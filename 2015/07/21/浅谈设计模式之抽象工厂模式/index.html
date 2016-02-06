@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>浅谈设计模式之抽象工厂模式 | Airing的博客</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="##抽象工厂模式(Abstract factory pattern)抽象工厂模式（Abstract factory pattern）是一种软件开发设计模式。抽象工厂模式提供了一种方式，可以将一组具有同一主题的单独的工厂封装起来。在正常使用中，客户端程序需要创建抽象工厂的具体实现，然后使用抽象工厂作为接口来创建这一主题的具体对象。客户端程序不需要知道（或关心）它从这些内部的工厂方法中获得对象的具体类">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浅谈设计模式之抽象工厂模式">
+<meta property="og:url" content="http://yoursite.com/2015/07/21/浅谈设计模式之抽象工厂模式/index.html">
+<meta property="og:site_name" content="Airing的博客">
+<meta property="og:description" content="##抽象工厂模式(Abstract factory pattern)抽象工厂模式（Abstract factory pattern）是一种软件开发设计模式。抽象工厂模式提供了一种方式，可以将一组具有同一主题的单独的工厂封装起来。在正常使用中，客户端程序需要创建抽象工厂的具体实现，然后使用抽象工厂作为接口来创建这一主题的具体对象。客户端程序不需要知道（或关心）它从这些内部的工厂方法中获得对象的具体类">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/ursb157211.png-normal.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/ursb157212.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/ursb157213.jpg">
+<meta property="og:updated_time" content="2015-07-21T03:45:20.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="浅谈设计模式之抽象工厂模式">
+<meta name="twitter:description" content="##抽象工厂模式(Abstract factory pattern)抽象工厂模式（Abstract factory pattern）是一种软件开发设计模式。抽象工厂模式提供了一种方式，可以将一组具有同一主题的单独的工厂封装起来。在正常使用中，客户端程序需要创建抽象工厂的具体实现，然后使用抽象工厂作为接口来创建这一主题的具体对象。客户端程序不需要知道（或关心）它从这些内部的工厂方法中获得对象的具体类">
+  
+    <link rel="alternative" href="/atom.xml" title="Airing的博客" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.ico">
+  
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+</head>
+<body>
+  <div id="container">
+    <div class="left-col">
+    <div class="overlay"></div>
+<div class="intrude-less">
+	<header id="header" class="inner">
+		<a href="/" class="profilepic">
+			
+			<img lazy-src="/img/face.png" class="js-avatar">
+			
+		</a>
+
+		<hgroup>
+		  <h1 class="header-author"><a href="/">Airing</a></h1>
+		</hgroup>
+
+		
+		<p class="header-subtitle">我是一只小小小小熊</p>
+		
+
+		
+			<div class="switch-btn">
+				<div class="icon">
+					<div class="icon-ctn">
+						<div class="icon-wrap icon-house" data-idx="0">
+							<div class="birdhouse"></div>
+							<div class="birdhouse_holes"></div>
+						</div>
+						<div class="icon-wrap icon-ribbon hide" data-idx="1">
+							<div class="ribbon"></div>
+						</div>
+						
+						<div class="icon-wrap icon-link hide" data-idx="2">
+							<div class="loopback_l"></div>
+							<div class="loopback_r"></div>
+						</div>
+						
+						
+						<div class="icon-wrap icon-me hide" data-idx="3">
+							<div class="user"></div>
+							<div class="shoulder"></div>
+						</div>
+						
+					</div>
+					
+				</div>
+				<div class="tips-box hide">
+					<div class="tips-arrow"></div>
+					<ul class="tips-inner">
+						<li>菜单</li>
+						<li>标签</li>
+						
+						<li>友情链接</li>
+						
+						
+						<li>捐助本站</li>
+						
+					</ul>
+				</div>
+			</div>
+		
+
+		<div class="switch-area">
+			<div class="switch-wrap">
+				<section class="switch-part switch-part1">
+					<nav class="header-menu">
+						<ul>
+						
+							<li><a href="/">主页</a></li>
+				        
+							<li><a href="/archives">所有文章</a></li>
+				        
+							<li><a href="/tags/随笔">随笔</a></li>
+				        
+							<li><a href="/instagram">相册</a></li>
+				        
+						</ul>
+					</nav>
+					<nav class="header-nav">
+						<div class="social">
+							
+								<a class="github" target="_blank" href="https://github.com/airingursb" title="github">github</a>
+					        
+								<a class="weibo" target="_blank" href="http://weibo.com/2696578192/profile?topnav=1&wvr=6" title="weibo">weibo</a>
+					        
+								<a class="mail" target="_blank" href="/gx-deng@163.com" title="mail">mail</a>
+					        
+								<a class="facebook" target="_blank" href="https://www.facebook.com/airing.gx" title="facebook">facebook</a>
+					        
+						</div>
+					</nav>
+				</section>
+				
+				
+				<section class="switch-part switch-part2">
+					<div class="widget tagcloud" id="js-tagcloud">
+						<a href="/tags/C/" style="font-size: 10px;">C</a> <a href="/tags/C51/" style="font-size: 10px;">C51</a> <a href="/tags/HTML5/" style="font-size: 20px;">HTML5</a> <a href="/tags/Java/" style="font-size: 16px;">Java</a> <a href="/tags/JavaScript/" style="font-size: 10px;">JavaScript</a> <a href="/tags/Linux/" style="font-size: 10px;">Linux</a> <a href="/tags/Markdown/" style="font-size: 10px;">Markdown</a> <a href="/tags/Swift/" style="font-size: 12px;">Swift</a> <a href="/tags/emacs/" style="font-size: 10px;">emacs</a> <a href="/tags/数据库/" style="font-size: 14px;">数据库</a> <a href="/tags/正则表达式/" style="font-size: 10px;">正则表达式</a> <a href="/tags/第三方/" style="font-size: 10px;">第三方</a> <a href="/tags/转载/" style="font-size: 10px;">转载</a> <a href="/tags/随笔/" style="font-size: 18px;">随笔</a> <a href="/tags/黑科技/" style="font-size: 12px;">黑科技</a>
+					</div>
+				</section>
+				
+				
+				
+				<section class="switch-part switch-part3">
+					<div id="js-friends">
+					
+			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://penny.gift/">Hi,Penny</a>
+			        
+			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://ursb.me/EduPlayer/">EduPlayer</a>
+			        
+			        </div>
+				</section>
+				
+
+				
+				
+				<section class="switch-part switch-part4">
+				
+					<div id="js-aboutme">谢谢支持！使用支付宝扫码即可。
+					<img src="http://7xkcl8.com1.z0.glb.clouddn.com/ursbzhifubao.png-zfb.jpg" />
+					</div>
+					
+				</section>
+				
+			</div>
+		</div>
+	</header>				
+</div>
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+  	<div class="overlay">
+  		<div class="slider-trigger"></div>
+  		<h1 class="header-author js-mobile-header hide">Airing</h1>
+  	</div>
+	<div class="intrude-less">
+		<header id="header" class="inner">
+			<div class="profilepic">
+				<img lazy-src="/img/face.png" class="js-avatar">
+			</div>
+			<hgroup>
+			  <h1 class="header-author">Airing</h1>
+			</hgroup>
+			
+			<p class="header-subtitle">我是一只小小小小熊</p>
+			
+			<nav class="header-menu">
+				<ul>
+				
+					<li><a href="/">主页</a></li>
+		        
+					<li><a href="/archives">所有文章</a></li>
+		        
+					<li><a href="/tags/随笔">随笔</a></li>
+		        
+					<li><a href="/instagram">相册</a></li>
+		        
+		        <div class="clearfix"></div>
+				</ul>
+			</nav>
+			<nav class="header-nav">
+				<div class="social">
+					
+						<a class="github" target="_blank" href="https://github.com/airingursb" title="github">github</a>
+			        
+						<a class="weibo" target="_blank" href="http://weibo.com/2696578192/profile?topnav=1&wvr=6" title="weibo">weibo</a>
+			        
+						<a class="mail" target="_blank" href="/gx-deng@163.com" title="mail">mail</a>
+			        
+						<a class="facebook" target="_blank" href="https://www.facebook.com/airing.gx" title="facebook">facebook</a>
+			        
+				</div>
+			</nav>
+		</header>				
+	</div>
+</nav>
+      <div class="body-wrap"><article id="post-浅谈设计模式之抽象工厂模式" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2015/07/21/浅谈设计模式之抽象工厂模式/" class="article-date">
+  	<time datetime="2015-07-21T11:14:56.000Z" itemprop="datePublished">2015-07-21</time>
+</a>
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      浅谈设计模式之抽象工厂模式
+    </h1>
+  
+
+      </header>
+      
+      <div class="article-info article-info-post">
+        
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+	</div>
+
+        
+
+        <div class="clearfix"></div>
+      </div>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>##抽象工厂模式(Abstract factory pattern)<br>抽象工厂模式（Abstract factory pattern）是一种软件开发设计模式。抽象工厂模式提供了一种方式，可以将一组具有同一主题的单独的工厂封装起来。在正常使用中，客户端程序需要创建抽象工厂的具体实现，然后使用抽象工厂作为接口来创建这一主题的具体对象。客户端程序不需要知道（或关心）它从这些内部的工厂方法中获得对象的具体类型，因为客户端程序仅使用这些对象的通用接口。抽象工厂模式将一组对象的实现细节与他们的一般使用分离开来。</p>
+<p><strong>定义：</strong>为创建一组相关或相互依赖的对象提供一个接口，而且无需指定他们的具体类。</p>
+<p><strong>类型：</strong>创建类模式</p>
+<p><strong>类图：</strong><br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/ursb157211.png-normal.jpg" alt="UML"><br><a id="more"></a><br><code>GuiFactory</code>接口中的<code>createButton</code>方法返回<code>Button</code>类型的对象。返回<code>Button</code>的哪种实现依赖于使用<code>GuiFactory</code>的哪种实现。</p>
+<p>需要注意的是，为了简洁起见，以上类图仅仅展示了创建一个类型对象的工厂。而在抽象工厂模式中，通常一个工厂能够创建若干种不同类型的对象。</p>
+<hr>
+<p>###产品族<br>先来认识下什么是产品族：<strong>位于不同产品等级结构中，功能相关联的产品组成的家族。</strong>还是让我们换一个例子来形象地说明一下吧。</p>
+<p><img src="http://7xkcl8.com1.z0.glb.clouddn.com/ursb157212.jpg" alt="产品族"></p>
+<p>图中的<code>BmwCar</code>和<code>BenzCar</code>就是两个产品树（产品层次结构）；而如图所示的<code>BenzSportsCar</code>和<code>BmwSportsCar</code>就是一个产品族。他们都可以放到跑车家族中，因此功能有所关联。同理<code>BmwBussinessCar</code>和<code>BenzSportsCar</code>也是一个产品族。</p>
+<hr>
+<p>回到抽象工厂模式的话题上。</p>
+<p><strong>可以说，抽象工厂模式和工厂方法模式的区别就在于需要创建对象的复杂程度上。而且抽象工厂模式是三个里面最为抽象、最具一般性的。</strong></p>
+<p>抽象工厂模式的用意为：<strong>给客户端提供一个接口，可以创建多个产品族中的产品对象。</strong></p>
+<p>而且使用抽象工厂模式还要满足一下条件：</p>
+<blockquote>
+<ol>
+<li><p>系统中有多个产品族，而系统一次只可能消费其中一族产品。</p>
+</li>
+<li><p>同属于同一个产品族的产品以其使用。</p>
+</li>
+</ol>
+</blockquote>
+<p>来看看抽象工厂模式的各个角色（和工厂方法的如出一辙）：</p>
+<blockquote>
+<ol>
+<li><p>抽象工厂角色： 这是工厂方法模式的核心，它与应用程序无关。是具体工厂角色必须实现的接口或者必须继承的父类。在java中它由抽象类或者接口来实现。</p>
+</li>
+<li><p>具体工厂角色：它含有和具体业务逻辑有关的代码。由应用程序调用以创建对应的具体产品的对象。在java中它由具体的类来实现。</p>
+</li>
+<li><p>抽象产品角色：它是具体产品继承的父类或者是实现的接口。在java中一般有抽象类或者接口来实现。</p>
+</li>
+<li><p>具体产品角色：具体工厂角色所创建的对象就是此角色的实例。在java中由具体的类来实现。</p>
+</li>
+</ol>
+</blockquote>
+<p>类图如下：<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/ursb157213.jpg" alt="抽象工厂模式"></p>
+<hr>
+<p>###代码举例<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// 产品 Plant接口    </span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Plant</span> </span>&#123; &#125;<span class="comment">//标志接口  </span></span><br><span class="line"></span><br><span class="line"><span class="comment">//具体产品PlantA，PlantB    </span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">PlantA</span> <span class="keyword">implements</span> <span class="title">Plant</span> </span>&#123;    </span><br><span class="line">  </span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="title">PlantA</span> <span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		System.out.println(<span class="string">"create PlantA !"</span>);    </span><br><span class="line">　	&#125;    </span><br><span class="line">  </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doSomething</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		System.out.println(<span class="string">" PlantA do something ..."</span>);    </span><br><span class="line">　	&#125;    </span><br><span class="line">&#125;    </span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">PlantB</span> <span class="keyword">implements</span> <span class="title">Plant</span> </span>&#123;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> <span class="title">PlantB</span> <span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		System.out.println(<span class="string">"create PlantB !"</span>);    </span><br><span class="line">　	&#125;    </span><br><span class="line">  </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doSomething</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		System.out.println(<span class="string">" PlantB do something ..."</span>);    </span><br><span class="line">　	&#125;    </span><br><span class="line">&#125;   </span><br><span class="line"> </span><br><span class="line"><span class="comment">//产品Fruit接口    </span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">Fruit</span> </span>&#123; &#125;    </span><br><span class="line"></span><br><span class="line"><span class="comment">//具体产品FruitA，FruitB    </span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitA</span> <span class="keyword">implements</span> <span class="title">Fruit</span> </span>&#123;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> <span class="title">FruitA</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		System.out.println(<span class="string">"create FruitA !"</span>);    </span><br><span class="line">　	&#125;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doSomething</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		System.out.println(<span class="string">" FruitA do something ..."</span>);    </span><br><span class="line">　	&#125;    </span><br><span class="line">&#125;    </span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FruitB</span> <span class="keyword">implements</span> <span class="title">Fruit</span> </span>&#123;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> <span class="title">FruitB</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		System.out.println(<span class="string">"create FruitB !"</span>);    </span><br><span class="line">　	&#125;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">doSomething</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		System.out.println(<span class="string">" FruitB do something ..."</span>);    </span><br><span class="line">　	&#125;    </span><br><span class="line">&#125;    </span><br><span class="line"></span><br><span class="line"><span class="comment">//抽象工厂方法    </span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">interface</span> <span class="title">AbstractFactory</span> </span>&#123;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> Plant <span class="title">createPlant</span><span class="params">()</span></span>;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> Fruit <span class="title">createFruit</span><span class="params">()</span></span>;    </span><br><span class="line">&#125;    </span><br><span class="line"></span><br><span class="line"><span class="comment">//具体工厂方法    </span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FactoryA</span> <span class="keyword">implements</span> <span class="title">AbstractFactory</span> </span>&#123;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> Plant <span class="title">createPlant</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		<span class="keyword">return</span> <span class="keyword">new</span> PlantA();    </span><br><span class="line">　	&#125;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> Fruit <span class="title">createFruit</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		<span class="keyword">return</span> <span class="keyword">new</span> FruitA();    </span><br><span class="line">　	&#125;    </span><br><span class="line">&#125;    </span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">FactoryB</span> <span class="keyword">implements</span> <span class="title">AbstractFactory</span> </span>&#123;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> Plant <span class="title">createPlant</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		<span class="keyword">return</span> <span class="keyword">new</span> PlantB();    </span><br><span class="line">　	&#125;    </span><br><span class="line">　	<span class="function"><span class="keyword">public</span> Fruit <span class="title">createFruit</span><span class="params">()</span> </span>&#123;    </span><br><span class="line">　　		<span class="keyword">return</span> <span class="keyword">new</span> FruitB();    </span><br><span class="line">　	&#125;    </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//调用工厂方法   </span></span><br><span class="line"><span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">Client</span> </span>&#123;   </span><br><span class="line">	<span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">method1</span><span class="params">()</span> </span>&#123;   </span><br><span class="line">		AbstractFactory instance = <span class="keyword">new</span> FactoryA();   </span><br><span class="line">   		instance.createPlant();   </span><br><span class="line">	&#125;   </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>建议可以看看GoF的《设计模式》一书，里面说到工厂模式时举得例子浅显易懂。</p>
+<hr>
+<p>###工厂方法模式与抽象工厂模式的区别<br>可以这么说，工厂方法模式是一种极端情况的抽象工厂模式，而抽象工厂模式可以看成是工厂方法模式的一种推广。 </p>
+<ol>
+<li><p>其实工厂方法模式是用来创建一个产品的等级结构的，而抽象工厂模式是用来创建多个产品的等级结构的。工厂方法创建一般只有一个方法，创建一种产品。抽象工厂一般有多个方法，创建一系列产品。 </p>
+</li>
+<li><p>工厂方法模式只有一个抽象产品类，而抽象工厂模式有多个。工厂方法模式的具体工厂类只能创建一个具体产品类的实例，而抽象工厂模式可以创建多个。 </p>
+</li>
+</ol>
+<p>简而言之，<br>工厂方法模式：</p>
+<blockquote>
+<ul>
+<li>一个抽象产品类，可以派生出多个具体产品类。   </li>
+<li>一个抽象工厂类，可以派生出多个具体工厂类。   </li>
+<li>每个具体工厂类只能创建一个具体产品类的实例。   </li>
+</ul>
+</blockquote>
+<p>抽象工厂模式：</p>
+<blockquote>
+<ul>
+<li>多个抽象产品类，每个抽象产品类可以派生出多个具体产品类。   </li>
+<li>一个抽象工厂类，可以派生出多个具体工厂类。   </li>
+<li>每个具体工厂类可以创建多个具体产品类的实例。 </li>
+</ul>
+</blockquote>
+<hr>
+<p>###适用性<br>在以下情况可以考虑使用抽象工厂模式：</p>
+<ul>
+<li>一个系统要独立于它的产品的创建、组合和表示时。</li>
+<li>一个系统要由多个产品系列中的一个来配置时。</li>
+<li>需要强调一系列相关的产品对象的设计以便进行联合使用时。</li>
+<li>提供一个产品类库，而只想显示它们的接口而不是实现时。</li>
+</ul>
+<p>###优点</p>
+<ul>
+<li>具体产品从客户代码中被分离出来。</li>
+<li>容易改变产品的系列。</li>
+<li>将一个系列的产品族统一到一起创建。</li>
+</ul>
+<p>###缺点</p>
+<ul>
+<li>在产品族中扩展新的产品是很困难的，它需要修改抽象工厂的接口</li>
+</ul>
+<blockquote>
+<p>参考资料：</p>
+<ul>
+<li><a href="https://zh.wikipedia.org/wiki/%E6%8A%BD%E8%B1%A1%E5%B7%A5%E5%8E%82" target="_blank" rel="external">wiki——抽象工厂</a></li>
+<li><a href="http://blog.csdn.net/zhengzhb/article/details/7359385" target="_blank" rel="external">CSDN卡奴达摩的专栏——23种设计模式（3）：抽象工厂模式</a></li>
+<li><a href="http://laughingchs.iteye.com/blog/1169986" target="_blank" rel="external">laughingchs——工厂方法模式与抽象工厂模式</a></li>
+</ul>
+</blockquote>
+
+      
+    </div>
+    
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/07/22/浅谈设计模式之代理模式/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption"><</strong>
+      <div class="article-nav-title">
+        
+          浅谈设计模式之代理模式
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2015/07/20/数据库范式之第三范式/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">数据库范式之第三范式</div>
+      <strong class="article-nav-caption">></strong>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<div class="share">
+	<!-- JiaThis Button BEGIN -->
+	<div class="jiathis_style">
+		<span class="jiathis_txt">分享到：</span>
+		<a class="jiathis_button_tsina"></a>
+		<a class="jiathis_button_cqq"></a>
+		<a class="jiathis_button_douban"></a>
+		<a class="jiathis_button_weixin"></a>
+		<a class="jiathis_button_tumblr"></a>
+		<a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	</div>
+	<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1405949716054953" charset="utf-8"></script>
+	<!-- JiaThis Button END -->
+</div>
+
+
+
+<div class="duoshuo">
+	<!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="浅谈设计模式之抽象工厂模式" data-title="浅谈设计模式之抽象工厂模式" data-url="http://yoursite.com/2015/07/21/浅谈设计模式之抽象工厂模式/"></div>
+	<!-- 多说评论框 end -->
+	<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+	<script type="text/javascript">
+	var duoshuoQuery = {short_name:"airingursb"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+	<!-- 多说公共JS代码 end -->
+</div>
+
+
+
+
+</div>
+      <footer id="footer">
+  <div class="outer">
+    <div id="footer-info">
+    	<div class="footer-left">
+    		&copy; 2016 Airing
+    	</div>
+      	<div class="footer-right">
+      		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
+      	</div>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+
+
+<script>
+	var yiliaConfig = {
+		fancybox: true,
+		mathjax: true,
+		animate: true,
+		isHome: false,
+		isPost: true,
+		isArchive: false,
+		isTag: false,
+		isCategory: false,
+		open_in_new: false
+	}
+</script>
+<script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js" type="text/javascript"></script>
+<script src="/js/main.js" type="text/javascript"></script>
+
+
+
+
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+    tex2jax: {
+        inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+        processEscapes: true,
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+});
+
+MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';                 
+    }       
+});
+</script>
+
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+  </div>
+</body>
+</html>

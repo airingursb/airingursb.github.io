@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>在Java中使用正则表达式 | Airing的博客</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="##前言之前的一篇文章已经简单介绍过正则表达式了，这里将使正则表达式派上用场——介绍如何在Java中使用正则表达式。因此对刚接触正则表达式的童鞋请参考有关资料，在此因篇幅有限不作介绍。
+在 JDK1.3 或之前的 JDK 版本中并没有包含正则表达式库可供 JAVA 程序员使用，之前我们一般都在使用第三方提供的正则表达式库，这些第三方库中有源代码开放的，也有需付费购买的，而在 JDK1.4 的测试版">
+<meta property="og:type" content="article">
+<meta property="og:title" content="在Java中使用正则表达式">
+<meta property="og:url" content="http://yoursite.com/2015/09/09/在Java中使用正则表达式/index.html">
+<meta property="og:site_name" content="Airing的博客">
+<meta property="og:description" content="##前言之前的一篇文章已经简单介绍过正则表达式了，这里将使正则表达式派上用场——介绍如何在Java中使用正则表达式。因此对刚接触正则表达式的童鞋请参考有关资料，在此因篇幅有限不作介绍。
+在 JDK1.3 或之前的 JDK 版本中并没有包含正则表达式库可供 JAVA 程序员使用，之前我们一般都在使用第三方提供的正则表达式库，这些第三方库中有源代码开放的，也有需付费购买的，而在 JDK1.4 的测试版">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/ursb2015090801.png">
+<meta property="og:updated_time" content="2015-09-08T15:01:04.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="在Java中使用正则表达式">
+<meta name="twitter:description" content="##前言之前的一篇文章已经简单介绍过正则表达式了，这里将使正则表达式派上用场——介绍如何在Java中使用正则表达式。因此对刚接触正则表达式的童鞋请参考有关资料，在此因篇幅有限不作介绍。
+在 JDK1.3 或之前的 JDK 版本中并没有包含正则表达式库可供 JAVA 程序员使用，之前我们一般都在使用第三方提供的正则表达式库，这些第三方库中有源代码开放的，也有需付费购买的，而在 JDK1.4 的测试版">
+  
+    <link rel="alternative" href="/atom.xml" title="Airing的博客" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.ico">
+  
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+</head>
+<body>
+  <div id="container">
+    <div class="left-col">
+    <div class="overlay"></div>
+<div class="intrude-less">
+	<header id="header" class="inner">
+		<a href="/" class="profilepic">
+			
+			<img lazy-src="/img/face.png" class="js-avatar">
+			
+		</a>
+
+		<hgroup>
+		  <h1 class="header-author"><a href="/">Airing</a></h1>
+		</hgroup>
+
+		
+		<p class="header-subtitle">我是一只小小小小熊</p>
+		
+
+		
+			<div class="switch-btn">
+				<div class="icon">
+					<div class="icon-ctn">
+						<div class="icon-wrap icon-house" data-idx="0">
+							<div class="birdhouse"></div>
+							<div class="birdhouse_holes"></div>
+						</div>
+						<div class="icon-wrap icon-ribbon hide" data-idx="1">
+							<div class="ribbon"></div>
+						</div>
+						
+						<div class="icon-wrap icon-link hide" data-idx="2">
+							<div class="loopback_l"></div>
+							<div class="loopback_r"></div>
+						</div>
+						
+						
+						<div class="icon-wrap icon-me hide" data-idx="3">
+							<div class="user"></div>
+							<div class="shoulder"></div>
+						</div>
+						
+					</div>
+					
+				</div>
+				<div class="tips-box hide">
+					<div class="tips-arrow"></div>
+					<ul class="tips-inner">
+						<li>菜单</li>
+						<li>标签</li>
+						
+						<li>友情链接</li>
+						
+						
+						<li>捐助本站</li>
+						
+					</ul>
+				</div>
+			</div>
+		
+
+		<div class="switch-area">
+			<div class="switch-wrap">
+				<section class="switch-part switch-part1">
+					<nav class="header-menu">
+						<ul>
+						
+							<li><a href="/">主页</a></li>
+				        
+							<li><a href="/archives">所有文章</a></li>
+				        
+							<li><a href="/tags/随笔">随笔</a></li>
+				        
+							<li><a href="/instagram">相册</a></li>
+				        
+						</ul>
+					</nav>
+					<nav class="header-nav">
+						<div class="social">
+							
+								<a class="github" target="_blank" href="https://github.com/airingursb" title="github">github</a>
+					        
+								<a class="weibo" target="_blank" href="http://weibo.com/2696578192/profile?topnav=1&wvr=6" title="weibo">weibo</a>
+					        
+								<a class="mail" target="_blank" href="/gx-deng@163.com" title="mail">mail</a>
+					        
+								<a class="facebook" target="_blank" href="https://www.facebook.com/airing.gx" title="facebook">facebook</a>
+					        
+						</div>
+					</nav>
+				</section>
+				
+				
+				<section class="switch-part switch-part2">
+					<div class="widget tagcloud" id="js-tagcloud">
+						<a href="/tags/C/" style="font-size: 10px;">C</a> <a href="/tags/C51/" style="font-size: 10px;">C51</a> <a href="/tags/HTML5/" style="font-size: 20px;">HTML5</a> <a href="/tags/Java/" style="font-size: 16px;">Java</a> <a href="/tags/JavaScript/" style="font-size: 10px;">JavaScript</a> <a href="/tags/Linux/" style="font-size: 10px;">Linux</a> <a href="/tags/Markdown/" style="font-size: 10px;">Markdown</a> <a href="/tags/Swift/" style="font-size: 12px;">Swift</a> <a href="/tags/emacs/" style="font-size: 10px;">emacs</a> <a href="/tags/数据库/" style="font-size: 14px;">数据库</a> <a href="/tags/正则表达式/" style="font-size: 10px;">正则表达式</a> <a href="/tags/第三方/" style="font-size: 10px;">第三方</a> <a href="/tags/转载/" style="font-size: 10px;">转载</a> <a href="/tags/随笔/" style="font-size: 18px;">随笔</a> <a href="/tags/黑科技/" style="font-size: 12px;">黑科技</a>
+					</div>
+				</section>
+				
+				
+				
+				<section class="switch-part switch-part3">
+					<div id="js-friends">
+					
+			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://penny.gift/">Hi,Penny</a>
+			        
+			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://ursb.me/EduPlayer/">EduPlayer</a>
+			        
+			        </div>
+				</section>
+				
+
+				
+				
+				<section class="switch-part switch-part4">
+				
+					<div id="js-aboutme">谢谢支持！使用支付宝扫码即可。
+					<img src="http://7xkcl8.com1.z0.glb.clouddn.com/ursbzhifubao.png-zfb.jpg" />
+					</div>
+					
+				</section>
+				
+			</div>
+		</div>
+	</header>				
+</div>
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+  	<div class="overlay">
+  		<div class="slider-trigger"></div>
+  		<h1 class="header-author js-mobile-header hide">Airing</h1>
+  	</div>
+	<div class="intrude-less">
+		<header id="header" class="inner">
+			<div class="profilepic">
+				<img lazy-src="/img/face.png" class="js-avatar">
+			</div>
+			<hgroup>
+			  <h1 class="header-author">Airing</h1>
+			</hgroup>
+			
+			<p class="header-subtitle">我是一只小小小小熊</p>
+			
+			<nav class="header-menu">
+				<ul>
+				
+					<li><a href="/">主页</a></li>
+		        
+					<li><a href="/archives">所有文章</a></li>
+		        
+					<li><a href="/tags/随笔">随笔</a></li>
+		        
+					<li><a href="/instagram">相册</a></li>
+		        
+		        <div class="clearfix"></div>
+				</ul>
+			</nav>
+			<nav class="header-nav">
+				<div class="social">
+					
+						<a class="github" target="_blank" href="https://github.com/airingursb" title="github">github</a>
+			        
+						<a class="weibo" target="_blank" href="http://weibo.com/2696578192/profile?topnav=1&wvr=6" title="weibo">weibo</a>
+			        
+						<a class="mail" target="_blank" href="/gx-deng@163.com" title="mail">mail</a>
+			        
+						<a class="facebook" target="_blank" href="https://www.facebook.com/airing.gx" title="facebook">facebook</a>
+			        
+				</div>
+			</nav>
+		</header>				
+	</div>
+</nav>
+      <div class="body-wrap"><article id="post-在Java中使用正则表达式" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2015/09/09/在Java中使用正则表达式/" class="article-date">
+  	<time datetime="2015-09-09T16:26:02.000Z" itemprop="datePublished">2015-09-09</time>
+</a>
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      在Java中使用正则表达式
+    </h1>
+  
+
+      </header>
+      
+      <div class="article-info article-info-post">
+        
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/Java/">Java</a></li></ul>
+	</div>
+
+        
+
+        <div class="clearfix"></div>
+      </div>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>##前言<br>之前的一篇文章已经简单介绍过正则表达式了，这里将使正则表达式派上用场——介绍如何在Java中使用正则表达式。因此对刚接触正则表达式的童鞋请参考有关资料，在此因篇幅有限不作介绍。</p>
+<p>在 JDK1.3 或之前的 JDK 版本中并没有包含正则表达式库可供 JAVA 程序员使用，之前我们一般都在使用第三方提供的正则表达式库，这些第三方库中有源代码开放的，也有需付费购买的，而在 JDK1.4 的测试版中也已经包含有正则表达式库—<strong>java.util.regex</strong>。</p>
+<p>java.util.regex 是一个用正则表达式所订制的模式来对字符串进行匹配工作的类库包。</p>
+<p>即JDK1.4之后都能使用java.util.regex包匹配正则表达式。</p>
+<a id="more"></a>
+<p>##Pattern 和 Matcher</p>
+<p><strong>java.util.regex</strong>包下有两个关键类——“Pattern”，“Matcher”。功能如下：</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">类名</th>
+<th style="text-align:center">介绍</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">Pattern</td>
+<td style="text-align:center">一个 Pattern 是一个正则表达式经编译后的表现模式。</td>
+</tr>
+<tr>
+<td style="text-align:center">Matcher</td>
+<td style="text-align:center">一个 Matcher 对象是一个状态机器，它依据 Pattern 对象做为匹配模式对字符串展开匹配检查。</td>
+</tr>
+</tbody>
+</table>
+<p>首先一个 Pattern 实例订制了一个所用语法与 PERL 的类似的正则表达式经编译后的模式，然后一个 Matcher 实例在这个给定的 Pattern 实例的模式控制下进行字符串的匹配工作。</p>
+<p>以下就分别来看看这两个类：</p>
+<p>####Pattern详解</p>
+<table>
+<thead>
+<tr>
+<th style="text-align:center">Pattern方法类型</th>
+<th style="text-align:center">Pattern方法介绍</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:center">static Pattern</td>
+<td style="text-align:center"><code>compile(String regex)</code>：将给定的正则表达式编译并赋予给 Pattern 类</td>
+</tr>
+<tr>
+<td style="text-align:center">static Pattern</td>
+<td style="text-align:center"><code>compile(String regex,int flags)</code>：同上，但增加flag参数，可选参数包括CASE INSENSITIVE,MULTILINE,DOTALL,UNICODE CASE,CANON EQ</td>
+</tr>
+<tr>
+<td style="text-align:center">int</td>
+<td style="text-align:center"><code>flags()</code>：返回当前Pattern匹配的flag参数</td>
+</tr>
+<tr>
+<td style="text-align:center">Matcher</td>
+<td style="text-align:center"><code>matcher(CharSequence input)</code>：生成一个给定命名的 Matcher 对象</td>
+</tr>
+<tr>
+<td style="text-align:center">static boolean</td>
+<td style="text-align:center"><code>matches(String regex, CharSequence input)</code>：编译给定的正则表达式并且对输入的字串以该正则表达式为模开展匹配，该方法适 于该正则表达式只会使用一次的情况,也就是只进行一次匹配工作，因为这种情况下并不需要生成一个 Matcher 实例。</td>
+</tr>
+<tr>
+<td style="text-align:center">String</td>
+<td style="text-align:center"><code>pattern()</code>：返回该 Patter 对象所编译的正则表达式。</td>
+</tr>
+<tr>
+<td style="text-align:center">String[]</td>
+<td style="text-align:center"><code>split(CharSequence input)</code>：将目标字符串按照 Pattern 里所包含的正则表达式为模进行分割。</td>
+</tr>
+<tr>
+<td style="text-align:center">String[]</td>
+<td style="text-align:center"><code>split(CharSequence input,int limit)</code>：作用同上，limit指定分割的段数</td>
+</tr>
+</tbody>
+</table>
+<p>一个正则表达式，也就是一串有特定意义的字符，必须首先要编译成为一个 Pattern 类的实例，这个 Pattern 对象将会使用 <code>matcher()</code>方法来生成一个 Matcher 实例，接着便可以使用该 Matcher 实例以编译的正 则表达式为基础对目标字符串进行匹配工作，多个 Matcher 是可以共用一个 Pattern 对象的。</p>
+<p>####Matcher详解<br>|Matcher方法类型|Matcher方法介绍|<br>|:–:|:–:|<br>|Matcher|<code>appendReplacement(StringBuffer sb, String replacement)</code>：将当前匹配子串替换为指定字符串，并且将替换后的子串以及其之前到上次匹配子串之后的字符串段添加到一个 StringBuffer 对象里。|<br>|StringBuffer|<code>appendTail(StringBuffer sb)</code>：将最后一次匹配工作后剩余的字符串添加到一个 StringBuffer 对象里。|<br>|int|<code>end()</code>：返回当前匹配的子串的最后一个字符在原目标字符串中的索引位置 。|<br>|int|<code>end(int group)</code>：返回与匹配模式里指定的组相匹配的子串最后一个字符的位置。|<br>|boolean|<code>find()</code>：尝试在目标字符串里查找下一个匹配子串。|<br>|boolean|<code>find(int start)</code>：重设 Matcher 对象,并且尝试在目标字符串里从指定的位置开始查找下一个匹配的子串。|<br>|String|<code>group()</code>：返回当前查找而获得的与组匹配的所有子串内容。|<br>|String|<code>group(int group)</code>：返回当前查找而获得的与指定的组匹配的子串内容。|<br>|int|<code>groupCount()</code>：返回当前查找所获得的匹配组的数量。|<br>|boolean|<code>lookingAt()</code>：检测目标字符串是否以匹配的子串起始。|<br>|boolean|<code>matches()</code>：尝试对整个目标字符展开匹配检测，也就是只有整个目标字符串完全匹配时才返回真值。|<br>|Pattern|<code>pattern()</code>：返回该 Matcher 对象的现有匹配模式，也就是对应的 Pattern 对象。|<br>|String|<code>replaceAll(String replacement)</code>：将目标字符串里与既有模式相匹配的子串全部替换为指定的字符串。|<br>|String|<code>replaceFirst(String replacement)</code>：将目标字符串里第一个与既有模式相匹配的子串替换为指定的字符串。|<br>|Matcher|<code>reset()</code>：重设该 Matcher 对象。|<br>|Matcher|<code>reset(CharSequence input)</code>：重设该 Matcher 对象并且指定一个新的目标字符串。|<br>|int|<code>start()</code>：返回当前查找所获子串的开始字符在原目标字符串中的位置。|<br>|int|<code>start(int group)</code>：返回当前查找所获得的和指定组匹配的子串的第一个字符在原目标字符串中的位置。|</p>
+<p>一个 Matcher 实例是被用来对目标字符串进行基于既有模式(也就是一个给定的 Pattern 所编译的正则表达式)进行匹配查找的，所有往 Matcher 的输入都是通过 CharSequence 接口提供的，这样做的目的在于可以支持对从多元化的数据源所提供的数据进行匹配工作。</p>
+<p>##匹配实例<br>前面说了这么多废话，其实真正的运用却非常简单。下面，我们来匹配所有 <code>Month DD,YYYY</code> 格式的日期，其中定义月份值为第一个组。</p>
+<p>正则表达式分析如下：</p>
+<p><img src="http://7xkcl8.com1.z0.glb.clouddn.com/ursb2015090801.png" alt="Month DD,YYYY"></p>
+<p>代码实现：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> com.airing.regex;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.util.regex.Matcher;<span class="keyword">import</span> java.util.regex.Pattern;<span class="keyword">public</span> <span class="class"><span class="keyword">class</span> <span class="title">PatternDemo010</span> </span>&#123;	<span class="function"><span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title">main</span><span class="params">(String args[])</span></span>&#123;		String str1 = <span class="string">"june 30, 1995"</span>;		<span class="comment">/*		 * ():表示分组		 * &#123;a-z&#125;:表示出现的内容范围		 * +:表示出现1次或多次		 * \\s:表示空格		 * */</span>		Pattern p = Pattern.compile(<span class="string">"([a-z]+)\\s+[0-9]&#123;1,2&#125;,\\s*[0-9]&#123;4&#125;"</span>);		<span class="comment">//将匹配程序交由Matcher进行匹配</span>		Matcher m = p.matcher(str1);		<span class="comment">//调用Matcher类中的matches()方法,测试是否可以匹配</span>		<span class="keyword">if</span>(m.matches())&#123;			System.out.println(<span class="string">"匹配成功"</span>) ;		&#125;<span class="keyword">else</span>&#123;			System.out.println(<span class="string">"不能匹配"</span>) ;		&#125;	&#125;￼&#125;</span><br></pre></td></tr></table></figure>
+<p>没错，很简单吧~其实就三句话即可实现匹配和判断。至于Pattern和Matcher的其他方法，有兴趣的童鞋可以自行研究。掌握至此，便也就足够了。</p>
+
+      
+    </div>
+    
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/09/10/写给我未来的学生/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption"><</strong>
+      <div class="article-nav-title">
+        
+          写给我未来的学生
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2015/09/08/JIRA-安装教程/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">JIRA 安装教程</div>
+      <strong class="article-nav-caption">></strong>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<div class="share">
+	<!-- JiaThis Button BEGIN -->
+	<div class="jiathis_style">
+		<span class="jiathis_txt">分享到：</span>
+		<a class="jiathis_button_tsina"></a>
+		<a class="jiathis_button_cqq"></a>
+		<a class="jiathis_button_douban"></a>
+		<a class="jiathis_button_weixin"></a>
+		<a class="jiathis_button_tumblr"></a>
+		<a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	</div>
+	<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1405949716054953" charset="utf-8"></script>
+	<!-- JiaThis Button END -->
+</div>
+
+
+
+<div class="duoshuo">
+	<!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="在Java中使用正则表达式" data-title="在Java中使用正则表达式" data-url="http://yoursite.com/2015/09/09/在Java中使用正则表达式/"></div>
+	<!-- 多说评论框 end -->
+	<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+	<script type="text/javascript">
+	var duoshuoQuery = {short_name:"airingursb"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+	<!-- 多说公共JS代码 end -->
+</div>
+
+
+
+
+</div>
+      <footer id="footer">
+  <div class="outer">
+    <div id="footer-info">
+    	<div class="footer-left">
+    		&copy; 2016 Airing
+    	</div>
+      	<div class="footer-right">
+      		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
+      	</div>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+
+
+<script>
+	var yiliaConfig = {
+		fancybox: true,
+		mathjax: true,
+		animate: true,
+		isHome: false,
+		isPost: true,
+		isArchive: false,
+		isTag: false,
+		isCategory: false,
+		open_in_new: false
+	}
+</script>
+<script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js" type="text/javascript"></script>
+<script src="/js/main.js" type="text/javascript"></script>
+
+
+
+
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+    tex2jax: {
+        inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+        processEscapes: true,
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+});
+
+MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';                 
+    }       
+});
+</script>
+
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+  </div>
+</body>
+</html>

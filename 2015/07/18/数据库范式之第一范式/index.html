@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  
+  <title>数据库范式之第一范式 | Airing的博客</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <meta name="description" content="##数据库范式(Database Normalization)设计关系数据库时，遵从不同的规范要求，设计出合理的关系型数据库，这些不同的规范要求被称为不同的范式，各种范式呈递次规范，越高的范式数据库冗余越小。
+目前关系数据库有六种范式：第一范式（1NF）、第二范式（2NF）、第三范式（3NF）、巴斯-科德范式（BCNF）、第四范式(4NF）和第五范式（5NF，还又称完美范式）。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="数据库范式之第一范式">
+<meta property="og:url" content="http://yoursite.com/2015/07/18/数据库范式之第一范式/index.html">
+<meta property="og:site_name" content="Airing的博客">
+<meta property="og:description" content="##数据库范式(Database Normalization)设计关系数据库时，遵从不同的规范要求，设计出合理的关系型数据库，这些不同的规范要求被称为不同的范式，各种范式呈递次规范，越高的范式数据库冗余越小。
+目前关系数据库有六种范式：第一范式（1NF）、第二范式（2NF）、第三范式（3NF）、巴斯-科德范式（BCNF）、第四范式(4NF）和第五范式（5NF，还又称完美范式）。">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157187181.jpg">
+<meta property="og:image" content="http://7xkcl8.com1.z0.glb.clouddn.com/157187182.jpg">
+<meta property="og:updated_time" content="2015-07-18T09:21:43.000Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="数据库范式之第一范式">
+<meta name="twitter:description" content="##数据库范式(Database Normalization)设计关系数据库时，遵从不同的规范要求，设计出合理的关系型数据库，这些不同的规范要求被称为不同的范式，各种范式呈递次规范，越高的范式数据库冗余越小。
+目前关系数据库有六种范式：第一范式（1NF）、第二范式（2NF）、第三范式（3NF）、巴斯-科德范式（BCNF）、第四范式(4NF）和第五范式（5NF，还又称完美范式）。">
+  
+    <link rel="alternative" href="/atom.xml" title="Airing的博客" type="application/atom+xml">
+  
+  
+    <link rel="icon" href="/favicon.ico">
+  
+  <link rel="stylesheet" href="/css/style.css" type="text/css">
+</head>
+<body>
+  <div id="container">
+    <div class="left-col">
+    <div class="overlay"></div>
+<div class="intrude-less">
+	<header id="header" class="inner">
+		<a href="/" class="profilepic">
+			
+			<img lazy-src="/img/face.png" class="js-avatar">
+			
+		</a>
+
+		<hgroup>
+		  <h1 class="header-author"><a href="/">Airing</a></h1>
+		</hgroup>
+
+		
+		<p class="header-subtitle">我是一只小小小小熊</p>
+		
+
+		
+			<div class="switch-btn">
+				<div class="icon">
+					<div class="icon-ctn">
+						<div class="icon-wrap icon-house" data-idx="0">
+							<div class="birdhouse"></div>
+							<div class="birdhouse_holes"></div>
+						</div>
+						<div class="icon-wrap icon-ribbon hide" data-idx="1">
+							<div class="ribbon"></div>
+						</div>
+						
+						<div class="icon-wrap icon-link hide" data-idx="2">
+							<div class="loopback_l"></div>
+							<div class="loopback_r"></div>
+						</div>
+						
+						
+						<div class="icon-wrap icon-me hide" data-idx="3">
+							<div class="user"></div>
+							<div class="shoulder"></div>
+						</div>
+						
+					</div>
+					
+				</div>
+				<div class="tips-box hide">
+					<div class="tips-arrow"></div>
+					<ul class="tips-inner">
+						<li>菜单</li>
+						<li>标签</li>
+						
+						<li>友情链接</li>
+						
+						
+						<li>捐助本站</li>
+						
+					</ul>
+				</div>
+			</div>
+		
+
+		<div class="switch-area">
+			<div class="switch-wrap">
+				<section class="switch-part switch-part1">
+					<nav class="header-menu">
+						<ul>
+						
+							<li><a href="/">主页</a></li>
+				        
+							<li><a href="/archives">所有文章</a></li>
+				        
+							<li><a href="/tags/随笔">随笔</a></li>
+				        
+							<li><a href="/instagram">相册</a></li>
+				        
+						</ul>
+					</nav>
+					<nav class="header-nav">
+						<div class="social">
+							
+								<a class="github" target="_blank" href="https://github.com/airingursb" title="github">github</a>
+					        
+								<a class="weibo" target="_blank" href="http://weibo.com/2696578192/profile?topnav=1&wvr=6" title="weibo">weibo</a>
+					        
+								<a class="mail" target="_blank" href="/gx-deng@163.com" title="mail">mail</a>
+					        
+								<a class="facebook" target="_blank" href="https://www.facebook.com/airing.gx" title="facebook">facebook</a>
+					        
+						</div>
+					</nav>
+				</section>
+				
+				
+				<section class="switch-part switch-part2">
+					<div class="widget tagcloud" id="js-tagcloud">
+						<a href="/tags/C/" style="font-size: 10px;">C</a> <a href="/tags/C51/" style="font-size: 10px;">C51</a> <a href="/tags/HTML5/" style="font-size: 20px;">HTML5</a> <a href="/tags/Java/" style="font-size: 16px;">Java</a> <a href="/tags/JavaScript/" style="font-size: 10px;">JavaScript</a> <a href="/tags/Linux/" style="font-size: 10px;">Linux</a> <a href="/tags/Markdown/" style="font-size: 10px;">Markdown</a> <a href="/tags/Swift/" style="font-size: 12px;">Swift</a> <a href="/tags/emacs/" style="font-size: 10px;">emacs</a> <a href="/tags/数据库/" style="font-size: 14px;">数据库</a> <a href="/tags/正则表达式/" style="font-size: 10px;">正则表达式</a> <a href="/tags/第三方/" style="font-size: 10px;">第三方</a> <a href="/tags/转载/" style="font-size: 10px;">转载</a> <a href="/tags/随笔/" style="font-size: 18px;">随笔</a> <a href="/tags/黑科技/" style="font-size: 12px;">黑科技</a>
+					</div>
+				</section>
+				
+				
+				
+				<section class="switch-part switch-part3">
+					<div id="js-friends">
+					
+			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://penny.gift/">Hi,Penny</a>
+			        
+			          <a target="_blank" class="main-nav-link switch-friends-link" href="http://ursb.me/EduPlayer/">EduPlayer</a>
+			        
+			        </div>
+				</section>
+				
+
+				
+				
+				<section class="switch-part switch-part4">
+				
+					<div id="js-aboutme">谢谢支持！使用支付宝扫码即可。
+					<img src="http://7xkcl8.com1.z0.glb.clouddn.com/ursbzhifubao.png-zfb.jpg" />
+					</div>
+					
+				</section>
+				
+			</div>
+		</div>
+	</header>				
+</div>
+    </div>
+    <div class="mid-col">
+      <nav id="mobile-nav">
+  	<div class="overlay">
+  		<div class="slider-trigger"></div>
+  		<h1 class="header-author js-mobile-header hide">Airing</h1>
+  	</div>
+	<div class="intrude-less">
+		<header id="header" class="inner">
+			<div class="profilepic">
+				<img lazy-src="/img/face.png" class="js-avatar">
+			</div>
+			<hgroup>
+			  <h1 class="header-author">Airing</h1>
+			</hgroup>
+			
+			<p class="header-subtitle">我是一只小小小小熊</p>
+			
+			<nav class="header-menu">
+				<ul>
+				
+					<li><a href="/">主页</a></li>
+		        
+					<li><a href="/archives">所有文章</a></li>
+		        
+					<li><a href="/tags/随笔">随笔</a></li>
+		        
+					<li><a href="/instagram">相册</a></li>
+		        
+		        <div class="clearfix"></div>
+				</ul>
+			</nav>
+			<nav class="header-nav">
+				<div class="social">
+					
+						<a class="github" target="_blank" href="https://github.com/airingursb" title="github">github</a>
+			        
+						<a class="weibo" target="_blank" href="http://weibo.com/2696578192/profile?topnav=1&wvr=6" title="weibo">weibo</a>
+			        
+						<a class="mail" target="_blank" href="/gx-deng@163.com" title="mail">mail</a>
+			        
+						<a class="facebook" target="_blank" href="https://www.facebook.com/airing.gx" title="facebook">facebook</a>
+			        
+				</div>
+			</nav>
+		</header>				
+	</div>
+</nav>
+      <div class="body-wrap"><article id="post-数据库范式之第一范式" class="article article-type-post" itemscope itemprop="blogPost">
+  
+    <div class="article-meta">
+      <a href="/2015/07/18/数据库范式之第一范式/" class="article-date">
+  	<time datetime="2015-07-18T16:56:25.000Z" itemprop="datePublished">2015-07-18</time>
+</a>
+    </div>
+  
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
+        
+  
+    <h1 class="article-title" itemprop="name">
+      数据库范式之第一范式
+    </h1>
+  
+
+      </header>
+      
+      <div class="article-info article-info-post">
+        
+	<div class="article-tag tagcloud">
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/数据库/">数据库</a></li></ul>
+	</div>
+
+        
+
+        <div class="clearfix"></div>
+      </div>
+      
+    
+    <div class="article-entry" itemprop="articleBody">
+      
+        <p>##数据库范式(Database Normalization)<br>设计关系数据库时，遵从不同的规范要求，设计出合理的关系型数据库，这些不同的规范要求被称为不同的范式，各种范式呈递次规范，<strong>越高的范式数据库冗余越小</strong>。</p>
+<p>目前关系数据库有六种范式：第一范式（1NF）、第二范式（2NF）、第三范式（3NF）、巴斯-科德范式（BCNF）、第四范式(4NF）和第五范式（5NF，还又称完美范式）。<br><a id="more"></a></p>
+<p>首先要明白”范式（NF）”是什么意思。按照教材中的定义，范式是“符合某一种级别的关系模式的集合，表示一个关系内部各属性之间的联系的合理化程度”。很晦涩吧？实际上你可以把它粗略地理解为一张数据表的表结构所符合的某种设计标准的级别。就像家里装修买建材，最环保的是E0级，其次是E1级，还有E2级等等。数据库范式也分为1NF，2NF，3NF，BCNF，4NF，5NF。一般在我们设计关系型数据库的时候，最多考虑到BCNF就够。符合高一级范式的设计，必定符合低一级范式，例如符合2NF的关系模式，必定符合1NF。</p>
+<p>不过在设计关系型数据库时，通常只会用到前四种范式，内容相对较少，利用闲暇之余整理一下，以便记忆。这次只是提及最简单的第一范式。</p>
+<p>##第一范式(1NF)<br>所谓第一范式（1NF）是指在关系模型中，对域添加的一个规范要求，所有的域都应该是原子性的，即数据库表的每一列都是不可分割的原子数据项，而不能是集合，数组，记录等非原子数据项。即实体中的某个属性有多个值时，必须拆分为不同的属性。在符合第一范式（1NF）表中的每个域值只能是实体的一个属性或一个属性的一部分。简而言之，<strong>第一范式就是无重复的域。符合1NF的关系中的每个属性都不可再分。</strong></p>
+<p>如下表，就不符合1NF。<br><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157187181.jpg" alt="数据表1"></p>
+<p>实际上，<strong>1NF是所有关系型数据库的最基本要求</strong>，你在关系型数据库管理系统（RDBMS），例如SQL Server，Oracle，MySQL中创建数据表的时候，如果数据表的设计不符合这个最基本的要求，那么操作一定是不能成功的。也就是说，只要在RDBMS中已经存在的数据表，一定是符合1NF的。如果我们要在RDBMS中表现表中的数据，就得设计为下表的形式：</p>
+<p><img src="http://7xkcl8.com1.z0.glb.clouddn.com/157187182.jpg" alt="数据库2"></p>
+<p>通常上只要知道1NF的上述特点即可。但是为了严谨，这里举出三点不符合第一范式的例子。</p>
+<hr>
+<p>###不符合第一范式的情况</p>
+<p>####1、重复组(单一字段中有多个有意义的值)<br>重复组通常会出现在会计账上，每一笔记录可能有不定个数的值。举例来说：</p>
+<table>
+<thead>
+<tr>
+<th>顾客</th>
+<th style="text-align:center">日期</th>
+<th style="text-align:center">数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pater</td>
+<td style="text-align:center">Monday</td>
+<td style="text-align:center">19.00,-28.20</td>
+</tr>
+<tr>
+<td>Pater</td>
+<td style="text-align:center">Wednesday</td>
+<td style="text-align:center">-84.00</td>
+</tr>
+<tr>
+<td>Sarah</td>
+<td style="text-align:center">Friday</td>
+<td style="text-align:center">100.00,150.00</td>
+</tr>
+</tbody>
+</table>
+<p>‘数量’ 就是所谓的重复组了，而在这种情况下这份数据就不符合第一范式。想要消除重复组的话，只要把每笔记录都转化为单一记录即可：</p>
+<table>
+<thead>
+<tr>
+<th>顾客</th>
+<th style="text-align:center">日期</th>
+<th style="text-align:center">数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pater</td>
+<td style="text-align:center">Monday</td>
+<td style="text-align:center">19.00</td>
+</tr>
+<tr>
+<td>Pater</td>
+<td style="text-align:center">Monday</td>
+<td style="text-align:center">-28.20</td>
+</tr>
+<tr>
+<td>Pater</td>
+<td style="text-align:center">Wednesday</td>
+<td style="text-align:center">-84.00</td>
+</tr>
+<tr>
+<td>Sarah</td>
+<td style="text-align:center">Friday</td>
+<td style="text-align:center">100.00</td>
+</tr>
+<tr>
+<td>Sarah</td>
+<td style="text-align:center">Friday</td>
+<td style="text-align:center">150.00</td>
+</tr>
+</tbody>
+</table>
+<p>####2、缺少唯一识别码<br>一样是在交易这个例子中，同一天同一个人买了同样的数量，这样的交易做了两次：</p>
+<table>
+<thead>
+<tr>
+<th>顾客</th>
+<th style="text-align:center">日期</th>
+<th style="text-align:center">数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Pater</td>
+<td style="text-align:center">Monday</td>
+<td style="text-align:center">19.00</td>
+</tr>
+<tr>
+<td>Pater</td>
+<td style="text-align:center">Monday</td>
+<td style="text-align:center">19.00</td>
+</tr>
+</tbody>
+</table>
+<p>如上所示，这两笔交易可以说是一模一样，也就是说如果只靠这些数据我们没有办法分辨这两笔记录。我们之所以说它不符合第一范式，是因为上面这样的表示法欠缺一个唯一识别码，可以是一个字段，也可以是一组字段，而且可以保证在这个数据中唯一识别码不会重复出现。要将它正规化到符合第一范式的原则只需要加入一个唯一识别码即可：</p>
+<table>
+<thead>
+<tr>
+<th>交易ID</th>
+<th style="text-align:center">顾客</th>
+<th style="text-align:center">日期</th>
+<th style="text-align:center">数量</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td style="text-align:center">Pater</td>
+<td style="text-align:center">Monday</td>
+<td style="text-align:center">19.00</td>
+</tr>
+<tr>
+<td>2</td>
+<td style="text-align:center">Pater</td>
+<td style="text-align:center">Monday</td>
+<td style="text-align:center">19.00</td>
+</tr>
+</tbody>
+</table>
+<p>####3、用很多字段来表达同一个事实<br>在同一个数据表里用多个字段来表达同一个事情也是违反第一范式的：</p>
+<table>
+<thead>
+<tr>
+<th>交易ID</th>
+<th style="text-align:center">人物</th>
+<th style="text-align:center">不喜欢的食物(1)</th>
+<th style="text-align:center">不喜欢的食物(2)</th>
+<th style="text-align:center">不喜欢的食物(3)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td style="text-align:center">Pater</td>
+<td style="text-align:center">梨子</td>
+<td style="text-align:center">苹果</td>
+<td style="text-align:center"></td>
+</tr>
+<tr>
+<td>2</td>
+<td style="text-align:center">Jim</td>
+<td style="text-align:center">西瓜</td>
+<td style="text-align:center"></td>
+<td style="text-align:center">梨子</td>
+</tr>
+<tr>
+<td>3</td>
+<td style="text-align:center">Airing</td>
+<td style="text-align:center">西瓜</td>
+<td style="text-align:center">苦瓜</td>
+<td style="text-align:center">梨子</td>
+</tr>
+<tr>
+<td>4</td>
+<td style="text-align:center">Tom</td>
+<td style="text-align:center"></td>
+<td style="text-align:center">老鼠</td>
+<td style="text-align:center">葡萄</td>
+</tr>
+</tbody>
+</table>
+<p>懂得数据库基础的人一看就知道这是一个很糟糕的设计，甚至连觉得其都称不上是一个数据表。没错，其实1NF是很简单，它是所有关系型数据库设计必须要满足的基础。</p>
+<blockquote>
+<p>参考资料：</p>
+<ul>
+<li><a href="https://zh.wikipedia.org/wiki/%E7%AC%AC%E4%B8%80%E6%AD%A3%E8%A6%8F%E5%8C%96" target="_blank" rel="external">wiki——第一范式</a></li>
+<li><a href="http://www.zhihu.com/question/24696366" target="_blank" rel="external">知乎——解释一下关系数据库的第一第二第三范式？</a></li>
+</ul>
+</blockquote>
+
+      
+    </div>
+    
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2015/07/19/数据库范式之第二范式/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption"><</strong>
+      <div class="article-nav-title">
+        
+          数据库范式之第二范式
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2015/07/17/浅谈设计模式之工厂方法模式/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">浅谈设计模式之工厂方法模式</div>
+      <strong class="article-nav-caption">></strong>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+<div class="share">
+	<!-- JiaThis Button BEGIN -->
+	<div class="jiathis_style">
+		<span class="jiathis_txt">分享到：</span>
+		<a class="jiathis_button_tsina"></a>
+		<a class="jiathis_button_cqq"></a>
+		<a class="jiathis_button_douban"></a>
+		<a class="jiathis_button_weixin"></a>
+		<a class="jiathis_button_tumblr"></a>
+		<a href="http://www.jiathis.com/share" class="jiathis jiathis_txt jtico jtico_jiathis" target="_blank"></a>
+	</div>
+	<script type="text/javascript" src="http://v3.jiathis.com/code/jia.js?uid=1405949716054953" charset="utf-8"></script>
+	<!-- JiaThis Button END -->
+</div>
+
+
+
+<div class="duoshuo">
+	<!-- 多说评论框 start -->
+	<div class="ds-thread" data-thread-key="数据库范式之第一范式" data-title="数据库范式之第一范式" data-url="http://yoursite.com/2015/07/18/数据库范式之第一范式/"></div>
+	<!-- 多说评论框 end -->
+	<!-- 多说公共JS代码 start (一个网页只需插入一次) -->
+	<script type="text/javascript">
+	var duoshuoQuery = {short_name:"airingursb"};
+	(function() {
+		var ds = document.createElement('script');
+		ds.type = 'text/javascript';ds.async = true;
+		ds.src = (document.location.protocol == 'https:' ? 'https:' : 'http:') + '//static.duoshuo.com/embed.js';
+		ds.charset = 'UTF-8';
+		(document.getElementsByTagName('head')[0] 
+		 || document.getElementsByTagName('body')[0]).appendChild(ds);
+	})();
+	</script>
+	<!-- 多说公共JS代码 end -->
+</div>
+
+
+
+
+</div>
+      <footer id="footer">
+  <div class="outer">
+    <div id="footer-info">
+    	<div class="footer-left">
+    		&copy; 2016 Airing
+    	</div>
+      	<div class="footer-right">
+      		<a href="http://hexo.io/" target="_blank">Hexo</a>  Theme <a href="https://github.com/litten/hexo-theme-yilia" target="_blank">Yilia</a> by Litten
+      	</div>
+    </div>
+  </div>
+</footer>
+    </div>
+    
+  <link rel="stylesheet" href="/fancybox/jquery.fancybox.css" type="text/css">
+
+
+<script>
+	var yiliaConfig = {
+		fancybox: true,
+		mathjax: true,
+		animate: true,
+		isHome: false,
+		isPost: true,
+		isArchive: false,
+		isTag: false,
+		isCategory: false,
+		open_in_new: false
+	}
+</script>
+<script src="http://7.url.cn/edu/jslib/comb/require-2.1.6,jquery-1.9.1.min.js" type="text/javascript"></script>
+<script src="/js/main.js" type="text/javascript"></script>
+
+
+
+
+
+
+<script type="text/x-mathjax-config">
+MathJax.Hub.Config({
+    tex2jax: {
+        inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+        processEscapes: true,
+        skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+    }
+});
+
+MathJax.Hub.Queue(function() {
+    var all = MathJax.Hub.getAllJax(), i;
+    for(i=0; i < all.length; i += 1) {
+        all[i].SourceElement().parentNode.className += ' has-jax';                 
+    }       
+});
+</script>
+
+<script type="text/javascript" src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+
+
+  </div>
+</body>
+</html>
