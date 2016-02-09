@@ -1,6 +1,6 @@
     "use strict";
     var fs = require("fs");
-    var path = "../../Photos/ursb.me";
+    var path = "../../Photos/ursb";
 
     fs.readdir(path, function (err, files) {
         if (err) {
