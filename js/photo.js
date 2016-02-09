@@ -18,8 +18,8 @@
                 var html, li = "";
                 for (var i = begin; i < end && i < data.length; i++) {
                     li += '<li><div class="img-box">' +
-                        '<a class="img-bg" rel="example_group" href="http://7xqtqq.com1.z0.glb.clouddn.com/ursb/' + data[i] + '&e=1455026624&token=diCBIWtSI2mabzsq7hQT8oiSg8RkjOeSk4HxSa-5:ts7sH_s9Y5_2pH1oKll-CW3AMuw?raw=true"></a>' +
-                        '<img lazy-src="http://7xqtqq.com1.z0.glb.clouddn.com/ursb/' + data[i] + '&e=1455026624&token=diCBIWtSI2mabzsq7hQT8oiSg8RkjOeSk4HxSa-5:ts7sH_s9Y5_2pH1oKll-CW3AMuw?raw=true" />' +
+                        '<a class="img-bg" rel="example_group" href="http://7xqtqq.com1.z0.glb.clouddn.com/ursb/' + data[i] + '-140.jpg?raw=true"></a>' +
+                        '<img lazy-src="http://7xqtqq.com1.z0.glb.clouddn.com/ursb/' + data[i] + '?raw=true" />' +
                         '</li>';
                 }
 
