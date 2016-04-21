@@ -1,4 +1,4 @@
-<link rel="stylesheet" type="text/css" href="/assets/css/APlayer.min.css"><script src="/assets/js/APlayer.min.js"> </script>    "use strict";
+<link rel="stylesheet" type="text/css" href="/css/APlayer.min.css"><script src="/js/APlayer.min.js"> </script>    "use strict";
     var fs = require("fs");
     var path = "../../Photos/ursb";
 
