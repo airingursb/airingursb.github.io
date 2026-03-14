@@ -41,16 +41,22 @@ export async function createVisitor(visitorId, ip, userAgent) {
   if (!client) return;
 
   const now = new Date().toISOString();
-  const { error } = await client.from('chat_visitors').upsert(
-    {
-      visitor_id: visitorId,
-      ip,
-      user_agent: userAgent,
-      first_seen_at: now,
-      last_seen_at: now,
-    },
-    { onConflict: 'visitor_id', ignoreDuplicates: false }
-  );
+  // Try insert first; if visitor_id already exists, just update last_seen
+  const { error: insertError } = await client.from('chat_visitors').insert({
+    visitor_id: visitorId,
+    ip,
+    user_agent: userAgent,
+    first_seen_at: now,
+    last_seen_at: now,
+  });
+
+  if (insertError && insertError.code === '23505') {
+    // Unique violation — visitor already exists, update activity only
+    await updateVisitorActivity(visitorId, ip, userAgent);
+    return;
+  }
+
+  const error = insertError;
 
   if (error) console.error('[supabase] createVisitor error:', error.message);
 }

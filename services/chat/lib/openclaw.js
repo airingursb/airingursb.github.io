@@ -19,8 +19,11 @@ export async function streamChat(messages, visitorId) {
   }
 
   const endpoint = `${url.replace(/\/$/, '')}/v1/chat/completions`;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
   const response = await fetch(endpoint, {
+    signal: controller.signal,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -34,6 +37,8 @@ export async function streamChat(messages, visitorId) {
       max_tokens: 500,
     }),
   });
+
+  clearTimeout(timeoutId);
 
   if (!response.ok) {
     const text = await response.text().catch(() => '');
