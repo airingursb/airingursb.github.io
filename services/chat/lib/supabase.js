@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { UAParser } from 'ua-parser-js';
 import config from './config.js';
 
 /** @type {import('@supabase/supabase-js').SupabaseClient | null} */
@@ -28,6 +29,60 @@ function getClient() {
   return _client;
 }
 
+// ── Device parsing ────────────────────────────────────────────────────────────
+
+/**
+ * Parse user-agent string into device_type, os, browser.
+ * @param {string} userAgent
+ * @returns {{ device_type: string, os: string, browser: string }}
+ */
+function parseUA(userAgent) {
+  const parser = new UAParser(userAgent);
+  const device = parser.getDevice();
+  const os = parser.getOS();
+  const browser = parser.getBrowser();
+
+  const deviceType = device.type || 'desktop'; // ua-parser returns undefined for desktop
+  const osStr = os.name ? `${os.name}${os.version ? ' ' + os.version : ''}` : '';
+  const browserStr = browser.name ? `${browser.name}${browser.version ? ' ' + browser.version : ''}` : '';
+
+  return { device_type: deviceType, os: osStr, browser: browserStr };
+}
+
+// ── GeoIP ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Look up country and city from IP using ip-api.com (free, no key needed).
+ * @param {string} ip
+ * @returns {Promise<{ country: string, city: string }>}
+ */
+async function geoLookup(ip) {
+  // Skip private/local IPs
+  if (!ip || ip === 'unknown' || ip.startsWith('127.') || ip.startsWith('192.168.') || ip.startsWith('10.') || ip === '::1') {
+    return { country: '', city: '' };
+  }
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+    const res = await fetch(`http://ip-api.com/json/${ip}?fields=countryCode,city`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) return { country: '', city: '' };
+
+    const data = await res.json();
+    return {
+      country: data.countryCode || '',
+      city: data.city || '',
+    };
+  } catch {
+    return { country: '', city: '' };
+  }
+}
+
 // ── Public API ─────────────────────────────────────────────────────────────────
 
 /**
@@ -41,11 +96,19 @@ export async function createVisitor(visitorId, ip, userAgent) {
   if (!client) return;
 
   const now = new Date().toISOString();
+  const { device_type, os, browser } = parseUA(userAgent);
+  const { country, city } = await geoLookup(ip);
+
   // Try insert first; if visitor_id already exists, just update last_seen
   const { error: insertError } = await client.from('chat_visitors').insert({
     visitor_id: visitorId,
     ip,
     user_agent: userAgent,
+    device_type,
+    os,
+    browser,
+    country,
+    city,
     first_seen_at: now,
     last_seen_at: now,
   });
@@ -126,9 +189,11 @@ export async function updateVisitorActivity(visitorId, ip, userAgent) {
   const client = getClient();
   if (!client) return;
 
+  const { device_type, os, browser } = parseUA(userAgent);
+
   const { error } = await client
     .from('chat_visitors')
-    .update({ ip, user_agent: userAgent, last_seen_at: new Date().toISOString() })
+    .update({ ip, user_agent: userAgent, device_type, os, browser, last_seen_at: new Date().toISOString() })
     .eq('visitor_id', visitorId);
 
   if (error) console.error('[supabase] updateVisitorActivity error:', error.message);
