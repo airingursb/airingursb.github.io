@@ -16,6 +16,9 @@ HTML_FILE = 'index.html'
 MAX_ARTICLES = 6
 MAX_TELEGRAM = 6
 
+READWISE_TOKEN = os.environ.get('READWISE_TOKEN', 'REDACTED_READWISE_TOKEN')
+READWISE_BASE = 'https://readwise.io/api/v2'
+
 LASTFM_USER = 'airingursb'
 LASTFM_API_KEY = os.environ.get('LASTFM_API_KEY', 'REDACTED_LASTFM_KEY')
 LASTFM_BASE = 'http://ws.audioscrobbler.com/2.0/'
@@ -71,7 +74,7 @@ def generate_items_html(items):
 def replace_section(content, start_marker, end_marker, new_html):
     pattern = rf'({re.escape(start_marker)})\n.*?\n(\s*{re.escape(end_marker)})'
     replacement = f'\\1\n{new_html}\n\\2'
-    return re.sub(pattern, replacement, content, flags=re.DOTALL)
+    return re.sub(pattern, lambda m: m.group(1) + '\n' + new_html + '\n' + m.group(2), content, flags=re.DOTALL)
 
 
 # ── Blog Feed ────────────────────────────────────────────────
@@ -291,6 +294,130 @@ def generate_music_script(data):
     return f'            <script>window.__MUSIC_DATA__={json_str}</script>'
 
 
+# ── Readwise ────────────────────────────────────────────────
+
+import random
+
+def readwise_api(endpoint, **params):
+    params_str = '&'.join(f'{k}={v}' for k, v in params.items())
+    url = f'{READWISE_BASE}/{endpoint}/?{params_str}' if params_str else f'{READWISE_BASE}/{endpoint}/'
+    req = urllib.request.Request(url, headers={
+        'Authorization': f'Token {READWISE_TOKEN}',
+        'User-Agent': 'Mozilla/5.0 (compatible; FeedBot/1.0)',
+    })
+    resp = urllib.request.urlopen(req, timeout=30)
+    return json.loads(resp.read().decode('utf-8'))
+
+
+def fetch_readwise_data():
+    # 1. Fetch latest 100 highlights
+    latest = []
+    page_url = f'{READWISE_BASE}/highlights/?page_size=100'
+    req = urllib.request.Request(page_url, headers={
+        'Authorization': f'Token {READWISE_TOKEN}',
+        'User-Agent': 'Mozilla/5.0 (compatible; FeedBot/1.0)',
+    })
+    resp = urllib.request.urlopen(req, timeout=30)
+    data = json.loads(resp.read().decode('utf-8'))
+    latest = data.get('results', [])
+
+    # 2. Fetch total count and pick random pages for another 100
+    total = data.get('count', 0)
+    random_highlights = []
+    if total > 100:
+        total_pages = (total + 99) // 100  # pages when page_size=100
+        # Pick a few random pages to get ~100 random highlights
+        random_pages = random.sample(range(2, total_pages + 1), min(3, total_pages - 1))
+        for pg in random_pages:
+            try:
+                pg_url = f'{READWISE_BASE}/highlights/?page_size=40&page={pg}'
+                req = urllib.request.Request(pg_url, headers={
+                    'Authorization': f'Token {READWISE_TOKEN}',
+                    'User-Agent': 'Mozilla/5.0 (compatible; FeedBot/1.0)',
+                })
+                resp = urllib.request.urlopen(req, timeout=30)
+                pg_data = json.loads(resp.read().decode('utf-8'))
+                random_highlights.extend(pg_data.get('results', []))
+            except Exception:
+                pass
+
+    # 3. Collect all unique book_ids
+    all_highlights = latest + random_highlights
+    book_ids = set(h['book_id'] for h in all_highlights if h.get('book_id'))
+
+    # 4. Fetch book info for these highlights
+    books_map = {}
+    # Fetch books page by page until we have all needed
+    books_page = 1
+    while True:
+        try:
+            books_data = readwise_api('books', page_size=100, page=books_page)
+            for b in books_data.get('results', []):
+                if b['id'] in book_ids:
+                    books_map[b['id']] = {
+                        'title': b.get('title', ''),
+                        'author': b.get('author', ''),
+                        'category': b.get('category', ''),
+                    }
+            # Stop if we've found all or no more pages
+            if len(books_map) >= len(book_ids) or not books_data.get('next'):
+                break
+            books_page += 1
+            if books_page > 20:  # safety limit
+                break
+        except Exception:
+            break
+
+    # 5. Build output: deduplicate, clean, sort
+    seen_ids = set()
+    highlights = []
+    for h in all_highlights:
+        if h['id'] in seen_ids:
+            continue
+        seen_ids.add(h['id'])
+        text = h.get('text', '').strip()
+        if not text or len(text) < 6:
+            continue
+        # Strip markdown formatting
+        text = re.sub(r'\*{1,2}(.*?)\*{1,2}', r'\1', text)
+        # Strip markdown links [text](url) -> text
+        text = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', text)
+        # Strip raw URLs left behind
+        text = re.sub(r'https?://\S+', '', text)
+        # Clean up leftover markers
+        text = re.sub(r'\s*--\s*\[?《?', '', text)  # trailing "-- [《" refs
+        text = re.sub(r'》\]?\s*$', '', text)
+        text = text.strip()
+        book = books_map.get(h.get('book_id'), {})
+        date_str = ''
+        if h.get('highlighted_at'):
+            date_str = format_date(h['highlighted_at'], '%Y.%m')
+        highlights.append({
+            'id': h['id'],
+            'text': text,
+            'title': book.get('title', ''),
+            'author': book.get('author', ''),
+            'date': date_str,
+            'url': h.get('url') or h.get('readwise_url', ''),
+        })
+
+    # Sort by id desc (latest first) for the final list
+    highlights.sort(key=lambda x: x['id'], reverse=True)
+
+    # Keep max 200
+    highlights = highlights[:200]
+
+    return {
+        'total': total,
+        'highlights': highlights,
+    }
+
+
+def generate_highlights_script(data):
+    json_str = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+    return f'            <script>window.__HIGHLIGHTS_DATA__={json_str}</script>'
+
+
 # ── Main ─────────────────────────────────────────────────────
 
 def main():
@@ -326,6 +453,16 @@ def main():
             print('Telegram: no messages found', file=sys.stderr)
     except Exception as e:
         print(f'Telegram: error - {e}', file=sys.stderr)
+
+    # Readwise
+    try:
+        rw_data = fetch_readwise_data()
+        rw_html = generate_highlights_script(rw_data)
+        content = replace_section(content, '<!-- HIGHLIGHTS_DATA_START -->', '<!-- HIGHLIGHTS_DATA_END -->', rw_html)
+        print(f'Readwise: {len(rw_data["highlights"])} highlights (total {rw_data["total"]})')
+        changed = True
+    except Exception as e:
+        print(f'Readwise: error - {e}', file=sys.stderr)
 
     # Last.fm
     try:
