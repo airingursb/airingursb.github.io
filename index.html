@@ -2322,7 +2322,7 @@
       var chatRounds = document.getElementById('chatRounds');
 
       var TOKEN_KEY = 'chat_visitor_token';
-      var MAX_ROUNDS = 10;
+      var MAX_ROUNDS = 5;
       var roundCount = 0;
 
       // ── Token management ──
@@ -2368,6 +2368,7 @@
               appendMessage(msg.role, msg.content, false);
             });
             roundCount = data.rounds || 0;
+            if (data.maxRounds) MAX_ROUNDS = data.maxRounds;
             updateRoundsDisplay();
             if (roundCount >= MAX_ROUNDS) {
               showLimitReached();
@@ -2488,7 +2489,6 @@
                       contentEl.classList.remove('chat-typing');
                       contentEl.innerHTML = renderMarkdown(accumulated);
                       chatArea.scrollTop = chatArea.scrollHeight;
-                      roundCount++;
                       updateRoundsDisplay();
                       if (roundCount >= MAX_ROUNDS) {
                         showLimitReached();
@@ -2514,7 +2514,8 @@
                           contentEl.innerHTML = renderMarkdown(accumulated) + '<span class="chat-typing"></span>';
                           chatArea.scrollTop = chatArea.scrollHeight;
                         } else if (evt.type === 'done') {
-                          // will be finalized on stream end
+                          if (evt.round) roundCount = evt.round;
+                          if (evt.maxRounds) MAX_ROUNDS = evt.maxRounds;
                         } else if (evt.type === 'error') {
                           throw { code: evt.code || 'STREAM_ERROR', message: evt.message };
                         }
