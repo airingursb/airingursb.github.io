@@ -42,3 +42,16 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
+
+      - name: Deploy to Aliyun server
+        env:
+          DEPLOY_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 39.105.102.252 >> ~/.ssh/known_hosts 2>/dev/null
+          rsync -avz --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            _site/ root@39.105.102.252:/var/www/ursb.me/
+          rm -f ~/.ssh/deploy_key
