@@ -338,10 +338,127 @@
       padding: 20px 0;
     }
 
+    /* Pixel Map */
+    /* World Map */
+    .card-map {
+      position: relative;
+      padding: 24px 24px 16px;
+    }
+
+    #worldMap {
+      height: 300px;
+      width: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+      z-index: 1;
+    }
+
+    /* Dark popup style */
+    .leaflet-popup-content-wrapper {
+      background: #161b22;
+      color: #e6edf3;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      font-family: 'SFMono-Regular', 'SF Mono', Menlo, Consolas, monospace;
+      font-size: 12px;
+    }
+
+    .leaflet-popup-tip {
+      background: #161b22;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .leaflet-popup-close-button {
+      color: #7d8590 !important;
+    }
+
+    /* Dark zoom controls */
+    .leaflet-control-zoom a {
+      background: #161b22 !important;
+      color: #e6edf3 !important;
+      border-color: rgba(255, 255, 255, 0.1) !important;
+    }
+
+    .leaflet-control-zoom a:hover {
+      background: #1f2937 !important;
+    }
+
+    /* Attribution */
+    .leaflet-control-attribution {
+      background: transparent !important;
+      color: #30363d !important;
+      font-size: 10px !important;
+    }
+
+    .leaflet-control-attribution a {
+      color: #30363d !important;
+    }
+
+    /* Pulse animation for current location */
+    @keyframes pulse-ring {
+      0% {
+        transform: scale(0.5);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(2.5);
+        opacity: 0;
+      }
+    }
+
+    .pulse-marker {
+      position: relative;
+    }
+
+    .pulse-marker .pulse-dot {
+      width: 10px;
+      height: 10px;
+      background: #ff6b6b;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .pulse-marker .pulse-ring {
+      width: 10px;
+      height: 10px;
+      border: 2px solid #ff6b6b;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation: pulse-ring 1.5s ease-out infinite;
+    }
+
+    /* Visitor Counter */
+    .visitor-counter {
+      text-align: center;
+      margin-top: 24px;
+      padding: 8px 0;
+      font-size: 11px;
+      color: #4ade80;
+      letter-spacing: 1px;
+      text-shadow: 0 0 6px rgba(74, 222, 128, 0.4);
+      opacity: 0;
+      transition: opacity 0.5s;
+    }
+
+    .visitor-counter.loaded {
+      opacity: 1;
+    }
+
+    .visitor-count {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+
     /* Footer */
     .footer {
       text-align: center;
-      margin-top: 24px;
+      margin-top: 8px;
       padding: 16px 0;
     }
 
@@ -367,6 +484,7 @@
       }
 
       .card-intro,
+      .card-map,
       .card-guestbook {
         grid-column: 1 / -1;
       }
@@ -413,6 +531,14 @@
         font-size: 11px;
         margin-left: 12px;
       }
+
+      #worldMap {
+        height: 220px;
+      }
+
+      .card-map {
+        padding: 20px 20px 12px;
+      }
     }
 
     @media (max-width: 360px) {
@@ -426,6 +552,8 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
@@ -534,6 +662,12 @@
         <!-- TELEGRAM_END -->
       </div>
 
+      <!-- World Map -->
+      <div class="card card-map">
+        <div class="section-title">Footprints</div>
+        <div id="worldMap"></div>
+      </div>
+
       <!-- Guestbook -->
       <div class="card card-guestbook">
         <div class="section-title">Guestbook</div>
@@ -554,6 +688,8 @@
         </form>
       </div>
     </div>
+
+    <div class="visitor-counter" id="visitorCounter"></div>
 
     <div class="footer">
       <a href="https://beian.miit.gov.cn" target="_blank">&copy; 粤ICP备16057808号-1</a>
@@ -1286,14 +1422,229 @@
       requestAnimationFrame(animate);
     })();
 
-    // ── Guestbook (placeholder - needs Supabase) ──
+    // ── World Map ──
     (function () {
+      var map = L.map('worldMap', {
+        center: [20, 100],
+        zoom: 2,
+        minZoom: 2,
+        maxZoom: 12,
+        zoomControl: true,
+        attributionControl: true
+      });
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+      }).addTo(map);
+
+      var visitedColor = '#4ade80';
+      var currentColor = '#ff6b6b';
+
+      var cities = [
+        // Current
+        { name: 'Singapore', lat: 1.35, lng: 103.82, current: true },
+        // Overseas
+        { name: 'San Jose', lat: 37.34, lng: -121.89 },
+        { name: 'Bintan Island', lat: 1.07, lng: 104.45 },
+        { name: 'Batam Island', lat: 1.05, lng: 104.03 },
+        { name: 'Johor Bahru', lat: 1.49, lng: 103.74 },
+        { name: 'Christchurch', lat: -43.53, lng: 172.64 },
+        { name: 'Queenstown', lat: -45.03, lng: 168.66 },
+        { name: 'Dunedin', lat: -45.87, lng: 170.50 },
+        // China
+        { name: '大理', lat: 25.60, lng: 100.27 },
+        { name: '昆明', lat: 25.04, lng: 102.68 },
+        { name: '南宁', lat: 22.82, lng: 108.32 },
+        { name: '深圳', lat: 22.54, lng: 114.06 },
+        { name: '广州', lat: 23.13, lng: 113.26 },
+        { name: '佛山', lat: 23.02, lng: 113.12 },
+        { name: '惠州', lat: 23.11, lng: 114.42 },
+        { name: '上海', lat: 31.23, lng: 121.47 },
+        { name: '杭州', lat: 30.27, lng: 120.15 },
+        { name: '苏州', lat: 31.30, lng: 120.62 },
+        { name: '南京', lat: 32.06, lng: 118.80 },
+        { name: '北京', lat: 39.90, lng: 116.40 },
+        { name: '重庆', lat: 29.56, lng: 106.55 },
+        { name: '福州', lat: 26.07, lng: 119.30 },
+        { name: '合肥', lat: 31.82, lng: 117.23 },
+        { name: '六安', lat: 31.74, lng: 116.51 }
+      ];
+
+      cities.forEach(function (city) {
+        if (city.current) {
+          // Pulse marker for current location
+          var pulseIcon = L.divIcon({
+            className: 'pulse-marker',
+            html: '<div class="pulse-ring"></div><div class="pulse-dot"></div>',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10],
+            popupAnchor: [0, -10]
+          });
+          L.marker([city.lat, city.lng], { icon: pulseIcon })
+            .addTo(map)
+            .bindPopup('<b>' + city.name + '</b><br><span style="color: ' + currentColor + ';">📍 Current Location</span>');
+        } else {
+          // Circle marker for visited cities
+          L.circleMarker([city.lat, city.lng], {
+            radius: 5,
+            fillColor: visitedColor,
+            color: visitedColor,
+            weight: 1,
+            opacity: 0.8,
+            fillOpacity: 0.6
+          })
+            .addTo(map)
+            .bindPopup('<b>' + city.name + '</b>');
+        }
+      });
+    })();
+
+    // ── Guestbook ──
+    (function () {
+      var SUPABASE_URL = 'https://pcoyocvqfipuydhvdsle.supabase.co';
+      var SUPABASE_KEY = 'sb_publishable_jieHU6yu3dPxSww2_B_KIg_9KcWg6wl';
+      var API = SUPABASE_URL + '/rest/v1/guestbook';
+      var HEADERS = {
+        'apikey': SUPABASE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_KEY,
+        'Content-Type': 'application/json'
+      };
+
+      var messagesEl = document.getElementById('guestbookMessages');
       var form = document.getElementById('guestbookForm');
+      var nameInput = document.getElementById('gbName');
+      var msgInput = document.getElementById('gbMessage');
+      var submitBtn = form.querySelector('.gb-submit');
+
+      // Client-side rate limit: max 5 messages per 10 minutes
+      var RATE_LIMIT = 5;
+      var RATE_WINDOW = 10 * 60 * 1000;
+      function checkRateLimit() {
+        var now = Date.now();
+        var timestamps = JSON.parse(localStorage.getItem('gb_timestamps') || '[]');
+        timestamps = timestamps.filter(function (t) { return now - t < RATE_WINDOW; });
+        if (timestamps.length >= RATE_LIMIT) return false;
+        timestamps.push(now);
+        localStorage.setItem('gb_timestamps', JSON.stringify(timestamps));
+        return true;
+      }
+
+      function timeAgo(dateStr) {
+        var diff = Date.now() - new Date(dateStr).getTime();
+        var s = Math.floor(diff / 1000);
+        if (s < 60) return 'just now';
+        var m = Math.floor(s / 60);
+        if (m < 60) return m + 'min ago';
+        var h = Math.floor(m / 60);
+        if (h < 24) return h + 'h ago';
+        var d = Math.floor(h / 24);
+        if (d < 30) return d + 'd ago';
+        return new Date(dateStr).toLocaleDateString();
+      }
+
+      function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(s));
+        return div.innerHTML;
+      }
+
+      function renderMessages(messages) {
+        if (!messages || messages.length === 0) {
+          messagesEl.innerHTML = '<div class="gb-empty">Be the first to leave a message :)</div>';
+          return;
+        }
+        messagesEl.innerHTML = messages.map(function (m) {
+          return '<div class="gb-msg">' +
+            '<div class="gb-meta">' +
+              '<span class="gb-name">&gt; ' + escapeHtml(m.name || 'anonymous') + '</span>' +
+              '<span class="gb-time">' + timeAgo(m.created_at) + '</span>' +
+            '</div>' +
+            '<div class="gb-text">' + escapeHtml(m.message) + '</div>' +
+          '</div>';
+        }).join('');
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      }
+
+      function loadMessages() {
+        fetch(API + '?select=id,name,message,created_at&order=created_at.desc&limit=20', {
+          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) { renderMessages(data.reverse()); })
+        .catch(function () { messagesEl.innerHTML = '<div class="gb-empty">Failed to load messages</div>'; });
+      }
+
       form.addEventListener('submit', function (e) {
         e.preventDefault();
-        // TODO: connect to Supabase
-        alert('Guestbook coming soon!');
+        var name = nameInput.value.trim() || 'anonymous';
+        var message = msgInput.value.trim();
+        if (!message) return;
+
+        if (!checkRateLimit()) {
+          alert('Too many messages. Please try again later.');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = '...';
+
+        fetch(API, {
+          method: 'POST',
+          headers: HEADERS,
+          body: JSON.stringify({ name: name, message: message })
+        })
+        .then(function (r) {
+          if (!r.ok) throw new Error('Failed');
+          msgInput.value = '';
+          loadMessages();
+        })
+        .catch(function () {
+          alert('Failed to send message. Please try again.');
+        })
+        .finally(function () {
+          submitBtn.disabled = false;
+          submitBtn.textContent = '↵';
+        });
       });
+
+      loadMessages();
+    })();
+
+    // ── Visitor Counter ──
+    (function () {
+      var SB_URL = 'https://pcoyocvqfipuydhvdsle.supabase.co';
+      var SB_KEY = 'sb_publishable_jieHU6yu3dPxSww2_B_KIg_9KcWg6wl';
+      var el = document.getElementById('visitorCounter');
+      var counted = sessionStorage.getItem('visitor_counted');
+
+      function show(n) {
+        var padded = String(n).padStart(8, '0');
+        el.innerHTML = 'You are visitor #<span class="visitor-count">' + padded + '</span>';
+        el.classList.add('loaded');
+      }
+
+      if (counted) {
+        show(parseInt(counted, 10));
+        return;
+      }
+
+      fetch(SB_URL + '/rest/v1/rpc/increment_visitor', {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: '{}'
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (count) {
+          sessionStorage.setItem('visitor_counted', count);
+          show(count);
+        })
+        .catch(function () { });
     })();
   </script>
 </body>
