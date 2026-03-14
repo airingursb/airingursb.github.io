@@ -893,7 +893,7 @@
       flex-shrink: 0;
       font-weight: bold;
       display: inline-block;
-      width: 28px;
+      width: 46px;
       text-align: right;
     }
 
@@ -902,7 +902,7 @@
       flex-shrink: 0;
       font-weight: bold;
       display: inline-block;
-      width: 28px;
+      width: 46px;
       text-align: right;
     }
 
@@ -923,6 +923,15 @@
       padding: 0 3px;
       font-size: 12px;
       font-family: inherit;
+    }
+
+    .chat-content ul {
+      margin: 4px 0;
+      padding-left: 18px;
+    }
+
+    .chat-content li {
+      margin-bottom: 2px;
     }
 
     .chat-input-row {
@@ -2403,6 +2412,19 @@
         // links: [text](url)
         escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
           '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        // unordered list items: "- item" at line start
+        escaped = escaped.replace(/^- (.+)$/gm, '<li>$1</li>');
+        escaped = escaped.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+        // headings (unlikely but handle): ### heading
+        escaped = escaped.replace(/^### (.+)$/gm, '<strong>$1</strong>');
+        escaped = escaped.replace(/^## (.+)$/gm, '<strong>$1</strong>');
+        // strip newlines inside <ul> blocks to prevent extra <br> between list items
+        escaped = escaped.replace(/<ul>([\s\S]*?)<\/ul>/g, function(match, inner) {
+          return '<ul>' + inner.replace(/\n/g, '') + '</ul>';
+        });
+        // double newline = paragraph break, single newline = line break
+        escaped = escaped.replace(/\n\n/g, '<br><br>');
+        escaped = escaped.replace(/\n/g, '<br>');
         return escaped;
       }
 
@@ -2413,7 +2435,7 @@
 
         var roleSpan = document.createElement('span');
         roleSpan.className = role === 'user' ? 'chat-role-user' : 'chat-role-ai';
-        roleSpan.textContent = role === 'user' ? 'you' : 'ai';
+        roleSpan.textContent = role === 'user' ? 'You' : 'Airing';
 
         var contentSpan = document.createElement('span');
         contentSpan.className = 'chat-content';
