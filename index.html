@@ -674,9 +674,10 @@
       var mouseX = 0, mouseY = 0;
       var eyeDirection = 'center';
 
-      /* Click tracking */
-      var clickCount = 0;
-      var clickTimer = null;
+      /* Click/tap tracking (shared for mouse and touch) */
+      var tapCount = 0;
+      var tapTimer = null;
+      var lastTapSource = '';
 
       /* Dizzy state */
       var dizzyUntil = 0;
@@ -805,28 +806,35 @@
         }
       }, { passive: true });
 
-      /* ── Click interactions ── */
-      bearWrapper.addEventListener('click', function (e) {
+      /* ── Shared tap/click handler ── */
+      function handleTap() {
         resetInteraction();
-        clickCount++;
-        if (clickTimer) clearTimeout(clickTimer);
-        clickTimer = setTimeout(function () {
-          if (clickCount === 1) {
+        tapCount++;
+        if (tapTimer) clearTimeout(tapTimer);
+        tapTimer = setTimeout(function () {
+          if (tapCount === 1) {
             if (jumpY >= 0 && jumpVel >= 0) {
               jumpVel = -3;
               jumpY = -0.1;
             }
-          } else if (clickCount === 2) {
+          } else if (tapCount === 2) {
             flipActive = true;
             flipStart = Date.now();
-          } else if (clickCount >= 3) {
+          } else if (tapCount >= 3) {
             dizzyUntil = Date.now() + 2000;
             bearState = 'dizzy';
             dizzyPhase = 0;
           }
-          clickCount = 0;
-          clickTimer = null;
+          tapCount = 0;
+          tapTimer = null;
         }, 300);
+      }
+
+      bearWrapper.addEventListener('click', function (e) {
+        // Skip if this click was already handled by touchend
+        if (lastTapSource === 'touch') { lastTapSource = ''; return; }
+        lastTapSource = 'mouse';
+        handleTap();
       });
 
       /* ── Touch gestures ── */
@@ -878,6 +886,10 @@
           crouchActive = true;
           crouchUntil = Date.now() + 300;
           bearState = 'crouching';
+        } else {
+          // No swipe detected — treat as tap
+          lastTapSource = 'touch';
+          handleTap();
         }
       });
 
