@@ -2442,11 +2442,12 @@
       // ── Show limit reached ──
       function showLimitReached() {
         chatInput.disabled = true;
-        chatInput.placeholder = '';
-        var limitMsg = document.createElement('span');
+        chatInput.style.display = 'none';
+        document.querySelector('.chat-prompt').style.display = 'none';
+        var limitMsg = document.createElement('div');
         limitMsg.className = 'chat-limit-msg';
-        limitMsg.textContent = 'Chat limit reached for this session.';
-        chatInput.parentNode.replaceChild(limitMsg, chatInput);
+        limitMsg.innerHTML = '今日对话次数已用完，24 小时后重置。<a href="https://blog.ursb.me" target="_blank">访问博客了解更多 →</a>';
+        chatInput.parentNode.appendChild(limitMsg);
       }
 
       // ── Send message ──
@@ -2539,16 +2540,16 @@
 
             var code = err && err.code;
             if (code === 'RATE_LIMITED') {
-              chatError.textContent = 'Too many requests. Please wait a moment.';
+              chatError.textContent = '⚠ 请求太频繁，请稍后再试';
             } else if (code === 'LIMIT_REACHED') {
               showLimitReached();
             } else if (code === 'INVALID_TOKEN') {
               localStorage.removeItem(TOKEN_KEY);
-              chatError.textContent = 'Session expired. Please try again.';
+              chatError.textContent = '⚠ 会话已过期，请刷新页面';
             } else if (err && err.name === 'AbortError') {
-              chatError.textContent = 'Request timed out. Please try again.';
+              chatError.textContent = '⚠ AI 服务响应超时';
             } else {
-              chatError.textContent = 'Network error. Please try again.';
+              chatError.textContent = '⚠ 连接失败，请稍后再试';
             }
 
             chatInput.disabled = false;

@@ -11,8 +11,7 @@ CREATE TABLE IF NOT EXISTS chat_visitors (
   last_seen_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_chat_visitors_visitor_id
-  ON chat_visitors (visitor_id);
+-- visitor_id UNIQUE already creates an implicit index, no separate index needed
 
 -- ── Messages ──────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS chat_messages (
@@ -23,8 +22,5 @@ CREATE TABLE IF NOT EXISTS chat_messages (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_chat_messages_visitor_id
-  ON chat_messages (visitor_id);
-
-CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at
-  ON chat_messages (created_at);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_visitor_created
+  ON chat_messages (visitor_id, created_at);

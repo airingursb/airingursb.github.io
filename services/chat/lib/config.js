@@ -72,6 +72,13 @@ const config = {
   maxInputLength: 200,
   maxRounds: 5,
   rateLimitPerHour: parseInt(process.env.RATE_LIMIT_PER_HOUR ?? '10', 10),
+  trustProxy: process.env.TRUST_PROXY === 'true',
 };
+
+// Startup validation — fail fast on missing critical config
+if (!config.hmacSecret) {
+  console.error('[config] FATAL: HMAC_SECRET is required. Generate one with: openssl rand -hex 32');
+  process.exit(1);
+}
 
 export default config;

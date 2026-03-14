@@ -64,9 +64,11 @@ function json(res, status, data) {
  * @returns {string}
  */
 function getIp(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) {
-    return String(forwarded).split(',')[0].trim();
+  if (config.trustProxy) {
+    const forwarded = req.headers['x-forwarded-for'];
+    if (forwarded) {
+      return String(forwarded).split(',')[0].trim();
+    }
   }
   return req.socket?.remoteAddress ?? 'unknown';
 }
@@ -85,7 +87,7 @@ function applyCors(req, res) {
   const origin = req.headers['origin'];
   if (!origin) return true; // same-origin or non-browser request
 
-  if (allowedOrigins.length > 0 && !allowedOrigins.includes(origin)) {
+  if (allowedOrigins.length === 0 || !allowedOrigins.includes(origin)) {
     return false;
   }
 
