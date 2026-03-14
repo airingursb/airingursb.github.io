@@ -451,6 +451,22 @@ def generate_github_script(data):
     return f'            <script>window.__GITHUB_DATA__={json_str}</script>'
 
 
+# ── Life + Vibe Coding (local data) ──────────────────────────
+
+def load_local_data():
+    """Load data/local_data.json (committed by local cron)."""
+    local_file = os.path.join(os.path.dirname(__file__), '..', 'data', 'local_data.json')
+    if not os.path.exists(local_file):
+        return None
+    with open(local_file, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def generate_local_data_script(data):
+    json_str = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+    return f'            <script>window.__LOCAL_DATA__={json_str}</script>'
+
+
 # ── Main ─────────────────────────────────────────────────────
 
 def main():
@@ -506,6 +522,19 @@ def main():
         changed = True
     except Exception as e:
         print(f'GitHub: error - {e}', file=sys.stderr)
+
+    # Local data (vibe coding + health + mood)
+    try:
+        local_data = load_local_data()
+        if local_data:
+            local_html = generate_local_data_script(local_data)
+            content = replace_section(content, '<!-- LOCAL_DATA_START -->', '<!-- LOCAL_DATA_END -->', local_html)
+            print(f'Local data: updated {local_data.get("updatedAt", "?")}')
+            changed = True
+        else:
+            print('Local data: no file found', file=sys.stderr)
+    except Exception as e:
+        print(f'Local data: error - {e}', file=sys.stderr)
 
     # Last.fm
     try:
