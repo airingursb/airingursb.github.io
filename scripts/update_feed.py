@@ -418,6 +418,39 @@ def generate_highlights_script(data):
     return f'            <script>window.__HIGHLIGHTS_DATA__={json_str}</script>'
 
 
+# ── GitHub ──────────────────────────────────────────────────
+
+GITHUB_USER = 'airingursb'
+
+def fetch_github_data():
+    url = f'https://api.github.com/users/{GITHUB_USER}'
+    req = urllib.request.Request(url, headers={
+        'User-Agent': 'Mozilla/5.0 (compatible; FeedBot/1.0)',
+    })
+    resp = urllib.request.urlopen(req, timeout=30)
+    user = json.loads(resp.read().decode('utf-8'))
+
+    created = user.get('created_at', '')
+    since_year = ''
+    if created:
+        since_year = created[:4]
+
+    return {
+        'login': user.get('login', ''),
+        'avatar': user.get('avatar_url', ''),
+        'bio': user.get('bio', ''),
+        'followers': user.get('followers', 0),
+        'following': user.get('following', 0),
+        'repos': user.get('public_repos', 0),
+        'sinceYear': since_year,
+    }
+
+
+def generate_github_script(data):
+    json_str = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+    return f'            <script>window.__GITHUB_DATA__={json_str}</script>'
+
+
 # ── Main ─────────────────────────────────────────────────────
 
 def main():
@@ -463,6 +496,16 @@ def main():
         changed = True
     except Exception as e:
         print(f'Readwise: error - {e}', file=sys.stderr)
+
+    # GitHub
+    try:
+        gh_data = fetch_github_data()
+        gh_html = generate_github_script(gh_data)
+        content = replace_section(content, '<!-- GITHUB_DATA_START -->', '<!-- GITHUB_DATA_END -->', gh_html)
+        print(f'GitHub: @{gh_data["login"]} - {gh_data["followers"]} followers, {gh_data["repos"]} repos')
+        changed = True
+    except Exception as e:
+        print(f'GitHub: error - {e}', file=sys.stderr)
 
     # Last.fm
     try:
