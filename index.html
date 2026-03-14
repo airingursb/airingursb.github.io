@@ -2311,6 +2311,263 @@
       update();
       setInterval(update, 1000);
     })();
+
+    // ── AI Chat ──
+    (function () {
+      var CHAT_API_BASE = ''; // TODO: set API base URL
+
+      var chatArea = document.getElementById('chatArea');
+      var chatInput = document.getElementById('chatInput');
+      var chatError = document.getElementById('chatError');
+      var chatRounds = document.getElementById('chatRounds');
+
+      var TOKEN_KEY = 'chat_visitor_token';
+      var MAX_ROUNDS = 10;
+      var roundCount = 0;
+
+      // ── Token management ──
+      function getToken() {
+        return localStorage.getItem(TOKEN_KEY);
+      }
+
+      function setToken(token) {
+        localStorage.setItem(TOKEN_KEY, token);
+      }
+
+      function ensureToken() {
+        var existing = getToken();
+        if (existing) return Promise.resolve(existing);
+        return fetch(CHAT_API_BASE + '/api/chat/init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        })
+          .then(function (r) {
+            if (!r.ok) throw new Error('init_failed');
+            return r.json();
+          })
+          .then(function (data) {
+            setToken(data.token);
+            return data.token;
+          });
+      }
+
+      // ── History ──
+      function loadHistory() {
+        var token = getToken();
+        if (!token) return;
+        fetch(CHAT_API_BASE + '/api/chat/history', {
+          headers: { 'X-Visitor-Token': token }
+        })
+          .then(function (r) {
+            if (!r.ok) return;
+            return r.json();
+          })
+          .then(function (data) {
+            if (!data || !data.messages) return;
+            data.messages.forEach(function (msg) {
+              appendMessage(msg.role, msg.content, false);
+            });
+            roundCount = data.rounds || 0;
+            updateRoundsDisplay();
+            if (roundCount >= MAX_ROUNDS) {
+              showLimitReached();
+            }
+          })
+          .catch(function () { /* silently ignore history load errors */ });
+      }
+
+      // ── Render markdown (lightweight inline only) ──
+      function escapeHtml(str) {
+        return str
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;');
+      }
+
+      function renderMarkdown(text) {
+        var escaped = escapeHtml(text);
+        // inline code: `code`
+        escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
+        // bold: **text**
+        escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        // italic: *text*
+        escaped = escaped.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        // links: [text](url)
+        escaped = escaped.replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g,
+          '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        return escaped;
+      }
+
+      // ── Append message ──
+      function appendMessage(role, content, animate) {
+        var msg = document.createElement('div');
+        msg.className = 'chat-msg';
+
+        var roleSpan = document.createElement('span');
+        roleSpan.className = role === 'user' ? 'chat-role-user' : 'chat-role-ai';
+        roleSpan.textContent = role === 'user' ? 'you' : 'ai';
+
+        var contentSpan = document.createElement('span');
+        contentSpan.className = 'chat-content';
+        if (animate) {
+          contentSpan.className += ' chat-typing';
+          contentSpan.innerHTML = '';
+        } else {
+          contentSpan.innerHTML = renderMarkdown(content);
+        }
+
+        msg.appendChild(roleSpan);
+        msg.appendChild(contentSpan);
+        chatArea.appendChild(msg);
+
+        if (!chatArea.classList.contains('active')) {
+          chatArea.classList.add('active');
+        }
+
+        chatArea.scrollTop = chatArea.scrollHeight;
+        return contentSpan;
+      }
+
+      // ── Rounds display ──
+      function updateRoundsDisplay() {
+        if (roundCount > 0) {
+          chatRounds.textContent = roundCount + '/' + MAX_ROUNDS;
+        } else {
+          chatRounds.textContent = '';
+        }
+      }
+
+      // ── Show limit reached ──
+      function showLimitReached() {
+        chatInput.disabled = true;
+        chatInput.placeholder = '';
+        var limitMsg = document.createElement('span');
+        limitMsg.className = 'chat-limit-msg';
+        limitMsg.textContent = 'Chat limit reached for this session.';
+        chatInput.parentNode.replaceChild(limitMsg, chatInput);
+      }
+
+      // ── Send message ──
+      function sendMessage(message) {
+        chatError.textContent = '';
+        chatInput.disabled = true;
+
+        var contentEl = appendMessage('ai', '', true);
+
+        ensureToken()
+          .then(function (token) {
+            var controller = new AbortController();
+            var timeoutId = setTimeout(function () { controller.abort(); }, 30000);
+
+            return fetch(CHAT_API_BASE + '/api/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Visitor-Token': token
+              },
+              body: JSON.stringify({ message: message }),
+              signal: controller.signal
+            })
+              .then(function (r) {
+                clearTimeout(timeoutId);
+                if (!r.ok) {
+                  return r.json().then(function (err) {
+                    throw err;
+                  });
+                }
+
+                var reader = r.body.getReader();
+                var decoder = new TextDecoder();
+                var buffer = '';
+                var accumulated = '';
+
+                function pump() {
+                  return reader.read().then(function (result) {
+                    if (result.done) {
+                      contentEl.classList.remove('chat-typing');
+                      contentEl.innerHTML = renderMarkdown(accumulated);
+                      chatArea.scrollTop = chatArea.scrollHeight;
+                      roundCount++;
+                      updateRoundsDisplay();
+                      if (roundCount >= MAX_ROUNDS) {
+                        showLimitReached();
+                      } else {
+                        chatInput.disabled = false;
+                        chatInput.focus();
+                      }
+                      return;
+                    }
+
+                    buffer += decoder.decode(result.value, { stream: true });
+                    var lines = buffer.split('\n');
+                    buffer = lines.pop();
+
+                    lines.forEach(function (line) {
+                      if (!line.startsWith('data:')) return;
+                      var data = line.slice(5).trim();
+                      if (!data) return;
+                      try {
+                        var evt = JSON.parse(data);
+                        if (evt.type === 'delta' && evt.text) {
+                          accumulated += evt.text;
+                          contentEl.innerHTML = renderMarkdown(accumulated) + '<span class="chat-typing"></span>';
+                          chatArea.scrollTop = chatArea.scrollHeight;
+                        } else if (evt.type === 'done') {
+                          // will be finalized on stream end
+                        } else if (evt.type === 'error') {
+                          throw { code: evt.code || 'STREAM_ERROR', message: evt.message };
+                        }
+                      } catch (e) {
+                        if (e.code) throw e;
+                      }
+                    });
+
+                    return pump();
+                  });
+                }
+
+                return pump();
+              });
+          })
+          .catch(function (err) {
+            contentEl.classList.remove('chat-typing');
+            if (contentEl.textContent === '') {
+              contentEl.parentNode.remove();
+            }
+
+            var code = err && err.code;
+            if (code === 'RATE_LIMITED') {
+              chatError.textContent = 'Too many requests. Please wait a moment.';
+            } else if (code === 'LIMIT_REACHED') {
+              showLimitReached();
+            } else if (code === 'INVALID_TOKEN') {
+              localStorage.removeItem(TOKEN_KEY);
+              chatError.textContent = 'Session expired. Please try again.';
+            } else if (err && err.name === 'AbortError') {
+              chatError.textContent = 'Request timed out. Please try again.';
+            } else {
+              chatError.textContent = 'Network error. Please try again.';
+            }
+
+            chatInput.disabled = false;
+            chatInput.focus();
+          });
+      }
+
+      // ── Enter key handler ──
+      chatInput.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        var message = chatInput.value.trim();
+        if (!message) return;
+        chatInput.value = '';
+        appendMessage('user', message, false);
+        sendMessage(message);
+      });
+
+      // ── Init ──
+      loadHistory();
+    })();
   </script>
 </body>
 
