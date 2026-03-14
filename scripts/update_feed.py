@@ -72,9 +72,8 @@ def generate_items_html(items):
 
 
 def replace_section(content, start_marker, end_marker, new_html):
-    pattern = rf'({re.escape(start_marker)})\n.*?\n(\s*{re.escape(end_marker)})'
-    replacement = f'\\1\n{new_html}\n\\2'
-    return re.sub(pattern, lambda m: m.group(1) + '\n' + new_html + '\n' + m.group(2), content, flags=re.DOTALL)
+    pattern = rf'({re.escape(start_marker)})\n(.*?\n)?(\s*{re.escape(end_marker)})'
+    return re.sub(pattern, lambda m: m.group(1) + '\n' + new_html + '\n' + m.group(3), content, flags=re.DOTALL)
 
 
 # ── Blog Feed ────────────────────────────────────────────────
