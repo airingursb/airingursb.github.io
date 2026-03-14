@@ -87,7 +87,12 @@ function applyCors(req, res) {
   const origin = req.headers['origin'];
   if (!origin) return true; // same-origin or non-browser request
 
-  if (allowedOrigins.length === 0 || !allowedOrigins.includes(origin)) {
+  // file:// pages send origin "null" — allow during development
+  const allowed = origin === 'null'
+    ? allowedOrigins.includes('null')
+    : allowedOrigins.includes(origin);
+
+  if (allowedOrigins.length === 0 || !allowed) {
     return false;
   }
 
@@ -217,6 +222,9 @@ async function handleChat(req, res) {
       for (const line of lines) {
         const trimmed = line.trim();
         if (!trimmed || trimmed === 'data: [DONE]') continue;
+
+        // Handle SSE event type lines
+        if (trimmed.startsWith('event:')) continue;
         if (!trimmed.startsWith('data:')) continue;
 
         const jsonStr = trimmed.slice(5).trim();
@@ -227,11 +235,20 @@ async function handleChat(req, res) {
           continue;
         }
 
-        const delta = parsed?.choices?.[0]?.delta?.content;
-        if (typeof delta === 'string' && delta) {
-          assistantMessage += delta;
-          const sseData = JSON.stringify({ type: 'delta', text: delta });
-          res.write(`data: ${sseData}\n\n`);
+        // OpenResponses format: response.output_text.delta events
+        const eventType = parsed?.type;
+
+        if (eventType === 'response.output_text.delta') {
+          const delta = parsed?.delta;
+          if (typeof delta === 'string' && delta) {
+            assistantMessage += delta;
+            const sseData = JSON.stringify({ type: 'delta', text: delta });
+            res.write(`data: ${sseData}\n\n`);
+          }
+        } else if (eventType === 'response.failed') {
+          const errMsg = parsed?.response?.error?.message ?? 'AI 服务暂时不可用';
+          const errData = JSON.stringify({ type: 'error', code: 'GATEWAY_ERROR', message: errMsg });
+          res.write(`data: ${errData}\n\n`);
         }
       }
     }
