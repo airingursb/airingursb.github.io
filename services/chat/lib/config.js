@@ -69,6 +69,9 @@ const config = {
     .split(',')
     .map((o) => o.trim())
     .filter(Boolean),
+  maxInputLength: 200,
+  maxRounds: 5,
+  rateLimitPerHour: parseInt(process.env.RATE_LIMIT_PER_HOUR ?? '10', 10),
 };
 
 export default config;

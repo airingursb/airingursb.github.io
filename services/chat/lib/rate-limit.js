@@ -5,7 +5,9 @@
  * A cleanup interval runs every CLEANUP_INTERVAL_MS to evict expired entries.
  */
 
-const MAX_REQUESTS = 20;          // requests per window
+import config from './config.js';
+
+const MAX_REQUESTS = config.rateLimitPerHour; // default 10, from config
 const WINDOW_MS = 60 * 60 * 1000; // 1 hour in ms
 const CLEANUP_INTERVAL_MS = 10 * 60 * 1000; // 10 minutes
 

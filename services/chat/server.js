@@ -12,8 +12,8 @@ import { streamChat } from './lib/openclaw.js';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const MAX_ROUNDS = 5;           // maximum back-and-forth exchanges per 24h window
-const MAX_INPUT_CHARS = 200;    // maximum user message length
+const MAX_ROUNDS = config.maxRounds;
+const MAX_INPUT_CHARS = config.maxInputLength;
 const MAX_BODY_BYTES = 10_240;  // 10 KB read limit for request bodies
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -127,7 +127,7 @@ async function handleChat(req, res) {
   // Content-Type check
   const ct = req.headers['content-type'] ?? '';
   if (!ct.includes('application/json')) {
-    return json(res, 415, { error: 'Content-Type must be application/json' });
+    return json(res, 415, { code: 'BAD_REQUEST', message: 'Content-Type must be application/json' });
   }
 
   // Token verification
@@ -137,7 +137,7 @@ async function handleChat(req, res) {
 
   const visitorId = verifyToken(rawToken);
   if (!visitorId) {
-    return json(res, 401, { error: 'Invalid or missing visitor token' });
+    return json(res, 401, { code: 'INVALID_TOKEN', message: '无效的访客凭证' });
   }
 
   // Rate limiting
@@ -146,7 +146,8 @@ async function handleChat(req, res) {
   if (!rateResult.allowed) {
     res.setHeader('Retry-After', String(rateResult.retryAfter));
     return json(res, 429, {
-      error: 'Too many requests',
+      code: 'RATE_LIMITED',
+      message: '请稍后再试',
       retryAfter: rateResult.retryAfter,
     });
   }
@@ -157,16 +158,17 @@ async function handleChat(req, res) {
     const raw = await readBody(req);
     body = JSON.parse(raw);
   } catch {
-    return json(res, 400, { error: 'Invalid JSON body' });
+    return json(res, 400, { code: 'BAD_REQUEST', message: 'Invalid JSON body' });
   }
 
   const userMessage = body?.message;
   if (typeof userMessage !== 'string' || !userMessage.trim()) {
-    return json(res, 400, { error: 'message is required' });
+    return json(res, 400, { code: 'BAD_REQUEST', message: 'message is required' });
   }
   if (userMessage.length > MAX_INPUT_CHARS) {
     return json(res, 400, {
-      error: `message must be ${MAX_INPUT_CHARS} characters or fewer`,
+      code: 'BAD_REQUEST',
+      message: `消息不能超过 ${MAX_INPUT_CHARS} 字符`,
     });
   }
 
@@ -174,9 +176,8 @@ async function handleChat(req, res) {
   const { messages: history, round } = await getRecentMessages(visitorId);
   if (round >= MAX_ROUNDS) {
     return json(res, 429, {
-      error: 'Round limit reached. Please come back tomorrow.',
-      round,
-      maxRounds: MAX_ROUNDS,
+      code: 'LIMIT_REACHED',
+      message: '今日对话次数已用完，24 小时后重置',
     });
   }
 
@@ -227,7 +228,7 @@ async function handleChat(req, res) {
         const delta = parsed?.choices?.[0]?.delta?.content;
         if (typeof delta === 'string' && delta) {
           assistantMessage += delta;
-          const sseData = JSON.stringify({ type: 'delta', content: delta });
+          const sseData = JSON.stringify({ type: 'delta', text: delta });
           res.write(`data: ${sseData}\n\n`);
         }
       }
@@ -268,11 +269,11 @@ async function handleHistory(req, res) {
 
   const visitorId = verifyToken(rawToken);
   if (!visitorId) {
-    return json(res, 401, { error: 'Invalid or missing visitor token' });
+    return json(res, 401, { code: 'INVALID_TOKEN', message: '无效的访客凭证' });
   }
 
   const { messages, round } = await getRecentMessages(visitorId);
-  json(res, 200, { messages, round, maxRounds: MAX_ROUNDS });
+  json(res, 200, { messages, rounds: round, maxRounds: MAX_ROUNDS });
 }
 
 // ── Request dispatcher ────────────────────────────────────────────────────────
