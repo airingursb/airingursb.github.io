@@ -106,7 +106,7 @@
     }
 
     .links {
-      margin-top: 16px;
+      margin-top: 8px;
       font-size: 13px;
     }
 
@@ -131,7 +131,7 @@
     .social {
       display: flex;
       gap: 16px;
-      margin-top: 20px;
+      margin-top: 12px;
     }
 
     .social a {
@@ -324,7 +324,7 @@
     .hl-cmd-btn {
       background: none;
       border: none;
-      color: #484f58;
+      color: #7d8590;
       font-family: inherit;
       font-size: 13px;
       cursor: pointer;
@@ -333,7 +333,7 @@
     }
 
     .hl-cmd-btn:hover {
-      color: #7d8590;
+      color: #c9d1d9;
     }
 
     .hl-cmd-cursor {
@@ -956,7 +956,7 @@
     .chat-divider {
       border: none;
       border-top: 1px solid #21262d;
-      margin: 12px 0 10px;
+      margin: 10px 0 8px;
     }
 
     .chat-area {
@@ -1029,12 +1029,55 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 8px 12px;
     }
 
     .chat-prompt {
       color: #4ade80;
       flex-shrink: 0;
       font-size: 13px;
+    }
+
+    .chat-prompt .fake-cursor {
+      display: inline-block;
+      animation: blink 1s step-end infinite;
+    }
+
+    .chat-prompt.hide-cursor .fake-cursor {
+      display: none;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    .chat-suggestions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .chat-suggestion-chip {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: #7d8590;
+      font-size: 12px;
+      font-family: inherit;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: color 0.2s, border-color 0.2s, background 0.2s;
+    }
+
+    .chat-suggestion-chip:hover {
+      color: #4ade80;
+      border-color: rgba(74, 222, 128, 0.3);
+      background: rgba(74, 222, 128, 0.05);
     }
 
     .chat-input {
@@ -1057,8 +1100,11 @@
       justify-content: space-between;
       font-size: 11px;
       color: #7d8590;
-      margin-top: 4px;
-      min-height: 16px;
+      margin-top: 2px;
+    }
+
+    .chat-meta:empty {
+      display: none;
     }
 
     .chat-error {
@@ -1114,6 +1160,25 @@
           <span class="name">Airing</span><span class="cursor">_</span>
         </div>
         <div class="role">Software Engineer @ Singapore</div>
+        <!-- AI Chat -->
+        <hr class="chat-divider">
+        <div class="chat-area" id="chatArea"></div>
+        <div class="chat-suggestions" id="chatSuggestions">
+          <button class="chat-suggestion-chip" type="button">你最近怎么样</button>
+          <button class="chat-suggestion-chip" type="button">在做什么项目</button>
+          <button class="chat-suggestion-chip" type="button">推荐篇文章</button>
+        </div>
+        <div class="chat-input-row">
+          <span class="chat-prompt" id="chatPrompt">&gt;<span class="fake-cursor">_</span></span>
+          <input type="text" class="chat-input" id="chatInput"
+                 placeholder="和 Airing 聊点什么..."
+                 maxlength="200" autocomplete="off">
+        </div>
+        <div class="chat-meta">
+          <span class="chat-error" id="chatError"></span>
+          <span id="chatRounds"></span>
+        </div>
+        <hr class="chat-divider">
         <div class="links">
           <a href="https://blog.ursb.me" target="_blank">Blog</a>
           <span class="sep">/</span>
@@ -1134,19 +1199,6 @@
           <a href="https://t.me/airingchannel" target="_blank" title="Telegram">
             <img src="assets/svg/telegram.svg" alt="Telegram">
           </a>
-        </div>
-        <!-- AI Chat -->
-        <hr class="chat-divider">
-        <div class="chat-area" id="chatArea"></div>
-        <div class="chat-input-row">
-          <span class="chat-prompt">&gt;_</span>
-          <input type="text" class="chat-input" id="chatInput"
-                 placeholder="Ask me anything about my blog..."
-                 maxlength="200" autocomplete="off">
-        </div>
-        <div class="chat-meta">
-          <span class="chat-error" id="chatError"></span>
-          <span id="chatRounds"></span>
         </div>
       </div>
 
@@ -1235,7 +1287,7 @@
         <div class="hl-log" id="hlLog"></div>
         <div class="hl-cmd">
           <span class="hl-cmd-prompt">$</span>
-          <button class="hl-cmd-btn" id="hlShuffle">shuffle</button>
+          <button class="hl-cmd-btn" id="hlShuffle">more</button>
           <span class="hl-cmd-cursor"></span>
         </div>
       </div>
@@ -1256,7 +1308,7 @@
           <span class="letter-tag">Productivity</span>
           <span class="letter-tag">Life</span>
         </div>
-        <a href="mailto:me@ursb.me?subject=Letter%20Consultation" class="letter-btn">
+        <a href="mailto:airing@ursb.me?subject=Letter%20Consultation" class="letter-btn">
           <span class="letter-btn-icon">✉</span>
           <span>Send a Letter</span>
         </a>
@@ -2440,6 +2492,42 @@
       var chatInput = document.getElementById('chatInput');
       var chatError = document.getElementById('chatError');
       var chatRounds = document.getElementById('chatRounds');
+      var chatPrompt = document.getElementById('chatPrompt');
+      var chatSuggestions = document.getElementById('chatSuggestions');
+
+      // ── Fake cursor & Airing_ cursor coordination ──
+      var nameCursor = document.querySelector('.cursor');
+      var chatActivated = false;
+
+      function updateNameCursor() {
+        // Show Airing_ if user has interacted with chat or chat is no longer usable
+        nameCursor.style.display = chatActivated ? '' : 'none';
+      }
+
+      chatInput.addEventListener('focus', function () {
+        chatPrompt.classList.add('hide-cursor');
+        chatActivated = true;
+        updateNameCursor();
+      });
+      chatInput.addEventListener('blur', function () {
+        if (!chatInput.value) {
+          chatPrompt.classList.remove('hide-cursor');
+        }
+      });
+
+      // Initially hide Airing_ since chat input cursor is visible
+      updateNameCursor();
+
+      // ── Suggestion chips ──
+      chatSuggestions.addEventListener('click', function (e) {
+        var chip = e.target.closest('.chat-suggestion-chip');
+        if (!chip) return;
+        submitChat(chip.textContent);
+      });
+
+      function hideSuggestions() {
+        chatSuggestions.style.display = 'none';
+      }
 
       var TOKEN_KEY = 'chat_visitor_token';
       var MAX_ROUNDS = 5;
@@ -2487,6 +2575,7 @@
             data.messages.forEach(function (msg) {
               appendMessage(msg.role, msg.content, false);
             });
+            if (data.messages.length > 0) hideSuggestions();
             roundCount = data.rounds || 0;
             if (data.maxRounds) MAX_ROUNDS = data.maxRounds;
             updateRoundsDisplay();
@@ -2577,6 +2666,8 @@
         chatInput.disabled = true;
         chatInput.style.display = 'none';
         document.querySelector('.chat-prompt').style.display = 'none';
+        chatActivated = true;
+        updateNameCursor();
         var limitMsg = document.createElement('div');
         limitMsg.className = 'chat-limit-msg';
         limitMsg.innerHTML = '今日对话次数已用完，24 小时后重置。<a href="https://blog.ursb.me" target="_blank">访问博客了解更多 →</a>';
@@ -2690,14 +2781,19 @@
           });
       }
 
-      // ── Enter key handler ──
-      chatInput.addEventListener('keydown', function (e) {
-        if (e.key !== 'Enter') return;
-        var message = chatInput.value.trim();
+      // ── Submit chat message ──
+      function submitChat(text) {
+        var message = text.trim();
         if (!message) return;
         chatInput.value = '';
+        hideSuggestions();
         appendMessage('user', message, false);
         sendMessage(message);
+      }
+
+      chatInput.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        submitChat(chatInput.value);
       });
 
       // ── Init ──
