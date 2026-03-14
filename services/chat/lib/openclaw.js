@@ -28,13 +28,14 @@ export async function streamChat(messages, visitorId) {
     headers: {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
-      'X-Agent-Id': agentId,
-      'X-Visitor-Id': visitorId,
+      'x-openclaw-agent-id': agentId,
     },
     body: JSON.stringify({
+      model: `openclaw:${agentId}`,
       messages,
       stream: true,
       max_tokens: 500,
+      user: visitorId,
     }),
   });
 

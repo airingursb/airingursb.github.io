@@ -87,7 +87,7 @@ export async function getRecentMessages(visitorId) {
     return { messages: [], round: 0 };
   }
 
-  const messages = (data ?? []).map(({ role, content }) => ({ role, content }));
+  const messages = (data ?? []).map(({ role, content, created_at }) => ({ role, content, created_at }));
 
   // A round is one user message paired with one assistant reply
   const userCount = messages.filter((m) => m.role === 'user').length;
