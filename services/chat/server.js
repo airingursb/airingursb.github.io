@@ -235,7 +235,7 @@ async function handleChat(req, res) {
     }
   } catch (err) {
     console.error('[chat] OpenClaw stream error:', err.message);
-    const errData = JSON.stringify({ type: 'error', message: 'Upstream error' });
+    const errData = JSON.stringify({ type: 'error', code: 'GATEWAY_ERROR', message: 'AI 服务暂时不可用' });
     res.write(`data: ${errData}\n\n`);
     res.end();
     return;
