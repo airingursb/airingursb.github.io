@@ -1,0 +1,44 @@
+name: Deploy
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Update feed articles
+        env:
+          LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
+          READWISE_TOKEN: ${{ secrets.READWISE_TOKEN }}
+        run: python3 scripts/update_feed.py
+
+      - name: Commit updated articles
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git diff --staged --quiet || git commit -m "chore: update feed articles"
+          git push
+
+      - name: Prepare site
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp -r assets _site/ 2>/dev/null || true
+          cp baidu_verify_codeva-*.html _site/ 2>/dev/null || true
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./_site
