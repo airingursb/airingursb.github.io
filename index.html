@@ -406,8 +406,11 @@
       }
     }
 
+    .visited-marker,
     .pulse-marker {
       position: relative;
+      background: transparent;
+      border: none;
     }
 
     .pulse-marker .pulse-dot {
@@ -1425,18 +1428,20 @@
     // ── World Map ──
     (function () {
       var map = L.map('worldMap', {
-        center: [20, 100],
+        center: [20, 160],
         zoom: 2,
         minZoom: 2,
         maxZoom: 12,
         zoomControl: true,
-        attributionControl: true
+        attributionControl: true,
+        worldCopyJump: true
       });
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
         subdomains: 'abcd',
-        maxZoom: 19
+        maxZoom: 19,
+        noWrap: false
       }).addTo(map);
 
       var visitedColor = '#4ade80';
@@ -1446,7 +1451,7 @@
         // Current
         { name: 'Singapore', lat: 1.35, lng: 103.82, current: true },
         // Overseas
-        { name: 'San Jose', lat: 37.34, lng: -121.89 },
+        { name: 'San Jose', lat: 37.34, lng: 238.11 },
         { name: 'Bintan Island', lat: 1.07, lng: 104.45 },
         { name: 'Batam Island', lat: 1.05, lng: 104.03 },
         { name: 'Johor Bahru', lat: 1.49, lng: 103.74 },
@@ -1469,7 +1474,11 @@
         { name: '重庆', lat: 29.56, lng: 106.55 },
         { name: '福州', lat: 26.07, lng: 119.30 },
         { name: '合肥', lat: 31.82, lng: 117.23 },
-        { name: '六安', lat: 31.74, lng: 116.51 }
+        { name: '六安', lat: 31.74, lng: 116.51 },
+        { name: '西宁', lat: 36.62, lng: 101.77 },
+        { name: '敦煌', lat: 40.14, lng: 94.66 },
+        { name: '珠海', lat: 22.27, lng: 113.58 },
+        { name: '中山', lat: 22.52, lng: 113.39 }
       ];
 
       cities.forEach(function (city) {
@@ -1486,19 +1495,20 @@
             .addTo(map)
             .bindPopup('<b>' + city.name + '</b><br><span style="color: ' + currentColor + ';">📍 Current Location</span>');
         } else {
-          // Circle marker for visited cities
-          L.circleMarker([city.lat, city.lng], {
-            radius: 5,
-            fillColor: visitedColor,
-            color: visitedColor,
-            weight: 1,
-            opacity: 0.8,
-            fillOpacity: 0.6
-          })
+          // Div marker for visited cities (divIcon renders at any viewport position)
+          var dotIcon = L.divIcon({
+            className: 'visited-marker',
+            html: '<div style="width:10px;height:10px;background:' + visitedColor + ';border-radius:50%;opacity:0.8;"></div>',
+            iconSize: [10, 10],
+            iconAnchor: [5, 5],
+            popupAnchor: [0, -5]
+          });
+          L.marker([city.lat, city.lng], { icon: dotIcon })
             .addTo(map)
             .bindPopup('<b>' + city.name + '</b>');
         }
       });
+
     })();
 
     // ── Guestbook ──
