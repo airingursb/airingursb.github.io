@@ -654,6 +654,62 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* Uptime */
+    .uptime {
+      text-align: center;
+      padding: 4px 0;
+      font-size: 11px;
+      color: #7d8590;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .uptime-text {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .uptime-num {
+      color: #4ade80;
+      font-weight: 700;
+    }
+
+    .heartbeat {
+      display: inline-flex;
+      align-items: flex-end;
+      gap: 1px;
+      height: 12px;
+    }
+
+    .heartbeat-bar {
+      width: 2px;
+      background: #4ade80;
+      border-radius: 1px;
+      opacity: 0.5;
+    }
+
+    @keyframes ecg {
+      0%, 100% { height: 2px; opacity: 0.3; }
+      15% { height: 3px; opacity: 0.4; }
+      30% { height: 5px; opacity: 0.6; }
+      40% { height: 10px; opacity: 1; }
+      50% { height: 12px; opacity: 1; }
+      60% { height: 8px; opacity: 0.8; }
+      70% { height: 4px; opacity: 0.5; }
+      85% { height: 2px; opacity: 0.3; }
+    }
+
+    .heartbeat-bar:nth-child(1) { animation: ecg 1.6s ease-in-out infinite 0s; }
+    .heartbeat-bar:nth-child(2) { animation: ecg 1.6s ease-in-out infinite 0.1s; }
+    .heartbeat-bar:nth-child(3) { animation: ecg 1.6s ease-in-out infinite 0.2s; }
+    .heartbeat-bar:nth-child(4) { animation: ecg 1.6s ease-in-out infinite 0.3s; }
+    .heartbeat-bar:nth-child(5) { animation: ecg 1.6s ease-in-out infinite 0.4s; }
+    .heartbeat-bar:nth-child(6) { animation: ecg 1.6s ease-in-out infinite 0.5s; }
+    .heartbeat-bar:nth-child(7) { animation: ecg 1.6s ease-in-out infinite 0.6s; }
+    .heartbeat-bar:nth-child(8) { animation: ecg 1.6s ease-in-out infinite 0.7s; }
+
     /* Footer */
     .footer {
       text-align: center;
@@ -901,6 +957,20 @@
     </div>
 
     <div class="visitor-counter" id="visitorCounter"></div>
+
+    <div class="uptime">
+      <span class="heartbeat">
+        <span class="heartbeat-bar"></span>
+        <span class="heartbeat-bar"></span>
+        <span class="heartbeat-bar"></span>
+        <span class="heartbeat-bar"></span>
+        <span class="heartbeat-bar"></span>
+        <span class="heartbeat-bar"></span>
+        <span class="heartbeat-bar"></span>
+        <span class="heartbeat-bar"></span>
+      </span>
+      <span class="uptime-text" id="uptimeText"></span>
+    </div>
 
     <div class="footer">
       <a href="https://beian.miit.gov.cn" target="_blank">&copy; 粤ICP备16057808号-1</a>
@@ -2000,6 +2070,38 @@
       summaryEl.innerHTML = '<span class="music-summary-num">' +
         data.totalScrobbles.toLocaleString() +
         '</span> scrobbles' + yearText;
+    })();
+  </script>
+
+  <script>
+    // ── Uptime ──
+    (function () {
+      var START = new Date('2014-12-02T00:00:00+08:00').getTime();
+      var el = document.getElementById('uptimeText');
+      if (!el) return;
+
+      function pad(n) { return n < 10 ? '0' + n : '' + n; }
+
+      function update() {
+        var diff = Date.now() - START;
+        var s = Math.floor(diff / 1000);
+        var m = Math.floor(s / 60); s %= 60;
+        var h = Math.floor(m / 60); m %= 60;
+        var d = Math.floor(h / 24); h %= 24;
+        var y = Math.floor(d / 365); d %= 365;
+
+        var parts = [];
+        if (y > 0) parts.push('<span class="uptime-num">' + y + '</span>y');
+        parts.push('<span class="uptime-num">' + d + '</span>d');
+        parts.push('<span class="uptime-num">' + pad(h) + '</span>h');
+        parts.push('<span class="uptime-num">' + pad(m) + '</span>m');
+        parts.push('<span class="uptime-num">' + pad(s) + '</span>s');
+
+        el.innerHTML = 'Online for ' + parts.join(' ');
+      }
+
+      update();
+      setInterval(update, 1000);
     })();
   </script>
 </body>
