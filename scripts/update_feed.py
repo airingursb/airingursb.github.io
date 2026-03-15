@@ -31,6 +31,9 @@ READWISE_BASE = 'https://readwise.io/api/v2'
 
 LASTFM_USER = 'airingursb'
 LASTFM_API_KEY = os.environ.get('LASTFM_API_KEY', '')
+
+RAINDROP_TOKEN = os.environ.get('RAINDROP_TOKEN', '')
+RAINDROP_COLLECTION_ID = '38311816'  # "Share" collection
 LASTFM_BASE = 'http://ws.audioscrobbler.com/2.0/'
 
 
@@ -303,6 +306,32 @@ def generate_music_script(data):
     return f'            <script>window.__MUSIC_DATA__={json_str}</script>'
 
 
+def fetch_lastfm_recent_tracks(limit=5):
+    """Fetch recent tracks from Last.fm user.getRecentTracks API."""
+    resp = lastfm_api('user.getrecenttracks', limit=str(limit))
+    raw_tracks = resp.get('recenttracks', {}).get('track', [])
+    tracks = []
+    for t in raw_tracks:
+        is_now = t.get('@attr', {}).get('nowplaying') == 'true'
+        ts = ''
+        if not is_now:
+            date_info = t.get('date', {})
+            ts = date_info.get('uts', '')
+        tracks.append({
+            'name': t.get('name', ''),
+            'artist': t.get('artist', {}).get('#text', '') if isinstance(t.get('artist'), dict) else str(t.get('artist', '')),
+            'album': t.get('album', {}).get('#text', '') if isinstance(t.get('album'), dict) else str(t.get('album', '')),
+            'nowplaying': is_now,
+            'ts': ts,
+        })
+    return tracks
+
+
+def generate_nowplaying_script(tracks):
+    json_str = json.dumps(tracks, ensure_ascii=False, separators=(',', ':'))
+    return f'            <script>window.__NOWPLAYING_DATA__={json_str}</script>'
+
+
 # ── Readwise ────────────────────────────────────────────────
 
 import random
@@ -427,6 +456,43 @@ def generate_highlights_script(data):
     return f'            <script>window.__HIGHLIGHTS_DATA__={json_str}</script>'
 
 
+# ── Raindrop ─────────────────────────────────────────────────
+
+def fetch_raindrop_data():
+    url = f'https://api.raindrop.io/rest/v1/raindrops/{RAINDROP_COLLECTION_ID}?perpage=6&sort=-created'
+    req = urllib.request.Request(url, headers={
+        'Authorization': f'Bearer {RAINDROP_TOKEN}',
+        'User-Agent': 'Mozilla/5.0 (compatible; FeedBot/1.0)',
+    })
+    resp = urllib.request.urlopen(req, timeout=30)
+    data = json.loads(resp.read().decode('utf-8'))
+
+    bookmarks = []
+    for item in data.get('items', []):
+        created = ''
+        if item.get('created'):
+            created = format_date(item['created'])
+        bookmarks.append({
+            'title': item.get('title', ''),
+            'link': item.get('link', ''),
+            'domain': item.get('domain', ''),
+            'tags': item.get('tags', []),
+            'note': item.get('note', ''),
+            'excerpt': item.get('excerpt', ''),
+            'created': created,
+        })
+
+    return {
+        'bookmarks': bookmarks,
+        'total': data.get('count', len(bookmarks)),
+    }
+
+
+def generate_raindrop_script(data):
+    json_str = json.dumps(data, ensure_ascii=False, separators=(',', ':'))
+    return f'            <script>window.__RAINDROP_DATA__={json_str}</script>'
+
+
 # ── GitHub ──────────────────────────────────────────────────
 
 GITHUB_USER = 'airingursb'
@@ -532,6 +598,16 @@ def main():
     except Exception as e:
         print(f'GitHub: error - {e}', file=sys.stderr)
 
+    # Raindrop
+    try:
+        rd_data = fetch_raindrop_data()
+        rd_html = generate_raindrop_script(rd_data)
+        content = replace_section(content, '<!-- RAINDROP_DATA_START -->', '<!-- RAINDROP_DATA_END -->', rd_html)
+        print(f'Raindrop: {len(rd_data["bookmarks"])} bookmarks (total {rd_data["total"]})')
+        changed = True
+    except Exception as e:
+        print(f'Raindrop: error - {e}', file=sys.stderr)
+
     # Local data (vibe coding + health + mood)
     try:
         local_data = load_local_data()
@@ -554,6 +630,17 @@ def main():
         changed = True
     except Exception as e:
         print(f'Last.fm: error - {e}', file=sys.stderr)
+
+    # Now Playing (Last.fm recent tracks)
+    try:
+        recent_tracks = fetch_lastfm_recent_tracks(6)
+        np_html = generate_nowplaying_script(recent_tracks)
+        content = replace_section(content, '<!-- NOWPLAYING_DATA_START -->', '<!-- NOWPLAYING_DATA_END -->', np_html)
+        now_count = sum(1 for t in recent_tracks if t.get('nowplaying'))
+        print(f'Now Playing: {len(recent_tracks)} recent tracks, {now_count} currently playing')
+        changed = True
+    except Exception as e:
+        print(f'Now Playing: error - {e}', file=sys.stderr)
 
     if changed:
         with open(HTML_FILE, 'w', encoding='utf-8') as f:
