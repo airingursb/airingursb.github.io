@@ -10,6 +10,16 @@ import os
 from html.parser import HTMLParser
 from datetime import datetime
 
+# Load .env file from repo root (for local development)
+_env_file = os.path.join(os.path.dirname(__file__), '..', '.env')
+if os.path.exists(_env_file):
+    with open(_env_file) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _v = _line.split('=', 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 FEED_URL = 'https://blog.ursb.me/feed.xml'
 TELEGRAM_URL = 'https://t.me/s/airingchannel'
 HTML_FILE = 'index.html'
