@@ -16,11 +16,11 @@ HTML_FILE = 'index.html'
 MAX_ARTICLES = 6
 MAX_TELEGRAM = 6
 
-READWISE_TOKEN = os.environ.get('READWISE_TOKEN', 'REDACTED_READWISE_TOKEN')
+READWISE_TOKEN = os.environ.get('READWISE_TOKEN', '')
 READWISE_BASE = 'https://readwise.io/api/v2'
 
 LASTFM_USER = 'airingursb'
-LASTFM_API_KEY = os.environ.get('LASTFM_API_KEY', 'REDACTED_LASTFM_KEY')
+LASTFM_API_KEY = os.environ.get('LASTFM_API_KEY', '')
 LASTFM_BASE = 'http://ws.audioscrobbler.com/2.0/'
 
 
