@@ -1349,10 +1349,10 @@
     .vc-total { font-size: 11px; color: #586069; }
     .vc-total strong { color: #4ade80; font-size: 14px; }
 
-    .vc-heatmap { display: flex; gap: 3px; margin-bottom: 16px; justify-content: flex-end; }
-    .vc-heatmap-week { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+    .vc-heatmap { display: flex; gap: 3px; margin-bottom: 16px; justify-content: flex-end; overflow: hidden; }
+    .vc-heatmap-week { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 0; }
     .vc-heatmap-cell {
-      width: 10px; height: 10px; border-radius: 2px;
+      width: 100%; aspect-ratio: 1; border-radius: 2px;
       background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.04);
       position: relative; cursor: default;
     }
@@ -2510,8 +2510,8 @@
     // ── World Map ──
     (function () {
       var map = L.map('worldMap', {
-        center: [20, 160],
-        zoom: 2,
+        center: [1.35, 103.82],
+        zoom: 3,
         minZoom: 2,
         maxZoom: 12,
         zoomControl: true,
@@ -2954,7 +2954,7 @@
       }
 
       var TOKEN_KEY = 'chat_visitor_token';
-      var MAX_ROUNDS = 5;
+      var MAX_ROUNDS = 10;
       var roundCount = 0;
 
       // ── Token management ──
@@ -3332,10 +3332,14 @@
           modelsEl.appendChild(tag);
         });
 
-        // Heatmap
+        // Heatmap - calculate weeks based on container width
         var heatmap = el('vcHeatmap');
         var today = new Date();
-        var totalWeeks = 37;
+        var heatmapWidth = heatmap.offsetWidth || 480;
+        // Each cell takes ~(cellWidth + gap), estimate: (width + 3px gap) per week column
+        var cellSize = Math.max(6, Math.floor((heatmapWidth + 3) / 37) - 3);
+        var totalWeeks = Math.floor((heatmapWidth + 3) / (cellSize + 3));
+        totalWeeks = Math.max(8, Math.min(totalWeeks, 52));
         var endDay = new Date(today);
         endDay.setDate(endDay.getDate() + (6 - endDay.getDay()));
         var startDay = new Date(endDay);
