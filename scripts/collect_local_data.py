@@ -301,7 +301,7 @@ def collect_mood():
                         activities_counter[a] += 1
 
     # Recent 60 mood dots (latest first in file, but CSV is chronological)
-    recent_moods = [m['mood'] for m in moods[-90:]]
+    recent_moods = [m['mood'] for m in moods[-150:]]
 
     # Top recent activities from last 60 entries
     recent_activities_counter = Counter()
