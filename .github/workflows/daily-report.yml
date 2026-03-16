@@ -1,0 +1,83 @@
+name: Daily Report
+
+on:
+  schedule:
+    # 01:03 UTC = 09:03 Beijing time (UTC+8)
+    - cron: '3 1 * * *'
+  workflow_dispatch: # allow manual trigger
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send daily report to Telegram
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          HOMEPAGE_SB_KEY: ${{ secrets.HOMEPAGE_SB_KEY }}
+          CHAT_SB_URL: ${{ secrets.CHAT_SB_URL }}
+          CHAT_SB_KEY: ${{ secrets.CHAT_SB_KEY }}
+        run: |
+          set -euo pipefail
+
+          YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
+          TODAY=$(date +%Y-%m-%d)
+
+          HOMEPAGE_SB_URL="https://pcoyocvqfipuydhvdsle.supabase.co"
+
+          # ── 1. Homepage visitor counter ──
+          current_count=$(curl -sf "${HOMEPAGE_SB_URL}/rest/v1/visitors?select=count&id=eq.1" \
+            -H "apikey: ${HOMEPAGE_SB_KEY}" \
+            -H "Authorization: Bearer ${HOMEPAGE_SB_KEY}" \
+            | jq '.[0].count')
+
+          # ── 2. Chat messages yesterday ──
+          chat_resp=$(curl -sf "${CHAT_SB_URL}/rest/v1/chat_messages?select=id&role=eq.user&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            -H "apikey: ${CHAT_SB_KEY}" \
+            -H "Authorization: Bearer ${CHAT_SB_KEY}" \
+            -H "Prefer: count=exact" \
+            -H "Range: 0-0" \
+            -D /tmp/chat_headers -o /dev/null -w "%{http_code}")
+
+          if [ "$chat_resp" = "200" ] || [ "$chat_resp" = "206" ]; then
+            chat_count=$(grep -i 'content-range' /tmp/chat_headers | sed 's/.*\///' | tr -d '\r\n ')
+            [ -z "$chat_count" ] && chat_count="0"
+          else
+            chat_count="0"
+          fi
+
+          # ── 3. New chat visitors yesterday ──
+          vis_resp=$(curl -sf "${CHAT_SB_URL}/rest/v1/chat_visitors?select=id&first_seen_at=gte.${YESTERDAY}T00:00:00Z&first_seen_at=lt.${TODAY}T00:00:00Z" \
+            -H "apikey: ${CHAT_SB_KEY}" \
+            -H "Authorization: Bearer ${CHAT_SB_KEY}" \
+            -H "Prefer: count=exact" \
+            -H "Range: 0-0" \
+            -D /tmp/vis_headers -o /dev/null -w "%{http_code}")
+
+          if [ "$vis_resp" = "200" ] || [ "$vis_resp" = "206" ]; then
+            chat_visitors=$(grep -i 'content-range' /tmp/vis_headers | sed 's/.*\///' | tr -d '\r\n ')
+            [ -z "$chat_visitors" ] && chat_visitors="0"
+          else
+            chat_visitors="0"
+          fi
+
+          # ── 4. Send Telegram message ──
+          MSG=$(cat <<MSGEOF
+          📊 *ursb.me 日报* — ${YESTERDAY}
+
+          🌐 *主页*
+            累计访客: ${current_count}
+
+          💬 *Chat 服务*
+            对话请求: ${chat_count} 条
+            新访客: ${chat_visitors} 人
+          MSGEOF
+          )
+
+          # Remove leading whitespace from heredoc
+          MSG=$(echo "$MSG" | sed 's/^          //')
+
+          curl -sf "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+            -d "chat_id=${TELEGRAM_CHAT_ID}" \
+            -d "parse_mode=Markdown" \
+            --data-urlencode "text=${MSG}"
