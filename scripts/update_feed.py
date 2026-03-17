@@ -643,6 +643,29 @@ def main():
         print(f'Now Playing: error - {e}', file=sys.stderr)
 
     if changed:
+        # Update "data_updated" i18n strings with today's date
+        now = datetime.now()
+        en_date = now.strftime('%b %d, %Y')  # e.g. "Mar 17, 2026"
+        cn_date = f'{now.year} 年 {now.month} 月 {now.day} 日'  # e.g. "2026 年 3 月 17 日"
+
+        content = re.sub(
+            r'(data_updated:\s*"Data updated on )[^"]*(")',
+            rf'\g<1>{en_date}\2',
+            content,
+        )
+        # CN string may be UTF-8 or \uXXXX escaped — match both forms
+        content = re.sub(
+            r'(data_updated:\s*")(?:\u6570\u636e\u66f4\u65b0\u4e8e|\\u6570\\u636e\\u66f4\\u65b0\\u4e8e) [^"]*(")',
+            rf'\g<1>\\u6570\\u636e\\u66f4\\u65b0\\u4e8e {now.year} \\u5e74 {now.month} \\u6708 {now.day} \\u65e5\2',
+            content,
+        )
+        # Also update the default HTML text
+        content = re.sub(
+            r'(data-i18n="data_updated">)Data updated on [^<]*(</span>)',
+            rf'\g<1>Data updated on {en_date}\2',
+            content,
+        )
+
         with open(HTML_FILE, 'w', encoding='utf-8') as f:
             f.write(content)
         print(f'Updated {HTML_FILE}')
