@@ -787,6 +787,95 @@
       padding: 20px 0;
     }
 
+    /* Subscribe Card */
+    .sub-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 4px;
+    }
+    .sub-cmd {
+      color: #7d8590;
+      font-size: 13px;
+    }
+    .sub-prompt { color: #4ade80; }
+    .sub-count {
+      font-size: 11px;
+      color: #7d8590;
+    }
+    .sub-count span { color: #4ade80; font-weight: 600; }
+    .sub-desc {
+      color: #7d8590;
+      font-size: 12px;
+      margin-bottom: 20px;
+    }
+    .sub-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .sub-field {
+      position: relative;
+    }
+    .sub-field label {
+      position: absolute;
+      top: -8px;
+      left: 10px;
+      background: #0d1117;
+      padding: 0 4px;
+      font-size: 10px;
+      color: #7d8590;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .sub-field input {
+      width: 100%;
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      color: #e6edf3;
+      font-family: inherit;
+      font-size: 13px;
+      padding: 10px 12px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .sub-field input:focus { border-color: #4ade80; }
+    .sub-field input::placeholder { color: #30363d; }
+    .sub-btn {
+      width: 100%;
+      margin-top: 4px;
+      padding: 10px;
+      background: transparent;
+      color: #4ade80;
+      border: 1px solid #4ade80;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .sub-btn:hover { background: #4ade80; color: #0d1117; }
+    .sub-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .sub-success {
+      display: none;
+      font-size: 12px;
+      color: #4ade80;
+      margin-top: 10px;
+    }
+    .sub-success.show { display: block; }
+    .sub-error {
+      display: none;
+      font-size: 12px;
+      color: #f87171;
+      margin-top: 10px;
+    }
+    .sub-error.show { display: block; }
+
     /* Music Card */
     .music-bars {
       display: flex;
@@ -1575,6 +1664,7 @@
       .card-letter,
       .card-sessions,
       .card-guestbook,
+      .card-subscribe,
       .card-vibe,
       .card-skills,
       .card-gear,
@@ -2343,6 +2433,15 @@
         lpt_writing: "Writing",
         lpt_biz: "Business Consulting",
         lpt_data: "Data Consulting",
+        sec_subscribe: "Subscribe",
+        sub_desc: "Get notified when I publish new posts and monthly newsletters.",
+        sub_name_placeholder: "your name",
+        sub_email_placeholder: "you@example.com",
+        sub_button: "Subscribe",
+        sub_success: "Subscribed! Check your inbox.",
+        sub_err_fail: "Subscription failed. Please try again.",
+        sub_err_exists: "This email is already subscribed.",
+        sub_count_suffix: " subscribers",
         sec_guestbook: "Guestbook",
         gb_empty: "Be the first to leave a message :)",
         gb_name: "Name",
@@ -2482,6 +2581,15 @@
         lpt_writing: "\u5199\u4f5c",
         lpt_biz: "\u5546\u4e1a\u54a8\u8be2",
         lpt_data: "\u6570\u636e\u54a8\u8be2",
+        sec_subscribe: "\u8ba2\u9605",
+        sub_desc: "\u65b0\u6587\u7ae0\u548c\u6708\u520a\u66f4\u65b0\u65f6\u7b2c\u4e00\u65f6\u95f4\u901a\u77e5\u4f60\u3002",
+        sub_name_placeholder: "\u4f60\u7684\u540d\u5b57",
+        sub_email_placeholder: "\u4f60\u7684\u90ae\u7bb1",
+        sub_button: "\u8ba2\u9605",
+        sub_success: "\u8ba2\u9605\u6210\u529f\uff01\u8bf7\u68c0\u67e5\u90ae\u7bb1\u786e\u8ba4\u3002",
+        sub_err_fail: "\u8ba2\u9605\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5\u3002",
+        sub_err_exists: "\u8be5\u90ae\u7bb1\u5df2\u8ba2\u9605\u3002",
+        sub_count_suffix: " \u4f4d\u8ba2\u9605\u8005",
         sec_guestbook: "\u7559\u8a00\u677f",
         gb_empty: "\u6210\u4e3a\u7b2c\u4e00\u4e2a\u7559\u8a00\u7684\u4eba :)",
         gb_name: "\u6635\u79f0",
@@ -3441,6 +3549,29 @@
           <span class="gb-pending-dot"></span>
           <span data-i18n="gb_pending">AI reviewing your message, it will be visible after approval</span>
         </div>
+      </div>
+
+      <!-- Subscribe -->
+      <div class="card card-subscribe" id="subscribe">
+        <div class="section-title" data-i18n="sec_subscribe">Subscribe</div>
+        <div class="sub-header">
+          <div class="sub-cmd"><span class="sub-prompt">$</span> subscribe --blog</div>
+          <div class="sub-count" id="subCount"></div>
+        </div>
+        <div class="sub-desc" data-i18n="sub_desc">Get notified when I publish new posts and monthly newsletters.</div>
+        <form class="sub-form" id="subscribeForm">
+          <div class="sub-field">
+            <label>name</label>
+            <input type="text" id="subName" data-i18n-placeholder="sub_name_placeholder" placeholder="your name" required maxlength="50">
+          </div>
+          <div class="sub-field">
+            <label>email</label>
+            <input type="email" id="subEmail" data-i18n-placeholder="sub_email_placeholder" placeholder="you@example.com" required maxlength="100">
+          </div>
+          <button type="submit" class="sub-btn" id="subBtn" data-i18n="sub_button">Subscribe</button>
+        </form>
+        <div class="sub-success" id="subSuccess" data-i18n="sub_success">Subscribed! Check your inbox.</div>
+        <div class="sub-error" id="subError"></div>
       </div>
     </div>
 
@@ -4501,6 +4632,67 @@
 
       window.addEventListener('langchange', function() {
         loadMessages();
+      });
+    })();
+
+    // ── Subscribe ──
+    (function () {
+      var SUBSCRIBE_API = 'https://chat.ursb.me/api/subscribe';
+      var form = document.getElementById('subscribeForm');
+      var nameInput = document.getElementById('subName');
+      var emailInput = document.getElementById('subEmail');
+      var btn = document.getElementById('subBtn');
+      var successEl = document.getElementById('subSuccess');
+      var errorEl = document.getElementById('subError');
+      var countEl = document.getElementById('subCount');
+
+      // Fetch subscriber count
+      fetch(SUBSCRIBE_API + '/count')
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (d.count) {
+            countEl.innerHTML = '<span>' + d.count.toLocaleString() + '</span>' + t('sub_count_suffix');
+          }
+        })
+        .catch(function () {
+          // Fallback: show historical count when API unreachable
+          countEl.innerHTML = '<span>1,497</span>' + t('sub_count_suffix');
+        });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var name = nameInput.value.trim();
+        var email = emailInput.value.trim();
+        if (!name || !email) return;
+
+        btn.disabled = true;
+        btn.textContent = '...';
+        successEl.classList.remove('show');
+        errorEl.classList.remove('show');
+
+        fetch(SUBSCRIBE_API, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: name, email: email })
+        })
+        .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
+        .then(function (result) {
+          if (result.ok || result.data.ok) {
+            successEl.classList.add('show');
+            form.style.display = 'none';
+          } else {
+            errorEl.textContent = t('sub_err_fail');
+            errorEl.classList.add('show');
+          }
+        })
+        .catch(function () {
+          errorEl.textContent = t('sub_err_fail');
+          errorEl.classList.add('show');
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.textContent = t('sub_button');
+        });
       });
     })();
 
