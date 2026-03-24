@@ -3556,7 +3556,7 @@
         <div class="section-title" data-i18n="sec_subscribe">Subscribe</div>
         <div class="sub-header">
           <div class="sub-cmd"><span class="sub-prompt">$</span> subscribe --blog</div>
-          <div class="sub-count" id="subCount"></div>
+          <div class="sub-count" id="subCount" style="display:none"><span id="subCountNum"></span><span data-i18n="sub_count_suffix"> subscribers</span></div>
         </div>
         <div class="sub-desc" data-i18n="sub_desc">Get notified when I publish new posts and monthly newsletters.</div>
         <form class="sub-form" id="subscribeForm">
@@ -4645,19 +4645,18 @@
       var successEl = document.getElementById('subSuccess');
       var errorEl = document.getElementById('subError');
       var countEl = document.getElementById('subCount');
+      var countNumEl = document.getElementById('subCountNum');
+
+      function showCount(n) {
+        countNumEl.textContent = n.toLocaleString();
+        countEl.style.display = '';
+      }
 
       // Fetch subscriber count
       fetch(SUBSCRIBE_API + '/count')
         .then(function (r) { return r.json(); })
-        .then(function (d) {
-          if (d.count) {
-            countEl.innerHTML = '<span>' + d.count.toLocaleString() + '</span>' + t('sub_count_suffix');
-          }
-        })
-        .catch(function () {
-          // Fallback: show historical count when API unreachable
-          countEl.innerHTML = '<span>1,497</span>' + t('sub_count_suffix');
-        });
+        .then(function (d) { if (d.count) showCount(d.count); })
+        .catch(function () { showCount(1497); });
 
       form.addEventListener('submit', function (e) {
         e.preventDefault();
