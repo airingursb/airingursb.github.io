@@ -1,0 +1,59 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+
+export async function getStaticPaths() {
+  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  const tags = [...new Set(posts.flatMap(p => p.data.tags))];
+  return tags.map(tag => ({
+    params: { tag },
+    props: {
+      tag,
+      posts: posts
+        .filter(p => p.data.tags.includes(tag))
+        .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf()),
+    },
+  }));
+}
+
+const { tag, posts } = Astro.props;
+---
+
+<BaseLayout title={`#${tag} | Airing`}>
+  <div class="tag-page">
+    <nav class="post-nav-bar">
+      <a href="/" class="post-back">← Home</a>
+      <a href="/archive" class="post-back">Archive</a>
+    </nav>
+    <h1 class="tag-title">#{tag}</h1>
+    <p class="tag-count">{posts.length} posts</p>
+    <div class="tag-list">
+      {posts.map(post => (
+        <a href={`/posts/${post.id}`} class="post-item">
+          <span class="post-title">{post.data.title}</span>
+          <span class="post-date">
+            {post.data.date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+          </span>
+        </a>
+      ))}
+    </div>
+  </div>
+</BaseLayout>
+
+<style>
+  .tag-page { max-width: 720px; margin: 0 auto; padding: 40px 20px; }
+  .post-nav-bar { display: flex; gap: 16px; margin-bottom: 32px; }
+  .post-back { color: #7d8590; text-decoration: none; font-size: 13px; }
+  .post-back:hover { color: #4ade80; }
+  .tag-title { font-size: 24px; color: #4ade80; margin-bottom: 4px; }
+  .tag-count { font-size: 13px; color: #7d8590; margin-bottom: 24px; }
+  .tag-list { display: flex; flex-direction: column; }
+  .post-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    text-decoration: none; color: #e6edf3; transition: color 0.2s;
+  }
+  .post-item:hover { color: #4ade80; }
+  .post-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .post-date { font-size: 12px; color: #7d8590; flex-shrink: 0; margin-left: 16px; }
+</style>
