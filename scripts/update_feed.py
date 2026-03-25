@@ -642,6 +642,57 @@ def main():
     except Exception as e:
         print(f'Now Playing: error - {e}', file=sys.stderr)
 
+    # ── Write JSON for Astro ────────────────────────────────
+    data_dir = os.path.join(os.path.dirname(__file__), '..', 'src', 'data')
+    os.makedirs(data_dir, exist_ok=True)
+
+    def write_json(name, data):
+        path = os.path.join(data_dir, f'{name}.json')
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        print(f'  → wrote {path}')
+
+    try:
+        if articles:
+            write_json('articles', articles)
+    except NameError:
+        pass
+    try:
+        if tg_items:
+            write_json('telegram', tg_items)
+    except NameError:
+        pass
+    try:
+        if rw_data:
+            write_json('highlights', rw_data)
+    except NameError:
+        pass
+    try:
+        if gh_data:
+            write_json('github', gh_data)
+    except NameError:
+        pass
+    try:
+        if rd_data:
+            write_json('raindrop', rd_data)
+    except NameError:
+        pass
+    try:
+        if local_data:
+            write_json('local_data', local_data)
+    except NameError:
+        pass
+    try:
+        if music_data:
+            write_json('music', music_data)
+    except NameError:
+        pass
+    try:
+        if recent_tracks:
+            write_json('nowplaying', recent_tracks)
+    except NameError:
+        pass
+
     if changed:
         # Update "data_updated" i18n strings with today's date
         now = datetime.now()
