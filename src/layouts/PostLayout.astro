@@ -1,0 +1,162 @@
+---
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  date: Date;
+  tags: string[];
+  description?: string;
+  cover?: string;
+}
+
+const { title, date, tags, description, cover } = Astro.props;
+
+const dateStr = date.toLocaleDateString('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+---
+
+<BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={cover}>
+  <div class="post-page">
+    <nav class="post-nav-bar">
+      <a href="/" class="post-back">← Home</a>
+      <a href="/archive" class="post-back">Archive</a>
+    </nav>
+    <article class="post-article">
+      <header class="post-header">
+        <h1 class="post-page-title">{title}</h1>
+        <div class="post-meta">
+          <time datetime={date.toISOString()}>{dateStr}</time>
+          {tags.length > 0 && (
+            <span class="post-tags">
+              {tags.map(tag => (
+                <a href={`/tags/${tag}`} class="post-tag">#{tag}</a>
+              ))}
+            </span>
+          )}
+        </div>
+      </header>
+      <div class="post-content">
+        <slot />
+      </div>
+    </article>
+  </div>
+</BaseLayout>
+
+<style>
+  .post-page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 40px 20px;
+  }
+  .post-nav-bar {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+  .post-back {
+    color: #7d8590;
+    text-decoration: none;
+    font-size: 13px;
+  }
+  .post-back:hover { color: #4ade80; }
+  .post-page-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #e6edf3;
+    line-height: 1.3;
+    margin-bottom: 12px;
+  }
+  .post-meta {
+    font-size: 13px;
+    color: #7d8590;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+  .post-tag {
+    color: #4ade80;
+    text-decoration: none;
+    font-size: 12px;
+  }
+  .post-tag:hover { text-decoration: underline; }
+  .post-content {
+    color: #e6edf3;
+    font-size: 15px;
+    line-height: 1.8;
+  }
+  .post-content :global(h2) {
+    font-size: 22px;
+    margin-top: 40px;
+    margin-bottom: 16px;
+    color: #e6edf3;
+  }
+  .post-content :global(h3) {
+    font-size: 18px;
+    margin-top: 32px;
+    margin-bottom: 12px;
+    color: #e6edf3;
+  }
+  .post-content :global(p) { margin-bottom: 16px; }
+  .post-content :global(a) {
+    color: #4ade80;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .post-content :global(img) {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 16px 0;
+  }
+  .post-content :global(pre) {
+    background: #161b22;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-size: 13px;
+  }
+  .post-content :global(code:not(pre code)) {
+    background: rgba(255,255,255,0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+  }
+  .post-content :global(blockquote) {
+    border-left: 3px solid #4ade80;
+    padding-left: 16px;
+    color: #7d8590;
+    margin: 16px 0;
+  }
+  .post-content :global(ul), .post-content :global(ol) {
+    margin-bottom: 16px;
+    padding-left: 24px;
+  }
+  .post-content :global(li) {
+    margin-bottom: 4px;
+  }
+  .post-content :global(hr) {
+    border: none;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin: 32px 0;
+  }
+  .post-content :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  .post-content :global(th), .post-content :global(td) {
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 8px 12px;
+    text-align: left;
+  }
+  .post-content :global(th) {
+    background: rgba(255,255,255,0.03);
+    font-weight: 600;
+  }
+</style>

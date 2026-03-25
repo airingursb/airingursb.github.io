@@ -1,0 +1,60 @@
+---
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const posts = (await getCollection('posts', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const postsByYear = posts.reduce((acc, post) => {
+  const year = post.data.date.getFullYear();
+  if (!acc[year]) acc[year] = [];
+  acc[year].push(post);
+  return acc;
+}, {} as Record<number, typeof posts>);
+
+const years = Object.keys(postsByYear).map(Number).sort((a, b) => b - a);
+---
+
+<BaseLayout title="Archive | Airing">
+  <div class="archive-page">
+    <nav class="post-nav-bar">
+      <a href="/" class="post-back">← Home</a>
+    </nav>
+    <h1 class="archive-title">Archive</h1>
+    <p class="archive-count">{posts.length} posts</p>
+    {years.map(year => (
+      <section class="archive-year">
+        <h2 class="archive-year-title">{year}</h2>
+        <div class="archive-list">
+          {postsByYear[year].map(post => (
+            <a href={`/posts/${post.id}`} class="post-item">
+              <span class="post-title">{post.data.title}</span>
+              <span class="post-date">
+                {post.data.date.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })}
+              </span>
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+  </div>
+</BaseLayout>
+
+<style>
+  .archive-page { max-width: 720px; margin: 0 auto; padding: 40px 20px; }
+  .post-nav-bar { display: flex; gap: 16px; margin-bottom: 32px; }
+  .post-back { color: #7d8590; text-decoration: none; font-size: 13px; }
+  .post-back:hover { color: #4ade80; }
+  .archive-title { font-size: 24px; color: #e6edf3; margin-bottom: 4px; }
+  .archive-count { font-size: 13px; color: #7d8590; margin-bottom: 32px; }
+  .archive-year-title { font-size: 18px; color: #4ade80; margin-bottom: 12px; margin-top: 24px; }
+  .archive-list { display: flex; flex-direction: column; }
+  .post-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06);
+    text-decoration: none; color: #e6edf3; transition: color 0.2s;
+  }
+  .post-item:hover { color: #4ade80; }
+  .post-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .post-date { font-size: 12px; color: #7d8590; flex-shrink: 0; margin-left: 16px; }
+</style>
