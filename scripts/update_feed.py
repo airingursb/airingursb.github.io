@@ -75,9 +75,15 @@ def generate_items_html(items):
     lines = []
     for a in items:
         title = escape_html(a['title'])
-        link = escape_html(a['link'])
+        link = a['link']
+        # Convert external blog.ursb.me links to local /posts/ links
+        m = re.search(r'blog\.ursb\.me/posts/([^/]+)/?', link)
+        if m:
+            link = f'/posts/{m.group(1)}'
+        link = escape_html(link)
         date = a['date']
-        lines.append(f'            <a href="{link}" class="post-item" target="_blank">')
+        target = '' if link.startswith('/') else ' target="_blank"'
+        lines.append(f'            <a href="{link}" class="post-item"{target}>')
         lines.append(f'              <span class="post-title">{title}</span>')
         lines.append(f'              <span class="post-date">{date}</span>')
         lines.append(f'            </a>')
