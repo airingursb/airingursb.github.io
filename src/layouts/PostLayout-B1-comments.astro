@@ -1,0 +1,876 @@
+---
+/**
+ * B1 + Inline Comments — Google Docs / 飞书 / 微信读书风格划线评论
+ *
+ * Desktop: 三栏布局，右侧评论卡片 absolute 定位对齐高亮文字
+ * Mobile:  单栏，高亮文字点击弹出 bottom-sheet 评论气泡
+ */
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  date: Date;
+  tags: string[];
+  description?: string;
+  cover?: string;
+}
+
+const { title, date, tags, description, cover } = Astro.props;
+
+const dateStr = date.toLocaleDateString('zh-CN', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+const shortDate = date.toLocaleDateString('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+---
+
+<BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={cover}>
+  <div class="post-page">
+    <!-- Masthead -->
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/" class="mast-brand">Airing's Blog</a>
+          <span class="mast-date">{dateStr}</span>
+          <div class="mast-links">
+            <a href="/archive">Archive</a>
+            <a href="/feed.xml">RSS</a>
+          </div>
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <!-- Headline -->
+    <div class="headline-section">
+      <div class="headline-inner">
+        <div class="headline-tags">
+          {tags.map(tag => (
+            <a href={`/tags/${tag}`} class="hl-tag">{tag}</a>
+          ))}
+        </div>
+        <h1 class="headline">{title}</h1>
+        {description && <p class="headline-deck">{description}</p>}
+      </div>
+    </div>
+
+    {cover && (
+      <div class="cover-section">
+        <img src={cover} alt={title} />
+      </div>
+    )}
+
+    <!-- Three-column: sidebar | content | comments -->
+    <div class="content-grid" id="contentGrid">
+      <aside class="sidebar-left">
+        <div class="sb-block">
+          <div class="sb-label">Date</div>
+          <div class="sb-value">{shortDate}</div>
+        </div>
+        {tags.length > 0 && (
+          <div class="sb-block">
+            <div class="sb-label">Tags</div>
+            <div class="sb-tags">
+              {tags.map(tag => (
+                <a href={`/tags/${tag}`} class="sb-tag">#{tag}</a>
+              ))}
+            </div>
+          </div>
+        )}
+        <div class="sb-block">
+          <div class="sb-label">Author</div>
+          <div class="sb-value">Airing</div>
+        </div>
+        <div class="sb-divider"></div>
+        <a href="/archive" class="sb-nav">&larr; All Posts</a>
+      </aside>
+
+      <article class="post-content" id="postContent">
+        <slot />
+      </article>
+
+      <!-- Right column: relative container for absolute-positioned cards -->
+      <aside class="comment-rail" id="commentRail">
+        <div class="cr-header">
+          <span class="cr-label">Comments</span>
+          <button class="cr-clear" id="clearAllComments" title="Clear all">&#x2715;</button>
+        </div>
+        <div class="cr-cards" id="commentCards">
+          <!-- Cards positioned absolutely here -->
+        </div>
+      </aside>
+    </div>
+
+    <!-- FAB -->
+    <button class="fab-comment" id="fabComment" aria-label="Add comment">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+    </button>
+
+    <!-- Comment input popover (desktop) -->
+    <div class="comment-input-popover" id="commentPopover">
+      <div class="cip-header">
+        <span class="cip-selected" id="cipSelectedText"></span>
+      </div>
+      <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3"></textarea>
+      <div class="cip-actions">
+        <button class="cip-cancel" id="cipCancel">Cancel</button>
+        <button class="cip-submit" id="cipSubmit">Comment</button>
+      </div>
+    </div>
+
+    <!-- Mobile bottom sheet -->
+    <div class="mobile-sheet-overlay" id="mobileOverlay"></div>
+    <div class="mobile-sheet" id="mobileSheet">
+      <div class="ms-handle"></div>
+      <div class="ms-quote" id="msQuote"></div>
+      <div class="ms-body" id="msBody"></div>
+      <div class="ms-time" id="msTime"></div>
+      <button class="ms-delete" id="msDelete">Delete Comment</button>
+    </div>
+
+    <footer class="page-footer">
+      <div class="footer-inner">
+        <div class="footer-rule"></div>
+        <div class="footer-bar">
+          <a href="/">&larr; Home</a>
+          <span class="footer-copy">&copy; Airing</span>
+          <a href="/archive">Archive &rarr;</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
+
+<script is:inline>
+(function() {
+  var STORAGE_KEY = 'blog-comments:' + location.pathname;
+  var postContent = document.getElementById('postContent');
+  var contentGrid = document.getElementById('contentGrid');
+  var commentRail = document.getElementById('commentRail');
+  var commentCards = document.getElementById('commentCards');
+  var fab = document.getElementById('fabComment');
+  var popover = document.getElementById('commentPopover');
+  var cipText = document.getElementById('cipSelectedText');
+  var cipArea = document.getElementById('cipTextarea');
+  var cipCancel = document.getElementById('cipCancel');
+  var cipSubmit = document.getElementById('cipSubmit');
+  var clearAll = document.getElementById('clearAllComments');
+  var mobileOverlay = document.getElementById('mobileOverlay');
+  var mobileSheet = document.getElementById('mobileSheet');
+  var msQuote = document.getElementById('msQuote');
+  var msBody = document.getElementById('msBody');
+  var msTime = document.getElementById('msTime');
+  var msDelete = document.getElementById('msDelete');
+
+  var pendingRange = null;
+  var activeMobileCommentId = null;
+
+  function isMobile() { return window.innerWidth <= 1100; }
+
+  // --- Storage ---
+  function loadComments() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
+    catch(e) { return []; }
+  }
+  function saveComments(c) { localStorage.setItem(STORAGE_KEY, JSON.stringify(c)); }
+
+  function uid() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+  // --- Highlight wrapping ---
+  function wrapRange(range, id) {
+    var mark = document.createElement('mark');
+    mark.className = 'comment-highlight';
+    mark.dataset.commentId = id;
+    try { range.surroundContents(mark); }
+    catch(e) {
+      var fragment = range.extractContents();
+      mark.appendChild(fragment);
+      range.insertNode(mark);
+    }
+    return mark;
+  }
+
+  // Restore highlights from saved comments by searching text in content
+  function restoreHighlights() {
+    var comments = loadComments();
+    comments.forEach(function(c) {
+      // Skip if mark already exists
+      if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
+      var searchText = c.selectedText;
+      if (!searchText) return;
+      // Walk text nodes to find the saved text
+      var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
+      var node;
+      while (node = walker.nextNode()) {
+        var idx = node.textContent.indexOf(searchText);
+        if (idx === -1) continue;
+        // Found it — wrap in a <mark>
+        var range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + searchText.length);
+        wrapRange(range, c.id);
+        break;
+      }
+    });
+  }
+
+  function removeHighlight(id) {
+    var marks = postContent.querySelectorAll('mark[data-comment-id="' + id + '"]');
+    marks.forEach(function(mark) {
+      var parent = mark.parentNode;
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+      parent.removeChild(mark);
+      parent.normalize();
+    });
+  }
+
+  // Get element's offsetTop relative to contentGrid by walking offsetParent chain
+  function offsetFromGrid(el) {
+    var top = 0;
+    while (el && el !== contentGrid) {
+      top += el.offsetTop;
+      el = el.offsetParent;
+    }
+    return top;
+  }
+
+  // --- Position cards aligned to their highlights ---
+  function layoutCards() {
+    var cards = commentCards.querySelectorAll('.cm-card');
+    if (!cards.length) return;
+
+    // Use commentRail as the reference since it aligns with postContent in the grid
+    var railOffset = offsetFromGrid(commentRail);
+
+    // Collect desired positions
+    var positions = [];
+    cards.forEach(function(card) {
+      var id = card.dataset.commentId;
+      var mark = postContent.querySelector('mark[data-comment-id="' + id + '"]');
+      var desiredTop = 0;
+      if (mark) {
+        var markOffset = offsetFromGrid(mark);
+        desiredTop = markOffset - railOffset;
+      }
+      positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
+    });
+
+    // Sort by desired position
+    positions.sort(function(a, b) { return a.desired - b.desired; });
+
+    // Resolve overlaps: each card must start after the previous one ends + gap
+    var GAP = 8;
+    var nextAvailable = 0;
+    positions.forEach(function(p) {
+      var top = Math.max(p.desired, nextAvailable);
+      p.card.style.top = top + 'px';
+      nextAvailable = top + p.height + GAP;
+    });
+
+    // Set container min-height so it doesn't collapse
+    commentCards.style.minHeight = nextAvailable + 'px';
+  }
+
+  // --- Render all comments (desktop) ---
+  function renderComments() {
+    var comments = loadComments();
+    commentCards.innerHTML = '';
+
+    clearAll.style.display = comments.length ? '' : 'none';
+
+    comments.forEach(function(c) {
+      var card = document.createElement('div');
+      card.className = 'cm-card';
+      card.dataset.commentId = c.id;
+
+      var mark = postContent.querySelector('mark[data-comment-id="' + c.id + '"]');
+
+      var time = new Date(c.ts);
+      var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+        + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      card.innerHTML =
+        '<div class="cm-card-quote">\u201c' + esc(trunc(c.selectedText, 50)) + '\u201d</div>' +
+        '<div class="cm-card-body">' + esc(c.text) + '</div>' +
+        '<div class="cm-card-footer">' +
+          '<span class="cm-card-time">' + timeStr + '</span>' +
+          '<button class="cm-card-delete" data-id="' + c.id + '">&times;</button>' +
+        '</div>';
+
+      // --- Desktop interactions ---
+      // Hover card → highlight mark
+      card.addEventListener('mouseenter', function() {
+        if (mark) mark.classList.add('highlight-active');
+        card.classList.add('cm-card-active');
+      });
+      card.addEventListener('mouseleave', function() {
+        if (mark) mark.classList.remove('highlight-active');
+        card.classList.remove('cm-card-active');
+      });
+
+      // Click card → scroll to highlighted text
+      card.addEventListener('click', function(e) {
+        if (e.target.classList.contains('cm-card-delete')) return;
+        if (mark) {
+          mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          mark.classList.add('highlight-flash');
+          setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1000);
+        }
+      });
+
+      // Hover mark → highlight card
+      if (mark) {
+        mark.addEventListener('mouseenter', function() {
+          card.classList.add('cm-card-active');
+          mark.classList.add('highlight-active');
+        });
+        mark.addEventListener('mouseleave', function() {
+          card.classList.remove('cm-card-active');
+          mark.classList.remove('highlight-active');
+        });
+      }
+
+      // --- Mobile: tap highlight → open bottom sheet ---
+      if (mark) {
+        mark.addEventListener('click', function(e) {
+          if (!isMobile()) return;
+          e.preventDefault();
+          e.stopPropagation();
+          openMobileSheet(c);
+        });
+      }
+
+      commentCards.appendChild(card);
+
+      // Delete
+      card.querySelector('.cm-card-delete').addEventListener('click', function(e) {
+        e.stopPropagation();
+        removeHighlight(c.id);
+        var updated = loadComments().filter(function(x) { return x.id !== c.id; });
+        saveComments(updated);
+        renderComments();
+      });
+    });
+
+    // Layout after DOM is ready
+    requestAnimationFrame(function() {
+      requestAnimationFrame(layoutCards);
+    });
+  }
+
+  // --- Mobile bottom sheet ---
+  function openMobileSheet(comment) {
+    activeMobileCommentId = comment.id;
+    msQuote.textContent = '\u201c' + trunc(comment.selectedText, 80) + '\u201d';
+    msBody.textContent = comment.text;
+    var time = new Date(comment.ts);
+    msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+      + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    mobileOverlay.classList.add('active');
+    mobileSheet.classList.add('active');
+  }
+
+  function closeMobileSheet() {
+    mobileOverlay.classList.remove('active');
+    mobileSheet.classList.remove('active');
+    activeMobileCommentId = null;
+  }
+
+  mobileOverlay.addEventListener('click', closeMobileSheet);
+
+  msDelete.addEventListener('click', function() {
+    if (!activeMobileCommentId) return;
+    removeHighlight(activeMobileCommentId);
+    var updated = loadComments().filter(function(x) { return x.id !== activeMobileCommentId; });
+    saveComments(updated);
+    closeMobileSheet();
+    renderComments();
+  });
+
+  // --- FAB: show on text selection ---
+  fab.style.display = 'none';
+  popover.style.display = 'none';
+
+  document.addEventListener('mouseup', function(e) {
+    if (popover.style.display !== 'none') return;
+    if (isMobile()) { fab.style.display = 'none'; return; }
+
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.top + window.scrollY - 36) + 'px';
+    fab.style.left = (rect.right + window.scrollX + 8) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  // Mobile: show FAB on touchend selection
+  document.addEventListener('selectionchange', function() {
+    if (!isMobile()) return;
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    fab.style.left = (rect.left + window.scrollX + (rect.width / 2) - 14) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('mousedown', function(e) {
+    if (fab.contains(e.target) || popover.contains(e.target)) return;
+    if (popover.style.display === 'none') fab.style.display = 'none';
+  });
+
+  // --- FAB click → open input ---
+  fab.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!pendingRange) return;
+    var selectedText = pendingRange.toString().trim();
+    if (!selectedText) return;
+
+    cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
+    cipArea.value = '';
+
+    var rect = pendingRange.getBoundingClientRect();
+
+    if (isMobile()) {
+      // Center popover on mobile
+      popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
+      popover.style.left = '50%';
+      popover.style.transform = 'translateX(-50%)';
+    } else {
+      popover.style.top = (rect.top + window.scrollY) + 'px';
+      popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
+      popover.style.transform = '';
+    }
+
+    popover.style.display = 'block';
+    fab.style.display = 'none';
+    cipArea.focus();
+  });
+
+  cipCancel.addEventListener('click', function() {
+    popover.style.display = 'none';
+    pendingRange = null;
+    window.getSelection().removeAllRanges();
+  });
+
+  cipSubmit.addEventListener('click', function() {
+    var text = cipArea.value.trim();
+    if (!text || !pendingRange) return;
+
+    var id = uid();
+    var selectedText = pendingRange.toString().trim();
+    wrapRange(pendingRange, id);
+
+    var comments = loadComments();
+    comments.push({ id: id, text: text, selectedText: selectedText, ts: Date.now() });
+    saveComments(comments);
+
+    popover.style.display = 'none';
+    pendingRange = null;
+    window.getSelection().removeAllRanges();
+    renderComments();
+  });
+
+  cipArea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
+    if (e.key === 'Escape') cipCancel.click();
+  });
+
+  // --- Clear all ---
+  clearAll.addEventListener('click', function() {
+    if (!confirm('Clear all comments?')) return;
+    postContent.querySelectorAll('mark.comment-highlight').forEach(function(m) {
+      var p = m.parentNode;
+      while (m.firstChild) p.insertBefore(m.firstChild, m);
+      p.removeChild(m);
+      p.normalize();
+    });
+    saveComments([]);
+    renderComments();
+  });
+
+  // --- Relayout on resize/scroll ---
+  var layoutTimer;
+  function debouncedLayout() {
+    clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(layoutCards, 60);
+  }
+  window.addEventListener('resize', debouncedLayout);
+
+  // --- Init ---
+  restoreHighlights();
+  renderComments();
+
+  // --- Helpers ---
+  function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+})();
+</script>
+
+<style>
+  .post-page { width: 100%; min-height: 100vh; }
+
+  /* ===== Masthead ===== */
+  .masthead { width: 100%; }
+  .mast-inner { max-width: 1440px; margin: 0 auto; padding: 0 48px; }
+  .mast-top-rule { height: 4px; background: #e6edf3; margin-top: 24px; }
+  .mast-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; position: relative;
+  }
+  .mast-brand {
+    font-size: 11px; color: #7d8590; text-decoration: none;
+    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+  }
+  .mast-brand:hover { color: #e6edf3; }
+  .mast-date {
+    font-size: 12px; color: #484f58;
+    position: absolute; left: 50%; transform: translateX(-50%);
+  }
+  .mast-links { display: flex; gap: 16px; }
+  .mast-links a {
+    font-size: 11px; color: #484f58; text-decoration: none;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .mast-links a:hover { color: #e6edf3; }
+  .mast-bottom-rule { height: 1px; background: #21262d; }
+
+  /* ===== Headline ===== */
+  .headline-section {
+    max-width: 1440px; margin: 0 auto;
+    padding: 48px 48px 40px; border-bottom: 1px solid #21262d;
+  }
+  .headline-inner { max-width: 860px; }
+  .headline-tags { display: flex; gap: 8px; margin-bottom: 12px; }
+  .hl-tag {
+    font-size: 11px; color: #4ade80; text-decoration: none;
+    text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+  }
+  .headline {
+    font-size: clamp(30px, 5vw, 52px); font-weight: 800; color: #e6edf3;
+    line-height: 1.08; letter-spacing: -0.03em;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .headline-deck {
+    font-size: 18px; color: #7d8590; margin-top: 16px; line-height: 1.5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  /* ===== Cover ===== */
+  .cover-section {
+    max-width: 1440px; margin: 0 auto; padding: 32px 48px;
+    border-bottom: 1px solid #21262d;
+  }
+  .cover-section img { width: 100%; border-radius: 4px; display: block; }
+
+  /* ===== Three-Column Grid ===== */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 160px 1fr 280px;
+    gap: 40px;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 40px 48px 60px;
+    align-items: start;
+    position: relative;
+  }
+
+  /* Left sidebar */
+  .sidebar-left {
+    position: sticky; top: 40px;
+    border-right: 1px solid #21262d; padding-right: 20px;
+  }
+  .sb-block { margin-bottom: 24px; }
+  .sb-label {
+    font-size: 9px; color: #484f58;
+    text-transform: uppercase; letter-spacing: 0.12em;
+    margin-bottom: 4px; font-weight: 600;
+  }
+  .sb-value { font-size: 13px; color: #7d8590; }
+  .sb-tags { display: flex; flex-direction: column; gap: 2px; }
+  .sb-tag { font-size: 13px; color: #4ade80; text-decoration: none; }
+  .sb-tag:hover { opacity: 0.7; }
+  .sb-divider { height: 1px; background: #21262d; margin: 20px 0; }
+  .sb-nav { font-size: 12px; color: #484f58; text-decoration: none; }
+  .sb-nav:hover { color: #e6edf3; }
+
+  /* ===== Content ===== */
+  .post-content {
+    color: #c9d1d9; font-size: 15px; line-height: 1.9;
+    min-width: 0; max-width: 72ch; position: relative;
+  }
+  .post-content :global(h2) {
+    font-size: 24px; font-weight: 700; margin-top: 48px; margin-bottom: 16px;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .post-content :global(h3) {
+    font-size: 18px; font-weight: 600; margin-top: 36px; margin-bottom: 12px;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .post-content :global(p) { margin-bottom: 18px; }
+  .post-content :global(a) {
+    color: #4ade80; text-decoration: none;
+    border-bottom: 1px solid rgba(74,222,128,0.25);
+  }
+  .post-content :global(a:hover) { border-bottom-color: #4ade80; }
+  .post-content :global(img) {
+    max-width: calc(100% + 60px); width: calc(100% + 60px);
+    margin-left: -30px; border-radius: 4px;
+    margin-top: 24px; margin-bottom: 24px; display: block;
+  }
+  .post-content :global(pre) {
+    max-width: calc(100% + 80px); width: calc(100% + 80px);
+    margin-left: -40px; background: #0d1117;
+    border: 1px solid #21262d; border-radius: 4px;
+    padding: 20px 28px; overflow-x: auto;
+    margin-top: 24px; margin-bottom: 24px;
+    font-size: 13px; line-height: 1.65;
+  }
+  .post-content :global(code:not(pre code)) {
+    background: rgba(255,255,255,0.05); padding: 2px 6px;
+    border-radius: 3px; font-size: 13px;
+  }
+  .post-content :global(blockquote) {
+    border-left: 3px solid #4ade80;
+    padding-left: 20px; color: #8b949e; margin: 24px 0;
+  }
+  .post-content :global(ul), .post-content :global(ol) { margin-bottom: 18px; padding-left: 24px; }
+  .post-content :global(li) { margin-bottom: 6px; }
+  .post-content :global(hr) { border: none; height: 1px; background: #21262d; margin: 40px 0; }
+  .post-content :global(table) { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 13px; }
+  .post-content :global(th), .post-content :global(td) { border: 1px solid #21262d; padding: 8px 14px; text-align: left; }
+  .post-content :global(th) {
+    background: rgba(255,255,255,0.02); font-weight: 600; color: #7d8590;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+
+  /* ===== Highlights ===== */
+  .post-content :global(mark.comment-highlight) {
+    background: rgba(74, 222, 128, 0.08);
+    color: inherit;
+    border-bottom: 2px solid rgba(74, 222, 128, 0.35);
+    padding: 1px 0;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .post-content :global(mark.comment-highlight.highlight-active) {
+    background: rgba(74, 222, 128, 0.18);
+    border-bottom-color: #4ade80;
+  }
+  .post-content :global(mark.comment-highlight.highlight-flash) {
+    animation: highlightFlash 1s ease;
+  }
+
+  /* ===== Comment Rail (right column) ===== */
+  .comment-rail {
+    border-left: 1px solid #21262d;
+    padding-left: 20px;
+    position: relative;
+  }
+  .cr-header {
+    display: flex; justify-content: space-between; align-items: center;
+    position: absolute; top: -28px; left: 20px; right: 0;
+    background: #0d1117; z-index: 2;
+  }
+  .cr-label {
+    font-size: 9px; color: #484f58;
+    text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600;
+  }
+  .cr-clear {
+    background: none; border: none; color: #30363d; cursor: pointer;
+    font-size: 14px; padding: 2px 6px; border-radius: 3px; transition: all 0.2s;
+  }
+  .cr-clear:hover { color: #f85149; background: rgba(248,81,73,0.1); }
+
+  /* Cards container: no extra positioning needed, rail is the context */
+  .cr-cards { }
+
+  /* Comment card */
+  .comment-rail :global(.cm-card) {
+    position: absolute;
+    left: 0; right: 0;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    animation: fadeInCard 0.2s ease;
+  }
+  .comment-rail :global(.cm-card-active),
+  .comment-rail :global(.cm-card:hover) {
+    border-color: rgba(74,222,128,0.4);
+    background: rgba(74,222,128,0.03);
+    box-shadow: -3px 0 0 0 #4ade80;
+  }
+  .comment-rail :global(.cm-card-quote) {
+    color: #4ade80; font-size: 11px; font-style: italic;
+    margin-bottom: 8px; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    line-height: 1.4; opacity: 0.7;
+  }
+  .comment-rail :global(.cm-card-body) {
+    color: #c9d1d9; line-height: 1.5; margin-bottom: 8px; word-break: break-word;
+  }
+  .comment-rail :global(.cm-card-footer) {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .comment-rail :global(.cm-card-time) { color: #30363d; font-size: 10px; }
+  .comment-rail :global(.cm-card-delete) {
+    background: none; border: none; color: #30363d; cursor: pointer;
+    font-size: 14px; padding: 0 4px; border-radius: 3px; transition: all 0.15s; line-height: 1;
+  }
+  .comment-rail :global(.cm-card-delete:hover) {
+    color: #f85149; background: rgba(248,81,73,0.1);
+  }
+
+  /* ===== FAB ===== */
+  .fab-comment {
+    position: absolute; z-index: 100; display: none;
+    align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: #4ade80; color: #0d1117; border: none; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(74,222,128,0.3);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .fab-comment:hover { transform: scale(1.1); box-shadow: 0 3px 12px rgba(74,222,128,0.4); }
+
+  /* ===== Comment Input Popover ===== */
+  .comment-input-popover {
+    position: absolute; z-index: 200; width: 300px; display: none;
+    background: #161b22; border: 1px solid #30363d; border-radius: 8px;
+    padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: fadeInCard 0.15s ease;
+  }
+  .cip-header { margin-bottom: 10px; }
+  .cip-selected {
+    font-size: 12px; color: #4ade80; font-style: italic;
+    line-height: 1.4; display: block; max-height: 40px; overflow: hidden;
+  }
+  .cip-textarea {
+    width: 100%; background: rgba(255,255,255,0.03);
+    border: 1px solid #30363d; border-radius: 4px;
+    color: #e6edf3; font-family: inherit; font-size: 13px;
+    padding: 8px 10px; resize: vertical; min-height: 60px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .cip-textarea:focus { border-color: #4ade80; }
+  .cip-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+  .cip-cancel, .cip-submit {
+    font-family: inherit; font-size: 12px; padding: 5px 14px;
+    border-radius: 4px; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .cip-cancel { background: none; color: #7d8590; }
+  .cip-cancel:hover { color: #e6edf3; }
+  .cip-submit { background: #4ade80; color: #0d1117; font-weight: 600; }
+  .cip-submit:hover { background: #6ee7a0; }
+
+  /* ===== Mobile Bottom Sheet ===== */
+  .mobile-sheet-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 900;
+  }
+  .mobile-sheet-overlay.active { display: block; }
+  .mobile-sheet {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 901;
+    background: #161b22; border-top: 1px solid #30363d;
+    border-radius: 16px 16px 0 0; padding: 12px 20px 32px;
+    transform: translateY(100%); transition: transform 0.3s ease;
+  }
+  .mobile-sheet.active { display: block; transform: translateY(0); }
+  .ms-handle {
+    width: 36px; height: 4px; background: #30363d; border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .ms-quote {
+    font-size: 13px; color: #4ade80; font-style: italic;
+    margin-bottom: 12px; padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    line-height: 1.5;
+  }
+  .ms-body {
+    font-size: 14px; color: #e6edf3; line-height: 1.6; margin-bottom: 12px;
+  }
+  .ms-time {
+    font-size: 11px; color: #484f58; margin-bottom: 16px;
+  }
+  .ms-delete {
+    width: 100%; padding: 10px; border-radius: 8px;
+    background: rgba(248,81,73,0.08); border: 1px solid rgba(248,81,73,0.2);
+    color: #f85149; font-family: inherit; font-size: 13px;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .ms-delete:hover { background: rgba(248,81,73,0.15); }
+
+  /* ===== Footer ===== */
+  .page-footer { max-width: 1440px; margin: 0 auto; padding: 0 48px 48px; }
+  .footer-rule { height: 4px; background: #e6edf3; margin-bottom: 14px; }
+  .footer-bar { display: flex; justify-content: space-between; align-items: center; }
+  .footer-bar a {
+    font-size: 11px; color: #484f58; text-decoration: none;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .footer-bar a:hover { color: #e6edf3; }
+  .footer-copy { font-size: 11px; color: #30363d; }
+
+  /* ===== Animations ===== */
+  @keyframes fadeInCard {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes highlightFlash {
+    0%, 100% { background: rgba(74, 222, 128, 0.08); }
+    30% { background: rgba(74, 222, 128, 0.3); }
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 1100px) {
+    .content-grid { grid-template-columns: 1fr; gap: 0; }
+    .sidebar-left {
+      position: static; border-right: none;
+      border-bottom: 1px solid #21262d;
+      padding-right: 0; padding-bottom: 20px; margin-bottom: 32px;
+      display: flex; gap: 24px; flex-wrap: wrap;
+    }
+    .sb-block { margin-bottom: 0; }
+    .sb-divider { display: none; }
+
+    /* Hide desktop comment rail on mobile */
+    .comment-rail { display: none; }
+
+    .post-content :global(img),
+    .post-content :global(pre) { max-width: 100%; width: 100%; margin-left: 0; }
+
+    .mast-inner, .headline-section, .content-grid,
+    .cover-section, .page-footer { padding-left: 20px; padding-right: 20px; }
+    .mast-date { display: none; }
+
+    /* Mobile: comment popover adjustments */
+    .comment-input-popover { width: calc(100vw - 40px); max-width: 360px; }
+  }
+</style>

@@ -1,0 +1,392 @@
+---
+/**
+ * B3: Swiss / International — 瑞士国际风格
+ * - 严格网格系统，大量留白
+ * - 标题特大号，对齐到网格
+ * - 左侧固定标题区 + 右侧正文（桌面端双栏并置）
+ * - 极简装饰，仅用线条和间距建立层级
+ * - 小写 label, 严格的字号层级
+ */
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  date: Date;
+  tags: string[];
+  description?: string;
+  cover?: string;
+}
+
+const { title, date, tags, description, cover } = Astro.props;
+
+const year = date.getFullYear();
+const monthDay = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+---
+
+<BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={cover}>
+  <div class="post-page">
+    <nav class="top-nav">
+      <div class="top-nav-inner">
+        <a href="/" class="nav-back">&larr;</a>
+        <div class="nav-center">
+          <a href="/archive">archive</a>
+          <span class="nav-slash">/</span>
+          <a href="/feed.xml">rss</a>
+        </div>
+        <span class="nav-spacer"></span>
+      </div>
+    </nav>
+
+    <!-- Title + meta: side by side on desktop -->
+    <header class="header-grid">
+      <div class="header-left">
+        <div class="header-date">
+          <span class="date-year">{year}</span>
+          <span class="date-md">{monthDay}</span>
+        </div>
+        {tags.length > 0 && (
+          <div class="header-tags">
+            {tags.map(tag => (
+              <a href={`/tags/${tag}`} class="header-tag">{tag}</a>
+            ))}
+          </div>
+        )}
+      </div>
+      <div class="header-right">
+        <h1 class="post-title">{title}</h1>
+        {description && <p class="post-desc">{description}</p>}
+      </div>
+    </header>
+
+    <div class="header-rule">
+      <div class="header-rule-inner"></div>
+    </div>
+
+    {cover && (
+      <div class="cover-section">
+        <img src={cover} alt={title} />
+      </div>
+    )}
+
+    <div class="article-grid">
+      <div class="article-gutter">
+        <span class="gutter-label">article</span>
+      </div>
+      <article class="post-content">
+        <slot />
+      </article>
+    </div>
+
+    <footer class="page-footer">
+      <div class="footer-grid">
+        <div class="footer-left">
+          <span class="footer-label">&copy; airing</span>
+        </div>
+        <div class="footer-right">
+          <a href="/archive">all posts &rarr;</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
+
+<style>
+  .post-page { width: 100%; min-height: 100vh; }
+
+  /* ===== Top Nav ===== */
+  .top-nav {
+    border-bottom: 1px solid #21262d;
+  }
+  .top-nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 16px 56px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .nav-back {
+    font-size: 16px;
+    color: #30363d;
+    text-decoration: none;
+    width: 32px;
+  }
+  .nav-back:hover { color: #e6edf3; }
+  .nav-center {
+    display: flex;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .nav-center a {
+    color: #484f58;
+    text-decoration: none;
+    letter-spacing: 0.04em;
+  }
+  .nav-center a:hover { color: #e6edf3; }
+  .nav-slash { color: #30363d; }
+  .nav-spacer { width: 32px; }
+
+  /* ===== Header Grid ===== */
+  .header-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 64px 56px 0;
+    align-items: end;
+  }
+
+  .header-left {
+    padding-bottom: 8px;
+  }
+  .header-date {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+  }
+  .date-year {
+    font-size: 48px;
+    font-weight: 200;
+    color: #21262d;
+    line-height: 1;
+    letter-spacing: -0.02em;
+  }
+  .date-md {
+    font-size: 14px;
+    color: #484f58;
+    margin-top: 4px;
+  }
+  .header-tags {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .header-tag {
+    font-size: 12px;
+    color: #4ade80;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+  }
+  .header-tag:hover { opacity: 0.7; }
+
+  .header-right {}
+  .post-title {
+    font-size: clamp(30px, 4.5vw, 50px);
+    font-weight: 700;
+    color: #e6edf3;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .post-desc {
+    font-size: 17px;
+    color: #7d8590;
+    margin-top: 14px;
+    line-height: 1.5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    max-width: 640px;
+  }
+
+  /* Rule */
+  .header-rule {
+    max-width: 1200px;
+    margin: 40px auto 0;
+    padding: 0 56px;
+  }
+  .header-rule-inner {
+    height: 1px;
+    background: #21262d;
+  }
+
+  /* ===== Cover ===== */
+  .cover-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 36px 56px;
+  }
+  .cover-section img {
+    width: 100%;
+    border-radius: 4px;
+    display: block;
+  }
+
+  /* ===== Article Grid ===== */
+  .article-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 56px 60px;
+    align-items: start;
+  }
+
+  .article-gutter {
+    position: sticky;
+    top: 40px;
+  }
+  .gutter-label {
+    font-size: 10px;
+    color: #30363d;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    writing-mode: vertical-lr;
+    transform: rotate(180deg);
+  }
+
+  /* ===== Content ===== */
+  .post-content {
+    color: #c9d1d9;
+    font-size: 16px;
+    line-height: 1.85;
+    min-width: 0;
+    max-width: 72ch;
+  }
+  .post-content :global(h2) {
+    font-size: 28px;
+    font-weight: 700;
+    margin-top: 56px;
+    margin-bottom: 20px;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    letter-spacing: -0.02em;
+  }
+  .post-content :global(h3) {
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 40px;
+    margin-bottom: 14px;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .post-content :global(p) { margin-bottom: 20px; }
+  .post-content :global(a) {
+    color: #e6edf3;
+    text-decoration: none;
+    border-bottom: 1px solid #4ade80;
+  }
+  .post-content :global(a:hover) {
+    color: #4ade80;
+  }
+  .post-content :global(img) {
+    max-width: calc(100% + 100px);
+    width: calc(100% + 100px);
+    margin-left: -50px;
+    border-radius: 4px;
+    margin-top: 28px;
+    margin-bottom: 28px;
+    display: block;
+  }
+  .post-content :global(pre) {
+    max-width: calc(100% + 80px);
+    width: calc(100% + 80px);
+    margin-left: -40px;
+    background: #0a0e14;
+    border: 1px solid #21262d;
+    border-radius: 4px;
+    padding: 22px 28px;
+    overflow-x: auto;
+    margin-top: 24px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .post-content :global(code:not(pre code)) {
+    background: rgba(255,255,255,0.05);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 14px;
+  }
+  .post-content :global(blockquote) {
+    border-left: none;
+    padding: 0;
+    margin: 40px 0;
+    color: #e6edf3;
+    font-size: 22px;
+    line-height: 1.5;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-weight: 300;
+    letter-spacing: -0.01em;
+  }
+  .post-content :global(blockquote p) { margin-bottom: 0; }
+  .post-content :global(ul), .post-content :global(ol) {
+    margin-bottom: 20px;
+    padding-left: 24px;
+  }
+  .post-content :global(li) { margin-bottom: 8px; }
+  .post-content :global(hr) {
+    border: none;
+    height: 1px;
+    background: #21262d;
+    margin: 48px 0;
+  }
+  .post-content :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+  }
+  .post-content :global(th), .post-content :global(td) {
+    border-bottom: 1px solid #21262d;
+    padding: 10px 16px;
+    text-align: left;
+  }
+  .post-content :global(th) {
+    font-weight: 500;
+    color: #484f58;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    border-bottom: 2px solid #21262d;
+  }
+
+  /* ===== Footer ===== */
+  .page-footer {
+    border-top: 1px solid #21262d;
+  }
+  .footer-grid {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 48px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 56px 48px;
+  }
+  .footer-label {
+    font-size: 11px;
+    color: #30363d;
+  }
+  .footer-right a {
+    font-size: 12px;
+    color: #484f58;
+    text-decoration: none;
+    letter-spacing: 0.02em;
+  }
+  .footer-right a:hover { color: #e6edf3; }
+
+  @media (max-width: 860px) {
+    .top-nav-inner, .header-grid, .article-grid,
+    .cover-section, .header-rule, .footer-grid {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+    .header-grid, .article-grid, .footer-grid {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+    .header-grid { padding-top: 40px; }
+    .header-left {
+      display: flex;
+      gap: 24px;
+      align-items: center;
+    }
+    .header-date { margin-bottom: 0; }
+    .date-year { font-size: 28px; }
+    .article-gutter { display: none; }
+    .post-content :global(img),
+    .post-content :global(pre) {
+      max-width: 100%; width: 100%; margin-left: 0;
+    }
+  }
+</style>
