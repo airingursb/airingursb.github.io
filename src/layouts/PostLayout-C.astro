@@ -1,0 +1,398 @@
+---
+/**
+ * Version C: Terminal Widescreen
+ * Geek aesthetic meets expansive layout
+ * - Full-width dark header with terminal prompt metaphor
+ * - Wide content area (~900px) keeping monospace throughout
+ * - Code blocks and images break out full width
+ * - ASCII-style dividers, dashed borders
+ * - Sticky TOC-style sidebar with metadata
+ */
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  date: Date;
+  tags: string[];
+  description?: string;
+  cover?: string;
+}
+
+const { title, date, tags, description, cover } = Astro.props;
+
+const dateStr = date.toLocaleDateString('zh-CN', {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+});
+---
+
+<BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={cover}>
+  <div class="post-page">
+    <!-- Terminal-style header bar -->
+    <header class="term-header">
+      <div class="term-inner">
+        <div class="term-path">
+          <a href="/" class="term-segment">~</a>
+          <span class="term-slash">/</span>
+          <a href="/archive" class="term-segment">posts</a>
+        </div>
+        <div class="term-info">
+          {tags.map(tag => (
+            <a href={`/tags/${tag}`} class="term-tag">[{tag}]</a>
+          ))}
+          <time datetime={date.toISOString()} class="term-date">{dateStr}</time>
+        </div>
+      </div>
+    </header>
+
+    <!-- Title section -->
+    <div class="title-section">
+      <div class="title-inner">
+        <h1 class="post-title">{title}</h1>
+        {description && <p class="post-desc">{description}</p>}
+        <div class="title-rule">
+          <span class="rule-dot"></span>
+          <span class="rule-line"></span>
+          <span class="rule-dot"></span>
+        </div>
+      </div>
+    </div>
+
+    {cover && (
+      <div class="cover-wide">
+        <img src={cover} alt={title} />
+      </div>
+    )}
+
+    <!-- Content: wide centered -->
+    <article class="post-article">
+      <div class="post-content">
+        <slot />
+      </div>
+    </article>
+
+    <!-- Footer -->
+    <footer class="term-footer">
+      <div class="term-footer-inner">
+        <div class="footer-prompt">
+          <span class="prompt-char">&gt;</span>
+          <a href="/archive" class="prompt-cmd">cd ~/posts</a>
+        </div>
+        <div class="footer-meta">
+          <span class="footer-eof">--- EOF ---</span>
+        </div>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
+
+<style>
+  /* ===== Page ===== */
+  .post-page {
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  /* ===== Terminal Header ===== */
+  .term-header {
+    width: 100%;
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid #21262d;
+  }
+  .term-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 12px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .term-path {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    font-size: 13px;
+  }
+  .term-segment {
+    color: #4ade80;
+    text-decoration: none;
+  }
+  .term-segment:hover { text-decoration: underline; }
+  .term-slash { color: #30363d; }
+  .term-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+  }
+  .term-tag {
+    color: #484f58;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .term-tag:hover { color: #4ade80; }
+  .term-date { color: #484f58; }
+
+  /* ===== Title Section ===== */
+  .title-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 64px 48px 0;
+  }
+  .title-inner {
+    max-width: 900px;
+  }
+  .post-title {
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 700;
+    color: #e6edf3;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    margin-bottom: 12px;
+  }
+  .post-desc {
+    font-size: 16px;
+    color: #7d8590;
+    line-height: 1.6;
+    margin-bottom: 0;
+  }
+
+  /* Decorative rule */
+  .title-rule {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 40px;
+    margin-bottom: 48px;
+  }
+  .rule-dot {
+    width: 4px;
+    height: 4px;
+    background: #4ade80;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .rule-line {
+    flex: 1;
+    height: 1px;
+    background: repeating-linear-gradient(
+      90deg,
+      #21262d 0px,
+      #21262d 4px,
+      transparent 4px,
+      transparent 8px
+    );
+  }
+
+  /* ===== Cover ===== */
+  .cover-wide {
+    max-width: 1200px;
+    margin: 0 auto 48px;
+    padding: 0 48px;
+  }
+  .cover-wide img {
+    width: 100%;
+    border-radius: 4px;
+    border: 1px solid #21262d;
+    display: block;
+  }
+
+  /* ===== Article ===== */
+  .post-article {
+    display: grid;
+    grid-template-columns: 1fr min(75ch, calc(100% - 96px)) 1fr;
+    width: 100%;
+  }
+  .post-article > * {
+    grid-column: 2;
+  }
+
+  /* ===== Content ===== */
+  .post-content {
+    color: #c9d1d9;
+    font-size: 15px;
+    line-height: 1.9;
+  }
+
+  .post-content :global(h2) {
+    font-size: 22px;
+    font-weight: 600;
+    margin-top: 52px;
+    margin-bottom: 16px;
+    color: #e6edf3;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .post-content :global(h2::before) {
+    content: '##';
+    color: #30363d;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .post-content :global(h2::after) {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: #21262d;
+  }
+  .post-content :global(h3) {
+    font-size: 17px;
+    font-weight: 600;
+    margin-top: 40px;
+    margin-bottom: 12px;
+    color: #c9d1d9;
+  }
+  .post-content :global(h3::before) {
+    content: '### ';
+    color: #30363d;
+  }
+  .post-content :global(p) {
+    margin-bottom: 18px;
+  }
+  .post-content :global(a) {
+    color: #4ade80;
+    text-decoration: none;
+  }
+  .post-content :global(a:hover) {
+    text-decoration: underline;
+  }
+
+  /* Images break out wider */
+  .post-content :global(img) {
+    max-width: calc(75ch + 120px);
+    width: calc(100% + 60px);
+    margin-left: -30px;
+    border-radius: 4px;
+    border: 1px solid #21262d;
+    margin-top: 24px;
+    margin-bottom: 24px;
+    display: block;
+  }
+
+  /* Code blocks break out wider */
+  .post-content :global(pre) {
+    max-width: calc(75ch + 160px);
+    width: calc(100% + 80px);
+    margin-left: -40px;
+    background: rgba(0,0,0,0.3);
+    border: 1px dashed #21262d;
+    border-radius: 4px;
+    padding: 20px 28px;
+    overflow-x: auto;
+    margin-top: 24px;
+    margin-bottom: 24px;
+    font-size: 13px;
+    line-height: 1.65;
+  }
+  .post-content :global(code:not(pre code)) {
+    background: rgba(255,255,255,0.05);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+    color: #e6edf3;
+  }
+  .post-content :global(blockquote) {
+    border-left: 2px solid #4ade80;
+    padding-left: 20px;
+    color: #7d8590;
+    margin: 28px 0;
+    position: relative;
+  }
+  .post-content :global(ul), .post-content :global(ol) {
+    margin-bottom: 18px;
+    padding-left: 20px;
+  }
+  .post-content :global(li) {
+    margin-bottom: 6px;
+  }
+  .post-content :global(li::marker) {
+    color: #30363d;
+  }
+  .post-content :global(hr) {
+    border: none;
+    height: 1px;
+    background: repeating-linear-gradient(
+      90deg,
+      #21262d 0px,
+      #21262d 4px,
+      transparent 4px,
+      transparent 8px
+    );
+    margin: 48px 0;
+  }
+  .post-content :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+  }
+  .post-content :global(th), .post-content :global(td) {
+    border: 1px dashed #21262d;
+    padding: 8px 14px;
+    text-align: left;
+  }
+  .post-content :global(th) {
+    color: #4ade80;
+    font-weight: 500;
+    font-size: 12px;
+    letter-spacing: 0.03em;
+  }
+
+  /* ===== Footer ===== */
+  .term-footer {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+  .term-footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 0 60px;
+    margin-top: 64px;
+    border-top: 1px dashed #21262d;
+  }
+  .footer-prompt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+  }
+  .prompt-char {
+    color: #4ade80;
+  }
+  .prompt-cmd {
+    color: #7d8590;
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+  .prompt-cmd:hover { color: #e6edf3; }
+  .footer-eof {
+    color: #30363d;
+    font-size: 12px;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 768px) {
+    .term-inner { padding: 10px 20px; }
+    .title-section { padding: 40px 20px 0; }
+    .cover-wide { padding: 0 20px; }
+    .post-article {
+      grid-template-columns: 1fr min(75ch, calc(100% - 40px)) 1fr;
+    }
+    .post-content :global(img) {
+      max-width: 100%;
+      width: 100%;
+      margin-left: 0;
+    }
+    .post-content :global(pre) {
+      max-width: 100%;
+      width: 100%;
+      margin-left: 0;
+      padding: 14px;
+    }
+    .term-footer { padding: 0 20px; }
+  }
+</style>

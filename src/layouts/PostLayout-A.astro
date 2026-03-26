@@ -1,0 +1,352 @@
+---
+/**
+ * Version A: Full-Bleed Magazine
+ * Inspired by Josh Comeau's 3-column grid technique
+ * - Prose at 65ch for readability, images/code break out to ~1100px
+ * - Large editorial hero with full-width treatment
+ * - Wide code blocks, pull-quote styling
+ * - Drop cap on first paragraph
+ */
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  date: Date;
+  tags: string[];
+  description?: string;
+  cover?: string;
+}
+
+const { title, date, tags, description, cover } = Astro.props;
+
+const dateStr = date.toLocaleDateString('en-US', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={cover}>
+  <div class="post-page">
+    <!-- Full-width hero header -->
+    <header class="post-hero">
+      <nav class="post-nav">
+        <a href="/" class="nav-link">&larr; Home</a>
+        <a href="/archive" class="nav-link">Archive</a>
+      </nav>
+      <div class="hero-content">
+        <div class="hero-meta">
+          <time datetime={date.toISOString()}>{dateStr}</time>
+          {tags.length > 0 && (
+            <span class="hero-tags">
+              {tags.map(tag => (
+                <a href={`/tags/${tag}`} class="hero-tag">#{tag}</a>
+              ))}
+            </span>
+          )}
+        </div>
+        <h1 class="hero-title">{title}</h1>
+        {description && <p class="hero-desc">{description}</p>}
+      </div>
+      <div class="hero-fade"></div>
+    </header>
+
+    {cover && (
+      <div class="post-cover-wide">
+        <img src={cover} alt={title} />
+      </div>
+    )}
+
+    <!-- 3-column grid: breakout content -->
+    <article class="post-article">
+      <div class="post-content drop-cap-first">
+        <slot />
+      </div>
+    </article>
+
+    <footer class="post-footer-wide">
+      <div class="footer-inner">
+        <a href="/archive" class="footer-link">&larr; All Posts</a>
+        <span class="footer-title">{title}</span>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
+
+<style>
+  /* ===== Page Shell ===== */
+  .post-page {
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  /* ===== Hero ===== */
+  .post-hero {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 48px 48px 56px;
+    position: relative;
+  }
+  .post-nav {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 64px;
+  }
+  .nav-link {
+    color: #484f58;
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.2s;
+  }
+  .nav-link:hover { color: #e6edf3; }
+
+  .hero-content {
+    max-width: 800px;
+  }
+  .hero-meta {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 13px;
+    color: #484f58;
+    margin-bottom: 20px;
+  }
+  .hero-tags {
+    display: flex;
+    gap: 10px;
+  }
+  .hero-tag {
+    color: #4ade80;
+    text-decoration: none;
+    font-size: 12px;
+  }
+  .hero-tag:hover { opacity: 0.7; }
+
+  .hero-title {
+    font-size: clamp(32px, 5vw, 56px);
+    font-weight: 700;
+    color: #e6edf3;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    margin-bottom: 16px;
+  }
+  .hero-desc {
+    font-size: 18px;
+    color: #7d8590;
+    line-height: 1.6;
+    max-width: 600px;
+  }
+  .hero-fade {
+    position: absolute;
+    bottom: 0;
+    left: 48px;
+    right: 48px;
+    height: 1px;
+    background: linear-gradient(90deg, #4ade80, rgba(74,222,128,0.1) 60%, transparent);
+  }
+
+  /* ===== Wide Cover ===== */
+  .post-cover-wide {
+    max-width: 1100px;
+    margin: 0 auto 48px;
+    padding: 0 48px;
+  }
+  .post-cover-wide img {
+    width: 100%;
+    border-radius: 12px;
+    display: block;
+  }
+
+  /* ===== Article: 3-column grid ===== */
+  .post-article {
+    display: grid;
+    grid-template-columns: 1fr min(65ch, calc(100% - 96px)) 1fr;
+    width: 100%;
+  }
+  .post-article > * {
+    grid-column: 2;
+  }
+
+  /* ===== Content Typography ===== */
+  .post-content {
+    color: #c9d1d9;
+    font-size: 16px;
+    line-height: 1.85;
+  }
+
+  /* Drop cap */
+  .drop-cap-first :global(p:first-child::first-letter) {
+    float: left;
+    font-size: 3.5em;
+    line-height: 0.8;
+    padding-right: 10px;
+    padding-top: 6px;
+    color: #4ade80;
+    font-weight: 700;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  .post-content :global(h2) {
+    font-size: 26px;
+    font-weight: 700;
+    margin-top: 56px;
+    margin-bottom: 20px;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    letter-spacing: -0.02em;
+  }
+  .post-content :global(h3) {
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 40px;
+    margin-bottom: 14px;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .post-content :global(p) {
+    margin-bottom: 20px;
+  }
+  .post-content :global(a) {
+    color: #4ade80;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(74, 222, 128, 0.3);
+    transition: border-color 0.2s;
+  }
+  .post-content :global(a:hover) {
+    border-bottom-color: #4ade80;
+  }
+
+  /* Wide images: break out of content column */
+  .post-content :global(img) {
+    max-width: calc(65ch + 200px);
+    width: calc(100% + 100px);
+    margin-left: -50px;
+    border-radius: 10px;
+    margin-top: 28px;
+    margin-bottom: 28px;
+    display: block;
+  }
+
+  /* Wide code blocks */
+  .post-content :global(pre) {
+    max-width: calc(65ch + 160px);
+    width: calc(100% + 80px);
+    margin-left: -40px;
+    background: #0d1117;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 24px 32px;
+    overflow-x: auto;
+    margin-top: 24px;
+    margin-bottom: 24px;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  .post-content :global(code:not(pre code)) {
+    background: rgba(255,255,255,0.06);
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 14px;
+  }
+
+  /* Blockquote as pull-quote */
+  .post-content :global(blockquote) {
+    border-left: none;
+    padding: 24px 0;
+    margin: 40px 0;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    font-size: 20px;
+    line-height: 1.6;
+    color: #e6edf3;
+    font-style: italic;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .post-content :global(blockquote p) {
+    margin-bottom: 0;
+  }
+
+  .post-content :global(ul), .post-content :global(ol) {
+    margin-bottom: 20px;
+    padding-left: 24px;
+  }
+  .post-content :global(li) {
+    margin-bottom: 8px;
+  }
+  .post-content :global(hr) {
+    border: none;
+    height: 1px;
+    background: rgba(255,255,255,0.06);
+    margin: 48px 0;
+  }
+  .post-content :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 14px;
+  }
+  .post-content :global(th), .post-content :global(td) {
+    border: 1px solid rgba(255,255,255,0.06);
+    padding: 10px 14px;
+    text-align: left;
+  }
+  .post-content :global(th) {
+    background: rgba(255,255,255,0.03);
+    font-weight: 600;
+  }
+
+  /* ===== Footer ===== */
+  .post-footer-wide {
+    max-width: 1200px;
+    margin: 80px auto 0;
+    padding: 0 48px 60px;
+  }
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 24px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .footer-link {
+    color: #484f58;
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.2s;
+  }
+  .footer-link:hover { color: #4ade80; }
+  .footer-title {
+    color: #30363d;
+    font-size: 12px;
+    max-width: 300px;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 768px) {
+    .post-hero { padding: 24px 20px 40px; }
+    .post-nav { margin-bottom: 40px; }
+    .hero-fade { left: 20px; right: 20px; }
+    .post-cover-wide { padding: 0 20px; }
+    .post-article {
+      grid-template-columns: 1fr min(65ch, calc(100% - 40px)) 1fr;
+    }
+    .post-content :global(img) {
+      max-width: 100%;
+      width: 100%;
+      margin-left: 0;
+    }
+    .post-content :global(pre) {
+      max-width: 100%;
+      width: 100%;
+      margin-left: 0;
+      padding: 16px;
+    }
+    .post-footer-wide { padding: 0 20px 40px; }
+  }
+</style>

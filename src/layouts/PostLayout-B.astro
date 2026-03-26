@@ -1,0 +1,395 @@
+---
+/**
+ * Version B: Newspaper / Broadsheet
+ * Inspired by Gwern's sidenotes + newspaper column layout
+ * - Two-column layout: main content + side margin for meta/notes
+ * - Full-width header with large display type
+ * - Dense but breathable information architecture
+ * - Monochrome with single accent color
+ */
+import BaseLayout from './BaseLayout.astro';
+
+interface Props {
+  title: string;
+  date: Date;
+  tags: string[];
+  description?: string;
+  cover?: string;
+}
+
+const { title, date, tags, description, cover } = Astro.props;
+
+const dateStr = date.toLocaleDateString('zh-CN', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+});
+---
+
+<BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={cover}>
+  <div class="post-page">
+    <!-- Full-width masthead -->
+    <header class="masthead">
+      <div class="masthead-inner">
+        <nav class="masthead-nav">
+          <a href="/" class="nav-home">Airing's Blog</a>
+          <div class="nav-links">
+            <a href="/archive">Archive</a>
+            <a href="/feed.xml">RSS</a>
+          </div>
+        </nav>
+        <div class="masthead-rule"></div>
+        <div class="masthead-headline">
+          <h1 class="headline-title">{title}</h1>
+          {description && <p class="headline-deck">{description}</p>}
+        </div>
+        <div class="masthead-byline">
+          <span class="byline-author">Airing</span>
+          <span class="byline-sep">&middot;</span>
+          <time datetime={date.toISOString()}>{dateStr}</time>
+          {tags.length > 0 && (
+            <>
+              <span class="byline-sep">&middot;</span>
+              {tags.map(tag => (
+                <a href={`/tags/${tag}`} class="byline-tag">{tag}</a>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+    </header>
+
+    {cover && (
+      <div class="cover-full">
+        <img src={cover} alt={title} />
+      </div>
+    )}
+
+    <!-- Two-column: content + sidebar -->
+    <div class="content-grid">
+      <article class="post-content">
+        <slot />
+      </article>
+      <aside class="content-sidebar">
+        <div class="sidebar-block">
+          <div class="sidebar-label">Published</div>
+          <time datetime={date.toISOString()}>{dateStr}</time>
+        </div>
+        {tags.length > 0 && (
+          <div class="sidebar-block">
+            <div class="sidebar-label">Topics</div>
+            <div class="sidebar-tags">
+              {tags.map(tag => (
+                <a href={`/tags/${tag}`} class="sidebar-tag">#{tag}</a>
+              ))}
+            </div>
+          </div>
+        )}
+        <div class="sidebar-block">
+          <div class="sidebar-label">Navigate</div>
+          <a href="/archive" class="sidebar-nav-link">All Posts &rarr;</a>
+        </div>
+      </aside>
+    </div>
+
+    <footer class="page-footer">
+      <div class="footer-rule"></div>
+      <div class="footer-inner">
+        <a href="/">&larr; Home</a>
+        <a href="/archive">Archive</a>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
+
+<style>
+  /* ===== Page ===== */
+  .post-page {
+    width: 100%;
+    min-height: 100vh;
+  }
+
+  /* ===== Masthead ===== */
+  .masthead {
+    width: 100%;
+    border-bottom: 3px double #21262d;
+  }
+  .masthead-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 24px 48px 32px;
+  }
+  .masthead-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+  }
+  .nav-home {
+    font-size: 12px;
+    color: #7d8590;
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .nav-home:hover { color: #e6edf3; }
+  .nav-links {
+    display: flex;
+    gap: 16px;
+  }
+  .nav-links a {
+    font-size: 12px;
+    color: #484f58;
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .nav-links a:hover { color: #e6edf3; }
+
+  .masthead-rule {
+    height: 1px;
+    background: #21262d;
+    margin-bottom: 32px;
+  }
+
+  .masthead-headline {
+    max-width: 800px;
+    margin-bottom: 20px;
+  }
+  .headline-title {
+    font-size: clamp(28px, 4.5vw, 48px);
+    font-weight: 800;
+    color: #e6edf3;
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .headline-deck {
+    font-size: 18px;
+    color: #7d8590;
+    line-height: 1.5;
+    margin-top: 12px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  .masthead-byline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: #484f58;
+  }
+  .byline-author {
+    color: #7d8590;
+    font-weight: 500;
+  }
+  .byline-sep { color: #30363d; }
+  .byline-tag {
+    color: #4ade80;
+    text-decoration: none;
+    font-size: 12px;
+  }
+  .byline-tag:hover { opacity: 0.7; }
+
+  /* ===== Cover ===== */
+  .cover-full {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 48px;
+  }
+  .cover-full img {
+    width: 100%;
+    border-radius: 6px;
+    display: block;
+  }
+
+  /* ===== Two-Column Grid ===== */
+  .content-grid {
+    display: grid;
+    grid-template-columns: 1fr 220px;
+    gap: 64px;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 48px 60px;
+    align-items: start;
+  }
+
+  /* ===== Sidebar ===== */
+  .content-sidebar {
+    position: sticky;
+    top: 40px;
+    padding-top: 4px;
+  }
+  .sidebar-block {
+    margin-bottom: 28px;
+  }
+  .sidebar-label {
+    font-size: 10px;
+    color: #484f58;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .sidebar-block time,
+  .sidebar-block a {
+    font-size: 13px;
+    color: #7d8590;
+    text-decoration: none;
+  }
+  .sidebar-tags {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sidebar-tag {
+    color: #4ade80 !important;
+    font-size: 13px;
+  }
+  .sidebar-nav-link:hover { color: #e6edf3 !important; }
+
+  /* ===== Content ===== */
+  .post-content {
+    color: #c9d1d9;
+    font-size: 16px;
+    line-height: 1.85;
+    min-width: 0;
+  }
+
+  .post-content :global(h2) {
+    font-size: 24px;
+    font-weight: 700;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    letter-spacing: -0.01em;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #21262d;
+  }
+  .post-content :global(h3) {
+    font-size: 18px;
+    font-weight: 600;
+    margin-top: 36px;
+    margin-bottom: 12px;
+    color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .post-content :global(p) {
+    margin-bottom: 18px;
+  }
+  .post-content :global(a) {
+    color: #4ade80;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(74,222,128,0.25);
+  }
+  .post-content :global(a:hover) {
+    border-bottom-color: #4ade80;
+  }
+  .post-content :global(img) {
+    max-width: 100%;
+    border-radius: 6px;
+    margin: 24px 0;
+    display: block;
+  }
+  .post-content :global(pre) {
+    background: #0d1117;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    padding: 20px 24px;
+    overflow-x: auto;
+    margin: 24px 0;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .post-content :global(code:not(pre code)) {
+    background: rgba(255,255,255,0.05);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 14px;
+  }
+  .post-content :global(blockquote) {
+    border-left: 3px solid #4ade80;
+    padding-left: 20px;
+    color: #8b949e;
+    margin: 24px 0;
+    font-size: 15px;
+  }
+  .post-content :global(ul), .post-content :global(ol) {
+    margin-bottom: 18px;
+    padding-left: 24px;
+  }
+  .post-content :global(li) {
+    margin-bottom: 6px;
+  }
+  .post-content :global(hr) {
+    border: none;
+    height: 1px;
+    background: #21262d;
+    margin: 40px 0;
+  }
+  .post-content :global(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-size: 13px;
+  }
+  .post-content :global(th), .post-content :global(td) {
+    border: 1px solid #21262d;
+    padding: 8px 14px;
+    text-align: left;
+  }
+  .post-content :global(th) {
+    background: rgba(255,255,255,0.02);
+    font-weight: 600;
+    color: #7d8590;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  /* ===== Footer ===== */
+  .page-footer {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 48px 48px;
+  }
+  .footer-rule {
+    height: 3px;
+    border-top: 1px solid #21262d;
+    border-bottom: 1px solid #21262d;
+    margin-bottom: 16px;
+  }
+  .footer-inner {
+    display: flex;
+    justify-content: space-between;
+  }
+  .footer-inner a {
+    color: #484f58;
+    text-decoration: none;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .footer-inner a:hover { color: #e6edf3; }
+
+  /* ===== Responsive ===== */
+  @media (max-width: 860px) {
+    .content-grid {
+      grid-template-columns: 1fr;
+      gap: 0;
+      padding: 32px 20px 48px;
+    }
+    .content-sidebar {
+      position: static;
+      display: flex;
+      gap: 24px;
+      border-top: 1px solid #21262d;
+      padding-top: 20px;
+      margin-top: 40px;
+    }
+    .sidebar-block { margin-bottom: 0; }
+    .masthead-inner { padding: 20px 20px 24px; }
+    .cover-full { padding: 24px 20px; }
+    .page-footer { padding: 0 20px 32px; }
+  }
+</style>
