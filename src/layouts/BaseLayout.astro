@@ -81,8 +81,74 @@ const {
     });
   </script>
   <slot name="head" />
+  <script is:inline>
+    // Apply saved theme before render to prevent flash
+    (function() {
+      var t = localStorage.getItem('blog-theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
 </head>
 <body>
   <slot />
+
+  <!-- Theme Switcher -->
+  <div class="theme-switcher" id="themeSwitcher">
+    <button class="theme-toggle" id="themeToggle" aria-label="Switch theme">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"/>
+        <circle cx="8" cy="8" r="3" fill="currentColor"/>
+      </svg>
+    </button>
+    <div class="theme-dots" id="themeDots">
+      <button class="theme-dot" data-theme="green" style="--dot-color:#4ade80" title="Green"></button>
+      <button class="theme-dot" data-theme="blue" style="--dot-color:#60a5fa" title="Blue"></button>
+      <button class="theme-dot" data-theme="purple" style="--dot-color:#a78bfa" title="Purple"></button>
+      <button class="theme-dot" data-theme="amber" style="--dot-color:#fbbf24" title="Amber"></button>
+      <button class="theme-dot" data-theme="rose" style="--dot-color:#fb7185" title="Rose"></button>
+      <button class="theme-dot" data-theme="cyan" style="--dot-color:#22d3ee" title="Cyan"></button>
+    </div>
+  </div>
+
+  <script is:inline>
+    (function() {
+      var toggle = document.getElementById('themeToggle');
+      var dots = document.getElementById('themeDots');
+      var switcher = document.getElementById('themeSwitcher');
+      var open = false;
+
+      toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        open = !open;
+        dots.classList.toggle('active', open);
+        toggle.classList.toggle('active', open);
+      });
+
+      dots.addEventListener('click', function(e) {
+        var btn = e.target.closest('.theme-dot');
+        if (!btn) return;
+        var theme = btn.dataset.theme;
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('blog-theme', theme);
+        dots.querySelectorAll('.theme-dot').forEach(function(d) {
+          d.classList.toggle('selected', d.dataset.theme === theme);
+        });
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!switcher.contains(e.target) && open) {
+          open = false;
+          dots.classList.remove('active');
+          toggle.classList.remove('active');
+        }
+      });
+
+      // Mark current theme
+      var current = localStorage.getItem('blog-theme') || 'green';
+      dots.querySelectorAll('.theme-dot').forEach(function(d) {
+        d.classList.toggle('selected', d.dataset.theme === current);
+      });
+    })();
+  </script>
 </body>
 </html>
