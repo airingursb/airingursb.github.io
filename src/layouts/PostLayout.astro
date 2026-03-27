@@ -114,10 +114,14 @@ const shortDate = date.toLocaleDateString('zh-CN', {
       </svg>
     </button>
 
-    <!-- Comment input popover (desktop) -->
+    <!-- Comment input popover (desktop) — now with nickname/email -->
     <div class="comment-input-popover" id="commentPopover">
       <div class="cip-header">
         <span class="cip-selected" id="cipSelectedText"></span>
+      </div>
+      <div class="cip-identity">
+        <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" />
+        <input type="email" class="cip-input" id="cipEmail" placeholder="Email (for Gravatar)" />
       </div>
       <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3"></textarea>
       <div class="cip-actions">
@@ -132,9 +136,52 @@ const shortDate = date.toLocaleDateString('zh-CN', {
       <div class="ms-handle"></div>
       <div class="ms-quote" id="msQuote"></div>
       <div class="ms-body" id="msBody"></div>
+      <div class="ms-author" id="msAuthor"></div>
       <div class="ms-time" id="msTime"></div>
       <button class="ms-delete" id="msDelete">Delete Comment</button>
     </div>
+
+    <!-- Article Like -->
+    <div class="article-like-section">
+      <div class="al-rule"></div>
+      <button class="article-like-btn" id="articleLikeBtn">
+        <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        </svg>
+        <span class="al-count" id="articleLikeCount">0</span>
+        <span class="al-label">likes</span>
+      </button>
+      <div class="al-rule"></div>
+    </div>
+
+    <!-- Bottom Comment Section -->
+    <section class="bottom-comments" id="bottomComments">
+      <div class="bc-inner">
+        <div class="bc-header">
+          <h2 class="bc-title">Comments</h2>
+          <span class="bc-count" id="bcCount">0 comments</span>
+        </div>
+        <div class="bc-thread" id="bcThread">
+          <!-- Comments rendered by JS -->
+        </div>
+        <div class="bc-compose">
+          <div class="bc-compose-avatar">
+            <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=identicon&s=80" alt="" class="bc-avatar-img" />
+          </div>
+          <div class="bc-compose-form">
+            <div class="bc-compose-fields">
+              <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" />
+              <input type="email" class="bc-input" id="bcEmail" placeholder="Email (for Gravatar, not shown)" />
+            </div>
+            <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4"></textarea>
+            <div class="bc-compose-footer">
+              <span class="bc-hint">Markdown supported</span>
+              <button class="bc-submit" id="bcSubmit">Submit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
 
     <footer class="page-footer">
       <div class="footer-inner">
@@ -151,7 +198,10 @@ const shortDate = date.toLocaleDateString('zh-CN', {
 
 <script is:inline>
 (function() {
-  var STORAGE_KEY = 'blog-comments:' + location.pathname;
+  var API = 'https://chat.ursb.me';
+  var POST_SLUG = location.pathname.replace(/^\/posts\//, '').replace(/\/$/, '');
+  var USER_KEY = 'blog-user-identity';
+
   var postContent = document.getElementById('postContent');
   var contentGrid = document.getElementById('contentGrid');
   var commentRail = document.getElementById('commentRail');
@@ -159,6 +209,8 @@ const shortDate = date.toLocaleDateString('zh-CN', {
   var fab = document.getElementById('fabComment');
   var popover = document.getElementById('commentPopover');
   var cipText = document.getElementById('cipSelectedText');
+  var cipNickname = document.getElementById('cipNickname');
+  var cipEmailInput = document.getElementById('cipEmail');
   var cipArea = document.getElementById('cipTextarea');
   var cipCancel = document.getElementById('cipCancel');
   var cipSubmit = document.getElementById('cipSubmit');
@@ -167,24 +219,84 @@ const shortDate = date.toLocaleDateString('zh-CN', {
   var mobileSheet = document.getElementById('mobileSheet');
   var msQuote = document.getElementById('msQuote');
   var msBody = document.getElementById('msBody');
+  var msAuthor = document.getElementById('msAuthor');
   var msTime = document.getElementById('msTime');
   var msDelete = document.getElementById('msDelete');
 
+  // Bottom comments
+  var bcThread = document.getElementById('bcThread');
+  var bcCount = document.getElementById('bcCount');
+  var bcNickname = document.getElementById('bcNickname');
+  var bcEmail = document.getElementById('bcEmail');
+  var bcTextarea = document.getElementById('bcTextarea');
+  var bcSubmit = document.getElementById('bcSubmit');
+  var bcComposeAvatar = document.getElementById('bcComposeAvatar');
+
+  // Article like
+  var articleLikeBtn = document.getElementById('articleLikeBtn');
+  var articleLikeCount = document.getElementById('articleLikeCount');
+
   var pendingRange = null;
   var activeMobileCommentId = null;
+  var inlineComments = [];
+  var bottomComments = [];
 
   function isMobile() { return window.innerWidth <= 1100; }
 
-  // --- Storage ---
-  function loadComments() {
-    try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-    catch(e) { return []; }
+  // --- User identity persistence ---
+  function getSavedIdentity() {
+    try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
   }
-  function saveComments(c) { localStorage.setItem(STORAGE_KEY, JSON.stringify(c)); }
+  function saveIdentity(nickname, email) {
+    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email }));
+  }
+  function restoreIdentity() {
+    var id = getSavedIdentity();
+    if (id.nickname) {
+      cipNickname.value = id.nickname;
+      bcNickname.value = id.nickname;
+    }
+    if (id.email) {
+      cipEmailInput.value = id.email;
+      bcEmail.value = id.email;
+      updateComposeAvatar(id.email);
+    }
+  }
 
-  function uid() { return 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+  function gravatarUrl(email) {
+    return 'https://gravatar.com/avatar/' + email.trim().toLowerCase() + '?d=identicon&s=80';
+  }
 
-  // --- Highlight wrapping ---
+  function updateComposeAvatar(email) {
+    if (email) bcComposeAvatar.src = gravatarUrl(email);
+  }
+
+  // Debounced avatar update on email input
+  var avatarTimer;
+  bcEmail.addEventListener('input', function() {
+    clearTimeout(avatarTimer);
+    avatarTimer = setTimeout(function() { updateComposeAvatar(bcEmail.value); }, 500);
+  });
+
+  // --- API helpers ---
+  function apiGet(path) {
+    return fetch(API + path, { headers: { 'Origin': location.origin } }).then(function(r) { return r.json(); });
+  }
+  function apiPost(path, body) {
+    return fetch(API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); });
+  }
+  function apiDelete(path) {
+    return fetch(API + path, { method: 'DELETE' }).then(function(r) { return r.json(); });
+  }
+
+  // =====================================================================
+  // INLINE (HIGHLIGHT) COMMENTS — right rail
+  // =====================================================================
+
   function wrapRange(range, id) {
     var mark = document.createElement('mark');
     mark.className = 'comment-highlight';
@@ -198,21 +310,16 @@ const shortDate = date.toLocaleDateString('zh-CN', {
     return mark;
   }
 
-  // Restore highlights from saved comments by searching text in content
   function restoreHighlights() {
-    var comments = loadComments();
-    comments.forEach(function(c) {
-      // Skip if mark already exists
+    inlineComments.forEach(function(c) {
       if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
-      var searchText = c.selectedText;
+      var searchText = c.selected_text;
       if (!searchText) return;
-      // Walk text nodes to find the saved text
       var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
       var node;
       while (node = walker.nextNode()) {
         var idx = node.textContent.indexOf(searchText);
         if (idx === -1) continue;
-        // Found it — wrap in a <mark>
         var range = document.createRange();
         range.setStart(node, idx);
         range.setEnd(node, idx + searchText.length);
@@ -232,81 +339,60 @@ const shortDate = date.toLocaleDateString('zh-CN', {
     });
   }
 
-  // Get element's offsetTop relative to contentGrid by walking offsetParent chain
   function offsetFromGrid(el) {
     var top = 0;
-    while (el && el !== contentGrid) {
-      top += el.offsetTop;
-      el = el.offsetParent;
-    }
+    while (el && el !== contentGrid) { top += el.offsetTop; el = el.offsetParent; }
     return top;
   }
 
-  // --- Position cards aligned to their highlights ---
   function layoutCards() {
     var cards = commentCards.querySelectorAll('.cm-card');
     if (!cards.length) return;
-
-    // Use commentRail as the reference since it aligns with postContent in the grid
     var railOffset = offsetFromGrid(commentRail);
-
-    // Collect desired positions
     var positions = [];
     cards.forEach(function(card) {
       var id = card.dataset.commentId;
       var mark = postContent.querySelector('mark[data-comment-id="' + id + '"]');
       var desiredTop = 0;
-      if (mark) {
-        var markOffset = offsetFromGrid(mark);
-        desiredTop = markOffset - railOffset;
-      }
+      if (mark) desiredTop = offsetFromGrid(mark) - railOffset;
       positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
     });
-
-    // Sort by desired position
     positions.sort(function(a, b) { return a.desired - b.desired; });
-
-    // Resolve overlaps: each card must start after the previous one ends + gap
-    var GAP = 8;
-    var nextAvailable = 0;
+    var GAP = 8, nextAvailable = 0;
     positions.forEach(function(p) {
       var top = Math.max(p.desired, nextAvailable);
       p.card.style.top = top + 'px';
       nextAvailable = top + p.height + GAP;
     });
-
-    // Set container min-height so it doesn't collapse
     commentCards.style.minHeight = nextAvailable + 'px';
   }
 
-  // --- Render all comments (desktop) ---
-  function renderComments() {
-    var comments = loadComments();
+  function renderInlineComments() {
     commentCards.innerHTML = '';
+    clearAll.style.display = inlineComments.length ? '' : 'none';
 
-    clearAll.style.display = comments.length ? '' : 'none';
-
-    comments.forEach(function(c) {
+    inlineComments.forEach(function(c) {
       var card = document.createElement('div');
       card.className = 'cm-card';
       card.dataset.commentId = c.id;
-
       var mark = postContent.querySelector('mark[data-comment-id="' + c.id + '"]');
 
-      var time = new Date(c.ts);
+      var time = new Date(c.created_at);
       var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
         + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
       card.innerHTML =
-        '<div class="cm-card-quote">\u201c' + esc(trunc(c.selectedText, 50)) + '\u201d</div>' +
-        '<div class="cm-card-body">' + esc(c.text) + '</div>' +
+        '<div class="cm-card-author">' +
+          '<img src="' + gravatarUrl(c.email) + '" class="cm-card-avatar" />' +
+          '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
+        '</div>' +
+        '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
+        '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
         '<div class="cm-card-footer">' +
           '<span class="cm-card-time">' + timeStr + '</span>' +
           '<button class="cm-card-delete" data-id="' + c.id + '">&times;</button>' +
         '</div>';
 
-      // --- Desktop interactions ---
-      // Hover card → highlight mark
       card.addEventListener('mouseenter', function() {
         if (mark) mark.classList.add('highlight-active');
         card.classList.add('cm-card-active');
@@ -315,8 +401,6 @@ const shortDate = date.toLocaleDateString('zh-CN', {
         if (mark) mark.classList.remove('highlight-active');
         card.classList.remove('cm-card-active');
       });
-
-      // Click card → scroll to highlighted text
       card.addEventListener('click', function(e) {
         if (e.target.classList.contains('cm-card-delete')) return;
         if (mark) {
@@ -325,74 +409,57 @@ const shortDate = date.toLocaleDateString('zh-CN', {
           setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1000);
         }
       });
-
-      // Hover mark → highlight card
       if (mark) {
-        mark.addEventListener('mouseenter', function() {
-          card.classList.add('cm-card-active');
-          mark.classList.add('highlight-active');
-        });
-        mark.addEventListener('mouseleave', function() {
-          card.classList.remove('cm-card-active');
-          mark.classList.remove('highlight-active');
-        });
-      }
-
-      // --- Mobile: tap highlight → open bottom sheet ---
-      if (mark) {
+        mark.addEventListener('mouseenter', function() { card.classList.add('cm-card-active'); mark.classList.add('highlight-active'); });
+        mark.addEventListener('mouseleave', function() { card.classList.remove('cm-card-active'); mark.classList.remove('highlight-active'); });
         mark.addEventListener('click', function(e) {
           if (!isMobile()) return;
-          e.preventDefault();
-          e.stopPropagation();
+          e.preventDefault(); e.stopPropagation();
           openMobileSheet(c);
         });
       }
 
       commentCards.appendChild(card);
 
-      // Delete
       card.querySelector('.cm-card-delete').addEventListener('click', function(e) {
         e.stopPropagation();
-        removeHighlight(c.id);
-        var updated = loadComments().filter(function(x) { return x.id !== c.id; });
-        saveComments(updated);
-        renderComments();
+        apiDelete('/api/inline-comments/' + c.id).then(function() {
+          removeHighlight(c.id);
+          inlineComments = inlineComments.filter(function(x) { return x.id !== c.id; });
+          renderInlineComments();
+        });
       });
     });
 
-    // Layout after DOM is ready
-    requestAnimationFrame(function() {
-      requestAnimationFrame(layoutCards);
-    });
+    requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
   }
 
   // --- Mobile bottom sheet ---
   function openMobileSheet(comment) {
     activeMobileCommentId = comment.id;
-    msQuote.textContent = '\u201c' + trunc(comment.selectedText, 80) + '\u201d';
-    msBody.textContent = comment.text;
-    var time = new Date(comment.ts);
+    msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
+    msBody.textContent = comment.comment;
+    msAuthor.textContent = comment.nickname;
+    var time = new Date(comment.created_at);
     msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
       + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
     mobileOverlay.classList.add('active');
     mobileSheet.classList.add('active');
   }
-
   function closeMobileSheet() {
     mobileOverlay.classList.remove('active');
     mobileSheet.classList.remove('active');
     activeMobileCommentId = null;
   }
-
   mobileOverlay.addEventListener('click', closeMobileSheet);
-
   msDelete.addEventListener('click', function() {
     if (!activeMobileCommentId) return;
-    removeHighlight(activeMobileCommentId);
-    var updated = loadComments().filter(function(x) { return x.id !== activeMobileCommentId; });
-    saveComments(updated);
-    closeMobileSheet();
-    renderComments();
+    apiDelete('/api/inline-comments/' + activeMobileCommentId).then(function() {
+      removeHighlight(activeMobileCommentId);
+      inlineComments = inlineComments.filter(function(x) { return x.id !== activeMobileCommentId; });
+      closeMobileSheet();
+      renderInlineComments();
+    });
   });
 
   // --- FAB: show on text selection ---
@@ -402,16 +469,12 @@ const shortDate = date.toLocaleDateString('zh-CN', {
   document.addEventListener('mouseup', function(e) {
     if (popover.style.display !== 'none') return;
     if (isMobile()) { fab.style.display = 'none'; return; }
-
     var sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
-
     var range = sel.getRangeAt(0);
     if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
-
     var text = sel.toString().trim();
     if (!text) { fab.style.display = 'none'; return; }
-
     var rect = range.getBoundingClientRect();
     fab.style.display = 'flex';
     fab.style.top = (rect.top + window.scrollY - 36) + 'px';
@@ -419,7 +482,6 @@ const shortDate = date.toLocaleDateString('zh-CN', {
     pendingRange = range.cloneRange();
   });
 
-  // Mobile: show FAB on touchend selection
   document.addEventListener('selectionchange', function() {
     if (!isMobile()) return;
     var sel = window.getSelection();
@@ -440,21 +502,15 @@ const shortDate = date.toLocaleDateString('zh-CN', {
     if (popover.style.display === 'none') fab.style.display = 'none';
   });
 
-  // --- FAB click → open input ---
   fab.addEventListener('click', function(e) {
-    e.preventDefault();
-    e.stopPropagation();
+    e.preventDefault(); e.stopPropagation();
     if (!pendingRange) return;
     var selectedText = pendingRange.toString().trim();
     if (!selectedText) return;
-
     cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
     cipArea.value = '';
-
     var rect = pendingRange.getBoundingClientRect();
-
     if (isMobile()) {
-      // Center popover on mobile
       popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
       popover.style.left = '50%';
       popover.style.transform = 'translateX(-50%)';
@@ -463,10 +519,9 @@ const shortDate = date.toLocaleDateString('zh-CN', {
       popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
       popover.style.transform = '';
     }
-
     popover.style.display = 'block';
     fab.style.display = 'none';
-    cipArea.focus();
+    cipNickname.focus();
   });
 
   cipCancel.addEventListener('click', function() {
@@ -477,20 +532,37 @@ const shortDate = date.toLocaleDateString('zh-CN', {
 
   cipSubmit.addEventListener('click', function() {
     var text = cipArea.value.trim();
-    if (!text || !pendingRange) return;
+    var nickname = cipNickname.value.trim();
+    var email = cipEmailInput.value.trim();
+    if (!text || !nickname || !email || !pendingRange) return;
 
-    var id = uid();
     var selectedText = pendingRange.toString().trim();
-    wrapRange(pendingRange, id);
+    saveIdentity(nickname, email);
 
-    var comments = loadComments();
-    comments.push({ id: id, text: text, selectedText: selectedText, ts: Date.now() });
-    saveComments(comments);
+    cipSubmit.disabled = true;
+    cipSubmit.textContent = '...';
 
-    popover.style.display = 'none';
-    pendingRange = null;
-    window.getSelection().removeAllRanges();
-    renderComments();
+    apiPost('/api/inline-comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      selected_text: selectedText,
+      comment: text,
+      range_start: 0,
+      range_end: selectedText.length
+    }).then(function(res) {
+      if (res.comment) {
+        wrapRange(pendingRange, res.comment.id);
+        inlineComments.push(res.comment);
+        renderInlineComments();
+      }
+      popover.style.display = 'none';
+      pendingRange = null;
+      window.getSelection().removeAllRanges();
+    }).finally(function() {
+      cipSubmit.disabled = false;
+      cipSubmit.textContent = 'Comment';
+    });
   });
 
   cipArea.addEventListener('keydown', function(e) {
@@ -498,30 +570,185 @@ const shortDate = date.toLocaleDateString('zh-CN', {
     if (e.key === 'Escape') cipCancel.click();
   });
 
-  // --- Clear all ---
   clearAll.addEventListener('click', function() {
     if (!confirm('Clear all comments?')) return;
-    postContent.querySelectorAll('mark.comment-highlight').forEach(function(m) {
-      var p = m.parentNode;
-      while (m.firstChild) p.insertBefore(m.firstChild, m);
-      p.removeChild(m);
-      p.normalize();
+    // Delete all from server
+    Promise.all(inlineComments.map(function(c) { return apiDelete('/api/inline-comments/' + c.id); })).then(function() {
+      postContent.querySelectorAll('mark.comment-highlight').forEach(function(m) {
+        var p = m.parentNode;
+        while (m.firstChild) p.insertBefore(m.firstChild, m);
+        p.removeChild(m);
+        p.normalize();
+      });
+      inlineComments = [];
+      renderInlineComments();
     });
-    saveComments([]);
-    renderComments();
   });
 
-  // --- Relayout on resize/scroll ---
   var layoutTimer;
-  function debouncedLayout() {
+  window.addEventListener('resize', function() {
     clearTimeout(layoutTimer);
     layoutTimer = setTimeout(layoutCards, 60);
-  }
-  window.addEventListener('resize', debouncedLayout);
+  });
 
-  // --- Init ---
-  restoreHighlights();
-  renderComments();
+  // =====================================================================
+  // ARTICLE LIKES
+  // =====================================================================
+  var articleLiked = false;
+
+  function loadArticleLikes() {
+    apiGet('/api/posts/' + encodeURIComponent(POST_SLUG) + '/likes').then(function(res) {
+      articleLikeCount.textContent = res.count;
+      articleLiked = res.liked;
+      if (articleLiked) articleLikeBtn.classList.add('liked');
+    });
+  }
+
+  articleLikeBtn.addEventListener('click', function() {
+    apiPost('/api/posts/' + encodeURIComponent(POST_SLUG) + '/like', {}).then(function(res) {
+      articleLiked = res.liked;
+      articleLikeCount.textContent = res.count;
+      articleLikeBtn.classList.toggle('liked', res.liked);
+      var icon = articleLikeBtn.querySelector('.al-icon path');
+      icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+    });
+  });
+
+  // =====================================================================
+  // BOTTOM COMMENTS
+  // =====================================================================
+
+  function loadBottomComments() {
+    apiGet('/api/comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+      bottomComments = res.comments || [];
+      renderBottomComments();
+    });
+  }
+
+  function renderBottomComments() {
+    bcThread.innerHTML = '';
+    var count = bottomComments.length;
+    bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+
+    // Build tree
+    var roots = [];
+    var byId = {};
+    bottomComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
+    bottomComments.forEach(function(c) {
+      if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
+      else roots.push(c);
+    });
+
+    roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+  }
+
+  function buildCommentEl(c, isReply) {
+    var div = document.createElement('div');
+    div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
+
+    var time = new Date(c.created_at);
+    var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    var avatarSize = isReply ? 32 : 40;
+    div.innerHTML =
+      '<div class="bc-avatar-wrap"><img src="' + gravatarUrl(c.email) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+      '<div class="bc-body">' +
+        '<div class="bc-meta">' +
+          '<span class="bc-name">' + esc(c.nickname) + '</span>' +
+          '<span class="bc-dot">&middot;</span>' +
+          '<time class="bc-time">' + timeStr + '</time>' +
+        '</div>' +
+        '<div class="bc-text"><p>' + esc(c.content) + '</p></div>' +
+        '<div class="bc-actions">' +
+          '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
+            '<span>' + (c.likes || 0) + '</span>' +
+          '</button>' +
+          '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
+        '</div>' +
+        '<div class="bc-replies-container"></div>' +
+      '</div>';
+
+    // Like button
+    div.querySelector('.bc-like-btn').addEventListener('click', function() {
+      var btn = this;
+      apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
+        btn.classList.toggle('liked', res.liked);
+        btn.querySelector('span').textContent = res.count;
+        var icon = btn.querySelector('path');
+        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      });
+    });
+
+    // Reply button
+    div.querySelector('.bc-reply-btn').addEventListener('click', function() {
+      // Scroll to compose and pre-fill with @mention
+      bcTextarea.value = '@' + c.nickname + ' ';
+      bcTextarea.dataset.parentId = c.id;
+      bcTextarea.focus();
+      bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Render replies
+    var repliesContainer = div.querySelector('.bc-replies-container');
+    if (c._replies && c._replies.length) {
+      c._replies.forEach(function(r) {
+        repliesContainer.appendChild(buildCommentEl(r, true));
+      });
+    }
+
+    return div;
+  }
+
+  // Submit bottom comment
+  bcSubmit.addEventListener('click', function() {
+    var content = bcTextarea.value.trim();
+    var nickname = bcNickname.value.trim();
+    var email = bcEmail.value.trim();
+    if (!content || !nickname || !email) return;
+
+    saveIdentity(nickname, email);
+    bcSubmit.disabled = true;
+    bcSubmit.textContent = '...';
+
+    var parentId = bcTextarea.dataset.parentId || null;
+
+    apiPost('/api/comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      content: content,
+      parent_id: parentId ? parseInt(parentId) : null
+    }).then(function(res) {
+      if (res.comment) {
+        bottomComments.push(res.comment);
+        renderBottomComments();
+        bcTextarea.value = '';
+        delete bcTextarea.dataset.parentId;
+      }
+    }).finally(function() {
+      bcSubmit.disabled = false;
+      bcSubmit.textContent = 'Submit';
+    });
+  });
+
+  bcTextarea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') bcSubmit.click();
+  });
+
+  // =====================================================================
+  // INIT — load everything from API
+  // =====================================================================
+  restoreIdentity();
+
+  apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+    inlineComments = res.comments || [];
+    restoreHighlights();
+    renderInlineComments();
+  });
+
+  loadArticleLikes();
+  loadBottomComments();
 
   // --- Helpers ---
   function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
@@ -826,6 +1053,230 @@ const shortDate = date.toLocaleDateString('zh-CN', {
     cursor: pointer; transition: background 0.2s;
   }
   .ms-delete:hover { background: rgba(248,81,73,0.15); }
+  .ms-author {
+    font-size: 12px; color: #7d8590; margin-bottom: 4px; font-weight: 500;
+  }
+
+  /* ===== Inline Comment Popover Identity ===== */
+  .cip-identity {
+    display: flex; gap: 8px; margin-bottom: 10px;
+  }
+  .cip-input {
+    flex: 1; padding: 7px 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #30363d; border-radius: 4px;
+    color: #e6edf3; font-family: inherit; font-size: 12px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .cip-input:focus { border-color: #4ade80; }
+  .cip-input::placeholder { color: #484f58; }
+
+  /* ===== Comment Rail Card Author ===== */
+  .comment-rail :global(.cm-card-author) {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .comment-rail :global(.cm-card-avatar) {
+    width: 20px; height: 20px; border-radius: 50%;
+    object-fit: cover; background: #21262d;
+  }
+  .comment-rail :global(.cm-card-name) {
+    font-size: 11px; font-weight: 600; color: #c9d1d9;
+  }
+
+  /* ===== Article Like Section ===== */
+  .article-like-section {
+    display: flex; align-items: center; gap: 24px;
+    max-width: 1440px; margin: 0 auto;
+    padding: 48px 48px 0;
+  }
+  .al-rule {
+    flex: 1; height: 1px; background: #21262d;
+  }
+  .article-like-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 28px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid #21262d;
+    border-radius: 100px;
+    color: #7d8590;
+    cursor: pointer;
+    transition: all 0.25s;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .article-like-btn:hover {
+    border-color: #30363d;
+    background: rgba(255,255,255,0.06);
+    color: #c9d1d9;
+  }
+  .article-like-btn.liked {
+    border-color: rgba(239,68,68,0.4);
+    background: rgba(239,68,68,0.08);
+    color: #ef4444;
+  }
+  .article-like-btn .al-icon {
+    transition: transform 0.25s;
+  }
+  .article-like-btn.liked .al-icon {
+    transform: scale(1.15);
+  }
+  .al-count {
+    font-size: 16px; font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .al-label {
+    font-size: 13px; font-weight: 500;
+  }
+
+  /* ===== Bottom Comment Section ===== */
+  .bottom-comments {
+    max-width: 1440px; margin: 0 auto;
+    padding: 0 48px 48px;
+  }
+  .bc-inner {
+    max-width: 720px;
+  }
+  .bc-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 32px; padding-top: 48px;
+  }
+  .bc-title {
+    font-size: 20px; font-weight: 700; color: #e6edf3;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .bc-count {
+    font-size: 13px; color: #484f58;
+    background: rgba(255,255,255,0.06);
+    padding: 2px 10px; border-radius: 10px;
+  }
+
+  /* Comment items */
+  .bottom-comments :global(.bc-item) {
+    display: flex; gap: 16px;
+    padding: 24px 0;
+    border-top: 1px solid #21262d;
+  }
+  .bottom-comments :global(.bc-item.bc-reply) {
+    padding: 16px 0 0;
+    border-top: none;
+  }
+  .bottom-comments :global(.bc-avatar-wrap) {
+    flex-shrink: 0;
+  }
+  .bottom-comments :global(.bc-avatar-img) {
+    width: 40px; height: 40px; border-radius: 50%;
+    object-fit: cover; background: #21262d;
+  }
+  .bottom-comments :global(.bc-body) {
+    flex: 1; min-width: 0;
+  }
+  .bottom-comments :global(.bc-meta) {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 8px;
+  }
+  .bottom-comments :global(.bc-name) {
+    font-size: 14px; font-weight: 600; color: #e6edf3;
+  }
+  .bottom-comments :global(.bc-dot) {
+    color: #30363d;
+  }
+  .bottom-comments :global(.bc-time) {
+    font-size: 13px; color: #484f58;
+  }
+  .bottom-comments :global(.bc-text p) {
+    font-size: 15px; color: #c9d1d9; line-height: 1.7;
+    margin: 0;
+  }
+  .bottom-comments :global(.bc-actions) {
+    display: flex; align-items: center; gap: 16px;
+    margin-top: 10px;
+  }
+  .bottom-comments :global(.bc-like-btn) {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    border: 1px solid transparent;
+    background: none; cursor: pointer;
+    font-size: 12px; color: #484f58;
+    transition: all 0.2s;
+  }
+  .bottom-comments :global(.bc-like-btn:hover) {
+    background: rgba(239,68,68,0.06);
+    border-color: rgba(239,68,68,0.15);
+    color: #ef4444;
+  }
+  .bottom-comments :global(.bc-like-btn.liked) {
+    color: #ef4444;
+    background: rgba(239,68,68,0.08);
+    border-color: rgba(239,68,68,0.2);
+  }
+  .bottom-comments :global(.bc-like-btn span) {
+    font-size: 12px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    min-width: 8px;
+  }
+  .bottom-comments :global(.bc-reply-btn) {
+    font-size: 12px; color: #484f58;
+    background: none; border: none; cursor: pointer;
+    transition: color 0.15s; font-family: inherit;
+  }
+  .bottom-comments :global(.bc-reply-btn:hover) {
+    color: #7d8590;
+  }
+  .bottom-comments :global(.bc-replies-container) {
+    border-left: 2px solid #21262d;
+    margin-left: 4px; padding-left: 20px;
+  }
+
+  /* Compose form */
+  .bc-compose {
+    display: flex; gap: 16px;
+    padding-top: 32px;
+    border-top: 1px solid #21262d;
+    margin-top: 8px;
+  }
+  .bc-compose-avatar { flex-shrink: 0; }
+  .bc-compose-avatar .bc-avatar-img {
+    width: 40px; height: 40px; border-radius: 50%;
+    object-fit: cover; background: #21262d;
+  }
+  .bc-compose-form { flex: 1; }
+  .bc-compose-fields {
+    display: flex; gap: 12px; margin-bottom: 12px;
+  }
+  .bc-input {
+    flex: 1; padding: 10px 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid #30363d; border-radius: 8px;
+    color: #e6edf3; font-size: 14px; font-family: inherit;
+    transition: border-color 0.2s; outline: none;
+  }
+  .bc-input:focus { border-color: #4ade80; }
+  .bc-input::placeholder { color: #484f58; }
+  .bc-textarea {
+    width: 100%; padding: 12px 14px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid #30363d; border-radius: 8px;
+    color: #e6edf3; font-size: 14px; font-family: inherit;
+    resize: vertical; min-height: 100px;
+    transition: border-color 0.2s; outline: none;
+  }
+  .bc-textarea:focus { border-color: #4ade80; }
+  .bc-textarea::placeholder { color: #484f58; }
+  .bc-compose-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 12px;
+  }
+  .bc-hint { font-size: 12px; color: #30363d; }
+  .bc-submit {
+    padding: 8px 20px; border-radius: 8px;
+    background: #4ade80; color: #0d1117;
+    font-size: 14px; font-weight: 600;
+    border: none; cursor: pointer; font-family: inherit;
+    transition: opacity 0.2s;
+  }
+  .bc-submit:hover { opacity: 0.85; }
+  .bc-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
   /* ===== Footer ===== */
   .page-footer { max-width: 1440px; margin: 0 auto; padding: 0 48px 48px; }
@@ -872,6 +1323,15 @@ const shortDate = date.toLocaleDateString('zh-CN', {
 
     /* Mobile: comment popover adjustments */
     .comment-input-popover { width: calc(100vw - 40px); max-width: 360px; }
+    .cip-identity { flex-direction: column; gap: 6px; }
+
+    /* Article like & bottom comments mobile */
+    .article-like-section { padding: 40px 20px 0; gap: 16px; }
+    .article-like-btn { padding: 10px 20px; }
+    .bottom-comments { padding: 0 20px 48px; }
+    .bc-compose-fields { flex-direction: column; gap: 8px; }
+    .bc-compose-avatar .bc-avatar-img { width: 32px; height: 32px; }
+    .bc-compose { gap: 12px; }
   }
 </style>
 
