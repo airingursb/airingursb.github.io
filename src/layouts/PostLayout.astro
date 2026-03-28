@@ -27,10 +27,39 @@ const shortDate = date.toLocaleDateString('zh-CN', {
   month: '2-digit',
   day: '2-digit',
 });
+
+const canonicalUrl = new URL(`/posts/${Astro.params.slug}/`, Astro.site).href;
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": title,
+  "datePublished": date.toISOString(),
+  "dateModified": date.toISOString(),
+  "author": {
+    "@type": "Person",
+    "name": "Airing",
+    "url": "https://ursb.me"
+  },
+  "publisher": {
+    "@type": "Person",
+    "name": "Airing",
+    "url": "https://ursb.me"
+  },
+  "url": canonicalUrl,
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": canonicalUrl
+  },
+  ...(description ? { "description": description } : {}),
+  ...(cover ? { "image": cover } : {}),
+  ...(tags.length > 0 ? { "keywords": tags.join(", ") } : {}),
+};
 ---
 
 <BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={cover}>
   <link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" />
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <div class="post-page">
     <!-- Masthead -->
     <header class="masthead">
