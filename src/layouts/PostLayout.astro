@@ -16,9 +16,21 @@ interface Props {
   prevPost?: { slug: string; title: string } | null;
   nextPost?: { slug: string; title: string } | null;
   relatedPosts?: { slug: string; title: string }[];
+  seriesInfo?: {
+    tag: string;
+    total: number;
+    current: number;
+    prev: { slug: string; title: string } | null;
+    next: { slug: string; title: string } | null;
+  } | null;
 }
 
-const { title, date, tags, description, cover, prevPost, nextPost, relatedPosts = [] } = Astro.props;
+const { title, date, tags, description, cover, prevPost, nextPost, relatedPosts = [], seriesInfo } = Astro.props;
+
+const seriesNames: Record<string, string> = {
+  weekly: '月刊',
+  annually: '年报',
+};
 
 const dateStr = date.toLocaleDateString('zh-CN', {
   year: 'numeric',
@@ -92,6 +104,22 @@ const jsonLd = {
         {description && <p class="headline-deck">{description}</p>}
       </div>
     </div>
+
+    {seriesInfo && (
+      <div class="series-nav">
+        <div class="series-inner">
+          {seriesInfo.prev && (
+            <a href={`/posts/${seriesInfo.prev.slug}/`} class="series-arrow" title={seriesInfo.prev.title}>&larr;</a>
+          )}
+          <a href={`/tags/${seriesInfo.tag}/`} class="series-badge">
+            {seriesNames[seriesInfo.tag] || seriesInfo.tag} #{seriesInfo.current} / {seriesInfo.total}
+          </a>
+          {seriesInfo.next && (
+            <a href={`/posts/${seriesInfo.next.slug}/`} class="series-arrow" title={seriesInfo.next.title}>&rarr;</a>
+          )}
+        </div>
+      </div>
+    )}
 
     {cover && (
       <div class="cover-section">
@@ -914,6 +942,32 @@ const jsonLd = {
     border-bottom: 1px solid var(--c-border);
   }
   .cover-section img { width: 100%; border-radius: 4px; display: block; }
+
+  /* ===== Series Nav ===== */
+  .series-nav {
+    text-align: center;
+    margin: -0.5rem 0 1rem;
+  }
+  .series-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .series-badge {
+    font-size: 0.8rem;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--c-border, rgba(255,255,255,0.15));
+    border-radius: 999px;
+    color: var(--c-text-muted, #888);
+    text-decoration: none;
+  }
+  .series-badge:hover { color: var(--accent, #4ade80); border-color: var(--accent, #4ade80); }
+  .series-arrow {
+    color: var(--c-text-muted, #888);
+    text-decoration: none;
+    font-size: 1rem;
+  }
+  .series-arrow:hover { color: var(--accent, #4ade80); }
 
   /* ===== Three-Column Grid ===== */
   .content-grid {

@@ -21,11 +21,27 @@ export async function getStaticPaths() {
               .map(p => ({ slug: p.id, title: p.data.title }))
           : [];
       })(),
+      seriesInfo: (() => {
+        const seriesTags = ['weekly', 'annually'];
+        const seriesTag = post.data.tags.find(t => seriesTags.includes(t));
+        if (!seriesTag) return null;
+        const seriesPosts = allPosts
+          .filter(p => p.data.tags.includes(seriesTag))
+          .sort((a, b) => a.data.date.valueOf() - b.data.date.valueOf());
+        const idx = seriesPosts.findIndex(p => p.id === post.id);
+        return {
+          tag: seriesTag,
+          total: seriesPosts.length,
+          current: idx + 1,
+          prev: idx > 0 ? { slug: seriesPosts[idx - 1].id, title: seriesPosts[idx - 1].data.title } : null,
+          next: idx < seriesPosts.length - 1 ? { slug: seriesPosts[idx + 1].id, title: seriesPosts[idx + 1].data.title } : null,
+        };
+      })(),
     },
   }));
 }
 
-const { post, prevPost, nextPost, relatedPosts } = Astro.props;
+const { post, prevPost, nextPost, relatedPosts, seriesInfo } = Astro.props;
 const { Content } = await render(post);
 ---
 
@@ -38,6 +54,7 @@ const { Content } = await render(post);
   prevPost={prevPost}
   nextPost={nextPost}
   relatedPosts={relatedPosts}
+  seriesInfo={seriesInfo}
 >
   <Content />
 </PostLayout>
