@@ -1,16 +1,17 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import telegramData from '../data/telegram.json';
 ---
 
-<BaseLayout title="Search | Airing">
-  <div class="search-page">
+<BaseLayout title="Moments | Airing">
+  <div class="moments-page">
     <nav class="top-nav">
       <div class="nav-inner">
         <a href="/" class="nav-brand">Airing</a>
         <div class="nav-tabs">
           <a href="/archive" class="nav-tab">Archive</a>
-          <a href="/moments" class="nav-tab">Moments</a>
-          <a href="/search" class="nav-tab active">Search</a>
+          <a href="/moments" class="nav-tab active">Moments</a>
+          <a href="/search" class="nav-tab">Search</a>
           <a href="/feed.xml" class="nav-tab">RSS</a>
         </div>
       </div>
@@ -18,14 +19,21 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
     <header class="page-header">
       <div class="header-inner">
-        <h1 class="page-title">Search</h1>
-        <p class="page-desc">Full-text search across all posts.</p>
+        <h1 class="page-title">Moments</h1>
+        <p class="page-desc">Thoughts and shares from <a href="https://t.me/airingchannel" target="_blank" style="color:var(--accent);text-decoration:none">Telegram Channel</a>.</p>
       </div>
     </header>
 
-    <main class="search-main">
-      <div class="search-container">
-        <div id="search"></div>
+    <main class="moments-main">
+      <div class="timeline">
+        {telegramData.map(item => (
+          <a href={item.link} target="_blank" rel="noopener" class="moment-item">
+            <time class="moment-date">{item.date}</time>
+            <div class="moment-content">
+              <p class="moment-text">{item.title}</p>
+            </div>
+          </a>
+        ))}
       </div>
     </main>
 
@@ -40,70 +48,10 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       </div>
     </footer>
   </div>
-
-  <link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
-  <script is:inline src="/pagefind/pagefind-ui.js"></script>
-  <script is:inline>
-    window.addEventListener('DOMContentLoaded', () => {
-      new PagefindUI({
-        element: "#search",
-        showSubResults: true,
-        showImages: false,
-      });
-    });
-  </script>
 </BaseLayout>
 
 <style is:global>
-  /* Pagefind UI theme variables */
-  .search-page {
-    --pagefind-ui-scale: 1;
-    --pagefind-ui-primary: var(--accent, #4ade80);
-    --pagefind-ui-text: var(--c-text, #e5e5e5);
-    --pagefind-ui-background: transparent;
-    --pagefind-ui-border: var(--c-border, rgba(255,255,255,0.15));
-    --pagefind-ui-tag: rgba(var(--c-overlay-rgb, 255,255,255), 0.06);
-    --pagefind-ui-border-width: 1px;
-    --pagefind-ui-border-radius: 8px;
-    --pagefind-ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
-  }
-
-  /* Override Pagefind input — must be global since Pagefind injects DOM dynamically */
-  .search-page .pagefind-ui__search-input {
-    background: transparent !important;
-    color: var(--c-text, #e5e5e5) !important;
-    border: 1px solid var(--c-border, rgba(255,255,255,0.15)) !important;
-    border-radius: 8px !important;
-    outline: none !important;
-    box-shadow: none !important;
-    font-size: 16px !important;
-    padding: 12px 16px 12px 44px !important;
-  }
-  .search-page .pagefind-ui__search-input::placeholder {
-    color: var(--c-text-dim, #666) !important;
-  }
-  .search-page .pagefind-ui__search-input:focus {
-    border-color: var(--accent, #4ade80) !important;
-    box-shadow: 0 0 0 1px var(--accent, #4ade80) !important;
-  }
-  .search-page .pagefind-ui__search-clear {
-    color: var(--c-text-muted, #888) !important;
-    background: transparent !important;
-  }
-  .search-page .pagefind-ui__result {
-    border-top-color: var(--c-border, rgba(255,255,255,0.1)) !important;
-  }
-  .search-page .pagefind-ui__result-link {
-    color: var(--accent, #4ade80) !important;
-  }
-  .search-page .pagefind-ui__result-excerpt {
-    color: var(--c-text-muted, #888) !important;
-  }
-  .search-page .pagefind-ui__message {
-    color: var(--c-text-dim, #666) !important;
-  }
-
-  body:has(.search-page) {
+  body:has(.moments-page) {
     display: block;
     padding: 0;
     align-items: stretch;
@@ -112,13 +60,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 </style>
 
 <style>
-  .search-page {
+  .moments-page {
     min-height: 100vh;
     width: 100%;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   }
 
-  /* Nav — matches archive.astro */
+  /* Nav */
   .top-nav {
     border-bottom: 1px solid var(--c-border);
     position: sticky; top: 0; z-index: 100;
@@ -142,7 +90,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .nav-tab:hover { color: var(--c-text); }
   .nav-tab.active { color: var(--c-text); border-bottom-color: var(--c-text); }
 
-  /* Header — matches archive.astro */
+  /* Header */
   .page-header {
     border-bottom: 1px solid var(--c-border);
     padding: 48px 0;
@@ -156,14 +104,40 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
   .page-desc { font-size: 15px; color: var(--c-text-dim); }
 
-  /* Search main */
-  .search-main { padding: 0; }
-  .search-container {
-    max-width: 1200px; margin: 0 auto;
-    padding: 40px 48px 80px;
+  /* Timeline */
+  .moments-main { padding: 0; }
+  .timeline {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 48px 60px;
+  }
+  .moment-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+    text-decoration: none;
+    padding: 16px 0;
+    border-bottom: 1px solid rgba(var(--c-overlay-rgb),0.04);
+    transition: all 0.15s;
+  }
+  .moment-item:last-child { border-bottom: none; }
+  .moment-item:hover .moment-text { color: var(--accent); }
+  .moment-date {
+    font-size: 13px;
+    color: var(--c-text-dim);
+    flex-shrink: 0;
+    width: 50px;
+    padding-top: 2px;
+    font-variant-numeric: tabular-nums;
+  }
+  .moment-text {
+    font-size: 15px;
+    color: var(--c-text);
+    line-height: 1.5;
+    transition: color 0.2s;
   }
 
-  /* Footer — matches archive.astro */
+  /* Footer */
   .blog-footer {
     border-top: 1px solid var(--c-border);
     padding: 32px 0; margin-top: 40px;
@@ -182,7 +156,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   @media (max-width: 768px) {
     .nav-inner { padding: 0 20px; }
     .header-inner { padding: 0 20px; }
-    .search-container { padding: 24px 20px 60px; }
+    .timeline { padding: 16px 20px 40px; }
     .footer-inner { padding: 0 20px; }
     .page-title { font-size: 28px; }
   }

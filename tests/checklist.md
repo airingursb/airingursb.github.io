@@ -68,6 +68,12 @@
 - [ ] GET `/sitemap-index.xml` 返回 XML
 - [ ] GET `/feed.xml` 返回 XML，包含 `<rss` 或 `<feed`
 
+## Moments (`/moments/`)
+
+- [ ] GET `/moments/` returns page
+- [ ] DOM: `.moment-item` exists (timeline items)
+- [ ] DOM: Nav tabs include "Moments" link
+
 ## Theme Switcher (任意页面)
 
 - [ ] DOM: `#modeToggle` 存在（明暗切换）
