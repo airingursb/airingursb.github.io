@@ -3,6 +3,7 @@ title: "月刊（第32期）：中大校友会的采访"
 date: 2025-08-16
 tags: ["weekly"]
 description: ""
+cover: "https://i.typlog.com/airing/8244677714_260533.jpg?x-oss-process=style/l"
 ---
 
 本篇是对二〇二五年七月至八月的记录与思考。

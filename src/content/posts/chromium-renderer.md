@@ -3,7 +3,8 @@ title: "Chromium 渲染流水线——字节码到像素的一生"
 date: 2022-10-16
 tags: ["tech"]
 description: ""
-featured: true
+featured: false
+cover: "https://airing.ursb.me/images/blog/chromium/20221016112818.png"
 ---
 
 ## 现代浏览器架构

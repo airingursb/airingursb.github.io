@@ -3,6 +3,7 @@ title: "月刊（第26期）：旅途"
 date: 2024-05-07
 tags: ["weekly"]
 description: ""
+cover: "https://airing.ursb.me/image/blog/wj26/queenstown.jpg"
 ---
 
 本篇是对二〇二四年四月的生活记录与思考。

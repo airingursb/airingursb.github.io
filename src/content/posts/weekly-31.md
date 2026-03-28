@@ -3,6 +3,7 @@ title: "月刊（第31期）：基于 Claude 的阅读流"
 date: 2025-07-05
 tags: ["weekly"]
 description: ""
+cover: "https://i.typlog.com/airing/8248277124_159252.png?x-oss-process=style/l"
 ---
 
 在 《[月刊（第16期）：个人信息流分享](https://blog.ursb.me/posts/weekly-16/)》里，我曾梳理过自己处理信息输入输出的方法。三年过去了，AI 工具的发展让我觉得有必要重新审视这个话题。这期月刊想重点聊聊我最近摸索出的阅读流。

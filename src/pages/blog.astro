@@ -1,0 +1,668 @@
+---
+/**
+ * Blog — Magazine-style Substack-inspired listing page
+ */
+import { getCollection } from 'astro:content';
+import BaseLayout from '../layouts/BaseLayout.astro';
+
+const posts = (await getCollection('posts', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const featuredPosts = posts.filter(p => p.data.featured);
+// Hero: featured first, then fill with recent
+const heroPool = [...featuredPosts, ...posts.filter(p => !p.data.featured)];
+const heroPosts = heroPool.slice(0, 5);
+const popularPosts = [...featuredPosts, ...posts].slice(0, 4);
+// Remaining for the list (skip hero posts)
+const heroIds = new Set(heroPosts.map(p => p.id));
+const listPosts = posts.filter(p => !heroIds.has(p.id)).slice(0, 15);
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08), rgba(var(--c-overlay-rgb),0.03))';
+---
+
+<BaseLayout title="Blog | Airing">
+  <link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" />
+  <div class="blog-page">
+    <!-- Top Nav -->
+    <nav class="top-nav">
+      <div class="nav-inner">
+        <a href="/" class="nav-brand">Airing</a>
+        <div class="nav-tabs">
+          <a href="/blog" class="nav-tab active">Blog</a>
+          <a href="/archive" class="nav-tab">Archive</a>
+          <a href="/moments" class="nav-tab">Moments</a>
+          <a href="/search" class="nav-tab">Search</a>
+          <a href="/feed.xml" class="nav-tab">RSS</a>
+        </div>
+        <div class="nav-actions">
+          <span class="nav-count">{posts.length} posts</span>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Magazine Hero Grid -->
+    <section class="hero-section">
+      <div class="hero-grid">
+        <!-- Left column: 2 small cards -->
+        <div class="hero-col hero-col-left">
+          {heroPosts.slice(1, 3).map(post => (
+            <a href={`/posts/${post.id}`} class="hero-card hero-card-sm">
+              <div
+                class="hc-img"
+                style={`background-image:${post.data.cover ? `url(${post.data.cover})` : gradientFallback}`}
+              ></div>
+              <div class="hc-body">
+                <h3 class="hc-title">{post.data.title}</h3>
+                {post.data.description && <p class="hc-excerpt">{post.data.description}</p>}
+                <div class="hc-meta">
+                  <time>{formatDate(post.data.date)}</time>
+                  <span>&middot;</span>
+                  <span>Airing</span>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+
+        <!-- Center: large hero -->
+        {heroPosts[0] && (
+          <a href={`/posts/${heroPosts[0].id}`} class="hero-card hero-card-lg">
+            <div
+              class="hc-img-full"
+              style={`background-image:${heroPosts[0].data.cover ? `url(${heroPosts[0].data.cover})` : gradientFallback}`}
+            >
+              <div class="hc-overlay">
+                <h2 class="hc-title-lg">{heroPosts[0].data.title}</h2>
+                {heroPosts[0].data.description && (
+                  <p class="hc-excerpt-lg">{heroPosts[0].data.description}</p>
+                )}
+                <div class="hc-meta-lg">
+                  <time>{formatDate(heroPosts[0].data.date)}</time>
+                  <span>&middot;</span>
+                  <span>Airing</span>
+                </div>
+              </div>
+            </div>
+          </a>
+        )}
+
+        <!-- Right column: 2 small cards -->
+        <div class="hero-col hero-col-right">
+          {heroPosts.slice(3, 5).map(post => (
+            <a href={`/posts/${post.id}`} class="hero-card hero-card-sm">
+              <div
+                class="hc-img"
+                style={`background-image:${post.data.cover ? `url(${post.data.cover})` : gradientFallback}`}
+              ></div>
+              <div class="hc-body">
+                <h3 class="hc-title">{post.data.title}</h3>
+                {post.data.description && <p class="hc-excerpt">{post.data.description}</p>}
+                <div class="hc-meta">
+                  <time>{formatDate(post.data.date)}</time>
+                  <span>&middot;</span>
+                  <span>Airing</span>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Most Popular -->
+    <section class="popular-section">
+      <div class="popular-inner">
+        <div class="popular-header">
+          <h2 class="popular-heading">Most Popular</h2>
+          <a href="/archive" class="popular-viewall">View all &rarr;</a>
+        </div>
+        <div class="popular-grid">
+          {popularPosts.map(post => (
+            <a href={`/posts/${post.id}`} class="popular-card">
+              <div class="pc-body">
+                <h3 class="pc-title">{post.data.title}</h3>
+                <div class="pc-meta">
+                  <time>{formatDate(post.data.date)}</time>
+                  <span>&middot;</span>
+                  <span>Airing</span>
+                </div>
+              </div>
+              {post.data.cover && (
+                <div class="pc-thumb" style={`background-image:url(${post.data.cover})`}></div>
+              )}
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Content Area -->
+    <section class="content-section">
+      <div class="content-inner">
+        <!-- Left: Article list -->
+        <div class="article-list">
+          <div class="list-tabs">
+            <div class="tab-bar">
+              <button class="list-tab active">Latest</button>
+              <button class="list-tab">Top</button>
+            </div>
+            <a href="/search" class="list-search-icon" aria-label="Search posts">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </a>
+          </div>
+
+          {listPosts.map(post => (
+            <a href={`/posts/${post.id}`} class="post-item">
+              <div class="pi-body">
+                <h3 class="pi-title">{post.data.title}</h3>
+                {post.data.description && (
+                  <p class="pi-desc">{post.data.description}</p>
+                )}
+                <div class="pi-meta">
+                  <time>{formatDate(post.data.date)}</time>
+                  <span>&middot;</span>
+                  <span>Airing</span>
+                </div>
+              </div>
+              {post.data.cover && (
+                <div class="pi-thumb" style={`background-image:url(${post.data.cover})`}></div>
+              )}
+            </a>
+          ))}
+        </div>
+
+        <!-- Right: Author sidebar -->
+        <aside class="author-sidebar">
+          <div class="sidebar-sticky">
+            <div class="author-card">
+              <img
+                src="https://avatars.githubusercontent.com/u/10513408?v=4&s=96"
+                alt="Airing"
+                class="author-avatar"
+                loading="lazy"
+              />
+              <h3 class="author-name">Airing</h3>
+              <p class="author-bio">哲学硕士｜终端全栈</p>
+            </div>
+            <div class="subscribe-card">
+              <p class="subscribe-label">Subscribe to get new posts by email</p>
+              <form class="subscribe-form" id="subscribe-form">
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Your email address"
+                  required
+                  class="subscribe-input"
+                />
+                <button type="submit" class="subscribe-btn">Subscribe</button>
+              </form>
+              <p class="subscribe-msg" id="subscribe-msg"></p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="blog-footer">
+      <div class="footer-inner">
+        <span>&copy; 2026 Airing</span>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/archive">Archive</a>
+          <a href="/feed.xml">RSS</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById('subscribe-form') as HTMLFormElement;
+  const msg = document.getElementById('subscribe-msg') as HTMLParagraphElement;
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = new FormData(form).get('email') as string;
+    if (!email) return;
+    msg.textContent = 'Subscribing...';
+    msg.style.color = 'var(--c-text-muted)';
+    try {
+      const res = await fetch('https://chat.ursb.me/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        msg.textContent = 'Subscribed! Thank you.';
+        msg.style.color = 'var(--accent, #4ade80)';
+        form.reset();
+      } else {
+        msg.textContent = 'Something went wrong. Try again.';
+        msg.style.color = '#f87171';
+      }
+    } catch {
+      msg.textContent = 'Network error. Try again.';
+      msg.style.color = '#f87171';
+    }
+  });
+</script>
+
+<style is:global>
+  body:has(.blog-page) {
+    display: block;
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+</style>
+
+<style>
+  .blog-page {
+    min-height: 100vh;
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-serif: 'Noto Serif SC', 'Source Han Serif CN', 'Source Han Serif SC', 'Songti SC', STSong, serif;
+  }
+
+  /* ── Nav ────────────────────────────────────────────── */
+  .top-nav {
+    border-bottom: 1px solid var(--c-border);
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(var(--c-bg-rgb),0.95);
+    backdrop-filter: blur(12px);
+  }
+  .nav-inner {
+    max-width: 1100px; margin: 0 auto;
+    padding: 0 48px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-brand {
+    font-size: 18px; font-weight: 800; color: var(--c-text);
+    text-decoration: none; letter-spacing: -0.02em;
+  }
+  .nav-tabs { display: flex; gap: 28px; }
+  .nav-tab {
+    font-size: 14px; color: var(--c-text-muted); text-decoration: none;
+    padding: 16px 0; border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .nav-tab:hover { color: var(--c-text); }
+  .nav-tab.active { color: var(--c-text); border-bottom-color: var(--c-text); }
+  .nav-actions { display: flex; align-items: center; }
+  .nav-count { font-size: 12px; color: var(--c-border-light); }
+
+  /* ── Hero Grid ─────────────────────────────────────── */
+  .hero-section {
+    padding: 32px 0 0;
+  }
+  .hero-grid {
+    max-width: 1100px; margin: 0 auto; padding: 0 48px;
+    display: grid;
+    grid-template-columns: 1fr 2.4fr 1fr;
+    gap: 16px;
+    min-height: 400px;
+  }
+
+  .hero-col {
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* Small side cards */
+  .hero-card-sm {
+    flex: 1;
+    display: flex; flex-direction: column;
+    text-decoration: none;
+    border-radius: 4px;
+    border: 1px solid var(--c-border);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: rgba(var(--c-overlay-rgb),0.02);
+  }
+  .hero-card-sm:hover {
+    border-color: rgba(var(--c-overlay-rgb),0.15);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .hc-img {
+    height: 120px;
+    background-size: cover;
+    background-position: center;
+    background-color: rgba(var(--c-overlay-rgb),0.04);
+    flex-shrink: 0;
+    border-radius: 4px 4px 0 0;
+  }
+  .hc-body {
+    padding: 12px 14px 14px;
+    display: flex; flex-direction: column;
+    flex-shrink: 0;
+  }
+  .hc-title {
+    font-size: 15px; font-weight: 700; color: var(--c-text);
+    line-height: 1.4; margin: 0 0 4px;
+    font-family: var(--font-serif);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .hc-excerpt {
+    font-size: 12px; color: var(--c-text-dim); line-height: 1.4;
+    margin: 0 0 auto;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .hc-meta {
+    font-size: 11px; color: var(--c-text-dim); margin-top: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Large center hero card */
+  .hero-card-lg {
+    display: block; text-decoration: none;
+    border-radius: 4px; overflow: hidden;
+    position: relative;
+  }
+  .hc-img-full {
+    width: 100%; height: 100%; min-height: 400px;
+    background-size: cover; background-position: center;
+    background-color: rgba(var(--c-overlay-rgb),0.04);
+    display: flex; align-items: flex-end;
+    position: relative;
+  }
+  .hc-img-full::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.2) 40%, transparent 70%);
+    border-radius: 4px;
+  }
+  .hc-overlay {
+    position: relative; z-index: 1;
+    padding: 28px 28px;
+    width: 100%;
+  }
+  .hc-title-lg {
+    font-size: 28px; font-weight: 700; color: #fff;
+    line-height: 1.2; margin: 0 0 8px;
+    letter-spacing: -0.02em;
+    font-family: var(--font-serif);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .hc-excerpt-lg {
+    font-size: 15px; color: rgba(255,255,255,0.8);
+    line-height: 1.55; margin: 0 0 12px;
+    font-family: var(--font-serif);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .hc-meta-lg {
+    font-size: 13px; color: rgba(255,255,255,0.65);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .hero-card-lg:hover .hc-title-lg {
+    color: var(--accent, #4ade80);
+  }
+
+  /* ── Most Popular ──────────────────────────────────── */
+  .popular-section {
+    padding: 40px 0 0;
+    border-top: 1px solid var(--c-border);
+    margin-top: 32px;
+  }
+  .popular-inner {
+    max-width: 1100px; margin: 0 auto; padding: 0 48px;
+  }
+  .popular-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px;
+  }
+  .popular-heading {
+    font-size: 18px; font-weight: 700; color: var(--c-text);
+    margin: 0; letter-spacing: -0.01em;
+    font-family: var(--font-serif);
+  }
+  .popular-viewall {
+    font-size: 13px; color: var(--c-text-muted); text-decoration: none;
+    transition: color 0.2s;
+  }
+  .popular-viewall:hover { color: var(--accent, #4ade80); }
+
+  .popular-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+  .popular-card {
+    display: flex; align-items: flex-start; gap: 12px;
+    text-decoration: none;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--c-border);
+    transition: opacity 0.15s;
+  }
+  .popular-card:hover { opacity: 0.8; }
+  .pc-body { flex: 1; min-width: 0; }
+  .pc-title {
+    font-size: 15px; font-weight: 700; color: var(--c-text);
+    line-height: 1.4; margin: 0 0 6px;
+    font-family: var(--font-serif);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .pc-meta {
+    font-size: 12px; color: var(--c-text-dim);
+    display: flex; align-items: center; gap: 5px;
+  }
+  .pc-thumb {
+    width: 48px; height: 48px; flex-shrink: 0;
+    background-size: cover; background-position: center;
+    border-radius: 6px;
+    background-color: rgba(var(--c-overlay-rgb),0.04);
+  }
+
+  /* ── Content Area ──────────────────────────────────── */
+  .content-section {
+    padding: 40px 0;
+    border-top: 1px solid var(--c-border);
+    margin-top: 32px;
+  }
+  .content-inner {
+    max-width: 900px; margin: 0 auto; padding: 0 48px;
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 48px;
+    align-items: start;
+  }
+
+  /* Tabs */
+  .list-tabs {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--c-border);
+    margin-bottom: 4px;
+  }
+  .tab-bar { display: flex; gap: 0; }
+  .list-tab {
+    background: none; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 600; color: var(--c-text-muted);
+    padding: 12px 20px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .list-tab:hover { color: var(--c-text); }
+  .list-tab.active { color: var(--c-text); border-bottom-color: var(--c-text); }
+  .list-search-icon {
+    color: var(--c-text-muted);
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.15s;
+    display: flex; align-items: center;
+  }
+  .list-search-icon:hover {
+    color: var(--c-text);
+    background: rgba(var(--c-overlay-rgb),0.06);
+  }
+
+  /* Post items */
+  .post-item {
+    display: flex; align-items: flex-start; gap: 20px;
+    text-decoration: none;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--c-border);
+    transition: opacity 0.15s;
+  }
+  .post-item:hover { opacity: 0.85; }
+  .post-item:hover .pi-title { color: var(--accent, #4ade80); }
+  .pi-body { flex: 1; min-width: 0; }
+  .pi-title {
+    font-size: 19px; font-weight: 700; color: var(--c-text);
+    line-height: 1.35; margin: 0 0 6px;
+    font-family: var(--font-serif);
+    letter-spacing: 0.01em;
+    transition: color 0.2s;
+  }
+  .pi-desc {
+    font-size: 15px; color: var(--c-text-dim); line-height: 1.6;
+    margin: 0 0 8px;
+    font-family: var(--font-serif);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .pi-meta {
+    font-size: 13px; color: var(--c-text-muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .pi-thumb {
+    width: 120px; height: 80px; flex-shrink: 0;
+    background-size: cover; background-position: center;
+    border-radius: 4px;
+    background-color: rgba(var(--c-overlay-rgb),0.04);
+    margin-top: 4px;
+  }
+
+  /* ── Author Sidebar ────────────────────────────────── */
+  .author-sidebar { }
+  .author-sidebar .sidebar-sticky {
+    position: sticky; top: 80px;
+  }
+  .author-card {
+    text-align: center;
+    padding: 24px 0 20px;
+    border-bottom: 1px solid var(--c-border);
+    margin-bottom: 20px;
+  }
+  .author-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    object-fit: cover; margin-bottom: 10px;
+  }
+  .author-name {
+    font-size: 16px; font-weight: 700; color: var(--c-text);
+    margin: 0 0 4px;
+  }
+  .author-bio {
+    font-size: 13px; color: var(--c-text-dim); margin: 0;
+    line-height: 1.4;
+  }
+
+  /* Subscribe */
+  .subscribe-card { }
+  .subscribe-label {
+    font-size: 13px; color: var(--c-text-muted);
+    margin: 0 0 12px; line-height: 1.4;
+  }
+  .subscribe-form {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .subscribe-input {
+    width: 100%; padding: 10px 12px;
+    font-size: 14px; font-family: inherit;
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    background: rgba(var(--c-overlay-rgb),0.03);
+    color: var(--c-text);
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  .subscribe-input:focus {
+    border-color: var(--accent, #4ade80);
+  }
+  .subscribe-input::placeholder {
+    color: var(--c-text-dim);
+  }
+  .subscribe-btn {
+    padding: 10px 16px;
+    font-size: 14px; font-weight: 600; font-family: inherit;
+    color: #000;
+    background: var(--accent, #4ade80);
+    border: none; border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .subscribe-btn:hover { opacity: 0.85; }
+  .subscribe-msg {
+    font-size: 12px; min-height: 16px; margin: 4px 0 0;
+  }
+
+  /* ── Footer ────────────────────────────────────────── */
+  .blog-footer {
+    border-top: 1px solid var(--c-border);
+    padding: 32px 0; margin-top: 0;
+  }
+  .footer-inner {
+    max-width: 1100px; margin: 0 auto; padding: 0 48px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--c-border-light);
+  }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a {
+    font-size: 12px; color: var(--c-text-dim); text-decoration: none;
+  }
+  .footer-links a:hover { color: var(--c-text); }
+
+  /* ── Responsive ────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .nav-inner { padding: 0 20px; }
+
+    .hero-grid {
+      padding: 0 20px;
+      grid-template-columns: 1fr;
+      min-height: auto;
+    }
+    .hero-col-left,
+    .hero-col-right { display: none; }
+    .hc-img-full { min-height: 260px; }
+    .hc-title-lg { font-size: 22px; }
+    .hc-excerpt-lg { font-size: 14px; }
+
+    .popular-inner { padding: 0 20px; }
+    .popular-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .content-inner {
+      padding: 0 20px;
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+    .author-sidebar .sidebar-sticky {
+      position: static;
+    }
+
+    .pi-thumb {
+      width: 80px; height: 60px;
+    }
+
+    .footer-inner { padding: 0 20px; }
+  }
+
+  @media (max-width: 480px) {
+    .nav-tabs { gap: 16px; }
+    .nav-tab { font-size: 13px; }
+    .popular-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>

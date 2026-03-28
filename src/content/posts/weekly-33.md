@@ -3,6 +3,7 @@ title: "月刊（第33期）：推理阶梯"
 date: 2025-11-15
 tags: ["weekly"]
 description: ""
+cover: "https://airing.ursb.me/image/blog/wj33/B0000514HEIC1760766420-1.jpg"
 ---
 
 本篇是对二〇二五年九月至十月的记录与思考。

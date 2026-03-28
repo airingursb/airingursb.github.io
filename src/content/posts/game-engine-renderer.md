@@ -3,7 +3,8 @@ title: "游戏组件的一生: 从加载到上屏"
 date: 2025-05-17
 tags: ["tech"]
 description: ""
-featured: true
+featured: false
+cover: "https://airing.ursb.me/images/blog/game-engine/image%2072.png"
 ---
 
 ## 1. 小游戏容器与游戏引擎

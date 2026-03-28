@@ -3,6 +3,7 @@ title: "月刊（第30期）：写在 30 岁这天"
 date: 2025-06-29
 tags: ["weekly"]
 description: ""
+cover: "https://i.typlog.com/airing/8248959215_895375.jpg?x-oss-process=style/l"
 ---
 
 本篇是对二〇二五年五月至六月的记录与思考。

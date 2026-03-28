@@ -3,6 +3,7 @@ title: "月刊（第16期）：个人信息流分享"
 date: 2022-12-03
 tags: ["weekly"]
 description: ""
+cover: "https://airing.ursb.me/image/blog/%E4%BF%A1%E6%81%AF%E6%B5%81%E5%88%86%E4%BA%AB@2x.png"
 ---
 
 周刊暂停了一段时间，发现每周保持更新对我的压力还是有些大的。经过调整之后，发觉 3 周更一下挺合适的，那 3 周更一下，不如就月更啦~所以这次月刊主要分享下 11 月发现的好玩意儿！

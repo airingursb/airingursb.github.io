@@ -62,6 +62,11 @@
 
 - [ ] DOM: `.series-badge` 不存在
 
+## Newsletter (Post Detail)
+
+- [ ] DOM: `#nlForm` exists (subscribe form in post)
+- [ ] DOM: `.nl-input` has transparent background (dark mode)
+
 ## SEO (全站)
 
 - [ ] GET `/robots.txt` 返回内容包含 `Sitemap:`
@@ -73,6 +78,11 @@
 - [ ] GET `/moments/` returns page
 - [ ] DOM: `.moment-item` exists (timeline items)
 - [ ] DOM: Nav tabs include "Moments" link
+
+## Admin (`/admin/`)
+
+- [ ] GET `/admin/` returns page
+- [ ] DOM: Token input or comment list exists
 
 ## Theme Switcher (任意页面)
 

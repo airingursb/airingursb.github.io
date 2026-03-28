@@ -3,6 +3,7 @@ title: "个人工具箱与好物分享"
 date: 2024-03-29
 tags: ["tech"]
 description: ""
+cover: "https://i.typlog.com/airing/8288290040_537382.jpg?x-oss-process=style/l"
 ---
 
 一直都很想写这个话题，因为本人是强烈的数码爱好者同时又是一个执着的工具控，自己尝试过很多新产品，淘汰了一批又一批产品，最终沉淀下来这套较为稳定的工具箱。

@@ -3,6 +3,7 @@ title: "月刊（第24期）：十年编程之路"
 date: 2023-11-09
 tags: ["weekly"]
 description: ""
+cover: "https://airing.ursb.me/images/blog/20231213215330%402x%20%281%29.png"
 ---
 
 本篇是对二〇二三年十月生活的记录与思考。

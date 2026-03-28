@@ -85,6 +85,7 @@ const jsonLd = {
           <a href="/" class="mast-brand">Airing's Blog</a>
           <span class="mast-date">{dateStr}</span>
           <div class="mast-links">
+            <a href="/blog">Blog</a>
             <a href="/archive">Archive</a>
             <a href="/moments">Moments</a>
             <a href="/search">Search</a>
@@ -255,6 +256,19 @@ const jsonLd = {
         <span class="al-label">likes</span>
       </button>
       <div class="al-rule"></div>
+    </div>
+
+    <!-- Newsletter CTA -->
+    <div class="newsletter-cta">
+      <div class="nl-inner">
+        <p class="nl-title">Subscribe</p>
+        <p class="nl-desc">Get notified when new posts are published.</p>
+        <form class="nl-form" id="nlForm">
+          <input type="email" class="nl-input" id="nlEmail" placeholder="your@email.com" required />
+          <button type="submit" class="nl-btn">Subscribe</button>
+        </form>
+        <p class="nl-status" id="nlStatus"></p>
+      </div>
     </div>
 
     <!-- Bottom Comment Section -->
@@ -882,6 +896,29 @@ const jsonLd = {
     renderInlineComments();
   });
 
+  // Newsletter subscribe
+  var nlForm = document.getElementById('nlForm');
+  var nlEmail = document.getElementById('nlEmail');
+  var nlStatus = document.getElementById('nlStatus');
+  if (nlForm) {
+    nlForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var email = nlEmail.value.trim();
+      if (!email) return;
+      nlStatus.textContent = 'Subscribing...';
+      fetch(API + '/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      }).then(function(r) { return r.json(); })
+        .then(function(d) {
+          nlStatus.textContent = d.error ? d.error : 'Subscribed!';
+          if (!d.error) nlEmail.value = '';
+        })
+        .catch(function() { nlStatus.textContent = 'Failed. Please try again.'; });
+    });
+  }
+
   loadArticleLikes();
   loadBottomComments();
 
@@ -957,28 +994,33 @@ const jsonLd = {
   /* ===== Series Nav ===== */
   .series-nav {
     text-align: center;
-    margin: -0.5rem 0 1rem;
+    margin: 1.5rem 0 0.5rem;
   }
   .series-inner {
     display: inline-flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.5rem;
   }
   .series-badge {
-    font-size: 0.8rem;
-    padding: 0.25rem 0.75rem;
-    border: 1px solid var(--c-border, rgba(255,255,255,0.15));
-    border-radius: 999px;
-    color: var(--c-text-muted, #888);
+    font-size: 11px;
+    padding: 0;
+    border: none;
+    color: var(--c-text-dim, #666);
     text-decoration: none;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
   }
-  .series-badge:hover { color: var(--accent, #4ade80); border-color: var(--accent, #4ade80); }
+  .series-badge:hover { color: var(--accent, #4ade80); }
   .series-arrow {
     color: var(--c-text-muted, #888);
     text-decoration: none;
-    font-size: 1rem;
+    font-size: 14px;
+    padding: 6px 12px;
+    border: 1px solid var(--c-border, rgba(255,255,255,0.15));
+    border-radius: 4px;
+    transition: all 0.15s;
   }
-  .series-arrow:hover { color: var(--accent, #4ade80); }
+  .series-arrow:hover { color: var(--accent, #4ade80); border-color: var(--accent, #4ade80); }
 
   /* ===== Three-Column Grid ===== */
   .content-grid {
@@ -1327,6 +1369,35 @@ const jsonLd = {
   .al-label {
     font-size: 13px; font-weight: 500;
   }
+
+  /* ===== Newsletter CTA ===== */
+  .newsletter-cta {
+    max-width: 720px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  .nl-inner {
+    border: 1px solid var(--c-border, rgba(255,255,255,0.1));
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+  }
+  .nl-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; }
+  .nl-desc { font-size: 0.85rem; color: var(--c-text-muted, #888); margin-bottom: 1rem; }
+  .nl-form { display: flex; gap: 0.5rem; max-width: 400px; margin: 0 auto; }
+  .nl-input {
+    flex: 1; padding: 0.5rem 0.75rem; border-radius: 6px;
+    border: 1px solid var(--c-border, rgba(255,255,255,0.15));
+    background: transparent; color: var(--c-text, #e5e5e5); font-size: 0.85rem;
+  }
+  .nl-input:focus { border-color: var(--accent, #4ade80); outline: none; }
+  .nl-btn {
+    padding: 0.5rem 1rem; border-radius: 6px; border: none;
+    background: var(--accent, #4ade80); color: #000; font-weight: 600;
+    font-size: 0.85rem; cursor: pointer;
+  }
+  .nl-btn:hover { opacity: 0.9; }
+  .nl-status { font-size: 0.8rem; color: var(--c-text-muted); margin-top: 0.5rem; }
 
   /* ===== Bottom Comment Section ===== */
   .bottom-comments {

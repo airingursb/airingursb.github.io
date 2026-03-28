@@ -3,6 +3,7 @@ title: "AI 心理疗愈应用的探索与实现"
 date: 2024-11-29
 tags: ["tech"]
 description: ""
+cover: "https://i.typlog.com/airing/8267118669_370302.png?x-oss-process=style/l"
 ---
 
 ## 开篇：咨询来信及自我疗愈的思考

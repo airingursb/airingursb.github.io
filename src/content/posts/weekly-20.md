@@ -3,6 +3,7 @@ title: "月刊（第20期）：重启人生"
 date: 2023-04-02
 tags: ["weekly"]
 description: ""
+cover: "https://airing.ursb.me/images/blog/20230402165118.png"
 ---
 
 本篇是对二〇二三年三月生活的记录与思考。

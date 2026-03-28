@@ -3,6 +3,7 @@ title: "月刊（第28期）：AI 没有体验世界的能力"
 date: 2025-01-01
 tags: ["weekly"]
 description: ""
+cover: "https://i.typlog.com/airing/8264279749_315481.jpg?x-oss-process=style/l"
 ---
 
 本篇是对二〇二四年十一月至十二月的记录与思考。

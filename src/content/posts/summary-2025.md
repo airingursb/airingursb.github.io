@@ -3,6 +3,7 @@ title: "2025，全新旅途"
 date: 2026-02-15
 tags: ["annually"]
 description: ""
+cover: "https://airing.ursb.me/image/blog/wj30/IMG_7379.jpeg"
 ---
 
 自写年终总结以来，已是第八个年头，我离开了一直以来生活的城市，来到未知的国度。2024 年破碎之后的虚无感逐渐消散，取而代之的，是一种由一个个具体人和事搭建起来的、粗糙但坚实的秩序。

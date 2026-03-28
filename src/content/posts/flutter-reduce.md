@@ -3,6 +3,7 @@ title: "Flutter 产物分析与减包方案"
 date: 2021-05-01
 tags: ["tech"]
 description: ""
+cover: "https://airing.ursb.me/image/blog/media/16185655225058/16185655375361.jpg"
 ---
 
 在混合开发场景下，Flutter 的包增量略大一直是被大家诟病的一点，但 Google 官方明确表示了 Flutter 不会支持动态化，而且目前 Flutter SDK 官方还没有提供一套定制方案。因此想要瘦身，那么只能自己动手丰衣足食了。

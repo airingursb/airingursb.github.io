@@ -3,6 +3,7 @@ title: "月刊（第27期）：旅居"
 date: 2024-10-30
 tags: ["weekly"]
 description: ""
+cover: "https://i.typlog.com/airing/8269801518_539572.jpg?x-oss-process=style/l"
 ---
 
 本篇是对二〇二四年九月至十月的生活记录与思考。

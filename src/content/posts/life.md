@@ -3,6 +3,7 @@ title: "谈谈存在的价值与人生体验"
 date: 2021-07-11
 tags: ["tech"]
 description: ""
+cover: "https://airing.ursb.me/image/blog/20210711-05.jpeg"
 ---
 
 人生观问题是一个一切人反对一切人的战场，本文仅简单谈谈自己现阶段的观点。从两个问题来切入：

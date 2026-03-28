@@ -3,6 +3,7 @@ title: "月刊（第29期）：新生活"
 date: 2025-04-18
 tags: ["weekly"]
 description: ""
+cover: "https://i.typlog.com/airing/8255042074_972041.png?x-oss-process=style/l"
 ---
 
 本篇是对二〇二五年二月至四月的记录与思考。

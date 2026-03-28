@@ -3,6 +3,7 @@ title: "大厂自研跨端框架技术揭秘"
 date: 2023-02-25
 tags: ["tech"]
 description: ""
+cover: "https://airing.ursb.me/images/blog/20230225231814.png"
 ---
 
 ## 导言
