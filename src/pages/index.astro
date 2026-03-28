@@ -2221,6 +2221,20 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       var submitBtn = form.querySelector('.gb-submit');
       var pendingEl = document.getElementById('gbPending');
 
+      // --- User identity persistence (shared with PostLayout) ---
+      var USER_KEY = 'blog-user-identity';
+      function getSavedIdentity() {
+        try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
+      }
+      function saveIdentity(nickname, email) {
+        localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email }));
+      }
+      (function restoreGuestbookIdentity() {
+        var id = getSavedIdentity();
+        if (id.nickname) nameInput.value = id.nickname;
+        if (id.email) emailInput.value = id.email;
+      })();
+
       // Client-side rate limit: max 5 messages per 10 minutes
       var RATE_LIMIT = 5;
       var RATE_WINDOW = 10 * 60 * 1000;
@@ -2304,8 +2318,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         })
         .then(function (r) {
           if (!r.ok) throw new Error('Failed');
+          saveIdentity(name, email);
           msgInput.value = '';
-          emailInput.value = '';
           pendingEl.style.display = 'flex';
           setTimeout(function() { pendingEl.style.display = 'none'; }, 8000);
         })
