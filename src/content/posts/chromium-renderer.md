@@ -3,6 +3,7 @@ title: "Chromium 渲染流水线——字节码到像素的一生"
 date: 2022-10-16
 tags: ["tech"]
 description: ""
+featured: true
 ---
 
 ## 现代浏览器架构

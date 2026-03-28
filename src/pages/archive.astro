@@ -18,6 +18,8 @@ const postsByYear = posts.reduce((acc, post) => {
 
 const years = Object.keys(postsByYear).map(Number).sort((a, b) => b - a);
 
+const featuredPosts = posts.filter(p => p.data.featured);
+
 function formatDate(date: Date) {
   return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
 }
@@ -54,6 +56,34 @@ function getTagColor(tag: string) {
     </header>
 
     <main class="archive-main">
+      {featuredPosts.length > 0 && (
+        <section class="featured-section">
+          <div class="featured-inner">
+            <div class="year-label">
+              <h2 class="year-num">Featured</h2>
+              <div class="year-line"></div>
+            </div>
+            <div class="year-posts">
+              {featuredPosts.map(post => (
+                <a href={`/posts/${post.id}`} class="feed-item featured-item">
+                  <time class="fi-date">{formatDate(post.data.date)}</time>
+                  <div class="fi-body">
+                    <div class="fi-tags">
+                      {post.data.tags.map(tag => (
+                        <span style={`color: ${getTagColor(tag)}`}>{tag}</span>
+                      ))}
+                    </div>
+                    <h3 class="fi-title">{post.data.title}</h3>
+                    {post.data.description && (
+                      <p class="fi-desc">{post.data.description}</p>
+                    )}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
       <div class="two-col">
         <!-- Sidebar: year nav -->
         <aside class="year-sidebar">
@@ -168,6 +198,18 @@ function getTagColor(tag: string) {
   }
   .page-desc { font-size: 15px; color: var(--c-text-dim); }
 
+  /* Featured section */
+  .featured-section {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 48px 0;
+  }
+  .featured-inner { }
+  .featured-item {
+    border-left: 2px solid var(--accent);
+    padding-left: 12px;
+  }
+
   /* Two-column layout */
   .archive-main { padding: 0; }
   .two-col {
@@ -273,6 +315,7 @@ function getTagColor(tag: string) {
   .footer-links a:hover { color: var(--c-text); }
 
   @media (max-width: 768px) {
+    .featured-section { padding: 16px 20px 0; }
     .nav-inner { padding: 0 20px; }
     .header-inner { padding: 0 20px; }
     .two-col {

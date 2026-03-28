@@ -3,6 +3,7 @@ title: "游戏组件的一生: 从加载到上屏"
 date: 2025-05-17
 tags: ["tech"]
 description: ""
+featured: true
 ---
 
 ## 1. 小游戏容器与游戏引擎

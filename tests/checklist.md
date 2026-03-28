@@ -27,6 +27,11 @@
 - [ ] DOM: 存在 `.year-section` (按年分组)
 - [ ] DOM: 文章链接 `.feed-item` 数量 > 0
 
+## Archive — Featured
+
+- [ ] DOM: `.featured-section` exists when featured posts exist
+- [ ] DOM: `.featured-item` has left border
+
 ## Search (`/search/`)
 
 - [ ] GET `/search/` 返回页面
