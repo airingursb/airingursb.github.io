@@ -12,11 +12,20 @@ export async function getStaticPaths() {
       post,
       prevPost: idx > 0 ? { slug: allPosts[idx - 1].id, title: allPosts[idx - 1].data.title } : null,
       nextPost: idx < allPosts.length - 1 ? { slug: allPosts[idx + 1].id, title: allPosts[idx + 1].data.title } : null,
+      relatedPosts: (() => {
+        const primaryTag = post.data.tags[0];
+        return primaryTag
+          ? allPosts
+              .filter(p => p.id !== post.id && p.data.tags.includes(primaryTag))
+              .slice(0, 5)
+              .map(p => ({ slug: p.id, title: p.data.title }))
+          : [];
+      })(),
     },
   }));
 }
 
-const { post, prevPost, nextPost } = Astro.props;
+const { post, prevPost, nextPost, relatedPosts } = Astro.props;
 const { Content } = await render(post);
 ---
 
@@ -28,6 +37,7 @@ const { Content } = await render(post);
   cover={post.data.cover}
   prevPost={prevPost}
   nextPost={nextPost}
+  relatedPosts={relatedPosts}
 >
   <Content />
 </PostLayout>
