@@ -1,0 +1,871 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Flutter 产物分析与减包方案 | Airing</title><meta name="description" content><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta property="og:title" content="Flutter 产物分析与减包方案 | Airing"><meta property="og:description" content><meta property="og:type" content="article"><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/feed.xml"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-W604S49M4X');
+  </script><!-- Umami Analytics --><script defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script><!-- Cal.com Embed --><script type="text/javascript">
+    (function (C, A, L) {
+      let p = function (a, ar) { a.q.push(ar); };
+      let d = C.document;
+      C.Cal = C.Cal || function () {
+        let cal = C.Cal;
+        let ar = arguments;
+        if (!cal.loaded) {
+          cal.ns = {};
+          cal.q = cal.q || [];
+          d.head.appendChild(d.createElement("script")).src = A;
+          cal.loaded = true;
+        }
+        if (ar[0] === L) {
+          const api = function () { p(api, arguments); };
+          const namespace = ar[1];
+          api.q = api.q || [];
+          if (typeof namespace === "string") {
+            cal.ns[namespace] = api;
+            p(api, ar);
+          } else {
+            p(cal, ar);
+          }
+          return;
+        }
+        p(cal, ar);
+      };
+    })(window, "https://app.cal.com/embed/embed.js", "init");
+    Cal("init", { origin: "https://cal.com" });
+    Cal("ui", {
+      theme: "dark",
+      styles: { branding: { brandColor: "#f59e0b" } },
+      hideEventTypeDetails: false,
+      layout: "month_view"
+    });
+  </script><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"><script>
+    // Apply saved theme & mode before render to prevent flash
+    (function() {
+      var t = localStorage.getItem('blog-theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+      var m = localStorage.getItem('blog-mode');
+      if (m) document.documentElement.setAttribute('data-mode', m);
+    })();
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.DxaztcR2.css">
+<link rel="stylesheet" href="/_astro/_slug_@_@astro.CL322p-9.css"></head> <body>   <div class="post-page" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>2021年5月1日</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/archive" data-astro-cid-gjtny2mx>Archive</a> <a href="/feed.xml" data-astro-cid-gjtny2mx>RSS</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> </div> </header> <!-- Headline --> <div class="headline-section" data-astro-cid-gjtny2mx> <div class="headline-inner" data-astro-cid-gjtny2mx> <div class="headline-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="hl-tag" data-astro-cid-gjtny2mx>tech</a> </div> <h1 class="headline" data-astro-cid-gjtny2mx>Flutter 产物分析与减包方案</h1>  </div> </div>  <!-- Three-column: sidebar | content | comments --> <div class="content-grid" id="contentGrid" data-astro-cid-gjtny2mx> <aside class="sidebar-left" data-astro-cid-gjtny2mx> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Date</div> <div class="sb-value" data-astro-cid-gjtny2mx>2021/05/01</div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Tags</div> <div class="sb-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="sb-tag" data-astro-cid-gjtny2mx>#tech</a> </div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Author</div> <div class="sb-value" data-astro-cid-gjtny2mx>Airing</div> </div> <div class="sb-divider" data-astro-cid-gjtny2mx></div> <a href="/archive" class="sb-nav" data-astro-cid-gjtny2mx>&larr; All Posts</a> </aside> <article class="post-content" id="postContent" data-astro-cid-gjtny2mx>  <p>在混合开发场景下，Flutter 的包增量略大一直是被大家诟病的一点，但 Google 官方明确表示了 Flutter 不会支持动态化，而且目前 Flutter SDK 官方还没有提供一套定制方案。因此想要瘦身，那么只能自己动手丰衣足食了。</p>
+<p>所谓减包，前提条件是必须知道产物内容有什么？产物里有哪些部分可以减？被减掉的部分我们要怎么加回来？因此本文将围绕“产物分析”与“减包方案”两个主题来分别论述 iOS 与 Android 两端的 Flutter 减包原理与方案。</p>
+<p>那么，先从 iOS 端开始吧。</p>
+<blockquote>
+<p>注：本文数据与代码片段均来源于一个基于 Flutter 1.17.1 的 Flutter Module 在 Release（AOT Assembly）Mode 下构建后的产物，未经过任何压缩。</p>
+</blockquote>
+<h2 id="1-ios-篇">1. iOS 篇</h2>
+<h3 id="11-产物构成">1.1 产物构成</h3>
+<p>我们知道使用 <code>flutter build ios-framework</code> 即可将一个 Flutter  Module 构建成一个 Framework 供 iOS 宿主集成，这种集成方式我们称之为产物集成，这么这个“产物”就是 Flutter 产物，它包含以下几个部分组成：</p>
+<ul>
+<li>
+<p>App.framework
+App: 这个是 Dart 业务代码 AOT 的产物</p>
+</li>
+<li>
+<p>flutter_assets: Flutter 静态资源文件</p>
+</li>
+<li>
+<p>Flutter.framework
+Flutter: Flutter Engine 的编译产物</p>
+</li>
+<li>
+<p>icudtl.dat: 国际化支持数据文件</p>
+</li>
+</ul>
+<p>打出产物之后，我们在终端可以显示各个部分的体积，最后整理一下 iOS 端 Flutter 产物结构如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16185655375361.jpg" alt="">> 需要注意的是 Mac Finder 中显示的体积会偏大，其换算倍率是 1000 而非 1024，需要我们用命令行拿到显示的体积之后再手动计算得到真实体积。</p>
+<blockquote>
+<p>此外，Engine 产物的体积我们选用的是 profile 模式（arm64+arm32）下的体积，因 Flutter 1.17.1 release 存在 bug，bitcode 无法被压缩，导致体积有 351.47 MB，影响分析。具体原因可见：<a href="https://github.com/flutter/flutter/issues/45519">Flutter app size is too big · Issue #45519</a>。</p>
+</blockquote>
+<h3 id="12-减包方案">1.2 减包方案</h3>
+<p>减包的基本方法有二：</p>
+<ul>
+<li>删产物：把产物中没用的部分直接删掉</li>
+<li>挪产物：把可以暂时移除的部分挪走改变为远端下发，同时需要修改产物加载逻辑，使 Flutter 支持动态加载远端下发的部分产物</li>
+</ul>
+<p>我们针对前文中总结的产物结构一一来实现产物减包，首先是 App.framework 中的 App 部分。</p>
+<p>1.2.1 App.framework/App
+在说方案之前，我们先看看 App.framework 下的 App 是如何构建而来的，如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16185657344614.jpg" alt="">首先，frontend_server 会将 Dart 源码编译成一个中间产物 dill，我们通过运行以下命令也可以实现通过的编译效果：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16185657004699.jpg" alt="">app.dill 是二进制字节码，我们通过 string app.dill 可以发现它其实就是 Dart 代码合并之后的产物：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16185657078713.jpg" alt="">而 Dart 在开发模式下提供的 Hot Reload 其实也正是通过将变动的代码通过 frontend_server 编译得到新增的 kernel（app.dill.incremental.dill），通过 WS 提交给 Dart VM Update 之后来进行整棵树的 Rebuild，从而实现 Hot Reload。</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16185657144650.jpg" alt="">之后会通过两个平台侧的 gen_snapshot 进行编译得到 IL 指令集和优化代码，最后输出汇编产物。汇编产物通过 xcrun 工具得到单架构的 App 产物，最后经过 lipo 得到最后双 ARM 架构的 App 产物。所以，我们这里展示的 App.framework 下的 App 的体积是双架构的。</p>
+<blockquote>
+<p>ARMv7: iPhone 5s 之前的 iOS 设备。
+ARM64: iPhone 5s 及其之后的 iOS 设备。</p>
+</blockquote>
+<p>接着，我们从删产物和挪产物两个层面来讲解如何减少该产物的体积。</p>
+<p>删产物
+<img src="https://airing.ursb.me/image/blog/media/16185655225058/16185655686811.jpg" alt="">这部分体积是 Dart 代码 AOT 之后的产物，体积较大，是我们减包过程中重点关照对象。</p>
+<p>按照之前说的减包基本方法，我们首先试试“删产物”，看看有什么可以直接删掉的，使用 Flutter 提供的体积分析工具可以直接得到体积图：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16185656005975.jpg" alt="">我们发现确实有两个库业务中没有用到，直接删掉依赖即可。</p>
+<p>除此之外还有一些优化，可以帮助我们减少代码体积：</p>
+<ul>
+<li>配置 linter 来禁止不合理的语法：如显示类型转换等，编译前会追加大量的 try catch 导致代码体积变大。</li>
+<li>混淆 Dart 代码： <strong>0.75MB</strong> (2.5%) ↓</li>
+</ul>
+<p>此外，我们还可以删除一些符号来达到减包效果</p>
+<ul>
+<li>不使用堆栈跟踪符号：<strong>1.8MB</strong> (6.2%) ↓</li>
+<li>删除 dSYM 符号表信息文件：<strong>5.8MB</strong> (20%) ↓</li>
+</ul>
+<blockquote>
+<p>注：dSYM 是保存 16 进制函数地址映射信息的中转文件，包含我们调试的 symbols，用来分析 crash report 文件，解析出正确的错误函数信息。</p>
+</blockquote>
+<p>挪产物
+接着，我们再看看如何实现“挪产物”，那就需要对 App.framework/App 中的内容做具体分析了。我们之前说它是 Dart 代码 AOT 之后的产物，没错，因为它主要由四个 AOT 快照库（snapshot）组成：</p>
+<ul>
+<li><strong>kDartIsolateSnapshotData</strong>: Isolate 快照数据，这是 Dart 堆的初始状态，并包含 isolate 专属的信息。</li>
+<li><strong>kDartIsolateSnapshotInstructions</strong>: Isolate 快照指令，包含由 Dart isolate 执行的 AOT 指令。</li>
+<li><strong>kDartVmSnapshotData</strong>: Dart VM 快照数据，isolate 之间共享的 Dart 堆的初始状态。</li>
+<li><strong>kDartVmSnapshotInstructions</strong>: Dart VM 快照指令，包含 VM 中所有 Dart isolate 之间共享的通用例程的 AOT 指令。</li>
+</ul>
+<blockquote>
+<p>详情可以看官方 Wiki 中的介绍：<a href="https://github.com/flutter/flutter/wiki/Flutter-engine-operation-in-AOT-Mode">https://github.com/flutter/flutter/wiki/Flutter-engine-operation-in-AOT-Mode</a></p>
+</blockquote>
+<p>同一个进程里可以有很多个 Isolate，但两个 Isolate 的堆是不能共享的。Dart VM 开发团队早就考虑到了交互的问题，于是就设计了一个 VM Isolate，它是运行在 UI 线程中 Isolate 之间交互的桥梁。Dart VM 中 isolate 之间的关系如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16185656246056.jpg" alt="">因此 isolate 对应的 AOT Snapshot 就是 kDartIsolateSnapshot，其又分为指令段和数据段；VM Isolate 对应的 AOT Snapshot 就是 kDartVmSnapshot，其也分为指令段和数据段。</p>
+<p>根据以上分析，App.framework 的结构我们可以进一步拆分成下图所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16185656181856.jpg-h600.jpg" alt="">我们知道 <strong>App Store 审核条例不允许动态下发可执行二进制代码</strong>，因此对于以上 4 个快照，我们只能下发数据段的内容（kDartIsolateSnapshotData 与 kDartVmSnapshotData），而指令段的内容（kDartIsolateSnapshotInstructions 与 kDartVmSnapshotInstructions）则依然要留在产物里。</p>
+<p>那么，我们要在哪里分离这个快照库呢？</p>
+<p>在 Dart VM 启动时的数据加载阶段，如下图所示，修改 settings 里面快照库的读取路径即可：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16185657665316.jpg" alt="">修改之后的具体实现本文不做讲解，在 <a href="https://mp.weixin.qq.com/s/mhObltbb3TKTUqb9Rs67-Q">《Q 音直播 Flutter 包裁剪方案 (iOS)》</a> 一文有详细的代码修改介绍。</p>
+<p>1.2.2 App.framework/flutter_assets
+<img src="https://airing.ursb.me/image/blog/media/16185655225058/16185657794868.jpg" alt="">flutter_assets 是 Flutter Module 中使用到的本地静态资源，对于这部分我们不可能“删”的只能“挪”，我们有两种方案来<strong>挪产物</strong>——常规方案依然是在 Dart VM 启动时的数据加载阶段来修改 settings 里的 flutter_assets 路径，来做到远程加载，常规情况下我们使用这种方式就可以移除 flutter_assets 了。</p>
+<p>那么有没有什么方式可以不修改 Flutter Engine 的代码移除 flutter_assets？有的，可以使用 <strong>CDN 图片 + 磁盘缓存 + 预加载</strong>的组合方案实现同样的效果，步骤如下：</p>
+<ul>
+<li>封装一个 Image 组件，根据编译模式选择使用本地图还是网络图，即开发环境下使用本地图快速开发，生产环境下使用 CDN 图。</li>
+<li>改造 CI，持续集成时移除 flutter_assets 并发布包内的图片到 CDN 上。</li>
+<li>扩展增强 Image 组件的能力，引入 cached_network_image，支持磁盘缓存。</li>
+<li>Flutter 模块加载时，使用 <code>precacheImage</code> 方法对 CDN 图片进行预加载。</li>
+</ul>
+<p>这套方案稍显麻烦了一些，而且还要区分环境，因此还是建议修改 Flutter Engine 来实现远端加载 flutter_assets。</p>
+<p>1.2.3 Flutter.framework/icudtl.dat
+<img src="https://airing.ursb.me/image/blog/media/16185655225058/16185657968235.jpg" alt="">icudtl.dat 是国际化支持数据文件，不建议直接删掉，而是同上述<strong>挪产物</strong>的方案一样，在 Dart VM 启动时的数据加载阶段修改 settings 里的 icudtl.dat 路径（<code>icu_data_path</code>）来实现远端加载：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16186330520961.jpg" alt="">1.2.4 Flutter.framework/Flutter
+<img src="https://airing.ursb.me/image/blog/media/16185655225058/16186330594150.jpg" alt="">引擎修改
+这一部分是 Flutter Engine （C++）的编译后的二进制产物，是产物里占据体积最大的部分，目前我们参考字节跳动的分享<a href="https://coffee.pmcaff.com/article/13376800_j">《如何缩减接近 50% 的 Flutter 包体积》</a>，可优化的部分目前有以下两点：</p>
+<ul>
+<li><strong>编译优化</strong></li>
+<li><strong>引擎裁剪</strong></li>
+</ul>
+<p>Flutter Engine 使用 LLVM 进行编译，其中链接时优化（LTO）有一个 Clang Optimization Level 编译参数，如下图所示（在 buildroot 里）:</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16186331071422.jpg" alt="">我们将这里 iOS 平台的 Engine 编译参数<strong>从 -Os 参数改成使用 -Oz 参数</strong>，最终可以减小 <strong>700 KB</strong> 左右体积。</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16186331220668.jpg" alt="">而引擎裁剪也有两个部分可以裁剪：</p>
+<ul>
+<li><strong>Skia</strong>: 去掉一些参数，在不影响性能的情况下可以减少 <strong>200KB</strong> 的体积。</li>
+<li><strong>BoringSSL</strong>: 若使用客户端代理请求，则不需要 Dart HttpClient 模块，这部分可以完全移除，且代理请求会比 HttpClient 的性能更好，这部分可以减少 <strong>500KB</strong> 的体积</li>
+</ul>
+<blockquote>
+<p>附: 在 <a href="https://github.com/flutter/flutter/issues/40345">https://github.com/flutter/flutter/issues/40345</a> 中提及了另一个角度的编译优化，即函数编译优化。同一个加法函数，Dart 实现编译之后有 36 条指令，而 Objective-C 只有 11 条指令，36 条指令中有头部 8 条和尾部 6 条的对齐指令，是可以移除的，中间有 5 条栈溢出检查也是可以移除的，**即 Dart 编译后的 36 条指令可以优化成 13 条指令。**这里需要等 Google 官方来进行优化。</p>
+</blockquote>
+<p>引擎编译
+修改完之后我们需要编译引擎，首先先介绍一下 Flutter Engine 编译时需要用到的工具：</p>
+<ul>
+<li>gclient：源码库管理工具，原本是 chromium 使用的，它可以管理源码以及对应的依赖，通过 gclient 来获取编译需要所有源码和依赖。</li>
+<li>gn：负责生成 ninja 编译需要的 build 文件，特别像 Flutter 这种跨多种操作系统平台跨多种 CPU 架构的，就需要通过 gn 生成很多套不同的 ninja build 文件。</li>
+<li>ninja：编译工具，负责最终的编译工作。</li>
+</ul>
+<blockquote>
+<p>编译工具介绍具体可见 Flutter 官方 Wiki：<a href="https://github.com/flutter/flutter/wiki/Setting-up-the-Engine-development-environment">Setting up the Engine development environment - Flutter wiki</a></p>
+</blockquote>
+<p>具体编译分为三步，首先创建一个 .gclient 文件，来拉取源码和所有对应的依赖，如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16186331302188.jpeg" alt="">第二步，执行 <code>gclient sync</code> 下载依赖。</p>
+<p>需要注意的是以上几点修改都是依赖（如 buildroot，skia 等）而非源码，因此需要我们 fork 一份 flutter engine，然后先改好依赖之后，获取对应依赖的 commit 号再填进 engine 的 DEPS 文件里，之后提交代码之后获取 engine 仓库最新的 commit 号，填进 .gclient 文件中。</p>
+<p>第三步，使用 ninja 配合 gn 生成的配置文件来编译 engine，想编译什么平台架构的 engine 就使用 gn 生成一份配置，之后 ninja 执行编译即可。如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16186331505464.jpg" alt="">最终，我们就能得到若干份（不同平台架构）的定制 Engine，而使用它们也很简单，直接替换本地 Flutter SDK 中的 Engine 即可。</p>
+<p>经过以上几步针对各个产物内容的减包处理，我们最终的产物架构如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16186331663650.jpg" alt="">### 1.3 减包成效
+iOS App 的体积查看分为以下几种方法，得到的大小都是不同的：</p>
+<p>第一种方式是查看本地构建 ipa 之后的分析报告，分析报告里会提供两个体积，但是需要注意的是它们都是<strong>未加密</strong>的：</p>
+<ul>
+<li>安装包体积：即未加密的，下载大小</li>
+<li>解压后的体积：即未加密的，占用体积</li>
+</ul>
+<p>但是上传 App Store 之后都是会加密的，因此想要知道用户最后看到的体积，需要上传 App Store 查看报告，这里的报告同样会提供两个体积，如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16186332280907.jpg" alt="">分别是：</p>
+<ul>
+<li>Download Size</li>
+<li>Install Size</li>
+</ul>
+<p>用户最后在 App Store 看到的是 Install Size。</p>
+<blockquote>
+<p>注：但有一种情况例外，即使用 Web 浏览器登录 App Store 去查看 App 的体积，那个时候展示的体积的 Download Size，因为 Apple 认为你此刻关注的并不是安装占用体积。</p>
+</blockquote>
+<p>我们使用空白项目作为宿主工程上传 App Store 查看 Install Size，发现 App 的体积<strong>从 18.7MB 减少到了 11.8MB</strong>。</p>
+<h2 id="2-android-篇">2. Android 篇</h2>
+<p>Android 侧减包方案则较为简单，因为没有 App Store 的审核条例限制，可以粗暴地挪走全部产物并动态下发。我们依然从产物构成、减包方案、减包成效来看看 Android 侧的 Flutter 减包。</p>
+<h3 id="21-产物构成">2.1 产物构成</h3>
+<p>首先我们来看看 Android 端 Flutter Module 产物（Release）编译流程，和 iOS 一样，依然是 Dart 源码与 Engine 两部分产物构成：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16186332656563.jpg" alt="">最终产物 flutter.gradle 里面包括了：</p>
+<ul>
+<li>libapp.so</li>
+<li>flutter.jar</li>
+</ul>
+<p>其中，flutter.jar 又含有 libflutter.so，icudtl.dat 与一些 Java 文件，而 libflutter.so 即引擎产物，icudtl.dat 依然是国际化支持文件，最后一些 Java 是暴露给业务侧调用 Flutter 的接口。</p>
+<p>那么关键产物构成如下表所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16186332751892.jpg" alt="">### 2.2 减包方案
+libflutter.so 是引擎产物，我们依然可以做裁剪定制，但是必要性已经不大了，因为 Flutter 产物在 Android 端可以做到完全动态下发。步骤如下：</p>
+<ul>
+<li>挪走 libapp.so，libflutter.so，flutter_assets 等文件，发布到云端</li>
+<li>通过定制 flutter.jar 中的 FlutterLoader.java 逻辑，来加载自定义位置的库路径，从而实现动态加载</li>
+</ul>
+<p>具体代码不再演示。</p>
+<h3 id="23-减包成效">2.3 减包成效</h3>
+<p>使用空白工程作为宿主，测量减包前后 APK 的体积大小，可以发现 6.2MB 的 Flutter 产物体积可以完全减去。</p>
+<p><img src="https://airing.ursb.me/image/blog/media/16185655225058/16186337044440.jpg-375width.jpg" alt="">以上便是双端的 Flutter 减包方案，内容相对简单，都是参考前人的脚步来一步步实践得到的效果，因此强烈建议读者延伸阅读一下文末的两篇文章，以作为进一步学习来加深了解。</p>
+<blockquote>
+<p>参考文章：</p>
+</blockquote>
+<blockquote>
+<ul>
+<li><a href="https://mp.weixin.qq.com/s/mhObltbb3TKTUqb9Rs67-Q">《Q 音直播 Flutter 包裁剪方案 (iOS)》</a></li>
+<li><a href="https://coffee.pmcaff.com/article/13376800_j">《如何缩减接近 50% 的 Flutter 包体积》</a></li>
+</ul>
+</blockquote>  </article> <!-- Right column: relative container for absolute-positioned cards --> <aside class="comment-rail" id="commentRail" data-astro-cid-gjtny2mx> <div class="cr-header" data-astro-cid-gjtny2mx> <span class="cr-label" data-astro-cid-gjtny2mx>Comments</span> <button class="cr-clear" id="clearAllComments" title="Clear all" data-astro-cid-gjtny2mx>&#x2715;</button> </div> <div class="cr-cards" id="commentCards" data-astro-cid-gjtny2mx> <!-- Cards positioned absolutely here --> </div> </aside> </div> <!-- FAB --> <button class="fab-comment" id="fabComment" aria-label="Add comment" data-astro-cid-gjtny2mx> <svg width="14" height="14" viewBox="0 0 14 14" fill="none" data-astro-cid-gjtny2mx> <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-astro-cid-gjtny2mx></path> </svg> </button> <!-- Comment input popover (desktop) — now with nickname/email --> <div class="comment-input-popover" id="commentPopover" data-astro-cid-gjtny2mx> <div class="cip-header" data-astro-cid-gjtny2mx> <span class="cip-selected" id="cipSelectedText" data-astro-cid-gjtny2mx></span> </div> <div class="cip-identity" data-astro-cid-gjtny2mx> <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="cip-input" id="cipEmail" placeholder="Email (for Gravatar)" data-astro-cid-gjtny2mx> </div> <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3" data-astro-cid-gjtny2mx></textarea> <div class="cip-actions" data-astro-cid-gjtny2mx> <button class="cip-cancel" id="cipCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="cip-submit" id="cipSubmit" data-astro-cid-gjtny2mx>Comment</button> </div> </div> <!-- Mobile bottom sheet --> <div class="mobile-sheet-overlay" id="mobileOverlay" data-astro-cid-gjtny2mx></div> <div class="mobile-sheet" id="mobileSheet" data-astro-cid-gjtny2mx> <div class="ms-handle" data-astro-cid-gjtny2mx></div> <div class="ms-quote" id="msQuote" data-astro-cid-gjtny2mx></div> <div class="ms-body" id="msBody" data-astro-cid-gjtny2mx></div> <div class="ms-author" id="msAuthor" data-astro-cid-gjtny2mx></div> <div class="ms-time" id="msTime" data-astro-cid-gjtny2mx></div> <button class="ms-delete" id="msDelete" data-astro-cid-gjtny2mx>Delete Comment</button> </div> <!-- Article Like --> <div class="article-like-section" data-astro-cid-gjtny2mx> <div class="al-rule" data-astro-cid-gjtny2mx></div> <button class="article-like-btn" id="articleLikeBtn" data-astro-cid-gjtny2mx> <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22" data-astro-cid-gjtny2mx> <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none" data-astro-cid-gjtny2mx></path> </svg> <span class="al-count" id="articleLikeCount" data-astro-cid-gjtny2mx>0</span> <span class="al-label" data-astro-cid-gjtny2mx>likes</span> </button> <div class="al-rule" data-astro-cid-gjtny2mx></div> </div> <!-- Bottom Comment Section --> <section class="bottom-comments" id="bottomComments" data-astro-cid-gjtny2mx> <div class="bc-inner" data-astro-cid-gjtny2mx> <div class="bc-header" data-astro-cid-gjtny2mx> <h2 class="bc-title" data-astro-cid-gjtny2mx>Comments</h2> <span class="bc-count" id="bcCount" data-astro-cid-gjtny2mx>0 comments</span> </div> <div class="bc-thread" id="bcThread" data-astro-cid-gjtny2mx> <!-- Comments rendered by JS --> </div> <div class="bc-compose" data-astro-cid-gjtny2mx> <div class="bc-compose-avatar" data-astro-cid-gjtny2mx> <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=identicon&s=80" alt="" class="bc-avatar-img" data-astro-cid-gjtny2mx> </div> <div class="bc-compose-form" data-astro-cid-gjtny2mx> <div class="bc-compose-fields" data-astro-cid-gjtny2mx> <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="bc-input" id="bcEmail" placeholder="Email (for Gravatar, not shown)" data-astro-cid-gjtny2mx> </div> <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4" data-astro-cid-gjtny2mx></textarea> <div class="bc-compose-footer" data-astro-cid-gjtny2mx> <span class="bc-hint" data-astro-cid-gjtny2mx>Markdown supported</span> <button class="bc-submit" id="bcSubmit" data-astro-cid-gjtny2mx>Submit</button> </div> </div> </div> </div> </section> <footer class="page-footer" data-astro-cid-gjtny2mx> <div class="footer-inner" data-astro-cid-gjtny2mx> <div class="footer-rule" data-astro-cid-gjtny2mx></div> <div class="footer-bar" data-astro-cid-gjtny2mx> <a href="/" data-astro-cid-gjtny2mx>&larr; Home</a> <span class="footer-copy" data-astro-cid-gjtny2mx>&copy; Airing</span> <a href="/archive" data-astro-cid-gjtny2mx>Archive &rarr;</a> </div> </div> </footer> </div>  <!-- Theme Switcher --> <div class="theme-switcher" id="themeSwitcher"> <button class="mode-toggle" id="modeToggle" aria-label="Toggle light/dark mode"> <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"></circle> <line x1="8" y1="0.5" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="8" y1="13.5" x2="8" y2="15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="0.5" y1="8" x2="2.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="13.5" y1="8" x2="15.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="2.7" x2="4.1" y2="4.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="11.9" x2="13.3" y2="13.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="13.3" x2="4.1" y2="11.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="4.1" x2="13.3" y2="2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> </svg> <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none"> <path d="M13.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </svg> </button> <button class="theme-toggle" id="themeToggle" aria-label="Switch accent color"> <svg width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"></circle> <circle cx="8" cy="8" r="3" fill="currentColor"></circle> </svg> </button> <div class="theme-dots" id="themeDots"> <button class="theme-dot" data-theme="green" style="--dot-color:#4ade80" title="Green"></button> <button class="theme-dot" data-theme="blue" style="--dot-color:#60a5fa" title="Blue"></button> <button class="theme-dot" data-theme="purple" style="--dot-color:#a78bfa" title="Purple"></button> <button class="theme-dot" data-theme="amber" style="--dot-color:#fbbf24" title="Amber"></button> <button class="theme-dot" data-theme="rose" style="--dot-color:#fb7185" title="Rose"></button> <button class="theme-dot" data-theme="cyan" style="--dot-color:#22d3ee" title="Cyan"></button> </div> </div> <script>
+    (function() {
+      var toggle = document.getElementById('themeToggle');
+      var dots = document.getElementById('themeDots');
+      var switcher = document.getElementById('themeSwitcher');
+      var modeToggle = document.getElementById('modeToggle');
+      var open = false;
+
+      // Mode toggle (light/dark)
+      function updateModeIcon() {
+        var isLight = document.documentElement.getAttribute('data-mode') === 'light';
+        switcher.classList.toggle('light-mode', isLight);
+      }
+      modeToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var current = document.documentElement.getAttribute('data-mode');
+        var next = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-mode', next);
+        localStorage.setItem('blog-mode', next);
+        updateModeIcon();
+      });
+      updateModeIcon();
+
+      // Color theme toggle
+      toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        open = !open;
+        dots.classList.toggle('active', open);
+        toggle.classList.toggle('active', open);
+      });
+
+      dots.addEventListener('click', function(e) {
+        var btn = e.target.closest('.theme-dot');
+        if (!btn) return;
+        var theme = btn.dataset.theme;
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('blog-theme', theme);
+        dots.querySelectorAll('.theme-dot').forEach(function(d) {
+          d.classList.toggle('selected', d.dataset.theme === theme);
+        });
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!switcher.contains(e.target) && open) {
+          open = false;
+          dots.classList.remove('active');
+          toggle.classList.remove('active');
+        }
+      });
+
+      // Mark current theme
+      var current = localStorage.getItem('blog-theme') || 'green';
+      dots.querySelectorAll('.theme-dot').forEach(function(d) {
+        d.classList.toggle('selected', d.dataset.theme === current);
+      });
+    })();
+  </script> </body> </html> <script>
+(function() {
+  var API = 'https://chat.ursb.me';
+  var POST_SLUG = location.pathname.replace(/^\/posts\//, '').replace(/\/$/, '');
+  var USER_KEY = 'blog-user-identity';
+
+  var postContent = document.getElementById('postContent');
+  var contentGrid = document.getElementById('contentGrid');
+  var commentRail = document.getElementById('commentRail');
+  var commentCards = document.getElementById('commentCards');
+  var fab = document.getElementById('fabComment');
+  var popover = document.getElementById('commentPopover');
+  var cipText = document.getElementById('cipSelectedText');
+  var cipNickname = document.getElementById('cipNickname');
+  var cipEmailInput = document.getElementById('cipEmail');
+  var cipArea = document.getElementById('cipTextarea');
+  var cipCancel = document.getElementById('cipCancel');
+  var cipSubmit = document.getElementById('cipSubmit');
+  var clearAll = document.getElementById('clearAllComments');
+  var mobileOverlay = document.getElementById('mobileOverlay');
+  var mobileSheet = document.getElementById('mobileSheet');
+  var msQuote = document.getElementById('msQuote');
+  var msBody = document.getElementById('msBody');
+  var msAuthor = document.getElementById('msAuthor');
+  var msTime = document.getElementById('msTime');
+  var msDelete = document.getElementById('msDelete');
+
+  // Bottom comments
+  var bcThread = document.getElementById('bcThread');
+  var bcCount = document.getElementById('bcCount');
+  var bcNickname = document.getElementById('bcNickname');
+  var bcEmail = document.getElementById('bcEmail');
+  var bcTextarea = document.getElementById('bcTextarea');
+  var bcSubmit = document.getElementById('bcSubmit');
+  var bcComposeAvatar = document.getElementById('bcComposeAvatar');
+
+  // Article like
+  var articleLikeBtn = document.getElementById('articleLikeBtn');
+  var articleLikeCount = document.getElementById('articleLikeCount');
+
+  var pendingRange = null;
+  var activeMobileCommentId = null;
+  var inlineComments = [];
+  var bottomComments = [];
+
+  function isMobile() { return window.innerWidth <= 1100; }
+
+  // --- User identity persistence ---
+  function getSavedIdentity() {
+    try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveIdentity(nickname, email) {
+    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email }));
+  }
+  function restoreIdentity() {
+    var id = getSavedIdentity();
+    if (id.nickname) {
+      cipNickname.value = id.nickname;
+      bcNickname.value = id.nickname;
+    }
+    if (id.email) {
+      cipEmailInput.value = id.email;
+      bcEmail.value = id.email;
+      updateComposeAvatar(id.email);
+    }
+  }
+
+  function gravatarUrl(email) {
+    return 'https://gravatar.com/avatar/' + email.trim().toLowerCase() + '?d=identicon&s=80';
+  }
+
+  function updateComposeAvatar(email) {
+    if (email) bcComposeAvatar.src = gravatarUrl(email);
+  }
+
+  // Debounced avatar update on email input
+  var avatarTimer;
+  bcEmail.addEventListener('input', function() {
+    clearTimeout(avatarTimer);
+    avatarTimer = setTimeout(function() { updateComposeAvatar(bcEmail.value); }, 500);
+  });
+
+  // --- API helpers ---
+  function apiGet(path) {
+    return fetch(API + path, { headers: { 'Origin': location.origin } }).then(function(r) { return r.json(); });
+  }
+  function apiPost(path, body) {
+    return fetch(API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); });
+  }
+  function apiDelete(path) {
+    return fetch(API + path, { method: 'DELETE' }).then(function(r) { return r.json(); });
+  }
+
+  // =====================================================================
+  // INLINE (HIGHLIGHT) COMMENTS — right rail
+  // =====================================================================
+
+  function wrapRange(range, id) {
+    var mark = document.createElement('mark');
+    mark.className = 'comment-highlight';
+    mark.dataset.commentId = id;
+    try { range.surroundContents(mark); }
+    catch(e) {
+      var fragment = range.extractContents();
+      mark.appendChild(fragment);
+      range.insertNode(mark);
+    }
+    return mark;
+  }
+
+  function restoreHighlights() {
+    inlineComments.forEach(function(c) {
+      if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
+      var searchText = c.selected_text;
+      if (!searchText) return;
+      var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
+      var node;
+      while (node = walker.nextNode()) {
+        var idx = node.textContent.indexOf(searchText);
+        if (idx === -1) continue;
+        var range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + searchText.length);
+        wrapRange(range, c.id);
+        break;
+      }
+    });
+  }
+
+  function removeHighlight(id) {
+    var marks = postContent.querySelectorAll('mark[data-comment-id="' + id + '"]');
+    marks.forEach(function(mark) {
+      var parent = mark.parentNode;
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+      parent.removeChild(mark);
+      parent.normalize();
+    });
+  }
+
+  function offsetFromGrid(el) {
+    var top = 0;
+    while (el && el !== contentGrid) { top += el.offsetTop; el = el.offsetParent; }
+    return top;
+  }
+
+  function layoutCards() {
+    var cards = commentCards.querySelectorAll('.cm-card');
+    if (!cards.length) return;
+    var railOffset = offsetFromGrid(commentRail);
+    var positions = [];
+    cards.forEach(function(card) {
+      var id = card.dataset.commentId;
+      var mark = postContent.querySelector('mark[data-comment-id="' + id + '"]');
+      var desiredTop = 0;
+      if (mark) desiredTop = offsetFromGrid(mark) - railOffset;
+      positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
+    });
+    positions.sort(function(a, b) { return a.desired - b.desired; });
+    var GAP = 8, nextAvailable = 0;
+    positions.forEach(function(p) {
+      var top = Math.max(p.desired, nextAvailable);
+      p.card.style.top = top + 'px';
+      nextAvailable = top + p.height + GAP;
+    });
+    commentCards.style.minHeight = nextAvailable + 'px';
+  }
+
+  function renderInlineComments() {
+    commentCards.innerHTML = '';
+    clearAll.style.display = inlineComments.length ? '' : 'none';
+
+    inlineComments.forEach(function(c) {
+      var card = document.createElement('div');
+      card.className = 'cm-card';
+      card.dataset.commentId = c.id;
+      var mark = postContent.querySelector('mark[data-comment-id="' + c.id + '"]');
+
+      var time = new Date(c.created_at);
+      var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+        + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      card.innerHTML =
+        '<div class="cm-card-author">' +
+          '<img src="' + gravatarUrl(c.email) + '" class="cm-card-avatar" />' +
+          '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
+        '</div>' +
+        '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
+        '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
+        '<div class="cm-card-footer">' +
+          '<span class="cm-card-time">' + timeStr + '</span>' +
+          '<button class="cm-card-delete" data-id="' + c.id + '">&times;</button>' +
+        '</div>';
+
+      card.addEventListener('mouseenter', function() {
+        if (mark) mark.classList.add('highlight-active');
+        card.classList.add('cm-card-active');
+      });
+      card.addEventListener('mouseleave', function() {
+        if (mark) mark.classList.remove('highlight-active');
+        card.classList.remove('cm-card-active');
+      });
+      card.addEventListener('click', function(e) {
+        if (e.target.classList.contains('cm-card-delete')) return;
+        if (mark) {
+          mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          mark.classList.add('highlight-flash');
+          setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1000);
+        }
+      });
+      if (mark) {
+        mark.addEventListener('mouseenter', function() { card.classList.add('cm-card-active'); mark.classList.add('highlight-active'); });
+        mark.addEventListener('mouseleave', function() { card.classList.remove('cm-card-active'); mark.classList.remove('highlight-active'); });
+        mark.addEventListener('click', function(e) {
+          if (!isMobile()) return;
+          e.preventDefault(); e.stopPropagation();
+          openMobileSheet(c);
+        });
+      }
+
+      commentCards.appendChild(card);
+
+      card.querySelector('.cm-card-delete').addEventListener('click', function(e) {
+        e.stopPropagation();
+        apiDelete('/api/inline-comments/' + c.id).then(function() {
+          removeHighlight(c.id);
+          inlineComments = inlineComments.filter(function(x) { return x.id !== c.id; });
+          renderInlineComments();
+        });
+      });
+    });
+
+    requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
+  }
+
+  // --- Mobile bottom sheet ---
+  function openMobileSheet(comment) {
+    activeMobileCommentId = comment.id;
+    msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
+    msBody.textContent = comment.comment;
+    msAuthor.textContent = comment.nickname;
+    var time = new Date(comment.created_at);
+    msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+      + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    mobileOverlay.classList.add('active');
+    mobileSheet.classList.add('active');
+  }
+  function closeMobileSheet() {
+    mobileOverlay.classList.remove('active');
+    mobileSheet.classList.remove('active');
+    activeMobileCommentId = null;
+  }
+  mobileOverlay.addEventListener('click', closeMobileSheet);
+  msDelete.addEventListener('click', function() {
+    if (!activeMobileCommentId) return;
+    apiDelete('/api/inline-comments/' + activeMobileCommentId).then(function() {
+      removeHighlight(activeMobileCommentId);
+      inlineComments = inlineComments.filter(function(x) { return x.id !== activeMobileCommentId; });
+      closeMobileSheet();
+      renderInlineComments();
+    });
+  });
+
+  // --- FAB: show on text selection ---
+  fab.style.display = 'none';
+  popover.style.display = 'none';
+
+  document.addEventListener('mouseup', function(e) {
+    if (popover.style.display !== 'none') return;
+    if (isMobile()) { fab.style.display = 'none'; return; }
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.top + window.scrollY - 36) + 'px';
+    fab.style.left = (rect.right + window.scrollX + 8) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('selectionchange', function() {
+    if (!isMobile()) return;
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    fab.style.left = (rect.left + window.scrollX + (rect.width / 2) - 14) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('mousedown', function(e) {
+    if (fab.contains(e.target) || popover.contains(e.target)) return;
+    if (popover.style.display === 'none') fab.style.display = 'none';
+  });
+
+  fab.addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (!pendingRange) return;
+    var selectedText = pendingRange.toString().trim();
+    if (!selectedText) return;
+    cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
+    cipArea.value = '';
+    var rect = pendingRange.getBoundingClientRect();
+    if (isMobile()) {
+      popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
+      popover.style.left = '50%';
+      popover.style.transform = 'translateX(-50%)';
+    } else {
+      popover.style.top = (rect.top + window.scrollY) + 'px';
+      popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
+      popover.style.transform = '';
+    }
+    popover.style.display = 'block';
+    fab.style.display = 'none';
+    cipNickname.focus();
+  });
+
+  cipCancel.addEventListener('click', function() {
+    popover.style.display = 'none';
+    pendingRange = null;
+    window.getSelection().removeAllRanges();
+  });
+
+  cipSubmit.addEventListener('click', function() {
+    var text = cipArea.value.trim();
+    var nickname = cipNickname.value.trim();
+    var email = cipEmailInput.value.trim();
+    if (!text || !nickname || !email || !pendingRange) return;
+
+    var selectedText = pendingRange.toString().trim();
+    saveIdentity(nickname, email);
+
+    cipSubmit.disabled = true;
+    cipSubmit.textContent = '...';
+
+    apiPost('/api/inline-comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      selected_text: selectedText,
+      comment: text,
+      range_start: 0,
+      range_end: selectedText.length
+    }).then(function(res) {
+      if (res.comment) {
+        wrapRange(pendingRange, res.comment.id);
+        inlineComments.push(res.comment);
+        renderInlineComments();
+      }
+      popover.style.display = 'none';
+      pendingRange = null;
+      window.getSelection().removeAllRanges();
+    }).finally(function() {
+      cipSubmit.disabled = false;
+      cipSubmit.textContent = 'Comment';
+    });
+  });
+
+  cipArea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
+    if (e.key === 'Escape') cipCancel.click();
+  });
+
+  clearAll.addEventListener('click', function() {
+    if (!confirm('Clear all comments?')) return;
+    // Delete all from server
+    Promise.all(inlineComments.map(function(c) { return apiDelete('/api/inline-comments/' + c.id); })).then(function() {
+      postContent.querySelectorAll('mark.comment-highlight').forEach(function(m) {
+        var p = m.parentNode;
+        while (m.firstChild) p.insertBefore(m.firstChild, m);
+        p.removeChild(m);
+        p.normalize();
+      });
+      inlineComments = [];
+      renderInlineComments();
+    });
+  });
+
+  var layoutTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(layoutCards, 60);
+  });
+
+  // =====================================================================
+  // ARTICLE LIKES
+  // =====================================================================
+  var articleLiked = false;
+
+  function loadArticleLikes() {
+    apiGet('/api/posts/' + encodeURIComponent(POST_SLUG) + '/likes').then(function(res) {
+      articleLikeCount.textContent = res.count;
+      articleLiked = res.liked;
+      if (articleLiked) articleLikeBtn.classList.add('liked');
+    });
+  }
+
+  articleLikeBtn.addEventListener('click', function() {
+    // Optimistic update — instant UI feedback
+    var prevLiked = articleLiked;
+    var prevCount = parseInt(articleLikeCount.textContent) || 0;
+    var newLiked = !prevLiked;
+    var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+    articleLiked = newLiked;
+    articleLikeCount.textContent = newCount;
+    articleLikeBtn.classList.toggle('liked', newLiked);
+    var icon = articleLikeBtn.querySelector('.al-icon path');
+    icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+    apiPost('/api/posts/' + encodeURIComponent(POST_SLUG) + '/like', {}).then(function(res) {
+      // Sync with server truth
+      articleLiked = res.liked;
+      articleLikeCount.textContent = res.count;
+      articleLikeBtn.classList.toggle('liked', res.liked);
+      icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+    }).catch(function() {
+      // Rollback on failure
+      articleLiked = prevLiked;
+      articleLikeCount.textContent = prevCount;
+      articleLikeBtn.classList.toggle('liked', prevLiked);
+      icon.setAttribute('fill', prevLiked ? 'currentColor' : 'none');
+    });
+  });
+
+  // =====================================================================
+  // BOTTOM COMMENTS
+  // =====================================================================
+
+  function loadBottomComments() {
+    apiGet('/api/comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+      bottomComments = res.comments || [];
+      renderBottomComments();
+    });
+  }
+
+  function renderBottomComments() {
+    bcThread.innerHTML = '';
+    var count = bottomComments.length;
+    bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+
+    // Build tree
+    var roots = [];
+    var byId = {};
+    bottomComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
+    bottomComments.forEach(function(c) {
+      if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
+      else roots.push(c);
+    });
+
+    roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+  }
+
+  function buildCommentEl(c, isReply) {
+    var div = document.createElement('div');
+    div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
+
+    var time = new Date(c.created_at);
+    var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    var avatarSize = isReply ? 32 : 40;
+    div.innerHTML =
+      '<div class="bc-avatar-wrap"><img src="' + gravatarUrl(c.email) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+      '<div class="bc-body">' +
+        '<div class="bc-meta">' +
+          '<span class="bc-name">' + esc(c.nickname) + '</span>' +
+          '<span class="bc-dot">&middot;</span>' +
+          '<time class="bc-time">' + timeStr + '</time>' +
+        '</div>' +
+        '<div class="bc-text"><p>' + esc(c.content) + '</p></div>' +
+        '<div class="bc-actions">' +
+          '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
+            '<span>' + (c.likes || 0) + '</span>' +
+          '</button>' +
+          '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
+        '</div>' +
+        '<div class="bc-replies-container"></div>' +
+      '</div>';
+
+    // Like button — optimistic update
+    div.querySelector('.bc-like-btn').addEventListener('click', function() {
+      var btn = this;
+      var icon = btn.querySelector('path');
+      var span = btn.querySelector('span');
+      var wasLiked = btn.classList.contains('liked');
+      var prevCount = parseInt(span.textContent) || 0;
+      var newLiked = !wasLiked;
+      var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+      btn.classList.toggle('liked', newLiked);
+      span.textContent = newCount;
+      icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+      apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
+        btn.classList.toggle('liked', res.liked);
+        span.textContent = res.count;
+        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      }).catch(function() {
+        btn.classList.toggle('liked', wasLiked);
+        span.textContent = prevCount;
+        icon.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+      });
+    });
+
+    // Reply button
+    div.querySelector('.bc-reply-btn').addEventListener('click', function() {
+      // Scroll to compose and pre-fill with @mention
+      bcTextarea.value = '@' + c.nickname + ' ';
+      bcTextarea.dataset.parentId = c.id;
+      bcTextarea.focus();
+      bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Render replies
+    var repliesContainer = div.querySelector('.bc-replies-container');
+    if (c._replies && c._replies.length) {
+      c._replies.forEach(function(r) {
+        repliesContainer.appendChild(buildCommentEl(r, true));
+      });
+    }
+
+    return div;
+  }
+
+  // Submit bottom comment
+  bcSubmit.addEventListener('click', function() {
+    var content = bcTextarea.value.trim();
+    var nickname = bcNickname.value.trim();
+    var email = bcEmail.value.trim();
+    if (!content || !nickname || !email) return;
+
+    saveIdentity(nickname, email);
+    bcSubmit.disabled = true;
+    bcSubmit.textContent = '...';
+
+    var parentId = bcTextarea.dataset.parentId || null;
+
+    apiPost('/api/comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      content: content,
+      parent_id: parentId ? parseInt(parentId) : null
+    }).then(function(res) {
+      if (res.comment) {
+        bottomComments.push(res.comment);
+        renderBottomComments();
+        bcTextarea.value = '';
+        delete bcTextarea.dataset.parentId;
+      }
+    }).finally(function() {
+      bcSubmit.disabled = false;
+      bcSubmit.textContent = 'Submit';
+    });
+  });
+
+  bcTextarea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') bcSubmit.click();
+  });
+
+  // =====================================================================
+  // INIT — load everything from API
+  // =====================================================================
+  restoreIdentity();
+
+  apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+    inlineComments = res.comments || [];
+    restoreHighlights();
+    renderInlineComments();
+  });
+
+  loadArticleLikes();
+  loadBottomComments();
+
+  // --- Helpers ---
+  function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+})();
+</script> 
