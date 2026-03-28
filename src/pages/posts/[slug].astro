@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import PostLayout from '../../layouts/PostLayout.astro';
+import fs from 'node:fs';
 
 export async function getStaticPaths() {
   const allPosts = (await getCollection('posts', ({ data }) => !data.draft))
@@ -43,6 +44,11 @@ export async function getStaticPaths() {
 
 const { post, prevPost, nextPost, relatedPosts, seriesInfo } = Astro.props;
 const { Content } = await render(post);
+const rawMd = fs.readFileSync(`./src/content/posts/${post.id}.md`, 'utf-8');
+const contentOnly = rawMd.replace(/^---[\s\S]*?---/, '');
+const chineseChars = (contentOnly.match(/[\u4e00-\u9fff]/g) || []).length;
+const englishWords = contentOnly.replace(/[\u4e00-\u9fff]/g, '').split(/\s+/).filter(Boolean).length;
+const readingTime = Math.max(1, Math.ceil((chineseChars + englishWords) / 200));
 ---
 
 <PostLayout
@@ -55,6 +61,7 @@ const { Content } = await render(post);
   nextPost={nextPost}
   relatedPosts={relatedPosts}
   seriesInfo={seriesInfo}
+  readingTime={readingTime}
 >
   <Content />
 </PostLayout>
