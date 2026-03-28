@@ -18,12 +18,26 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     <header class="page-header">
       <div class="header-inner">
         <h1 class="page-title">Search</h1>
+        <p class="page-desc">Full-text search across all posts.</p>
       </div>
     </header>
 
     <main class="search-main">
-      <div id="search"></div>
+      <div class="search-container">
+        <div id="search"></div>
+      </div>
     </main>
+
+    <footer class="blog-footer">
+      <div class="footer-inner">
+        <span>&copy; 2026 Airing</span>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/archive">Archive</a>
+          <a href="/feed.xml">RSS</a>
+        </div>
+      </div>
+    </footer>
   </div>
 
   <link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
@@ -37,52 +51,138 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       });
     });
   </script>
-
-  <style is:inline>
-    .search-page {
-      min-height: 100vh;
-    }
-    .top-nav {
-      border-bottom: 1px solid var(--c-border, rgba(255,255,255,0.1));
-      padding: 0.75rem 1.5rem;
-    }
-    .nav-inner {
-      max-width: 900px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .nav-brand {
-      font-weight: 700;
-      font-size: 1.1rem;
-      color: var(--c-text, #e5e5e5);
-      text-decoration: none;
-    }
-    .nav-tabs { display: flex; gap: 1rem; }
-    .nav-tab {
-      font-size: 0.85rem;
-      color: var(--c-text-muted, #888);
-      text-decoration: none;
-    }
-    .nav-tab.active, .nav-tab:hover { color: var(--accent, #4ade80); }
-    .page-header { padding: 2rem 1.5rem 1rem; max-width: 900px; margin: 0 auto; }
-    .page-title { font-size: 1.8rem; font-weight: 700; }
-    .search-main {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 0 1.5rem 4rem;
-    }
-    :root {
-      --pagefind-ui-scale: 0.9;
-      --pagefind-ui-primary: var(--accent, #4ade80);
-      --pagefind-ui-text: var(--c-text, #e5e5e5);
-      --pagefind-ui-background: transparent;
-      --pagefind-ui-border: var(--c-border, rgba(255,255,255,0.15));
-      --pagefind-ui-tag: var(--c-border, rgba(255,255,255,0.1));
-      --pagefind-ui-border-width: 1px;
-      --pagefind-ui-border-radius: 6px;
-      --pagefind-ui-font: inherit;
-    }
-  </style>
 </BaseLayout>
+
+<style is:global>
+  /* Pagefind UI theme variables */
+  .search-page {
+    --pagefind-ui-scale: 1;
+    --pagefind-ui-primary: var(--accent, #4ade80);
+    --pagefind-ui-text: var(--c-text, #e5e5e5);
+    --pagefind-ui-background: transparent;
+    --pagefind-ui-border: var(--c-border, rgba(255,255,255,0.15));
+    --pagefind-ui-tag: rgba(var(--c-overlay-rgb, 255,255,255), 0.06);
+    --pagefind-ui-border-width: 1px;
+    --pagefind-ui-border-radius: 8px;
+    --pagefind-ui-font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  /* Override Pagefind input — must be global since Pagefind injects DOM dynamically */
+  .search-page .pagefind-ui__search-input {
+    background: transparent !important;
+    color: var(--c-text, #e5e5e5) !important;
+    border: 1px solid var(--c-border, rgba(255,255,255,0.15)) !important;
+    border-radius: 8px !important;
+    outline: none !important;
+    box-shadow: none !important;
+    font-size: 16px !important;
+    padding: 12px 16px 12px 44px !important;
+  }
+  .search-page .pagefind-ui__search-input::placeholder {
+    color: var(--c-text-dim, #666) !important;
+  }
+  .search-page .pagefind-ui__search-input:focus {
+    border-color: var(--accent, #4ade80) !important;
+    box-shadow: 0 0 0 1px var(--accent, #4ade80) !important;
+  }
+  .search-page .pagefind-ui__search-clear {
+    color: var(--c-text-muted, #888) !important;
+    background: transparent !important;
+  }
+  .search-page .pagefind-ui__result {
+    border-top-color: var(--c-border, rgba(255,255,255,0.1)) !important;
+  }
+  .search-page .pagefind-ui__result-link {
+    color: var(--accent, #4ade80) !important;
+  }
+  .search-page .pagefind-ui__result-excerpt {
+    color: var(--c-text-muted, #888) !important;
+  }
+  .search-page .pagefind-ui__message {
+    color: var(--c-text-dim, #666) !important;
+  }
+
+  body:has(.search-page) {
+    display: block;
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+</style>
+
+<style>
+  .search-page {
+    min-height: 100vh;
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  /* Nav — matches archive.astro */
+  .top-nav {
+    border-bottom: 1px solid var(--c-border);
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(var(--c-bg-rgb),0.95); backdrop-filter: blur(12px);
+  }
+  .nav-inner {
+    max-width: 1200px; margin: 0 auto;
+    padding: 0 48px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .nav-brand {
+    font-size: 18px; font-weight: 800; color: var(--c-text);
+    text-decoration: none; letter-spacing: -0.02em;
+  }
+  .nav-tabs { display: flex; gap: 32px; }
+  .nav-tab {
+    font-size: 14px; color: var(--c-text-muted); text-decoration: none;
+    padding: 16px 0; border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .nav-tab:hover { color: var(--c-text); }
+  .nav-tab.active { color: var(--c-text); border-bottom-color: var(--c-text); }
+
+  /* Header — matches archive.astro */
+  .page-header {
+    border-bottom: 1px solid var(--c-border);
+    padding: 48px 0;
+  }
+  .header-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+  }
+  .page-title {
+    font-size: 36px; font-weight: 800; color: var(--c-text);
+    letter-spacing: -0.03em; margin-bottom: 8px;
+  }
+  .page-desc { font-size: 15px; color: var(--c-text-dim); }
+
+  /* Search main */
+  .search-main { padding: 0; }
+  .search-container {
+    max-width: 1200px; margin: 0 auto;
+    padding: 40px 48px 80px;
+  }
+
+  /* Footer — matches archive.astro */
+  .blog-footer {
+    border-top: 1px solid var(--c-border);
+    padding: 32px 0; margin-top: 40px;
+  }
+  .footer-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--c-border-light);
+  }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a {
+    font-size: 12px; color: var(--c-text-dim); text-decoration: none;
+  }
+  .footer-links a:hover { color: var(--c-text); }
+
+  @media (max-width: 768px) {
+    .nav-inner { padding: 0 20px; }
+    .header-inner { padding: 0 20px; }
+    .search-container { padding: 24px 20px 60px; }
+    .footer-inner { padding: 0 20px; }
+    .page-title { font-size: 28px; }
+  }
+</style>
