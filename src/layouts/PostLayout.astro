@@ -13,9 +13,11 @@ interface Props {
   tags: string[];
   description?: string;
   cover?: string;
+  prevPost?: { slug: string; title: string } | null;
+  nextPost?: { slug: string; title: string } | null;
 }
 
-const { title, date, tags, description, cover } = Astro.props;
+const { title, date, tags, description, cover, prevPost, nextPost } = Astro.props;
 
 const dateStr = date.toLocaleDateString('zh-CN', {
   year: 'numeric',
@@ -170,6 +172,26 @@ const jsonLd = {
       <div class="ms-time" id="msTime"></div>
       <button class="ms-delete" id="msDelete">Delete Comment</button>
     </div>
+
+    <!-- Prev / Next Navigation -->
+    {(prevPost || nextPost) && (
+      <nav class="post-nav">
+        <div class="post-nav-inner">
+          {prevPost ? (
+            <a href={`/posts/${prevPost.slug}/`} class="post-nav-link post-nav-prev">
+              <span class="post-nav-label">&larr; Newer</span>
+              <span class="post-nav-title">{prevPost.title}</span>
+            </a>
+          ) : <div />}
+          {nextPost ? (
+            <a href={`/posts/${nextPost.slug}/`} class="post-nav-link post-nav-next">
+              <span class="post-nav-label">Older &rarr;</span>
+              <span class="post-nav-title">{nextPost.title}</span>
+            </a>
+          ) : <div />}
+        </div>
+      </nav>
+    )}
 
     <!-- Article Like -->
     <div class="article-like-section">
@@ -1423,4 +1445,37 @@ const jsonLd = {
     align-items: stretch;
     justify-content: stretch;
   }
+
+  .post-nav {
+    max-width: 720px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+  }
+  .post-nav-inner {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.5rem;
+    border-top: 1px solid var(--c-border, rgba(255,255,255,0.1));
+    padding-top: 1.5rem;
+  }
+  .post-nav-link {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    text-decoration: none;
+    max-width: 45%;
+  }
+  .post-nav-next { text-align: right; margin-left: auto; }
+  .post-nav-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--c-text-muted, #888);
+  }
+  .post-nav-title {
+    font-size: 0.9rem;
+    color: var(--accent, #4ade80);
+    line-height: 1.4;
+  }
+  .post-nav-link:hover .post-nav-title { text-decoration: underline; }
 </style>

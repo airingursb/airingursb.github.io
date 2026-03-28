@@ -3,14 +3,20 @@ import { getCollection, render } from 'astro:content';
 import PostLayout from '../../layouts/PostLayout.astro';
 
 export async function getStaticPaths() {
-  const posts = await getCollection('posts', ({ data }) => !data.draft);
-  return posts.map(post => ({
+  const allPosts = (await getCollection('posts', ({ data }) => !data.draft))
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+  return allPosts.map((post, idx) => ({
     params: { slug: post.id },
-    props: { post },
+    props: {
+      post,
+      prevPost: idx > 0 ? { slug: allPosts[idx - 1].id, title: allPosts[idx - 1].data.title } : null,
+      nextPost: idx < allPosts.length - 1 ? { slug: allPosts[idx + 1].id, title: allPosts[idx + 1].data.title } : null,
+    },
   }));
 }
 
-const { post } = Astro.props;
+const { post, prevPost, nextPost } = Astro.props;
 const { Content } = await render(post);
 ---
 
@@ -20,6 +26,8 @@ const { Content } = await render(post);
   tags={post.data.tags}
   description={post.data.description}
   cover={post.data.cover}
+  prevPost={prevPost}
+  nextPost={nextPost}
 >
   <Content />
 </PostLayout>
