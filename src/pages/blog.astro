@@ -12,7 +12,6 @@ const featuredPosts = posts.filter(p => p.data.featured);
 // Hero: featured first, then fill with recent
 const heroPool = [...featuredPosts, ...posts.filter(p => !p.data.featured)];
 const heroPosts = heroPool.slice(0, 5);
-const popularPosts = [...featuredPosts, ...posts].slice(0, 4); // SSR fallback before JS ranking loads
 // Remaining for the list (skip hero posts)
 const heroIds = new Set(heroPosts.map(p => p.id));
 const listPosts = posts.filter(p => !heroIds.has(p.id));
@@ -23,14 +22,28 @@ function formatDate(date: Date) {
 
 const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08), rgba(var(--c-overlay-rgb),0.03))';
 
-// All posts metadata for client-side ranking
-const allPostsMeta = posts.map(p => ({
-  id: p.id,
-  title: p.data.title,
-  date: formatDate(p.data.date),
-  dateISO: p.data.date.toISOString(),
-  cover: p.data.cover || null,
-}));
+// Fetch ranking data at build time
+let ranking: { likes: Record<string, number>; views: Record<string, number> } = { likes: {}, views: {} };
+try {
+  const res = await fetch('https://chat.ursb.me/api/posts/ranking');
+  if (res.ok) ranking = await res.json();
+} catch { /* fallback to empty */ }
+
+// Sort all posts by ranking: likes desc → PV desc → date desc
+const rankedPosts = [...posts].sort((a, b) => {
+  const likesA = ranking.likes[a.id] || 0;
+  const likesB = ranking.likes[b.id] || 0;
+  if (likesB !== likesA) return likesB - likesA;
+  const pvA = ranking.views[a.id] || 0;
+  const pvB = ranking.views[b.id] || 0;
+  if (pvB !== pvA) return pvB - pvA;
+  return b.data.date.valueOf() - a.data.date.valueOf();
+});
+const popularPosts = rankedPosts.slice(0, 4);
+
+// Build rank index for each post (0 = most popular)
+const rankIndex = new Map<string, number>();
+rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
 ---
 
 <BaseLayout title="Blog | Airing">
@@ -127,16 +140,13 @@ const allPostsMeta = posts.map(p => ({
     </section>
 
     <!-- Most Popular -->
-    <script is:inline define:vars={{ allPostsMeta }}>
-      window.__ALL_POSTS_META__ = allPostsMeta;
-    </script>
     <section class="popular-section">
       <div class="popular-inner">
         <div class="popular-header">
           <h2 class="popular-heading">Most Popular</h2>
           <a href="/archive" class="popular-viewall">View all &rarr;</a>
         </div>
-        <div class="popular-grid" id="popularGrid">
+        <div class="popular-grid">
           {popularPosts.map(post => (
             <a href={`/posts/${post.id}`} class="popular-card">
               <div class="pc-body">
@@ -175,7 +185,7 @@ const allPostsMeta = posts.map(p => ({
           </div>
 
           {listPosts.map(post => (
-            <a href={`/posts/${post.id}`} class="post-item" data-slug={post.id} data-date={post.data.date.toISOString()}>
+            <a href={`/posts/${post.id}`} class="post-item" data-slug={post.id} data-date={post.data.date.toISOString()} data-rank={rankIndex.get(post.id) ?? 9999}>
               <div class="pi-body">
                 <h3 class="pi-title">{post.data.title}</h3>
                 {post.data.description && (
@@ -312,66 +322,13 @@ const allPostsMeta = posts.map(p => ({
   });
   document.addEventListener('click', () => wechatTooltip?.classList.remove('active'));
 
-  // ── Fetch ranking data (shared by popular section & Top tab) ──
-  let rankingCache: { likes: Record<string, number>; views: Record<string, number> } | null = null;
-
-  async function fetchRanking() {
-    if (rankingCache) return rankingCache;
-    try {
-      const res = await fetch('https://chat.ursb.me/api/posts/ranking');
-      rankingCache = await res.json();
-    } catch {
-      rankingCache = { likes: {}, views: {} };
-    }
-    return rankingCache;
-  }
-
-  // ── Populate Most Popular with real ranking data ──
-  (async () => {
-    const ranking = await fetchRanking();
-    const allPosts = (window as any).__ALL_POSTS_META__ as Array<{
-      id: string; title: string; date: string; dateISO: string; cover: string | null;
-    }>;
-    if (!allPosts || !ranking) return;
-
-    const sorted = [...allPosts].sort((a, b) => {
-      const likesA = ranking.likes[a.id] || 0;
-      const likesB = ranking.likes[b.id] || 0;
-      if (likesB !== likesA) return likesB - likesA;
-      const pvA = ranking.views[a.id] || 0;
-      const pvB = ranking.views[b.id] || 0;
-      if (pvB !== pvA) return pvB - pvA;
-      return new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime();
-    });
-
-    const top4 = sorted.slice(0, 4);
-    const grid = document.getElementById('popularGrid');
-    if (!grid) return;
-
-    grid.innerHTML = top4.map(p => `
-      <a href="/posts/${p.id}" class="popular-card">
-        <div class="pc-body">
-          <h3 class="pc-title">${p.title}</h3>
-          <div class="pc-meta">
-            <time>${p.date}</time>
-            <span>&middot;</span>
-            <span>Airing</span>
-          </div>
-        </div>
-        ${p.cover ? `<div class="pc-thumb" style="background-image:url(${p.cover})"></div>` : ''}
-      </a>
-    `).join('');
-  })();
-
   // ── Top / Latest tab switching ──
   const tabs = document.querySelectorAll('.list-tab') as NodeListOf<HTMLButtonElement>;
   const postItems = document.querySelectorAll('.post-item') as NodeListOf<HTMLAnchorElement>;
-
-  // Store original order (by date descending, already rendered)
   const originalOrder = Array.from(postItems);
 
   tabs.forEach(tab => {
-    tab.addEventListener('click', async () => {
+    tab.addEventListener('click', () => {
       tabs.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
 
@@ -380,21 +337,11 @@ const allPostsMeta = posts.map(p => ({
       if (!container) return;
 
       if (isTop) {
-        await fetchRanking();
-
-        // Sort: likes desc → PV desc → date desc
-        const sorted = Array.from(postItems).sort((a, b) => {
-          const likesA = rankingCache!.likes[a.dataset.slug!] || 0;
-          const likesB = rankingCache!.likes[b.dataset.slug!] || 0;
-          if (likesB !== likesA) return likesB - likesA;
-          const pvA = rankingCache!.views[a.dataset.slug!] || 0;
-          const pvB = rankingCache!.views[b.dataset.slug!] || 0;
-          if (pvB !== pvA) return pvB - pvA;
-          return new Date(b.dataset.date!).getTime() - new Date(a.dataset.date!).getTime();
-        });
+        const sorted = Array.from(postItems).sort((a, b) =>
+          parseInt(a.dataset.rank!) - parseInt(b.dataset.rank!)
+        );
         sorted.forEach(item => container.appendChild(item));
       } else {
-        // Restore original order (by date)
         originalOrder.forEach(item => container.appendChild(item));
       }
     });
