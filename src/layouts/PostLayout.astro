@@ -295,6 +295,7 @@ const jsonLd = {
             <div class="bc-compose-fields">
               <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" />
               <input type="email" class="bc-input" id="bcEmail" placeholder="Email (for Gravatar, not shown)" />
+              <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" />
             </div>
             <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4"></textarea>
             <div class="bc-compose-footer">
@@ -567,6 +568,7 @@ const jsonLd = {
   var bcCount = document.getElementById('bcCount');
   var bcNickname = document.getElementById('bcNickname');
   var bcEmail = document.getElementById('bcEmail');
+  var bcWebsite = document.getElementById('bcWebsite');
   var bcTextarea = document.getElementById('bcTextarea');
   var bcSubmit = document.getElementById('bcSubmit');
   var bcComposeAvatar = document.getElementById('bcComposeAvatar');
@@ -586,8 +588,8 @@ const jsonLd = {
   function getSavedIdentity() {
     try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
   }
-  function saveIdentity(nickname, email) {
-    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email }));
+  function saveIdentity(nickname, email, website) {
+    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email, website: website || '' }));
   }
   function restoreIdentity() {
     var id = getSavedIdentity();
@@ -599,6 +601,9 @@ const jsonLd = {
       cipEmailInput.value = id.email;
       bcEmail.value = id.email;
       updateComposeAvatar(id.email);
+    }
+    if (id.website) {
+      bcWebsite.value = id.website;
     }
   }
 
@@ -1007,11 +1012,14 @@ const jsonLd = {
     var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
 
     var avatarSize = isReply ? 32 : 40;
+    var nameHtml = c.website
+      ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
+      : '<span class="bc-name">' + esc(c.nickname) + '</span>';
     div.innerHTML =
       '<div class="bc-avatar-wrap"><img src="' + gravatarUrl(c.email) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
       '<div class="bc-body">' +
         '<div class="bc-meta">' +
-          '<span class="bc-name">' + esc(c.nickname) + '</span>' +
+          nameHtml +
           '<span class="bc-dot">&middot;</span>' +
           '<time class="bc-time">' + timeStr + '</time>' +
         '</div>' +
@@ -1076,21 +1084,25 @@ const jsonLd = {
     var content = bcTextarea.value.trim();
     var nickname = bcNickname.value.trim();
     var email = bcEmail.value.trim();
+    var website = bcWebsite.value.trim();
     if (!content || !nickname || !email) return;
 
-    saveIdentity(nickname, email);
+    saveIdentity(nickname, email, website);
     bcSubmit.disabled = true;
     bcSubmit.textContent = '...';
 
     var parentId = bcTextarea.dataset.parentId || null;
 
-    apiPost('/api/comments', {
+    var body = {
       post_slug: POST_SLUG,
       nickname: nickname,
       email: email,
       content: content,
       parent_id: parentId ? parseInt(parentId) : null
-    }).then(function(res) {
+    };
+    if (website) body.website = website;
+
+    apiPost('/api/comments', body).then(function(res) {
       if (res.comment) {
         bottomComments.push(res.comment);
         renderBottomComments();
@@ -1704,6 +1716,7 @@ const jsonLd = {
   }
   .bc-inner {
     max-width: 720px;
+    margin: 0 auto;
   }
   .bc-header {
     display: flex; align-items: center; gap: 12px;
@@ -1745,6 +1758,12 @@ const jsonLd = {
   }
   .bottom-comments :global(.bc-name) {
     font-size: 14px; font-weight: 600; color: var(--c-text);
+  }
+  .bottom-comments :global(.bc-name-link) {
+    text-decoration: none; color: var(--accent);
+  }
+  .bottom-comments :global(.bc-name-link:hover) {
+    text-decoration: underline;
   }
   .bottom-comments :global(.bc-dot) {
     color: var(--c-border-light);
