@@ -158,6 +158,12 @@ const jsonLd = {
             <div class="sb-value">{readingTime} min</div>
           </div>
         )}
+        <div class="sb-divider"></div>
+        <div class="sb-block toc-block" id="tocBlock" style="display:none;">
+          <div class="sb-label">Contents</div>
+          <nav class="toc-nav" id="tocNav"></nav>
+        </div>
+
         {relatedPosts.length > 0 && (
           <>
             <div class="sb-divider"></div>
@@ -313,6 +319,222 @@ const jsonLd = {
   </div>
 </BaseLayout>
 
+<script is:inline>
+/* Wrap short text nodes after <img> as styled captions */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = content.querySelectorAll('p');
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (!imgs.length) return;
+    var nodes = Array.from(p.childNodes);
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeType !== 3) continue;
+      var text = node.textContent.trim();
+      if (!text) continue;
+      var prev = node.previousSibling;
+      while (prev && prev.nodeType === 3 && !prev.textContent.trim()) prev = prev.previousSibling;
+      if (!prev || prev.nodeName !== 'IMG') continue;
+      if (text.length > 30 || text.indexOf('\n') !== -1 || text.charAt(0) === '#') continue;
+      var span = document.createElement('span');
+      span.className = 'img-caption';
+      span.textContent = text;
+      p.replaceChild(span, node);
+    }
+  });
+})();
+
+/* Gallery: group consecutive images into flex rows */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = Array.from(content.querySelectorAll('p'));
+
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (imgs.length < 2) return;
+
+    // Segment childNodes into groups: consecutive img(+caption) vs other content
+    var nodes = Array.from(p.childNodes);
+    var segments = [];
+    var currentImgs = [];
+
+    function flushImgs() {
+      if (currentImgs.length >= 2) {
+        segments.push({ type: 'images', items: currentImgs });
+      } else if (currentImgs.length === 1) {
+        segments.push({ type: 'other', nodes: [currentImgs[0].img] });
+        if (currentImgs[0].caption) segments.push({ type: 'other', nodes: [currentImgs[0].caption] });
+      }
+      currentImgs = [];
+    }
+
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeName === 'IMG') {
+        var item = { img: node, caption: null };
+        var next = nodes[i + 1];
+        if (next && next.nodeType === 1 && next.classList && next.classList.contains('img-caption')) {
+          item.caption = next;
+          i++;
+        }
+        currentImgs.push(item);
+      } else if (node.nodeType === 3 && !node.textContent.trim()) {
+        continue;
+      } else {
+        flushImgs();
+        segments.push({ type: 'other', nodes: [node] });
+      }
+    }
+    flushImgs();
+
+    var hasGallery = segments.some(function(s) { return s.type === 'images'; });
+    if (!hasGallery) return;
+
+    var frag = document.createDocumentFragment();
+
+    segments.forEach(function(seg) {
+      if (seg.type === 'other') {
+        seg.nodes.forEach(function(n) { frag.appendChild(n.cloneNode(true)); });
+        return;
+      }
+
+      var items = seg.items;
+      var gallery = document.createElement('div');
+      gallery.className = 'img-gallery';
+
+      // Build rows: max 3 per row (2 for groups of 4)
+      var rows = [];
+      var row = [];
+      for (var j = 0; j < items.length; j++) {
+        row.push(items[j]);
+        var maxPerRow = items.length === 4 ? 2 : 3;
+        if (row.length >= maxPerRow) { rows.push(row); row = []; }
+      }
+      if (row.length) rows.push(row);
+
+      rows.forEach(function(rowItems) {
+        var rowDiv = document.createElement('div');
+        rowDiv.className = 'img-gallery-row';
+        rowItems.forEach(function(item) {
+          var figure = document.createElement('figure');
+          figure.className = 'img-gallery-item';
+          figure.appendChild(item.img.cloneNode(true));
+          if (item.caption) {
+            var figcap = document.createElement('figcaption');
+            figcap.textContent = item.caption.textContent;
+            figure.appendChild(figcap);
+          }
+          rowDiv.appendChild(figure);
+        });
+        gallery.appendChild(rowDiv);
+      });
+
+      // Apply flex ratios once all images in gallery have loaded
+      var galleryImgs = gallery.querySelectorAll('img');
+      var loaded = 0;
+      var total = galleryImgs.length;
+      function applyFlex() {
+        var rows = gallery.querySelectorAll('.img-gallery-row');
+        rows.forEach(function(rowEl) {
+          var figs = rowEl.querySelectorAll('.img-gallery-item');
+          figs.forEach(function(fig) {
+            var img = fig.querySelector('img');
+            var w = img.naturalWidth || 1;
+            var h = img.naturalHeight || 1;
+            fig.style.flex = (w / h).toFixed(3);
+          });
+        });
+      }
+      galleryImgs.forEach(function(img) {
+        if (img.complete && img.naturalWidth > 0) {
+          loaded++;
+          if (loaded === total) applyFlex();
+        } else {
+          img.addEventListener('load', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+          img.addEventListener('error', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+        }
+      });
+
+      frag.appendChild(gallery);
+    });
+
+    p.parentNode.replaceChild(frag, p);
+  });
+})();
+
+/* TOC: build, scroll-spy, click-to-scroll */
+(function() {
+  var content = document.querySelector('.post-content');
+  var tocNav = document.getElementById('tocNav');
+  var tocBlock = document.getElementById('tocBlock');
+  if (!content || !tocNav || !tocBlock) return;
+
+  var headings = content.querySelectorAll('h2, h3');
+  if (headings.length < 2) return;
+
+  // Ensure each heading has an id
+  headings.forEach(function(h, i) {
+    if (!h.id) h.id = 'heading-' + i;
+  });
+
+  // Build TOC links
+  var fragment = document.createDocumentFragment();
+  headings.forEach(function(h) {
+    var a = document.createElement('a');
+    a.className = 'toc-link';
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    a.setAttribute('data-level', h.tagName === 'H2' ? '2' : '3');
+    a.addEventListener('click', function(e) {
+      e.preventDefault();
+      h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', '#' + h.id);
+    });
+    fragment.appendChild(a);
+  });
+  tocNav.appendChild(fragment);
+  tocBlock.style.display = '';
+
+  // Scroll spy
+  var tocLinks = tocNav.querySelectorAll('.toc-link');
+  var headingArr = Array.from(headings);
+  var ticking = false;
+
+  function updateActive() {
+    var scrollY = window.scrollY + 80;
+    var active = null;
+    for (var i = headingArr.length - 1; i >= 0; i--) {
+      if (headingArr[i].offsetTop <= scrollY) { active = i; break; }
+    }
+    tocLinks.forEach(function(link, idx) {
+      link.classList.toggle('active', idx === active);
+    });
+    // Scroll active link into view within TOC nav
+    if (active !== null && tocLinks[active]) {
+      var link = tocLinks[active];
+      var nav = tocNav;
+      if (link.offsetTop < nav.scrollTop || link.offsetTop + link.offsetHeight > nav.scrollTop + nav.clientHeight) {
+        nav.scrollTop = link.offsetTop - nav.clientHeight / 3;
+      }
+    }
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function() {
+    if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
+  }, { passive: true });
+  updateActive();
+})();
+</script>
 <script is:inline>
 (function() {
   var API = 'https://chat.ursb.me';
@@ -1071,6 +1293,32 @@ const jsonLd = {
     color: var(--accent, #4ade80);
   }
 
+  /* TOC — :global because links are JS-generated */
+  .toc-nav {
+    display: flex; flex-direction: column; gap: 0;
+    max-height: 40vh; overflow-y: auto;
+  }
+  .toc-nav::-webkit-scrollbar { width: 2px; }
+  .toc-nav::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
+  .toc-nav :global(.toc-link) {
+    font-size: 12px; line-height: 1.4;
+    color: var(--c-text-muted, #888);
+    text-decoration: none;
+    padding: 3px 0 3px 8px;
+    border-left: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .toc-nav :global(.toc-link[data-level="3"]) { padding-left: 20px; font-size: 11px; }
+  .toc-nav :global(.toc-link:hover) { color: var(--c-text); }
+  .toc-nav :global(.toc-link.active) {
+    color: var(--accent, #4ade80);
+    border-left-color: var(--accent, #4ade80);
+  }
+
   /* ===== Content ===== */
   .post-content {
     color: var(--c-text); font-size: 18px; line-height: 2.0;
@@ -1097,10 +1345,60 @@ const jsonLd = {
   }
   .post-content :global(a:hover) { border-bottom-color: var(--accent); }
   .post-content :global(img) {
-    max-width: calc(100% + 60px); width: calc(100% + 60px);
-    margin-left: -30px; border-radius: 4px;
-    margin-top: 24px; margin-bottom: 24px; display: block;
+    max-width: 100%;
+    border-radius: 10px;
+    margin-top: 28px; margin-bottom: 4px; display: block;
+    height: auto;
+    max-height: 70vh;
+    object-fit: contain;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.04);
   }
+  .post-content :global(.img-caption) {
+    display: block;
+    text-align: center;
+    font-size: 13px;
+    color: var(--c-text-muted, #888);
+    margin-bottom: 24px;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+  }
+
+  /* Gallery: consecutive images laid out in flex rows */
+  .post-content :global(.img-gallery) {
+    margin-top: 28px;
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .post-content :global(.img-gallery-row) {
+    display: flex;
+    gap: 6px;
+  }
+  .post-content :global(.img-gallery-item) {
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+  .post-content :global(.img-gallery-item img) {
+    width: 100%;
+    height: auto;
+    display: block;
+    margin: 0;
+    border-radius: 10px;
+    box-shadow: none;
+    max-height: none;
+  }
+  .post-content :global(.img-gallery-item figcaption) {
+    text-align: center;
+    font-size: 12px;
+    color: var(--c-text-muted, #888);
+    margin-top: 4px;
+    line-height: 1.4;
+  }
+
   .post-content :global(pre) {
     max-width: calc(100% + 80px); width: calc(100% + 80px);
     margin-left: -40px; background: var(--c-bg);
@@ -1581,6 +1879,7 @@ const jsonLd = {
     }
     .sb-block { margin-bottom: 0; }
     .sb-divider { display: none; }
+    .toc-block { display: none !important; }
 
     /* Hide desktop comment rail on mobile */
     .comment-rail { display: none; }
