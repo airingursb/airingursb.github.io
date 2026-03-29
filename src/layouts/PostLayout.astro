@@ -156,7 +156,7 @@ const jsonLd = {
             <div class="sb-value">{readingTime} min</div>
           </div>
         )}
-        <div class="sb-block">
+        <div class="sb-block" id="postViewsBlock" style="display:none;">
           <div class="sb-label">Views</div>
           <div class="sb-value" id="postViews">-</div>
         </div>
@@ -550,12 +550,17 @@ const jsonLd = {
   // Track pageview (fire-and-forget)
   fetch(API + '/api/posts/' + encodeURIComponent(POST_SLUG) + '/view', { method: 'POST' }).catch(function() {});
 
-  // Fetch and display view count
+  // Fetch and display view count (only show if >= 1000)
   fetch(API + '/api/posts/' + encodeURIComponent(POST_SLUG) + '/views')
     .then(function(r) { return r.json(); })
     .then(function(d) {
-      var el = document.getElementById('postViews');
-      if (el) el.textContent = (d.pv || 0).toLocaleString();
+      var pv = d.pv || 0;
+      if (pv >= 1000) {
+        var el = document.getElementById('postViews');
+        var block = document.getElementById('postViewsBlock');
+        if (el) el.textContent = pv.toLocaleString();
+        if (block) block.style.display = '';
+      }
     })
     .catch(function() {});
 
