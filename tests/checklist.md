@@ -84,6 +84,33 @@
 - [ ] GET `/admin/` returns page
 - [ ] DOM: Token input or comment list exists
 
+## Post Detail — Image Gallery (`/posts/weekly-30/`)
+
+- [ ] DOM: `.img-gallery` exists (consecutive images grouped into gallery)
+- [ ] DOM: `.img-gallery-row` exists with multiple `.img-gallery-item` children
+- [ ] CSS: `.img-gallery-row` has `display: flex`
+- [ ] Evaluate: `.img-gallery-item` has non-default flex value (aspect-ratio based)
+
+## Post Detail — Image Captions (`/posts/weekly-30/`)
+
+- [ ] DOM: `.img-caption` exists for short text following images
+
+## Post Detail — Table of Contents (`/posts/weekly-30/`)
+
+- [ ] DOM: `#tocBlock` exists and is visible (`display` not `none`)
+- [ ] DOM: `#tocNav` contains `.toc-link` elements matching h2/h3 headings
+- [ ] DOM: `.toc-link.active` exists (scroll spy highlights current section)
+
+## Light Mode Accent Colors
+
+- [ ] CSS: In light mode, `--accent` is a darker shade (e.g. `#16a34a` for green theme)
+- [ ] Evaluate: `getComputedStyle(document.documentElement).getPropertyValue('--accent')` returns darker color in light mode
+
+## Post Detail — Gravatar (`/posts/weekly-30/`)
+
+- [ ] DOM: `#bcComposeAvatar` src contains `d=robohash`
+- [ ] Evaluate: `gravatarUrl` function returns URL with `d=robohash`
+
 ## Theme Switcher (任意页面)
 
 - [ ] DOM: `#modeToggle` 存在（明暗切换）
