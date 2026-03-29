@@ -94,8 +94,17 @@ const {
     (function() {
       var t = localStorage.getItem('blog-theme');
       if (t) document.documentElement.setAttribute('data-theme', t);
-      var m = localStorage.getItem('blog-mode');
-      if (m) document.documentElement.setAttribute('data-mode', m);
+      var userSet = localStorage.getItem('blog-mode-set');
+      if (userSet) {
+        // User has manually toggled — respect their choice
+        var m = localStorage.getItem('blog-mode');
+        if (m) document.documentElement.setAttribute('data-mode', m);
+      } else {
+        // No manual toggle — use path-based default: homepage=dark, blog=light
+        var path = window.location.pathname;
+        var isBlog = path.startsWith('/blog') || path.startsWith('/posts/') || path.startsWith('/archive') || path.startsWith('/friends') || path.startsWith('/search') || path.startsWith('/tags/');
+        document.documentElement.setAttribute('data-mode', isBlog ? 'light' : 'dark');
+      }
     })();
   </script>
 </head>
@@ -155,6 +164,7 @@ const {
         var next = current === 'light' ? 'dark' : 'light';
         document.documentElement.setAttribute('data-mode', next);
         localStorage.setItem('blog-mode', next);
+        localStorage.setItem('blog-mode-set', '1');
         updateModeIcon();
       });
       updateModeIcon();
