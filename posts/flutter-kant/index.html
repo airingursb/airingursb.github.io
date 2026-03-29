@@ -1,0 +1,1266 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Flutter 核心原理与混合开发模式 | Airing</title><meta name="description" content><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta property="og:title" content="Flutter 核心原理与混合开发模式 | Airing"><meta property="og:description" content><meta property="og:type" content="article"><link rel="canonical" href="https://ursb.me/posts/flutter-kant/"><meta property="og:url" content="https://ursb.me/posts/flutter-kant/"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Flutter 核心原理与混合开发模式 | Airing"><meta name="twitter:description" content><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/feed.xml"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-W604S49M4X');
+  </script><!-- Umami Analytics --><script defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script><!-- Cal.com Embed --><script type="text/javascript">
+    (function (C, A, L) {
+      let p = function (a, ar) { a.q.push(ar); };
+      let d = C.document;
+      C.Cal = C.Cal || function () {
+        let cal = C.Cal;
+        let ar = arguments;
+        if (!cal.loaded) {
+          cal.ns = {};
+          cal.q = cal.q || [];
+          d.head.appendChild(d.createElement("script")).src = A;
+          cal.loaded = true;
+        }
+        if (ar[0] === L) {
+          const api = function () { p(api, arguments); };
+          const namespace = ar[1];
+          api.q = api.q || [];
+          if (typeof namespace === "string") {
+            cal.ns[namespace] = api;
+            p(api, ar);
+          } else {
+            p(cal, ar);
+          }
+          return;
+        }
+        p(cal, ar);
+      };
+    })(window, "https://app.cal.com/embed/embed.js", "init");
+    Cal("init", { origin: "https://cal.com" });
+    Cal("ui", {
+      theme: "dark",
+      styles: { branding: { brandColor: "#f59e0b" } },
+      hideEventTypeDetails: false,
+      layout: "month_view"
+    });
+  </script><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"><script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Flutter 核心原理与混合开发模式","datePublished":"2020-06-30T00:00:00.000Z","dateModified":"2020-06-30T00:00:00.000Z","author":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"publisher":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"url":"https://ursb.me/posts/flutter-kant/","mainEntityOfPage":{"@type":"WebPage","@id":"https://ursb.me/posts/flutter-kant/"},"keywords":"tech"}</script><script>
+    // Apply saved theme & mode before render to prevent flash
+    (function() {
+      var t = localStorage.getItem('blog-theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+      var m = localStorage.getItem('blog-mode');
+      if (m) document.documentElement.setAttribute('data-mode', m);
+    })();
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.DLZEbWeP.css">
+<link rel="stylesheet" href="/_astro/_slug_@_@astro.0M_B7D7i.css"></head> <body>    <div class="post-page" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>2020年6月30日</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" data-astro-cid-gjtny2mx>Blog</a> <a href="/archive" data-astro-cid-gjtny2mx>Archive</a> <a href="/moments" data-astro-cid-gjtny2mx>Moments</a> <a href="/search" data-astro-cid-gjtny2mx>Search</a> <a href="/feed.xml" data-astro-cid-gjtny2mx>RSS</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> </div> </header> <!-- Headline --> <div class="headline-section" data-astro-cid-gjtny2mx> <div class="headline-inner" data-astro-cid-gjtny2mx> <div class="headline-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="hl-tag" data-astro-cid-gjtny2mx>tech</a> </div> <h1 class="headline" data-astro-cid-gjtny2mx>Flutter 核心原理与混合开发模式</h1>  </div> </div>   <!-- Three-column: sidebar | content | comments --> <div class="content-grid" id="contentGrid" data-astro-cid-gjtny2mx> <aside class="sidebar-left" data-astro-cid-gjtny2mx> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Date</div> <div class="sb-value" data-astro-cid-gjtny2mx>2020/06/30</div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Tags</div> <div class="sb-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="sb-tag" data-astro-cid-gjtny2mx>#tech</a> </div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Author</div> <div class="sb-value" data-astro-cid-gjtny2mx>Airing</div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Read</div> <div class="sb-value" data-astro-cid-gjtny2mx>41 min</div> </div> <div class="sb-divider" data-astro-cid-gjtny2mx></div> <div class="sb-block toc-block" id="tocBlock" style="display:none;" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Contents</div> <nav class="toc-nav" id="tocNav" data-astro-cid-gjtny2mx></nav> </div>  <div class="sb-divider" data-astro-cid-gjtny2mx></div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Related</div> <ul class="sb-related" data-astro-cid-gjtny2mx> <li data-astro-cid-gjtny2mx><a href="/posts/game-engine-renderer/" class="sb-related-link" data-astro-cid-gjtny2mx>游戏组件的一生: 从加载到上屏</a></li><li data-astro-cid-gjtny2mx><a href="/posts/moflow/" class="sb-related-link" data-astro-cid-gjtny2mx>AI 心理疗愈应用的探索与实现</a></li><li data-astro-cid-gjtny2mx><a href="/posts/mac-app-share-2024/" class="sb-related-link" data-astro-cid-gjtny2mx>Mac 小众软件推荐与工作流分享(2024)</a></li><li data-astro-cid-gjtny2mx><a href="/posts/2024-summer/" class="sb-related-link" data-astro-cid-gjtny2mx>再见了，盛夏</a></li><li data-astro-cid-gjtny2mx><a href="/posts/service/" class="sb-related-link" data-astro-cid-gjtny2mx>Airing 开通了一个咨询服务</a></li> </ul> </div>  <div class="sb-divider" data-astro-cid-gjtny2mx></div> <a href="/archive" class="sb-nav" data-astro-cid-gjtny2mx>&larr; All Posts</a> </aside> <article class="post-content" id="postContent" data-pagefind-body data-astro-cid-gjtny2mx>  <p>在 「Fan 直播」的 Flutter 混合开发实践中，我们总结了一些 Flutter 混合开发的经验特此分享。本文将从 Flutter 原理出发，详细介绍 Flutter 的绘制原理，借由此来对比三种跨端方案；之后再进入第三篇章 Flutter 混合开发模式的讲解，主要是四种不同的 Flutter 混合模式的原理分析；最后简单分享一下混合工程的工程化探索。</p>
+<p>“唯有深入，方能浅出”，对于一门技术，只有了解的深入，才能用最浅显、通俗的话语描述出。在此之前，我写过一些 Flutter 的文章，但性质更偏向于学习笔记与源码阅读笔记，因此较为晦涩，且零碎繁乱。本文作为阶段性的总结，我尽可能以浅显易懂的文字、循序渐进地来分享 Flutter 混合开发的知识，对于关键内容会辅以源码或源码中的关键函数来解读，但不会成段粘贴源码。源码学习的效果主要在于自身，所以若对源码学习感兴趣的，可以自行阅读 Framework 与 Engine 的源码，也可以阅读我过往的几篇文章。</p>
+<p>好了，那废话不多说，直接开始吧！</p>
+<h2 id="1-flutter-核心原理">1. Flutter 核心原理</h2>
+<h3 id="11-flutter-架构">1.1 Flutter 架构</h3>
+<p><img src="https://airing.ursb.me/image/flutter/flutter%E6%9E%B6%E6%9E%84.png" alt="flutter 架构"></p>
+<blockquote>
+<p>注：此图引自 <a href="https://flutter.dev/docs/resources/technical-overview">Flutter System Overview</a></p>
+</blockquote>
+<p>传统惯例，只要说到 Flutter 原理的文章，在开头都会摆上这张图。不论讲的好不好，都是先摆出来，然后大部分还是靠自行领悟。因为这张图实在太好用了。</p>
+<p>摆出这张图，还是简单从整体上来先认识了一下什么是 Flutter，否则容易陷入“盲人摸象”的境地。</p>
+<p>Flutter 架构采用分层设计，从下到上分为三层，依次为：Embedder、Engine、Framework。</p>
+<ol>
+<li><strong>Embedder</strong>：操作系统适配层，实现渲染 Surface 设置、线程设置等。</li>
+<li><strong>Engine</strong>：实现 FLutter 渲染引擎、文字排版、事件处理、Dart 运行时等功能。包括了 Skia 图形绘制库、Dart VM、Text 等，其中 Skia 和 Text 为上层接口提供了调用底层渲染和排版的能力。</li>
+<li><strong>Framework</strong>：是一个用 Dart 实现的 UI SDK，从上之下包括了两大风格组件库、基础组件库、图形绘制、手势识别、动画等功能。</li>
+</ol>
+<p>至于更多详情，这张图配合源码食用体验会更好。但由于本文不是源码解析，所以这个工作本文就不展开了。接下来，我会以 Flutter 绘制流程为例，来讲解 Flutter 是如何工作的。这也能更好地帮助你理解源码的思路。</p>
+<h3 id="12-flutter-绘制原理">1.2 Flutter 绘制原理</h3>
+<p>Flutter 绘制流程总结了一下大体上如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/flutter/flutter-render.png" alt="flutter-render.png"></p>
+<p>首先是用户操作，触发 Widget Tree 的更新，然后构建 Element Tree，计算重绘区后将信息同步给 RenderObject Tree，之后实现组件布局、组件绘制、图层合成、引擎渲染。</p>
+<p>作为前置知识，我们先来看看渲染过程中涉及到的数据结构，再来具体剖析渲染的各个具体环节。</p>
+<h3 id="13-flutter-渲染过程中的数据结构">1.3 Flutter 渲染过程中的数据结构</h3>
+<p><img src="https://airing.ursb.me/image/flutter/data-model.png" alt="Data Model"></p>
+<p>渲染过程中涉及到的关键的数据结构包括三棵树和一个图层，其中 RenderObject 持有了 Layer，我们重点先看一下三棵树之间的关系。</p>
+<p>举个栗子，比如有这么一个简单的布局：</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E5%B8%83%E5%B1%80.png" alt="布局"></p>
+<p>那么对应的三棵树之间的关系如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E4%B8%89%E6%A3%B5%E6%A0%91.png" alt="三棵树"></p>
+<h4 id="131-widget-tree">1.3.1 Widget Tree</h4>
+<p><img src="https://airing.ursb.me/image/flutter/Widget-tree.png" alt="Widget Tree"></p>
+<p>第一棵树，是 Widget Tree。它是控件实现的基本逻辑单位，是用户对界面 UI 的描述方式。</p>
+<p>需要注意的是，<strong>Widget 是不可变的（immutable）</strong>，当视图配置信息发生变化时，Flutter 会重建 Widget 来进行更新，以数据驱动 UI 的方式构建简单高效。</p>
+<p>那为什么将 Widget Tree 设计为 immutable？Flutter 界面开发是一种响应式编程，主张“simple is fast”，而由上到下重新创建 Widget Tree 来进行刷新，这种思路比较简单，不用额外关系数据更变了会影响到哪些节点。另外，Widget 只是一个配置是数据结构，创建是轻量的，销毁也是做过优化的，不用担心整棵树重新构建带来的性能问题。</p>
+<h4 id="132-element-tree">1.3.2 Element Tree</h4>
+<p><img src="https://airing.ursb.me/image/flutter/element-tree.png" alt="Element Tree"></p>
+<p>第二棵树，Element Tree。它是 Widget 的实例化对象（如下图，Widget 提供了 <code>createElement</code> 工厂方法来创建 Element），持久存在于运行时的 Dart 上下文之中。它承载了构建的上下文数据，是连接结构化的配置信息到最终完成渲染的桥梁。</p>
+<p>之所以让它持久地存在于 Dart 上下文中而不是像 Widget 重新构建，**因为 Element Tree 的重新创建和重新渲染的开销会非常大，**所以 Element Tree 到 RenderObject Tree 也有一个 Diff 环节，来计算最小重绘区域。</p>
+<p><img src="https://airing.ursb.me/image/flutter/code-3.png" alt="code"></p>
+<p>需要注意的是，Element 同时持有 Widget 和 RenderObject，<strong>但无论是 Widget 还是 Element，其实都不负责最后的渲染，它们只是“发号施令”，真正对配置信息进行渲染的是 RenderObject。</strong></p>
+<h4 id="133-renderobject-tree">1.3.3 RenderObject Tree</h4>
+<p><img src="https://airing.ursb.me/image/flutter/RenderObject-tree.png" alt="RenderObject Tree"></p>
+<p>第三棵树，RenderObject Tree，即渲染对象树。RenderObject 由 Element 创建并关联到 <code>Element.renderObject</code> 上（如下图），它接受 Element 的信息同步，同样的，<strong>它也是持久地存在 Dart Runtime 的上下文中，是主要负责实现视图渲染的对象。</strong></p>
+<p><img src="https://airing.ursb.me/image/flutter/code-2.png" alt="code"></p>
+<p>RenderObject Tree 在 Flutter 的展示过程分为四个阶段：</p>
+<ol>
+<li>布局</li>
+<li>绘制</li>
+<li>合成</li>
+<li>渲染</li>
+</ol>
+<p>其中，布局和绘制在 RenderObject 中完成，Flutter 采用深度优先机制遍历渲染对象树，确定树中各个对象的位置和尺寸，并把它们绘制到不同的图层上。绘制完毕后，合成和渲染的工作则交给 Skia 处理。</p>
+<p>那么问题来了，为什么是三棵树而不是两棵？为什么需要中间的 Element Tree，由 Widget Tree 直接构建 RenderObject Tree 不可以吗？</p>
+<p>理论上可以，但实际不可行。因为如果直接构建 RenderObject Tree 会极大地增加渲染带来的性能损耗。因为 Widget Tree 是不可变的，但 Element 却是可变的。**实际上，Element 这一层将 Widget 树的变化做了抽象（类似 React / Vue 的 VDOM Diff），只将真正需要修改的部分同步到 RenderObject Tree 中，由此最大程度去降低重绘区域，提高渲染效率。**可以发现，Flutter 的思想很大程度上是借鉴了前端响应式框架 React / Vue。</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E5%AF%B9%E6%AF%94%E8%99%9A%E6%8B%9Fdom.png" alt="对比"></p>
+<p>此外，再扩展补充一下 VDOM。我们知道，Virtual DOM 的几个优势是：</p>
+<ol>
+<li><strong>Diff 算法，保证操作尽可能少的 DOM 节点</strong>。这里在 Flutter 的 Element Tree 中体现了出来。</li>
+<li><strong>UI 声明式编程，代码可维护性强</strong>。这一点在 Dart 声明式编写 UI 组件的时候可以体现出来。</li>
+<li><strong>将真实的节点抽象出来，可以方便实现跨平台</strong>。这一点在 Flutter 侧没有体现，因为 Flutter 本身就是跨端的自绘引擎。但换个思路，我们构建 Element 的 Widget Tree 能否不用 Dart 构建，专用其他支持运行时编译的语言构建（如 JavaScript），那这样不就可以实现动态化了吗？是的，目前 MXFlutter 就是以这种思路来实现动态化的。</li>
+</ol>
+<h4 id="134-layers">1.3.4 Layers</h4>
+<p><img src="https://airing.ursb.me/image/flutter/layers.png" alt="layers"></p>
+<p>最后，看看 Layer，它依附于 RenderObject（通过 <code>RenderObject.layer</code> 获取），是绘图操作的载体，也可以缓存绘图操作的结果。Flutter 分别在不用的图层上绘图，然后将这些缓存了绘图结果的图层按照规则进行叠加，得到最终的渲染结果，也就是我们所说的图像。</p>
+<p><img src="https://airing.ursb.me/image/flutter/code-4.png" alt="code"></p>
+<p>如上图代码所示，Layer 的基类上有两个属性 <code>_needsAddToScene</code> 和 _<code>subtreeNeedsAddToScene</code>，前者表示需要加入场景，后者表示子树需要加入场景。通常，只有状态发生了更新，才需要加入到场景，所以这两个属性又可以直观理解为「自己需要更新」和「子树需要更新」。</p>
+<p>Layer 提供了 <code>markNeedsAddToScene()</code> 来把自己标记为「需要更新」。派生类在自己状态发生变化时调用此方法把自己标记为「需要更新」，比如 ContainerLayer 的子节点增删、OpacityLayer 的透明度发生变化、PictureLayer 的 picture 发生变化等等。</p>
+<h3 id="14-flutter-绘制流程拆解">1.4 Flutter 绘制流程拆解</h3>
+<p>绘制流程分为以下六个阶段：</p>
+<ol>
+<li>Build</li>
+<li>Diff</li>
+<li>Layout</li>
+<li>Paint</li>
+<li>Composite</li>
+<li>Render</li>
+</ol>
+<p>抛开 Diff 和 Render 我们本文不讲解，因为这两部分稍稍繁琐一些，我们来关注下剩下的四个环节。</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E7%BB%98%E5%88%B6%E6%B5%81%E7%A8%8B.png" alt="绘制流程"></p>
+<blockquote>
+<p>注：此流程图出自 <a href="https://zhuanlan.zhihu.com/p/134024247">复杂业务如何保证Flutter的高性能高流畅度？| 闲鱼技术</a>，可以较为清晰的表达 Flutter 核心的绘制流程了。</p>
+</blockquote>
+<h4 id="141-build">1.4.1 Build</h4>
+<p>执行 build 方法时，根据组件的类型，存在两种不同的逻辑。</p>
+<p>我们知道，Flutter 内的 Widget 可以分为 StatelessWidget 与 StatefulWidget，即无状态组件与有状态组件。</p>
+<p>所谓 StatelessWidget，就是它 build 的信息完全由配置参数（入参）组成，换句话说，<strong>它们一旦创建成功就不再关心、也不响应任何数据变化进行重绘。</strong></p>
+<p><img src="https://airing.ursb.me/image/flutter/stateless.png" alt="StatelessWidget"></p>
+<p>所谓 StatefulWidget，除了父组件初始化时传入的静态配置之外，还要处理用户的交互与内部数据变化（如网络数据回包）并体现在 UI 上，这类组件就需要以 State 类打来 Widget 构建的设计方式来实现。它由 State 的 build 方法构建 UI， 最终调用 <code>buildScope</code> 方法。其会遍历 <code>_dirtyElements</code>，对其调用 rebuild/build。</p>
+<p><img src="https://airing.ursb.me/image/flutter/stateful.png" alt="StatefulWidget"></p>
+<blockquote>
+<p>注：以上两图出自 <a href="https://time.geekbang.org/column/article/108576">《Flutter 核心技术与实战 | 陈航》</a></p>
+</blockquote>
+<h4 id="142-layout">1.4.2 Layout</h4>
+<p>只有布局类 Widget 会触发 layout（如 Container、Padding、Align 等）。</p>
+<p>每个 RenderObject 节点需要做两件事：</p>
+<ol>
+<li>调用自己的 performLayout 来计算 layout</li>
+<li>调用 child 的 layout，把 parent 的限制传入</li>
+</ol>
+<p><img src="https://airing.ursb.me/image/flutter/carbon%20(14).png" alt="code"></p>
+<p>如此递归一轮，每个节点都受到父节点的约束并计算出自己的 size，然后父节点就可以按照自己的逻辑决定各个子节点的位置，从而完成整个 Layout 环节。</p>
+<p><img src="https://airing.ursb.me/image/flutter/layout.png" alt="layout"></p>
+<h4 id="143-paint">1.4.3 Paint</h4>
+<p>渲染管道中首先找出需要重绘的 RenderObject，如果有实现了 CustomPainter 则调用 CustomPainter paint 方法
+再调用 child 的 paint 方法；如果未实现 CustomPainter，则直接调用 child 的 paint。</p>
+<p>在调用 paint 的时候，经过一串的转换后，<code>layer->PaintingContext->Canvas</code>，最终 paint 就是描绘在 Canvas 上。</p>
+<p><img src="https://airing.ursb.me/image/flutter/code-paint.png" alt="code"></p>
+<h4 id="144-composite">1.4.4 Composite</h4>
+<p>合成主要做三件事情：</p>
+<ol>
+<li>把所有 Layer 组合成 Scene</li>
+<li>通过 <code>ui.window.render</code> 方法，把 Scene 提交给 Engine。</li>
+<li>Engine 把计算所有的 Layer 最终的显示效果，渲染到屏幕上。</li>
+</ol>
+<p><img src="https://airing.ursb.me/image/flutter/carbon%20(15).png" alt="code"></p>
+<h2 id="2-跨端方案对比">2. 跨端方案对比</h2>
+<p>跨端开发是必然趋势，从本质上来说，它增加业务代码的复用率，减少因为适配不同平台带来的工作量，从而降低开发成本。在各平台差异抹平之前，要想“多快好省”地开发出各端体验接近一致的程序，那便是跨端开发了。</p>
+<p>总得来说，业内普遍认同跨端方案存在以下三种：</p>
+<ol>
+<li>Web 容器方案</li>
+<li>泛 Web 容器方案</li>
+<li>自绘引擎方案</li>
+</ol>
+<p>下面来一一讲解。</p>
+<h3 id="21-web-容器">2.1 Web 容器</h3>
+<p><img src="https://airing.ursb.me/image/flutter/%E8%B7%A8%E7%AB%AF%E6%96%B9%E6%A1%881.png" alt="跨端方案1"></p>
+<p>所谓 Web 容器，即是基于 Web 相关技术通过浏览器组件来实现界面和功能，包括我们通常意义上说的基于 WebView 的 “H5”、Cordova、Ionic、微信小程序。</p>
+<p>这类 Hybrid 开发模式，只需要将开发一次  Web，就可以同时在多个系统的浏览器组件中运行，保持基本一致的体验，是迄今为止热度很高的跨端开发模式。而 Web 与 原生系统之间的通信，则通过 JSBridge 来完成，原生系统通过 JSBridge 接口暴露能力给 Web 调用。而页面的呈现，则由浏览器组件按照标准的浏览器渲染流程自行将 Web 加载、解析、渲染。</p>
+<p>这类方案的优点：简单、天然支持热更新、生态繁荣、兼容性强、开发体验友好。</p>
+<p>当然，缺点也很明显，否则就没有后面两个方案什么事了，主要是体验上的问题：</p>
+<ol>
+<li>浏览器渲染流程复杂，页面需要在线加载，体验受限于网络。所以 Web 存在白屏时间（PWA 例外）、且<strong>交互上体验上与原生体验有着非常非常明显区别。</strong></li>
+<li>双端需要分别实现 JSBridge 接口，且 JSBridge 的通信效率一般。</li>
+</ol>
+<h3 id="22-泛-web-容器">2.2 泛 Web 容器</h3>
+<p><img src="https://airing.ursb.me/image/flutter/%E8%B7%A8%E7%AB%AF%E6%96%B9%E6%A1%882.png" alt="跨端方案2"></p>
+<p>所以轮到泛 Web 容器方案出场了，代表性框架是 React Native，Weex，Hippy。</p>
+<ul>
+<li><strong>它放弃了浏览器渲染，而采用原生控件，从而保证交互体验；</strong></li>
+<li><strong>它支持内置离线包，来规避加载耗时避免长时间白屏；</strong></li>
+<li><strong>它依然采用前端友好的 JavaScript 语言，来保证开发体验。</strong></li>
+</ul>
+<p>在跨端通信上，React Native 依然通过 Bridge 的方式来调用原生提供的方法。</p>
+<p>这套方案理想是美好的，但现实确实骨感的，它在实践下来之后也依然发现了问题：</p>
+<ol>
+<li>直接调用原生控件虽然提升了体验和性能，但是<strong>不同端相同的原生控件的渲染结果是存在差异的，跨端的差异需要巨大的工作量来抹平。</strong></li>
+<li><strong>Bridge 的通信效率一般，在需要高频通信的场景下会造成丢帧。</strong></li>
+</ol>
+<h3 id="23-自绘引擎">2.3 自绘引擎</h3>
+<p>那我们究竟能不能既简单地抹平差异，又同时保证性能呢？</p>
+<p>答案是可以，那就是自绘引擎。不调用原生控件，我们自己去画。那就是 Flutter。好比警察问 React Native 嫌疑犯长什么样子，React Native 只能绘声绘色地去描绘嫌疑犯的外观，警察画完之后再拿给 React Native 看，React Native 还要回答像不像；但 Flutter 自己就是一个素描大师，它可以自己将嫌疑犯的画像画好然后交给警察看。这两者的效率和表现差异，不言而喻。</p>
+<ol>
+<li><strong>其通过 Skia 图形库直接调用 OpenGL 渲染，保证渲染的高性能，同时抹平差异性。</strong></li>
+<li><strong>开发语言选择同时支持 JIT 和 AOT 的 Dart</strong>，保证开发效率的同时，较 JavaScript 而言，更是提升了数十倍的执行效率。</li>
+</ol>
+<p><img src="https://airing.ursb.me/image/flutter/%E8%B7%A8%E7%AB%AF%E6%96%B9%E6%A1%883.png" alt="跨端方案3"></p>
+<p>通过这样的思路，Flutter 可以尽可能地减少不同平台之间的差异, 同时保持和原生开发一样的高性能。并且对于系统能力，可以通过开发 Plugin 来支持 Flutter 项目间的复用。所以说，Flutter 成了三类跨端方案中最灵活的那个，也成了目前业内受到关注的框架。</p>
+<p>至于通信效率，Fluter 跨端的通信效率也是高出 JSBridge 许许多多。Flutter 通过 Channel 进行通信，其中：</p>
+<ol>
+<li>BasicMessageChannel，用于传递字符串和半结构化的信息，是全双工的，可以双向请求数据。</li>
+<li>MethodChannel，<strong>用于传递方案调用</strong>，即 Dart 侧可以调用原生侧的方法并通过 Result 接口回调结果数据。</li>
+<li>EventChannel：<strong>用户数据流的通信</strong>，即 Dart 侧监听原生侧的实时消息，一旦原生侧产生了数据，立即回调给 Dart 侧。</li>
+</ol>
+<p>其中，MethodChannel 在开发中用的比较多，下图是一个标准的 MethodChannel 的调用原理图：</p>
+<p><img src="https://airing.ursb.me/image/flutter/MethodChannel.png" alt="MethodChannel"></p>
+<p>但为什么我们说 Channel 的性能高呢？梳理一下 MethodChannel 调用时的调用栈，如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E9%80%9A%E4%BF%A1%E6%95%88%E7%8E%87.png" alt="通信效率"></p>
+<p>可以发现，整个流程中都是机器码的传递，而 JNI 的通信又和 JavaVM 内部通信效率一样，整个流程通信的流程相当于原生端的内部通信。但是也存在瓶颈。我们可以发现，<strong>methodCall 需要编解码，其实主要的消耗都在编解码上了，因此，MethodChannel 并不适合传递大规模的数据。</strong></p>
+<p>比如我们想调用摄像头来拍照或录视频，但在拍照和录视频的过程中我们需要将预览画面显示到我们的 Flutter UI中，如果我们要用 MethodChannel 来实现这个功能，就需要将摄像头采集的每一帧图片都要从原生传递到 Dart 侧中，这样做代价将会非常大，因为将图像或视频数据通过消息通道实时传输必然会引起内存和 CPU 的巨大消耗。为此，Flutter 提供了一种基于 Texture 的图片数据共享机制。</p>
+<p>Texture 和 PlatformView 不在本文的探讨范围内，这里就不再深入展开了，有兴趣的读者可以自行查阅相关资料作为扩展知识了解。</p>
+<p>那接下来，我们就进入本文的第三篇章吧，Flutter 混合开发模式的探索。</p>
+<h2 id="3-flutter-混合开发模式">3. Flutter 混合开发模式</h2>
+<h3 id="31-混合模式">3.1 混合模式</h3>
+<p>Flutter 混合工程的结构，主要存在以下两种模式：</p>
+<ol>
+<li>统一管理模式</li>
+<li>三端分离模式</li>
+</ol>
+<p><img src="https://airing.ursb.me/image/flutter/%E4%B8%A4%E7%A7%8D%E6%B7%B7%E5%90%88%E6%A8%A1%E5%BC%8F.png" alt="两种混合模式"></p>
+<p>所谓统一管理模式，就是一个标准的 Flutter Application 工程，而其中 Flutter 的产物工程目录（<code>ios/</code> 和 <code>android/</code> ）是可以进行原生混编的工程，如 React Native 进行混合开发那般，在工程项目中进行混合开发就好。但是这样的缺点是当原生项目业务庞大起来时，Flutter 工程对于原生工程的耦合就会非常严重，当工程进行升级时会比较麻烦。因此这种混合模式只适用于 Flutter 业务主导、原生功能为辅的项目。但早期 Google 未支持 Flutter Module 时，进行混合开发也只存在这一种模式。</p>
+<p>后来 Google 对混合开发有了更好的支持，除了 Flutter Application，还支持 Flutter Module。所谓 Flutter Module，恰如其名，就是支持以模块化的方式将 Flutter 引入原生工程中，**它的产物就是 iOS 下的 Framework 或 Pods、Android 下的 AAR，原生工程就像引入其他第三方 SDK 那样，使用 Maven 和 Cocoapods 引入 Flutter Module 即可。**从而实现真正意义上的三端分离的开发模式。</p>
+<h3 id="32-混合栈原理">3.2 混合栈原理</h3>
+<p><img src="https://airing.ursb.me/image/flutter/%E6%B7%B7%E5%90%88%E6%A0%88.png" alt="混合栈"></p>
+<p>为了问题的简洁性，我们这里暂时不考虑生命周期的统一性和通信层的实现，而除此之外，混合导航栈主要需要解决以下四种场景下的问题：</p>
+<ol>
+<li>Native 跳转 Flutter</li>
+<li>Flutter 跳转 Flutter</li>
+<li>Flutter 跳转 Native</li>
+<li>Native 跳转 Native</li>
+</ol>
+<h4 id="321-native-跳转-flutter">3.2.1 Native 跳转 Flutter</h4>
+<p>Native -> Flutter，这种情况比较简单，Flutter Engine 已经为我们提供了现成的 Plugin，即 iOS 下的 FlutterViewController 与 Android 下的 FlutterView（自行包装一下可以实现 FlutterActivity），所以这种场景我们直接使用启动了的 Flutter Engine 来初始化 Flutter 容器，为其设置初始路由页面之后，就可以以原生的方式跳转至 Flutter 页面了。</p>
+<p><img src="https://airing.ursb.me/image/flutter/code-1.png" alt="code"></p>
+<h4 id="322-flutter-跳转-flutter">3.2.2 Flutter 跳转 Flutter</h4>
+<p>Flutter -> Flutter，业内存在两种方案，后续我们会详细介绍到，分别是：</p>
+<ol>
+<li>使用 Flutter 本身的 Navigator 导航栈</li>
+<li>创建新的 Flutter 容器后，使用原生导航栈</li>
+</ol>
+<h4 id="323-flutter-跳转-native">3.2.3 Flutter 跳转 Native</h4>
+<p>Flutter -> Native，需要注意的时，这里的跳转其实是包含了两种情况，一是打开原生页面（open，包括但不限于 push），二是回退到原生页面（close，包括但不限于 pop）。</p>
+<p><img src="https://airing.ursb.me/image/flutter/flutter-native.png" alt="flutter->native"></p>
+<p>如上图，这种情况相对复杂，我们需要使用 MethodChannel 让 Dart 与 Platform 侧进行通信，Dart 发出 open 或 close 的指令后由原生侧执行相应的逻辑。</p>
+<h4 id="324-native-跳转-native">3.2.4 Native 跳转 Native</h4>
+<p>Native -> Native，这种情况没有什么好说的，直接使用原生的导航栈即可。</p>
+<h3 id="33-混合模式">3.3 混合模式</h3>
+<p>为了解决混合栈问题，以及弥补 Flutter 自身对混合开发支持的不足，业内提出了一些混合栈框架，总得来说，离不开这四种混合模式：</p>
+<ol>
+<li>Flutter Boost 为代表的类 WebView 导航栈</li>
+<li>Flutter Thrio 为代表的 Navigator 导航栈</li>
+<li>多 Engine 混合模式</li>
+<li>View 基本的混合模式</li>
+</ol>
+<p>下面，一一来谈谈它们的原理与优缺点。</p>
+<h4 id="331-flutter-boost">3.3.1 Flutter Boost</h4>
+<p>Flutter Boost 是闲鱼团队开源的 Flutter 混合框架，成熟稳定，业内影响力高，在导航栈的处理思路上没有绕开我们在 3.2 节中谈及的混合栈原理，但需要注意的是，当 Flutter 跳转 Flutter 时，它采用的是 new 一个新的 FlutterViewController 后使用原生导航栈跳转的方式，如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/flutter/flutterboost.png" alt="flutter boost"></p>
+<p>这么做的好处是使用者（业务开发者）操作 Flutter 容器就如同操作 WebView 一样，而 Flutter 页面就如同 Web 页面，逻辑上简单清晰，将所有的导航路由逻辑收归到原生侧处理。如下图，是调用 open 方法时 Flutter Boost 的时序图（关键函数路径），这里可以看到两点信息：</p>
+<ol>
+<li>混合导航栈的逻辑主要包括原生层、通信层、Dart 层。</li>
+<li>Flutter Boost 的 open 方法实现逻辑相对简单。</li>
+</ol>
+<p><img src="https://airing.ursb.me/image/flutter/flutter-boost%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="flutter boost open 时序图"></p>
+<p>但是它也有缺点，就是每次打开 Flutter 页面都需要 new 一个 ViewController，<strong>在连续的 Flutter 跳转 Flutter 的场景下有额外的内存开销</strong>。针对这个问题，又有团队开发了 Flutter Thrio。</p>
+<h4 id="332-flutter-thrio">3.3.2 Flutter Thrio</h4>
+<p>上面我们说到，Flutter 跳转 Flutter 这种场景 Flutter Boost 存在额外的内存开销，故哈啰出行团队今年4月开源了 Flutter Thrio 混合框架，其针对 Flutter Boost 做出的最重要的改变在于：Flutter 跳转 Flutter 这种场景下，Thrio 使用了 Flutter Navigator 导航栈。如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/flutter/flutter-thrio.png" alt="flutter thrio"></p>
+<p>在连续的 Flutter 页面跳转场景下，内存测试图表如下：</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E5%86%85%E5%AD%98%E5%A2%9E%E9%87%8F2.png" alt="内存增量"></p>
+<p>从这张图表中我们可以得到以下几点信息：</p>
+<ol>
+<li>红色区域是启动 Flutter Engine 的内存增量，基本接近 30MB，Flutter Engine 是一个比较重的对象。</li>
+<li>FlutterViewController 带来的内存增量普遍在 12~15MB 左右。</li>
+</ol>
+<p>可见，在这种场景下，Thrio 还是做出了一定的优化的。但与之带来的，就是实现的复杂性。我们谈到 Flutter
+Boost 的优点是简单，路由全部收归原生导航栈。而 Flutter Thrio 混用了原生导航栈和 Flutter Navigator，因此实现会相对更复杂一下。这里我梳理了一下 Flutter Thrio open 时关键函数路径，可以看到，Thrio 的导航管理确实是复杂了一些。</p>
+<p><img src="https://airing.ursb.me/image/flutter/thrio%E6%97%B6%E5%BA%8F%E5%9B%BE.png" alt="thrio 时序图"></p>
+<h4 id="333-多-engine-模式">3.3.3 多 Engine 模式</h4>
+<p>以上我们谈及的两种混合框架都是单引擎的，对应的，也存在多引擎的框架。在谈多引擎之前，还是需要先介绍一下关于 Engine、Dart VM、isolate 几个前置知识点。</p>
+<p>在第一篇章中我们没有涉及到 Engine 层的源码分析，而着重篇幅去讲解 Framework 层的原理，一是为了第一章的连贯性，二是此处也会单独说到 Engine，还是最好放在此时讲解会更便于记忆与理解。</p>
+<h5 id="dart-vmengine-与-isolate">Dart VM、Engine 与 isolate</h5>
+<p>（a）Dart 虚拟机创建完成之后，需要创建 Engine 对象，然后会调用 <code>DartIsolate::CreateRootIsolate()</code> 来创建 isolate。
+（b）每一个 Engine 实例都为 UI、GPU、IO、Platform Runner 创建各自新的 Thread。
+（c）isolate，顾名思义，内存在逻辑上是隔离的。
+（d）isolate 中的 code 是按顺序执行的，任何 Dart 程序的并发都是运行多个 isolate 的结果。当然我们可以开启多个 isolate 来处理 CPU 密集型任务。</p>
+<p>根据 (a) 我们可以推出：<strong>(1) 每个 Engine 对应一个 isolate 对象，即 Root Isolate</strong>。
+根据 (b) 我们可以推出：<strong>(2) Engine 是一个比较重的对象</strong>（前文也有所提及）。
+根据 (c) 和 (1) 我们可以推出：<strong>(3) Engine 与 Engine 之间相互隔离</strong>。
+根据 (d) 和 (3) 我们可以推出：<strong>(4) Engine 没有共享内存的并发，没有竞争的可能性，不需要锁，也就不存在死锁问题。</strong></p>
+<p>好啦，记住这四个结论，我们再来看看 window。</p>
+<h5 id="window">Window</h5>
+<p>window 是绘图的窗口，也是连接 Flutter Framework（Dart）与 Flutter Engine（C++）的窗口 (5)。</p>
+<p>从类的定义上来看，window 是连接 Framework 与 Engine 的窗口。在 Framework 层，window 指的是 <code>ui.window</code> 单例对象，源码文件是 window.dart。而在 Engine 层，源码文件是 window.cc，两者交互的 API 很少，但是一一对应：</p>
+<p><img src="https://airing.ursb.me/image/flutter/carbon%20(19).png" alt="code"></p>
+<p><img src="https://airing.ursb.me/image/flutter/carbon%20(18).png" alt="code"></p>
+<p>可以发现，这些主要是 Framework 层调用 Engine 层中 Skia 库封装后的相关 API。那就不得不说说它的第二层含义——作为绘图的窗口。</p>
+<p>从功能上来看，在界面绘制交互意义上，window 也是绘图的窗口。在 Engine 中，绘图操作输出到了一个 <code>PictureRecorder</code> 的对象上；在此对象上调用 <code>endRecording()</code> 得到一个 <code>Picture</code> 对象，然后需要在合适的时候把 <code>Picture</code> 对象添加（add）到 <code>SceneBuilder</code> 对象上；调用 <code>SceneBuilder</code> 对象的 <code>build()</code> 方法获得一个 <code>Scene</code> 对象；最后，在合适的时机把 <code>Scene</code> 对象传递给 <code>window.render()</code> 方法，最终把场景渲染出来。</p>
+<p><img src="https://airing.ursb.me/image/flutter/window.png" alt="window"></p>
+<blockquote>
+<p>该图出自：<a href="https://xieguanglei.github.io/blog/post/flutter-code-chapter-01.html">Flutter Framework 源码解析（ 1 ）—— 开篇和绘图引擎的用法</a></p>
+</blockquote>
+<p>实例代码如下：</p>
+<p><img src="https://airing.ursb.me/image/flutter/carbon%20(17).png" alt="code"></p>
+<h5 id="多-engine-模式">多 Engine 模式</h5>
+<p>综上，根据（1）（3）（5）我们可以得出下图的多引擎模式：</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E5%A4%9Aengine%E6%A8%A1%E5%BC%8F.png" alt="多 engine 模式"></p>
+<p>它有以下几个特征：</p>
+<ol>
+<li><strong>App 内存在多个引擎</strong></li>
+<li><strong>每个引擎内有若干个 FlutterVC</strong></li>
+<li><strong>Engine 与 Engine 之间是隔离的</strong></li>
+</ol>
+<p>根据这三个特征，我们可以设想一下其通信层的实现，假设存在两个引擎，每个引擎内又存在两个 FlutterVC，每个 FlutterVC 内又存在两个 Flutter 页面，那这种场景下的跳转就会变得非常复杂（下图出自 Thrio 开源仓库中的README）：</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E5%A4%9Aengine%E6%A8%A1%E5%BC%8F2.png" alt="多 engine 模式"></p>
+<p>所以显而易见的，我们不可否认 Engine 之间的逻辑隔离带来了模块间天然的隔离性，但是问题也有许多：</p>
+<p>首先如上图所示，<strong>通信层设计会异常复杂</strong>，而且通信层的核心逻辑依然是需要放在原生侧来实现，如此便一定程度上失去了跨端开发的优势。</p>
+<p>其次，我们反复提到 Engine 是一个比较重的对象，启动多个 Flutter Engine 会导致<strong>资源消耗过多</strong>。</p>
+<p>最后，由于 Engine 之间没有共享内存，这种天然的隔离性其实弊大于利，在混合开发的视角下，一个 App 需要维护两套缓存池——原生缓存池与 DartVM 所持有的缓存池，但是随着开启多 Engine 的介入，后者缓存池的资源又互不相通，<strong>导致资源开销变得更加巨大</strong>。</p>
+<p>为了解决传统的多 Engine 模式所带来的这些问题，又有团队提出了基于 View 级别的混合模式。</p>
+<h4 id="334-view-级别的混合模式">3.3.4 View 级别的混合模式</h4>
+<p>基于 View 级别的混合模式，核心是为每个 window 加入 windowId 的概念，以便它们去共享同一份 Root Isolate。我们刚才说到，一个 isolate 具有一个 <code>ui.window</code> 单例对象，那么只需要做一点修改，把 Flutter Engine 加入 ID 的概念传给 Dart 层，让 Dart 层存在多个 window，就可以实现多个 Flutter Engine 共享一个 isolate 了。</p>
+<p>如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E5%A4%9Aview%E6%A8%A1%E5%BC%8F.png" alt="View 级别的混合模式"></p>
+<p>这样就可以真正实现 View 级别的混合开发，<strong>可以同时持有多份 FlutterViewController，且这些 FlutterVC 可以内存共享</strong>。</p>
+<p>那缺点也比较明显，我们需要对 Engine 代码做出修改，<strong>维护成本会很高</strong>。其次，多 Engine 的资源消耗问题在这种模式下也是需要通过对 Engine 不断裁剪来解决的。</p>
+<h2 id="4-工程化探索">4. 工程化探索</h2>
+<h3 id="41-编译模式">4.1 编译模式</h3>
+<p>Dart 天然支持两种编译模式，JIT 与 AOT。</p>
+<h4 id="411-jit-与-aot">4.1.1 JIT 与 AOT</h4>
+<p>所谓 JIT，Just In Time，即时编译/运行时编译，在 Debug 模式中使用，可以动态下发和执行代码，但是执行性能受运行时编译影响。</p>
+<p><img src="https://airing.ursb.me/image/flutter/JIT.png" alt="JIT"></p>
+<p>所谓 AOT，Ahead Of Time，提前编译/运行前编译，在 Release 模式中使用，可以为特定平台生成二进制代码，执行性能好、运行速度快，但每次执行都需要提前编译，开发调试效率低。</p>
+<p><img src="https://airing.ursb.me/image/flutter/AOT.png" alt="AOT"></p>
+<h4 id="412-debugreleaseprofile">4.1.2 Debug、Release、Profile</h4>
+<p>对应的 Flutter App 存在三种运行模式：</p>
+<ul>
+<li>Debug</li>
+<li>Release</li>
+<li>Profile</li>
+</ul>
+<p><img src="https://airing.ursb.me/image/flutter/%E8%BF%90%E8%A1%8C%E6%A8%A1%E5%BC%8F.png" alt="运行模式"></p>
+<p>因此，我们可以看出，在开发调试过程中，我们需要使用支持 JIT 的 Debug 模式，而在生产环境中，我们需要构建包为支持 AOT 的 Release 模式以保证性能。</p>
+<p>那么，这对我们的集成与构建也提出了一定的要求。</p>
+<h3 id="42-集成与构建">4.2 集成与构建</h3>
+<p>所谓集成，指的是混合项目中，将 Flutter Module 的产物集成到原生项目中去，存在两种集成方式，区别如下：</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E4%B8%A4%E7%A7%8D%E9%9B%86%E6%88%90.png" alt="源码集成 vs 产物集成"></p>
+<p>可以发现源码集成是 Flutter dev 分支需要的，但是产物集成是 Flutter dev 以外的分支需要的。在这里，我们的混合项目需要同时支持两种不同的集成工程，在 Flutter dev 分支上进行源码集成开发，然后依赖抽取构建产物发布到远程，如 iOS 构建成 pods 发布到 Cocoapods 对应的仓库，而 Android 构建成 AAR 发布到 Maven 对应的云端。于是，其他分支的工程直接 gradle 或者 pod install 就可以更新 Flutter 依赖模块了。</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E6%9E%84%E5%BB%BA.png" alt="构建"></p>
+<p>当然，我们说到运行模式存在 Debug、Release、Profile 三种，其对应的集成产物也会区分这三种版本，但由于产物集成无法调试，集成 Debug 版本和 Profile 版本没有意义，因此依赖抽取发布时只需要发布 Release 版本的产物就好。</p>
+<h3 id="43-工作流">4.3 工作流</h3>
+<p>在整套「Fan 直播」Flutter 混合项目搭建之后，我们形成了一套初具雏形的 Flutter 工作流。在未来，我们也会不断完善 Flutter 混合开发模式，积极参与到 Flutter 的生态建设中去。</p>
+<p><img src="https://airing.ursb.me/image/flutter/%E5%B7%A5%E4%BD%9C%E6%B5%81.png" alt="Flutter 工作流"></p>
+<blockquote>
+<p>扩展阅读：
+<a href="https://zhuanlan.zhihu.com/p/133477746">Flutter 混合开发模式探索</a>
+<a href="https://zhuanlan.zhihu.com/p/111783390">Flutter Boost 混合开发实践与源码解析</a></p>
+</blockquote>  </article> <!-- Right column: relative container for absolute-positioned cards --> <aside class="comment-rail" id="commentRail" data-astro-cid-gjtny2mx> <div class="cr-header" data-astro-cid-gjtny2mx> <span class="cr-label" data-astro-cid-gjtny2mx>Comments</span> <button class="cr-clear" id="clearAllComments" title="Clear all" data-astro-cid-gjtny2mx>&#x2715;</button> </div> <div class="cr-cards" id="commentCards" data-astro-cid-gjtny2mx> <!-- Cards positioned absolutely here --> </div> </aside> </div> <!-- FAB --> <button class="fab-comment" id="fabComment" aria-label="Add comment" data-astro-cid-gjtny2mx> <svg width="14" height="14" viewBox="0 0 14 14" fill="none" data-astro-cid-gjtny2mx> <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-astro-cid-gjtny2mx></path> </svg> </button> <!-- Comment input popover (desktop) — now with nickname/email --> <div class="comment-input-popover" id="commentPopover" data-astro-cid-gjtny2mx> <div class="cip-header" data-astro-cid-gjtny2mx> <span class="cip-selected" id="cipSelectedText" data-astro-cid-gjtny2mx></span> </div> <div class="cip-identity" data-astro-cid-gjtny2mx> <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="cip-input" id="cipEmail" placeholder="Email (for Gravatar)" data-astro-cid-gjtny2mx> </div> <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3" data-astro-cid-gjtny2mx></textarea> <div class="cip-actions" data-astro-cid-gjtny2mx> <button class="cip-cancel" id="cipCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="cip-submit" id="cipSubmit" data-astro-cid-gjtny2mx>Comment</button> </div> </div> <!-- Mobile bottom sheet --> <div class="mobile-sheet-overlay" id="mobileOverlay" data-astro-cid-gjtny2mx></div> <div class="mobile-sheet" id="mobileSheet" data-astro-cid-gjtny2mx> <div class="ms-handle" data-astro-cid-gjtny2mx></div> <div class="ms-quote" id="msQuote" data-astro-cid-gjtny2mx></div> <div class="ms-body" id="msBody" data-astro-cid-gjtny2mx></div> <div class="ms-author" id="msAuthor" data-astro-cid-gjtny2mx></div> <div class="ms-time" id="msTime" data-astro-cid-gjtny2mx></div> <button class="ms-delete" id="msDelete" data-astro-cid-gjtny2mx>Delete Comment</button> </div> <!-- Prev / Next Navigation --> <nav class="post-nav" data-astro-cid-gjtny2mx> <div class="post-nav-inner" data-astro-cid-gjtny2mx> <a href="/posts/sky/" class="post-nav-link post-nav-prev" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>&larr; Newer</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>《光·遇》之“禅”</span> </a> <a href="/posts/flutter-hybrid/" class="post-nav-link post-nav-next" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>Older &rarr;</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>Flutter 混合开发框架模式探索</span> </a> </div> </nav> <!-- Article Like --> <div class="article-like-section" data-astro-cid-gjtny2mx> <div class="al-rule" data-astro-cid-gjtny2mx></div> <button class="article-like-btn" id="articleLikeBtn" data-astro-cid-gjtny2mx> <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22" data-astro-cid-gjtny2mx> <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none" data-astro-cid-gjtny2mx></path> </svg> <span class="al-count" id="articleLikeCount" data-astro-cid-gjtny2mx>0</span> <span class="al-label" data-astro-cid-gjtny2mx>likes</span> </button> <div class="al-rule" data-astro-cid-gjtny2mx></div> </div> <!-- Newsletter CTA --> <div class="newsletter-cta" data-astro-cid-gjtny2mx> <div class="nl-inner" data-astro-cid-gjtny2mx> <p class="nl-title" data-astro-cid-gjtny2mx>Subscribe</p> <p class="nl-desc" data-astro-cid-gjtny2mx>Get notified when new posts are published.</p> <form class="nl-form" id="nlForm" data-astro-cid-gjtny2mx> <input type="email" class="nl-input" id="nlEmail" placeholder="your@email.com" required data-astro-cid-gjtny2mx> <button type="submit" class="nl-btn" data-astro-cid-gjtny2mx>Subscribe</button> </form> <p class="nl-status" id="nlStatus" data-astro-cid-gjtny2mx></p> </div> </div> <!-- Bottom Comment Section --> <section class="bottom-comments" id="bottomComments" data-astro-cid-gjtny2mx> <div class="bc-inner" data-astro-cid-gjtny2mx> <div class="bc-header" data-astro-cid-gjtny2mx> <h2 class="bc-title" data-astro-cid-gjtny2mx>Comments</h2> <span class="bc-count" id="bcCount" data-astro-cid-gjtny2mx>0 comments</span> </div> <div class="bc-thread" id="bcThread" data-astro-cid-gjtny2mx> <!-- Comments rendered by JS --> </div> <div class="bc-compose" data-astro-cid-gjtny2mx> <div class="bc-compose-avatar" data-astro-cid-gjtny2mx> <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" data-astro-cid-gjtny2mx> </div> <div class="bc-compose-form" data-astro-cid-gjtny2mx> <div class="bc-compose-fields" data-astro-cid-gjtny2mx> <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="bc-input" id="bcEmail" placeholder="Email" data-astro-cid-gjtny2mx> <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" data-astro-cid-gjtny2mx> </div> <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4" data-astro-cid-gjtny2mx></textarea> <div class="bc-compose-footer" data-astro-cid-gjtny2mx> <span class="bc-hint" data-astro-cid-gjtny2mx>Markdown supported</span> <button class="bc-submit" id="bcSubmit" data-astro-cid-gjtny2mx>Submit</button> </div> </div> </div> </div> </section> <footer class="page-footer" data-astro-cid-gjtny2mx> <div class="footer-inner" data-astro-cid-gjtny2mx> <div class="footer-rule" data-astro-cid-gjtny2mx></div> <div class="footer-bar" data-astro-cid-gjtny2mx> <a href="/" data-astro-cid-gjtny2mx>&larr; Home</a> <span class="footer-copy" data-astro-cid-gjtny2mx>&copy; Airing</span> <a href="/archive" data-astro-cid-gjtny2mx>Archive &rarr;</a> </div> </div> </footer> </div>  <!-- Theme Switcher --> <div class="theme-switcher" id="themeSwitcher"> <button class="mode-toggle" id="modeToggle" aria-label="Toggle light/dark mode"> <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"></circle> <line x1="8" y1="0.5" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="8" y1="13.5" x2="8" y2="15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="0.5" y1="8" x2="2.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="13.5" y1="8" x2="15.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="2.7" x2="4.1" y2="4.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="11.9" x2="13.3" y2="13.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="13.3" x2="4.1" y2="11.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="4.1" x2="13.3" y2="2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> </svg> <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none"> <path d="M13.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </svg> </button> <button class="theme-toggle" id="themeToggle" aria-label="Switch accent color"> <svg width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"></circle> <circle cx="8" cy="8" r="3" fill="currentColor"></circle> </svg> </button> <div class="theme-dots" id="themeDots"> <button class="theme-dot" data-theme="green" style="--dot-color:#4ade80" title="Green"></button> <button class="theme-dot" data-theme="blue" style="--dot-color:#60a5fa" title="Blue"></button> <button class="theme-dot" data-theme="purple" style="--dot-color:#a78bfa" title="Purple"></button> <button class="theme-dot" data-theme="amber" style="--dot-color:#fbbf24" title="Amber"></button> <button class="theme-dot" data-theme="rose" style="--dot-color:#fb7185" title="Rose"></button> <button class="theme-dot" data-theme="cyan" style="--dot-color:#22d3ee" title="Cyan"></button> </div> </div> <script>
+    (function() {
+      var toggle = document.getElementById('themeToggle');
+      var dots = document.getElementById('themeDots');
+      var switcher = document.getElementById('themeSwitcher');
+      var modeToggle = document.getElementById('modeToggle');
+      var open = false;
+
+      // Mode toggle (light/dark)
+      function updateModeIcon() {
+        var isLight = document.documentElement.getAttribute('data-mode') === 'light';
+        switcher.classList.toggle('light-mode', isLight);
+      }
+      modeToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var current = document.documentElement.getAttribute('data-mode');
+        var next = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-mode', next);
+        localStorage.setItem('blog-mode', next);
+        updateModeIcon();
+      });
+      updateModeIcon();
+
+      // Color theme toggle
+      toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        open = !open;
+        dots.classList.toggle('active', open);
+        toggle.classList.toggle('active', open);
+      });
+
+      dots.addEventListener('click', function(e) {
+        var btn = e.target.closest('.theme-dot');
+        if (!btn) return;
+        var theme = btn.dataset.theme;
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('blog-theme', theme);
+        dots.querySelectorAll('.theme-dot').forEach(function(d) {
+          d.classList.toggle('selected', d.dataset.theme === theme);
+        });
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!switcher.contains(e.target) && open) {
+          open = false;
+          dots.classList.remove('active');
+          toggle.classList.remove('active');
+        }
+      });
+
+      // Mark current theme
+      var current = localStorage.getItem('blog-theme') || 'green';
+      dots.querySelectorAll('.theme-dot').forEach(function(d) {
+        d.classList.toggle('selected', d.dataset.theme === current);
+      });
+    })();
+  </script> </body> </html> <script>
+/* Wrap short text nodes after <img> as styled captions */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = content.querySelectorAll('p');
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (!imgs.length) return;
+    var nodes = Array.from(p.childNodes);
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeType !== 3) continue;
+      var text = node.textContent.trim();
+      if (!text) continue;
+      var prev = node.previousSibling;
+      while (prev && prev.nodeType === 3 && !prev.textContent.trim()) prev = prev.previousSibling;
+      if (!prev || prev.nodeName !== 'IMG') continue;
+      if (text.length > 30 || text.indexOf('\n') !== -1 || text.charAt(0) === '#') continue;
+      var span = document.createElement('span');
+      span.className = 'img-caption';
+      span.textContent = text;
+      p.replaceChild(span, node);
+    }
+  });
+})();
+
+/* Gallery: group consecutive images into flex rows */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = Array.from(content.querySelectorAll('p'));
+
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (imgs.length < 2) return;
+
+    // Segment childNodes into groups: consecutive img(+caption) vs other content
+    var nodes = Array.from(p.childNodes);
+    var segments = [];
+    var currentImgs = [];
+
+    function flushImgs() {
+      if (currentImgs.length >= 2) {
+        segments.push({ type: 'images', items: currentImgs });
+      } else if (currentImgs.length === 1) {
+        segments.push({ type: 'other', nodes: [currentImgs[0].img] });
+        if (currentImgs[0].caption) segments.push({ type: 'other', nodes: [currentImgs[0].caption] });
+      }
+      currentImgs = [];
+    }
+
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeName === 'IMG') {
+        var item = { img: node, caption: null };
+        var next = nodes[i + 1];
+        if (next && next.nodeType === 1 && next.classList && next.classList.contains('img-caption')) {
+          item.caption = next;
+          i++;
+        }
+        currentImgs.push(item);
+      } else if (node.nodeType === 3 && !node.textContent.trim()) {
+        continue;
+      } else {
+        flushImgs();
+        segments.push({ type: 'other', nodes: [node] });
+      }
+    }
+    flushImgs();
+
+    var hasGallery = segments.some(function(s) { return s.type === 'images'; });
+    if (!hasGallery) return;
+
+    var frag = document.createDocumentFragment();
+
+    segments.forEach(function(seg) {
+      if (seg.type === 'other') {
+        seg.nodes.forEach(function(n) { frag.appendChild(n.cloneNode(true)); });
+        return;
+      }
+
+      var items = seg.items;
+      var gallery = document.createElement('div');
+      gallery.className = 'img-gallery';
+
+      // Build rows: max 3 per row (2 for groups of 4)
+      var rows = [];
+      var row = [];
+      for (var j = 0; j < items.length; j++) {
+        row.push(items[j]);
+        var maxPerRow = items.length === 4 ? 2 : 3;
+        if (row.length >= maxPerRow) { rows.push(row); row = []; }
+      }
+      if (row.length) rows.push(row);
+
+      rows.forEach(function(rowItems) {
+        var rowDiv = document.createElement('div');
+        rowDiv.className = 'img-gallery-row';
+        rowItems.forEach(function(item) {
+          var figure = document.createElement('figure');
+          figure.className = 'img-gallery-item';
+          figure.appendChild(item.img.cloneNode(true));
+          if (item.caption) {
+            var figcap = document.createElement('figcaption');
+            figcap.textContent = item.caption.textContent;
+            figure.appendChild(figcap);
+          }
+          rowDiv.appendChild(figure);
+        });
+        gallery.appendChild(rowDiv);
+      });
+
+      // Apply flex ratios once all images in gallery have loaded
+      var galleryImgs = gallery.querySelectorAll('img');
+      var loaded = 0;
+      var total = galleryImgs.length;
+      function applyFlex() {
+        var rows = gallery.querySelectorAll('.img-gallery-row');
+        rows.forEach(function(rowEl) {
+          var figs = rowEl.querySelectorAll('.img-gallery-item');
+          figs.forEach(function(fig) {
+            var img = fig.querySelector('img');
+            var w = img.naturalWidth || 1;
+            var h = img.naturalHeight || 1;
+            fig.style.flex = (w / h).toFixed(3);
+          });
+        });
+      }
+      galleryImgs.forEach(function(img) {
+        if (img.complete && img.naturalWidth > 0) {
+          loaded++;
+          if (loaded === total) applyFlex();
+        } else {
+          img.addEventListener('load', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+          img.addEventListener('error', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+        }
+      });
+
+      frag.appendChild(gallery);
+    });
+
+    p.parentNode.replaceChild(frag, p);
+  });
+})();
+
+/* TOC: build, scroll-spy, click-to-scroll */
+(function() {
+  var content = document.querySelector('.post-content');
+  var tocNav = document.getElementById('tocNav');
+  var tocBlock = document.getElementById('tocBlock');
+  if (!content || !tocNav || !tocBlock) return;
+
+  var headings = content.querySelectorAll('h2, h3');
+  if (headings.length < 2) return;
+
+  // Ensure each heading has an id
+  headings.forEach(function(h, i) {
+    if (!h.id) h.id = 'heading-' + i;
+  });
+
+  // Build TOC links
+  var fragment = document.createDocumentFragment();
+  headings.forEach(function(h) {
+    var a = document.createElement('a');
+    a.className = 'toc-link';
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    a.setAttribute('data-level', h.tagName === 'H2' ? '2' : '3');
+    a.addEventListener('click', function(e) {
+      e.preventDefault();
+      h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', '#' + h.id);
+    });
+    fragment.appendChild(a);
+  });
+  tocNav.appendChild(fragment);
+  tocBlock.style.display = '';
+
+  // Scroll spy
+  var tocLinks = tocNav.querySelectorAll('.toc-link');
+  var headingArr = Array.from(headings);
+  var ticking = false;
+
+  function updateActive() {
+    var scrollY = window.scrollY + 80;
+    var active = null;
+    for (var i = headingArr.length - 1; i >= 0; i--) {
+      if (headingArr[i].offsetTop <= scrollY) { active = i; break; }
+    }
+    tocLinks.forEach(function(link, idx) {
+      link.classList.toggle('active', idx === active);
+    });
+    // Scroll active link into view within TOC nav
+    if (active !== null && tocLinks[active]) {
+      var link = tocLinks[active];
+      var nav = tocNav;
+      if (link.offsetTop < nav.scrollTop || link.offsetTop + link.offsetHeight > nav.scrollTop + nav.clientHeight) {
+        nav.scrollTop = link.offsetTop - nav.clientHeight / 3;
+      }
+    }
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function() {
+    if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
+  }, { passive: true });
+  updateActive();
+})();
+</script> <script>
+(function() {
+  var API = 'https://chat.ursb.me';
+  var POST_SLUG = location.pathname.replace(/^\/posts\//, '').replace(/\/$/, '');
+  var USER_KEY = 'blog-user-identity';
+
+  var postContent = document.getElementById('postContent');
+  var contentGrid = document.getElementById('contentGrid');
+  var commentRail = document.getElementById('commentRail');
+  var commentCards = document.getElementById('commentCards');
+  var fab = document.getElementById('fabComment');
+  var popover = document.getElementById('commentPopover');
+  var cipText = document.getElementById('cipSelectedText');
+  var cipNickname = document.getElementById('cipNickname');
+  var cipEmailInput = document.getElementById('cipEmail');
+  var cipArea = document.getElementById('cipTextarea');
+  var cipCancel = document.getElementById('cipCancel');
+  var cipSubmit = document.getElementById('cipSubmit');
+  var clearAll = document.getElementById('clearAllComments');
+  var mobileOverlay = document.getElementById('mobileOverlay');
+  var mobileSheet = document.getElementById('mobileSheet');
+  var msQuote = document.getElementById('msQuote');
+  var msBody = document.getElementById('msBody');
+  var msAuthor = document.getElementById('msAuthor');
+  var msTime = document.getElementById('msTime');
+  var msDelete = document.getElementById('msDelete');
+
+  // Bottom comments
+  var bcThread = document.getElementById('bcThread');
+  var bcCount = document.getElementById('bcCount');
+  var bcNickname = document.getElementById('bcNickname');
+  var bcEmail = document.getElementById('bcEmail');
+  var bcWebsite = document.getElementById('bcWebsite');
+  var bcTextarea = document.getElementById('bcTextarea');
+  var bcSubmit = document.getElementById('bcSubmit');
+  var bcComposeAvatar = document.getElementById('bcComposeAvatar');
+
+  // Article like
+  var articleLikeBtn = document.getElementById('articleLikeBtn');
+  var articleLikeCount = document.getElementById('articleLikeCount');
+
+  var pendingRange = null;
+  var activeMobileCommentId = null;
+  var inlineComments = [];
+  var bottomComments = [];
+
+  function isMobile() { return window.innerWidth <= 1100; }
+
+  // --- User identity persistence ---
+  function getSavedIdentity() {
+    try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveIdentity(nickname, email, website) {
+    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email, website: website || '' }));
+  }
+  function restoreIdentity() {
+    var id = getSavedIdentity();
+    if (id.nickname) {
+      cipNickname.value = id.nickname;
+      bcNickname.value = id.nickname;
+    }
+    if (id.email) {
+      cipEmailInput.value = id.email;
+      bcEmail.value = id.email;
+      updateComposeAvatar(id.email);
+    }
+    if (id.website) {
+      bcWebsite.value = id.website;
+    }
+  }
+
+  var AUTHOR_EMAILS = { 'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80' };
+  function gravatarUrl(email) {
+    var e = email.trim().toLowerCase();
+    if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
+    var hash = e.endsWith('@gravatar.placeholder') ? e.split('@')[0] : e;
+    return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80';
+  }
+
+  function updateComposeAvatar(email) {
+    if (email) bcComposeAvatar.src = gravatarUrl(email);
+  }
+
+  // Debounced avatar update on email input
+  var avatarTimer;
+  bcEmail.addEventListener('input', function() {
+    clearTimeout(avatarTimer);
+    avatarTimer = setTimeout(function() { updateComposeAvatar(bcEmail.value); }, 500);
+  });
+
+  // --- API helpers ---
+  function apiGet(path) {
+    return fetch(API + path, { headers: { 'Origin': location.origin } }).then(function(r) { return r.json(); });
+  }
+  function apiPost(path, body) {
+    return fetch(API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); });
+  }
+  function apiDelete(path) {
+    return fetch(API + path, { method: 'DELETE' }).then(function(r) { return r.json(); });
+  }
+
+  // =====================================================================
+  // INLINE (HIGHLIGHT) COMMENTS — right rail
+  // =====================================================================
+
+  function wrapRange(range, id) {
+    var mark = document.createElement('mark');
+    mark.className = 'comment-highlight';
+    mark.dataset.commentId = id;
+    try { range.surroundContents(mark); }
+    catch(e) {
+      var fragment = range.extractContents();
+      mark.appendChild(fragment);
+      range.insertNode(mark);
+    }
+    return mark;
+  }
+
+  function restoreHighlights() {
+    inlineComments.forEach(function(c) {
+      if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
+      var searchText = c.selected_text;
+      if (!searchText) return;
+      var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
+      var node;
+      while (node = walker.nextNode()) {
+        var idx = node.textContent.indexOf(searchText);
+        if (idx === -1) continue;
+        var range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + searchText.length);
+        wrapRange(range, c.id);
+        break;
+      }
+    });
+  }
+
+  function removeHighlight(id) {
+    var marks = postContent.querySelectorAll('mark[data-comment-id="' + id + '"]');
+    marks.forEach(function(mark) {
+      var parent = mark.parentNode;
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+      parent.removeChild(mark);
+      parent.normalize();
+    });
+  }
+
+  function offsetFromGrid(el) {
+    var top = 0;
+    while (el && el !== contentGrid) { top += el.offsetTop; el = el.offsetParent; }
+    return top;
+  }
+
+  function layoutCards() {
+    var cards = commentCards.querySelectorAll('.cm-card');
+    if (!cards.length) return;
+    var railOffset = offsetFromGrid(commentRail);
+    var positions = [];
+    cards.forEach(function(card) {
+      var id = card.dataset.commentId;
+      var mark = postContent.querySelector('mark[data-comment-id="' + id + '"]');
+      var desiredTop = 0;
+      if (mark) desiredTop = offsetFromGrid(mark) - railOffset;
+      positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
+    });
+    positions.sort(function(a, b) { return a.desired - b.desired; });
+    var GAP = 8, nextAvailable = 0;
+    positions.forEach(function(p) {
+      var top = Math.max(p.desired, nextAvailable);
+      p.card.style.top = top + 'px';
+      nextAvailable = top + p.height + GAP;
+    });
+    commentCards.style.minHeight = nextAvailable + 'px';
+  }
+
+  function renderInlineComments() {
+    commentCards.innerHTML = '';
+    clearAll.style.display = inlineComments.length ? '' : 'none';
+
+    inlineComments.forEach(function(c) {
+      var card = document.createElement('div');
+      card.className = 'cm-card';
+      card.dataset.commentId = c.id;
+      var mark = postContent.querySelector('mark[data-comment-id="' + c.id + '"]');
+
+      var time = new Date(c.created_at);
+      var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+        + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      card.innerHTML =
+        '<div class="cm-card-author">' +
+          '<img src="' + gravatarUrl(c.email) + '" class="cm-card-avatar" />' +
+          '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
+        '</div>' +
+        '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
+        '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
+        '<div class="cm-card-footer">' +
+          '<span class="cm-card-time">' + timeStr + '</span>' +
+          '<button class="cm-card-delete" data-id="' + c.id + '">&times;</button>' +
+        '</div>';
+
+      card.addEventListener('mouseenter', function() {
+        if (mark) mark.classList.add('highlight-active');
+        card.classList.add('cm-card-active');
+      });
+      card.addEventListener('mouseleave', function() {
+        if (mark) mark.classList.remove('highlight-active');
+        card.classList.remove('cm-card-active');
+      });
+      card.addEventListener('click', function(e) {
+        if (e.target.classList.contains('cm-card-delete')) return;
+        if (mark) {
+          mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          mark.classList.add('highlight-flash');
+          setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1000);
+        }
+      });
+      if (mark) {
+        mark.addEventListener('mouseenter', function() { card.classList.add('cm-card-active'); mark.classList.add('highlight-active'); });
+        mark.addEventListener('mouseleave', function() { card.classList.remove('cm-card-active'); mark.classList.remove('highlight-active'); });
+        mark.addEventListener('click', function(e) {
+          if (!isMobile()) return;
+          e.preventDefault(); e.stopPropagation();
+          openMobileSheet(c);
+        });
+      }
+
+      commentCards.appendChild(card);
+
+      card.querySelector('.cm-card-delete').addEventListener('click', function(e) {
+        e.stopPropagation();
+        apiDelete('/api/inline-comments/' + c.id).then(function() {
+          removeHighlight(c.id);
+          inlineComments = inlineComments.filter(function(x) { return x.id !== c.id; });
+          renderInlineComments();
+        });
+      });
+    });
+
+    requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
+  }
+
+  // --- Mobile bottom sheet ---
+  function openMobileSheet(comment) {
+    activeMobileCommentId = comment.id;
+    msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
+    msBody.textContent = comment.comment;
+    msAuthor.textContent = comment.nickname;
+    var time = new Date(comment.created_at);
+    msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+      + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    mobileOverlay.classList.add('active');
+    mobileSheet.classList.add('active');
+  }
+  function closeMobileSheet() {
+    mobileOverlay.classList.remove('active');
+    mobileSheet.classList.remove('active');
+    activeMobileCommentId = null;
+  }
+  mobileOverlay.addEventListener('click', closeMobileSheet);
+  msDelete.addEventListener('click', function() {
+    if (!activeMobileCommentId) return;
+    apiDelete('/api/inline-comments/' + activeMobileCommentId).then(function() {
+      removeHighlight(activeMobileCommentId);
+      inlineComments = inlineComments.filter(function(x) { return x.id !== activeMobileCommentId; });
+      closeMobileSheet();
+      renderInlineComments();
+    });
+  });
+
+  // --- FAB: show on text selection ---
+  fab.style.display = 'none';
+  popover.style.display = 'none';
+
+  document.addEventListener('mouseup', function(e) {
+    if (popover.style.display !== 'none') return;
+    if (isMobile()) { fab.style.display = 'none'; return; }
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.top + window.scrollY - 36) + 'px';
+    fab.style.left = (rect.right + window.scrollX + 8) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('selectionchange', function() {
+    if (!isMobile()) return;
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    fab.style.left = (rect.left + window.scrollX + (rect.width / 2) - 14) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('mousedown', function(e) {
+    if (fab.contains(e.target) || popover.contains(e.target)) return;
+    if (popover.style.display === 'none') fab.style.display = 'none';
+  });
+
+  fab.addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (!pendingRange) return;
+    var selectedText = pendingRange.toString().trim();
+    if (!selectedText) return;
+    cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
+    cipArea.value = '';
+    var rect = pendingRange.getBoundingClientRect();
+    if (isMobile()) {
+      popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
+      popover.style.left = '50%';
+      popover.style.transform = 'translateX(-50%)';
+    } else {
+      popover.style.top = (rect.top + window.scrollY) + 'px';
+      popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
+      popover.style.transform = '';
+    }
+    popover.style.display = 'block';
+    fab.style.display = 'none';
+    cipNickname.focus();
+  });
+
+  cipCancel.addEventListener('click', function() {
+    popover.style.display = 'none';
+    pendingRange = null;
+    window.getSelection().removeAllRanges();
+  });
+
+  cipSubmit.addEventListener('click', function() {
+    var text = cipArea.value.trim();
+    var nickname = cipNickname.value.trim();
+    var email = cipEmailInput.value.trim();
+    if (!text || !nickname || !email || !pendingRange) return;
+
+    var selectedText = pendingRange.toString().trim();
+    saveIdentity(nickname, email);
+
+    cipSubmit.disabled = true;
+    cipSubmit.textContent = '...';
+
+    apiPost('/api/inline-comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      selected_text: selectedText,
+      comment: text,
+      range_start: 0,
+      range_end: selectedText.length
+    }).then(function(res) {
+      if (res.comment) {
+        wrapRange(pendingRange, res.comment.id);
+        inlineComments.push(res.comment);
+        renderInlineComments();
+      }
+      popover.style.display = 'none';
+      pendingRange = null;
+      window.getSelection().removeAllRanges();
+    }).finally(function() {
+      cipSubmit.disabled = false;
+      cipSubmit.textContent = 'Comment';
+    });
+  });
+
+  cipArea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
+    if (e.key === 'Escape') cipCancel.click();
+  });
+
+  clearAll.addEventListener('click', function() {
+    if (!confirm('Clear all comments?')) return;
+    // Delete all from server
+    Promise.all(inlineComments.map(function(c) { return apiDelete('/api/inline-comments/' + c.id); })).then(function() {
+      postContent.querySelectorAll('mark.comment-highlight').forEach(function(m) {
+        var p = m.parentNode;
+        while (m.firstChild) p.insertBefore(m.firstChild, m);
+        p.removeChild(m);
+        p.normalize();
+      });
+      inlineComments = [];
+      renderInlineComments();
+    });
+  });
+
+  var layoutTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(layoutCards, 60);
+  });
+
+  // =====================================================================
+  // ARTICLE LIKES
+  // =====================================================================
+  var articleLiked = false;
+
+  function loadArticleLikes() {
+    apiGet('/api/posts/' + encodeURIComponent(POST_SLUG) + '/likes').then(function(res) {
+      articleLikeCount.textContent = res.count;
+      articleLiked = res.liked;
+      if (articleLiked) articleLikeBtn.classList.add('liked');
+    });
+  }
+
+  articleLikeBtn.addEventListener('click', function() {
+    // Optimistic update — instant UI feedback
+    var prevLiked = articleLiked;
+    var prevCount = parseInt(articleLikeCount.textContent) || 0;
+    var newLiked = !prevLiked;
+    var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+    articleLiked = newLiked;
+    articleLikeCount.textContent = newCount;
+    articleLikeBtn.classList.toggle('liked', newLiked);
+    var icon = articleLikeBtn.querySelector('.al-icon path');
+    icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+    apiPost('/api/posts/' + encodeURIComponent(POST_SLUG) + '/like', {}).then(function(res) {
+      // Sync with server truth
+      articleLiked = res.liked;
+      articleLikeCount.textContent = res.count;
+      articleLikeBtn.classList.toggle('liked', res.liked);
+      icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+    }).catch(function() {
+      // Rollback on failure
+      articleLiked = prevLiked;
+      articleLikeCount.textContent = prevCount;
+      articleLikeBtn.classList.toggle('liked', prevLiked);
+      icon.setAttribute('fill', prevLiked ? 'currentColor' : 'none');
+    });
+  });
+
+  // =====================================================================
+  // BOTTOM COMMENTS
+  // =====================================================================
+
+  function loadBottomComments() {
+    apiGet('/api/comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+      bottomComments = res.comments || [];
+      renderBottomComments();
+    });
+  }
+
+  function renderBottomComments() {
+    bcThread.innerHTML = '';
+    var count = bottomComments.length;
+    bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+
+    // Build tree
+    var roots = [];
+    var byId = {};
+    bottomComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
+    bottomComments.forEach(function(c) {
+      if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
+      else roots.push(c);
+    });
+
+    roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+  }
+
+  function buildCommentEl(c, isReply) {
+    var div = document.createElement('div');
+    div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
+
+    var time = new Date(c.created_at);
+    var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    var avatarSize = isReply ? 32 : 40;
+    var nameHtml = c.website
+      ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
+      : '<span class="bc-name">' + esc(c.nickname) + '</span>';
+    div.innerHTML =
+      '<div class="bc-avatar-wrap"><img src="' + gravatarUrl(c.email) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+      '<div class="bc-body">' +
+        '<div class="bc-meta">' +
+          nameHtml +
+          '<span class="bc-dot">&middot;</span>' +
+          '<time class="bc-time">' + timeStr + '</time>' +
+        '</div>' +
+        '<div class="bc-text"><p>' + esc(c.content) + '</p></div>' +
+        '<div class="bc-actions">' +
+          '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
+            '<span>' + (c.likes || 0) + '</span>' +
+          '</button>' +
+          '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
+        '</div>' +
+        '<div class="bc-replies-container"></div>' +
+      '</div>';
+
+    // Like button — optimistic update
+    div.querySelector('.bc-like-btn').addEventListener('click', function() {
+      var btn = this;
+      var icon = btn.querySelector('path');
+      var span = btn.querySelector('span');
+      var wasLiked = btn.classList.contains('liked');
+      var prevCount = parseInt(span.textContent) || 0;
+      var newLiked = !wasLiked;
+      var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+      btn.classList.toggle('liked', newLiked);
+      span.textContent = newCount;
+      icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+      apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
+        btn.classList.toggle('liked', res.liked);
+        span.textContent = res.count;
+        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      }).catch(function() {
+        btn.classList.toggle('liked', wasLiked);
+        span.textContent = prevCount;
+        icon.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+      });
+    });
+
+    // Reply button
+    div.querySelector('.bc-reply-btn').addEventListener('click', function() {
+      // Scroll to compose and pre-fill with @mention
+      bcTextarea.value = '@' + c.nickname + ' ';
+      bcTextarea.dataset.parentId = c.id;
+      bcTextarea.focus();
+      bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Render replies
+    var repliesContainer = div.querySelector('.bc-replies-container');
+    if (c._replies && c._replies.length) {
+      c._replies.forEach(function(r) {
+        repliesContainer.appendChild(buildCommentEl(r, true));
+      });
+    }
+
+    return div;
+  }
+
+  // Submit bottom comment
+  bcSubmit.addEventListener('click', function() {
+    var content = bcTextarea.value.trim();
+    var nickname = bcNickname.value.trim();
+    var email = bcEmail.value.trim();
+    var website = bcWebsite.value.trim();
+    if (!content || !nickname || !email) return;
+
+    saveIdentity(nickname, email, website);
+    bcSubmit.disabled = true;
+    bcSubmit.textContent = '...';
+
+    var parentId = bcTextarea.dataset.parentId || null;
+
+    var body = {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      content: content,
+      parent_id: parentId ? parseInt(parentId) : null
+    };
+    if (website) body.website = website;
+
+    apiPost('/api/comments', body).then(function(res) {
+      if (res.comment) {
+        bottomComments.push(res.comment);
+        renderBottomComments();
+        bcTextarea.value = '';
+        delete bcTextarea.dataset.parentId;
+      }
+    }).finally(function() {
+      bcSubmit.disabled = false;
+      bcSubmit.textContent = 'Submit';
+    });
+  });
+
+  bcTextarea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') bcSubmit.click();
+  });
+
+  // =====================================================================
+  // INIT — load everything from API
+  // =====================================================================
+  restoreIdentity();
+
+  apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+    inlineComments = res.comments || [];
+    restoreHighlights();
+    renderInlineComments();
+  });
+
+  // Newsletter subscribe
+  var nlForm = document.getElementById('nlForm');
+  var nlEmail = document.getElementById('nlEmail');
+  var nlStatus = document.getElementById('nlStatus');
+  if (nlForm) {
+    nlForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var email = nlEmail.value.trim();
+      if (!email) return;
+      nlStatus.textContent = 'Subscribing...';
+      fetch(API + '/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      }).then(function(r) { return r.json(); })
+        .then(function(d) {
+          nlStatus.textContent = d.error ? d.error : 'Subscribed!';
+          if (!d.error) nlEmail.value = '';
+        })
+        .catch(function() { nlStatus.textContent = 'Failed. Please try again.'; });
+    });
+  }
+
+  loadArticleLikes();
+  loadBottomComments();
+
+  // --- Helpers ---
+  function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+})();
+</script> 

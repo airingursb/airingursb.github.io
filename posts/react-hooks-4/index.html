@@ -1,0 +1,1537 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>React Hooks 源码解析（4）：useEffect | Airing</title><meta name="description" content><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta property="og:title" content="React Hooks 源码解析（4）：useEffect | Airing"><meta property="og:description" content><meta property="og:type" content="article"><link rel="canonical" href="https://ursb.me/posts/react-hooks-4/"><meta property="og:url" content="https://ursb.me/posts/react-hooks-4/"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="React Hooks 源码解析（4）：useEffect | Airing"><meta name="twitter:description" content><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/feed.xml"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-W604S49M4X');
+  </script><!-- Umami Analytics --><script defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script><!-- Cal.com Embed --><script type="text/javascript">
+    (function (C, A, L) {
+      let p = function (a, ar) { a.q.push(ar); };
+      let d = C.document;
+      C.Cal = C.Cal || function () {
+        let cal = C.Cal;
+        let ar = arguments;
+        if (!cal.loaded) {
+          cal.ns = {};
+          cal.q = cal.q || [];
+          d.head.appendChild(d.createElement("script")).src = A;
+          cal.loaded = true;
+        }
+        if (ar[0] === L) {
+          const api = function () { p(api, arguments); };
+          const namespace = ar[1];
+          api.q = api.q || [];
+          if (typeof namespace === "string") {
+            cal.ns[namespace] = api;
+            p(api, ar);
+          } else {
+            p(cal, ar);
+          }
+          return;
+        }
+        p(cal, ar);
+      };
+    })(window, "https://app.cal.com/embed/embed.js", "init");
+    Cal("init", { origin: "https://cal.com" });
+    Cal("ui", {
+      theme: "dark",
+      styles: { branding: { brandColor: "#f59e0b" } },
+      hideEventTypeDetails: false,
+      layout: "month_view"
+    });
+  </script><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"><script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"React Hooks 源码解析（4）：useEffect","datePublished":"2019-12-03T00:00:00.000Z","dateModified":"2019-12-03T00:00:00.000Z","author":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"publisher":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"url":"https://ursb.me/posts/react-hooks-4/","mainEntityOfPage":{"@type":"WebPage","@id":"https://ursb.me/posts/react-hooks-4/"},"keywords":"tech"}</script><script>
+    // Apply saved theme & mode before render to prevent flash
+    (function() {
+      var t = localStorage.getItem('blog-theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+      var m = localStorage.getItem('blog-mode');
+      if (m) document.documentElement.setAttribute('data-mode', m);
+    })();
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.DLZEbWeP.css">
+<link rel="stylesheet" href="/_astro/_slug_@_@astro.0M_B7D7i.css"></head> <body>    <div class="post-page" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>2019年12月3日</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" data-astro-cid-gjtny2mx>Blog</a> <a href="/archive" data-astro-cid-gjtny2mx>Archive</a> <a href="/moments" data-astro-cid-gjtny2mx>Moments</a> <a href="/search" data-astro-cid-gjtny2mx>Search</a> <a href="/feed.xml" data-astro-cid-gjtny2mx>RSS</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> </div> </header> <!-- Headline --> <div class="headline-section" data-astro-cid-gjtny2mx> <div class="headline-inner" data-astro-cid-gjtny2mx> <div class="headline-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="hl-tag" data-astro-cid-gjtny2mx>tech</a> </div> <h1 class="headline" data-astro-cid-gjtny2mx>React Hooks 源码解析（4）：useEffect</h1>  </div> </div>   <!-- Three-column: sidebar | content | comments --> <div class="content-grid" id="contentGrid" data-astro-cid-gjtny2mx> <aside class="sidebar-left" data-astro-cid-gjtny2mx> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Date</div> <div class="sb-value" data-astro-cid-gjtny2mx>2019/12/03</div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Tags</div> <div class="sb-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="sb-tag" data-astro-cid-gjtny2mx>#tech</a> </div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Author</div> <div class="sb-value" data-astro-cid-gjtny2mx>Airing</div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Read</div> <div class="sb-value" data-astro-cid-gjtny2mx>25 min</div> </div> <div class="sb-divider" data-astro-cid-gjtny2mx></div> <div class="sb-block toc-block" id="tocBlock" style="display:none;" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Contents</div> <nav class="toc-nav" id="tocNav" data-astro-cid-gjtny2mx></nav> </div>  <div class="sb-divider" data-astro-cid-gjtny2mx></div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Related</div> <ul class="sb-related" data-astro-cid-gjtny2mx> <li data-astro-cid-gjtny2mx><a href="/posts/game-engine-renderer/" class="sb-related-link" data-astro-cid-gjtny2mx>游戏组件的一生: 从加载到上屏</a></li><li data-astro-cid-gjtny2mx><a href="/posts/moflow/" class="sb-related-link" data-astro-cid-gjtny2mx>AI 心理疗愈应用的探索与实现</a></li><li data-astro-cid-gjtny2mx><a href="/posts/mac-app-share-2024/" class="sb-related-link" data-astro-cid-gjtny2mx>Mac 小众软件推荐与工作流分享(2024)</a></li><li data-astro-cid-gjtny2mx><a href="/posts/2024-summer/" class="sb-related-link" data-astro-cid-gjtny2mx>再见了，盛夏</a></li><li data-astro-cid-gjtny2mx><a href="/posts/service/" class="sb-related-link" data-astro-cid-gjtny2mx>Airing 开通了一个咨询服务</a></li> </ul> </div>  <div class="sb-divider" data-astro-cid-gjtny2mx></div> <a href="/archive" class="sb-nav" data-astro-cid-gjtny2mx>&larr; All Posts</a> </aside> <article class="post-content" id="postContent" data-pagefind-body data-astro-cid-gjtny2mx>  <blockquote>
+<ul>
+<li>React 源码版本: v16.11.0</li>
+<li>源码注释笔记：<a href="https://github.com/airingursb/react">airingursb/react</a></li>
+</ul>
+</blockquote>
+<h2 id="1-useeffect-简介">1. useEffect 简介</h2>
+<h3 id="11-为什么要有-useeffect">1.1 为什么要有 useEffect</h3>
+<p>我们在前文中说到 React Hooks 使得 Functional Component 拥有 Class Component 的特性，其<a href="https://me.ursb.me/archives/useState.html#directory026996420065467942">主要动机</a>包括：</p>
+<ol>
+<li>在组件之间复用状态逻辑很难</li>
+<li>复杂组件变得难以理解</li>
+<li>难以理解的 class</li>
+</ol>
+<p>对于第二点，首先，针对 Class Component 来说，我们写 React 应用时经常要在组件的各种生命周期中编写代码，如在 <code>componentDidMount</code> 和 <code>componentDidUpdate</code> 中发送 HTTP 请求、事件绑定、甚至做一些额外的逻辑，使得业务逻辑扎堆在组件的生命周期函数中。在这个时候，我们的编程思路是“在组件装载完毕时我们需要做什么”、“在组件更新时我们需要做什么”，这使得 React 开发成为了<strong>面向生命周期编程</strong>，而我们在生命周期中写的那些逻辑，则成了组件生命周期函数的<strong>副作用</strong>。</p>
+<p>其次，面向生命周期编程会导致业务逻辑散乱在各生命周期函数里。比如，我们在 <code>componentDidMount</code> 进行的事件绑定又需要在 <code>componentDidUnmount</code> 解绑，那事件管理的逻辑就不统一，代码零散 review 起来会比较麻烦：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">import</span><span style="color:#E1E4E8"> React </span><span style="color:#F97583">from</span><span style="color:#9ECBFF"> 'react'</span></span>
+<span class="line"><span style="color:#F97583">class</span><span style="color:#B392F0"> A</span><span style="color:#F97583"> extends</span><span style="color:#B392F0"> React</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">Componment</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">  componmentDidMount</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#E1E4E8">    document.</span><span style="color:#B392F0">getElementById</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'js_button'</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">      .</span><span style="color:#B392F0">addEventListener</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'click'</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">this</span><span style="color:#E1E4E8">.log)</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#B392F0">  componentDidUnmount</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#E1E4E8">    document.</span><span style="color:#B392F0">getElementById</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'js_button'</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">      .</span><span style="color:#B392F0">removeEventListener</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'click'</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">this</span><span style="color:#E1E4E8">.log)</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#B392F0">  log</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> () </span><span style="color:#F97583">=></span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">    console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'log'</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#B392F0">  render</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8"> (</span></span>
+<span class="line"><span style="color:#E1E4E8">      &#x3C;</span><span style="color:#85E89D">div</span><span style="color:#B392F0"> id</span><span style="color:#F97583">=</span><span style="color:#9ECBFF">"js_button"</span><span style="color:#E1E4E8">>button&#x3C;/</span><span style="color:#85E89D">div</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">    )</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p>而 <code>useEffect</code> 的出现，则让开发者的关注点从生命周期重新抽离出来聚焦在业务逻辑之上，其实 effect 的全称就是 side effect，即副作用，useEffect 就是用来处理原本生命周期函数里的副作用逻辑。</p>
+<p>接下来，我们看看 useEffect 的用法。</p>
+<h3 id="12-useeffect-的用法">1.2 useEffect 的用法</h3>
+<p>上面那段代码用 useEffect 改写之后如下：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">import</span><span style="color:#E1E4E8"> React, { useEffect } </span><span style="color:#F97583">from</span><span style="color:#9ECBFF"> 'react'</span></span>
+<span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> A</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#B392F0">  log</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#E1E4E8">    console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'log'</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#B392F0">  useEffect</span><span style="color:#E1E4E8">(() </span><span style="color:#F97583">=></span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">    document</span></span>
+<span class="line"><span style="color:#E1E4E8">      .</span><span style="color:#B392F0">getElementById</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'js_button'</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">      .</span><span style="color:#B392F0">addEventListener</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'click'</span><span style="color:#E1E4E8">, log)</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8"> () </span><span style="color:#F97583">=></span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">      document</span></span>
+<span class="line"><span style="color:#E1E4E8">        .</span><span style="color:#B392F0">getElementById</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'js_button'</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">        .</span><span style="color:#B392F0">removeEventListener</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'click'</span><span style="color:#E1E4E8">, log)</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  })</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#E1E4E8"> (&#x3C;</span><span style="color:#85E89D">div</span><span style="color:#B392F0"> id</span><span style="color:#F97583">=</span><span style="color:#9ECBFF">"js_button"</span><span style="color:#E1E4E8">>button&#x3C;/</span><span style="color:#85E89D">div</span><span style="color:#E1E4E8">>)</span></span>
+<span class="line"><span style="color:#E1E4E8">} </span></span></code></pre>
+<p>useEffect 接受两个参数，第一个参数是一个 function，其实现 bind 操作并将 unbind 作为一个 thunk 函数被返回。第二个参数是一个可选的 dependencies 数组，如果dependencies 不存在，那么 function 每次 render 都会执行；如果 dependencies 存在，只有当它发生了变化，function 才会执行。由此我们也可以推知，如果 dependencies 是一个空数组，那么当且仅当首次 render 的时候才会执行 function。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#B392F0">useEffect</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#E1E4E8">  () </span><span style="color:#F97583">=></span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> subscription</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> props.source.</span><span style="color:#B392F0">subscribe</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8"> () </span><span style="color:#F97583">=></span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">      subscription.</span><span style="color:#B392F0">unsubscribe</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">    };</span></span>
+<span class="line"><span style="color:#E1E4E8">  },</span></span>
+<span class="line"><span style="color:#E1E4E8">  [props.source],</span></span>
+<span class="line"><span style="color:#E1E4E8">);</span></span></code></pre>
+<blockquote>
+<p>更多用法请阅读 React 官网的 useEffect API 介绍: <a href="https://reactjs.org/docs/hooks-reference.html#useeffect">https://reactjs.org/docs/hooks-reference.html#useeffect</a></p>
+</blockquote>
+<h2 id="2-useeffect-的原理与简单实现">2. useEffect 的原理与简单实现</h2>
+<p>根据 useEffect 的用法，我们可以自己实现一个简单的 useEffect：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">let</span><span style="color:#E1E4E8"> _deps;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> useEffect</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">callback</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">dependencies</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> hasChanged</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> _deps</span></span>
+<span class="line"><span style="color:#F97583">    &#x26;&#x26;</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">dependencies.</span><span style="color:#B392F0">every</span><span style="color:#E1E4E8">((</span><span style="color:#FFAB70">el</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">i</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">=></span><span style="color:#E1E4E8"> el </span><span style="color:#F97583">===</span><span style="color:#E1E4E8"> _deps[i])</span></span>
+<span class="line"><span style="color:#F97583">    ||</span><span style="color:#79B8FF"> true</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#6A737D">  // 如果 dependencies 不存在，或者 dependencies 有变化，就执行 callback</span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">dependencies </span><span style="color:#F97583">||</span><span style="color:#E1E4E8"> hasChanged) {</span></span>
+<span class="line"><span style="color:#B392F0">    callback</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">    _deps </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> dependencies;</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<h2 id="3-useeffect-源码解析">3. useEffect 源码解析</h2>
+<h3 id="31-mounteffect--updateeffect">3.1 mountEffect &#x26; updateEffect</h3>
+<p>useEffect 的入口和上一节中 useState 的一样，都在 ReactFiberHooks.js 这个文件中，并且同 useState 一样，在首次加载时 useEffect 实际执行的是 mountEffect，之后每次渲染执行的是 updateEffect，此处不再赘述。那我们需要重点看看 mountEffect 和 updateEffect 实际做了什么。</p>
+<p>对于 mountEffect：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> mountEffect</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#B392F0">  create</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> () </span><span style="color:#F97583">=></span><span style="color:#E1E4E8"> (() </span><span style="color:#F97583">=></span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">|</span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  deps</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Array</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#B392F0">mixed</span><span style="color:#E1E4E8">> </span><span style="color:#F97583">|</span><span style="color:#79B8FF"> void</span><span style="color:#F97583"> |</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#B392F0"> mountEffectImpl</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#E1E4E8">    UpdateEffect </span><span style="color:#F97583">|</span><span style="color:#E1E4E8"> PassiveEffect,</span></span>
+<span class="line"><span style="color:#E1E4E8">    UnmountPassive </span><span style="color:#F97583">|</span><span style="color:#E1E4E8"> MountPassive,</span></span>
+<span class="line"><span style="color:#E1E4E8">    create,</span></span>
+<span class="line"><span style="color:#E1E4E8">    deps,</span></span>
+<span class="line"><span style="color:#E1E4E8">  );</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p>对于 updateEffect：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> updateEffect</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#B392F0">  create</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> () </span><span style="color:#F97583">=></span><span style="color:#E1E4E8"> (() </span><span style="color:#F97583">=></span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">|</span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  deps</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Array</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#B392F0">mixed</span><span style="color:#E1E4E8">> </span><span style="color:#F97583">|</span><span style="color:#79B8FF"> void</span><span style="color:#F97583"> |</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#B392F0"> updateEffectImpl</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#E1E4E8">    UpdateEffect </span><span style="color:#F97583">|</span><span style="color:#E1E4E8"> PassiveEffect,</span></span>
+<span class="line"><span style="color:#E1E4E8">    UnmountPassive </span><span style="color:#F97583">|</span><span style="color:#E1E4E8"> MountPassive,</span></span>
+<span class="line"><span style="color:#E1E4E8">    create,</span></span>
+<span class="line"><span style="color:#E1E4E8">    deps,</span></span>
+<span class="line"><span style="color:#E1E4E8">  );</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p>mountEffect 和 updateEffect 的入参是一个 function 和一个 array，对应的就是我们前文 useEffect 传的 callback 和 deps。同时，我们可以发现 mountEffect 和 updateEffect 实际调用的是 mountEffectImpl 和 updateEffectImpl，它们接受的四个参数一模一样的，后面两个参数直接透传的不用说，主要是前面的 <code>UpdateEffect | PassiveEffect</code>、<code>UnmountPassive | MountPassive</code> 究竟是什么？</p>
+<p>阅读代码可知他们是从 <code>ReactSideEffectTags</code> 与 <code>ReactHookEffectTags</code> 中引入的。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">import</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  Update </span><span style="color:#F97583">as</span><span style="color:#E1E4E8"> UpdateEffect,</span></span>
+<span class="line"><span style="color:#E1E4E8">  Passive </span><span style="color:#F97583">as</span><span style="color:#E1E4E8"> PassiveEffect,</span></span>
+<span class="line"><span style="color:#E1E4E8">} </span><span style="color:#F97583">from</span><span style="color:#9ECBFF"> 'shared/ReactSideEffectTags'</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">import</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">  NoEffect </span><span style="color:#F97583">as</span><span style="color:#E1E4E8"> NoHookEffect,</span></span>
+<span class="line"><span style="color:#E1E4E8">  UnmountPassive,</span></span>
+<span class="line"><span style="color:#E1E4E8">  MountPassive,</span></span>
+<span class="line"><span style="color:#E1E4E8">} </span><span style="color:#F97583">from</span><span style="color:#9ECBFF"> './ReactHookEffectTags'</span><span style="color:#E1E4E8">;</span></span></code></pre>
+<p>看一下 ReactSideEffectTags.js 与 ReactHookEffectTags.js 中的定义：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#6A737D">// Don't change these two values. They're used by React Dev Tools.</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> NoEffect</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*              */</span><span style="color:#79B8FF"> 0b0000000000000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> PerformedWork</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*         */</span><span style="color:#79B8FF"> 0b0000000000001</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">// You can change the rest (and add more).</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> Placement</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*             */</span><span style="color:#79B8FF"> 0b0000000000010</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> Update</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*                */</span><span style="color:#79B8FF"> 0b0000000000100</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> PlacementAndUpdate</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*    */</span><span style="color:#79B8FF"> 0b0000000000110</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> Deletion</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*              */</span><span style="color:#79B8FF"> 0b0000000001000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> ContentReset</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*          */</span><span style="color:#79B8FF"> 0b0000000010000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> Callback</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*              */</span><span style="color:#79B8FF"> 0b0000000100000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> DidCapture</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*            */</span><span style="color:#79B8FF"> 0b0000001000000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> Ref</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*                   */</span><span style="color:#79B8FF"> 0b0000010000000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> Snapshot</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*              */</span><span style="color:#79B8FF"> 0b0000100000000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> Passive</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*               */</span><span style="color:#79B8FF"> 0b0001000000000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> Hydrating</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*             */</span><span style="color:#79B8FF"> 0b0010000000000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> HydratingAndUpdate</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*    */</span><span style="color:#79B8FF"> 0b0010000000100</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> NoEffect</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*             */</span><span style="color:#79B8FF"> 0b00000000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> UnmountSnapshot</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*      */</span><span style="color:#79B8FF"> 0b00000010</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> UnmountMutation</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*      */</span><span style="color:#79B8FF"> 0b00000100</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> MountMutation</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*        */</span><span style="color:#79B8FF"> 0b00001000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> UnmountLayout</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*        */</span><span style="color:#79B8FF"> 0b00010000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> MountLayout</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*          */</span><span style="color:#79B8FF"> 0b00100000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> MountPassive</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*         */</span><span style="color:#79B8FF"> 0b01000000</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> UnmountPassive</span><span style="color:#F97583"> =</span><span style="color:#6A737D"> /*       */</span><span style="color:#79B8FF"> 0b10000000</span><span style="color:#E1E4E8">;</span></span></code></pre>
+<p>这么设计是为了简化类型比较与类型复合，如果项目开发的过程中有过一些复合权限系统的设计经验，那么可能第一眼就能反应过来，所以 <code>UnmountPassive | MountPassive</code> 就是 0b11000000。如果对应的位为非零，则表示 tag 实现了指定的行为。这个在未来会用到，我们这里先不涉及，所以就先放在这里了解即可。</p>
+<h3 id="32-mounteffectimpl--updateeffectimpl">3.2 mountEffectImpl &#x26; updateEffectImpl</h3>
+<p>接着我们来看看 <code>mountEffectImpl</code> 与 <code>updateEffectImpl</code> 的具体实现。</p>
+<h4 id="321-mounteffectimpl">3.2.1 mountEffectImpl</h4>
+<p>首先是 <code>mountEffectImpl</code>：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> mountEffectImpl</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">fiberEffectTag</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">hookEffectTag</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">create</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">deps</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> hook</span><span style="color:#F97583"> =</span><span style="color:#B392F0"> mountWorkInProgressHook</span><span style="color:#E1E4E8">(); </span><span style="color:#6A737D">// 创建一个新的 Hook 并返回当前 workInProgressHook</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> nextDeps</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> deps </span><span style="color:#F97583">===</span><span style="color:#79B8FF"> undefined</span><span style="color:#F97583"> ?</span><span style="color:#79B8FF"> null</span><span style="color:#F97583"> :</span><span style="color:#E1E4E8"> deps;</span></span>
+<span class="line"><span style="color:#E1E4E8">  sideEffectTag </span><span style="color:#F97583">|=</span><span style="color:#E1E4E8"> fiberEffectTag;</span></span>
+<span class="line"><span style="color:#E1E4E8">  hook.memoizedState </span><span style="color:#F97583">=</span><span style="color:#B392F0"> pushEffect</span><span style="color:#E1E4E8">(hookEffectTag, create, </span><span style="color:#79B8FF">undefined</span><span style="color:#E1E4E8">, nextDeps);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p><code>mountWorkInProgressHook</code> 我们在<a href="https://me.ursb.me/archives/useState.html#directory0568338329425144719">第 3 篇 4.3.3: mountWorkInProgressHook</a> 中解析过，其就是创建一个新的 Hook 并返回当前 workInProgressHook，具体原理不再赘述。</p>
+<p><code>sideEffectTag</code> 是按位或上 <code>fiberEffectTag</code> 然后赋值，在 <code>renderWithHooks</code> 中挂载在 <code>renderedWork.effectTag</code> 上，并在每次渲染后重置为 0。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#E1E4E8">renderedWork.effectTag </span><span style="color:#F97583">|=</span><span style="color:#E1E4E8"> sideEffectTag;</span></span>
+<span class="line"><span style="color:#E1E4E8">sideEffectTag </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span></code></pre>
+<p>具体 <code>renderedWork.effectTag</code> 有什么用，我们后续会说到。</p>
+<blockquote>
+<p>renderWithHooks 在 <a href="https://me.ursb.me/archives/useState.html#directory04314192122993054717">第 3 篇 4.3.1: renderWithHooks</a> 中解析过，此处不再赘述。</p>
+</blockquote>
+<p><code>hook.memoizedState</code> 记录 <code>pushEffect</code> 的返回结果，这个同记录 useState 中的 newState 的原理是一致的。那么现在的重点转移到了 <code>pushEffect</code> 究竟做了什么。</p>
+<h4 id="332-updateeffectimpl">3.3.2 updateEffectImpl</h4>
+<p>接下来我们看看 <code>updateEffectImpl</code> 又做了些什么工作呢？</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> updateEffectImpl</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">fiberEffectTag</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">hookEffectTag</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">create</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">deps</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> hook</span><span style="color:#F97583"> =</span><span style="color:#B392F0"> updateWorkInProgressHook</span><span style="color:#E1E4E8">(); </span><span style="color:#6A737D">// 获取当前正在工作中的 Hook</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> nextDeps</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> deps </span><span style="color:#F97583">===</span><span style="color:#79B8FF"> undefined</span><span style="color:#F97583"> ?</span><span style="color:#79B8FF"> null</span><span style="color:#F97583"> :</span><span style="color:#E1E4E8"> deps;</span></span>
+<span class="line"><span style="color:#F97583">  let</span><span style="color:#E1E4E8"> destroy </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> undefined</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (currentHook </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> prevEffect</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> currentHook.memoizedState;</span></span>
+<span class="line"><span style="color:#E1E4E8">    destroy </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> prevEffect.destroy;</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (nextDeps </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> prevDeps</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> prevEffect.deps;</span></span>
+<span class="line"><span style="color:#F97583">      if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">areHookInputsEqual</span><span style="color:#E1E4E8">(nextDeps, prevDeps)) {</span></span>
+<span class="line"><span style="color:#B392F0">        pushEffect</span><span style="color:#E1E4E8">(NoHookEffect, create, destroy, nextDeps);</span></span>
+<span class="line"><span style="color:#F97583">        return</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">  sideEffectTag </span><span style="color:#F97583">|=</span><span style="color:#E1E4E8"> fiberEffectTag;</span></span>
+<span class="line"><span style="color:#E1E4E8">  hook.memoizedState </span><span style="color:#F97583">=</span><span style="color:#B392F0"> pushEffect</span><span style="color:#E1E4E8">(hookEffectTag, create, destroy, nextDeps);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p><code>updateWorkInProgressHook</code> 我们在<a href="https://me.ursb.me/archives/useState.html#directory0600654957385160324">第 3 篇 4.4.3: updateWorkInProgressHook</a> 中解析过，其就是获取当前正在工作中的 Hook，具体原理不再赘述。</p>
+<p>可以发现在 <code>currentHook</code> 为空的时候，<code>updateEffectImpl</code> 的逻辑与 <code>mountEffectImpl</code> 的逻辑是一模一样的；当 <code>currentHook</code> 不为空的时候，<code>pushEffect</code> 的第三个参数不是 undefined，而是 destroy。并且，在这个分支存在 <code>areHookInputsEqual(nextDeps, prevDeps)</code>，即如果当前 useEffect 的 deps 和上一阶段的 useEffect 的 deps 相等（<code>areHookInputsEqual</code> 所做的事情就是遍历比较两个 deps 是否相等，这里就不展开解读了），那就执行 <code>pushEffect(NoHookEffect, create, destroy, nextDeps);</code>，大胆猜测 <code>NoHookEffect</code> 的意思就是不执行这次的 useEffect。如此，这段代码的逻辑就和我们之前自己实现的 useEffect 是一致的。</p>
+<p>根据 <a href="https://me.ursb.me/archives/useState.html#directory0600654957385160324">第 3 篇 4.4.3: updateWorkInProgressHook</a>，我们得知 <code>currentHook</code> 就是当前阶段正在处理的 Hook，其正常逻辑下不会为空。那我们接下来需要重点关注的应该是 <code>pushEffect</code> 做了什么，其第三个参数有什么含义？</p>
+<h3 id="33-pusheffect">3.3 pushEffect</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> pushEffect</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">tag</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">create</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">destroy</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">deps</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  // 声明一个新的 effect</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> effect</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Effect</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">    tag,</span></span>
+<span class="line"><span style="color:#E1E4E8">    create, </span></span>
+<span class="line"><span style="color:#E1E4E8">    destroy,</span></span>
+<span class="line"><span style="color:#E1E4E8">    deps, </span></span>
+<span class="line"><span style="color:#6A737D">    // Circular</span></span>
+<span class="line"><span style="color:#B392F0">    next</span><span style="color:#E1E4E8">: (</span><span style="color:#FFAB70">null</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> any</span><span style="color:#E1E4E8">), </span><span style="color:#6A737D">// 函数组件中定义的下一个 effect 的引用</span></span>
+<span class="line"><span style="color:#E1E4E8">  };</span></span>
+<span class="line"><span style="color:#E1E4E8">  if (</span><span style="color:#FFAB70">componentUpdateQueue</span><span style="color:#E1E4E8"> === </span><span style="color:#FFAB70">null</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#E1E4E8">    componentUpdateQueue </span><span style="color:#F97583">=</span><span style="color:#B392F0"> createFunctionComponentUpdateQueue</span><span style="color:#E1E4E8">(); </span><span style="color:#6A737D">// 初始化 componentUpdateQueue</span></span>
+<span class="line"><span style="color:#E1E4E8">    componentUpdateQueue.lastEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> effect.next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> effect;</span></span>
+<span class="line"><span style="color:#E1E4E8">  } else {</span></span>
+<span class="line"><span style="color:#E1E4E8">    const lastEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> componentUpdateQueue.lastEffect;</span></span>
+<span class="line"><span style="color:#B392F0">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">lastEffect</span><span style="color:#E1E4E8"> === </span><span style="color:#FFAB70">null</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#E1E4E8">      componentUpdateQueue.lastEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> effect.next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> effect;</span></span>
+<span class="line"><span style="color:#E1E4E8">    } else {</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> firstEffect</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> lastEffect.next;</span></span>
+<span class="line"><span style="color:#E1E4E8">      lastEffect.next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> effect;</span></span>
+<span class="line"><span style="color:#E1E4E8">      effect.next </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> firstEffect;</span></span>
+<span class="line"><span style="color:#E1E4E8">      componentUpdateQueue.lastEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> effect;</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">  return effect;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">type</span><span style="color:#B392F0"> Effect</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#FFAB70">  tag</span><span style="color:#F97583">:</span><span style="color:#B392F0"> HookEffectTag</span><span style="color:#E1E4E8">, </span><span style="color:#6A737D">// 一个二进制数，它将决定 effect 的行为</span></span>
+<span class="line"><span style="color:#B392F0">  create</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> () </span><span style="color:#F97583">=></span><span style="color:#E1E4E8"> (() </span><span style="color:#F97583">=></span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">|</span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8">, </span><span style="color:#6A737D">// 绘制后应该运行的回调</span></span>
+<span class="line"><span style="color:#FFAB70">  destroy</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> (() </span><span style="color:#F97583">=></span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8">) </span><span style="color:#F97583">|</span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8">, </span><span style="color:#6A737D">// 用于确定是否应销毁和重新创建 effect</span></span>
+<span class="line"><span style="color:#FFAB70">  deps</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Array</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#B392F0">mixed</span><span style="color:#E1E4E8">> </span><span style="color:#F97583">|</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">, </span><span style="color:#6A737D">// 决定重绘制后是否执行的 deps</span></span>
+<span class="line"><span style="color:#FFAB70">  next</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Effect</span><span style="color:#E1E4E8">, </span><span style="color:#6A737D">// 函数组件中定义的下一个 effect 的引用</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span></code></pre>
+<p>这个函数首先根据入参声明了一个新的 effect，数据结构也给出来了，它同样也是一个循环链表。tag 是</p>
+<p>接下来根据 componentUpdateQueue 是否为空走两套逻辑，而 componentUpdateQueue 的结构其实很简单:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>export type FunctionComponentUpdateQueue = {</span></span>
+<span class="line"><span>  lastEffect: Effect | null,</span></span>
+<span class="line"><span>};</span></span></code></pre>
+<p>可见，componentUpdateQueue 其实就是一个存储 Effect 的全局变量。</p>
+<ol>
+<li>
+<p>componentUpdateQueue 为空：这种情况就是 mountEffect 时候的逻辑，它会创建一个空的 componentUpdateQueue，它其实只是 <code>{lastEffect: null}</code>，之后将 <code>componentUpdateQueue.lastEffect</code> 指向 <code>effect.next</code>，其实就是存了一下 effect。</p>
+</li>
+<li>
+<p>componentUpdateQueue 不为空：这种情况就是 updateEffect 时候会走到的逻辑</p>
+</li>
+<li>
+<p>lastEffect 为空：这种情况是新的渲染阶段的第一个 useEffect，逻辑处理和 componentUpdateQueue 为空时一致。</p>
+</li>
+<li>
+<p>lastEffect 不为空：这种情况意味着这个组件有多个 useEffect，是第二个及其之后的 useEffect 会走到的分支，将 lastEffect 指向下一个 effect。</p>
+</li>
+</ol>
+<p>最后 return 一个 effect。</p>
+<h3 id="34-react-fiber-流程分析">3.4 React Fiber 流程分析</h3>
+<p>看似源码到这里就结束了，但我们还存留几个问题没有解决：</p>
+<ol>
+<li><code>effect.tag</code> 的那些二进制数是什么意思？</li>
+<li><code>pushEffect</code> 之后还有什么逻辑？</li>
+<li><code>componentUpdateQueue</code> 存储 Effect 之后会在哪里被用到？</li>
+</ol>
+<p>在 <code>renderWithHooks</code> 中，<code>componentUpdateQueue</code> 会被赋值到 <code>renderedWork.updateQueue</code> 上，包括我们 3.2 中的 <code>sideEffectTag</code> 也会赋值到 <code>renderedWork.effectTag</code> 上。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#E1E4E8">renderedWork.</span><span style="color:#B392F0">updateQueue</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">componentUpdateQueue</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> any</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">renderedWork.effectTag |= sideEffectTag;</span></span></code></pre>
+<p>在<a href="https://me.ursb.me/archives/useState.html#directory0568338329425144719">第 3 篇 4.3.1: renderWithHooks</a>中，我们分析出 renderWithHooks 是在函数组件更新阶段（<code>updateFunctionComponent</code>）执行的函数，这里我们要想知道上面三个问题的答案，必须要把整个 Reconciler 的流程走一遍才能解析清楚。我个人认为 Fiber 是 React 16 中最复杂的一块逻辑了，所以在前面几篇中我只是略微提及，并没有展开篇幅解析。Fiber 里面的内容很多，如果展开的话足够写几篇文章了，因此这里也尽量简单快捷的走一遍流程，忽略本文不相关的细节，只梳理部分逻辑的实现，重点关注我们调用 useEffect 之后的逻辑。</p>
+<p>注：如果对这部分不感兴趣的同学可以直接跳到 3.5 继续阅读。</p>
+<blockquote>
+<p>React Fiber 优秀的文章有很多，这里再推荐阅读几篇文章和视频来帮助有兴趣的同学来了解</p>
+<ol>
+<li>
+<div class="embed-container"><iframe src="https://www.youtube.com/embed/ZCuYPiUIONs" width="100%" height="400" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="border-radius:8px"></iframe></div>
+</li>
+<li><a href="https://juejin.im/post/5a2276d5518825619a027f57">React Fiber初探</a></li>
+<li><a href="https://juejin.im/post/5dadc6045188255a270a0f85">这可能是最通俗的 React Fiber 打开方式</a></li>
+</ol>
+</blockquote>
+<p>那我们开始吧！</p>
+<h4 id="341-reactdomjs">3.4.1 ReactDOM.js</h4>
+<p>页面渲染的唯一入口便是 ReactDOM.render，</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#79B8FF">ReactRoot</span><span style="color:#E1E4E8">.</span><span style="color:#79B8FF">prototype</span><span style="color:#E1E4E8">.render </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> ReactSyncRoot</span><span style="color:#E1E4E8">.</span><span style="color:#79B8FF">prototype</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">render</span><span style="color:#F97583"> =</span><span style="color:#F97583"> function</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#FFAB70">  children</span><span style="color:#F97583">:</span><span style="color:#B392F0"> ReactNodeList</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  callback</span><span style="color:#F97583">:</span><span style="color:#F97583"> ?</span><span style="color:#E1E4E8">() </span><span style="color:#F97583">=></span><span style="color:#B392F0"> mixed</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Work</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6A737D">  // ... 忽略无关代码</span></span>
+<span class="line"><span style="color:#B392F0">  updateContainer</span><span style="color:#E1E4E8">(children, root, </span><span style="color:#79B8FF">null</span><span style="color:#E1E4E8">, work._onCommit);</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#E1E4E8"> work;</span></span>
+<span class="line"><span style="color:#E1E4E8">};</span></span></code></pre>
+<p>render 的核心是调用 <code>updateContainer</code>，这个函数来自于 react-reconciler 中的 ReactFiberReconciler.js。</p>
+<h4 id="342-reactfiberreconcilerjs">3.4.2 ReactFiberReconciler.js</h4>
+<p>这个文件其实也是 react-reconciler 的入口，我们先看看 <code>updateContainer</code> 究竟是什么：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> function</span><span style="color:#B392F0"> updateContainer</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#FFAB70">  element</span><span style="color:#F97583">:</span><span style="color:#B392F0"> ReactNodeList</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  container</span><span style="color:#F97583">:</span><span style="color:#B392F0"> OpaqueRoot</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  parentComponent</span><span style="color:#F97583">:</span><span style="color:#F97583"> ?</span><span style="color:#B392F0">React$Component</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#79B8FF">any</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">any</span><span style="color:#E1E4E8">>,</span></span>
+<span class="line"><span style="color:#FFAB70">  callback</span><span style="color:#F97583">:</span><span style="color:#F97583"> ?</span><span style="color:#B392F0">Function</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#B392F0"> ExpirationTime</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6A737D">  // ... 忽略无关代码</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#B392F0"> updateContainerAtExpirationTime</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#E1E4E8">    element,</span></span>
+<span class="line"><span style="color:#E1E4E8">    container,</span></span>
+<span class="line"><span style="color:#E1E4E8">    parentComponent,</span></span>
+<span class="line"><span style="color:#E1E4E8">    expirationTime,</span></span>
+<span class="line"><span style="color:#E1E4E8">    suspenseConfig,</span></span>
+<span class="line"><span style="color:#E1E4E8">    callback,</span></span>
+<span class="line"><span style="color:#E1E4E8">  );</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p>忽略无关代码发现它其实只是 <code>updateContainerAtExpirationTime</code> 的一层封装，那我们看看这个是什么：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> function</span><span style="color:#B392F0"> updateContainerAtExpirationTime</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#FFAB70">  element</span><span style="color:#F97583">:</span><span style="color:#B392F0"> ReactNodeList</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  container</span><span style="color:#F97583">:</span><span style="color:#B392F0"> OpaqueRoot</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  parentComponent</span><span style="color:#F97583">:</span><span style="color:#F97583"> ?</span><span style="color:#B392F0">React$Component</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#79B8FF">any</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">any</span><span style="color:#E1E4E8">>,</span></span>
+<span class="line"><span style="color:#FFAB70">  expirationTime</span><span style="color:#F97583">:</span><span style="color:#B392F0"> ExpirationTime</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  suspenseConfig</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> null</span><span style="color:#F97583"> |</span><span style="color:#B392F0"> SuspenseConfig</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  callback</span><span style="color:#F97583">:</span><span style="color:#F97583"> ?</span><span style="color:#B392F0">Function</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#6A737D">  // ... 忽略无关代码</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#B392F0"> scheduleRootUpdate</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#E1E4E8">    current,</span></span>
+<span class="line"><span style="color:#E1E4E8">    element,</span></span>
+<span class="line"><span style="color:#E1E4E8">    expirationTime,</span></span>
+<span class="line"><span style="color:#E1E4E8">    suspenseConfig,</span></span>
+<span class="line"><span style="color:#E1E4E8">    callback,</span></span>
+<span class="line"><span style="color:#E1E4E8">  );</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p>再次忽略一些无关代码，发现它又是 <code>scheduleRootUpdate</code> 的一层封装……那我们再看看 <code>scheduleRootUpdate</code> 是什么：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> scheduleRootUpdate</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#FFAB70">  current</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Fiber</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  element</span><span style="color:#F97583">:</span><span style="color:#B392F0"> ReactNodeList</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  expirationTime</span><span style="color:#F97583">:</span><span style="color:#B392F0"> ExpirationTime</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  suspenseConfig</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> null</span><span style="color:#F97583"> |</span><span style="color:#B392F0"> SuspenseConfig</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  callback</span><span style="color:#F97583">:</span><span style="color:#F97583"> ?</span><span style="color:#B392F0">Function</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#6A737D">  // ... 忽略无关代码</span></span>
+<span class="line"><span style="color:#B392F0">  enqueueUpdate</span><span style="color:#E1E4E8">(current, update);</span></span>
+<span class="line"><span style="color:#B392F0">  scheduleWork</span><span style="color:#E1E4E8">(current, expirationTime);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#E1E4E8"> expirationTime;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p>忽略一小段无关代码，发现它的核心是做两件事，<code>enqueueUpdate</code> 我们这里暂时先不管，重点看看任务调度 <code>scheduleWork</code>，它相当于是 Fiber 逻辑的入口了，在 ReactFiberWorkLoop.js 中定义。</p>
+<h4 id="343-reactfiberworkloopjs---render">3.4.3 ReactFiberWorkLoop.js - render</h4>
+<p>ReactFiberWorkLoop.js 的内容非常长，有 2900 行代码，是包含任务循环主逻辑，不过我们刚才弄清楚要从 <code>scheduleWork</code> 开始着手那就慢慢梳理：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> function</span><span style="color:#B392F0"> scheduleUpdateOnFiber</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#FFAB70">  fiber</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Fiber</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  expirationTime</span><span style="color:#F97583">:</span><span style="color:#B392F0"> ExpirationTime</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#6A737D">  // ... 忽略无关代码</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> priorityLevel</span><span style="color:#F97583"> =</span><span style="color:#B392F0"> getCurrentPriorityLevel</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (expirationTime </span><span style="color:#F97583">===</span><span style="color:#E1E4E8"> Sync) {</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span></span>
+<span class="line"><span style="color:#E1E4E8">      (executionContext </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> LegacyUnbatchedContext) </span><span style="color:#F97583">!==</span><span style="color:#E1E4E8"> NoContext </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">      (executionContext </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> (RenderContext </span><span style="color:#F97583">|</span><span style="color:#E1E4E8"> CommitContext)) </span><span style="color:#F97583">===</span><span style="color:#E1E4E8"> NoContext</span></span>
+<span class="line"><span style="color:#E1E4E8">    ) {</span></span>
+<span class="line"><span style="color:#B392F0">      schedulePendingInteractions</span><span style="color:#E1E4E8">(root, expirationTime);</span></span>
+<span class="line"><span style="color:#F97583">      let</span><span style="color:#E1E4E8"> callback </span><span style="color:#F97583">=</span><span style="color:#B392F0"> renderRoot</span><span style="color:#E1E4E8">(root, Sync, </span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">      while</span><span style="color:#E1E4E8"> (callback </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#E1E4E8">        callback </span><span style="color:#F97583">=</span><span style="color:#B392F0"> callback</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">      scheduleCallbackForRoot</span><span style="color:#E1E4E8">(root, ImmediatePriority, Sync);</span></span>
+<span class="line"><span style="color:#F97583">      if</span><span style="color:#E1E4E8"> (executionContext </span><span style="color:#F97583">===</span><span style="color:#E1E4E8"> NoContext) {</span></span>
+<span class="line"><span style="color:#B392F0">        flushSyncCallbackQueue</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  } </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">    scheduleCallbackForRoot</span><span style="color:#E1E4E8">(root, priorityLevel, expirationTime);</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#6A737D">  // ... 忽略特殊情况的处理</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> const</span><span style="color:#79B8FF"> scheduleWork</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> scheduleUpdateOnFiber;</span></span></code></pre>
+<p>其实这段代码大部分分支都会收回到 <code>renderRoot</code> 上，再对 <code>renderRoot</code> 的回调做 while 循环处理。所以我们与其说 <code>scheduleWork</code> 是 Fiber 逻辑的入口，不如说 <code>renderRoot</code> 是入口。<code>renderRoot</code> 就是大名鼎鼎的 Fiber 两个阶段中的 render 阶段。</p>
+<p><img src="https://airing.ursb.me/image/blog/useEffect/phases.png" alt=""></p>
+<blockquote>
+<p>图源 A Cartoon Intro to Fiber - React Conf 2017</p>
+</blockquote>
+<p>其实 debug 一下也容易看出这两个阶段：</p>
+<p><img src="https://airing.ursb.me/image/blog/useEffect/phases2.jpg" alt=""></p>
+<p><code>renderRoot</code> 中的代码也非常复杂，我们重点关注和本文有关的逻辑：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> renderRoot</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#FFAB70">  root</span><span style="color:#F97583">:</span><span style="color:#B392F0"> FiberRoot</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  expirationTime</span><span style="color:#F97583">:</span><span style="color:#B392F0"> ExpirationTime</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#FFAB70">  isSync</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> boolean</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#B392F0"> SchedulerCallback</span><span style="color:#F97583"> |</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (isSync </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#E1E4E8"> root.finishedExpirationTime </span><span style="color:#F97583">===</span><span style="color:#E1E4E8"> expirationTime) {</span></span>
+<span class="line"><span style="color:#6A737D">    // There's already a pending commit at this expiration time.</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8"> commitRoot.</span><span style="color:#B392F0">bind</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">null</span><span style="color:#E1E4E8">, root); </span><span style="color:#6A737D">// 进入 commit 阶段</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#6A737D">  // ...</span></span>
+<span class="line"><span style="color:#F97583">  do</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">    try</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">      if</span><span style="color:#E1E4E8"> (isSync) {</span></span>
+<span class="line"><span style="color:#B392F0">        workLoopSync</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">      } </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        workLoop</span><span style="color:#E1E4E8">(); </span><span style="color:#6A737D">// 核心逻辑</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#F97583">      break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">catch</span><span style="color:#E1E4E8"> (thrownValue) {</span></span>
+<span class="line"><span style="color:#6A737D">      // ...</span></span>
+<span class="line"><span style="color:#E1E4E8">  } </span><span style="color:#F97583">while</span><span style="color:#E1E4E8"> (</span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#6A737D">  // ...</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p>把一些多余的代码略去之后，我们关注到两个重要的点：</p>
+<ol>
+<li><code>workLoop</code> 是代码的核心部分，配合循环来实现任务循环。</li>
+<li>在超时的情况下，会进入 commit 阶段。</li>
+</ol>
+<p>我们先看看 <code>workLoop</code> 的逻辑：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> workLoop</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">  while</span><span style="color:#E1E4E8"> (workInProgress </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#F97583"> &#x26;&#x26;</span><span style="color:#F97583"> !</span><span style="color:#B392F0">shouldYield</span><span style="color:#E1E4E8">()) {</span></span>
+<span class="line"><span style="color:#E1E4E8">    workInProgress </span><span style="color:#F97583">=</span><span style="color:#B392F0"> performUnitOfWork</span><span style="color:#E1E4E8">(workInProgress);</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p>看来我们重点是需要看看 <code>performUnitOfWork</code>:</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> performUnitOfWork</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">unitOfWork</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Fiber</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Fiber</span><span style="color:#F97583"> |</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> current</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> unitOfWork.alternate;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  // ... 忽略计时逻辑</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  let</span><span style="color:#E1E4E8"> next;</span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (enableProfilerTimer </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#E1E4E8"> (unitOfWork.mode </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> ProfileMode) </span><span style="color:#F97583">!==</span><span style="color:#E1E4E8"> NoMode) {</span></span>
+<span class="line"><span style="color:#E1E4E8">    next </span><span style="color:#F97583">=</span><span style="color:#B392F0"> beginWork</span><span style="color:#E1E4E8">(current, unitOfWork, renderExpirationTime);</span></span>
+<span class="line"><span style="color:#E1E4E8">  } </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">    next </span><span style="color:#F97583">=</span><span style="color:#B392F0"> beginWork</span><span style="color:#E1E4E8">(current, unitOfWork, renderExpirationTime);</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#6A737D">  // ... 忽略特殊逻辑</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">  ReactCurrentOwner.current </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#E1E4E8"> next;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p>我们忽略计时逻辑，发现这段代码的内容其实就是两个 <code>beginWork</code>（这里解答了我们在第3篇中 4.3.1 中留下的问题）。这个 <code>beginWork</code> 引自 ReactFiberBeginWork.js。</p>
+<h4 id="344-reactfiberbeginworkjs">3.4.4 ReactFiberBeginWork.js</h4>
+<p>本节代码分析同 <a href="https://me.ursb.me/archives/useState.html#directory04314192122993054717">第 3 篇 4.3.1: renderWithHooks</a>，不再赘述。</p>
+<p>也就是现在我们 <code>renderedWork</code> 上的 <code>updateQueue</code>(还记得它吗？它的内容是 Effect 链表) 和 <code>effectTag</code> 挂到了 Fiber 上，跳过这部分逻辑，我们看看 Fiber 最后怎么处理它们。</p>
+<h4 id="345--reactfiberworkloopjs---commit">3.4.5  ReactFiberWorkLoop.js - commit</h4>
+<p>在刚才分析 <code>renderRoot</code> 的过程中，我们关注到任务超时之后会直接进入 commit 阶段。我们先看看 <code>commitRoot</code> 的代码：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> commitRoot</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">root</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> renderPriorityLevel</span><span style="color:#F97583"> =</span><span style="color:#B392F0"> getCurrentPriorityLevel</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#B392F0">  runWithPriority</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#E1E4E8">    ImmediatePriority,</span></span>
+<span class="line"><span style="color:#E1E4E8">    commitRootImpl.</span><span style="color:#B392F0">bind</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">null</span><span style="color:#E1E4E8">, root, renderPriorityLevel),</span></span>
+<span class="line"><span style="color:#E1E4E8">  );</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p>好的，这里发现我们应该关注 <code>commitRootImpl</code>，来看看：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="javascript"><code><span class="line"><span style="color:#F97583">function</span><span style="color:#B392F0"> commitRootImpl</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">root</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">renderPriorityLevel</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#6A737D">  // ...</span></span>
+<span class="line"><span style="color:#B392F0">  startCommitTimer</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">   // Get the list of effects.</span></span>
+<span class="line"><span style="color:#F97583">  let</span><span style="color:#E1E4E8"> firstEffect;</span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (finishedWork.effectTag </span><span style="color:#F97583">></span><span style="color:#E1E4E8"> PerformedWork) {</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (finishedWork.lastEffect </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#E1E4E8">      finishedWork.lastEffect.nextEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> finishedWork;</span></span>
+<span class="line"><span style="color:#E1E4E8">      firstEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> finishedWork.firstEffect;</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">      firstEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> finishedWork;</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  } </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">    firstEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> finishedWork.firstEffect;</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (firstEffect </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">    do</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">      try</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        commitBeforeMutationEffects</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">      } </span><span style="color:#F97583">catch</span><span style="color:#E1E4E8"> (error) {</span></span>
+<span class="line"><span style="color:#B392F0">        invariant</span><span style="color:#E1E4E8">(nextEffect </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">'Should be working on an effect.'</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">        captureCommitPhaseError</span><span style="color:#E1E4E8">(nextEffect, error);</span></span>
+<span class="line"><span style="color:#E1E4E8">        nextEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> nextEffect.nextEffect;</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">while</span><span style="color:#E1E4E8"> (nextEffect </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">    stopCommitSnapshotEffectsTimer</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (enableProfilerTimer) {</span></span>
+<span class="line"><span style="color:#6A737D">      // Mark the current commit time to be shared by all Profilers in this</span></span>
+<span class="line"><span style="color:#6A737D">      // batch. This enables them to be grouped later.</span></span>
+<span class="line"><span style="color:#B392F0">      recordCommitTime</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">    // The next phase is the mutation phase, where we mutate the host tree.</span></span>
+<span class="line"><span style="color:#B392F0">    startCommitHostEffectsTimer</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">    nextEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> firstEffect;</span></span>
+<span class="line"><span style="color:#F97583">    do</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">      try</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        commitMutationEffects</span><span style="color:#E1E4E8">(root, renderPriorityLevel);</span></span>
+<span class="line"><span style="color:#E1E4E8">      } </span><span style="color:#F97583">catch</span><span style="color:#E1E4E8"> (error) {</span></span>
+<span class="line"><span style="color:#B392F0">        invariant</span><span style="color:#E1E4E8">(nextEffect </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">'Should be working on an effect.'</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">        captureCommitPhaseError</span><span style="color:#E1E4E8">(nextEffect, error);</span></span>
+<span class="line"><span style="color:#E1E4E8">        nextEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> nextEffect.nextEffect;</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">while</span><span style="color:#E1E4E8"> (nextEffect </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">    stopCommitHostEffectsTimer</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#B392F0">    resetAfterCommit</span><span style="color:#E1E4E8">(root.containerInfo);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">    // The work-in-progress tree is now the current tree. This must come after</span></span>
+<span class="line"><span style="color:#6A737D">    // the mutation phase, so that the previous tree is still current during</span></span>
+<span class="line"><span style="color:#6A737D">    // componentWillUnmount, but before the layout phase, so that the finished</span></span>
+<span class="line"><span style="color:#6A737D">    // work is current during componentDidMount/Update.</span></span>
+<span class="line"><span style="color:#E1E4E8">    root.current </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> finishedWork;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">    // The next phase is the layout phase, where we call effects that read</span></span>
+<span class="line"><span style="color:#6A737D">    // the host tree after it's been mutated. The idiomatic use case for this is</span></span>
+<span class="line"><span style="color:#6A737D">    // layout, but class component lifecycles also fire here for legacy reasons.</span></span>
+<span class="line"><span style="color:#B392F0">    startCommitLifeCyclesTimer</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">    nextEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> firstEffect;</span></span>
+<span class="line"><span style="color:#F97583">    do</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">      try</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        commitLayoutEffects</span><span style="color:#E1E4E8">(root, expirationTime);</span></span>
+<span class="line"><span style="color:#E1E4E8">      } </span><span style="color:#F97583">catch</span><span style="color:#E1E4E8"> (error) {</span></span>
+<span class="line"><span style="color:#B392F0">        invariant</span><span style="color:#E1E4E8">(nextEffect </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">'Should be working on an effect.'</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">        captureCommitPhaseError</span><span style="color:#E1E4E8">(nextEffect, error);</span></span>
+<span class="line"><span style="color:#E1E4E8">        nextEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> nextEffect.nextEffect;</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">while</span><span style="color:#E1E4E8"> (nextEffect </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">    stopCommitLifeCyclesTimer</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">    nextEffect </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">    // Tell Scheduler to yield at the end of the frame, so the browser has an</span></span>
+<span class="line"><span style="color:#6A737D">    // opportunity to paint.</span></span>
+<span class="line"><span style="color:#B392F0">    requestPaint</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (enableSchedulerTracing) {</span></span>
+<span class="line"><span style="color:#E1E4E8">      __interactionsRef.current </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ((</span><span style="color:#FFAB70">prevInteractions</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> any</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Set</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#B392F0">Interaction</span><span style="color:#E1E4E8">>);</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#B392F0">    executionContext</span><span style="color:#E1E4E8"> = </span><span style="color:#B392F0">prevExecutionContext</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">  } </span><span style="color:#B392F0">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6A737D">    // No effects.</span></span>
+<span class="line"><span style="color:#6A737D">    // ...</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">  stopCommitTimer</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">  nextEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> firstEffect;</span></span>
+<span class="line"><span style="color:#B392F0">  while</span><span style="color:#E1E4E8"> (nextEffect </span><span style="color:#F97583">!==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#E1E4E8">    const nextNextEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> nextEffect.nextEffect;</span></span>
+<span class="line"><span style="color:#E1E4E8">    nextEffect.nextEffect </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">    nextEffect </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> nextNextEffect;</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  // ...</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#E1E4E8">  return </span><span style="color:#79B8FF">null</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<p><code>commitRootImpl</code> 的代码是真的很长，我这里忽略了一些和 effect 处理无关的代码，剩下我们阅读一下，发现当 effect 存在的时候，有三段逻辑要处理，它们的逻辑基本相同，循环 effect 链表传给三个不同的函数，分别是：</p>
+<ul>
+<li>commitBeforeMutationEffects</li>
+<li>commitMutationEffects</li>
+<li>commitLayoutEffects</li>
+</ul>
+<p>最后将循环 effect，将 nextEffect 赋值成 nextNextEffect。</p>
+<p>限于篇幅问题，且第三个函数关于 useLayoutEffect，所以左右这里这三个函数我们这里都不一一展开解释了，留给下篇文章中分析 useLayoutEffect 再来详解。所以 3.4 中我们留下的问题—— <code>effect.tag</code> 的那些二进制数是什么意思？这个问题也需要等到下一篇文章中来解释了。</p>
+<p>我们这里只需要知道这三个函数的核心代码分别引用了 ReactFiberCommitWork.js 中的 <code>commitWork</code>，<code>commitBeforeMutationLifeCycles</code>，<code>commitLifeCycles</code>，而这三个函数的核心代码在处理 FunctionCompoment 的逻辑时都走到了 <code>commitHookEffectList</code> 中即可。</p>
+<h3 id="35-commithookeffectlist">3.5 commitHookEffectList</h3>
+<p>分析了一大圈，最后我们看看 ReactFiberCommitWork.js 中 <code>commitHookEffectList</code> 的逻辑，这里便是 useEffect 终点了：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>function commitHookEffectList(</span></span>
+<span class="line"><span>  unmountTag: number,</span></span>
+<span class="line"><span>  mountTag: number,</span></span>
+<span class="line"><span>  finishedWork: Fiber,</span></span>
+<span class="line"><span>) {</span></span>
+<span class="line"><span>  const updateQueue: FunctionComponentUpdateQueue | null = (finishedWork.updateQueue: any);</span></span>
+<span class="line"><span>  let lastEffect = updateQueue !== null ? updateQueue.lastEffect : null;</span></span>
+<span class="line"><span>  if (lastEffect !== null) {</span></span>
+<span class="line"><span>    const firstEffect = lastEffect.next;</span></span>
+<span class="line"><span>    let effect = firstEffect;</span></span>
+<span class="line"><span>    do {</span></span>
+<span class="line"><span>      if ((effect.tag &#x26; unmountTag) !== NoHookEffect) {</span></span>
+<span class="line"><span>        // Unmount</span></span>
+<span class="line"><span>        const destroy = effect.destroy;</span></span>
+<span class="line"><span>        effect.destroy = undefined;</span></span>
+<span class="line"><span>        if (destroy !== undefined) {</span></span>
+<span class="line"><span>          destroy();</span></span>
+<span class="line"><span>        }</span></span>
+<span class="line"><span>      }</span></span>
+<span class="line"><span>      if ((effect.tag &#x26; mountTag) !== NoHookEffect) {</span></span>
+<span class="line"><span>        // Mount</span></span>
+<span class="line"><span>        const create = effect.create;</span></span>
+<span class="line"><span>        effect.destroy = create();</span></span>
+<span class="line"><span>      }</span></span>
+<span class="line"><span>      effect = effect.next;</span></span>
+<span class="line"><span>    } while (effect !== firstEffect);</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>}</span></span></code></pre>
+<p>可以发现，这里的代码很清楚，这里把 <code>renderedWork.updateQueue</code> 上的 effect 取了下来，在 unmount 的时候执行 <code>effect.destory</code>（也就是 useEffect 第一个参数的返回值），在 mount 的时候执行 <code>effect.create</code>（也就是 useEffect 传入的第一个参数）。并且，循环所有的 effect 直到结束。</p>
+<p>同时这里也印证了我们之前的猜想：当 tag 是 <code>NoHookEffect</code> 的时候什么也不做。</p>
+<p>这里我们把 useEffect 的源码解释清楚了，但是遗留了一个问题：<code>effect.tag</code> 这个参数究竟有什么用？目前我们仅仅知道当它是 <code>NoHookEffect</code> 时的作用是不执行 useEffect 的内容，但是其他的值我们还没有分析到，它们分析逻辑主要在我们 3.4.5 略过的那三个函数里。在下篇文章中，我们分析 useLayoutEffect 中会拿出来详细分析。</p>
+<p>大家再见。</p>
+<p>最后附上 3.4 节分析的流程图：</p>
+<p><img src="https://airing.ursb.me/image/blog/useEffect/useEffect.png" alt=""></p>  </article> <!-- Right column: relative container for absolute-positioned cards --> <aside class="comment-rail" id="commentRail" data-astro-cid-gjtny2mx> <div class="cr-header" data-astro-cid-gjtny2mx> <span class="cr-label" data-astro-cid-gjtny2mx>Comments</span> <button class="cr-clear" id="clearAllComments" title="Clear all" data-astro-cid-gjtny2mx>&#x2715;</button> </div> <div class="cr-cards" id="commentCards" data-astro-cid-gjtny2mx> <!-- Cards positioned absolutely here --> </div> </aside> </div> <!-- FAB --> <button class="fab-comment" id="fabComment" aria-label="Add comment" data-astro-cid-gjtny2mx> <svg width="14" height="14" viewBox="0 0 14 14" fill="none" data-astro-cid-gjtny2mx> <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-astro-cid-gjtny2mx></path> </svg> </button> <!-- Comment input popover (desktop) — now with nickname/email --> <div class="comment-input-popover" id="commentPopover" data-astro-cid-gjtny2mx> <div class="cip-header" data-astro-cid-gjtny2mx> <span class="cip-selected" id="cipSelectedText" data-astro-cid-gjtny2mx></span> </div> <div class="cip-identity" data-astro-cid-gjtny2mx> <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="cip-input" id="cipEmail" placeholder="Email (for Gravatar)" data-astro-cid-gjtny2mx> </div> <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3" data-astro-cid-gjtny2mx></textarea> <div class="cip-actions" data-astro-cid-gjtny2mx> <button class="cip-cancel" id="cipCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="cip-submit" id="cipSubmit" data-astro-cid-gjtny2mx>Comment</button> </div> </div> <!-- Mobile bottom sheet --> <div class="mobile-sheet-overlay" id="mobileOverlay" data-astro-cid-gjtny2mx></div> <div class="mobile-sheet" id="mobileSheet" data-astro-cid-gjtny2mx> <div class="ms-handle" data-astro-cid-gjtny2mx></div> <div class="ms-quote" id="msQuote" data-astro-cid-gjtny2mx></div> <div class="ms-body" id="msBody" data-astro-cid-gjtny2mx></div> <div class="ms-author" id="msAuthor" data-astro-cid-gjtny2mx></div> <div class="ms-time" id="msTime" data-astro-cid-gjtny2mx></div> <button class="ms-delete" id="msDelete" data-astro-cid-gjtny2mx>Delete Comment</button> </div> <!-- Prev / Next Navigation --> <nav class="post-nav" data-astro-cid-gjtny2mx> <div class="post-nav-inner" data-astro-cid-gjtny2mx> <a href="/posts/summary-2019/" class="post-nav-link post-nav-prev" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>&larr; Newer</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>2019，走走停停</span> </a> <a href="/posts/react-hooks-3/" class="post-nav-link post-nav-next" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>Older &rarr;</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>React Hooks 源码解析（3）：useState</span> </a> </div> </nav> <!-- Article Like --> <div class="article-like-section" data-astro-cid-gjtny2mx> <div class="al-rule" data-astro-cid-gjtny2mx></div> <button class="article-like-btn" id="articleLikeBtn" data-astro-cid-gjtny2mx> <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22" data-astro-cid-gjtny2mx> <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none" data-astro-cid-gjtny2mx></path> </svg> <span class="al-count" id="articleLikeCount" data-astro-cid-gjtny2mx>0</span> <span class="al-label" data-astro-cid-gjtny2mx>likes</span> </button> <div class="al-rule" data-astro-cid-gjtny2mx></div> </div> <!-- Newsletter CTA --> <div class="newsletter-cta" data-astro-cid-gjtny2mx> <div class="nl-inner" data-astro-cid-gjtny2mx> <p class="nl-title" data-astro-cid-gjtny2mx>Subscribe</p> <p class="nl-desc" data-astro-cid-gjtny2mx>Get notified when new posts are published.</p> <form class="nl-form" id="nlForm" data-astro-cid-gjtny2mx> <input type="email" class="nl-input" id="nlEmail" placeholder="your@email.com" required data-astro-cid-gjtny2mx> <button type="submit" class="nl-btn" data-astro-cid-gjtny2mx>Subscribe</button> </form> <p class="nl-status" id="nlStatus" data-astro-cid-gjtny2mx></p> </div> </div> <!-- Bottom Comment Section --> <section class="bottom-comments" id="bottomComments" data-astro-cid-gjtny2mx> <div class="bc-inner" data-astro-cid-gjtny2mx> <div class="bc-header" data-astro-cid-gjtny2mx> <h2 class="bc-title" data-astro-cid-gjtny2mx>Comments</h2> <span class="bc-count" id="bcCount" data-astro-cid-gjtny2mx>0 comments</span> </div> <div class="bc-thread" id="bcThread" data-astro-cid-gjtny2mx> <!-- Comments rendered by JS --> </div> <div class="bc-compose" data-astro-cid-gjtny2mx> <div class="bc-compose-avatar" data-astro-cid-gjtny2mx> <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" data-astro-cid-gjtny2mx> </div> <div class="bc-compose-form" data-astro-cid-gjtny2mx> <div class="bc-compose-fields" data-astro-cid-gjtny2mx> <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="bc-input" id="bcEmail" placeholder="Email" data-astro-cid-gjtny2mx> <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" data-astro-cid-gjtny2mx> </div> <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4" data-astro-cid-gjtny2mx></textarea> <div class="bc-compose-footer" data-astro-cid-gjtny2mx> <span class="bc-hint" data-astro-cid-gjtny2mx>Markdown supported</span> <button class="bc-submit" id="bcSubmit" data-astro-cid-gjtny2mx>Submit</button> </div> </div> </div> </div> </section> <footer class="page-footer" data-astro-cid-gjtny2mx> <div class="footer-inner" data-astro-cid-gjtny2mx> <div class="footer-rule" data-astro-cid-gjtny2mx></div> <div class="footer-bar" data-astro-cid-gjtny2mx> <a href="/" data-astro-cid-gjtny2mx>&larr; Home</a> <span class="footer-copy" data-astro-cid-gjtny2mx>&copy; Airing</span> <a href="/archive" data-astro-cid-gjtny2mx>Archive &rarr;</a> </div> </div> </footer> </div>  <!-- Theme Switcher --> <div class="theme-switcher" id="themeSwitcher"> <button class="mode-toggle" id="modeToggle" aria-label="Toggle light/dark mode"> <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"></circle> <line x1="8" y1="0.5" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="8" y1="13.5" x2="8" y2="15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="0.5" y1="8" x2="2.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="13.5" y1="8" x2="15.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="2.7" x2="4.1" y2="4.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="11.9" x2="13.3" y2="13.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="13.3" x2="4.1" y2="11.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="4.1" x2="13.3" y2="2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> </svg> <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none"> <path d="M13.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </svg> </button> <button class="theme-toggle" id="themeToggle" aria-label="Switch accent color"> <svg width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"></circle> <circle cx="8" cy="8" r="3" fill="currentColor"></circle> </svg> </button> <div class="theme-dots" id="themeDots"> <button class="theme-dot" data-theme="green" style="--dot-color:#4ade80" title="Green"></button> <button class="theme-dot" data-theme="blue" style="--dot-color:#60a5fa" title="Blue"></button> <button class="theme-dot" data-theme="purple" style="--dot-color:#a78bfa" title="Purple"></button> <button class="theme-dot" data-theme="amber" style="--dot-color:#fbbf24" title="Amber"></button> <button class="theme-dot" data-theme="rose" style="--dot-color:#fb7185" title="Rose"></button> <button class="theme-dot" data-theme="cyan" style="--dot-color:#22d3ee" title="Cyan"></button> </div> </div> <script>
+    (function() {
+      var toggle = document.getElementById('themeToggle');
+      var dots = document.getElementById('themeDots');
+      var switcher = document.getElementById('themeSwitcher');
+      var modeToggle = document.getElementById('modeToggle');
+      var open = false;
+
+      // Mode toggle (light/dark)
+      function updateModeIcon() {
+        var isLight = document.documentElement.getAttribute('data-mode') === 'light';
+        switcher.classList.toggle('light-mode', isLight);
+      }
+      modeToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var current = document.documentElement.getAttribute('data-mode');
+        var next = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-mode', next);
+        localStorage.setItem('blog-mode', next);
+        updateModeIcon();
+      });
+      updateModeIcon();
+
+      // Color theme toggle
+      toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        open = !open;
+        dots.classList.toggle('active', open);
+        toggle.classList.toggle('active', open);
+      });
+
+      dots.addEventListener('click', function(e) {
+        var btn = e.target.closest('.theme-dot');
+        if (!btn) return;
+        var theme = btn.dataset.theme;
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('blog-theme', theme);
+        dots.querySelectorAll('.theme-dot').forEach(function(d) {
+          d.classList.toggle('selected', d.dataset.theme === theme);
+        });
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!switcher.contains(e.target) && open) {
+          open = false;
+          dots.classList.remove('active');
+          toggle.classList.remove('active');
+        }
+      });
+
+      // Mark current theme
+      var current = localStorage.getItem('blog-theme') || 'green';
+      dots.querySelectorAll('.theme-dot').forEach(function(d) {
+        d.classList.toggle('selected', d.dataset.theme === current);
+      });
+    })();
+  </script> </body> </html> <script>
+/* Wrap short text nodes after <img> as styled captions */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = content.querySelectorAll('p');
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (!imgs.length) return;
+    var nodes = Array.from(p.childNodes);
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeType !== 3) continue;
+      var text = node.textContent.trim();
+      if (!text) continue;
+      var prev = node.previousSibling;
+      while (prev && prev.nodeType === 3 && !prev.textContent.trim()) prev = prev.previousSibling;
+      if (!prev || prev.nodeName !== 'IMG') continue;
+      if (text.length > 30 || text.indexOf('\n') !== -1 || text.charAt(0) === '#') continue;
+      var span = document.createElement('span');
+      span.className = 'img-caption';
+      span.textContent = text;
+      p.replaceChild(span, node);
+    }
+  });
+})();
+
+/* Gallery: group consecutive images into flex rows */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = Array.from(content.querySelectorAll('p'));
+
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (imgs.length < 2) return;
+
+    // Segment childNodes into groups: consecutive img(+caption) vs other content
+    var nodes = Array.from(p.childNodes);
+    var segments = [];
+    var currentImgs = [];
+
+    function flushImgs() {
+      if (currentImgs.length >= 2) {
+        segments.push({ type: 'images', items: currentImgs });
+      } else if (currentImgs.length === 1) {
+        segments.push({ type: 'other', nodes: [currentImgs[0].img] });
+        if (currentImgs[0].caption) segments.push({ type: 'other', nodes: [currentImgs[0].caption] });
+      }
+      currentImgs = [];
+    }
+
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeName === 'IMG') {
+        var item = { img: node, caption: null };
+        var next = nodes[i + 1];
+        if (next && next.nodeType === 1 && next.classList && next.classList.contains('img-caption')) {
+          item.caption = next;
+          i++;
+        }
+        currentImgs.push(item);
+      } else if (node.nodeType === 3 && !node.textContent.trim()) {
+        continue;
+      } else {
+        flushImgs();
+        segments.push({ type: 'other', nodes: [node] });
+      }
+    }
+    flushImgs();
+
+    var hasGallery = segments.some(function(s) { return s.type === 'images'; });
+    if (!hasGallery) return;
+
+    var frag = document.createDocumentFragment();
+
+    segments.forEach(function(seg) {
+      if (seg.type === 'other') {
+        seg.nodes.forEach(function(n) { frag.appendChild(n.cloneNode(true)); });
+        return;
+      }
+
+      var items = seg.items;
+      var gallery = document.createElement('div');
+      gallery.className = 'img-gallery';
+
+      // Build rows: max 3 per row (2 for groups of 4)
+      var rows = [];
+      var row = [];
+      for (var j = 0; j < items.length; j++) {
+        row.push(items[j]);
+        var maxPerRow = items.length === 4 ? 2 : 3;
+        if (row.length >= maxPerRow) { rows.push(row); row = []; }
+      }
+      if (row.length) rows.push(row);
+
+      rows.forEach(function(rowItems) {
+        var rowDiv = document.createElement('div');
+        rowDiv.className = 'img-gallery-row';
+        rowItems.forEach(function(item) {
+          var figure = document.createElement('figure');
+          figure.className = 'img-gallery-item';
+          figure.appendChild(item.img.cloneNode(true));
+          if (item.caption) {
+            var figcap = document.createElement('figcaption');
+            figcap.textContent = item.caption.textContent;
+            figure.appendChild(figcap);
+          }
+          rowDiv.appendChild(figure);
+        });
+        gallery.appendChild(rowDiv);
+      });
+
+      // Apply flex ratios once all images in gallery have loaded
+      var galleryImgs = gallery.querySelectorAll('img');
+      var loaded = 0;
+      var total = galleryImgs.length;
+      function applyFlex() {
+        var rows = gallery.querySelectorAll('.img-gallery-row');
+        rows.forEach(function(rowEl) {
+          var figs = rowEl.querySelectorAll('.img-gallery-item');
+          figs.forEach(function(fig) {
+            var img = fig.querySelector('img');
+            var w = img.naturalWidth || 1;
+            var h = img.naturalHeight || 1;
+            fig.style.flex = (w / h).toFixed(3);
+          });
+        });
+      }
+      galleryImgs.forEach(function(img) {
+        if (img.complete && img.naturalWidth > 0) {
+          loaded++;
+          if (loaded === total) applyFlex();
+        } else {
+          img.addEventListener('load', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+          img.addEventListener('error', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+        }
+      });
+
+      frag.appendChild(gallery);
+    });
+
+    p.parentNode.replaceChild(frag, p);
+  });
+})();
+
+/* TOC: build, scroll-spy, click-to-scroll */
+(function() {
+  var content = document.querySelector('.post-content');
+  var tocNav = document.getElementById('tocNav');
+  var tocBlock = document.getElementById('tocBlock');
+  if (!content || !tocNav || !tocBlock) return;
+
+  var headings = content.querySelectorAll('h2, h3');
+  if (headings.length < 2) return;
+
+  // Ensure each heading has an id
+  headings.forEach(function(h, i) {
+    if (!h.id) h.id = 'heading-' + i;
+  });
+
+  // Build TOC links
+  var fragment = document.createDocumentFragment();
+  headings.forEach(function(h) {
+    var a = document.createElement('a');
+    a.className = 'toc-link';
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    a.setAttribute('data-level', h.tagName === 'H2' ? '2' : '3');
+    a.addEventListener('click', function(e) {
+      e.preventDefault();
+      h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', '#' + h.id);
+    });
+    fragment.appendChild(a);
+  });
+  tocNav.appendChild(fragment);
+  tocBlock.style.display = '';
+
+  // Scroll spy
+  var tocLinks = tocNav.querySelectorAll('.toc-link');
+  var headingArr = Array.from(headings);
+  var ticking = false;
+
+  function updateActive() {
+    var scrollY = window.scrollY + 80;
+    var active = null;
+    for (var i = headingArr.length - 1; i >= 0; i--) {
+      if (headingArr[i].offsetTop <= scrollY) { active = i; break; }
+    }
+    tocLinks.forEach(function(link, idx) {
+      link.classList.toggle('active', idx === active);
+    });
+    // Scroll active link into view within TOC nav
+    if (active !== null && tocLinks[active]) {
+      var link = tocLinks[active];
+      var nav = tocNav;
+      if (link.offsetTop < nav.scrollTop || link.offsetTop + link.offsetHeight > nav.scrollTop + nav.clientHeight) {
+        nav.scrollTop = link.offsetTop - nav.clientHeight / 3;
+      }
+    }
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function() {
+    if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
+  }, { passive: true });
+  updateActive();
+})();
+</script> <script>
+(function() {
+  var API = 'https://chat.ursb.me';
+  var POST_SLUG = location.pathname.replace(/^\/posts\//, '').replace(/\/$/, '');
+  var USER_KEY = 'blog-user-identity';
+
+  var postContent = document.getElementById('postContent');
+  var contentGrid = document.getElementById('contentGrid');
+  var commentRail = document.getElementById('commentRail');
+  var commentCards = document.getElementById('commentCards');
+  var fab = document.getElementById('fabComment');
+  var popover = document.getElementById('commentPopover');
+  var cipText = document.getElementById('cipSelectedText');
+  var cipNickname = document.getElementById('cipNickname');
+  var cipEmailInput = document.getElementById('cipEmail');
+  var cipArea = document.getElementById('cipTextarea');
+  var cipCancel = document.getElementById('cipCancel');
+  var cipSubmit = document.getElementById('cipSubmit');
+  var clearAll = document.getElementById('clearAllComments');
+  var mobileOverlay = document.getElementById('mobileOverlay');
+  var mobileSheet = document.getElementById('mobileSheet');
+  var msQuote = document.getElementById('msQuote');
+  var msBody = document.getElementById('msBody');
+  var msAuthor = document.getElementById('msAuthor');
+  var msTime = document.getElementById('msTime');
+  var msDelete = document.getElementById('msDelete');
+
+  // Bottom comments
+  var bcThread = document.getElementById('bcThread');
+  var bcCount = document.getElementById('bcCount');
+  var bcNickname = document.getElementById('bcNickname');
+  var bcEmail = document.getElementById('bcEmail');
+  var bcWebsite = document.getElementById('bcWebsite');
+  var bcTextarea = document.getElementById('bcTextarea');
+  var bcSubmit = document.getElementById('bcSubmit');
+  var bcComposeAvatar = document.getElementById('bcComposeAvatar');
+
+  // Article like
+  var articleLikeBtn = document.getElementById('articleLikeBtn');
+  var articleLikeCount = document.getElementById('articleLikeCount');
+
+  var pendingRange = null;
+  var activeMobileCommentId = null;
+  var inlineComments = [];
+  var bottomComments = [];
+
+  function isMobile() { return window.innerWidth <= 1100; }
+
+  // --- User identity persistence ---
+  function getSavedIdentity() {
+    try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveIdentity(nickname, email, website) {
+    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email, website: website || '' }));
+  }
+  function restoreIdentity() {
+    var id = getSavedIdentity();
+    if (id.nickname) {
+      cipNickname.value = id.nickname;
+      bcNickname.value = id.nickname;
+    }
+    if (id.email) {
+      cipEmailInput.value = id.email;
+      bcEmail.value = id.email;
+      updateComposeAvatar(id.email);
+    }
+    if (id.website) {
+      bcWebsite.value = id.website;
+    }
+  }
+
+  var AUTHOR_EMAILS = { 'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80' };
+  function gravatarUrl(email) {
+    var e = email.trim().toLowerCase();
+    if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
+    var hash = e.endsWith('@gravatar.placeholder') ? e.split('@')[0] : e;
+    return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80';
+  }
+
+  function updateComposeAvatar(email) {
+    if (email) bcComposeAvatar.src = gravatarUrl(email);
+  }
+
+  // Debounced avatar update on email input
+  var avatarTimer;
+  bcEmail.addEventListener('input', function() {
+    clearTimeout(avatarTimer);
+    avatarTimer = setTimeout(function() { updateComposeAvatar(bcEmail.value); }, 500);
+  });
+
+  // --- API helpers ---
+  function apiGet(path) {
+    return fetch(API + path, { headers: { 'Origin': location.origin } }).then(function(r) { return r.json(); });
+  }
+  function apiPost(path, body) {
+    return fetch(API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); });
+  }
+  function apiDelete(path) {
+    return fetch(API + path, { method: 'DELETE' }).then(function(r) { return r.json(); });
+  }
+
+  // =====================================================================
+  // INLINE (HIGHLIGHT) COMMENTS — right rail
+  // =====================================================================
+
+  function wrapRange(range, id) {
+    var mark = document.createElement('mark');
+    mark.className = 'comment-highlight';
+    mark.dataset.commentId = id;
+    try { range.surroundContents(mark); }
+    catch(e) {
+      var fragment = range.extractContents();
+      mark.appendChild(fragment);
+      range.insertNode(mark);
+    }
+    return mark;
+  }
+
+  function restoreHighlights() {
+    inlineComments.forEach(function(c) {
+      if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
+      var searchText = c.selected_text;
+      if (!searchText) return;
+      var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
+      var node;
+      while (node = walker.nextNode()) {
+        var idx = node.textContent.indexOf(searchText);
+        if (idx === -1) continue;
+        var range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + searchText.length);
+        wrapRange(range, c.id);
+        break;
+      }
+    });
+  }
+
+  function removeHighlight(id) {
+    var marks = postContent.querySelectorAll('mark[data-comment-id="' + id + '"]');
+    marks.forEach(function(mark) {
+      var parent = mark.parentNode;
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+      parent.removeChild(mark);
+      parent.normalize();
+    });
+  }
+
+  function offsetFromGrid(el) {
+    var top = 0;
+    while (el && el !== contentGrid) { top += el.offsetTop; el = el.offsetParent; }
+    return top;
+  }
+
+  function layoutCards() {
+    var cards = commentCards.querySelectorAll('.cm-card');
+    if (!cards.length) return;
+    var railOffset = offsetFromGrid(commentRail);
+    var positions = [];
+    cards.forEach(function(card) {
+      var id = card.dataset.commentId;
+      var mark = postContent.querySelector('mark[data-comment-id="' + id + '"]');
+      var desiredTop = 0;
+      if (mark) desiredTop = offsetFromGrid(mark) - railOffset;
+      positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
+    });
+    positions.sort(function(a, b) { return a.desired - b.desired; });
+    var GAP = 8, nextAvailable = 0;
+    positions.forEach(function(p) {
+      var top = Math.max(p.desired, nextAvailable);
+      p.card.style.top = top + 'px';
+      nextAvailable = top + p.height + GAP;
+    });
+    commentCards.style.minHeight = nextAvailable + 'px';
+  }
+
+  function renderInlineComments() {
+    commentCards.innerHTML = '';
+    clearAll.style.display = inlineComments.length ? '' : 'none';
+
+    inlineComments.forEach(function(c) {
+      var card = document.createElement('div');
+      card.className = 'cm-card';
+      card.dataset.commentId = c.id;
+      var mark = postContent.querySelector('mark[data-comment-id="' + c.id + '"]');
+
+      var time = new Date(c.created_at);
+      var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+        + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      card.innerHTML =
+        '<div class="cm-card-author">' +
+          '<img src="' + gravatarUrl(c.email) + '" class="cm-card-avatar" />' +
+          '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
+        '</div>' +
+        '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
+        '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
+        '<div class="cm-card-footer">' +
+          '<span class="cm-card-time">' + timeStr + '</span>' +
+          '<button class="cm-card-delete" data-id="' + c.id + '">&times;</button>' +
+        '</div>';
+
+      card.addEventListener('mouseenter', function() {
+        if (mark) mark.classList.add('highlight-active');
+        card.classList.add('cm-card-active');
+      });
+      card.addEventListener('mouseleave', function() {
+        if (mark) mark.classList.remove('highlight-active');
+        card.classList.remove('cm-card-active');
+      });
+      card.addEventListener('click', function(e) {
+        if (e.target.classList.contains('cm-card-delete')) return;
+        if (mark) {
+          mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          mark.classList.add('highlight-flash');
+          setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1000);
+        }
+      });
+      if (mark) {
+        mark.addEventListener('mouseenter', function() { card.classList.add('cm-card-active'); mark.classList.add('highlight-active'); });
+        mark.addEventListener('mouseleave', function() { card.classList.remove('cm-card-active'); mark.classList.remove('highlight-active'); });
+        mark.addEventListener('click', function(e) {
+          if (!isMobile()) return;
+          e.preventDefault(); e.stopPropagation();
+          openMobileSheet(c);
+        });
+      }
+
+      commentCards.appendChild(card);
+
+      card.querySelector('.cm-card-delete').addEventListener('click', function(e) {
+        e.stopPropagation();
+        apiDelete('/api/inline-comments/' + c.id).then(function() {
+          removeHighlight(c.id);
+          inlineComments = inlineComments.filter(function(x) { return x.id !== c.id; });
+          renderInlineComments();
+        });
+      });
+    });
+
+    requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
+  }
+
+  // --- Mobile bottom sheet ---
+  function openMobileSheet(comment) {
+    activeMobileCommentId = comment.id;
+    msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
+    msBody.textContent = comment.comment;
+    msAuthor.textContent = comment.nickname;
+    var time = new Date(comment.created_at);
+    msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+      + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    mobileOverlay.classList.add('active');
+    mobileSheet.classList.add('active');
+  }
+  function closeMobileSheet() {
+    mobileOverlay.classList.remove('active');
+    mobileSheet.classList.remove('active');
+    activeMobileCommentId = null;
+  }
+  mobileOverlay.addEventListener('click', closeMobileSheet);
+  msDelete.addEventListener('click', function() {
+    if (!activeMobileCommentId) return;
+    apiDelete('/api/inline-comments/' + activeMobileCommentId).then(function() {
+      removeHighlight(activeMobileCommentId);
+      inlineComments = inlineComments.filter(function(x) { return x.id !== activeMobileCommentId; });
+      closeMobileSheet();
+      renderInlineComments();
+    });
+  });
+
+  // --- FAB: show on text selection ---
+  fab.style.display = 'none';
+  popover.style.display = 'none';
+
+  document.addEventListener('mouseup', function(e) {
+    if (popover.style.display !== 'none') return;
+    if (isMobile()) { fab.style.display = 'none'; return; }
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.top + window.scrollY - 36) + 'px';
+    fab.style.left = (rect.right + window.scrollX + 8) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('selectionchange', function() {
+    if (!isMobile()) return;
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    fab.style.left = (rect.left + window.scrollX + (rect.width / 2) - 14) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('mousedown', function(e) {
+    if (fab.contains(e.target) || popover.contains(e.target)) return;
+    if (popover.style.display === 'none') fab.style.display = 'none';
+  });
+
+  fab.addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (!pendingRange) return;
+    var selectedText = pendingRange.toString().trim();
+    if (!selectedText) return;
+    cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
+    cipArea.value = '';
+    var rect = pendingRange.getBoundingClientRect();
+    if (isMobile()) {
+      popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
+      popover.style.left = '50%';
+      popover.style.transform = 'translateX(-50%)';
+    } else {
+      popover.style.top = (rect.top + window.scrollY) + 'px';
+      popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
+      popover.style.transform = '';
+    }
+    popover.style.display = 'block';
+    fab.style.display = 'none';
+    cipNickname.focus();
+  });
+
+  cipCancel.addEventListener('click', function() {
+    popover.style.display = 'none';
+    pendingRange = null;
+    window.getSelection().removeAllRanges();
+  });
+
+  cipSubmit.addEventListener('click', function() {
+    var text = cipArea.value.trim();
+    var nickname = cipNickname.value.trim();
+    var email = cipEmailInput.value.trim();
+    if (!text || !nickname || !email || !pendingRange) return;
+
+    var selectedText = pendingRange.toString().trim();
+    saveIdentity(nickname, email);
+
+    cipSubmit.disabled = true;
+    cipSubmit.textContent = '...';
+
+    apiPost('/api/inline-comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      selected_text: selectedText,
+      comment: text,
+      range_start: 0,
+      range_end: selectedText.length
+    }).then(function(res) {
+      if (res.comment) {
+        wrapRange(pendingRange, res.comment.id);
+        inlineComments.push(res.comment);
+        renderInlineComments();
+      }
+      popover.style.display = 'none';
+      pendingRange = null;
+      window.getSelection().removeAllRanges();
+    }).finally(function() {
+      cipSubmit.disabled = false;
+      cipSubmit.textContent = 'Comment';
+    });
+  });
+
+  cipArea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
+    if (e.key === 'Escape') cipCancel.click();
+  });
+
+  clearAll.addEventListener('click', function() {
+    if (!confirm('Clear all comments?')) return;
+    // Delete all from server
+    Promise.all(inlineComments.map(function(c) { return apiDelete('/api/inline-comments/' + c.id); })).then(function() {
+      postContent.querySelectorAll('mark.comment-highlight').forEach(function(m) {
+        var p = m.parentNode;
+        while (m.firstChild) p.insertBefore(m.firstChild, m);
+        p.removeChild(m);
+        p.normalize();
+      });
+      inlineComments = [];
+      renderInlineComments();
+    });
+  });
+
+  var layoutTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(layoutCards, 60);
+  });
+
+  // =====================================================================
+  // ARTICLE LIKES
+  // =====================================================================
+  var articleLiked = false;
+
+  function loadArticleLikes() {
+    apiGet('/api/posts/' + encodeURIComponent(POST_SLUG) + '/likes').then(function(res) {
+      articleLikeCount.textContent = res.count;
+      articleLiked = res.liked;
+      if (articleLiked) articleLikeBtn.classList.add('liked');
+    });
+  }
+
+  articleLikeBtn.addEventListener('click', function() {
+    // Optimistic update — instant UI feedback
+    var prevLiked = articleLiked;
+    var prevCount = parseInt(articleLikeCount.textContent) || 0;
+    var newLiked = !prevLiked;
+    var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+    articleLiked = newLiked;
+    articleLikeCount.textContent = newCount;
+    articleLikeBtn.classList.toggle('liked', newLiked);
+    var icon = articleLikeBtn.querySelector('.al-icon path');
+    icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+    apiPost('/api/posts/' + encodeURIComponent(POST_SLUG) + '/like', {}).then(function(res) {
+      // Sync with server truth
+      articleLiked = res.liked;
+      articleLikeCount.textContent = res.count;
+      articleLikeBtn.classList.toggle('liked', res.liked);
+      icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+    }).catch(function() {
+      // Rollback on failure
+      articleLiked = prevLiked;
+      articleLikeCount.textContent = prevCount;
+      articleLikeBtn.classList.toggle('liked', prevLiked);
+      icon.setAttribute('fill', prevLiked ? 'currentColor' : 'none');
+    });
+  });
+
+  // =====================================================================
+  // BOTTOM COMMENTS
+  // =====================================================================
+
+  function loadBottomComments() {
+    apiGet('/api/comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+      bottomComments = res.comments || [];
+      renderBottomComments();
+    });
+  }
+
+  function renderBottomComments() {
+    bcThread.innerHTML = '';
+    var count = bottomComments.length;
+    bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+
+    // Build tree
+    var roots = [];
+    var byId = {};
+    bottomComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
+    bottomComments.forEach(function(c) {
+      if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
+      else roots.push(c);
+    });
+
+    roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+  }
+
+  function buildCommentEl(c, isReply) {
+    var div = document.createElement('div');
+    div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
+
+    var time = new Date(c.created_at);
+    var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    var avatarSize = isReply ? 32 : 40;
+    var nameHtml = c.website
+      ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
+      : '<span class="bc-name">' + esc(c.nickname) + '</span>';
+    div.innerHTML =
+      '<div class="bc-avatar-wrap"><img src="' + gravatarUrl(c.email) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+      '<div class="bc-body">' +
+        '<div class="bc-meta">' +
+          nameHtml +
+          '<span class="bc-dot">&middot;</span>' +
+          '<time class="bc-time">' + timeStr + '</time>' +
+        '</div>' +
+        '<div class="bc-text"><p>' + esc(c.content) + '</p></div>' +
+        '<div class="bc-actions">' +
+          '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
+            '<span>' + (c.likes || 0) + '</span>' +
+          '</button>' +
+          '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
+        '</div>' +
+        '<div class="bc-replies-container"></div>' +
+      '</div>';
+
+    // Like button — optimistic update
+    div.querySelector('.bc-like-btn').addEventListener('click', function() {
+      var btn = this;
+      var icon = btn.querySelector('path');
+      var span = btn.querySelector('span');
+      var wasLiked = btn.classList.contains('liked');
+      var prevCount = parseInt(span.textContent) || 0;
+      var newLiked = !wasLiked;
+      var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+      btn.classList.toggle('liked', newLiked);
+      span.textContent = newCount;
+      icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+      apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
+        btn.classList.toggle('liked', res.liked);
+        span.textContent = res.count;
+        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      }).catch(function() {
+        btn.classList.toggle('liked', wasLiked);
+        span.textContent = prevCount;
+        icon.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+      });
+    });
+
+    // Reply button
+    div.querySelector('.bc-reply-btn').addEventListener('click', function() {
+      // Scroll to compose and pre-fill with @mention
+      bcTextarea.value = '@' + c.nickname + ' ';
+      bcTextarea.dataset.parentId = c.id;
+      bcTextarea.focus();
+      bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Render replies
+    var repliesContainer = div.querySelector('.bc-replies-container');
+    if (c._replies && c._replies.length) {
+      c._replies.forEach(function(r) {
+        repliesContainer.appendChild(buildCommentEl(r, true));
+      });
+    }
+
+    return div;
+  }
+
+  // Submit bottom comment
+  bcSubmit.addEventListener('click', function() {
+    var content = bcTextarea.value.trim();
+    var nickname = bcNickname.value.trim();
+    var email = bcEmail.value.trim();
+    var website = bcWebsite.value.trim();
+    if (!content || !nickname || !email) return;
+
+    saveIdentity(nickname, email, website);
+    bcSubmit.disabled = true;
+    bcSubmit.textContent = '...';
+
+    var parentId = bcTextarea.dataset.parentId || null;
+
+    var body = {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      content: content,
+      parent_id: parentId ? parseInt(parentId) : null
+    };
+    if (website) body.website = website;
+
+    apiPost('/api/comments', body).then(function(res) {
+      if (res.comment) {
+        bottomComments.push(res.comment);
+        renderBottomComments();
+        bcTextarea.value = '';
+        delete bcTextarea.dataset.parentId;
+      }
+    }).finally(function() {
+      bcSubmit.disabled = false;
+      bcSubmit.textContent = 'Submit';
+    });
+  });
+
+  bcTextarea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') bcSubmit.click();
+  });
+
+  // =====================================================================
+  // INIT — load everything from API
+  // =====================================================================
+  restoreIdentity();
+
+  apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+    inlineComments = res.comments || [];
+    restoreHighlights();
+    renderInlineComments();
+  });
+
+  // Newsletter subscribe
+  var nlForm = document.getElementById('nlForm');
+  var nlEmail = document.getElementById('nlEmail');
+  var nlStatus = document.getElementById('nlStatus');
+  if (nlForm) {
+    nlForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var email = nlEmail.value.trim();
+      if (!email) return;
+      nlStatus.textContent = 'Subscribing...';
+      fetch(API + '/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      }).then(function(r) { return r.json(); })
+        .then(function(d) {
+          nlStatus.textContent = d.error ? d.error : 'Subscribed!';
+          if (!d.error) nlEmail.value = '';
+        })
+        .catch(function() { nlStatus.textContent = 'Failed. Please try again.'; });
+    });
+  }
+
+  loadArticleLikes();
+  loadBottomComments();
+
+  // --- Helpers ---
+  function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+})();
+</script> 

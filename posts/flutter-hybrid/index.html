@@ -1,0 +1,1912 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Flutter 混合开发框架模式探索 | Airing</title><meta name="description" content><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta property="og:title" content="Flutter 混合开发框架模式探索 | Airing"><meta property="og:description" content><meta property="og:type" content="article"><link rel="canonical" href="https://ursb.me/posts/flutter-hybrid/"><meta property="og:url" content="https://ursb.me/posts/flutter-hybrid/"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Flutter 混合开发框架模式探索 | Airing"><meta name="twitter:description" content><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/feed.xml"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-W604S49M4X');
+  </script><!-- Umami Analytics --><script defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script><!-- Cal.com Embed --><script type="text/javascript">
+    (function (C, A, L) {
+      let p = function (a, ar) { a.q.push(ar); };
+      let d = C.document;
+      C.Cal = C.Cal || function () {
+        let cal = C.Cal;
+        let ar = arguments;
+        if (!cal.loaded) {
+          cal.ns = {};
+          cal.q = cal.q || [];
+          d.head.appendChild(d.createElement("script")).src = A;
+          cal.loaded = true;
+        }
+        if (ar[0] === L) {
+          const api = function () { p(api, arguments); };
+          const namespace = ar[1];
+          api.q = api.q || [];
+          if (typeof namespace === "string") {
+            cal.ns[namespace] = api;
+            p(api, ar);
+          } else {
+            p(cal, ar);
+          }
+          return;
+        }
+        p(cal, ar);
+      };
+    })(window, "https://app.cal.com/embed/embed.js", "init");
+    Cal("init", { origin: "https://cal.com" });
+    Cal("ui", {
+      theme: "dark",
+      styles: { branding: { brandColor: "#f59e0b" } },
+      hideEventTypeDetails: false,
+      layout: "month_view"
+    });
+  </script><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"><script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Flutter 混合开发框架模式探索","datePublished":"2020-04-18T00:00:00.000Z","dateModified":"2020-04-18T00:00:00.000Z","author":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"publisher":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"url":"https://ursb.me/posts/flutter-hybrid/","mainEntityOfPage":{"@type":"WebPage","@id":"https://ursb.me/posts/flutter-hybrid/"},"keywords":"tech"}</script><script>
+    // Apply saved theme & mode before render to prevent flash
+    (function() {
+      var t = localStorage.getItem('blog-theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+      var m = localStorage.getItem('blog-mode');
+      if (m) document.documentElement.setAttribute('data-mode', m);
+    })();
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.DLZEbWeP.css">
+<link rel="stylesheet" href="/_astro/_slug_@_@astro.0M_B7D7i.css"></head> <body>    <div class="post-page" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>2020年4月18日</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" data-astro-cid-gjtny2mx>Blog</a> <a href="/archive" data-astro-cid-gjtny2mx>Archive</a> <a href="/moments" data-astro-cid-gjtny2mx>Moments</a> <a href="/search" data-astro-cid-gjtny2mx>Search</a> <a href="/feed.xml" data-astro-cid-gjtny2mx>RSS</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> </div> </header> <!-- Headline --> <div class="headline-section" data-astro-cid-gjtny2mx> <div class="headline-inner" data-astro-cid-gjtny2mx> <div class="headline-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="hl-tag" data-astro-cid-gjtny2mx>tech</a> </div> <h1 class="headline" data-astro-cid-gjtny2mx>Flutter 混合开发框架模式探索</h1>  </div> </div>   <!-- Three-column: sidebar | content | comments --> <div class="content-grid" id="contentGrid" data-astro-cid-gjtny2mx> <aside class="sidebar-left" data-astro-cid-gjtny2mx> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Date</div> <div class="sb-value" data-astro-cid-gjtny2mx>2020/04/18</div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Tags</div> <div class="sb-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="sb-tag" data-astro-cid-gjtny2mx>#tech</a> </div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Author</div> <div class="sb-value" data-astro-cid-gjtny2mx>Airing</div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Read</div> <div class="sb-value" data-astro-cid-gjtny2mx>34 min</div> </div> <div class="sb-divider" data-astro-cid-gjtny2mx></div> <div class="sb-block toc-block" id="tocBlock" style="display:none;" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Contents</div> <nav class="toc-nav" id="tocNav" data-astro-cid-gjtny2mx></nav> </div>  <div class="sb-divider" data-astro-cid-gjtny2mx></div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Related</div> <ul class="sb-related" data-astro-cid-gjtny2mx> <li data-astro-cid-gjtny2mx><a href="/posts/game-engine-renderer/" class="sb-related-link" data-astro-cid-gjtny2mx>游戏组件的一生: 从加载到上屏</a></li><li data-astro-cid-gjtny2mx><a href="/posts/moflow/" class="sb-related-link" data-astro-cid-gjtny2mx>AI 心理疗愈应用的探索与实现</a></li><li data-astro-cid-gjtny2mx><a href="/posts/mac-app-share-2024/" class="sb-related-link" data-astro-cid-gjtny2mx>Mac 小众软件推荐与工作流分享(2024)</a></li><li data-astro-cid-gjtny2mx><a href="/posts/2024-summer/" class="sb-related-link" data-astro-cid-gjtny2mx>再见了，盛夏</a></li><li data-astro-cid-gjtny2mx><a href="/posts/service/" class="sb-related-link" data-astro-cid-gjtny2mx>Airing 开通了一个咨询服务</a></li> </ul> </div>  <div class="sb-divider" data-astro-cid-gjtny2mx></div> <a href="/archive" class="sb-nav" data-astro-cid-gjtny2mx>&larr; All Posts</a> </aside> <article class="post-content" id="postContent" data-pagefind-body data-astro-cid-gjtny2mx>  <p>由于 Google 官方提供的 Flutter 混合式开发方案过于简单，仅支持打开一个 Flutter View 的能力，而不支持路由间传参、统一的生命周期、路由栈管理等业务开发中必要的能力，因此我们需要借助第三方混合开发框架（如 Flutter Boost、Thrio、QFlutter 等）的整合能力才能将 Flutter 混合开发模式投入与生产环境。本文中，我们来研究一下这类混合开发框架的职能、架构与源码。</p>
+<h2 id="1-核心职能与框架目标">1. 核心职能与框架目标</h2>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587271835471-a4231e7b-1562-4f22-8be9-31443ed39eca.jpeg" alt="15867692757044.jpg"></p>
+<p>一个合格的混合开发框架至少需要支持到以下能力：</p>
+<ol>
+<li>混合路由栈的管理：支持打开任意 Flutter 或 Native 页面。</li>
+<li>完善的通知机制：如统一的生命周期，路由相关事件通知机制。</li>
+</ol>
+<p>对于以上几点目标，我们以 iOS 为例，来逐步挖掘 Flutter 混合开发模式的最佳实现。</p>
+<blockquote>
+<p>注：因为篇幅问题，本文不探究 Android 的实现，从 iOS 切入只是分析问题的一个角度，因 Android 与 iOS 的实现原理一致，具体实现则大同小异。其次因 Channel 通信层代码实现比较繁杂，此文对于 Channel 通信层的讲解仅停留在使用层面上，具体实现读者可以自行研究。
+注：本文的 Flutter Boost 版本为 1.12.13，Thrio 的版本为 0.1.0</p>
+</blockquote>
+<h2 id="2从flutterviewcontroller开始">2. 从 FlutterViewController 开始</h2>
+<p>在混合开发中，我们使用 Flutter 作为插件化开发，需要起一个 FlutterViewController，这是一个 UIViewController 的实现，其依附于 FlutterEngine，给 Flutter 传递 UIKit 的输入事件，并展示被 FlutterEngine 渲染的每一帧 Flutter views。而这个 FlutterEngine 则充当 Dart VM 和 Flutter 运行时的环境。</p>
+<p>需要注意的是，一个 Flutter Engine 只能最多同时运行一个 FlutterViewController。</p>
+<blockquote>
+<p>FlutterEngine: The FlutterEngine class coordinates a single instance of execution for a FlutterDartProject. It may have zero or one FlutterViewController at a time.</p>
+</blockquote>
+<p>启动 Engine：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>self.flutterEngine = [[FlutterEngine alloc] initWithName:@"my flutter engine"];</span></span>
+<span class="line"><span>[self.flutterEngine run];</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>创建 FlutterViewController 并展示</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>FlutterViewController *flutterViewController =</span></span>
+<span class="line"><span>        [[FlutterViewController alloc] initWithEngine:flutterEngine nibName:nil bundle:nil];</span></span>
+<span class="line"><span>[self presentViewController:flutterViewController animated:YES completion:nil];</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>创建一个 FlutterViewController 我们既可以用已经运行中的 FlutterEngine 去初始化，也可以创建的时候同时去隐式启动一个 FlutterEngine（不过不建议这样做，因为按需创建 FlutterEngine 的话，在 FlutterViewController 被 present 出来之后，第一帧图像渲染完之前，将会引入明显的延迟），这里我们用前者的方式去创建。</p>
+<blockquote>
+<p>FlutterEngine: <a href="https://api.flutter.dev/objcdoc/Classes/FlutterEngine.html">https://api.flutter.dev/objcdoc/Classes/FlutterEngine.html</a>
+FlutterViewController: <a href="https://api.flutter.dev/objcdoc/Classes/FlutterViewController.html">https://api.flutter.dev/objcdoc/Classes/FlutterViewController.html</a></p>
+</blockquote>
+<p>至此，我们通过官方提供的方案在 Native 工程中启动 Flutter Engine 并通过 FlutterViewController 展示 Flutter 页面。</p>
+<p>在 Flutter 页面中，我们可以使用 Navigator.push 在打开另一个 Flutter 页面（Route）：</p>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587288531775-e5bf0b72-2914-4b1b-a7c3-c0fe7d893806.png" alt="image.png"></p>
+<p>因此对于这种路由栈我们很容易实现：</p>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587288108427-06b9a808-397a-454a-9ef3-5041074c64e7.png" alt="image.png"></p>
+<p>即整个 Flutter 运行在一个单例的 FlutterViewController 容器里，Flutter 内部的所有页面都在这个容器中管理。但如果要实现下面这种 Native 与 Flutter 混合跳转的这种混合路由栈，我们要如何实现呢？</p>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587272118213-2c50eb77-04db-4b8d-9da6-7088b151bf9a.jpeg" alt="15867693180281.jpg"></p>
+<p>最基本的解决思路是，把这个 FlutterViewController 与 NativeViewController 混合起来，直接让 FlutterViewController 在 iOS 的路由栈中来回移动，如下图所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587287329547-8c87af32-4ebc-4063-a71c-6661ae9ba136.png" alt="image.png"></p>
+<p>这种方案相对复杂，回到我们上面混合栈的场景，这需要精准记录每个 Flutter 页面和 Native 容器所处的位置，得知道自己 pop 之后应该回到上一层 Flutter 页面，还是切换另一个 NativeViewController，这就得维护好页面索引，并改造原生的pop 时间与 Navigator.pop 事件，使两者统一起来。</p>
+<p>我们来看看业界的一些解决方案吧！</p>
+<h2 id="3flutterboost">3. Flutter Boost</h2>
+<p>对于混合栈问题，Flutter Boost 会将每个 Flutter 页面用 FlutterViewController 包装起来，使之成为多例，用起来就如同 Webview 一样：</p>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587287353326-71130245-471b-4540-8b1b-b603f101554e.png" alt="image.png"></p>
+<p>Flutter Boost 的源码之前在另一篇文章中梳理过《Flutter Boost 混合开发实践与源码解析（以 Android 为例）》，那篇文章中梳理了一下 Android 侧打开页面流程的源码，本文中则尽量不重复介绍源码，并且将以 iOS 侧来重点梳理一下 Flutter Boost 究竟是如何实现的。</p>
+<h3 id="31-从-native-打开页面">3.1 从 Native 打开页面</h3>
+<p>本节分析 Flutter Boost 如何从 Native 打开页面吗，即包含以下两种情况：</p>
+<ol>
+<li>Native -> Flutter</li>
+<li>Native -> Native</li>
+</ol>
+<p>在工程中，我们需要接入以下代码集成 Flutter Boost：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// AppDelegate.m</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    PlatformRouterImp *router = [PlatformRouterImp new];</span></span>
+<span class="line"><span>    [FlutterBoostPlugin.sharedInstance startFlutterWithPlatform:router</span></span>
+<span class="line"><span>                                                        onStart:^(FlutterEngine *engine) {</span></span>
+<span class="line"><span>                                                        }];</span></span>
+<span class="line"><span>    self.window = [[UIWindow alloc] initWithFrame: [UIScreen mainScreen].bounds];</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    [self.window makeKeyAndVisible];</span></span>
+<span class="line"><span>   </span></span>
+<span class="line"><span>    UINavigationController *rvc = [[UINavigationController alloc] initWithRootViewController:tabVC];</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    router.navigationController = rvc;</span></span>
+<span class="line"><span>    self.window.rootViewController = rvc;</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    return YES;</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>// PlatformRouterImp.m</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (void)openNativeVC:(NSString *)name</span></span>
+<span class="line"><span>           urlParams:(NSDictionary *)params</span></span>
+<span class="line"><span>                exts:(NSDictionary *)exts{</span></span>
+<span class="line"><span>    UIViewController *vc = UIViewControllerDemo.new;</span></span>
+<span class="line"><span>    BOOL animated = [exts[@"animated"] boolValue];</span></span>
+<span class="line"><span>    if([params[@"present"] boolValue]){</span></span>
+<span class="line"><span>        [self.navigationController presentViewController:vc animated:animated completion:^{</span></span>
+<span class="line"><span>        }];</span></span>
+<span class="line"><span>    }else{</span></span>
+<span class="line"><span>        [self.navigationController pushViewController:vc animated:animated];</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (void)open:(NSString *)name</span></span>
+<span class="line"><span>   urlParams:(NSDictionary *)params</span></span>
+<span class="line"><span>        exts:(NSDictionary *)exts</span></span>
+<span class="line"><span>  completion:(void (^)(BOOL))completion</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    if ([name isEqualToString:@"native"]) { // 模拟打开native页面</span></span>
+<span class="line"><span>        [self openNativeVC:name urlParams:params exts:exts];</span></span>
+<span class="line"><span>        return;</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    </span></span>
+<span class="line"><span>    BOOL animated = [exts[@"animated"] boolValue];</span></span>
+<span class="line"><span>    FLBFlutterViewContainer *vc = FLBFlutterViewContainer.new;</span></span>
+<span class="line"><span>    [vc setName:name params:params];</span></span>
+<span class="line"><span>    [self.navigationController pushViewController:vc animated:animated];</span></span>
+<span class="line"><span>    if(completion) completion(YES);</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>可以发现，我们在工程中首先要启动引擎，对应的 Flutter Boost 源码如下：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// FlutterBoostPlugin.m</span></span>
+<span class="line"><span>- (void)startFlutterWithPlatform:(id&#x3C;FLBPlatform>)platform</span></span>
+<span class="line"><span>                          engine:(FlutterEngine *)engine</span></span>
+<span class="line"><span>           pluginRegisterred:(BOOL)registerPlugin</span></span>
+<span class="line"><span>                         onStart:(void (^)(FlutterEngine * _Nonnull))callback{</span></span>
+<span class="line"><span>    static dispatch_once_t onceToken;</span></span>
+<span class="line"><span>    __weak __typeof__(self) weakSelf = self;</span></span>
+<span class="line"><span>    dispatch_once(&#x26;onceToken, ^{</span></span>
+<span class="line"><span>        __strong __typeof__(weakSelf) self = weakSelf;</span></span>
+<span class="line"><span>        FLBFactory *factory = FLBFactory.new;</span></span>
+<span class="line"><span>        self.application = [factory createApplication:platform];</span></span>
+<span class="line"><span>        [self.application startFlutterWithPlatform:platform</span></span>
+<span class="line"><span>                                     withEngine:engine</span></span>
+<span class="line"><span>                                      withPluginRegisterred:registerPlugin</span></span>
+<span class="line"><span>                                       onStart:callback];</span></span>
+<span class="line"><span>    });</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>// FLBFlutterApplication.m</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (void)startFlutterWithPlatform:(id&#x3C;FLBPlatform>)platform</span></span>
+<span class="line"><span>                      withEngine:(FlutterEngine* _Nullable)engine</span></span>
+<span class="line"><span>                        withPluginRegisterred:(BOOL)registerPlugin</span></span>
+<span class="line"><span>                         onStart:(void (^)(FlutterEngine *engine))callback</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    static dispatch_once_t onceToken;</span></span>
+<span class="line"><span>    dispatch_once(&#x26;onceToken, ^{</span></span>
+<span class="line"><span>        self.platform = platform;</span></span>
+<span class="line"><span>        self.viewProvider = [[FLBFlutterEngine alloc] initWithPlatform:platform engine:engine];</span></span>
+<span class="line"><span>        self.isRunning = YES;</span></span>
+<span class="line"><span>        if(registerPlugin){</span></span>
+<span class="line"><span>            Class clazz = NSClassFromString(@"GeneratedPluginRegistrant");</span></span>
+<span class="line"><span>            FlutterEngine *myengine = [self.viewProvider engine];</span></span>
+<span class="line"><span>            if (clazz &#x26;&#x26; myengine) {</span></span>
+<span class="line"><span>                if ([clazz respondsToSelector:NSSelectorFromString(@"registerWithRegistry:")]) {</span></span>
+<span class="line"><span>                    [clazz performSelector:NSSelectorFromString(@"registerWithRegistry:")</span></span>
+<span class="line"><span>                                withObject:myengine];</span></span>
+<span class="line"><span>                }</span></span>
+<span class="line"><span>            }</span></span>
+<span class="line"><span>        }</span></span>
+<span class="line"><span>        if(callback) callback(self.viewProvider.engine);</span></span>
+<span class="line"><span>    });</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>可以发现启动引擎时 startFlutterWithPlatform 需要传入路由管理类，而在 FLBPlatform.h 中可以看到 open 接口是由业务侧 Native 传过来的实现。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// PlatformRouterImp.m</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (void)open:(NSString *)name</span></span>
+<span class="line"><span>   urlParams:(NSDictionary *)params</span></span>
+<span class="line"><span>        exts:(NSDictionary *)exts</span></span>
+<span class="line"><span>  completion:(void (^)(BOOL))completion</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    if ([name isEqualToString:@"native"]) { // 模拟打开native页面</span></span>
+<span class="line"><span>        [self openNativeVC:name urlParams:params exts:exts];</span></span>
+<span class="line"><span>        return;</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    </span></span>
+<span class="line"><span>    BOOL animated = [exts[@"animated"] boolValue];</span></span>
+<span class="line"><span>    FLBFlutterViewContainer *vc = FLBFlutterViewContainer.new;</span></span>
+<span class="line"><span>    [vc setName:name params:params];</span></span>
+<span class="line"><span>    [self.navigationController pushViewController:vc animated:animated];</span></span>
+<span class="line"><span>    if(completion) completion(YES);</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>之后要在业务侧 AppDelegate.m 中初始化一个 UINavigationController，之后在路由管理类中实现 open 方法，即在这个 navigationContainer 中 push 一个 FLBFlutterViewContainer 容器，它的父类其实就是我们第一章节所说的 FlutterViewController。核心流程的代码如下：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// FLBFlutterViewContainer.m</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (instancetype)init</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    [FLUTTER_APP.flutterProvider prepareEngineIfNeeded];</span></span>
+<span class="line"><span>    if(self = [super initWithEngine:FLUTTER_APP.flutterProvider.engine</span></span>
+<span class="line"><span>                            nibName:_flbNibName</span></span>
+<span class="line"><span>                            bundle:_flbNibBundle]){</span></span>
+<span class="line"><span>        self.modalPresentationStyle = UIModalPresentationFullScreen;</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        [self _setup];</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    return self;</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>没错，它调用的便是我们第一章节所说的，通过 initWithEngine 来创建 FlutterViewController。</p>
+<p>那 Native 页面如何打开 Flutter 页面？业务侧调用 FlutterBoostPlugin 的 open 方法：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (IBAction)pushFlutterPage:(id)sender {</span></span>
+<span class="line"><span>    [FlutterBoostPlugin open:@"first" urlParams:@{kPageCallBackId:@"MycallbackId#1"} exts:@{@"animated":@(YES)} onPageFinished:^(NSDictionary *result) {</span></span>
+<span class="line"><span>        NSLog(@"call me when page finished, and your result is:%@", result);</span></span>
+<span class="line"><span>    } completion:^(BOOL f) {</span></span>
+<span class="line"><span>        NSLog(@"page is opened");</span></span>
+<span class="line"><span>    }];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Flutter Boost 对应的处理如下：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// FlutterBoostPlugin.m</span></span>
+<span class="line"><span>+ (void)open:(NSString *)url urlParams:(NSDictionary *)urlParams exts:(NSDictionary *)exts onPageFinished:(void (^)(NSDictionary *))resultCallback completion:(void (^)(BOOL))completion{</span></span>
+<span class="line"><span>    id&#x3C;FLBFlutterApplicationInterface> app = [[FlutterBoostPlugin sharedInstance] application];</span></span>
+<span class="line"><span>    [app open:url urlParams:urlParams exts:exts onPageFinished:resultCallback completion:completion];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>// FLBFlutterApplication.m</span></span>
+<span class="line"><span>- (void)open:(NSString *)url</span></span>
+<span class="line"><span>   urlParams:(NSDictionary *)urlParams</span></span>
+<span class="line"><span>        exts:(NSDictionary *)exts</span></span>
+<span class="line"><span>       onPageFinished:(void (^)(NSDictionary *))resultCallback</span></span>
+<span class="line"><span>  completion:(void (^)(BOOL))completion</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    NSString *cid = urlParams[kPageCallBackId];</span></span>
+<span class="line"><span>   </span></span>
+<span class="line"><span>    if(!cid){</span></span>
+<span class="line"><span>        static int64_t sCallbackID = 1;</span></span>
+<span class="line"><span>        cid = @(sCallbackID).stringValue;</span></span>
+<span class="line"><span>        sCallbackID += 2;</span></span>
+<span class="line"><span>        NSMutableDictionary *newParams = [[NSMutableDictionary alloc]initWithDictionary:urlParams];</span></span>
+<span class="line"><span>        [newParams setObject:cid?cid:@"__default#0__" forKey:kPageCallBackId];</span></span>
+<span class="line"><span>        urlParams = newParams;</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    _previousViewController = [self flutterViewController];</span></span>
+<span class="line"><span>    _callbackCache[cid] = resultCallback;</span></span>
+<span class="line"><span>    if([urlParams[@"present"]respondsToSelector:@selector(boolValue)] &#x26;&#x26; [urlParams[@"present"] boolValue] &#x26;&#x26; [self.platform respondsToSelector:@selector(present:urlParams:exts:completion:)]){</span></span>
+<span class="line"><span>        [self.platform present:url</span></span>
+<span class="line"><span>                  urlParams:urlParams</span></span>
+<span class="line"><span>                       exts:exts</span></span>
+<span class="line"><span>                 completion:completion];</span></span>
+<span class="line"><span>    }else{</span></span>
+<span class="line"><span>        [self.platform open:url</span></span>
+<span class="line"><span>                  urlParams:urlParams</span></span>
+<span class="line"><span>                       exts:exts</span></span>
+<span class="line"><span>                 completion:completion];</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>而 Platform 的 open 就是业务侧传过来的路由类中实现的 open，之后就走到了我们本章开头分析的部分，前文分析过了，后文也有总结，这里不再赘述了。</p>
+<p>小结一下，Native 无论打开 Native 还是 Flutter，都需要业务侧调用 Flutter Boost 的 open 方法，而 Flutter Boost 的 open 方法的实现最后其实还是回到了业务侧路由管理类中实现的 open 方法，那么：</p>
+<ol>
+<li>Native 打开 Native：通过路由管理类拦截注册的 Native 路由，实例化 viewController 之后 push。</li>
+<li>Native 打开 Flutter：实例化 FLBFlutterViewContainer 后 push，而 FLBFlutterViewContainer 本质上是 FlutterViewController。</li>
+</ol>
+<h3 id="32-从-flutter-打开页面">3.2 从 Flutter 打开页面</h3>
+<p>本节分析 Flutter Boost 如何从 Native 打开页面吗，即包含以下两种情况：</p>
+<ol>
+<li>Flutter-> Flutter</li>
+<li>Flutter-> Native</li>
+</ol>
+<p>Dart 业务侧直接调用 open 方法打开 Native 或者 Flutter 页面：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>FlutterBoost.singleton.open("native").then((Map value) {</span></span>
+<span class="line"><span>    print("call me when page is finished. did recieve native route result $value");</span></span>
+<span class="line"><span>});</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>FlutterBoost.singleton.open("flutterPage").then((Map value) {</span></span>
+<span class="line"><span>    print("call me when page is finished. did recieve native route result $value");</span></span>
+<span class="line"><span>});</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>open 的源码如下，可见它的核心是使用 MethodChannel 向 Native 侧发送 openPage 消息：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// flutter_boost.dart</span></span>
+<span class="line"><span>Future&#x3C;Map&#x3C;dynamic, dynamic>> open(String url,</span></span>
+<span class="line"><span>  {Map&#x3C;dynamic, dynamic> urlParams, Map&#x3C;dynamic, dynamic> exts}) {</span></span>
+<span class="line"><span>    Map&#x3C;dynamic, dynamic> properties = new Map&#x3C;dynamic, dynamic>();</span></span>
+<span class="line"><span>    properties["url"] = url;</span></span>
+<span class="line"><span>    properties["urlParams"] = urlParams;</span></span>
+<span class="line"><span>    properties["exts"] = exts;</span></span>
+<span class="line"><span>    return channel.invokeMethod&#x3C;Map&#x3C;dynamic, dynamic>>('openPage', properties);</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>// boost_channel.dart</span></span>
+<span class="line"><span>final MethodChannel _methodChannel = MethodChannel("flutter_boost");</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>Future&#x3C;T> invokeMethod&#x3C;T>(String method, [dynamic arguments]) async {</span></span>
+<span class="line"><span>    assert(method != "__event__");</span></span>
+<span class="line"><span>    </span></span>
+<span class="line"><span>    return _methodChannel.invokeMethod&#x3C;T>(method, arguments);</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>iOS 侧监听 Dart 侧来的消息，针对 openPage 做处理，核心是调用 FLBFlutterApplication 中的 open 方法：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {</span></span>
+<span class="line"><span>    if([@"openPage" isEqualToString:call.method]){</span></span>
+<span class="line"><span>        NSDictionary *args = [FLBCollectionHelper deepCopyNSDictionary:call.arguments</span></span>
+<span class="line"><span>        filter:^bool(id  _Nonnull value) { </span></span>
+<span class="line"><span>            return ![value isKindOfClass:NSNull.class];</span></span>
+<span class="line"><span>        }];</span></span>
+<span class="line"><span>        NSString *url = args[@"url"];</span></span>
+<span class="line"><span>        NSDictionary *urlParams = args[@"urlParams"];</span></span>
+<span class="line"><span>        NSDictionary *exts = args[@"exts"];</span></span>
+<span class="line"><span>        NSNull2Nil(url);</span></span>
+<span class="line"><span>        NSNull2Nil(urlParams);</span></span>
+<span class="line"><span>        NSNull2Nil(exts);</span></span>
+<span class="line"><span>        [[FlutterBoostPlugin sharedInstance].application open:url</span></span>
+<span class="line"><span>                                                    urlParams:urlParams</span></span>
+<span class="line"><span>                                                         exts:exts</span></span>
+<span class="line"><span>                                                        onPageFinished:result</span></span>
+<span class="line"><span>                                                   completion:^(BOOL r) {}];</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>// FLBFlutterApplication.m</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (FlutterViewController *)flutterViewController</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    return self.flutterProvider.engine.viewController;</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (void)open:(NSString *)url</span></span>
+<span class="line"><span>   urlParams:(NSDictionary *)urlParams</span></span>
+<span class="line"><span>        exts:(NSDictionary *)exts</span></span>
+<span class="line"><span>       onPageFinished:(void (^)(NSDictionary *))resultCallback</span></span>
+<span class="line"><span>  completion:(void (^)(BOOL))completion</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    NSString *cid = urlParams[kPageCallBackId];</span></span>
+<span class="line"><span>   </span></span>
+<span class="line"><span>    if(!cid){</span></span>
+<span class="line"><span>        static int64_t sCallbackID = 1;</span></span>
+<span class="line"><span>        cid = @(sCallbackID).stringValue;</span></span>
+<span class="line"><span>        sCallbackID += 2;</span></span>
+<span class="line"><span>        NSMutableDictionary *newParams = [[NSMutableDictionary alloc]initWithDictionary:urlParams];</span></span>
+<span class="line"><span>        [newParams setObject:cid?cid:@"__default#0__" forKey:kPageCallBackId];</span></span>
+<span class="line"><span>        urlParams = newParams;</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    _previousViewController = [self flutterViewController];</span></span>
+<span class="line"><span>    _callbackCache[cid] = resultCallback;</span></span>
+<span class="line"><span>    if([urlParams[@"present"]respondsToSelector:@selector(boolValue)] &#x26;&#x26; [urlParams[@"present"] boolValue] &#x26;&#x26; [self.platform respondsToSelector:@selector(present:urlParams:exts:completion:)]){</span></span>
+<span class="line"><span>        [self.platform present:url</span></span>
+<span class="line"><span>                  urlParams:urlParams</span></span>
+<span class="line"><span>                       exts:exts</span></span>
+<span class="line"><span>                 completion:completion];</span></span>
+<span class="line"><span>    }else{</span></span>
+<span class="line"><span>        [self.platform open:url</span></span>
+<span class="line"><span>                  urlParams:urlParams</span></span>
+<span class="line"><span>                       exts:exts</span></span>
+<span class="line"><span>                 completion:completion];</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>同前文分析的一样，监听到这个 openPage 之后会调用 Flutter Boost 的 open 方法，而它最后还是会走到 Native 业务侧传来的路由管理类中实现的 open 方法，也是就说从 Flutter 打开页面，最终也是交由 Native 去负责 push。</p>
+<p>小结一下，Flutter 无论的打开 Flutter 还是 Native 页面，都需要给 iOS 侧发送 openPage 的消息，iOS 侧收到消息后会执行 Flutter Boost 的 open 方法，而它的实现就是业务侧的路由管理类中的open 方法，即最终仍然交由业务侧的路由去实现。</p>
+<ol>
+<li>Flutter 打开 Flutter：iOS 侧收到消息后执行 open。即实例化 FLBFlutterViewContainer 后 push，而 FLBFlutterViewContainer 本质上是 FlutterViewController。同 Native 打开 Flutter。</li>
+<li>Flutter 打开 Native：iOS 侧收到消息后执行 open。通过路由管理类拦截注册的 Native 路由，实例化 viewController 之后 push。同 Native 打开 Native。</li>
+</ol>
+<h3 id="33-flutter-容器切换">3.3 Flutter 容器切换</h3>
+<p>我们前文说到路由管理统一收归给 Native 侧去实现，每 push 一个 page （无论 Flutter 还是 Native）都是 push 一个容器。统一收归的好处是由 Native 业务侧控制，使用起来直接、简单；每次 push 一个容器的好处是直观、简单。</p>
+<p>但是我们之前说到 Flutter Engine 只能最多同时挂载一个 FlutterViewController，那每次打开 Flutter Page 的时候都会生成一个 vc 会导致问题吗？我们来看看 Flutter Boost 是如何处理的：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// FLBFlutterViewContainer.m</span></span>
+<span class="line"><span>- (void)viewWillAppear:(BOOL)animated</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    //For new page we should attach flutter view in view will appear</span></span>
+<span class="line"><span>    [self attatchFlutterEngine];</span></span>
+<span class="line"><span>    [BoostMessageChannel willShowPageContainer:^(NSNumber *result) {}</span></span>
+<span class="line"><span>                                            pageName:_name</span></span>
+<span class="line"><span>                                              params:_params</span></span>
+<span class="line"><span>                                            uniqueId:self.uniqueIDString];</span></span>
+<span class="line"><span>    //Save some first time page info.</span></span>
+<span class="line"><span>    [FlutterBoostPlugin sharedInstance].fPagename = _name;</span></span>
+<span class="line"><span>    [FlutterBoostPlugin sharedInstance].fPageId = self.uniqueIDString;</span></span>
+<span class="line"><span>    [FlutterBoostPlugin sharedInstance].fParams = _params;</span></span>
+<span class="line"><span>    </span></span>
+<span class="line"><span> </span></span>
+<span class="line"><span>    </span></span>
+<span class="line"><span>    [super bridge_viewWillAppear:animated];</span></span>
+<span class="line"><span>    [self.view setNeedsLayout];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (void)attatchFlutterEngine</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    [FLUTTER_APP.flutterProvider atacheToViewController:self];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>可以看到在容器 willAppear 的时候会调用 attatchFlutterEngine 方法，其用于切换 engine 的 viewController。即，每次打开 Flutter Page 的时候，刚生成的承载它的容器 FlutterViewController 都会被挂载在 engine 上。是的，Flutter Boost 是通过不断切换 engine 的 viewController 来展示 Flutter 容器和页面的。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// FLBFlutterEngine.m</span></span>
+<span class="line"><span>- (BOOL)atacheToViewController:(FlutterViewController *)vc</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    if(_engine.viewController != vc){</span></span>
+<span class="line"><span>        _engine.viewController = vc;</span></span>
+<span class="line"><span>        return YES;</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    return NO;</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<h3 id="34-统一生命周期与路由事件通知">3.4  统一生命周期与路由事件通知</h3>
+<p>那 Flutter Boost 是如何解决 Native 与 Dart 页面生命周期不一致的问题呢？</p>
+<p>我们还是以 2.4 中 FLBFlutterViewController viewWillAppear 来举例吧，可以看到在这个函数中会执行 willShowPageContainer，它的实现在 BoostMessageChannel.m 中。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// BoostMessageChannel.m</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span> + (void)willShowPageContainer:(void (^)(NSNumber *))result pageName:(NSString *)pageName params:(NSDictionary *)params uniqueId:(NSString *)uniqueId</span></span>
+<span class="line"><span> {</span></span>
+<span class="line"><span>     if ([pageName isEqualToString:kIgnoreMessageWithName]) {</span></span>
+<span class="line"><span>         return;</span></span>
+<span class="line"><span>     }</span></span>
+<span class="line"><span>     </span></span>
+<span class="line"><span>     NSMutableDictionary *tmp = [NSMutableDictionary dictionary];</span></span>
+<span class="line"><span>     if(pageName) tmp[@"pageName"] = pageName;</span></span>
+<span class="line"><span>     if(params) tmp[@"params"] = params;</span></span>
+<span class="line"><span>     if(uniqueId) tmp[@"uniqueId"] = uniqueId;</span></span>
+<span class="line"><span>     [self.methodChannel invokeMethod:@"willShowPageContainer" arguments:tmp result:^(id tTesult) {</span></span>
+<span class="line"><span>         if (result) {</span></span>
+<span class="line"><span>             result(tTesult);</span></span>
+<span class="line"><span>         }</span></span>
+<span class="line"><span>     }];</span></span>
+<span class="line"><span> }</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>它只做了一件事情，就是通过 methodChannel 向 Dart 侧发送 willShowPageContainer 这个消息。Dart 侧在 container_coordinator.dart 中接受消息：</p>
+<blockquote>
+<p>Flutter Boost 的 Dart 侧代码比较简单，container_coordinator.dart 顾名思义，就是协同 Native 侧容器的类，它负责监听 Native 来的消息，并使用 container_manager.dart 容器管理类来进行一些处理。</p>
+</blockquote>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// container_coordinator.dart</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>Future&#x3C;dynamic> _onMethodCall(MethodCall call) {</span></span>
+<span class="line"><span>    Logger.log("onMetohdCall ${call.method}");</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    switch (call.method) {</span></span>
+<span class="line"><span>      case "willShowPageContainer":</span></span>
+<span class="line"><span>        {</span></span>
+<span class="line"><span>          String pageName = call.arguments["pageName"];</span></span>
+<span class="line"><span>          Map params = call.arguments["params"];</span></span>
+<span class="line"><span>          String uniqueId = call.arguments["uniqueId"];</span></span>
+<span class="line"><span>          _nativeContainerWillShow(pageName, params, uniqueId);</span></span>
+<span class="line"><span>        }</span></span>
+<span class="line"><span>        break;</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>bool _nativeContainerWillShow(String name, Map params, String pageId) {</span></span>
+<span class="line"><span>    if (FlutterBoost.containerManager?.containsContainer(pageId) != true) {</span></span>
+<span class="line"><span>      FlutterBoost.containerManager</span></span>
+<span class="line"><span>          ?.pushContainer(_createContainerSettings(name, params, pageId));</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    // ...省略一些优化代码</span></span>
+<span class="line"><span>    return true;</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>核心是执行 FlutterBoost.containerManager?.pushContainer，它在 container_manager.dart 容器管理类中实现：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// container_manager.dart</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>final List&#x3C;BoostContainer> _offstage = &#x3C;BoostContainer>[];</span></span>
+<span class="line"><span>BoostContainer _onstage;</span></span>
+<span class="line"><span>enum ContainerOperation { Push, Onstage, Pop, Remove }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>void pushContainer(BoostContainerSettings settings) {</span></span>
+<span class="line"><span>    assert(settings.uniqueId != _onstage.settings.uniqueId);</span></span>
+<span class="line"><span>    assert(_offstage.every((BoostContainer container) =></span></span>
+<span class="line"><span>        container.settings.uniqueId != settings.uniqueId));</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    _offstage.add(_onstage);</span></span>
+<span class="line"><span>    _onstage = BoostContainer.obtain(widget.initNavigator, settings);</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    setState(() {});</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    for (BoostContainerObserver observer in FlutterBoost</span></span>
+<span class="line"><span>        .singleton.observersHolder</span></span>
+<span class="line"><span>        .observersOf&#x3C;BoostContainerObserver>()) {</span></span>
+<span class="line"><span>      observer(ContainerOperation.Push, _onstage.settings);</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    Logger.log('ContainerObserver#2 didPush');</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>在执行 BoostContainer.obtain 的过程中，内部会出发生命周期的监听。除此之外还执行了  observer(ContainerOperation.Push, _onstage.settings); ，以此来触发 Push 事件的通知。</p>
+<p>其实在 FlutterBoost 中，框架一共注册了 3 种类型的事件监听：</p>
+<ol>
+<li>容器变化监听：BoostContainerObserver</li>
+<li>生命周期监听：BoostContainerLifeCycleObserver</li>
+<li>Navigator push 和 pop 监听：ContainerNavigatorObserver</li>
+</ol>
+<p>它们都伴随着混合路由栈的跳转来触发相关的事件，至于通信层的源码本文不再研究，留给有兴趣的同学自己看看。</p>
+<p>下图是本章 Flutter Boost 打开页面的流程总结：</p>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587287247737-2a18ab06-2714-4565-9261-cf9bf143dbb4.png" alt="image.png"></p>
+<blockquote>
+<p>注：此方案频繁地去创建 FlutterViewController，在 pop 某些 FlutterViewController 之后，这些内存并没有被 engine  释放，造成内存泄露：<a href="https://github.com/flutter/flutter/issues/25255%EF%BC%8C%E8%BF%99%E6%98%AF">https://github.com/flutter/flutter/issues/25255，这是</a> engine 的 bug，貌似至今仍未得到很好的解决。</p>
+</blockquote>
+<h2 id="4-thrio">4. Thrio</h2>
+<p>Thrio 是上个月（2020.03） Hellobike 开源的又一款 Flutter 混合栈框架，这个框架处理的核心问题也依然是我们在第一章抛出来的两个点：</p>
+<ol>
+<li>混合路由栈的管理：支持打开任意 Flutter 或 Native 页面</li>
+<li>完善的通知机制：如统一的生命周期，路由相关事件通知机制。</li>
+</ol>
+<p>在本文中，我们主要来看看 Thrio 是如何实现混合栈管理的，至于通信层的逻辑，我们依然只是顺带讲解一些，具体实现比较繁杂因此本文不再分析其源码。</p>
+<p>我们可以先看一下时序图来宏观上有一个流程的了解：</p>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587282557375-6c4de4c2-444b-4bd8-981f-8afb5d7c12cf.png" alt="thrio-push.png"></p>
+<h3 id="41-调用">4.1 调用</h3>
+<h4 id="411-从-native-打开页面">4.1.1 从 Native 打开页面</h4>
+<p>从 iOS 业务侧调用 openUrl 即可打开 Native 或 Flutte 页面：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (IBAction)pushNativePage:(id)sender {</span></span>
+<span class="line"><span>  [ThrioNavigator pushUrl:@"native1"];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (IBAction)pushFlutterPage:(id)sender {</span></span>
+<span class="line"><span>  [ThrioNavigator pushUrl:@"biz1/flutter1"];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>openUrl 最终会调用 thrio_pushUrl：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// ThrioNavigator.m</span></span>
+<span class="line"><span>+ (void)_pushUrl:(NSString *)url</span></span>
+<span class="line"><span>         params:(id _Nullable)params</span></span>
+<span class="line"><span>       animated:(BOOL)animated</span></span>
+<span class="line"><span>         result:(ThrioNumberCallback _Nullable)result</span></span>
+<span class="line"><span>   poppedResult:(ThrioIdCallback _Nullable)poppedResult {</span></span>
+<span class="line"><span>  [self.navigationController thrio_pushUrl:url</span></span>
+<span class="line"><span>                                    params:params</span></span>
+<span class="line"><span>                                  animated:animated</span></span>
+<span class="line"><span>                            fromEntrypoint:nil</span></span>
+<span class="line"><span>                                    result:^(NSNumber *idx) {</span></span>
+<span class="line"><span>    if (result) {</span></span>
+<span class="line"><span>      result(idx);</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>  } poppedResult:poppedResult];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<h4 id="412-从-flutter-打开页面">4.1.2 从 Flutter 打开页面</h4>
+<p>那我们转过头来看看，Thrio 究竟如何实现从 Dart 业务侧打开页面的：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>InkWell(</span></span>
+<span class="line"><span>  onTap: () => ThrioNavigator.push(</span></span>
+<span class="line"><span>    url: 'biz1/flutter1',</span></span>
+<span class="line"><span>    params: {</span></span>
+<span class="line"><span>      '1': {'2': '3'}</span></span>
+<span class="line"><span>    },</span></span>
+<span class="line"><span>    poppedResult: (params) =></span></span>
+<span class="line"><span>    ThrioLogger.v('biz1/flutter1 popped:$params'),</span></span>
+<span class="line"><span>  ),</span></span>
+<span class="line"><span>  child: Container(</span></span>
+<span class="line"><span>    padding: const EdgeInsets.all(8),</span></span>
+<span class="line"><span>    margin: const EdgeInsets.all(8),</span></span>
+<span class="line"><span>    color: Colors.yellow,</span></span>
+<span class="line"><span>    child: Text(</span></span>
+<span class="line"><span>      'push flutter1',</span></span>
+<span class="line"><span>      style: TextStyle(fontSize: 22, color: Colors.black),</span></span>
+<span class="line"><span>    )),</span></span>
+<span class="line"><span>),</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Thrio 处理的处理如下，它会向 Native 侧通过 MethodChannel 发一条 push 消息：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// thrio_navigator.dart</span></span>
+<span class="line"><span>static Future&#x3C;int> push({</span></span>
+<span class="line"><span>    @required String url,</span></span>
+<span class="line"><span>    params,</span></span>
+<span class="line"><span>    bool animated = true,</span></span>
+<span class="line"><span>    NavigatorParamsCallback poppedResult,</span></span>
+<span class="line"><span>  }) =></span></span>
+<span class="line"><span>      ThrioNavigatorImplement.push(</span></span>
+<span class="line"><span>        url: url,</span></span>
+<span class="line"><span>        params: params,</span></span>
+<span class="line"><span>        animated: animated,</span></span>
+<span class="line"><span>        poppedResult: poppedResult,</span></span>
+<span class="line"><span>      );</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span></span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>// thrio_navigator_implement.dart</span></span>
+<span class="line"><span>static Future&#x3C;int> push({</span></span>
+<span class="line"><span>    @required String url,</span></span>
+<span class="line"><span>    params,</span></span>
+<span class="line"><span>    bool animated = true,</span></span>
+<span class="line"><span>    NavigatorParamsCallback poppedResult,</span></span>
+<span class="line"><span>  }) {</span></span>
+<span class="line"><span>    if (_default == null) {</span></span>
+<span class="line"><span>      throw ThrioException('Must call the `builder` method first');</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    return _default._sendChannel</span></span>
+<span class="line"><span>        .push(url: url, params: params, animated: animated)</span></span>
+<span class="line"><span>        .then&#x3C;int>((index) {</span></span>
+<span class="line"><span>      if (poppedResult != null &#x26;&#x26; index != null &#x26;&#x26; index > 0) {</span></span>
+<span class="line"><span>        _default._pagePoppedResults['$url.$index'] = poppedResult;</span></span>
+<span class="line"><span>      }</span></span>
+<span class="line"><span>      return index;</span></span>
+<span class="line"><span>    });</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>// navigator_route_send_channel.dart</span></span>
+<span class="line"><span>Future&#x3C;int> push({</span></span>
+<span class="line"><span>    @required String url,</span></span>
+<span class="line"><span>    params,</span></span>
+<span class="line"><span>    bool animated = true,</span></span>
+<span class="line"><span>  }) {</span></span>
+<span class="line"><span>    final arguments = &#x3C;String, dynamic>{</span></span>
+<span class="line"><span>      'url': url,</span></span>
+<span class="line"><span>      'animated': animated,</span></span>
+<span class="line"><span>      'params': params,</span></span>
+<span class="line"><span>    };</span></span>
+<span class="line"><span>    return _channel.invokeMethod&#x3C;int>('push', arguments);</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Native 侧接受到 push 消息后，同样会调用 thrio_pushUrl，即，从 Native 或 Flutter 打开页面的逻辑，都统一收归到 Native 侧进行处理了：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (void)_onPush {</span></span>
+<span class="line"><span>  __weak typeof(self) weakself = self;</span></span>
+<span class="line"><span>  [_channel registryMethodCall:@"push"</span></span>
+<span class="line"><span>                        handler:^void(NSDictionary&#x3C;NSString *,id> * arguments,</span></span>
+<span class="line"><span>                                      ThrioIdCallback _Nullable result) {</span></span>
+<span class="line"><span>    NSString *url = arguments[@"url"];</span></span>
+<span class="line"><span>    if (url.length &#x3C; 1) {</span></span>
+<span class="line"><span>      if (result) {</span></span>
+<span class="line"><span>        result(nil);</span></span>
+<span class="line"><span>      }</span></span>
+<span class="line"><span>      return;</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    id params = [arguments[@"params"] isKindOfClass:NSNull.class] ? nil : arguments[@"params"];</span></span>
+<span class="line"><span>    BOOL animated = [arguments[@"animated"] boolValue];</span></span>
+<span class="line"><span>    ThrioLogV(@"on push: %@", url);</span></span>
+<span class="line"><span>    __strong typeof(weakself) strongSelf = weakself;</span></span>
+<span class="line"><span>    [ThrioNavigator.navigationController thrio_pushUrl:url</span></span>
+<span class="line"><span>                                                params:params</span></span>
+<span class="line"><span>                                              animated:animated</span></span>
+<span class="line"><span>                                        fromEntrypoint:strongSelf.channel.entrypoint</span></span>
+<span class="line"><span>                                                result:^(NSNumber *idx) { result(idx); }</span></span>
+<span class="line"><span>                                          poppedResult:nil];</span></span>
+<span class="line"><span>  }];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<h4 id="413-thrio_pushurl">4.1.3 thrio_pushUrl</h4>
+<p>那我们看看这个  thrio_pushUrl 究竟做了什么事情：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// UINavigationController+Navigator.m</span></span>
+<span class="line"><span>- (void)thrio_pushUrl:(NSString *)url</span></span>
+<span class="line"><span>               params:(id _Nullable)params</span></span>
+<span class="line"><span>             animated:(BOOL)animated</span></span>
+<span class="line"><span>       fromEntrypoint:(NSString * _Nullable)entrypoint</span></span>
+<span class="line"><span>               result:(ThrioNumberCallback _Nullable)result</span></span>
+<span class="line"><span>         poppedResult:(ThrioIdCallback _Nullable)poppedResult {</span></span>
+<span class="line"><span>  @synchronized (self) {</span></span>
+<span class="line"><span>    UIViewController *viewController = [self thrio_createNativeViewControllerWithUrl:url params:params];</span></span>
+<span class="line"><span>    if (viewController) {</span></span>
+<span class="line"><span>    // 4.2 中分析</span></span>
+<span class="line"><span>    } else {</span></span>
+<span class="line"><span>      // 4.3 中分析</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>可以发现它做的第一件事情就是调用 thrio_createNativeViewControllerWithUrl 创建一个 viewController，thrio_createNativeViewControllerWithUrl 实现如下：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (UIViewController * _Nullable)thrio_createNativeViewControllerWithUrl:(NSString *)url params:(NSDictionary *)params {</span></span>
+<span class="line"><span>  UIViewController *viewController;</span></span>
+<span class="line"><span>  NavigatorPageBuilder builder = [ThrioNavigator pageBuilders][url];</span></span>
+<span class="line"><span>  if (builder) {</span></span>
+<span class="line"><span>    viewController = builder(params);</span></span>
+<span class="line"><span>    // 省略一些额外处理的代码</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>  return viewController;</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>理解这段代码要结合 Thrio 的路由注册流程，Native 业务侧注册了路由之后，Thrio 中会维护一个 map 来管理这些注册的路由，key 为注册的路由名，value 为对应的 builder。那么 thrio_createNativeViewControllerWithUrl  其实就是尝试去根据路由名去创建一个 NativeViewController 容器，如果注册过的就肯定会返回 viewController，若在 Native 侧没有注册过这个路由，就返回 nil。因此也就有了下面根据 viewController 存在与否走的两套逻辑了。那么我们看看什么时候会创建成功呢？那就是业务侧 pushUrl 打开的是一个在 Native 注册的页面就会返回 NativeController，否则没有注册过去调用 pushUrl，意味着业务侧打开的路由名是从 Flutter 侧注册的，那它要打开的就是一个 FlutterViewController。</p>
+<blockquote>
+<p>Thrio 作者 @稻子 指出：这里还包含 Flutter 侧也没有注册的逻辑，这样写是为了判断路由是否在 Native 侧注册了，如果注册了就打开原生页面，否则就交由 Flutter 处理。如果 Flutter 侧注册了，就会打开 Flutter 页面，否则就返回 null。这里后面也会说到，其实咱们说想要打开 Flutter 页面，也包括了这个页面没有被注册的情况了。</p>
+</blockquote>
+<p>因此：</p>
+<ol>
+<li>viewController 存在，即要打开的是 Native 页面。</li>
+<li>viewController 不存在，即要打开的是 Flutter 页面（注：这里主要是为了交由 Flutter 处理，Flutter 也可能没有注册这个路由）。</li>
+</ol>
+<p>接下来我们来继续分析这两段逻辑。</p>
+<blockquote>
+<p>注：Thrio 将容器分为两类，一类是 NativeViewController，即承载 Native 页面的容器；另一类是 FlutterViewController，即承载 Flutter 页面的容器。</p>
+</blockquote>
+<h3 id="42-打开-native-页面">4.2 打开 Native 页面</h3>
+<p>viewController 存在，即要打开的是 Native 页面：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>if (viewController) {</span></span>
+<span class="line"><span>      [self thrio_pushViewController:viewController</span></span>
+<span class="line"><span>                                 url:url</span></span>
+<span class="line"><span>                              params:params</span></span>
+<span class="line"><span>                            animated:animated</span></span>
+<span class="line"><span>                      fromEntrypoint:entrypoint</span></span>
+<span class="line"><span>                              result:result</span></span>
+<span class="line"><span>                        poppedResult:poppedResult];</span></span>
+<span class="line"><span> }</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>thrio_pushViewController 实现如下：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (void)thrio_pushViewController:(UIViewController *)viewController animated:(BOOL)animated {</span></span>
+<span class="line"><span>  // ...省略处理 navigatorbar 的代码</span></span>
+<span class="line"><span>  [self thrio_pushViewController:viewController animated:animated];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>我们打开的是 NativeViewController，因此走的是下面的分支，调用 thrio_pushViewController：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (void)thrio_pushViewController:(UIViewController *)viewController</span></span>
+<span class="line"><span>                             url:(NSString *)url</span></span>
+<span class="line"><span>                          params:(id _Nullable)params</span></span>
+<span class="line"><span>                        animated:(BOOL)animated</span></span>
+<span class="line"><span>                  fromEntrypoint:(NSString * _Nullable)entrypoint</span></span>
+<span class="line"><span>                          result:(ThrioNumberCallback _Nullable)result</span></span>
+<span class="line"><span>                    poppedResult:(ThrioIdCallback _Nullable)poppedResult {</span></span>
+<span class="line"><span>  if (viewController) {</span></span>
+<span class="line"><span>    NSNumber *index = @([self thrio_getLastIndexByUrl:url].integerValue + 1);</span></span>
+<span class="line"><span>    __weak typeof(self) weakself = self;</span></span>
+<span class="line"><span>    [viewController thrio_pushUrl:url</span></span>
+<span class="line"><span>                            index:index</span></span>
+<span class="line"><span>                           params:params</span></span>
+<span class="line"><span>                         animated:animated</span></span>
+<span class="line"><span>                   fromEntrypoint:entrypoint</span></span>
+<span class="line"><span>                           result:^(NSNumber *idx) {</span></span>
+<span class="line"><span>      if (idx &#x26;&#x26; [idx boolValue]) {</span></span>
+<span class="line"><span>        __strong typeof(weakself) strongSelf = weakself;</span></span>
+<span class="line"><span>        [strongSelf pushViewController:viewController animated:animated];</span></span>
+<span class="line"><span>      }</span></span>
+<span class="line"><span>      if (result) {</span></span>
+<span class="line"><span>        result(idx);</span></span>
+<span class="line"><span>      }</span></span>
+<span class="line"><span>    } poppedResult:poppedResult];</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>这里主要做了两件事：</p>
+<ol>
+<li>调用 thrio_pushUrl。</li>
+<li>调用 pushViewController，UINavigationViewController 的 pushViewController 将直接在 Native 中 push 一个容器。</li>
+</ol>
+<p>其实这里就已经打开了容器，但是我们还是要看看第一步调用 thrio_pushUrl 做了什么：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (void)thrio_pushUrl:(NSString *)url</span></span>
+<span class="line"><span>                index:(NSNumber *)index</span></span>
+<span class="line"><span>               params:(id _Nullable)params</span></span>
+<span class="line"><span>             animated:(BOOL)animated</span></span>
+<span class="line"><span>       fromEntrypoint:(NSString * _Nullable)entrypoint</span></span>
+<span class="line"><span>               result:(ThrioNumberCallback _Nullable)result</span></span>
+<span class="line"><span>         poppedResult:(ThrioIdCallback _Nullable)poppedResult {</span></span>
+<span class="line"><span>  NavigatorRouteSettings *settings = [NavigatorRouteSettings settingsWithUrl:url</span></span>
+<span class="line"><span>                                                                       index:index</span></span>
+<span class="line"><span>                                                                      nested:self.thrio_firstRoute != nil</span></span>
+<span class="line"><span>                                                                      params:params];</span></span>
+<span class="line"><span>  if (![self isKindOfClass:NavigatorFlutterViewController.class]) { // 当前页面为原生页面</span></span>
+<span class="line"><span>    [ThrioNavigator onCreate:settings];</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>  NavigatorPageRoute *newRoute = [NavigatorPageRoute routeWithSettings:settings];</span></span>
+<span class="line"><span>  newRoute.fromEntrypoint = entrypoint;</span></span>
+<span class="line"><span>  newRoute.poppedResult = poppedResult;</span></span>
+<span class="line"><span>  if (self.thrio_firstRoute) {</span></span>
+<span class="line"><span>    NavigatorPageRoute *lastRoute = self.thrio_lastRoute;</span></span>
+<span class="line"><span>    lastRoute.next = newRoute;</span></span>
+<span class="line"><span>    newRoute.prev = lastRoute;</span></span>
+<span class="line"><span>  } else {</span></span>
+<span class="line"><span>    self.thrio_firstRoute = newRoute;</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>  if ([self isKindOfClass:NavigatorFlutterViewController.class]) {</span></span>
+<span class="line"><span>  // 打开 Flutter 页面的逻辑，4.3.1 中分析</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>关键是调用了 onCreate 函数，至于剩下的业务，是对页面指针的处理，这里不做分析了。我们来看看 onCreate 做了什么事情：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (void)onCreate:(NavigatorRouteSettings *)routeSettings {</span></span>
+<span class="line"><span>  NSDictionary *arguments = [routeSettings toArguments];</span></span>
+<span class="line"><span>  [_channel invokeMethod:@"__onOnCreate__" arguments:arguments];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>这里是使用 MethodChannel 向 Dart 侧发送一条 onOnCreate 消息，Dart 侧收到之后会交由相关的事件进行处理：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>NavigatorPageObserverChannel() {</span></span>
+<span class="line"><span>    _on(</span></span>
+<span class="line"><span>      'onCreate',</span></span>
+<span class="line"><span>      (pageObserver, routeSettings) => pageObserver.onCreate(routeSettings),</span></span>
+<span class="line"><span>    );</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>void _on(String method, NavigatorPageObserverCallback callback) =></span></span>
+<span class="line"><span>      _channel.registryMethodCall(</span></span>
+<span class="line"><span>          '__on${method[0].toUpperCase() + method.substring(1)}__', (</span></span>
+<span class="line"><span>              [arguments]) {</span></span>
+<span class="line"><span>        final routeSettings = NavigatorRouteSettings.fromArguments(arguments);</span></span>
+<span class="line"><span>        final pageObservers = ThrioNavigatorImplement.pageObservers;</span></span>
+<span class="line"><span>        for (final pageObserver in pageObservers) {</span></span>
+<span class="line"><span>          if (pageObserver is NavigatorPageObserverChannel) {</span></span>
+<span class="line"><span>            continue;</span></span>
+<span class="line"><span>          }</span></span>
+<span class="line"><span>          callback(pageObserver, routeSettings);</span></span>
+<span class="line"><span>        }</span></span>
+<span class="line"><span>        return Future.value();</span></span>
+<span class="line"><span>      });</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>即 Thrio 在这里完成了生命周期的统一处理，其实现方式与 FlutterBoost 其实是一致，都是在混合栈跳转的过程中顺带通知相关事件，至于通信层的具体逻辑这里也不再具体分析了。另外，Thrio Dart 侧的代码比较简洁，推荐有兴趣的同学自行阅读。</p>
+<h3 id="43-打开-flutter-页面">4.3 打开 Flutter 页面</h3>
+<p>若 viewController 不存在，即业务侧要打开的是 Native 页面：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>if (viewController) {</span></span>
+<span class="line"><span>  // 4.2</span></span>
+<span class="line"><span>} else {</span></span>
+<span class="line"><span>      NSString *entrypoint = @"";</span></span>
+<span class="line"><span>      if (ThrioNavigator.isMultiEngineEnabled) {</span></span>
+<span class="line"><span>        entrypoint = [url componentsSeparatedByString:@"/"].firstObject;</span></span>
+<span class="line"><span>      }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>      __weak typeof(self) weakself = self;</span></span>
+<span class="line"><span>      ThrioIdCallback readyBlock = ^(id _){</span></span>
+<span class="line"><span>        ThrioLogV(@"push entrypoint: %@, url:%@", entrypoint, url);</span></span>
+<span class="line"><span>        __strong typeof(weakself) strongSelf = weakself;</span></span>
+<span class="line"><span>        if ([strongSelf.topViewController isKindOfClass:NavigatorFlutterViewController.class] &#x26;&#x26;</span></span>
+<span class="line"><span>            [[(NavigatorFlutterViewController*)strongSelf.topViewController entrypoint] isEqualToString:entrypoint]) {</span></span>
+<span class="line"><span>         // 4.3.1 中分析</span></span>
+<span class="line"><span>        } else {</span></span>
+<span class="line"><span>         // 4.3.2 中分析</span></span>
+<span class="line"><span>      };</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>      [NavigatorFlutterEngineFactory.shared startupWithEntrypoint:entrypoint readyBlock:readyBlock];</span></span>
+<span class="line"><span>};</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>这里开头有一些多引擎的标志处理，因 Thrio 的多引擎目前还在开发完善中，因此我们本节就不看它多引擎部分的代码了，看看主体部分吧。根据容器类型，如果当前（最上层）的 viewController 是 FlutterViewController（NavigatorFlutterViewController 是它的一层封装）就走某逻辑，否则就是 NativeViewController 走另一端逻辑。</p>
+<p>因此在要打开的页面是 Flutter 页面是，Thrio 和 Flutter Boost 不同，它不会一股脑的去创建容器，而是区分情况处理，这其实也是 Thrio 与 Flutter Boost 最大的不同：</p>
+<ol>
+<li>Flutter 打开 Flutter</li>
+<li>Native 打开 Flutter</li>
+</ol>
+<h4 id="431-flutter-打开-flutter">4.3.1 Flutter 打开 Flutter</h4>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>if ([strongSelf.topViewController isKindOfClass:NavigatorFlutterViewController.class] &#x26;&#x26;</span></span>
+<span class="line"><span>            [[(NavigatorFlutterViewController*)strongSelf.topViewController entrypoint] isEqualToString:entrypoint]) {</span></span>
+<span class="line"><span>          NSNumber *index = @([strongSelf thrio_getLastIndexByUrl:url].integerValue + 1);</span></span>
+<span class="line"><span>          [strongSelf.topViewController thrio_pushUrl:url</span></span>
+<span class="line"><span>                                                index:index</span></span>
+<span class="line"><span>                                               params:params</span></span>
+<span class="line"><span>                                             animated:animated</span></span>
+<span class="line"><span>                                       fromEntrypoint:entrypoint</span></span>
+<span class="line"><span>                                               result:^(NSNumber *idx) {</span></span>
+<span class="line"><span>            if (idx &#x26;&#x26; [idx boolValue]) {</span></span>
+<span class="line"><span>              [strongSelf thrio_removePopGesture];</span></span>
+<span class="line"><span>            }</span></span>
+<span class="line"><span>            if (result) {</span></span>
+<span class="line"><span>              result(idx);</span></span>
+<span class="line"><span>            }</span></span>
+<span class="line"><span>          } poppedResult:poppedResult];</span></span>
+<span class="line"><span>} else {</span></span>
+<span class="line"><span> // Native 打开 Flutter 4.3.2 中分析</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>这里又会走到我们 4.2 中分析到 thrio_pushUrl：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (void)thrio_pushUrl:(NSString *)url</span></span>
+<span class="line"><span>                index:(NSNumber *)index</span></span>
+<span class="line"><span>               params:(id _Nullable)params</span></span>
+<span class="line"><span>             animated:(BOOL)animated</span></span>
+<span class="line"><span>       fromEntrypoint:(NSString * _Nullable)entrypoint</span></span>
+<span class="line"><span>               result:(ThrioNumberCallback _Nullable)result</span></span>
+<span class="line"><span>         poppedResult:(ThrioIdCallback _Nullable)poppedResult {</span></span>
+<span class="line"><span>  NavigatorRouteSettings *settings = [NavigatorRouteSettings settingsWithUrl:url</span></span>
+<span class="line"><span>                                                                       index:index</span></span>
+<span class="line"><span>                                                                      nested:self.thrio_firstRoute != nil</span></span>
+<span class="line"><span>                                                                      params:params];</span></span>
+<span class="line"><span>   // ...省略 4.2 中的代码</span></span>
+<span class="line"><span>  if ([self isKindOfClass:NavigatorFlutterViewController.class]) {</span></span>
+<span class="line"><span>  NSMutableDictionary *arguments = [NSMutableDictionary dictionaryWithDictionary:[settings toArguments]];</span></span>
+<span class="line"><span>    [arguments setObject:[NSNumber numberWithBool:animated] forKey:@"animated"];</span></span>
+<span class="line"><span>    NSString *entrypoint = [(NavigatorFlutterViewController*)self entrypoint];</span></span>
+<span class="line"><span>    NavigatorRouteSendChannel *channel = [NavigatorFlutterEngineFactory.shared getSendChannelByEntrypoint:entrypoint];</span></span>
+<span class="line"><span>    if (result) {</span></span>
+<span class="line"><span>      [channel onPush:arguments result:^(id _Nullable r) {</span></span>
+<span class="line"><span>        result(r &#x26;&#x26; [r boolValue] ? index : nil);</span></span>
+<span class="line"><span>      }];</span></span>
+<span class="line"><span>    } else {</span></span>
+<span class="line"><span>      [channel onPush:arguments result:nil];</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>核心是使用 MethodChannel 向 Dart 侧发送 onPush 消息：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (void)onPush:(id _Nullable)arguments result:(FlutterResult _Nullable)callback {</span></span>
+<span class="line"><span>  [self _on:@"onPush" arguments:arguments result:callback];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (void)_on:(NSString *)method</span></span>
+<span class="line"><span>  arguments:(id _Nullable)arguments</span></span>
+<span class="line"><span>     result:(FlutterResult _Nullable)callback {</span></span>
+<span class="line"><span>  NSString *channelMethod = [NSString stringWithFormat:@"__%@__", method];</span></span>
+<span class="line"><span>  [_channel invokeMethod:channelMethod arguments:arguments result:callback];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Dart 侧收到消息后，根据路由名找到 builder 生成一个 Route，之后会使用 Flutter 的 Navigator 去 push 这个 widget：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>void _onPush() => _channel.registryMethodCall('__onPush__', ([arguments]) {</span></span>
+<span class="line"><span>        final routeSettings = NavigatorRouteSettings.fromArguments(arguments);</span></span>
+<span class="line"><span>        ThrioLogger.v('onPush:${routeSettings.name}');</span></span>
+<span class="line"><span>        final animatedValue = arguments['animated'];</span></span>
+<span class="line"><span>        final animated =</span></span>
+<span class="line"><span>            (animatedValue != null &#x26;&#x26; animatedValue is bool) &#x26;&#x26; animatedValue;</span></span>
+<span class="line"><span>        return ThrioNavigatorImplement.navigatorState</span></span>
+<span class="line"><span>            ?.push(routeSettings, animated: animated)</span></span>
+<span class="line"><span>            ?.then((it) {</span></span>
+<span class="line"><span>          _clearPagePoppedResults();</span></span>
+<span class="line"><span>          return it;</span></span>
+<span class="line"><span>        });</span></span>
+<span class="line"><span>      });</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>因此，Thrio 这种场景下没有像 Flutter Boost 那样去创建一个 FlutterViewController，而是在已有的容器上使用 Navigator 去 push。所以在连续打开 Flutter 页面这种场景下，Thrio 的内存占用会低一些。</p>
+<h4 id="432-native-打开-flutter">4.3.2 Native 打开 Flutter</h4>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>if ([strongSelf.topViewController isKindOfClass:NavigatorFlutterViewController.class] &#x26;&#x26;</span></span>
+<span class="line"><span>            [[(NavigatorFlutterViewController*)strongSelf.topViewController entrypoint] isEqualToString:entrypoint]) {</span></span>
+<span class="line"><span>// 4.3.1，Flutter 打开 Flutter</span></span>
+<span class="line"><span>} else {</span></span>
+<span class="line"><span>          UIViewController *viewController = [strongSelf thrio_createFlutterViewControllerWithEntrypoint:entrypoint];</span></span>
+<span class="line"><span>          [strongSelf thrio_pushViewController:viewController</span></span>
+<span class="line"><span>                                           url:url</span></span>
+<span class="line"><span>                                        params:params</span></span>
+<span class="line"><span>                                      animated:animated</span></span>
+<span class="line"><span>                                fromEntrypoint:entrypoint</span></span>
+<span class="line"><span>                                        result:result</span></span>
+<span class="line"><span>                                  poppedResult:poppedResult];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>从 Native 页面打开 Flutter，会先执行 thrio_createFlutterViewControllerWithEntrypoint，顾名思义，其实它就是创建一个 FlutterViewController：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (UIViewController *)thrio_createFlutterViewControllerWithEntrypoint:(NSString *)entrypoint {</span></span>
+<span class="line"><span>  UIViewController *viewController;</span></span>
+<span class="line"><span>  NavigatorFlutterPageBuilder flutterBuilder = [ThrioNavigator flutterPageBuilder];</span></span>
+<span class="line"><span>  if (flutterBuilder) {</span></span>
+<span class="line"><span>    viewController = flutterBuilder();</span></span>
+<span class="line"><span>  } else {</span></span>
+<span class="line"><span>    viewController = [[NavigatorFlutterViewController alloc] initWithEntrypoint:entrypoint];</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>  return viewController;</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>需要注意的是，这里框架会维护一个对象，如果之前创建过 FlutterViewController，它就会从缓存里去取出来，否则才会新建一个 FlutterViewController。</p>
+<p>之后调用 thrio_pushViewController，这段逻辑和之前分析的 4.2 打开 Native 页面是一样的：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (void)thrio_pushViewController:(UIViewController *)viewController</span></span>
+<span class="line"><span>                             url:(NSString *)url</span></span>
+<span class="line"><span>                          params:(id _Nullable)params</span></span>
+<span class="line"><span>                        animated:(BOOL)animated</span></span>
+<span class="line"><span>                  fromEntrypoint:(NSString * _Nullable)entrypoint</span></span>
+<span class="line"><span>                          result:(ThrioNumberCallback _Nullable)result</span></span>
+<span class="line"><span>                    poppedResult:(ThrioIdCallback _Nullable)poppedResult {</span></span>
+<span class="line"><span>  if (viewController) {</span></span>
+<span class="line"><span>    NSNumber *index = @([self thrio_getLastIndexByUrl:url].integerValue + 1);</span></span>
+<span class="line"><span>    __weak typeof(self) weakself = self;</span></span>
+<span class="line"><span>    [viewController thrio_pushUrl:url</span></span>
+<span class="line"><span>                            index:index</span></span>
+<span class="line"><span>                           params:params</span></span>
+<span class="line"><span>                         animated:animated</span></span>
+<span class="line"><span>                   fromEntrypoint:entrypoint</span></span>
+<span class="line"><span>                           result:^(NSNumber *idx) {</span></span>
+<span class="line"><span>      if (idx &#x26;&#x26; [idx boolValue]) {</span></span>
+<span class="line"><span>        __strong typeof(weakself) strongSelf = weakself;</span></span>
+<span class="line"><span>        [strongSelf pushViewController:viewController animated:animated];</span></span>
+<span class="line"><span>      }</span></span>
+<span class="line"><span>      if (result) {</span></span>
+<span class="line"><span>        result(idx);</span></span>
+<span class="line"><span>      }</span></span>
+<span class="line"><span>    } poppedResult:poppedResult];</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<ol>
+<li>调用 thrio_pushUrl，同样是发通知的逻辑，这里不赘述了。</li>
+<li>调用 pushViewController，pushViewController 将直接在 Native 中 push FlutterViewController。</li>
+</ol>
+<p>Thrio 的源码当然不止分析的这一点，还有很多索引维护、边界处理、多引擎逻辑、场景性能优化、生命周期与路由事件通知等逻辑没有分析到，鉴于篇幅问题，仅分析一下主流程打通框架的脉络，剩下的过于细节，本文不再一一分析。</p>
+<p>下图是本节 Thrio 打开页面的一个流程总结：</p>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587286318899-9b6202e0-cd70-4ee4-ac27-4701ae74e76d.png" alt="image.png"></p>
+<p>虽然框架的实现上我们发现 Thrio 较 Flutter Boost 要复杂一些，但是混合栈的容器更简洁了——对于连续的 Flutter 页面（Widget）只需要在当前 FlutterViewController 打开即可，无需去创建新的容器。</p>
+<h2 id="5-多-engine-模式">5. 多 engine 模式</h2>
+<p>多引擎的架构如图所示：</p>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587290502005-ed3901b3-6fd8-4a38-8116-b0e413f6da62.png" alt=""></p>
+<p>官方设计是 FlutterEngine 对应四个线程（Task Runner）：</p>
+<ul>
+<li>Platform Task Runner</li>
+<li>UI Task Runner</li>
+<li>GPU Task Runner</li>
+<li>IO Task Runner</li>
+</ul>
+<p>因此 Engine 是一个比较重的对象，之前笔者测试过，启动一个 engine 主线程会耗时 30ms 左右，内存占用增加 30MB。虽然内存不占优，但主线程只占用 30ms 相比 RN 与 Webview 动辄初始化 100~200 ms 是好了不少。</p>
+<p>多 engine 可能会带来一些问题：</p>
+<ol>
+<li>启动和运行需要消耗额外资源：这里可以通过裁剪 engine 来进行优化。</li>
+<li>冗余的资源问题：多引擎模式下每个引擎之间的 Isolate 是相互独立的，在逻辑上这并没有什么坏处，但是引擎底层其实是维护了图片缓存等比较消耗内存的对象。每个引擎都维护自己一份图片缓存，内存压力会增大。</li>
+<li>通信层紊乱问题：多 engine 会使得通信层的逻辑变得尤其复杂，需要设计好通信层的逻辑。这里可以学习一下 Thrio 的实现。</li>
+</ol>
+<p>Thrio 有一套索引维护机制，结合多引擎和多 FlutterViewController，可以定位到每一个页面的位置：</p>
+<p><img src="https://airing.ursb.me/image/blog/flutter-hybrid/1587282687774-e2e6297e-f33b-48d8-a637-35285f38e297.png" alt="thrio-architecture.png"></p>
+<p>不可否认，多引擎带来的隔离是一个好处，至于能带来多少性能提升，还需要再测试一下。不过，多引擎模式是值得期待的混合开发框架模式。</p>
+<blockquote>
+<p>参考资料：</p>
+<p>Adding Flutter to exist app：<a href="https://flutter.dev/docs/development/add-to-app">https://flutter.dev/docs/development/add-to-app</a>
+闲鱼基于Flutter的移动端跨平台应用实践  <a href="http://www.cocoachina.com/cms/wap.php?action=article&#x26;id=24859">http://www.cocoachina.com/cms/wap.php?action=article&#x26;id=24859</a>
+今日头条 | 让Flutter真正支持View级别的混合开发：<a href="https://www.msup.com.cn/share/details?id=226">https://www.msup.com.cn/share/details?id=226</a>
+hellobike/thrio：<a href="https://github.com/hellobike/thrio/blob/master/doc/Feature.md">https://github.com/hellobike/thrio/blob/master/doc/Feature.md</a>
+alibaba/flutter_boost：<a href="https://github.com/alibaba/flutter_boost">https://github.com/alibaba/flutter_boost</a></p>
+</blockquote>  </article> <!-- Right column: relative container for absolute-positioned cards --> <aside class="comment-rail" id="commentRail" data-astro-cid-gjtny2mx> <div class="cr-header" data-astro-cid-gjtny2mx> <span class="cr-label" data-astro-cid-gjtny2mx>Comments</span> <button class="cr-clear" id="clearAllComments" title="Clear all" data-astro-cid-gjtny2mx>&#x2715;</button> </div> <div class="cr-cards" id="commentCards" data-astro-cid-gjtny2mx> <!-- Cards positioned absolutely here --> </div> </aside> </div> <!-- FAB --> <button class="fab-comment" id="fabComment" aria-label="Add comment" data-astro-cid-gjtny2mx> <svg width="14" height="14" viewBox="0 0 14 14" fill="none" data-astro-cid-gjtny2mx> <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-astro-cid-gjtny2mx></path> </svg> </button> <!-- Comment input popover (desktop) — now with nickname/email --> <div class="comment-input-popover" id="commentPopover" data-astro-cid-gjtny2mx> <div class="cip-header" data-astro-cid-gjtny2mx> <span class="cip-selected" id="cipSelectedText" data-astro-cid-gjtny2mx></span> </div> <div class="cip-identity" data-astro-cid-gjtny2mx> <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="cip-input" id="cipEmail" placeholder="Email (for Gravatar)" data-astro-cid-gjtny2mx> </div> <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3" data-astro-cid-gjtny2mx></textarea> <div class="cip-actions" data-astro-cid-gjtny2mx> <button class="cip-cancel" id="cipCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="cip-submit" id="cipSubmit" data-astro-cid-gjtny2mx>Comment</button> </div> </div> <!-- Mobile bottom sheet --> <div class="mobile-sheet-overlay" id="mobileOverlay" data-astro-cid-gjtny2mx></div> <div class="mobile-sheet" id="mobileSheet" data-astro-cid-gjtny2mx> <div class="ms-handle" data-astro-cid-gjtny2mx></div> <div class="ms-quote" id="msQuote" data-astro-cid-gjtny2mx></div> <div class="ms-body" id="msBody" data-astro-cid-gjtny2mx></div> <div class="ms-author" id="msAuthor" data-astro-cid-gjtny2mx></div> <div class="ms-time" id="msTime" data-astro-cid-gjtny2mx></div> <button class="ms-delete" id="msDelete" data-astro-cid-gjtny2mx>Delete Comment</button> </div> <!-- Prev / Next Navigation --> <nav class="post-nav" data-astro-cid-gjtny2mx> <div class="post-nav-inner" data-astro-cid-gjtny2mx> <a href="/posts/flutter-kant/" class="post-nav-link post-nav-prev" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>&larr; Newer</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>Flutter 核心原理与混合开发模式</span> </a> <a href="/posts/flutter-boost-android/" class="post-nav-link post-nav-next" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>Older &rarr;</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>Flutter Boost 混合开发实践与源码解析</span> </a> </div> </nav> <!-- Article Like --> <div class="article-like-section" data-astro-cid-gjtny2mx> <div class="al-rule" data-astro-cid-gjtny2mx></div> <button class="article-like-btn" id="articleLikeBtn" data-astro-cid-gjtny2mx> <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22" data-astro-cid-gjtny2mx> <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none" data-astro-cid-gjtny2mx></path> </svg> <span class="al-count" id="articleLikeCount" data-astro-cid-gjtny2mx>0</span> <span class="al-label" data-astro-cid-gjtny2mx>likes</span> </button> <div class="al-rule" data-astro-cid-gjtny2mx></div> </div> <!-- Newsletter CTA --> <div class="newsletter-cta" data-astro-cid-gjtny2mx> <div class="nl-inner" data-astro-cid-gjtny2mx> <p class="nl-title" data-astro-cid-gjtny2mx>Subscribe</p> <p class="nl-desc" data-astro-cid-gjtny2mx>Get notified when new posts are published.</p> <form class="nl-form" id="nlForm" data-astro-cid-gjtny2mx> <input type="email" class="nl-input" id="nlEmail" placeholder="your@email.com" required data-astro-cid-gjtny2mx> <button type="submit" class="nl-btn" data-astro-cid-gjtny2mx>Subscribe</button> </form> <p class="nl-status" id="nlStatus" data-astro-cid-gjtny2mx></p> </div> </div> <!-- Bottom Comment Section --> <section class="bottom-comments" id="bottomComments" data-astro-cid-gjtny2mx> <div class="bc-inner" data-astro-cid-gjtny2mx> <div class="bc-header" data-astro-cid-gjtny2mx> <h2 class="bc-title" data-astro-cid-gjtny2mx>Comments</h2> <span class="bc-count" id="bcCount" data-astro-cid-gjtny2mx>0 comments</span> </div> <div class="bc-thread" id="bcThread" data-astro-cid-gjtny2mx> <!-- Comments rendered by JS --> </div> <div class="bc-compose" data-astro-cid-gjtny2mx> <div class="bc-compose-avatar" data-astro-cid-gjtny2mx> <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" data-astro-cid-gjtny2mx> </div> <div class="bc-compose-form" data-astro-cid-gjtny2mx> <div class="bc-compose-fields" data-astro-cid-gjtny2mx> <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="bc-input" id="bcEmail" placeholder="Email" data-astro-cid-gjtny2mx> <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" data-astro-cid-gjtny2mx> </div> <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4" data-astro-cid-gjtny2mx></textarea> <div class="bc-compose-footer" data-astro-cid-gjtny2mx> <span class="bc-hint" data-astro-cid-gjtny2mx>Markdown supported</span> <button class="bc-submit" id="bcSubmit" data-astro-cid-gjtny2mx>Submit</button> </div> </div> </div> </div> </section> <footer class="page-footer" data-astro-cid-gjtny2mx> <div class="footer-inner" data-astro-cid-gjtny2mx> <div class="footer-rule" data-astro-cid-gjtny2mx></div> <div class="footer-bar" data-astro-cid-gjtny2mx> <a href="/" data-astro-cid-gjtny2mx>&larr; Home</a> <span class="footer-copy" data-astro-cid-gjtny2mx>&copy; Airing</span> <a href="/archive" data-astro-cid-gjtny2mx>Archive &rarr;</a> </div> </div> </footer> </div>  <!-- Theme Switcher --> <div class="theme-switcher" id="themeSwitcher"> <button class="mode-toggle" id="modeToggle" aria-label="Toggle light/dark mode"> <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"></circle> <line x1="8" y1="0.5" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="8" y1="13.5" x2="8" y2="15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="0.5" y1="8" x2="2.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="13.5" y1="8" x2="15.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="2.7" x2="4.1" y2="4.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="11.9" x2="13.3" y2="13.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="13.3" x2="4.1" y2="11.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="4.1" x2="13.3" y2="2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> </svg> <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none"> <path d="M13.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </svg> </button> <button class="theme-toggle" id="themeToggle" aria-label="Switch accent color"> <svg width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"></circle> <circle cx="8" cy="8" r="3" fill="currentColor"></circle> </svg> </button> <div class="theme-dots" id="themeDots"> <button class="theme-dot" data-theme="green" style="--dot-color:#4ade80" title="Green"></button> <button class="theme-dot" data-theme="blue" style="--dot-color:#60a5fa" title="Blue"></button> <button class="theme-dot" data-theme="purple" style="--dot-color:#a78bfa" title="Purple"></button> <button class="theme-dot" data-theme="amber" style="--dot-color:#fbbf24" title="Amber"></button> <button class="theme-dot" data-theme="rose" style="--dot-color:#fb7185" title="Rose"></button> <button class="theme-dot" data-theme="cyan" style="--dot-color:#22d3ee" title="Cyan"></button> </div> </div> <script>
+    (function() {
+      var toggle = document.getElementById('themeToggle');
+      var dots = document.getElementById('themeDots');
+      var switcher = document.getElementById('themeSwitcher');
+      var modeToggle = document.getElementById('modeToggle');
+      var open = false;
+
+      // Mode toggle (light/dark)
+      function updateModeIcon() {
+        var isLight = document.documentElement.getAttribute('data-mode') === 'light';
+        switcher.classList.toggle('light-mode', isLight);
+      }
+      modeToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var current = document.documentElement.getAttribute('data-mode');
+        var next = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-mode', next);
+        localStorage.setItem('blog-mode', next);
+        updateModeIcon();
+      });
+      updateModeIcon();
+
+      // Color theme toggle
+      toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        open = !open;
+        dots.classList.toggle('active', open);
+        toggle.classList.toggle('active', open);
+      });
+
+      dots.addEventListener('click', function(e) {
+        var btn = e.target.closest('.theme-dot');
+        if (!btn) return;
+        var theme = btn.dataset.theme;
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('blog-theme', theme);
+        dots.querySelectorAll('.theme-dot').forEach(function(d) {
+          d.classList.toggle('selected', d.dataset.theme === theme);
+        });
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!switcher.contains(e.target) && open) {
+          open = false;
+          dots.classList.remove('active');
+          toggle.classList.remove('active');
+        }
+      });
+
+      // Mark current theme
+      var current = localStorage.getItem('blog-theme') || 'green';
+      dots.querySelectorAll('.theme-dot').forEach(function(d) {
+        d.classList.toggle('selected', d.dataset.theme === current);
+      });
+    })();
+  </script> </body> </html> <script>
+/* Wrap short text nodes after <img> as styled captions */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = content.querySelectorAll('p');
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (!imgs.length) return;
+    var nodes = Array.from(p.childNodes);
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeType !== 3) continue;
+      var text = node.textContent.trim();
+      if (!text) continue;
+      var prev = node.previousSibling;
+      while (prev && prev.nodeType === 3 && !prev.textContent.trim()) prev = prev.previousSibling;
+      if (!prev || prev.nodeName !== 'IMG') continue;
+      if (text.length > 30 || text.indexOf('\n') !== -1 || text.charAt(0) === '#') continue;
+      var span = document.createElement('span');
+      span.className = 'img-caption';
+      span.textContent = text;
+      p.replaceChild(span, node);
+    }
+  });
+})();
+
+/* Gallery: group consecutive images into flex rows */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = Array.from(content.querySelectorAll('p'));
+
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (imgs.length < 2) return;
+
+    // Segment childNodes into groups: consecutive img(+caption) vs other content
+    var nodes = Array.from(p.childNodes);
+    var segments = [];
+    var currentImgs = [];
+
+    function flushImgs() {
+      if (currentImgs.length >= 2) {
+        segments.push({ type: 'images', items: currentImgs });
+      } else if (currentImgs.length === 1) {
+        segments.push({ type: 'other', nodes: [currentImgs[0].img] });
+        if (currentImgs[0].caption) segments.push({ type: 'other', nodes: [currentImgs[0].caption] });
+      }
+      currentImgs = [];
+    }
+
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeName === 'IMG') {
+        var item = { img: node, caption: null };
+        var next = nodes[i + 1];
+        if (next && next.nodeType === 1 && next.classList && next.classList.contains('img-caption')) {
+          item.caption = next;
+          i++;
+        }
+        currentImgs.push(item);
+      } else if (node.nodeType === 3 && !node.textContent.trim()) {
+        continue;
+      } else {
+        flushImgs();
+        segments.push({ type: 'other', nodes: [node] });
+      }
+    }
+    flushImgs();
+
+    var hasGallery = segments.some(function(s) { return s.type === 'images'; });
+    if (!hasGallery) return;
+
+    var frag = document.createDocumentFragment();
+
+    segments.forEach(function(seg) {
+      if (seg.type === 'other') {
+        seg.nodes.forEach(function(n) { frag.appendChild(n.cloneNode(true)); });
+        return;
+      }
+
+      var items = seg.items;
+      var gallery = document.createElement('div');
+      gallery.className = 'img-gallery';
+
+      // Build rows: max 3 per row (2 for groups of 4)
+      var rows = [];
+      var row = [];
+      for (var j = 0; j < items.length; j++) {
+        row.push(items[j]);
+        var maxPerRow = items.length === 4 ? 2 : 3;
+        if (row.length >= maxPerRow) { rows.push(row); row = []; }
+      }
+      if (row.length) rows.push(row);
+
+      rows.forEach(function(rowItems) {
+        var rowDiv = document.createElement('div');
+        rowDiv.className = 'img-gallery-row';
+        rowItems.forEach(function(item) {
+          var figure = document.createElement('figure');
+          figure.className = 'img-gallery-item';
+          figure.appendChild(item.img.cloneNode(true));
+          if (item.caption) {
+            var figcap = document.createElement('figcaption');
+            figcap.textContent = item.caption.textContent;
+            figure.appendChild(figcap);
+          }
+          rowDiv.appendChild(figure);
+        });
+        gallery.appendChild(rowDiv);
+      });
+
+      // Apply flex ratios once all images in gallery have loaded
+      var galleryImgs = gallery.querySelectorAll('img');
+      var loaded = 0;
+      var total = galleryImgs.length;
+      function applyFlex() {
+        var rows = gallery.querySelectorAll('.img-gallery-row');
+        rows.forEach(function(rowEl) {
+          var figs = rowEl.querySelectorAll('.img-gallery-item');
+          figs.forEach(function(fig) {
+            var img = fig.querySelector('img');
+            var w = img.naturalWidth || 1;
+            var h = img.naturalHeight || 1;
+            fig.style.flex = (w / h).toFixed(3);
+          });
+        });
+      }
+      galleryImgs.forEach(function(img) {
+        if (img.complete && img.naturalWidth > 0) {
+          loaded++;
+          if (loaded === total) applyFlex();
+        } else {
+          img.addEventListener('load', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+          img.addEventListener('error', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+        }
+      });
+
+      frag.appendChild(gallery);
+    });
+
+    p.parentNode.replaceChild(frag, p);
+  });
+})();
+
+/* TOC: build, scroll-spy, click-to-scroll */
+(function() {
+  var content = document.querySelector('.post-content');
+  var tocNav = document.getElementById('tocNav');
+  var tocBlock = document.getElementById('tocBlock');
+  if (!content || !tocNav || !tocBlock) return;
+
+  var headings = content.querySelectorAll('h2, h3');
+  if (headings.length < 2) return;
+
+  // Ensure each heading has an id
+  headings.forEach(function(h, i) {
+    if (!h.id) h.id = 'heading-' + i;
+  });
+
+  // Build TOC links
+  var fragment = document.createDocumentFragment();
+  headings.forEach(function(h) {
+    var a = document.createElement('a');
+    a.className = 'toc-link';
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    a.setAttribute('data-level', h.tagName === 'H2' ? '2' : '3');
+    a.addEventListener('click', function(e) {
+      e.preventDefault();
+      h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', '#' + h.id);
+    });
+    fragment.appendChild(a);
+  });
+  tocNav.appendChild(fragment);
+  tocBlock.style.display = '';
+
+  // Scroll spy
+  var tocLinks = tocNav.querySelectorAll('.toc-link');
+  var headingArr = Array.from(headings);
+  var ticking = false;
+
+  function updateActive() {
+    var scrollY = window.scrollY + 80;
+    var active = null;
+    for (var i = headingArr.length - 1; i >= 0; i--) {
+      if (headingArr[i].offsetTop <= scrollY) { active = i; break; }
+    }
+    tocLinks.forEach(function(link, idx) {
+      link.classList.toggle('active', idx === active);
+    });
+    // Scroll active link into view within TOC nav
+    if (active !== null && tocLinks[active]) {
+      var link = tocLinks[active];
+      var nav = tocNav;
+      if (link.offsetTop < nav.scrollTop || link.offsetTop + link.offsetHeight > nav.scrollTop + nav.clientHeight) {
+        nav.scrollTop = link.offsetTop - nav.clientHeight / 3;
+      }
+    }
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function() {
+    if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
+  }, { passive: true });
+  updateActive();
+})();
+</script> <script>
+(function() {
+  var API = 'https://chat.ursb.me';
+  var POST_SLUG = location.pathname.replace(/^\/posts\//, '').replace(/\/$/, '');
+  var USER_KEY = 'blog-user-identity';
+
+  var postContent = document.getElementById('postContent');
+  var contentGrid = document.getElementById('contentGrid');
+  var commentRail = document.getElementById('commentRail');
+  var commentCards = document.getElementById('commentCards');
+  var fab = document.getElementById('fabComment');
+  var popover = document.getElementById('commentPopover');
+  var cipText = document.getElementById('cipSelectedText');
+  var cipNickname = document.getElementById('cipNickname');
+  var cipEmailInput = document.getElementById('cipEmail');
+  var cipArea = document.getElementById('cipTextarea');
+  var cipCancel = document.getElementById('cipCancel');
+  var cipSubmit = document.getElementById('cipSubmit');
+  var clearAll = document.getElementById('clearAllComments');
+  var mobileOverlay = document.getElementById('mobileOverlay');
+  var mobileSheet = document.getElementById('mobileSheet');
+  var msQuote = document.getElementById('msQuote');
+  var msBody = document.getElementById('msBody');
+  var msAuthor = document.getElementById('msAuthor');
+  var msTime = document.getElementById('msTime');
+  var msDelete = document.getElementById('msDelete');
+
+  // Bottom comments
+  var bcThread = document.getElementById('bcThread');
+  var bcCount = document.getElementById('bcCount');
+  var bcNickname = document.getElementById('bcNickname');
+  var bcEmail = document.getElementById('bcEmail');
+  var bcWebsite = document.getElementById('bcWebsite');
+  var bcTextarea = document.getElementById('bcTextarea');
+  var bcSubmit = document.getElementById('bcSubmit');
+  var bcComposeAvatar = document.getElementById('bcComposeAvatar');
+
+  // Article like
+  var articleLikeBtn = document.getElementById('articleLikeBtn');
+  var articleLikeCount = document.getElementById('articleLikeCount');
+
+  var pendingRange = null;
+  var activeMobileCommentId = null;
+  var inlineComments = [];
+  var bottomComments = [];
+
+  function isMobile() { return window.innerWidth <= 1100; }
+
+  // --- User identity persistence ---
+  function getSavedIdentity() {
+    try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveIdentity(nickname, email, website) {
+    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email, website: website || '' }));
+  }
+  function restoreIdentity() {
+    var id = getSavedIdentity();
+    if (id.nickname) {
+      cipNickname.value = id.nickname;
+      bcNickname.value = id.nickname;
+    }
+    if (id.email) {
+      cipEmailInput.value = id.email;
+      bcEmail.value = id.email;
+      updateComposeAvatar(id.email);
+    }
+    if (id.website) {
+      bcWebsite.value = id.website;
+    }
+  }
+
+  var AUTHOR_EMAILS = { 'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80' };
+  function gravatarUrl(email) {
+    var e = email.trim().toLowerCase();
+    if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
+    var hash = e.endsWith('@gravatar.placeholder') ? e.split('@')[0] : e;
+    return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80';
+  }
+
+  function updateComposeAvatar(email) {
+    if (email) bcComposeAvatar.src = gravatarUrl(email);
+  }
+
+  // Debounced avatar update on email input
+  var avatarTimer;
+  bcEmail.addEventListener('input', function() {
+    clearTimeout(avatarTimer);
+    avatarTimer = setTimeout(function() { updateComposeAvatar(bcEmail.value); }, 500);
+  });
+
+  // --- API helpers ---
+  function apiGet(path) {
+    return fetch(API + path, { headers: { 'Origin': location.origin } }).then(function(r) { return r.json(); });
+  }
+  function apiPost(path, body) {
+    return fetch(API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); });
+  }
+  function apiDelete(path) {
+    return fetch(API + path, { method: 'DELETE' }).then(function(r) { return r.json(); });
+  }
+
+  // =====================================================================
+  // INLINE (HIGHLIGHT) COMMENTS — right rail
+  // =====================================================================
+
+  function wrapRange(range, id) {
+    var mark = document.createElement('mark');
+    mark.className = 'comment-highlight';
+    mark.dataset.commentId = id;
+    try { range.surroundContents(mark); }
+    catch(e) {
+      var fragment = range.extractContents();
+      mark.appendChild(fragment);
+      range.insertNode(mark);
+    }
+    return mark;
+  }
+
+  function restoreHighlights() {
+    inlineComments.forEach(function(c) {
+      if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
+      var searchText = c.selected_text;
+      if (!searchText) return;
+      var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
+      var node;
+      while (node = walker.nextNode()) {
+        var idx = node.textContent.indexOf(searchText);
+        if (idx === -1) continue;
+        var range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + searchText.length);
+        wrapRange(range, c.id);
+        break;
+      }
+    });
+  }
+
+  function removeHighlight(id) {
+    var marks = postContent.querySelectorAll('mark[data-comment-id="' + id + '"]');
+    marks.forEach(function(mark) {
+      var parent = mark.parentNode;
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+      parent.removeChild(mark);
+      parent.normalize();
+    });
+  }
+
+  function offsetFromGrid(el) {
+    var top = 0;
+    while (el && el !== contentGrid) { top += el.offsetTop; el = el.offsetParent; }
+    return top;
+  }
+
+  function layoutCards() {
+    var cards = commentCards.querySelectorAll('.cm-card');
+    if (!cards.length) return;
+    var railOffset = offsetFromGrid(commentRail);
+    var positions = [];
+    cards.forEach(function(card) {
+      var id = card.dataset.commentId;
+      var mark = postContent.querySelector('mark[data-comment-id="' + id + '"]');
+      var desiredTop = 0;
+      if (mark) desiredTop = offsetFromGrid(mark) - railOffset;
+      positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
+    });
+    positions.sort(function(a, b) { return a.desired - b.desired; });
+    var GAP = 8, nextAvailable = 0;
+    positions.forEach(function(p) {
+      var top = Math.max(p.desired, nextAvailable);
+      p.card.style.top = top + 'px';
+      nextAvailable = top + p.height + GAP;
+    });
+    commentCards.style.minHeight = nextAvailable + 'px';
+  }
+
+  function renderInlineComments() {
+    commentCards.innerHTML = '';
+    clearAll.style.display = inlineComments.length ? '' : 'none';
+
+    inlineComments.forEach(function(c) {
+      var card = document.createElement('div');
+      card.className = 'cm-card';
+      card.dataset.commentId = c.id;
+      var mark = postContent.querySelector('mark[data-comment-id="' + c.id + '"]');
+
+      var time = new Date(c.created_at);
+      var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+        + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      card.innerHTML =
+        '<div class="cm-card-author">' +
+          '<img src="' + gravatarUrl(c.email) + '" class="cm-card-avatar" />' +
+          '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
+        '</div>' +
+        '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
+        '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
+        '<div class="cm-card-footer">' +
+          '<span class="cm-card-time">' + timeStr + '</span>' +
+          '<button class="cm-card-delete" data-id="' + c.id + '">&times;</button>' +
+        '</div>';
+
+      card.addEventListener('mouseenter', function() {
+        if (mark) mark.classList.add('highlight-active');
+        card.classList.add('cm-card-active');
+      });
+      card.addEventListener('mouseleave', function() {
+        if (mark) mark.classList.remove('highlight-active');
+        card.classList.remove('cm-card-active');
+      });
+      card.addEventListener('click', function(e) {
+        if (e.target.classList.contains('cm-card-delete')) return;
+        if (mark) {
+          mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          mark.classList.add('highlight-flash');
+          setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1000);
+        }
+      });
+      if (mark) {
+        mark.addEventListener('mouseenter', function() { card.classList.add('cm-card-active'); mark.classList.add('highlight-active'); });
+        mark.addEventListener('mouseleave', function() { card.classList.remove('cm-card-active'); mark.classList.remove('highlight-active'); });
+        mark.addEventListener('click', function(e) {
+          if (!isMobile()) return;
+          e.preventDefault(); e.stopPropagation();
+          openMobileSheet(c);
+        });
+      }
+
+      commentCards.appendChild(card);
+
+      card.querySelector('.cm-card-delete').addEventListener('click', function(e) {
+        e.stopPropagation();
+        apiDelete('/api/inline-comments/' + c.id).then(function() {
+          removeHighlight(c.id);
+          inlineComments = inlineComments.filter(function(x) { return x.id !== c.id; });
+          renderInlineComments();
+        });
+      });
+    });
+
+    requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
+  }
+
+  // --- Mobile bottom sheet ---
+  function openMobileSheet(comment) {
+    activeMobileCommentId = comment.id;
+    msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
+    msBody.textContent = comment.comment;
+    msAuthor.textContent = comment.nickname;
+    var time = new Date(comment.created_at);
+    msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+      + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    mobileOverlay.classList.add('active');
+    mobileSheet.classList.add('active');
+  }
+  function closeMobileSheet() {
+    mobileOverlay.classList.remove('active');
+    mobileSheet.classList.remove('active');
+    activeMobileCommentId = null;
+  }
+  mobileOverlay.addEventListener('click', closeMobileSheet);
+  msDelete.addEventListener('click', function() {
+    if (!activeMobileCommentId) return;
+    apiDelete('/api/inline-comments/' + activeMobileCommentId).then(function() {
+      removeHighlight(activeMobileCommentId);
+      inlineComments = inlineComments.filter(function(x) { return x.id !== activeMobileCommentId; });
+      closeMobileSheet();
+      renderInlineComments();
+    });
+  });
+
+  // --- FAB: show on text selection ---
+  fab.style.display = 'none';
+  popover.style.display = 'none';
+
+  document.addEventListener('mouseup', function(e) {
+    if (popover.style.display !== 'none') return;
+    if (isMobile()) { fab.style.display = 'none'; return; }
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.top + window.scrollY - 36) + 'px';
+    fab.style.left = (rect.right + window.scrollX + 8) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('selectionchange', function() {
+    if (!isMobile()) return;
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    fab.style.left = (rect.left + window.scrollX + (rect.width / 2) - 14) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('mousedown', function(e) {
+    if (fab.contains(e.target) || popover.contains(e.target)) return;
+    if (popover.style.display === 'none') fab.style.display = 'none';
+  });
+
+  fab.addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (!pendingRange) return;
+    var selectedText = pendingRange.toString().trim();
+    if (!selectedText) return;
+    cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
+    cipArea.value = '';
+    var rect = pendingRange.getBoundingClientRect();
+    if (isMobile()) {
+      popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
+      popover.style.left = '50%';
+      popover.style.transform = 'translateX(-50%)';
+    } else {
+      popover.style.top = (rect.top + window.scrollY) + 'px';
+      popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
+      popover.style.transform = '';
+    }
+    popover.style.display = 'block';
+    fab.style.display = 'none';
+    cipNickname.focus();
+  });
+
+  cipCancel.addEventListener('click', function() {
+    popover.style.display = 'none';
+    pendingRange = null;
+    window.getSelection().removeAllRanges();
+  });
+
+  cipSubmit.addEventListener('click', function() {
+    var text = cipArea.value.trim();
+    var nickname = cipNickname.value.trim();
+    var email = cipEmailInput.value.trim();
+    if (!text || !nickname || !email || !pendingRange) return;
+
+    var selectedText = pendingRange.toString().trim();
+    saveIdentity(nickname, email);
+
+    cipSubmit.disabled = true;
+    cipSubmit.textContent = '...';
+
+    apiPost('/api/inline-comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      selected_text: selectedText,
+      comment: text,
+      range_start: 0,
+      range_end: selectedText.length
+    }).then(function(res) {
+      if (res.comment) {
+        wrapRange(pendingRange, res.comment.id);
+        inlineComments.push(res.comment);
+        renderInlineComments();
+      }
+      popover.style.display = 'none';
+      pendingRange = null;
+      window.getSelection().removeAllRanges();
+    }).finally(function() {
+      cipSubmit.disabled = false;
+      cipSubmit.textContent = 'Comment';
+    });
+  });
+
+  cipArea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
+    if (e.key === 'Escape') cipCancel.click();
+  });
+
+  clearAll.addEventListener('click', function() {
+    if (!confirm('Clear all comments?')) return;
+    // Delete all from server
+    Promise.all(inlineComments.map(function(c) { return apiDelete('/api/inline-comments/' + c.id); })).then(function() {
+      postContent.querySelectorAll('mark.comment-highlight').forEach(function(m) {
+        var p = m.parentNode;
+        while (m.firstChild) p.insertBefore(m.firstChild, m);
+        p.removeChild(m);
+        p.normalize();
+      });
+      inlineComments = [];
+      renderInlineComments();
+    });
+  });
+
+  var layoutTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(layoutCards, 60);
+  });
+
+  // =====================================================================
+  // ARTICLE LIKES
+  // =====================================================================
+  var articleLiked = false;
+
+  function loadArticleLikes() {
+    apiGet('/api/posts/' + encodeURIComponent(POST_SLUG) + '/likes').then(function(res) {
+      articleLikeCount.textContent = res.count;
+      articleLiked = res.liked;
+      if (articleLiked) articleLikeBtn.classList.add('liked');
+    });
+  }
+
+  articleLikeBtn.addEventListener('click', function() {
+    // Optimistic update — instant UI feedback
+    var prevLiked = articleLiked;
+    var prevCount = parseInt(articleLikeCount.textContent) || 0;
+    var newLiked = !prevLiked;
+    var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+    articleLiked = newLiked;
+    articleLikeCount.textContent = newCount;
+    articleLikeBtn.classList.toggle('liked', newLiked);
+    var icon = articleLikeBtn.querySelector('.al-icon path');
+    icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+    apiPost('/api/posts/' + encodeURIComponent(POST_SLUG) + '/like', {}).then(function(res) {
+      // Sync with server truth
+      articleLiked = res.liked;
+      articleLikeCount.textContent = res.count;
+      articleLikeBtn.classList.toggle('liked', res.liked);
+      icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+    }).catch(function() {
+      // Rollback on failure
+      articleLiked = prevLiked;
+      articleLikeCount.textContent = prevCount;
+      articleLikeBtn.classList.toggle('liked', prevLiked);
+      icon.setAttribute('fill', prevLiked ? 'currentColor' : 'none');
+    });
+  });
+
+  // =====================================================================
+  // BOTTOM COMMENTS
+  // =====================================================================
+
+  function loadBottomComments() {
+    apiGet('/api/comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+      bottomComments = res.comments || [];
+      renderBottomComments();
+    });
+  }
+
+  function renderBottomComments() {
+    bcThread.innerHTML = '';
+    var count = bottomComments.length;
+    bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+
+    // Build tree
+    var roots = [];
+    var byId = {};
+    bottomComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
+    bottomComments.forEach(function(c) {
+      if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
+      else roots.push(c);
+    });
+
+    roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+  }
+
+  function buildCommentEl(c, isReply) {
+    var div = document.createElement('div');
+    div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
+
+    var time = new Date(c.created_at);
+    var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    var avatarSize = isReply ? 32 : 40;
+    var nameHtml = c.website
+      ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
+      : '<span class="bc-name">' + esc(c.nickname) + '</span>';
+    div.innerHTML =
+      '<div class="bc-avatar-wrap"><img src="' + gravatarUrl(c.email) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+      '<div class="bc-body">' +
+        '<div class="bc-meta">' +
+          nameHtml +
+          '<span class="bc-dot">&middot;</span>' +
+          '<time class="bc-time">' + timeStr + '</time>' +
+        '</div>' +
+        '<div class="bc-text"><p>' + esc(c.content) + '</p></div>' +
+        '<div class="bc-actions">' +
+          '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
+            '<span>' + (c.likes || 0) + '</span>' +
+          '</button>' +
+          '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
+        '</div>' +
+        '<div class="bc-replies-container"></div>' +
+      '</div>';
+
+    // Like button — optimistic update
+    div.querySelector('.bc-like-btn').addEventListener('click', function() {
+      var btn = this;
+      var icon = btn.querySelector('path');
+      var span = btn.querySelector('span');
+      var wasLiked = btn.classList.contains('liked');
+      var prevCount = parseInt(span.textContent) || 0;
+      var newLiked = !wasLiked;
+      var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+      btn.classList.toggle('liked', newLiked);
+      span.textContent = newCount;
+      icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+      apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
+        btn.classList.toggle('liked', res.liked);
+        span.textContent = res.count;
+        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      }).catch(function() {
+        btn.classList.toggle('liked', wasLiked);
+        span.textContent = prevCount;
+        icon.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+      });
+    });
+
+    // Reply button
+    div.querySelector('.bc-reply-btn').addEventListener('click', function() {
+      // Scroll to compose and pre-fill with @mention
+      bcTextarea.value = '@' + c.nickname + ' ';
+      bcTextarea.dataset.parentId = c.id;
+      bcTextarea.focus();
+      bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Render replies
+    var repliesContainer = div.querySelector('.bc-replies-container');
+    if (c._replies && c._replies.length) {
+      c._replies.forEach(function(r) {
+        repliesContainer.appendChild(buildCommentEl(r, true));
+      });
+    }
+
+    return div;
+  }
+
+  // Submit bottom comment
+  bcSubmit.addEventListener('click', function() {
+    var content = bcTextarea.value.trim();
+    var nickname = bcNickname.value.trim();
+    var email = bcEmail.value.trim();
+    var website = bcWebsite.value.trim();
+    if (!content || !nickname || !email) return;
+
+    saveIdentity(nickname, email, website);
+    bcSubmit.disabled = true;
+    bcSubmit.textContent = '...';
+
+    var parentId = bcTextarea.dataset.parentId || null;
+
+    var body = {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      content: content,
+      parent_id: parentId ? parseInt(parentId) : null
+    };
+    if (website) body.website = website;
+
+    apiPost('/api/comments', body).then(function(res) {
+      if (res.comment) {
+        bottomComments.push(res.comment);
+        renderBottomComments();
+        bcTextarea.value = '';
+        delete bcTextarea.dataset.parentId;
+      }
+    }).finally(function() {
+      bcSubmit.disabled = false;
+      bcSubmit.textContent = 'Submit';
+    });
+  });
+
+  bcTextarea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') bcSubmit.click();
+  });
+
+  // =====================================================================
+  // INIT — load everything from API
+  // =====================================================================
+  restoreIdentity();
+
+  apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+    inlineComments = res.comments || [];
+    restoreHighlights();
+    renderInlineComments();
+  });
+
+  // Newsletter subscribe
+  var nlForm = document.getElementById('nlForm');
+  var nlEmail = document.getElementById('nlEmail');
+  var nlStatus = document.getElementById('nlStatus');
+  if (nlForm) {
+    nlForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var email = nlEmail.value.trim();
+      if (!email) return;
+      nlStatus.textContent = 'Subscribing...';
+      fetch(API + '/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      }).then(function(r) { return r.json(); })
+        .then(function(d) {
+          nlStatus.textContent = d.error ? d.error : 'Subscribed!';
+          if (!d.error) nlEmail.value = '';
+        })
+        .catch(function() { nlStatus.textContent = 'Failed. Please try again.'; });
+    });
+  }
+
+  loadArticleLikes();
+  loadBottomComments();
+
+  // --- Helpers ---
+  function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+})();
+</script> 

@@ -1,0 +1,1620 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Flutter Boost 混合开发实践与源码解析 | Airing</title><meta name="description" content><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta property="og:title" content="Flutter Boost 混合开发实践与源码解析 | Airing"><meta property="og:description" content><meta property="og:type" content="article"><link rel="canonical" href="https://ursb.me/posts/flutter-boost-android/"><meta property="og:url" content="https://ursb.me/posts/flutter-boost-android/"><meta name="twitter:card" content="summary"><meta name="twitter:title" content="Flutter Boost 混合开发实践与源码解析 | Airing"><meta name="twitter:description" content><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/feed.xml"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-W604S49M4X');
+  </script><!-- Umami Analytics --><script defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script><!-- Cal.com Embed --><script type="text/javascript">
+    (function (C, A, L) {
+      let p = function (a, ar) { a.q.push(ar); };
+      let d = C.document;
+      C.Cal = C.Cal || function () {
+        let cal = C.Cal;
+        let ar = arguments;
+        if (!cal.loaded) {
+          cal.ns = {};
+          cal.q = cal.q || [];
+          d.head.appendChild(d.createElement("script")).src = A;
+          cal.loaded = true;
+        }
+        if (ar[0] === L) {
+          const api = function () { p(api, arguments); };
+          const namespace = ar[1];
+          api.q = api.q || [];
+          if (typeof namespace === "string") {
+            cal.ns[namespace] = api;
+            p(api, ar);
+          } else {
+            p(cal, ar);
+          }
+          return;
+        }
+        p(cal, ar);
+      };
+    })(window, "https://app.cal.com/embed/embed.js", "init");
+    Cal("init", { origin: "https://cal.com" });
+    Cal("ui", {
+      theme: "dark",
+      styles: { branding: { brandColor: "#f59e0b" } },
+      hideEventTypeDetails: false,
+      layout: "month_view"
+    });
+  </script><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"><script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"Flutter Boost 混合开发实践与源码解析","datePublished":"2020-03-07T00:00:00.000Z","dateModified":"2020-03-07T00:00:00.000Z","author":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"publisher":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"url":"https://ursb.me/posts/flutter-boost-android/","mainEntityOfPage":{"@type":"WebPage","@id":"https://ursb.me/posts/flutter-boost-android/"},"keywords":"tech"}</script><script>
+    // Apply saved theme & mode before render to prevent flash
+    (function() {
+      var t = localStorage.getItem('blog-theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+      var m = localStorage.getItem('blog-mode');
+      if (m) document.documentElement.setAttribute('data-mode', m);
+    })();
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.DLZEbWeP.css">
+<link rel="stylesheet" href="/_astro/_slug_@_@astro.0M_B7D7i.css"></head> <body>    <div class="post-page" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>2020年3月7日</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" data-astro-cid-gjtny2mx>Blog</a> <a href="/archive" data-astro-cid-gjtny2mx>Archive</a> <a href="/moments" data-astro-cid-gjtny2mx>Moments</a> <a href="/search" data-astro-cid-gjtny2mx>Search</a> <a href="/feed.xml" data-astro-cid-gjtny2mx>RSS</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> </div> </header> <!-- Headline --> <div class="headline-section" data-astro-cid-gjtny2mx> <div class="headline-inner" data-astro-cid-gjtny2mx> <div class="headline-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="hl-tag" data-astro-cid-gjtny2mx>tech</a> </div> <h1 class="headline" data-astro-cid-gjtny2mx>Flutter Boost 混合开发实践与源码解析</h1>  </div> </div>   <!-- Three-column: sidebar | content | comments --> <div class="content-grid" id="contentGrid" data-astro-cid-gjtny2mx> <aside class="sidebar-left" data-astro-cid-gjtny2mx> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Date</div> <div class="sb-value" data-astro-cid-gjtny2mx>2020/03/07</div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Tags</div> <div class="sb-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="sb-tag" data-astro-cid-gjtny2mx>#tech</a> </div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Author</div> <div class="sb-value" data-astro-cid-gjtny2mx>Airing</div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Read</div> <div class="sb-value" data-astro-cid-gjtny2mx>24 min</div> </div> <div class="sb-divider" data-astro-cid-gjtny2mx></div> <div class="sb-block toc-block" id="tocBlock" style="display:none;" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Contents</div> <nav class="toc-nav" id="tocNav" data-astro-cid-gjtny2mx></nav> </div>  <div class="sb-divider" data-astro-cid-gjtny2mx></div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Related</div> <ul class="sb-related" data-astro-cid-gjtny2mx> <li data-astro-cid-gjtny2mx><a href="/posts/game-engine-renderer/" class="sb-related-link" data-astro-cid-gjtny2mx>游戏组件的一生: 从加载到上屏</a></li><li data-astro-cid-gjtny2mx><a href="/posts/moflow/" class="sb-related-link" data-astro-cid-gjtny2mx>AI 心理疗愈应用的探索与实现</a></li><li data-astro-cid-gjtny2mx><a href="/posts/mac-app-share-2024/" class="sb-related-link" data-astro-cid-gjtny2mx>Mac 小众软件推荐与工作流分享(2024)</a></li><li data-astro-cid-gjtny2mx><a href="/posts/2024-summer/" class="sb-related-link" data-astro-cid-gjtny2mx>再见了，盛夏</a></li><li data-astro-cid-gjtny2mx><a href="/posts/service/" class="sb-related-link" data-astro-cid-gjtny2mx>Airing 开通了一个咨询服务</a></li> </ul> </div>  <div class="sb-divider" data-astro-cid-gjtny2mx></div> <a href="/archive" class="sb-nav" data-astro-cid-gjtny2mx>&larr; All Posts</a> </aside> <article class="post-content" id="postContent" data-pagefind-body data-astro-cid-gjtny2mx>  <h2 id="1-简介">1. 简介</h2>
+<p>Flutter Boost 是闲鱼团队开发的一个 Flutter 混合开发框架，项目背景可以看看闲鱼的这篇文章：码上用它开始Flutter混合开发——FlutterBoost。</p>
+<p>文章中主要讲述了多引擎存在一些实际问题，所以闲鱼目前采用的混合方案是共享同一个引擎的方案。而 Flutter Boost 的 Feature 如下：</p>
+<ul>
+<li>可复用通用型混合方案</li>
+<li>支持更加复杂的混合模式，比如支持主页Tab这种情况</li>
+<li>无侵入性方案：不再依赖修改Flutter的方案</li>
+<li>支持通用页面生命周期</li>
+<li>统一明确的设计概念</li>
+</ul>
+<p>Flutter Boost 采用共享引擎的模式来实现，主要思路是由 Native 容器 Container 通过消息驱动 Flutter 页面容器 Container，从而达到 Native Container 与 Flutter Container 的同步目的。简单的理解，闲鱼想做到把 Flutter 容器做成浏览器的感觉。填写一个页面地址，然后由容器去管理页面的绘制。在 Native 侧我们只需要关心如果初始化容器，然后设置容器对应的页面标志即可。</p>
+<p>鉴于网上没有相关的接入文档和使用教程，我这几天也恰好抽空研究了一下，遂整理成文，仅供参考。由于篇幅原因，本文只研究 Android 端的接入与源码，iOS 的部分后续有机会则补充文章来讲解。</p>
+<blockquote>
+<p>注：本文接入的 Flutter Boost 版本为 1.12.13，对应支持的 Flutter SDK 版本为 1.12.13-hotfixes，是目前最新的版本。但 Flutter Boost 版本更新之后，接入方式和使用方式可能会有一些改变，故参考本文时请认准 1.12.13 版本。</p>
+</blockquote>
+<h2 id="2-接入">2. 接入</h2>
+<h3 id="21-创建-flutter-module">2.1 创建 Flutter Module</h3>
+<p>在开始之前，我们需要保证工程目录如下结构所示：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>--- flutter_hybrid</span></span>
+<span class="line"><span>--- flutter_module</span></span>
+<span class="line"><span>--- FlutterHybridAndroid </span></span>
+<span class="line"><span>--- FlutterHybridiOS</span></span></code></pre>
+<p>即，iOS 工程与 Android 工程与 flutter_module 目录在同一层级。如此，方便管理，同时也保证后续集成代码中路径的一致性。</p>
+<p>接着，我们来创建 Flutter Module：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>cd flutter_hybrid</span></span>
+<span class="line"><span>flutter create -t module flutter_module</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>需要注意的是，如果要创建支持 Android X 的 flutter module，命令上需要加上 —androidx 参数，即：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>flutter create --androidx -t module flutter_module</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>注：如果安装依赖过慢，可以切换为国内的依赖镜像源。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>export PUB_HOSTED_URL=https://pub.flutter-io.cn</span></span>
+<span class="line"><span>export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>当然我们也可以通过新版的 Android Studio 来可视化创建一个 Flutter Module （需 3.6.1 以上版本，并给 IDE 装上 Flutter 与 Dart 插件），具体方法可以见官网介绍（<a href="https://flutter.dev/docs/development/add-to-app/android/project-setup%EF%BC%89%EF%BC%8C%E6%AD%A4%E5%A4%84%E4%B8%8D%E5%86%8D%E8%B5%98%E8%BF%B0%E3%80%82%E4%BD%86%E4%B8%AA%E4%BA%BA%E5%BB%BA%E8%AE%AE%E4%BD%BF%E7%94%A8%E6%9C%AC%E6%96%87%E4%BB%8B%E7%BB%8D%E7%9A%84%E6%9B%B4%E4%B8%BA%E9%80%9A%E7%94%A8%E7%9A%84%E6%96%B9%E6%B3%95%E5%8E%BB%E5%88%9B%E5%BB%BA%E5%B9%B6%E9%9B%86%E6%88%90">https://flutter.dev/docs/development/add-to-app/android/project-setup），此处不再赘述。但个人建议使用本文介绍的更为通用的方法去创建并集成</a> Flutter Module。</p>
+<h3 id="22-集成-flutter-module">2.2 集成 Flutter Module</h3>
+<p>创建好 Flutter Module 之后，需要在 Native 工程中集成 flutter_module。具体有两种方式：</p>
+<ol>
+<li>源码依赖</li>
+<li>arr 依赖</li>
+</ol>
+<h4 id="221-源码依赖集成">2.2.1 源码依赖集成</h4>
+<p>源码依赖的优点是开发、调试方便，也就是在 Android 工程的 settings.gradle 和 app 目录下的 build.gradle 文件中加入对 flutter_module 的依赖即可。</p>
+<p>首先，在 settings.gradle 文件中，增加以下代码：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>include ':app'                                     // 已存在的内容</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>setBinding(new Binding([gradle: this]))                                </span></span>
+<span class="line"><span>evaluate(new File(                                                     </span></span>
+<span class="line"><span>  settingsDir.parentFile,                                               </span></span>
+<span class="line"><span>  'flutter_module/.android/include_flutter.groovy'                      </span></span>
+<span class="line"><span>))</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>setBinding 与 evaluate 增加之后我们就可以在 app/build.gradle 中增加 :flutter 依赖：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>...</span></span>
+<span class="line"><span>dependencies {</span></span>
+<span class="line"><span>  implementation project(':flutter')</span></span>
+<span class="line"><span>...</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>同时也需要在该文件中的 android() 配置指定一下编译时的 Java 版本为 Java 8，否则会报错</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>compileOptions {</span></span>
+<span class="line"><span>  sourceCompatibility 1.8</span></span>
+<span class="line"><span>  targetCompatibility 1.8</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>最后执行一下 gradle sync 下载依赖库。如果集成成功，会在左侧的项目目录中看到与项目同级的 flutter_module 文件夹。</p>
+<h4 id="222-arr-依赖集成">2.2.2 arr 依赖集成</h4>
+<p>如果需要用远程打包，而远程的机器上没有 flutter 环境，就可以把 flutter 打包成 arr 文件进行依赖。生成 aar 文件之后再在主工程里引用，flutter aar 中包含了 flutter sdk 的代码，所以这种方式是不需要flutter 环境的，也适合第三方快速接入。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>cd .android/</span></span>
+<span class="line"><span>./gradlew flutter:assembleDebug</span></span>
+<span class="line"><span></span></span></code></pre>
+<h3 id="23-添加-flutter-boost-依赖">2.3 添加 Flutter Boost 依赖</h3>
+<p>首先在 Flutter Module 项目中加入 flutter-boost 依赖，即在 pubspec.yaml 文件中的 dev_dependencies 配置增加 flutter-boost 依赖：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>dev_dependencies:</span></span>
+<span class="line"><span>  flutter_boost:</span></span>
+<span class="line"><span>     git:</span></span>
+<span class="line"><span>        url: 'https://github.com/alibaba/flutter_boost.git'</span></span>
+<span class="line"><span>        ref: '1.12.13'</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>以上 flutter boost 支持 AndroidX，如果想支持 support，则需要切换分支：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>flutter_boost:</span></span>
+<span class="line"><span>    git:</span></span>
+<span class="line"><span>        url: 'https://github.com/alibaba/flutter_boost.git'</span></span>
+<span class="line"><span>        ref: 'task/task_v1.12.13_support_hotfixes'</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>编辑完之后在 flutter_module 目录下执行以下命令安装依赖。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>flutter packages get</span></span></code></pre>
+<p>之后在 Android 工程中的 app 目录下的 build.gradle 文件中增加 :flutter_boost 依赖，</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>dependencies {</span></span>
+<span class="line"><span>    ...</span></span>
+<span class="line"><span>    implementation project(':flutter')</span></span>
+<span class="line"><span>    implementation project(':flutter_boost')</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>因为 Flutter Boost 是以 Flutter Plugin 的形式集成到我们的项目中来的，所以我们还需要做一些工作，首先在 app 目录下的 build.gradle 文件的头部增加以下代码：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>def localProperties = new Properties()</span></span>
+<span class="line"><span>def localPropertiesFile = rootProject.file('local.properties')</span></span>
+<span class="line"><span>if (localPropertiesFile.exists()) {</span></span>
+<span class="line"><span>    localPropertiesFile.withReader('UTF-8') { reader -></span></span>
+<span class="line"><span>        localProperties.load(reader)</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>def flutterRoot = localProperties.getProperty('flutter.sdk')</span></span>
+<span class="line"><span>if (flutterRoot == null) {</span></span>
+<span class="line"><span>    throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>def flutterVersionCode = localProperties.getProperty('flutter.versionCode')</span></span>
+<span class="line"><span>if (flutterVersionCode == null) {</span></span>
+<span class="line"><span>    flutterVersionCode = '1'</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>def flutterVersionName = localProperties.getProperty('flutter.versionName')</span></span>
+<span class="line"><span>if (flutterVersionName == null) {</span></span>
+<span class="line"><span>    flutterVersionName = '1.0'</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>这需要我们在 Android 工程下的 local.properties 文件中指定以下我们本地的 Flutter SDK 的位置（没有该文件就新建一个）：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>flutter.sdk = /Users/airing/flutter</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>最后再在工程目录下的  settings.gradle 中增加以下代码引入 flutter-plugin：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>def flutterProjectRoot = rootProject.projectDir.parentFile.toPath()</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>def plugins = new Properties()</span></span>
+<span class="line"><span>def pluginsFile = new File(flutterProjectRoot.toFile(), '.flutter-plugins')</span></span>
+<span class="line"><span>if (pluginsFile.exists()) {</span></span>
+<span class="line"><span>    pluginsFile.withReader('UTF-8') { reader -> plugins.load(reader) }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>plugins.each { name, path -></span></span>
+<span class="line"><span>    def pluginDirectory = flutterProjectRoot.resolve(path).resolve('android').toFile()</span></span>
+<span class="line"><span>    include ":$name"</span></span>
+<span class="line"><span>    project(":$name").projectDir = pluginDirectory</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>同样的，修改完 Android 工程的依赖之后，需要 gradle sync 一下。</p>
+<p>至此，Flutter Boost 集成成功。接下来，我们使用 Flutter Boost 进行混合开发。而混合开发，主要涉及到两个场景：</p>
+<ol>
+<li>在 Native 项目中加入 Flutter 页面，即 Add a single Flutter screen。</li>
+<li>在 Native 页面中嵌入 Flutter 模块，即 Add a Flutter Fragment。</li>
+</ol>
+<p>这两种方式在 Flutter 的官网上都有实践讲解，我们这里主要看看如果使用 Flutter boost 究竟要如何实现的，并顺便探究一下其实现原理。</p>
+<h2 id="3-混合开发1-flutter-view">3. 混合开发1： Flutter View</h2>
+<p><img src="https://airing.ursb.me/image/blog/flutterboost/1.png" alt=""></p>
+<h3 id="31-在-flutter-module-中使用-flutter-boost">3.1 在 Flutter Module 中使用 Flutter Boost</h3>
+<p>首先引入依赖</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>import 'package:flutter_boost/flutter_boost.dart';</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>随后在 main 方法中运行的 rootWidget 中注册两个新的页面，以便 Native 工程可以跳转过来。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>import 'package:flutter/material.dart';</span></span>
+<span class="line"><span>import 'package:flutter_boost/flutter_boost.dart';</span></span>
+<span class="line"><span>import 'simple_page_widgets.dart';</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>void main() {</span></span>
+<span class="line"><span>  runApp(MyApp());</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>class MyApp extends StatefulWidget {</span></span>
+<span class="line"><span>  @override</span></span>
+<span class="line"><span>  _MyAppState createState() => _MyAppState();</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>class _MyAppState extends State&#x3C;MyApp> {</span></span>
+<span class="line"><span>  @override</span></span>
+<span class="line"><span>  void initState() {</span></span>
+<span class="line"><span>    super.initState();</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    FlutterBoost.singleton.registerPageBuilders({</span></span>
+<span class="line"><span>      'first': (pageName, params, _) => FirstRouteWidget(),</span></span>
+<span class="line"><span>      'second': (pageName, params, _) => SecondRouteWidget(),</span></span>
+<span class="line"><span>    });</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>  @override</span></span>
+<span class="line"><span>  Widget build(BuildContext context) {</span></span>
+<span class="line"><span>    return MaterialApp(</span></span>
+<span class="line"><span>        title: 'Flutter Boost example',</span></span>
+<span class="line"><span>        builder: FlutterBoost.init(),</span></span>
+<span class="line"><span>        home: Container(</span></span>
+<span class="line"><span>            color:Colors.white</span></span>
+<span class="line"><span>        ));</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>代码很简单：</p>
+<ol>
+<li>在 initState 的时候使用 <code>FlutterBoost.singleton.registerPageBuilders</code>  注册页面</li>
+<li>在 bulider 中初始化 FlutterBoost。</li>
+</ol>
+<h3 id="32-在-android-工程中使用-flutter-boost">3.2 在 Android 工程中使用 Flutter Boost</h3>
+<p>在 Android 项目中增加一个 Flutter 页面，即是添加一个  Flutter Activity（iOS 即是添加一个新的 FlutterViewController，这里不再花篇幅去讲解 iOS 的实现了，有兴趣的同学可以自己去阅读 Flutter Boost 的示例代码和源码）。</p>
+<p>这里我们在 AndroidManifest.xml 的 Application 配置中添加一个 Flutter Boost Activity：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>&#x3C;activity</span></span>
+<span class="line"><span>  android:name="com.idlefish.flutterboost.containers.BoostFlutterActivity"</span></span>
+<span class="line"><span>  android:theme="@style/Theme.AppCompat"</span></span>
+<span class="line"><span>  android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density"</span></span>
+<span class="line"><span>  android:hardwareAccelerated="true"</span></span>
+<span class="line"><span>  android:windowSoftInputMode="adjustResize" ></span></span>
+<span class="line"><span>  &#x3C;meta-data android:name="io.flutter.embedding.android.SplashScreenDrawable" android:resource="@drawable/page_loading"/></span></span>
+<span class="line"><span>&#x3C;/activity></span></span>
+<span class="line"><span></span></span></code></pre>
+<p>除此之外还需要在 AndroidManifest.xml 中添加 flutterEmbedding 版本设置：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>&#x3C;meta-data android:name="flutterEmbedding"</span></span>
+<span class="line"><span>android:value="2"></span></span>
+<span class="line"><span>&#x3C;/meta-data></span></span>
+<span class="line"><span></span></span></code></pre>
+<p>接着要进行初始化 FlutterBoost 的工作，建议在 Application 的 onCreate 方法中初始化：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>public class MyApplication extends Application {</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    @Override</span></span>
+<span class="line"><span>    public void onCreate() {</span></span>
+<span class="line"><span>        super.onCreate();</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        INativeRouter router = new INativeRouter() {</span></span>
+<span class="line"><span>            @Override</span></span>
+<span class="line"><span>            public void openContainer(Context context, String url, Map&#x3C;String, Object> urlParams, int requestCode, Map&#x3C;String, Object> exts) {</span></span>
+<span class="line"><span>               String  assembleUrl=Utils.assembleUrl(url,urlParams);</span></span>
+<span class="line"><span>                PageRouter.openPageByUrl(context,assembleUrl, urlParams);</span></span>
+<span class="line"><span>            }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        };</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        FlutterBoost.BoostLifecycleListener boostLifecycleListener= new FlutterBoost.BoostLifecycleListener(){</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>            @Override</span></span>
+<span class="line"><span>            public void beforeCreateEngine() {</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>            }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>            @Override</span></span>
+<span class="line"><span>            public void onEngineCreated() {</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>            }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>            @Override</span></span>
+<span class="line"><span>            public void onPluginsRegistered() {</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>            }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>            @Override</span></span>
+<span class="line"><span>            public void onEngineDestroy() {</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>            }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        };</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        Platform platform = new FlutterBoost</span></span>
+<span class="line"><span>                .ConfigBuilder(this,router)</span></span>
+<span class="line"><span>                .isDebug(true)</span></span>
+<span class="line"><span>                .whenEngineStart(FlutterBoost.ConfigBuilder.ANY_ACTIVITY_CREATED)</span></span>
+<span class="line"><span>                .renderMode(FlutterView.RenderMode.texture)</span></span>
+<span class="line"><span>                .lifecycleListener(boostLifecycleListener)</span></span>
+<span class="line"><span>                .build();</span></span>
+<span class="line"><span>        FlutterBoost.instance().init(platform);</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>FlutterBoost 在 Android 工程中初始化需要进行 4 步工作：</p>
+<ol>
+<li>注册路由跳转方法（后续会说 PageRouter 的实现）</li>
+<li>增加 flutter boost 的生命周期监听函数，可以在 Flutter Engine 创建之前、创建之后、销毁之后与 Flutter Plugin 注册之后回调事件。</li>
+<li>声明 Flutter boost 配置，把路由和生命周期函数配置上。</li>
+<li>初始化 Flutter boost。</li>
+</ol>
+<p>接着要在 Android 工程中实现一个页面路由的工具类 PageRouter，这里直接摆上 Flutter Boost 示例代码中的实现了，比较全面：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>public class PageRouter {</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    public final static Map&#x3C;String, String> pageName = new HashMap&#x3C;String, String>() {{</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        put("first", "first");</span></span>
+<span class="line"><span>        put("second", "second");</span></span>
+<span class="line"><span>        put("tab", "tab");</span></span>
+<span class="line"><span>        put("sample://flutterPage", "flutterPage");</span></span>
+<span class="line"><span>    }};</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    public static final String NATIVE_PAGE_URL = "sample://nativePage";</span></span>
+<span class="line"><span>    public static final String FLUTTER_PAGE_URL = "sample://flutterPage";</span></span>
+<span class="line"><span>    public static final String FLUTTER_FRAGMENT_PAGE_URL = "sample://flutterFragmentPage";</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    public static boolean openPageByUrl(Context context, String url, Map params) {</span></span>
+<span class="line"><span>        return openPageByUrl(context, url, params, 0);</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    public static boolean openPageByUrl(Context context, String url, Map params, int requestCode) {</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        String path = url.split("\\?")[0];</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        Log.i("openPageByUrl",path);</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        try {</span></span>
+<span class="line"><span>            if (pageName.containsKey(path)) {</span></span>
+<span class="line"><span>                Intent intent = BoostFlutterActivity.withNewEngine().url(pageName.get(path)).params(params)</span></span>
+<span class="line"><span>                        .backgroundMode(BoostFlutterActivity.BackgroundMode.opaque).build(context);</span></span>
+<span class="line"><span>                if(context instanceof Activity){</span></span>
+<span class="line"><span>                    Activity activity=(Activity)context;</span></span>
+<span class="line"><span>                    activity.startActivityForResult(intent,requestCode);</span></span>
+<span class="line"><span>                }else{</span></span>
+<span class="line"><span>                    context.startActivity(intent);</span></span>
+<span class="line"><span>                }</span></span>
+<span class="line"><span>                return true;</span></span>
+<span class="line"><span>            } else if (url.startsWith(FLUTTER_FRAGMENT_PAGE_URL)) {</span></span>
+<span class="line"><span>                context.startActivity(new Intent(context, FlutterFragmentPageActivity.class));</span></span>
+<span class="line"><span>                return true;</span></span>
+<span class="line"><span>            } else if (url.startsWith(NATIVE_PAGE_URL)) {</span></span>
+<span class="line"><span>                context.startActivity(new Intent(context, NativePageActivity.class));</span></span>
+<span class="line"><span>                return true;</span></span>
+<span class="line"><span>            }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>            return false;</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        } catch (Throwable t) {</span></span>
+<span class="line"><span>            return false;</span></span>
+<span class="line"><span>        }</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<h3 id="33-在-native-项目中打开-flutter-页面">3.3 在 Native 项目中打开 Flutter 页面</h3>
+<p>调用比较简单，在 Native 页面上的按钮绑定上 onClick 监听来实现点击打开我们注册的 Flutter 中的 first 页面，还可以顺便传上一个 map 参数：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>@Override</span></span>
+<span class="line"><span>public void onClick(View v) {</span></span>
+<span class="line"><span>    Map params = new HashMap();</span></span>
+<span class="line"><span>    params.put("test1","v_test1");</span></span>
+<span class="line"><span>    params.put("test2","v_test2");</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    PageRouter.openPageByUrl(this, "first", params);</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>我们回顾一下我们在 3.1 中 Flutter 中注册页面的代码，发现有一个 params 参数，没错那就是 Native 打开 Flutter 时传过来的参数，我们可以打印出来或者传给 widget 做额外的处理：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>FlutterBoost.singleton.registerPageBuilders({</span></span>
+<span class="line"><span>      'first': (pageName, params, _) => {</span></span>
+<span class="line"><span>        print("flutterPage params:$params");</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        return FirstRouteWidget(params:params);</span></span>
+<span class="line"><span>      },</span></span>
+<span class="line"><span>      'second': (pageName, params, _) => SecondRouteWidget(),</span></span>
+<span class="line"><span>});</span></span>
+<span class="line"><span></span></span></code></pre>
+<h3 id="34-在-flutter-页面中打开-native-页面">3.4 在 Flutter 页面中打开 Native 页面</h3>
+<p>同样的，我们可能还会遇到一种场景，在 Native 中打开 Flutter 页面之后，我们 Flutter 中的业务又需要再打开一个新的 Native 页面，那需要怎么做？在 Flutter 中使用 FlutterBoost.singleton.open 即可，如下：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// 后面的参数会在native的IPlatform.startActivity方法回调中拼接到url的query部分。</span></span>
+<span class="line"><span>// 例如：sample://nativePage?aaa=bbb</span></span>
+<span class="line"><span>onTap: () => FlutterBoost.singleton</span></span>
+<span class="line"><span>     .open("sample://nativePage", urlParams: &#x3C;dynamic,dynamic>{</span></span>
+<span class="line"><span>      "query": {"aaa": "bbb"}</span></span>
+<span class="line"><span>}),</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>当然，这个方法不单单支持打开 Native 页面，也可以打开一个新的 Flutter 页面，只需要写好路由名就好，这里不再赘述。</p>
+<blockquote>
+<p>注：得益于 Flutter 的 JIT 编译模式，我们可以通过 flutter attach 命令来实现 hot reload 功能，在开发 Flutter 页面时无需重新编译工程。</p>
+</blockquote>
+<h2 id="4-混合开发2flutter-fragment">4. 混合开发2：Flutter Fragment</h2>
+<p><img src="https://airing.ursb.me/image/blog/flutterboost/2.png" alt=""></p>
+<p>我们假设工程中存在一个 Activity，配置如下：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>&#x3C;activity</span></span>
+<span class="line"><span>     android:name=".FlutterFragmentPageActivity"</span></span>
+<span class="line"><span>     android:theme="@style/Theme.AppCompat"</span></span>
+<span class="line"><span>     android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density"</span></span>
+<span class="line"><span>     android:hardwareAccelerated="true"</span></span>
+<span class="line"><span>     android:windowSoftInputMode="adjustResize"></span></span>
+<span class="line"><span>     &#x3C;meta-data android:name="io.flutter.embedding.android.SplashScreenDrawable" android:resource="@drawable/page_loading"/></span></span>
+<span class="line"><span>&#x3C;/activity></span></span>
+<span class="line"><span></span></span></code></pre>
+<p>而对应 layout 中我们要加入一个 FrameLayout 组件作为占位符：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>&#x3C;FrameLayout</span></span>
+<span class="line"><span>        android:layout_width="match_parent"</span></span>
+<span class="line"><span>        android:layout_height="0dp"</span></span>
+<span class="line"><span>        android:layout_weight="1"</span></span>
+<span class="line"><span>        android:id="@+id/fragment_stub"/></span></span>
+<span class="line"><span></span></span></code></pre>
+<p>最后，在代码中拿到对应 url 的 Flutter widget，塞到占位组件里即可：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>@Override</span></span>
+<span class="line"><span>public void onClick(View v) {</span></span>
+<span class="line"><span>    FlutterFragment mFragment = new FlutterFragment.NewEngineFragmentBuilder().url("flutterFragment").build();</span></span>
+<span class="line"><span>    getSupportFragmentManager()</span></span>
+<span class="line"><span>        .beginTransaction()</span></span>
+<span class="line"><span>        .replace(R.id.fragment_stub, mFragment)</span></span>
+<span class="line"><span>        .commit();</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<h2 id="5-flutter-boost-源码解析">5. Flutter Boost 源码解析</h2>
+<p>本节主要简单分析一下 Flutter Boost 的原理，只有知根知底才能用得得心应手。由于篇幅问题，不可能全部的源码都分析一遍，本节只分析具有代表性的源码，其余的原理基本一致，留给读者自行阅读。</p>
+<p>那本节就从 Dart 端切入，关注其中两个 api，一个是注册页面的 registerPageBuilders，另一个是打开页面的 open，看看 Flutter Boost 是如何实现它们的。</p>
+<h3 id="51-注册页面">5.1 注册页面</h3>
+<p>我们在使用 Flutter Boost 的流程中，第一步是要在 Flutter 中注册页面，调用了 registerPageBuilders 函数，那我们来看一下这个函数是如何实现的。</p>
+<p>在 flutter_boost.dart 文件中，我们很容易就找到了这个函数的入口：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>///Register a map builders</span></span>
+<span class="line"><span>void registerPageBuilders(Map&#x3C;String, PageBuilder> builders) {</span></span>
+<span class="line"><span>  ContainerCoordinator.singleton.registerPageBuilders(builders);</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>它调用了 ContainerCoordinator 单例的 registerPageBuilders，那我们接着看 container_coordinator.dart 文件中这个函数的实现：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>final Map&#x3C;String, PageBuilder> _pageBuilders = &#x3C;String, PageBuilder>{};</span></span>
+<span class="line"><span>  PageBuilder _defaultPageBuilder;</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>///Register page builder for a key.</span></span>
+<span class="line"><span>void registerPageBuilder(String pageName, PageBuilder builder) {</span></span>
+<span class="line"><span>  if (pageName != null &#x26;&#x26; builder != null) {</span></span>
+<span class="line"><span>    _pageBuilders[pageName] = builder;</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>其中 PageBuilder 我们可以找到定义，是一个 Widget，那么这个函数其实就将我们注册的 Widget 塞到一个 Map 里，而我们指定的路由名，就是它的 key。那我们接着要关注的是 _pageBuilders 定义好之后会怎么被使用？</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>BoostContainerSettings _createContainerSettings(</span></span>
+<span class="line"><span>      String name, Map params, String pageId) {</span></span>
+<span class="line"><span>    Widget page;</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    final BoostContainerSettings routeSettings = BoostContainerSettings(</span></span>
+<span class="line"><span>        uniqueId: pageId,</span></span>
+<span class="line"><span>        name: name,</span></span>
+<span class="line"><span>        params: params,</span></span>
+<span class="line"><span>        builder: (BuildContext ctx) {</span></span>
+<span class="line"><span>          //Try to build a page using keyed builder.</span></span>
+<span class="line"><span>          if (_pageBuilders[name] != null) {</span></span>
+<span class="line"><span>            page = _pageBuilders[name](name, params, pageId);</span></span>
+<span class="line"><span>          }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>          //Build a page using default builder.</span></span>
+<span class="line"><span>          if (page == null &#x26;&#x26; _defaultPageBuilder != null) {</span></span>
+<span class="line"><span>            page = _defaultPageBuilder(name, params, pageId);</span></span>
+<span class="line"><span>          }</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>          assert(page != null);</span></span>
+<span class="line"><span>          Logger.log('build widget:$page for page:$name($pageId)');</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>          return page;</span></span>
+<span class="line"><span>        });</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    return routeSettings;</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>可以发现，它在 _createContainerSettings 中 build widget 之后返回一个 routeSetting，该变量在 _nativeContainerWillShow 中被 pushContainer 调用，而 _nativeContainerWillShow 会在 _onMethodCall 中被调用。</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>bool _nativeContainerWillShow(String name, Map params, String pageId) {</span></span>
+<span class="line"><span>    if (FlutterBoost.containerManager?.containsContainer(pageId) != true) {</span></span>
+<span class="line"><span>      FlutterBoost.containerManager</span></span>
+<span class="line"><span>          ?.pushContainer(_createContainerSettings(name, params, pageId));</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>    return true;</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span></span></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>Future&#x3C;dynamic> _onMethodCall(MethodCall call) {</span></span>
+<span class="line"><span>    Logger.log("onMetohdCall ${call.method}");</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    switch (call.method) {</span></span>
+<span class="line"><span>      // 省略无关代码</span></span>
+<span class="line"><span>      case "willShowPageContainer":</span></span>
+<span class="line"><span>        {</span></span>
+<span class="line"><span>          String pageName = call.arguments["pageName"];</span></span>
+<span class="line"><span>          Map params = call.arguments["params"];</span></span>
+<span class="line"><span>          String uniqueId = call.arguments["uniqueId"];</span></span>
+<span class="line"><span>          _nativeContainerWillShow(pageName, params, uniqueId);</span></span>
+<span class="line"><span>        }</span></span>
+<span class="line"><span>        break;</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>  // 省略无关代码</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>以上两段代码的作用是当 Dart 端监听到来自 Native 的通信之后，如果 Native 传递了一个要打开一个页面容器的信息（willShowPageContainer）之后，FlutterBoost 的容器管理器就会根据用户注册配置的路由页面去打开一个新的容器。而这里的 pushContainer 主要做一些路由管理和绑定监听等操作，我们就不再细看这部分的逻辑了，主要还是看看 _onMethodCall 的 Native 与 Dart 的互相通信。</p>
+<h3 id="52-通信">5.2 通信</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>ContainerCoordinator(BoostChannel channel) {</span></span>
+<span class="line"><span>    assert(_instance == null);</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    _instance = this;</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    channel.addEventListener("lifecycle",</span></span>
+<span class="line"><span>        (String name, Map arguments) => _onChannelEvent(arguments));</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>    channel.addMethodHandler((MethodCall call) => _onMethodCall(call));</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>Flutter Boost 中负责通信的是 BoostChannel，它的本质上是 MethodChannel 的一层封装，而 MethodChannel 是 Native 与 Flutter 通信的方案之一，有兴趣的同学可以自己查阅 MethodChannel 相关的资料加以了解。</p>
+<p><img src="https://airing.ursb.me/image/blog/flutterboost/3.png" alt=""></p>
+<blockquote>
+<p>可以阅读 Flutter 官网对 MethodChannel 的介绍：<a href="https://flutter.dev/docs/development/platform-integration/platform-channels">https://flutter.dev/docs/development/platform-integration/platform-channels</a></p>
+</blockquote>
+<h3 id="53-打开页面">5.3 打开页面</h3>
+<p>最后我们再来看一个打开页面的函数 open，它的实现在库中也容易找到：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>Future&#x3C;Map&#x3C;dynamic, dynamic>> open(String url,</span></span>
+<span class="line"><span>      {Map&#x3C;dynamic, dynamic> urlParams, Map&#x3C;dynamic, dynamic> exts}) {</span></span>
+<span class="line"><span>    Map&#x3C;dynamic, dynamic> properties = new Map&#x3C;dynamic, dynamic>();</span></span>
+<span class="line"><span>    properties["url"] = url;</span></span>
+<span class="line"><span>    properties["urlParams"] = urlParams;</span></span>
+<span class="line"><span>    properties["exts"] = exts;</span></span>
+<span class="line"><span>    return channel.invokeMethod&#x3C;Map&#x3C;dynamic, dynamic>>('openPage', properties);</span></span>
+<span class="line"><span>  }</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>可以发现，它的工作其实就是包装好参数后把 openPage 的消息发送给 Native。那我们再来看看 Native 侧接受到这个消息之后作何处理吧！在 Android 侧的 Flutter Boost 源码中可以找到 FlutterBoostPlugin.java 这个文件，其中有 MethodChannel 的逻辑来监听 Dart 侧的消息：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>class BoostMethodHandler implements MethodChannel.MethodCallHandler {</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>        @Override</span></span>
+<span class="line"><span>        public void onMethodCall(MethodCall methodCall, final MethodChannel.Result result) {</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>            FlutterViewContainerManager mManager = (FlutterViewContainerManager) FlutterBoost.instance().containerManager();</span></span>
+<span class="line"><span>            switch (methodCall.method) {</span></span>
+<span class="line"><span>                // 省略无关的分支</span></span>
+<span class="line"><span>                case "openPage": {</span></span>
+<span class="line"><span>                    try {</span></span>
+<span class="line"><span>                        Map&#x3C;String, Object> params = methodCall.argument("urlParams");</span></span>
+<span class="line"><span>                        Map&#x3C;String, Object> exts = methodCall.argument("exts");</span></span>
+<span class="line"><span>                        String url = methodCall.argument("url");</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>                        mManager.openContainer(url, params, exts, new FlutterViewContainerManager.OnResult() {</span></span>
+<span class="line"><span>                            @Override</span></span>
+<span class="line"><span>                            public void onResult(Map&#x3C;String, Object> rlt) {</span></span>
+<span class="line"><span>                                if (result != null) {</span></span>
+<span class="line"><span>                                    result.success(rlt);</span></span>
+<span class="line"><span>                                }</span></span>
+<span class="line"><span>                            }</span></span>
+<span class="line"><span>                        });</span></span>
+<span class="line"><span>                    } catch (Throwable t) {</span></span>
+<span class="line"><span>                        result.error("open page error", t.getMessage(), t);</span></span>
+<span class="line"><span>                    }</span></span>
+<span class="line"><span>                }</span></span>
+<span class="line"><span>                break;</span></span>
+<span class="line"><span>                default: {</span></span>
+<span class="line"><span>                    result.notImplemented();</span></span>
+<span class="line"><span>                }</span></span>
+<span class="line"><span>            }</span></span>
+<span class="line"><span>        }</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>在收到来自 Dart 的 openPage 消息后，Android 侧的容器管理器（FlutterViewContainerMananger）会根据 Dart 侧携带来的配置数据打开一个容器，而这个 openContainer 通过阅读源码，可以发现它最后是一个抽象方法，需要我们自己在业务侧实现。回看我们在 3.2 节中在 Android 中初始化 Flutter Boost 第一步工作，做的就是实现这个 openContainer，而它最后交由我们封装的 PageRouter 工具类来实现了，即 context.startActivity()。</p>
+<p>至此，我们在 Android 工程中集成了 Flutter Boost 来实现 Flutter 在 Android 项目中的混合开发。本文只是初步分析了下 Flutter Boost 的源码，后续有机会会补上详细的分析和 iOS 侧的接入使用。敬请期待。</p>
+<h2 id="附flutter-boost-接入实践ios-篇">附：Flutter Boost 接入实践（iOS 篇）</h2>
+<h3 id="1-前言">1. 前言</h3>
+<p>我们给 Android 接入 Flutter Boost 之后，现在我们来看看如何给 iOS 工程（OC）接入 Flutter Boost。</p>
+<p>本文将简单梳理一下 iOS 工程接入的 Flutter Boost 的流程，以作为前文的补充。</p>
+<blockquote>
+<p>参见前文：Flutter Boost 混合开发实践与源码解析（以 Android 为例），Flutter Module 也依旧用前文生成的，目录结构依旧如前文所述，不再赘述。</p>
+</blockquote>
+<h3 id="2-接入-1">2. 接入</h3>
+<h4 id="21-工程准备">2.1 工程准备</h4>
+<p>准备一个配有 Cocoapods 的空白工程，在 Podfile 中配置我们之前准备好的 Flutter Module 作为依赖：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>flutter_application_path = '../flutter_module'</span></span>
+<span class="line"><span>load File.join(flutter_application_path, '.ios', 'Flutter', 'podhelper.rb')</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>target 'FlutterHybridiOS' do</span></span>
+<span class="line"><span>install_all_flutter_pods(flutter_application_path)</span></span>
+<span class="line"><span>end</span></span></code></pre>
+<p>接着在工程根目录下运行 pod install ，即可集成上 Flutter Module。看到我们的 Pods 中多了以下几个模块，即说明集成成功。</p>
+<p><img src="https://airing.ursb.me/image/blog/1585189850410-c1b92b89-ccff-447d-9b0a-49ec821696db.png" alt="image.png"></p>
+<blockquote>
+<p>如不了解 Cocoapods，请参见 CocoaPods 使用指南</p>
+</blockquote>
+<h4 id="22-实现路由类">2.2 实现路由类</h4>
+<p>这一块直接参照 Flutter Boost 官方提供的 example 就好了：<a href="https://github.com/alibaba/flutter_boost/blob/master/example/ios/Runner/PlatformRouterImp.h">https://github.com/alibaba/flutter_boost/blob/master/example/ios/Runner/PlatformRouterImp.h</a></p>
+<p>PlatformRouterImp.h：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>#import &#x3C;Foundation/Foundation.h></span></span>
+<span class="line"><span>#import &#x3C;UIKit/UIKit.h></span></span>
+<span class="line"><span>#import &#x3C;flutter_boost/FlutterBoost.h></span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>NS_ASSUME_NONNULL_BEGIN</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>@protocol FLBPlatform;</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>/**</span></span>
+<span class="line"><span> * 实现平台侧的页面打开和关闭，不建议直接使用用于页面打开，建议使用FlutterBoostPlugin中的open和close方法来打开或关闭页面；</span></span>
+<span class="line"><span> * FlutterBoostPlugin带有页面返回数据的能力</span></span>
+<span class="line"><span> */</span></span>
+<span class="line"><span>@interface PlatformRouterImp : NSObject&#x3C;FLBPlatform></span></span>
+<span class="line"><span>@property (nonatomic,strong) UINavigationController *navigationController;</span></span>
+<span class="line"><span>@end</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>NS_ASSUME_NONNULL_END</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>PlatformRouterImp.m：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>#import "PlatformRouterImp.h"</span></span>
+<span class="line"><span>#import &#x3C;flutter_boost/FlutterBoost.h></span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>@interface PlatformRouterImp()</span></span>
+<span class="line"><span>@end</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>@implementation PlatformRouterImp</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>#pragma mark - Boost 1.5</span></span>
+<span class="line"><span>- (void)open:(NSString *)name</span></span>
+<span class="line"><span>   urlParams:(NSDictionary *)params</span></span>
+<span class="line"><span>        exts:(NSDictionary *)exts</span></span>
+<span class="line"><span>  completion:(void (^)(BOOL))completion</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    BOOL animated = [exts[@"animated"] boolValue];</span></span>
+<span class="line"><span>    FLBFlutterViewContainer *vc = FLBFlutterViewContainer.new;</span></span>
+<span class="line"><span>    [vc setName:name params:params];</span></span>
+<span class="line"><span>    [self.navigationController pushViewController:vc animated:animated];</span></span>
+<span class="line"><span>    if(completion) completion(YES);</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (void)present:(NSString *)name</span></span>
+<span class="line"><span>   urlParams:(NSDictionary *)params</span></span>
+<span class="line"><span>        exts:(NSDictionary *)exts</span></span>
+<span class="line"><span>  completion:(void (^)(BOOL))completion</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    BOOL animated = [exts[@"animated"] boolValue];</span></span>
+<span class="line"><span>    FLBFlutterViewContainer *vc = FLBFlutterViewContainer.new;</span></span>
+<span class="line"><span>    [vc setName:name params:params];</span></span>
+<span class="line"><span>    [self.navigationController presentViewController:vc animated:animated completion:^{</span></span>
+<span class="line"><span>        if(completion) completion(YES);</span></span>
+<span class="line"><span>    }];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (void)close:(NSString *)uid</span></span>
+<span class="line"><span>       result:(NSDictionary *)result</span></span>
+<span class="line"><span>         exts:(NSDictionary *)exts</span></span>
+<span class="line"><span>   completion:(void (^)(BOOL))completion</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    BOOL animated = [exts[@"animated"] boolValue];</span></span>
+<span class="line"><span>    animated = YES;</span></span>
+<span class="line"><span>    FLBFlutterViewContainer *vc = (id)self.navigationController.presentedViewController;</span></span>
+<span class="line"><span>    if([vc isKindOfClass:FLBFlutterViewContainer.class] &#x26;&#x26; [vc.uniqueIDString isEqual: uid]){</span></span>
+<span class="line"><span>        [vc dismissViewControllerAnimated:animated completion:^{}];</span></span>
+<span class="line"><span>    }else{</span></span>
+<span class="line"><span>        [self.navigationController popViewControllerAnimated:animated];</span></span>
+<span class="line"><span>    }</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span>@end</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>可以看到，Flutter Boost 支持常规 push，也支持打开模态弹窗，也支持手动 pop。</p>
+<h4 id="23-绑定路由管理">2.3 绑定路由管理</h4>
+<p>AppDelegate.h：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>#import &#x3C;UIKit/UIKit.h></span></span>
+<span class="line"><span>#import &#x3C;flutter_boost/FlutterBoost.h></span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>@interface AppDelegate : UIResponder &#x3C;UIApplicationDelegate></span></span>
+<span class="line"><span>@property (nullable, nonatomic, strong) UIWindow *window;</span></span>
+<span class="line"><span>@end</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>AppDelegate.m：</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>#import "AppDelegate.h"</span></span>
+<span class="line"><span>#import "PlatformRouterImp.h"</span></span>
+<span class="line"><span>#import &#x3C;flutter_boost/FlutterBoost.h></span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>@interface AppDelegate ()</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>@end</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>@implementation AppDelegate</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {</span></span>
+<span class="line"><span>    </span></span>
+<span class="line"><span>    PlatformRouterImp *router = [PlatformRouterImp new];</span></span>
+<span class="line"><span>    [FlutterBoostPlugin.sharedInstance startFlutterWithPlatform:router</span></span>
+<span class="line"><span>                                                        onStart:^(FlutterEngine *engine) {</span></span>
+<span class="line"><span>                                                            </span></span>
+<span class="line"><span>                                                        }];</span></span>
+<span class="line"><span>UITabBarController *tabVC = [[UITabBarController alloc] init];</span></span>
+<span class="line"><span>UINavigationController *rvc = [[UINavigationController alloc] initWithRootViewController:tabVC];</span></span>
+<span class="line"><span>    router.navigationController = rvc;</span></span>
+<span class="line"><span>    </span></span>
+<span class="line"><span>return YES;</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<h3 id="3-使用">3. 使用</h3>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>- (void)openClick:(UIButton *)button</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    [FlutterBoostPlugin open:@"first" urlParams:@{kPageCallBackId:@"MycallbackId#1"} exts:@{@"animated":@(YES)} onPageFinished:^(NSDictionary *result) {</span></span>
+<span class="line"><span>        NSLog(@"call me when page finished, and your result is:%@", result);</span></span>
+<span class="line"><span>    } completion:^(BOOL f) {</span></span>
+<span class="line"><span>        NSLog(@"page is opened");</span></span>
+<span class="line"><span>    }];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>- (void)openPresentClick:(UIButton *)button</span></span>
+<span class="line"><span>{</span></span>
+<span class="line"><span>    [FlutterBoostPlugin open:@"second" urlParams:@{@"present":@(YES),kPageCallBackId:@"MycallbackId#2"} exts:@{@"animated":@(YES)} onPageFinished:^(NSDictionary *result) {</span></span>
+<span class="line"><span>        NSLog(@"call me when page finished, and your result is:%@", result);</span></span>
+<span class="line"><span>    } completion:^(BOOL f) {</span></span>
+<span class="line"><span>        NSLog(@"page is presented");</span></span>
+<span class="line"><span>    }];</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span></code></pre>
+<p>同样的，这里可在 Native 端用两种不同的方式去打开我们在 Flutter Module 中注册好的路由名。</p>
+<p>至此，我们成功在 iOS 工程中接入了 Flutter Boost，那就开启我们的混编之旅吧~</p>  </article> <!-- Right column: relative container for absolute-positioned cards --> <aside class="comment-rail" id="commentRail" data-astro-cid-gjtny2mx> <div class="cr-header" data-astro-cid-gjtny2mx> <span class="cr-label" data-astro-cid-gjtny2mx>Comments</span> <button class="cr-clear" id="clearAllComments" title="Clear all" data-astro-cid-gjtny2mx>&#x2715;</button> </div> <div class="cr-cards" id="commentCards" data-astro-cid-gjtny2mx> <!-- Cards positioned absolutely here --> </div> </aside> </div> <!-- FAB --> <button class="fab-comment" id="fabComment" aria-label="Add comment" data-astro-cid-gjtny2mx> <svg width="14" height="14" viewBox="0 0 14 14" fill="none" data-astro-cid-gjtny2mx> <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-astro-cid-gjtny2mx></path> </svg> </button> <!-- Comment input popover (desktop) — now with nickname/email --> <div class="comment-input-popover" id="commentPopover" data-astro-cid-gjtny2mx> <div class="cip-header" data-astro-cid-gjtny2mx> <span class="cip-selected" id="cipSelectedText" data-astro-cid-gjtny2mx></span> </div> <div class="cip-identity" data-astro-cid-gjtny2mx> <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="cip-input" id="cipEmail" placeholder="Email (for Gravatar)" data-astro-cid-gjtny2mx> </div> <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3" data-astro-cid-gjtny2mx></textarea> <div class="cip-actions" data-astro-cid-gjtny2mx> <button class="cip-cancel" id="cipCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="cip-submit" id="cipSubmit" data-astro-cid-gjtny2mx>Comment</button> </div> </div> <!-- Mobile bottom sheet --> <div class="mobile-sheet-overlay" id="mobileOverlay" data-astro-cid-gjtny2mx></div> <div class="mobile-sheet" id="mobileSheet" data-astro-cid-gjtny2mx> <div class="ms-handle" data-astro-cid-gjtny2mx></div> <div class="ms-quote" id="msQuote" data-astro-cid-gjtny2mx></div> <div class="ms-body" id="msBody" data-astro-cid-gjtny2mx></div> <div class="ms-author" id="msAuthor" data-astro-cid-gjtny2mx></div> <div class="ms-time" id="msTime" data-astro-cid-gjtny2mx></div> <button class="ms-delete" id="msDelete" data-astro-cid-gjtny2mx>Delete Comment</button> </div> <!-- Prev / Next Navigation --> <nav class="post-nav" data-astro-cid-gjtny2mx> <div class="post-nav-inner" data-astro-cid-gjtny2mx> <a href="/posts/flutter-hybrid/" class="post-nav-link post-nav-prev" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>&larr; Newer</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>Flutter 混合开发框架模式探索</span> </a> <a href="/posts/summary-2019/" class="post-nav-link post-nav-next" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>Older &rarr;</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>2019，走走停停</span> </a> </div> </nav> <!-- Article Like --> <div class="article-like-section" data-astro-cid-gjtny2mx> <div class="al-rule" data-astro-cid-gjtny2mx></div> <button class="article-like-btn" id="articleLikeBtn" data-astro-cid-gjtny2mx> <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22" data-astro-cid-gjtny2mx> <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none" data-astro-cid-gjtny2mx></path> </svg> <span class="al-count" id="articleLikeCount" data-astro-cid-gjtny2mx>0</span> <span class="al-label" data-astro-cid-gjtny2mx>likes</span> </button> <div class="al-rule" data-astro-cid-gjtny2mx></div> </div> <!-- Newsletter CTA --> <div class="newsletter-cta" data-astro-cid-gjtny2mx> <div class="nl-inner" data-astro-cid-gjtny2mx> <p class="nl-title" data-astro-cid-gjtny2mx>Subscribe</p> <p class="nl-desc" data-astro-cid-gjtny2mx>Get notified when new posts are published.</p> <form class="nl-form" id="nlForm" data-astro-cid-gjtny2mx> <input type="email" class="nl-input" id="nlEmail" placeholder="your@email.com" required data-astro-cid-gjtny2mx> <button type="submit" class="nl-btn" data-astro-cid-gjtny2mx>Subscribe</button> </form> <p class="nl-status" id="nlStatus" data-astro-cid-gjtny2mx></p> </div> </div> <!-- Bottom Comment Section --> <section class="bottom-comments" id="bottomComments" data-astro-cid-gjtny2mx> <div class="bc-inner" data-astro-cid-gjtny2mx> <div class="bc-header" data-astro-cid-gjtny2mx> <h2 class="bc-title" data-astro-cid-gjtny2mx>Comments</h2> <span class="bc-count" id="bcCount" data-astro-cid-gjtny2mx>0 comments</span> </div> <div class="bc-thread" id="bcThread" data-astro-cid-gjtny2mx> <!-- Comments rendered by JS --> </div> <div class="bc-compose" data-astro-cid-gjtny2mx> <div class="bc-compose-avatar" data-astro-cid-gjtny2mx> <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" data-astro-cid-gjtny2mx> </div> <div class="bc-compose-form" data-astro-cid-gjtny2mx> <div class="bc-compose-fields" data-astro-cid-gjtny2mx> <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="bc-input" id="bcEmail" placeholder="Email" data-astro-cid-gjtny2mx> <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" data-astro-cid-gjtny2mx> </div> <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4" data-astro-cid-gjtny2mx></textarea> <div class="bc-compose-footer" data-astro-cid-gjtny2mx> <span class="bc-hint" data-astro-cid-gjtny2mx>Markdown supported</span> <button class="bc-submit" id="bcSubmit" data-astro-cid-gjtny2mx>Submit</button> </div> </div> </div> </div> </section> <footer class="page-footer" data-astro-cid-gjtny2mx> <div class="footer-inner" data-astro-cid-gjtny2mx> <div class="footer-rule" data-astro-cid-gjtny2mx></div> <div class="footer-bar" data-astro-cid-gjtny2mx> <a href="/" data-astro-cid-gjtny2mx>&larr; Home</a> <span class="footer-copy" data-astro-cid-gjtny2mx>&copy; Airing</span> <a href="/archive" data-astro-cid-gjtny2mx>Archive &rarr;</a> </div> </div> </footer> </div>  <!-- Theme Switcher --> <div class="theme-switcher" id="themeSwitcher"> <button class="mode-toggle" id="modeToggle" aria-label="Toggle light/dark mode"> <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"></circle> <line x1="8" y1="0.5" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="8" y1="13.5" x2="8" y2="15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="0.5" y1="8" x2="2.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="13.5" y1="8" x2="15.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="2.7" x2="4.1" y2="4.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="11.9" x2="13.3" y2="13.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="13.3" x2="4.1" y2="11.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="4.1" x2="13.3" y2="2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> </svg> <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none"> <path d="M13.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </svg> </button> <button class="theme-toggle" id="themeToggle" aria-label="Switch accent color"> <svg width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.5"></circle> <circle cx="8" cy="8" r="3" fill="currentColor"></circle> </svg> </button> <div class="theme-dots" id="themeDots"> <button class="theme-dot" data-theme="green" style="--dot-color:#4ade80" title="Green"></button> <button class="theme-dot" data-theme="blue" style="--dot-color:#60a5fa" title="Blue"></button> <button class="theme-dot" data-theme="purple" style="--dot-color:#a78bfa" title="Purple"></button> <button class="theme-dot" data-theme="amber" style="--dot-color:#fbbf24" title="Amber"></button> <button class="theme-dot" data-theme="rose" style="--dot-color:#fb7185" title="Rose"></button> <button class="theme-dot" data-theme="cyan" style="--dot-color:#22d3ee" title="Cyan"></button> </div> </div> <script>
+    (function() {
+      var toggle = document.getElementById('themeToggle');
+      var dots = document.getElementById('themeDots');
+      var switcher = document.getElementById('themeSwitcher');
+      var modeToggle = document.getElementById('modeToggle');
+      var open = false;
+
+      // Mode toggle (light/dark)
+      function updateModeIcon() {
+        var isLight = document.documentElement.getAttribute('data-mode') === 'light';
+        switcher.classList.toggle('light-mode', isLight);
+      }
+      modeToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var current = document.documentElement.getAttribute('data-mode');
+        var next = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-mode', next);
+        localStorage.setItem('blog-mode', next);
+        updateModeIcon();
+      });
+      updateModeIcon();
+
+      // Color theme toggle
+      toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        open = !open;
+        dots.classList.toggle('active', open);
+        toggle.classList.toggle('active', open);
+      });
+
+      dots.addEventListener('click', function(e) {
+        var btn = e.target.closest('.theme-dot');
+        if (!btn) return;
+        var theme = btn.dataset.theme;
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('blog-theme', theme);
+        dots.querySelectorAll('.theme-dot').forEach(function(d) {
+          d.classList.toggle('selected', d.dataset.theme === theme);
+        });
+      });
+
+      document.addEventListener('click', function(e) {
+        if (!switcher.contains(e.target) && open) {
+          open = false;
+          dots.classList.remove('active');
+          toggle.classList.remove('active');
+        }
+      });
+
+      // Mark current theme
+      var current = localStorage.getItem('blog-theme') || 'green';
+      dots.querySelectorAll('.theme-dot').forEach(function(d) {
+        d.classList.toggle('selected', d.dataset.theme === current);
+      });
+    })();
+  </script> </body> </html> <script>
+/* Wrap short text nodes after <img> as styled captions */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = content.querySelectorAll('p');
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (!imgs.length) return;
+    var nodes = Array.from(p.childNodes);
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeType !== 3) continue;
+      var text = node.textContent.trim();
+      if (!text) continue;
+      var prev = node.previousSibling;
+      while (prev && prev.nodeType === 3 && !prev.textContent.trim()) prev = prev.previousSibling;
+      if (!prev || prev.nodeName !== 'IMG') continue;
+      if (text.length > 30 || text.indexOf('\n') !== -1 || text.charAt(0) === '#') continue;
+      var span = document.createElement('span');
+      span.className = 'img-caption';
+      span.textContent = text;
+      p.replaceChild(span, node);
+    }
+  });
+})();
+
+/* Gallery: group consecutive images into flex rows */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = Array.from(content.querySelectorAll('p'));
+
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (imgs.length < 2) return;
+
+    // Segment childNodes into groups: consecutive img(+caption) vs other content
+    var nodes = Array.from(p.childNodes);
+    var segments = [];
+    var currentImgs = [];
+
+    function flushImgs() {
+      if (currentImgs.length >= 2) {
+        segments.push({ type: 'images', items: currentImgs });
+      } else if (currentImgs.length === 1) {
+        segments.push({ type: 'other', nodes: [currentImgs[0].img] });
+        if (currentImgs[0].caption) segments.push({ type: 'other', nodes: [currentImgs[0].caption] });
+      }
+      currentImgs = [];
+    }
+
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeName === 'IMG') {
+        var item = { img: node, caption: null };
+        var next = nodes[i + 1];
+        if (next && next.nodeType === 1 && next.classList && next.classList.contains('img-caption')) {
+          item.caption = next;
+          i++;
+        }
+        currentImgs.push(item);
+      } else if (node.nodeType === 3 && !node.textContent.trim()) {
+        continue;
+      } else {
+        flushImgs();
+        segments.push({ type: 'other', nodes: [node] });
+      }
+    }
+    flushImgs();
+
+    var hasGallery = segments.some(function(s) { return s.type === 'images'; });
+    if (!hasGallery) return;
+
+    var frag = document.createDocumentFragment();
+
+    segments.forEach(function(seg) {
+      if (seg.type === 'other') {
+        seg.nodes.forEach(function(n) { frag.appendChild(n.cloneNode(true)); });
+        return;
+      }
+
+      var items = seg.items;
+      var gallery = document.createElement('div');
+      gallery.className = 'img-gallery';
+
+      // Build rows: max 3 per row (2 for groups of 4)
+      var rows = [];
+      var row = [];
+      for (var j = 0; j < items.length; j++) {
+        row.push(items[j]);
+        var maxPerRow = items.length === 4 ? 2 : 3;
+        if (row.length >= maxPerRow) { rows.push(row); row = []; }
+      }
+      if (row.length) rows.push(row);
+
+      rows.forEach(function(rowItems) {
+        var rowDiv = document.createElement('div');
+        rowDiv.className = 'img-gallery-row';
+        rowItems.forEach(function(item) {
+          var figure = document.createElement('figure');
+          figure.className = 'img-gallery-item';
+          figure.appendChild(item.img.cloneNode(true));
+          if (item.caption) {
+            var figcap = document.createElement('figcaption');
+            figcap.textContent = item.caption.textContent;
+            figure.appendChild(figcap);
+          }
+          rowDiv.appendChild(figure);
+        });
+        gallery.appendChild(rowDiv);
+      });
+
+      // Apply flex ratios once all images in gallery have loaded
+      var galleryImgs = gallery.querySelectorAll('img');
+      var loaded = 0;
+      var total = galleryImgs.length;
+      function applyFlex() {
+        var rows = gallery.querySelectorAll('.img-gallery-row');
+        rows.forEach(function(rowEl) {
+          var figs = rowEl.querySelectorAll('.img-gallery-item');
+          figs.forEach(function(fig) {
+            var img = fig.querySelector('img');
+            var w = img.naturalWidth || 1;
+            var h = img.naturalHeight || 1;
+            fig.style.flex = (w / h).toFixed(3);
+          });
+        });
+      }
+      galleryImgs.forEach(function(img) {
+        if (img.complete && img.naturalWidth > 0) {
+          loaded++;
+          if (loaded === total) applyFlex();
+        } else {
+          img.addEventListener('load', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+          img.addEventListener('error', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+        }
+      });
+
+      frag.appendChild(gallery);
+    });
+
+    p.parentNode.replaceChild(frag, p);
+  });
+})();
+
+/* TOC: build, scroll-spy, click-to-scroll */
+(function() {
+  var content = document.querySelector('.post-content');
+  var tocNav = document.getElementById('tocNav');
+  var tocBlock = document.getElementById('tocBlock');
+  if (!content || !tocNav || !tocBlock) return;
+
+  var headings = content.querySelectorAll('h2, h3');
+  if (headings.length < 2) return;
+
+  // Ensure each heading has an id
+  headings.forEach(function(h, i) {
+    if (!h.id) h.id = 'heading-' + i;
+  });
+
+  // Build TOC links
+  var fragment = document.createDocumentFragment();
+  headings.forEach(function(h) {
+    var a = document.createElement('a');
+    a.className = 'toc-link';
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    a.setAttribute('data-level', h.tagName === 'H2' ? '2' : '3');
+    a.addEventListener('click', function(e) {
+      e.preventDefault();
+      h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', '#' + h.id);
+    });
+    fragment.appendChild(a);
+  });
+  tocNav.appendChild(fragment);
+  tocBlock.style.display = '';
+
+  // Scroll spy
+  var tocLinks = tocNav.querySelectorAll('.toc-link');
+  var headingArr = Array.from(headings);
+  var ticking = false;
+
+  function updateActive() {
+    var scrollY = window.scrollY + 80;
+    var active = null;
+    for (var i = headingArr.length - 1; i >= 0; i--) {
+      if (headingArr[i].offsetTop <= scrollY) { active = i; break; }
+    }
+    tocLinks.forEach(function(link, idx) {
+      link.classList.toggle('active', idx === active);
+    });
+    // Scroll active link into view within TOC nav
+    if (active !== null && tocLinks[active]) {
+      var link = tocLinks[active];
+      var nav = tocNav;
+      if (link.offsetTop < nav.scrollTop || link.offsetTop + link.offsetHeight > nav.scrollTop + nav.clientHeight) {
+        nav.scrollTop = link.offsetTop - nav.clientHeight / 3;
+      }
+    }
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function() {
+    if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
+  }, { passive: true });
+  updateActive();
+})();
+</script> <script>
+(function() {
+  var API = 'https://chat.ursb.me';
+  var POST_SLUG = location.pathname.replace(/^\/posts\//, '').replace(/\/$/, '');
+  var USER_KEY = 'blog-user-identity';
+
+  var postContent = document.getElementById('postContent');
+  var contentGrid = document.getElementById('contentGrid');
+  var commentRail = document.getElementById('commentRail');
+  var commentCards = document.getElementById('commentCards');
+  var fab = document.getElementById('fabComment');
+  var popover = document.getElementById('commentPopover');
+  var cipText = document.getElementById('cipSelectedText');
+  var cipNickname = document.getElementById('cipNickname');
+  var cipEmailInput = document.getElementById('cipEmail');
+  var cipArea = document.getElementById('cipTextarea');
+  var cipCancel = document.getElementById('cipCancel');
+  var cipSubmit = document.getElementById('cipSubmit');
+  var clearAll = document.getElementById('clearAllComments');
+  var mobileOverlay = document.getElementById('mobileOverlay');
+  var mobileSheet = document.getElementById('mobileSheet');
+  var msQuote = document.getElementById('msQuote');
+  var msBody = document.getElementById('msBody');
+  var msAuthor = document.getElementById('msAuthor');
+  var msTime = document.getElementById('msTime');
+  var msDelete = document.getElementById('msDelete');
+
+  // Bottom comments
+  var bcThread = document.getElementById('bcThread');
+  var bcCount = document.getElementById('bcCount');
+  var bcNickname = document.getElementById('bcNickname');
+  var bcEmail = document.getElementById('bcEmail');
+  var bcWebsite = document.getElementById('bcWebsite');
+  var bcTextarea = document.getElementById('bcTextarea');
+  var bcSubmit = document.getElementById('bcSubmit');
+  var bcComposeAvatar = document.getElementById('bcComposeAvatar');
+
+  // Article like
+  var articleLikeBtn = document.getElementById('articleLikeBtn');
+  var articleLikeCount = document.getElementById('articleLikeCount');
+
+  var pendingRange = null;
+  var activeMobileCommentId = null;
+  var inlineComments = [];
+  var bottomComments = [];
+
+  function isMobile() { return window.innerWidth <= 1100; }
+
+  // --- User identity persistence ---
+  function getSavedIdentity() {
+    try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveIdentity(nickname, email, website) {
+    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email, website: website || '' }));
+  }
+  function restoreIdentity() {
+    var id = getSavedIdentity();
+    if (id.nickname) {
+      cipNickname.value = id.nickname;
+      bcNickname.value = id.nickname;
+    }
+    if (id.email) {
+      cipEmailInput.value = id.email;
+      bcEmail.value = id.email;
+      updateComposeAvatar(id.email);
+    }
+    if (id.website) {
+      bcWebsite.value = id.website;
+    }
+  }
+
+  var AUTHOR_EMAILS = { 'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80' };
+  function gravatarUrl(email) {
+    var e = email.trim().toLowerCase();
+    if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
+    var hash = e.endsWith('@gravatar.placeholder') ? e.split('@')[0] : e;
+    return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80';
+  }
+
+  function updateComposeAvatar(email) {
+    if (email) bcComposeAvatar.src = gravatarUrl(email);
+  }
+
+  // Debounced avatar update on email input
+  var avatarTimer;
+  bcEmail.addEventListener('input', function() {
+    clearTimeout(avatarTimer);
+    avatarTimer = setTimeout(function() { updateComposeAvatar(bcEmail.value); }, 500);
+  });
+
+  // --- API helpers ---
+  function apiGet(path) {
+    return fetch(API + path, { headers: { 'Origin': location.origin } }).then(function(r) { return r.json(); });
+  }
+  function apiPost(path, body) {
+    return fetch(API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); });
+  }
+  function apiDelete(path) {
+    return fetch(API + path, { method: 'DELETE' }).then(function(r) { return r.json(); });
+  }
+
+  // =====================================================================
+  // INLINE (HIGHLIGHT) COMMENTS — right rail
+  // =====================================================================
+
+  function wrapRange(range, id) {
+    var mark = document.createElement('mark');
+    mark.className = 'comment-highlight';
+    mark.dataset.commentId = id;
+    try { range.surroundContents(mark); }
+    catch(e) {
+      var fragment = range.extractContents();
+      mark.appendChild(fragment);
+      range.insertNode(mark);
+    }
+    return mark;
+  }
+
+  function restoreHighlights() {
+    inlineComments.forEach(function(c) {
+      if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
+      var searchText = c.selected_text;
+      if (!searchText) return;
+      var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
+      var node;
+      while (node = walker.nextNode()) {
+        var idx = node.textContent.indexOf(searchText);
+        if (idx === -1) continue;
+        var range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + searchText.length);
+        wrapRange(range, c.id);
+        break;
+      }
+    });
+  }
+
+  function removeHighlight(id) {
+    var marks = postContent.querySelectorAll('mark[data-comment-id="' + id + '"]');
+    marks.forEach(function(mark) {
+      var parent = mark.parentNode;
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+      parent.removeChild(mark);
+      parent.normalize();
+    });
+  }
+
+  function offsetFromGrid(el) {
+    var top = 0;
+    while (el && el !== contentGrid) { top += el.offsetTop; el = el.offsetParent; }
+    return top;
+  }
+
+  function layoutCards() {
+    var cards = commentCards.querySelectorAll('.cm-card');
+    if (!cards.length) return;
+    var railOffset = offsetFromGrid(commentRail);
+    var positions = [];
+    cards.forEach(function(card) {
+      var id = card.dataset.commentId;
+      var mark = postContent.querySelector('mark[data-comment-id="' + id + '"]');
+      var desiredTop = 0;
+      if (mark) desiredTop = offsetFromGrid(mark) - railOffset;
+      positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
+    });
+    positions.sort(function(a, b) { return a.desired - b.desired; });
+    var GAP = 8, nextAvailable = 0;
+    positions.forEach(function(p) {
+      var top = Math.max(p.desired, nextAvailable);
+      p.card.style.top = top + 'px';
+      nextAvailable = top + p.height + GAP;
+    });
+    commentCards.style.minHeight = nextAvailable + 'px';
+  }
+
+  function renderInlineComments() {
+    commentCards.innerHTML = '';
+    clearAll.style.display = inlineComments.length ? '' : 'none';
+
+    inlineComments.forEach(function(c) {
+      var card = document.createElement('div');
+      card.className = 'cm-card';
+      card.dataset.commentId = c.id;
+      var mark = postContent.querySelector('mark[data-comment-id="' + c.id + '"]');
+
+      var time = new Date(c.created_at);
+      var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+        + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      card.innerHTML =
+        '<div class="cm-card-author">' +
+          '<img src="' + gravatarUrl(c.email) + '" class="cm-card-avatar" />' +
+          '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
+        '</div>' +
+        '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
+        '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
+        '<div class="cm-card-footer">' +
+          '<span class="cm-card-time">' + timeStr + '</span>' +
+          '<button class="cm-card-delete" data-id="' + c.id + '">&times;</button>' +
+        '</div>';
+
+      card.addEventListener('mouseenter', function() {
+        if (mark) mark.classList.add('highlight-active');
+        card.classList.add('cm-card-active');
+      });
+      card.addEventListener('mouseleave', function() {
+        if (mark) mark.classList.remove('highlight-active');
+        card.classList.remove('cm-card-active');
+      });
+      card.addEventListener('click', function(e) {
+        if (e.target.classList.contains('cm-card-delete')) return;
+        if (mark) {
+          mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          mark.classList.add('highlight-flash');
+          setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1000);
+        }
+      });
+      if (mark) {
+        mark.addEventListener('mouseenter', function() { card.classList.add('cm-card-active'); mark.classList.add('highlight-active'); });
+        mark.addEventListener('mouseleave', function() { card.classList.remove('cm-card-active'); mark.classList.remove('highlight-active'); });
+        mark.addEventListener('click', function(e) {
+          if (!isMobile()) return;
+          e.preventDefault(); e.stopPropagation();
+          openMobileSheet(c);
+        });
+      }
+
+      commentCards.appendChild(card);
+
+      card.querySelector('.cm-card-delete').addEventListener('click', function(e) {
+        e.stopPropagation();
+        apiDelete('/api/inline-comments/' + c.id).then(function() {
+          removeHighlight(c.id);
+          inlineComments = inlineComments.filter(function(x) { return x.id !== c.id; });
+          renderInlineComments();
+        });
+      });
+    });
+
+    requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
+  }
+
+  // --- Mobile bottom sheet ---
+  function openMobileSheet(comment) {
+    activeMobileCommentId = comment.id;
+    msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
+    msBody.textContent = comment.comment;
+    msAuthor.textContent = comment.nickname;
+    var time = new Date(comment.created_at);
+    msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+      + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    mobileOverlay.classList.add('active');
+    mobileSheet.classList.add('active');
+  }
+  function closeMobileSheet() {
+    mobileOverlay.classList.remove('active');
+    mobileSheet.classList.remove('active');
+    activeMobileCommentId = null;
+  }
+  mobileOverlay.addEventListener('click', closeMobileSheet);
+  msDelete.addEventListener('click', function() {
+    if (!activeMobileCommentId) return;
+    apiDelete('/api/inline-comments/' + activeMobileCommentId).then(function() {
+      removeHighlight(activeMobileCommentId);
+      inlineComments = inlineComments.filter(function(x) { return x.id !== activeMobileCommentId; });
+      closeMobileSheet();
+      renderInlineComments();
+    });
+  });
+
+  // --- FAB: show on text selection ---
+  fab.style.display = 'none';
+  popover.style.display = 'none';
+
+  document.addEventListener('mouseup', function(e) {
+    if (popover.style.display !== 'none') return;
+    if (isMobile()) { fab.style.display = 'none'; return; }
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.top + window.scrollY - 36) + 'px';
+    fab.style.left = (rect.right + window.scrollX + 8) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('selectionchange', function() {
+    if (!isMobile()) return;
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    fab.style.left = (rect.left + window.scrollX + (rect.width / 2) - 14) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('mousedown', function(e) {
+    if (fab.contains(e.target) || popover.contains(e.target)) return;
+    if (popover.style.display === 'none') fab.style.display = 'none';
+  });
+
+  fab.addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (!pendingRange) return;
+    var selectedText = pendingRange.toString().trim();
+    if (!selectedText) return;
+    cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
+    cipArea.value = '';
+    var rect = pendingRange.getBoundingClientRect();
+    if (isMobile()) {
+      popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
+      popover.style.left = '50%';
+      popover.style.transform = 'translateX(-50%)';
+    } else {
+      popover.style.top = (rect.top + window.scrollY) + 'px';
+      popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
+      popover.style.transform = '';
+    }
+    popover.style.display = 'block';
+    fab.style.display = 'none';
+    cipNickname.focus();
+  });
+
+  cipCancel.addEventListener('click', function() {
+    popover.style.display = 'none';
+    pendingRange = null;
+    window.getSelection().removeAllRanges();
+  });
+
+  cipSubmit.addEventListener('click', function() {
+    var text = cipArea.value.trim();
+    var nickname = cipNickname.value.trim();
+    var email = cipEmailInput.value.trim();
+    if (!text || !nickname || !email || !pendingRange) return;
+
+    var selectedText = pendingRange.toString().trim();
+    saveIdentity(nickname, email);
+
+    cipSubmit.disabled = true;
+    cipSubmit.textContent = '...';
+
+    apiPost('/api/inline-comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      selected_text: selectedText,
+      comment: text,
+      range_start: 0,
+      range_end: selectedText.length
+    }).then(function(res) {
+      if (res.comment) {
+        wrapRange(pendingRange, res.comment.id);
+        inlineComments.push(res.comment);
+        renderInlineComments();
+      }
+      popover.style.display = 'none';
+      pendingRange = null;
+      window.getSelection().removeAllRanges();
+    }).finally(function() {
+      cipSubmit.disabled = false;
+      cipSubmit.textContent = 'Comment';
+    });
+  });
+
+  cipArea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
+    if (e.key === 'Escape') cipCancel.click();
+  });
+
+  clearAll.addEventListener('click', function() {
+    if (!confirm('Clear all comments?')) return;
+    // Delete all from server
+    Promise.all(inlineComments.map(function(c) { return apiDelete('/api/inline-comments/' + c.id); })).then(function() {
+      postContent.querySelectorAll('mark.comment-highlight').forEach(function(m) {
+        var p = m.parentNode;
+        while (m.firstChild) p.insertBefore(m.firstChild, m);
+        p.removeChild(m);
+        p.normalize();
+      });
+      inlineComments = [];
+      renderInlineComments();
+    });
+  });
+
+  var layoutTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(layoutCards, 60);
+  });
+
+  // =====================================================================
+  // ARTICLE LIKES
+  // =====================================================================
+  var articleLiked = false;
+
+  function loadArticleLikes() {
+    apiGet('/api/posts/' + encodeURIComponent(POST_SLUG) + '/likes').then(function(res) {
+      articleLikeCount.textContent = res.count;
+      articleLiked = res.liked;
+      if (articleLiked) articleLikeBtn.classList.add('liked');
+    });
+  }
+
+  articleLikeBtn.addEventListener('click', function() {
+    // Optimistic update — instant UI feedback
+    var prevLiked = articleLiked;
+    var prevCount = parseInt(articleLikeCount.textContent) || 0;
+    var newLiked = !prevLiked;
+    var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+    articleLiked = newLiked;
+    articleLikeCount.textContent = newCount;
+    articleLikeBtn.classList.toggle('liked', newLiked);
+    var icon = articleLikeBtn.querySelector('.al-icon path');
+    icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+    apiPost('/api/posts/' + encodeURIComponent(POST_SLUG) + '/like', {}).then(function(res) {
+      // Sync with server truth
+      articleLiked = res.liked;
+      articleLikeCount.textContent = res.count;
+      articleLikeBtn.classList.toggle('liked', res.liked);
+      icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+    }).catch(function() {
+      // Rollback on failure
+      articleLiked = prevLiked;
+      articleLikeCount.textContent = prevCount;
+      articleLikeBtn.classList.toggle('liked', prevLiked);
+      icon.setAttribute('fill', prevLiked ? 'currentColor' : 'none');
+    });
+  });
+
+  // =====================================================================
+  // BOTTOM COMMENTS
+  // =====================================================================
+
+  function loadBottomComments() {
+    apiGet('/api/comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+      bottomComments = res.comments || [];
+      renderBottomComments();
+    });
+  }
+
+  function renderBottomComments() {
+    bcThread.innerHTML = '';
+    var count = bottomComments.length;
+    bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+
+    // Build tree
+    var roots = [];
+    var byId = {};
+    bottomComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
+    bottomComments.forEach(function(c) {
+      if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
+      else roots.push(c);
+    });
+
+    roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+  }
+
+  function buildCommentEl(c, isReply) {
+    var div = document.createElement('div');
+    div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
+
+    var time = new Date(c.created_at);
+    var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    var avatarSize = isReply ? 32 : 40;
+    var nameHtml = c.website
+      ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
+      : '<span class="bc-name">' + esc(c.nickname) + '</span>';
+    div.innerHTML =
+      '<div class="bc-avatar-wrap"><img src="' + gravatarUrl(c.email) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+      '<div class="bc-body">' +
+        '<div class="bc-meta">' +
+          nameHtml +
+          '<span class="bc-dot">&middot;</span>' +
+          '<time class="bc-time">' + timeStr + '</time>' +
+        '</div>' +
+        '<div class="bc-text"><p>' + esc(c.content) + '</p></div>' +
+        '<div class="bc-actions">' +
+          '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
+            '<span>' + (c.likes || 0) + '</span>' +
+          '</button>' +
+          '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
+        '</div>' +
+        '<div class="bc-replies-container"></div>' +
+      '</div>';
+
+    // Like button — optimistic update
+    div.querySelector('.bc-like-btn').addEventListener('click', function() {
+      var btn = this;
+      var icon = btn.querySelector('path');
+      var span = btn.querySelector('span');
+      var wasLiked = btn.classList.contains('liked');
+      var prevCount = parseInt(span.textContent) || 0;
+      var newLiked = !wasLiked;
+      var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+      btn.classList.toggle('liked', newLiked);
+      span.textContent = newCount;
+      icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+      apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
+        btn.classList.toggle('liked', res.liked);
+        span.textContent = res.count;
+        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      }).catch(function() {
+        btn.classList.toggle('liked', wasLiked);
+        span.textContent = prevCount;
+        icon.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+      });
+    });
+
+    // Reply button
+    div.querySelector('.bc-reply-btn').addEventListener('click', function() {
+      // Scroll to compose and pre-fill with @mention
+      bcTextarea.value = '@' + c.nickname + ' ';
+      bcTextarea.dataset.parentId = c.id;
+      bcTextarea.focus();
+      bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Render replies
+    var repliesContainer = div.querySelector('.bc-replies-container');
+    if (c._replies && c._replies.length) {
+      c._replies.forEach(function(r) {
+        repliesContainer.appendChild(buildCommentEl(r, true));
+      });
+    }
+
+    return div;
+  }
+
+  // Submit bottom comment
+  bcSubmit.addEventListener('click', function() {
+    var content = bcTextarea.value.trim();
+    var nickname = bcNickname.value.trim();
+    var email = bcEmail.value.trim();
+    var website = bcWebsite.value.trim();
+    if (!content || !nickname || !email) return;
+
+    saveIdentity(nickname, email, website);
+    bcSubmit.disabled = true;
+    bcSubmit.textContent = '...';
+
+    var parentId = bcTextarea.dataset.parentId || null;
+
+    var body = {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      content: content,
+      parent_id: parentId ? parseInt(parentId) : null
+    };
+    if (website) body.website = website;
+
+    apiPost('/api/comments', body).then(function(res) {
+      if (res.comment) {
+        bottomComments.push(res.comment);
+        renderBottomComments();
+        bcTextarea.value = '';
+        delete bcTextarea.dataset.parentId;
+      }
+    }).finally(function() {
+      bcSubmit.disabled = false;
+      bcSubmit.textContent = 'Submit';
+    });
+  });
+
+  bcTextarea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') bcSubmit.click();
+  });
+
+  // =====================================================================
+  // INIT — load everything from API
+  // =====================================================================
+  restoreIdentity();
+
+  apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+    inlineComments = res.comments || [];
+    restoreHighlights();
+    renderInlineComments();
+  });
+
+  // Newsletter subscribe
+  var nlForm = document.getElementById('nlForm');
+  var nlEmail = document.getElementById('nlEmail');
+  var nlStatus = document.getElementById('nlStatus');
+  if (nlForm) {
+    nlForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var email = nlEmail.value.trim();
+      if (!email) return;
+      nlStatus.textContent = 'Subscribing...';
+      fetch(API + '/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      }).then(function(r) { return r.json(); })
+        .then(function(d) {
+          nlStatus.textContent = d.error ? d.error : 'Subscribed!';
+          if (!d.error) nlEmail.value = '';
+        })
+        .catch(function() { nlStatus.textContent = 'Failed. Please try again.'; });
+    });
+  }
+
+  loadArticleLikes();
+  loadBottomComments();
+
+  // --- Helpers ---
+  function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+})();
+</script> 
