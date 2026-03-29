@@ -74,6 +74,31 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
       </div>
     </section>
 
+    <!-- Link Exchange -->
+    <section class="exchange-section">
+      <div class="exchange-inner">
+        <h2 class="exchange-title">Exchange Links</h2>
+        <p class="exchange-desc">Want to exchange blogroll links? Add my site first, then leave a message below with your info.</p>
+        <div class="exchange-info">
+          <div class="exchange-row">
+            <span class="exchange-label">Name</span>
+            <span class="exchange-value">Airing 的小屋</span>
+          </div>
+          <div class="exchange-row">
+            <span class="exchange-label">URL</span>
+            <span class="exchange-value"><a href="https://ursb.me">https://ursb.me</a></span>
+          </div>
+          <div class="exchange-row">
+            <span class="exchange-label">Avatar</span>
+            <span class="exchange-value">
+              <img src="https://airing.ursb.me/image/airing-face.png" alt="Airing" class="exchange-avatar" />
+              <code>https://airing.ursb.me/image/airing-face.png</code>
+            </span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- Guestbook Section -->
     <section class="guestbook-section">
       <div class="gb-inner">
@@ -96,7 +121,10 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
             </div>
             <textarea class="bc-textarea" id="gbTextarea" placeholder="Write a message..." rows="4"></textarea>
             <div class="bc-compose-footer">
-              <span class="bc-hint">Markdown supported</span>
+              <label class="bc-notify-label">
+                <input type="checkbox" id="gbNotify" />
+                <span>Notify me of replies via email</span>
+              </label>
               <button class="bc-submit" id="gbSubmit">Submit</button>
             </div>
           </div>
@@ -243,14 +271,62 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
+  /* Exchange Section */
+  .exchange-section {
+    padding: 40px 0;
+    border-bottom: 1px solid var(--c-border);
+  }
+  .exchange-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+  }
+  .exchange-title {
+    font-size: 20px; font-weight: 700; color: var(--c-text);
+    margin-bottom: 8px;
+  }
+  .exchange-desc {
+    font-size: 14px; color: var(--c-text-dim); margin-bottom: 20px;
+  }
+  .exchange-info {
+    background: rgba(var(--c-overlay-rgb), 0.04);
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .exchange-row {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .exchange-label {
+    font-size: 12px; color: var(--c-text-dim);
+    text-transform: uppercase; letter-spacing: 0.06em;
+    width: 56px; flex-shrink: 0; font-weight: 600;
+  }
+  .exchange-value {
+    font-size: 14px; color: var(--c-text);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .exchange-value a {
+    color: var(--accent); text-decoration: none;
+  }
+  .exchange-value a:hover { text-decoration: underline; }
+  .exchange-value code {
+    font-size: 12px; color: var(--c-text-muted);
+    background: rgba(var(--c-overlay-rgb), 0.08);
+    padding: 2px 8px; border-radius: 4px;
+    user-select: all;
+  }
+  .exchange-avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    object-fit: cover; flex-shrink: 0;
+  }
+
   /* Guestbook Section */
   .guestbook-section {
-    max-width: 1440px; margin: 0 auto;
+    max-width: 1200px; margin: 0 auto;
     padding: 0 48px 48px;
   }
   .gb-inner {
-    max-width: 720px;
-    margin: 0 auto;
+    width: 100%;
   }
 
   /* Comment header */
@@ -360,7 +436,15 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
   .bc-compose-footer {
     display: flex; justify-content: space-between; align-items: center; margin-top: 12px;
   }
-  .bc-hint { font-size: 12px; color: var(--c-border-light); }
+  .bc-notify-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--c-text-dim); cursor: pointer;
+    user-select: none;
+  }
+  .bc-notify-label input[type="checkbox"] {
+    accent-color: var(--accent, #4ade80);
+    cursor: pointer;
+  }
   .bc-submit {
     padding: 8px 20px; border-radius: 8px;
     background: var(--accent); color: var(--c-bg);
@@ -394,6 +478,7 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     .header-inner { padding: 0 20px; }
     .friends-inner { padding: 0 20px; }
     .friends-grid { grid-template-columns: repeat(2, 1fr); }
+    .exchange-inner { padding: 0 20px; }
     .guestbook-section { padding: 0 20px 48px; }
     .bc-compose-fields { flex-direction: column; gap: 8px; }
     .bc-compose-avatar .bc-avatar-img { width: 32px; height: 32px; }
@@ -421,6 +506,7 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
   var gbEmail = document.getElementById('gbEmail');
   var gbWebsite = document.getElementById('gbWebsite');
   var gbTextarea = document.getElementById('gbTextarea');
+  var gbNotify = document.getElementById('gbNotify');
   var gbSubmit = document.getElementById('gbSubmit');
   var gbComposeAvatar = document.getElementById('gbComposeAvatar');
 
@@ -587,7 +673,8 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
       nickname: nickname,
       email: email,
       content: content,
-      parent_id: parentId ? parseInt(parentId) : null
+      parent_id: parentId ? parseInt(parentId) : null,
+      notify_replies: gbNotify.checked
     };
     if (website) body.website = website;
 

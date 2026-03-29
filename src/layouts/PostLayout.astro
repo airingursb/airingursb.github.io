@@ -301,7 +301,10 @@ const jsonLd = {
             </div>
             <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4"></textarea>
             <div class="bc-compose-footer">
-              <span class="bc-hint">Markdown supported</span>
+              <label class="bc-notify-label">
+                <input type="checkbox" id="bcNotify" />
+                <span>Notify me of replies via email</span>
+              </label>
               <button class="bc-submit" id="bcSubmit">Submit</button>
             </div>
           </div>
@@ -584,6 +587,7 @@ const jsonLd = {
   var bcEmail = document.getElementById('bcEmail');
   var bcWebsite = document.getElementById('bcWebsite');
   var bcTextarea = document.getElementById('bcTextarea');
+  var bcNotify = document.getElementById('bcNotify');
   var bcSubmit = document.getElementById('bcSubmit');
   var bcComposeAvatar = document.getElementById('bcComposeAvatar');
 
@@ -1116,7 +1120,8 @@ const jsonLd = {
       nickname: nickname,
       email: email,
       content: content,
-      parent_id: parentId ? parseInt(parentId) : null
+      parent_id: parentId ? parseInt(parentId) : null,
+      notify_replies: bcNotify.checked
     };
     if (website) body.website = website;
 
@@ -1381,7 +1386,7 @@ const jsonLd = {
     height: auto;
     max-height: 70vh;
     object-fit: contain;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.04);
+    box-shadow: none;
   }
   .post-content :global(.img-caption) {
     display: block;
@@ -1658,6 +1663,8 @@ const jsonLd = {
     display: flex; align-items: center; gap: 24px;
     max-width: 1440px; margin: 0 auto;
     padding: 48px 48px 0;
+    padding-left: calc(48px + 160px + 40px);
+    padding-right: calc(48px + 280px + 40px);
   }
   .al-rule {
     flex: 1; height: 1px; background: var(--c-border);
@@ -1700,9 +1707,11 @@ const jsonLd = {
 
   /* ===== Newsletter CTA ===== */
   .newsletter-cta {
-    max-width: 720px;
+    max-width: 1440px;
     margin: 2rem auto;
-    padding: 0 1rem;
+    padding: 0 48px;
+    padding-left: calc(48px + 160px + 40px);
+    padding-right: calc(48px + 280px + 40px);
   }
   .nl-inner {
     border: 1px solid var(--c-border, rgba(255,255,255,0.1));
@@ -1731,10 +1740,11 @@ const jsonLd = {
   .bottom-comments {
     max-width: 1440px; margin: 0 auto;
     padding: 0 48px 48px;
+    padding-left: calc(48px + 160px + 40px);
+    padding-right: calc(48px + 280px + 40px);
   }
   .bc-inner {
     max-width: 720px;
-    margin: 0 auto;
   }
   .bc-header {
     display: flex; align-items: center; gap: 12px;
@@ -1873,7 +1883,15 @@ const jsonLd = {
     display: flex; justify-content: space-between; align-items: center;
     margin-top: 12px;
   }
-  .bc-hint { font-size: 12px; color: var(--c-border-light); }
+  .bc-notify-label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--c-text-dim); cursor: pointer;
+    user-select: none;
+  }
+  .bc-notify-label input[type="checkbox"] {
+    accent-color: var(--accent, #4ade80);
+    cursor: pointer;
+  }
   .bc-submit {
     padding: 8px 20px; border-radius: 8px;
     background: var(--accent); color: var(--c-bg);
@@ -1933,7 +1951,9 @@ const jsonLd = {
     .cip-identity { flex-direction: column; gap: 6px; }
 
     /* Article like & bottom comments mobile */
-    .article-like-section { padding: 40px 20px 0; gap: 16px; }
+    .article-like-section { padding: 40px 20px 0 !important; gap: 16px; }
+    .newsletter-cta { padding: 0 20px !important; }
+    .post-nav { padding: 0 20px !important; }
     .article-like-btn { padding: 10px 20px; }
     .bottom-comments { padding: 0 20px 48px; }
     .bc-compose-fields { flex-direction: column; gap: 8px; }
@@ -1951,9 +1971,11 @@ const jsonLd = {
   }
 
   .post-nav {
-    max-width: 720px;
+    max-width: 1440px;
     margin: 2rem auto;
-    padding: 0 1rem;
+    padding: 0 48px;
+    padding-left: calc(48px + 160px + 40px);
+    padding-right: calc(48px + 280px + 40px);
   }
   .post-nav-inner {
     display: flex;
@@ -1982,4 +2004,11 @@ const jsonLd = {
     line-height: 1.4;
   }
   .post-nav-link:hover .post-nav-title { text-decoration: underline; }
+
+  @media (max-width: 1100px) {
+    .post-nav {
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+  }
 </style>
