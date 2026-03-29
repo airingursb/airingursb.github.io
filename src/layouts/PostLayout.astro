@@ -191,10 +191,12 @@ const jsonLd = {
       <aside class="comment-rail" id="commentRail">
         <div class="cr-header">
           <span class="cr-label">Comments</span>
-          <button class="cr-clear" id="clearAllComments" title="Clear all">&#x2715;</button>
         </div>
         <div class="cr-cards" id="commentCards">
           <!-- Cards positioned absolutely here -->
+        </div>
+        <div class="cr-empty" id="crEmpty">
+          <p>Select text to add an inline comment.</p>
         </div>
       </aside>
     </div>
@@ -213,7 +215,7 @@ const jsonLd = {
       </div>
       <div class="cip-identity">
         <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" />
-        <input type="email" class="cip-input" id="cipEmail" placeholder="Email (for Gravatar)" />
+        <input type="email" class="cip-input" id="cipEmail" placeholder="Email" />
       </div>
       <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3"></textarea>
       <div class="cip-actions">
@@ -230,7 +232,20 @@ const jsonLd = {
       <div class="ms-body" id="msBody"></div>
       <div class="ms-author" id="msAuthor"></div>
       <div class="ms-time" id="msTime"></div>
-      <button class="ms-delete" id="msDelete">Delete Comment</button>
+      <div class="ms-replies" id="msReplies"></div>
+      <button class="ms-reply-toggle" id="msReplyToggle">Reply</button>
+      <div class="ms-reply-form" id="msReplyForm" style="display:none;">
+        <div class="ms-rf-identity">
+          <input type="text" class="ms-rf-input" id="msRfNickname" placeholder="Nickname" />
+          <input type="email" class="ms-rf-input" id="msRfEmail" placeholder="Email" />
+        </div>
+        <textarea class="ms-rf-textarea" id="msRfTextarea" placeholder="Write a reply..." rows="2"></textarea>
+        <label class="ms-rf-notify"><input type="checkbox" id="msRfNotify" checked /> Notify me of replies</label>
+        <div class="ms-rf-actions">
+          <button class="ms-rf-cancel" id="msRfCancel">Cancel</button>
+          <button class="ms-rf-submit" id="msRfSubmit">Reply</button>
+        </div>
+      </div>
     </div>
 
     <!-- Prev / Next Navigation -->
@@ -576,14 +591,13 @@ const jsonLd = {
   var cipArea = document.getElementById('cipTextarea');
   var cipCancel = document.getElementById('cipCancel');
   var cipSubmit = document.getElementById('cipSubmit');
-  var clearAll = document.getElementById('clearAllComments');
+  var crEmpty = document.getElementById('crEmpty');
   var mobileOverlay = document.getElementById('mobileOverlay');
   var mobileSheet = document.getElementById('mobileSheet');
   var msQuote = document.getElementById('msQuote');
   var msBody = document.getElementById('msBody');
   var msAuthor = document.getElementById('msAuthor');
   var msTime = document.getElementById('msTime');
-  var msDelete = document.getElementById('msDelete');
 
   // Bottom comments
   var bcThread = document.getElementById('bcThread');
@@ -632,7 +646,7 @@ const jsonLd = {
 
   var AUTHOR_EMAILS = { 'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80' };
   function gravatarUrl(email) {
-    var e = email.trim().toLowerCase();
+    var e = (email || '').trim().toLowerCase();
     if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
     var hash = e.endsWith('@gravatar.placeholder') ? e.split('@')[0] : e;
     return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80';
@@ -740,9 +754,10 @@ const jsonLd = {
 
   function renderInlineComments() {
     commentCards.innerHTML = '';
-    clearAll.style.display = inlineComments.length ? '' : 'none';
+    crEmpty.style.display = inlineComments.length ? 'none' : '';
 
     inlineComments.forEach(function(c) {
+      if (!c.replies) c.replies = [];
       var card = document.createElement('div');
       card.className = 'cm-card';
       card.dataset.commentId = c.id;
@@ -751,6 +766,26 @@ const jsonLd = {
       var time = new Date(c.created_at);
       var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
         + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      var repliesHtml = '';
+      if (c.replies && c.replies.length) {
+        repliesHtml = '<div class="cm-replies">';
+        c.replies.forEach(function(r) {
+          var rTime = new Date(r.created_at);
+          var rTimeStr = rTime.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+            + ' ' + rTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+          repliesHtml +=
+            '<div class="cm-reply">' +
+              '<div class="cm-reply-header">' +
+                '<img class="cm-reply-avatar" src="' + gravatarUrl(r.email) + '" />' +
+                '<span class="cm-reply-name">' + esc(r.nickname) + '</span>' +
+                '<span class="cm-reply-time">' + rTimeStr + '</span>' +
+              '</div>' +
+              '<div class="cm-reply-body">' + esc(r.comment) + '</div>' +
+            '</div>';
+        });
+        repliesHtml += '</div>';
+      }
 
       card.innerHTML =
         '<div class="cm-card-author">' +
@@ -761,7 +796,20 @@ const jsonLd = {
         '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
         '<div class="cm-card-footer">' +
           '<span class="cm-card-time">' + timeStr + '</span>' +
-          '<button class="cm-card-delete" data-id="' + c.id + '">&times;</button>' +
+        '</div>' +
+        repliesHtml +
+        '<button class="cm-reply-btn" data-parent-id="' + c.id + '">Reply</button>' +
+        '<div class="cm-reply-form" style="display:none;">' +
+          '<div class="cm-rf-identity">' +
+            '<input class="cm-rf-input" placeholder="Nickname" />' +
+            '<input class="cm-rf-input" placeholder="Email" />' +
+          '</div>' +
+          '<textarea class="cm-rf-textarea" placeholder="Write a reply..." rows="2"></textarea>' +
+          '<label class="cm-rf-notify"><input type="checkbox" checked /> Notify me of replies</label>' +
+          '<div class="cm-rf-actions">' +
+            '<button class="cm-rf-cancel">Cancel</button>' +
+            '<button class="cm-rf-submit">Reply</button>' +
+          '</div>' +
         '</div>';
 
       card.addEventListener('mouseenter', function() {
@@ -773,7 +821,7 @@ const jsonLd = {
         card.classList.remove('cm-card-active');
       });
       card.addEventListener('click', function(e) {
-        if (e.target.classList.contains('cm-card-delete')) return;
+        if (e.target.closest('.cm-reply-btn') || e.target.closest('.cm-reply-form')) return;
         if (mark) {
           mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
           mark.classList.add('highlight-flash');
@@ -792,12 +840,64 @@ const jsonLd = {
 
       commentCards.appendChild(card);
 
-      card.querySelector('.cm-card-delete').addEventListener('click', function(e) {
+      // Reply button handler
+      var replyBtn = card.querySelector('.cm-reply-btn');
+      var replyForm = card.querySelector('.cm-reply-form');
+      var rfInputs = replyForm.querySelectorAll('.cm-rf-input');
+      var rfNickname = rfInputs[0];
+      var rfEmail = rfInputs[1];
+      var rfTextarea = replyForm.querySelector('.cm-rf-textarea');
+      var rfNotify = replyForm.querySelector('.cm-rf-notify input');
+      var rfCancel = replyForm.querySelector('.cm-rf-cancel');
+      var rfSubmit = replyForm.querySelector('.cm-rf-submit');
+
+      replyBtn.addEventListener('click', function(e) {
         e.stopPropagation();
-        apiDelete('/api/inline-comments/' + c.id).then(function() {
-          removeHighlight(c.id);
-          inlineComments = inlineComments.filter(function(x) { return x.id !== c.id; });
-          renderInlineComments();
+        replyForm.style.display = '';
+        replyBtn.style.display = 'none';
+        var identity = getSavedIdentity();
+        if (identity.nickname) rfNickname.value = identity.nickname;
+        if (identity.email) rfEmail.value = identity.email;
+        rfNickname.focus();
+        layoutCards();
+      });
+
+      rfCancel.addEventListener('click', function(e) {
+        e.stopPropagation();
+        replyForm.style.display = 'none';
+        replyBtn.style.display = '';
+        layoutCards();
+      });
+
+      rfSubmit.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var nickname = rfNickname.value.trim();
+        var email = rfEmail.value.trim();
+        var comment = rfTextarea.value.trim();
+        var rfValid = true;
+        rfNickname.classList.remove('cip-error');
+        rfTextarea.classList.remove('cip-error');
+        if (!nickname) { rfNickname.classList.add('cip-error'); rfValid = false; }
+        if (!comment) { rfTextarea.classList.add('cip-error'); rfValid = false; }
+        if (!rfValid) return;
+
+        saveIdentity(nickname, email);
+        rfSubmit.disabled = true;
+
+        apiPost('/api/inline-comments', {
+          post_slug: POST_SLUG,
+          nickname: nickname,
+          email: email,
+          comment: comment,
+          parent_id: c.id,
+          notify_replies: rfNotify.checked
+        }).then(function(res) {
+          if (res.comment) {
+            c.replies.push(res.comment);
+            renderInlineComments();
+          }
+        }).finally(function() {
+          rfSubmit.disabled = false;
         });
       });
     });
@@ -814,6 +914,32 @@ const jsonLd = {
     var time = new Date(comment.created_at);
     msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
       + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+    // Render replies
+    var repliesEl = document.getElementById('msReplies');
+    repliesEl.innerHTML = '';
+    if (comment.replies && comment.replies.length) {
+      comment.replies.forEach(function(r) {
+        var rTime = new Date(r.created_at);
+        var rTimeStr = rTime.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+          + ' ' + rTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        var div = document.createElement('div');
+        div.className = 'ms-reply-item';
+        div.innerHTML =
+          '<div class="ms-reply-header">' +
+            '<img src="' + gravatarUrl(r.email) + '" class="ms-reply-avatar" />' +
+            '<span class="ms-reply-name">' + esc(r.nickname) + '</span>' +
+            '<span class="ms-reply-time">' + rTimeStr + '</span>' +
+          '</div>' +
+          '<div class="ms-reply-body">' + esc(r.comment) + '</div>';
+        repliesEl.appendChild(div);
+      });
+    }
+
+    // Reset reply form
+    document.getElementById('msReplyForm').style.display = 'none';
+    document.getElementById('msReplyToggle').style.display = '';
+
     mobileOverlay.classList.add('active');
     mobileSheet.classList.add('active');
   }
@@ -823,13 +949,61 @@ const jsonLd = {
     activeMobileCommentId = null;
   }
   mobileOverlay.addEventListener('click', closeMobileSheet);
-  msDelete.addEventListener('click', function() {
-    if (!activeMobileCommentId) return;
-    apiDelete('/api/inline-comments/' + activeMobileCommentId).then(function() {
-      removeHighlight(activeMobileCommentId);
-      inlineComments = inlineComments.filter(function(x) { return x.id !== activeMobileCommentId; });
-      closeMobileSheet();
-      renderInlineComments();
+  // Mobile reply toggle
+  document.getElementById('msReplyToggle').addEventListener('click', function() {
+    var form = document.getElementById('msReplyForm');
+    form.style.display = 'block';
+    this.style.display = 'none';
+    var id = getSavedIdentity();
+    if (id.nickname) document.getElementById('msRfNickname').value = id.nickname;
+    if (id.email) document.getElementById('msRfEmail').value = id.email;
+    document.getElementById('msRfNickname').focus();
+  });
+
+  document.getElementById('msRfCancel').addEventListener('click', function() {
+    document.getElementById('msReplyForm').style.display = 'none';
+    document.getElementById('msReplyToggle').style.display = '';
+  });
+
+  document.getElementById('msRfSubmit').addEventListener('click', function() {
+    var nickname = document.getElementById('msRfNickname').value.trim();
+    var email = document.getElementById('msRfEmail').value.trim();
+    var text = document.getElementById('msRfTextarea').value.trim();
+    var notify = document.getElementById('msRfNotify').checked;
+    var msNickEl = document.getElementById('msRfNickname');
+    var msTextEl = document.getElementById('msRfTextarea');
+    var msValid = true;
+    msNickEl.classList.remove('cip-error');
+    msTextEl.classList.remove('cip-error');
+    if (!nickname) { msNickEl.classList.add('cip-error'); msValid = false; }
+    if (!text) { msTextEl.classList.add('cip-error'); msValid = false; }
+    if (!msValid || !activeMobileCommentId) return;
+
+    saveIdentity(nickname, email);
+    var submitBtn = this;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '...';
+
+    apiPost('/api/inline-comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      comment: text,
+      parent_id: activeMobileCommentId,
+      notify_replies: notify,
+    }).then(function(res) {
+      if (res.comment) {
+        var parent = inlineComments.find(function(c) { return c.id === activeMobileCommentId; });
+        if (parent) {
+          if (!parent.replies) parent.replies = [];
+          parent.replies.push(res.comment);
+        }
+        closeMobileSheet();
+        renderInlineComments();
+      }
+    }).finally(function() {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Reply';
     });
   });
 
@@ -905,7 +1079,14 @@ const jsonLd = {
     var text = cipArea.value.trim();
     var nickname = cipNickname.value.trim();
     var email = cipEmailInput.value.trim();
-    if (!text || !nickname || !email || !pendingRange) return;
+
+    // Validate required fields with red border feedback
+    var valid = true;
+    cipNickname.classList.remove('cip-error');
+    cipArea.classList.remove('cip-error');
+    if (!nickname) { cipNickname.classList.add('cip-error'); valid = false; }
+    if (!text) { cipArea.classList.add('cip-error'); valid = false; }
+    if (!valid || !pendingRange) return;
 
     var selectedText = pendingRange.toString().trim();
     saveIdentity(nickname, email);
@@ -920,7 +1101,8 @@ const jsonLd = {
       selected_text: selectedText,
       comment: text,
       range_start: 0,
-      range_end: selectedText.length
+      range_end: selectedText.length,
+      notify_replies: true
     }).then(function(res) {
       if (res.comment) {
         wrapRange(pendingRange, res.comment.id);
@@ -939,21 +1121,6 @@ const jsonLd = {
   cipArea.addEventListener('keydown', function(e) {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
     if (e.key === 'Escape') cipCancel.click();
-  });
-
-  clearAll.addEventListener('click', function() {
-    if (!confirm('Clear all comments?')) return;
-    // Delete all from server
-    Promise.all(inlineComments.map(function(c) { return apiDelete('/api/inline-comments/' + c.id); })).then(function() {
-      postContent.querySelectorAll('mark.comment-highlight').forEach(function(m) {
-        var p = m.parentNode;
-        while (m.firstChild) p.insertBefore(m.firstChild, m);
-        p.removeChild(m);
-        p.normalize();
-      });
-      inlineComments = [];
-      renderInlineComments();
-    });
   });
 
   var layoutTimer;
@@ -1492,32 +1659,32 @@ const jsonLd = {
   /* ===== Comment Rail (right column) ===== */
   .comment-rail {
     border-left: 1px solid var(--c-border);
-    padding-left: 20px;
+    padding-left: 0;
     position: relative;
   }
   .cr-header {
     display: flex; justify-content: space-between; align-items: center;
-    position: absolute; top: -28px; left: 20px; right: 0;
-    background: var(--c-bg); z-index: 2;
+    position: absolute; top: -28px; left: 0; right: 0;
+    background: transparent; z-index: 2;
   }
   .cr-label {
     font-size: 9px; color: var(--c-text-dim);
     text-transform: uppercase; letter-spacing: 0.12em; font-weight: 600;
   }
-  .cr-clear {
-    background: none; border: none; color: var(--c-border-light); cursor: pointer;
-    font-size: 14px; padding: 2px 6px; border-radius: 3px; transition: all 0.2s;
-  }
-  .cr-clear:hover { color: #f85149; background: rgba(248,81,73,0.1); }
 
   /* Cards container: no extra positioning needed, rail is the context */
   .cr-cards { }
+  .cr-empty {
+    color: var(--c-text-dim); font-size: 12px; padding: 16px 0;
+    text-align: center; opacity: 0.6;
+  }
+  .cr-empty p { margin: 0; }
 
   /* Comment card */
   .comment-rail :global(.cm-card) {
     position: absolute;
     left: 0; right: 0;
-    background: rgba(var(--c-overlay-rgb),0.02);
+    background: transparent;
     border: 1px solid var(--c-border);
     border-radius: 6px;
     padding: 12px;
@@ -1552,6 +1719,28 @@ const jsonLd = {
   .comment-rail :global(.cm-card-delete:hover) {
     color: #f85149; background: rgba(248,81,73,0.1);
   }
+
+  /* ===== Reply Elements ===== */
+  .comment-rail :global(.cm-replies) { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(127,127,127,0.12); }
+  .comment-rail :global(.cm-reply) { margin-bottom: 6px; }
+  .comment-rail :global(.cm-reply-header) { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+  .comment-rail :global(.cm-reply-avatar) { width: 16px; height: 16px; border-radius: 50%; }
+  .comment-rail :global(.cm-reply-name) { font-size: 11px; font-weight: 600; color: var(--c-text-muted, #666); }
+  .comment-rail :global(.cm-reply-time) { font-size: 10px; color: var(--c-text-dim, #999); margin-left: auto; }
+  .comment-rail :global(.cm-reply-body) { font-size: 11px; line-height: 1.4; color: var(--c-text, #333); padding-left: 20px; }
+  .comment-rail :global(.cm-reply-btn) { display: block; margin-top: 6px; padding: 2px 8px; font-size: 11px; color: var(--accent, #4ade80); background: none; border: 1px solid var(--accent, #4ade80); border-radius: 4px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; }
+  .comment-rail :global(.cm-reply-btn:hover) { opacity: 1; }
+  .comment-rail :global(.cm-reply-form) { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(127,127,127,0.12); }
+  .comment-rail :global(.cm-rf-identity) { display: flex; gap: 4px; margin-bottom: 4px; }
+  .comment-rail :global(.cm-rf-input) { flex: 1; padding: 4px 6px; font-size: 11px; border: 1px solid rgba(127,127,127,0.2); border-radius: 4px; background: var(--c-bg-alt, #f9f9f9); color: var(--c-text, #333); }
+  .comment-rail :global(.cm-rf-textarea) { width: 100%; padding: 4px 6px; font-size: 11px; border: 1px solid rgba(127,127,127,0.2); border-radius: 4px; background: var(--c-bg-alt, #f9f9f9); color: var(--c-text, #333); resize: vertical; box-sizing: border-box; }
+  .comment-rail :global(.cm-rf-notify) { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--c-text-dim, #999); margin: 4px 0; }
+  .comment-rail :global(.cm-rf-notify input) { width: 12px; height: 12px; }
+  .comment-rail :global(.cm-rf-actions) { display: flex; justify-content: flex-end; gap: 4px; margin-top: 4px; }
+  .comment-rail :global(.cm-rf-cancel), .comment-rail :global(.cm-rf-submit) { padding: 3px 10px; font-size: 11px; border-radius: 4px; cursor: pointer; border: none; }
+  .comment-rail :global(.cm-rf-cancel) { background: transparent; color: var(--c-text-dim, #999); }
+  .comment-rail :global(.cm-rf-submit) { background: var(--accent, #4ade80); color: #000; font-weight: 600; }
+  .comment-rail :global(.cm-rf-submit:disabled) { opacity: 0.5; cursor: default; }
 
   /* ===== FAB ===== */
   .fab-comment {
@@ -1596,6 +1785,7 @@ const jsonLd = {
   .cip-cancel:hover { color: var(--c-text); }
   .cip-submit { background: var(--accent); color: var(--c-bg); font-weight: 600; }
   .cip-submit:hover { background: #6ee7a0; }
+  .cip-error { border-color: #ef4444 !important; }
 
   /* ===== Mobile Bottom Sheet ===== */
   .mobile-sheet-overlay {
@@ -1632,6 +1822,24 @@ const jsonLd = {
     cursor: pointer; transition: background 0.2s;
   }
   .ms-delete:hover { background: rgba(248,81,73,0.15); }
+  .ms-replies { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(127,127,127,0.12); }
+  .ms-replies:empty { display: none; }
+  .ms-reply-item { margin-bottom: 10px; }
+  .ms-reply-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .ms-reply-avatar { width: 20px; height: 20px; border-radius: 50%; }
+  .ms-reply-name { font-size: 13px; font-weight: 600; }
+  .ms-reply-time { font-size: 11px; color: #999; margin-left: auto; }
+  .ms-reply-body { font-size: 13px; line-height: 1.5; padding-left: 26px; }
+  .ms-reply-toggle { display: block; width: 100%; margin-top: 12px; padding: 8px; font-size: 14px; color: var(--accent, #4ade80); background: none; border: 1px solid var(--accent, #4ade80); border-radius: 8px; cursor: pointer; }
+  .ms-reply-form { margin-top: 12px; }
+  .ms-rf-identity { display: flex; gap: 8px; margin-bottom: 8px; }
+  .ms-rf-input { flex: 1; padding: 8px; font-size: 14px; border: 1px solid rgba(127,127,127,0.2); border-radius: 6px; background: var(--bg-secondary, #f9f9f9); color: var(--text-primary, #333); }
+  .ms-rf-textarea { width: 100%; padding: 8px; font-size: 14px; border: 1px solid rgba(127,127,127,0.2); border-radius: 6px; background: var(--bg-secondary, #f9f9f9); color: var(--text-primary, #333); resize: vertical; box-sizing: border-box; }
+  .ms-rf-notify { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted, #999); margin: 8px 0; }
+  .ms-rf-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .ms-rf-cancel { padding: 6px 16px; font-size: 14px; border-radius: 6px; background: transparent; color: var(--text-muted, #999); border: none; cursor: pointer; }
+  .ms-rf-submit { padding: 6px 16px; font-size: 14px; border-radius: 6px; background: var(--accent, #4ade80); color: #000; font-weight: 600; border: none; cursor: pointer; }
+  .ms-rf-submit:disabled { opacity: 0.5; }
   .ms-author {
     font-size: 12px; color: var(--c-text-muted); margin-bottom: 4px; font-weight: 500;
   }
