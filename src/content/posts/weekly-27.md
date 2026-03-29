@@ -74,7 +74,9 @@ cover: "https://i.typlog.com/airing/8269801518_539572.jpg?x-oss-process=style/l"
 
 ![](https://airing.ursb.me/image/blog/wj27/202410301213062x.png)因为时长问题，改过了 3 版的 PPT 大纲最终如下（反正放大也看不清楚就不打码了），原本会更系统一些，准备了 200 页+。
 
-![](https://airing.ursb.me/image/blog/wj27/202410301218082x.png)## ✨ 创业分享
+![](https://airing.ursb.me/image/blog/wj27/202410301218082x.png)
+
+## ✨ 创业分享
 ### 即时通讯：Slack
 之前我们团队用的飞书，作为一款 All in One 的办公软件用起来确实很方便，至少会比企业微信高效很多。我们也在飞书里建立了若干个话题群，大家会在话题群里滚动发一些资讯的帖子，以保持对新鲜事物的敏感度。
 
@@ -97,7 +99,9 @@ cover: "https://i.typlog.com/airing/8269801518_539572.jpg?x-oss-process=style/l"
 
 - **丰富的集成应用**：众所周知，Slack 的集成非常丰富，我们集成了 GitHub、Notion、Linear、Loom、Xcode Cloud 等常用软件，结合自动化，几乎可以算作另一种意义上的 All in One。
 
-![](https://airing.ursb.me/image/blog/wj27/slack-linear.png)![](https://airing.ursb.me/image/blog/wj27/slack-app.png)### 会议：Loom & Slack 抱团
+![](https://airing.ursb.me/image/blog/wj27/slack-linear.png)![](https://airing.ursb.me/image/blog/wj27/slack-app.png)
+
+### 会议：Loom & Slack 抱团
 前文提到了集体会议的时长会比较长，后来我们尝试做了一些优化。
 
 首先，每周我会先用 Loom 录制一个异步会议，总结大家上周的工作和下周的工作安排，并整理下周工作安排的几个重点方案，团队成员有时间的时候浏览下视频和配套的文档即可。
@@ -106,7 +110,9 @@ cover: "https://i.typlog.com/airing/8269801518_539572.jpg?x-oss-process=style/l"
 
 这样就不需要约大家都有空的时间进行全体会议，约一个大家都有空的共同时间这件事本身就比较耽误项目的节奏。
 
-![](https://airing.ursb.me/image/blog/wj27/loom.png)### 任务管理：Linear
+![](https://airing.ursb.me/image/blog/wj27/loom.png)
+
+### 任务管理：Linear
 团队使用 Linear 作为任务管理工具，它和 Slack 集成非常好，填好工作量之后，洞察功能可以对整个项目的研发进度给出预估完成的最早和最晚时间，这点对于 PM 把握项目节奏而言非常好。
 
 ![](https://airing.ursb.me/image/blog/wj27/linear-progress.png)此外，我们将项目每隔两周划成一个 Cycle，每个 Cycle 有 1-2 个主题，帮助我们专注于当下最核心的任务模块。

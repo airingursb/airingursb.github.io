@@ -519,7 +519,9 @@ RUNTIME_FUNCTION(Runtime_StringParseFloat) {
 ## 3. Number()
 [ECMAScript (ECMA-262) Number ( value )](https://tc39.es/ecma262/#sec-number-constructor-number-value)
 
-![](https://airing.ursb.me/image/blog/media/20220503/Pasted%20image%2020220503110831.png)### 3.1 V8 中的 Number()
+![](https://airing.ursb.me/image/blog/media/20220503/Pasted%20image%2020220503110831.png)
+
+### 3.1 V8 中的 Number()
 Number 作为全局对象，定义还是在  [→ src/init/bootstrapper.cc] 中，在前文介绍 `Number.parseInt` 的注册时已然介绍过，我们回顾下：
 
 `Handle<JSFunction> number_fun = InstallFunction(

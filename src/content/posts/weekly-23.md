@@ -90,7 +90,9 @@ description: ""
 
 某日晚饭后回到工位，惊鸿一瞥的夕阳。
 
-![](https://airing.ursb.me/image/blog/IMG_6518.jpg)## 🎬 书影音
+![](https://airing.ursb.me/image/blog/IMG_6518.jpg)
+
+## 🎬 书影音
 以下是近两个多月的书影音：
 
 - 在读：哲学 |《<资本论>的读法》| ★★★★★

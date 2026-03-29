@@ -80,7 +80,9 @@ Q7. 最后的最后，希望可以推荐三本书。
 ## 🌺 生活点滴
 🌇 分享这个月拍到的几张好看的夕阳吧：
 
-![](https://airing.ursb.me/image/blog/wj32/IMG_8276.jpeg)![](https://airing.ursb.me/image/blog/wj32/05F2C1F8-B457-4774-96B5-36CDDFAF7E02.jpeg)![](https://airing.ursb.me/image/blog/wj32/IMG_8405.jpeg)## 🎬 书影音
+![](https://airing.ursb.me/image/blog/wj32/IMG_8276.jpeg)![](https://airing.ursb.me/image/blog/wj32/05F2C1F8-B457-4774-96B5-36CDDFAF7E02.jpeg)![](https://airing.ursb.me/image/blog/wj32/IMG_8405.jpeg)
+
+## 🎬 书影音
 以下是本周期的书影音记录。
 
 - 看过：电影 |《鬼灭之刃: 无限城第一章》| ★★★★★

@@ -80,7 +80,9 @@ WebKit 的演变路线大致历程如下图所示：
 ![](https://airing.ursb.me/images/blog/chromium/20221015171504.png?max_age=624800)
 通过 Web Platform Tests 的测试报告可见 Chromium 渲染引擎的兼容性也是极好的：
 
-![](https://airing.ursb.me/images/blog/chromium/20221015203034.png?max_age=624800)### JavaScript 引擎
+![](https://airing.ursb.me/images/blog/chromium/20221015203034.png?max_age=624800)
+
+### JavaScript 引擎
 JavaScript 引擎在浏览器中通常作为渲染引擎内置的一个模块，但同时它的独立性非常好，也可以作为独立的引擎移植到其他地方使用。
 
 这里列举几个业内有名的 JavaScript 引擎：
@@ -99,7 +101,9 @@ JavaScript 引擎在浏览器中通常作为渲染引擎内置的一个模块，
 
 ![](https://airing.ursb.me/images/blog/chromium/20221015202658.png?max_age=624800)ECMAScript 标准支持情况：
 
-![](https://airing.ursb.me/images/blog/chromium/20221015202855.png?max_age=624800)## Chromium 进程模型
+![](https://airing.ursb.me/images/blog/chromium/20221015202855.png?max_age=624800)
+
+## Chromium 进程模型
 Chromium 有 5 类进程：
 
 - Browser Process：1 个
@@ -110,7 +114,9 @@ Chromium 有 5 类进程：
 
 抛开 Chrome 扩展的 Plugin Process，和渲染强相关的有 Browser Process、Render Process、Viz Process。接下来，我们重点看看这 3 类进程。
 
-![](https://airing.ursb.me/images/blog/chromium/20221015203410.png?max_age=624800)### Render Process
+![](https://airing.ursb.me/images/blog/chromium/20221015203410.png?max_age=624800)
+
+### Render Process
 
 - 数量：多个
 - 职责：负责单个 Tab 内单个站点（注意跨站点 iframe 的情况）的渲染、动画、滚动、Input 事件等。
@@ -143,7 +149,9 @@ Compositor Thread
 
 其中，Compositor thread helpers 的数目取决于 CPU 核心数。
 
-![](https://airing.ursb.me/images/blog/chromium/20221015204233.png?max_age=624800)### Browser Process
+![](https://airing.ursb.me/images/blog/chromium/20221015204233.png?max_age=624800)
+
+### Browser Process
 
 - 数量：1 个
 - 职责：负责 Browser UI （不包含 WebContent 的 UI）的全部能力，包括渲染、动画、路由、Input 事件等。
@@ -178,7 +186,9 @@ Compositor Thread
 
 那么按照 Process-per-tab 模式，最终的进程模型如下图所示：
 
-![](https://airing.ursb.me/images/blog/chromium/20221015205446.png?max_age=624800)## Chromium 渲染流水线
+![](https://airing.ursb.me/images/blog/chromium/20221015205446.png?max_age=624800)
+
+## Chromium 渲染流水线
 至今前置知识已介绍完毕，开启本文的核心部分 —— Chromium Rendering Pipeline。
 
 所谓渲染流水线，就是从接受网络的字节码开始，一步步处理这些字节码把它们转变成屏幕上像素的过程。经过梳理之后，包括以下 13 个流程：
@@ -477,7 +487,9 @@ Layout Object 记录了 Render Object 的几何属性。
 
 **Property trees** 包括以下四棵树：
 
-![](https://airing.ursb.me/images/blog/chromium/20221015215807.png?max_age=624800)### Paint
+![](https://airing.ursb.me/images/blog/chromium/20221015215807.png?max_age=624800)
+
+### Paint
 ![](https://airing.ursb.me/images/blog/chromium/20221015215947.png?max_age=624800)
 - 模块：blink
 - 进程：Render Process

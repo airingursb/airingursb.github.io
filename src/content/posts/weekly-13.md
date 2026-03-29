@@ -75,7 +75,9 @@ description: ""
 
 很喜欢 Dorfromantik 这种治愈画风的游戏呀~
 
-![](https://airing.ursb.me/image/blog/20220731124503.png)### Recent Code
+![](https://airing.ursb.me/image/blog/20220731124503.png)
+
+### Recent Code
 ```
 TypeScript        21 hrs 1 min   █████████▋░░░░░░░░░░░  45.9%
 TypeScript React  19 hrs 56 mins █████████▏░░░░░░░░░░░  43.6%

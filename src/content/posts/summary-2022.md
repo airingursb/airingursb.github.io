@@ -90,7 +90,9 @@ cover: "https://airing.ursb.me/images/blog/2022-007.jpeg"
 
 **希望今后仍旧能抱着那时被珍视的心情，勇敢地继续走下去。**
 
-![](https://airing.ursb.me/images/blog/2022-006.png)## 生活
+![](https://airing.ursb.me/images/blog/2022-006.png)
+
+## 生活
 今年搬了新家，换了居住三年的小屋子搬到了一个大屋子。
 
 喜欢我房间窗外的晚霞。

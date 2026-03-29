@@ -34,7 +34,9 @@ cover: "https://airing.ursb.me/images/blog/20231213215330%402x%20%281%29.png"
 
 ![](https://airing.ursb.me/image/blog/04b0d14653332a6699b3171ea12679%201.jpg)大二的时候，我们学校开放了一些第二专业，我便申请辅修了计算机，每天白天上本专业的课程，晚上去上二专课，九点多下课回宿舍捣鼓自己的东西。虽然有点辛苦，但是回忆起来异常充实，而且稀里糊涂地总是第一。
 
-![](https://airing.ursb.me/image/blog/3d1f1c4f311d701f2fac3f4d0c7773.jpg)### 2015：Web 前端
+![](https://airing.ursb.me/image/blog/3d1f1c4f311d701f2fac3f4d0c7773.jpg)
+
+### 2015：Web 前端
 一五年的时候接触了 HTML、CSS 和 JS，也就是现在所谓的 Web 前端。刚接触 H5 开发的时候还在用 DreamWeaver…之后了解到了 Sublime，便把 DreamWeaver 卸载了。
 
 ![](https://airing.ursb.me/image/blog/afa372be5a1f3f23eee5d46d63d3ba%201.jpg)学 JS 期间用 Canvas 写了个微信聊天界面模拟器，项目也迅速上了 100 Star。
@@ -186,7 +188,9 @@ PS. 这一年的空余时间依旧在折腾我的博客：
 
 手套最近特别喜欢蹂躏这只狗，每天把这狗藏起来晚上，手套总能把它拖出来打一番：
 
-![](https://airing.ursb.me/image/blog/20231109211241@2x.jpg)## 🎬 书影音
+![](https://airing.ursb.me/image/blog/20231109211241@2x.jpg)
+
+## 🎬 书影音
 以下是这个月的书影音：
 
 - 在读：心理学 |《存在主义心理治疗》| ★★★★★

@@ -11,7 +11,9 @@ description: ""
 
 ![](https://airing.ursb.me/image/blog/2022071001.png)你也可以扫码填写表格：
 
-![](https://airing.ursb.me/image/blog/2022071002.png)## 那些我喜欢的游戏（第1辑）
+![](https://airing.ursb.me/image/blog/2022071002.png)
+
+## 那些我喜欢的游戏（第1辑）
 以下排名没有先后。
 
 ### 1. Undertale

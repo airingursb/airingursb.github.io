@@ -63,12 +63,16 @@ description: ""
 
 当然，这个软件还有一部分很大的场景是关联 GTD 的任务项与相关文件（可惜我正在用的滴答清单不支持 scheme）：
 
-![](https://airing.ursb.me/image/blog/2022071701.png)### Emojimix
+![](https://airing.ursb.me/image/blog/2022071701.png)
+
+### Emojimix
 [emojimix](https://tikolu.net/emojimix/) 是一个网页应用，可以混合两个 Emoji 得到一个新的 Emoji，贼有意思。
 
 举两个栗子：
 
-![](https://airing.ursb.me/image/blog/emojimix.jpg)## 本周记录
+![](https://airing.ursb.me/image/blog/emojimix.jpg)
+
+## 本周记录
 ### Recent Viewings
 
 - 在看：动漫 |《宝可梦旅途》

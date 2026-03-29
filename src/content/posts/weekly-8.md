@@ -105,13 +105,19 @@ description: ""
 ### Obsidian
 经典的卡片盒式笔记工具，目前我用作 Markdown 写作工具。
 
-![](https://airing.ursb.me/image/blog/2022062503.png)### LogSeq
+![](https://airing.ursb.me/image/blog/2022062503.png)
+
+### LogSeq
 大纲式双链知识库笔记工具，是 Roam Research 的平替版（甚至做的更好），也是我目前唯一在使用的笔记工具。
 
-![](https://airing.ursb.me/image/blog/2022062504.png)### Hepta
+![](https://airing.ursb.me/image/blog/2022062504.png)
+
+### Hepta
 作者是一个台湾刚毕业的大学生，对笔记有一套自己的思考，而且他能做到 Hepta 几乎日更，这也是我很佩服的一个点。
 
-![](https://airing.ursb.me/image/blog/20220626122915.png)## 本周记录
+![](https://airing.ursb.me/image/blog/20220626122915.png)
+
+## 本周记录
 ### Recent Viewings
 
 - 在读：情感 |《见字如面》
@@ -127,7 +133,9 @@ description: ""
 
 By the way，糖豆人免费了 & 登录了 Switch，直连游玩体验 ok，一定要尝试下！（游戏就应该是这种纯粹的快乐呀）
 
-![](https://airing.ursb.me/image/blog/20220625180007.png)### Recent Code
+![](https://airing.ursb.me/image/blog/20220625180007.png)
+
+### Recent Code
 ```
 TypeScript React    40 hrs 12 mins ██████████████▋░░░░░░ 70.1%
 TypeScript          13 hrs 43 mins █████░░░░░░░░░░░░░░░░ 23.9%

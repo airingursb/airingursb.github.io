@@ -66,7 +66,9 @@ cover: "https://airing.ursb.me/image/blog/wj33/B0000514HEIC1760766420-1.jpg"
 
 10 月份还去了趟 SG 的环球影城，体验了下夜晚的万圣节主题和 4 个限定鬼屋，鬼屋都是清一色的 Jump scare，布景有特色但体验较为同质化。
 
-![](https://airing.ursb.me/image/blog/wj33/20251025_215212.jpg)## 🎬 书影音
+![](https://airing.ursb.me/image/blog/wj33/20251025_215212.jpg)
+
+## 🎬 书影音
 以下是本周期的书影音记录。
 
 - 看过：剧集 |《苦尽柑来遇见你》| ★★★★★

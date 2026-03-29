@@ -33,7 +33,9 @@ description: ""
 ### 技术：Why’s THE Design
 这周看到了个不错的博客网站：[为什么这么设计系列文章 - 面向信仰编程](https://draveness.me/whys-the-design/)，博主撰写了一系列关于计算机领域中程序设计决策的文章，在这个系列的每一篇文章中他都会提出一个具体的问题并从不同的角度讨论这种设计的优缺点、对具体实现造成的影响。这种提出问题并去深入研究的学习方法非常值得学习。
 
-![](https://airing.ursb.me/image/blog/20220604113130.png)### 软件：1Password 8
+![](https://airing.ursb.me/image/blog/20220604113130.png)
+
+### 软件：1Password 8
 作为 1Password 老用户，一直停留在 1Password 7 没有去主动升级上周发布的大版本，因为很久之前看新闻说新版本用 Electron 开发，评论区都在吐槽 Electron 的性能，对抛弃原生开发的做法表示非常不满。但我这周看到  1Password 8 宣传页，深深被新 UI 吸引了，“不争气”地升级到了 8。
 
 ![](https://airing.ursb.me/image/blog/20220604114351.png)体验了几天下来发现，作为密码管理软件而言并没有什么要吃性能的地方，整体 Electron 的性能非常流畅。我想如果官方不主动对用户表示新版本换了技术栈，应该也不会有人发现新一代的 1Password 居然不是原生开发的。

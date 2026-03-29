@@ -96,7 +96,9 @@ PDF 报告原文：[2022大社交趋势观察报告-袤则咨询](https://docs.q
 - Why
 - How
 
-![](https://airing.ursb.me/image/blog/2022070301.png)### Muse 2.0
+![](https://airing.ursb.me/image/blog/2022070301.png)
+
+### Muse 2.0
 Muse 前段时间出了 2.0 版本，登录了 Mac。不过，还是期待一波 iPad OS 的新系统出的白板应用。
 
 PS. Muse 的开发者很 Nice，针对国行特定调低了价格。除此之外，我之前用蹩脚英语给他们发邮件咨询文件同步的功能，他们也很认真地回复了。体验了之后会发现，Muse 着实是一款用心打磨过的好产品。
@@ -112,7 +114,9 @@ PS. Muse 的开发者很 Nice，针对国行特定调低了价格。除此之外
 - 在看：纪录片 |《英雄之路》
 - 在玩：Switch |《十三机兵防卫圈》
 
-![](https://airing.ursb.me/image/blog/2022070303.png)### Recent Code
+![](https://airing.ursb.me/image/blog/2022070303.png)
+
+### Recent Code
 ```
 TypeScriptReact  32 hrs 30 mins ███████████████▋░░░░░  74.5%
 TypeScript       7 hrs 31 mins  ███▌░░░░░░░░░░░░░░░░░  17.2%

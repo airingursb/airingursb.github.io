@@ -25,7 +25,9 @@ cover: "https://airing.ursb.me/image/blog/2023/WechatIMG76.jpg"
 
 今年还搬了家，搬家前最后拍了下阳台的风景，依旧绝美——
 
-![](https://airing.ursb.me/image/blog/2023/WechatIMG67.jpg)### 旅行
+![](https://airing.ursb.me/image/blog/2023/WechatIMG67.jpg)
+
+### 旅行
 今年去了不少地方旅行。
 
 👪 大鹏：春节期间家人过来深圳过年，带他们逛了大鹏半岛。
@@ -59,7 +61,9 @@ cover: "https://airing.ursb.me/image/blog/2023/WechatIMG76.jpg"
 - AirPods Pro2(USB-C)：之前的 Pro1 被洗衣机洗了一遍，虽然勉强还能听，但是降噪失效了，且偶尔会有杂音，趁着今年出了 USB-C 的新款换了一下。
 - 莫曼顿助力自行车：每天上下班的代步车，三档助力可调，续航 35 KM 左右，正好够我一周上下班（上坡的时候和开挂一样）；不开电的时候也可以当自行车，有七档变速，缺点是不开电的时候有点难骑。
 
-![](https://airing.ursb.me/image/blog/2023/WechatIMG69.jpg)### 试驾
+![](https://airing.ursb.me/image/blog/2023/WechatIMG69.jpg)
+
+### 试驾
 今年陪不同朋友去试驾了几辆车，谈谈我个人的感受。
 
 - 问界 M5：体验智驾的时候翻车了，该转弯的时候没变道成功，直接直行了。而且我不太喜欢它的内饰，有点老气。
@@ -74,7 +78,9 @@ cover: "https://airing.ursb.me/image/blog/2023/WechatIMG76.jpg"
 
 整体而言，运动以后比以前的状态好了特别多。
 
-![](https://airing.ursb.me/image/blog/2023/WechatIMG64.jpg)### 情绪
+![](https://airing.ursb.me/image/blog/2023/WechatIMG64.jpg)
+
+### 情绪
 今年依旧每天写心情日记，今年的 iOS 17 还出了「手记」和健康里的「心理状态」，是我一直想做的 App。
 
 ![](https://airing.ursb.me/image/blog/2023/WechatIMG71.jpg)今年的情绪图如下，处理六月那段时间比较艰难之外（后文讲到工作再提），其余时间都是保持着小确幸的。
@@ -90,7 +96,9 @@ cover: "https://airing.ursb.me/image/blog/2023/WechatIMG76.jpg"
 
 手机没有存货，刚现场拍了一张：
 
-![](https://airing.ursb.me/image/blog/2023/WechatIMG75.jpg)## 学习
+![](https://airing.ursb.me/image/blog/2023/WechatIMG75.jpg)
+
+## 学习
 今年是大模型 AI 之年，借助 AI 和一些软件以及自己的工作流，摄取知识的效率更高了。这里简单介绍下我的工作流和方法。
 
 在 2022 年的《[月刊（第16期）：个人信息流分享](https://blog.ursb.me/posts/weekly-16/)》一文中，介绍过自己的信息处理模式，2023 年有一些辅助性上的改动，这里介绍一下。
@@ -238,7 +246,9 @@ PS. 某周 WakaTime 的编程统计：
 - 《故乡，别来无恙》：★★★★☆
 - 《宁安如梦》：★★★☆☆
 
-![](https://airing.ursb.me/image/blog/2023/WechatIMG62.jpg)### 电影
+![](https://airing.ursb.me/image/blog/2023/WechatIMG62.jpg)
+
+### 电影
 神作档：
 
 - 《蜘蛛侠：纵横宇宙》：★★★★★

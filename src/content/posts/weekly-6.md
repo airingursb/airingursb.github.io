@@ -59,10 +59,14 @@ description: ""
 ### 优化输入法体验：Input Source Pro
 [Input Source Pro](https://inputsource.pro/zh-CN) 可以根据应用或是网站自动切换输入法，并且在切换窗口的时候还会贴心的提示当前的输入法是什么，比如设置 VSCode、iTerm、Xcode 默认为英文输入法，而笔记软件和企业微信默认为中文输入法，切换软件时再也不需要按 shift 键了！（这款软件安利给同事们之后纷纷点赞，简直程序员刚需）
 
-![](https://airing.ursb.me/image/blog/20220611155646.png)### 渐进式单词学习插件
+![](https://airing.ursb.me/image/blog/20220611155646.png)
+
+### 渐进式单词学习插件
 [Relingo](https://relingo.net/zh/index) 是一款免费的 Chrome 插件，可以自动标注网页里的生词，你可以根据自己的掌握程度来选择性地将它们一键加入到生词本中，通过日常的网页浏览，渐进式地学习英语单词。
 
-![](https://airing.ursb.me/image/blog/SCR-20220611-m9h.jpg)### 截图软件
+![](https://airing.ursb.me/image/blog/SCR-20220611-m9h.jpg)
+
+### 截图软件
 [Snipaste](http://zh.snipaste.com/) 是我一直在用的免费截图软件，Windows 和 MacOS 都支持，最喜欢的是可以把截图贴在桌面上的能力，如同便签一样，方便我贴重构稿、关键信息、对比代码、二维码等信息到桌面上：
 
 ![](https://airing.ursb.me/image/blog/20220611154247.png)[Shottr](https://shottr.cc/#/) 是最近新出的又一款 MacOS 平台的截图 App，功能强大、界面美观、而且免费，较于 Snipaste 多了滚动截图、窗口截图、OCR 等能力，但是缺少了我最喜欢的桌面贴图功能，而且个人体验下来，虽然它很美观，但是标注图片时总是不如 Snipaste 用的顺手。
@@ -72,7 +76,9 @@ description: ""
 
 [CleanShot X](https://cleanshot.com/) 是一款老牌 & 功能强大的 MacOS 平台的截图软件，以上两款软件的功能它都有，除此之外，还有录制视频、录制 GIF、上传图片到云端、顺序标注等独有的能力，界面也很美观，和 Raycast 的联动做的也很好，还有独创的 「all in one」 模式。唯一的缺点是需要付费（现在 618 大促，仅需 ￥104 元/设备）。
 
-![](https://airing.ursb.me/image/blog/20220611155321.png)## 本周记录
+![](https://airing.ursb.me/image/blog/20220611155321.png)
+
+## 本周记录
 ### Recent Viewings
 
 - 读完：小说 |《红手指》|  ★★★★
@@ -86,7 +92,9 @@ description: ""
 
 Shotgun King 是一款很有创意的游戏，魔改了国际象棋，你是黑棋国王，虽孤军奋战，但你有一把霰弹枪。
 
-![](https://airing.ursb.me/image/blog/20220611160836.png)### Recent Code
+![](https://airing.ursb.me/image/blog/20220611160836.png)
+
+### Recent Code
 ```
 TypeScript React   45 hrs 11 mins ███████████████▊░░░░░  75.3%
 TypeScript         10 hrs 14 mins ███▌░░░░░░░░░░░░░░░░░  17.1%
