@@ -15,8 +15,9 @@ export async function GET(context: APIContext) {
 
   return rss({
     title: "Airing 的博客",
-    description: "Airing's Blog - 记录生活与技术",
+    description: "Airing - INFJ | Blogger | Full-stack engineer | SG",
     site: context.site!,
+    stylesheet: '/feed.xsl',
     items: posts.map((post, i) => {
       const desc = post.data.description ?? '';
       const pixel = `<img src="${trackingBase}?post=${encodeURIComponent(post.id)}" width="1" height="1" alt="" />`;
