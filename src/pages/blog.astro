@@ -12,7 +12,7 @@ const featuredPosts = posts.filter(p => p.data.featured);
 // Hero: featured first, then fill with recent
 const heroPool = [...featuredPosts, ...posts.filter(p => !p.data.featured)];
 const heroPosts = heroPool.slice(0, 5);
-const popularPosts = [...featuredPosts, ...posts].slice(0, 4);
+const popularPosts = [...featuredPosts, ...posts].slice(0, 4); // SSR fallback before JS ranking loads
 // Remaining for the list (skip hero posts)
 const heroIds = new Set(heroPosts.map(p => p.id));
 const listPosts = posts.filter(p => !heroIds.has(p.id));
@@ -22,6 +22,15 @@ function formatDate(date: Date) {
 }
 
 const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08), rgba(var(--c-overlay-rgb),0.03))';
+
+// All posts metadata for client-side ranking
+const allPostsMeta = posts.map(p => ({
+  id: p.id,
+  title: p.data.title,
+  date: formatDate(p.data.date),
+  dateISO: p.data.date.toISOString(),
+  cover: p.data.cover || null,
+}));
 ---
 
 <BaseLayout title="Blog | Airing">
@@ -118,13 +127,16 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
     </section>
 
     <!-- Most Popular -->
+    <script is:inline define:vars={{ allPostsMeta }}>
+      window.__ALL_POSTS_META__ = allPostsMeta;
+    </script>
     <section class="popular-section">
       <div class="popular-inner">
         <div class="popular-header">
           <h2 class="popular-heading">Most Popular</h2>
           <a href="/archive" class="popular-viewall">View all &rarr;</a>
         </div>
-        <div class="popular-grid">
+        <div class="popular-grid" id="popularGrid">
           {popularPosts.map(post => (
             <a href={`/posts/${post.id}`} class="popular-card">
               <div class="pc-body">
@@ -300,10 +312,60 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
   });
   document.addEventListener('click', () => wechatTooltip?.classList.remove('active'));
 
+  // ── Fetch ranking data (shared by popular section & Top tab) ──
+  let rankingCache: { likes: Record<string, number>; views: Record<string, number> } | null = null;
+
+  async function fetchRanking() {
+    if (rankingCache) return rankingCache;
+    try {
+      const res = await fetch('https://chat.ursb.me/api/posts/ranking');
+      rankingCache = await res.json();
+    } catch {
+      rankingCache = { likes: {}, views: {} };
+    }
+    return rankingCache;
+  }
+
+  // ── Populate Most Popular with real ranking data ──
+  (async () => {
+    const ranking = await fetchRanking();
+    const allPosts = (window as any).__ALL_POSTS_META__ as Array<{
+      id: string; title: string; date: string; dateISO: string; cover: string | null;
+    }>;
+    if (!allPosts || !ranking) return;
+
+    const sorted = [...allPosts].sort((a, b) => {
+      const likesA = ranking.likes[a.id] || 0;
+      const likesB = ranking.likes[b.id] || 0;
+      if (likesB !== likesA) return likesB - likesA;
+      const pvA = ranking.views[a.id] || 0;
+      const pvB = ranking.views[b.id] || 0;
+      if (pvB !== pvA) return pvB - pvA;
+      return new Date(b.dateISO).getTime() - new Date(a.dateISO).getTime();
+    });
+
+    const top4 = sorted.slice(0, 4);
+    const grid = document.getElementById('popularGrid');
+    if (!grid) return;
+
+    grid.innerHTML = top4.map(p => `
+      <a href="/posts/${p.id}" class="popular-card">
+        <div class="pc-body">
+          <h3 class="pc-title">${p.title}</h3>
+          <div class="pc-meta">
+            <time>${p.date}</time>
+            <span>&middot;</span>
+            <span>Airing</span>
+          </div>
+        </div>
+        ${p.cover ? `<div class="pc-thumb" style="background-image:url(${p.cover})"></div>` : ''}
+      </a>
+    `).join('');
+  })();
+
   // ── Top / Latest tab switching ──
   const tabs = document.querySelectorAll('.list-tab') as NodeListOf<HTMLButtonElement>;
   const postItems = document.querySelectorAll('.post-item') as NodeListOf<HTMLAnchorElement>;
-  let rankingCache: { likes: Record<string, number>; views: Record<string, number> } | null = null;
 
   // Store original order (by date descending, already rendered)
   const originalOrder = Array.from(postItems);
@@ -318,15 +380,7 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
       if (!container) return;
 
       if (isTop) {
-        // Fetch ranking data if not cached
-        if (!rankingCache) {
-          try {
-            const res = await fetch('https://chat.ursb.me/api/posts/ranking');
-            rankingCache = await res.json();
-          } catch {
-            rankingCache = { likes: {}, views: {} };
-          }
-        }
+        await fetchRanking();
 
         // Sort: likes desc → PV desc → date desc
         const sorted = Array.from(postItems).sort((a, b) => {
@@ -543,7 +597,6 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
     display: flex; align-items: flex-start; gap: 12px;
     text-decoration: none;
     padding-bottom: 20px;
-    border-bottom: 1px solid var(--c-border);
     transition: opacity 0.15s;
   }
   .popular-card:hover { opacity: 0.8; }
@@ -561,7 +614,7 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
     margin-top: auto;
   }
   .pc-thumb {
-    width: 48px; height: 48px; flex-shrink: 0;
+    width: 72px; height: 72px; flex-shrink: 0;
     background-size: cover; background-position: center;
     border-radius: 6px;
     background-color: rgba(var(--c-overlay-rgb),0.04);
