@@ -2206,14 +2206,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
     // ── Guestbook ──
     (function () {
-      var SUPABASE_URL = 'https://pcoyocvqfipuydhvdsle.supabase.co';
-      var SUPABASE_KEY = 'sb_publishable_jieHU6yu3dPxSww2_B_KIg_9KcWg6wl';
-      var API = SUPABASE_URL + '/rest/v1/guestbook';
-      var HEADERS = {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY,
-        'Content-Type': 'application/json'
-      };
+      var CHAT_API = 'https://chat.ursb.me';
+      var SLUG = 'guestbook';
 
       var messagesEl = document.getElementById('guestbookMessages');
       var form = document.getElementById('guestbookForm');
@@ -2269,35 +2263,37 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         return div.innerHTML;
       }
 
-      function renderMessages(messages) {
-        if (!messages || messages.length === 0) {
+      function renderMessages(comments) {
+        // Filter only root comments (no replies) for the homepage mini view
+        var roots = comments.filter(function(c) { return !c.parent_id; });
+        if (!roots || roots.length === 0) {
           messagesEl.innerHTML = '<div class="gb-empty">' + t('gb_empty') + '</div>';
           return;
         }
-        messagesEl.innerHTML = messages.map(function (m) {
+        messagesEl.innerHTML = roots.map(function (m) {
           return '<div class="gb-msg">' +
             '<div class="gb-meta">' +
-              '<span class="gb-name">&gt; ' + escapeHtml(m.name || t('gb_anonymous')) + '</span>' +
+              '<span class="gb-name">&gt; ' + escapeHtml(m.nickname || t('gb_anonymous')) + '</span>' +
               '<span class="gb-time">' + timeAgo(m.created_at) + '</span>' +
             '</div>' +
-            '<div class="gb-text">' + escapeHtml(m.message) + '</div>' +
+            '<div class="gb-text">' + escapeHtml(m.content) + '</div>' +
           '</div>';
         }).join('');
         messagesEl.scrollTop = messagesEl.scrollHeight;
       }
 
       function loadMessages() {
-        fetch(API + '?select=id,name,message,created_at&status=eq.approved&order=created_at.desc&limit=20', {
-          headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
+        fetch(CHAT_API + '/api/comments?post_slug=' + encodeURIComponent(SLUG), {
+          headers: { 'Origin': location.origin }
         })
         .then(function (r) { return r.json(); })
-        .then(function (data) { renderMessages(data.reverse()); })
+        .then(function (data) { renderMessages(data.comments || []); })
         .catch(function () { messagesEl.innerHTML = '<div class="gb-empty">' + t('gb_load_fail') + '</div>'; });
       }
 
       form.addEventListener('submit', function (e) {
         e.preventDefault();
-        var name = nameInput.value.trim() || 'anonymous';
+        var nickname = nameInput.value.trim() || 'anonymous';
         var email = emailInput.value.trim();
         var message = msgInput.value.trim();
         if (!message) return;
@@ -2310,20 +2306,27 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         submitBtn.disabled = true;
         submitBtn.textContent = '...';
 
-        var payload = { name: name, message: message, status: 'pending' };
-        if (email) payload.email = email;
+        var body = {
+          post_slug: SLUG,
+          nickname: nickname,
+          email: email || undefined,
+          content: message
+        };
 
-        fetch(API, {
+        fetch(CHAT_API + '/api/comments', {
           method: 'POST',
-          headers: HEADERS,
-          body: JSON.stringify(payload)
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
         })
-        .then(function (r) {
-          if (!r.ok) throw new Error('Failed');
-          saveIdentity(name, email);
-          msgInput.value = '';
-          pendingEl.style.display = 'flex';
-          setTimeout(function() { pendingEl.style.display = 'none'; }, 8000);
+        .then(function (r) { return r.json(); })
+        .then(function (res) {
+          if (res.comment) {
+            saveIdentity(nickname, email);
+            msgInput.value = '';
+            loadMessages();
+          } else {
+            throw new Error('No comment returned');
+          }
         })
         .catch(function () {
           alert(t('gb_send_fail'));

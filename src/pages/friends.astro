@@ -1,0 +1,626 @@
+---
+/**
+ * Friends — 友链 + 留言板
+ * Top: friend links list
+ * Bottom: guestbook comments (chat.ursb.me API, slug "friends")
+ */
+import BaseLayout from '../layouts/BaseLayout.astro';
+import friends from '../data/friends.json';
+import friendsMeta from '../data/friends_meta.json';
+
+const sites = friendsMeta.sites || {};
+const checkedAt = friendsMeta.checkedAt ? new Date(friendsMeta.checkedAt) : null;
+const checkedStr = checkedAt
+  ? checkedAt.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
+  : '';
+
+function getDomain(url: string) {
+  try { return new URL(url).hostname.replace('www.', ''); } catch { return url; }
+}
+function getFaviconUrl(url: string) {
+  return `https://www.google.com/s2/favicons?domain=${getDomain(url)}&sz=32`;
+}
+function getSiteStatus(url: string): 'ok' | 'error' | 'unknown' {
+  const m = sites[url];
+  if (!m) return 'unknown';
+  return m.ok ? 'ok' : 'error';
+}
+function getLastModified(url: string): string | null {
+  const m = sites[url];
+  if (!m?.lastModified) return null;
+  try {
+    return new Date(m.lastModified).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+  } catch { return null; }
+}
+
+const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
+---
+
+<BaseLayout title="Friends | Airing">
+  <div class="friends-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/blog" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/blog">Blog</a>
+            <a href="/archive">Archive</a>
+            <a href="/friends">Friends</a>
+          </div>
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <header class="page-header">
+      <div class="header-inner">
+        <h1 class="page-title">Friends</h1>
+        <p class="page-desc">{friends.length} blogs I follow and recommend. <span class="status-summary">{okCount} accessible</span></p>
+        {checkedStr && <p class="page-checked">Last checked: {checkedStr}</p>}
+      </div>
+    </header>
+
+    <!-- Friends List -->
+    <section class="friends-section">
+      <div class="friends-inner">
+        <div class="friends-grid">
+          {friends.map((f) => {
+            const status = getSiteStatus(f.url);
+            const lastMod = getLastModified(f.url);
+            return (
+              <a href={f.url} class={`friend-card fc-${status}`} target="_blank" rel="noopener noreferrer">
+                <div class="fc-top">
+                  <img src={getFaviconUrl(f.url)} alt="" class="fc-icon" loading="lazy" width="16" height="16" />
+                  <span class={`fc-status fc-status-${status}`} title={status === 'ok' ? 'Accessible' : status === 'error' ? 'Unreachable' : 'Unknown'} />
+                </div>
+                <span class="fc-name">{f.name}</span>
+                <span class="fc-domain">{getDomain(f.url)}</span>
+                {lastMod && <span class="fc-updated">Updated {lastMod}</span>}
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+
+    <!-- Guestbook Section -->
+    <section class="guestbook-section">
+      <div class="gb-inner">
+        <div class="bc-header">
+          <h2 class="bc-title">Guestbook</h2>
+          <span class="bc-count" id="gbCount">0 messages</span>
+        </div>
+
+        <div class="bc-thread" id="gbThread"></div>
+
+        <div class="bc-compose">
+          <div class="bc-compose-avatar">
+            <img id="gbComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" />
+          </div>
+          <div class="bc-compose-form">
+            <div class="bc-compose-fields">
+              <input type="text" class="bc-input" id="gbNickname" placeholder="Nickname" />
+              <input type="email" class="bc-input" id="gbEmail" placeholder="Email" />
+              <input type="url" class="bc-input" id="gbWebsite" placeholder="Website (optional)" />
+            </div>
+            <textarea class="bc-textarea" id="gbTextarea" placeholder="Write a message..." rows="4"></textarea>
+            <div class="bc-compose-footer">
+              <span class="bc-hint">Markdown supported</span>
+              <button class="bc-submit" id="gbSubmit">Submit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer class="page-footer">
+      <div class="footer-inner">
+        <span>&copy; 2026 Airing</span>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/blog">Blog</a>
+          <a href="/feed.xml">RSS</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>
+
+<style is:global>
+  body:has(.friends-page) {
+    display: block;
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+</style>
+
+<style>
+  .friends-page {
+    min-height: 100vh;
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  /* Masthead */
+  .masthead { width: 100%; }
+  .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+  .mast-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; position: relative;
+  }
+  .mast-brand {
+    font-size: 11px; color: var(--c-text-muted); text-decoration: none;
+    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+  }
+  .mast-brand:hover { color: var(--c-text); }
+  .mast-links { display: flex; gap: 16px; }
+  .mast-links a {
+    font-size: 11px; color: var(--c-text-dim); text-decoration: none;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .mast-links a:hover { color: var(--c-text); }
+  .mast-bottom-rule { height: 1px; background: var(--c-border); }
+
+  /* Header */
+  .page-header {
+    border-bottom: 1px solid var(--c-border);
+    padding: 48px 0;
+  }
+  .header-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+  }
+  .page-title {
+    font-size: 36px; font-weight: 800; color: var(--c-text);
+    letter-spacing: -0.03em; margin-bottom: 8px;
+  }
+  .page-desc { font-size: 15px; color: var(--c-text-dim); }
+  .status-summary {
+    display: inline-block;
+    font-size: 12px; color: #4ade80;
+    background: rgba(74,222,128,0.1);
+    padding: 1px 8px; border-radius: 10px;
+    margin-left: 6px; vertical-align: middle;
+  }
+  .page-checked {
+    font-size: 12px; color: var(--c-text-dim); margin-top: 4px;
+    opacity: 0.6;
+  }
+
+  /* Friends Section */
+  .friends-section {
+    padding: 48px 0;
+    border-bottom: 1px solid var(--c-border);
+  }
+  .friends-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+  }
+
+  /* ═══ Grid Cards ═══ */
+  .friends-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+  }
+  .friend-card {
+    display: flex; flex-direction: column; gap: 4px;
+    padding: 16px 20px;
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    background: rgba(var(--c-overlay-rgb), 0.02);
+    position: relative;
+  }
+  .friend-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    background: rgba(var(--c-overlay-rgb), 0.05);
+  }
+  .friend-card.fc-error {
+    opacity: 0.55;
+  }
+  .friend-card.fc-error:hover {
+    opacity: 0.8;
+  }
+  .fc-top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .fc-icon {
+    width: 16px; height: 16px;
+    border-radius: 3px;
+    background: var(--c-border);
+    flex-shrink: 0;
+  }
+  .fc-status {
+    width: 6px; height: 6px; border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .fc-status-ok { background: #4ade80; }
+  .fc-status-error { background: #f87171; }
+  .fc-status-unknown { background: var(--c-text-dim); opacity: 0.4; }
+  .fc-name {
+    font-size: 14px; font-weight: 600; color: var(--c-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .friend-card:hover .fc-name { color: var(--accent); }
+  .fc-domain {
+    font-size: 11px; color: var(--c-text-dim);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .fc-updated {
+    font-size: 10px; color: var(--c-text-dim);
+    opacity: 0.6; margin-top: 2px;
+  }
+
+  /* Guestbook Section */
+  .guestbook-section {
+    max-width: 1440px; margin: 0 auto;
+    padding: 0 48px 48px;
+  }
+  .gb-inner {
+    max-width: 720px;
+    margin: 0 auto;
+  }
+
+  /* Comment header */
+  .bc-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 32px; padding-top: 48px;
+  }
+  .bc-title {
+    font-size: 20px; font-weight: 700; color: var(--c-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .bc-count {
+    font-size: 13px; color: var(--c-text-dim);
+    background: rgba(var(--c-overlay-rgb),0.06);
+    padding: 2px 10px; border-radius: 10px;
+  }
+
+  /* Comment items */
+  .guestbook-section :global(.bc-item) {
+    display: flex; gap: 16px;
+    padding: 24px 0;
+    border-top: 1px solid var(--c-border);
+  }
+  .guestbook-section :global(.bc-item.bc-reply) {
+    padding: 16px 0 0; border-top: none;
+  }
+  .guestbook-section :global(.bc-avatar-wrap) { flex-shrink: 0; }
+  .guestbook-section :global(.bc-avatar-img) {
+    width: 40px; height: 40px; border-radius: 50%;
+    object-fit: cover; background: var(--c-border);
+  }
+  .guestbook-section :global(.bc-body) { flex: 1; min-width: 0; }
+  .guestbook-section :global(.bc-meta) {
+    display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+  }
+  .guestbook-section :global(.bc-name) {
+    font-size: 14px; font-weight: 600; color: var(--c-text);
+  }
+  .guestbook-section :global(.bc-name-link) {
+    text-decoration: none; color: var(--accent);
+  }
+  .guestbook-section :global(.bc-name-link:hover) { text-decoration: underline; }
+  .guestbook-section :global(.bc-dot) { color: var(--c-border-light); }
+  .guestbook-section :global(.bc-time) { font-size: 13px; color: var(--c-text-dim); }
+  .guestbook-section :global(.bc-text p) {
+    font-size: 15px; color: var(--c-text); line-height: 1.7; margin: 0;
+  }
+  .guestbook-section :global(.bc-actions) {
+    display: flex; align-items: center; gap: 16px; margin-top: 10px;
+  }
+  .guestbook-section :global(.bc-like-btn) {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 100px;
+    border: 1px solid transparent; background: none; cursor: pointer;
+    font-size: 12px; color: var(--c-text-dim); transition: all 0.2s;
+  }
+  .guestbook-section :global(.bc-like-btn:hover) {
+    background: rgba(239,68,68,0.06); border-color: rgba(239,68,68,0.15); color: #ef4444;
+  }
+  .guestbook-section :global(.bc-like-btn.liked) {
+    color: #ef4444; background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.2);
+  }
+  .guestbook-section :global(.bc-like-btn span) {
+    font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; min-width: 8px;
+  }
+  .guestbook-section :global(.bc-reply-btn) {
+    font-size: 12px; color: var(--c-text-dim);
+    background: none; border: none; cursor: pointer;
+    transition: color 0.15s; font-family: inherit;
+  }
+  .guestbook-section :global(.bc-reply-btn:hover) { color: var(--c-text-muted); }
+  .guestbook-section :global(.bc-replies-container) {
+    border-left: 2px solid var(--c-border); margin-left: 4px; padding-left: 20px;
+  }
+
+  /* Compose */
+  .bc-compose {
+    display: flex; gap: 16px;
+    padding-top: 32px; border-top: 1px solid var(--c-border); margin-top: 8px;
+  }
+  .bc-compose-avatar { flex-shrink: 0; }
+  .bc-compose-avatar .bc-avatar-img {
+    width: 40px; height: 40px; border-radius: 50%;
+    object-fit: cover; background: var(--c-border);
+  }
+  .bc-compose-form { flex: 1; }
+  .bc-compose-fields { display: flex; gap: 12px; margin-bottom: 12px; }
+  .bc-input {
+    flex: 1; padding: 10px 14px;
+    background: rgba(var(--c-overlay-rgb),0.04);
+    border: 1px solid var(--c-border-light); border-radius: 8px;
+    color: var(--c-text); font-size: 14px; font-family: inherit;
+    transition: border-color 0.2s; outline: none;
+  }
+  .bc-input:focus { border-color: var(--accent); }
+  .bc-input::placeholder { color: var(--c-text-dim); }
+  .bc-textarea {
+    width: 100%; padding: 12px 14px;
+    background: rgba(var(--c-overlay-rgb),0.04);
+    border: 1px solid var(--c-border-light); border-radius: 8px;
+    color: var(--c-text); font-size: 14px; font-family: inherit;
+    resize: vertical; min-height: 100px;
+    transition: border-color 0.2s; outline: none;
+  }
+  .bc-textarea:focus { border-color: var(--accent); }
+  .bc-textarea::placeholder { color: var(--c-text-dim); }
+  .bc-compose-footer {
+    display: flex; justify-content: space-between; align-items: center; margin-top: 12px;
+  }
+  .bc-hint { font-size: 12px; color: var(--c-border-light); }
+  .bc-submit {
+    padding: 8px 20px; border-radius: 8px;
+    background: var(--accent); color: var(--c-bg);
+    font-size: 14px; font-weight: 600;
+    border: none; cursor: pointer; transition: opacity 0.2s;
+  }
+  .bc-submit:hover { opacity: 0.85; }
+  .bc-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Footer */
+  .page-footer {
+    border-top: 1px solid var(--c-border);
+    padding: 32px 0; margin-top: 40px;
+  }
+  .footer-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--c-border-light);
+  }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a {
+    font-size: 12px; color: var(--c-text-dim); text-decoration: none;
+  }
+  .footer-links a:hover { color: var(--c-text); }
+
+  @media (max-width: 1024px) {
+    .friends-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .mast-inner { padding: 0 20px; }
+    .header-inner { padding: 0 20px; }
+    .friends-inner { padding: 0 20px; }
+    .friends-grid { grid-template-columns: repeat(2, 1fr); }
+    .guestbook-section { padding: 0 20px 48px; }
+    .bc-compose-fields { flex-direction: column; gap: 8px; }
+    .bc-compose-avatar .bc-avatar-img { width: 32px; height: 32px; }
+    .bc-compose { gap: 12px; }
+    .page-title { font-size: 28px; }
+    .footer-inner { padding: 0 20px; }
+  }
+  @media (max-width: 480px) {
+    .friends-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+    .friend-card { padding: 12px 14px; }
+    .fc-name { font-size: 13px; }
+  }
+</style>
+
+<script is:inline>
+(function() {
+  // ── Guestbook ──
+  var API = 'https://chat.ursb.me';
+  var SLUG = 'friends';
+  var USER_KEY = 'blog-user-identity';
+
+  var gbThread = document.getElementById('gbThread');
+  var gbCount = document.getElementById('gbCount');
+  var gbNickname = document.getElementById('gbNickname');
+  var gbEmail = document.getElementById('gbEmail');
+  var gbWebsite = document.getElementById('gbWebsite');
+  var gbTextarea = document.getElementById('gbTextarea');
+  var gbSubmit = document.getElementById('gbSubmit');
+  var gbComposeAvatar = document.getElementById('gbComposeAvatar');
+
+  var allComments = [];
+
+  function getSavedIdentity() {
+    try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveIdentity(nickname, email, website) {
+    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email, website: website || '' }));
+  }
+  function restoreIdentity() {
+    var id = getSavedIdentity();
+    if (id.nickname) gbNickname.value = id.nickname;
+    if (id.email) { gbEmail.value = id.email; updateComposeAvatar(id.email); }
+    if (id.website) gbWebsite.value = id.website;
+  }
+
+  var AUTHOR_EMAILS = { 'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80' };
+  function gravatarUrl(email) {
+    var e = (email || '').trim().toLowerCase();
+    if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
+    var hash = e.endsWith('@gravatar.placeholder') ? e.split('@')[0] : e;
+    return 'https://gravatar.com/avatar/' + (hash || '00000000000000000000000000000000') + '?d=robohash&s=80';
+  }
+
+  function updateComposeAvatar(email) {
+    if (email) gbComposeAvatar.src = gravatarUrl(email);
+  }
+
+  var avatarTimer;
+  gbEmail.addEventListener('input', function() {
+    clearTimeout(avatarTimer);
+    avatarTimer = setTimeout(function() { updateComposeAvatar(gbEmail.value); }, 500);
+  });
+
+  function esc(s) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(s || ''));
+    return div.innerHTML;
+  }
+
+  function apiGet(path) {
+    return fetch(API + path, { headers: { 'Origin': location.origin } }).then(function(r) { return r.json(); });
+  }
+  function apiPost(path, body) {
+    return fetch(API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(function(r) { return r.json(); });
+  }
+
+  function loadComments() {
+    apiGet('/api/comments?post_slug=' + encodeURIComponent(SLUG)).then(function(res) {
+      allComments = res.comments || [];
+      renderComments();
+    });
+  }
+
+  function renderComments() {
+    gbThread.innerHTML = '';
+    var count = allComments.length;
+    gbCount.textContent = count + ' message' + (count !== 1 ? 's' : '');
+
+    var roots = [];
+    var byId = {};
+    allComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
+    allComments.forEach(function(c) {
+      if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
+      else roots.push(c);
+    });
+
+    if (!roots.length) {
+      gbThread.innerHTML = '<p style="color:var(--c-text-dim);font-size:14px;padding:40px 0;text-align:center">No messages yet. Be the first to leave one!</p>';
+      return;
+    }
+
+    roots.forEach(function(c) { gbThread.appendChild(buildCommentEl(c, false)); });
+  }
+
+  function buildCommentEl(c, isReply) {
+    var div = document.createElement('div');
+    div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
+
+    var time = new Date(c.created_at);
+    var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    var avatarSize = isReply ? 32 : 40;
+    var nameHtml = c.website
+      ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
+      : '<span class="bc-name">' + esc(c.nickname || 'Anonymous') + '</span>';
+
+    div.innerHTML =
+      '<div class="bc-avatar-wrap"><img src="' + gravatarUrl(c.email) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+      '<div class="bc-body">' +
+        '<div class="bc-meta">' + nameHtml + '<span class="bc-dot">&middot;</span><time class="bc-time">' + timeStr + '</time></div>' +
+        '<div class="bc-text"><p>' + esc(c.content) + '</p></div>' +
+        '<div class="bc-actions">' +
+          '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
+            '<span>' + (c.likes || 0) + '</span>' +
+          '</button>' +
+          '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
+        '</div>' +
+        '<div class="bc-replies-container"></div>' +
+      '</div>';
+
+    div.querySelector('.bc-like-btn').addEventListener('click', function() {
+      var btn = this;
+      var icon = btn.querySelector('path');
+      var span = btn.querySelector('span');
+      var wasLiked = btn.classList.contains('liked');
+      var prevCount = parseInt(span.textContent) || 0;
+      var newLiked = !wasLiked;
+      var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+      btn.classList.toggle('liked', newLiked);
+      span.textContent = newCount;
+      icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+      apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
+        btn.classList.toggle('liked', res.liked);
+        span.textContent = res.count;
+        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      }).catch(function() {
+        btn.classList.toggle('liked', wasLiked);
+        span.textContent = prevCount;
+        icon.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+      });
+    });
+
+    div.querySelector('.bc-reply-btn').addEventListener('click', function() {
+      gbTextarea.value = '@' + c.nickname + ' ';
+      gbTextarea.dataset.parentId = c.id;
+      gbTextarea.focus();
+      gbTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    var repliesContainer = div.querySelector('.bc-replies-container');
+    if (c._replies && c._replies.length) {
+      c._replies.forEach(function(r) {
+        repliesContainer.appendChild(buildCommentEl(r, true));
+      });
+    }
+
+    return div;
+  }
+
+  gbSubmit.addEventListener('click', function() {
+    var content = gbTextarea.value.trim();
+    var nickname = gbNickname.value.trim();
+    var email = gbEmail.value.trim();
+    var website = gbWebsite.value.trim();
+    if (!content || !nickname || !email) return;
+
+    saveIdentity(nickname, email, website);
+    gbSubmit.disabled = true;
+    gbSubmit.textContent = '...';
+
+    var parentId = gbTextarea.dataset.parentId || null;
+    var body = {
+      post_slug: SLUG,
+      nickname: nickname,
+      email: email,
+      content: content,
+      parent_id: parentId ? parseInt(parentId) : null
+    };
+    if (website) body.website = website;
+
+    apiPost('/api/comments', body).then(function(res) {
+      if (res.comment) {
+        allComments.push(res.comment);
+        renderComments();
+        gbTextarea.value = '';
+        delete gbTextarea.dataset.parentId;
+      }
+    }).catch(function() {
+      alert('Failed to send. Please try again.');
+    }).finally(function() {
+      gbSubmit.disabled = false;
+      gbSubmit.textContent = 'Submit';
+    });
+  });
+
+  restoreIdentity();
+  loadComments();
+})();
+</script>

@@ -15,7 +15,7 @@ const heroPosts = heroPool.slice(0, 5);
 const popularPosts = [...featuredPosts, ...posts].slice(0, 4);
 // Remaining for the list (skip hero posts)
 const heroIds = new Set(heroPosts.map(p => p.id));
-const listPosts = posts.filter(p => !heroIds.has(p.id)).slice(0, 15);
+const listPosts = posts.filter(p => !heroIds.has(p.id));
 
 function formatDate(date: Date) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -163,7 +163,7 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
           </div>
 
           {listPosts.map(post => (
-            <a href={`/posts/${post.id}`} class="post-item">
+            <a href={`/posts/${post.id}`} class="post-item" data-slug={post.id} data-date={post.data.date.toISOString()}>
               <div class="pi-body">
                 <h3 class="pi-title">{post.data.title}</h3>
                 {post.data.description && (
@@ -195,14 +195,34 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
               <h3 class="author-name"><a href="/">Airing</a></h3>
               <p class="author-bio">哲学硕士｜终端全栈</p>
               <div class="author-links">
+                <a href="https://github.com/airingursb" target="_blank" rel="noopener" title="GitHub" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                </a>
+                <a href="https://x.com/airingursb" target="_blank" rel="noopener" title="X / Twitter" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
+                <a href="https://t.me/s/airingchannel" target="_blank" rel="noopener" title="Telegram" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                </a>
+                <span class="wechat-wrap">
+                  <button type="button" title="WeChat" class="author-link-icon wechat-btn" id="wechatBtn">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm3.97 2.985c-4.037 0-7.31 2.755-7.31 6.155 0 3.4 3.273 6.155 7.31 6.155a8.43 8.43 0 0 0 2.36-.334.72.72 0 0 1 .596.082l1.583.926a.271.271 0 0 0 .14.045c.133 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.49.49 0 0 1 .176-.553C22.023 18.78 23 17.037 23 15.131c0-3.4-3.273-6.155-7.31-6.155h-.122zm-2.36 2.726c.535 0 .969.44.969.983a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.544.434-.983.97-.983zm4.844 0c.535 0 .969.44.969.983a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.544.434-.983.969-.983z"/></svg>
+                  </button>
+                  <div class="wechat-tooltip" id="wechatTooltip">
+                    <img src="https://airing.ursb.me/image/blog/mp-airing.png" alt="WeChat QR Code" class="wechat-qr" />
+                  </div>
+                </span>
+                <a href="https://www.xiaohongshu.com/user/profile/5cc2d4220000000012014e9c" target="_blank" rel="noopener" title="小红书" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M22.405 9.879c0.002 0.016 0.01 0.02 0.07 0.019h0.725a0.797 0.797 0 0 0 0.78 -0.972 0.794 0.794 0 0 0 -0.884 -0.618 0.795 0.795 0 0 0 -0.692 0.794c0 0.101 -0.002 0.666 0.001 0.777zm-11.509 4.808c-0.203 0.001 -1.353 0.004 -1.685 0.003a2.528 2.528 0 0 1 -0.766 -0.126 0.025 0.025 0 0 0 -0.03 0.014L7.7 16.127a0.025 0.025 0 0 0 0.01 0.032c0.111 0.06 0.336 0.124 0.495 0.124 0.66 0.01 1.32 0.002 1.981 0 0.01 0 0.02 -0.006 0.023 -0.015l0.712 -1.545a0.025 0.025 0 0 0 -0.024 -0.036zM0.477 9.91c-0.071 0 -0.076 0.002 -0.076 0.01a0.834 0.834 0 0 0 -0.01 0.08c-0.027 0.397 -0.038 0.495 -0.234 3.06 -0.012 0.24 -0.034 0.389 -0.135 0.607 -0.026 0.057 -0.033 0.042 0.003 0.112 0.046 0.092 0.681 1.523 0.787 1.74 0.008 0.015 0.011 0.02 0.017 0.02 0.008 0 0.033 -0.026 0.047 -0.044 0.147 -0.187 0.268 -0.391 0.371 -0.606 0.306 -0.635 0.44 -1.325 0.486 -1.706 0.014 -0.11 0.021 -0.22 0.03 -0.33l0.204 -2.616 0.022 -0.293c0.003 -0.029 0 -0.033 -0.03 -0.034zm7.203 3.757a1.427 1.427 0 0 1 -0.135 -0.607c-0.004 -0.084 -0.031 -0.39 -0.235 -3.06a0.443 0.443 0 0 0 -0.01 -0.082c-0.004 -0.011 -0.052 -0.008 -0.076 -0.008h-1.48c-0.03 0.001 -0.034 0.005 -0.03 0.034l0.021 0.293c0.076 0.982 0.153 1.964 0.233 2.946 0.05 0.4 0.186 1.085 0.487 1.706 0.103 0.215 0.223 0.419 0.37 0.606 0.015 0.018 0.037 0.051 0.048 0.049 0.02 -0.003 0.742 -1.642 0.804 -1.765 0.036 -0.07 0.03 -0.055 0.003 -0.112zm3.861 -0.913h-0.872a0.126 0.126 0 0 1 -0.116 -0.178l1.178 -2.625a0.025 0.025 0 0 0 -0.023 -0.035l-1.318 -0.003a0.148 0.148 0 0 1 -0.135 -0.21l0.876 -1.954a0.025 0.025 0 0 0 -0.023 -0.035h-1.56c-0.01 0 -0.02 0.006 -0.024 0.015l-0.926 2.068c-0.085 0.169 -0.314 0.634 -0.399 0.938a0.534 0.534 0 0 0 -0.02 0.191 0.46 0.46 0 0 0 0.23 0.378 0.981 0.981 0 0 0 0.46 0.119h0.59c0.041 0 -0.688 1.482 -0.834 1.972a0.53 0.53 0 0 0 -0.023 0.172 0.465 0.465 0 0 0 0.23 0.398c0.15 0.092 0.342 0.12 0.475 0.12l1.66 -0.001c0.01 0 0.02 -0.006 0.023 -0.015l0.575 -1.28a0.025 0.025 0 0 0 -0.024 -0.035zm-6.93 -4.937H3.1a0.032 0.032 0 0 0 -0.034 0.033c0 1.048 -0.01 2.795 -0.01 6.829 0 0.288 -0.269 0.262 -0.28 0.262h-0.74c-0.04 0.001 -0.044 0.004 -0.04 0.047 0.001 0.037 0.465 1.064 0.555 1.263 0.01 0.02 0.03 0.033 0.051 0.033 0.157 0.003 0.767 0.009 0.938 -0.014 0.153 -0.02 0.3 -0.06 0.438 -0.132 0.3 -0.156 0.49 -0.419 0.595 -0.765 0.052 -0.172 0.075 -0.353 0.075 -0.533 0.002 -2.33 0 -4.66 -0.007 -6.991a0.032 0.032 0 0 0 -0.032 -0.032zm11.784 6.896c0 -0.014 -0.01 -0.021 -0.024 -0.022h-1.465c-0.048 -0.001 -0.049 -0.002 -0.05 -0.049v-4.66c0 -0.072 -0.005 -0.07 0.07 -0.07h0.863c0.08 0 0.075 0.004 0.075 -0.074V8.393c0 -0.082 0.006 -0.076 -0.08 -0.076h-3.5c-0.064 0 -0.075 -0.006 -0.075 0.073v1.445c0 0.083 -0.006 0.077 0.08 0.077h0.854c0.075 0 0.07 -0.004 0.07 0.07v4.624c0 0.095 0.008 0.084 -0.085 0.084 -0.37 0 -1.11 -0.002 -1.304 0 -0.048 0.001 -0.06 0.03 -0.06 0.03l-0.697 1.519s-0.014 0.025 -0.008 0.036c0.006 0.01 0.013 0.008 0.058 0.008 1.748 0.003 3.495 0.002 5.243 0.002 0.03 -0.001 0.034 -0.006 0.035 -0.033v-1.539zm4.177 -3.43c0 0.013 -0.007 0.023 -0.02 0.024 -0.346 0.006 -0.692 0.004 -1.037 0.004 -0.014 -0.002 -0.022 -0.01 -0.022 -0.024 -0.005 -0.434 -0.007 -0.869 -0.01 -1.303 0 -0.072 -0.006 -0.071 0.07 -0.07l0.733 -0.003c0.041 0 0.081 0.002 0.12 0.015 0.093 0.025 0.16 0.107 0.165 0.204 0.006 0.431 0.002 1.153 0.001 1.153zm2.67 0.244a1.953 1.953 0 0 0 -0.883 -0.222h-0.18c-0.04 -0.001 -0.04 -0.003 -0.042 -0.04V10.21c0 -0.132 -0.007 -0.263 -0.025 -0.394a1.823 1.823 0 0 0 -0.153 -0.53 1.533 1.533 0 0 0 -0.677 -0.71 2.167 2.167 0 0 0 -1 -0.258c-0.153 -0.003 -0.567 0 -0.72 0 -0.07 0 -0.068 0.004 -0.068 -0.065V7.76c0 -0.031 -0.01 -0.041 -0.046 -0.039H17.93s-0.016 0 -0.023 0.007c-0.006 0.006 -0.008 0.012 -0.008 0.023v0.546c-0.008 0.036 -0.057 0.015 -0.082 0.022h-0.95c-0.022 0.002 -0.028 0.008 -0.03 0.032v1.481c0 0.09 -0.004 0.082 0.082 0.082h0.913c0.082 0 0.072 0.128 0.072 0.128v1.148s0.003 0.117 -0.06 0.117h-1.482c-0.068 0 -0.06 0.082 -0.06 0.082v1.445s-0.01 0.068 0.064 0.068h1.457c0.082 0 0.076 -0.006 0.076 0.079v3.225c0 0.088 -0.007 0.081 0.082 0.081h1.43c0.09 0 0.082 0.007 0.082 -0.08v-3.27c0 -0.029 0.006 -0.035 0.033 -0.035l2.323 -0.003c0.098 0 0.191 0.02 0.28 0.061a0.46 0.46 0 0 1 0.274 0.407c0.008 0.395 0.003 0.79 0.003 1.185 0 0.259 -0.107 0.367 -0.33 0.367h-1.218c-0.023 0.002 -0.029 0.008 -0.028 0.033 0.184 0.437 0.374 0.871 0.57 1.303a0.045 0.045 0 0 0 0.04 0.026c0.17 0.005 0.34 0.002 0.51 0.003 0.15 -0.002 0.517 0.004 0.666 -0.01a2.03 2.03 0 0 0 0.408 -0.075c0.59 -0.18 0.975 -0.698 0.976 -1.313v-1.981c0 -0.128 -0.01 -0.254 -0.034 -0.38 0 0.078 -0.029 -0.641 -0.724 -0.998z"/></svg>
+                </a>
+                <a href="mailto:airing@ursb.me" title="Email" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                </a>
                 <a href="/search" title="Search" class="author-link-icon">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                 </a>
                 <a href="/feed.xml" title="RSS" class="author-link-icon">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
-                </a>
-                <a href="https://t.me/s/airingchannel" target="_blank" rel="noopener" title="Telegram" class="author-link-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
                 </a>
               </div>
             </div>
@@ -270,6 +290,58 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
       msg.style.color = '#f87171';
     }
   });
+
+  // WeChat tooltip
+  const wechatBtn = document.getElementById('wechatBtn');
+  const wechatTooltip = document.getElementById('wechatTooltip');
+  wechatBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    wechatTooltip?.classList.toggle('active');
+  });
+  document.addEventListener('click', () => wechatTooltip?.classList.remove('active'));
+
+  // ── Top / Latest tab switching ──
+  const tabs = document.querySelectorAll('.list-tab') as NodeListOf<HTMLButtonElement>;
+  const postItems = document.querySelectorAll('.post-item') as NodeListOf<HTMLAnchorElement>;
+  let viewsCache: Record<string, number> | null = null;
+
+  // Store original order (by date descending, already rendered)
+  const originalOrder = Array.from(postItems);
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', async () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      const isTop = tab.textContent?.trim() === 'Top';
+      const container = postItems[0]?.parentElement;
+      if (!container) return;
+
+      if (isTop) {
+        // Fetch views if not cached
+        if (!viewsCache) {
+          try {
+            const res = await fetch('https://chat.ursb.me/api/posts/views/all');
+            viewsCache = await res.json();
+          } catch {
+            viewsCache = {};
+          }
+        }
+
+        // Sort: PV desc, then date desc
+        const sorted = Array.from(postItems).sort((a, b) => {
+          const pvA = viewsCache![a.dataset.slug!] || 0;
+          const pvB = viewsCache![b.dataset.slug!] || 0;
+          if (pvB !== pvA) return pvB - pvA;
+          return new Date(b.dataset.date!).getTime() - new Date(a.dataset.date!).getTime();
+        });
+        sorted.forEach(item => container.appendChild(item));
+      } else {
+        // Restore original order (by date)
+        originalOrder.forEach(item => container.appendChild(item));
+      }
+    });
+  });
 </script>
 
 <style is:global>
@@ -291,7 +363,7 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
 
   /* ── Nav ────────────────────────────────────────────── */
   .masthead { width: 100%; }
-  .mast-inner { max-width: 1100px; margin: 0 auto; padding: 0 48px; }
+  .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
   .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
   .mast-bar {
     display: flex; justify-content: space-between; align-items: center;
@@ -333,7 +405,7 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
     padding: 32px 0 0;
   }
   .hero-grid {
-    max-width: 1100px; margin: 0 auto; padding: 0 48px;
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
     display: grid;
     grid-template-columns: 1fr 2.4fr 1fr;
     gap: 16px;
@@ -442,7 +514,7 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
     margin-top: 32px;
   }
   .popular-inner {
-    max-width: 1100px; margin: 0 auto; padding: 0 48px;
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
   }
   .popular-header {
     display: flex; justify-content: space-between; align-items: center;
@@ -499,7 +571,7 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
     margin-top: 32px;
   }
   .content-inner {
-    max-width: 1100px; margin: 0 auto; padding: 0 48px;
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
     display: grid;
     grid-template-columns: 1fr 280px;
     gap: 48px;
@@ -596,14 +668,38 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
     color: var(--accent, #4ade80);
   }
   .author-links {
-    display: flex; gap: 12px; justify-content: center;
+    display: flex; gap: 10px; justify-content: center;
+    flex-wrap: wrap;
     margin-top: 10px;
   }
   .author-link-icon {
     color: var(--c-text-dim); transition: color 0.2s;
     display: flex; align-items: center;
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-size: inherit;
   }
   .author-link-icon:hover { color: var(--c-text); }
+
+  /* WeChat tooltip */
+  .wechat-wrap { position: relative; display: inline-flex; }
+  .wechat-tooltip {
+    display: none; position: absolute;
+    bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+    z-index: 10;
+    background: var(--c-bg, #fff);
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .wechat-tooltip::after {
+    content: ''; position: absolute;
+    top: 100%; left: 50%; transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--c-border);
+  }
+  .wechat-tooltip.active { display: block; }
+  .wechat-qr { width: 280px; height: auto; display: block; border-radius: 4px; }
   .author-bio {
     font-size: 13px; color: var(--c-text-dim); margin: 0;
     line-height: 1.4;
@@ -669,7 +765,7 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
     padding: 32px 0; margin-top: 0;
   }
   .footer-inner {
-    max-width: 1100px; margin: 0 auto; padding: 0 48px;
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
     display: flex; justify-content: space-between; align-items: center;
     font-size: 12px; color: var(--c-border-light);
   }
