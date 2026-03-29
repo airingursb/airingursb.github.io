@@ -25,14 +25,6 @@ function getSiteStatus(url: string): 'ok' | 'error' | 'unknown' {
   if (!m) return 'unknown';
   return m.ok ? 'ok' : 'error';
 }
-function getLastModified(url: string): string | null {
-  const m = sites[url];
-  if (!m?.lastModified) return null;
-  try {
-    return new Date(m.lastModified).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
-  } catch { return null; }
-}
-
 const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
 ---
 
@@ -67,7 +59,6 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
         <div class="friends-grid">
           {friends.map((f) => {
             const status = getSiteStatus(f.url);
-            const lastMod = getLastModified(f.url);
             return (
               <a href={f.url} class={`friend-card fc-${status}`} target="_blank" rel="noopener noreferrer">
                 <div class="fc-top">
@@ -76,7 +67,6 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
                 </div>
                 <span class="fc-name">{f.name}</span>
                 <span class="fc-domain">{getDomain(f.url)}</span>
-                {lastMod && <span class="fc-updated">Updated {lastMod}</span>}
               </a>
             );
           })}
@@ -251,10 +241,6 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
   .fc-domain {
     font-size: 11px; color: var(--c-text-dim);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  .fc-updated {
-    font-size: 10px; color: var(--c-text-dim);
-    opacity: 0.6; margin-top: 2px;
   }
 
   /* Guestbook Section */
