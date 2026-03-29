@@ -303,7 +303,7 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
   // ── Top / Latest tab switching ──
   const tabs = document.querySelectorAll('.list-tab') as NodeListOf<HTMLButtonElement>;
   const postItems = document.querySelectorAll('.post-item') as NodeListOf<HTMLAnchorElement>;
-  let viewsCache: Record<string, number> | null = null;
+  let rankingCache: { likes: Record<string, number>; views: Record<string, number> } | null = null;
 
   // Store original order (by date descending, already rendered)
   const originalOrder = Array.from(postItems);
@@ -318,20 +318,23 @@ const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08
       if (!container) return;
 
       if (isTop) {
-        // Fetch views if not cached
-        if (!viewsCache) {
+        // Fetch ranking data if not cached
+        if (!rankingCache) {
           try {
-            const res = await fetch('https://chat.ursb.me/api/posts/views/all');
-            viewsCache = await res.json();
+            const res = await fetch('https://chat.ursb.me/api/posts/ranking');
+            rankingCache = await res.json();
           } catch {
-            viewsCache = {};
+            rankingCache = { likes: {}, views: {} };
           }
         }
 
-        // Sort: PV desc, then date desc
+        // Sort: likes desc → PV desc → date desc
         const sorted = Array.from(postItems).sort((a, b) => {
-          const pvA = viewsCache![a.dataset.slug!] || 0;
-          const pvB = viewsCache![b.dataset.slug!] || 0;
+          const likesA = rankingCache!.likes[a.dataset.slug!] || 0;
+          const likesB = rankingCache!.likes[b.dataset.slug!] || 0;
+          if (likesB !== likesA) return likesB - likesA;
+          const pvA = rankingCache!.views[a.dataset.slug!] || 0;
+          const pvB = rankingCache!.views[b.dataset.slug!] || 0;
           if (pvB !== pvA) return pvB - pvA;
           return new Date(b.dataset.date!).getTime() - new Date(a.dataset.date!).getTime();
         });
