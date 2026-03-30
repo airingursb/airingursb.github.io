@@ -25,6 +25,8 @@ jobs:
           HOMEPAGE_SB_KEY: ${{ secrets.HOMEPAGE_SB_KEY }}
           CHAT_SB_URL: ${{ secrets.CHAT_SB_URL }}
           CHAT_SB_KEY: ${{ secrets.CHAT_SB_KEY }}
+          BLOG_SB_URL: ${{ secrets.BLOG_SB_URL }}
+          BLOG_SB_KEY: ${{ secrets.BLOG_SB_KEY }}
         run: |
           set -euo pipefail
 
@@ -32,6 +34,23 @@ jobs:
           TODAY=$(date +%Y-%m-%d)
 
           HOMEPAGE_SB_URL="https://pcoyocvqfipuydhvdsle.supabase.co"
+          # Blog Supabase (fallback to homepage if not set)
+          BLOG_SB_URL="${BLOG_SB_URL:-${HOMEPAGE_SB_URL}}"
+          BLOG_SB_KEY="${BLOG_SB_KEY:-${HOMEPAGE_SB_KEY}}"
+
+          # Helper: count rows via Supabase REST
+          sb_count() {
+            local url="$1" key="$2" query="$3" tmp="$4"
+            local resp
+            resp=$(curl -sf "${url}/rest/v1/${query}" \
+              -H "apikey: ${key}" -H "Authorization: Bearer ${key}" \
+              -H "Prefer: count=exact" -H "Range: 0-0" \
+              -o /dev/null -w "%{http_code}" -D "${tmp}" 2>/dev/null)
+            if [ "$resp" = "200" ] || [ "$resp" = "206" ]; then
+              local c; c=$(grep -i 'content-range' "${tmp}" | sed 's/.*\///' | tr -d '\r\n ')
+              echo "${c:-0}"
+            else echo "0"; fi
+          }
 
           # ── 1. Homepage visitor counter ──
           current_count=$(curl -sf "${HOMEPAGE_SB_URL}/rest/v1/visitors?select=count&id=eq.1" \
@@ -39,53 +58,69 @@ jobs:
             -H "Authorization: Bearer ${HOMEPAGE_SB_KEY}" \
             | jq '.[0].count')
 
-          # Compute daily UV from snapshot diff
           if [ -f visitor-snapshot.txt ]; then
             prev_count=$(cat visitor-snapshot.txt)
             daily_uv=$((current_count - prev_count))
           else
             daily_uv="N/A"
           fi
-
-          # Save current count for tomorrow
           echo "$current_count" > visitor-snapshot.txt
 
-          # ── 2. Chat messages yesterday ──
-          chat_resp=$(curl -sf "${CHAT_SB_URL}/rest/v1/chat_messages?select=id&role=eq.user&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
-            -H "apikey: ${CHAT_SB_KEY}" \
-            -H "Authorization: Bearer ${CHAT_SB_KEY}" \
-            -H "Prefer: count=exact" \
-            -H "Range: 0-0" \
-            -D /tmp/chat_headers -o /dev/null -w "%{http_code}")
+          # ── 2. Chat stats ──
+          chat_count=$(sb_count "$CHAT_SB_URL" "$CHAT_SB_KEY" \
+            "chat_messages?select=id&role=eq.user&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            /tmp/chat_h)
+          chat_visitors=$(sb_count "$CHAT_SB_URL" "$CHAT_SB_KEY" \
+            "chat_visitors?select=id&first_seen_at=gte.${YESTERDAY}T00:00:00Z&first_seen_at=lt.${TODAY}T00:00:00Z" \
+            /tmp/vis_h)
 
-          if [ "$chat_resp" = "200" ] || [ "$chat_resp" = "206" ]; then
-            chat_count=$(grep -i 'content-range' /tmp/chat_headers | sed 's/.*\///' | tr -d '\r\n ')
-            [ -z "$chat_count" ] && chat_count="0"
-          else
-            chat_count="0"
-          fi
+          # ── 3. Blog engagement ──
+          daily_pv=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
+            "post_views?select=id&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            /tmp/pv_h)
 
-          # ── 3. New chat visitors yesterday ──
-          vis_resp=$(curl -sf "${CHAT_SB_URL}/rest/v1/chat_visitors?select=id&first_seen_at=gte.${YESTERDAY}T00:00:00Z&first_seen_at=lt.${TODAY}T00:00:00Z" \
-            -H "apikey: ${CHAT_SB_KEY}" \
-            -H "Authorization: Bearer ${CHAT_SB_KEY}" \
-            -H "Prefer: count=exact" \
-            -H "Range: 0-0" \
-            -D /tmp/vis_headers -o /dev/null -w "%{http_code}")
+          blog_uv=$(curl -sf "${BLOG_SB_URL}/rest/v1/post_views?select=ip&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            -H "apikey: ${BLOG_SB_KEY}" -H "Authorization: Bearer ${BLOG_SB_KEY}" 2>/dev/null \
+            | python3 -c 'import sys,json;d=json.load(sys.stdin);print(len(set(r["ip"] for r in d)))' 2>/dev/null || echo "0")
 
-          if [ "$vis_resp" = "200" ] || [ "$vis_resp" = "206" ]; then
-            chat_visitors=$(grep -i 'content-range' /tmp/vis_headers | sed 's/.*\///' | tr -d '\r\n ')
-            [ -z "$chat_visitors" ] && chat_visitors="0"
-          else
-            chat_visitors="0"
-          fi
+          daily_comments=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
+            "post_comments?select=id&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            /tmp/cmt_h)
+          daily_inline=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
+            "inline_comments?select=id&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            /tmp/inl_h)
+          daily_likes=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
+            "post_likes?select=id&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            /tmp/lk_h)
+
+          top_articles=$(curl -sf "${BLOG_SB_URL}/rest/v1/post_views?select=post_slug&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            -H "apikey: ${BLOG_SB_KEY}" -H "Authorization: Bearer ${BLOG_SB_KEY}" 2>/dev/null \
+            | python3 -c '
+          import sys,json
+          try:
+              d=json.load(sys.stdin)
+              if not d: print("  (无访问)")
+              else:
+                  c={}
+                  for r in d: c[r["post_slug"]]=c.get(r["post_slug"],0)+1
+                  for s,n in sorted(c.items(),key=lambda x:-x[1])[:5]: print(f"  {s}: {n} PV")
+          except: print("  N/A")
+          ' 2>/dev/null || echo "  N/A")
 
           # ── 4. Send Telegram message ──
           MSG="📊 *ursb.me 日报* — ${YESTERDAY}
 
           🌐 *主页*
-            当日访客 (UV): ${daily_uv}
+            访客 (UV): ${daily_uv}
             累计访客: ${current_count}
+
+          📝 *博客*
+            PV: ${daily_pv}  |  UV: ${blog_uv}
+            评论: ${daily_comments}  |  划线评论: ${daily_inline}
+            点赞: ${daily_likes}
+
+          🔥 *热门文章*
+          ${top_articles}
 
           💬 *Chat 服务*
             对话请求: ${chat_count} 条
