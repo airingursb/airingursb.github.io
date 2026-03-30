@@ -107,7 +107,31 @@ jobs:
           except: print("  N/A")
           ' 2>/dev/null || echo "  N/A")
 
-          # ── 4. Send Telegram message ──
+          # ── 4. RSS subscriber stats ──
+          rss_clients=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
+            "rss_subscribers?select=id" /tmp/rss_h)
+
+          SEVEN_DAYS_AGO=$(date -d "7 days ago" +%Y-%m-%dT00:00:00Z)
+          rss_active=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
+            "rss_subscribers?select=id&last_seen=gte.${SEVEN_DAYS_AGO}" /tmp/rss_act_h)
+
+          rss_platforms=$(curl -sf "${BLOG_SB_URL}/rest/v1/rss_subscribers?select=platform,subscriber_count&subscriber_count=not.is.null&order=subscriber_count.desc&limit=5" \
+            -H "apikey: ${BLOG_SB_KEY}" -H "Authorization: Bearer ${BLOG_SB_KEY}" 2>/dev/null \
+            | python3 -c '
+          import sys,json
+          try:
+              data=json.load(sys.stdin)
+              seen={}
+              for r in data:
+                  p=r["platform"]; c=r["subscriber_count"] or 0
+                  seen[p]=max(seen.get(p,0),c)
+              total=sum(seen.values())
+              parts=[f"{p}: {c}" for p,c in sorted(seen.items(),key=lambda x:-x[1])]
+              print(f"{total} ({chr(44).join(parts)})" if parts else "0")
+          except: print("N/A")
+          ' 2>/dev/null || echo "N/A")
+
+          # ── 5. Send Telegram message ──
           MSG="📊 *ursb.me 日报* — ${YESTERDAY}
 
           🌐 *主页*
@@ -121,6 +145,11 @@ jobs:
 
           🔥 *热门文章*
           ${top_articles}
+
+          📡 *RSS 订阅*
+            聚合平台: ${rss_platforms}
+            独立客户端: ${rss_clients}
+            近 7 日活跃: ${rss_active}
 
           💬 *Chat 服务*
             对话请求: ${chat_count} 条
