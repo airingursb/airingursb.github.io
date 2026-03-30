@@ -22,21 +22,44 @@ function formatDate(date: Date) {
 
 const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08), rgba(var(--c-overlay-rgb),0.03))';
 
+function formatNum(n: number) {
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+function getStats(postId: string) {
+  return {
+    pv: ranking.views[postId] || 0,
+    likes: ranking.likes[postId] || 0,
+    comments: ranking.comments[postId] || 0,
+  };
+}
+
 // Fetch ranking data at build time
-let ranking: { likes: Record<string, number>; views: Record<string, number> } = { likes: {}, views: {} };
+let ranking: { likes: Record<string, number>; views: Record<string, number>; comments: Record<string, number> } = { likes: {}, views: {}, comments: {} };
 try {
   const res = await fetch('https://chat.ursb.me/api/posts/ranking');
-  if (res.ok) ranking = await res.json();
+  if (res.ok) {
+    const data = await res.json();
+    ranking = {
+      likes: data.likes || {},
+      views: data.views || {},
+      comments: data.comments || {},
+    };
+  }
 } catch { /* fallback to empty */ }
 
-// Sort all posts by ranking: likes desc → PV desc → date desc
+// Sort all posts by ranking: PV desc → likes desc → comments desc → date desc
 const rankedPosts = [...posts].sort((a, b) => {
-  const likesA = ranking.likes[a.id] || 0;
-  const likesB = ranking.likes[b.id] || 0;
-  if (likesB !== likesA) return likesB - likesA;
   const pvA = ranking.views[a.id] || 0;
   const pvB = ranking.views[b.id] || 0;
   if (pvB !== pvA) return pvB - pvA;
+  const likesA = ranking.likes[a.id] || 0;
+  const likesB = ranking.likes[b.id] || 0;
+  if (likesB !== likesA) return likesB - likesA;
+  const cmtA = ranking.comments[a.id] || 0;
+  const cmtB = ranking.comments[b.id] || 0;
+  if (cmtB !== cmtA) return cmtB - cmtA;
   return b.data.date.valueOf() - a.data.date.valueOf();
 });
 const popularPosts = rankedPosts.slice(0, 4);
@@ -48,7 +71,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
 
 <BaseLayout title="Blog | Airing">
   <link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" />
-  <div class="blog-page">
+  <div class="blog-page" id="blogPage">
     <!-- Masthead -->
     <header class="masthead">
       <div class="mast-inner">
@@ -76,7 +99,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
         <!-- Left column: 2 small cards -->
         <div class="hero-col hero-col-left">
           {heroPosts.slice(1, 3).map(post => (
-            <a href={`/posts/${post.id}`} class="hero-card hero-card-sm">
+            <a href={`/posts/${post.id}`} class="hero-card hero-card-sm" data-slug={post.id}>
               <div
                 class="hc-img"
                 style={`background-image:${post.data.cover ? `url(${post.data.cover})` : gradientFallback}`}
@@ -89,6 +112,13 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
                   <span>&middot;</span>
                   <span>Airing</span>
                 </div>
+                {(getStats(post.id).pv > 0 || getStats(post.id).likes > 0 || getStats(post.id).comments > 0) && (
+                <div class="pi-stats">
+                  {getStats(post.id).pv > 0 && <span class="pi-stat"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{formatNum(getStats(post.id).pv)}</span>}
+                  {getStats(post.id).likes > 0 && <span class="pi-stat pi-stat-like" data-slug={post.id}><svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{formatNum(getStats(post.id).likes)}</span>}
+                  {getStats(post.id).comments > 0 && <span class="pi-stat"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{getStats(post.id).comments}</span>}
+                </div>
+                )}
               </div>
             </a>
           ))}
@@ -96,7 +126,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
 
         <!-- Center: large hero -->
         {heroPosts[0] && (
-          <a href={`/posts/${heroPosts[0].id}`} class="hero-card hero-card-lg">
+          <a href={`/posts/${heroPosts[0].id}`} class="hero-card hero-card-lg" data-slug={heroPosts[0].id}>
             <div
               class="hc-img-full"
               style={`background-image:${heroPosts[0].data.cover ? `url(${heroPosts[0].data.cover})` : gradientFallback}`}
@@ -111,6 +141,13 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
                   <span>&middot;</span>
                   <span>Airing</span>
                 </div>
+                {(getStats(heroPosts[0].id).pv > 0 || getStats(heroPosts[0].id).likes > 0 || getStats(heroPosts[0].id).comments > 0) && (
+                <div class="pi-stats pi-stats-lg">
+                  {getStats(heroPosts[0].id).pv > 0 && <span class="pi-stat"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{formatNum(getStats(heroPosts[0].id).pv)}</span>}
+                  {getStats(heroPosts[0].id).likes > 0 && <span class="pi-stat pi-stat-like" data-slug={heroPosts[0].id}><svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{formatNum(getStats(heroPosts[0].id).likes)}</span>}
+                  {getStats(heroPosts[0].id).comments > 0 && <span class="pi-stat"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{getStats(heroPosts[0].id).comments}</span>}
+                </div>
+                )}
               </div>
             </div>
           </a>
@@ -119,7 +156,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
         <!-- Right column: 2 small cards -->
         <div class="hero-col hero-col-right">
           {heroPosts.slice(3, 5).map(post => (
-            <a href={`/posts/${post.id}`} class="hero-card hero-card-sm">
+            <a href={`/posts/${post.id}`} class="hero-card hero-card-sm" data-slug={post.id}>
               <div
                 class="hc-img"
                 style={`background-image:${post.data.cover ? `url(${post.data.cover})` : gradientFallback}`}
@@ -132,6 +169,13 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
                   <span>&middot;</span>
                   <span>Airing</span>
                 </div>
+                {(getStats(post.id).pv > 0 || getStats(post.id).likes > 0 || getStats(post.id).comments > 0) && (
+                <div class="pi-stats">
+                  {getStats(post.id).pv > 0 && <span class="pi-stat"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{formatNum(getStats(post.id).pv)}</span>}
+                  {getStats(post.id).likes > 0 && <span class="pi-stat pi-stat-like" data-slug={post.id}><svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{formatNum(getStats(post.id).likes)}</span>}
+                  {getStats(post.id).comments > 0 && <span class="pi-stat"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{getStats(post.id).comments}</span>}
+                </div>
+                )}
               </div>
             </a>
           ))}
@@ -148,7 +192,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
         </div>
         <div class="popular-grid">
           {popularPosts.map(post => (
-            <a href={`/posts/${post.id}`} class="popular-card">
+            <a href={`/posts/${post.id}`} class="popular-card" data-slug={post.id}>
               <div class="pc-body">
                 <h3 class="pc-title">{post.data.title}</h3>
                 <div class="pc-meta">
@@ -156,6 +200,13 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
                   <span>&middot;</span>
                   <span>Airing</span>
                 </div>
+                {(getStats(post.id).pv > 0 || getStats(post.id).likes > 0 || getStats(post.id).comments > 0) && (
+                <div class="pi-stats">
+                  {getStats(post.id).pv > 0 && <span class="pi-stat"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{formatNum(getStats(post.id).pv)}</span>}
+                  {getStats(post.id).likes > 0 && <span class="pi-stat pi-stat-like" data-slug={post.id}><svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{formatNum(getStats(post.id).likes)}</span>}
+                  {getStats(post.id).comments > 0 && <span class="pi-stat"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{getStats(post.id).comments}</span>}
+                </div>
+                )}
               </div>
               {post.data.cover && (
                 <div class="pc-thumb" style={`background-image:url(${post.data.cover})`}></div>
@@ -184,24 +235,38 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
             </a>
           </div>
 
-          {listPosts.map(post => (
+          {listPosts.map(post => {
+            const pv = ranking.views[post.id] || 0;
+            const likes = ranking.likes[post.id] || 0;
+            const comments = ranking.comments[post.id] || 0;
+            return (
             <a href={`/posts/${post.id}`} class="post-item" data-slug={post.id} data-date={post.data.date.toISOString()} data-rank={rankIndex.get(post.id) ?? 9999}>
               <div class="pi-body">
                 <h3 class="pi-title">{post.data.title}</h3>
                 {post.data.description && (
                   <p class="pi-desc">{post.data.description}</p>
                 )}
-                <div class="pi-meta">
-                  <time>{formatDate(post.data.date)}</time>
-                  <span>&middot;</span>
-                  <span>Airing</span>
+                <div class="pi-meta-wrap">
+                  <div class="pi-meta">
+                    <time>{formatDate(post.data.date)}</time>
+                    <span>&middot;</span>
+                    <span>Airing</span>
+                  </div>
+                  {(pv > 0 || likes > 0 || comments > 0) && (
+                  <div class="pi-stats">
+                    {pv > 0 && <span class="pi-stat"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{formatNum(pv)}</span>}
+                    {likes > 0 && <span class="pi-stat pi-stat-like" data-slug={post.id}><svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{formatNum(likes)}</span>}
+                    {comments > 0 && <span class="pi-stat"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{comments}</span>}
+                  </div>
+                  )}
                 </div>
               </div>
               {post.data.cover && (
                 <div class="pi-thumb" style={`background-image:url(${post.data.cover})`}></div>
               )}
             </a>
-          ))}
+            );
+          })}
         </div>
 
         <!-- Right: Author sidebar -->
@@ -346,6 +411,20 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
       }
     });
   });
+
+  // Highlight liked hearts from localStorage
+  try {
+    const likedRaw = localStorage.getItem('post_likes');
+    if (likedRaw) {
+      const likedSet = new Set(JSON.parse(likedRaw) as string[]);
+      document.querySelectorAll('.pi-stat-like').forEach(el => {
+        const slug = (el as HTMLElement).dataset.slug;
+        if (slug && likedSet.has(slug)) {
+          el.classList.add('liked');
+        }
+      });
+    }
+  } catch { /* ignore */ }
 </script>
 
 <style is:global>
@@ -643,6 +722,39 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
     font-size: 13px; color: var(--c-text-muted);
     display: flex; align-items: center; gap: 6px;
   }
+
+  /* ── Post stats (Design A: row below meta, show on hover) ── */
+  .pi-stats {
+    display: flex; align-items: center; gap: 14px;
+    margin-top: 6px;
+    font-size: 12px; color: var(--c-text-muted);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .pi-stat {
+    display: inline-flex; align-items: center; gap: 3px;
+  }
+  .pi-stat-icon {
+    width: 13px; height: 13px; stroke-width: 1.8;
+    opacity: 0.6;
+  }
+  /* Liked heart state */
+  .pi-stat-like.liked .pi-heart-icon {
+    fill: #ef4444;
+    stroke: #ef4444;
+    opacity: 1;
+  }
+  /* Show stats on hover — list items */
+  .post-item:hover .pi-stats { opacity: 1; }
+  /* Show stats on hover — hero cards */
+  .hero-card:hover .pi-stats { opacity: 1; }
+  /* Show stats on hover — popular cards */
+  .popular-card:hover .pi-stats { opacity: 1; }
+  /* Large hero card stats: white text */
+  .pi-stats-lg { color: rgba(255,255,255,0.85); }
+  .pi-stats-lg .pi-stat-icon { stroke: rgba(255,255,255,0.85); opacity: 0.8; }
+  .pi-stats-lg .pi-stat-like.liked .pi-heart-icon { fill: #ef4444; stroke: #ef4444; opacity: 1; }
+
   .pi-thumb {
     width: 120px; height: 80px; flex-shrink: 0;
     background-size: cover; background-position: center;

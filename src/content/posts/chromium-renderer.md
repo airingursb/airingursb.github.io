@@ -511,7 +511,8 @@ Layout Object 记录了 Render Object 的几何属性。
 
 ![](https://airing.ursb.me/images/blog/chromium/20221015220721.png?max_age=624800)再举一个例子，针对以下 HTML：
 
-`<style> #p {
+```html
+<style> #p {
   position: absolute; padding: 2px;
   width: 50px; height: 20px;
   left: 25px; top: 25px;
@@ -519,7 +520,7 @@ Layout Object 记录了 Render Object 的几何属性。
   background-color: lightgrey;
 } </style>
 <div id=p> pixels </div>
-`
+```
 
 对应生成的 display items 如下图所示：
 

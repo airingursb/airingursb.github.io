@@ -160,6 +160,14 @@ const jsonLd = {
           <div class="sb-label">Views</div>
           <div class="sb-value" id="postViews">-</div>
         </div>
+        <div class="sb-block" id="postLikesBlock" style="display:none;">
+          <div class="sb-label">Likes</div>
+          <div class="sb-value" id="postLikesCount">-</div>
+        </div>
+        <div class="sb-block" id="postCommentsBlock" style="display:none;">
+          <div class="sb-label">Comments</div>
+          <div class="sb-value" id="postCommentsCount">-</div>
+        </div>
         <div class="sb-divider"></div>
         <div class="sb-block toc-block" id="tocBlock" style="display:none;">
           <div class="sb-label">Contents</div>
@@ -652,6 +660,11 @@ const jsonLd = {
     return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80';
   }
 
+  function commentAvatarUrl(comment) {
+    if (comment && comment.avatar) return comment.avatar;
+    return gravatarUrl(comment ? comment.email : '');
+  }
+
   function updateComposeAvatar(email) {
     if (email) bcComposeAvatar.src = gravatarUrl(email);
   }
@@ -777,7 +790,7 @@ const jsonLd = {
           repliesHtml +=
             '<div class="cm-reply">' +
               '<div class="cm-reply-header">' +
-                '<img class="cm-reply-avatar" src="' + gravatarUrl(r.email) + '" />' +
+                '<img class="cm-reply-avatar" src="' + commentAvatarUrl(r) + '" />' +
                 '<span class="cm-reply-name">' + esc(r.nickname) + '</span>' +
                 '<span class="cm-reply-time">' + rTimeStr + '</span>' +
               '</div>' +
@@ -789,7 +802,7 @@ const jsonLd = {
 
       card.innerHTML =
         '<div class="cm-card-author">' +
-          '<img src="' + gravatarUrl(c.email) + '" class="cm-card-avatar" />' +
+          '<img src="' + commentAvatarUrl(c) + '" class="cm-card-avatar" />' +
           '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
         '</div>' +
         '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
@@ -927,7 +940,7 @@ const jsonLd = {
         div.className = 'ms-reply-item';
         div.innerHTML =
           '<div class="ms-reply-header">' +
-            '<img src="' + gravatarUrl(r.email) + '" class="ms-reply-avatar" />' +
+            '<img src="' + commentAvatarUrl(r) + '" class="ms-reply-avatar" />' +
             '<span class="ms-reply-name">' + esc(r.nickname) + '</span>' +
             '<span class="ms-reply-time">' + rTimeStr + '</span>' +
           '</div>' +
@@ -1139,6 +1152,20 @@ const jsonLd = {
       articleLikeCount.textContent = res.count;
       articleLiked = res.liked;
       if (articleLiked) articleLikeBtn.classList.add('liked');
+      // Populate sidebar likes
+      if (res.count > 0) {
+        var lkEl = document.getElementById('postLikesCount');
+        var lkBlock = document.getElementById('postLikesBlock');
+        if (lkEl) lkEl.textContent = res.count.toLocaleString();
+        if (lkBlock) lkBlock.style.display = '';
+      }
+      // Sync localStorage with server state
+      try {
+        var stored = JSON.parse(localStorage.getItem('post_likes') || '[]');
+        var set = new Set(stored);
+        if (res.liked) set.add(POST_SLUG); else set.delete(POST_SLUG);
+        localStorage.setItem('post_likes', JSON.stringify(Array.from(set)));
+      } catch(e) {}
     });
   }
 
@@ -1161,6 +1188,22 @@ const jsonLd = {
       articleLikeCount.textContent = res.count;
       articleLikeBtn.classList.toggle('liked', res.liked);
       icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      // Update sidebar likes
+      var lkEl = document.getElementById('postLikesCount');
+      var lkBlock = document.getElementById('postLikesBlock');
+      if (res.count > 0) {
+        if (lkEl) lkEl.textContent = res.count.toLocaleString();
+        if (lkBlock) lkBlock.style.display = '';
+      } else {
+        if (lkBlock) lkBlock.style.display = 'none';
+      }
+      // Persist liked state to localStorage
+      try {
+        var stored = JSON.parse(localStorage.getItem('post_likes') || '[]');
+        var set = new Set(stored);
+        if (res.liked) set.add(POST_SLUG); else set.delete(POST_SLUG);
+        localStorage.setItem('post_likes', JSON.stringify(Array.from(set)));
+      } catch(e) {}
     }).catch(function() {
       // Rollback on failure
       articleLiked = prevLiked;
@@ -1185,6 +1228,13 @@ const jsonLd = {
     bcThread.innerHTML = '';
     var count = bottomComments.length;
     bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+    // Populate sidebar comments
+    if (count > 0) {
+      var cmEl = document.getElementById('postCommentsCount');
+      var cmBlock = document.getElementById('postCommentsBlock');
+      if (cmEl) cmEl.textContent = count.toLocaleString();
+      if (cmBlock) cmBlock.style.display = '';
+    }
 
     // Build tree
     var roots = [];
@@ -1210,7 +1260,7 @@ const jsonLd = {
       ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
       : '<span class="bc-name">' + esc(c.nickname) + '</span>';
     div.innerHTML =
-      '<div class="bc-avatar-wrap"><img src="' + gravatarUrl(c.email) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+      '<div class="bc-avatar-wrap"><img src="' + commentAvatarUrl(c) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
       '<div class="bc-body">' +
         '<div class="bc-meta">' +
           nameHtml +
