@@ -1,5 +1,5 @@
 ---
-title: "B站2000万用户分析"
+title: "B 站 2000 万用户分析"
 date: 2016-02-23
 tags: ["tech"]
 description: ""

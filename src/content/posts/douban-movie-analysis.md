@@ -1,5 +1,5 @@
 ---
-title: "6万部豆瓣电影数据分析"
+title: "6 万部豆瓣电影数据分析"
 date: 2017-01-16
 tags: ["tech"]
 description: ""
