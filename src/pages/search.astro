@@ -47,12 +47,25 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <link href="/pagefind/pagefind-ui.css" rel="stylesheet" />
   <script is:inline src="/pagefind/pagefind-ui.js"></script>
   <script is:inline>
-    window.addEventListener('DOMContentLoaded', () => {
+    window.addEventListener('DOMContentLoaded', function() {
       new PagefindUI({
         element: "#search",
         showSubResults: true,
         showImages: false,
       });
+      var searchInput = document.querySelector('#search input');
+      var searchTimer = null;
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          clearTimeout(searchTimer);
+          var q = this.value.trim();
+          if (q.length >= 2) {
+            searchTimer = setTimeout(function() {
+              if (typeof umami !== 'undefined') umami.track('search-query', { query: q });
+            }, 1000);
+          }
+        });
+      }
     });
   </script>
 </BaseLayout>
