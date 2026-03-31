@@ -74,10 +74,21 @@
         localStorage.setItem('blog-mode', next);
         localStorage.setItem('blog-mode-set', '1');
         updateModeIcon();
+        if (typeof umami !== 'undefined') umami.track('dark-mode-toggle', { mode: next });
       });
       updateModeIcon();
     })();
   </script> </body> </html>   <script>
+(function() {
+  var grid = document.querySelector('.friends-grid');
+  if (grid) grid.addEventListener('click', function(e) {
+    var a = e.target.closest('.friend-card');
+    if (!a) return;
+    var name = a.querySelector('.fc-name').textContent;
+    if (typeof umami !== 'undefined') umami.track('friend-link', { name: name, url: a.href });
+  });
+})();
+</script> <script>
 (function() {
   // ── Guestbook ──
   var API = 'https://chat.ursb.me';
