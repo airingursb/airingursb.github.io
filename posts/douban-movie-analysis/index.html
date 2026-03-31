@@ -372,6 +372,7 @@
       e.preventDefault();
       h.scrollIntoView({ behavior: 'smooth', block: 'start' });
       history.replaceState(null, '', '#' + h.id);
+      if (typeof umami !== 'undefined') umami.track('toc-click', { heading: h.textContent });
     });
     fragment.appendChild(a);
   });
@@ -407,6 +408,44 @@
     if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
   }, { passive: true });
   updateActive();
+})();
+</script> <script>
+// Scroll depth tracking
+(function() {
+  var milestones = [25, 50, 75, 100];
+  var fired = {};
+  var postContent = document.querySelector('.post-content');
+  if (!postContent) return;
+  window.addEventListener('scroll', function() {
+    var rect = postContent.getBoundingClientRect();
+    var total = postContent.scrollHeight;
+    var scrolled = Math.max(0, -rect.top);
+    var pct = Math.min(100, Math.round(scrolled / (total - window.innerHeight) * 100));
+    milestones.forEach(function(m) {
+      if (pct >= m && !fired[m]) {
+        fired[m] = true;
+        if (typeof umami !== 'undefined') umami.track('scroll-depth', { depth: m });
+      }
+    });
+  }, { passive: true });
+})();
+</script> <script>
+// Outbound link tracking
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  content.addEventListener('click', function(e) {
+    var a = e.target.closest('a[href^="http"]');
+    if (!a) return;
+    var host = new URL(a.href).hostname;
+    if (host === location.hostname) return;
+    if (typeof umami !== 'undefined') umami.track('outbound-link', { url: a.href, host: host });
+  });
+  // Copy text tracking
+  content.addEventListener('copy', function() {
+    var text = (window.getSelection() || '').toString().slice(0, 100);
+    if (text && typeof umami !== 'undefined') umami.track('copy-text', { text: text });
+  });
 })();
 </script> <script>
 (function() {

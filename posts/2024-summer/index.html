@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>再见了，盛夏 | Airing</title><meta name="description" content><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta property="og:title" content="再见了，盛夏 | Airing"><meta property="og:description" content><meta property="og:type" content="article"><link rel="canonical" href="https://ursb.me/posts/2024-summer/"><meta property="og:url" content="https://ursb.me/posts/2024-summer/"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="再见了，盛夏 | Airing"><meta name="twitter:description" content><meta name="twitter:image" content="https://airing.ursb.me/images/blog/2024/life.jpg"><meta property="og:image" content="https://airing.ursb.me/images/blog/2024/life.jpg"><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/blog/feed.xml"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>再见了，盛夏 | Airing</title><meta name="description" content><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta property="og:title" content="再见了，盛夏 | Airing"><meta property="og:description" content><meta property="og:type" content="article"><link rel="canonical" href="https://ursb.me/posts/2024-summer/"><meta property="og:url" content="https://ursb.me/posts/2024-summer/"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="再见了，盛夏 | Airing"><meta name="twitter:description" content><meta name="twitter:image" content="https://ursb.me/og/2024-summer.png"><meta property="og:image" content="https://ursb.me/og/2024-summer.png"><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/blog/feed.xml"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
@@ -473,6 +473,7 @@
       e.preventDefault();
       h.scrollIntoView({ behavior: 'smooth', block: 'start' });
       history.replaceState(null, '', '#' + h.id);
+      if (typeof umami !== 'undefined') umami.track('toc-click', { heading: h.textContent });
     });
     fragment.appendChild(a);
   });
@@ -508,6 +509,44 @@
     if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
   }, { passive: true });
   updateActive();
+})();
+</script> <script>
+// Scroll depth tracking
+(function() {
+  var milestones = [25, 50, 75, 100];
+  var fired = {};
+  var postContent = document.querySelector('.post-content');
+  if (!postContent) return;
+  window.addEventListener('scroll', function() {
+    var rect = postContent.getBoundingClientRect();
+    var total = postContent.scrollHeight;
+    var scrolled = Math.max(0, -rect.top);
+    var pct = Math.min(100, Math.round(scrolled / (total - window.innerHeight) * 100));
+    milestones.forEach(function(m) {
+      if (pct >= m && !fired[m]) {
+        fired[m] = true;
+        if (typeof umami !== 'undefined') umami.track('scroll-depth', { depth: m });
+      }
+    });
+  }, { passive: true });
+})();
+</script> <script>
+// Outbound link tracking
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  content.addEventListener('click', function(e) {
+    var a = e.target.closest('a[href^="http"]');
+    if (!a) return;
+    var host = new URL(a.href).hostname;
+    if (host === location.hostname) return;
+    if (typeof umami !== 'undefined') umami.track('outbound-link', { url: a.href, host: host });
+  });
+  // Copy text tracking
+  content.addEventListener('copy', function() {
+    var text = (window.getSelection() || '').toString().slice(0, 100);
+    if (text && typeof umami !== 'undefined') umami.track('copy-text', { text: text });
+  });
 })();
 </script> <script>
 (function() {
