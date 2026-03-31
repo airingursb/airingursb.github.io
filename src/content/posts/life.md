@@ -1,7 +1,7 @@
 ---
 title: "谈谈存在的价值与人生体验"
 date: 2021-07-11
-tags: ["tech"]
+tags: ["essays"]
 description: ""
 cover: "https://airing.ursb.me/image/blog/20210711-05.jpeg"
 ---

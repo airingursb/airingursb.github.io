@@ -1,7 +1,7 @@
 ---
 title: "再见了，盛夏"
 date: 2024-08-31
-tags: ["tech"]
+tags: ["annually"]
 description: ""
 cover: "https://airing.ursb.me/images/blog/2024/life.jpg"
 ---

@@ -1,7 +1,7 @@
 ---
 title: "如何有效沟通——从《齐物论》立场问题切入"
 date: 2021-03-09
-tags: ["tech"]
+tags: ["essays"]
 description: ""
 ---
 
