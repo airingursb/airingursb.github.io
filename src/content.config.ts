@@ -11,6 +11,7 @@ const posts = defineCollection({
     cover: z.string().optional(),
     featured: z.boolean().default(false),
     draft: z.boolean().default(false),
+    spotifyTrack: z.string().optional(),
   }),
 });
 
