@@ -3,7 +3,24 @@
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
     gtag('config', 'G-W604S49M4X');
-  </script><!-- Umami Analytics --><script defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script><!-- Cal.com Embed --><script type="text/javascript">
+  </script><!-- Umami Analytics --><script defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script><script>
+    (function() {
+      function identifySession() {
+        if (typeof umami === 'undefined') return;
+        var theme = localStorage.getItem('blog-mode') || 'dark';
+        var lang = localStorage.getItem('preferred_lang') || 'zh';
+        var visited = localStorage.getItem('visited');
+        var returning = visited ? 'yes' : 'no';
+        if (!visited) localStorage.setItem('visited', '1');
+        umami.identify({ theme: theme, language: lang, returning: returning });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { setTimeout(identifySession, 500); });
+      } else {
+        setTimeout(identifySession, 500);
+      }
+    })();
+  </script><!-- Cal.com Embed --><script type="text/javascript">
     (function (C, A, L) {
       let p = function (a, ar) { a.q.push(ar); };
       let d = C.document;
@@ -96,7 +113,10 @@
         localStorage.setItem('blog-mode', next);
         localStorage.setItem('blog-mode-set', '1');
         updateModeIcon();
-        if (typeof umami !== 'undefined') umami.track('dark-mode-toggle', { mode: next });
+        if (typeof umami !== 'undefined') {
+          umami.track('dark-mode-toggle', { mode: next });
+          umami.identify({ theme: next });
+        }
       });
       updateModeIcon();
     })();
