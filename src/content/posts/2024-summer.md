@@ -4,7 +4,6 @@ date: 2024-08-31
 tags: ["annually"]
 description: ""
 cover: "https://airing.ursb.me/images/blog/2024/life.jpg"
-spotifyTrack: "6oakdtkmSLIvpurMVU0q5x"
 ---
 
 ## 一、近况、过往与未来
