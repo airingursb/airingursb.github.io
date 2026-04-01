@@ -51,6 +51,24 @@ const {
   </script>
   <!-- Umami Analytics -->
   <script is:inline defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script>
+  <script is:inline>
+    (function() {
+      function identifySession() {
+        if (typeof umami === 'undefined') return;
+        var theme = localStorage.getItem('blog-mode') || 'dark';
+        var lang = localStorage.getItem('preferred_lang') || 'zh';
+        var visited = localStorage.getItem('visited');
+        var returning = visited ? 'yes' : 'no';
+        if (!visited) localStorage.setItem('visited', '1');
+        umami.identify({ theme: theme, language: lang, returning: returning });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { setTimeout(identifySession, 500); });
+      } else {
+        setTimeout(identifySession, 500);
+      }
+    })();
+  </script>
   <!-- Cal.com Embed -->
   <script is:inline type="text/javascript">
     (function (C, A, L) {
@@ -149,7 +167,10 @@ const {
         localStorage.setItem('blog-mode', next);
         localStorage.setItem('blog-mode-set', '1');
         updateModeIcon();
-        if (typeof umami !== 'undefined') umami.track('dark-mode-toggle', { mode: next });
+        if (typeof umami !== 'undefined') {
+          umami.track('dark-mode-toggle', { mode: next });
+          umami.identify({ theme: next });
+        }
       });
       updateModeIcon();
     })();
