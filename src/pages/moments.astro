@@ -281,18 +281,28 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   .action-btn svg { flex-shrink: 0; }
 
   .reactions-row {
-    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
     margin-left: auto;
   }
   .reaction-bubble {
-    display: inline-flex; align-items: center; gap: 3px;
-    font-size: 12px; background: rgba(var(--c-overlay-rgb), 0.06);
-    border: 1px solid var(--c-border); border-radius: 20px;
-    padding: 2px 8px; cursor: pointer; transition: border-color 0.15s;
+    display: inline-flex; align-items: center; gap: 2px;
+    font-size: 12px; line-height: 1;
+    background: var(--c-bg); border: 1px solid var(--c-border); border-radius: 12px;
+    padding: 3px 8px 3px 6px; cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
     user-select: none;
   }
-  .reaction-bubble:hover { border-color: var(--accent); }
-  .reaction-bubble.reacted { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.08); }
+  .reaction-bubble .reaction-emoji { line-height: 0; display: inline-flex; }
+  .reaction-bubble .reaction-emoji img { pointer-events: none; }
+  .reaction-bubble .reaction-count {
+    font-size: 11px; font-weight: 500; color: var(--c-text-dim);
+    font-variant-numeric: tabular-nums;
+  }
+  .reaction-bubble:hover { border-color: var(--accent); background: rgba(var(--accent-rgb), 0.04); }
+  .reaction-bubble.reacted {
+    border-color: var(--accent); background: rgba(var(--accent-rgb), 0.08);
+  }
+  .reaction-bubble.reacted .reaction-count { color: var(--accent); font-weight: 600; }
 
   /* Expanded area */
   .card-expanded {
@@ -303,15 +313,19 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
   /* Emoji picker */
   .emoji-picker {
-    display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px;
+    display: flex; gap: 2px; margin-bottom: 16px;
+    background: var(--c-bg); border: 1px solid var(--c-border);
+    border-radius: 8px; padding: 4px; width: fit-content;
   }
   .emoji-pick-btn {
-    font-size: 20px; background: none; border: 1px solid var(--c-border);
-    border-radius: 8px; padding: 4px 8px; cursor: pointer;
-    transition: border-color 0.15s, transform 0.1s;
-    line-height: 1.4;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: none; border: none;
+    border-radius: 6px; padding: 5px 6px; cursor: pointer;
+    transition: background 0.12s, transform 0.1s;
+    line-height: 0;
   }
-  .emoji-pick-btn:hover { border-color: var(--accent); transform: scale(1.1); }
+  .emoji-pick-btn:hover { background: rgba(var(--c-overlay-rgb), 0.1); transform: scale(1.2); }
+  .emoji-pick-btn img { pointer-events: none; }
 
   /* Comments */
   .comments-list { margin-bottom: 16px; }
@@ -431,6 +445,19 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   const AVATAR = 'https://avatars.githubusercontent.com/u/10513408?v=4&s=64';
   const GRAVATAR = 'https://www.gravatar.com/avatar/?d=robohash&s=48';
   const EMOJIS = ['👍', '❤️', '🔥', '😄', '🎉', '🙏', '😢', '🤔'];
+  // Twemoji SVG CDN — consistent, well-designed emoji across all platforms
+  const TWEMOJI_BASE = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg';
+  const EMOJI_CODE = {
+    '👍': '1f44d', '❤️': '2764', '🔥': '1f525', '😄': '1f604',
+    '🎉': '1f389', '🙏': '1f64f', '😢': '1f622', '🤔': '1f914',
+  };
+  function twemojiUrl(emoji) {
+    return `${TWEMOJI_BASE}/${EMOJI_CODE[emoji] || '1f44d'}.svg`;
+  }
+  function twemojiImg(emoji, size) {
+    const s = size || 18;
+    return `<img src="${twemojiUrl(emoji)}" alt="${emoji}" width="${s}" height="${s}" style="vertical-align:-3px" draggable="false">`;
+  }
   const LIMIT = 20;
 
   let page = 1;
@@ -537,7 +564,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       .filter(([, count]) => count > 0)
       .map(([emoji, count]) => {
         const reacted = myReactions.includes(emoji) ? ' reacted' : '';
-        return `<span class="reaction-bubble${reacted}" data-moment-id="${esc(momentId)}" data-emoji="${esc(emoji)}" title="${esc(emoji)}">${esc(emoji)} ${count}</span>`;
+        return `<span class="reaction-bubble${reacted}" data-moment-id="${esc(momentId)}" data-emoji="${esc(emoji)}" title="${esc(emoji)}"><span class="reaction-emoji">${twemojiImg(emoji, 14)}</span><span class="reaction-count">${count}</span></span>`;
       }).join('');
   }
 
@@ -550,7 +577,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     const reactionsHtml = buildReactionsHtml(reactions, m.id);
 
     const emojiPickerHtml = EMOJIS.map(e =>
-      `<button class="emoji-pick-btn" data-moment-id="${esc(m.id)}" data-emoji="${esc(e)}" title="${esc(e)}">${e}</button>`
+      `<button class="emoji-pick-btn" data-moment-id="${esc(m.id)}" data-emoji="${esc(e)}" title="${esc(e)}">${twemojiImg(e, 20)}</button>`
     ).join('');
 
     return `
