@@ -74,6 +74,47 @@ function linkifyStatic(text: string): string {
   result += escHtml(text.slice(lastIndex));
   return result;
 }
+
+// ── Date grouping helpers ──
+const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+function formatDateHeader(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const weekday = WEEKDAYS[d.getDay()];
+  return `${month}月${day}日 · ${weekday}`;
+}
+
+function getDateKey(dateStr: string): string {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Group static moments by date
+const groupedMoments: { dateKey: string; dateLabel: string; moments: any[] }[] = [];
+const seenDates = new Set<string>();
+for (const m of staticMoments) {
+  const dk = getDateKey(m.published_at);
+  if (!seenDates.has(dk)) {
+    seenDates.add(dk);
+    groupedMoments.push({ dateKey: dk, dateLabel: formatDateHeader(m.published_at), moments: [] });
+  }
+  groupedMoments[groupedMoments.length - 1].moments.push(m);
+}
+
+// ── Calendar data: count moments per day + first image per day ──
+const momentCountByDate: Record<string, number> = {};
+const momentImageByDate: Record<string, string> = {};
+for (const m of staticMoments) {
+  const dk = getDateKey(m.published_at);
+  momentCountByDate[dk] = (momentCountByDate[dk] || 0) + 1;
+  if (!momentImageByDate[dk] && m.images && m.images.length > 0) {
+    momentImageByDate[dk] = m.images[0];
+  }
+}
 ---
 
 <BaseLayout title="Moment | Airing">
@@ -86,8 +127,8 @@ function linkifyStatic(text: string): string {
           <a href="/blog" class="mast-brand">Airing's Blog</a>
           <span class="mast-motto">应无所住而生其心</span>
           <div class="mast-links">
-            <a href="/blog">Blog</a>
-            <a href="/archive">Archive</a>
+            <a href="/blog" class="mast-hide-mobile">Blog</a>
+            <a href="/archive" class="mast-hide-mobile">Archive</a>
             <a href="/moments" class="mast-link-active">Moment</a>
             <a href="/friends">Friends</a>
           </div>
@@ -100,7 +141,7 @@ function linkifyStatic(text: string): string {
     <header class="page-header">
       <div class="header-inner">
         <h1 class="page-title">Moment</h1>
-        <p class="page-desc">Thoughts and shares from <a href="https://t.me/airingchannel" target="_blank" style="color:var(--accent);text-decoration:none">Telegram Channel</a>.</p>
+        <p class="page-desc">Thoughts and shares from <a href="https://t.me/s/airingchannel" target="_blank" style="color:var(--accent);text-decoration:none">Telegram Channel</a>.</p>
       </div>
     </header>
 
@@ -109,74 +150,77 @@ function linkifyStatic(text: string): string {
       <div class="content-inner">
         <!-- Timeline -->
         <div class="timeline-wrap">
-          <div class="timeline-line"></div>
           <div class="moments-container" id="momentsContainer">
-            {staticMoments.map((m) => {
-              const content = m.content || '';
-              const truncated = content.length > 200;
-              const previews = m.link_previews || [];
-              const images = m.images || [];
-              const emojiPickerHtml = EMOJIS_LIST.map(e =>
-                `<button class="emoji-pick-btn" data-moment-id="${m.id}" data-emoji="${e}" title="${e}"><img src="${twemojiUrl(e)}" alt="${e}" width="20" height="20" style="vertical-align:-3px" draggable="false"></button>`
-              ).join('');
-              return (
-                <div class="moment-item" data-moment-id={m.id}>
-                  <div class="moment-dot"></div>
-                  <div class="moment-card">
-                    <div class="card-header">
-                      <img class="card-avatar" src={AVATAR} alt="Airing" />
-                      <span class="card-author">Airing</span>
-                      <time class="card-time" title={m.published_at || ''}>{relativeTimeStatic(m.published_at)}</time>
-                    </div>
-                    <div class={`card-text${truncated ? ' truncated' : ''}`} set:html={linkifyStatic(content)} />
-                    {truncated && <button class="text-expand-btn">展开全文</button>}
-                    {previews.length > 0 && previews.map((p: any) => {
-                      const domain = p.url.replace(/^https?:\/\//, '').split('/')[0];
-                      return (
-                        <a class="link-preview" href={p.url} target="_blank" rel="noopener noreferrer">
-                          {p.image && <img class="link-preview-image" src={p.image} alt="" loading="lazy" />}
-                          <div class="link-preview-body">
-                            <div class="link-preview-title">{p.title}</div>
-                            {p.description && <div class="link-preview-desc">{p.description}</div>}
-                            <div class="link-preview-domain">{domain}</div>
-                          </div>
-                        </a>
-                      );
-                    })}
-                    {images.length > 0 && (
-                      <div class={`card-images ${images.length === 1 ? 'single' : 'multi'}`}>
-                        {images.map((u: string) => <img class="card-img" src={u} alt="" loading="lazy" />)}
-                      </div>
-                    )}
-                    <div class="card-actions">
-                      <button class="action-btn like-btn" data-moment-id={m.id} title="Like">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-                        <span class="like-count">0</span>
-                      </button>
-                      <button class="action-btn comment-toggle-btn" data-moment-id={m.id} title="Comments">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                        <span class="comment-count">0</span>
-                      </button>
-                      <div class="reactions-row" data-moment-id={m.id}></div>
-                    </div>
-                    <div class="card-expanded">
-                      <div class="emoji-picker" set:html={emojiPickerHtml} />
-                      <div class="comments-list" id={`comments-${m.id}`}>
-                        <div class="spinner" style="width:18px;height:18px;margin:8px auto;"></div>
-                      </div>
-                      <form class="comment-form" data-moment-id={m.id}>
-                        <div class="comment-form-row">
-                          <input class="comment-input" name="nickname" placeholder="昵称 *" required style="flex:1" />
-                          <input class="comment-input" name="email" type="email" placeholder="邮箱 (可选)" style="flex:1" />
+            {groupedMoments.map((group) => (
+              <>
+                <div class="date-header" data-date={group.dateKey}>{group.dateLabel}</div>
+                {group.moments.map((m) => {
+                  const content = m.content || '';
+                  const truncated = content.length > 200;
+                  const previews = m.link_previews || [];
+                  const images = m.images || [];
+                  const emojiPickerHtml = EMOJIS_LIST.map(e =>
+                    `<button class="emoji-pick-btn" data-moment-id="${m.id}" data-emoji="${e}" title="${e}"><img src="${twemojiUrl(e)}" alt="${e}" width="20" height="20" style="vertical-align:-3px" draggable="false"></button>`
+                  ).join('');
+                  return (
+                    <div class="moment-item" data-moment-id={m.id} data-date={getDateKey(m.published_at)}>
+                      <div class="moment-card">
+                        <div class="card-header">
+                          <img class="card-avatar" src={AVATAR} alt="Airing" />
+                          <span class="card-author">Airing</span>
+                          <time class="card-time" title={m.published_at || ''}>{relativeTimeStatic(m.published_at)}</time>
                         </div>
-                        <textarea class="comment-input" name="content" rows={2} placeholder="发表评论..." required></textarea>
-                        <button class="comment-submit" type="submit">发送</button>
-                      </form>
+                        <div class={`card-text${truncated ? ' truncated' : ''}`} set:html={linkifyStatic(content)} />
+                        {truncated && <button class="text-expand-btn">展开全文</button>}
+                        {previews.length > 0 && previews.map((p: any) => {
+                          const domain = p.url.replace(/^https?:\/\//, '').split('/')[0];
+                          return (
+                            <a class="link-preview" href={p.url} target="_blank" rel="noopener noreferrer">
+                              {p.image && <img class="link-preview-image" src={p.image} alt="" loading="lazy" />}
+                              <div class="link-preview-body">
+                                <div class="link-preview-title">{p.title}</div>
+                                {p.description && <div class="link-preview-desc">{p.description}</div>}
+                                <div class="link-preview-domain">{domain}</div>
+                              </div>
+                            </a>
+                          );
+                        })}
+                        {images.length > 0 && (
+                          <div class={`card-images ${images.length === 1 ? 'single' : 'multi'}`}>
+                            {images.map((u: string) => <img class="card-img" src={u} alt="" loading="lazy" />)}
+                          </div>
+                        )}
+                        <div class="card-actions">
+                          <button class="action-btn like-btn" data-moment-id={m.id} title="Like">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                            <span class="like-count">0</span>
+                          </button>
+                          <button class="action-btn comment-toggle-btn" data-moment-id={m.id} title="Comments">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                            <span class="comment-count">0</span>
+                          </button>
+                          <div class="reactions-row" data-moment-id={m.id}></div>
+                        </div>
+                        <div class="card-expanded">
+                          <div class="emoji-picker" set:html={emojiPickerHtml} />
+                          <div class="comments-list" id={`comments-${m.id}`}>
+                            <div class="spinner" style="width:18px;height:18px;margin:8px auto;"></div>
+                          </div>
+                          <form class="comment-form" data-moment-id={m.id}>
+                            <div class="comment-form-row">
+                              <input class="comment-input" name="nickname" placeholder="昵称 *" required style="flex:1" />
+                              <input class="comment-input" name="email" type="email" placeholder="邮箱 (可选)" style="flex:1" />
+                            </div>
+                            <textarea class="comment-input" name="content" rows={2} placeholder="发表评论..." required></textarea>
+                            <button class="comment-submit" type="submit">发送</button>
+                          </form>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </>
+            ))}
           </div>
           <div class="loader-wrap" id="loaderWrap" style="display:none">
             <div class="spinner"></div>
@@ -186,28 +230,34 @@ function linkifyStatic(text: string): string {
           </div>
         </div>
 
-        <!-- Sidebar -->
-        <aside class="author-sidebar">
+        <!-- Calendar Sidebar -->
+        <aside class="calendar-sidebar" id="calendarSidebar">
           <div class="sidebar-sticky">
-            <div class="author-card">
-              <img
-                src="https://avatars.githubusercontent.com/u/10513408?v=4&s=96"
-                alt="Airing"
-                class="author-avatar"
-                loading="lazy"
-              />
-              <h3 class="author-name"><a href="/">Airing</a></h3>
-              <p class="author-bio">哲学硕士｜终端全栈</p>
-              <div class="author-links">
-                <a href="https://github.com/airingursb" target="_blank" rel="noopener" title="GitHub" class="author-link-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-                </a>
-                <a href="https://x.com/airingursb" target="_blank" rel="noopener" title="X / Twitter" class="author-link-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-                </a>
-                <a href="https://t.me/s/airingchannel" target="_blank" rel="noopener" title="Telegram" class="author-link-icon">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
-                </a>
+            <div class="calendar-card">
+              <div class="calendar-header">
+                <button class="cal-nav-btn" id="calPrev" title="上个月">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <span class="cal-month-label" id="calMonthLabel"></span>
+                <button class="cal-nav-btn" id="calNext" title="下个月">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              </div>
+              <div class="cal-weekdays">
+                <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+              </div>
+              <div class="cal-grid" id="calGrid"></div>
+              <div class="cal-filter-info" id="calFilterInfo" style="display:none">
+                <span id="calFilterLabel"></span>
+                <button class="cal-clear-filter" id="calClearFilter">清除筛选</button>
+              </div>
+            </div>
+            <!-- Compact author info -->
+            <div class="author-compact">
+              <img src="https://avatars.githubusercontent.com/u/10513408?v=4&s=48" alt="Airing" class="author-compact-avatar" />
+              <div class="author-compact-info">
+                <a href="/" class="author-compact-name">Airing</a>
+                <span class="author-compact-bio">哲学硕士｜终端全栈</span>
               </div>
             </div>
           </div>
@@ -290,27 +340,21 @@ function linkifyStatic(text: string): string {
   /* ── Timeline ── */
   .timeline-wrap {
     flex: 1; min-width: 0; max-width: 720px;
-    position: relative; padding-left: 28px;
   }
-  .timeline-line {
-    position: absolute; left: 4px; top: 0; bottom: 0;
-    width: 2px; background: var(--c-border);
+
+  /* ── Date Group Header ── */
+  .date-header {
+    font-size: 13px; font-weight: 600; color: var(--c-text-dim);
+    padding: 4px 0 12px; margin-top: 8px;
+    letter-spacing: 0.02em;
   }
+  .date-header:first-child { margin-top: 0; }
 
   /* ── Moment Item ── */
   .moment-item {
-    position: relative; margin-bottom: 24px; cursor: pointer;
+    position: relative; margin-bottom: 16px; cursor: pointer;
   }
-  .moment-dot {
-    position: absolute; left: -32px; top: 18px;
-    width: 10px; height: 10px; border-radius: 50%;
-    background: var(--accent); flex-shrink: 0;
-    box-shadow: 0 0 0 3px rgba(var(--accent-rgb), 0.15);
-    transition: box-shadow 0.2s;
-  }
-  .moment-item.expanded .moment-dot {
-    box-shadow: 0 0 0 4px rgba(var(--accent-rgb), 0.3);
-  }
+  .moment-item:last-child { margin-bottom: 24px; }
   .moment-card {
     background: var(--c-bg-alt);
     border: 1px solid var(--c-border);
@@ -540,29 +584,109 @@ function linkifyStatic(text: string): string {
     font-size: 13px; color: var(--c-text-dim);
   }
 
-  /* ── Sidebar ── */
-  .author-sidebar { width: 280px; flex-shrink: 0; }
+  /* ── Calendar Sidebar ── */
+  .calendar-sidebar { width: 280px; flex-shrink: 0; }
   .sidebar-sticky { position: sticky; top: 24px; }
-  .author-card {
+  .calendar-card {
     background: var(--c-bg-alt); border: 1px solid var(--c-border);
-    border-radius: 12px; padding: 24px; text-align: center;
+    border-radius: 12px; padding: 16px;
   }
-  .author-avatar {
-    width: 64px; height: 64px; border-radius: 50%; margin-bottom: 12px;
+  .calendar-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px;
   }
-  .author-name {
-    font-size: 16px; font-weight: 700; color: var(--c-text); margin-bottom: 4px;
+  .cal-month-label {
+    font-size: 14px; font-weight: 700; color: var(--c-text);
+    letter-spacing: 0.01em;
   }
-  .author-name a { color: inherit; text-decoration: none; }
-  .author-name a:hover { color: var(--accent); }
-  .author-bio { font-size: 13px; color: var(--c-text-muted); margin-bottom: 16px; }
-  .author-links { display: flex; justify-content: center; gap: 12px; }
-  .author-link-icon {
-    color: var(--c-text-dim); transition: color 0.15s;
+  .cal-nav-btn {
     display: inline-flex; align-items: center; justify-content: center;
-    padding: 6px; border-radius: 6px;
+    background: none; border: none; cursor: pointer;
+    color: var(--c-text-dim); padding: 4px; border-radius: 6px;
+    transition: color 0.15s, background 0.15s;
   }
-  .author-link-icon:hover { color: var(--c-text); }
+  .cal-nav-btn:hover { color: var(--c-text); background: rgba(var(--c-overlay-rgb), 0.06); }
+  .cal-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    text-align: center; font-size: 11px; color: var(--c-text-muted);
+    margin-bottom: 4px; font-weight: 500;
+  }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+  }
+  .cal-day {
+    aspect-ratio: 1; display: flex;
+    align-items: flex-end; justify-content: flex-start;
+    font-size: 11px; color: var(--c-text-dim);
+    border-radius: 3px; cursor: default; position: relative;
+    transition: opacity 0.15s;
+    overflow: hidden;
+  }
+  .cal-day.empty { visibility: hidden; }
+  .cal-day.has-moments {
+    cursor: pointer;
+    background: rgba(var(--accent-rgb), 0.15);
+    color: var(--accent); font-weight: 600;
+  }
+  .cal-day.has-moments:hover { opacity: 0.8; }
+  .cal-day.active {
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+  .cal-day.today {
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+    border-radius: 4px;
+  }
+  .cal-day.today .cal-day-num {
+    color: var(--accent); font-weight: 700;
+  }
+  .cal-day-num {
+    position: relative; z-index: 1;
+    padding: 2px 3px; line-height: 1;
+  }
+  .cal-day.has-image {
+    background-size: cover; background-position: center;
+    color: #fff; font-weight: 700;
+  }
+  .cal-day.has-image::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 60%);
+  }
+  .cal-day.has-image .cal-day-num {
+    text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .cal-day.has-image.today {
+    box-shadow: inset 0 0 0 1.5px #fff;
+  }
+  .cal-day.has-image.today .cal-day-num {
+    color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.6);
+  }
+  .cal-filter-info {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--c-border);
+    font-size: 12px; color: var(--c-text-dim);
+  }
+  .cal-clear-filter {
+    font-size: 12px; color: var(--accent); background: none; border: none;
+    cursor: pointer; font-family: inherit; padding: 0;
+  }
+  .cal-clear-filter:hover { text-decoration: underline; }
+
+  /* Compact author */
+  .author-compact {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 16px; padding: 12px 16px;
+    background: var(--c-bg-alt); border: 1px solid var(--c-border);
+    border-radius: 12px;
+  }
+  .author-compact-avatar { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+  .author-compact-info { display: flex; flex-direction: column; }
+  .author-compact-name {
+    font-size: 13px; font-weight: 600; color: var(--c-text);
+    text-decoration: none;
+  }
+  .author-compact-name:hover { color: var(--accent); }
+  .author-compact-bio { font-size: 11px; color: var(--c-text-muted); }
 
   /* ── Footer ── */
   .blog-footer { border-top: 1px solid var(--c-border); padding: 32px 0; margin-top: 40px; }
@@ -577,13 +701,14 @@ function linkifyStatic(text: string): string {
 
   /* ── Responsive ── */
   @media (max-width: 900px) {
-    .author-sidebar { display: none; }
+    .calendar-sidebar { display: none; }
     .content-inner { padding: 0 24px; }
     .timeline-wrap { max-width: 100%; }
   }
   @media (max-width: 768px) {
     .mast-inner { padding: 0 20px; }
     .mast-motto { display: none; }
+    .mast-hide-mobile { display: none; }
     .header-inner { padding: 0 20px; }
     .content-inner { padding: 0 20px; }
     .footer-inner { padding: 0 20px; }
@@ -593,6 +718,10 @@ function linkifyStatic(text: string): string {
   }
 </style>
 
+<script is:inline define:vars={{ momentCountByDate, momentImageByDate }}>
+  window.__momentCountByDate = momentCountByDate;
+  window.__momentImageByDate = momentImageByDate;
+</script>
 <script is:inline>
 (function () {
   'use strict';
@@ -668,6 +797,19 @@ function linkifyStatic(text: string): string {
 
   const TEXT_MAX_LEN = 200; // Characters before truncation
   const URL_RE = /https?:\/\/[^\s，。、！？；：）》\]'"<>]+/g;
+  const WEEKDAYS_JS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+  function getDateKeyJs(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return '';
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  function formatDateHeaderJs(dateStr) {
+    const d = new Date(dateStr);
+    if (isNaN(d)) return '';
+    return `${d.getMonth() + 1}月${d.getDate()}日 · ${WEEKDAYS_JS[d.getDay()]}`;
+  }
 
   function linkifyAndEsc(text) {
     // Escape text while converting URLs to clickable <a> tags
@@ -742,8 +884,7 @@ function linkifyStatic(text: string): string {
     ).join('');
 
     return `
-      <div class="moment-item" data-moment-id="${esc(m.id)}">
-        <div class="moment-dot"></div>
+      <div class="moment-item" data-moment-id="${esc(m.id)}" data-date="${getDateKeyJs(m.published_at)}">
         <div class="moment-card">
           <div class="card-header">
             <img class="card-avatar" src="${AVATAR}" alt="Airing">
@@ -927,7 +1068,20 @@ function linkifyStatic(text: string): string {
       if (moments.length === 0) {
         finished = true;
       } else {
-        const html = moments.map(buildMomentHtml).join('');
+        // Insert with date group headers
+        let lastDateInContainer = '';
+        const lastHeader = container.querySelector('.date-header:last-of-type');
+        if (lastHeader) lastDateInContainer = lastHeader.dataset.date || '';
+
+        let html = '';
+        for (const m of moments) {
+          const dk = getDateKeyJs(m.published_at);
+          if (dk && dk !== lastDateInContainer) {
+            html += `<div class="date-header" data-date="${esc(dk)}">${formatDateHeaderJs(m.published_at)}</div>`;
+            lastDateInContainer = dk;
+          }
+          html += buildMomentHtml(m);
+        }
         container.insertAdjacentHTML('beforeend', html);
         page++;
 
@@ -1001,82 +1155,106 @@ function linkifyStatic(text: string): string {
   container.addEventListener('click', async function (e) {
     const target = e.target;
 
-    // Like button
+    // Like button (optimistic)
     const likeBtn = target.closest('.like-btn');
     if (likeBtn) {
       e.stopPropagation();
       const momentId = likeBtn.dataset.momentId;
       const likes = getLikes();
-      try {
-        const data = await postLike(momentId);
-        const countEl = likeBtn.querySelector('.like-count');
+      const wasLiked = likes.includes(momentId);
+      const countEl = likeBtn.querySelector('.like-count');
+      const svgPath = likeBtn.querySelector('path');
+      const oldCount = parseInt(countEl?.textContent || '0', 10);
+
+      // Optimistic update
+      const newLiked = !wasLiked;
+      const newCount = newLiked ? oldCount + 1 : Math.max(0, oldCount - 1);
+      if (countEl) countEl.textContent = newCount;
+      if (newLiked) {
+        likeBtn.classList.add('liked');
+        if (svgPath) svgPath.setAttribute('fill', '#e05d68');
+        if (!likes.includes(momentId)) { likes.push(momentId); setLikes(likes); }
+      } else {
+        likeBtn.classList.remove('liked');
+        if (svgPath) svgPath.setAttribute('fill', 'none');
+        const idx = likes.indexOf(momentId);
+        if (idx > -1) { likes.splice(idx, 1); setLikes(likes); }
+      }
+
+      // Fire-and-forget API call, reconcile on response
+      postLike(momentId).then(data => {
         if (countEl) countEl.textContent = data.count;
-        const svgPath = likeBtn.querySelector('path');
-        if (data.liked) {
+      }).catch(err => {
+        console.error('Like failed:', err);
+        // Rollback
+        if (countEl) countEl.textContent = oldCount;
+        if (wasLiked) {
           likeBtn.classList.add('liked');
           if (svgPath) svgPath.setAttribute('fill', '#e05d68');
-          if (!likes.includes(momentId)) { likes.push(momentId); setLikes(likes); }
+          const rl = getLikes(); if (!rl.includes(momentId)) { rl.push(momentId); setLikes(rl); }
         } else {
           likeBtn.classList.remove('liked');
           if (svgPath) svgPath.setAttribute('fill', 'none');
-          const idx = likes.indexOf(momentId);
-          if (idx > -1) { likes.splice(idx, 1); setLikes(likes); }
+          const rl = getLikes(); const ri = rl.indexOf(momentId); if (ri > -1) { rl.splice(ri, 1); setLikes(rl); }
         }
-      } catch (err) {
-        console.error('Like failed:', err);
-      }
+      });
       return;
     }
 
-    // Emoji reaction bubble
-    const reactionBubble = target.closest('.reaction-bubble');
-    if (reactionBubble) {
+    // Emoji reaction (shared optimistic handler for both bubble and picker)
+    const reactionTarget = target.closest('.reaction-bubble') || target.closest('.emoji-pick-btn');
+    if (reactionTarget) {
       e.stopPropagation();
-      const momentId = reactionBubble.dataset.momentId;
-      const emoji = reactionBubble.dataset.emoji;
-      try {
-        const data = await postReact(momentId, emoji);
-        // Update localStorage BEFORE re-rendering so reacted class is correct
-        const myReactions = getReactions();
-        if (!myReactions[momentId]) myReactions[momentId] = [];
-        const idx = myReactions[momentId].indexOf(emoji);
-        if (data.reacted) {
-          if (idx === -1) myReactions[momentId].push(emoji);
-        } else {
-          if (idx > -1) myReactions[momentId].splice(idx, 1);
-        }
-        setReactions(myReactions);
-        const momentEl = container.querySelector(`[data-moment-id="${momentId}"]`);
-        if (momentEl) updateReactions(momentEl, data.reactions);
-      } catch (err) {
-        console.error('React failed:', err);
-      }
-      return;
-    }
+      const momentId = reactionTarget.dataset.momentId;
+      const emoji = reactionTarget.dataset.emoji;
+      const momentEl = container.querySelector(`[data-moment-id="${momentId}"]`);
+      if (!momentEl) return;
 
-    // Emoji picker button
-    const emojiPickBtn = target.closest('.emoji-pick-btn');
-    if (emojiPickBtn) {
-      e.stopPropagation();
-      const momentId = emojiPickBtn.dataset.momentId;
-      const emoji = emojiPickBtn.dataset.emoji;
-      try {
-        const data = await postReact(momentId, emoji);
-        // Update localStorage BEFORE re-rendering so reacted class is correct
-        const myReactions = getReactions();
-        if (!myReactions[momentId]) myReactions[momentId] = [];
-        const idx = myReactions[momentId].indexOf(emoji);
-        if (data.reacted) {
-          if (idx === -1) myReactions[momentId].push(emoji);
-        } else {
-          if (idx > -1) myReactions[momentId].splice(idx, 1);
-        }
-        setReactions(myReactions);
-        const momentEl = container.querySelector(`[data-moment-id="${momentId}"]`);
-        if (momentEl) updateReactions(momentEl, data.reactions);
-      } catch (err) {
-        console.error('React failed:', err);
+      // Compute optimistic state
+      const myReactions = getReactions();
+      if (!myReactions[momentId]) myReactions[momentId] = [];
+      const idx = myReactions[momentId].indexOf(emoji);
+      const willReact = idx === -1;
+
+      // Build optimistic reactions from current DOM
+      const row = momentEl.querySelector('.reactions-row');
+      const oldHtml = row ? row.innerHTML : '';
+      const optimisticReactions = {};
+      row?.querySelectorAll('.reaction-bubble').forEach(b => {
+        optimisticReactions[b.dataset.emoji] = parseInt(b.querySelector('.reaction-count')?.textContent || '0', 10);
+      });
+      if (willReact) {
+        optimisticReactions[emoji] = (optimisticReactions[emoji] || 0) + 1;
+        myReactions[momentId].push(emoji);
+      } else {
+        optimisticReactions[emoji] = Math.max(0, (optimisticReactions[emoji] || 0) - 1);
+        if (optimisticReactions[emoji] === 0) delete optimisticReactions[emoji];
+        myReactions[momentId].splice(idx, 1);
       }
+      setReactions(myReactions);
+      updateReactions(momentEl, optimisticReactions);
+
+      // Fire-and-forget, reconcile on response
+      postReact(momentId, emoji).then(data => {
+        // Reconcile with server truth
+        const sr = getReactions();
+        if (!sr[momentId]) sr[momentId] = [];
+        const si = sr[momentId].indexOf(emoji);
+        if (data.reacted && si === -1) sr[momentId].push(emoji);
+        if (!data.reacted && si > -1) sr[momentId].splice(si, 1);
+        setReactions(sr);
+        updateReactions(momentEl, data.reactions);
+      }).catch(err => {
+        console.error('React failed:', err);
+        // Rollback
+        const rr = getReactions();
+        if (!rr[momentId]) rr[momentId] = [];
+        const ri = rr[momentId].indexOf(emoji);
+        if (willReact && ri > -1) rr[momentId].splice(ri, 1);
+        if (!willReact && ri === -1) rr[momentId].push(emoji);
+        setReactions(rr);
+        if (row) row.innerHTML = oldHtml;
+      });
       return;
     }
 
@@ -1201,9 +1379,114 @@ function linkifyStatic(text: string): string {
     if (e.key === 'Escape') closeLightbox();
   }
 
+  // ── Calendar Widget ──
+  const calGrid = document.getElementById('calGrid');
+  const calMonthLabel = document.getElementById('calMonthLabel');
+  const calPrev = document.getElementById('calPrev');
+  const calNext = document.getElementById('calNext');
+  const calFilterInfo = document.getElementById('calFilterInfo');
+  const calFilterLabel = document.getElementById('calFilterLabel');
+  const calClearFilter = document.getElementById('calClearFilter');
+
+  // Moment counts per date (initialized from static data, updated on hydrate)
+  const momentDates = window.__momentCountByDate || {};
+  const momentImages = window.__momentImageByDate || {};
+  let calYear, calMonth; // 0-indexed month
+  let activeFilterDate = null;
+
+  function initCalendar() {
+    const now = new Date();
+    calYear = now.getFullYear();
+    calMonth = now.getMonth();
+    renderCalendar();
+  }
+
+  function renderCalendar() {
+    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+    calMonthLabel.textContent = `${calYear}年${monthNames[calMonth]}`;
+
+    const firstDay = new Date(calYear, calMonth, 1).getDay();
+    const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const today = new Date();
+    const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+    let html = '';
+    // Empty cells before first day
+    for (let i = 0; i < firstDay; i++) {
+      html += '<div class="cal-day empty"></div>';
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dk = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const count = momentDates[dk] || 0;
+      const classes = ['cal-day'];
+      if (count > 0) classes.push('has-moments');
+      if (dk === todayKey) classes.push('today');
+      if (dk === activeFilterDate) classes.push('active');
+
+      const img = momentImages[dk] || '';
+      let style = '';
+      if (img) {
+        classes.push('has-image');
+        style = ` style="background-image:url('${img}')"`;
+      }
+      html += `<div class="${classes.join(' ')}" data-date="${dk}"${style}><span class="cal-day-num">${d}</span></div>`;
+    }
+    calGrid.innerHTML = html;
+  }
+
+  calPrev.addEventListener('click', () => {
+    calMonth--;
+    if (calMonth < 0) { calMonth = 11; calYear--; }
+    renderCalendar();
+  });
+
+  calNext.addEventListener('click', () => {
+    calMonth++;
+    if (calMonth > 11) { calMonth = 0; calYear++; }
+    renderCalendar();
+  });
+
+  calGrid.addEventListener('click', (e) => {
+    const dayEl = e.target.closest('.cal-day.has-moments');
+    if (!dayEl) return;
+    const dk = dayEl.dataset.date;
+    if (activeFilterDate === dk) {
+      clearCalendarFilter();
+    } else {
+      activeFilterDate = dk;
+      renderCalendar();
+      filterMomentsByDate(dk);
+      // Show filter info
+      const d = new Date(dk + 'T00:00:00');
+      calFilterLabel.textContent = `${d.getMonth() + 1}月${d.getDate()}日`;
+      calFilterInfo.style.display = 'flex';
+    }
+  });
+
+  calClearFilter.addEventListener('click', clearCalendarFilter);
+
+  function clearCalendarFilter() {
+    activeFilterDate = null;
+    renderCalendar();
+    calFilterInfo.style.display = 'none';
+    // Show all moments
+    container.querySelectorAll('.moment-item').forEach(el => el.style.display = '');
+    container.querySelectorAll('.date-header').forEach(el => el.style.display = '');
+  }
+
+  function filterMomentsByDate(dk) {
+    container.querySelectorAll('.moment-item').forEach(el => {
+      el.style.display = el.dataset.date === dk ? '' : 'none';
+    });
+    container.querySelectorAll('.date-header').forEach(el => {
+      el.style.display = el.dataset.date === dk ? '' : 'none';
+    });
+  }
+
   // ── Init ──
   const hasStaticContent = container.querySelectorAll('.moment-item').length > 0;
   window.addEventListener('scroll', checkScroll, { passive: true });
+  initCalendar();
   if (hasStaticContent) {
     // Static cards exist from build — hydrate with fresh interaction data
     hydrateMoments();
