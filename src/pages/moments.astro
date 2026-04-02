@@ -202,6 +202,55 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     font-size: 14px; color: var(--c-text); line-height: 1.7;
     white-space: pre-wrap; word-break: break-word; margin-bottom: 12px;
   }
+  .card-text.truncated {
+    max-height: 7.2em; /* ~4 lines at 1.7 line-height */
+    overflow: hidden;
+    position: relative;
+  }
+  .card-text.truncated::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0; height: 2.4em;
+    background: linear-gradient(transparent, var(--c-bg-alt));
+    pointer-events: none;
+  }
+  .text-expand-btn {
+    display: none; font-size: 13px; color: var(--accent); cursor: pointer;
+    background: none; border: none; padding: 0; margin-bottom: 12px;
+    font-family: inherit;
+  }
+  .text-expand-btn:hover { text-decoration: underline; }
+  .card-text.truncated + .text-expand-btn { display: inline-block; }
+  .card-text a { color: var(--accent); text-decoration: none; }
+  .card-text a:hover { text-decoration: underline; }
+
+  /* Link preview */
+  .link-preview {
+    display: flex; border: 1px solid var(--c-border); border-radius: 8px;
+    overflow: hidden; margin-bottom: 12px; text-decoration: none;
+    color: var(--c-text); background: var(--c-bg); transition: border-color 0.15s;
+    max-height: 96px;
+  }
+  .link-preview:hover { border-color: var(--accent); }
+  .link-preview-image {
+    width: 96px; min-width: 96px; height: 96px; object-fit: cover; flex-shrink: 0;
+  }
+  .link-preview-body {
+    padding: 10px 14px; overflow: hidden; display: flex;
+    flex-direction: column; justify-content: center; min-width: 0;
+  }
+  .link-preview-title {
+    font-size: 13px; font-weight: 600; color: var(--c-text);
+    line-height: 1.4; margin-bottom: 4px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .link-preview-desc {
+    font-size: 12px; color: var(--c-text-dim); line-height: 1.4;
+    overflow: hidden; text-overflow: ellipsis;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  }
+  .link-preview-domain {
+    font-size: 11px; color: var(--c-text-muted); margin-top: 4px;
+  }
 
   /* Image grid */
   .card-images {
@@ -434,6 +483,46 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     return `${Math.floor(months / 12)} 年前`;
   }
 
+  const TEXT_MAX_LEN = 200; // Characters before truncation
+  const URL_RE = /https?:\/\/[^\s，。、！？；：）》\]'"<>]+/g;
+
+  function linkifyAndEsc(text) {
+    // Escape text while converting URLs to clickable <a> tags
+    if (!text) return '';
+    let result = '';
+    let lastIndex = 0;
+    let match;
+    URL_RE.lastIndex = 0;
+    while ((match = URL_RE.exec(text)) !== null) {
+      result += esc(text.slice(lastIndex, match.index));
+      const url = match[0];
+      result += `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(url)}</a>`;
+      lastIndex = URL_RE.lastIndex;
+    }
+    result += esc(text.slice(lastIndex));
+    return result;
+  }
+
+  function buildLinkPreviewHtml(previews) {
+    if (!previews || previews.length === 0) return '';
+    return previews.map(p => {
+      const domain = p.url.replace(/^https?:\/\//, '').split('/')[0];
+      const imgHtml = p.image
+        ? `<img class="link-preview-image" src="${esc(p.image)}" alt="" loading="lazy">`
+        : '';
+      return `
+        <a class="link-preview" href="${esc(p.url)}" target="_blank" rel="noopener noreferrer">
+          ${imgHtml}
+          <div class="link-preview-body">
+            <div class="link-preview-title">${esc(p.title)}</div>
+            ${p.description ? `<div class="link-preview-desc">${esc(p.description)}</div>` : ''}
+            <div class="link-preview-domain">${esc(domain)}</div>
+          </div>
+        </a>
+      `;
+    }).join('');
+  }
+
   function buildImagesHtml(images) {
     if (!images || images.length === 0) return '';
     const cls = images.length === 1 ? 'single' : 'multi';
@@ -473,7 +562,9 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             <span class="card-author">Airing</span>
             <time class="card-time" title="${esc(m.published_at || '')}">${relativeTime(m.published_at)}</time>
           </div>
-          <div class="card-text">${esc(m.content || m.text || '')}</div>
+          <div class="card-text${(m.content || '').length > TEXT_MAX_LEN ? ' truncated' : ''}">${linkifyAndEsc(m.content || m.text || '')}</div>
+          ${(m.content || '').length > TEXT_MAX_LEN ? '<button class="text-expand-btn">展开全文</button>' : ''}
+          ${buildLinkPreviewHtml(m.link_previews)}
           ${buildImagesHtml(m.images)}
           <div class="card-actions">
             <button class="action-btn like-btn${liked}" data-moment-id="${esc(m.id)}" title="Like">
@@ -767,12 +858,31 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       return;
     }
 
+    // Text expand/collapse button
+    const expandBtn = target.closest('.text-expand-btn');
+    if (expandBtn) {
+      e.stopPropagation();
+      const cardText = expandBtn.previousElementSibling;
+      if (cardText && cardText.classList.contains('truncated')) {
+        cardText.classList.remove('truncated');
+        expandBtn.textContent = '收起';
+        expandBtn.style.display = 'inline-block';
+      } else if (cardText) {
+        cardText.classList.add('truncated');
+        expandBtn.textContent = '展开全文';
+      }
+      return;
+    }
+
     // Click on card (not action buttons) → toggle expand
     const card = target.closest('.moment-card');
     if (card) {
       const actionBtn = target.closest('.action-btn');
       const form = target.closest('.comment-form');
-      if (!actionBtn && !form) {
+      const link = target.closest('a');
+      const linkPreview = target.closest('.link-preview');
+      const textExpandBtn = target.closest('.text-expand-btn');
+      if (!actionBtn && !form && !link && !linkPreview && !textExpandBtn) {
         const momentEl = card.closest('.moment-item');
         if (momentEl) toggleExpand(momentEl);
       }
