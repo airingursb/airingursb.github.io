@@ -1,5 +1,79 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+
+// ── Build-time: fetch moments from Supabase ──
+const SUPABASE_URL = import.meta.env.BLOG_SUPABASE_URL || process.env.BLOG_SUPABASE_URL || '';
+const SUPABASE_KEY = import.meta.env.BLOG_SUPABASE_SERVICE_KEY || process.env.BLOG_SUPABASE_SERVICE_KEY || '';
+
+let staticMoments: any[] = [];
+if (SUPABASE_URL && SUPABASE_KEY) {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/moments?select=id,telegram_post_id,content,images,link_previews,published_at&order=published_at.desc&limit=20`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+        },
+      }
+    );
+    if (res.ok) {
+      staticMoments = await res.json();
+    }
+  } catch (e) {
+    console.error('[moments] Build-time fetch failed:', e);
+  }
+}
+
+// ── Helpers for static rendering ──
+function escHtml(str: string): string {
+  if (!str) return '';
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function relativeTimeStatic(dateStr: string): string {
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return dateStr || '';
+  const diff = Date.now() - date.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return '刚刚';
+  if (mins < 60) return `${mins} 分钟前`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours} 小时前`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days} 天前`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months} 个月前`;
+  return `${Math.floor(months / 12)} 年前`;
+}
+
+const AVATAR = 'https://avatars.githubusercontent.com/u/10513408?v=4&s=64';
+const TWEMOJI_BASE = 'https://cdn.jsdelivr.net/gh/twitter/twemoji@14.0.2/assets/svg';
+const EMOJI_CODES: Record<string, string> = {
+  '👍': '1f44d', '❤️': '2764', '🔥': '1f525', '😄': '1f604',
+  '🎉': '1f389', '🙏': '1f64f', '😢': '1f622', '🤔': '1f914',
+};
+const EMOJIS_LIST = ['👍', '❤️', '🔥', '😄', '🎉', '🙏', '😢', '🤔'];
+
+function twemojiUrl(emoji: string): string {
+  return `${TWEMOJI_BASE}/${EMOJI_CODES[emoji] || '1f44d'}.svg`;
+}
+
+function linkifyStatic(text: string): string {
+  if (!text) return '';
+  const urlRe = /https?:\/\/[^\s，。、！？；：）》\]'"<>]+/g;
+  let result = '';
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = urlRe.exec(text)) !== null) {
+    result += escHtml(text.slice(lastIndex, match.index));
+    const url = match[0];
+    result += `<a href="${escHtml(url)}" target="_blank" rel="noopener noreferrer">${escHtml(url)}</a>`;
+    lastIndex = urlRe.lastIndex;
+  }
+  result += escHtml(text.slice(lastIndex));
+  return result;
+}
 ---
 
 <BaseLayout title="Moment | Airing">
@@ -36,11 +110,78 @@ import BaseLayout from '../layouts/BaseLayout.astro';
         <!-- Timeline -->
         <div class="timeline-wrap">
           <div class="timeline-line"></div>
-          <div class="moments-container" id="momentsContainer"></div>
-          <div class="loader-wrap" id="loaderWrap">
+          <div class="moments-container" id="momentsContainer">
+            {staticMoments.map((m) => {
+              const content = m.content || '';
+              const truncated = content.length > 200;
+              const previews = m.link_previews || [];
+              const images = m.images || [];
+              const emojiPickerHtml = EMOJIS_LIST.map(e =>
+                `<button class="emoji-pick-btn" data-moment-id="${m.id}" data-emoji="${e}" title="${e}"><img src="${twemojiUrl(e)}" alt="${e}" width="20" height="20" style="vertical-align:-3px" draggable="false"></button>`
+              ).join('');
+              return (
+                <div class="moment-item" data-moment-id={m.id}>
+                  <div class="moment-dot"></div>
+                  <div class="moment-card">
+                    <div class="card-header">
+                      <img class="card-avatar" src={AVATAR} alt="Airing" />
+                      <span class="card-author">Airing</span>
+                      <time class="card-time" title={m.published_at || ''}>{relativeTimeStatic(m.published_at)}</time>
+                    </div>
+                    <div class={`card-text${truncated ? ' truncated' : ''}`} set:html={linkifyStatic(content)} />
+                    {truncated && <button class="text-expand-btn">展开全文</button>}
+                    {previews.length > 0 && previews.map((p: any) => {
+                      const domain = p.url.replace(/^https?:\/\//, '').split('/')[0];
+                      return (
+                        <a class="link-preview" href={p.url} target="_blank" rel="noopener noreferrer">
+                          {p.image && <img class="link-preview-image" src={p.image} alt="" loading="lazy" />}
+                          <div class="link-preview-body">
+                            <div class="link-preview-title">{p.title}</div>
+                            {p.description && <div class="link-preview-desc">{p.description}</div>}
+                            <div class="link-preview-domain">{domain}</div>
+                          </div>
+                        </a>
+                      );
+                    })}
+                    {images.length > 0 && (
+                      <div class={`card-images ${images.length === 1 ? 'single' : 'multi'}`}>
+                        {images.map((u: string) => <img class="card-img" src={u} alt="" loading="lazy" />)}
+                      </div>
+                    )}
+                    <div class="card-actions">
+                      <button class="action-btn like-btn" data-moment-id={m.id} title="Like">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                        <span class="like-count">0</span>
+                      </button>
+                      <button class="action-btn comment-toggle-btn" data-moment-id={m.id} title="Comments">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <span class="comment-count">0</span>
+                      </button>
+                      <div class="reactions-row" data-moment-id={m.id}></div>
+                    </div>
+                    <div class="card-expanded">
+                      <div class="emoji-picker" set:html={emojiPickerHtml} />
+                      <div class="comments-list" id={`comments-${m.id}`}>
+                        <div class="spinner" style="width:18px;height:18px;margin:8px auto;"></div>
+                      </div>
+                      <form class="comment-form" data-moment-id={m.id}>
+                        <div class="comment-form-row">
+                          <input class="comment-input" name="nickname" placeholder="昵称 *" required style="flex:1" />
+                          <input class="comment-input" name="email" type="email" placeholder="邮箱 (可选)" style="flex:1" />
+                        </div>
+                        <textarea class="comment-input" name="content" rows={2} placeholder="发表评论..." required></textarea>
+                        <button class="comment-submit" type="submit">发送</button>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div class="loader-wrap" id="loaderWrap" style="display:none">
             <div class="spinner"></div>
           </div>
-          <div class="end-message" id="endMessage" style="display:none">
+          <div class="end-message" id="endMessage" style={staticMoments.length > 0 && staticMoments.length < 20 ? '' : 'display:none'}>
             <span>— 已经到底了 —</span>
           </div>
         </div>
@@ -719,7 +860,60 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     return res.json();
   }
 
-  // ── Load moments ──
+  // ── Hydrate static cards with fresh interaction data ──
+  async function hydrateMoments() {
+    try {
+      const data = await fetchMoments(1);
+      const moments = data.moments || [];
+      total = data.total || 0;
+
+      const existingIds = new Set();
+      container.querySelectorAll('.moment-item').forEach(el => existingIds.add(el.dataset.momentId));
+
+      for (const m of moments) {
+        const el = container.querySelector(`[data-moment-id="${m.id}"]`);
+        if (el) {
+          // Update like count and state
+          const likeBtn = el.querySelector('.like-btn');
+          const likeCount = m.likeCount || m.likes || 0;
+          if (likeBtn) {
+            likeBtn.querySelector('.like-count').textContent = likeCount;
+            const myLikes = getLikes();
+            if (myLikes.includes(m.id) && likeCount > 0) {
+              likeBtn.classList.add('liked');
+              likeBtn.querySelector('path').setAttribute('fill', '#e05d68');
+            } else if (myLikes.includes(m.id) && likeCount === 0) {
+              const idx = myLikes.indexOf(m.id);
+              myLikes.splice(idx, 1); setLikes(myLikes);
+            }
+          }
+          // Update comment count
+          const commentBtn = el.querySelector('.comment-toggle-btn .comment-count');
+          if (commentBtn) commentBtn.textContent = m.commentCount || m.comments || 0;
+          // Update reactions
+          const reactionsRow = el.querySelector('.reactions-row');
+          if (reactionsRow) reactionsRow.innerHTML = buildReactionsHtml(m.reactions || {}, m.id);
+          // Update relative time
+          const timeEl = el.querySelector('.card-time');
+          if (timeEl && m.published_at) timeEl.textContent = relativeTime(m.published_at);
+        } else {
+          // New moment not in static build — prepend it
+          container.insertAdjacentHTML('afterbegin', buildMomentHtml(m));
+        }
+      }
+
+      page = 2; // Static build covered page 1
+      const loaded = container.querySelectorAll('.moment-item').length;
+      if (loaded >= total || moments.length < LIMIT) {
+        finished = true;
+        endMessage.style.display = 'block';
+      }
+    } catch (err) {
+      console.error('Failed to hydrate moments:', err);
+    }
+  }
+
+  // ── Load more moments (page 2+) ──
   async function loadMoments() {
     if (loading || finished) return;
     loading = true;
@@ -744,22 +938,12 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       }
     } catch (err) {
       console.error('Failed to load moments:', err);
-      container.insertAdjacentHTML('beforeend', `
-        <div style="text-align:center;padding:32px;color:var(--c-text-dim);font-size:14px;">
-          加载失败，请稍后重试
-        </div>
-      `);
       finished = true;
     }
 
     loading = false;
-    loaderWrap.style.display = finished ? 'none' : 'none';
-    if (finished) {
-      loaderWrap.style.display = 'none';
-      endMessage.style.display = 'block';
-    } else {
-      loaderWrap.style.display = 'none';
-    }
+    loaderWrap.style.display = 'none';
+    if (finished) endMessage.style.display = 'block';
   }
 
   // ── Infinite scroll ──
@@ -1018,7 +1202,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
 
   // ── Init ──
+  const hasStaticContent = container.querySelectorAll('.moment-item').length > 0;
   window.addEventListener('scroll', checkScroll, { passive: true });
-  loadMoments();
+  if (hasStaticContent) {
+    // Static cards exist from build — hydrate with fresh interaction data
+    hydrateMoments();
+  } else {
+    // Fallback: no static content (e.g. env vars missing at build) — fetch everything
+    loadMoments();
+  }
 })();
 </script>
