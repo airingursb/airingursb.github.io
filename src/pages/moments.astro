@@ -264,6 +264,21 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
   .card-images.single .card-img { aspect-ratio: 16/9; max-height: 360px; object-fit: cover; }
 
+  /* Lightbox */
+  .lightbox-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center;
+    cursor: zoom-out; opacity: 0; transition: opacity 0.2s;
+  }
+  .lightbox-overlay.active { opacity: 1; }
+  .lightbox-overlay img {
+    max-width: 90vw; max-height: 90vh; object-fit: contain;
+    border-radius: 4px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    cursor: default; transform: scale(0.95); transition: transform 0.2s;
+  }
+  .lightbox-overlay.active img { transform: scale(1); }
+
   /* Action bar */
   .card-actions {
     display: flex; align-items: center; gap: 12px; padding-top: 8px;
@@ -885,6 +900,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       return;
     }
 
+    // Image lightbox
+    if (target.classList.contains('card-img')) {
+      e.stopPropagation();
+      openLightbox(target.src);
+      return;
+    }
+
     // Text expand/collapse button
     const expandBtn = target.closest('.text-expand-btn');
     if (expandBtn) {
@@ -909,7 +931,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       const link = target.closest('a');
       const linkPreview = target.closest('.link-preview');
       const textExpandBtn = target.closest('.text-expand-btn');
-      if (!actionBtn && !form && !link && !linkPreview && !textExpandBtn) {
+      const cardImg = target.closest('.card-img');
+      if (!actionBtn && !form && !link && !linkPreview && !textExpandBtn && !cardImg) {
         const momentEl = card.closest('.moment-item');
         if (momentEl) toggleExpand(momentEl);
       }
@@ -957,6 +980,34 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     submitBtn.disabled = false;
     submitBtn.textContent = '发送';
   });
+
+  // ── Lightbox ──
+  let lightboxEl = null;
+
+  function openLightbox(src) {
+    if (lightboxEl) closeLightbox();
+    lightboxEl = document.createElement('div');
+    lightboxEl.className = 'lightbox-overlay';
+    lightboxEl.innerHTML = `<img src="${src}" alt="">`;
+    lightboxEl.addEventListener('click', function (e) {
+      if (e.target === lightboxEl) closeLightbox();
+    });
+    document.body.appendChild(lightboxEl);
+    requestAnimationFrame(() => lightboxEl.classList.add('active'));
+    document.addEventListener('keydown', lightboxKeyHandler);
+  }
+
+  function closeLightbox() {
+    if (!lightboxEl) return;
+    lightboxEl.classList.remove('active');
+    lightboxEl.addEventListener('transitionend', () => lightboxEl.remove());
+    lightboxEl = null;
+    document.removeEventListener('keydown', lightboxKeyHandler);
+  }
+
+  function lightboxKeyHandler(e) {
+    if (e.key === 'Escape') closeLightbox();
+  }
 
   // ── Init ──
   window.addEventListener('scroll', checkScroll, { passive: true });
