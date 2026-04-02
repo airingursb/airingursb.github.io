@@ -999,10 +999,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
   function closeLightbox() {
     if (!lightboxEl) return;
-    lightboxEl.classList.remove('active');
-    lightboxEl.addEventListener('transitionend', () => lightboxEl.remove());
+    const el = lightboxEl;
     lightboxEl = null;
     document.removeEventListener('keydown', lightboxKeyHandler);
+    el.classList.remove('active');
+    el.addEventListener('transitionend', () => el.remove(), { once: true });
+    // Fallback: remove after 300ms in case transitionend doesn't fire
+    setTimeout(() => { if (el.parentNode) el.remove(); }, 300);
   }
 
   function lightboxKeyHandler(e) {
