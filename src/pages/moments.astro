@@ -97,7 +97,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
 </style>
 
-<style>
+<style is:global>
   .moments-page {
     min-height: 100vh;
     width: 100%;
@@ -471,7 +471,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <div class="card-header">
             <img class="card-avatar" src="${AVATAR}" alt="Airing">
             <span class="card-author">Airing</span>
-            <time class="card-time" title="${esc(m.createdAt || '')}">${relativeTime(m.createdAt)}</time>
+            <time class="card-time" title="${esc(m.published_at || '')}">${relativeTime(m.published_at)}</time>
           </div>
           <div class="card-text">${esc(m.content || m.text || '')}</div>
           ${buildImagesHtml(m.images)}
@@ -531,7 +531,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           <img class="comment-avatar" src="${esc(avatarSrc)}" alt="" loading="lazy">
           <div class="comment-body">
             <span class="comment-nick">${esc(c.nickname || c.name || '匿名')}</span>
-            <span class="comment-time">${relativeTime(c.createdAt)}</span>
+            <span class="comment-time">${relativeTime(c.created_at)}</span>
             <p class="comment-text">${esc(c.content)}</p>
           </div>
         </div>
@@ -714,9 +714,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       const emoji = reactionBubble.dataset.emoji;
       try {
         const data = await postReact(momentId, emoji);
-        const momentEl = container.querySelector(`[data-moment-id="${momentId}"]`);
-        if (momentEl) updateReactions(momentEl, data.reactions);
-        // Update localStorage
+        // Update localStorage BEFORE re-rendering so reacted class is correct
         const myReactions = getReactions();
         if (!myReactions[momentId]) myReactions[momentId] = [];
         const idx = myReactions[momentId].indexOf(emoji);
@@ -726,6 +724,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           if (idx > -1) myReactions[momentId].splice(idx, 1);
         }
         setReactions(myReactions);
+        const momentEl = container.querySelector(`[data-moment-id="${momentId}"]`);
+        if (momentEl) updateReactions(momentEl, data.reactions);
       } catch (err) {
         console.error('React failed:', err);
       }
@@ -740,8 +740,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       const emoji = emojiPickBtn.dataset.emoji;
       try {
         const data = await postReact(momentId, emoji);
-        const momentEl = container.querySelector(`[data-moment-id="${momentId}"]`);
-        if (momentEl) updateReactions(momentEl, data.reactions);
+        // Update localStorage BEFORE re-rendering so reacted class is correct
         const myReactions = getReactions();
         if (!myReactions[momentId]) myReactions[momentId] = [];
         const idx = myReactions[momentId].indexOf(emoji);
@@ -751,6 +750,8 @@ import BaseLayout from '../layouts/BaseLayout.astro';
           if (idx > -1) myReactions[momentId].splice(idx, 1);
         }
         setReactions(myReactions);
+        const momentEl = container.querySelector(`[data-moment-id="${momentId}"]`);
+        if (momentEl) updateReactions(momentEl, data.reactions);
       } catch (err) {
         console.error('React failed:', err);
       }
