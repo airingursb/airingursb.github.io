@@ -585,8 +585,13 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 
   function buildMomentHtml(m) {
     const myLikes = getLikes();
-    const liked = myLikes.includes(m.id) ? ' liked' : '';
     const likeCount = m.likeCount || m.likes || 0;
+    // Clear stale localStorage if server says 0 likes
+    let liked = '';
+    if (myLikes.includes(m.id)) {
+      if (likeCount > 0) { liked = ' liked'; }
+      else { const idx = myLikes.indexOf(m.id); myLikes.splice(idx, 1); setLikes(myLikes); }
+    }
     const commentCount = m.commentCount || m.comments || 0;
     const reactions = m.reactions || {};
     const reactionsHtml = buildReactionsHtml(reactions, m.id);
