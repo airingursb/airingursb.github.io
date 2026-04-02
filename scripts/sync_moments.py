@@ -115,9 +115,9 @@ def parse_telegram_messages(html_str):
 
         messages.append({
             'telegram_post_id': post_id,
-            'content': text if text else None,
-            'images': images if images else None,
-            'published_at': published_at if published_at else None,
+            'content': text or '',
+            'images': images or [],
+            'published_at': published_at or None,
         })
 
     return messages
