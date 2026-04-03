@@ -402,6 +402,39 @@ def upsert_moments(records):
         return False
 
 
+def fetch_existing_images(post_ids):
+    """Fetch existing image URLs from Supabase for given telegram_post_ids.
+    Returns dict: { telegram_post_id: [image_urls] }"""
+    if not SUPABASE_URL or not SUPABASE_SERVICE_KEY or not post_ids:
+        return {}
+
+    # Query moments by telegram_post_id, only select images column
+    ids_param = ','.join(f'"{pid}"' for pid in post_ids)
+    endpoint = (
+        f'{SUPABASE_URL.rstrip("/")}/rest/v1/moments'
+        f'?select=telegram_post_id,images'
+        f'&telegram_post_id=in.({ids_param})'
+    )
+
+    req = urllib.request.Request(endpoint, headers={
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': f'Bearer {SUPABASE_SERVICE_KEY}',
+    })
+
+    try:
+        resp = urllib.request.urlopen(req, timeout=15)
+        data = json.loads(resp.read().decode('utf-8'))
+        result = {}
+        for row in data:
+            imgs = row.get('images') or []
+            if imgs:
+                result[row['telegram_post_id']] = imgs
+        return result
+    except Exception as e:
+        print(f'[COS] Failed to fetch existing images: {e}', file=sys.stderr)
+        return {}
+
+
 # ── Main ─────────────────────────────────────────────────────
 
 def main():
@@ -419,12 +452,23 @@ def main():
         print('No messages to upsert.')
         return
 
-    # Migrate images from Telegram CDN to COS
+    # Migrate images from Telegram CDN to COS (skip already-migrated ones)
     if cos_enabled():
-        print('Migrating images to Tencent Cloud COS...')
+        existing_images = fetch_existing_images([m['telegram_post_id'] for m in messages])
+        migrated = 0
+        skipped = 0
         for msg in messages:
-            if msg.get('images'):
+            if not msg.get('images'):
+                continue
+            post_id = msg['telegram_post_id']
+            # If Supabase already has COS URLs for this moment, reuse them
+            if post_id in existing_images and all(COS_DOMAIN in u for u in existing_images[post_id]):
+                msg['images'] = existing_images[post_id]
+                skipped += len(msg['images'])
+            else:
                 msg['images'] = migrate_images_to_cos(msg['images'])
+                migrated += len(msg['images'])
+        print(f'[COS] Migrated: {migrated}, Skipped (already on COS): {skipped}')
     else:
         print('COS not configured, skipping image migration.')
 
