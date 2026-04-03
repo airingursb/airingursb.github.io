@@ -8,6 +8,10 @@ import json
 import os
 import sys
 import html as html_module
+import hashlib
+import hmac
+import time
+import tempfile
 
 # Load .env file from repo root (for local development)
 _env_file = os.path.join(os.path.dirname(__file__), '..', '.env')
@@ -23,8 +27,151 @@ TELEGRAM_URL = 'https://t.me/s/airingchannel'
 SUPABASE_URL = os.environ.get('BLOG_SUPABASE_URL', '')
 SUPABASE_SERVICE_KEY = os.environ.get('BLOG_SUPABASE_SERVICE_KEY', '')
 
+# Tencent Cloud COS config
+COS_SECRET_ID = os.environ.get('COS_SECRET_ID', '')
+COS_SECRET_KEY = os.environ.get('COS_SECRET_KEY', '')
+COS_BUCKET = os.environ.get('COS_BUCKET', '')
+COS_REGION = os.environ.get('COS_REGION', '')
+COS_DIRECTORY = os.environ.get('COS_DIRECTORY', '')
+COS_DOMAIN = os.environ.get('COS_DOMAIN', '')
+
 # URL regex for extracting links from text
 URL_RE = re.compile(r'https?://[^\s<>\'"，。、！？；：）》\]]+')
+
+
+# ── COS Upload ──────────────────────────────────────────────
+
+def cos_enabled():
+    return all([COS_SECRET_ID, COS_SECRET_KEY, COS_BUCKET, COS_REGION, COS_DOMAIN])
+
+
+def cos_sign(method, key, headers_dict):
+    """Generate Tencent Cloud COS authorization signature."""
+    now = int(time.time())
+    expire = now + 600  # 10 min validity
+    key_time = f'{now};{expire}'
+
+    # SignKey
+    sign_key = hmac.new(
+        COS_SECRET_KEY.encode(), key_time.encode(), hashlib.sha1
+    ).hexdigest()
+
+    # Lowercase header keys/values for signing
+    signed_headers = {}
+    for k, v in headers_dict.items():
+        lk = k.lower()
+        if lk in ('content-type', 'content-length', 'host'):
+            signed_headers[lk] = str(v)
+
+    header_list = ';'.join(sorted(signed_headers.keys()))
+    header_string = '&'.join(
+        f'{k}={urllib.request.quote(str(v), safe="")}'
+        for k, v in sorted(signed_headers.items())
+    )
+
+    http_string = f'{method.lower()}\n/{key}\n\n{header_string}\n'
+    string_to_sign = f'sha1\n{key_time}\n{hashlib.sha1(http_string.encode()).hexdigest()}\n'
+    signature = hmac.new(sign_key.encode(), string_to_sign.encode(), hashlib.sha1).hexdigest()
+
+    return (
+        f'q-sign-algorithm=sha1'
+        f'&q-ak={COS_SECRET_ID}'
+        f'&q-sign-time={key_time}'
+        f'&q-key-time={key_time}'
+        f'&q-header-list={header_list}'
+        f'&q-url-param-list='
+        f'&q-signature={signature}'
+    )
+
+
+def upload_to_cos(image_data, key, content_type='image/jpeg'):
+    """Upload binary data to COS. Returns the public URL on success, None on failure."""
+    host = f'{COS_BUCKET}.cos.{COS_REGION}.myqcloud.com'
+    url = f'https://{host}/{key}'
+
+    headers_dict = {
+        'Host': host,
+        'Content-Type': content_type,
+        'Content-Length': str(len(image_data)),
+    }
+    auth = cos_sign('PUT', key, headers_dict)
+    headers_dict['Authorization'] = auth
+
+    req = urllib.request.Request(url, data=image_data, method='PUT', headers=headers_dict)
+    try:
+        resp = urllib.request.urlopen(req, timeout=30)
+        if resp.getcode() == 200:
+            public_url = f'https://{COS_DOMAIN}/{key}'
+            return public_url
+        print(f'[COS] Upload failed: HTTP {resp.getcode()}', file=sys.stderr)
+        return None
+    except urllib.error.HTTPError as e:
+        body = e.read().decode('utf-8', errors='replace')
+        print(f'[COS] Upload error: HTTP {e.code} - {body}', file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f'[COS] Upload error: {e}', file=sys.stderr)
+        return None
+
+
+def download_image(url):
+    """Download image from URL, return (data, content_type) or (None, None)."""
+    try:
+        req = urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (compatible; FeedBot/1.0)'
+        })
+        resp = urllib.request.urlopen(req, timeout=30)
+        data = resp.read()
+        content_type = resp.headers.get('Content-Type', 'image/jpeg')
+        return data, content_type
+    except Exception as e:
+        print(f'[COS] Download failed ({url}): {e}', file=sys.stderr)
+        return None, None
+
+
+def image_filename_from_url(url):
+    """Extract a stable filename from a Telegram CDN URL."""
+    # e.g. https://cdn4.telegram-cdn.org/file/XXXXX.jpg → XXXXX.jpg
+    path = urllib.request.urlparse(url).path if hasattr(urllib.request, 'urlparse') else url.split('?')[0]
+    # Use urllib.parse for proper parsing
+    from urllib.parse import urlparse
+    parsed = urlparse(url)
+    basename = parsed.path.rstrip('/').split('/')[-1]
+    if not basename:
+        basename = hashlib.md5(url.encode()).hexdigest() + '.jpg'
+    return basename
+
+
+def migrate_images_to_cos(images):
+    """Download images from Telegram CDN and upload to COS.
+    Returns a new list of image URLs (COS URLs for successful uploads, original for failures)."""
+    if not cos_enabled():
+        return images
+
+    new_images = []
+    for url in images:
+        # Skip if already on COS
+        if COS_DOMAIN in url:
+            new_images.append(url)
+            continue
+
+        filename = image_filename_from_url(url)
+        key = f'{COS_DIRECTORY}/{filename}'
+
+        data, content_type = download_image(url)
+        if data is None:
+            print(f'[COS] Skipping (download failed): {url}')
+            new_images.append(url)
+            continue
+
+        cos_url = upload_to_cos(data, key, content_type)
+        if cos_url:
+            print(f'[COS] Uploaded: {filename} → {cos_url}')
+            new_images.append(cos_url)
+        else:
+            new_images.append(url)
+
+    return new_images
 
 
 # ── Helpers ──────────────────────────────────────────────────
@@ -271,6 +418,15 @@ def main():
     if not messages:
         print('No messages to upsert.')
         return
+
+    # Migrate images from Telegram CDN to COS
+    if cos_enabled():
+        print('Migrating images to Tencent Cloud COS...')
+        for msg in messages:
+            if msg.get('images'):
+                msg['images'] = migrate_images_to_cos(msg['images'])
+    else:
+        print('COS not configured, skipping image migration.')
 
     # Upsert all messages in a single request
     success = upsert_moments(messages)
