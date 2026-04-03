@@ -23,6 +23,7 @@ if os.path.exists(_env_file):
 FEED_URL = 'https://blog.ursb.me/feed.xml'
 TELEGRAM_URL = 'https://t.me/s/airingchannel'
 HTML_FILE = 'index.html'
+ASTRO_FILE = 'src/pages/index.astro'
 MAX_ARTICLES = 6
 MAX_TELEGRAM = 6
 
@@ -620,6 +621,17 @@ def main():
         if local_data:
             local_html = generate_local_data_script(local_data)
             content = replace_section(content, '<!-- LOCAL_DATA_START -->', '<!-- LOCAL_DATA_END -->', local_html)
+            # Also sync to index.astro (uses <script is:inline>)
+            astro_path = os.path.join(os.path.dirname(__file__), '..', ASTRO_FILE)
+            if os.path.exists(astro_path):
+                with open(astro_path, 'r', encoding='utf-8') as f:
+                    astro_content = f.read()
+                astro_script = local_html.replace('<script>', '<script is:inline>')
+                astro_new = replace_section(astro_content, '<!-- LOCAL_DATA_START -->', '<!-- LOCAL_DATA_END -->', astro_script)
+                if astro_new != astro_content:
+                    with open(astro_path, 'w', encoding='utf-8') as f:
+                        f.write(astro_new)
+                    print(f'Local data: synced to {ASTRO_FILE}')
             print(f'Local data: updated {local_data.get("updatedAt", "?")}')
             changed = True
         else:
