@@ -339,7 +339,6 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
 
     <!-- Footer -->
     <footer class="blog-footer">
-      <div class="blog-visitor-counter" id="blogVisitorCounter"></div>
       <div class="footer-inner">
         <span>&copy; 2026 Airing</span>
         <div class="footer-links">
@@ -428,42 +427,6 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
       });
     }
   } catch { /* ignore */ }
-
-  // ── Blog Visitor Counter ──
-  (function () {
-    const SB_URL = 'https://pcoyocvqfipuydhvdsle.supabase.co';
-    const SB_KEY = 'sb_publishable_jieHU6yu3dPxSww2_B_KIg_9KcWg6wl';
-    const el = document.getElementById('blogVisitorCounter');
-    if (!el) return;
-    const counted = sessionStorage.getItem('blog_visitor_counted');
-
-    function show(n: number) {
-      const padded = String(n).padStart(8, '0');
-      el!.innerHTML = '累计访客 <span class="blog-visitor-count">' + padded + '</span>';
-      el!.classList.add('loaded');
-    }
-
-    if (counted) {
-      show(parseInt(counted, 10));
-      return;
-    }
-
-    fetch(SB_URL + '/rest/v1/rpc/increment_blog_visitor', {
-      method: 'POST',
-      headers: {
-        'apikey': SB_KEY,
-        'Authorization': 'Bearer ' + SB_KEY,
-        'Content-Type': 'application/json'
-      },
-      body: '{}'
-    })
-      .then(r => r.json())
-      .then(count => {
-        sessionStorage.setItem('blog_visitor_counted', String(count));
-        show(count);
-      })
-      .catch(() => {});
-  })();
 </script>
 
 <style is:global>
@@ -914,22 +877,6 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
   }
   .subscribe-msg {
     font-size: 12px; min-height: 16px; margin: 4px 0 0;
-  }
-
-  /* ── Blog Visitor Counter ───────────────────────────── */
-  .blog-visitor-counter {
-    text-align: center;
-    padding: 8px 0 0;
-    font-size: 11px;
-    color: var(--c-text-muted);
-    letter-spacing: 1px;
-    opacity: 0;
-    transition: opacity 0.5s;
-  }
-  .blog-visitor-counter.loaded { opacity: 1; }
-  .blog-visitor-count {
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
   }
 
   /* ── Footer ────────────────────────────────────────── */
