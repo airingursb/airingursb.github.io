@@ -96,6 +96,10 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
               <code>https://airing.ursb.me/image/airing-face.png</code>
             </span>
           </div>
+          <button class="exchange-copy-btn" id="exchangeCopyBtn" type="button">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span>Copy Info</span>
+          </button>
         </div>
       </div>
     </section>
@@ -305,6 +309,7 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
   .exchange-value {
     font-size: 14px; color: var(--c-text);
     display: flex; align-items: center; gap: 8px;
+    min-width: 0; overflow: hidden;
   }
   .exchange-value a {
     color: var(--accent); text-decoration: none;
@@ -315,10 +320,28 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     background: rgba(var(--c-overlay-rgb), 0.08);
     padding: 2px 8px; border-radius: 4px;
     user-select: all;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    min-width: 0;
   }
   .exchange-avatar {
     width: 28px; height: 28px; border-radius: 50%;
     object-fit: cover; flex-shrink: 0;
+  }
+  .exchange-copy-btn {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 4px; padding: 6px 14px;
+    font-size: 12px; color: var(--c-text-dim);
+    background: rgba(var(--c-overlay-rgb), 0.06);
+    border: 1px solid var(--c-border); border-radius: 6px;
+    cursor: pointer; transition: all 0.15s ease;
+    align-self: flex-start;
+  }
+  .exchange-copy-btn:hover {
+    color: var(--accent); border-color: var(--accent);
+    background: rgba(var(--c-overlay-rgb), 0.1);
+  }
+  .exchange-copy-btn.copied {
+    color: #22c55e; border-color: #22c55e;
   }
 
   /* Guestbook Section */
@@ -503,6 +526,23 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     if (!a) return;
     var name = a.querySelector('.fc-name').textContent;
     if (typeof umami !== 'undefined') umami.track('friend-link', { name: name, url: a.href });
+  });
+})();
+</script>
+<script is:inline>
+(function() {
+  var btn = document.getElementById('exchangeCopyBtn');
+  if (!btn) return;
+  btn.addEventListener('click', function() {
+    var text = 'Name: Airing 的小屋\nURL: https://ursb.me\nAvatar: https://airing.ursb.me/image/airing-face.png';
+    navigator.clipboard.writeText(text).then(function() {
+      btn.classList.add('copied');
+      btn.querySelector('span').textContent = 'Copied!';
+      setTimeout(function() {
+        btn.classList.remove('copied');
+        btn.querySelector('span').textContent = 'Copy Info';
+      }, 2000);
+    });
   });
 })();
 </script>
