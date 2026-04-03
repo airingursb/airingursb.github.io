@@ -191,6 +191,10 @@ for (const m of staticMoments) {
                           </div>
                         )}
                         <div class="card-actions">
+                          <span class="action-btn view-count-btn" title="Views">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                            <span class="view-count">0</span>
+                          </span>
                           <button class="action-btn like-btn" data-moment-id={m.id} title="Like">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
                             <span class="like-count">0</span>
@@ -477,6 +481,8 @@ for (const m of staticMoments) {
     font-family: inherit;
   }
   .action-btn:hover { color: var(--c-text); background: rgba(var(--c-overlay-rgb), 0.06); }
+  .view-count-btn { cursor: default; }
+  .view-count-btn:hover { background: none; }
   .action-btn.liked { color: #e05d68; }
   .action-btn svg { flex-shrink: 0; }
 
@@ -896,6 +902,10 @@ for (const m of staticMoments) {
           ${buildLinkPreviewHtml(m.link_previews)}
           ${buildImagesHtml(m.images)}
           <div class="card-actions">
+            <span class="action-btn view-count-btn" title="Views">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <span class="view-count">${m.views || 0}</span>
+            </span>
             <button class="action-btn like-btn${liked}" data-moment-id="${esc(m.id)}" title="Like">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="${liked ? '#e05d68' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
               <span class="like-count">${likeCount}</span>
@@ -975,6 +985,12 @@ for (const m of staticMoments) {
     return res.json();
   }
 
+  async function postView(momentId) {
+    const res = await fetch(`${API_BASE}/api/moments/${momentId}/view`, { method: 'POST' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
   async function postLike(momentId) {
     const res = await fetch(`${API_BASE}/api/moments/${momentId}/like`, { method: 'POST' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1031,6 +1047,9 @@ for (const m of staticMoments) {
           // Update comment count
           const commentBtn = el.querySelector('.comment-toggle-btn .comment-count');
           if (commentBtn) commentBtn.textContent = m.commentCount || m.comments || 0;
+          // Update view count
+          const viewCountEl = el.querySelector('.view-count');
+          if (viewCountEl) viewCountEl.textContent = m.views || 0;
           // Update reactions
           const reactionsRow = el.querySelector('.reactions-row');
           if (reactionsRow) reactionsRow.innerHTML = buildReactionsHtml(m.reactions || {}, m.id);
@@ -1049,9 +1068,26 @@ for (const m of staticMoments) {
         finished = true;
         endMessage.style.display = 'block';
       }
+      trackViews();
     } catch (err) {
       console.error('Failed to hydrate moments:', err);
+      trackViews(); // Track even if hydration fails
     }
+  }
+
+  // ── Track views for visible moments (fire-and-forget) ──
+  const trackedViews = new Set();
+  function trackViews() {
+    container.querySelectorAll('.moment-item').forEach(el => {
+      const id = el.dataset.momentId;
+      if (id && !trackedViews.has(id)) {
+        trackedViews.add(id);
+        postView(id).then(data => {
+          const viewEl = el.querySelector('.view-count');
+          if (viewEl) viewEl.textContent = data.views;
+        }).catch(() => {});
+      }
+    });
   }
 
   // ── Load more moments (page 2+) ──
@@ -1084,6 +1120,7 @@ for (const m of staticMoments) {
         }
         container.insertAdjacentHTML('beforeend', html);
         page++;
+        trackViews();
 
         const loaded = container.querySelectorAll('.moment-item').length;
         if (loaded >= total || moments.length < LIMIT) {
