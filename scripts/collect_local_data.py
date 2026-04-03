@@ -153,6 +153,13 @@ def collect_vibe_coding():
     else:
         num_weeks = 1
 
+    # x2: account for a second machine (work computer)
+    total_tokens *= 2
+    total_cost *= 2
+    for d in daily_map.values():
+        d['cost'] = round(d['cost'] * 2, 2)
+        d['tokens'] = d['tokens'] * 2
+
     return {
         'daily': daily_map,
         'totalTokens': total_tokens,
