@@ -89,75 +89,974 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
         </div>
 
         <!-- Right: TOC + Meta -->
-        {(headings.length > 0 || note.data.tags.length > 0) && (
-          <aside class="meta-sidebar">
-            <div class="meta-inner">
-              {headings.length > 0 && (
-                <div class="meta-section">
-                  <div class="meta-label">目录</div>
-                  <ul class="toc-list">
-                    {headings
-                      .filter(h => h.depth <= 3)
-                      .map(h => (
-                        <li class:list={[{ 'toc-h3': h.depth === 3 }]}>
-                          <a href={`#${h.slug}`}>{h.text}</a>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              )}
-
+        <aside class="meta-sidebar">
+          <div class="meta-inner">
+            {headings.length > 0 && (
               <div class="meta-section">
-                <div class="meta-label">标签</div>
-                <div class="meta-tags">
-                  {note.data.tags.map(tag => (
-                    <a href={`/notes?tag=${encodeURIComponent(tag)}`} class="meta-tag">{tag}</a>
+                <div class="meta-label">目录</div>
+                <ul class="toc-list">
+                  {headings
+                    .filter(h => h.depth <= 3)
+                    .map(h => (
+                      <li class:list={[{ 'toc-h3': h.depth === 3 }]}>
+                        <a href={`#${h.slug}`}>{h.text}</a>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            )}
+
+            <div class="meta-section">
+              <div class="meta-label">标签</div>
+              <div class="meta-tags">
+                {note.data.tags.map(tag => (
+                  <a href={`/notes?tag=${encodeURIComponent(tag)}`} class="meta-tag">{tag}</a>
+                ))}
+              </div>
+            </div>
+
+            <!-- Stats block -->
+            <div class="meta-section" id="noteStatsBlock" style="display:none;">
+              <div class="meta-label">Stats</div>
+              <div class="meta-stats">
+                <span id="noteViewsDisplay"></span>
+                <span id="noteLikesDisplay"></span>
+                <span id="noteCommentsDisplay"></span>
+              </div>
+            </div>
+
+            {relatedNotes.length > 0 && (
+              <div class="meta-section">
+                <div class="meta-label">相关笔记</div>
+                <div class="related-list">
+                  {relatedNotes.map(r => (
+                    <a href={`/notes/${r.slug}`} class="related-item">→ {r.title}</a>
                   ))}
                 </div>
               </div>
+            )}
+          </div>
 
-              {relatedNotes.length > 0 && (
-                <div class="meta-section">
-                  <div class="meta-label">相关笔记</div>
-                  <div class="related-list">
-                    {relatedNotes.map(r => (
-                      <a href={`/notes/${r.slug}`} class="related-item">→ {r.title}</a>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </aside>
-        )}
+          <!-- Comment cards rail (absolutely positioned within .meta-sidebar) -->
+          <div class="cr-cards" id="commentCards"></div>
+        </aside>
       </div>
     </main>
+
+    <!-- Article Like -->
+    <div class="article-like-section">
+      <div class="al-rule"></div>
+      <button class="article-like-btn" id="articleLikeBtn">
+        <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22">
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+        </svg>
+        <span class="al-count" id="articleLikeCount">0</span>
+        <span class="al-label">likes</span>
+      </button>
+      <div class="al-rule"></div>
+    </div>
+
+    <!-- Bottom Comment Section -->
+    <section class="bottom-comments" id="bottomComments">
+      <div class="bc-inner">
+        <div class="bc-header">
+          <h2 class="bc-title">Comments</h2>
+          <span class="bc-count" id="bcCount">0 comments</span>
+        </div>
+        <div class="bc-thread" id="bcThread"></div>
+        <div class="bc-compose">
+          <div class="bc-compose-avatar">
+            <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" />
+          </div>
+          <div class="bc-compose-form">
+            <div class="bc-compose-fields">
+              <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" />
+              <input type="email" class="bc-input" id="bcEmail" placeholder="Email" />
+              <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" />
+            </div>
+            <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4"></textarea>
+            <div class="bc-compose-footer">
+              <label class="bc-notify-label">
+                <input type="checkbox" id="bcNotify" />
+                <span>Notify me of replies via email</span>
+              </label>
+              <button class="bc-submit" id="bcSubmit">Submit</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- FAB button -->
+  <button class="fab-comment" id="fabComment" aria-label="Add comment">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <!-- Comment input popover (desktop) -->
+  <div class="comment-input-popover" id="commentPopover">
+    <div class="cip-header">
+      <span class="cip-selected" id="cipSelectedText"></span>
+    </div>
+    <div class="cip-identity">
+      <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" />
+      <input type="email" class="cip-input" id="cipEmail" placeholder="Email" />
+    </div>
+    <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3"></textarea>
+    <div class="cip-actions">
+      <button class="cip-cancel" id="cipCancel">Cancel</button>
+      <button class="cip-submit" id="cipSubmit">Comment</button>
+    </div>
+  </div>
+
+  <!-- Mobile bottom sheet -->
+  <div class="mobile-sheet-overlay" id="mobileOverlay"></div>
+  <div class="mobile-sheet" id="mobileSheet">
+    <div class="ms-handle"></div>
+    <div class="ms-quote" id="msQuote"></div>
+    <div class="ms-body" id="msBody"></div>
+    <div class="ms-author" id="msAuthor"></div>
+    <div class="ms-time" id="msTime"></div>
+    <div class="ms-replies" id="msReplies"></div>
+    <button class="ms-reply-toggle" id="msReplyToggle">Reply</button>
+    <div class="ms-reply-form" id="msReplyForm" style="display:none;">
+      <div class="ms-rf-identity">
+        <input type="text" class="ms-rf-input" id="msRfNickname" placeholder="Nickname" />
+        <input type="email" class="ms-rf-input" id="msRfEmail" placeholder="Email" />
+      </div>
+      <textarea class="ms-rf-textarea" id="msRfTextarea" placeholder="Write a reply..." rows="2"></textarea>
+      <label class="ms-rf-notify"><input type="checkbox" id="msRfNotify" checked /> Notify me of replies</label>
+      <div class="ms-rf-actions">
+        <button class="ms-rf-cancel" id="msRfCancel">Cancel</button>
+        <button class="ms-rf-submit" id="msRfSubmit">Reply</button>
+      </div>
+    </div>
   </div>
 
   <script is:inline>
   (function() {
     // TOC active state highlighting
     var tocLinks = document.querySelectorAll('.toc-list a');
-    if (!tocLinks.length) return;
+    if (tocLinks.length) {
+      var headingEls = Array.from(tocLinks).map(function(a) {
+        var id = decodeURIComponent(a.getAttribute('href').slice(1));
+        return document.getElementById(id);
+      }).filter(Boolean);
 
-    var headingEls = Array.from(tocLinks).map(function(a) {
-      var id = decodeURIComponent(a.getAttribute('href').slice(1));
-      return document.getElementById(id);
-    }).filter(Boolean);
+      var current = '';
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) current = entry.target.id;
+        });
+        tocLinks.forEach(function(link) {
+          var li = link.parentElement;
+          var id = decodeURIComponent(link.getAttribute('href').slice(1));
+          if (id === current) li.classList.add('active');
+          else li.classList.remove('active');
+        });
+      }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
 
-    var current = '';
-    var observer = new IntersectionObserver(function(entries) {
-      entries.forEach(function(entry) {
-        if (entry.isIntersecting) current = entry.target.id;
+      headingEls.forEach(function(el) { observer.observe(el); });
+    }
+  })();
+  </script>
+
+  <script is:inline>
+  (function() {
+    var API = 'https://chat.ursb.me';
+    var NOTE_SLUG = 'note/' + location.pathname.replace(/^\/notes\//, '').replace(/\/$/, '');
+    var USER_KEY = 'blog-user-identity';
+
+    // Track pageview (fire-and-forget)
+    fetch(API + '/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/view', { method: 'POST' }).catch(function() {});
+
+    // Fetch and display view count
+    fetch(API + '/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/views')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var pv = d.pv || 0;
+        if (pv > 0) {
+          var el = document.getElementById('noteViewsDisplay');
+          if (el) { el.textContent = pv.toLocaleString() + ' views'; el.style.display = 'block'; }
+          showStatsBlock();
+        }
+      })
+      .catch(function() {});
+
+    function showStatsBlock() {
+      var block = document.getElementById('noteStatsBlock');
+      if (block) block.style.display = '';
+    }
+
+    var postContent = document.querySelector('.prose');
+    var contentGrid = document.querySelector('.three-col');
+    var commentRail = document.querySelector('.meta-sidebar');
+    var commentCards = document.getElementById('commentCards');
+    var fab = document.getElementById('fabComment');
+    var popover = document.getElementById('commentPopover');
+    var cipText = document.getElementById('cipSelectedText');
+    var cipNickname = document.getElementById('cipNickname');
+    var cipEmailInput = document.getElementById('cipEmail');
+    var cipArea = document.getElementById('cipTextarea');
+    var cipCancel = document.getElementById('cipCancel');
+    var cipSubmit = document.getElementById('cipSubmit');
+    var mobileOverlay = document.getElementById('mobileOverlay');
+    var mobileSheet = document.getElementById('mobileSheet');
+    var msQuote = document.getElementById('msQuote');
+    var msBody = document.getElementById('msBody');
+    var msAuthor = document.getElementById('msAuthor');
+    var msTime = document.getElementById('msTime');
+
+    // Bottom comments
+    var bcThread = document.getElementById('bcThread');
+    var bcCount = document.getElementById('bcCount');
+    var bcNickname = document.getElementById('bcNickname');
+    var bcEmail = document.getElementById('bcEmail');
+    var bcWebsite = document.getElementById('bcWebsite');
+    var bcTextarea = document.getElementById('bcTextarea');
+    var bcNotify = document.getElementById('bcNotify');
+    var bcSubmit = document.getElementById('bcSubmit');
+    var bcComposeAvatar = document.getElementById('bcComposeAvatar');
+
+    // Article like
+    var articleLikeBtn = document.getElementById('articleLikeBtn');
+    var articleLikeCount = document.getElementById('articleLikeCount');
+
+    var pendingRange = null;
+    var activeMobileCommentId = null;
+    var inlineComments = [];
+    var bottomComments = [];
+
+    function isMobile() { return window.innerWidth <= 960; }
+
+    // --- User identity persistence ---
+    function getSavedIdentity() {
+      try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
+    }
+    function saveIdentity(nickname, email, website) {
+      localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email, website: website || '' }));
+    }
+    function restoreIdentity() {
+      var id = getSavedIdentity();
+      if (id.nickname) {
+        if (cipNickname) cipNickname.value = id.nickname;
+        if (bcNickname) bcNickname.value = id.nickname;
+      }
+      if (id.email) {
+        if (cipEmailInput) cipEmailInput.value = id.email;
+        if (bcEmail) { bcEmail.value = id.email; updateComposeAvatar(id.email); }
+      }
+      if (id.website && bcWebsite) bcWebsite.value = id.website;
+    }
+
+    var AUTHOR_EMAILS = { 'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80' };
+    function gravatarUrl(email) {
+      var e = (email || '').trim().toLowerCase();
+      if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
+      return 'https://gravatar.com/avatar/' + e + '?d=robohash&s=80';
+    }
+    function commentAvatarUrl(comment) {
+      if (comment && comment.avatar) return comment.avatar;
+      return gravatarUrl(comment ? comment.email : '');
+    }
+    function updateComposeAvatar(email) {
+      if (email && bcComposeAvatar) bcComposeAvatar.src = gravatarUrl(email);
+    }
+
+    var avatarTimer;
+    if (bcEmail) {
+      bcEmail.addEventListener('input', function() {
+        clearTimeout(avatarTimer);
+        avatarTimer = setTimeout(function() { updateComposeAvatar(bcEmail.value); }, 500);
       });
-      tocLinks.forEach(function(link) {
-        var li = link.parentElement;
-        var id = decodeURIComponent(link.getAttribute('href').slice(1));
-        if (id === current) li.classList.add('active');
-        else li.classList.remove('active');
-      });
-    }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+    }
 
-    headingEls.forEach(function(el) { observer.observe(el); });
+    // --- API helpers ---
+    function apiGet(path) {
+      return fetch(API + path, { headers: { 'Origin': location.origin } }).then(function(r) { return r.json(); });
+    }
+    function apiPost(path, body) {
+      return fetch(API + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(function(r) { return r.json(); });
+    }
+
+    // =====================================================================
+    // INLINE (HIGHLIGHT) COMMENTS — right rail
+    // =====================================================================
+
+    function wrapRange(range, id) {
+      var mark = document.createElement('mark');
+      mark.className = 'comment-highlight';
+      mark.dataset.commentId = id;
+      try { range.surroundContents(mark); }
+      catch(e) {
+        var fragment = range.extractContents();
+        mark.appendChild(fragment);
+        range.insertNode(mark);
+      }
+      return mark;
+    }
+
+    function restoreHighlights() {
+      if (!postContent) return;
+      inlineComments.forEach(function(c) {
+        if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
+        var searchText = c.selected_text;
+        if (!searchText) return;
+        var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
+        var node;
+        while (node = walker.nextNode()) {
+          var idx = node.textContent.indexOf(searchText);
+          if (idx === -1) continue;
+          var range = document.createRange();
+          range.setStart(node, idx);
+          range.setEnd(node, idx + searchText.length);
+          wrapRange(range, c.id);
+          break;
+        }
+      });
+    }
+
+    function removeHighlight(id) {
+      if (!postContent) return;
+      var marks = postContent.querySelectorAll('mark[data-comment-id="' + id + '"]');
+      marks.forEach(function(mark) {
+        var parent = mark.parentNode;
+        while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+        parent.removeChild(mark);
+        parent.normalize();
+      });
+    }
+
+    function offsetFromGrid(el) {
+      var top = 0;
+      while (el && el !== contentGrid) { top += el.offsetTop; el = el.offsetParent; }
+      return top;
+    }
+
+    function layoutCards() {
+      if (!commentCards || !commentRail || !postContent) return;
+      var cards = commentCards.querySelectorAll('.cm-card');
+      if (!cards.length) return;
+      var railOffset = offsetFromGrid(commentRail);
+      var positions = [];
+      cards.forEach(function(card) {
+        var id = card.dataset.commentId;
+        var mark = postContent.querySelector('mark[data-comment-id="' + id + '"]');
+        var desiredTop = 0;
+        if (mark) desiredTop = offsetFromGrid(mark) - railOffset;
+        positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
+      });
+      positions.sort(function(a, b) { return a.desired - b.desired; });
+      var GAP = 8, nextAvailable = 0;
+      positions.forEach(function(p) {
+        var top = Math.max(p.desired, nextAvailable);
+        p.card.style.top = top + 'px';
+        nextAvailable = top + p.height + GAP;
+      });
+      commentCards.style.minHeight = nextAvailable + 'px';
+    }
+
+    function renderInlineComments() {
+      if (!commentCards) return;
+      commentCards.innerHTML = '';
+
+      inlineComments.forEach(function(c) {
+        if (!c.replies) c.replies = [];
+        var card = document.createElement('div');
+        card.className = 'cm-card';
+        card.dataset.commentId = c.id;
+        var mark = postContent ? postContent.querySelector('mark[data-comment-id="' + c.id + '"]') : null;
+
+        var time = new Date(c.created_at);
+        var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+          + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+        var repliesHtml = '';
+        if (c.replies && c.replies.length) {
+          repliesHtml = '<div class="cm-replies">';
+          c.replies.forEach(function(r) {
+            var rTime = new Date(r.created_at);
+            var rTimeStr = rTime.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+              + ' ' + rTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            repliesHtml +=
+              '<div class="cm-reply">' +
+                '<div class="cm-reply-header">' +
+                  '<img class="cm-reply-avatar" src="' + commentAvatarUrl(r) + '" />' +
+                  '<span class="cm-reply-name">' + esc(r.nickname) + '</span>' +
+                  '<span class="cm-reply-time">' + rTimeStr + '</span>' +
+                '</div>' +
+                '<div class="cm-reply-body">' + esc(r.comment) + '</div>' +
+              '</div>';
+          });
+          repliesHtml += '</div>';
+        }
+
+        card.innerHTML =
+          '<div class="cm-card-author">' +
+            '<img src="' + commentAvatarUrl(c) + '" class="cm-card-avatar" />' +
+            '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
+          '</div>' +
+          '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
+          '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
+          '<div class="cm-card-footer">' +
+            '<span class="cm-card-time">' + timeStr + '</span>' +
+          '</div>' +
+          repliesHtml +
+          '<button class="cm-reply-btn" data-parent-id="' + c.id + '">Reply</button>' +
+          '<div class="cm-reply-form" style="display:none;">' +
+            '<div class="cm-rf-identity">' +
+              '<input class="cm-rf-input" placeholder="Nickname" />' +
+              '<input class="cm-rf-input" placeholder="Email" />' +
+            '</div>' +
+            '<textarea class="cm-rf-textarea" placeholder="Write a reply..." rows="2"></textarea>' +
+            '<label class="cm-rf-notify"><input type="checkbox" checked /> Notify me of replies</label>' +
+            '<div class="cm-rf-actions">' +
+              '<button class="cm-rf-cancel">Cancel</button>' +
+              '<button class="cm-rf-submit">Reply</button>' +
+            '</div>' +
+          '</div>';
+
+        card.addEventListener('mouseenter', function() {
+          if (mark) mark.classList.add('highlight-active');
+          card.classList.add('cm-card-active');
+        });
+        card.addEventListener('mouseleave', function() {
+          if (mark) mark.classList.remove('highlight-active');
+          card.classList.remove('cm-card-active');
+        });
+        card.addEventListener('click', function(e) {
+          if (e.target.closest('.cm-reply-btn') || e.target.closest('.cm-reply-form')) return;
+          if (mark) {
+            mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            mark.classList.add('highlight-flash');
+            setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1000);
+          }
+        });
+        if (mark) {
+          mark.addEventListener('mouseenter', function() { card.classList.add('cm-card-active'); mark.classList.add('highlight-active'); });
+          mark.addEventListener('mouseleave', function() { card.classList.remove('cm-card-active'); mark.classList.remove('highlight-active'); });
+          mark.addEventListener('click', function(e) {
+            if (!isMobile()) return;
+            e.preventDefault(); e.stopPropagation();
+            openMobileSheet(c);
+          });
+        }
+
+        commentCards.appendChild(card);
+
+        // Reply button handler
+        var replyBtn = card.querySelector('.cm-reply-btn');
+        var replyForm = card.querySelector('.cm-reply-form');
+        var rfInputs = replyForm.querySelectorAll('.cm-rf-input');
+        var rfNickname = rfInputs[0];
+        var rfEmail = rfInputs[1];
+        var rfTextarea = replyForm.querySelector('.cm-rf-textarea');
+        var rfNotify = replyForm.querySelector('.cm-rf-notify input');
+        var rfCancel = replyForm.querySelector('.cm-rf-cancel');
+        var rfSubmit = replyForm.querySelector('.cm-rf-submit');
+
+        replyBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          replyForm.style.display = '';
+          replyBtn.style.display = 'none';
+          var identity = getSavedIdentity();
+          if (identity.nickname) rfNickname.value = identity.nickname;
+          if (identity.email) rfEmail.value = identity.email;
+          rfNickname.focus();
+          layoutCards();
+        });
+
+        rfCancel.addEventListener('click', function(e) {
+          e.stopPropagation();
+          replyForm.style.display = 'none';
+          replyBtn.style.display = '';
+          layoutCards();
+        });
+
+        rfSubmit.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var nickname = rfNickname.value.trim();
+          var email = rfEmail.value.trim();
+          var comment = rfTextarea.value.trim();
+          var rfValid = true;
+          rfNickname.classList.remove('cip-error');
+          rfTextarea.classList.remove('cip-error');
+          if (!nickname) { rfNickname.classList.add('cip-error'); rfValid = false; }
+          if (!comment) { rfTextarea.classList.add('cip-error'); rfValid = false; }
+          if (!rfValid) return;
+
+          saveIdentity(nickname, email);
+          rfSubmit.disabled = true;
+
+          apiPost('/api/inline-comments', {
+            post_slug: NOTE_SLUG,
+            nickname: nickname,
+            email: email,
+            comment: comment,
+            parent_id: c.id,
+            notify_replies: rfNotify.checked
+          }).then(function(res) {
+            if (res.comment) {
+              c.replies.push(res.comment);
+              renderInlineComments();
+            }
+          }).finally(function() {
+            rfSubmit.disabled = false;
+          });
+        });
+      });
+
+      requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
+    }
+
+    // --- Mobile bottom sheet ---
+    function openMobileSheet(comment) {
+      activeMobileCommentId = comment.id;
+      msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
+      msBody.textContent = comment.comment;
+      msAuthor.textContent = comment.nickname;
+      var time = new Date(comment.created_at);
+      msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+        + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      var repliesEl = document.getElementById('msReplies');
+      repliesEl.innerHTML = '';
+      if (comment.replies && comment.replies.length) {
+        comment.replies.forEach(function(r) {
+          var rTime = new Date(r.created_at);
+          var rTimeStr = rTime.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+            + ' ' + rTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+          var div = document.createElement('div');
+          div.className = 'ms-reply-item';
+          div.innerHTML =
+            '<div class="ms-reply-header">' +
+              '<img src="' + commentAvatarUrl(r) + '" class="ms-reply-avatar" />' +
+              '<span class="ms-reply-name">' + esc(r.nickname) + '</span>' +
+              '<span class="ms-reply-time">' + rTimeStr + '</span>' +
+            '</div>' +
+            '<div class="ms-reply-body">' + esc(r.comment) + '</div>';
+          repliesEl.appendChild(div);
+        });
+      }
+
+      document.getElementById('msReplyForm').style.display = 'none';
+      document.getElementById('msReplyToggle').style.display = '';
+      mobileOverlay.classList.add('active');
+      mobileSheet.classList.add('active');
+    }
+
+    function closeMobileSheet() {
+      mobileOverlay.classList.remove('active');
+      mobileSheet.classList.remove('active');
+      activeMobileCommentId = null;
+    }
+
+    mobileOverlay.addEventListener('click', closeMobileSheet);
+
+    document.getElementById('msReplyToggle').addEventListener('click', function() {
+      var form = document.getElementById('msReplyForm');
+      form.style.display = 'block';
+      this.style.display = 'none';
+      var id = getSavedIdentity();
+      if (id.nickname) document.getElementById('msRfNickname').value = id.nickname;
+      if (id.email) document.getElementById('msRfEmail').value = id.email;
+      document.getElementById('msRfNickname').focus();
+    });
+
+    document.getElementById('msRfCancel').addEventListener('click', function() {
+      document.getElementById('msReplyForm').style.display = 'none';
+      document.getElementById('msReplyToggle').style.display = '';
+    });
+
+    document.getElementById('msRfSubmit').addEventListener('click', function() {
+      var nickname = document.getElementById('msRfNickname').value.trim();
+      var email = document.getElementById('msRfEmail').value.trim();
+      var text = document.getElementById('msRfTextarea').value.trim();
+      var notify = document.getElementById('msRfNotify').checked;
+      var msNickEl = document.getElementById('msRfNickname');
+      var msTextEl = document.getElementById('msRfTextarea');
+      var msValid = true;
+      msNickEl.classList.remove('cip-error');
+      msTextEl.classList.remove('cip-error');
+      if (!nickname) { msNickEl.classList.add('cip-error'); msValid = false; }
+      if (!text) { msTextEl.classList.add('cip-error'); msValid = false; }
+      if (!msValid || !activeMobileCommentId) return;
+
+      saveIdentity(nickname, email);
+      var submitBtn = this;
+      submitBtn.disabled = true;
+      submitBtn.textContent = '...';
+
+      apiPost('/api/inline-comments', {
+        post_slug: NOTE_SLUG,
+        nickname: nickname,
+        email: email,
+        comment: text,
+        parent_id: activeMobileCommentId,
+        notify_replies: notify,
+      }).then(function(res) {
+        if (res.comment) {
+          var parent = inlineComments.find(function(c) { return c.id === activeMobileCommentId; });
+          if (parent) {
+            if (!parent.replies) parent.replies = [];
+            parent.replies.push(res.comment);
+          }
+          closeMobileSheet();
+          renderInlineComments();
+        }
+      }).finally(function() {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Reply';
+      });
+    });
+
+    // --- FAB: show on text selection ---
+    fab.style.display = 'none';
+    popover.style.display = 'none';
+
+    document.addEventListener('mouseup', function(e) {
+      if (popover.style.display !== 'none') return;
+      if (isMobile()) { fab.style.display = 'none'; return; }
+      var sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+      var range = sel.getRangeAt(0);
+      if (!postContent || !postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+      var text = sel.toString().trim();
+      if (!text) { fab.style.display = 'none'; return; }
+      var rect = range.getBoundingClientRect();
+      fab.style.display = 'flex';
+      fab.style.top = (rect.top + window.scrollY - 36) + 'px';
+      fab.style.left = (rect.right + window.scrollX + 8) + 'px';
+      pendingRange = range.cloneRange();
+    });
+
+    document.addEventListener('selectionchange', function() {
+      if (!isMobile()) return;
+      var sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+      var range = sel.getRangeAt(0);
+      if (!postContent || !postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+      var text = sel.toString().trim();
+      if (!text) { fab.style.display = 'none'; return; }
+      var rect = range.getBoundingClientRect();
+      fab.style.display = 'flex';
+      fab.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+      fab.style.left = (rect.left + window.scrollX + (rect.width / 2) - 14) + 'px';
+      pendingRange = range.cloneRange();
+    });
+
+    document.addEventListener('mousedown', function(e) {
+      if (fab.contains(e.target) || popover.contains(e.target)) return;
+      if (popover.style.display === 'none') fab.style.display = 'none';
+    });
+
+    fab.addEventListener('click', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      if (!pendingRange) return;
+      var selectedText = pendingRange.toString().trim();
+      if (!selectedText) return;
+      cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
+      cipArea.value = '';
+      var rect = pendingRange.getBoundingClientRect();
+      if (isMobile()) {
+        popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
+        popover.style.left = '50%';
+        popover.style.transform = 'translateX(-50%)';
+      } else {
+        popover.style.top = (rect.top + window.scrollY) + 'px';
+        popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
+        popover.style.transform = '';
+      }
+      popover.style.display = 'block';
+      fab.style.display = 'none';
+      cipNickname.focus();
+    });
+
+    cipCancel.addEventListener('click', function() {
+      popover.style.display = 'none';
+      pendingRange = null;
+      window.getSelection().removeAllRanges();
+    });
+
+    cipSubmit.addEventListener('click', function() {
+      var text = cipArea.value.trim();
+      var nickname = cipNickname.value.trim();
+      var email = cipEmailInput.value.trim();
+
+      var valid = true;
+      cipNickname.classList.remove('cip-error');
+      cipArea.classList.remove('cip-error');
+      if (!nickname) { cipNickname.classList.add('cip-error'); valid = false; }
+      if (!text) { cipArea.classList.add('cip-error'); valid = false; }
+      if (!valid || !pendingRange) return;
+
+      var selectedText = pendingRange.toString().trim();
+      saveIdentity(nickname, email);
+      cipSubmit.disabled = true;
+      cipSubmit.textContent = '...';
+
+      apiPost('/api/inline-comments', {
+        post_slug: NOTE_SLUG,
+        nickname: nickname,
+        email: email,
+        selected_text: selectedText,
+        comment: text,
+        range_start: 0,
+        range_end: selectedText.length,
+        notify_replies: true
+      }).then(function(res) {
+        if (res.comment) {
+          wrapRange(pendingRange, res.comment.id);
+          inlineComments.push(res.comment);
+          renderInlineComments();
+        }
+        popover.style.display = 'none';
+        pendingRange = null;
+        window.getSelection().removeAllRanges();
+      }).finally(function() {
+        cipSubmit.disabled = false;
+        cipSubmit.textContent = 'Comment';
+      });
+    });
+
+    cipArea.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
+      if (e.key === 'Escape') cipCancel.click();
+    });
+
+    var layoutTimer;
+    window.addEventListener('resize', function() {
+      clearTimeout(layoutTimer);
+      layoutTimer = setTimeout(layoutCards, 60);
+    });
+
+    // =====================================================================
+    // ARTICLE LIKES
+    // =====================================================================
+    var articleLiked = false;
+
+    function loadArticleLikes() {
+      apiGet('/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/likes').then(function(res) {
+        articleLikeCount.textContent = res.count;
+        articleLiked = res.liked;
+        if (articleLiked) articleLikeBtn.classList.add('liked');
+        if (res.count > 0) {
+          var lkEl = document.getElementById('noteLikesDisplay');
+          if (lkEl) { lkEl.textContent = res.count.toLocaleString() + ' likes'; lkEl.style.display = 'block'; }
+          showStatsBlock();
+        }
+        try {
+          var stored = JSON.parse(localStorage.getItem('post_likes') || '[]');
+          var set = new Set(stored);
+          if (res.liked) set.add(NOTE_SLUG); else set.delete(NOTE_SLUG);
+          localStorage.setItem('post_likes', JSON.stringify(Array.from(set)));
+        } catch(e) {}
+      });
+    }
+
+    articleLikeBtn.addEventListener('click', function() {
+      var prevLiked = articleLiked;
+      var prevCount = parseInt(articleLikeCount.textContent) || 0;
+      var newLiked = !prevLiked;
+      var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+      articleLiked = newLiked;
+      articleLikeCount.textContent = newCount;
+      articleLikeBtn.classList.toggle('liked', newLiked);
+      var icon = articleLikeBtn.querySelector('.al-icon path');
+      icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+      apiPost('/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/like', {}).then(function(res) {
+        articleLiked = res.liked;
+        articleLikeCount.textContent = res.count;
+        articleLikeBtn.classList.toggle('liked', res.liked);
+        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+        var lkEl = document.getElementById('noteLikesDisplay');
+        if (res.count > 0) {
+          if (lkEl) { lkEl.textContent = res.count.toLocaleString() + ' likes'; lkEl.style.display = 'block'; }
+          showStatsBlock();
+        } else {
+          if (lkEl) lkEl.style.display = 'none';
+        }
+        try {
+          var stored = JSON.parse(localStorage.getItem('post_likes') || '[]');
+          var set = new Set(stored);
+          if (res.liked) set.add(NOTE_SLUG); else set.delete(NOTE_SLUG);
+          localStorage.setItem('post_likes', JSON.stringify(Array.from(set)));
+        } catch(e) {}
+      }).catch(function() {
+        articleLiked = prevLiked;
+        articleLikeCount.textContent = prevCount;
+        articleLikeBtn.classList.toggle('liked', prevLiked);
+        icon.setAttribute('fill', prevLiked ? 'currentColor' : 'none');
+      });
+    });
+
+    // =====================================================================
+    // BOTTOM COMMENTS
+    // =====================================================================
+
+    function loadBottomComments() {
+      apiGet('/api/comments?post_slug=' + encodeURIComponent(NOTE_SLUG)).then(function(res) {
+        bottomComments = res.comments || [];
+        renderBottomComments();
+      });
+    }
+
+    function renderBottomComments() {
+      bcThread.innerHTML = '';
+      var count = bottomComments.length;
+      bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+      if (count > 0) {
+        var cmEl = document.getElementById('noteCommentsDisplay');
+        if (cmEl) { cmEl.textContent = count.toLocaleString() + ' comments'; cmEl.style.display = 'block'; }
+        showStatsBlock();
+      }
+
+      var roots = [];
+      var byId = {};
+      bottomComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
+      bottomComments.forEach(function(c) {
+        if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
+        else roots.push(c);
+      });
+
+      roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+    }
+
+    function buildCommentEl(c, isReply) {
+      var div = document.createElement('div');
+      div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
+
+      var time = new Date(c.created_at);
+      var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+      var avatarSize = isReply ? 32 : 40;
+      var nameHtml = c.website
+        ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
+        : '<span class="bc-name">' + esc(c.nickname) + '</span>';
+      div.innerHTML =
+        '<div class="bc-avatar-wrap"><img src="' + commentAvatarUrl(c) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+        '<div class="bc-body">' +
+          '<div class="bc-meta">' +
+            nameHtml +
+            '<span class="bc-dot">&middot;</span>' +
+            '<time class="bc-time">' + timeStr + '</time>' +
+          '</div>' +
+          '<div class="bc-text"><p>' + esc(c.content) + '</p></div>' +
+          '<div class="bc-actions">' +
+            '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
+              '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
+              '<span>' + (c.likes || 0) + '</span>' +
+            '</button>' +
+            '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
+          '</div>' +
+          '<div class="bc-replies-container"></div>' +
+        '</div>';
+
+      div.querySelector('.bc-like-btn').addEventListener('click', function() {
+        var btn = this;
+        var icon = btn.querySelector('path');
+        var span = btn.querySelector('span');
+        var wasLiked = btn.classList.contains('liked');
+        var prevCount = parseInt(span.textContent) || 0;
+        var newLiked = !wasLiked;
+        var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+        btn.classList.toggle('liked', newLiked);
+        span.textContent = newCount;
+        icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+        apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
+          btn.classList.toggle('liked', res.liked);
+          span.textContent = res.count;
+          icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+        }).catch(function() {
+          btn.classList.toggle('liked', wasLiked);
+          span.textContent = prevCount;
+          icon.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+        });
+      });
+
+      div.querySelector('.bc-reply-btn').addEventListener('click', function() {
+        bcTextarea.value = '@' + c.nickname + ' ';
+        bcTextarea.dataset.parentId = c.id;
+        bcTextarea.focus();
+        bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+
+      var repliesContainer = div.querySelector('.bc-replies-container');
+      if (c._replies && c._replies.length) {
+        c._replies.forEach(function(r) {
+          repliesContainer.appendChild(buildCommentEl(r, true));
+        });
+      }
+
+      return div;
+    }
+
+    bcSubmit.addEventListener('click', function() {
+      var content = bcTextarea.value.trim();
+      var nickname = bcNickname.value.trim();
+      var email = bcEmail.value.trim();
+      var website = bcWebsite.value.trim();
+      if (!content || !nickname || !email) return;
+
+      saveIdentity(nickname, email, website);
+      bcSubmit.disabled = true;
+      bcSubmit.textContent = '...';
+
+      var parentId = bcTextarea.dataset.parentId || null;
+      var body = {
+        post_slug: NOTE_SLUG,
+        nickname: nickname,
+        email: email,
+        content: content,
+        parent_id: parentId ? parseInt(parentId) : null,
+        notify_replies: bcNotify.checked
+      };
+      if (website) body.website = website;
+
+      apiPost('/api/comments', body).then(function(res) {
+        if (res.comment) {
+          bottomComments.push(res.comment);
+          renderBottomComments();
+          bcTextarea.value = '';
+          delete bcTextarea.dataset.parentId;
+        }
+      }).finally(function() {
+        bcSubmit.disabled = false;
+        bcSubmit.textContent = 'Submit';
+      });
+    });
+
+    bcTextarea.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') bcSubmit.click();
+    });
+
+    // =====================================================================
+    // INIT
+    // =====================================================================
+    restoreIdentity();
+
+    apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(NOTE_SLUG)).then(function(res) {
+      inlineComments = res.comments || [];
+      restoreHighlights();
+      renderInlineComments();
+    });
+
+    loadArticleLikes();
+    loadBottomComments();
+
+    // --- Helpers ---
+    function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
+    function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   })();
   </script>
 </BaseLayout>
@@ -262,6 +1161,370 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
     padding-bottom: 1px;
   }
   .note-detail-page .wikilink:hover { border-bottom-style: solid; }
+
+  /* ===== Highlights ===== */
+  .note-detail-page .prose mark.comment-highlight {
+    background: rgba(var(--accent-rgb, 74,222,128), 0.08);
+    color: inherit;
+    border-bottom: 2px solid rgba(var(--accent-rgb, 74,222,128), 0.35);
+    padding: 1px 0;
+    border-radius: 2px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .note-detail-page .prose mark.comment-highlight.highlight-active {
+    background: rgba(var(--accent-rgb, 74,222,128), 0.18);
+    border-bottom-color: var(--accent);
+  }
+  .note-detail-page .prose mark.comment-highlight.highlight-flash {
+    animation: highlightFlash 1s ease;
+  }
+
+  /* ===== Comment cards in meta sidebar ===== */
+  .cr-cards {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+  }
+  .cr-cards .cm-card {
+    position: absolute;
+    left: 0; right: 0;
+    background: transparent;
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    padding: 12px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+    animation: fadeInCard 0.2s ease;
+  }
+  .cr-cards .cm-card-active,
+  .cr-cards .cm-card:hover {
+    border-color: rgba(74,222,128,0.4);
+    background: rgba(74,222,128,0.03);
+    box-shadow: -3px 0 0 0 var(--accent);
+  }
+  .cr-cards .cm-card-quote {
+    color: var(--accent); font-size: 11px; font-style: italic;
+    margin-bottom: 8px; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(var(--c-overlay-rgb, 0,0,0), 0.04);
+    line-height: 1.4; opacity: 0.7;
+  }
+  .cr-cards .cm-card-body {
+    color: var(--c-text); line-height: 1.5; margin-bottom: 8px; word-break: break-word;
+  }
+  .cr-cards .cm-card-footer {
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .cr-cards .cm-card-time { color: var(--c-border-light); font-size: 10px; }
+  .cr-cards .cm-replies { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(127,127,127,0.12); }
+  .cr-cards .cm-reply { margin-bottom: 6px; }
+  .cr-cards .cm-reply-header { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+  .cr-cards .cm-reply-avatar { width: 16px; height: 16px; border-radius: 50%; }
+  .cr-cards .cm-reply-name { font-size: 11px; font-weight: 600; color: var(--c-text-muted, #666); }
+  .cr-cards .cm-reply-time { font-size: 10px; color: var(--c-text-dim, #999); margin-left: auto; }
+  .cr-cards .cm-reply-body { font-size: 11px; line-height: 1.4; color: var(--c-text, #333); padding-left: 20px; }
+  .cr-cards .cm-reply-btn { display: block; margin-top: 6px; padding: 2px 8px; font-size: 11px; color: var(--accent, #4ade80); background: none; border: 1px solid var(--accent, #4ade80); border-radius: 4px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; }
+  .cr-cards .cm-reply-btn:hover { opacity: 1; }
+  .cr-cards .cm-reply-form { margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(127,127,127,0.12); }
+  .cr-cards .cm-rf-identity { display: flex; gap: 4px; margin-bottom: 4px; }
+  .cr-cards .cm-rf-input { flex: 1; padding: 4px 6px; font-size: 11px; border: 1px solid rgba(127,127,127,0.2); border-radius: 4px; background: var(--c-bg-alt, #f9f9f9); color: var(--c-text, #333); }
+  .cr-cards .cm-rf-textarea { width: 100%; padding: 4px 6px; font-size: 11px; border: 1px solid rgba(127,127,127,0.2); border-radius: 4px; background: var(--c-bg-alt, #f9f9f9); color: var(--c-text, #333); resize: vertical; box-sizing: border-box; }
+  .cr-cards .cm-rf-notify { display: flex; align-items: center; gap: 4px; font-size: 10px; color: var(--c-text-dim, #999); margin: 4px 0; }
+  .cr-cards .cm-rf-notify input { width: 12px; height: 12px; }
+  .cr-cards .cm-rf-actions { display: flex; justify-content: flex-end; gap: 4px; margin-top: 4px; }
+  .cr-cards .cm-rf-cancel, .cr-cards .cm-rf-submit { padding: 3px 10px; font-size: 11px; border-radius: 4px; cursor: pointer; border: none; }
+  .cr-cards .cm-rf-cancel { background: transparent; color: var(--c-text-dim, #999); }
+  .cr-cards .cm-rf-submit { background: var(--accent, #4ade80); color: #000; font-weight: 600; }
+  .cr-cards .cm-rf-submit:disabled { opacity: 0.5; cursor: default; }
+  .cr-cards .cm-card-author { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .cr-cards .cm-card-avatar { width: 20px; height: 20px; border-radius: 50%; object-fit: cover; background: var(--c-border); }
+  .cr-cards .cm-card-name { font-size: 11px; font-weight: 600; color: var(--c-text); }
+
+  /* ===== FAB ===== */
+  .fab-comment {
+    position: absolute; z-index: 100; display: none;
+    align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: var(--c-bg); border: none; cursor: pointer;
+    box-shadow: 0 2px 8px rgba(74,222,128,0.3);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .fab-comment:hover { transform: scale(1.1); box-shadow: 0 3px 12px rgba(74,222,128,0.4); }
+
+  /* ===== Comment Input Popover ===== */
+  .comment-input-popover {
+    position: absolute; z-index: 200; width: 300px; display: none;
+    background: var(--c-bg-alt); border: 1px solid var(--c-border-light); border-radius: 8px;
+    padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: fadeInCard 0.15s ease;
+  }
+  .cip-header { margin-bottom: 10px; }
+  .cip-selected {
+    font-size: 12px; color: var(--accent); font-style: italic;
+    line-height: 1.5; display: -webkit-box;
+    -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .cip-identity { display: flex; gap: 8px; margin-bottom: 10px; }
+  .cip-input {
+    flex: 1; min-width: 0; padding: 7px 10px;
+    background: rgba(var(--c-overlay-rgb, 0,0,0),0.03);
+    border: 1px solid var(--c-border-light); border-radius: 4px;
+    color: var(--c-text); font-family: inherit; font-size: 12px;
+    outline: none; transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  .cip-input:focus { border-color: var(--accent); }
+  .cip-input::placeholder { color: var(--c-text-dim); }
+  .cip-textarea {
+    width: 100%; box-sizing: border-box;
+    background: rgba(var(--c-overlay-rgb, 0,0,0),0.03);
+    border: 1px solid var(--c-border-light); border-radius: 4px;
+    color: var(--c-text); font-family: inherit; font-size: 13px;
+    padding: 8px 10px; resize: vertical; min-height: 60px;
+    outline: none; transition: border-color 0.2s;
+  }
+  .cip-textarea:focus { border-color: var(--accent); }
+  .cip-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+  .cip-cancel, .cip-submit {
+    font-family: inherit; font-size: 12px; padding: 5px 14px;
+    border-radius: 4px; cursor: pointer; border: none; transition: all 0.15s;
+  }
+  .cip-cancel { background: none; color: var(--c-text-muted); }
+  .cip-cancel:hover { color: var(--c-text); }
+  .cip-submit { background: var(--accent); color: var(--c-bg); font-weight: 600; }
+  .cip-submit:hover { background: #6ee7a0; }
+  .cip-error { border-color: #ef4444 !important; }
+
+  /* ===== Mobile Bottom Sheet ===== */
+  .mobile-sheet-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 900;
+  }
+  .mobile-sheet-overlay.active { display: block; }
+  .mobile-sheet {
+    display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 901;
+    background: var(--c-bg-alt); border-top: 1px solid var(--c-border-light);
+    border-radius: 16px 16px 0 0; padding: 12px 20px 32px;
+    transform: translateY(100%); transition: transform 0.3s ease;
+  }
+  .mobile-sheet.active { display: block; transform: translateY(0); }
+  .ms-handle {
+    width: 36px; height: 4px; background: var(--c-border-light); border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .ms-quote {
+    font-size: 13px; color: var(--accent); font-style: italic;
+    margin-bottom: 12px; padding-bottom: 12px;
+    border-bottom: 1px solid rgba(var(--c-overlay-rgb, 0,0,0),0.06);
+    line-height: 1.5;
+  }
+  .ms-body { font-size: 14px; color: var(--c-text); line-height: 1.6; margin-bottom: 12px; }
+  .ms-author { font-size: 12px; color: var(--c-text-muted); margin-bottom: 4px; font-weight: 500; }
+  .ms-time { font-size: 11px; color: var(--c-text-dim); margin-bottom: 16px; }
+  .ms-replies { margin-top: 12px; padding-top: 8px; border-top: 1px solid rgba(127,127,127,0.12); }
+  .ms-replies:empty { display: none; }
+  .ms-reply-item { margin-bottom: 10px; }
+  .ms-reply-header { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+  .ms-reply-avatar { width: 20px; height: 20px; border-radius: 50%; }
+  .ms-reply-name { font-size: 13px; font-weight: 600; }
+  .ms-reply-time { font-size: 11px; color: #999; margin-left: auto; }
+  .ms-reply-body { font-size: 13px; line-height: 1.5; padding-left: 26px; }
+  .ms-reply-toggle { display: block; width: 100%; margin-top: 12px; padding: 8px; font-size: 14px; color: var(--accent, #4ade80); background: none; border: 1px solid var(--accent, #4ade80); border-radius: 8px; cursor: pointer; }
+  .ms-reply-form { margin-top: 12px; }
+  .ms-rf-identity { display: flex; gap: 8px; margin-bottom: 8px; }
+  .ms-rf-input { flex: 1; padding: 8px; font-size: 14px; border: 1px solid rgba(127,127,127,0.2); border-radius: 6px; background: var(--c-bg-alt, #f9f9f9); color: var(--c-text, #333); }
+  .ms-rf-textarea { width: 100%; padding: 8px; font-size: 14px; border: 1px solid rgba(127,127,127,0.2); border-radius: 6px; background: var(--c-bg-alt, #f9f9f9); color: var(--c-text, #333); resize: vertical; box-sizing: border-box; }
+  .ms-rf-notify { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-text-muted, #999); margin: 8px 0; }
+  .ms-rf-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  .ms-rf-cancel { padding: 6px 16px; font-size: 14px; border-radius: 6px; background: transparent; color: var(--c-text-muted, #999); border: none; cursor: pointer; }
+  .ms-rf-submit { padding: 6px 16px; font-size: 14px; border-radius: 6px; background: var(--accent, #4ade80); color: #000; font-weight: 600; border: none; cursor: pointer; }
+  .ms-rf-submit:disabled { opacity: 0.5; }
+
+  /* ===== Article Like Section ===== */
+  .article-like-section {
+    display: flex; align-items: center; gap: 24px;
+    max-width: 1200px; margin: 0 auto;
+    padding: 48px 48px 0;
+  }
+  .al-rule { flex: 1; height: 1px; background: var(--c-border); }
+  .article-like-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 12px 28px;
+    background: rgba(var(--c-overlay-rgb, 0,0,0),0.03);
+    border: 1px solid var(--c-border);
+    border-radius: 100px;
+    color: var(--c-text-muted);
+    cursor: pointer;
+    transition: all 0.25s;
+    white-space: nowrap;
+    font-family: inherit;
+  }
+  .article-like-btn:hover {
+    border-color: var(--c-border-light);
+    background: rgba(var(--c-overlay-rgb, 0,0,0),0.06);
+    color: var(--c-text);
+  }
+  .article-like-btn.liked {
+    border-color: rgba(239,68,68,0.4);
+    background: rgba(239,68,68,0.08);
+    color: #ef4444;
+  }
+  .article-like-btn .al-icon { transition: transform 0.25s; }
+  .article-like-btn.liked .al-icon { transform: scale(1.15); }
+  .al-count { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .al-label { font-size: 13px; font-weight: 500; }
+
+  /* ===== Bottom Comment Section ===== */
+  .bottom-comments {
+    max-width: 1200px; margin: 0 auto;
+    padding: 0 48px 80px;
+  }
+  .bc-inner { max-width: 720px; }
+  .bc-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 32px; padding-top: 48px;
+  }
+  .bc-title {
+    font-size: 20px; font-weight: 700; color: var(--c-text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .bc-count {
+    font-size: 13px; color: var(--c-text-dim);
+    background: rgba(var(--c-overlay-rgb, 0,0,0),0.06);
+    padding: 2px 10px; border-radius: 10px;
+  }
+  .bottom-comments .bc-item {
+    display: flex; gap: 16px;
+    padding: 24px 0;
+    border-top: 1px solid var(--c-border);
+  }
+  .bottom-comments .bc-item.bc-reply {
+    padding: 16px 0 0;
+    border-top: none;
+  }
+  .bottom-comments .bc-avatar-wrap { flex-shrink: 0; }
+  .bottom-comments .bc-avatar-img {
+    width: 40px; height: 40px; border-radius: 50%;
+    object-fit: cover; background: var(--c-border);
+  }
+  .bottom-comments .bc-body { flex: 1; min-width: 0; }
+  .bottom-comments .bc-meta {
+    display: flex; align-items: center; gap: 6px;
+    margin-bottom: 8px;
+  }
+  .bottom-comments .bc-name { font-size: 14px; font-weight: 600; color: var(--c-text); }
+  .bottom-comments .bc-name-link { text-decoration: none; color: var(--accent); }
+  .bottom-comments .bc-name-link:hover { text-decoration: underline; }
+  .bottom-comments .bc-dot { color: var(--c-border-light); }
+  .bottom-comments .bc-time { font-size: 13px; color: var(--c-text-dim); }
+  .bottom-comments .bc-text p { font-size: 15px; color: var(--c-text); line-height: 1.7; margin: 0; }
+  .bottom-comments .bc-actions {
+    display: flex; align-items: center; gap: 16px;
+    margin-top: 10px;
+  }
+  .bottom-comments .bc-like-btn {
+    display: flex; align-items: center; gap: 5px;
+    padding: 4px 10px;
+    border-radius: 100px;
+    border: 1px solid transparent;
+    background: none; cursor: pointer;
+    font-size: 12px; color: var(--c-text-dim);
+    transition: all 0.2s;
+  }
+  .bottom-comments .bc-like-btn:hover {
+    background: rgba(239,68,68,0.06);
+    border-color: rgba(239,68,68,0.15);
+    color: #ef4444;
+  }
+  .bottom-comments .bc-like-btn.liked {
+    color: #ef4444;
+    background: rgba(239,68,68,0.08);
+    border-color: rgba(239,68,68,0.2);
+  }
+  .bottom-comments .bc-like-btn span {
+    font-size: 12px; font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    min-width: 8px;
+  }
+  .bottom-comments .bc-reply-btn {
+    font-size: 12px; color: var(--c-text-dim);
+    background: none; border: none; cursor: pointer;
+    transition: color 0.15s; font-family: inherit;
+  }
+  .bottom-comments .bc-reply-btn:hover { color: var(--c-text-muted); }
+  .bottom-comments .bc-replies-container {
+    border-left: 2px solid var(--c-border);
+    margin-left: 4px; padding-left: 20px;
+  }
+
+  /* Compose form */
+  .bc-compose {
+    display: flex; gap: 16px;
+    padding-top: 32px;
+    border-top: 1px solid var(--c-border);
+    margin-top: 8px;
+  }
+  .bc-compose-avatar { flex-shrink: 0; }
+  .bc-compose-avatar .bc-avatar-img {
+    width: 40px; height: 40px; border-radius: 50%;
+    object-fit: cover; background: var(--c-border);
+  }
+  .bc-compose-form { flex: 1; }
+  .bc-compose-fields { display: flex; gap: 12px; margin-bottom: 12px; }
+  .bc-input {
+    flex: 1; padding: 10px 14px;
+    background: rgba(var(--c-overlay-rgb, 0,0,0),0.04);
+    border: 1px solid var(--c-border-light); border-radius: 8px;
+    color: var(--c-text); font-size: 14px; font-family: inherit;
+    transition: border-color 0.2s; outline: none;
+  }
+  .bc-input:focus { border-color: var(--accent); }
+  .bc-input::placeholder { color: var(--c-text-dim); }
+  .bc-textarea {
+    width: 100%; padding: 12px 14px;
+    background: rgba(var(--c-overlay-rgb, 0,0,0),0.04);
+    border: 1px solid var(--c-border-light); border-radius: 8px;
+    color: var(--c-text); font-size: 14px; font-family: inherit;
+    resize: vertical; min-height: 100px;
+    transition: border-color 0.2s; outline: none;
+  }
+  .bc-textarea:focus { border-color: var(--accent); }
+  .bc-textarea::placeholder { color: var(--c-text-dim); }
+  .bc-compose-footer {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-top: 12px;
+  }
+  .bc-notify-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--c-text-dim); cursor: pointer;
+  }
+  .bc-submit {
+    padding: 10px 28px;
+    background: var(--accent); color: #000; font-weight: 600;
+    border: none; border-radius: 8px; cursor: pointer;
+    font-size: 14px; font-family: inherit;
+    transition: opacity 0.2s;
+  }
+  .bc-submit:disabled { opacity: 0.5; cursor: default; }
+
+  /* Stats display in meta sidebar */
+  .meta-stats {
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .meta-stats span {
+    font-size: 12px; color: var(--c-text-dim);
+    display: none;
+  }
+
+  /* Animations */
+  @keyframes fadeInCard {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes highlightFlash {
+    0%, 100% { background: rgba(var(--accent-rgb, 74,222,128), 0.08); }
+    50% { background: rgba(var(--accent-rgb, 74,222,128), 0.32); }
+  }
 </style>
 
 <style>
@@ -298,7 +1561,7 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
     max-width: 1200px; margin: 0 auto;
     padding: 0 48px;
     display: grid;
-    grid-template-columns: 200px 1fr 180px;
+    grid-template-columns: 200px 1fr 220px;
     gap: 40px;
     align-items: start;
   }
@@ -363,7 +1626,7 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
   }
 
   /* Right sidebar: TOC + meta */
-  .meta-sidebar { padding-top: 32px; }
+  .meta-sidebar { padding-top: 32px; position: relative; }
   .meta-inner {
     position: sticky; top: 80px;
   }
@@ -423,5 +1686,7 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
     .mast-hide-mobile { display: none; }
     .mast-inner { padding: 0 20px; }
     .article-header h1 { font-size: 24px; }
+    .article-like-section { padding: 32px 20px 0; }
+    .bottom-comments { padding: 0 20px 48px; }
   }
 </style>
