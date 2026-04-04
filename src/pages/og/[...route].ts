@@ -5,6 +5,7 @@ import { Resvg } from '@resvg/resvg-js';
 import fs from 'node:fs';
 
 const posts = await getCollection('posts', ({ data }) => !data.draft);
+const notes = await getCollection('notes', ({ data }) => data.public && !data.draft);
 
 // Load fonts from local files
 const notoSansSCBold = fs.readFileSync('src/assets/fonts/NotoSansSC-Bold.ttf');
@@ -27,7 +28,7 @@ function extractExcerpt(id: string): string {
 }
 
 export const getStaticPaths: GetStaticPaths = async () => {
-  return posts.map((post) => ({
+  const postRoutes = posts.map((post) => ({
     params: { route: `${post.id}.png` },
     props: {
       title: post.data.title,
@@ -36,6 +37,18 @@ export const getStaticPaths: GetStaticPaths = async () => {
       date: post.data.date,
     },
   }));
+
+  const noteRoutes = notes.map((note) => ({
+    params: { route: `notes/${note.id}.png` },
+    props: {
+      title: note.data.title,
+      description: note.data.summary || '',
+      tags: note.data.tags,
+      date: new Date(note.data.date),
+    },
+  }));
+
+  return [...postRoutes, ...noteRoutes];
 };
 
 export const GET: APIRoute = async ({ props }) => {
