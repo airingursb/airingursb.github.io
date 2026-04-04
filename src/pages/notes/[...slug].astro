@@ -4,20 +4,16 @@ import { getCollection, render } from 'astro:content';
 import { getBacklinks } from '../../lib/backlinks';
 
 export async function getStaticPaths() {
-  const notes = await getCollection('notes');
-  return notes
-    .filter(note => note.data.public && !note.data.draft)
-    .map(note => ({
-      params: { slug: note.id },
-      props: { note },
-    }));
+  const notes = await getCollection('notes', ({ data }) => data.public && !data.draft);
+  const sorted = notes.sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
+  return sorted.map(note => ({
+    params: { slug: note.id },
+    props: { note, allNotes: sorted },
+  }));
 }
 
-const { note } = Astro.props;
+const { note, allNotes } = Astro.props;
 const { Content, headings } = await render(note);
-
-const allNotes = (await getCollection('notes', ({ data }) => data.public && !data.draft))
-  .sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
 
 const backlinkMap = await getBacklinks();
 const noteBacklinks = backlinkMap.get(note.data.title.toLowerCase()) || [];
@@ -32,8 +28,10 @@ const relatedNotes = [
   ...relatedFromTags.map(n => ({ title: n.data.title, slug: n.id })),
 ].slice(0, 8);
 
-const wordCount = note.body?.split(/\s+/).length || 0;
-const readingTime = `约 ${Math.max(1, Math.ceil(wordCount / 200))} 分钟`;
+// Reading time: count CJK characters and Latin words separately
+const cjkChars = (note.body?.match(/[\u4e00-\u9fff]/g) || []).length;
+const latinWords = note.body?.split(/\s+/).filter(w => w.length > 0).length || 0;
+const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords / 200)))} 分钟`;
 ---
 <BaseLayout title={`${note.data.title} | Notes`}>
   <div class="note-detail-page">
