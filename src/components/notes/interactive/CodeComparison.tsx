@@ -42,13 +42,13 @@ export default function CodeComparison() {
               <div style={{ flex: 1, position: 'relative' }}>
                 <div style={{
                   height: 36, borderRadius: 6,
-                  background: 'linear-gradient(90deg, #5a3a3a, #7a4a4a)',
+                  background: 'linear-gradient(90deg, #d4a0a0, #c08888)',
                   width: animated ? claudeWidth : 0,
                   maxWidth: '100%',
                   transition: 'width 1.2s cubic-bezier(0.22, 1, 0.36, 1)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <span style={{ fontSize: 12, color: '#f0a0a0', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 12, color: '#6b3030', fontWeight: 500, whiteSpace: 'nowrap' }}>
                     512,664 行 · 1,884 文件 · TypeScript
                   </span>
                 </div>
@@ -61,12 +61,12 @@ export default function CodeComparison() {
               <div style={{ flex: 1, position: 'relative' }}>
                 <div style={{
                   height: 36, borderRadius: 6,
-                  background: 'linear-gradient(90deg, #1a3a2a, #2a5a3a)',
+                  background: 'linear-gradient(90deg, #7dcea0, #5bb880)',
                   width: animated ? Math.max(ohWidth, 220) : 0,
                   transition: 'width 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s',
                   display: 'flex', alignItems: 'center', paddingLeft: 12,
                 }}>
-                  <span style={{ fontSize: 12, color: '#7dcea0', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: 12, color: '#1a5a3a', fontWeight: 500, whiteSpace: 'nowrap' }}>
                     11,733 行 · 163 文件 · Python
                   </span>
                 </div>

@@ -5,12 +5,12 @@ const H = 680;
 const FLOW_SPEED = 40;
 
 const palette = {
-  capability: { fill: '#1a3a2a', stroke: '#4a9a6a', text: '#7dcea0' },
-  security:   { fill: '#3a2a10', stroke: '#c09a3e', text: '#f0d080' },
-  collab:     { fill: '#162840', stroke: '#4a80b0', text: '#80c0f0' },
-  infra:      { fill: '#2a2a2a', stroke: '#808080', text: '#c0c0c0' },
-  harness:    { fill: '#2a1a40', stroke: '#7a60b0', text: '#c0a0f0' },
-  loop:       { fill: '#3a1a0a', stroke: '#c06030', text: '#f0a060' },
+  capability: { fill: '#e8f5ee', stroke: '#4a9a6a', text: '#2a6a4a' },
+  security:   { fill: '#fdf3e0', stroke: '#c09a3e', text: '#7a5a10' },
+  collab:     { fill: '#e8f0fa', stroke: '#4a80b0', text: '#2a5080' },
+  infra:      { fill: '#f0f0f0', stroke: '#a0a0a0', text: '#505050' },
+  harness:    { fill: '#f0e8fa', stroke: '#7a60b0', text: '#4a3070' },
+  loop:       { fill: '#fde8d8', stroke: '#c06030', text: '#804020' },
 };
 
 interface Box {
