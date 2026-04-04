@@ -484,12 +484,21 @@
     }
   }
 
-  var AUTHOR_EMAILS = { 'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80' };
+  var AUTHOR_EMAILS = {
+    'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80',
+    'airing@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80',
+  };
+  var gravatarCache = {};
+  async function sha256Hex(str) {
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
   function gravatarUrl(email) {
     var e = (email || '').trim().toLowerCase();
     if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
-    var hash = e.endsWith('@gravatar.placeholder') ? e.split('@')[0] : e;
-    return 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=80';
+    if (gravatarCache[e]) return gravatarCache[e];
+    sha256Hex(e).then(function(h) { gravatarCache[e] = 'https://gravatar.com/avatar/' + h + '?d=robohash&s=80'; });
+    return 'https://gravatar.com/avatar/?d=robohash&s=80';
   }
 
   function commentAvatarUrl(comment) {
