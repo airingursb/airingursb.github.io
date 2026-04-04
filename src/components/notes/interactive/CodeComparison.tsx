@@ -15,8 +15,17 @@ export default function CodeComparison() {
     return () => clearTimeout(timer);
   }, []);
 
-  const claudeWidth = 680;
-  const ohWidth = animated ? Math.round(claudeWidth * (11733 / 512664)) : 0;
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  const claudeWidth = isMobile ? '100%' : 680;
+  const ohWidth = animated ? (isMobile ? `${(11733 / 512664) * 100}%` : Math.max(Math.round(680 * (11733 / 512664)), 220)) : 0;
 
   return (
     <div className="interactive-block">
@@ -37,38 +46,59 @@ export default function CodeComparison() {
         <div style={{ maxWidth: 720, margin: '0 auto 24px' }}>
           {/* Claude Code bar */}
           <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', width: 110, flexShrink: 0 }}>Claude Code</span>
-              <div style={{ flex: 1, position: 'relative' }}>
+            <div style={{ marginBottom: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', width: isMobile ? 'auto' : 110, flexShrink: 0 }}>Claude Code</span>
+                {isMobile && (
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    512,664 行 · 1,884 文件 · TypeScript
+                  </span>
+                )}
+              </div>
+              <div style={{ flex: 1, position: 'relative', marginTop: isMobile ? 6 : 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+                {!isMobile && <div style={{ width: 110, flexShrink: 0 }} />}
                 <div style={{
-                  height: 36, borderRadius: 6,
-                  background: 'linear-gradient(90deg, #d4a0a0, #c08888)',
+                  height: 36, borderRadius: 6, flex: 1,
+                  background: 'linear-gradient(90deg, #b05050, #994444)',
                   width: animated ? claudeWidth : 0,
                   maxWidth: '100%',
                   transition: 'width 1.2s cubic-bezier(0.22, 1, 0.36, 1)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <span style={{ fontSize: 12, color: '#6b3030', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    512,664 行 · 1,884 文件 · TypeScript
-                  </span>
+                  {!isMobile && (
+                    <span style={{ fontSize: 12, color: '#fff', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      512,664 行 · 1,884 文件 · TypeScript
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
 
             {/* OpenHarness bar */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', width: 110, flexShrink: 0 }}>OpenHarness</span>
-              <div style={{ flex: 1, position: 'relative' }}>
+            <div style={{ marginTop: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', width: isMobile ? 'auto' : 110, flexShrink: 0 }}>OpenHarness</span>
+                {isMobile && (
+                  <span style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
+                    11,733 行 · 163 文件 · Python
+                  </span>
+                )}
+              </div>
+              <div style={{ flex: 1, position: 'relative', marginTop: isMobile ? 6 : 0, display: 'flex', alignItems: 'center', gap: 12 }}>
+                {!isMobile && <div style={{ width: 110, flexShrink: 0 }} />}
                 <div style={{
                   height: 36, borderRadius: 6,
-                  background: 'linear-gradient(90deg, #7dcea0, #5bb880)',
-                  width: animated ? Math.max(ohWidth, 220) : 0,
+                  background: 'linear-gradient(90deg, #5bb880, #4a9a6a)',
+                  width: animated ? ohWidth : 0,
+                  minWidth: animated ? (isMobile ? 20 : 220) : 0,
                   transition: 'width 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s',
                   display: 'flex', alignItems: 'center', paddingLeft: 12,
                 }}>
-                  <span style={{ fontSize: 12, color: '#1a5a3a', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                    11,733 行 · 163 文件 · Python
-                  </span>
+                  {!isMobile && (
+                    <span style={{ fontSize: 12, color: '#fff', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                      11,733 行 · 163 文件 · Python
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

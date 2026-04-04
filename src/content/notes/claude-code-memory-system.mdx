@@ -1,0 +1,71 @@
+---
+title: Claude Code Memory 系统详解
+date: "2026-04-05"
+tags: [AI, Agent, Architecture]
+public: true
+interactive: true
+summary: 深入解析 Claude Code 的 Memory 系统：5 层架构、4 种记忆类型、写入/检索/删除流程，以及三层安全防护机制。
+---
+
+import MemoryLayers from '../../components/notes/interactive/MemoryLayers.tsx';
+import MemoryTypes from '../../components/notes/interactive/MemoryTypes.tsx';
+import MemoryWriteFlow from '../../components/notes/interactive/MemoryWriteFlow.tsx';
+import MemoryRetrievalFlow from '../../components/notes/interactive/MemoryRetrievalFlow.tsx';
+import MemorySecurityFlow from '../../components/notes/interactive/MemorySecurityFlow.tsx';
+import MemorySummary from '../../components/notes/interactive/MemorySummary.tsx';
+
+Claude Code 的 Memory 系统是让 Agent 真正"认识你"的核心基础设施。不同于传统的对话历史，它是一套跨会话的、结构化的持久化记忆机制——Agent 不仅能记住你说过什么，还能记住你是谁、你的偏好、项目背景，甚至你对它工作方式的反馈。
+
+## 1. Memory 5 层架构
+
+Memory 并不是一个单一的存储，而是由 5 个层次组成的体系。每一层有不同的生命周期、写入方式和用途。
+
+<MemoryLayers client:visible />
+
+从上到下，前三层（CLAUDE.md、会话记忆、对话历史）的生命周期都局限于单次会话或由用户主动管理。真正有意思的是最底下的**自动记忆**——这是 Claude Code 从多次对话中自主学习、自主管理的记忆层。
+
+## 2. 四种记忆类型
+
+自动记忆不是一股脑地什么都记。它严格区分四种类型，每种类型有不同的触发条件和用途。这四种类型本质上是为 Agent 检索时提供的标签——帮助它快速判断一条记忆与当前任务的相关性。
+
+<MemoryTypes client:visible />
+
+记忆的存储格式非常简单：每条记忆一个 `.md` 文件，带有 YAML frontmatter（name、description、type），再加一个 `MEMORY.md` 索引文件作为目录。这个设计既方便 Agent 读写，也方便人类直接查看和编辑。
+
+## 3. 如何写入记忆？
+
+记忆的写入分三个阶段：实时提取、定期整合、判断删除。
+
+<MemoryWriteFlow client:visible />
+
+关键设计决策：
+- **逐轮提取**是增量的——后台 Agent 只看最近几条消息，不会重读整个对话
+- **定期整合**由独立的 autoDream 子 Agent 执行，它有自己的上下文，不会干扰主对话
+- **删除是保守的**——宁可保留可能过时的记忆，也不会冒险删掉有用信息
+
+## 4. 如何检索 Memory？
+
+检索是 Memory 系统中最精巧的部分。核心问题：一个项目可能有上百条记忆，但每次对话的上下文窗口有限，如何选出最相关的？
+
+<MemoryRetrievalFlow client:visible />
+
+这个设计有几个精妙之处：
+- **Sonnet 做过滤而非主模型**——即使你在用 Opus，筛选记忆的仍然是 Sonnet。这实现了关注点分离：主模型专注推理，过滤模型专注相关性判断
+- **只看 description 不看内容**——Sonnet 在筛选时只能看到 frontmatter 中的 description 字段，看不到记忆的完整内容。这就是为什么 description 的质量至关重要
+- **过时警告是框架注入的**——不是靠 Agent 自觉，而是系统在加载记忆时自动附加警告
+
+## 5. Memory 安全怎么保证？
+
+让一个 AI Agent 自主读写本地文件系统，安全是绕不开的问题。Claude Code 的 Memory 系统采用了三层防护：
+
+<MemorySecurityFlow client:visible />
+
+核心原则：**不信任模型的自律性**。安全不是靠 prompt 里写"不要做坏事"，而是通过代码层面的硬约束来保证。路径锁死、权限校验、沙箱隔离——每一层都是代码级别的防护，不依赖模型的"理解"或"配合"。
+
+## 总结
+
+<MemorySummary client:visible />
+
+Memory 系统体现了 Claude Code 架构哲学的一个核心观点：**模型很强大，但 Harness 不信任它在无监督下管理自己的记忆**。每一步操作——写入、检索、删除、过时处理——都有独立的约束机制。这不是对模型能力的否定，而是工程上的务实：在 Agent 真正可靠之前，框架层面的安全网是必要的。
+
+从使用者的角度看，Memory 系统的存在让 Claude Code 从一个"每次从零开始的助手"变成了一个"认识你的协作伙伴"。它记住你的编码风格、测试偏好、项目背景、甚至你不喜欢它做什么。随着对话的积累，这种个性化会越来越精准——这也许是当前 AI 编码工具中最被低估的特性。

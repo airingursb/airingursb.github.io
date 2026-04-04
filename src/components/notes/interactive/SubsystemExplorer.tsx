@@ -17,7 +17,7 @@ const layers: Layer[] = [
   {
     name: '能力层',
     color: '#4a9a6a',
-    bgColor: '#0d1f14',
+    bgColor: '#e8f5ee',
     subsystems: [
       {
         name: 'Tools (43+)',
@@ -39,7 +39,7 @@ const layers: Layer[] = [
   {
     name: '安全 / 控制层',
     color: '#c09a3e',
-    bgColor: '#1f1a0d',
+    bgColor: '#fdf3e0',
     subsystems: [
       {
         name: 'Permissions',
@@ -61,7 +61,7 @@ const layers: Layer[] = [
   {
     name: '协作 / 扩展层',
     color: '#4a80b0',
-    bgColor: '#0d1520',
+    bgColor: '#e8f0fa',
     subsystems: [
       {
         name: 'MCP 协议',
@@ -83,7 +83,7 @@ const layers: Layer[] = [
   {
     name: '基础设施层',
     color: '#808080',
-    bgColor: '#151515',
+    bgColor: '#f0f0f0',
     subsystems: [
       {
         name: 'Config（配置）',
