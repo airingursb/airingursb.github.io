@@ -1,0 +1,46 @@
+---
+title: 可视化解读 OpenHarness：用 3% 代码复刻 Claude Code 的 Agent 架构
+date: "2026-04-04"
+tags: [AI, Agent, Architecture]
+public: true
+interactive: true
+summary: OpenHarness 是香港大学 HKUDS 团队开源的项目，用纯 Python 复刻 Claude Code 的 Agent Harness 架构，仅 11,733 行代码实现 98% 工具覆盖率。
+---
+
+import HarnessArchitecture from '../../components/notes/interactive/HarnessArchitecture.tsx';
+import CodeComparison from '../../components/notes/interactive/CodeComparison.tsx';
+import SubsystemExplorer from '../../components/notes/interactive/SubsystemExplorer.tsx';
+
+[OpenHarness](https://github.com/HKUDS/OpenHarness) 是香港大学 HKUDS 团队开源的项目，核心定位是**用纯 Python 复刻 Claude Code 的 Agent Harness 架构**。
+
+## 什么是 Agent Harness？
+
+> *The model is the agent. The code is the harness.*
+
+模型提供智能，Harness 提供"手、眼、记忆和安全边界"。本质就是把一个 LLM 变成可用 Agent 所需的全部基础设施。
+
+## 架构全景
+
+<HarnessArchitecture client:visible />
+
+核心循环很简洁：Query → LLM 流式响应 → 检测到 tool_use → 权限检查 → Hook → 执行 → 结果回传 → 继续循环，直到模型决定停止。
+
+这个架构把 Agent 的能力分成了四个层次——能力层提供工具和技能，安全层控制权限和生命周期，协作层处理外部集成和多 Agent 协作，基础设施层负责配置和 UI。
+
+## 代码量对比
+
+<CodeComparison client:visible />
+
+这组数据相当惊人。OpenHarness 只用了 11,733 行 Python 代码（Claude Code 有 512,664 行 TypeScript），做到了 43/44 个工具的覆盖。这对于想理解"AI Agent 底层到底怎么跑起来的"非常有价值——去掉了企业级的遥测、OAuth、数百个 React 组件等 overhead，只保留了 Harness 的骨架。
+
+## 10 大子系统详解
+
+<SubsystemExplorer client:visible />
+
+## 为什么值得关注？
+
+1. **学习价值极高**：想理解 Claude Code 内部架构，读 OpenHarness 的 11K 行 Python 比读 500K 行 TypeScript 高效得多
+2. **架构思维**：清晰展示了一个 Agent Harness 需要哪些子系统，以及它们如何协作
+3. **可扩展**：MIT License，Python ≥3.11，可以作为自己构建 Agent 系统的起点
+
+核心 takeaway：**模型是 Agent，代码是 Harness**。LLM 本身已经具备推理能力，Harness 做的是给它接上工具、记忆、权限和协作能力，让它能真正"做事"。

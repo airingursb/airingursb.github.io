@@ -1,0 +1,134 @@
+---
+title: 用控制论理解 AI Coding
+date: "2026-03-29"
+tags: [控制论, AI, 系统思维]
+public: true
+interactive: true
+summary: 控制论的反馈回路模型完美映射了 AI Coding 的工作流。从负反馈回路到 Plant 复杂性，再到控制策略的进化，这套框架能让你重新理解人与 AI 的协作本质。
+---
+
+import FeedbackLoop from '../../components/notes/interactive/FeedbackLoop.tsx';
+import ThermostatSimulator from '../../components/notes/interactive/ThermostatSimulator.tsx';
+import PlantComplexity from '../../components/notes/interactive/PlantComplexity.tsx';
+import ControlStrategyLevels from '../../components/notes/interactive/ControlStrategyLevels.tsx';
+import SecondOrderCybernetics from '../../components/notes/interactive/SecondOrderCybernetics.tsx';
+import CoEvolutionLoop from '../../components/notes/interactive/CoEvolutionLoop.tsx';
+
+你每天用 AI 写代码的过程——设定目标、AI 执行、review 结果、调整指令——其实就是 1948 年 Norbert Wiener 在《控制论》里描述的 **反馈回路**（feedback loop）。这不是比喻，是同一个数学结构。
+
+理解这一点，能帮你从"凭感觉调 prompt"进化到"系统化地设计人机协作"。
+
+## 一切从反馈回路开始
+
+控制论最经典的模型是 **负反馈控制回路**——系统观察自己的输出，然后调整自己的行为：
+
+<FeedbackLoop client:visible />
+
+五个环节各司其职：**Goal** 设定目标状态，**Comparator** 计算误差，**Controller** 根据误差决定行动，**System** 执行产生输出，**Sensor** 测量结果并反馈。闭环形成。
+
+用恒温器来感受一下这个回路是怎么"收敛"到目标温度的：
+
+<ThermostatSimulator client:visible />
+
+调调参数，你会直觉性地理解三个核心概念：**Gain 调小**，系统迟缓但稳定（欠阻尼）；**Gain 调大**，快速到位但剧烈震荡（过冲）；**Disturbance** 代表外部不确定性，反馈回路的意义就是持续修正它。
+
+## 比较器：一个减法的优雅
+
+理解了整体回路，接下来看它最核心的环节——**比较器**（Comparator）。它做的事只有一件：
+
+`Error = Goal - Actual`
+
+就这一个减法，但它产生的信号驱动了整个系统的行为：
+
+- **Error 为正**（实际 < 目标）→ 还没到位，控制器"加油"。Error 越大，越使劲
+- **Error 为零**（实际 = 目标）→ 完美命中，系统进入稳态
+- **Error 为负**（实际 > 目标）→ 过冲了，控制器"踩刹车"
+
+简单的减法背后藏着一个深刻的设计思想：**控制器不需要知道目标是什么、也不需要知道系统在做什么——它只需要知道"差多少"。** 通过解耦，让每个模块各司其职。这就是控制论的优雅之处。
+
+你 review AI 代码时其实就在做比较器的工作——"我想要 X，AI 写出来 Y，差距在哪？"Error 描述得越精准，AI 的修正就越到位。
+
+## Plant：被控对象的“脾气”
+
+比较器解决了"怎么衡量差距"，但控制的真正难点在另一边——**Plant**（被控对象），你想要控制的"东西"本身。
+
+Plant 不是你说什么就做什么的。恒温器开到最大，房间不会瞬间变热——墙壁要吸热、窗户在散热、外面在刮风。这些都是 Plant 自带的物理惯性和扰动。控制器必须理解（或至少适应）这些特性才能有效工作。
+
+在 AI Coding 里，**你的 codebase 就是 Plant**。它有历史债务、隐式约束、AI 看不到的上下文。同样的 prompt 在干净项目里很顺，在复杂老项目里就容易翻车——不是 AI 变笨了，是 Plant 变复杂了。
+
+## Plant 的四种“脾气”
+
+理解了 Plant 的概念，接下来看它具体怎么为难控制器。同一个控制器（同样的 Gain），面对不同“脾气”的 Plant 会发生什么：
+
+<PlantComplexity client:visible />
+
+四种特性，每种都直接映射到 AI Coding 的日常：
+
+- **Inertia（惯性）**：大型 codebase 的"改一处动全身"。AI 改了一个文件，连锁影响需要时间暴露
+- **Delay（延迟）**：最致命的特性。编译部署后才发现问题——控制器在根据过时信息做决策。这就是 hot reload 和快速测试如此重要的原因
+- **Nonlinearity（非线性）**：某些 bug 小规模不出现、一上生产就爆炸。同样的 prompt 对简单问题有效，对复杂问题突然失灵
+- **Disturbance（扰动）**：需求变更、第三方 API 行为变化、团队成员的并行修改
+
+点 "Real codebase" 按钮——四种脾气全开。这就是为什么真实项目中 vibe coding 比 hello world 难得多。
+
+控制论给出的应对思路很朴素：**如果你不能简化 Plant，就提升你对它的理解。** 给 AI 更好的 context（降低延迟），写更精确的 rules（应对非线性），拆小任务（降低惯性），做好 CI/CD（降低扰动）。这些工程实践，本质上都是控制论里的 **system identification**（系统辨识）和 **disturbance rejection**（扰动抑制）。
+
+而 Harness Engineer 的核心能力，就是 **帮助 Controller 理解 Plant**——通过 system prompt、context、rules，给 AI 建立关于 codebase 的心理模型。
+
+## 控制策略的进化
+
+Plant 越复杂，需要的控制策略就越精巧。从简单到复杂，控制策略经历了五个层次的进化：
+
+<ControlStrategyLevels client:visible />
+
+从 open-loop 到 adaptive，本质上是在增加"对 Plant 的理解"。你作为 Harness Engineer 的成长轨迹也是这条路：盲目 prompt（open-loop）→ 看一眼结果改一下（on/off）→ 精细 review + 写 rules（PID）→ 提前规划 context 和架构（MPC）→ 持续积累 `CLAUDE.md` 和工作流迭代（adaptive）。
+
+## 控制论无处不在
+
+到这里你可能会发现，控制论的力量在于它是一个 **跨学科的统一框架**。无论什么领域，只要识别出四个角色——Goal、Controller、Plant、Sensor——就能用同一套语言分析问题：
+
+| 场景 | Goal | Controller | Plant | Sensor |
+|------|------|-----------|-------|--------|
+| 恒温器 | 目标温度 | 温控芯片 | 房间（墙壁、窗户、空气） | 温度传感器 |
+| 人体体温 | 37°C | 下丘脑 | 身体（血管、汗腺、肌肉） | 温度感受器 |
+| 自动驾驶 | 车道中心 | 控制算法 | 车辆（惯性、轮胎、路面） | 摄像头 + 激光雷达 |
+| RLHF | helpful & safe | reward model | LLM 权重 | human raters |
+| **AI Coding** | **需求目标** | **AI（Claude）** | **Codebase** | **你（review 代码）** |
+
+最后一行就是你每天在做的事。而倒数第二行说明，你每天在用的这个 AI 模型本身就是控制论的直接产物——**RLHF 本身就是一个控制论系统**。
+
+这张表的核心洞察是：每个场景的难度差异，几乎完全取决于 Plant 的复杂性。恒温器的 Plant 是线性的、可预测的；而 codebase 这个 Plant 有惯性、延迟、非线性和扰动——所以 AI Coding 比调恒温器难得多。
+
+理解了这一层，接下来可以看控制论中最"哲学"、也和 AI Coding 关系最深的部分。
+
+## 二阶控制论：从"控制"到"参与"
+
+前面讨论的一切都是 **一阶控制论**——观察者站在系统外面，冷静地观测和操控。二阶控制论的核心转变是：**观察者自己也是系统的一部分，观察行为本身改变了被观察的系统。**
+
+<SecondOrderCybernetics client:visible />
+
+左边是一阶：Observer 站在系统外面，"我观测和控制系统"。右边是二阶：Observer 被拉进了系统边界内部，它的观察行为本身就在改变 Plant——形成了一条额外的反作用回路。
+
+关键范式跳跃：从 "controlling a system" 到 "participating in a system"。
+
+## 双向塑造：你和 AI 的共同进化
+
+这个思想在 AI Coding 场景里展开得最精彩。你和 AI 之间不是单向的"我控制你"，而是一个双向塑造的循环——neither side is purely "controller" or "plant"：
+
+<CoEvolutionLoop client:visible />
+
+这就是二阶控制论最深刻的地方：**在你和 AI 协作写代码的过程中，你在改变 AI 的同时，AI 也在改变你——而且这两个方向的改变是耦合的、无法分开的。**
+
+几个你可能已经有直觉但没有意识到的二阶现象：
+
+**你的思维被 AI 重塑了。** 你开始用 AI 容易理解的方式思考问题——把任务拆成小块、用更精确的语言描述需求、写更明确的接口定义。这不是"妥协"，这是二阶反馈：AI 的能力边界重新定义了你认为"好需求"长什么样。
+
+**你发展出了"prompt 方言"。** 你知道哪些表达模式效果好，不自觉地回避歧义，写作变得更结构化、更声明式。AI 训练你学会了说它的语言。
+
+**AI 的"个性"被你塑造了。** 同一个模型，在你的 `CLAUDE.md` 加持下和裸跑完全不同。你通过 rules 和 context 在不碰模型权重的情况下改变了 Controller 的行为。这在控制论里叫 **structural coupling**（结构耦合），是二阶控制论的关键人物 Humberto Maturana 提出的概念。
+
+**Codebase 在自发进化。** AI 写出的代码倾向于一致性和可预测性（好的命名、清晰的类型），这让未来的 AI 更容易理解和修改这些代码——Plant 在被 Controller 操作的过程中，变得越来越"好控制"了。这不是任何一方有意设计的，是从双向反馈回路中 **自然涌现** 的。
+
+最终，codebase、你的思维方式、AI 的有效行为、团队的工作流——都共同进化成了一个没有任何参与者单独设计过的形态。这就是二阶控制论的标志：**系统通过双向反馈自组织。**
+
+这也是为什么 "Harness Engineering" 这个概念值得认真对待——它不仅仅是"控制 AI"，而是在一个二阶系统中找到人和 AI **共同进化**的最优路径。

@@ -1,0 +1,42 @@
+---
+title: 贝塞尔曲线的数学原理
+date: "2026-03-27"
+tags: [Math, Canvas]
+public: true
+draft: true
+interactive: false
+summary: 从线性插值到三次贝塞尔曲线，逐步推导其数学表达。
+---
+
+贝塞尔曲线是计算机图形学中最基础也最优雅的工具之一。从字体渲染到动画缓动函数，从 SVG 路径到 CAD 建模，它无处不在。
+
+## 从线性插值说起
+
+给定两个点 P₀ 和 P₁，线性插值的公式是：
+
+B(t) = (1-t)P₀ + tP₁，其中 t ∈ [0, 1]
+
+这本质上是在两点之间做匀速运动。
+
+## 三次贝塞尔曲线
+
+当我们用四个控制点时，得到三次贝塞尔曲线：
+
+B(t) = (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
+
+```typescript
+function cubicBezier(
+  t: number,
+  p0: Point, p1: Point, p2: Point, p3: Point
+): Point {
+  const mt = 1 - t;
+  return {
+    x: mt**3*p0.x + 3*mt**2*t*p1.x + 3*mt*t**2*p2.x + t**3*p3.x,
+    y: mt**3*p0.y + 3*mt**2*t*p1.y + 3*mt*t**2*p2.y + t**3*p3.y,
+  };
+}
+```
+
+## 应用
+
+浏览器的 `cubic-bezier()` CSS 函数本质上就是一条三次贝塞尔曲线。参考 [[Hello World]] 了解更多。
