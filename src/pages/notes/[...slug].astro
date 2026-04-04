@@ -1,0 +1,429 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { getCollection, render } from 'astro:content';
+import { getBacklinks } from '../../lib/backlinks';
+
+export async function getStaticPaths() {
+  const notes = await getCollection('notes');
+  return notes
+    .filter(note => note.data.public && !note.data.draft)
+    .map(note => ({
+      params: { slug: note.id },
+      props: { note },
+    }));
+}
+
+const { note } = Astro.props;
+const { Content, headings } = await render(note);
+
+const allNotes = (await getCollection('notes', ({ data }) => data.public && !data.draft))
+  .sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
+
+const backlinkMap = await getBacklinks();
+const noteBacklinks = backlinkMap.get(note.data.title.toLowerCase()) || [];
+
+// Related notes: backlinks + notes sharing tags (deduplicated)
+const relatedSlugs = new Set(noteBacklinks.map(bl => bl.slug));
+const relatedFromTags = allNotes
+  .filter(n => n.id !== note.id && !relatedSlugs.has(n.id) && n.data.tags.some(t => note.data.tags.includes(t)))
+  .slice(0, 5);
+const relatedNotes = [
+  ...noteBacklinks.map(bl => ({ title: bl.title, slug: bl.slug })),
+  ...relatedFromTags.map(n => ({ title: n.data.title, slug: n.id })),
+].slice(0, 8);
+
+const wordCount = note.body?.split(/\s+/).length || 0;
+const readingTime = `约 ${Math.max(1, Math.ceil(wordCount / 200))} 分钟`;
+---
+<BaseLayout title={`${note.data.title} | Notes`}>
+  <div class="note-detail-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/blog" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/blog" class="mast-hide-mobile">Blog</a>
+            <a href="/archive" class="mast-hide-mobile">Archive</a>
+            <a href="/moments">Moment</a>
+            <a href="/notes">Notes</a>
+            <a href="/friends">Friends</a>
+          </div>
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <main class="detail-main">
+      <div class="three-col">
+        <!-- Left: Note list -->
+        <aside class="note-sidebar">
+          <div class="sidebar-inner">
+            <a href="/notes" class="sidebar-back">← 全部笔记</a>
+            <div class="sidebar-list">
+              {allNotes.map(n => (
+                <a
+                  href={`/notes/${n.id}`}
+                  class:list={['sl-item', { active: n.id === note.id }]}
+                >
+                  <span class="sl-title">{n.data.title}</span>
+                  <span class="sl-date">{n.data.date.replace(/-/g, '.')}</span>
+                </a>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <!-- Center: Article -->
+        <div class="article-col">
+          <header class="article-header">
+            <h1>{note.data.title}</h1>
+            <div class="article-meta">
+              <span>{note.data.date.replace(/-/g, '.')}</span>
+              <span class="dot"></span>
+              <span>{readingTime}</span>
+            </div>
+          </header>
+
+          <article class="prose">
+            <Content />
+          </article>
+        </div>
+
+        <!-- Right: TOC + Meta -->
+        {(headings.length > 0 || note.data.tags.length > 0) && (
+          <aside class="meta-sidebar">
+            <div class="meta-inner">
+              {headings.length > 0 && (
+                <div class="meta-section">
+                  <div class="meta-label">目录</div>
+                  <ul class="toc-list">
+                    {headings
+                      .filter(h => h.depth <= 3)
+                      .map(h => (
+                        <li class:list={[{ 'toc-h3': h.depth === 3 }]}>
+                          <a href={`#${h.slug}`}>{h.text}</a>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
+
+              <div class="meta-section">
+                <div class="meta-label">标签</div>
+                <div class="meta-tags">
+                  {note.data.tags.map(tag => (
+                    <a href={`/notes?tag=${encodeURIComponent(tag)}`} class="meta-tag">{tag}</a>
+                  ))}
+                </div>
+              </div>
+
+              {relatedNotes.length > 0 && (
+                <div class="meta-section">
+                  <div class="meta-label">相关笔记</div>
+                  <div class="related-list">
+                    {relatedNotes.map(r => (
+                      <a href={`/notes/${r.slug}`} class="related-item">→ {r.title}</a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </aside>
+        )}
+      </div>
+    </main>
+  </div>
+
+  <script is:inline>
+  (function() {
+    // TOC active state highlighting
+    var tocLinks = document.querySelectorAll('.toc-list a');
+    if (!tocLinks.length) return;
+
+    var headingEls = Array.from(tocLinks).map(function(a) {
+      var id = decodeURIComponent(a.getAttribute('href').slice(1));
+      return document.getElementById(id);
+    }).filter(Boolean);
+
+    var current = '';
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) current = entry.target.id;
+      });
+      tocLinks.forEach(function(link) {
+        var li = link.parentElement;
+        var id = decodeURIComponent(link.getAttribute('href').slice(1));
+        if (id === current) li.classList.add('active');
+        else li.classList.remove('active');
+      });
+    }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+
+    headingEls.forEach(function(el) { observer.observe(el); });
+  })();
+  </script>
+</BaseLayout>
+
+<style is:global>
+  body:has(.note-detail-page) {
+    display: block;
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  /* Prose styles for notes */
+  .note-detail-page .prose {
+    font-size: 16px;
+    line-height: 1.8;
+    color: var(--c-text);
+  }
+  .note-detail-page .prose p { margin-bottom: 20px; }
+  .note-detail-page .prose h2 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 22px; font-weight: 600;
+    margin-top: 48px; margin-bottom: 16px;
+    color: var(--c-text);
+  }
+  .note-detail-page .prose h3 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 18px; font-weight: 600;
+    margin-top: 32px; margin-bottom: 12px;
+    color: var(--c-text);
+  }
+  .note-detail-page .prose a {
+    color: var(--c-text);
+    border-bottom: 1.5px solid var(--accent);
+    padding-bottom: 1px;
+    transition: border-color 0.2s;
+  }
+  .note-detail-page .prose a:hover { border-color: var(--c-text); }
+  .note-detail-page .prose code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.9em;
+    background: rgba(var(--c-overlay-rgb), 0.06);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+  .note-detail-page .prose pre {
+    background: #1e1e2e;
+    border-radius: 10px;
+    padding: 20px;
+    overflow-x: auto;
+    margin: 24px 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .note-detail-page .prose pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    color: #cdd6f4;
+  }
+  .note-detail-page .prose blockquote {
+    border-left: 3px solid var(--accent);
+    padding-left: 16px;
+    margin: 24px 0;
+    color: var(--c-text-dim);
+  }
+  .note-detail-page .prose img {
+    max-width: 100%;
+    border-radius: 8px;
+    margin: 16px 0;
+  }
+  .note-detail-page .prose ul, .note-detail-page .prose ol {
+    padding-left: 24px;
+    margin-bottom: 20px;
+  }
+  .note-detail-page .prose li { margin-bottom: 6px; }
+
+  /* Interactive component blocks */
+  .note-detail-page .interactive-block {
+    margin: 32px 0;
+    border: 1px solid var(--c-border);
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(var(--c-overlay-rgb), 0.02);
+  }
+  .note-detail-page .interactive-block-header {
+    padding: 12px 20px;
+    display: flex; justify-content: space-between; align-items: center;
+    border-bottom: 1px solid var(--c-border);
+    font-size: 12px; color: var(--c-text-dim);
+  }
+  .note-detail-page .interactive-block-body {
+    padding: 32px;
+    min-height: 200px;
+  }
+
+  /* Wikilink style */
+  .note-detail-page .wikilink {
+    color: var(--accent);
+    border-bottom: 1px dashed var(--accent);
+    padding-bottom: 1px;
+  }
+  .note-detail-page .wikilink:hover { border-bottom-style: solid; }
+</style>
+
+<style>
+  .note-detail-page {
+    min-height: 100vh;
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  /* Masthead */
+  .masthead { width: 100%; }
+  .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+  .mast-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0;
+  }
+  .mast-brand {
+    font-size: 11px; color: var(--c-text-muted); text-decoration: none;
+    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+  }
+  .mast-brand:hover { color: var(--c-text); }
+  .mast-links { display: flex; gap: 16px; }
+  .mast-links a {
+    font-size: 11px; color: var(--c-text-dim); text-decoration: none;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .mast-links a:hover { color: var(--c-text); }
+  .mast-bottom-rule { height: 1px; background: var(--c-border); }
+
+  /* Three-column layout */
+  .detail-main { padding: 0; }
+  .three-col {
+    max-width: 1200px; margin: 0 auto;
+    padding: 0 48px;
+    display: grid;
+    grid-template-columns: 200px 1fr 180px;
+    gap: 40px;
+    align-items: start;
+  }
+
+  /* Left sidebar: note list */
+  .note-sidebar { padding-top: 32px; }
+  .sidebar-inner {
+    position: sticky; top: 80px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+  .sidebar-back {
+    display: block;
+    font-size: 12px; color: var(--c-text-dim);
+    margin-bottom: 16px; text-decoration: none;
+  }
+  .sidebar-back:hover { color: var(--c-text); }
+  .sidebar-list {
+    display: flex; flex-direction: column; gap: 2px;
+  }
+  .sl-item {
+    display: block; padding: 8px 10px;
+    border-radius: 6px; text-decoration: none;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .sl-item:hover { background: rgba(var(--c-overlay-rgb), 0.04); }
+  .sl-item.active {
+    background: rgba(var(--c-overlay-rgb), 0.06);
+    border-left-color: var(--accent);
+  }
+  .sl-title {
+    display: block;
+    font-size: 13px; color: var(--c-text);
+    line-height: 1.3;
+    overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sl-item.active .sl-title { color: var(--accent); font-weight: 600; }
+  .sl-date {
+    display: block;
+    font-size: 11px; color: var(--c-text-dim);
+    margin-top: 2px; font-variant-numeric: tabular-nums;
+  }
+
+  /* Center: article */
+  .article-col { min-width: 0; padding-top: 32px; }
+  .article-header { padding-bottom: 32px; }
+  .article-header h1 {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 28px; font-weight: 700; color: var(--c-text);
+    line-height: 1.3; letter-spacing: -0.5px;
+  }
+  .article-meta {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 13px; color: var(--c-text-dim);
+    margin-top: 12px;
+  }
+  .dot {
+    width: 3px; height: 3px; border-radius: 50%;
+    background: var(--c-border);
+  }
+
+  /* Right sidebar: TOC + meta */
+  .meta-sidebar { padding-top: 32px; }
+  .meta-inner {
+    position: sticky; top: 80px;
+  }
+  .meta-section { margin-bottom: 28px; }
+  .meta-label {
+    font-size: 11px; font-weight: 500;
+    color: var(--c-text-dim);
+    text-transform: uppercase; letter-spacing: 1px;
+    margin-bottom: 12px;
+  }
+
+  /* TOC */
+  .toc-list { list-style: none; }
+  .toc-list li {
+    font-size: 13px; padding: 5px 0;
+    border-left: 2px solid rgba(var(--c-overlay-rgb), 0.06);
+    padding-left: 12px;
+  }
+  .toc-list li.toc-h3 { padding-left: 24px; font-size: 12px; }
+  .toc-list li.active { border-left-color: var(--accent); }
+  .toc-list li.active a { color: var(--c-text); }
+  .toc-list a {
+    color: var(--c-text-dim);
+    text-decoration: none; transition: color 0.2s;
+  }
+  .toc-list a:hover { color: var(--c-text); }
+
+  /* Tags */
+  .meta-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+  .meta-tag {
+    font-size: 12px; padding: 3px 10px;
+    border-radius: 99px; text-decoration: none;
+    border: 1px solid var(--c-border);
+    color: var(--c-text-dim); transition: all 0.15s;
+  }
+  .meta-tag:hover {
+    border-color: var(--accent); color: var(--accent);
+  }
+
+  /* Related notes */
+  .related-list {
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .related-item {
+    font-size: 13px; color: var(--c-text-dim);
+    text-decoration: none; transition: color 0.2s;
+  }
+  .related-item:hover { color: var(--accent); }
+
+  @media (max-width: 960px) {
+    .three-col {
+      grid-template-columns: 1fr;
+      padding: 0 20px;
+    }
+    .note-sidebar { display: none; }
+    .meta-sidebar { display: none; }
+    .mast-hide-mobile { display: none; }
+    .mast-inner { padding: 0 20px; }
+    .article-header h1 { font-size: 24px; }
+  }
+</style>
