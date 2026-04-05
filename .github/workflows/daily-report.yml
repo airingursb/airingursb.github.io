@@ -111,7 +111,35 @@ jobs:
           except: print("  N/A")
           ' 2>/dev/null || echo "  N/A")
 
-          # ── 4. RSS subscriber stats ──
+          # ── 4. Notes engagement (post_slug starts with note/) ──
+          notes_pv=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
+            "post_views?select=id&post_slug=like.note/*&viewed_at=gte.${YESTERDAY}T00:00:00Z&viewed_at=lt.${TODAY}T00:00:00Z" \
+            /tmp/npv_h)
+          notes_comments=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
+            "post_comments?select=id&post_slug=like.note/*&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            /tmp/ncmt_h)
+          notes_inline=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
+            "inline_comments?select=id&post_slug=like.note/*&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            /tmp/ninl_h)
+          notes_likes=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
+            "post_likes?select=id&post_slug=like.note/*&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
+            /tmp/nlk_h)
+
+          top_notes=$(curl -sf "${BLOG_SB_URL}/rest/v1/post_views?select=post_slug&post_slug=like.note/*&viewed_at=gte.${YESTERDAY}T00:00:00Z&viewed_at=lt.${TODAY}T00:00:00Z" \
+            -H "apikey: ${BLOG_SB_KEY}" -H "Authorization: Bearer ${BLOG_SB_KEY}" 2>/dev/null \
+            | python3 -c '
+          import sys,json
+          try:
+              d=json.load(sys.stdin)
+              if not d: print("  (无访问)")
+              else:
+                  c={}
+                  for r in d: c[r["post_slug"].replace("note/","")]=c.get(r["post_slug"].replace("note/",""),0)+1
+                  for s,n in sorted(c.items(),key=lambda x:-x[1])[:3]: print(f"  {s}: {n} PV")
+          except: print("  N/A")
+          ' 2>/dev/null || echo "  N/A")
+
+          # ── 5. RSS subscriber stats ──
           rss_clients=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
             "rss_subscribers?select=id" /tmp/rss_h)
 
@@ -150,6 +178,14 @@ jobs:
 
           🔥 *热门文章*
           ${top_articles}
+
+          📓 *Notes*
+            PV: ${notes_pv}
+            评论: ${notes_comments}  |  划线评论: ${notes_inline}
+            点赞: ${notes_likes}
+
+          📖 *热门笔记*
+          ${top_notes}
 
           📡 *RSS 订阅*
             聚合平台: ${rss_platforms}
