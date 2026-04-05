@@ -8,7 +8,7 @@ export async function GET(context: APIContext) {
 
   return rss({
     title: "Airing's Notes",
-    description: "Airing 的笔记 - 交互式技术笔记与可视化解读",
+    description: "思考的痕迹：记录关于前端、数学、设计、哲学和一切让我好奇的事物。",
     site: context.site!,
     stylesheet: '/feed.xsl',
     items: notes.map((note) => ({

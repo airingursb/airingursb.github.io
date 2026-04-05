@@ -66,14 +66,28 @@
             <div class="banner-label">RSS Feed</div>
             <h1><xsl:value-of select="/rss/channel/title"/></h1>
             <p><xsl:value-of select="/rss/channel/description"/></p>
-            <a>
-              <xsl:attribute name="href"><xsl:value-of select="/rss/channel/link"/>blog</xsl:attribute>
-              访问博客 →
-            </a>
-            <div class="subscribe-hint">
-              复制下方链接到你的 RSS 阅读器即可订阅：<br/>
-              <code>https://ursb.me/blog/feed.xml</code>
-            </div>
+            <xsl:choose>
+              <xsl:when test="contains(/rss/channel/title, 'Notes')">
+                <a>
+                  <xsl:attribute name="href"><xsl:value-of select="/rss/channel/link"/>notes</xsl:attribute>
+                  访问笔记 →
+                </a>
+                <div class="subscribe-hint">
+                  复制下方链接到你的 RSS 阅读器即可订阅：<br/>
+                  <code>https://ursb.me/notes/feed.xml</code>
+                </div>
+              </xsl:when>
+              <xsl:otherwise>
+                <a>
+                  <xsl:attribute name="href"><xsl:value-of select="/rss/channel/link"/>blog</xsl:attribute>
+                  访问博客 →
+                </a>
+                <div class="subscribe-hint">
+                  复制下方链接到你的 RSS 阅读器即可订阅：<br/>
+                  <code>https://ursb.me/blog/feed.xml</code>
+                </div>
+              </xsl:otherwise>
+            </xsl:choose>
           </div>
           <ul class="post-list">
             <xsl:for-each select="/rss/channel/item">
