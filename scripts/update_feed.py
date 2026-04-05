@@ -573,6 +573,20 @@ def generate_local_data_script(data):
 
 # ── Main ─────────────────────────────────────────────────────
 
+def sync_to_astro(start_marker, end_marker, html, label):
+    """Sync a section from index.html to src/pages/index.astro."""
+    astro_path = os.path.join(os.path.dirname(__file__), '..', ASTRO_FILE)
+    if not os.path.exists(astro_path):
+        return
+    with open(astro_path, 'r', encoding='utf-8') as f:
+        astro_content = f.read()
+    astro_new = replace_section(astro_content, start_marker, end_marker, html)
+    if astro_new != astro_content:
+        with open(astro_path, 'w', encoding='utf-8') as f:
+            f.write(astro_new)
+        print(f'{label}: synced to {ASTRO_FILE}')
+
+
 def main():
     with open(HTML_FILE, 'r', encoding='utf-8') as f:
         content = f.read()
@@ -586,6 +600,7 @@ def main():
         if articles:
             html = generate_items_html(articles)
             content = replace_section(content, '<!-- ARTICLES_START -->', '<!-- ARTICLES_END -->', html)
+            sync_to_astro('<!-- ARTICLES_START -->', '<!-- ARTICLES_END -->', html, 'Blog')
             print(f'Blog: {len(articles)} articles')
             changed = True
         else:
@@ -600,6 +615,7 @@ def main():
         if notes:
             html = generate_items_html(notes)
             content = replace_section(content, '<!-- NOTES_START -->', '<!-- NOTES_END -->', html)
+            sync_to_astro('<!-- NOTES_START -->', '<!-- NOTES_END -->', html, 'Notes')
             print(f'Notes: {len(notes)} notes')
             changed = True
         else:
@@ -614,6 +630,7 @@ def main():
         if tg_items:
             html = generate_items_html(tg_items)
             content = replace_section(content, '<!-- TELEGRAM_START -->', '<!-- TELEGRAM_END -->', html)
+            sync_to_astro('<!-- TELEGRAM_START -->', '<!-- TELEGRAM_END -->', html, 'Telegram')
             print(f'Telegram: {len(tg_items)} messages')
             changed = True
         else:
@@ -658,16 +675,8 @@ def main():
             local_html = generate_local_data_script(local_data)
             content = replace_section(content, '<!-- LOCAL_DATA_START -->', '<!-- LOCAL_DATA_END -->', local_html)
             # Also sync to index.astro (uses <script is:inline>)
-            astro_path = os.path.join(os.path.dirname(__file__), '..', ASTRO_FILE)
-            if os.path.exists(astro_path):
-                with open(astro_path, 'r', encoding='utf-8') as f:
-                    astro_content = f.read()
-                astro_script = local_html.replace('<script>', '<script is:inline>')
-                astro_new = replace_section(astro_content, '<!-- LOCAL_DATA_START -->', '<!-- LOCAL_DATA_END -->', astro_script)
-                if astro_new != astro_content:
-                    with open(astro_path, 'w', encoding='utf-8') as f:
-                        f.write(astro_new)
-                    print(f'Local data: synced to {ASTRO_FILE}')
+            astro_script = local_html.replace('<script>', '<script is:inline>')
+            sync_to_astro('<!-- LOCAL_DATA_START -->', '<!-- LOCAL_DATA_END -->', astro_script, 'Local data')
             print(f'Local data: updated {local_data.get("updatedAt", "?")}')
             changed = True
         else:
