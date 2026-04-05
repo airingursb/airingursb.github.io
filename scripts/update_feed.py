@@ -21,10 +21,12 @@ if os.path.exists(_env_file):
                 os.environ.setdefault(_k.strip(), _v.strip())
 
 FEED_URL = 'https://blog.ursb.me/feed.xml'
+NOTES_FEED_URL = 'https://ursb.me/notes/feed.xml'
 TELEGRAM_URL = 'https://t.me/s/airingchannel'
 HTML_FILE = 'index.html'
 ASTRO_FILE = 'src/pages/index.astro'
 MAX_ARTICLES = 6
+MAX_NOTES = 6
 MAX_TELEGRAM = 6
 
 READWISE_TOKEN = os.environ.get('READWISE_TOKEN', '')
@@ -139,6 +141,26 @@ def parse_blog_feed(xml_str):
         articles.append({'title': title, 'link': link, 'date': format_date(date_raw)})
 
     return articles
+
+
+# ── Notes Feed ───────────────────────────────────────────────
+
+def parse_notes_feed(xml_str):
+    root = ET.fromstring(xml_str)
+    notes = []
+    for item in root.findall('.//item')[:MAX_NOTES]:
+        title_el = item.find('title')
+        link_el = item.find('link')
+        pub_el = item.find('pubDate')
+        title = title_el.text.strip() if title_el is not None and title_el.text else ''
+        link = link_el.text.strip() if link_el is not None and link_el.text else ''
+        # Convert absolute URL to local path
+        m = re.search(r'ursb\.me(/notes/[^?#]+)', link)
+        if m:
+            link = m.group(1)
+        date_raw = pub_el.text.strip() if pub_el is not None and pub_el.text else ''
+        notes.append({'title': title, 'link': link, 'date': format_date(date_raw)})
+    return notes
 
 
 # ── Telegram Channel ─────────────────────────────────────────
@@ -570,6 +592,20 @@ def main():
             print('Blog: no articles found', file=sys.stderr)
     except Exception as e:
         print(f'Blog: error - {e}', file=sys.stderr)
+
+    # Notes feed
+    try:
+        xml_str = fetch_url(NOTES_FEED_URL)
+        notes = parse_notes_feed(xml_str)
+        if notes:
+            html = generate_items_html(notes)
+            content = replace_section(content, '<!-- NOTES_START -->', '<!-- NOTES_END -->', html)
+            print(f'Notes: {len(notes)} notes')
+            changed = True
+        else:
+            print('Notes: no notes found', file=sys.stderr)
+    except Exception as e:
+        print(f'Notes: error - {e}', file=sys.stderr)
 
     # Telegram channel
     try:
