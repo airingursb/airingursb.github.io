@@ -224,7 +224,11 @@ def extract_urls(text):
 def fetch_og_metadata(url):
     """Fetch Open Graph metadata for a URL. Returns dict or None."""
     try:
-        req = urllib.request.Request(url, headers={
+        # Use fxtwitter.com proxy for x.com/twitter.com URLs to get OG metadata
+        fetch_url = url
+        if re.match(r'https?://(x\.com|twitter\.com)/', url):
+            fetch_url = re.sub(r'https?://(x\.com|twitter\.com)/', 'https://fxtwitter.com/', url)
+        req = urllib.request.Request(fetch_url, headers={
             'User-Agent': 'Mozilla/5.0 (compatible; OGBot/1.0)',
             'Accept': 'text/html',
         })
