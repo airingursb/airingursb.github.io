@@ -562,18 +562,24 @@
   });
 
   // --- API helpers ---
+  function handleResponse(r) {
+    return r.json().then(function(data) {
+      if (!r.ok) return Promise.reject(data);
+      return data;
+    });
+  }
   function apiGet(path) {
-    return fetch(API + path, { headers: { 'Origin': location.origin } }).then(function(r) { return r.json(); });
+    return fetch(API + path, { headers: { 'Origin': location.origin } }).then(handleResponse);
   }
   function apiPost(path, body) {
     return fetch(API + path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body)
-    }).then(function(r) { return r.json(); });
+    }).then(handleResponse);
   }
   function apiDelete(path) {
-    return fetch(API + path, { method: 'DELETE' }).then(function(r) { return r.json(); });
+    return fetch(API + path, { method: 'DELETE' }).then(handleResponse);
   }
 
   // =====================================================================
