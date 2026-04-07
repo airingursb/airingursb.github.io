@@ -221,9 +221,46 @@ def extract_urls(text):
     return URL_RE.findall(text)
 
 
+def fetch_douban_metadata(url):
+    """Fetch metadata for douban.com URLs via Frodo API. Returns dict or None."""
+    m = re.match(r'https?://(movie|book)\.douban\.com/subject/(\d+)', url)
+    if not m:
+        return None
+    kind, subject_id = m.group(1), m.group(2)
+    api_url = f'https://frodo.douban.com/api/v2/{kind}/{subject_id}?apiKey=0ac44ae016490db2204ce0a042db2916'
+    try:
+        req = urllib.request.Request(api_url, headers={
+            'User-Agent': 'MicroMessenger/8.0.0',
+            'Referer': 'https://servicewechat.com/wx2f9b06c1de1ccfca/91/page-frame.html',
+        })
+        resp = urllib.request.urlopen(req, timeout=10)
+        data = json.loads(resp.read())
+        title = data.get('title', '')
+        if not title:
+            return None
+        rating = data.get('rating', {}).get('value')
+        subtitle = data.get('card_subtitle', '')
+        desc_parts = []
+        if rating:
+            desc_parts.append(f'豆瓣评分: {rating}')
+        if subtitle:
+            desc_parts.append(subtitle)
+        return {
+            'url': url,
+            'title': title,
+            'description': ' / '.join(desc_parts),
+            'image': data.get('pic', {}).get('normal', ''),
+        }
+    except Exception:
+        return None
+
+
 def fetch_og_metadata(url):
     """Fetch Open Graph metadata for a URL. Returns dict or None."""
     try:
+        # Use Douban Frodo API for douban.com URLs (web pages block bots)
+        if re.match(r'https?://(movie|book)\.douban\.com/subject/\d+', url):
+            return fetch_douban_metadata(url)
         # Use fxtwitter.com proxy for x.com/twitter.com URLs to get OG metadata
         fetch_url = url
         if re.match(r'https?://(x\.com|twitter\.com)/', url):
