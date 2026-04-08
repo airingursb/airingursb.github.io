@@ -8,7 +8,9 @@ export async function getStaticPaths() {
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
   const enPosts = await getCollection('postsEn', ({ data }) => !data.draft);
-  const enPostIds = new Set(enPosts.map(p => p.id.replace(/\.en$/, '')));
+  // Astro github-slugifies filenames: "weekly-4.en.md" → id "weekly-4en"
+  // The zh post id is "weekly-4", so we strip the trailing "en"
+  const enPostIds = new Set(enPosts.map(p => p.id.replace(/\.en$/, '').replace(/en$/, '')));
 
   return allPosts.map((post, idx) => ({
     params: { slug: post.id },

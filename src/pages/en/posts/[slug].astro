@@ -1,0 +1,126 @@
+---
+import { getCollection, render } from 'astro:content';
+import PostLayout from '../../../layouts/PostLayout.astro';
+
+export async function getStaticPaths() {
+  const enPosts = (await getCollection('postsEn', ({ data }) => !data.draft))
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+  const allZhPosts = (await getCollection('posts', ({ data }) => !data.draft))
+    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+  // Build a map: enPost.id → zhPost.id
+  // Astro's glob loader github-slugifies filenames:
+  // "weekly-4.en.md" → enPost.id = "weekly-4en"
+  // "weekly-4.md"    → zhPost.id = "weekly-4"
+  // So enPost.id === zhPost.id + "en"
+  const zhIdByEnId = new Map<string, string>();
+  for (const zhPost of allZhPosts) {
+    const expectedEnId = zhPost.id + 'en';
+    const match = enPosts.find(ep => ep.id === expectedEnId);
+    if (match) zhIdByEnId.set(match.id, zhPost.id);
+  }
+
+  // enSlugs: set of zh post IDs that have English translations (used for related/series links)
+  const enSlugs = new Set(zhIdByEnId.values());
+
+  return enPosts.map((enPost) => {
+    const zhSlug = zhIdByEnId.get(enPost.id) ?? enPost.id;
+
+    // Find prev/next among English-translated posts (by date)
+    const enPostsSorted = [...enPosts].sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+    const idx = enPostsSorted.findIndex(p => p.id === enPost.id);
+
+    const prevPost = idx > 0
+      ? { slug: zhIdByEnId.get(enPostsSorted[idx - 1].id) ?? enPostsSorted[idx - 1].id, title: enPostsSorted[idx - 1].data.title }
+      : null;
+    const nextPost = idx < enPostsSorted.length - 1
+      ? { slug: zhIdByEnId.get(enPostsSorted[idx + 1].id) ?? enPostsSorted[idx + 1].id, title: enPostsSorted[idx + 1].data.title }
+      : null;
+
+    // Related posts: find posts with same primary tag, prefer English versions
+    const primaryTag = enPost.data.tags[0];
+    const relatedPosts = primaryTag
+      ? allZhPosts
+          .filter(p => p.id !== zhSlug && p.data.tags.includes(primaryTag))
+          .slice(0, 5)
+          .map(p => {
+            const enVersion = enPosts.find(ep => zhIdByEnId.get(ep.id) === p.id);
+            return {
+              slug: p.id,
+              title: enVersion ? enVersion.data.title : p.data.title,
+            };
+          })
+      : [];
+
+    // Series info
+    const seriesTags = ['weekly', 'annually'];
+    const seriesTag = enPost.data.tags.find((t: string) => seriesTags.includes(t));
+    let seriesInfo = null;
+    if (seriesTag) {
+      const seriesPosts = allZhPosts
+        .filter(p => p.data.tags.includes(seriesTag))
+        .sort((a, b) => a.data.date.valueOf() - b.data.date.valueOf());
+      const seriesIdx = seriesPosts.findIndex(p => p.id === zhSlug);
+      if (seriesIdx >= 0) {
+        const prevSeries = seriesIdx > 0 ? seriesPosts[seriesIdx - 1] : null;
+        const nextSeries = seriesIdx < seriesPosts.length - 1 ? seriesPosts[seriesIdx + 1] : null;
+        seriesInfo = {
+          tag: seriesTag,
+          total: seriesPosts.length,
+          current: seriesIdx + 1,
+          prev: prevSeries ? {
+            slug: prevSeries.id,
+            title: (() => {
+              const enVer = enPosts.find(ep => zhIdByEnId.get(ep.id) === prevSeries.id);
+              return enVer ? enVer.data.title : prevSeries.data.title;
+            })(),
+          } : null,
+          next: nextSeries ? {
+            slug: nextSeries.id,
+            title: (() => {
+              const enVer = enPosts.find(ep => zhIdByEnId.get(ep.id) === nextSeries.id);
+              return enVer ? enVer.data.title : nextSeries.data.title;
+            })(),
+          } : null,
+        };
+      }
+    }
+
+    return {
+      params: { slug: zhSlug },
+      props: { enPost, relatedPosts, prevPost, nextPost, seriesInfo, zhSlug },
+    };
+  });
+}
+
+const { enPost, relatedPosts, prevPost, nextPost, seriesInfo, zhSlug } = Astro.props;
+const { Content } = await render(enPost);
+
+// Reading time: English word count / 200
+const contentOnly = enPost.body ?? '';
+const wordCount = contentOnly.split(/\s+/).filter(Boolean).length;
+const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+
+const hreflang = {
+  zh: new URL(`/posts/${zhSlug}/`, Astro.site).href,
+  en: new URL(`/en/posts/${zhSlug}/`, Astro.site).href,
+};
+---
+
+<PostLayout
+  title={enPost.data.title}
+  date={enPost.data.date}
+  tags={enPost.data.tags}
+  description={enPost.data.description}
+  cover={enPost.data.cover}
+  prevPost={prevPost}
+  nextPost={nextPost}
+  relatedPosts={relatedPosts}
+  seriesInfo={seriesInfo}
+  readingTime={readingTime}
+  lang="en"
+  hreflang={hreflang}
+>
+  <Content />
+</PostLayout>
