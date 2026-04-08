@@ -6,6 +6,7 @@
  * Mobile:  单栏，高亮文字点击弹出 bottom-sheet 评论气泡
  */
 import BaseLayout from './BaseLayout.astro';
+import LangSwitch from '../components/LangSwitch.astro';
 
 interface Props {
   title: string;
@@ -43,6 +44,7 @@ const shortDate = lang === 'en'
   : date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
 const prefix = lang === 'en' ? '/en' : '';
+const hasEnVersion = !!hreflang?.en;
 const canonicalUrl = new URL(`${prefix}/posts/${Astro.params.slug}/`, Astro.site).href;
 
 const jsonLd = {
@@ -84,7 +86,6 @@ const jsonLd = {
         <div class="mast-top-rule"></div>
         <div class="mast-bar">
           <a href="/blog" class="mast-brand">Airing's Blog</a>
-          <span class="mast-date">{dateStr}</span>
           <div class="mast-links">
             <a href="/blog" class="mast-hide-mobile">Blog</a>
             <a href="/archive" class="mast-hide-mobile">Archive</a>
@@ -94,6 +95,10 @@ const jsonLd = {
           </div>
         </div>
         <div class="mast-bottom-rule"></div>
+        <div class="mast-date-line">
+          <span class="mast-date">{dateStr}</span>
+          <LangSwitch lang={lang} currentPath={`/posts/${Astro.params.slug}`} hasEnVersion={hasEnVersion} />
+        </div>
       </div>
     </header>
 
