@@ -1,0 +1,79 @@
+---
+interface Props {
+  lang: 'zh' | 'en';
+  /** Current page path (e.g., /blog, /posts/weekly-4) */
+  currentPath: string;
+  /** Whether an English version exists for this page (always true for list pages) */
+  hasEnVersion?: boolean;
+}
+
+const { lang, currentPath, hasEnVersion = true } = Astro.props;
+
+// Build the alternate language URL
+let zhHref: string;
+let enHref: string;
+
+if (lang === 'en') {
+  // We're on /en/..., Chinese version strips /en prefix
+  zhHref = currentPath.replace(/^\/en/, '') || '/blog';
+  enHref = currentPath;
+} else {
+  // We're on Chinese page, English version adds /en prefix
+  zhHref = currentPath;
+  enHref = `/en${currentPath}`;
+}
+---
+
+<span class="lang-switch">
+  {lang === 'zh' ? (
+    <strong class="lang-active">中</strong>
+  ) : (
+    <a href={zhHref} class="lang-link" data-lang-switch="zh">中</a>
+  )}
+  <span class="lang-sep">·</span>
+  {lang === 'en' ? (
+    <strong class="lang-active">EN</strong>
+  ) : hasEnVersion ? (
+    <a href={enHref} class="lang-link" data-lang-switch="en">EN</a>
+  ) : (
+    <span class="lang-disabled">EN</span>
+  )}
+</span>
+
+<style>
+  .lang-switch {
+    font-size: 0.85em;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+  .lang-active {
+    font-weight: 700;
+    color: var(--c-text, #1a1a1a);
+  }
+  .lang-sep {
+    margin: 0 0.3em;
+    color: var(--c-muted, #999);
+  }
+  .lang-link {
+    color: var(--c-muted, #999);
+    text-decoration: none;
+    transition: color 0.15s;
+  }
+  .lang-link:hover {
+    color: var(--c-text, #1a1a1a);
+  }
+  .lang-disabled {
+    color: var(--c-muted, #999);
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+</style>
+
+<script is:inline>
+  // Persist language preference on click
+  document.querySelectorAll('[data-lang-switch]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      localStorage.setItem('preferred_lang', el.getAttribute('data-lang-switch'));
+    });
+  });
+</script>
