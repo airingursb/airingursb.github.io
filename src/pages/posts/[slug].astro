@@ -7,6 +7,9 @@ export async function getStaticPaths() {
   const allPosts = (await getCollection('posts', ({ data }) => !data.draft))
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
+  const enPosts = await getCollection('postsEn', ({ data }) => !data.draft);
+  const enPostIds = new Set(enPosts.map(p => p.id.replace(/\.en$/, '')));
+
   return allPosts.map((post, idx) => ({
     params: { slug: post.id },
     props: {
@@ -38,17 +41,22 @@ export async function getStaticPaths() {
           next: idx < seriesPosts.length - 1 ? { slug: seriesPosts[idx + 1].id, title: seriesPosts[idx + 1].data.title } : null,
         };
       })(),
+      hasEn: enPostIds.has(post.id),
     },
   }));
 }
 
-const { post, prevPost, nextPost, relatedPosts, seriesInfo } = Astro.props;
+const { post, prevPost, nextPost, relatedPosts, seriesInfo, hasEn } = Astro.props;
 const { Content } = await render(post);
 const rawMd = fs.readFileSync(`./src/content/posts/${post.id}.md`, 'utf-8');
 const contentOnly = rawMd.replace(/^---[\s\S]*?---/, '');
 const chineseChars = (contentOnly.match(/[\u4e00-\u9fff]/g) || []).length;
 const englishWords = contentOnly.replace(/[\u4e00-\u9fff]/g, '').split(/\s+/).filter(Boolean).length;
 const readingTime = Math.max(1, Math.ceil((chineseChars + englishWords) / 200));
+const hreflang = hasEn ? {
+  zh: new URL(`/posts/${post.id}/`, Astro.site).href,
+  en: new URL(`/en/posts/${post.id}/`, Astro.site).href,
+} : undefined;
 ---
 
 <PostLayout
@@ -62,6 +70,8 @@ const readingTime = Math.max(1, Math.ceil((chineseChars + englishWords) / 200));
   relatedPosts={relatedPosts}
   seriesInfo={seriesInfo}
   readingTime={readingTime}
+  lang="zh"
+  hreflang={hreflang}
 >
   <Content />
 </PostLayout>
