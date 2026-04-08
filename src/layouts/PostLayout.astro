@@ -1326,7 +1326,7 @@ const jsonLd = {
           '<span class="bc-dot">&middot;</span>' +
           '<time class="bc-time">' + timeStr + '</time>' +
         '</div>' +
-        '<div class="bc-text"><p>' + esc(c.content).replace(/\n/g, '<br>') + '</p></div>' +
+        '<div class="bc-text"><p>' + linkify(esc(c.content)).replace(/\n/g, '<br>') + '</p></div>' +
         '<div class="bc-actions">' +
           '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
             '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
@@ -1463,6 +1463,7 @@ const jsonLd = {
   // --- Helpers ---
   function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
   function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function linkify(s) { return s.replace(/(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'); }
 })();
 </script>
 
@@ -2132,6 +2133,15 @@ const jsonLd = {
   .bottom-comments :global(.bc-text p) {
     font-size: 15px; color: var(--c-text); line-height: 1.7;
     margin: 0;
+  }
+  .bottom-comments :global(.bc-text a) {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    transition: opacity 0.2s;
+  }
+  .bottom-comments :global(.bc-text a:hover) {
+    opacity: 0.7;
   }
   .bottom-comments :global(.bc-actions) {
     display: flex; align-items: center; gap: 16px;
