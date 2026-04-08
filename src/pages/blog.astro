@@ -4,6 +4,7 @@
  */
 import { getCollection } from 'astro:content';
 import BaseLayout from '../layouts/BaseLayout.astro';
+import LangSwitch from '../components/LangSwitch.astro';
 
 const posts = (await getCollection('posts', ({ data }) => !data.draft))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
@@ -69,7 +70,7 @@ const rankIndex = new Map<string, number>();
 rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
 ---
 
-<BaseLayout title="Blog | Airing">
+<BaseLayout title="Blog | Airing" hreflang={{ zh: 'https://ursb.me/blog', en: 'https://ursb.me/en/blog' }}>
   <link slot="head" rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
   <noscript><link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" /></noscript>
   <div class="blog-page" id="blogPage">
@@ -91,7 +92,8 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
         <div class="mast-bottom-rule"></div>
         <div class="mast-date-line">
           <span class="mast-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-          <span class="mast-post-count">{posts.length} posts</span>
+          <span class="mast-post-count">{posts.length} 篇文章</span>
+          <LangSwitch lang="zh" currentPath="/blog" />
         </div>
       </div>
     </header>
@@ -352,6 +354,13 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
       </div>
     </footer>
   </div>
+
+<script is:inline>
+  // Auto-redirect to English version if user preference is English
+  if (localStorage.getItem('preferred_lang') === 'en') {
+    window.location.replace('/en/blog');
+  }
+</script>
 </BaseLayout>
 
 <script>
