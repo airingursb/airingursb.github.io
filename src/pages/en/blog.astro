@@ -1,0 +1,1092 @@
+---
+/**
+ * Blog — Magazine-style Substack-inspired listing page (English)
+ */
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { t, buildTranslationMap, enPostSlug } from '../../lib/i18n';
+
+const posts = (await getCollection('posts', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+
+const featuredPosts = posts.filter(p => p.data.featured);
+// Hero: featured first, then fill with recent
+const heroPool = [...featuredPosts, ...posts.filter(p => !p.data.featured)];
+const heroPosts = heroPool.slice(0, 5);
+// Remaining for the list (skip hero posts)
+const heroIds = new Set(heroPosts.map(p => p.id));
+const listPosts = posts.filter(p => !heroIds.has(p.id));
+
+function formatDate(date: Date) {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+const gradientFallback = 'linear-gradient(135deg, rgba(var(--c-overlay-rgb),0.08), rgba(var(--c-overlay-rgb),0.03))';
+
+function formatNum(n: number) {
+  if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+  return String(n);
+}
+
+function getStats(postId: string) {
+  return {
+    pv: ranking.views[postId] || 0,
+    likes: ranking.likes[postId] || 0,
+    comments: ranking.comments[postId] || 0,
+  };
+}
+
+// Fetch ranking data at build time
+let ranking: { likes: Record<string, number>; views: Record<string, number>; comments: Record<string, number> } = { likes: {}, views: {}, comments: {} };
+try {
+  const res = await fetch('https://chat.ursb.me/api/posts/ranking');
+  if (res.ok) {
+    const data = await res.json();
+    ranking = {
+      likes: data.likes || {},
+      views: data.views || {},
+      comments: data.comments || {},
+    };
+  }
+} catch { /* fallback to empty */ }
+
+// Sort all posts by ranking: PV desc → likes desc → comments desc → date desc
+const rankedPosts = [...posts].sort((a, b) => {
+  const pvA = ranking.views[a.id] || 0;
+  const pvB = ranking.views[b.id] || 0;
+  if (pvB !== pvA) return pvB - pvA;
+  const likesA = ranking.likes[a.id] || 0;
+  const likesB = ranking.likes[b.id] || 0;
+  if (likesB !== likesA) return likesB - likesA;
+  const cmtA = ranking.comments[a.id] || 0;
+  const cmtB = ranking.comments[b.id] || 0;
+  if (cmtB !== cmtA) return cmtB - cmtA;
+  return b.data.date.valueOf() - a.data.date.valueOf();
+});
+const popularPosts = rankedPosts.slice(0, 4);
+
+// Build rank index for each post (0 = most popular)
+const rankIndex = new Map<string, number>();
+rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
+
+const strings = t('en');
+const enPosts = await getCollection('postsEn', ({ data }) => !data.draft);
+const hasEn = buildTranslationMap(enPosts.map(p => p.id));
+const enPostMap = new Map(enPosts.map(p => [enPostSlug(p.id), p]));
+
+/** Get display title: English if translation exists, otherwise Chinese */
+function displayTitle(postId: string, zhTitle: string) {
+  const enPost = enPostMap.get(postId);
+  return enPost ? enPost.data.title : zhTitle;
+}
+
+/** Get display description */
+function displayDesc(postId: string, zhDesc?: string) {
+  const enPost = enPostMap.get(postId);
+  return enPost?.data.description ?? zhDesc ?? '';
+}
+
+/** Get post link: /en/posts/slug if English exists, /posts/slug otherwise */
+function postLink(postId: string) {
+  return hasEn.has(postId) ? `/en/posts/${postId}/` : `/posts/${postId}/`;
+}
+---
+
+<BaseLayout title="Blog | Airing" hreflang={{ zh: 'https://ursb.me/blog', en: 'https://ursb.me/en/blog' }}>
+  <link slot="head" rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
+  <noscript><link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" /></noscript>
+  <div class="blog-page" id="blogPage">
+    <!-- Masthead -->
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
+          <span class="mast-motto">{strings.motto}</span>
+          <div class="mast-links">
+            <a href="/en/blog" class="mast-hide-mobile">Blog</a>
+            <a href="/archive" class="mast-hide-mobile">Archive</a>
+            <a href="/moments">Moment</a>
+            <a href="/notes">Notes</a>
+            <a href="/friends">Friends</a>
+          </div>
+        </div>
+        <div class="mast-bottom-rule"></div>
+        <div class="mast-date-line">
+          <span class="mast-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <span class="mast-post-count">{strings.posts_count(posts.length)}</span>
+          <LangSwitch lang="en" currentPath="/en/blog" />
+        </div>
+      </div>
+    </header>
+
+    <!-- Magazine Hero Grid -->
+    <section class="hero-section">
+      <div class="hero-grid">
+        <!-- Left column: 2 small cards -->
+        <div class="hero-col hero-col-left">
+          {heroPosts.slice(1, 3).map(post => (
+            <a href={postLink(post.id)} class="hero-card hero-card-sm" data-slug={post.id}>
+              <div
+                class="hc-img"
+                style={`background-image:${post.data.cover ? `url(${post.data.cover})` : gradientFallback}`}
+              >
+                {(getStats(post.id).pv > 0 || getStats(post.id).likes > 0 || getStats(post.id).comments > 0) && (
+                <div class="pi-stats-overlay">
+                  {getStats(post.id).pv > 0 && <span class="pi-stat pi-stat-view"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{formatNum(getStats(post.id).pv)}</span>}
+                  {getStats(post.id).likes > 0 && <span class="pi-stat pi-stat-like" data-slug={post.id}><svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{formatNum(getStats(post.id).likes)}</span>}
+                  {getStats(post.id).comments > 0 && <span class="pi-stat pi-stat-comment"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{getStats(post.id).comments}</span>}
+                </div>
+                )}
+              </div>
+              <div class="hc-body">
+                <h3 class="hc-title">{displayTitle(post.id, post.data.title)}{!hasEn.has(post.id) && <span class="cn-badge">CN</span>}</h3>
+                {post.data.description && <p class="hc-excerpt">{displayDesc(post.id, post.data.description)}</p>}
+                <div class="hc-meta">
+                  <time>{formatDate(post.data.date)}</time>
+                  <span>&middot;</span>
+                  <span>Airing</span>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+
+        <!-- Center: large hero -->
+        {heroPosts[0] && (
+          <a href={postLink(heroPosts[0].id)} class="hero-card hero-card-lg" data-slug={heroPosts[0].id}>
+            <div
+              class="hc-img-full"
+              style={`background-image:${heroPosts[0].data.cover ? `url(${heroPosts[0].data.cover})` : gradientFallback}`}
+            >
+              <div class="hc-overlay">
+                <h2 class="hc-title-lg">{displayTitle(heroPosts[0].id, heroPosts[0].data.title)}{!hasEn.has(heroPosts[0].id) && <span class="cn-badge">CN</span>}</h2>
+                {heroPosts[0].data.description && (
+                  <p class="hc-excerpt-lg">{displayDesc(heroPosts[0].id, heroPosts[0].data.description)}</p>
+                )}
+                <div class="hc-meta-lg">
+                  <time>{formatDate(heroPosts[0].data.date)}</time>
+                  <span>&middot;</span>
+                  <span>Airing</span>
+                </div>
+                {(getStats(heroPosts[0].id).pv > 0 || getStats(heroPosts[0].id).likes > 0 || getStats(heroPosts[0].id).comments > 0) && (
+                <div class="pi-stats pi-stats-lg">
+                  {getStats(heroPosts[0].id).pv > 0 && <span class="pi-stat pi-stat-view"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{formatNum(getStats(heroPosts[0].id).pv)}</span>}
+                  {getStats(heroPosts[0].id).likes > 0 && <span class="pi-stat pi-stat-like" data-slug={heroPosts[0].id}><svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{formatNum(getStats(heroPosts[0].id).likes)}</span>}
+                  {getStats(heroPosts[0].id).comments > 0 && <span class="pi-stat pi-stat-comment"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{getStats(heroPosts[0].id).comments}</span>}
+                </div>
+                )}
+              </div>
+            </div>
+          </a>
+        )}
+
+        <!-- Right column: 2 small cards -->
+        <div class="hero-col hero-col-right">
+          {heroPosts.slice(3, 5).map(post => (
+            <a href={postLink(post.id)} class="hero-card hero-card-sm" data-slug={post.id}>
+              <div
+                class="hc-img"
+                style={`background-image:${post.data.cover ? `url(${post.data.cover})` : gradientFallback}`}
+              >
+                {(getStats(post.id).pv > 0 || getStats(post.id).likes > 0 || getStats(post.id).comments > 0) && (
+                <div class="pi-stats-overlay">
+                  {getStats(post.id).pv > 0 && <span class="pi-stat pi-stat-view"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{formatNum(getStats(post.id).pv)}</span>}
+                  {getStats(post.id).likes > 0 && <span class="pi-stat pi-stat-like" data-slug={post.id}><svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{formatNum(getStats(post.id).likes)}</span>}
+                  {getStats(post.id).comments > 0 && <span class="pi-stat pi-stat-comment"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{getStats(post.id).comments}</span>}
+                </div>
+                )}
+              </div>
+              <div class="hc-body">
+                <h3 class="hc-title">{displayTitle(post.id, post.data.title)}{!hasEn.has(post.id) && <span class="cn-badge">CN</span>}</h3>
+                {post.data.description && <p class="hc-excerpt">{displayDesc(post.id, post.data.description)}</p>}
+                <div class="hc-meta">
+                  <time>{formatDate(post.data.date)}</time>
+                  <span>&middot;</span>
+                  <span>Airing</span>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Most Popular -->
+    <section class="popular-section">
+      <div class="popular-inner">
+        <div class="popular-header">
+          <h2 class="popular-heading">{strings.popular}</h2>
+          <a href="/archive" class="popular-viewall">View all &rarr;</a>
+        </div>
+        <div class="popular-grid">
+          {popularPosts.map(post => (
+            <a href={postLink(post.id)} class="popular-card" data-slug={post.id}>
+              <div class="pc-body">
+                <h3 class="pc-title">{displayTitle(post.id, post.data.title)}{!hasEn.has(post.id) && <span class="cn-badge">CN</span>}</h3>
+                <div class="pc-meta">
+                  <time>{formatDate(post.data.date)}</time>
+                  <span>&middot;</span>
+                  <span>Airing</span>
+                </div>
+                {(getStats(post.id).pv > 0 || getStats(post.id).likes > 0 || getStats(post.id).comments > 0) && (
+                <div class="pi-stats">
+                  {getStats(post.id).pv > 0 && <span class="pi-stat pi-stat-view"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{formatNum(getStats(post.id).pv)}</span>}
+                  {getStats(post.id).likes > 0 && <span class="pi-stat pi-stat-like" data-slug={post.id}><svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{formatNum(getStats(post.id).likes)}</span>}
+                  {getStats(post.id).comments > 0 && <span class="pi-stat pi-stat-comment"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{getStats(post.id).comments}</span>}
+                </div>
+                )}
+              </div>
+              {post.data.cover && (
+                <div class="pc-thumb" style={`background-image:url(${post.data.cover})`}></div>
+              )}
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
+
+    <!-- Content Area -->
+    <section class="content-section">
+      <div class="content-inner">
+        <!-- Left: Article list -->
+        <div class="article-list">
+          <div class="list-tabs">
+            <div class="tab-bar">
+              <button class="list-tab active">{strings.latest}</button>
+              <button class="list-tab">Top</button>
+            </div>
+            <a href="/search" class="list-search-icon" aria-label="Search posts">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+            </a>
+          </div>
+
+          {listPosts.map(post => {
+            const pv = ranking.views[post.id] || 0;
+            const likes = ranking.likes[post.id] || 0;
+            const comments = ranking.comments[post.id] || 0;
+            return (
+            <a href={postLink(post.id)} class="post-item" data-slug={post.id} data-date={post.data.date.toISOString()} data-rank={rankIndex.get(post.id) ?? 9999}>
+              <div class="pi-body">
+                <h3 class="pi-title">{displayTitle(post.id, post.data.title)}{!hasEn.has(post.id) && <span class="cn-badge">CN</span>}</h3>
+                {post.data.description && (
+                  <p class="pi-desc">{displayDesc(post.id, post.data.description)}</p>
+                )}
+                <div class="pi-meta-wrap">
+                  <div class="pi-meta">
+                    <time>{formatDate(post.data.date)}</time>
+                    <span>&middot;</span>
+                    <span>Airing</span>
+                  </div>
+                  {(pv > 0 || likes > 0 || comments > 0) && (
+                  <div class="pi-stats">
+                    {pv > 0 && <span class="pi-stat pi-stat-view"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>{formatNum(pv)}</span>}
+                    {likes > 0 && <span class="pi-stat pi-stat-like" data-slug={post.id}><svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>{formatNum(likes)}</span>}
+                    {comments > 0 && <span class="pi-stat pi-stat-comment"><svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>{comments}</span>}
+                  </div>
+                  )}
+                </div>
+              </div>
+              {post.data.cover && (
+                <div class="pi-thumb" style={`background-image:url(${post.data.cover})`}></div>
+              )}
+            </a>
+            );
+          })}
+        </div>
+
+        <!-- Right: Author sidebar -->
+        <aside class="author-sidebar">
+          <div class="sidebar-sticky">
+            <div class="author-card">
+              <img
+                src="https://avatars.githubusercontent.com/u/10513408?v=4&s=96"
+                alt="Airing"
+                class="author-avatar"
+                loading="lazy"
+              />
+              <h3 class="author-name"><a href="/">Airing</a></h3>
+              <p class="author-bio">M.Phil. in Philosophy | Full-stack Engineer</p>
+              <div class="author-links">
+                <a href="https://github.com/airingursb" target="_blank" rel="noopener" title="GitHub" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+                </a>
+                <a href="https://x.com/airingursb" target="_blank" rel="noopener" title="X / Twitter" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                </a>
+                <a href="https://t.me/s/airingchannel" target="_blank" rel="noopener" title="Telegram" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                </a>
+                <span class="wechat-wrap">
+                  <button type="button" title="WeChat" class="author-link-icon wechat-btn" id="wechatBtn">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.29.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.596-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm3.97 2.985c-4.037 0-7.31 2.755-7.31 6.155 0 3.4 3.273 6.155 7.31 6.155a8.43 8.43 0 0 0 2.36-.334.72.72 0 0 1 .596.082l1.583.926a.271.271 0 0 0 .14.045c.133 0 .24-.111.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.49.49 0 0 1 .176-.553C22.023 18.78 23 17.037 23 15.131c0-3.4-3.273-6.155-7.31-6.155h-.122zm-2.36 2.726c.535 0 .969.44.969.983a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.544.434-.983.97-.983zm4.844 0c.535 0 .969.44.969.983a.976.976 0 0 1-.969.983.976.976 0 0 1-.969-.983c0-.544.434-.983.969-.983z"/></svg>
+                  </button>
+                  <div class="wechat-tooltip" id="wechatTooltip">
+                    <img src="https://airing.ursb.me/image/blog/mp-airing.png" alt="WeChat QR Code" class="wechat-qr" />
+                  </div>
+                </span>
+                <a href="https://www.xiaohongshu.com/user/profile/5cc2d4220000000012014e9c" target="_blank" rel="noopener" title="小红书" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M22.405 9.879c0.002 0.016 0.01 0.02 0.07 0.019h0.725a0.797 0.797 0 0 0 0.78 -0.972 0.794 0.794 0 0 0 -0.884 -0.618 0.795 0.795 0 0 0 -0.692 0.794c0 0.101 -0.002 0.666 0.001 0.777zm-11.509 4.808c-0.203 0.001 -1.353 0.004 -1.685 0.003a2.528 2.528 0 0 1 -0.766 -0.126 0.025 0.025 0 0 0 -0.03 0.014L7.7 16.127a0.025 0.025 0 0 0 0.01 0.032c0.111 0.06 0.336 0.124 0.495 0.124 0.66 0.01 1.32 0.002 1.981 0 0.01 0 0.02 -0.006 0.023 -0.015l0.712 -1.545a0.025 0.025 0 0 0 -0.024 -0.036zM0.477 9.91c-0.071 0 -0.076 0.002 -0.076 0.01a0.834 0.834 0 0 0 -0.01 0.08c-0.027 0.397 -0.038 0.495 -0.234 3.06 -0.012 0.24 -0.034 0.389 -0.135 0.607 -0.026 0.057 -0.033 0.042 0.003 0.112 0.046 0.092 0.681 1.523 0.787 1.74 0.008 0.015 0.011 0.02 0.017 0.02 0.008 0 0.033 -0.026 0.047 -0.044 0.147 -0.187 0.268 -0.391 0.371 -0.606 0.306 -0.635 0.44 -1.325 0.486 -1.706 0.014 -0.11 0.021 -0.22 0.03 -0.33l0.204 -2.616 0.022 -0.293c0.003 -0.029 0 -0.033 -0.03 -0.034zm7.203 3.757a1.427 1.427 0 0 1 -0.135 -0.607c-0.004 -0.084 -0.031 -0.39 -0.235 -3.06a0.443 0.443 0 0 0 -0.01 -0.082c-0.004 -0.011 -0.052 -0.008 -0.076 -0.008h-1.48c-0.03 0.001 -0.034 0.005 -0.03 0.034l0.021 0.293c0.076 0.982 0.153 1.964 0.233 2.946 0.05 0.4 0.186 1.085 0.487 1.706 0.103 0.215 0.223 0.419 0.37 0.606 0.015 0.018 0.037 0.051 0.048 0.049 0.02 -0.003 0.742 -1.642 0.804 -1.765 0.036 -0.07 0.03 -0.055 0.003 -0.112zm3.861 -0.913h-0.872a0.126 0.126 0 0 1 -0.116 -0.178l1.178 -2.625a0.025 0.025 0 0 0 -0.023 -0.035l-1.318 -0.003a0.148 0.148 0 0 1 -0.135 -0.21l0.876 -1.954a0.025 0.025 0 0 0 -0.023 -0.035h-1.56c-0.01 0 -0.02 0.006 -0.024 0.015l-0.926 2.068c-0.085 0.169 -0.314 0.634 -0.399 0.938a0.534 0.534 0 0 0 -0.02 0.191 0.46 0.46 0 0 0 0.23 0.378 0.981 0.981 0 0 0 0.46 0.119h0.59c0.041 0 -0.688 1.482 -0.834 1.972a0.53 0.53 0 0 0 -0.023 0.172 0.465 0.465 0 0 0 0.23 0.398c0.15 0.092 0.342 0.12 0.475 0.12l1.66 -0.001c0.01 0 0.02 -0.006 0.023 -0.015l0.575 -1.28a0.025 0.025 0 0 0 -0.024 -0.035zm-6.93 -4.937H3.1a0.032 0.032 0 0 0 -0.034 0.033c0 1.048 -0.01 2.795 -0.01 6.829 0 0.288 -0.269 0.262 -0.28 0.262h-0.74c-0.04 0.001 -0.044 0.004 -0.04 0.047 0.001 0.037 0.465 1.064 0.555 1.263 0.01 0.02 0.03 0.033 0.051 0.033 0.157 0.003 0.767 0.009 0.938 -0.014 0.153 -0.02 0.3 -0.06 0.438 -0.132 0.3 -0.156 0.49 -0.419 0.595 -0.765 0.052 -0.172 0.075 -0.353 0.075 -0.533 0.002 -2.33 0 -4.66 -0.007 -6.991a0.032 0.032 0 0 0 -0.032 -0.032zm11.784 6.896c0 -0.014 -0.01 -0.021 -0.024 -0.022h-1.465c-0.048 -0.001 -0.049 -0.002 -0.05 -0.049v-4.66c0 -0.072 -0.005 -0.07 0.07 -0.07h0.863c0.08 0 0.075 0.004 0.075 -0.074V8.393c0 -0.082 0.006 -0.076 -0.08 -0.076h-3.5c-0.064 0 -0.075 -0.006 -0.075 0.073v1.445c0 0.083 -0.006 0.077 0.08 0.077h0.854c0.075 0 0.07 -0.004 0.07 0.07v4.624c0 0.095 0.008 0.084 -0.085 0.084 -0.37 0 -1.11 -0.002 -1.304 0 -0.048 0.001 -0.06 0.03 -0.06 0.03l-0.697 1.519s-0.014 0.025 -0.008 0.036c0.006 0.01 0.013 0.008 0.058 0.008 1.748 0.003 3.495 0.002 5.243 0.002 0.03 -0.001 0.034 -0.006 0.035 -0.033v-1.539zm4.177 -3.43c0 0.013 -0.007 0.023 -0.02 0.024 -0.346 0.006 -0.692 0.004 -1.037 0.004 -0.014 -0.002 -0.022 -0.01 -0.022 -0.024 -0.005 -0.434 -0.007 -0.869 -0.01 -1.303 0 -0.072 -0.006 -0.071 0.07 -0.07l0.733 -0.003c0.041 0 0.081 0.002 0.12 0.015 0.093 0.025 0.16 0.107 0.165 0.204 0.006 0.431 0.002 1.153 0.001 1.153zm2.67 0.244a1.953 1.953 0 0 0 -0.883 -0.222h-0.18c-0.04 -0.001 -0.04 -0.003 -0.042 -0.04V10.21c0 -0.132 -0.007 -0.263 -0.025 -0.394a1.823 1.823 0 0 0 -0.153 -0.53 1.533 1.533 0 0 0 -0.677 -0.71 2.167 2.167 0 0 0 -1 -0.258c-0.153 -0.003 -0.567 0 -0.72 0 -0.07 0 -0.068 0.004 -0.068 -0.065V7.76c0 -0.031 -0.01 -0.041 -0.046 -0.039H17.93s-0.016 0 -0.023 0.007c-0.006 0.006 -0.008 0.012 -0.008 0.023v0.546c-0.008 0.036 -0.057 0.015 -0.082 0.022h-0.95c-0.022 0.002 -0.028 0.008 -0.03 0.032v1.481c0 0.09 -0.004 0.082 0.082 0.082h0.913c0.082 0 0.072 0.128 0.072 0.128v1.148s0.003 0.117 -0.06 0.117h-1.482c-0.068 0 -0.06 0.082 -0.06 0.082v1.445s-0.01 0.068 0.064 0.068h1.457c0.082 0 0.076 -0.006 0.076 0.079v3.225c0 0.088 -0.007 0.081 0.082 0.081h1.43c0.09 0 0.082 0.007 0.082 -0.08v-3.27c0 -0.029 0.006 -0.035 0.033 -0.035l2.323 -0.003c0.098 0 0.191 0.02 0.28 0.061a0.46 0.46 0 0 1 0.274 0.407c0.008 0.395 0.003 0.79 0.003 1.185 0 0.259 -0.107 0.367 -0.33 0.367h-1.218c-0.023 0.002 -0.029 0.008 -0.028 0.033 0.184 0.437 0.374 0.871 0.57 1.303a0.045 0.045 0 0 0 0.04 0.026c0.17 0.005 0.34 0.002 0.51 0.003 0.15 -0.002 0.517 0.004 0.666 -0.01a2.03 2.03 0 0 0 0.408 -0.075c0.59 -0.18 0.975 -0.698 0.976 -1.313v-1.981c0 -0.128 -0.01 -0.254 -0.034 -0.38 0 0.078 -0.029 -0.641 -0.724 -0.998z"/></svg>
+                </a>
+                <a href="mailto:airing@ursb.me" title="Email" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                </a>
+                <a href="/search" title="Search" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                </a>
+                <a href="/en/blog/feed.xml" title="RSS" class="author-link-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+                </a>
+              </div>
+            </div>
+            <div class="subscribe-card">
+              <p class="subscribe-desc">Subscribe to get new posts by email</p>
+              <form class="subscribe-form" id="subscribe-form">
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Your email address"
+                  required
+                  class="subscribe-input"
+                />
+                <button type="submit" class="subscribe-btn">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                  Subscribe
+                </button>
+              </form>
+              <p class="subscribe-msg" id="subscribe-msg"></p>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="blog-footer">
+      <div class="footer-inner">
+        <span>&copy; 2026 Airing</span>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/archive">Archive</a>
+          <a href="/blog/feed.xml">RSS</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+<script is:inline>
+  if (localStorage.getItem('preferred_lang') === 'zh') {
+    window.location.replace('/blog');
+  }
+</script>
+</BaseLayout>
+
+<script>
+  const form = document.getElementById('subscribe-form') as HTMLFormElement;
+  const msg = document.getElementById('subscribe-msg') as HTMLParagraphElement;
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = new FormData(form).get('email') as string;
+    if (!email) return;
+    msg.textContent = 'Subscribing...';
+    msg.style.color = 'var(--c-text-muted)';
+    try {
+      const res = await fetch('https://chat.ursb.me/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (res.ok) {
+        msg.textContent = 'Subscribed! Thank you.';
+        msg.style.color = 'var(--accent, #4ade80)';
+        form.reset();
+      } else {
+        msg.textContent = 'Something went wrong. Try again.';
+        msg.style.color = '#f87171';
+      }
+    } catch {
+      msg.textContent = 'Network error. Try again.';
+      msg.style.color = '#f87171';
+    }
+  });
+
+  // WeChat tooltip
+  const wechatBtn = document.getElementById('wechatBtn');
+  const wechatTooltip = document.getElementById('wechatTooltip');
+  wechatBtn?.addEventListener('click', (e) => {
+    e.stopPropagation();
+    wechatTooltip?.classList.toggle('active');
+  });
+  document.addEventListener('click', () => wechatTooltip?.classList.remove('active'));
+
+  // ── Top / Latest tab switching ──
+  const tabs = document.querySelectorAll('.list-tab') as NodeListOf<HTMLButtonElement>;
+  const postItems = document.querySelectorAll('.post-item') as NodeListOf<HTMLAnchorElement>;
+  const originalOrder = Array.from(postItems);
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+
+      const isTop = tab.textContent?.trim() === 'Top';
+      const container = postItems[0]?.parentElement;
+      if (!container) return;
+
+      if (isTop) {
+        const sorted = Array.from(postItems).sort((a, b) =>
+          parseInt(a.dataset.rank!) - parseInt(b.dataset.rank!)
+        );
+        sorted.forEach(item => container.appendChild(item));
+      } else {
+        originalOrder.forEach(item => container.appendChild(item));
+      }
+    });
+  });
+
+  // Highlight liked hearts from localStorage
+  try {
+    const likedRaw = localStorage.getItem('post_likes');
+    if (likedRaw) {
+      const likedSet = new Set(JSON.parse(likedRaw) as string[]);
+      document.querySelectorAll('.pi-stat-like').forEach(el => {
+        const slug = (el as HTMLElement).dataset.slug;
+        if (slug && likedSet.has(slug)) {
+          el.classList.add('liked');
+        }
+      });
+    }
+  } catch { /* ignore */ }
+
+  // Dynamically refresh stats from API (updates stale build-time values)
+  function formatNumJs(n: number) {
+    if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+    return String(n);
+  }
+
+  const VIEW_SVG = '<svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>';
+  const LIKE_SVG = '<svg class="pi-stat-icon pi-heart-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>';
+  const COMMENT_SVG = '<svg class="pi-stat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>';
+
+  fetch('https://chat.ursb.me/api/posts/ranking')
+    .then(r => r.json())
+    .then(data => {
+      const { views = {}, likes = {}, comments = {} } = data;
+
+      document.querySelectorAll<HTMLElement>('[data-slug]').forEach(card => {
+        const slug = card.dataset.slug!;
+        const pv = views[slug] || 0;
+        const lk = likes[slug] || 0;
+        const cm = comments[slug] || 0;
+
+        // Find the stats container within this card
+        let container = card.querySelector('.pi-stats-overlay, .pi-stats');
+
+        // If no container exists but we have stats, create one
+        if (!container && (pv > 0 || lk > 0 || cm > 0)) {
+          // Determine which type of container to create based on card type
+          const isOverlay = !!card.querySelector('.hc-img');
+          const parent = isOverlay ? card.querySelector('.hc-img') : card.querySelector('.pi-meta-wrap') || card.querySelector('.pc-body');
+          if (!parent) return;
+          container = document.createElement('div');
+          container.className = isOverlay ? 'pi-stats-overlay' : (card.classList.contains('hero-card') ? 'pi-stats pi-stats-lg' : 'pi-stats');
+          parent.appendChild(container);
+        }
+        if (!container) return;
+
+        // Helper to update or create a stat span
+        function upsertStat(cls: string, svg: string, value: number, slugAttr?: string) {
+          let el = container!.querySelector<HTMLElement>(`.${cls}`);
+          if (value > 0) {
+            if (!el) {
+              el = document.createElement('span');
+              el.className = `pi-stat ${cls}`;
+              if (slugAttr) el.dataset.slug = slugAttr;
+              el.innerHTML = svg + formatNumJs(value);
+              container!.appendChild(el);
+            } else {
+              // Update only the text node (last child)
+              const textNode = Array.from(el.childNodes).find(n => n.nodeType === Node.TEXT_NODE);
+              if (textNode) {
+                textNode.textContent = formatNumJs(value);
+              } else {
+                el.appendChild(document.createTextNode(formatNumJs(value)));
+              }
+            }
+            el.style.display = '';
+          } else if (el) {
+            el.style.display = 'none';
+          }
+        }
+
+        upsertStat('pi-stat-view', VIEW_SVG, pv);
+        upsertStat('pi-stat-like', LIKE_SVG, lk, slug);
+        upsertStat('pi-stat-comment', COMMENT_SVG, cm);
+      });
+    })
+    .catch(() => { /* keep build-time values on error */ });
+</script>
+
+<style is:global>
+  body:has(.blog-page) {
+    display: block;
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+</style>
+
+<style>
+  .blog-page {
+    min-height: 100vh;
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    --font-serif: 'Noto Serif SC', 'Source Han Serif CN', 'Source Han Serif SC', 'Songti SC', STSong, serif;
+  }
+
+  /* ── Nav ────────────────────────────────────────────── */
+  .masthead { width: 100%; }
+  .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+  .mast-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; position: relative;
+  }
+  .mast-brand {
+    font-size: 11px; color: var(--c-text-muted); text-decoration: none;
+    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+  }
+  .mast-brand:hover { color: var(--c-text); }
+  .mast-links { display: flex; gap: 16px; }
+  .mast-links a {
+    font-size: 11px; color: var(--c-text-dim); text-decoration: none;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .mast-links a:hover { color: var(--c-text); }
+  .mast-motto {
+    font-size: 12px; color: var(--c-text-dim);
+    position: absolute; left: 50%; transform: translateX(-50%);
+    letter-spacing: 0.15em;
+    font-family: var(--font-serif);
+  }
+  .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-date-line {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 0; border-bottom: 1px solid var(--c-border);
+  }
+  .mast-date {
+    font-size: 11px; color: var(--c-text-dim);
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .mast-post-count {
+    font-size: 11px; color: var(--c-text-dim);
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Hero Grid ─────────────────────────────────────── */
+  .hero-section {
+    padding: 32px 0 0;
+  }
+  .hero-grid {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+    display: grid;
+    grid-template-columns: 1fr 2.4fr 1fr;
+    gap: 16px;
+    min-height: 400px;
+  }
+
+  .hero-col {
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  /* Small side cards */
+  .hero-card-sm {
+    flex: 1;
+    display: flex; flex-direction: column;
+    text-decoration: none;
+    border-radius: 4px;
+    border: 1px solid var(--c-border);
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: rgba(var(--c-overlay-rgb),0.02);
+  }
+  .hero-card-sm:hover {
+    border-color: rgba(var(--c-overlay-rgb),0.15);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .hc-img {
+    height: 120px;
+    background-size: cover;
+    background-position: center;
+    background-color: rgba(var(--c-overlay-rgb),0.04);
+    flex-shrink: 0;
+    border-radius: 4px 4px 0 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .pi-stats-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: flex-end; justify-content: center;
+    gap: 14px; padding: 0 12px 8px;
+    background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.15) 50%, transparent 100%);
+    font-size: 12px; color: rgba(255,255,255,0.9);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .pi-stats-overlay .pi-stat-icon {
+    stroke: rgba(255,255,255,0.9); opacity: 0.85;
+  }
+  .pi-stats-overlay .pi-stat-like.liked .pi-heart-icon {
+    fill: #ef4444; stroke: #ef4444; opacity: 1;
+  }
+  .hero-card-sm:hover .pi-stats-overlay { opacity: 1; }
+  .hc-body {
+    padding: 12px 14px 14px;
+    display: flex; flex-direction: column;
+    flex-shrink: 0;
+  }
+  .hc-title {
+    font-size: 15px; font-weight: 700; color: var(--c-text);
+    line-height: 1.4; margin: 0 0 4px;
+    font-family: var(--font-serif);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .hc-excerpt {
+    font-size: 12px; color: var(--c-text-dim); line-height: 1.4;
+    margin: 0 0 auto;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .hc-meta {
+    font-size: 11px; color: var(--c-text-dim); margin-top: 8px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Large center hero card */
+  .hero-card-lg {
+    display: block; text-decoration: none;
+    border-radius: 4px; overflow: hidden;
+    position: relative;
+  }
+  .hc-img-full {
+    width: 100%; height: 100%; min-height: 400px;
+    background-size: cover; background-position: center;
+    background-color: rgba(var(--c-overlay-rgb),0.04);
+    display: flex; align-items: flex-end;
+    position: relative;
+  }
+  .hc-img-full::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(to top, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.2) 40%, transparent 70%);
+    border-radius: 4px;
+  }
+  .hc-overlay {
+    position: relative; z-index: 1;
+    padding: 28px 28px;
+    width: 100%;
+  }
+  .hc-title-lg {
+    font-size: 28px; font-weight: 700; color: #fff;
+    line-height: 1.2; margin: 0 0 8px;
+    letter-spacing: -0.02em;
+    font-family: var(--font-serif);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .hc-excerpt-lg {
+    font-size: 15px; color: rgba(255,255,255,0.8);
+    line-height: 1.55; margin: 0 0 12px;
+    font-family: var(--font-serif);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .hc-meta-lg {
+    font-size: 13px; color: rgba(255,255,255,0.65);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .hero-card-lg:hover .hc-title-lg {
+    color: var(--accent, #4ade80);
+  }
+
+  /* ── Most Popular ──────────────────────────────────── */
+  .popular-section {
+    padding: 40px 0 0;
+    border-top: 1px solid var(--c-border);
+    margin-top: 32px;
+  }
+  .popular-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+  }
+  .popular-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 20px;
+  }
+  .popular-heading {
+    font-size: 18px; font-weight: 700; color: var(--c-text);
+    margin: 0; letter-spacing: -0.01em;
+    font-family: var(--font-serif);
+  }
+  .popular-viewall {
+    font-size: 13px; color: var(--c-text-muted); text-decoration: none;
+    transition: color 0.2s;
+  }
+  .popular-viewall:hover { color: var(--accent, #4ade80); }
+
+  .popular-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+  }
+  .popular-card {
+    display: flex; align-items: flex-start; gap: 12px;
+    text-decoration: none;
+    padding-bottom: 20px;
+    padding-right: 24px;
+    border-right: 1px solid var(--c-border);
+    transition: opacity 0.15s;
+    position: relative;
+  }
+  .popular-card:last-child { border-right: none; padding-right: 0; }
+  .popular-card:hover { opacity: 0.8; }
+  .popular-card .pi-stats {
+    position: absolute; bottom: 0; left: 0;
+    margin-top: 0;
+  }
+  .pc-body { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; min-height: 48px; }
+  .pc-title {
+    font-size: 15px; font-weight: 700; color: var(--c-text);
+    line-height: 1.4; margin: 0 0 6px;
+    font-family: var(--font-serif);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .pc-meta {
+    font-size: 12px; color: var(--c-text-dim);
+    display: flex; align-items: center; gap: 5px;
+    margin-top: auto;
+  }
+  .pc-thumb {
+    width: 72px; height: 72px; flex-shrink: 0;
+    background-size: cover; background-position: center;
+    border-radius: 6px;
+    background-color: rgba(var(--c-overlay-rgb),0.04);
+  }
+
+  /* ── Content Area ──────────────────────────────────── */
+  .content-section {
+    padding: 40px 0;
+    border-top: 1px solid var(--c-border);
+    margin-top: 32px;
+  }
+  .content-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+    display: grid;
+    grid-template-columns: 1fr 280px;
+    gap: 48px;
+    align-items: start;
+  }
+
+  /* Tabs */
+  .list-tabs {
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--c-border);
+    margin-bottom: 4px;
+  }
+  .tab-bar { display: flex; gap: 0; }
+  .list-tab {
+    background: none; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 600; color: var(--c-text-muted);
+    padding: 12px 20px;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .list-tab:hover { color: var(--c-text); }
+  .list-tab.active { color: var(--c-text); border-bottom-color: var(--c-text); }
+  .list-search-icon {
+    color: var(--c-text-muted);
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.15s;
+    display: flex; align-items: center;
+  }
+  .list-search-icon:hover {
+    color: var(--c-text);
+    background: rgba(var(--c-overlay-rgb),0.06);
+  }
+
+  /* Post items */
+  .post-item {
+    display: flex; align-items: center; gap: 20px;
+    text-decoration: none;
+    padding: 20px 0;
+    min-height: 120px;
+    border-bottom: 1px solid var(--c-border);
+    transition: opacity 0.15s;
+  }
+  .post-item:hover { opacity: 0.85; }
+  .post-item:hover .pi-title { color: var(--accent, #4ade80); }
+  .pi-body { flex: 1; min-width: 0; }
+  .pi-title {
+    font-size: 19px; font-weight: 700; color: var(--c-text);
+    line-height: 1.35; margin: 0 0 6px;
+    font-family: var(--font-serif);
+    letter-spacing: 0.01em;
+    transition: color 0.2s;
+  }
+  .pi-desc {
+    font-size: 15px; color: var(--c-text-dim); line-height: 1.6;
+    margin: 0 0 8px;
+    font-family: var(--font-serif);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .pi-meta {
+    font-size: 13px; color: var(--c-text-muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ── Post stats (Design A: row below meta, show on hover) ── */
+  .pi-stats {
+    display: flex; align-items: center; gap: 14px;
+    margin-top: 6px;
+    font-size: 12px; color: var(--c-text-muted);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .pi-stat {
+    display: inline-flex; align-items: center; gap: 3px;
+  }
+  .pi-stat-icon {
+    width: 13px; height: 13px; stroke-width: 1.8;
+    opacity: 0.6;
+  }
+  /* Liked heart state */
+  .pi-stat-like.liked .pi-heart-icon {
+    fill: #ef4444;
+    stroke: #ef4444;
+    opacity: 1;
+  }
+  /* Show stats on hover — list items */
+  .post-item:hover .pi-stats { opacity: 1; }
+  /* Show stats on hover — hero cards (large card only, small cards use .pi-stats-overlay) */
+  .hero-card-lg:hover .pi-stats { opacity: 1; }
+  /* Show stats on hover — popular cards */
+  .popular-card:hover .pi-stats { opacity: 1; }
+  /* Large hero card stats: white text */
+  .pi-stats-lg { color: rgba(255,255,255,0.85); }
+  .pi-stats-lg .pi-stat-icon { stroke: rgba(255,255,255,0.85); opacity: 0.8; }
+  .pi-stats-lg .pi-stat-like.liked .pi-heart-icon { fill: #ef4444; stroke: #ef4444; opacity: 1; }
+
+  .pi-thumb {
+    width: 120px; height: 80px; flex-shrink: 0;
+    background-size: cover; background-position: center;
+    border-radius: 4px;
+    background-color: rgba(var(--c-overlay-rgb),0.04);
+  }
+
+  /* ── Author Sidebar ────────────────────────────────── */
+  .author-sidebar { }
+  .author-sidebar .sidebar-sticky {
+    position: sticky; top: 80px;
+  }
+  .author-card {
+    text-align: center;
+    padding: 24px 0 20px;
+  }
+  .author-avatar {
+    width: 48px; height: 48px; border-radius: 50%;
+    object-fit: cover; margin-bottom: 10px;
+  }
+  .author-name {
+    font-size: 16px; font-weight: 700; color: var(--c-text);
+    margin: 0 0 4px;
+  }
+  .author-name a {
+    color: inherit; text-decoration: none;
+  }
+  .author-name a:hover {
+    color: var(--accent, #4ade80);
+  }
+  .author-links {
+    display: flex; gap: 10px; justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .author-link-icon {
+    color: var(--c-text-dim); transition: color 0.2s;
+    display: flex; align-items: center;
+    background: none; border: none; padding: 0; cursor: pointer;
+    font-size: inherit;
+  }
+  .author-link-icon:hover { color: var(--c-text); }
+
+  /* WeChat tooltip */
+  .wechat-wrap { position: relative; display: inline-flex; }
+  .wechat-tooltip {
+    display: none; position: absolute;
+    bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
+    z-index: 10;
+    background: var(--c-bg, #fff);
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    padding: 8px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .wechat-tooltip::after {
+    content: ''; position: absolute;
+    top: 100%; left: 50%; transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: var(--c-border);
+  }
+  .wechat-tooltip.active { display: block; }
+  .wechat-qr { width: 280px; height: auto; display: block; border-radius: 4px; }
+  .author-bio {
+    font-size: 13px; color: var(--c-text-dim); margin: 0;
+    line-height: 1.4;
+  }
+
+  /* Subscribe */
+  .subscribe-card {
+    border-top: 1px solid var(--c-border);
+    padding-top: 16px;
+    margin-top: 16px;
+  }
+  .subscribe-desc {
+    font-size: 12px; color: var(--c-text-dim); margin: 0 0 10px;
+    line-height: 1.4; text-align: center;
+  }
+  .subscribe-form {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .subscribe-input {
+    width: 100%; padding: 9px 12px;
+    font-size: 13px; font-family: inherit;
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    background: rgba(var(--c-overlay-rgb),0.03);
+    color: var(--c-text);
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  .subscribe-input:focus {
+    border-color: var(--accent, #4ade80);
+  }
+  .subscribe-input::placeholder {
+    color: var(--c-text-dim);
+  }
+  .subscribe-btn {
+    width: 100%; padding: 9px 14px;
+    font-size: 13px; font-weight: 500; font-family: inherit;
+    color: var(--c-text);
+    background: rgba(var(--c-overlay-rgb),0.06);
+    border: 1px solid var(--c-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    white-space: nowrap;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .subscribe-btn:hover {
+    background: rgba(74, 222, 128, 0.1);
+    color: var(--accent, #4ade80);
+    border-color: var(--accent, #4ade80);
+  }
+  .subscribe-btn svg {
+    flex-shrink: 0;
+  }
+  .subscribe-msg {
+    font-size: 12px; min-height: 16px; margin: 4px 0 0;
+  }
+
+  /* ── Footer ────────────────────────────────────────── */
+  .blog-footer {
+    border-top: 1px solid var(--c-border);
+    padding: 32px 0; margin-top: 0;
+  }
+  .footer-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--c-border-light);
+  }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a {
+    font-size: 12px; color: var(--c-text-dim); text-decoration: none;
+  }
+  .footer-links a:hover { color: var(--c-text); }
+
+  /* ── Responsive ────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .mast-inner { padding: 0 20px; }
+    .mast-motto { display: none; }
+    .mast-hide-mobile { display: none; }
+
+    .hero-grid {
+      padding: 0 20px;
+      grid-template-columns: 1fr 1fr;
+      min-height: auto;
+    }
+    .hero-card-lg { grid-column: 1 / -1; order: -1; }
+    .hero-col-left,
+    .hero-col-right {
+      display: contents;
+    }
+    .hero-col-left .hero-card-sm,
+    .hero-col-right .hero-card-sm {
+      min-height: 0;
+    }
+    .hc-img-full { min-height: 260px; }
+    .hc-title-lg { font-size: 22px; }
+    .hc-excerpt-lg { font-size: 14px; }
+
+    .popular-inner { padding: 0 20px; }
+    .popular-grid {
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .content-inner {
+      padding: 0 20px;
+      grid-template-columns: 1fr;
+      gap: 32px;
+    }
+    .author-sidebar .sidebar-sticky {
+      position: static;
+    }
+
+    .pi-thumb {
+      width: 80px; height: 60px;
+    }
+
+    .footer-inner { padding: 0 20px; }
+  }
+
+  @media (max-width: 480px) {
+    .popular-grid {
+      grid-template-columns: 1fr;
+    }
+    .popular-card {
+      border-right: none;
+      padding-right: 0;
+    }
+  }
+
+  .cn-badge {
+    display: inline-block;
+    font-size: 0.65em;
+    font-weight: 600;
+    color: var(--c-text-muted);
+    background: var(--c-bg-alt, #f5f5f5);
+    border: 1px solid var(--c-border, #e0e0e0);
+    border-radius: 3px;
+    padding: 0.1em 0.4em;
+    margin-left: 0.5em;
+    vertical-align: middle;
+    letter-spacing: 0.05em;
+  }
+</style>
