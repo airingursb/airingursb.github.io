@@ -1,5 +1,5 @@
 ---
-title: "Monthly #20: Restart"
+title: "Weekly #20: Restart"
 date: 2023-04-02
 tags: ["weekly"]
 description: ""

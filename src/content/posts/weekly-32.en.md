@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 32): A Sun Yat-sen University Alumni Interview"
+title: "Weekly #32: A Sun Yat-sen University Alumni Interview"
 date: 2025-08-16
 tags: ["weekly"]
 description: ""

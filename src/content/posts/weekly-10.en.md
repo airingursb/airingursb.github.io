@@ -1,5 +1,5 @@
 ---
-title: "Weekly (Issue 10): Games I Love (Vol. 1)"
+title: "Weekly #10: Games I Love (Vol. 1)"
 date: 2022-07-10
 tags: ["weekly"]
 description: ""

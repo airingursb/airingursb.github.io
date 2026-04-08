@@ -1,5 +1,5 @@
 ---
-title: "Weekly (Issue 6): Perception Checking in the Art of Communication"
+title: "Weekly #6: Perception Checking in the Art of Communication"
 date: 2022-06-11
 tags: ["weekly"]
 description: ""

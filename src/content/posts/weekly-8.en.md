@@ -1,5 +1,5 @@
 ---
-title: "Weekly (Issue 8): Three-Act Structure and the Hero's Journey"
+title: "Weekly #8: Three-Act Structure and the Hero's Journey"
 date: 2022-06-26
 tags: ["weekly"]
 description: ""

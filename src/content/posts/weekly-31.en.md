@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 31): A Claude-Powered Reading Flow"
+title: "Weekly #31: A Claude-Powered Reading Flow"
 date: 2025-07-05
 tags: ["weekly"]
 description: ""

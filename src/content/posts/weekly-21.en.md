@@ -1,5 +1,5 @@
 ---
-title: "Monthly #21: Short Video in the Age of Speed"
+title: "Weekly #21: Short Video in the Age of Speed"
 date: 2023-05-03
 tags: ["weekly"]
 description: ""

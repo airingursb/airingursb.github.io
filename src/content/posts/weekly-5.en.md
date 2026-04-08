@@ -1,5 +1,5 @@
 ---
-title: "Weekly (Issue 5): A Day in My Life at TME"
+title: "Weekly #5: A Day in My Life at TME"
 date: 2022-06-04
 tags: ["weekly"]
 description: ""

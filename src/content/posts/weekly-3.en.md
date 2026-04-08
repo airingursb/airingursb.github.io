@@ -1,5 +1,5 @@
 ---
-title: "Weekly (Issue 3): A Bouquet of Love"
+title: "Weekly #3: A Bouquet of Love"
 date: 2022-05-21
 tags: ["weekly"]
 description: ""

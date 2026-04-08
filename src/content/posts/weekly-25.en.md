@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 25): Love Concrete People"
+title: "Weekly #25: Love Concrete People"
 date: 2024-03-17
 tags: ["weekly"]
 description: ""

@@ -1,5 +1,5 @@
 ---
-title: "Weekly (Issue 7): Models for Impromptu Speaking"
+title: "Weekly #7: Models for Impromptu Speaking"
 date: 2022-06-19
 tags: ["weekly"]
 description: ""

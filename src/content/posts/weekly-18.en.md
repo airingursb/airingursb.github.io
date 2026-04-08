@@ -1,5 +1,5 @@
 ---
-title: "Monthly #18: Escaping Social Media"
+title: "Weekly #18: Escaping Social Media"
 date: 2023-02-03
 tags: ["weekly"]
 description: ""

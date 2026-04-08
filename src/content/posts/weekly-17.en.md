@@ -1,5 +1,5 @@
 ---
-title: "Monthly #17: Go Where Your Heart Leads"
+title: "Weekly #17: Go Where Your Heart Leads"
 date: 2022-12-25
 tags: ["weekly"]
 description: ""

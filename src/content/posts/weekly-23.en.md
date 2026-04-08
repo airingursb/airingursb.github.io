@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 23): Time Management When You're Doing Too Much"
+title: "Weekly #23: Time Management When You're Doing Too Much"
 date: 2023-10-06
 tags: ["weekly"]
 description: ""

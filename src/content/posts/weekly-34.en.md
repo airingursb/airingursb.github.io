@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 34): The Joy of Making Things"
+title: "Weekly #34: The Joy of Making Things"
 date: 2026-04-05
 tags: ["weekly"]
 description: ""

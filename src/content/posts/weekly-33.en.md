@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 33): The Ladder of Inference"
+title: "Weekly #33: The Ladder of Inference"
 date: 2025-11-15
 tags: ["weekly"]
 description: ""

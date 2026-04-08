@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 28): AI Has No Capacity for Experience"
+title: "Weekly #28: AI Has No Capacity for Experience"
 date: 2025-01-01
 tags: ["weekly"]
 description: ""

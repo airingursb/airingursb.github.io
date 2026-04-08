@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 29): A New Life"
+title: "Weekly #29: A New Life"
 date: 2025-04-18
 tags: ["weekly"]
 description: ""

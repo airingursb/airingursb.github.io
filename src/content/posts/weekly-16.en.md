@@ -1,5 +1,5 @@
 ---
-title: "Monthly #16: My Personal Information Feed"
+title: "Weekly #16: My Personal Information Feed"
 date: 2022-12-03
 tags: ["weekly"]
 description: ""

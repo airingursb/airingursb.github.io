@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 27): A New Way of Living"
+title: "Weekly #27: A New Way of Living"
 date: 2024-10-30
 tags: ["weekly"]
 description: ""

@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 24): Ten Years of Programming"
+title: "Weekly #24: Ten Years of Programming"
 date: 2023-11-09
 tags: ["weekly"]
 description: ""

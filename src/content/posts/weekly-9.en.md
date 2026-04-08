@@ -1,5 +1,5 @@
 ---
-title: "Weekly (Issue 9): From High Efficiency to High Drain — Observations and Reflections"
+title: "Weekly #9: From High Efficiency to High Drain — Observations and Reflections"
 date: 2022-07-03
 tags: ["weekly"]
 description: ""

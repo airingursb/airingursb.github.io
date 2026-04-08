@@ -1,5 +1,5 @@
 ---
-title: "Monthly #19: The Meaning of Keeping a Journal"
+title: "Weekly #19: The Meaning of Keeping a Journal"
 date: 2023-03-03
 tags: ["weekly"]
 description: ""

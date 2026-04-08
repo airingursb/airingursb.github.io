@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 26): The Journey"
+title: "Weekly #26: The Journey"
 date: 2024-05-07
 tags: ["weekly"]
 description: ""

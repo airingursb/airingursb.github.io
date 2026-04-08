@@ -1,5 +1,5 @@
 ---
-title: "Weekly (Issue 1): The Beginning — Why I'm Starting a Newsletter"
+title: "Weekly #1: The Beginning — Why I'm Starting a Newsletter"
 date: 2022-05-07
 tags: ["weekly"]
 description: ""

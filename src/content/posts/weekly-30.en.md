@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 30): Written on My 30th Birthday"
+title: "Weekly #30: Written on My 30th Birthday"
 date: 2025-06-29
 tags: ["weekly"]
 description: ""

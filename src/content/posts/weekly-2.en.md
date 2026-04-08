@@ -1,5 +1,5 @@
 ---
-title: "Weekly (Issue 2): Reclaiming Lost Curiosity"
+title: "Weekly #2: Reclaiming Lost Curiosity"
 date: 2022-05-14
 tags: ["weekly"]
 description: ""

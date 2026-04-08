@@ -1,5 +1,5 @@
 ---
-title: "Monthly (Issue 22): The Joy of the Present"
+title: "Weekly #22: The Joy of the Present"
 date: 2023-08-13
 tags: ["weekly"]
 description: ""
