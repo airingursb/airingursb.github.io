@@ -21,6 +21,7 @@ if os.path.exists(_env_file):
                 os.environ.setdefault(_k.strip(), _v.strip())
 
 FEED_URL = 'https://blog.ursb.me/feed.xml'
+FEED_EN_URL = 'https://ursb.me/en/blog/feed.xml'
 NOTES_FEED_URL = 'https://ursb.me/notes/feed.xml'
 TELEGRAM_URL = 'https://t.me/s/airingchannel'
 HTML_FILE = 'index.html'
@@ -74,19 +75,26 @@ def format_date(raw, fmt_out='%Y.%m.%d'):
     return raw[:10] if raw else ''
 
 
-def generate_items_html(items):
+def generate_items_html(items, lang=None):
     lines = []
     for a in items:
         title = escape_html(a['title'])
         link = a['link']
-        # Convert external blog.ursb.me links to local /posts/ links
-        m = re.search(r'blog\.ursb\.me/posts/([^/]+)/?', link)
-        if m:
-            link = f'/posts/{m.group(1)}'
+        if lang == 'en':
+            # Convert external links to local /en/posts/ links
+            m = re.search(r'ursb\.me/en/posts/([^/]+)/?', link)
+            if m:
+                link = f'/en/posts/{m.group(1)}/'
+        elif lang == 'zh':
+            # Convert external blog.ursb.me links to local /posts/ links
+            m = re.search(r'blog\.ursb\.me/posts/([^/]+)/?', link)
+            if m:
+                link = f'/posts/{m.group(1)}'
         link = escape_html(link)
         date = a['date']
         target = '' if link.startswith('/') else ' target="_blank"'
-        lines.append(f'            <a href="{link}" class="post-item"{target}>')
+        lang_cls = f' post-item-{lang}' if lang else ''
+        lines.append(f'            <a href="{link}" class="post-item{lang_cls}"{target}>')
         lines.append(f'              <span class="post-title">{title}</span>')
         lines.append(f'              <span class="post-date">{date}</span>')
         lines.append(f'            </a>')
@@ -598,7 +606,7 @@ def main():
         xml_str = fetch_url(FEED_URL)
         articles = parse_blog_feed(xml_str)
         if articles:
-            html = generate_items_html(articles)
+            html = generate_items_html(articles, lang='zh')
             content = replace_section(content, '<!-- ARTICLES_START -->', '<!-- ARTICLES_END -->', html)
             sync_to_astro('<!-- ARTICLES_START -->', '<!-- ARTICLES_END -->', html, 'Blog')
             print(f'Blog: {len(articles)} articles')
@@ -607,6 +615,21 @@ def main():
             print('Blog: no articles found', file=sys.stderr)
     except Exception as e:
         print(f'Blog: error - {e}', file=sys.stderr)
+
+    # English blog feed
+    try:
+        xml_str = fetch_url(FEED_EN_URL)
+        articles_en = parse_blog_feed(xml_str)
+        if articles_en:
+            html = generate_items_html(articles_en, lang='en')
+            content = replace_section(content, '<!-- ARTICLES_EN_START -->', '<!-- ARTICLES_EN_END -->', html)
+            sync_to_astro('<!-- ARTICLES_EN_START -->', '<!-- ARTICLES_EN_END -->', html, 'Blog EN')
+            print(f'Blog EN: {len(articles_en)} articles')
+            changed = True
+        else:
+            print('Blog EN: no articles found', file=sys.stderr)
+    except Exception as e:
+        print(f'Blog EN: error - {e}', file=sys.stderr)
 
     # Notes feed
     try:
