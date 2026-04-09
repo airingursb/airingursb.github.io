@@ -35,20 +35,17 @@ export function t(lang: Lang) {
 
 /**
  * Build a map of Chinese post IDs that have English translations.
- * The Astro glob loader github-slugifies filenames, so "weekly-4.en.md"
- * becomes ID "weekly-4en" (dot removed by github-slugger).
- * The corresponding Chinese ID is "weekly-4".
+ * English posts now live in src/content/posts/en/, so their IDs match
+ * the Chinese post IDs directly (e.g., "weekly-4").
  */
 export function buildTranslationMap(enPostIds: string[]): Set<string> {
   return new Set(enPostIds.map(id => enPostSlug(id)));
 }
 
 /**
- * Get the slug for linking: English posts use the base slug (strip en suffix).
- * Astro's glob loader applies github-slugger to filenames, so "weekly-4.en.md"
- * becomes ID "weekly-4en". We strip the trailing "en" to get the shared slug "weekly-4".
+ * Get the slug for linking. With English posts in their own directory,
+ * the ID is already the correct slug (e.g., "weekly-4").
  */
 export function enPostSlug(enPostId: string): string {
-  // Handle both "weekly-4en" (github-slugged) and legacy "weekly-4.en" forms
-  return enPostId.replace(/\.en$/, '').replace(/en$/, '');
+  return enPostId;
 }
