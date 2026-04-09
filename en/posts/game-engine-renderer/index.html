@@ -1,0 +1,1580 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>The Life of a Game Component: From Load to Screen | Airing</title><meta name="description" content><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta property="og:title" content="The Life of a Game Component: From Load to Screen | Airing"><meta property="og:description" content><meta property="og:type" content="article"><link rel="canonical" href="https://ursb.me/en/posts/game-engine-renderer/"><meta property="og:url" content="https://ursb.me/en/posts/game-engine-renderer/"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="The Life of a Game Component: From Load to Screen | Airing"><meta name="twitter:description" content><meta name="twitter:image" content="https://ursb.me/og/game-engine-renderer.png"><meta property="og:image" content="https://ursb.me/og/game-engine-renderer.png"><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/blog/feed.xml"><link rel="alternate" type="application/rss+xml" title="Airing's Blog (English)" href="/en/blog/feed.xml"><link rel="alternate" hreflang="zh" href="https://ursb.me/posts/game-engine-renderer/"><link rel="alternate" hreflang="en" href="https://ursb.me/en/posts/game-engine-renderer/"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-W604S49M4X');
+  </script><!-- Umami Analytics --><script defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script><script>
+    (function() {
+      function identifySession() {
+        if (typeof umami === 'undefined') return;
+        var theme = localStorage.getItem('blog-mode') || 'dark';
+        var lang = localStorage.getItem('preferred_lang') || 'zh';
+        var visited = localStorage.getItem('visited');
+        var returning = visited ? 'yes' : 'no';
+        if (!visited) localStorage.setItem('visited', '1');
+        umami.identify({ theme: theme, language: lang, returning: returning });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { setTimeout(identifySession, 500); });
+      } else {
+        setTimeout(identifySession, 500);
+      }
+    })();
+  </script><!-- Cal.com Embed --><script type="text/javascript">
+    (function (C, A, L) {
+      let p = function (a, ar) { a.q.push(ar); };
+      let d = C.document;
+      C.Cal = C.Cal || function () {
+        let cal = C.Cal;
+        let ar = arguments;
+        if (!cal.loaded) {
+          cal.ns = {};
+          cal.q = cal.q || [];
+          d.head.appendChild(d.createElement("script")).src = A;
+          cal.loaded = true;
+        }
+        if (ar[0] === L) {
+          const api = function () { p(api, arguments); };
+          const namespace = ar[1];
+          api.q = api.q || [];
+          if (typeof namespace === "string") {
+            cal.ns[namespace] = api;
+            p(api, ar);
+          } else {
+            p(cal, ar);
+          }
+          return;
+        }
+        p(cal, ar);
+      };
+    })(window, "https://app.cal.com/embed/embed.js", "init");
+    Cal("init", { origin: "https://cal.com" });
+    Cal("ui", {
+      theme: "dark",
+      styles: { branding: { brandColor: "#f59e0b" } },
+      hideEventTypeDetails: false,
+      layout: "month_view"
+    });
+  </script><link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'"><script type="application/ld+json">{"@context":"https://schema.org","@type":"BlogPosting","headline":"The Life of a Game Component: From Load to Screen","datePublished":"2025-05-17T00:00:00.000Z","dateModified":"2025-05-17T00:00:00.000Z","author":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"publisher":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"url":"https://ursb.me/en/posts/game-engine-renderer/","mainEntityOfPage":{"@type":"WebPage","@id":"https://ursb.me/en/posts/game-engine-renderer/"},"inLanguage":"en","image":"https://airing.ursb.me/images/blog/game-engine/image%2072.png","keywords":"tech"}</script><script>
+    // Apply saved theme & mode before render to prevent flash
+    (function() {
+      var t = localStorage.getItem('blog-theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+      var userSet = localStorage.getItem('blog-mode-set');
+      if (userSet) {
+        // User has manually toggled — respect their choice
+        var m = localStorage.getItem('blog-mode');
+        if (m) document.documentElement.setAttribute('data-mode', m);
+      } else {
+        // No manual toggle — use path-based default: homepage=dark, blog=light
+        var path = window.location.pathname;
+        var isBlog = path.startsWith('/blog') || path.startsWith('/posts/') || path.startsWith('/archive') || path.startsWith('/moments') || path.startsWith('/friends') || path.startsWith('/search') || path.startsWith('/tags/') || path.startsWith('/notes');
+        document.documentElement.setAttribute('data-mode', isBlog ? 'light' : 'dark');
+      }
+    })();
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.Do1l4WZr.css">
+<style>.lang-switch[data-astro-cid-r2b4e7hz]{font-size:.85em;letter-spacing:.02em;white-space:nowrap}.lang-active[data-astro-cid-r2b4e7hz]{font-weight:700;color:var(--c-text, #1a1a1a)}.lang-sep[data-astro-cid-r2b4e7hz]{margin:0 .3em;color:var(--c-muted, #999)}.lang-link[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);text-decoration:none;transition:color .15s}.lang-link[data-astro-cid-r2b4e7hz]:hover{color:var(--c-text, #1a1a1a)}.lang-disabled[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);opacity:.4;cursor:not-allowed}
+</style>
+<link rel="stylesheet" href="/_astro/PostLayout.DTszR7YZ.css"></head> <body>   <noscript><link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"></noscript>  <div class="post-page" data-lang="en" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>May 17, 2025</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-hide-mobile" data-astro-cid-gjtny2mx>Blog</a> <a href="/archive" class="mast-hide-mobile" data-astro-cid-gjtny2mx>Archive</a> <a href="/moments" data-astro-cid-gjtny2mx>Moment</a> <a href="/notes" data-astro-cid-gjtny2mx>Notes</a> <a href="/friends" data-astro-cid-gjtny2mx>Friends</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> <div class="mast-lang-line" data-astro-cid-gjtny2mx> <span class="lang-switch" data-astro-cid-r2b4e7hz> <a href="/posts/game-engine-renderer" class="lang-link" data-lang-switch="zh" data-astro-cid-r2b4e7hz>中</a> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <strong class="lang-active" data-astro-cid-r2b4e7hz>EN</strong> </span>  <script>
+  // Persist language preference on click
+  document.querySelectorAll('[data-lang-switch]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      localStorage.setItem('preferred_lang', el.getAttribute('data-lang-switch'));
+    });
+  });
+</script> </div> </div> </header> <!-- Headline --> <div class="headline-section" data-astro-cid-gjtny2mx> <div class="headline-inner" data-astro-cid-gjtny2mx> <div class="headline-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="hl-tag" data-astro-cid-gjtny2mx>tech</a> </div> <h1 class="headline" data-astro-cid-gjtny2mx>The Life of a Game Component: From Load to Screen</h1>  </div> </div>  <div class="cover-section" data-astro-cid-gjtny2mx> <img src="https://airing.ursb.me/images/blog/game-engine/image%2072.png" alt="The Life of a Game Component: From Load to Screen" loading="lazy" decoding="async" data-astro-cid-gjtny2mx> </div> <!-- Three-column: sidebar | content | comments --> <div class="content-grid" id="contentGrid" data-astro-cid-gjtny2mx> <aside class="sidebar-left" data-astro-cid-gjtny2mx> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Date</div> <div class="sb-value" data-astro-cid-gjtny2mx>05/17/2025</div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Tags</div> <div class="sb-tags" data-astro-cid-gjtny2mx> <a href="/tags/tech" class="sb-tag" data-astro-cid-gjtny2mx>#tech</a> </div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Author</div> <div class="sb-value" data-astro-cid-gjtny2mx><a href="/" style="color:inherit;text-decoration:none;" data-astro-cid-gjtny2mx>Airing</a></div> </div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Read</div> <div class="sb-value" data-astro-cid-gjtny2mx>23 min</div> </div> <div class="sb-block" id="postViewsBlock" style="display:none;" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Views</div> <div class="sb-value" id="postViews" data-astro-cid-gjtny2mx>-</div> </div> <div class="sb-block" id="postLikesBlock" style="display:none;" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Likes</div> <div class="sb-value" id="postLikesCount" data-astro-cid-gjtny2mx>-</div> </div> <div class="sb-block" id="postCommentsBlock" style="display:none;" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Comments</div> <div class="sb-value" id="postCommentsCount" data-astro-cid-gjtny2mx>-</div> </div> <div class="sb-divider" data-astro-cid-gjtny2mx></div> <div class="sb-block toc-block" id="tocBlock" style="display:none;" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Contents</div> <nav class="toc-nav" id="tocNav" data-astro-cid-gjtny2mx></nav> </div>  <div class="sb-divider" data-astro-cid-gjtny2mx></div> <div class="sb-block" data-astro-cid-gjtny2mx> <div class="sb-label" data-astro-cid-gjtny2mx>Related</div> <ul class="sb-related" data-astro-cid-gjtny2mx> <li data-astro-cid-gjtny2mx><a href="/posts/moflow/" class="sb-related-link" data-astro-cid-gjtny2mx>AI 心理疗愈应用的探索与实现</a></li><li data-astro-cid-gjtny2mx><a href="/posts/mac-app-share-2024/" class="sb-related-link" data-astro-cid-gjtny2mx>Mac 小众软件推荐与工作流分享(2024)</a></li><li data-astro-cid-gjtny2mx><a href="/posts/service/" class="sb-related-link" data-astro-cid-gjtny2mx>Airing 开通了一个咨询服务</a></li><li data-astro-cid-gjtny2mx><a href="/posts/tools/" class="sb-related-link" data-astro-cid-gjtny2mx>个人工具箱与好物分享</a></li><li data-astro-cid-gjtny2mx><a href="/posts/cross-end/" class="sb-related-link" data-astro-cid-gjtny2mx>大厂自研跨端框架技术揭秘</a></li> </ul> </div>  <div class="sb-divider" data-astro-cid-gjtny2mx></div> <a href="/archive" class="sb-nav" data-astro-cid-gjtny2mx>&larr; All Posts</a> </aside> <article class="post-content" id="postContent" data-pagefind-body data-astro-cid-gjtny2mx>  <h2 id="1-mini-game-containers-and-game-engines">1. Mini-Game Containers and Game Engines</h2>
+<p>A mini-game container can be thought of as a specialized WebView. On the rendering side, it strips away unnecessary DOM elements and keeps only Canvas. On the scripting side, it aligns with the ECMA-262 standard through JS polyfills or container bindings. Beyond that, the container must provide script loading and execution, WASM support, and multimedia capabilities like Audio and Video — all exposed to the JS layer via JSBinding, wrapped into BOM-style interfaces.</p>
+<p>The reason mini-game containers are designed to comply with web standards is compatibility: this lets different game engines plug in without modification. The core idea is to standardize and unify underlying platform capabilities, shielding hardware and OS fragmentation inside the container, and exposing only a single programming model similar to the browser’s BOM/DOM. This allows engines like Cocos, Egret, Laya, and Unity WebGL to treat the container as a web runtime — no need for each engine to adapt to each platform’s native APIs. It’s essentially a local, lightweight re-evolution of WebView: the mini-game container is approximately a lightweight browser kernel.</p>
+<p>In this model, the <strong>container handles platform standardization</strong>, and the <strong>engine handles content ecosystem</strong>. For example:</p>
+<p>Container responsibilities:</p>
+<ul>
+<li>Provide a unified rendering context (Canvas/WebGL).</li>
+<li>Provide a unified script runtime (JS/WASM).</li>
+<li>Provide standardized input, audio, video, and multimedia APIs.</li>
+<li>Provide platform capability wrappers: networking, storage, payment, sharing, ads.</li>
+<li>Interface with the security sandbox, permission management, and performance isolation layers.</li>
+</ul>
+<p>Game engine responsibilities:</p>
+<ul>
+<li>Provide high-level abstractions for scene management, physics, animation, and asset management.</li>
+<li>Provide developer-friendly editors and debugging toolchains.</li>
+<li>Provide a cross-platform, component-based development paradigm (UI, skeletal animation, particle systems, etc.).</li>
+<li>Manage game lifecycle, state synchronization, and rendering scheduling.</li>
+</ul>
+<p>This article uses the Cocos engine rendering pipeline as a case study to walk through how a mini-game container loads assets and renders game components.</p>
+<h2 id="2-the-three-major-loops-in-a-game-engine">2. The Three Major Loops in a Game Engine</h2>
+<p>The game engine rendering pipeline is driven by three major loops: the Render Loop, the Event Loop, and the Game Loop. Here is an overview of all three:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image.png" alt=""></p>
+<h3 id="21-renderloop">2.1 RenderLoop</h3>
+<p>The render loop is first. Its main flow looks like this:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%201.png" alt=""></p>
+<p>The entire render loop is driven by the system’s Vsync signal. On iOS, this originates from <code>CADisplayLink</code>, running rendering tasks through the main thread’s RunLoop, with frame rate control capabilities — on iOS you can set 30/60/90/120 FPS.</p>
+<p>On the engine side, the core loop does three things each frame:</p>
+<ul>
+<li><strong><code>glFlush</code></strong> — flush GL command buffer: forces any queued OpenGL commands from the previous frame to execute, ensuring display memory and framebuffer data are consistent and preventing “frame delay” or stuttering from command backlog.</li>
+<li><strong><code>UpdateScheduler</code></strong> — async task scheduling: dispatches async tasks scheduled for the current frame, such as audio callbacks and network event responses. This decouples non-rendering logic (like data updates) from the rendering path, improving main-thread concurrency.</li>
+<li><strong><code>Tick</code></strong> — drive JS layer logic: every frame, via Binding, calls the JS-side Tick method to execute animations and state updates related to rendering. This decouples the logic layer from the render layer and improves cross-platform adaptability.</li>
+</ul>
+<p>On the container side, iOS uses <code>CAEAGLLayer</code> to get GL commands onto screen in two steps:</p>
+<ul>
+<li><strong><code>glBindRenderbuffer</code></strong> — binds the current frame’s render result to the RenderBuffer, which serves as the on-screen buffer.</li>
+<li><strong><code>PresentRenderbuffer</code></strong> — presents the RenderBuffer content to the screen, producing the final visible image.</li>
+</ul>
+<p>In iOS’s rendering architecture, <code>CAEAGLLayer</code> is the component ultimately responsible for display. As part of the Layer Tree, it directly references the shared-memory render buffer (Renderbuffer data). The system Compositor then composites <code>CAEAGLLayer</code>’s content with other UI elements (UIKit, SwiftUI) and outputs the final frame.</p>
+<p>In each frame’s Tick task, JavaScript works with the game engine to produce the Framebuffer for that frame (covered in sections 3.5–3.10). Core Animation and OpenGL ES synchronize through the shared render buffer. This means the OpenGL render result is essentially just one canvas in the Layer Tree — it still needs to be composited with the system UI layer to produce the final display image.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%202.png" alt=""></p>
+<p>Note: this article’s mini-game container uses OpenGL as its rendering backend only. With the rise of Metal, Vulkan, and other next-generation graphics APIs, RenderBuffer binding and on-screen presentation are moving toward a “parallel rendering + async display” model, improving smoothness and reducing latency at high frame rates.</p>
+<p>The render loop runs synchronously, so if a frame’s logic doesn’t complete within 16.6ms at 60 FPS, it causes jank.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%203.png" alt=""></p>
+<p>For example, in this bad case, running a Tick task with 136ms of JS execution on the main thread caused game animation stutter:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/20250514171113@2x.png" alt=""></p>
+<p>To keep the game running smoothly, you need to continuously optimize performance and minimize synchronous task latency. Profiling tools are essential — here are some commonly used ones:</p>
+<ul>
+<li><strong>Xcode GPU Frame Debugger</strong>: An iOS graphics debugging tool for deep analysis of render pipeline bottlenecks, especially useful for Metal and OpenGL ES.</li>
+<li><strong>RenderDoc</strong>: A mainstream cross-platform graphics debugging tool; captures frame data and analyzes resource and performance bottlenecks across pipeline stages. Supports OpenGL, Vulkan, DirectX, and more.</li>
+<li><strong>inspector.js</strong>: Usable in web contexts; useful for analyzing DrawCalls, shaders, and resource bindings in WebGL scenarios.</li>
+<li><strong>Mali Offline Shader Compiler</strong>: <a href="https://zhuanlan.zhihu.com/p/161761815">https://zhuanlan.zhihu.com/p/161761815</a> — An offline shader compilation and analysis tool for ARM Mali GPUs, used to evaluate shader complexity and instruction cost to optimize mobile rendering.</li>
+<li><strong>Snapdragon Profiler</strong>: A frame capture tool that tracks Heavy DrawCalls and Overdraw, helping identify rendering bottlenecks and redundant computation.</li>
+</ul>
+<h3 id="22-eventloop">2.2 EventLoop</h3>
+<p>Going deeper, from the Tick task we enter the second loop — the Event Loop.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%204.png" alt=""></p>
+<p>Because the mini-game container is not a WebView — it only has a JS engine — we need to implement an event loop mechanism to drive JS execution (it doesn’t need to fully align with the browser standard, just satisfy container requirements). As the diagram shows, it consists of three main tasks:</p>
+<ul>
+<li><strong>Consume macrotasks</strong> (timers, etc.): process tasks registered via <code>setTimeout</code>, <code>setInterval</code>, etc., ensuring timers fire correctly.</li>
+<li><strong>Consume rAF tasks</strong>: this primarily drives GameLoop logic. The game’s main loop is typically mounted in an rAF callback, updating rendering and logic frame by frame.</li>
+<li><strong>Flush current-frame Commands</strong>: execute render commands and queued interface update instructions, completing the current frame’s render cycle.</li>
+</ul>
+<p>A closer look at the rAF implementation is worth it. Early on, rAF was simulated with <code>setTimeout(0)</code>, with this call chain:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%205.png" alt=""></p>
+<p>This approach had problems:</p>
+<ul>
+<li><strong>Non-standard</strong>: simulated with <code>setTimeout(0)</code> rather than driven directly by vsync.</li>
+<li><strong>Long chain</strong>: Native maintained the Timer queue and would call back to JS only after consuming the vsync signal.</li>
+</ul>
+<p>It was later refactored to follow the WHATWG standard:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%206.png" alt=""></p>
+<p>Benefits:</p>
+<ul>
+<li><strong>Standardized</strong>: JS is called directly after vsync.</li>
+<li><strong>Lower overhead</strong>: JS maintains the Timers queue, eliminating the JSBinding call overhead of the native intermediary.</li>
+</ul>
+<p>This illustrates how rendering performance optimization lives in implementation details — it takes digging and refinement.</p>
+<p>Through this event loop, the container maintains coordinated operation between the JS engine and the rendering system, keeping the game running and updating continuously.</p>
+<h3 id="23-gameloop">2.3 GameLoop</h3>
+<p>The GameLoop expands into Chapter 3 — the life of a game component:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%207.png" alt=""></p>
+<p>Before unrolling the full picture, here’s the traditional rendering pipeline for a mini-game container using OpenGL as its rendering backend:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%208.png" alt=""></p>
+<p>First comes asset loading, which involves two completely different resource types — script assets and static assets. Script assets are handled by the JS Runtime; static assets each have their own handling depending on type — images, fonts, audio, video, and the special case of skeletal animation. Since this article focuses on rendering, we won’t expand on the asset loading pipeline.</p>
+<p>These assets are then processed by the game engine’s rendering pipeline. JS drives the generation of WebGL commands, which go through JS Binding and ultimately call into C++ or native-side OpenGL instructions — WebGL is a subset of OpenGL, so there’s a one-to-one correspondence.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%209.png" alt=""></p>
+<p>This process often produces rendering bottlenecks. The main hardware resources to monitor are CPU, GPU, and bandwidth. On today’s resource-constrained mobile hardware, game optimization becomes an art of balance — when a bottleneck can’t be eliminated, it needs to be shifted. A common example is moving bottlenecks from CPU to GPU using Compute Shaders, GPU skinning, Animation Baking, GPU particles, etc.</p>
+<p><strong>CPU</strong> is the most common bottleneck. Rather than covering business-side optimizations (Culling, Batching to reduce DrawCalls), here are some container-side optimization approaches:</p>
+<ul>
+<li>JSBinding calls can create bottlenecks — one approach is batching: batching call counts with CommandBuffer to increase throughput, and merging call implementations with high-level graphics libraries like GFX.</li>
+<li>Synchronous JS tasks that block the main thread can be moved to Native for compute-intensive work.</li>
+<li>For JS interpretation overhead, consider JIT or WASM.</li>
+<li>GC is also an area with room for optimization.</li>
+</ul>
+<p><strong>GPU</strong> bottlenecks generally stem from overly complex Fragment Shaders, or oversized Vertex Buffers (e.g., triangle counts exceeding thresholds — typically 500K–1.5M triangles on mobile). High Overdraw also causes the GPU to do a lot of unnecessary work.</p>
+<p><strong>Bandwidth</strong> bottlenecks are primarily addressed with texture compression (desktop can also use deferred rendering and post-processing). A rule of thumb from the community:</p>
+<blockquote>
+<p>If your game runs at 60 fps, each frame has roughly 2*1024/60 = 34 MB of bandwidth. If your GBuffer resolution is 1280×1080, writing one GBuffer (RGBA, 4 bytes) costs 1280*1080*4/1024/1024 = 5.2 MB. Three GBuffers = 15.6 MB.</p>
+<p>Assuming a reasonable Overdraw of 1.5x, that’s 15.6 × 1.5 = 23.4 MB. Add scene, UI, and character rendering on top of that, and you easily exceed the recommended 34 MB/frame budget.</p>
+</blockquote>
+<p>Here’s a typical synchronous rendering pipeline:</p>
+<ul>
+<li>Application layer provides vertex data.</li>
+<li>Vertex shader normalizes the vertices.</li>
+<li>Primitive assembly builds geometric primitives.</li>
+<li>Rasterization discretizes primitives into fragments, each corresponding to a pixel area on screen.</li>
+<li>Fragment shader executes texture sampling, color calculation, fog effects, and other per-pixel processing.</li>
+<li>Testing and blending operations (Alpha, depth, stencil tests) run, and results are written to the Framebuffer.</li>
+</ul>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2010.png" alt=""></p>
+<p>Once the Framebuffer is built, we return to the <code>CAEAGLLayer</code> on-screen presentation described in section 2.1.</p>
+<p>Now let’s unroll the full picture and follow a game component through its entire life.</p>
+<h2 id="3-the-life-of-a-game-component">3. The Life of a Game Component</h2>
+<p>Here’s the full diagram of a game component’s journey from load to screen:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%207.png" alt=""></p>
+<p>This pipeline can be broken into 10 stages:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2011.png" alt=""></p>
+<p>To make this concrete, I prepared a minimal Cocos game demo. Here’s the scene:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2012.png" alt=""></p>
+<p>And here’s the main scene code:</p>
+<p>`const { ccclass } = cc._decorator;</p>
+<p>@ccclass
+export default class Helloworld extends cc.Component {</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>protected onLoad(): void {</span></span>
+<span class="line"><span>    console.log('onLoad');</span></span>
+<span class="line"><span>}</span></span>
+<span class="line"><span></span></span>
+<span class="line"><span>start () {</span></span>
+<span class="line"><span>    console.log('Hello World');</span></span>
+<span class="line"><span>}</span></span></code></pre>
+<p>}
+`</p>
+<h3 id="31-load-assets">3.1 Load Assets</h3>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2013.png" alt="">First comes asset loading. As mentioned earlier, game assets split into static assets and script assets. Since static asset loading involves a lot of complexity, this section covers only script asset loading.</p>
+<p>There are three types of script assets:</p>
+<ul>
+<li><strong>Built-in scripts</strong>: Loaded when the engine starts. These include registering JS Bindings, implementing the <code>window</code> object (basic BOM and Canvas DOM objects), and polyfilling ES standard compliance. The scripts are bundled in the container and loaded immediately when the JS engine launches. This step can support multiple instances and pre-execution to speed up startup.</li>
+<li><strong>Entry scripts</strong>: The container needs an entry script — similar to HTML on the web — to import the game’s entry assets.</li>
+<li><strong>Dynamically loaded scripts</strong>: Imported by the entry assets: game framework code, JS assets from the game bundle, etc.</li>
+</ul>
+<p>On the container side, optimizations include offline assets, preload, prefetch, and pre-execution. On the JS engine side, Code Cache can be added to avoid repeated compilation overhead.</p>
+<h3 id="32-component-scheduler">3.2 Component Scheduler</h3>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2014.png" alt="">After script assets load and execute, game component code enters the component scheduler for priority scheduling.</p>
+<p>The Cocos component lifecycle is shown on the left in the diagram below. Three key lifecycle phases each have a corresponding scheduler, and each scheduler is designed with three priority queues. Each queue is organized as a linked list, executing registered invokers in order.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2015.png" alt=""></p>
+<p>From the business perspective: when a Node is created in the scene editor, developers can name it and toggle the “active” property to set its default activation state. Once a node is marked active, the Load phase hands it off to the <strong>Node Activator</strong>, which activates the node. The <strong>Component Activator</strong> (part of the component scheduler) then sequentially activates each component mounted on the node and triggers the activation of the Scene that contains it. Finally, the activated scene attaches the node to the hierarchy tree and registers the component Invokers with the scheduler for unified scheduling and management.</p>
+<p>The overall flow:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2016.png" alt=""></p>
+<p>Our demo component logs “Hello World” in the <code>start</code> lifecycle. The call stack looks like this:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2017.png" alt=""><img src="https://airing.ursb.me/images/blog/game-engine/image%2018.png" alt=""><img src="https://airing.ursb.me/images/blog/game-engine/image%2019.png" alt=""></p>
+<h3 id="33-render-scene">3.3 Render Scene</h3>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2020.png" alt="">Once the scene is activated and components are mounted, the next step is rendering the scene — which involves calling from JS into Native: Scene data must be passed to the Native side to trigger the Native rendering pipeline.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2021.png" alt=""></p>
+<p>There are many ways for JS and Native to call each other, each suited to different scenarios — we won’t expand on those here. One architectural note worth making: the Binding layer should be abstracted so the container can interface with different JS engine implementations.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2022.png" alt=""></p>
+<p>Also important: the Binding must handle GC properly on both sides. Therefore, Binding implementations must follow the RAII principle:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2023.png" alt=""></p>
+<h3 id="34-batcher">3.4 Batcher</h3>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2024.png" alt="">Once Native receives the nodes, they need to be batched. This step is compute-intensive, which is why it’s done on the Native side.</p>
+<p>The batching process is complex. The core idea is to traverse the scene’s Nodes via DFS, compute and assemble vertex data (Assembler), and produce a VertexBuffer and IndexBuffer:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2025.png" alt=""></p>
+<p>Our demo’s scene tree is relatively simple. Traversal starts from root and goes downward (don’t forget the Camera):</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2026.png" alt=""></p>
+<p>The assembly computation is complex; here I’ll just break down the final result to help readers understand where the data comes from. Our little dinosaur is a Sprite2D — during assembly it’s converted to Texture2D processing. The critical output at this stage is the Mesh Buffer:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2027.png" alt=""></p>
+<p>The Mesh Buffer is made up of Vertex Buffers. This assembled Mesh Buffer is 80 bytes total. At 20 bytes per vertex, we can extract 4 Vertex Buffers, and using the <code>a_uv</code> definition and offsets we can recover the UV coordinates for each:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2028.png" alt=""></p>
+<p>For example, from the vertex shader code we know each Vertex Buffer contains 3 data components:</p>
+<ul>
+<li><code>a_position</code>: offset 0, 8 bytes. <code>vec2</code> — one coordinate.</li>
+<li><code>a_uv0</code>: offset 8, 8 bytes. <code>vec2</code> — x, y — evaluates to (0, 1).</li>
+<li><code>a_color</code>: offset 16, 4 bytes. <code>vec4</code> — RGBA — value 0xFFFFFFFF, i.e., opaque white.</li>
+</ul>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2029.png" alt=""></p>
+<p>Computing all four vertex coordinates gives us the width, height, and top-left coordinate — and indeed, this data matches exactly what the developer set for the Node’s size and position in the scene editor:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2030.png" alt=""></p>
+<p>After vertex assembly, the Nodes are placed into the Models list and assembled into <code>models</code> nodes within the Scene Tree:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2031.png" alt=""></p>
+<h3 id="35-setup">3.5 Setup</h3>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2032.png" alt="">This stage consists of two main operations:</p>
+<ul>
+<li>Setting up the Framebuffer and Viewport</li>
+<li>Converting each Model in the Scene into a DrawItem queue</li>
+</ul>
+<p>First, setting up the Framebuffer and Viewport:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2033.png" alt=""></p>
+<ul>
+<li><code>setFrameBuffer</code> calls <code>glBindFramebuffer</code> to bind the Framebuffer Object, attaching a color buffer (<code>COLOR_ATTACHMENT</code>, storing rendered color information), a depth buffer (<code>DEPTH_ATTACHMENT</code>, storing per-pixel depth for depth testing), and a stencil buffer (<code>STENCIL_ATTACHMENT</code>, storing stencil test results) — ensuring subsequent drawing has the correct render targets.</li>
+<li><code>setViewport</code> calls <code>glViewport</code> to set the viewport, determining the mapping area of the final render onto the screen.</li>
+<li><code>setup clear</code> sequentially calls <code>glClearColor</code>, <code>glClearDepth</code>, and <code>glClearStencil</code> to initialize clear values for the color, depth, and stencil buffers, providing a clean initial state for each frame.</li>
+</ul>
+<p><code>unsigned int fbo; glGenFramebuffers(1, &#x26;fbo); </code></p>
+<p>Next, the game engine converts each Model in the Scene into a one-to-one DrawItem. A DrawItem’s data structure:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2034.png" alt=""></p>
+<p>Finally, the engine assembles these DrawItems into a DrawItems queue for subsequent processing:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2035.png" alt=""></p>
+<h3 id="36-render-stage">3.6 Render Stage</h3>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2036.png" alt="">The pipeline enters the Render Stage, where DrawItems are classified and dispatched. Based on each DrawItem’s Material requirements, they’re distributed into three different Passes — Opaque, Shadowcast, and Transparent — corresponding to material properties and shadow casting behavior:</p>
+<ul>
+<li><strong>Opaque</strong>: For objects that completely block light, like walls, floors, and character models. Rendered first; uses the depth buffer (Z-Buffer) for occlusion culling, avoiding unnecessary subsequent draws and improving rendering efficiency.</li>
+<li><strong>Shadowcast</strong>: Handles shadow casting in the scene. Based on light source information, this pass draws shadows for objects that cast them, adding realism and spatial depth — especially effective in scenes with strong light sources or prominent light/shadow effects.</li>
+<li><strong>Transparent</strong>: For semi-transparent objects that allow light through, like glass, water surfaces, and particle effects. Transparent objects typically need depth sorting based on view angle to ensure correct front-to-back layering and avoid visual z-fighting.</li>
+</ul>
+<p>By distributing DrawItems into different Passes based on object characteristics, the pipeline can apply effects in a targeted way.</p>
+<p>On the business side, you can create a specific Material in code and the pipeline will route it to the corresponding pass:</p>
+<p>`// Create a cube mesh
+const cube = new cc.MeshRenderer();
+cube.mesh = cc.GizmoMesh.createBox(1, 1, 1);</p>
+<p>// Set material to opaque
+const opaqueMaterial = cc.Material.create();
+opaqueMaterial.initialize({
+effectName: ‘builtin-unlit’,
+technique: ‘opaque’,
+});
+cube.setMaterial(opaqueMaterial, 0);
+`</p>
+<p>Because our demo is simple, the final StageInfo only includes the Opaque Pass:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2037.png" alt=""></p>
+<p>Cocos also supports custom render pipelines — essentially customizing the Passes in this stage. Once defined, they can be applied directly across the Opaque, Shadowcast, and Transparent stages:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2038.png" alt=""></p>
+<h3 id="37-modelview-transformation">3.7 ModelView Transformation</h3>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2039.png" alt="">After the Passes, scene DrawItems are sent to the OpaqueStage Renderer, Shadowcast Renderer, and Transparent Renderer based on their properties for initial processing. Each Renderer at this stage primarily updates view-related Uniforms (matrices, material parameters, etc.) to ensure the correct viewpoint and spatial information are available for subsequent rendering. This can be classified as the View Transformation stage — preparing transformation data in view coordinate space.</p>
+<p>After that, different render stages apply differentiated pre-processing: opaque and transparent objects both execute SubmitLight to submit lighting information, while the shadow stage exclusively executes SubmitShadow to generate shadow data. Additionally, the transparent stage calculates depth information (Calculate zdist) for depth sorting.</p>
+<p>Once all pre-processing completes, everything enters the ModelView Transformation stage, which produces the view-projection matrix and completes the transformation from model space to screen space, enabling subsequent primitive rasterization and pixel shading.</p>
+<p>Before diving into ModelView Transformation, let’s define the coordinate systems used in a game:</p>
+<ul>
+<li><strong>Object (local) coordinate system</strong>: Origin at the object’s own center (anchor typically set to (0.5, 0.5)). Describes the relative positions of parts within the object — useful for defining the internal atomic structure of complex objects.</li>
+<li><strong>World coordinate system</strong>: Origin at the center of the entire scene. Uniformly describes the positions of all objects, cameras, and lights in the scene, ensuring consistent global spatial relationships.</li>
+<li><strong>Camera coordinate system</strong>: Origin at the camera’s position. Used to transform 3D space into a 2D image for rendering calculations.</li>
+</ul>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2040.png" alt=""></p>
+<p>Under this coordinate system, the Viewing Transformation involves three steps: view transformation, model transformation, and projection transformation.</p>
+<ul>
+<li><strong>View transformation</strong>: Placing the camera in the scene — defining the camera’s orientation and position.</li>
+<li><strong>Model transformation</strong>: Positioning, rotating, and scaling objects in the scene.</li>
+<li><strong>Projection transformation</strong>: Like photography — mapping 3D object information onto a 2D screen space through a projection.</li>
+</ul>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2041.png" alt=""></p>
+<p>Let’s focus on <strong>Projection Transformation</strong>, which comes in two forms: <strong>Orthographic Projection</strong> and <strong>Perspective Projection</strong>.</p>
+<ul>
+<li>Orthographic projection is common in engineering drawing software — no near-far perspective effect.</li>
+<li>Perspective projection is widely used in games and rendering engines — it more realistically simulates the perspective effect the human eye perceives.</li>
+</ul>
+<p>Mathematically, perspective projection is a combination of frustum squishing and orthographic projection — it transforms an infinitely extending view space (frustum) into a convenient box for computation.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2042.png" alt=""></p>
+<p>A quick illustration: <strong>fov</strong> (field of view) defines the camera’s viewing angle width — there’s a horizontal fov and a vertical fov. <strong>distance</strong> defines the distance from the projection plane to the camera. The view space is defined by near and far clipping planes that bound the rendering range. Using similar triangles, the 3D space is ultimately mapped to a 2D screen (Canvas).</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2043.png" alt=""></p>
+<p>Now for the other type — <strong>Orthographic Projection</strong>. Two common implementations:</p>
+<ul>
+<li>Simply drop the Z coordinate, converting 3D objects to 2D directly. Intuitive but can’t express spatial depth.</li>
+<li>Transform the view space into a normalized cube, then apply a transformation matrix.</li>
+</ul>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2044.png" alt=""></p>
+<p>In summary, the coordinate transformation flow is: object coordinates → world coordinates → camera coordinates → projected coordinates → screen coordinates.</p>
+<ol>
+<li>In the editor, define coordinate relationships to place objects in the scene.</li>
+<li>Apply view transformation to position the camera, and model transformation to position objects.</li>
+<li>Apply projection transformation to project 3D space onto 2D.</li>
+<li>Finally, convert to screen coordinates for correct on-screen rendering.</li>
+</ol>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2045.png" alt=""></p>
+<p>This process produces the <strong>View Matrix</strong> and <strong>Projection Matrix</strong>; multiplying them gives the <strong>Model-View-Projection (MVP) Matrix</strong>. Let’s look at how each is computed using our demo’s breakpoint data.</p>
+<p>First, the <strong>View Matrix</strong> — it transforms world coordinates to camera coordinates, including axis scaling and translation. In practice this involves homogeneous coordinate padding to ensure valid matrix operations.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2046.png" alt=""></p>
+<p>Next, the <strong>Projection Matrix</strong> — maps camera space to Normalized Device Coordinates (NDC). The scaling coefficients in the matrix are computed from the screen’s aspect ratio and the configured orthographic height.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2047.png" alt=""></p>
+<p>The final rendering step uses the <strong>MVP Matrix</strong> (Model-View-Projection Matrix) — a combination of the view and projection matrices, used for final vertex transformation and shader rendering calculations.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2048.png" alt=""></p>
+<h3 id="38-link-program">3.8 Link Program</h3>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2049.png" alt="">Next comes shader creation and linking. First, creating the primitive:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2050.png" alt=""></p>
+<p>Then creating the vertex shader and fragment shader:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2051.png" alt=""></p>
+<p>Worth noting: Cocos has 11 built-in shaders. The first 5 handle 2D rendering, <code>builtin-clear-stencil|vs|fs</code> clears the stencil buffer, shaders 7–10 handle 3D rendering, and the last handles 3D lighting:</p>
+<ul>
+<li>builtin-2d-spine|vs|fs</li>
+<li>builtin-2d-graphics|vs|fs</li>
+<li>builtin-2d-label|vs|fs</li>
+<li>builtin-2d-sprite|vs|fs</li>
+<li>builtin-2d-gray-sprite|vs|fs</li>
+<li>builtin-clear-stencil|vs|fs</li>
+<li>builtin-3d-trail|particle-trail:vs_main|tinted-fs:add</li>
+<li>builtin-3d-trail|particle-trail:vs_main|tinted-fs:multiply</li>
+<li>builtin-3d-trail|particle-trail:vs_main|no-tint-fs:addSmooth</li>
+<li>builtin-3d-trail|particle-trail:vs_main|no-tint-fs:premultiplied</li>
+<li>builtin-unlit|unlit-vs|unlit-fs</li>
+</ul>
+<p>The demo uses a built-in shader template.</p>
+<p>Next, create the shader program and link the vertex and fragment shaders to it. Then set the required Uniform variables — including the texture and the view-projection matrix computed in the previous step:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2052.png" alt=""></p>
+<p>At this point, the Framebuffer will have the color attachment, depth attachment, and stencil attachment:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2053.png" alt=""></p>
+<p>Note that a freshly created Framebuffer cannot be used immediately — it isn’t yet complete. A complete Framebuffer requires:</p>
+<ul>
+<li>At least one attached buffer (color, depth, or stencil).</li>
+<li>At least one <code>GL_COLOR_ATTACHMENT</code>.</li>
+<li>All attachments must be complete (memory allocated).</li>
+<li>If Multisampling is enabled, all buffers must have the same sample count.</li>
+</ul>
+<p>Therefore, use <code>glCheckFramebufferStatus</code> to verify completeness:</p>
+<p><code>GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER); if (status != GL_FRAMEBUFFER_COMPLETE) {     // ...     // notify native: getInstance()->glErrorCallback(GL_ERROR, errMsg);     return; } </code></p>
+<h3 id="39-blend--test">3.9 Blend &#x26; Test</h3>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2054.png" alt="">Next comes Blend, Depth Test, and Stencil Test in sequence.</p>
+<p>First, <strong>Blend</strong> — literally blending two colors together. The diagram below shows how the blend equation works:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2055.png" alt=""></p>
+<p>Common blend functions in OpenGL:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2056.png" alt=""></p>
+<p>A simple example — using a shader to create a red mask Blend effect:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2057.png" alt=""></p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2058.png" alt=""></p>
+<p><strong>Depth Test</strong> determines whether each pixel is displayed. When depth testing is enabled, OpenGL compares the current fragment’s depth value against the depth buffer. If the fragment passes the test, the depth buffer updates to the new depth value; otherwise the fragment is discarded. Common depth test functions in OpenGL:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2059.png" alt=""></p>
+<p><strong>Stencil Test</strong> restricts the render area. Through the stencil buffer, you can create special region markers during rendering — only fragments that satisfy the stencil buffer’s conditions get rendered to screen. The stencil buffer enables complex effects like shadows, mirror reflections, and outline highlights. Common stencil test functions in OpenGL:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2060.png" alt=""></p>
+<p>All of these results tie back to the Framebuffer’s Attachment mechanism, which determines how render results are written to the buffers. A Framebuffer typically carries multiple buffers — the color buffer (<code>GL_COLOR_ATTACHMENT</code>), depth buffer (<code>GL_DEPTH_ATTACHMENT</code>), and stencil buffer (<code>GL_STENCIL_ATTACHMENT</code>) — which together determine the final rendered output.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2061.png" alt=""></p>
+<h3 id="310-commit--draw-pass">3.10 Commit &#x26; Draw Pass</h3>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2062.png" alt="">The final stage in the pipeline: Commit and Draw.</p>
+<p>In Cocos, each frame stores two states: the <strong>current frame state</strong> (<code>currentState</code>) and the <strong>upcoming render frame state</strong> (<code>nextState</code>).</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2063.png" alt=""></p>
+<p>We compute each component of <code>nextState</code> in sequence, then diff <code>nextState</code> against <code>currentState</code>. If any stage’s state value differs, a commit operation is triggered — allowing the pipeline to maximize cache reuse.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2064.png" alt=""></p>
+<p>The state values managed in the pipeline:</p>
+<ul>
+<li>Blend States, Depth States, Stencil States</li>
+<li>Cull Mode</li>
+<li>Vertex Buffer</li>
+<li>Program</li>
+<li>Textures</li>
+<li>Uniforms</li>
+</ul>
+<p>Note: the Program is typically prepared for all shaders during pipeline initialization; under normal conditions its cache never invalidates, so it’s not shown in the diagram above.</p>
+<p>Blend States, Depth States, and Stencil States store the GL call parameters and partial results from the Blend, Depth Test, and Stencil Test stages described earlier — no need to expand on those here.</p>
+<p>Next is <strong>Cull Mode</strong> — uses vertex index winding order (clockwise vs counterclockwise) to distinguish front from back faces. If the state differs from <code>currentState</code>, <code>glCullFace</code> is called to commit:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2065.png" alt=""></p>
+<p>The <strong>Vertex Buffer</strong> also has state management. If it’s dirty, <code>glBindBuffer</code> is called to rebind:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2066.png" alt=""></p>
+<p>The <strong>shader program</strong> is the same — if dirty, <code>glUseProgram</code> is called to reset it:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2067.png" alt=""></p>
+<p>Then <strong>Textures</strong> are checked and committed. Two key points:</p>
+<ul>
+<li><strong>Texture activation</strong>: Involves <code>glActiveTexture</code> and <code>glBindTexture</code>. First, <code>glActiveTexture</code> selects which texture unit to activate — determining which unit the subsequently bound texture will act on. Then <code>glBindTexture</code> binds a specific texture object to a particular texture target. This mechanism associates texture objects with texture units and targets, completing texture activation and binding.</li>
+<li><strong>Texture units</strong>: Represent the multiple textures a GPU can manage simultaneously. By default, <code>GL_TEXTURE0</code> is always active. OpenGL guarantees at least 16 texture units (<code>GL_TEXTURE0</code> through <code>GL_TEXTURE15</code>). Since they’re defined sequentially, you can access a specific unit conveniently with expressions like <code>GL_TEXTURE0 + 8</code>, enabling multiple textures in complex rendering scenarios.</li>
+</ul>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2068.png" alt=""></p>
+<p>Once the preceding state values are prepared and committed, the final state to manage is <strong>Uniforms</strong>. If this is dirty, the Uniform variables must also be resubmitted. In our demo, the Uniform variables involved are <code>cc_matViewProj</code> and <code>texture</code>:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2069.png" alt=""></p>
+<p>Finally, the Draw. Before drawing each frame, <code>glClear</code> must be called to clear the Framebuffer state. The diagram below shows the timing sequence of GL command calls:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2070.png" alt=""></p>
+<p>Because the demo is simple, drawing only requires the texture and Uniforms to be ready. The final call is <code>glDrawArrays</code> or <code>glDrawElements</code> to draw the prepared Framebuffer onto the screen:</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2071.png" alt=""></p>
+<p>And with that, after traversing the entire pipeline, our demo game has completed its journey to the screen inside the mini-game container.</p>
+<p><img src="https://airing.ursb.me/images/blog/game-engine/image%2072.png" alt=""></p>
+<h2 id="further-reading">Further Reading</h2>
+<ul>
+<li><em>GAMES 101</em></li>
+<li><em>Introduction to Computer Graphics: A Guide to 3D Rendering</em></li>
+<li><a href="https://learnopengl.com/">LearnOpenGL</a> (Chinese: <a href="https://learnopengl-cn.github.io/">LearnOpenGLCN</a>)</li>
+</ul>  </article> <!-- Right column: relative container for absolute-positioned cards --> <aside class="comment-rail" id="commentRail" data-astro-cid-gjtny2mx> <div class="cr-header" data-astro-cid-gjtny2mx> <span class="cr-label" data-astro-cid-gjtny2mx>Comments</span> </div> <div class="cr-cards" id="commentCards" data-astro-cid-gjtny2mx> <!-- Cards positioned absolutely here --> </div> <div class="cr-empty" id="crEmpty" data-astro-cid-gjtny2mx> <p data-astro-cid-gjtny2mx>Select text to add an inline comment.</p> </div> </aside> </div> <!-- FAB --> <button class="fab-comment" id="fabComment" aria-label="Add comment" data-astro-cid-gjtny2mx> <svg width="14" height="14" viewBox="0 0 14 14" fill="none" data-astro-cid-gjtny2mx> <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-astro-cid-gjtny2mx></path> </svg> </button> <!-- Comment input popover (desktop) — now with nickname/email --> <div class="comment-input-popover" id="commentPopover" data-astro-cid-gjtny2mx> <div class="cip-header" data-astro-cid-gjtny2mx> <span class="cip-selected" id="cipSelectedText" data-astro-cid-gjtny2mx></span> </div> <div class="cip-identity" data-astro-cid-gjtny2mx> <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="cip-input" id="cipEmail" placeholder="Email" data-astro-cid-gjtny2mx> </div> <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3" data-astro-cid-gjtny2mx></textarea> <div class="cip-actions" data-astro-cid-gjtny2mx> <button class="cip-cancel" id="cipCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="cip-submit" id="cipSubmit" data-astro-cid-gjtny2mx>Comment</button> </div> </div> <!-- Mobile bottom sheet --> <div class="mobile-sheet-overlay" id="mobileOverlay" data-astro-cid-gjtny2mx></div> <div class="mobile-sheet" id="mobileSheet" data-astro-cid-gjtny2mx> <div class="ms-handle" data-astro-cid-gjtny2mx></div> <div class="ms-quote" id="msQuote" data-astro-cid-gjtny2mx></div> <div class="ms-body" id="msBody" data-astro-cid-gjtny2mx></div> <div class="ms-author" id="msAuthor" data-astro-cid-gjtny2mx></div> <div class="ms-time" id="msTime" data-astro-cid-gjtny2mx></div> <div class="ms-replies" id="msReplies" data-astro-cid-gjtny2mx></div> <button class="ms-reply-toggle" id="msReplyToggle" data-astro-cid-gjtny2mx>Reply</button> <div class="ms-reply-form" id="msReplyForm" style="display:none;" data-astro-cid-gjtny2mx> <div class="ms-rf-identity" data-astro-cid-gjtny2mx> <input type="text" class="ms-rf-input" id="msRfNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="ms-rf-input" id="msRfEmail" placeholder="Email" data-astro-cid-gjtny2mx> </div> <textarea class="ms-rf-textarea" id="msRfTextarea" placeholder="Write a reply..." rows="2" data-astro-cid-gjtny2mx></textarea> <label class="ms-rf-notify" data-astro-cid-gjtny2mx><input type="checkbox" id="msRfNotify" checked data-astro-cid-gjtny2mx> Notify me of replies</label> <div class="ms-rf-actions" data-astro-cid-gjtny2mx> <button class="ms-rf-cancel" id="msRfCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="ms-rf-submit" id="msRfSubmit" data-astro-cid-gjtny2mx>Reply</button> </div> </div> </div> <!-- Prev / Next Navigation --> <nav class="post-nav" data-astro-cid-gjtny2mx> <div class="post-nav-inner" data-astro-cid-gjtny2mx> <a href="/posts/weekly-30/" class="post-nav-link post-nav-prev" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>&larr; Newer</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>Weekly #30: Written on My 30th Birthday</span> </a> <a href="/posts/weekly-29/" class="post-nav-link post-nav-next" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>Older &rarr;</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>Weekly #29: A New Life</span> </a> </div> </nav> <!-- Article Like --> <div class="article-like-section" data-astro-cid-gjtny2mx> <div class="al-rule" data-astro-cid-gjtny2mx></div> <button class="article-like-btn" id="articleLikeBtn" data-astro-cid-gjtny2mx> <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22" data-astro-cid-gjtny2mx> <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none" data-astro-cid-gjtny2mx></path> </svg> <span class="al-count" id="articleLikeCount" data-astro-cid-gjtny2mx>0</span> <span class="al-label" data-astro-cid-gjtny2mx>likes</span> </button> <div class="al-rule" data-astro-cid-gjtny2mx></div> </div> <!-- Newsletter CTA --> <div class="newsletter-cta" data-astro-cid-gjtny2mx> <div class="nl-inner" data-astro-cid-gjtny2mx> <p class="nl-title" data-astro-cid-gjtny2mx>Subscribe</p> <p class="nl-desc" data-astro-cid-gjtny2mx>Get notified when new posts are published.</p> <form class="nl-form" id="nlForm" data-astro-cid-gjtny2mx> <input type="email" class="nl-input" id="nlEmail" placeholder="your@email.com" required data-astro-cid-gjtny2mx> <button type="submit" class="nl-btn" data-astro-cid-gjtny2mx>Subscribe</button> </form> <p class="nl-status" id="nlStatus" data-astro-cid-gjtny2mx></p> </div> </div> <!-- Bottom Comment Section --> <section class="bottom-comments" id="bottomComments" data-astro-cid-gjtny2mx> <div class="bc-inner" data-astro-cid-gjtny2mx> <div class="bc-header" data-astro-cid-gjtny2mx> <h2 class="bc-title" data-astro-cid-gjtny2mx>Comments</h2> <span class="bc-count" id="bcCount" data-astro-cid-gjtny2mx>0 comments</span> </div> <div class="bc-thread" id="bcThread" data-astro-cid-gjtny2mx> <!-- Comments rendered by JS --> </div> <div class="bc-compose" data-astro-cid-gjtny2mx> <div class="bc-compose-avatar" data-astro-cid-gjtny2mx> <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" data-astro-cid-gjtny2mx> </div> <div class="bc-compose-form" data-astro-cid-gjtny2mx> <div class="bc-compose-fields" data-astro-cid-gjtny2mx> <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="bc-input" id="bcEmail" placeholder="Email" data-astro-cid-gjtny2mx> <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" data-astro-cid-gjtny2mx> </div> <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4" data-astro-cid-gjtny2mx></textarea> <div class="bc-compose-footer" data-astro-cid-gjtny2mx> <label class="bc-notify-label" data-astro-cid-gjtny2mx> <input type="checkbox" id="bcNotify" data-astro-cid-gjtny2mx> <span data-astro-cid-gjtny2mx>Notify me of replies via email</span> </label> <button class="bc-submit" id="bcSubmit" data-astro-cid-gjtny2mx>Submit</button> </div> </div> </div> </div> </section> <footer class="page-footer" data-astro-cid-gjtny2mx> <div class="footer-inner" data-astro-cid-gjtny2mx> <div class="footer-rule" data-astro-cid-gjtny2mx></div> <div class="footer-bar" data-astro-cid-gjtny2mx> <a href="/" data-astro-cid-gjtny2mx>&larr; Home</a> <span class="footer-copy" data-astro-cid-gjtny2mx>&copy; Airing</span> <a href="/archive" data-astro-cid-gjtny2mx>Archive &rarr;</a> </div> </div> </footer> </div>  <!-- Mode Toggle (light/dark) --> <div class="theme-switcher" id="themeSwitcher"> <button class="mode-toggle" id="modeToggle" aria-label="Toggle light/dark mode"> <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"></circle> <line x1="8" y1="0.5" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="8" y1="13.5" x2="8" y2="15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="0.5" y1="8" x2="2.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="13.5" y1="8" x2="15.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="2.7" x2="4.1" y2="4.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="11.9" x2="13.3" y2="13.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="13.3" x2="4.1" y2="11.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="4.1" x2="13.3" y2="2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> </svg> <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none"> <path d="M13.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </svg> </button> </div> <script>
+    (function() {
+      var switcher = document.getElementById('themeSwitcher');
+      var modeToggle = document.getElementById('modeToggle');
+
+      // Mode toggle (light/dark)
+      function updateModeIcon() {
+        var isLight = document.documentElement.getAttribute('data-mode') === 'light';
+        switcher.classList.toggle('light-mode', isLight);
+      }
+      modeToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var current = document.documentElement.getAttribute('data-mode');
+        var next = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-mode', next);
+        localStorage.setItem('blog-mode', next);
+        localStorage.setItem('blog-mode-set', '1');
+        updateModeIcon();
+        if (typeof umami !== 'undefined') {
+          umami.track('dark-mode-toggle', { mode: next });
+          umami.identify({ theme: next });
+        }
+      });
+      updateModeIcon();
+    })();
+  </script> </body> </html> <script>
+/* Wrap short text nodes after <img> as styled captions */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = content.querySelectorAll('p');
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (!imgs.length) return;
+    var nodes = Array.from(p.childNodes);
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeType !== 3) continue;
+      var text = node.textContent.trim();
+      if (!text) continue;
+      var prev = node.previousSibling;
+      while (prev && prev.nodeType === 3 && !prev.textContent.trim()) prev = prev.previousSibling;
+      if (!prev || prev.nodeName !== 'IMG') continue;
+      if (text.length > 30 || text.indexOf('\n') !== -1 || text.charAt(0) === '#') continue;
+      var span = document.createElement('span');
+      span.className = 'img-caption';
+      span.textContent = text;
+      p.replaceChild(span, node);
+    }
+  });
+})();
+
+/* Gallery: group consecutive images into flex rows */
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  var paragraphs = Array.from(content.querySelectorAll('p'));
+
+  paragraphs.forEach(function(p) {
+    var imgs = p.querySelectorAll('img');
+    if (imgs.length < 2) return;
+
+    // Segment childNodes into groups: consecutive img(+caption) vs other content
+    var nodes = Array.from(p.childNodes);
+    var segments = [];
+    var currentImgs = [];
+
+    function flushImgs() {
+      if (currentImgs.length >= 2) {
+        segments.push({ type: 'images', items: currentImgs });
+      } else if (currentImgs.length === 1) {
+        segments.push({ type: 'other', nodes: [currentImgs[0].img] });
+        if (currentImgs[0].caption) segments.push({ type: 'other', nodes: [currentImgs[0].caption] });
+      }
+      currentImgs = [];
+    }
+
+    for (var i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (node.nodeName === 'IMG') {
+        var item = { img: node, caption: null };
+        var next = nodes[i + 1];
+        if (next && next.nodeType === 1 && next.classList && next.classList.contains('img-caption')) {
+          item.caption = next;
+          i++;
+        }
+        currentImgs.push(item);
+      } else if (node.nodeType === 3 && !node.textContent.trim()) {
+        continue;
+      } else {
+        flushImgs();
+        segments.push({ type: 'other', nodes: [node] });
+      }
+    }
+    flushImgs();
+
+    var hasGallery = segments.some(function(s) { return s.type === 'images'; });
+    if (!hasGallery) return;
+
+    var frag = document.createDocumentFragment();
+
+    segments.forEach(function(seg) {
+      if (seg.type === 'other') {
+        seg.nodes.forEach(function(n) { frag.appendChild(n.cloneNode(true)); });
+        return;
+      }
+
+      var items = seg.items;
+      var gallery = document.createElement('div');
+      gallery.className = 'img-gallery';
+
+      // Build rows: max 3 per row (2 for groups of 4)
+      var rows = [];
+      var row = [];
+      for (var j = 0; j < items.length; j++) {
+        row.push(items[j]);
+        var maxPerRow = items.length === 4 ? 2 : 3;
+        if (row.length >= maxPerRow) { rows.push(row); row = []; }
+      }
+      if (row.length) rows.push(row);
+
+      rows.forEach(function(rowItems) {
+        var rowDiv = document.createElement('div');
+        rowDiv.className = 'img-gallery-row';
+        rowItems.forEach(function(item) {
+          var figure = document.createElement('figure');
+          figure.className = 'img-gallery-item';
+          figure.appendChild(item.img.cloneNode(true));
+          if (item.caption) {
+            var figcap = document.createElement('figcaption');
+            figcap.textContent = item.caption.textContent;
+            figure.appendChild(figcap);
+          }
+          rowDiv.appendChild(figure);
+        });
+        gallery.appendChild(rowDiv);
+      });
+
+      // Apply flex ratios once all images in gallery have loaded
+      var galleryImgs = gallery.querySelectorAll('img');
+      var loaded = 0;
+      var total = galleryImgs.length;
+      function applyFlex() {
+        var rows = gallery.querySelectorAll('.img-gallery-row');
+        rows.forEach(function(rowEl) {
+          var figs = rowEl.querySelectorAll('.img-gallery-item');
+          figs.forEach(function(fig) {
+            var img = fig.querySelector('img');
+            var w = img.naturalWidth || 1;
+            var h = img.naturalHeight || 1;
+            fig.style.flex = (w / h).toFixed(3);
+          });
+        });
+      }
+      galleryImgs.forEach(function(img) {
+        if (img.complete && img.naturalWidth > 0) {
+          loaded++;
+          if (loaded === total) applyFlex();
+        } else {
+          img.addEventListener('load', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+          img.addEventListener('error', function() {
+            loaded++;
+            if (loaded === total) applyFlex();
+          });
+        }
+      });
+
+      frag.appendChild(gallery);
+    });
+
+    p.parentNode.replaceChild(frag, p);
+  });
+})();
+
+/* TOC: build, scroll-spy, click-to-scroll */
+(function() {
+  var content = document.querySelector('.post-content');
+  var tocNav = document.getElementById('tocNav');
+  var tocBlock = document.getElementById('tocBlock');
+  if (!content || !tocNav || !tocBlock) return;
+
+  var headings = content.querySelectorAll('h2, h3');
+  if (headings.length < 2) return;
+
+  // Ensure each heading has an id
+  headings.forEach(function(h, i) {
+    if (!h.id) h.id = 'heading-' + i;
+  });
+
+  // Build TOC links
+  var fragment = document.createDocumentFragment();
+  headings.forEach(function(h) {
+    var a = document.createElement('a');
+    a.className = 'toc-link';
+    a.href = '#' + h.id;
+    a.textContent = h.textContent;
+    a.setAttribute('data-level', h.tagName === 'H2' ? '2' : '3');
+    a.addEventListener('click', function(e) {
+      e.preventDefault();
+      h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      history.replaceState(null, '', '#' + h.id);
+      if (typeof umami !== 'undefined') umami.track('toc-click', { heading: h.textContent });
+    });
+    fragment.appendChild(a);
+  });
+  tocNav.appendChild(fragment);
+  tocBlock.style.display = '';
+
+  // Scroll spy
+  var tocLinks = tocNav.querySelectorAll('.toc-link');
+  var headingArr = Array.from(headings);
+  var ticking = false;
+
+  function updateActive() {
+    var scrollY = window.scrollY + 80;
+    var active = null;
+    for (var i = headingArr.length - 1; i >= 0; i--) {
+      if (headingArr[i].offsetTop <= scrollY) { active = i; break; }
+    }
+    tocLinks.forEach(function(link, idx) {
+      link.classList.toggle('active', idx === active);
+    });
+    // Scroll active link into view within TOC nav
+    if (active !== null && tocLinks[active]) {
+      var link = tocLinks[active];
+      var nav = tocNav;
+      if (link.offsetTop < nav.scrollTop || link.offsetTop + link.offsetHeight > nav.scrollTop + nav.clientHeight) {
+        nav.scrollTop = link.offsetTop - nav.clientHeight / 3;
+      }
+    }
+    ticking = false;
+  }
+
+  window.addEventListener('scroll', function() {
+    if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
+  }, { passive: true });
+  updateActive();
+})();
+</script> <script>
+// Scroll depth tracking
+(function() {
+  var milestones = [25, 50, 75, 100];
+  var fired = {};
+  var postContent = document.querySelector('.post-content');
+  if (!postContent) return;
+  window.addEventListener('scroll', function() {
+    var rect = postContent.getBoundingClientRect();
+    var total = postContent.scrollHeight;
+    var scrolled = Math.max(0, -rect.top);
+    var pct = Math.min(100, Math.round(scrolled / (total - window.innerHeight) * 100));
+    milestones.forEach(function(m) {
+      if (pct >= m && !fired[m]) {
+        fired[m] = true;
+        if (typeof umami !== 'undefined') umami.track('scroll-depth', { depth: m });
+      }
+    });
+  }, { passive: true });
+})();
+</script> <script>
+// Outbound link tracking
+(function() {
+  var content = document.querySelector('.post-content');
+  if (!content) return;
+  content.addEventListener('click', function(e) {
+    var a = e.target.closest('a[href^="http"]');
+    if (!a) return;
+    var host = new URL(a.href).hostname;
+    if (host === location.hostname) return;
+    if (typeof umami !== 'undefined') umami.track('outbound-link', { url: a.href, host: host });
+  });
+  // Copy text tracking
+  content.addEventListener('copy', function() {
+    var text = (window.getSelection() || '').toString().slice(0, 100);
+    if (text && typeof umami !== 'undefined') umami.track('copy-text', { text: text });
+  });
+})();
+</script> <script>
+(function() {
+  var API = 'https://chat.ursb.me';
+  var POST_SLUG = location.pathname.replace(/^\/posts\//, '').replace(/\/$/, '');
+  var USER_KEY = 'blog-user-identity';
+
+  // Track pageview (fire-and-forget)
+  fetch(API + '/api/posts/' + encodeURIComponent(POST_SLUG) + '/view', { method: 'POST' }).catch(function() {});
+
+  // Fetch and display view count (only show if >= 1000)
+  fetch(API + '/api/posts/' + encodeURIComponent(POST_SLUG) + '/views')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var pv = d.pv || 0;
+      if (pv >= 1000) {
+        var el = document.getElementById('postViews');
+        var block = document.getElementById('postViewsBlock');
+        if (el) el.textContent = pv.toLocaleString();
+        if (block) block.style.display = '';
+      }
+    })
+    .catch(function() {});
+
+  var postContent = document.getElementById('postContent');
+  var contentGrid = document.getElementById('contentGrid');
+  var commentRail = document.getElementById('commentRail');
+  var commentCards = document.getElementById('commentCards');
+  var fab = document.getElementById('fabComment');
+  var popover = document.getElementById('commentPopover');
+  var cipText = document.getElementById('cipSelectedText');
+  var cipNickname = document.getElementById('cipNickname');
+  var cipEmailInput = document.getElementById('cipEmail');
+  var cipArea = document.getElementById('cipTextarea');
+  var cipCancel = document.getElementById('cipCancel');
+  var cipSubmit = document.getElementById('cipSubmit');
+  var crEmpty = document.getElementById('crEmpty');
+  var mobileOverlay = document.getElementById('mobileOverlay');
+  var mobileSheet = document.getElementById('mobileSheet');
+  var msQuote = document.getElementById('msQuote');
+  var msBody = document.getElementById('msBody');
+  var msAuthor = document.getElementById('msAuthor');
+  var msTime = document.getElementById('msTime');
+
+  // Bottom comments
+  var bcThread = document.getElementById('bcThread');
+  var bcCount = document.getElementById('bcCount');
+  var bcNickname = document.getElementById('bcNickname');
+  var bcEmail = document.getElementById('bcEmail');
+  var bcWebsite = document.getElementById('bcWebsite');
+  var bcTextarea = document.getElementById('bcTextarea');
+  var bcNotify = document.getElementById('bcNotify');
+  var bcSubmit = document.getElementById('bcSubmit');
+  var bcComposeAvatar = document.getElementById('bcComposeAvatar');
+
+  // Article like
+  var articleLikeBtn = document.getElementById('articleLikeBtn');
+  var articleLikeCount = document.getElementById('articleLikeCount');
+
+  var pendingRange = null;
+  var activeMobileCommentId = null;
+  var inlineComments = [];
+  var bottomComments = [];
+
+  function isMobile() { return window.innerWidth <= 1100; }
+
+  // --- User identity persistence ---
+  function getSavedIdentity() {
+    try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
+  }
+  function saveIdentity(nickname, email, website) {
+    localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email, website: website || '' }));
+  }
+  function restoreIdentity() {
+    var id = getSavedIdentity();
+    if (id.nickname) {
+      cipNickname.value = id.nickname;
+      bcNickname.value = id.nickname;
+    }
+    if (id.email) {
+      cipEmailInput.value = id.email;
+      bcEmail.value = id.email;
+      updateComposeAvatar(id.email);
+    }
+    if (id.website) {
+      bcWebsite.value = id.website;
+    }
+  }
+
+  var AUTHOR_EMAILS = {
+    'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80',
+    'airing@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80',
+  };
+  var gravatarCache = {};
+  async function sha256Hex(str) {
+    var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
+  function gravatarUrl(email) {
+    var e = (email || '').trim().toLowerCase();
+    if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
+    if (gravatarCache[e]) return gravatarCache[e];
+    sha256Hex(e).then(function(h) { gravatarCache[e] = 'https://gravatar.com/avatar/' + h + '?d=robohash&s=80'; });
+    return 'https://gravatar.com/avatar/?d=robohash&s=80';
+  }
+
+  function commentAvatarUrl(comment) {
+    if (comment && comment.avatar) return comment.avatar;
+    return gravatarUrl(comment ? comment.email : '');
+  }
+
+  function updateComposeAvatar(email) {
+    if (email) bcComposeAvatar.src = gravatarUrl(email);
+  }
+
+  // Debounced avatar update on email input
+  var avatarTimer;
+  bcEmail.addEventListener('input', function() {
+    clearTimeout(avatarTimer);
+    avatarTimer = setTimeout(function() { updateComposeAvatar(bcEmail.value); }, 500);
+  });
+
+  // --- API helpers ---
+  function handleResponse(r) {
+    return r.json().then(function(data) {
+      if (!r.ok) return Promise.reject(data);
+      return data;
+    });
+  }
+  function apiGet(path) {
+    return fetch(API + path, { headers: { 'Origin': location.origin } }).then(handleResponse);
+  }
+  function apiPost(path, body) {
+    return fetch(API + path, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    }).then(handleResponse);
+  }
+  function apiDelete(path) {
+    return fetch(API + path, { method: 'DELETE' }).then(handleResponse);
+  }
+
+  // =====================================================================
+  // INLINE (HIGHLIGHT) COMMENTS — right rail
+  // =====================================================================
+
+  function wrapRange(range, id) {
+    var mark = document.createElement('mark');
+    mark.className = 'comment-highlight';
+    mark.dataset.commentId = id;
+    try { range.surroundContents(mark); }
+    catch(e) {
+      var fragment = range.extractContents();
+      mark.appendChild(fragment);
+      range.insertNode(mark);
+    }
+    return mark;
+  }
+
+  function restoreHighlights() {
+    inlineComments.forEach(function(c) {
+      if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
+      var searchText = c.selected_text;
+      if (!searchText) return;
+      var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
+      var node;
+      while (node = walker.nextNode()) {
+        var idx = node.textContent.indexOf(searchText);
+        if (idx === -1) continue;
+        var range = document.createRange();
+        range.setStart(node, idx);
+        range.setEnd(node, idx + searchText.length);
+        wrapRange(range, c.id);
+        break;
+      }
+    });
+  }
+
+  function removeHighlight(id) {
+    var marks = postContent.querySelectorAll('mark[data-comment-id="' + id + '"]');
+    marks.forEach(function(mark) {
+      var parent = mark.parentNode;
+      while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+      parent.removeChild(mark);
+      parent.normalize();
+    });
+  }
+
+  function offsetFromGrid(el) {
+    var top = 0;
+    while (el && el !== contentGrid) { top += el.offsetTop; el = el.offsetParent; }
+    return top;
+  }
+
+  function layoutCards() {
+    var cards = commentCards.querySelectorAll('.cm-card');
+    if (!cards.length) return;
+    var railOffset = offsetFromGrid(commentRail);
+    var positions = [];
+    cards.forEach(function(card) {
+      var id = card.dataset.commentId;
+      var mark = postContent.querySelector('mark[data-comment-id="' + id + '"]');
+      var desiredTop = 0;
+      if (mark) desiredTop = offsetFromGrid(mark) - railOffset;
+      positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
+    });
+    positions.sort(function(a, b) { return a.desired - b.desired; });
+    var GAP = 8, nextAvailable = 0;
+    positions.forEach(function(p) {
+      var top = Math.max(p.desired, nextAvailable);
+      p.card.style.top = top + 'px';
+      nextAvailable = top + p.height + GAP;
+    });
+    commentCards.style.minHeight = nextAvailable + 'px';
+  }
+
+  function renderInlineComments() {
+    commentCards.innerHTML = '';
+    crEmpty.style.display = inlineComments.length ? 'none' : '';
+
+    inlineComments.forEach(function(c) {
+      if (!c.replies) c.replies = [];
+      var card = document.createElement('div');
+      card.className = 'cm-card';
+      card.dataset.commentId = c.id;
+      var mark = postContent.querySelector('mark[data-comment-id="' + c.id + '"]');
+
+      var time = new Date(c.created_at);
+      var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+        + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      var repliesHtml = '';
+      if (c.replies && c.replies.length) {
+        repliesHtml = '<div class="cm-replies">';
+        c.replies.forEach(function(r) {
+          var rTime = new Date(r.created_at);
+          var rTimeStr = rTime.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+            + ' ' + rTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+          repliesHtml +=
+            '<div class="cm-reply">' +
+              '<div class="cm-reply-header">' +
+                '<img class="cm-reply-avatar" src="' + commentAvatarUrl(r) + '" />' +
+                '<span class="cm-reply-name">' + esc(r.nickname) + '</span>' +
+                '<span class="cm-reply-time">' + rTimeStr + '</span>' +
+              '</div>' +
+              '<div class="cm-reply-body">' + esc(r.comment) + '</div>' +
+            '</div>';
+        });
+        repliesHtml += '</div>';
+      }
+
+      card.innerHTML =
+        '<div class="cm-card-author">' +
+          '<img src="' + commentAvatarUrl(c) + '" class="cm-card-avatar" />' +
+          '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
+        '</div>' +
+        '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
+        '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
+        '<div class="cm-card-footer">' +
+          '<span class="cm-card-time">' + timeStr + '</span>' +
+        '</div>' +
+        repliesHtml +
+        '<button class="cm-reply-btn" data-parent-id="' + c.id + '">Reply</button>' +
+        '<div class="cm-reply-form" style="display:none;">' +
+          '<div class="cm-rf-identity">' +
+            '<input class="cm-rf-input" placeholder="Nickname" />' +
+            '<input class="cm-rf-input" placeholder="Email" />' +
+          '</div>' +
+          '<textarea class="cm-rf-textarea" placeholder="Write a reply..." rows="2"></textarea>' +
+          '<label class="cm-rf-notify"><input type="checkbox" checked /> Notify me of replies</label>' +
+          '<div class="cm-rf-actions">' +
+            '<button class="cm-rf-cancel">Cancel</button>' +
+            '<button class="cm-rf-submit">Reply</button>' +
+          '</div>' +
+        '</div>';
+
+      card.addEventListener('mouseenter', function() {
+        if (mark) mark.classList.add('highlight-active');
+        card.classList.add('cm-card-active');
+      });
+      card.addEventListener('mouseleave', function() {
+        if (mark) mark.classList.remove('highlight-active');
+        card.classList.remove('cm-card-active');
+      });
+      card.addEventListener('click', function(e) {
+        if (e.target.closest('.cm-reply-btn') || e.target.closest('.cm-reply-form')) return;
+        if (mark) {
+          mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          mark.classList.add('highlight-flash');
+          setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1000);
+        }
+      });
+      if (mark) {
+        mark.addEventListener('mouseenter', function() { card.classList.add('cm-card-active'); mark.classList.add('highlight-active'); });
+        mark.addEventListener('mouseleave', function() { card.classList.remove('cm-card-active'); mark.classList.remove('highlight-active'); });
+        mark.addEventListener('click', function(e) {
+          if (!isMobile()) return;
+          e.preventDefault(); e.stopPropagation();
+          openMobileSheet(c);
+        });
+      }
+
+      commentCards.appendChild(card);
+
+      // Reply button handler
+      var replyBtn = card.querySelector('.cm-reply-btn');
+      var replyForm = card.querySelector('.cm-reply-form');
+      var rfInputs = replyForm.querySelectorAll('.cm-rf-input');
+      var rfNickname = rfInputs[0];
+      var rfEmail = rfInputs[1];
+      var rfTextarea = replyForm.querySelector('.cm-rf-textarea');
+      var rfNotify = replyForm.querySelector('.cm-rf-notify input');
+      var rfCancel = replyForm.querySelector('.cm-rf-cancel');
+      var rfSubmit = replyForm.querySelector('.cm-rf-submit');
+
+      replyBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        replyForm.style.display = '';
+        replyBtn.style.display = 'none';
+        var identity = getSavedIdentity();
+        if (identity.nickname) rfNickname.value = identity.nickname;
+        if (identity.email) rfEmail.value = identity.email;
+        rfNickname.focus();
+        layoutCards();
+      });
+
+      rfCancel.addEventListener('click', function(e) {
+        e.stopPropagation();
+        replyForm.style.display = 'none';
+        replyBtn.style.display = '';
+        layoutCards();
+      });
+
+      rfSubmit.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var nickname = rfNickname.value.trim();
+        var email = rfEmail.value.trim();
+        var comment = rfTextarea.value.trim();
+        var rfValid = true;
+        rfNickname.classList.remove('cip-error');
+        rfTextarea.classList.remove('cip-error');
+        if (!nickname) { rfNickname.classList.add('cip-error'); rfValid = false; }
+        if (!comment) { rfTextarea.classList.add('cip-error'); rfValid = false; }
+        if (!rfValid) return;
+
+        saveIdentity(nickname, email);
+        rfSubmit.disabled = true;
+
+        apiPost('/api/inline-comments', {
+          post_slug: POST_SLUG,
+          nickname: nickname,
+          email: email,
+          comment: comment,
+          parent_id: c.id,
+          notify_replies: rfNotify.checked
+        }).then(function(res) {
+          if (res.comment) {
+            c.replies.push(res.comment);
+            renderInlineComments();
+          }
+        }).finally(function() {
+          rfSubmit.disabled = false;
+        });
+      });
+    });
+
+    requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
+  }
+
+  // --- Mobile bottom sheet ---
+  function openMobileSheet(comment) {
+    activeMobileCommentId = comment.id;
+    msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
+    msBody.textContent = comment.comment;
+    msAuthor.textContent = comment.nickname;
+    var time = new Date(comment.created_at);
+    msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+      + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+    // Render replies
+    var repliesEl = document.getElementById('msReplies');
+    repliesEl.innerHTML = '';
+    if (comment.replies && comment.replies.length) {
+      comment.replies.forEach(function(r) {
+        var rTime = new Date(r.created_at);
+        var rTimeStr = rTime.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+          + ' ' + rTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+        var div = document.createElement('div');
+        div.className = 'ms-reply-item';
+        div.innerHTML =
+          '<div class="ms-reply-header">' +
+            '<img src="' + commentAvatarUrl(r) + '" class="ms-reply-avatar" />' +
+            '<span class="ms-reply-name">' + esc(r.nickname) + '</span>' +
+            '<span class="ms-reply-time">' + rTimeStr + '</span>' +
+          '</div>' +
+          '<div class="ms-reply-body">' + esc(r.comment) + '</div>';
+        repliesEl.appendChild(div);
+      });
+    }
+
+    // Reset reply form
+    document.getElementById('msReplyForm').style.display = 'none';
+    document.getElementById('msReplyToggle').style.display = '';
+
+    mobileOverlay.classList.add('active');
+    mobileSheet.classList.add('active');
+  }
+  function closeMobileSheet() {
+    mobileOverlay.classList.remove('active');
+    mobileSheet.classList.remove('active');
+    activeMobileCommentId = null;
+  }
+  mobileOverlay.addEventListener('click', closeMobileSheet);
+  // Mobile reply toggle
+  document.getElementById('msReplyToggle').addEventListener('click', function() {
+    var form = document.getElementById('msReplyForm');
+    form.style.display = 'block';
+    this.style.display = 'none';
+    var id = getSavedIdentity();
+    if (id.nickname) document.getElementById('msRfNickname').value = id.nickname;
+    if (id.email) document.getElementById('msRfEmail').value = id.email;
+    document.getElementById('msRfNickname').focus();
+  });
+
+  document.getElementById('msRfCancel').addEventListener('click', function() {
+    document.getElementById('msReplyForm').style.display = 'none';
+    document.getElementById('msReplyToggle').style.display = '';
+  });
+
+  document.getElementById('msRfSubmit').addEventListener('click', function() {
+    var nickname = document.getElementById('msRfNickname').value.trim();
+    var email = document.getElementById('msRfEmail').value.trim();
+    var text = document.getElementById('msRfTextarea').value.trim();
+    var notify = document.getElementById('msRfNotify').checked;
+    var msNickEl = document.getElementById('msRfNickname');
+    var msTextEl = document.getElementById('msRfTextarea');
+    var msValid = true;
+    msNickEl.classList.remove('cip-error');
+    msTextEl.classList.remove('cip-error');
+    if (!nickname) { msNickEl.classList.add('cip-error'); msValid = false; }
+    if (!text) { msTextEl.classList.add('cip-error'); msValid = false; }
+    if (!msValid || !activeMobileCommentId) return;
+
+    saveIdentity(nickname, email);
+    var submitBtn = this;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '...';
+
+    apiPost('/api/inline-comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      comment: text,
+      parent_id: activeMobileCommentId,
+      notify_replies: notify,
+    }).then(function(res) {
+      if (res.comment) {
+        var parent = inlineComments.find(function(c) { return c.id === activeMobileCommentId; });
+        if (parent) {
+          if (!parent.replies) parent.replies = [];
+          parent.replies.push(res.comment);
+        }
+        closeMobileSheet();
+        renderInlineComments();
+      }
+    }).finally(function() {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Reply';
+    });
+  });
+
+  // --- FAB: show on text selection ---
+  fab.style.display = 'none';
+  popover.style.display = 'none';
+
+  document.addEventListener('mouseup', function(e) {
+    if (popover.style.display !== 'none') return;
+    if (isMobile()) { fab.style.display = 'none'; return; }
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.top + window.scrollY - 36) + 'px';
+    fab.style.left = (rect.right + window.scrollX + 8) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('selectionchange', function() {
+    if (!isMobile()) return;
+    var sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+    var range = sel.getRangeAt(0);
+    if (!postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+    var text = sel.toString().trim();
+    if (!text) { fab.style.display = 'none'; return; }
+    var rect = range.getBoundingClientRect();
+    fab.style.display = 'flex';
+    fab.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    fab.style.left = (rect.left + window.scrollX + (rect.width / 2) - 14) + 'px';
+    pendingRange = range.cloneRange();
+  });
+
+  document.addEventListener('mousedown', function(e) {
+    if (fab.contains(e.target) || popover.contains(e.target)) return;
+    if (popover.style.display === 'none') fab.style.display = 'none';
+  });
+
+  fab.addEventListener('click', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    if (!pendingRange) return;
+    var selectedText = pendingRange.toString().trim();
+    if (!selectedText) return;
+    cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
+    cipArea.value = '';
+    var rect = pendingRange.getBoundingClientRect();
+    if (isMobile()) {
+      popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
+      popover.style.left = '50%';
+      popover.style.transform = 'translateX(-50%)';
+    } else {
+      popover.style.top = (rect.top + window.scrollY) + 'px';
+      popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
+      popover.style.transform = '';
+    }
+    popover.style.display = 'block';
+    fab.style.display = 'none';
+    cipNickname.focus();
+  });
+
+  cipCancel.addEventListener('click', function() {
+    popover.style.display = 'none';
+    pendingRange = null;
+    window.getSelection().removeAllRanges();
+  });
+
+  cipSubmit.addEventListener('click', function() {
+    var text = cipArea.value.trim();
+    var nickname = cipNickname.value.trim();
+    var email = cipEmailInput.value.trim();
+
+    // Validate required fields with red border feedback
+    var valid = true;
+    cipNickname.classList.remove('cip-error');
+    cipArea.classList.remove('cip-error');
+    if (!nickname) { cipNickname.classList.add('cip-error'); valid = false; }
+    if (!text) { cipArea.classList.add('cip-error'); valid = false; }
+    if (!valid || !pendingRange) return;
+
+    var selectedText = pendingRange.toString().trim();
+    saveIdentity(nickname, email);
+
+    cipSubmit.disabled = true;
+    cipSubmit.textContent = '...';
+
+    apiPost('/api/inline-comments', {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      selected_text: selectedText,
+      comment: text,
+      range_start: 0,
+      range_end: selectedText.length,
+      notify_replies: true
+    }).then(function(res) {
+      if (res.comment) {
+        wrapRange(pendingRange, res.comment.id);
+        inlineComments.push(res.comment);
+        renderInlineComments();
+      }
+      popover.style.display = 'none';
+      pendingRange = null;
+      window.getSelection().removeAllRanges();
+    }).finally(function() {
+      cipSubmit.disabled = false;
+      cipSubmit.textContent = 'Comment';
+    });
+  });
+
+  cipArea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
+    if (e.key === 'Escape') cipCancel.click();
+  });
+
+  var layoutTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(layoutTimer);
+    layoutTimer = setTimeout(layoutCards, 60);
+  });
+
+  // =====================================================================
+  // ARTICLE LIKES
+  // =====================================================================
+  var articleLiked = false;
+
+  function loadArticleLikes() {
+    apiGet('/api/posts/' + encodeURIComponent(POST_SLUG) + '/likes').then(function(res) {
+      articleLikeCount.textContent = res.count;
+      articleLiked = res.liked;
+      if (articleLiked) articleLikeBtn.classList.add('liked');
+      // Populate sidebar likes
+      if (res.count > 0) {
+        var lkEl = document.getElementById('postLikesCount');
+        var lkBlock = document.getElementById('postLikesBlock');
+        if (lkEl) lkEl.textContent = res.count.toLocaleString();
+        if (lkBlock) lkBlock.style.display = '';
+      }
+      // Sync localStorage with server state
+      try {
+        var stored = JSON.parse(localStorage.getItem('post_likes') || '[]');
+        var set = new Set(stored);
+        if (res.liked) set.add(POST_SLUG); else set.delete(POST_SLUG);
+        localStorage.setItem('post_likes', JSON.stringify(Array.from(set)));
+      } catch(e) {}
+    });
+  }
+
+  articleLikeBtn.addEventListener('click', function() {
+    // Optimistic update — instant UI feedback
+    var prevLiked = articleLiked;
+    var prevCount = parseInt(articleLikeCount.textContent) || 0;
+    var newLiked = !prevLiked;
+    var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+    articleLiked = newLiked;
+    articleLikeCount.textContent = newCount;
+    articleLikeBtn.classList.toggle('liked', newLiked);
+    var icon = articleLikeBtn.querySelector('.al-icon path');
+    icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+    apiPost('/api/posts/' + encodeURIComponent(POST_SLUG) + '/like', {}).then(function(res) {
+      // Sync with server truth
+      articleLiked = res.liked;
+      articleLikeCount.textContent = res.count;
+      articleLikeBtn.classList.toggle('liked', res.liked);
+      icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      // Update sidebar likes
+      var lkEl = document.getElementById('postLikesCount');
+      var lkBlock = document.getElementById('postLikesBlock');
+      if (res.count > 0) {
+        if (lkEl) lkEl.textContent = res.count.toLocaleString();
+        if (lkBlock) lkBlock.style.display = '';
+      } else {
+        if (lkBlock) lkBlock.style.display = 'none';
+      }
+      // Persist liked state to localStorage
+      try {
+        var stored = JSON.parse(localStorage.getItem('post_likes') || '[]');
+        var set = new Set(stored);
+        if (res.liked) set.add(POST_SLUG); else set.delete(POST_SLUG);
+        localStorage.setItem('post_likes', JSON.stringify(Array.from(set)));
+      } catch(e) {}
+    }).catch(function() {
+      // Rollback on failure
+      articleLiked = prevLiked;
+      articleLikeCount.textContent = prevCount;
+      articleLikeBtn.classList.toggle('liked', prevLiked);
+      icon.setAttribute('fill', prevLiked ? 'currentColor' : 'none');
+    });
+  });
+
+  // =====================================================================
+  // BOTTOM COMMENTS
+  // =====================================================================
+
+  function loadBottomComments() {
+    apiGet('/api/comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+      bottomComments = res.comments || [];
+      renderBottomComments();
+    });
+  }
+
+  function renderBottomComments() {
+    bcThread.innerHTML = '';
+    var count = bottomComments.length;
+    bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+    // Populate sidebar comments
+    if (count > 0) {
+      var cmEl = document.getElementById('postCommentsCount');
+      var cmBlock = document.getElementById('postCommentsBlock');
+      if (cmEl) cmEl.textContent = count.toLocaleString();
+      if (cmBlock) cmBlock.style.display = '';
+    }
+
+    // Build tree
+    var roots = [];
+    var byId = {};
+    bottomComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
+    bottomComments.forEach(function(c) {
+      if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
+      else roots.push(c);
+    });
+
+    roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+  }
+
+  function buildCommentEl(c, isReply) {
+    var div = document.createElement('div');
+    div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
+
+    var time = new Date(c.created_at);
+    var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+    var avatarSize = isReply ? 32 : 40;
+    var nameHtml = c.website
+      ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
+      : '<span class="bc-name">' + esc(c.nickname) + '</span>';
+    div.innerHTML =
+      '<div class="bc-avatar-wrap"><img src="' + commentAvatarUrl(c) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+      '<div class="bc-body">' +
+        '<div class="bc-meta">' +
+          nameHtml +
+          '<span class="bc-dot">&middot;</span>' +
+          '<time class="bc-time">' + timeStr + '</time>' +
+        '</div>' +
+        '<div class="bc-text"><p>' + linkify(esc(c.content)).replace(/\n/g, '<br>') + '</p></div>' +
+        '<div class="bc-actions">' +
+          '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
+            '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
+            '<span>' + (c.likes || 0) + '</span>' +
+          '</button>' +
+          '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
+        '</div>' +
+        '<div class="bc-replies-container"></div>' +
+      '</div>';
+
+    // Like button — optimistic update
+    div.querySelector('.bc-like-btn').addEventListener('click', function() {
+      var btn = this;
+      var icon = btn.querySelector('path');
+      var span = btn.querySelector('span');
+      var wasLiked = btn.classList.contains('liked');
+      var prevCount = parseInt(span.textContent) || 0;
+      var newLiked = !wasLiked;
+      var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+      btn.classList.toggle('liked', newLiked);
+      span.textContent = newCount;
+      icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+      apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
+        btn.classList.toggle('liked', res.liked);
+        span.textContent = res.count;
+        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      }).catch(function() {
+        btn.classList.toggle('liked', wasLiked);
+        span.textContent = prevCount;
+        icon.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+      });
+    });
+
+    // Reply button
+    div.querySelector('.bc-reply-btn').addEventListener('click', function() {
+      // Scroll to compose and pre-fill with @mention
+      bcTextarea.value = '@' + c.nickname + ' ';
+      bcTextarea.dataset.parentId = c.id;
+      bcTextarea.focus();
+      bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+
+    // Render replies
+    var repliesContainer = div.querySelector('.bc-replies-container');
+    if (c._replies && c._replies.length) {
+      c._replies.forEach(function(r) {
+        repliesContainer.appendChild(buildCommentEl(r, true));
+      });
+    }
+
+    return div;
+  }
+
+  // Submit bottom comment
+  bcSubmit.addEventListener('click', function() {
+    var content = bcTextarea.value.trim();
+    var nickname = bcNickname.value.trim();
+    var email = bcEmail.value.trim();
+    var website = bcWebsite.value.trim();
+    if (!content || !nickname || !email) return;
+
+    saveIdentity(nickname, email, website);
+    bcSubmit.disabled = true;
+    bcSubmit.textContent = '...';
+
+    var parentId = bcTextarea.dataset.parentId || null;
+
+    var body = {
+      post_slug: POST_SLUG,
+      nickname: nickname,
+      email: email,
+      content: content,
+      parent_id: parentId ? parseInt(parentId) : null,
+      notify_replies: bcNotify.checked
+    };
+    if (website) body.website = website;
+
+    apiPost('/api/comments', body).then(function(res) {
+      if (res.comment) {
+        bottomComments.push(res.comment);
+        renderBottomComments();
+        bcTextarea.value = '';
+        delete bcTextarea.dataset.parentId;
+      }
+    }).finally(function() {
+      bcSubmit.disabled = false;
+      bcSubmit.textContent = 'Submit';
+    });
+  });
+
+  bcTextarea.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') bcSubmit.click();
+  });
+
+  // =====================================================================
+  // INIT — load everything from API
+  // =====================================================================
+  restoreIdentity();
+
+  apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
+    inlineComments = res.comments || [];
+    restoreHighlights();
+    renderInlineComments();
+  });
+
+  // Newsletter subscribe
+  var nlForm = document.getElementById('nlForm');
+  var nlEmail = document.getElementById('nlEmail');
+  var nlStatus = document.getElementById('nlStatus');
+  if (nlForm) {
+    nlForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      var email = nlEmail.value.trim();
+      if (!email) return;
+      nlStatus.textContent = 'Subscribing...';
+      fetch(API + '/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email })
+      }).then(function(r) { return r.json(); })
+        .then(function(d) {
+          nlStatus.textContent = d.error ? d.error : 'Subscribed!';
+          if (!d.error) nlEmail.value = '';
+        })
+        .catch(function() { nlStatus.textContent = 'Failed. Please try again.'; });
+    });
+  }
+
+  loadArticleLikes();
+  loadBottomComments();
+
+  // --- Helpers ---
+  function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
+  function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function linkify(s) { return s.replace(/(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'); }
+})();
+</script> 
