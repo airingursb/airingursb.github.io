@@ -257,60 +257,66 @@ def fetch_douban_metadata(url):
 
 def fetch_og_metadata(url):
     """Fetch Open Graph metadata for a URL. Returns dict or None."""
-    try:
-        # Use Douban Frodo API for douban.com URLs (web pages block bots)
-        if re.match(r'https?://(movie|book)\.douban\.com/subject/\d+', url):
-            return fetch_douban_metadata(url)
-        # Use fxtwitter.com proxy for x.com/twitter.com URLs to get OG metadata
-        fetch_url = url
-        if re.match(r'https?://(x\.com|twitter\.com)/', url):
-            fetch_url = re.sub(r'https?://(x\.com|twitter\.com)/', 'https://fxtwitter.com/', url)
-        req = urllib.request.Request(fetch_url, headers={
-            'User-Agent': 'Mozilla/5.0 (compatible; OGBot/1.0)',
-            'Accept': 'text/html',
-        })
-        resp = urllib.request.urlopen(req, timeout=10)
-        # Only parse HTML responses
-        content_type = resp.headers.get('Content-Type', '')
-        if 'text/html' not in content_type and 'application/xhtml' not in content_type:
+    # Use Douban Frodo API for douban.com URLs (web pages block bots)
+    if re.match(r'https?://(movie|book)\.douban\.com/subject/\d+', url):
+        return fetch_douban_metadata(url)
+    # Use fxtwitter.com proxy for x.com/twitter.com URLs to get OG metadata
+    fetch_url = url
+    if re.match(r'https?://(x\.com|twitter\.com)/', url):
+        fetch_url = re.sub(r'https?://(x\.com|twitter\.com)/', 'https://fxtwitter.com/', url)
+
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(fetch_url, headers={
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+            })
+            resp = urllib.request.urlopen(req, timeout=15)
+            # Only parse HTML responses
+            content_type = resp.headers.get('Content-Type', '')
+            if 'text/html' not in content_type and 'application/xhtml' not in content_type:
+                return None
+            raw = resp.read(64 * 1024)  # Read at most 64KB
+            html_str = raw.decode('utf-8', errors='replace')
+
+            og = {}
+            # Extract <meta property="og:..." content="...">
+            for m in re.finditer(
+                r'<meta\s+(?:[^>]*?)property=["\']og:(\w+)["\'](?:[^>]*?)content=["\']([^"\']*)["\']',
+                html_str, re.IGNORECASE
+            ):
+                og[m.group(1)] = html_module.unescape(m.group(2))
+
+            # Also try content before property order
+            for m in re.finditer(
+                r'<meta\s+(?:[^>]*?)content=["\']([^"\']*)["\'](?:[^>]*?)property=["\']og:(\w+)["\']',
+                html_str, re.IGNORECASE
+            ):
+                key = m.group(2)
+                if key not in og:
+                    og[key] = html_module.unescape(m.group(1))
+
+            # Fallback to <title> if no og:title
+            if 'title' not in og:
+                title_m = re.search(r'<title[^>]*>([^<]+)</title>', html_str, re.IGNORECASE)
+                if title_m:
+                    og['title'] = html_module.unescape(title_m.group(1).strip())
+
+            if not og.get('title'):
+                return None
+
+            return {
+                'url': url,
+                'title': og.get('title', ''),
+                'description': og.get('description', ''),
+                'image': og.get('image', ''),
+            }
+        except Exception:
+            if attempt < 2:
+                time.sleep(2)
+                continue
             return None
-        raw = resp.read(64 * 1024)  # Read at most 64KB
-        html_str = raw.decode('utf-8', errors='replace')
-
-        og = {}
-        # Extract <meta property="og:..." content="...">
-        for m in re.finditer(
-            r'<meta\s+(?:[^>]*?)property=["\']og:(\w+)["\'](?:[^>]*?)content=["\']([^"\']*)["\']',
-            html_str, re.IGNORECASE
-        ):
-            og[m.group(1)] = html_module.unescape(m.group(2))
-
-        # Also try content before property order
-        for m in re.finditer(
-            r'<meta\s+(?:[^>]*?)content=["\']([^"\']*)["\'](?:[^>]*?)property=["\']og:(\w+)["\']',
-            html_str, re.IGNORECASE
-        ):
-            key = m.group(2)
-            if key not in og:
-                og[key] = html_module.unescape(m.group(1))
-
-        # Fallback to <title> if no og:title
-        if 'title' not in og:
-            title_m = re.search(r'<title[^>]*>([^<]+)</title>', html_str, re.IGNORECASE)
-            if title_m:
-                og['title'] = html_module.unescape(title_m.group(1).strip())
-
-        if not og.get('title'):
-            return None
-
-        return {
-            'url': url,
-            'title': og.get('title', ''),
-            'description': og.get('description', ''),
-            'image': og.get('image', ''),
-        }
-    except Exception:
-        return None
 
 
 def get_link_previews(text):

@@ -1,10 +1,11 @@
 ---
 /**
- * Blog — Magazine-style Substack-inspired listing page
+ * Blog — Magazine-style Substack-inspired listing page (English)
  */
 import { getCollection } from 'astro:content';
-import BaseLayout from '../layouts/BaseLayout.astro';
-import LangSwitch from '../components/LangSwitch.astro';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { t, buildTranslationMap, enPostSlug } from '../../lib/i18n';
 
 const posts = (await getCollection('posts', ({ data }) => !data.draft))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
@@ -68,6 +69,28 @@ const popularPosts = rankedPosts.slice(0, 4);
 // Build rank index for each post (0 = most popular)
 const rankIndex = new Map<string, number>();
 rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
+
+const strings = t('en');
+const enPosts = await getCollection('postsEn', ({ data }) => !data.draft);
+const hasEn = buildTranslationMap(enPosts.map(p => p.id));
+const enPostMap = new Map(enPosts.map(p => [enPostSlug(p.id), p]));
+
+/** Get display title: English if translation exists, otherwise Chinese */
+function displayTitle(postId: string, zhTitle: string) {
+  const enPost = enPostMap.get(postId);
+  return enPost ? enPost.data.title : zhTitle;
+}
+
+/** Get display description */
+function displayDesc(postId: string, zhDesc?: string) {
+  const enPost = enPostMap.get(postId);
+  return enPost?.data.description ?? zhDesc ?? '';
+}
+
+/** Get post link: /en/posts/slug if English exists, /posts/slug otherwise */
+function postLink(postId: string) {
+  return hasEn.has(postId) ? `/en/posts/${postId}/` : `/posts/${postId}/`;
+}
 ---
 
 <BaseLayout title="Blog | Airing" hreflang={{ zh: 'https://ursb.me/blog', en: 'https://ursb.me/en/blog' }}>
@@ -79,10 +102,10 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
       <div class="mast-inner">
         <div class="mast-top-rule"></div>
         <div class="mast-bar">
-          <a href="/blog" class="mast-brand">Airing's Blog</a>
-          <span class="mast-motto">应无所住而生其心</span>
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
+          <span class="mast-motto">{strings.motto}</span>
           <div class="mast-links">
-            <a href="/blog" class="mast-hide-mobile">Blog</a>
+            <a href="/en/blog" class="mast-hide-mobile">Blog</a>
             <a href="/archive" class="mast-hide-mobile">Archive</a>
             <a href="/moments">Moment</a>
             <a href="/notes">Notes</a>
@@ -93,8 +116,8 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
         <div class="mast-date-line">
           <span class="mast-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
           <span class="mast-right">
-            <span class="mast-post-count">{posts.length} 篇文章</span>
-            <LangSwitch lang="zh" currentPath="/blog" />
+            <span class="mast-post-count">{strings.posts_count(posts.length)}</span>
+            <LangSwitch lang="en" currentPath="/en/blog" />
           </span>
         </div>
       </div>
@@ -106,7 +129,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
         <!-- Left column: 2 small cards -->
         <div class="hero-col hero-col-left">
           {heroPosts.slice(1, 3).map(post => (
-            <a href={`/posts/${post.id}`} class="hero-card hero-card-sm" data-slug={post.id}>
+            <a href={postLink(post.id)} class="hero-card hero-card-sm" data-slug={post.id}>
               <div
                 class="hc-img"
                 style={`background-image:${post.data.cover ? `url(${post.data.cover})` : gradientFallback}`}
@@ -120,8 +143,8 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
                 )}
               </div>
               <div class="hc-body">
-                <h3 class="hc-title">{post.data.title}</h3>
-                {post.data.description && <p class="hc-excerpt">{post.data.description}</p>}
+                <h3 class="hc-title">{displayTitle(post.id, post.data.title)}{!hasEn.has(post.id) && <span class="cn-badge">CN</span>}</h3>
+                {post.data.description && <p class="hc-excerpt">{displayDesc(post.id, post.data.description)}</p>}
                 <div class="hc-meta">
                   <time>{formatDate(post.data.date)}</time>
                   <span>&middot;</span>
@@ -134,15 +157,15 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
 
         <!-- Center: large hero -->
         {heroPosts[0] && (
-          <a href={`/posts/${heroPosts[0].id}`} class="hero-card hero-card-lg" data-slug={heroPosts[0].id}>
+          <a href={postLink(heroPosts[0].id)} class="hero-card hero-card-lg" data-slug={heroPosts[0].id}>
             <div
               class="hc-img-full"
               style={`background-image:${heroPosts[0].data.cover ? `url(${heroPosts[0].data.cover})` : gradientFallback}`}
             >
               <div class="hc-overlay">
-                <h2 class="hc-title-lg">{heroPosts[0].data.title}</h2>
+                <h2 class="hc-title-lg">{displayTitle(heroPosts[0].id, heroPosts[0].data.title)}{!hasEn.has(heroPosts[0].id) && <span class="cn-badge">CN</span>}</h2>
                 {heroPosts[0].data.description && (
-                  <p class="hc-excerpt-lg">{heroPosts[0].data.description}</p>
+                  <p class="hc-excerpt-lg">{displayDesc(heroPosts[0].id, heroPosts[0].data.description)}</p>
                 )}
                 <div class="hc-meta-lg">
                   <time>{formatDate(heroPosts[0].data.date)}</time>
@@ -164,7 +187,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
         <!-- Right column: 2 small cards -->
         <div class="hero-col hero-col-right">
           {heroPosts.slice(3, 5).map(post => (
-            <a href={`/posts/${post.id}`} class="hero-card hero-card-sm" data-slug={post.id}>
+            <a href={postLink(post.id)} class="hero-card hero-card-sm" data-slug={post.id}>
               <div
                 class="hc-img"
                 style={`background-image:${post.data.cover ? `url(${post.data.cover})` : gradientFallback}`}
@@ -178,8 +201,8 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
                 )}
               </div>
               <div class="hc-body">
-                <h3 class="hc-title">{post.data.title}</h3>
-                {post.data.description && <p class="hc-excerpt">{post.data.description}</p>}
+                <h3 class="hc-title">{displayTitle(post.id, post.data.title)}{!hasEn.has(post.id) && <span class="cn-badge">CN</span>}</h3>
+                {post.data.description && <p class="hc-excerpt">{displayDesc(post.id, post.data.description)}</p>}
                 <div class="hc-meta">
                   <time>{formatDate(post.data.date)}</time>
                   <span>&middot;</span>
@@ -196,14 +219,14 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
     <section class="popular-section">
       <div class="popular-inner">
         <div class="popular-header">
-          <h2 class="popular-heading">Most Popular</h2>
+          <h2 class="popular-heading">{strings.popular}</h2>
           <a href="/archive" class="popular-viewall">View all &rarr;</a>
         </div>
         <div class="popular-grid">
           {popularPosts.map(post => (
-            <a href={`/posts/${post.id}`} class="popular-card" data-slug={post.id}>
+            <a href={postLink(post.id)} class="popular-card" data-slug={post.id}>
               <div class="pc-body">
-                <h3 class="pc-title">{post.data.title}</h3>
+                <h3 class="pc-title">{displayTitle(post.id, post.data.title)}{!hasEn.has(post.id) && <span class="cn-badge">CN</span>}</h3>
                 <div class="pc-meta">
                   <time>{formatDate(post.data.date)}</time>
                   <span>&middot;</span>
@@ -233,7 +256,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
         <div class="article-list">
           <div class="list-tabs">
             <div class="tab-bar">
-              <button class="list-tab active">Latest</button>
+              <button class="list-tab active">{strings.latest}</button>
               <button class="list-tab">Top</button>
             </div>
             <a href="/search" class="list-search-icon" aria-label="Search posts">
@@ -249,11 +272,11 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
             const likes = ranking.likes[post.id] || 0;
             const comments = ranking.comments[post.id] || 0;
             return (
-            <a href={`/posts/${post.id}`} class="post-item" data-slug={post.id} data-date={post.data.date.toISOString()} data-rank={rankIndex.get(post.id) ?? 9999}>
+            <a href={postLink(post.id)} class="post-item" data-slug={post.id} data-date={post.data.date.toISOString()} data-rank={rankIndex.get(post.id) ?? 9999}>
               <div class="pi-body">
-                <h3 class="pi-title">{post.data.title}</h3>
+                <h3 class="pi-title">{displayTitle(post.id, post.data.title)}{!hasEn.has(post.id) && <span class="cn-badge">CN</span>}</h3>
                 {post.data.description && (
-                  <p class="pi-desc">{post.data.description}</p>
+                  <p class="pi-desc">{displayDesc(post.id, post.data.description)}</p>
                 )}
                 <div class="pi-meta-wrap">
                   <div class="pi-meta">
@@ -289,7 +312,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
                 loading="lazy"
               />
               <h3 class="author-name"><a href="/">Airing</a></h3>
-              <p class="author-bio">哲学硕士｜终端全栈</p>
+              <p class="author-bio">M.Phil. in Philosophy | Full-stack Engineer</p>
               <div class="author-links">
                 <a href="https://github.com/airingursb" target="_blank" rel="noopener" title="GitHub" class="author-link-icon">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
@@ -317,7 +340,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
                 <a href="/search" title="Search" class="author-link-icon">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
                 </a>
-                <a href="/blog/feed.xml" title="RSS" class="author-link-icon">
+                <a href="/en/blog/feed.xml" title="RSS" class="author-link-icon">
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
                 </a>
               </div>
@@ -351,16 +374,15 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
         <div class="footer-links">
           <a href="/">Home</a>
           <a href="/archive">Archive</a>
-          <a href="/blog/feed.xml">RSS</a>
+          <a href="/en/blog/feed.xml">RSS</a>
         </div>
       </div>
     </footer>
   </div>
 
 <script is:inline>
-  // Auto-redirect to English version if user preference is English
-  if (localStorage.getItem('preferred_lang') === 'en') {
-    window.location.replace('/en/blog');
+  if (localStorage.getItem('preferred_lang') === 'zh') {
+    window.location.replace('/blog');
   }
 </script>
 </BaseLayout>
@@ -1057,5 +1079,19 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
       border-right: none;
       padding-right: 0;
     }
+  }
+
+  .cn-badge {
+    display: inline-block;
+    font-size: 0.65em;
+    font-weight: 600;
+    color: var(--c-text-muted);
+    background: var(--c-bg-alt, #f5f5f5);
+    border: 1px solid var(--c-border, #e0e0e0);
+    border-radius: 3px;
+    padding: 0.1em 0.4em;
+    margin-left: 0.5em;
+    vertical-align: middle;
+    letter-spacing: 0.05em;
   }
 </style>

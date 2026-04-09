@@ -6,6 +6,7 @@
  * Mobile:  单栏，高亮文字点击弹出 bottom-sheet 评论气泡
  */
 import BaseLayout from './BaseLayout.astro';
+import LangSwitch from '../components/LangSwitch.astro';
 
 interface Props {
   title: string;
@@ -24,27 +25,27 @@ interface Props {
     next: { slug: string; title: string } | null;
   } | null;
   readingTime?: number;
+  lang?: 'zh' | 'en';
+  hreflang?: { zh?: string; en?: string };
 }
 
-const { title, date, tags, description, cover, prevPost, nextPost, relatedPosts = [], seriesInfo, readingTime } = Astro.props;
+const { title, date, tags, description, cover, prevPost, nextPost, relatedPosts = [], seriesInfo, readingTime, lang = 'zh', hreflang } = Astro.props;
 
-const seriesNames: Record<string, string> = {
-  weekly: '月刊',
-  annually: '年报',
+const seriesNames: Record<string, Record<string, string>> = {
+  zh: { weekly: '月刊', annually: '年报' },
+  en: { weekly: 'Weekly', annually: 'Annual' },
 };
 
-const dateStr = date.toLocaleDateString('zh-CN', {
-  year: 'numeric',
-  month: 'long',
-  day: 'numeric',
-});
-const shortDate = date.toLocaleDateString('zh-CN', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
+const dateStr = lang === 'en'
+  ? date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  : date.toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+const shortDate = lang === 'en'
+  ? date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
+  : date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
-const canonicalUrl = new URL(`/posts/${Astro.params.slug}/`, Astro.site).href;
+const prefix = lang === 'en' ? '/en' : '';
+const hasEnVersion = !!hreflang?.en;
+const canonicalUrl = new URL(`${prefix}/posts/${Astro.params.slug}/`, Astro.site).href;
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -67,17 +68,18 @@ const jsonLd = {
     "@type": "WebPage",
     "@id": canonicalUrl
   },
+  "inLanguage": lang === 'en' ? 'en' : 'zh-CN',
   ...(description ? { "description": description } : {}),
   ...(cover ? { "image": cover } : {}),
   ...(tags.length > 0 ? { "keywords": tags.join(", ") } : {}),
 };
 ---
 
-<BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={`${new URL(`og/${Astro.url.pathname.split('/').filter(Boolean).pop()}.png`, Astro.site).href}`}>
+<BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={`${new URL(`og/${Astro.url.pathname.split('/').filter(Boolean).pop()}.png`, Astro.site).href}`} hreflang={hreflang}>
   <link slot="head" rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'" />
   <noscript><link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" /></noscript>
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
-  <div class="post-page">
+  <div class="post-page" data-lang={lang}>
     <!-- Masthead -->
     <header class="masthead">
       <div class="mast-inner">
@@ -94,6 +96,9 @@ const jsonLd = {
           </div>
         </div>
         <div class="mast-bottom-rule"></div>
+        <div class="mast-lang-line">
+          <LangSwitch lang={lang} currentPath={`/posts/${Astro.params.slug}`} hasEnVersion={hasEnVersion} />
+        </div>
       </div>
     </header>
 
@@ -114,13 +119,13 @@ const jsonLd = {
       <div class="series-nav">
         <div class="series-inner">
           {seriesInfo.prev && (
-            <a href={`/posts/${seriesInfo.prev.slug}/`} class="series-arrow" title={seriesInfo.prev.title}>&larr;</a>
+            <a href={`${prefix}/posts/${seriesInfo.prev.slug}/`} class="series-arrow" title={seriesInfo.prev.title}>&larr;</a>
           )}
           <a href={`/tags/${seriesInfo.tag}/`} class="series-badge">
-            {seriesNames[seriesInfo.tag] || seriesInfo.tag} #{seriesInfo.current} / {seriesInfo.total}
+            {(seriesNames[lang] || seriesNames.zh)[seriesInfo.tag] || seriesInfo.tag} #{seriesInfo.current} / {seriesInfo.total}
           </a>
           {seriesInfo.next && (
-            <a href={`/posts/${seriesInfo.next.slug}/`} class="series-arrow" title={seriesInfo.next.title}>&rarr;</a>
+            <a href={`${prefix}/posts/${seriesInfo.next.slug}/`} class="series-arrow" title={seriesInfo.next.title}>&rarr;</a>
           )}
         </div>
       </div>
@@ -1492,7 +1497,8 @@ const jsonLd = {
   .mast-date {
     font-size: 12px; color: var(--c-text-dim);
     position: absolute; left: 50%; transform: translateX(-50%);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    font-family: var(--font-serif);
+    letter-spacing: 0.08em;
   }
   .mast-links { display: flex; gap: 16px; }
   .mast-links a {
@@ -1502,6 +1508,10 @@ const jsonLd = {
   }
   .mast-links a:hover { color: var(--c-text); }
   .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-lang-line {
+    display: flex; justify-content: flex-end;
+    padding: 8px 0;
+  }
 
   /* ===== Headline ===== */
   .headline-section {
@@ -1527,7 +1537,6 @@ const jsonLd = {
     font-size: 18px; color: var(--c-text-muted); margin-top: 16px; line-height: 1.5;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   }
-
   /* ===== Cover ===== */
   .cover-section {
     max-width: 900px; margin: 0 auto 2rem; padding: 32px 48px 0;
@@ -1650,11 +1659,18 @@ const jsonLd = {
     font-family: 'Noto Serif SC', 'Source Han Serif CN', 'Source Han Serif SC', 'Songti SC', STSong, serif;
     letter-spacing: 0.02em;
   }
+  .post-page[data-lang="en"] .post-content {
+    font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+    letter-spacing: normal;
+  }
   .post-content :global(h2) {
     font-size: 24px; font-weight: 700; margin-top: 48px; margin-bottom: 20px;
     color: var(--c-text);
     font-family: 'Noto Serif SC', 'Source Han Serif CN', 'Songti SC', serif;
     line-height: 1.4; letter-spacing: 0.01em;
+  }
+  .post-page[data-lang="en"] .post-content :global(h2) {
+    font-family: Georgia, 'Times New Roman', serif;
   }
   .post-content :global(:first-child) { margin-top: 0; }
   .post-content :global(h3) {
@@ -1662,6 +1678,9 @@ const jsonLd = {
     color: var(--c-text);
     font-family: 'Noto Serif SC', 'Source Han Serif CN', 'Songti SC', serif;
     line-height: 1.45;
+  }
+  .post-page[data-lang="en"] .post-content :global(h3) {
+    font-family: Georgia, 'Times New Roman', serif;
   }
   .post-content :global(p) { margin-bottom: 24px; }
   .post-content :global(a) {
