@@ -35,7 +35,7 @@ export const siteStrings = {
         `${m}/${d} 周` + (count ? ` (${count} 篇)` : ''),
       feedTitle: "Airing's Notes",
       feedDesc: '思考的痕迹：记录关于前端、数学、设计、哲学和一切让我好奇的事物。',
-      feedLang: 'zh-cn',
+      feedLang: 'zh-CN',
     },
     archive: {
       title: 'Archive',
