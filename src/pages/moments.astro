@@ -1,5 +1,9 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import LangSwitch from '../components/LangSwitch.astro';
+import { tSite } from '../lib/i18n';
+
+const s = tSite('zh').moments;
 
 // ── Build-time: fetch moments from Supabase ──
 const SUPABASE_URL = import.meta.env.BLOG_SUPABASE_URL || process.env.BLOG_SUPABASE_URL || '';
@@ -117,7 +121,7 @@ for (const m of staticMoments) {
 }
 ---
 
-<BaseLayout title="Moment | Airing">
+<BaseLayout title={`${s.title} | Airing`} lang="zh">
   <div class="moments-page">
     <!-- Masthead -->
     <header class="masthead">
@@ -134,6 +138,9 @@ for (const m of staticMoments) {
             <a href="/friends">Friends</a>
           </div>
         </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="zh" currentPath="/moments" hasEnVersion={true} />
+        </div>
         <div class="mast-bottom-rule"></div>
       </div>
     </header>
@@ -141,8 +148,8 @@ for (const m of staticMoments) {
     <!-- Page Header -->
     <header class="page-header">
       <div class="header-inner">
-        <h1 class="page-title">Moment</h1>
-        <p class="page-desc">Thoughts and shares from <a href="https://t.me/s/airingchannel" target="_blank" style="color:var(--accent);text-decoration:none">Telegram Channel</a>.</p>
+        <h1 class="page-title">{s.title}</h1>
+        <p class="page-desc">{s.desc}</p>
       </div>
     </header>
 
@@ -278,6 +285,11 @@ for (const m of staticMoments) {
       </div>
     </footer>
   </div>
+  <script is:inline>
+    if (localStorage.getItem('preferred_lang') === 'en') {
+      window.location.replace('/en/moments');
+    }
+  </script>
 </BaseLayout>
 
 <style is:global>
@@ -321,6 +333,11 @@ for (const m of staticMoments) {
   }
   .mast-links a:hover, .mast-link-active { color: var(--c-text) !important; }
   .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-lang-line {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 8px 0;
+  }
 
   /* ── Page Header ── */
   .page-header { border-bottom: 1px solid var(--c-border); padding: 48px 0; }
