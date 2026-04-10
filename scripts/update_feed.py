@@ -666,6 +666,8 @@ def main():
         rw_data = fetch_readwise_data()
         rw_html = generate_highlights_script(rw_data)
         content = replace_section(content, '<!-- HIGHLIGHTS_DATA_START -->', '<!-- HIGHLIGHTS_DATA_END -->', rw_html)
+        astro_script = rw_html.replace('<script>', '<script is:inline>')
+        sync_to_astro('<!-- HIGHLIGHTS_DATA_START -->', '<!-- HIGHLIGHTS_DATA_END -->', astro_script, 'Readwise')
         print(f'Readwise: {len(rw_data["highlights"])} highlights (total {rw_data["total"]})')
         changed = True
     except Exception as e:
@@ -676,6 +678,8 @@ def main():
         gh_data = fetch_github_data()
         gh_html = generate_github_script(gh_data)
         content = replace_section(content, '<!-- GITHUB_DATA_START -->', '<!-- GITHUB_DATA_END -->', gh_html)
+        astro_script = gh_html.replace('<script>', '<script is:inline>')
+        sync_to_astro('<!-- GITHUB_DATA_START -->', '<!-- GITHUB_DATA_END -->', astro_script, 'GitHub')
         print(f'GitHub: @{gh_data["login"]} - {gh_data["followers"]} followers, {gh_data["repos"]} repos')
         changed = True
     except Exception as e:
@@ -686,6 +690,8 @@ def main():
         rd_data = fetch_raindrop_data()
         rd_html = generate_raindrop_script(rd_data)
         content = replace_section(content, '<!-- RAINDROP_DATA_START -->', '<!-- RAINDROP_DATA_END -->', rd_html)
+        astro_script = rd_html.replace('<script>', '<script is:inline>')
+        sync_to_astro('<!-- RAINDROP_DATA_START -->', '<!-- RAINDROP_DATA_END -->', astro_script, 'Raindrop')
         print(f'Raindrop: {len(rd_data["bookmarks"])} bookmarks (total {rd_data["total"]})')
         changed = True
     except Exception as e:
@@ -712,6 +718,8 @@ def main():
         music_data = fetch_lastfm_data()
         script_html = generate_music_script(music_data)
         content = replace_section(content, '<!-- MUSIC_DATA_START -->', '<!-- MUSIC_DATA_END -->', script_html)
+        astro_script = script_html.replace('<script>', '<script is:inline>')
+        sync_to_astro('<!-- MUSIC_DATA_START -->', '<!-- MUSIC_DATA_END -->', astro_script, 'Last.fm')
         print(f'Last.fm: {len(music_data["periods"])} periods, {music_data["totalScrobbles"]} scrobbles')
         changed = True
     except Exception as e:
@@ -722,6 +730,8 @@ def main():
         recent_tracks = fetch_lastfm_recent_tracks(6)
         np_html = generate_nowplaying_script(recent_tracks)
         content = replace_section(content, '<!-- NOWPLAYING_DATA_START -->', '<!-- NOWPLAYING_DATA_END -->', np_html)
+        astro_script = np_html.replace('<script>', '<script is:inline>')
+        sync_to_astro('<!-- NOWPLAYING_DATA_START -->', '<!-- NOWPLAYING_DATA_END -->', astro_script, 'Now Playing')
         now_count = sum(1 for t in recent_tracks if t.get('nowplaying'))
         print(f'Now Playing: {len(recent_tracks)} recent tracks, {now_count} currently playing')
         changed = True
