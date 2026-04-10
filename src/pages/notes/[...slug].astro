@@ -2,17 +2,25 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection, render } from 'astro:content';
 import { getBacklinks } from '../../lib/backlinks';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { tSite } from '../../lib/i18n';
 
 export async function getStaticPaths() {
   const notes = await getCollection('notes', ({ data }) => data.public && !data.draft);
   const sorted = notes.sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
+  const enNotes = await getCollection('notesEn', ({ data }) => data.public && !data.draft);
+  const enNoteIds = new Set(enNotes.map(n => n.id));
   return sorted.map(note => ({
     params: { slug: note.id },
-    props: { note, allNotes: sorted },
+    props: {
+      note,
+      allNotes: sorted,
+      hasEn: enNoteIds.has(note.id),
+    },
   }));
 }
 
-const { note, allNotes } = Astro.props;
+const { note, allNotes, hasEn } = Astro.props;
 const { Content, headings } = await render(note);
 
 const backlinkMap = await getBacklinks();
@@ -28,12 +36,14 @@ const relatedNotes = [
   ...relatedFromTags.map(n => ({ title: n.data.title, slug: n.id })),
 ].slice(0, 8);
 
+const s = tSite('zh').notes;
+
 // Reading time: count CJK characters and Latin words separately
 const cjkChars = (note.body?.match(/[\u4e00-\u9fff]/g) || []).length;
 const latinWords = note.body?.split(/\s+/).filter(w => w.length > 0).length || 0;
-const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords / 200)))} 分钟`;
+const readingTime = s.readingTime(Math.max(1, Math.ceil((cjkChars / 300) + (latinWords / 200))));
 ---
-<BaseLayout title={`${note.data.title} | Notes`} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article">
+<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article">
   <div class="note-detail-page">
     <header class="masthead">
       <div class="mast-inner">
@@ -48,6 +58,9 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
             <a href="/friends">Friends</a>
           </div>
         </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="zh" currentPath={`/notes/${note.id}`} hasEnVersion={hasEn} />
+        </div>
         <div class="mast-bottom-rule"></div>
       </div>
     </header>
@@ -57,7 +70,7 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
         <!-- Left: Note list -->
         <aside class="note-sidebar">
           <div class="sidebar-inner">
-            <a href="/notes" class="sidebar-back">← 全部笔记</a>
+            <a href="/notes" class="sidebar-back">{s.backToList}</a>
             <div class="sidebar-list">
               {allNotes.map(n => (
                 <a
@@ -93,7 +106,7 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
           <div class="meta-inner">
             {headings.length > 0 && (
               <div class="meta-section">
-                <div class="meta-label">目录</div>
+                <div class="meta-label">{s.toc}</div>
                 <ul class="toc-list">
                   {headings
                     .filter(h => h.depth <= 3)
@@ -107,7 +120,7 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
             )}
 
             <div class="meta-section">
-              <div class="meta-label">标签</div>
+              <div class="meta-label">{s.tagsLabel}</div>
               <div class="meta-tags">
                 {note.data.tags.map(tag => (
                   <a href={`/notes?tag=${encodeURIComponent(tag)}`} class="meta-tag">{tag}</a>
@@ -127,7 +140,7 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
 
             {relatedNotes.length > 0 && (
               <div class="meta-section">
-                <div class="meta-label">相关笔记</div>
+                <div class="meta-label">{s.relatedNotes}</div>
                 <div class="related-list">
                   {relatedNotes.map(r => (
                     <a href={`/notes/${r.slug}`} class="related-item">→ {r.title}</a>
@@ -1598,6 +1611,11 @@ const readingTime = `约 ${Math.max(1, Math.ceil((cjkChars / 300) + (latinWords 
   }
   .mast-links a:hover { color: var(--c-text); }
   .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-lang-line {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 8px 0;
+  }
 
   /* Three-column layout */
   .detail-main { padding: 0; }
