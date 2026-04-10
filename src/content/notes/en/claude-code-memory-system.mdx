@@ -20,7 +20,7 @@ Claude Code's Memory system is the core infrastructure that lets the agent truly
 
 Memory is not a single store. It is a hierarchy of five layers, each with its own lifecycle, write mechanism, and purpose.
 
-<MemoryLayers client:visible />
+<MemoryLayers client:visible lang="en" />
 
 From top to bottom, the first three layers (CLAUDE.md, session memory, conversation history) all have lifecycles bounded by a single session or actively managed by the user. The truly interesting layer is at the bottom: **automatic memory** — a layer that Claude Code learns and manages autonomously across multiple conversations.
 
@@ -28,7 +28,7 @@ From top to bottom, the first three layers (CLAUDE.md, session memory, conversat
 
 Automatic memory doesn't just record everything in a lump. It strictly distinguishes four types, each with different triggering conditions and purposes. These four types are essentially labels provided for the agent during retrieval — helping it quickly judge whether a memory is relevant to the current task.
 
-<MemoryTypes client:visible />
+<MemoryTypes client:visible lang="en" />
 
 The storage format is extremely simple: one `.md` file per memory, with a YAML frontmatter (`name`, `description`, `type`), plus a `MEMORY.md` index file as a table of contents. This design is both friendly for the agent to read and write, and easy for humans to view and edit directly.
 
@@ -36,7 +36,7 @@ The storage format is extremely simple: one `.md` file per memory, with a YAML f
 
 Writing memories happens in three stages: real-time extraction, periodic consolidation, and deletion judgment.
 
-<MemoryWriteFlow client:visible />
+<MemoryWriteFlow client:visible lang="en" />
 
 Key design decisions:
 - **Per-turn extraction is incremental** — the background agent only looks at the most recent few messages, never re-reading the entire conversation.
@@ -47,7 +47,7 @@ Key design decisions:
 
 Retrieval is the most elegant part of the Memory system. The core problem: a project may have hundreds of memories, but each conversation has a limited context window — how do you pick the most relevant ones?
 
-<MemoryRetrievalFlow client:visible />
+<MemoryRetrievalFlow client:visible lang="en" />
 
 A few subtle design choices stand out:
 - **Sonnet does the filtering, not the main model** — even if you're using Opus, memory filtering is still done by Sonnet. This achieves separation of concerns: the main model focuses on reasoning, the filter model focuses on relevance judgment.
@@ -58,13 +58,13 @@ A few subtle design choices stand out:
 
 Letting an AI agent autonomously read and write the local file system is an unavoidable security question. Claude Code's Memory system uses three layers of defense:
 
-<MemorySecurityFlow client:visible />
+<MemorySecurityFlow client:visible lang="en" />
 
 The core principle: **don't trust the model's self-discipline**. Security isn't enforced by "please don't do bad things" written into a prompt — it's enforced by hard constraints at the code level. Paths are locked down, permissions are checked, sandboxes isolate execution — every layer is a code-level guarantee, not reliant on the model's "understanding" or "cooperation."
 
 ## Summary
 
-<MemorySummary client:visible />
+<MemorySummary client:visible lang="en" />
 
 The Memory system embodies a core tenet of Claude Code's architectural philosophy: **the model is powerful, but the harness does not trust it to manage its own memory unsupervised**. Every operation — write, retrieve, delete, stale handling — has an independent constraint mechanism. This isn't a denial of the model's capabilities; it's engineering pragmatism: until agents are truly reliable, a safety net at the framework level is necessary.
 
