@@ -1,0 +1,691 @@
+---
+/**
+ * Notes List Page — Two-Column with Tag Sidebar
+ * Sticky tag navigation on the left, filterable note cards on the right.
+ */
+import { getCollection } from 'astro:content';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import LangSwitch from '../../../components/LangSwitch.astro';
+import { tSite } from '../../../lib/i18n';
+
+const notes = (await getCollection('notesEn', ({ data }) => data.public && !data.draft))
+  .sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
+
+// Collect all tags with counts
+const tagCounts: Record<string, number> = {};
+for (const note of notes) {
+  for (const tag of note.data.tags) {
+    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+  }
+}
+const tags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+
+function formatDate(dateStr: string) {
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+const ITEMS_PER_PAGE = 20;
+
+// Build heatmap data: which weeks of current year have notes
+const currentYear = new Date().getFullYear();
+const noteWeeks: Record<number, string[]> = {}; // weekNum -> [date strings]
+for (const note of notes) {
+  const d = new Date(note.data.date);
+  if (d.getFullYear() !== currentYear) continue;
+  const start = new Date(currentYear, 0, 1);
+  const weekNum = Math.floor((d.getTime() - start.getTime()) / (7 * 86400000)) + 1;
+  if (!noteWeeks[weekNum]) noteWeeks[weekNum] = [];
+  noteWeeks[weekNum].push(note.data.date);
+}
+const heatmapData = JSON.stringify(noteWeeks);
+
+const s = tSite('en').notes;
+
+// Precompute heatmap tooltip strings per week so the inline script can
+// just read them by week number (functions can't cross define:vars).
+const weekTooltips: Record<number, string> = {};
+for (let w = 1; w <= 52; w++) {
+  const weekStart = new Date(currentYear, 0, 1 + (w - 1) * 7);
+  const m = weekStart.getMonth() + 1;
+  const d = weekStart.getDate();
+  const count = noteWeeks[w]?.length;
+  weekTooltips[w] = s.weekTooltip(m, d, count);
+}
+---
+
+<BaseLayout title={`${s.siteTitle} | Airing`} lang="en">
+  <div class="notes-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/en/blog" class="mast-hide-mobile">Blog</a>
+            <a href="/en/archive" class="mast-hide-mobile">Archive</a>
+            <a href="/en/moments">Moment</a>
+            <a href="/en/notes" class="mast-active">Notes</a>
+            <a href="/en/friends">Friends</a>
+          </div>
+        </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="en" currentPath="/en/notes" hasEnVersion={true} />
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <header class="page-header">
+      <div class="header-inner">
+        <h1 class="page-title">{s.siteTitle}</h1>
+        <p class="page-desc">{s.siteDesc}</p>
+      </div>
+    </header>
+
+    <main class="notes-main">
+      <div class="two-col">
+        <!-- Left: Tag sidebar (desktop) -->
+        <aside class="tag-sidebar">
+          <div class="sidebar-sticky">
+            <!-- Stats + RSS -->
+            <div class="sidebar-stats">
+              <span><span class="stats-count">{notes.length}</span> {s.countSuffix}</span>
+              <a href="/en/notes/feed.xml" class="rss-link" id="notesRssLink">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="6.18" cy="17.82" r="2.18"/><path d="M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56zm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z"/></svg>
+                RSS
+              </a>
+            </div>
+
+            <!-- Heatmap: 13×4 grid -->
+            <div class="heatmap-wrap">
+              <div class="heatmap-grid" id="heatmapGrid"></div>
+            </div>
+
+            <!-- Tags -->
+            <div class="sidebar-tags">
+              <button class="sidebar-tag active" data-tag="all">
+                <span class="st-name">{s.allTag}</span>
+                <span class="st-count">{notes.length}</span>
+              </button>
+              {tags.map(([tag, count]) => (
+                <button class="sidebar-tag" data-tag={tag}>
+                  <span class="st-name">{tag}</span>
+                  <span class="st-count">{count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <!-- Right: Note list -->
+        <div class="note-list-col">
+          <!-- Mobile: horizontal tag pills -->
+          <div class="mobile-tags">
+            <button class="tag-pill active" data-tag="all">{s.allTag}</button>
+            {tags.map(([tag]) => (
+              <button class="tag-pill" data-tag={tag}>{tag}</button>
+            ))}
+          </div>
+
+          <!-- Search bar -->
+          <div class="search-bar-wrap">
+            <input
+              type="search"
+              id="notes-search"
+              class="search-input"
+              placeholder={s.searchPlaceholder}
+              autocomplete="off"
+            />
+          </div>
+
+          <!-- Note cards -->
+          <div class="note-list" id="note-list">
+            {notes.map(note => (
+              <a
+                href={`/en/notes/${note.id}`}
+                class="note-card"
+                data-tags={JSON.stringify(note.data.tags)}
+                data-title={note.data.title.toLowerCase()}
+                data-summary={note.data.summary.toLowerCase()}
+                data-date={note.data.date}
+              >
+                <div class="nc-meta">
+                  <time class="nc-date">{formatDate(note.data.date)}</time>
+                  <div class="nc-tags">
+                    {note.data.tags.map(tag => (
+                      <span class="nc-tag">{tag}</span>
+                    ))}
+                  </div>
+                </div>
+                <h3 class="nc-title">{note.data.title}</h3>
+                {note.data.summary && (
+                  <p class="nc-summary">{note.data.summary}</p>
+                )}
+              </a>
+            ))}
+          </div>
+
+          <!-- Empty state -->
+          <div class="empty-state" id="empty-state" style="display:none">
+            <p>{s.emptyState}</p>
+          </div>
+
+          <!-- Pagination -->
+          <div class="pagination" id="pagination"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="blog-footer">
+      <div class="footer-inner">
+        <span>&copy; 2026 Airing</span>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/en/archive">Archive</a>
+          <a href="/en/notes">Notes</a>
+          <a href="/en/blog/feed.xml">RSS</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script is:inline define:vars={{ ITEMS_PER_PAGE, heatmapData, weekTooltips }}>
+  (function() {
+    var currentTag = 'all';
+    var currentWeek = null; // active heatmap week filter
+    var currentPage = 1;
+    var allCards = Array.from(document.querySelectorAll('.note-card'));
+    var filteredCards = allCards.slice();
+
+    // --- Heatmap ---
+    var noteWeeks = JSON.parse(heatmapData);
+    var currentYear = new Date().getFullYear();
+    (function buildHeatmap() {
+      var grid = document.getElementById('heatmapGrid');
+      if (!grid) return;
+      for (var w = 1; w <= 52; w++) {
+        var cell = document.createElement('div');
+        cell.className = 'hm-cell' + (noteWeeks[w] ? ' hm-active' : '');
+        cell.dataset.week = w;
+        // Calculate approx date range for tooltip
+        var weekStart = new Date(currentYear, 0, 1 + (w - 1) * 7);
+        var m = weekStart.getMonth() + 1;
+        var d = weekStart.getDate();
+        cell.title = weekTooltips[w];
+        cell.addEventListener('click', function() {
+          var wk = parseInt(this.dataset.week);
+          if (!noteWeeks[wk]) return;
+          if (currentWeek === wk) {
+            currentWeek = null;
+            this.classList.remove('hm-selected');
+          } else {
+            // Clear previous selection
+            var prev = grid.querySelector('.hm-selected');
+            if (prev) prev.classList.remove('hm-selected');
+            currentWeek = wk;
+            this.classList.add('hm-selected');
+          }
+          currentPage = 1;
+          filterCards();
+          renderPage();
+          if (typeof umami !== 'undefined') umami.track('notes-heatmap-click', { week: wk });
+        });
+        grid.appendChild(cell);
+      }
+    })();
+
+    // RSS link umami tracking
+    var rssLink = document.getElementById('notesRssLink');
+    if (rssLink) {
+      rssLink.addEventListener('click', function() {
+        if (typeof umami !== 'undefined') umami.track('notes-rss-click');
+      });
+    }
+
+    // Read tag from URL query param
+    var params = new URLSearchParams(window.location.search);
+    var initialTag = params.get('tag');
+    if (initialTag) {
+      currentTag = initialTag;
+    }
+
+    function getSearchQuery() {
+      var input = document.getElementById('notes-search');
+      return input ? input.value.trim().toLowerCase() : '';
+    }
+
+    function getWeekOfYear(dateStr) {
+      var d = new Date(dateStr);
+      var start = new Date(d.getFullYear(), 0, 1);
+      return Math.floor((d.getTime() - start.getTime()) / (7 * 86400000)) + 1;
+    }
+
+    function filterCards() {
+      var q = getSearchQuery();
+      filteredCards = allCards.filter(function(card) {
+        // Tag filter
+        var tagMatch = currentTag === 'all';
+        if (!tagMatch) {
+          try {
+            var cardTags = JSON.parse(card.getAttribute('data-tags') || '[]');
+            tagMatch = cardTags.some(function(t) { return t === currentTag; });
+          } catch(e) { tagMatch = false; }
+        }
+        // Week filter
+        var weekMatch = !currentWeek;
+        if (!weekMatch) {
+          var cardDate = card.getAttribute('data-date');
+          if (cardDate) weekMatch = getWeekOfYear(cardDate) === currentWeek;
+        }
+        // Search filter
+        var searchMatch = !q ||
+          (card.getAttribute('data-title') || '').includes(q) ||
+          (card.getAttribute('data-summary') || '').includes(q);
+        return tagMatch && weekMatch && searchMatch;
+      });
+    }
+
+    function renderPage() {
+      var start = (currentPage - 1) * ITEMS_PER_PAGE;
+      var end = start + ITEMS_PER_PAGE;
+      allCards.forEach(function(card) { card.style.display = 'none'; });
+      var pageCards = filteredCards.slice(start, end);
+      pageCards.forEach(function(card) { card.style.display = ''; });
+
+      var emptyState = document.getElementById('empty-state');
+      if (emptyState) emptyState.style.display = filteredCards.length === 0 ? '' : 'none';
+
+      renderPagination();
+    }
+
+    function renderPagination() {
+      var container = document.getElementById('pagination');
+      if (!container) return;
+      var totalPages = Math.ceil(filteredCards.length / ITEMS_PER_PAGE);
+      if (totalPages <= 1) { container.innerHTML = ''; return; }
+
+      var html = '';
+      for (var i = 1; i <= totalPages; i++) {
+        html += '<button class="page-btn' + (i === currentPage ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>';
+      }
+      container.innerHTML = html;
+
+      container.querySelectorAll('.page-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          currentPage = parseInt(btn.getAttribute('data-page'));
+          renderPage();
+          document.querySelector('.note-list-col').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+      });
+    }
+
+    function setActiveTag(tag) {
+      currentTag = tag;
+      currentPage = 1;
+
+      // Update sidebar buttons
+      document.querySelectorAll('.sidebar-tag').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-tag') === tag);
+      });
+      // Update mobile pills
+      document.querySelectorAll('.tag-pill').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-tag') === tag);
+      });
+
+      // Update URL without reload
+      var url = new URL(window.location.href);
+      if (tag === 'all') {
+        url.searchParams.delete('tag');
+      } else {
+        url.searchParams.set('tag', tag);
+      }
+      history.replaceState(null, '', url.toString());
+
+      filterCards();
+      renderPage();
+
+      if (typeof umami !== 'undefined') umami.track('notes-tag-filter', { tag: tag });
+    }
+
+    // Sidebar tag clicks
+    document.querySelectorAll('.sidebar-tag').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        setActiveTag(btn.getAttribute('data-tag'));
+      });
+    });
+    // Mobile pill clicks
+    document.querySelectorAll('.tag-pill').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        setActiveTag(btn.getAttribute('data-tag'));
+      });
+    });
+
+    // Search input
+    var searchInput = document.getElementById('notes-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', function() {
+        currentPage = 1;
+        filterCards();
+        renderPage();
+      });
+    }
+
+    // Initialize with URL param
+    if (initialTag) {
+      setActiveTag(initialTag);
+    } else {
+      filterCards();
+      renderPage();
+    }
+  })();
+  </script>
+
+  <script is:inline>
+    if (localStorage.getItem('preferred_lang') === 'zh') {
+      window.location.replace('/notes');
+    }
+  </script>
+</BaseLayout>
+
+<style is:global>
+  body:has(.notes-page) {
+    display: block;
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  /* Heatmap — must be global because cells are created by JS */
+  .heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(13, 10px);
+    grid-auto-rows: 10px;
+    gap: 2px;
+  }
+  .hm-cell {
+    border-radius: 2px;
+    background: #ddd;
+    cursor: default;
+    transition: transform 0.1s;
+  }
+  .hm-cell.hm-active {
+    background: var(--accent, #4ade80);
+    cursor: pointer;
+  }
+  .hm-cell.hm-active:hover { transform: scale(1.3); }
+  .hm-cell.hm-selected {
+    outline: 2px solid var(--c-text, #333);
+    outline-offset: 1px;
+  }
+  [data-mode="dark"] .hm-cell {
+    background: #333;
+  }
+  [data-mode="dark"] .hm-cell.hm-active {
+    background: var(--accent, #4ade80);
+  }
+</style>
+
+<style>
+  .notes-page {
+    min-height: 100vh;
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  /* Nav */
+  .masthead { width: 100%; }
+  .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+  .mast-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; position: relative;
+  }
+  .mast-brand {
+    font-size: 11px; color: var(--c-text-muted); text-decoration: none;
+    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+  }
+  .mast-brand:hover { color: var(--c-text); }
+  .mast-links { display: flex; gap: 16px; }
+  .mast-links a {
+    font-size: 11px; color: var(--c-text-dim); text-decoration: none;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .mast-links a:hover { color: var(--c-text); }
+  .mast-active { color: var(--c-text) !important; }
+  .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-lang-line {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 8px 0;
+  }
+
+  /* Header */
+  .page-header {
+    border-bottom: 1px solid var(--c-border);
+    padding: 48px 0;
+  }
+  .header-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+  }
+  .page-title {
+    font-size: 36px; font-weight: 800; color: var(--c-text);
+    letter-spacing: -0.03em; margin-bottom: 8px;
+  }
+  .page-desc { font-size: 15px; color: var(--c-text-dim); }
+
+  /* Two-column layout */
+  .notes-main { padding: 0; }
+  .two-col {
+    max-width: 1200px; margin: 0 auto;
+    padding: 0 48px;
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 48px;
+    align-items: start;
+  }
+
+  /* Tag sidebar */
+  .tag-sidebar {
+    padding-top: 40px;
+  }
+  .sidebar-sticky {
+    position: sticky; top: 80px;
+    display: flex; flex-direction: column; gap: 0;
+  }
+
+  /* Stats + RSS row */
+  .sidebar-stats {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px;
+    font-size: 13px; color: var(--c-text-dim);
+  }
+  .stats-count { font-weight: 700; color: var(--c-text); }
+  .rss-link {
+    font-size: 12px; color: var(--accent); text-decoration: none;
+    display: flex; align-items: center; gap: 4px;
+    transition: opacity 0.2s;
+  }
+  .rss-link:hover { opacity: 0.7; }
+
+  .heatmap-wrap { margin-bottom: 16px; }
+
+  /* Tags section */
+  .sidebar-tags {
+    display: flex; flex-direction: column; gap: 4px;
+    padding-top: 12px;
+    border-top: 1px solid var(--c-border);
+  }
+  .sidebar-tag {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: none; background: none; cursor: pointer;
+    text-align: left; width: 100%;
+    transition: all 0.15s;
+  }
+  .sidebar-tag:hover {
+    background: rgba(var(--c-overlay-rgb), 0.04);
+  }
+  .sidebar-tag.active {
+    background: rgba(var(--c-overlay-rgb), 0.06);
+  }
+  .sidebar-tag.active .st-name {
+    color: var(--accent);
+  }
+  .st-name {
+    font-size: 14px; font-weight: 600; color: var(--c-text);
+  }
+  .st-count {
+    font-size: 12px; color: var(--c-text-dim);
+    background: rgba(var(--c-overlay-rgb), 0.06);
+    padding: 2px 8px; border-radius: 10px;
+  }
+
+  /* Note list column */
+  .note-list-col {
+    padding-top: 40px;
+  }
+
+  /* Mobile tag pills (hidden on desktop) */
+  .mobile-tags {
+    display: none;
+    gap: 8px; flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+  .tag-pill {
+    padding: 6px 14px; border-radius: 20px;
+    border: 1px solid var(--c-border); background: none; cursor: pointer;
+    font-size: 13px; color: var(--c-text-dim);
+    transition: all 0.15s;
+  }
+  .tag-pill:hover {
+    border-color: var(--accent); color: var(--accent);
+  }
+  .tag-pill.active {
+    background: var(--accent); border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* Search */
+  .search-bar-wrap {
+    margin-bottom: 24px;
+  }
+  .search-input {
+    width: 100%; padding: 10px 16px;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    background: rgba(var(--c-overlay-rgb), 0.02);
+    color: var(--c-text);
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+    box-sizing: border-box;
+  }
+  .search-input:focus {
+    border-color: var(--accent);
+  }
+  .search-input::placeholder {
+    color: var(--c-text-dim);
+  }
+
+  /* Note cards */
+  .note-list {
+    display: flex; flex-direction: column; gap: 0;
+  }
+  .note-card {
+    display: block;
+    padding: 20px 0;
+    border-bottom: 1px solid rgba(var(--c-overlay-rgb), 0.06);
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .note-card:last-child { border-bottom: none; }
+  .note-card:hover .nc-title { color: var(--accent); }
+
+  .nc-meta {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 6px;
+  }
+  .nc-date {
+    font-size: 13px; color: var(--c-text-dim);
+    font-variant-numeric: tabular-nums; flex-shrink: 0;
+  }
+  .nc-tags {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .nc-tag {
+    font-size: 11px; color: var(--c-text-muted);
+    background: rgba(var(--c-overlay-rgb), 0.06);
+    padding: 2px 8px; border-radius: 10px;
+    text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+  }
+  .nc-title {
+    font-size: 17px; font-weight: 600; color: var(--c-text);
+    line-height: 1.4; margin-bottom: 6px; transition: color 0.2s;
+  }
+  .nc-summary {
+    font-size: 14px; color: var(--c-text-dim); line-height: 1.6;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Empty state */
+  .empty-state {
+    padding: 60px 0; text-align: center;
+    color: var(--c-text-dim); font-size: 15px;
+  }
+
+  /* Pagination */
+  .pagination {
+    display: flex; gap: 8px; justify-content: center;
+    padding: 32px 0;
+  }
+  .page-btn {
+    min-width: 36px; height: 36px;
+    border: 1px solid var(--c-border); border-radius: 6px;
+    background: none; cursor: pointer;
+    font-size: 14px; color: var(--c-text-dim);
+    padding: 0 10px;
+    transition: all 0.15s;
+  }
+  .page-btn:hover {
+    border-color: var(--accent); color: var(--accent);
+  }
+  .page-btn.active {
+    background: var(--accent); border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* Footer */
+  .blog-footer {
+    border-top: 1px solid var(--c-border);
+    padding: 32px 0; margin-top: 40px;
+  }
+  .footer-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--c-border-light);
+  }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a {
+    font-size: 12px; color: var(--c-text-dim); text-decoration: none;
+  }
+  .footer-links a:hover { color: var(--c-text); }
+
+  @media (max-width: 768px) {
+    .mast-hide-mobile { display: none; }
+    .mast-inner { padding: 0 20px; }
+    .header-inner { padding: 0 20px; }
+    .two-col {
+      padding: 0 20px;
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+    .tag-sidebar { display: none; }
+    .note-list-col { padding-top: 24px; }
+    .mobile-tags { display: flex; }
+    .footer-inner { padding: 0 20px; }
+    .page-title { font-size: 28px; }
+  }
+</style>
