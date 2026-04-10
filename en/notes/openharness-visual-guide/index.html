@@ -1,0 +1,974 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>A Visual Guide to OpenHarness: Recreating Claude Code&#39;s Agent Architecture in 3% of the Code | Traces of Thought</title><meta name="description" content="Airing's Homepage - Software Engineer @ Singapore"><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta property="og:title" content="A Visual Guide to OpenHarness: Recreating Claude Code's Agent Architecture in 3% of the Code | Traces of Thought"><meta property="og:description" content="Airing's Homepage - Software Engineer @ Singapore"><meta property="og:type" content="article"><link rel="canonical" href="https://ursb.me/en/notes/openharness-visual-guide/"><meta property="og:url" content="https://ursb.me/en/notes/openharness-visual-guide/"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="A Visual Guide to OpenHarness: Recreating Claude Code's Agent Architecture in 3% of the Code | Traces of Thought"><meta name="twitter:description" content="Airing's Homepage - Software Engineer @ Singapore"><meta name="twitter:image" content="https://ursb.me/og/notes/openharness-visual-guide.png"><meta property="og:image" content="https://ursb.me/og/notes/openharness-visual-guide.png"><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/blog/feed.xml"><link rel="alternate" type="application/rss+xml" title="Airing's Blog (English)" href="/en/blog/feed.xml"><link rel="alternate" hreflang="zh" href="https://ursb.me/notes/openharness-visual-guide/"><link rel="alternate" hreflang="en" href="https://ursb.me/en/notes/openharness-visual-guide/"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-W604S49M4X');
+  </script><!-- Umami Analytics --><script defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script><script>
+    (function() {
+      function identifySession() {
+        if (typeof umami === 'undefined') return;
+        var theme = localStorage.getItem('blog-mode') || 'dark';
+        var lang = localStorage.getItem('preferred_lang') || 'zh';
+        var visited = localStorage.getItem('visited');
+        var returning = visited ? 'yes' : 'no';
+        if (!visited) localStorage.setItem('visited', '1');
+        umami.identify({ theme: theme, language: lang, returning: returning });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() { setTimeout(identifySession, 500); });
+      } else {
+        setTimeout(identifySession, 500);
+      }
+    })();
+  </script><!-- Cal.com Embed --><script type="text/javascript">
+    (function (C, A, L) {
+      let p = function (a, ar) { a.q.push(ar); };
+      let d = C.document;
+      C.Cal = C.Cal || function () {
+        let cal = C.Cal;
+        let ar = arguments;
+        if (!cal.loaded) {
+          cal.ns = {};
+          cal.q = cal.q || [];
+          d.head.appendChild(d.createElement("script")).src = A;
+          cal.loaded = true;
+        }
+        if (ar[0] === L) {
+          const api = function () { p(api, arguments); };
+          const namespace = ar[1];
+          api.q = api.q || [];
+          if (typeof namespace === "string") {
+            cal.ns[namespace] = api;
+            p(api, ar);
+          } else {
+            p(cal, ar);
+          }
+          return;
+        }
+        p(cal, ar);
+      };
+    })(window, "https://app.cal.com/embed/embed.js", "init");
+    Cal("init", { origin: "https://cal.com" });
+    Cal("ui", {
+      theme: "dark",
+      styles: { branding: { brandColor: "#f59e0b" } },
+      hideEventTypeDetails: false,
+      layout: "month_view"
+    });
+  </script><script>
+    // Apply saved theme & mode before render to prevent flash
+    (function() {
+      var t = localStorage.getItem('blog-theme');
+      if (t) document.documentElement.setAttribute('data-theme', t);
+      var userSet = localStorage.getItem('blog-mode-set');
+      if (userSet) {
+        // User has manually toggled — respect their choice
+        var m = localStorage.getItem('blog-mode');
+        if (m) document.documentElement.setAttribute('data-mode', m);
+      } else {
+        // No manual toggle — use path-based default: homepage=dark, blog=light
+        var path = window.location.pathname;
+        // Strip optional /en prefix so EN routes share the same light/dark default as ZH.
+        var normalized = path.replace(/^\/en(?=\/|$)/, '') || '/';
+        var isBlog = normalized.startsWith('/blog') || normalized.startsWith('/posts/') || normalized.startsWith('/archive') || normalized.startsWith('/moments') || normalized.startsWith('/friends') || normalized.startsWith('/search') || normalized.startsWith('/tags/') || normalized.startsWith('/notes');
+        document.documentElement.setAttribute('data-mode', isBlog ? 'light' : 'dark');
+      }
+    })();
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.Do1l4WZr.css">
+<style>.lang-switch[data-astro-cid-r2b4e7hz]{font-size:.85em;letter-spacing:.02em;white-space:nowrap}.lang-active[data-astro-cid-r2b4e7hz]{font-weight:700;color:var(--c-text, #1a1a1a)}.lang-sep[data-astro-cid-r2b4e7hz]{margin:0 .3em;color:var(--c-muted, #999)}.lang-link[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);text-decoration:none;transition:color .15s}.lang-link[data-astro-cid-r2b4e7hz]:hover{color:var(--c-text, #1a1a1a)}.lang-disabled[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);opacity:.4;cursor:not-allowed}
+</style>
+<link rel="stylesheet" href="/_astro/_..klDsoL70.css"></head> <body>  <div class="note-detail-page" data-astro-cid-5445e3b7> <header class="masthead" data-astro-cid-5445e3b7> <div class="mast-inner" data-astro-cid-5445e3b7> <div class="mast-top-rule" data-astro-cid-5445e3b7></div> <div class="mast-bar" data-astro-cid-5445e3b7> <a href="/en/blog" class="mast-brand" data-astro-cid-5445e3b7>Airing's Blog</a> <div class="mast-links" data-astro-cid-5445e3b7> <a href="/en/blog" class="mast-hide-mobile" data-astro-cid-5445e3b7>Blog</a> <a href="/en/archive" class="mast-hide-mobile" data-astro-cid-5445e3b7>Archive</a> <a href="/en/moments" data-astro-cid-5445e3b7>Moment</a> <a href="/en/notes" data-astro-cid-5445e3b7>Notes</a> <a href="/en/friends" data-astro-cid-5445e3b7>Friends</a> </div> </div> <div class="mast-lang-line" data-astro-cid-5445e3b7> <span class="lang-switch" data-astro-cid-r2b4e7hz> <a href="/notes/openharness-visual-guide" class="lang-link" data-lang-switch="zh" data-astro-cid-r2b4e7hz>中</a> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <strong class="lang-active" data-astro-cid-r2b4e7hz>EN</strong> </span>  <script>
+  // Persist language preference on click
+  document.querySelectorAll('[data-lang-switch]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      localStorage.setItem('preferred_lang', el.getAttribute('data-lang-switch'));
+    });
+  });
+</script> </div> <div class="mast-bottom-rule" data-astro-cid-5445e3b7></div> </div> </header> <main class="detail-main" data-astro-cid-5445e3b7> <div class="three-col" data-astro-cid-5445e3b7> <!-- Left: Note list --> <aside class="note-sidebar" data-astro-cid-5445e3b7> <div class="sidebar-inner" data-astro-cid-5445e3b7> <a href="/en/notes" class="sidebar-back" data-astro-cid-5445e3b7>← All Notes</a> <div class="sidebar-list" data-astro-cid-5445e3b7> <a href="/en/notes/claude-101-intro" class="sl-item" data-astro-cid-5445e3b7> <span class="sl-title" data-astro-cid-5445e3b7>Claude 101: An Interactive Tour of Claude Code from the AI&#39;s Point of View</span> <span class="sl-date" data-astro-cid-5445e3b7>2026.04.05</span> </a><a href="/en/notes/claude-code-memory-system" class="sl-item" data-astro-cid-5445e3b7> <span class="sl-title" data-astro-cid-5445e3b7>Claude Code&#39;s Memory System, Explained</span> <span class="sl-date" data-astro-cid-5445e3b7>2026.04.05</span> </a><a href="/en/notes/openharness-visual-guide" class="sl-item active" data-astro-cid-5445e3b7> <span class="sl-title" data-astro-cid-5445e3b7>A Visual Guide to OpenHarness: Recreating Claude Code&#39;s Agent Architecture in 3% of the Code</span> <span class="sl-date" data-astro-cid-5445e3b7>2026.04.04</span> </a><a href="/en/notes/cybernetics-and-ai-coding" class="sl-item" data-astro-cid-5445e3b7> <span class="sl-title" data-astro-cid-5445e3b7>Understanding AI Coding Through Cybernetics</span> <span class="sl-date" data-astro-cid-5445e3b7>2026.03.29</span> </a> </div> </div> </aside> <!-- Center: Article --> <div class="article-col" data-astro-cid-5445e3b7> <header class="article-header" data-astro-cid-5445e3b7> <h1 data-astro-cid-5445e3b7>A Visual Guide to OpenHarness: Recreating Claude Code&#39;s Agent Architecture in 3% of the Code</h1> <div class="article-meta" data-astro-cid-5445e3b7> <span data-astro-cid-5445e3b7>2026.04.04</span> <span class="dot" data-astro-cid-5445e3b7></span> <span data-astro-cid-5445e3b7>2 min read</span> </div> </header> <article class="prose" data-astro-cid-5445e3b7> <p><a href="https://github.com/HKUDS/OpenHarness">OpenHarness</a> is an open-source project from the HKUDS group at the University of Hong Kong. Its core mission is to <strong>recreate Claude Code’s Agent Harness architecture in pure Python</strong>.</p>
+<h2 id="what-is-an-agent-harness">What is an Agent Harness?</h2>
+<blockquote>
+<p><em>The model is the agent. The code is the harness.</em></p>
+</blockquote>
+<p>The model provides intelligence; the harness provides the “hands, eyes, memory, and safety boundaries.” It is, in essence, all the infrastructure needed to turn an LLM into a usable agent.</p>
+<h2 id="architectural-overview">Architectural overview</h2>
+<astro-island uid="1aTLOW" prefix="r3" component-url="/_astro/HarnessArchitecture.6pqhxTCe.js" component-export="default" renderer-url="/_astro/client.DQ5RmyUj.js" props="{&quot;lang&quot;:[0,&quot;en&quot;]}" ssr client="visible" opts="{&quot;name&quot;:&quot;HarnessArchitecture&quot;,&quot;value&quot;:true}" await-children><div class="interactive-block"><div class="interactive-block-header"><span style="display:flex;align-items:center;gap:6px"><span class="badge-interactive"></span>Interactive · Architecture Diagram</span></div><div class="interactive-block-body" style="padding:20px 0;overflow:hidden"><div style="text-align:center;margin-bottom:12px"><div style="font-size:18px;font-weight:700;color:var(--text)">OpenHarness (oh) — Agent Harness Overview</div><div style="font-size:13px;color:var(--text-secondary);margin-top:2px">3% of the code, 80% of Claude Code&#x27;s core capabilities</div></div><svg viewBox="0 0 900 680" style="width:100%;height:auto;display:block"><defs><marker id="oh-arrow" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6" fill="#c06030"></path></marker></defs><rect x="100" y="40" width="700" height="56" rx="10" fill="#f0e8fa" stroke="#7a60b0" stroke-width="1.5"></rect><text x="450" y="73" text-anchor="middle" font-size="15" font-weight="600" fill="#4a3070">Harness = Tools + Knowledge + Observation + Action + Permissions</text><path data-flow="true" data-speed="40" d="M450,98 L450,138" fill="none" stroke="#c06030" stroke-width="2" stroke-dasharray="8 5" marker-end="url(#oh-arrow)"></path><rect x="160" y="140" width="580" height="80" rx="28" fill="#fde8d8" stroke="#c06030" stroke-width="2"></rect><text x="450" y="170" text-anchor="middle" font-size="16" font-weight="700" fill="#804020">Agent Loop (core loop)</text><text x="450" y="190" text-anchor="middle" font-size="12" fill="#804020" opacity="0.8">Query → LLM Stream → Tool Call → Permission Check</text><text x="450" y="206" text-anchor="middle" font-size="12" fill="#804020" opacity="0.8">→ Hook → Execute → Result → Loop</text><path data-flow="true" data-speed="30" d="M744,160
+                Q780,180
+                744,210" fill="none" stroke="#c06030" stroke-width="2" stroke-dasharray="8 5"></path><text x="786" y="184" font-size="13" fill="#804020" font-weight="500">loop</text><path data-flow="true" data-speed="40" d="M450,222 L450,276" fill="none" stroke="#c06030" stroke-width="2" stroke-dasharray="8 5" marker-end="url(#oh-arrow)"></path><g><rect x="60" y="280" width="230" height="64" rx="8" fill="#e8f5ee" stroke="#4a9a6a" stroke-width="1.5"></rect><text x="175" y="306" text-anchor="middle" font-size="14" font-weight="700" fill="#2a6a4a">Tools (43+)</text><text x="175" y="326" text-anchor="middle" font-size="12" fill="#2a6a4a" opacity="0.7">File, Shell, Web, MCP</text></g><g><rect x="335" y="280" width="230" height="64" rx="8" fill="#e8f5ee" stroke="#4a9a6a" stroke-width="1.5"></rect><text x="450" y="306" text-anchor="middle" font-size="14" font-weight="700" fill="#2a6a4a">Skills (on-demand knowledge)</text><text x="450" y="326" text-anchor="middle" font-size="12" fill="#2a6a4a" opacity="0.7">40+ .md skill files</text></g><g><rect x="610" y="280" width="230" height="64" rx="8" fill="#e8f5ee" stroke="#4a9a6a" stroke-width="1.5"></rect><text x="725" y="306" text-anchor="middle" font-size="14" font-weight="700" fill="#2a6a4a">Plugins</text><text x="725" y="326" text-anchor="middle" font-size="12" fill="#2a6a4a" opacity="0.7">Compatible with claude-code</text></g><g><rect x="60" y="370" width="230" height="64" rx="8" fill="#fdf3e0" stroke="#c09a3e" stroke-width="1.5"></rect><text x="175" y="396" text-anchor="middle" font-size="14" font-weight="700" fill="#7a5a10">Permissions</text><text x="175" y="416" text-anchor="middle" font-size="12" fill="#7a5a10" opacity="0.7">Default / Auto / Plan</text></g><g><rect x="335" y="370" width="230" height="64" rx="8" fill="#fdf3e0" stroke="#c09a3e" stroke-width="1.5"></rect><text x="450" y="396" text-anchor="middle" font-size="14" font-weight="700" fill="#7a5a10">Hooks (lifecycle)</text><text x="450" y="416" text-anchor="middle" font-size="12" fill="#7a5a10" opacity="0.7">Pre/Post ToolUse</text></g><g><rect x="610" y="370" width="230" height="64" rx="8" fill="#fdf3e0" stroke="#c09a3e" stroke-width="1.5"></rect><text x="725" y="396" text-anchor="middle" font-size="14" font-weight="700" fill="#7a5a10">Commands (54)</text><text x="725" y="416" text-anchor="middle" font-size="12" fill="#7a5a10" opacity="0.7">/help /commit /plan …</text></g><g><rect x="60" y="460" width="230" height="64" rx="8" fill="#e8f0fa" stroke="#4a80b0" stroke-width="1.5"></rect><text x="175" y="486" text-anchor="middle" font-size="14" font-weight="700" fill="#2a5080">MCP Protocol</text><text x="175" y="506" text-anchor="middle" font-size="12" fill="#2a5080" opacity="0.7">External tool integration</text></g><g><rect x="335" y="460" width="230" height="64" rx="8" fill="#e8f0fa" stroke="#4a80b0" stroke-width="1.5"></rect><text x="450" y="486" text-anchor="middle" font-size="14" font-weight="700" fill="#2a5080">Memory</text><text x="450" y="506" text-anchor="middle" font-size="12" fill="#2a5080" opacity="0.7">Cross-session persistence</text></g><g><rect x="610" y="460" width="230" height="64" rx="8" fill="#e8f0fa" stroke="#4a80b0" stroke-width="1.5"></rect><text x="725" y="486" text-anchor="middle" font-size="14" font-weight="700" fill="#2a5080">Coordinator</text><text x="725" y="506" text-anchor="middle" font-size="12" fill="#2a5080" opacity="0.7">Multi-agent collaboration</text></g><g><rect x="197" y="550" width="230" height="64" rx="8" fill="#f0f0f0" stroke="#a0a0a0" stroke-width="1.5"></rect><text x="312" y="576" text-anchor="middle" font-size="14" font-weight="700" fill="#505050">Config</text><text x="312" y="596" text-anchor="middle" font-size="12" fill="#505050" opacity="0.7">Multi-level settings migration</text></g><g><rect x="472" y="550" width="230" height="64" rx="8" fill="#f0f0f0" stroke="#a0a0a0" stroke-width="1.5"></rect><text x="587" y="576" text-anchor="middle" font-size="14" font-weight="700" fill="#505050">React TUI</text><text x="587" y="596" text-anchor="middle" font-size="12" fill="#505050" opacity="0.7">Ink-based terminal UI</text></g><g transform="translate(160, 650)"><circle cx="0" cy="0" r="5" fill="#4a9a6a"></circle><text x="12" y="4" font-size="12" fill="var(--text-secondary)">Capability Layer</text></g><g transform="translate(330, 650)"><circle cx="0" cy="0" r="5" fill="#c09a3e"></circle><text x="12" y="4" font-size="12" fill="var(--text-secondary)">Safety / Control Layer</text></g><g transform="translate(500, 650)"><circle cx="0" cy="0" r="5" fill="#4a80b0"></circle><text x="12" y="4" font-size="12" fill="var(--text-secondary)">Collaboration / Extension Layer</text></g><g transform="translate(670, 650)"><circle cx="0" cy="0" r="5" fill="#a0a0a0"></circle><text x="12" y="4" font-size="12" fill="var(--text-secondary)">Infrastructure Layer</text></g></svg></div></div><!--astro:end--></astro-island>
+<p>The core loop is refreshingly simple: Query → LLM streaming response → detect <code>tool_use</code> → permission check → hook → execute → return result → continue the loop, until the model decides to stop.</p>
+<p>This architecture decomposes an agent’s capabilities into four layers — a capability layer providing tools and skills, a safety layer controlling permissions and lifecycle, a collaboration layer handling external integrations and multi-agent coordination, and an infrastructure layer responsible for configuration and UI.</p>
+<h2 id="lines-of-code-comparison">Lines-of-code comparison</h2>
+<style>astro-island,astro-slot,astro-static-slot{display:contents}</style><script>(()=>{var a=(s,i,o)=>{let r=async()=>{await(await s())()},t=typeof i.value=="object"?i.value:void 0,c={rootMargin:t==null?void 0:t.rootMargin},n=new IntersectionObserver(e=>{for(let l of e)if(l.isIntersecting){n.disconnect(),r();break}},c);for(let e of o.children)n.observe(e)};(self.Astro||(self.Astro={})).visible=a;window.dispatchEvent(new Event("astro:visible"));})();</script><script>(()=>{var A=Object.defineProperty;var g=(i,o,a)=>o in i?A(i,o,{enumerable:!0,configurable:!0,writable:!0,value:a}):i[o]=a;var d=(i,o,a)=>g(i,typeof o!="symbol"?o+"":o,a);{let i={0:t=>m(t),1:t=>a(t),2:t=>new RegExp(t),3:t=>new Date(t),4:t=>new Map(a(t)),5:t=>new Set(a(t)),6:t=>BigInt(t),7:t=>new URL(t),8:t=>new Uint8Array(t),9:t=>new Uint16Array(t),10:t=>new Uint32Array(t),11:t=>Number.POSITIVE_INFINITY*t},o=t=>{let[l,e]=t;return l in i?i[l](e):void 0},a=t=>t.map(o),m=t=>typeof t!="object"||t===null?t:Object.fromEntries(Object.entries(t).map(([l,e])=>[l,o(e)]));class y extends HTMLElement{constructor(){super(...arguments);d(this,"Component");d(this,"hydrator");d(this,"hydrate",async()=>{var b;if(!this.hydrator||!this.isConnected)return;let e=(b=this.parentElement)==null?void 0:b.closest("astro-island[ssr]");if(e){e.addEventListener("astro:hydrate",this.hydrate,{once:!0});return}let c=this.querySelectorAll("astro-slot"),n={},h=this.querySelectorAll("template[data-astro-template]");for(let r of h){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("data-astro-template")||"default"]=r.innerHTML,r.remove())}for(let r of c){let s=r.closest(this.tagName);s!=null&&s.isSameNode(this)&&(n[r.getAttribute("name")||"default"]=r.innerHTML)}let p;try{p=this.hasAttribute("props")?m(JSON.parse(this.getAttribute("props"))):{}}catch(r){let s=this.getAttribute("component-url")||"<unknown>",v=this.getAttribute("component-export");throw v&&(s+=` (export ${v})`),console.error(`[hydrate] Error parsing props for component ${s}`,this.getAttribute("props"),r),r}let u;await this.hydrator(this)(this.Component,p,n,{client:this.getAttribute("client")}),this.removeAttribute("ssr"),this.dispatchEvent(new CustomEvent("astro:hydrate"))});d(this,"unmount",()=>{this.isConnected||this.dispatchEvent(new CustomEvent("astro:unmount"))})}disconnectedCallback(){document.removeEventListener("astro:after-swap",this.unmount),document.addEventListener("astro:after-swap",this.unmount,{once:!0})}connectedCallback(){if(!this.hasAttribute("await-children")||document.readyState==="interactive"||document.readyState==="complete")this.childrenConnectedCallback();else{let e=()=>{document.removeEventListener("DOMContentLoaded",e),c.disconnect(),this.childrenConnectedCallback()},c=new MutationObserver(()=>{var n;((n=this.lastChild)==null?void 0:n.nodeType)===Node.COMMENT_NODE&&this.lastChild.nodeValue==="astro:end"&&(this.lastChild.remove(),e())});c.observe(this,{childList:!0}),document.addEventListener("DOMContentLoaded",e)}}async childrenConnectedCallback(){let e=this.getAttribute("before-hydration-url");e&&await import(e),this.start()}async start(){let e=JSON.parse(this.getAttribute("opts")),c=this.getAttribute("client");if(Astro[c]===void 0){window.addEventListener(`astro:${c}`,()=>this.start(),{once:!0});return}try{await Astro[c](async()=>{let n=this.getAttribute("renderer-url"),[h,{default:p}]=await Promise.all([import(this.getAttribute("component-url")),n?import(n):()=>()=>{}]),u=this.getAttribute("component-export")||"default";if(!u.includes("."))this.Component=h[u];else{this.Component=h;for(let f of u.split("."))this.Component=this.Component[f]}return this.hydrator=p,this.hydrate},e,this)}catch(n){console.error(`[astro-island] Error hydrating ${this.getAttribute("component-url")}`,n)}}attributeChangedCallback(){this.hydrate()}}d(y,"observedAttributes",["props"]),customElements.get("astro-island")||customElements.define("astro-island",y)}})();</script><astro-island uid="Z18uPHC" prefix="r4" component-url="/_astro/CodeComparison.C4hehxWC.js" component-export="default" renderer-url="/_astro/client.DQ5RmyUj.js" props="{&quot;lang&quot;:[0,&quot;en&quot;]}" ssr client="visible" opts="{&quot;name&quot;:&quot;CodeComparison&quot;,&quot;value&quot;:true}" await-children><div class="interactive-block"><div class="interactive-block-header"><span style="display:flex;align-items:center;gap:6px"><span class="badge-interactive"></span>Interactive · Code Comparison</span></div><div class="interactive-block-body" style="padding:24px 28px"><div style="text-align:center;margin-bottom:20px"><div style="font-size:18px;font-weight:700;color:var(--text)">Code Size Comparison: 44x Lighter</div></div><div style="max-width:720px;margin:0 auto 24px"><div style="margin-bottom:16px"><div style="margin-bottom:6px"><div style="display:flex;align-items:center;gap:12px"><span style="font-size:13px;font-weight:600;color:var(--text);width:110px;flex-shrink:0">Claude Code</span></div><div style="flex:1;position:relative;margin-top:0;display:flex;align-items:center;gap:12px"><div style="width:110px;flex-shrink:0"></div><div style="height:36px;border-radius:6px;flex:1;background:linear-gradient(90deg, #b05050, #994444);width:0;max-width:100%;transition:width 1.2s cubic-bezier(0.22, 1, 0.36, 1);display:flex;align-items:center;justify-content:center"><span style="font-size:12px;color:#fff;font-weight:500;white-space:nowrap">512,664 lines · 1,884 files · TypeScript</span></div></div></div><div style="margin-top:8px"><div style="display:flex;align-items:center;gap:12px"><span style="font-size:13px;font-weight:600;color:var(--text);width:110px;flex-shrink:0">OpenHarness</span></div><div style="flex:1;position:relative;margin-top:0;display:flex;align-items:center;gap:12px"><div style="width:110px;flex-shrink:0"></div><div style="height:36px;border-radius:6px;background:linear-gradient(90deg, #5bb880, #4a9a6a);width:0;min-width:0;transition:width 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.3s;display:flex;align-items:center;padding-left:12px"><span style="font-size:12px;color:#fff;font-weight:500;white-space:nowrap">11,733 lines · 163 files · Python</span></div></div></div></div></div><div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:12px;max-width:720px;margin:0 auto 20px"><div style="text-align:center;padding:14px 8px;border-radius:8px;border:1.5px solid #4a9a6a40;background:#4a9a6a10"><div style="font-size:24px;font-weight:800;color:#4a9a6a">98%</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Tool Coverage</div></div><div style="text-align:center;padding:14px 8px;border-radius:8px;border:1.5px solid #4a80b040;background:#4a80b010"><div style="font-size:24px;font-weight:800;color:#4a80b0">44x</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Code Reduction</div></div><div style="text-align:center;padding:14px 8px;border-radius:8px;border:1.5px solid #8b604040;background:#8b604010"><div style="font-size:24px;font-weight:800;color:#8b6040">114</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Unit Tests Passing</div></div><div style="text-align:center;padding:14px 8px;border-radius:8px;border:1.5px solid #7a60b040;background:#7a60b010"><div style="font-size:24px;font-weight:800;color:#7a60b0">54</div><div style="font-size:12px;color:var(--text-secondary);margin-top:4px">CLI Commands</div></div></div><div style="text-align:center"><div style="font-size:14px;font-style:italic;color:var(--text-secondary);margin-bottom:4px">The model is the agent. The code is the harness.</div><div style="font-size:12px;color:var(--text-secondary);opacity:0.7">by HKUDS · MIT License · Python ≥3.11</div></div></div></div><!--astro:end--></astro-island>
+<p>These numbers are striking. OpenHarness uses only 11,733 lines of Python (Claude Code has 512,664 lines of TypeScript) and still covers 43 out of 44 tools. That’s enormously valuable for anyone trying to understand “how an AI agent actually runs under the hood” — it strips away the enterprise telemetry, OAuth, hundreds of React components, and other overhead, leaving only the harness skeleton.</p>
+<h2 id="ten-major-subsystems-explained">Ten major subsystems, explained</h2>
+<astro-island uid="20nzMi" prefix="r5" component-url="/_astro/SubsystemExplorer.D6GSstIs.js" component-export="default" renderer-url="/_astro/client.DQ5RmyUj.js" props="{&quot;lang&quot;:[0,&quot;en&quot;]}" ssr client="visible" opts="{&quot;name&quot;:&quot;SubsystemExplorer&quot;,&quot;value&quot;:true}" await-children><div class="interactive-block"><div class="interactive-block-header"><span style="display:flex;align-items:center;gap:6px"><span class="badge-interactive"></span>Interactive · Subsystem Explorer</span></div><div class="interactive-block-body" style="padding:24px 28px"><div style="text-align:center;margin-bottom:20px"><div style="font-size:18px;font-weight:700;color:var(--text)">10 Subsystems · 4-Layer Architecture</div><div style="font-size:13px;color:var(--text-secondary);margin-top:4px">Click a layer and subsystem for details</div></div><div style="max-width:640px;margin:0 auto"><div style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:#e8f5ee;border:1.5px solid #4a9a6a;border-radius:10px 10px 0 0;cursor:pointer;transition:all 0.2s"><div style="width:10px;height:10px;border-radius:50%;background:#4a9a6a;flex-shrink:0"></div><span style="font-size:15px;font-weight:700;color:#4a9a6a;flex:1">Capability Layer</span><span style="font-size:12px;color:var(--text-secondary)">3<!-- --> subsystems</span><span style="font-size:16px;color:var(--text-secondary);transform:rotate(180deg);transition:transform 0.2s">▾</span></div><div style="border:1.5px solid #4a9a6a;border-top:none;border-radius:0 0 10px 10px;background:#e8f5ee;padding:8px"><div style="margin-bottom:6px"><div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:transparent;cursor:pointer;transition:background 0.15s"><span style="font-size:14px;font-weight:600;color:#4a9a6a">Tools (43+)</span><span style="font-size:12px;color:var(--text-secondary);flex:1">File, Shell, Web, MCP</span><span style="font-size:14px;color:var(--text-secondary);transform:none;transition:transform 0.15s">›</span></div></div><div style="margin-bottom:6px"><div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:transparent;cursor:pointer;transition:background 0.15s"><span style="font-size:14px;font-weight:600;color:#4a9a6a">Skills (On-Demand Knowledge)</span><span style="font-size:12px;color:var(--text-secondary);flex:1">40+ .md skill files</span><span style="font-size:14px;color:var(--text-secondary);transform:none;transition:transform 0.15s">›</span></div></div><div style="margin-bottom:0"><div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;background:transparent;cursor:pointer;transition:background 0.15s"><span style="font-size:14px;font-weight:600;color:#4a9a6a">Plugins</span><span style="font-size:12px;color:var(--text-secondary);flex:1">Compatible with claude-code</span><span style="font-size:14px;color:var(--text-secondary);transform:none;transition:transform 0.15s">›</span></div></div></div></div><div style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:transparent;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s"><div style="width:10px;height:10px;border-radius:50%;background:#c09a3e;flex-shrink:0"></div><span style="font-size:15px;font-weight:700;color:#c09a3e;flex:1">Safety / Control Layer</span><span style="font-size:12px;color:var(--text-secondary)">3<!-- --> subsystems</span><span style="font-size:16px;color:var(--text-secondary);transform:none;transition:transform 0.2s">▾</span></div></div><div style="margin-bottom:8px"><div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:transparent;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s"><div style="width:10px;height:10px;border-radius:50%;background:#4a80b0;flex-shrink:0"></div><span style="font-size:15px;font-weight:700;color:#4a80b0;flex:1">Collaboration / Extension Layer</span><span style="font-size:12px;color:var(--text-secondary)">3<!-- --> subsystems</span><span style="font-size:16px;color:var(--text-secondary);transform:none;transition:transform 0.2s">▾</span></div></div><div style="margin-bottom:0"><div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:transparent;border:1.5px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s"><div style="width:10px;height:10px;border-radius:50%;background:#808080;flex-shrink:0"></div><span style="font-size:15px;font-weight:700;color:#808080;flex:1">Infrastructure Layer</span><span style="font-size:12px;color:var(--text-secondary)">2<!-- --> subsystems</span><span style="font-size:16px;color:var(--text-secondary);transform:none;transition:transform 0.2s">▾</span></div></div></div></div></div><!--astro:end--></astro-island>
+<h2 id="why-its-worth-your-attention">Why it’s worth your attention</h2>
+<ol>
+<li><strong>High learning value</strong>: if you want to understand Claude Code’s internal architecture, reading OpenHarness’s 11K lines of Python is far more efficient than reading 500K lines of TypeScript.</li>
+<li><strong>Architectural clarity</strong>: it clearly shows which subsystems an Agent Harness needs and how they collaborate.</li>
+<li><strong>Extensible</strong>: MIT License, Python ≥3.11 — a solid starting point for building your own agent systems.</li>
+</ol>
+<p>The core takeaway: <strong>the model is the agent, the code is the harness</strong>. The LLM itself already has reasoning ability; the harness’s job is to plug it into tools, memory, permissions, and collaboration — so it can actually <em>do things</em>.</p> </article> </div> <!-- Right: TOC + Meta --> <aside class="meta-sidebar" data-astro-cid-5445e3b7> <div class="meta-inner" data-astro-cid-5445e3b7> <div class="meta-section" data-astro-cid-5445e3b7> <div class="meta-label" data-astro-cid-5445e3b7>Contents</div> <ul class="toc-list" data-astro-cid-5445e3b7> <li data-astro-cid-5445e3b7> <a href="#what-is-an-agent-harness" data-astro-cid-5445e3b7>What is an Agent Harness?</a> </li><li data-astro-cid-5445e3b7> <a href="#architectural-overview" data-astro-cid-5445e3b7>Architectural overview</a> </li><li data-astro-cid-5445e3b7> <a href="#lines-of-code-comparison" data-astro-cid-5445e3b7>Lines-of-code comparison</a> </li><li data-astro-cid-5445e3b7> <a href="#ten-major-subsystems-explained" data-astro-cid-5445e3b7>Ten major subsystems, explained</a> </li><li data-astro-cid-5445e3b7> <a href="#why-its-worth-your-attention" data-astro-cid-5445e3b7>Why it’s worth your attention</a> </li> </ul> </div> <div class="meta-section" data-astro-cid-5445e3b7> <div class="meta-label" data-astro-cid-5445e3b7>Tags</div> <div class="meta-tags" data-astro-cid-5445e3b7> <a href="/en/notes?tag=ai" class="meta-tag" data-astro-cid-5445e3b7>ai</a><a href="/en/notes?tag=agent" class="meta-tag" data-astro-cid-5445e3b7>agent</a><a href="/en/notes?tag=architecture" class="meta-tag" data-astro-cid-5445e3b7>architecture</a> </div> </div> <!-- Stats block --> <div class="meta-section" id="noteStatsBlock" style="display:none;" data-astro-cid-5445e3b7> <div class="meta-label" data-astro-cid-5445e3b7>Stats</div> <div class="meta-stats" data-astro-cid-5445e3b7> <span id="noteViewsDisplay" data-astro-cid-5445e3b7></span> <span id="noteLikesDisplay" data-astro-cid-5445e3b7></span> <span id="noteCommentsDisplay" data-astro-cid-5445e3b7></span> </div> </div> <div class="meta-section" data-astro-cid-5445e3b7> <div class="meta-label" data-astro-cid-5445e3b7>Related</div> <div class="related-list" data-astro-cid-5445e3b7> <a href="/en/notes/claude-101-intro" class="related-item" data-astro-cid-5445e3b7>→ Claude 101: An Interactive Tour of Claude Code from the AI&#39;s Point of View</a><a href="/en/notes/claude-code-memory-system" class="related-item" data-astro-cid-5445e3b7>→ Claude Code&#39;s Memory System, Explained</a><a href="/en/notes/cybernetics-and-ai-coding" class="related-item" data-astro-cid-5445e3b7>→ Understanding AI Coding Through Cybernetics</a> </div> </div> </div> <!-- Comment cards rail (absolutely positioned within .meta-sidebar) --> <div class="cr-cards" id="commentCards" data-astro-cid-5445e3b7></div> </aside> </div> </main> <!-- Article Like --> <div class="article-like-section" data-astro-cid-5445e3b7> <div class="al-rule" data-astro-cid-5445e3b7></div> <button class="article-like-btn" id="articleLikeBtn" data-astro-cid-5445e3b7> <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22" data-astro-cid-5445e3b7> <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none" data-astro-cid-5445e3b7></path> </svg> <span class="al-count" id="articleLikeCount" data-astro-cid-5445e3b7>0</span> <span class="al-label" data-astro-cid-5445e3b7>likes</span> </button> <div class="al-rule" data-astro-cid-5445e3b7></div> </div> <!-- Bottom Comment Section --> <section class="bottom-comments" id="bottomComments" data-astro-cid-5445e3b7> <div class="bc-inner" data-astro-cid-5445e3b7> <div class="bc-header" data-astro-cid-5445e3b7> <h2 class="bc-title" data-astro-cid-5445e3b7>Comments</h2> <span class="bc-count" id="bcCount" data-astro-cid-5445e3b7>0 comments</span> </div> <div class="bc-thread" id="bcThread" data-astro-cid-5445e3b7></div> <div class="bc-compose" data-astro-cid-5445e3b7> <div class="bc-compose-avatar" data-astro-cid-5445e3b7> <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" data-astro-cid-5445e3b7> </div> <div class="bc-compose-form" data-astro-cid-5445e3b7> <div class="bc-compose-fields" data-astro-cid-5445e3b7> <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" data-astro-cid-5445e3b7> <input type="email" class="bc-input" id="bcEmail" placeholder="Email" data-astro-cid-5445e3b7> <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" data-astro-cid-5445e3b7> </div> <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4" data-astro-cid-5445e3b7></textarea> <div class="bc-compose-footer" data-astro-cid-5445e3b7> <label class="bc-notify-label" data-astro-cid-5445e3b7> <input type="checkbox" id="bcNotify" data-astro-cid-5445e3b7> <span data-astro-cid-5445e3b7>Notify me of replies via email</span> </label> <button class="bc-submit" id="bcSubmit" data-astro-cid-5445e3b7>Submit</button> </div> </div> </div> </div> </section> </div>  <button class="fab-comment" id="fabComment" aria-label="Add comment" data-astro-cid-5445e3b7> <svg width="14" height="14" viewBox="0 0 14 14" fill="none" data-astro-cid-5445e3b7> <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-astro-cid-5445e3b7></path> </svg> </button>  <div class="comment-input-popover" id="commentPopover" data-astro-cid-5445e3b7> <div class="cip-header" data-astro-cid-5445e3b7> <span class="cip-selected" id="cipSelectedText" data-astro-cid-5445e3b7></span> </div> <div class="cip-identity" data-astro-cid-5445e3b7> <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" data-astro-cid-5445e3b7> <input type="email" class="cip-input" id="cipEmail" placeholder="Email" data-astro-cid-5445e3b7> </div> <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3" data-astro-cid-5445e3b7></textarea> <div class="cip-actions" data-astro-cid-5445e3b7> <button class="cip-cancel" id="cipCancel" data-astro-cid-5445e3b7>Cancel</button> <button class="cip-submit" id="cipSubmit" data-astro-cid-5445e3b7>Comment</button> </div> </div>  <div class="mobile-sheet-overlay" id="mobileOverlay" data-astro-cid-5445e3b7></div> <div class="mobile-sheet" id="mobileSheet" data-astro-cid-5445e3b7> <div class="ms-handle" data-astro-cid-5445e3b7></div> <div class="ms-quote" id="msQuote" data-astro-cid-5445e3b7></div> <div class="ms-body" id="msBody" data-astro-cid-5445e3b7></div> <div class="ms-author" id="msAuthor" data-astro-cid-5445e3b7></div> <div class="ms-time" id="msTime" data-astro-cid-5445e3b7></div> <div class="ms-replies" id="msReplies" data-astro-cid-5445e3b7></div> <button class="ms-reply-toggle" id="msReplyToggle" data-astro-cid-5445e3b7>Reply</button> <div class="ms-reply-form" id="msReplyForm" style="display:none;" data-astro-cid-5445e3b7> <div class="ms-rf-identity" data-astro-cid-5445e3b7> <input type="text" class="ms-rf-input" id="msRfNickname" placeholder="Nickname" data-astro-cid-5445e3b7> <input type="email" class="ms-rf-input" id="msRfEmail" placeholder="Email" data-astro-cid-5445e3b7> </div> <textarea class="ms-rf-textarea" id="msRfTextarea" placeholder="Write a reply..." rows="2" data-astro-cid-5445e3b7></textarea> <label class="ms-rf-notify" data-astro-cid-5445e3b7><input type="checkbox" id="msRfNotify" checked data-astro-cid-5445e3b7> Notify me of replies</label> <div class="ms-rf-actions" data-astro-cid-5445e3b7> <button class="ms-rf-cancel" id="msRfCancel" data-astro-cid-5445e3b7>Cancel</button> <button class="ms-rf-submit" id="msRfSubmit" data-astro-cid-5445e3b7>Reply</button> </div> </div> </div> <script>
+  (function() {
+    // TOC active state highlighting
+    var tocLinks = document.querySelectorAll('.toc-list a');
+    if (tocLinks.length) {
+      var headingEls = Array.from(tocLinks).map(function(a) {
+        var id = decodeURIComponent(a.getAttribute('href').slice(1));
+        return document.getElementById(id);
+      }).filter(Boolean);
+
+      var current = '';
+      var observer = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) current = entry.target.id;
+        });
+        tocLinks.forEach(function(link) {
+          var li = link.parentElement;
+          var id = decodeURIComponent(link.getAttribute('href').slice(1));
+          if (id === current) li.classList.add('active');
+          else li.classList.remove('active');
+        });
+      }, { rootMargin: '0px 0px -70% 0px', threshold: 0 });
+
+      headingEls.forEach(function(el) { observer.observe(el); });
+    }
+  })();
+  </script> <script>
+  (function() {
+    var API = 'https://chat.ursb.me';
+    var NOTE_SLUG = 'note/' + location.pathname.replace(/^\/(?:en\/)?notes\//, '').replace(/\/$/, '');
+    var USER_KEY = 'blog-user-identity';
+
+    // Track pageview (fire-and-forget)
+    fetch(API + '/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/view', { method: 'POST' }).catch(function() {});
+
+    // Fetch and display view count
+    fetch(API + '/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/views')
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var pv = d.pv || 0;
+        if (pv > 0) {
+          var el = document.getElementById('noteViewsDisplay');
+          if (el) { el.textContent = pv.toLocaleString() + ' views'; el.style.display = 'block'; }
+          showStatsBlock();
+        }
+      })
+      .catch(function() {});
+
+    function showStatsBlock() {
+      var block = document.getElementById('noteStatsBlock');
+      if (block) block.style.display = '';
+    }
+
+    var postContent = document.querySelector('.prose');
+    var contentGrid = document.querySelector('.three-col');
+    var commentRail = document.querySelector('.meta-sidebar');
+    var commentCards = document.getElementById('commentCards');
+    var fab = document.getElementById('fabComment');
+    var popover = document.getElementById('commentPopover');
+    var cipText = document.getElementById('cipSelectedText');
+    var cipNickname = document.getElementById('cipNickname');
+    var cipEmailInput = document.getElementById('cipEmail');
+    var cipArea = document.getElementById('cipTextarea');
+    var cipCancel = document.getElementById('cipCancel');
+    var cipSubmit = document.getElementById('cipSubmit');
+    var mobileOverlay = document.getElementById('mobileOverlay');
+    var mobileSheet = document.getElementById('mobileSheet');
+    var msQuote = document.getElementById('msQuote');
+    var msBody = document.getElementById('msBody');
+    var msAuthor = document.getElementById('msAuthor');
+    var msTime = document.getElementById('msTime');
+
+    // Bottom comments
+    var bcThread = document.getElementById('bcThread');
+    var bcCount = document.getElementById('bcCount');
+    var bcNickname = document.getElementById('bcNickname');
+    var bcEmail = document.getElementById('bcEmail');
+    var bcWebsite = document.getElementById('bcWebsite');
+    var bcTextarea = document.getElementById('bcTextarea');
+    var bcNotify = document.getElementById('bcNotify');
+    var bcSubmit = document.getElementById('bcSubmit');
+    var bcComposeAvatar = document.getElementById('bcComposeAvatar');
+
+    // Article like
+    var articleLikeBtn = document.getElementById('articleLikeBtn');
+    var articleLikeCount = document.getElementById('articleLikeCount');
+
+    var pendingRange = null;
+    var activeMobileCommentId = null;
+    var inlineComments = [];
+    var bottomComments = [];
+
+    function isMobile() { return window.innerWidth <= 960; }
+
+    // --- User identity persistence ---
+    function getSavedIdentity() {
+      try { return JSON.parse(localStorage.getItem(USER_KEY)) || {}; } catch(e) { return {}; }
+    }
+    function saveIdentity(nickname, email, website) {
+      localStorage.setItem(USER_KEY, JSON.stringify({ nickname: nickname, email: email, website: website || '' }));
+    }
+    function restoreIdentity() {
+      var id = getSavedIdentity();
+      if (id.nickname) {
+        if (cipNickname) cipNickname.value = id.nickname;
+        if (bcNickname) bcNickname.value = id.nickname;
+      }
+      if (id.email) {
+        if (cipEmailInput) cipEmailInput.value = id.email;
+        if (bcEmail) { bcEmail.value = id.email; updateComposeAvatar(id.email); }
+      }
+      if (id.website && bcWebsite) bcWebsite.value = id.website;
+    }
+
+    var AUTHOR_EMAILS = {
+      'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80',
+      'airing@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80',
+    };
+    var gravatarCache = {};
+    async function sha256Hex(str) {
+      var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+      return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    }
+    function gravatarUrl(email) {
+      var e = (email || '').trim().toLowerCase();
+      if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
+      if (gravatarCache[e]) return gravatarCache[e];
+      // Start async hash, return placeholder for now
+      sha256Hex(e).then(function(h) { gravatarCache[e] = 'https://gravatar.com/avatar/' + h + '?d=robohash&s=80'; });
+      return 'https://gravatar.com/avatar/?d=robohash&s=80';
+    }
+    function commentAvatarUrl(comment) {
+      if (comment && comment.avatar) return comment.avatar;
+      return gravatarUrl(comment ? comment.email : '');
+    }
+    function updateComposeAvatar(email) {
+      if (email && bcComposeAvatar) bcComposeAvatar.src = gravatarUrl(email);
+    }
+
+    var avatarTimer;
+    if (bcEmail) {
+      bcEmail.addEventListener('input', function() {
+        clearTimeout(avatarTimer);
+        avatarTimer = setTimeout(function() { updateComposeAvatar(bcEmail.value); }, 500);
+      });
+    }
+
+    // --- API helpers ---
+    function handleResponse(r) {
+      return r.json().then(function(data) {
+        if (!r.ok) return Promise.reject(data);
+        return data;
+      });
+    }
+    function apiGet(path) {
+      return fetch(API + path, { headers: { 'Origin': location.origin } }).then(handleResponse);
+    }
+    function apiPost(path, body) {
+      return fetch(API + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      }).then(handleResponse);
+    }
+
+    // =====================================================================
+    // INLINE (HIGHLIGHT) COMMENTS — right rail
+    // =====================================================================
+
+    function wrapRange(range, id) {
+      var mark = document.createElement('mark');
+      mark.className = 'comment-highlight';
+      mark.dataset.commentId = id;
+      try { range.surroundContents(mark); }
+      catch(e) {
+        var fragment = range.extractContents();
+        mark.appendChild(fragment);
+        range.insertNode(mark);
+      }
+      return mark;
+    }
+
+    function restoreHighlights() {
+      if (!postContent) return;
+      inlineComments.forEach(function(c) {
+        if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
+        var searchText = c.selected_text;
+        if (!searchText) return;
+        var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
+        var node;
+        while (node = walker.nextNode()) {
+          var idx = node.textContent.indexOf(searchText);
+          if (idx === -1) continue;
+          var range = document.createRange();
+          range.setStart(node, idx);
+          range.setEnd(node, idx + searchText.length);
+          wrapRange(range, c.id);
+          break;
+        }
+      });
+    }
+
+    function removeHighlight(id) {
+      if (!postContent) return;
+      var marks = postContent.querySelectorAll('mark[data-comment-id="' + id + '"]');
+      marks.forEach(function(mark) {
+        var parent = mark.parentNode;
+        while (mark.firstChild) parent.insertBefore(mark.firstChild, mark);
+        parent.removeChild(mark);
+        parent.normalize();
+      });
+    }
+
+    function offsetFromGrid(el) {
+      var top = 0;
+      while (el && el !== contentGrid) { top += el.offsetTop; el = el.offsetParent; }
+      return top;
+    }
+
+    function layoutCards() {
+      if (!commentCards || !commentRail || !postContent) return;
+      var cards = commentCards.querySelectorAll('.cm-card');
+      if (!cards.length) return;
+      var railOffset = offsetFromGrid(commentRail);
+      var positions = [];
+      cards.forEach(function(card) {
+        var id = card.dataset.commentId;
+        var mark = postContent.querySelector('mark[data-comment-id="' + id + '"]');
+        var desiredTop = 0;
+        if (mark) desiredTop = offsetFromGrid(mark) - railOffset;
+        positions.push({ card: card, desired: desiredTop, height: card.offsetHeight });
+      });
+      positions.sort(function(a, b) { return a.desired - b.desired; });
+      var GAP = 8, nextAvailable = 0;
+      positions.forEach(function(p) {
+        var top = Math.max(p.desired, nextAvailable);
+        p.card.style.top = top + 'px';
+        nextAvailable = top + p.height + GAP;
+      });
+      commentCards.style.minHeight = nextAvailable + 'px';
+    }
+
+    function renderInlineComments() {
+      if (!commentCards) return;
+      commentCards.innerHTML = '';
+
+      inlineComments.forEach(function(c) {
+        if (!c.replies) c.replies = [];
+        var card = document.createElement('div');
+        card.className = 'cm-card';
+        card.dataset.commentId = c.id;
+        var mark = postContent ? postContent.querySelector('mark[data-comment-id="' + c.id + '"]') : null;
+
+        var time = new Date(c.created_at);
+        var timeStr = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+          + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+        var repliesHtml = '';
+        if (c.replies && c.replies.length) {
+          repliesHtml = '<div class="cm-replies">';
+          c.replies.forEach(function(r) {
+            var rTime = new Date(r.created_at);
+            var rTimeStr = rTime.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+              + ' ' + rTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+            repliesHtml +=
+              '<div class="cm-reply">' +
+                '<div class="cm-reply-header">' +
+                  '<img class="cm-reply-avatar" src="' + commentAvatarUrl(r) + '" />' +
+                  '<span class="cm-reply-name">' + esc(r.nickname) + '</span>' +
+                  '<span class="cm-reply-time">' + rTimeStr + '</span>' +
+                '</div>' +
+                '<div class="cm-reply-body">' + esc(r.comment) + '</div>' +
+              '</div>';
+          });
+          repliesHtml += '</div>';
+        }
+
+        card.innerHTML =
+          '<div class="cm-card-author">' +
+            '<img src="' + commentAvatarUrl(c) + '" class="cm-card-avatar" />' +
+            '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
+          '</div>' +
+          '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
+          '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
+          '<div class="cm-card-footer">' +
+            '<span class="cm-card-time">' + timeStr + '</span>' +
+          '</div>' +
+          repliesHtml +
+          '<button class="cm-reply-btn" data-parent-id="' + c.id + '">Reply</button>' +
+          '<div class="cm-reply-form" style="display:none;">' +
+            '<div class="cm-rf-identity">' +
+              '<input class="cm-rf-input" placeholder="Nickname" />' +
+              '<input class="cm-rf-input" placeholder="Email" />' +
+            '</div>' +
+            '<textarea class="cm-rf-textarea" placeholder="Write a reply..." rows="2"></textarea>' +
+            '<label class="cm-rf-notify"><input type="checkbox" checked /> Notify me of replies</label>' +
+            '<div class="cm-rf-actions">' +
+              '<button class="cm-rf-cancel">Cancel</button>' +
+              '<button class="cm-rf-submit">Reply</button>' +
+            '</div>' +
+          '</div>';
+
+        card.addEventListener('mouseenter', function() {
+          if (mark) mark.classList.add('highlight-active');
+          card.classList.add('cm-card-active');
+        });
+        card.addEventListener('mouseleave', function() {
+          if (mark) mark.classList.remove('highlight-active');
+          card.classList.remove('cm-card-active');
+        });
+        card.addEventListener('click', function(e) {
+          if (e.target.closest('.cm-reply-btn') || e.target.closest('.cm-reply-form')) return;
+          if (mark) {
+            mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            mark.classList.add('highlight-flash');
+            setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1000);
+          }
+        });
+        if (mark) {
+          mark.addEventListener('mouseenter', function() { card.classList.add('cm-card-active'); mark.classList.add('highlight-active'); });
+          mark.addEventListener('mouseleave', function() { card.classList.remove('cm-card-active'); mark.classList.remove('highlight-active'); });
+          mark.addEventListener('click', function(e) {
+            if (!isMobile()) return;
+            e.preventDefault(); e.stopPropagation();
+            openMobileSheet(c);
+          });
+        }
+
+        commentCards.appendChild(card);
+
+        // Reply button handler
+        var replyBtn = card.querySelector('.cm-reply-btn');
+        var replyForm = card.querySelector('.cm-reply-form');
+        var rfInputs = replyForm.querySelectorAll('.cm-rf-input');
+        var rfNickname = rfInputs[0];
+        var rfEmail = rfInputs[1];
+        var rfTextarea = replyForm.querySelector('.cm-rf-textarea');
+        var rfNotify = replyForm.querySelector('.cm-rf-notify input');
+        var rfCancel = replyForm.querySelector('.cm-rf-cancel');
+        var rfSubmit = replyForm.querySelector('.cm-rf-submit');
+
+        replyBtn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          replyForm.style.display = '';
+          replyBtn.style.display = 'none';
+          var identity = getSavedIdentity();
+          if (identity.nickname) rfNickname.value = identity.nickname;
+          if (identity.email) rfEmail.value = identity.email;
+          rfNickname.focus();
+          layoutCards();
+        });
+
+        rfCancel.addEventListener('click', function(e) {
+          e.stopPropagation();
+          replyForm.style.display = 'none';
+          replyBtn.style.display = '';
+          layoutCards();
+        });
+
+        rfSubmit.addEventListener('click', function(e) {
+          e.stopPropagation();
+          var nickname = rfNickname.value.trim();
+          var email = rfEmail.value.trim();
+          var comment = rfTextarea.value.trim();
+          var rfValid = true;
+          rfNickname.classList.remove('cip-error');
+          rfTextarea.classList.remove('cip-error');
+          if (!nickname) { rfNickname.classList.add('cip-error'); rfValid = false; }
+          if (!comment) { rfTextarea.classList.add('cip-error'); rfValid = false; }
+          if (!rfValid) return;
+
+          saveIdentity(nickname, email);
+          rfSubmit.disabled = true;
+
+          apiPost('/api/inline-comments', {
+            post_slug: NOTE_SLUG,
+            nickname: nickname,
+            email: email,
+            comment: comment,
+            parent_id: c.id,
+            notify_replies: rfNotify.checked
+          }).then(function(res) {
+            if (res.comment) {
+              c.replies.push(res.comment);
+              renderInlineComments();
+            }
+          }).finally(function() {
+            rfSubmit.disabled = false;
+          });
+        });
+      });
+
+      requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
+    }
+
+    // --- Mobile bottom sheet ---
+    function openMobileSheet(comment) {
+      activeMobileCommentId = comment.id;
+      msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
+      msBody.textContent = comment.comment;
+      msAuthor.textContent = comment.nickname;
+      var time = new Date(comment.created_at);
+      msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+        + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+
+      var repliesEl = document.getElementById('msReplies');
+      repliesEl.innerHTML = '';
+      if (comment.replies && comment.replies.length) {
+        comment.replies.forEach(function(r) {
+          var rTime = new Date(r.created_at);
+          var rTimeStr = rTime.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
+            + ' ' + rTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+          var div = document.createElement('div');
+          div.className = 'ms-reply-item';
+          div.innerHTML =
+            '<div class="ms-reply-header">' +
+              '<img src="' + commentAvatarUrl(r) + '" class="ms-reply-avatar" />' +
+              '<span class="ms-reply-name">' + esc(r.nickname) + '</span>' +
+              '<span class="ms-reply-time">' + rTimeStr + '</span>' +
+            '</div>' +
+            '<div class="ms-reply-body">' + esc(r.comment) + '</div>';
+          repliesEl.appendChild(div);
+        });
+      }
+
+      document.getElementById('msReplyForm').style.display = 'none';
+      document.getElementById('msReplyToggle').style.display = '';
+      mobileOverlay.classList.add('active');
+      mobileSheet.classList.add('active');
+    }
+
+    function closeMobileSheet() {
+      mobileOverlay.classList.remove('active');
+      mobileSheet.classList.remove('active');
+      activeMobileCommentId = null;
+    }
+
+    mobileOverlay.addEventListener('click', closeMobileSheet);
+
+    document.getElementById('msReplyToggle').addEventListener('click', function() {
+      var form = document.getElementById('msReplyForm');
+      form.style.display = 'block';
+      this.style.display = 'none';
+      var id = getSavedIdentity();
+      if (id.nickname) document.getElementById('msRfNickname').value = id.nickname;
+      if (id.email) document.getElementById('msRfEmail').value = id.email;
+      document.getElementById('msRfNickname').focus();
+    });
+
+    document.getElementById('msRfCancel').addEventListener('click', function() {
+      document.getElementById('msReplyForm').style.display = 'none';
+      document.getElementById('msReplyToggle').style.display = '';
+    });
+
+    document.getElementById('msRfSubmit').addEventListener('click', function() {
+      var nickname = document.getElementById('msRfNickname').value.trim();
+      var email = document.getElementById('msRfEmail').value.trim();
+      var text = document.getElementById('msRfTextarea').value.trim();
+      var notify = document.getElementById('msRfNotify').checked;
+      var msNickEl = document.getElementById('msRfNickname');
+      var msTextEl = document.getElementById('msRfTextarea');
+      var msValid = true;
+      msNickEl.classList.remove('cip-error');
+      msTextEl.classList.remove('cip-error');
+      if (!nickname) { msNickEl.classList.add('cip-error'); msValid = false; }
+      if (!text) { msTextEl.classList.add('cip-error'); msValid = false; }
+      if (!msValid || !activeMobileCommentId) return;
+
+      saveIdentity(nickname, email);
+      var submitBtn = this;
+      submitBtn.disabled = true;
+      submitBtn.textContent = '...';
+
+      apiPost('/api/inline-comments', {
+        post_slug: NOTE_SLUG,
+        nickname: nickname,
+        email: email,
+        comment: text,
+        parent_id: activeMobileCommentId,
+        notify_replies: notify,
+      }).then(function(res) {
+        if (res.comment) {
+          var parent = inlineComments.find(function(c) { return c.id === activeMobileCommentId; });
+          if (parent) {
+            if (!parent.replies) parent.replies = [];
+            parent.replies.push(res.comment);
+          }
+          closeMobileSheet();
+          renderInlineComments();
+        }
+      }).finally(function() {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Reply';
+      });
+    });
+
+    // --- FAB: show on text selection ---
+    fab.style.display = 'none';
+    popover.style.display = 'none';
+
+    document.addEventListener('mouseup', function(e) {
+      if (popover.style.display !== 'none') return;
+      if (isMobile()) { fab.style.display = 'none'; return; }
+      var sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+      var range = sel.getRangeAt(0);
+      if (!postContent || !postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+      var text = sel.toString().trim();
+      if (!text) { fab.style.display = 'none'; return; }
+      var rect = range.getBoundingClientRect();
+      fab.style.display = 'flex';
+      fab.style.top = (rect.top + window.scrollY - 36) + 'px';
+      fab.style.left = (rect.right + window.scrollX + 8) + 'px';
+      pendingRange = range.cloneRange();
+    });
+
+    document.addEventListener('selectionchange', function() {
+      if (!isMobile()) return;
+      var sel = window.getSelection();
+      if (!sel || sel.isCollapsed || !sel.rangeCount) { fab.style.display = 'none'; return; }
+      var range = sel.getRangeAt(0);
+      if (!postContent || !postContent.contains(range.commonAncestorContainer)) { fab.style.display = 'none'; return; }
+      var text = sel.toString().trim();
+      if (!text) { fab.style.display = 'none'; return; }
+      var rect = range.getBoundingClientRect();
+      fab.style.display = 'flex';
+      fab.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+      fab.style.left = (rect.left + window.scrollX + (rect.width / 2) - 14) + 'px';
+      pendingRange = range.cloneRange();
+    });
+
+    document.addEventListener('mousedown', function(e) {
+      if (fab.contains(e.target) || popover.contains(e.target)) return;
+      if (popover.style.display === 'none') fab.style.display = 'none';
+    });
+
+    fab.addEventListener('click', function(e) {
+      e.preventDefault(); e.stopPropagation();
+      if (!pendingRange) return;
+      var selectedText = pendingRange.toString().trim();
+      if (!selectedText) return;
+      cipText.textContent = '\u201c' + trunc(selectedText, 60) + '\u201d';
+      cipArea.value = '';
+      var rect = pendingRange.getBoundingClientRect();
+      if (isMobile()) {
+        popover.style.top = (rect.bottom + window.scrollY + 12) + 'px';
+        popover.style.left = '50%';
+        popover.style.transform = 'translateX(-50%)';
+      } else {
+        popover.style.top = (rect.top + window.scrollY) + 'px';
+        popover.style.left = (postContent.getBoundingClientRect().right + 24) + 'px';
+        popover.style.transform = '';
+      }
+      popover.style.display = 'block';
+      fab.style.display = 'none';
+      cipNickname.focus();
+    });
+
+    cipCancel.addEventListener('click', function() {
+      popover.style.display = 'none';
+      pendingRange = null;
+      window.getSelection().removeAllRanges();
+    });
+
+    cipSubmit.addEventListener('click', function() {
+      var text = cipArea.value.trim();
+      var nickname = cipNickname.value.trim();
+      var email = cipEmailInput.value.trim();
+
+      var valid = true;
+      cipNickname.classList.remove('cip-error');
+      cipArea.classList.remove('cip-error');
+      if (!nickname) { cipNickname.classList.add('cip-error'); valid = false; }
+      if (!text) { cipArea.classList.add('cip-error'); valid = false; }
+      if (!valid || !pendingRange) return;
+
+      var selectedText = pendingRange.toString().trim();
+      saveIdentity(nickname, email);
+      cipSubmit.disabled = true;
+      cipSubmit.textContent = '...';
+
+      apiPost('/api/inline-comments', {
+        post_slug: NOTE_SLUG,
+        nickname: nickname,
+        email: email,
+        selected_text: selectedText,
+        comment: text,
+        range_start: 0,
+        range_end: selectedText.length,
+        notify_replies: true
+      }).then(function(res) {
+        if (res.comment) {
+          wrapRange(pendingRange, res.comment.id);
+          inlineComments.push(res.comment);
+          renderInlineComments();
+        }
+        popover.style.display = 'none';
+        pendingRange = null;
+        window.getSelection().removeAllRanges();
+      }).finally(function() {
+        cipSubmit.disabled = false;
+        cipSubmit.textContent = 'Comment';
+      });
+    });
+
+    cipArea.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') cipSubmit.click();
+      if (e.key === 'Escape') cipCancel.click();
+    });
+
+    var layoutTimer;
+    window.addEventListener('resize', function() {
+      clearTimeout(layoutTimer);
+      layoutTimer = setTimeout(layoutCards, 60);
+    });
+
+    // =====================================================================
+    // ARTICLE LIKES
+    // =====================================================================
+    var articleLiked = false;
+
+    function loadArticleLikes() {
+      apiGet('/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/likes').then(function(res) {
+        articleLikeCount.textContent = res.count;
+        articleLiked = res.liked;
+        if (articleLiked) articleLikeBtn.classList.add('liked');
+        if (res.count > 0) {
+          var lkEl = document.getElementById('noteLikesDisplay');
+          if (lkEl) { lkEl.textContent = res.count.toLocaleString() + ' likes'; lkEl.style.display = 'block'; }
+          showStatsBlock();
+        }
+        try {
+          var stored = JSON.parse(localStorage.getItem('post_likes') || '[]');
+          var set = new Set(stored);
+          if (res.liked) set.add(NOTE_SLUG); else set.delete(NOTE_SLUG);
+          localStorage.setItem('post_likes', JSON.stringify(Array.from(set)));
+        } catch(e) {}
+      });
+    }
+
+    articleLikeBtn.addEventListener('click', function() {
+      var prevLiked = articleLiked;
+      var prevCount = parseInt(articleLikeCount.textContent) || 0;
+      var newLiked = !prevLiked;
+      var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+      articleLiked = newLiked;
+      articleLikeCount.textContent = newCount;
+      articleLikeBtn.classList.toggle('liked', newLiked);
+      var icon = articleLikeBtn.querySelector('.al-icon path');
+      icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+      apiPost('/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/like', {}).then(function(res) {
+        articleLiked = res.liked;
+        articleLikeCount.textContent = res.count;
+        articleLikeBtn.classList.toggle('liked', res.liked);
+        icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+        var lkEl = document.getElementById('noteLikesDisplay');
+        if (res.count > 0) {
+          if (lkEl) { lkEl.textContent = res.count.toLocaleString() + ' likes'; lkEl.style.display = 'block'; }
+          showStatsBlock();
+        } else {
+          if (lkEl) lkEl.style.display = 'none';
+        }
+        try {
+          var stored = JSON.parse(localStorage.getItem('post_likes') || '[]');
+          var set = new Set(stored);
+          if (res.liked) set.add(NOTE_SLUG); else set.delete(NOTE_SLUG);
+          localStorage.setItem('post_likes', JSON.stringify(Array.from(set)));
+        } catch(e) {}
+      }).catch(function() {
+        articleLiked = prevLiked;
+        articleLikeCount.textContent = prevCount;
+        articleLikeBtn.classList.toggle('liked', prevLiked);
+        icon.setAttribute('fill', prevLiked ? 'currentColor' : 'none');
+      });
+    });
+
+    // =====================================================================
+    // BOTTOM COMMENTS
+    // =====================================================================
+
+    function loadBottomComments() {
+      apiGet('/api/comments?post_slug=' + encodeURIComponent(NOTE_SLUG)).then(function(res) {
+        bottomComments = res.comments || [];
+        renderBottomComments();
+      });
+    }
+
+    function renderBottomComments() {
+      bcThread.innerHTML = '';
+      var count = bottomComments.length;
+      bcCount.textContent = count + ' comment' + (count !== 1 ? 's' : '');
+      if (count > 0) {
+        var cmEl = document.getElementById('noteCommentsDisplay');
+        if (cmEl) { cmEl.textContent = count.toLocaleString() + ' comments'; cmEl.style.display = 'block'; }
+        showStatsBlock();
+      }
+
+      var roots = [];
+      var byId = {};
+      bottomComments.forEach(function(c) { c._replies = []; byId[c.id] = c; });
+      bottomComments.forEach(function(c) {
+        if (c.parent_id && byId[c.parent_id]) byId[c.parent_id]._replies.push(c);
+        else roots.push(c);
+      });
+
+      roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+    }
+
+    function buildCommentEl(c, isReply) {
+      var div = document.createElement('div');
+      div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
+
+      var time = new Date(c.created_at);
+      var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+      var avatarSize = isReply ? 32 : 40;
+      var nameHtml = c.website
+        ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
+        : '<span class="bc-name">' + esc(c.nickname) + '</span>';
+      div.innerHTML =
+        '<div class="bc-avatar-wrap"><img src="' + commentAvatarUrl(c) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+        '<div class="bc-body">' +
+          '<div class="bc-meta">' +
+            nameHtml +
+            '<span class="bc-dot">&middot;</span>' +
+            '<time class="bc-time">' + timeStr + '</time>' +
+          '</div>' +
+          '<div class="bc-text"><p>' + linkify(esc(c.content)).replace(/\n/g, '<br>') + '</p></div>' +
+          '<div class="bc-actions">' +
+            '<button class="bc-like-btn' + (c._userLiked ? ' liked' : '') + '" data-id="' + c.id + '">' +
+              '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
+              '<span>' + (c.likes || 0) + '</span>' +
+            '</button>' +
+            '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
+          '</div>' +
+          '<div class="bc-replies-container"></div>' +
+        '</div>';
+
+      div.querySelector('.bc-like-btn').addEventListener('click', function() {
+        var btn = this;
+        var icon = btn.querySelector('path');
+        var span = btn.querySelector('span');
+        var wasLiked = btn.classList.contains('liked');
+        var prevCount = parseInt(span.textContent) || 0;
+        var newLiked = !wasLiked;
+        var newCount = newLiked ? prevCount + 1 : Math.max(0, prevCount - 1);
+
+        btn.classList.toggle('liked', newLiked);
+        span.textContent = newCount;
+        icon.setAttribute('fill', newLiked ? 'currentColor' : 'none');
+
+        apiPost('/api/comments/' + c.id + '/like', {}).then(function(res) {
+          btn.classList.toggle('liked', res.liked);
+          span.textContent = res.count;
+          icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+        }).catch(function() {
+          btn.classList.toggle('liked', wasLiked);
+          span.textContent = prevCount;
+          icon.setAttribute('fill', wasLiked ? 'currentColor' : 'none');
+        });
+      });
+
+      div.querySelector('.bc-reply-btn').addEventListener('click', function() {
+        bcTextarea.value = '@' + c.nickname + ' ';
+        bcTextarea.dataset.parentId = c.id;
+        bcTextarea.focus();
+        bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+
+      var repliesContainer = div.querySelector('.bc-replies-container');
+      if (c._replies && c._replies.length) {
+        c._replies.forEach(function(r) {
+          repliesContainer.appendChild(buildCommentEl(r, true));
+        });
+      }
+
+      return div;
+    }
+
+    bcSubmit.addEventListener('click', function() {
+      var content = bcTextarea.value.trim();
+      var nickname = bcNickname.value.trim();
+      var email = bcEmail.value.trim();
+      var website = bcWebsite.value.trim();
+      if (!content || !nickname || !email) return;
+
+      saveIdentity(nickname, email, website);
+      bcSubmit.disabled = true;
+      bcSubmit.textContent = '...';
+
+      var parentId = bcTextarea.dataset.parentId || null;
+      var body = {
+        post_slug: NOTE_SLUG,
+        nickname: nickname,
+        email: email,
+        content: content,
+        parent_id: parentId ? parseInt(parentId) : null,
+        notify_replies: bcNotify.checked
+      };
+      if (website) body.website = website;
+
+      apiPost('/api/comments', body).then(function(res) {
+        if (res.comment) {
+          bottomComments.push(res.comment);
+          renderBottomComments();
+          bcTextarea.value = '';
+          delete bcTextarea.dataset.parentId;
+        }
+      }).finally(function() {
+        bcSubmit.disabled = false;
+        bcSubmit.textContent = 'Submit';
+      });
+    });
+
+    bcTextarea.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') bcSubmit.click();
+    });
+
+    // =====================================================================
+    // INIT
+    // =====================================================================
+    restoreIdentity();
+
+    apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(NOTE_SLUG)).then(function(res) {
+      inlineComments = res.comments || [];
+      restoreHighlights();
+      renderInlineComments();
+    });
+
+    loadArticleLikes();
+    loadBottomComments();
+
+    // --- Helpers ---
+    function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
+    function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+    function linkify(s) { return s.replace(/(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'); }
+  })();
+  </script>  <!-- Mode Toggle (light/dark) --> <div class="theme-switcher" id="themeSwitcher"> <button class="mode-toggle" id="modeToggle" aria-label="Toggle light/dark mode"> <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"></circle> <line x1="8" y1="0.5" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="8" y1="13.5" x2="8" y2="15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="0.5" y1="8" x2="2.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="13.5" y1="8" x2="15.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="2.7" x2="4.1" y2="4.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="11.9" x2="13.3" y2="13.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="13.3" x2="4.1" y2="11.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="4.1" x2="13.3" y2="2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> </svg> <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none"> <path d="M13.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </svg> </button> </div> <script>
+    (function() {
+      var switcher = document.getElementById('themeSwitcher');
+      var modeToggle = document.getElementById('modeToggle');
+
+      // Mode toggle (light/dark)
+      function updateModeIcon() {
+        var isLight = document.documentElement.getAttribute('data-mode') === 'light';
+        switcher.classList.toggle('light-mode', isLight);
+      }
+      modeToggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var current = document.documentElement.getAttribute('data-mode');
+        var next = current === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-mode', next);
+        localStorage.setItem('blog-mode', next);
+        localStorage.setItem('blog-mode-set', '1');
+        updateModeIcon();
+        if (typeof umami !== 'undefined') {
+          umami.track('dark-mode-toggle', { mode: next });
+          umami.identify({ theme: next });
+        }
+      });
+      updateModeIcon();
+    })();
+  </script> </body> </html> 
