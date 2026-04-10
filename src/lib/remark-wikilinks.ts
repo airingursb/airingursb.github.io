@@ -3,8 +3,19 @@ import type { Text, Link } from 'mdast';
 
 export const outgoingLinks: Map<string, string[]> = new Map();
 
-const remarkWikilinks = () => {
+interface WikilinkOptions {
+  /** Set of EN note slug IDs (for cross-language fallback) */
+  enNoteSlugs?: Set<string>;
+}
+
+const remarkWikilinks = (options: WikilinkOptions = {}) => {
+  const enNoteSlugs = options.enNoteSlugs ?? new Set<string>();
+
   return (tree: any, file: any) => {
+    // Detect if current file is an EN note (under src/content/notes/en/)
+    const filePath = (file.path || file.history?.[0] || '') as string;
+    const isEnNote = filePath.includes('/content/notes/en/');
+
     const sourceSlug = file.data.astro?.frontmatter?.title as string | undefined;
     const links: string[] = [];
 
@@ -31,9 +42,20 @@ const remarkWikilinks = () => {
 
         links.push(target);
 
+        // Determine link URL based on source file language and target availability:
+        // - zh note → always /notes/${slug}
+        // - EN note + target exists in EN → /en/notes/${slug}
+        // - EN note + target NOT in EN → fallback to /notes/${slug}
+        let url: string;
+        if (isEnNote) {
+          url = enNoteSlugs.has(slug) ? `/en/notes/${slug}` : `/notes/${slug}`;
+        } else {
+          url = `/notes/${slug}`;
+        }
+
         parts.push({
           type: 'link',
-          url: `/notes/${slug}`,
+          url,
           children: [{ type: 'text', value: displayText || target }],
           data: {
             hProperties: { class: 'wikilink' },
