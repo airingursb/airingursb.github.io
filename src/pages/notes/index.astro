@@ -5,6 +5,8 @@
  */
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { tSite } from '../../lib/i18n';
 
 const notes = (await getCollection('notes', ({ data }) => data.public && !data.draft))
   .sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
@@ -37,9 +39,14 @@ for (const note of notes) {
   noteWeeks[weekNum].push(note.data.date);
 }
 const heatmapData = JSON.stringify(noteWeeks);
+
+const s = tSite('zh').notes;
+
+// Template parts passed via define:vars since functions can't cross the inline-script boundary
+const tooltipTemplate = { weekUnit: '周', countSuffix: '篇' };
 ---
 
-<BaseLayout title="Notes | Airing">
+<BaseLayout title={`${s.siteTitle} | Airing`}>
   <div class="notes-page">
     <header class="masthead">
       <div class="mast-inner">
@@ -54,14 +61,17 @@ const heatmapData = JSON.stringify(noteWeeks);
             <a href="/friends">Friends</a>
           </div>
         </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="zh" currentPath="/notes" hasEnVersion={true} />
+        </div>
         <div class="mast-bottom-rule"></div>
       </div>
     </header>
 
     <header class="page-header">
       <div class="header-inner">
-        <h1 class="page-title">思考的痕迹</h1>
-        <p class="page-desc">记录关于前端、数学、设计、哲学和一切让我好奇的事物</p>
+        <h1 class="page-title">{s.siteTitle}</h1>
+        <p class="page-desc">{s.siteDesc}</p>
       </div>
     </header>
 
@@ -72,7 +82,7 @@ const heatmapData = JSON.stringify(noteWeeks);
           <div class="sidebar-sticky">
             <!-- Stats + RSS -->
             <div class="sidebar-stats">
-              <span><span class="stats-count">{notes.length}</span> 篇笔记</span>
+              <span><span class="stats-count">{notes.length}</span> {s.countSuffix}</span>
               <a href="/notes/feed.xml" class="rss-link" id="notesRssLink">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="6.18" cy="17.82" r="2.18"/><path d="M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56zm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z"/></svg>
                 RSS
@@ -87,7 +97,7 @@ const heatmapData = JSON.stringify(noteWeeks);
             <!-- Tags -->
             <div class="sidebar-tags">
               <button class="sidebar-tag active" data-tag="all">
-                <span class="st-name">全部</span>
+                <span class="st-name">{s.allTag}</span>
                 <span class="st-count">{notes.length}</span>
               </button>
               {tags.map(([tag, count]) => (
@@ -104,7 +114,7 @@ const heatmapData = JSON.stringify(noteWeeks);
         <div class="note-list-col">
           <!-- Mobile: horizontal tag pills -->
           <div class="mobile-tags">
-            <button class="tag-pill active" data-tag="all">全部</button>
+            <button class="tag-pill active" data-tag="all">{s.allTag}</button>
             {tags.map(([tag]) => (
               <button class="tag-pill" data-tag={tag}>{tag}</button>
             ))}
@@ -116,7 +126,7 @@ const heatmapData = JSON.stringify(noteWeeks);
               type="search"
               id="notes-search"
               class="search-input"
-              placeholder="搜索笔记标题或摘要…"
+              placeholder={s.searchPlaceholder}
               autocomplete="off"
             />
           </div>
@@ -150,7 +160,7 @@ const heatmapData = JSON.stringify(noteWeeks);
 
           <!-- Empty state -->
           <div class="empty-state" id="empty-state" style="display:none">
-            <p>没有找到匹配的笔记</p>
+            <p>{s.emptyState}</p>
           </div>
 
           <!-- Pagination -->
@@ -172,7 +182,7 @@ const heatmapData = JSON.stringify(noteWeeks);
     </footer>
   </div>
 
-  <script is:inline define:vars={{ ITEMS_PER_PAGE, heatmapData }}>
+  <script is:inline define:vars={{ ITEMS_PER_PAGE, heatmapData, tooltipTemplate }}>
   (function() {
     var currentTag = 'all';
     var currentWeek = null; // active heatmap week filter
@@ -194,7 +204,7 @@ const heatmapData = JSON.stringify(noteWeeks);
         var weekStart = new Date(currentYear, 0, 1 + (w - 1) * 7);
         var m = weekStart.getMonth() + 1;
         var d = weekStart.getDate();
-        cell.title = m + '/' + d + ' 周' + (noteWeeks[w] ? ' (' + noteWeeks[w].length + ' 篇)' : '');
+        cell.title = m + '/' + d + ' ' + tooltipTemplate.weekUnit + (noteWeeks[w] ? ' (' + noteWeeks[w].length + ' ' + tooltipTemplate.countSuffix + ')' : '');
         cell.addEventListener('click', function() {
           var wk = parseInt(this.dataset.week);
           if (!noteWeeks[wk]) return;
@@ -362,6 +372,12 @@ const heatmapData = JSON.stringify(noteWeeks);
     }
   })();
   </script>
+
+  <script is:inline>
+    if (localStorage.getItem('preferred_lang') === 'en') {
+      window.location.replace('/en/notes');
+    }
+  </script>
 </BaseLayout>
 
 <style is:global>
@@ -430,6 +446,11 @@ const heatmapData = JSON.stringify(noteWeeks);
   .mast-links a:hover { color: var(--c-text); }
   .mast-active { color: var(--c-text) !important; }
   .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-lang-line {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 8px 0;
+  }
 
   /* Header */
   .page-header {
