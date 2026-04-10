@@ -68,7 +68,9 @@
       } else {
         // No manual toggle — use path-based default: homepage=dark, blog=light
         var path = window.location.pathname;
-        var isBlog = path.startsWith('/blog') || path.startsWith('/posts/') || path.startsWith('/archive') || path.startsWith('/moments') || path.startsWith('/friends') || path.startsWith('/search') || path.startsWith('/tags/') || path.startsWith('/notes');
+        // Strip optional /en prefix so EN routes share the same light/dark default as ZH.
+        var normalized = path.replace(/^\/en(?=\/|$)/, '') || '/';
+        var isBlog = normalized.startsWith('/blog') || normalized.startsWith('/posts/') || normalized.startsWith('/archive') || normalized.startsWith('/moments') || normalized.startsWith('/friends') || normalized.startsWith('/search') || normalized.startsWith('/tags/') || normalized.startsWith('/notes');
         document.documentElement.setAttribute('data-mode', isBlog ? 'light' : 'dark');
       }
     })();
@@ -1035,7 +1037,9 @@
 </script> <script>
 (function() {
   var API = 'https://chat.ursb.me';
-  var POST_SLUG = location.pathname.replace(/^\/posts\//, '').replace(/\/$/, '');
+  // Normalize both /posts/foo/ and /en/posts/foo/ to the same slug so EN and ZH
+  // pages share view counts, likes, comments, and inline comments.
+  var POST_SLUG = location.pathname.replace(/^\/(?:en\/)?posts\//, '').replace(/\/$/, '');
   var USER_KEY = 'blog-user-identity';
 
   // Track pageview (fire-and-forget)
