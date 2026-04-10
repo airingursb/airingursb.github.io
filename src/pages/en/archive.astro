@@ -4,13 +4,13 @@
  * Sticky year navigation on the left, scrollable post list on the right.
  */
 import { getCollection } from 'astro:content';
-import BaseLayout from '../layouts/BaseLayout.astro';
-import LangSwitch from '../components/LangSwitch.astro';
-import { tSite } from '../lib/i18n';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { tSite } from '../../lib/i18n';
 
-const s = tSite('zh').archive;
+const s = tSite('en').archive;
 
-const posts = (await getCollection('posts', ({ data }) => !data.draft))
+const posts = (await getCollection('postsEn', ({ data }) => !data.draft))
   .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
 const postsByYear = posts.reduce((acc, post) => {
@@ -34,23 +34,23 @@ function getTagColor(tag: string) {
 }
 ---
 
-<BaseLayout title={`${s.title} | Airing`} lang="zh">
+<BaseLayout title={`${s.title} | Airing`} lang="en">
   <div class="archive-page">
     <header class="masthead">
       <div class="mast-inner">
         <div class="mast-top-rule"></div>
         <div class="mast-bar">
-          <a href="/blog" class="mast-brand">Airing's Blog</a>
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
           <div class="mast-links">
-            <a href="/blog" class="mast-hide-mobile">Blog</a>
-            <a href="/archive" class="mast-hide-mobile">Archive</a>
-            <a href="/moments">Moment</a>
-            <a href="/notes">Notes</a>
-            <a href="/friends">Friends</a>
+            <a href="/en/blog" class="mast-hide-mobile">Blog</a>
+            <a href="/en/archive" class="mast-hide-mobile">Archive</a>
+            <a href="/en/moments">Moment</a>
+            <a href="/en/notes">Notes</a>
+            <a href="/en/friends">Friends</a>
           </div>
         </div>
         <div class="mast-lang-line">
-          <LangSwitch lang="zh" currentPath="/archive" hasEnVersion={true} />
+          <LangSwitch lang="en" currentPath="/en/archive" hasEnVersion={true} />
         </div>
         <div class="mast-bottom-rule"></div>
       </div>
@@ -87,7 +87,7 @@ function getTagColor(tag: string) {
               </div>
               <div class="year-posts">
                 {postsByYear[year].map(post => (
-                  <a href={`/posts/${post.id}`} class="feed-item">
+                  <a href={`/en/posts/${post.id}`} class="feed-item">
                     <time class="fi-date">{formatDate(post.data.date)}</time>
                     <div class="fi-body">
                       <div class="fi-tags">
@@ -114,8 +114,8 @@ function getTagColor(tag: string) {
         <span>&copy; 2026 Airing</span>
         <div class="footer-links">
           <a href="/">Home</a>
-          <a href="/archive">Archive</a>
-          <a href="/blog/feed.xml">RSS</a>
+          <a href="/en/archive">Archive</a>
+          <a href="/en/blog/feed.xml">RSS</a>
         </div>
       </div>
     </footer>
@@ -132,8 +132,8 @@ function getTagColor(tag: string) {
   })();
   </script>
   <script is:inline>
-    if (localStorage.getItem('preferred_lang') === 'en') {
-      window.location.replace('/en/archive');
+    if (localStorage.getItem('preferred_lang') === 'zh') {
+      window.location.replace('/archive');
     }
   </script>
 </BaseLayout>

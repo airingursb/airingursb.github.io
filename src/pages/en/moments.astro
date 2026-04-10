@@ -1,9 +1,9 @@
 ---
-import BaseLayout from '../layouts/BaseLayout.astro';
-import LangSwitch from '../components/LangSwitch.astro';
-import { tSite } from '../lib/i18n';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { tSite } from '../../lib/i18n';
 
-const s = tSite('zh').moments;
+const s = tSite('en').moments;
 
 // ── Build-time: fetch moments from Supabase ──
 const SUPABASE_URL = import.meta.env.BLOG_SUPABASE_URL || process.env.BLOG_SUPABASE_URL || '';
@@ -40,15 +40,15 @@ function relativeTimeStatic(dateStr: string): string {
   if (isNaN(date.getTime())) return dateStr || '';
   const diff = Date.now() - date.getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return '刚刚';
-  if (mins < 60) return `${mins} 分钟前`;
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins} min ago`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return `${hours} h ago`;
   const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} 天前`;
+  if (days < 30) return `${days} d ago`;
   const months = Math.floor(days / 30);
-  if (months < 12) return `${months} 个月前`;
-  return `${Math.floor(months / 12)} 年前`;
+  if (months < 12) return `${months} mo ago`;
+  return `${Math.floor(months / 12)} y ago`;
 }
 
 const AVATAR = 'https://avatars.githubusercontent.com/u/10513408?v=4&s=64';
@@ -80,15 +80,16 @@ function linkifyStatic(text: string): string {
 }
 
 // ── Date grouping helpers ──
-const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 function formatDateHeader(dateStr: string): string {
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return '';
-  const month = d.getMonth() + 1;
+  const month = MONTHS[d.getMonth()];
   const day = d.getDate();
   const weekday = WEEKDAYS[d.getDay()];
-  return `${month}月${day}日 · ${weekday}`;
+  return `${month} ${day} · ${weekday}`;
 }
 
 function getDateKey(dateStr: string): string {
@@ -121,25 +122,25 @@ for (const m of staticMoments) {
 }
 ---
 
-<BaseLayout title={`${s.title} | Airing`} lang="zh">
+<BaseLayout title={`${s.title} | Airing`} lang="en">
   <div class="moments-page">
     <!-- Masthead -->
     <header class="masthead">
       <div class="mast-inner">
         <div class="mast-top-rule"></div>
         <div class="mast-bar">
-          <a href="/blog" class="mast-brand">Airing's Blog</a>
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
           <!-- motto only on blog homepage -->
           <div class="mast-links">
-            <a href="/blog" class="mast-hide-mobile">Blog</a>
-            <a href="/archive" class="mast-hide-mobile">Archive</a>
-            <a href="/moments" class="mast-link-active">Moment</a>
-            <a href="/notes">Notes</a>
-            <a href="/friends">Friends</a>
+            <a href="/en/blog" class="mast-hide-mobile">Blog</a>
+            <a href="/en/archive" class="mast-hide-mobile">Archive</a>
+            <a href="/en/moments" class="mast-link-active">Moment</a>
+            <a href="/en/notes">Notes</a>
+            <a href="/en/friends">Friends</a>
           </div>
         </div>
         <div class="mast-lang-line">
-          <LangSwitch lang="zh" currentPath="/moments" hasEnVersion={true} />
+          <LangSwitch lang="en" currentPath="/en/moments" hasEnVersion={true} />
         </div>
         <div class="mast-bottom-rule"></div>
       </div>
@@ -179,7 +180,7 @@ for (const m of staticMoments) {
                           <time class="card-time" title={m.published_at || ''}>{relativeTimeStatic(m.published_at)}</time>
                         </div>
                         <div class={`card-text${truncated ? ' truncated' : ''}`} set:html={linkifyStatic(content)} />
-                        {truncated && <button class="text-expand-btn">展开全文</button>}
+                        {truncated && <button class="text-expand-btn">Show more</button>}
                         {previews.length > 0 && previews.map((p: any) => {
                           const domain = p.url.replace(/^https?:\/\//, '').split('/')[0];
                           return (
@@ -216,11 +217,11 @@ for (const m of staticMoments) {
                           </div>
                           <form class="comment-form" data-moment-id={m.id}>
                             <div class="comment-form-row">
-                              <input class="comment-input" name="nickname" placeholder="昵称 *" required style="flex:1" />
-                              <input class="comment-input" name="email" type="email" placeholder="邮箱 (可选)" style="flex:1" />
+                              <input class="comment-input" name="nickname" placeholder="Nickname *" required style="flex:1" />
+                              <input class="comment-input" name="email" type="email" placeholder="Email (optional)" style="flex:1" />
                             </div>
-                            <textarea class="comment-input" name="content" rows={2} placeholder="发表评论..." required></textarea>
-                            <button class="comment-submit" type="submit">发送</button>
+                            <textarea class="comment-input" name="content" rows={2} placeholder="Write a comment..." required></textarea>
+                            <button class="comment-submit" type="submit">Send</button>
                           </form>
                         </div>
                       </div>
@@ -234,7 +235,7 @@ for (const m of staticMoments) {
             <div class="spinner"></div>
           </div>
           <div class="end-message" id="endMessage" style={staticMoments.length > 0 && staticMoments.length < 20 ? '' : 'display:none'}>
-            <span>— 已经到底了 —</span>
+            <span>— End —</span>
           </div>
         </div>
 
@@ -243,21 +244,21 @@ for (const m of staticMoments) {
           <div class="sidebar-sticky">
             <div class="calendar-card">
               <div class="calendar-header">
-                <button class="cal-nav-btn" id="calPrev" title="上个月">
+                <button class="cal-nav-btn" id="calPrev" title="Previous month">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
                 <span class="cal-month-label" id="calMonthLabel"></span>
-                <button class="cal-nav-btn" id="calNext" title="下个月">
+                <button class="cal-nav-btn" id="calNext" title="Next month">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
                 </button>
               </div>
               <div class="cal-weekdays">
-                <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+                <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
               </div>
               <div class="cal-grid" id="calGrid"></div>
               <div class="cal-filter-info" id="calFilterInfo" style="display:none">
                 <span id="calFilterLabel"></span>
-                <button class="cal-clear-filter" id="calClearFilter">清除筛选</button>
+                <button class="cal-clear-filter" id="calClearFilter">Clear filter</button>
               </div>
             </div>
             <!-- Compact author info -->
@@ -265,7 +266,7 @@ for (const m of staticMoments) {
               <img src="https://avatars.githubusercontent.com/u/10513408?v=4&s=48" alt="Airing" class="author-compact-avatar" />
               <div class="author-compact-info">
                 <a href="/" class="author-compact-name">Airing</a>
-                <span class="author-compact-bio">哲学硕士｜终端全栈</span>
+                <span class="author-compact-bio">MA in Philosophy · Full-stack dev</span>
               </div>
             </div>
           </div>
@@ -279,15 +280,15 @@ for (const m of staticMoments) {
         <span>&copy; 2026 Airing</span>
         <div class="footer-links">
           <a href="/">Home</a>
-          <a href="/archive">Archive</a>
-          <a href="/blog/feed.xml">RSS</a>
+          <a href="/en/archive">Archive</a>
+          <a href="/en/blog/feed.xml">RSS</a>
         </div>
       </div>
     </footer>
   </div>
   <script is:inline>
-    if (localStorage.getItem('preferred_lang') === 'en') {
-      window.location.replace('/en/moments');
+    if (localStorage.getItem('preferred_lang') === 'zh') {
+      window.location.replace('/moments');
     }
   </script>
 </BaseLayout>
@@ -804,20 +805,21 @@ for (const m of staticMoments) {
     if (isNaN(date)) return dateStr || '';
     const diff = Date.now() - date.getTime();
     const mins = Math.floor(diff / 60000);
-    if (mins < 1) return '刚刚';
-    if (mins < 60) return `${mins} 分钟前`;
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours} 小时前`;
+    if (hours < 24) return `${hours} h ago`;
     const days = Math.floor(hours / 24);
-    if (days < 30) return `${days} 天前`;
+    if (days < 30) return `${days} d ago`;
     const months = Math.floor(days / 30);
-    if (months < 12) return `${months} 个月前`;
-    return `${Math.floor(months / 12)} 年前`;
+    if (months < 12) return `${months} mo ago`;
+    return `${Math.floor(months / 12)} y ago`;
   }
 
   const TEXT_MAX_LEN = 200; // Characters before truncation
   const URL_RE = /https?:\/\/[^\s，。、！？；：）》\]'"<>]+/g;
-  const WEEKDAYS_JS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  const WEEKDAYS_JS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const MONTHS_JS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   function getDateKeyJs(dateStr) {
     const d = new Date(dateStr);
@@ -828,7 +830,7 @@ for (const m of staticMoments) {
   function formatDateHeaderJs(dateStr) {
     const d = new Date(dateStr);
     if (isNaN(d)) return '';
-    return `${d.getMonth() + 1}月${d.getDate()}日 · ${WEEKDAYS_JS[d.getDay()]}`;
+    return `${MONTHS_JS[d.getMonth()]} ${d.getDate()} · ${WEEKDAYS_JS[d.getDay()]}`;
   }
 
   function linkifyAndEsc(text) {
@@ -912,7 +914,7 @@ for (const m of staticMoments) {
             <time class="card-time" title="${esc(m.published_at || '')}">${relativeTime(m.published_at)}</time>
           </div>
           <div class="card-text${(m.content || '').length > TEXT_MAX_LEN ? ' truncated' : ''}">${linkifyAndEsc(m.content || m.text || '')}</div>
-          ${(m.content || '').length > TEXT_MAX_LEN ? '<button class="text-expand-btn">展开全文</button>' : ''}
+          ${(m.content || '').length > TEXT_MAX_LEN ? '<button class="text-expand-btn">Show more</button>' : ''}
           ${buildLinkPreviewHtml(m.link_previews)}
           ${buildImagesHtml(m.images)}
           <div class="card-actions">
@@ -935,11 +937,11 @@ for (const m of staticMoments) {
             </div>
             <form class="comment-form" data-moment-id="${esc(m.id)}">
               <div class="comment-form-row">
-                <input class="comment-input" name="nickname" placeholder="昵称 *" required style="flex:1">
-                <input class="comment-input" name="email" type="email" placeholder="邮箱 (可选)" style="flex:1">
+                <input class="comment-input" name="nickname" placeholder="Nickname *" required style="flex:1">
+                <input class="comment-input" name="email" type="email" placeholder="Email (optional)" style="flex:1">
               </div>
-              <textarea class="comment-input" name="content" rows="2" placeholder="发表评论..." required></textarea>
-              <button class="comment-submit" type="submit">发送</button>
+              <textarea class="comment-input" name="content" rows="2" placeholder="Write a comment..." required></textarea>
+              <button class="comment-submit" type="submit">Send</button>
             </form>
           </div>
         </div>
@@ -949,7 +951,7 @@ for (const m of staticMoments) {
 
   function buildCommentsHtml(comments) {
     if (!comments || comments.length === 0) {
-      return '<p style="font-size:13px;color:var(--c-text-dim);text-align:center;padding:8px 0;">暂无评论</p>';
+      return '<p style="font-size:13px;color:var(--c-text-dim);text-align:center;padding:8px 0;">No comments yet</p>';
     }
 
     // Build tree: top-level + children
@@ -970,7 +972,7 @@ for (const m of staticMoments) {
         <div class="comment-item">
           <img class="comment-avatar" src="${esc(avatarSrc)}" alt="" loading="lazy">
           <div class="comment-body">
-            <span class="comment-nick">${esc(c.nickname || c.name || '匿名')}</span>
+            <span class="comment-nick">${esc(c.nickname || c.name || 'Anonymous')}</span>
             <span class="comment-time">${relativeTime(c.created_at)}</span>
             <p class="comment-text">${esc(c.content)}</p>
           </div>
@@ -1166,7 +1168,7 @@ for (const m of staticMoments) {
       const data = await fetchComments(momentId);
       el.innerHTML = buildCommentsHtml(data.comments || []);
     } catch {
-      el.innerHTML = '<p style="font-size:13px;color:var(--c-text-dim);text-align:center;">评论加载失败</p>';
+      el.innerHTML = '<p style="font-size:13px;color:var(--c-text-dim);text-align:center;">Failed to load comments</p>';
     }
   }
 
@@ -1328,11 +1330,11 @@ for (const m of staticMoments) {
       const cardText = expandBtn.previousElementSibling;
       if (cardText && cardText.classList.contains('truncated')) {
         cardText.classList.remove('truncated');
-        expandBtn.textContent = '收起';
+        expandBtn.textContent = 'Show less';
         expandBtn.style.display = 'inline-block';
       } else if (cardText) {
         cardText.classList.add('truncated');
-        expandBtn.textContent = '展开全文';
+        expandBtn.textContent = 'Show more';
       }
       return;
     }
@@ -1368,7 +1370,7 @@ for (const m of staticMoments) {
 
     const submitBtn = form.querySelector('.comment-submit');
     submitBtn.disabled = true;
-    submitBtn.textContent = '发送中...';
+    submitBtn.textContent = 'Sending...';
 
     try {
       const data = await postComment(momentId, { nickname, email, content });
@@ -1388,11 +1390,11 @@ for (const m of staticMoments) {
       form.querySelector('[name="content"]').value = '';
     } catch (err) {
       console.error('Comment failed:', err);
-      alert('评论发送失败，请稍后重试');
+      alert('Failed to send comment. Please try again later.');
     }
 
     submitBtn.disabled = false;
-    submitBtn.textContent = '发送';
+    submitBtn.textContent = 'Send';
   });
 
   // ── Lightbox ──
@@ -1449,8 +1451,8 @@ for (const m of staticMoments) {
   }
 
   function renderCalendar() {
-    const monthNames = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-    calMonthLabel.textContent = `${calYear}年${monthNames[calMonth]}`;
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    calMonthLabel.textContent = `${monthNames[calMonth]} ${calYear}`;
 
     const firstDay = new Date(calYear, calMonth, 1).getDay();
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -1505,7 +1507,7 @@ for (const m of staticMoments) {
       filterMomentsByDate(dk);
       // Show filter info
       const d = new Date(dk + 'T00:00:00');
-      calFilterLabel.textContent = `${d.getMonth() + 1}月${d.getDate()}日`;
+      calFilterLabel.textContent = `${MONTHS_JS[d.getMonth()]} ${d.getDate()}`;
       calFilterInfo.style.display = 'flex';
     }
   });

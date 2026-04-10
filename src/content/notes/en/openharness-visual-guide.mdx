@@ -1,0 +1,46 @@
+---
+title: "A Visual Guide to OpenHarness: Recreating Claude Code's Agent Architecture in 3% of the Code"
+date: "2026-04-04"
+tags: [ai, agent, architecture]
+public: true
+interactive: true
+summary: OpenHarness is an open-source project from HKU's HKUDS group that recreates Claude Code's Agent Harness architecture in pure Python — 98% tool coverage in just 11,733 lines of code.
+---
+
+import HarnessArchitecture from '../../../components/notes/interactive/HarnessArchitecture.tsx';
+import CodeComparison from '../../../components/notes/interactive/CodeComparison.tsx';
+import SubsystemExplorer from '../../../components/notes/interactive/SubsystemExplorer.tsx';
+
+[OpenHarness](https://github.com/HKUDS/OpenHarness) is an open-source project from the HKUDS group at the University of Hong Kong. Its core mission is to **recreate Claude Code's Agent Harness architecture in pure Python**.
+
+## What is an Agent Harness?
+
+> *The model is the agent. The code is the harness.*
+
+The model provides intelligence; the harness provides the "hands, eyes, memory, and safety boundaries." It is, in essence, all the infrastructure needed to turn an LLM into a usable agent.
+
+## Architectural overview
+
+<HarnessArchitecture client:visible lang="en" />
+
+The core loop is refreshingly simple: Query → LLM streaming response → detect `tool_use` → permission check → hook → execute → return result → continue the loop, until the model decides to stop.
+
+This architecture decomposes an agent's capabilities into four layers — a capability layer providing tools and skills, a safety layer controlling permissions and lifecycle, a collaboration layer handling external integrations and multi-agent coordination, and an infrastructure layer responsible for configuration and UI.
+
+## Lines-of-code comparison
+
+<CodeComparison client:visible lang="en" />
+
+These numbers are striking. OpenHarness uses only 11,733 lines of Python (Claude Code has 512,664 lines of TypeScript) and still covers 43 out of 44 tools. That's enormously valuable for anyone trying to understand "how an AI agent actually runs under the hood" — it strips away the enterprise telemetry, OAuth, hundreds of React components, and other overhead, leaving only the harness skeleton.
+
+## Ten major subsystems, explained
+
+<SubsystemExplorer client:visible lang="en" />
+
+## Why it's worth your attention
+
+1. **High learning value**: if you want to understand Claude Code's internal architecture, reading OpenHarness's 11K lines of Python is far more efficient than reading 500K lines of TypeScript.
+2. **Architectural clarity**: it clearly shows which subsystems an Agent Harness needs and how they collaborate.
+3. **Extensible**: MIT License, Python ≥3.11 — a solid starting point for building your own agent systems.
+
+The core takeaway: **the model is the agent, the code is the harness**. The LLM itself already has reasoning ability; the harness's job is to plug it into tools, memory, permissions, and collaboration — so it can actually *do things*.

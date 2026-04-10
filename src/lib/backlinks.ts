@@ -5,8 +5,9 @@ export interface BacklinkEntry {
   slug: string;
 }
 
-export async function getBacklinks(): Promise<Map<string, BacklinkEntry[]>> {
-  const notes = await getCollection('notes');
+export async function getBacklinks(lang: 'zh' | 'en' = 'zh'): Promise<Map<string, BacklinkEntry[]>> {
+  const collectionName = (lang === 'en' ? 'notesEn' : 'notes') as 'notes' | 'notesEn';
+  const notes = await getCollection(collectionName);
   const backlinkMap = new Map<string, BacklinkEntry[]>();
 
   const publicNotes = notes.filter(n => n.data.public && !n.data.draft);

@@ -1,13 +1,38 @@
 import { useState, useEffect } from 'react';
 
-const stats = [
-  { label: '工具覆盖率', value: '98%', color: '#4a9a6a' },
-  { label: '代码精简倍数', value: '44x', color: '#4a80b0' },
-  { label: '单元测试通过', value: '114', color: '#8b6040' },
-  { label: 'CLI 命令', value: '54', color: '#7a60b0' },
-];
+const strings = {
+  zh: {
+    title: '代码量对比：44x 更轻量',
+    claudeCodeLabel: '512,664 行 · 1,884 文件 · TypeScript',
+    openHarnessLabel: '11,733 行 · 163 文件 · Python',
+    stats: [
+      { label: '工具覆盖率', value: '98%' },
+      { label: '代码精简倍数', value: '44x' },
+      { label: '单元测试通过', value: '114' },
+      { label: 'CLI 命令', value: '54' },
+    ],
+  },
+  en: {
+    title: 'Code Size Comparison: 44x Lighter',
+    claudeCodeLabel: '512,664 lines · 1,884 files · TypeScript',
+    openHarnessLabel: '11,733 lines · 163 files · Python',
+    stats: [
+      { label: 'Tool Coverage', value: '98%' },
+      { label: 'Code Reduction', value: '44x' },
+      { label: 'Unit Tests Passing', value: '114' },
+      { label: 'CLI Commands', value: '54' },
+    ],
+  },
+} as const;
 
-export default function CodeComparison() {
+const statColors = ['#4a9a6a', '#4a80b0', '#8b6040', '#7a60b0'];
+
+interface Props {
+  lang?: 'zh' | 'en';
+}
+
+export default function CodeComparison({ lang = 'zh' }: Props) {
+  const s = strings[lang];
   const [animated, setAnimated] = useState(false);
 
   useEffect(() => {
@@ -38,7 +63,7 @@ export default function CodeComparison() {
       <div className="interactive-block-body" style={{ padding: '24px 28px' }}>
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
-            代码量对比：44x 更轻量
+            {s.title}
           </div>
         </div>
 
@@ -51,7 +76,7 @@ export default function CodeComparison() {
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', width: isMobile ? 'auto' : 110, flexShrink: 0 }}>Claude Code</span>
                 {isMobile && (
                   <span style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                    512,664 行 · 1,884 文件 · TypeScript
+                    {s.claudeCodeLabel}
                   </span>
                 )}
               </div>
@@ -67,7 +92,7 @@ export default function CodeComparison() {
                 }}>
                   {!isMobile && (
                     <span style={{ fontSize: 12, color: '#fff', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                      512,664 行 · 1,884 文件 · TypeScript
+                      {s.claudeCodeLabel}
                     </span>
                   )}
                 </div>
@@ -80,7 +105,7 @@ export default function CodeComparison() {
                 <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)', width: isMobile ? 'auto' : 110, flexShrink: 0 }}>OpenHarness</span>
                 {isMobile && (
                   <span style={{ fontSize: 11, color: 'var(--text-secondary)', whiteSpace: 'nowrap' }}>
-                    11,733 行 · 163 文件 · Python
+                    {s.openHarnessLabel}
                   </span>
                 )}
               </div>
@@ -96,7 +121,7 @@ export default function CodeComparison() {
                 }}>
                   {!isMobile && (
                     <span style={{ fontSize: 12, color: '#fff', fontWeight: 500, whiteSpace: 'nowrap' }}>
-                      11,733 行 · 163 文件 · Python
+                      {s.openHarnessLabel}
                     </span>
                   )}
                 </div>
@@ -110,16 +135,18 @@ export default function CodeComparison() {
           display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12,
           maxWidth: 720, margin: '0 auto 20px',
         }}>
-          {stats.map((s) => (
-            <div key={s.label} style={{
+          {s.stats.map((stat, i) => {
+            const color = statColors[i];
+            return (
+            <div key={stat.label} style={{
               textAlign: 'center', padding: '14px 8px',
-              borderRadius: 8, border: `1.5px solid ${s.color}40`,
-              background: `${s.color}10`,
+              borderRadius: 8, border: `1.5px solid ${color}40`,
+              background: `${color}10`,
             }}>
-              <div style={{ fontSize: 24, fontWeight: 800, color: s.color }}>{s.value}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{s.label}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color }}>{stat.value}</div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>{stat.label}</div>
             </div>
-          ))}
+          );})}
         </div>
 
         {/* Tagline */}

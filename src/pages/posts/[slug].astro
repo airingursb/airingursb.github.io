@@ -1,6 +1,7 @@
 ---
 import { getCollection, render } from 'astro:content';
 import PostLayout from '../../layouts/PostLayout.astro';
+import { buildTranslationMap } from '../../lib/i18n';
 import fs from 'node:fs';
 
 export async function getStaticPaths() {
@@ -8,9 +9,7 @@ export async function getStaticPaths() {
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
   const enPosts = await getCollection('postsEn', ({ data }) => !data.draft);
-  // Astro github-slugifies filenames: "weekly-4.en.md" → id "weekly-4en"
-  // The zh post id is "weekly-4", so we strip the trailing "en"
-  const enPostIds = new Set(enPosts.map(p => p.id.replace(/\.en$/, '').replace(/en$/, '')));
+  const enPostIds = buildTranslationMap(enPosts.map(p => p.id));
 
   return allPosts.map((post, idx) => ({
     params: { slug: post.id },

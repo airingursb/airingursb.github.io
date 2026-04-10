@@ -1,11 +1,11 @@
 import rss from '@astrojs/rss';
 import { getCollection } from 'astro:content';
 import type { APIContext } from 'astro';
-import { tSite } from '../../lib/i18n';
+import { tSite } from '../../../lib/i18n';
 
 export async function GET(context: APIContext) {
-  const s = tSite('zh').notes;
-  const notes = (await getCollection('notes', ({ data }) => data.public && !data.draft))
+  const s = tSite('en').notes;
+  const notes = (await getCollection('notesEn', ({ data }) => data.public && !data.draft))
     .sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
 
   return rss({
@@ -17,7 +17,7 @@ export async function GET(context: APIContext) {
       title: note.data.title,
       pubDate: new Date(note.data.date),
       description: note.data.summary || '',
-      link: `/notes/${note.id}/`,
+      link: `/en/notes/${note.id}/`,
       categories: note.data.tags,
     })),
     customData: `<language>${s.feedLang}</language>`,

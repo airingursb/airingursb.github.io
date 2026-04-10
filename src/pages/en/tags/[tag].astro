@@ -1,13 +1,13 @@
 ---
 import { getCollection } from 'astro:content';
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import LangSwitch from '../../components/LangSwitch.astro';
-import { tSite } from '../../lib/i18n';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import LangSwitch from '../../../components/LangSwitch.astro';
+import { tSite } from '../../../lib/i18n';
 
-const s = tSite('zh').tags;
+const s = tSite('en').tags;
 
 export async function getStaticPaths() {
-  const posts = await getCollection('posts', ({ data }) => !data.draft);
+  const posts = await getCollection('postsEn', ({ data }) => !data.draft);
   const tags = [...new Set(posts.flatMap(p => p.data.tags))];
   const tagCounts: Record<string, number> = {};
   tags.forEach(t => {
@@ -29,7 +29,7 @@ export async function getStaticPaths() {
 const { tag, allTags, tagCounts, posts } = Astro.props;
 
 function formatDate(date: Date) {
-  return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 const tagColors: Record<string, string> = {
@@ -41,23 +41,23 @@ function getTagColor(t: string) {
 const tagColor = getTagColor(tag);
 ---
 
-<BaseLayout title={`${s.title(tag)} | Airing`} lang="zh">
+<BaseLayout title={`${s.title(tag)} | Airing`} lang="en">
   <div class="tag-page">
     <header class="masthead">
       <div class="mast-inner">
         <div class="mast-top-rule"></div>
         <div class="mast-bar">
-          <a href="/blog" class="mast-brand">Airing's Blog</a>
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
           <div class="mast-links">
-            <a href="/blog">Blog</a>
-            <a href="/archive">Archive</a>
-            <a href="/moments">Moment</a>
-            <a href="/notes">Notes</a>
-            <a href="/friends">Friends</a>
+            <a href="/en/blog">Blog</a>
+            <a href="/en/archive">Archive</a>
+            <a href="/en/moments">Moment</a>
+            <a href="/en/notes">Notes</a>
+            <a href="/en/friends">Friends</a>
           </div>
         </div>
         <div class="mast-lang-line">
-          <LangSwitch lang="zh" currentPath={`/tags/${tag}`} hasEnVersion={true} />
+          <LangSwitch lang="en" currentPath={`/en/tags/${tag}`} hasEnVersion={true} />
         </div>
         <div class="mast-bottom-rule"></div>
       </div>
@@ -68,7 +68,7 @@ const tagColor = getTagColor(tag);
       <div class="tags-nav-inner">
         {allTags.map(t => (
           <a
-            href={`/tags/${t}`}
+            href={`/en/tags/${t}`}
             class={`tag-pill ${t === tag ? 'active' : ''}`}
             style={t === tag ? `--active-color: ${getTagColor(t)}` : ''}
           >
@@ -92,7 +92,7 @@ const tagColor = getTagColor(tag);
       <div class="content-wrap">
         <div class="card-grid">
           {posts.map(post => (
-            <a href={`/posts/${post.id}`} class="post-card">
+            <a href={`/en/posts/${post.id}`} class="post-card">
               <div class="card-top">
                 <div class="card-tags">
                   {post.data.tags.map(t => (
@@ -117,8 +117,8 @@ const tagColor = getTagColor(tag);
         <span>&copy; 2026 Airing</span>
         <div class="footer-links">
           <a href="/">Home</a>
-          <a href="/archive">Archive</a>
-          <a href="/blog/feed.xml">RSS</a>
+          <a href="/en/archive">Archive</a>
+          <a href="/en/blog/feed.xml">RSS</a>
         </div>
       </div>
     </footer>
@@ -135,8 +135,8 @@ const tagColor = getTagColor(tag);
   })();
   </script>
   <script is:inline define:vars={{ tag }}>
-    if (localStorage.getItem('preferred_lang') === 'en') {
-      window.location.replace('/en/tags/' + tag);
+    if (localStorage.getItem('preferred_lang') === 'zh') {
+      window.location.replace('/tags/' + tag);
     }
   </script>
 </BaseLayout>

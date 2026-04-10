@@ -31,15 +31,31 @@ const palette = {
 // dash animation speed (px / s)
 const FLOW_SPEED = 40;
 
+const strings = {
+  zh: {
+    title: '负反馈控制回路',
+    subtitle: '控制论的核心模型',
+  },
+  en: {
+    title: 'Negative feedback control loop',
+    subtitle: 'The core model of cybernetics',
+  },
+} as const;
+
 interface FeedbackLoopProps {
   title?: string;
   subtitle?: string;
+  lang?: 'zh' | 'en';
 }
 
 export default function FeedbackLoop({
-  title = 'Negative feedback control loop',
-  subtitle = 'The core model of cybernetics',
+  title,
+  subtitle,
+  lang = 'zh',
 }: FeedbackLoopProps) {
+  const s = strings[lang];
+  const resolvedTitle = title ?? s.title;
+  const resolvedSubtitle = subtitle ?? s.subtitle;
   const svgRef = useRef<SVGSVGElement>(null);
 
   // animate dash offset
@@ -74,10 +90,10 @@ export default function FeedbackLoop({
       <div className="interactive-block-body" style={{ padding: '24px 0', overflow: 'hidden' }}>
         {/* title */}
         <div style={{ textAlign: 'center', marginBottom: 16 }}>
-          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>{title}</div>
-          {subtitle && (
+          <div style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)' }}>{resolvedTitle}</div>
+          {resolvedSubtitle && (
             <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
-              {subtitle}
+              {resolvedSubtitle}
             </div>
           )}
         </div>

@@ -1,29 +1,29 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { getCollection, render } from 'astro:content';
-import { getBacklinks } from '../../lib/backlinks';
-import LangSwitch from '../../components/LangSwitch.astro';
-import { tSite } from '../../lib/i18n';
+import { getBacklinks } from '../../../lib/backlinks';
+import LangSwitch from '../../../components/LangSwitch.astro';
+import { tSite } from '../../../lib/i18n';
 
 export async function getStaticPaths() {
-  const notes = await getCollection('notes', ({ data }) => data.public && !data.draft);
+  const notes = await getCollection('notesEn', ({ data }) => data.public && !data.draft);
   const sorted = notes.sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
-  const enNotes = await getCollection('notesEn', ({ data }) => data.public && !data.draft);
-  const enNoteIds = new Set(enNotes.map(n => n.id));
+  const zhNotes = await getCollection('notes', ({ data }) => data.public && !data.draft);
+  const zhNoteIds = new Set(zhNotes.map(n => n.id));
   return sorted.map(note => ({
     params: { slug: note.id },
     props: {
       note,
       allNotes: sorted,
-      hasEn: enNoteIds.has(note.id),
+      hasZh: zhNoteIds.has(note.id),
     },
   }));
 }
 
-const { note, allNotes, hasEn } = Astro.props;
+const { note, allNotes, hasZh } = Astro.props;
 const { Content, headings } = await render(note);
 
-const backlinkMap = await getBacklinks();
+const backlinkMap = await getBacklinks('en');
 const noteBacklinks = backlinkMap.get(note.data.title.toLowerCase()) || [];
 
 // Related notes: backlinks + notes sharing tags (deduplicated)
@@ -36,35 +36,34 @@ const relatedNotes = [
   ...relatedFromTags.map(n => ({ title: n.data.title, slug: n.id })),
 ].slice(0, 8);
 
-const s = tSite('zh').notes;
+const s = tSite('en').notes;
 
-// Reading time: count CJK characters and Latin words separately
-const cjkChars = (note.body?.match(/[\u4e00-\u9fff]/g) || []).length;
-const latinWords = note.body?.split(/\s+/).filter(w => w.length > 0).length || 0;
-const readingTime = s.readingTime(Math.max(1, Math.ceil((cjkChars / 300) + (latinWords / 200))));
+// Reading time: EN pure word count
+const wordCount = (note.body ?? '').split(/\s+/).filter(Boolean).length;
+const readingTime = s.readingTime(Math.max(1, Math.ceil(wordCount / 200)));
 
-const hreflang = hasEn ? {
+const hreflang = hasZh ? {
   zh: new URL(`/notes/${note.id}/`, Astro.site).href,
   en: new URL(`/en/notes/${note.id}/`, Astro.site).href,
 } : undefined;
 ---
-<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article" hreflang={hreflang}>
+<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article" lang="en" hreflang={hreflang}>
   <div class="note-detail-page">
     <header class="masthead">
       <div class="mast-inner">
         <div class="mast-top-rule"></div>
         <div class="mast-bar">
-          <a href="/blog" class="mast-brand">Airing's Blog</a>
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
           <div class="mast-links">
-            <a href="/blog" class="mast-hide-mobile">Blog</a>
-            <a href="/archive" class="mast-hide-mobile">Archive</a>
-            <a href="/moments">Moment</a>
-            <a href="/notes">Notes</a>
-            <a href="/friends">Friends</a>
+            <a href="/en/blog" class="mast-hide-mobile">Blog</a>
+            <a href="/en/archive" class="mast-hide-mobile">Archive</a>
+            <a href="/en/moments">Moment</a>
+            <a href="/en/notes">Notes</a>
+            <a href="/en/friends">Friends</a>
           </div>
         </div>
         <div class="mast-lang-line">
-          <LangSwitch lang="zh" currentPath={`/notes/${note.id}`} hasEnVersion={hasEn} />
+          <LangSwitch lang="en" currentPath={`/en/notes/${note.id}`} hasEnVersion={true} />
         </div>
         <div class="mast-bottom-rule"></div>
       </div>
@@ -75,11 +74,11 @@ const hreflang = hasEn ? {
         <!-- Left: Note list -->
         <aside class="note-sidebar">
           <div class="sidebar-inner">
-            <a href="/notes" class="sidebar-back">{s.backToList}</a>
+            <a href="/en/notes" class="sidebar-back">{s.backToList}</a>
             <div class="sidebar-list">
               {allNotes.map(n => (
                 <a
-                  href={`/notes/${n.id}`}
+                  href={`/en/notes/${n.id}`}
                   class:list={['sl-item', { active: n.id === note.id }]}
                 >
                   <span class="sl-title">{n.data.title}</span>
@@ -128,7 +127,7 @@ const hreflang = hasEn ? {
               <div class="meta-label">{s.tagsLabel}</div>
               <div class="meta-tags">
                 {note.data.tags.map(tag => (
-                  <a href={`/notes?tag=${encodeURIComponent(tag)}`} class="meta-tag">{tag}</a>
+                  <a href={`/en/notes?tag=${encodeURIComponent(tag)}`} class="meta-tag">{tag}</a>
                 ))}
               </div>
             </div>
@@ -148,7 +147,7 @@ const hreflang = hasEn ? {
                 <div class="meta-label">{s.relatedNotes}</div>
                 <div class="related-list">
                   {relatedNotes.map(r => (
-                    <a href={`/notes/${r.slug}`} class="related-item">→ {r.title}</a>
+                    <a href={`/en/notes/${r.slug}`} class="related-item">→ {r.title}</a>
                   ))}
                 </div>
               </div>

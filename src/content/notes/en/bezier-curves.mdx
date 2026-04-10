@@ -1,0 +1,42 @@
+---
+title: The Math Behind Bezier Curves
+date: "2026-03-27"
+tags: [math, canvas]
+public: true
+draft: true
+interactive: false
+summary: From linear interpolation to cubic Bezier curves — deriving the math step by step.
+---
+
+Bezier curves are among the most elegant and foundational tools in computer graphics. From font rendering to animation easing, from SVG paths to CAD modeling, they are everywhere.
+
+## Starting from linear interpolation
+
+Given two points P₀ and P₁, the formula for linear interpolation is:
+
+B(t) = (1-t)P₀ + tP₁, where t ∈ [0, 1]
+
+This is essentially uniform motion between two points.
+
+## The cubic Bezier curve
+
+When we use four control points, we get the cubic Bezier curve:
+
+B(t) = (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
+
+```typescript
+function cubicBezier(
+  t: number,
+  p0: Point, p1: Point, p2: Point, p3: Point
+): Point {
+  const mt = 1 - t;
+  return {
+    x: mt**3*p0.x + 3*mt**2*t*p1.x + 3*mt*t**2*p2.x + t**3*p3.x,
+    y: mt**3*p0.y + 3*mt**2*t*p1.y + 3*mt*t**2*p2.y + t**3*p3.y,
+  };
+}
+```
+
+## Applications
+
+The browser's `cubic-bezier()` CSS function is essentially a cubic Bezier curve. See [[Hello World]] for more.

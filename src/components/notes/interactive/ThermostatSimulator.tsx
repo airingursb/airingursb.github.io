@@ -84,7 +84,11 @@ function Slider({
   );
 }
 
-export default function ThermostatSimulator() {
+interface Props {
+  lang?: 'zh' | 'en';
+}
+
+export default function ThermostatSimulator(_props: Props = {}) {
   const [target, setTarget] = useState(28);
   const [kp, setKp] = useState(14);
   const [disturbance, setDisturbance] = useState(0);
