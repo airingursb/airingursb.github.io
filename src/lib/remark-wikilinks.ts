@@ -14,7 +14,8 @@ const remarkWikilinks = (options: WikilinkOptions = {}) => {
   return (tree: any, file: any) => {
     // Detect if current file is an EN note (under src/content/notes/en/)
     const filePath = (file.path || file.history?.[0] || '') as string;
-    const isEnNote = filePath.includes('/content/notes/en/');
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    const isEnNote = normalizedPath.includes('/content/notes/en/');
 
     const sourceSlug = file.data.astro?.frontmatter?.title as string | undefined;
     const links: string[] = [];
