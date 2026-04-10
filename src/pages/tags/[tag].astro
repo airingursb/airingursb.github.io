@@ -1,6 +1,10 @@
 ---
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { tSite } from '../../lib/i18n';
+
+const s = tSite('zh').tags;
 
 export async function getStaticPaths() {
   const posts = await getCollection('posts', ({ data }) => !data.draft);
@@ -37,7 +41,7 @@ function getTagColor(t: string) {
 const tagColor = getTagColor(tag);
 ---
 
-<BaseLayout title={`#${tag} | Airing`}>
+<BaseLayout title={`${s.title(tag)} | Airing`} lang="zh">
   <div class="tag-page">
     <header class="masthead">
       <div class="mast-inner">
@@ -51,6 +55,9 @@ const tagColor = getTagColor(tag);
             <a href="/notes">Notes</a>
             <a href="/friends">Friends</a>
           </div>
+        </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="zh" currentPath={`/tags/${tag}`} hasEnVersion={true} />
         </div>
         <div class="mast-bottom-rule"></div>
       </div>
@@ -75,8 +82,8 @@ const tagColor = getTagColor(tag);
     <!-- Header -->
     <header class="page-header">
       <div class="content-wrap">
-        <h1 class="page-title" style={`color: ${tagColor}`}>#{tag}</h1>
-        <p class="page-desc">{posts.length} posts tagged with <strong style={`color: ${tagColor}`}>{tag}</strong></p>
+        <h1 class="page-title" style={`color: ${tagColor}`}>{s.title(tag)}</h1>
+        <p class="page-desc">{s.desc(posts.length)}</p>
       </div>
     </header>
 
@@ -127,6 +134,11 @@ const tagColor = getTagColor(tag);
     });
   })();
   </script>
+  <script is:inline define:vars={{ tag }}>
+    if (localStorage.getItem('preferred_lang') === 'en') {
+      window.location.replace('/en/tags/' + tag);
+    }
+  </script>
 </BaseLayout>
 
 <style is:global>
@@ -169,6 +181,11 @@ const tagColor = getTagColor(tag);
   }
   .mast-links a:hover { color: var(--c-text); }
   .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-lang-line {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 8px 0;
+  }
 
   /* Tags Navigation */
   .tags-nav {
