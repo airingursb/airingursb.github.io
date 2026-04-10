@@ -1,0 +1,71 @@
+---
+title: "Claude Code's Memory System, Explained"
+date: "2026-04-05"
+tags: [ai, agent, architecture]
+public: true
+interactive: true
+summary: A deep dive into Claude Code's Memory system — its 5-layer architecture, 4 memory types, write/retrieve/delete flows, and the three-layer safety mechanism.
+---
+
+import MemoryLayers from '../../../components/notes/interactive/MemoryLayers.tsx';
+import MemoryTypes from '../../../components/notes/interactive/MemoryTypes.tsx';
+import MemoryWriteFlow from '../../../components/notes/interactive/MemoryWriteFlow.tsx';
+import MemoryRetrievalFlow from '../../../components/notes/interactive/MemoryRetrievalFlow.tsx';
+import MemorySecurityFlow from '../../../components/notes/interactive/MemorySecurityFlow.tsx';
+import MemorySummary from '../../../components/notes/interactive/MemorySummary.tsx';
+
+Claude Code's Memory system is the core infrastructure that lets the agent truly "know you." Unlike traditional conversation history, it is a cross-session, structured, persistent memory mechanism — the agent not only remembers what you said, but also who you are, your preferences, your project context, and even your feedback on how it works.
+
+## 1. The 5-layer memory architecture
+
+Memory is not a single store. It is a hierarchy of five layers, each with its own lifecycle, write mechanism, and purpose.
+
+<MemoryLayers client:visible />
+
+From top to bottom, the first three layers (CLAUDE.md, session memory, conversation history) all have lifecycles bounded by a single session or actively managed by the user. The truly interesting layer is at the bottom: **automatic memory** — a layer that Claude Code learns and manages autonomously across multiple conversations.
+
+## 2. Four memory types
+
+Automatic memory doesn't just record everything in a lump. It strictly distinguishes four types, each with different triggering conditions and purposes. These four types are essentially labels provided for the agent during retrieval — helping it quickly judge whether a memory is relevant to the current task.
+
+<MemoryTypes client:visible />
+
+The storage format is extremely simple: one `.md` file per memory, with a YAML frontmatter (`name`, `description`, `type`), plus a `MEMORY.md` index file as a table of contents. This design is both friendly for the agent to read and write, and easy for humans to view and edit directly.
+
+## 3. How are memories written?
+
+Writing memories happens in three stages: real-time extraction, periodic consolidation, and deletion judgment.
+
+<MemoryWriteFlow client:visible />
+
+Key design decisions:
+- **Per-turn extraction is incremental** — the background agent only looks at the most recent few messages, never re-reading the entire conversation.
+- **Periodic consolidation** is performed by a separate autoDream sub-agent with its own context, so it doesn't interfere with the main conversation.
+- **Deletion is conservative** — better to keep possibly stale memories than to risk deleting useful information.
+
+## 4. How is Memory retrieved?
+
+Retrieval is the most elegant part of the Memory system. The core problem: a project may have hundreds of memories, but each conversation has a limited context window — how do you pick the most relevant ones?
+
+<MemoryRetrievalFlow client:visible />
+
+A few subtle design choices stand out:
+- **Sonnet does the filtering, not the main model** — even if you're using Opus, memory filtering is still done by Sonnet. This achieves separation of concerns: the main model focuses on reasoning, the filter model focuses on relevance judgment.
+- **It only sees description, not content** — during filtering, Sonnet can only see the `description` field in the frontmatter, not the memory's full content. This is why the quality of your descriptions is critical.
+- **Staleness warnings are framework-injected** — they don't rely on the agent's self-discipline; the system automatically attaches warnings when loading memories.
+
+## 5. How is Memory security guaranteed?
+
+Letting an AI agent autonomously read and write the local file system is an unavoidable security question. Claude Code's Memory system uses three layers of defense:
+
+<MemorySecurityFlow client:visible />
+
+The core principle: **don't trust the model's self-discipline**. Security isn't enforced by "please don't do bad things" written into a prompt — it's enforced by hard constraints at the code level. Paths are locked down, permissions are checked, sandboxes isolate execution — every layer is a code-level guarantee, not reliant on the model's "understanding" or "cooperation."
+
+## Summary
+
+<MemorySummary client:visible />
+
+The Memory system embodies a core tenet of Claude Code's architectural philosophy: **the model is powerful, but the harness does not trust it to manage its own memory unsupervised**. Every operation — write, retrieve, delete, stale handling — has an independent constraint mechanism. This isn't a denial of the model's capabilities; it's engineering pragmatism: until agents are truly reliable, a safety net at the framework level is necessary.
+
+From a user's perspective, the Memory system turns Claude Code from "an assistant that starts from zero every time" into "a collaborator that knows you." It remembers your coding style, your testing preferences, your project context, and even the things you'd rather it not do. As the conversation accumulates, this personalization becomes more and more precise — perhaps the most underrated feature in today's AI coding tools.
