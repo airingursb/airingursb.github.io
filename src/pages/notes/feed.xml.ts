@@ -1,14 +1,16 @@
 import rss from '@astrojs/rss';
 import { getCollection } from 'astro:content';
 import type { APIContext } from 'astro';
+import { tSite } from '../../lib/i18n';
 
 export async function GET(context: APIContext) {
+  const s = tSite('zh').notes;
   const notes = (await getCollection('notes', ({ data }) => data.public && !data.draft))
     .sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
 
   return rss({
-    title: "Airing's Notes",
-    description: "思考的痕迹：记录关于前端、数学、设计、哲学和一切让我好奇的事物。",
+    title: s.feedTitle,
+    description: s.feedDesc,
     site: context.site!,
     stylesheet: '/feed.xsl',
     items: notes.map((note) => ({
@@ -18,6 +20,6 @@ export async function GET(context: APIContext) {
       link: `/notes/${note.id}/`,
       categories: note.data.tags,
     })),
-    customData: '<language>zh-cn</language>',
+    customData: `<language>${s.feedLang}</language>`,
   });
 }
