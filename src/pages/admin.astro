@@ -1,8 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import LangSwitch from '../components/LangSwitch.astro';
+import { tSite } from '../lib/i18n';
+
+const s = tSite('zh').admin;
 ---
 
-<BaseLayout title="Admin | Airing">
+<BaseLayout title={`${s.title} | Airing`} lang="zh">
   <div class="admin-page">
     <header class="masthead">
       <div class="mast-inner">
@@ -17,14 +21,17 @@ import BaseLayout from '../layouts/BaseLayout.astro';
             <a href="/friends">Friends</a>
           </div>
         </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="zh" currentPath="/admin" hasEnVersion={true} />
+        </div>
         <div class="mast-bottom-rule"></div>
       </div>
     </header>
 
     <header class="page-header">
       <div class="header-inner">
-        <h1 class="page-title">Comment Admin</h1>
-        <p class="page-desc">Moderate blog comments.</p>
+        <h1 class="page-title">{s.title}</h1>
+        <p class="page-desc">{s.desc}</p>
       </div>
     </header>
 
@@ -233,6 +240,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   })();
   </script>
+  <script is:inline>
+    if (localStorage.getItem('preferred_lang') === 'en') {
+      window.location.replace('/en/admin');
+    }
+  </script>
 </BaseLayout>
 
 <style is:global>
@@ -271,6 +283,11 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   }
   .mast-links a:hover { color: var(--c-text); }
   .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-lang-line {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 8px 0;
+  }
 
   /* Header */
   .page-header {
