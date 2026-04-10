@@ -21,17 +21,24 @@ const postsEn = defineCollection({
   schema: postSchema,
 });
 
-const notes = defineCollection({
-  loader: glob({ pattern: '**/*.mdx', base: './src/content/notes' }),
-  schema: z.object({
-    title: z.string(),
-    date: z.string(),
-    tags: z.array(z.string()),
-    public: z.boolean().default(true),
-    draft: z.boolean().default(false),
-    interactive: z.boolean().default(false),
-    summary: z.string(),
-  }),
+const noteSchema = z.object({
+  title: z.string(),
+  date: z.string(),
+  tags: z.array(z.string()),
+  public: z.boolean().default(true),
+  draft: z.boolean().default(false),
+  interactive: z.boolean().default(false),
+  summary: z.string(),
 });
 
-export const collections = { posts, postsEn, notes };
+const notes = defineCollection({
+  loader: glob({ pattern: ['**/*.mdx', '!en/**'], base: './src/content/notes' }),
+  schema: noteSchema,
+});
+
+const notesEn = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/notes/en' }),
+  schema: noteSchema,
+});
+
+export const collections = { posts, postsEn, notes, notesEn };
