@@ -42,8 +42,16 @@ const heatmapData = JSON.stringify(noteWeeks);
 
 const s = tSite('zh').notes;
 
-// Template parts passed via define:vars since functions can't cross the inline-script boundary
-const tooltipTemplate = { weekUnit: '周', countSuffix: '篇' };
+// Precompute heatmap tooltip strings per week so the inline script can
+// just read them by week number (functions can't cross define:vars).
+const weekTooltips: Record<number, string> = {};
+for (let w = 1; w <= 52; w++) {
+  const weekStart = new Date(currentYear, 0, 1 + (w - 1) * 7);
+  const m = weekStart.getMonth() + 1;
+  const d = weekStart.getDate();
+  const count = noteWeeks[w]?.length;
+  weekTooltips[w] = s.weekTooltip(m, d, count);
+}
 ---
 
 <BaseLayout title={`${s.siteTitle} | Airing`}>
@@ -182,7 +190,7 @@ const tooltipTemplate = { weekUnit: '周', countSuffix: '篇' };
     </footer>
   </div>
 
-  <script is:inline define:vars={{ ITEMS_PER_PAGE, heatmapData, tooltipTemplate }}>
+  <script is:inline define:vars={{ ITEMS_PER_PAGE, heatmapData, weekTooltips }}>
   (function() {
     var currentTag = 'all';
     var currentWeek = null; // active heatmap week filter
@@ -204,7 +212,7 @@ const tooltipTemplate = { weekUnit: '周', countSuffix: '篇' };
         var weekStart = new Date(currentYear, 0, 1 + (w - 1) * 7);
         var m = weekStart.getMonth() + 1;
         var d = weekStart.getDate();
-        cell.title = m + '/' + d + ' ' + tooltipTemplate.weekUnit + (noteWeeks[w] ? ' (' + noteWeeks[w].length + ' ' + tooltipTemplate.countSuffix + ')' : '');
+        cell.title = weekTooltips[w];
         cell.addEventListener('click', function() {
           var wk = parseInt(this.dataset.week);
           if (!noteWeeks[wk]) return;
