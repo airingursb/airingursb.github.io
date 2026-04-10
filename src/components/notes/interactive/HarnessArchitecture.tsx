@@ -13,54 +13,137 @@ const palette = {
   loop:       { fill: '#fde8d8', stroke: '#c06030', text: '#804020' },
 };
 
-interface Box {
-  x: number; y: number; w: number; h: number;
-  label: string; sub: string;
-  color: typeof palette.capability;
-}
+const strings = {
+  zh: {
+    title: 'OpenHarness (oh) — Agent Harness 架构全景',
+    subtitle: '用 3% 的代码量实现 Claude Code 80% 的核心能力',
+    harnessDefinition: 'Harness = Tools + Knowledge + Observation + Action + Permissions',
+    loopTitle: 'Agent Loop（核心循环）',
+    loopLine1: 'Query → LLM Stream → Tool Call → Permission Check',
+    loopLine2: '→ Hook → Execute → Result → Loop',
+    loopLabel: 'loop',
+    layers: [
+      {
+        name: '能力层',
+        boxes: [
+          { label: 'Tools (43+)', sub: 'File, Shell, Web, MCP' },
+          { label: 'Skills（按需知识）', sub: '40+ .md 技能文件' },
+          { label: 'Plugins（插件）', sub: '兼容 claude-code' },
+        ],
+      },
+      {
+        name: '安全 / 控制层',
+        boxes: [
+          { label: 'Permissions', sub: 'Default / Auto / Plan' },
+          { label: 'Hooks（生命周期）', sub: 'Pre/Post ToolUse' },
+          { label: 'Commands (54)', sub: '/help /commit /plan …' },
+        ],
+      },
+      {
+        name: '协作 / 扩展层',
+        boxes: [
+          { label: 'MCP 协议', sub: '外部工具集成' },
+          { label: 'Memory（记忆）', sub: '跨会话持久化' },
+          { label: 'Coordinator', sub: '多 Agent 协作' },
+        ],
+      },
+      {
+        name: '基础设施层',
+        boxes: [
+          { label: 'Config（配置）', sub: '多层级设置迁移' },
+          { label: 'React TUI', sub: 'Ink 终端交互界面' },
+        ],
+      },
+    ],
+  },
+  en: {
+    title: 'OpenHarness (oh) — Agent Harness Overview',
+    subtitle: '3% of the code, 80% of Claude Code\'s core capabilities',
+    harnessDefinition: 'Harness = Tools + Knowledge + Observation + Action + Permissions',
+    loopTitle: 'Agent Loop (core loop)',
+    loopLine1: 'Query → LLM Stream → Tool Call → Permission Check',
+    loopLine2: '→ Hook → Execute → Result → Loop',
+    loopLabel: 'loop',
+    layers: [
+      {
+        name: 'Capability Layer',
+        boxes: [
+          { label: 'Tools (43+)', sub: 'File, Shell, Web, MCP' },
+          { label: 'Skills (on-demand knowledge)', sub: '40+ .md skill files' },
+          { label: 'Plugins', sub: 'Compatible with claude-code' },
+        ],
+      },
+      {
+        name: 'Safety / Control Layer',
+        boxes: [
+          { label: 'Permissions', sub: 'Default / Auto / Plan' },
+          { label: 'Hooks (lifecycle)', sub: 'Pre/Post ToolUse' },
+          { label: 'Commands (54)', sub: '/help /commit /plan …' },
+        ],
+      },
+      {
+        name: 'Collaboration / Extension Layer',
+        boxes: [
+          { label: 'MCP Protocol', sub: 'External tool integration' },
+          { label: 'Memory', sub: 'Cross-session persistence' },
+          { label: 'Coordinator', sub: 'Multi-agent collaboration' },
+        ],
+      },
+      {
+        name: 'Infrastructure Layer',
+        boxes: [
+          { label: 'Config', sub: 'Multi-level settings migration' },
+          { label: 'React TUI', sub: 'Ink-based terminal UI' },
+        ],
+      },
+    ],
+  },
+} as const;
 
-const harnessBox = { x: 100, y: 40, w: 700, h: 56 };
-const loopBox = { x: 160, y: 140, w: 580, h: 80 };
-
-const layers: { name: string; color: typeof palette.capability; boxes: Box[] }[] = [
+// layout positions for each layer's boxes (same for both languages)
+const layerLayouts = [
   {
-    name: '能力层',
     color: palette.capability,
-    boxes: [
-      { x: 60,  y: 280, w: 230, h: 64, label: 'Tools (43+)', sub: 'File, Shell, Web, MCP', color: palette.capability },
-      { x: 335, y: 280, w: 230, h: 64, label: 'Skills（按需知识）', sub: '40+ .md 技能文件', color: palette.capability },
-      { x: 610, y: 280, w: 230, h: 64, label: 'Plugins（插件）', sub: '兼容 claude-code', color: palette.capability },
+    positions: [
+      { x: 60,  y: 280, w: 230, h: 64 },
+      { x: 335, y: 280, w: 230, h: 64 },
+      { x: 610, y: 280, w: 230, h: 64 },
     ],
   },
   {
-    name: '安全 / 控制层',
     color: palette.security,
-    boxes: [
-      { x: 60,  y: 370, w: 230, h: 64, label: 'Permissions', sub: 'Default / Auto / Plan', color: palette.security },
-      { x: 335, y: 370, w: 230, h: 64, label: 'Hooks（生命周期）', sub: 'Pre/Post ToolUse', color: palette.security },
-      { x: 610, y: 370, w: 230, h: 64, label: 'Commands (54)', sub: '/help /commit /plan …', color: palette.security },
+    positions: [
+      { x: 60,  y: 370, w: 230, h: 64 },
+      { x: 335, y: 370, w: 230, h: 64 },
+      { x: 610, y: 370, w: 230, h: 64 },
     ],
   },
   {
-    name: '协作 / 扩展层',
     color: palette.collab,
-    boxes: [
-      { x: 60,  y: 460, w: 230, h: 64, label: 'MCP 协议', sub: '外部工具集成', color: palette.collab },
-      { x: 335, y: 460, w: 230, h: 64, label: 'Memory（记忆）', sub: '跨会话持久化', color: palette.collab },
-      { x: 610, y: 460, w: 230, h: 64, label: 'Coordinator', sub: '多 Agent 协作', color: palette.collab },
+    positions: [
+      { x: 60,  y: 460, w: 230, h: 64 },
+      { x: 335, y: 460, w: 230, h: 64 },
+      { x: 610, y: 460, w: 230, h: 64 },
     ],
   },
   {
-    name: '基础设施层',
     color: palette.infra,
-    boxes: [
-      { x: 197, y: 550, w: 230, h: 64, label: 'Config（配置）', sub: '多层级设置迁移', color: palette.infra },
-      { x: 472, y: 550, w: 230, h: 64, label: 'React TUI', sub: 'Ink 终端交互界面', color: palette.infra },
+    positions: [
+      { x: 197, y: 550, w: 230, h: 64 },
+      { x: 472, y: 550, w: 230, h: 64 },
     ],
   },
 ];
 
-export default function HarnessArchitecture() {
+const harnessBox = { x: 100, y: 40, w: 700, h: 56 };
+const loopBox = { x: 160, y: 140, w: 580, h: 80 };
+
+interface Props {
+  lang?: 'zh' | 'en';
+}
+
+export default function HarnessArchitecture({ lang = 'zh' }: Props) {
+  const s = strings[lang];
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
@@ -93,10 +176,10 @@ export default function HarnessArchitecture() {
       <div className="interactive-block-body" style={{ padding: '20px 0', overflow: 'hidden' }}>
         <div style={{ textAlign: 'center', marginBottom: 12 }}>
           <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>
-            OpenHarness (oh) — Agent Harness 架构全景
+            {s.title}
           </div>
           <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>
-            用 3% 的代码量实现 Claude Code 80% 的核心能力
+            {s.subtitle}
           </div>
         </div>
 
@@ -125,7 +208,7 @@ export default function HarnessArchitecture() {
             textAnchor="middle" fontSize={15} fontWeight={600}
             fill={palette.harness.text}
           >
-            Harness = Tools + Knowledge + Observation + Action + Permissions
+            {s.harnessDefinition}
           </text>
 
           {/* Arrow: Harness → Loop */}
@@ -150,21 +233,21 @@ export default function HarnessArchitecture() {
             textAnchor="middle" fontSize={16} fontWeight={700}
             fill={palette.loop.text}
           >
-            Agent Loop（核心循环）
+            {s.loopTitle}
           </text>
           <text
             x={loopBox.x + loopBox.w / 2} y={loopBox.y + 50}
             textAnchor="middle" fontSize={12}
             fill={palette.loop.text} opacity={0.8}
           >
-            Query → LLM Stream → Tool Call → Permission Check
+            {s.loopLine1}
           </text>
           <text
             x={loopBox.x + loopBox.w / 2} y={loopBox.y + 66}
             textAnchor="middle" fontSize={12}
             fill={palette.loop.text} opacity={0.8}
           >
-            → Hook → Execute → Result → Loop
+            {s.loopLine2}
           </text>
 
           {/* Loop arrow (circular) */}
@@ -180,7 +263,7 @@ export default function HarnessArchitecture() {
             x={loopBox.x + loopBox.w + 46} y={loopBox.y + loopBox.h / 2 + 4}
             fontSize={13} fill={palette.loop.text} fontWeight={500}
           >
-            loop
+            {s.loopLabel}
           </text>
 
           {/* Arrow: Loop → capability layer */}
@@ -192,45 +275,44 @@ export default function HarnessArchitecture() {
           />
 
           {/* Layer boxes */}
-          {layers.map((layer) =>
-            layer.boxes.map((box, bi) => (
-              <g key={`${layer.name}-${bi}`}>
-                <rect
-                  x={box.x} y={box.y}
-                  width={box.w} height={box.h}
-                  rx={8}
-                  fill={box.color.fill}
-                  stroke={box.color.stroke}
-                  strokeWidth={1.5}
-                />
-                <text
-                  x={box.x + box.w / 2} y={box.y + 26}
-                  textAnchor="middle" fontSize={14} fontWeight={700}
-                  fill={box.color.text}
-                >
-                  {box.label}
-                </text>
-                <text
-                  x={box.x + box.w / 2} y={box.y + 46}
-                  textAnchor="middle" fontSize={12}
-                  fill={box.color.text} opacity={0.7}
-                >
-                  {box.sub}
-                </text>
-              </g>
-            ))
-          )}
+          {s.layers.map((layer, li) => {
+            const layout = layerLayouts[li];
+            return layer.boxes.map((box, bi) => {
+              const pos = layout.positions[bi];
+              return (
+                <g key={`${layer.name}-${bi}`}>
+                  <rect
+                    x={pos.x} y={pos.y}
+                    width={pos.w} height={pos.h}
+                    rx={8}
+                    fill={layout.color.fill}
+                    stroke={layout.color.stroke}
+                    strokeWidth={1.5}
+                  />
+                  <text
+                    x={pos.x + pos.w / 2} y={pos.y + 26}
+                    textAnchor="middle" fontSize={14} fontWeight={700}
+                    fill={layout.color.text}
+                  >
+                    {box.label}
+                  </text>
+                  <text
+                    x={pos.x + pos.w / 2} y={pos.y + 46}
+                    textAnchor="middle" fontSize={12}
+                    fill={layout.color.text} opacity={0.7}
+                  >
+                    {box.sub}
+                  </text>
+                </g>
+              );
+            });
+          })}
 
           {/* Legend */}
-          {[
-            { label: '能力层', color: palette.capability.stroke },
-            { label: '安全 / 控制层', color: palette.security.stroke },
-            { label: '协作 / 扩展层', color: palette.collab.stroke },
-            { label: '基础设施层', color: palette.infra.stroke },
-          ].map((item, i) => (
-            <g key={item.label} transform={`translate(${160 + i * 170}, ${H - 30})`}>
-              <circle cx={0} cy={0} r={5} fill={item.color} />
-              <text x={12} y={4} fontSize={12} fill="var(--text-secondary)">{item.label}</text>
+          {s.layers.map((layer, i) => (
+            <g key={layer.name} transform={`translate(${160 + i * 170}, ${H - 30})`}>
+              <circle cx={0} cy={0} r={5} fill={layerLayouts[i].color.stroke} />
+              <text x={12} y={4} fontSize={12} fill="var(--text-secondary)">{layer.name}</text>
             </g>
           ))}
         </svg>
