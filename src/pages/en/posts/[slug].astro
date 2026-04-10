@@ -9,33 +9,22 @@ export async function getStaticPaths() {
   const allZhPosts = (await getCollection('posts', ({ data }) => !data.draft))
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
-  // Build a map: enPost.id → zhPost.id
-  // Astro's glob loader github-slugifies filenames:
-  // "weekly-4.en.md" → enPost.id = "weekly-4en"
-  // "weekly-4.md"    → zhPost.id = "weekly-4"
-  // So enPost.id === zhPost.id + "en"
-  const zhIdByEnId = new Map<string, string>();
-  for (const zhPost of allZhPosts) {
-    const expectedEnId = zhPost.id + 'en';
-    const match = enPosts.find(ep => ep.id === expectedEnId);
-    if (match) zhIdByEnId.set(match.id, zhPost.id);
-  }
-
-  // enSlugs: set of zh post IDs that have English translations (used for related/series links)
-  const enSlugs = new Set(zhIdByEnId.values());
+  // English post IDs already match Chinese post IDs directly (both live under
+  // their respective content directories with identical filenames).
+  const enSlugs = new Set(enPosts.map(p => p.id));
 
   return enPosts.map((enPost) => {
-    const zhSlug = zhIdByEnId.get(enPost.id) ?? enPost.id;
+    const zhSlug = enPost.id;
 
     // Find prev/next among English-translated posts (by date)
     const enPostsSorted = [...enPosts].sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
     const idx = enPostsSorted.findIndex(p => p.id === enPost.id);
 
     const prevPost = idx > 0
-      ? { slug: zhIdByEnId.get(enPostsSorted[idx - 1].id) ?? enPostsSorted[idx - 1].id, title: enPostsSorted[idx - 1].data.title }
+      ? { slug: enPostsSorted[idx - 1].id, title: enPostsSorted[idx - 1].data.title }
       : null;
     const nextPost = idx < enPostsSorted.length - 1
-      ? { slug: zhIdByEnId.get(enPostsSorted[idx + 1].id) ?? enPostsSorted[idx + 1].id, title: enPostsSorted[idx + 1].data.title }
+      ? { slug: enPostsSorted[idx + 1].id, title: enPostsSorted[idx + 1].data.title }
       : null;
 
     // Related posts: only show posts that have English translations.
@@ -46,7 +35,7 @@ export async function getStaticPaths() {
           .filter(p => p.id !== enPost.id && p.data.tags.includes(primaryTag))
           .slice(0, 5)
           .map(p => ({
-            slug: zhIdByEnId.get(p.id) ?? p.id,
+            slug: p.id,
             title: p.data.title,
           }))
       : [];
@@ -70,14 +59,14 @@ export async function getStaticPaths() {
           prev: prevSeries ? {
             slug: prevSeries.id,
             title: (() => {
-              const enVer = enPosts.find(ep => zhIdByEnId.get(ep.id) === prevSeries.id);
+              const enVer = enPosts.find(ep => ep.id === prevSeries.id);
               return enVer ? enVer.data.title : prevSeries.data.title;
             })(),
           } : null,
           next: nextSeries ? {
             slug: nextSeries.id,
             title: (() => {
-              const enVer = enPosts.find(ep => zhIdByEnId.get(ep.id) === nextSeries.id);
+              const enVer = enPosts.find(ep => ep.id === nextSeries.id);
               return enVer ? enVer.data.title : nextSeries.data.title;
             })(),
           } : null,
