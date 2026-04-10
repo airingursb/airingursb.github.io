@@ -1,0 +1,406 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { tSite } from '../../lib/i18n';
+
+const s = tSite('en').admin;
+---
+
+<BaseLayout title={`${s.title} | Airing`} lang="en">
+  <div class="admin-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/en/blog" class="mast-hide-mobile">Blog</a>
+            <a href="/en/archive" class="mast-hide-mobile">Archive</a>
+            <a href="/en/moments">Moment</a>
+            <a href="/en/notes">Notes</a>
+            <a href="/en/friends">Friends</a>
+          </div>
+        </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="en" currentPath="/en/admin" hasEnVersion={true} />
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <header class="page-header">
+      <div class="header-inner">
+        <h1 class="page-title">{s.title}</h1>
+        <p class="page-desc">{s.desc}</p>
+      </div>
+    </header>
+
+    <main class="admin-main">
+      <div class="admin-container">
+        <div id="authGate" class="auth-gate">
+          <input type="password" id="tokenInput" placeholder="Enter admin token" class="auth-input" />
+          <button id="tokenBtn" class="auth-btn">Login</button>
+        </div>
+        <div id="dashboard" style="display:none">
+          <div class="tab-bar">
+            <button class="tab active" data-status="">All</button>
+            <button class="tab" data-status="pending">Pending</button>
+            <button class="tab" data-status="approved">Approved</button>
+            <button class="tab" data-status="spam">Spam</button>
+          </div>
+          <div class="bulk-bar" id="bulkBar" style="display:none">
+            <span id="selectedCount">0 selected</span>
+            <button class="bulk-btn" data-action="approve">Approve</button>
+            <button class="bulk-btn" data-action="spam">Spam</button>
+            <button class="bulk-btn bulk-btn-danger" data-action="delete">Delete</button>
+          </div>
+          <div id="commentList" class="comment-list"></div>
+          <div id="pagination" class="pagination"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="blog-footer">
+      <div class="footer-inner">
+        <span>&copy; 2026 Airing</span>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/en/archive">Archive</a>
+          <a href="/en/blog/feed.xml">RSS</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script is:inline>
+  (function() {
+    var API = 'https://chat.ursb.me';
+    var token = localStorage.getItem('admin-token') || '';
+    var currentStatus = '';
+    var currentPage = 1;
+    var selectedIds = new Set();
+
+    // Elements
+    var authGate = document.getElementById('authGate');
+    var dashboard = document.getElementById('dashboard');
+    var tokenInput = document.getElementById('tokenInput');
+    var tokenBtn = document.getElementById('tokenBtn');
+    var commentList = document.getElementById('commentList');
+    var bulkBar = document.getElementById('bulkBar');
+    var selectedCount = document.getElementById('selectedCount');
+    var pagination = document.getElementById('pagination');
+
+    if (token) { showDashboard(); }
+
+    tokenBtn.addEventListener('click', function() {
+      token = tokenInput.value.trim();
+      if (!token) return;
+      localStorage.setItem('admin-token', token);
+      showDashboard();
+    });
+    tokenInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') tokenBtn.click();
+    });
+
+    // Tabs
+    document.querySelectorAll('.tab').forEach(function(tab) {
+      tab.addEventListener('click', function() {
+        document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        currentStatus = tab.dataset.status;
+        currentPage = 1;
+        selectedIds.clear();
+        updateBulkBar();
+        loadComments();
+      });
+    });
+
+    // Bulk actions
+    document.querySelectorAll('.bulk-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        if (selectedIds.size === 0) return;
+        var action = btn.dataset.action;
+        fetch(API + '/api/admin/comments/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ ids: Array.from(selectedIds), action: action })
+        }).then(function(r) { return r.json(); })
+          .then(function() {
+            selectedIds.clear();
+            updateBulkBar();
+            loadComments();
+          });
+      });
+    });
+
+    function showDashboard() {
+      authGate.style.display = 'none';
+      dashboard.style.display = 'block';
+      loadComments();
+    }
+
+    function loadComments() {
+      var url = API + '/api/admin/comments?page=' + currentPage + '&limit=50';
+      if (currentStatus) url += '&status=' + currentStatus;
+      fetch(url, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      }).then(function(r) {
+        if (r.status === 401) {
+          localStorage.removeItem('admin-token');
+          authGate.style.display = 'block';
+          dashboard.style.display = 'none';
+          return null;
+        }
+        return r.json();
+      }).then(function(data) {
+        if (!data) return;
+        renderComments(data.comments);
+        renderPagination(data.total, data.page, data.limit);
+      });
+    }
+
+    function renderComments(comments) {
+      if (!comments.length) {
+        commentList.innerHTML = '<p class="no-comments">No comments found.</p>';
+        return;
+      }
+      commentList.innerHTML = comments.map(function(c) {
+        var checked = selectedIds.has(c.id) ? 'checked' : '';
+        var date = new Date(c.created_at).toLocaleDateString();
+        var excerpt = c.content.length > 120 ? c.content.slice(0, 120) + '...' : c.content;
+        return '<div class="cm-item" data-id="' + c.id + '">' +
+          '<label class="cm-check"><input type="checkbox" ' + checked + ' data-id="' + c.id + '" /></label>' +
+          '<div class="cm-body">' +
+            '<div class="cm-meta">' +
+              '<span class="cm-author">' + esc(c.nickname) + '</span>' +
+              '<span class="cm-dot">&middot;</span>' +
+              '<span class="cm-slug">' + esc(c.post_slug) + '</span>' +
+              '<span class="cm-dot">&middot;</span>' +
+              '<span class="cm-date">' + date + '</span>' +
+              '<span class="cm-status cm-status-' + c.status + '">' + c.status + '</span>' +
+            '</div>' +
+            '<div class="cm-content">' + esc(excerpt) + '</div>' +
+            '<div class="cm-actions">' +
+              (c.status !== 'approved' ? '<button class="cm-act" onclick="adminAction(' + c.id + ',\'approve\')">Approve</button>' : '') +
+              (c.status !== 'spam' ? '<button class="cm-act" onclick="adminAction(' + c.id + ',\'spam\')">Spam</button>' : '') +
+              '<button class="cm-act cm-act-danger" onclick="adminAction(' + c.id + ',\'delete\')">Delete</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+
+      // Checkbox listeners
+      commentList.querySelectorAll('input[type=checkbox]').forEach(function(cb) {
+        cb.addEventListener('change', function() {
+          var id = parseInt(cb.dataset.id);
+          if (cb.checked) selectedIds.add(id); else selectedIds.delete(id);
+          updateBulkBar();
+        });
+      });
+    }
+
+    function renderPagination(total, page, limit) {
+      var pages = Math.ceil(total / limit);
+      if (pages <= 1) { pagination.innerHTML = ''; return; }
+      var html = '';
+      for (var i = 1; i <= pages; i++) {
+        html += '<button class="pg-btn' + (i === page ? ' pg-active' : '') + '" data-page="' + i + '">' + i + '</button>';
+      }
+      pagination.innerHTML = html;
+      pagination.querySelectorAll('.pg-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          currentPage = parseInt(btn.dataset.page);
+          loadComments();
+        });
+      });
+    }
+
+    function updateBulkBar() {
+      bulkBar.style.display = selectedIds.size > 0 ? 'flex' : 'none';
+      selectedCount.textContent = selectedIds.size + ' selected';
+    }
+
+    // Global action handler
+    window.adminAction = function(id, action) {
+      if (action === 'delete' && !confirm('Delete this comment?')) return;
+      var method = action === 'delete' ? 'POST' : 'PATCH';
+      var url = action === 'delete'
+        ? API + '/api/admin/comments/bulk'
+        : API + '/api/admin/comments/' + id;
+      var body = action === 'delete'
+        ? { ids: [id], action: 'delete' }
+        : { status: action === 'approve' ? 'approved' : 'spam' };
+      fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(body)
+      }).then(function() { loadComments(); });
+    };
+
+    function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  })();
+  </script>
+  <script is:inline>
+    if (localStorage.getItem('preferred_lang') === 'zh') {
+      window.location.replace('/admin');
+    }
+  </script>
+</BaseLayout>
+
+<style is:global>
+  body:has(.admin-page) {
+    display: block;
+    padding: 0;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+</style>
+
+<style>
+  .admin-page {
+    min-height: 100vh;
+    width: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+
+  /* Nav */
+  .masthead { width: 100%; }
+  .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+  .mast-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; position: relative;
+  }
+  .mast-brand {
+    font-size: 11px; color: var(--c-text-muted); text-decoration: none;
+    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+  }
+  .mast-brand:hover { color: var(--c-text); }
+  .mast-links { display: flex; gap: 16px; }
+  .mast-links a {
+    font-size: 11px; color: var(--c-text-dim); text-decoration: none;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .mast-links a:hover { color: var(--c-text); }
+  .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-lang-line {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 8px 0;
+  }
+
+  /* Header */
+  .page-header {
+    border-bottom: 1px solid var(--c-border);
+    padding: 48px 0;
+  }
+  .header-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+  }
+  .page-title {
+    font-size: 36px; font-weight: 800; color: var(--c-text);
+    letter-spacing: -0.03em; margin-bottom: 8px;
+  }
+  .page-desc { font-size: 15px; color: var(--c-text-dim); }
+
+  /* Admin main */
+  .admin-main { padding: 0; }
+  .admin-container {
+    max-width: 1200px; margin: 0 auto;
+    padding: 32px 48px;
+  }
+
+  /* Auth gate */
+  .auth-gate { max-width: 400px; margin: 60px auto; text-align: center; }
+  .auth-input {
+    width: 100%; padding: 12px 16px; border-radius: 8px;
+    border: 1px solid var(--c-border, rgba(255,255,255,0.15));
+    background: transparent; color: var(--c-text); font-size: 16px;
+    margin-bottom: 12px; box-sizing: border-box;
+  }
+  .auth-input:focus { border-color: var(--accent, #4ade80); outline: none; }
+  .auth-btn {
+    padding: 10px 24px; border-radius: 8px; border: none;
+    background: var(--accent, #4ade80); color: #000; font-weight: 600; cursor: pointer;
+  }
+
+  /* Tabs */
+  .tab-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+  .tab {
+    padding: 8px 16px; border-radius: 6px; border: 1px solid var(--c-border);
+    background: transparent; color: var(--c-text-muted); cursor: pointer; font-size: 14px;
+  }
+  .tab.active { background: var(--accent, #4ade80); color: #000; border-color: transparent; }
+
+  /* Bulk bar */
+  .bulk-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px; margin-bottom: 16px;
+    background: rgba(var(--c-overlay-rgb, 255,255,255), 0.04);
+    border-radius: 8px; font-size: 14px; color: var(--c-text-muted);
+  }
+  .bulk-btn {
+    padding: 4px 12px; border-radius: 4px; border: 1px solid var(--c-border);
+    background: transparent; color: var(--c-text-muted); cursor: pointer; font-size: 13px;
+  }
+  .bulk-btn:hover { color: var(--c-text); }
+  .bulk-btn-danger { color: #f87171; border-color: #f87171; }
+
+  /* Comment items */
+  .comment-list { display: flex; flex-direction: column; gap: 1px; }
+  .cm-item {
+    display: flex; gap: 12px; padding: 16px;
+    border-bottom: 1px solid var(--c-border, rgba(255,255,255,0.08));
+  }
+  .cm-check { display: flex; align-items: flex-start; padding-top: 2px; }
+  .cm-body { flex: 1; min-width: 0; }
+  .cm-meta { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--c-text-muted); margin-bottom: 6px; flex-wrap: wrap; }
+  .cm-author { font-weight: 600; color: var(--c-text); }
+  .cm-dot { opacity: 0.3; }
+  .cm-status { padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+  .cm-status-approved { background: rgba(74,222,128,0.15); color: #4ade80; }
+  .cm-status-pending { background: rgba(250,204,21,0.15); color: #facc15; }
+  .cm-status-spam { background: rgba(248,113,113,0.15); color: #f87171; }
+  .cm-content { font-size: 14px; color: var(--c-text); line-height: 1.5; }
+  .cm-actions { display: flex; gap: 8px; margin-top: 8px; }
+  .cm-act {
+    padding: 2px 10px; border-radius: 4px; border: 1px solid var(--c-border);
+    background: transparent; color: var(--c-text-muted); cursor: pointer; font-size: 12px;
+  }
+  .cm-act:hover { color: var(--c-text); }
+  .cm-act-danger { color: #f87171; border-color: #f87171; }
+  .no-comments { text-align: center; color: var(--c-text-dim); padding: 40px 0; }
+
+  /* Pagination */
+  .pagination { display: flex; gap: 4px; justify-content: center; margin-top: 24px; }
+  .pg-btn {
+    padding: 6px 12px; border-radius: 4px; border: 1px solid var(--c-border);
+    background: transparent; color: var(--c-text-muted); cursor: pointer; font-size: 13px;
+  }
+  .pg-active { background: var(--accent, #4ade80); color: #000; border-color: transparent; }
+
+  /* Footer */
+  .blog-footer {
+    border-top: 1px solid var(--c-border);
+    padding: 32px 0; margin-top: 40px;
+  }
+  .footer-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 48px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--c-border-light);
+  }
+  .footer-links { display: flex; gap: 20px; }
+  .footer-links a {
+    font-size: 12px; color: var(--c-text-dim); text-decoration: none;
+  }
+  .footer-links a:hover { color: var(--c-text); }
+
+  @media (max-width: 768px) {
+    .mast-hide-mobile { display: none; }
+    .mast-inner { padding: 0 20px; }
+    .header-inner { padding: 0 20px; }
+    .admin-container { padding: 24px 20px; }
+    .footer-inner { padding: 0 20px; }
+    .page-title { font-size: 28px; }
+  }
+</style>
