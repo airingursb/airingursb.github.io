@@ -42,8 +42,13 @@ const s = tSite('zh').notes;
 const cjkChars = (note.body?.match(/[\u4e00-\u9fff]/g) || []).length;
 const latinWords = note.body?.split(/\s+/).filter(w => w.length > 0).length || 0;
 const readingTime = s.readingTime(Math.max(1, Math.ceil((cjkChars / 300) + (latinWords / 200))));
+
+const hreflang = hasEn ? {
+  zh: new URL(`/notes/${note.id}/`, Astro.site).href,
+  en: new URL(`/en/notes/${note.id}/`, Astro.site).href,
+} : undefined;
 ---
-<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article">
+<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article" hreflang={hreflang}>
   <div class="note-detail-page">
     <header class="masthead">
       <div class="mast-inner">

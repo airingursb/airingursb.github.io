@@ -8,16 +8,19 @@ import { tSite } from '../../../lib/i18n';
 export async function getStaticPaths() {
   const notes = await getCollection('notesEn', ({ data }) => data.public && !data.draft);
   const sorted = notes.sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
+  const zhNotes = await getCollection('notes', ({ data }) => data.public && !data.draft);
+  const zhNoteIds = new Set(zhNotes.map(n => n.id));
   return sorted.map(note => ({
     params: { slug: note.id },
     props: {
       note,
       allNotes: sorted,
+      hasZh: zhNoteIds.has(note.id),
     },
   }));
 }
 
-const { note, allNotes } = Astro.props;
+const { note, allNotes, hasZh } = Astro.props;
 const { Content, headings } = await render(note);
 
 const backlinkMap = await getBacklinks('en');
@@ -38,8 +41,13 @@ const s = tSite('en').notes;
 // Reading time: EN pure word count
 const wordCount = (note.body ?? '').split(/\s+/).filter(Boolean).length;
 const readingTime = s.readingTime(Math.max(1, Math.ceil(wordCount / 200)));
+
+const hreflang = hasZh ? {
+  zh: new URL(`/notes/${note.id}/`, Astro.site).href,
+  en: new URL(`/en/notes/${note.id}/`, Astro.site).href,
+} : undefined;
 ---
-<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article" lang="en">
+<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article" lang="en" hreflang={hreflang}>
   <div class="note-detail-page">
     <header class="masthead">
       <div class="mast-inner">
