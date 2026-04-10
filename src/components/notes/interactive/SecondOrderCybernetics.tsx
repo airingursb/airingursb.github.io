@@ -15,7 +15,11 @@ const c = {
 
 const DASH_SPEED = 35;
 
-export default function SecondOrderCybernetics() {
+interface Props {
+  lang?: 'zh' | 'en';
+}
+
+export default function SecondOrderCybernetics(_props: Props = {}) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useEffect(() => {
