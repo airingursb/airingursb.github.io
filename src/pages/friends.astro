@@ -5,8 +5,12 @@
  * Bottom: guestbook comments (chat.ursb.me API, slug "friends")
  */
 import BaseLayout from '../layouts/BaseLayout.astro';
+import LangSwitch from '../components/LangSwitch.astro';
+import { tSite } from '../lib/i18n';
 import friends from '../data/friends.json';
 import friendsMeta from '../data/friends_meta.json';
+
+const s = tSite('zh').friends;
 
 const sites = friendsMeta.sites || {};
 const checkedAt = friendsMeta.checkedAt ? new Date(friendsMeta.checkedAt) : null;
@@ -28,7 +32,7 @@ function getSiteStatus(url: string): 'ok' | 'error' | 'unknown' {
 const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
 ---
 
-<BaseLayout title="Friends | Airing">
+<BaseLayout title={`${s.title} | Airing`} lang="zh">
   <div class="friends-page">
     <header class="masthead">
       <div class="mast-inner">
@@ -43,15 +47,18 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
             <a href="/friends">Friends</a>
           </div>
         </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="zh" currentPath="/friends" hasEnVersion={true} />
+        </div>
         <div class="mast-bottom-rule"></div>
       </div>
     </header>
 
     <header class="page-header">
       <div class="header-inner">
-        <h1 class="page-title">Friends</h1>
-        <p class="page-desc">{friends.length} blogs I follow and recommend. <span class="status-summary">{okCount} accessible</span></p>
-        {checkedStr && <p class="page-checked">Last checked: {checkedStr}</p>}
+        <h1 class="page-title">{s.title}</h1>
+        <p class="page-desc">{s.desc}</p>
+        {checkedStr && <p class="page-checked">{s.lastChecked(checkedStr)}</p>}
       </div>
     </header>
 
@@ -108,7 +115,7 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     <section class="guestbook-section">
       <div class="gb-inner">
         <div class="bc-header">
-          <h2 class="bc-title">Guestbook</h2>
+          <h2 class="bc-title">{s.guestbook}</h2>
           <span class="bc-count" id="gbCount">0 messages</span>
         </div>
 
@@ -148,6 +155,11 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
       </div>
     </footer>
   </div>
+  <script is:inline>
+    if (localStorage.getItem('preferred_lang') === 'en') {
+      window.location.replace('/en/friends');
+    }
+  </script>
 </BaseLayout>
 
 <style is:global>
@@ -186,6 +198,11 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
   }
   .mast-links a:hover { color: var(--c-text); }
   .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-lang-line {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 8px 0;
+  }
 
   /* Header */
   .page-header {
