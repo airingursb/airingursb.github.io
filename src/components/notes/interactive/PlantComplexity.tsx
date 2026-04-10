@@ -79,7 +79,11 @@ function Slider({ label, value, max, onChange }: { label: string; value: number;
   );
 }
 
-export default function PlantComplexity() {
+interface Props {
+  lang?: 'zh' | 'en';
+}
+
+export default function PlantComplexity(_props: Props = {}) {
   const [params, setParams] = useState<SimParams>(PRESETS.ideal.params);
   const { temps } = useMemo(() => simulate(params), [params]);
 
