@@ -38,19 +38,17 @@ export async function getStaticPaths() {
       ? { slug: zhIdByEnId.get(enPostsSorted[idx + 1].id) ?? enPostsSorted[idx + 1].id, title: enPostsSorted[idx + 1].data.title }
       : null;
 
-    // Related posts: find posts with same primary tag, prefer English versions
+    // Related posts: only show posts that have English translations.
+    // Better to show fewer (or none) than send EN readers to a Chinese page.
     const primaryTag = enPost.data.tags[0];
     const relatedPosts = primaryTag
-      ? allZhPosts
-          .filter(p => p.id !== zhSlug && p.data.tags.includes(primaryTag))
+      ? enPosts
+          .filter(p => p.id !== enPost.id && p.data.tags.includes(primaryTag))
           .slice(0, 5)
-          .map(p => {
-            const enVersion = enPosts.find(ep => zhIdByEnId.get(ep.id) === p.id);
-            return {
-              slug: p.id,
-              title: enVersion ? enVersion.data.title : p.data.title,
-            };
-          })
+          .map(p => ({
+            slug: zhIdByEnId.get(p.id) ?? p.id,
+            title: p.data.title,
+          }))
       : [];
 
     // Series info
