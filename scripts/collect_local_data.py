@@ -8,6 +8,7 @@ update_feed.py (which runs in CI) can inject it into index.html.
 import json
 import csv
 import os
+import sys
 import subprocess
 import glob
 from datetime import datetime, timedelta
@@ -15,7 +16,24 @@ from pathlib import Path
 from collections import Counter
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+SCRIPT_DIR = Path(__file__).resolve().parent
 OUT_FILE = REPO_ROOT / 'data' / 'local_data.json'
+
+# Load .env from repo root so VIBE_REMOTE_* is available to the remote fetch.
+_env_file = REPO_ROOT / '.env'
+if _env_file.exists():
+    with open(_env_file) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _v = _line.split('=', 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
+# Import the standalone Claude/Codex/Gemini collector. Same module is also
+# streamed to the remote work Mac over SSH and run there against its own
+# ~/.codex, ~/.gemini, and ccusage install (see _collect_vibe_remote below).
+sys.path.insert(0, str(SCRIPT_DIR))
+from _vibe_collect import collect_all as collect_vibe_machine  # noqa: E402
 
 HEALTH_BASE = os.path.expanduser(
     '~/Library/Mobile Documents/iCloud~com~ifunography~HealthExport/Documents'
@@ -73,78 +91,264 @@ def first_metric_today(metrics, name, date_str):
 
 
 # ── Vibe Coding ──────────────────────────────────────────────
+#
+# Final aggregation formula:
+#
+#     TOTAL = 本机   (local_claude   + local_codex   + local_gemini)
+#           + 服务端 (server_claude × 2 + server_codex + server_gemini)
+#
+# Concretely:
+#     total_claude = local_claude + 2 × server_claude
+#     total_codex  = local_codex  + 1 × server_codex
+#     total_gemini = local_gemini + 1 × server_gemini
+#
+# Both machines emit the SAME JSON shape — the same collector script
+# (scripts/_vibe_collect.py) runs in-process locally, and is streamed over
+# SSH to `python3 -` on the server Mac so it runs there against the server's
+# own ~/.codex, ~/.gemini, and ccusage. The results are merged day-by-day.
+#
+# The server_claude × 2 multiplier is an intentional over-weighting: the
+# work Mac runs a heavier Claude Code workflow than raw ccusage history
+# reflects (parallel agents / multi-worktree sessions) — tweak
+# SERVER_CLAUDE_FACTOR below if that ratio changes.
+#
+# Data sources per machine (identical on local + server):
+#   • Claude → `ccusage daily --json --breakdown --since <90d>` (real API $)
+#   • Codex  → ~/.codex/sessions/**/rollout-*.jsonl (last token_count event
+#              per session; synthetic $ at OpenAI list-price)
+#   • Gemini → ~/.gemini/tmp/*/chats/session-*.json (per-message tokens
+#              summed; synthetic $ at Google list-price)
+#
+# Codex + Gemini are subscription-billed, so their marginal $ is really 0.
+# The synthetic costs keep the headline number comparable to Claude's real
+# spend; see CODEX_PRICING / GEMINI_PRICING in scripts/_vibe_collect.py.
+
+VIBE_SINCE_DAYS = 90
+
+# Server-side multipliers per the formula above.
+SERVER_CLAUDE_FACTOR = 2
+SERVER_CODEX_FACTOR = 1
+SERVER_GEMINI_FACTOR = 1
+
+# Friendly model names + display colors (union of Anthropic / OpenAI / Google).
+MODEL_NAME_MAP = {
+    # Anthropic (Claude Code)
+    'claude-opus-4-6': 'Opus 4.6',
+    'claude-opus-4-5-20251101': 'Opus 4.5',
+    'claude-sonnet-4-6': 'Sonnet 4.6',
+    'claude-sonnet-4-5-20241022': 'Sonnet 3.5',
+    'claude-haiku-4-5-20251001': 'Haiku 4.5',
+    'claude-haiku-4-5': 'Haiku 4.5',
+    # OpenAI (Codex CLI)
+    'gpt-5': 'GPT-5',
+    'gpt-5.4': 'GPT-5',
+    'gpt-5-codex': 'GPT-5 Codex',
+    'gpt-5.3-codex': 'GPT-5 Codex',
+    # Google (Gemini CLI) — collapse 3.x and 3.1.x previews under one name
+    'gemini-3-pro-preview': 'Gemini 3 Pro',
+    'gemini-3.1-pro-preview': 'Gemini 3 Pro',
+    'gemini-3-flash-preview': 'Gemini 3 Flash',
+    'gemini-2.5-pro': 'Gemini 2.5 Pro',
+    'gemini-2.5-flash': 'Gemini 2.5 Flash',
+}
+MODEL_COLORS = {
+    'Opus 4.6': '#4ade80',
+    'Opus 4.5': '#a78bfa',
+    'Sonnet 4.6': '#f472b6',
+    'Sonnet 3.5': '#fb923c',
+    'Haiku 4.5': '#38bdf8',
+    'GPT-5': '#10b981',
+    'GPT-5 Codex': '#0ea5e9',
+    'Gemini 3 Pro': '#facc15',
+    'Gemini 3 Flash': '#fbbf24',
+    'Gemini 2.5 Pro': '#eab308',
+    'Gemini 2.5 Flash': '#fde047',
+}
+
+
+# ── Daily-map helpers ────────────────────────────────────────
+
+def _add_day(dst_map, date, cost, tokens, models):
+    entry = dst_map.setdefault(date, {'cost': 0.0, 'tokens': 0, 'models': []})
+    entry['cost'] += cost
+    entry['tokens'] += tokens
+    for m in models or []:
+        if m and m not in entry['models']:
+            entry['models'].append(m)
+
+
+def _multiply_map(daily_map, factor):
+    """Return a copy of daily_map with each day's cost/tokens scaled."""
+    return {
+        date: {
+            'cost': e['cost'] * factor,
+            'tokens': e['tokens'] * factor,
+            'models': list(e['models']),
+        }
+        for date, e in daily_map.items()
+    }
+
+
+def _merge_maps(*maps):
+    """Sum cost/tokens and union models across several daily_maps."""
+    merged = {}
+    for m in maps:
+        if not m:
+            continue
+        for date, e in m.items():
+            _add_day(merged, date, e['cost'], e['tokens'], e['models'])
+    for e in merged.values():
+        e['cost'] = round(e['cost'], 2)
+    return merged
+
+
+def _summarize(label, daily_map):
+    n = len(daily_map or {})
+    cost = sum(e['cost'] for e in (daily_map or {}).values())
+    tokens = sum(e['tokens'] for e in (daily_map or {}).values())
+    print(f'  {label:<22} {n:>3} days  ${cost:>10,.2f}  {tokens:>16,} tokens')
+
+
+# ── Remote fetch (server Mac via SSH + paramiko) ─────────────
+
+def _collect_vibe_remote(since_dt, host, user, password):
+    """Stream scripts/_vibe_collect.py to HOST and run it there via `python3 -`.
+
+    The remote stdout is a single JSON object with the shape
+    `{"claude": {...}, "codex": {...}, "gemini": {...}}` — exactly the same
+    shape our local collect_vibe_machine() returns — so the caller can merge
+    without special-casing the source.
+
+    Returns None on any failure (missing paramiko, bad credentials, ccusage
+    absent on the remote, parse error …) and the caller falls back to
+    local-only numbers rather than aborting the whole collection.
+    """
+    try:
+        import paramiko  # lazy: only needed when VIBE_REMOTE_* is set
+    except ImportError:
+        print('  remote skipped: paramiko not installed (pip install --user paramiko)')
+        return None
+
+    script_path = SCRIPT_DIR / '_vibe_collect.py'
+    try:
+        script_src = script_path.read_text()
+    except OSError as e:
+        print(f'  remote: cannot read {script_path}: {e}')
+        return None
+
+    since_str = since_dt.strftime('%Y%m%d')
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    try:
+        client.connect(
+            host, username=user, password=password,
+            timeout=15, look_for_keys=False, allow_agent=False,
+        )
+        # `python3 -` reads the script from stdin; argv past `-` is forwarded.
+        stdin, stdout, stderr = client.exec_command(
+            f'python3 - --since {since_str}', timeout=180,
+        )
+        stdin.write(script_src)
+        stdin.channel.shutdown_write()
+        out = stdout.read().decode()
+        err = stderr.read().decode()
+        if not out.strip():
+            msg = err.strip()[:200] or '(empty)'
+            print(f'  remote: no output from {host}: {msg}')
+            return None
+        return json.loads(out)
+    except Exception as e:
+        print(f'  remote fetch failed ({host}): {e}')
+        return None
+    finally:
+        try:
+            client.close()
+        except Exception:
+            pass
+
+
+# ── Entry point ──────────────────────────────────────────────
 
 def collect_vibe_coding():
-    """Run ccusage to get daily usage data."""
-    # Get data for the last 90 days
-    since = (datetime.now() - timedelta(days=90)).strftime('%Y%m%d')
-    try:
-        result = subprocess.run(
-            ['ccusage', 'daily', '--json', '--breakdown', '--since', since],
-            capture_output=True, text=True, timeout=60
-        )
-        if result.returncode != 0:
-            print(f'ccusage error: {result.stderr}')
-            return None
-        data = json.loads(result.stdout)
-    except Exception as e:
-        print(f'ccusage failed: {e}')
+    """Collect Claude + Codex + Gemini from this Mac AND the server, and merge.
+
+    Returns a single daily_map-style result; schema is kept compatible with
+    the previous version (daily, totalTokens, totalCost, avgWeekCost, models,
+    numDays) so downstream consumers (index.html / src/pages/index.astro)
+    don't need changes.
+    """
+    since_dt = datetime.now() - timedelta(days=VIBE_SINCE_DAYS)
+
+    # 1) LOCAL machine — direct in-process call, no subprocess overhead.
+    local = collect_vibe_machine(since_dt)
+
+    # 2) SERVER machine — same collector streamed over SSH. Skipped silently
+    #    if VIBE_REMOTE_* isn't configured (local-only run).
+    remote_host = os.environ.get('VIBE_REMOTE_HOST', '').strip()
+    remote_user = os.environ.get('VIBE_REMOTE_USER', '').strip()
+    remote_pw = os.environ.get('VIBE_REMOTE_PASSWORD', '').strip()
+    remote = None
+    if remote_host and remote_user and remote_pw:
+        remote = _collect_vibe_remote(since_dt, remote_host, remote_user, remote_pw)
+    else:
+        print('  remote skipped: VIBE_REMOTE_{HOST,USER,PASSWORD} not set')
+    if remote is None:
+        remote = {'claude': {}, 'codex': {}, 'gemini': {}}
+
+    # 3) Apply the server-side factors (claude ×2, the rest ×1) up-front so
+    #    the per-component log lines actually sum to the TOTAL row below.
+    server_claude = _multiply_map(remote.get('claude', {}), SERVER_CLAUDE_FACTOR)
+    server_codex = _multiply_map(remote.get('codex', {}), SERVER_CODEX_FACTOR)
+    server_gemini = _multiply_map(remote.get('gemini', {}), SERVER_GEMINI_FACTOR)
+
+    # Log every (post-multiplier) component — makes a bad fetch obvious.
+    _summarize('local claude', local.get('claude', {}))
+    _summarize('local codex', local.get('codex', {}))
+    _summarize('local gemini', local.get('gemini', {}))
+    _summarize(f'server claude ×{SERVER_CLAUDE_FACTOR}', server_claude)
+    _summarize(f'server codex  ×{SERVER_CODEX_FACTOR}', server_codex)
+    _summarize(f'server gemini ×{SERVER_GEMINI_FACTOR}', server_gemini)
+
+    any_local = any(local.get(t) for t in ('claude', 'codex', 'gemini'))
+    any_remote = any(remote.get(t) for t in ('claude', 'codex', 'gemini'))
+    if not (any_local or any_remote):
         return None
 
-    days = data.get('daily', [])
-    if not days:
+    # 4) Merge all six maps into the final daily_map.
+    daily_map = _merge_maps(
+        local.get('claude', {}),
+        local.get('codex', {}),
+        local.get('gemini', {}),
+        server_claude,
+        server_codex,
+        server_gemini,
+    )
+    if not daily_map:
         return None
 
-    total_tokens = sum(d['totalTokens'] for d in days)
-    total_cost = sum(d['totalCost'] for d in days)
+    _summarize('TOTAL merged', daily_map)
 
-    # Collect all models used
+    total_tokens = sum(e['tokens'] for e in daily_map.values())
+    total_cost = sum(e['cost'] for e in daily_map.values())
+
+    # Union of raw model identifiers across all six maps.
     model_set = set()
-    for d in days:
-        for m in d.get('modelsUsed', []):
-            model_set.add(m)
+    for entry in daily_map.values():
+        model_set.update(entry['models'])
 
-    # Build daily map: date → {cost, tokens, models}
-    daily_map = {}
-    for d in days:
-        date = d['date']
-        models = d.get('modelsUsed', [])
-        # Pick the dominant model for display
-        top_model = models[0] if models else ''
-        daily_map[date] = {
-            'cost': round(d['totalCost'], 2),
-            'tokens': d['totalTokens'],
-            'models': models,
-        }
-
-    # Friendly model names
-    model_name_map = {
-        'claude-opus-4-6': 'Opus 4.6',
-        'claude-opus-4-5-20251101': 'Opus 4.5',
-        'claude-sonnet-4-6': 'Sonnet 4.6',
-        'claude-sonnet-4-5-20241022': 'Sonnet 3.5',
-        'claude-haiku-4-5-20251001': 'Haiku 4.5',
-        'claude-haiku-4-5': 'Haiku 4.5',
-    }
-    model_colors = {
-        'Opus 4.6': '#4ade80',
-        'Opus 4.5': '#a78bfa',
-        'Sonnet 4.6': '#f472b6',
-        'Sonnet 3.5': '#fb923c',
-        'Haiku 4.5': '#38bdf8',
-    }
-
-    # Deduplicate models by friendly name
-    seen_models = set()
+    # Deduplicate by friendly display name.
+    seen = set()
     models_display = []
     for raw in sorted(model_set):
-        friendly = model_name_map.get(raw, raw)
-        if friendly not in seen_models:
-            seen_models.add(friendly)
-            color = model_colors.get(friendly, '#7d8590')
-            models_display.append({'name': friendly, 'color': color})
+        friendly = MODEL_NAME_MAP.get(raw, raw)
+        if friendly not in seen:
+            seen.add(friendly)
+            models_display.append({
+                'name': friendly,
+                'color': MODEL_COLORS.get(friendly, '#7d8590'),
+            })
 
-    # Calculate actual weeks spanned
+    # Weeks spanned (for avgWeekCost).
     dates = sorted(daily_map.keys())
     if len(dates) >= 2:
         first = datetime.strptime(dates[0], '%Y-%m-%d')
@@ -153,20 +357,13 @@ def collect_vibe_coding():
     else:
         num_weeks = 1
 
-    # x2: account for a second machine (work computer)
-    total_tokens *= 2
-    total_cost *= 2
-    for d in daily_map.values():
-        d['cost'] = round(d['cost'] * 2, 2)
-        d['tokens'] = d['tokens'] * 2
-
     return {
         'daily': daily_map,
         'totalTokens': total_tokens,
         'totalCost': round(total_cost, 2),
         'avgWeekCost': round(total_cost / num_weeks, 0),
         'models': models_display,
-        'numDays': len(days),
+        'numDays': len(daily_map),
     }
 
 
@@ -355,12 +552,13 @@ def main():
     result = {}
 
     # Vibe Coding
+    print('Vibe Coding:')
     vc = collect_vibe_coding()
     if vc:
         result['vibeCoding'] = vc
-        print(f'  Vibe Coding: {vc["numDays"]} days, ${vc["totalCost"]}, {len(vc["models"])} models')
+        print(f'  merged: {vc["numDays"]} days, ${vc["totalCost"]:,.2f}, {vc["totalTokens"]:,} tokens, {len(vc["models"])} models')
     else:
-        print('  Vibe Coding: skipped')
+        print('  skipped')
 
     # Health
     health = collect_health()
