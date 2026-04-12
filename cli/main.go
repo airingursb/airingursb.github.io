@@ -4,10 +4,13 @@ import (
 	"os"
 
 	"github.com/airingursb/airing-cli/cmd"
+	"github.com/airingursb/airing-cli/internal"
 )
 
 func main() {
-	if err := cmd.Execute(); err != nil {
+	err := cmd.Execute()
+	internal.FlushTelemetry()
+	if err != nil {
 		os.Exit(1)
 	}
 }
