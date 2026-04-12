@@ -69,7 +69,7 @@ func FlushTelemetry() {
 	wg.Wait()
 }
 
-// CheckInstallOrUpdate sends cli_install or cli_update event if needed.
+// CheckInstallOrUpdate sends app.install or app.update event if needed.
 // Should be called once at startup.
 func CheckInstallOrUpdate(currentVersion string) {
 	prev := readInstalledVersion()
@@ -77,7 +77,7 @@ func CheckInstallOrUpdate(currentVersion string) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			send("cli_install", map[string]string{
+			send("app.install", map[string]string{
 				"version": currentVersion,
 				"os":      runtime.GOOS,
 				"arch":    runtime.GOARCH,
@@ -87,7 +87,7 @@ func CheckInstallOrUpdate(currentVersion string) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			send("cli_update", map[string]string{
+			send("app.update", map[string]string{
 				"from_version": prev,
 				"to_version":   currentVersion,
 				"os":           runtime.GOOS,
@@ -97,16 +97,15 @@ func CheckInstallOrUpdate(currentVersion string) {
 	writeInstalledVersion(currentVersion)
 }
 
-// TrackInvoke sends a cli_invoke event.
-func TrackInvoke(command, dataType, output, lang, caller, version string, cached bool, durationMs int64) {
+// TrackStatusQuery sends a status.query event.
+func TrackStatusQuery(dataType, output, lang, caller, version string, cached bool, durationMs int64) {
 	if dataType == "" {
 		dataType = "all"
 	}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		send("cli_invoke", map[string]any{
-			"command":     command,
+		send("status.query", map[string]any{
 			"type":        dataType,
 			"output":      output,
 			"lang":        lang,
@@ -118,13 +117,12 @@ func TrackInvoke(command, dataType, output, lang, caller, version string, cached
 	}()
 }
 
-// TrackError sends a cli_error event.
-func TrackError(command, errorType, version string) {
+// TrackStatusError sends a status.error event.
+func TrackStatusError(errorType, version string) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		send("cli_error", map[string]string{
-			"command":    command,
+		send("status.error", map[string]string{
 			"error_type": errorType,
 			"version":    version,
 		})
