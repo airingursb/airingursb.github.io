@@ -23,6 +23,7 @@ var agentSkillDirs = map[string]string{
 type SkillMeta struct {
 	Source      string   `json:"source"`
 	Repo        string   `json:"repo,omitempty"`
+	Path        string   `json:"path,omitempty"`
 	Version     string   `json:"version"`
 	InstalledAt string   `json:"installed_at"`
 	Agents      []string `json:"agents"`
@@ -90,21 +91,59 @@ func WriteSkillsFile(sf *SkillsFile) error {
 }
 
 // InstallSkillFromGit clones a git repo into the skills directory.
-func InstallSkillFromGit(name, repo string) (string, error) {
+// If subdir is non-empty, only that subdirectory is extracted as the skill.
+func InstallSkillFromGit(name, repo, subdir string) (string, error) {
 	dest := skillPath(name)
 	if err := os.MkdirAll(skillsDir(), 0755); err != nil {
 		return "", err
 	}
-	cmd := exec.Command("git", "clone", "--depth", "1", repo, dest)
+
+	if subdir == "" {
+		// Clone directly into the skill directory
+		cmd := exec.Command("git", "clone", "--depth", "1", repo, dest)
+		cmd.Stdout = os.Stderr
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return "", fmt.Errorf("git clone failed: %w", err)
+		}
+		hash, err := gitHeadHash(dest)
+		if err != nil {
+			return "unknown", nil
+		}
+		return hash, nil
+	}
+
+	// Clone to a temp directory, then extract the subdirectory
+	tmpDir, err := os.MkdirTemp("", "airing-skill-*")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	cmd := exec.Command("git", "clone", "--depth", "1", repo, tmpDir)
 	cmd.Stdout = os.Stderr
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("git clone failed: %w", err)
 	}
-	hash, err := gitHeadHash(dest)
-	if err != nil {
-		return "unknown", nil
+
+	hash, _ := gitHeadHash(tmpDir)
+	if hash == "" {
+		hash = "unknown"
 	}
+
+	// Copy only the subdirectory to the skill destination
+	srcPath := filepath.Join(tmpDir, subdir)
+	info, err := os.Stat(srcPath)
+	if err != nil || !info.IsDir() {
+		return "", fmt.Errorf("subdirectory %q not found in repo", subdir)
+	}
+
+	cpCmd := exec.Command("cp", "-r", srcPath, dest)
+	if err := cpCmd.Run(); err != nil {
+		return "", fmt.Errorf("failed to extract subdirectory: %w", err)
+	}
+
 	return hash, nil
 }
 
@@ -119,16 +158,30 @@ func InstallSkillFromLocal(name, srcPath string) error {
 }
 
 // UpdateSkillGit pulls latest changes for a git-sourced skill.
-func UpdateSkillGit(name string) (oldHash, newHash string, err error) {
+// For subdirectory-sourced skills (no .git in skill dir), re-clone and extract.
+func UpdateSkillGit(name, repo, subdir string) (oldHash, newHash string, err error) {
 	dest := skillPath(name)
-	oldHash, _ = gitHeadHash(dest)
-	cmd := exec.Command("git", "-C", dest, "pull", "--ff-only")
-	cmd.Stdout = os.Stderr
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return oldHash, oldHash, fmt.Errorf("git pull failed: %w", err)
+
+	if subdir == "" {
+		// Direct repo: just git pull
+		oldHash, _ = gitHeadHash(dest)
+		cmd := exec.Command("git", "-C", dest, "pull", "--ff-only")
+		cmd.Stdout = os.Stderr
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return oldHash, oldHash, fmt.Errorf("git pull failed: %w", err)
+		}
+		newHash, _ = gitHeadHash(dest)
+		return oldHash, newHash, nil
 	}
-	newHash, _ = gitHeadHash(dest)
+
+	// Subdirectory source: re-clone to temp, extract, replace
+	oldHash = "unknown"
+	os.RemoveAll(dest)
+	newHash, err = InstallSkillFromGit(name, repo, subdir)
+	if err != nil {
+		return oldHash, oldHash, err
+	}
 	return oldHash, newHash, nil
 }
 

@@ -19,6 +19,7 @@ type RegistrySkill struct {
 	Name        string   `json:"name"`
 	Description string   `json:"description"`
 	Repo        string   `json:"repo"`
+	Path        string   `json:"path,omitempty"`
 	Keywords    []string `json:"keywords"`
 }
 

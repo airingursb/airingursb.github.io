@@ -82,7 +82,7 @@ func runSkillsInstall(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	var skillName, repo, version string
+	var skillName, repo, subdir, version string
 
 	switch source {
 	case "local":
@@ -103,7 +103,7 @@ func runSkillsInstall(cmd *cobra.Command, args []string) error {
 		}
 		repo = input
 		fmt.Fprintf(os.Stderr, "📦 %s\n", internal.L(lang, "skill_cloning"))
-		version, err = internal.InstallSkillFromGit(skillName, repo)
+		version, err = internal.InstallSkillFromGit(skillName, repo, "")
 		if err != nil {
 			return err
 		}
@@ -120,12 +120,13 @@ func runSkillsInstall(cmd *cobra.Command, args []string) error {
 		}
 		skillName = found.Name
 		repo = found.Repo
+		subdir = found.Path
 		if _, exists := sf.Installed[skillName]; exists {
 			return fmt.Errorf("%s %s", skillName, internal.L(lang, "skill_already"))
 		}
 		fmt.Fprintf(os.Stderr, "✅ %s: %s (%s)\n", internal.L(lang, "skill_found"), found.Name, found.Description)
 		fmt.Fprintf(os.Stderr, "📦 %s\n", internal.L(lang, "skill_cloning"))
-		version, err = internal.InstallSkillFromGit(skillName, repo)
+		version, err = internal.InstallSkillFromGit(skillName, repo, found.Path)
 		if err != nil {
 			return err
 		}
@@ -151,6 +152,7 @@ func runSkillsInstall(cmd *cobra.Command, args []string) error {
 	sf.Installed[skillName] = &internal.SkillMeta{
 		Source:      source,
 		Repo:        repo,
+		Path:        subdir,
 		Version:     version,
 		InstalledAt: internal.NowISO(),
 		Agents:      agents,
@@ -208,7 +210,7 @@ func runSkillsUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Fprintf(os.Stderr, "🔄 %s\n", internal.L(lang, "skill_updating"))
-	oldHash, newHash, err := internal.UpdateSkillGit(name)
+	oldHash, newHash, err := internal.UpdateSkillGit(name, meta.Repo, meta.Path)
 	if err != nil {
 		return err
 	}
