@@ -6,6 +6,20 @@ Designed for AI Agent consumption (as a skill), with human-friendly text output 
 
 ## Install
 
+### Homebrew (recommended)
+
+```bash
+brew install airingursb/tap/airing
+```
+
+Upgrade:
+
+```bash
+brew update && brew upgrade airingursb/tap/airing
+```
+
+### Build from source
+
 ```bash
 cd cli
 go build -o airing .
