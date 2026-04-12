@@ -3,8 +3,8 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
+	"time"
 
 	"github.com/airingursb/airing-cli/internal"
 	"github.com/spf13/cobra"
@@ -38,16 +38,25 @@ func init() {
 }
 
 func runStatus(cmd *cobra.Command, args []string) error {
+	start := time.Now()
+	caller := internal.DetectCaller()
+
 	if statusType != "" && !isValidType(statusType) {
-		fmt.Fprintf(os.Stderr, "error: invalid type %q\navailable types: %s\n", statusType, strings.Join(validTypes, ", "))
-		os.Exit(1)
+		internal.TrackError("status", "invalid_type", Version)
+		return fmt.Errorf("invalid type %q\navailable types: %s", statusType, strings.Join(validTypes, ", "))
 	}
 
 	raw, err := internal.FetchStatus(noCache)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
+		errType := "network"
+		if strings.Contains(err.Error(), "status") {
+			errType = "http_error"
+		}
+		internal.TrackError("status", errType, Version)
+		return err
 	}
+
+	cached := !noCache && time.Since(start) < 50*time.Millisecond
 
 	if statusType == "" {
 		if statusOutput == "text" {
@@ -55,19 +64,20 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		} else {
 			fmt.Println(string(raw))
 		}
+		internal.TrackInvoke("status", statusType, statusOutput, lang, caller, Version, cached, time.Since(start).Milliseconds())
 		return nil
 	}
 
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &m); err != nil {
-		fmt.Fprintf(os.Stderr, "error: failed to parse response: %v\n", err)
-		os.Exit(1)
+		internal.TrackError("status", "parse", Version)
+		return fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	typeData, ok := m[statusType]
 	if !ok {
-		fmt.Fprintf(os.Stderr, "error: type %q not found in response\n", statusType)
-		os.Exit(1)
+		internal.TrackError("status", "type_not_found", Version)
+		return fmt.Errorf("type %q not found in response", statusType)
 	}
 
 	if statusOutput == "text" {
@@ -76,6 +86,8 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		limited := applyLimit(statusType, typeData, statusLimit)
 		fmt.Println(string(limited))
 	}
+
+	internal.TrackInvoke("status", statusType, statusOutput, lang, caller, Version, cached, time.Since(start).Milliseconds())
 	return nil
 }
 
