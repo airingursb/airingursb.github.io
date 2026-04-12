@@ -142,7 +142,14 @@ func LinkSkillToAgent(skillName, agent string) error {
 	if err := os.MkdirAll(filepath.Dir(dst), 0755); err != nil {
 		return err
 	}
-	os.Remove(dst)
+	// Only remove existing symlinks; refuse to overwrite real directories
+	if info, err := os.Lstat(dst); err == nil {
+		if info.Mode()&os.ModeSymlink != 0 {
+			os.Remove(dst)
+		} else {
+			return fmt.Errorf("%s already exists and is not a symlink — remove it manually first", dst)
+		}
+	}
 	return os.Symlink(src, dst)
 }
 
