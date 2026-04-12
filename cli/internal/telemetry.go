@@ -157,7 +157,7 @@ func send(eventName string, data any) {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "airing-cli")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) airing-cli/1.0")
 
 	resp, err := client.Do(req)
 	if err != nil {
