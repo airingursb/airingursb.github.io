@@ -42,7 +42,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	caller := internal.DetectCaller()
 
 	if statusType != "" && !isValidType(statusType) {
-		internal.TrackError("status", "invalid_type", Version)
+		internal.TrackStatusError("invalid_type", Version)
 		return fmt.Errorf("invalid type %q\navailable types: %s", statusType, strings.Join(validTypes, ", "))
 	}
 
@@ -52,7 +52,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		if strings.Contains(err.Error(), "status") {
 			errType = "http_error"
 		}
-		internal.TrackError("status", errType, Version)
+		internal.TrackStatusError(errType, Version)
 		return err
 	}
 
@@ -64,19 +64,19 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		} else {
 			fmt.Println(string(raw))
 		}
-		internal.TrackInvoke("status", statusType, statusOutput, lang, caller, Version, cached, time.Since(start).Milliseconds())
+		internal.TrackStatusQuery(statusType, statusOutput, lang, caller, Version, cached, time.Since(start).Milliseconds())
 		return nil
 	}
 
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &m); err != nil {
-		internal.TrackError("status", "parse", Version)
+		internal.TrackStatusError("parse", Version)
 		return fmt.Errorf("failed to parse response: %w", err)
 	}
 
 	typeData, ok := m[statusType]
 	if !ok {
-		internal.TrackError("status", "type_not_found", Version)
+		internal.TrackStatusError("type_not_found", Version)
 		return fmt.Errorf("type %q not found in response", statusType)
 	}
 
@@ -87,7 +87,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 		fmt.Println(string(limited))
 	}
 
-	internal.TrackInvoke("status", statusType, statusOutput, lang, caller, Version, cached, time.Since(start).Milliseconds())
+	internal.TrackStatusQuery(statusType, statusOutput, lang, caller, Version, cached, time.Since(start).Milliseconds())
 	return nil
 }
 
