@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	StatusURL = "https://ursb.me/api/status.json"
-	CacheTTL  = 5 * time.Minute
+	DefaultStatusURL = "https://ursb.me/api/status.json"
+	CacheTTL         = 5 * time.Minute
 )
 
 type cacheEntry struct {
@@ -59,6 +59,13 @@ func writeCache(raw json.RawMessage) error {
 	return os.WriteFile(cachePath(), data, 0644)
 }
 
+func statusURL() string {
+	if u := os.Getenv("AIRING_API_URL"); u != "" {
+		return u
+	}
+	return DefaultStatusURL
+}
+
 func FetchStatus(noCache bool) (json.RawMessage, error) {
 	if !noCache {
 		if entry, err := readCache(); err == nil {
@@ -68,7 +75,7 @@ func FetchStatus(noCache bool) (json.RawMessage, error) {
 		}
 	}
 
-	resp, err := http.Get(StatusURL)
+	resp, err := http.Get(statusURL())
 	if err != nil {
 		if entry, cacheErr := readCache(); cacheErr == nil {
 			fmt.Fprintf(os.Stderr, "warning: network error, using cached data from %s\n", entry.FetchedAt.Format(time.RFC3339))
