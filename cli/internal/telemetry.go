@@ -163,3 +163,56 @@ func send(eventName string, data any) {
 	}
 	resp.Body.Close()
 }
+
+// TrackSkillInstall sends a skill.install event.
+func TrackSkillInstall(skillName, source string, agents []string, version string) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		send("skill.install", map[string]any{
+			"skill_name": skillName,
+			"source":     source,
+			"agents":     agents,
+			"version":    version,
+		})
+	}()
+}
+
+// TrackSkillUninstall sends a skill.uninstall event.
+func TrackSkillUninstall(skillName, version string) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		send("skill.uninstall", map[string]string{
+			"skill_name": skillName,
+			"version":    version,
+		})
+	}()
+}
+
+// TrackSkillUpdate sends a skill.update event.
+func TrackSkillUpdate(skillName, fromVersion, toVersion, version string) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		send("skill.update", map[string]any{
+			"skill_name":   skillName,
+			"from_version": fromVersion,
+			"to_version":   toVersion,
+			"version":      version,
+		})
+	}()
+}
+
+// TrackSkillSearch sends a skill.search event.
+func TrackSkillSearch(keyword string, resultCount int, version string) {
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		send("skill.search", map[string]any{
+			"keyword":      keyword,
+			"result_count": resultCount,
+			"version":      version,
+		})
+	}()
+}
