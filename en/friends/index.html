@@ -172,15 +172,36 @@
   }
 
   var AUTHOR_EMAILS = { 'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80' };
-  function gravatarUrl(email) {
+  var _gravatarHashCache = {};
+  function _sha256Hex(str) {
+    if (_gravatarHashCache[str]) return _gravatarHashCache[str];
+    var p = crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)).then(function(buf) {
+      var arr = Array.from(new Uint8Array(buf));
+      return arr.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    });
+    _gravatarHashCache[str] = p;
+    return p;
+  }
+  function _placeholderGravatar(size) {
+    return 'https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=' + (size || 80);
+  }
+  function applyGravatar(imgEl, email, size) {
+    if (!imgEl) return;
+    var s = size || 80;
     var e = (email || '').trim().toLowerCase();
-    if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
-    var hash = e.endsWith('@gravatar.placeholder') ? e.split('@')[0] : e;
-    return 'https://gravatar.com/avatar/' + (hash || '00000000000000000000000000000000') + '?d=robohash&s=80';
+    if (!e) { imgEl.src = _placeholderGravatar(s); return; }
+    if (AUTHOR_EMAILS[e]) { imgEl.src = AUTHOR_EMAILS[e]; return; }
+    if (e.endsWith('@gravatar.placeholder')) {
+      imgEl.src = 'https://gravatar.com/avatar/' + e.split('@')[0] + '?d=robohash&s=' + s;
+      return;
+    }
+    _sha256Hex(e).then(function(hash) {
+      imgEl.src = 'https://gravatar.com/avatar/' + hash + '?d=robohash&s=' + s;
+    }).catch(function() { imgEl.src = _placeholderGravatar(s); });
   }
 
   function updateComposeAvatar(email) {
-    if (email) gbComposeAvatar.src = gravatarUrl(email);
+    applyGravatar(gbComposeAvatar, email, 80);
   }
 
   var avatarTimer;
@@ -254,7 +275,7 @@
       : '<span class="bc-name">' + esc(c.nickname || 'Anonymous') + '</span>';
 
     div.innerHTML =
-      '<div class="bc-avatar-wrap"><img src="' + gravatarUrl(c.email) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+      '<div class="bc-avatar-wrap"><img src="' + _placeholderGravatar(avatarSize * 2) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
       '<div class="bc-body">' +
         '<div class="bc-meta">' + nameHtml + '<span class="bc-dot">&middot;</span><time class="bc-time">' + timeStr + '</time></div>' +
         '<div class="bc-text"><p>' + linkify(esc(c.content)).replace(/\n/g, '<br>') + '</p></div>' +
@@ -267,6 +288,8 @@
         '</div>' +
         '<div class="bc-replies-container"></div>' +
       '</div>';
+
+    applyGravatar(div.querySelector('.bc-avatar-img'), c.email, avatarSize * 2);
 
     div.querySelector('.bc-like-btn').addEventListener('click', function() {
       var btn = this;
