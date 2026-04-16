@@ -1756,4 +1756,83 @@ const hreflang = hasEn ? {
     .article-like-section { padding: 32px 20px 0; }
     .bottom-comments { padding: 0 20px 48px; }
   }
+
+  /* Click-to-zoom cursor for content images (overlay styles are global) */
+  .note-detail-page .prose :global(img) { cursor: zoom-in; }
+  .note-detail-page .prose :global(a img) { cursor: pointer; }
+</style>
+
+<script is:inline>
+/* Click-to-zoom lightbox for note images */
+(function() {
+  var container = document.querySelector('.note-detail-page .prose');
+  if (!container) return;
+  var overlay = null;
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  function close() {
+    if (!overlay) return;
+    var o = overlay; overlay = null;
+    o.classList.remove('open');
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', onKey);
+    setTimeout(function() { if (o.parentNode) o.parentNode.removeChild(o); }, 220);
+  }
+  function open(img) {
+    if (overlay) close();
+    overlay = document.createElement('div');
+    overlay.className = 'img-zoom-overlay';
+    var big = document.createElement('img');
+    big.src = img.currentSrc || img.src;
+    big.alt = img.alt || '';
+    big.className = 'img-zoom-img';
+    overlay.appendChild(big);
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(function() { overlay.classList.add('open'); });
+    overlay.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    if (typeof umami !== 'undefined') umami.track('image-zoom', { src: big.src });
+  }
+  container.addEventListener('click', function(e) {
+    var img = e.target.closest('img');
+    if (!img || !container.contains(img)) return;
+    if (img.closest('a')) return;
+    var w = img.naturalWidth || img.offsetWidth;
+    if (w < 100) return;
+    e.preventDefault();
+    open(img);
+  });
+})();
+</script>
+
+<style is:global>
+  .img-zoom-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(13, 17, 23, 0.94);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    transition: opacity 0.22s ease;
+    cursor: zoom-out;
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  .img-zoom-overlay.open { opacity: 1; }
+  .img-zoom-img {
+    max-width: calc(100vw - 40px);
+    max-height: calc(100vh - 40px);
+    border-radius: 6px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    transform: scale(0.96);
+    transition: transform 0.22s ease;
+  }
+  .img-zoom-overlay.open .img-zoom-img { transform: scale(1); }
+  @media (max-width: 640px) {
+    .img-zoom-overlay { padding: 8px; }
+    .img-zoom-img { max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
+  }
 </style>

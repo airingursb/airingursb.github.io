@@ -38,7 +38,7 @@ Before addressing these problems we need to establish an existentialist proposit
 
 The only "real" thing I have ever been deeply convinced of is this: right now, I am alive — I exist, I breathe, I perceive the world around me — and that is the only reality. Some say the highest value is to contribute a brick to the edifice of human progress. Others say the greatest meaning is to give light and warmth to the cause of world peace. Never mind that these lofty ideals are too distant for ordinary people to see — even if they exist, what of it? The universe has existed for billions of years; human history spans only a few thousand. Earth is a drop in the ocean; human history is a mayfly. Those so-called ideals — **from the scale of the cosmos, everything is meaningless.**
 
-![](https://airing.ursb.me/image/blog/20210711-04.jpeg)
+<img src="https://airing.ursb.me/image/blog/20210711-04.jpeg" alt="" style="width: 50%; max-height: none; margin-inline: auto;" />
 
 Yet even so, we still exist — isn't that already an extraordinary miracle? **The only certainty is the present. The only thing that matters is now, this very moment. A person must first exist before anything about life can be discussed.** Understanding this, we need to pay attention to each step underfoot and find in each one solid, powerful support and joy — to experience the scenery, the setbacks, and the bitterness of the journey.
 
