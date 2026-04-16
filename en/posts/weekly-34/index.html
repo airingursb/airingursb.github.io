@@ -77,7 +77,7 @@
   </script><link rel="stylesheet" href="/_astro/BaseLayout.Do1l4WZr.css">
 <style>.lang-switch[data-astro-cid-r2b4e7hz]{font-size:.85em;letter-spacing:.02em;white-space:nowrap}.lang-active[data-astro-cid-r2b4e7hz]{font-weight:700;color:var(--c-text, #1a1a1a)}.lang-sep[data-astro-cid-r2b4e7hz]{margin:0 .3em;color:var(--c-muted, #999)}.lang-link[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);text-decoration:none;transition:color .15s}.lang-link[data-astro-cid-r2b4e7hz]:hover{color:var(--c-text, #1a1a1a)}.lang-disabled[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);opacity:.4;cursor:not-allowed}
 </style>
-<link rel="stylesheet" href="/_astro/PostLayout.DTszR7YZ.css"></head> <body>   <noscript><link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"></noscript>  <div class="post-page" data-lang="en" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>April 5, 2026</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-hide-mobile" data-astro-cid-gjtny2mx>Blog</a> <a href="/archive" class="mast-hide-mobile" data-astro-cid-gjtny2mx>Archive</a> <a href="/moments" data-astro-cid-gjtny2mx>Moment</a> <a href="/notes" data-astro-cid-gjtny2mx>Notes</a> <a href="/friends" data-astro-cid-gjtny2mx>Friends</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> <div class="mast-lang-line" data-astro-cid-gjtny2mx> <span class="lang-switch" data-astro-cid-r2b4e7hz> <a href="/posts/weekly-34" class="lang-link" data-lang-switch="zh" data-astro-cid-r2b4e7hz>中</a> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <strong class="lang-active" data-astro-cid-r2b4e7hz>EN</strong> </span>  <script>
+<link rel="stylesheet" href="/_astro/PostLayout.CL90Pc97.css"></head> <body>   <noscript><link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"></noscript>  <div class="post-page" data-lang="en" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>April 5, 2026</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-hide-mobile" data-astro-cid-gjtny2mx>Blog</a> <a href="/archive" class="mast-hide-mobile" data-astro-cid-gjtny2mx>Archive</a> <a href="/moments" data-astro-cid-gjtny2mx>Moment</a> <a href="/notes" data-astro-cid-gjtny2mx>Notes</a> <a href="/friends" data-astro-cid-gjtny2mx>Friends</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> <div class="mast-lang-line" data-astro-cid-gjtny2mx> <span class="lang-switch" data-astro-cid-r2b4e7hz> <a href="/posts/weekly-34" class="lang-link" data-lang-switch="zh" data-astro-cid-r2b4e7hz>中</a> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <strong class="lang-active" data-astro-cid-r2b4e7hz>EN</strong> </span>  <script>
   // Persist language preference on click
   document.querySelectorAll('[data-lang-switch]').forEach(function(el) {
     el.addEventListener('click', function() {
@@ -459,6 +459,49 @@
   });
 })();
 </script> <script>
+/* Click-to-zoom lightbox for post images */
+(function() {
+  var container = document.querySelector('.post-content');
+  if (!container) return;
+
+  var overlay = null;
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  function close() {
+    if (!overlay) return;
+    var o = overlay; overlay = null;
+    o.classList.remove('open');
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', onKey);
+    setTimeout(function() { if (o.parentNode) o.parentNode.removeChild(o); }, 220);
+  }
+  function open(img) {
+    if (overlay) close();
+    overlay = document.createElement('div');
+    overlay.className = 'img-zoom-overlay';
+    var big = document.createElement('img');
+    big.src = img.currentSrc || img.src;
+    big.alt = img.alt || '';
+    big.className = 'img-zoom-img';
+    overlay.appendChild(big);
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(function() { overlay.classList.add('open'); });
+    overlay.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    if (typeof umami !== 'undefined') umami.track('image-zoom', { src: big.src });
+  }
+
+  container.addEventListener('click', function(e) {
+    var img = e.target.closest('img');
+    if (!img || !container.contains(img)) return;
+    if (img.closest('a')) return;
+    var w = img.naturalWidth || img.offsetWidth;
+    if (w < 100) return;
+    e.preventDefault();
+    open(img);
+  });
+})();
+</script>  <script>
 (function() {
   var API = 'https://chat.ursb.me';
   // Normalize both /posts/foo/ and /en/posts/foo/ to the same slug so EN and ZH

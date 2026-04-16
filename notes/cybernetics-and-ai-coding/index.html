@@ -77,7 +77,7 @@
   </script><link rel="stylesheet" href="/_astro/BaseLayout.Do1l4WZr.css">
 <style>.lang-switch[data-astro-cid-r2b4e7hz]{font-size:.85em;letter-spacing:.02em;white-space:nowrap}.lang-active[data-astro-cid-r2b4e7hz]{font-weight:700;color:var(--c-text, #1a1a1a)}.lang-sep[data-astro-cid-r2b4e7hz]{margin:0 .3em;color:var(--c-muted, #999)}.lang-link[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);text-decoration:none;transition:color .15s}.lang-link[data-astro-cid-r2b4e7hz]:hover{color:var(--c-text, #1a1a1a)}.lang-disabled[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);opacity:.4;cursor:not-allowed}
 </style>
-<link rel="stylesheet" href="/_astro/_..DyFeN9EE.css"></head> <body>  <div class="note-detail-page" data-astro-cid-5eggoaxc> <header class="masthead" data-astro-cid-5eggoaxc> <div class="mast-inner" data-astro-cid-5eggoaxc> <div class="mast-top-rule" data-astro-cid-5eggoaxc></div> <div class="mast-bar" data-astro-cid-5eggoaxc> <a href="/blog" class="mast-brand" data-astro-cid-5eggoaxc>Airing's Blog</a> <div class="mast-links" data-astro-cid-5eggoaxc> <a href="/blog" class="mast-hide-mobile" data-astro-cid-5eggoaxc>Blog</a> <a href="/archive" class="mast-hide-mobile" data-astro-cid-5eggoaxc>Archive</a> <a href="/moments" data-astro-cid-5eggoaxc>Moment</a> <a href="/notes" data-astro-cid-5eggoaxc>Notes</a> <a href="/friends" data-astro-cid-5eggoaxc>Friends</a> </div> </div> <div class="mast-lang-line" data-astro-cid-5eggoaxc> <span class="lang-switch" data-astro-cid-r2b4e7hz> <strong class="lang-active" data-astro-cid-r2b4e7hz>中</strong> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <a href="/en/notes/cybernetics-and-ai-coding" class="lang-link" data-lang-switch="en" data-astro-cid-r2b4e7hz>EN</a> </span>  <script>
+<link rel="stylesheet" href="/_astro/_..B4V2hQNd.css"></head> <body>  <div class="note-detail-page" data-astro-cid-5eggoaxc> <header class="masthead" data-astro-cid-5eggoaxc> <div class="mast-inner" data-astro-cid-5eggoaxc> <div class="mast-top-rule" data-astro-cid-5eggoaxc></div> <div class="mast-bar" data-astro-cid-5eggoaxc> <a href="/blog" class="mast-brand" data-astro-cid-5eggoaxc>Airing's Blog</a> <div class="mast-links" data-astro-cid-5eggoaxc> <a href="/blog" class="mast-hide-mobile" data-astro-cid-5eggoaxc>Blog</a> <a href="/archive" class="mast-hide-mobile" data-astro-cid-5eggoaxc>Archive</a> <a href="/moments" data-astro-cid-5eggoaxc>Moment</a> <a href="/notes" data-astro-cid-5eggoaxc>Notes</a> <a href="/friends" data-astro-cid-5eggoaxc>Friends</a> </div> </div> <div class="mast-lang-line" data-astro-cid-5eggoaxc> <span class="lang-switch" data-astro-cid-r2b4e7hz> <strong class="lang-active" data-astro-cid-r2b4e7hz>中</strong> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <a href="/en/notes/cybernetics-and-ai-coding" class="lang-link" data-lang-switch="en" data-astro-cid-r2b4e7hz>EN</a> </span>  <script>
   // Persist language preference on click
   document.querySelectorAll('[data-lang-switch]').forEach(function(el) {
     el.addEventListener('click', function() {
@@ -1057,4 +1057,45 @@
       });
       updateModeIcon();
     })();
-  </script> </body> </html> 
+  </script> </body> </html>   <script>
+/* Click-to-zoom lightbox for note images */
+(function() {
+  var container = document.querySelector('.note-detail-page .prose');
+  if (!container) return;
+  var overlay = null;
+  function onKey(e) { if (e.key === 'Escape') close(); }
+  function close() {
+    if (!overlay) return;
+    var o = overlay; overlay = null;
+    o.classList.remove('open');
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', onKey);
+    setTimeout(function() { if (o.parentNode) o.parentNode.removeChild(o); }, 220);
+  }
+  function open(img) {
+    if (overlay) close();
+    overlay = document.createElement('div');
+    overlay.className = 'img-zoom-overlay';
+    var big = document.createElement('img');
+    big.src = img.currentSrc || img.src;
+    big.alt = img.alt || '';
+    big.className = 'img-zoom-img';
+    overlay.appendChild(big);
+    document.body.appendChild(overlay);
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(function() { overlay.classList.add('open'); });
+    overlay.addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    if (typeof umami !== 'undefined') umami.track('image-zoom', { src: big.src });
+  }
+  container.addEventListener('click', function(e) {
+    var img = e.target.closest('img');
+    if (!img || !container.contains(img)) return;
+    if (img.closest('a')) return;
+    var w = img.naturalWidth || img.offsetWidth;
+    if (w < 100) return;
+    e.preventDefault();
+    open(img);
+  });
+})();
+</script>
