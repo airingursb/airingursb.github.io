@@ -228,11 +228,10 @@ Carakan → V8</p>
 </ul>
 <p>示例：</p>
 <p>假设现在有 3 个 Tab，分别打开了 foo.com，bar.com，baz.com 三个站点，其中 bar.com、baz.com 不涉及 iframe；但 foo.com 涉及，它的代码如下所示：</p>
-<p>`</p>
-  <iframe id="one" src="foo.com/other-url"></iframe>
-  <iframe id="two" src="bar.com"></iframe>
-
-`
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="html"><code><span class="line"><span style="color:#E1E4E8">&#x3C;</span><span style="color:#85E89D">html</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">  &#x3C;</span><span style="color:#85E89D">iframe</span><span style="color:#B392F0"> id</span><span style="color:#E1E4E8">=</span><span style="color:#9ECBFF">one</span><span style="color:#B392F0"> src</span><span style="color:#E1E4E8">=</span><span style="color:#9ECBFF">"foo.com/other-url"</span><span style="color:#E1E4E8">>&#x3C;/</span><span style="color:#85E89D">iframe</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">  &#x3C;</span><span style="color:#85E89D">iframe</span><span style="color:#B392F0"> id</span><span style="color:#E1E4E8">=</span><span style="color:#9ECBFF">two</span><span style="color:#B392F0"> src</span><span style="color:#E1E4E8">=</span><span style="color:#9ECBFF">"bar.com"</span><span style="color:#E1E4E8">>&#x3C;/</span><span style="color:#85E89D">iframe</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">&#x3C;/</span><span style="color:#85E89D">html</span><span style="color:#E1E4E8">></span></span></code></pre>
 <p>那么按照 Process-per-tab 模式，最终的进程模型如下图所示：</p>
 <p><img src="https://airing.ursb.me/images/blog/chromium/20221015205446.png?max_age=624800" alt=""></p>
 <h2 id="chromium-渲染流水线">Chromium 渲染流水线</h2>
@@ -312,13 +311,12 @@ Carakan → V8</p>
 </ul>
 <p>注意这一步在处理的过程中，就会使用栈结构存储 Node (HTML Tag)，以便后续构造 DOM Tree —— 例如对于 <code>HTMLToken::StartTag</code> 类型的 Token，就会调用 <code>ProcessStartTag</code> 执行一个压栈操作，而对于<code>HTMLToken::EndTag</code> 类型的 Token，就会调用 <code>ProcessEndTag</code> 执行一个出栈操作。</p>
 <p>如针对如下所示的 DOM Tree：</p>
-<p>`</p><div><p></p>
-  <p>
-    </p><div></div>
-  <p></p>
-  <span></span>
-</div>
-`
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="html"><code><span class="line"><span style="color:#E1E4E8">&#x3C;</span><span style="color:#85E89D">div</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">  &#x3C;</span><span style="color:#85E89D">p</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">    &#x3C;</span><span style="color:#85E89D">div</span><span style="color:#E1E4E8">>&#x3C;/</span><span style="color:#85E89D">div</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">  &#x3C;/</span><span style="color:#85E89D">p</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">  &#x3C;</span><span style="color:#85E89D">span</span><span style="color:#E1E4E8">>&#x3C;/</span><span style="color:#85E89D">span</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">&#x3C;/</span><span style="color:#85E89D">div</span><span style="color:#E1E4E8">></span></span></code></pre>
 <p>各 Node 压榨与出栈流程如下：</p>
 <p><img src="https://airing.ursb.me/images/blog/chromium/20221015211837.png?max_age=624800" alt="">DOM construction
 职责：将 Element 实例化为 DOM Tree。</p>
@@ -375,7 +373,13 @@ CSS 解析涉及的数据流为：bytes → characters → tokens → StyleRule 
 <p>StyleRules = selectors(选择器) + properties(属性集)。</p>
 <p>值得注意的的是 CSS 选择器解析是<strong>从右向左</strong>的</p>
 <p>例如对于这个 CSS：</p>
-<p><code>.text .hello{     color: rgb(200, 200, 200);     width: calc(100% - 20px); } #world{     margin: 20px; } </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="css"><code><span class="line"><span style="color:#B392F0">.text</span><span style="color:#B392F0"> .hello</span><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#79B8FF">    color</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">rgb</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">200</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">200</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">200</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#79B8FF">    width</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">calc</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">100</span><span style="color:#F97583">%</span><span style="color:#F97583"> -</span><span style="color:#79B8FF"> 20</span><span style="color:#F97583">px</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#B392F0">#world</span><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#79B8FF">    margin</span><span style="color:#E1E4E8">: </span><span style="color:#79B8FF">20</span><span style="color:#F97583">px</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>解析结果如下所示：</p>
 <pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>selector text = “.text .hello”</span></span>
 <span class="line"><span>value = “hello” matchType = “Class” relation = “Descendant”</span></span>
@@ -443,12 +447,11 @@ CSS 解析涉及的数据流为：bytes → characters → tokens → StyleRule 
 </ul>
 <p>但需要注意的是，LayoutObject 与 DOM Node 并非 1:1 的关系，理由如下图所示：</p>
 <p><img src="https://airing.ursb.me/images/blog/chromium/20221015215041.png?max_age=624800" alt="">Layout 流程的核心函数：<a href="https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/dom/document.h%3Bl=706?q=document::updateStyle&#x26;ss=chromium/chromium/src">Document::UpdateStyleAndLayout</a> ，经过这一步之后 DOM tree 会变成 Layout Tree，如下图代码：</p>
-<p>`</p><div style="max-width: 100px">
-  <div style="float: left; padding: 1ex">F</div>
-  <br>The <b>quick brown</b> fox
-  <div style="margin: -60px 0 0 80px">jumps</div><p></p>
-</div>
-`
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="html"><code><span class="line"><span style="color:#E1E4E8">&#x3C;</span><span style="color:#85E89D">div</span><span style="color:#B392F0"> style</span><span style="color:#E1E4E8">=</span><span style="color:#9ECBFF">"max-width: 100px"</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">  &#x3C;</span><span style="color:#85E89D">div</span><span style="color:#B392F0"> style</span><span style="color:#E1E4E8">=</span><span style="color:#9ECBFF">"float: left; padding: 1ex"</span><span style="color:#E1E4E8">>F&#x3C;/</span><span style="color:#85E89D">div</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">  &#x3C;</span><span style="color:#85E89D">br</span><span style="color:#E1E4E8">>The &#x3C;</span><span style="color:#85E89D">b</span><span style="color:#E1E4E8">>quick brown&#x3C;/</span><span style="color:#85E89D">b</span><span style="color:#E1E4E8">> fox</span></span>
+<span class="line"><span style="color:#E1E4E8">  &#x3C;</span><span style="color:#85E89D">div</span><span style="color:#B392F0"> style</span><span style="color:#E1E4E8">=</span><span style="color:#9ECBFF">"margin: -60px 0 0 80px"</span><span style="color:#E1E4E8">>jumps&#x3C;/</span><span style="color:#85E89D">div</span><span style="color:#E1E4E8">></span></span>
+<span class="line"><span style="color:#E1E4E8">&#x3C;/</span><span style="color:#85E89D">div</span><span style="color:#E1E4E8">></span></span></code></pre>
 <p><img src="https://airing.ursb.me/images/blog/chromium/20221015215220.png?max_age=624800" alt="">
 每一个 LayoutObject 节点都记录了位置和尺寸信息：
 <img src="https://airing.ursb.me/images/blog/chromium/20221015215232.png?max_age=624800" alt="">

@@ -193,18 +193,19 @@
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%207.png" alt="">把这个流程可以简单拆成 10 个阶段：</p>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2011.png" alt="">为了介绍清楚这个流程，我准备了一个最简单的 Cocos 游戏 Demo。这个是 Demo 的场景设计：</p>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2012.png" alt="">这个是主场景的代码：</p>
-<p>`const { ccclass } = cc._decorator;</p>
-<p>@ccclass
-export default class Helloworld extends cc.Component {</p>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>protected onLoad(): void {</span></span>
-<span class="line"><span>    console.log('onLoad');</span></span>
-<span class="line"><span>}</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>start () {</span></span>
-<span class="line"><span>    console.log('Hello World');</span></span>
-<span class="line"><span>}</span></span></code></pre>
-<p>}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#F97583">const</span><span style="color:#E1E4E8"> { </span><span style="color:#79B8FF">ccclass</span><span style="color:#E1E4E8"> } </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> cc._decorator;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">@ccclass</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> default</span><span style="color:#F97583"> class</span><span style="color:#B392F0"> Helloworld</span><span style="color:#F97583"> extends</span><span style="color:#B392F0"> cc</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">Component</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    protected</span><span style="color:#B392F0"> onLoad</span><span style="color:#E1E4E8">()</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">        console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'onLoad'</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">    start</span><span style="color:#E1E4E8"> () {</span></span>
+<span class="line"><span style="color:#E1E4E8">        console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'Hello World'</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <h3 id="31-load-assets">3.1 Load Assets</h3>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2013.png" alt="">首先是资源加载，前文介绍过游戏资源可以分为静态资源和脚本资源。由于静态资源的加载流程涉及的内容太多了，本节只简单介绍下脚本资源加载。</p>
 <p>包括 3 类脚本资源：</p>
@@ -254,7 +255,8 @@ export default class Helloworld extends cc.Component {</p>
 <li><code>setViewport</code> 调用 <code>glViewport</code> 设置视口，决定最终渲染区域在屏幕上的映射范围</li>
 <li><code>setup clear</code> 依次执行 <code>glClearColor</code>、<code>glClearDepth</code> 和 <code>glClearStencil</code>，初始化颜色、深度和模板缓冲的清除值，为每一帧绘制提供干净的初始状态。</li>
 </ul>
-<p><code>unsigned int fbo; glGenFramebuffers(1, &#x26;fbo); </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> fbo;</span></span>
+<span class="line"><span style="color:#B392F0">glGenFramebuffers</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">fbo);</span></span></code></pre>
 <p>接下来，游戏引擎会将 Scene 里的各个 Model 转成一对一的 DrawItem，一个 DrawItem 的数据结构如下所示：</p>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2034.png" alt="">最后，引擎将这些 DrawItem 组装成 DrawItems 队列，以便后续流程处理。</p>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2035.png" alt=""></p>
@@ -267,17 +269,17 @@ export default class Helloworld extends cc.Component {</p>
 </ul>
 <p>通过将 DrawItems 按照物体特性分发至不同 Pass，渲染管线能够有针对性地对 Effect 进行实现。</p>
 <p>业务侧可以在代码里创建一个指定的 Material，之后管线就会走到对应的 pass 进行处理：</p>
-<p>`// 创建一个立方体网格
-const cube = new cc.MeshRenderer();
-cube.mesh = cc.GizmoMesh.createBox(1, 1, 1);</p>
-<p>// 设置材质为不透明
-const opaqueMaterial = cc.Material.create();
-opaqueMaterial.initialize({
-effectName: ‘builtin-unlit’,
-technique: ‘opaque’,
-});
-cube.setMaterial(opaqueMaterial, 0);
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#6A737D">// 创建一个立方体网格</span></span>
+<span class="line"><span style="color:#F97583">const</span><span style="color:#79B8FF"> cube</span><span style="color:#F97583"> =</span><span style="color:#F97583"> new</span><span style="color:#E1E4E8"> cc.</span><span style="color:#B392F0">MeshRenderer</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">cube.mesh </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> cc.GizmoMesh.</span><span style="color:#B392F0">createBox</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">// 设置材质为不透明</span></span>
+<span class="line"><span style="color:#F97583">const</span><span style="color:#79B8FF"> opaqueMaterial</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> cc.Material.</span><span style="color:#B392F0">create</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">opaqueMaterial.</span><span style="color:#B392F0">initialize</span><span style="color:#E1E4E8">({</span></span>
+<span class="line"><span style="color:#E1E4E8">    effectName: </span><span style="color:#9ECBFF">'builtin-unlit'</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">    technique: </span><span style="color:#9ECBFF">'opaque'</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">});</span></span>
+<span class="line"><span style="color:#E1E4E8">cube.</span><span style="color:#B392F0">setMaterial</span><span style="color:#E1E4E8">(opaqueMaterial, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span></code></pre>
 <p>因为我们 Demo 较为简单，因此最后生成的 StageInfo 只包含 Opaque Pass：</p>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2037.png" alt="">当然，在 Cocos 中也是支持自定义渲染管线，实际上就是自定义这个环节的 Passes，定义完之后可以直接应用在 Opaque、Shadowcast 和 Transparent 三个阶段之上：</p>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2038.png" alt=""></p>
@@ -349,7 +351,12 @@ cube.setMaterial(opaqueMaterial, 0);
 <li>若开启 Multisampling，则每个缓冲都应该有相同的样本数(sample)。</li>
 </ul>
 <p>因此需要使用 <code>glCheckFramebufferStatus</code> 对缓冲区的完整性做出检查：</p>
-<p><code>GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER); if (status != GL_FRAMEBUFFER_COMPLETE) {     // ...     // notify native: getInstance()->glErrorCallback(GL_ERROR, errMsg);     return; } </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#E1E4E8">GLenum status </span><span style="color:#F97583">=</span><span style="color:#B392F0"> glCheckFramebufferStatus</span><span style="color:#E1E4E8">(GL_FRAMEBUFFER);</span></span>
+<span class="line"><span style="color:#F97583">if</span><span style="color:#E1E4E8"> (status </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> GL_FRAMEBUFFER_COMPLETE) {</span></span>
+<span class="line"><span style="color:#6A737D">    // ...</span></span>
+<span class="line"><span style="color:#6A737D">    // notify native: getInstance()->glErrorCallback(GL_ERROR, errMsg);</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <h3 id="39-blend--test">3.9 Blend &#x26; Test</h3>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2054.png" alt="">接着依次进入执行 混合（Blend）、深度测试（Depth Test）、模版测试（Stencil Test）。</p>
 <p>首先是 Blend，顾名思义讲两个颜色进行混合。下图展示了混合方程的计算方式：</p>

@@ -112,7 +112,27 @@ encoding in HTTP/2.</p>
 </blockquote>
 <p>而如今大多数客户端与 HTTP 服务端都默认会把 HTTP Header 的名称字段统一改成小写，避免使用方再重复做大小写转换的处理逻辑。</p>
 <p>比如 NodeJS 中的 HTTP 模块就会自动将 Header 字段改成小写 <a href="https://github.com/nodejs/node/blob/main/lib/_http_outgoing.js#L187">node/_http_outgoing.js at main · nodejs/node · GitHub</a>：</p>
-<p><code>// lib/_http_outgoing.js ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {   __proto__: null,   get: internalUtil.deprecate(function() {     return this.getHeaders();   }, 'OutgoingMessage.prototype._headers is deprecated', 'DEP0066'),   set: internalUtil.deprecate(function(val) {     if (val == null) {       this[kOutHeaders] = null;     } else if (typeof val === 'object') {       const headers = this[kOutHeaders] = ObjectCreate(null);       const keys = ObjectKeys(val);       // Retain for(;;) loop for performance reasons       // Refs: https://github.com/nodejs/node/pull/30958       for (let i = 0; i &#x3C; keys.length; ++i) {         const name = keys[i];         headers[StringPrototypeToLowerCase(name)] = [name, val[name]];       }     }   }, 'OutgoingMessage.prototype._headers is deprecated', 'DEP0066') }); </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#6A737D">// lib/_http_outgoing.js</span></span>
+<span class="line"><span style="color:#B392F0">ObjectDefineProperty</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">OutgoingMessage</span><span style="color:#E1E4E8">.</span><span style="color:#79B8FF">prototype</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">'_headers'</span><span style="color:#E1E4E8">, {</span></span>
+<span class="line"><span style="color:#E1E4E8">  __proto__: </span><span style="color:#79B8FF">null</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">  get: internalUtil.</span><span style="color:#B392F0">deprecate</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">function</span><span style="color:#E1E4E8">() {</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#79B8FF"> this</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">getHeaders</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">  }, </span><span style="color:#9ECBFF">'OutgoingMessage.prototype._headers is deprecated'</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">'DEP0066'</span><span style="color:#E1E4E8">),</span></span>
+<span class="line"><span style="color:#E1E4E8">  set: internalUtil.</span><span style="color:#B392F0">deprecate</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">function</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">val</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (val </span><span style="color:#F97583">==</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#79B8FF">      this</span><span style="color:#E1E4E8">[kOutHeaders] </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> null</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">else</span><span style="color:#F97583"> if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">typeof</span><span style="color:#E1E4E8"> val </span><span style="color:#F97583">===</span><span style="color:#9ECBFF"> 'object'</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> headers</span><span style="color:#F97583"> =</span><span style="color:#79B8FF"> this</span><span style="color:#E1E4E8">[kOutHeaders] </span><span style="color:#F97583">=</span><span style="color:#B392F0"> ObjectCreate</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">null</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> keys</span><span style="color:#F97583"> =</span><span style="color:#B392F0"> ObjectKeys</span><span style="color:#E1E4E8">(val);</span></span>
+<span class="line"><span style="color:#6A737D">      // Retain for(;;) loop for performance reasons</span></span>
+<span class="line"><span style="color:#6A737D">      // Refs: https://github.com/nodejs/node/pull/30958</span></span>
+<span class="line"><span style="color:#F97583">      for</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">let</span><span style="color:#E1E4E8"> i </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">; i </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> keys.</span><span style="color:#79B8FF">length</span><span style="color:#E1E4E8">; </span><span style="color:#F97583">++</span><span style="color:#E1E4E8">i) {</span></span>
+<span class="line"><span style="color:#F97583">        const</span><span style="color:#79B8FF"> name</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> keys[i];</span></span>
+<span class="line"><span style="color:#E1E4E8">        headers[</span><span style="color:#B392F0">StringPrototypeToLowerCase</span><span style="color:#E1E4E8">(name)] </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> [name, val[name]];</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  }, </span><span style="color:#9ECBFF">'OutgoingMessage.prototype._headers is deprecated'</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">'DEP0066'</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">});</span></span></code></pre>
 <blockquote>
 <p>PS. 在写这篇文章的时候，发现 NodeJS 的这部分文档有处错误，示例中的获取 headers 存在大写字母，于是顺手提了个 PR，现已经合入了。<a href="https://github.com/nodejs/node/pull/43933/">doc: fix typo in http.md by airingursb · Pull Request #43933 · nodejs/node · GitHub</a></p>
 </blockquote>
@@ -124,7 +144,10 @@ encoding in HTTP/2.</p>
 <p>源码可见：<a href="https://docs.rs/crate/http/0.1.3/source/src/header/name.rs">src/headers/name.rs - http 0.1.3 - Docs.rs</a></p>
 <p>作为前端开发，会更加关注 Chromium 和 WebKit 对这块的处理。</p>
 <p>对于请求头而言，我们在 Chrome 中做个实验：</p>
-<p><code>var ajax = new XMLHttpRequest(); ajax.open("GET", "https://y.qq.com/lib/interaction/h5/interaction-component-1.2.min.js"); ajax.setRequestHeader("X-test", "AA"); ajax.send(); </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#F97583">var</span><span style="color:#E1E4E8"> ajax </span><span style="color:#F97583">=</span><span style="color:#F97583"> new</span><span style="color:#B392F0"> XMLHttpRequest</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">ajax.</span><span style="color:#B392F0">open</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"GET"</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"https://y.qq.com/lib/interaction/h5/interaction-component-1.2.min.js"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">ajax.</span><span style="color:#B392F0">setRequestHeader</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"X-test"</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"AA"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">ajax.</span><span style="color:#B392F0">send</span><span style="color:#E1E4E8">();</span></span></code></pre>
 <p>对于 HTTP2 的请求，抓包之后可以发现，这里的 <code>X-test</code> 被改写成了小写 <code>x-test</code>：</p>
 <p><img src="https://airing.ursb.me/image/blog/20220723154829@2x.png" alt="">为了严谨起见，这里又使用了 Chrome 自带的 netlog-viewer 去抓包查看，这里的请求头确实是被转成小写了没有问题：</p>
 <p><img src="https://airing.ursb.me/image/blog/20220724104811@2x.png" alt="">> 注：以上测试在 Safari 中也会得到同样的结果，但是必须要抓包看，如果只是在 Safari 的控制台看，它展示大小写是有问题的，而 Chrome 的 Devtools 则没有问题。这里猜测是 Safari 的 Bug。</p>
@@ -132,36 +155,53 @@ encoding in HTTP/2.</p>
 <p>我也去查 XMLHTTPRequest 的标准，<a href="https://xhr.spec.whatwg.org/#the-setrequestheader()-method">XMLHttpRequest Standard</a> 中也没有提到需要将 header 字段名改成小写。</p>
 <p>甚至在 XHR 标准中也曾有人建议过直接在 XHR 把 Header 字段名转成小写（<a href="https://github.com/whatwg/xhr/issues/34">Should XHR store and send HTTP header names in lower case? · Issue #34 · whatwg/xhr · GitHub</a>），但是被拒绝了。</p>
 <p>按照规范 HTTP2 的 Header 名都需要转成小写，但我找了个 HTTP1.1 的站点测试了一下：</p>
-<p><code>var ajax = new XMLHttpRequest(); ajax.open("get", "http://www.cn1t.com/airing.js"); ajax.setRequestHeader("X-test", "AA"); ajax.send(); </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#F97583">var</span><span style="color:#E1E4E8"> ajax </span><span style="color:#F97583">=</span><span style="color:#F97583"> new</span><span style="color:#B392F0"> XMLHttpRequest</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">ajax.</span><span style="color:#B392F0">open</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"get"</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"http://www.cn1t.com/airing.js"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">ajax.</span><span style="color:#B392F0">setRequestHeader</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"X-test"</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"AA"</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">ajax.</span><span style="color:#B392F0">send</span><span style="color:#E1E4E8">();</span></span></code></pre>
 <p>发现这里的 Header 字段名则并不会转成小写：</p>
 <p><img src="https://airing.ursb.me/image/blog/20220724092209@2x.png" alt="">可以得知，请求头的字段名大小写转换不是 XMLHTTPRequest 做的事情，而是底层网络库的逻辑。</p>
 <blockquote>
 <p>PS. 我这里 Debug 了许久，没有找到更底层具体是哪里转成了小写，若有知晓的同学可以直接评论告知，万分感谢。</p>
 </blockquote>
 <p>而响应头中的字段名则不一样了。如果你使用 XMLHTTPRequest 的 <code>getAllResponseHeaders</code> 等方法去获取响应头，Blink 会将 Header 的名称字段改成小写：</p>
-<p><code>String XMLHttpRequest::getAllResponseHeaders() const {   // ...   for (const auto&#x26; header : headers) {     string_builder.Append(header.first.LowerASCII());     string_builder.Append(':');     string_builder.Append(' ');     string_builder.Append(header.second);     string_builder.Append('\r');     string_builder.Append('\n');   }   // ... } </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">String</span><span style="color:#B392F0"> XMLHttpRequest</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">getAllResponseHeaders</span><span style="color:#E1E4E8">() </span><span style="color:#F97583">const</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6A737D">  // ...</span></span>
+<span class="line"><span style="color:#F97583">  for</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">const</span><span style="color:#F97583"> auto&#x26;</span><span style="color:#E1E4E8"> header : headers) {</span></span>
+<span class="line"><span style="color:#E1E4E8">    string_builder.</span><span style="color:#B392F0">Append</span><span style="color:#E1E4E8">(header.first.</span><span style="color:#B392F0">LowerASCII</span><span style="color:#E1E4E8">());</span></span>
+<span class="line"><span style="color:#E1E4E8">    string_builder.</span><span style="color:#B392F0">Append</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">':'</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">    string_builder.</span><span style="color:#B392F0">Append</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">' '</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">    string_builder.</span><span style="color:#B392F0">Append</span><span style="color:#E1E4E8">(header.second);</span></span>
+<span class="line"><span style="color:#E1E4E8">    string_builder.</span><span style="color:#B392F0">Append</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'</span><span style="color:#79B8FF">\r</span><span style="color:#9ECBFF">'</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">    string_builder.</span><span style="color:#B392F0">Append</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'</span><span style="color:#79B8FF">\n</span><span style="color:#9ECBFF">'</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#6A737D">  // ...</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>此外，Chromium 在解析网络响应包的时候，如果走 HTTP2 协议，发现了 Header 字段名有大写字母，会直接导致网络包解析失败：</p>
-<p>`absl::optional<parsedheaders> ConvertCBORValueToHeaders(
-const cbor::Value&#x26; headers_value) {
-// |headers_value| of headers must be a map.
-if (!headers_value.is_map())
-return absl::nullopt;</parsedheaders></p>
-<p>ParsedHeaders result;</p>
-<p>for (const auto&#x26; item : headers_value.GetMap()) {
-if (!item.first.is_bytestring() || !item.second.is_bytestring())
-return absl::nullopt;
-base::StringPiece name = item.first.GetBytestringAsString();
-base::StringPiece value = item.second.GetBytestringAsString();</p>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// If name contains any upper-case or non-ASCII characters, return an error.</span></span>
-<span class="line"><span>// This matches the requirement in Section 8.1.2 of [RFC7540].</span></span>
-<span class="line"><span>if (!base::IsStringASCII(name) ||</span></span>
-<span class="line"><span>    std::any_of(name.begin(), name.end(), base::IsAsciiUpper&#x3C;char>))</span></span>
-<span class="line"><span>  return absl::nullopt;</span></span></code></pre>
-<p>// …other
-}</p>
-<p>return result;
-}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">absl</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">optional</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#B392F0">ParsedHeaders</span><span style="color:#E1E4E8">> </span><span style="color:#B392F0">ConvertCBORValueToHeaders</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#B392F0"> cbor</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">Value</span><span style="color:#F97583">&#x26;</span><span style="color:#FFAB70"> headers_value</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#6A737D">  // |headers_value| of headers must be a map.</span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">headers_value.</span><span style="color:#B392F0">is_map</span><span style="color:#E1E4E8">())</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#B392F0"> absl</span><span style="color:#E1E4E8">::nullopt;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">  ParsedHeaders result;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  for</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">const</span><span style="color:#F97583"> auto&#x26;</span><span style="color:#E1E4E8"> item : headers_value.</span><span style="color:#B392F0">GetMap</span><span style="color:#E1E4E8">()) {</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">item.first.</span><span style="color:#B392F0">is_bytestring</span><span style="color:#E1E4E8">() </span><span style="color:#F97583">||</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">item.second.</span><span style="color:#B392F0">is_bytestring</span><span style="color:#E1E4E8">())</span></span>
+<span class="line"><span style="color:#F97583">      return</span><span style="color:#B392F0"> absl</span><span style="color:#E1E4E8">::nullopt;</span></span>
+<span class="line"><span style="color:#B392F0">    base</span><span style="color:#E1E4E8">::StringPiece name </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> item.first.</span><span style="color:#B392F0">GetBytestringAsString</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#B392F0">    base</span><span style="color:#E1E4E8">::StringPiece value </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> item.second.</span><span style="color:#B392F0">GetBytestringAsString</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">    // If name contains any upper-case or non-ASCII characters, return an error.</span></span>
+<span class="line"><span style="color:#6A737D">    // This matches the requirement in Section 8.1.2 of [RFC7540].</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">base</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">IsStringASCII</span><span style="color:#E1E4E8">(name) </span><span style="color:#F97583">||</span></span>
+<span class="line"><span style="color:#B392F0">        std</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">any_of</span><span style="color:#E1E4E8">(name.</span><span style="color:#B392F0">begin</span><span style="color:#E1E4E8">(), name.</span><span style="color:#B392F0">end</span><span style="color:#E1E4E8">(), </span><span style="color:#B392F0">base</span><span style="color:#E1E4E8">::IsAsciiUpper</span><span style="color:#F97583">&#x3C;char></span><span style="color:#E1E4E8">))</span></span>
+<span class="line"><span style="color:#F97583">      return</span><span style="color:#B392F0"> absl</span><span style="color:#E1E4E8">::nullopt;</span></span>
+<span class="line"><span style="color:#6A737D">// ...other</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#E1E4E8"> result;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <h2 id="http-method-区分大小写吗">HTTP Method 区分大小写吗？</h2>
 <p>根据规范 <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-3.1.1">RFC 7230 - Hypertext Transfer Protocol (HTTP/1.1)#section-3.1.1</a>：</p>
 <blockquote>
@@ -169,32 +209,33 @@ base::StringPiece value = item.second.GetBytestringAsString();</p>
 </blockquote>
 <p><strong>HTTP Method 是区分大小写的，并且全部为大写。</strong></p>
 <p>但其实如果你的 XMLHttpRequest 实例传入小写的 Method 也是没有关系的（如调用 <code>ajax.open("get", "https://ursb.me")</code>），Blink 等浏览器内核会将其规范化改成大写 <a href="https://chromium.googlesource.com/chromium/blink/+/master/Source/core/xmlhttprequest/XMLHttpRequest.cpp#618">Source/core/xmlhttprequest/XMLHttpRequest.cpp - chromium/blink - Git at Google</a>：</p>
-<p>`void XMLHttpRequest::open(const AtomicString&#x26; method,
-const KURL&#x26; url,
-bool async,
-ExceptionState&#x26; exception_state) {
-//…
-method_ = FetchUtils::NormalizeMethod(method);
-// …</p>
-<p>}
-`</p>
-<p>`AtomicString FetchUtils::NormalizeMethod(const AtomicString&#x26; method) {
-// <a href="https://fetch.spec.whatwg.org/#concept-method-normalize">https://fetch.spec.whatwg.org/#concept-method-normalize</a></p>
-<p>// We place GET and POST first because they are more commonly used than
-// others.
-const char* const kMethods[] = {
-“GET”, “POST”, “DELETE”, “HEAD”, “OPTIONS”, “PUT”,
-};</p>
-<p>for (auto* const known : kMethods) {
-if (EqualIgnoringASCIICase(method, known)) {
-// Don’t bother allocating a new string if it’s already all
-// uppercase.
-return method == known ? method : known;
-}
-}
-return method;
-}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#F97583">void</span><span style="color:#B392F0"> XMLHttpRequest</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">open</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#B392F0"> AtomicString</span><span style="color:#F97583">&#x26;</span><span style="color:#FFAB70"> method</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">                          const</span><span style="color:#B392F0"> KURL</span><span style="color:#F97583">&#x26;</span><span style="color:#FFAB70"> url</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">                          bool</span><span style="color:#FFAB70"> async</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#B392F0">                          ExceptionState</span><span style="color:#F97583">&#x26;</span><span style="color:#FFAB70"> exception_state</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#6A737D">  //...</span></span>
+<span class="line"><span style="color:#E1E4E8">  method_ </span><span style="color:#F97583">=</span><span style="color:#B392F0"> FetchUtils</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">NormalizeMethod</span><span style="color:#E1E4E8">(method);</span></span>
+<span class="line"><span style="color:#6A737D">  // ...</span></span>
+<span class="line"><span style="color:#E1E4E8">  </span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">AtomicString</span><span style="color:#B392F0"> FetchUtils</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">NormalizeMethod</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#B392F0"> AtomicString</span><span style="color:#F97583">&#x26;</span><span style="color:#FFAB70"> method</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#6A737D">  // https://fetch.spec.whatwg.org/#concept-method-normalize</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  // We place GET and POST first because they are more commonly used than</span></span>
+<span class="line"><span style="color:#6A737D">  // others.</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#F97583"> char*</span><span style="color:#F97583"> const</span><span style="color:#E1E4E8"> kMethods[] </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#9ECBFF">      "GET"</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"POST"</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"DELETE"</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"HEAD"</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"OPTIONS"</span><span style="color:#E1E4E8">, </span><span style="color:#9ECBFF">"PUT"</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">  };</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  for</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">auto*</span><span style="color:#F97583"> const</span><span style="color:#E1E4E8"> known : kMethods) {</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">EqualIgnoringASCIICase</span><span style="color:#E1E4E8">(method, known)) {</span></span>
+<span class="line"><span style="color:#6A737D">      // Don't bother allocating a new string if it's already all</span></span>
+<span class="line"><span style="color:#6A737D">      // uppercase.</span></span>
+<span class="line"><span style="color:#F97583">      return</span><span style="color:#E1E4E8"> method </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> known </span><span style="color:#F97583">?</span><span style="color:#E1E4E8"> method </span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> known;</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#E1E4E8"> method;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <h2 id="url-区分大小写吗">URL 区分大小写吗？</h2>
 <p>根据规范 <a href="https://datatracker.ietf.org/doc/html/rfc7230#section-2.7.3">RFC 7230 - Hypertext Transfer Protocol (HTTP/1.1)#section-2.7.3</a> 中的描述：</p>
 <blockquote>

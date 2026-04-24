@@ -205,18 +205,19 @@
 <p>To make this concrete, I prepared a minimal Cocos game demo. Here’s the scene:</p>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2012.png" alt=""></p>
 <p>And here’s the main scene code:</p>
-<p>`const { ccclass } = cc._decorator;</p>
-<p>@ccclass
-export default class Helloworld extends cc.Component {</p>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>protected onLoad(): void {</span></span>
-<span class="line"><span>    console.log('onLoad');</span></span>
-<span class="line"><span>}</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>start () {</span></span>
-<span class="line"><span>    console.log('Hello World');</span></span>
-<span class="line"><span>}</span></span></code></pre>
-<p>}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#F97583">const</span><span style="color:#E1E4E8"> { </span><span style="color:#79B8FF">ccclass</span><span style="color:#E1E4E8"> } </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> cc._decorator;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">@ccclass</span></span>
+<span class="line"><span style="color:#F97583">export</span><span style="color:#F97583"> default</span><span style="color:#F97583"> class</span><span style="color:#B392F0"> Helloworld</span><span style="color:#F97583"> extends</span><span style="color:#B392F0"> cc</span><span style="color:#E1E4E8">.</span><span style="color:#B392F0">Component</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    protected</span><span style="color:#B392F0"> onLoad</span><span style="color:#E1E4E8">()</span><span style="color:#F97583">:</span><span style="color:#79B8FF"> void</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">        console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'onLoad'</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">    start</span><span style="color:#E1E4E8"> () {</span></span>
+<span class="line"><span style="color:#E1E4E8">        console.</span><span style="color:#B392F0">log</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">'Hello World'</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <h3 id="31-load-assets">3.1 Load Assets</h3>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2013.png" alt="">First comes asset loading. As mentioned earlier, game assets split into static assets and script assets. Since static asset loading involves a lot of complexity, this section covers only script asset loading.</p>
 <p>There are three types of script assets:</p>
@@ -276,7 +277,8 @@ export default class Helloworld extends cc.Component {</p>
 <li><code>setViewport</code> calls <code>glViewport</code> to set the viewport, determining the mapping area of the final render onto the screen.</li>
 <li><code>setup clear</code> sequentially calls <code>glClearColor</code>, <code>glClearDepth</code>, and <code>glClearStencil</code> to initialize clear values for the color, depth, and stencil buffers, providing a clean initial state for each frame.</li>
 </ul>
-<p><code>unsigned int fbo; glGenFramebuffers(1, &#x26;fbo); </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#F97583">unsigned</span><span style="color:#F97583"> int</span><span style="color:#E1E4E8"> fbo;</span></span>
+<span class="line"><span style="color:#B392F0">glGenFramebuffers</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">fbo);</span></span></code></pre>
 <p>Next, the game engine converts each Model in the Scene into a one-to-one DrawItem. A DrawItem’s data structure:</p>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2034.png" alt=""></p>
 <p>Finally, the engine assembles these DrawItems into a DrawItems queue for subsequent processing:</p>
@@ -290,17 +292,17 @@ export default class Helloworld extends cc.Component {</p>
 </ul>
 <p>By distributing DrawItems into different Passes based on object characteristics, the pipeline can apply effects in a targeted way.</p>
 <p>On the business side, you can create a specific Material in code and the pipeline will route it to the corresponding pass:</p>
-<p>`// Create a cube mesh
-const cube = new cc.MeshRenderer();
-cube.mesh = cc.GizmoMesh.createBox(1, 1, 1);</p>
-<p>// Set material to opaque
-const opaqueMaterial = cc.Material.create();
-opaqueMaterial.initialize({
-effectName: ‘builtin-unlit’,
-technique: ‘opaque’,
-});
-cube.setMaterial(opaqueMaterial, 0);
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#6A737D">// Create a cube mesh</span></span>
+<span class="line"><span style="color:#F97583">const</span><span style="color:#79B8FF"> cube</span><span style="color:#F97583"> =</span><span style="color:#F97583"> new</span><span style="color:#E1E4E8"> cc.</span><span style="color:#B392F0">MeshRenderer</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">cube.mesh </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> cc.GizmoMesh.</span><span style="color:#B392F0">createBox</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">// Set material to opaque</span></span>
+<span class="line"><span style="color:#F97583">const</span><span style="color:#79B8FF"> opaqueMaterial</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> cc.Material.</span><span style="color:#B392F0">create</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">opaqueMaterial.</span><span style="color:#B392F0">initialize</span><span style="color:#E1E4E8">({</span></span>
+<span class="line"><span style="color:#E1E4E8">    effectName: </span><span style="color:#9ECBFF">'builtin-unlit'</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">    technique: </span><span style="color:#9ECBFF">'opaque'</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#E1E4E8">});</span></span>
+<span class="line"><span style="color:#E1E4E8">cube.</span><span style="color:#B392F0">setMaterial</span><span style="color:#E1E4E8">(opaqueMaterial, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span></code></pre>
 <p>Because our demo is simple, the final StageInfo only includes the Opaque Pass:</p>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2037.png" alt=""></p>
 <p>Cocos also supports custom render pipelines — essentially customizing the Passes in this stage. Once defined, they can be applied directly across the Opaque, Shadowcast, and Transparent stages:</p>
@@ -385,7 +387,12 @@ cube.setMaterial(opaqueMaterial, 0);
 <li>If Multisampling is enabled, all buffers must have the same sample count.</li>
 </ul>
 <p>Therefore, use <code>glCheckFramebufferStatus</code> to verify completeness:</p>
-<p><code>GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER); if (status != GL_FRAMEBUFFER_COMPLETE) {     // ...     // notify native: getInstance()->glErrorCallback(GL_ERROR, errMsg);     return; } </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#E1E4E8">GLenum status </span><span style="color:#F97583">=</span><span style="color:#B392F0"> glCheckFramebufferStatus</span><span style="color:#E1E4E8">(GL_FRAMEBUFFER);</span></span>
+<span class="line"><span style="color:#F97583">if</span><span style="color:#E1E4E8"> (status </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> GL_FRAMEBUFFER_COMPLETE) {</span></span>
+<span class="line"><span style="color:#6A737D">    // ...</span></span>
+<span class="line"><span style="color:#6A737D">    // notify native: getInstance()->glErrorCallback(GL_ERROR, errMsg);</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <h3 id="39-blend--test">3.9 Blend &#x26; Test</h3>
 <p><img src="https://airing.ursb.me/images/blog/game-engine/image%2054.png" alt="">Next comes Blend, Depth Test, and Stencil Test in sequence.</p>
 <p>First, <strong>Blend</strong> — literally blending two colors together. The diagram below shows how the blend equation works:</p>

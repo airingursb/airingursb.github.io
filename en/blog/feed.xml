@@ -745,19 +745,20 @@
 &lt;p&gt;To make this concrete, I prepared a minimal Cocos game demo. Here&apos;s the scene:&lt;/p&gt;
 &lt;p&gt;&lt;img src=&quot;https://airing.ursb.me/images/blog/game-engine/image%2012.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 &lt;p&gt;And here&apos;s the main scene code:&lt;/p&gt;
-&lt;p&gt;`const { ccclass } = cc._decorator;&lt;/p&gt;
-&lt;p&gt;@ccclass
-export default class Helloworld extends cc.Component {&lt;/p&gt;
-&lt;pre&gt;&lt;code&gt;protected onLoad(): void {
-    console.log(&apos;onLoad&apos;);
-}
+&lt;pre&gt;&lt;code&gt;const { ccclass } = cc._decorator;
 
-start () {
-    console.log(&apos;Hello World&apos;);
+@ccclass
+export default class Helloworld extends cc.Component {
+
+    protected onLoad(): void {
+        console.log(&apos;onLoad&apos;);
+    }
+
+    start () {
+        console.log(&apos;Hello World&apos;);
+    }
 }
 &lt;/code&gt;&lt;/pre&gt;
-&lt;p&gt;}
-`&lt;/p&gt;
 &lt;h3&gt;3.1 Load Assets&lt;/h3&gt;
 &lt;p&gt;&lt;img src=&quot;https://airing.ursb.me/images/blog/game-engine/image%2013.png&quot; alt=&quot;&quot; /&gt;First comes asset loading. As mentioned earlier, game assets split into static assets and script assets. Since static asset loading involves a lot of complexity, this section covers only script asset loading.&lt;/p&gt;
 &lt;p&gt;There are three types of script assets:&lt;/p&gt;
@@ -817,7 +818,9 @@ start () {
 &lt;li&gt;&lt;code&gt;setViewport&lt;/code&gt; calls &lt;code&gt;glViewport&lt;/code&gt; to set the viewport, determining the mapping area of the final render onto the screen.&lt;/li&gt;
 &lt;li&gt;&lt;code&gt;setup clear&lt;/code&gt; sequentially calls &lt;code&gt;glClearColor&lt;/code&gt;, &lt;code&gt;glClearDepth&lt;/code&gt;, and &lt;code&gt;glClearStencil&lt;/code&gt; to initialize clear values for the color, depth, and stencil buffers, providing a clean initial state for each frame.&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p&gt;&lt;code&gt;unsigned int fbo; glGenFramebuffers(1, &amp;amp;fbo); &lt;/code&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;unsigned int fbo;
+glGenFramebuffers(1, &amp;amp;fbo);
+&lt;/code&gt;&lt;/pre&gt;
 &lt;p&gt;Next, the game engine converts each Model in the Scene into a one-to-one DrawItem. A DrawItem&apos;s data structure:&lt;/p&gt;
 &lt;p&gt;&lt;img src=&quot;https://airing.ursb.me/images/blog/game-engine/image%2034.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 &lt;p&gt;Finally, the engine assembles these DrawItems into a DrawItems queue for subsequent processing:&lt;/p&gt;
@@ -831,17 +834,18 @@ start () {
 &lt;/ul&gt;
 &lt;p&gt;By distributing DrawItems into different Passes based on object characteristics, the pipeline can apply effects in a targeted way.&lt;/p&gt;
 &lt;p&gt;On the business side, you can create a specific Material in code and the pipeline will route it to the corresponding pass:&lt;/p&gt;
-&lt;p&gt;`// Create a cube mesh
+&lt;pre&gt;&lt;code&gt;// Create a cube mesh
 const cube = new cc.MeshRenderer();
-cube.mesh = cc.GizmoMesh.createBox(1, 1, 1);&lt;/p&gt;
-&lt;p&gt;// Set material to opaque
+cube.mesh = cc.GizmoMesh.createBox(1, 1, 1);
+
+// Set material to opaque
 const opaqueMaterial = cc.Material.create();
 opaqueMaterial.initialize({
-effectName: &apos;builtin-unlit&apos;,
-technique: &apos;opaque&apos;,
+    effectName: &apos;builtin-unlit&apos;,
+    technique: &apos;opaque&apos;,
 });
 cube.setMaterial(opaqueMaterial, 0);
-`&lt;/p&gt;
+&lt;/code&gt;&lt;/pre&gt;
 &lt;p&gt;Because our demo is simple, the final StageInfo only includes the Opaque Pass:&lt;/p&gt;
 &lt;p&gt;&lt;img src=&quot;https://airing.ursb.me/images/blog/game-engine/image%2037.png&quot; alt=&quot;&quot; /&gt;&lt;/p&gt;
 &lt;p&gt;Cocos also supports custom render pipelines — essentially customizing the Passes in this stage. Once defined, they can be applied directly across the Opaque, Shadowcast, and Transparent stages:&lt;/p&gt;
@@ -926,7 +930,13 @@ cube.setMaterial(opaqueMaterial, 0);
 &lt;li&gt;If Multisampling is enabled, all buffers must have the same sample count.&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;Therefore, use &lt;code&gt;glCheckFramebufferStatus&lt;/code&gt; to verify completeness:&lt;/p&gt;
-&lt;p&gt;&lt;code&gt;GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER); if (status != GL_FRAMEBUFFER_COMPLETE) {     // ...     // notify native: getInstance()-&amp;gt;glErrorCallback(GL_ERROR, errMsg);     return; } &lt;/code&gt;&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+if (status != GL_FRAMEBUFFER_COMPLETE) {
+    // ...
+    // notify native: getInstance()-&amp;gt;glErrorCallback(GL_ERROR, errMsg);
+    return;
+}
+&lt;/code&gt;&lt;/pre&gt;
 &lt;h3&gt;3.9 Blend &amp;amp; Test&lt;/h3&gt;
 &lt;p&gt;&lt;img src=&quot;https://airing.ursb.me/images/blog/game-engine/image%2054.png&quot; alt=&quot;&quot; /&gt;Next comes Blend, Depth Test, and Stencil Test in sequence.&lt;/p&gt;
 &lt;p&gt;First, &lt;strong&gt;Blend&lt;/strong&gt; — literally blending two colors together. The diagram below shows how the blend equation works:&lt;/p&gt;

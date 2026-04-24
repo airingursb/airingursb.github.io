@@ -119,12 +119,13 @@
 <p><img src="https://airing.ursb.me/image/blog/media/20220503/Pasted%20image%2020220503111054.png" alt=""></p>
 <h3 id="11-parseint-in-v8">1.1 parseInt() in V8</h3>
 <p>In V8’s [→ src/init/bootstrapper.cc], built-in JS language objects are registered. Here’s the <code>parseInt</code> registration:</p>
-<p>`Handle<jsfunction> number_fun = InstallFunction(isolate_, global, “Number”, JS_PRIMITIVE_WRAPPER_TYPE, JSPrimitiveWrapper::kHeaderSize, 0, isolate_->initial_object_prototype(), Builtin::kNumberConstructor);</jsfunction></p>
-<p>// Install Number.parseInt and Global.parseInt.
-Handle<jsfunction> parse_int_fun = SimpleInstallFunction(isolate_, number_fun, “parseInt”, Builtin::kNumberParseInt, 2, true);</jsfunction></p>
-<p>JSObject::AddProperty(isolate_, global_object, “parseInt”, parse_int_fun,
-native_context()->set_global_parse_int_fun(*parse_int_fun);
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#E1E4E8">Handle</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">JSFunction</span><span style="color:#F97583">></span><span style="color:#E1E4E8"> number_fun </span><span style="color:#F97583">=</span><span style="color:#B392F0"> InstallFunction</span><span style="color:#E1E4E8">(isolate_, global, </span><span style="color:#9ECBFF">"Number"</span><span style="color:#E1E4E8">, JS_PRIMITIVE_WRAPPER_TYPE, </span><span style="color:#B392F0">JSPrimitiveWrapper</span><span style="color:#E1E4E8">::kHeaderSize, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">, isolate_-></span><span style="color:#B392F0">initial_object_prototype</span><span style="color:#E1E4E8">(), </span><span style="color:#B392F0">Builtin</span><span style="color:#E1E4E8">::kNumberConstructor);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">// Install Number.parseInt and Global.parseInt.</span></span>
+<span class="line"><span style="color:#E1E4E8">Handle</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">JSFunction</span><span style="color:#F97583">></span><span style="color:#E1E4E8"> parse_int_fun </span><span style="color:#F97583">=</span><span style="color:#B392F0"> SimpleInstallFunction</span><span style="color:#E1E4E8">(isolate_, number_fun, </span><span style="color:#9ECBFF">"parseInt"</span><span style="color:#E1E4E8">, </span><span style="color:#B392F0">Builtin</span><span style="color:#E1E4E8">::kNumberParseInt, </span><span style="color:#79B8FF">2</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">true</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">JSObject</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">AddProperty</span><span style="color:#E1E4E8">(isolate_, global_object, </span><span style="color:#9ECBFF">"parseInt"</span><span style="color:#E1E4E8">, parse_int_fun,</span></span>
+<span class="line"><span style="color:#B392F0"> native_context</span><span style="color:#E1E4E8">()-></span><span style="color:#B392F0">set_global_parse_int_fun</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">parse_int_fun);</span></span></code></pre>
 <p>Both <code>Number.parseInt</code> and the global <code>parseInt</code> are registered via <code>SimpleInstallFunction</code>, binding the API to a Builtin. When JS calls <code>parseInt</code>, the engine calls <code>Builtin::kNumberParseInt</code>.</p>
 <p>Builtins in V8 are code blocks executable at VM runtime. V8 currently supports five implementation types:</p>
 <ul>
@@ -135,60 +136,61 @@ native_context()->set_global_parse_int_fun(*parse_int_fun);
 <li><strong>Torque</strong>: an improved version of CodeStubAssembler with TypeScript-like syntax. Easier to write without sacrificing performance. Many modern builtins use Torque.</li>
 </ul>
 <p>The function <code>Builtin::kNumberParseInt</code> maps to <code>NumberParseInt</code>, implemented in Torque at [→ src/builtins/number.tq]:</p>
-<p>`// ES6 #sec-number.parseint
-transitioning javascript builtin NumberParseInt(
-js-implicit context: NativeContext)(value: JSAny, radix: JSAny): Number {
-return ParseInt(value, radix);
-}</p>
-<p>transitioning builtin ParseInt(implicit context: Context)(
-input: JSAny, radix: JSAny): Number {
-try {
-// Check if radix should be 10 (i.e. undefined, 0 or 10).
-if (radix != Undefined &#x26;&#x26; !TaggedEqual(radix, SmiConstant(10)) &#x26;&#x26;
-!TaggedEqual(radix, SmiConstant(0))) {
-goto CallRuntime;
-}</p>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>typeswitch (input) {</span></span>
-<span class="line"><span>  case (s: Smi): {</span></span>
-<span class="line"><span>    return s;</span></span>
-<span class="line"><span>  }</span></span>
-<span class="line"><span>  case (h: HeapNumber): {</span></span>
-<span class="line"><span>    // Check if the input value is in Signed32 range.</span></span>
-<span class="line"><span>    const asFloat64: float64 = Convert&#x3C;float64>(h);</span></span>
-<span class="line"><span>    const asInt32: int32 = Signed(TruncateFloat64ToWord32(asFloat64));</span></span>
-<span class="line"><span>    // The sense of comparison is important for the NaN case.</span></span>
-<span class="line"><span>    if (asFloat64 == ChangeInt32ToFloat64(asInt32)) goto Int32(asInt32);</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>    // Check if the absolute value of input is in the [1,1&#x3C;&#x3C;31[ range.</span></span>
-<span class="line"><span>    const kMaxAbsValue: float64 = 2147483648.0;</span></span>
-<span class="line"><span>    const absInput: float64 = math::Float64Abs(asFloat64);</span></span>
-<span class="line"><span>    if (absInput &#x3C; kMaxAbsValue &#x26;&#x26; absInput >= 1.0) goto Int32(asInt32);</span></span>
-<span class="line"><span>    goto CallRuntime;</span></span>
-<span class="line"><span>  }</span></span>
-<span class="line"><span>  case (s: String): {</span></span>
-<span class="line"><span>    goto String(s);</span></span>
-<span class="line"><span>  }</span></span>
-<span class="line"><span>  case (HeapObject): {</span></span>
-<span class="line"><span>    goto CallRuntime;</span></span>
-<span class="line"><span>  }</span></span>
-<span class="line"><span>}</span></span></code></pre>
-<p>} label Int32(i: int32) {
-return ChangeInt32ToTagged(i);
-} label String(s: String) {
-// Check if the string is a cached array index.
-const hash: NameHash = s.raw_hash_field;
-if (IsIntegerIndex(hash) &#x26;&#x26;
-hash.array_index_length &#x3C; kMaxCachedArrayIndexLength) {
-const arrayIndex: uint32 = hash.array_index_value;
-return SmiFromUint32(arrayIndex);
-}
-// Fall back to the runtime.
-goto CallRuntime;
-} label CallRuntime {
-tail runtime::StringParseInt(input, radix);
-}
-}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#6A737D">// ES6 #sec-number.parseint</span></span>
+<span class="line"><span style="color:#E1E4E8">transitioning javascript builtin </span><span style="color:#B392F0">NumberParseInt</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#E1E4E8">    js</span><span style="color:#F97583">-</span><span style="color:#E1E4E8">implicit context: NativeContext)(value: JSAny, radix: JSAny): Number {</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#B392F0"> ParseInt</span><span style="color:#E1E4E8">(value, radix);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">transitioning builtin </span><span style="color:#B392F0">ParseInt</span><span style="color:#E1E4E8">(implicit context: Context)(</span></span>
+<span class="line"><span style="color:#E1E4E8">    input: JSAny, radix: JSAny): Number {</span></span>
+<span class="line"><span style="color:#F97583">  try</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6A737D">    // Check if radix should be 10 (i.e. undefined, 0 or 10).</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (radix </span><span style="color:#F97583">!=</span><span style="color:#E1E4E8"> Undefined </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#F97583"> !</span><span style="color:#B392F0">TaggedEqual</span><span style="color:#E1E4E8">(radix, </span><span style="color:#B392F0">SmiConstant</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">10</span><span style="color:#E1E4E8">)) </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#F97583">        !</span><span style="color:#B392F0">TaggedEqual</span><span style="color:#E1E4E8">(radix, </span><span style="color:#B392F0">SmiConstant</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">))) {</span></span>
+<span class="line"><span style="color:#F97583">      goto</span><span style="color:#B392F0"> CallRuntime</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B392F0">    typeswitch</span><span style="color:#E1E4E8"> (input) {</span></span>
+<span class="line"><span style="color:#F97583">      case</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">s</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Smi</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        return</span><span style="color:#FFAB70"> s</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#B392F0">      case</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">h</span><span style="color:#F97583">:</span><span style="color:#B392F0"> HeapNumber</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6A737D">        // Check if the input value is in Signed32 range.</span></span>
+<span class="line"><span style="color:#B392F0">        const</span><span style="color:#FFAB70"> asFloat64</span><span style="color:#F97583">:</span><span style="color:#B392F0"> float64</span><span style="color:#F97583"> =</span><span style="color:#B392F0"> Convert</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#B392F0">float64</span><span style="color:#E1E4E8">>(h);</span></span>
+<span class="line"><span style="color:#B392F0">        const</span><span style="color:#FFAB70"> asInt32</span><span style="color:#F97583">:</span><span style="color:#B392F0"> int32</span><span style="color:#F97583"> =</span><span style="color:#B392F0"> Signed</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">TruncateFloat64ToWord32</span><span style="color:#E1E4E8">(asFloat64));</span></span>
+<span class="line"><span style="color:#6A737D">        // The sense of comparison is important for the NaN case.</span></span>
+<span class="line"><span style="color:#B392F0">        if</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">asFloat64</span><span style="color:#E1E4E8"> == </span><span style="color:#FFAB70">ChangeInt32ToFloat64</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">asInt32</span><span style="color:#E1E4E8">)) goto </span><span style="color:#B392F0">Int32</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">asInt32</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">        // Check if the absolute value of input is in the [1,1&#x3C;&#x3C;31[ range.</span></span>
+<span class="line"><span style="color:#B392F0">        const</span><span style="color:#FFAB70"> kMaxAbsValue</span><span style="color:#F97583">:</span><span style="color:#B392F0"> float64</span><span style="color:#F97583"> =</span><span style="color:#79B8FF"> 2147483648.0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#B392F0">        const</span><span style="color:#FFAB70"> absInput</span><span style="color:#F97583">:</span><span style="color:#B392F0"> float64</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> math::</span><span style="color:#B392F0">Float64Abs</span><span style="color:#E1E4E8">(asFloat64);</span></span>
+<span class="line"><span style="color:#B392F0">        if</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">absInput</span><span style="color:#E1E4E8"> &#x3C; </span><span style="color:#FFAB70">kMaxAbsValue</span><span style="color:#E1E4E8"> &#x26;&#x26; </span><span style="color:#FFAB70">absInput</span><span style="color:#E1E4E8"> ></span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 1.0</span><span style="color:#E1E4E8">) goto </span><span style="color:#B392F0">Int32</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">asInt32</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">        goto</span><span style="color:#FFAB70"> CallRuntime</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#B392F0">      case</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">s</span><span style="color:#F97583">:</span><span style="color:#B392F0"> String</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        goto</span><span style="color:#B392F0"> String</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">s</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#B392F0">      case</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">HeapObject</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        goto</span><span style="color:#FFAB70"> CallRuntime</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  } </span><span style="color:#B392F0">label</span><span style="color:#B392F0"> Int32</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">i</span><span style="color:#F97583">:</span><span style="color:#B392F0"> int32</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#B392F0"> ChangeInt32ToTagged</span><span style="color:#E1E4E8">(i);</span></span>
+<span class="line"><span style="color:#E1E4E8">  } label </span><span style="color:#B392F0">String</span><span style="color:#E1E4E8">(s: String) {</span></span>
+<span class="line"><span style="color:#6A737D">    // Check if the string is a cached array index.</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> hash</span><span style="color:#F97583">:</span><span style="color:#B392F0"> NameHash</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> s.raw_hash_field;</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">IsIntegerIndex</span><span style="color:#E1E4E8">(hash) </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">        hash.array_index_length </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> kMaxCachedArrayIndexLength) {</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> arrayIndex</span><span style="color:#F97583">:</span><span style="color:#B392F0"> uint32</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> hash.array_index_value;</span></span>
+<span class="line"><span style="color:#F97583">      return</span><span style="color:#B392F0"> SmiFromUint32</span><span style="color:#E1E4E8">(arrayIndex);</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#6A737D">    // Fall back to the runtime.</span></span>
+<span class="line"><span style="color:#F97583">    goto</span><span style="color:#B392F0"> CallRuntime</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">  } label CallRuntime {</span></span>
+<span class="line"><span style="color:#E1E4E8">    tail </span><span style="color:#B392F0">runtime</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">StringParseInt</span><span style="color:#E1E4E8">(input, radix);</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>A quick intro to V8’s data structures (see [→ src/objects/objects.h] for all definitions):</p>
 <ul>
 <li><strong>Smi</strong>: inherits from Object; “small immediate integer,” only 31 bits</li>
@@ -207,81 +209,86 @@ tail runtime::StringParseInt(input, radix);
 </li>
 </ul>
 <p>The focus shifts to <code>runtime::StringParseInt</code> in [→ src/runtime/runtime-numbers.cc]:</p>
-<p>`// ES6 18.2.5 parseInt(string, radix) slow path
-RUNTIME_FUNCTION(Runtime_StringParseInt) {
-HandleScope handle_scope(isolate);
-DCHECK_EQ(2, args.length());
-Handle<object> string = args.at(0);
-Handle<object> radix = args.at(1);<p></p>
-<p>Handle<string> subject;
-ASSIGN_RETURN_FAILURE_ON_EXCEPTION(isolate, subject,
-Object::ToString(isolate, string));
-subject = String::Flatten(isolate, subject);</string></p>
-<p>if (!radix->IsNumber()) {
-ASSIGN_RETURN_FAILURE_ON_EXCEPTION(isolate, radix,
-Object::ToNumber(isolate, radix));
-}
-int radix32 = DoubleToInt32(radix->Number());
-if (radix32 != 0 &#x26;&#x26; (radix32 &#x3C; 2 || radix32 > 36)) {
-return ReadOnlyRoots(isolate).nan_value();
-}</p>
-<p>double result = StringToInt(isolate, subject, radix32);
-return *isolate->factory()->NewNumber(result);
-}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#6A737D">// ES6 18.2.5 parseInt(string, radix) slow path</span></span>
+<span class="line"><span style="color:#B392F0">RUNTIME_FUNCTION</span><span style="color:#E1E4E8">(Runtime_StringParseInt) {</span></span>
+<span class="line"><span style="color:#E1E4E8">  HandleScope </span><span style="color:#B392F0">handle_scope</span><span style="color:#E1E4E8">(isolate);</span></span>
+<span class="line"><span style="color:#B392F0">  DCHECK_EQ</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">2</span><span style="color:#E1E4E8">, args.</span><span style="color:#B392F0">length</span><span style="color:#E1E4E8">());</span></span>
+<span class="line"><span style="color:#E1E4E8">  Handle</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">Object</span><span style="color:#F97583">></span><span style="color:#E1E4E8"> string </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> args.</span><span style="color:#B392F0">at</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">  Handle</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">Object</span><span style="color:#F97583">></span><span style="color:#E1E4E8"> radix </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> args.</span><span style="color:#B392F0">at</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">  Handle</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">String</span><span style="color:#F97583">></span><span style="color:#E1E4E8"> subject;</span></span>
+<span class="line"><span style="color:#B392F0">  ASSIGN_RETURN_FAILURE_ON_EXCEPTION</span><span style="color:#E1E4E8">(isolate, subject,</span></span>
+<span class="line"><span style="color:#B392F0">                                     Object</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">ToString</span><span style="color:#E1E4E8">(isolate, string));</span></span>
+<span class="line"><span style="color:#E1E4E8">  subject </span><span style="color:#F97583">=</span><span style="color:#B392F0"> String</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">Flatten</span><span style="color:#E1E4E8">(isolate, subject);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">radix-></span><span style="color:#B392F0">IsNumber</span><span style="color:#E1E4E8">()) {</span></span>
+<span class="line"><span style="color:#B392F0">    ASSIGN_RETURN_FAILURE_ON_EXCEPTION</span><span style="color:#E1E4E8">(isolate, radix,</span></span>
+<span class="line"><span style="color:#B392F0">                                       Object</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">ToNumber</span><span style="color:#E1E4E8">(isolate, radix));</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#F97583">  int</span><span style="color:#E1E4E8"> radix32 </span><span style="color:#F97583">=</span><span style="color:#B392F0"> DoubleToInt32</span><span style="color:#E1E4E8">(radix-></span><span style="color:#B392F0">Number</span><span style="color:#E1E4E8">());</span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (radix32 </span><span style="color:#F97583">!=</span><span style="color:#79B8FF"> 0</span><span style="color:#F97583"> &#x26;&#x26;</span><span style="color:#E1E4E8"> (radix32 </span><span style="color:#F97583">&#x3C;</span><span style="color:#79B8FF"> 2</span><span style="color:#F97583"> ||</span><span style="color:#E1E4E8"> radix32 </span><span style="color:#F97583">></span><span style="color:#79B8FF"> 36</span><span style="color:#E1E4E8">)) {</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#B392F0"> ReadOnlyRoots</span><span style="color:#E1E4E8">(isolate).</span><span style="color:#B392F0">nan_value</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  double</span><span style="color:#E1E4E8"> result </span><span style="color:#F97583">=</span><span style="color:#B392F0"> StringToInt</span><span style="color:#E1E4E8">(isolate, subject, radix32);</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">isolate-></span><span style="color:#B392F0">factory</span><span style="color:#E1E4E8">()-></span><span style="color:#B392F0">NewNumber</span><span style="color:#E1E4E8">(result);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>Worth noting: per the standard, if <code>radix</code> is outside the range [2, 36], <code>NaN</code> is returned.</p>
 <h3 id="12-parseint-in-javascriptcore">1.2 parseInt() in JavaScriptCore</h3>
 <p>JavaScriptCore registers built-in functions in [→ runtime/JSGlobalObjectFunctions.cpp]:</p>
-<p>`JSC_DEFINE_HOST_FUNCTION(globalFuncParseInt, (JSGlobalObject* globalObject, CallFrame* callFrame))
-{
-JSValue value = callFrame->argument(0);
-JSValue radixValue = callFrame->argument(1);</p>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>// Optimized handling for numbers:</span></span>
-<span class="line"><span>// If the argument is 0 or a number in range 10^-6 &#x3C;= n &#x3C; INT_MAX+1, then parseInt</span></span>
-<span class="line"><span>// results in a truncation to integer.</span></span>
-<span class="line"><span>static const double tenToTheMinus6 = 0.000001;</span></span>
-<span class="line"><span>static const double intMaxPlusOne = 2147483648.0;</span></span>
-<span class="line"><span>if (value.isNumber()) {</span></span>
-<span class="line"><span>    double n = value.asNumber();</span></span>
-<span class="line"><span>    if (((n &#x3C; intMaxPlusOne &#x26;&#x26; n >= tenToTheMinus6) || !n) &#x26;&#x26; radixValue.isUndefinedOrNull())</span></span>
-<span class="line"><span>        return JSValue::encode(jsNumber(static_cast&#x3C;int32_t>(n)));</span></span>
-<span class="line"><span>}</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>return toStringView(globalObject, value, [&#x26;] (StringView view) {</span></span>
-<span class="line"><span>    return JSValue::encode(jsNumber(parseInt(view, radixValue.toInt32(globalObject))));</span></span>
-<span class="line"><span>});</span></span></code></pre>
-<p>}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">JSC_DEFINE_HOST_FUNCTION</span><span style="color:#E1E4E8">(globalFuncParseInt, (JSGlobalObject</span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> globalObject, CallFrame</span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> callFrame))</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">    JSValue value </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> callFrame-></span><span style="color:#B392F0">argument</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">    JSValue radixValue </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> callFrame-></span><span style="color:#B392F0">argument</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">    // Optimized handling for numbers:</span></span>
+<span class="line"><span style="color:#6A737D">    // If the argument is 0 or a number in range 10^-6 &#x3C;= n &#x3C; INT_MAX+1, then parseInt</span></span>
+<span class="line"><span style="color:#6A737D">    // results in a truncation to integer.</span></span>
+<span class="line"><span style="color:#F97583">    static</span><span style="color:#F97583"> const</span><span style="color:#F97583"> double</span><span style="color:#E1E4E8"> tenToTheMinus6 </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0.000001</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">    static</span><span style="color:#F97583"> const</span><span style="color:#F97583"> double</span><span style="color:#E1E4E8"> intMaxPlusOne </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 2147483648.0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (value.</span><span style="color:#B392F0">isNumber</span><span style="color:#E1E4E8">()) {</span></span>
+<span class="line"><span style="color:#F97583">        double</span><span style="color:#E1E4E8"> n </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> value.</span><span style="color:#B392F0">asNumber</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#F97583">        if</span><span style="color:#E1E4E8"> (((n </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> intMaxPlusOne </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#E1E4E8"> n </span><span style="color:#F97583">>=</span><span style="color:#E1E4E8"> tenToTheMinus6) </span><span style="color:#F97583">||</span><span style="color:#F97583"> !</span><span style="color:#E1E4E8">n) </span><span style="color:#F97583">&#x26;&#x26;</span><span style="color:#E1E4E8"> radixValue.</span><span style="color:#B392F0">isUndefinedOrNull</span><span style="color:#E1E4E8">())</span></span>
+<span class="line"><span style="color:#F97583">            return</span><span style="color:#B392F0"> JSValue</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">encode</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">jsNumber</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">static_cast&#x3C;int32_t></span><span style="color:#E1E4E8">(n)));</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#B392F0"> toStringView</span><span style="color:#E1E4E8">(globalObject, value, [</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">] (</span><span style="color:#B392F0">StringView</span><span style="color:#FFAB70"> view</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">        return</span><span style="color:#B392F0"> JSValue</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">encode</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">jsNumber</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">parseInt</span><span style="color:#E1E4E8">(view, radixValue.</span><span style="color:#B392F0">toInt32</span><span style="color:#E1E4E8">(globalObject))));</span></span>
+<span class="line"><span style="color:#E1E4E8">    });</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>The comments are thorough — I’ll let them speak for themselves. Ultimately it calls <code>parseInt</code>, whose core implementation lives in [→ runtime/ParseInt.h]. The code follows the ECMAScript spec step by step with excellent comments — I highly recommend reading it directly.</p>
 <h3 id="13-parseint-in-quickjs">1.3 parseInt() in QuickJS</h3>
 <p>QuickJS’s core is in [→ quickjs.c]. The registration:</p>
-<p><code>static const JSCFunctionListEntry js_global_funcs[] = {     JS_CFUNC_DEF("parseInt", 2, js_parseInt ), //... } </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#F97583"> const</span><span style="color:#E1E4E8"> JSCFunctionListEntry js_global_funcs[] </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">    JS_CFUNC_DEF</span><span style="color:#E1E4E8">(</span><span style="color:#9ECBFF">"parseInt"</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">2</span><span style="color:#E1E4E8">, js_parseInt ),</span></span>
+<span class="line"><span style="color:#6A737D">//...</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>The <code>js_parseInt</code> implementation:</p>
-<p>`static JSValue js_parseInt(JSContext *ctx, JSValueConst this_val,
-int argc, JSValueConst *argv)
-{
-const char *str, *p;
-int radix, flags;
-JSValue ret;</p>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>str = JS_ToCString(ctx, argv[0]);</span></span>
-<span class="line"><span>if (!str)</span></span>
-<span class="line"><span>    return JS_EXCEPTION;</span></span>
-<span class="line"><span>if (JS_ToInt32(ctx, &#x26;radix, argv[1])) {</span></span>
-<span class="line"><span>    JS_FreeCString(ctx, str);</span></span>
-<span class="line"><span>    return JS_EXCEPTION;</span></span>
-<span class="line"><span>}</span></span>
-<span class="line"><span>if (radix != 0 &#x26;&#x26; (radix &#x3C; 2 || radix > 36)) {</span></span>
-<span class="line"><span>    ret = JS_NAN;</span></span>
-<span class="line"><span>} else {</span></span>
-<span class="line"><span>    p = str;</span></span>
-<span class="line"><span>    p += skip_spaces(p);</span></span>
-<span class="line"><span>    flags = ATOD_INT_ONLY | ATOD_ACCEPT_PREFIX_AFTER_SIGN;</span></span>
-<span class="line"><span>    ret = js_atof(ctx, p, NULL, radix, flags);</span></span>
-<span class="line"><span>}</span></span>
-<span class="line"><span>JS_FreeCString(ctx, str);</span></span>
-<span class="line"><span>return ret;</span></span></code></pre>
-<p>}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#B392F0"> JSValue</span><span style="color:#B392F0"> js_parseInt</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">JSContext</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">ctx</span><span style="color:#E1E4E8">, </span><span style="color:#B392F0">JSValueConst</span><span style="color:#FFAB70"> this_val</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">                           int</span><span style="color:#FFAB70"> argc</span><span style="color:#E1E4E8">, </span><span style="color:#B392F0">JSValueConst</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">argv</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">str, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">p;</span></span>
+<span class="line"><span style="color:#F97583">    int</span><span style="color:#E1E4E8"> radix, flags;</span></span>
+<span class="line"><span style="color:#E1E4E8">    JSValue ret;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">    str </span><span style="color:#F97583">=</span><span style="color:#B392F0"> JS_ToCString</span><span style="color:#E1E4E8">(ctx, argv[</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">]);</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">str)</span></span>
+<span class="line"><span style="color:#F97583">        return</span><span style="color:#E1E4E8"> JS_EXCEPTION;</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">JS_ToInt32</span><span style="color:#E1E4E8">(ctx, </span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8">radix, argv[</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">])) {</span></span>
+<span class="line"><span style="color:#B392F0">        JS_FreeCString</span><span style="color:#E1E4E8">(ctx, str);</span></span>
+<span class="line"><span style="color:#F97583">        return</span><span style="color:#E1E4E8"> JS_EXCEPTION;</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (radix </span><span style="color:#F97583">!=</span><span style="color:#79B8FF"> 0</span><span style="color:#F97583"> &#x26;&#x26;</span><span style="color:#E1E4E8"> (radix </span><span style="color:#F97583">&#x3C;</span><span style="color:#79B8FF"> 2</span><span style="color:#F97583"> ||</span><span style="color:#E1E4E8"> radix </span><span style="color:#F97583">></span><span style="color:#79B8FF"> 36</span><span style="color:#E1E4E8">)) {</span></span>
+<span class="line"><span style="color:#E1E4E8">        ret </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> JS_NAN;</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#E1E4E8">        p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> str;</span></span>
+<span class="line"><span style="color:#E1E4E8">        p </span><span style="color:#F97583">+=</span><span style="color:#B392F0"> skip_spaces</span><span style="color:#E1E4E8">(p);</span></span>
+<span class="line"><span style="color:#E1E4E8">        flags </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> ATOD_INT_ONLY </span><span style="color:#F97583">|</span><span style="color:#E1E4E8"> ATOD_ACCEPT_PREFIX_AFTER_SIGN;</span></span>
+<span class="line"><span style="color:#E1E4E8">        ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> js_atof</span><span style="color:#E1E4E8">(ctx, p, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">, radix, flags);</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#B392F0">    JS_FreeCString</span><span style="color:#E1E4E8">(ctx, str);</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>Bellard’s code has minimal comments but is wonderfully concise.</p>
 <p>All three engines implement <code>parseInt</code> based on the ECMAScript standard, but each has its own style — reading them feels like comparing three authors with distinct voices.</p>
 <p>Looking at the standard vs. the implementations, we can see that <code>parseInt</code> does a lot of preliminary work before the actual string-to-number conversion: input validation, default values, string normalization, range checks, and more. That’s why it’s slower — not because the core math is expensive, but because of all the setup.</p>
@@ -296,111 +303,160 @@ JSValue ret;</p>
 </ul>
 <h3 id="21-parsefloat-in-v8">2.1 parseFloat() in V8</h3>
 <p>The relevant code lives right next to <code>parseInt</code>. The key part [→ src/builtins/number.tq]:</p>
-<p><code>// ES6 #sec-number.parsefloat transitioning javascript builtin NumberParseFloat(     js-implicit context: NativeContext)(value: JSAny): Number {   try {     typeswitch (value) {       case (s: Smi): {         return s;       }       case (h: HeapNumber): {         // Take care of -0.         return (Convert&#x3C;float64>(h) == 0) ? SmiConstant(0) : h;       }       case (s: String): {         goto String(s);       }       case (HeapObject): {         goto String(string::ToString(context, value));       }     }   } label String(s: String) {     const hash: NameHash = s.raw_hash_field;     if (IsIntegerIndex(hash) &#x26;&#x26;         hash.array_index_length &#x3C; kMaxCachedArrayIndexLength) {       const arrayIndex: uint32 = hash.array_index_value;       return SmiFromUint32(arrayIndex);     }     return runtime::StringParseFloat(s);   } } </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#6A737D">// ES6 #sec-number.parsefloat</span></span>
+<span class="line"><span style="color:#E1E4E8">transitioning javascript builtin </span><span style="color:#B392F0">NumberParseFloat</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#E1E4E8">    js</span><span style="color:#F97583">-</span><span style="color:#E1E4E8">implicit context: NativeContext)(value: JSAny): Number {</span></span>
+<span class="line"><span style="color:#F97583">  try</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">    typeswitch</span><span style="color:#E1E4E8"> (value) {</span></span>
+<span class="line"><span style="color:#F97583">      case</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">s</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Smi</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        return</span><span style="color:#FFAB70"> s</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#B392F0">      case</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">h</span><span style="color:#F97583">:</span><span style="color:#B392F0"> HeapNumber</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#6A737D">        // Take care of -0.</span></span>
+<span class="line"><span style="color:#B392F0">        return</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">Convert</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#FFAB70">float64</span><span style="color:#E1E4E8">>(</span><span style="color:#FFAB70">h</span><span style="color:#E1E4E8">) == 0) ? </span><span style="color:#B392F0">SmiConstant</span><span style="color:#E1E4E8">(0) </span><span style="color:#F97583">:</span><span style="color:#B392F0"> h</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#B392F0">      case</span><span style="color:#E1E4E8"> (</span><span style="color:#FFAB70">s</span><span style="color:#F97583">:</span><span style="color:#B392F0"> String</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        goto</span><span style="color:#B392F0"> String</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">s</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#B392F0">      case</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">HeapObject</span><span style="color:#E1E4E8">)</span><span style="color:#F97583">:</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">        goto</span><span style="color:#B392F0"> String</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">string</span><span style="color:#F97583">::</span><span style="color:#B392F0">ToString</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">context</span><span style="color:#E1E4E8">, </span><span style="color:#FFAB70">value</span><span style="color:#E1E4E8">));</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  } </span><span style="color:#B392F0">label</span><span style="color:#B392F0"> String</span><span style="color:#E1E4E8">(</span><span style="color:#FFAB70">s</span><span style="color:#F97583">:</span><span style="color:#B392F0"> String</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> hash</span><span style="color:#F97583">:</span><span style="color:#B392F0"> NameHash</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> s.raw_hash_field;</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">IsIntegerIndex</span><span style="color:#E1E4E8">(hash) </span><span style="color:#F97583">&#x26;&#x26;</span></span>
+<span class="line"><span style="color:#E1E4E8">        hash.array_index_length </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> kMaxCachedArrayIndexLength) {</span></span>
+<span class="line"><span style="color:#F97583">      const</span><span style="color:#79B8FF"> arrayIndex</span><span style="color:#F97583">:</span><span style="color:#B392F0"> uint32</span><span style="color:#F97583"> =</span><span style="color:#E1E4E8"> hash.array_index_value;</span></span>
+<span class="line"><span style="color:#F97583">      return</span><span style="color:#B392F0"> SmiFromUint32</span><span style="color:#E1E4E8">(arrayIndex);</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8"> runtime::</span><span style="color:#B392F0">StringParseFloat</span><span style="color:#E1E4E8">(s);</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>And [→ src/runtime/runtime-numbers.cc]:</p>
-<p>`// ES6 18.2.4 parseFloat(string)
-RUNTIME_FUNCTION(Runtime_StringParseFloat) {
-HandleScope shs(isolate);
-DCHECK_EQ(1, args.length());
-Handle<string> subject = args.at<string>(0);</string></string></p>
-<p>double value = StringToDouble(isolate, subject, ALLOW_TRAILING_JUNK,
-std::numeric_limits<double>::quiet_NaN());</double></p>
-<p>return *isolate->factory()->NewNumber(value);
-}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#6A737D">// ES6 18.2.4 parseFloat(string)</span></span>
+<span class="line"><span style="color:#B392F0">RUNTIME_FUNCTION</span><span style="color:#E1E4E8">(Runtime_StringParseFloat) {</span></span>
+<span class="line"><span style="color:#E1E4E8">  HandleScope </span><span style="color:#B392F0">shs</span><span style="color:#E1E4E8">(isolate);</span></span>
+<span class="line"><span style="color:#B392F0">  DCHECK_EQ</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">, args.</span><span style="color:#B392F0">length</span><span style="color:#E1E4E8">());</span></span>
+<span class="line"><span style="color:#E1E4E8">  Handle</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">String</span><span style="color:#F97583">></span><span style="color:#E1E4E8"> subject </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> args.at</span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8">String</span><span style="color:#F97583">></span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  double</span><span style="color:#E1E4E8"> value </span><span style="color:#F97583">=</span><span style="color:#B392F0"> StringToDouble</span><span style="color:#E1E4E8">(isolate, subject, ALLOW_TRAILING_JUNK,</span></span>
+<span class="line"><span style="color:#B392F0">                                std</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">numeric_limits</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#F97583">double</span><span style="color:#E1E4E8">>::</span><span style="color:#B392F0">quiet_NaN</span><span style="color:#E1E4E8">());</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">isolate-></span><span style="color:#B392F0">factory</span><span style="color:#E1E4E8">()-></span><span style="color:#B392F0">NewNumber</span><span style="color:#E1E4E8">(value);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>Simpler than <code>parseInt</code>, reflecting the simpler spec.</p>
 <h3 id="22-parsefloat-in-javascriptcore">2.2 parseFloat() in JavaScriptCore</h3>
 <p>Even more concise:</p>
-<p>`static double parseFloat(StringView s)
-{
-unsigned size = s.length();</p>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>if (size == 1) {</span></span>
-<span class="line"><span>    UChar c = s[0];</span></span>
-<span class="line"><span>    if (isASCIIDigit(c))</span></span>
-<span class="line"><span>        return c - '0';</span></span>
-<span class="line"><span>    return PNaN;</span></span>
-<span class="line"><span>}</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>if (s.is8Bit()) {</span></span>
-<span class="line"><span>    const LChar* data = s.characters8();</span></span>
-<span class="line"><span>    const LChar* end = data + size;</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>    for (; data &#x3C; end; ++data) {</span></span>
-<span class="line"><span>        if (!isStrWhiteSpace(*data))</span></span>
-<span class="line"><span>            break;</span></span>
-<span class="line"><span>    }</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>    if (data == end)</span></span>
-<span class="line"><span>        return PNaN;</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>    return jsStrDecimalLiteral(data, end);</span></span>
-<span class="line"><span>}</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>const UChar* data = s.characters16();</span></span>
-<span class="line"><span>const UChar* end = data + size;</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>for (; data &#x3C; end; ++data) {</span></span>
-<span class="line"><span>    if (!isStrWhiteSpace(*data))</span></span>
-<span class="line"><span>        break;</span></span>
-<span class="line"><span>}</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>if (data == end)</span></span>
-<span class="line"><span>    return PNaN;</span></span>
-<span class="line"><span></span></span>
-<span class="line"><span>return jsStrDecimalLiteral(data, end);</span></span></code></pre>
-<p>}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="js"><code><span class="line"><span style="color:#E1E4E8">static double </span><span style="color:#B392F0">parseFloat</span><span style="color:#E1E4E8">(StringView s)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">    unsigned size </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> s.</span><span style="color:#B392F0">length</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (size </span><span style="color:#F97583">==</span><span style="color:#79B8FF"> 1</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#E1E4E8">        UChar c </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> s[</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">];</span></span>
+<span class="line"><span style="color:#F97583">        if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">isASCIIDigit</span><span style="color:#E1E4E8">(c))</span></span>
+<span class="line"><span style="color:#F97583">            return</span><span style="color:#E1E4E8"> c </span><span style="color:#F97583">-</span><span style="color:#9ECBFF"> '0'</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">        return</span><span style="color:#E1E4E8"> PNaN;</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (s.</span><span style="color:#B392F0">is8Bit</span><span style="color:#E1E4E8">()) {</span></span>
+<span class="line"><span style="color:#F97583">        const</span><span style="color:#79B8FF"> LChar</span><span style="color:#E1E4E8">* data </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> s.</span><span style="color:#B392F0">characters8</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#F97583">        const</span><span style="color:#79B8FF"> LChar</span><span style="color:#E1E4E8">* end </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> data </span><span style="color:#F97583">+</span><span style="color:#E1E4E8"> size;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">        for</span><span style="color:#E1E4E8"> (; data </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> end; </span><span style="color:#F97583">++</span><span style="color:#E1E4E8">data) {</span></span>
+<span class="line"><span style="color:#F97583">            if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">isStrWhiteSpace</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">data))</span></span>
+<span class="line"><span style="color:#F97583">                break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">        }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">        if</span><span style="color:#E1E4E8"> (data </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> end)</span></span>
+<span class="line"><span style="color:#F97583">            return</span><span style="color:#E1E4E8"> PNaN;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">        return</span><span style="color:#B392F0"> jsStrDecimalLiteral</span><span style="color:#E1E4E8">(data, end);</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> UChar</span><span style="color:#E1E4E8">* data </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> s.</span><span style="color:#B392F0">characters16</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> UChar</span><span style="color:#E1E4E8">* end </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> data </span><span style="color:#F97583">+</span><span style="color:#E1E4E8"> size;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    for</span><span style="color:#E1E4E8"> (; data </span><span style="color:#F97583">&#x3C;</span><span style="color:#E1E4E8"> end; </span><span style="color:#F97583">++</span><span style="color:#E1E4E8">data) {</span></span>
+<span class="line"><span style="color:#F97583">        if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#B392F0">isStrWhiteSpace</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">*</span><span style="color:#E1E4E8">data))</span></span>
+<span class="line"><span style="color:#F97583">            break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (data </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> end)</span></span>
+<span class="line"><span style="color:#F97583">        return</span><span style="color:#E1E4E8"> PNaN;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#B392F0"> jsStrDecimalLiteral</span><span style="color:#E1E4E8">(data, end);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <h3 id="23-parsefloat-in-quickjs">2.3 parseFloat() in QuickJS</h3>
 <p>QuickJS fits it in 12 lines:</p>
-<p>`static JSValue js_parseFloat(JSContext *ctx, JSValueConst this_val,
-int argc, JSValueConst *argv)
-{
-const char *str, *p;
-JSValue ret;</p>
-<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>str = JS_ToCString(ctx, argv[0]);</span></span>
-<span class="line"><span>if (!str)</span></span>
-<span class="line"><span>    return JS_EXCEPTION;</span></span>
-<span class="line"><span>p = str;</span></span>
-<span class="line"><span>p += skip_spaces(p);</span></span>
-<span class="line"><span>ret = js_atof(ctx, p, NULL, 10, 0);</span></span>
-<span class="line"><span>JS_FreeCString(ctx, str);</span></span>
-<span class="line"><span>return ret;</span></span></code></pre>
-<p>}
-`</p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#F97583">static</span><span style="color:#B392F0"> JSValue</span><span style="color:#B392F0"> js_parseFloat</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">JSContext</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">ctx</span><span style="color:#E1E4E8">, </span><span style="color:#B392F0">JSValueConst</span><span style="color:#FFAB70"> this_val</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#F97583">                             int</span><span style="color:#FFAB70"> argc</span><span style="color:#E1E4E8">, </span><span style="color:#B392F0">JSValueConst</span><span style="color:#F97583"> *</span><span style="color:#FFAB70">argv</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#F97583"> char</span><span style="color:#F97583"> *</span><span style="color:#E1E4E8">str, </span><span style="color:#F97583">*</span><span style="color:#E1E4E8">p;</span></span>
+<span class="line"><span style="color:#E1E4E8">    JSValue ret;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#E1E4E8">    str </span><span style="color:#F97583">=</span><span style="color:#B392F0"> JS_ToCString</span><span style="color:#E1E4E8">(ctx, argv[</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">]);</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (</span><span style="color:#F97583">!</span><span style="color:#E1E4E8">str)</span></span>
+<span class="line"><span style="color:#F97583">        return</span><span style="color:#E1E4E8"> JS_EXCEPTION;</span></span>
+<span class="line"><span style="color:#E1E4E8">    p </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> str;</span></span>
+<span class="line"><span style="color:#E1E4E8">    p </span><span style="color:#F97583">+=</span><span style="color:#B392F0"> skip_spaces</span><span style="color:#E1E4E8">(p);</span></span>
+<span class="line"><span style="color:#E1E4E8">    ret </span><span style="color:#F97583">=</span><span style="color:#B392F0"> js_atof</span><span style="color:#E1E4E8">(ctx, p, </span><span style="color:#79B8FF">NULL</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">10</span><span style="color:#E1E4E8">, </span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">);</span></span>
+<span class="line"><span style="color:#B392F0">    JS_FreeCString</span><span style="color:#E1E4E8">(ctx, str);</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#E1E4E8"> ret;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>The brevity is intentional — the latest ECMAScript spec doesn’t require the ASCII/8-bit compatibility checks that JavaScriptCore includes, and QuickJS stays minimal.</p>
 <h2 id="3-number">3. Number()</h2>
 <p><a href="https://tc39.es/ecma262/#sec-number-constructor-number-value">ECMAScript (ECMA-262) Number ( value )</a></p>
 <p><img src="https://airing.ursb.me/image/blog/media/20220503/Pasted%20image%2020220503110831.png" alt=""></p>
 <h3 id="31-number-in-v8">3.1 Number() in V8</h3>
 <p><code>Number</code> is registered in [→ src/init/bootstrapper.cc]. The constructor <code>Builtin::kNumberConstructor</code> is implemented in Torque [→ src/builtins/constructor.tq]:</p>
-<p>`// ES #sec-number-constructor
-transitioning javascript builtin
-NumberConstructor(
-js-implicit context: NativeContext, receiver: JSAny, newTarget: JSAny,
-target: JSFunction)(…arguments): JSAny {
-// 1. If no arguments were passed to this function invocation, let n be +0.
-let n: Number = 0;
-if (arguments.length > 0) {
-// 2. Else,
-//    a. Let prim be ? ToNumeric(value).
-//    b. If Type(prim) is BigInt, let n be the Number value for prim.
-//    c. Otherwise, let n be prim.
-const value = arguments[0];
-n = ToNumber(value, BigIntHandling::kConvertToNumber);
-}</p>
-<p>// 3. If NewTarget is undefined, return n.
-if (newTarget == Undefined) return n;</p>
-<p>const target: JSFunction = LoadTargetFromFrame();
-const result = UnsafeCast<jsprimitivewrapper>(
-FastNewObject(context, target, UnsafeCast<jsreceiver>(newTarget)));
-result.value = n;
-return result;
-}
-`</jsreceiver></jsprimitivewrapper></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#6A737D">// ES #sec-number-constructor</span></span>
+<span class="line"><span style="color:#E1E4E8">transitioning javascript builtin</span></span>
+<span class="line"><span style="color:#B392F0">NumberConstructor</span><span style="color:#E1E4E8">(</span></span>
+<span class="line"><span style="color:#E1E4E8">    js</span><span style="color:#F97583">-</span><span style="color:#E1E4E8">implicit context: NativeContext, receiver: JSAny, newTarget: JSAny,</span></span>
+<span class="line"><span style="color:#E1E4E8">    target: JSFunction)(</span><span style="color:#F97583">...</span><span style="color:#79B8FF">arguments</span><span style="color:#E1E4E8">): JSAny {</span></span>
+<span class="line"><span style="color:#6A737D">  // 1. If no arguments were passed to this function invocation, let n be +0.</span></span>
+<span class="line"><span style="color:#F97583">  let</span><span style="color:#E1E4E8"> n</span><span style="color:#F97583">:</span><span style="color:#B392F0"> Number</span><span style="color:#F97583"> =</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (</span><span style="color:#79B8FF">arguments</span><span style="color:#E1E4E8">.</span><span style="color:#79B8FF">length</span><span style="color:#F97583"> ></span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#6A737D">    // 2. Else,</span></span>
+<span class="line"><span style="color:#6A737D">    //    a. Let prim be ? ToNumeric(value).</span></span>
+<span class="line"><span style="color:#6A737D">    //    b. If Type(prim) is BigInt, let n be the Number value for prim.</span></span>
+<span class="line"><span style="color:#6A737D">    //    c. Otherwise, let n be prim.</span></span>
+<span class="line"><span style="color:#F97583">    const</span><span style="color:#79B8FF"> value</span><span style="color:#F97583"> =</span><span style="color:#79B8FF"> arguments</span><span style="color:#E1E4E8">[</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">];</span></span>
+<span class="line"><span style="color:#E1E4E8">    n </span><span style="color:#F97583">=</span><span style="color:#B392F0"> ToNumber</span><span style="color:#E1E4E8">(value, BigIntHandling::kConvertToNumber);</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#6A737D">  // 3. If NewTarget is undefined, return n.</span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (newTarget </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> Undefined) </span><span style="color:#F97583">return</span><span style="color:#E1E4E8"> n;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> target</span><span style="color:#F97583">:</span><span style="color:#B392F0"> JSFunction</span><span style="color:#F97583"> =</span><span style="color:#B392F0"> LoadTargetFromFrame</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#79B8FF"> result</span><span style="color:#F97583"> =</span><span style="color:#B392F0"> UnsafeCast</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#B392F0">JSPrimitiveWrapper</span><span style="color:#E1E4E8">>(</span></span>
+<span class="line"><span style="color:#B392F0">      FastNewObject</span><span style="color:#E1E4E8">(context, target, </span><span style="color:#B392F0">UnsafeCast</span><span style="color:#E1E4E8">&#x3C;</span><span style="color:#B392F0">JSReceiver</span><span style="color:#E1E4E8">>(newTarget)));</span></span>
+<span class="line"><span style="color:#E1E4E8">  result.value </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> n;</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#E1E4E8"> result;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>Steps 1–6 in the comments map directly to the ECMAScript spec. Notably, <code>Number</code> explicitly supports BigInt — which is why our comparison table showed those results.</p>
 <h3 id="32-number-in-javascriptcore">3.2 Number() in JavaScriptCore</h3>
 <p>Same logic as V8, closely following the spec [→ runtime/NumberConstructor.cpp]:</p>
-<p><code>// ECMA 15.7.1 JSC_DEFINE_HOST_FUNCTION(constructNumberConstructor, (JSGlobalObject* globalObject, CallFrame* callFrame)) {     VM&#x26; vm = globalObject->vm();     auto scope = DECLARE_THROW_SCOPE(vm);     double n = 0;     if (callFrame->argumentCount()) {         JSValue numeric = callFrame->uncheckedArgument(0).toNumeric(globalObject);         RETURN_IF_EXCEPTION(scope, { });         if (numeric.isNumber())             n = numeric.asNumber();         else {             ASSERT(numeric.isBigInt());             numeric = JSBigInt::toNumber(numeric);             ASSERT(numeric.isNumber());             n = numeric.asNumber();         }     }     // ... } </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#6A737D">// ECMA 15.7.1</span></span>
+<span class="line"><span style="color:#B392F0">JSC_DEFINE_HOST_FUNCTION</span><span style="color:#E1E4E8">(constructNumberConstructor, (JSGlobalObject</span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> globalObject, CallFrame</span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> callFrame))</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">    VM</span><span style="color:#F97583">&#x26;</span><span style="color:#E1E4E8"> vm </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> globalObject-></span><span style="color:#B392F0">vm</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#F97583">    auto</span><span style="color:#E1E4E8"> scope </span><span style="color:#F97583">=</span><span style="color:#B392F0"> DECLARE_THROW_SCOPE</span><span style="color:#E1E4E8">(vm);</span></span>
+<span class="line"><span style="color:#F97583">    double</span><span style="color:#E1E4E8"> n </span><span style="color:#F97583">=</span><span style="color:#79B8FF"> 0</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (callFrame-></span><span style="color:#B392F0">argumentCount</span><span style="color:#E1E4E8">()) {</span></span>
+<span class="line"><span style="color:#E1E4E8">        JSValue numeric </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> callFrame-></span><span style="color:#B392F0">uncheckedArgument</span><span style="color:#E1E4E8">(</span><span style="color:#79B8FF">0</span><span style="color:#E1E4E8">).</span><span style="color:#B392F0">toNumeric</span><span style="color:#E1E4E8">(globalObject);</span></span>
+<span class="line"><span style="color:#B392F0">        RETURN_IF_EXCEPTION</span><span style="color:#E1E4E8">(scope, { });</span></span>
+<span class="line"><span style="color:#F97583">        if</span><span style="color:#E1E4E8"> (numeric.</span><span style="color:#B392F0">isNumber</span><span style="color:#E1E4E8">())</span></span>
+<span class="line"><span style="color:#E1E4E8">            n </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> numeric.</span><span style="color:#B392F0">asNumber</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#F97583">        else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#B392F0">            ASSERT</span><span style="color:#E1E4E8">(numeric.</span><span style="color:#B392F0">isBigInt</span><span style="color:#E1E4E8">());</span></span>
+<span class="line"><span style="color:#E1E4E8">            numeric </span><span style="color:#F97583">=</span><span style="color:#B392F0"> JSBigInt</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">toNumber</span><span style="color:#E1E4E8">(numeric);</span></span>
+<span class="line"><span style="color:#B392F0">            ASSERT</span><span style="color:#E1E4E8">(numeric.</span><span style="color:#B392F0">isNumber</span><span style="color:#E1E4E8">());</span></span>
+<span class="line"><span style="color:#E1E4E8">            n </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> numeric.</span><span style="color:#B392F0">asNumber</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#E1E4E8">        }</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#6A737D">    // ...</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <h3 id="33-number-in-quickjs">3.3 Number() in QuickJS</h3>
 <p>QuickJS makes BigInt support configurable via <code>CONFIG_BIGNUM</code> — a reflection of its philosophy of staying lean and customizable.</p>
 <h2 id="4-double-tilde--operator">4. Double Tilde (~~) Operator</h2>
@@ -409,21 +465,71 @@ return result;
 <p>The <code>~</code> operator leverages step 2 of the spec — type conversion of the operand — to convert strings to numbers. Let’s see where this happens in the engine.</p>
 <h3 id="41-bitwisenot-in-v8">4.1 BitwiseNot in V8</h3>
 <p>V8 identifies unary operators in [→ src/parsing/token.h]. During AST construction in the parsing phase, unary operators are handled via <code>ParseUnaryExpression</code> and <code>BuildUnaryExpression</code>:</p>
-<p><code>Expression* Parser::BuildUnaryExpression(Expression* expression,                                          Token::Value op, int pos) {   DCHECK_NOT_NULL(expression);   const Literal* literal = expression->AsLiteral();   if (literal != nullptr) {     if (op == Token::NOT) {       return factory()->NewBooleanLiteral(literal->ToBooleanIsFalse(), pos);     } else if (literal->IsNumberLiteral()) {       double value = literal->AsNumber();       switch (op) {         case Token::ADD:           return expression;         case Token::SUB:           return factory()->NewNumberLiteral(-value, pos);         case Token::BIT_NOT:           return factory()->NewNumberLiteral(~DoubleToInt32(value), pos);         default:           break;       }     }   }   return factory()->NewUnaryOperation(op, expression, pos); } </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">Expression</span><span style="color:#F97583">*</span><span style="color:#B392F0"> Parser</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">BuildUnaryExpression</span><span style="color:#E1E4E8">(</span><span style="color:#B392F0">Expression</span><span style="color:#F97583">*</span><span style="color:#FFAB70"> expression</span><span style="color:#E1E4E8">,</span></span>
+<span class="line"><span style="color:#B392F0">                                         Token</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">Value</span><span style="color:#FFAB70"> op</span><span style="color:#E1E4E8">, </span><span style="color:#F97583">int</span><span style="color:#FFAB70"> pos</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#B392F0">  DCHECK_NOT_NULL</span><span style="color:#E1E4E8">(expression);</span></span>
+<span class="line"><span style="color:#F97583">  const</span><span style="color:#E1E4E8"> Literal</span><span style="color:#F97583">*</span><span style="color:#E1E4E8"> literal </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> expression-></span><span style="color:#B392F0">AsLiteral</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#F97583">  if</span><span style="color:#E1E4E8"> (literal </span><span style="color:#F97583">!=</span><span style="color:#79B8FF"> nullptr</span><span style="color:#E1E4E8">) {</span></span>
+<span class="line"><span style="color:#F97583">    if</span><span style="color:#E1E4E8"> (op </span><span style="color:#F97583">==</span><span style="color:#B392F0"> Token</span><span style="color:#E1E4E8">::NOT) {</span></span>
+<span class="line"><span style="color:#F97583">      return</span><span style="color:#B392F0"> factory</span><span style="color:#E1E4E8">()-></span><span style="color:#B392F0">NewBooleanLiteral</span><span style="color:#E1E4E8">(literal-></span><span style="color:#B392F0">ToBooleanIsFalse</span><span style="color:#E1E4E8">(), pos);</span></span>
+<span class="line"><span style="color:#E1E4E8">    } </span><span style="color:#F97583">else</span><span style="color:#F97583"> if</span><span style="color:#E1E4E8"> (literal-></span><span style="color:#B392F0">IsNumberLiteral</span><span style="color:#E1E4E8">()) {</span></span>
+<span class="line"><span style="color:#F97583">      double</span><span style="color:#E1E4E8"> value </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> literal-></span><span style="color:#B392F0">AsNumber</span><span style="color:#E1E4E8">();</span></span>
+<span class="line"><span style="color:#F97583">      switch</span><span style="color:#E1E4E8"> (op) {</span></span>
+<span class="line"><span style="color:#F97583">        case</span><span style="color:#B392F0"> Token</span><span style="color:#E1E4E8">::ADD:</span></span>
+<span class="line"><span style="color:#F97583">          return</span><span style="color:#E1E4E8"> expression;</span></span>
+<span class="line"><span style="color:#F97583">        case</span><span style="color:#B392F0"> Token</span><span style="color:#E1E4E8">::SUB:</span></span>
+<span class="line"><span style="color:#F97583">          return</span><span style="color:#B392F0"> factory</span><span style="color:#E1E4E8">()-></span><span style="color:#B392F0">NewNumberLiteral</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">-</span><span style="color:#E1E4E8">value, pos);</span></span>
+<span class="line"><span style="color:#F97583">        case</span><span style="color:#B392F0"> Token</span><span style="color:#E1E4E8">::BIT_NOT:</span></span>
+<span class="line"><span style="color:#F97583">          return</span><span style="color:#B392F0"> factory</span><span style="color:#E1E4E8">()-></span><span style="color:#B392F0">NewNumberLiteral</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">~</span><span style="color:#B392F0">DoubleToInt32</span><span style="color:#E1E4E8">(value), pos);</span></span>
+<span class="line"><span style="color:#F97583">        default</span><span style="color:#E1E4E8">:</span></span>
+<span class="line"><span style="color:#F97583">          break</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">      }</span></span>
+<span class="line"><span style="color:#E1E4E8">    }</span></span>
+<span class="line"><span style="color:#E1E4E8">  }</span></span>
+<span class="line"><span style="color:#F97583">  return</span><span style="color:#B392F0"> factory</span><span style="color:#E1E4E8">()-></span><span style="color:#B392F0">NewUnaryOperation</span><span style="color:#E1E4E8">(op, expression, pos);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>If the literal is a number and the operator is <code>BIT_NOT</code>, the value is converted to Int32 and bitwise-negated.</p>
 <h3 id="42-bitwisenot-in-javascriptcore">4.2 BitwiseNot in JavaScriptCore</h3>
 <p>Similarly, during AST construction, when the <code>~</code> (TILDE) token is encountered:</p>
-<p><code>ExpressionNode* ASTBuilder::makeBitwiseNotNode(const JSTokenLocation&#x26; location, ExpressionNode* expr) { if (expr->isNumber())         return createIntegerLikeNumber(location, ~toInt32(static_cast&#x3C;NumberNode*>(expr)->value()));     return new (m_parserArena) BitwiseNotNode(location, expr); } </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">ExpressionNode</span><span style="color:#F97583">*</span><span style="color:#B392F0"> ASTBuilder</span><span style="color:#E1E4E8">::</span><span style="color:#B392F0">makeBitwiseNotNode</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">const</span><span style="color:#B392F0"> JSTokenLocation</span><span style="color:#F97583">&#x26;</span><span style="color:#FFAB70"> location</span><span style="color:#E1E4E8">, </span><span style="color:#B392F0">ExpressionNode</span><span style="color:#F97583">*</span><span style="color:#FFAB70"> expr</span><span style="color:#E1E4E8">)</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#F97583">if</span><span style="color:#E1E4E8"> (expr-></span><span style="color:#B392F0">isNumber</span><span style="color:#E1E4E8">())</span></span>
+<span class="line"><span style="color:#F97583">        return</span><span style="color:#B392F0"> createIntegerLikeNumber</span><span style="color:#E1E4E8">(location, </span><span style="color:#F97583">~</span><span style="color:#B392F0">toInt32</span><span style="color:#E1E4E8">(</span><span style="color:#F97583">static_cast&#x3C;</span><span style="color:#E1E4E8">NumberNode</span><span style="color:#F97583">*></span><span style="color:#E1E4E8">(expr)-></span><span style="color:#B392F0">value</span><span style="color:#E1E4E8">()));</span></span>
+<span class="line"><span style="color:#F97583">    return</span><span style="color:#F97583"> new</span><span style="color:#E1E4E8"> (m_parserArena) </span><span style="color:#B392F0">BitwiseNotNode</span><span style="color:#E1E4E8">(location, expr);</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <h3 id="43-bitwisenot-in-quickjs">4.3 BitwiseNot in QuickJS</h3>
 <p>QuickJS generates the <code>OP_not</code> bytecode for <code>~</code>, then handles it during interpretation in <code>JS_CallInternal</code>:</p>
-<p><code>CASE(OP_not): { JSValue op1; op1 = sp[-1]; if (JS_VALUE_GET_TAG(op1) == JS_TAG_INT) { sp[-1] = JS_NewInt32(ctx, ~JS_VALUE_GET_INT(op1)); } else { if (js_not_slow(ctx, sp)) goto exception; } } BREAK; </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">CASE</span><span style="color:#E1E4E8">(OP_not):</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">JSValue op1;</span></span>
+<span class="line"><span style="color:#E1E4E8">op1 </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> sp[</span><span style="color:#F97583">-</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">];</span></span>
+<span class="line"><span style="color:#F97583">if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">JS_VALUE_GET_TAG</span><span style="color:#E1E4E8">(op1) </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> JS_TAG_INT) {</span></span>
+<span class="line"><span style="color:#E1E4E8">sp[</span><span style="color:#F97583">-</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">] </span><span style="color:#F97583">=</span><span style="color:#B392F0"> JS_NewInt32</span><span style="color:#E1E4E8">(ctx, </span><span style="color:#F97583">~</span><span style="color:#B392F0">JS_VALUE_GET_INT</span><span style="color:#E1E4E8">(op1));</span></span>
+<span class="line"><span style="color:#E1E4E8">} </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">js_not_slow</span><span style="color:#E1E4E8">(ctx, sp))</span></span>
+<span class="line"><span style="color:#F97583">goto</span><span style="color:#B392F0"> exception</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#E1E4E8">BREAK;</span></span></code></pre>
 <p>If it’s already an integer, it just negates it. Otherwise it calls <code>js_not_slow</code>, which calls <code>JS_ToInt32Free</code> to perform type conversion first.</p>
 <h2 id="5-unary-operator-">5. Unary Operator (+)</h2>
 <p><a href="https://tc39.es/ecma262/#sec-unary-plus-operator-runtime-semantics-evaluation">ECMAScript (ECMA-262) Unary Plus Operator</a></p>
 <p><img src="https://airing.ursb.me/image/blog/media/20220503/Pasted%20image%2020220503114251.png" alt=""></p>
 <p>The unary <code>+</code> is personally my favorite way to convert strings to numbers. The spec is refreshingly simple — it’s explicitly designed for numeric type conversion.</p>
 <p>The V8 and JavaScriptCore parsing phases work the same as for <code>~~</code>, so I’ll skip those. In QuickJS’s interpreter:</p>
-<p><code>CASE(OP_plus): {     JSValue op1; uint32_t tag; op1 = sp[-1]; tag = JS_VALUE_GET_TAG(op1); if (tag == JS_TAG_INT || JS_TAG_IS_FLOAT64(tag)) { } else { if (js_unary_arith_slow(ctx, sp, opcode))  goto exception; } BREAK; } </code></p>
+<pre class="astro-code github-dark" style="background-color:#24292e;color:#e1e4e8; overflow-x: auto;" tabindex="0" data-language="cpp"><code><span class="line"><span style="color:#B392F0">CASE</span><span style="color:#E1E4E8">(OP_plus):</span></span>
+<span class="line"><span style="color:#E1E4E8">{</span></span>
+<span class="line"><span style="color:#E1E4E8">    JSValue op1;</span></span>
+<span class="line"><span style="color:#F97583">uint32_t</span><span style="color:#E1E4E8"> tag;</span></span>
+<span class="line"><span style="color:#E1E4E8">op1 </span><span style="color:#F97583">=</span><span style="color:#E1E4E8"> sp[</span><span style="color:#F97583">-</span><span style="color:#79B8FF">1</span><span style="color:#E1E4E8">];</span></span>
+<span class="line"><span style="color:#E1E4E8">tag </span><span style="color:#F97583">=</span><span style="color:#B392F0"> JS_VALUE_GET_TAG</span><span style="color:#E1E4E8">(op1);</span></span>
+<span class="line"><span style="color:#F97583">if</span><span style="color:#E1E4E8"> (tag </span><span style="color:#F97583">==</span><span style="color:#E1E4E8"> JS_TAG_INT </span><span style="color:#F97583">||</span><span style="color:#B392F0"> JS_TAG_IS_FLOAT64</span><span style="color:#E1E4E8">(tag)) {</span></span>
+<span class="line"><span style="color:#E1E4E8">} </span><span style="color:#F97583">else</span><span style="color:#E1E4E8"> {</span></span>
+<span class="line"><span style="color:#F97583">if</span><span style="color:#E1E4E8"> (</span><span style="color:#B392F0">js_unary_arith_slow</span><span style="color:#E1E4E8">(ctx, sp, opcode))</span></span>
+<span class="line"><span style="color:#F97583"> goto</span><span style="color:#B392F0"> exception</span><span style="color:#E1E4E8">;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span>
+<span class="line"><span style="color:#E1E4E8">BREAK;</span></span>
+<span class="line"><span style="color:#E1E4E8">}</span></span></code></pre>
 <p>If it’s already Int or Float64, nothing happens — consistent with the spec. For other types, <code>js_unary_arith_slow</code> handles conversion via <code>JS_ToFloat64Free</code>, then returns the value as-is for <code>OP_plus</code>.</p>
 <hr>
 <p>That covers five of the nine conversion methods:</p>
@@ -453,7 +559,7 @@ return result;
 <li>Clean code and maximum performance, with predictable input → use Unary Operator (+)</li>
 <li>Defensive coding for unknown inputs → use parseFloat()</li>
 <li>Need BigInt support → use parseFloat()</li>
-</ul></object></object></p>  </article> <!-- Right column: relative container for absolute-positioned cards --> <aside class="comment-rail" id="commentRail" data-astro-cid-gjtny2mx> <div class="cr-header" data-astro-cid-gjtny2mx> <span class="cr-label" data-astro-cid-gjtny2mx>Comments</span> </div> <div class="cr-cards" id="commentCards" data-astro-cid-gjtny2mx> <!-- Cards positioned absolutely here --> </div> <div class="cr-empty" id="crEmpty" data-astro-cid-gjtny2mx> <p data-astro-cid-gjtny2mx>Select text to add an inline comment.</p> </div> </aside> </div> <!-- FAB --> <button class="fab-comment" id="fabComment" aria-label="Add comment" data-astro-cid-gjtny2mx> <svg width="14" height="14" viewBox="0 0 14 14" fill="none" data-astro-cid-gjtny2mx> <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-astro-cid-gjtny2mx></path> </svg> </button> <!-- Comment input popover (desktop) — now with nickname/email --> <div class="comment-input-popover" id="commentPopover" data-astro-cid-gjtny2mx> <div class="cip-header" data-astro-cid-gjtny2mx> <span class="cip-selected" id="cipSelectedText" data-astro-cid-gjtny2mx></span> </div> <div class="cip-identity" data-astro-cid-gjtny2mx> <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="cip-input" id="cipEmail" placeholder="Email" data-astro-cid-gjtny2mx> </div> <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3" data-astro-cid-gjtny2mx></textarea> <div class="cip-actions" data-astro-cid-gjtny2mx> <button class="cip-cancel" id="cipCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="cip-submit" id="cipSubmit" data-astro-cid-gjtny2mx>Comment</button> </div> </div> <!-- Mobile bottom sheet --> <div class="mobile-sheet-overlay" id="mobileOverlay" data-astro-cid-gjtny2mx></div> <div class="mobile-sheet" id="mobileSheet" data-astro-cid-gjtny2mx> <div class="ms-handle" data-astro-cid-gjtny2mx></div> <div class="ms-quote" id="msQuote" data-astro-cid-gjtny2mx></div> <div class="ms-body" id="msBody" data-astro-cid-gjtny2mx></div> <div class="ms-author" id="msAuthor" data-astro-cid-gjtny2mx></div> <div class="ms-time" id="msTime" data-astro-cid-gjtny2mx></div> <div class="ms-replies" id="msReplies" data-astro-cid-gjtny2mx></div> <button class="ms-reply-toggle" id="msReplyToggle" data-astro-cid-gjtny2mx>Reply</button> <div class="ms-reply-form" id="msReplyForm" style="display:none;" data-astro-cid-gjtny2mx> <div class="ms-rf-identity" data-astro-cid-gjtny2mx> <input type="text" class="ms-rf-input" id="msRfNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="ms-rf-input" id="msRfEmail" placeholder="Email" data-astro-cid-gjtny2mx> </div> <textarea class="ms-rf-textarea" id="msRfTextarea" placeholder="Write a reply..." rows="2" data-astro-cid-gjtny2mx></textarea> <label class="ms-rf-notify" data-astro-cid-gjtny2mx><input type="checkbox" id="msRfNotify" checked data-astro-cid-gjtny2mx> Notify me of replies</label> <div class="ms-rf-actions" data-astro-cid-gjtny2mx> <button class="ms-rf-cancel" id="msRfCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="ms-rf-submit" id="msRfSubmit" data-astro-cid-gjtny2mx>Reply</button> </div> </div> </div> <!-- Prev / Next Navigation --> <nav class="post-nav" data-astro-cid-gjtny2mx> <div class="post-nav-inner" data-astro-cid-gjtny2mx> <a href="/en/posts/weekly-1/" class="post-nav-link post-nav-prev" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>&larr; Newer</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>Weekly #1: The Beginning — Why I&#39;m Starting a Newsletter</span> </a> <a href="/en/posts/summary-2021/" class="post-nav-link post-nav-next" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>Older &rarr;</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>2021: Finding My Own Way Forward</span> </a> </div> </nav> <!-- Article Like --> <div class="article-like-section" data-astro-cid-gjtny2mx> <div class="al-rule" data-astro-cid-gjtny2mx></div> <button class="article-like-btn" id="articleLikeBtn" data-astro-cid-gjtny2mx> <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22" data-astro-cid-gjtny2mx> <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none" data-astro-cid-gjtny2mx></path> </svg> <span class="al-count" id="articleLikeCount" data-astro-cid-gjtny2mx>0</span> <span class="al-label" data-astro-cid-gjtny2mx>likes</span> </button> <div class="al-rule" data-astro-cid-gjtny2mx></div> </div> <!-- Newsletter CTA --> <div class="newsletter-cta" data-astro-cid-gjtny2mx> <div class="nl-inner" data-astro-cid-gjtny2mx> <p class="nl-title" data-astro-cid-gjtny2mx>Subscribe</p> <p class="nl-desc" data-astro-cid-gjtny2mx>Get notified when new posts are published.</p> <form class="nl-form" id="nlForm" data-astro-cid-gjtny2mx> <input type="email" class="nl-input" id="nlEmail" placeholder="your@email.com" required data-astro-cid-gjtny2mx> <button type="submit" class="nl-btn" data-astro-cid-gjtny2mx>Subscribe</button> </form> <p class="nl-status" id="nlStatus" data-astro-cid-gjtny2mx></p> </div> </div> <!-- Bottom Comment Section --> <section class="bottom-comments" id="bottomComments" data-astro-cid-gjtny2mx> <div class="bc-inner" data-astro-cid-gjtny2mx> <div class="bc-header" data-astro-cid-gjtny2mx> <h2 class="bc-title" data-astro-cid-gjtny2mx>Comments</h2> <span class="bc-count" id="bcCount" data-astro-cid-gjtny2mx>0 comments</span> </div> <div class="bc-thread" id="bcThread" data-astro-cid-gjtny2mx> <!-- Comments rendered by JS --> </div> <div class="bc-compose" data-astro-cid-gjtny2mx> <div class="bc-compose-avatar" data-astro-cid-gjtny2mx> <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" data-astro-cid-gjtny2mx> </div> <div class="bc-compose-form" data-astro-cid-gjtny2mx> <div class="bc-compose-fields" data-astro-cid-gjtny2mx> <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="bc-input" id="bcEmail" placeholder="Email" data-astro-cid-gjtny2mx> <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" data-astro-cid-gjtny2mx> </div> <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4" data-astro-cid-gjtny2mx></textarea> <div class="bc-compose-footer" data-astro-cid-gjtny2mx> <label class="bc-notify-label" data-astro-cid-gjtny2mx> <input type="checkbox" id="bcNotify" data-astro-cid-gjtny2mx> <span data-astro-cid-gjtny2mx>Notify me of replies via email</span> </label> <button class="bc-submit" id="bcSubmit" data-astro-cid-gjtny2mx>Submit</button> </div> </div> </div> </div> </section> <footer class="page-footer" data-astro-cid-gjtny2mx> <div class="footer-inner" data-astro-cid-gjtny2mx> <div class="footer-rule" data-astro-cid-gjtny2mx></div> <div class="footer-bar" data-astro-cid-gjtny2mx> <a href="/" data-astro-cid-gjtny2mx>&larr; Home</a> <span class="footer-copy" data-astro-cid-gjtny2mx>&copy; Airing</span> <a href="/archive" data-astro-cid-gjtny2mx>Archive &rarr;</a> </div> </div> </footer> </div>  <!-- Mode Toggle (light/dark) --> <div class="theme-switcher" id="themeSwitcher"> <button class="mode-toggle" id="modeToggle" aria-label="Toggle light/dark mode"> <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"></circle> <line x1="8" y1="0.5" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="8" y1="13.5" x2="8" y2="15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="0.5" y1="8" x2="2.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="13.5" y1="8" x2="15.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="2.7" x2="4.1" y2="4.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="11.9" x2="13.3" y2="13.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="13.3" x2="4.1" y2="11.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="4.1" x2="13.3" y2="2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> </svg> <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none"> <path d="M13.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </svg> </button> </div> <script>
+</ul>  </article> <!-- Right column: relative container for absolute-positioned cards --> <aside class="comment-rail" id="commentRail" data-astro-cid-gjtny2mx> <div class="cr-header" data-astro-cid-gjtny2mx> <span class="cr-label" data-astro-cid-gjtny2mx>Comments</span> </div> <div class="cr-cards" id="commentCards" data-astro-cid-gjtny2mx> <!-- Cards positioned absolutely here --> </div> <div class="cr-empty" id="crEmpty" data-astro-cid-gjtny2mx> <p data-astro-cid-gjtny2mx>Select text to add an inline comment.</p> </div> </aside> </div> <!-- FAB --> <button class="fab-comment" id="fabComment" aria-label="Add comment" data-astro-cid-gjtny2mx> <svg width="14" height="14" viewBox="0 0 14 14" fill="none" data-astro-cid-gjtny2mx> <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" data-astro-cid-gjtny2mx></path> </svg> </button> <!-- Comment input popover (desktop) — now with nickname/email --> <div class="comment-input-popover" id="commentPopover" data-astro-cid-gjtny2mx> <div class="cip-header" data-astro-cid-gjtny2mx> <span class="cip-selected" id="cipSelectedText" data-astro-cid-gjtny2mx></span> </div> <div class="cip-identity" data-astro-cid-gjtny2mx> <input type="text" class="cip-input" id="cipNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="cip-input" id="cipEmail" placeholder="Email" data-astro-cid-gjtny2mx> </div> <textarea class="cip-textarea" id="cipTextarea" placeholder="Write a comment..." rows="3" data-astro-cid-gjtny2mx></textarea> <div class="cip-actions" data-astro-cid-gjtny2mx> <button class="cip-cancel" id="cipCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="cip-submit" id="cipSubmit" data-astro-cid-gjtny2mx>Comment</button> </div> </div> <!-- Mobile bottom sheet --> <div class="mobile-sheet-overlay" id="mobileOverlay" data-astro-cid-gjtny2mx></div> <div class="mobile-sheet" id="mobileSheet" data-astro-cid-gjtny2mx> <div class="ms-handle" data-astro-cid-gjtny2mx></div> <div class="ms-quote" id="msQuote" data-astro-cid-gjtny2mx></div> <div class="ms-body" id="msBody" data-astro-cid-gjtny2mx></div> <div class="ms-author" id="msAuthor" data-astro-cid-gjtny2mx></div> <div class="ms-time" id="msTime" data-astro-cid-gjtny2mx></div> <div class="ms-replies" id="msReplies" data-astro-cid-gjtny2mx></div> <button class="ms-reply-toggle" id="msReplyToggle" data-astro-cid-gjtny2mx>Reply</button> <div class="ms-reply-form" id="msReplyForm" style="display:none;" data-astro-cid-gjtny2mx> <div class="ms-rf-identity" data-astro-cid-gjtny2mx> <input type="text" class="ms-rf-input" id="msRfNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="ms-rf-input" id="msRfEmail" placeholder="Email" data-astro-cid-gjtny2mx> </div> <textarea class="ms-rf-textarea" id="msRfTextarea" placeholder="Write a reply..." rows="2" data-astro-cid-gjtny2mx></textarea> <label class="ms-rf-notify" data-astro-cid-gjtny2mx><input type="checkbox" id="msRfNotify" checked data-astro-cid-gjtny2mx> Notify me of replies</label> <div class="ms-rf-actions" data-astro-cid-gjtny2mx> <button class="ms-rf-cancel" id="msRfCancel" data-astro-cid-gjtny2mx>Cancel</button> <button class="ms-rf-submit" id="msRfSubmit" data-astro-cid-gjtny2mx>Reply</button> </div> </div> </div> <!-- Prev / Next Navigation --> <nav class="post-nav" data-astro-cid-gjtny2mx> <div class="post-nav-inner" data-astro-cid-gjtny2mx> <a href="/en/posts/weekly-1/" class="post-nav-link post-nav-prev" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>&larr; Newer</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>Weekly #1: The Beginning — Why I&#39;m Starting a Newsletter</span> </a> <a href="/en/posts/summary-2021/" class="post-nav-link post-nav-next" data-astro-cid-gjtny2mx> <span class="post-nav-label" data-astro-cid-gjtny2mx>Older &rarr;</span> <span class="post-nav-title" data-astro-cid-gjtny2mx>2021: Finding My Own Way Forward</span> </a> </div> </nav> <!-- Article Like --> <div class="article-like-section" data-astro-cid-gjtny2mx> <div class="al-rule" data-astro-cid-gjtny2mx></div> <button class="article-like-btn" id="articleLikeBtn" data-astro-cid-gjtny2mx> <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22" data-astro-cid-gjtny2mx> <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none" data-astro-cid-gjtny2mx></path> </svg> <span class="al-count" id="articleLikeCount" data-astro-cid-gjtny2mx>0</span> <span class="al-label" data-astro-cid-gjtny2mx>likes</span> </button> <div class="al-rule" data-astro-cid-gjtny2mx></div> </div> <!-- Newsletter CTA --> <div class="newsletter-cta" data-astro-cid-gjtny2mx> <div class="nl-inner" data-astro-cid-gjtny2mx> <p class="nl-title" data-astro-cid-gjtny2mx>Subscribe</p> <p class="nl-desc" data-astro-cid-gjtny2mx>Get notified when new posts are published.</p> <form class="nl-form" id="nlForm" data-astro-cid-gjtny2mx> <input type="email" class="nl-input" id="nlEmail" placeholder="your@email.com" required data-astro-cid-gjtny2mx> <button type="submit" class="nl-btn" data-astro-cid-gjtny2mx>Subscribe</button> </form> <p class="nl-status" id="nlStatus" data-astro-cid-gjtny2mx></p> </div> </div> <!-- Bottom Comment Section --> <section class="bottom-comments" id="bottomComments" data-astro-cid-gjtny2mx> <div class="bc-inner" data-astro-cid-gjtny2mx> <div class="bc-header" data-astro-cid-gjtny2mx> <h2 class="bc-title" data-astro-cid-gjtny2mx>Comments</h2> <span class="bc-count" id="bcCount" data-astro-cid-gjtny2mx>0 comments</span> </div> <div class="bc-thread" id="bcThread" data-astro-cid-gjtny2mx> <!-- Comments rendered by JS --> </div> <div class="bc-compose" data-astro-cid-gjtny2mx> <div class="bc-compose-avatar" data-astro-cid-gjtny2mx> <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" data-astro-cid-gjtny2mx> </div> <div class="bc-compose-form" data-astro-cid-gjtny2mx> <div class="bc-compose-fields" data-astro-cid-gjtny2mx> <input type="text" class="bc-input" id="bcNickname" placeholder="Nickname" data-astro-cid-gjtny2mx> <input type="email" class="bc-input" id="bcEmail" placeholder="Email" data-astro-cid-gjtny2mx> <input type="url" class="bc-input" id="bcWebsite" placeholder="Website (optional)" data-astro-cid-gjtny2mx> </div> <textarea class="bc-textarea" id="bcTextarea" placeholder="Write a comment..." rows="4" data-astro-cid-gjtny2mx></textarea> <div class="bc-compose-footer" data-astro-cid-gjtny2mx> <label class="bc-notify-label" data-astro-cid-gjtny2mx> <input type="checkbox" id="bcNotify" data-astro-cid-gjtny2mx> <span data-astro-cid-gjtny2mx>Notify me of replies via email</span> </label> <button class="bc-submit" id="bcSubmit" data-astro-cid-gjtny2mx>Submit</button> </div> </div> </div> </div> </section> <footer class="page-footer" data-astro-cid-gjtny2mx> <div class="footer-inner" data-astro-cid-gjtny2mx> <div class="footer-rule" data-astro-cid-gjtny2mx></div> <div class="footer-bar" data-astro-cid-gjtny2mx> <a href="/" data-astro-cid-gjtny2mx>&larr; Home</a> <span class="footer-copy" data-astro-cid-gjtny2mx>&copy; Airing</span> <a href="/archive" data-astro-cid-gjtny2mx>Archive &rarr;</a> </div> </div> </footer> </div>  <!-- Mode Toggle (light/dark) --> <div class="theme-switcher" id="themeSwitcher"> <button class="mode-toggle" id="modeToggle" aria-label="Toggle light/dark mode"> <svg class="icon-sun" width="16" height="16" viewBox="0 0 16 16" fill="none"> <circle cx="8" cy="8" r="3.5" stroke="currentColor" stroke-width="1.5"></circle> <line x1="8" y1="0.5" x2="8" y2="2.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="8" y1="13.5" x2="8" y2="15.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="0.5" y1="8" x2="2.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="13.5" y1="8" x2="15.5" y2="8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="2.7" x2="4.1" y2="4.1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="11.9" x2="13.3" y2="13.3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="2.7" y1="13.3" x2="4.1" y2="11.9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> <line x1="11.9" y1="4.1" x2="13.3" y2="2.7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></line> </svg> <svg class="icon-moon" width="16" height="16" viewBox="0 0 16 16" fill="none"> <path d="M13.5 9.5a5.5 5.5 0 01-7-7 5.5 5.5 0 107 7z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path> </svg> </button> </div> <script>
     (function() {
       var switcher = document.getElementById('themeSwitcher');
       var modeToggle = document.getElementById('modeToggle');
