@@ -178,11 +178,12 @@ Compositor Thread
 
 假设现在有 3 个 Tab，分别打开了 foo.com，bar.com，baz.com 三个站点，其中 bar.com、baz.com 不涉及 iframe；但 foo.com 涉及，它的代码如下所示：
 
-`<html>
+```html
+<html>
   <iframe id=one src="foo.com/other-url"></iframe>
   <iframe id=two src="bar.com"></iframe>
 </html>
-`
+```
 
 那么按照 Process-per-tab 模式，最终的进程模型如下图所示：
 
@@ -276,13 +277,14 @@ Lexing
 
 如针对如下所示的 DOM Tree：
 
-`<div>
+```html
+<div>
   <p>
     <div></div>
   </p>
   <span></span>
 </div>
-`
+```
 
 各 Node 压榨与出栈流程如下：
 
@@ -361,14 +363,15 @@ StyleRules = selectors(选择器) + properties(属性集)。
 
 例如对于这个 CSS：
 
-`.text .hello{
+```css
+.text .hello{
     color: rgb(200, 200, 200);
     width: calc(100% - 20px);
 }
 #world{
     margin: 20px;
 }
-`
+```
 
 解析结果如下所示：
 
@@ -445,12 +448,13 @@ Layout Object 记录了 Render Object 的几何属性。
 
 ![](https://airing.ursb.me/images/blog/chromium/20221015215041.png?max_age=624800)Layout 流程的核心函数：[Document::UpdateStyleAndLayout](https://source.chromium.org/chromium/chromium/src/+/main:third_party/blink/renderer/core/dom/document.h%3Bl=706?q=document::updateStyle&ss=chromium/chromium/src) ，经过这一步之后 DOM tree 会变成 Layout Tree，如下图代码：
 
-`<div style="max-width: 100px">
+```html
+<div style="max-width: 100px">
   <div style="float: left; padding: 1ex">F</div>
   <br>The <b>quick brown</b> fox
   <div style="margin: -60px 0 0 80px">jumps</div>
 </div>
-`
+```
 
 ![](https://airing.ursb.me/images/blog/chromium/20221015215220.png?max_age=624800)
 每一个 LayoutObject 节点都记录了位置和尺寸信息：

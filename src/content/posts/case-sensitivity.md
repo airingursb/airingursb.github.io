@@ -38,7 +38,8 @@ description: ""
 
 比如 NodeJS 中的 HTTP 模块就会自动将 Header 字段改成小写 [node/_http_outgoing.js at main · nodejs/node · GitHub](https://github.com/nodejs/node/blob/main/lib/_http_outgoing.js#L187)：
 
-`// lib/_http_outgoing.js
+```js
+// lib/_http_outgoing.js
 ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
   __proto__: null,
   get: internalUtil.deprecate(function() {
@@ -59,7 +60,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
     }
   }, 'OutgoingMessage.prototype._headers is deprecated', 'DEP0066')
 });
-`
+```
 
 > PS. 在写这篇文章的时候，发现 NodeJS 的这部分文档有处错误，示例中的获取 headers 存在大写字母，于是顺手提了个 PR，现已经合入了。[doc: fix typo in http.md by airingursb · Pull Request #43933 · nodejs/node · GitHub](https://github.com/nodejs/node/pull/43933/)
 
@@ -75,11 +76,12 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
 
 对于请求头而言，我们在 Chrome 中做个实验：
 
-`var ajax = new XMLHttpRequest();
+```js
+var ajax = new XMLHttpRequest();
 ajax.open("GET", "https://y.qq.com/lib/interaction/h5/interaction-component-1.2.min.js");
 ajax.setRequestHeader("X-test", "AA");
 ajax.send();
-`
+```
 
 对于 HTTP2 的请求，抓包之后可以发现，这里的 `X-test` 被改写成了小写 `x-test`：
 
@@ -95,11 +97,12 @@ ajax.send();
 
 按照规范 HTTP2 的 Header 名都需要转成小写，但我找了个 HTTP1.1 的站点测试了一下：
 
-`var ajax = new XMLHttpRequest();
+```js
+var ajax = new XMLHttpRequest();
 ajax.open("get", "http://www.cn1t.com/airing.js");
 ajax.setRequestHeader("X-test", "AA");
 ajax.send();
-`
+```
 
 发现这里的 Header 字段名则并不会转成小写：
 
@@ -109,7 +112,8 @@ ajax.send();
 
 而响应头中的字段名则不一样了。如果你使用 XMLHTTPRequest 的 `getAllResponseHeaders` 等方法去获取响应头，Blink 会将 Header 的名称字段改成小写：
 
-`String XMLHttpRequest::getAllResponseHeaders() const {
+```cpp
+String XMLHttpRequest::getAllResponseHeaders() const {
   // ...
   for (const auto& header : headers) {
     string_builder.Append(header.first.LowerASCII());
@@ -121,11 +125,12 @@ ajax.send();
   }
   // ...
 }
-`
+```
 
 此外，Chromium 在解析网络响应包的时候，如果走 HTTP2 协议，发现了 Header 字段名有大写字母，会直接导致网络包解析失败：
 
-`absl::optional<ParsedHeaders> ConvertCBORValueToHeaders(
+```cpp
+absl::optional<ParsedHeaders> ConvertCBORValueToHeaders(
     const cbor::Value& headers_value) {
   // |headers_value| of headers must be a map.
   if (!headers_value.is_map())
@@ -149,7 +154,7 @@ ajax.send();
 
   return result;
 }
-`
+```
 
 ## HTTP Method 区分大小写吗？
 根据规范 [RFC 7230 - Hypertext Transfer Protocol (HTTP/1.1)#section-3.1.1](https://datatracker.ietf.org/doc/html/rfc7230#section-3.1.1)：
@@ -160,7 +165,8 @@ ajax.send();
 
 但其实如果你的 XMLHttpRequest 实例传入小写的 Method 也是没有关系的（如调用 `ajax.open("get", "https://ursb.me")`），Blink 等浏览器内核会将其规范化改成大写 [Source/core/xmlhttprequest/XMLHttpRequest.cpp - chromium/blink - Git at Google](https://chromium.googlesource.com/chromium/blink/+/master/Source/core/xmlhttprequest/XMLHttpRequest.cpp#618)：
 
-`void XMLHttpRequest::open(const AtomicString& method,
+```cpp
+void XMLHttpRequest::open(const AtomicString& method,
                           const KURL& url,
                           bool async,
                           ExceptionState& exception_state) {
@@ -169,9 +175,10 @@ ajax.send();
   // ...
   
 }
-`
+```
 
-`AtomicString FetchUtils::NormalizeMethod(const AtomicString& method) {
+```cpp
+AtomicString FetchUtils::NormalizeMethod(const AtomicString& method) {
   // https://fetch.spec.whatwg.org/#concept-method-normalize
 
   // We place GET and POST first because they are more commonly used than
@@ -189,7 +196,7 @@ ajax.send();
   }
   return method;
 }
-`
+```
 
 ## URL 区分大小写吗？
 根据规范 [RFC 7230 - Hypertext Transfer Protocol (HTTP/1.1)#section-2.7.3](https://datatracker.ietf.org/doc/html/rfc7230#section-2.7.3) 中的描述：

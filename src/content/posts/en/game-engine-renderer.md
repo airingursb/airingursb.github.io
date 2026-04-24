@@ -179,7 +179,8 @@ To make this concrete, I prepared a minimal Cocos game demo. Here's the scene:
 
 And here's the main scene code:
 
-`const { ccclass } = cc._decorator;
+```js
+const { ccclass } = cc._decorator;
 
 @ccclass
 export default class Helloworld extends cc.Component {
@@ -192,7 +193,7 @@ export default class Helloworld extends cc.Component {
         console.log('Hello World');
     }
 }
-`
+```
 
 ### 3.1 Load Assets
 
@@ -289,9 +290,10 @@ First, setting up the Framebuffer and Viewport:
 - `setViewport` calls `glViewport` to set the viewport, determining the mapping area of the final render onto the screen.
 - `setup clear` sequentially calls `glClearColor`, `glClearDepth`, and `glClearStencil` to initialize clear values for the color, depth, and stencil buffers, providing a clean initial state for each frame.
 
-`unsigned int fbo;
+```cpp
+unsigned int fbo;
 glGenFramebuffers(1, &fbo);
-`
+```
 
 Next, the game engine converts each Model in the Scene into a one-to-one DrawItem. A DrawItem's data structure:
 
@@ -313,7 +315,8 @@ By distributing DrawItems into different Passes based on object characteristics,
 
 On the business side, you can create a specific Material in code and the pipeline will route it to the corresponding pass:
 
-`// Create a cube mesh
+```js
+// Create a cube mesh
 const cube = new cc.MeshRenderer();
 cube.mesh = cc.GizmoMesh.createBox(1, 1, 1);
 
@@ -324,7 +327,7 @@ opaqueMaterial.initialize({
     technique: 'opaque',
 });
 cube.setMaterial(opaqueMaterial, 0);
-`
+```
 
 Because our demo is simple, the final StageInfo only includes the Opaque Pass:
 
@@ -444,13 +447,14 @@ Note that a freshly created Framebuffer cannot be used immediately — it isn't 
 
 Therefore, use `glCheckFramebufferStatus` to verify completeness:
 
-`GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+```cpp
+GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 if (status != GL_FRAMEBUFFER_COMPLETE) {
     // ...
     // notify native: getInstance()->glErrorCallback(GL_ERROR, errMsg);
     return;
 }
-`
+```
 
 ### 3.9 Blend & Test
 

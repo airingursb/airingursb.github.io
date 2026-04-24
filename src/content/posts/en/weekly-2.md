@@ -68,8 +68,9 @@ Switching between windows on a Mac can be frustrating. `Cmd+Tab` doesn't show a 
 
 [AltTab](https://alt-tab-macos.netlify.app) fixes this problem elegantly. Install it via Homebrew:
 
-`brew install alt-tab
-`
+```bash
+brew install alt-tab
+```
 
 Once installed, `Alt+Tab` lets you cycle through every open window on the system (including multiple windows within the same app), with a live preview so you can jump exactly where you want.
 

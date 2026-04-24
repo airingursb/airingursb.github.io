@@ -116,3 +116,10 @@
 - [ ] DOM: `#modeToggle` 存在（明暗切换）
 - [ ] DOM: `#themeToggle` 存在（主题色切换）
 - [ ] 点击 `#modeToggle`，`<html>` 的 `data-mode` 属性变化
+
+## Post Detail — Code Blocks (`/posts/js-string-to-number/`, `/posts/case-sensitivity/`)
+
+- [ ] Evaluate: `document.querySelectorAll('pre.astro-code').length` > 0
+- [ ] Evaluate: 所有 `<pre>` 均带 `astro-code` class（不存在未渲染的裸代码块）
+- [ ] Evaluate: 源 markdown 不含以单反引号起始的多行代码块（`grep '^\`[^\`]'` 仅命中行内代码）
+- [ ] DOM: C++/JS 代码块含 Shiki 着色 span（`.line span[style*="color:"]`）

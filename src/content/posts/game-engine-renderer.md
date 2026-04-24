@@ -144,7 +144,8 @@ cover: "https://airing.ursb.me/images/blog/game-engine/image%2072.png"
 
 ![](https://airing.ursb.me/images/blog/game-engine/image%2012.png)这个是主场景的代码：
 
-`const { ccclass } = cc._decorator;
+```js
+const { ccclass } = cc._decorator;
 
 @ccclass
 export default class Helloworld extends cc.Component {
@@ -157,7 +158,7 @@ export default class Helloworld extends cc.Component {
         console.log('Hello World');
     }
 }
-`
+```
 
 ### 3.1 Load Assets
 ![](https://airing.ursb.me/images/blog/game-engine/image%2013.png)首先是资源加载，前文介绍过游戏资源可以分为静态资源和脚本资源。由于静态资源的加载流程涉及的内容太多了，本节只简单介绍下脚本资源加载。
@@ -228,9 +229,10 @@ Batch 的流程比较复杂，核心思想是通过 DFS 对场景中的 Node 进
 - `setViewport` 调用 `glViewport` 设置视口，决定最终渲染区域在屏幕上的映射范围
 - `setup clear` 依次执行 `glClearColor`、`glClearDepth` 和 `glClearStencil`，初始化颜色、深度和模板缓冲的清除值，为每一帧绘制提供干净的初始状态。
 
-`unsigned int fbo;
+```cpp
+unsigned int fbo;
 glGenFramebuffers(1, &fbo);
-`
+```
 
 接下来，游戏引擎会将 Scene 里的各个 Model 转成一对一的 DrawItem，一个 DrawItem 的数据结构如下所示：
 
@@ -249,7 +251,8 @@ glGenFramebuffers(1, &fbo);
 
 业务侧可以在代码里创建一个指定的 Material，之后管线就会走到对应的 pass 进行处理：
 
-`// 创建一个立方体网格
+```js
+// 创建一个立方体网格
 const cube = new cc.MeshRenderer();
 cube.mesh = cc.GizmoMesh.createBox(1, 1, 1);
 
@@ -260,7 +263,7 @@ opaqueMaterial.initialize({
     technique: 'opaque',
 });
 cube.setMaterial(opaqueMaterial, 0);
-`
+```
 
 因为我们 Demo 较为简单，因此最后生成的 StageInfo 只包含 Opaque Pass：
 
@@ -352,13 +355,14 @@ cube.setMaterial(opaqueMaterial, 0);
 
 因此需要使用 `glCheckFramebufferStatus` 对缓冲区的完整性做出检查：
 
-`GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+```cpp
+GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 if (status != GL_FRAMEBUFFER_COMPLETE) {
     // ...
     // notify native: getInstance()->glErrorCallback(GL_ERROR, errMsg);
     return;
 }
-`
+```
 
 ### 3.9 Blend & Test
 ![](https://airing.ursb.me/images/blog/game-engine/image%2054.png)接着依次进入执行 混合（Blend）、深度测试（Depth Test）、模版测试（Stencil Test）。

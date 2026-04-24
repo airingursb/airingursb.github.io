@@ -39,7 +39,8 @@ Most modern HTTP clients and servers automatically normalize header field names 
 
 For example, Node.js's HTTP module automatically lowercases header fields [node/_http_outgoing.js at main · nodejs/node · GitHub](https://github.com/nodejs/node/blob/main/lib/_http_outgoing.js#L187):
 
-`// lib/_http_outgoing.js
+```js
+// lib/_http_outgoing.js
 ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
   __proto__: null,
   get: internalUtil.deprecate(function() {
@@ -60,7 +61,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
     }
   }, 'OutgoingMessage.prototype._headers is deprecated', 'DEP0066')
 });
-`
+```
 
 > PS. While writing this post, I noticed an error in the Node.js docs — the example used a header with uppercase letters. I submitted a PR that has since been merged: [doc: fix typo in http.md by airingursb · Pull Request #43933 · nodejs/node · GitHub](https://github.com/nodejs/node/pull/43933/)
 
@@ -76,11 +77,12 @@ As frontend developers, we're more interested in how Chromium and WebKit handle 
 
 Let's experiment with request headers in Chrome:
 
-`var ajax = new XMLHttpRequest();
+```js
+var ajax = new XMLHttpRequest();
 ajax.open("GET", "https://y.qq.com/lib/interaction/h5/interaction-component-1.2.min.js");
 ajax.setRequestHeader("X-test", "AA");
 ajax.send();
-`
+```
 
 For HTTP/2 requests, packet capture shows that `X-test` is rewritten to lowercase `x-test`:
 
@@ -98,11 +100,12 @@ There was even a proposal to have XHR lowercase headers automatically ([Should X
 
 Testing against an HTTP/1.1 site:
 
-`var ajax = new XMLHttpRequest();
+```js
+var ajax = new XMLHttpRequest();
 ajax.open("get", "http://www.cn1t.com/airing.js");
 ajax.setRequestHeader("X-test", "AA");
 ajax.send();
-`
+```
 
 The header name is *not* lowercased here:
 
@@ -114,7 +117,8 @@ This tells us: lowercasing request headers isn't done by `XMLHttpRequest` — it
 
 For response headers, it's different. When you use `getAllResponseHeaders` on an `XMLHttpRequest`, Blink explicitly lowercases header names:
 
-`String XMLHttpRequest::getAllResponseHeaders() const {
+```cpp
+String XMLHttpRequest::getAllResponseHeaders() const {
   // ...
   for (const auto& header : headers) {
     string_builder.Append(header.first.LowerASCII());
@@ -126,11 +130,12 @@ For response headers, it's different. When you use `getAllResponseHeaders` on an
   }
   // ...
 }
-`
+```
 
 Additionally, when Chromium parses HTTP/2 response packets, any uppercase header field names cause the packet parse to fail:
 
-`absl::optional<ParsedHeaders> ConvertCBORValueToHeaders(
+```cpp
+absl::optional<ParsedHeaders> ConvertCBORValueToHeaders(
     const cbor::Value& headers_value) {
   // ...
 
@@ -150,7 +155,7 @@ Additionally, when Chromium parses HTTP/2 response packets, any uppercase header
 
   return result;
 }
-`
+```
 
 ## Is the HTTP Method Case-Sensitive?
 
@@ -162,7 +167,8 @@ Per [RFC 7230 — HTTP/1.1, Section 3.1.1](https://datatracker.ietf.org/doc/html
 
 That said, passing a lowercase method to `XMLHttpRequest` (e.g., `ajax.open("get", "https://ursb.me")`) actually works fine — Blink normalizes it to uppercase internally [XMLHttpRequest.cpp - Chromium/blink](https://chromium.googlesource.com/chromium/blink/+/master/Source/core/xmlhttprequest/XMLHttpRequest.cpp#618):
 
-`void XMLHttpRequest::open(const AtomicString& method,
+```cpp
+void XMLHttpRequest::open(const AtomicString& method,
                           const KURL& url,
                           bool async,
                           ExceptionState& exception_state) {
@@ -170,9 +176,10 @@ That said, passing a lowercase method to `XMLHttpRequest` (e.g., `ajax.open("get
   method_ = FetchUtils::NormalizeMethod(method);
   // ...
 }
-`
+```
 
-`AtomicString FetchUtils::NormalizeMethod(const AtomicString& method) {
+```cpp
+AtomicString FetchUtils::NormalizeMethod(const AtomicString& method) {
   // https://fetch.spec.whatwg.org/#concept-method-normalize
 
   // GET and POST first because they're most common
@@ -187,7 +194,7 @@ That said, passing a lowercase method to `XMLHttpRequest` (e.g., `ajax.open("get
   }
   return method;
 }
-`
+```
 
 ## Is the URL Case-Sensitive?
 

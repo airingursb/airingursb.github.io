@@ -53,14 +53,15 @@ Starting with `parseInt()`.
 
 In V8's [→ src/init/bootstrapper.cc], built-in JS language objects are registered. Here's the `parseInt` registration:
 
-`Handle<JSFunction> number_fun = InstallFunction(isolate_, global, "Number", JS_PRIMITIVE_WRAPPER_TYPE, JSPrimitiveWrapper::kHeaderSize, 0, isolate_->initial_object_prototype(), Builtin::kNumberConstructor);
+```cpp
+Handle<JSFunction> number_fun = InstallFunction(isolate_, global, "Number", JS_PRIMITIVE_WRAPPER_TYPE, JSPrimitiveWrapper::kHeaderSize, 0, isolate_->initial_object_prototype(), Builtin::kNumberConstructor);
 
 // Install Number.parseInt and Global.parseInt.
 Handle<JSFunction> parse_int_fun = SimpleInstallFunction(isolate_, number_fun, "parseInt", Builtin::kNumberParseInt, 2, true);
 
 JSObject::AddProperty(isolate_, global_object, "parseInt", parse_int_fun,
  native_context()->set_global_parse_int_fun(*parse_int_fun);
-`
+```
 
 Both `Number.parseInt` and the global `parseInt` are registered via `SimpleInstallFunction`, binding the API to a Builtin. When JS calls `parseInt`, the engine calls `Builtin::kNumberParseInt`.
 
@@ -74,7 +75,8 @@ Builtins in V8 are code blocks executable at VM runtime. V8 currently supports f
 
 The function `Builtin::kNumberParseInt` maps to `NumberParseInt`, implemented in Torque at [→ src/builtins/number.tq]:
 
-`// ES6 #sec-number.parseint
+```ts
+// ES6 #sec-number.parseint
 transitioning javascript builtin NumberParseInt(
     js-implicit context: NativeContext)(value: JSAny, radix: JSAny): Number {
   return ParseInt(value, radix);
@@ -129,7 +131,7 @@ transitioning builtin ParseInt(implicit context: Context)(
     tail runtime::StringParseInt(input, radix);
   }
 }
-`
+```
 
 A quick intro to V8's data structures (see [→ src/objects/objects.h] for all definitions):
 
@@ -147,7 +149,8 @@ A quick intro to V8's data structures (see [→ src/objects/objects.h] for all d
 
 The focus shifts to `runtime::StringParseInt` in [→ src/runtime/runtime-numbers.cc]:
 
-`// ES6 18.2.5 parseInt(string, radix) slow path
+```cpp
+// ES6 18.2.5 parseInt(string, radix) slow path
 RUNTIME_FUNCTION(Runtime_StringParseInt) {
   HandleScope handle_scope(isolate);
   DCHECK_EQ(2, args.length());
@@ -171,7 +174,7 @@ RUNTIME_FUNCTION(Runtime_StringParseInt) {
   double result = StringToInt(isolate, subject, radix32);
   return *isolate->factory()->NewNumber(result);
 }
-`
+```
 
 Worth noting: per the standard, if `radix` is outside the range [2, 36], `NaN` is returned.
 
@@ -179,7 +182,8 @@ Worth noting: per the standard, if `radix` is outside the range [2, 36], `NaN` i
 
 JavaScriptCore registers built-in functions in [→ runtime/JSGlobalObjectFunctions.cpp]:
 
-`JSC_DEFINE_HOST_FUNCTION(globalFuncParseInt, (JSGlobalObject* globalObject, CallFrame* callFrame))
+```cpp
+JSC_DEFINE_HOST_FUNCTION(globalFuncParseInt, (JSGlobalObject* globalObject, CallFrame* callFrame))
 {
     JSValue value = callFrame->argument(0);
     JSValue radixValue = callFrame->argument(1);
@@ -199,7 +203,7 @@ JavaScriptCore registers built-in functions in [→ runtime/JSGlobalObjectFuncti
         return JSValue::encode(jsNumber(parseInt(view, radixValue.toInt32(globalObject))));
     });
 }
-`
+```
 
 The comments are thorough — I'll let them speak for themselves. Ultimately it calls `parseInt`, whose core implementation lives in [→ runtime/ParseInt.h]. The code follows the ECMAScript spec step by step with excellent comments — I highly recommend reading it directly.
 
@@ -207,15 +211,17 @@ The comments are thorough — I'll let them speak for themselves. Ultimately it 
 
 QuickJS's core is in [→ quickjs.c]. The registration:
 
-`static const JSCFunctionListEntry js_global_funcs[] = {
+```cpp
+static const JSCFunctionListEntry js_global_funcs[] = {
     JS_CFUNC_DEF("parseInt", 2, js_parseInt ),
 //...
 }
-`
+```
 
 The `js_parseInt` implementation:
 
-`static JSValue js_parseInt(JSContext *ctx, JSValueConst this_val,
+```cpp
+static JSValue js_parseInt(JSContext *ctx, JSValueConst this_val,
                            int argc, JSValueConst *argv)
 {
     const char *str, *p;
@@ -240,7 +246,7 @@ The `js_parseInt` implementation:
     JS_FreeCString(ctx, str);
     return ret;
 }
-`
+```
 
 Bellard's code has minimal comments but is wonderfully concise.
 
@@ -265,7 +271,8 @@ Two key differences from `parseInt`:
 
 The relevant code lives right next to `parseInt`. The key part [→ src/builtins/number.tq]:
 
-`// ES6 #sec-number.parsefloat
+```ts
+// ES6 #sec-number.parsefloat
 transitioning javascript builtin NumberParseFloat(
     js-implicit context: NativeContext)(value: JSAny): Number {
   try {
@@ -294,11 +301,12 @@ transitioning javascript builtin NumberParseFloat(
     return runtime::StringParseFloat(s);
   }
 }
-`
+```
 
 And [→ src/runtime/runtime-numbers.cc]:
 
-`// ES6 18.2.4 parseFloat(string)
+```cpp
+// ES6 18.2.4 parseFloat(string)
 RUNTIME_FUNCTION(Runtime_StringParseFloat) {
   HandleScope shs(isolate);
   DCHECK_EQ(1, args.length());
@@ -309,7 +317,7 @@ RUNTIME_FUNCTION(Runtime_StringParseFloat) {
 
   return *isolate->factory()->NewNumber(value);
 }
-`
+```
 
 Simpler than `parseInt`, reflecting the simpler spec.
 
@@ -317,7 +325,8 @@ Simpler than `parseInt`, reflecting the simpler spec.
 
 Even more concise:
 
-`static double parseFloat(StringView s)
+```js
+static double parseFloat(StringView s)
 {
     unsigned size = s.length();
 
@@ -356,13 +365,14 @@ Even more concise:
 
     return jsStrDecimalLiteral(data, end);
 }
-`
+```
 
 ### 2.3 parseFloat() in QuickJS
 
 QuickJS fits it in 12 lines:
 
-`static JSValue js_parseFloat(JSContext *ctx, JSValueConst this_val,
+```cpp
+static JSValue js_parseFloat(JSContext *ctx, JSValueConst this_val,
                              int argc, JSValueConst *argv)
 {
     const char *str, *p;
@@ -377,7 +387,7 @@ QuickJS fits it in 12 lines:
     JS_FreeCString(ctx, str);
     return ret;
 }
-`
+```
 
 The brevity is intentional — the latest ECMAScript spec doesn't require the ASCII/8-bit compatibility checks that JavaScriptCore includes, and QuickJS stays minimal.
 
@@ -391,7 +401,8 @@ The brevity is intentional — the latest ECMAScript spec doesn't require the AS
 
 `Number` is registered in [→ src/init/bootstrapper.cc]. The constructor `Builtin::kNumberConstructor` is implemented in Torque [→ src/builtins/constructor.tq]:
 
-`// ES #sec-number-constructor
+```ts
+// ES #sec-number-constructor
 transitioning javascript builtin
 NumberConstructor(
     js-implicit context: NativeContext, receiver: JSAny, newTarget: JSAny,
@@ -416,7 +427,7 @@ NumberConstructor(
   result.value = n;
   return result;
 }
-`
+```
 
 Steps 1–6 in the comments map directly to the ECMAScript spec. Notably, `Number` explicitly supports BigInt — which is why our comparison table showed those results.
 
@@ -424,7 +435,8 @@ Steps 1–6 in the comments map directly to the ECMAScript spec. Notably, `Numbe
 
 Same logic as V8, closely following the spec [→ runtime/NumberConstructor.cpp]:
 
-`// ECMA 15.7.1
+```cpp
+// ECMA 15.7.1
 JSC_DEFINE_HOST_FUNCTION(constructNumberConstructor, (JSGlobalObject* globalObject, CallFrame* callFrame))
 {
     VM& vm = globalObject->vm();
@@ -444,7 +456,7 @@ JSC_DEFINE_HOST_FUNCTION(constructNumberConstructor, (JSGlobalObject* globalObje
     }
     // ...
 }
-`
+```
 
 ### 3.3 Number() in QuickJS
 
@@ -462,7 +474,8 @@ The `~` operator leverages step 2 of the spec — type conversion of the operand
 
 V8 identifies unary operators in [→ src/parsing/token.h]. During AST construction in the parsing phase, unary operators are handled via `ParseUnaryExpression` and `BuildUnaryExpression`:
 
-`Expression* Parser::BuildUnaryExpression(Expression* expression,
+```cpp
+Expression* Parser::BuildUnaryExpression(Expression* expression,
                                          Token::Value op, int pos) {
   DCHECK_NOT_NULL(expression);
   const Literal* literal = expression->AsLiteral();
@@ -485,7 +498,7 @@ V8 identifies unary operators in [→ src/parsing/token.h]. During AST construct
   }
   return factory()->NewUnaryOperation(op, expression, pos);
 }
-`
+```
 
 If the literal is a number and the operator is `BIT_NOT`, the value is converted to Int32 and bitwise-negated.
 
@@ -493,19 +506,21 @@ If the literal is a number and the operator is `BIT_NOT`, the value is converted
 
 Similarly, during AST construction, when the `~` (TILDE) token is encountered:
 
-`ExpressionNode* ASTBuilder::makeBitwiseNotNode(const JSTokenLocation& location, ExpressionNode* expr)
+```cpp
+ExpressionNode* ASTBuilder::makeBitwiseNotNode(const JSTokenLocation& location, ExpressionNode* expr)
 {
 if (expr->isNumber())
         return createIntegerLikeNumber(location, ~toInt32(static_cast<NumberNode*>(expr)->value()));
     return new (m_parserArena) BitwiseNotNode(location, expr);
 }
-`
+```
 
 ### 4.3 BitwiseNot in QuickJS
 
 QuickJS generates the `OP_not` bytecode for `~`, then handles it during interpretation in `JS_CallInternal`:
 
-`CASE(OP_not):
+```cpp
+CASE(OP_not):
 {
 JSValue op1;
 op1 = sp[-1];
@@ -517,7 +532,7 @@ goto exception;
 }
 }
 BREAK;
-`
+```
 
 If it's already an integer, it just negates it. Otherwise it calls `js_not_slow`, which calls `JS_ToInt32Free` to perform type conversion first.
 
@@ -531,7 +546,8 @@ The unary `+` is personally my favorite way to convert strings to numbers. The s
 
 The V8 and JavaScriptCore parsing phases work the same as for `~~`, so I'll skip those. In QuickJS's interpreter:
 
-`CASE(OP_plus):
+```cpp
+CASE(OP_plus):
 {
     JSValue op1;
 uint32_t tag;
@@ -544,7 +560,7 @@ if (js_unary_arith_slow(ctx, sp, opcode))
 }
 BREAK;
 }
-`
+```
 
 If it's already Int or Float64, nothing happens — consistent with the spec. For other types, `js_unary_arith_slow` handles conversion via `JS_ToFloat64Free`, then returns the value as-is for `OP_plus`.
 
