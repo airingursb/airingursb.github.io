@@ -23,6 +23,7 @@ if os.path.exists(_env_file):
 FEED_URL = 'https://blog.ursb.me/feed.xml'
 FEED_EN_URL = 'https://ursb.me/en/blog/feed.xml'
 NOTES_FEED_URL = 'https://ursb.me/notes/feed.xml'
+NOTES_EN_FEED_URL = 'https://ursb.me/en/notes/feed.xml'
 TELEGRAM_URL = 'https://t.me/s/airingchannel'
 HTML_FILE = 'index.html'
 ASTRO_FILE = 'src/pages/index.astro'
@@ -164,12 +165,13 @@ def parse_notes_feed(xml_str):
         pub_el = item.find('pubDate')
         title = title_el.text.strip() if title_el is not None and title_el.text else ''
         link = link_el.text.strip() if link_el is not None and link_el.text else ''
-        # Convert absolute URL to local path (notes detail or immersive standalone)
-        m = re.search(r'ursb\.me(/(?:notes|immersive)/[^?#]+)', link)
+        # Convert absolute URL to local path
+        # Matches: /notes/<slug>/, /en/notes/<slug>/, /immersive/<slug>/
+        m = re.search(r'ursb\.me(/(?:en/)?(?:notes|immersive)/[^?#]+)', link)
         if m:
             link = m.group(1)
         # Immersive notes open in a new tab (different layout)
-        is_immersive = link.startswith('/immersive/')
+        is_immersive = '/immersive/' in link
         date_raw = pub_el.text.strip() if pub_el is not None and pub_el.text else ''
         notes.append({'title': title, 'link': link, 'date': format_date(date_raw), 'immersive': is_immersive})
     return notes
@@ -635,7 +637,7 @@ def main():
     except Exception as e:
         print(f'Blog EN: error - {e}', file=sys.stderr)
 
-    # Notes feed
+    # Notes feed (zh)
     try:
         xml_str = fetch_url(NOTES_FEED_URL)
         notes = parse_notes_feed(xml_str)
@@ -649,6 +651,21 @@ def main():
             print('Notes: no notes found', file=sys.stderr)
     except Exception as e:
         print(f'Notes: error - {e}', file=sys.stderr)
+
+    # Notes feed (en)
+    try:
+        xml_str = fetch_url(NOTES_EN_FEED_URL)
+        notes_en = parse_notes_feed(xml_str)
+        if notes_en:
+            html = generate_items_html(notes_en, lang='en')
+            content = replace_section(content, '<!-- NOTES_EN_START -->', '<!-- NOTES_EN_END -->', html)
+            sync_to_astro('<!-- NOTES_EN_START -->', '<!-- NOTES_EN_END -->', html, 'Notes EN')
+            print(f'Notes EN: {len(notes_en)} notes')
+            changed = True
+        else:
+            print('Notes EN: no notes found', file=sys.stderr)
+    except Exception as e:
+        print(f'Notes EN: error - {e}', file=sys.stderr)
 
     # Telegram channel
     try:
