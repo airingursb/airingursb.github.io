@@ -23,13 +23,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
-/* ---------- i18n (with !important to defeat translation extensions) ---------- */
-html[lang="zh"] [lang="en"]:not(html) { display: none !important; }
-html[lang="en"] [lang="zh"]:not(html) { display: none !important; }
+/* ---------- i18n (with :lang() to match zh/zh-CN/zh-Hans variants) ---------- */
+html:lang(zh) [lang="en"]:not(html) { display: none !important; }
+html:lang(en) [lang="zh"]:not(html) { display: none !important; }
 /* Belt-and-braces: hide common translation-extension injected elements */
 immersive-translate-target,
 immersive-translate-source-wrapper { display: none !important; }
-html[lang="en"] body {
+html:lang(en) body {
   font-family: "Tiempos Text", Georgia, "Charter", "Iowan Old Style", serif;
 }
 
@@ -4665,11 +4665,26 @@ se-&gt;start(self.gameEJView.jsGlobalContext);</code></pre>
     try { localStorage.setItem('article_lang', lang); } catch (e) {}
   }
   buttons.forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
-  // Restore saved lang
+  // Normalize: some browsers/extensions promote lang="zh" to "zh-CN" / "zh-Hans"
+  // etc. Strip the subtag so the active button highlight + CSS rules stay
+  // consistent. (CSS itself uses :lang() which already handles variants.)
+  function normalizeLang(raw) {
+    if (!raw) return 'zh';
+    const tag = String(raw).toLowerCase();
+    if (tag.startsWith('en')) return 'en';
+    return 'zh';
+  }
+  // Restore saved lang, otherwise normalize whatever the browser ended up with.
   try {
     const saved = localStorage.getItem('article_lang');
-    if (saved && (saved === 'zh' || saved === 'en')) setLang(saved);
-  } catch (e) {}
+    if (saved === 'zh' || saved === 'en') {
+      setLang(saved);
+    } else {
+      setLang(normalizeLang(html.getAttribute('lang')));
+    }
+  } catch (e) {
+    setLang(normalizeLang(html.getAttribute('lang')));
+  }
 })();
 
 /* ============================================================
