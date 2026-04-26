@@ -29,6 +29,14 @@ const noteSchema = z.object({
   draft: z.boolean().default(false),
   interactive: z.boolean().default(false),
   summary: z.string(),
+  // Immersive: standalone full-page article hosted under /immersive/<slug>/
+  // When set, the notes list links directly to this URL (target=_blank) and shows
+  // a special badge. The detail page /notes/<slug>/ still renders mdx body as
+  // a preview/teaser for RSS and SEO.
+  immersive: z.object({
+    url: z.string(),                    // e.g. "/immersive/helio/"
+    label: z.string().optional(),       // shown next to badge, default "沉浸式 / Immersive"
+  }).optional(),
 });
 
 const notes = defineCollection({

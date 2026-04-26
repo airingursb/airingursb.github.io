@@ -17,7 +17,9 @@ export async function GET(context: APIContext) {
       title: note.data.title,
       pubDate: new Date(note.data.date),
       description: note.data.summary || '',
-      link: `/en/notes/${note.id}/`,
+      // Immersive notes link directly to their standalone page;
+      // others use the canonical EN detail page.
+      link: note.data.immersive ? note.data.immersive.url : `/en/notes/${note.id}/`,
       categories: note.data.tags,
     })),
     customData: `<language>${s.feedLang}</language>`,

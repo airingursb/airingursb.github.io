@@ -6,6 +6,7 @@
 import { getCollection } from 'astro:content';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import LangSwitch from '../../../components/LangSwitch.astro';
+import ImmersiveBadge from '../../../components/ImmersiveBadge.astro';
 import { tSite } from '../../../lib/i18n';
 
 const notes = (await getCollection('notesEn', ({ data }) => data.public && !data.draft))
@@ -146,29 +147,44 @@ const hreflang = {
 
           <!-- Note cards -->
           <div class="note-list" id="note-list">
-            {notes.map(note => (
-              <a
-                href={`/en/notes/${note.id}`}
-                class="note-card"
-                data-tags={JSON.stringify(note.data.tags)}
-                data-title={note.data.title.toLowerCase()}
-                data-summary={note.data.summary.toLowerCase()}
-                data-date={note.data.date}
-              >
-                <div class="nc-meta">
-                  <time class="nc-date">{formatDate(note.data.date)}</time>
-                  <div class="nc-tags">
-                    {note.data.tags.map(tag => (
-                      <span class="nc-tag">{tag}</span>
-                    ))}
+            {notes.map(note => {
+              const isImmersive = !!note.data.immersive;
+              const href = isImmersive ? note.data.immersive!.url : `/en/notes/${note.id}`;
+              const linkProps = isImmersive
+                ? { target: '_blank', rel: 'noopener' }
+                : {};
+              return (
+                <a
+                  href={href}
+                  class={`note-card${isImmersive ? ' note-card-immersive' : ''}`}
+                  data-tags={JSON.stringify(note.data.tags)}
+                  data-title={note.data.title.toLowerCase()}
+                  data-summary={note.data.summary.toLowerCase()}
+                  data-date={note.data.date}
+                  data-immersive={isImmersive ? 'true' : undefined}
+                  {...linkProps}
+                >
+                  <div class="nc-meta">
+                    <time class="nc-date">{formatDate(note.data.date)}</time>
+                    <div class="nc-tags">
+                      {note.data.tags.map(tag => (
+                        <span class="nc-tag">{tag}</span>
+                      ))}
+                      {isImmersive && (
+                        <ImmersiveBadge label={note.data.immersive!.label || 'Immersive'} />
+                      )}
+                    </div>
                   </div>
-                </div>
-                <h3 class="nc-title">{note.data.title}</h3>
-                {note.data.summary && (
-                  <p class="nc-summary">{note.data.summary}</p>
-                )}
-              </a>
-            ))}
+                  <h3 class="nc-title">
+                    {note.data.title}
+                    {isImmersive && <span class="nc-ext-arrow" aria-hidden="true">↗</span>}
+                  </h3>
+                  {note.data.summary && (
+                    <p class="nc-summary">{note.data.summary}</p>
+                  )}
+                </a>
+              );
+            })}
           </div>
 
           <!-- Empty state -->
@@ -607,6 +623,20 @@ const hreflang = {
   }
   .note-card:last-child { border-bottom: none; }
   .note-card:hover .nc-title { color: var(--accent); }
+
+  /* Immersive cards: subtle warm tint + amber hover accent */
+  .note-card-immersive { position: relative; }
+  .note-card-immersive:hover { background: linear-gradient(90deg, rgba(252,211,77,0.04), transparent 70%); }
+  .note-card-immersive:hover .nc-title { color: #b45309; }
+  .nc-ext-arrow {
+    display: inline-block; margin-left: 6px;
+    color: #b45309; font-weight: 500; font-size: 0.85em;
+    transition: transform 0.18s ease;
+    vertical-align: 1px;
+  }
+  .note-card-immersive:hover .nc-ext-arrow {
+    transform: translate(2px, -2px);
+  }
 
   .nc-meta {
     display: flex; align-items: center; gap: 12px;
