@@ -92,7 +92,9 @@ def generate_items_html(items, lang=None):
                 link = f'/posts/{m.group(1)}'
         link = escape_html(link)
         date = a['date']
-        target = '' if link.startswith('/') else ' target="_blank"'
+        # Open in new tab for: external links, OR immersive standalone pages
+        is_immersive = a.get('immersive') or link.startswith('/immersive/')
+        target = ' target="_blank" rel="noopener"' if (not link.startswith('/') or is_immersive) else ''
         lang_cls = f' post-item-{lang}' if lang else ''
         lines.append(f'            <a href="{link}" class="post-item{lang_cls}"{target}>')
         lines.append(f'              <span class="post-title">{title}</span>')
@@ -162,12 +164,14 @@ def parse_notes_feed(xml_str):
         pub_el = item.find('pubDate')
         title = title_el.text.strip() if title_el is not None and title_el.text else ''
         link = link_el.text.strip() if link_el is not None and link_el.text else ''
-        # Convert absolute URL to local path
-        m = re.search(r'ursb\.me(/notes/[^?#]+)', link)
+        # Convert absolute URL to local path (notes detail or immersive standalone)
+        m = re.search(r'ursb\.me(/(?:notes|immersive)/[^?#]+)', link)
         if m:
             link = m.group(1)
+        # Immersive notes open in a new tab (different layout)
+        is_immersive = link.startswith('/immersive/')
         date_raw = pub_el.text.strip() if pub_el is not None and pub_el.text else ''
-        notes.append({'title': title, 'link': link, 'date': format_date(date_raw)})
+        notes.append({'title': title, 'link': link, 'date': format_date(date_raw), 'immersive': is_immersive})
     return notes
 
 
