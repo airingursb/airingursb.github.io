@@ -642,7 +642,7 @@ def main():
         xml_str = fetch_url(NOTES_FEED_URL)
         notes = parse_notes_feed(xml_str)
         if notes:
-            html = generate_items_html(notes)
+            html = generate_items_html(notes, lang='zh')
             content = replace_section(content, '<!-- NOTES_START -->', '<!-- NOTES_END -->', html)
             sync_to_astro('<!-- NOTES_START -->', '<!-- NOTES_END -->', html, 'Notes')
             print(f'Notes: {len(notes)} notes')
