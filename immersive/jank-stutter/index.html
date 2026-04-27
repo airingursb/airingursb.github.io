@@ -1,0 +1,3493 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google" content="notranslate">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico">
+<link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico">
+<link rel="icon" href="https://airing.ursb.me/image/favicon.ico">
+<title>测量「流畅」 — 从 FrameTime 到 Stutter</title>
+<style>
+  :root {
+    --bg: #f4efe6;
+    --bg-soft: #ebe5d8;
+    --paper: #faf6ed;
+    --ink: #1c1a16;
+    --ink-soft: #4a463e;
+    --ink-mute: #807a6d;
+    --rule: #c9c1ae;
+    --accent: #b3422c;
+    --accent-soft: #c4684f;
+    --good: #4a6b3e;
+    --warn: #a87a1f;
+    --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+    --serif-en: "Source Serif Pro", "Source Serif 4", Georgia, "Times New Roman", "Source Han Serif SC", serif;
+    --sans: "Inter", -apple-system, "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Menlo, ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 16px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body.lang-en {
+    font-family: var(--serif-en);
+  }
+
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image: radial-gradient(rgba(80,60,30,0.05) 1px, transparent 1px);
+    background-size: 3px 3px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .container {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 0 32px;
+    position: relative;
+    z-index: 2;
+  }
+
+  /* ====================== LANG TOGGLE ====================== */
+  .lang-toggle {
+    position: fixed;
+    top: 28px;
+    right: 32px;
+    z-index: 100;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 6px 12px;
+    border-radius: 99px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+  }
+  .lang-toggle button {
+    background: transparent;
+    border: 0;
+    padding: 2px 6px;
+    font: inherit;
+    color: var(--ink-mute);
+    cursor: pointer;
+    letter-spacing: inherit;
+    transition: color 0.15s;
+    border-radius: 99px;
+  }
+  .lang-toggle button:hover { color: var(--ink); }
+  .lang-toggle button.active {
+    color: var(--ink);
+    font-weight: 600;
+  }
+  .lang-toggle .sep {
+    color: var(--rule);
+    user-select: none;
+  }
+
+  /* ====================== LANG VISIBILITY ====================== */
+  body:not(.lang-en) .lang-en-only { display: none !important; }
+  body.lang-en .lang-zh-only { display: none !important; }
+
+  /* ====================== HERO ====================== */
+  .hero {
+    padding: 120px 0 80px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .hero .meta {
+    font-family: var(--sans);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 32px;
+  }
+  .hero .meta span + span::before {
+    content: "·";
+    margin: 0 12px;
+    color: var(--rule);
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: 64px;
+    line-height: 1.1;
+    margin: 0 0 24px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  body.lang-en .hero h1 {
+    font-family: var(--serif-en);
+    font-size: 60px;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+  .hero h1 .accent { color: var(--accent); }
+  .hero .deck {
+    font-family: var(--sans);
+    font-size: 19px;
+    line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 580px;
+    margin: 0 0 48px;
+    font-weight: 300;
+  }
+  .byline {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-mute);
+    display: flex;
+    gap: 32px;
+    flex-wrap: wrap;
+  }
+  .byline .label { color: var(--ink-mute); }
+  .byline .value { color: var(--ink); margin-left: 6px; }
+  .byline a.value { text-decoration: none; border-bottom: 1px solid var(--rule); transition: color 0.18s, border-color 0.18s; }
+  .byline a.value:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ====================== TOC ====================== */
+  .toc {
+    padding: 56px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .toc-label {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 24px;
+  }
+  .toc ol { list-style: none; padding: 0; margin: 0; counter-reset: toc; }
+  .toc li {
+    font-family: var(--sans);
+    font-size: 15px;
+    padding: 10px 0;
+    border-bottom: 1px dotted var(--rule);
+    display: flex;
+    align-items: baseline;
+    counter-increment: toc;
+  }
+  .toc li::before {
+    content: counter(toc, decimal-leading-zero);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 12px;
+    margin-right: 20px;
+    width: 28px;
+  }
+  .toc li a { color: var(--ink); text-decoration: none; flex: 1; }
+  .toc li a:hover { color: var(--accent); }
+  .toc li .en {
+    color: var(--ink-mute);
+    font-size: 12px;
+    font-style: italic;
+    margin-left: 12px;
+  }
+  body.lang-en .toc li .en {
+    margin-left: 0;
+    font-style: normal;
+    color: var(--ink-mute);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  /* ====================== SECTION ====================== */
+  section.chap {
+    padding: 96px 0 48px;
+    border-bottom: 1px solid var(--rule);
+    scroll-margin-top: 40px;
+  }
+  .chap-num {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 16px;
+  }
+  .chap-title {
+    font-family: var(--serif);
+    font-size: 42px;
+    line-height: 1.15;
+    margin: 0 0 6px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  body.lang-en .chap-title {
+    font-family: var(--serif-en);
+    font-size: 38px;
+    letter-spacing: -0.015em;
+  }
+  .chap-en {
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--ink-mute);
+    font-style: italic;
+    margin: 0 0 40px;
+    letter-spacing: 0.04em;
+  }
+
+  h3.sub {
+    font-family: var(--sans);
+    font-size: 13px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin: 48px 0 16px;
+    font-weight: 500;
+  }
+  h4.sub2 {
+    font-family: var(--serif);
+    font-size: 22px;
+    margin: 36px 0 12px;
+    font-weight: 600;
+  }
+  body.lang-en h4.sub2 { font-family: var(--serif-en); }
+
+  p { margin: 0 0 20px; }
+  p .em { color: var(--accent); font-style: normal; }
+
+  /* ====================== KEY NUMBER ====================== */
+  .keynum {
+    margin: 40px 0;
+    padding: 32px 0;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+  }
+  .keynum .item .v {
+    font-family: var(--sans);
+    font-size: 38px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+  .keynum .item .v .unit {
+    font-size: 16px;
+    color: var(--ink-mute);
+    margin-left: 4px;
+    font-weight: 400;
+  }
+  .keynum .item .l {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-top: 8px;
+  }
+
+  /* ====================== FIGURE ====================== */
+  figure { margin: 48px 0; padding: 0; }
+  figure .figbox {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 32px;
+    border-radius: 2px;
+  }
+  figcaption {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-mute);
+    margin-top: 12px;
+    line-height: 1.5;
+  }
+  figcaption .figid {
+    color: var(--accent);
+    font-family: var(--mono);
+    letter-spacing: 0.1em;
+    margin-right: 10px;
+  }
+  figcaption .figen {
+    display: block;
+    font-style: italic;
+    margin-top: 2px;
+    color: var(--ink-mute);
+    opacity: 0.75;
+  }
+
+  /* ====================== BUTTER STACK (4 innovations) ====================== */
+  .butter-stack {
+    display: flex; flex-direction: column; gap: 14px;
+    margin: 22px 0 32px;
+  }
+  .butter-row {
+    display: grid; grid-template-columns: 64px 1fr; gap: 18px;
+    padding: 16px 20px; background: var(--paper);
+    border-left: 2px solid var(--accent); border-radius: 0 4px 4px 0;
+  }
+  .butter-num {
+    font-family: var(--mono); font-size: 22px; color: var(--accent);
+    font-weight: 700; line-height: 1; padding-top: 4px;
+  }
+  .butter-body h5 {
+    font-family: var(--serif); font-size: 16px; font-weight: 700;
+    color: var(--ink); margin: 0 0 6px;
+  }
+  body.lang-en .butter-body h5 { font-family: var(--serif-en); }
+  .butter-body p {
+    margin: 0; font-size: 14px; line-height: 1.7; color: var(--ink-soft);
+    font-family: var(--serif);
+  }
+  body.lang-en .butter-body p { font-family: var(--serif-en); }
+
+  /* ====================== SVG FIG WRAPPER ====================== */
+  .fig-svg-wrap {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 18px 14px; margin: 8px 0;
+  }
+  .fig-svg-wrap svg { width: 100%; height: auto; display: block; }
+
+  /* ====================== SMOOTH-VS-JANK ANIMATION DEMO ====================== */
+  .smooth-demo {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 22px 24px; margin: 8px 0;
+    display: flex; flex-direction: column; gap: 22px;
+  }
+  .smooth-track .smooth-head {
+    display: flex; align-items: baseline; gap: 12px;
+    margin-bottom: 10px; font-family: var(--mono); font-size: 11px;
+  }
+  .smooth-track .smooth-name {
+    font-family: var(--serif); font-size: 14px; font-weight: 700; color: var(--ink);
+  }
+  body.lang-en .smooth-track .smooth-name { font-family: var(--serif-en); }
+  .smooth-track .smooth-name.bad { color: var(--accent); }
+  .smooth-track .smooth-name.good { color: var(--good); }
+  .smooth-track .smooth-meta {
+    color: var(--ink-mute); font-size: 10.5px; letter-spacing: 0.05em;
+  }
+  .smooth-rail {
+    position: relative; height: 30px;
+    border-bottom: 2px solid var(--rule);
+  }
+  .smooth-rail::before, .smooth-rail::after {
+    content: ""; position: absolute; bottom: -6px;
+    width: 1px; height: 10px; background: var(--ink-mute);
+  }
+  .smooth-rail::before { left: 0; }
+  .smooth-rail::after { right: 0; }
+  .smooth-ball {
+    position: absolute; top: 5px; left: 0;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--ink-soft);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+    will-change: left;
+  }
+  .smooth-ball.good { background: var(--good); }
+  .smooth-ball.bad { background: var(--accent); }
+  .smooth-cap {
+    margin: 8px 0 0; font-family: var(--sans); font-size: 12px;
+    color: var(--ink-mute); line-height: 1.55;
+  }
+
+  @keyframes smooth-glide {
+    from { left: 0; }
+    to   { left: calc(100% - 20px); }
+  }
+  /* "60fps + 3 jank" — smooth motion punctuated by 3 freeze segments */
+  @keyframes janky-glide {
+    0%   { left: 0%; }
+    18%  { left: 20%; }
+    22%  { left: 20%; }   /* freeze 1 */
+    46%  { left: 50%; }
+    52%  { left: 50%; }   /* freeze 2 */
+    78%  { left: 80%; }
+    82%  { left: 80%; }   /* freeze 3 */
+    100% { left: calc(100% - 20px); }
+  }
+  .smooth-ball.run-smooth { animation: smooth-glide 1.8s linear infinite alternate; }
+  .smooth-ball.run-janky  { animation: janky-glide  1.8s linear infinite alternate; }
+  .smooth-ball.run-low    { animation: smooth-glide 3.6s linear infinite alternate; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .smooth-ball { animation: none !important; left: 50% !important; }
+  }
+
+  /* ====================== FRAME RIBBON ====================== */
+  .ribbon {
+    display: flex;
+    align-items: stretch;
+    gap: 2px;
+    height: 64px;
+    margin: 8px 0;
+  }
+  .ribbon .f {
+    background: var(--ink-soft);
+    border-radius: 1px;
+    position: relative;
+    transition: all 0.2s;
+  }
+  .ribbon .f.long { background: var(--accent); }
+  .ribbon .f.miss {
+    background: repeating-linear-gradient(
+      45deg,
+      var(--rule),
+      var(--rule) 4px,
+      var(--paper) 4px,
+      var(--paper) 8px
+    );
+    border: 1px dashed var(--rule);
+  }
+  .ribbon-axis {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-mute);
+    display: flex;
+    justify-content: space-between;
+    margin-top: 6px;
+  }
+  .ribbon-label {
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--ink-soft);
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ====================== COMPARE GRID ====================== */
+  .compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin: 32px 0;
+  }
+  .compare .col {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 24px;
+  }
+  .compare .col h5 {
+    margin: 0 0 4px;
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .compare .col .big {
+    font-family: var(--sans);
+    font-size: 32px;
+    font-weight: 600;
+    color: var(--ink);
+    margin: 4px 0 16px;
+  }
+  .compare .col.left .big { color: var(--accent); }
+  .compare .col.right .big { color: var(--good); }
+  .compare .col p {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  /* ====================== FORMULA CARD ====================== */
+  .formula {
+    background: var(--ink);
+    color: var(--bg);
+    padding: 32px;
+    margin: 32px 0;
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.9;
+    border-radius: 2px;
+    position: relative;
+  }
+  .formula .ftitle {
+    font-family: var(--sans);
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    color: var(--rule);
+  }
+  .formula .cond { display: block; margin: 4px 0; }
+  .formula .cond::before {
+    content: "▸";
+    color: var(--accent-soft);
+    margin-right: 12px;
+  }
+  .formula .out {
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid #333;
+    color: var(--accent-soft);
+  }
+
+  /* ====================== TABLE ====================== */
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 24px 0;
+    font-family: var(--sans);
+    font-size: 14px;
+  }
+  table.cmp th, table.cmp td {
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  table.cmp th {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+    font-weight: 500;
+    border-bottom: 2px solid var(--ink);
+  }
+  table.cmp td:first-child { color: var(--ink-soft); width: 35%; }
+  table.cmp td.num {
+    font-family: var(--mono);
+    color: var(--accent);
+  }
+
+  /* ====================== SCENARIO CARDS ====================== */
+  .scenarios {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+    margin: 32px 0;
+  }
+  .scn {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 24px;
+    position: relative;
+  }
+  .scn .sno {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+  .scn .stitle {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 12px;
+  }
+  body.lang-en .scn .stitle { font-family: var(--serif-en); }
+  .scn .stags {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  .scn .tag {
+    font-family: var(--sans);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    padding: 2px 8px;
+    border: 1px solid var(--ink);
+    color: var(--ink);
+    border-radius: 99px;
+    text-transform: uppercase;
+  }
+  .scn .tag.off { color: var(--ink-mute); border-color: var(--rule); text-decoration: line-through; opacity: 0.6; }
+  .scn p {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* ====================== PULLQUOTE ====================== */
+  blockquote.pull {
+    margin: 56px 0;
+    padding: 0 0 0 24px;
+    border-left: 3px solid var(--accent);
+    font-family: var(--serif);
+    font-size: 24px;
+    line-height: 1.5;
+    color: var(--ink);
+    font-style: italic;
+  }
+  body.lang-en blockquote.pull { font-family: var(--serif-en); }
+  blockquote.pull cite {
+    display: block;
+    margin-top: 12px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-style: normal;
+    letter-spacing: 0.1em;
+    color: var(--ink-mute);
+  }
+  blockquote.pull cite::before { content: "— "; }
+
+  /* ====================== NOTE BOX ====================== */
+  .note {
+    background: var(--bg-soft);
+    border-left: 2px solid var(--ink);
+    padding: 18px 22px;
+    margin: 28px 0;
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.7;
+    color: var(--ink-soft);
+  }
+  .note strong { color: var(--ink); font-weight: 600; }
+  .note .ntag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  /* ====================== MICRO STUTTER VIZ ====================== */
+  .stutter-viz {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    gap: 20px;
+    align-items: center;
+    margin: 12px 0;
+  }
+  .stutter-viz .lbl {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-mute);
+  }
+  .stutter-viz .lbl .big {
+    font-family: var(--sans);
+    font-size: 24px;
+    color: var(--ink);
+    font-weight: 600;
+    display: block;
+    line-height: 1;
+  }
+
+  /* ====================== CLOSING ====================== */
+  .closing {
+    padding: 96px 0 120px;
+    text-align: left;
+  }
+  .closing .quote {
+    font-family: var(--serif);
+    font-size: 28px;
+    line-height: 1.5;
+    color: var(--ink);
+    margin: 0 0 32px;
+    max-width: 620px;
+    font-style: italic;
+  }
+  body.lang-en .closing .quote { font-family: var(--serif-en); }
+  .closing .signoff {
+    font-family: var(--sans);
+    font-size: 12px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  /* ====================== RESPONSIVE ====================== */
+  @media (max-width: 720px) {
+    .lang-toggle { top: 16px; right: 16px; padding: 4px 10px; font-size: 11px; }
+    .hero { padding: 80px 0 56px; }
+    .hero h1 { font-size: 42px; }
+    body.lang-en .hero h1 { font-size: 40px; }
+    .hero .deck { font-size: 16px; }
+    .chap-title { font-size: 30px; }
+    body.lang-en .chap-title { font-size: 28px; }
+    .keynum { grid-template-columns: 1fr; gap: 16px; }
+    .compare { grid-template-columns: 1fr; }
+    .scenarios { grid-template-columns: 1fr; }
+    .container { padding: 0 24px; }
+    .closing .quote { font-size: 22px; }
+  }
+
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
+  a:hover { color: var(--ink); }
+
+  ::selection { background: var(--accent); color: var(--bg); }
+
+  /* ===== Fixed left TOC sidebar (desktop only) ===== */
+  .toc-side {
+    position: fixed; top: 50%; left: 22px; transform: translateY(-50%);
+    z-index: 100; width: 210px; max-height: 86vh; overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 11.5px; line-height: 1.55;
+    scrollbar-width: thin; scrollbar-color: var(--rule) transparent;
+  }
+  .toc-side::-webkit-scrollbar { width: 4px; }
+  .toc-side::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+  .toc-side ol { list-style: none; margin: 0; padding: 0; }
+  .toc-side a { color: var(--ink-soft); text-decoration: none; }
+  .toc-side > .toc-label {
+    font-size: 10px; letter-spacing: 0.2em; color: var(--ink-mute);
+    text-transform: uppercase; margin-bottom: 14px; font-weight: 600;
+  }
+  .toc-side li { margin-bottom: 4px; }
+  .toc-side li > a {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 5px 0; opacity: 0.55; transition: opacity 0.18s, color 0.18s;
+    border: none;
+  }
+  .toc-side li > a:hover { opacity: 0.9; color: var(--accent); }
+  .toc-side li.active > a { opacity: 1; color: var(--accent); font-weight: 600; }
+  .toc-side .toc-num {
+    flex-shrink: 0; width: 22px; color: var(--accent);
+    font-variant-numeric: tabular-nums; font-size: 10px;
+    font-weight: 700; letter-spacing: 0.05em;
+  }
+  .toc-side li.active .toc-num { color: var(--accent); }
+  @media (max-width: 1280px) { .toc-side { display: none; } }
+
+  /* ===== ursb.me back link ===== */
+  .ursb-backlink {
+    position: fixed; top: 28px; left: 32px; z-index: 100;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    padding: 6px 14px 6px 12px; border-radius: 99px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
+    color: var(--ink-soft); text-decoration: none;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+    transition: all 0.18s ease;
+  }
+  .ursb-backlink:hover { color: var(--accent); border-color: var(--accent-soft); transform: translateX(-1px); }
+  @media (max-width: 720px) {
+    .ursb-backlink { top: 18px; left: 16px; padding: 5px 10px 5px 8px; font-size: 11px; }
+    .lang-toggle { top: 18px !important; right: 16px !important; }
+  }
+
+  /* ===== Bilingual footer spans — hide based on body.lang-en ===== */
+  body:not(.lang-en) .ursb-fbody [lang="en"] { display: none; }
+  body.lang-en .ursb-fbody [lang="zh"] { display: none; }
+
+  /* ============================================================
+     ===== NEW: Deep-dive visual primitives (added 2026-04-27) =====
+     ============================================================ */
+
+  /* ---------- Scanout / tearing animation ---------- */
+  .scanout-stage {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 18px;
+    margin: 14px 0 10px;
+  }
+  .scanout-card {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 18px;
+  }
+  .scanout-title {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+    font-weight: 700; text-transform: uppercase; color: var(--ink-mute);
+    margin-bottom: 12px;
+  }
+  .scanout-card.bad .scanout-title { color: var(--accent); }
+  .scanout-card.good .scanout-title { color: var(--good); }
+  .scanout-screen {
+    position: relative; aspect-ratio: 16 / 10;
+    background: #1c1a16; border-radius: 4px; overflow: hidden;
+  }
+  /* "frame A" stripes: red */
+  .scanout-screen .frame-a, .scanout-screen .frame-b {
+    position: absolute; left: 0; right: 0; height: 50%;
+    background-image:
+      repeating-linear-gradient(180deg, rgba(255,255,255,0.05) 0 4px, transparent 4px 8px);
+  }
+  .scanout-screen .frame-a { top: 0;    background-color: #b3422c; }
+  .scanout-screen .frame-b { bottom: 0; background-color: #4a6b3e; }
+
+  /* GOOD card: full red frame, no tearing */
+  .scanout-card.good .frame-a { height: 100%; top: 0; }
+  .scanout-card.good .frame-b { display: none; }
+
+  /* tearing variant — animate the split line between frame A (red) and frame B (green) */
+  @keyframes tear-split {
+    0%, 30%  { top: 0%; }                /* fully scanning frame A */
+    50%      { top: 38%; }              /* tear: top 38% A, bottom 62% B */
+    80%, 100%{ top: 100%; }              /* fully transitioned to frame B */
+  }
+  .scanout-card.bad .frame-a { animation: tear-split 4s ease-in-out infinite alternate; height: 0%; top: 0; bottom: auto; background-color: #b3422c; }
+  .scanout-card.bad .frame-b { top: 0; bottom: 0; height: 100%; background-color: #4a6b3e; }
+  /* re-stack A on top of B */
+  .scanout-card.bad .frame-a { z-index: 2; }
+  .scanout-card.bad .frame-b { z-index: 1; }
+  /* Wait — better: animate frame-a's height grow from 0 to 100% with a held mid-state */
+  /* Actually let's use scanline approach */
+
+  .scanout-screen .scanline {
+    position: absolute; left: 0; right: 0;
+    height: 2px; background: rgba(255,255,255,0.85);
+    box-shadow: 0 0 6px rgba(255,255,255,0.45);
+    pointer-events: none; z-index: 3;
+    animation: scan-sweep 2s linear infinite;
+  }
+  @keyframes scan-sweep {
+    0%   { top: 0%; }
+    100% { top: 100%; }
+  }
+  .scanout-card .label-a, .scanout-card .label-b {
+    position: absolute; right: 8px; font-family: var(--mono); font-size: 9px;
+    color: rgba(255,255,255,0.85); padding: 2px 6px; border-radius: 2px;
+    background: rgba(0,0,0,0.4); z-index: 4;
+  }
+  .scanout-card .label-a { top: 6px; }
+  .scanout-card .label-b { bottom: 6px; }
+
+  /* The tear-mark line that "freezes" mid-screen on bad card */
+  .scanout-card.bad .tear-mark {
+    position: absolute; left: 0; right: 0; top: 38%; height: 2px;
+    background: #fcd34d; z-index: 4;
+    box-shadow: 0 0 8px rgba(252,211,77,0.8);
+  }
+  .scanout-card.bad .tear-mark::after {
+    content: "TEAR"; position: absolute; right: 6px; top: -16px;
+    font-family: var(--mono); font-size: 9px; font-weight: 700;
+    color: #fcd34d; padding: 1px 5px; background: rgba(0,0,0,0.55);
+    border-radius: 2px; letter-spacing: 0.1em;
+  }
+
+  .scanout-cap {
+    margin-top: 10px; font-family: var(--sans); font-size: 12px;
+    color: var(--ink-mute); line-height: 1.55;
+  }
+
+  /* ---------- Triple buffer latency cost ---------- */
+  .latency-bars {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 18px 22px; margin: 8px 0;
+  }
+  .lat-row { display: grid; grid-template-columns: 110px 1fr 80px; align-items: center;
+    gap: 12px; padding: 7px 0; }
+  .lat-name { font-family: var(--serif); font-weight: 700; font-size: 13px; color: var(--ink); }
+  body.lang-en .lat-name { font-family: var(--serif-en); }
+  .lat-track { position: relative; height: 14px; background: #ebe5d8; border-radius: 2px; }
+  .lat-bar {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    border-radius: 2px;
+    background: var(--ink-soft);
+  }
+  .lat-bar.warn  { background: var(--warn); }
+  .lat-bar.bad   { background: var(--accent); }
+  .lat-bar.good  { background: var(--good); }
+  .lat-num {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft);
+    font-variant-numeric: tabular-nums; text-align: right;
+  }
+  .lat-axis { display: grid; grid-template-columns: 110px 1fr 80px; gap: 12px;
+    margin-top: 4px; font-family: var(--mono); font-size: 9px; color: var(--ink-mute); }
+  .lat-axis .ticks { display: flex; justify-content: space-between; }
+
+  /* ---------- Refresh-rate triple track demo ---------- */
+  /* Uses .smooth-* shells; just adds a few keyframes & 120Hz beat indicator */
+  @keyframes glide-fast { from { left: 0; } to { left: calc(100% - 20px); } }
+  .smooth-ball.run-30  { animation: glide-fast 4.0s linear infinite alternate; }
+  .smooth-ball.run-60  { animation: glide-fast 2.0s linear infinite alternate; }
+  .smooth-ball.run-120 { animation: glide-fast 1.0s linear infinite alternate; }
+
+  /* ---------- Three-judges (Google / PerfDog / Apple) ---------- */
+  .judge-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin: 16px 0;
+  }
+  .judge-card {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px;
+  }
+  .judge-name {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+    font-weight: 700; text-transform: uppercase; color: var(--ink-mute);
+    margin-bottom: 8px;
+  }
+  .judge-formula {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink); line-height: 1.55;
+    background: #fdfbf3; border: 1px solid var(--rule); border-radius: 3px;
+    padding: 8px 10px; margin-bottom: 10px;
+  }
+  .judge-verdict {
+    display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px;
+  }
+  .judge-tag {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    padding: 3px 8px; border-radius: 3px;
+    background: var(--bg-soft); color: var(--ink-soft);
+  }
+  .judge-tag.hit  { background: rgba(168,122,31,0.18); color: var(--warn); }
+  .judge-tag.miss { background: var(--bg-soft); color: var(--ink-mute); text-decoration: line-through; opacity: 0.7; }
+  .judge-tag.severe { background: rgba(179,66,44,0.18); color: var(--accent); }
+
+  /* ---------- Frame time histogram ---------- */
+  .hist-wrap {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 18px 14px; margin: 8px 0;
+  }
+  .hist-wrap svg { display: block; width: 100%; height: auto; }
+
+  /* ---------- Cause taxonomy grid (Ch7) ---------- */
+  .cause-grid {
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;
+    margin: 18px 0;
+  }
+  .cause-card {
+    background: var(--paper); border: 1px solid var(--rule); border-left: 2px solid var(--accent);
+    border-radius: 0 4px 4px 0; padding: 14px 18px;
+  }
+  .cause-card .cause-tag {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    font-weight: 700; text-transform: uppercase; color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .cause-card .cause-name {
+    font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--ink);
+    margin-bottom: 6px;
+  }
+  body.lang-en .cause-card .cause-name { font-family: var(--serif-en); }
+  .cause-card p {
+    margin: 0; font-family: var(--serif); font-size: 13.5px; line-height: 1.65;
+    color: var(--ink-soft);
+  }
+  body.lang-en .cause-card p { font-family: var(--serif-en); }
+  .cause-card .cause-tool {
+    margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--rule);
+    font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute);
+  }
+
+  /* ---------- Touch-to-photon timeline (Ch8) ---------- */
+  .ttp-stage {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 22px 24px; margin: 8px 0;
+  }
+  .ttp-track {
+    display: flex; align-items: stretch;
+    height: 36px; border-radius: 4px; overflow: hidden;
+    border: 1px solid var(--rule);
+  }
+  .ttp-seg {
+    display: flex; align-items: center; justify-content: center;
+    color: var(--paper); font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    padding: 0 6px; line-height: 1.2; text-align: center;
+  }
+  .ttp-seg.s1 { background: #4a463e; }
+  .ttp-seg.s2 { background: #6b6357; }
+  .ttp-seg.s3 { background: #807a6d; }
+  .ttp-seg.s4 { background: #a87a1f; }
+  .ttp-seg.s5 { background: #b3422c; }
+
+  .ttp-axis {
+    display: flex; justify-content: space-between;
+    margin-top: 6px; font-family: var(--mono); font-size: 10px; color: var(--ink-mute);
+  }
+  .ttp-legend {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+    margin-top: 14px;
+  }
+  .ttp-legend-item {
+    font-family: var(--sans); font-size: 11.5px; line-height: 1.4; color: var(--ink-soft);
+  }
+  .ttp-legend-item .swatch {
+    display: inline-block; width: 9px; height: 9px; border-radius: 1px;
+    margin-right: 6px; vertical-align: middle;
+  }
+
+  /* ---------- Cross-platform map (Ch8) ---------- */
+  .xplat-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    margin: 18px 0;
+  }
+  .xplat-card {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 18px;
+  }
+  .xplat-card h5 {
+    margin: 0 0 4px; font-family: var(--serif); font-size: 16px; font-weight: 700;
+    color: var(--ink);
+  }
+  body.lang-en .xplat-card h5 { font-family: var(--serif-en); }
+  .xplat-card .xkey {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    margin-bottom: 10px; font-weight: 700;
+  }
+  .xplat-card p {
+    font-family: var(--serif); font-size: 13.5px; line-height: 1.65; color: var(--ink-soft);
+    margin: 0;
+  }
+  body.lang-en .xplat-card p { font-family: var(--serif-en); }
+
+  @media (max-width: 760px) {
+    .scanout-stage, .judge-grid, .xplat-grid, .cause-grid { grid-template-columns: 1fr; }
+    .ttp-legend { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ---------- Ch7 5-step case study ---------- */
+  .case-flow {
+    display: flex; flex-direction: column; gap: 12px;
+    margin: 18px 0;
+  }
+  .case-step {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 16px 20px;
+    display: grid; grid-template-columns: 60px 1fr; gap: 16px;
+    position: relative;
+  }
+  .case-step:not(:last-child)::after {
+    content: ""; position: absolute; left: 36px; bottom: -12px;
+    width: 1px; height: 12px; background: var(--rule);
+  }
+  .case-num {
+    font-family: var(--mono); font-size: 18px; color: var(--accent);
+    font-weight: 700; line-height: 1; padding-top: 4px;
+  }
+  .case-body h5 {
+    margin: 0 0 4px; font-family: var(--serif); font-size: 15px; font-weight: 700;
+    color: var(--ink);
+  }
+  body.lang-en .case-body h5 { font-family: var(--serif-en); }
+  .case-body .case-meta {
+    font-family: var(--mono); font-size: 10px; color: var(--ink-mute);
+    text-transform: uppercase; letter-spacing: 0.12em;
+    margin-bottom: 10px;
+  }
+  .case-body p {
+    margin: 0 0 10px; font-family: var(--serif); font-size: 13.5px; line-height: 1.65;
+    color: var(--ink-soft);
+  }
+  body.lang-en .case-body p { font-family: var(--serif-en); }
+  .case-artifact {
+    background: #fdfbf3; border: 1px solid var(--rule); border-radius: 3px;
+    padding: 10px 12px; margin-top: 8px; font-family: var(--mono);
+    font-size: 12px; color: var(--ink); line-height: 1.5;
+    overflow-x: auto;
+  }
+  .case-artifact .bad { color: var(--accent); }
+  .case-artifact .good { color: var(--good); }
+  .case-artifact svg { display: block; width: 100%; height: auto; }
+  .case-artifact .code-line { display: block; }
+  .case-artifact .hi {
+    background: rgba(252,211,77,0.25); padding: 0 3px; border-radius: 2px;
+  }
+
+  /* ---------- Ch8 (NEW) optimization strategies ---------- */
+  .opt-strategies {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+    margin: 18px 0;
+  }
+  .opt-strategy {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 18px;
+    border-top: 3px solid var(--accent);
+  }
+  .opt-strategy.b { border-top-color: var(--warn); }
+  .opt-strategy.c { border-top-color: var(--good); }
+  .opt-strategy .opt-letter {
+    font-family: var(--serif); font-size: 32px; font-weight: 700;
+    color: var(--accent); line-height: 1; margin-bottom: 8px;
+  }
+  body.lang-en .opt-strategy .opt-letter { font-family: var(--serif-en); }
+  .opt-strategy.b .opt-letter { color: var(--warn); }
+  .opt-strategy.c .opt-letter { color: var(--good); }
+  .opt-strategy h5 {
+    margin: 0 0 8px; font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--ink);
+  }
+  body.lang-en .opt-strategy h5 { font-family: var(--serif-en); }
+  .opt-strategy p {
+    margin: 0; font-family: var(--serif); font-size: 13px; line-height: 1.65; color: var(--ink-soft);
+  }
+  body.lang-en .opt-strategy p { font-family: var(--serif-en); }
+  .opt-strategy .opt-hint {
+    margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--rule);
+    font-family: var(--mono); font-size: 11px; color: var(--ink-mute);
+  }
+
+  /* ---------- Ch8 (NEW) tactic cards (similar to cause-grid) ---------- */
+  .opt-tactics {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin: 18px 0;
+  }
+  .opt-tactic {
+    background: var(--paper); border: 1px solid var(--rule); border-radius: 4px;
+    padding: 14px 16px;
+  }
+  .opt-tactic .ot-tag {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    font-weight: 700; text-transform: uppercase; color: var(--accent);
+    margin-bottom: 4px;
+  }
+  .opt-tactic h6 {
+    margin: 0 0 6px; font-family: var(--serif); font-size: 14px; font-weight: 700; color: var(--ink);
+  }
+  body.lang-en .opt-tactic h6 { font-family: var(--serif-en); }
+  .opt-tactic p {
+    margin: 0; font-family: var(--serif); font-size: 12.5px; line-height: 1.6; color: var(--ink-soft);
+  }
+  body.lang-en .opt-tactic p { font-family: var(--serif-en); }
+
+  @media (max-width: 760px) {
+    .case-step { grid-template-columns: 44px 1fr; gap: 12px; padding: 14px; }
+    .case-step:not(:last-child)::after { left: 28px; }
+    .opt-strategies, .opt-tactics { grid-template-columns: 1fr; }
+  }
+</style>
+<!-- Umami analytics (shared with ursb.me) -->
+<script async defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script>
+</head>
+<body>
+
+<!-- ========== BACK LINK ========== -->
+<a class="ursb-backlink" href="https://ursb.me/notes/" target="_self" aria-label="Back to ursb.me notes">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M19 12H5M12 19l-7-7 7-7"/>
+  </svg>
+  ursb.me / notes
+</a>
+
+<!-- ========== TOC SIDEBAR (desktop only) ========== -->
+<nav class="toc-side" aria-label="Table of contents">
+  <div class="toc-label lang-zh-only">目录</div>
+  <div class="toc-label lang-en-only">Contents</div>
+  <ol>
+    <li data-section="c1">
+      <a href="#c1"><span class="toc-num">01</span><span class="lang-zh-only">FrameTime</span><span class="lang-en-only">FrameTime</span></a>
+    </li>
+    <li data-section="c2">
+      <a href="#c2"><span class="toc-num">02</span><span class="lang-zh-only">FPS</span><span class="lang-en-only">FPS</span></a>
+    </li>
+    <li data-section="c3">
+      <a href="#c3"><span class="toc-num">03</span><span class="lang-zh-only">流畅度</span><span class="lang-en-only">Smoothness</span></a>
+    </li>
+    <li data-section="c4">
+      <a href="#c4"><span class="toc-num">04</span><span class="lang-zh-only">Jank</span><span class="lang-en-only">Jank</span></a>
+    </li>
+    <li data-section="c5">
+      <a href="#c5"><span class="toc-num">05</span><span class="lang-zh-only">Stutter</span><span class="lang-en-only">Stutter</span></a>
+    </li>
+    <li data-section="c6">
+      <a href="#c6"><span class="toc-num">06</span><span class="lang-zh-only">影响</span><span class="lang-en-only">Impact</span></a>
+    </li>
+    <li data-section="c7">
+      <a href="#c7"><span class="toc-num">07</span><span class="lang-zh-only">根因</span><span class="lang-en-only">Root cause</span></a>
+    </li>
+    <li data-section="c8">
+      <a href="#c8"><span class="toc-num">08</span><span class="lang-zh-only">优化</span><span class="lang-en-only">Fix</span></a>
+    </li>
+    <li data-section="c9">
+      <a href="#c9"><span class="toc-num">09</span><span class="lang-zh-only">通用语</span><span class="lang-en-only">Common tongue</span></a>
+    </li>
+  </ol>
+</nav>
+
+<!-- ========== LANG TOGGLE ========== -->
+<div class="lang-toggle" role="navigation" aria-label="language">
+  <button id="lang-zh" class="active" aria-pressed="true">中</button>
+  <span class="sep">/</span>
+  <button id="lang-en" aria-pressed="false">EN</button>
+</div>
+
+<div class="container">
+
+  <!-- ========== HERO ========== -->
+  <header class="hero">
+    <div class="meta">
+      <span>FIELD&nbsp;NOTE&nbsp;/&nbsp;01</span>
+      <span class="lang-zh-only">性能工程</span>
+      <span class="lang-en-only">Performance Engineering</span>
+      <span>2026</span>
+    </div>
+    <h1 class="lang-zh-only">测量<span class="accent">「流畅」</span><br>是一门工程。</h1>
+    <h1 class="lang-en-only">On <span class="accent">«Smoothness»,</span><br>an engineering act.</h1>
+    <p class="deck lang-zh-only">从 FrameTime 到 Stutter，一套衡量「卡顿」的判别语言——<br>它告诉你：高帧率为什么也能不流畅，以及，肉眼说"卡了"时，机器看到的是什么。</p>
+    <p class="deck lang-en-only">From FrameTime to Stutter — a discriminator language for the experience of lag.<br>Why high frame rates can still feel choppy, and what the machine sees the moment your eyes say <em>it's stuttering</em>.</p>
+    <div class="byline">
+      <span><span class="label">AUTHOR</span><a class="value" href="https://ursb.me" target="_blank" rel="noopener">Airing</a></span>
+      <span><span class="label">TOPIC</span><span class="value">FrameTime · FPS · Jank · Stutter</span></span>
+      <span><span class="label">FORMAT</span><span class="value">Long Read</span></span>
+    </div>
+  </header>
+
+  <!-- ========== TOC ========== -->
+  <nav class="toc">
+    <div class="toc-label lang-zh-only">CONTENTS&nbsp;/&nbsp;目录</div>
+    <div class="toc-label lang-en-only">CONTENTS</div>
+    <ol class="lang-zh-only">
+      <li><a href="#c1">FrameTime — 帧的最小单位<span class="en">the smallest unit of a frame</span></a></li>
+      <li><a href="#c2">FPS — 帧率的两副面孔<span class="en">the two faces of frame rate</span></a></li>
+      <li><a href="#c3">流畅度 — 视觉惯性与电影帧<span class="en">visual inertia &amp; cinematic frames</span></a></li>
+      <li><a href="#c4">Jank — 一条判别式<span class="en">a discriminator function</span></a></li>
+      <li><a href="#c5">Stutter — 用占比代替次数<span class="en">ratio over count</span></a></li>
+      <li><a href="#c6">影响 — 不同场景的指标侧重<span class="en">where to look, by scenario</span></a></li>
+      <li><a href="#c7">根因 — 知道卡了，还要知道为什么<span class="en">knowing it lagged isn&rsquo;t enough</span></a></li>
+      <li><a href="#c8">优化 — 让卡顿不发生<span class="en">keeping Jank from happening</span></a></li>
+      <li><a href="#c9">通用语 — 流畅是一种跨平台方言<span class="en">smoothness as a cross-platform dialect</span></a></li>
+    </ol>
+    <ol class="lang-en-only">
+      <li><a href="#c1">FrameTime <span class="en">the smallest unit of a frame</span></a></li>
+      <li><a href="#c2">FPS <span class="en">the two faces of frame rate</span></a></li>
+      <li><a href="#c3">Smoothness <span class="en">visual inertia &amp; cinematic frames</span></a></li>
+      <li><a href="#c4">Jank <span class="en">a discriminator function</span></a></li>
+      <li><a href="#c5">Stutter <span class="en">ratio over count</span></a></li>
+      <li><a href="#c6">Impact <span class="en">where to look, by scenario</span></a></li>
+      <li><a href="#c7">Root cause <span class="en">knowing it lagged isn&rsquo;t enough</span></a></li>
+      <li><a href="#c8">Fix <span class="en">keeping Jank from happening</span></a></li>
+      <li><a href="#c9">Common tongue <span class="en">smoothness as a cross-platform dialect</span></a></li>
+    </ol>
+  </nav>
+
+  <!-- ========== CHAPTER 01 ========== -->
+  <section class="chap" id="c1">
+    <div class="chap-num">CHAPTER&nbsp;01</div>
+    <h2 class="chap-title lang-zh-only">FrameTime — 帧的最小单位</h2>
+    <h2 class="chap-title lang-en-only">FrameTime — the smallest unit of a frame</h2>
+    <p class="chap-en lang-zh-only">the smallest unit of a frame</p>
+    <p class="chap-en lang-en-only">帧的最小单位</p>
+
+    <div class="lang-zh-only">
+      <p>所有关于"流畅"的讨论，最终都得回到一个数字：<span class="em">两帧画面之间的间隔耗时</span>。这就是 <strong>FrameTime</strong>，可以简单理解为"一帧画面渲染并最终被你看到所用的时间"。</p>
+      <p>但这里有一个常被忽略的区分——<em>GPU 渲染完成</em> 与 <em>屏幕真正刷新</em> 不是同一件事。GPU 把一帧画完了 (eglSwapBuffers)，并不意味着这一帧已经被推到了你眼前。玩家最终看到的，是显示器 Display 的刷新节奏，而不是 GPU 的吐帧节奏。</p>
+
+      <div class="note">
+        <span class="ntag">PERFDOG &nbsp;//&nbsp; 取数策略</span>
+        所有 FrameTime 都按 <strong>Display-FrameTime</strong> 计——也就是用户真正看到画面变化的时间间隔。这也意味着，你可以直接读 FrameTime 来判断"那一刻屏幕到底有没有更新"。
+      </div>
+    </div>
+
+    <div class="lang-en-only">
+      <p>Every conversation about smoothness eventually collapses into a single number: <span class="em">the time interval between two visible frames</span>. That is <strong>FrameTime</strong> — simply, the time it takes for one frame to be rendered <em>and ultimately reach your eyes</em>.</p>
+      <p>But there is a distinction that gets quietly ignored — <em>GPU render completion</em> is not the same event as <em>display refresh</em>. The GPU finishing a frame (eglSwapBuffers) does not mean the frame has been pushed in front of you. What the player ultimately sees is the rhythm of the display, not the rhythm of the GPU.</p>
+
+      <div class="note">
+        <span class="ntag">PERFDOG &nbsp;//&nbsp; ACQUISITION</span>
+        Every FrameTime is measured as <strong>Display-FrameTime</strong> — the actual interval between visible frame changes. Which means: read FrameTime directly to know whether the screen really updated at that instant.
+      </div>
+    </div>
+
+    <figure>
+      <div class="figbox">
+        <div class="ribbon-label">
+          <span class="lang-zh-only">理想刷新（每帧均匀 16.7ms）</span>
+          <span class="lang-en-only">Ideal refresh — uniform 16.7ms per frame</span>
+          <span class="lang-zh-only">↓ 帧序</span>
+          <span class="lang-en-only">↓ frame order</span>
+        </div>
+        <div class="ribbon">
+          <div class="f" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+        </div>
+        <div class="ribbon-axis"><span>0ms</span><span>33ms</span><span>67ms</span><span>100ms</span><span>133ms</span></div>
+
+        <div style="height: 16px;"></div>
+
+        <div class="ribbon-label">
+          <span class="lang-zh-only">实际刷新（含一次掉帧）</span>
+          <span class="lang-en-only">Actual refresh — one dropped frame</span>
+          <span class="lang-zh-only">↓ B 帧占用两次刷新</span>
+          <span class="lang-en-only">↓ frame B occupies two refreshes</span>
+        </div>
+        <div class="ribbon">
+          <div class="f" style="flex: 1;"></div>
+          <div class="f long" style="flex: 2;"></div>
+          <div class="f miss" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+          <div class="f" style="flex: 1;"></div>
+        </div>
+        <div class="ribbon-axis"><span>0ms</span><span>33ms</span><span>67ms</span><span>100ms</span><span>133ms</span></div>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;01</span>
+        <span class="lang-zh-only">FrameTime 视图：B 帧 GPU 渲染耗时超过一次刷新间隔，下一个刷新点没有新画面，等于"掉了一帧"。</span>
+        <span class="lang-en-only">FrameTime view: frame B's GPU render time exceeds one refresh interval; the next vsync passes with no new image — a dropped frame.</span>
+        <span class="figen lang-zh-only">When a frame's render time exceeds the display refresh interval, one vsync passes without a new image — the eye registers it as a stutter.</span>
+        <span class="figen lang-en-only">渲染耗时一旦超过显示器刷新间隔，下一次 vsync 就没有新画面——眼睛把这一刻记成卡顿。</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ========== CHAPTER 02 ========== -->
+  <section class="chap" id="c2">
+    <div class="chap-num">CHAPTER&nbsp;02</div>
+    <h2 class="chap-title lang-zh-only">FPS — 帧率的两副面孔</h2>
+    <h2 class="chap-title lang-en-only">FPS — the two faces of frame rate</h2>
+    <p class="chap-en lang-zh-only">the two faces of frame rate</p>
+    <p class="chap-en lang-en-only">帧率的两副面孔</p>
+
+    <div class="lang-zh-only">
+      <p>FPS 通常被理解为"帧率"：1 秒内的平均画面刷新次数。但这只是它的一面。它还有一个不被注意的孪生兄弟——<strong>瞬时帧率</strong>，也就是用单帧 FrameTime 反算出来的实时 FPS。</p>
+      <p>这两者之差，正是大量"明明帧率不低但就是觉得卡"的真相所在。</p>
+    </div>
+
+    <div class="lang-en-only">
+      <p>FPS is usually read as "frame rate": the average number of refreshes per second. But that's only one face. It has a quieter twin — <strong>instantaneous frame rate</strong> — computed back from a single frame's FrameTime.</p>
+      <p>The gap between these two numbers is exactly where the truth of "high FPS that still feels choppy" hides.</p>
+    </div>
+
+    <h3 class="sub lang-zh-only">CASE — APPLE WWDC18</h3>
+    <h3 class="sub lang-en-only">CASE — APPLE WWDC18</h3>
+
+    <p class="lang-zh-only">苹果在 WWDC18 给过一个被反复引用的对照案例：</p>
+    <p class="lang-en-only">Apple, at WWDC18, offered a now-classic comparison:</p>
+
+    <div class="compare">
+      <div class="col left">
+        <h5 class="lang-zh-only">Game A · 高帧率</h5>
+        <h5 class="lang-en-only">Game A · High FPS</h5>
+        <div class="big">40 <span style="font-size: 16px; color: var(--ink-mute);">fps</span></div>
+        <p class="lang-zh-only">试图以 60 帧运行但实际只能到 40，FrameTime 跳变剧烈，单帧最高 <strong>117ms</strong>。<br>体感：<span style="color: var(--accent);">一卡一顿</span>（micro stuttering）。</p>
+        <p class="lang-en-only">Aiming for 60 fps but landing at 40. FrameTime jumps violently, peaking at <strong>117ms</strong>.<br>Feel: <span style="color: var(--accent);">stop-and-go</span> (micro stuttering).</p>
+      </div>
+      <div class="col right">
+        <h5 class="lang-zh-only">Game B · 低帧率</h5>
+        <h5 class="lang-en-only">Game B · Low FPS</h5>
+        <div class="big">30 <span style="font-size: 16px; color: var(--ink-mute);">fps</span></div>
+        <p class="lang-zh-only">稳定锁帧 30，FrameTime 均匀维持 <strong>33ms</strong>。<br>体感：<span style="color: var(--good);">非常平滑</span>。</p>
+        <p class="lang-en-only">Locked at 30 fps. FrameTime stays uniform at <strong>33ms</strong>.<br>Feel: <span style="color: var(--good);">unmistakably smooth</span>.</p>
+      </div>
+    </div>
+
+    <blockquote class="pull lang-zh-only">
+      帧率高，未必流畅。<br>
+      流畅的钥匙不是"更多帧"，而是"更稳定的帧"。
+      <cite>WWDC&nbsp;18 · Apple</cite>
+    </blockquote>
+    <blockquote class="pull lang-en-only">
+      A higher frame rate is no guarantee of smoothness.<br>
+      The key to smooth isn't <em>more frames</em> — it's <em>steadier ones</em>.
+      <cite>WWDC&nbsp;18 · Apple</cite>
+    </blockquote>
+
+    <h3 class="sub lang-zh-only">CASE — ANDROID 黄油计划</h3>
+    <h3 class="sub lang-en-only">CASE — ANDROID PROJECT BUTTER</h3>
+
+    <p class="lang-zh-only">2012 年 Google I/O，Android 4.1 (Jelly Bean) 用了一个甜蜜的代号—— Project Butter，黄油计划。在它之前，UI 卡顿是 Android 的"原生味道"；在它之后，"流畅"第一次被写进了系统级的设计目标。</p>
+    <p class="lang-en-only">At Google I/O 2012, Android 4.1 (Jelly Bean) shipped under a sweet codename — Project Butter. Before it, UI stutter was Android's signature flavour; after it, "smoothness" was inscribed into the OS design itself.</p>
+
+    <p class="lang-zh-only">黄油计划把"流畅"翻译成了一个工程指标：以硬件 vsync 为锚，<em>连续一次 vsync 没有新画面刷新，记一次 Jank</em>。这是工业界第一次承认：流畅不是平均值的事，而是分布的事。</p>
+    <p class="lang-en-only">Project Butter turned "smoothness" into an engineering metric: anchored to the hardware vsync, <em>one consecutive vsync without a new image counts as one Jank</em>. It was the industry's first admission: smoothness isn't a matter of averages — it's a matter of distribution.</p>
+
+    <p class="lang-zh-only">为了达成这条指标，Google 同时上了四件武器：</p>
+    <p class="lang-en-only">To meet that metric, Google deployed four weapons at once:</p>
+
+    <div class="butter-stack">
+      <div class="butter-row">
+        <span class="butter-num">01</span>
+        <div class="butter-body">
+          <h5 class="lang-zh-only">VSync 同步信号</h5>
+          <h5 class="lang-en-only">VSync Synchronization</h5>
+          <p class="lang-zh-only">所有 UI 渲染对齐显示器的硬件刷新信号。GPU 不再"想画就画"，而是在每个 vsync 节拍上提交画面，从源头消除画面撕裂。</p>
+          <p class="lang-en-only">All UI rendering aligns to the display's hardware refresh. The GPU no longer paints whenever it pleases; it commits one frame per vsync beat, eliminating tearing at the source.</p>
+        </div>
+      </div>
+      <div class="butter-row">
+        <span class="butter-num">02</span>
+        <div class="butter-body">
+          <h5 class="lang-zh-only">三重缓冲</h5>
+          <h5 class="lang-en-only">Triple Buffering</h5>
+          <p class="lang-zh-only">在前/后双缓冲之上加第三个备用缓冲。当 GPU 偶尔慢一拍，显示器仍能从备用缓冲拿到新画面，避免 vsync 空打。</p>
+          <p class="lang-en-only">A spare buffer behind the front/back pair. When the GPU lags by a beat, the display still has a fresh frame ready — no empty vsync.</p>
+        </div>
+      </div>
+      <div class="butter-row">
+        <span class="butter-num">03</span>
+        <div class="butter-body">
+          <h5 class="lang-zh-only">Choreographer 协调器</h5>
+          <h5 class="lang-en-only">Choreographer</h5>
+          <p class="lang-zh-only">系统级的"心跳"：把输入、动画、布局、绘制全部钉在 vsync 时间点上有序触发。每一帧都按"输入 → 动画 → 测量 → 绘制 → 上屏"的固定节拍走。</p>
+          <p class="lang-en-only">An OS-level metronome. Input, animation, layout, draw — all pinned to vsync moments and run in a fixed beat: <em>input → animate → measure → draw → display</em>, every frame.</p>
+        </div>
+      </div>
+      <div class="butter-row">
+        <span class="butter-num">04</span>
+        <div class="butter-body">
+          <h5 class="lang-zh-only">CPU Boost on Touch</h5>
+          <h5 class="lang-en-only">CPU Boost on Touch</h5>
+          <p class="lang-zh-only">手指触屏的瞬间，CPU 短暂提频，确保第一帧响应不会因为省电节流而错过 vsync 窗口——按下与画面变化之间，必须感觉不到延迟。</p>
+          <p class="lang-en-only">The instant a finger touches the screen, the CPU briefly boosts clock speed so the first response frame doesn't miss the vsync window because of power throttling — there must be no perceptible gap between press and reaction.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ FIG 02 — VSync alignment ============ -->
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg" aria-label="VSync alignment before/after">
+          <defs>
+            <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+              <line x1="0" y1="0" x2="0" y2="6" stroke="#c9c1ae" stroke-width="2"/>
+            </pattern>
+          </defs>
+
+          <!-- ===== BEFORE — without vsync ===== -->
+          <text x="20" y="20" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#b3422c" letter-spacing="2"><tspan class="lang-zh-only">BEFORE · GPU 自由发挥</tspan><tspan class="lang-en-only">BEFORE · UNBOUND GPU</tspan></text>
+          <text x="20" y="34" font-family="Inter, sans-serif" font-size="9" fill="#807a6d" letter-spacing="1"><tspan class="lang-zh-only">不受 vsync 约束的 GPU 输出</tspan><tspan class="lang-en-only">unbound GPU output</tspan></text>
+
+          <!-- vsync ticks -->
+          <g stroke="#c9c1ae" stroke-width="1" stroke-dasharray="3,3">
+            <line x1="120" y1="50" x2="120" y2="120"/>
+            <line x1="220" y1="50" x2="220" y2="120"/>
+            <line x1="320" y1="50" x2="320" y2="120"/>
+            <line x1="420" y1="50" x2="420" y2="120"/>
+            <line x1="520" y1="50" x2="520" y2="120"/>
+            <line x1="620" y1="50" x2="620" y2="120"/>
+            <line x1="720" y1="50" x2="720" y2="120"/>
+          </g>
+          <g font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d" text-anchor="middle">
+            <text x="120" y="48">vsync</text><text x="220" y="48">vsync</text><text x="320" y="48">vsync</text>
+            <text x="420" y="48">vsync</text><text x="520" y="48">vsync</text><text x="620" y="48">vsync</text>
+          </g>
+
+          <!-- GPU production track (irregular timing) -->
+          <text x="100" y="78" text-anchor="end" font-family="Inter, sans-serif" font-size="10" font-weight="600" fill="#4a463e">GPU</text>
+          <line x1="115" y1="80" x2="725" y2="80" stroke="#c9c1ae" stroke-width="1"/>
+          <g>
+            <rect x="118" y="72" width="60" height="16" rx="2" fill="#4a463e"/>
+            <text x="148" y="83" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">A</text>
+
+            <rect x="180" y="72" width="120" height="16" rx="2" fill="#b3422c"/>
+            <text x="240" y="83" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">B (slow)</text>
+
+            <rect x="302" y="72" width="68" height="16" rx="2" fill="#4a463e"/>
+            <text x="336" y="83" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">C</text>
+
+            <rect x="372" y="72" width="42" height="16" rx="2" fill="#4a463e"/>
+            <text x="393" y="83" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">D</text>
+
+            <rect x="416" y="72" width="74" height="16" rx="2" fill="#4a463e"/>
+            <text x="453" y="83" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">E</text>
+
+            <rect x="492" y="72" width="56" height="16" rx="2" fill="#4a463e"/>
+            <text x="520" y="83" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">F</text>
+
+            <rect x="550" y="72" width="80" height="16" rx="2" fill="#4a463e"/>
+            <text x="590" y="83" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">G</text>
+          </g>
+
+          <!-- Display (samples whatever's available) -->
+          <text x="100" y="110" text-anchor="end" font-family="Inter, sans-serif" font-size="10" font-weight="600" fill="#4a463e">Display</text>
+          <line x1="115" y1="112" x2="725" y2="112" stroke="#c9c1ae" stroke-width="1"/>
+          <g>
+            <rect x="120" y="104" width="100" height="16" rx="2" fill="#807a6d"/>
+            <text x="170" y="115" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">A</text>
+
+            <rect x="220" y="104" width="100" height="16" rx="2" fill="url(#hatch)" stroke="#b3422c" stroke-width="1" stroke-dasharray="3,2"/>
+            <text x="270" y="115" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#b3422c" font-weight="700">A (stale)</text>
+
+            <rect x="320" y="104" width="100" height="16" rx="2" fill="#807a6d"/>
+            <text x="370" y="115" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">B</text>
+
+            <rect x="420" y="104" width="100" height="16" rx="2" fill="#807a6d"/>
+            <text x="470" y="115" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">D / E?</text>
+
+            <rect x="520" y="104" width="100" height="16" rx="2" fill="#807a6d"/>
+            <text x="570" y="115" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">E / F?</text>
+
+            <rect x="620" y="104" width="100" height="16" rx="2" fill="#807a6d"/>
+            <text x="670" y="115" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">G</text>
+          </g>
+
+          <text x="270" y="138" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#b3422c" font-weight="600">
+            <tspan class="lang-zh-only">慢帧导致 vsync 窗口空打 → 同一画面停留两拍</tspan>
+            <tspan class="lang-en-only">slow frame → empty vsync slot → same image lingers</tspan>
+          </text>
+
+          <!-- Divider -->
+          <line x1="0" y1="166" x2="760" y2="166" stroke="#c9c1ae" stroke-width="1" stroke-dasharray="6,4"/>
+
+          <!-- ===== AFTER — vsync-aligned ===== -->
+          <text x="20" y="186" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#4a6b3e" letter-spacing="2"><tspan class="lang-zh-only">AFTER · 对齐 VSYNC</tspan><tspan class="lang-en-only">AFTER · VSYNC-ALIGNED</tspan></text>
+          <text x="20" y="200" font-family="Inter, sans-serif" font-size="9" fill="#807a6d" letter-spacing="1"><tspan class="lang-zh-only">出帧节奏锁到 vsync 时间点</tspan><tspan class="lang-en-only">vsync-aligned production</tspan></text>
+
+          <!-- vsync ticks -->
+          <g stroke="#c9c1ae" stroke-width="1" stroke-dasharray="3,3">
+            <line x1="120" y1="216" x2="120" y2="286"/>
+            <line x1="220" y1="216" x2="220" y2="286"/>
+            <line x1="320" y1="216" x2="320" y2="286"/>
+            <line x1="420" y1="216" x2="420" y2="286"/>
+            <line x1="520" y1="216" x2="520" y2="286"/>
+            <line x1="620" y1="216" x2="620" y2="286"/>
+            <line x1="720" y1="216" x2="720" y2="286"/>
+          </g>
+          <g font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d" text-anchor="middle">
+            <text x="120" y="214">vsync</text><text x="220" y="214">vsync</text><text x="320" y="214">vsync</text>
+            <text x="420" y="214">vsync</text><text x="520" y="214">vsync</text><text x="620" y="214">vsync</text>
+          </g>
+
+          <!-- GPU production aligned to vsync -->
+          <text x="100" y="244" text-anchor="end" font-family="Inter, sans-serif" font-size="10" font-weight="600" fill="#4a463e">GPU</text>
+          <line x1="115" y1="246" x2="725" y2="246" stroke="#c9c1ae" stroke-width="1"/>
+          <g fill="#4a6b3e">
+            <rect x="124" y="238" width="92" height="16" rx="2"/><text x="170" y="249" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">A</text>
+            <rect x="224" y="238" width="92" height="16" rx="2"/><text x="270" y="249" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">B</text>
+            <rect x="324" y="238" width="92" height="16" rx="2"/><text x="370" y="249" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">C</text>
+            <rect x="424" y="238" width="92" height="16" rx="2"/><text x="470" y="249" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">D</text>
+            <rect x="524" y="238" width="92" height="16" rx="2"/><text x="570" y="249" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">E</text>
+            <rect x="624" y="238" width="92" height="16" rx="2"/><text x="670" y="249" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">F</text>
+          </g>
+
+          <!-- Display reads aligned frames -->
+          <text x="100" y="276" text-anchor="end" font-family="Inter, sans-serif" font-size="10" font-weight="600" fill="#4a463e">Display</text>
+          <line x1="115" y1="278" x2="725" y2="278" stroke="#4a6b3e" stroke-width="1.5"/>
+          <g fill="#4a6b3e">
+            <rect x="124" y="270" width="92" height="16" rx="2"/><text x="170" y="281" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">A</text>
+            <rect x="224" y="270" width="92" height="16" rx="2"/><text x="270" y="281" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">B</text>
+            <rect x="324" y="270" width="92" height="16" rx="2"/><text x="370" y="281" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">C</text>
+            <rect x="424" y="270" width="92" height="16" rx="2"/><text x="470" y="281" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">D</text>
+            <rect x="524" y="270" width="92" height="16" rx="2"/><text x="570" y="281" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">E</text>
+            <rect x="624" y="270" width="92" height="16" rx="2"/><text x="670" y="281" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">F</text>
+          </g>
+
+          <text x="380" y="306" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#4a6b3e" font-weight="600">
+            <tspan class="lang-zh-only">每个 vsync 都对应一个新画面 · 节奏稳定 · 无 Jank</tspan>
+            <tspan class="lang-en-only">every vsync brings a new image · steady rhythm · no Jank</tspan>
+          </text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;02</span>
+        <span class="lang-zh-only">VSync 对齐：把"GPU 何时出帧"绑定到显示器的硬件节拍上，撕裂与重复帧从源头消失。</span>
+        <span class="lang-en-only">VSync alignment: binding "when the GPU emits a frame" to the display's hardware beat — tearing and duplicate frames disappear at the source.</span>
+        <span class="figen lang-zh-only">Once frame production is locked to vsync, the display always has exactly one fresh frame per refresh — no stale repeats.</span>
+        <span class="figen lang-en-only">将出帧节奏锁到 vsync，显示器在每个刷新周期上都恰好拿到一帧新画面——不会再有"上一帧的复读"。</span>
+      </figcaption>
+    </figure>
+
+    <!-- ============ FIG 03 — Buffer strategy ============ -->
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 290" xmlns="http://www.w3.org/2000/svg" aria-label="Buffer strategies — single / double / triple">
+          <!-- ===== Panel 1: Single buffer ===== -->
+          <text x="120" y="22" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#b3422c" letter-spacing="2">SINGLE BUFFER</text>
+          <text x="120" y="36" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#807a6d"><tspan class="lang-zh-only">→ 撕裂</tspan><tspan class="lang-en-only">→ tearing</tspan></text>
+          <!-- single buffer rect -->
+          <rect x="40" y="56" width="160" height="60" rx="4" fill="#faf6ed" stroke="#4a463e" stroke-width="1.5"/>
+          <text x="120" y="80" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#4a463e">Buffer</text>
+          <text x="120" y="100" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#807a6d">read + write</text>
+          <!-- write arrow (GPU) -->
+          <path d="M 30 76 L 35 76" stroke="#4a463e" stroke-width="1.5"/>
+          <text x="14" y="80" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#4a463e">GPU →</text>
+          <!-- read arrow (Display) -->
+          <path d="M 205 96 L 210 96" stroke="#4a463e" stroke-width="1.5"/>
+          <text x="226" y="100" font-family="JetBrains Mono, monospace" font-size="9" fill="#4a463e">→ Disp</text>
+          <!-- conflict -->
+          <text x="120" y="148" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#b3422c" font-weight="700">
+            <tspan class="lang-zh-only">读写同时进行</tspan>
+            <tspan class="lang-en-only">read &amp; write simultaneously</tspan>
+          </text>
+          <text x="120" y="164" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#b3422c">
+            <tspan class="lang-zh-only">→ 画面撕裂</tspan>
+            <tspan class="lang-en-only">→ visible tearing</tspan>
+          </text>
+
+          <!-- divider -->
+          <line x1="244" y1="48" x2="244" y2="262" stroke="#c9c1ae" stroke-width="1" stroke-dasharray="3,3"/>
+
+          <!-- ===== Panel 2: Double buffer ===== -->
+          <text x="380" y="22" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#a87a1f" letter-spacing="2">DOUBLE BUFFER</text>
+          <text x="380" y="36" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#807a6d"><tspan class="lang-zh-only">→ GPU 慢则卡顿</tspan><tspan class="lang-en-only">→ stutter when GPU lags</tspan></text>
+          <!-- two buffers -->
+          <rect x="284" y="56" width="86" height="60" rx="4" fill="#faf6ed" stroke="#4a463e" stroke-width="1.5"/>
+          <text x="327" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#4a463e">Front</text>
+          <text x="327" y="96" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#807a6d">on screen</text>
+          <text x="327" y="108" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#807a6d">→ Disp</text>
+
+          <rect x="390" y="56" width="86" height="60" rx="4" fill="#faf6ed" stroke="#4a463e" stroke-width="1.5"/>
+          <text x="433" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#4a463e">Back</text>
+          <text x="433" y="96" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#807a6d">drawing</text>
+          <text x="433" y="108" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#807a6d">GPU →</text>
+
+          <!-- swap arrow -->
+          <path d="M 372 86 L 388 86" stroke="#a87a1f" stroke-width="1.5"/>
+          <path d="M 388 90 L 372 90" stroke="#a87a1f" stroke-width="1.5"/>
+          <text x="380" y="130" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#a87a1f" font-weight="700">swap on vsync</text>
+
+          <!-- problem -->
+          <text x="380" y="156" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#a87a1f" font-weight="700">
+            <tspan class="lang-zh-only">GPU 慢一拍 → Front 复用</tspan>
+            <tspan class="lang-en-only">GPU lags → reuse Front</tspan>
+          </text>
+          <text x="380" y="172" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#a87a1f">
+            <tspan class="lang-zh-only">→ Jank（vsync 空打）</tspan>
+            <tspan class="lang-en-only">→ Jank (empty vsync)</tspan>
+          </text>
+
+          <!-- divider -->
+          <line x1="500" y1="48" x2="500" y2="262" stroke="#c9c1ae" stroke-width="1" stroke-dasharray="3,3"/>
+
+          <!-- ===== Panel 3: Triple buffer ===== -->
+          <text x="630" y="22" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#4a6b3e" letter-spacing="2">TRIPLE BUFFER</text>
+          <text x="630" y="36" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#807a6d"><tspan class="lang-zh-only">→ 抖动也不卡</tspan><tspan class="lang-en-only">→ smooth even with hiccups</tspan></text>
+
+          <rect x="514" y="56" width="76" height="60" rx="4" fill="#faf6ed" stroke="#4a463e" stroke-width="1.5"/>
+          <text x="552" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#4a463e">Front</text>
+          <text x="552" y="96" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#807a6d">on screen</text>
+          <text x="552" y="108" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#807a6d">→ Disp</text>
+
+          <rect x="592" y="56" width="76" height="60" rx="4" fill="#faf6ed" stroke="#4a6b3e" stroke-width="1.5"/>
+          <text x="630" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#4a6b3e">Back-1</text>
+          <text x="630" y="96" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#807a6d">queued</text>
+          <text x="630" y="108" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#807a6d">ready</text>
+
+          <rect x="670" y="56" width="76" height="60" rx="4" fill="#faf6ed" stroke="#4a463e" stroke-width="1.5"/>
+          <text x="708" y="78" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#4a463e">Back-2</text>
+          <text x="708" y="96" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" fill="#807a6d">drawing</text>
+          <text x="708" y="108" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#807a6d">GPU →</text>
+
+          <!-- chain arrows -->
+          <path d="M 590 86 L 595 86" stroke="#4a463e" stroke-width="1.2"/>
+          <path d="M 668 86 L 673 86" stroke="#4a463e" stroke-width="1.2"/>
+
+          <text x="630" y="130" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#4a6b3e" font-weight="700">always one ready</text>
+
+          <text x="630" y="156" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#4a6b3e" font-weight="700">
+            <tspan class="lang-zh-only">GPU 慢一拍仍有备用</tspan>
+            <tspan class="lang-en-only">spare frame absorbs the lag</tspan>
+          </text>
+          <text x="630" y="172" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#4a6b3e">
+            <tspan class="lang-zh-only">→ vsync 不空打</tspan>
+            <tspan class="lang-en-only">→ no empty vsync</tspan>
+          </text>
+
+          <!-- bottom outcome bar -->
+          <line x1="40" y1="206" x2="720" y2="206" stroke="#c9c1ae" stroke-width="1"/>
+          <text x="380" y="230" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#4a463e" letter-spacing="1">
+            <tspan class="lang-zh-only">代价：多一个缓冲的内存（约 5 MB / 1080p RGBA），换 vsync 不漏帧</tspan>
+            <tspan class="lang-en-only">trade-off: ~5MB more memory per 1080p RGBA buffer, in exchange for never missing a vsync</tspan>
+          </text>
+          <text x="380" y="248" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#807a6d">
+            <tspan class="lang-zh-only">这是后来移动端"流畅性"工程的事实标准</tspan>
+            <tspan class="lang-en-only">later the de-facto standard of mobile smoothness engineering</tspan>
+          </text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;03</span>
+        <span class="lang-zh-only">缓冲策略对比：单缓冲撕裂、双缓冲会因 GPU 慢半拍而漏帧、三重缓冲用一个备用帧吃掉抖动。</span>
+        <span class="lang-en-only">Buffer strategies: single buffer tears, double buffer drops a frame whenever the GPU lags, triple buffer absorbs the jitter with a spare.</span>
+        <span class="figen lang-zh-only">Triple buffering is the cheapest way to convert occasional render lag into "imperceptible" — at the cost of one extra framebuffer.</span>
+        <span class="figen lang-en-only">三重缓冲，是把"偶尔的渲染抖动"变成"感知不到"的最便宜方案——代价只是多一个 framebuffer。</span>
+      </figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">撕裂到底是什么样子</h3>
+    <h3 class="sub lang-en-only">WHAT TEARING ACTUALLY LOOKS LIKE</h3>
+
+    <p class="lang-zh-only">单 buffer 的"撕裂"听起来很抽象，其实非常具体：显示器是<em>逐行扫描</em>的，从屏幕顶端到底端用大约 16.67ms 完成一次刷新。如果在扫描的中途，缓冲被换成了下一帧的图像 —— 上半屏还是旧帧，下半屏已经是新帧 —— 你的眼睛就会看到一条裂缝。</p>
+    <p class="lang-en-only">"Tearing" sounds abstract — it isn't. The display draws <em>line by line</em>, top to bottom, taking ~16.67ms per refresh. If the buffer is overwritten <em>mid-scan</em>, the top half still shows the old frame while the bottom shows the new one — and your eye sees a crack.</p>
+
+    <figure>
+      <div class="scanout-stage">
+        <div class="scanout-card good">
+          <div class="scanout-title"><span class="lang-zh-only">VSYNC 对齐 — 一次只画一帧</span><span class="lang-en-only">VSYNC-ALIGNED — one frame at a time</span></div>
+          <div class="scanout-screen">
+            <div class="frame-a"></div>
+            <div class="scanline"></div>
+            <span class="label-a">FRAME A</span>
+          </div>
+          <p class="scanout-cap"><span class="lang-zh-only">扫描线（白线）从上扫到下，整屏完成后才允许换帧。</span><span class="lang-en-only">The scanline sweeps top → bottom; the buffer can only be swapped after a full pass.</span></p>
+        </div>
+        <div class="scanout-card bad">
+          <div class="scanout-title"><span class="lang-zh-only">单 BUFFER · 中途换帧 → 撕裂</span><span class="lang-en-only">SINGLE BUFFER · mid-scan swap → tearing</span></div>
+          <div class="scanout-screen">
+            <div class="frame-b" style="top: 0; height: 100%; bottom: auto;"></div>
+            <div class="frame-a" style="height: 38%; top: 0; bottom: auto; animation: none; z-index: 2;"></div>
+            <div class="tear-mark"></div>
+            <div class="scanline"></div>
+            <span class="label-a">FRAME A</span>
+            <span class="label-b">FRAME B</span>
+          </div>
+          <p class="scanout-cap"><span class="lang-zh-only">扫描走到 38% 时缓冲被覆盖。下半屏跳到新帧 —— 黄线就是物理上的"撕裂"。</span><span class="lang-en-only">At 38% of the scan, the buffer is overwritten. The bottom half jumps to a different frame — that yellow line is the physical "tear".</span></p>
+        </div>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;04</span>
+        <span class="lang-zh-only">为什么 vsync 是「同步」信号：它把"换帧"这件事限制在两次扫描之间，绝不允许扫描中途换。</span>
+        <span class="lang-en-only">Why vsync is the <em>sync</em> signal: it forbids the buffer swap from happening during a scan — it can only happen between scans.</span>
+        <span class="figen lang-zh-only">这就是为什么单 buffer 一定会撕：不撕的唯一办法是禁止扫描中途换帧。</span>
+        <span class="figen lang-en-only">That's why single buffering must tear: the only way to prevent it is to forbid mid-scan swaps.</span>
+      </figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">三重缓冲不是免费的</h3>
+    <h3 class="sub lang-en-only">TRIPLE BUFFERING ISN'T FREE</h3>
+
+    <p class="lang-zh-only">三重缓冲解决了"撕裂 / 漏帧"，但同时给"按下到画面变化"塞了一段隐形的延迟 —— 因为指令要排队穿过 3 个 buffer 才能上屏。下面是同一帧从 GPU 出发到玩家眼睛为止，三种策略各自的延迟代价：</p>
+    <p class="lang-en-only">Triple buffering kills tearing and dropped frames — but it also slips an invisible latency between the user's finger and the screen. Each frame waits its turn through three buffers. Here's the latency cost of each strategy:</p>
+
+    <figure>
+      <div class="latency-bars">
+        <div class="lat-row">
+          <span class="lat-name"><span class="lang-zh-only">单 Buffer</span><span class="lang-en-only">Single buffer</span></span>
+          <div class="lat-track"><div class="lat-bar good" style="width: 12%;"></div></div>
+          <span class="lat-num">≈ 8 ms</span>
+        </div>
+        <div class="lat-row">
+          <span class="lat-name"><span class="lang-zh-only">双 Buffer</span><span class="lang-en-only">Double buffer</span></span>
+          <div class="lat-track"><div class="lat-bar warn" style="width: 38%;"></div></div>
+          <span class="lat-num">≈ 16–33 ms</span>
+        </div>
+        <div class="lat-row">
+          <span class="lat-name"><span class="lang-zh-only">三重 Buffer</span><span class="lang-en-only">Triple buffer</span></span>
+          <div class="lat-track"><div class="lat-bar bad" style="width: 78%;"></div></div>
+          <span class="lat-num">≈ 33–50 ms</span>
+        </div>
+        <div class="lat-axis">
+          <span></span>
+          <span class="ticks"><span>0</span><span>16ms</span><span>33ms</span><span>50ms</span><span>66ms</span></span>
+          <span></span>
+        </div>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;05</span>
+        <span class="lang-zh-only">缓冲数 vs 延迟：每多一个 buffer 就多一拍 vsync 的延迟。</span>
+        <span class="lang-en-only">Buffer count vs latency: each extra buffer adds another vsync's worth of delay.</span>
+        <span class="figen lang-zh-only">这就是为什么 FPS / 格斗类游戏宁愿偶尔抖一下，也不愿手指按下后晚 50ms 才反应——稳定与即时是永远的 trade-off。</span>
+        <span class="figen lang-en-only">It's why FPS shooters and fighting games take an occasional hitch over a 50ms response delay — stability vs. responsiveness is the eternal trade-off.</span>
+      </figcaption>
+    </figure>
+
+    <p class="lang-zh-only">这套组合拳之后，PerfDog Jank、Apple Smoothness、Web Performance Budget 等指标都站在了它的肩膀上：把"流畅"拆成可测量、可比较、可优化的工程语言，是黄油计划留给整个移动行业的真正遗产。</p>
+    <p class="lang-en-only">After that combination, PerfDog Jank, Apple Smoothness, the Web Performance Budget — all of them stand on its shoulders. Decomposing "smoothness" into a measurable, comparable, optimizable engineering language is Project Butter's real legacy to the mobile industry.</p>
+
+    <h3 class="sub lang-zh-only">现代延伸 — Frame Pacing 与 Swappy</h3>
+    <h3 class="sub lang-en-only">MODERN HEIRS — FRAME PACING &amp; SWAPPY</h3>
+
+    <p class="lang-zh-only">"对齐 vsync"这件事在 2024 年也还在打补丁。Google 在 2019 年发布了 <a href="https://developer.android.com/games/sdk/frame-pacing" target="_blank" rel="noopener" style="color:var(--accent);">Swappy</a> 库，专门解决"游戏渲染速度 ≠ 显示器刷新率"的拍子错配 —— 比如游戏内部跑 90fps、显示器只支持 60Hz，Swappy 会主动节流到 60fps 的整数倍，避免节奏不齐造成的 micro-stutter。是同一个 2012 年的思想，工具变了，目标没变。</p>
+    <p class="lang-en-only">"Align to vsync" still gets patches in 2024. In 2019 Google released <a href="https://developer.android.com/games/sdk/frame-pacing" target="_blank" rel="noopener" style="color:var(--accent);">Swappy</a>, a library purpose-built for the "render rate ≠ display rate" beat mismatch — say a game running 90fps on a 60Hz panel, where Swappy throttles to a clean 60fps multiple to prevent the micro-stutter of misaligned cadence. Same 2012 idea, new tool, same goal.</p>
+  </section>
+
+  <!-- ========== CHAPTER 03 ========== -->
+  <section class="chap" id="c3">
+    <div class="chap-num">CHAPTER&nbsp;03</div>
+    <h2 class="chap-title lang-zh-only">流畅度 — 视觉惯性与电影帧</h2>
+    <h2 class="chap-title lang-en-only">Smoothness — visual inertia &amp; cinematic frames</h2>
+    <p class="chap-en lang-zh-only">visual inertia &amp; cinematic frames</p>
+    <p class="chap-en lang-en-only">视觉惯性与电影帧</p>
+
+    <p class="lang-zh-only">"卡顿感"从哪里长出来？答案藏在两个看似无关的概念里：</p>
+    <p class="lang-en-only">Where does the <em>feeling of lag</em> actually come from? The answer hides in two seemingly unrelated ideas:</p>
+
+    <h4 class="sub2 lang-zh-only">1 ─ 视觉惯性</h4>
+    <h4 class="sub2 lang-en-only">1 ─ Visual Inertia</h4>
+    <p class="lang-zh-only">大脑会下意识用"上一帧的节奏"预测下一帧。一直 60 帧，它就以为下一帧也是 60。一旦节奏忽然降到 25 帧，预测被打断，<span class="em">卡顿感由此诞生</span>。<br>
+    所以同样是 25 帧——一直保持的 25 不卡，从 60 突然掉到 25 才是卡。</p>
+    <p class="lang-en-only">The brain unconsciously uses <em>last frame's rhythm</em> to predict the next. Steady at 60 fps, it expects 60. The moment the rhythm drops to 25, prediction breaks — <span class="em">and that is where lag is born</span>.<br>
+    Same 25 fps, two different worlds: a steady 25 doesn't feel like lag; a sudden fall from 60 to 25 does.</p>
+
+    <h4 class="sub2 lang-zh-only">2 ─ 电影帧</h4>
+    <h4 class="sub2 lang-en-only">2 ─ Cinematic Frames</h4>
+    <p class="lang-zh-only">电影一般是 24 帧，单帧约 41.67ms。这是一个生理学的临界点：低于这个帧率，人眼就开始能辨别画面的不连续。</p>
+    <p class="lang-en-only">Films typically run at 24 fps, with each frame around 41.67ms. This is a physiological threshold: below it, the eye begins to detect discontinuity.</p>
+
+    <div class="keynum">
+      <div class="item">
+        <div class="v">24<span class="unit">fps</span></div>
+        <div class="l lang-zh-only">电影帧率 / cinematic baseline</div>
+        <div class="l lang-en-only">cinematic baseline</div>
+      </div>
+      <div class="item">
+        <div class="v">41.67<span class="unit">ms</span></div>
+        <div class="l lang-zh-only">单帧耗时 / per-frame budget</div>
+        <div class="l lang-en-only">per-frame budget</div>
+      </div>
+      <div class="item">
+        <div class="v">2<span class="unit lang-zh-only">帧</span><span class="unit lang-en-only">frames</span></div>
+        <div class="l lang-zh-only">人眼可容忍延迟 / tolerance</div>
+        <div class="l lang-en-only">eye-tolerable delay</div>
+      </div>
+    </div>
+
+    <p class="lang-zh-only">把这两件事放在一起，就能推导出 PerfDog 衡量卡顿的整套阈值：以"前三帧均值"度量节奏的稳定，以"电影帧倍数"度量绝对时长的容忍。</p>
+    <p class="lang-en-only">Put these two together and you arrive at PerfDog's full threshold system: measure rhythmic stability via the <em>three-frame moving average</em>; measure absolute-duration tolerance via <em>multiples of the cinematic frame</em>.</p>
+
+    <h3 class="sub lang-zh-only">DEMO — 看，「卡」长这个样子</h3>
+    <h3 class="sub lang-en-only">DEMO — what stutter actually looks like</h3>
+
+    <p class="lang-zh-only">下面三条轨道里的小球都在重复"左 → 右 → 左"。试着只看节奏，别看速度：</p>
+    <p class="lang-en-only">Three balls below run a loop: left → right → left. Watch the <em>rhythm</em>, not the speed:</p>
+
+    <figure>
+      <div class="smooth-demo" aria-label="Smooth vs Janky vs Locked-low demo">
+
+        <div class="smooth-track">
+          <div class="smooth-head">
+            <span class="smooth-name good">A &nbsp;·&nbsp; <span class="lang-zh-only">平稳 60 fps</span><span class="lang-en-only">steady 60 fps</span></span>
+            <span class="smooth-meta">no jank · 16.67ms × N</span>
+          </div>
+          <div class="smooth-rail"><div class="smooth-ball good run-smooth"></div></div>
+          <p class="smooth-cap"><span class="lang-zh-only">流畅 · 节奏完全均匀</span><span class="lang-en-only">smooth · perfectly even rhythm</span></p>
+        </div>
+
+        <div class="smooth-track">
+          <div class="smooth-head">
+            <span class="smooth-name bad">B &nbsp;·&nbsp; <span class="lang-zh-only">60 fps + 3 次 Jank</span><span class="lang-en-only">60 fps + 3 janks</span></span>
+            <span class="smooth-meta">avg fps higher · feels worse</span>
+          </div>
+          <div class="smooth-rail"><div class="smooth-ball bad run-janky"></div></div>
+          <p class="smooth-cap"><span class="lang-zh-only">总速度更快，但每一次停顿都被身体清楚地记下来了</span><span class="lang-en-only">faster on average — yet every pause is felt by the body</span></p>
+        </div>
+
+        <div class="smooth-track">
+          <div class="smooth-head">
+            <span class="smooth-name"><span style="font-weight:400;color:var(--ink-mute);font-family:var(--mono);font-size:12px;">C &nbsp;·&nbsp;</span> <span class="lang-zh-only">锁定 30 fps</span><span class="lang-en-only">locked at 30 fps</span></span>
+            <span class="smooth-meta">half the speed · same rhythm</span>
+          </div>
+          <div class="smooth-rail"><div class="smooth-ball run-low"></div></div>
+          <p class="smooth-cap"><span class="lang-zh-only">慢一倍，但稳定 — 体感反而比 B 流畅得多</span><span class="lang-en-only">half as fast, but uniform — and feels far smoother than B</span></p>
+        </div>
+
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;06</span>
+        <span class="lang-zh-only">三条轨道直观展示「流畅是分布的事，不是平均的事」：B 的平均速度其实更快，但你的眼睛会本能地说"卡"。</span>
+        <span class="lang-en-only">Three tracks show that "smoothness is distribution, not average": B is faster on average — yet your eye instinctively calls it <em>laggy</em>.</span>
+        <span class="figen lang-zh-only">If track B feels worse than track C despite running at a higher average frame rate, you've just experienced WWDC18's lesson with your own eyes.</span>
+        <span class="figen lang-en-only">如果 B 让你觉得比 C 难受，即使它的平均帧率更高——你刚刚用眼睛验证了 WWDC18 的那条结论。</span>
+      </figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">现代显示器：30 / 60 / 120Hz</h3>
+    <h3 class="sub lang-en-only">MODERN DISPLAYS — 30 / 60 / 120Hz</h3>
+
+    <p class="lang-zh-only">2012 年所有"流畅"的对话都默认 60Hz。今天的高端手机已经是 120Hz 起步，iPhone Pro 用 LTPO 面板实现 1–120Hz 的无级变速 —— 静态时降到 1Hz 省电，滚动时拉到 120Hz 抢丝滑感。同一个画面在三种刷新率下，节奏完全不同：</p>
+    <p class="lang-en-only">In 2012 every conversation about smoothness assumed 60Hz. Today's flagship phones start at 120Hz, with iPhone Pro using LTPO panels to vary refresh rate from 1 to 120Hz — dropping to 1Hz when static to save battery, climbing to 120Hz when scrolling. The same image looks different at each rate:</p>
+
+    <figure>
+      <div class="smooth-demo" aria-label="30/60/120Hz refresh rate comparison">
+        <div class="smooth-track">
+          <div class="smooth-head">
+            <span class="smooth-name">30 Hz &nbsp;·&nbsp; <span class="lang-zh-only">每帧 33.3ms</span><span class="lang-en-only">33.3ms per frame</span></span>
+            <span class="smooth-meta">budget · low-end / power saver</span>
+          </div>
+          <div class="smooth-rail"><div class="smooth-ball run-30"></div></div>
+          <p class="smooth-cap"><span class="lang-zh-only">能看，但快速滑动时会感到"轻微拖影"</span><span class="lang-en-only">readable, but a faint smear during fast flicks</span></p>
+        </div>
+        <div class="smooth-track">
+          <div class="smooth-head">
+            <span class="smooth-name">60 Hz &nbsp;·&nbsp; <span class="lang-zh-only">每帧 16.67ms</span><span class="lang-en-only">16.67ms per frame</span></span>
+            <span class="smooth-meta">mainstream baseline · 2012–today</span>
+          </div>
+          <div class="smooth-rail"><div class="smooth-ball run-60"></div></div>
+          <p class="smooth-cap"><span class="lang-zh-only">业界标准。"流畅"两个字最初就是为这个数定义的</span><span class="lang-en-only">the industry standard — "smooth" was originally defined around this number</span></p>
+        </div>
+        <div class="smooth-track">
+          <div class="smooth-head">
+            <span class="smooth-name good">120 Hz &nbsp;·&nbsp; <span class="lang-zh-only">每帧 8.3ms</span><span class="lang-en-only">8.3ms per frame</span></span>
+            <span class="smooth-meta">flagship · ProMotion / LTPO</span>
+          </div>
+          <div class="smooth-rail"><div class="smooth-ball good run-120"></div></div>
+          <p class="smooth-cap"><span class="lang-zh-only">手指越快，差距越明显。但每帧预算只剩一半 —— 渲染负担也翻倍</span><span class="lang-en-only">the faster you flick, the more obvious it gets — but the per-frame budget is half, doubling the render burden</span></p>
+        </div>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;07</span>
+        <span class="lang-zh-only">三种刷新率横向对比：120Hz 不只是"画面更快"，它把每帧预算压到了 8.3ms，这给渲染器、JS 引擎、所有的中间件都换了一个新难度。</span>
+        <span class="lang-en-only">Three refresh rates side by side: 120Hz isn't just "faster image" — it crushes the per-frame budget to 8.3ms, raising the difficulty for the renderer, the JS engine, and every piece of middleware in between.</span>
+        <span class="figen lang-zh-only">LTPO 面板的可变刷新率让"FPS"这个概念第一次开始流动 —— 同一段视频，前一秒可能是 24Hz，下一秒就跳到 120Hz。</span>
+        <span class="figen lang-en-only">LTPO's variable refresh rate makes "FPS" itself fluid for the first time — one second the panel is at 24Hz, the next at 120Hz.</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ========== CHAPTER 04 ========== -->
+  <section class="chap" id="c4">
+    <div class="chap-num">CHAPTER&nbsp;04</div>
+    <h2 class="chap-title lang-zh-only">Jank — 一条判别式</h2>
+    <h2 class="chap-title lang-en-only">Jank — a discriminator function</h2>
+    <p class="chap-en lang-zh-only">a discriminator function</p>
+    <p class="chap-en lang-en-only">一条判别式</p>
+
+    <p class="lang-zh-only">把上面两个直觉变成可以跑在工具里的判别式，PerfDog 用了一组双条件：一帧必须<em>同时</em>违反"节奏稳定"与"时长可容忍"，才算一次 Jank。</p>
+    <p class="lang-en-only">To turn those two intuitions into a function the tooling can actually run, PerfDog uses a paired condition: a frame must violate <em>both</em> "rhythmic stability" and "duration tolerance" to count as one Jank.</p>
+
+    <div class="formula">
+      <div class="ftitle lang-zh-only">DEFINITION&nbsp;/&nbsp;Jank（一次卡顿）</div>
+      <div class="ftitle lang-en-only">DEFINITION&nbsp;/&nbsp;Jank — one stutter</div>
+      <span class="cond lang-zh-only">Display FrameTime &gt; 前三帧平均耗时 × 2</span>
+      <span class="cond lang-en-only">Display FrameTime &gt; 2 × avg(prev 3 frames)</span>
+      <span class="cond">Display FrameTime &gt; 1000ms / 24 × 2 &nbsp;≈&nbsp; 83.33ms</span>
+      <div class="out lang-zh-only">⇒&nbsp; 同时满足，则记一次 <strong>Jank</strong></div>
+      <div class="out lang-en-only">⇒&nbsp; both conditions met → one <strong>Jank</strong></div>
+    </div>
+
+    <div class="formula">
+      <div class="ftitle lang-zh-only">DEFINITION&nbsp;/&nbsp;BigJank（一次严重卡顿）</div>
+      <div class="ftitle lang-en-only">DEFINITION&nbsp;/&nbsp;BigJank — a severe stutter</div>
+      <span class="cond lang-zh-only">Display FrameTime &gt; 前三帧平均耗时 × 2</span>
+      <span class="cond lang-en-only">Display FrameTime &gt; 2 × avg(prev 3 frames)</span>
+      <span class="cond">Display FrameTime &gt; 1000ms / 24 × 3 &nbsp;=&nbsp; 125ms</span>
+      <div class="out lang-zh-only">⇒&nbsp; 同时满足，则记一次 <strong>BigJank</strong></div>
+      <div class="out lang-en-only">⇒&nbsp; both conditions met → one <strong>BigJank</strong></div>
+    </div>
+
+    <h3 class="sub lang-zh-only">Jank vs BigJank — 一张图说清</h3>
+    <h3 class="sub lang-en-only">JANK vs BIGJANK — IN ONE PICTURE</h3>
+
+    <p class="lang-zh-only">两条公式只差一个数字 —— 把"2 倍电影帧 (83ms)"改成"3 倍电影帧 (125ms)"。Jank 是"开始觉得卡"的临界，BigJank 是"明确觉得卡了一下"的临界。一帧如果同时跨过两条阈值线（即"前三帧平均 × 2" 和 "电影帧 × N"），就会被记一次。</p>
+    <p class="lang-en-only">The two formulas differ by a single number — swap "2 × cinematic frame (83ms)" for "3 × cinematic frame (125ms)". Jank is the threshold where the eye <em>starts</em> to feel lag; BigJank is where it <em>definitely</em> registers a hitch. A frame is counted only if it crosses <em>both</em> lines (the relative "2 × prev-3-avg" and the absolute "N × cinematic frame").</p>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg" aria-label="Jank vs BigJank discriminator over a frame sequence">
+          <!-- title -->
+          <text x="20" y="20" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#4a463e" letter-spacing="2">FRAMETIME OVER 12 FRAMES</text>
+          <text x="20" y="34" font-family="Inter, sans-serif" font-size="9" fill="#807a6d"><tspan class="lang-zh-only">柱高 = 单帧耗时（ms）· 阈值线穿过即触发</tspan><tspan class="lang-en-only">bar height = FrameTime in ms · crossing a line trips the discriminator</tspan></text>
+
+          <!-- chart bg -->
+          <rect x="60" y="50" width="640" height="240" fill="#fdfbf3" stroke="#c9c1ae" stroke-width="1"/>
+
+          <!-- y-axis labels -->
+          <g font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d" text-anchor="end">
+            <text x="56" y="54">160ms</text>
+            <text x="56" y="105">125ms</text>
+            <text x="56" y="148">83ms</text>
+            <text x="56" y="218">33ms</text>
+            <text x="56" y="288">0</text>
+          </g>
+
+          <!-- threshold lines -->
+          <!-- BigJank line — 125ms -->
+          <line x1="60" y1="100" x2="700" y2="100" stroke="#b3422c" stroke-width="1.4" stroke-dasharray="6,3"/>
+          <text x="704" y="103" font-family="JetBrains Mono, monospace" font-size="9" fill="#b3422c" font-weight="700"><tspan class="lang-zh-only">BigJank 阈值 125ms</tspan><tspan class="lang-en-only">BigJank · 125ms</tspan></text>
+
+          <!-- Jank line — 83ms -->
+          <line x1="60" y1="142" x2="700" y2="142" stroke="#a87a1f" stroke-width="1.4" stroke-dasharray="6,3"/>
+          <text x="704" y="145" font-family="JetBrains Mono, monospace" font-size="9" fill="#a87a1f" font-weight="700"><tspan class="lang-zh-only">Jank 阈值 83ms</tspan><tspan class="lang-en-only">Jank · 83ms</tspan></text>
+
+          <!-- 33ms baseline (2 × avg of normal frames at ~16.67ms) -->
+          <line x1="60" y1="216" x2="700" y2="216" stroke="#807a6d" stroke-width="1" stroke-dasharray="2,3"/>
+          <text x="704" y="219" font-family="JetBrains Mono, monospace" font-size="8" fill="#807a6d"><tspan class="lang-zh-only">2 × 前三帧均值（约 33ms）</tspan><tspan class="lang-en-only">2 × prev-3 avg (≈ 33ms)</tspan></text>
+
+          <!-- 12 frame bars; each frame slot is ~50px wide, bars 30px wide centered -->
+          <!-- baseline = y=288 (0ms), top scale: 0..160ms over 240px so 1ms = 1.5px from y=288 upward -->
+          <!-- Frame bars: heights -->
+          <!-- Frames 1-3: 16.67ms (h=25), color ink-soft -->
+          <g fill="#4a463e">
+            <rect x="68"  y="263" width="32" height="25" rx="1"/>
+            <rect x="118" y="263" width="32" height="25" rx="1"/>
+            <rect x="168" y="263" width="32" height="25" rx="1"/>
+          </g>
+          <!-- Frame 4: 90ms (h=135), JANK (yellow + outline) -->
+          <rect x="218" y="153" width="32" height="135" rx="1" fill="#a87a1f" stroke="#a87a1f" stroke-width="1.5"/>
+          <text x="234" y="148" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" font-weight="700" fill="#a87a1f">JANK</text>
+          <!-- Frames 5-8: 16.67ms each -->
+          <g fill="#4a463e">
+            <rect x="268" y="263" width="32" height="25" rx="1"/>
+            <rect x="318" y="263" width="32" height="25" rx="1"/>
+            <rect x="368" y="263" width="32" height="25" rx="1"/>
+            <rect x="418" y="263" width="32" height="25" rx="1"/>
+          </g>
+          <!-- Frame 9: 140ms (h=210), BIGJANK (red + outline) -->
+          <rect x="468" y="78" width="32" height="210" rx="1" fill="#b3422c" stroke="#b3422c" stroke-width="1.5"/>
+          <text x="484" y="73" text-anchor="middle" font-family="Inter, sans-serif" font-size="9" font-weight="700" fill="#b3422c">BIGJANK</text>
+          <!-- Frame 10: 50ms (h=75) — exceeds 33ms relative threshold, but NOT 83ms absolute → not Jank -->
+          <rect x="518" y="213" width="32" height="75" rx="1" fill="#807a6d"/>
+          <text x="534" y="208" text-anchor="middle" font-family="Inter, sans-serif" font-size="8" font-weight="600" fill="#807a6d">~</text>
+          <!-- Frames 11-12: 16.67ms -->
+          <g fill="#4a463e">
+            <rect x="568" y="263" width="32" height="25" rx="1"/>
+            <rect x="618" y="263" width="32" height="25" rx="1"/>
+          </g>
+
+          <!-- x-axis labels -->
+          <g font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d" text-anchor="middle">
+            <text x="84" y="304">F1</text><text x="134" y="304">F2</text><text x="184" y="304">F3</text>
+            <text x="234" y="304" fill="#a87a1f" font-weight="700">F4</text>
+            <text x="284" y="304">F5</text><text x="334" y="304">F6</text><text x="384" y="304">F7</text><text x="434" y="304">F8</text>
+            <text x="484" y="304" fill="#b3422c" font-weight="700">F9</text>
+            <text x="534" y="304">F10</text><text x="584" y="304">F11</text><text x="634" y="304">F12</text>
+          </g>
+
+          <!-- annotations -->
+          <text x="380" y="332" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="11" font-weight="700" fill="#4a463e">
+            <tspan class="lang-zh-only">F4 / F9 同时跨过两条阈值线 → 计入 Jank · BigJank。F10 只跨了相对阈值，未越绝对线 → 不计。</tspan>
+            <tspan class="lang-en-only">F4 / F9 cross both lines → counted as Jank · BigJank. F10 crosses only the relative line — not enough → not counted.</tspan>
+          </text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;08</span>
+        <span class="lang-zh-only">Jank vs BigJank：F4 越过 83ms 横线触发 Jank；F9 一次越过 125ms 触发 BigJank；F10 看似很高（50ms），但没越过 83ms 那条绝对线，所以不算。</span>
+        <span class="lang-en-only">Jank vs BigJank: F4 crosses 83ms — one Jank. F9 crosses 125ms — one BigJank. F10 looks tall (50ms) but never crosses 83ms — not counted.</span>
+        <span class="figen lang-zh-only">"双条件"是关键：相对阈值（节奏突变）+ 绝对阈值（人眼底线），少一个都不算。</span>
+        <span class="figen lang-en-only">The "paired condition" is the point: relative threshold (rhythm break) + absolute threshold (eye floor) — miss either, and it doesn't count.</span>
+      </figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">魔法数字背后</h3>
+    <h3 class="sub lang-en-only">BEHIND THE MAGIC NUMBERS</h3>
+
+    <p class="lang-zh-only">"前三帧均值 × 2" 和 "1000/24 × 2" 这两个数字看起来像是拍脑袋拍出来的，实际上各自有清晰的工程直觉：</p>
+    <p class="lang-en-only">"2 × avg of prev 3" and "1000/24 × 2" look like back-of-the-napkin numbers — they aren't. Each has a clear engineering rationale:</p>
+
+    <ul class="lang-zh-only" style="font-family:var(--serif); color:var(--ink-soft); line-height:1.85; margin: 0 0 16px 18px;">
+      <li><strong>为什么是「× 2」而不是「× 1.5」？</strong>&nbsp;1.5× 太敏感，正常的 16.67 → 25ms 抖动也会被记成 Jank，噪声盖住信号；3× 又太宽松，会漏掉 50ms 的明显卡顿。2× 是经验上"最像人眼"的那个倍数。</li>
+      <li><strong>为什么取「前 3 帧」均值？</strong>&nbsp;1 帧太短，统计意义弱；5 帧以上又会把过早的信息拉进来稀释。前 3 帧 ≈ 50ms，恰好覆盖人眼短期视觉记忆窗口（约 80ms 内被认为是"刚才"）。</li>
+      <li><strong>为什么 24fps 是绝对底线？</strong>&nbsp;低于 24fps 时人眼开始辨别画面不连续——这是电影工业用了一百年验证的生理阈值。1000/24×2 ≈ 83ms 是「Jank」，×3 = 125ms 是「BigJank」，多一档电影帧就升一级。</li>
+    </ul>
+    <ul class="lang-en-only" style="font-family:var(--serif-en); color:var(--ink-soft); line-height:1.85; margin: 0 0 16px 18px;">
+      <li><strong>Why "× 2", not "× 1.5"?</strong>&nbsp;1.5× is too sensitive — normal 16.67 → 25ms jitter would register as Jank and drown the signal in noise. 3× is too forgiving and lets a 50ms hitch slip by. 2× is empirically the multiple that "feels" closest to the eye.</li>
+      <li><strong>Why "previous 3 frames"?</strong>&nbsp;1 frame is too short for any statistical meaning; 5+ pulls in stale information and dilutes the recent signal. Three frames ≈ 50ms — exactly the window the eye holds in short-term visual memory (anything within ~80ms reads as "just now").</li>
+      <li><strong>Why 24fps as the absolute floor?</strong>&nbsp;Below 24fps the eye starts to perceive discontinuity — a physiological threshold the film industry has validated for a hundred years. 1000/24×2 ≈ 83ms gives Jank; ×3 = 125ms gives BigJank. Each extra cinematic frame upgrades the severity.</li>
+    </ul>
+
+    <h3 class="sub lang-zh-only">三家判别式 — Google / PerfDog / Apple</h3>
+    <h3 class="sub lang-en-only">THREE DISCRIMINATORS — GOOGLE / PERFDOG / APPLE</h3>
+
+    <p class="lang-zh-only">PerfDog 是其中一种判别式，市面还有另外两套主流定义。三家直觉不同，对同一段帧数据可能给出完全不同的答案：</p>
+    <p class="lang-en-only">PerfDog is one discriminator among several. Two other mainstream definitions exist — and given the same frame data, the three may return entirely different answers:</p>
+
+    <div class="judge-grid">
+      <div class="judge-card">
+        <div class="judge-name">Google · Jank</div>
+        <h5 class="lang-zh-only" style="font-family:var(--serif);font-size:14px;font-weight:700;margin:0 0 8px;color:var(--ink);">系统级 · 绝对锚</h5>
+        <h5 class="lang-en-only" style="font-family:var(--serif-en);font-size:14px;font-weight:700;margin:0 0 8px;color:var(--ink);">System-level · Absolute anchor</h5>
+        <div class="judge-formula">FrameTime &gt; 1 vsync interval</div>
+        <p class="lang-zh-only" style="font-family:var(--serif);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0;">每错过一次 vsync 就计一次。最朴素，但忽略了"短时抖动 vs 长时卡顿"的体感差。</p>
+        <p class="lang-en-only" style="font-family:var(--serif-en);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0;">Every missed vsync is one Jank. The simplest definition — but it ignores the felt difference between brief jitter and a long freeze.</p>
+      </div>
+
+      <div class="judge-card">
+        <div class="judge-name">PerfDog · Jank</div>
+        <h5 class="lang-zh-only" style="font-family:var(--serif);font-size:14px;font-weight:700;margin:0 0 8px;color:var(--accent);">体验级 · 相对 + 绝对兜底</h5>
+        <h5 class="lang-en-only" style="font-family:var(--serif-en);font-size:14px;font-weight:700;margin:0 0 8px;color:var(--accent);">Experience-level · Relative + Floor</h5>
+        <div class="judge-formula">&gt; 2 × avg(prev 3)<br>&amp;&nbsp; &gt; 83 ms (Jank) / 125 ms (BigJank)</div>
+        <p class="lang-zh-only" style="font-family:var(--serif);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0;">"双条件"判别：节奏破了 + 长得离谱才算。还分了 Jank / BigJank 两档严重程度。</p>
+        <p class="lang-en-only" style="font-family:var(--serif-en);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0;">A paired condition — rhythm break <em>and</em> absolutely too long. Also graded into Jank / BigJank.</p>
+      </div>
+
+      <div class="judge-card">
+        <div class="judge-name">Apple · Hitch</div>
+        <h5 class="lang-zh-only" style="font-family:var(--serif);font-size:14px;font-weight:700;margin:0 0 8px;color:var(--good);">连续值 · ms/s 占比</h5>
+        <h5 class="lang-en-only" style="font-family:var(--serif-en);font-size:14px;font-weight:700;margin:0 0 8px;color:var(--good);">Continuous · ms-per-second</h5>
+        <div class="judge-formula">hitchTime = ∑(FrameTime − vsync)<br>ratio = hitchTime / totalTime</div>
+        <p class="lang-zh-only" style="font-family:var(--serif);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0;">不数次数，直接累加每帧"超出 vsync 的部分"。MetricKit 推荐目标 &lt; 10 ms/s。</p>
+        <p class="lang-en-only" style="font-family:var(--serif-en);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0;">Doesn't count events — sums the excess time over vsync per frame. MetricKit's recommended ceiling is &lt; 10 ms/s.</p>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">同一段数据 · 三种判决</h3>
+    <h3 class="sub lang-en-only">SAME DATA · THREE VERDICTS</h3>
+
+    <p class="lang-zh-only">把上面 FIG 08 那 12 帧的数据原封不动喂给三家判别式，结果差别非常大：</p>
+    <p class="lang-en-only">Feed the same 12-frame data from FIG 08 into all three discriminators — and the results diverge significantly:</p>
+
+    <figure>
+      <div class="judge-grid">
+        <div class="judge-card">
+          <div class="judge-name">Google</div>
+          <p class="lang-zh-only" style="font-family:var(--serif);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0 0 10px;">F4 错过 5 次 vsync · F9 错过 8 次 · F10 错过 2 次。<strong>合计 15 次 Jank。</strong></p>
+          <p class="lang-en-only" style="font-family:var(--serif-en);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0 0 10px;">F4 misses 5 vsyncs · F9 misses 8 · F10 misses 2. <strong>Total: 15 Janks.</strong></p>
+          <div class="judge-verdict">
+            <span class="judge-tag hit">F4 ×5</span>
+            <span class="judge-tag severe">F9 ×8</span>
+            <span class="judge-tag hit">F10 ×2</span>
+          </div>
+        </div>
+        <div class="judge-card">
+          <div class="judge-name">PerfDog</div>
+          <p class="lang-zh-only" style="font-family:var(--serif);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0 0 10px;">F4 触 Jank · F9 触 BigJank · F10 跨过 33ms 但没跨 83ms，<em>不算</em>。<strong>合计 1 Jank + 1 BigJank。</strong></p>
+          <p class="lang-en-only" style="font-family:var(--serif-en);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0 0 10px;">F4 trips Jank · F9 trips BigJank · F10 crossed 33ms but not 83ms, <em>not counted</em>. <strong>Total: 1 Jank + 1 BigJank.</strong></p>
+          <div class="judge-verdict">
+            <span class="judge-tag hit">F4 Jank</span>
+            <span class="judge-tag severe">F9 BigJank</span>
+            <span class="judge-tag miss">F10 ignored</span>
+          </div>
+        </div>
+        <div class="judge-card">
+          <div class="judge-name">Apple</div>
+          <p class="lang-zh-only" style="font-family:var(--serif);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0 0 10px;">超出 16.67 的部分累加：73 + 123 + 33 = <strong>≈ 230 ms 的 hitch time</strong>，作为占比报告。</p>
+          <p class="lang-en-only" style="font-family:var(--serif-en);font-size:13px;line-height:1.6;color:var(--ink-soft);margin:0 0 10px;">Sum of "excess over 16.67ms": 73 + 123 + 33 = <strong>≈ 230 ms of hitch time</strong>, reported as a ratio.</p>
+          <div class="judge-verdict">
+            <span class="judge-tag hit">F4 +73ms</span>
+            <span class="judge-tag severe">F9 +123ms</span>
+            <span class="judge-tag hit">F10 +33ms</span>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;09</span>
+        <span class="lang-zh-only">同一段帧数据，三家判别式给出完全不同的"事故报告"：Google 关心"次数"、PerfDog 关心"严重程度分级"、Apple 关心"累计影响"。没有谁错，只是各自盯的体验维度不同。</span>
+        <span class="lang-en-only">Same frame data, three completely different "incident reports": Google counts events, PerfDog grades severity, Apple sums impact. None is wrong — they each track a different dimension of experience.</span>
+        <span class="figen lang-zh-only">如果你的产品同时跑在 Android 和 iOS 上，这意味着你不能在两边用同一个数字汇报"流畅度"。</span>
+        <span class="figen lang-en-only">If your product ships on both Android and iOS, this means you can't report "smoothness" with a single number across the two platforms.</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ========== CHAPTER 05 ========== -->
+  <section class="chap" id="c5">
+    <div class="chap-num">CHAPTER&nbsp;05</div>
+    <h2 class="chap-title lang-zh-only">Stutter — 用占比代替次数</h2>
+    <h2 class="chap-title lang-en-only">Stutter — ratio over count</h2>
+    <p class="chap-en lang-zh-only">ratio over count</p>
+    <p class="chap-en lang-en-only">用占比代替次数</p>
+
+    <p class="lang-zh-only">Jank 是次数，Stutter 是占比。后者的存在是为了回答一个 Jank 回答不了的问题：<em>每次卡顿到底有多严重？</em></p>
+    <p class="lang-en-only">Jank is a count. Stutter is a ratio. The latter exists to answer a question Jank cannot: <em>how severe is each stutter?</em></p>
+
+    <div class="formula">
+      <div class="ftitle">DEFINITION&nbsp;/&nbsp;Stutter</div>
+      <span class="cond">Stutter = ∑Jank&nbsp;Time &nbsp;/&nbsp; Total&nbsp;Time</span>
+      <div class="out lang-zh-only">⇒&nbsp; 测试过程中，卡顿时长占总时长的比例</div>
+      <div class="out lang-en-only">⇒&nbsp; the share of stutter time within total test time</div>
+    </div>
+
+    <p class="lang-zh-only">同样是"3 次 Jank"，可能意味着完全不同的两段体验：</p>
+    <p class="lang-en-only">"Three Janks" can mean two very different stories:</p>
+
+    <div class="stutter-viz">
+      <div class="lbl">
+        <span class="big">A</span>
+        <span class="lang-zh-only">3 × 90ms</span>
+        <span class="lang-en-only">3 × 90ms</span>
+      </div>
+      <div class="ribbon" style="height: 28px;">
+        <div class="f" style="flex: 6;"></div>
+        <div class="f long" style="flex: 1.5;"></div>
+        <div class="f" style="flex: 6;"></div>
+        <div class="f long" style="flex: 1.5;"></div>
+        <div class="f" style="flex: 8;"></div>
+        <div class="f long" style="flex: 1.5;"></div>
+        <div class="f" style="flex: 6;"></div>
+      </div>
+    </div>
+    <div class="stutter-viz">
+      <div class="lbl">
+        <span class="big">B</span>
+        <span>3 × 600ms</span>
+      </div>
+      <div class="ribbon" style="height: 28px;">
+        <div class="f" style="flex: 4;"></div>
+        <div class="f long" style="flex: 8;"></div>
+        <div class="f" style="flex: 3;"></div>
+        <div class="f long" style="flex: 8;"></div>
+        <div class="f" style="flex: 2;"></div>
+        <div class="f long" style="flex: 8;"></div>
+        <div class="f" style="flex: 2;"></div>
+      </div>
+    </div>
+
+    <p class="lang-zh-only" style="font-family: var(--sans); font-size: 13px; color: var(--ink-mute); margin-top: 12px;">A、B 的 Jank 次数相同，但 Stutter 相差近一个数量级。这就是为什么 Jank 和 Stutter 只能<em>同时</em>看，不能互相替代。</p>
+    <p class="lang-en-only" style="font-family: var(--sans); font-size: 13px; color: var(--ink-mute); margin-top: 12px;">A and B share the same Jank count, but their Stutter values differ by nearly an order of magnitude. That is why Jank and Stutter must be read <em>together</em>, never as substitutes.</p>
+
+    <h3 class="sub lang-zh-only">把直觉换成数字</h3>
+    <h3 class="sub lang-en-only">FROM INTUITION TO NUMBERS</h3>
+
+    <p class="lang-zh-only">假设两段都是 10 秒测试，分别累计 270ms 和 1800ms 的卡顿时长，把数字代入定义就一目了然：</p>
+    <p class="lang-en-only">Assume both runs are 10-second tests, with 270ms and 1800ms of stutter time respectively. Drop the numbers into the definition and the gap is undeniable:</p>
+
+    <div class="formula">
+      <div class="ftitle">EXAMPLE&nbsp;/&nbsp;A · 3 × 90ms</div>
+      <span class="cond">Stutter = 270ms / 10 000ms = <strong>2.7%</strong></span>
+      <div class="out lang-zh-only">⇒&nbsp; 3 次"轻微 Jank"，体感"偶尔抖一下"</div>
+      <div class="out lang-en-only">⇒&nbsp; 3 mild janks — feels like an "occasional hiccup"</div>
+    </div>
+    <div class="formula">
+      <div class="ftitle">EXAMPLE&nbsp;/&nbsp;B · 3 × 600ms</div>
+      <span class="cond">Stutter = 1800ms / 10 000ms = <strong>18%</strong></span>
+      <div class="out lang-zh-only">⇒&nbsp; 3 次"长时间冻结"，体感"卡到怀疑死机"</div>
+      <div class="out lang-en-only">⇒&nbsp; 3 long freezes — feels "frozen, possibly hung"</div>
+    </div>
+
+    <h3 class="sub lang-zh-only">业界经验区间</h3>
+    <h3 class="sub lang-en-only">RULE-OF-THUMB BANDS</h3>
+
+    <p class="lang-zh-only">不同行业有自己默认接受的 Stutter 区间，可以把它当快速诊断尺：</p>
+    <p class="lang-en-only">Each segment of the industry has its own acceptable Stutter band. Treat them as a quick diagnostic ruler:</p>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 130" xmlns="http://www.w3.org/2000/svg" aria-label="Stutter rule-of-thumb bands">
+          <!-- baseline bar -->
+          <rect x="40" y="50" width="680" height="32" rx="4" fill="#ebe5d8" stroke="#c9c1ae" stroke-width="1"/>
+          <!-- bands: <1% green, 1-3% light green, 3-10% amber, >10% red -->
+          <rect x="40" y="50" width="68"  height="32" fill="#4a6b3e" opacity="0.85"/>
+          <rect x="108" y="50" width="136" height="32" fill="#4a6b3e" opacity="0.45"/>
+          <rect x="244" y="50" width="272" height="32" fill="#a87a1f" opacity="0.55"/>
+          <rect x="516" y="50" width="204" height="32" fill="#b3422c" opacity="0.7"/>
+
+          <g font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#faf6ed" text-anchor="middle">
+            <text x="74"  y="71">&lt; 1%</text>
+            <text x="176" y="71">1–3%</text>
+            <text x="380" y="71">3–10%</text>
+            <text x="618" y="71">&gt; 10%</text>
+          </g>
+
+          <g font-family="Inter, PingFang SC, sans-serif" font-size="11" fill="#4a463e" text-anchor="middle">
+            <text x="74"  y="106"><tspan class="lang-zh-only">优秀</tspan><tspan class="lang-en-only">excellent</tspan></text>
+            <text x="176" y="106"><tspan class="lang-zh-only">良好</tspan><tspan class="lang-en-only">good</tspan></text>
+            <text x="380" y="106"><tspan class="lang-zh-only">可接受 / 看场景</tspan><tspan class="lang-en-only">acceptable · context</tspan></text>
+            <text x="618" y="106"><tspan class="lang-zh-only">明显卡顿，需优化</tspan><tspan class="lang-en-only">noticeable lag — must fix</tspan></text>
+          </g>
+
+          <!-- examples on the bar -->
+          <g font-family="JetBrains Mono, monospace" font-size="10" fill="#1c1a16">
+            <line x1="180" y1="36" x2="180" y2="50" stroke="#1c1a16" stroke-width="1"/>
+            <text x="180" y="32" text-anchor="middle">A · 2.7%</text>
+            <line x1="582" y1="36" x2="582" y2="50" stroke="#1c1a16" stroke-width="1"/>
+            <text x="582" y="32" text-anchor="middle">B · 18%</text>
+          </g>
+
+          <g font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d">
+            <text x="40"  y="98" text-anchor="start">0%</text>
+            <text x="720" y="98" text-anchor="end">20%</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;10</span>
+        <span class="lang-zh-only">Stutter 经验尺：A 落在「良好/可接受」边界，B 已到「必须优化」区。同样 3 次 Jank，对产品的意义截然不同。</span>
+        <span class="lang-en-only">Stutter ruler: A sits on the "good / acceptable" boundary; B is firmly in "must fix". Same Jank count, two utterly different products.</span>
+        <span class="figen lang-zh-only">游戏对 Stutter 的容忍度通常更低（&lt;3%），社交 / 视频可放宽到 5–10%；超过 10% 几乎一定会被用户口碑反应出来。</span>
+        <span class="figen lang-en-only">Games tolerate less Stutter (&lt;3%); social / video can stretch to 5–10%. Past 10% it almost always shows up in user reviews.</span>
+      </figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">还要再深一层 — 看分布</h3>
+    <h3 class="sub lang-en-only">ONE LEVEL DEEPER — LOOK AT THE DISTRIBUTION</h3>
+
+    <p class="lang-zh-only">Jank 是次数，Stutter 是占比。但即使两者都看，仍然有最后一层信息会被埋掉：<em>帧时分布的形状</em>。FrameTime 本质是个长尾分布——大部分帧很快，少数帧拖了所有人下水。光看平均值会被这种尾巴骗。</p>
+    <p class="lang-en-only">Jank counts events, Stutter measures share. But even both miss one more layer: <em>the shape of the FrameTime distribution</em>. Frame times are inherently long-tailed — most are fast, a handful drag the whole experience down. The mean lies because of that tail.</p>
+
+    <figure>
+      <div class="hist-wrap">
+        <svg viewBox="0 0 760 290" xmlns="http://www.w3.org/2000/svg" aria-label="Frame time distribution histogram with percentiles">
+          <!-- title -->
+          <text x="20" y="20" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#4a463e" letter-spacing="2">FRAMETIME DISTRIBUTION · 1000 SAMPLES</text>
+          <text x="20" y="34" font-family="Inter, sans-serif" font-size="9" fill="#807a6d"><tspan class="lang-zh-only">x = 单帧耗时 (ms) · y = 出现次数 · 平均值在中段，但 P99 远在尾巴上</tspan><tspan class="lang-en-only">x = FrameTime (ms) · y = frequency · the mean sits mid-pack, but P99 lives way out on the tail</tspan></text>
+
+          <!-- Plot area: x from 60 to 740, y from 240 (bottom) to 56 (top) -->
+          <rect x="60" y="50" width="680" height="200" fill="#fdfbf3" stroke="#c9c1ae" stroke-width="1"/>
+
+          <!-- Histogram bars: x range 0..200ms across 680px (1ms = 3.4px). Bar widths = 4ms = 13.6px -->
+          <!-- Generate a long-tailed distribution: peak around 16-17ms, tail to 150ms -->
+          <g fill="#4a463e">
+            <!-- Bins: each rect represents a 4ms bin -->
+            <!-- 0-4: 5 -->     <rect x="64"  y="244" width="11" height="6"/>
+            <!-- 4-8: 18 -->    <rect x="78"  y="226" width="11" height="24"/>
+            <!-- 8-12: 75 -->   <rect x="92"  y="156" width="11" height="94"/>
+            <!-- 12-16: 220 --> <rect x="106" y="60"  width="11" height="190"/>
+            <!-- 16-20: 380 --> <rect x="120" y="50"  width="11" height="200"/>
+            <!-- 20-24: 180 --> <rect x="134" y="86"  width="11" height="164"/>
+            <!-- 24-28: 70 -->  <rect x="148" y="160" width="11" height="90"/>
+            <!-- 28-32: 32 -->  <rect x="162" y="210" width="11" height="40"/>
+            <!-- 32-36: 18 -->  <rect x="176" y="226" width="11" height="24"/>
+            <!-- 36-40: 10 -->  <rect x="190" y="236" width="11" height="14"/>
+            <!-- 40-44: 7 -->   <rect x="204" y="240" width="11" height="10"/>
+            <!-- 44-48: 5 -->   <rect x="218" y="244" width="11" height="6"/>
+            <!-- 48-52: 4 -->   <rect x="232" y="245" width="11" height="5"/>
+            <!-- 52-56: 4 -->   <rect x="246" y="245" width="11" height="5"/>
+            <!-- 56-60: 3 -->   <rect x="260" y="246" width="11" height="4"/>
+            <!-- 60-64: 3 -->   <rect x="274" y="246" width="11" height="4"/>
+            <!-- 64-68: 2 -->   <rect x="288" y="247" width="11" height="3"/>
+            <!-- 68-72: 2 -->   <rect x="302" y="247" width="11" height="3"/>
+            <!-- 72-76: 2 -->   <rect x="316" y="247" width="11" height="3"/>
+            <!-- 76-80: 2 -->   <rect x="330" y="247" width="11" height="3"/>
+          </g>
+          <!-- Tail bars (>=80ms) — colored amber/red -->
+          <g fill="#a87a1f">
+            <rect x="344" y="247" width="11" height="3"/>
+            <rect x="358" y="247" width="11" height="3"/>
+            <rect x="372" y="247" width="11" height="3"/>
+            <rect x="386" y="247" width="11" height="3"/>
+            <rect x="400" y="248" width="11" height="2"/>
+            <rect x="414" y="248" width="11" height="2"/>
+            <rect x="428" y="248" width="11" height="2"/>
+          </g>
+          <g fill="#b3422c">
+            <rect x="442" y="248" width="11" height="2"/>
+            <rect x="456" y="248" width="11" height="2"/>
+            <rect x="470" y="249" width="11" height="1"/>
+            <rect x="484" y="249" width="11" height="1"/>
+            <rect x="498" y="249" width="11" height="1"/>
+            <rect x="512" y="249" width="11" height="1"/>
+            <rect x="540" y="249" width="11" height="1"/>
+            <rect x="600" y="249" width="11" height="1"/>
+            <rect x="660" y="249" width="11" height="1"/>
+          </g>
+
+          <!-- Percentile markers -->
+          <!-- P50 at ~17ms → x = 60 + (17/200)*680 ≈ 117 -->
+          <line x1="124" y1="50" x2="124" y2="250" stroke="#4a6b3e" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <text x="124" y="46" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="#4a6b3e">P50 · 17ms</text>
+
+          <!-- P95 at ~38ms → x ≈ 60 + (38/200)*680 ≈ 189 -->
+          <line x1="189" y1="50" x2="189" y2="250" stroke="#a87a1f" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <text x="189" y="46" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="#a87a1f">P95 · 38ms</text>
+
+          <!-- P99 at ~85ms → x ≈ 60 + (85/200)*680 ≈ 349 -->
+          <line x1="349" y1="50" x2="349" y2="250" stroke="#b3422c" stroke-width="1.5" stroke-dasharray="3,2"/>
+          <text x="349" y="46" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="#b3422c">P99 · 85ms</text>
+
+          <!-- mean at ~22ms (skewed by tail) -->
+          <line x1="135" y1="50" x2="135" y2="250" stroke="#807a6d" stroke-width="1" stroke-dasharray="2,3"/>
+          <text x="135" y="270" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d">mean · 22ms</text>
+
+          <!-- x-axis labels -->
+          <g font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d" text-anchor="middle">
+            <text x="60"  y="270">0</text>
+            <text x="195" y="270">40</text>
+            <text x="332" y="270">80</text>
+            <text x="468" y="270">120</text>
+            <text x="604" y="270">160</text>
+            <text x="740" y="270">200ms</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;11</span>
+        <span class="lang-zh-only">长尾分布：P50 是 17ms（看起来很流畅），但 P99 已经到 85ms（每 100 帧就有 1 帧达到 Jank 阈值）。平均值 22ms 介于两者之间，骗了所有只看平均值的人。</span>
+        <span class="lang-en-only">Long tail: P50 is 17ms (looks smooth), but P99 hits 85ms (1 in 100 frames at the Jank threshold). The mean of 22ms sits between them — and lies to anyone who only watches averages.</span>
+        <span class="figen lang-zh-only">这就是为什么"P99 帧时"是真正应该写在 dashboard 顶部的数字——它直接对应"用户偶尔遇到的最差体验"。</span>
+        <span class="figen lang-en-only">This is why "P99 FrameTime" deserves the top of every performance dashboard — it directly tracks "the worst experience your user occasionally hits".</span>
+      </figcaption>
+    </figure>
+
+    <p class="lang-zh-only">结论很简单：<strong>没有 Jank → Stutter 必然为 0；有 Jank → 两者趋势一致但并非线性</strong>。两个一起看，才能描出体验的全貌。再加一层分布视角（P50/P95/P99），才算把"流畅"这件事真正讲透。</p>
+    <p class="lang-en-only">The conclusion is simple: <strong>no Jank → Stutter is necessarily 0; with Jank → the two trend together but never linearly</strong>. Read both, or you'll miss the shape of the experience. Add a distributional view (P50 / P95 / P99) on top, and only then have you really pinned down "smoothness".</p>
+  </section>
+
+  <!-- ========== CHAPTER 06 ========== -->
+  <section class="chap" id="c6">
+    <div class="chap-num">CHAPTER&nbsp;06</div>
+    <h2 class="chap-title lang-zh-only">影响 — 不同场景的指标侧重</h2>
+    <h2 class="chap-title lang-en-only">Impact — where to look, by scenario</h2>
+    <p class="chap-en lang-zh-only">where to look, by scenario</p>
+    <p class="chap-en lang-en-only">不同场景的指标侧重</p>
+
+    <p class="lang-zh-only">是不是所有 APP/游戏都该把 FPS、Jank、Stutter 三件事一起盯？答案是<em>看场景</em>。同一个数字在不同语境下，含义、阈值、优化方向都完全不同。</p>
+    <p class="lang-en-only">Should every app and every game watch FPS, Jank, and Stutter all at once? The honest answer: <em>it depends on the scenario</em>. The same number means different things — and points to different fixes — in different contexts.</p>
+
+    <h3 class="sub lang-zh-only">游戏 — 三件套全要</h3>
+    <h3 class="sub lang-en-only">GAMES — All three, always</h3>
+
+    <p class="lang-zh-only">游戏是三件套都不能放的场景：玩家的手指、画面、预期同步在一帧上。FPS 决定操作的"反馈感"，Jank 决定关键瞬间是否破功，Stutter 决定整局体验的"质量底色"。</p>
+    <p class="lang-en-only">Games are the one place all three matter at once. The player's finger, the image, and their expectations are aligned on a single frame. FPS shapes <em>response feel</em>; Jank decides whether key moments collapse; Stutter sets the <em>baseline quality</em> of the entire session.</p>
+
+    <p class="lang-zh-only">实操上有两条额外注意：</p>
+    <p class="lang-en-only">Two practical notes:</p>
+
+    <ul class="lang-zh-only" style="font-family:var(--serif); color:var(--ink-soft); line-height:1.85; margin: 0 0 16px 18px;">
+      <li><strong>剔除可预期卡顿。</strong>地图加载、首次进战、新 UI 弹出这种"业务上必然慢的瞬间"，应该在测试平台上框选剔除，不计入 Jank。否则数据会被噪声盖住。</li>
+      <li><strong>分场景给指标。</strong>战斗、菜单、剧情对 Jank 容忍度差好几个量级。一刀切的"Jank &lt; 5 / 分钟"反而掩盖了战斗时的灾难。</li>
+    </ul>
+    <ul class="lang-en-only" style="font-family:var(--serif-en); color:var(--ink-soft); line-height:1.85; margin: 0 0 16px 18px;">
+      <li><strong>Exclude predictable stutters.</strong> Map loads, first combat entries, new-UI pops — anything that's expected to be slow — should be region-selected out of the test, not counted as Jank. Otherwise the noise drowns the signal.</li>
+      <li><strong>Bucket by scene.</strong> Combat, menu, and cinematic scenes tolerate Jank by orders of magnitude. A flat "Jank &lt; 5 / min" hides the disaster happening during combat.</li>
+    </ul>
+
+    <h3 class="sub lang-zh-only">APP — 按场景分而治之</h3>
+    <h3 class="sub lang-en-only">APPS — Divide by scenario</h3>
+
+    <p class="lang-zh-only">APP 没有"一组指标走天下"的奢侈。同一个 App 里，登陆页、信息流、视频播放对应完全不同的指标语言：</p>
+    <p class="lang-en-only">Apps don't get a single metric set for everything. Within one app, the login page, the feed, and the video player each speak a totally different metric language:</p>
+
+    <div class="scenarios">
+      <div class="scn">
+        <div class="sno">SCENARIO · 01</div>
+        <div class="stitle lang-zh-only">静态页面（设置页 / 登录页）</div>
+        <div class="stitle lang-en-only">Static page (settings / login)</div>
+        <div class="stags">
+          <span class="tag">FPS</span>
+          <span class="tag off">Jank</span>
+          <span class="tag off">Stutter</span>
+        </div>
+        <p class="lang-zh-only">理论 FPS 应该是 <strong>0</strong>：没人在交互时，根本不该有任何刷新。一旦 FPS &gt; 0，说明有动画或定时任务在偷偷工作 —— 直接对应发热和耗电的暗债。</p>
+        <p class="lang-en-only">Theoretical FPS should be <strong>0</strong>. With no interaction, no redraws should fire. Anything above zero means an animation or timer is working in secret — heat and battery drain hidden in plain sight.</p>
+      </div>
+
+      <div class="scn">
+        <div class="sno">SCENARIO · 02</div>
+        <div class="stitle lang-zh-only">滚动动画 / 信息流</div>
+        <div class="stitle lang-en-only">Scrolling animation / feed</div>
+        <div class="stags">
+          <span class="tag">FPS</span>
+          <span class="tag off">Jank</span>
+          <span class="tag off">Stutter</span>
+        </div>
+        <p class="lang-zh-only">FPS 锁在合理值（30 / 60）即可，不必一味追求 120。手指匀速滑时，60fps 完全足够；多出来的帧只在烧 GPU、烧电池，并不会被感知。</p>
+        <p class="lang-en-only">Lock FPS at a reasonable value (30 / 60) — don't chase 120 for its own sake. With a finger gliding at constant speed, 60fps is enough; the extra frames just burn GPU and battery without being noticed.</p>
+      </div>
+
+      <div class="scn">
+        <div class="sno">SCENARIO · 03</div>
+        <div class="stitle lang-zh-only">快速滑动 / 弹性动画</div>
+        <div class="stitle lang-en-only">Fast flick / spring animation</div>
+        <div class="stags">
+          <span class="tag">FPS</span>
+          <span class="tag">Jank</span>
+          <span class="tag">Stutter</span>
+        </div>
+        <p class="lang-zh-only">手机交互"灵敏感"的来源——也是 Android 黄油计划诞生的场景。手指越快、画面越敏感，Jank 在这里变得致命：一次 100ms 的卡顿，足以让用户怀疑屏幕坏了。<br>建议：<strong>FPS &gt; 55，Stutter &lt; 1%</strong>。</p>
+        <p class="lang-en-only">The wellspring of mobile UI <em>responsiveness</em> — and the very scenario Project Butter was born to fix. The faster the finger, the more sensitive the image — Jank becomes lethal here. A single 100ms hitch is enough for a user to suspect a broken screen.<br>Target: <strong>FPS &gt; 55, Stutter &lt; 1%</strong>.</p>
+      </div>
+
+      <div class="scn">
+        <div class="sno">SCENARIO · 04</div>
+        <div class="stitle lang-zh-only">视频播放</div>
+        <div class="stitle lang-en-only">Video playback</div>
+        <div class="stags">
+          <span class="tag">FPS</span>
+          <span class="tag">Jank</span>
+          <span class="tag">Stutter</span>
+        </div>
+        <p class="lang-zh-only">视频源帧率一般 18–24 帧，FPS 不能掉、Jank 必须为 0。任何一次卡顿都会让人物嘴型对不上声音，被用户立刻感知。<br>这里的"FPS 高"反而要怀疑：是不是解码器在反复重绘同一帧？</p>
+        <p class="lang-en-only">Source video typically runs 18–24 fps; FPS must not drop and Jank must be 0. Any stutter desyncs lips from sound — the viewer notices instantly.<br>An <em>unusually high</em> FPS here is suspicious — is the decoder repainting the same frame?</p>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">速查表 — 哪类场景该看哪个数</h3>
+    <h3 class="sub lang-en-only">CHEAT SHEET — WHICH METRIC, WHICH SCENE</h3>
+
+    <table class="cmp lang-zh-only">
+      <thead>
+        <tr><th>场景</th><th>FPS</th><th>Jank</th><th>Stutter</th><th>建议目标</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>游戏 · 战斗</td><td class="num">≥ 55</td><td class="num">&lt; 3 / 分</td><td class="num">&lt; 1%</td><td>三件套同盯，按场景分桶</td></tr>
+        <tr><td>游戏 · 菜单</td><td class="num">30 OK</td><td class="num">&lt; 1 / 分</td><td class="num">&lt; 0.5%</td><td>UI 卡顿优先</td></tr>
+        <tr><td>App · 静态页</td><td class="num">= 0</td><td>—</td><td>—</td><td>非 0 即异常</td></tr>
+        <tr><td>App · 滑动 / Feed</td><td class="num">≥ 30</td><td class="num">&lt; 5 / 分</td><td class="num">&lt; 3%</td><td>避免追高，关注稳定</td></tr>
+        <tr><td>App · 快滑 / 弹性</td><td class="num">≥ 55</td><td class="num">&lt; 2 / 分</td><td class="num">&lt; 1%</td><td>触摸响应优先</td></tr>
+        <tr><td>视频播放</td><td>原帧率</td><td class="num">= 0</td><td class="num">&lt; 0.5%</td><td>FPS 异常高也是问题</td></tr>
+      </tbody>
+    </table>
+
+    <table class="cmp lang-en-only">
+      <thead>
+        <tr><th>Scene</th><th>FPS</th><th>Jank</th><th>Stutter</th><th>Target</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Game · combat</td><td class="num">≥ 55</td><td class="num">&lt; 3 / min</td><td class="num">&lt; 1%</td><td>All three, bucketed by scene</td></tr>
+        <tr><td>Game · menu</td><td class="num">30 OK</td><td class="num">&lt; 1 / min</td><td class="num">&lt; 0.5%</td><td>UI smoothness first</td></tr>
+        <tr><td>App · static page</td><td class="num">= 0</td><td>—</td><td>—</td><td>Anything &gt; 0 is a leak</td></tr>
+        <tr><td>App · scroll / feed</td><td class="num">≥ 30</td><td class="num">&lt; 5 / min</td><td class="num">&lt; 3%</td><td>Stability over peak fps</td></tr>
+        <tr><td>App · flick / spring</td><td class="num">≥ 55</td><td class="num">&lt; 2 / min</td><td class="num">&lt; 1%</td><td>Touch response first</td></tr>
+        <tr><td>Video playback</td><td>source fps</td><td class="num">= 0</td><td class="num">&lt; 0.5%</td><td>An unusually high FPS is also a bug</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ========== CHAPTER 07 ========== -->
+  <section class="chap" id="c7">
+    <div class="chap-num">CHAPTER&nbsp;07</div>
+    <h2 class="chap-title lang-zh-only">根因 — 知道卡了，还要知道为什么卡</h2>
+    <h2 class="chap-title lang-en-only">Root cause — knowing it lagged isn't enough</h2>
+    <p class="chap-en lang-zh-only">knowing it lagged isn&rsquo;t enough</p>
+    <p class="chap-en lang-en-only">知道卡了，还要知道为什么卡</p>
+
+    <p class="lang-zh-only">前面六章定义了"什么是卡"。但工程上更难的问题是下一句：<em>这一帧为什么卡了？</em>FrameTime 长，原因可能在 CPU、GPU、JS、布局、IO、硬件、甚至运营商网络。光看 FrameTime 高度，是看不出哪条线让它高的。</p>
+    <p class="lang-en-only">The first six chapters defined <em>what</em> a stutter is. The harder question follows immediately: <em>why did this frame stutter?</em> A long FrameTime can come from CPU, GPU, JS, layout, IO, hardware throttling — even the carrier's network. Bar height alone won't tell you which one made it tall.</p>
+
+    <p class="lang-zh-only">把工程经验里最常见的根因归类成 6 大族，每族都有自己的"指纹"和对应的诊断工具：</p>
+    <p class="lang-en-only">From engineering experience, the most common root causes fall into 6 families — each with its own "fingerprint" and a matching diagnostic tool:</p>
+
+    <div class="cause-grid">
+      <div class="cause-card">
+        <div class="cause-tag">01 · CPU</div>
+        <div class="cause-name lang-zh-only">主线程长任务</div>
+        <div class="cause-name lang-en-only">Long main-thread task</div>
+        <p class="lang-zh-only">JS / 布局 / 复杂业务逻辑同步占用主线程。指纹：FrameTime 突然飙升，CPU 在这一帧持续 100% 占用单核。</p>
+        <p class="lang-en-only">JS / layout / complex business logic monopolizing the main thread. Fingerprint: FrameTime spikes; one CPU core pegs at 100% for that frame.</p>
+        <div class="cause-tool"><span class="lang-zh-only">工具：Perfetto / Instruments — Time Profiler</span><span class="lang-en-only">Tool: Perfetto · Instruments Time Profiler</span></div>
+      </div>
+
+      <div class="cause-card">
+        <div class="cause-tag">02 · GPU</div>
+        <div class="cause-name lang-zh-only">渲染管线瓶颈</div>
+        <div class="cause-name lang-en-only">Render pipeline bottleneck</div>
+        <p class="lang-zh-only">overdraw、复杂 shader、大尺寸纹理加载。指纹：CPU 已交完命令，但帧仍在等 GPU 完成；profiler 显示 GPU busy &gt; vsync。</p>
+        <p class="lang-en-only">Overdraw, heavy shaders, large texture uploads. Fingerprint: CPU has flushed commands but the frame waits for GPU completion; profiler shows GPU busy &gt; vsync.</p>
+        <div class="cause-tool"><span class="lang-zh-only">工具：GAPID / Xcode GPU Frame Capture / RenderDoc</span><span class="lang-en-only">Tool: GAPID · Xcode GPU Frame Capture · RenderDoc</span></div>
+      </div>
+
+      <div class="cause-card">
+        <div class="cause-tag">03 · GC</div>
+        <div class="cause-name lang-zh-only">垃圾回收停顿</div>
+        <div class="cause-name lang-en-only">GC pause</div>
+        <p class="lang-zh-only">JS / Java / Swift 的垃圾回收在主线程上同步触发。指纹：周期性、每隔几秒一次的 50–200ms 卡顿，伴随内存陡降。</p>
+        <p class="lang-en-only">JS / Java / Swift garbage collection firing synchronously on the main thread. Fingerprint: periodic 50–200ms hitches every few seconds, with a sharp memory dip.</p>
+        <div class="cause-tool"><span class="lang-zh-only">工具：Chrome DevTools Memory · Android Profiler</span><span class="lang-en-only">Tool: Chrome DevTools Memory · Android Profiler</span></div>
+      </div>
+
+      <div class="cause-card">
+        <div class="cause-tag">04 · IO</div>
+        <div class="cause-name lang-zh-only">主线程 IO / 网络阻塞</div>
+        <div class="cause-name lang-en-only">Main-thread IO / network</div>
+        <p class="lang-zh-only">同步文件读写或同步 RPC 进入主线程。指纹：FrameTime 抖动幅度极大（10ms ~ 数秒不等），跟网络/磁盘负载强相关。</p>
+        <p class="lang-en-only">Synchronous file IO or sync RPC reaching the main thread. Fingerprint: FrameTime variance is enormous (10ms to seconds), correlated with disk / network load.</p>
+        <div class="cause-tool"><span class="lang-zh-only">工具：systrace / strace · 网络抓包</span><span class="lang-en-only">Tool: systrace / strace · network capture</span></div>
+      </div>
+
+      <div class="cause-card">
+        <div class="cause-tag">05 · COMPILE</div>
+        <div class="cause-name lang-zh-only">Shader / JIT 首次编译</div>
+        <div class="cause-name lang-en-only">Shader / JIT first compile</div>
+        <p class="lang-zh-only">Shader 第一次使用时被编译；V8 / JSCore 把热点 JS 升 JIT。指纹：只在"第一次"出现的卡顿——重启后再现，预热后消失。</p>
+        <p class="lang-en-only">Shaders compile on first use; V8 / JSCore promote hot JS to JIT. Fingerprint: hitches that appear <em>only on first encounter</em> — they reproduce after a clean start and vanish after warm-up.</p>
+        <div class="cause-tool"><span class="lang-zh-only">工具：Pre-warm · PSO 缓存 · JS bytecode cache</span><span class="lang-en-only">Tool: Pre-warm · PSO cache · JS bytecode cache</span></div>
+      </div>
+
+      <div class="cause-card">
+        <div class="cause-tag">06 · THERMAL</div>
+        <div class="cause-name lang-zh-only">热降频 / 大小核调度</div>
+        <div class="cause-name lang-en-only">Thermal throttle / big.LITTLE</div>
+        <p class="lang-zh-only">设备发烫后内核降频；任务被错误调度到小核上。指纹：游戏前 5 分钟 60fps，第 6 分钟开始稳定掉到 40fps，FrameTime 整体抬升。</p>
+        <p class="lang-en-only">The kernel down-clocks once the device gets hot; tasks land on the LITTLE cores by mistake. Fingerprint: a game holds 60fps for 5 minutes, then settles at 40fps from minute 6 onward — FrameTime baseline lifts uniformly.</p>
+        <div class="cause-tool"><span class="lang-zh-only">工具：Battery Historian · CPU 温度日志</span><span class="lang-en-only">Tool: Battery Historian · CPU temperature logs</span></div>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">「火焰图」直觉 — 一帧的 16.67ms 都花在哪了</h3>
+    <h3 class="sub lang-en-only">FLAME-GRAPH INTUITION — WHERE 16.67ms GOES</h3>
+
+    <p class="lang-zh-only">真正调试时，profiler 会把这 16.67ms 切成一段段堆叠的时间块（Perfetto / systrace / Instruments 都长一样）。哪段长得反常，就是这帧的根因。下面是一个简化示意：</p>
+    <p class="lang-en-only">When you actually debug, the profiler dices that 16.67ms into stacked time blocks (Perfetto / systrace / Instruments all look the same). The block that looks abnormally tall <em>is</em> the root cause for that frame:</p>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 220" xmlns="http://www.w3.org/2000/svg" aria-label="Profiler-style stacked-time view of one frame">
+          <!-- Title -->
+          <text x="20" y="20" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#4a463e" letter-spacing="2">PROFILER VIEW · ONE FRAME · 16.67ms BUDGET</text>
+
+          <!-- Timeline frame -->
+          <rect x="60" y="50" width="640" height="120" fill="#fdfbf3" stroke="#c9c1ae" stroke-width="1"/>
+
+          <!-- vsync deadline marker -->
+          <line x1="700" y1="40" x2="700" y2="180" stroke="#b3422c" stroke-width="1.5" stroke-dasharray="3,3"/>
+          <text x="700" y="38" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#b3422c" font-weight="700">vsync · 16.67ms</text>
+
+          <!-- Healthy frame: stacked layers all fit -->
+          <text x="48" y="80" text-anchor="end" font-family="Inter, sans-serif" font-size="10" font-weight="600" fill="#4a463e">HEALTHY</text>
+          <text x="48" y="92" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d">≈ 12ms</text>
+          <g>
+            <rect x="60"  y="70" width="60" height="22" fill="#4a463e"/>
+            <text x="90"  y="84" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">input · 1ms</text>
+            <rect x="120" y="70" width="80" height="22" fill="#6b6357"/>
+            <text x="160" y="84" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">animate · 2</text>
+            <rect x="200" y="70" width="120" height="22" fill="#807a6d"/>
+            <text x="260" y="84" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">layout · 3</text>
+            <rect x="320" y="70" width="160" height="22" fill="#a87a1f"/>
+            <text x="400" y="84" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">draw · 4</text>
+            <rect x="480" y="70" width="80" height="22" fill="#4a6b3e"/>
+            <text x="520" y="84" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">composite · 2</text>
+          </g>
+
+          <!-- Janky frame: one layer blew up -->
+          <text x="48" y="140" text-anchor="end" font-family="Inter, sans-serif" font-size="10" font-weight="600" fill="#b3422c">JANKED</text>
+          <text x="48" y="152" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#b3422c" font-weight="700">≈ 90ms</text>
+          <g>
+            <rect x="60"  y="130" width="60" height="22" fill="#4a463e"/>
+            <text x="90"  y="144" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">input · 1ms</text>
+            <rect x="120" y="130" width="60" height="22" fill="#6b6357"/>
+            <text x="150" y="144" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">animate · 1</text>
+            <!-- LAYOUT explodes — wider than the frame budget -->
+            <rect x="180" y="130" width="455" height="22" fill="#b3422c"/>
+            <text x="407" y="144" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">layout · 75ms ← BLOWN UP</text>
+            <rect x="635" y="130" width="40" height="22" fill="#a87a1f"/>
+            <text x="655" y="144" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" font-weight="700">draw · 8</text>
+          </g>
+
+          <!-- Annotation arrow -->
+          <line x1="407" y1="160" x2="407" y2="172" stroke="#b3422c" stroke-width="1.2"/>
+          <text x="407" y="194" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="11" fill="#b3422c" font-weight="700"><tspan class="lang-zh-only">这一段就是根因 → 一次过深的布局递归</tspan><tspan class="lang-en-only">this is the root cause → a deep layout recursion</tspan></text>
+          <text x="407" y="208" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#807a6d"><tspan class="lang-zh-only">profiler 不会告诉你"卡了"，它告诉你"哪段长了"</tspan><tspan class="lang-en-only">the profiler doesn't say "it lagged" — it says "this segment got long"</tspan></text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;12</span>
+        <span class="lang-zh-only">所有调试工具的核心动作只有一个：把一帧切片，看哪一片异常长。Jank / Stutter 告诉你"出了事"，profiler 告诉你"在哪里"。</span>
+        <span class="lang-en-only">Every profiler does the same thing at heart: slice a frame, find the abnormally long block. Jank / Stutter tells you <em>something happened</em>; the profiler tells you <em>where</em>.</span>
+        <span class="figen lang-zh-only">学会读这种"分层时间块"是性能工程师从"知道卡了"走向"知道为什么"的关键一步。</span>
+        <span class="figen lang-en-only">Learning to read these "stacked time blocks" is the step from <em>knowing it lagged</em> to <em>knowing why</em>.</span>
+      </figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">完整 case — 一次卡顿是怎么被抓住的</h3>
+    <h3 class="sub lang-en-only">A FULL CASE — HOW ONE STUTTER GETS CAUGHT</h3>
+
+    <p class="lang-zh-only">把上面的所有概念串起来，看一段真实的排查链路。<strong>场景</strong>：电商商品列表页，快速滚动时偶尔出现一次明显的 ~200ms 顿挫。监控大盘上能看到 P99 帧时异常 spike，5% 用户上报"滑得不顺"。我们沿着五步把它抓下来：</p>
+    <p class="lang-en-only">Stitch all the concepts above into a real investigation. <strong>Scenario</strong>: an e-commerce product list page, where fast scrolling occasionally produces a clear ~200ms hitch. The dashboard shows a P99 FrameTime spike; about 5% of users report "scroll feels off". Five steps to catch it:</p>
+
+    <figure>
+      <div class="case-flow">
+
+        <!-- ===== STEP 01 ===== -->
+        <div class="case-step">
+          <span class="case-num">01</span>
+          <div class="case-body">
+            <div class="case-meta"><span class="lang-zh-only">报警 · DASHBOARD</span><span class="lang-en-only">ALERT · DASHBOARD</span></div>
+            <h5 class="lang-zh-only">监控数据先告诉你"出事了"</h5>
+            <h5 class="lang-en-only">The dashboard tells you "something happened"</h5>
+            <p class="lang-zh-only">P99 FrameTime 平时稳定在 ~25ms，今天某个版本上线后跳到 213ms，集中在"商品列表 · 快速滚动"分桶里。Stutter 也从 0.4% 抬到 8%。</p>
+            <p class="lang-en-only">P99 FrameTime is normally ~25ms; after today's deploy it spikes to 213ms — concentrated in the "product list · fast scroll" bucket. Stutter rose from 0.4% to 8%.</p>
+            <div class="case-artifact">
+              <svg viewBox="0 0 700 80" xmlns="http://www.w3.org/2000/svg">
+                <text x="6" y="14" font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d">P99 FrameTime · last 24h</text>
+                <line x1="6" y1="62" x2="694" y2="62" stroke="#c9c1ae" stroke-width="1"/>
+                <!-- baseline polyline at ~25ms (y=52) -->
+                <polyline points="6,54 60,55 120,53 180,54 240,52 300,53 360,52 420,55 480,53 540,54 580,52" fill="none" stroke="#4a463e" stroke-width="1.4"/>
+                <!-- spike: jump up to 213ms -->
+                <polyline points="580,52 600,18 620,16 640,52" fill="none" stroke="#b3422c" stroke-width="2"/>
+                <circle cx="610" cy="17" r="3" fill="#b3422c"/>
+                <text x="610" y="12" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#b3422c" font-weight="700">213ms</text>
+                <line x1="600" y1="68" x2="600" y2="72" stroke="#b3422c" stroke-width="1"/>
+                <text x="610" y="76" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#b3422c">v3.42 release</text>
+                <!-- baseline rest -->
+                <polyline points="640,52 680,53" fill="none" stroke="#4a463e" stroke-width="1.4"/>
+                <!-- baseline label -->
+                <text x="6" y="56" font-family="JetBrains Mono, monospace" font-size="8" fill="#807a6d">~25ms baseline</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== STEP 02 ===== -->
+        <div class="case-step">
+          <span class="case-num">02</span>
+          <div class="case-body">
+            <div class="case-meta"><span class="lang-zh-only">抓帧 · CAPTURE</span><span class="lang-en-only">CAPTURE · TRACE</span></div>
+            <h5 class="lang-zh-only">用 profiler 录一段，找到那一帧</h5>
+            <h5 class="lang-en-only">Record a session, locate the offending frame</h5>
+            <p class="lang-zh-only">在 Perfetto / Instruments 上录一段 5 秒的列表滚动。看 frame timeline，绝大多数帧都在 16ms 左右，唯独中间冒出一个 213ms 的红色长帧——肉眼一眼可见的异常。</p>
+            <p class="lang-en-only">Record 5 seconds of list scrolling in Perfetto / Instruments. The frame timeline shows almost every frame near 16ms — except one red 213ms bar in the middle, jumping out instantly.</p>
+            <div class="case-artifact">
+              <svg viewBox="0 0 700 70" xmlns="http://www.w3.org/2000/svg">
+                <text x="6" y="14" font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d">Frame timeline · 5s capture</text>
+                <line x1="6" y1="60" x2="694" y2="60" stroke="#c9c1ae" stroke-width="1"/>
+                <!-- 25 normal frame bars at h=8 -->
+                <g fill="#4a463e">
+                  <rect x="20"  y="52" width="6" height="8"/><rect x="32"  y="52" width="6" height="8"/><rect x="44"  y="52" width="6" height="8"/><rect x="56"  y="52" width="6" height="8"/>
+                  <rect x="68"  y="52" width="6" height="8"/><rect x="80"  y="52" width="6" height="8"/><rect x="92"  y="52" width="6" height="8"/><rect x="104" y="52" width="6" height="8"/>
+                  <rect x="116" y="52" width="6" height="8"/><rect x="128" y="52" width="6" height="8"/><rect x="140" y="52" width="6" height="8"/><rect x="152" y="52" width="6" height="8"/>
+                  <rect x="164" y="52" width="6" height="8"/><rect x="176" y="52" width="6" height="8"/><rect x="188" y="52" width="6" height="8"/><rect x="200" y="52" width="6" height="8"/>
+                  <rect x="212" y="52" width="6" height="8"/><rect x="224" y="52" width="6" height="8"/><rect x="236" y="52" width="6" height="8"/><rect x="248" y="52" width="6" height="8"/>
+                  <rect x="260" y="52" width="6" height="8"/><rect x="272" y="52" width="6" height="8"/><rect x="284" y="52" width="6" height="8"/><rect x="296" y="52" width="6" height="8"/>
+                  <rect x="308" y="52" width="6" height="8"/><rect x="320" y="52" width="6" height="8"/><rect x="332" y="52" width="6" height="8"/>
+                </g>
+                <!-- one giant spike at ~344 with width matching 213ms (proportional, w=80) -->
+                <rect x="344" y="22" width="80" height="38" fill="#b3422c"/>
+                <text x="384" y="18" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" font-weight="700" fill="#b3422c">213ms · this one</text>
+                <!-- normal bars after -->
+                <g fill="#4a463e">
+                  <rect x="436" y="52" width="6" height="8"/><rect x="448" y="52" width="6" height="8"/><rect x="460" y="52" width="6" height="8"/><rect x="472" y="52" width="6" height="8"/>
+                  <rect x="484" y="52" width="6" height="8"/><rect x="496" y="52" width="6" height="8"/><rect x="508" y="52" width="6" height="8"/><rect x="520" y="52" width="6" height="8"/>
+                  <rect x="532" y="52" width="6" height="8"/><rect x="544" y="52" width="6" height="8"/><rect x="556" y="52" width="6" height="8"/><rect x="568" y="52" width="6" height="8"/>
+                  <rect x="580" y="52" width="6" height="8"/><rect x="592" y="52" width="6" height="8"/><rect x="604" y="52" width="6" height="8"/><rect x="616" y="52" width="6" height="8"/>
+                  <rect x="628" y="52" width="6" height="8"/><rect x="640" y="52" width="6" height="8"/><rect x="652" y="52" width="6" height="8"/><rect x="664" y="52" width="6" height="8"/>
+                  <rect x="676" y="52" width="6" height="8"/>
+                </g>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== STEP 03 ===== -->
+        <div class="case-step">
+          <span class="case-num">03</span>
+          <div class="case-body">
+            <div class="case-meta"><span class="lang-zh-only">拆解 · DECOMPOSE</span><span class="lang-en-only">DECOMPOSE · DRILL DOWN</span></div>
+            <h5 class="lang-zh-only">展开这一帧，看时间块</h5>
+            <h5 class="lang-en-only">Expand the frame, look at the time blocks</h5>
+            <p class="lang-zh-only">点开这个 213ms 帧，profiler 把它切成"input · animate · layout · draw · composite"。其中 <strong>layout 段占 180ms</strong>（正常应 &lt; 5ms）—— 锁定，是 layout 的问题。</p>
+            <p class="lang-en-only">Open the 213ms frame; the profiler splits it into "input · animate · layout · draw · composite". <strong>Layout alone takes 180ms</strong> (normal: &lt; 5ms). The culprit class is layout.</p>
+            <div class="case-artifact">
+              <svg viewBox="0 0 700 50" xmlns="http://www.w3.org/2000/svg">
+                <rect x="6" y="14" width="688" height="22" fill="#fdfbf3" stroke="#c9c1ae"/>
+                <!-- 5 stacked segments proportional to time -->
+                <rect x="6"   y="14" width="14"  height="22" fill="#4a463e"/>
+                <text x="13" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#faf6ed">in</text>
+                <rect x="20"  y="14" width="14"  height="22" fill="#6b6357"/>
+                <text x="27" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#faf6ed">an</text>
+                <rect x="34"  y="14" width="580" height="22" fill="#b3422c"/>
+                <text x="324" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#faf6ed" font-weight="700">layout · 180ms ← 这一段就是元凶</text>
+                <rect x="614" y="14" width="40"  height="22" fill="#a87a1f"/>
+                <text x="634" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#faf6ed">draw</text>
+                <rect x="654" y="14" width="40"  height="22" fill="#4a6b3e"/>
+                <text x="674" y="28" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#faf6ed">comp</text>
+                <text x="6" y="46" font-family="JetBrains Mono, monospace" font-size="8" fill="#807a6d">total · 213ms</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== STEP 04 ===== -->
+        <div class="case-step">
+          <span class="case-num">04</span>
+          <div class="case-body">
+            <div class="case-meta"><span class="lang-zh-only">定位 · PINPOINT</span><span class="lang-en-only">PINPOINT · CALL STACK</span></div>
+            <h5 class="lang-zh-only">进入 layout 的调用栈，找到那行代码</h5>
+            <h5 class="lang-en-only">Walk into layout's call stack, find the line</h5>
+            <p class="lang-zh-only">展开 layout 段的火焰图，看到 100 次相同的栈：<code>scroll handler → checkVisible() → getBoundingClientRect()</code>。每次调用都触发<strong>同步 reflow</strong>—— 100 × 1.8ms = 180ms。一句话定位。</p>
+            <p class="lang-en-only">Expand the layout flame graph and see 100 identical stacks: <code>scroll handler → checkVisible() → getBoundingClientRect()</code>. Each call triggers a <strong>synchronous reflow</strong> — 100 × 1.8ms = 180ms. The line is pinpointed.</p>
+            <div class="case-artifact">
+              <span class="code-line"><span class="bad">// in scroll handler — fires 100× per scroll event</span></span>
+              <span class="code-line">items.forEach(item =&gt; {</span>
+              <span class="code-line">&nbsp;&nbsp;<span class="hi">const rect = item.getBoundingClientRect();</span>&nbsp;&nbsp;<span class="bad">// ← forced reflow</span></span>
+              <span class="code-line">&nbsp;&nbsp;if (rect.top &lt; window.innerHeight) item.classList.add('visible');</span>
+              <span class="code-line">});</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== STEP 05 ===== -->
+        <div class="case-step">
+          <span class="case-num">05</span>
+          <div class="case-body">
+            <div class="case-meta"><span class="lang-zh-only">修复 + 验证 · FIX &amp; VERIFY</span><span class="lang-en-only">FIX &amp; VERIFY</span></div>
+            <h5 class="lang-zh-only">改成异步 + 监控验收</h5>
+            <h5 class="lang-en-only">Switch to async + verify on the dashboard</h5>
+            <p class="lang-zh-only">把同步 <code>getBoundingClientRect</code> 换成 IntersectionObserver，可见性判断从主线程移到浏览器内置异步通知。重新发版后 P99 从 213ms 回到 24ms，Stutter 从 8% 回到 0.3%——闭环。</p>
+            <p class="lang-en-only">Replace the synchronous <code>getBoundingClientRect</code> with IntersectionObserver — visibility checks move from the main thread to the browser's async callback. After redeploy: P99 drops from 213ms to 24ms; Stutter from 8% to 0.3% — closed loop.</p>
+            <div class="case-artifact">
+              <span class="code-line"><span class="good">// async, off main thread</span></span>
+              <span class="code-line">const io = new IntersectionObserver(entries =&gt; {</span>
+              <span class="code-line">&nbsp;&nbsp;entries.forEach(e =&gt; e.target.classList.toggle('visible', e.isIntersecting));</span>
+              <span class="code-line">});</span>
+              <span class="code-line">items.forEach(item =&gt; io.observe(item));</span>
+              <br>
+              <svg viewBox="0 0 700 50" xmlns="http://www.w3.org/2000/svg">
+                <text x="6" y="12" font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d">P99 FrameTime · before / after</text>
+                <text x="6" y="32" font-family="JetBrains Mono, monospace" font-size="10" fill="#b3422c" font-weight="700">before</text>
+                <rect x="60" y="22" width="350" height="14" fill="#b3422c"/>
+                <text x="416" y="33" font-family="JetBrains Mono, monospace" font-size="10" fill="#b3422c" font-weight="700">213ms</text>
+                <text x="6" y="48" font-family="JetBrains Mono, monospace" font-size="10" fill="#4a6b3e" font-weight="700">after</text>
+                <rect x="60" y="42" width="40"  height="6"  fill="#4a6b3e"/>
+                <text x="106" y="48" font-family="JetBrains Mono, monospace" font-size="10" fill="#4a6b3e" font-weight="700">24ms</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;13</span>
+        <span class="lang-zh-only">一次完整的卡顿排查 case：监控 → 抓帧 → 拆段 → 调用栈 → 修复 + 验证。每一步都对应前面章节里讲过的概念。</span>
+        <span class="lang-en-only">A complete stutter investigation: monitor → capture → decompose → call stack → fix &amp; verify. Each step lands on a concept from earlier chapters.</span>
+        <span class="figen lang-zh-only">流程在所有平台都通用，只是工具不同——Web 用 Chrome DevTools / Lighthouse，iOS 用 Instruments，Android 用 Perfetto。</span>
+        <span class="figen lang-en-only">The flow is universal — only the tools change. Web uses Chrome DevTools / Lighthouse, iOS uses Instruments, Android uses Perfetto.</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ========== CHAPTER 08 (NEW) — optimization ========== -->
+  <section class="chap" id="c8">
+    <div class="chap-num">CHAPTER&nbsp;08</div>
+    <h2 class="chap-title lang-zh-only">优化 — 让卡顿不发生</h2>
+    <h2 class="chap-title lang-en-only">Fix — keeping Jank from happening</h2>
+    <p class="chap-en lang-zh-only">keeping Jank from happening</p>
+    <p class="chap-en lang-en-only">让卡顿不发生</p>
+
+    <p class="lang-zh-only">第七章告诉你"卡在哪"，这一章告诉你"怎么不卡"。优化手段虽然繁多，但底层只有 <strong>三种思路</strong>：要么让每帧的工作变少，要么把工作搬走，要么干脆接受妥协。</p>
+    <p class="lang-en-only">Chapter 7 told you <em>where</em> it lags. This one tells you <em>how to keep it from lagging</em>. The toolbox is large, but underneath there are really only <strong>three strategies</strong>: do less work per frame, move work elsewhere, or accept compromise.</p>
+
+    <h3 class="sub lang-zh-only">三种思路</h3>
+    <h3 class="sub lang-en-only">THREE STRATEGIES</h3>
+
+    <div class="opt-strategies">
+      <div class="opt-strategy a">
+        <div class="opt-letter">A</div>
+        <h5 class="lang-zh-only">缩短关键路径</h5>
+        <h5 class="lang-en-only">Shorten the critical path</h5>
+        <p class="lang-zh-only">让每一帧主线程上的工作变少。能不算就不算、能少算就少算。最朴素的优化方向，往往也最有效。</p>
+        <p class="lang-en-only">Make each frame's main-thread work smaller. If you can skip it, skip it. The plainest direction — and usually the most effective.</p>
+        <div class="opt-hint">↓ <span class="lang-zh-only">虚拟列表 · 缓存 · 算法降复杂度</span><span class="lang-en-only">virtual lists · caching · lower-O algorithms</span></div>
+      </div>
+      <div class="opt-strategy b">
+        <div class="opt-letter">B</div>
+        <h5 class="lang-zh-only">让出主线程</h5>
+        <h5 class="lang-en-only">Yield the main thread</h5>
+        <p class="lang-zh-only">同样的工作量，搬到别的地方做。Web Worker、异步队列、空闲回调，都是把"必须算"的活儿挪开主线程的工具。</p>
+        <p class="lang-en-only">Same work, different runner. Web Workers, async queues, idle callbacks — tools for relocating necessary work off the main thread.</p>
+        <div class="opt-hint">↓ <span class="lang-zh-only">Web Worker · requestIdleCallback · 任务拆分</span><span class="lang-en-only">Web Worker · requestIdleCallback · chunking</span></div>
+      </div>
+      <div class="opt-strategy c">
+        <div class="opt-letter">C</div>
+        <h5 class="lang-zh-only">降级 / 跳过</h5>
+        <h5 class="lang-en-only">Degrade / skip</h5>
+        <p class="lang-zh-only">承认一帧塞不下，主动选择"哪一帧不画"或"画得糙一点"。滚动时降帧、视口外剔除、低端机降画质——是工程上的"诚实"。</p>
+        <p class="lang-en-only">Admit a frame can't fit, then choose what to drop or simplify: lower framerate while scrolling, cull off-screen, downgrade quality on low-end devices. Engineering honesty.</p>
+        <div class="opt-hint">↓ <span class="lang-zh-only">视口剔除 · 动态降级 · 滚动降频</span><span class="lang-en-only">viewport culling · dynamic downgrade · scroll-throttle</span></div>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">六个最常用的具体手段</h3>
+    <h3 class="sub lang-en-only">SIX MOST-USED TACTICS</h3>
+
+    <div class="opt-tactics">
+      <div class="opt-tactic">
+        <div class="ot-tag">A · TASK</div>
+        <h6 class="lang-zh-only">任务拆分</h6>
+        <h6 class="lang-en-only">Chunking</h6>
+        <p class="lang-zh-only">把一个长任务切成多段，每段之间让 vsync 插一帧。50ms 的活拆成 5 × 10ms，主线程就能在中间画出 5 帧。</p>
+        <p class="lang-en-only">Slice a long task into pieces with vsync gaps. A 50ms job split into 5 × 10ms lets the main thread paint 5 frames in between.</p>
+      </div>
+      <div class="opt-tactic">
+        <div class="ot-tag">A · LIST</div>
+        <h6 class="lang-zh-only">虚拟列表</h6>
+        <h6 class="lang-en-only">Virtual list</h6>
+        <p class="lang-zh-only">10 万条数据只渲染屏幕里那 20 条。React-window / RecyclerView / Compose LazyList 都是这一类。</p>
+        <p class="lang-en-only">Render only the 20 items currently visible out of 100,000. React-window / RecyclerView / Compose LazyList all belong here.</p>
+      </div>
+      <div class="opt-tactic">
+        <div class="ot-tag">B · WORKER</div>
+        <h6 class="lang-zh-only">Web Worker / 后台线程</h6>
+        <h6 class="lang-en-only">Web Worker / off-main-thread</h6>
+        <p class="lang-zh-only">JSON 解析、图像编码、复杂计算搬到 Worker 线程。主线程拿结果不参与计算，自然不会卡。</p>
+        <p class="lang-en-only">JSON parsing, image encoding, heavy compute — move to a Worker. The main thread takes the result instead of doing the work.</p>
+      </div>
+      <div class="opt-tactic">
+        <div class="ot-tag">B · SCHEDULE</div>
+        <h6 class="lang-zh-only">异步调度</h6>
+        <h6 class="lang-en-only">Async scheduling</h6>
+        <p class="lang-zh-only">requestAnimationFrame 控制画面、requestIdleCallback 处理低优先级任务。React 18 的 startTransition 也是同源思想。</p>
+        <p class="lang-en-only">requestAnimationFrame for visuals, requestIdleCallback for low-priority work. React 18's startTransition is the same school.</p>
+      </div>
+      <div class="opt-tactic">
+        <div class="ot-tag">A · CACHE</div>
+        <h6 class="lang-zh-only">缓存与预热</h6>
+        <h6 class="lang-en-only">Caching &amp; pre-warm</h6>
+        <p class="lang-zh-only">Shader 预编译（PSO cache）、图片预解码、JS bytecode 缓存——让"第一次"的成本提前付掉。</p>
+        <p class="lang-en-only">Pre-compile shaders (PSO cache), pre-decode images, cache JS bytecode — pay the "first time" cost up front.</p>
+      </div>
+      <div class="opt-tactic">
+        <div class="ot-tag">C · DEGRADE</div>
+        <h6 class="lang-zh-only">动态降级</h6>
+        <h6 class="lang-en-only">Dynamic downgrade</h6>
+        <p class="lang-zh-only">检测到帧时拉长就主动降画质：粒子数减半、阴影关闭、动画跳帧。诚实的妥协，比"卡到死"好得多。</p>
+        <p class="lang-en-only">When FrameTime drifts, downgrade actively: halve particles, kill shadows, drop animation frames. Honest compromise beats freezing.</p>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">最常引用的招式 — 任务拆分</h3>
+    <h3 class="sub lang-en-only">THE MOST-CITED MOVE — CHUNKING</h3>
+
+    <p class="lang-zh-only">举一个最直观的例子：一段 50ms 的 JSON 解析挂在 click handler 上。同步跑会让接下来 3 个 vsync 没有新画面（即 3 次 Jank）。把它切成 5 段、每段之间 yield，主线程就能在中间画出帧。代码量没变，体感差一个数量级：</p>
+    <p class="lang-en-only">The simplest example: a 50ms JSON parse hanging off a click handler. Run synchronously and the next 3 vsyncs see no new image — 3 Janks. Slice it into 5 pieces and yield between them; the main thread paints frames in the gaps. Same code count; the felt difference is an order of magnitude:</p>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg" aria-label="Long task vs chunked task — frame painting comparison">
+          <!-- title -->
+          <text x="20" y="20" font-family="Inter, sans-serif" font-size="11" font-weight="700" fill="#4a463e" letter-spacing="2">SAME WORK · 50ms · TWO SCHEDULES</text>
+
+          <!-- vsync ticks at 16.67ms intervals (1ms = 12px from x=80) -->
+          <!-- so x = 80 + ms*12; 16ms ≈ 272, 33 ≈ 476, 50 ≈ 680 -->
+          <g stroke="#c9c1ae" stroke-width="1" stroke-dasharray="3,3">
+            <line x1="80"  y1="40" x2="80"  y2="248"/>
+            <line x1="280" y1="40" x2="280" y2="248"/>
+            <line x1="480" y1="40" x2="480" y2="248"/>
+            <line x1="680" y1="40" x2="680" y2="248"/>
+          </g>
+          <g font-family="JetBrains Mono, monospace" font-size="9" fill="#807a6d" text-anchor="middle">
+            <text x="80"  y="36">vsync 0</text>
+            <text x="280" y="36">vsync 16</text>
+            <text x="480" y="36">vsync 33</text>
+            <text x="680" y="36">vsync 50</text>
+            <text x="745" y="36">ms</text>
+          </g>
+
+          <!-- ===== BEFORE ===== -->
+          <text x="20" y="68" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#b3422c" letter-spacing="2">BEFORE · ONE LONG TASK</text>
+          <text x="60" y="92" text-anchor="end" font-family="Inter, sans-serif" font-size="10" font-weight="600" fill="#4a463e">main</text>
+          <line x1="70" y1="94" x2="700" y2="94" stroke="#c9c1ae" stroke-width="1"/>
+          <!-- one long task block -->
+          <rect x="80" y="84" width="600" height="20" rx="2" fill="#b3422c"/>
+          <text x="380" y="98" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" font-weight="700" fill="#faf6ed">parseJSON · 50ms (blocking)</text>
+
+          <!-- frame paints attempted but missed -->
+          <g>
+            <text x="60" y="124" text-anchor="end" font-family="Inter, sans-serif" font-size="10" font-weight="600" fill="#807a6d">paint</text>
+            <line x1="70" y1="126" x2="700" y2="126" stroke="#c9c1ae" stroke-width="1"/>
+            <!-- missed paints at vsync 16, 33 — show as red X -->
+            <text x="280" y="120" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#b3422c" font-weight="700">×</text>
+            <text x="280" y="138" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#b3422c">missed</text>
+            <text x="480" y="120" text-anchor="middle" font-family="Inter, sans-serif" font-size="13" fill="#b3422c" font-weight="700">×</text>
+            <text x="480" y="138" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#b3422c">missed</text>
+            <!-- paint at vsync 50 -->
+            <rect x="680" y="118" width="14" height="14" rx="1" fill="#4a463e"/>
+            <text x="687" y="146" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#4a463e">paint</text>
+          </g>
+          <text x="380" y="160" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#b3422c" font-weight="600">
+            <tspan class="lang-zh-only">→ 错过 3 次 vsync · 3 次 Jank</tspan>
+            <tspan class="lang-en-only">→ 3 missed vsyncs · 3 Janks</tspan>
+          </text>
+
+          <!-- divider -->
+          <line x1="0" y1="178" x2="760" y2="178" stroke="#c9c1ae" stroke-width="1" stroke-dasharray="6,4"/>
+
+          <!-- ===== AFTER ===== -->
+          <text x="20" y="200" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#4a6b3e" letter-spacing="2">AFTER · CHUNKED · YIELD BETWEEN</text>
+          <text x="60" y="224" text-anchor="end" font-family="Inter, sans-serif" font-size="10" font-weight="600" fill="#4a463e">main</text>
+          <line x1="70" y1="226" x2="700" y2="226" stroke="#c9c1ae" stroke-width="1"/>
+          <!-- 5 small task chunks, 10ms each = 120px wide; with paint slots between -->
+          <!-- chunks at x=80,200,320,440,560 each 120 wide? But they need to fit between vsyncs (16ms apart = 200px apart) -->
+          <!-- Better: chunks 80-180 (10ms wide = 120px... wait 10ms = 120px). 5 chunks each 120px = 600px total -->
+          <!-- Plus 4 gaps of ~ 5ms = 60px? Total = 600+240=840 too wide -->
+          <!-- Reduce gaps: chunks 80, 220, 360, 500, 640 — 4 gaps of 20px (= ~1.7ms). Total = 600+80=680, fits 600 -->
+          <g fill="#4a6b3e">
+            <rect x="80"  y="216" width="100" height="20" rx="2"/>
+            <rect x="200" y="216" width="100" height="20" rx="2"/>
+            <rect x="320" y="216" width="100" height="20" rx="2"/>
+            <rect x="440" y="216" width="100" height="20" rx="2"/>
+            <rect x="560" y="216" width="100" height="20" rx="2"/>
+          </g>
+          <g font-family="JetBrains Mono, monospace" font-size="9" fill="#faf6ed" text-anchor="middle" font-weight="700">
+            <text x="130" y="230">10ms</text>
+            <text x="250" y="230">10ms</text>
+            <text x="370" y="230">10ms</text>
+            <text x="490" y="230">10ms</text>
+            <text x="610" y="230">10ms</text>
+          </g>
+
+          <!-- paint successfully at vsync 16 (in gap between chunk 1 and 2), vsync 33 (gap), vsync 50 (after) -->
+          <g>
+            <text x="60" y="256" text-anchor="end" font-family="Inter, sans-serif" font-size="10" font-weight="600" fill="#4a6b3e">paint</text>
+            <line x1="70" y1="258" x2="700" y2="258" stroke="#4a6b3e" stroke-width="1.2"/>
+            <!-- paints align with vsync ticks: 80, 280, 480, 680 -->
+            <rect x="73"  y="250" width="14" height="14" rx="1" fill="#4a6b3e"/>
+            <rect x="273" y="250" width="14" height="14" rx="1" fill="#4a6b3e"/>
+            <rect x="473" y="250" width="14" height="14" rx="1" fill="#4a6b3e"/>
+            <rect x="673" y="250" width="14" height="14" rx="1" fill="#4a6b3e"/>
+          </g>
+          <text x="380" y="278" text-anchor="middle" font-family="Inter, PingFang SC, sans-serif" font-size="10" fill="#4a6b3e" font-weight="600">
+            <tspan class="lang-zh-only">→ 每个 vsync 都画到 · 0 次 Jank</tspan>
+            <tspan class="lang-en-only">→ every vsync paints · 0 Janks</tspan>
+          </text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;14</span>
+        <span class="lang-zh-only">同样 50ms 的工作，整块跑会塞死 3 次 vsync；切成 5 段每段 10ms，每个 vsync 都能挤出一帧。这是"让出主线程"思想最直观的例子。</span>
+        <span class="lang-en-only">Same 50ms work — run as a single block and it suffocates 3 vsyncs; chunked into 5 × 10ms, every vsync still paints. The cleanest illustration of "yield the main thread".</span>
+        <span class="figen lang-zh-only">这条思路对应 React 18 的 startTransition、Web 的 scheduler.yield()、Cocos 的协程拆帧。底层全部是同一个动作。</span>
+        <span class="figen lang-en-only">This pattern shows up as React 18's startTransition, Web's scheduler.yield(), and Cocos coroutine yielding. All the same underlying move.</span>
+      </figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">速查 — 根因 → 手段</h3>
+    <h3 class="sub lang-en-only">CHEAT SHEET — CAUSE → FIX</h3>
+
+    <p class="lang-zh-only">把第七章的 6 类根因和上面的手段拼一张表，下次找到根因后能直接在表里查处方：</p>
+    <p class="lang-en-only">Stitch Chapter 7's 6 root causes to the tactics above into one table — once you've named the cause, look up the prescription:</p>
+
+    <table class="cmp lang-zh-only">
+      <thead>
+        <tr><th>根因</th><th>主要手段</th><th>典型工具 / API</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>CPU · 主线程长任务</td><td>任务拆分 · 异步调度 · Web Worker</td><td>scheduler.yield · requestIdleCallback · postMessage</td></tr>
+        <tr><td>GPU · 渲染管线瓶颈</td><td>降 overdraw · 减纹理 · 简化 shader</td><td>RenderDoc · Texture Atlas · Mip-mapping</td></tr>
+        <tr><td>GC · 垃圾回收停顿</td><td>对象池 · 减少临时对象 · 关闭装箱</td><td>Object Pool · TypedArray · 避免闭包临时对象</td></tr>
+        <tr><td>IO · 主线程 IO / 网络</td><td>异步化 · 预加载 · 缓存</td><td>async/await · Service Worker cache · IndexedDB</td></tr>
+        <tr><td>COMPILE · Shader / JIT 首次编译</td><td>预热 · PSO cache · bytecode cache</td><td>Vulkan PSO Cache · V8 Snapshot · pre-warm</td></tr>
+        <tr><td>THERMAL · 热降频</td><td>动态降级 · 限帧 · 推送高负载到峰前</td><td>FPS auto-throttle · QoS class · pre-compute</td></tr>
+      </tbody>
+    </table>
+
+    <table class="cmp lang-en-only">
+      <thead>
+        <tr><th>Root cause</th><th>Primary fix</th><th>Typical tool / API</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>CPU · long main-thread task</td><td>Chunking · async scheduling · Web Worker</td><td>scheduler.yield · requestIdleCallback · postMessage</td></tr>
+        <tr><td>GPU · pipeline bottleneck</td><td>Reduce overdraw · smaller textures · simpler shaders</td><td>RenderDoc · texture atlas · mip-mapping</td></tr>
+        <tr><td>GC · pause</td><td>Object pools · fewer temporaries · avoid boxing</td><td>Object Pool · TypedArray · avoid closure temps</td></tr>
+        <tr><td>IO · main-thread IO / network</td><td>Async · preload · cache</td><td>async/await · Service Worker cache · IndexedDB</td></tr>
+        <tr><td>COMPILE · first-time shader / JIT</td><td>Pre-warm · PSO cache · bytecode cache</td><td>Vulkan PSO Cache · V8 snapshot · pre-warm</td></tr>
+        <tr><td>THERMAL · throttling</td><td>Dynamic downgrade · cap fps · pre-compute peaks</td><td>FPS auto-throttle · QoS class · pre-compute</td></tr>
+      </tbody>
+    </table>
+
+    <p class="lang-zh-only">六大类、三种思路、一张矩阵——优化的全图基本就这些。剩下的工作不是"知道有什么手段"，而是"具体场景下挑哪一个"。这件事没有银弹，只有反复地：测、改、再测。</p>
+    <p class="lang-en-only">Six causes, three strategies, one matrix — that's the optimization map in full. The remaining job isn't "knowing what tools exist", it's "picking the right one for this scene". No silver bullet — just measure, fix, measure again.</p>
+  </section>
+
+  <!-- ========== CHAPTER 09 (was 08) ========== -->
+  <section class="chap" id="c9">
+    <div class="chap-num">CHAPTER&nbsp;09</div>
+    <h2 class="chap-title lang-zh-only">通用语 — 流畅是一种跨平台方言</h2>
+    <h2 class="chap-title lang-en-only">A common tongue — smoothness as a cross-platform dialect</h2>
+    <p class="chap-en lang-zh-only">smoothness as a cross-platform dialect</p>
+    <p class="chap-en lang-en-only">流畅是一种跨平台方言</p>
+
+    <p class="lang-zh-only">前面所有的概念听起来像移动端专属，其实它们在 Web 和 iOS 上都有<em>同形异姓</em>的孪生兄弟。一旦认出"这是同一种语言"，跨端跳起来就不再陌生：</p>
+    <p class="lang-en-only">Most of the concepts above sound mobile-specific. They aren't — they have <em>same-shape, different-name</em> twins on the Web and on iOS. Once you recognize "this is the same language", crossing platforms stops feeling foreign:</p>
+
+    <div class="xplat-grid">
+      <div class="xplat-card">
+        <h5>Web · INP</h5>
+        <div class="xkey">Interaction to Next Paint</div>
+        <p class="lang-zh-only">2024 年取代 FID 成为 Core Web Vitals 三件套之一。测量"用户交互到下一次画面更新"的耗时，目标 &lt; 200ms。本质就是 Web 版的 Jank Time。</p>
+        <p class="lang-en-only">Replaced FID in 2024 as a Core Web Vitals metric. Measures the time from user input to the next paint, with a target &lt; 200ms. Fundamentally Web's "Jank time".</p>
+      </div>
+      <div class="xplat-card">
+        <h5>iOS · MetricKit Hitch</h5>
+        <div class="xkey">scrollHitchTimeRatio</div>
+        <p class="lang-zh-only">iOS 14+ 系统级指标。每帧错过 vsync 的"超出时间"被累加，作为 ms/s 的占比上报。Apple 推荐目标 &lt; 10 ms/s。</p>
+        <p class="lang-en-only">A system-level metric since iOS 14. Excess time per missed-vsync frame is summed and reported as a ms-per-second ratio. Apple's recommended target is &lt; 10 ms/s.</p>
+      </div>
+      <div class="xplat-card">
+        <h5>UX · Doherty</h5>
+        <div class="xkey">100 / 1000 / 10000ms 法则</div>
+        <p class="lang-zh-only">1968 年 IBM 的研究：响应在 100ms 内 = "瞬时"，&lt; 1s = "连续"，&gt; 10s = "中断"。它和帧时无关，但和"流畅感"同源 —— 都是用户对延迟的容忍曲线。</p>
+        <p class="lang-en-only">A 1968 IBM study: response &lt; 100ms feels instant, &lt; 1s feels continuous, &gt; 10s feels broken. Independent of FrameTime — but rooted in the same human-tolerance curve for latency.</p>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">从触摸到上屏 — 流畅之外还有"快"</h3>
+    <h3 class="sub lang-en-only">FROM TOUCH TO PHOTON — "FAST" IS NOT ONLY "SMOOTH"</h3>
+
+    <p class="lang-zh-only">流畅（FrameTime 稳定）和响应（输入延迟低）是两件事，常常被混作一谈。一次完整的"按下到看见反馈"经过 5 个阶段，每一段都可能成为瓶颈：</p>
+    <p class="lang-en-only">Smoothness (steady FrameTime) and responsiveness (low input latency) are different things, frequently conflated. A complete "press → see-it-react" path crosses 5 stages — any one can become the bottleneck:</p>
+
+    <figure>
+      <div class="ttp-stage">
+        <div class="ttp-track">
+          <div class="ttp-seg s1" style="flex: 0.5;">
+            <span><span class="lang-zh-only">触控扫描</span><span class="lang-en-only">touch scan</span><br>~5ms</span>
+          </div>
+          <div class="ttp-seg s2" style="flex: 0.4;">
+            <span><span class="lang-zh-only">系统派发</span><span class="lang-en-only">dispatch</span><br>~3ms</span>
+          </div>
+          <div class="ttp-seg s3" style="flex: 1.6;">
+            <span><span class="lang-zh-only">应用响应（JS / 业务）</span><span class="lang-en-only">app response (JS / logic)</span><br>~12ms</span>
+          </div>
+          <div class="ttp-seg s4" style="flex: 1;">
+            <span><span class="lang-zh-only">渲染 + 合成</span><span class="lang-en-only">render + composite</span><br>~8ms</span>
+          </div>
+          <div class="ttp-seg s5" style="flex: 0.5;">
+            <span><span class="lang-zh-only">扫描上屏</span><span class="lang-en-only">scanout</span><br>~4ms</span>
+          </div>
+        </div>
+        <div class="ttp-axis">
+          <span>0ms</span>
+          <span><span class="lang-zh-only">总延迟 ≈ 32 ms</span><span class="lang-en-only">total ≈ 32 ms</span></span>
+          <span>16ms</span>
+          <span>32ms</span>
+        </div>
+        <div class="ttp-legend">
+          <div class="ttp-legend-item"><span class="swatch" style="background:#4a463e;"></span><span class="lang-zh-only">硬件采样</span><span class="lang-en-only">hardware sample</span></div>
+          <div class="ttp-legend-item"><span class="swatch" style="background:#6b6357;"></span><span class="lang-zh-only">OS 派发</span><span class="lang-en-only">OS dispatch</span></div>
+          <div class="ttp-legend-item"><span class="swatch" style="background:#807a6d;"></span><span class="lang-zh-only">应用层（最大）</span><span class="lang-en-only">app layer (largest)</span></div>
+          <div class="ttp-legend-item"><span class="swatch" style="background:#a87a1f;"></span><span class="lang-zh-only">渲染管线</span><span class="lang-en-only">render pipeline</span></div>
+          <div class="ttp-legend-item"><span class="swatch" style="background:#b3422c;"></span><span class="lang-zh-only">硬件扫描</span><span class="lang-en-only">hardware scanout</span></div>
+        </div>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;15</span>
+        <span class="lang-zh-only">一次按下，5 个阶段的触控延迟分解。"应用响应"（JS / 业务逻辑）通常是其中最大、也最容易优化的一段。</span>
+        <span class="lang-en-only">A single press, decomposed into five latency stages. "App response" (JS / business logic) is usually the largest segment — and the most tractable.</span>
+        <span class="figen lang-zh-only">总延迟 32ms 听起来很快，但 Doherty 的 100ms 阈值 是把"瞬时"留给那些能压到 30ms 以内的产品。</span>
+        <span class="figen lang-en-only">32ms total sounds fast — but Doherty's 100ms ceiling reserves "instant" for products that hold response within 30ms.</span>
+      </figcaption>
+    </figure>
+
+    <p class="lang-zh-only">所以下一次别人说"我们 60fps 流畅"时，可以追问一句：<em>P99 帧时是多少？输入延迟是多少？hitch 占比多少？</em>真正流畅的产品，三个问题都答得出，且数字相互呼应。</p>
+    <p class="lang-en-only">So the next time someone says "we're at 60fps, smooth" — push back: <em>What's your P99 FrameTime? Your input latency? Your hitch ratio?</em> Truly smooth products answer all three — and their answers reinforce each other.</p>
+  </section>
+
+  <!-- ========== CLOSING ========== -->
+  <section class="closing">
+    <p class="quote lang-zh-only">"流畅"听起来是一种感受，<br>
+    但它在工程上能被切成 FrameTime、FPS、视觉惯性、电影帧、判别阈值与占比。<br>
+    每一个数字，都对应一种被你身体记住、却说不出名字的不适。</p>
+    <p class="quote lang-en-only">"Smoothness" sounds like a feeling.<br>
+    In engineering it splits into FrameTime, FPS, visual inertia, cinematic frames, discriminator thresholds, and ratios.<br>
+    Each number is the name of a discomfort your body has memorised but cannot pronounce.</p>
+    <div class="signoff">FIN&nbsp;//&nbsp;END&nbsp;OF&nbsp;FIELD&nbsp;NOTE&nbsp;01</div>
+  </section>
+
+</div>
+
+<script>
+  (function () {
+    var KEY = "perfdog-lang";
+    var btnZh = document.getElementById("lang-zh");
+    var btnEn = document.getElementById("lang-en");
+    var html = document.documentElement;
+
+    function apply(lang) {
+      if (lang === "en") {
+        document.body.classList.add("lang-en");
+        html.setAttribute("lang", "en");
+        document.title = "On «Smoothness» — From FrameTime to Stutter";
+        btnZh.classList.remove("active"); btnZh.setAttribute("aria-pressed", "false");
+        btnEn.classList.add("active"); btnEn.setAttribute("aria-pressed", "true");
+      } else {
+        document.body.classList.remove("lang-en");
+        html.setAttribute("lang", "zh-CN");
+        document.title = "测量「流畅」 — 从 FrameTime 到 Stutter";
+        btnEn.classList.remove("active"); btnEn.setAttribute("aria-pressed", "false");
+        btnZh.classList.add("active"); btnZh.setAttribute("aria-pressed", "true");
+      }
+    }
+
+    var saved;
+    try { saved = localStorage.getItem(KEY); } catch (e) {}
+    if (!saved) {
+      var nav = (navigator.language || "").toLowerCase();
+      saved = nav.indexOf("zh") === 0 ? "zh" : "en";
+    }
+    apply(saved);
+
+    btnZh.addEventListener("click", function () {
+      apply("zh");
+      try { localStorage.setItem(KEY, "zh"); } catch (e) {}
+    });
+    btnEn.addEventListener("click", function () {
+      apply("en");
+      try { localStorage.setItem(KEY, "en"); } catch (e) {}
+    });
+  })();
+
+  /* ===== TOC scroll-spy ===== */
+  (function () {
+    var items = Array.prototype.map.call(
+      document.querySelectorAll('.toc-side li[data-section]'),
+      function (li) { return { li: li, el: document.getElementById(li.dataset.section) }; }
+    ).filter(function (o) { return o.el; });
+    if (!items.length) return;
+    function update() {
+      var offset = window.innerHeight * 0.32;
+      var active = items[0];
+      for (var i = 0; i < items.length; i++) {
+        if (items[i].el.getBoundingClientRect().top - offset < 0) active = items[i];
+      }
+      items.forEach(function (o) { o.li.classList.toggle('active', o === active); });
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  })();
+</script>
+
+<!-- ============================================================
+     Interactive footer: stats / like / comments  (talks to chat.ursb.me)
+     ============================================================ -->
+<style>
+.ursb-interactive { background: var(--bg-soft); border-top: 1px solid var(--rule); padding: 24px 24px 80px; position: relative; z-index: 2; }
+.ursb-interactive .ursb-fbody { max-width: 720px; margin: 0 auto; }
+.ui-divider { text-align: center; margin: 28px 0 28px; position: relative; }
+.ui-divider::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--rule); }
+.ui-divider-mark { position: relative; background: var(--bg-soft); padding: 0 18px; color: var(--accent); font-size: 14px; letter-spacing: 0.2em; }
+.ui-stats-row {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin: 36px 0 56px; flex-wrap: wrap;
+}
+.ui-like, .ui-share, .ui-views {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 18px; border-radius: 999px;
+  background: transparent; border: 1px solid var(--rule);
+  font-family: var(--sans);
+  font-size: 12.5px; font-weight: 500; color: var(--ink-mute); line-height: 1;
+  transition: all 0.18s ease;
+}
+.ui-like, .ui-share { cursor: pointer; }
+.ui-like:hover, .ui-share:hover { border-color: var(--accent-soft); color: var(--accent); background: rgba(179,66,44,0.04); }
+.ui-like:disabled, .ui-share:disabled, .ui-comment-form button:disabled { opacity: 0.55; cursor: wait; }
+.ui-like.liked { border-color: var(--accent); background: rgba(179,66,44,0.08); color: var(--accent); }
+.ui-like.liked svg { fill: var(--accent); stroke: var(--accent); }
+.ui-like.liked .ui-count { color: var(--accent); }
+.ui-views { cursor: default; color: var(--ink-mute); }
+.ui-views:hover { background: transparent; border-color: var(--rule); color: var(--ink-mute); }
+.ui-count {
+  font-family: var(--serif);
+  font-weight: 700; color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  font-size: 13.5px;
+}
+.ui-count-small { font-family: var(--mono); font-size: 12px; color: var(--ink-mute); font-weight: 400; margin-left: 8px; }
+.ui-section-title { font-family: var(--serif); font-size: 20px; font-weight: 700; color: var(--ink); margin: 36px 0 14px; }
+.ui-comment-form { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; margin-bottom: 32px; }
+.ui-form-row { display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; margin-bottom: 10px; }
+.ui-form-row input, .ui-comment-form textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 4px;
+  font-size: 14px; font-family: var(--sans); color: var(--ink);
+  box-sizing: border-box; background: #fefcf6;
+}
+.ui-comment-form textarea { resize: vertical; min-height: 84px; line-height: 1.55; }
+.ui-form-row input:focus, .ui-comment-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(179,66,44,0.1); }
+.ui-form-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 12px; }
+.ui-form-status { font-size: 12px; color: var(--ink-mute); flex: 1; }
+.ui-form-status.error { color: var(--accent); }
+.ui-form-status.success { color: var(--good); font-weight: 600; }
+.ui-comment-form button[type="submit"] {
+  background: var(--ink); color: var(--paper); border: none; padding: 10px 22px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+  font-family: var(--sans);
+}
+.ui-comment-form button[type="submit"]:hover { background: var(--accent); }
+.ui-comment-loading, .ui-comment-empty { text-align: center; color: var(--ink-mute); padding: 36px 0; font-family: var(--serif); font-style: italic; font-size: 14px; }
+.ui-comment { padding: 18px 0; border-bottom: 1px solid var(--rule); }
+.ui-comment:last-child { border-bottom: none; }
+.ui-comment-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; font-size: 13px; }
+.ui-comment-name { font-weight: 700; color: var(--ink); }
+.ui-comment-date { color: var(--ink-mute); font-family: var(--serif); font-size: 12px; }
+.ui-comment-body { color: var(--ink-soft); line-height: 1.65; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; }
+@media (max-width: 768px) {
+  .ui-form-row { grid-template-columns: 1fr; }
+  .ui-stats-row { gap: 8px; }
+  .ui-like, .ui-share { padding: 8px 14px; font-size: 12px; }
+}
+</style>
+
+<section class="ursb-interactive">
+  <div class="ursb-fbody">
+    <div class="ui-divider"><span class="ui-divider-mark">✦ ✦ ✦</span></div>
+
+    <div class="ui-stats-row">
+      <button class="ui-like" id="uiLikeBtn" type="button" disabled>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        <span class="ui-count" id="uiLikeCount">—</span>
+        <span><span lang="zh">点赞</span><span lang="en">Likes</span></span>
+      </button>
+      <div class="ui-views" title="Page views">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span class="ui-count" id="uiViewCount">—</span>
+        <span><span lang="zh">阅读</span><span lang="en">Reads</span></span>
+      </div>
+      <button class="ui-share" id="uiShareBtn" type="button">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
+        <span class="ui-share-text"><span lang="zh">分享</span><span lang="en">Share</span></span>
+      </button>
+    </div>
+
+    <h3 class="ui-section-title">
+      <span lang="zh">留下评论</span><span lang="en">Leave a comment</span>
+    </h3>
+    <form class="ui-comment-form" id="uiCommentForm" autocomplete="off">
+      <div class="ui-form-row">
+        <input type="text" name="nickname" id="uiNickname" required maxlength="40">
+        <input type="email" name="email" id="uiEmail" maxlength="120">
+      </div>
+      <textarea name="content" id="uiContent" required maxlength="2000" rows="4"></textarea>
+      <div class="ui-form-foot">
+        <span class="ui-form-status" id="uiFormStatus"></span>
+        <button type="submit" id="uiSubmitBtn">
+          <span lang="zh">发布评论</span><span lang="en">Post comment</span>
+        </button>
+      </div>
+    </form>
+
+    <h3 class="ui-section-title">
+      <span lang="zh">评论</span><span lang="en">Comments</span>
+      <span id="uiCommentCount" class="ui-count-small">—</span>
+    </h3>
+    <div class="ui-comment-list" id="uiCommentList">
+      <div class="ui-comment-loading">
+        <span lang="zh">加载中…</span><span lang="en">Loading…</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ursb.me INTERACTIVE FOOTER — likes / views / comments
+   Talks to https://chat.ursb.me, slug = "note/jank-stutter" */
+(function() {
+  var API_BASE = 'https://chat.ursb.me';
+  var POST_SLUG = 'note/jank-stutter';
+  var ENC = encodeURIComponent(POST_SLUG);
+
+  var likeBtn = document.getElementById('uiLikeBtn');
+  var likeCount = document.getElementById('uiLikeCount');
+  var viewCount = document.getElementById('uiViewCount');
+  var shareBtn = document.getElementById('uiShareBtn');
+  var commentForm = document.getElementById('uiCommentForm');
+  var commentList = document.getElementById('uiCommentList');
+  var commentCount = document.getElementById('uiCommentCount');
+  var formStatus = document.getElementById('uiFormStatus');
+  var submitBtn = document.getElementById('uiSubmitBtn');
+  var nicknameInput = document.getElementById('uiNickname');
+  var emailInput = document.getElementById('uiEmail');
+  var contentInput = document.getElementById('uiContent');
+  if (!likeBtn) return;
+
+  var I18N = {
+    zh: { nicknamePh: '昵称*', emailPh: '邮箱（可选，仅用于回复通知）', contentPh: '说点什么…',
+          posting: '提交中…', posted: '✓ 已发布', postFailed: '✗ 发布失败：',
+          shareCopied: '✓ 已复制链接', loading: '加载中…', empty: '还没有评论，来抢沙发吧。',
+          loadFailed: '评论加载失败', justNow: '刚刚', mAgo: ' 分钟前', hAgo: ' 小时前', dAgo: ' 天前' },
+    en: { nicknamePh: 'Nickname*', emailPh: 'Email (optional, for reply notifications)', contentPh: 'Say something…',
+          posting: 'Posting…', posted: '✓ Posted', postFailed: '✗ Failed: ',
+          shareCopied: '✓ Link copied', loading: 'Loading…', empty: 'Be the first to comment.',
+          loadFailed: 'Failed to load comments', justNow: 'just now', mAgo: 'm ago', hAgo: 'h ago', dAgo: 'd ago' }
+  };
+  function t() {
+    var lang = (document.documentElement.lang || '').toLowerCase();
+    return I18N[lang.indexOf('en') === 0 ? 'en' : 'zh'];
+  }
+  function applyI18n() {
+    var s = t();
+    if (nicknameInput) nicknameInput.placeholder = s.nicknamePh;
+    if (emailInput) emailInput.placeholder = s.emailPh;
+    if (contentInput) contentInput.placeholder = s.contentPh;
+  }
+  applyI18n();
+  new MutationObserver(applyI18n).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+
+  fetch(API_BASE + '/api/posts/' + ENC + '/view', { method: 'POST' }).catch(function(){});
+
+  fetch(API_BASE + '/api/posts/' + ENC + '/views')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var pv = (d && (d.pv != null ? d.pv : d.views)) || 0;
+      viewCount.textContent = pv.toLocaleString();
+    })
+    .catch(function() { viewCount.textContent = '—'; });
+
+  fetch(API_BASE + '/api/posts/' + ENC + '/likes')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      likeCount.textContent = ((d && d.count) || 0).toLocaleString();
+      if (d && d.liked) likeBtn.classList.add('liked');
+    })
+    .catch(function() { likeCount.textContent = '—'; })
+    .finally(function() { likeBtn.disabled = false; });
+
+  likeBtn.addEventListener('click', function() {
+    likeBtn.disabled = true;
+    fetch(API_BASE + '/api/posts/' + ENC + '/like', { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        likeCount.textContent = ((d && d.count) || 0).toLocaleString();
+        likeBtn.classList.toggle('liked', !!(d && d.liked));
+        if (typeof umami !== 'undefined') umami.track('post-like', { post: POST_SLUG });
+      })
+      .catch(function() {})
+      .finally(function() { likeBtn.disabled = false; });
+  });
+
+  shareBtn.addEventListener('click', function() {
+    var url = window.location.href;
+    var title = document.title;
+    if (navigator.share) {
+      navigator.share({ title: title, url: url }).catch(function(){});
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function() {
+        var label = shareBtn.querySelector('.ui-share-text');
+        var orig = label.innerHTML;
+        label.textContent = t().shareCopied;
+        setTimeout(function() { label.innerHTML = orig; }, 1800);
+      }).catch(function() { window.prompt('Copy URL:', url); });
+    } else { window.prompt('Copy URL:', url); }
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c];
+    });
+  }
+  function fmtDate(s) {
+    if (!s) return '';
+    var d = new Date(s);
+    var diff = (new Date() - d) / 1000;
+    var i18n = t();
+    if (diff < 60) return i18n.justNow;
+    if (diff < 3600) return Math.floor(diff/60) + i18n.mAgo;
+    if (diff < 86400) return Math.floor(diff/3600) + i18n.hAgo;
+    if (diff < 7*86400) return Math.floor(diff/86400) + i18n.dAgo;
+    return d.toLocaleDateString();
+  }
+  function renderComments(comments) {
+    var i18n = t();
+    if (!comments || !comments.length) {
+      commentList.innerHTML = '<div class="ui-comment-empty">' + i18n.empty + '</div>';
+      commentCount.textContent = '(0)';
+      return;
+    }
+    commentCount.textContent = '(' + comments.length + ')';
+    commentList.innerHTML = comments.map(function(c) {
+      return '<div class="ui-comment">' +
+        '<div class="ui-comment-head">' +
+          '<span class="ui-comment-name">' + escapeHtml(c.nickname || 'Anonymous') + '</span>' +
+          '<span class="ui-comment-date">' + escapeHtml(fmtDate(c.created_at || c.createdAt)) + '</span>' +
+        '</div>' +
+        '<div class="ui-comment-body">' + escapeHtml(c.content || '') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+  function loadComments() {
+    fetch(API_BASE + '/api/comments?post_slug=' + encodeURIComponent(POST_SLUG))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var list = Array.isArray(d) ? d : (d && d.comments) || [];
+        renderComments(list);
+      })
+      .catch(function() {
+        commentList.innerHTML = '<div class="ui-comment-empty">' + t().loadFailed + '</div>';
+      });
+  }
+  loadComments();
+
+  commentForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var i18n = t();
+    var payload = {
+      post_slug: POST_SLUG,
+      nickname: (nicknameInput.value || '').trim(),
+      email: (emailInput.value || '').trim() || null,
+      content: (contentInput.value || '').trim(),
+      parent_id: null
+    };
+    if (!payload.nickname || !payload.content) return;
+    submitBtn.disabled = true;
+    formStatus.className = 'ui-form-status';
+    formStatus.textContent = i18n.posting;
+    fetch(API_BASE + '/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function(r) {
+        return r.json().then(function(j) { return { ok: r.ok, body: j }; });
+      })
+      .then(function(res) {
+        if (!res.ok) throw new Error((res.body && (res.body.error || res.body.message)) || 'Failed');
+        formStatus.className = 'ui-form-status success';
+        formStatus.textContent = i18n.posted;
+        commentForm.reset();
+        loadComments();
+        if (typeof umami !== 'undefined') umami.track('post-comment', { post: POST_SLUG });
+        setTimeout(function() { formStatus.textContent = ''; formStatus.className = 'ui-form-status'; }, 3000);
+      })
+      .catch(function(err) {
+        formStatus.className = 'ui-form-status error';
+        formStatus.textContent = i18n.postFailed + (err.message || '');
+      })
+      .finally(function() { submitBtn.disabled = false; });
+  });
+})();
+</script>
+
+</body>
+</html>
