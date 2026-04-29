@@ -128,11 +128,14 @@ import BaseLayout from '../layouts/BaseLayout.astro';
   <div class="container">
     <div class="bear-wrapper" id="bearWrapper">
       <canvas id="bear" width="13" height="20"></canvas>
-      <div class="weather-line" id="weatherLine">
-        <canvas id="weatherIcon" width="16" height="16"></canvas>
-        <span>Singapore</span>
-        <span class="temp" id="weatherTemp"></span>
-        <span id="weatherDesc"></span>
+      <div class="bear-meta">
+        <div class="weather-line" id="weatherLine">
+          <canvas id="weatherIcon" width="16" height="16"></canvas>
+          <span>Singapore</span>
+          <span class="temp" id="weatherTemp"></span>
+          <span id="weatherDesc"></span>
+        </div>
+        <div class="online-line" data-online="site" data-online-template='<span class="online-dot"></span><span class="online-count">{n}</span> online' data-online-min="1" style="display:none"></div>
       </div>
     </div>
 
@@ -3305,4 +3308,37 @@ import BaseLayout from '../layouts/BaseLayout.astro';
       }
     })();
   </script>
+
+  <!-- Online presence (site-wide, tiered + i18n) -->
+  <script is:inline>
+    (function () {
+      var DOT = '<span class="online-dot"></span>';
+      var N = '<span class="online-count">{n}</span>';
+      var tiersZh = [
+        { max: 1,   html: '✦ 此刻仅你一人在此' },
+        { max: 9,   html: DOT + '此刻有 ' + N + ' 人在站' },
+        { max: 19,  html: DOT + N + ' 人在站 · 热闹了起来' },
+        { max: 29,  html: DOT + '人潮汇聚 · ' + N + ' 人在站' },
+        { max: 99,  html: '🔥 ' + N + ' 人在线 · 站点活跃' },
+        { max: Infinity, html: '🔥 ' + N + ' 人在线 · 史无前例' }
+      ];
+      var tiersEn = [
+        { max: 1,   html: '✦ Just you here right now' },
+        { max: 9,   html: DOT + N + ' online' },
+        { max: 19,  html: DOT + N + ' online · getting busy' },
+        { max: 29,  html: DOT + 'a small crowd · ' + N + ' online' },
+        { max: 99,  html: '🔥 ' + N + ' online · alive' },
+        { max: Infinity, html: '🔥 ' + N + ' online · unprecedented' }
+      ];
+      function pickTiers() {
+        return (window.currentLang === 'zh') ? tiersZh : tiersEn;
+      }
+      window.__ONLINE_CONFIG__ = { pageId: null, tiers: pickTiers() };
+      window.addEventListener('langchange', function () {
+        window.__ONLINE_CONFIG__.tiers = pickTiers();
+        if (window.__onlineRefresh) window.__onlineRefresh();
+      });
+    })();
+  </script>
+  <script is:inline src="/assets/online-presence.js" defer></script>
 </BaseLayout>

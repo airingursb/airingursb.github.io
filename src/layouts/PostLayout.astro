@@ -287,13 +287,16 @@ const jsonLd = {
     <!-- Article Like -->
     <div class="article-like-section">
       <div class="al-rule"></div>
-      <button class="article-like-btn" id="articleLikeBtn">
-        <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22">
-          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/>
-        </svg>
-        <span class="al-count" id="articleLikeCount">0</span>
-        <span class="al-label">likes</span>
-      </button>
+      <div class="al-stack">
+        <button class="article-like-btn" id="articleLikeBtn">
+          <svg class="al-icon" viewBox="0 0 24 24" fill="none" width="22" height="22">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          </svg>
+          <span class="al-count" id="articleLikeCount">0</span>
+          <span class="al-label">likes</span>
+        </button>
+        <span class="online-indicator article-online" data-online="page" data-online-template='<span class="online-dot"></span><span class="online-count">{n}</span> 人在读' data-online-min="1" style="display:none"></span>
+      </div>
       <div class="al-rule"></div>
     </div>
 
@@ -1549,6 +1552,38 @@ const jsonLd = {
 })();
 </script>
 
+<!-- Online presence (per-post) -->
+<script is:inline>
+  (function () {
+    var path = location.pathname;
+    var isEn = /^\/en\/posts\//.test(path);
+    var slug = path.replace(/^\/(?:en\/)?posts\//, '').replace(/\/$/, '');
+    var DOT = '<span class="online-dot"></span>';
+    var COUNT = '<span class="online-count">{n}</span>';
+    var tiersZh = [
+      { max: 1,   html: '✦ 你是此刻唯一在读的人' },
+      { max: 9,   html: DOT + '此刻有 ' + COUNT + ' 人在读' },
+      { max: 19,  html: DOT + COUNT + ' 人正在读这篇' },
+      { max: 29,  html: DOT + '茶座坐满了,' + COUNT + ' 人' },
+      { max: 99,  html: '🔥 ' + COUNT + ' 人聚在这,人声渐沸' },
+      { max: Infinity, html: '🔥 ' + COUNT + ' 人围读!这篇火了' }
+    ];
+    var tiersEn = [
+      { max: 1,   html: '✦ You are the only one reading right now' },
+      { max: 9,   html: DOT + COUNT + ' people reading right now' },
+      { max: 19,  html: DOT + COUNT + ' reading this piece' },
+      { max: 29,  html: DOT + 'A full house, ' + COUNT + ' reading' },
+      { max: 99,  html: '🔥 ' + COUNT + ' gathered here, buzzing' },
+      { max: Infinity, html: '🔥 ' + COUNT + ' readers, this is on fire' }
+    ];
+    window.__ONLINE_CONFIG__ = {
+      pageId: 'post/' + slug,
+      tiers: isEn ? tiersEn : tiersZh
+    };
+  })();
+</script>
+<script is:inline src="/assets/online-presence.js" defer></script>
+
 <style>
   .post-page {
     width: 100%; min-height: 100vh;
@@ -2093,6 +2128,14 @@ const jsonLd = {
     padding: 48px 48px 0;
     padding-left: calc(48px + 160px + 40px);
     padding-right: calc(48px + 280px + 40px);
+  }
+  .al-stack {
+    display: flex; flex-direction: column; align-items: center; gap: 12px;
+  }
+  .article-online {
+    font-size: 12px;
+    color: var(--c-text-dim);
+    white-space: nowrap;
   }
   .al-rule {
     flex: 1; height: 1px; background: var(--c-border);
