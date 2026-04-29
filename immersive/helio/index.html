@@ -5035,6 +5035,27 @@ se-&gt;start(self.gameEJView.jsGlobalContext);</code></pre>
 .ui-like.liked .ui-count { color: #991b1b; }
 .ui-views { cursor: default; color: #6b6b6b; }
 .ui-views:hover { background: transparent; border-color: #e3dfd2; color: #6b6b6b; }
+.ui-online {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 18px; border-radius: 999px;
+  background: rgba(34,197,94,0.05); border: 1px solid rgba(34,197,94,0.25);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Inter", sans-serif;
+  font-size: 12.5px; font-weight: 500; color: #15803d; line-height: 1;
+  cursor: default; opacity: 0; transition: opacity 0.4s;
+}
+.ui-online.loaded { opacity: 1; }
+.ui-online .ui-count { color: #15803d; }
+.ui-online-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 0 0 rgba(34,197,94,0.55);
+  animation: ui-online-pulse 2s ease-in-out infinite;
+}
+@keyframes ui-online-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+  70%  { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+  100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+}
 .ui-stat-divider { width: 1px; height: 14px; background: #d4d0c4; margin: 0 4px; }
 .ui-count {
   font-family: Georgia, "Source Han Serif SC", serif;
@@ -5103,6 +5124,7 @@ se-&gt;start(self.gameEJView.jsGlobalContext);</code></pre>
         </svg>
         <span class="ui-share-text"><span lang="zh">分享</span><span lang="en">Share</span></span>
       </button>
+      <div class="ui-online" data-online="page" data-online-template='<span class="ui-online-dot"></span><span class="ui-count">{n}</span><span><span lang="zh">在读</span><span lang="en">reading</span></span>' data-online-min="1" style="display:none"></div>
     </div>
 
     <!-- Comment form -->
@@ -5517,5 +5539,28 @@ se-&gt;start(self.gameEJView.jsGlobalContext);</code></pre>
   });
 })();
 </script>
+
+<!-- Online presence (per-page) -->
+<script>
+(function () {
+  var DOT = '<span class="ui-online-dot"></span>';
+  var N = '<span class="ui-count">{n}</span>';
+  function dual(zh, en) {
+    return '<span lang="zh">' + zh + '</span><span lang="en">' + en + '</span>';
+  }
+  window.__ONLINE_CONFIG__ = {
+    pageId: 'note/helio',
+    tiers: [
+      { max: 1,   html: '✦ ' + dual('你是此刻唯一在读的人', 'You are the only one reading right now') },
+      { max: 9,   html: DOT + dual('此刻有 ' + N + ' 人在读', N + ' people reading right now') },
+      { max: 19,  html: DOT + dual(N + ' 人正在读这篇', N + ' reading this piece') },
+      { max: 29,  html: DOT + dual('茶座坐满了,' + N + ' 人', 'A full house, ' + N + ' reading') },
+      { max: 99,  html: '🔥 ' + dual(N + ' 人聚在这,人声渐沸', N + ' gathered here, buzzing') },
+      { max: Infinity, html: '🔥 ' + dual(N + ' 人围读!这篇火了', N + ' readers, this is on fire') }
+    ]
+  };
+})();
+</script>
+<script src="/assets/online-presence.js" defer></script>
 </body>
 </html>
