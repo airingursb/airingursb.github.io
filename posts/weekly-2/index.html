@@ -639,22 +639,52 @@
     return mark;
   }
 
+  // Find a Range spanning `searchText` inside `root`. Walks all text nodes,
+  // concatenates them into a single string, indexOf, then maps back to the
+  // (startNode, startOffset, endNode, endOffset) the Range API needs. This
+  // handles selections that cross element boundaries (e.g. text inside <a>
+  // followed by sibling text after </a>) — the original single-node search
+  // would never match those.
+  function findRangeByText(root, searchText) {
+    var walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var nodes = [];
+    var fullText = '';
+    var n;
+    while (n = walker.nextNode()) {
+      nodes.push({ node: n, start: fullText.length });
+      fullText += n.textContent;
+    }
+    var idx = fullText.indexOf(searchText);
+    if (idx === -1) return null;
+    var endIdx = idx + searchText.length;
+
+    var startNode = null, startOffset = 0, endNode = null, endOffset = 0;
+    for (var i = 0; i < nodes.length; i++) {
+      var entry = nodes[i];
+      var entryEnd = entry.start + entry.node.textContent.length;
+      if (startNode === null && idx >= entry.start && idx <= entryEnd) {
+        startNode = entry.node;
+        startOffset = idx - entry.start;
+      }
+      if (endIdx >= entry.start && endIdx <= entryEnd) {
+        endNode = entry.node;
+        endOffset = endIdx - entry.start;
+        break;
+      }
+    }
+    if (!startNode || !endNode) return null;
+    var range = document.createRange();
+    range.setStart(startNode, startOffset);
+    range.setEnd(endNode, endOffset);
+    return range;
+  }
+
   function restoreHighlights() {
     inlineComments.forEach(function(c) {
       if (postContent.querySelector('mark[data-comment-id="' + c.id + '"]')) return;
-      var searchText = c.selected_text;
-      if (!searchText) return;
-      var walker = document.createTreeWalker(postContent, NodeFilter.SHOW_TEXT, null, false);
-      var node;
-      while (node = walker.nextNode()) {
-        var idx = node.textContent.indexOf(searchText);
-        if (idx === -1) continue;
-        var range = document.createRange();
-        range.setStart(node, idx);
-        range.setEnd(node, idx + searchText.length);
-        wrapRange(range, c.id);
-        break;
-      }
+      if (!c.selected_text) return;
+      var range = findRangeByText(postContent, c.selected_text);
+      if (range) wrapRange(range, c.id);
     });
   }
 
