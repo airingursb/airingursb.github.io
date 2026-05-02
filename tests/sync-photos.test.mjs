@@ -60,3 +60,38 @@ test('scanSource throws on duplicate slugs', async () => {
     await fs.rm(tmp, { recursive: true, force: true });
   }
 });
+
+import { normalizeExif } from '../scripts/lib/photos-exif.mjs';
+
+test('normalizeExif maps standard tags', () => {
+  const raw = {
+    Make: 'SONY',
+    Model: 'ILCE-7M4',
+    LensModel: 'FE 24-70mm F2.8 GM II',
+    ISO: 400,
+    ExposureTime: 1 / 250,
+    FNumber: 2.8,
+    FocalLength: 35,
+    DateTimeOriginal: new Date('2024-08-15T18:30:00Z'),
+  };
+  const n = normalizeExif(raw);
+  assert.equal(n.camera, 'Sony ILCE-7M4');
+  assert.equal(n.lens, 'FE 24-70mm F2.8 GM II');
+  assert.equal(n.iso, 400);
+  assert.equal(n.shutter, '1/250');
+  assert.equal(n.aperture, 'f/2.8');
+  assert.equal(n.focalLength, '35mm');
+  assert.equal(n.takenAt, '2024-08-15T18:30:00.000Z');
+});
+
+test('normalizeExif handles missing fields', () => {
+  const n = normalizeExif({});
+  assert.equal(n.camera, null);
+  assert.equal(n.iso, null);
+  assert.equal(n.takenAt, null);
+});
+
+test('normalizeExif formats slow shutter as decimal', () => {
+  const n = normalizeExif({ ExposureTime: 2.5 });
+  assert.equal(n.shutter, '2.5s');
+});
