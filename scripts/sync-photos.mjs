@@ -20,6 +20,7 @@ import { normalizeExif } from './lib/photos-exif.mjs';
 import { generateVariants } from './lib/photos-variants.mjs';
 import { uploadIfChanged, publicUrl } from './lib/photos-r2.mjs';
 import { reverseGeocode, cityCoords } from './lib/photos-geocode.mjs';
+import { computeHistogram } from './lib/photos-histogram.mjs';
 import {
   readManifest,
   writeManifest,
@@ -113,13 +114,24 @@ async function resolvePlace({ sidecarPlace, autoPlace, existingPlace, filePath }
 async function processPhoto(entry, existingRecord) {
   const sourceHash = await sha256File(entry.filePath);
   if (existingRecord && existingRecord.sourceHash === sourceHash) {
-    // unchanged — refresh metadata fields from sidecar; backfill place if missing
+    // unchanged — refresh metadata; backfill place + histogram if missing
     const place = await resolvePlace({
       sidecarPlace: entry.placeOverride,
       autoPlace: null,
       existingPlace: existingRecord.place,
       filePath: existingRecord.place ? null : entry.filePath, // backfill only if needed
     });
+    let histogram = existingRecord.histogram;
+    if (!histogram) {
+      const { decodePath, cleanup } = await prepareDecodable(entry.filePath);
+      try {
+        histogram = await computeHistogram(decodePath);
+      } catch (err) {
+        console.warn(`  ! histogram backfill failed for ${entry.slug}: ${err.message}`);
+      } finally {
+        await cleanup();
+      }
+    }
     const updated = {
       ...existingRecord,
       title: entry.title || existingRecord.title,
@@ -128,13 +140,14 @@ async function processPhoto(entry, existingRecord) {
     };
     if (place) updated.place = place;
     else delete updated.place;
+    if (histogram) updated.histogram = histogram;
     console.log(`  ✓ ${entry.slug} (unchanged binary)${place ? ` · ${place.city}` : ''}`);
     return updated;
   }
 
   console.log(`  ⟳ ${entry.slug} — processing`);
   const { decodePath, cleanup } = await prepareDecodable(entry.filePath);
-  let width, height, dominant, outputs, exif, autoPlace = null;
+  let width, height, dominant, outputs, exif, histogram, autoPlace = null;
   try {
     const buf = await fs.readFile(decodePath);
     const rawExif = (await exifr.parse(buf, { tiff: true, exif: true, gps: true })) || {};
@@ -144,6 +157,7 @@ async function processPhoto(entry, existingRecord) {
       autoPlace = await reverseGeocode(rawExif.latitude, rawExif.longitude);
     }
     ({ width, height, dominant, outputs } = await generateVariants(decodePath));
+    histogram = await computeHistogram(decodePath);
   } finally {
     await cleanup();
   }
@@ -181,6 +195,7 @@ async function processPhoto(entry, existingRecord) {
       focalLength: exif.focalLength,
     },
     ...(place ? { place } : {}),
+    ...(histogram ? { histogram } : {}),
     variants: buildVariantUrls(entry.slug),
     sourceHash,
     syncedAt: new Date().toISOString(),

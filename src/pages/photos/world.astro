@@ -1,6 +1,6 @@
 ---
 import '../../styles/photos.css';
-import 'leaflet/dist/leaflet.css';
+// Leaflet CSS + JS are loaded globally from BaseLayout (CDN); use window.L
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LangSwitch from '../../components/LangSwitch.astro';
 import photosData from '../../data/photos.json';
@@ -101,7 +101,8 @@ const pinsJson = JSON.stringify(pins);
   </div>
 
   <script>
-    import L from 'leaflet';
+    // Leaflet is loaded globally via BaseLayout CDN
+    const L = (window as any).L;
 
     type Pin = {
       citySlug: string;
@@ -115,7 +116,7 @@ const pinsJson = JSON.stringify(pins);
     };
 
     const el = document.getElementById('worldMap');
-    if (el) {
+    if (el && L) {
       const pins: Pin[] = JSON.parse(el.dataset.pins || '[]');
       const dark = document.documentElement.dataset.mode === 'dark';
       const tileUrl = dark

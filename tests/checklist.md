@@ -171,3 +171,11 @@
 - [ ] 点 marker 弹出 popup,内含缩略图 + city + country + 张数
 - [ ] popup 卡片 `.world-pop` 是链接,点击跳 `/photos/places/<city>`
 - [ ] DOM: `.view-switcher-active` 文本为 `Map`
+
+## Photos — Histogram (`/photos/<slug>` — every photo synced after histogram support)
+
+- [ ] DOM: `<canvas id="histogramCanvas">` 存在 + `data-histogram` 是合法 JSON
+- [ ] Evaluate: JSON.parse(canvas.dataset.histogram) 含 `red`, `green`, `blue`, `luminance` 四个数组,每个长度 128
+- [ ] CSS: `.meta-histogram-canvas` 高度 110px(移动端 90px),背景 `rgba(28, 28, 30, 0.95)`
+- [ ] Evaluate: 加载后 canvas.width > 0(已初始化绘制)
+- [ ] Screenshot: 画面有暗背景 + RGB 叠加柱(Apple 配色)+ Luma 半透白底
