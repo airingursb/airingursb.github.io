@@ -1,0 +1,146 @@
+---
+import '../../styles/photos.css';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { siteStrings } from '../../lib/i18n';
+import photosData from '../../data/photos.json';
+
+export async function getStaticPaths() {
+  const photos = photosData as Array<any>;
+  return photos.map((p, i) => ({
+    params: { slug: p.slug },
+    props: {
+      photo: p,
+      prev: photos[i - 1] || null,
+      next: photos[i + 1] || null,
+    },
+  }));
+}
+
+const { photo, prev, next } = Astro.props as any;
+const s = siteStrings.en.photos;
+
+const exifRows: Array<[string, string | number | null]> = [
+  ['Camera', photo.exif.camera],
+  ['Lens', photo.exif.lens],
+  ['Focal', photo.exif.focalLength],
+  ['Aperture', photo.exif.aperture],
+  ['Shutter', photo.exif.shutter],
+  ['ISO', photo.exif.iso],
+  ['Taken', photo.takenAt
+    ? new Date(photo.takenAt).toLocaleString('en-US', {
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+      })
+    : null,
+  ],
+  ['Dimensions', `${photo.width} × ${photo.height}`],
+];
+---
+
+<BaseLayout
+  title={`${photo.title || photo.slug} · ${s.title} · Airing`}
+  description={photo.description || s.desc}
+  lang="en"
+>
+  <div class="photo-detail-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/en/blog" class="mast-hide-mobile">Blog</a>
+            <a href="/en/archive" class="mast-hide-mobile">Archive</a>
+            <a href="/en/moments">Moment</a>
+            <a href="/en/notes">Notes</a>
+            <a href="/photos" class="mast-link-active">Photos</a>
+            <a href="/en/friends">Friends</a>
+          </div>
+        </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="en" currentPath={`/photos/${photo.slug}`} hasEnVersion={false} />
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <nav class="detail-bar">
+      <a href="/photos">← All photos</a>
+      <div class="detail-nav">
+        {prev
+          ? <a href={`/photos/${prev.slug}`} aria-label="Previous photo">‹ Prev</a>
+          : <a class="disabled" aria-disabled="true">‹ Prev</a>}
+        {next
+          ? <a href={`/photos/${next.slug}`} aria-label="Next photo">Next ›</a>
+          : <a class="disabled" aria-disabled="true">Next ›</a>}
+      </div>
+    </nav>
+
+    <div class="detail-layout">
+      <div class="detail-stage" style={`--dom: ${photo.dominantColor}`}>
+        <picture>
+          <source type="image/avif" srcset={photo.variants.full.avif} />
+          <source type="image/webp" srcset={photo.variants.full.webp} />
+          <img
+            src={photo.variants.full.webp}
+            alt={photo.title || photo.slug}
+            width={photo.width}
+            height={photo.height}
+            loading="eager"
+            decoding="async"
+          />
+        </picture>
+      </div>
+
+      <aside class="detail-info">
+        {photo.title && <h1>{photo.title}</h1>}
+        {photo.description && <p class="detail-desc">{photo.description}</p>}
+
+        <dl class="detail-exif">
+          {exifRows.map(([k, v]) =>
+            v != null && v !== '' ? <><dt>{k}</dt><dd>{v}</dd></> : null
+          )}
+        </dl>
+
+        {photo.tags && photo.tags.length > 0 && (
+          <div class="detail-tags">
+            {photo.tags.map((t: string) => <span class="detail-tag">#{t}</span>)}
+          </div>
+        )}
+      </aside>
+    </div>
+  </div>
+
+  <style>
+    .masthead { width: 100%; }
+    .mast-inner { max-width: 1400px; margin: 0 auto; padding: 0 48px; }
+    .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+    .mast-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; position: relative;
+    }
+    .mast-brand {
+      font-size: 11px; color: var(--c-text-muted); text-decoration: none;
+      letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+    }
+    .mast-brand:hover { color: var(--c-text); }
+    .mast-links { display: flex; gap: 16px; }
+    .mast-links a {
+      font-size: 11px; color: var(--c-text-dim); text-decoration: none;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .mast-links a:hover, .mast-link-active { color: var(--c-text) !important; }
+    .mast-bottom-rule { height: 1px; background: var(--c-border); }
+    .mast-lang-line {
+      display: flex;
+      justify-content: flex-end;
+      padding: 4px 0 8px 0;
+    }
+
+    @media (max-width: 640px) {
+      .mast-inner { padding: 0 20px; }
+      .mast-hide-mobile { display: none; }
+    }
+  </style>
+</BaseLayout>

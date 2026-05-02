@@ -1,5 +1,7 @@
+/* ── Grid (sambecker-style: uniform 3:2 cells, cover crop, tight gap) ── */
+
 .photos-page {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 0 1.25rem;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -10,16 +12,16 @@
 }
 
 .photos-title {
-  font-size: 2.5rem;
+  font-size: 2rem;
   font-weight: 200;
   letter-spacing: -0.02em;
   margin: 1rem 0 0.5rem;
 }
 
 .photos-desc {
-  color: var(--color-text-secondary, #888);
-  font-size: 0.95rem;
-  margin: 0 0 3rem;
+  color: var(--c-text-muted, #888);
+  font-size: 0.9rem;
+  margin: 0 0 2rem;
 }
 
 .photos-empty {
@@ -33,154 +35,154 @@
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 3rem 1.5rem;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
 }
 
 @media (min-width: 768px) {
-  .photos-grid { grid-template-columns: repeat(2, 1fr); }
+  .photos-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
 @media (min-width: 1280px) {
-  .photos-grid { grid-template-columns: repeat(3, 1fr); }
+  .photos-grid { grid-template-columns: repeat(4, 1fr); }
 }
 
 .photo-card { margin: 0; }
 
 .photo-link {
   display: block;
-  color: inherit;
-  text-decoration: none;
-}
-
-.photo-frame {
+  aspect-ratio: 3 / 2;
   background: var(--dom, #1a1a1a);
   overflow: hidden;
-  border-radius: 2px;
+  position: relative;
 }
 
-.photo-frame img {
+.photo-link picture,
+.photo-link img {
   display: block;
   width: 100%;
-  height: auto;
-  transition: opacity 200ms;
+  height: 100%;
 }
 
-.photo-link:hover .photo-frame img { opacity: 0.92; }
+.photo-link img {
+  object-fit: cover;
+  transition: transform 400ms ease, opacity 200ms;
+}
 
-.photo-exif {
-  margin-top: 0.6rem;
-  font-size: 0.72rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: var(--color-text-secondary, #999);
+.photo-link:hover img { transform: scale(1.04); }
+
+/* ── Photo detail page ─────────────────────────────────────── */
+
+.photo-detail-page {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.25rem 4rem;
+  color: var(--c-text, #ddd);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.detail-bar {
   display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  letter-spacing: 0.02em;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 0 1.5rem;
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-.exif-cam { color: var(--color-text, #ddd); font-weight: 500; }
-.exif-lens { color: #888; }
-.exif-trio { color: #777; }
-.exif-sep { margin: 0 0.4rem; opacity: 0.5; }
+.detail-bar a {
+  color: var(--c-text-dim, #888);
+  text-decoration: none;
+  transition: color 150ms;
+}
+.detail-bar a:hover { color: var(--c-text, #fff); }
+.detail-bar a.disabled { opacity: 0.3; pointer-events: none; }
 
-/* ── Lightbox ──────────────────────────────────────────── */
+.detail-nav { display: flex; gap: 1.5rem; }
 
-.lightbox[hidden] { display: none; }
-
-.lightbox {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.96);
-  z-index: 9999;
+.detail-layout {
   display: grid;
   grid-template-columns: 1fr;
-  grid-template-rows: 1fr auto;
-  overflow: auto;
+  gap: 1.5rem;
 }
 
 @media (min-width: 1024px) {
-  .lightbox {
-    grid-template-columns: 1fr 320px;
-    grid-template-rows: 1fr;
+  .detail-layout {
+    grid-template-columns: 1fr 280px;
+    align-items: start;
+    gap: 2rem;
   }
 }
 
-.lightbox-close {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  z-index: 1;
-  background: transparent;
-  border: 0;
-  color: #fff;
-  font-size: 2rem;
-  line-height: 1;
-  width: 2.5rem;
-  height: 2.5rem;
-  cursor: pointer;
-  opacity: 0.7;
-}
-.lightbox-close:hover { opacity: 1; }
-
-.lightbox-stage {
+.detail-stage {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
-  min-height: 60vh;
+  min-height: 50vh;
+  background: var(--dom, #0a0a0a);
 }
 
-.lightbox-stage img {
-  max-width: 100%;
-  max-height: 90vh;
-  object-fit: contain;
+.detail-stage img {
   display: block;
+  max-width: 100%;
+  max-height: 85vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
 }
 
-.lightbox-info {
-  background: #0a0a0a;
-  color: #ddd;
-  padding: 2rem 1.5rem;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-  border-top: 1px solid #1a1a1a;
-}
+.detail-info { padding-top: 0.5rem; }
 
-@media (min-width: 1024px) {
-  .lightbox-info {
-    border-top: 0;
-    border-left: 1px solid #1a1a1a;
-    overflow-y: auto;
-  }
-}
-
-.lightbox-info h2 {
-  font-size: 1.1rem;
-  font-weight: 400;
+.detail-info h1 {
+  font-size: 1.15rem;
+  font-weight: 500;
   margin: 0 0 0.5rem;
+  color: var(--c-text, #ddd);
+  letter-spacing: -0.01em;
 }
 
-.lightbox-info p {
-  color: #888;
+.detail-desc {
+  color: var(--c-text-muted, #888);
   font-size: 0.85rem;
-  line-height: 1.5;
+  line-height: 1.55;
+  margin: 0 0 1.75rem;
+}
+
+.detail-exif {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.45rem 1rem;
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   margin: 0 0 1.5rem;
 }
 
-.lightbox-info dl {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.4rem 1.2rem;
-  font-size: 0.8rem;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  margin: 0;
-}
-
-.lightbox-info dt {
-  color: #666;
+.detail-exif dt {
+  color: var(--c-text-dim, #666);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  font-size: 0.65rem;
 }
 
-.lightbox-info dd { margin: 0; color: #ddd; }
+.detail-exif dd {
+  margin: 0;
+  color: var(--c-text, #ddd);
+  word-break: break-word;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.detail-tag {
+  font-size: 0.7rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: var(--c-text-dim, #888);
+  border: 1px solid var(--c-border, #2a2a2a);
+  padding: 0.18rem 0.5rem;
+  border-radius: 2px;
+}
