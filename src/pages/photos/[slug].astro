@@ -38,6 +38,27 @@ function formatTakenAt(iso: string | null): string {
 }
 
 const takenAtFormatted = formatTakenAt(photo.takenAt);
+
+// Camera short form for the share-card overlay: drop make ("Sony ILCE-7M4" → "ILCE-7M4")
+const cameraShort = photo.exif.camera
+  ? photo.exif.camera.replace(/^\S+\s+/, '')
+  : '';
+
+// Full canonical URL for sharing (uses Astro.site, falls back to ursb.me)
+const fullUrl = new URL(`/photos/${photo.slug}`, Astro.site || 'https://ursb.me').href;
+const displayUrl = fullUrl.replace(/^https?:\/\//, '');
+
+// Build the EXIF overlay string ("X-T5 90mm ƒ/2 ISO 125")
+const overlayBits = [
+  cameraShort,
+  photo.exif.focalLength,
+  photo.exif.aperture,
+  photo.exif.iso != null ? `ISO ${photo.exif.iso}` : null,
+].filter(Boolean);
+
+const shareText = photo.title || photo.slug;
+const threadsHref = `https://www.threads.net/intent/post?text=${encodeURIComponent(shareText + ' ' + fullUrl)}`;
+const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(shareText)}`;
 ---
 
 <BaseLayout
@@ -214,8 +235,69 @@ const takenAtFormatted = formatTakenAt(photo.takenAt);
     </div>
   </div>
 
-  <script is:inline define:vars={{ photoTitle: photo.title || photo.slug, photoDesc: photo.description || '' }}>
+  {/* ── Share modal ────────────────────────────────────────── */}
+  <div class="share-modal" id="shareModal" hidden>
+    <button type="button" class="share-backdrop" id="shareBackdrop" aria-label="Close share dialog"></button>
+    <div class="share-card" role="dialog" aria-modal="true" aria-label="Share photo">
+      <button type="button" class="share-close" id="shareClose" aria-label="Close">×</button>
+
+      <div class="share-image">
+        <picture>
+          <source type="image/avif" srcset={photo.variants.medium.avif} />
+          <source type="image/webp" srcset={photo.variants.medium.webp} />
+          <img src={photo.variants.medium.webp} alt={photo.title || photo.slug} />
+        </picture>
+        {overlayBits.length > 0 && (
+          <div class="share-overlay">
+            {overlayBits.map((bit, i) => (
+              <>
+                {i > 0 && <span class="share-overlay-sep">{' '}</span>}
+                <span>{bit && bit.toString().startsWith('f/')
+                  ? <><i>ƒ</i>{bit.toString().slice(1)}</>
+                  : bit}</span>
+              </>
+            ))}
+          </div>
+        )}
+        <div class="share-image-meta">
+          {photo.title && <h3>{photo.title}</h3>}
+          {takenAtFormatted && <div class="share-image-date">{takenAtFormatted}</div>}
+        </div>
+      </div>
+
+      <div class="share-row">
+        <input type="text" readonly value={displayUrl} class="share-url" id="shareUrl" />
+        <div class="share-actions-row">
+          <button type="button" class="share-act" id="shareCopy" aria-label="Copy link" title="Copy link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="8" y="8" width="12" height="12" rx="2" />
+              <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+            </svg>
+          </button>
+          <a href={threadsHref} class="share-act" target="_blank" rel="noopener noreferrer" aria-label="Share to Threads" title="Share to Threads">
+            {/* Simplified Threads logo */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.21 11.16c-.09-.04-.18-.08-.27-.12-.16-2.97-1.78-4.67-4.51-4.69h-.04c-1.63 0-2.99.7-3.83 1.96l1.5 1.03c.62-.94 1.6-1.14 2.33-1.14h.03c.91.01 1.6.27 2.04.78.32.37.54.88.65 1.52-.83-.14-1.73-.18-2.69-.13-2.71.16-4.46 1.74-4.34 3.94.06 1.12.62 2.08 1.57 2.71.81.53 1.85.79 2.93.73 1.43-.08 2.55-.62 3.34-1.62.6-.76.97-1.74 1.14-2.97.7.42 1.21.97 1.5 1.63.49 1.13.52 2.97-.98 4.47-1.31 1.31-2.89 1.88-5.27 1.9-2.64-.02-4.64-.87-5.93-2.52-1.21-1.55-1.84-3.79-1.86-6.65.02-2.86.65-5.1 1.86-6.65 1.29-1.65 3.29-2.5 5.93-2.52 2.66.02 4.7.87 6.06 2.54.67.81 1.17 1.84 1.51 3.04l1.79-.48c-.41-1.47-1.05-2.74-1.91-3.79C16.99 1.95 14.5.86 11.45.84h-.01C8.39.86 5.93 1.96 4.21 4.1 2.69 6 1.91 8.65 1.89 11.99v.02c.02 3.34.79 5.99 2.32 7.89 1.71 2.14 4.18 3.24 7.23 3.26h.01c2.71-.02 4.62-.73 6.2-2.31 2.07-2.06 2-4.65 1.32-6.24-.49-1.16-1.43-2.1-2.71-2.71zm-4.6 3.91c-1.2.07-2.45-.47-2.51-1.6-.04-.83.59-1.76 2.58-1.87.23-.01.45-.02.67-.02.72 0 1.39.07 2 .2-.23 2.84-1.56 3.22-2.74 3.29z" />
+            </svg>
+          </a>
+          <a href={xHref} class="share-act" target="_blank" rel="noopener noreferrer" aria-label="Share to X" title="Share to X">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </a>
+          <button type="button" class="share-act" id="shareNative" aria-label="More share options" title="More">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline define:vars={{ photoTitle: photo.title || photo.slug, fullUrl }}>
     (function () {
+      // Fullscreen on the stage element
       var fullBtn = document.getElementById('fullBtn');
       var stage = document.getElementById('stageEl');
       if (fullBtn && stage) {
@@ -228,38 +310,71 @@ const takenAtFormatted = formatTakenAt(photo.takenAt);
         });
       }
 
-      var shareBtn = document.getElementById('shareBtn');
-      if (shareBtn) {
-        shareBtn.addEventListener('click', async function () {
-          var url = window.location.href;
-          var shareData = {
-            title: photoTitle,
-            text: photoDesc || photoTitle,
-            url: url,
-          };
-          // Prefer native share sheet (mobile)
-          if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-            try {
-              await navigator.share(shareData);
-              return;
-            } catch (e) {
-              if (e && e.name === 'AbortError') return;
-            }
-          }
-          // Fallback: copy URL to clipboard
-          try {
-            await navigator.clipboard.writeText(url);
-            shareBtn.classList.add('copied');
-            shareBtn.setAttribute('title', 'Link copied');
-            setTimeout(function () {
-              shareBtn.classList.remove('copied');
-              shareBtn.setAttribute('title', 'Share');
-            }, 1800);
-          } catch (e) {
-            window.prompt('Copy this link:', url);
-          }
-        });
+      // Share modal
+      var modal = document.getElementById('shareModal');
+      var openBtn = document.getElementById('shareBtn');
+      var closeBtn = document.getElementById('shareClose');
+      var backdrop = document.getElementById('shareBackdrop');
+      var copyBtn = document.getElementById('shareCopy');
+      var nativeBtn = document.getElementById('shareNative');
+      var urlInput = document.getElementById('shareUrl');
+
+      function openModal() {
+        if (!modal) return;
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        // Move focus to close button for accessibility
+        setTimeout(function () { closeBtn && closeBtn.focus(); }, 0);
       }
+      function closeModal() {
+        if (!modal) return;
+        modal.hidden = true;
+        document.body.style.overflow = '';
+        openBtn && openBtn.focus();
+      }
+      openBtn && openBtn.addEventListener('click', openModal);
+      closeBtn && closeBtn.addEventListener('click', closeModal);
+      backdrop && backdrop.addEventListener('click', closeModal);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal && !modal.hidden) closeModal();
+      });
+
+      // Copy link
+      copyBtn && copyBtn.addEventListener('click', async function () {
+        try {
+          await navigator.clipboard.writeText(fullUrl);
+        } catch (e) {
+          urlInput && urlInput.select();
+          try { document.execCommand('copy'); } catch (_) {}
+        }
+        copyBtn.classList.add('copied');
+        var originalLabel = copyBtn.getAttribute('aria-label');
+        copyBtn.setAttribute('aria-label', 'Copied!');
+        setTimeout(function () {
+          copyBtn.classList.remove('copied');
+          copyBtn.setAttribute('aria-label', originalLabel);
+        }, 1800);
+      });
+
+      // Click on URL input to select all (helps non-clipboard users)
+      urlInput && urlInput.addEventListener('click', function () {
+        urlInput.select();
+      });
+
+      // Native share (arrow up icon)
+      nativeBtn && nativeBtn.addEventListener('click', async function () {
+        var data = { title: photoTitle, url: fullUrl };
+        if (navigator.share) {
+          try {
+            await navigator.share(data);
+            return;
+          } catch (e) {
+            if (e && e.name === 'AbortError') return;
+          }
+        }
+        // No native share — fall back to copy
+        copyBtn && copyBtn.click();
+      });
     })();
   </script>
 
