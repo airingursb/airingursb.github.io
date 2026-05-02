@@ -151,3 +151,23 @@
 - [ ] DOM: `.meta-line.meta-link` 内含地图 pin SVG icon
 - [ ] DOM: 该链接 `href` 形如 `/photos/places/<city-slug>`
 - [ ] DOM: 链接文本为 `City, Country` 或仅 `City`
+
+## Photos — Detail page mini map (`/photos/<slug>` with `place.coords`)
+
+- [ ] DOM: `<div id="metaMap">` 存在 + `data-lat` / `data-lng` / `data-city-slug` 属性齐全
+- [ ] CSS: `.meta-map` 高度 160px,有 border + border-radius
+- [ ] Evaluate: 加载后 `#metaMap` 内有 `.leaflet-container`(Leaflet 已初始化)
+- [ ] DOM: 地图上有 `.photo-pin` marker
+- [ ] 点 marker 跳到 `/photos/places/<city-slug>`
+- [ ] 没有 `place.coords` 的照片不渲染 `#metaMap`
+
+## Photos — World map (`/photos/world`)
+
+- [ ] GET: 200 OK
+- [ ] DOM: `.world-map` + `data-pins` 属性,JSON 解析后非空数组
+- [ ] CSS: `.world-map` 高度 70vh / min-height 420px (移动端 56vh / 340px)
+- [ ] Evaluate: `.leaflet-container` 渲染,marker 数量 = unique city 数
+- [ ] 多张照片同城显示 `.photo-pin-multi` (带计数 badge)
+- [ ] 点 marker 弹出 popup,内含缩略图 + city + country + 张数
+- [ ] popup 卡片 `.world-pop` 是链接,点击跳 `/photos/places/<city>`
+- [ ] DOM: `.view-switcher-active` 文本为 `Map`

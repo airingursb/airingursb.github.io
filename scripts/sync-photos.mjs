@@ -19,7 +19,7 @@ import { scanSource } from './lib/photos-source.mjs';
 import { normalizeExif } from './lib/photos-exif.mjs';
 import { generateVariants } from './lib/photos-variants.mjs';
 import { uploadIfChanged, publicUrl } from './lib/photos-r2.mjs';
-import { reverseGeocode } from './lib/photos-geocode.mjs';
+import { reverseGeocode, cityCoords } from './lib/photos-geocode.mjs';
 import {
   readManifest,
   writeManifest,
@@ -95,12 +95,19 @@ async function geocodeFromFile(filePath) {
 }
 
 // Resolve final `place` field: sidecar > auto GPS > existing record > null.
+// Always enriches with city centroid `coords` (forward-geocoded) for maps.
 async function resolvePlace({ sidecarPlace, autoPlace, existingPlace, filePath }) {
-  if (sidecarPlace) return sidecarPlace;
-  if (autoPlace) return autoPlace;
-  if (existingPlace) return existingPlace;
-  if (filePath) return await geocodeFromFile(filePath).catch(() => null);
-  return null;
+  let place = sidecarPlace || autoPlace || existingPlace;
+  if (!place && filePath) {
+    place = await geocodeFromFile(filePath).catch(() => null);
+  }
+  if (!place || !place.city) return null;
+  // Backfill coords if missing (for sidecar overrides or pre-coords records).
+  if (!Array.isArray(place.coords) || place.coords.length !== 2) {
+    const coords = await cityCoords(place.city, place.country).catch(() => null);
+    if (coords) place = { ...place, coords };
+  }
+  return place;
 }
 
 async function processPhoto(entry, existingRecord) {
@@ -140,7 +147,12 @@ async function processPhoto(entry, existingRecord) {
   } finally {
     await cleanup();
   }
-  const place = entry.placeOverride || autoPlace || null;
+  const place = await resolvePlace({
+    sidecarPlace: entry.placeOverride,
+    autoPlace,
+    existingPlace: existingRecord?.place,
+    filePath: null, // already attempted above
+  });
 
   for (const o of outputs) {
     const result = await uploadIfChanged({
