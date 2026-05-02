@@ -123,3 +123,31 @@
 - [ ] Evaluate: 所有 `<pre>` 均带 `astro-code` class（不存在未渲染的裸代码块）
 - [ ] Evaluate: 源 markdown 不含以单反引号起始的多行代码块（`grep '^\`[^\`]'` 仅命中行内代码）
 - [ ] DOM: C++/JS 代码块含 Shiki 着色 span（`.line span[style*="color:"]`）
+
+## Photos — Calendar (`/photos/calendar`)
+
+- [ ] GET: 200 OK
+- [ ] DOM: `.cal-stream` 存在,内含至少一个 `.cal-year`
+- [ ] DOM: `.cal-year-head` 含 `.cal-year-num`(年份)和 `.cal-year-count`(数量)
+- [ ] DOM: `.cal-month-head` 含 `.cal-month-label`(月份英文)和 `.cal-month-count`
+- [ ] DOM: 每个 `.cal-month` 内有 `.photos-grid` + `.photo-card` 链接到 `/photos/<slug>`
+- [ ] DOM: `.view-switcher-active` 文本为 `Calendar`,旁边有 `<a href="/photos">Grid</a>`
+- [ ] CSS: `.cal-year-head` 有 `position: sticky; top: 0`
+- [ ] Evaluate: 年份按降序排列(最新年份在前)
+
+## Photos — Grid view-switcher (`/photos`)
+
+- [ ] DOM: `.view-switcher` 内 `.view-switcher-active` 文本为 `Grid`
+- [ ] DOM: `.view-switcher` 内有 `<a href="/photos/calendar">Calendar</a>`
+
+## Photos — Place taxonomy (`/photos/places/<city>`)
+
+- [ ] GET: `/photos/places/shanghai` 200 OK(若无该城市则换一个 photos.json 里的)
+- [ ] DOM: `.facet-crumbs` 含 "All photos / places" 面包屑
+- [ ] DOM: `.photos-title` 显示 `City, Country` 格式
+
+## Photos — Detail page place line (`/photos/<slug>` for a photo with `place`)
+
+- [ ] DOM: `.meta-line.meta-link` 内含地图 pin SVG icon
+- [ ] DOM: 该链接 `href` 形如 `/photos/places/<city-slug>`
+- [ ] DOM: 链接文本为 `City, Country` 或仅 `City`

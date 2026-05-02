@@ -1,0 +1,208 @@
+---
+import '../../styles/photos.css';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import photosData from '../../data/photos.json';
+
+const photos = photosData as Array<any>;
+
+const monthLabels = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+type MonthGroup = { month: number; label: string; photos: any[] };
+type YearGroup = { year: string; total: number; months: MonthGroup[] };
+
+const byYear = new Map<string, Map<number, any[]>>();
+for (const p of photos) {
+  if (!p.takenAt) continue;
+  const d = new Date(p.takenAt);
+  if (isNaN(d.getTime())) continue;
+  const y = String(d.getFullYear());
+  const m = d.getMonth();
+  if (!byYear.has(y)) byYear.set(y, new Map());
+  const yearMap = byYear.get(y)!;
+  if (!yearMap.has(m)) yearMap.set(m, []);
+  yearMap.get(m)!.push(p);
+}
+
+const years: YearGroup[] = Array.from(byYear.entries())
+  .sort((a, b) => b[0].localeCompare(a[0]))
+  .map(([year, monthMap]) => {
+    const months: MonthGroup[] = Array.from(monthMap.entries())
+      .sort((a, b) => b[0] - a[0])
+      .map(([month, ps]) => ({
+        month,
+        label: monthLabels[month],
+        photos: [...ps].sort((a, b) => (b.takenAt || '').localeCompare(a.takenAt || '')),
+      }));
+    const total = months.reduce((acc, m) => acc + m.photos.length, 0);
+    return { year, total, months };
+  });
+
+const totalPhotos = years.reduce((acc, y) => acc + y.total, 0);
+const undated = photos.filter((p) => !p.takenAt).length;
+---
+
+<BaseLayout
+  title="Calendar · Photos · Airing"
+  description="Photos organized by date."
+  lang="en"
+>
+  <div class="photos-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/en/blog">Blog</a>
+            <a href="/en/archive">Archive</a>
+            <a href="/en/moments">Moment</a>
+            <a href="/en/notes">Notes</a>
+            <a href="/photos" class="mast-link-active">Photos</a>
+            <a href="/en/friends">Friends</a>
+          </div>
+        </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="en" currentPath="/photos/calendar" hasEnVersion={false} />
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <main class="photos-main">
+      <nav class="facet-crumbs">
+        <a href="/photos">All photos</a>
+        <span class="crumb-sep">/</span>
+        <span>calendar</span>
+      </nav>
+      <h1 class="photos-title">Calendar</h1>
+      <p class="photos-desc">
+        {totalPhotos} photo{totalPhotos === 1 ? '' : 's'} grouped by month
+        {undated > 0 ? ` · ${undated} without a date` : ''}.
+      </p>
+
+      <nav class="view-switcher" aria-label="Photo views">
+        <a href="/photos">Grid</a>
+        <span class="view-switcher-active">Calendar</span>
+      </nav>
+
+      {years.length === 0 ? (
+        <p class="photos-empty">No dated photos yet.</p>
+      ) : (
+        <div class="cal-stream">
+          {years.map((y) => (
+            <section class="cal-year">
+              <header class="cal-year-head">
+                <span class="cal-year-num">{y.year}</span>
+                <span class="cal-year-count">{y.total}</span>
+              </header>
+              {y.months.map((m) => (
+                <section class="cal-month">
+                  <header class="cal-month-head">
+                    <h2 class="cal-month-label">{m.label}</h2>
+                    <span class="cal-month-count">{m.photos.length}</span>
+                  </header>
+                  <ul class="photos-grid">
+                    {m.photos.map((p: any) => (
+                      <li class="photo-card" style={`--dom: ${p.dominantColor}`}>
+                        <a href={`/photos/${p.slug}`} class="photo-link" aria-label={p.title || p.slug}>
+                          <picture>
+                            <source type="image/avif" srcset={`${p.variants.thumb.avif} 400w, ${p.variants.medium.avif} 1200w`} sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw" />
+                            <source type="image/webp" srcset={`${p.variants.thumb.webp} 400w, ${p.variants.medium.webp} 1200w`} sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw" />
+                            <img src={p.variants.medium.webp} alt={p.title || p.slug} loading="lazy" decoding="async" />
+                          </picture>
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </section>
+          ))}
+        </div>
+      )}
+    </main>
+  </div>
+
+  <style>
+    .masthead { width: 100%; }
+    .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+    .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+    .mast-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; position: relative; }
+    .mast-brand { font-size: 11px; color: var(--c-text-muted); text-decoration: none; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+    .mast-brand:hover { color: var(--c-text); }
+    .mast-links { display: flex; gap: 16px; }
+    .mast-links a { font-size: 11px; color: var(--c-text-dim); text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase; }
+    .mast-links a:hover, .mast-link-active { color: var(--c-text) !important; }
+    .mast-bottom-rule { height: 1px; background: var(--c-border); }
+    .mast-lang-line { display: flex; justify-content: flex-end; padding: 4px 0 8px 0; }
+    @media (max-width: 768px) { .mast-inner { padding: 0 20px; } }
+
+    /* Calendar stream */
+    .cal-stream { display: flex; flex-direction: column; gap: 3rem; }
+    .cal-year { display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .cal-year-head {
+      display: flex; align-items: baseline; gap: 0.75rem;
+      border-bottom: 1px solid var(--c-border);
+      padding-bottom: 0.4rem;
+      position: sticky; top: 0;
+      background: var(--c-bg, #fff);
+      z-index: 1;
+    }
+    .cal-year-num {
+      font-size: 1.6rem;
+      font-weight: 200;
+      letter-spacing: -0.02em;
+      color: var(--c-text);
+    }
+    .cal-year-count {
+      font-size: 11px;
+      color: var(--c-text-dim);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .cal-month { display: flex; flex-direction: column; gap: 0.75rem; }
+    .cal-month-head {
+      display: flex; align-items: baseline; gap: 0.6rem;
+    }
+    .cal-month-label {
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.02em;
+      margin: 0;
+      color: var(--c-text);
+    }
+    .cal-month-count {
+      font-size: 11px;
+      color: var(--c-text-dim);
+    }
+
+    .view-switcher {
+      display: flex; gap: 1rem;
+      margin: 0 0 1.5rem;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .view-switcher a {
+      color: var(--c-text-dim);
+      text-decoration: none;
+    }
+    .view-switcher a:hover { color: var(--c-text); }
+    .view-switcher-active {
+      color: var(--c-text);
+      font-weight: 600;
+    }
+  </style>
+
+  <style is:global>
+    body:has(.photos-page) {
+      display: block; padding: 0; align-items: stretch; justify-content: stretch;
+    }
+  </style>
+</BaseLayout>
