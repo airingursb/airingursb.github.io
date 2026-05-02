@@ -3,6 +3,7 @@ import '../../styles/photos.css';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LangSwitch from '../../components/LangSwitch.astro';
 import { siteStrings } from '../../lib/i18n';
+import { slugify } from '../../lib/photos-slug';
 import photosData from '../../data/photos.json';
 
 export async function getStaticPaths() {
@@ -142,15 +143,18 @@ const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(fullUrl
       <aside class="detail-info">
         <div class="detail-meta-grid">
           <div class="meta-text">
+            {photo.title && <h1 class="meta-title">{photo.title}</h1>}
+            {photo.description && <p class="meta-desc">{photo.description}</p>}
+
             {photo.exif.camera && (
-              <div class="meta-line">
+              <a href={`/photos/cameras/${slugify(photo.exif.camera)}`} class="meta-line meta-link" title="View all photos with this camera">
                 {/* Tabler TbCamera */}
                 <svg class="meta-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" />
                   <path d="M12 17a3 3 0 1 0 0 -6a3 3 0 0 0 0 6z" />
                 </svg>
                 <span>{photo.exif.camera}</span>
-              </div>
+              </a>
             )}
             {photo.exif.lens && (
               <div class="meta-line">
@@ -161,6 +165,14 @@ const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(fullUrl
                   <path d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3" />
                 </svg>
                 <span>{photo.exif.lens}</span>
+              </div>
+            )}
+
+            {photo.tags && photo.tags.length > 0 && (
+              <div class="meta-tags">
+                {photo.tags.map((t: string) => (
+                  <a href={`/photos/tags/${slugify(t)}`} class="meta-tag" title={`View all photos tagged ${t}`}>#{t}</a>
+                ))}
               </div>
             )}
           </div>
