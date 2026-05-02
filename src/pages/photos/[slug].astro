@@ -21,22 +21,23 @@ export async function getStaticPaths() {
 const { photo, prev, next, others = [] } = Astro.props as any;
 const s = siteStrings.en.photos;
 
-const exifRows: Array<[string, string | number | null]> = [
-  ['Camera', photo.exif.camera],
-  ['Lens', photo.exif.lens],
-  ['Focal', photo.exif.focalLength],
-  ['Aperture', photo.exif.aperture],
-  ['Shutter', photo.exif.shutter],
-  ['ISO', photo.exif.iso],
-  ['Taken', photo.takenAt
-    ? new Date(photo.takenAt).toLocaleString('en-US', {
-        year: 'numeric', month: 'short', day: 'numeric',
-        hour: '2-digit', minute: '2-digit', hour12: false,
-      })
-    : null,
-  ],
-  ['Dimensions', `${photo.width} × ${photo.height}`],
-];
+// Sambecker-style date: "06 JUL 24 3:01PM"
+function formatTakenAt(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = months[d.getMonth()];
+  const year = String(d.getFullYear()).slice(-2);
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${day} ${month} ${year} ${h}:${min}${ampm}`;
+}
+
+const takenAtFormatted = formatTakenAt(photo.takenAt);
 ---
 
 <BaseLayout
@@ -82,11 +83,27 @@ const exifRows: Array<[string, string | number | null]> = [
       </div>
       <div class="detail-nav">
         {prev
-          ? <a href={`/photos/${prev.slug}`} aria-label="Previous photo">‹ Prev</a>
-          : <a class="disabled" aria-disabled="true">‹ Prev</a>}
+          ? <a href={`/photos/${prev.slug}`} aria-label="Previous photo" class="detail-arrow">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M10 3 L5 8 L10 13" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </a>
+          : <span class="detail-arrow disabled" aria-disabled="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M10 3 L5 8 L10 13" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>}
         {next
-          ? <a href={`/photos/${next.slug}`} aria-label="Next photo">Next ›</a>
-          : <a class="disabled" aria-disabled="true">Next ›</a>}
+          ? <a href={`/photos/${next.slug}`} aria-label="Next photo" class="detail-arrow">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M6 3 L11 8 L6 13" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </a>
+          : <span class="detail-arrow disabled" aria-disabled="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M6 3 L11 8 L6 13" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>}
       </div>
     </nav>
 
@@ -110,11 +127,41 @@ const exifRows: Array<[string, string | number | null]> = [
         {photo.title && <h1>{photo.title}</h1>}
         {photo.description && <p class="detail-desc">{photo.description}</p>}
 
-        <dl class="detail-exif">
-          {exifRows.map(([k, v]) =>
-            v != null && v !== '' ? <><dt>{k}</dt><dd>{v}</dd></> : null
-          )}
-        </dl>
+        <div class="detail-meta">
+          <div class="meta-camera">
+            {photo.exif.camera && (
+              <div class="meta-row">
+                <svg class="meta-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+                  <rect x="1.5" y="4.5" width="13" height="9" rx="1" />
+                  <circle cx="8" cy="9" r="2.5" />
+                  <path d="M5 4.5 V3 H11 V4.5" />
+                </svg>
+                <span>{photo.exif.camera}</span>
+              </div>
+            )}
+            {photo.exif.lens && (
+              <div class="meta-row">
+                <svg class="meta-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+                  <circle cx="8" cy="8" r="6" />
+                  <circle cx="8" cy="8" r="2.5" fill="currentColor" />
+                </svg>
+                <span>{photo.exif.lens}</span>
+              </div>
+            )}
+          </div>
+
+          <div class="meta-params">
+            {photo.exif.focalLength && <div>{photo.exif.focalLength}</div>}
+            {photo.exif.aperture && <div><i>ƒ</i>{photo.exif.aperture.replace(/^f/i, '')}</div>}
+            {photo.exif.shutter && <div>{photo.exif.shutter}</div>}
+            {photo.exif.iso != null && <div>ISO {photo.exif.iso}</div>}
+          </div>
+        </div>
+
+        <div class="detail-meta-foot">
+          {takenAtFormatted && <span class="meta-date">{takenAtFormatted}</span>}
+          <span class="meta-dim">{photo.width} × {photo.height}</span>
+        </div>
 
         {photo.tags && photo.tags.length > 0 && (
           <div class="detail-tags">
