@@ -1,0 +1,421 @@
+---
+import '../../styles/photos.css';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { siteStrings } from '../../lib/i18n';
+import photosData from '../../data/photos.json';
+
+export async function getStaticPaths() {
+  const photos = photosData as Array<any>;
+  return photos.map((p, i) => ({
+    params: { slug: p.slug },
+    props: {
+      photo: p,
+      prev: photos[i - 1] || null,
+      next: photos[i + 1] || null,
+      others: photos.filter((_, j) => j !== i),
+    },
+  }));
+}
+
+const { photo, prev, next, others = [] } = Astro.props as any;
+const s = siteStrings.en.photos;
+
+// Sambecker-style date: "06 JUL 24 3:01PM"
+function formatTakenAt(iso: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const months = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = months[d.getMonth()];
+  const year = String(d.getFullYear()).slice(-2);
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12 || 12;
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${day} ${month} ${year} ${h}:${min}${ampm}`;
+}
+
+const takenAtFormatted = formatTakenAt(photo.takenAt);
+
+// Camera short form for the share-card overlay: drop make ("Sony ILCE-7M4" → "ILCE-7M4")
+const cameraShort = photo.exif.camera
+  ? photo.exif.camera.replace(/^\S+\s+/, '')
+  : '';
+
+// Full canonical URL for sharing (uses Astro.site, falls back to ursb.me)
+const fullUrl = new URL(`/photos/${photo.slug}`, Astro.site || 'https://ursb.me').href;
+const displayUrl = fullUrl.replace(/^https?:\/\//, '');
+
+// Build the EXIF overlay string ("X-T5 90mm ƒ/2 ISO 125")
+const overlayBits = [
+  cameraShort,
+  photo.exif.focalLength,
+  photo.exif.aperture,
+  photo.exif.iso != null ? `ISO ${photo.exif.iso}` : null,
+].filter(Boolean);
+
+const shareText = photo.title || photo.slug;
+const threadsHref = `https://www.threads.net/intent/post?text=${encodeURIComponent(shareText + ' ' + fullUrl)}`;
+const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(shareText)}`;
+---
+
+<BaseLayout
+  title={`${photo.title || photo.slug} · ${s.title} · Airing`}
+  description={photo.description || s.desc}
+  lang="en"
+>
+  <div class="photo-detail-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/en/blog">Blog</a>
+            <a href="/en/archive">Archive</a>
+            <a href="/en/moments">Moment</a>
+            <a href="/en/notes">Notes</a>
+            <a href="/photos" class="mast-link-active">Photos</a>
+            <a href="/en/friends">Friends</a>
+          </div>
+        </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="en" currentPath={`/photos/${photo.slug}`} hasEnVersion={false} />
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <nav class="detail-bar">
+      <div class="detail-icons">
+        <a href="/photos" class="detail-icon" aria-label="All photos" title="Back to grid">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="1.5" y="1.5" width="5" height="5" /><rect x="9.5" y="1.5" width="5" height="5" />
+            <rect x="1.5" y="9.5" width="5" height="5" /><rect x="9.5" y="9.5" width="5" height="5" />
+          </svg>
+        </a>
+      </div>
+      <div class="detail-nav">
+        {prev
+          ? <a href={`/photos/${prev.slug}`} aria-label="Previous photo" class="detail-arrow">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M10 3 L5 8 L10 13" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </a>
+          : <span class="detail-arrow disabled" aria-disabled="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M10 3 L5 8 L10 13" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>}
+        {next
+          ? <a href={`/photos/${next.slug}`} aria-label="Next photo" class="detail-arrow">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M6 3 L11 8 L6 13" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </a>
+          : <span class="detail-arrow disabled" aria-disabled="true">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M6 3 L11 8 L6 13" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>}
+      </div>
+    </nav>
+
+    <div class="detail-layout">
+      <div class="detail-stage" id="stageEl">
+        <picture>
+          <source type="image/avif" srcset={photo.variants.full.avif} />
+          <source type="image/webp" srcset={photo.variants.full.webp} />
+          <img
+            src={photo.variants.full.webp}
+            alt={photo.title || photo.slug}
+            width={photo.width}
+            height={photo.height}
+            loading="eager"
+            decoding="async"
+          />
+        </picture>
+      </div>
+
+      <aside class="detail-info">
+        <div class="detail-meta-grid">
+          <div class="meta-text">
+            {photo.exif.camera && (
+              <div class="meta-line">
+                {/* Tabler TbCamera */}
+                <svg class="meta-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M5 7h1a2 2 0 0 0 2 -2a1 1 0 0 1 1 -1h6a1 1 0 0 1 1 1a2 2 0 0 0 2 2h1a2 2 0 0 1 2 2v9a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2" />
+                  <path d="M12 17a3 3 0 1 0 0 -6a3 3 0 0 0 0 6z" />
+                </svg>
+                <span>{photo.exif.camera}</span>
+              </div>
+            )}
+            {photo.exif.lens && (
+              <div class="meta-line">
+                {/* Remix RiCameraLensLine */}
+                <svg class="meta-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <circle cx="12" cy="12" r="4" />
+                  <path d="M12 3 v3 M12 18 v3 M3 12 h3 M18 12 h3" />
+                </svg>
+                <span>{photo.exif.lens}</span>
+              </div>
+            )}
+          </div>
+
+          <div class="meta-exif">
+            <ul class="exif-list">
+              {photo.exif.focalLength && <li>{photo.exif.focalLength}</li>}
+              {photo.exif.aperture && <li><i>ƒ</i>{photo.exif.aperture.replace(/^f/i, '')}</li>}
+              {photo.exif.shutter && <li>{photo.exif.shutter}</li>}
+              {photo.exif.iso != null && <li>ISO {photo.exif.iso}</li>}
+            </ul>
+
+            <div class="exif-foot">
+              {takenAtFormatted && <span class="meta-date">{takenAtFormatted}</span>}
+              <div class="exif-actions">
+                <button type="button" class="meta-icon-btn" id="fullBtn" aria-label="Fullscreen" title="Fullscreen">
+                  {/* Lucide LuExpand */}
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="m21 21-6-6m6 6v-4.8m0 4.8h-4.8" />
+                    <path d="M3 16.2V21m0 0h4.8M3 21l6-6" />
+                    <path d="M21 7.8V3m0 0h-4.8M21 3l-6 6" />
+                    <path d="M3 7.8V3m0 0h4.8M3 3l6 6" />
+                  </svg>
+                </button>
+                <button type="button" class="meta-icon-btn" id="shareBtn" aria-label="Share" title="Share">
+                  {/* Tabler TbPhotoShare */}
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M15 8h.01" />
+                    <path d="M12.5 21h-6.5a3 3 0 0 1 -3 -3v-12a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v6.5" />
+                    <path d="M3 16l5 -5c.928 -.875 2.072 -.875 3 0l3 3" />
+                    <path d="M14 14l1 -1c.617 -.582 1.327 -.79 2.012 -.626" />
+                    <path d="M16 22l5 -5" />
+                    <path d="M21 21.5v-4.5h-4.5" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {others.length > 0 && (
+        <section class="detail-others">
+          <ul class="photos-grid">
+            {others.map((p: any) => (
+              <li class="photo-card" style={`--dom: ${p.dominantColor}`}>
+                <a href={`/photos/${p.slug}`} class="photo-link" aria-label={p.title || p.slug}>
+                  <picture>
+                    <source
+                      type="image/avif"
+                      srcset={`${p.variants.thumb.avif} 400w, ${p.variants.medium.avif} 1200w`}
+                      sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                    />
+                    <source
+                      type="image/webp"
+                      srcset={`${p.variants.thumb.webp} 400w, ${p.variants.medium.webp} 1200w`}
+                      sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                    />
+                    <img
+                      src={p.variants.medium.webp}
+                      alt={p.title || p.slug}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </picture>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  </div>
+
+  {/* ── Share modal ────────────────────────────────────────── */}
+  <div class="share-modal" id="shareModal" hidden>
+    <button type="button" class="share-backdrop" id="shareBackdrop" aria-label="Close share dialog"></button>
+    <div class="share-card" role="dialog" aria-modal="true" aria-label="Share photo">
+      <button type="button" class="share-close" id="shareClose" aria-label="Close">×</button>
+
+      <div class="share-image">
+        <picture>
+          <source type="image/avif" srcset={photo.variants.medium.avif} />
+          <source type="image/webp" srcset={photo.variants.medium.webp} />
+          <img src={photo.variants.medium.webp} alt={photo.title || photo.slug} />
+        </picture>
+        {overlayBits.length > 0 && (
+          <div class="share-overlay">
+            {overlayBits.map((bit, i) => (
+              <>
+                {i > 0 && <span class="share-overlay-sep">{' '}</span>}
+                <span>{bit && bit.toString().startsWith('f/')
+                  ? <><i>ƒ</i>{bit.toString().slice(1)}</>
+                  : bit}</span>
+              </>
+            ))}
+          </div>
+        )}
+        <div class="share-image-meta">
+          {photo.title && <h3>{photo.title}</h3>}
+          {takenAtFormatted && <div class="share-image-date">{takenAtFormatted}</div>}
+        </div>
+      </div>
+
+      <div class="share-row">
+        <input type="text" readonly value={displayUrl} class="share-url" id="shareUrl" />
+        <div class="share-actions-row">
+          <button type="button" class="share-act" id="shareCopy" aria-label="Copy link" title="Copy link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="8" y="8" width="12" height="12" rx="2" />
+              <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+            </svg>
+          </button>
+          <a href={threadsHref} class="share-act" target="_blank" rel="noopener noreferrer" aria-label="Share to Threads" title="Share to Threads">
+            {/* Simplified Threads logo */}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.21 11.16c-.09-.04-.18-.08-.27-.12-.16-2.97-1.78-4.67-4.51-4.69h-.04c-1.63 0-2.99.7-3.83 1.96l1.5 1.03c.62-.94 1.6-1.14 2.33-1.14h.03c.91.01 1.6.27 2.04.78.32.37.54.88.65 1.52-.83-.14-1.73-.18-2.69-.13-2.71.16-4.46 1.74-4.34 3.94.06 1.12.62 2.08 1.57 2.71.81.53 1.85.79 2.93.73 1.43-.08 2.55-.62 3.34-1.62.6-.76.97-1.74 1.14-2.97.7.42 1.21.97 1.5 1.63.49 1.13.52 2.97-.98 4.47-1.31 1.31-2.89 1.88-5.27 1.9-2.64-.02-4.64-.87-5.93-2.52-1.21-1.55-1.84-3.79-1.86-6.65.02-2.86.65-5.1 1.86-6.65 1.29-1.65 3.29-2.5 5.93-2.52 2.66.02 4.7.87 6.06 2.54.67.81 1.17 1.84 1.51 3.04l1.79-.48c-.41-1.47-1.05-2.74-1.91-3.79C16.99 1.95 14.5.86 11.45.84h-.01C8.39.86 5.93 1.96 4.21 4.1 2.69 6 1.91 8.65 1.89 11.99v.02c.02 3.34.79 5.99 2.32 7.89 1.71 2.14 4.18 3.24 7.23 3.26h.01c2.71-.02 4.62-.73 6.2-2.31 2.07-2.06 2-4.65 1.32-6.24-.49-1.16-1.43-2.1-2.71-2.71zm-4.6 3.91c-1.2.07-2.45-.47-2.51-1.6-.04-.83.59-1.76 2.58-1.87.23-.01.45-.02.67-.02.72 0 1.39.07 2 .2-.23 2.84-1.56 3.22-2.74 3.29z" />
+            </svg>
+          </a>
+          <a href={xHref} class="share-act" target="_blank" rel="noopener noreferrer" aria-label="Share to X" title="Share to X">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </a>
+          <button type="button" class="share-act" id="shareNative" aria-label="More share options" title="More">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script is:inline define:vars={{ photoTitle: photo.title || photo.slug, fullUrl }}>
+    (function () {
+      // Fullscreen on the stage element
+      var fullBtn = document.getElementById('fullBtn');
+      var stage = document.getElementById('stageEl');
+      if (fullBtn && stage) {
+        fullBtn.addEventListener('click', function () {
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          } else if (stage.requestFullscreen) {
+            stage.requestFullscreen();
+          }
+        });
+      }
+
+      // Share modal
+      var modal = document.getElementById('shareModal');
+      var openBtn = document.getElementById('shareBtn');
+      var closeBtn = document.getElementById('shareClose');
+      var backdrop = document.getElementById('shareBackdrop');
+      var copyBtn = document.getElementById('shareCopy');
+      var nativeBtn = document.getElementById('shareNative');
+      var urlInput = document.getElementById('shareUrl');
+
+      function openModal() {
+        if (!modal) return;
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        // Move focus to close button for accessibility
+        setTimeout(function () { closeBtn && closeBtn.focus(); }, 0);
+      }
+      function closeModal() {
+        if (!modal) return;
+        modal.hidden = true;
+        document.body.style.overflow = '';
+        openBtn && openBtn.focus();
+      }
+      openBtn && openBtn.addEventListener('click', openModal);
+      closeBtn && closeBtn.addEventListener('click', closeModal);
+      backdrop && backdrop.addEventListener('click', closeModal);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal && !modal.hidden) closeModal();
+      });
+
+      // Copy link
+      copyBtn && copyBtn.addEventListener('click', async function () {
+        try {
+          await navigator.clipboard.writeText(fullUrl);
+        } catch (e) {
+          urlInput && urlInput.select();
+          try { document.execCommand('copy'); } catch (_) {}
+        }
+        copyBtn.classList.add('copied');
+        var originalLabel = copyBtn.getAttribute('aria-label');
+        copyBtn.setAttribute('aria-label', 'Copied!');
+        setTimeout(function () {
+          copyBtn.classList.remove('copied');
+          copyBtn.setAttribute('aria-label', originalLabel);
+        }, 1800);
+      });
+
+      // Click on URL input to select all (helps non-clipboard users)
+      urlInput && urlInput.addEventListener('click', function () {
+        urlInput.select();
+      });
+
+      // Native share (arrow up icon)
+      nativeBtn && nativeBtn.addEventListener('click', async function () {
+        var data = { title: photoTitle, url: fullUrl };
+        if (navigator.share) {
+          try {
+            await navigator.share(data);
+            return;
+          } catch (e) {
+            if (e && e.name === 'AbortError') return;
+          }
+        }
+        // No native share — fall back to copy
+        copyBtn && copyBtn.click();
+      });
+    })();
+  </script>
+
+  <style>
+    .masthead { width: 100%; }
+    .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+    .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+    .mast-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 14px 0; position: relative;
+    }
+    .mast-brand {
+      font-size: 11px; color: var(--c-text-muted); text-decoration: none;
+      letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+    }
+    .mast-brand:hover { color: var(--c-text); }
+    .mast-links { display: flex; gap: 16px; }
+    .mast-links a {
+      font-size: 11px; color: var(--c-text-dim); text-decoration: none;
+      letter-spacing: 0.06em; text-transform: uppercase;
+    }
+    .mast-links a:hover, .mast-link-active { color: var(--c-text) !important; }
+    .mast-bottom-rule { height: 1px; background: var(--c-border); }
+    .mast-lang-line {
+      display: flex;
+      justify-content: flex-end;
+      padding: 4px 0 8px 0;
+    }
+
+    @media (max-width: 768px) {
+      .mast-inner { padding: 0 20px; }
+    }
+    /* Mobile dropdown is provided globally — see global.css and BaseLayout.astro */
+  </style>
+
+  <style is:global>
+    body:has(.photo-detail-page) {
+      display: block;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
+    }
+  </style>
+</BaseLayout>
