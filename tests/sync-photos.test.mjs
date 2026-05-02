@@ -95,3 +95,36 @@ test('normalizeExif formats slow shutter as decimal', () => {
   const n = normalizeExif({ ExposureTime: 2.5 });
   assert.equal(n.shutter, '2.5s');
 });
+
+import { sortByTakenAt, mergeRecords } from '../scripts/lib/photos-manifest.mjs';
+
+test('sortByTakenAt orders newest first; nulls last', () => {
+  const input = [
+    { slug: 'a', takenAt: '2024-01-01T00:00:00Z' },
+    { slug: 'b', takenAt: null },
+    { slug: 'c', takenAt: '2024-06-01T00:00:00Z' },
+  ];
+  const out = sortByTakenAt(input);
+  assert.deepEqual(out.map((p) => p.slug), ['c', 'a', 'b']);
+});
+
+test('mergeRecords replaces by slug, preserves untouched', () => {
+  const existing = [
+    { slug: 'a', title: 'Old A' },
+    { slug: 'b', title: 'B' },
+  ];
+  const incoming = [{ slug: 'a', title: 'New A' }];
+  const merged = mergeRecords(existing, incoming, new Set(['a', 'b']));
+  assert.equal(merged.find((p) => p.slug === 'a').title, 'New A');
+  assert.equal(merged.find((p) => p.slug === 'b').title, 'B');
+});
+
+test('mergeRecords drops records whose slug is not in liveSlugs', () => {
+  const existing = [
+    { slug: 'a', title: 'A' },
+    { slug: 'gone', title: 'Removed from source' },
+  ];
+  const merged = mergeRecords(existing, [], new Set(['a']));
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].slug, 'a');
+});
