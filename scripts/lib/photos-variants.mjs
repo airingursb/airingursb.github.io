@@ -8,7 +8,7 @@ const VARIANTS = [
 
 export async function generateVariants(filePath) {
   const src = sharp(filePath, { failOn: 'truncated' });
-  const meta = await src.metadata();
+  const meta = await src.clone().rotate().metadata();
   const width = meta.width;
   const height = meta.height;
 

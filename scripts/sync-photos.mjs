@@ -104,8 +104,7 @@ async function main() {
   console.log(`found ${entries.length} photo(s)`);
 
   if (entries.length === 0) {
-    console.log('nothing to do');
-    await writeManifest(MANIFEST, []);
+    console.log('nothing to do (source empty — manifest left untouched)');
     return;
   }
 
