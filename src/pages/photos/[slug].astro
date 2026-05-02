@@ -67,7 +67,19 @@ const exifRows: Array<[string, string | number | null]> = [
     </header>
 
     <nav class="detail-bar">
-      <a href="/photos">← All photos</a>
+      <div class="detail-icons">
+        <a href="/photos" class="detail-icon" aria-label="All photos" title="Back to grid">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="1.5" y="1.5" width="5" height="5" /><rect x="9.5" y="1.5" width="5" height="5" />
+            <rect x="1.5" y="9.5" width="5" height="5" /><rect x="9.5" y="9.5" width="5" height="5" />
+          </svg>
+        </a>
+        <button type="button" class="detail-icon" id="fullscreenBtn" aria-label="Fullscreen" title="Fullscreen">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M1.5 5.5V1.5H5.5M14.5 5.5V1.5H10.5M1.5 10.5V14.5H5.5M14.5 10.5V14.5H10.5" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
       <div class="detail-nav">
         {prev
           ? <a href={`/photos/${prev.slug}`} aria-label="Previous photo">‹ Prev</a>
@@ -79,70 +91,89 @@ const exifRows: Array<[string, string | number | null]> = [
     </nav>
 
     <div class="detail-layout">
-      <div class="detail-stage" style={`--dom: ${photo.dominantColor}`}>
-        <picture>
-          <source type="image/avif" srcset={photo.variants.full.avif} />
-          <source type="image/webp" srcset={photo.variants.full.webp} />
-          <img
-            src={photo.variants.full.webp}
-            alt={photo.title || photo.slug}
-            width={photo.width}
-            height={photo.height}
-            loading="eager"
-            decoding="async"
-          />
-        </picture>
+      <div class="detail-left">
+        <div class="detail-stage" id="stageEl">
+          <picture>
+            <source type="image/avif" srcset={photo.variants.full.avif} />
+            <source type="image/webp" srcset={photo.variants.full.webp} />
+            <img
+              src={photo.variants.full.webp}
+              alt={photo.title || photo.slug}
+              width={photo.width}
+              height={photo.height}
+              loading="eager"
+              decoding="async"
+            />
+          </picture>
+        </div>
+
+        {others.length > 0 && (
+          <section class="detail-others">
+            <ul class="photos-grid">
+              {others.map((p: any) => (
+                <li class="photo-card" style={`--dom: ${p.dominantColor}`}>
+                  <a href={`/photos/${p.slug}`} class="photo-link" aria-label={p.title || p.slug}>
+                    <picture>
+                      <source
+                        type="image/avif"
+                        srcset={`${p.variants.thumb.avif} 400w, ${p.variants.medium.avif} 1200w`}
+                        sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                      />
+                      <source
+                        type="image/webp"
+                        srcset={`${p.variants.thumb.webp} 400w, ${p.variants.medium.webp} 1200w`}
+                        sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                      />
+                      <img
+                        src={p.variants.medium.webp}
+                        alt={p.title || p.slug}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    </picture>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
 
       <aside class="detail-info">
-        {photo.title && <h1>{photo.title}</h1>}
-        {photo.description && <p class="detail-desc">{photo.description}</p>}
+        <div class="detail-info-sticky">
+          {photo.title && <h1>{photo.title}</h1>}
+          {photo.description && <p class="detail-desc">{photo.description}</p>}
 
-        <dl class="detail-exif">
-          {exifRows.map(([k, v]) =>
-            v != null && v !== '' ? <><dt>{k}</dt><dd>{v}</dd></> : null
+          <dl class="detail-exif">
+            {exifRows.map(([k, v]) =>
+              v != null && v !== '' ? <><dt>{k}</dt><dd>{v}</dd></> : null
+            )}
+          </dl>
+
+          {photo.tags && photo.tags.length > 0 && (
+            <div class="detail-tags">
+              {photo.tags.map((t: string) => <span class="detail-tag">#{t}</span>)}
+            </div>
           )}
-        </dl>
-
-        {photo.tags && photo.tags.length > 0 && (
-          <div class="detail-tags">
-            {photo.tags.map((t: string) => <span class="detail-tag">#{t}</span>)}
-          </div>
-        )}
+        </div>
       </aside>
     </div>
-
-    {others.length > 0 && (
-      <section class="detail-others">
-        <ul class="photos-grid">
-          {others.map((p: any) => (
-            <li class="photo-card" style={`--dom: ${p.dominantColor}`}>
-              <a href={`/photos/${p.slug}`} class="photo-link" aria-label={p.title || p.slug}>
-                <picture>
-                  <source
-                    type="image/avif"
-                    srcset={`${p.variants.thumb.avif} 400w, ${p.variants.medium.avif} 1200w`}
-                    sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                  />
-                  <source
-                    type="image/webp"
-                    srcset={`${p.variants.thumb.webp} 400w, ${p.variants.medium.webp} 1200w`}
-                    sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
-                  />
-                  <img
-                    src={p.variants.medium.webp}
-                    alt={p.title || p.slug}
-                    loading="lazy"
-                    decoding="async"
-                  />
-                </picture>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    )}
   </div>
+
+  <script is:inline>
+    (function () {
+      var btn = document.getElementById('fullscreenBtn');
+      var stage = document.getElementById('stageEl');
+      if (!btn || !stage) return;
+      btn.addEventListener('click', function () {
+        if (document.fullscreenElement) {
+          document.exitFullscreen();
+        } else if (stage.requestFullscreen) {
+          stage.requestFullscreen();
+        }
+      });
+    })();
+  </script>
 
   <style>
     .masthead { width: 100%; }
