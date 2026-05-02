@@ -45,8 +45,8 @@ export async function scanSource(sourceDir) {
     let sidecar = {};
     try {
       sidecar = parseSidecar(await fs.readFile(sidecarPath, 'utf-8'));
-    } catch {
-      // no sidecar — fine
+    } catch (err) {
+      if (err.code !== 'ENOENT') throw err; // missing sidecar is fine; other errors aren't
     }
 
     const slug = sidecar.slug || deriveSlug(ent.name);
