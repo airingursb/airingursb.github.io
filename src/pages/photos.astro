@@ -20,12 +20,7 @@ const photos = photosData as Array<any>;
         <div class="mast-top-rule"></div>
         <div class="mast-bar">
           <a href="/en/blog" class="mast-brand">Airing's Blog</a>
-          <button type="button" class="mast-toggle" id="mastToggle" aria-label="Open menu" aria-expanded="false" aria-controls="mastLinks">
-            <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
-              <path d="M2 4h12 M2 8h12 M2 12h12" />
-            </svg>
-          </button>
-          <div class="mast-links" id="mastLinks">
+          <div class="mast-links">
             <a href="/en/blog">Blog</a>
             <a href="/en/archive">Archive</a>
             <a href="/en/moments">Moment</a>
@@ -41,30 +36,6 @@ const photos = photosData as Array<any>;
       </div>
     </header>
 
-    <script is:inline>
-      (function () {
-        var btn = document.getElementById('mastToggle');
-        var links = document.getElementById('mastLinks');
-        if (!btn || !links) return;
-        btn.addEventListener('click', function (e) {
-          e.stopPropagation();
-          var open = links.classList.toggle('open');
-          btn.setAttribute('aria-expanded', String(open));
-        });
-        document.addEventListener('click', function (e) {
-          if (!links.contains(e.target) && !btn.contains(e.target)) {
-            links.classList.remove('open');
-            btn.setAttribute('aria-expanded', 'false');
-          }
-        });
-        document.addEventListener('keydown', function (e) {
-          if (e.key === 'Escape' && links.classList.contains('open')) {
-            links.classList.remove('open');
-            btn.setAttribute('aria-expanded', 'false');
-          }
-        });
-      })();
-    </script>
 
     <main class="photos-main">
       <h1 class="photos-title">{s.title}</h1>
@@ -104,9 +75,9 @@ const photos = photosData as Array<any>;
   </div>
 
   <style>
-    /* Nav — matches site convention (max-width 1200 + 768px breakpoint) */
+    /* Nav — matches site convention exactly (moments.astro / blog.astro) */
     .masthead { width: 100%; }
-    .mast-inner { /* outer .photos-page provides max-width + padding */ }
+    .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
     .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
     .mast-bar {
       display: flex; justify-content: space-between; align-items: center;
@@ -130,51 +101,19 @@ const photos = photosData as Array<any>;
       padding: 4px 0 8px 0;
     }
 
-    /* Hamburger menu button — desktop hidden, mobile visible */
-    .mast-toggle {
-      display: none;
-      background: transparent;
-      border: 0;
-      color: var(--c-text);
-      cursor: pointer;
-      padding: 4px;
-      align-items: center;
-      justify-content: center;
-    }
-
     @media (max-width: 768px) {
-      .mast-toggle { display: inline-flex; }
-      .mast-bar { position: relative; }
-      .mast-links {
-        position: absolute;
-        top: calc(100% + 4px);
-        right: 0;
-        flex-direction: column;
-        gap: 0;
-        background: var(--c-bg, #0a0a0a);
-        border: 1px solid var(--c-border, #2a2a2a);
-        border-radius: 6px;
-        padding: 4px 0;
-        min-width: 160px;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
-        z-index: 50;
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(-4px);
-        transition: opacity 150ms, transform 150ms, visibility 150ms;
-      }
-      .mast-links.open {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
-      }
-      .mast-links a {
-        padding: 10px 16px;
-        font-size: 12px;
-      }
-      .mast-links a:hover {
-        background: var(--c-bg-elev, #141414);
-      }
+      .mast-inner { padding: 0 20px; }
+    }
+    /* Mobile dropdown is provided globally — see global.css and BaseLayout.astro */
+  </style>
+
+  <style is:global>
+    /* Reset global.css body flex+padding when this page is rendered */
+    body:has(.photos-page) {
+      display: block;
+      padding: 0;
+      align-items: stretch;
+      justify-content: stretch;
     }
   </style>
 </BaseLayout>
