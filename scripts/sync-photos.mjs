@@ -92,7 +92,7 @@ async function processPhoto(entry, existingRecord) {
       aperture: exif.aperture,
       focalLength: exif.focalLength,
     },
-    variants: buildVariantUrls(slug),
+    variants: buildVariantUrls(entry.slug),
     sourceHash,
     syncedAt: new Date().toISOString(),
   };
