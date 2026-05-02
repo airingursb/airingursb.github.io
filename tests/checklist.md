@@ -179,3 +179,11 @@
 - [ ] CSS: `.meta-histogram-canvas` 高度 110px(移动端 90px),背景 `rgba(28, 28, 30, 0.95)`
 - [ ] Evaluate: 加载后 canvas.width > 0(已初始化绘制)
 - [ ] Screenshot: 画面有暗背景 + RGB 叠加柱(Apple 配色)+ Luma 半透白底
+
+## Photos — Umami custom events
+
+- [ ] `/photos/<slug>` 点 share 按钮 → 触发 `photo-share` 事件 (data: { slug })
+- [ ] `/photos/<slug>` 点全屏按钮 → 触发 `photo-fullscreen` 事件 (data: { slug })
+- [ ] `/photos/<slug>` 点 camera/place/tag 链接 → 触发 `facet-link` 事件 (data: { kind: cameras|places|tags, value, from })
+- [ ] `/photos/world` 点 marker → 触发 `world-marker-click` 事件 (data: { city, country, count })
+- [ ] `/photos`、`/photos/calendar`、`/photos/world` 点 view-switcher 链接 → 触发 `view-switch` 事件 (data: { from, to })

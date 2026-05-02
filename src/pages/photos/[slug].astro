@@ -337,13 +337,14 @@ const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(fullUrl
     </div>
   </div>
 
-  <script is:inline define:vars={{ photoTitle: photo.title || photo.slug, fullUrl }}>
+  <script is:inline define:vars={{ photoTitle: photo.title || photo.slug, photoSlug: photo.slug, fullUrl }}>
     (function () {
       // Fullscreen on the stage element
       var fullBtn = document.getElementById('fullBtn');
       var stage = document.getElementById('stageEl');
       if (fullBtn && stage) {
         fullBtn.addEventListener('click', function () {
+          if (typeof umami !== 'undefined') umami.track('photo-fullscreen', { slug: photoSlug });
           if (document.fullscreenElement) {
             document.exitFullscreen();
           } else if (stage.requestFullscreen) {
@@ -363,6 +364,7 @@ const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(fullUrl
 
       function openModal() {
         if (!modal) return;
+        if (typeof umami !== 'undefined') umami.track('photo-share', { slug: photoSlug });
         modal.hidden = false;
         document.body.style.overflow = 'hidden';
         // Move focus to close button for accessibility
@@ -416,6 +418,20 @@ const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(fullUrl
         }
         // No native share — fall back to copy
         copyBtn && copyBtn.click();
+      });
+
+      // Facet link tracking — camera / place / tag links lead to taxonomy pages.
+      // Delegate so we don't bind per-link.
+      document.addEventListener('click', function (e) {
+        if (typeof umami === 'undefined') return;
+        var t = e.target;
+        if (!t || !t.closest) return;
+        var link = t.closest('a.meta-link, a.meta-tag');
+        if (!link) return;
+        var href = link.getAttribute('href') || '';
+        var m = href.match(/^\/photos\/(cameras|places|tags)\/([^/?#]+)/);
+        if (!m) return;
+        umami.track('facet-link', { kind: m[1], value: m[2], from: photoSlug });
       });
     })();
   </script>

@@ -161,6 +161,15 @@ const pinsJson = JSON.stringify(pins);
 
         L.marker(pin.coords, { icon })
           .bindPopup(popupHtml, { closeButton: false, maxWidth: 220 })
+          .on('popupopen', () => {
+            if (typeof (window as any).umami !== 'undefined') {
+              (window as any).umami.track('world-marker-click', {
+                city: pin.city,
+                country: pin.country,
+                count: pin.count,
+              });
+            }
+          })
           .addTo(map);
 
         bounds.push(pin.coords);
@@ -284,4 +293,15 @@ const pinsJson = JSON.stringify(pins);
       margin-top: 2px;
     }
   </style>
+
+  <script is:inline define:vars={{ currentView: 'map' }}>
+    document.addEventListener('click', function (e) {
+      if (typeof umami === 'undefined') return;
+      var t = e.target;
+      if (!t || !t.closest) return;
+      var a = t.closest('.view-switcher a');
+      if (!a) return;
+      umami.track('view-switch', { from: currentView, to: (a.textContent || '').trim().toLowerCase() });
+    });
+  </script>
 </BaseLayout>
