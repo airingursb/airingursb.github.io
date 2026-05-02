@@ -139,29 +139,53 @@
   border-color: var(--c-text-muted, #666);
 }
 
+/* Mobile-first: single column, natural order: stage → info → others */
 .detail-layout {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1.5rem;
 }
 
+/* Desktop: 2-col with grid-template-areas. Stage top-left, info spans both
+   rows on right (sticky), others bottom-left. */
 @media (min-width: 1024px) {
   .detail-layout {
     grid-template-columns: 1fr 280px;
+    grid-template-areas:
+      "stage info"
+      "others info";
     align-items: start;
-    gap: 2rem;
+    column-gap: 2rem;
+    row-gap: 2rem;
   }
-}
-
-.detail-left {
-  min-width: 0;  /* allow grid item to shrink properly */
+  .detail-stage  { grid-area: stage; }
+  .detail-info   { grid-area: info; }
+  .detail-others { grid-area: others; }
 }
 
 .detail-stage {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 50vh;
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .detail-stage { min-height: 50vh; }
+}
+
+/* On mobile, photo escapes page horizontal padding for edge-to-edge feel */
+@media (max-width: 1023px) {
+  .detail-stage {
+    margin-left: -48px;
+    margin-right: -48px;
+  }
+}
+@media (max-width: 640px) {
+  .detail-stage {
+    margin-left: -20px;
+    margin-right: -20px;
+  }
 }
 
 .detail-stage:fullscreen {
@@ -181,7 +205,7 @@
   max-height: 100vh;
 }
 
-/* Sticky right rail on desktop */
+/* Sticky right rail on desktop only */
 .detail-info {
   padding-top: 0.5rem;
 }
@@ -194,10 +218,6 @@
     max-height: calc(100vh - 2rem);
     overflow-y: auto;
   }
-}
-
-.detail-info-sticky {
-  /* Inner wrapper — kept for any future scroll-area styling */
 }
 
 .detail-info h1 {
