@@ -91,6 +91,97 @@ const photos = photosData as Array<any>;
         </ul>
       )}
     </main>
+
+    <div class="lightbox" id="lightbox" hidden>
+      <button class="lightbox-close" id="lightboxClose" aria-label="Close">×</button>
+      <div class="lightbox-stage">
+        <picture>
+          <source id="lbAvif" type="image/avif" />
+          <source id="lbWebp" type="image/webp" />
+          <img id="lbImg" alt="" />
+        </picture>
+      </div>
+      <aside class="lightbox-info">
+        <h2 id="lbTitle"></h2>
+        <p id="lbDesc"></p>
+        <dl id="lbExif"></dl>
+      </aside>
+    </div>
+
+    <script is:inline define:vars={{ photos }}>
+      (function () {
+        const lb = document.getElementById('lightbox');
+        const lbAvif = document.getElementById('lbAvif');
+        const lbWebp = document.getElementById('lbWebp');
+        const lbImg = document.getElementById('lbImg');
+        const lbTitle = document.getElementById('lbTitle');
+        const lbDesc = document.getElementById('lbDesc');
+        const lbExif = document.getElementById('lbExif');
+        const closeBtn = document.getElementById('lightboxClose');
+
+        const bySlug = new Map(photos.map((p) => [p.slug, p]));
+
+        function open(slug) {
+          const p = bySlug.get(slug);
+          if (!p) return;
+          lbAvif.srcset = p.variants.full.avif;
+          lbWebp.srcset = p.variants.full.webp;
+          lbImg.src = p.variants.full.webp;
+          lbImg.alt = p.title || p.slug;
+          lbImg.width = p.width;
+          lbImg.height = p.height;
+          lbTitle.textContent = p.title || '';
+          lbDesc.textContent = p.description || '';
+          lbExif.innerHTML = '';
+          const rows = [
+            ['Camera', p.exif.camera],
+            ['Lens', p.exif.lens],
+            ['Focal', p.exif.focalLength],
+            ['Aperture', p.exif.aperture],
+            ['Shutter', p.exif.shutter],
+            ['ISO', p.exif.iso],
+            ['Taken', p.takenAt ? new Date(p.takenAt).toLocaleString('en-US') : null],
+          ];
+          for (const [k, v] of rows) {
+            if (v == null || v === '') continue;
+            const dt = document.createElement('dt');
+            dt.textContent = k;
+            const dd = document.createElement('dd');
+            dd.textContent = String(v);
+            lbExif.appendChild(dt);
+            lbExif.appendChild(dd);
+          }
+          lb.hidden = false;
+          document.body.style.overflow = 'hidden';
+          history.replaceState(null, '', `#photo-${slug}`);
+        }
+
+        function close() {
+          lb.hidden = true;
+          document.body.style.overflow = '';
+          history.replaceState(null, '', location.pathname);
+        }
+
+        document.querySelectorAll('.photo-link').forEach((a) => {
+          a.addEventListener('click', (e) => {
+            e.preventDefault();
+            open(a.dataset.slug);
+          });
+        });
+
+        closeBtn.addEventListener('click', close);
+        lb.addEventListener('click', (e) => {
+          if (e.target === lb) close();
+        });
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && !lb.hidden) close();
+        });
+
+        // Open from hash on load
+        const hash = location.hash.match(/^#photo-(.+)$/);
+        if (hash) open(decodeURIComponent(hash[1]));
+      })();
+    </script>
   </div>
 
   <style>
