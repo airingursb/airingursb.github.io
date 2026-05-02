@@ -8,8 +8,10 @@
 
 import 'dotenv/config';
 import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import exifr from 'exifr';
 
@@ -17,6 +19,7 @@ import { scanSource } from './lib/photos-source.mjs';
 import { normalizeExif } from './lib/photos-exif.mjs';
 import { generateVariants } from './lib/photos-variants.mjs';
 import { uploadIfChanged, publicUrl } from './lib/photos-r2.mjs';
+import { reverseGeocode } from './lib/photos-geocode.mjs';
 import {
   readManifest,
   writeManifest,
@@ -34,6 +37,37 @@ async function sha256File(filePath) {
   return crypto.createHash('sha256').update(buf).digest('hex');
 }
 
+// Formats sharp can't decode out of the box (HEIC needs HEVC; RAW needs libraw).
+// macOS sips handles all of these via the Image I/O framework, preserving EXIF.
+const NEEDS_TRANSCODE = /\.(heic|heif|dng|raf|cr2|cr3|nef|arw|orf|rw2|pef|3fr|fff|iiq)$/i;
+
+async function transcodeToJpeg(srcPath) {
+  if (process.platform !== 'darwin') {
+    throw new Error(
+      `Decoding ${path.extname(srcPath)} currently requires macOS (sips). Got platform ${process.platform}. ` +
+      `Convert ${path.basename(srcPath)} to JPEG before running sync, or run sync on macOS.`
+    );
+  }
+  const tmpPath = path.join(
+    os.tmpdir(),
+    `photos-sync-${crypto.randomBytes(6).toString('hex')}.jpg`
+  );
+  await new Promise((resolve, reject) => {
+    const proc = spawn('sips', ['-s', 'format', 'jpeg', srcPath, '--out', tmpPath], { stdio: 'ignore' });
+    proc.on('close', (code) => (code === 0 ? resolve() : reject(new Error(`sips exited ${code} on ${path.basename(srcPath)}`))));
+    proc.on('error', reject);
+  });
+  return tmpPath;
+}
+
+async function prepareDecodable(filePath) {
+  if (NEEDS_TRANSCODE.test(filePath)) {
+    const tmp = await transcodeToJpeg(filePath);
+    return { decodePath: tmp, cleanup: () => fs.unlink(tmp).catch(() => {}) };
+  }
+  return { decodePath: filePath, cleanup: async () => {} };
+}
+
 function buildVariantUrls(slug) {
   const sizes = ['thumb', 'medium', 'full'];
   const variants = {};
@@ -46,25 +80,67 @@ function buildVariantUrls(slug) {
   return variants;
 }
 
+// Read GPS from a source file (transcoding HEIC if needed) and reverse-geocode.
+// Returns null if no GPS or geocode fails. Coords stay inside this function.
+async function geocodeFromFile(filePath) {
+  const { decodePath, cleanup } = await prepareDecodable(filePath);
+  try {
+    const buf = await fs.readFile(decodePath);
+    const r = (await exifr.parse(buf, { gps: true })) || {};
+    if (typeof r.latitude !== 'number' || typeof r.longitude !== 'number') return null;
+    return await reverseGeocode(r.latitude, r.longitude);
+  } finally {
+    await cleanup();
+  }
+}
+
+// Resolve final `place` field: sidecar > auto GPS > existing record > null.
+async function resolvePlace({ sidecarPlace, autoPlace, existingPlace, filePath }) {
+  if (sidecarPlace) return sidecarPlace;
+  if (autoPlace) return autoPlace;
+  if (existingPlace) return existingPlace;
+  if (filePath) return await geocodeFromFile(filePath).catch(() => null);
+  return null;
+}
+
 async function processPhoto(entry, existingRecord) {
   const sourceHash = await sha256File(entry.filePath);
   if (existingRecord && existingRecord.sourceHash === sourceHash) {
-    // unchanged — refresh metadata fields from sidecar in case they edited title/desc/tags
+    // unchanged — refresh metadata fields from sidecar; backfill place if missing
+    const place = await resolvePlace({
+      sidecarPlace: entry.placeOverride,
+      autoPlace: null,
+      existingPlace: existingRecord.place,
+      filePath: existingRecord.place ? null : entry.filePath, // backfill only if needed
+    });
     const updated = {
       ...existingRecord,
       title: entry.title || existingRecord.title,
       description: entry.description || existingRecord.description,
       tags: entry.tags.length ? entry.tags : existingRecord.tags,
     };
-    console.log(`  ✓ ${entry.slug} (unchanged binary)`);
+    if (place) updated.place = place;
+    else delete updated.place;
+    console.log(`  ✓ ${entry.slug} (unchanged binary)${place ? ` · ${place.city}` : ''}`);
     return updated;
   }
 
   console.log(`  ⟳ ${entry.slug} — processing`);
-  const buf = await fs.readFile(entry.filePath);
-  const rawExif = (await exifr.parse(buf, { tiff: true, exif: true, gps: false })) || {};
-  const exif = normalizeExif(rawExif);
-  const { width, height, dominant, outputs } = await generateVariants(entry.filePath);
+  const { decodePath, cleanup } = await prepareDecodable(entry.filePath);
+  let width, height, dominant, outputs, exif, autoPlace = null;
+  try {
+    const buf = await fs.readFile(decodePath);
+    const rawExif = (await exifr.parse(buf, { tiff: true, exif: true, gps: true })) || {};
+    exif = normalizeExif(rawExif);
+    if (typeof rawExif.latitude === 'number' && typeof rawExif.longitude === 'number') {
+      // lat/lng stays inside this scope only; only city/country leaves the function
+      autoPlace = await reverseGeocode(rawExif.latitude, rawExif.longitude);
+    }
+    ({ width, height, dominant, outputs } = await generateVariants(decodePath));
+  } finally {
+    await cleanup();
+  }
+  const place = entry.placeOverride || autoPlace || null;
 
   for (const o of outputs) {
     const result = await uploadIfChanged({
@@ -92,6 +168,7 @@ async function processPhoto(entry, existingRecord) {
       aperture: exif.aperture,
       focalLength: exif.focalLength,
     },
+    ...(place ? { place } : {}),
     variants: buildVariantUrls(entry.slug),
     sourceHash,
     syncedAt: new Date().toISOString(),

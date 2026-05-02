@@ -38,7 +38,7 @@ export async function scanSource(sourceDir) {
 
   for (const ent of entries) {
     if (!ent.isFile()) continue;
-    if (!/\.(jpe?g)$/i.test(ent.name)) continue;
+    if (!/\.(jpe?g|png|heic|heif|dng|raf|cr2|cr3|nef|arw|orf|rw2|pef|3fr|fff|iiq)$/i.test(ent.name)) continue;
 
     const filePath = path.join(sourceDir, ent.name);
     const sidecarPath = filePath.replace(/\.[^.]+$/, '.md');
@@ -61,8 +61,25 @@ export async function scanSource(sourceDir) {
       title: sidecar.title || '',
       description: sidecar.description || '',
       tags: sidecar.tags || [],
+      placeOverride: parsePlaceOverride(sidecar),
     });
   }
 
   return photos;
+}
+
+// Sidecar place can be written as either:
+//   place: Shanghai, China        # combined
+//   city: Shanghai                # explicit
+//   country: China
+// Returns null if neither is set; sidecar always wins over auto-geocode.
+function parsePlaceOverride(sidecar) {
+  if (sidecar.place) {
+    const [city, ...rest] = sidecar.place.split(',').map((s) => s.trim());
+    return city ? { city, country: rest.join(', ') || null } : null;
+  }
+  if (sidecar.city || sidecar.country) {
+    return { city: sidecar.city || null, country: sidecar.country || null };
+  }
+  return null;
 }
