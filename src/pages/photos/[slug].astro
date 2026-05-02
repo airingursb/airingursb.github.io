@@ -13,11 +13,12 @@ export async function getStaticPaths() {
       photo: p,
       prev: photos[i - 1] || null,
       next: photos[i + 1] || null,
+      others: photos.filter((_, j) => j !== i),
     },
   }));
 }
 
-const { photo, prev, next } = Astro.props as any;
+const { photo, prev, next, others = [] } = Astro.props as any;
 const s = siteStrings.en.photos;
 
 const exifRows: Array<[string, string | number | null]> = [
@@ -110,6 +111,37 @@ const exifRows: Array<[string, string | number | null]> = [
         )}
       </aside>
     </div>
+
+    {others.length > 0 && (
+      <section class="detail-others">
+        <ul class="photos-grid">
+          {others.map((p: any) => (
+            <li class="photo-card" style={`--dom: ${p.dominantColor}`}>
+              <a href={`/photos/${p.slug}`} class="photo-link" aria-label={p.title || p.slug}>
+                <picture>
+                  <source
+                    type="image/avif"
+                    srcset={`${p.variants.thumb.avif} 400w, ${p.variants.medium.avif} 1200w`}
+                    sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                  />
+                  <source
+                    type="image/webp"
+                    srcset={`${p.variants.thumb.webp} 400w, ${p.variants.medium.webp} 1200w`}
+                    sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw"
+                  />
+                  <img
+                    src={p.variants.medium.webp}
+                    alt={p.title || p.slug}
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </picture>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
   </div>
 
   <style>
