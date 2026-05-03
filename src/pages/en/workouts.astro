@@ -12,16 +12,20 @@ import RouteMini from '../../components/workouts/RouteMini.tsx';
 
 const s = siteStrings.en.workouts;
 const idxPath = resolvePath('./src/data/workouts.json');
-const items = (existsSync(idxPath) ? JSON.parse(readFileSync(idxPath, 'utf8')) : []) as Array<any>;
+const pubIdxPath = resolvePath('./src/data/workouts-public.json');
+const idxFile = existsSync(idxPath) ? idxPath : (existsSync(pubIdxPath) ? pubIdxPath : null);
+const items = (idxFile ? JSON.parse(readFileSync(idxFile, 'utf8')) : []) as Array<any>;
 const contentEntries = await getCollection('workouts');
 // Astro 5 lowercases content collection IDs; workout UUIDs are uppercase.
 const titleById = new Map(contentEntries.map(e => [e.id.toLowerCase(), e.data.title]));
 
 const routesById = new Map<string, any[]>();
 for (const w of items) {
-  const detailPath = resolvePath(`./src/data/workouts/${w.id}.json`);
-  if (!existsSync(detailPath)) continue;
-  const detail = JSON.parse(readFileSync(detailPath, 'utf8'));
+  const local = resolvePath(`./src/data/workouts/${w.id}.json`);
+  const pub   = resolvePath(`./src/data/workouts-public/${w.id}.json`);
+  const file  = existsSync(local) ? local : (existsSync(pub) ? pub : null);
+  if (!file) continue;
+  const detail = JSON.parse(readFileSync(file, 'utf8'));
   routesById.set(w.id, detail.route ?? []);
 }
 

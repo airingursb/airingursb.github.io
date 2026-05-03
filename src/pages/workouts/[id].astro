@@ -15,14 +15,18 @@ import { defaultWorkoutTitle } from '../../components/workouts/format.mjs';
 
 export async function getStaticPaths() {
   const idxPath = resolvePath('./src/data/workouts.json');
-  if (!existsSync(idxPath)) return [];
-  const items = JSON.parse(readFileSync(idxPath, 'utf8')) as Array<any>;
+  const pubIdxPath = resolvePath('./src/data/workouts-public.json');
+  const idxFile = existsSync(idxPath) ? idxPath : (existsSync(pubIdxPath) ? pubIdxPath : null);
+  if (!idxFile) return [];
+  const items = JSON.parse(readFileSync(idxFile, 'utf8')) as Array<any>;
   return items.map((w) => ({ params: { id: w.id } }));
 }
 
 const { id } = Astro.params;
-const detailPath = resolvePath(`./src/data/workouts/${id}.json`);
-if (!existsSync(detailPath)) throw new Error(`Workout not found: ${id}`);
+const localPath = resolvePath(`./src/data/workouts/${id}.json`);
+const pubPath   = resolvePath(`./src/data/workouts-public/${id}.json`);
+const detailPath = existsSync(localPath) ? localPath : (existsSync(pubPath) ? pubPath : null);
+if (!detailPath) throw new Error(`Workout not found: ${id}`);
 const detail = JSON.parse(readFileSync(detailPath, 'utf8'));
 
 const contentEntries = await getCollection('workouts');

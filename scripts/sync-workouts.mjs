@@ -30,13 +30,16 @@ const DEFAULT_DIR = path.join(ROOT, 'workouts-source');
 const SRC_DIR = process.env.WORKOUTS_SOURCE_DIR
   || process.env.WORKOUTS_BACKUP_DIR        // legacy env name
   || DEFAULT_DIR;
-const OUT_DATA_DIR    = path.join(ROOT, 'src/data/workouts');
-const OUT_INDEX       = path.join(ROOT, 'src/data/workouts.json');
-const OUT_CONTENT_DIR = path.join(ROOT, 'src/content/workouts');
+const OUT_DATA_DIR        = path.join(ROOT, 'src/data/workouts');             // gitignored — full local dataset
+const OUT_INDEX           = path.join(ROOT, 'src/data/workouts.json');         // gitignored — full index
+const OUT_PUBLIC_DATA_DIR = path.join(ROOT, 'src/data/workouts-public');       // committed — subset (public:true)
+const OUT_PUBLIC_INDEX    = path.join(ROOT, 'src/data/workouts-public.json');  // committed — public index
+const OUT_CONTENT_DIR     = path.join(ROOT, 'src/content/workouts');
 
 async function main() {
-  await fs.mkdir(OUT_DATA_DIR,    { recursive: true });
-  await fs.mkdir(OUT_CONTENT_DIR, { recursive: true });
+  await fs.mkdir(OUT_DATA_DIR,        { recursive: true });
+  await fs.mkdir(OUT_PUBLIC_DATA_DIR, { recursive: true });
+  await fs.mkdir(OUT_CONTENT_DIR,     { recursive: true });
 
   let entries = [];
   try {
@@ -90,6 +93,8 @@ async function main() {
 
   // Write per-workout JSON + content stubs (+ OG cards uploaded to R2)
   const indexEntries = [];
+  const publicIndexEntries = [];
+  const publicIds = new Set();   // for pruning the public dir
   for (const w of seen.values()) {
     const mdxPath = path.join(OUT_CONTENT_DIR, `${w.id}.mdx`);
     if (!(await exists(mdxPath))) {
@@ -97,18 +102,18 @@ async function main() {
       console.log(`[workouts] stub mdx → ${path.basename(mdxPath)}`);
     }
 
-    // Read the user-edited mdx frontmatter for title/location.
+    // Read the user-edited mdx frontmatter for title / location / public.
     const fm = await readFrontmatter(mdxPath);
     const titleZh = fm?.title?.zh || `${w.start.slice(0, 10)} · 徒步`;
     const titleEn = fm?.title?.en || `${w.start.slice(0, 10)} · Hiking`;
     const locationZh = fm?.location?.zh || '';
     const locationEn = fm?.location?.en || '';
+    const isPublic = fm?.public === true;
 
-    // OG cards (zh + en). uploadIfChanged etag-compares so unchanged
-    // PNGs don't re-upload; the satori/resvg pass still runs every time
-    // (cheap, ~1s per card).
+    // OG cards (zh + en). Only generate + upload for public hikes so
+    // private routes don't end up at predictable R2 URLs.
     let og = undefined;
-    if (r2Ready && w.bbox && w.route?.length >= 2) {
+    if (isPublic && r2Ready && w.bbox && w.route?.length >= 2) {
       try {
         const [zhPng, enPng] = await Promise.all([
           generateWorkoutOG({ workout: w, title: titleZh, location: locationZh, lang: 'zh' }),
@@ -128,11 +133,13 @@ async function main() {
       }
     }
 
-    const detailPath = path.join(OUT_DATA_DIR, `${w.id}.json`);
     const enriched = og ? { ...w, og } : w;
+
+    // Always write the local (gitignored) full record.
+    const detailPath = path.join(OUT_DATA_DIR, `${w.id}.json`);
     await fs.writeFile(detailPath, JSON.stringify(enriched) + '\n');
 
-    indexEntries.push({
+    const indexEntry = {
       id: w.id,
       type: w.type,
       start: w.start,
@@ -144,14 +151,32 @@ async function main() {
       },
       bbox: w.bbox,
       trackSvg: generateTrackSvg(w.route),
-    });
+    };
+    indexEntries.push(indexEntry);
+
+    // For public hikes, ALSO write to the committed public subset so CI
+    // (which doesn't have workouts-source/) can build the deployed site.
+    if (isPublic) {
+      const pubDetailPath = path.join(OUT_PUBLIC_DATA_DIR, `${w.id}.json`);
+      await fs.writeFile(pubDetailPath, JSON.stringify(enriched) + '\n');
+      publicIndexEntries.push(indexEntry);
+      publicIds.add(w.id);
+    }
   }
 
   // Sort newest first
   indexEntries.sort((a, b) => b.start.localeCompare(a.start));
+  publicIndexEntries.sort((a, b) => b.start.localeCompare(a.start));
 
   await fs.writeFile(OUT_INDEX, JSON.stringify(indexEntries, null, 2) + '\n');
-  console.log(`[workouts] wrote ${indexEntries.length} workout(s) → ${path.relative(ROOT, OUT_INDEX)}`);
+  await fs.writeFile(OUT_PUBLIC_INDEX, JSON.stringify(publicIndexEntries, null, 2) + '\n');
+
+  // Prune public dir: remove anything not in the public set (e.g., a
+  // hike that flipped from public:true → public:false).
+  await pruneOrphans(OUT_PUBLIC_DATA_DIR, '.json', publicIds);
+
+  console.log(`[workouts] wrote ${indexEntries.length} local workout(s) → ${path.relative(ROOT, OUT_INDEX)}`);
+  console.log(`[workouts] wrote ${publicIndexEntries.length} public workout(s) → ${path.relative(ROOT, OUT_PUBLIC_INDEX)}`);
 }
 
 async function exists(p) {
