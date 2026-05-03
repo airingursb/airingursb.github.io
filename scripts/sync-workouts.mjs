@@ -14,12 +14,17 @@ import 'dotenv/config';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 import { normalizeWorkout } from './lib/workouts-normalize.mjs';
 import { generateTrackSvg } from './lib/workouts-svg-track.mjs';
 import { generateWorkoutOG } from './lib/workouts-og.mjs';
 import { uploadIfChanged, publicUrl } from './lib/photos-r2.mjs';
+
+function shortHash(buf) {
+  return crypto.createHash('md5').update(buf).digest('hex').slice(0, 10);
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -124,9 +129,12 @@ async function main() {
           uploadIfChanged({ key: `workouts/${w.id}.en.png`, body: enPng, contentType: 'image/png' }),
         ]);
         console.log(`[workouts] og ${w.id.slice(0, 8)} zh=${zhRes.status} en=${enRes.status}`);
+        // Append a content hash so a regenerated OG (e.g. after we
+        // changed the layout) actually invalidates the long-lived
+        // immutable Cloudflare/browser cache fronting R2.
         og = {
-          zh: publicUrl(`workouts/${w.id}.zh.png`),
-          en: publicUrl(`workouts/${w.id}.en.png`),
+          zh: `${publicUrl(`workouts/${w.id}.zh.png`)}?v=${shortHash(zhPng)}`,
+          en: `${publicUrl(`workouts/${w.id}.en.png`)}?v=${shortHash(enPng)}`,
         };
       } catch (err) {
         console.warn(`[workouts] og ${w.id.slice(0, 8)} failed: ${err.message}`);
