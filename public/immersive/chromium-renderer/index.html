@@ -1864,6 +1864,69 @@
     background: var(--accent);
   }
 
+  /* ---------- FAQ · inline collapsible Q&A ---------- */
+  .faq {
+    background: rgba(168,122,31,0.05);
+    border: 1px solid rgba(168,122,31,0.30);
+    border-left: 3px solid var(--warn);
+    border-radius: 0 4px 4px 0;
+    margin: 20px 0 24px;
+    padding: 0;
+  }
+  .faq summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 12px 18px;
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--sans); font-size: 13.5px;
+    color: var(--ink); font-weight: 500;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::before {
+    content: "Q";
+    flex-shrink: 0;
+    width: 22px; height: 22px;
+    background: var(--warn); color: var(--paper);
+    border-radius: 50%;
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    letter-spacing: 0;
+  }
+  .faq summary::after {
+    content: "+";
+    margin-left: auto;
+    font-family: var(--mono); font-size: 18px; font-weight: 700;
+    color: var(--warn);
+    transition: transform 0.18s;
+  }
+  .faq[open] summary::after { content: "−"; }
+  .faq summary:hover { background: rgba(168,122,31,0.08); }
+  .faq summary strong { color: var(--ink); font-weight: 600; }
+  .faq summary em { font-style: normal; color: var(--warn); font-weight: 600; }
+  .faq .faq-body {
+    padding: 4px 18px 18px 50px;
+    font-family: var(--sans); font-size: 13.5px; line-height: 1.7;
+    color: var(--ink-soft);
+    border-top: 1px dashed rgba(168,122,31,0.25);
+    margin-top: 0;
+  }
+  .faq[open] .faq-body { padding-top: 14px; }
+  .faq .faq-body p { margin: 0 0 12px; }
+  .faq .faq-body p:last-child { margin-bottom: 0; }
+  .faq .faq-body strong { color: var(--ink); font-weight: 600; }
+  .faq .faq-body em { font-style: normal; color: var(--warn); font-weight: 600; }
+  .faq .faq-body code {
+    font-family: var(--mono); font-size: 12px;
+    background: rgba(168,122,31,0.10); color: var(--copper);
+    padding: 1px 5px; border-radius: 2px;
+  }
+  .faq .faq-body ol, .faq .faq-body ul {
+    padding-left: 22px; margin: 8px 0 12px;
+  }
+  .faq .faq-body li { margin-bottom: 6px; }
+
   /* ---------- Mainline block (per chapter "The Card after stage X") ---------- */
   .mainline {
     background: linear-gradient(180deg, rgba(179,90,31,0.05) 0%, var(--paper-2) 100%);
@@ -4456,6 +4519,34 @@
     </div>
     <p class="lang-zh-only" style="font-family: var(--sans); font-size: 12px; color: var(--ink-mute); margin-top: 6px;">输入：<code>&lt;div&gt;&lt;p&gt;&lt;div&gt;&lt;/div&gt;&lt;/p&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;</code></p>
     <p class="lang-en-only" style="font-family: var(--sans); font-size: 12px; color: var(--ink-mute); margin-top: 6px;">Input: <code>&lt;div&gt;&lt;p&gt;&lt;div&gt;&lt;/div&gt;&lt;/p&gt;&lt;span&gt;&lt;/span&gt;&lt;/div&gt;</code></p>
+
+    <details class="faq">
+      <summary>
+        <span class="lang-zh-only"><strong>为什么用栈,不用链表?</strong> · <em>嵌套天然 LIFO,栈是规范要求的数据结构</em></span>
+        <span class="lang-en-only"><strong>Why a stack, not a linked list?</strong> · <em>nesting is naturally LIFO; the stack is the spec-required data structure</em></span>
+      </summary>
+      <div class="faq-body">
+        <p class="lang-zh-only">这是个很好的问题——4 个原因,从最直接到最深入:</p>
+        <p class="lang-en-only">A great question — four reasons, from the most immediate to the deepest:</p>
+
+        <ol>
+          <li class="lang-zh-only"><strong>HTML 嵌套天然是 LIFO</strong>。解析器吃到 <code>&lt;/div&gt;</code> 时,它要找的是"<em>最近一个还没闭合的同名开标签</em>"——这正好是<strong>栈顶</strong>。栈直接 O(1) pop;链表得从头/尾遍历找最近的匹配,O(n)。一个 100KB 的页面有几千次 push/pop,O(n) 与 O(1) 的差距是数量级。</li>
+          <li class="lang-en-only"><strong>HTML nesting is naturally LIFO</strong>. When the parser sees <code>&lt;/div&gt;</code>, it needs the "<em>most recent unclosed open tag with that name</em>" — exactly the <strong>top of the stack</strong>. Stack pop is O(1); a linked list has to traverse to find the latest match, O(n). A 100KB page does thousands of push/pop pairs — O(1) vs O(n) is an order-of-magnitude gap.</li>
+
+          <li class="lang-zh-only"><strong>HTML5 规范<em>本身</em>就用栈描述</strong>。W3C/WHATWG 的 HTML5 解析算法里有两个明文叫做"<em>stack of open elements</em>"和"<em>list of active formatting elements</em>"的数据结构。最复杂的那段——<em>adoption agency algorithm</em>(处理 <code>&lt;b&gt;&lt;p&gt;X&lt;/b&gt;Y&lt;/p&gt;</code> 这种交叉嵌套的"<em>错误恢复</em>")——直接按栈的术语写规范。换成链表,你不仅要重写所有规范引文,逻辑也表达不出来了。</li>
+          <li class="lang-en-only"><strong>The HTML5 spec <em>itself</em> describes it as a stack</strong>. W3C/WHATWG's HTML parsing algorithm explicitly uses two data structures named "<em>stack of open elements</em>" and "<em>list of active formatting elements</em>". The hairiest piece — the <em>adoption agency algorithm</em> (error recovery for crossed nestings like <code>&lt;b&gt;&lt;p&gt;X&lt;/b&gt;Y&lt;/p&gt;</code>) — is written directly in stack terminology. Switching to a linked list would force you to rewrite every spec quote, and the logic would no longer express itself.</li>
+
+          <li class="lang-zh-only"><strong>缓存友好</strong>。栈通常用<em>连续数组</em>实现(Blink 的 <code>HTMLElementStack</code> 内部就是 <code>Vector&lt;HTMLStackItem*&gt;</code>),CPU 一次 cache line 64 字节就装下 8 个指针,push/pop 在 L1 cache 里跑。链表节点散落在堆上,每次 next 指针跳一次都可能 cache miss——<em>实测能差 5-10×</em>。</li>
+          <li class="lang-en-only"><strong>Cache-friendly</strong>. Stacks typically live in a <em>contiguous array</em> (Blink's <code>HTMLElementStack</code> is internally a <code>Vector&lt;HTMLStackItem*&gt;</code>). One 64-byte cache line holds 8 pointers; push/pop runs in L1. Linked-list nodes scatter across the heap, so each next-pointer chase risks a cache miss — <em>5-10× slower in practice</em>.</li>
+
+          <li class="lang-zh-only"><strong>栈高度 = 嵌套深度</strong>,白送一个语义指标。HTML5 规范里大量规则按"<em>nesting depth</em>"判断:<code>&lt;table&gt;</code> 内部的 foster parenting、限制 <code>&lt;p&gt;</code> 不能嵌套 block、<code>&lt;option&gt;</code> 在 <code>&lt;select&gt;</code> 里的隐式闭合……栈直接 <code>.size()</code> 给答案。链表需要单独维护一个深度计数器,加同步成本。</li>
+          <li class="lang-en-only"><strong>Stack depth = nesting depth</strong>, a free semantic index. Many HTML5 spec rules dispatch on "<em>nesting depth</em>": foster parenting inside <code>&lt;table&gt;</code>, banning <code>&lt;p&gt;</code> from nesting block elements, the implicit close of <code>&lt;option&gt;</code> inside <code>&lt;select&gt;</code>… Stack <code>.size()</code> answers in O(1). A linked list would need a separately maintained depth counter, with its own sync cost.</li>
+        </ol>
+
+        <p class="lang-zh-only"><strong>反过来想:</strong> "<em>什么时候用链表反而合适</em>?" 答案是——<em>需要在中间任意位置插入/删除</em>的场景。HTML 解析里,中间插入的次数极少(只有 adoption agency 算法里的 fragment-tree 重排会用到),用栈的代价小到可以无视。所以"<em>HTML 解析器为什么用栈而不是链表</em>"的真正答案是:<strong>这个问题问反了——HTML 嵌套就是栈结构,链表是个反直觉的选项</strong>。</p>
+        <p class="lang-en-only"><strong>Flip the question:</strong> "<em>When would a linked list be a better fit?</em>" Answer: <em>scenarios needing arbitrary mid-list insert/delete</em>. HTML parsing rarely needs that (only the adoption agency algorithm's fragment-tree rearrangement, and even that's cheap on top of a stack). So the real answer to "<em>why a stack, not a linked list?</em>" is: <strong>the question is inverted — HTML nesting <em>is</em> a stack; a linked list would be the counter-intuitive choice</strong>.</p>
+      </div>
+    </details>
 
     <h3 class="sub lang-zh-only">怎么观察这个流程</h3>
     <h3 class="sub lang-en-only">How to inspect this stage</h3>
