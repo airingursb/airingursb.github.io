@@ -3,7 +3,7 @@ import * as React from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { RoutePoint, Bbox, WorkoutMetric } from './types';
-import { colorFor, type ColorTheme } from './workoutColors';
+import { colorFor, percentileRange, type ColorTheme } from './workoutColors';
 
 interface Props {
   route: RoutePoint[];
@@ -101,8 +101,7 @@ function paintRoute(map: mapboxgl.Map, route: RoutePoint[], metric: WorkoutMetri
     metric === 'calories' ? 'cal' :
     'step';
   const values = route.map(p => p[key] as number);
-  const yMin = Math.min(...values);
-  const yMax = Math.max(...values);
+  const [yMin, yMax] = percentileRange(values);
 
   for (let i = 0; i < route.length - 1; i++) {
     const a = route[i];
@@ -145,7 +144,7 @@ function SvgFallback({ route, bbox, metric, theme, height }: Required<Omit<Props
     metric === 'calories' ? 'cal' :
     metric === 'steps' ? 'step' : 'alt';
   const values = route.map(p => p[key] as number);
-  const yMin = Math.min(...values), yMax = Math.max(...values);
+  const [yMin, yMax] = percentileRange(values);
 
   return (
     <svg className="workout-map" viewBox={`0 0 ${widthPx} ${heightPx}`} style={{ height }}>

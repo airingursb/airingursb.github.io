@@ -69,3 +69,24 @@ export function colorFor(
 function clamp01(n: number) {
   return n < 0 ? 0 : n > 1 ? 1 : n;
 }
+
+/**
+ * Clamp the color domain to a percentile band so outliers (a few seconds
+ * of GPS jitter, a paused segment with sec/m → ∞, a lone altitude spike)
+ * don't crush the rest of the data into a single shade.
+ *
+ * Default 10th/90th gives the hike body the full gradient while still
+ * letting extremes saturate at the endpoints.
+ */
+export function percentileRange(
+  values: number[],
+  lowP = 0.1,
+  highP = 0.9,
+): [number, number] {
+  if (values.length === 0) return [0, 1];
+  if (values.length === 1) return [values[0], values[0]];
+  const sorted = [...values].sort((a, b) => a - b);
+  const lo = sorted[Math.max(0, Math.floor((sorted.length - 1) * lowP))];
+  const hi = sorted[Math.min(sorted.length - 1, Math.ceil((sorted.length - 1) * highP))];
+  return lo === hi ? [lo, lo + 1e-9] : [lo, hi];
+}
