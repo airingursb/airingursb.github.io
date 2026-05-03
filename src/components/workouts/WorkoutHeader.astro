@@ -1,0 +1,31 @@
+---
+// src/components/workouts/WorkoutHeader.astro
+import { formatDistance, formatDuration } from './format.mjs';
+import type { WorkoutType } from './types';
+
+interface Props {
+  type: WorkoutType;
+  distanceKm: number;
+  durationSec: number;
+  name: string;
+}
+
+const { type, distanceKm, durationSec, name } = Astro.props;
+
+const TYPE_GLYPH: Record<string, string> = {
+  hiking:  '🥾',
+  walking: '🚶',
+  running: '🏃',
+  cycling: '🚴',
+  other:   '⊙',
+};
+const typeIcon = TYPE_GLYPH[type] ?? TYPE_GLYPH.other;
+---
+<header class="header">
+  <span class="type-icon" aria-label={type}>{typeIcon}</span>
+  <div class="dist-dur">
+    <div>{formatDistance(distanceKm)}</div>
+    <div style="color: var(--w-fg-muted); font-size: 12px;">{formatDuration(durationSec)}</div>
+  </div>
+  <div class="name">{name}</div>
+</header>
