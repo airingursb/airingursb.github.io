@@ -15,8 +15,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
+import yaml from 'js-yaml';
 import { normalizeWorkout } from './lib/workouts-normalize.mjs';
 import { generateTrackSvg } from './lib/workouts-svg-track.mjs';
+import { generateWorkoutOG } from './lib/workouts-og.mjs';
+import { uploadIfChanged, publicUrl } from './lib/photos-r2.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
@@ -79,17 +82,55 @@ async function main() {
   await pruneOrphans(OUT_DATA_DIR, '.json', seen);
   await pruneOrphans(OUT_CONTENT_DIR, '.mdx', seen);
 
-  // Write per-workout JSON + content stubs
+  // Detect R2 once up front so we don't probe envs in the per-workout loop.
+  const r2Ready = !!(process.env.R2_ACCOUNT_ID && process.env.R2_ACCESS_KEY_ID
+                  && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET
+                  && process.env.R2_PUBLIC_BASE);
+  if (!r2Ready) console.warn('[workouts] R2 env missing → OG generation skipped');
+
+  // Write per-workout JSON + content stubs (+ OG cards uploaded to R2)
   const indexEntries = [];
   for (const w of seen.values()) {
-    const detailPath = path.join(OUT_DATA_DIR, `${w.id}.json`);
-    await fs.writeFile(detailPath, JSON.stringify(w) + '\n');
-
     const mdxPath = path.join(OUT_CONTENT_DIR, `${w.id}.mdx`);
     if (!(await exists(mdxPath))) {
       await fs.writeFile(mdxPath, makeStubMdx(w));
       console.log(`[workouts] stub mdx → ${path.basename(mdxPath)}`);
     }
+
+    // Read the user-edited mdx frontmatter for title/location.
+    const fm = await readFrontmatter(mdxPath);
+    const titleZh = fm?.title?.zh || `${w.start.slice(0, 10)} · 徒步`;
+    const titleEn = fm?.title?.en || `${w.start.slice(0, 10)} · Hiking`;
+    const locationZh = fm?.location?.zh || '';
+    const locationEn = fm?.location?.en || '';
+
+    // OG cards (zh + en). uploadIfChanged etag-compares so unchanged
+    // PNGs don't re-upload; the satori/resvg pass still runs every time
+    // (cheap, ~1s per card).
+    let og = undefined;
+    if (r2Ready && w.bbox && w.route?.length >= 2) {
+      try {
+        const [zhPng, enPng] = await Promise.all([
+          generateWorkoutOG({ workout: w, title: titleZh, location: locationZh, lang: 'zh' }),
+          generateWorkoutOG({ workout: w, title: titleEn, location: locationEn, lang: 'en' }),
+        ]);
+        const [zhRes, enRes] = await Promise.all([
+          uploadIfChanged({ key: `workouts/${w.id}.zh.png`, body: zhPng, contentType: 'image/png' }),
+          uploadIfChanged({ key: `workouts/${w.id}.en.png`, body: enPng, contentType: 'image/png' }),
+        ]);
+        console.log(`[workouts] og ${w.id.slice(0, 8)} zh=${zhRes.status} en=${enRes.status}`);
+        og = {
+          zh: publicUrl(`workouts/${w.id}.zh.png`),
+          en: publicUrl(`workouts/${w.id}.en.png`),
+        };
+      } catch (err) {
+        console.warn(`[workouts] og ${w.id.slice(0, 8)} failed: ${err.message}`);
+      }
+    }
+
+    const detailPath = path.join(OUT_DATA_DIR, `${w.id}.json`);
+    const enriched = og ? { ...w, og } : w;
+    await fs.writeFile(detailPath, JSON.stringify(enriched) + '\n');
 
     indexEntries.push({
       id: w.id,
@@ -115,6 +156,18 @@ async function main() {
 
 async function exists(p) {
   try { await fs.access(p); return true; } catch { return false; }
+}
+
+/** Parse the frontmatter of an mdx file (between the leading `---` fences). */
+async function readFrontmatter(filePath) {
+  try {
+    const text = await fs.readFile(filePath, 'utf8');
+    const m = /^---\r?\n([\s\S]*?)\r?\n---/.exec(text);
+    if (!m) return null;
+    return yaml.load(m[1]);
+  } catch {
+    return null;
+  }
 }
 
 /** Delete files in `dir` whose basename (sans `ext`) is not a key in `keep`. */

@@ -1,0 +1,162 @@
+---
+// Workout share modal — same structure / classes as the photos share
+// modal in src/pages/photos/[slug].astro so it picks up the existing
+// .share-* CSS in src/styles/photos.css. The detail page must import
+// photos.css (alongside workouts.css) for the styles to apply.
+//
+// Renders a button you click to open a centered card showing the
+// pre-rendered OG image, the canonical URL, and the same share
+// actions photos uses (copy / Threads / X / native).
+
+interface Props {
+  ogImage?: string;
+  shareUrl: string;
+  shareTitle: string;
+}
+const { ogImage, shareUrl, shareTitle } = Astro.props;
+
+const threadsHref = `https://www.threads.net/intent/post?text=${encodeURIComponent(shareTitle + ' ' + shareUrl)}`;
+const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`;
+---
+
+<button type="button" class="workout-share-btn" id="shareBtn" aria-label="Share" title="Share">
+  {/* Tabler TbPhotoShare — same icon photos uses */}
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M15 8h.01" />
+    <path d="M12.5 21h-6.5a3 3 0 0 1 -3 -3v-12a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v6.5" />
+    <path d="M3 16l5 -5c.928 -.875 2.072 -.875 3 0l3 3" />
+    <path d="M14 14l1 -1c.617 -.582 1.327 -.79 2.012 -.626" />
+    <path d="M16 22l5 -5" />
+    <path d="M21 21.5v-4.5h-4.5" />
+  </svg>
+</button>
+
+<div class="share-modal" id="shareModal" hidden>
+  <button type="button" class="share-backdrop" id="shareBackdrop" aria-label="Close share dialog"></button>
+  <div class="share-card" role="dialog" aria-modal="true" aria-label="Share workout">
+    <button type="button" class="share-close" id="shareClose" aria-label="Close">×</button>
+
+    <div class="share-image">
+      {ogImage ? (
+        <img src={ogImage} alt={shareTitle} loading="lazy" decoding="async" />
+      ) : (
+        <div style="aspect-ratio: 1200/630; display: grid; place-items: center; color: #888; font-family: ui-monospace, monospace;">
+          OG card not available
+        </div>
+      )}
+    </div>
+
+    <div class="share-row">
+      <input type="text" readonly value={shareUrl} class="share-url" id="shareUrl" />
+      <div class="share-actions-row">
+        <button type="button" class="share-act" id="shareCopy" aria-label="Copy link" title="Copy link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="8" y="8" width="12" height="12" rx="2" />
+            <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+          </svg>
+        </button>
+        <a href={threadsHref} class="share-act" target="_blank" rel="noopener noreferrer" aria-label="Share to Threads" title="Share to Threads">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.21 11.16c-.09-.04-.18-.08-.27-.12-.16-2.97-1.78-4.67-4.51-4.69h-.04c-1.63 0-2.99.7-3.83 1.96l1.5 1.03c.62-.94 1.6-1.14 2.33-1.14h.03c.91.01 1.6.27 2.04.78.32.37.54.88.65 1.52-.83-.14-1.73-.18-2.69-.13-2.71.16-4.46 1.74-4.34 3.94.06 1.12.62 2.08 1.57 2.71.81.53 1.85.79 2.93.73 1.43-.08 2.55-.62 3.34-1.62.6-.76.97-1.74 1.14-2.97.7.42 1.21.97 1.5 1.63.49 1.13.52 2.97-.98 4.47-1.31 1.31-2.89 1.88-5.27 1.9-2.64-.02-4.64-.87-5.93-2.52-1.21-1.55-1.84-3.79-1.86-6.65.02-2.86.65-5.1 1.86-6.65 1.29-1.65 3.29-2.5 5.93-2.52 2.66.02 4.7.87 6.06 2.54.67.81 1.17 1.84 1.51 3.04l1.79-.48c-.41-1.47-1.05-2.74-1.91-3.79C16.99 1.95 14.5.86 11.45.84h-.01C8.39.86 5.93 1.96 4.21 4.1 2.69 6 1.91 8.65 1.89 11.99v.02c.02 3.34.79 5.99 2.32 7.89 1.71 2.14 4.18 3.24 7.23 3.26h.01c2.71-.02 4.62-.73 6.2-2.31 2.07-2.06 2-4.65 1.32-6.24-.49-1.16-1.43-2.1-2.71-2.71zm-4.6 3.91c-1.2.07-2.45-.47-2.51-1.6-.04-.83.59-1.76 2.58-1.87.23-.01.45-.02.67-.02.72 0 1.39.07 2 .2-.23 2.84-1.56 3.22-2.74 3.29z" />
+          </svg>
+        </a>
+        <a href={xHref} class="share-act" target="_blank" rel="noopener noreferrer" aria-label="Share to X" title="Share to X">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+        </a>
+        <button type="button" class="share-act" id="shareNative" aria-label="More share options" title="More">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 19V5M5 12l7-7 7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ shareTitle, shareUrl }}>
+  (function () {
+    const modal = document.getElementById('shareModal');
+    const openBtn = document.getElementById('shareBtn');
+    const closeBtn = document.getElementById('shareClose');
+    const backdrop = document.getElementById('shareBackdrop');
+    const copyBtn = document.getElementById('shareCopy');
+    const nativeBtn = document.getElementById('shareNative');
+    const urlInput = document.getElementById('shareUrl');
+
+    function open() {
+      if (!modal) return;
+      if (typeof umami !== 'undefined') umami.track('workout-share', { url: shareUrl });
+      modal.hidden = false;
+      document.body.style.overflow = 'hidden';
+      setTimeout(function () { closeBtn && closeBtn.focus(); }, 0);
+    }
+    function close() {
+      if (!modal) return;
+      modal.hidden = true;
+      document.body.style.overflow = '';
+      openBtn && openBtn.focus();
+    }
+    openBtn && openBtn.addEventListener('click', open);
+    closeBtn && closeBtn.addEventListener('click', close);
+    backdrop && backdrop.addEventListener('click', close);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && modal && !modal.hidden) close();
+    });
+
+    copyBtn && copyBtn.addEventListener('click', async function () {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+      } catch (_e) {
+        urlInput && urlInput.select();
+        try { document.execCommand('copy'); } catch (_) {}
+      }
+      copyBtn.classList.add('copied');
+      const originalLabel = copyBtn.getAttribute('aria-label');
+      copyBtn.setAttribute('aria-label', 'Copied!');
+      setTimeout(function () {
+        copyBtn.classList.remove('copied');
+        copyBtn.setAttribute('aria-label', originalLabel);
+      }, 1800);
+    });
+
+    urlInput && urlInput.addEventListener('click', function () { urlInput.select(); });
+
+    nativeBtn && nativeBtn.addEventListener('click', async function () {
+      const data = { title: shareTitle, url: shareUrl };
+      if (navigator.share) {
+        try { await navigator.share(data); return; }
+        catch (e) { if (e && e.name === 'AbortError') return; }
+      }
+      copyBtn && copyBtn.click();
+    });
+  })();
+</script>
+
+<style>
+  .workout-share-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--w-border);
+    background: var(--w-cell-bg);
+    color: var(--w-fg);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 150ms, background 150ms;
+  }
+  .workout-share-btn:hover { opacity: 1; background: var(--w-cell-bg-active); }
+
+  /* Hide the (optional) overlay slot used by photos so the share-image
+     doesn't have empty bits when reused in workouts. */
+  .share-card .share-image-meta { display: none; }
+</style>
