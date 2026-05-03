@@ -53,7 +53,13 @@ const workoutsSchema = z.object({
   title: z.object({ zh: z.string(), en: z.string() }),
   description: z.object({ zh: z.string(), en: z.string() }).optional(),
   location: z.object({ zh: z.string(), en: z.string() }).optional(),
+  weather: z.object({ zh: z.string(), en: z.string() }).optional(),
+  companions: z.array(z.string()).optional(),
   cover: z.string().optional(),
+  // public: false → workout exists only in the local (gitignored)
+  // dataset and never gets committed/built into the public site.
+  // Flip to true when ready to publish that specific hike.
+  public: z.boolean().default(false),
   draft: z.boolean().default(false),
 });
 

@@ -8,12 +8,22 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import { formatDistance, formatDuration, formatRelativeDate, defaultWorkoutTitle } from '../components/workouts/format.mjs';
 import { WorkoutTypeIcon } from '../components/workouts/icons';
+import RouteMini from '../components/workouts/RouteMini.tsx';
 
 const s = siteStrings.zh.workouts;
 const idxPath = resolvePath('./src/data/workouts.json');
 const items = (existsSync(idxPath) ? JSON.parse(readFileSync(idxPath, 'utf8')) : []) as Array<any>;
 const contentEntries = await getCollection('workouts');
 const titleById = new Map(contentEntries.map(e => [e.id.replace(/\.mdx$/, ''), e.data.title]));
+
+// Inline simplified route per item so RouteMini hydrates without an extra fetch.
+const routesById = new Map<string, any[]>();
+for (const w of items) {
+  const detailPath = resolvePath(`./src/data/workouts/${w.id}.json`);
+  if (!existsSync(detailPath)) continue;
+  const detail = JSON.parse(readFileSync(detailPath, 'utf8'));
+  routesById.set(w.id, detail.route ?? []);
+}
 
 const totalKm = items.reduce((s, w) => s + (w.stats?.distanceKm ?? 0), 0);
 const totalHours = items.reduce((s, w) => s + (w.durationSec ?? 0), 0) / 3600;
@@ -63,9 +73,9 @@ const totalHours = items.reduce((s, w) => s + (w.durationSec ?? 0), 0) / 3600;
             return (
               <li>
                 <a href={`/workouts/${w.id}`} class="workout-list-card">
-                  <svg class="track-svg" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" stroke="currentColor" stroke-width="1.5" fill="none">
-                    {w.trackSvg && <path d={w.trackSvg} />}
-                  </svg>
+                  <div class="track-mini-wrap">
+                    <RouteMini route={routesById.get(w.id) ?? []} bbox={w.bbox} height={60} client:visible />
+                  </div>
                   <div>
                     <div class="meta-name">
                       <WorkoutTypeIcon type={w.type} size={14} client:load />

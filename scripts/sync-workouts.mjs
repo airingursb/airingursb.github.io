@@ -131,7 +131,7 @@ async function pruneOrphans(dir, ext, keep) {
 }
 
 function makeStubMdx(w) {
-  const dateZh = w.start.slice(0, 10);
+  const date = w.start.slice(0, 10);
   const typeLabel = ({
     hiking: '徒步',
     walking: '步行',
@@ -140,12 +140,45 @@ function makeStubMdx(w) {
     other:   '运动',
   })[w.type] ?? '运动';
   const typeLabelEn = w.type.charAt(0).toUpperCase() + w.type.slice(1);
+  const km = w.stats.distanceKm.toFixed(2);
+  const mins = Math.floor(w.durationSec / 60);
+  const hh = Math.floor(mins / 60);
+  const mm = mins % 60;
+  const dur = `${hh}:${String(mm).padStart(2, '0')}`;
   return `---
+# ${date} · ${km} km · ${dur}
+# Replace placeholder strings below; leave fields empty ("") to skip them.
 title:
-  zh: ${dateZh} · ${typeLabel}
-  en: ${dateZh} · ${typeLabelEn}
-draft: false
+  zh: ${date} · ${typeLabel}
+  en: ${date} · ${typeLabelEn}
+description:
+  zh: ""
+  en: ""
+location:
+  zh: ""
+  en: ""
+weather:
+  zh: ""
+  en: ""
+# companions: ["A", "B"]    # uncomment when needed
+public: false               # flip to true to publish this hike to the public site
 ---
+
+## 路线 / Route
+
+{/* 走了哪条路、起点终点、印象最深的几段 */}
+
+## 体感 / How it felt
+
+{/* 状态、节奏、累不累、配速感受 */}
+
+## 装备 / Gear
+
+{/* 鞋、背包、补给、随身物 */}
+
+## 备注 / Notes
+
+{/* 其他想记下的 */}
 `;
 }
 
