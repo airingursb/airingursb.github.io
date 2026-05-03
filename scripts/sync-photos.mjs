@@ -130,7 +130,11 @@ async function processPhoto(entry, existingRecord) {
       exif: existingRecord.exif,
       takenAt: existingRecord.takenAt,
     });
-    const ogStale = !existingRecord.ogImage || existingRecord.ogHash !== newOgHash;
+    // Force regen when: missing, content stale, OR still pointing at the old PNG URL.
+    const ogStale =
+      !existingRecord.ogImage
+      || !existingRecord.ogImage.endsWith('.jpg')
+      || existingRecord.ogHash !== newOgHash;
     const histogramMissing = !existingRecord.histogram;
 
     let histogram = existingRecord.histogram;
@@ -155,12 +159,12 @@ async function processPhoto(entry, existingRecord) {
               place,
             });
             const result = await uploadIfChanged({
-              key: `photos/${entry.slug}/og.png`,
+              key: `photos/${entry.slug}/og.jpg`,
               body: og,
-              contentType: 'image/png',
+              contentType: 'image/jpeg',
             });
-            console.log(`    ${result.status === 'uploaded' ? '↑' : '·'} og.png (regen)`);
-            ogImage = publicUrl(`photos/${entry.slug}/og.png`);
+            console.log(`    ${result.status === 'uploaded' ? '↑' : '·'} og.jpg (regen)`);
+            ogImage = publicUrl(`photos/${entry.slug}/og.jpg`);
           } catch (err) {
             console.warn(`  ! og regen failed for ${entry.slug}: ${err.message}`);
           }
@@ -218,7 +222,7 @@ async function processPhoto(entry, existingRecord) {
   }
 
   if (og) {
-    outputs.push({ key: 'og.png', body: og, contentType: 'image/png' });
+    outputs.push({ key: 'og.jpg', body: og, contentType: 'image/jpeg' });
   }
 
   for (const o of outputs) {
@@ -252,7 +256,7 @@ async function processPhoto(entry, existingRecord) {
     ...(place ? { place } : {}),
     ...(histogram ? { histogram } : {}),
     variants: buildVariantUrls(entry.slug),
-    ...(og ? { ogImage: publicUrl(`photos/${entry.slug}/og.png`), ogHash } : {}),
+    ...(og ? { ogImage: publicUrl(`photos/${entry.slug}/og.jpg`), ogHash } : {}),
     sourceHash,
     syncedAt: new Date().toISOString(),
   };

@@ -199,7 +199,11 @@ export async function generateOG({ filePath, exif, takenAt, title, place }) {
     { width: 1200, height: 630, fonts },
   );
 
-  return new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } }).render().asPng();
+  // resvg only outputs PNG; transcode to JPEG for ~4x smaller payload and
+  // wider crawler compatibility (notably WeChat, which is finicky with
+  // larger PNGs on flaky CN routes).
+  const png = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } }).render().asPng();
+  return await sharp(png).jpeg({ quality: 85, mozjpeg: true }).toBuffer();
 }
 
 // Stable hash of the inputs that affect OG output. Lets sync skip
