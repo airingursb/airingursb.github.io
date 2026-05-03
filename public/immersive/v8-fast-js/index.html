@@ -786,6 +786,314 @@
   .axis-label span:first-child { color: var(--copper); }
   .axis-label span:last-child { color: var(--asm); }
 
+  /* ---------- Extended reading (collapsible) ---------- */
+  details.extended {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--copper);
+    border-radius: 0 4px 4px 0;
+    margin: 28px 0;
+    padding: 0;
+  }
+  details.extended summary {
+    cursor: pointer;
+    padding: 14px 22px;
+    font-family: var(--sans); font-size: 13.5px; font-weight: 600;
+    color: var(--ink-soft);
+    list-style: none;
+    display: flex; align-items: center; gap: 12px;
+    user-select: none;
+    transition: background 0.15s;
+  }
+  details.extended summary::-webkit-details-marker { display: none; }
+  details.extended summary::after {
+    content: "▸";
+    margin-left: auto;
+    color: var(--copper);
+    transition: transform 0.18s;
+    font-size: 12px;
+  }
+  details.extended[open] summary::after { transform: rotate(90deg); }
+  details.extended summary:hover { background: var(--paper-2); }
+  details.extended .ext-tag {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--copper); font-weight: 700;
+    background: rgba(179,90,31,0.10);
+    padding: 3px 8px; border-radius: 2px;
+  }
+  details.extended .ext-body {
+    padding: 6px 22px 18px;
+    border-top: 1px dashed var(--rule);
+  }
+  details.extended .ext-body p {
+    font-family: var(--sans); font-size: 13.5px; line-height: 1.7;
+    color: var(--ink-soft); margin: 14px 0;
+  }
+  details.extended .ext-body p strong { color: var(--ink); font-weight: 600; }
+  details.extended .ext-body p em { color: var(--copper); font-style: normal; font-weight: 600; }
+  details.extended .ext-body p code {
+    color: var(--copper); font-family: var(--mono); font-size: 0.92em;
+    background: rgba(179,90,31,0.06); padding: 1px 5px; border-radius: 2px;
+  }
+  details.extended .ext-body h6 {
+    font-family: var(--sans); font-size: 11px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--copper); margin: 22px 0 4px;
+    font-weight: 700;
+  }
+
+  /* ---------- HeapObject visualization ---------- */
+  .heap-vis {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: stretch;
+    margin: 18px 0;
+  }
+  .heap-vis.solo { grid-template-columns: 1fr; }
+  .hv-side {
+    background: var(--bg-soft);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 14px 16px;
+    display: flex; flex-direction: column;
+    gap: 10px;
+  }
+  .hv-side.smi { border-left: 3px solid var(--asm); }
+  .hv-side.heap { border-left: 3px solid var(--heat); }
+  .hv-h {
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: 0.06em;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .hv-side.smi .hv-h { color: var(--asm); }
+  .hv-side.heap .hv-h { color: var(--heat); }
+  .hv-cell {
+    font-family: var(--mono); font-size: 11.5px;
+    background: var(--paper);
+    border: 1px solid var(--rule-soft);
+    padding: 8px 12px;
+    border-radius: 3px;
+    color: var(--ink);
+  }
+  .hv-cell.ptr {
+    background: rgba(195,87,58,0.08);
+    border-color: var(--heat-soft);
+    color: var(--heat);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .hv-cell.smi {
+    background: rgba(45,106,79,0.08);
+    border-color: var(--asm-soft);
+    color: var(--asm);
+  }
+  .hv-cell .hv-tag {
+    font-size: 9.5px; color: var(--ink-mute);
+    background: var(--paper); padding: 1px 6px; border-radius: 99px;
+    border: 1px solid var(--rule-soft);
+  }
+  .hv-arrow-down {
+    text-align: center;
+    color: var(--ink-mute);
+    font-family: var(--mono);
+    font-size: 14px;
+  }
+  .hv-cells {
+    background: var(--paper);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .hv-row {
+    font-family: var(--mono); font-size: 11px;
+    padding: 7px 12px;
+    border-bottom: 1px dashed var(--rule-soft);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .hv-row:last-child { border-bottom: none; }
+  .hv-row .hv-bytes {
+    font-size: 9px; color: var(--ink-mute);
+  }
+  .hv-row.map { color: var(--accent); background: rgba(31,92,140,0.04); }
+  .hv-row.val { color: var(--ink); }
+  .hv-row.props { color: var(--accent); }
+  .hv-row.elems { color: var(--accent); }
+  .hv-row.inobj { color: var(--asm); background: rgba(45,106,79,0.04); }
+  .hv-meta {
+    font-family: var(--sans); font-size: 11.5px;
+    color: var(--ink-mute); line-height: 1.65;
+    padding-top: 6px;
+    border-top: 1px dashed var(--rule-soft);
+  }
+  .hv-meta strong { color: var(--ink); font-weight: 600; }
+  .hv-arrow {
+    align-self: center;
+    font-family: var(--mono); font-size: 14px;
+    color: var(--ink-mute); padding: 0 6px;
+  }
+  @media (max-width: 720px) {
+    .heap-vis { grid-template-columns: 1fr; }
+    .hv-arrow { transform: rotate(90deg); padding: 4px 0; }
+  }
+
+  /* ---------- Code translator (Ch1) — sample switcher ---------- */
+  .code-tr { /* container */ }
+  .ct-tabs {
+    display: flex; gap: 4px; flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  .ct-tabs button {
+    background: var(--bg-soft);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    padding: 7px 12px;
+    font-family: var(--sans); font-size: 12px;
+    color: var(--ink-soft); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .ct-tabs button code {
+    font-family: var(--mono); font-size: 11px;
+    background: none; padding: 0; color: inherit;
+  }
+  .ct-tabs button:hover {
+    color: var(--accent); border-color: var(--accent-soft); background: var(--paper-2);
+  }
+  .ct-tabs button.active {
+    background: var(--accent);
+    color: var(--paper);
+    border-color: var(--accent);
+  }
+  .ct-tabs button.active code { color: var(--paper); }
+  .ct-stage { display: none; }
+  .ct-stage.active { display: block; }
+
+  /* ---------- Tier explorer (Ch3) — 5-tier output trace ---------- */
+  .tier-explorer { /* container */ }
+  .tx-tabs {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+  .tx-tabs button {
+    background: var(--bg-soft);
+    border: 1px solid var(--rule-soft);
+    border-top: 2px solid var(--rule-soft);
+    border-radius: 3px;
+    padding: 9px 8px;
+    font-family: var(--sans); font-size: 11.5px;
+    color: var(--ink-soft); cursor: pointer;
+    transition: all 0.15s;
+    display: flex; flex-direction: column; align-items: flex-start;
+    gap: 3px;
+    text-align: left;
+  }
+  .tx-tabs button .tx-out {
+    font-family: var(--mono); font-size: 9.5px;
+    color: var(--ink-mute); letter-spacing: 0.04em;
+  }
+  .tx-tabs button.parser    { border-top-color: var(--ink-mute); }
+  .tx-tabs button.ignition  { border-top-color: var(--accent); }
+  .tx-tabs button.sparkplug { border-top-color: var(--copper); }
+  .tx-tabs button.maglev    { border-top-color: var(--asm); }
+  .tx-tabs button.turbofan  { border-top-color: var(--heat); }
+  .tx-tabs button:hover {
+    background: var(--paper-2);
+    color: var(--ink);
+  }
+  .tx-tabs button.active {
+    background: var(--paper-2);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.06);
+    color: var(--ink);
+  }
+  .tx-tabs button.parser.active    { background: linear-gradient(180deg, rgba(118,124,135,0.10) 0%, var(--paper-2) 70%); }
+  .tx-tabs button.ignition.active  { background: linear-gradient(180deg, rgba(31,92,140,0.10) 0%, var(--paper-2) 70%); }
+  .tx-tabs button.sparkplug.active { background: linear-gradient(180deg, rgba(179,90,31,0.10) 0%, var(--paper-2) 70%); }
+  .tx-tabs button.maglev.active    { background: linear-gradient(180deg, rgba(45,106,79,0.10) 0%, var(--paper-2) 70%); }
+  .tx-tabs button.turbofan.active  { background: linear-gradient(180deg, rgba(195,87,58,0.10) 0%, var(--paper-2) 70%); }
+
+  .tx-source {
+    background: var(--bg-soft);
+    border: 1px solid var(--rule-soft);
+    border-radius: 4px;
+    padding: 14px 16px;
+    margin-bottom: 12px;
+  }
+  .tx-source-h {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute);
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .tx-source pre {
+    margin: 0;
+    font-family: var(--mono); font-size: 12.5px; line-height: 1.7;
+    color: var(--ink);
+    white-space: pre;
+    overflow-x: auto;
+  }
+  .tx-source pre .kw { color: var(--gpu); }
+  .tx-source pre .fn { color: var(--accent); font-weight: 600; }
+
+  .tx-stage { display: none; }
+  .tx-stage.active { display: block; }
+  .tx-out-h {
+    font-family: var(--sans); font-size: 10px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: #888d96;
+    margin-bottom: 8px;
+    display: flex; gap: 12px; align-items: baseline;
+  }
+  .tx-tag {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    letter-spacing: 0.14em;
+    padding: 3px 8px; border-radius: 2px;
+  }
+  .tx-tag.parser    { background: rgba(118,124,135,0.18); color: var(--ink-soft); }
+  .tx-tag.ignition  { background: rgba(31,92,140,0.18);  color: var(--accent); }
+  .tx-tag.sparkplug { background: rgba(179,90,31,0.18);  color: var(--copper); }
+  .tx-tag.maglev    { background: rgba(45,106,79,0.18);  color: var(--asm); }
+  .tx-tag.turbofan  { background: rgba(195,87,58,0.18);  color: var(--heat); }
+  .tx-out-tag {
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--ink-mute);
+  }
+
+  .tx-body {
+    background: var(--ink); color: #d8d8d8;
+    border-radius: 4px;
+    padding: 16px 18px;
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.85;
+    overflow-x: auto;
+  }
+  .tx-body .src-line {
+    display: block; padding: 1px 0;
+    white-space: pre;
+    font-variant-ligatures: none;
+  }
+  .tx-body .src-frame   { color: #888d96; }
+  .tx-body .src-fn      { color: #fcd34d; }
+  .tx-body .src-cls     { color: #4a85b3; }
+  .tx-body .src-arg     { color: #5fc18a; }
+  .tx-body .src-comment { color: #5a6172; font-style: italic; }
+  .tx-body .src-method  { color: #5fc18a; }
+  .tx-body .src-kw      { color: #c977c6; }
+  .tx-body .src-num     { color: #d1855a; }
+  .tx-body .src-str     { color: #5fc18a; }
+  .tx-body .src-hot     { background: rgba(195,87,58,0.18); }
+  .tx-body .src-good    { background: rgba(95,193,138,0.10); }
+
+  @media (max-width: 720px) {
+    .tx-tabs { grid-template-columns: 1fr 1fr; }
+    .tx-tabs button .tx-out { display: none; }
+  }
+
   /* ---------- Compile pipeline diagram (4-tier) ---------- */
   .compile-pipe {
     background: var(--paper); border: 1px solid var(--rule);
@@ -1683,49 +1991,200 @@
 
     <figure data-watch>
       <div class="figbox">
-        <div class="three-eyes">
-          <div class="te-col brain">
-            <div class="te-icon">◉</div>
-            <div class="te-name lang-zh-only">人脑</div>
-            <div class="te-name lang-en-only">Brain</div>
-            <div class="te-sub">high abstraction</div>
-            <div class="te-body"><span class="cm">// 算 3+4，存到 a</span>
-a <span class="kw">=</span> <span class="num">7</span></div>
+        <div class="code-tr" id="codeTr">
+          <div class="ct-tabs">
+            <button class="active" data-stage="t0"><code>const a = 3 + 4</code></button>
+            <button data-stage="t1"><code>function add(a, b)</code></button>
+            <button data-stage="t2"><code>function abs(x)</code></button>
+            <button data-stage="t3"><code>function sum(n)</code></button>
           </div>
-          <div class="te-arrow">›</div>
-          <div class="te-col engine">
-            <div class="te-icon">V8</div>
-            <div class="te-name lang-zh-only">V8 引擎</div>
-            <div class="te-name lang-en-only">V8 engine</div>
-            <div class="te-sub">parser → bytecode → asm</div>
-            <div class="te-body"><span class="cm">// Ignition bytecode</span>
-LdaSmi <span class="num">[3]</span>
+
+          <!-- t0: const a = 3 + 4 -->
+          <div class="ct-stage active" data-stage="t0">
+            <div class="three-eyes">
+              <div class="te-col brain">
+                <div class="te-icon">◉</div>
+                <div class="te-name lang-zh-only">人脑</div>
+                <div class="te-name lang-en-only">Brain</div>
+                <div class="te-sub">js source</div>
+                <div class="te-body"><span class="kw">const</span> a = <span class="num">3</span> + <span class="num">4</span>;
+<span class="cm">// → a = 7</span></div>
+              </div>
+              <div class="te-arrow">›</div>
+              <div class="te-col engine">
+                <div class="te-icon">V8</div>
+                <div class="te-name">Ignition</div>
+                <div class="te-sub">bytecode</div>
+                <div class="te-body">LdaSmi <span class="num">[3]</span>
 Star0
-AddSmi <span class="num">[4]</span>, <span class="num">[0]</span>
+LdaSmi <span class="num">[4]</span>
+Add  r0, <span class="num">[0]</span>
 Star1
 Return</div>
-          </div>
-          <div class="te-arrow">›</div>
-          <div class="te-col cpu">
-            <div class="te-icon">▦</div>
-            <div class="te-name lang-zh-only">CPU</div>
-            <div class="te-name lang-en-only">CPU</div>
-            <div class="te-sub">low abstraction</div>
-            <div class="te-body"><span class="cm">; TurboFan x86-64</span>
-<span class="kw">mov</span>   <span class="reg">eax</span>, <span class="num">3</span>
-<span class="kw">add</span>   <span class="reg">eax</span>, <span class="num">4</span>
+              </div>
+              <div class="te-arrow">›</div>
+              <div class="te-col cpu">
+                <div class="te-icon">▦</div>
+                <div class="te-name">TurboFan</div>
+                <div class="te-sub">x86-64 asm</div>
+                <div class="te-body"><span class="cm">; const folded → 7</span>
+<span class="kw">mov</span>  <span class="reg">eax</span>, <span class="num">7</span>
 <span class="kw">ret</span></div>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="axis-label">
-          <span class="lang-zh-only">抽象程度高</span><span class="lang-en-only">More abstract</span>
-          <span class="lang-zh-only">抽象程度低</span><span class="lang-en-only">Less abstract</span>
+
+          <!-- t1: function add(a, b) -->
+          <div class="ct-stage" data-stage="t1">
+            <div class="three-eyes">
+              <div class="te-col brain">
+                <div class="te-icon">◉</div>
+                <div class="te-name lang-zh-only">人脑</div>
+                <div class="te-name lang-en-only">Brain</div>
+                <div class="te-sub">js source</div>
+                <div class="te-body"><span class="kw">function</span> <span class="reg">add</span>(a, b) {
+  <span class="kw">return</span> a + b;
+}</div>
+              </div>
+              <div class="te-arrow">›</div>
+              <div class="te-col engine">
+                <div class="te-icon">V8</div>
+                <div class="te-name">Ignition</div>
+                <div class="te-sub">bytecode</div>
+                <div class="te-body"><span class="cm">// 3 ops · 6 bytes</span>
+Ldar a1
+Add  a0, <span class="num">[0]</span>
+Return</div>
+              </div>
+              <div class="te-arrow">›</div>
+              <div class="te-col cpu">
+                <div class="te-icon">▦</div>
+                <div class="te-name">TurboFan</div>
+                <div class="te-sub">x86-64 (assumed SMI)</div>
+                <div class="te-body"><span class="kw">testb</span> [<span class="reg">rbx</span>+<span class="num">0xf</span>], <span class="num">0x1</span>
+<span class="kw">jne</span>   deopt
+<span class="kw">testb</span> [<span class="reg">rcx</span>+<span class="num">0xf</span>], <span class="num">0x1</span>
+<span class="kw">jne</span>   deopt
+<span class="kw">mov</span>   <span class="reg">rax</span>, <span class="reg">rbx</span>
+<span class="kw">add</span>   <span class="reg">rax</span>, <span class="reg">rcx</span>
+<span class="kw">jo</span>    overflow
+<span class="kw">ret</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- t2: function abs(x) -->
+          <div class="ct-stage" data-stage="t2">
+            <div class="three-eyes">
+              <div class="te-col brain">
+                <div class="te-icon">◉</div>
+                <div class="te-name lang-zh-only">人脑</div>
+                <div class="te-name lang-en-only">Brain</div>
+                <div class="te-sub">js source</div>
+                <div class="te-body"><span class="kw">function</span> <span class="reg">abs</span>(x) {
+  <span class="kw">return</span> x &lt; <span class="num">0</span> ? -x : x;
+}</div>
+              </div>
+              <div class="te-arrow">›</div>
+              <div class="te-col engine">
+                <div class="te-icon">V8</div>
+                <div class="te-name">Ignition</div>
+                <div class="te-sub">bytecode</div>
+                <div class="te-body">Ldar a0
+TestLessThan <span class="num">[0]</span>, <span class="num">[1]</span>
+JumpIfFalse <span class="num">[+5]</span>
+Ldar a0
+Negate <span class="num">[2]</span>
+Return
+Ldar a0
+Return</div>
+              </div>
+              <div class="te-arrow">›</div>
+              <div class="te-col cpu">
+                <div class="te-icon">▦</div>
+                <div class="te-name">TurboFan</div>
+                <div class="te-sub">x86-64 (assumed SMI)</div>
+                <div class="te-body"><span class="kw">testb</span> [<span class="reg">rbx</span>+<span class="num">0xf</span>], <span class="num">0x1</span>
+<span class="kw">jne</span>   deopt
+<span class="kw">test</span>  <span class="reg">rbx</span>, <span class="reg">rbx</span>
+<span class="kw">jns</span>   .pos
+<span class="kw">neg</span>   <span class="reg">rbx</span>
+.pos:
+<span class="kw">mov</span>   <span class="reg">rax</span>, <span class="reg">rbx</span>
+<span class="kw">ret</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- t3: function sum(n) -->
+          <div class="ct-stage" data-stage="t3">
+            <div class="three-eyes">
+              <div class="te-col brain">
+                <div class="te-icon">◉</div>
+                <div class="te-name lang-zh-only">人脑</div>
+                <div class="te-name lang-en-only">Brain</div>
+                <div class="te-sub">js source</div>
+                <div class="te-body"><span class="kw">function</span> <span class="reg">sum</span>(n) {
+  <span class="kw">let</span> s = <span class="num">0</span>;
+  <span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>;
+       i &lt; n; i++) {
+    s += i;
+  }
+  <span class="kw">return</span> s;
+}</div>
+              </div>
+              <div class="te-arrow">›</div>
+              <div class="te-col engine">
+                <div class="te-icon">V8</div>
+                <div class="te-name">Ignition</div>
+                <div class="te-sub">bytecode</div>
+                <div class="te-body">LdaZero
+Star0          <span class="cm">; s</span>
+LdaZero
+Star1          <span class="cm">; i</span>
+.L:
+Ldar r1
+TestLessThan a0, <span class="num">[0]</span>
+JumpIfFalse <span class="num">[+9]</span>
+Ldar r0
+Add  r1, <span class="num">[1]</span>
+Star0
+Ldar r1
+Inc <span class="num">[2]</span>
+Star1
+JumpLoop <span class="num">[-13]</span>
+Ldar r0
+Return</div>
+              </div>
+              <div class="te-arrow">›</div>
+              <div class="te-col cpu">
+                <div class="te-icon">▦</div>
+                <div class="te-name">TurboFan</div>
+                <div class="te-sub">x86-64 (loop opt)</div>
+                <div class="te-body"><span class="kw">xor</span>   <span class="reg">rax</span>, <span class="reg">rax</span>      <span class="cm">; s = 0</span>
+<span class="kw">xor</span>   <span class="reg">rcx</span>, <span class="reg">rcx</span>      <span class="cm">; i = 0</span>
+.loop:
+<span class="kw">cmp</span>   <span class="reg">rcx</span>, <span class="reg">rbx</span>
+<span class="kw">jge</span>   .done
+<span class="kw">add</span>   <span class="reg">rax</span>, <span class="reg">rcx</span>
+<span class="kw">inc</span>   <span class="reg">rcx</span>
+<span class="kw">jmp</span>   .loop
+.done:
+<span class="kw">ret</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="axis-label">
+            <span class="lang-zh-only">抽象程度高</span><span class="lang-en-only">More abstract</span>
+            <span class="lang-zh-only">抽象程度低</span><span class="lang-en-only">Less abstract</span>
+          </div>
         </div>
       </div>
       <figcaption>
-        <span class="figid">FIG. 01</span>
-        <span class="lang-zh-only">同一行代码,在抽象轴上的三个落点。V8 的工作就是在中间那一格里,把左边折叠成右边。</span>
-        <span class="figen lang-en-only">The same one-liner sampled at three points on the abstraction axis. V8's job is to fold the left into the right, in the middle box.</span>
+        <span class="figid">FIG. 01 · interactive</span>
+        <span class="lang-zh-only">点上面 4 个 tab 切换不同 JS 样例,每段都给出 V8 Ignition 的字节码产物和 TurboFan 的机器码产物。同一段 JS,经过两次翻译,从抽象到具体。注意右栏汇编里多出来的 <code>testb</code> 和 <code>jne deopt</code>——那不是逻辑,是 V8 埋的类型检查 checkpoint(后面 Phase II 详细讲)。</span>
+        <span class="figen lang-en-only">Click the four tabs above to swap JS samples; each shows V8 Ignition's bytecode and TurboFan's machine code. The same JS, two translations, abstract to concrete. Note the extra <code>testb</code> + <code>jne deopt</code> in the asm column — those aren't logic, they're V8's type-check checkpoints (Phase II will dissect them).</span>
       </figcaption>
     </figure>
 
@@ -1995,6 +2454,191 @@ Return</div>
       </div>
     </div>
 
+    <h3 class="sub lang-zh-only">同一段 JS · 五级输出对照</h3>
+    <h3 class="sub lang-en-only">Same JS · five-tier output trace</h3>
+
+    <div class="lang-zh-only">
+      <p>把 Ch1 那个 <code>function add(a, b) { return a + b; }</code> 沿着五级流水线走一遍,你能直观看到每一级输出的代码长得有多不一样。点 tab 切换:</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Trace Ch1's <code>function add(a, b) { return a + b; }</code> through all five tiers. Each tier's output looks dramatically different. Click a tab:</p>
+    </div>
+
+    <figure data-watch>
+      <div class="figbox">
+        <div class="tier-explorer" id="tierExplorer">
+          <div class="tx-tabs">
+            <button class="parser active" data-stage="p"><span>Parser</span><span class="tx-out">→ AST</span></button>
+            <button class="ignition" data-stage="i"><span>Ignition</span><span class="tx-out">→ bytecode</span></button>
+            <button class="sparkplug" data-stage="s"><span>Sparkplug</span><span class="tx-out">→ baseline asm</span></button>
+            <button class="maglev" data-stage="m"><span>Maglev</span><span class="tx-out">→ mid-tier asm</span></button>
+            <button class="turbofan" data-stage="t"><span>TurboFan</span><span class="tx-out">→ peak asm</span></button>
+          </div>
+
+          <div class="tx-source">
+            <div class="tx-source-h">
+              <span class="lang-zh-only">输入 · JS 源码</span>
+              <span class="lang-en-only">Input · JS source</span>
+            </div>
+            <pre><span class="kw">function</span> <span class="fn">add</span>(a, b) {
+  <span class="kw">return</span> a + b;
+}</pre>
+          </div>
+
+          <!-- p: Parser AST -->
+          <div class="tx-stage active" data-stage="p">
+            <div class="tx-out-h">
+              <span class="tx-tag parser">PARSER</span>
+              <span class="tx-out-tag">AST · JSON-like tree</span>
+            </div>
+            <div class="tx-body">
+              <span class="src-line"><span class="src-cls">Program</span> {</span>
+              <span class="src-line">  body: [</span>
+              <span class="src-line">    <span class="src-cls">FunctionDeclaration</span> {</span>
+              <span class="src-line">      id: { name: <span class="src-str">"add"</span> },</span>
+              <span class="src-line">      params: [</span>
+              <span class="src-line">        <span class="src-cls">Identifier</span> { name: <span class="src-str">"a"</span> },</span>
+              <span class="src-line">        <span class="src-cls">Identifier</span> { name: <span class="src-str">"b"</span> }</span>
+              <span class="src-line">      ],</span>
+              <span class="src-line">      body: <span class="src-cls">BlockStatement</span> {</span>
+              <span class="src-line">        body: [</span>
+              <span class="src-line">          <span class="src-cls">ReturnStatement</span> {</span>
+              <span class="src-line">            argument: <span class="src-cls">BinaryExpression</span> {</span>
+              <span class="src-line">              operator: <span class="src-str">"+"</span>,</span>
+              <span class="src-line">              left:  <span class="src-cls">Identifier</span> { name: <span class="src-str">"a"</span> },</span>
+              <span class="src-line">              right: <span class="src-cls">Identifier</span> { name: <span class="src-str">"b"</span> }</span>
+              <span class="src-line">            }</span>
+              <span class="src-line">          }</span>
+              <span class="src-line">        ]</span>
+              <span class="src-line">      }</span>
+              <span class="src-line">    }</span>
+              <span class="src-line">  ]</span>
+              <span class="src-line">}</span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">; 没有任何机器指令——只是一棵语法树。</span></span>
+              <span class="src-line"><span class="src-comment">; 所有后面四级的输入都是这棵树(及其字节码),不是源码。</span></span>
+            </div>
+          </div>
+
+          <!-- i: Ignition bytecode -->
+          <div class="tx-stage" data-stage="i">
+            <div class="tx-out-h">
+              <span class="tx-tag ignition">IGNITION</span>
+              <span class="tx-out-tag">bytecode · 6 bytes · 3 opcodes</span>
+            </div>
+            <div class="tx-body">
+              <span class="src-line"><span class="src-comment">[generated bytecode for function: add]</span></span>
+              <span class="src-line"><span class="src-comment">  Parameter count 3   (含 receiver)</span></span>
+              <span class="src-line"><span class="src-comment">  Register count 0    (无本地变量)</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-frame">  00 :</span>  <span class="src-kw">Ldar</span> a1            <span class="src-comment">; load b → accumulator</span></span>
+              <span class="src-line"><span class="src-frame">  02 :</span>  <span class="src-kw">Add</span>  a0, <span class="src-num">[0]</span>      <span class="src-comment">; acc = a + acc, feedback slot 0</span></span>
+              <span class="src-line"><span class="src-frame">  05 :</span>  <span class="src-kw">Return</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">; 由 Ignition 解释器 dispatch 执行</span></span>
+              <span class="src-line"><span class="src-comment">; 每条指令带一个 [slot] 用来记录 type feedback</span></span>
+            </div>
+          </div>
+
+          <!-- s: Sparkplug baseline asm -->
+          <div class="tx-stage" data-stage="s">
+            <div class="tx-out-h">
+              <span class="tx-tag sparkplug">SPARKPLUG</span>
+              <span class="tx-out-tag">baseline x86-64 · 1:1 字节码翻译 · 不读 feedback</span>
+            </div>
+            <div class="tx-body">
+              <span class="src-line"><span class="src-frame">L01</span>  <span class="src-kw">push</span>  <span class="src-method">rbp</span></span>
+              <span class="src-line"><span class="src-frame">L02</span>  <span class="src-kw">mov</span>   <span class="src-method">rbp</span>, <span class="src-method">rsp</span></span>
+              <span class="src-line"><span class="src-frame">L03</span>  <span class="src-kw">push</span>  <span class="src-method">rsi</span>                       <span class="src-comment">; 保存 context</span></span>
+              <span class="src-line"><span class="src-frame">L04</span>  <span class="src-kw">push</span>  <span class="src-method">rdi</span>                       <span class="src-comment">; 保存 fn</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">  ;── Ldar a1 ──────────────────────────────</span></span>
+              <span class="src-line"><span class="src-frame">L05</span>  <span class="src-kw">mov</span>   <span class="src-method">rax</span>, [<span class="src-method">rbp</span>+<span class="src-num">0x10</span>]         <span class="src-comment">; rax = b</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">  ;── Add a0, [0] ──────────────────────────</span></span>
+              <span class="src-line"><span class="src-frame">L06</span>  <span class="src-kw">mov</span>   <span class="src-method">rcx</span>, [<span class="src-method">rbp</span>+<span class="src-num">0x18</span>]         <span class="src-comment">; rcx = a</span></span>
+              <span class="src-line"><span class="src-hot">L07  <span class="src-kw">call</span>  <span class="src-fn">Builtin::Add_Baseline</span>      <span class="src-comment">; ★ 调通用 builtin,不内联</span></span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">  ;── Return ───────────────────────────────</span></span>
+              <span class="src-line"><span class="src-frame">L08</span>  <span class="src-kw">mov</span>   <span class="src-method">rsp</span>, <span class="src-method">rbp</span></span>
+              <span class="src-line"><span class="src-frame">L09</span>  <span class="src-kw">pop</span>   <span class="src-method">rbp</span></span>
+              <span class="src-line"><span class="src-frame">L10</span>  <span class="src-kw">ret</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">; ★ 关键:Add 这条字节码翻译成一个 call。Sparkplug 不知道</span></span>
+              <span class="src-line"><span class="src-comment">;   a/b 的类型,所以走通用 builtin。比解释器快 ~3-5×,</span></span>
+              <span class="src-line"><span class="src-comment">;   但远没到 TurboFan 的水平。</span></span>
+            </div>
+          </div>
+
+          <!-- m: Maglev mid-tier asm -->
+          <div class="tx-stage" data-stage="m">
+            <div class="tx-out-h">
+              <span class="tx-tag maglev">MAGLEV</span>
+              <span class="tx-out-tag">mid-tier x86-64 · 读 feedback · 内联 add · 轻量 deopt</span>
+            </div>
+            <div class="tx-body">
+              <span class="src-line"><span class="src-frame">L01</span>  <span class="src-kw">push</span>  <span class="src-method">rbp</span></span>
+              <span class="src-line"><span class="src-frame">L02</span>  <span class="src-kw">mov</span>   <span class="src-method">rbp</span>, <span class="src-method">rsp</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">  ;── 读取 b 并做轻量 SMI 检查 ──────────────</span></span>
+              <span class="src-line"><span class="src-frame">L03</span>  <span class="src-kw">mov</span>   <span class="src-method">rax</span>, [<span class="src-method">rbp</span>+<span class="src-num">0x10</span>]         <span class="src-comment">; rax = b</span></span>
+              <span class="src-line"><span class="src-good">L04  <span class="src-kw">test</span>  <span class="src-method">al</span>, <span class="src-num">0x1</span>                 <span class="src-comment">; SMI?</span></span></span>
+              <span class="src-line"><span class="src-good">L05  <span class="src-kw">jne</span>   <span class="src-fn">Maglev_Deopt</span>              <span class="src-comment">; 不是 → deopt</span></span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">  ;── 读取 a 并做轻量 SMI 检查 ──────────────</span></span>
+              <span class="src-line"><span class="src-frame">L06</span>  <span class="src-kw">mov</span>   <span class="src-method">rcx</span>, [<span class="src-method">rbp</span>+<span class="src-num">0x18</span>]         <span class="src-comment">; rcx = a</span></span>
+              <span class="src-line"><span class="src-good">L07  <span class="src-kw">test</span>  <span class="src-method">cl</span>, <span class="src-num">0x1</span></span></span>
+              <span class="src-line"><span class="src-good">L08  <span class="src-kw">jne</span>   <span class="src-fn">Maglev_Deopt</span></span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">  ;── 内联的 add ──────────────────────────</span></span>
+              <span class="src-line"><span class="src-good">L09  <span class="src-kw">add</span>   <span class="src-method">rax</span>, <span class="src-method">rcx</span>             <span class="src-comment">; ★ 内联,不再 call</span></span></span>
+              <span class="src-line"><span class="src-frame">L10</span>  <span class="src-kw">jo</span>    <span class="src-fn">Maglev_Deopt</span>              <span class="src-comment">; 溢出</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-frame">L11</span>  <span class="src-kw">pop</span>   <span class="src-method">rbp</span></span>
+              <span class="src-line"><span class="src-frame">L12</span>  <span class="src-kw">ret</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">; ★ 比 Sparkplug 多了 SMI checkpoint,但 add 已经内联。</span></span>
+              <span class="src-line"><span class="src-comment">;   编译耗时比 TurboFan 短得多,性能 ~70% TurboFan。</span></span>
+            </div>
+          </div>
+
+          <!-- t: TurboFan peak asm -->
+          <div class="tx-stage" data-stage="t">
+            <div class="tx-out-h">
+              <span class="tx-tag turbofan">TURBOFAN</span>
+              <span class="tx-out-tag">peak x86-64 · 完整 checkpoint + deopt scaffold</span>
+            </div>
+            <div class="tx-body">
+              <span class="src-line"><span class="src-frame">L01</span>  <span class="src-kw">push</span>  <span class="src-method">rbp</span></span>
+              <span class="src-line"><span class="src-frame">L02</span>  <span class="src-kw">mov</span>   <span class="src-method">rbp</span>, <span class="src-method">rsp</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">  ;── 完整的类型守卫 (Phase II 的主角) ───────</span></span>
+              <span class="src-line"><span class="src-hot">L19  <span class="src-kw">testb</span> [<span class="src-method">rbx</span>+<span class="src-num">0xf</span>], <span class="src-num">0x1</span>           <span class="src-comment">; ★ checkpoint: a SMI?</span></span></span>
+              <span class="src-line"><span class="src-hot">L20  <span class="src-kw">jne</span>   <span class="src-fn">CompileLazyDeoptimizedCode</span></span></span>
+              <span class="src-line"><span class="src-hot">L21  <span class="src-kw">testb</span> [<span class="src-method">rcx</span>+<span class="src-num">0xf</span>], <span class="src-num">0x1</span>           <span class="src-comment">; ★ checkpoint: b SMI?</span></span></span>
+              <span class="src-line"><span class="src-hot">L22  <span class="src-kw">jne</span>   <span class="src-fn">CompileLazyDeoptimizedCode</span></span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">  ;── 实际 add(裸寄存器,SMI 已确认)──────────</span></span>
+              <span class="src-line"><span class="src-good">L23  <span class="src-kw">mov</span>   <span class="src-method">rax</span>, <span class="src-method">rbx</span></span></span>
+              <span class="src-line"><span class="src-good">L24  <span class="src-kw">add</span>   <span class="src-method">rax</span>, <span class="src-method">rcx</span>                  <span class="src-comment">; ★ 核心逻辑就这一行</span></span></span>
+              <span class="src-line"><span class="src-frame">L25</span>  <span class="src-kw">jo</span>    <span class="src-fn">OverflowDeopt</span>               <span class="src-comment">; 溢出</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-frame">L26</span>  <span class="src-kw">pop</span>   <span class="src-method">rbp</span></span>
+              <span class="src-line"><span class="src-frame">L27</span>  <span class="src-kw">ret</span></span>
+              <span class="src-line"></span>
+              <span class="src-line"><span class="src-comment">; ★ 1 行 JS → 9 行 asm。其中 6 行钢架(checkpoint+jo+ret),</span></span>
+              <span class="src-line"><span class="src-comment">;   1 行真正逻辑(add)。这 6 行钢架就是"V8 比 C 多付的税"。</span></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <figcaption>
+        <span class="figid">FIG. 02b · interactive</span>
+        <span class="lang-zh-only">同一个 <code>add(a, b)</code> 在 V8 流水线上的五种形态。Parser 出 AST 树;Ignition 出 3 条字节码;Sparkplug 出 ~10 行 baseline asm 但还要 <code>call</code> 通用 builtin;Maglev 内联了 add,用 SMI 检查替代 call;TurboFan 加了完整的 deopt 钢架,但核心 add 还是裸寄存器一条指令。每升一级,代码量增多,但运行时越来越接近 CPU 直接消费。</span>
+        <span class="figen lang-en-only">The same <code>add(a, b)</code> in five forms across V8's pipeline. Parser emits an AST tree; Ignition emits 3 bytecodes; Sparkplug emits ~10 lines of baseline asm that still <code>call</code>s a generic builtin; Maglev inlines the add, replacing the call with SMI guards; TurboFan adds the full deopt scaffold but the core add is still one register-level instruction. Each tier adds lines but moves runtime closer to what the CPU eats raw.</span>
+      </figcaption>
+    </figure>
+
     <h3 class="sub lang-zh-only">为什么不一上来就用 TurboFan</h3>
     <h3 class="sub lang-en-only">Why not just go straight to TurboFan</h3>
 
@@ -2262,6 +2906,114 @@ Return</div>
       </ul>
     </div>
 
+    <details class="extended">
+      <summary>
+        <span class="ext-tag"><span class="lang-zh-only">扩展阅读</span><span class="lang-en-only">extended</span></span>
+        <span class="lang-zh-only">SMI vs HeapObject — 两种"装值"的方式,为什么 HeapObject "重"</span>
+        <span class="lang-en-only">SMI vs HeapObject — two ways V8 boxes a value, and why HeapObject is "heavy"</span>
+      </summary>
+      <div class="ext-body">
+        <div class="lang-zh-only">
+          <p>V8 在内部表达"<em>一个 JS 值</em>"的方式只有两种,这两种就是 <strong>SMI</strong> 和 <strong>HeapObject</strong>。所有 JS 里能拿到的东西——number / string / boolean / null / object / function——背后都得装进这两个之一。</p>
+
+          <h6>SMI · 装得下,直接塞进指针里</h6>
+          <p><strong>SMI</strong>(Small Integer)是一个<em>整数且足够小</em>(31 位有符号,±2³⁰ 范围内)时 V8 走的那条路。它跳过堆,把数值<em>编码进那个 64 位字本身</em>:把数左移 1 位,末位填 0 标识"我是 SMI"。</p>
+          <p>读 SMI 时只需要右移一位拿数值;算术时直接用 CPU 寄存器,一条 <code>add</code> 指令搞定。整个过程<strong>不分配堆内存,不进 GC,不解引用</strong>。</p>
+
+          <h6>HeapObject · 装不下的,丢去堆上</h6>
+          <p>其他一切——浮点数、大整数、字符串、对象、数组、函数——都装不进 SMI,V8 会在堆上分配一块内存,把数据放那儿,然后用一个指针指过去。这个指针的<em>末位是 1</em>,V8 通过这一位区分"这是 SMI 还是要去堆上找的指针"。</p>
+          <p>但 HeapObject 不只是"一段值",它有一整套<strong>元信息</strong>——这是它"重"的根源。下面这张图把 SMI 跟 HeapNumber(用来装 <code>42.5</code> 这种浮点数)摆在一起对比:</p>
+        </div>
+        <div class="lang-en-only">
+          <p>Internally, V8 represents <em>any JS value</em> in exactly one of two ways: <strong>SMI</strong> or <strong>HeapObject</strong>. Everything you can hold in JS — numbers, strings, booleans, null, objects, functions — eventually fits into one bucket or the other.</p>
+
+          <h6>SMI · small enough, packed into the pointer itself</h6>
+          <p><strong>SMI</strong> (Small Integer) is the path V8 takes when a value <em>is an integer and small enough</em> (31-bit signed, ±2³⁰). It skips the heap and packs the value <em>directly into the 64-bit word</em>: shift left by one and set the low bit to 0 to mark "I am a SMI".</p>
+          <p>Reading a SMI is just a right shift; arithmetic happens in CPU registers, one <code>add</code> instruction. <strong>No heap alloc, no GC visit, no dereference</strong>.</p>
+
+          <h6>HeapObject · everything else lives on the heap</h6>
+          <p>Anything bigger or more complex — floats, big integers, strings, objects, arrays, functions — doesn't fit. V8 allocates a chunk on the heap, puts the data there, and hands you a pointer. That pointer's <em>low bit is 1</em>; V8 uses that bit to know "this is a pointer, dereference me to find the real thing".</p>
+          <p>But a HeapObject isn't just "a value" — it carries a whole stack of <strong>metadata</strong>, and that's the source of its weight. Here's a SMI and a HeapNumber (the box used for floats like <code>42.5</code>) side by side:</p>
+        </div>
+
+        <div class="heap-vis">
+          <div class="hv-side smi">
+            <div class="hv-h"><span class="lang-zh-only">SMI · 装整数 42</span><span class="lang-en-only">SMI · holding integer 42</span></div>
+            <div class="hv-cell smi">
+              <span><span class="lang-zh-only">值字本身: 0…0 0010 1010 <strong>0</strong></span><span class="lang-en-only">word itself: 0…0 0010 1010 <strong>0</strong></span></span>
+              <span class="hv-tag">SMI</span>
+            </div>
+            <div class="hv-meta">
+              <strong><span class="lang-zh-only">8 字节 · 1 个 word</span><span class="lang-en-only">8 bytes · 1 word</span></strong><br>
+              <span class="lang-zh-only">0 次堆分配 · 0 次 GC 扫描 · 0 次解引用</span>
+              <span class="lang-en-only">0 heap allocs · 0 GC visits · 0 deref</span><br>
+              <span class="lang-zh-only">运算就是一条 CPU <code>add</code></span>
+              <span class="lang-en-only">arithmetic is one CPU <code>add</code></span>
+            </div>
+          </div>
+          <div class="hv-arrow">vs</div>
+          <div class="hv-side heap">
+            <div class="hv-h"><span class="lang-zh-only">HeapNumber · 装浮点 42.5</span><span class="lang-en-only">HeapNumber · holding float 42.5</span></div>
+            <div class="hv-cell ptr">
+              <span><span class="lang-zh-only">指针字: 0x... <strong>1</strong></span><span class="lang-en-only">pointer word: 0x... <strong>1</strong></span></span>
+              <span class="hv-tag">HeapObject</span>
+            </div>
+            <div class="hv-arrow-down">↓</div>
+            <div class="hv-cells">
+              <div class="hv-row map"><span>Map ptr → HeapNumber</span><span class="hv-bytes">8 B</span></div>
+              <div class="hv-row val"><span>value 42.5</span><span class="hv-bytes">8 B</span></div>
+            </div>
+            <div class="hv-meta">
+              <strong><span class="lang-zh-only">至少 16 字节 + GC 头</span><span class="lang-en-only">≥ 16 bytes + GC header</span></strong><br>
+              <span class="lang-zh-only">1 次堆分配 · 每次 GC 都要扫</span>
+              <span class="lang-en-only">1 heap alloc · scanned by every GC pass</span><br>
+              <span class="lang-zh-only">读取要先解引用拿到 value</span>
+              <span class="lang-en-only">reading requires a deref to fetch the value</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lang-zh-only">
+          <p>对一个普通对象 <code>{x: 1, y: 2}</code>(JSObject),情况就更夸张——光这两字段就占 40 字节,还得带一个指向 Hidden Class 的指针:</p>
+        </div>
+        <div class="lang-en-only">
+          <p>A plain object <code>{x: 1, y: 2}</code> (a JSObject) is even more dramatic — those two fields alone occupy 40 bytes, plus a pointer to its Hidden Class:</p>
+        </div>
+
+        <div class="heap-vis solo">
+          <div class="hv-side heap">
+            <div class="hv-h"><span class="lang-zh-only">JSObject · {x: 1, y: 2} 的全部底层占用</span><span class="lang-en-only">JSObject · the full physical footprint of {x: 1, y: 2}</span></div>
+            <div class="hv-cell ptr">
+              <span><span class="lang-zh-only">指针字: 0x... <strong>1</strong></span><span class="lang-en-only">pointer word: 0x... <strong>1</strong></span></span>
+              <span class="hv-tag">HeapObject</span>
+            </div>
+            <div class="hv-arrow-down">↓</div>
+            <div class="hv-cells">
+              <div class="hv-row map"><span>Map ptr → Hidden Class</span><span class="hv-bytes">8 B</span></div>
+              <div class="hv-row props"><span>Properties ptr</span><span class="hv-bytes">8 B</span></div>
+              <div class="hv-row elems"><span>Elements ptr</span><span class="hv-bytes">8 B</span></div>
+              <div class="hv-row inobj"><span>in-obj #0 = 1 (= obj.x)</span><span class="hv-bytes">8 B</span></div>
+              <div class="hv-row inobj"><span>in-obj #1 = 2 (= obj.y)</span><span class="hv-bytes">8 B</span></div>
+            </div>
+            <div class="hv-meta">
+              <strong><span class="lang-zh-only">≥ 40 字节 + GC 头 · 还引用一个 Hidden Class</span><span class="lang-en-only">≥ 40 bytes + GC header · plus a referenced Hidden Class</span></strong><br>
+              <span class="lang-zh-only">每次 GC 要追整条引用链 · 每次属性访问要走 IC 路径</span>
+              <span class="lang-en-only">GC walks the entire reference chain · every property access goes through the IC</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="lang-zh-only">
+          <p>所以"<strong>一个数到底是 SMI 还是 HeapObject</strong>"是 V8 内部代价差距最大的<em>那一个 bit</em>——一个普通页面跑起来,堆里大半的 HeapObject 其实都是包装一个数字用的。这就是为什么 V8 拼命让能进 SMI 的就别进堆。</p>
+          <p>这也是后面 Phase III(Hidden Class、IC、Fast/Slow Properties)<em>所以重要</em>的根源:那些机制都在围绕"如何让访问 HeapObject 像访问 SMI 一样便宜"做文章。</p>
+        </div>
+        <div class="lang-en-only">
+          <p>So "<strong>SMI vs HeapObject</strong>" is the single biggest cost difference in V8 internals — and in a real page, most of those HeapObjects are just boxed numbers. That's why V8 fights so hard to keep things in SMI form.</p>
+          <p>It's also why Phase III (Hidden Class, IC, Fast/Slow Properties) <em>matters so much</em>: every mechanism there is about making HeapObject access as cheap as SMI access.</p>
+        </div>
+      </div>
+    </details>
+
     <div class="note asm">
       <span class="ntag"><span class="lang-zh-only">尺寸细节</span><span class="lang-en-only">SIZING DETAILS</span></span>
       <span class="lang-zh-only">在 32 位 V8 上,SMI 是 31 位有符号整数(范围 ±2³⁰),浮点和大整数会被装箱成 <code>HeapNumber</code> / <code>BigInt</code>。在 64 位 V8 上,默认开启<strong>指针压缩</strong>,SMI/Pointer 都是 32 位,Pointer 高 32 位由"isolate root"统一,所以低 32 位放得下大部分情况。这个细节决定了"传 number 比传 string 快得多"——string 永远是 HeapObject。</span>
@@ -2289,6 +3041,69 @@ Return</div>
       </ol>
       <p>Tagged Pointer isn't a curiosity. It's <em>the minimal decision V8 makes behind every line of JS you write</em>.</p>
     </div>
+
+    <details class="extended">
+      <summary>
+        <span class="ext-tag"><span class="lang-zh-only">扩展阅读</span><span class="lang-en-only">extended</span></span>
+        <span class="lang-zh-only"><code>obj.x</code> 比 <code>obj['x']</code> 快——是为什么</span>
+        <span class="lang-en-only">Why <code>obj.x</code> beats <code>obj['x']</code></span>
+      </summary>
+      <div class="ext-body">
+        <div class="lang-zh-only">
+          <p>它们看起来等价,但 V8 把它们编译成<em>两条不同的字节码</em>,走两条<em>不同的 IC</em> 路径:</p>
+        </div>
+        <div class="lang-en-only">
+          <p>They look equivalent, but V8 compiles them into <em>two different bytecodes</em> taking <em>two different IC paths</em>:</p>
+        </div>
+
+        <div class="src-stack">
+          <div class="src-h">
+            <span><span class="lang-zh-only">字节码差异</span><span class="lang-en-only">bytecode diff</span></span>
+            <span class="src-tag">v8/ignition</span>
+          </div>
+          <span class="src-line"><span class="src-comment">// obj.x  —— 编译期就知道 key 是 "x" 的字面量</span></span>
+          <span class="src-line"><span class="src-good"><span class="src-kw">LdaNamedProperty</span> &lt;obj&gt;, [<span class="src-str">'x'</span>], <span class="src-num">[0]</span></span></span>
+          <span class="src-line"><span class="src-good"><span class="src-comment">    ; → 走 LoadIC,V8 可以把 key 内联成 in-object offset</span></span></span>
+          <span class="src-line"><span class="src-good"><span class="src-comment">    ; → 命中后是一条 mov [base + offset]</span></span></span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// obj['x']  —— 哪怕 key 是字面量,也走通用 keyed 路径</span></span>
+          <span class="src-line"><span class="src-hot"><span class="src-kw">LdaKeyedProperty</span> &lt;obj&gt;, <span class="src-num">[0]</span>     <span class="src-comment">; key 在 accumulator 上</span></span></span>
+          <span class="src-line"><span class="src-hot"><span class="src-comment">    ; → 走 KeyedLoadIC,要同时处理:</span></span></span>
+          <span class="src-line"><span class="src-hot"><span class="src-comment">    ;     - string key (像 obj['x'])</span></span></span>
+          <span class="src-line"><span class="src-hot"><span class="src-comment">    ;     - SMI 数字下标 (像 arr[0])</span></span></span>
+          <span class="src-line"><span class="src-hot"><span class="src-comment">    ;   状态机比 LoadIC 复杂,优化命中率也更低</span></span></span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// obj[varName]  —— key 是动态变量,完全没法静态优化</span></span>
+          <span class="src-line"><span class="src-hot"><span class="src-kw">LdaKeyedProperty</span> &lt;obj&gt;, <span class="src-num">[0]</span></span></span>
+          <span class="src-line"><span class="src-hot"><span class="src-comment">    ; → KeyedLoadIC + 多态 feedback,最坏情况退化到字典查找</span></span></span>
+        </div>
+
+        <div class="lang-zh-only">
+          <p>三个实战层面的差距:</p>
+          <ul>
+            <li><strong>字节码不同</strong>:<code>LdaNamedProperty</code> 比 <code>LdaKeyedProperty</code> 多带一个 key index——V8 编译期就知道要找哪个属性,直接走最优路径。</li>
+            <li><strong>IC 状态机不同</strong>:LoadIC 只处理"按名字找属性",形态简单;KeyedLoadIC 还要兼顾数字下标(<code>arr[0]</code>),所以它的 fast-path 检查更多、更容易退化到 megamorphic。</li>
+            <li><strong>退化的代价不同</strong>:写 <code>obj['x']</code> 时,只要旁边有人写了 <code>obj[someVar]</code>,这个 site 的 IC 就<em>同时被两种用法污染</em>;而 <code>obj.x</code> 的 site 永远只是 LoadIC,不会被 keyed 路径污染。</li>
+          </ul>
+          <p>注意:现代 V8(2022 年之后)对字面量 <code>obj['x']</code> 做了一定的常量折叠,在某些场景下能把它优化成跟 <code>obj.x</code> 一样的 LoadIC——但<strong>不保证</strong>,而且只要这个 site 同时见过非字面量的 keyed 访问,优化就会退回。所以"用 <code>.x</code>"是<em>明确告诉 V8 和读代码的人:这是个静态名字</em>,不要给以后留隐性退化的口子。</p>
+        </div>
+        <div class="lang-en-only">
+          <p>Three practical differences:</p>
+          <ul>
+            <li><strong>Different bytecode</strong>: <code>LdaNamedProperty</code> carries the key index — V8 knows the target property at compile time and can take the most direct path. <code>LdaKeyedProperty</code> doesn't.</li>
+            <li><strong>Different IC state machine</strong>: LoadIC only handles "lookup by name", which is simple. KeyedLoadIC also has to handle numeric indices (<code>arr[0]</code>), so its fast paths have more checks and degrade to megamorphic more easily.</li>
+            <li><strong>Different blast radius</strong>: write <code>obj['x']</code> next to a <code>obj[someVar]</code> and the call site's IC gets <em>polluted by both usages</em>. A <code>obj.x</code> site stays as LoadIC and never gets pulled into the keyed path.</li>
+          </ul>
+          <p>Note: modern V8 (post-2022) does constant-fold literal <code>obj['x']</code> into LoadIC in some cases — but <strong>it isn't guaranteed</strong>, and once a site has seen any non-literal keyed access, the folding bails. Using <code>.x</code> is your way of <em>telling V8 and your future self that this is a static name</em> — no hidden degradation later.</p>
+        </div>
+
+        <div class="case-study heat" style="margin-top:18px">
+          <div class="cs-tag"><span class="lang-zh-only">同时也适用于</span><span class="lang-en-only">SAME REASONING APPLIES TO</span></div>
+          <p class="lang-zh-only"><strong><code>switch (str)</code> vs <code>switch (intEnum)</code></strong> · 字符串 switch 每个 case 要做字符串比较(string intern 之后是指针比较,但仍然走 KeyedCompareIC);整数 switch 可以编译成 jump table,O(1) 直接跳。同样,<strong><code>obj.method()</code> vs <code>obj['method']()</code></strong> 也是同样的差距,<code>.method</code> 走 NamedLoadIC + Call,<code>['method']()</code> 走 KeyedLoadIC + Call,前者快得多。</p>
+          <p class="lang-en-only"><strong><code>switch (str)</code> vs <code>switch (intEnum)</code></strong> · string switches do per-case string comparisons (pointer-compare after interning, but still through KeyedCompareIC). Integer switches compile into jump tables — O(1) direct branch. Likewise, <strong><code>obj.method()</code> vs <code>obj['method']()</code></strong>: the dot form goes through NamedLoadIC + Call; the bracket form takes the slower KeyedLoadIC + Call path.</p>
+        </div>
+      </div>
+    </details>
 
     <div class="cross-link">
       <a href="#c4">
@@ -4450,6 +5265,36 @@ Return</div>
       b.addEventListener('click', function () {
         var s = b.dataset.stage;
         btns.forEach(function (x) { x.classList.toggle('active', x === b); });
+        stages.forEach(function (x) { x.classList.toggle('active', x.dataset.stage === s); });
+      });
+    });
+  })();
+
+  /* ===== Code translator tabs (Ch1) ===== */
+  (function () {
+    var ct = document.getElementById('codeTr');
+    if (!ct) return;
+    var tabs = ct.querySelectorAll('.ct-tabs button');
+    var stages = ct.querySelectorAll('.ct-stage');
+    tabs.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var s = b.dataset.stage;
+        tabs.forEach(function (x) { x.classList.toggle('active', x === b); });
+        stages.forEach(function (x) { x.classList.toggle('active', x.dataset.stage === s); });
+      });
+    });
+  })();
+
+  /* ===== Tier explorer tabs (Ch3) ===== */
+  (function () {
+    var tx = document.getElementById('tierExplorer');
+    if (!tx) return;
+    var tabs = tx.querySelectorAll('.tx-tabs button');
+    var stages = tx.querySelectorAll('.tx-stage');
+    tabs.forEach(function (b) {
+      b.addEventListener('click', function () {
+        var s = b.dataset.stage;
+        tabs.forEach(function (x) { x.classList.toggle('active', x === b); });
         stages.forEach(function (x) { x.classList.toggle('active', x.dataset.stage === s); });
       });
     });
