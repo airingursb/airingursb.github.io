@@ -3,13 +3,13 @@ import * as React from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { RoutePoint, Bbox, WorkoutMetric } from './types';
-import { colorFor, percentileRange, type ColorTheme } from './workoutColors';
+import { colorFor, percentileRange, useColorTheme, type ColorTheme } from './workoutColors';
 
 interface Props {
   route: RoutePoint[];
   bbox: Bbox | null;
   metric: WorkoutMetric;
-  theme: ColorTheme;
+  theme?: ColorTheme;     // optional override; defaults to useColorTheme()
   height?: number;
 }
 
@@ -19,7 +19,9 @@ interface Props {
 // the bundle — so write the access exactly like this and only this.
 const TOKEN: string | undefined = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 
-export function RouteMap({ route, bbox, metric, theme, height = 380 }: Props) {
+export function RouteMap({ route, bbox, metric, theme: themeProp, height = 380 }: Props) {
+  const themeFromDoc = useColorTheme();
+  const theme = themeProp ?? themeFromDoc;
   if (!route.length || !bbox) {
     return <div className="workout-map" style={{ height, display: 'grid', placeItems: 'center', color: 'var(--w-fg-muted)' }}>
       No GPS data
@@ -48,7 +50,10 @@ function MapboxMap({ route, bbox, metric, theme, height }: Required<Omit<Props, 
       interactive: true,
     });
     mapRef.current = map;
-    map.on('load', () => paintRoute(map, route, metric, theme));
+    map.on('load', () => {
+      localizeLabels(map);
+      paintRoute(map, route, metric, theme);
+    });
     return () => { map.remove(); mapRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -58,7 +63,10 @@ function MapboxMap({ route, bbox, metric, theme, height }: Required<Omit<Props, 
     const map = mapRef.current;
     if (!map) return;
     map.setStyle(styleUrl);
-    map.once('style.load', () => paintRoute(map, route, metric, theme));
+    map.once('style.load', () => {
+      localizeLabels(map);
+      paintRoute(map, route, metric, theme);
+    });
   }, [styleUrl]);
 
   // Re-color on metric change
@@ -160,4 +168,28 @@ function SvgFallback({ route, bbox, metric, theme, height }: Required<Omit<Props
       })}
     </svg>
   );
+}
+
+/**
+ * On the EN locale, switch every symbol layer's text-field to use the
+ * Mapbox `name_en` property (with the local `name` as fallback for places
+ * without an English label). On ZH, leave defaults — Mapbox returns the
+ * local-language label which IS Chinese inside China.
+ *
+ * Keyed off <html lang> set by BaseLayout.
+ */
+function localizeLabels(map: mapboxgl.Map) {
+  if (typeof document === 'undefined') return;
+  if (document.documentElement.lang !== 'en') return;
+  const layers = map.getStyle()?.layers ?? [];
+  for (const layer of layers) {
+    if (layer.type !== 'symbol') continue;
+    const layout = (layer as any).layout;
+    if (!layout || !('text-field' in layout)) continue;
+    try {
+      map.setLayoutProperty(layer.id, 'text-field', ['coalesce', ['get', 'name_en'], ['get', 'name']]);
+    } catch {
+      // Some layers don't accept this expression — skip silently.
+    }
+  }
 }

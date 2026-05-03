@@ -10,7 +10,7 @@ import * as React from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import type { RoutePoint, Bbox } from './types';
-import { colorFor, percentileRange, type ColorTheme } from './workoutColors';
+import { colorFor, percentileRange, useColorTheme, type ColorTheme } from './workoutColors';
 
 const TOKEN: string | undefined = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 
@@ -22,17 +22,7 @@ interface Props {
 
 export default function RouteMini({ route, bbox, height = 90 }: Props) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
-  const [theme, setTheme] = React.useState<ColorTheme>(() =>
-    typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
-  );
-
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(prefers-color-scheme: dark)');
-    const onChange = (e: MediaQueryListEvent) => setTheme(e.matches ? 'dark' : 'light');
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  const theme = useColorTheme();
 
   React.useEffect(() => {
     if (!containerRef.current || !TOKEN || !route.length || !bbox) return;

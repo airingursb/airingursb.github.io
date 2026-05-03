@@ -71,6 +71,33 @@ function clamp01(n: number) {
 }
 
 /**
+ * The site's manual light/dark toggle writes data-mode on <html>.
+ * BaseLayout sets it before paint based on path defaults + localStorage,
+ * and the toggle button updates it (and localStorage) on click. The
+ * useColorTheme hook returns the current mode and re-renders when it
+ * changes, so map/chart colors track the toggle without a page reload.
+ */
+import * as React from 'react';
+
+function readDocMode(): ColorTheme {
+  if (typeof document === 'undefined') return 'dark';
+  return document.documentElement.getAttribute('data-mode') === 'light' ? 'light' : 'dark';
+}
+
+export function useColorTheme(): ColorTheme {
+  const [theme, setTheme] = React.useState<ColorTheme>(readDocMode);
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const obs = new MutationObserver(() => setTheme(readDocMode()));
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-mode'] });
+    // Pick up any change that happened between SSR and effect attachment.
+    setTheme(readDocMode());
+    return () => obs.disconnect();
+  }, []);
+  return theme;
+}
+
+/**
  * Clamp the color domain to a percentile band so outliers (a few seconds
  * of GPS jitter, a paused segment with sec/m → ∞, a lone altitude spike)
  * don't crush the rest of the data into a single shade.
