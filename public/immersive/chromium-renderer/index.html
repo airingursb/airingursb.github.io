@@ -1864,6 +1864,23 @@
     background: var(--accent);
   }
 
+  /* ---------- C5 overview SVG · interactive stage cells ---------- */
+  .fig-svg-wrap rect.stage-cell {
+    cursor: pointer;
+    transition: fill 0.18s, stroke-width 0.18s, transform 0.18s;
+    transform-origin: center;
+    transform-box: fill-box;
+  }
+  .fig-svg-wrap rect.stage-cell:hover {
+    fill: rgba(31,92,140,0.30) !important;
+    stroke-width: 2 !important;
+    transform: translateY(-2px);
+  }
+  .fig-svg-wrap rect.stage-cell.viz:hover { fill: rgba(107,58,163,0.30) !important; stroke: #6b3aa3 !important; }
+  .fig-svg-wrap rect.stage-cell.lifeline:hover {
+    transform: scaleY(1.4);
+  }
+
   /* ---------- Tracing-mock · chrome://tracing 风格的时间轨 ---------- */
   .tracing-mock {
     background: #15171c;
@@ -1913,6 +1930,23 @@
     overflow: hidden; white-space: nowrap;
     font-weight: 700;
     letter-spacing: 0;
+    transform-origin: center;
+    transition: transform 0.18s cubic-bezier(.34,1.56,.64,1),
+                box-shadow 0.18s, z-index 0s 0.18s;
+    cursor: pointer;
+  }
+  .tracing-mock .tm-evt:hover {
+    transform: scale(1.6);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.55);
+    z-index: 20;
+    overflow: visible;
+    font-size: 10px;
+    transition: transform 0.18s cubic-bezier(.34,1.56,.64,1),
+                box-shadow 0.18s, z-index 0s;
+  }
+  .tracing-mock .tm-lane-track:hover .tm-evt:not(:hover) {
+    opacity: 0.45;
+    transition: opacity 0.18s;
   }
   .tracing-mock .tm-evt.html  { background: #6b9bd2; }
   .tracing-mock .tm-evt.head  { background: #a87a1f; color: #fdfbf3; }
@@ -3744,56 +3778,112 @@
             <text x="946" y="54" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#4a6b3e" font-weight="700">viz</text>
           </g>
 
-          <!-- =========== STAGES =========== -->
+          <!-- =========== STAGES (with hover tooltips) =========== -->
           <g font-family="Inter, system-ui, sans-serif" font-size="10" font-weight="700" fill="#1f5c8c">
             <!-- Loading (Browser) -->
-            <rect x="20" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="55" y="139" text-anchor="middle">Loading</text>
+            <a href="#c0">
+              <rect x="20" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 00 · Loading
+模块: network_service  ·  进程: Browser  ·  线程: Network ×N
+入: URL  →  出: bytes (推给 Render via Mojo)</title></rect>
+            </a>
+            <text x="55" y="139" text-anchor="middle" pointer-events="none">Loading</text>
             <!-- bytes arrow -->
             <line x1="92" y1="135" x2="106" y2="135" stroke="#3c4148" stroke-width="1.2"/>
             <polygon points="103,131 109,135 103,139" fill="#3c4148"/>
             <text x="98" y="128" text-anchor="middle" font-size="9" font-weight="400" fill="#3c4148">bytes</text>
 
             <!-- Renderer stages -->
-            <rect x="110" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="145" y="139" text-anchor="middle">Parsing</text>
+            <a href="#c6">
+              <rect x="110" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 01 · Parsing
+模块: blink  ·  进程: Render  ·  线程: Main
+入: bytes  →  出: DOM Tree (blink::TreeScope)</title></rect>
+            </a>
+            <text x="145" y="139" text-anchor="middle" pointer-events="none">Parsing</text>
 
-            <rect x="182" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="217" y="139" text-anchor="middle">Style</text>
+            <a href="#c7">
+              <rect x="182" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 02 · Style
+模块: blink  ·  进程: Render  ·  线程: Main
+入: DOM Tree  →  出: Render Tree (每节点挂 ComputedStyle)</title></rect>
+            </a>
+            <text x="217" y="139" text-anchor="middle" pointer-events="none">Style</text>
 
-            <rect x="254" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="289" y="139" text-anchor="middle">Layout</text>
+            <a href="#c8">
+              <rect x="254" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 03 · Layout
+模块: blink  ·  进程: Render  ·  线程: Main
+入: Render Tree  →  出: Layout Tree (LayoutObject + LayoutRect + Fragment 树)</title></rect>
+            </a>
+            <text x="289" y="139" text-anchor="middle" pointer-events="none">Layout</text>
 
-            <rect x="326" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="361" y="139" text-anchor="middle">Pre-paint</text>
+            <a href="#c9">
+              <rect x="326" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 04 · Pre-paint
+模块: blink  ·  进程: Render  ·  线程: Main
+入: Layout Tree  →  出: 4 棵属性树 (Transform / Clip / Effect / Scroll)</title></rect>
+            </a>
+            <text x="361" y="139" text-anchor="middle" pointer-events="none">Pre-paint</text>
 
-            <rect x="398" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="433" y="139" text-anchor="middle">Paint</text>
+            <a href="#c10">
+              <rect x="398" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 05 · Paint
+模块: blink → cc  ·  进程: Render  ·  线程: Main
+入: Layout + Property Trees  →  出: cc::PictureLayer + DisplayItemList</title></rect>
+            </a>
+            <text x="433" y="139" text-anchor="middle" pointer-events="none">Paint</text>
 
-            <rect x="470" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="505" y="139" text-anchor="middle">Commit</text>
+            <a href="#c11">
+              <rect x="470" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 06 · Commit
+模块: cc  ·  进程: Render  ·  线程: Main → Compositor (cross-thread)
+入: cc::Layer Tree  →  出: LayerImpl Tree (Compositor thread 上)</title></rect>
+            </a>
+            <text x="505" y="139" text-anchor="middle" pointer-events="none">Commit</text>
 
-            <rect x="542" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="577" y="139" text-anchor="middle" font-size="9.5">Compositing</text>
+            <a href="#c12">
+              <rect x="542" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 07 · Compositing
+模块: cc  ·  进程: Render  ·  线程: Compositor
+入: LayerImpl Tree  →  出: GraphicsLayer (升格判定)</title></rect>
+            </a>
+            <text x="577" y="139" text-anchor="middle" font-size="9.5" pointer-events="none">Compositing</text>
 
-            <rect x="614" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="649" y="139" text-anchor="middle">Tiling</text>
+            <a href="#c13">
+              <rect x="614" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 08 · Tiling
+模块: cc  ·  进程: Render  ·  线程: Compositor
+入: PictureLayerImpl  →  出: cc::TileTask[] (256/512 切片 + 优先级)</title></rect>
+            </a>
+            <text x="649" y="139" text-anchor="middle" pointer-events="none">Tiling</text>
 
-            <rect x="686" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="721" y="139" text-anchor="middle">Raster</text>
+            <a href="#c14">
+              <rect x="686" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 09 · Raster
+模块: cc  ·  进程: Render  ·  线程: Raster ×N (并行)
+入: cc::TileTask  →  出: 像素纹理 (SharedImage / Bitmap)</title></rect>
+            </a>
+            <text x="721" y="139" text-anchor="middle" pointer-events="none">Raster</text>
 
-            <rect x="758" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="793" y="139" text-anchor="middle">Activate</text>
+            <a href="#c15">
+              <rect x="758" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 10 · Activate
+模块: cc  ·  进程: Render  ·  线程: Compositor
+入: Pending Tree (rasterised)  →  出: Active Tree (draw-ready)</title></rect>
+            </a>
+            <text x="793" y="139" text-anchor="middle" pointer-events="none">Activate</text>
 
-            <rect x="830" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="865" y="139" text-anchor="middle">Draw</text>
+            <a href="#c16">
+              <rect x="830" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c" class="stage-cell"><title>Stage 11 · Draw (Submit)
+模块: cc  ·  进程: Render  ·  线程: Compositor
+入: Active LayerImpl  →  出: viz::CompositorFrame (经 Mojo 投到 Viz)</title></rect>
+            </a>
+            <text x="865" y="139" text-anchor="middle" pointer-events="none">Draw</text>
 
             <!-- GPU stages -->
-            <rect x="920" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="955" y="139" text-anchor="middle" font-size="9.5">Aggregate</text>
+            <a href="#c17">
+              <rect x="920" y="110" width="70" height="50" rx="3" fill="rgba(107,58,163,0.10)" stroke="#6b3aa3" class="stage-cell viz"><title>Stage 12 · Aggregate
+模块: viz  ·  进程: GPU  ·  线程: Display Compositor
+入: N 份 CF (跨进程)  →  出: 1 份 Aggregated CF (DFS 拍平 + damage_rect)</title></rect>
+            </a>
+            <text x="955" y="139" text-anchor="middle" font-size="9.5" pointer-events="none" fill="#6b3aa3">Aggregate</text>
 
-            <rect x="992" y="110" width="70" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
-            <text x="1027" y="139" text-anchor="middle">Display</text>
+            <a href="#c18">
+              <rect x="992" y="110" width="70" height="50" rx="3" fill="rgba(107,58,163,0.10)" stroke="#6b3aa3" class="stage-cell viz"><title>Stage 13 · Display
+模块: viz  ·  进程: GPU  ·  线程: GPU main thread
+入: Aggregated CF  →  出: 屏幕像素 (SkiaRenderer DDL → SwapBuffers)</title></rect>
+            </a>
+            <text x="1027" y="139" text-anchor="middle" pointer-events="none" fill="#6b3aa3">Display</text>
           </g>
 
           <!-- Stage numbers (small, above each cell) -->
@@ -4985,6 +5075,34 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
       <p class="lang-zh-only">Blink 内部用 <strong>RGBA32</strong>（一个 32 位整数）存颜色，入口是 <code>CSSColor::Create</code>。<code>#hex</code> 走的是 HashToken 直读路径——直接做位运算合成 RGBA32；而 <code>rgb()</code> 是 FunctionToken，要先解析参数列表、做范围检查、再合成。<em>同样一个白色，多走了几跳函数调用。</em></p>
       <p class="lang-en-only">Blink stores colours as <strong>RGBA32</strong> — one 32-bit int — via <code>CSSColor::Create</code>. <code>#hex</code> goes through HashToken's direct path: bitwise pack straight into RGBA32. <code>rgb()</code> is a FunctionToken: parse arg list, range-check, <em>then</em> pack. <em>Same white, more hops.</em></p>
     </div>
+
+    <details class="faq">
+      <summary>
+        <span class="lang-zh-only"><strong>15% 这个数字真的有意义吗?</strong> · <em>微基准 vs 实际页面收益</em></span>
+        <span class="lang-en-only"><strong>Is the 15% really meaningful?</strong> · <em>micro-bench vs real-page payoff</em></span>
+      </summary>
+      <div class="faq-body">
+        <p class="lang-zh-only">先说结论:<strong>对几乎所有业务页面,这 15% 看不见</strong>。原因是 CSS 解析<em>只在首次加载时跑一次</em>,几千条规则的整张表也就 5-15ms,15% 即~2ms,在白屏时间(几百 ms 起步)里是噪音。所以"<em>把所有 rgb() 改成 hex</em>"是<strong>典型的过度优化</strong>。</p>
+        <p class="lang-en-only">Bottom line: <strong>for nearly every business page, the 15% is invisible</strong>. CSS parsing <em>runs once at first load</em>; a stylesheet of thousands of rules takes 5-15ms total, so 15% means ~2ms — noise inside cold-start (which starts at hundreds of ms). "<em>Convert all rgb() to hex</em>" is <strong>textbook over-optimisation</strong>.</p>
+
+        <p class="lang-zh-only"><strong>那为什么这个数字还值得记?</strong> 因为它是一扇<em>窗户</em>——透过这 15% 你能看到 V8/Blink 这种 C++ 系统的<strong>性能哲学</strong>:</p>
+        <p class="lang-en-only"><strong>Then why is the number worth knowing?</strong> Because it's a <em>window</em> — through that 15% you see the <strong>performance philosophy</strong> of C++ systems like V8/Blink:</p>
+
+        <ol>
+          <li class="lang-zh-only"><strong>"<em>fast path</em> + <em>slow path</em>" 是 Blink/V8 全栈的常用招</strong>。Hex 是 fast path(纯位运算),rgb() 是 slow path(走 function 解析子系统)。整个 CSS 解析器、JS 引擎、布局引擎里都是这种结构——<em>常见情况优化到 nano 秒,罕见情况老实走 micro 秒</em>。</li>
+          <li class="lang-en-only"><strong>"<em>fast path</em> + <em>slow path</em>" is a Blink/V8 staple</strong>. Hex is the fast path (pure bitwise); rgb() is the slow path (function-parsing subsystem). The CSS parser, JS engine, and layout engine all use this structure — <em>optimise the common case to nanoseconds, let the rare case take its microseconds</em>.</li>
+
+          <li class="lang-zh-only"><strong>"<em>函数调用本身就是性能事件</em>"</strong> — C++ 里一次虚函数调用 ~5-10ns,加上参数检查 ~50ns。CSS 一行 <code>color: rgb(...)</code> 多 50ns,几千行就是几十微秒。<em>积少成多</em> 的逻辑只在<strong>每帧都跑</strong>的代码路径上才生效——CSS 解析不是,所以无所谓。</li>
+          <li class="lang-en-only"><strong>"<em>function calls are themselves performance events</em>"</strong> — one C++ virtual call costs ~5-10ns, plus arg validation ~50ns. A row of <code>color: rgb(...)</code> adds 50ns; thousands of rows add tens of microseconds. <em>The "drop in the bucket" calculus only matters on <strong>per-frame hot paths</strong></em> — CSS parsing isn't one, so the math doesn't move the needle.</li>
+
+          <li class="lang-zh-only"><strong>真正<em>每帧都跑</em>的颜色路径在 paint/raster</strong>:每个 DisplayItem 的 fill color 解析、每个 tile 的像素采样,这些才是 RGBA32 优化的真正受益者。CSS 解析的 15% 只是<em>同一套数据结构在 cold path 上的副产品</em>。</li>
+          <li class="lang-en-only"><strong>The colour path that actually <em>runs every frame</em> is in paint/raster</strong>: every DisplayItem's fill color, every tile's pixel sampling — these are the real beneficiaries of RGBA32. The CSS parsing 15% is just <em>the same data structure showing up on the cold path</em>.</li>
+        </ol>
+
+        <p class="lang-zh-only"><strong>所以:</strong> <em>不要</em> 为了这 15% 重写已有 CSS;但<em>要</em> 理解"<em>fast/slow path 二分</em>" 是浏览器内核遍布的优化模式——<strong>真正的优化目标是流水线后段那些"<em>每帧 1000 次</em>" 的路径</strong>(C9/C10/C14 才是战场)。</p>
+        <p class="lang-en-only"><strong>So:</strong> <em>don't</em> rewrite existing CSS for that 15%; <em>do</em> understand that "<em>fast/slow path bifurcation</em>" is a pattern the entire browser engine uses — <strong>the real optimisation targets are the "<em>1000 times per frame</em>" paths in later pipeline stages</strong> (C9/C10/C14 are the actual battleground).</p>
+      </div>
+    </details>
 
     <h3 class="sub lang-zh-only">选择器解析 · 真实 dump</h3>
     <h3 class="sub lang-en-only">Selector parsing · the real dump</h3>
@@ -6785,6 +6903,31 @@ GraphicsLayer · <span class="mt-tag">root</span>
       <p class="lang-en-only">256×256 is the empirical sweet spot. <em>Mobile</em> uses 256 (narrow screens, small animation range); <em>desktop</em> uses 512 (large viewport amortises the overhead). <strong>Tile size is not a constant — it is chosen per device.</strong></p>
     </div>
 
+    <details class="faq">
+      <summary>
+        <span class="lang-zh-only"><strong>那为什么不"<em>真正动态</em>"——按 layer 大小自动选?</strong> · <em>统一货币单位才能复用</em></span>
+        <span class="lang-en-only"><strong>So why not "<em>truly dynamic</em>" — pick per-layer?</strong> · <em>uniform "currency" enables reuse</em></span>
+      </summary>
+      <div class="faq-body">
+        <p class="lang-zh-only">直觉上"<em>小 layer 用小 tile,大 layer 用大 tile</em>"应该最省。但 cc 没这么做,因为 tile 不只是"<em>切块</em>",更是<strong>整个 GPU 内存系统的"货币单位"</strong>:</p>
+        <p class="lang-en-only">Intuition says "<em>small layer = small tile, big layer = big tile</em>" should be most efficient. cc doesn't do this, because tiles aren't just "<em>chunks</em>" — they're <strong>the entire GPU memory system's "currency unit"</strong>:</p>
+
+        <ol>
+          <li class="lang-zh-only"><strong>统一尺寸 → 纹理池可复用</strong>。GPU 纹理分配是<em>极慢</em>的(几十微秒到几毫秒)。cc 维护一个 <code>ResourcePool</code> 缓存"<em>已分配但当前空闲</em>"的纹理槽位——下次有 tile 需要,直接从池里抓一个,O(1)。<em>但前提是所有 tile 同尺寸</em>:如果 tile 大小不一,池子要按尺寸分桶,大尺寸槽位经常空着、小尺寸不够用,内存碎片严重。<strong>统一 256/512 = 池子里所有槽位完全可互换</strong>,这是 ResourcePool 高命中率的根基。</li>
+          <li class="lang-en-only"><strong>Uniform size → reusable texture pool</strong>. GPU texture allocation is <em>extremely slow</em> (tens of µs to ms). cc maintains a <code>ResourcePool</code> caching "<em>allocated but idle</em>" texture slots — when a tile needs one, grab from the pool, O(1). <em>But that requires all tiles to be the same size</em>: with mixed sizes, the pool buckets by size, large slots sit unused while small ones are starved — heavy fragmentation. <strong>Uniform 256/512 = every slot in the pool is fully interchangeable</strong> — the foundation of ResourcePool's hit rate.</li>
+
+          <li class="lang-zh-only"><strong>统一尺寸 → 跨 Tab 共享内存</strong>。Chrome 多 Tab 共用<em>同一个</em> GPU 进程的纹理池。如果 Tab A 用 256, Tab B 用 333, Tab C 用 512,池子被三种尺寸切碎,共享几乎不可能。统一标准让 30 个 Tab 共用一池——<em>就像内存分页用 4KB 一个标准</em>,不会按文件大小做动态页大小。</li>
+          <li class="lang-en-only"><strong>Uniform size → cross-tab memory sharing</strong>. Chrome's tabs share <em>one</em> GPU-process texture pool. If Tab A uses 256, Tab B uses 333, Tab C uses 512, the pool is sliced three ways and sharing is nearly impossible. Standard size lets 30 tabs share one pool — <em>just like memory paging uses one 4KB standard</em>, not dynamic page sizes per file.</li>
+
+          <li class="lang-zh-only"><strong>统一尺寸 → 算法简化</strong>。Tile manager 排优先级时按 grid 坐标做距离场计算 — 如果每个 layer 网格步长不同,要先归一化才能比较。统一 256 让"<em>第几行第几列</em>"在所有 layer 上等价,priority 直接比较。</li>
+          <li class="lang-en-only"><strong>Uniform size → simpler algorithm</strong>. TileManager's priority calc uses grid-coord distance fields — different grid pitches per layer would force normalisation before comparison. Uniform 256 makes "<em>row N, col M</em>" equivalent across all layers; priority compares directly.</li>
+        </ol>
+
+        <p class="lang-zh-only"><strong>所以"<em>设备维度</em>" 选 256 vs 512 是 OK 的</strong>(因为同一设备所有 layer 用同一尺寸,池子还是统一的);但"<em>layer 维度</em>" 动态选不行——<em>会把 ResourcePool 这套<strong>缓存复用机制</strong>整个废掉</em>。这跟操作系统选 4KB 还是 2MB Huge Page 是同一个权衡:统一标准的复用红利,远大于"<em>因地制宜</em>" 的浪费节省。</p>
+        <p class="lang-en-only"><strong>So "<em>per-device</em>" 256 vs 512 is fine</strong> (same device → all layers use the same size → pool stays uniform); but "<em>per-layer</em>" dynamic isn't — <em>it would gut the entire <strong>cache-reuse mechanism</strong> of ResourcePool</em>. The same trade-off as an OS picking 4KB vs 2MB Huge Pages: the reuse dividend of one standard far outweighs the savings of "<em>fitting each case</em>".</p>
+      </div>
+    </details>
+
     <h3 class="sub lang-zh-only">预测光栅化 · 先低后高</h3>
     <h3 class="sub lang-en-only">Predictive raster · low first, high later</h3>
 
@@ -7790,6 +7933,68 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
       <span class="lang-en-only">cc emphasises "<em>submit</em>" here — it doesn't paint pixels, it ships "what to paint" to Viz. If Viz is busy (GPU is full, vsync missed), the CF queues or even drops. Submit succeeding ≠ on-screen. The Render process learns whether its last submission landed via <code>BeginFrameAck</code>.</span>
     </div>
 
+    <details class="faq">
+      <summary>
+        <span class="lang-zh-only"><strong>Submit 与 Draw,Chromium 词汇里到底是什么区别?</strong> · <em>"<em>下单</em>" vs "<em>下厨</em>"</em></span>
+        <span class="lang-en-only"><strong>Submit vs Draw — what's the precise difference in Chromium-speak?</strong> · <em>"<em>placing the order</em>" vs "<em>cooking it</em>"</em></span>
+      </summary>
+      <div class="faq-body">
+        <p class="lang-zh-only">在 Chromium 词汇里这两个词<em>从不混用</em>,但又长得很像,容易让人糊涂。最简洁的类比:<strong>Submit 是"下单",Draw 是"下厨"</strong>。</p>
+        <p class="lang-en-only">In Chromium's vocabulary, these two words are <em>never interchangeable</em>, but they look so similar they're easy to confuse. The simplest analogy: <strong>Submit is "placing the order", Draw is "cooking it"</strong>.</p>
+
+        <table class="cmp" style="margin: 12px 0;">
+          <thead>
+            <tr>
+              <th></th>
+              <th>Submit</th>
+              <th>Draw</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="lang-zh-only">谁在做</span><span class="lang-en-only">Who</span></td>
+              <td>cc (Render Process · Compositor thread)</td>
+              <td>Viz (GPU Process · GPU thread)</td>
+            </tr>
+            <tr>
+              <td><span class="lang-zh-only">在做什么</span><span class="lang-en-only">Doing what</span></td>
+              <td><span class="lang-zh-only">把 CompositorFrame 通过 Mojo IPC 寄出去</span><span class="lang-en-only">ships CompositorFrame via Mojo IPC</span></td>
+              <td><span class="lang-zh-only">真的调 GL/Vulkan 把像素画到 framebuffer</span><span class="lang-en-only">actually calls GL/Vulkan, paints pixels to framebuffer</span></td>
+            </tr>
+            <tr>
+              <td><span class="lang-zh-only">是否触屏</span><span class="lang-en-only">On-screen?</span></td>
+              <td class="bad"><span class="lang-zh-only">不一定</span><span class="lang-en-only">not necessarily</span></td>
+              <td class="good"><span class="lang-zh-only">是,SwapBuffers 之后</span><span class="lang-en-only">yes, after SwapBuffers</span></td>
+            </tr>
+            <tr>
+              <td><span class="lang-zh-only">失败/丢弃可能</span><span class="lang-en-only">Can fail / be dropped?</span></td>
+              <td><span class="lang-zh-only">可以(GPU 忙、vsync 错过、damage_rect 为空 → 整帧跳过)</span><span class="lang-en-only">yes (GPU busy, vsync missed, empty damage_rect → frame skipped)</span></td>
+              <td><span class="lang-zh-only">很少(已经在 GPU 上,基本一定执行)</span><span class="lang-en-only">rarely (already on GPU, almost always executes)</span></td>
+            </tr>
+            <tr>
+              <td><span class="lang-zh-only">何时<em>知道</em>结果</span><span class="lang-en-only">When you know the outcome</span></td>
+              <td><code>BeginFrameAck</code> <span class="lang-zh-only">回弹</span><span class="lang-en-only">callback</span></td>
+              <td><span class="lang-zh-only">同步,函数返回时已完成</span><span class="lang-en-only">synchronous, complete on return</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <p class="lang-zh-only"><strong>为什么这个区分非常重要?</strong> 因为它直接对应<em>性能反馈</em> 的拓扑:</p>
+        <p class="lang-en-only"><strong>Why does this distinction matter so much?</strong> Because it maps directly to the <em>performance feedback</em> topology:</p>
+
+        <ul>
+          <li class="lang-zh-only"><strong>"<em>Submit 成功</em>"</strong>只能告诉你"<em>cc 把工作打包好了</em>"。Web Vitals 的 LCP/CLS<em>不能</em>用 Submit 时间——必须用<em>真正上屏的时间</em>。这就是为什么 Chrome 内部专门有 <code>FrameMetrics</code> 在 Display 阶段后通过 <code>BeginFrameAck</code> 把"<em>这一帧上屏了吗</em>" 反馈回 Render Process。</li>
+          <li class="lang-en-only"><strong>"<em>Submit success</em>"</strong> only tells you "<em>cc packaged its work</em>". Web Vitals' LCP/CLS <em>cannot</em> use Submit time — they must use <em>actual on-screen time</em>. That's exactly why Chrome internals have <code>FrameMetrics</code>, which after the Display stage uses <code>BeginFrameAck</code> to feed "<em>did this frame reach the screen?</em>" back to the Render process.</li>
+
+          <li class="lang-zh-only"><strong>Submit 与 Draw 之间的"<em>排队期</em>"</strong> 是 Viz 的负载缓冲。GPU 偶尔忙(其他 Tab 在做大动画),Viz 队列里能堆 2-3 帧 CF;一旦超 3 帧,旧的就被丢弃(<code>kSkipped</code>)——cc 通过 BeginFrameAck 知道"<em>我刚才那帧白做了</em>",决定下一帧要不要降级(降分辨率、跳动画帧)。<em>"<strong>Submit 是 push,Draw 是 pull,中间有队列</strong>"</em> 是这套架构的本质。</li>
+          <li class="lang-en-only"><strong>The "<em>queue period</em>" between Submit and Draw</strong> is Viz's load buffer. The GPU is occasionally busy (other tabs running heavy animations); Viz can queue 2-3 frames of CF. Once it exceeds 3, old ones drop (<code>kSkipped</code>) — cc, via BeginFrameAck, learns "<em>my last frame was wasted work</em>" and decides whether to degrade the next (lower resolution, skip animation frame). <em>"<strong>Submit is push, Draw is pull, queue in between</strong>"</em> is the essence of this architecture.</li>
+        </ul>
+
+        <p class="lang-zh-only"><strong>类比:</strong> 这跟 Git 里的 <code>git push</code> 与 <code>git merge</code> 很像——push 只是"<em>把 commit 推到远程仓库</em>"(可能被 reject),merge 才是"<em>真的进入主干</em>"。Chromium 把这种"<em>提交 ≠ 落地</em>" 的语义做得极其严谨,任何 perf 监控如果搞混 Submit 与 Draw 的时间,数据就是错的。</p>
+        <p class="lang-en-only"><strong>Analogy:</strong> very much like Git's <code>git push</code> vs <code>git merge</code> — push only "<em>uploads commits to the remote</em>" (which may reject); merge is "<em>actually integrating into trunk</em>". Chromium pushes this "<em>submit ≠ land</em>" semantic to the limit, and any perf monitor that conflates Submit with Draw timestamps gives wrong numbers.</p>
+      </div>
+    </details>
+
     <div class="observe-bar">
       <div class="ob-row"><div class="ob-key">DEVTOOLS</div><div class="ob-val"><span class="lang-zh-only">Performance > "Composite Layers";Rendering > Layer Borders</span><span class="lang-en-only">Performance > "Composite Layers"; Rendering > Layer Borders</span></div></div>
       <div class="ob-row"><div class="ob-key">TRACING</div><div class="ob-val"><code>cc, viz.layers, viz.surface</code></div></div>
@@ -8025,6 +8230,31 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
 
     <p class="lang-zh-only">两个数学操作决定了"完美贴合"的视觉效果：① <em>变换矩阵相乘</em>——父 frame 的变换 × 子 RenderPass 的变换 = 子 quad 在最终屏幕上的位姿；② <em>裁剪 rect 求交</em>——父 frame 的裁剪 ∩ 子 surface 的裁剪 = 子 quad 真正可见的区域。如果裁剪结果为空，<strong>整个子 surface 不会被光栅化，连 GPU 内存都不分配</strong>——这就是为什么"<em>不可见的 OOPIF 也不会浪费 GPU 资源</em>"。</p>
     <p class="lang-en-only">Two pieces of math deliver the "perfectly stitched" look: ① <em>transform multiplication</em> — parent frame's transform × child RenderPass's transform = the child quad's final on-screen pose; ② <em>clip-rect intersection</em> — parent's clip ∩ child surface's clip = the actual visible region. If the intersection is empty, <strong>the whole child surface is never rasterised — no GPU memory allocated</strong>. That's why "<em>invisible OOPIFs cost no GPU</em>".</p>
+
+    <details class="faq">
+      <summary>
+        <span class="lang-zh-only"><strong>为什么 SurfaceAggregator 用 DFS,不是 BFS?</strong> · <em>渲染顺序就是深度顺序</em></span>
+        <span class="lang-en-only"><strong>Why does SurfaceAggregator use DFS, not BFS?</strong> · <em>rendering order IS depth order</em></span>
+      </summary>
+      <div class="faq-body">
+        <p class="lang-zh-only">"BFS 不是更快吗?层级浅,缓存友好。"——这是个公平的疑问。但 Aggregate 是<em>渲染流水线的工序之一</em>,DFS 是被<strong>3 件硬约束</strong>逼出来的:</p>
+        <p class="lang-en-only">"Wouldn't BFS be faster? Shallower levels, cache-friendly." — a fair question. But Aggregate is a <em>step in a rendering pipeline</em>, and DFS is forced by <strong>three hard constraints</strong>:</p>
+
+        <ol>
+          <li class="lang-zh-only"><strong>z-order 是深度顺序,不是宽度顺序</strong>。"<em>子 surface 画在父 surface 之上</em>" 是 HTML/CSS 的层叠规则——你想象一棵 surface 树,根是 Browser UI,叶子是最深的 OOPIF。<em>正确的画图顺序是从根开始,先画自己,然后<strong>立即递归画第一个子的整棵子树</strong>,然后画第二个子的整棵子树……</em>——这就是 DFS 前序遍历。换成 BFS,你会先画所有第 1 层,再画所有第 2 层,但同一层里的两个 surface 完全没关系,反而<em>跨子树穿插</em>,合不成正确的 z-order。</li>
+          <li class="lang-en-only"><strong>z-order is depth-order, not breadth-order</strong>. "<em>Child surface paints on top of parent surface</em>" is the HTML/CSS stacking rule — picture a surface tree with Browser UI at the root and the deepest OOPIF at the leaves. <em>The correct paint order: start from the root, draw self, then <strong>immediately recurse into the first child's entire subtree</strong>, then into the second child's, etc.</em> — that's exactly DFS pre-order. Under BFS you'd paint all level-1 surfaces, then all level-2, but two level-N surfaces have no relation to each other and <em>get interleaved across subtrees</em> — z-order breaks.</li>
+
+          <li class="lang-zh-only"><strong>RenderPass 依赖 = 子先于父</strong>。SurfaceAggregator 输出的 RenderPass 列表里,如果<em>父用 RenderPassDrawQuad 引用子的 Pass</em>,那子 Pass 必须出现在列表的<strong>前面</strong>(GPU 按列表顺序执行)。DFS 后序天然产出"<em>叶子在前,根在后</em>" 的列表——拓扑排序;BFS 给不了这个保证,要单独再做一遍拓扑排序,白搭一倍开销。</li>
+          <li class="lang-en-only"><strong>RenderPass dependency = child before parent</strong>. In SurfaceAggregator's output RenderPass list, when <em>a parent references a child Pass via RenderPassDrawQuad</em>, the child Pass must appear <strong>earlier in the list</strong> (GPU executes in list order). DFS post-order naturally produces a "<em>leaves first, root last</em>" list — a topological sort. BFS gives no such guarantee — you'd need a separate topo-sort pass, doubling the cost.</li>
+
+          <li class="lang-zh-only"><strong>剪枝最早发生</strong>。DFS 在递归到一个子 surface 时,<em>立刻</em>能算出"<em>父变换 × 子变换</em>" 与"<em>父裁剪 ∩ 子裁剪</em>"——如果裁剪结果为空,<strong>整棵子树跳过,连一个 quad 都不复制</strong>。BFS 在第 1 层做完才进第 2 层,要么提前算所有人的变换/裁剪(浪费),要么晚才发现空裁剪(浪费)。DFS 的"<em>遇到空裁剪就回溯</em>" 是天然的<em>剪枝优化</em>。</li>
+          <li class="lang-en-only"><strong>Earliest possible pruning</strong>. When DFS recurses into a child surface, it can <em>immediately</em> compute "<em>parent transform × child transform</em>" and "<em>parent clip ∩ child clip</em>" — if the intersection is empty, <strong>the entire subtree is skipped, not even one quad is copied</strong>. BFS finishes level 1 before level 2 — either compute every transform/clip up front (waste), or discover the empty clip late (waste). DFS's "<em>back off on empty clip</em>" is natural <em>pruning</em>.</li>
+        </ol>
+
+        <p class="lang-zh-only"><strong>总结:</strong> DFS 在三个维度上都自然契合 SurfaceAggregator 的需求——<em>z-order = 深度优先</em>、<em>RenderPass 依赖 = 拓扑排序</em>、<em>裁剪剪枝 = 回溯发生在第一时间</em>。BFS 看似平易近人,但每一条都得额外付代码代价。<strong>"<em>选对了遍历方式,半个算法就免费了</em>"</strong> 是图算法工程的常见现象。</p>
+        <p class="lang-en-only"><strong>Bottom line:</strong> DFS naturally fits SurfaceAggregator on three axes — <em>z-order = depth-first</em>, <em>RenderPass dependency = topological order</em>, <em>clip pruning = early backoff</em>. BFS looks friendlier but each property costs extra code. <strong>"<em>Pick the right traversal and half the algorithm is free</em>"</strong> is a common phenomenon in graph engineering.</p>
+      </div>
+    </details>
 
     <div class="io-pair">
       <div class="io-card in">
