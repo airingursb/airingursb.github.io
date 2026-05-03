@@ -13,7 +13,11 @@ interface Props {
   height?: number;
 }
 
-const TOKEN = (import.meta as any).env?.PUBLIC_MAPBOX_TOKEN as string | undefined;
+// `import.meta.env.PUBLIC_*` is replaced at build time by Vite via plain
+// string substitution. Any wrapping (cast, optional chain) defeats the
+// match and leaves the literal `import.meta.env.PUBLIC_MAPBOX_TOKEN` in
+// the bundle — so write the access exactly like this and only this.
+const TOKEN: string | undefined = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 
 export function RouteMap({ route, bbox, metric, theme, height = 380 }: Props) {
   if (!route.length || !bbox) {
