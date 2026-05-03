@@ -1,0 +1,90 @@
+---
+import '../../../styles/workouts.css';
+import 'mapbox-gl/dist/mapbox-gl.css';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import LangSwitch from '../../../components/LangSwitch.astro';
+import { siteStrings } from '../../../lib/i18n';
+import { getCollection } from 'astro:content';
+import workoutsIndex from '../../../data/workouts.json';
+import WorkoutHeader from '../../../components/workouts/WorkoutHeader.astro';
+import WorkoutDetail from '../../../components/workouts/WorkoutDetail.tsx';
+
+export async function getStaticPaths() {
+  const items = (await import('../../../data/workouts.json')).default as Array<any>;
+  return items.map((w) => ({ params: { id: w.id } }));
+}
+
+const { id } = Astro.params;
+const indexEntry = (workoutsIndex as Array<any>).find(w => w.id === id);
+if (!indexEntry) throw new Error(`Workout not found: ${id}`);
+
+const detail = (await import(`../../../data/workouts/${id}.json`)).default;
+
+const contentEntries = await getCollection('workouts');
+const contentEntry = contentEntries.find(e => e.id.replace(/\.mdx$/, '') === id);
+const titleEn = contentEntry?.data.title.en ?? contentEntry?.data.title.zh ?? `${detail.start.slice(0, 10)} · Hiking`;
+const Body = contentEntry?.body ? (await contentEntry.render()).Content : null;
+
+const s = siteStrings.en.workouts;
+---
+
+<BaseLayout
+  title={`${titleEn} · ${s.title} · Airing`}
+  description={contentEntry?.data.description?.en ?? ''}
+  lang="en"
+  hreflang={{ zh: `/workouts/${id}`, en: `/en/workouts/${id}` }}
+>
+  <div class="workout-detail-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/en/workouts">{s.backToList}</a>
+          </div>
+        </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="en" currentPath={`/en/workouts/${id}`} hasEnVersion={true} />
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <main style="padding: 24px 16px;">
+      <article class="workout-card">
+        <WorkoutHeader
+          type={detail.type}
+          distanceKm={detail.stats.distanceKm}
+          durationSec={detail.durationSec}
+          name={titleEn}
+        />
+        <WorkoutDetail workout={detail} client:visible />
+      </article>
+
+      {Body && (
+        <section style="max-width: 760px; margin: 24px auto 0; padding: 0 4px;">
+          <Body />
+        </section>
+      )}
+    </main>
+  </div>
+
+  <style>
+    .masthead { width: 100%; }
+    .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+    .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+    .mast-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; }
+    .mast-brand { font-size: 11px; color: var(--c-text-muted); text-decoration: none; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+    .mast-brand:hover { color: var(--c-text); }
+    .mast-links { display: flex; gap: 16px; }
+    .mast-links a { font-size: 11px; color: var(--c-text-dim); text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase; }
+    .mast-links a:hover { color: var(--c-text); }
+    .mast-bottom-rule { height: 1px; background: var(--c-border); }
+    .mast-lang-line { display: flex; justify-content: flex-end; padding: 4px 0 8px 0; }
+    @media (max-width: 768px) { .mast-inner { padding: 0 20px; } }
+  </style>
+  <style is:global>
+    body:has(.workout-detail-page) { display: block; padding: 0; align-items: stretch; justify-content: stretch; }
+  </style>
+</BaseLayout>
