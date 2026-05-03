@@ -1866,18 +1866,31 @@
 
   /* ---------- Mainline block (per chapter "The Card after stage X") ---------- */
   .mainline {
-    background: linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
-    border: 1px solid var(--rule);
-    border-left: 3px solid var(--copper);
+    background: linear-gradient(180deg, rgba(179,90,31,0.05) 0%, var(--paper-2) 100%);
+    border: 1px solid var(--copper-soft);
+    border-left: 5px solid var(--copper);
     border-radius: 0 6px 6px 0;
-    padding: 18px 22px;
-    margin: 28px 0 36px;
+    padding: 22px 26px 24px;
+    margin: 36px 0 44px;
+    position: relative;
+    box-shadow: 0 2px 8px rgba(179,90,31,0.06);
+  }
+  .mainline::before {
+    content: "✦ THE CARD";
+    position: absolute;
+    top: -10px; left: 18px;
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.22em; font-weight: 700;
+    background: var(--copper); color: var(--paper);
+    padding: 3px 12px;
+    border-radius: 999px;
+    z-index: 1;
   }
   .mainline .ml-tag {
-    font-family: var(--mono); font-size: 10px;
+    font-family: var(--mono); font-size: 11px;
     letter-spacing: 0.18em; text-transform: uppercase;
     color: var(--copper); font-weight: 700;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     display: flex; align-items: center; gap: 10px;
   }
   .mainline .ml-tag::before {
@@ -1885,12 +1898,13 @@
   }
   .mainline .ml-tag .ml-stage-no {
     background: var(--copper); color: var(--paper);
-    padding: 2px 6px; border-radius: 2px;
-    font-size: 9px;
+    padding: 3px 8px; border-radius: 2px;
+    font-size: 10px;
   }
   .mainline h6 {
-    font-family: var(--serif); font-size: 16px; font-weight: 700;
-    color: var(--ink); margin: 0 0 10px;
+    font-family: var(--serif); font-size: 18px; font-weight: 700;
+    color: var(--ink); margin: 0 0 12px;
+    letter-spacing: -0.005em;
   }
   body.lang-en .mainline h6 { font-family: var(--serif-en); }
   .mainline .ml-body {
@@ -2908,6 +2922,283 @@
       <span class="lang-zh-only">JIT 预热时间长 → <strong>首屏慢</strong>；JIT 也会增加包体积与内存。当系统的 sandbox 不允许动态生成可执行内存（比如 iOS App），JIT 干脆<em>没法用</em>。这就是 JSCore-iOS 不开 JIT 的根本原因。</span>
       <span class="lang-en-only">JIT warm-up is long → <strong>cold-start regresses</strong>; JIT also bloats binary size and memory. When the sandbox bans writable-executable pages (iOS apps), JIT is simply <em>impossible</em>. That's why JSCore on iOS apps cannot enable it.</span>
     </div>
+
+    <h3 class="sub lang-zh-only">V8 拆开 · 四层 JIT 流水线</h3>
+    <h3 class="sub lang-en-only">V8 dissected · the four-tier compilation pipeline</h3>
+
+    <p class="lang-zh-only">"<em>JIT</em>"在 V8 里不是一个东西——是<strong>四层</strong>。一段函数从冷到热,V8 会依次把它升格到更"<em>贵</em>"但更"<em>快</em>"的实现:</p>
+    <p class="lang-en-only">"<em>JIT</em>" inside V8 is not one thing — it's <strong>four tiers</strong>. As a function heats up, V8 promotes it through progressively <em>more expensive</em> but <em>faster</em> implementations:</p>
+
+    <figure>
+      <div class="fig-svg-wrap" style="padding: 22px 18px;">
+        <svg viewBox="0 0 800 280" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <!-- Source code box -->
+          <rect x="20" y="32" width="100" height="50" rx="3" fill="#15171c"/>
+          <text x="70" y="56" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#fcd34d" font-weight="700">JS source</text>
+          <text x="70" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#a8aab0">.js</text>
+
+          <!-- Parser -->
+          <path d="M120 57 L 152 57" stroke="#3c4148" stroke-width="1.4"/>
+          <polygon points="148,53 156,57 148,61" fill="#3c4148"/>
+          <rect x="156" y="32" width="92" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
+          <text x="202" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#1f5c8c" font-weight="700">Parser</text>
+          <text x="202" y="68" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#1f5c8c">→ AST</text>
+
+          <!-- Bytecode generator -->
+          <path d="M248 57 L 280 57" stroke="#3c4148" stroke-width="1.4"/>
+          <polygon points="276,53 284,57 276,61" fill="#3c4148"/>
+          <rect x="284" y="32" width="120" height="50" rx="3" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
+          <text x="344" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#1f5c8c" font-weight="700">BytecodeGen</text>
+          <text x="344" y="68" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#1f5c8c">→ bytecode</text>
+
+          <!-- 4 tiers -->
+          <path d="M404 57 L 436 57" stroke="#3c4148" stroke-width="1.4"/>
+          <polygon points="432,53 440,57 432,61" fill="#3c4148"/>
+
+          <!-- Tier 1: Ignition (interpreter) -->
+          <rect x="440" y="22" width="160" height="28" rx="3" fill="rgba(74,107,62,0.20)" stroke="#4a6b3e"/>
+          <text x="448" y="40" font-family="JetBrains Mono, monospace" font-size="11" fill="#4a6b3e" font-weight="700">① Ignition</text>
+          <text x="592" y="40" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#4a6b3e">interpreter</text>
+
+          <!-- Tier 2: Sparkplug -->
+          <rect x="440" y="56" width="160" height="28" rx="3" fill="rgba(168,122,31,0.20)" stroke="#a87a1f"/>
+          <text x="448" y="74" font-family="JetBrains Mono, monospace" font-size="11" fill="#a87a1f" font-weight="700">② Sparkplug</text>
+          <text x="592" y="74" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#a87a1f">baseline JIT · &lt;1ms</text>
+
+          <!-- Tier 3: Maglev -->
+          <rect x="440" y="90" width="160" height="28" rx="3" fill="rgba(179,90,31,0.25)" stroke="#b35a1f"/>
+          <text x="448" y="108" font-family="JetBrains Mono, monospace" font-size="11" fill="#b35a1f" font-weight="700">③ Maglev</text>
+          <text x="592" y="108" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#b35a1f">mid-tier · type-aware</text>
+
+          <!-- Tier 4: TurboFan -->
+          <rect x="440" y="124" width="160" height="32" rx="3" fill="rgba(107,58,163,0.25)" stroke="#6b3aa3"/>
+          <text x="448" y="144" font-family="JetBrains Mono, monospace" font-size="11" fill="#6b3aa3" font-weight="700">④ TurboFan</text>
+          <text x="592" y="144" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="9" fill="#6b3aa3">top-tier · speculative</text>
+
+          <!-- Output: machine code -->
+          <path d="M600 90 L 632 90" stroke="#3c4148" stroke-width="1.4"/>
+          <polygon points="628,86 636,90 628,94" fill="#3c4148"/>
+          <rect x="636" y="60" width="140" height="60" rx="3" fill="#15171c"/>
+          <text x="706" y="84" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#fcd34d" font-weight="700">x64 / ARM64</text>
+          <text x="706" y="100" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#a8aab0">native code</text>
+
+          <!-- Promotion arrows (vertical) -->
+          <path d="M520 50 L 520 56" stroke="#a87a1f" stroke-width="1" stroke-dasharray="2 2"/>
+          <path d="M520 84 L 520 90" stroke="#b35a1f" stroke-width="1" stroke-dasharray="2 2"/>
+          <path d="M520 118 L 520 124" stroke="#6b3aa3" stroke-width="1" stroke-dasharray="2 2"/>
+          <text x="540" y="56" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">hot</text>
+          <text x="540" y="90" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">hotter</text>
+          <text x="540" y="124" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">hottest</text>
+
+          <!-- Deopt arrows (back down) -->
+          <path d="M600 144 C 660 144, 660 200, 480 200 C 460 200, 440 200, 440 158" fill="none" stroke="#b3422c" stroke-width="1.2" stroke-dasharray="3 3"/>
+          <polygon points="436,162 440,154 444,162" fill="#b3422c"/>
+          <text x="540" y="218" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#b3422c" font-weight="600">⤺ Deoptimization · 类型假设崩了 · 退回 Ignition</text>
+          <text x="540" y="232" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#b3422c">type assumption broke · drop back to Ignition</text>
+
+          <!-- Bottom note -->
+          <text x="20" y="262" font-family="JetBrains Mono, monospace" font-size="9" fill="#767c87">编译速度 ←  Ignition  ⟶  Sparkplug  ⟶  Maglev  ⟶  TurboFan  → 执行速度</text>
+          <text x="20" y="274" font-family="JetBrains Mono, monospace" font-size="9" fill="#767c87">compile speed (left) ←—— execution speed (right)</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;03</span>
+        <span class="lang-zh-only">V8 的四层 JIT 流水线。函数<em>边跑边升格</em>:Ignition 跑前几次执行,热了进 Sparkplug,更热进 Maglev,极热进 TurboFan;<em>类型假设一旦失效,整段被 deopt 退回 Ignition</em>。Maglev 是 Chrome 117(2023)新加的中间层,把"<em>从慢到快</em>"的台阶从 2 级补到 4 级——以前 Sparkplug → TurboFan 一步跨太大。</span>
+        <span class="lang-en-only">V8's four-tier JIT pipeline. A function is <em>promoted as it heats up</em>: Ignition for the first few runs, then Sparkplug, then Maglev, then TurboFan; <em>once a type assumption breaks, the whole frame is deopted back to Ignition</em>. Maglev is Chrome 117 (2023) new — bridging the "<em>cold to hot</em>" staircase from 2 steps to 4. The old Sparkplug → TurboFan was too steep.</span>
+      </figcaption>
+    </figure>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>V8 · TIER MATRIX</span>
+        <span class="src-tag">v8/src/{interpreter, baseline, maglev, compiler}/</span>
+      </div>
+      <span class="src-line"><span class="src-cls">Tier</span>          | <span class="src-cls">编译速度</span>  | <span class="src-cls">运行速度</span> | <span class="src-cls">类型反馈</span> | <span class="src-cls">触发条件</span></span>
+      <span class="src-line"><span class="src-frame">───────────────────────────────────────────────────────────────────</span></span>
+      <span class="src-line"><span class="src-fn">① Ignition</span>    | <span class="src-arg">~0 (无)</span>     | <span class="src-arg">基线 1×</span>    | <span class="src-arg">收集 IC</span>     | <span class="src-arg">默认</span></span>
+      <span class="src-line"><span class="src-fn">② Sparkplug</span>   | <span class="src-arg">&lt; 1 ms/函数</span> | <span class="src-arg">~5×</span>        | <span class="src-arg">同上</span>       | <span class="src-arg">~5 次调用后</span></span>
+      <span class="src-line"><span class="src-fn">③ Maglev</span>      | <span class="src-arg">~10 ms/函数</span> | <span class="src-arg">~30×</span>       | <span class="src-arg">用 IC 优化</span>  | <span class="src-arg">~50 次调用后</span></span>
+      <span class="src-line"><span class="src-fn">④ TurboFan</span>    | <span class="src-arg">~100 ms/函数</span> | <span class="src-arg">~50× +</span>     | <span class="src-arg">深度推断</span>   | <span class="src-arg">真正热点</span></span>
+      <span class="src-line"></span>
+      <span class="src-line"><span class="src-comment">// 编译都在后台线程,不阻塞主线程 → "concurrent compilation"</span></span>
+      <span class="src-line"><span class="src-comment">// Sparkplug/Maglev/TurboFan 三个线程池可以同时跑</span></span>
+    </div>
+
+    <p class="lang-zh-only">关键设计:<em>编译都在后台线程</em>(<code>--concurrent-recompilation</code>,默认开)。Main thread 上只跑 Ignition 解释器(零编译开销),后台线程发现热点就编译,编完了通过<em>原子指针交换</em>把函数表入口改写成新版本——下一次调用走 Sparkplug/Maglev/TurboFan,中间没有 stop-the-world。<strong>这就是为什么 V8 能"<em>边跑边变快</em>"而不卡顿</strong>。</p>
+    <p class="lang-en-only">Key design: <em>compilation runs on background threads</em> (<code>--concurrent-recompilation</code>, default-on). Main thread only runs Ignition (zero compile overhead); background threads spot the hot frames and compile, then atomically <em>swap a pointer</em> in the dispatch table to the new version — next call hits Sparkplug/Maglev/TurboFan with no stop-the-world. <strong>This is how V8 "<em>gets faster while running</em>" without stalling</strong>.</p>
+
+    <h3 class="sub lang-zh-only">隐藏类 + 内联缓存 · 让动态语言变成"<em>近静态</em>"</h3>
+    <h3 class="sub lang-en-only">Hidden classes + Inline caches · making a dynamic language "<em>nearly static</em>"</h3>
+
+    <p class="lang-zh-only">JS 是动态语言——对象的 shape 随时可以改。但在内存里,V8 偷偷给每一种"<em>属性集合</em>"分配了一个 <strong>HiddenClass</strong>(Map),让对象访问能<em>像 C++ struct 一样按 offset 取</em>。配合<strong>内联缓存(IC)</strong>,一次 <code>obj.x</code> 访问可以<em>不走任何字典查找</em>:</p>
+    <p class="lang-en-only">JS is dynamic — an object's shape can change at any moment. Yet in memory, V8 quietly assigns each "<em>property set</em>" a <strong>HiddenClass</strong> (Map), so property access can <em>fetch by offset like a C++ struct</em>. Combined with <strong>Inline Caches (IC)</strong>, a single <code>obj.x</code> access can <em>skip any dictionary lookup</em>:</p>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>HIDDEN CLASS · A WORKED EXAMPLE</span>
+        <span class="src-tag">v8/src/objects/map.h</span>
+      </div>
+      <span class="src-line"><span class="src-comment">// JS 代码</span></span>
+      <span class="src-line">var p1 = {};            <span class="src-comment">// HiddenClass C0  · 空</span></span>
+      <span class="src-line">p1.x = 10;              <span class="src-comment">// HiddenClass C0 → C1 (添加 .x@offset 0)</span></span>
+      <span class="src-line">p1.y = 20;              <span class="src-comment">// HiddenClass C1 → C2 (添加 .y@offset 1)</span></span>
+      <span class="src-line"></span>
+      <span class="src-line">var p2 = {};            <span class="src-comment">// HiddenClass C0  · 复用!</span></span>
+      <span class="src-line">p2.x = 30;              <span class="src-comment">// HiddenClass C0 → C1  · 复用!</span></span>
+      <span class="src-line">p2.y = 40;              <span class="src-comment">// HiddenClass C1 → C2  · 复用!</span></span>
+      <span class="src-line"></span>
+      <span class="src-line"><span class="src-comment">// 现在 p1 与 p2 共享 HiddenClass C2 → 它们的 shape 相同</span></span>
+      <span class="src-line"><span class="src-comment">// 函数 sum(p) { return p.x + p.y } 内的 IC 第一次执行时</span></span>
+      <span class="src-line"><span class="src-comment">// 缓存 [HiddenClass=C2 → x@offset 0, y@offset 1]</span></span>
+      <span class="src-line"><span class="src-comment">// 第二次执行 IC 命中 → 直接走 mov [rdi+0x10], rax · 不走字典</span></span>
+      <span class="src-line"></span>
+      <span class="src-line"><span class="src-comment">// ⚠ 反例:</span></span>
+      <span class="src-line">var p3 = {};</span>
+      <span class="src-line">p3.y = 99; p3.x = 100;  <span class="src-comment">// y 先 x 后 → HiddenClass D2 (≠ C2)</span></span>
+      <span class="src-line">                          <span class="src-comment">// 同一个 sum() 现在面对 2 种 HiddenClass</span></span>
+      <span class="src-line">                          <span class="src-comment">// IC 升级为 polymorphic IC,慢 ~3×</span></span>
+      <span class="src-line">                          <span class="src-comment">// 4 种以上 → megamorphic,完全退化为字典查找</span></span>
+    </div>
+
+    <p class="lang-zh-only">这就是为什么"<em>给对象初始化属性时<strong>顺序要一致</strong></em>"是 V8 性能的金科玉律。React/Vue 的 createElement、Class 字段初始化、构造函数里属性赋值顺序,这些细节都直接影响 IC 命中率。<strong>IC 命中率每降一级,函数性能掉一个数量级</strong>:Monomorphic ≫ Polymorphic ≫ Megamorphic。</p>
+    <p class="lang-en-only">This is why "<em>initialise properties in <strong>consistent order</strong></em>" is V8's golden rule. React/Vue's createElement, class field initialisation, the order of assignments in a constructor — all of these directly affect IC hit rate. <strong>Each step down the IC ladder costs an order of magnitude</strong>: Monomorphic ≫ Polymorphic ≫ Megamorphic.</p>
+
+    <h3 class="sub lang-zh-only">Orinoco · V8 的代际 GC</h3>
+    <h3 class="sub lang-en-only">Orinoco · V8's generational GC</h3>
+
+    <p class="lang-zh-only">V8 的堆按"<em>年龄</em>"分两块:Young Gen(新对象,~1-8MB)+ Old Gen(老对象,几十-几百 MB)。绝大多数对象<em>朝生夕死</em>(分配后几毫秒就没引用),不值得用昂贵的 mark-sweep——所以 Young Gen 用<strong>Scavenger 半空间复制 GC</strong>,只扫存活对象,死对象<em>不需要被"收集"——自动消失</em>。</p>
+    <p class="lang-en-only">V8's heap is split by <em>age</em>: Young Gen (new objects, ~1-8MB) + Old Gen (long-lived, tens to hundreds of MB). The vast majority of objects <em>die young</em> (no refs within milliseconds of allocation), not worth the cost of mark-sweep — so Young Gen uses <strong>Scavenger semi-space copying GC</strong>, scanning only live objects; dead objects <em>need no "collection" — they vanish</em>.</p>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>ORINOCO · GC ARCHITECTURE</span>
+        <span class="src-tag">v8/src/heap/</span>
+      </div>
+      <span class="src-line"><span class="src-cls">Heap</span></span>
+      <span class="src-line">├─ <span class="src-fn">YoungGeneration</span>(~1-8 MB)</span>
+      <span class="src-line">│   ├─ to-space      <span class="src-comment">// 当前用</span></span>
+      <span class="src-line">│   └─ from-space    <span class="src-comment">// GC 时把存活对象复制过去,废 from-space</span></span>
+      <span class="src-line">│   <span class="src-comment">// Scavenger · stop-the-world ~1-5 ms · 频繁但极快</span></span>
+      <span class="src-line">│</span>
+      <span class="src-line">└─ <span class="src-fn">OldGeneration</span>(几十-几百 MB)</span>
+      <span class="src-line">    ├─ MajorGC: Mark-Compact 主回收</span>
+      <span class="src-line">    │   ├─ <span class="src-method">Concurrent marking</span> · 后台线程跑 marking,主线程几乎不停</span>
+      <span class="src-line">    │   ├─ <span class="src-method">Incremental marking</span> · 切片 marking,塞在主线程空闲</span>
+      <span class="src-line">    │   └─ <span class="src-method">Parallel compacting</span> · 多线程整理</span>
+      <span class="src-line">    └─ MinorGC: 把"<span class="src-arg">幸存 2 次 Scavenge</span>" 的对象提升过来</span>
+      <span class="src-line"></span>
+      <span class="src-line"><span class="src-comment">// Orinoco 的设计目标:把 GC 暂停从 100ms+ 压到 &lt; 1ms</span></span>
+      <span class="src-line"><span class="src-comment">// 代价是 GC 工作量被分摊到更多线程 + 更复杂的 read/write barrier</span></span>
+    </div>
+
+    <p class="lang-zh-only"><strong>对前端意味着什么:</strong> 频繁创建临时对象(<em>函数返回值、Array.map、JSX 重渲染</em>)<em>不可怕</em>——Scavenger 1ms 就清完。真正的杀手是<em>"<strong>本来该死掉但意外被引用住</strong>"</em>的对象——它们晋升到 Old Gen,触发 Major GC 时全堆 mark,可能 stall 主线程几十毫秒。<em>Memory leak 在 V8 里的体征不是 OOM,是"<strong>每隔几秒卡顿一下</strong>"</em>——那是 Major GC 在抢 Main thread。</p>
+    <p class="lang-en-only"><strong>What this means for web devs:</strong> creating heaps of short-lived objects (<em>function return values, Array.map, JSX re-renders</em>) <em>is fine</em> — Scavenger sweeps them in 1ms. The real killer is "<em><strong>objects that should have died but accidentally stayed referenced</strong></em>" — they're promoted to Old Gen, triggering Major GC, marking the whole heap, possibly stalling Main for tens of milliseconds. <em>A memory leak in V8 doesn't show as OOM — it shows as "<strong>jank every few seconds</strong>"</em> — that's Major GC stealing the Main thread.</p>
+
+    <h3 class="sub lang-zh-only">V8 与渲染流水线的"<em>邻居关系</em>"</h3>
+    <h3 class="sub lang-en-only">V8 and the rendering pipeline · the "<em>neighbour</em>" relationship</h3>
+
+    <p class="lang-zh-only">V8 不是渲染流水线的"<em>一段</em>",但它在<strong>每段都坐着</strong>——Main thread 上 Style/Layout/Paint 跑完之后留下的空隙,JS handler 就开始执行。一帧 16.7ms 里典型的剧本:</p>
+    <p class="lang-en-only">V8 is not a "<em>stage</em>" of the rendering pipeline, but it <strong>squats inside every stage</strong> — JS handlers fill the gaps left by Style/Layout/Paint on the Main thread. A typical script for one 16.7ms frame:</p>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>MAIN THREAD · 16.7 MS · WHO RUNS WHEN</span>
+        <span class="src-tag">v8 ↔ blink ↔ cc</span>
+      </div>
+      <span class="src-line">  0 ms ─▶ <span class="src-cls">vsync</span> · Compositor 给 Main 发 BeginMainFrame</span>
+      <span class="src-line">  0 ms ─▶ <span class="src-cls">V8</span>: 跑事件回调(click/keypress/setTimeout)</span>
+      <span class="src-line">  2 ms ─▶ <span class="src-cls">V8</span>: microtask queue(Promise.then)</span>
+      <span class="src-line">  3 ms ─▶ <span class="src-cls">Blink</span>: Style + Layout + Pre-paint + Paint</span>
+      <span class="src-line">  6 ms ─▶ <span class="src-cls">cc</span>: Commit · Main 阻塞 ~1ms</span>
+      <span class="src-line">  7 ms ─▶ <span class="src-cls">V8</span>: requestAnimationFrame 回调(动画 / 渲染前最后一次改 DOM)</span>
+      <span class="src-line">  9 ms ─▶ <span class="src-cls">V8</span>: requestIdleCallback / scheduler.postTask 低优任务</span>
+      <span class="src-line"> 14 ms ─▶ <span class="src-cls">V8</span>: idle · 等下一个 vsync</span>
+      <span class="src-line"></span>
+      <span class="src-line"><span class="src-comment">// V8 在 [0,3) [7,9) [9,14) 三段窗口里</span></span>
+      <span class="src-line"><span class="src-comment">// 一段 JS 长任务 50ms → 阻塞 3 帧 → INP &gt; 200ms</span></span>
+    </div>
+
+    <div class="case-study accent">
+      <div class="cs-tag"><span class="lang-zh-only">长任务的物理后果</span><span class="lang-en-only">PHYSICS OF A LONG TASK</span></div>
+      <h5 class="lang-zh-only">为什么 50ms 是 INP 的天花板?</h5>
+      <h5 class="lang-en-only">Why is 50ms the ceiling for INP?</h5>
+      <p class="lang-zh-only">一帧 16.7ms 已经预留 ~6ms 给 Style/Layout/Paint,留给 JS 的窗口就是 ~10ms。<em>JS 单任务超过 50ms = 跨过 3 帧</em>——浏览器 Performance Observer 把它标 "<strong>Long Task</strong>";Web Vitals 把这次 input 的 INP 计为<em>从 input 到 next-paint 的真实时间</em>,直接就 200ms+。Chrome 122 起的 <code>scheduler.yield()</code> + <code>scheduler.postTask({ priority })</code> 就是为这件事造的——把长任务<strong>主动切片</strong>。</p>
+      <p class="lang-en-only">A 16.7ms frame budget already reserves ~6ms for Style/Layout/Paint, leaving ~10ms for JS. <em>A single JS task over 50ms = crosses 3 frames</em> — the browser's Performance Observer flags it as a "<strong>Long Task</strong>"; Web Vitals counts the INP for that input as <em>actual time from input to next-paint</em>, instantly 200ms+. Chrome 122's <code>scheduler.yield()</code> + <code>scheduler.postTask({ priority })</code> exist precisely for this — to <strong>actively slice</strong> long tasks.</p>
+    </div>
+
+    <h3 class="sub lang-zh-only">V8 vs JSCore vs Hermes · 设计哲学的三条路</h3>
+    <h3 class="sub lang-en-only">V8 vs JSCore vs Hermes · three design philosophies</h3>
+
+    <table class="cmp">
+      <thead>
+        <tr>
+          <th><span class="lang-zh-only">维度</span><span class="lang-en-only">Axis</span></th>
+          <th>V8 (Chrome)</th>
+          <th>JSCore (Safari)</th>
+          <th>Hermes (RN)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="lang-zh-only">JIT 层数</span><span class="lang-en-only">JIT tiers</span></td>
+          <td class="num">4 层</td>
+          <td class="num">4 层 (LLInt/Baseline/DFG/FTL)</td>
+          <td><span class="lang-zh-only">无 JIT · 直接吃字节码</span><span class="lang-en-only">No JIT · bytecode only</span></td>
+        </tr>
+        <tr>
+          <td><span class="lang-zh-only">字节码</span><span class="lang-en-only">Bytecode</span></td>
+          <td><span class="lang-zh-only">运行时生成 + 缓存</span><span class="lang-en-only">runtime-generated + cached</span></td>
+          <td><span class="lang-zh-only">运行时生成</span><span class="lang-en-only">runtime-generated</span></td>
+          <td><span class="lang-zh-only"><strong>构建时</strong>预编译 → ship 字节码</span><span class="lang-en-only"><strong>build-time</strong> precompiled → ship bytecode</span></td>
+        </tr>
+        <tr>
+          <td><span class="lang-zh-only">启动时间</span><span class="lang-en-only">Cold start</span></td>
+          <td class="bad">~200ms (parse + IC 预热)</td>
+          <td class="bad">~150ms</td>
+          <td class="good">&lt; 50ms (无 parse)</td>
+        </tr>
+        <tr>
+          <td><span class="lang-zh-only">峰值速度</span><span class="lang-en-only">Peak speed</span></td>
+          <td class="good">A+ (TurboFan 全开)</td>
+          <td class="good">A (FTL 全开)</td>
+          <td class="warn">C (字节码解释器)</td>
+        </tr>
+        <tr>
+          <td>GC</td>
+          <td>Orinoco · 代际 + 并发</td>
+          <td>Riptide · 三色标记</td>
+          <td>Hades · 并发 mark + 老生代</td>
+        </tr>
+        <tr>
+          <td><span class="lang-zh-only">体积</span><span class="lang-en-only">Footprint</span></td>
+          <td class="bad">~12 MB</td>
+          <td>~5 MB</td>
+          <td class="good">~2 MB</td>
+        </tr>
+        <tr>
+          <td><span class="lang-zh-only">最适合</span><span class="lang-en-only">Best fit</span></td>
+          <td><span class="lang-zh-only">Web · 长会话 · CPU 密集</span><span class="lang-en-only">Web · long sessions · CPU heavy</span></td>
+          <td><span class="lang-zh-only">移动 + iOS 沙箱</span><span class="lang-en-only">Mobile + iOS sandbox</span></td>
+          <td><span class="lang-zh-only">React Native · 启动至上</span><span class="lang-en-only">React Native · cold-start matters most</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <p class="lang-zh-only">三种引擎各走一条路:V8 把"<em>长会话峰值速度</em>"押到极致;JSCore 用 LLInt 解释器(可在沙箱里执行)弥补 iOS 不能 JIT 的限制;Hermes <em>把整个 parse + bytecode-gen 阶段挪到构建时</em>——APK 里直接 ship 字节码,App 启动跳过 parse。<strong>没有"<em>最好</em>"的引擎,只有"<em>最适合这个场景</em>"的引擎</strong>。</p>
+    <p class="lang-en-only">Three engines take three roads: V8 pushes "<em>peak speed in long sessions</em>" to the limit; JSCore uses an LLInt interpreter (executable in the sandbox) to compensate for iOS's no-JIT rule; Hermes <em>moves parse + bytecode-gen to build time</em> — the APK ships bytecode directly, the app skips parsing on launch. <strong>There is no "<em>best</em>" engine, only the "<em>best fit for this scenario</em>"</strong>.</p>
+
+    <div class="modern-note">
+      <span class="mn-tag">2024 +</span>
+      <span class="lang-zh-only"><strong>Maglev 默认开启 + Sparkplug 提前编译:</strong> Chrome 117+ 默认开 Maglev,把<em>"中等热度函数"</em>的性能从 5× 拉到 30×。Chrome 121 起还引入<strong>Compile Hints</strong>(<code>Magic-Bytecode</code> 注解),允许网站用 HTTP header 告诉 V8 "<em>这些脚本进 Sparkplug 不要再等</em>",把首屏 JS 启动再砍 ~30%。</span>
+      <span class="lang-en-only"><strong>Maglev default-on + Sparkplug-eager compilation:</strong> Chrome 117+ ships Maglev default, lifting <em>"warm function"</em> performance from 5× to 30×. Chrome 121+ added <strong>Compile Hints</strong> (<code>Magic-Bytecode</code> annotations) — sites can tell V8 via HTTP header "<em>compile these scripts straight to Sparkplug, don't wait</em>", trimming cold-start JS by another ~30%.</span>
+    </div>
+
+    <div class="observe-bar">
+      <div class="ob-row"><div class="ob-key">DEVTOOLS</div><div class="ob-val"><span class="lang-zh-only">Performance > "Compile Code" / "Optimize Code" / "Function Call";Memory 面板看 GC</span><span class="lang-en-only">Performance > "Compile Code" / "Optimize Code" / "Function Call"; Memory panel for GC</span></div></div>
+      <div class="ob-row"><div class="ob-key">TRACING</div><div class="ob-val"><code>v8.execute, v8.compile, v8.gc, v8.ic_stats</code></div></div>
+      <div class="ob-row"><div class="ob-key">FLAG</div><div class="ob-val"><span class="ob-flag">--js-flags="--print-opt-code --trace-deopt --trace-ic"</span> <span class="lang-zh-only">/ 看真实 IC 与 deopt</span><span class="lang-en-only">/ inspect actual IC and deopts</span></div></div>
+      <div class="ob-row"><div class="ob-key">SOURCE</div><div class="ob-val"><code>v8/src/{interpreter,baseline,maglev,compiler,heap}/</code></div></div>
+    </div>
   </section>
 
   <!-- ========== CHAPTER 04 — PROCESS MODEL ========== -->
@@ -3589,7 +3880,7 @@
 
   <!-- ========== STAGE 00 — NETWORK ========== -->
   <section class="chap" id="c0">
-    <div class="chap-num">CHAPTER&nbsp;05.5 · STAGE 00</div>
+    <div class="chap-num">STAGE&nbsp;00 · NETWORK</div>
     <h2 class="chap-title lang-zh-only">Loading — bytes 到达之前的事</h2>
     <h2 class="chap-title lang-en-only">Loading — what happens before the first byte</h2>
     <p class="chap-en lang-zh-only">network thread, mojo IPC, the preload scanner head-start</p>
@@ -3792,7 +4083,7 @@
 
   <!-- ========== CHAPTER 06 — PARSING ========== -->
   <section class="chap" id="c6">
-    <div class="chap-num">CHAPTER&nbsp;06 · STAGE 01</div>
+    <div class="chap-num">STAGE&nbsp;01 · DOC PHASE</div>
     <h2 class="chap-title lang-zh-only">Parsing — bytes 到 DOM Tree</h2>
     <h2 class="chap-title lang-en-only">Parsing — bytes to a DOM tree</h2>
     <p class="chap-en lang-zh-only">bytes → characters → tokens → DOM</p>
@@ -4091,7 +4382,7 @@
 
   <!-- ========== CHAPTER 07 — STYLE ========== -->
   <section class="chap" id="c7">
-    <div class="chap-num">CHAPTER&nbsp;07 · STAGE 02</div>
+    <div class="chap-num">STAGE&nbsp;02 · DOC PHASE</div>
     <h2 class="chap-title lang-zh-only">Style — CSS 是从右到左读的</h2>
     <h2 class="chap-title lang-en-only">Style — CSS is read right-to-left</h2>
     <p class="chap-en lang-zh-only">CSSOM and right-to-left selectors</p>
@@ -4430,7 +4721,7 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
 
   <!-- ========== CHAPTER 08 — LAYOUT ========== -->
   <section class="chap" id="c8">
-    <div class="chap-num">CHAPTER&nbsp;08 · STAGE 03</div>
+    <div class="chap-num">STAGE&nbsp;03 · DOC PHASE</div>
     <h2 class="chap-title lang-zh-only">Layout — 几何属性的归宿</h2>
     <h2 class="chap-title lang-en-only">Layout — where geometry settles</h2>
     <p class="chap-en lang-zh-only">where geometry settles</p>
@@ -4814,7 +5105,7 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
 
   <!-- ========== CHAPTER 09 — PRE-PAINT ========== -->
   <section class="chap" id="c9">
-    <div class="chap-num">CHAPTER&nbsp;09 · STAGE 04</div>
+    <div class="chap-num">STAGE&nbsp;04 · DOC PHASE</div>
     <h2 class="chap-title lang-zh-only">Pre-paint — 四棵属性树的诞生</h2>
     <h2 class="chap-title lang-en-only">Pre-paint — birth of the four property trees</h2>
     <p class="chap-en lang-zh-only">isolation contracts for transform · clip · effect · scroll</p>
@@ -5076,7 +5367,7 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
 
   <!-- ========== CHAPTER 10 — PAINT ========== -->
   <section class="chap" id="c10">
-    <div class="chap-num">CHAPTER&nbsp;10 · STAGE 05</div>
+    <div class="chap-num">STAGE&nbsp;05 · DOC PHASE</div>
     <h2 class="chap-title lang-zh-only">Paint — 不画像素，写"绘画清单"</h2>
     <h2 class="chap-title lang-en-only">Paint — not pixels, but a display list</h2>
     <p class="chap-en lang-zh-only">layout objects → display item list, in CSS painting order</p>
@@ -5317,7 +5608,7 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
 
   <!-- ========== CHAPTER 11 — COMMIT ========== -->
   <section class="chap" id="c11">
-    <div class="chap-num">CHAPTER&nbsp;11 · STAGE 06</div>
+    <div class="chap-num">STAGE&nbsp;06 · CC PHASE</div>
     <h2 class="chap-title lang-zh-only">Commit — 跨过线程的边界</h2>
     <h2 class="chap-title lang-en-only">Commit — crossing the thread boundary</h2>
     <p class="chap-en lang-zh-only">main thread → compositor thread, atomically</p>
@@ -5515,7 +5806,7 @@ property_trees_ ─────────────────────�
 
   <!-- ========== CHAPTER 12 — COMPOSITING ========== -->
   <section class="chap" id="c12">
-    <div class="chap-num">CHAPTER&nbsp;12 · STAGE 07</div>
+    <div class="chap-num">STAGE&nbsp;07 · CC PHASE</div>
     <h2 class="chap-title lang-zh-only">Compositing — 把页面切成独立图层</h2>
     <h2 class="chap-title lang-en-only">Compositing — slicing the page into independent layers</h2>
     <p class="chap-en lang-zh-only">why "mutate one, repaint one" is possible</p>
@@ -5766,7 +6057,7 @@ GraphicsLayer · <span class="mt-tag">root</span>
 
   <!-- ========== CHAPTER 13 — TILING ========== -->
   <section class="chap" id="c13">
-    <div class="chap-num">CHAPTER&nbsp;13 · STAGE 08</div>
+    <div class="chap-num">STAGE&nbsp;08 · CC PHASE</div>
     <h2 class="chap-title lang-zh-only">Tiling — 把图层切成马赛克</h2>
     <h2 class="chap-title lang-en-only">Tiling — slicing layers into mosaic</h2>
     <p class="chap-en lang-zh-only">picture layer → tile tasks, with priority</p>
@@ -5984,7 +6275,7 @@ GraphicsLayer · <span class="mt-tag">root</span>
 
   <!-- ========== CHAPTER 14 — RASTER ========== -->
   <section class="chap" id="c14">
-    <div class="chap-num">CHAPTER&nbsp;14 · STAGE 09</div>
+    <div class="chap-num">STAGE&nbsp;09 · CC PHASE</div>
     <h2 class="chap-title lang-zh-only">Raster — 把"绘画清单"翻成像素</h2>
     <h2 class="chap-title lang-en-only">Raster — translating the display list into pixels</h2>
     <p class="chap-en lang-zh-only">DisplayItemList playback into bitmaps / textures</p>
@@ -6446,7 +6737,7 @@ GraphicsLayer · <span class="mt-tag">root</span>
 
   <!-- ========== CHAPTER 15 — ACTIVATE ========== -->
   <section class="chap" id="c15">
-    <div class="chap-num">CHAPTER&nbsp;15 · STAGE 10</div>
+    <div class="chap-num">STAGE&nbsp;10 · CC PHASE</div>
     <h2 class="chap-title lang-zh-only">Activate — 三棵 LayerImpl 的舞蹈</h2>
     <h2 class="chap-title lang-en-only">Activate — three LayerImpl trees in rotation</h2>
     <p class="chap-en lang-zh-only">pending → active → recycle, the buffering you didn't see</p>
@@ -6648,7 +6939,7 @@ recycle_tree_ ─▶ null            recycle_tree_ ─▶ <span class="mt-attr">
 
   <!-- ========== CHAPTER 16 — DRAW ========== -->
   <section class="chap" id="c16">
-    <div class="chap-num">CHAPTER&nbsp;16 · STAGE 11</div>
+    <div class="chap-num">STAGE&nbsp;11 · CC PHASE</div>
     <h2 class="chap-title lang-zh-only">Draw — 不是画像素，是写"剧本"</h2>
     <h2 class="chap-title lang-en-only">Draw — not painting pixels, writing the script</h2>
     <p class="chap-en lang-zh-only">turning LayerImpl into a CompositorFrame</p>
@@ -6935,7 +7226,7 @@ recycle_tree_ ─▶ null            recycle_tree_ ─▶ <span class="mt-attr">
 
   <!-- ========== CHAPTER 17 — AGGREGATE ========== -->
   <section class="chap" id="c17">
-    <div class="chap-num">CHAPTER&nbsp;17 · STAGE 12</div>
+    <div class="chap-num">STAGE&nbsp;12 · VIZ PHASE</div>
     <h2 class="chap-title lang-zh-only">Aggregate — 多个进程的 CF 合成一帧</h2>
     <h2 class="chap-title lang-en-only">Aggregate — many CFs become one frame</h2>
     <p class="chap-en lang-zh-only">flattening surface trees across processes</p>
@@ -7159,7 +7450,7 @@ recycle_tree_ ─▶ null            recycle_tree_ ─▶ <span class="mt-attr">
 
   <!-- ========== CHAPTER 18 — DISPLAY ========== -->
   <section class="chap" id="c18">
-    <div class="chap-num">CHAPTER&nbsp;18 · STAGE 13</div>
+    <div class="chap-num">STAGE&nbsp;13 · VIZ PHASE</div>
     <h2 class="chap-title lang-zh-only">Display — 像素终于上屏</h2>
     <h2 class="chap-title lang-en-only">Display — pixels finally reach the screen</h2>
     <p class="chap-en lang-zh-only">DrawQuads → GL/Skia → vsync → photons</p>
