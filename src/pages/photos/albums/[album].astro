@@ -1,0 +1,311 @@
+---
+import '../../../styles/photos.css';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import LangSwitch from '../../../components/LangSwitch.astro';
+import photosData from '../../../data/photos.json';
+import { slugify } from '../../../lib/photos-slug';
+
+export async function getStaticPaths() {
+  const photos = photosData as Array<any>;
+  const grouped = new Map<string, { name: string; photos: any[] }>();
+  for (const p of photos) {
+    const albums: string[] = Array.isArray(p.albums) ? p.albums : [];
+    for (const name of albums) {
+      const slug = slugify(name);
+      if (!slug) continue;
+      if (!grouped.has(slug)) grouped.set(slug, { name, photos: [] });
+      grouped.get(slug)!.photos.push(p);
+    }
+  }
+  return Array.from(grouped.entries()).map(([slug, group]) => {
+    const sorted = [...group.photos].sort((a, b) => {
+      if (!a.takenAt && !b.takenAt) return 0;
+      if (!a.takenAt) return 1;
+      if (!b.takenAt) return -1;
+      return b.takenAt.localeCompare(a.takenAt);
+    });
+    return {
+      params: { album: slug },
+      props: { slug, name: group.name, photos: sorted },
+    };
+  });
+}
+
+const { slug, name, photos } = Astro.props as any;
+const count = photos.length;
+
+function formatRange(list: any[]): string {
+  const dates = list.map((p) => p.takenAt).filter(Boolean).sort();
+  if (dates.length === 0) return '';
+  const fmt = (iso: string) => {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+  };
+  const a = fmt(dates[0]);
+  const b = fmt(dates[dates.length - 1]);
+  return a === b ? a : `${a} – ${b}`;
+}
+const range = formatRange(photos);
+
+// Album OG image: lives on R2 alongside per-photo OGs, generated at sync-time
+// from `scripts/lib/photos-album-og.mjs` and uploaded to `albums/<slug>/og.jpg`.
+// URL is convention-based — sync ensures the asset exists and is fresh.
+// We also use this same image as the in-page modal preview so the user sees
+// exactly what gets shared (no separate cover-photo letterboxing).
+const R2_BASE = 'https://r2.airingdeng.com';
+const albumOgUrl = `${R2_BASE}/albums/${slug}/og.jpg`;
+
+const fullUrl = new URL(`/photos/albums/${slug}`, Astro.site || 'https://ursb.me').href;
+const displayUrl = fullUrl.replace(/^https?:\/\//, '');
+
+const shareText = `${name} · ${count} photo${count === 1 ? '' : 's'}`;
+const threadsHref = `https://www.threads.net/intent/post?text=${encodeURIComponent(shareText + ' ' + fullUrl)}`;
+const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(shareText)}`;
+
+const description = `${count} photo${count === 1 ? '' : 's'}${range ? ` · ${range}` : ''} in the ${name} album.`;
+---
+
+<BaseLayout
+  title={`${name} · Albums · Photos · Airing`}
+  description={description}
+  ogImage={albumOgUrl}
+  ogType="article"
+  lang="en"
+>
+  <div class="photos-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/en/blog">Blog</a>
+            <a href="/en/archive">Archive</a>
+            <a href="/en/moments">Moment</a>
+            <a href="/en/notes">Notes</a>
+            <a href="/photos" class="mast-link-active">Photos</a>
+            <a href="/en/friends">Friends</a>
+          </div>
+        </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="en" currentPath={`/photos/albums/${slug}`} hasEnVersion={false} />
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <main class="photos-main">
+      <nav class="facet-crumbs">
+        <a href="/photos">All photos</a>
+        <span class="crumb-sep">/</span>
+        <a href="/photos/albums">albums</a>
+        <span class="crumb-sep">/</span>
+        <span>{name}</span>
+      </nav>
+
+      <div class="album-header">
+        <div class="album-header-text">
+          <h1 class="photos-title">{name}</h1>
+          <p class="photos-desc">
+            {count} photo{count === 1 ? '' : 's'}
+            {range ? ` · ${range}` : ''}.
+          </p>
+        </div>
+        <button type="button" class="album-share-btn" id="albumShareBtn" aria-label="Share album" title="Share album">
+          {/* Tabler TbPhotoShare */}
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 8h.01" />
+            <path d="M12.5 21h-6.5a3 3 0 0 1 -3 -3v-12a3 3 0 0 1 3 -3h12a3 3 0 0 1 3 3v6.5" />
+            <path d="M3 16l5 -5c.928 -.875 2.072 -.875 3 0l3 3" />
+            <path d="M14 14l1 -1c.617 -.582 1.327 -.79 2.012 -.626" />
+            <path d="M16 22l5 -5" />
+            <path d="M21 21.5v-4.5h-4.5" />
+          </svg>
+          <span>Share</span>
+        </button>
+      </div>
+
+      <ul class="photos-grid">
+        {photos.map((p: any) => (
+          <li class="photo-card" style={`--dom: ${p.dominantColor}`}>
+            <a href={`/photos/${p.slug}`} class="photo-link" aria-label={p.title || p.slug}>
+              <picture>
+                <source type="image/avif" srcset={`${p.variants.thumb.avif} 400w, ${p.variants.medium.avif} 1200w`} sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw" />
+                <source type="image/webp" srcset={`${p.variants.thumb.webp} 400w, ${p.variants.medium.webp} 1200w`} sizes="(max-width: 768px) 50vw, (max-width: 1280px) 33vw, 25vw" />
+                <img src={p.variants.medium.webp} alt={p.title || p.slug} loading="lazy" decoding="async" />
+              </picture>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </main>
+  </div>
+
+  {/* ── Share modal (mirrors photo detail) ─────────────────── */}
+  <div class="share-modal" id="albumShareModal" hidden>
+    <button type="button" class="share-backdrop" id="albumShareBackdrop" aria-label="Close share dialog"></button>
+    <div class="share-card" role="dialog" aria-modal="true" aria-label="Share album">
+      <button type="button" class="share-close" id="albumShareClose" aria-label="Close">×</button>
+
+      <div class="share-image share-image-og">
+        <img src={albumOgUrl} alt={`${name} share card`} width="1200" height="630" />
+      </div>
+
+      <div class="share-row">
+        <input type="text" readonly value={displayUrl} class="share-url" id="albumShareUrl" />
+        <div class="share-actions-row">
+          <button type="button" class="share-act" id="albumShareCopy" aria-label="Copy link" title="Copy link">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="8" y="8" width="12" height="12" rx="2" />
+              <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+            </svg>
+          </button>
+          <a href={threadsHref} class="share-act" target="_blank" rel="noopener noreferrer" aria-label="Share to Threads" title="Share to Threads">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17.21 11.16c-.09-.04-.18-.08-.27-.12-.16-2.97-1.78-4.67-4.51-4.69h-.04c-1.63 0-2.99.7-3.83 1.96l1.5 1.03c.62-.94 1.6-1.14 2.33-1.14h.03c.91.01 1.6.27 2.04.78.32.37.54.88.65 1.52-.83-.14-1.73-.18-2.69-.13-2.71.16-4.46 1.74-4.34 3.94.06 1.12.62 2.08 1.57 2.71.81.53 1.85.79 2.93.73 1.43-.08 2.55-.62 3.34-1.62.6-.76.97-1.74 1.14-2.97.7.42 1.21.97 1.5 1.63.49 1.13.52 2.97-.98 4.47-1.31 1.31-2.89 1.88-5.27 1.9-2.64-.02-4.64-.87-5.93-2.52-1.21-1.55-1.84-3.79-1.86-6.65.02-2.86.65-5.1 1.86-6.65 1.29-1.65 3.29-2.5 5.93-2.52 2.66.02 4.7.87 6.06 2.54.67.81 1.17 1.84 1.51 3.04l1.79-.48c-.41-1.47-1.05-2.74-1.91-3.79C16.99 1.95 14.5.86 11.45.84h-.01C8.39.86 5.93 1.96 4.21 4.1 2.69 6 1.91 8.65 1.89 11.99v.02c.02 3.34.79 5.99 2.32 7.89 1.71 2.14 4.18 3.24 7.23 3.26h.01c2.71-.02 4.62-.73 6.2-2.31 2.07-2.06 2-4.65 1.32-6.24-.49-1.16-1.43-2.1-2.71-2.71zm-4.6 3.91c-1.2.07-2.45-.47-2.51-1.6-.04-.83.59-1.76 2.58-1.87.23-.01.45-.02.67-.02.72 0 1.39.07 2 .2-.23 2.84-1.56 3.22-2.74 3.29z" />
+            </svg>
+          </a>
+          <a href={xHref} class="share-act" target="_blank" rel="noopener noreferrer" aria-label="Share to X" title="Share to X">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </a>
+          <button type="button" class="share-act" id="albumShareNative" aria-label="More share options" title="More">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 19V5M5 12l7-7 7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .masthead { width: 100%; }
+    .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+    .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+    .mast-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; position: relative; }
+    .mast-brand { font-size: 11px; color: var(--c-text-muted); text-decoration: none; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+    .mast-brand:hover { color: var(--c-text); }
+    .mast-links { display: flex; gap: 16px; }
+    .mast-links a { font-size: 11px; color: var(--c-text-dim); text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase; }
+    .mast-links a:hover, .mast-link-active { color: var(--c-text) !important; }
+    .mast-bottom-rule { height: 1px; background: var(--c-border); }
+    .mast-lang-line { display: flex; justify-content: flex-end; padding: 4px 0 8px 0; }
+    @media (max-width: 768px) { .mast-inner { padding: 0 20px; } }
+
+    .album-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .album-header-text { min-width: 0; flex: 1; }
+    .album-header .photos-title,
+    .album-header .photos-desc { margin-top: 0; }
+
+    .album-share-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.45rem 0.85rem;
+      background: transparent;
+      border: 1px solid var(--c-border);
+      color: var(--c-text-dim);
+      border-radius: 6px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: color 150ms, border-color 150ms, background 150ms;
+      flex-shrink: 0;
+      margin-top: 0.4rem;
+    }
+    .album-share-btn:hover {
+      color: var(--c-text);
+      border-color: var(--c-text-muted);
+    }
+    .album-share-btn svg { display: block; }
+
+    @media (max-width: 480px) {
+      .album-share-btn span { display: none; }
+      .album-share-btn { padding: 0.45rem 0.55rem; }
+    }
+
+    /* OG-as-preview: no letterbox bars — the 1200×630 art already includes
+       all branding/title overlays, so the modal frames it edge-to-edge. */
+    .share-image-og { background: transparent; }
+    .share-image-og img {
+      display: block;
+      width: 100%;
+      height: auto;
+      max-height: none;
+      object-fit: contain;
+    }
+  </style>
+
+  <style is:global>
+    body:has(.photos-page) {
+      display: block; padding: 0; align-items: stretch; justify-content: stretch;
+    }
+  </style>
+
+  <script is:inline define:vars={{ albumName: name, albumSlug: slug, fullUrl, shareText }}>
+    (function () {
+      var modal = document.getElementById('albumShareModal');
+      var openBtn = document.getElementById('albumShareBtn');
+      var closeBtn = document.getElementById('albumShareClose');
+      var backdrop = document.getElementById('albumShareBackdrop');
+      var copyBtn = document.getElementById('albumShareCopy');
+      var nativeBtn = document.getElementById('albumShareNative');
+      var urlInput = document.getElementById('albumShareUrl');
+
+      function openModal() {
+        if (!modal) return;
+        if (typeof umami !== 'undefined') umami.track('album-share', { slug: albumSlug });
+        modal.hidden = false;
+        document.body.style.overflow = 'hidden';
+        setTimeout(function () { closeBtn && closeBtn.focus(); }, 0);
+      }
+      function closeModal() {
+        if (!modal) return;
+        modal.hidden = true;
+        document.body.style.overflow = '';
+        openBtn && openBtn.focus();
+      }
+      openBtn && openBtn.addEventListener('click', openModal);
+      closeBtn && closeBtn.addEventListener('click', closeModal);
+      backdrop && backdrop.addEventListener('click', closeModal);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && modal && !modal.hidden) closeModal();
+      });
+
+      copyBtn && copyBtn.addEventListener('click', async function () {
+        try {
+          await navigator.clipboard.writeText(fullUrl);
+        } catch (e) {
+          urlInput && urlInput.select();
+          try { document.execCommand('copy'); } catch (_) {}
+        }
+        copyBtn.classList.add('copied');
+        var originalLabel = copyBtn.getAttribute('aria-label');
+        copyBtn.setAttribute('aria-label', 'Copied!');
+        setTimeout(function () {
+          copyBtn.classList.remove('copied');
+          copyBtn.setAttribute('aria-label', originalLabel);
+        }, 1400);
+      });
+
+      nativeBtn && nativeBtn.addEventListener('click', async function () {
+        if (navigator.share) {
+          try {
+            await navigator.share({ title: albumName, text: shareText, url: fullUrl });
+          } catch (_) { /* user cancelled */ }
+        } else {
+          copyBtn && copyBtn.click();
+        }
+      });
+    })();
+  </script>
+</BaseLayout>

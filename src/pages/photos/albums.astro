@@ -1,0 +1,312 @@
+---
+import '../../styles/photos.css';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import photosData from '../../data/photos.json';
+import { slugify } from '../../lib/photos-slug';
+
+const photos = photosData as Array<any>;
+
+type AlbumGroup = {
+  slug: string;
+  name: string;
+  count: number;
+  covers: any[];           // top-3 newest photos for the polaroid stack
+  earliest: string | null;
+  latest: string | null;
+};
+
+const groupingMap = new Map<string, { slug: string; name: string; photos: any[] }>();
+for (const p of photos) {
+  const albums: string[] = Array.isArray(p.albums) ? p.albums : [];
+  for (const name of albums) {
+    const slug = slugify(name);
+    if (!slug) continue;
+    if (!groupingMap.has(slug)) groupingMap.set(slug, { slug, name, photos: [] });
+    groupingMap.get(slug)!.photos.push(p);
+  }
+}
+
+const albums: AlbumGroup[] = Array.from(groupingMap.values()).map((g) => {
+  const sorted = [...g.photos].sort((a, b) => {
+    if (!a.takenAt && !b.takenAt) return 0;
+    if (!a.takenAt) return 1;
+    if (!b.takenAt) return -1;
+    return b.takenAt.localeCompare(a.takenAt);
+  });
+  const dated = sorted.filter((p) => p.takenAt);
+  return {
+    slug: g.slug,
+    name: g.name,
+    count: g.photos.length,
+    covers: sorted.slice(0, 3),
+    earliest: dated.length ? dated[dated.length - 1].takenAt : null,
+    latest: dated.length ? dated[0].takenAt : null,
+  };
+});
+
+albums.sort((a, b) => {
+  // Newest album first by latest taken date; albums without dates fall to the end.
+  if (!a.latest && !b.latest) return a.name.localeCompare(b.name);
+  if (!a.latest) return 1;
+  if (!b.latest) return -1;
+  return b.latest.localeCompare(a.latest);
+});
+
+const totalPhotosInAlbums = albums.reduce((acc, a) => acc + a.count, 0);
+
+function formatRange(earliest: string | null, latest: string | null): string {
+  if (!earliest || !latest) return '';
+  const e = new Date(earliest);
+  const l = new Date(latest);
+  if (isNaN(e.getTime()) || isNaN(l.getTime())) return '';
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}`;
+  const a = fmt(e);
+  const b = fmt(l);
+  return a === b ? a : `${a} – ${b}`;
+}
+---
+
+<BaseLayout
+  title="Albums · Photos · Airing"
+  description="Curated photo albums."
+  lang="en"
+>
+  <div class="photos-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/en/blog" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/en/blog">Blog</a>
+            <a href="/en/archive">Archive</a>
+            <a href="/en/moments">Moment</a>
+            <a href="/en/notes">Notes</a>
+            <a href="/photos" class="mast-link-active">Photos</a>
+            <a href="/en/friends">Friends</a>
+          </div>
+        </div>
+        <div class="mast-lang-line">
+          <LangSwitch lang="en" currentPath="/photos/albums" hasEnVersion={false} />
+        </div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <main class="photos-main">
+      <nav class="facet-crumbs">
+        <a href="/photos">All photos</a>
+        <span class="crumb-sep">/</span>
+        <span>albums</span>
+      </nav>
+      <h1 class="photos-title">Albums</h1>
+      <p class="photos-desc">
+        {albums.length} album{albums.length === 1 ? '' : 's'}
+        {totalPhotosInAlbums > 0 ? ` · ${totalPhotosInAlbums} photo${totalPhotosInAlbums === 1 ? '' : 's'}` : ''}.
+      </p>
+
+      <nav class="view-switcher" aria-label="Photo views">
+        <a href="/photos">Grid</a>
+        <a href="/photos/calendar">Calendar</a>
+        <span class="view-switcher-active">Albums</span>
+        <a href="/photos/world">Map</a>
+      </nav>
+
+      {albums.length === 0 ? (
+        <p class="photos-empty">No albums yet. Add <code>albums: [Album Name]</code> to a photo's sidecar to start one.</p>
+      ) : (
+        <ul class="albums-grid">
+          {albums.map((a) => {
+            const stack = a.covers;
+            const slots = [
+              { rot: -8, dx: -22, dy: 8 },  // back-left
+              { rot: 4,  dx: 22,  dy: -4 }, // front-right (drawn last, on top)
+              { rot: -3, dx: 0,   dy: -10 },// middle-back (only when 3 covers)
+            ];
+            // Render order: paint back ones first, foreground last. Slot order
+            // controls visual depth.
+            const order = stack.length === 3 ? [2, 0, 1] : stack.length === 2 ? [0, 1] : [0];
+            const range = formatRange(a.earliest, a.latest);
+            return (
+              <li class="album-card" style={`--dom: ${stack[0].dominantColor}`}>
+                <a href={`/photos/albums/${a.slug}`} class="album-link" aria-label={a.name}>
+                  <div class="album-stack" aria-hidden="true">
+                    <div class="album-stack-bg"></div>
+                    {order.map((idx) => {
+                      const slot = slots[idx] || slots[0];
+                      const p = stack[idx];
+                      return (
+                        <div
+                          class="album-polaroid"
+                          style={`--rot: ${slot.rot}deg; --dx: ${slot.dx}px; --dy: ${slot.dy}px;`}
+                        >
+                          <picture>
+                            <source type="image/avif" srcset={p.variants.thumb.avif} />
+                            <source type="image/webp" srcset={p.variants.thumb.webp} />
+                            <img src={p.variants.thumb.webp} alt="" loading="lazy" decoding="async" />
+                          </picture>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div class="album-meta">
+                    <span class="album-tag">ALBUM</span>
+                    <span class="album-name">{a.name}</span>
+                    <span class="album-sub">
+                      <span>{a.count} photo{a.count === 1 ? '' : 's'}</span>
+                      {range && <><span class="album-sep">·</span><span>{range}</span></>}
+                    </span>
+                  </div>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </main>
+  </div>
+
+  <style>
+    .masthead { width: 100%; }
+    .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+    .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+    .mast-bar { display: flex; justify-content: space-between; align-items: center; padding: 14px 0; position: relative; }
+    .mast-brand { font-size: 11px; color: var(--c-text-muted); text-decoration: none; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600; }
+    .mast-brand:hover { color: var(--c-text); }
+    .mast-links { display: flex; gap: 16px; }
+    .mast-links a { font-size: 11px; color: var(--c-text-dim); text-decoration: none; letter-spacing: 0.06em; text-transform: uppercase; }
+    .mast-links a:hover, .mast-link-active { color: var(--c-text) !important; }
+    .mast-bottom-rule { height: 1px; background: var(--c-border); }
+    .mast-lang-line { display: flex; justify-content: flex-end; padding: 4px 0 8px 0; }
+    @media (max-width: 768px) { .mast-inner { padding: 0 20px; } }
+
+    .view-switcher {
+      display: flex; gap: 1rem;
+      margin: 0 0 1.5rem;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .view-switcher a { color: var(--c-text-dim); text-decoration: none; }
+    .view-switcher a:hover { color: var(--c-text); }
+    .view-switcher-active { color: var(--c-text); font-weight: 600; }
+
+    .albums-grid {
+      list-style: none; padding: 0; margin: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+    .album-card {
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid var(--c-border);
+      background: var(--c-bg, #fff);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .album-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.2);
+    }
+    .album-link {
+      display: block;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    /* Polaroid stack visual */
+    .album-stack {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 5 / 3;
+      overflow: hidden;
+      isolation: isolate;
+    }
+    .album-stack-bg {
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse at 50% 60%, color-mix(in srgb, var(--dom, #2a2a2a) 70%, #000) 0%, #0a0a0a 80%);
+      z-index: 0;
+    }
+    .album-card:hover .album-polaroid {
+      transition: transform 0.25s ease;
+    }
+    .album-polaroid {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 46%;
+      aspect-ratio: 1 / 1;
+      background: #fafafa;
+      padding: 6px 6px 22px;
+      transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px))) rotate(var(--rot, 0deg));
+      box-shadow:
+        0 12px 24px rgba(0,0,0,0.45),
+        0 2px 6px rgba(0,0,0,0.35);
+      z-index: 1;
+    }
+    .album-card:hover .album-polaroid {
+      transform: translate(calc(-50% + var(--dx, 0px) * 1.25), calc(-50% + var(--dy, 0px) * 1.25 - 2px)) rotate(calc(var(--rot, 0deg) * 1.1));
+    }
+    .album-polaroid picture,
+    .album-polaroid img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .album-meta {
+      padding: 0.95rem 1.1rem 1.1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      border-top: 1px solid var(--c-border);
+    }
+    .album-tag {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 10px;
+      letter-spacing: 0.22em;
+      color: var(--c-text-dim);
+      text-transform: uppercase;
+    }
+    .album-name {
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      color: var(--c-text);
+      line-height: 1.25;
+    }
+    .album-sub {
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: var(--c-text-dim);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      display: flex;
+      gap: 0.45rem;
+      align-items: center;
+    }
+    .album-sep { opacity: 0.5; }
+  </style>
+
+  <style is:global>
+    body:has(.photos-page) {
+      display: block; padding: 0; align-items: stretch; justify-content: stretch;
+    }
+  </style>
+
+  <script is:inline define:vars={{ currentView: 'albums' }}>
+    document.addEventListener('click', function (e) {
+      if (typeof umami === 'undefined') return;
+      var t = e.target;
+      if (!t || !t.closest) return;
+      var a = t.closest('.view-switcher a');
+      if (!a) return;
+      umami.track('view-switch', { from: currentView, to: (a.textContent || '').trim().toLowerCase() });
+    });
+  </script>
+</BaseLayout>

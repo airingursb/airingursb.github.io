@@ -162,7 +162,7 @@ export async function generateOG({ filePath, exif, takenAt, title, place }) {
                 textShadow: '0 1px 4px rgba(0,0,0,0.5)',
                 display: 'flex',
               },
-              children: 'ursb.me',
+              children: 'Airing  ·  ursb.me',
             },
           },
           {
@@ -206,11 +206,16 @@ export async function generateOG({ filePath, exif, takenAt, title, place }) {
   return await sharp(png).jpeg({ quality: 85, mozjpeg: true }).toBuffer();
 }
 
+// Bump when the visual layout changes so existing OG cards regen even when
+// the underlying photo inputs (binary, title, place, EXIF) are identical.
+const LAYOUT_VERSION = 'v2-airing-brand';
+
 // Stable hash of the inputs that affect OG output. Lets sync skip
 // regeneration when nothing visible has changed (binary unchanged AND
 // title/place/EXIF still the same).
 export function computeOgHash({ sourceHash, title, place, exif, takenAt }) {
   const payload = JSON.stringify({
+    v: LAYOUT_VERSION,
     sourceHash: sourceHash || '',
     title: title || '',
     place: place ? { city: place.city || '', country: place.country || '' } : null,

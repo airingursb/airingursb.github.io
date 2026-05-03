@@ -35,13 +35,15 @@ export async function scanSource(sourceDir) {
   const entries = await fs.readdir(sourceDir, { withFileTypes: true });
   const photos = [];
   const seenSlugs = new Set();
+  const metaDir = path.join(sourceDir, 'meta');
 
   for (const ent of entries) {
     if (!ent.isFile()) continue;
     if (!/\.(jpe?g|png|heic|heif|dng|raf|cr2|cr3|nef|arw|orf|rw2|pef|3fr|fff|iiq)$/i.test(ent.name)) continue;
 
     const filePath = path.join(sourceDir, ent.name);
-    const sidecarPath = filePath.replace(/\.[^.]+$/, '.md');
+    const sidecarBase = ent.name.replace(/\.[^.]+$/, '') + '.md';
+    const sidecarPath = path.join(metaDir, sidecarBase);
     let sidecar = {};
     try {
       sidecar = parseSidecar(await fs.readFile(sidecarPath, 'utf-8'));
@@ -61,11 +63,31 @@ export async function scanSource(sourceDir) {
       title: sidecar.title || '',
       description: sidecar.description || '',
       tags: sidecar.tags || [],
+      albums: parseAlbums(sidecar),
       placeOverride: parsePlaceOverride(sidecar),
     });
   }
 
   return photos;
+}
+
+// Sidecar can specify album membership as a single string or array:
+//   album: 2024 New Zealand
+//   albums: [2024 New Zealand, Travel]
+// Returns a deduped, trimmed array (empty if neither is set).
+function parseAlbums(sidecar) {
+  const raw = sidecar.albums ?? sidecar.album;
+  if (raw == null) return [];
+  const list = Array.isArray(raw) ? raw : [raw];
+  const seen = new Set();
+  const out = [];
+  for (const item of list) {
+    const name = String(item).trim();
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    out.push(name);
+  }
+  return out;
 }
 
 // Sidecar place can be written as either:

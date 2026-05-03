@@ -131,7 +131,7 @@
 - [ ] DOM: `.cal-year-head` 含 `.cal-year-num`(年份)和 `.cal-year-count`(数量)
 - [ ] DOM: `.cal-month-head` 含 `.cal-month-label`(月份英文)和 `.cal-month-count`
 - [ ] DOM: 每个 `.cal-month` 内有 `.photos-grid` + `.photo-card` 链接到 `/photos/<slug>`
-- [ ] DOM: `.view-switcher-active` 文本为 `Calendar`,旁边有 `<a href="/photos">Grid</a>`
+- [ ] DOM: `.view-switcher-active` 文本为 `Calendar`,旁边有 `<a href="/photos">Grid</a>` 和 `<a href="/photos/albums">Albums</a>`
 - [ ] CSS: `.cal-year-head` 有 `position: sticky; top: 0`
 - [ ] Evaluate: 年份按降序排列(最新年份在前)
 
@@ -139,6 +139,29 @@
 
 - [ ] DOM: `.view-switcher` 内 `.view-switcher-active` 文本为 `Grid`
 - [ ] DOM: `.view-switcher` 内有 `<a href="/photos/calendar">Calendar</a>`
+- [ ] DOM: `.view-switcher` 内有 `<a href="/photos/albums">Albums</a>`(Calendar 与 Map 之间)
+
+## Photos — Albums index (`/photos/albums`)
+
+- [ ] GET: 200 OK
+- [ ] DOM: `.view-switcher-active` 文本为 `Albums`
+- [ ] DOM: `.albums-grid` 存在,内含至少一个 `.album-card`
+- [ ] DOM: 每张 `.album-card` 含 `.album-name`(album 标题)+ `.album-sub`(`<n> photo(s)` + 时间范围)
+- [ ] DOM: 卡片链接 href 形如 `/photos/albums/<album-slug>`
+- [ ] Evaluate: 多 album 时按最新照片日期降序
+
+## Photos — Album detail (`/photos/albums/<album>`)
+
+- [ ] GET: `/photos/albums/2024-new-zealand` 200 OK
+- [ ] DOM: `.facet-crumbs` 含 "All photos / albums / <name>" 面包屑
+- [ ] DOM: `.photos-title` 显示 album 名称(原始大小写,如 `2024 New Zealand`)
+- [ ] DOM: `.photos-grid` 内照片数量等于 album 内照片数
+- [ ] Evaluate: 照片按 `takenAt` 降序
+
+## Photos — Detail page album link (`/photos/<slug>` for a photo with `albums`)
+
+- [ ] DOM: `.meta-tags` 内出现 `.meta-album` 链接,文本为 album 原名
+- [ ] DOM: 该链接 href 形如 `/photos/albums/<album-slug>`
 
 ## Photos — Place taxonomy (`/photos/places/<city>`)
 
@@ -184,6 +207,6 @@
 
 - [ ] `/photos/<slug>` 点 share 按钮 → 触发 `photo-share` 事件 (data: { slug })
 - [ ] `/photos/<slug>` 点全屏按钮 → 触发 `photo-fullscreen` 事件 (data: { slug })
-- [ ] `/photos/<slug>` 点 camera/place/tag 链接 → 触发 `facet-link` 事件 (data: { kind: cameras|places|tags, value, from })
+- [ ] `/photos/<slug>` 点 camera/place/tag/album 链接 → 触发 `facet-link` 事件 (data: { kind: cameras|places|tags|albums, value, from })
 - [ ] `/photos/world` 点 marker → 触发 `world-marker-click` 事件 (data: { city, country, count })
-- [ ] `/photos`、`/photos/calendar`、`/photos/world` 点 view-switcher 链接 → 触发 `view-switch` 事件 (data: { from, to })
+- [ ] `/photos`、`/photos/calendar`、`/photos/albums`、`/photos/world` 点 view-switcher 链接 → 触发 `view-switch` 事件 (data: { from, to })
