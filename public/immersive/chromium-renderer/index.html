@@ -136,6 +136,195 @@
   }
   .byline a.value:hover { color: var(--accent); border-bottom-color: var(--accent); }
 
+  /* ====================== TOC v2 — grouped & interactive ====================== */
+  .toc-v2 { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+  .toc-v2 .tv-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .toc-v2 .tv-label {
+    font-family: var(--sans); font-size: 11px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .toc-v2 .tv-meta {
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--ink-mute); letter-spacing: 0.08em;
+  }
+  .toc-v2 .tv-meta .tv-now {
+    color: var(--accent); font-weight: 700;
+  }
+  .toc-v2 .tv-sub {
+    font-family: var(--sans); font-size: 13px;
+    color: var(--ink-mute); margin: 2px 0 26px;
+    font-style: italic;
+  }
+
+  /* Mini progress bar showing how many chapters in each phase */
+  .toc-v2 .tv-progress {
+    display: grid;
+    grid-template-columns: 5fr 1fr 14fr 5fr;
+    gap: 4px;
+    height: 8px;
+    margin: 6px 0 28px;
+  }
+  .toc-v2 .tv-progress span {
+    border-radius: 2px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .toc-v2 .tv-progress span:hover { transform: translateY(-1px); }
+  .toc-v2 .tv-progress .tv-p1 { background: var(--ink-mute); opacity: 0.55; }
+  .toc-v2 .tv-progress .tv-p2 { background: var(--copper); }
+  .toc-v2 .tv-progress .tv-p3 { background: var(--accent); }
+  .toc-v2 .tv-progress .tv-p4 { background: var(--good); }
+
+  .toc-group {
+    margin-bottom: 18px;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--ink-mute);
+    border-radius: 0 4px 4px 0;
+    background: var(--paper);
+    padding: 14px 18px 16px;
+    transition: background 0.15s;
+  }
+  .toc-group[data-phase="bg"]    { border-left-color: var(--ink-mute); }
+  .toc-group[data-phase="card"]  { border-left-color: var(--copper); background: linear-gradient(135deg, rgba(179,90,31,0.04) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="pipe"]  { border-left-color: var(--accent); }
+  .toc-group[data-phase="synth"] { border-left-color: var(--good); }
+
+  .toc-group-head {
+    display: flex; align-items: baseline; gap: 14px;
+    margin-bottom: 12px;
+    border-bottom: 1px dotted var(--rule);
+    padding-bottom: 10px;
+  }
+  .toc-group-head .tg-num {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--ink-mute); width: 22px;
+  }
+  .toc-group-head .tg-name {
+    font-family: var(--serif); font-size: 16px; font-weight: 700;
+    color: var(--ink);
+    flex: 1;
+  }
+  body.lang-en .toc-group-head .tg-name { font-family: var(--serif-en); }
+  .toc-group-head .tg-en {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .toc-group-head .tg-count {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-mute);
+    background: var(--bg-soft);
+    padding: 2px 8px; border-radius: 999px;
+  }
+
+  .toc-chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 5px;
+  }
+  .toc-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    background: var(--bg-soft);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    text-decoration: none;
+    color: var(--ink);
+    font-family: var(--sans); font-size: 13px;
+    transition: all 0.15s;
+    position: relative;
+    border-bottom-width: 1px;  /* override site link underline */
+  }
+  .toc-chip:hover {
+    border-color: var(--accent);
+    background: var(--paper-2);
+    transform: translateX(2px);
+    color: var(--ink);
+  }
+  .toc-chip:hover .tc-num { color: var(--accent); }
+  .toc-chip:hover .tc-en { opacity: 1; }
+  .toc-chip.active {
+    border-color: var(--accent);
+    background: rgba(31,92,140,0.10);
+    box-shadow: 0 1px 4px rgba(31,92,140,0.10);
+  }
+  .toc-chip.active .tc-num { color: var(--accent); font-weight: 700; }
+  .toc-chip.active .tc-name { font-weight: 700; color: var(--accent); }
+  .toc-chip .tc-num {
+    font-family: var(--mono); font-size: 10.5px;
+    font-weight: 700; color: var(--ink-mute);
+    letter-spacing: 0.06em;
+    flex-shrink: 0;
+    width: 22px;
+  }
+  .toc-chip .tc-name { flex: 1; min-width: 0; line-height: 1.2; }
+  .toc-chip .tc-en {
+    font-family: var(--mono); font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--ink-mute);
+    opacity: 0.55;
+    transition: opacity 0.15s;
+    text-transform: uppercase;
+  }
+  .toc-chip.tc-special {
+    background: linear-gradient(135deg, rgba(179,90,31,0.10), var(--paper));
+    border-color: var(--copper-soft);
+    border-left: 2px solid var(--copper);
+  }
+  .toc-chip.tc-special .tc-num { color: var(--copper); }
+
+  /* Sub-group inside the pipeline group (Doc / cc / Viz) */
+  .toc-sub {
+    margin-top: 12px;
+  }
+  .toc-sub:first-child { margin-top: 0; }
+  .toc-sub-tag {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute);
+    margin: 6px 0 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toc-sub-tag::before {
+    content: ""; width: 14px; height: 1px;
+    background: var(--rule);
+  }
+  .toc-sub-tag .ts-stripe {
+    width: 8px; height: 8px; border-radius: 2px;
+    background: var(--accent);
+  }
+  .toc-sub[data-thread="main"] .ts-stripe { background: var(--accent); }
+  .toc-sub[data-thread="cc"]   .ts-stripe { background: var(--copper); }
+  .toc-sub[data-thread="viz"]  .ts-stripe { background: var(--gpu); }
+  .toc-sub[data-thread="net"]  .ts-stripe { background: var(--ink-mute); }
+
+  @media (max-width: 720px) {
+    .toc-chips { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .toc-group { padding: 12px 14px 14px; }
+    .toc-group-head .tg-name { font-size: 14px; }
+  }
+
+  /* ===== Side TOC v2 — grouped headings ===== */
+  .toc-side .ts-divider {
+    font-family: var(--mono); font-size: 9px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute);
+    margin: 14px 0 4px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--rule);
+    opacity: 0.7;
+  }
+  .toc-side .ts-divider:first-child {
+    margin-top: 0;
+    border-top: 0;
+    padding-top: 0;
+  }
+
   /* ====================== HERO NOTICE (rewrite-of) ====================== */
   .hero-notice {
     margin: 36px 0 0;
@@ -2171,24 +2360,42 @@
   <div class="toc-label lang-zh-only">目录</div>
   <div class="toc-label lang-en-only">Contents</div>
   <ol>
+    <li class="ts-divider"><span class="lang-zh-only">I · 背景</span><span class="lang-en-only">I · Background</span></li>
     <li data-section="c1"><a href="#c1"><span class="toc-num">01</span><span class="lang-zh-only">两个公式</span><span class="lang-en-only">Two formulas</span></a></li>
     <li data-section="c2"><a href="#c2"><span class="toc-num">02</span><span class="lang-zh-only">家谱</span><span class="lang-en-only">Family tree</span></a></li>
     <li data-section="c3"><a href="#c3"><span class="toc-num">03</span><span class="lang-zh-only">JS 引擎</span><span class="lang-en-only">JS engines</span></a></li>
     <li data-section="c4"><a href="#c4"><span class="toc-num">04</span><span class="lang-zh-only">进程模型</span><span class="lang-en-only">Process model</span></a></li>
     <li data-section="c5"><a href="#c5"><span class="toc-num">05</span><span class="lang-zh-only">流水线全景</span><span class="lang-en-only">Pipeline</span></a></li>
-    <li data-section="c6"><a href="#c6"><span class="toc-num">06</span>Parsing</a></li>
-    <li data-section="c7"><a href="#c7"><span class="toc-num">07</span>Style</a></li>
-    <li data-section="c8"><a href="#c8"><span class="toc-num">08</span>Layout</a></li>
-    <li data-section="c9"><a href="#c9"><span class="toc-num">09</span>Pre-paint</a></li>
-    <li data-section="c10"><a href="#c10"><span class="toc-num">10</span>Paint</a></li>
-    <li data-section="c11"><a href="#c11"><span class="toc-num">11</span>Commit</a></li>
-    <li data-section="c12"><a href="#c12"><span class="toc-num">12</span>Compositing</a></li>
-    <li data-section="c13"><a href="#c13"><span class="toc-num">13</span>Tiling</a></li>
-    <li data-section="c14"><a href="#c14"><span class="toc-num">14</span>Raster</a></li>
-    <li data-section="c15"><a href="#c15"><span class="toc-num">15</span>Activate</a></li>
-    <li data-section="c16"><a href="#c16"><span class="toc-num">16</span>Draw</a></li>
-    <li data-section="c17"><a href="#c17"><span class="toc-num">17</span>Aggregate</a></li>
-    <li data-section="c18"><a href="#c18"><span class="toc-num">18</span>Display</a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">II · 主线</span><span class="lang-en-only">II · Main-line</span></li>
+    <li data-section="cmain"><a href="#cmain"><span class="toc-num">✦</span><span class="lang-zh-only">The Card</span><span class="lang-en-only">The Card</span></a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">III · 流水线 · Doc</span><span class="lang-en-only">III · Pipeline · Doc</span></li>
+    <li data-section="c0"><a href="#c0"><span class="toc-num">00</span>Loading</a></li>
+    <li data-section="c6"><a href="#c6"><span class="toc-num">01</span>Parsing</a></li>
+    <li data-section="c7"><a href="#c7"><span class="toc-num">02</span>Style</a></li>
+    <li data-section="c8"><a href="#c8"><span class="toc-num">03</span>Layout</a></li>
+    <li data-section="c9"><a href="#c9"><span class="toc-num">04</span>Pre-paint</a></li>
+    <li data-section="c10"><a href="#c10"><span class="toc-num">05</span>Paint</a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">III · 流水线 · cc</span><span class="lang-en-only">III · Pipeline · cc</span></li>
+    <li data-section="c11"><a href="#c11"><span class="toc-num">06</span>Commit</a></li>
+    <li data-section="c12"><a href="#c12"><span class="toc-num">07</span>Compositing</a></li>
+    <li data-section="c13"><a href="#c13"><span class="toc-num">08</span>Tiling</a></li>
+    <li data-section="c14"><a href="#c14"><span class="toc-num">09</span>Raster</a></li>
+    <li data-section="c15"><a href="#c15"><span class="toc-num">10</span>Activate</a></li>
+    <li data-section="c16"><a href="#c16"><span class="toc-num">11</span>Draw</a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">III · 流水线 · viz</span><span class="lang-en-only">III · Pipeline · viz</span></li>
+    <li data-section="c17"><a href="#c17"><span class="toc-num">12</span>Aggregate</a></li>
+    <li data-section="c18"><a href="#c18"><span class="toc-num">13</span>Display</a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">IV · 综合</span><span class="lang-en-only">IV · Synthesis</span></li>
+    <li data-section="c19"><a href="#c19"><span class="toc-num">19</span><span class="lang-zh-only">帧时间线</span><span class="lang-en-only">Frame timeline</span></a></li>
+    <li data-section="c20"><a href="#c20"><span class="toc-num">20</span><span class="lang-zh-only">输入到帧</span><span class="lang-en-only">Input → frame</span></a></li>
+    <li data-section="c21"><a href="#c21"><span class="toc-num">21</span><span class="lang-zh-only">现代性</span><span class="lang-en-only">Modernity</span></a></li>
+    <li data-section="c22"><a href="#c22"><span class="toc-num">22</span><span class="lang-zh-only">症状反查</span><span class="lang-en-only">Symptom lookup</span></a></li>
+    <li data-section="c23"><a href="#c23"><span class="toc-num">23</span><span class="lang-zh-only">术语表</span><span class="lang-en-only">Glossary</span></a></li>
   </ol>
 </nav>
 
@@ -2272,50 +2479,124 @@
     </div>
   </header>
 
-  <!-- ========== TOC ========== -->
-  <nav class="toc">
-    <div class="toc-label lang-zh-only">CONTENTS&nbsp;/&nbsp;目录</div>
-    <div class="toc-label lang-en-only">CONTENTS</div>
-    <ol class="lang-zh-only">
-      <li><a href="#c1">两个公式 — 浏览器到底是什么<span class="en">two formulas, one anatomy</span></a></li>
-      <li><a href="#c2">家谱 — WebKit 的 22 年<span class="en">a family tree from KHTML to Blink</span></a></li>
-      <li><a href="#c3">JavaScript 引擎 — 性能与体积的取舍<span class="en">JS engines: speed vs. footprint</span></a></li>
-      <li><a href="#c4">进程模型 — 每个 Tab 都是一座孤岛<span class="en">processes &amp; threads, mapped</span></a></li>
-      <li><a href="#c5">流水线 — 字节走完十三步<span class="en">a bird's-eye view of 13 stages</span></a></li>
-      <li><a href="#c6">Parsing · Stage 01<span class="en">bytes → DOM tree</span></a></li>
-      <li><a href="#c7">Style · Stage 02<span class="en">CSSOM &amp; right-to-left selectors</span></a></li>
-      <li><a href="#c8">Layout · Stage 03<span class="en">where geometry settles</span></a></li>
-      <li><a href="#c9">Pre-paint · Stage 04<span class="en">birth of four property trees</span></a></li>
-      <li><a href="#c10">Paint · Stage 05<span class="en">layout objects → display list</span></a></li>
-      <li><a href="#c11">Commit · Stage 06<span class="en">crossing the thread boundary</span></a></li>
-      <li><a href="#c12">Compositing · Stage 07<span class="en">slicing into independent layers</span></a></li>
-      <li><a href="#c13">Tiling · Stage 08<span class="en">layers → tile tasks, prioritised</span></a></li>
-      <li><a href="#c14">Raster · Stage 09<span class="en">display list → pixels</span></a></li>
-      <li><a href="#c15">Activate · Stage 10<span class="en">three trees in rotation</span></a></li>
-      <li><a href="#c16">Draw · Stage 11<span class="en">layers → CompositorFrame</span></a></li>
-      <li><a href="#c17">Aggregate · Stage 12<span class="en">multi-process CFs → one frame</span></a></li>
-      <li><a href="#c18">Display · Stage 13<span class="en">pixels reach the screen</span></a></li>
-    </ol>
-    <ol class="lang-en-only">
-      <li><a href="#c1">Two formulas <span class="en">what is a browser, anatomically?</span></a></li>
-      <li><a href="#c2">Family tree <span class="en">22 years of WebKit</span></a></li>
-      <li><a href="#c3">JS engines <span class="en">speed vs. footprint</span></a></li>
-      <li><a href="#c4">Process model <span class="en">processes &amp; threads, mapped</span></a></li>
-      <li><a href="#c5">Pipeline <span class="en">a 13-step march, mapped</span></a></li>
-      <li><a href="#c6">Parsing · Stage 01<span class="en">bytes → DOM tree</span></a></li>
-      <li><a href="#c7">Style · Stage 02<span class="en">CSSOM &amp; right-to-left selectors</span></a></li>
-      <li><a href="#c8">Layout · Stage 03<span class="en">where geometry settles</span></a></li>
-      <li><a href="#c9">Pre-paint · Stage 04<span class="en">birth of four property trees</span></a></li>
-      <li><a href="#c10">Paint · Stage 05<span class="en">layout objects → display list</span></a></li>
-      <li><a href="#c11">Commit · Stage 06<span class="en">crossing the thread boundary</span></a></li>
-      <li><a href="#c12">Compositing · Stage 07<span class="en">slicing into independent layers</span></a></li>
-      <li><a href="#c13">Tiling · Stage 08<span class="en">layers → tile tasks, prioritised</span></a></li>
-      <li><a href="#c14">Raster · Stage 09<span class="en">display list → pixels</span></a></li>
-      <li><a href="#c15">Activate · Stage 10<span class="en">three trees in rotation</span></a></li>
-      <li><a href="#c16">Draw · Stage 11<span class="en">layers → CompositorFrame</span></a></li>
-      <li><a href="#c17">Aggregate · Stage 12<span class="en">multi-process CFs → one frame</span></a></li>
-      <li><a href="#c18">Display · Stage 13<span class="en">pixels reach the screen</span></a></li>
-    </ol>
+  <!-- ========== TOC v2 — grouped & interactive ========== -->
+  <nav class="toc-v2" aria-label="Contents">
+    <div class="tv-head">
+      <div class="tv-label lang-zh-only">CONTENTS · 目录</div>
+      <div class="tv-label lang-en-only">CONTENTS</div>
+      <div class="tv-meta">
+        <span class="tv-now">25</span> <span class="lang-zh-only">章 · 4 大段</span><span class="lang-en-only">chapters · 4 acts</span>
+      </div>
+    </div>
+    <div class="tv-sub lang-zh-only">"<em>从 bytes 到 pixels</em>" 的全景。点任意一格跳转,滚动时当前章节会高亮。</div>
+    <div class="tv-sub lang-en-only">A field map from <em>bytes to pixels</em>. Click any chip to jump; the active chapter highlights as you scroll.</div>
+
+    <!-- mini progress bar showing the 4 acts' relative weight -->
+    <div class="tv-progress" title="背景 5 · 主线 1 · 流水线 14 · 综合 5">
+      <span class="tv-p1" data-jump="#c1"   title="I · Background"></span>
+      <span class="tv-p2" data-jump="#cmain" title="II · Main-line"></span>
+      <span class="tv-p3" data-jump="#c0"    title="III · Pipeline"></span>
+      <span class="tv-p4" data-jump="#c19"   title="IV · Synthesis"></span>
+    </div>
+
+    <!-- ============ I · Background ============ -->
+    <div class="toc-group" data-phase="bg">
+      <div class="toc-group-head">
+        <div class="tg-num">I</div>
+        <div class="tg-name lang-zh-only">背景</div>
+        <div class="tg-name lang-en-only">Background</div>
+        <div class="tg-en">5 chapters · prerequisites</div>
+        <div class="tg-count">5</div>
+      </div>
+      <div class="toc-chips">
+        <a href="#c1" class="toc-chip" data-section="c1"><span class="tc-num">01</span><div class="tc-name"><span class="lang-zh-only">两个公式</span><span class="lang-en-only">Two formulas</span><span class="tc-en">browser anatomy</span></div></a>
+        <a href="#c2" class="toc-chip" data-section="c2"><span class="tc-num">02</span><div class="tc-name"><span class="lang-zh-only">家谱</span><span class="lang-en-only">Family tree</span><span class="tc-en">22 yrs of WebKit</span></div></a>
+        <a href="#c3" class="toc-chip" data-section="c3"><span class="tc-num">03</span><div class="tc-name"><span class="lang-zh-only">JS 引擎</span><span class="lang-en-only">JS engines</span><span class="tc-en">speed vs. footprint</span></div></a>
+        <a href="#c4" class="toc-chip" data-section="c4"><span class="tc-num">04</span><div class="tc-name"><span class="lang-zh-only">进程模型</span><span class="lang-en-only">Process model</span><span class="tc-en">tabs as islands</span></div></a>
+        <a href="#c5" class="toc-chip" data-section="c5"><span class="tc-num">05</span><div class="tc-name"><span class="lang-zh-only">流水线全景</span><span class="lang-en-only">Pipeline overview</span><span class="tc-en">4-layer master map</span></div></a>
+      </div>
+    </div>
+
+    <!-- ============ II · Main-line example ============ -->
+    <div class="toc-group" data-phase="card">
+      <div class="toc-group-head">
+        <div class="tg-num">II</div>
+        <div class="tg-name lang-zh-only">主线例子 · The Card</div>
+        <div class="tg-name lang-en-only">Main-line · The Card</div>
+        <div class="tg-en">1 chapter · the through-line</div>
+        <div class="tg-count">1</div>
+      </div>
+      <div class="toc-chips">
+        <a href="#cmain" class="toc-chip tc-special" data-section="cmain"><span class="tc-num">✦</span><div class="tc-name"><span class="lang-zh-only">Airing 名片</span><span class="lang-en-only">Airing's card</span><span class="tc-en">13-stage transformation map</span></div></a>
+      </div>
+    </div>
+
+    <!-- ============ III · Pipeline ============ -->
+    <div class="toc-group" data-phase="pipe">
+      <div class="toc-group-head">
+        <div class="tg-num">III</div>
+        <div class="tg-name lang-zh-only">流水线</div>
+        <div class="tg-name lang-en-only">Pipeline</div>
+        <div class="tg-en">14 stages · the engine</div>
+        <div class="tg-count">14</div>
+      </div>
+
+      <div class="toc-sub" data-thread="net">
+        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">网络阶段 · Browser process</span><span class="lang-en-only">Network · Browser process</span></div>
+        <div class="toc-chips">
+          <a href="#c0" class="toc-chip" data-section="c0"><span class="tc-num">00</span><div class="tc-name">Loading<span class="tc-en">network thread + Mojo</span></div></a>
+        </div>
+      </div>
+
+      <div class="toc-sub" data-thread="main">
+        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">文档阶段 · Main thread (blink)</span><span class="lang-en-only">Document · Main thread (blink)</span></div>
+        <div class="toc-chips">
+          <a href="#c6"  class="toc-chip" data-section="c6"><span class="tc-num">01</span><div class="tc-name">Parsing<span class="tc-en">bytes → DOM</span></div></a>
+          <a href="#c7"  class="toc-chip" data-section="c7"><span class="tc-num">02</span><div class="tc-name">Style<span class="tc-en">CSS · right-to-left</span></div></a>
+          <a href="#c8"  class="toc-chip" data-section="c8"><span class="tc-num">03</span><div class="tc-name">Layout<span class="tc-en">geometry · LayoutNG</span></div></a>
+          <a href="#c9"  class="toc-chip" data-section="c9"><span class="tc-num">04</span><div class="tc-name">Pre-paint<span class="tc-en">4 property trees</span></div></a>
+          <a href="#c10" class="toc-chip" data-section="c10"><span class="tc-num">05</span><div class="tc-name">Paint<span class="tc-en">DisplayItemList</span></div></a>
+        </div>
+      </div>
+
+      <div class="toc-sub" data-thread="cc">
+        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">合成阶段 · Compositor + Raster (cc)</span><span class="lang-en-only">Composite · Compositor + Raster (cc)</span></div>
+        <div class="toc-chips">
+          <a href="#c11" class="toc-chip" data-section="c11"><span class="tc-num">06</span><div class="tc-name">Commit<span class="tc-en">cross thread</span></div></a>
+          <a href="#c12" class="toc-chip" data-section="c12"><span class="tc-num">07</span><div class="tc-name">Compositing<span class="tc-en">layer promotion</span></div></a>
+          <a href="#c13" class="toc-chip" data-section="c13"><span class="tc-num">08</span><div class="tc-name">Tiling<span class="tc-en">256×256 mosaic</span></div></a>
+          <a href="#c14" class="toc-chip" data-section="c14"><span class="tc-num">09</span><div class="tc-name">Raster<span class="tc-en">DI list → pixels</span></div></a>
+          <a href="#c15" class="toc-chip" data-section="c15"><span class="tc-num">10</span><div class="tc-name">Activate<span class="tc-en">3-tree rotation</span></div></a>
+          <a href="#c16" class="toc-chip" data-section="c16"><span class="tc-num">11</span><div class="tc-name">Draw<span class="tc-en">→ CompositorFrame</span></div></a>
+        </div>
+      </div>
+
+      <div class="toc-sub" data-thread="viz">
+        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">显示阶段 · Viz · GPU</span><span class="lang-en-only">Display · Viz · GPU</span></div>
+        <div class="toc-chips">
+          <a href="#c17" class="toc-chip" data-section="c17"><span class="tc-num">12</span><div class="tc-name">Aggregate<span class="tc-en">cross-process flatten</span></div></a>
+          <a href="#c18" class="toc-chip" data-section="c18"><span class="tc-num">13</span><div class="tc-name">Display<span class="tc-en">SkiaRenderer · swap</span></div></a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ IV · Synthesis ============ -->
+    <div class="toc-group" data-phase="synth">
+      <div class="toc-group-head">
+        <div class="tg-num">IV</div>
+        <div class="tg-name lang-zh-only">综合</div>
+        <div class="tg-name lang-en-only">Synthesis</div>
+        <div class="tg-en">5 chapters · putting it together</div>
+        <div class="tg-count">5</div>
+      </div>
+      <div class="toc-chips">
+        <a href="#c19" class="toc-chip" data-section="c19"><span class="tc-num">19</span><div class="tc-name"><span class="lang-zh-only">一帧时间线</span><span class="lang-en-only">Frame timeline</span><span class="tc-en">all 13 in 16.7 ms</span></div></a>
+        <a href="#c20" class="toc-chip" data-section="c20"><span class="tc-num">20</span><div class="tc-name"><span class="lang-zh-only">输入到帧</span><span class="lang-en-only">Input → frame</span><span class="tc-en">RAIL · reverse pipeline</span></div></a>
+        <a href="#c21" class="toc-chip" data-section="c21"><span class="tc-num">21</span><div class="tc-name"><span class="lang-zh-only">现代性</span><span class="lang-en-only">Modernity</span><span class="tc-en">2024-25 patches</span></div></a>
+        <a href="#c22" class="toc-chip" data-section="c22"><span class="tc-num">22</span><div class="tc-name"><span class="lang-zh-only">症状反查</span><span class="lang-en-only">Symptom lookup</span><span class="tc-en">debug guide</span></div></a>
+        <a href="#c23" class="toc-chip" data-section="c23"><span class="tc-num">23</span><div class="tc-name"><span class="lang-zh-only">术语表</span><span class="lang-en-only">Glossary</span><span class="tc-en">64 key terms</span></div></a>
+      </div>
+    </div>
   </nav>
 
   <!-- ========== CHAPTER 01 — TWO FORMULAS ========== -->
@@ -7757,24 +8038,50 @@ recycle_tree_ ─▶ null            recycle_tree_ ─▶ <span class="mt-attr">
     btnEn.addEventListener("click", function () { apply("en"); try { localStorage.setItem(KEY, "en"); } catch (e) {} });
   })();
 
-  /* ===== TOC scroll-spy ===== */
+  /* ===== TOC scroll-spy (drives both side-TOC and main TOC v2 chips) ===== */
   (function () {
-    var items = Array.prototype.map.call(
+    var sideItems = Array.prototype.map.call(
       document.querySelectorAll('.toc-side li[data-section]'),
-      function (li) { return { li: li, el: document.getElementById(li.dataset.section) }; }
+      function (li) { return { node: li, el: document.getElementById(li.dataset.section) }; }
     ).filter(function (o) { return o.el; });
-    if (!items.length) return;
+
+    var chipItems = Array.prototype.map.call(
+      document.querySelectorAll('.toc-chip[data-section]'),
+      function (a) { return { node: a, el: document.getElementById(a.dataset.section) }; }
+    ).filter(function (o) { return o.el; });
+
+    if (!sideItems.length && !chipItems.length) return;
+
+    // Use the side list as the canonical "section index" (covers all chapters).
+    var canonical = sideItems.length ? sideItems : chipItems;
+
     function update() {
       var offset = window.innerHeight * 0.32;
-      var active = items[0];
-      for (var i = 0; i < items.length; i++) {
-        if (items[i].el.getBoundingClientRect().top - offset < 0) active = items[i];
+      var activeIdx = 0;
+      for (var i = 0; i < canonical.length; i++) {
+        if (canonical[i].el.getBoundingClientRect().top - offset < 0) activeIdx = i;
       }
-      items.forEach(function (o) { o.li.classList.toggle('active', o === active); });
+      var activeId = canonical[activeIdx].el.id;
+      sideItems.forEach(function (o) {
+        o.node.classList.toggle('active', o.el.id === activeId);
+      });
+      chipItems.forEach(function (o) {
+        o.node.classList.toggle('active', o.el.id === activeId);
+      });
     }
     window.addEventListener('scroll', update, { passive: true });
     window.addEventListener('resize', update);
     update();
+  })();
+
+  /* ===== TOC v2 progress-bar quick-jump ===== */
+  (function () {
+    document.querySelectorAll('.toc-v2 .tv-progress span[data-jump]').forEach(function (span) {
+      span.addEventListener('click', function () {
+        var target = document.querySelector(span.dataset.jump);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
   })();
 
   /* ===== Hero pipeline pulse: lights cells in sequence forever ===== */
