@@ -1,0 +1,47 @@
+---
+title: "字节码到像素的一生 —— Chromium 渲染流水线全景"
+date: "2026-05-03"
+tags: [浏览器, 渲染引擎, Chromium, Blink, 性能工程]
+public: true
+summary: 一段从网络上来的字节流，要走 13 道工序、跨 3 个进程、穿过 4 棵属性树，才能在显示器上点亮一个像素。把每一步的源码、类层级、算法骨架、可视化全摊开。
+immersive:
+  url: /immersive/chromium-renderer/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/chromium-renderer/)
+
+这是 2022 年原版《Chromium 渲染流水线》的**增订重写版**。在 13 步流水线骨架上重新组织进程/线程地图，补全每一步的 Chromium 源码定位、类层级、算法骨架与可视化插图。
+
+### 五个准备章节 + 十三步流水线
+
+1. **两个公式**：浏览器到底是什么——内核 + 服务的解构。
+2. **WebKit 22 年家谱**：从 KHTML 到 Blink 的三个分裂时刻。
+3. **JavaScript 引擎**：性能与体积的取舍，主流引擎的 benchmark 对照。
+4. **进程模型**：Browser / Render / Viz / Utility / Plugin 五类进程的分工，Render Process 内部 6 段线程。
+5. **流水线总览**：13 阶段 × 3 进程 × 6 线程的全景图。
+
+然后是 13 步流水线，每步一章：
+
+```
+01 Parsing      02 Style       03 Layout      04 Pre-paint
+05 Paint        06 Commit      07 Compositing 08 Tiling
+09 Raster       10 Activate    11 Draw        12 Aggregate
+                                              13 Display
+```
+
+### 这一版补了什么
+
+- **每步都有源码定位**：`third_party/blink/...`、`cc/...`、`components/viz/...` 文件路径与类层级。
+- **HTMLTokenizer 80+ 状态机** + PreloadScanner 抢跑机制。
+- **LayoutObject 完整继承树** + LayoutNG 三段式（NGConstraintSpace → NGLayoutAlgorithm → NGPhysicalBoxFragment）。
+- **4 类 PaintPropertyTreeNode 字段清单** + PaintPropertyTreeBuilder 的"建什么树"决策表。
+- **DisplayItem → PaintChunk → PaintArtifact 三层数据模型** + PaintController 双 buffer 增量复用。
+- **RasterBufferProvider 接口**与 **Skia DDL 录制/重放**两阶段流。
+- **PictureLayerImpl::AppendQuads 完整算法骨架**（三态 Quad 分发 + checkerboard 反馈）。
+- **SurfaceAggregator::HandleSurfaceQuad 6 步铺平算法**（变换矩阵相乘 + 裁剪求交）。
+- **SkiaRenderer · DDL 录制 → SubmitPaint** 上屏机制 + 双缓冲与 vsync。
+
+读完你会对"一个 HTML 页面到屏幕像素"的整条工序有完整心智模型——每一步在哪个进程、哪个线程、读什么数据结构、写什么数据结构、为什么要这么拆。
+
+完整阅读：**[字节码到像素的一生 — Chromium 渲染流水线全景](/immersive/chromium-renderer/)**

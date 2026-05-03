@@ -1,0 +1,47 @@
+---
+title: "Bytecode to Pixels — A Field Map of Chromium's Rendering Pipeline"
+date: "2026-05-03"
+tags: [Browser, Rendering Engine, Chromium, Blink, Performance Engineering]
+public: true
+summary: A stream of bytes from the network must cross 13 stages, 3 processes and 4 property trees before it can light a single pixel. Source paths, class hierarchies, algorithm skeletons and diagrams for every stage.
+immersive:
+  url: /immersive/chromium-renderer/
+  label: Immersive
+---
+
+> This is an immersive long-form essay — best read in its dedicated layout → [Open the full version](/immersive/chromium-renderer/)
+
+This is an **expanded rewrite** of the 2022 original «The Chromium Rendering Pipeline». On top of the original 13-stage skeleton it re-organises the process/thread map and adds Chromium source paths, class hierarchies, algorithm skeletons and diagrams for every stage.
+
+### Five preparatory chapters + thirteen pipeline stages
+
+1. **Two formulas**: what a browser actually is — engine + services, decomposed.
+2. **WebKit's 22-year family tree**: from KHTML to Blink, three moments of divergence.
+3. **JavaScript engines**: speed vs. footprint, with side-by-side benchmarks of the major engines.
+4. **Process model**: the five process types (Browser / Render / Viz / Utility / Plugin) and the six thread segments inside a Render process.
+5. **Pipeline overview**: a master diagram of 13 stages × 3 processes × 6 threads.
+
+Then thirteen stages, one chapter each:
+
+```
+01 Parsing      02 Style       03 Layout      04 Pre-paint
+05 Paint        06 Commit      07 Compositing 08 Tiling
+09 Raster       10 Activate    11 Draw        12 Aggregate
+                                              13 Display
+```
+
+### What this rewrite adds
+
+- **Source paths for every stage**: `third_party/blink/...`, `cc/...`, `components/viz/...` file paths and class hierarchies.
+- **HTMLTokenizer 80+ state machine** + PreloadScanner head-start mechanism.
+- **Full LayoutObject inheritance tree** + LayoutNG's three-act form (NGConstraintSpace → NGLayoutAlgorithm → NGPhysicalBoxFragment).
+- **Four PaintPropertyTreeNode field tables** + PaintPropertyTreeBuilder's "build-on-demand" decision matrix.
+- **DisplayItem → PaintChunk → PaintArtifact three-layer model** + PaintController double-buffer incremental reuse.
+- **RasterBufferProvider interface** + **Skia DDL record/replay** two-stage flow.
+- **PictureLayerImpl::AppendQuads full algorithm skeleton** (three-state quad dispatch + checkerboard feedback).
+- **SurfaceAggregator::HandleSurfaceQuad 6-step flatten algorithm** (matrix multiplication + clip intersection).
+- **SkiaRenderer · DDL recording → SubmitPaint** on-screen mechanism + double buffer & vsync.
+
+By the end you'll have a complete mental model of "an HTML page to pixels on screen" — which process owns each step, which thread runs it, which data structure it reads, which it writes, and why the split is shaped that way.
+
+Read the full piece: **[Bytecode to Pixels — A field map of Chromium's rendering pipeline](/immersive/chromium-renderer/)**
