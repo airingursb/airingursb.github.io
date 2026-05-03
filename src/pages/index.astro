@@ -3384,6 +3384,23 @@ const recentPhotos = (photosData as Array<any>)
   <script is:inline>
     (function () {
       var WINDOW_DAYS = 14;
+      // Animated NEW badge — gradient text with SMIL color cycling
+      // (pink → purple → cyan, 3s loop). Source asset:
+      // https://github.com/airingursb/airingursb/blob/master/assets/new-badge.svg
+      var BADGE_SVG = ''
+        + '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">'
+        +   '<defs>'
+        +     '<linearGradient id="g-newbadge" x1="0%" y1="0%" x2="100%" y2="0%">'
+        +       '<stop offset="0%" stop-color="#FF0080">'
+        +         '<animate attributeName="stop-color" values="#FF0080;#7928CA;#00D4FF;#7928CA;#FF0080" dur="3s" repeatCount="indefinite"/>'
+        +       '</stop>'
+        +       '<stop offset="100%" stop-color="#7928CA">'
+        +         '<animate attributeName="stop-color" values="#7928CA;#00D4FF;#FF0080;#00D4FF;#7928CA" dur="3s" repeatCount="indefinite"/>'
+        +       '</stop>'
+        +     '</linearGradient>'
+        +   '</defs>'
+        +   '<text x="0" y="8" font-family="-apple-system,BlinkMacSystemFont,&apos;Segoe UI&apos;,Roboto,Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="url(#g-newbadge)" letter-spacing="0.4">NEW</text>'
+        + '</svg>';
       function parseDate(text) {
         if (!text) return null;
         var m = text.trim().match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})/);
@@ -3392,7 +3409,6 @@ const recentPhotos = (photosData as Array<any>)
       }
       function tag() {
         var now = new Date();
-        var labelText = (window.currentLang === 'zh') ? 'NEW' : 'NEW';
         var cutoff = now.getTime() - WINDOW_DAYS * 86400000;
         var items = document.querySelectorAll('.card-posts .post-item, .card-notes .post-item');
         items.forEach(function (el) {
@@ -3407,7 +3423,7 @@ const recentPhotos = (photosData as Array<any>)
             var span = document.createElement('span');
             span.className = 'new-badge';
             span.setAttribute('aria-label', 'new');
-            span.textContent = labelText;
+            span.innerHTML = BADGE_SVG;
             titleEl.insertBefore(span, titleEl.firstChild);
           } else if (!isNew && existing) {
             existing.remove();
