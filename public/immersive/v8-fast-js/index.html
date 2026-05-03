@@ -1795,6 +1795,49 @@
     color: var(--accent); font-family: var(--mono);
     background: rgba(31,92,140,0.06); padding: 1px 5px; border-radius: 2px;
   }
+  .rules-timeline .rt-diff {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    margin: 10px 0 0;
+  }
+  .rules-timeline .rt-diff > pre {
+    margin: 0;
+    background: var(--ink);
+    color: #d8d8d8;
+    border-radius: 3px;
+    padding: 8px 10px 8px 10px;
+    font-family: var(--mono); font-size: 10.5px;
+    line-height: 1.6;
+    overflow-x: auto;
+    white-space: pre;
+    border-left: 2px solid var(--rule);
+    position: relative;
+  }
+  .rules-timeline .rt-diff > pre.bad  { border-left-color: var(--heat); }
+  .rules-timeline .rt-diff > pre.good { border-left-color: var(--asm); }
+  .rules-timeline .rt-diff > pre::before {
+    content: attr(data-tag);
+    display: block;
+    font-family: var(--sans); font-size: 8.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: #888d96;
+    margin-bottom: 4px;
+    padding-bottom: 3px;
+    border-bottom: 1px dashed #2c2f36;
+    white-space: normal;
+  }
+  .rules-timeline .rt-diff > pre.bad::before  { content: "✗ AVOID"; color: #d99c87; }
+  .rules-timeline .rt-diff > pre.good::before { content: "✓ DO THIS"; color: #6ec48f; }
+  .rules-timeline .rt-diff .kw  { color: #c977c6; }
+  .rules-timeline .rt-diff .num { color: #d1855a; }
+  .rules-timeline .rt-diff .str { color: #5fc18a; }
+  .rules-timeline .rt-diff .cm  { color: #5a6172; font-style: italic; }
+  .rules-timeline .rt-diff .fn  { color: #fcd34d; }
+  @media (max-width: 600px) {
+    .rules-timeline .rt-diff { grid-template-columns: 1fr; }
+  }
+
   .rules-timeline .rt-detail {
     margin-top: 10px;
     font-family: var(--sans); font-size: 12px;
@@ -1804,6 +1847,67 @@
     display: none;
   }
   .rules-timeline .rt-item.expanded .rt-detail { display: block; }
+
+  /* ---------- Anti-pattern gallery ---------- */
+  .anti-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+  .anti-card {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--heat);
+    border-radius: 0 4px 4px 0;
+    padding: 14px 18px 16px;
+    display: flex; flex-direction: column;
+  }
+  .anti-num {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--heat); font-weight: 700;
+    margin-bottom: 4px;
+  }
+  .anti-name {
+    font-family: var(--serif); font-size: 15px;
+    font-weight: 700; color: var(--ink);
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  body.lang-en .anti-name { font-family: var(--serif-en); }
+  .anti-disguise {
+    font-family: var(--sans); font-size: 11.5px;
+    color: var(--ink-mute); font-style: italic;
+    margin-bottom: 10px;
+    line-height: 1.5;
+  }
+  .anti-code {
+    background: var(--ink); color: #d8d8d8;
+    font-family: var(--mono); font-size: 11px;
+    line-height: 1.6;
+    padding: 8px 10px; border-radius: 3px;
+    margin: 0 0 10px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  .anti-code .kw { color: #c977c6; }
+  .anti-code .num { color: #d1855a; }
+  .anti-code .str { color: #5fc18a; }
+  .anti-code .cm { color: #5a6172; font-style: italic; }
+  .anti-code .fn { color: #fcd34d; }
+  .anti-why {
+    font-family: var(--sans); font-size: 12px;
+    color: var(--ink-soft);
+    margin: 0;
+    line-height: 1.6;
+  }
+  .anti-why a { color: var(--accent); border-bottom: 1px solid currentColor; font-weight: 600; }
+  .anti-card.span-2 { grid-column: 1 / -1; }
+  @media (max-width: 600px) {
+    .anti-grid { grid-template-columns: 1fr; }
+    .anti-card.span-2 { grid-column: 1; }
+  }
 
   /* ---------- before/after benchmark bars ---------- */
   .bench-bars {
@@ -5135,6 +5239,20 @@ Return</div>
         <div class="rt-name lang-en-only">Split polymorphic functions into monomorphic ones</div>
         <p class="rt-why lang-zh-only">主线 px2rem 同时接 number / string / object,V8 必须为每个 binop 都生成多态机器码 → 退化到 <code>BinaryOp::Any</code>。<strong>把它拆成 <code>px2remNumber / px2remString / px2remObject</code> 三个函数,在调用方分发</strong>——每个函数都可以是 monomorphic。</p>
         <p class="rt-why lang-en-only">px2rem takes number / string / object — V8 must emit polymorphic asm for every binop, dropping to <code>BinaryOp::Any</code>. <strong>Split into three: <code>px2remNumber / px2remString / px2remObject</code>, dispatch at the call site</strong> — each function can be monomorphic.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="kw">function</span> <span class="fn">px2rem</span>(input, base) {
+  <span class="cm">// 同一个函数三种类型 → BinaryOp::Any</span>
+  <span class="kw">if</span> (<span class="kw">typeof</span> input === <span class="str">'number'</span>) ...
+  <span class="kw">else if</span> (<span class="kw">typeof</span> input === <span class="str">'string'</span>) ...
+  <span class="kw">else</span> ...
+}</pre>
+<pre class="good"><span class="kw">function</span> <span class="fn">px2rem</span>(i, base) {
+  <span class="cm">// 调用方分发到单态函数</span>
+  <span class="kw">if</span> (<span class="kw">typeof</span> i === <span class="str">'number'</span>) <span class="kw">return</span> <span class="fn">px2remNumber</span>(i, base);
+  <span class="kw">if</span> (<span class="kw">typeof</span> i === <span class="str">'string'</span>) <span class="kw">return</span> <span class="fn">px2remString</span>(i, base);
+  <span class="kw">return</span> <span class="fn">px2remObject</span>(i, base);
+}</pre>
+        </div>
         <div class="rt-detail">
           <div class="lang-zh-only"><strong>对应章节:</strong> Ch8 (Mono/Poly/Mega)。<br>这一刀通常占整体提速的 50%+。在主线函数上,只这一刀就把 v0 的 240ms 砍到 ~120ms。</div>
           <div class="lang-en-only"><strong>Maps to:</strong> Ch8 (Mono/Poly/Mega).<br>Usually accounts for 50%+ of the total speedup. On the main-line, this single cut takes v0 from 240ms to ~120ms.</div>
@@ -5147,6 +5265,18 @@ Return</div>
         <div class="rt-name lang-en-only">Decompose hot functions until each is small</div>
         <p class="rt-why lang-zh-only">超过 <code>max_optimized_bytecode_size</code>(默认 60K bytecode 字节)V8 不会优化。即使没超,小函数还能享受 <strong>inline 展开</strong>——TurboFan 会把小被调函数 inline 进调用方,省一次 push/pop。</p>
         <p class="rt-why lang-en-only">Functions over <code>max_optimized_bytecode_size</code> (60K bytecode bytes by default) skip optimization entirely. Even below the limit, small functions get <strong>inlined</strong> — TurboFan folds them into the caller, saving the push/pop.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="kw">function</span> <span class="fn">processOrder</span>(o) {
+  <span class="cm">// 1000 行混合 validation/calc/format/dispatch</span>
+  <span class="cm">// → 超 max_optimized_bytecode_size</span>
+  <span class="cm">// → V8 直接放弃优化整段</span>
+}</pre>
+<pre class="good"><span class="kw">function</span> <span class="fn">processOrder</span>(o) {
+  <span class="fn">validate</span>(o);   <span class="cm">// &lt; 200 字节</span>
+  <span class="fn">calc</span>(o);       <span class="cm">// &lt; 200 字节</span>
+  <span class="fn">format</span>(o);     <span class="cm">// 各自能被 inline</span>
+}</pre>
+        </div>
         <div class="rt-detail">
           <div class="lang-zh-only"><strong>对应章节:</strong> Ch3 (流水线), Ch9 (ShouldOptimize)。<br>主线函数把单位换算和距离计算拆成独立函数,各自 &lt; 200 字节 bytecode。</div>
           <div class="lang-en-only"><strong>Maps to:</strong> Ch3 (Pipeline), Ch9 (ShouldOptimize).<br>The main-line splits unit conversion and distance math into separate functions, each under 200 bytecode bytes.</div>
@@ -5159,6 +5289,16 @@ Return</div>
         <div class="rt-name lang-en-only">Use TypeScript to lock arg types</div>
         <p class="rt-why lang-zh-only">TS 类型系统不是为了"装",它在工程上恰好替你保证了热点函数的<strong>单态性</strong>——只要类型签名是 <code>(n: number) =&gt; number</code>,你就基本不会不小心给它喂 string。</p>
         <p class="rt-why lang-en-only">TS types aren't decoration. In practice they enforce the <strong>monomorphism</strong> of hot functions — a signature of <code>(n: number) =&gt; number</code> means you basically won't accidentally feed it a string.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="kw">function</span> <span class="fn">add</span>(a, b) {
+  <span class="cm">// 没类型约束,谁都能传 string 进来</span>
+  <span class="kw">return</span> a + b;
+}</pre>
+<pre class="good"><span class="kw">function</span> <span class="fn">add</span>(a: <span class="kw">number</span>, b: <span class="kw">number</span>): <span class="kw">number</span> {
+  <span class="cm">// 编译期就拒绝非 number 调用方</span>
+  <span class="kw">return</span> a + b;
+}</pre>
+        </div>
         <div class="rt-detail">
           <div class="lang-zh-only"><strong>注意:</strong> TS 不能保证 SMI vs 浮点的区分,这是 V8 内部的差异。但它能保证 number vs string 不混。</div>
           <div class="lang-en-only"><strong>Caveat:</strong> TS can't enforce SMI vs float — that's a V8 internal distinction. But it does keep number and string apart.</div>
@@ -5171,6 +5311,18 @@ Return</div>
         <div class="rt-name lang-en-only">Keep property assignment order stable</div>
         <p class="rt-why lang-zh-only"><code>{x:1, y:2}</code> 和 <code>{y:2, x:1}</code> 在 V8 里是<em>两个不同的 Hidden Class</em>。在 factory 函数里,所有对象都按同一个顺序赋值——这样所有 instance 共享同一条 transition chain。</p>
         <p class="rt-why lang-en-only"><code>{x:1, y:2}</code> and <code>{y:2, x:1}</code> are <em>two different Hidden Classes</em>. In factory functions, assign properties in a fixed order so every instance walks the same transition chain.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="cm">// 条件分支里的赋值改变了顺序</span>
+<span class="kw">if</span> (debug) o.dbgFlag = <span class="num">1</span>;
+o.x = <span class="num">1</span>;
+o.y = <span class="num">2</span>;
+<span class="cm">// → debug 时 HC 分叉</span></pre>
+<pre class="good"><span class="cm">// 始终按相同顺序赋值</span>
+o.x = <span class="num">1</span>;
+o.y = <span class="num">2</span>;
+<span class="kw">if</span> (debug) o.dbgFlag = <span class="num">1</span>;
+<span class="cm">// → 所有实例同一条 transition</span></pre>
+        </div>
         <div class="rt-detail">
           <div class="lang-zh-only"><strong>对应章节:</strong> Ch11, Ch12 (Hidden Class · Transition Chain)。</div>
           <div class="lang-en-only"><strong>Maps to:</strong> Ch11, Ch12 (Hidden Class · Transition Chain).</div>
@@ -5183,6 +5335,22 @@ Return</div>
         <div class="rt-name lang-en-only">Declare class fields with defaults</div>
         <p class="rt-why lang-zh-only">V8 给空对象预留 4 个 in-object 槽位(Slack Tracking)。如果你在 constructor 里"<em>有时</em>"才赋某个字段,会触发 Hidden Class 分叉。<strong>所有字段在 constructor 一次写齐</strong>(没值就 null/undefined),让所有实例走同一条链。</p>
         <p class="rt-why lang-en-only">V8 reserves 4 in-object slots (Slack Tracking). If your constructor "<em>sometimes</em>" assigns a field, you fork the Hidden Class. <strong>Initialize every field in the constructor</strong> (use null/undefined if no value), keeping all instances on one chain.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="kw">class</span> <span class="fn">Point</span> {
+  <span class="kw">constructor</span>(x, y) {
+    <span class="kw">this</span>.x = x;
+    <span class="kw">if</span> (y !== <span class="kw">undefined</span>) <span class="kw">this</span>.y = y;
+    <span class="cm">// 有 y 和无 y 的实例不同 HC</span>
+  }
+}</pre>
+<pre class="good"><span class="kw">class</span> <span class="fn">Point</span> {
+  y = <span class="num">0</span>;   <span class="cm">// 字段默认值</span>
+  <span class="kw">constructor</span>(x, y = <span class="num">0</span>) {
+    <span class="kw">this</span>.x = x;
+    <span class="kw">this</span>.y = y;   <span class="cm">// 所有实例同 HC</span>
+  }
+}</pre>
+        </div>
         <div class="rt-detail">
           <div class="lang-zh-only">主线 px2remObject 的内部 result 对象就是按这条规则一次性初始化的。</div>
           <div class="lang-en-only">px2remObject's internal result object follows this rule for its single-shot init.</div>
@@ -5195,6 +5363,16 @@ Return</div>
         <div class="rt-name lang-en-only">Don't use <code>delete</code></div>
         <p class="rt-why lang-zh-only">一次 <code>delete obj.x</code> 会把对象从 Fast Properties 一脚踹进 Slow Properties——所有 IC 失效,后续访问慢几十~百倍且<em>不可逆</em>。要"清掉"就 <code>obj.x = null</code>。</p>
         <p class="rt-why lang-en-only">A single <code>delete obj.x</code> kicks an object from Fast to Slow Properties — invalidates every IC, slows access dozens to a hundred times, and is <em>irreversible</em>. To "clear" a property, use <code>obj.x = null</code>.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="cm">// 释放内存,顺手 delete</span>
+<span class="kw">delete</span> cache.payload;
+<span class="cm">// → cache 永远 Slow Properties</span>
+<span class="cm">// → 所有访问 cache.* 的 IC 全部失效</span></pre>
+<pre class="good"><span class="cm">// 设 null,GC 会回收引用的内存</span>
+cache.payload = <span class="kw">null</span>;
+<span class="cm">// → Hidden Class 不变</span>
+<span class="cm">// → IC 全保留</span></pre>
+        </div>
       </div>
 
       <div class="rt-item">
@@ -5203,6 +5381,18 @@ Return</div>
         <div class="rt-name lang-en-only">Avoid deopts</div>
         <p class="rt-why lang-zh-only">在生产 build 上加 <code>--trace-deopt</code> 跑一遍核心场景,看哪些函数 deopt——大多数是<em>偶尔传 undefined</em> 或者<em>偶尔抛 try-catch</em>。把这些"偶尔"消除就行。</p>
         <p class="rt-why lang-en-only">Run your core scenarios with <code>--trace-deopt</code> in a prod build and find every deopting function. Most cases are <em>occasional undefined</em> or <em>occasional try-catch throws</em>. Remove the "occasionals".</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="kw">function</span> <span class="fn">format</span>(x) {
+  <span class="kw">try</span> { <span class="kw">return</span> x.<span class="fn">toFixed</span>(<span class="num">2</span>); }
+  <span class="kw">catch</span> { <span class="kw">return</span> <span class="str">'0'</span>; }
+  <span class="cm">// 偶尔 throw 触发 deopt → 不可逆变多态</span>
+}</pre>
+<pre class="good"><span class="kw">function</span> <span class="fn">format</span>(x) {
+  <span class="kw">return</span> <span class="kw">typeof</span> x === <span class="str">'number'</span>
+    ? x.<span class="fn">toFixed</span>(<span class="num">2</span>) : <span class="str">'0'</span>;
+  <span class="cm">// 用 typeof 守卫替代 try-catch</span>
+}</pre>
+        </div>
       </div>
 
       <div class="rt-item">
@@ -5211,6 +5401,20 @@ Return</div>
         <div class="rt-name lang-en-only">Static beats dynamic</div>
         <p class="rt-why lang-zh-only">这是 Ch13 的 145 倍跑分差距。在热点里把 <code>obj[key]</code> 改成 <code>obj.knownKey</code>,把 <code>switch(string)</code> 改成 <code>switch(intEnum)</code>——一刀切。</p>
         <p class="rt-why lang-en-only">The 145× from Ch13. In hot paths, replace <code>obj[key]</code> with <code>obj.knownKey</code> and string switches with int-enum switches. One clean cut.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="cm">// KeyedLoadIC,O(N) 字符串比较</span>
+<span class="kw">return</span> obj[key];
+<span class="kw">switch</span> (mode) {
+  <span class="kw">case</span> <span class="str">'show'</span>: ...
+  <span class="kw">case</span> <span class="str">'hide'</span>: ...
+}</pre>
+<pre class="good"><span class="cm">// LoadIC,O(1) 偏移读</span>
+<span class="kw">return</span> obj.knownKey;
+<span class="kw">switch</span> (mode) {
+  <span class="kw">case</span> MODE_SHOW: ...   <span class="cm">// 整数 enum</span>
+  <span class="kw">case</span> MODE_HIDE: ...
+}</pre>
+        </div>
       </div>
 
       <div class="rt-item">
@@ -5219,6 +5423,15 @@ Return</div>
         <div class="rt-name lang-en-only">Literals beat procedural construction</div>
         <p class="rt-why lang-zh-only"><code>const o = {x: 1, y: 2}</code> 比 <code>const o = {}; o.x = 1; o.y = 2</code> 更稳——前者一次性建好 Hidden Class,后者要走两次 transition。</p>
         <p class="rt-why lang-en-only"><code>const o = {x: 1, y: 2}</code> is more reliable than <code>const o = {}; o.x = 1; o.y = 2</code> — the literal builds the Hidden Class in one shot; the procedural form walks two transitions.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="kw">const</span> o = {};
+o.x = <span class="num">1</span>;
+o.y = <span class="num">2</span>;
+<span class="cm">// → ∅ → "x" → "y" 两次 transition</span></pre>
+<pre class="good"><span class="kw">const</span> o = { x: <span class="num">1</span>, y: <span class="num">2</span> };
+<span class="cm">// → 一次性建好 Hidden Class</span>
+<span class="cm">// → 跟 100 万个同 shape 对象共享</span></pre>
+        </div>
       </div>
 
       <div class="rt-item">
@@ -5227,6 +5440,18 @@ Return</div>
         <div class="rt-name lang-en-only">Keep object lifetime within one function</div>
         <p class="rt-why lang-zh-only">基于 <strong>逃逸分析</strong>(Escape Analysis):如果对象不逃出函数,V8 可以把它的字段全部展开成寄存器变量,根本不分配堆内存。这对 GC 也是免费收益。</p>
         <p class="rt-why lang-en-only">Based on <strong>escape analysis</strong>: if an object never escapes its function, V8 can replace its fields with register variables and skip heap allocation entirely. Free GC win too.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="kw">function</span> <span class="fn">dist2</span>(a, b) {
+  <span class="kw">const</span> tmp = { dx: a-b, dy: <span class="num">0</span> };
+  <span class="kw">return</span> tmp.dx * tmp.dx;
+  <span class="cm">// → tmp 上堆 + GC + 间接寻址</span>
+}</pre>
+<pre class="good"><span class="kw">function</span> <span class="fn">dist2</span>(a, b) {
+  <span class="kw">const</span> dx = a - b;
+  <span class="kw">return</span> dx * dx;
+  <span class="cm">// → 全在寄存器,逃逸分析 0 分配</span>
+}</pre>
+        </div>
       </div>
 
       <div class="rt-item">
@@ -5235,6 +5460,16 @@ Return</div>
         <div class="rt-name lang-en-only">Use integers over floats when you can</div>
         <p class="rt-why lang-zh-only">SMI(整数)在 V8 里是立即数,不进堆;float 一律装箱成 <code>HeapNumber</code>,要分配 + GC + 间接寻址。能用 <code>Math.floor</code> / 整数 enum 就用,只在最终输出层做一次 / 100 转浮点。</p>
         <p class="rt-why lang-en-only">SMIs (ints) live as immediate values; floats box into <code>HeapNumber</code> with allocation, GC, and indirection. Prefer <code>Math.floor</code> and integer enums; only divide-by-100 at the very last output step.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="kw">let</span> sum = <span class="num">0</span>;
+<span class="kw">for</span> (...) sum += <span class="num">1.5</span>;
+<span class="kw">return</span> sum / <span class="num">1000</span>;
+<span class="cm">// → 第一次 += 就装箱成 HeapNumber</span></pre>
+<pre class="good"><span class="kw">let</span> sum = <span class="num">0</span>;
+<span class="kw">for</span> (...) sum += <span class="num">1500</span>;          <span class="cm">// 整数累加</span>
+<span class="kw">return</span> sum / <span class="num">1_000_000</span>;
+<span class="cm">// → 全程 SMI,只在末尾转一次 float</span></pre>
+        </div>
       </div>
 
       <div class="rt-item">
@@ -5243,6 +5478,16 @@ Return</div>
         <div class="rt-name lang-en-only">Avoid <code>Ref&lt;T&gt;</code>-style wrappers</div>
         <p class="rt-why lang-zh-only">React/Vue 里 <code>useRef(0)</code> 把数字包成 <code>{ current: 0 }</code> 对象——读写都得过一层 Hidden Class + IC。如果你需要在热点里高频读写一个数,直接用闭包 let 变量,比 ref 快好几倍。</p>
         <p class="rt-why lang-en-only">React/Vue's <code>useRef(0)</code> wraps a number into <code>{ current: 0 }</code> — every read/write hits a Hidden Class + IC. For high-frequency hot-path reads, a closure-captured <code>let</code> outperforms a ref by several times.</p>
+        <div class="rt-diff">
+<pre class="bad"><span class="kw">const</span> count = <span class="fn">useRef</span>(<span class="num">0</span>);
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">1e6</span>; i++) {
+  count.current++;   <span class="cm">// 每次走 IC</span>
+}</pre>
+<pre class="good"><span class="kw">let</span> count = <span class="num">0</span>;   <span class="cm">// 闭包变量</span>
+<span class="kw">for</span> (<span class="kw">let</span> i = <span class="num">0</span>; i &lt; <span class="num">1e6</span>; i++) {
+  count++;           <span class="cm">// 直接寄存器 inc</span>
+}</pre>
+        </div>
       </div>
     </div>
 
@@ -5250,6 +5495,95 @@ Return</div>
       <span class="ntag"><span class="lang-zh-only">规则的优先级</span><span class="lang-en-only">PRIORITIZING THE RULES</span></span>
       <span class="lang-zh-only">不是每条都得用上。<strong>Rule 1 / 2 / 6 / 8 是性能收益最大的四条</strong>——其他几条更多是"保护性"规则,在热点函数上别踩坑。如果改一段代码只能动一两刀,从这四条里挑。</span>
       <span class="lang-en-only">You don't need all twelve. <strong>Rules 1 / 2 / 6 / 8 carry the most weight</strong> — the others are protective: don't step on these traps. If you only have time for two cuts, pick from those four.</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">五个看起来人畜无害的 perf 凶手</h3>
+    <h3 class="sub lang-en-only">Five innocent-looking perf killers</h3>
+
+    <div class="lang-zh-only">
+      <p>上面 12 条规则讲"应该怎么做"。下面五个反过来——它们是 12 条规则的<em>典型违反案例</em>,共同特点是<strong>看起来非常无害</strong>,代码评审一般也不会拦,但一上热点就立刻把性能腰斩。把它们记成模式,review 时一眼能识别。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>The 12 rules above say "what to do". These five are the inverse — typical <em>violations</em> of those rules, all sharing one trait: they <strong>look harmless</strong> and won't be flagged by code review, but the moment they enter a hot path they cut performance in half. Memorize them as patterns; you'll spot them at a glance during review.</p>
+    </div>
+
+    <div class="anti-grid">
+
+      <div class="anti-card">
+        <div class="anti-num">#1 · the cleanup-killer</div>
+        <div class="anti-name lang-zh-only">"释放内存"用 <code>delete</code></div>
+        <div class="anti-name lang-en-only">"Cleanup" via <code>delete</code></div>
+        <div class="anti-disguise lang-zh-only">伪装成内存卫生 · 一行 PR 评审一定过</div>
+        <div class="anti-disguise lang-en-only">Disguised as memory hygiene — sails through code review</div>
+        <pre class="anti-code"><span class="kw">for</span> (<span class="kw">const</span> item <span class="kw">of</span> cache) {
+  <span class="kw">delete</span> item.bigPayload;   <span class="cm">// 看起来在帮 GC</span>
+}</pre>
+        <p class="anti-why lang-zh-only">把所有 <code>item</code> 永久打到 Slow Properties · IC 全废 · 不可逆。"清"用 <code>= null</code>,Hidden Class 不变。<a href="#c14">→ Ch14</a></p>
+        <p class="anti-why lang-en-only">Demotes every <code>item</code> to Slow Properties forever · all ICs invalidated · irreversible. Use <code>= null</code> instead — Hidden Class stays intact. <a href="#c14">→ Ch14</a></p>
+      </div>
+
+      <div class="anti-card">
+        <div class="anti-num">#2 · the debug-trail</div>
+        <div class="anti-name lang-zh-only">热点里的 <code>console.log(arg)</code></div>
+        <div class="anti-name lang-en-only"><code>console.log(arg)</code> in a hotspot</div>
+        <div class="anti-disguise lang-zh-only">伪装成临时调试 · 大概率忘了删</div>
+        <div class="anti-disguise lang-en-only">Disguised as temporary debugging — usually never removed</div>
+        <pre class="anti-code"><span class="kw">function</span> <span class="fn">layoutCell</span>(cell) {
+  <span class="fn">console</span>.<span class="fn">log</span>(<span class="str">'cell:'</span>, cell);   <span class="cm">// arg 偶尔 undefined</span>
+  <span class="cm">// → 函数瞬间 deopt 永远多态</span>
+}</pre>
+        <p class="anti-why lang-zh-only"><code>console.log</code> 本身不慢,但只要 arg 偶尔是 <code>undefined</code> / 复杂对象,就会让宿主函数 deopt,从此跑在多态机器码上。生产代码遇到一定要彻底删 / 改成 dev-only。<a href="#c7">→ Ch7</a></p>
+        <p class="anti-why lang-en-only"><code>console.log</code> itself isn't slow — but if <code>arg</code> is occasionally <code>undefined</code> / a complex object, the host function deopts and runs on polymorphic asm forever after. Strip in prod or gate it dev-only. <a href="#c7">→ Ch7</a></p>
+      </div>
+
+      <div class="anti-card">
+        <div class="anti-num">#3 · the dynamic key</div>
+        <div class="anti-name lang-zh-only"><code>obj[key]</code> 配合可变 key</div>
+        <div class="anti-name lang-en-only"><code>obj[key]</code> with a variable key</div>
+        <div class="anti-disguise lang-zh-only">看起来跟 <code>obj.x</code> 一样 · 静态分析也很难抓</div>
+        <div class="anti-disguise lang-en-only">Looks identical to <code>obj.x</code> — even static analysis usually misses it</div>
+        <pre class="anti-code"><span class="kw">function</span> <span class="fn">pick</span>(obj, key) {
+  <span class="kw">return</span> obj[key];   <span class="cm">// KeyedLoadIC,慢 145×</span>
+}</pre>
+        <p class="anti-why lang-zh-only">走 <code>KeyedLoadIC</code> 而不是 <code>LoadIC</code>——状态机更复杂、更易退化到 megamorphic。如果 key 集合<em>已知</em>,改成 if 串 / map 字面量 + <code>.knownKey</code>;实在要动态,起码加个 <code>typeof key === 'string'</code> 守卫。<a href="#c13">→ Ch13</a></p>
+        <p class="anti-why lang-en-only">Routes through <code>KeyedLoadIC</code> instead of <code>LoadIC</code> — more state-machine complexity, more prone to megamorphic decay. If the key set is <em>known</em>, switch to an if-chain / map-literal + <code>.knownKey</code>. If truly dynamic, at least guard with <code>typeof key === 'string'</code>. <a href="#c13">→ Ch13</a></p>
+      </div>
+
+      <div class="anti-card">
+        <div class="anti-num">#4 · the wrapper trap</div>
+        <div class="anti-name lang-zh-only"><code>useRef(0)</code> / 数字包对象</div>
+        <div class="anti-name lang-en-only"><code>useRef(0)</code> / numeric wrappers</div>
+        <div class="anti-disguise lang-zh-only">伪装成 React 习惯写法 · 一查文档全这么写的</div>
+        <div class="anti-disguise lang-en-only">Disguised as idiomatic React — every tutorial writes it this way</div>
+        <pre class="anti-code"><span class="kw">const</span> count = <span class="fn">useRef</span>(<span class="num">0</span>);
+<span class="kw">function</span> <span class="fn">onScroll</span>() {
+  count.current++;   <span class="cm">// 读+写 都过 IC</span>
+}</pre>
+        <p class="anti-why lang-zh-only"><code>useRef(n)</code> 把数字包成 <code>{ current: n }</code> 对象——每次 <code>count.current</code> 都要走一层 Hidden Class + IC,SMI 直接寄存器 inc 的 ~5 倍开销。要 React 跨 render 持久化:用 ref;要热点高频读写:用闭包 <code>let</code>。两件事别混。<a href="#c13">→ Ch13</a></p>
+        <p class="anti-why lang-en-only"><code>useRef(n)</code> wraps the number into <code>{ current: n }</code> — every <code>count.current</code> goes through a Hidden Class + IC, ~5× the cost of a SMI register-inc. Use ref for cross-render persistence; use a closure <code>let</code> for hot-path counters. Don't conflate them. <a href="#c13">→ Ch13</a></p>
+      </div>
+
+      <div class="anti-card span-2">
+        <div class="anti-num">#5 · the catch-all</div>
+        <div class="anti-name lang-zh-only">用 <code>try / catch</code> 替代类型守卫</div>
+        <div class="anti-name lang-en-only"><code>try / catch</code> as a type guard</div>
+        <div class="anti-disguise lang-zh-only">伪装成"健壮"代码 · "万一传错呢" · 评审反而会鼓励</div>
+        <div class="anti-disguise lang-en-only">Disguised as "defensive coding" — "what if it's malformed?" — code review often <em>rewards</em> this</div>
+        <pre class="anti-code"><span class="kw">function</span> <span class="fn">format</span>(x) {
+  <span class="kw">try</span> { <span class="kw">return</span> x.<span class="fn">toFixed</span>(<span class="num">2</span>); }
+  <span class="kw">catch</span> { <span class="kw">return</span> <span class="str">'0'</span>; }
+  <span class="cm">// 偶尔 throw → 整个函数被推入 polymorphic + deopt 路径,且 V8 对 try-catch 块本身的优化也更保守</span>
+}</pre>
+        <p class="anti-why lang-zh-only">用 <code>try-catch</code> 当 type guard 一举俩坑:(1) 偶发 throw 触发 deopt;(2) 历史上 V8 对 try-catch 函数的内联和优化都更保守(现代版本好了不少,但仍非零开销)。改成显式 <code>typeof</code> 守卫,性能差几倍。<a href="#c7">→ Ch7</a></p>
+        <p class="anti-why lang-en-only">Using <code>try-catch</code> as a type guard pays twice: (1) the occasional throw triggers a deopt; (2) historically V8 was more conservative about inlining and optimizing functions containing <code>try-catch</code> (much better now, but still non-zero). Replace with explicit <code>typeof</code> guards — several times faster. <a href="#c7">→ Ch7</a></p>
+      </div>
+
+    </div>
+
+    <div class="note copper">
+      <span class="ntag"><span class="lang-zh-only">怎么用这份清单</span><span class="lang-en-only">HOW TO USE THIS LIST</span></span>
+      <span class="lang-zh-only">这五个不是"绝对禁止",而是"<em>在热点函数里出现就要追问</em>"。<code>delete</code> 在配置初始化里完全 OK;<code>useRef(0)</code> 用来跨 render 持久化也 OK——它们只在<em>每秒上百次调用</em>的代码路径上才致命。所以使用流程是:Performance 面板找出热点 → 拿这份清单 grep 一遍 → 命中的就改。</span>
+      <span class="lang-en-only">These five aren't "always wrong" — they're "<em>worth questioning when they show up in hot code</em>". <code>delete</code> in a setup function is fine; <code>useRef(0)</code> for cross-render state is fine — they're only lethal on paths called <em>hundreds of times per second</em>. Workflow: find the hotspot in the Performance panel → grep your hotspot for these five patterns → fix what hits.</span>
     </div>
 
     <div class="cross-link">
@@ -5733,6 +6067,125 @@ Return</div>
       <p>Every "<em>how to see what V8 is doing</em>" tool used across this piece, in one place. Save this chapter as a cheatsheet — next time you face slow JS, copy-paste from here.</p>
     </div>
 
+    <details class="extended">
+      <summary>
+        <span class="ext-tag"><span class="lang-zh-only">术语速查</span><span class="lang-en-only">glossary</span></span>
+        <span class="lang-zh-only">所有专有名词,1 行解释 + 跳到首次出现章节</span>
+        <span class="lang-en-only">every jargon term, 1-line def + jump to first appearance</span>
+      </summary>
+      <div class="ext-body">
+        <div class="lang-zh-only">
+          <p>读到一半卡在某个名词?在这里查。词条按"出现频率"排,不按字母——跟读这本文的节奏对得上。</p>
+        </div>
+        <div class="lang-en-only">
+          <p>Stuck on a term? Look here. Entries are ordered by frequency-of-appearance, not alphabetically — to match the reading order of this piece.</p>
+        </div>
+
+        <div class="glossary">
+          <dl class="glossary-grid">
+            <dt>SMI · Small Integer</dt>
+            <dd><span class="lang-zh-only">31 位有符号小整数,值直接编码进 64 位字本身,末位 0。<a href="#c5">→ Ch5</a></span><span class="lang-en-only">31-bit signed integer packed directly into the 64-bit word, low bit 0. <a href="#c5">→ Ch5</a></span></dd>
+
+            <dt>HeapObject</dt>
+            <dd><span class="lang-zh-only">堆上的对象,指针末位 1。所有非 SMI 都是 HeapObject(浮点、字符串、对象、函数)。<a href="#c5">→ Ch5</a></span><span class="lang-en-only">a heap-allocated object; pointer's low bit is 1. Anything that isn't a SMI (floats, strings, objects, functions). <a href="#c5">→ Ch5</a></span></dd>
+
+            <dt>HeapNumber</dt>
+            <dd><span class="lang-zh-only">浮点数 / 大整数装箱后的 HeapObject。<a href="#c5">→ Ch5</a></span><span class="lang-en-only">a HeapObject wrapping a float / bigint that didn't fit a SMI. <a href="#c5">→ Ch5</a></span></dd>
+
+            <dt>Tagged Pointer</dt>
+            <dd><span class="lang-zh-only">用指针的若干低位携带类型信息。V8 用末 1 位区分 SMI / HeapObject。<a href="#c5">→ Ch5</a></span><span class="lang-en-only">stuffing type info into a pointer's low bits. V8 uses the low bit to split SMI / HeapObject. <a href="#c5">→ Ch5</a></span></dd>
+
+            <dt>JSObject</dt>
+            <dd><span class="lang-zh-only">V8 表达 JS 对象的核心结构,含 Map / properties / elements / in-object slots。<a href="#c10">→ Ch10</a></span><span class="lang-en-only">V8's core object struct: Map / properties / elements / in-object slots. <a href="#c10">→ Ch10</a></span></dd>
+
+            <dt>Hidden Class · Map · Shape</dt>
+            <dd><span class="lang-zh-only">对象的"形状描述"。同 shape 对象共享一份。Edge 叫 Types,JSC 叫 Structure,SpiderMonkey 叫 Shape,V8 源码里叫 Map。<a href="#c11">→ Ch11</a></span><span class="lang-en-only">an object's "shape descriptor". Same-shape objects share one. Edge: Types · JSC: Structure · SpiderMonkey: Shape · V8 source: Map. <a href="#c11">→ Ch11</a></span></dd>
+
+            <dt>DescriptorArray</dt>
+            <dd><span class="lang-zh-only">Hidden Class 的子结构,记录每个 key 名 + 对应 in-object slot 下标。<a href="#c11">→ Ch11</a></span><span class="lang-en-only">sub-structure inside Hidden Class — records each key name + its in-object slot index. <a href="#c11">→ Ch11</a></span></dd>
+
+            <dt>Transition Chain</dt>
+            <dd><span class="lang-zh-only">Hidden Class 的链表/树,描述 shape 怎么随属性增加而生长。<a href="#c12">→ Ch12</a></span><span class="lang-en-only">linked-list / tree of Hidden Classes describing how a shape grows as properties are added. <a href="#c12">→ Ch12</a></span></dd>
+
+            <dt>in-object properties</dt>
+            <dd><span class="lang-zh-only">预留在 JSObject 本体里的属性槽,访问最快(<code>base + offset</code>)。<a href="#c10">→ Ch10</a></span><span class="lang-en-only">slots reserved inside the JSObject body itself; fastest access (<code>base + offset</code>). <a href="#c10">→ Ch10</a></span></dd>
+
+            <dt>Slack Tracking</dt>
+            <dd><span class="lang-zh-only">V8 给空对象默认预留 4 个 in-object 槽位,后续 GC 回收没用到的。<a href="#c11">→ Ch11</a></span><span class="lang-en-only">V8 reserves 4 in-object slots for an empty object; unused ones reclaimed in a later GC. <a href="#c11">→ Ch11</a></span></dd>
+
+            <dt>IC · Inline Cache</dt>
+            <dd><span class="lang-zh-only">把"通过 key 找属性"内联成"按固定偏移读"——核心性能技术。<a href="#c13">→ Ch13</a></span><span class="lang-en-only">inlining "look up by key" into "load at a fixed offset" — V8's core perf trick. <a href="#c13">→ Ch13</a></span></dd>
+
+            <dt>LoadIC · KeyedLoadIC</dt>
+            <dd><span class="lang-zh-only">两种属性读 IC:LoadIC 走静态 <code>obj.x</code>(快),KeyedLoadIC 走动态 <code>obj[key]</code> + 数组下标(慢)。<a href="#c13">→ Ch13</a></span><span class="lang-en-only">two property-load IC variants: LoadIC for static <code>obj.x</code> (fast); KeyedLoadIC for dynamic <code>obj[key]</code> + array indexing (slower). <a href="#c13">→ Ch13</a></span></dd>
+
+            <dt>Mono · Poly · Mega morphic</dt>
+            <dd><span class="lang-zh-only">IC 状态机:见过 1 种 → mono(最快);2-4 种 → poly(还行);&gt;4 种 → mega(放弃缓存,接近解释器)。<a href="#c8">→ Ch8</a></span><span class="lang-en-only">IC state machine: 1 type → mono (fastest); 2–4 → poly (OK); &gt;4 → mega (cache abandoned, near-interpreter). <a href="#c8">→ Ch8</a></span></dd>
+
+            <dt>Fast / Slow Properties</dt>
+            <dd><span class="lang-zh-only">Fast 用 in-object + IC;Slow 用字典(被 <code>delete</code> 打过 / 属性太多溢出)。Slow 慢几十~百倍且不可逆。<a href="#c14">→ Ch14</a></span><span class="lang-en-only">Fast uses in-object + IC; Slow uses a dictionary (after <code>delete</code> or too many overflow keys). Slow is 10–100× slower and irreversible. <a href="#c14">→ Ch14</a></span></dd>
+
+            <dt>FeedbackVector</dt>
+            <dd><span class="lang-zh-only">每个函数挂的"<em>类型反馈表</em>",每个调用点一个 slot。<a href="#c6">→ Ch6</a></span><span class="lang-en-only">a per-function "<em>type feedback table</em>"; one slot per call site. <a href="#c6">→ Ch6</a></span></dd>
+
+            <dt>Feedback Slot</dt>
+            <dd><span class="lang-zh-only">FeedbackVector 里一个具体表项,记录某个 site 见过哪些类型 / shape。<a href="#c6">→ Ch6</a></span><span class="lang-en-only">a single entry in the FeedbackVector — records which types / shapes a given site has seen. <a href="#c6">→ Ch6</a></span></dd>
+
+            <dt>Assumption</dt>
+            <dd><span class="lang-zh-only">V8 编译时基于 feedback 做的"<em>大胆假设</em>",比如"a/b 都是 SMI"。<a href="#c6">→ Ch6</a></span><span class="lang-en-only">V8's "<em>bold guess</em>" at compile time, e.g. "a and b are both SMIs". <a href="#c6">→ Ch6</a></span></dd>
+
+            <dt>Checkpoint · Type Guard</dt>
+            <dd><span class="lang-zh-only">JIT 汇编里 inline 的类型守卫(<code>testb</code> / <code>cmp</code>),保护 assumption。<a href="#c4">→ Ch4</a> · <a href="#c6">Ch6</a></span><span class="lang-en-only">inlined type guard (<code>testb</code> / <code>cmp</code>) that protects an assumption. <a href="#c4">→ Ch4</a> · <a href="#c6">Ch6</a></span></dd>
+
+            <dt>Deoptimization · deopt</dt>
+            <dd><span class="lang-zh-only">JIT 假设打破时丢弃机器码,退回 Ignition 解释执行。性能噩梦。<a href="#c7">→ Ch7</a></span><span class="lang-en-only">JIT discards optimized code when an assumption breaks, falling back to Ignition. Performance nightmare. <a href="#c7">→ Ch7</a></span></dd>
+
+            <dt>Parser · AST</dt>
+            <dd><span class="lang-zh-only">V8 第一级:把源码解析成抽象语法树 + 第一版字节码。<a href="#c3">→ Ch3</a></span><span class="lang-en-only">V8's first stage: parse source into an AST + emit first bytecode. <a href="#c3">→ Ch3</a></span></dd>
+
+            <dt>Ignition</dt>
+            <dd><span class="lang-zh-only">V8 字节码<strong>解释器</strong>。冷代码住在这里。<a href="#c3">→ Ch3</a></span><span class="lang-en-only">V8's bytecode <strong>interpreter</strong>. Where cold code lives. <a href="#c3">→ Ch3</a></span></dd>
+
+            <dt>Bytecode</dt>
+            <dd><span class="lang-zh-only">V8 自定义的虚拟机指令集(栈+累加器)。所有 JIT 层的输入都是它,不是源码。<a href="#c4">→ Ch4</a></span><span class="lang-en-only">V8's custom VM ISA (stack + accumulator). Every JIT tier's input — not source. <a href="#c4">→ Ch4</a></span></dd>
+
+            <dt>Sparkplug</dt>
+            <dd><span class="lang-zh-only">2021 年加的<strong>非优化基线 JIT</strong>。把 bytecode 1:1 翻译成 asm,跳过 dispatch。<a href="#c3">→ Ch3</a></span><span class="lang-en-only">2021's <strong>non-optimizing baseline JIT</strong>. Translates bytecode 1:1 into asm, skipping dispatch. <a href="#c3">→ Ch3</a></span></dd>
+
+            <dt>Maglev</dt>
+            <dd><span class="lang-zh-only">2023 年加的<strong>中间级 JIT</strong>。用 feedback 做轻量优化,达到 ~70% TurboFan 性能。<a href="#c3">→ Ch3</a></span><span class="lang-en-only">2023's <strong>mid-tier JIT</strong>. Uses feedback for light opts, reaches ~70% TurboFan perf. <a href="#c3">→ Ch3</a></span></dd>
+
+            <dt>TurboFan</dt>
+            <dd><span class="lang-zh-only">V8 的<strong>峰值优化 JIT</strong>。基于 Sea-of-Nodes IR 做几十种优化。<a href="#c3">→ Ch3</a></span><span class="lang-en-only">V8's <strong>peak optimizing JIT</strong>. Sea-of-Nodes IR with dozens of passes. <a href="#c3">→ Ch3</a></span></dd>
+
+            <dt>NewSpace · OldSpace</dt>
+            <dd><span class="lang-zh-only">V8 GC 的两个分代:NewSpace 装短命对象(Scavenger 频繁扫),OldSpace 装活过 GC 的长命对象。<a href="#c5">→ Ch5</a></span><span class="lang-en-only">V8 GC generations: NewSpace for short-lived objects (Scavenger sweeps often); OldSpace for survivors. <a href="#c5">→ Ch5</a></span></dd>
+
+            <dt>Scavenger · Orinoco</dt>
+            <dd><span class="lang-zh-only">V8 GC 的实现:Scavenger 是 NewSpace 上的复制式收集器;Orinoco 是 V8 的并行/增量 GC 总称。<a href="#c5">→ Ch5</a></span><span class="lang-en-only">V8's GC implementations: Scavenger is the NewSpace copying collector; Orinoco is V8's parallel/incremental GC framework. <a href="#c5">→ Ch5</a></span></dd>
+
+            <dt>Forwarding Pointer</dt>
+            <dd><span class="lang-zh-only">GC compaction 时,被搬走的对象在原位置留下的"<em>新地址提示</em>"。<a href="#c5">→ Ch5</a></span><span class="lang-en-only">a "<em>moved-to address hint</em>" left at an object's old location during GC compaction. <a href="#c5">→ Ch5</a></span></dd>
+
+            <dt>Mark Bitmap</dt>
+            <dd><span class="lang-zh-only">V8 把 GC mark bits 存在<em>对象之外</em>的 side bitmap 里,每堆地址一位。<a href="#c5">→ Ch5</a></span><span class="lang-en-only">V8 stores GC mark bits in a side bitmap <em>off-object</em>, one bit per heap address. <a href="#c5">→ Ch5</a></span></dd>
+
+            <dt>JSCore · LLInt · DFG · FTL</dt>
+            <dd><span class="lang-zh-only">Safari 的 JS 引擎(WebKit)+ 它的四层 JIT(LLInt 解释器 / Baseline / DFG / FTL=LLVM)。<a href="#c18">→ Ch18</a></span><span class="lang-en-only">Safari's JS engine (WebKit) and its four-tier JIT (LLInt interpreter / Baseline / DFG / FTL=LLVM). <a href="#c18">→ Ch18</a></span></dd>
+
+            <dt>Hermes</dt>
+            <dd><span class="lang-zh-only">Meta 给 React Native 用的 JS 引擎,<strong>无 JIT</strong>(iOS 限制)。打包阶段做 AOT 字节码。<a href="#c2">→ Ch2</a></span><span class="lang-en-only">Meta's React Native JS engine, <strong>no JIT</strong> (iOS restrictions). Does AOT bytecode at bundle time. <a href="#c2">→ Ch2</a></span></dd>
+
+            <dt>SpiderMonkey · CacheIR</dt>
+            <dd><span class="lang-zh-only">Firefox 的 JS 引擎 + 它的 IC IR(基于 cache 操作的中间表示)。<a href="#c18">→ Ch18</a></span><span class="lang-en-only">Firefox's JS engine + its IC IR (cache-operation-based intermediate representation). <a href="#c18">→ Ch18</a></span></dd>
+
+            <dt>Wasm · Liftoff</dt>
+            <dd><span class="lang-zh-only">WebAssembly + V8 的 Wasm 基线 JIT(对应 Sparkplug 的角色)。<a href="#c19">→ Ch19</a></span><span class="lang-en-only">WebAssembly + V8's Wasm baseline JIT (Sparkplug's analog). <a href="#c19">→ Ch19</a></span></dd>
+          </dl>
+        </div>
+      </div>
+    </details>
+
     <h3 class="sub lang-zh-only">启动开关</h3>
     <h3 class="sub lang-en-only">Startup flags</h3>
 
@@ -5813,6 +6266,76 @@ Return</div>
       </ol>
       <p>This is <strong>the most direct way to verify shape stability</strong> — easier than diffing <code>%DebugPrint</code> output.</p>
     </div>
+
+    <h3 class="sub lang-zh-only">在浏览器里看 V8 — DevTools Performance 面板</h3>
+    <h3 class="sub lang-en-only">Watching V8 in the browser — DevTools Performance panel</h3>
+
+    <div class="lang-zh-only">
+      <p>本文前面所有 <code>%DebugPrint</code> / <code>--trace-deopt</code> 都是 Node CLI 工具,但你实际工作中的瓶颈大多在浏览器里——<strong>DevTools 的 Performance 面板</strong> 才是日常入口。Node 工具用来"<em>解剖</em>"已经定位的热点函数,Performance 面板用来"<em>找到</em>"哪个函数是热点。两步走:</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Everything above with <code>%DebugPrint</code> / <code>--trace-deopt</code> is for Node CLI, but your real-world bottlenecks usually surface in the browser — <strong>DevTools' Performance panel</strong> is the daily entry point. Node tools <em>dissect</em> a hotspot you've already located; the Performance panel <em>locates</em> which function is the hotspot. Two-step flow:</p>
+    </div>
+
+    <div class="stage-purpose">
+      <div class="sp-row">
+        <div class="sp-key"><span class="lang-zh-only">第一步 · 找</span><span class="lang-en-only">step 1 · find</span></div>
+        <div class="sp-val">
+          <span class="lang-zh-only"><strong>Performance 面板录一段</strong>(3-5 秒,在录制期间触发慢路径——比如滚一下、点一下),停止录制。看顶部火焰图,<em>找最高最宽的 JS 蓝色柱</em>——那就是热点。如果你的"慢"完全是 DOM 紫色 / Layout 紫红 / Paint 绿色,本文方法论用不上,得去看 chromium-renderer 那篇。</span>
+          <span class="lang-en-only">Open the <strong>Performance panel and record</strong> for 3–5 seconds while triggering the slow path (scroll, click, etc.), then stop. Look at the flame chart and <em>find the tallest+widest JS-blue bar</em> — that's the hotspot. If your "slow" is entirely DOM purple / Layout magenta / Paint green, this piece's methodology won't help — read the chromium-renderer companion instead.</span>
+        </div>
+      </div>
+      <div class="sp-row">
+        <div class="sp-key"><span class="lang-zh-only">第二步 · 量</span><span class="lang-en-only">step 2 · quantify</span></div>
+        <div class="sp-val">
+          <span class="lang-zh-only">底部切到 <strong>Bottom-Up</strong> tab,按 <code>Self Time</code> 降序排——这是"<em>这个函数自己<em>(不算调用)</em>烧了多少 CPU 时间</em>"。占比 &gt; 5% + 是 JS 蓝色 → 本文方法论一定有用。点开任意一条进 Call Tree,可以看到完整调用链。</span>
+          <span class="lang-en-only">Switch the bottom panel to <strong>Bottom-Up</strong> and sort by <code>Self Time</code> descending — this is "<em>how much CPU this function itself burns, not its callees</em>". &gt; 5% + JS-blue → this piece's methodology will help. Click any row to expand the Call Tree.</span>
+        </div>
+      </div>
+      <div class="sp-row">
+        <div class="sp-key"><span class="lang-zh-only">第三步 · 解剖</span><span class="lang-en-only">step 3 · dissect</span></div>
+        <div class="sp-val">
+          <span class="lang-zh-only">把那个热点函数<em>从浏览器搬到 Node</em>(连同它的真实输入分布),用本文 Ch15 / Ch20 那套 <code>%DebugPrint</code> + <code>--trace-deopt</code> 看它在 V8 里的状态。<strong>"在浏览器里找,在 Node 里改"</strong> 是这套方法论的标准工作流。</span>
+          <span class="lang-en-only">Lift that hotspot <em>from the browser into Node</em> (with realistic input distribution) and apply Ch15 / Ch20's <code>%DebugPrint</code> + <code>--trace-deopt</code> to see its V8 state. <strong>"Find in the browser, fix in Node"</strong> is this methodology's standard workflow.</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="ntag"><span class="lang-zh-only">几条信号别忽略</span><span class="lang-en-only">SIGNALS NOT TO IGNORE</span></span>
+      <span class="lang-zh-only">在 Performance 面板里看到这些就是 V8 在求救:<strong>大量 Minor GC 锯齿</strong>(NewSpace 上短命对象多 → 上 Phase IV 规则 #10 逃逸分析);<strong>函数自身耗时高 + 调用链短</strong>(纯 CPU 热点,典型本文目标);<strong>"Compile Code" / "Optimize Code" 频繁出现</strong>(deopt 在反复发生,直接对应 Ch7 反优化);<strong>Long Tasks(&gt;50ms 的红色三角)</strong>(主线程被某段 JS 长占)。</span>
+      <span class="lang-en-only">These are V8 cries for help in the Performance panel: <strong>jagged Minor GC pattern</strong> (lots of short-lived NewSpace objects → see Phase IV rule #10 escape analysis); <strong>high self-time + shallow call stack</strong> (pure CPU hotspot — exactly this piece's target); <strong>frequent "Compile Code" / "Optimize Code" entries</strong> (repeated deopts — straight to Ch7); <strong>Long Tasks (red triangles &gt;50ms)</strong> (main thread held hostage by some JS).</span>
+    </div>
+
+    <details class="extended">
+      <summary>
+        <span class="ext-tag"><span class="lang-zh-only">扩展阅读</span><span class="lang-en-only">extended</span></span>
+        <span class="lang-zh-only">为什么 DevTools 看不到 BinaryOp::Any / 反优化日志</span>
+        <span class="lang-en-only">Why DevTools can't show you BinaryOp::Any / deopt logs</span>
+      </summary>
+      <div class="ext-body">
+        <div class="lang-zh-only">
+          <p>Performance 面板能告诉你<strong>哪个函数烧时间</strong>,但<em>不能</em>告诉你"这个函数为什么慢——是因为退化成 Mega 了,还是 deopt 了,还是 GC 太多"。这些"为什么"信号都在 V8 内部状态里,DevTools 没暴露这一层(原因是大部分 Web 开发者用不到,V8 团队没动力放出来)。</p>
+          <p>真要看,有三条路:</p>
+          <ol>
+            <li><strong>Node 复刻</strong>(本文走的路):把热点函数 + 真实输入搬到 Node,用 <code>--allow-natives-syntax</code> + <code>%DebugPrint</code> 看 feedback vector。最直接,但要自己重建调用环境。</li>
+            <li><strong>Chrome 启动加 V8 flags</strong>:<code>open -a Chromium --args --js-flags="--allow-natives-syntax --trace-deopt"</code> 启动,然后在 stdout 看 deopt 日志。代价:Chrome 控制台不直接显示这些,得从启动它的 terminal 里看。</li>
+            <li><strong>chrome://tracing</strong>:开 V8 的内部 tracing(<code>--enable-blink-features=...</code> 之类),能看到 Maglev / TurboFan 编译事件。最完整但门槛最高,基本只有引擎开发者用。</li>
+          </ol>
+          <p>实战建议:就走第 1 条。Performance 面板找到热点,把它移到 Node 文件,跑本文 Ch15 / Ch17 的 a.js 模板。</p>
+        </div>
+        <div class="lang-en-only">
+          <p>The Performance panel tells you <strong>which function burns time</strong>, but <em>not</em> "why it's slow — has it degraded to Mega, is it deopting, is GC dominating". Those "why" signals live in V8 internals, and DevTools doesn't surface that layer (most web devs don't need it, so V8 team hasn't prioritized exposing it).</p>
+          <p>Three ways to actually see them:</p>
+          <ol>
+            <li><strong>Replicate in Node</strong> (this piece's path): lift the hotspot + realistic inputs into a Node script, run with <code>--allow-natives-syntax</code> + <code>%DebugPrint</code> to inspect the feedback vector. Most direct, but you have to rebuild the calling context.</li>
+            <li><strong>Launch Chrome with V8 flags</strong>: <code>open -a Chromium --args --js-flags="--allow-natives-syntax --trace-deopt"</code>, then watch the launching terminal's stdout for deopt logs. Note: Chrome's DevTools Console doesn't show these — you have to read the terminal that launched Chromium.</li>
+            <li><strong>chrome://tracing</strong>: enable V8 internal tracing categories. Most complete but highest barrier — basically engine-developer territory.</li>
+          </ol>
+          <p>Practical advice: just do (1). Find the hotspot in Performance, move it to a Node file, run the a.js templates from Ch15 / Ch17.</p>
+        </div>
+      </div>
+    </details>
 
     <h3 class="sub lang-zh-only">最小重现 cheatsheet</h3>
     <h3 class="sub lang-en-only">Minimal repro cheatsheet</h3>
