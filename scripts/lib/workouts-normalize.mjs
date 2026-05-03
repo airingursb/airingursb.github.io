@@ -111,7 +111,7 @@ export function normalizeWorkout(raw) {
   const totalKcal = (raw.activeEnergyBurned?.qty ?? 0) * KJ_TO_KCAL;
   const burnPerHr = durationMin > 0 ? totalKcal / (durationMin / 60) : 0;
 
-  const totalSteps = raw.stepCount?.reduce?.((s, x) => s + (x.qty ?? 0), 0) ?? 0;
+  const totalSteps = Math.round(raw.stepCount?.reduce?.((s, x) => s + (x.qty ?? 0), 0) ?? 0);
   const stepCadence = raw.stepCadence?.qty ?? 0;
   const stepLengthM = totalSteps > 0 ? (distKm * 1000) / totalSteps : 0;
 

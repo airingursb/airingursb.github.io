@@ -5,7 +5,7 @@ import LangSwitch from '../../components/LangSwitch.astro';
 import { siteStrings } from '../../lib/i18n';
 import { getCollection } from 'astro:content';
 import workoutsIndex from '../../data/workouts.json';
-import { formatDistance, formatDuration, formatRelativeDate } from '../../components/workouts/format.mjs';
+import { formatDistance, formatDuration, formatRelativeDate, defaultWorkoutTitle } from '../../components/workouts/format.mjs';
 import { WorkoutTypeIcon } from '../../components/workouts/icons';
 
 const s = siteStrings.en.workouts;
@@ -57,7 +57,7 @@ const totalHours = items.reduce((s, w) => s + (w.durationSec ?? 0), 0) / 3600;
         <ul class="workouts-list" style="list-style: none; padding: 0;">
           {items.map((w) => {
             const title = titleById.get(w.id);
-            const name = title?.en ?? title?.zh ?? `${w.start.slice(0, 10)} · Hiking`;
+            const name = title?.en ?? title?.zh ?? defaultWorkoutTitle(w.start, w.type, 'en');
             return (
               <li>
                 <a href={`/en/workouts/${w.id}`} class="workout-list-card">

@@ -2,7 +2,7 @@
 // src/components/workouts/WorkoutCardPreview.astro
 import workoutsIndex from '../../data/workouts.json';
 import { getCollection } from 'astro:content';
-import { formatDistance } from './format.mjs';
+import { formatDistance, defaultWorkoutTitle } from './format.mjs';
 
 const items = workoutsIndex as Array<any>;
 const latest = items[0];
@@ -11,7 +11,7 @@ const totalHours = items.reduce((s, w) => s + (w.durationSec ?? 0), 0) / 3600;
 
 const contentEntries = await getCollection('workouts');
 const titleById = new Map(contentEntries.map(e => [e.id.replace(/\.mdx$/, ''), e.data.title]));
-const latestTitleZh = latest ? (titleById.get(latest.id)?.zh ?? `${latest.start.slice(0, 10)} · Hiking`) : '';
+const latestTitleZh = latest ? (titleById.get(latest.id)?.zh ?? defaultWorkoutTitle(latest.start, latest.type, 'zh')) : '';
 ---
 {latest && (
   <a href="/workouts" class="workout-preview-card" data-href-zh="/workouts" data-href-en="/en/workouts">

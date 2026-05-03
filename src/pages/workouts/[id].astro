@@ -8,6 +8,7 @@ import { getCollection } from 'astro:content';
 import workoutsIndex from '../../data/workouts.json';
 import WorkoutHeader from '../../components/workouts/WorkoutHeader.astro';
 import WorkoutDetail from '../../components/workouts/WorkoutDetail.tsx';
+import { defaultWorkoutTitle } from '../../components/workouts/format.mjs';
 
 export async function getStaticPaths() {
   const items = (await import('../../data/workouts.json')).default as Array<any>;
@@ -22,7 +23,7 @@ const detail = (await import(`../../data/workouts/${id}.json`)).default;
 
 const contentEntries = await getCollection('workouts');
 const contentEntry = contentEntries.find(e => e.id.replace(/\.mdx$/, '') === id);
-const titleZh = contentEntry?.data.title.zh ?? `${detail.start.slice(0, 10)} · Hiking`;
+const titleZh = contentEntry?.data.title.zh ?? defaultWorkoutTitle(detail.start, detail.type, 'zh');
 const Body = contentEntry?.body ? (await contentEntry.render()).Content : null;
 
 const s = siteStrings.zh.workouts;
