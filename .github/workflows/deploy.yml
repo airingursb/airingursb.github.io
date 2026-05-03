@@ -1,4 +1,10 @@
-name: Deploy
+name: Sync feeds and moments
+
+# Daily refresh of external data sources (LastFM, Readwise, Raindrop,
+# Telegram). The build + deploy step is intentionally NOT here — that
+# happens locally via `npm run deploy` so private workout data
+# (gitignored under workouts-source/ and src/data/workouts/) can be
+# inlined into the dist bundle without ever being committed.
 
 on:
   push:
@@ -11,7 +17,7 @@ permissions:
   contents: write
 
 jobs:
-  deploy:
+  sync:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -44,12 +50,6 @@ jobs:
           COS_DOMAIN: ${{ secrets.COS_DOMAIN }}
         run: python3 scripts/sync_moments.py
 
-      - name: Build Astro site
-        env:
-          BLOG_SUPABASE_URL: ${{ secrets.BLOG_SUPABASE_URL }}
-          BLOG_SUPABASE_SERVICE_KEY: ${{ secrets.BLOG_SUPABASE_SERVICE_KEY }}
-        run: npm run build
-
       - name: Commit updated data
         run: |
           git config user.name "github-actions[bot]"
@@ -57,22 +57,3 @@ jobs:
           git add src/data/ index.html
           git diff --staged --quiet || git commit -m "chore: update feed articles"
           git push
-
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-
-      - name: Deploy to Aliyun server
-        env:
-          DEPLOY_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
-        run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H 39.105.102.252 >> ~/.ssh/known_hosts 2>/dev/null
-          rsync -avz --delete \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            dist/ root@39.105.102.252:/var/www/ursb.me/
-          rm -f ~/.ssh/deploy_key
