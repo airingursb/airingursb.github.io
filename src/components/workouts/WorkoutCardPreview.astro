@@ -20,7 +20,8 @@ const totalKm = items.reduce((s: number, w: any) => s + (w.stats?.distanceKm ?? 
 const totalHours = items.reduce((s: number, w: any) => s + (w.durationSec ?? 0), 0) / 3600;
 
 const contentEntries = await getCollection('workouts');
-const titleById = new Map(contentEntries.map(e => [e.id.replace(/\.mdx$/, ''), e.data.title]));
+// Astro 5 lowercases content collection IDs; workout UUIDs are uppercase.
+const titleById = new Map(contentEntries.map(e => [e.id.toLowerCase(), e.data.title]));
 
 // Inline the route per tile so RouteMini gets the data at hydration time
 // without an extra fetch.
@@ -42,7 +43,7 @@ for (const w of items) {
     </div>
     <div class="workouts-strip" role="list">
       {items.map((w: any) => {
-        const titleZh = titleById.get(w.id)?.zh ?? defaultWorkoutTitle(w.start, w.type, 'zh');
+        const titleZh = titleById.get(w.id.toLowerCase())?.zh ?? defaultWorkoutTitle(w.start, w.type, 'zh');
         const route = routesById.get(w.id) ?? [];
         return (
           <a

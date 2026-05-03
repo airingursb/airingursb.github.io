@@ -4,7 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import LangSwitch from '../../../components/LangSwitch.astro';
 import { siteStrings } from '../../../lib/i18n';
-import { getCollection } from 'astro:content';
+import { getCollection, render } from 'astro:content';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import WorkoutHeader from '../../../components/workouts/WorkoutHeader.astro';
@@ -24,9 +24,10 @@ if (!existsSync(detailPath)) throw new Error(`Workout not found: ${id}`);
 const detail = JSON.parse(readFileSync(detailPath, 'utf8'));
 
 const contentEntries = await getCollection('workouts');
-const contentEntry = contentEntries.find(e => e.id.replace(/\.mdx$/, '') === id);
+// Astro 5 lowercases content collection IDs; workout UUIDs are uppercase.
+const contentEntry = contentEntries.find(e => e.id.toLowerCase() === id?.toLowerCase());
 const titleEn = contentEntry?.data.title.en ?? contentEntry?.data.title.zh ?? defaultWorkoutTitle(detail.start, detail.type, 'en');
-const Body = contentEntry?.body ? (await contentEntry.render()).Content : null;
+const Body = contentEntry?.body ? (await render(contentEntry)).Content : null;
 
 const s = siteStrings.en.workouts;
 ---

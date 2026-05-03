@@ -14,7 +14,8 @@ const s = siteStrings.en.workouts;
 const idxPath = resolvePath('./src/data/workouts.json');
 const items = (existsSync(idxPath) ? JSON.parse(readFileSync(idxPath, 'utf8')) : []) as Array<any>;
 const contentEntries = await getCollection('workouts');
-const titleById = new Map(contentEntries.map(e => [e.id.replace(/\.mdx$/, ''), e.data.title]));
+// Astro 5 lowercases content collection IDs; workout UUIDs are uppercase.
+const titleById = new Map(contentEntries.map(e => [e.id.toLowerCase(), e.data.title]));
 
 const routesById = new Map<string, any[]>();
 for (const w of items) {
@@ -67,7 +68,7 @@ const totalHours = items.reduce((s, w) => s + (w.durationSec ?? 0), 0) / 3600;
       ) : (
         <ul class="workouts-list" style="list-style: none; padding: 0;">
           {items.map((w) => {
-            const title = titleById.get(w.id);
+            const title = titleById.get(w.id.toLowerCase());
             const name = title?.en ?? title?.zh ?? defaultWorkoutTitle(w.start, w.type, 'en');
             return (
               <li>
