@@ -1915,15 +1915,24 @@ const recentPhotos = (photosData as Array<any>)
         maxZoom: 12,
         zoomControl: true,
         attributionControl: true,
-        worldCopyJump: true
+        // worldCopyJump made divIcons drift at low zoom — turn off and
+        // pair with noWrap on the tile layer so the world stays single.
+        worldCopyJump: false,
+        maxBounds: [[-85, -180], [85, 180]],
+        maxBoundsViscosity: 1.0
       });
 
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
         subdomains: 'abcd',
         maxZoom: 19,
-        noWrap: false
+        noWrap: true
       }).addTo(map);
+
+      // Container can be 0-height during the homepage's initial layout;
+      // recompute once on the next tick + on every resize.
+      requestAnimationFrame(function () { map.invalidateSize(); });
+      window.addEventListener('resize', function () { map.invalidateSize(); });
 
       var visitedColor = 'var(--accent)';
       var currentColor = '#ff6b6b';
@@ -1932,7 +1941,7 @@ const recentPhotos = (photosData as Array<any>)
         // Current
         { name: 'Singapore', lat: 1.35, lng: 103.82, current: true },
         // Overseas
-        { name: 'San Jose', lat: 37.34, lng: 238.11 },
+        { name: 'San Jose', lat: 37.34, lng: -121.89 },
         { name: 'Bintan Island', lat: 1.07, lng: 104.45 },
         { name: 'Batam Island', lat: 1.05, lng: 104.03 },
         { name: 'Johor Bahru', lat: 1.49, lng: 103.74 },
