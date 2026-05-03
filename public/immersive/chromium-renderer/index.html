@@ -6611,6 +6611,61 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
       <span class="lang-en-only"><strong>cc = content collator</strong> — <em>not</em> Chromium Compositor. The cc module's job is to assemble what should be drawn for Viz inside the Render process. Collator fits better than Compositor.</span>
     </div>
 
+    <div class="observe-bar">
+      <div class="ob-row"><div class="ob-key">DEVTOOLS</div><div class="ob-val"><span class="lang-zh-only">Rendering > "Paint flashing" 勾选 + Performance > "Paint" 事件展开</span><span class="lang-en-only">Rendering > "Paint flashing" checkbox + Performance > "Paint" event expanded</span></div></div>
+      <div class="ob-row"><div class="ob-key">TRACING</div><div class="ob-val"><code>blink.painting, paint, cc.debug.invalidation</code></div></div>
+      <div class="ob-row"><div class="ob-key">FLAG</div><div class="ob-val"><span class="ob-flag">--show-paint-rects</span> <span class="lang-zh-only">/ 启动时就开,直接看脏区</span><span class="lang-en-only">/ on at startup, dirty rects visible</span></div></div>
+      <div class="ob-row"><div class="ob-key">SOURCE</div><div class="ob-val"><code>third_party/blink/renderer/core/paint/, paint_controller.cc</code></div></div>
+    </div>
+
+    <div class="dt-mock">
+      <div class="dt-tab">
+        <span><span class="dt-active">▸ Performance</span> · "Paint" 事件展开 · 7 阶段绘画顺序</span>
+        <span class="dt-meta">PaintArtifact · 2 chunks · 124 items · 1.8 ms</span>
+      </div>
+      <div class="dt-body">
+        <div class="dt-flame">
+          <div class="dt-row"><div class="dt-row-label thread">Main</div><div class="dt-row-track">
+            <div class="dt-evt idle" style="left:0%;width:8%;">JS</div>
+            <div class="dt-evt style" style="left:9%;width:14%;">Style + Layout + Pre-paint</div>
+            <div class="dt-evt paint" style="left:24%;width:38%;">Paint 1.8 ms</div>
+            <div class="dt-evt commit" style="left:62%;width:6%;">Commit</div>
+            <div class="dt-evt idle" style="left:70%;width:30%;">idle</div>
+          </div></div>
+          <div class="dt-row"><div class="dt-row-label">Paint 7 阶段</div><div class="dt-row-track">
+            <div class="dt-evt paint" style="left:24%;width:5%;">① bg</div>
+            <div class="dt-evt paint" style="left:29.5%;width:5%;">② border</div>
+            <div class="dt-evt paint" style="left:34.5%;width:4%;">③ float</div>
+            <div class="dt-evt paint" style="left:39%;width:7%;">④ in-flow</div>
+            <div class="dt-evt paint" style="left:46.5%;width:6%;">⑤ positioned</div>
+            <div class="dt-evt paint" style="left:53%;width:3%;">⑥ outline</div>
+            <div class="dt-evt paint" style="left:56.5%;width:5%;">⑦ text</div>
+          </div></div>
+          <div class="dt-row"><div class="dt-row-label">PaintChunk</div><div class="dt-row-track">
+            <div class="dt-evt commit" style="left:24%;width:24%;">chunk #1 · .card · property=(T0,C0,E1,S0)</div>
+            <div class="dt-evt gpu" style="left:48.5%;width:13.5%;">chunk #2 · .follow ★ · (T1,C0,E0,S0)</div>
+          </div></div>
+          <div style="background: #15171c; padding: 8px 10px; margin-top: 8px; border-radius: 3px; font-size: 9.5px; color: #d8d8d8; font-family: var(--mono);">
+            <div style="color:#a8aab0; letter-spacing: 0.1em; margin-bottom: 4px;">PaintController 双 buffer 命中</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px;">
+              <span><span style="color:#5fc18a;">UseCachedItemIfPossible</span></span><span>= 98 / 124 items (79%)</span>
+              <span><span style="color:#fcd34d;">Re-painted (dirty)</span></span><span>= 26 items (.follow hover)</span>
+              <span><span style="color:#5fc18a;">PaintChunk 复用</span></span><span>= 1 / 2 chunks</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dt-note">
+        <span class="lang-zh-only"><strong>3 个判读:</strong> ① <em>7 阶段顺序固定</em>(CSS 2.1 Appendix E),你看到的色块顺序永远是 bg → border → float → in-flow → positioned → outline → text;② <em>PaintChunk 数量 ≈ 独立 PaintLayer 数量</em>,过多说明子树绑了不同的 property tree state;③ <em>UseCachedItemIfPossible 命中率 &lt; 80%</em> 是<strong>典型的 invalidation 风暴</strong> — 改了某个共享属性导致整子树标脏。开 Paint Flashing 浮层(浅绿色矩形闪一下),能直观看到哪一块被重 paint。</span>
+        <span class="lang-en-only"><strong>3 reads:</strong> ① <em>The 7-phase order is fixed</em> (CSS 2.1 Appendix E) — you'll always see bg → border → float → in-flow → positioned → outline → text; ② <em>PaintChunk count ≈ distinct PaintLayer count</em>; explosion means subtrees are bound to different property-tree states; ③ <em>UseCachedItemIfPossible hit rate &lt; 80%</em> is a <strong>classic invalidation storm</strong> — a shared property mutation marked the whole subtree dirty. Toggle Paint Flashing (light-green flashing rectangles) and you can directly see which region was repainted.</span>
+      </div>
+    </div>
+
+    <div class="cross-link">
+      <a href="#c9" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> <span class="lang-zh-only">Stage 04 · Pre-paint</span><span class="lang-en-only">Stage 04 · Pre-paint</span></a>
+      <a href="#c11" class="cl-next"><span class="cl-label"><span class="lang-zh-only">下一章</span><span class="lang-en-only">next</span></span><span class="lang-zh-only">Stage 06 · Commit · 跨过线程的边界</span><span class="lang-en-only">Stage 06 · Commit · crossing the thread boundary</span> <span class="cl-arrow">→</span></a>
+    </div>
+
     <div class="io-pair">
       <div class="io-card in">
         <div class="io-key">INPUT</div>
@@ -6833,6 +6888,59 @@ property_trees_ ─────────────────────�
         <p class="lang-en-only"><strong>Are there non-blocking alternatives?</strong> Yes — <em>"impl-side painting"</em> (experimented in 2014, abandoned) and <em>"composite without commit"</em> (a side-channel for the very few Compositor-only animations). The first was killed for complexity; the second only handles "<em>pure transform / opacity</em>" animations. <strong>For most business pages, accepting 1ms of Commit blocking in exchange for a clean pipeline is an excellent trade</strong>.</p>
       </div>
     </details>
+
+    <div class="observe-bar">
+      <div class="ob-row"><div class="ob-key">DEVTOOLS</div><div class="ob-val"><span class="lang-zh-only">Performance > Frames 行 + "Commit" 事件;Main 线和 Compositor 线对齐看</span><span class="lang-en-only">Performance > Frames row + "Commit" event; align Main and Compositor lanes</span></div></div>
+      <div class="ob-row"><div class="ob-key">TRACING</div><div class="ob-val"><code>cc, blink.commit, viz.frame_production, scheduler</code></div></div>
+      <div class="ob-row"><div class="ob-key">FLAG</div><div class="ob-val"><span class="ob-flag">--single-process</span> <span class="lang-zh-only">/ 看 SingleThreadProxy 模式 vs ProxyMain</span><span class="lang-en-only">/ inspect SingleThreadProxy vs ProxyMain modes</span></div></div>
+      <div class="ob-row"><div class="ob-key">SOURCE</div><div class="ob-val"><code>cc/trees/proxy_main.cc, proxy_impl.cc, layer_tree_host.cc::FinishCommitOnImplThread</code></div></div>
+    </div>
+
+    <div class="dt-mock">
+      <div class="dt-tab">
+        <span><span class="dt-active">▸ Performance</span> · BeginMainFrame 到 Commit 的完整周期</span>
+        <span class="dt-meta">vsync N · 16.7 ms budget</span>
+      </div>
+      <div class="dt-body">
+        <div class="dt-flame">
+          <div class="dt-row"><div class="dt-row-label thread">Compositor</div><div class="dt-row-track">
+            <div class="dt-evt commit" style="left:0%;width:3%;">BMF</div>
+            <div class="dt-evt idle" style="left:3.5%;width:33%;">wait for Main</div>
+            <div class="dt-evt commit" style="left:37%;width:5%;">Commit</div>
+            <div class="dt-evt commit" style="left:43%;width:8%;">Tile + Activate</div>
+            <div class="dt-evt idle" style="left:52%;width:25%;">wait for Raster</div>
+            <div class="dt-evt commit" style="left:78%;width:8%;">Draw + Submit</div>
+            <div class="dt-evt idle" style="left:87%;width:13%;">idle</div>
+          </div></div>
+          <div class="dt-row"><div class="dt-row-label thread">Main</div><div class="dt-row-track">
+            <div class="dt-evt idle" style="left:0%;width:4%;">wake</div>
+            <div class="dt-evt gpu" style="left:5%;width:8%;">JS</div>
+            <div class="dt-evt style" style="left:13%;width:6%;">Style</div>
+            <div class="dt-evt layout" style="left:19%;width:9%;">Layout</div>
+            <div class="dt-evt style" style="left:28%;width:4%;">Pre-paint</div>
+            <div class="dt-evt paint" style="left:32%;width:5%;">Paint</div>
+            <div class="dt-evt hot" style="left:37%;width:5%;">⤳ Commit (blocked)</div>
+            <div class="dt-evt gpu" style="left:43%;width:14%;">microtask + rAF</div>
+            <div class="dt-evt idle" style="left:58%;width:42%;">idle (until next BMF)</div>
+          </div></div>
+          <div class="dt-row"><div class="dt-row-label thread">Raster ×4</div><div class="dt-row-track">
+            <div class="dt-evt idle" style="left:0%;width:43%;">idle</div>
+            <div class="dt-evt commit" style="left:43%;width:35%;">parallel raster (4 threads)</div>
+            <div class="dt-evt idle" style="left:78%;width:22%;">idle</div>
+          </div></div>
+          <div class="dt-axis"><span>0</span><span>4</span><span>8</span><span>12</span><span>16.7 ms</span></div>
+        </div>
+      </div>
+      <div class="dt-note">
+        <span class="lang-zh-only"><strong>3 个判读:</strong> ① <em>Compositor 与 Main 在 "Commit" 那条红线<strong>同时</strong>停下</em> — 这是唯一一段两线程<em>显式同步</em>的时刻,~1ms 阻塞;② Commit 之后 Main 立即解锁,可以跑 microtask 与 rAF — <em>不是在等渲染完成</em>;③ Compositor 在 Commit 之后并不闲,而是<em>继续推进</em> Tile / Activate / Draw,与 Main 上的 JS 工作并行 — 这就是 cc 的 "<em>异步流水线</em>"。<strong>看到 Commit 时间长 &gt; 5ms,八成是 cc::Layer 树过大或 Property 节点爆炸</strong>。</span>
+        <span class="lang-en-only"><strong>3 reads:</strong> ① <em>Compositor and Main both pause at the red "Commit" line</em> — the one moment of <em>explicit cross-thread sync</em>, ~1ms block; ② Main unlocks immediately after Commit and runs microtasks + rAF — <em>not waiting for rendering to finish</em>; ③ Compositor isn't idle after Commit either — it <em>keeps pushing</em> Tile / Activate / Draw, in parallel with Main's JS work. That's cc's "<em>asynchronous pipeline</em>". <strong>Commit time &gt; 5ms almost always means an oversized cc::Layer tree or property-node explosion</strong>.</span>
+      </div>
+    </div>
+
+    <div class="cross-link">
+      <a href="#c10" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> <span class="lang-zh-only">Stage 05 · Paint</span><span class="lang-en-only">Stage 05 · Paint</span></a>
+      <a href="#c12" class="cl-next"><span class="cl-label"><span class="lang-zh-only">下一章</span><span class="lang-en-only">next</span></span><span class="lang-zh-only">Stage 07 · Compositing · 切独立图层</span><span class="lang-en-only">Stage 07 · Compositing · slicing into layers</span> <span class="cl-arrow">→</span></a>
+    </div>
 
     <div class="io-pair">
       <div class="io-card in">
@@ -7085,6 +7193,52 @@ GraphicsLayer · <span class="mt-tag">root</span>
       <cite>Field Note · 02</cite>
     </blockquote>
 
+    <div class="observe-bar">
+      <div class="ob-row"><div class="ob-key">DEVTOOLS</div><div class="ob-val"><span class="lang-zh-only">Rendering 面板 > "Layer borders" 勾选;Layers 面板看 Compositing Reasons</span><span class="lang-en-only">Rendering panel > "Layer borders" checkbox; Layers panel for Compositing Reasons</span></div></div>
+      <div class="ob-row"><div class="ob-key">TRACING</div><div class="ob-val"><code>cc, blink.compositing, viz.layers</code></div></div>
+      <div class="ob-row"><div class="ob-key">FLAG</div><div class="ob-val"><span class="ob-flag">--show-composited-layer-borders</span> <span class="lang-zh-only">/ 启动时就开</span><span class="lang-en-only">/ on at startup</span></div></div>
+      <div class="ob-row"><div class="ob-key">SOURCE</div><div class="ob-val"><code>cc/trees/property_tree_builder.cc, cc/layers/picture_layer.cc</code></div></div>
+    </div>
+
+    <div class="dt-mock">
+      <div class="dt-tab">
+        <span><span class="dt-active">▸ Layer Borders</span> · 视口浮层 · "<em>Rendering</em>" 面板勾选后实时叠加</span>
+        <span class="dt-meta">5 layers · 4 promoted · 1 inline</span>
+      </div>
+      <div class="dt-body">
+        <div class="dt-layers-canvas" style="height: 240px; background-color: #15171c; background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px); background-size: 16px 16px;">
+          <!-- Composited layers (solid borders) -->
+          <div class="dt-layer-rect composited" style="left: 12px; top: 14px; width: 180px; height: 24px;">
+            #header (sticky) · transform · 1248×64
+          </div>
+          <div class="dt-layer-rect composited" style="left: 60px; top: 60px; width: 360px; height: 110px;">
+            article.card · 340×88 · render_surface (shadow)
+          </div>
+          <div class="dt-layer-rect composited tile-border" style="left: 320px; top: 100px; width: 64px; height: 30px;">
+            .follow ★
+          </div>
+          <div class="dt-layer-rect composited" style="left: 440px; top: 60px; width: 200px; height: 130px; border-color: #d04848; color: #d04848;">
+            video · TextureLayer
+          </div>
+          <div class="dt-layer-rect" style="left: 130px; top: 198px; width: 120px; height: 22px;">
+            inline · &lt;p&gt; (not composited)
+          </div>
+          <div style="position: absolute; right: 8px; bottom: 6px; font-size: 9px; color: #767c87;">
+            黄=PictureLayer · 绿=独立合成层 · 红=TextureLayer · 灰=未升格
+          </div>
+        </div>
+      </div>
+      <div class="dt-note">
+        <span class="lang-zh-only"><strong>3 个判读:</strong> ① <em>实线 = 独立合成层</em>(transform / opacity 动画走 Compositor 的);虚线 = 普通子元素挂在父层上;② <em>颜色编码层类型</em>:黄 PictureLayer(常规)、绿 升格(will-change/3D/sticky)、红 TextureLayer(Canvas/Video/WebGL)、紫 SurfaceLayer(iframe/OOPIF);③ <em>层数 ≤ 30 是健康线</em>。Twitter 主页大约 80,GitHub 大约 40。<strong>合成层数 × 平均面积 ≈ GPU 上传量</strong> — 看到 200+ 层基本可以确认 will-change 用得太凶。</span>
+        <span class="lang-en-only"><strong>3 reads:</strong> ① <em>solid borders = composited layers</em> (transform / opacity animations run on the Compositor); dashed = inline children attached to a parent layer; ② <em>colour codes layer subtype</em>: yellow = PictureLayer (default), green = promoted (will-change/3D/sticky), red = TextureLayer (Canvas/Video/WebGL), purple = SurfaceLayer (iframe/OOPIF); ③ <em>layer count ≤ 30 is healthy</em>. Twitter homepage ~80, GitHub ~40. <strong>Composited-layer count × average area ≈ GPU upload volume</strong> — seeing 200+ layers is near-certain proof of will-change abuse.</span>
+      </div>
+    </div>
+
+    <div class="cross-link">
+      <a href="#c11" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> <span class="lang-zh-only">Stage 06 · Commit</span><span class="lang-en-only">Stage 06 · Commit</span></a>
+      <a href="#c13" class="cl-next"><span class="cl-label"><span class="lang-zh-only">下一章</span><span class="lang-en-only">next</span></span><span class="lang-zh-only">Stage 08 · Tiling · 切马赛克</span><span class="lang-en-only">Stage 08 · Tiling · slicing into mosaic</span> <span class="cl-arrow">→</span></a>
+    </div>
+
     <div class="io-pair">
       <div class="io-card in">
         <div class="io-key">INPUT</div>
@@ -7327,6 +7481,75 @@ GraphicsLayer · <span class="mt-tag">root</span>
 
     <p class="lang-zh-only">Tile 任务并不孤立——<code>cc::ImageDecodeCache</code> 也把 JPEG/PNG/WebP 解码任务塞进同一张 TaskGraph，由同一组 Raster 线程消化。<em>解码与光栅化竞争同一个 CPU 池</em>。这就是为什么"图片图片图片"的页面在低端机上更卡——Raster 线程被解码长时间占用。</p>
     <p class="lang-en-only">Tile tasks aren't islands — <code>cc::ImageDecodeCache</code> drops JPEG/PNG/WebP decode tasks into the same TaskGraph, consumed by the same Raster threads. <em>Decode and rasterisation share one CPU pool</em>. That's why image-heavy pages stutter more on low-end devices — Raster threads get monopolised by decoding.</p>
+
+    <div class="observe-bar">
+      <div class="ob-row"><div class="ob-key">DEVTOOLS</div><div class="ob-val"><span class="lang-zh-only">Rendering > Frame Rendering Stats;Performance > "Update Tile Priorities"</span><span class="lang-en-only">Rendering > Frame Rendering Stats; Performance > "Update Tile Priorities"</span></div></div>
+      <div class="ob-row"><div class="ob-key">TRACING</div><div class="ob-val"><code>cc, cc.debug.tile_priority, blink.tile, gpu.command_buffer</code></div></div>
+      <div class="ob-row"><div class="ob-key">FLAG</div><div class="ob-val"><span class="ob-flag">--default-tile-width=512 --default-tile-height=512</span> <span class="lang-zh-only">/ 强行改 tile 大小</span><span class="lang-en-only">/ force tile size</span></div></div>
+      <div class="ob-row"><div class="ob-key">SOURCE</div><div class="ob-val"><code>cc/tiles/tile_manager.cc, cc/tiles/picture_layer_tiling.cc</code></div></div>
+    </div>
+
+    <div class="dt-mock">
+      <div class="dt-tab">
+        <span><span class="dt-active">▸ Tile Priority Heatmap</span> · 距视口的"距离场" · NOW / SOON / EVENTUALLY</span>
+        <span class="dt-meta">layer 1280×2400 · 30 tiles total</span>
+      </div>
+      <div class="dt-body">
+        <div style="display: flex; gap: 14px; align-items: flex-start;">
+          <div style="flex: 1;">
+            <div class="dt-tilegrid" style="aspect-ratio: 8 / 6;">
+              <!-- row 0: EVENTUALLY (顶部) -->
+              <div class="dt-cell"></div><div class="dt-cell"></div><div class="dt-cell"></div><div class="dt-cell"></div>
+              <div class="dt-cell"></div><div class="dt-cell"></div><div class="dt-cell"></div><div class="dt-cell"></div>
+              <!-- row 1: SOON -->
+              <div class="dt-cell"></div><div class="dt-cell pending"></div><div class="dt-cell pending"></div><div class="dt-cell pending"></div>
+              <div class="dt-cell pending"></div><div class="dt-cell pending"></div><div class="dt-cell pending"></div><div class="dt-cell"></div>
+              <!-- row 2-3: NOW (viewport) -->
+              <div class="dt-cell pending"></div><div class="dt-cell ready viewport"></div><div class="dt-cell ready viewport"></div><div class="dt-cell ready viewport"></div>
+              <div class="dt-cell ready viewport"></div><div class="dt-cell ready viewport"></div><div class="dt-cell ready viewport"></div><div class="dt-cell pending"></div>
+              <div class="dt-cell pending"></div><div class="dt-cell ready viewport"></div><div class="dt-cell ready viewport"></div><div class="dt-cell ready viewport"></div>
+              <div class="dt-cell ready viewport"></div><div class="dt-cell ready viewport"></div><div class="dt-cell ready viewport"></div><div class="dt-cell pending"></div>
+              <!-- row 4: SOON -->
+              <div class="dt-cell"></div><div class="dt-cell pending"></div><div class="dt-cell pending"></div><div class="dt-cell pending"></div>
+              <div class="dt-cell pending"></div><div class="dt-cell pending"></div><div class="dt-cell pending"></div><div class="dt-cell"></div>
+              <!-- row 5: EVENTUALLY -->
+              <div class="dt-cell"></div><div class="dt-cell"></div><div class="dt-cell"></div><div class="dt-cell"></div>
+              <div class="dt-cell"></div><div class="dt-cell"></div><div class="dt-cell"></div><div class="dt-cell"></div>
+            </div>
+            <div class="dt-tilegrid-legend">
+              <span><i style="background:rgba(74,107,62,0.55);"></i> NOW · 视口内 · 必须 ready</span>
+              <span><i style="background:rgba(168,122,31,0.55);"></i> SOON · 1 屏内 · 主动 raster</span>
+              <span><i style="background:rgba(31,92,140,0.30);"></i> EVENTUALLY · 远场 · 滚到才 raster</span>
+              <span><i style="border:2px solid #fcd34d;background:transparent;"></i> 视口</span>
+            </div>
+          </div>
+          <div style="flex: 0 0 240px; background: #15171c; padding: 10px 12px; border-radius: 3px; font-family: var(--mono); font-size: 9.5px; color: #d8d8d8;">
+            <div style="color: #a8aab0; letter-spacing: 0.1em; margin-bottom: 8px;">TilePriority · 当前帧采样</div>
+            <div style="display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; line-height: 1.7;">
+              <span style="color:#5fc18a;">priority_bin = NOW</span><span>12 tiles</span>
+              <span style="color:#fcd34d;">priority_bin = SOON</span><span>14 tiles</span>
+              <span style="color:#1f5c8c;">priority_bin = EVENTUALLY</span><span>16 tiles</span>
+              <span style="color:#a8aab0; border-top: 1px dashed #2c2f36; padding-top: 4px; grid-column: 1/3; margin-top: 4px;">distance_to_visible</span>
+              <span>min</span><span>0 px (in viewport)</span>
+              <span>max</span><span>1280 px</span>
+              <span>median</span><span>320 px</span>
+              <span style="color:#a8aab0; border-top: 1px dashed #2c2f36; padding-top: 4px; grid-column: 1/3; margin-top: 4px;">resolution</span>
+              <span style="color:#5fc18a;">HIGH</span><span>26 tiles</span>
+              <span style="color:#d04848;">LOW</span><span>4 tiles ⚠ 退化</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dt-note">
+        <span class="lang-zh-only"><strong>3 个判读规则:</strong> ① <em>视口内必须全 NOW + HIGH 分辨率</em> — 任何一个 SOON 就是 jank 信号;② <em>SOON tiles 数量 = 用户即将看到的内容量</em>,这个数大表示页面"<em>纵向接续</em>" 多,惯性滚动会更平滑;③ <em>LOW resolution 数量</em> &gt; 0 = 上一帧 raster 跟不上 GPU 上传需求,系统主动降级 — 短暂可接受,持续就是性能崩盘。<strong>TileManager 调度的全部目标</strong>:让视口里永远是绿色 NOW,SOON 在路上,EVENTUALLY 别动。</span>
+        <span class="lang-en-only"><strong>3 reading rules:</strong> ① <em>viewport must be entirely NOW + HIGH res</em> — any SOON is a jank signal; ② <em>SOON tile count = volume of about-to-show content</em>, larger = more "<em>vertical continuity</em>", smoother inertial scroll; ③ <em>LOW resolution count</em> &gt; 0 = last frame's raster couldn't keep up with GPU upload demand, system actively downgraded — temporarily OK, sustained = perf collapse. <strong>TileManager's entire goal</strong>: keep the viewport green-NOW, SOON in flight, EVENTUALLY untouched.</span>
+      </div>
+    </div>
+
+    <div class="cross-link">
+      <a href="#c12" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> <span class="lang-zh-only">Stage 07 · Compositing</span><span class="lang-en-only">Stage 07 · Compositing</span></a>
+      <a href="#c14" class="cl-next"><span class="cl-label"><span class="lang-zh-only">下一章</span><span class="lang-en-only">next</span></span><span class="lang-zh-only">Stage 09 · Raster · 翻成像素</span><span class="lang-en-only">Stage 09 · Raster · into pixels</span> <span class="cl-arrow">→</span></a>
+    </div>
 
     <div class="io-pair">
       <div class="io-card in">
@@ -8108,6 +8331,59 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
       </div>
     </details>
 
+    <div class="observe-bar">
+      <div class="ob-row"><div class="ob-key">DEVTOOLS</div><div class="ob-val"><span class="lang-zh-only">Performance > "Activate Layer Tree" 事件;Layers 面板看 pending vs active</span><span class="lang-en-only">Performance > "Activate Layer Tree" event; Layers panel for pending vs active</span></div></div>
+      <div class="ob-row"><div class="ob-key">TRACING</div><div class="ob-val"><code>cc, cc.debug.activation, viz.frame_submission</code></div></div>
+      <div class="ob-row"><div class="ob-key">FLAG</div><div class="ob-val"><span class="ob-flag">--enable-features=PartialRasterUploads</span> <span class="lang-zh-only">/ 让部分 tile ready 也可以激活</span><span class="lang-en-only">/ allows partial-tile activation</span></div></div>
+      <div class="ob-row"><div class="ob-key">SOURCE</div><div class="ob-val"><code>cc/trees/layer_tree_host_impl.cc::ActivateSyncTree</code></div></div>
+    </div>
+
+    <div class="dt-mock">
+      <div class="dt-tab">
+        <span><span class="dt-active">▸ Performance</span> · cc.debug · 三棵树指针轨迹 · 4 帧</span>
+        <span class="dt-meta">66.7 ms window · 60 Hz</span>
+      </div>
+      <div class="dt-body">
+        <div class="dt-flame">
+          <div class="dt-row"><div class="dt-row-label thread">Active 指针</div><div class="dt-row-track">
+            <div class="dt-evt commit" style="left:0%;width:24%;">frame N</div>
+            <div class="dt-evt commit" style="left:25%;width:24%;">frame N+1</div>
+            <div class="dt-evt commit" style="left:50%;width:24%;">frame N+2</div>
+            <div class="dt-evt commit" style="left:75%;width:24%;">frame N+3</div>
+          </div></div>
+          <div class="dt-row"><div class="dt-row-label thread">Pending 指针</div><div class="dt-row-track">
+            <div class="dt-evt layout" style="left:0%;width:24%;">build N+1</div>
+            <div class="dt-evt layout" style="left:25%;width:24%;">build N+2</div>
+            <div class="dt-evt layout" style="left:50%;width:24%;">build N+3</div>
+            <div class="dt-evt hot" style="left:75%;width:8%;">build N+4 ⚠ raster slow</div>
+            <div class="dt-evt layout" style="left:84%;width:15%;">build N+4(完)</div>
+          </div></div>
+          <div class="dt-row"><div class="dt-row-label thread">Recycle 指针</div><div class="dt-row-track">
+            <div class="dt-evt idle" style="left:0%;width:24%;">empty</div>
+            <div class="dt-evt style" style="left:25%;width:24%;">old N (留)</div>
+            <div class="dt-evt style" style="left:50%;width:24%;">old N+1 (留)</div>
+            <div class="dt-evt style" style="left:75%;width:24%;">old N+2 (留)</div>
+          </div></div>
+          <div class="dt-row"><div class="dt-row-label">⚡ Activate 触发</div><div class="dt-row-track">
+            <div class="dt-evt gpu" style="left:24.5%;width:1%;">⚡</div>
+            <div class="dt-evt gpu" style="left:49.5%;width:1%;">⚡</div>
+            <div class="dt-evt gpu" style="left:74.5%;width:1%;">⚡</div>
+            <div class="dt-evt hot" style="left:82%;width:2%;">⚡ delayed!</div>
+          </div></div>
+          <div class="dt-axis"><span>0</span><span>vsync</span><span>vsync</span><span>vsync</span><span>vsync · 66.7ms</span></div>
+        </div>
+      </div>
+      <div class="dt-note">
+        <span class="lang-zh-only"><strong>3 个观察点:</strong> ① <em>Active 指针在每个 vsync 整数倍切换</em> = 健康节奏(60fps);② <em>Pending 提前 ~12ms 完成 build</em> 才跟得上 — 跟不上(图中 frame N+4)就 Activate 推迟,Active 还显示老 frame,用户感知"<em>这一帧没动</em>";③ <em>Recycle 永远满载</em> — 它总是上一个被替换下来的 Active,留给下一次 Commit 复用,这就是"<em>不需要每帧 alloc/free LayerImpl</em>" 的源头。</span>
+        <span class="lang-en-only"><strong>3 watch points:</strong> ① <em>Active pointer flips at every vsync</em> = healthy rhythm (60fps); ② <em>Pending finishes build ~12ms early</em> to keep up — when it can't (frame N+4 here), Activate is delayed, Active stays on the old frame, and the user perceives "<em>this frame didn't move</em>"; ③ <em>Recycle is always full</em> — always holding the just-retired Active, ready for next Commit's reuse. This is the source of "<em>no per-frame alloc/free of LayerImpl</em>".</span>
+      </div>
+    </div>
+
+    <div class="cross-link">
+      <a href="#c14" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> <span class="lang-zh-only">Stage 09 · Raster</span><span class="lang-en-only">Stage 09 · Raster</span></a>
+      <a href="#c16" class="cl-next"><span class="cl-label"><span class="lang-zh-only">下一章</span><span class="lang-en-only">next</span></span><span class="lang-zh-only">Stage 11 · Draw · 写"剧本"</span><span class="lang-en-only">Stage 11 · Draw · writing the script</span> <span class="cl-arrow">→</span></a>
+    </div>
+
     <div class="io-pair">
       <div class="io-card in">
         <div class="io-key">INPUT</div>
@@ -8740,6 +9016,57 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
         <p class="lang-en-only"><strong>Bottom line:</strong> DFS naturally fits SurfaceAggregator on three axes — <em>z-order = depth-first</em>, <em>RenderPass dependency = topological order</em>, <em>clip pruning = early backoff</em>. BFS looks friendlier but each property costs extra code. <strong>"<em>Pick the right traversal and half the algorithm is free</em>"</strong> is a common phenomenon in graph engineering.</p>
       </div>
     </details>
+
+    <div class="observe-bar">
+      <div class="ob-row"><div class="ob-key">DEVTOOLS</div><div class="ob-val"><code>chrome://compositor-thread-rendering-stats</code> · Performance > "Frame submitted to display"</div></div>
+      <div class="ob-row"><div class="ob-key">TRACING</div><div class="ob-val"><code>viz, viz.surface, viz.aggregator, viz.frame_submission</code></div></div>
+      <div class="ob-row"><div class="ob-key">FLAG</div><div class="ob-val"><span class="ob-flag">--enable-features=VizFrameSubmissionForWebView,VizDebuggerOverlay</span></div></div>
+      <div class="ob-row"><div class="ob-key">SOURCE</div><div class="ob-val"><code>components/viz/service/display/surface_aggregator.cc, surface_manager.cc</code></div></div>
+    </div>
+
+    <div class="dt-mock">
+      <div class="dt-tab">
+        <span><span class="dt-active">▸ Surface Inspector</span> · 一帧 Aggregate 之后的 Surface 树展开</span>
+        <span class="dt-meta">3 surfaces · 5 RenderPasses · damage 8.4%</span>
+      </div>
+      <div class="dt-body">
+        <div class="dt-surface-tree">
+<span class="surf-line"><span class="surf-tag">▾</span> <span class="surf-id">root</span> · FrameSinkId(1, root_compositor) · LocalSurfaceId(7:42)</span>
+<span class="surf-line">    <span class="surf-cmt">// Browser UI · Aggregator 入口</span></span>
+<span class="surf-line">    transform = identity   damage_rect = [0,0  1280×800]   damage = <span class="surf-damage">8.4%</span></span>
+<span class="surf-line"></span>
+<span class="surf-line">  <span class="surf-tag">▾</span> SurfaceDrawQuad → <span class="surf-id">render_a</span></span>
+<span class="surf-line">      transform = translate(0, 64)   <span class="surf-cmt">// 主页面位于工具栏下面</span></span>
+<span class="surf-line">      clip = [0,64  1280×736]   damage_rect = [340,200  220×88]</span>
+<span class="surf-line">      <span class="surf-tag">▾</span> RenderPass[3]</span>
+<span class="surf-line">        ├─ Pass#A2 (shadow off-screen, 离屏特效)</span>
+<span class="surf-line">        ├─ Pass#A3 (filter blur, 离屏特效)</span>
+<span class="surf-line">        └─ Pass#A1 (root surface)</span>
+<span class="surf-line">             ├─ TileDrawQuad ×4   <span class="surf-cmt">// 主图层</span></span>
+<span class="surf-line">             ├─ RenderPassDrawQuad → Pass#A2</span>
+<span class="surf-line">             └─ <span class="surf-tag">▾</span> SurfaceDrawQuad → <span class="surf-id">render_b</span> (OOPIF)</span>
+<span class="surf-line">                   transform = parent ∘ translate(180, 280) ∘ scale(0.9)</span>
+<span class="surf-line">                   clip = parent ∩ [180,280  420×120] = <span class="surf-id">[180,280  420×120]</span></span>
+<span class="surf-line">                   <span class="surf-tag">▾</span> RenderPass[2]</span>
+<span class="surf-line">                     ├─ Pass#B2 (filter)</span>
+<span class="surf-line">                     └─ Pass#B1 (root)</span>
+<span class="surf-line">                          └─ TileDrawQuad ×3   <span class="surf-cmt">// OOPIF 内容</span></span>
+<span class="surf-line"></span>
+<span class="surf-line">  <span class="surf-tag">▾</span> SurfaceDrawQuad → <span class="surf-id">offscreen_canvas</span></span>
+<span class="surf-line">      damage_rect = empty   <span class="surf-cmt">// ⚠ 整棵子树跳过(裁剪 0×0 或 damage 空)</span></span>
+<span class="surf-line">      ⤳ <span class="surf-damage">PRUNED</span>   <span class="surf-cmt">// 节省 ~120KB GPU 上传</span></span>
+        </div>
+      </div>
+      <div class="dt-note">
+        <span class="lang-zh-only"><strong>看 4 件事:</strong> ① <em>Surface 数量</em> = Browser UI + 每个 Render + 每个 OffscreenCanvas;② <em>damage_rect 占 viewport 比例</em>(本帧 8.4%)— 越小,Display 阶段 GPU 工作量越小;③ <em>"PRUNED"</em> 标记 = 子 surface 因裁剪/damage 空被跳过,connected to "<em>不可见 OOPIF 不耗 GPU</em>" 那条规则;④ <em>嵌套深度</em> &gt; 4 是危险信号 — 说明 OOPIF 套 OOPIF 套 OffscreenCanvas,SurfaceAggregator 的 DFS 会变贵。</span>
+        <span class="lang-en-only"><strong>4 things to watch:</strong> ① <em>Surface count</em> = Browser UI + every Render + every OffscreenCanvas; ② <em>damage_rect as % of viewport</em> (8.4% this frame) — smaller = less GPU work in Display; ③ <em>"PRUNED" marker</em> = child surface skipped due to empty clip or damage, the "<em>invisible OOPIF costs no GPU</em>" rule; ④ <em>Nesting depth</em> &gt; 4 is a red flag — OOPIF nested inside OOPIF nested inside OffscreenCanvas makes the DFS expensive.</span>
+      </div>
+    </div>
+
+    <div class="cross-link">
+      <a href="#c16" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> <span class="lang-zh-only">Stage 11 · Draw</span><span class="lang-en-only">Stage 11 · Draw</span></a>
+      <a href="#c18" class="cl-next"><span class="cl-label"><span class="lang-zh-only">下一章</span><span class="lang-en-only">next</span></span><span class="lang-zh-only">Stage 13 · Display · 像素终于上屏</span><span class="lang-en-only">Stage 13 · Display · pixels finally reach the screen</span> <span class="cl-arrow">→</span></a>
+    </div>
 
     <div class="io-pair">
       <div class="io-card in">
