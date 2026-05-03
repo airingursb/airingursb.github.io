@@ -7,6 +7,12 @@ featured: false
 cover: "https://airing.ursb.me/images/blog/chromium/20221016112818.png"
 ---
 
+> **📌 2026 增订重写版：** 这篇 2022 年的原文已被重新组织为一份**沉浸式增订版**——补全了每一步的 Chromium 源码定位、类层级、算法骨架与可视化插图，新增 LayoutNG / PaintController / SkiaRenderer 等深度技术章节。
+>
+> 👉 **推荐阅读新版：[字节码到像素的一生 — Chromium 渲染流水线全景](/immersive/chromium-renderer/)**
+>
+> 原文保留如下,仅作存档参考。
+
 ## 现代浏览器架构
 在开始介绍渲染流水线之前，我们需要先介绍一下 Chromium 的浏览器架构与 Chromium 的进程模型作为前置知识。
 

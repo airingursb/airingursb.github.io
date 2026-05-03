@@ -7,6 +7,12 @@ featured: false
 cover: "https://airing.ursb.me/images/blog/chromium/20221016112818.png"
 ---
 
+> **📌 2026 Expanded Rewrite:** This 2022 original has been reworked into an **immersive expanded edition** — Chromium source paths, class hierarchies, algorithm skeletons and diagrams added for every stage, with new deep-dives into LayoutNG / PaintController / SkiaRenderer.
+>
+> 👉 **Read the new version: [Bytecode to Pixels — A field map of Chromium's rendering pipeline](/immersive/chromium-renderer/)**
+>
+> The original is kept below for archival reference.
+
 ## Modern Browser Architecture
 
 Before diving into the rendering pipeline, let's establish some foundational knowledge about Chromium's browser architecture and process model.
