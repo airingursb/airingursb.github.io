@@ -1,5 +1,11 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
+import photosData from '../data/photos.json';
+
+const recentPhotos = (photosData as Array<any>)
+  .slice()
+  .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime())
+  .slice(0, 12);
 ---
 <BaseLayout title="Hi, folks | Airing">
   <div class="lang-toggle" id="langToggle">
@@ -420,6 +426,38 @@ import BaseLayout from '../layouts/BaseLayout.astro';
               <span class="post-date">04.05</span>
             </a>
         <!-- TELEGRAM_END -->
+      </div>
+
+      <!-- Photos -->
+      <div class="card card-photos" id="photos-card">
+        <div class="section-title-row">
+          <span class="section-title" data-i18n="sec_photos">Photos</span>
+          <a class="photos-strip-more" href="/photos" data-i18n="ph_view_all">View all →</a>
+        </div>
+        <div class="photos-strip" role="list">
+          {recentPhotos.map((p: any) => (
+            <a
+              href={`/photos/${p.slug}`}
+              class="photos-strip-item"
+              role="listitem"
+              aria-label={p.title || p.slug}
+              style={`--dom: ${p.dominantColor}`}
+            >
+              <picture>
+                <source type="image/avif" srcset={p.variants.thumb.avif} />
+                <source type="image/webp" srcset={p.variants.thumb.webp} />
+                <img
+                  src={p.variants.thumb.webp}
+                  alt={p.title || p.slug}
+                  loading="lazy"
+                  decoding="async"
+                  width="160"
+                  height="120"
+                />
+              </picture>
+            </a>
+          ))}
+        </div>
       </div>
 
       <!-- Skill Tree -->
@@ -3341,4 +3379,47 @@ import BaseLayout from '../layouts/BaseLayout.astro';
     })();
   </script>
   <script is:inline src="/assets/online-presence.js" defer></script>
+
+  <!-- "New" badge injection for posts/notes within last 14 days -->
+  <script is:inline>
+    (function () {
+      var WINDOW_DAYS = 14;
+      function parseDate(text) {
+        if (!text) return null;
+        var m = text.trim().match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})/);
+        if (!m) return null;
+        return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+      }
+      function tag() {
+        var now = new Date();
+        var labelText = (window.currentLang === 'zh') ? 'NEW' : 'NEW';
+        var cutoff = now.getTime() - WINDOW_DAYS * 86400000;
+        var items = document.querySelectorAll('.card-posts .post-item, .card-notes .post-item');
+        items.forEach(function (el) {
+          var dateEl = el.querySelector('.post-date');
+          var titleEl = el.querySelector('.post-title');
+          if (!dateEl || !titleEl) return;
+          var d = parseDate(dateEl.textContent);
+          if (!d) return;
+          var existing = titleEl.querySelector('.new-badge');
+          var isNew = d.getTime() >= cutoff && d.getTime() <= now.getTime();
+          if (isNew && !existing) {
+            var span = document.createElement('span');
+            span.className = 'new-badge';
+            span.setAttribute('aria-label', 'new');
+            span.textContent = labelText;
+            titleEl.insertBefore(span, titleEl.firstChild);
+          } else if (!isNew && existing) {
+            existing.remove();
+          }
+        });
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', tag);
+      } else {
+        tag();
+      }
+      window.addEventListener('langchange', tag);
+    })();
+  </script>
 </BaseLayout>
