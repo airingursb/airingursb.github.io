@@ -55,6 +55,7 @@ async function main() {
     for (const w of workouts) {
       try {
         const normalized = normalizeWorkout(w);
+        if (normalized.type !== 'hiking') continue;        // hiking-only feed
         if (!seen.has(normalized.id)) {
           seen.set(normalized.id, normalized);
         }
@@ -63,6 +64,10 @@ async function main() {
       }
     }
   }
+
+  // Prune any locally-cached non-hiking artifacts from a previous run.
+  await pruneOrphans(OUT_DATA_DIR, '.json', seen);
+  await pruneOrphans(OUT_CONTENT_DIR, '.mdx', seen);
 
   // Write per-workout JSON + content stubs
   const indexEntries = [];
@@ -100,6 +105,19 @@ async function main() {
 
 async function exists(p) {
   try { await fs.access(p); return true; } catch { return false; }
+}
+
+/** Delete files in `dir` whose basename (sans `ext`) is not a key in `keep`. */
+async function pruneOrphans(dir, ext, keep) {
+  const entries = await fs.readdir(dir);
+  for (const f of entries) {
+    if (!f.endsWith(ext)) continue;
+    const id = f.slice(0, -ext.length);
+    if (!keep.has(id)) {
+      await fs.unlink(path.join(dir, f));
+      console.log(`[workouts] prune ${f}`);
+    }
+  }
 }
 
 function makeStubMdx(w) {
