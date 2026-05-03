@@ -1,14 +1,16 @@
 ---
 // src/components/workouts/WorkoutCardPreview.astro
 //
-// Full-width homepage card matching the .card.card-photos pattern:
-// section-title-row + horizontal-scrolling strip of workouts. Reads the
-// (gitignored) workouts index defensively so CI builds without source
-// data render no card at all.
+// Full-width homepage card matching .card.card-photos:
+// section-title-row + horizontal scroll strip. Each tile renders a
+// multi-segment polyline colored by pace (matching the detail map's
+// pace gradient), reading from the (gitignored) per-workout detail
+// JSON at build time. CI builds without source data render no card.
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve as resolvePath } from 'node:path';
 import { getCollection } from 'astro:content';
 import { formatDistance, formatDuration, defaultWorkoutTitle } from './format.mjs';
+import { colorFor, percentileRange } from './workoutColors';
 
 const idxPath = resolvePath('./src/data/workouts.json');
 const items = (existsSync(idxPath) ? JSON.parse(readFileSync(idxPath, 'utf8')) : []) as Array<any>;
@@ -18,18 +20,69 @@ const totalHours = items.reduce((s: number, w: any) => s + (w.durationSec ?? 0),
 
 const contentEntries = await getCollection('workouts');
 const titleById = new Map(contentEntries.map(e => [e.id.replace(/\.mdx$/, ''), e.data.title]));
+
+// Pre-compute per-tile polyline segments + per-segment pace colors.
+// Done at build time so the homepage stays static (no client JS).
+// Default to the *light* theme palette for the gradient — the homepage
+// is dark mode but pace scale is deliberately bright (red/yellow/green)
+// and reads fine on either background.
+const VW = 100, VH = 60, PAD = 4;
+const tiles = items.map((w: any) => {
+  const detailPath = resolvePath(`./src/data/workouts/${w.id}.json`);
+  if (!existsSync(detailPath) || !w.bbox || !w.trackSvg) {
+    return { id: w.id, segments: [] };
+  }
+  const detail = JSON.parse(readFileSync(detailPath, 'utf8'));
+  const route: Array<{ lat: number; lng: number; pace: number }> = detail.route ?? [];
+  if (route.length < 2) return { id: w.id, segments: [] };
+
+  // Equirectangular project to 100x60 viewBox with 4px padding,
+  // preserving aspect ratio.
+  let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+  for (const p of route) {
+    if (p.lat < minLat) minLat = p.lat;
+    if (p.lat > maxLat) maxLat = p.lat;
+    if (p.lng < minLng) minLng = p.lng;
+    if (p.lng > maxLng) maxLng = p.lng;
+  }
+  const dLat = Math.max(maxLat - minLat, 1e-9);
+  const dLng = Math.max(maxLng - minLng, 1e-9);
+  const innerW = VW - PAD * 2;
+  const innerH = VH - PAD * 2;
+  const scale = Math.min(innerW / dLng, innerH / dLat);
+  const offX = PAD + (innerW - dLng * scale) / 2;
+  const offY = PAD + (innerH - dLat * scale) / 2;
+
+  const paces = route.map(p => p.pace).filter(p => p > 0);
+  const [pMin, pMax] = percentileRange(paces);
+
+  const segments: Array<{ x1: number; y1: number; x2: number; y2: number; color: string }> = [];
+  for (let i = 0; i < route.length - 1; i++) {
+    const a = route[i], b = route[i + 1];
+    const x1 = +(offX + (a.lng - minLng) * scale).toFixed(2);
+    const y1 = +(offY + (maxLat - a.lat) * scale).toFixed(2);
+    const x2 = +(offX + (b.lng - minLng) * scale).toFixed(2);
+    const y2 = +(offY + (maxLat - b.lat) * scale).toFixed(2);
+    const v = (a.pace + b.pace) / 2;
+    const color = colorFor('pace', v, pMin, pMax, 'dark');
+    segments.push({ x1, y1, x2, y2, color });
+  }
+  return { id: w.id, segments };
+});
+const segmentsById = new Map(tiles.map(t => [t.id, t.segments]));
 ---
 {items.length > 0 && (
   <div class="card card-workouts" id="workouts-card">
     <div class="section-title-row">
       <span class="section-title" data-i18n="sec_workouts">Workouts</span>
       <a class="workouts-strip-more" href="/workouts" data-href-zh="/workouts" data-href-en="/en/workouts" data-i18n="wk_view_all">
-        {items.length} · {formatDistance(totalKm)} · {totalHours.toFixed(1)}h →
+        View all →
       </a>
     </div>
     <div class="workouts-strip" role="list">
       {items.map((w: any) => {
         const titleZh = titleById.get(w.id)?.zh ?? defaultWorkoutTitle(w.start, w.type, 'zh');
+        const segments = segmentsById.get(w.id) ?? [];
         return (
           <a
             href={`/workouts/${w.id}`}
@@ -39,8 +92,14 @@ const titleById = new Map(contentEntries.map(e => [e.id.replace(/\.mdx$/, ''), e
             data-href-en={`/en/workouts/${w.id}`}
             aria-label={titleZh}
           >
-            <svg class="ws-track" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" stroke="currentColor" stroke-width="1.6" fill="none">
-              {w.trackSvg && <path d={w.trackSvg} />}
+            <svg class="ws-track" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" fill="none" stroke-linecap="round">
+              {segments.length > 0 ? (
+                segments.map((s) => (
+                  <line x1={s.x1} y1={s.y1} x2={s.x2} y2={s.y2} stroke={s.color} stroke-width="1.6" />
+                ))
+              ) : (
+                w.trackSvg && <path d={w.trackSvg} stroke="currentColor" stroke-width="1.6" />
+              )}
             </svg>
             <div class="ws-meta">
               <div class="ws-name">{titleZh}</div>
@@ -106,7 +165,8 @@ const titleById = new Map(contentEntries.map(e => [e.id.replace(/\.mdx$/, ''), e
   .ws-track {
     width: 100%;
     height: 90px;
-    color: var(--c-text);
+    background: rgba(var(--c-overlay-rgb), 0.04);
+    border-radius: 4px;
   }
   .ws-meta {
     display: flex;
