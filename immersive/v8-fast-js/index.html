@@ -1556,6 +1556,118 @@
   }
   .ic-toggle button.active.fast { color: var(--asm); }
   .ic-toggle button.active.slow { color: var(--heat); }
+  /* ---------- IC lookup paths (slow vs fast) — Ch13 ---------- */
+  .ic-paths {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin: 16px 0;
+  }
+  .ic-path {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .ic-path.slow { border-left: 3px solid var(--heat); }
+  .ic-path.fast { border-left: 3px solid var(--asm); }
+  .ic-path-h {
+    font-family: var(--mono); font-size: 12.5px; font-weight: 700;
+    color: var(--ink);
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--rule);
+    flex-wrap: wrap; gap: 6px;
+  }
+  .ic-path.slow .ic-path-h { color: var(--heat); }
+  .ic-path.fast .ic-path-h { color: var(--asm); }
+  .ic-path-h .ic-h-tag {
+    font-size: 9.5px; font-weight: 400;
+    color: var(--ink-mute);
+    background: var(--bg-soft);
+    padding: 2px 8px; border-radius: 99px;
+    border: 1px solid var(--rule-soft);
+  }
+  .ic-path-sub {
+    font-family: var(--sans); font-size: 11.5px;
+    color: var(--ink-mute);
+    margin-top: -6px; line-height: 1.55;
+  }
+  .ic-hc-table {
+    background: var(--bg-soft);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    overflow: hidden;
+    font-family: var(--mono); font-size: 11px;
+  }
+  .ic-hc-table .ic-hc-h {
+    background: var(--ink); color: #d8d8d8;
+    padding: 5px 10px;
+    font-size: 9.5px; letter-spacing: 0.1em; text-transform: uppercase;
+    display: flex; justify-content: space-between;
+  }
+  .ic-hc-table .ic-hc-h .ic-hc-tag { color: #fcd34d; font-weight: 600; }
+  .ic-hc-table .ic-hc-row {
+    padding: 6px 12px;
+    display: flex; align-items: center;
+    border-bottom: 1px dashed var(--rule-soft);
+    gap: 8px;
+  }
+  .ic-hc-table .ic-hc-row:last-child { border-bottom: none; }
+  .ic-hc-table .ic-hc-row.miss { color: var(--ink-mute); background: rgba(195,87,58,0.04); }
+  .ic-hc-table .ic-hc-row.miss .ic-mark { color: var(--heat); font-weight: 700; }
+  .ic-hc-table .ic-hc-row.hit  { color: var(--asm); background: rgba(45,106,79,0.10); font-weight: 700; }
+  .ic-hc-table .ic-hc-row.hit  .ic-mark { color: var(--asm); font-weight: 700; }
+  .ic-hc-table .ic-hc-row.dim  { color: var(--ink-mute); opacity: 0.45; }
+  .ic-hc-table .ic-hc-row.baked { background: rgba(45,106,79,0.10); color: var(--asm); font-weight: 700; }
+  .ic-hc-table .ic-hc-row.baked .ic-mark { color: var(--asm); font-weight: 700; }
+  .ic-hc-table .ic-hc-row .ic-mark { width: 14px; flex-shrink: 0; text-align: center; }
+  .ic-hc-table .ic-hc-row .ic-key { flex: 1; }
+  .ic-hc-table .ic-hc-row .ic-offset {
+    color: var(--ink-mute); font-size: 10px;
+    flex-shrink: 0;
+  }
+  .ic-hc-table .ic-hc-row.hit .ic-offset,
+  .ic-hc-table .ic-hc-row.baked .ic-offset { color: inherit; opacity: 0.85; }
+
+  .ic-steps {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--ink-soft); line-height: 1.7;
+  }
+  .ic-steps .ic-step {
+    display: flex; gap: 8px;
+    align-items: baseline;
+    padding: 1px 0;
+  }
+  .ic-steps .ic-step .ic-num {
+    color: var(--ink-mute); font-size: 9.5px;
+    width: 22px; flex-shrink: 0;
+    text-align: right;
+  }
+  .ic-steps .ic-step.hot { color: var(--heat); }
+  .ic-steps .ic-step.good { color: var(--asm); }
+  .ic-steps .ic-step .ic-cycles {
+    color: var(--ink-mute); font-size: 9.5px;
+    margin-left: auto;
+    flex-shrink: 0;
+  }
+  .ic-total {
+    font-family: var(--mono); font-size: 12px;
+    font-weight: 700;
+    padding-top: 8px;
+    border-top: 1px dashed var(--rule);
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .ic-path.slow .ic-total { color: var(--heat); }
+  .ic-path.fast .ic-total { color: var(--asm); }
+  .ic-total .ic-total-num {
+    font-size: 16px; letter-spacing: -0.02em;
+  }
+  @media (max-width: 720px) {
+    .ic-paths { grid-template-columns: 1fr; }
+  }
+
   .ic-stage-wrap { position: relative; min-height: 200px; }
   .ic-stage {
     display: none;
@@ -4394,48 +4506,116 @@ Return</div>
       </figcaption>
     </figure>
 
-    <h3 class="sub lang-zh-only">IC 在汇编里长什么样</h3>
-    <h3 class="sub lang-en-only">What an IC looks like in asm</h3>
+    <h3 class="sub lang-zh-only">IC 在汇编里长什么样 — 145 倍差距怎么来的</h3>
+    <h3 class="sub lang-en-only">What an IC looks like in asm — where the 145× comes from</h3>
 
     <div class="lang-zh-only">
-      <p>当 V8 编译 <code>map.a</code> 这种<em>静态 key</em> 的属性访问时,它会在<em>第一次</em>调用时通过 Hidden Class 找到 <code>"a"</code> 对应的 in-object offset(比如 1),然后把这个数字<strong>直接写死在编译出来的汇编里</strong>:</p>
+      <p>同一个 <code>obj.a</code> 这件事,<em>动态写法</em> <code>map[key]</code> 和<em>静态写法</em> <code>map.a</code> 在 V8 里要做的工作完全不同。把每次调用的步骤画出来对比,差距就具体了:</p>
     </div>
     <div class="lang-en-only">
-      <p>When V8 compiles a property access with a <em>static key</em> like <code>map.a</code>, it follows the Hidden Class on first call to find <code>"a"</code>'s in-object offset (say, 1), then <strong>burns that number into the emitted asm</strong>:</p>
+      <p>Reading <code>obj.a</code> via <em>dynamic</em> <code>map[key]</code> vs <em>static</em> <code>map.a</code> sends V8 down two completely different paths. Let's draw what each call has to do:</p>
+    </div>
+
+    <figure data-watch>
+      <div class="figbox">
+        <div class="ic-paths">
+
+          <!-- SLOW PATH -->
+          <div class="ic-path slow">
+            <div class="ic-path-h">
+              <span><code style="color:inherit;background:none;padding:0">map[key]</code></span>
+              <span class="ic-h-tag"><span class="lang-zh-only">动态 key · O(N)</span><span class="lang-en-only">dynamic key · O(N)</span></span>
+            </div>
+            <div class="ic-path-sub"><span class="lang-zh-only">运行时才知道 key 是什么 · 必须扫一遍 Hidden Class 的 key 表</span><span class="lang-en-only">key only known at runtime · must walk the Hidden Class key table</span></div>
+
+            <div class="ic-hc-table">
+              <div class="ic-hc-h"><span>map.hiddenClass</span><span class="ic-hc-tag"><span class="lang-zh-only">扫描中…</span><span class="lang-en-only">scanning…</span></span></div>
+              <div class="ic-hc-row miss"><span class="ic-mark">✗</span><span class="ic-key">"x"</span><span class="ic-offset">offset 24</span></div>
+              <div class="ic-hc-row miss"><span class="ic-mark">✗</span><span class="ic-key">"y"</span><span class="ic-offset">offset 32</span></div>
+              <div class="ic-hc-row hit"><span class="ic-mark">✓</span><span class="ic-key">"a" — 命中!</span><span class="ic-offset">offset 40</span></div>
+              <div class="ic-hc-row dim"><span class="ic-mark">·</span><span class="ic-key">"b"</span><span class="ic-offset">offset 48</span></div>
+              <div class="ic-hc-row dim"><span class="ic-mark">·</span><span class="ic-key">"c"</span><span class="ic-offset">offset 56</span></div>
+            </div>
+
+            <div class="ic-steps">
+              <div class="ic-step hot"><span class="ic-num">1</span><span><span class="lang-zh-only">读 map.hiddenClass</span><span class="lang-en-only">load map.hiddenClass</span></span><span class="ic-cycles">~3 cyc</span></div>
+              <div class="ic-step hot"><span class="ic-num">2</span><span><span class="lang-zh-only">读 DescriptorArray</span><span class="lang-en-only">load DescriptorArray</span></span><span class="ic-cycles">~3 cyc</span></div>
+              <div class="ic-step hot"><span class="ic-num">3-5</span><span><span class="lang-zh-only">3 次指针 cmp(intern 后)</span><span class="lang-en-only">3 pointer cmps (interned)</span></span><span class="ic-cycles">~9 cyc</span></div>
+              <div class="ic-step hot"><span class="ic-num">6</span><span><span class="lang-zh-only">读对应 offset</span><span class="lang-en-only">load offset entry</span></span><span class="ic-cycles">~3 cyc</span></div>
+              <div class="ic-step hot"><span class="ic-num">7</span><span><span class="lang-zh-only">最终 ldr 取值</span><span class="lang-en-only">final ldr to read value</span></span><span class="ic-cycles">~3 cyc</span></div>
+            </div>
+
+            <div class="ic-total">
+              <span><span class="lang-zh-only">每次调用</span><span class="lang-en-only">per call</span></span>
+              <span class="ic-total-num">~50–200 cyc</span>
+            </div>
+          </div>
+
+          <!-- FAST PATH -->
+          <div class="ic-path fast">
+            <div class="ic-path-h">
+              <span><code style="color:inherit;background:none;padding:0">map.a</code></span>
+              <span class="ic-h-tag"><span class="lang-zh-only">静态 key · IC 命中 · O(1)</span><span class="lang-en-only">static key · IC hit · O(1)</span></span>
+            </div>
+            <div class="ic-path-sub"><span class="lang-zh-only">编译期就把 hiddenClass 地址 + offset baked into 汇编</span><span class="lang-en-only">hiddenClass ptr + offset baked into the asm at compile time</span></div>
+
+            <div class="ic-hc-table">
+              <div class="ic-hc-h"><span>map.hiddenClass</span><span class="ic-hc-tag"><span class="lang-zh-only">编译期已知</span><span class="lang-en-only">known at compile</span></span></div>
+              <div class="ic-hc-row baked"><span class="ic-mark">★</span><span class="ic-key">"a" → in-obj slot 1</span><span class="ic-offset">offset 32 baked</span></div>
+              <div class="ic-hc-row dim" style="opacity:0.25"><span class="ic-mark">·</span><span class="ic-key" style="font-style:italic"><span class="lang-zh-only">其他 key 不必关心</span><span class="lang-en-only">other keys: unused</span></span><span class="ic-offset">—</span></div>
+            </div>
+
+            <div class="ic-steps">
+              <div class="ic-step good"><span class="ic-num">1</span><span><span class="lang-zh-only">cmp shape ptr(校验 shape 没变)</span><span class="lang-en-only">cmp shape ptr (validate shape)</span></span><span class="ic-cycles">~1 cyc</span></div>
+              <div class="ic-step good"><span class="ic-num">2</span><span><code>ldr [obj + 32]</code> <span class="lang-zh-only">直接取值</span><span class="lang-en-only">load directly</span></span><span class="ic-cycles">~3 cyc</span></div>
+              <div class="ic-step" style="opacity:0.4"><span class="ic-num">&nbsp;</span><span><span class="lang-zh-only">没有循环 · 没有字符串比较</span><span class="lang-en-only">no loop · no string compares</span></span><span class="ic-cycles">&nbsp;</span></div>
+            </div>
+
+            <div class="ic-total">
+              <span><span class="lang-zh-only">每次调用</span><span class="lang-en-only">per call</span></span>
+              <span class="ic-total-num">~5 cyc</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <figcaption>
+        <span class="figid">FIG. 09b</span>
+        <span class="lang-zh-only">同样是 <code>obj.a</code>:左边动态查找在 Hidden Class 里走一遍——本例运气好命中第三个,运气不好(目标 key 在表尾)得扫到底;右边 IC 命中后只剩两步——1 次 cmp 验证 shape 没变 + 1 次 ldr 按固定偏移直接取值。这两条路径的 cycle 差距,就是文章开头跑分里那 145 倍的物理来源。</span>
+        <span class="figen lang-en-only">Same <code>obj.a</code>: on the left, dynamic lookup walks the Hidden Class — best case (this run) hits on the 3rd row; worst case scans to the end. On the right, after the IC has cached, only two ops remain — 1 cmp to validate the shape, 1 ldr at a fixed offset. The cycle gap here is exactly the 145× the bench-bars opened with.</span>
+      </figcaption>
+    </figure>
+
+    <div class="lang-zh-only">
+      <p>把上面右边那条快路径在<em>真实 ARM64</em> 里编出来,就是下面这 5 行——里面的 <code>cmp + ldr</code> 跟图里那两步一一对应,多出的 <code>b.ne</code> 是反优化守卫:</p>
+    </div>
+    <div class="lang-en-only">
+      <p>The same fast path, emitted in <em>real ARM64</em>, looks like this — the <code>cmp + ldr</code> map directly to the two steps above; the extra <code>b.ne</code> is the deopt guard:</p>
     </div>
 
     <div class="src-stack">
       <div class="src-h">
-        <span>IC fast path · TurboFan 输出</span>
+        <span><span class="lang-zh-only">map.a 的真实 TurboFan 输出 — 全部就这么多</span><span class="lang-en-only">map.a · real TurboFan output — that's all of it</span></span>
         <span class="src-tag">arm64 (m1)</span>
       </div>
-      <span class="src-line"><span class="src-comment">; map.a — 假设 map 的 Hidden Class 物理地址是 0x3a8d76b74971</span></span>
+      <span class="src-line"><span class="src-comment">; map.a — 假设 map 的 Hidden Class 物理地址 = 0x3a8d76b74971</span></span>
       <span class="src-line"></span>
-      <span class="src-line"><span class="src-hot">L133  <span class="src-kw">ldr</span>   x0, [x4, #+24]                    <span class="src-comment">; 读 map 的 *hiddenClass</span></span></span>
-      <span class="src-line"><span class="src-hot">L134  <span class="src-kw">cmp</span>   x0, <span class="src-num">0x3a8d76b74971</span>            <span class="src-comment">; ★ checkpoint: shape 没变?</span></span></span>
-      <span class="src-line"><span class="src-hot">L135  <span class="src-kw">b.ne</span>  CompileLazyDeoptimizedCode         <span class="src-comment">; 变了 → deopt</span></span></span>
-      <span class="src-line"><span class="src-good">L136  <span class="src-kw">ldr</span>   x0, [x4, #+32]                    <span class="src-comment">; ★ 直接读 in-object slot 1</span></span></span>
+      <span class="src-line"><span class="src-hot">L133  <span class="src-kw">ldr</span>   x0, [x4, #+24]                    <span class="src-comment">; 读 map.hiddenClass(图中步骤 1 之前)</span></span></span>
+      <span class="src-line"><span class="src-hot">L134  <span class="src-kw">cmp</span>   x0, <span class="src-num">0x3a8d76b74971</span>            <span class="src-comment">; ★ 图中步骤 1 — shape 没变?</span></span></span>
+      <span class="src-line"><span class="src-hot">L135  <span class="src-kw">b.ne</span>  CompileLazyDeoptimizedCode         <span class="src-comment">; 变了 → deopt(快路径外的兜底)</span></span></span>
+      <span class="src-line"><span class="src-good">L136  <span class="src-kw">ldr</span>   x0, [x4, #+32]                    <span class="src-comment">; ★ 图中步骤 2 — 按 baked offset 取值</span></span></span>
       <span class="src-line"><span class="src-good">                                                  <span class="src-comment">; (32 = JSObject header 24 + slot 1 × 8)</span></span></span>
       <span class="src-line"><span class="src-frame">L137  <span class="src-kw">ret</span></span></span>
+      <span class="src-line"></span>
+      <span class="src-line"><span class="src-comment">; → 一行 obj.a 编出来 5 条 asm,核心就两条(cmp + ldr)</span></span>
+      <span class="src-line"><span class="src-comment">; → 没有循环、没有字符串比较、没有内存追逐 — 这就是 IC 的全部魔法</span></span>
     </div>
 
     <div class="lang-zh-only">
-      <p>这就是<strong>Inline Cache 的真身</strong>——它把"通过 key 找属性"这件事 inline 成了"先比一次 Hidden Class 物理地址,再读一个固定偏移"。这个名字也由此而来:把缓存 inline 到了汇编里。</p>
-      <p>对比一下动态 <code>map[key]</code>:V8 不知道 <code>key</code> 是什么字符串,只能在每次调用时:</p>
-      <ol>
-        <li>把 <code>key</code> 字符串和 Hidden Class 里的所有 key 名字符串<em>一一比较</em>;</li>
-        <li>找到匹配后,再读对应 offset。</li>
-      </ol>
-      <p>哪怕 V8 给字符串比较做了内部 intern(同字符串复用同一个指针,只比指针),也比"一条 ldr"慢得多。这就是 145 倍差距的来源。</p>
+      <p>那条 <code>★ ldr x0, [x4, #+32]</code> 就是 <strong>Inline Cache 的真身</strong>——V8 把"按 key 找属性"这件事 inline 成了"按一个固定偏移直接读"。<em>这个偏移之所以能写死在汇编里,是因为 cmp 那一行先验证了 shape 没变</em>——shape 一变,deopt 把整段汇编扔掉重编。<strong>"缓存"被 inline 进了汇编</strong>,这就是 IC 名字的由来。</p>
     </div>
     <div class="lang-en-only">
-      <p>That's <strong>Inline Cache in the flesh</strong> — it inlines "look up by key" into "first compare a Hidden Class pointer, then load a fixed offset". The name comes from this: the cache is inlined into the asm itself.</p>
-      <p>Contrast dynamic <code>map[key]</code>: V8 doesn't know the value of <code>key</code> at compile time, so each call has to:</p>
-      <ol>
-        <li>compare the <code>key</code> string against every key in the Hidden Class;</li>
-        <li>then load the matched offset.</li>
-      </ol>
-      <p>Even with V8's internal string interning (same string → same pointer; pointer-compare only), this is dramatically slower than one <code>ldr</code>. Hence the 145×.</p>
+      <p>That <code>★ ldr x0, [x4, #+32]</code> is <strong>Inline Cache in the flesh</strong> — V8 inlines "look up by key" into "load at a fixed offset". <em>The reason that offset can be baked in is that the cmp above guarantees the shape is unchanged</em>; if it changes, the whole asm gets thrown away and recompiled. The "cache" is inlined into the asm itself — that's where the name comes from.</p>
     </div>
 
     <blockquote class="pull asm lang-zh-only">
