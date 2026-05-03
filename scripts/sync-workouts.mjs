@@ -20,11 +20,13 @@ import { generateTrackSvg } from './lib/workouts-svg-track.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
-const DEFAULT_DIR = path.join(
-  os.homedir(),
-  'Library/Mobile Documents/iCloud~com~ifunography~HealthExport/Documents/Workouts Backup'
-);
-const SRC_DIR = process.env.WORKOUTS_BACKUP_DIR || DEFAULT_DIR;
+// Default source: project-local `workouts-source/` (gitignored).
+// Drop full HealthAutoExport JSONs there with any filename.
+// Override via $WORKOUTS_SOURCE_DIR for one-off runs against another path.
+const DEFAULT_DIR = path.join(ROOT, 'workouts-source');
+const SRC_DIR = process.env.WORKOUTS_SOURCE_DIR
+  || process.env.WORKOUTS_BACKUP_DIR        // legacy env name
+  || DEFAULT_DIR;
 const OUT_DATA_DIR    = path.join(ROOT, 'src/data/workouts');
 const OUT_INDEX       = path.join(ROOT, 'src/data/workouts.json');
 const OUT_CONTENT_DIR = path.join(ROOT, 'src/content/workouts');
@@ -33,12 +35,20 @@ async function main() {
   await fs.mkdir(OUT_DATA_DIR,    { recursive: true });
   await fs.mkdir(OUT_CONTENT_DIR, { recursive: true });
 
-  const entries = await fs.readdir(SRC_DIR);
+  let entries = [];
+  try {
+    entries = await fs.readdir(SRC_DIR);
+  } catch (err) {
+    // No source dir → produce empty index so the build still succeeds.
+    console.warn(`[workouts] no source dir at ${SRC_DIR} (${err.code}); writing empty index`);
+    await fs.writeFile(OUT_INDEX, '[]\n');
+    return;
+  }
   const files = entries
-    .filter(f => /^HealthAutoExport-.*\.json$/.test(f))
+    .filter(f => f.endsWith('.json') && !f.startsWith('.'))
     .map(f => path.join(SRC_DIR, f));
 
-  console.log(`[workouts] scanning ${files.length} backup file(s) in ${SRC_DIR}`);
+  console.log(`[workouts] scanning ${files.length} source file(s) in ${SRC_DIR}`);
 
   /** @type {Map<string, ReturnType<typeof normalizeWorkout>>} */
   const seen = new Map();

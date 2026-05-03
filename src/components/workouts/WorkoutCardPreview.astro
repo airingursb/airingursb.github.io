@@ -1,32 +1,135 @@
 ---
 // src/components/workouts/WorkoutCardPreview.astro
-import workoutsIndex from '../../data/workouts.json';
+//
+// Full-width homepage card matching the .card.card-photos pattern:
+// section-title-row + horizontal-scrolling strip of workouts. Reads the
+// (gitignored) workouts index defensively so CI builds without source
+// data render no card at all.
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { getCollection } from 'astro:content';
-import { formatDistance, defaultWorkoutTitle } from './format.mjs';
+import { formatDistance, formatDuration, defaultWorkoutTitle } from './format.mjs';
 
-const items = workoutsIndex as Array<any>;
-const latest = items[0];
-const totalKm = items.reduce((s, w) => s + (w.stats?.distanceKm ?? 0), 0);
-const totalHours = items.reduce((s, w) => s + (w.durationSec ?? 0), 0) / 3600;
+const idxPath = resolvePath('./src/data/workouts.json');
+const items = (existsSync(idxPath) ? JSON.parse(readFileSync(idxPath, 'utf8')) : []) as Array<any>;
+
+const totalKm = items.reduce((s: number, w: any) => s + (w.stats?.distanceKm ?? 0), 0);
+const totalHours = items.reduce((s: number, w: any) => s + (w.durationSec ?? 0), 0) / 3600;
 
 const contentEntries = await getCollection('workouts');
 const titleById = new Map(contentEntries.map(e => [e.id.replace(/\.mdx$/, ''), e.data.title]));
-const latestTitleZh = latest ? (titleById.get(latest.id)?.zh ?? defaultWorkoutTitle(latest.start, latest.type, 'zh')) : '';
 ---
-{latest && (
-  <a href="/workouts" class="workout-preview-card" data-href-zh="/workouts" data-href-en="/en/workouts">
-    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px;">
-      <strong>Workouts</strong>
-      <span style="color: var(--w-fg-muted); font-size: 12px;">
-        {items.length} · {formatDistance(totalKm)} · {totalHours.toFixed(1)}h
-      </span>
+{items.length > 0 && (
+  <div class="card card-workouts" id="workouts-card">
+    <div class="section-title-row">
+      <span class="section-title" data-i18n="sec_workouts">Workouts</span>
+      <a class="workouts-strip-more" href="/workouts" data-href-zh="/workouts" data-href-en="/en/workouts" data-i18n="wk_view_all">
+        {items.length} · {formatDistance(totalKm)} · {totalHours.toFixed(1)}h →
+      </a>
     </div>
-    <svg class="track-svg" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" stroke="currentColor" stroke-width="1.5" fill="none">
-      {latest.trackSvg && <path d={latest.trackSvg} />}
-    </svg>
-    <div style="display: flex; justify-content: space-between; margin-top: 8px;">
-      <span>{latestTitleZh}</span>
-      <span style="color: var(--w-fg-muted);">查看全部 →</span>
+    <div class="workouts-strip" role="list">
+      {items.map((w: any) => {
+        const titleZh = titleById.get(w.id)?.zh ?? defaultWorkoutTitle(w.start, w.type, 'zh');
+        return (
+          <a
+            href={`/workouts/${w.id}`}
+            class="workouts-strip-item"
+            role="listitem"
+            data-href-zh={`/workouts/${w.id}`}
+            data-href-en={`/en/workouts/${w.id}`}
+            aria-label={titleZh}
+          >
+            <svg class="ws-track" viewBox="0 0 100 60" preserveAspectRatio="xMidYMid meet" stroke="currentColor" stroke-width="1.6" fill="none">
+              {w.trackSvg && <path d={w.trackSvg} />}
+            </svg>
+            <div class="ws-meta">
+              <div class="ws-name">{titleZh}</div>
+              <div class="ws-sub">
+                <span>{formatDistance(w.stats?.distanceKm ?? 0)}</span>
+                <span>·</span>
+                <span>{formatDuration(w.durationSec)}</span>
+              </div>
+            </div>
+          </a>
+        );
+      })}
     </div>
-  </a>
+  </div>
 )}
+
+<style>
+  .card-workouts .workouts-strip-more {
+    font-size: 11px;
+    color: var(--c-text-muted);
+    text-decoration: none;
+    letter-spacing: 0.3px;
+    transition: color 0.2s;
+    font-variant-numeric: tabular-nums;
+  }
+  .card-workouts .workouts-strip-more:hover { color: var(--accent); }
+
+  .workouts-strip {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+  .workouts-strip::-webkit-scrollbar { height: 4px; }
+  .workouts-strip::-webkit-scrollbar-thumb {
+    background: rgba(var(--c-overlay-rgb), 0.15);
+    border-radius: 2px;
+  }
+
+  .workouts-strip-item {
+    flex: 0 0 auto;
+    width: 200px;
+    border-radius: 8px;
+    background: rgba(var(--c-overlay-rgb), 0.06);
+    color: var(--c-text);
+    text-decoration: none;
+    padding: 12px;
+    scroll-snap-align: start;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .workouts-strip-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    background: rgba(var(--c-overlay-rgb), 0.10);
+  }
+  .ws-track {
+    width: 100%;
+    height: 90px;
+    color: var(--c-text);
+  }
+  .ws-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .ws-name {
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ws-sub {
+    font-size: 11px;
+    color: var(--c-text-muted);
+    display: flex;
+    gap: 6px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  @media (max-width: 480px) {
+    .workouts-strip-item { width: 168px; padding: 10px; }
+    .ws-track { height: 76px; }
+  }
+</style>

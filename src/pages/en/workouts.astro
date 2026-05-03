@@ -4,12 +4,14 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import LangSwitch from '../../components/LangSwitch.astro';
 import { siteStrings } from '../../lib/i18n';
 import { getCollection } from 'astro:content';
-import workoutsIndex from '../../data/workouts.json';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve as resolvePath } from 'node:path';
 import { formatDistance, formatDuration, formatRelativeDate, defaultWorkoutTitle } from '../../components/workouts/format.mjs';
 import { WorkoutTypeIcon } from '../../components/workouts/icons';
 
 const s = siteStrings.en.workouts;
-const items = workoutsIndex as Array<any>;
+const idxPath = resolvePath('./src/data/workouts.json');
+const items = (existsSync(idxPath) ? JSON.parse(readFileSync(idxPath, 'utf8')) : []) as Array<any>;
 const contentEntries = await getCollection('workouts');
 const titleById = new Map(contentEntries.map(e => [e.id.replace(/\.mdx$/, ''), e.data.title]));
 
