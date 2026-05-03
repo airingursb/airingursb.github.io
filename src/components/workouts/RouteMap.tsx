@@ -48,6 +48,10 @@ function MapboxMap({ route, bbox, metric, theme, height }: Required<Omit<Props, 
       bounds: [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
       fitBoundsOptions: { padding: 24, animate: false },
       interactive: true,
+      // Compact "ⓘ" attribution per Mapbox ToS — fully removing it
+      // violates the free-tier terms; this collapses it to a single
+      // hover-to-expand icon in the corner.
+      attributionControl: { compact: true },
     });
     mapRef.current = map;
     map.on('load', () => {
