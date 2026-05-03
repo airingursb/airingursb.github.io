@@ -4805,6 +4805,127 @@ Return</div>
       <span class="src-line"><span class="src-hot">  - slot #7 Compare CompareOp::<span class="src-cls">Any</span>            ; ★ 类型守卫退化</span></span>
     </div>
 
+    <details class="extended">
+      <summary>
+        <span class="ext-tag"><span class="lang-zh-only">亲手跑一遍</span><span class="lang-en-only">try it yourself</span></span>
+        <span class="lang-zh-only">让 V8 告诉你这段代码病在哪 — 完整 a.js + node 命令</span>
+        <span class="lang-en-only">Have V8 tell you where this code is sick — full a.js + node command</span>
+      </summary>
+      <div class="ext-body">
+        <div class="lang-zh-only">
+          <p>把下面这段存成 <code>a.js</code>,然后 <code>node --allow-natives-syntax a.js</code>。它会在你自己机器上跑出和上面那一刀几乎一模一样的输出——你能亲眼看到 <code>BinaryOp::Any</code> 和 <code>MEGAMORPHIC</code>。</p>
+        </div>
+        <div class="lang-en-only">
+          <p>Save the snippet below as <code>a.js</code> and run <code>node --allow-natives-syntax a.js</code>. You'll get the same kind of output the cut above shows — you can see <code>BinaryOp::Any</code> and <code>MEGAMORPHIC</code> with your own eyes.</p>
+        </div>
+
+        <div class="src-stack">
+          <div class="src-h">
+            <span>a.js</span>
+            <span class="src-tag heat">v0 · 故意多态</span>
+          </div>
+          <span class="src-line"><span class="src-comment">// v0 朴素版 — 跟文章上面这一节一样的多态地狱</span></span>
+          <span class="src-line"><span class="src-kw">function</span> <span class="src-fn">px2rem</span>(input, base) {</span>
+          <span class="src-line">  <span class="src-kw">let</span> value, unit;</span>
+          <span class="src-line">  <span class="src-kw">if</span> (<span class="src-kw">typeof</span> input === <span class="src-str">'number'</span>) { value = input; unit = <span class="src-str">'px'</span>; }</span>
+          <span class="src-line">  <span class="src-kw">else if</span> (<span class="src-kw">typeof</span> input === <span class="src-str">'string'</span>) {</span>
+          <span class="src-line">    <span class="src-kw">const</span> m = input.<span class="src-method">match</span>(/^(-?\d+(?:\.\d+)?)(px|rem|em|%)?$/);</span>
+          <span class="src-line">    value = m ? <span class="src-method">parseFloat</span>(m[<span class="src-num">1</span>]) : <span class="src-num">0</span>;</span>
+          <span class="src-line">    unit  = m &amp;&amp; m[<span class="src-num">2</span>] || <span class="src-str">'px'</span>;</span>
+          <span class="src-line">  } <span class="src-kw">else if</span> (input &amp;&amp; <span class="src-kw">typeof</span> input === <span class="src-str">'object'</span>) {</span>
+          <span class="src-line">    value = input.value; unit = input.unit || <span class="src-str">'px'</span>;</span>
+          <span class="src-line">  } <span class="src-kw">else</span> { <span class="src-kw">return</span> <span class="src-num">0</span>; }</span>
+          <span class="src-line">  <span class="src-kw">if</span> (unit === <span class="src-str">'rem'</span>) <span class="src-kw">return</span> value;</span>
+          <span class="src-line">  <span class="src-kw">if</span> (unit === <span class="src-str">'em'</span>)  <span class="src-kw">return</span> value;</span>
+          <span class="src-line">  <span class="src-kw">if</span> (unit === <span class="src-str">'%'</span>)   <span class="src-kw">return</span> value / <span class="src-num">100</span>;</span>
+          <span class="src-line">  <span class="src-kw">return</span> value / base;</span>
+          <span class="src-line">}</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// 1. 喂混合类型,触发多态(关键 — 不混合就一直是单态,看不到病)</span></span>
+          <span class="src-line"><span class="src-kw">const</span> samples = [<span class="src-num">12</span>, <span class="src-str">'14px'</span>, { value: <span class="src-num">16</span>, unit: <span class="src-str">'rem'</span> }, <span class="src-num">20</span>, <span class="src-str">'1.5em'</span>];</span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">time</span>(<span class="src-str">'v0'</span>);</span>
+          <span class="src-line"><span class="src-kw">for</span> (<span class="src-kw">let</span> i = <span class="src-num">0</span>; i &lt; <span class="src-num">1_000_000</span>; i++) <span class="src-fn">px2rem</span>(samples[i % <span class="src-num">5</span>], <span class="src-num">16</span>);</span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">timeEnd</span>(<span class="src-str">'v0'</span>);</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// 2. 强制下次调用就编进 TurboFan(保证看到的是峰值版本)</span></span>
+          <span class="src-line">%OptimizeFunctionOnNextCall(px2rem);</span>
+          <span class="src-line"><span class="src-fn">px2rem</span>(<span class="src-num">12</span>, <span class="src-num">16</span>);</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// 3. 看 V8 把它当成什么</span></span>
+          <span class="src-line"><span class="src-kw">const</span> status = %GetOptimizationStatus(px2rem);</span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">log</span>(<span class="src-str">'\n--- %GetOptimizationStatus ---'</span>);</span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">log</span>(<span class="src-str">'raw:'</span>, status, <span class="src-str">' binary:'</span>, status.<span class="src-method">toString</span>(<span class="src-num">2</span>));</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-kw">const</span> FLAGS = [</span>
+          <span class="src-line">  [<span class="src-num">0</span>, <span class="src-str">'kIsFunction'</span>], [<span class="src-num">3</span>, <span class="src-str">'kMaybeDeopted'</span>],</span>
+          <span class="src-line">  [<span class="src-num">4</span>, <span class="src-str">'kOptimized'</span>], [<span class="src-num">5</span>, <span class="src-str">'kMaglevved'</span>], [<span class="src-num">6</span>, <span class="src-str">'kTurboFanned'</span>],</span>
+          <span class="src-line">  [<span class="src-num">7</span>, <span class="src-str">'kInterpreted'</span>], [<span class="src-num">14</span>, <span class="src-str">'kMarkedForDeoptimization'</span>],</span>
+          <span class="src-line">];</span>
+          <span class="src-line"><span class="src-kw">for</span> (<span class="src-kw">const</span> [b, n] <span class="src-kw">of</span> FLAGS) <span class="src-kw">if</span> (status &amp; (<span class="src-num">1</span> &lt;&lt; b)) <span class="src-method">console</span>.<span class="src-fn">log</span>(<span class="src-str">'  ★'</span>, n);</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// 4. 完整内部信息 — feedback vector 在输出底部</span></span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">log</span>(<span class="src-str">'\n--- %DebugPrint ---'</span>);</span>
+          <span class="src-line">%DebugPrint(px2rem);</span>
+        </div>
+
+        <h6 class="lang-zh-only">跑法</h6>
+        <h6 class="lang-en-only">How to run</h6>
+
+        <div class="src-stack">
+          <div class="src-h">
+            <span>terminal</span>
+            <span class="src-tag">node 22+</span>
+          </div>
+          <span class="src-line">$ node --allow-natives-syntax a.js</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment"># 想看反优化日志 + TurboFan 实际机器码,把 trace 全开:</span></span>
+          <span class="src-line">$ node --allow-natives-syntax \</span>
+          <span class="src-line">       --trace-opt --trace-deopt --print-opt-code \</span>
+          <span class="src-line">       a.js 2&gt;&amp;1 | less</span>
+        </div>
+
+        <h6 class="lang-zh-only">怎么读输出</h6>
+        <h6 class="lang-en-only">How to read the output</h6>
+
+        <div class="lang-zh-only">
+          <ul>
+            <li><strong>raw status</strong> 是个整数,二进制每一位代表一个 flag。比如 <code>81</code> = <code>1010001</code> = bit 0+4+6 = <code>kIsFunction | kOptimized | kTurboFanned</code>——就是上面截图那一行。</li>
+            <li><strong><code>%DebugPrint</code> 的 <code>feedback vector</code> 段</strong>是真正的诊断核心。找里面的 <code>slot #N &lt;op&gt;::&lt;type&gt;</code>:<code>SignedSmall</code> / <code>Number</code> = 单态(快路径),<code>Any</code> 或 <code>MEGAMORPHIC</code> = 文章里那种"已经病了"的状态。</li>
+            <li><strong><code>--trace-deopt</code></strong> 会打印每次反优化事件 + 具体原因(<code>not a Smi</code> / <code>wrong map</code>),配上 <code>@ bytecode N</code> 偏移可以倒推到 JS 哪一行触发的。</li>
+          </ul>
+        </div>
+        <div class="lang-en-only">
+          <ul>
+            <li><strong>raw status</strong> is an integer; each binary bit is a flag. For example, <code>81</code> = <code>1010001</code> = bits 0+4+6 = <code>kIsFunction | kOptimized | kTurboFanned</code> — exactly the line in the screenshot.</li>
+            <li><strong>The <code>feedback vector</code> section of <code>%DebugPrint</code></strong> is where diagnosis really happens. Look for <code>slot #N &lt;op&gt;::&lt;type&gt;</code>: <code>SignedSmall</code> / <code>Number</code> = monomorphic (fast); <code>Any</code> or <code>MEGAMORPHIC</code> = the "already sick" state from the article.</li>
+            <li><strong><code>--trace-deopt</code></strong> prints every deopt event with its reason (<code>not a Smi</code> / <code>wrong map</code>) and the <code>@ bytecode N</code> offset, which lets you backtrack to the exact JS line.</li>
+          </ul>
+        </div>
+
+        <h6 class="lang-zh-only">几个常见坑</h6>
+        <h6 class="lang-en-only">A few gotchas</h6>
+
+        <div class="lang-zh-only">
+          <ul>
+            <li>看到 <code>SyntaxError: Unexpected token '%'</code> 就是 <code>--allow-natives-syntax</code> 漏了——是 parse 错不是 runtime 错,整个文件加载不了。</li>
+            <li>Node 版本要够新:Sparkplug 17+,Maglev 默认开是 20.6+,Node 22 全套齐。</li>
+            <li><code>%DebugPrint</code> 输出在 stderr。管道 <code>grep</code> 时记得 <code>2&gt;&amp;1</code>。</li>
+            <li>必须真的<em>喂混合类型</em>(数组里既有 number 又有 string 又有 object),否则函数一直停在单态,看不到 <code>::Any</code>。</li>
+            <li>同一段代码<em>第一次跑 vs 跑过几百万次后</em> feedback 是不同的——这就是 V8 性能曲线的本质,要看稳态就让循环跑足够多次。</li>
+          </ul>
+        </div>
+        <div class="lang-en-only">
+          <ul>
+            <li><code>SyntaxError: Unexpected token '%'</code> means you forgot <code>--allow-natives-syntax</code> — it's a parse error, not runtime, so the whole file fails to load.</li>
+            <li>Node version matters: Sparkplug needs 17+, Maglev defaults on at 20.6+, Node 22 has all of it.</li>
+            <li><code>%DebugPrint</code> writes to stderr — pipe <code>2&gt;&amp;1</code> if you want to grep.</li>
+            <li>You really need to feed <em>mixed types</em> (the array has number, string, and object). Otherwise the function stays monomorphic and you'll never see <code>::Any</code>.</li>
+            <li>The feedback for the same code is different on the <em>first call</em> vs after <em>millions of calls</em>. That's the V8 perf curve in action — let the loop run long enough to reach steady state.</li>
+          </ul>
+        </div>
+      </div>
+    </details>
+
     <h3 class="sub lang-zh-only">第三刀:看反优化日志</h3>
     <h3 class="sub lang-en-only">Cut #3: read the deopt log</h3>
 
@@ -5130,6 +5251,151 @@ Return</div>
       <span class="src-line"><span class="src-good">  - bytecode size: 28 bytes                       ; 远低于 60K 阈值</span></span>
       <span class="src-line"><span class="src-good">  - inlined into px2rem? <span class="src-num">YES</span> (3 call sites)        ; ★ 被 inline 展开了</span></span>
     </div>
+
+    <details class="extended">
+      <summary>
+        <span class="ext-tag"><span class="lang-zh-only">亲手跑一遍</span><span class="lang-en-only">try it yourself</span></span>
+        <span class="lang-zh-only">验证你的重写真的单态了 — 完整 a.js + node 命令</span>
+        <span class="lang-en-only">Verify your rewrite really is monomorphic — full a.js + node command</span>
+      </summary>
+      <div class="ext-body">
+        <div class="lang-zh-only">
+          <p>把下面这段存成 <code>a.js</code>,跑 <code>node --allow-natives-syntax a.js</code>。它会让你亲眼看到上面那个截图里的 <code>BinaryOp::<strong>Number</strong></code>(单态!)和 <code>kind: <strong>TURBOFAN</strong></code>。如果你看到的不是 Number 而是 Any——说明你的重写还有漏网之鱼。</p>
+          <p>对照 Ch15 那段 v0 的 a.js 一起跑,差距更直观:同一台机器、同一种循环规模,前者吐 <code>::Any</code>,后者吐 <code>::Number</code>;前者 ~240ms,后者 ~24ms。这个对比就是 10× 的<em>物理证据</em>。</p>
+        </div>
+        <div class="lang-en-only">
+          <p>Save the snippet below as <code>a.js</code> and run <code>node --allow-natives-syntax a.js</code>. You'll see the <code>BinaryOp::<strong>Number</strong></code> (monomorphic!) and <code>kind: <strong>TURBOFAN</strong></code> from the screenshot above with your own eyes. If you see <code>Any</code> instead of <code>Number</code> — your rewrite still has a leak.</p>
+          <p>Run this side-by-side with the v0 <code>a.js</code> from Ch15 and the contrast is concrete: same machine, same loop size, but one prints <code>::Any</code> and the other prints <code>::Number</code>; one takes ~240ms, the other ~24ms. That's the <em>physical proof</em> of 10×.</p>
+        </div>
+
+        <div class="src-stack">
+          <div class="src-h">
+            <span>a.js</span>
+            <span class="src-tag" style="color:#6ec48f">v1 · 单态分发</span>
+          </div>
+          <span class="src-line"><span class="src-comment">// 提到模块顶层,只编一次 (Rule 9)</span></span>
+          <span class="src-line"><span class="src-kw">const</span> RE = /^(-?\d+(?:\.\d+)?)(px|rem|em|%)?$/;</span>
+          <span class="src-line"><span class="src-kw">const</span> UNIT_PX = <span class="src-num">0</span>, UNIT_REM = <span class="src-num">1</span>, UNIT_EM = <span class="src-num">2</span>, UNIT_PCT = <span class="src-num">3</span>;</span>
+          <span class="src-line"><span class="src-kw">const</span> UNIT_MAP = { px: UNIT_PX, rem: UNIT_REM, em: UNIT_EM, <span class="src-str">'%'</span>: UNIT_PCT };</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// 三个单态分支 (Rule 1 + Rule 3)</span></span>
+          <span class="src-line"><span class="src-kw">function</span> <span class="src-fn">px2remNumber</span>(value, base) {</span>
+          <span class="src-line">  <span class="src-kw">return</span> value / base;</span>
+          <span class="src-line">}</span>
+          <span class="src-line"><span class="src-kw">function</span> <span class="src-fn">px2remString</span>(input, base) {</span>
+          <span class="src-line">  <span class="src-kw">const</span> m = input.<span class="src-method">match</span>(RE);</span>
+          <span class="src-line">  <span class="src-kw">if</span> (!m) <span class="src-kw">return</span> <span class="src-num">0</span>;</span>
+          <span class="src-line">  <span class="src-kw">const</span> v = +m[<span class="src-num">1</span>];</span>
+          <span class="src-line">  <span class="src-kw">const</span> u = UNIT_MAP[m[<span class="src-num">2</span>]] ?? UNIT_PX;</span>
+          <span class="src-line">  <span class="src-kw">if</span> (u === UNIT_REM || u === UNIT_EM) <span class="src-kw">return</span> v;</span>
+          <span class="src-line">  <span class="src-kw">if</span> (u === UNIT_PCT) <span class="src-kw">return</span> v / <span class="src-num">100</span>;</span>
+          <span class="src-line">  <span class="src-kw">return</span> v / base;</span>
+          <span class="src-line">}</span>
+          <span class="src-line"><span class="src-kw">function</span> <span class="src-fn">px2remObject</span>(input, base) {</span>
+          <span class="src-line">  <span class="src-kw">const</span> u = UNIT_MAP[input.unit] ?? UNIT_PX;</span>
+          <span class="src-line">  <span class="src-kw">const</span> v = input.value;</span>
+          <span class="src-line">  <span class="src-kw">if</span> (u === UNIT_REM || u === UNIT_EM) <span class="src-kw">return</span> v;</span>
+          <span class="src-line">  <span class="src-kw">if</span> (u === UNIT_PCT) <span class="src-kw">return</span> v / <span class="src-num">100</span>;</span>
+          <span class="src-line">  <span class="src-kw">return</span> v / base;</span>
+          <span class="src-line">}</span>
+          <span class="src-line"><span class="src-kw">function</span> <span class="src-fn">px2rem</span>(input, base) {</span>
+          <span class="src-line">  <span class="src-kw">if</span> (<span class="src-kw">typeof</span> input === <span class="src-str">'number'</span>) <span class="src-kw">return</span> <span class="src-fn">px2remNumber</span>(input, base);</span>
+          <span class="src-line">  <span class="src-kw">if</span> (<span class="src-kw">typeof</span> input === <span class="src-str">'string'</span>) <span class="src-kw">return</span> <span class="src-fn">px2remString</span>(input, base);</span>
+          <span class="src-line">  <span class="src-kw">return</span> <span class="src-fn">px2remObject</span>(input, base);</span>
+          <span class="src-line">}</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// 同样的混合输入,跑同样次数</span></span>
+          <span class="src-line"><span class="src-kw">const</span> samples = [<span class="src-num">12</span>, <span class="src-str">'14px'</span>, { value: <span class="src-num">16</span>, unit: <span class="src-str">'rem'</span> }, <span class="src-num">20</span>, <span class="src-str">'1.5em'</span>];</span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">time</span>(<span class="src-str">'v1'</span>);</span>
+          <span class="src-line"><span class="src-kw">for</span> (<span class="src-kw">let</span> i = <span class="src-num">0</span>; i &lt; <span class="src-num">1_000_000</span>; i++) <span class="src-fn">px2rem</span>(samples[i % <span class="src-num">5</span>], <span class="src-num">16</span>);</span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">timeEnd</span>(<span class="src-str">'v1'</span>);</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// 强制三个单态分支都升级到 TurboFan</span></span>
+          <span class="src-line">%OptimizeFunctionOnNextCall(px2remNumber);</span>
+          <span class="src-line">%OptimizeFunctionOnNextCall(px2remString);</span>
+          <span class="src-line">%OptimizeFunctionOnNextCall(px2remObject);</span>
+          <span class="src-line"><span class="src-fn">px2rem</span>(<span class="src-num">12</span>, <span class="src-num">16</span>);</span>
+          <span class="src-line"><span class="src-fn">px2rem</span>(<span class="src-str">'14px'</span>, <span class="src-num">16</span>);</span>
+          <span class="src-line"><span class="src-fn">px2rem</span>({ value: <span class="src-num">16</span>, unit: <span class="src-str">'rem'</span> }, <span class="src-num">16</span>);</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// 重点 — 看 px2remNumber 的 feedback vector,期望看到 BinaryOp::Number</span></span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">log</span>(<span class="src-str">'\n--- px2remNumber 优化状态 ---'</span>);</span>
+          <span class="src-line"><span class="src-kw">const</span> sN = %GetOptimizationStatus(px2remNumber);</span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">log</span>(<span class="src-str">'binary:'</span>, sN.<span class="src-method">toString</span>(<span class="src-num">2</span>),</span>
+          <span class="src-line">  <span class="src-str">'  TurboFan?'</span>, !!(sN &amp; (<span class="src-num">1</span> &lt;&lt; <span class="src-num">6</span>)),</span>
+          <span class="src-line">  <span class="src-str">'  Optimized?'</span>, !!(sN &amp; (<span class="src-num">1</span> &lt;&lt; <span class="src-num">4</span>)));</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">log</span>(<span class="src-str">'\n--- %DebugPrint(px2remNumber) ---'</span>);</span>
+          <span class="src-line">%DebugPrint(px2remNumber);</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// 同样看 String / Object 那两个分支的 feedback</span></span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">log</span>(<span class="src-str">'\n--- %DebugPrint(px2remString) ---'</span>);</span>
+          <span class="src-line">%DebugPrint(px2remString);</span>
+          <span class="src-line"><span class="src-method">console</span>.<span class="src-fn">log</span>(<span class="src-str">'\n--- %DebugPrint(px2remObject) ---'</span>);</span>
+          <span class="src-line">%DebugPrint(px2remObject);</span>
+        </div>
+
+        <h6 class="lang-zh-only">跑法</h6>
+        <h6 class="lang-en-only">How to run</h6>
+
+        <div class="src-stack">
+          <div class="src-h">
+            <span>terminal</span>
+            <span class="src-tag">node 22+</span>
+          </div>
+          <span class="src-line">$ node --allow-natives-syntax a.js</span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment"># 想看每次 inline 展开和 TurboFan 真正的输出汇编:</span></span>
+          <span class="src-line">$ node --allow-natives-syntax \</span>
+          <span class="src-line">       --trace-opt --trace-deopt --print-opt-code \</span>
+          <span class="src-line">       a.js 2&gt;&amp;1 | less</span>
+        </div>
+
+        <h6 class="lang-zh-only">期望看到的输出</h6>
+        <h6 class="lang-en-only">What you should see</h6>
+
+        <div class="lang-zh-only">
+          <p>三个分支函数的 feedback vector 段都应该长这样,跟 v0 形成强对比:</p>
+        </div>
+        <div class="lang-en-only">
+          <p>All three branch functions should show feedback vectors like this — a sharp contrast with v0:</p>
+        </div>
+
+        <div class="src-stack">
+          <div class="src-h">
+            <span><span class="lang-zh-only">期望节选</span><span class="lang-en-only">expected excerpt</span></span>
+            <span class="src-tag" style="color:#6ec48f">verified mono</span>
+          </div>
+          <span class="src-line"><span class="src-comment">// px2remNumber:纯算术,所以 BinaryOp 是 Number 单态</span></span>
+          <span class="src-line"><span class="src-good">- slot #0 BinaryOp BinaryOp::<span class="src-cls">Number</span>            ; ★ 单态(<em>不是 Any</em>)</span></span>
+          <span class="src-line"><span class="src-good">- code: kind: <span class="src-cls">TURBOFAN</span>                          ; ★ 已经在峰值层</span></span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// px2remString:静态属性 LoadIC 不退化</span></span>
+          <span class="src-line"><span class="src-good">- slot #X LoadProperty (LoadIC) <span class="src-cls">MONOMORPHIC</span>     ; ★ 单态(<em>不是 MEGAMORPHIC</em>)</span></span>
+          <span class="src-line"></span>
+          <span class="src-line"><span class="src-comment">// px2remObject:input.value / input.unit 全部 IC 命中</span></span>
+          <span class="src-line"><span class="src-good">- slot #X LoadProperty (LoadIC) <span class="src-cls">MONOMORPHIC</span>     ; ★ 同上</span></span>
+        </div>
+
+        <h6 class="lang-zh-only">对照 + 自检</h6>
+        <h6 class="lang-en-only">Compare + self-check</h6>
+
+        <div class="lang-zh-only">
+          <ol>
+            <li>把 Ch15 那个 v0 的 <code>a.js</code> 也跑一遍,把两次终端输出贴一起。<strong>确认 v0 看到 <code>::Any</code> + <code>MEGAMORPHIC</code>,v1 看到 <code>::Number</code> + <code>MONOMORPHIC</code></strong>——这就是十倍提速的<em>状态机层面</em>证据。</li>
+            <li>如果 v1 任意一个分支函数还看到 <code>::Any</code>:大概率是你不小心给它喂了非预期类型(比如 px2remNumber 收到了 NaN 或 boolean)。重检调用方分发逻辑。</li>
+            <li>如果三个分支看到的 <code>kind</code> 不是 <code>TURBOFAN</code> 而是 <code>BASELINE</code> / <code>IGNITION</code>:说明 1M 次循环还没跑够升级阈值,或者函数太长触发了 <code>max_optimized_bytecode_size</code>(Ch9)。试试加大循环或拆得更小。</li>
+          </ol>
+        </div>
+        <div class="lang-en-only">
+          <ol>
+            <li>Run the v0 <code>a.js</code> from Ch15 too and paste both terminal outputs side by side. <strong>Confirm v0 shows <code>::Any</code> + <code>MEGAMORPHIC</code> while v1 shows <code>::Number</code> + <code>MONOMORPHIC</code></strong> — that's the state-machine evidence behind the 10×.</li>
+            <li>If any v1 branch still shows <code>::Any</code>: most likely you accidentally fed it an unexpected type (e.g. <code>px2remNumber</code> got NaN or a boolean). Audit your dispatch.</li>
+            <li>If <code>kind</code> isn't <code>TURBOFAN</code> but <code>BASELINE</code> / <code>IGNITION</code>: either the 1M-call loop didn't cross the tiering threshold, or the function is over <code>max_optimized_bytecode_size</code> (Ch9). Bump the loop or split smaller.</li>
+          </ol>
+        </div>
+      </div>
+    </details>
 
     <h3 class="sub lang-zh-only">十倍是怎么算出来的</h3>
     <h3 class="sub lang-en-only">Where the 10× actually comes from</h3>
