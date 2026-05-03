@@ -843,6 +843,94 @@
     font-weight: 700;
   }
 
+  /* ---------- ISA comparison (stack vs accumulator vs register) ---------- */
+  .isa-cmp {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 16px 0;
+  }
+  .isa-col {
+    background: var(--bg-soft);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--rule);
+    border-radius: 4px;
+    padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .isa-col.stack { border-top-color: var(--copper); }
+  .isa-col.acc   { border-top-color: var(--accent); }
+  .isa-col.reg   { border-top-color: var(--asm); }
+  .isa-h {
+    font-family: var(--sans); font-size: 12px; font-weight: 700;
+    color: var(--ink);
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .isa-col.stack .isa-h { color: var(--copper); }
+  .isa-col.acc   .isa-h { color: var(--accent); }
+  .isa-col.reg   .isa-h { color: var(--asm); }
+  .isa-h .isa-tag {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.06em;
+    color: var(--ink-mute);
+    font-weight: 400;
+  }
+  .isa-flow {
+    background: var(--paper);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    padding: 10px 12px;
+    font-family: var(--mono); font-size: 10.5px;
+    line-height: 1.7;
+  }
+  .isa-flow .isa-step {
+    display: flex; gap: 8px; align-items: baseline;
+    border-bottom: 1px dotted var(--rule-soft);
+    padding: 3px 0;
+  }
+  .isa-flow .isa-step:last-child { border-bottom: none; }
+  .isa-flow .isa-n {
+    color: var(--ink-mute); font-size: 9.5px;
+    letter-spacing: 0.04em;
+    width: 22px; flex-shrink: 0;
+  }
+  .isa-flow .isa-op { color: var(--ink); flex-shrink: 0; }
+  .isa-flow .isa-state {
+    color: var(--ink-mute);
+    margin-left: auto;
+    font-size: 10px;
+  }
+  .isa-flow .isa-state strong {
+    color: var(--accent);
+    font-weight: 700;
+  }
+  .isa-flow .isa-state .stk {
+    color: var(--copper); font-weight: 700;
+  }
+  .isa-bc {
+    background: var(--ink); color: #d8d8d8;
+    border-radius: 3px;
+    padding: 10px 12px;
+    font-family: var(--mono); font-size: 11px; line-height: 1.7;
+    overflow-x: auto;
+  }
+  .isa-bc .kw  { color: #c977c6; }
+  .isa-bc .reg { color: #5fc18a; }
+  .isa-bc .num { color: #d1855a; }
+  .isa-bc .cm  { color: #5a6172; font-style: italic; }
+  .isa-foot {
+    font-family: var(--sans); font-size: 11.5px;
+    color: var(--ink-mute); line-height: 1.6;
+    border-top: 1px dashed var(--rule-soft);
+    padding-top: 8px;
+  }
+  .isa-foot strong { color: var(--ink); font-weight: 600; }
+  @media (max-width: 720px) {
+    .isa-cmp { grid-template-columns: 1fr; }
+  }
+
   /* ---------- HeapObject visualization ---------- */
   .heap-vis {
     display: grid;
@@ -2770,6 +2858,187 @@ Return</div>
       <p>The cost is the interpreter loop: every instruction pays "fetch → decode → jump-to-handler → execute → jump-back". That loop alone is roughly an order of magnitude slower than running raw machine code. <strong>That's why Sparkplug exists</strong> — translate bytecode 1-to-1 into asm and kill the dispatch loop.</p>
     </div>
 
+    <details class="extended">
+      <summary>
+        <span class="ext-tag"><span class="lang-zh-only">扩展阅读</span><span class="lang-en-only">extended</span></span>
+        <span class="lang-zh-only">栈机 vs 寄存器机 — V8 为什么选了"带累加寄存器的栈机"</span>
+        <span class="lang-en-only">Stack vs register machines — why V8 chose "stack with accumulator"</span>
+      </summary>
+      <div class="ext-body">
+        <div class="lang-zh-only">
+          <p>"虚拟机指令集"的<em>形态</em>历史上分两大流派,选哪种几十年来一直是 VM 设计的<strong>第一刀</strong>:</p>
+          <ul>
+            <li><strong>栈机 (Stack machine)</strong>:操作数在一条<em>隐式栈</em>上 push/pop。代表:JVM(Java bytecode)、CPython 3.10 及以前、.NET CIL、早期 Lua。</li>
+            <li><strong>寄存器机 (Register machine)</strong>:操作数显式编码到指令里(三地址码),没有栈。代表:Lua 5.0+、Dalvik(Android)、JavaScriptCore LLInt、Hermes。</li>
+            <li><strong>带累加寄存器的栈机 (Stack-with-accumulator)</strong>:V8 Ignition 选的混合形态——有一个<em>隐式累加寄存器</em>(acc)+ 256 个显式寄存器(<code>r0</code>~<code>r255</code>),所有运算结果默认进 acc,寄存器只用来"暂存"。</li>
+          </ul>
+          <p>把 <code>c = a + b</code> 在三种 ISA 里编出来,差距一目了然:</p>
+        </div>
+        <div class="lang-en-only">
+          <p>Bytecode ISAs split into two historical schools — picking one is one of the <strong>first decisions</strong> any VM designer makes:</p>
+          <ul>
+            <li><strong>Stack machine</strong>: operands flow through an <em>implicit stack</em>, push/pop driven. Examples: JVM (Java bytecode), CPython ≤ 3.10, .NET CIL, early Lua.</li>
+            <li><strong>Register machine</strong>: operands are encoded explicitly into the instruction (three-address code), no stack. Examples: Lua 5.0+, Dalvik (Android), JavaScriptCore LLInt, Hermes.</li>
+            <li><strong>Stack with accumulator</strong>: V8 Ignition's hybrid — one <em>implicit accumulator register</em> (acc) + 256 explicit registers (<code>r0</code>~<code>r255</code>). All ops default to writing the result into acc; registers are just temporaries.</li>
+          </ul>
+          <p>Compile <code>c = a + b</code> in three ISA flavors and the differences become obvious:</p>
+        </div>
+
+        <div class="isa-cmp">
+          <div class="isa-col stack">
+            <div class="isa-h">
+              <span class="lang-zh-only">栈机</span>
+              <span class="lang-en-only">Stack machine</span>
+              <span class="isa-tag">JVM · CPython</span>
+            </div>
+            <div class="isa-flow">
+              <div class="isa-step"><span class="isa-n">①</span><span class="isa-op">push a</span><span class="isa-state"><span class="stk">stack: [a]</span></span></div>
+              <div class="isa-step"><span class="isa-n">②</span><span class="isa-op">push b</span><span class="isa-state"><span class="stk">[a, b]</span></span></div>
+              <div class="isa-step"><span class="isa-n">③</span><span class="isa-op">add</span><span class="isa-state"><span class="stk">[a+b]</span></span></div>
+              <div class="isa-step"><span class="isa-n">④</span><span class="isa-op">store c</span><span class="isa-state"><span class="stk">[]</span></span></div>
+            </div>
+            <div class="isa-bc">
+              <span><span class="kw">iload</span>  a       <span class="cm">; 1B</span></span><br>
+              <span><span class="kw">iload</span>  b       <span class="cm">; 1B</span></span><br>
+              <span><span class="kw">iadd</span>           <span class="cm">; 1B</span></span><br>
+              <span><span class="kw">istore</span> c       <span class="cm">; 1B</span></span>
+            </div>
+            <div class="isa-foot">
+              <strong><span class="lang-zh-only">+ 指令短(无操作数)、好生成、好移植</span><span class="lang-en-only">+ tiny opcodes, easy to emit, portable</span></strong><br>
+              <span class="lang-zh-only">− 指令多(4 条做一件事),解释器要频繁读写"栈顶"</span>
+              <span class="lang-en-only">− many ops per logical step (4 here), interpreter hammers stack top</span>
+            </div>
+          </div>
+
+          <div class="isa-col acc">
+            <div class="isa-h">
+              <span class="lang-zh-only">带累加器</span>
+              <span class="lang-en-only">Stack + accumulator</span>
+              <span class="isa-tag">V8 · Ignition</span>
+            </div>
+            <div class="isa-flow">
+              <div class="isa-step"><span class="isa-n">①</span><span class="isa-op">Ldar a</span><span class="isa-state">acc = <strong>a</strong></span></div>
+              <div class="isa-step"><span class="isa-n">②</span><span class="isa-op">Add b, [0]</span><span class="isa-state">acc = <strong>a+b</strong></span></div>
+              <div class="isa-step"><span class="isa-n">③</span><span class="isa-op">Star c</span><span class="isa-state">c = <strong>a+b</strong></span></div>
+              <div class="isa-step"><span class="isa-n">&nbsp;</span><span class="isa-op" style="color:var(--ink-mute)">(acc 隐式)</span><span class="isa-state">&nbsp;</span></div>
+            </div>
+            <div class="isa-bc">
+              <span><span class="kw">Ldar</span>  <span class="reg">a</span>          <span class="cm">; 2B</span></span><br>
+              <span><span class="kw">Add</span>   <span class="reg">b</span>, <span class="num">[0]</span>      <span class="cm">; 3B (含 fb)</span></span><br>
+              <span><span class="kw">Star</span>  <span class="reg">c</span>          <span class="cm">; 2B</span></span>
+            </div>
+            <div class="isa-foot">
+              <strong><span class="lang-zh-only">+ 指令短(acc 不占操作数位)+ 比纯栈机快</span><span class="lang-en-only">+ tight (acc costs no operand bits) + faster than pure stack</span></strong><br>
+              <span class="lang-zh-only">− 编码不如纯寄存器机简单</span>
+              <span class="lang-en-only">− encoding rules slightly trickier than pure register</span>
+            </div>
+          </div>
+
+          <div class="isa-col reg">
+            <div class="isa-h">
+              <span class="lang-zh-only">寄存器机</span>
+              <span class="lang-en-only">Register machine</span>
+              <span class="isa-tag">JSC · Hermes · Lua 5+</span>
+            </div>
+            <div class="isa-flow">
+              <div class="isa-step"><span class="isa-n">①</span><span class="isa-op">add r3, r1, r2</span><span class="isa-state">r3 = r1+r2</span></div>
+              <div class="isa-step"><span class="isa-n">&nbsp;</span><span class="isa-op" style="color:var(--ink-mute)">r1, r2 已是输入</span><span class="isa-state">&nbsp;</span></div>
+              <div class="isa-step"><span class="isa-n">&nbsp;</span><span class="isa-op" style="color:var(--ink-mute)">r3 已是输出</span><span class="isa-state">&nbsp;</span></div>
+              <div class="isa-step"><span class="isa-n">&nbsp;</span><span class="isa-op" style="color:var(--ink-mute)">(单条搞定)</span><span class="isa-state">&nbsp;</span></div>
+            </div>
+            <div class="isa-bc">
+              <span><span class="kw">add</span>   <span class="reg">r3</span>, <span class="reg">r1</span>, <span class="reg">r2</span>   <span class="cm">; 4B</span></span><br>
+              <span class="cm">; 1 条指令 = 1 个高级操作</span><br>
+              <span class="cm">; 但每条指令更长</span>
+            </div>
+            <div class="isa-foot">
+              <strong><span class="lang-zh-only">+ 解释器跑得最快(指令少)</span><span class="lang-en-only">+ interpreter is fastest (fewer instructions)</span></strong><br>
+              <span class="lang-zh-only">− 指令长(操作数占位多),代码体积更大</span>
+              <span class="lang-en-only">− longer per-op encoding → larger code size</span>
+            </div>
+          </div>
+        </div>
+
+        <h6 class="lang-zh-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--copper);margin:22px 0 6px;font-weight:700">主流引擎选型对照</h6>
+        <h6 class="lang-en-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--copper);margin:22px 0 6px;font-weight:700">What the major engines picked</h6>
+
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th><span class="lang-zh-only">引擎 / 语言</span><span class="lang-en-only">Engine / lang</span></th>
+              <th><span class="lang-zh-only">ISA 形态</span><span class="lang-en-only">ISA shape</span></th>
+              <th><span class="lang-zh-only">为什么这么选</span><span class="lang-en-only">Why</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>V8 Ignition</strong> · Chrome / Node</td>
+              <td><span class="lang-zh-only">栈 + 累加器(混合)</span><span class="lang-en-only">stack + accumulator</span></td>
+              <td><span class="lang-zh-only">2016 年从纯解释器(JIT 直接编源码)切到 Ignition · 优先<strong>缩短启动时间 + 节省内存</strong>(短字节码) · acc 让指令编码紧凑</span><span class="lang-en-only">2016 cutover from JIT-only to Ignition · optimized for <strong>fast start-up + small footprint</strong> (short bytecode) · acc keeps encoding compact</span></td>
+            </tr>
+            <tr>
+              <td><strong>JSCore LLInt</strong> · Safari</td>
+              <td><span class="lang-zh-only">寄存器机(3 地址码)</span><span class="lang-en-only">register (3-address)</span></td>
+              <td><span class="lang-zh-only">优先解释器<strong>稳态吞吐</strong> · 体积代价由 LLInt 的紧凑编码缓解 · 后端 LLVM JIT 也对寄存器 IR 友好</span><span class="lang-en-only">optimized for <strong>steady-state throughput</strong> · LLInt's encoding mitigates the size cost · LLVM-based JIT thrives on register IR</span></td>
+            </tr>
+            <tr>
+              <td><strong>SpiderMonkey</strong> · Firefox</td>
+              <td><span class="lang-zh-only">纯栈机</span><span class="lang-en-only">pure stack</span></td>
+              <td><span class="lang-zh-only">最早期(1996)就这么定的 · ECMA-262 spec 本身用栈语义描述 · CacheIR 在解释器之上加优化 · 没改架构</span><span class="lang-en-only">picked in 1996 · ECMA-262 spec itself uses stack semantics · CacheIR layered on top instead of redesign</span></td>
+            </tr>
+            <tr>
+              <td><strong>Hermes</strong> · React Native</td>
+              <td><span class="lang-zh-only">寄存器机</span><span class="lang-en-only">register</span></td>
+              <td><span class="lang-zh-only">没有 JIT(iOS 不允许动态生成代码)· 解释器是<em>唯一</em>跑代码的层,所以必须最快 · 寄存器机解释器吞吐高</span><span class="lang-en-only">no JIT (iOS bans dynamic code-gen) · the interpreter is the <em>only</em> execution path, so it has to be fast · register machines lead in interpreter throughput</span></td>
+            </tr>
+            <tr>
+              <td><strong>JVM</strong> · Java</td>
+              <td><span class="lang-zh-only">纯栈机</span><span class="lang-en-only">pure stack</span></td>
+              <td><span class="lang-zh-only">1995 年的设计选择 · 优先<strong>跨平台编码紧凑</strong> · HotSpot JIT 把字节码再编译成寄存器机器码,补回性能</span><span class="lang-en-only">1995 design call · prioritized <strong>cross-platform compact encoding</strong> · HotSpot JIT rewrites bytecode into register machine code at runtime</span></td>
+            </tr>
+            <tr>
+              <td><strong>Lua 5+</strong></td>
+              <td><span class="lang-zh-only">寄存器机</span><span class="lang-en-only">register</span></td>
+              <td><span class="lang-zh-only">2003 年 Lua 5.0 发布时从栈机切到寄存器机 · 论文显示解释器吞吐<em>提升 2-3×</em> · 是这个领域的经典转折点</span><span class="lang-en-only">Lua 5.0 (2003) switched from stack to register · published interpreter throughput jumped <em>2–3×</em> · the canonical case study</span></td>
+            </tr>
+            <tr>
+              <td><strong>CPython 3.11+</strong></td>
+              <td><span class="lang-zh-only">栈机(加 specialization)</span><span class="lang-en-only">stack + specialization</span></td>
+              <td><span class="lang-zh-only">没改 ISA 形态 · 但 3.11 加了"specializing adaptive interpreter":在不改字节码的前提下,运行时把热点字节码替换成类型专用版,变相获得寄存器机的部分收益</span><span class="lang-en-only">ISA unchanged · but 3.11 added "specializing adaptive interpreter": rewrite hot bytecodes into type-specialized versions at runtime — backdoor register-machine wins</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h6 class="lang-zh-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--copper);margin:22px 0 6px;font-weight:700">V8 为什么选 "栈 + 累加器"</h6>
+        <h6 class="lang-en-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:var(--copper);margin:22px 0 6px;font-weight:700">Why V8 specifically picked "stack + accumulator"</h6>
+
+        <div class="lang-zh-only">
+          <p>2016 年 Ignition 设计文档里写的<strong>三个原因</strong>:</p>
+          <ol>
+            <li><strong>启动速度优先</strong>:Web 主线程冷启动每减 1ms 都是用户能感知的。<em>短字节码 = 短编译时间 = 短启动延迟</em>。栈+累加器的编码比纯寄存器机短约 20-30%。</li>
+            <li><strong>内存优先</strong>:Chrome 多 tab 场景每个 V8 isolate 都要存一份字节码。<em>短字节码 = 小内存</em>——这也是 Chrome 一直被骂"吃内存"时少有的<em>反向收益</em>。</li>
+            <li><strong>给 JIT 留弹性</strong>:解释器吞吐不是 V8 的瓶颈(冷代码很快被 JIT 接管)。Ignition 故意做得"够用就好",把性能优化让给 Sparkplug / Maglev / TurboFan——这才是 V8 的设计哲学。</li>
+          </ol>
+          <p>有意思的是:<strong>JSCore 走完全相反的方向</strong>——纯寄存器机 LLInt 是为<em>解释器吞吐</em>优化的,因为 JSC 历来更看重"没 JIT 时也得快"(早期 iOS 限制 + 服务端场景)。两个引擎的 ISA 选型,本质上反映的是两家公司对"<em>JIT 之前那段时间该多重要</em>"的不同押注。</p>
+        </div>
+        <div class="lang-en-only">
+          <p>The 2016 Ignition design doc listed <strong>three reasons</strong>:</p>
+          <ol>
+            <li><strong>Start-up first</strong>: every millisecond on the Web main thread cold start is user-perceptible. <em>Short bytecode = short compile time = shorter time-to-first-paint</em>. Stack+accumulator encoding is ~20–30% shorter than pure register.</li>
+            <li><strong>Memory first</strong>: Chrome's multi-tab world stores a bytecode copy per isolate. <em>Short bytecode = less memory</em> — a rare "we got smaller" win for Chrome.</li>
+            <li><strong>Defer to the JIT</strong>: interpreter throughput isn't V8's bottleneck — JITs take over quickly. Ignition is deliberately "good enough", leaving optimization to Sparkplug / Maglev / TurboFan. That's V8's design philosophy.</li>
+          </ol>
+          <p>Tellingly, <strong>JSCore went the opposite way</strong> — its pure-register LLInt is optimized for <em>interpreter throughput</em>, because JSC has always cared more about "fast even without JIT" (early iOS restrictions + server-side use cases). The two engines' ISA choices reflect different bets on <em>how much the time before the JIT kicks in matters</em>.</p>
+        </div>
+
+        <div class="case-study accent" style="margin-top:18px">
+          <div class="cs-tag"><span class="lang-zh-only">读源码线索</span><span class="lang-en-only">SOURCE READING POINTERS</span></div>
+          <p class="lang-zh-only">想看 V8 字节码 ISA 的全部 opcode,直接读 <code>v8/src/interpreter/bytecodes.h</code>——里面定义了 ~200 条 opcode + 每条的操作数布局。Lua 5.0 改寄存器机的经典论文是 Roberto Ierusalimschy 的 <em>"The Implementation of Lua 5.0"</em>(2005),JS 引擎设计参考最多的就是这篇。</p>
+          <p class="lang-en-only">For V8's full bytecode ISA, read <code>v8/src/interpreter/bytecodes.h</code> — ~200 opcodes with operand layout. The canonical paper on Lua's switch to register-based VMs is Roberto Ierusalimschy's <em>"The Implementation of Lua 5.0"</em> (2005) — the most-cited reference in JS-engine design discussions.</p>
+        </div>
+      </div>
+    </details>
+
     <h3 class="sub lang-zh-only">汇编里多出来的那些"看不懂"指令</h3>
     <h3 class="sub lang-en-only">The "extra" instructions you'll see in real asm</h3>
 
@@ -2964,7 +3233,7 @@ Return</div>
               <div class="hv-row val"><span>value 42.5</span><span class="hv-bytes">8 B</span></div>
             </div>
             <div class="hv-meta">
-              <strong><span class="lang-zh-only">至少 16 字节 + GC 头</span><span class="lang-en-only">≥ 16 bytes + GC header</span></strong><br>
+              <strong><span class="lang-zh-only">至少 16 字节(含 Map 头 + GC 税)</span><span class="lang-en-only">≥ 16 bytes (Map header + GC tax)</span></strong><br>
               <span class="lang-zh-only">1 次堆分配 · 每次 GC 都要扫</span>
               <span class="lang-en-only">1 heap alloc · scanned by every GC pass</span><br>
               <span class="lang-zh-only">读取要先解引用拿到 value</span>
@@ -2996,7 +3265,7 @@ Return</div>
               <div class="hv-row inobj"><span>in-obj #1 = 2 (= obj.y)</span><span class="hv-bytes">8 B</span></div>
             </div>
             <div class="hv-meta">
-              <strong><span class="lang-zh-only">≥ 40 字节 + GC 头 · 还引用一个 Hidden Class</span><span class="lang-en-only">≥ 40 bytes + GC header · plus a referenced Hidden Class</span></strong><br>
+              <strong><span class="lang-zh-only">≥ 40 字节(含 Map 头 + GC 税)· 还引用一个 Hidden Class</span><span class="lang-en-only">≥ 40 bytes (Map header + GC tax) · plus a referenced Hidden Class</span></strong><br>
               <span class="lang-zh-only">每次 GC 要追整条引用链 · 每次属性访问要走 IC 路径</span>
               <span class="lang-en-only">GC walks the entire reference chain · every property access goes through the IC</span>
             </div>
@@ -3010,6 +3279,114 @@ Return</div>
         <div class="lang-en-only">
           <p>So "<strong>SMI vs HeapObject</strong>" is the single biggest cost difference in V8 internals — and in a real page, most of those HeapObjects are just boxed numbers. That's why V8 fights so hard to keep things in SMI form.</p>
           <p>It's also why Phase III (Hidden Class, IC, Fast/Slow Properties) <em>matters so much</em>: every mechanism there is about making HeapObject access as cheap as SMI access.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="extended">
+      <summary>
+        <span class="ext-tag"><span class="lang-zh-only">扩展阅读</span><span class="lang-en-only">extended</span></span>
+        <span class="lang-zh-only">"GC 头" 到底是什么 — V8 GC 在每个 HeapObject 上收的三份税</span>
+        <span class="lang-en-only">What "GC header" really means — the three taxes V8 GC charges per HeapObject</span>
+      </summary>
+      <div class="ext-body">
+        <div class="lang-zh-only">
+          <p>"GC 头"是个简化叫法。<strong>V8 里其实没有像 JVM 那种独立的"GC header"字段</strong>——每个 HeapObject 的<em>第一个 word</em>(8 字节)就是 <strong>Map pointer</strong>,这个指针同时承担三件事:</p>
+          <ol>
+            <li><strong>类型描述</strong>:Map 告诉 V8"这是个 HeapNumber / String / JSObject / ..."</li>
+            <li><strong>Shape 描述</strong>:对 JSObject 来说,Map 就是 Hidden Class,记录有哪些字段、每个字段在哪个 offset。</li>
+            <li><strong>GC 入口</strong>:GC 拿到一个 HeapObject,先读它的 Map,从 Map 上得知"这个对象身上哪几个 word 是指针"——这样才知道接下来要追哪些位置。</li>
+          </ol>
+          <p>所以严格说,"GC 头"就是这个 Map pointer——它<em>不是额外加的字节</em>,就是对象本身的第一字段。HeapNumber 占 16 字节里,8 字节是 Map,另外 8 字节才是数值;<em>Map 占了一半</em>。</p>
+
+          <h6>那为什么我管它叫"GC 税"</h6>
+          <p>因为 Map 字段只是入场券。GC 真正<em>每次跑都要在每个 HeapObject 上做的事情</em>,远不止这一份字节占用。下面把 SMI 和 HeapObject 在一次完整 GC 周期里被对待的方式摆出来对比:</p>
+        </div>
+        <div class="lang-en-only">
+          <p>"GC header" is shorthand. <strong>V8 doesn't actually have a JVM-style separate "GC header" word</strong> — the <em>first word</em> (8 bytes) of every HeapObject is the <strong>Map pointer</strong>, and it pulls triple duty:</p>
+          <ol>
+            <li><strong>Type</strong>: the Map tells V8 "this is a HeapNumber / String / JSObject / ...".</li>
+            <li><strong>Shape</strong>: for JSObjects, the Map IS the Hidden Class — recording field names and their offsets.</li>
+            <li><strong>GC entry point</strong>: when the GC visits a HeapObject, it first reads the Map. The Map tells it "these N words on this object are pointers" — so the GC knows what to follow.</li>
+          </ol>
+          <p>Strictly, "GC header" is that Map pointer — <em>not extra bytes</em>, just the object's first field. A 16-byte HeapNumber spends 8 of those on the Map; the other 8 carry the value. <em>Half the box is the label</em>.</p>
+
+          <h6>So why call it "GC tax"</h6>
+          <p>Because the Map word is just the entry ticket. The GC's <em>per-HeapObject work on every cycle</em> is much more than those bytes. Compare what happens to a SMI vs a HeapObject across a full GC pass:</p>
+        </div>
+
+        <table class="cmp">
+          <thead>
+            <tr>
+              <th><span class="lang-zh-only">GC 阶段</span><span class="lang-en-only">GC phase</span></th>
+              <th>SMI</th>
+              <th>HeapObject</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="lang-zh-only">分配 (Allocation)</span><span class="lang-en-only">Allocation</span></td>
+              <td class="good"><span class="lang-zh-only">没分配 · 直接在寄存器/栈帧里</span><span class="lang-en-only">none · lives in register / stack</span></td>
+              <td><span class="lang-zh-only">在 NewSpace bump-allocate · 改 top 指针 + 写 Map + 写字段</span><span class="lang-en-only">bump-allocate in NewSpace · advance top + write Map + write fields</span></td>
+            </tr>
+            <tr>
+              <td><span class="lang-zh-only">标记 (Marking)</span><span class="lang-en-only">Marking</span></td>
+              <td class="good"><span class="lang-zh-only">末位是 0 → GC 一眼跳过</span><span class="lang-en-only">low bit 0 → GC skips at a glance</span></td>
+              <td class="bad"><span class="lang-zh-only">读 Map → 知道哪几位是指针 → 加入 mark queue → 翻一位 mark bit</span><span class="lang-en-only">read Map → learn which words are pointers → push to mark queue → flip a mark bit</span></td>
+            </tr>
+            <tr>
+              <td><span class="lang-zh-only">扫描 / 清理 (Sweeping)</span><span class="lang-en-only">Sweeping</span></td>
+              <td class="good"><span class="lang-zh-only">不存在</span><span class="lang-en-only">N/A</span></td>
+              <td><span class="lang-zh-only">未 mark → 空间归还 free list 或被 compact 阶段拿走</span><span class="lang-en-only">unmarked → returned to free list or claimed by compaction</span></td>
+            </tr>
+            <tr>
+              <td><span class="lang-zh-only">压缩 / 搬迁 (Compaction)</span><span class="lang-en-only">Compaction</span></td>
+              <td class="good"><span class="lang-zh-only">不存在</span><span class="lang-en-only">N/A</span></td>
+              <td class="heat"><span class="lang-zh-only">可能被搬到新地址 · 旧位置写一个 forwarding pointer · 所有指向它的指针都要改</span><span class="lang-en-only">may be relocated · old slot becomes a forwarding pointer · all referrers must be rewritten</span></td>
+            </tr>
+            <tr>
+              <td><span class="lang-zh-only">下次再活</span><span class="lang-en-only">Next survival</span></td>
+              <td class="good"><span class="lang-zh-only">无成本</span><span class="lang-en-only">free</span></td>
+              <td><span class="lang-zh-only">可能从 NewSpace 晋升到 OldSpace,改 Map · 多次幸存进 LargeObjectSpace</span><span class="lang-en-only">may promote NewSpace → OldSpace, Map updated · long-lived ones land in LargeObjectSpace</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div class="lang-zh-only">
+          <p>关键观察:<strong>SMI 在 GC 里整一行都是空的</strong>;HeapObject 每一行都要付代价。Chrome 一个普通页面 GC 触发频率是<em>每秒 10 次以上</em>(Scavenger 在 NewSpace 上的小 GC),每次 GC 都要遍历所有 HeapObject,把它们各自的 Map 读一遍、mark 一下、可能搬一下。这叠加起来才是"HeapObject 重"的真实重量。</p>
+
+          <h6>顺手解决一个常见困惑</h6>
+          <p><strong>那 mark bit 不也是每个对象一份吗?</strong> 是的,但 V8 的 mark bit <em>不存在对象本身上</em>——它存在一个独立的 <code>MarkingBitmap</code>(side table)里,每个堆地址对应 bitmap 里的一位。所以 HeapNumber 是真的 16 字节、JSObject 真的 40 字节,mark bit 不再额外加。但在算"GC 工作量"时,bitmap 那一位的读写依然是<em>每个对象一次</em>。</p>
+
+          <p>所以更精确地说,HeapObject 的"GC 税"包含:</p>
+          <ul>
+            <li>对象本身的 <strong>Map 指针</strong>(8 字节,占用对象内存)</li>
+            <li>side bitmap 里的 <strong>1 个 mark bit</strong>(不在对象上,但每个对象都要消耗一位)</li>
+            <li>每次 GC 周期对它的 <strong>4 步处理</strong>(allocate / mark / sweep / 可能 compact)</li>
+            <li>compaction 时可能产生的 <strong>forwarding pointer</strong> 和<em>所有引用方的指针更新</em></li>
+          </ul>
+          <p>这就是为什么你写一个 <code>{ x: 1 }</code> 看起来无害,在<em>每秒上百次新建/丢弃</em>的热点路径上能让 GC 占走 10-20% 的主线程时间——你交的不是字节,是 GC 的<em>劳动力</em>。</p>
+        </div>
+        <div class="lang-en-only">
+          <p>Key observation: <strong>the SMI column is blank for every row</strong>; the HeapObject column pays at every step. A typical Chrome page triggers GC <em>more than 10× per second</em> (Scavenger in NewSpace), and every cycle visits every HeapObject — reads its Map, marks it, possibly relocates it. Cumulatively, that's the real weight of "HeapObject is heavy".</p>
+
+          <h6>Sidebar: aren't mark bits per-object too?</h6>
+          <p>Yes, but V8's mark bits <em>don't live on the object itself</em>. They live in a separate <code>MarkingBitmap</code> (side table), one bit per heap address. So a HeapNumber really is 16 bytes and a JSObject really is 40 bytes — mark bits don't add to that. But when counting "GC work", the bitmap bit still costs one read+write <em>per object</em>.</p>
+
+          <p>So more precisely, the HeapObject "GC tax" comprises:</p>
+          <ul>
+            <li>The object's <strong>Map pointer</strong> (8 bytes, lives on the object)</li>
+            <li>One <strong>mark bit</strong> in the side bitmap (off-object but one per object)</li>
+            <li>The <strong>4-step pipeline</strong> per GC cycle (allocate / mark / sweep / maybe compact)</li>
+            <li>During compaction, possibly a <strong>forwarding pointer</strong> and <em>pointer rewriting at every referrer</em></li>
+          </ul>
+          <p>That's why an innocent-looking <code>{ x: 1 }</code> on a hot path that creates+discards <em>hundreds per second</em> can have GC eat 10–20% of main-thread time. You aren't paying bytes — you're paying GC <em>labor</em>.</p>
+        </div>
+
+        <div class="case-study accent" style="margin-top:18px">
+          <div class="cs-tag"><span class="lang-zh-only">怎么测</span><span class="lang-en-only">HOW TO MEASURE</span></div>
+          <p class="lang-zh-only">Chrome DevTools → Performance → 录一段,在 Summary 里看 <code>GC</code> 那一段占帧时间多少。常见信号:<strong>Minor GC</strong>(NewSpace,毫秒以下)很多 → 大量短命对象;<strong>Major GC</strong>(OldSpace,十几毫秒)出现 → 长命对象太多 / 内存压力。Phase IV 的"逃逸分析"规则就是为了让短命对象根本不上堆,直接消除前者。</p>
+          <p class="lang-en-only">Chrome DevTools → Performance → record a session and look at <code>GC</code>'s share in the Summary panel. Common signals: lots of <strong>Minor GC</strong> (NewSpace, sub-millisecond) → many short-lived objects; <strong>Major GC</strong> (OldSpace, 10s of ms) showing up → too many long-lived objects / memory pressure. Phase IV's "escape analysis" rule kills short-lived heap objects entirely so that Minor GC has nothing to scan.</p>
         </div>
       </div>
     </details>
