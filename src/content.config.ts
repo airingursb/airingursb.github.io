@@ -49,4 +49,17 @@ const notesEn = defineCollection({
   schema: noteSchema,
 });
 
-export const collections = { posts, postsEn, notes, notesEn };
+const workoutsSchema = z.object({
+  title: z.object({ zh: z.string(), en: z.string() }),
+  description: z.object({ zh: z.string(), en: z.string() }).optional(),
+  location: z.object({ zh: z.string(), en: z.string() }).optional(),
+  cover: z.string().optional(),
+  draft: z.boolean().default(false),
+});
+
+const workouts = defineCollection({
+  loader: glob({ pattern: '**/*.mdx', base: './src/content/workouts' }),
+  schema: workoutsSchema,
+});
+
+export const collections = { posts, postsEn, notes, notesEn, workouts };
