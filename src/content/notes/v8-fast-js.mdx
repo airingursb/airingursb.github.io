@@ -1,0 +1,38 @@
+---
+title: "JS 极致性能优化 —— V8 优化原理与一段热点函数的重生"
+date: "2026-05-03"
+tags: [JavaScript, V8, 性能工程, JIT, Hidden Class, Inline Cache]
+public: true
+summary: 一段慢 JS 怎么分析、怎么定位瓶颈、怎么基于 V8 内部原理改写到快十倍。20 章方法论手册，主线一段 px2rem 函数从 ~240ms 跑到 ~24ms，每一刀都对应 V8 的一个具体机制。
+immersive:
+  url: /immersive/v8-fast-js/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/v8-fast-js/)
+
+性能优化的"难"不在改代码——难在**看懂 V8 当前在干什么**。这篇文章不是 V8 知识全集，而是一份方法论手册：一段真实的 px2rem 工具函数，从 ~240ms / 1M 次跑到 ~24ms / 1M 次，每一刀都对应 V8 的一个具体机制。
+
+### 5 个 Phase + 1 个 Coda · 共 20 章
+
+```
+0 引子            (2)  · 三视角看 a=3+4 / JIT vs AOT
+I 流水线          (3)  · 四层 JIT / 字节码 vs 机器码 / Tagged Pointer
+II 假设的舞台     (4)  · 三件套 / 反优化 / Mono-Poly-Mega / ShouldOptimize
+III 对象的内心    (5)  · 2008 设计题 / Hidden Class / Transition Chain / IC / Fast vs Slow
+IV 主线 · 热点函数 (3)  · 前世 240ms / 12 改写规则 / 今生 24ms
+V 边界            (2)  · JSCore / Wasm
+∞ 工具箱          (1)  · --allow-natives-syntax 全套实战
+```
+
+### 这一版有什么
+
+- **方法论叙事**：不是术语百科，是"我怎么分析、怎么定位、怎么改"的实战路径。
+- **5 个交互可视化**：Tagged Pointer 32-bit 点亮、Mono-Poly-Mega 状态迁移、Hidden Class 链表生长、Inline Cache 汇编 diff 切换、12 条规则时间线。
+- **真实诊断输出**：`%DebugPrint` / `--trace-deopt` / `--print-opt-code` 的实际日志，每条对应一种"病"。
+- **十二条改写规则**：每条都对应前面 14 章里某个具体机制的工程总结，按收益频度排序。
+- **跨引擎共识**：JSCore、SpiderMonkey、Hermes 都在做同一件事——这套方法论是引擎无关的。
+
+读完你会对"一段 JS 为什么慢、怎么让它快十倍"形成一套可复用的诊断—改写流程，也能看懂 V8 的反优化日志、`%DebugPrint` 输出、TurboFan 汇编里那些"看不懂的指令"。
+
+完整阅读：**[JS 极致性能优化 — V8 优化原理与一段热点函数的重生](/immersive/v8-fast-js/)**

@@ -1,0 +1,38 @@
+---
+title: "JavaScript at the Limit — V8 Internals and One Hot Function's Road to 10×"
+date: "2026-05-03"
+tags: [JavaScript, V8, Performance Engineering, JIT, Hidden Class, Inline Cache]
+public: true
+summary: How to diagnose a slow piece of JS, locate its bottleneck, and rewrite it ten times faster using V8 internals as a guide. A 20-chapter methodology — one real px2rem function takes the trip from ~240ms to ~24ms / 1M iters, each cut mapping to a concrete V8 mechanism.
+immersive:
+  url: /immersive/v8-fast-js/
+  label: Immersive
+---
+
+> This is an immersive long-form essay — best read in its dedicated layout → [Open the full version](/immersive/v8-fast-js/)
+
+The hard part of performance work isn't editing code — it's **seeing what V8 is doing right now**. This piece isn't a tour of V8; it's a methodology. One real px2rem helper drops from ~240ms / 1M iters to ~24ms / 1M iters, with every cut mapping onto a concrete V8 mechanism.
+
+### 5 phases + 1 coda · 20 chapters
+
+```
+0  Prologue        (2)  · three eyes on a=3+4 / JIT vs AOT
+I  Pipeline        (3)  · four-tier JIT / bytecode vs asm / Tagged Pointer
+II Assumptions     (4)  · the trio / first scene of deopt / Mono-Poly-Mega / ShouldOptimize
+III Object Model   (5)  · 2008 puzzle / Hidden Class / Transition Chain / IC / Fast vs Slow
+IV Hot function    (3)  · before 240ms / twelve rules / after 24ms
+V  Frontiers       (2)  · JSCore / Wasm
+∞  Toolbox         (1)  · --allow-natives-syntax in practice
+```
+
+### What's in this version
+
+- **Methodology, not encyclopedia** — every chapter answers "how do I diagnose / locate / rewrite", not "what's a thing called".
+- **Five interactive visualizations**: 32-bit Tagged Pointer, Mono-Poly-Mega state migration, Hidden Class chain growth, IC asm-diff toggle, twelve-rules timeline.
+- **Real diagnostic output**: actual `%DebugPrint` / `--trace-deopt` / `--print-opt-code` logs — each one mapped to a "disease".
+- **Twelve rewrite rules**: each maps to a specific mechanism from the previous 14 chapters, ordered by impact on the main-line.
+- **Cross-engine consensus**: JSCore, SpiderMonkey, Hermes all do the same thing — the methodology is engine-agnostic.
+
+After reading you'll have a reusable diagnose-then-rewrite flow for "why is this JS slow, how do I make it ten times faster", plus the literacy to read V8's deopt logs, `%DebugPrint` output, and the "noise" instructions in TurboFan asm.
+
+Read the full piece: **[JavaScript at the Limit — V8 Internals and One Hot Function's Road to 10×](/immersive/v8-fast-js/)**
