@@ -21,6 +21,7 @@ import { generateVariants } from './lib/photos-variants.mjs';
 import { uploadIfChanged, publicUrl } from './lib/photos-r2.mjs';
 import { reverseGeocode, cityCoords } from './lib/photos-geocode.mjs';
 import { computeHistogram } from './lib/photos-histogram.mjs';
+import { generateOG, computeOgHash } from './lib/photos-og.mjs';
 import {
   readManifest,
   writeManifest,
@@ -114,40 +115,81 @@ async function resolvePlace({ sidecarPlace, autoPlace, existingPlace, filePath }
 async function processPhoto(entry, existingRecord) {
   const sourceHash = await sha256File(entry.filePath);
   if (existingRecord && existingRecord.sourceHash === sourceHash) {
-    // unchanged — refresh metadata; backfill place + histogram if missing
+    // unchanged binary — refresh metadata; backfill place / histogram / og if missing or stale
     const place = await resolvePlace({
       sidecarPlace: entry.placeOverride,
       autoPlace: null,
       existingPlace: existingRecord.place,
-      filePath: existingRecord.place ? null : entry.filePath, // backfill only if needed
+      filePath: existingRecord.place ? null : entry.filePath,
     });
+    const finalTitle = entry.title || existingRecord.title;
+    const newOgHash = computeOgHash({
+      sourceHash,
+      title: finalTitle,
+      place,
+      exif: existingRecord.exif,
+      takenAt: existingRecord.takenAt,
+    });
+    const ogStale = !existingRecord.ogImage || existingRecord.ogHash !== newOgHash;
+    const histogramMissing = !existingRecord.histogram;
+
     let histogram = existingRecord.histogram;
-    if (!histogram) {
+    let ogImage = existingRecord.ogImage;
+    if (histogramMissing || ogStale) {
       const { decodePath, cleanup } = await prepareDecodable(entry.filePath);
       try {
-        histogram = await computeHistogram(decodePath);
-      } catch (err) {
-        console.warn(`  ! histogram backfill failed for ${entry.slug}: ${err.message}`);
+        if (histogramMissing) {
+          try {
+            histogram = await computeHistogram(decodePath);
+          } catch (err) {
+            console.warn(`  ! histogram backfill failed for ${entry.slug}: ${err.message}`);
+          }
+        }
+        if (ogStale) {
+          try {
+            const og = await generateOG({
+              filePath: decodePath,
+              exif: existingRecord.exif,
+              takenAt: existingRecord.takenAt,
+              title: finalTitle,
+              place,
+            });
+            const result = await uploadIfChanged({
+              key: `photos/${entry.slug}/og.png`,
+              body: og,
+              contentType: 'image/png',
+            });
+            console.log(`    ${result.status === 'uploaded' ? '↑' : '·'} og.png (regen)`);
+            ogImage = publicUrl(`photos/${entry.slug}/og.png`);
+          } catch (err) {
+            console.warn(`  ! og regen failed for ${entry.slug}: ${err.message}`);
+          }
+        }
       } finally {
         await cleanup();
       }
     }
+
     const updated = {
       ...existingRecord,
-      title: entry.title || existingRecord.title,
+      title: finalTitle,
       description: entry.description || existingRecord.description,
       tags: entry.tags.length ? entry.tags : existingRecord.tags,
     };
     if (place) updated.place = place;
     else delete updated.place;
     if (histogram) updated.histogram = histogram;
+    if (ogImage) {
+      updated.ogImage = ogImage;
+      updated.ogHash = newOgHash;
+    }
     console.log(`  ✓ ${entry.slug} (unchanged binary)${place ? ` · ${place.city}` : ''}`);
     return updated;
   }
 
   console.log(`  ⟳ ${entry.slug} — processing`);
   const { decodePath, cleanup } = await prepareDecodable(entry.filePath);
-  let width, height, dominant, outputs, exif, histogram, autoPlace = null;
+  let width, height, dominant, outputs, exif, histogram, place, og, autoPlace = null;
   try {
     const buf = await fs.readFile(decodePath);
     const rawExif = (await exifr.parse(buf, { tiff: true, exif: true, gps: true })) || {};
@@ -158,15 +200,26 @@ async function processPhoto(entry, existingRecord) {
     }
     ({ width, height, dominant, outputs } = await generateVariants(decodePath));
     histogram = await computeHistogram(decodePath);
+    place = await resolvePlace({
+      sidecarPlace: entry.placeOverride,
+      autoPlace,
+      existingPlace: existingRecord?.place,
+      filePath: null,
+    });
+    og = await generateOG({
+      filePath: decodePath,
+      exif,
+      takenAt: exif.takenAt,
+      title: entry.title,
+      place,
+    });
   } finally {
     await cleanup();
   }
-  const place = await resolvePlace({
-    sidecarPlace: entry.placeOverride,
-    autoPlace,
-    existingPlace: existingRecord?.place,
-    filePath: null, // already attempted above
-  });
+
+  if (og) {
+    outputs.push({ key: 'og.png', body: og, contentType: 'image/png' });
+  }
 
   for (const o of outputs) {
     const result = await uploadIfChanged({
@@ -176,6 +229,8 @@ async function processPhoto(entry, existingRecord) {
     });
     console.log(`    ${result.status === 'uploaded' ? '↑' : '·'} ${o.key}`);
   }
+
+  const ogHash = computeOgHash({ sourceHash, title: entry.title, place, exif, takenAt: exif.takenAt });
 
   return {
     slug: entry.slug,
@@ -197,6 +252,7 @@ async function processPhoto(entry, existingRecord) {
     ...(place ? { place } : {}),
     ...(histogram ? { histogram } : {}),
     variants: buildVariantUrls(entry.slug),
+    ...(og ? { ogImage: publicUrl(`photos/${entry.slug}/og.png`), ogHash } : {}),
     sourceHash,
     syncedAt: new Date().toISOString(),
   };

@@ -62,7 +62,10 @@ const shareText = photo.title || photo.slug;
 const threadsHref = `https://www.threads.net/intent/post?text=${encodeURIComponent(shareText + ' ' + fullUrl)}`;
 const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(fullUrl)}&text=${encodeURIComponent(shareText)}`;
 
-const ogImageUrl = new URL(`/og/photos/${photo.slug}.png`, Astro.site || 'https://ursb.me').href;
+// OG image lives on R2 alongside the photo variants — generated at sync-time.
+// Falls back to the static site path for older records that pre-date the R2-side
+// pipeline (build/deploy may 404 the fallback; just don't set ogImage in that case).
+const ogImageUrl = photo.ogImage as string | undefined;
 const ogTitle = photo.title || (photo.place?.city ? `Photo · ${photo.place.city}` : `Photo · ${photo.slug}`);
 const ogDescription = photo.description
   || overlayBits.filter(Boolean).join(' · ')
