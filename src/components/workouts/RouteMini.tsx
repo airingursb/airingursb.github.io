@@ -54,21 +54,18 @@ export default function RouteMini({ route, bbox, height = 90 }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [theme]);
 
-  if (!TOKEN || !route.length || !bbox) {
-    // Token missing or no GPS — render a neutral placeholder so the layout
-    // doesn't collapse. The homepage's previous SVG fallback could go here
-    // but a flat block is simpler and still hints at "no data".
+  if (!route.length || !bbox) {
     return (
       <div
-        style={{
-          height,
-          width: '100%',
-          background: 'var(--w-cell-bg, rgba(0,0,0,0.05))',
-          borderRadius: 4,
-        }}
+        style={{ height, width: '100%', background: 'var(--w-cell-bg, rgba(0,0,0,0.05))', borderRadius: 4 }}
         aria-label="no map"
       />
     );
+  }
+  if (!TOKEN) {
+    // No Mapbox token (CI without secret, etc.) — render a pure-SVG
+    // colored polyline so the route is still legible without a basemap.
+    return <SvgRoute route={route} bbox={bbox} theme={theme} height={height} />;
   }
 
   return (
@@ -76,6 +73,54 @@ export default function RouteMini({ route, bbox, height = 90 }: Props) {
       ref={containerRef}
       style={{ height, width: '100%', borderRadius: 4, overflow: 'hidden' }}
     />
+  );
+}
+
+function SvgRoute({ route, bbox, theme, height }: {
+  route: RoutePoint[]; bbox: Bbox; theme: ColorTheme; height: number;
+}) {
+  // Equirectangular projection into a 200x90-ish viewBox (we render the
+  // SVG at 100% width via preserveAspectRatio, so internal viewBox just
+  // needs to keep the aspect roughly close to the host container).
+  const W = 200, H = 90, PAD = 4;
+  const [west, south, east, north] = bbox;
+  const dLat = Math.max(north - south, 1e-9);
+  const dLng = Math.max(east - west, 1e-9);
+  const innerW = W - PAD * 2;
+  const innerH = H - PAD * 2;
+  const scale = Math.min(innerW / dLng, innerH / dLat);
+  const offX = PAD + (innerW - dLng * scale) / 2;
+  const offY = PAD + (innerH - dLat * scale) / 2;
+  const project = (p: RoutePoint) => [
+    +(offX + (p.lng - west) * scale).toFixed(2),
+    +(offY + (north - p.lat) * scale).toFixed(2),
+  ];
+
+  const paces = route.map(p => p.pace).filter(p => p > 0);
+  const [pMin, pMax] = percentileRange(paces);
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="xMidYMid meet"
+      style={{ width: '100%', height, background: 'var(--w-cell-bg, rgba(0,0,0,0.05))', borderRadius: 4, display: 'block' }}
+    >
+      {route.slice(0, -1).map((p, i) => {
+        const q = route[i + 1];
+        const [x1, y1] = project(p);
+        const [x2, y2] = project(q);
+        const v = (p.pace + q.pace) / 2;
+        return (
+          <line
+            key={i}
+            x1={x1} y1={y1} x2={x2} y2={y2}
+            stroke={colorFor('pace', v, pMin, pMax, theme)}
+            strokeWidth={1.4}
+            strokeLinecap="round"
+          />
+        );
+      })}
+    </svg>
   );
 }
 
