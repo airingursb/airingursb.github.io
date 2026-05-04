@@ -279,3 +279,19 @@
 - [x] 桌面 1440 渲染清晰
 - [⚠️] gzip 后总 HTML 428 KB(超 spec 250 KB 预算 71%,用户选择"无上限")
 - [x] 无 console error
+
+### 批 6 — Phase VIII + IX · 工具箱 + 终章 7 章
+- [x] 工具箱 4 章 (C59-C62) 按顺序插入,data-phase=bg(neutral)
+- [x] C59 命令行 codec 一览 — 17+ 行表格 (JPEG/PNG/WebP/AVIF/JXL/HEIC/GIF/BC/ASTC/KTX2/Basis/EXR/TIFF/RAW/DICOM/SVG/FITS/generic) + 4 条 useful facts
+- [x] C60 DevTools 看响应头与解码时间 — 4 张手绘 DevTools UI SVG (Network/Performance/picture fallback/decode time)
+- [x] C61 libvips vs ImageMagick 性能对比表 — streaming vs full-load 设计哲学
+- [x] C62 「我应该用哪个格式」决策树 — 大 SVG 决策树 + 4 张快速场景卡 (Web 设计师 / 游戏纹理师 / 摄影师 / 学术研究)
+- [x] 终章 3 章 (C63-C65) 按顺序插入
+- [x] C63 像素的归宿 — 收束 8 站旅程,3 段叙事 + 8 站时间轴 SVG + serif pull 引文
+- [x] C64 三个反直觉结论 — keynum 3 卡 (最古老不一定最差 / ASTC 6×6 vs BC7 / AVIF 战胜 JXL 是政治)
+- [x] C65 参考与扩展阅读 — ~70 条 reference 按 Phase 分组 (RFC/ISO/paper/blog/GitHub)
+- [x] closing footer 完成 — "完 / Fin" + 斜体 serif 引文 "每一种格式都是一次妥协的化石" + 邮件 invite + byline (Author/Date/Series 链接 v8-fast-js/chromium-renderer/helio/jank-stutter) + signoff "FIELD NOTE / 05"
+- [x] TOC v2 工具箱 (4) + 终章 (3) 列回填,共 67 chip 全部就位
+- [x] 全文最终统计: 16096 行 HTML / 134 chap-title (67×2 双语对仗) / 58 format-card / 14 format-flow-svg / 17 case-study / 13 扛把子完整(JPEG/PNG/WebP/AVIF/JXL/BC7/ASTC/EXR/RAW/DICOM/SVG/FITS/Neural)
+- [⚠️] gzip 后总 HTML 453 KB(超 spec 250 KB 预算 81%,用户选择"无上限")
+- [x] 无 console error

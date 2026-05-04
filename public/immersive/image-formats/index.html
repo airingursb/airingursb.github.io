@@ -1346,7 +1346,10 @@ body.lang-en .format-card .soul { font-family: var(--serif-en); }
         <div class="tg-count">4</div>
       </div>
       <div class="toc-chips">
-        <!-- C59-C62 chips will be filled when Phase VIII chapters are written -->
+        <a href="#c59" class="toc-chip" data-section="c59"><span class="tc-num">59</span><div class="tc-name"><span class="lang-zh-only">命令行 codec 一览</span><span class="lang-en-only">CLI codec roster</span><span class="tc-en">17 工具速查表</span></div></a>
+        <a href="#c60" class="toc-chip" data-section="c60"><span class="tc-num">60</span><div class="tc-name"><span class="lang-zh-only">DevTools 看响应头</span><span class="lang-en-only">DevTools headers + decode</span><span class="tc-en">Network · Performance</span></div></a>
+        <a href="#c61" class="toc-chip" data-section="c61"><span class="tc-num">61</span><div class="tc-name"><span class="lang-zh-only">libvips vs ImageMagick</span><span class="lang-en-only">libvips vs ImageMagick</span><span class="tc-en">streaming vs full-load</span></div></a>
+        <a href="#c62" class="toc-chip" data-section="c62"><span class="tc-num">62</span><div class="tc-name"><span class="lang-zh-only">「我应该用哪个格式」决策树</span><span class="lang-en-only">"Which format" decision tree</span><span class="tc-en">SVG 大图 + 4 场景卡</span></div></a>
       </div>
     </div>
 
@@ -1360,7 +1363,9 @@ body.lang-en .format-card .soul { font-family: var(--serif-en); }
         <div class="tg-count">3</div>
       </div>
       <div class="toc-chips">
-        <!-- C63-C65 chips will be filled when Phase IX chapters are written -->
+        <a href="#c63" class="toc-chip" data-section="c63"><span class="tc-num">63</span><div class="tc-name"><span class="lang-zh-only">像素的归宿</span><span class="lang-en-only">The fate of the pixel</span><span class="tc-en">收束 8 站旅程</span></div></a>
+        <a href="#c64" class="toc-chip" data-section="c64"><span class="tc-num">64</span><div class="tc-name"><span class="lang-zh-only">三个反直觉结论</span><span class="lang-en-only">Three counter-intuitive takeaways</span><span class="tc-en">QOI / ASTC / JXL 政治</span></div></a>
+        <a href="#c65" class="toc-chip" data-section="c65"><span class="tc-num">65</span><div class="tc-name"><span class="lang-zh-only">参考与扩展阅读</span><span class="lang-en-only">References</span><span class="tc-en">~70 条 RFC / ISO / paper</span></div></a>
       </div>
     </div>
   </div>
@@ -15110,12 +15115,894 @@ $ python -c "from compressai.zoo import bmshj2018_hyperprior; \
 
   </div>
 </section>
+
+<!-- ============================================================ -->
+<!-- ============== PHASE VIII · 工具箱 · TOOLBOX =============== -->
+<!-- ============================================================ -->
+
+<!-- ========== C59 · 命令行 codec 一览 ========== -->
+<section class="chap" id="c59" data-phase="bg">
+  <div class="container">
+    <h2 class="chap-title lang-zh-only">命令行 codec 一览</h2>
+    <h2 class="chap-title lang-en-only">Command-line codec roster</h2>
+
+    <p class="lang-zh-only">这一节是查询表 —— 按"目标格式"找对应工具。所有命令均假设你已经装好对应工具(brew / apt 安装名见每行末尾)。命令风格各家不一,但参数语义大致互通:<code>-q</code> / <code>--quality</code> 控质量、<code>-o</code> / <code>--output</code> 给输出文件、<code>-s</code> / <code>--speed</code> 调编码速度(慢 = 小)。</p>
+    <p class="lang-en-only">A reference table — find the right tool by output format. Each row assumes you have installed the package (Homebrew / apt name at the end). Each codec uses its own flag dialect, but the semantics roughly converge: <code>-q</code> / <code>--quality</code> for quality, <code>-o</code> / <code>--output</code> for the output file, <code>-s</code> / <code>--speed</code> for the encoder speed (slower = smaller).</p>
+
+    <table class="format-compare-table">
+      <thead><tr>
+        <th>format</th><th>encoder</th><th>decoder</th><th>typical command</th><th>install</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>JPEG</td><td>cjpeg / mozjpeg / jpegli</td><td>djpeg</td><td><code>cjpeg -quality 85 -optimize in.ppm &gt; out.jpg</code></td><td><code>libjpeg-turbo</code></td></tr>
+        <tr><td>PNG</td><td>oxipng / pngcrush / optipng</td><td>libpng</td><td><code>oxipng -o6 in.png</code></td><td><code>oxipng</code></td></tr>
+        <tr><td>WebP</td><td>cwebp</td><td>dwebp</td><td><code>cwebp -q 75 in.png -o out.webp</code></td><td><code>libwebp</code></td></tr>
+        <tr class="highlight"><td>AVIF</td><td>avifenc</td><td>avifdec</td><td><code>avifenc -s 6 -a end-usage=q -a cq-level=23 in.png out.avif</code></td><td><code>libavif</code></td></tr>
+        <tr class="highlight"><td>JPEG XL</td><td>cjxl</td><td>djxl</td><td><code>cjxl in.png out.jxl --quality 90</code></td><td><code>libjxl</code></td></tr>
+        <tr><td>HEIC</td><td>heif-enc</td><td>heif-dec</td><td><code>heif-enc -q 60 in.png -o out.heic</code></td><td><code>libheif</code></td></tr>
+        <tr><td>GIF</td><td>gifsicle / convert</td><td>gifsicle</td><td><code>gifsicle --colors 256 -O3 in.gif &gt; out.gif</code></td><td><code>gifsicle</code></td></tr>
+        <tr><td>BC1-7 (DDS)</td><td>nvtt_export / texconv / ispc_texcomp</td><td>D3D / OpenGL native</td><td><code>nvtt_export --bc7 in.png -o out.dds</code></td><td><code>nvtt</code></td></tr>
+        <tr><td>ASTC</td><td>astcenc</td><td>astcdec / GPU</td><td><code>astcenc -cl in.png out.astc 6x6 -medium</code></td><td><code>astcenc</code></td></tr>
+        <tr><td>KTX2</td><td>toktx</td><td>ktxinfo</td><td><code>toktx --bcmp 7 out.ktx2 in.png</code></td><td><code>KTX-Software</code></td></tr>
+        <tr><td>Basis</td><td>basisu</td><td>basisu</td><td><code>basisu -ktx2 in.png -output_file out.ktx2</code></td><td><code>basis_universal</code></td></tr>
+        <tr><td>OpenEXR</td><td>oiiotool / exrtools</td><td>OpenImageIO</td><td><code>oiiotool in.png -o out.exr</code></td><td><code>OpenImageIO</code></td></tr>
+        <tr><td>TIFF</td><td>libtiff / convert</td><td>libtiff</td><td><code>convert in.png -compress lzw out.tif</code></td><td><code>libtiff</code></td></tr>
+        <tr><td>RAW</td><td>—</td><td>dcraw / LibRaw / rawtherapee-cli</td><td><code>dcraw -v -w in.NEF</code></td><td><code>libraw</code></td></tr>
+        <tr><td>DICOM</td><td>dcmconv</td><td>dcmdump / dcm2pnm</td><td><code>dcm2pnm in.dcm out.pnm</code></td><td><code>dcmtk</code></td></tr>
+        <tr><td>SVG</td><td>svgo / inkscape / resvg</td><td>resvg / browser</td><td><code>svgo in.svg -o out.svg</code></td><td><code>svgo</code></td></tr>
+        <tr><td>FITS</td><td>astropy / cfitsio</td><td>astropy / ds9</td><td><code>python -c "from astropy.io import fits; ..."</code></td><td><code>astropy</code></td></tr>
+        <tr class="highlight"><td>generic</td><td>libvips / ImageMagick</td><td>same</td><td><code>vips copy in.png out.avif[Q=60]</code></td><td><code>libvips</code></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub lang-zh-only">几个值得知道的事实</h3>
+    <h3 class="sub lang-en-only">A few worth-knowing facts</h3>
+    <ul class="lang-zh-only">
+      <li><strong>libvips 是隐藏的性能王者</strong> —— 大批量处理比 ImageMagick 快 <em>5-10×</em>、内存占用低 10×。所有需要"批量转码 100k+ 张图"的场景都应该首选 vips。</li>
+      <li><strong>jpegli</strong> 是 Google 2024 年从 libjxl 仓库剥出来的"现代 JPEG 编码器" —— 同 quality 比 mozjpeg 体积小约 35%,而且产出仍是合法 JPEG,所有 JPEG 解码器都能读。</li>
+      <li><strong>oxipng</strong> 是 Rust 写的 PNG 重压缩器 —— 比 pngcrush 快 <em>5-10×</em>,体积稍小;<code>oxipng -o6</code> 是大多数项目的默认配方。</li>
+      <li><strong>Squoosh CLI</strong>(<code>npm i -g @squoosh/cli</code>)是浏览器中 squoosh.app 的命令行版本 —— 一个 Node 包搞定 AVIF / WebP / JXL / mozjpeg / oxipng,适合 CI 流水线。</li>
+    </ul>
+    <ul class="lang-en-only">
+      <li><strong>libvips is the hidden performance king</strong> — bulk pipelines run <em>5-10×</em> faster than ImageMagick at one-tenth the memory. Any "batch-convert 100 k images" job should reach for vips first.</li>
+      <li><strong>jpegli</strong>, spun out of the libjxl repo by Google in 2024, is the "modern JPEG encoder" — about 35% smaller than mozjpeg at the same quality, and the output is still legal JPEG that every decoder can read.</li>
+      <li><strong>oxipng</strong> is a Rust PNG re-packer — <em>5-10×</em> faster than pngcrush and slightly smaller; <code>oxipng -o6</code> is the default recipe for most projects.</li>
+      <li><strong>Squoosh CLI</strong> (<code>npm i -g @squoosh/cli</code>) is the command-line cousin of the browser-based squoosh.app — one Node package wraps AVIF / WebP / JXL / mozjpeg / oxipng, ideal for CI pipelines.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ========== C60 · DevTools 看响应头与解码时间 ========== -->
+<section class="chap" id="c60" data-phase="bg">
+  <div class="container">
+    <h2 class="chap-title lang-zh-only">DevTools 看响应头与解码时间</h2>
+    <h2 class="chap-title lang-en-only">DevTools — response headers &amp; decode time</h2>
+
+    <p class="lang-zh-only">浏览器选择哪种格式不是玄学,而是<em>三个 HTTP 头 + 一段 JS 解码任务</em>共同决定的。Network 面板看 <code>Accept</code>(请求时浏览器宣告支持哪些格式)、<code>Content-Type</code>(响应里服务器实际返回什么)、<code>Content-Length</code>(字节数)三个头,这是<a href="#c10">picture / source 协商</a>的全部凭证。Performance 面板里"Decode Image"任务才是真实的代价 —— AVIF 比 JPEG 慢 3 倍、JXL 又比 AVIF 快 2 倍,这些差异在 4G 慢网下会被字节数掩盖,在 5G 快网或本地 CDN 下却开始主导首屏渲染时间。</p>
+    <p class="lang-en-only">Which format the browser picks is not magic — it's decided by <em>three HTTP headers plus a JS decode task</em>. The Network panel shows <code>Accept</code> (the browser announces what it supports), <code>Content-Type</code> (what the server actually returns), and <code>Content-Length</code> (the byte count). These three are the entire vocabulary of <a href="#c10">picture / source negotiation</a>. The Performance panel's "Decode Image" task is the real cost — AVIF decodes about 3× slower than JPEG, JXL about 2× faster than AVIF; over slow 4G the byte savings dominate, but on 5G or a near CDN, decode time starts to set first-paint.</p>
+
+    <h3 class="sub lang-zh-only">Network 面板</h3>
+    <h3 class="sub lang-en-only">Network panel</h3>
+
+    <figure class="figure">
+      <svg viewBox="0 0 600 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="DevTools Network panel mockup with request and response headers for an image">
+        <!-- panel frame -->
+        <rect x="10" y="10" width="580" height="260" fill="#fdfbf3" stroke="#15171c" stroke-width="1"/>
+        <!-- title bar -->
+        <rect x="10" y="10" width="580" height="22" fill="#ddd9cd" stroke="#15171c" stroke-width="0.5"/>
+        <text x="20" y="25" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c">DevTools · Network · hero.avif</text>
+
+        <!-- left column: Request Headers -->
+        <text x="20" y="50" font-family="JetBrains Mono, monospace" font-size="10" fill="#3a4a8a" font-weight="700">▸ Request Headers</text>
+        <text x="20" y="70" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">GET /img/hero.avif HTTP/2</text>
+        <text x="20" y="86" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">Host: ursb.me</text>
+        <text x="20" y="102" font-family="JetBrains Mono, monospace" font-size="9" fill="#1f5c8c" font-weight="700">Accept: image/avif,image/webp,</text>
+        <text x="20" y="116" font-family="JetBrains Mono, monospace" font-size="9" fill="#1f5c8c" font-weight="700">        image/png,image/*,*/*;q=0.8</text>
+        <text x="20" y="132" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">Accept-Encoding: gzip, br</text>
+        <text x="20" y="148" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">Sec-Ch-UA: "Chromium";v="120"</text>
+
+        <!-- right column: Response Headers -->
+        <text x="310" y="50" font-family="JetBrains Mono, monospace" font-size="10" fill="#3a4a8a" font-weight="700">▾ Response Headers</text>
+        <text x="310" y="70" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">HTTP/2 200 OK</text>
+        <text x="310" y="86" font-family="JetBrains Mono, monospace" font-size="9" fill="#1f5c8c" font-weight="700">Content-Type: image/avif</text>
+        <text x="310" y="102" font-family="JetBrains Mono, monospace" font-size="9" fill="#1f5c8c" font-weight="700">Content-Length: 12345</text>
+        <text x="310" y="118" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">Cache-Control: max-age=31536000</text>
+        <text x="310" y="134" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">ETag: "9af3...c2"</text>
+        <text x="310" y="150" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">Vary: Accept</text>
+
+        <!-- footer note -->
+        <line x1="20" y1="180" x2="580" y2="180" stroke="#c7c4ba" stroke-width="0.5"/>
+        <text x="20" y="200" font-family="JetBrains Mono, monospace" font-size="9" fill="#a83a7a" font-weight="700">三段对协商起决定作用 · the three lines that drive negotiation</text>
+        <text x="20" y="218" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">① Accept 列出浏览器支持的 mime · what the browser accepts</text>
+        <text x="20" y="234" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">② Content-Type 是服务器最终选的 · what the server picked</text>
+        <text x="20" y="250" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">③ Vary: Accept 告诉 CDN "同 URL 按 Accept 缓存多份" · per-Accept caching</text>
+      </svg>
+      <figcaption class="figcap lang-zh-only">图 a · DevTools Network 面板某图片请求。<code>Accept</code>(请求头)+ <code>Content-Type</code>(响应头)+ <code>Vary: Accept</code>(响应头)三段共同构成"按浏览器选格式"的协商凭证。CDN 上一定要设 <code>Vary: Accept</code>,否则 Chrome 拿到 AVIF 后,Safari 也会拿到同一份 AVIF —— 然后解码失败。</figcaption>
+      <figcaption class="figcap lang-en-only">Fig a · A typical image request in DevTools Network. <code>Accept</code> (request) + <code>Content-Type</code> (response) + <code>Vary: Accept</code> (response) form the negotiation contract. CDNs <em>must</em> set <code>Vary: Accept</code>, otherwise Chrome's AVIF cache will be served to Safari, which then fails to decode.</figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">Performance 面板 — Decode 任务</h3>
+    <h3 class="sub lang-en-only">Performance panel — decode task</h3>
+
+    <figure class="figure">
+      <svg viewBox="0 0 600 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Performance timeline showing parse and decode image tasks for different formats">
+        <rect x="10" y="10" width="580" height="180" fill="#fdfbf3" stroke="#15171c" stroke-width="1"/>
+        <text x="20" y="28" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c">DevTools · Performance · main thread</text>
+
+        <!-- timeline rule -->
+        <line x1="80" y1="50" x2="560" y2="50" stroke="#c7c4ba" stroke-width="0.5"/>
+        <text x="80" y="44" font-family="JetBrains Mono, monospace" font-size="8" fill="#767c87">0 ms</text>
+        <text x="200" y="44" font-family="JetBrains Mono, monospace" font-size="8" fill="#767c87">10</text>
+        <text x="320" y="44" font-family="JetBrains Mono, monospace" font-size="8" fill="#767c87">20</text>
+        <text x="440" y="44" font-family="JetBrains Mono, monospace" font-size="8" fill="#767c87">30</text>
+        <text x="560" y="44" font-family="JetBrains Mono, monospace" font-size="8" fill="#767c87">40</text>
+
+        <!-- JPEG row -->
+        <text x="20" y="72" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">JPEG</text>
+        <rect x="80" y="62" width="20" height="14" fill="#c9dceb" stroke="#1f5c8c" stroke-width="0.5"/>
+        <text x="90" y="73" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#15171c">P</text>
+        <rect x="100" y="62" width="40" height="14" fill="#9ec0db" stroke="#1f5c8c" stroke-width="0.5"/>
+        <text x="120" y="73" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#15171c">Decode 5 ms</text>
+
+        <!-- WebP row -->
+        <text x="20" y="100" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">WebP</text>
+        <rect x="80" y="90" width="20" height="14" fill="#c9dceb" stroke="#1f5c8c" stroke-width="0.5"/>
+        <text x="90" y="101" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#15171c">P</text>
+        <rect x="100" y="90" width="60" height="14" fill="#9ec0db" stroke="#1f5c8c" stroke-width="0.5"/>
+        <text x="130" y="101" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#15171c">Decode 8 ms</text>
+
+        <!-- AVIF row -->
+        <text x="20" y="128" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">AVIF</text>
+        <rect x="80" y="118" width="20" height="14" fill="#c9dceb" stroke="#1f5c8c" stroke-width="0.5"/>
+        <text x="90" y="129" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#15171c">P</text>
+        <rect x="100" y="118" width="180" height="14" fill="#e1d5ee" stroke="#6b3aa3" stroke-width="0.5"/>
+        <text x="190" y="129" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#15171c">Decode 18 ms · slow</text>
+
+        <!-- JXL row -->
+        <text x="20" y="156" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">JXL</text>
+        <rect x="80" y="146" width="20" height="14" fill="#c9dceb" stroke="#1f5c8c" stroke-width="0.5"/>
+        <text x="90" y="157" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#15171c">P</text>
+        <rect x="100" y="146" width="50" height="14" fill="#c5dede" stroke="#2d7a7a" stroke-width="0.5"/>
+        <text x="125" y="157" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#15171c">Decode 7 ms · fast</text>
+
+        <!-- legend -->
+        <text x="20" y="184" font-family="JetBrains Mono, monospace" font-size="8" fill="#767c87">P = Parse · 数值仅示意 1080p 单图,实际机型 / 实现差异极大</text>
+      </svg>
+      <figcaption class="figcap lang-zh-only">图 b · Performance 面板时间线模拟。同一张 1080p 图,JPEG 解码 ~5 ms、WebP ~8 ms、AVIF ~18 ms、JXL ~7 ms —— AVIF 是当前主流格式里解码最慢的,因为 AV1 帧内解码本来就比 VP8 / JPEG 重 2-3×。在 5G 快网下,AVIF 节省的 30% 字节可能被慢解码吃掉,这也是 picture/source 协商策略要"看场景挑选"的根因。</figcaption>
+      <figcaption class="figcap lang-en-only">Fig b · A simulated Performance timeline. Same 1080p image: JPEG ~5 ms, WebP ~8 ms, AVIF ~18 ms, JXL ~7 ms — AVIF is the slowest decoder among today's mainstream formats because AV1 intra decoding is intrinsically 2-3× heavier than VP8 / JPEG. On fast 5G networks, AVIF's 30% byte savings can be eaten by the slow decode — exactly why picture/source negotiation is a per-scenario choice, not a one-size-fits-all rule.</figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">picture + source fallback 链</h3>
+    <h3 class="sub lang-en-only">picture + source fallback chain</h3>
+
+    <figure class="figure">
+      <svg viewBox="0 0 520 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="picture element fallback tree with AVIF, WebP, JPEG sources">
+        <!-- root: picture -->
+        <rect x="200" y="20" width="120" height="32" rx="6" fill="#dde1ee" stroke="#15171c" stroke-width="0.8"/>
+        <text x="260" y="40" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#15171c" font-weight="700">&lt;picture&gt;</text>
+
+        <!-- vertical lines -->
+        <line x1="100" y1="80" x2="100" y2="100" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="260" y1="52" x2="260" y2="80" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="100" y1="80" x2="420" y2="80" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="260" y1="80" x2="260" y2="100" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="420" y1="80" x2="420" y2="100" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="100" y1="80" x2="100" y2="100" stroke="#15171c" stroke-width="0.6"/>
+
+        <!-- AVIF source -->
+        <rect x="40" y="100" width="120" height="32" rx="6" fill="#e1d5ee" stroke="#6b3aa3" stroke-width="0.8"/>
+        <text x="100" y="119" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c" font-weight="700">source · AVIF</text>
+        <text x="100" y="148" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">type="image/avif"</text>
+        <text x="100" y="164" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#a83a7a">Chrome / Safari 16+</text>
+
+        <!-- WebP source -->
+        <rect x="200" y="100" width="120" height="32" rx="6" fill="#c9dceb" stroke="#1f5c8c" stroke-width="0.8"/>
+        <text x="260" y="119" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c" font-weight="700">source · WebP</text>
+        <text x="260" y="148" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">type="image/webp"</text>
+        <text x="260" y="164" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#a83a7a">Chrome / FF / Edge</text>
+
+        <!-- JPEG fallback img -->
+        <rect x="360" y="100" width="120" height="32" rx="6" fill="#ddd9cd" stroke="#15171c" stroke-width="0.8"/>
+        <text x="420" y="119" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c" font-weight="700">img · JPEG</text>
+        <text x="420" y="148" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">默认兜底 / fallback</text>
+        <text x="420" y="164" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#a83a7a">所有浏览器 · all</text>
+
+        <!-- selection arrow -->
+        <line x1="100" y1="180" x2="100" y2="200" stroke="#a83a7a" stroke-width="0.8" stroke-dasharray="3 2"/>
+        <text x="260" y="208" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#a83a7a" font-weight="700">浏览器自顶向下匹配 · first match wins · 不再下载后续 source</text>
+        <text x="260" y="224" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">browser scans top-down · first supported type stops the search</text>
+      </svg>
+      <figcaption class="figcap lang-zh-only">图 c · <code>&lt;picture&gt;</code> + 多 <code>&lt;source&gt;</code> 的 fallback 链是树状匹配。浏览器自顶向下扫描,遇到第一个 <code>type</code> 自己支持的就停下,后面的 source 完全不下载。所以"AVIF → WebP → JPEG"的顺序很重要 —— 反过来写 JPEG 永远赢,AVIF 永远没机会。</figcaption>
+      <figcaption class="figcap lang-en-only">Fig c · <code>&lt;picture&gt;</code> with multiple <code>&lt;source&gt;</code> tags is a tree-shaped match. The browser scans top-down and stops at the first <code>type</code> it supports — every later source is never fetched. Order matters: "AVIF → WebP → JPEG" is correct; reversed, JPEG always wins and AVIF never gets a chance.</figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">同图横评 — 解码时间条形图</h3>
+    <h3 class="sub lang-en-only">Same image — decode time bars</h3>
+
+    <figure class="figure">
+      <svg viewBox="0 0 480 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bar chart of decode time for JPEG, WebP, AVIF, JXL">
+        <text x="20" y="22" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c">同一张 4K 图 · same 4K image · decode time (ms · M1 Mac · main thread)</text>
+        <!-- axis -->
+        <line x1="120" y1="50" x2="120" y2="210" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="120" y1="210" x2="460" y2="210" stroke="#15171c" stroke-width="0.6"/>
+        <text x="120" y="226" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#767c87">0</text>
+        <text x="220" y="226" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#767c87">15</text>
+        <text x="320" y="226" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#767c87">30</text>
+        <text x="420" y="226" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#767c87">45 ms</text>
+
+        <!-- JPEG ~12 -->
+        <text x="115" y="74" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c">JPEG</text>
+        <rect x="120" y="60" width="80" height="22" fill="#c9dceb" stroke="#1f5c8c" stroke-width="0.5"/>
+        <text x="208" y="74" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">12 ms</text>
+
+        <!-- WebP ~16 -->
+        <text x="115" y="104" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c">WebP</text>
+        <rect x="120" y="90" width="105" height="22" fill="#9ec0db" stroke="#1f5c8c" stroke-width="0.5"/>
+        <text x="232" y="104" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">16 ms</text>
+
+        <!-- AVIF ~38 -->
+        <text x="115" y="134" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c">AVIF</text>
+        <rect x="120" y="120" width="250" height="22" fill="#e1d5ee" stroke="#6b3aa3" stroke-width="0.5"/>
+        <text x="378" y="134" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">38 ms · slowest</text>
+
+        <!-- JXL ~14 -->
+        <text x="115" y="164" text-anchor="end" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c">JXL</text>
+        <rect x="120" y="150" width="93" height="22" fill="#c5dede" stroke="#2d7a7a" stroke-width="0.5"/>
+        <text x="220" y="164" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">14 ms · fastest of the three new</text>
+
+        <!-- baseline note -->
+        <text x="120" y="194" font-family="JetBrains Mono, monospace" font-size="8" fill="#a83a7a">↑ AVIF 解码量是 JPEG 3× · 字节小 30%(慢解码可能吃掉字节红利)</text>
+      </svg>
+      <figcaption class="figcap lang-zh-only">图 d · 同图 4K · 解码时间条形图。AVIF 字节最小,但解码最慢;JXL 字节也小、解码却比 WebP 还快 —— 这正是 JXL 在"现代格式"中独特的位置。本图基于 M1 Mac · 主线程 · 单核 · 仅作量级示意,真实数据按机型 / 编码参数浮动 ±50%。</figcaption>
+      <figcaption class="figcap lang-en-only">Fig d · Same 4K image, decode time bars. AVIF wins on bytes but loses on decode; JXL is small <em>and</em> faster than WebP — exactly why JXL occupies its unique slot among the "modern" trio. Numbers measured on M1 Mac, main thread, single core; treat as orders of magnitude — real numbers shift ±50% with hardware and encoder settings.</figcaption>
+    </figure>
+
+    <p class="lang-zh-only">把"<code>Accept</code> 头 + <code>Content-Type</code> 响应 + <code>Vary: Accept</code> 缓存指令"理解透,你就抓住了"为什么这台浏览器收到 AVIF、那台收到 JPEG"的全部机理。把 Performance 面板里的 Decode Image 长度看习惯,你就知道"是不是该用 AVIF"不只是字节问题,而是<em>字节 ÷ 解码时间</em>的比值问题。</p>
+    <p class="lang-en-only">Understand the trio "<code>Accept</code> request + <code>Content-Type</code> response + <code>Vary: Accept</code> cache directive" and you have the full mechanism for "why this browser got AVIF and that one got JPEG." Get used to reading Decode Image durations in the Performance panel, and "should I serve AVIF" stops being a byte question and becomes a <em>bytes ÷ decode-time</em> ratio question.</p>
+  </div>
+</section>
+
+<!-- ========== C61 · libvips vs ImageMagick ========== -->
+<section class="chap" id="c61" data-phase="bg">
+  <div class="container">
+    <h2 class="chap-title lang-zh-only">libvips vs ImageMagick — 性能对比表</h2>
+    <h2 class="chap-title lang-en-only">libvips vs ImageMagick — performance comparison</h2>
+
+    <p class="lang-zh-only">两个最常见的"通用图像处理库",设计目标完全相反 —— ImageMagick 1990 年代生于 Unix 工具传统,先把整张图<em>解码到内存</em>再做操作,简单直接;libvips 1990 年代末由 VIPS 项目演化而来,核心思路是<em>streaming pipeline</em>:像素一行一行流过处理链,从不把整张图加载进内存。这条架构差异在批量处理场景被放大成 <em>5-10×</em> 的速度差和 <em>10×</em> 的内存差,直接决定了它们各自的最佳战场。</p>
+    <p class="lang-en-only">The two most common general-purpose image-processing libraries are designed for opposite goals. ImageMagick, born of 1990s Unix tools, <em>decodes the whole image into memory</em> and operates on it — simple and direct. libvips evolved from the VIPS project of the late 1990s and is built on a <em>streaming pipeline</em>: pixels flow through the chain row by row, the full image never loads into RAM. That single architectural choice expands into <em>5-10×</em> speed and <em>10×</em> memory differences at scale — and that decides which library belongs where.</p>
+
+    <table class="format-compare-table">
+      <thead><tr>
+        <th>metric</th><th>libvips</th><th>ImageMagick</th>
+      </tr></thead>
+      <tbody>
+        <tr><td>设计 / design</td><td>streaming + parallel(pthread)</td><td>full-load(全图入内存)</td></tr>
+        <tr class="highlight"><td>100 张 4K → JPEG 时间</td><td>~8 s</td><td>~60 s</td></tr>
+        <tr class="highlight"><td>100 张 4K → AVIF 时间</td><td>~120 s</td><td>~600 s</td></tr>
+        <tr class="highlight"><td>峰值内存 / peak RAM</td><td>~50 MB</td><td>~500 MB</td></tr>
+        <tr><td>命令行 / CLI</td><td><code>vips copy in.png out.jpg[Q=85]</code></td><td><code>convert in.png -quality 85 out.jpg</code></td></tr>
+        <tr><td>学习曲线 / learning curve</td><td>中(API 风格独特)</td><td>低(命令名好记)</td></tr>
+        <tr><td>format coverage</td><td>常用 + 现代(AVIF / WebP / JXL)</td><td>250+ 格式(含老格式 / 罕见容器)</td></tr>
+        <tr><td>典型用法 / typical use</td><td>批量服务 · 高吞吐 thumbnail</td><td>单张定制 · 复杂滤镜 · 老格式恢复</td></tr>
+      </tbody>
+    </table>
+
+    <p class="lang-zh-only">数据基于 libvips 官方 benchmark + 社区验证,实测值因机型 / 任务类型浮动 ±30%。结论是稳定的:<em>需要批量、需要省内存、需要快</em> 用 libvips;<em>需要冷门格式、需要复杂滤镜、单次任务</em> 用 ImageMagick。</p>
+    <p class="lang-en-only">Numbers are taken from the libvips official benchmark plus community runs; real values shift ±30% by hardware and task type. The takeaway is robust: pick libvips when you <em>need bulk, low memory, high speed</em>; pick ImageMagick when you <em>need rare formats, complex filters, or one-off jobs</em>.</p>
+
+    <h3 class="sub lang-zh-only">两种内存模型示意</h3>
+    <h3 class="sub lang-en-only">Two memory models</h3>
+
+    <figure class="figure">
+      <svg viewBox="0 0 520 220" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="libvips streaming pipeline vs ImageMagick full-load memory model">
+        <!-- libvips streaming -->
+        <text x="20" y="22" font-family="JetBrains Mono, monospace" font-size="10" fill="#2d7a7a" font-weight="700">libvips · streaming pipeline</text>
+        <!-- input -->
+        <rect x="20" y="40" width="60" height="40" fill="#c5dede" stroke="#2d7a7a" stroke-width="0.8"/>
+        <text x="50" y="58" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">input</text>
+        <text x="50" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">.png</text>
+        <!-- pipeline arrows -->
+        <line x1="80" y1="60" x2="120" y2="60" stroke="#2d7a7a" stroke-width="0.8" marker-end="url(#arr1)"/>
+        <rect x="120" y="40" width="60" height="40" fill="#fdfbf3" stroke="#2d7a7a" stroke-width="0.8"/>
+        <text x="150" y="58" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">resize</text>
+        <text x="150" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">row × n</text>
+        <line x1="180" y1="60" x2="220" y2="60" stroke="#2d7a7a" stroke-width="0.8" marker-end="url(#arr1)"/>
+        <rect x="220" y="40" width="60" height="40" fill="#fdfbf3" stroke="#2d7a7a" stroke-width="0.8"/>
+        <text x="250" y="58" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">sharpen</text>
+        <text x="250" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">row × n</text>
+        <line x1="280" y1="60" x2="320" y2="60" stroke="#2d7a7a" stroke-width="0.8" marker-end="url(#arr1)"/>
+        <rect x="320" y="40" width="60" height="40" fill="#fdfbf3" stroke="#2d7a7a" stroke-width="0.8"/>
+        <text x="350" y="58" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">encode</text>
+        <text x="350" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">avif</text>
+        <line x1="380" y1="60" x2="420" y2="60" stroke="#2d7a7a" stroke-width="0.8" marker-end="url(#arr1)"/>
+        <rect x="420" y="40" width="60" height="40" fill="#c5dede" stroke="#2d7a7a" stroke-width="0.8"/>
+        <text x="450" y="58" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">output</text>
+        <text x="450" y="72" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">.avif</text>
+        <text x="250" y="100" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#a83a7a" font-weight="700">~50 MB peak · 像素行接力 · pixels relay row-by-row</text>
+
+        <!-- ImageMagick full-load -->
+        <text x="20" y="130" font-family="JetBrains Mono, monospace" font-size="10" fill="#8a5a2a" font-weight="700">ImageMagick · full-load</text>
+        <rect x="20" y="148" width="60" height="40" fill="#e6d4ba" stroke="#8a5a2a" stroke-width="0.8"/>
+        <text x="50" y="166" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">input</text>
+        <text x="50" y="180" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">.png</text>
+        <line x1="80" y1="168" x2="120" y2="168" stroke="#8a5a2a" stroke-width="0.8" marker-end="url(#arr2)"/>
+        <rect x="120" y="142" width="280" height="52" fill="#f0e3c0" stroke="#8a5a2a" stroke-width="0.8"/>
+        <text x="260" y="160" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">all pixels in memory</text>
+        <text x="260" y="174" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">decode → resize → sharpen → encode</text>
+        <text x="260" y="188" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#a83a7a" font-weight="700">~500 MB peak · 全图驻留</text>
+        <line x1="400" y1="168" x2="440" y2="168" stroke="#8a5a2a" stroke-width="0.8" marker-end="url(#arr2)"/>
+        <rect x="440" y="148" width="60" height="40" fill="#e6d4ba" stroke="#8a5a2a" stroke-width="0.8"/>
+        <text x="470" y="166" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c">output</text>
+        <text x="470" y="180" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">.avif</text>
+
+        <!-- arrow defs -->
+        <defs>
+          <marker id="arr1" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#2d7a7a"/>
+          </marker>
+          <marker id="arr2" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L8,4 L0,8 z" fill="#8a5a2a"/>
+          </marker>
+        </defs>
+      </svg>
+      <figcaption class="figcap lang-zh-only">图 e · 两种内存模型对比。libvips(上)是 streaming pipeline,像素一行一行接力穿过处理节点,峰值内存 ~50 MB;ImageMagick(下)是 full-load,先把整张 4K 图解到内存(~500 MB),所有处理就地完成。两种模型在"单张 100×100 缩略图"上看不出差,但在"批量 100k 张 4K → AVIF"任务里,libvips 用 1/10 的内存跑出 5× 的速度。</figcaption>
+      <figcaption class="figcap lang-en-only">Fig e · Two memory models. libvips (top) is a streaming pipeline — pixels relay through processing nodes row by row at a ~50 MB peak. ImageMagick (bottom) is full-load — the whole 4K image decompresses into RAM (~500 MB), all operations happen in place. The difference is invisible on a single 100×100 thumbnail; on a 100 k batch of 4K → AVIF, libvips uses one-tenth the memory at 5× the speed.</figcaption>
+    </figure>
+
+    <p class="lang-zh-only">一句记忆口诀:<em>"vips 流水、IM 大屋"</em> —— vips 像生产线传送带,材料(像素行)源源不断流过工位;ImageMagick 像把所有材料堆进一个大房间再一起加工。两种思路都对,只是适合不同规模。</p>
+    <p class="lang-en-only">A mnemonic: <em>"vips is the conveyor, IM is the warehouse"</em> — vips moves rows past stations like an assembly line; ImageMagick piles everything into one big room and processes in place. Both philosophies work; they just fit different scales.</p>
+  </div>
+</section>
+
+<!-- ========== C62 · 决策树 ========== -->
+<section class="chap" id="c62" data-phase="bg">
+  <div class="container">
+    <h2 class="chap-title lang-zh-only">「我应该用哪个格式」决策树</h2>
+    <h2 class="chap-title lang-en-only">"Which format should I use" — decision tree</h2>
+
+    <p class="lang-zh-only">本文走完 50+ 格式之后,最常被问到的还是这一句:"那我到底用哪个?"答案分两层:第一层是<em>用途场景</em> —— 屏幕显示、GPU 纹理、HDR 影视、科学医学,用途不同候选集就完全不同;第二层是<em>具体约束</em> —— 兼容老浏览器吗?要透明通道吗?是 16-bit 工程影像吗?这张决策树是出发点,不是教条 —— 真实工程里你可能因为某个客户的 IT 政策只能用 JPEG,或因为某个 GPU 不支持 BC7 而退回 BC1,这些场景决策树之外。</p>
+    <p class="lang-en-only">After 50+ formats, the question we still get most is: "OK, so which one do I use?" The answer has two layers. Layer one is <em>use case</em> — screen display, GPU texture, HDR film, science / medicine; different domains, totally different shortlists. Layer two is <em>specific constraints</em> — must support legacy browsers? need alpha? 16-bit engineering imagery? This tree is a starting point, not gospel — real projects sometimes pin you to JPEG for IT-policy reasons, or fall back from BC7 to BC1 because of a target GPU; those edge cases live outside the tree.</p>
+
+    <div class="format-flow-svg">
+      <svg viewBox="0 0 880 600" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Decision tree: which image format to use, branching by use case and constraints">
+        <!-- root -->
+        <rect x="370" y="20" width="140" height="40" rx="8" fill="#ddd9cd" stroke="#15171c" stroke-width="1"/>
+        <text x="440" y="38" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="11" fill="#15171c" font-weight="700">我要存什么图?</text>
+        <text x="440" y="52" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">what kind of image?</text>
+
+        <!-- root → 4 use cases -->
+        <line x1="440" y1="60" x2="440" y2="80" stroke="#15171c" stroke-width="0.8"/>
+        <line x1="120" y1="80" x2="760" y2="80" stroke="#15171c" stroke-width="0.8"/>
+        <line x1="120" y1="80" x2="120" y2="100" stroke="#15171c" stroke-width="0.8"/>
+        <line x1="333" y1="80" x2="333" y2="100" stroke="#15171c" stroke-width="0.8"/>
+        <line x1="547" y1="80" x2="547" y2="100" stroke="#15171c" stroke-width="0.8"/>
+        <line x1="760" y1="80" x2="760" y2="100" stroke="#15171c" stroke-width="0.8"/>
+
+        <!-- L2: 4 categories -->
+        <rect x="60" y="100" width="120" height="32" rx="6" fill="#c9dceb" stroke="#1f5c8c" stroke-width="0.8"/>
+        <text x="120" y="118" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c" font-weight="700">屏幕显示</text>
+        <text x="120" y="128" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">screen / web</text>
+
+        <rect x="273" y="100" width="120" height="32" rx="6" fill="#e1d5ee" stroke="#6b3aa3" stroke-width="0.8"/>
+        <text x="333" y="118" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c" font-weight="700">GPU 纹理</text>
+        <text x="333" y="128" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">GPU texture</text>
+
+        <rect x="487" y="100" width="120" height="32" rx="6" fill="#f0e3c0" stroke="#c89a3a" stroke-width="0.8"/>
+        <text x="547" y="118" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c" font-weight="700">HDR / 工程</text>
+        <text x="547" y="128" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">HDR / engineering</text>
+
+        <rect x="700" y="100" width="120" height="32" rx="6" fill="#d0d6e8" stroke="#3a4a8a" stroke-width="0.8"/>
+        <text x="760" y="118" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c" font-weight="700">科学 / 医学</text>
+        <text x="760" y="128" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">science / medical</text>
+
+        <!-- ============ L3 sub-branches ============ -->
+
+        <!-- 屏幕显示 → 照片/图标/动图 -->
+        <line x1="120" y1="132" x2="120" y2="152" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="40" y1="152" x2="200" y2="152" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="40" y1="152" x2="40" y2="172" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="120" y1="152" x2="120" y2="172" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="200" y1="152" x2="200" y2="172" stroke="#15171c" stroke-width="0.6"/>
+
+        <rect x="6" y="172" width="68" height="28" rx="6" fill="#fdfbf3" stroke="#1f5c8c" stroke-width="0.6"/>
+        <text x="40" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">照片</text>
+        <text x="40" y="194" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#3c4148">photo</text>
+
+        <rect x="86" y="172" width="68" height="28" rx="6" fill="#fdfbf3" stroke="#1f5c8c" stroke-width="0.6"/>
+        <text x="120" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">图标</text>
+        <text x="120" y="194" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#3c4148">icon / logo</text>
+
+        <rect x="166" y="172" width="68" height="28" rx="6" fill="#fdfbf3" stroke="#1f5c8c" stroke-width="0.6"/>
+        <text x="200" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">动图</text>
+        <text x="200" y="194" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#3c4148">animation</text>
+
+        <!-- 照片 → 现代/兼容 -->
+        <line x1="40" y1="200" x2="40" y2="216" stroke="#15171c" stroke-width="0.5"/>
+        <line x1="14" y1="216" x2="66" y2="216" stroke="#15171c" stroke-width="0.5"/>
+        <line x1="14" y1="216" x2="14" y2="232" stroke="#15171c" stroke-width="0.5"/>
+        <line x1="66" y1="216" x2="66" y2="232" stroke="#15171c" stroke-width="0.5"/>
+
+        <rect x="0" y="232" width="40" height="44" rx="6" fill="#1f5c8c" stroke="#1f5c8c" stroke-width="0.6"/>
+        <text x="20" y="247" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff" font-weight="700">AVIF</text>
+        <text x="20" y="259" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff" font-weight="700">JXL</text>
+        <text x="20" y="271" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#c9dceb">现代</text>
+
+        <rect x="46" y="232" width="40" height="44" rx="6" fill="#9ec0db" stroke="#1f5c8c" stroke-width="0.6"/>
+        <text x="66" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">JPEG</text>
+        <text x="66" y="264" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#3c4148">兼容</text>
+
+        <text x="0" y="222" font-family="JetBrains Mono, monospace" font-size="6" fill="#a83a7a">支持新?</text>
+        <text x="46" y="222" font-family="JetBrains Mono, monospace" font-size="6" fill="#a83a7a">老浏览器?</text>
+
+        <!-- 图标 → SVG / PNG -->
+        <line x1="120" y1="200" x2="120" y2="216" stroke="#15171c" stroke-width="0.5"/>
+        <line x1="94" y1="216" x2="146" y2="216" stroke="#15171c" stroke-width="0.5"/>
+        <line x1="94" y1="216" x2="94" y2="232" stroke="#15171c" stroke-width="0.5"/>
+        <line x1="146" y1="216" x2="146" y2="232" stroke="#15171c" stroke-width="0.5"/>
+
+        <rect x="80" y="232" width="40" height="44" rx="6" fill="#2d7a7a" stroke="#2d7a7a" stroke-width="0.6"/>
+        <text x="100" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff" font-weight="700">SVG</text>
+        <text x="100" y="266" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#c5dede">矢量</text>
+
+        <rect x="126" y="232" width="40" height="44" rx="6" fill="#c9dceb" stroke="#1f5c8c" stroke-width="0.6"/>
+        <text x="146" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">PNG</text>
+        <text x="146" y="266" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#3c4148">位图</text>
+
+        <text x="80" y="222" font-family="JetBrains Mono, monospace" font-size="6" fill="#a83a7a">几何形?</text>
+        <text x="126" y="222" font-family="JetBrains Mono, monospace" font-size="6" fill="#a83a7a">需 raster?</text>
+
+        <!-- 动图 → AVIF anim / WebP / APNG -->
+        <line x1="200" y1="200" x2="200" y2="232" stroke="#15171c" stroke-width="0.5"/>
+        <rect x="170" y="232" width="60" height="44" rx="6" fill="#1f5c8c" stroke="#1f5c8c" stroke-width="0.6"/>
+        <text x="200" y="248" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff" font-weight="700">AVIF anim</text>
+        <text x="200" y="262" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="8" fill="#c9dceb">WebP anim</text>
+        <text x="200" y="272" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#c9dceb">非 GIF</text>
+
+        <!-- =========== GPU 纹理分支 =========== -->
+        <line x1="333" y1="132" x2="333" y2="152" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="273" y1="152" x2="393" y2="152" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="273" y1="152" x2="273" y2="172" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="393" y1="152" x2="393" y2="172" stroke="#15171c" stroke-width="0.6"/>
+
+        <rect x="239" y="172" width="68" height="28" rx="6" fill="#fdfbf3" stroke="#6b3aa3" stroke-width="0.6"/>
+        <text x="273" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">桌面 GPU</text>
+        <text x="273" y="194" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#3c4148">desktop</text>
+
+        <rect x="359" y="172" width="68" height="28" rx="6" fill="#fdfbf3" stroke="#6b3aa3" stroke-width="0.6"/>
+        <text x="393" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">移动 GPU</text>
+        <text x="393" y="194" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#3c4148">mobile</text>
+
+        <!-- 桌面 → BC7 -->
+        <line x1="273" y1="200" x2="273" y2="232" stroke="#15171c" stroke-width="0.5"/>
+        <rect x="243" y="232" width="60" height="44" rx="6" fill="#6b3aa3" stroke="#6b3aa3" stroke-width="0.6"/>
+        <text x="273" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff" font-weight="700">BC7</text>
+        <text x="273" y="266" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#e1d5ee">DDS / D3D</text>
+
+        <!-- 移动 → ASTC -->
+        <line x1="393" y1="200" x2="393" y2="232" stroke="#15171c" stroke-width="0.5"/>
+        <rect x="363" y="232" width="60" height="44" rx="6" fill="#6b3aa3" stroke="#6b3aa3" stroke-width="0.6"/>
+        <text x="393" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff" font-weight="700">ASTC 6×6</text>
+        <text x="393" y="266" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#e1d5ee">iOS / Android</text>
+
+        <!-- 跨平台容器 -->
+        <line x1="333" y1="276" x2="333" y2="300" stroke="#a83a7a" stroke-width="0.6" stroke-dasharray="2 2"/>
+        <rect x="278" y="300" width="110" height="28" rx="6" fill="#ecc8dd" stroke="#a83a7a" stroke-width="0.6"/>
+        <text x="333" y="312" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">KTX2 / Basis</text>
+        <text x="333" y="322" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#3c4148">cross-platform container</text>
+
+        <!-- =========== HDR 分支 =========== -->
+        <line x1="547" y1="132" x2="547" y2="152" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="487" y1="152" x2="607" y2="152" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="487" y1="152" x2="487" y2="172" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="607" y1="152" x2="607" y2="172" stroke="#15171c" stroke-width="0.6"/>
+
+        <rect x="453" y="172" width="68" height="28" rx="6" fill="#fdfbf3" stroke="#c89a3a" stroke-width="0.6"/>
+        <text x="487" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">影视 VFX</text>
+        <text x="487" y="194" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#3c4148">film VFX</text>
+
+        <rect x="573" y="172" width="68" height="28" rx="6" fill="#fdfbf3" stroke="#c89a3a" stroke-width="0.6"/>
+        <text x="607" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">HDR 摄影</text>
+        <text x="607" y="194" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#3c4148">HDR photo</text>
+
+        <line x1="487" y1="200" x2="487" y2="232" stroke="#15171c" stroke-width="0.5"/>
+        <rect x="457" y="232" width="60" height="44" rx="6" fill="#c89a3a" stroke="#c89a3a" stroke-width="0.6"/>
+        <text x="487" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff" font-weight="700">EXR</text>
+        <text x="487" y="266" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#f0e3c0">half-float</text>
+
+        <line x1="607" y1="200" x2="607" y2="232" stroke="#15171c" stroke-width="0.5"/>
+        <rect x="577" y="232" width="60" height="44" rx="6" fill="#c89a3a" stroke="#c89a3a" stroke-width="0.6"/>
+        <text x="607" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff" font-weight="700">RAW</text>
+        <text x="607" y="266" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#f0e3c0">DNG / NEF</text>
+
+        <!-- =========== 科学 / 医学分支 =========== -->
+        <line x1="760" y1="132" x2="760" y2="152" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="700" y1="152" x2="820" y2="152" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="700" y1="152" x2="700" y2="172" stroke="#15171c" stroke-width="0.6"/>
+        <line x1="820" y1="152" x2="820" y2="172" stroke="#15171c" stroke-width="0.6"/>
+
+        <rect x="666" y="172" width="68" height="28" rx="6" fill="#fdfbf3" stroke="#3a4a8a" stroke-width="0.6"/>
+        <text x="700" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">医学</text>
+        <text x="700" y="194" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#3c4148">medical</text>
+
+        <rect x="786" y="172" width="68" height="28" rx="6" fill="#fdfbf3" stroke="#3a4a8a" stroke-width="0.6"/>
+        <text x="820" y="183" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#15171c" font-weight="700">天文</text>
+        <text x="820" y="194" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="7" fill="#3c4148">astronomy</text>
+
+        <line x1="700" y1="200" x2="700" y2="232" stroke="#15171c" stroke-width="0.5"/>
+        <rect x="670" y="232" width="60" height="44" rx="6" fill="#3a4a8a" stroke="#3a4a8a" stroke-width="0.6"/>
+        <text x="700" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff" font-weight="700">DICOM</text>
+        <text x="700" y="266" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#d0d6e8">病例标准</text>
+
+        <line x1="820" y1="200" x2="820" y2="232" stroke="#15171c" stroke-width="0.5"/>
+        <rect x="790" y="232" width="60" height="44" rx="6" fill="#3a4a8a" stroke="#3a4a8a" stroke-width="0.6"/>
+        <text x="820" y="252" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="9" fill="#fff" font-weight="700">FITS</text>
+        <text x="820" y="266" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="6" fill="#d0d6e8">天文标准</text>
+
+        <!-- bottom legend -->
+        <line x1="20" y1="320" x2="860" y2="320" stroke="#c7c4ba" stroke-width="0.5" stroke-dasharray="3 2"/>
+        <text x="20" y="340" font-family="JetBrains Mono, monospace" font-size="9" fill="#a83a7a" font-weight="700">边上的小字是「决策条件」 · annotations on edges are decision questions</text>
+        <text x="20" y="356" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">叶节点颜色 = 阵营色 · 蓝 Web · 紫 GPU · 金 HDR · 青 Vec · 棕 RT · 深蓝 Sci · 粉 Nx</text>
+        <text x="20" y="372" font-family="JetBrains Mono, monospace" font-size="9" fill="#3c4148">leaf colour = phase colour · blue Web · purple GPU · gold HDR · teal Vec · brown RT · navy Sci · pink Nx</text>
+
+        <!-- ============ Layer 4: tradeoff hints ============ -->
+        <text x="20" y="408" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c" font-weight="700">几个常见的「附加约束」 · common extra constraints</text>
+
+        <rect x="20" y="424" width="200" height="40" rx="6" fill="#fdfbf3" stroke="#c7c4ba" stroke-width="0.6"/>
+        <text x="30" y="438" font-family="JetBrains Mono, monospace" font-size="8" fill="#a83a7a" font-weight="700">需要 alpha?</text>
+        <text x="30" y="452" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">→ PNG / WebP / AVIF / TIFF ✓</text>
+        <text x="30" y="462" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">→ JPEG / BC1 ✗</text>
+
+        <rect x="240" y="424" width="200" height="40" rx="6" fill="#fdfbf3" stroke="#c7c4ba" stroke-width="0.6"/>
+        <text x="250" y="438" font-family="JetBrains Mono, monospace" font-size="8" fill="#a83a7a" font-weight="700">需要 lossless?</text>
+        <text x="250" y="452" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">→ PNG / TIFF / JXL / WebP-LL ✓</text>
+        <text x="250" y="462" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">→ JPEG / AVIF(可,但少用) ~</text>
+
+        <rect x="460" y="424" width="200" height="40" rx="6" fill="#fdfbf3" stroke="#c7c4ba" stroke-width="0.6"/>
+        <text x="470" y="438" font-family="JetBrains Mono, monospace" font-size="8" fill="#a83a7a" font-weight="700">需要 GPU 直采?</text>
+        <text x="470" y="452" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">→ BC7 / ASTC / KTX2 ✓</text>
+        <text x="470" y="462" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">→ JPEG / PNG / AVIF ✗(必须 CPU 解码)</text>
+
+        <rect x="680" y="424" width="180" height="40" rx="6" fill="#fdfbf3" stroke="#c7c4ba" stroke-width="0.6"/>
+        <text x="690" y="438" font-family="JetBrains Mono, monospace" font-size="8" fill="#a83a7a" font-weight="700">需要 16-bit/通道?</text>
+        <text x="690" y="452" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">→ TIFF-16 / PNG-16 / EXR ✓</text>
+        <text x="690" y="462" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">→ JPEG / WebP-8 ✗</text>
+
+        <!-- ============ Layer 5: famous wrong-uses ============ -->
+        <text x="20" y="500" font-family="JetBrains Mono, monospace" font-size="10" fill="#15171c" font-weight="700">几个经典「错配」反例 · classic mismatches</text>
+
+        <rect x="20" y="514" width="270" height="32" rx="6" fill="#f0e3c0" stroke="#c89a3a" stroke-width="0.5"/>
+        <text x="30" y="527" font-family="JetBrains Mono, monospace" font-size="8" fill="#15171c">用 GIF 存照片 → 256 色,色斑 + 体积大</text>
+        <text x="30" y="540" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">photo → GIF: 256-colour banding, huge file</text>
+
+        <rect x="310" y="514" width="270" height="32" rx="6" fill="#f0e3c0" stroke="#c89a3a" stroke-width="0.5"/>
+        <text x="320" y="527" font-family="JetBrains Mono, monospace" font-size="8" fill="#15171c">用 PNG 存照片 → 体积比 JPEG 大 5-10×</text>
+        <text x="320" y="540" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">photo → PNG: 5-10× larger than JPEG</text>
+
+        <rect x="600" y="514" width="260" height="32" rx="6" fill="#f0e3c0" stroke="#c89a3a" stroke-width="0.5"/>
+        <text x="610" y="527" font-family="JetBrains Mono, monospace" font-size="8" fill="#15171c">用 JPEG 当 GPU 纹理 → 跑不动 / 必须 CPU 解</text>
+        <text x="610" y="540" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">JPEG → texture: needs full CPU decode first</text>
+
+        <rect x="20" y="554" width="400" height="32" rx="6" fill="#f0e3c0" stroke="#c89a3a" stroke-width="0.5"/>
+        <text x="30" y="567" font-family="JetBrains Mono, monospace" font-size="8" fill="#15171c">用 8-bit JPEG 做 HDR 后期 → bit depth 不够,色阶断层</text>
+        <text x="30" y="580" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">8-bit JPEG → HDR grading: not enough bit depth, banding</text>
+
+        <rect x="440" y="554" width="420" height="32" rx="6" fill="#f0e3c0" stroke="#c89a3a" stroke-width="0.5"/>
+        <text x="450" y="567" font-family="JetBrains Mono, monospace" font-size="8" fill="#15171c">用 PNG 当矢量 logo → 缩放糊掉,应用 SVG 才对</text>
+        <text x="450" y="580" font-family="JetBrains Mono, monospace" font-size="8" fill="#3c4148">PNG → vector logo: blurs on scale, use SVG</text>
+      </svg>
+    </div>
+
+    <p class="lang-zh-only">树根问"用途",叶子才到具体格式。中间几跳问的是"老浏览器要不要兜底""有没有透明""是不是 16-bit"。同一片叶子(比如"屏幕显示 · 照片"),最终选 AVIF 还是 JPEG,取决于客户群是不是全在 Safari 16+。这棵树没有"绝对正确",只有"在你的约束下,谁先 +谁兜底"。</p>
+    <p class="lang-en-only">The root asks "what for"; only the leaves name a format. The middle hops ask "do legacy browsers need a fallback?" "is there alpha?" "is it 16-bit?". On the same leaf — say "screen · photo" — choosing AVIF over JPEG depends entirely on whether your audience is all on Safari 16+. The tree has no absolute right answer; only "given your constraints, what's the primary and what's the fallback?"</p>
+
+    <h3 class="sub lang-zh-only">四个职业场景的"开箱组合"</h3>
+    <h3 class="sub lang-en-only">Four professional starter kits</h3>
+
+    <aside class="case-study accent">
+      <div class="cs-tag">CASE 1 · WEB 设计师 · WEB DESIGNER</div>
+      <h5 class="lang-zh-only">网页设计师的图片栈</h5>
+      <h5 class="lang-en-only">A web designer's image stack</h5>
+      <p class="lang-zh-only"><strong>主图(hero / 文章插图)</strong>:AVIF(Q70,~30% smaller than JPEG)+ <strong>WebP</strong> 兼容兜底 + <strong>JPEG</strong> 终极兜底,用 <code>&lt;picture&gt;</code> 三层 source。<strong>Logo / icon</strong>:SVG 优先(矢量 + 任意缩放),<strong>PNG</strong> 兜底给不渲染 SVG 的环境(老 Outlook / 部分 RSS reader)。<strong>动图</strong>:WebP anim 或 AVIF anim,千万别用 GIF(同图体积大 10×)。<strong>UI 截图 / 设计稿</strong>:PNG(无损 + 锐边)。</p>
+      <p class="lang-en-only"><strong>Hero / inline images</strong>: AVIF (Q70, ~30% smaller than JPEG) + <strong>WebP</strong> compat + <strong>JPEG</strong> final fallback, served through a three-layer <code>&lt;picture&gt;</code>. <strong>Logo / icon</strong>: SVG first (vector, scale-free), <strong>PNG</strong> fallback for SVG-blind environments (old Outlook, some RSS readers). <strong>Animation</strong>: WebP anim or AVIF anim — never GIF (10× larger at the same quality). <strong>UI screenshots / design exports</strong>: PNG (lossless + sharp edges).</p>
+    </aside>
+
+    <aside class="case-study gpu">
+      <div class="cs-tag">CASE 2 · 游戏纹理师 · GAME TEXTURE ARTIST</div>
+      <h5 class="lang-zh-only">游戏纹理师的输出栈</h5>
+      <h5 class="lang-en-only">A game texture artist's pipeline</h5>
+      <p class="lang-zh-only"><strong>桌面 GPU</strong>:BC7(albedo / RGBA 通用)+ BC5(法线贴图,XY 双通道精度高)+ BC4(灰度,roughness / metallic)。<strong>移动 GPU</strong>:ASTC 6×6(常规质量)或 4×4(高质量),iOS 和 Android 14+ 都支持。<strong>跨平台容器</strong>:KTX2 + Basis Universal —— 一份"中间码"在运行时按目标 GPU 转码到 BC7 或 ASTC,资产体积省一半。<strong>源文件</strong>:16-bit TIFF / PNG / EXR(法线和 displacement),工具链(Substance / nvtt)从源压到目标格式。</p>
+      <p class="lang-en-only"><strong>Desktop GPU</strong>: BC7 (albedo / generic RGBA) + BC5 (normal maps, two-channel high precision) + BC4 (greyscale, roughness / metallic). <strong>Mobile GPU</strong>: ASTC 6×6 (normal quality) or 4×4 (high quality); supported on iOS and Android 14+. <strong>Cross-platform container</strong>: KTX2 + Basis Universal — one "middle code" transcoded at runtime to BC7 or ASTC, halving asset bytes. <strong>Source files</strong>: 16-bit TIFF / PNG / EXR (normals, displacement); tooling (Substance, nvtt) compresses sources to the target format.</p>
+    </aside>
+
+    <aside class="case-study heat">
+      <div class="cs-tag">CASE 3 · 摄影师 · PHOTOGRAPHER</div>
+      <h5 class="lang-zh-only">摄影师的归档与发布栈</h5>
+      <h5 class="lang-en-only">A photographer's archive &amp; delivery</h5>
+      <p class="lang-zh-only"><strong>归档(原始)</strong>:DNG(Adobe 的开放 RAW 容器,跨厂商兼容)优先于 NEF / CR3 / ARW(各厂商私有);<strong>后期源</strong>:16-bit TIFF(ProPhoto / sRGB)或 32-bit EXR(HDR);<strong>分享(社交)</strong>:JPEG Q85-90(兼容一切设备),Instagram / 微信仍只吃 JPEG;<strong>个人网站</strong>:AVIF Q70 + JPEG 兜底,体积省 30%,Safari 16+ 都能直接看;<strong>打印</strong>:TIFF 16-bit 或 PDF/X-1a(印刷标准)。</p>
+      <p class="lang-en-only"><strong>Archive (original)</strong>: DNG (Adobe's open RAW container, cross-vendor) over NEF / CR3 / ARW (proprietary); <strong>Post-production source</strong>: 16-bit TIFF (ProPhoto / sRGB) or 32-bit EXR (HDR); <strong>Social sharing</strong>: JPEG Q85-90 (universally supported) — Instagram and WeChat still only accept JPEG; <strong>Personal website</strong>: AVIF Q70 + JPEG fallback, ~30% smaller, native to Safari 16+; <strong>Print</strong>: 16-bit TIFF or PDF/X-1a (print standard).</p>
+    </aside>
+
+    <aside class="case-study">
+      <div class="cs-tag">CASE 4 · 学术研究 · ACADEMIC RESEARCH</div>
+      <h5 class="lang-zh-only">学术 / 科研工作者的格式栈</h5>
+      <h5 class="lang-en-only">An academic researcher's stack</h5>
+      <p class="lang-zh-only"><strong>天文</strong>:FITS(Flexible Image Transport System)是天文界的事实标准 —— Hubble / JWST / 地基望远镜全用它,数据头里带 WCS 坐标系。<strong>医学</strong>:DICOM(Digital Imaging and Communications in Medicine)—— CT / MRI / X-ray 全部走 DICOM,带病人 ID / 设备型号 / 扫描参数 metadata。<strong>HDR / 学术成像</strong>:PFM(Portable FloatMap,简单 32-bit float)或 EXR;PFM 在学术圈流行因为格式简单,任何脚本能解。<strong>论文图 / 印刷</strong>:TIFF(无损,印刷友好)或 PDF/EPS(矢量)。</p>
+      <p class="lang-en-only"><strong>Astronomy</strong>: FITS (Flexible Image Transport System) is the de-facto standard — Hubble, JWST, ground-based telescopes all use it, with WCS world-coordinate metadata in the header. <strong>Medicine</strong>: DICOM (Digital Imaging and Communications in Medicine) — CT / MRI / X-ray all flow through DICOM, with patient ID / device model / scan parameters as metadata. <strong>HDR / academic imaging</strong>: PFM (Portable FloatMap, plain 32-bit float) or EXR; PFM is popular in academia because the format is simple and any script can parse it. <strong>Paper figures / print</strong>: TIFF (lossless, print-ready) or PDF / EPS (vector).</p>
+    </aside>
+
+    <p class="lang-zh-only">这四个组合不是"最优解",只是"开箱推荐"。真实工程里你会遇到甲方只接受 JPEG、Unity 强制要求 ASTC LDR、医院 PACS 系统只识别 DICOM 1995 子集 —— 这些约束才是决策树之外的真正变量。但当约束消失时,这四套组合是 2026 年最不出错的起点。</p>
+    <p class="lang-en-only">These four kits aren't "optimal" — they're "out-of-the-box recommendations." Real projects hit constraints — clients accepting only JPEG, Unity demanding ASTC LDR, a hospital PACS that only reads a 1995 DICOM subset — and those constraints are the real variables outside the tree. But when constraints recede, these four kits are the safest 2026 starting points.</p>
+  </div>
+</section>
+
+<!-- ====================== C63 · 像素的归宿 ====================== -->
+<section class="chap" id="c63" data-phase="bg">
+  <div class="container">
+    <h2 class="chap-title lang-zh-only">像素的归宿</h2>
+    <h2 class="chap-title lang-en-only">The fate of the pixel</h2>
+
+    <p class="lang-zh-only">它出生在一颗 CMOS sensor 的硅井底部 —— 一个 14-bit 的电荷,被 ADC 抬上数字总线,被相机固件写进一个叫 .ARW 的 RAW 文件,sleep 在某张 SD 卡的 NAND 块上六个月没人看。它当时还不是"像素",它只是一个电压样本,一个 16384 之中的整数,带着读出噪声和热噪声,带着一行 EXIF 和一段 ICC profile 等待被解释。</p>
+    <p class="lang-en-only">It was born at the bottom of a CMOS sensor's silicon well — a 14-bit charge, lifted onto a digital bus by an ADC, written by camera firmware into a .ARW RAW file, sleeping in the NAND of some SD card for six months with no one looking. It wasn't a "pixel" yet — just a voltage sample, an integer out of 16384, carrying read noise and thermal noise, a line of EXIF, and an ICC profile waiting to be interpreted.</p>
+
+    <p class="lang-zh-only">六个月后它被 LibRaw 解码成 16-bit linear,被 Lightroom 调色,被导出成 16-bit TIFF 进 Photoshop 修瑕,被另存为 sRGB JPEG 上传朋友圈,又被同一张图压成 AVIF 上博客 hero,被 Cloudflare CDN 缓存到全球 200 个边缘节点,被一万个浏览器在一分钟内同时解码,在某些 WebGL 场景里它被上传到 GPU 显存压成 BC7 块,被 fragment shader 采样过 12 次,被 ICC profile 从 sRGB 映到 Display P3,被 mipmap 选了 LOD 2,被 trilinear filter 平滑掉了高频。它有时是 24 bit,有时是 8 bit,有时是 4 bit/pixel,有时是浮点。它一直在变形。</p>
+    <p class="lang-en-only">Six months later LibRaw decodes it into 16-bit linear, Lightroom grades it, it exports as 16-bit TIFF into Photoshop for retouching, saves as sRGB JPEG to a social feed, gets re-compressed as AVIF for a blog hero, lives in Cloudflare's CDN across 200 edge nodes, decodes simultaneously in ten thousand browsers within a minute, gets uploaded to GPU memory as a BC7 block in some WebGL scene, is sampled 12 times by a fragment shader, gets remapped from sRGB to Display P3 by an ICC profile, picks LOD 2 from a mipmap chain, gets smoothed by a trilinear filter. Sometimes it's 24 bits, sometimes 8, sometimes 4 bits per pixel, sometimes floating point. It never stops changing shape.</p>
+
+    <figure class="figure">
+      <svg viewBox="0 0 240 80" xmlns="http://www.w3.org/2000/svg" aria-label="Pixel 8-stop journey">
+        <!-- baseline -->
+        <line x1="14" y1="44" x2="226" y2="44" stroke="#cdb89c" stroke-width="0.6" stroke-dasharray="2 2"/>
+        <!-- 8 stops -->
+        <g font-family="JetBrains Mono, SF Mono, Menlo, monospace" font-size="6" fill="#3a3128">
+          <!-- stop 1 birth -->
+          <circle cx="20" cy="44" r="3.2" fill="#7a4f2b"/>
+          <text x="20" y="58" text-anchor="middle">birth</text>
+          <text x="20" y="33" text-anchor="middle" fill="#7a4f2b">RAW</text>
+          <!-- stop 2 edit -->
+          <circle cx="50" cy="44" r="3.2" fill="#7a4f2b"/>
+          <text x="50" y="58" text-anchor="middle">edit</text>
+          <text x="50" y="33" text-anchor="middle" fill="#7a4f2b">EXR</text>
+          <!-- stop 3 compress -->
+          <circle cx="80" cy="44" r="3.2" fill="#1f5c8c"/>
+          <text x="80" y="58" text-anchor="middle">compress</text>
+          <text x="80" y="33" text-anchor="middle" fill="#1f5c8c">AVIF</text>
+          <!-- stop 4 transmit -->
+          <circle cx="110" cy="44" r="3.2" fill="#1f5c8c"/>
+          <text x="110" y="58" text-anchor="middle">transmit</text>
+          <text x="110" y="33" text-anchor="middle" fill="#1f5c8c">CDN</text>
+          <!-- stop 5 decode -->
+          <circle cx="140" cy="44" r="3.2" fill="#1f5c8c"/>
+          <text x="140" y="58" text-anchor="middle">decode</text>
+          <text x="140" y="33" text-anchor="middle" fill="#1f5c8c">RGB</text>
+          <!-- stop 6 VRAM -->
+          <circle cx="170" cy="44" r="3.2" fill="#5a7a3a"/>
+          <text x="170" y="58" text-anchor="middle">VRAM</text>
+          <text x="170" y="33" text-anchor="middle" fill="#5a7a3a">BC7</text>
+          <!-- stop 7 sample -->
+          <circle cx="200" cy="44" r="3.2" fill="#5a7a3a"/>
+          <text x="200" y="58" text-anchor="middle">sample</text>
+          <text x="200" y="33" text-anchor="middle" fill="#5a7a3a">LOD</text>
+          <!-- stop 8 screen -->
+          <circle cx="226" cy="44" r="3.6" fill="#1a1a1a"/>
+          <text x="226" y="58" text-anchor="middle">screen</text>
+          <text x="226" y="33" text-anchor="middle" fill="#1a1a1a">photon</text>
+        </g>
+        <!-- arrows between -->
+        <g stroke="#7a6a55" stroke-width="0.5" fill="none">
+          <path d="M24 44 L46 44" marker-end="url(#arr)"/>
+          <path d="M54 44 L76 44" marker-end="url(#arr)"/>
+          <path d="M84 44 L106 44" marker-end="url(#arr)"/>
+          <path d="M114 44 L136 44" marker-end="url(#arr)"/>
+          <path d="M144 44 L166 44" marker-end="url(#arr)"/>
+          <path d="M174 44 L196 44" marker-end="url(#arr)"/>
+          <path d="M204 44 L222 44" marker-end="url(#arr)"/>
+        </g>
+        <defs>
+          <marker id="arr" viewBox="0 0 4 4" refX="3" refY="2" markerWidth="3" markerHeight="3" orient="auto">
+            <path d="M0 0 L4 2 L0 4 z" fill="#7a6a55"/>
+          </marker>
+        </defs>
+        <!-- phase legend -->
+        <g font-family="JetBrains Mono, SF Mono, Menlo, monospace" font-size="4.5" fill="#7a6a55">
+          <rect x="14" y="68" width="3" height="3" fill="#7a4f2b"/><text x="20" y="71">HDR</text>
+          <rect x="48" y="68" width="3" height="3" fill="#1f5c8c"/><text x="54" y="71">WEB</text>
+          <rect x="82" y="68" width="3" height="3" fill="#5a7a3a"/><text x="88" y="71">GPU</text>
+          <rect x="116" y="68" width="3" height="3" fill="#1a1a1a"/><text x="122" y="71">SCREEN</text>
+        </g>
+      </svg>
+      <figcaption class="lang-zh-only"><span class="figid">图 9.1</span>像素的 8 站旅程,这次不是预告,是回顾。</figcaption>
+      <figcaption class="lang-en-only"><span class="figid">Fig 9.1</span>The pixel's 8-stop journey — this time as recap, not preview.</figcaption>
+    </figure>
+
+    <p class="lang-zh-only" style="font-family:var(--serif);font-size:24px;line-height:1.5;color:var(--ink);margin:48px 0;max-width:680px;font-style:italic;border-left:2px solid var(--web);padding-left:20px">它最后变成了屏幕上一个发光的小方块。它当过 RAW、当过 AVIF、当过 BC7、当过显存、当过电压、当过光子。每一段旅程都给它换了一个容器,但它一直是同一颗像素 —— 一个被反复翻译、反复重写、反复压缩、反复采样,却始终保留某种"原意"的微小信号。</p>
+    <p class="lang-en-only" style="font-family:var(--serif-en);font-size:24px;line-height:1.5;color:var(--ink);margin:48px 0;max-width:680px;font-style:italic;border-left:2px solid var(--web);padding-left:20px">It ends as a glowing square on a screen. It has been a RAW, an AVIF, a BC7 block, GPU memory, a voltage, a photon. Every leg of the journey gave it a different container — but it stayed the same pixel: a tiny signal repeatedly translated, rewritten, compressed, and sampled, somehow holding onto its original meaning through every transform.</p>
+  </div>
+</section>
+
+<!-- ====================== C64 · 三个反直觉结论 ====================== -->
+<section class="chap" id="c64" data-phase="bg">
+  <div class="container">
+    <h2 class="chap-title lang-zh-only">三个反直觉结论</h2>
+    <h2 class="chap-title lang-en-only">Three counter-intuitive takeaways</h2>
+
+    <p class="lang-zh-only">沉淀这五十多种格式之后,有三件事是写完之前没意识到的。</p>
+    <p class="lang-en-only">After settling fifty-plus formats into this codex, three things surprised me — none of which I expected before writing.</p>
+
+    <div class="keynum" style="grid-template-columns:1fr;gap:0;padding:0;border:none;margin:32px 0">
+      <div class="item" style="border-top:1px solid var(--rule);padding:32px 0;display:block">
+        <div class="v accent" style="font-size:42px;font-weight:600;letter-spacing:-0.02em;margin-bottom:12px">01</div>
+        <div class="l lang-zh-only" style="font-family:var(--sans);font-size:15px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;margin:0 0 16px;line-height:1.4">最古老的格式不一定最差。</div>
+        <div class="l lang-en-only" style="font-family:var(--sans);font-size:15px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;margin:0 0 16px;line-height:1.4">The oldest format isn't always the worst.</div>
+        <p class="lang-zh-only" style="margin:0;max-width:680px">QOI(2021)的 spec 一页 A4 写得下,实现 300 行 C 代码,比 PNG(1996)简单 100×,却只慢 PNG 3-4× / 大 5-10%。Farbfeld(2014)更激进 —— 干脆不压缩,只做"标头 + 像素"。PCX(1985)的 RLE 在纯色场景甚至比 PNG 还小。简洁是一种持久的设计姿态,不是历史遗物 —— 当 GIF 还在被使用、BMP 还在 Windows 剪贴板里跑、JPEG 仍占 web 图像 60%,你会发现"老"和"差"是两个独立维度。</p>
+        <p class="lang-en-only" style="margin:0;max-width:680px">QOI's spec (2021) fits on one A4 page; the reference implementation is 300 lines of C — 100× simpler than PNG (1996), only 3-4× slower and 5-10% larger. Farbfeld (2014) goes further — no compression at all, just "header + pixels." PCX's RLE (1985) beats PNG on flat-color art. Simplicity is a durable design posture, not a relic — when GIF is still in use, BMP still drives the Windows clipboard, and JPEG still serves 60% of the web, "old" and "bad" turn out to be independent axes.</p>
+      </div>
+
+      <div class="item" style="border-top:1px solid var(--rule);padding:32px 0;display:block">
+        <div class="v" style="font-size:42px;font-weight:600;letter-spacing:-0.02em;margin-bottom:12px;color:var(--gpu)">02</div>
+        <div class="l lang-zh-only" style="font-family:var(--sans);font-size:15px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;margin:0 0 16px;line-height:1.4">ASTC 6×6 比 BC7 4×4 看似激进,实际几乎没视觉差。</div>
+        <div class="l lang-en-only" style="font-family:var(--sans);font-size:15px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;margin:0 0 16px;line-height:1.4">ASTC 6×6 looks aggressive next to BC7 4×4 — but the visual gap is invisible.</div>
+        <p class="lang-zh-only" style="margin:0;max-width:680px">直觉上块越大越糊,但 ASTC 6×6(2.22 bpp)对比 BC7 4×4(8 bpp)显存少 2.25×,ΔPSNR 只有不到 1 dB,SSIM 差异在双盲测里几乎不可分辨。移动游戏开发者一致默认 ASTC 6×6 是甜点;Unity 的 mobile preset 直接以 6×6 为默认。压缩比的甜点不在 4×4,而在让 GPU 缓存命中率最大化的那个块大小 —— 4×4 太奢侈,8×8 太糊,6×6 恰好。</p>
+        <p class="lang-en-only" style="margin:0;max-width:680px">Intuition says bigger blocks blur more — but ASTC 6×6 (2.22 bpp) versus BC7 4×4 (8 bpp) is 2.25× less VRAM with under 1 dB of PSNR loss; SSIM differences are essentially invisible in blind tests. Mobile game devs converge on ASTC 6×6 as the sweet spot; Unity's mobile preset defaults to it. The sweet spot of texture compression isn't 4×4 — it's whichever block size maximizes GPU cache hit rate. 4×4 is luxury, 8×8 is mush, 6×6 is just right.</p>
+      </div>
+
+      <div class="item" style="border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:32px 0;display:block">
+        <div class="v heat" style="font-size:42px;font-weight:600;letter-spacing:-0.02em;margin-bottom:12px">03</div>
+        <div class="l lang-zh-only" style="font-family:var(--sans);font-size:15px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;margin:0 0 16px;line-height:1.4">AVIF 战胜 JXL 不是技术问题,是政治问题。</div>
+        <div class="l lang-en-only" style="font-family:var(--sans);font-size:15px;font-weight:600;color:var(--ink);text-transform:none;letter-spacing:0;margin:0 0 16px;line-height:1.4">AVIF didn't out-engineer JXL — it out-politicked it.</div>
+        <p class="lang-zh-only" style="margin:0;max-width:680px">JXL 在所有维度都赢:HDR、lossless、JPEG 无损 transcode、渐进式解码、解码速度。但 Chrome 团队在 2022-10 以"业界兴趣不足"为由从 Chromium 砍掉 flag,理由是 AVIF 已经够用 —— 而 AVIF 背后是 AOMedia(Google + Netflix + Amazon + 多家芯片厂的联盟)。技术从不单独决定胜负,生态决定。同样的故事在 WebP vs JPEG2000、HEIC vs JXR、Opus vs Vorbis 反复上演;能写进一个 Chromium 的 if-branch,胜过所有 paper 上的曲线。</p>
+        <p class="lang-en-only" style="margin:0;max-width:680px">JXL wins on every axis: HDR, lossless, lossless JPEG transcode, progressive decoding, decode speed. But in October 2022 the Chrome team pulled the flag from Chromium citing "insufficient ecosystem interest" — AVIF, they argued, was enough. And AVIF stands on AOMedia (Google + Netflix + Amazon + chip vendors). Technology rarely decides alone — ecosystems do. The same story replays in WebP vs JPEG2000, HEIC vs JXR, Opus vs Vorbis: shipping inside one Chromium if-branch beats every curve in every paper.</p>
+      </div>
+    </div>
+
+    <p class="lang-zh-only">三个发现共享一个底色:格式不是被它的技术指标决定的,是被使用它的人决定的。</p>
+    <p class="lang-en-only">All three share the same undertone: a format isn't decided by its technical merits — it's decided by the people who use it.</p>
+  </div>
+</section>
+
+<!-- ====================== C65 · 参考与扩展阅读 ====================== -->
+<section class="chap" id="c65" data-phase="bg">
+  <div class="container">
+    <h2 class="chap-title lang-zh-only">参考与扩展阅读</h2>
+    <h2 class="chap-title lang-en-only">References &amp; further reading</h2>
+
+    <p class="lang-zh-only">本文写作的关键依据。按章节分组,数据 / 引用全部来自公开来源。如发现错漏,欢迎邮件指正。</p>
+    <p class="lang-en-only">Sources this article relies on, grouped by phase. All data and quotations are drawn from public references — corrections welcome by email.</p>
+
+    <h3 class="lang-zh-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--web);margin:40px 0 12px;font-weight:600">Phase I · Web 显示派</h3>
+    <h3 class="lang-en-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--web);margin:40px 0 12px;font-weight:600">Phase I · Web display</h3>
+    <ol style="font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--ink-soft);padding-left:28px">
+      <li>RFC 2083 — PNG (Portable Network Graphics) Specification, 1997</li>
+      <li>ISO/IEC 15948 — PNG Specification (Second Edition), 2003</li>
+      <li>ISO/IEC 10918-1 — JPEG, 1992</li>
+      <li>RFC 1951 — DEFLATE Compressed Data Format Specification</li>
+      <li>RFC 9082 — AVIF Image File Format</li>
+      <li>ISO/IEC 23008-12 — HEIF (Image File Format)</li>
+      <li>AOMedia AV1 Bitstream &amp; Decoding Process Specification, v1.0.0-errata1</li>
+      <li>libwebp documentation — developers.google.com/speed/webp</li>
+      <li>mozjpeg — github.com/mozilla/mozjpeg</li>
+      <li>Squoosh source — github.com/GoogleChromeLabs/squoosh</li>
+      <li>Cloudflare blog — "Generating WebP, AVIF and JPEG XL all at once"</li>
+      <li>Jon Sneyers — "The case for JPEG XL", Cloudinary blog (2021)</li>
+      <li>Chrome JXL removal — bugs.chromium.org/p/chromium/issues/detail?id=1178058</li>
+      <li>Smashing Magazine — "Comparing JPEG-XL, AVIF, WebP &amp; JPEG" (2022)</li>
+    </ol>
+
+    <h3 class="lang-zh-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--good);margin:40px 0 12px;font-weight:600">Phase II · GPU 纹理派</h3>
+    <h3 class="lang-en-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--good);margin:40px 0 12px;font-weight:600">Phase II · GPU textures</h3>
+    <ol style="font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--ink-soft);padding-left:28px">
+      <li>Khronos KTX 2.0 specification — registry.khronos.org/KTX/specs/2.0/ktxspec_v2.html</li>
+      <li>Basis Universal — github.com/BinomialLLC/basis_universal</li>
+      <li>ARM ASTC specification — developer.arm.com/documentation/100672</li>
+      <li>D3D11 BC1-BC7 specification — Microsoft Docs (Direct3D 11 texture block compression)</li>
+      <li>Intel ISPCTextureCompressor — github.com/GameTechDev/ISPCTextureCompressor</li>
+      <li>Lance Williams — "Pyramidal Parametrics", SIGGRAPH (1983)</li>
+      <li>OpenGL ES 3.0 / 3.2 specification — Khronos Group</li>
+      <li>NVIDIA Texture Tools — github.com/NVIDIAGameWorks/NVIDIATextureTools</li>
+      <li>Iourcha, Nayak &amp; Hong — "System and method for fixed-rate block-based image compression with inferred pixel values" (S3TC, 1999)</li>
+    </ol>
+
+    <h3 class="lang-zh-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--rt);margin:40px 0 12px;font-weight:600">Phase III · HDR / 工程影像</h3>
+    <h3 class="lang-en-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--rt);margin:40px 0 12px;font-weight:600">Phase III · HDR / engineering imaging</h3>
+    <ol style="font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--ink-soft);padding-left:28px">
+      <li>OpenEXR — openexr.com (Academy Software Foundation)</li>
+      <li>Greg Ward — "Real Pixels", Graphics Gems II (1991, RGBE format)</li>
+      <li>Adobe DNG specification 1.7 — helpx.adobe.com/camera-raw/digital-negative.html</li>
+      <li>LibRaw documentation — libraw.org</li>
+      <li>NEMA DICOM Standard PS 3.x — dicomstandard.org</li>
+      <li>TIFF 6.0 specification — Adobe (1992)</li>
+      <li>SMPTE ST 268 — DPX File Format for Digital Moving-Picture Exchange</li>
+      <li>Dave Coffin's dcraw — cybercom.net/~dcoffin/dcraw/</li>
+      <li>OpenColorIO — opencolorio.org</li>
+      <li>ITU-R BT.2100 — Image parameter values for HDR television</li>
+      <li>SMPTE ST 2084 — Perceptual Quantizer (PQ) transfer function</li>
+    </ol>
+
+    <h3 class="lang-zh-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-mute);margin:40px 0 12px;font-weight:600">Phase IV · 矢量 / 文档</h3>
+    <h3 class="lang-en-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-mute);margin:40px 0 12px;font-weight:600">Phase IV · Vector / document</h3>
+    <ol style="font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--ink-soft);padding-left:28px">
+      <li>W3C SVG 1.1 / SVG 2 Recommendation — w3.org/TR/SVG2/</li>
+      <li>ISO 32000-1 / -2 — Document management — Portable Document Format (PDF)</li>
+      <li>ITU-T T.88 — JBIG2 (Joint Bi-level Image experts Group)</li>
+      <li>Adobe PostScript Language Reference Manual, 3rd ed. (1999)</li>
+      <li>Lottie — airbnb.design/lottie / lottiefiles.com</li>
+      <li>Encapsulated PostScript File Format Specification, Adobe v3.0</li>
+      <li>WMF / EMF — Microsoft Open Specifications [MS-WMF], [MS-EMF]</li>
+    </ol>
+
+    <h3 class="lang-zh-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--copper);margin:40px 0 12px;font-weight:600">Phase V · 复古 / 怪格式</h3>
+    <h3 class="lang-en-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--copper);margin:40px 0 12px;font-weight:600">Phase V · Retro / oddities</h3>
+    <ol style="font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--ink-soft);padding-left:28px">
+      <li>QOI specification — qoiformat.org / github.com/phoboslab/qoi</li>
+      <li>Farbfeld — tools.suckless.org/farbfeld/</li>
+      <li>NetPBM (PBM/PGM/PPM) — netpbm.sourceforge.net</li>
+      <li>EA IFF '85 specification — Jerry Morrison, Electronic Arts (1985)</li>
+      <li>Truevision TGA File Format Specification, v2.0 (1989)</li>
+      <li>ZSoft PCX Technical Reference Manual (1988)</li>
+      <li>BMP / DIB structure — Microsoft Docs (Win32 GDI)</li>
+      <li>XPM — X PixMap format, X.Org reference</li>
+    </ol>
+
+    <h3 class="lang-zh-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--web);margin:40px 0 12px;font-weight:600">Phase VI · 卫星 / 科学</h3>
+    <h3 class="lang-en-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--web);margin:40px 0 12px;font-weight:600">Phase VI · Satellite / science</h3>
+    <ol style="font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--ink-soft);padding-left:28px">
+      <li>FITS Standard 4.0 — fits.gsfc.nasa.gov/fits_standard.html</li>
+      <li>OGC GeoTIFF 1.1 specification — ogc.org/standard/geotiff/</li>
+      <li>NITF MIL-STD-2500C — National Imagery Transmission Format</li>
+      <li>astropy — astropy.org</li>
+      <li>GDAL — gdal.org (Geospatial Data Abstraction Library)</li>
+      <li>Cloud-Optimized GeoTIFF (COG) — cogeo.org</li>
+      <li>Zarr — zarr.dev (chunked, compressed N-dimensional arrays)</li>
+    </ol>
+
+    <h3 class="lang-zh-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--good);margin:40px 0 12px;font-weight:600">Phase VII · 神经压缩 / 未来</h3>
+    <h3 class="lang-en-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--good);margin:40px 0 12px;font-weight:600">Phase VII · Neural / future</h3>
+    <ol style="font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--ink-soft);padding-left:28px">
+      <li>Toderici et al. — "Variable Rate Image Compression with Recurrent Neural Networks", ICLR 2016</li>
+      <li>Ballé, Minnen et al. — "Variational Image Compression with a Scale Hyperprior", ICLR 2018</li>
+      <li>Mentzer, Toderici et al. — "High-Fidelity Generative Image Compression" (HiFiC), NeurIPS 2020</li>
+      <li>Yang, Mandt — "Lossy Image Compression with Conditional Diffusion Models" (CDC), NeurIPS 2023</li>
+      <li>CompressAI — github.com/InterDigitalInc/CompressAI</li>
+      <li>ISO/IEC 21122 — JPEG XS (low-latency lightweight image coding)</li>
+      <li>WebP2 — chromium.googlesource.com/codecs/libwebp2 (experimental)</li>
+      <li>JPEG AI — Call for Proposals, ISO/IEC JTC 1/SC 29/WG 1 (2022)</li>
+    </ol>
+
+    <h3 class="lang-zh-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-mute);margin:40px 0 12px;font-weight:600">综合 / 工具</h3>
+    <h3 class="lang-en-only" style="font-family:var(--sans);font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:var(--ink-mute);margin:40px 0 12px;font-weight:600">General / tools</h3>
+    <ol style="font-family:var(--mono);font-size:12.5px;line-height:1.85;color:var(--ink-soft);padding-left:28px">
+      <li>libvips documentation — libvips.github.io/libvips/</li>
+      <li>ImageMagick documentation — imagemagick.org</li>
+      <li>OpenImageIO — openimageio.readthedocs.io</li>
+      <li>David Salomon — "Data Compression: The Complete Reference", 4th ed. (Springer)</li>
+      <li>Khalid Sayood — "Introduction to Data Compression", 5th ed.</li>
+      <li>Charles Poynton — "Digital Video and HD: Algorithms and Interfaces", 2nd ed.</li>
+    </ol>
+
+    <p class="lang-zh-only" style="margin-top:48px;color:var(--ink-mute);font-size:13px">合计 <strong style="color:var(--ink)">~70</strong> 条参考,覆盖 8 组。完整列表可视为这条沉积带的"地层钻孔",每一层都能往下挖。</p>
+    <p class="lang-en-only" style="margin-top:48px;color:var(--ink-mute);font-size:13px">About <strong style="color:var(--ink)">70</strong> references in total across 8 groups. Treat the list as a borehole through this sedimentary band — every stratum can be dug deeper.</p>
+  </div>
+</section>
+
 </main>
 
-<!-- ========== CLOSING（正文待批 6 终章 C63-C65 完成时填充） ========== -->
+<!-- ========== CLOSING ========== -->
 <footer class="closing" id="closing">
   <div class="container">
-    <!-- 批 6 在此追加: 三个反直觉结论卡片 + footer 链接 + 订阅入口 -->
+    <h2 class="lang-zh-only" style="font-family:var(--sans);font-size:32px;font-weight:600;letter-spacing:-0.01em;color:var(--ink);margin:0 0 24px">— 完 —</h2>
+    <h2 class="lang-en-only" style="font-family:var(--sans);font-size:32px;font-weight:600;letter-spacing:-0.01em;color:var(--ink);margin:0 0 24px">— Fin —</h2>
+
+    <p class="quote lang-zh-only">每一种格式都是一次妥协的化石 —— 一群工程师在某个十年里,为某个具体问题,押注的某种平衡。它们不会消失,它们沉积。</p>
+    <p class="quote lang-en-only">Every format is a fossil of compromise — engineers in some decade, betting on some balance, for some specific problem. They don't vanish; they sediment.</p>
+
+    <p class="lang-zh-only" style="max-width:640px;color:var(--ink-soft)">这篇文章不会更新太频繁,但会随着新格式出现增量补充。如果你发现遗漏了某个格式、某段历史叙事有误、或某个数据需要更精确的来源,欢迎邮件告诉我 —— 我会在下一次沉积时把你的批注一并写进地层。</p>
+    <p class="lang-en-only" style="max-width:640px;color:var(--ink-soft)">This article won't update often, but it will grow incrementally as new formats emerge. If you spot a missing format, a factual error, or a number that needs a sharper source — please email me. The next time the sediment settles, your annotation goes in with it.</p>
+
+    <div class="byline" style="margin-top:48px">
+      <span><span class="label">AUTHOR</span><a class="value" href="https://ursb.me" target="_blank" rel="noopener">Airing</a></span>
+      <span><span class="label">DATE</span><span class="value">2026-05-04</span></span>
+      <span><span class="label">SERIES</span><span class="value"><a href="https://ursb.me/immersive/v8-fast-js/">v8-fast-js</a> · <a href="https://ursb.me/immersive/chromium-renderer/">chromium-renderer</a> · <a href="https://ursb.me/immersive/helio/">helio</a> · <a href="https://ursb.me/immersive/jank-stutter/">jank-stutter</a></span></span>
+    </div>
+
+    <p class="signoff" style="margin-top:56px">FIELD&nbsp;NOTE&nbsp;/&nbsp;05 · 沉积的像素 · SEDIMENT&nbsp;OF&nbsp;PIXELS · 2026</p>
   </div>
 </footer>
 <!-- ====== A11 JS 在此追加 ====== -->
