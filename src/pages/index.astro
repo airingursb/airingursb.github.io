@@ -139,6 +139,238 @@ const recentPhotos = (photosData as Array<any>)
     }
   })();
   </script>
+  <script is:inline>
+  // ── Block scramble (faithful port of anime.js v4 scrambleText, no dep) ──
+  // Source: https://esm.sh/animejs@4.4.1/.../text/scramble.mjs
+  // Each char gets a per-position start/end time (with perturbation jitter),
+  // a "cursor density" settle phase (█→▓→▒→░), and ~30Hz scramble updates.
+  (function() {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Full block range ▀-▟ for random scramble pool
+    var POOL = '';
+    for (var b = 0x2580; b <= 0x259F; b++) POOL += String.fromCharCode(b);
+    var POOL_MAX = POOL.length - 1;
+    // Cursor (settle) gradient — light to full block, played in reverse: █→▓→▒→░
+    var CURSOR = '░▒▓█'; // ░▒▓█
+    var CURSOR_LEN = CURSOR.length;
+    var SETTLE_RATE = 30; // scramble char update Hz
+
+    function rint(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
+
+    function scramble(el, text, opts) {
+      if (!el || text == null) return;
+      if (reduce) { el.textContent = text; return; }
+      if (el.__scrambleId) cancelAnimationFrame(el.__scrambleId);
+
+      opts = opts || {};
+      var from = opts.from || 'random';
+      var duration = opts.duration || 780;
+      var perturbation = opts.perturbation != null ? opts.perturbation : 0.22;
+      var settleDuration = opts.settleDuration || 220;
+
+      var n = text.length;
+      if (n === 0) { el.textContent = ''; return; }
+
+      // Reveal order: u[c] = rank slot for char c (0..n-1)
+      var u = new Array(n);
+      if (from === 'random') {
+        for (var i = 0; i < n; i++) u[i] = i;
+        for (var i = n - 1; i > 0; i--) {
+          var j = rint(0, i);
+          var tmp = u[i]; u[i] = u[j]; u[j] = tmp;
+        }
+      } else {
+        var anchor = from === 'right' ? n - 1
+                   : from === 'center' ? (n - 1) / 2
+                   : 0;
+        var pos = [];
+        for (var i = 0; i < n; i++) pos.push(i);
+        pos.sort(function(a, b) { return Math.abs(a - anchor) - Math.abs(b - anchor); });
+        for (var i = 0; i < n; i++) u[pos[i]] = i;
+      }
+
+      var H = settleDuration / duration;     // settle phase fraction
+      var J = (1 - H) / n;                   // per-char step fraction
+      var Ct = CURSOR_LEN * J;               // cursor pass duration per char (in 0..1)
+      var K = 1000 / (SETTLE_RATE * duration);
+      if (!isFinite(K) || K <= 0) K = 0.001;
+
+      var N = new Float32Array(n); // start time per char (0..1 progress)
+      var X = new Float32Array(n); // end time per char
+      var Z = perturbation * H;
+      for (var i = 0; i < n; i++) {
+        var jit1 = Z > 0 ? (rint(0, 2000) - 1000) / 1000 * Z : 0;
+        var jit2 = Z > 0 ? (rint(0, 2000) - 1000) / 1000 * Z : 0;
+        N[i] = u[i] * J + jit1;
+        X[i] = Math.ceil((N[i] + H + jit2) / K) * K;
+      }
+
+      var L = new Array(n);
+      for (var i = 0; i < n; i++) L[i] = POOL.charAt(rint(0, POOL_MAX));
+
+      // Pre-render initial scrambled state so first paint isn't original text
+      var initial = '';
+      for (var c = 0; c < n; c++) {
+        var ch = text.charAt(c);
+        initial += (ch === ' ' ? ' ' : L[c]);
+      }
+      el.textContent = initial;
+
+      var startTime = performance.now();
+      var lastR = -1;
+
+      function tick(now) {
+        var t = (now - startTime) / duration;
+        if (t >= 1) {
+          el.textContent = text;
+          el.__scrambleId = 0;
+          return;
+        }
+        var r = (t / K) | 0;
+        var aChanged = r !== lastR;
+        if (aChanged) lastR = r;
+        var l = t; // linear ease
+
+        var s = '';
+        for (var c = 0; c < n; c++) {
+          var ch = text.charAt(c);
+          var cs = N[c], ce = X[c];
+
+          if (l >= ce) { s += ch; continue; }
+          if (ch === ' ') { s += ' '; continue; }
+
+          if (l < cs) {
+            // before this char's window: continue scramble at K-rate
+            if (aChanged) L[c] = POOL.charAt(rint(0, POOL_MAX));
+            s += L[c];
+            continue;
+          }
+          // in [cs, ce): cursor settle then optional scramble tail
+          var dt = l - cs;
+          if (dt < Ct) {
+            var idx = (dt / J) | 0;
+            if (idx >= CURSOR_LEN) idx = CURSOR_LEN - 1;
+            s += CURSOR.charAt(CURSOR_LEN - 1 - idx); // █→▓→▒→░
+          } else {
+            if (aChanged) L[c] = POOL.charAt(rint(0, POOL_MAX));
+            s += L[c];
+          }
+        }
+        el.textContent = s;
+        el.__scrambleId = requestAnimationFrame(tick);
+      }
+      el.__scrambleId = requestAnimationFrame(tick);
+    }
+
+    function txt(el) { return el ? (el.textContent || '').trim() : ''; }
+
+    // Scramble while preserving inner HTML structure (e.g. .online-dot span).
+    function scrambleEl(el, opts) {
+      if (!el || reduce) return;
+      opts = opts || {};
+      var text = txt(el);
+      if (!text) return;
+      if (opts.preserveHTML) {
+        var originalHTML = el.innerHTML;
+        el.textContent = text;
+        scramble(el, text, opts);
+        var d = (opts.duration || 780) + 60;
+        setTimeout(function() {
+          if (!el.__scrambleId && txt(el) === text) el.innerHTML = originalHTML;
+        }, d);
+      } else {
+        scramble(el, text, opts);
+      }
+    }
+
+    // Watch an element for its first non-empty text fill, then scramble once.
+    function watchFirstFill(el, opts) {
+      if (!el || reduce) return;
+      if (txt(el)) { scrambleEl(el, opts); return; }
+      var obs = new MutationObserver(function() {
+        if (txt(el)) {
+          obs.disconnect();
+          scrambleEl(el, opts);
+        }
+      });
+      obs.observe(el, { childList: true, characterData: true, subtree: true });
+    }
+
+    function getEls() {
+      return {
+        greeting: document.querySelector('.card-intro .greeting'),
+        name: document.querySelector('.card-intro .name'),
+        role: document.querySelector('.card-intro .role')
+      };
+    }
+
+    // Match the reference page's "DECRYPT" payload tempo:
+    //   top    → from:left,   duration:680
+    //   subtitle → from:center, duration:900
+    //   bottom → from:right,  duration:760
+    function playIntro() {
+      var els = getEls();
+      if (els.greeting) scramble(els.greeting, txt(els.greeting), { from: 'left',   duration: 680 });
+      if (els.name)     scramble(els.name,     txt(els.name),     { from: 'center', duration: 900 });
+      if (els.role)     scramble(els.role,     txt(els.role),     { from: 'right',  duration: 760 });
+    }
+
+    function playBearMeta() {
+      var weatherSpans = document.querySelectorAll('#weatherLine span');
+      var sg = weatherSpans[0]; // "Singapore" — static
+      var temp = document.getElementById('weatherTemp');
+      var desc = document.getElementById('weatherDesc');
+      var online = document.querySelector('.online-line');
+
+      if (sg) scramble(sg, txt(sg), { from: 'left', duration: 640 });
+      if (temp) watchFirstFill(temp, { from: 'center', duration: 540 });
+      if (desc) watchFirstFill(desc, { from: 'right',  duration: 720 });
+      if (online) watchFirstFill(online, { from: 'random', duration: 820, preserveHTML: true });
+    }
+
+    function initHover() {
+      var name = document.querySelector('.card-intro .name');
+      if (!name || reduce) return;
+      var locked = false;
+      name.addEventListener('mouseenter', function() {
+        if (locked) return;
+        locked = true;
+        scramble(name, txt(name), { from: 'center', duration: 560 });
+        setTimeout(function() { locked = false; }, 700);
+      });
+    }
+
+    function ready() {
+      var run = function() {
+        // rAF pushes past i18n's applyTranslations on the same tick
+        requestAnimationFrame(function() {
+          playIntro();
+          playBearMeta();
+          initHover();
+        });
+      };
+      if (window._i18nReady && window._i18nReady.then) {
+        window._i18nReady.then(run);
+      } else {
+        run();
+      }
+
+      window.addEventListener('langchange', function() {
+        requestAnimationFrame(function() {
+          var els = getEls();
+          if (els.greeting) scramble(els.greeting, txt(els.greeting), { from: 'left',  duration: 680 });
+          if (els.role)     scramble(els.role,     txt(els.role),     { from: 'right', duration: 760 });
+        });
+      });
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', ready);
+    } else {
+      ready();
+    }
+  })();
+  </script>
   <div class="container">
     <div class="bear-wrapper" id="bearWrapper">
       <canvas id="bear" width="13" height="20"></canvas>
