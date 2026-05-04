@@ -264,3 +264,18 @@
 - [x] 桌面 1440 渲染清晰
 - [⚠️] gzip 后总 HTML 313 KB(超出 spec 250 KB 预算 25%,尚可接受 — 用户选择"无上限")
 - [x] 无 console error
+
+### 批 5 — Phase V + VI + VII · 复古 + 科学 + 未来 18 章
+- [x] Phase V Retro intro pi-note 中英文已填,sepia copper 染色,8 站灯条 active=birth+screen(时间机器隐喻)
+- [x] Phase VI Science intro pi-note 中英文已填,science indigo 染色,active=birth+edit(测量)
+- [x] Phase VII Future intro pi-note 中英文已填,neural magenta 染色,active=compress+transmit
+- [x] Phase V Retro 9 章(C41-C49)按顺序插入,sepia copper 染色
+- [x] Phase VI Science 4 章(C50-C53)按顺序插入,science indigo 染色
+- [x] Phase VII Future 5 章(C54-C58)按顺序插入,neural magenta 染色
+- [x] 2 个扛把子: C52 FITS(40 年天文标准,Don Wells 1981 → JWST 2021)/ C57 神经压缩(HiFiC + CDC + 6 个 NN codec)
+- [x] 16 个普通章节(C41-C46/C50/C51/C53-C56/C58)各 9 模块完整
+- [x] TOC v2 Phase V (9) + VI (4 by D3) + VII (5) 列回填,共 18 chip
+- [x] 中英双语完美对仗,切换无残留
+- [x] 桌面 1440 渲染清晰
+- [⚠️] gzip 后总 HTML 428 KB(超 spec 250 KB 预算 71%,用户选择"无上限")
+- [x] 无 console error
