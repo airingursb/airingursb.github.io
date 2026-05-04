@@ -225,3 +225,15 @@
 - [x] JS 加载无 console error；语言切换中→英→中全文响应,无残留
 - [x] 桌面 1440 + 移动 390 两个视口无破版（移动端 family-tree 横向滚动）
 - [x] gzip 后总 HTML 19 KB（远低于 250 KB 预算）
+
+### 批 2 — Phase I · Web 显示派 13 章
+- [x] Phase I intro pi-note 中英文已填,8 站灯条 active=compress+transmit
+- [x] 13 章按 c1-c13 顺序插入,phase 色 cobalt 蓝染色 chap-title 一致
+- [x] 5 个扛把子(C3 PNG / C6 JPEG / C10 WebP / C12 AVIF / C13 JXL)各含 4 张小 SVG + 1 张流程图 + case-study 历史专栏 + 同阵营对比表 + src-stack 命令行
+- [x] 8 个普通章节(C1 BMP / C2 GIF / C4 APNG / C5 aWebP / C7 JPEG-LS / C8 JP2 / C9 JXR / C11 HEIC)各含 9 模块完整 + 1-2 张手绘 SVG
+- [x] format-card 左 4px web-pale 色带 + meta-row 10 字段 + 灵魂引文 28px serif italic + use-cols + support 表 + trivia heat 边框 + lineage 父子链
+- [x] TOC v2 Phase I 列回填 13 个 toc-chip(BMP 到 JPEG XL),hover/active 染色正常
+- [x] 中英双语 288:288 完美对仗,切换无残留
+- [x] 桌面 1440 渲染清晰、无破版;移动 390 各章节正常
+- [x] gzip 后总 HTML 116 KB(预算 250 KB,占 47%)
+- [x] 无 console error(只有 favicon 等无关资源 404)
