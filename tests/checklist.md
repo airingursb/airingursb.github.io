@@ -251,3 +251,16 @@
 - [x] 桌面 1440 渲染清晰、无破版
 - [x] gzip 后总 HTML 203 KB(预算 250 KB,占 81%)
 - [x] 无 console error
+
+### 批 4 — Phase III + IV · HDR + 矢量 13 章
+- [x] Phase III HDR intro pi-note 中英文已填,8 站灯条 active=birth+edit(金色高亮)
+- [x] Phase IV VEC intro pi-note 中英文已填,8 站灯条全 dim 仅 screen active(反旅程 anti-journey 设计)
+- [x] Phase III HDR 8 章 (C28-C35) 按顺序插入,phase 色 hdr 金染色
+- [x] Phase IV VEC 5 章 (C36-C40) 按顺序插入,phase 色 vec teal 染色
+- [x] 4 个扛把子完整: C28 OpenEXR (ILM 30 年 + ASWF 捐赠) / C32 RAW (Bayer + dcraw + LibRaw) / C35 DICOM (4000 tag + DIMSE/DICOMweb) / C36 SVG (W3C 战胜 Flash/VML)
+- [x] 9 个普通章节: C29 Radiance / C30 PFM / C31 TIFF / C33 DNG / C34 CR3-NEF-ARW / C37 PDF / C38 EPS / C39 AI / C40 JBIG2
+- [x] TOC v2 Phase III + IV 列回填 13 chip(C28-C40)
+- [x] 中英双语完美对仗,切换无残留
+- [x] 桌面 1440 渲染清晰
+- [⚠️] gzip 后总 HTML 313 KB(超出 spec 250 KB 预算 25%,尚可接受 — 用户选择"无上限")
+- [x] 无 console error
