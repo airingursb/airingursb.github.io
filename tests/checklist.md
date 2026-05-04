@@ -210,3 +210,18 @@
 - [ ] `/photos/<slug>` 点 camera/place/tag/album 链接 → 触发 `facet-link` 事件 (data: { kind: cameras|places|tags|albums, value, from })
 - [ ] `/photos/world` 点 marker → 触发 `world-marker-click` 事件 (data: { city, country, count })
 - [ ] `/photos`、`/photos/calendar`、`/photos/albums`、`/photos/world` 点 view-switcher 链接 → 触发 `view-switch` 事件 (data: { from, to })
+
+## 沉积的像素 · 图片格式百科 (`/immersive/image-formats/`)
+
+### 批 1 — 基础设施
+- [x] Hero 区中英 H1（沉积/像素 双色 rt + web）+ deck + byline + hero-notice + TL;DR 4 step + 7 阵营 phase-pulse banner
+- [x] TOC v2 9 个 toc-group 完整（Phase 0 已含 2 chip,其余 7 个 Phase + 工具箱 + 终章 chips 待回填）
+- [x] 家族树 SVG viewBox 1200×900,7 行 swimlane 色带可见,时间轴 1985-2025 共 9 个 tick
+- [x] 家族树 50+ 节点全部可见,13 个扛把子是方块（PNG/JPEG/WebP/AVIF/JXL/BC7/ASTC/EXR/RAW/DICOM/SVG/FITS/Neural）
+- [x] 家族树关键事件标注（LZW patent / LZW expires / WebP public / HEIC iOS / AV1 1.0 / Chrome drops JXL）heat 色显示
+- [x] 像素旅程 8 站点 HTML 灯条在家族树 SVG 下方独立显示（按阵营色：HDR 金/Web 蓝/GPU 紫/Ink 黑），与 SVG 不冲突
+- [x] 序章 C0.1 排版正确,"50 种归宿" / "50 fates" 主题色 web 蓝
+- [x] 7 个 Phase intro 已搭骨架（pi-note 占位待填），灯条按 spec 高亮正确站点：I/II/III/IV/V/VI/VII；Phase IV vec 灯条 dim
+- [x] JS 加载无 console error；语言切换中→英→中全文响应,无残留
+- [x] 桌面 1440 + 移动 390 两个视口无破版（移动端 family-tree 横向滚动）
+- [x] gzip 后总 HTML 19 KB（远低于 250 KB 预算）
