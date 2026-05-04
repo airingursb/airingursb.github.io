@@ -237,3 +237,17 @@
 - [x] 桌面 1440 渲染清晰、无破版;移动 390 各章节正常
 - [x] gzip 后总 HTML 116 KB(预算 250 KB,占 47%)
 - [x] 无 console error(只有 favicon 等无关资源 404)
+
+### 批 3 — Phase II · GPU 纹理派 14 章
+- [x] Phase II intro pi-note 中英文已填,8 站灯条 active=VRAM+sample+screen(GPU 紫色高亮)
+- [x] 14 章按 c14-c27 顺序插入,phase 色 GPU 紫染色 chap-title 一致
+- [x] 2 个扛把子(C20 BC7 / C24 ASTC)各含 4 张小 SVG + 1 张流程图 + case-study + 对比表 + src-stack
+- [x] BC7 扛把子:8 mode 表 + 块选择流程 + BC1 vs BC7 视觉对比 + 编码时间对比 + ENCODE-TIME WAR case-study(Intel ISPC 救命)
+- [x] ASTC 扛把子:14 块大小 vs bpp 表 + 16-byte block 布局 + 4×4/6×6/12×12 视觉对比 + ASTC vs BC7 + 历史专栏(ARM/Khronos/Intel HD politics/WebGPU)
+- [x] 12 个普通章节(C14-C19 + C21-C23 + C25-C27)各含 9 模块完整 + 1 张手绘 SVG
+- [x] BCn 家族 6 章(C16-C20)对比清晰,可看出 BC1→BC2/3→BC4/5→BC6H/BC7 进化链
+- [x] TOC v2 Phase II 列回填 14 个 toc-chip(KTX 到 Mipmap),hover/active 染色正常
+- [x] 中英双语完美对仗,切换无残留
+- [x] 桌面 1440 渲染清晰、无破版
+- [x] gzip 后总 HTML 203 KB(预算 250 KB,占 81%)
+- [x] 无 console error
