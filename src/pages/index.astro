@@ -38,6 +38,90 @@ const recentPhotos = (photosData as Array<any>)
       })();
     </script>
   </Fragment>
+  <style is:global>
+    /* ===== Cyber Glitch Effects (homepage only) ===== */
+    /* Spec: docs/superpowers/specs/2026-05-06-cyber-glitch-effects-design.md */
+
+    body.fx-rgb { will-change: transform, filter; }
+
+    /* RGB chromatic aberration. JS sets --rx / --cx / --c-r / --c-c per frame. */
+    body.fx-rgb .greeting,
+    body.fx-rgb .name,
+    body.fx-rgb .role,
+    body.fx-rgb .chat-prompt,
+    body.fx-rgb .chat-input,
+    body.fx-rgb .fake-cursor,
+    body.fx-rgb .chat-suggestion-chip,
+    body.fx-rgb .chat-area,
+    body.fx-rgb .chat-error,
+    body.fx-rgb .links a,
+    body.fx-rgb .sep,
+    body.fx-rgb .section-title,
+    body.fx-rgb .gh-name,
+    body.fx-rgb .gh-bio,
+    body.fx-rgb .gh-stat-val,
+    body.fx-rgb .gh-stat-label,
+    body.fx-rgb .mf-tagline,
+    body.fx-rgb .mf-desc,
+    body.fx-rgb .mf-feature,
+    body.fx-rgb .mf-tag,
+    body.fx-rgb .mf-link,
+    body.fx-rgb .mf-link-appstore,
+    body.fx-rgb .post-title,
+    body.fx-rgb .post-date,
+    body.fx-rgb .weather-line,
+    body.fx-rgb .np-corner-track,
+    body.fx-rgb .np-corner-artist,
+    body.fx-rgb .np-corner-now,
+    body.fx-rgb .np-corner-label,
+    body.fx-rgb .online-line {
+      text-shadow:
+        var(--rx, 0) 0 var(--c-r, transparent),
+        var(--cx, 0) 0 var(--c-c, transparent);
+    }
+
+    .fx-band {
+      position: fixed;
+      left: 0;
+      right: 0;
+      height: 14px;
+      pointer-events: none;
+      z-index: 9999;
+      background: linear-gradient(180deg,
+        transparent,
+        rgba(0, 220, 255, 0.07) 35%,
+        rgba(255, 0, 110, 0.07) 65%,
+        transparent);
+      mix-blend-mode: screen;
+    }
+
+    .fx-scan {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9998;
+      background: repeating-linear-gradient(0deg,
+        transparent 0 5px,
+        rgba(255, 0, 110, 0.035) 5px 6px);
+    }
+
+    [data-glitch-flash] { position: relative; }
+    [data-glitch-flash]::after {
+      content: '';
+      position: absolute;
+      left: -4px; right: -4px; top: -2px; bottom: -2px;
+      background: rgba(var(--accent-rgb), 0.10);
+      pointer-events: none;
+      opacity: 0;
+      border-radius: 2px;
+      transition: opacity 0.4s;
+    }
+    [data-glitch-flash][data-glitch-flashing]::after {
+      opacity: 1;
+      transition: opacity 0.05s;
+    }
+  </style>
+
   <div class="lang-toggle" id="langToggle">
     <button data-lang="en" class="active">EN</button>
     <button data-lang="zh">CN</button>
@@ -397,8 +481,367 @@ const recentPhotos = (photosData as Array<any>)
     } else {
       ready();
     }
+
+    // Expose for cyber-glitch effect E (spec: 2026-05-06-cyber-glitch-effects-design.md)
+    window.__heroScramble = scramble;
   })();
   </script>
+
+  <script is:inline>
+  /* ============================================================
+   * Cyber Glitch Effects (A: chromatic burst, E: scramble bursts)
+   * Spec: docs/superpowers/specs/2026-05-06-cyber-glitch-effects-design.md
+   * Scope: homepage only (this file).
+   * ========================================================== */
+  (function() {
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function isDark() {
+      return document.documentElement.getAttribute('data-mode') !== 'light';
+    }
+
+    var P = {
+      GLITCH_MIN:    60000,
+      GLITCH_MAX:    120000,
+      GLITCH_WARMUP: 30000,
+      HOVER_COOLDOWN:   800,
+      HERO_DELAY:     1200,
+      DWELL_THR:     30000,
+      AMBIENT_MIN:    8000,
+      AMBIENT_MAX:    12000,
+      SCROLL_THR:     1500,
+      SCROLL_COOLDOWN:  700
+    };
+
+    function rand(a, b) { return a + Math.random() * (b - a); }
+    function randInt(a, b) { return Math.floor(rand(a, b + 1)); }
+    function randSign() { return Math.random() < 0.5 ? -1 : 1; }
+    function pickWeighted(arr) {
+      var total = arr.reduce(function(s, f) { return s + f.w; }, 0);
+      var r = Math.random() * total;
+      for (var i = 0; i < arr.length; i++) {
+        r -= arr[i].w;
+        if (r <= 0) return arr[i];
+      }
+      return arr[arr.length - 1];
+    }
+
+    /* ============================================================
+     * Effect A: GLITCH (chromatic burst)
+     * ========================================================== */
+
+    var FLAVORS = [
+      { name: 'hum',    w: 35, scene: 0,    rgb: 0.55, hue: 0,  band: 0,   scan: 0, dur: [200, 280] },
+      { name: 'pulse',  w: 22, scene: 1.0,  rgb: 0.6,  hue: 0,  band: 0,   scan: 0, dur: [220, 320] },
+      { name: 'chroma', w: 15, scene: 0,    rgb: 0.7,  hue: 6,  band: 0,   scan: 0, dur: [300, 400] },
+      { name: 'slice',  w: 12, scene: 0,    rgb: 0.45, hue: 0,  band: 1.0, scan: 0, dur: [260, 360] },
+      { name: 'jolt',   w:  8, scene: 1.4,  rgb: 0,    hue: 12, band: 0,   scan: 0, dur: [240, 340] },
+      { name: 'full',   w:  8, scene: 1.6,  rgb: 0.75, hue: 14, band: 1.0, scan: 1, dur: [380, 500] }
+    ];
+
+    var RGB_PAIRS = [
+      ['rgba(255, 0, 110, _A_)',  'rgba(0, 220, 255, _A_)'],
+      ['rgba(255, 80, 180, _A_)', 'rgba(60, 180, 255, _A_)'],
+      ['rgba(255, 180, 40, _A_)', 'rgba(80, 255, 255, _A_)']
+    ];
+
+    function sceneShake(intensity, durMs) {
+      var n = randInt(4, 7);
+      var amp = 1.2 * intensity;
+      var keyframes = [{ transform: 'translate(0,0)' }];
+      for (var i = 1; i < n - 1; i++) {
+        var x = (Math.random() * 2 - 1) * amp;
+        var y = (Math.random() * 2 - 1) * amp * 0.7;
+        keyframes.push({ transform: 'translate(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px)' });
+      }
+      keyframes.push({ transform: 'translate(0,0)' });
+      try {
+        document.body.animate(keyframes, {
+          duration: durMs,
+          easing: 'steps(' + n + ', end)',
+          fill: 'none'
+        });
+      } catch (e) { /* WAAPI not supported */ }
+    }
+
+    function rgbShift(intensity, durMs) {
+      var maxPx = 1 + intensity * 2.5;
+      var pair = RGB_PAIRS[randInt(0, RGB_PAIRS.length - 1)];
+      var alpha = 0.45 + intensity * 0.25;
+      var cR = pair[0].replace('_A_', alpha.toFixed(2));
+      var cC = pair[1].replace('_A_', alpha.toFixed(2));
+      var b = document.body;
+      b.style.setProperty('--c-r', cR);
+      b.style.setProperty('--c-c', cC);
+      b.classList.add('fx-rgb');
+      var start = performance.now();
+      function tick(now) {
+        var t = (now - start) / durMs;
+        if (t >= 1) { b.classList.remove('fx-rgb'); return; }
+        var rx = (Math.random() * 2 - 1) * maxPx * (1 - t * 0.5);
+        var cx = (Math.random() * 2 - 1) * maxPx * (1 - t * 0.5);
+        b.style.setProperty('--rx', rx.toFixed(2) + 'px');
+        b.style.setProperty('--cx', cx.toFixed(2) + 'px');
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function hueShift(deg, durMs) {
+      var dir = randSign();
+      var b = document.body;
+      var start = performance.now();
+      function tick(now) {
+        var t = (now - start) / durMs;
+        if (t >= 1) { b.style.filter = ''; return; }
+        var k = Math.sin(t * Math.PI);
+        b.style.filter = 'hue-rotate(' + (dir * deg * k).toFixed(2) + 'deg)';
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    function sliceBand(durMs) {
+      var band = document.createElement('div');
+      band.className = 'fx-band';
+      band.style.top = (10 + Math.random() * 60) + '%';
+      document.body.appendChild(band);
+      var dx = (Math.random() * 60 + 20) * randSign();
+      try {
+        var anim = band.animate([
+          { transform: 'translateX(0)', opacity: 0 },
+          { transform: 'translateX(' + (dx * 0.3).toFixed(0) + 'px)', opacity: 1, offset: 0.15 },
+          { transform: 'translateX(' + dx.toFixed(0) + 'px)', opacity: 1, offset: 0.7 },
+          { transform: 'translateX(' + (dx * 1.1).toFixed(0) + 'px)', opacity: 0 }
+        ], { duration: durMs, easing: 'steps(6, end)' });
+        anim.onfinish = function() { band.remove(); };
+      } catch (e) {
+        setTimeout(function() { band.remove(); }, durMs);
+      }
+    }
+
+    function scanPulse(durMs) {
+      var s = document.createElement('div');
+      s.className = 'fx-scan';
+      document.body.appendChild(s);
+      try {
+        var anim = s.animate([
+          { opacity: 0, transform: 'translateY(0)' },
+          { opacity: 1, transform: 'translateY(-4px)', offset: 0.3 },
+          { opacity: 0.6, transform: 'translateY(2px)', offset: 0.7 },
+          { opacity: 0, transform: 'translateY(0)' }
+        ], { duration: durMs, easing: 'steps(8, end)' });
+        anim.onfinish = function() { s.remove(); };
+      } catch (e) {
+        setTimeout(function() { s.remove(); }, durMs);
+      }
+    }
+
+    var glitchActive = false;
+
+    function fireGlitch(forceFlavor) {
+      if (reduce || !isDark() || document.hidden) return;
+      var flavor = forceFlavor || pickWeighted(FLAVORS);
+      var dur = rand(flavor.dur[0], flavor.dur[1]);
+      glitchActive = true;
+      setTimeout(function() { glitchActive = false; }, dur + 20);
+      if (flavor.scene > 0) sceneShake(flavor.scene, dur);
+      if (flavor.rgb > 0)   rgbShift(flavor.rgb, dur);
+      if (flavor.hue > 0)   hueShift(flavor.hue, dur);
+      if (flavor.band > 0)  sliceBand(dur);
+      if (flavor.scan > 0)  scanPulse(dur);
+    }
+
+    /* ============================================================
+     * Effect E: SCRAMBLE BURSTS
+     * ========================================================== */
+
+    var SCRAMBLE_SELECTORS = [
+      '.greeting',
+      '.role',
+      '.links a',
+      '.section-title',
+      '.gh-bio',
+      '.mf-desc',
+      '.mf-feature',
+      '.mf-tag',
+      '.mf-tagline',
+      '.post-title',
+      '.post-date'
+    ].join(',');
+
+    var allScrambles = [];
+    function bindScrambles() {
+      Array.prototype.forEach.call(
+        document.querySelectorAll(SCRAMBLE_SELECTORS),
+        function(el) {
+          if (el.__bound) return;
+          el.__bound = true;
+          el.setAttribute('data-glitch-flash', '');
+          allScrambles.push(el);
+        }
+      );
+    }
+
+    function flash(el) {
+      el.setAttribute('data-glitch-flashing', '');
+      setTimeout(function() { el.removeAttribute('data-glitch-flashing'); }, 60);
+    }
+
+    function scrambleEl(el, opts) {
+      if (!el || reduce) return;
+      if (glitchActive) return;
+      if (typeof window.__heroScramble !== 'function') return;
+      var t = (el.textContent || '').trim();
+      if (!t) return;
+      flash(el);
+      window.__heroScramble(el, t, opts || { duration: 600 });
+    }
+
+    function visibleScrambles() {
+      var out = [];
+      for (var i = 0; i < allScrambles.length; i++) {
+        var el = allScrambles[i];
+        var r = el.getBoundingClientRect();
+        if (r.bottom > 60 && r.top < window.innerHeight - 40) out.push(el);
+      }
+      return out;
+    }
+
+    function burstVisible(count) {
+      var v = visibleScrambles();
+      if (!v.length) return;
+      for (var i = 0; i < count && v.length; i++) {
+        var idx = Math.floor(Math.random() * v.length);
+        var el = v.splice(idx, 1)[0];
+        scrambleEl(el, { duration: 460, from: 'random', settleDuration: 140 });
+      }
+    }
+
+    /* --- Scroll velocity trigger --- */
+    var scrollLastY = window.scrollY;
+    var scrollLastT = performance.now();
+    var lastScrollBurst = 0;
+    window.addEventListener('scroll', function() {
+      var now = performance.now();
+      var dt = Math.max(8, now - scrollLastT);
+      var v = Math.abs(window.scrollY - scrollLastY) / dt * 1000;
+      scrollLastY = window.scrollY;
+      scrollLastT = now;
+      if (v > P.SCROLL_THR && now - lastScrollBurst > P.SCROLL_COOLDOWN) {
+        lastScrollBurst = now;
+        burstVisible(2);
+      }
+    }, { passive: true });
+
+    /* --- Dwell ticker + ambient mode --- */
+    var visibleTime = 0;
+    var lastVisTick = performance.now();
+    var ambientStarted = false;
+    var ambientTimer = null;
+
+    function scheduleAmbient() {
+      clearTimeout(ambientTimer);
+      var delay = P.AMBIENT_MIN + Math.random() * (P.AMBIENT_MAX - P.AMBIENT_MIN);
+      ambientTimer = setTimeout(function() {
+        if (!document.hidden) burstVisible(1);
+        scheduleAmbient();
+      }, delay);
+    }
+
+    function tickDwell() {
+      var now = performance.now();
+      if (!document.hidden) visibleTime += now - lastVisTick;
+      lastVisTick = now;
+      if (!ambientStarted && visibleTime >= P.DWELL_THR) {
+        ambientStarted = true;
+        scheduleAmbient();
+      }
+    }
+    setInterval(tickDwell, 250);
+
+    /* ============================================================
+     * Triggers + scheduling + lifecycle
+     * ========================================================== */
+
+    /* --- Hero weekly gate --- */
+    var HERO_KEY = 'glitch-hero-week';
+    function currentWeekId() {
+      return Math.floor(Date.now() / 604800000);
+    }
+    function heroFiredThisWeek() {
+      try { return localStorage.getItem(HERO_KEY) === String(currentWeekId()); }
+      catch (e) { return true; }
+    }
+    function markHeroFired() {
+      try { localStorage.setItem(HERO_KEY, String(currentWeekId())); }
+      catch (e) { /* silently ignore */ }
+    }
+    function tryHeroGlitch() {
+      if (reduce || !isDark() || document.hidden) return;
+      if (heroFiredThisWeek()) return;
+      var soft = FLAVORS.filter(function(f) {
+        return f.name === 'hum' || f.name === 'pulse' || f.name === 'chroma';
+      });
+      var f = pickWeighted(soft);
+      fireGlitch(f);
+      markHeroFired();
+    }
+
+    /* --- Scheduled A --- */
+    var glitchTimer = null;
+    function scheduleGlitch(initial) {
+      clearTimeout(glitchTimer);
+      var base = initial ? P.GLITCH_WARMUP : 0;
+      var delay = base + P.GLITCH_MIN + Math.random() * (P.GLITCH_MAX - P.GLITCH_MIN);
+      glitchTimer = setTimeout(function() {
+        if (!document.hidden) fireGlitch();
+        scheduleGlitch(false);
+      }, delay);
+    }
+
+    /* --- Hover trigger (existing initHover scramble still fires too) --- */
+    var lastHoverFire = 0;
+    function bindHover() {
+      var name = document.querySelector('.card-intro .name');
+      if (!name) return;
+      name.addEventListener('mouseenter', function() {
+        var now = performance.now();
+        if (now - lastHoverFire < P.HOVER_COOLDOWN) return;
+        lastHoverFire = now;
+        fireGlitch();
+      });
+    }
+
+    /* --- Visibility --- */
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) {
+        clearTimeout(glitchTimer);
+        clearTimeout(ambientTimer);
+      } else {
+        scheduleGlitch(false);
+        if (ambientStarted) scheduleAmbient();
+      }
+      lastVisTick = performance.now();
+    });
+
+    /* --- Boot --- */
+    function bootGlitch() {
+      bindScrambles();
+      bindHover();
+      if (!reduce) {
+        setTimeout(tryHeroGlitch, P.HERO_DELAY);
+        scheduleGlitch(true);
+      }
+    }
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', bootGlitch);
+    } else {
+      bootGlitch();
+    }
+  })();
+  </script>
+
   <div class="container">
     <div class="bear-wrapper" id="bearWrapper">
       <canvas id="bear" width="13" height="20"></canvas>

@@ -20,6 +20,21 @@
 - [ ] DOM: `<meta property="og:url">` 存在
 - [ ] DOM: `<meta name="twitter:card">` 存在
 
+## Cyber Glitch (Homepage)
+
+> Spec: `docs/superpowers/specs/2026-05-06-cyber-glitch-effects-design.md`
+> Effects A (chromatic glitch, dark-mode only) and E (scramble bursts, both modes).
+
+- [ ] Evaluate: `typeof window.__heroScramble === 'function'` 在首页返回 `true`
+- [ ] Evaluate: `typeof window.__fireGlitch === 'undefined'` 在首页返回 `true`（debug 接口未泄漏）
+- [ ] Hero 一瞥：清空 `localStorage.glitch-hero-week`，刷新，1.5s 后 `localStorage.getItem('glitch-hero-week')` 是非空字符串
+- [ ] Hero 周门：再次刷新（不清存储），首 3s 内 body 不出现 `fx-rgb` class
+- [ ] Light 模式下 A 静音：`document.documentElement.setAttribute('data-mode','light')` + 清存储 + 刷新，3s 内 body 不出现 `fx-rgb` class
+- [ ] E 滚动触发：`window.scrollBy({top:3000})` 后立刻 `scrollBy({top:-3000})`，至少一个 `.post-title` 或 `.role` 短暂获得 `data-glitch-flashing` 属性
+- [ ] 其他页面隔离：`/notes/` `/posts/[slug]` `/blog/` `/admin/` `/photos/` 上 `typeof window.__heroScramble === 'undefined'`
+- [ ] reduce-motion：模拟 `prefers-reduced-motion: reduce`，刷新，永不出现 `fx-rgb` 或 `data-glitch-flashing`
+- [ ] DOM: `<style is:global>` 块包含 `body.fx-rgb` 选择器
+
 ## Archive (`/archive/`)
 
 - [ ] GET `/archive/` 返回页面
