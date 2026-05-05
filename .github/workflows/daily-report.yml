@@ -2,209 +2,28 @@ name: Daily Report
 
 on:
   schedule:
-    # 01:03 UTC = 09:03 Beijing time (UTC+8)
+    # 01:03 UTC = 09:03 BJT
     - cron: '3 1 * * *'
-  workflow_dispatch: # allow manual trigger
+  workflow_dispatch:
 
 jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - name: Restore visitor snapshot
-        id: cache
-        uses: actions/cache/restore@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          path: visitor-snapshot.txt
-          key: visitor-snapshot-unused
-          restore-keys: visitor-snapshot-
-
-      - name: Collect stats and send report
+          python-version: '3.11'
+      - name: Build and send report
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           HOMEPAGE_SB_KEY: ${{ secrets.HOMEPAGE_SB_KEY }}
-          CHAT_SB_URL: ${{ secrets.CHAT_SB_URL }}
-          CHAT_SB_KEY: ${{ secrets.CHAT_SB_KEY }}
           BLOG_SB_URL: ${{ secrets.BLOG_SB_URL }}
           BLOG_SB_KEY: ${{ secrets.BLOG_SB_KEY }}
-        run: |
-          set -euo pipefail
-
-          YESTERDAY=$(date -d "yesterday" +%Y-%m-%d)
-          TODAY=$(date +%Y-%m-%d)
-
-          HOMEPAGE_SB_URL="https://pcoyocvqfipuydhvdsle.supabase.co"
-          # Blog Supabase (fallback to homepage if not set)
-          BLOG_SB_URL="${BLOG_SB_URL:-${HOMEPAGE_SB_URL}}"
-          BLOG_SB_KEY="${BLOG_SB_KEY:-${HOMEPAGE_SB_KEY}}"
-
-          # Helper: count rows via Supabase REST
-          sb_count() {
-            local url="$1" key="$2" query="$3" tmp="$4"
-            local resp
-            resp=$(curl -sf "${url}/rest/v1/${query}" \
-              -H "apikey: ${key}" -H "Authorization: Bearer ${key}" \
-              -H "Prefer: count=exact" -H "Range: 0-0" \
-              -o /dev/null -w "%{http_code}" -D "${tmp}" 2>/dev/null)
-            if [ "$resp" = "200" ] || [ "$resp" = "206" ]; then
-              local c; c=$(grep -i 'content-range' "${tmp}" | sed 's/.*\///' | tr -d '\r\n ')
-              echo "${c:-0}"
-            else echo "0"; fi
-          }
-
-          # ── 1. Homepage visitor counter ──
-          current_count=$(curl -sf "${HOMEPAGE_SB_URL}/rest/v1/visitors?select=count&id=eq.1" \
-            -H "apikey: ${HOMEPAGE_SB_KEY}" \
-            -H "Authorization: Bearer ${HOMEPAGE_SB_KEY}" \
-            | jq '.[0].count')
-
-          if [ -f visitor-snapshot.txt ]; then
-            prev_count=$(cat visitor-snapshot.txt)
-            daily_uv=$((current_count - prev_count))
-          else
-            daily_uv="N/A"
-          fi
-          echo "$current_count" > visitor-snapshot.txt
-
-          # ── 2. Chat stats ──
-          chat_count=$(sb_count "$CHAT_SB_URL" "$CHAT_SB_KEY" \
-            "chat_messages?select=id&role=eq.user&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
-            /tmp/chat_h)
-          chat_visitors=$(sb_count "$CHAT_SB_URL" "$CHAT_SB_KEY" \
-            "chat_visitors?select=id&first_seen_at=gte.${YESTERDAY}T00:00:00Z&first_seen_at=lt.${TODAY}T00:00:00Z" \
-            /tmp/vis_h)
-
-          # ── 3. Blog engagement ──
-          daily_pv=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
-            "post_views?select=id&viewed_at=gte.${YESTERDAY}T00:00:00Z&viewed_at=lt.${TODAY}T00:00:00Z" \
-            /tmp/pv_h)
-
-          blog_uv=$(curl -sf "${BLOG_SB_URL}/rest/v1/post_views?select=ip&viewed_at=gte.${YESTERDAY}T00:00:00Z&viewed_at=lt.${TODAY}T00:00:00Z" \
-            -H "apikey: ${BLOG_SB_KEY}" -H "Authorization: Bearer ${BLOG_SB_KEY}" 2>/dev/null \
-            | python3 -c 'import sys,json;d=json.load(sys.stdin);print(len(set(r["ip"] for r in d)))' 2>/dev/null || echo "0")
-
-          daily_comments=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
-            "post_comments?select=id&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
-            /tmp/cmt_h)
-          daily_inline=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
-            "inline_comments?select=id&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
-            /tmp/inl_h)
-          daily_likes=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
-            "post_likes?select=id&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
-            /tmp/lk_h)
-
-          blog_total_uv=$(curl -sf "${BLOG_SB_URL}/rest/v1/post_views?select=ip" \
-            -H "apikey: ${BLOG_SB_KEY}" -H "Authorization: Bearer ${BLOG_SB_KEY}" 2>/dev/null \
-            | python3 -c 'import sys,json;d=json.load(sys.stdin);print(len(set(r["ip"] for r in d)))' 2>/dev/null || echo "N/A")
-
-          top_articles=$(curl -sf "${BLOG_SB_URL}/rest/v1/post_views?select=post_slug&viewed_at=gte.${YESTERDAY}T00:00:00Z&viewed_at=lt.${TODAY}T00:00:00Z" \
-            -H "apikey: ${BLOG_SB_KEY}" -H "Authorization: Bearer ${BLOG_SB_KEY}" 2>/dev/null \
-            | python3 -c '
-          import sys,json
-          try:
-              d=json.load(sys.stdin)
-              if not d: print("  (无访问)")
-              else:
-                  c={}
-                  for r in d: c[r["post_slug"]]=c.get(r["post_slug"],0)+1
-                  for s,n in sorted(c.items(),key=lambda x:-x[1])[:5]: print(f"  {s}: {n} PV")
-          except: print("  N/A")
-          ' 2>/dev/null || echo "  N/A")
-
-          # ── 4. Notes engagement (post_slug starts with note/) ──
-          notes_pv=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
-            "post_views?select=id&post_slug=like.note/*&viewed_at=gte.${YESTERDAY}T00:00:00Z&viewed_at=lt.${TODAY}T00:00:00Z" \
-            /tmp/npv_h)
-          notes_comments=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
-            "post_comments?select=id&post_slug=like.note/*&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
-            /tmp/ncmt_h)
-          notes_inline=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
-            "inline_comments?select=id&post_slug=like.note/*&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
-            /tmp/ninl_h)
-          notes_likes=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
-            "post_likes?select=id&post_slug=like.note/*&created_at=gte.${YESTERDAY}T00:00:00Z&created_at=lt.${TODAY}T00:00:00Z" \
-            /tmp/nlk_h)
-
-          top_notes=$(curl -sf "${BLOG_SB_URL}/rest/v1/post_views?select=post_slug&post_slug=like.note/*&viewed_at=gte.${YESTERDAY}T00:00:00Z&viewed_at=lt.${TODAY}T00:00:00Z" \
-            -H "apikey: ${BLOG_SB_KEY}" -H "Authorization: Bearer ${BLOG_SB_KEY}" 2>/dev/null \
-            | python3 -c '
-          import sys,json
-          try:
-              d=json.load(sys.stdin)
-              if not d: print("  (无访问)")
-              else:
-                  c={}
-                  for r in d: c[r["post_slug"].replace("note/","")]=c.get(r["post_slug"].replace("note/",""),0)+1
-                  for s,n in sorted(c.items(),key=lambda x:-x[1])[:3]: print(f"  {s}: {n} PV")
-          except: print("  N/A")
-          ' 2>/dev/null || echo "  N/A")
-
-          # ── 5. RSS subscriber stats ──
-          rss_clients=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
-            "rss_subscribers?select=id" /tmp/rss_h)
-
-          SEVEN_DAYS_AGO=$(date -d "7 days ago" +%Y-%m-%dT00:00:00Z)
-          rss_active=$(sb_count "$BLOG_SB_URL" "$BLOG_SB_KEY" \
-            "rss_subscribers?select=id&last_seen=gte.${SEVEN_DAYS_AGO}" /tmp/rss_act_h)
-
-          rss_platforms=$(curl -sf "${BLOG_SB_URL}/rest/v1/rss_subscribers?select=platform,subscriber_count&subscriber_count=not.is.null&order=subscriber_count.desc&limit=5" \
-            -H "apikey: ${BLOG_SB_KEY}" -H "Authorization: Bearer ${BLOG_SB_KEY}" 2>/dev/null \
-            | python3 -c '
-          import sys,json
-          try:
-              data=json.load(sys.stdin)
-              seen={}
-              for r in data:
-                  p=r["platform"]; c=r["subscriber_count"] or 0
-                  seen[p]=max(seen.get(p,0),c)
-              total=sum(seen.values())
-              parts=[f"{p}: {c}" for p,c in sorted(seen.items(),key=lambda x:-x[1])]
-              print(f"{total} ({chr(44).join(parts)})" if parts else "0")
-          except: print("N/A")
-          ' 2>/dev/null || echo "N/A")
-
-          # ── 5. Send Telegram message ──
-          MSG="📊 *ursb.me 日报* — ${YESTERDAY}
-
-          🌐 *主页*
-            访客 (UV): ${daily_uv}
-            累计访客: ${current_count}
-
-          📝 *博客*
-            PV: ${daily_pv}  |  UV: ${blog_uv}
-            累计访客: ${blog_total_uv}
-            评论: ${daily_comments}  |  划线评论: ${daily_inline}
-            点赞: ${daily_likes}
-
-          🔥 *热门文章*
-          ${top_articles}
-
-          📓 *Notes*
-            PV: ${notes_pv}
-            评论: ${notes_comments}  |  划线评论: ${notes_inline}
-            点赞: ${notes_likes}
-
-          📖 *热门笔记*
-          ${top_notes}
-
-          📡 *RSS 订阅*
-            聚合平台: ${rss_platforms}
-            独立客户端: ${rss_clients}
-            近 7 日活跃: ${rss_active}
-
-          💬 *Chat 服务*
-            对话请求: ${chat_count} 条
-            新访客: ${chat_visitors} 人"
-
-          MSG=$(echo "$MSG" | sed 's/^          //')
-
-          curl -sf "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-            -d "chat_id=${TELEGRAM_CHAT_ID}" \
-            -d "parse_mode=Markdown" \
-            --data-urlencode "text=${MSG}"
-
-      - name: Save visitor snapshot
-        uses: actions/cache/save@v4
-        with:
-          path: visitor-snapshot.txt
-          key: visitor-snapshot-${{ github.run_id }}
+          CHAT_SB_URL: ${{ secrets.CHAT_SB_URL }}
+          CHAT_SB_KEY: ${{ secrets.CHAT_SB_KEY }}
+          UMAMI_API_URL: ${{ secrets.UMAMI_API_URL }}
+          UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
+          UMAMI_WEBSITE_ID: ${{ secrets.UMAMI_WEBSITE_ID }}
+        run: python3 scripts/daily_report.py
