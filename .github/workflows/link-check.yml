@@ -1,0 +1,22 @@
+name: Link Check
+
+on:
+  schedule:
+    # Sundays 02:00 UTC = 10:00 BJT
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run link checker
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_NOISE_CHAT_ID: ${{ secrets.TELEGRAM_NOISE_CHAT_ID }}
+        run: python3 scripts/link_check.py
