@@ -295,3 +295,20 @@
 - [x] 全文最终统计: 16096 行 HTML / 134 chap-title (67×2 双语对仗) / 58 format-card / 14 format-flow-svg / 17 case-study / 13 扛把子完整(JPEG/PNG/WebP/AVIF/JXL/BC7/ASTC/EXR/RAW/DICOM/SVG/FITS/Neural)
 - [⚠️] gzip 后总 HTML 453 KB(超 spec 250 KB 预算 81%,用户选择"无上限")
 - [x] 无 console error
+
+### 批 7 — 首页节日彩蛋（仅 `/` 生效）
+- [x] 首页今日命中节日表 → `<html data-theme>` 设为对应预设（6 色：green/blue/purple/amber/rose/cyan）
+- [x] 离开首页（/blog 等）时无 data-theme 残留，CSS 回退到 :root 默认绿
+- [x] FIXED_DATES 覆盖固定公历节日（45+ 条），FLOATING_DATES 覆盖 2026–2028 农历/伊斯兰/复活节/节气/Mother/Father/Thanksgiving（100+ 条）
+- [x] 优先级：生日 > 中国法定 > SG 法定 > 节气 > 中国民俗 > 西方 > 趣味/电商
+- [x] 6/30 生日 cyan，1/1 元旦 cyan，4/1 愚人节 purple，10/1–10/7 国庆 rose，11/11 双十一 purple，12/25 圣诞 green
+- [x] Peak Day 1.1/2.2/3.3/6.6/7.7/8.8/9.9/10.10/11.11/12.12 全 purple（碰撞由 FLOATING 覆盖）
+- [x] 5/4 默认 blue（Star Wars/青年节），但 2026/2027 落在劳动节假被 rose 覆盖
+- [x] data-theme="green" 用 emerald `#34d399`（暗）/ `#059669`（亮），与默认 green `#4ade80`/`#16a34a` 区分（同明度、色相偏青）
+- [x] 胶囊提示（右下角 mode-toggle 左侧）显示节日名 + 主题色描边 + 脉动小点
+- [x] 胶囊文字按 `localStorage.preferred_lang` 双语切换，监听 `langchange` 即时同步
+- [x] 胶囊点击 → 清掉 data-theme 回默认色 + 胶囊变灰停脉动 + sessionStorage 记忆；再点恢复
+- [x] sessionStorage key = `easter-dismissed:YYYY-MM-DD`，跨日自动重亮
+- [x] `?eggDate=YYYY-MM-DD` query 参数预览任意日期（不入侵生产）
+- [x] `<480px` 移动端隐藏胶囊
+- [x] 单元测试：`tests/easter-egg-themes.test.mjs` 13 项全过（节日命中、双语、优先级、6 色合法性）

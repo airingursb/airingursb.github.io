@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import photosData from '../data/photos.json';
 import '../styles/workouts.css';
 import WorkoutCardPreview from '../components/workouts/WorkoutCardPreview.astro';
+import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
 
 const recentPhotos = (photosData as Array<any>)
   .slice()
@@ -10,6 +11,33 @@ const recentPhotos = (photosData as Array<any>)
   .slice(0, 12);
 ---
 <BaseLayout title="Hi, folks | Airing">
+  <Fragment slot="head">
+    <script is:inline define:vars={{ FIXED_DATES, FLOATING_DATES }}>
+      // Homepage easter egg: pick an accent color based on today's holiday.
+      // Runs before <slot name="head"> closes, so data-theme is set before paint.
+      // Preview any day with ?eggDate=YYYY-MM-DD.
+      (function () {
+        var d = new Date();
+        var override = new URLSearchParams(location.search).get('eggDate');
+        if (override) {
+          var t = new Date(override + 'T12:00:00');
+          if (!isNaN(t)) d = t;
+        }
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, '0');
+        var dy = String(d.getDate()).padStart(2, '0');
+        var dateKey = y + '-' + m + '-' + dy;
+        var hit = FLOATING_DATES[dateKey] || FIXED_DATES[m + '-' + dy];
+        if (hit) {
+          window.__easterEggTheme = hit;
+          window.__easterEggDateKey = dateKey;
+          if (!sessionStorage.getItem('easter-dismissed:' + dateKey)) {
+            document.documentElement.setAttribute('data-theme', hit.theme);
+          }
+        }
+      })();
+    </script>
+  </Fragment>
   <div class="lang-toggle" id="langToggle">
     <button data-lang="en" class="active">EN</button>
     <button data-lang="zh">CN</button>
@@ -3708,4 +3736,105 @@ const recentPhotos = (photosData as Array<any>)
       window.addEventListener('langchange', tag);
     })();
   </script>
+
+  <!-- Easter egg hint pill (only set on homepage when today maps to a holiday) -->
+  <button type="button" class="easter-hint" id="easterHint" hidden>
+    <span class="easter-hint-dot"></span>
+    <span class="easter-hint-name"></span>
+  </button>
+  <script is:inline>
+    (function () {
+      var hit = window.__easterEggTheme;
+      if (!hit) return;
+      var hint = document.getElementById('easterHint');
+      if (!hint) return;
+      var nameEl = hint.querySelector('.easter-hint-name');
+      var dateKey = window.__easterEggDateKey;
+      var SS_KEY = 'easter-dismissed:' + dateKey;
+
+      function renderLabel() {
+        var lang = (window.currentLang) || localStorage.getItem('preferred_lang') || 'zh';
+        nameEl.textContent = (lang === 'en' && hit.en) ? hit.en : hit.zh;
+        hint.setAttribute('aria-label', nameEl.textContent + ' — ' + (lang === 'en' ? 'tap to dim' : '点一下熄灭'));
+      }
+
+      function setLit(lit) {
+        if (lit) {
+          document.documentElement.setAttribute('data-theme', hit.theme);
+          hint.classList.remove('dimmed');
+          sessionStorage.removeItem(SS_KEY);
+        } else {
+          document.documentElement.removeAttribute('data-theme');
+          hint.classList.add('dimmed');
+          sessionStorage.setItem(SS_KEY, '1');
+        }
+      }
+
+      renderLabel();
+      if (sessionStorage.getItem(SS_KEY)) hint.classList.add('dimmed');
+      hint.removeAttribute('hidden');
+      requestAnimationFrame(function () { hint.classList.add('visible'); });
+      hint.addEventListener('click', function () {
+        setLit(hint.classList.contains('dimmed'));
+      });
+      window.addEventListener('langchange', renderLabel);
+    })();
+  </script>
+  <style>
+    .easter-hint {
+      position: fixed;
+      bottom: 24px;
+      right: 72px;
+      z-index: 9999;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: rgba(var(--accent-rgb), 0.10);
+      border: 1px solid rgba(var(--accent-rgb), 0.35);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      color: var(--accent);
+      font: 500 12px/1 inherit;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      user-select: none;
+      opacity: 0;
+      transform: translateX(8px);
+      transition: opacity 0.4s ease, transform 0.4s ease, background 0.25s, border-color 0.25s, color 0.25s;
+    }
+    .easter-hint:hover {
+      filter: brightness(1.15);
+    }
+    .easter-hint.visible {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .easter-hint-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: easter-pulse 2s ease-in-out infinite;
+      transition: background 0.25s;
+    }
+    @keyframes easter-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(var(--accent-rgb), 0.5); }
+      50%      { box-shadow: 0 0 0 6px rgba(var(--accent-rgb), 0); }
+    }
+    .easter-hint.dimmed {
+      background: rgba(125, 133, 144, 0.06);
+      border-color: rgba(125, 133, 144, 0.25);
+      color: #7d8590;
+    }
+    .easter-hint.dimmed .easter-hint-dot {
+      background: #7d8590;
+      animation: none;
+      box-shadow: none;
+    }
+    @media (max-width: 480px) {
+      .easter-hint { display: none; }
+    }
+  </style>
 </BaseLayout>
