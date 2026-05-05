@@ -384,9 +384,13 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
       const res = await fetch('https://chat.ursb.me/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, lang: 'zh' }),
       });
-      if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.alreadySubscribed) {
+        msg.textContent = 'This email is already subscribed.';
+        msg.style.color = 'var(--c-text-muted)';
+      } else if (res.ok) {
         msg.textContent = 'Subscribed! Thank you.';
         msg.style.color = 'var(--accent, #4ade80)';
         form.reset();

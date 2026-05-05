@@ -2507,14 +2507,18 @@ const recentPhotos = (photosData as Array<any>)
         successEl.classList.remove('show');
         errorEl.classList.remove('show');
 
+        var lang = localStorage.getItem('preferred_lang') === 'en' ? 'en' : 'zh';
         fetch(SUBSCRIBE_API, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: name, email: email })
+          body: JSON.stringify({ name: name, email: email, lang: lang })
         })
         .then(function (res) { return res.json().then(function (d) { return { ok: res.ok, data: d }; }); })
         .then(function (result) {
-          if (result.ok || result.data.ok) {
+          if (result.ok && result.data.alreadySubscribed) {
+            errorEl.textContent = t('sub_err_exists');
+            errorEl.classList.add('show');
+          } else if (result.ok || result.data.ok) {
             successEl.classList.add('show');
             form.style.display = 'none';
           } else {
