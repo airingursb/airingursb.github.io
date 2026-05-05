@@ -402,62 +402,247 @@ body.lang-en .format-card .soul { font-family: var(--serif-en); }
 .phase-pulse .pp-tier .pt-name { font-weight: 600; font-size: 11px; }
 .phase-pulse .pp-tier .pt-role { color: var(--ink-mute); margin-top: 3px; font-size: 9px; }
 
-/* ====== 侧边浮动目录(桌面) ====== */
+/* ====== 侧边浮动目录 — 左侧手稿索引 ====== */
 .side-toc {
   position: fixed;
-  top: 50%; right: 16px;
+  top: 50%; left: 16px;
+  right: auto;
   transform: translateY(-50%);
-  max-height: calc(100vh - 80px);
-  width: 220px;
+  max-height: calc(100vh - 60px);
+  width: 188px;
   z-index: 50;
-  font-family: var(--mono); font-size: 11px;
-  color: var(--ink-mute);
+  color: var(--ink);
   background: transparent;
-  padding: 12px 0;
+  padding: 18px 4px 18px 12px;
   overflow-y: auto;
   scrollbar-width: thin;
-  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
-          mask-image: linear-gradient(180deg, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  scrollbar-color: var(--rule-soft) transparent;
+  font-family: var(--serif);
+  -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 32px), transparent 100%);
+          mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 32px), transparent 100%);
 }
+body.lang-en .side-toc { font-family: var(--serif-en); }
+
+.side-toc::-webkit-scrollbar { width: 2px; }
+.side-toc::-webkit-scrollbar-thumb { background: var(--rule-soft); border-radius: 1px; }
+
+.side-toc::before {
+  content: '❦';
+  display: block;
+  font-family: var(--serif-en);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--ink-mute);
+  opacity: 0.5;
+  margin: 0 0 8px 4px;
+}
+
 .side-toc .st-title {
-  font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--ink-mute); margin: 0 0 10px 12px;
+  font-family: var(--serif-en);
+  font-size: 11px;
+  font-style: italic;
+  letter-spacing: 0.10em;
+  color: var(--ink-soft);
+  margin: 0 0 12px 4px;
+  padding: 0 4px 8px 0;
+  border-bottom: 1px solid var(--rule-soft);
+  text-transform: none;
+  font-weight: 500;
 }
+body.lang-en .side-toc .st-title {
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-weight: 600;
+}
+
 .side-toc .st-list {
   list-style: none; margin: 0; padding: 0;
 }
-.side-toc .st-list li {
-  margin: 0; padding: 0;
-  border-left: 2px solid transparent;
-  transition: border-color 0.18s, color 0.18s;
+
+/* === Phase header === */
+.side-toc .st-phase {
+  display: flex; align-items: baseline;
+  gap: 8px;
+  margin: 14px 0 6px;
+  padding: 0 4px 4px 0;
+  border-left: 0;
 }
-.side-toc .st-list li a {
-  display: block; padding: 4px 12px;
-  color: var(--ink-mute); text-decoration: none;
-  font-size: 11px; line-height: 1.4;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  opacity: 0.55;
+.side-toc .st-phase:first-of-type { margin-top: 0; }
+
+.side-toc .st-phase .stp-num {
+  font-family: var(--serif-en);
+  font-size: 15px;
+  line-height: 1;
+  font-style: italic;
+  font-weight: 500;
+  color: var(--phase-color, var(--ink-mute));
+  letter-spacing: 0.02em;
+  min-width: 24px;
+  flex-shrink: 0;
+}
+.side-toc .st-phase .stp-name {
+  font-family: var(--serif);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.005em;
+  line-height: 1.25;
+}
+body.lang-en .side-toc .st-phase .stp-name { font-family: var(--serif-en); font-weight: 500; }
+
+.side-toc .st-phase[data-phase="web"] { --phase-color: var(--web); }
+.side-toc .st-phase[data-phase="gpu"] { --phase-color: var(--gpu); }
+.side-toc .st-phase[data-phase="hdr"] { --phase-color: var(--hdr); }
+.side-toc .st-phase[data-phase="vec"] { --phase-color: var(--vec); }
+.side-toc .st-phase[data-phase="rt"]  { --phase-color: var(--rt);  }
+.side-toc .st-phase[data-phase="sci"] { --phase-color: var(--sci); }
+.side-toc .st-phase[data-phase="nx"]  { --phase-color: var(--nx);  }
+.side-toc .st-phase[data-phase="bg"]  { --phase-color: var(--ink-mute); }
+
+/* === Chapter item === */
+.side-toc .st-chap {
+  position: relative;
+  margin: 0;
+  padding-left: 10px;
+  border-left: 1px solid var(--rule-soft);
+  transition: border-color 0.2s, padding 0.2s;
+}
+.side-toc .st-chap[data-phase="web"] { --phase-color: var(--web); }
+.side-toc .st-chap[data-phase="gpu"] { --phase-color: var(--gpu); }
+.side-toc .st-chap[data-phase="hdr"] { --phase-color: var(--hdr); }
+.side-toc .st-chap[data-phase="vec"] { --phase-color: var(--vec); }
+.side-toc .st-chap[data-phase="rt"]  { --phase-color: var(--rt);  }
+.side-toc .st-chap[data-phase="sci"] { --phase-color: var(--sci); }
+.side-toc .st-chap[data-phase="nx"]  { --phase-color: var(--nx);  }
+.side-toc .st-chap[data-phase="bg"]  { --phase-color: var(--ink-mute); }
+
+.side-toc .st-chap a {
+  display: flex; align-items: baseline;
+  gap: 6px;
+  padding: 3px 4px 3px 0;
+  color: var(--ink-soft);
+  text-decoration: none;
+  font-size: 11.5px;
+  font-family: var(--serif);
+  line-height: 1.3;
+  white-space: nowrap; overflow: hidden;
+  opacity: 0.7;
+  transition: color 0.18s, opacity 0.18s, padding 0.18s, background 0.18s;
+}
+body.lang-en .side-toc .st-chap a { font-family: var(--serif-en); }
+
+.side-toc .st-chap a:hover {
+  color: var(--ink);
+  opacity: 1;
+  padding-left: 4px;
+  background: linear-gradient(90deg, rgba(199,196,186,0.18), transparent 80%);
+}
+.side-toc .st-chap a:hover .stc-num { color: var(--phase-color); opacity: 1; }
+
+.side-toc .st-chap a .stc-num {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--ink-mute);
+  opacity: 0.65;
+  flex-shrink: 0;
+  min-width: 20px;
+  font-feature-settings: "tnum";
+  padding-top: 1px;
   transition: color 0.18s, opacity 0.18s;
 }
-.side-toc .st-list li a:hover { color: var(--ink); opacity: 1; }
-.side-toc .st-list li.active {
-  border-left-color: var(--ink);
+
+.side-toc .st-chap a .stc-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.side-toc .st-list li.active a { color: var(--ink); opacity: 1; font-weight: 600; }
-.side-toc .st-list li[data-phase="web"].active { border-left-color: var(--web); }
-.side-toc .st-list li[data-phase="web"].active a { color: var(--web); }
-.side-toc .st-list li[data-phase="gpu"].active { border-left-color: var(--gpu); }
-.side-toc .st-list li[data-phase="gpu"].active a { color: var(--gpu); }
-.side-toc .st-list li[data-phase="hdr"].active { border-left-color: var(--hdr); }
-.side-toc .st-list li[data-phase="hdr"].active a { color: var(--hdr); }
-.side-toc .st-list li[data-phase="vec"].active { border-left-color: var(--vec); }
-.side-toc .st-list li[data-phase="vec"].active a { color: var(--vec); }
-.side-toc .st-list li[data-phase="rt"].active  { border-left-color: var(--rt);  }
-.side-toc .st-list li[data-phase="rt"].active a  { color: var(--rt);  }
-.side-toc .st-list li[data-phase="sci"].active { border-left-color: var(--sci); }
-.side-toc .st-list li[data-phase="sci"].active a { color: var(--sci); }
-.side-toc .st-list li[data-phase="nx"].active  { border-left-color: var(--nx);  }
-.side-toc .st-list li[data-phase="nx"].active a  { color: var(--nx);  }
+
+.side-toc .st-chap.is-hero a .stc-name::before {
+  content: '★';
+  margin-right: 4px;
+  color: var(--heat);
+  font-size: 8.5px;
+  vertical-align: 1px;
+  opacity: 0.85;
+}
+
+/* Active */
+.side-toc .st-chap.active {
+  border-left-color: var(--phase-color);
+  border-left-width: 2px;
+  padding-left: 9px;
+}
+.side-toc .st-chap.active a {
+  color: var(--phase-color);
+  opacity: 1;
+  font-weight: 600;
+  background: linear-gradient(90deg, rgba(0,0,0,0.05), transparent 80%);
+}
+.side-toc .st-chap.active a .stc-num {
+  color: var(--phase-color);
+  opacity: 1;
+  font-weight: 700;
+}
+
+/* ====== Auto-list — 把段落里的 ①②③ 内联枚举改造成正式列表 ====== */
+.auto-list {
+  list-style: none;
+  margin: 18px 0;
+  padding: 0;
+  font-family: var(--serif);
+  font-size: 16px;
+  line-height: 1.85;
+  color: var(--ink);
+  counter-reset: auto-list;
+}
+body.lang-en .auto-list { font-family: var(--serif-en); }
+
+.auto-list > li {
+  position: relative;
+  padding: 8px 0 8px 36px;
+  margin: 0;
+  border-bottom: 1px dotted var(--rule-soft);
+  break-inside: avoid;
+}
+.auto-list > li:last-child { border-bottom: 0; }
+
+.auto-list > li::before {
+  content: attr(data-marker);
+  position: absolute;
+  left: 0; top: 8px;
+  font-family: var(--serif-en);
+  font-style: normal;
+  font-size: 17px;
+  font-weight: 500;
+  color: var(--ink-soft);
+  line-height: 1.85;
+  letter-spacing: 0;
+  width: 28px;
+  text-align: left;
+}
+
+/* phase-tinted markers when inside a phase-tinted section */
+section.chap[data-phase="web"] .auto-list > li::before { color: var(--web); opacity: 0.85; }
+section.chap[data-phase="gpu"] .auto-list > li::before { color: var(--gpu); opacity: 0.85; }
+section.chap[data-phase="hdr"] .auto-list > li::before { color: var(--hdr); opacity: 0.95; }
+section.chap[data-phase="vec"] .auto-list > li::before { color: var(--vec); opacity: 0.85; }
+section.chap[data-phase="rt"]  .auto-list > li::before { color: var(--rt);  opacity: 0.85; }
+section.chap[data-phase="sci"] .auto-list > li::before { color: var(--sci); opacity: 0.85; }
+section.chap[data-phase="nx"]  .auto-list > li::before { color: var(--nx);  opacity: 0.85; }
+
+/* if list is inside a card-like child container, soften */
+.format-card .auto-list { font-size: 15px; }
+.format-card .auto-list > li { padding: 7px 0 7px 32px; }
+.format-card .auto-list > li::before { font-size: 15px; top: 7px; }
+
+@media (max-width: 720px) {
+  .auto-list > li { padding: 6px 0 6px 30px; }
+  .auto-list > li::before { font-size: 15px; }
+}
 
 /* ====== 响应式断点 ====== */
 @media (max-width: 1280px) {
@@ -666,157 +851,337 @@ body.lang-en .format-card .soul { font-family: var(--serif-en); }
     margin-top: 12px; letter-spacing: 0.06em;
   }
 
-  /* ====================== TOC v2 ====================== */
-  .toc-v2 { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+  /* ====================== TOC v2 — manuscript index ====================== */
+  .toc-v2 {
+    padding: 88px 0 72px;
+    border-bottom: 1px solid var(--rule);
+    background:
+      radial-gradient(ellipse 600px 200px at 50% 0%, rgba(199,196,186,0.10), transparent 70%),
+      var(--paper);
+    position: relative;
+  }
+  .toc-v2::before {
+    content: '❦';
+    position: absolute;
+    top: 32px; left: 50%;
+    transform: translateX(-50%);
+    font-family: var(--serif-en);
+    font-size: 22px;
+    color: var(--ink-mute);
+    opacity: 0.45;
+  }
+  .toc-v2 .container { max-width: 1040px; }
+
   .toc-v2 .tv-head {
     display: flex; align-items: baseline; justify-content: space-between;
+    gap: 24px;
     margin-bottom: 6px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--ink);
+    position: relative;
+  }
+  .toc-v2 .tv-head::after {
+    content: '';
+    position: absolute; left: 0; right: 0; bottom: -4px;
+    height: 1px; background: var(--ink); opacity: 0.4;
   }
   .toc-v2 .tv-label {
-    font-family: var(--sans); font-size: 11px;
-    letter-spacing: 0.22em; text-transform: uppercase;
-    color: var(--ink-mute);
-  }
-  .toc-v2 .tv-meta {
-    font-family: var(--mono); font-size: 10.5px;
-    color: var(--ink-mute); letter-spacing: 0.08em;
-  }
-  .toc-v2 .tv-meta .tv-now {
-    color: var(--web); font-weight: 700;
-  }
-  .toc-v2 .tv-sub {
-    font-family: var(--sans); font-size: 13px;
-    color: var(--ink-mute); margin: 2px 0 26px;
+    font-family: var(--serif-en);
+    font-size: 30px;
+    line-height: 1;
+    letter-spacing: 0.06em;
+    color: var(--ink); font-weight: 500;
     font-style: italic;
   }
-  .toc-v2 .tv-progress {
-    display: grid;
-    grid-template-columns: 2fr 3fr 4fr 5fr 3fr 2fr 1fr;
-    gap: 4px;
-    height: 8px;
-    margin: 6px 0 28px;
+  body.lang-en .toc-v2 .tv-label { letter-spacing: 0.18em; font-style: normal; text-transform: uppercase; font-size: 22px; }
+  .toc-v2 .tv-meta {
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--ink-mute);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
   }
-  .toc-v2 .tv-progress span {
-    border-radius: 2px;
-    cursor: pointer;
-    transition: opacity 0.15s, transform 0.15s;
+  .toc-v2 .tv-meta .tv-now {
+    color: var(--ink); font-weight: 700;
+    font-size: 13px;
+    font-family: var(--serif-en);
+    font-style: italic;
+    letter-spacing: 0.02em;
   }
-  .toc-v2 .tv-progress span:hover { transform: translateY(-1px); }
-  .toc-v2 .tv-progress .tv-p0 { background: var(--ink-mute); opacity: 0.5; }
-  .toc-v2 .tv-progress .tv-p1 { background: var(--web); }
-  .toc-v2 .tv-progress .tv-p2 { background: var(--rt); }
-  .toc-v2 .tv-progress .tv-p3 { background: var(--asm); }
-  .toc-v2 .tv-progress .tv-p4 { background: var(--heat); }
-  .toc-v2 .tv-progress .tv-p5 { background: var(--gpu); }
-  .toc-v2 .tv-progress .tv-pc { background: var(--ink-mute); opacity: 0.7; }
+  .toc-v2 .tv-sub {
+    font-family: var(--serif);
+    font-size: 14px;
+    color: var(--ink-soft);
+    margin: 26px 0 56px;
+    font-style: italic;
+    max-width: 620px;
+    line-height: 1.6;
+  }
+  body.lang-en .toc-v2 .tv-sub { font-family: var(--serif-en); }
 
+  /* === group: two-column manuscript layout === */
   .toc-group {
-    margin-bottom: 18px;
-    border: 1px solid var(--rule);
-    border-left: 3px solid var(--ink-mute);
-    border-radius: 0 4px 4px 0;
-    background: var(--paper);
-    padding: 14px 18px 16px;
-    transition: background 0.15s;
+    display: grid;
+    grid-template-columns: 188px 1fr;
+    column-gap: 44px;
+    padding: 40px 0 36px;
+    border-top: 1px solid var(--rule-soft);
+    border-left: 0;
+    border-radius: 0;
+    background: transparent;
+    margin: 0;
+    position: relative;
+    transition: none;
   }
-  .toc-group[data-phase="bg"]    { border-left-color: var(--ink-mute); }
-  .toc-group[data-phase="pipe"]  { border-left-color: var(--web); }
-  .toc-group[data-phase="asm"]   { border-left-color: var(--rt); background: linear-gradient(135deg, rgba(179,90,31,0.04) 0%, var(--paper) 60%); }
-  .toc-group[data-phase="obj"]   { border-left-color: var(--asm); background: linear-gradient(135deg, rgba(45,106,79,0.04) 0%, var(--paper) 60%); }
-  .toc-group[data-phase="hot"]   { border-left-color: var(--heat); background: linear-gradient(135deg, rgba(195,87,58,0.06) 0%, var(--paper) 60%); }
-  .toc-group[data-phase="frontier"] { border-left-color: var(--gpu); }
-  .toc-group[data-phase="coda"]  { border-left-color: var(--ink-mute); }
+  .toc-group:first-of-type {
+    border-top: 0;
+    padding-top: 24px;
+  }
 
+  /* phase color accent — a thin vertical mark on the very left */
+  .toc-group::before {
+    content: '';
+    position: absolute;
+    left: -22px; top: 50px; bottom: 50px;
+    width: 2px;
+    background: var(--phase-color, var(--ink-mute));
+    opacity: 0.55;
+    border-radius: 1px;
+  }
+  .toc-group[data-phase="web"] { --phase-color: var(--web); }
+  .toc-group[data-phase="gpu"] { --phase-color: var(--gpu); }
+  .toc-group[data-phase="hdr"] { --phase-color: var(--hdr); }
+  .toc-group[data-phase="vec"] { --phase-color: var(--vec); }
+  .toc-group[data-phase="rt"]  { --phase-color: var(--rt);  }
+  .toc-group[data-phase="sci"] { --phase-color: var(--sci); }
+  .toc-group[data-phase="nx"]  { --phase-color: var(--nx);  }
+  .toc-group[data-phase="bg"]  { --phase-color: var(--ink-mute); }
+
+  /* === phase rail (left column) === */
   .toc-group-head {
-    display: flex; align-items: baseline; gap: 14px;
-    margin-bottom: 12px;
-    border-bottom: 1px dotted var(--rule);
-    padding-bottom: 10px;
+    display: flex; flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    border: 0; padding: 0; margin: 0;
+    position: sticky; top: 24px;
+    align-self: start;
   }
   .toc-group-head .tg-num {
-    font-family: var(--mono); font-size: 12px; font-weight: 700;
-    letter-spacing: 0.16em;
-    color: var(--ink-mute); width: 32px;
+    font-family: var(--serif-en);
+    font-size: 64px; line-height: 0.9;
+    font-weight: 400; font-style: italic;
+    color: var(--phase-color, var(--ink-mute));
+    letter-spacing: 0.01em;
+    width: auto;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .toc-group-head .tg-num::after {
+    content: '';
+    display: block;
+    width: 40px; height: 1px;
+    background: var(--phase-color, var(--ink-mute));
+    margin-top: 14px;
+    opacity: 0.5;
   }
   .toc-group-head .tg-name {
-    font-family: var(--serif); font-size: 16px; font-weight: 700;
+    font-family: var(--serif);
+    font-size: 22px; font-weight: 600;
     color: var(--ink);
-    flex: 1;
+    line-height: 1.25;
+    flex: none;
+    margin-bottom: 4px;
   }
-  body.lang-en .toc-group-head .tg-name { font-family: var(--serif-en); }
+  body.lang-en .toc-group-head .tg-name { font-family: var(--serif-en); font-weight: 500; }
   .toc-group-head .tg-en {
     font-family: var(--mono); font-size: 9.5px;
-    letter-spacing: 0.18em; text-transform: uppercase;
+    letter-spacing: 0.22em; text-transform: uppercase;
     color: var(--ink-mute);
+    margin-top: 4px;
+    line-height: 1.5;
   }
   .toc-group-head .tg-count {
-    font-family: var(--mono); font-size: 10px;
+    display: inline-flex; align-items: baseline; gap: 6px;
+    font-family: var(--serif-en);
+    font-size: 12.5px;
+    font-weight: 500;
+    font-style: italic;
+    color: var(--ink-soft);
+    background: transparent;
+    border: 0;
+    border-top: 1px dotted var(--rule);
+    padding: 10px 0 0;
+    border-radius: 0;
+    margin-top: 14px;
+    letter-spacing: 0.02em;
+    width: 100%;
+    max-width: 140px;
+  }
+  .toc-group-head .tg-count::before {
+    content: '§';
+    color: var(--phase-color, var(--ink-mute));
+    font-size: 14px;
+    margin-right: 4px;
+    opacity: 0.75;
+    font-style: normal;
+  }
+  .toc-group-head .tg-count::after {
+    content: ' chapters';
+    font-size: 11px;
     color: var(--ink-mute);
-    background: var(--bg-soft);
-    padding: 2px 8px; border-radius: 999px;
+    margin-left: 2px;
   }
 
+  /* === chip list (right column) === */
   .toc-chips {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 5px;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 32px;
+    row-gap: 0;
+    padding-top: 6px;
   }
+
+  /* === each chip is now a manuscript index entry === */
   .toc-chip {
-    display: flex; align-items: center; gap: 10px;
-    padding: 9px 12px;
-    background: var(--bg-soft);
-    border: 1px solid var(--rule-soft);
-    border-radius: 3px;
+    display: grid;
+    grid-template-columns: 30px 1fr;
+    column-gap: 14px;
+    align-items: baseline;
+    padding: 11px 6px 11px 4px;
+    background: transparent;
+    border: 0;
+    border-bottom: 1px dotted var(--rule);
+    border-radius: 0;
     text-decoration: none;
     color: var(--ink);
-    font-family: var(--sans); font-size: 13px;
-    transition: all 0.15s;
+    font-family: var(--serif);
+    font-size: 14.5px;
+    line-height: 1.3;
+    transition: background-color 0.18s ease, padding 0.2s ease, color 0.18s ease;
     position: relative;
-    border-bottom-width: 1px;
   }
+  body.lang-en .toc-chip { font-family: var(--serif-en); }
+
   .toc-chip:hover {
-    border-color: var(--web);
-    background: var(--paper-2);
-    transform: translateX(2px);
+    background: linear-gradient(90deg, rgba(199,196,186,0.22), rgba(199,196,186,0.04) 80%, transparent);
+    padding-left: 10px;
     color: var(--ink);
   }
-  .toc-chip:hover .tc-num { color: var(--web); }
-  .toc-chip:hover .tc-en { opacity: 1; }
-  .toc-chip.active {
-    border-color: var(--web);
-    background: rgba(31,92,140,0.10);
-    box-shadow: 0 1px 4px rgba(31,92,140,0.10);
-  }
-  .toc-chip.active .tc-num { color: var(--web); font-weight: 700; }
-  .toc-chip.active .tc-name { font-weight: 700; color: var(--web); }
-  .toc-chip .tc-num {
-    font-family: var(--mono); font-size: 10.5px;
-    font-weight: 700; color: var(--ink-mute);
-    letter-spacing: 0.06em;
-    flex-shrink: 0;
-    width: 22px;
-  }
-  .toc-chip .tc-name { flex: 1; min-width: 0; line-height: 1.2; }
-  .toc-chip .tc-en {
-    font-family: var(--mono); font-size: 9px;
-    letter-spacing: 0.06em;
-    color: var(--ink-mute);
-    opacity: 0.55;
-    transition: opacity 0.15s;
-    text-transform: uppercase;
-    display: block;
-  }
-  .toc-chip.tc-special {
-    background: linear-gradient(135deg, rgba(195,87,58,0.10), var(--paper));
-    border-color: var(--heat-soft);
-    border-left: 2px solid var(--heat);
-  }
-  .toc-chip.tc-special .tc-num { color: var(--heat); }
+  .toc-chip:hover .tc-num { color: var(--phase-color, var(--web)); }
+  .toc-chip:hover .tc-en  { color: var(--ink-soft); opacity: 1; }
+  .toc-chip:hover .tc-name > span:not(.tc-en) { color: var(--ink); }
 
+  .toc-chip.active {
+    background: linear-gradient(90deg, rgba(0,0,0,0.05), transparent 70%);
+    padding-left: 12px;
+    border-bottom-color: var(--phase-color, var(--web));
+    border-bottom-style: solid;
+  }
+  .toc-chip.active .tc-num { color: var(--phase-color, var(--web)); font-weight: 700; }
+  .toc-chip.active .tc-name > span:not(.tc-en) { color: var(--ink); font-weight: 600; }
+
+  .toc-chip .tc-num {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--ink-mute);
+    letter-spacing: 0.06em;
+    font-feature-settings: "tnum";
+    align-self: baseline;
+    padding-top: 2px;
+  }
+
+  .toc-chip .tc-name {
+    display: flex; flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+    line-height: 1.25;
+  }
+  .toc-chip .tc-name > span:not(.tc-en) {
+    font-size: 14.5px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: 0.005em;
+    transition: color 0.18s;
+  }
+
+  .toc-chip .tc-en {
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    color: var(--ink-mute);
+    opacity: 0.7;
+    text-transform: none;
+    line-height: 1.35;
+    transition: opacity 0.18s, color 0.18s;
+  }
+
+  /* heavy hitter — a small filled bookmark/star, slight emphasis */
+  .toc-chip.tc-hero .tc-num {
+    color: var(--phase-color, var(--web));
+    font-weight: 700;
+  }
+  .toc-chip.tc-hero .tc-name > span:not(.tc-en)::before {
+    content: '★';
+    display: inline-block;
+    margin-right: 6px;
+    color: var(--heat);
+    font-size: 10px;
+    vertical-align: 1.5px;
+    opacity: 0.9;
+  }
+  .toc-chip.tc-hero .tc-name > span:not(.tc-en) {
+    font-weight: 600;
+  }
+
+  /* the standalone "tc-special" chip (FITS) */
+  .toc-chip.tc-special {
+    background: linear-gradient(90deg, rgba(58,74,138,0.06), transparent 70%);
+    border-bottom-style: dotted;
+  }
+  .toc-chip.tc-special .tc-num { color: var(--sci); font-weight: 700; }
+
+  /* graceful breakpoints */
+  @media (max-width: 980px) {
+    .toc-v2 .container { max-width: 100%; }
+    .toc-group {
+      grid-template-columns: 156px 1fr;
+      column-gap: 28px;
+      padding: 32px 0 28px;
+    }
+    .toc-group::before { left: -10px; top: 40px; bottom: 40px; }
+    .toc-group-head .tg-num { font-size: 50px; }
+    .toc-chips { grid-template-columns: 1fr; }
+  }
   @media (max-width: 720px) {
-    .toc-chips { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-    .toc-group { padding: 12px 14px 14px; }
-    .toc-group-head .tg-name { font-size: 14px; }
+    .toc-v2 { padding: 64px 0 48px; }
+    .toc-v2::before { top: 20px; }
+    .toc-v2 .tv-label { font-size: 24px; }
+    .toc-group {
+      grid-template-columns: 1fr;
+      gap: 18px;
+      padding: 28px 0 24px;
+    }
+    .toc-group::before { display: none; }
+    .toc-group-head {
+      position: static;
+      flex-direction: row; flex-wrap: wrap;
+      align-items: baseline;
+      gap: 8px 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--rule-soft);
+    }
+    .toc-group-head .tg-num {
+      font-size: 38px; margin-bottom: 0;
+    }
+    .toc-group-head .tg-num::after { display: none; }
+    .toc-group-head .tg-name { font-size: 18px; margin-bottom: 0; }
+    .toc-group-head .tg-en { width: 100%; margin-top: 0; }
+    .toc-group-head .tg-count {
+      border-top: 0; padding-top: 0; margin-top: 0;
+      max-width: none; width: auto;
+    }
+    .toc-chips { padding-top: 0; }
   }
 
   /* ====================== Side TOC ====================== */
@@ -1289,17 +1654,17 @@ body.lang-en .format-card .soul { font-family: var(--serif-en); }
       <div class="toc-chips">
         <a href="#c1" class="toc-chip" data-section="c1"><span class="tc-num">01</span><div class="tc-name"><span class="lang-zh-only">BMP</span><span class="lang-en-only">BMP</span><span class="tc-en">未压缩童年 · 1990</span></div></a>
         <a href="#c2" class="toc-chip" data-section="c2"><span class="tc-num">02</span><div class="tc-name"><span class="lang-zh-only">GIF</span><span class="lang-en-only">GIF</span><span class="tc-en">LZW + 调色板 · 1987</span></div></a>
-        <a href="#c3" class="toc-chip" data-section="c3"><span class="tc-num">03</span><div class="tc-name"><span class="lang-zh-only">PNG</span><span class="lang-en-only">PNG</span><span class="tc-en">DEFLATE + filter · 扛把子</span></div></a>
+        <a href="#c3" class="toc-chip tc-hero" data-section="c3"><span class="tc-num">03</span><div class="tc-name"><span class="lang-zh-only">PNG</span><span class="lang-en-only">PNG</span><span class="tc-en">DEFLATE + filter · 扛把子</span></div></a>
         <a href="#c4" class="toc-chip" data-section="c4"><span class="tc-num">04</span><div class="tc-name"><span class="lang-zh-only">APNG</span><span class="lang-en-only">APNG</span><span class="tc-en">PNG 偷做动图 · 2004</span></div></a>
         <a href="#c5" class="toc-chip" data-section="c5"><span class="tc-num">05</span><div class="tc-name"><span class="lang-zh-only">animated WebP</span><span class="lang-en-only">animated WebP</span><span class="tc-en">RIFF 多帧 · 2012</span></div></a>
-        <a href="#c6" class="toc-chip" data-section="c6"><span class="tc-num">06</span><div class="tc-name"><span class="lang-zh-only">JPEG</span><span class="lang-en-only">JPEG</span><span class="tc-en">8×8 DCT · 扛把子</span></div></a>
+        <a href="#c6" class="toc-chip tc-hero" data-section="c6"><span class="tc-num">06</span><div class="tc-name"><span class="lang-zh-only">JPEG</span><span class="lang-en-only">JPEG</span><span class="tc-en">8×8 DCT · 扛把子</span></div></a>
         <a href="#c7" class="toc-chip" data-section="c7"><span class="tc-num">07</span><div class="tc-name"><span class="lang-zh-only">JPEG-LS</span><span class="lang-en-only">JPEG-LS</span><span class="tc-en">无损 JPEG · 1997</span></div></a>
         <a href="#c8" class="toc-chip" data-section="c8"><span class="tc-num">08</span><div class="tc-name"><span class="lang-zh-only">JPEG 2000</span><span class="lang-en-only">JPEG 2000</span><span class="tc-en">小波的悲剧 · 2000</span></div></a>
         <a href="#c9" class="toc-chip" data-section="c9"><span class="tc-num">09</span><div class="tc-name"><span class="lang-zh-only">JPEG XR</span><span class="lang-en-only">JPEG XR</span><span class="tc-en">微软最后努力 · 2006</span></div></a>
-        <a href="#c10" class="toc-chip" data-section="c10"><span class="tc-num">10</span><div class="tc-name"><span class="lang-zh-only">WebP</span><span class="lang-en-only">WebP</span><span class="tc-en">VP8 帧内 · 扛把子</span></div></a>
+        <a href="#c10" class="toc-chip tc-hero" data-section="c10"><span class="tc-num">10</span><div class="tc-name"><span class="lang-zh-only">WebP</span><span class="lang-en-only">WebP</span><span class="tc-en">VP8 帧内 · 扛把子</span></div></a>
         <a href="#c11" class="toc-chip" data-section="c11"><span class="tc-num">11</span><div class="tc-name"><span class="lang-zh-only">HEIC / HEIF</span><span class="lang-en-only">HEIC / HEIF</span><span class="tc-en">苹果 + 专利墙 · 2015</span></div></a>
-        <a href="#c12" class="toc-chip" data-section="c12"><span class="tc-num">12</span><div class="tc-name"><span class="lang-zh-only">AVIF</span><span class="lang-en-only">AVIF</span><span class="tc-en">AV1 副产品 · 扛把子</span></div></a>
-        <a href="#c13" class="toc-chip" data-section="c13"><span class="tc-num">13</span><div class="tc-name"><span class="lang-zh-only">JPEG XL</span><span class="lang-en-only">JPEG XL</span><span class="tc-en">被 Chrome 砍掉 · 扛把子</span></div></a>
+        <a href="#c12" class="toc-chip tc-hero" data-section="c12"><span class="tc-num">12</span><div class="tc-name"><span class="lang-zh-only">AVIF</span><span class="lang-en-only">AVIF</span><span class="tc-en">AV1 副产品 · 扛把子</span></div></a>
+        <a href="#c13" class="toc-chip tc-hero" data-section="c13"><span class="tc-num">13</span><div class="tc-name"><span class="lang-zh-only">JPEG XL</span><span class="lang-en-only">JPEG XL</span><span class="tc-en">被 Chrome 砍掉 · 扛把子</span></div></a>
       </div>
     </div>
 
@@ -1319,11 +1684,11 @@ body.lang-en .format-card .soul { font-family: var(--serif-en); }
         <a href="#c17" class="toc-chip" data-section="c17"><span class="tc-num">17</span><div class="tc-name"><span class="lang-zh-only">BC2 / BC3</span><span class="lang-en-only">BC2 / BC3</span><span class="tc-en">alpha 两条路 · 1999</span></div></a>
         <a href="#c18" class="toc-chip" data-section="c18"><span class="tc-num">18</span><div class="tc-name"><span class="lang-zh-only">BC4 / BC5</span><span class="lang-en-only">BC4 / BC5</span><span class="tc-en">单/双通道 · 2007</span></div></a>
         <a href="#c19" class="toc-chip" data-section="c19"><span class="tc-num">19</span><div class="tc-name"><span class="lang-zh-only">BC6H</span><span class="lang-en-only">BC6H</span><span class="tc-en">HDR 块压缩 · 2011</span></div></a>
-        <a href="#c20" class="toc-chip" data-section="c20"><span class="tc-num">20</span><div class="tc-name"><span class="lang-zh-only">BC7</span><span class="lang-en-only">BC7</span><span class="tc-en">8 mode · 扛把子</span></div></a>
+        <a href="#c20" class="toc-chip tc-hero" data-section="c20"><span class="tc-num">20</span><div class="tc-name"><span class="lang-zh-only">BC7</span><span class="lang-en-only">BC7</span><span class="tc-en">8 mode · 扛把子</span></div></a>
         <a href="#c21" class="toc-chip" data-section="c21"><span class="tc-num">21</span><div class="tc-name"><span class="lang-zh-only">ETC1</span><span class="lang-en-only">ETC1</span><span class="tc-en">Android 早期 · 2005</span></div></a>
         <a href="#c22" class="toc-chip" data-section="c22"><span class="tc-num">22</span><div class="tc-name"><span class="lang-zh-only">ETC2 / EAC</span><span class="lang-en-only">ETC2 / EAC</span><span class="tc-en">GLES 3.0 强制 · 2013</span></div></a>
         <a href="#c23" class="toc-chip" data-section="c23"><span class="tc-num">23</span><div class="tc-name"><span class="lang-zh-only">PVRTC</span><span class="lang-en-only">PVRTC</span><span class="tc-en">Apple 老 GPU · 2003</span></div></a>
-        <a href="#c24" class="toc-chip" data-section="c24"><span class="tc-num">24</span><div class="tc-name"><span class="lang-zh-only">ASTC</span><span class="lang-en-only">ASTC</span><span class="tc-en">14 块大小 · 扛把子</span></div></a>
+        <a href="#c24" class="toc-chip tc-hero" data-section="c24"><span class="tc-num">24</span><div class="tc-name"><span class="lang-zh-only">ASTC</span><span class="lang-en-only">ASTC</span><span class="tc-en">14 块大小 · 扛把子</span></div></a>
         <a href="#c25" class="toc-chip" data-section="c25"><span class="tc-num">25</span><div class="tc-name"><span class="lang-zh-only">Basis Universal</span><span class="lang-en-only">Basis Universal</span><span class="tc-en">运行时转码 · 2018</span></div></a>
         <a href="#c26" class="toc-chip" data-section="c26"><span class="tc-num">26</span><div class="tc-name"><span class="lang-zh-only">Crunch</span><span class="lang-en-only">Crunch</span><span class="tc-en">cluster + 熵 · 2012</span></div></a>
         <a href="#c27" class="toc-chip" data-section="c27"><span class="tc-num">27</span><div class="tc-name"><span class="lang-zh-only">Mipmap 体系</span><span class="lang-en-only">Mipmap</span><span class="tc-en">概念 · 1983</span></div></a>
@@ -1340,14 +1705,14 @@ body.lang-en .format-card .soul { font-family: var(--serif-en); }
         <div class="tg-count">8</div>
       </div>
       <div class="toc-chips">
-        <a href="#c28" class="toc-chip" data-section="c28"><span class="tc-num">28</span><div class="tc-name"><span class="lang-zh-only">OpenEXR</span><span class="lang-en-only">OpenEXR</span><span class="tc-en">VFX 行业 · 扛把子</span></div></a>
+        <a href="#c28" class="toc-chip tc-hero" data-section="c28"><span class="tc-num">28</span><div class="tc-name"><span class="lang-zh-only">OpenEXR</span><span class="lang-en-only">OpenEXR</span><span class="tc-en">VFX 行业 · 扛把子</span></div></a>
         <a href="#c29" class="toc-chip" data-section="c29"><span class="tc-num">29</span><div class="tc-name"><span class="lang-zh-only">Radiance HDR</span><span class="lang-en-only">Radiance HDR</span><span class="tc-en">RGBE 编码 · 1989</span></div></a>
         <a href="#c30" class="toc-chip" data-section="c30"><span class="tc-num">30</span><div class="tc-name"><span class="lang-zh-only">PFM</span><span class="lang-en-only">PFM</span><span class="tc-en">学术 raw float · 2005</span></div></a>
-        <a href="#c31" class="toc-chip" data-section="c31"><span class="tc-num">31</span><div class="tc-name"><span class="lang-zh-only">16/32-bit TIFF</span><span class="lang-en-only">16/32-bit TIFF</span><span class="tc-en">印刷扛把子 · 1986</span></div></a>
-        <a href="#c32" class="toc-chip" data-section="c32"><span class="tc-num">32</span><div class="tc-name"><span class="lang-zh-only">RAW</span><span class="lang-en-only">RAW</span><span class="tc-en">厂商林立 · 扛把子</span></div></a>
+        <a href="#c31" class="toc-chip tc-hero" data-section="c31"><span class="tc-num">31</span><div class="tc-name"><span class="lang-zh-only">16/32-bit TIFF</span><span class="lang-en-only">16/32-bit TIFF</span><span class="tc-en">印刷扛把子 · 1986</span></div></a>
+        <a href="#c32" class="toc-chip tc-hero" data-section="c32"><span class="tc-num">32</span><div class="tc-name"><span class="lang-zh-only">RAW</span><span class="lang-en-only">RAW</span><span class="tc-en">厂商林立 · 扛把子</span></div></a>
         <a href="#c33" class="toc-chip" data-section="c33"><span class="tc-num">33</span><div class="tc-name"><span class="lang-zh-only">DNG</span><span class="lang-en-only">DNG</span><span class="tc-en">Adobe 想统一 · 2004</span></div></a>
         <a href="#c34" class="toc-chip" data-section="c34"><span class="tc-num">34</span><div class="tc-name"><span class="lang-zh-only">CR3 / NEF / ARW</span><span class="lang-en-only">CR3 / NEF / ARW</span><span class="tc-en">三大厂 RAW</span></div></a>
-        <a href="#c35" class="toc-chip" data-section="c35"><span class="tc-num">35</span><div class="tc-name"><span class="lang-zh-only">DICOM</span><span class="lang-en-only">DICOM</span><span class="tc-en">医学城堡 · 扛把子</span></div></a>
+        <a href="#c35" class="toc-chip tc-hero" data-section="c35"><span class="tc-num">35</span><div class="tc-name"><span class="lang-zh-only">DICOM</span><span class="lang-en-only">DICOM</span><span class="tc-en">医学城堡 · 扛把子</span></div></a>
       </div>
     </div>
 
@@ -1361,7 +1726,7 @@ body.lang-en .format-card .soul { font-family: var(--serif-en); }
         <div class="tg-count">5</div>
       </div>
       <div class="toc-chips">
-        <a href="#c36" class="toc-chip" data-section="c36"><span class="tc-num">36</span><div class="tc-name"><span class="lang-zh-only">SVG</span><span class="lang-en-only">SVG</span><span class="tc-en">XML + 数学 · 扛把子</span></div></a>
+        <a href="#c36" class="toc-chip tc-hero" data-section="c36"><span class="tc-num">36</span><div class="tc-name"><span class="lang-zh-only">SVG</span><span class="lang-en-only">SVG</span><span class="tc-en">XML + 数学 · 扛把子</span></div></a>
         <a href="#c37" class="toc-chip" data-section="c37"><span class="tc-num">37</span><div class="tc-name"><span class="lang-zh-only">PDF</span><span class="lang-en-only">PDF</span><span class="tc-en">容器之王 · 1993</span></div></a>
         <a href="#c38" class="toc-chip" data-section="c38"><span class="tc-num">38</span><div class="tc-name"><span class="lang-zh-only">EPS</span><span class="lang-en-only">EPS</span><span class="tc-en">PostScript + BBox · 1987</span></div></a>
         <a href="#c39" class="toc-chip" data-section="c39"><span class="tc-num">39</span><div class="tc-name"><span class="lang-zh-only">AI</span><span class="lang-en-only">AI</span><span class="tc-en">Illustrator 私有 · 1987</span></div></a>
@@ -1403,7 +1768,7 @@ body.lang-en .format-card .soul { font-family: var(--serif-en); }
       <div class="toc-chips">
         <a href="#c50" class="toc-chip" data-section="c50"><span class="tc-num">50</span><div class="tc-name"><span class="lang-zh-only">GeoTIFF</span><span class="lang-en-only">GeoTIFF</span><span class="tc-en">TIFF + 6 GeoKey · 卫星标准</span></div></a>
         <a href="#c51" class="toc-chip" data-section="c51"><span class="tc-num">51</span><div class="tc-name"><span class="lang-zh-only">NITF</span><span class="lang-en-only">NITF</span><span class="tc-en">军用情报图像 · MIL-STD-2500C</span></div></a>
-        <a href="#c52" class="toc-chip tc-special" data-section="c52"><span class="tc-num">52</span><div class="tc-name"><span class="lang-zh-only">FITS</span><span class="lang-en-only">FITS</span><span class="tc-en">天文唯一标准 · 扛把子</span></div></a>
+        <a href="#c52" class="toc-chip tc-special tc-hero" data-section="c52"><span class="tc-num">52</span><div class="tc-name"><span class="lang-zh-only">FITS</span><span class="lang-en-only">FITS</span><span class="tc-en">天文唯一标准 · 扛把子</span></div></a>
         <a href="#c53" class="toc-chip" data-section="c53"><span class="tc-num">53</span><div class="tc-name"><span class="lang-zh-only">JP2 / JPX</span><span class="lang-en-only">JP2 / JPX</span><span class="tc-en">JPEG 2000 在科学领域的活路</span></div></a>
       </div>
     </div>
@@ -1421,7 +1786,7 @@ body.lang-en .format-card .soul { font-family: var(--serif-en); }
         <a href="#c54" class="toc-chip" data-section="c54"><span class="tc-num">54</span><div class="tc-name"><span class="lang-zh-only">WebP2</span><span class="lang-en-only">WebP2</span><span class="tc-en">实验后代 · 2021</span></div></a>
         <a href="#c55" class="toc-chip" data-section="c55"><span class="tc-num">55</span><div class="tc-name"><span class="lang-zh-only">AVIF Sequence</span><span class="lang-en-only">AVIF Sequence</span><span class="tc-en">AV1 video 接回图片</span></div></a>
         <a href="#c56" class="toc-chip" data-section="c56"><span class="tc-num">56</span><div class="tc-name"><span class="lang-zh-only">JPEG XS</span><span class="lang-en-only">JPEG XS</span><span class="tc-en">ms 级延迟广播 · 2018</span></div></a>
-        <a href="#c57" class="toc-chip" data-section="c57"><span class="tc-num">57</span><div class="tc-name"><span class="lang-zh-only">神经压缩</span><span class="lang-en-only">Neural codec</span><span class="tc-en">HiFiC / CDC · 扛把子</span></div></a>
+        <a href="#c57" class="toc-chip tc-hero" data-section="c57"><span class="tc-num">57</span><div class="tc-name"><span class="lang-zh-only">神经压缩</span><span class="lang-en-only">Neural codec</span><span class="tc-en">HiFiC / CDC · 扛把子</span></div></a>
         <a href="#c58" class="toc-chip" data-section="c58"><span class="tc-num">58</span><div class="tc-name"><span class="lang-zh-only">HEIC Live Photo</span><span class="lang-en-only">HEIC Live Photo</span><span class="tc-en">图 + 视频混合 · iPhone 6s</span></div></a>
       </div>
     </div>
@@ -16136,25 +16501,148 @@ $ python -c "from compressai.zoo import bmshj2018_hyperprior; \
     });
   });
 
-  // ====== 3. Side TOC dynamic build ======
+  // ====== 3. Side TOC dynamic build (phase-grouped, manuscript style) ======
   const sideToc = document.querySelector('.side-toc .st-list');
   if (sideToc) {
-    const chaps = document.querySelectorAll('section.chap');
-    chaps.forEach(chap => {
-      const id = chap.id;
-      const titleZh = chap.querySelector('.chap-title.lang-zh-only');
-      const titleEn = chap.querySelector('.chap-title.lang-en-only');
-      if (!id || !titleZh) return;
-      const li = document.createElement('li');
-      li.dataset.section = id;
-      li.dataset.phase = chap.dataset.phase || 'bg';
-      li.innerHTML = `<a href="#${id}">
-        <span class="lang-zh-only">${titleZh.textContent.trim()}</span>
-        <span class="lang-en-only">${(titleEn ? titleEn.textContent : titleZh.textContent).trim()}</span>
-      </a>`;
-      sideToc.appendChild(li);
+    const groups = document.querySelectorAll('.toc-v2 .toc-group');
+    groups.forEach(group => {
+      const phase = group.dataset.phase || 'bg';
+      const numEl = group.querySelector('.tg-num');
+      const nameZhEl = group.querySelector('.tg-name.lang-zh-only');
+      const nameEnEl = group.querySelector('.tg-name.lang-en-only');
+
+      // Phase header
+      const headerLi = document.createElement('li');
+      headerLi.className = 'st-phase';
+      headerLi.dataset.phase = phase;
+      const phaseNum = numEl ? numEl.textContent.trim() : '';
+      const phaseZh = nameZhEl ? nameZhEl.textContent.trim() : '';
+      const phaseEn = nameEnEl ? nameEnEl.textContent.trim() : '';
+      headerLi.innerHTML = `
+        <span class="stp-num">${phaseNum}</span>
+        <span class="stp-name lang-zh-only">${phaseZh}</span>
+        <span class="stp-name lang-en-only">${phaseEn}</span>
+      `;
+      sideToc.appendChild(headerLi);
+
+      // Chapters within phase
+      const chips = group.querySelectorAll('.toc-chip[data-section]');
+      chips.forEach(chip => {
+        const id = chip.dataset.section;
+        const isHero = chip.classList.contains('tc-hero');
+        const numC = chip.querySelector('.tc-num');
+        const nameZh = chip.querySelector('.tc-name .lang-zh-only');
+        const nameEn = chip.querySelector('.tc-name .lang-en-only');
+
+        const li = document.createElement('li');
+        li.className = 'st-chap' + (isHero ? ' is-hero' : '');
+        li.dataset.section = id;
+        li.dataset.phase = phase;
+        li.innerHTML = `<a href="#${id}">
+          <span class="stc-num">${numC ? numC.textContent.trim() : ''}</span>
+          <span class="stc-name lang-zh-only">${nameZh ? nameZh.textContent.trim() : ''}</span>
+          <span class="stc-name lang-en-only">${nameEn ? nameEn.textContent.trim() : ''}</span>
+        </a>`;
+        sideToc.appendChild(li);
+      });
     });
   }
+
+  // ====== 3.5 Auto-listify paragraphs containing inline enumerations ======
+  // Supports several marker series; each paragraph is split using the first
+  // series that has 2+ markers. Series:
+  //   1. Circled digits ①②③ … ⑩
+  //   2. Parenthesized ASCII letters (a) (b) (c) … (z) — restricted to
+  //      list-position via lookahead (must be followed by space/tag/punct)
+  (function () {
+    const SERIES = [
+      {
+        split: /([①②③④⑤⑥⑦⑧⑨⑩])/,
+        count: /[①②③④⑤⑥⑦⑧⑨⑩]/g,
+        normalize: m => m
+      },
+      {
+        // (a) (b) ... but only when used as list marker (followed by space, tag, or punct)
+        split: /(\([a-z]\))(?=[\s<,;:。、])/,
+        count: /\([a-z]\)(?=[\s<,;:。、])/g,
+        // turn "(a)" into the prettier circled "ⓐ"
+        normalize: m => {
+          const ch = m.charAt(1);
+          const code = ch.charCodeAt(0) - 'a'.charCodeAt(0);
+          if (code < 0 || code > 25) return m;
+          return String.fromCodePoint(0x24D0 + code); // ⓐ-ⓩ
+        }
+      }
+    ];
+
+    const INLINE_TAGS = ['strong', 'em', 'code', 'span', 'a', 'b', 'i', 'sup', 'sub', 'mark', 'small'];
+
+    function tagsBalanced(html) {
+      for (const t of INLINE_TAGS) {
+        const opens = (html.match(new RegExp(`<${t}\\b`, 'gi')) || []).length;
+        const closes = (html.match(new RegExp(`</${t}>`, 'gi')) || []).length;
+        if (opens !== closes) return false;
+      }
+      return true;
+    }
+
+    function trySplit(html, series) {
+      const matches = html.match(series.count);
+      if (!matches || matches.length < 2) return null;
+      const parts = html.split(series.split);
+      for (const chunk of parts) {
+        if (!tagsBalanced(chunk)) return null;
+      }
+      return parts;
+    }
+
+    function listify(p) {
+      if (p.classList.contains('no-auto-list')) return;
+      if (p.closest('li, ol, ul, .auto-list')) return;
+      const html = p.innerHTML;
+
+      let parts = null;
+      let series = null;
+      for (const s of SERIES) {
+        parts = trySplit(html, s);
+        if (parts) { series = s; break; }
+      }
+      if (!parts) return;
+
+      const pretext = parts[0].replace(/[\s,;:。、,;:]+$/, '').trim();
+      const items = [];
+      for (let i = 1; i < parts.length; i += 2) {
+        const m = parts[i];
+        let t = (parts[i + 1] || '').trim();
+        t = t.replace(/^[\s,;:、:]+/, '');
+        t = t.replace(/[;;]\s*$/, '');
+        items.push({ marker: series.normalize(m), html: t });
+      }
+
+      const frag = document.createDocumentFragment();
+      const langClasses = [...p.classList].filter(c => c.startsWith('lang-'));
+
+      if (pretext) {
+        const np = document.createElement('p');
+        np.innerHTML = pretext;
+        langClasses.forEach(c => np.classList.add(c));
+        frag.appendChild(np);
+      }
+      const ol = document.createElement('ol');
+      ol.className = 'auto-list';
+      langClasses.forEach(c => ol.classList.add(c));
+      items.forEach(item => {
+        const li = document.createElement('li');
+        li.dataset.marker = item.marker;
+        li.innerHTML = item.html;
+        ol.appendChild(li);
+      });
+      frag.appendChild(ol);
+      p.replaceWith(frag);
+    }
+
+    document.querySelectorAll('section.chap p').forEach(listify);
+  })();
 
   // ====== 4. IntersectionObserver — TOC + side-TOC active highlight ======
   const tocChips = document.querySelectorAll('.toc-chip[data-section]');
