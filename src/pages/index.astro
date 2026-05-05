@@ -2607,7 +2607,12 @@ const recentPhotos = (photosData as Array<any>)
     (function () {
       var data = window.__MUSIC_DATA__;
       if (!data || !data.periods || !data.periods.length) return;
+      // Defer rendering until i18n dictionaries are loaded; otherwise
+      // t() falls back to returning the raw keys ("music_plays" etc.).
+      var ready = window._i18nReady && window._i18nReady.then ? window._i18nReady : Promise.resolve();
+      ready.then(render);
 
+      function render() {
       var barsEl = document.getElementById('musicBars');
       var legendEl = document.getElementById('musicLegend');
       var summaryEl = document.getElementById('musicSummary');
@@ -2743,6 +2748,7 @@ const recentPhotos = (photosData as Array<any>)
           }
         });
       });
+      }
     })();
 
     // ── Now Playing Card ──
