@@ -1546,14 +1546,21 @@ encoding in HTTP/2.</p>
       var email = nlEmail.value.trim();
       if (!email) return;
       nlStatus.textContent = 'Subscribing...';
+      var lang = /^\/en\//.test(location.pathname) ? 'en' : 'zh';
       fetch(API + '/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email })
+        body: JSON.stringify({ email: email, lang: lang })
       }).then(function(r) { return r.json(); })
         .then(function(d) {
-          nlStatus.textContent = d.error ? d.error : 'Subscribed!';
-          if (!d.error) nlEmail.value = '';
+          if (d.error) {
+            nlStatus.textContent = d.error;
+          } else if (d.alreadySubscribed) {
+            nlStatus.textContent = 'Already subscribed.';
+          } else {
+            nlStatus.textContent = 'Subscribed!';
+            nlEmail.value = '';
+          }
         })
         .catch(function() { nlStatus.textContent = 'Failed. Please try again.'; });
     });
