@@ -852,7 +852,7 @@ const recentPhotos = (photosData as Array<any>)
           <span class="temp" id="weatherTemp"></span>
           <span id="weatherDesc"></span>
         </div>
-        <div class="online-line" data-online="site" data-online-template='<span class="online-dot"></span><span class="online-count">{n}</span> online' data-online-min="1" style="display:none"></div>
+        <div class="online-line" data-online="site" data-online-template='<span class="online-dot"></span><span class="online-count">{n}</span> online' data-online-min="1" data-online-countries="popover" data-online-region-min="2" data-online-region-label="regions" data-online-popover-title="Readers by region" data-online-total-template="{n} readers online" data-online-locale="en" style="display:none"></div>
       </div>
     </div>
 
@@ -4112,9 +4112,30 @@ const recentPhotos = (photosData as Array<any>)
       function pickTiers() {
         return (window.currentLang === 'zh') ? tiersZh : tiersEn;
       }
-      window.__ONLINE_CONFIG__ = { pageId: null, tiers: pickTiers() };
+      function applyOnlineLocale() {
+        var el = document.querySelector('.online-line[data-online-countries="popover"]');
+        if (!el) return;
+        if (window.currentLang === 'zh') {
+          el.setAttribute('data-online-region-label', '地区');
+          el.setAttribute('data-online-popover-title', '此刻访客分布');
+          el.setAttribute('data-online-total-template', '{n} 人在线');
+          el.setAttribute('data-online-locale', 'zh-CN');
+        } else {
+          el.setAttribute('data-online-region-label', 'regions');
+          el.setAttribute('data-online-popover-title', 'Visitors by region');
+          el.setAttribute('data-online-total-template', '{n} visitors online');
+          el.setAttribute('data-online-locale', 'en');
+        }
+      }
+      applyOnlineLocale();
+      window.__ONLINE_CONFIG__ = {
+        pageId: null,
+        tiers: pickTiers(),
+        demoCountries: { SG: 2, US: 1, CN: 1 }
+      };
       window.addEventListener('langchange', function () {
         window.__ONLINE_CONFIG__.tiers = pickTiers();
+        applyOnlineLocale();
         if (window.__onlineRefresh) window.__onlineRefresh();
       });
     })();
