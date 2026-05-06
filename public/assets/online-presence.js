@@ -247,7 +247,7 @@
       var regionMin = parseInt(el.getAttribute('data-online-region-min') || '2', 10);
       var shouldShowCountrySummary = countryMode === 'popover' ? rows.length >= regionMin : rows.length > 0;
       if (shouldShowCountrySummary) {
-        el.style.cursor = 'help';
+        el.style.cursor = 'pointer';
         el.setAttribute('tabindex', '0');
         el.setAttribute('role', 'button');
         el.setAttribute('aria-haspopup', 'dialog');
