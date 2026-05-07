@@ -127,7 +127,7 @@ There are a few new things to explore over at [ursb.me](https://ursb.me):
 
 ## Other Projects
 
-**[How to Train Your LLM](https://airingursb.github.io/how-to-train-your-llm)**: An interactive mini-game for learning the basics of LLMs through play.
+**[How to Train Your LLM](https://htyl.ursb.me/)**: An interactive mini-game for learning the basics of LLMs through play.
 
 **[Claude-101](https://claude-101.ursb.me/)**: An interactive learning project, with analysis based on the previously leaked 2.1.88 source code.
 

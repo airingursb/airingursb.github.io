@@ -127,7 +127,7 @@ AI 会进行自测：
 
 ## 其他项目
 
-**[How to Train Your LLM](https://airingursb.github.io/how-to-train-your-llm)**：一个交互式小游戏，通过玩的方式了解 LLM 的基础知识。
+**[How to Train Your LLM](https://htyl.ursb.me/)**：一个交互式小游戏，通过玩的方式了解 LLM 的基础知识。
 
 **[Claude-101](https://claude-101.ursb.me/)**：交互式学习项目，结合了之前 2.1.88 泄露的源码进行分析。
 
