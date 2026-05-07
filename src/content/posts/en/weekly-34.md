@@ -129,7 +129,7 @@ There are a few new things to explore over at [ursb.me](https://ursb.me):
 
 **[How to Train Your LLM](https://airingursb.github.io/how-to-train-your-llm)**: An interactive mini-game for learning the basics of LLMs through play.
 
-**[Claude-101](https://ursb.me/claude-101/)**: An interactive learning project, with analysis based on the previously leaked 2.1.88 source code.
+**[Claude-101](https://claude-101.ursb.me/)**: An interactive learning project, with analysis based on the previously leaked 2.1.88 source code.
 
 **Linear workflow**: I've been experimenting with using Linear to assign tasks to agents, track progress, and generate summaries. Assigning tasks to agents isn't new — tools like Slock and Multica already do it — but the integration with Linear's project management capabilities makes the experience feel more complete. On the deployment side, in addition to Codex, I've also self-hosted Cline to run Claude Code and Gemini.
 

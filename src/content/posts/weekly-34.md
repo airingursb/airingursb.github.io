@@ -129,7 +129,7 @@ AI 会进行自测：
 
 **[How to Train Your LLM](https://airingursb.github.io/how-to-train-your-llm)**：一个交互式小游戏，通过玩的方式了解 LLM 的基础知识。
 
-**[Claude-101](https://ursb.me/claude-101/)**：交互式学习项目，结合了之前 2.1.88 泄露的源码进行分析。
+**[Claude-101](https://claude-101.ursb.me/)**：交互式学习项目，结合了之前 2.1.88 泄露的源码进行分析。
 
 **Linear 工作流**：尝试用 Linear 给 Agent 分配任务、记录任务进度和总结。给 Agent 派活这件事 Slock、Multica 等新兴软件都可以做到，不算新奇，但结合 Linear 的项目管理能力体验更完整。部署侧除了 Codex，还自己搭了 Cynus 跑 Claude Code 和 Gemini。
 
