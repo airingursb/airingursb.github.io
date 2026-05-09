@@ -98,21 +98,27 @@ def first_metric_today(metrics, name, date_str):
 #           + 服务端 (server_claude × 2 + server_codex + server_gemini)
 #
 # Concretely:
-#     total_claude = local_claude + 2 × server_claude
-#     total_codex  = local_codex  + 1 × server_codex
-#     total_gemini = local_gemini + 1 × server_gemini
+#     total_claude = client_claude + 2 × server_claude + extra_claude
+#     total_codex  = client_codex  + 1 × server_codex
+#     total_gemini = client_gemini + 1 × server_gemini
 #
 # Both machines emit the SAME JSON shape — the same collector script
-# (scripts/_vibe_collect.py) runs in-process locally, and is streamed over
-# SSH to `python3 -` on the server Mac so it runs there against the server's
-# own ~/.codex, ~/.gemini, and ccusage. The results are merged day-by-day.
+# (scripts/_vibe_collect.py) runs in-process for THIS machine and is
+# streamed over SSH to `python3 -` on the OTHER machine. Either direction
+# works (run from server, fetch client; or run from client, fetch server)
+# — the role mapping comes from VIBE_THIS_ROLE in .env, so the same code
+# applies the right multiplier regardless of where it's running.
 #
-# The server_claude × 2 multiplier is an intentional over-weighting: the
-# work Mac runs a heavier Claude Code workflow than raw ccusage history
-# reflects (parallel agents / multi-worktree sessions) — tweak
-# SERVER_CLAUDE_FACTOR below if that ratio changes.
+# The server-side ×2 is an intentional over-weighting: the server Mac
+# runs a heavier Claude Code workflow than raw ccusage history reflects
+# (parallel agents / multi-worktree sessions) — tweak SERVER_CLAUDE_FACTOR
+# if that ratio changes.
 #
-# Data sources per machine (identical on local + server):
+# A third Mac that's not reachable over SSH can dump `ccusage daily --json
+# --breakdown` to a file (VIBE_EXTRA_CLAUDE_FILE); we read it as flat
+# additional claude data, multiplier ×1 by default.
+#
+# Data sources per machine (identical on client + server):
 #   • Claude → `ccusage daily --json --breakdown --since <90d>` (real API $)
 #   • Codex  → ~/.codex/sessions/**/rollout-*.jsonl (last token_count event
 #              per session; synthetic $ at OpenAI list-price)
@@ -125,10 +131,24 @@ def first_metric_today(metrics, name, date_str):
 
 VIBE_SINCE_DAYS = 90
 
-# Server-side multipliers per the formula above.
+# Per-role multipliers. Server machine's Claude usage is doubled; Codex
+# and Gemini are 1× regardless of role.
 SERVER_CLAUDE_FACTOR = 2
-SERVER_CODEX_FACTOR = 1
-SERVER_GEMINI_FACTOR = 1
+CLIENT_CLAUDE_FACTOR = 1
+NON_CLAUDE_FACTOR = 1
+
+_THIS_ROLE = os.environ.get('VIBE_THIS_ROLE', 'client').strip().lower()
+if _THIS_ROLE not in ('server', 'client'):
+    print(f"  warning: VIBE_THIS_ROLE='{_THIS_ROLE}' invalid, defaulting to 'client'")
+    _THIS_ROLE = 'client'
+_OTHER_ROLE = 'client' if _THIS_ROLE == 'server' else 'server'
+
+# Resolve the Claude multiplier per side based on which machine is which.
+THIS_CLAUDE_FACTOR = SERVER_CLAUDE_FACTOR if _THIS_ROLE == 'server' else CLIENT_CLAUDE_FACTOR
+OTHER_CLAUDE_FACTOR = SERVER_CLAUDE_FACTOR if _OTHER_ROLE == 'server' else CLIENT_CLAUDE_FACTOR
+
+# Optional third Mac (file-based, no SSH). Multiplier defaults to 1.
+EXTRA_CLAUDE_FACTOR = float(os.environ.get('VIBE_EXTRA_CLAUDE_FACTOR', '1'))
 
 # Friendly model names + display colors (union of Anthropic / OpenAI / Google).
 MODEL_NAME_MAP = {
@@ -209,6 +229,48 @@ def _summarize(label, daily_map):
     print(f'  {label:<22} {n:>3} days  ${cost:>10,.2f}  {tokens:>16,} tokens')
 
 
+# ── Extra Claude file (offline ccusage export from a third Mac) ────────────
+
+def _collect_vibe_extra_claude_file(since_dt, path):
+    """Read a `ccusage daily --json` export and return its claude daily_map.
+
+    Same shape as scripts/_vibe_collect.py:collect_claude() consumes from
+    ccusage stdout, just persisted to a file because the source Mac isn't
+    reachable from the build machine. File schema:
+        { "daily": [ {date, totalCost, totalTokens, modelsUsed, ...}, ... ] }
+    """
+    if not path:
+        return {}
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        print(f'  extra claude skipped: {path} not found')
+        return {}
+    except (OSError, json.JSONDecodeError) as e:
+        print(f'  extra claude failed ({path}): {e}')
+        return {}
+
+    out = {}
+    for d in data.get('daily', []) or []:
+        date = d.get('date')
+        if not date:
+            continue
+        try:
+            if datetime.strptime(date, '%Y-%m-%d') < since_dt:
+                continue
+        except ValueError:
+            continue
+        _add_day(
+            out,
+            date,
+            float(d.get('totalCost', 0) or 0),
+            int(d.get('totalTokens', 0) or 0),
+            d.get('modelsUsed', []) or [],
+        )
+    return out
+
+
 # ── Remote fetch (server Mac via SSH + paramiko) ─────────────
 
 def _collect_vibe_remote(since_dt, host, user, password):
@@ -279,49 +341,61 @@ def collect_vibe_coding():
     """
     since_dt = datetime.now() - timedelta(days=VIBE_SINCE_DAYS)
 
-    # 1) LOCAL machine — direct in-process call, no subprocess overhead.
-    local = collect_vibe_machine(since_dt)
+    # 1) THIS machine — direct in-process call, no subprocess overhead.
+    this_data = collect_vibe_machine(since_dt)
 
-    # 2) SERVER machine — same collector streamed over SSH. Skipped silently
-    #    if VIBE_REMOTE_* isn't configured (local-only run).
+    # 2) OTHER machine — same collector streamed over SSH. Skipped silently
+    #    if VIBE_REMOTE_* isn't configured.
     remote_host = os.environ.get('VIBE_REMOTE_HOST', '').strip()
     remote_user = os.environ.get('VIBE_REMOTE_USER', '').strip()
     remote_pw = os.environ.get('VIBE_REMOTE_PASSWORD', '').strip()
-    remote = None
+    other_data = None
     if remote_host and remote_user and remote_pw:
-        remote = _collect_vibe_remote(since_dt, remote_host, remote_user, remote_pw)
+        other_data = _collect_vibe_remote(since_dt, remote_host, remote_user, remote_pw)
     else:
         print('  remote skipped: VIBE_REMOTE_{HOST,USER,PASSWORD} not set')
-    if remote is None:
-        remote = {'claude': {}, 'codex': {}, 'gemini': {}}
+    if other_data is None:
+        other_data = {'claude': {}, 'codex': {}, 'gemini': {}}
 
-    # 3) Apply the server-side factors (claude ×2, the rest ×1) up-front so
-    #    the per-component log lines actually sum to the TOTAL row below.
-    server_claude = _multiply_map(remote.get('claude', {}), SERVER_CLAUDE_FACTOR)
-    server_codex = _multiply_map(remote.get('codex', {}), SERVER_CODEX_FACTOR)
-    server_gemini = _multiply_map(remote.get('gemini', {}), SERVER_GEMINI_FACTOR)
+    # 3) Apply per-role multipliers. Only Claude differs between server (×2)
+    #    and client (×1); Codex/Gemini are always ×1.
+    this_claude = _multiply_map(this_data.get('claude', {}), THIS_CLAUDE_FACTOR)
+    other_claude = _multiply_map(other_data.get('claude', {}), OTHER_CLAUDE_FACTOR)
+    this_codex = this_data.get('codex', {})
+    this_gemini = this_data.get('gemini', {})
+    other_codex = other_data.get('codex', {})
+    other_gemini = other_data.get('gemini', {})
+
+    # 3b) Optional third-Mac Claude data from a static ccusage export file.
+    extra_claude_path = os.environ.get('VIBE_EXTRA_CLAUDE_FILE', '').strip()
+    extra_claude_raw = _collect_vibe_extra_claude_file(since_dt, extra_claude_path)
+    extra_claude = _multiply_map(extra_claude_raw, EXTRA_CLAUDE_FACTOR)
 
     # Log every (post-multiplier) component — makes a bad fetch obvious.
-    _summarize('local claude', local.get('claude', {}))
-    _summarize('local codex', local.get('codex', {}))
-    _summarize('local gemini', local.get('gemini', {}))
-    _summarize(f'server claude ×{SERVER_CLAUDE_FACTOR}', server_claude)
-    _summarize(f'server codex  ×{SERVER_CODEX_FACTOR}', server_codex)
-    _summarize(f'server gemini ×{SERVER_GEMINI_FACTOR}', server_gemini)
+    _summarize(f'{_THIS_ROLE} claude  ×{THIS_CLAUDE_FACTOR}', this_claude)
+    _summarize(f'{_THIS_ROLE} codex   ×{NON_CLAUDE_FACTOR}', this_codex)
+    _summarize(f'{_THIS_ROLE} gemini  ×{NON_CLAUDE_FACTOR}', this_gemini)
+    _summarize(f'{_OTHER_ROLE} claude  ×{OTHER_CLAUDE_FACTOR}', other_claude)
+    _summarize(f'{_OTHER_ROLE} codex   ×{NON_CLAUDE_FACTOR}', other_codex)
+    _summarize(f'{_OTHER_ROLE} gemini  ×{NON_CLAUDE_FACTOR}', other_gemini)
+    if extra_claude_path:
+        _summarize(f'extra claude  ×{EXTRA_CLAUDE_FACTOR:g}', extra_claude)
 
-    any_local = any(local.get(t) for t in ('claude', 'codex', 'gemini'))
-    any_remote = any(remote.get(t) for t in ('claude', 'codex', 'gemini'))
-    if not (any_local or any_remote):
+    any_this = any(this_data.get(t) for t in ('claude', 'codex', 'gemini'))
+    any_other = any(other_data.get(t) for t in ('claude', 'codex', 'gemini'))
+    any_extra = bool(extra_claude_raw)
+    if not (any_this or any_other or any_extra):
         return None
 
-    # 4) Merge all six maps into the final daily_map.
+    # 4) Merge all maps into the final daily_map.
     daily_map = _merge_maps(
-        local.get('claude', {}),
-        local.get('codex', {}),
-        local.get('gemini', {}),
-        server_claude,
-        server_codex,
-        server_gemini,
+        this_claude,
+        this_codex,
+        this_gemini,
+        other_claude,
+        other_codex,
+        other_gemini,
+        extra_claude,
     )
     if not daily_map:
         return None
