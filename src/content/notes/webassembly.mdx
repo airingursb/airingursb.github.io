@@ -1,0 +1,47 @@
+---
+title: "从 Rust 到 SIMD —— WebAssembly 的一生"
+date: "2026-05-16"
+tags: [WebAssembly, 编译器, JIT, V8, Liftoff, TurboFan, 性能工程]
+public: true
+summary: 一段 cargo build 出来的 11 行 Rust 卷积代码，要穿过 17 道工序、两层 JIT、4 GiB 线性内存，才能在屏幕上点亮一个像素。把每一步的字节、IR、机器码、W3C/IETF 规范出处全摊开。
+immersive:
+  url: /immersive/webassembly/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/webassembly/)
+
+这是 [《字节码到像素的一生》](/immersive/chromium-renderer/) 与 [《V8 是怎么把 JS 跑快的》](/immersive/v8-fast-js/) 的姐妹篇。前两篇问"<em>浏览器拿到字节后怎么变像素</em>"和"<em>JS 怎么变快</em>"，这一篇问<strong>"当 JS 还是不够快，我们用什么"</strong>。三篇可以独立读，但放在一起，你会看见浏览器作为一台通用计算机的全貌。
+
+### 一条贯穿全文的主线
+
+文章追着同一段 Rust 代码——一个 3×3 box blur 卷积内核——走过它的一生：从 `cargo build` 一路到屏幕亮起一个像素。12 格 storyboard 把它的形态变化拍下来：
+
+```
+01 rustc   02 LLVM IR  03 wasm-ld   04 .wasm bytes
+05 fetch+decode  06 validate  07 Liftoff codegen
+08 first execute  09 tier-up  10 TurboFan codegen
+11 atomic install  12 SIMD frame  → pixel on screen
+```
+
+Ch11/12/13/14/15/16/17/19 各章顶部都挂一个 `MAIN-LINE · STOP X/12` 胶囊，告诉你"<em>你现在站在主线的哪一格</em>"。
+
+### 30 章 + 14 张 SVG 全景
+
+- **Act I 背景**（4 章）：三个公式、家谱、为什么是栈机、JS 的天花板
+- **Act II 主线**：The Hot Loop——11 行 Rust + 12 格 storyboard
+- **Act III 二进制解剖**（6 章）：模块外壳、11 段 section、类型系统、430 条 opcode、4 GiB 线性内存、O(n) 验证
+- **Act IV 编译流水线**（6 章）：streaming decode、parallel validate、Liftoff、TurboFan / Turboshaft、instantiate、JS↔Wasm trampoline
+- **Act V 提案族**（5 章）：Threads & Atomics、SIMD v128、wasm-GC、Component Model、其余六提案
+- **Act VI 综合**（4 章）：性能模型、DevTools 调试、现实战场、50 词术语表
+- **附录**（3 章 + References）：安全模型 / 服务端 wasm / wasm 不能做什么 / 完整 W3C·IETF·IEEE·学术·源码引用
+
+### 这一版补了什么
+
+- **14 张 SVG 技术图**：12 格主线 storyboard、family tree、Module 拓扑、类型 lattice、opcode 256-grid、4 GiB 地址空间、类型栈动画、sea-of-nodes 图、trampoline 三栈帧、SharedArrayBuffer 拓扑、v128 lanes、Component Model lift/lower 等
+- **完整规范出处**：Wasm 2.0 Core / JS API / Web API（W3C REC 2025）、threads/simd/gc/component-model GitHub spec、IEEE 754-2019、RFC 3629、DWARF 5、Haas PLDI 2017、Watt CPP 2018 WasmCert
+- **每条 V8 / SpiderMonkey / JSC 关键源文件路径**：`v8/src/wasm/baseline/liftoff-compiler.cc`、`v8/src/compiler/wasm-compiler.cc`、`mozilla-central/js/src/wasm/WasmIonCompile.cpp`、`WebKit/JavaScriptCore/wasm/WasmBBQ*.cpp` 等
+
+读完你会知道：一段 wasm 字节，从被 fetch 进浏览器、被 validate、被 Liftoff 单遍编译、第一次执行、tier-up、被 TurboFan 重编译、和 JS 互调、加上 SIMD 向量化，到最后在屏幕上点亮一个像素——每一步在哪个进程、哪个线程、占多少字节、花多少纳秒、对应 W3C 规范的哪一节。
+
+完整阅读：**[从 Rust 到 SIMD —— WebAssembly 的一生](/immersive/webassembly/)**

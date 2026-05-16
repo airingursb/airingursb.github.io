@@ -1,0 +1,47 @@
+---
+title: "From Rust to SIMD — The Life of WebAssembly"
+date: "2026-05-16"
+tags: [WebAssembly, Compiler, JIT, V8, Liftoff, TurboFan, Performance Engineering]
+public: true
+summary: 11 lines of Rust convolution from cargo build have to cross seventeen stages, two tiers of JIT, and 4 GiB of linear memory before they can light up one SIMD-vectorised pixel on screen. Every byte, every IR form, every machine instruction, every W3C / IETF spec citation — fully unpacked.
+immersive:
+  url: /immersive/webassembly/
+  label: Immersive
+---
+
+> This is an immersive long-form essay — best read in its dedicated layout → [Open the full version](/immersive/webassembly/)
+
+A companion to [«Bytecode to Pixels»](/immersive/chromium-renderer/) and [«How V8 Makes JS Fast»](/immersive/v8-fast-js/). The earlier two ask <em>how bytes become pixels</em> and <em>how JS gets fast</em>; this one asks <strong>what we use when JS still isn't fast enough</strong>. Each stands alone, but together they paint a complete portrait of the browser as a general-purpose computer.
+
+### One main-line threads the whole piece
+
+The article follows the same Rust function — a 3×3 box-blur convolution kernel — through its life from `cargo build` to a pixel lighting up on screen. A 12-cell storyboard captures the transformation:
+
+```
+01 rustc   02 LLVM IR  03 wasm-ld   04 .wasm bytes
+05 fetch+decode  06 validate  07 Liftoff codegen
+08 first execute  09 tier-up  10 TurboFan codegen
+11 atomic install  12 SIMD frame  → pixel on screen
+```
+
+Ch11/12/13/14/15/16/17/19 each carry a `MAIN-LINE · STOP X/12` capsule at the top, telling you <em>which cell of the storyboard you're standing in</em>.
+
+### 30 chapters + 14 SVG figures
+
+- **Act I · Background** (4 chapters): three formulas, family tree, why a stack machine, the JS ceiling
+- **Act II · Main-line**: The Hot Loop — 11 lines of Rust + 12-cell storyboard
+- **Act III · Binary anatomy** (6 chapters): module shell, 11 sections, type system, ~430 opcodes, 4 GiB linear memory, O(n) validation
+- **Act IV · Compilation pipeline** (6 chapters): streaming decode, parallel validate, Liftoff, TurboFan / Turboshaft, instantiate, JS↔Wasm trampoline
+- **Act V · Proposals** (5 chapters): Threads & Atomics, SIMD v128, wasm-GC, Component Model, six more in-flight proposals
+- **Act VI · Synthesis** (4 chapters): performance model, DevTools debugging, real-world battlefields, 50-term glossary
+- **Appendix** (3 chapters + References): security model / server-side wasm / what wasm cannot do / full W3C · IETF · IEEE · academic · source-code references
+
+### What this version adds
+
+- **14 SVG technical figures**: the 12-cell storyboard, family tree, module topology, type lattice, opcode 256-grid, 4 GiB address space, type-stack animation, sea-of-nodes graph, trampoline three-frame stack, SharedArrayBuffer topology, v128 lanes, Component Model lift/lower, etc.
+- **Complete spec citations**: Wasm 2.0 Core / JS API / Web API (W3C RECs 2025), threads/simd/gc/component-model GitHub specs, IEEE 754-2019, RFC 3629, DWARF 5, Haas PLDI 2017, Watt CPP 2018 WasmCert
+- **Engine source paths**: `v8/src/wasm/baseline/liftoff-compiler.cc`, `v8/src/compiler/wasm-compiler.cc`, `mozilla-central/js/src/wasm/WasmIonCompile.cpp`, `WebKit/JavaScriptCore/wasm/WasmBBQ*.cpp`, etc.
+
+By the end you'll know: a piece of wasm bytecode, from being fetched into the browser, validated, single-pass compiled by Liftoff, first executed, tiered up, recompiled by TurboFan, interoperating with JS, vectorised with SIMD, and finally lighting up a pixel — which process, which thread, how many bytes, how many nanoseconds, and which W3C spec section governs each step.
+
+Read the full piece: **[From Rust to SIMD — The Life of WebAssembly](/immersive/webassembly/)**
