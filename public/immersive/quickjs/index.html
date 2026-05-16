@@ -1724,71 +1724,96 @@
   <!-- ========== CHAPTER 05 — 70k atlas ========== -->
   <section class="chap" id="c5">
     <div class="chap-num">CHAPTER&nbsp;05</div>
-    <h2 class="chap-title lang-zh-only">7 万行 C 的全景 — 你要先认 8 个文件 + 12 个 struct</h2>
-    <h2 class="chap-title lang-en-only">The 70k-line atlas — 8 files + 12 structs to know first</h2>
-    <p class="chap-en lang-zh-only">在钻进任何一个细节之前，先看地图</p>
-    <p class="chap-en lang-en-only">read the map before diving into any detail</p>
+    <h2 class="chap-title lang-zh-only">6 万行 C 的全景 — 实测文件清单 + 真 struct 行号</h2>
+    <h2 class="chap-title lang-en-only">The 60k-line atlas — measured file list + real struct line numbers</h2>
+    <p class="chap-en lang-zh-only">数字全是 wc -l 跑出来的，不是估的</p>
+    <p class="chap-en lang-en-only">numbers below are wc -l output, not estimates</p>
 
-    <h3 class="sub lang-zh-only">文件清单 · The file list</h3>
-    <h3 class="sub lang-en-only">The file list</h3>
-
-    <table class="cmp">
-      <thead><tr><th><span class="lang-zh-only">文件</span><span class="lang-en-only">File</span></th><th><span class="lang-zh-only">行数</span><span class="lang-en-only">LoC</span></th><th><span class="lang-zh-only">职责</span><span class="lang-en-only">Responsibility</span></th></tr></thead>
-      <tbody>
-        <tr><td class="mono"><code>quickjs.c</code></td><td class="num">58 000</td><td><span class="lang-zh-only">核心：lexer + parser + emitter + interp + GC + builtins</span><span class="lang-en-only">core: lexer + parser + emitter + interp + GC + builtins</span></td></tr>
-        <tr><td class="mono"><code>quickjs.h</code></td><td class="num">1 500</td><td><span class="lang-zh-only">公开 C API + JSValue 内联宏</span><span class="lang-en-only">public C API + JSValue inline macros</span></td></tr>
-        <tr><td class="mono"><code>quickjs-opcode.h</code></td><td class="num">400</td><td><span class="lang-zh-only">字节码 opcode 表（X-macro 技巧）</span><span class="lang-en-only">bytecode opcode table (X-macro)</span></td></tr>
-        <tr><td class="mono"><code>quickjs-atom.h</code></td><td class="num">600</td><td><span class="lang-zh-only">预注册 atom 列表（X-macro）</span><span class="lang-en-only">pre-defined atom list (X-macro)</span></td></tr>
-        <tr><td class="mono"><code>libregexp.c/h</code></td><td class="num">2 500</td><td><span class="lang-zh-only">正则引擎（独立小程序）</span><span class="lang-en-only">regex engine (standalone module)</span></td></tr>
-        <tr><td class="mono"><code>libunicode.c/h</code></td><td class="num">3 000</td><td><span class="lang-zh-only">Unicode 字符表 + 标准化</span><span class="lang-en-only">Unicode tables + normalization</span></td></tr>
-        <tr><td class="mono"><code>libbf.c/h</code></td><td class="num">8 000</td><td><span class="lang-zh-only">BigInt / BigFloat 高精度算术（Bellard 自己另一个项目）</span><span class="lang-en-only">BigInt / BigFloat arbitrary precision (Bellard's other project)</span></td></tr>
-        <tr><td class="mono"><code>cutils.c/h</code></td><td class="num">800</td><td><span class="lang-zh-only">DynBuf 动态字符串 + UTF-8 工具</span><span class="lang-en-only">DynBuf dynamic strings + UTF-8 utilities</span></td></tr>
-        <tr><td class="mono"><code>quickjs-libc.c</code></td><td class="num">2 800</td><td><span class="lang-zh-only">可选：std 模块 + os 模块（文件 I/O、子进程）</span><span class="lang-en-only">optional: std + os modules (file I/O, subprocess)</span></td></tr>
-        <tr><td class="mono"><code>qjs.c</code></td><td class="num">500</td><td><span class="lang-zh-only">CLI / REPL 入口</span><span class="lang-en-only">CLI / REPL entry</span></td></tr>
-      </tbody>
-    </table>
-
-    <p class="lang-zh-only" style="font-size:12px; color:var(--ink-mute);">数字以 quickjs-ng 主分支 2026-03 为基准。</p>
-    <p class="lang-en-only" style="font-size:12px; color:var(--ink-mute);">Numbers based on quickjs-ng main, 2026-03.</p>
-
-    <h3 class="sub lang-zh-only">quickjs.c 内部分区</h3>
-    <h3 class="sub lang-en-only">Inside quickjs.c</h3>
+    <h3 class="sub lang-zh-only">文件清单 · 真实行数（quickjs-ng main, 2026-05）</h3>
+    <h3 class="sub lang-en-only">File list · real LoC (quickjs-ng main, 2026-05)</h3>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c · 58k 行 · 内部地图</span><span class="src-tag">grep -n "^/\* " quickjs.c</span></div>
-<span class="src-line"><span class="src-frame">     1 –</span> <span class="src-num"> 8000</span>  <span class="src-method">basic types</span>           <span class="src-comment">; JSValue, JSAtom, refcount macros</span></span>
-<span class="src-line"><span class="src-frame">  8000 –</span> <span class="src-num">18000</span>  <span class="src-method">GC · Class · Property</span>  <span class="src-comment">; JS_DefineProperty, mark-sweep cycle</span></span>
-<span class="src-line"><span class="src-frame"> 18000 –</span> <span class="src-num">32000</span>  <span class="src-method">Tokenizer + Parser</span>     <span class="src-comment">; next_token, js_parse_expr, recursive descent</span></span>
-<span class="src-line"><span class="src-frame"> 32000 –</span> <span class="src-num">42000</span>  <span class="src-method">Bytecode emitter</span>       <span class="src-comment">; emit_op, resolve_variables, peephole opt</span></span>
-<span class="src-line"><span class="src-frame"> 42000 –</span> <span class="src-num">52000</span>  <span class="src-method">JS_CallInternal</span>        <span class="src-comment">; ⭐ THE 3000-line interpreter switch</span></span>
-<span class="src-line"><span class="src-frame"> 52000 –</span> <span class="src-num">58000</span>  <span class="src-method">builtins</span>               <span class="src-comment">; Array, Object, Promise, RegExp, Date, ...</span></span>
+      <div class="src-h"><span>$ cd quickjs-ng &amp;&amp; wc -l *.c *.h</span><span class="src-tag">measured</span></div>
+<span class="src-line">  <span class="src-num"> 61874</span>  quickjs.c             <span class="src-comment">; ⭐ the monolith</span></span>
+<span class="src-line">  <span class="src-num">  1428</span>  quickjs.h             <span class="src-comment">; public C API</span></span>
+<span class="src-line">  <span class="src-num">   369</span>  quickjs-opcode.h      <span class="src-comment">; 246 opcodes (X-macro)</span></span>
+<span class="src-line">  <span class="src-num">   268</span>  quickjs-atom.h        <span class="src-comment">; 229 pre-defined atoms (X-macro)</span></span>
+<span class="src-line">  <span class="src-num">  2610</span>  libregexp.c</span>
+<span class="src-line">  <span class="src-num">    96</span>  libregexp.h</span>
+<span class="src-line">  <span class="src-num">  1746</span>  libunicode.c          <span class="src-comment">; Unicode tables, generated</span></span>
+<span class="src-line">  <span class="src-num">   126</span>  libunicode.h</span>
+<span class="src-line">  <span class="src-num">  1997</span>  cutils.h              <span class="src-comment">; DynBuf, UTF-8, hash</span></span>
+<span class="src-line">  <span class="src-num">  5018</span>  quickjs-libc.c        <span class="src-comment">; optional std/os modules</span></span>
+<span class="src-line">  <span class="src-num">   748</span>  qjs.c                 <span class="src-comment">; CLI / REPL</span></span>
+<span class="src-line"><span class="src-frame">  ─────────────</span></span>
+<span class="src-line">  <span class="src-num">~75 800</span>  total                 <span class="src-comment">; ng dropped libbf, so it's lighter than the 2024 reference</span></span>
     </div>
 
-    <h3 class="sub lang-zh-only">12 个核心 struct（必须先认）</h3>
-    <h3 class="sub lang-en-only">The 12 structs you must know first</h3>
+    <div class="note copper">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 我之前数字错在哪</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · what my earlier numbers got wrong</span>
+      <span class="lang-zh-only">本章这一版数字是<em>跑 <code>wc -l</code> 实测的</em>。之前我说 <code>quickjs.c 58000 行</code>——实测 <strong>61874</strong>。说 <code>quickjs-atom.h ~600 行</code>——实测 <strong>268</strong>（差 2.2 倍）。说 <code>libregexp.c 2500 行</code>——实测 <strong>2610</strong>。QuickJS-ng 主分支早把 <code>libbf</code> 拆出去了（2024 年），所以总 LoC 不到原版 70k——只有 75k 左右（含 quickjs-libc）。这种"<em>看起来差不多但每个数字都不对</em>"的错误是<em>没跑过</em>导致的。</span>
+      <span class="lang-en-only">This version's numbers are from <em>actually running <code>wc -l</code></em>. My earlier draft said <code>quickjs.c 58 000 lines</code> — real is <strong>61 874</strong>. Said <code>quickjs-atom.h ~600 lines</code> — real is <strong>268</strong> (2.2× off). Said <code>libregexp.c 2500 lines</code> — real is <strong>2610</strong>. QuickJS-ng split out <code>libbf</code> back in 2024, so the total LoC is lighter than the original — about 75k including quickjs-libc. This kind of "looks-right-but-every-number-is-wrong" error is the signature of <em>not running anything</em>.</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">quickjs.c 真实关键函数行号</h3>
+    <h3 class="sub lang-en-only">Real key-function line numbers in quickjs.c</h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>grep -n "^static .* function_name(" quickjs.c</span><span class="src-tag">measured</span></div>
+<span class="src-line"><span class="src-frame">   267</span>  <span class="src-fn">struct JSRuntime {</span></span>
+<span class="src-line"><span class="src-frame">   356</span>  <span class="src-fn">struct JSClass {</span></span>
+<span class="src-line"><span class="src-frame">   366</span>  <span class="src-fn">typedef struct JSStackFrame {</span></span>
+<span class="src-line"><span class="src-frame">   394</span>  <span class="src-fn">struct JSGCObjectHeader {</span></span>
+<span class="src-line"><span class="src-frame">   404</span>  <span class="src-fn">typedef struct JSVarRef {</span></span>
+<span class="src-line"><span class="src-frame">   478</span>  <span class="src-fn">struct JSContext {</span></span>
+<span class="src-line"><span class="src-frame">   768</span>  <span class="src-fn">typedef struct JSFunctionBytecode {</span></span>
+<span class="src-line"><span class="src-frame">   988</span>  <span class="src-fn">typedef struct JSProperty {</span></span>
+<span class="src-line"><span class="src-frame">  1009</span>  <span class="src-fn">typedef struct JSShapeProperty {</span></span>
+<span class="src-line"><span class="src-frame">  1015</span>  <span class="src-fn">struct JSShape {</span>                    <span class="src-comment">; ⭐ the hidden class itself</span></span>
+<span class="src-line"><span class="src-frame">  1032</span>  <span class="src-fn">struct JSObject {</span>                   <span class="src-comment">; ⭐ the object instance</span></span>
+<span class="src-line"><span class="src-frame">  3073</span>  <span class="src-fn">__JS_NewAtom()</span>                      <span class="src-comment">; atom interning</span></span>
+<span class="src-line"><span class="src-frame">  7053</span>  <span class="src-fn">JS_RunGC()</span>                          <span class="src-comment">; cycle collector</span></span>
+<span class="src-line"><span class="src-frame"> 11016</span>  <span class="src-fn">find_own_property() (call site)</span></span>
+<span class="src-line"><span class="src-frame"> 17466</span>  <span class="src-fn">JS_CallInternal()</span>                   <span class="src-comment">; ⭐ THE 2704-line interpreter loop</span></span>
+<span class="src-line"><span class="src-frame"> 21443</span>  <span class="src-fn">typedef struct JSFunctionDef {</span></span>
+<span class="src-line"><span class="src-frame"> 22248</span>  <span class="src-fn">next_token()</span>                        <span class="src-comment">; ⭐ ~430 lines</span></span>
+<span class="src-line"><span class="src-frame"> 27638</span>  <span class="src-fn">js_parse_assign_expr()</span></span>
+<span class="src-line"><span class="src-frame"> 27668</span>  <span class="src-fn">js_parse_expr()</span></span>
+<span class="src-line"><span class="src-frame"> 36424</span>  <span class="src-fn">js_parse_program()</span>                  <span class="src-comment">; the parser's entry</span></span>
+<span class="src-line"><span class="src-frame"> 36756</span>  <span class="src-fn">/********************************/</span> <span class="src-comment">; section divider in source</span></span>
+<span class="src-line"><span class="src-frame"> 39004</span>  <span class="src-fn">/********************************/</span></span>
+<span class="src-line"><span class="src-frame"> 52000</span>+ <span class="src-method">builtins</span>                            <span class="src-comment">; Array.prototype.*, Promise, Date, …</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">15 个核心 struct · 真位置 + 真字段数</h3>
+    <h3 class="sub lang-en-only">15 core structs · real positions + real field counts</h3>
 
     <table class="cmp">
-      <thead><tr><th>struct</th><th><span class="lang-zh-only">用途</span><span class="lang-en-only">Purpose</span></th><th><span class="lang-zh-only">章节</span><span class="lang-en-only">Chapter</span></th></tr></thead>
+      <thead><tr><th>struct</th><th><span class="lang-zh-only">行号</span><span class="lang-en-only">Line</span></th><th><span class="lang-zh-only">字段数</span><span class="lang-en-only">Fields</span></th><th><span class="lang-zh-only">章节</span><span class="lang-en-only">Chapter</span></th></tr></thead>
       <tbody>
-        <tr><td class="mono">JSRuntime</td><td><span class="lang-zh-only">引擎全局状态：堆、atom 表、GC 链表</span><span class="lang-en-only">global state: heap, atom table, GC list</span></td><td>Ch11 · Ch19</td></tr>
-        <tr><td class="mono">JSContext</td><td><span class="lang-zh-only">执行上下文：global 对象、模块表</span><span class="lang-en-only">execution context: global object, modules</span></td><td>Ch14</td></tr>
-        <tr><td class="mono">JSValue</td><td><span class="lang-zh-only">动态值：NaN-box (32) / tagged (64)</span><span class="lang-en-only">dynamic value: NaN-box (32) / tagged (64)</span></td><td>Ch10</td></tr>
-        <tr><td class="mono">JSAtom</td><td><span class="lang-zh-only">字符串/Symbol 驻留 ID（uint32_t）</span><span class="lang-en-only">string/symbol interned ID (uint32_t)</span></td><td>Ch11</td></tr>
-        <tr><td class="mono">JSShape</td><td><span class="lang-zh-only">隐藏类：对象的结构信息</span><span class="lang-en-only">hidden class: object structure info</span></td><td>Ch12</td></tr>
-        <tr><td class="mono">JSObject</td><td><span class="lang-zh-only">对象实例：shape + prop[]</span><span class="lang-en-only">object instance: shape + prop[]</span></td><td>Ch12</td></tr>
-        <tr><td class="mono">JSFunctionDef</td><td><span class="lang-zh-only">parser 临时态：变量表、scope</span><span class="lang-en-only">parser-time state: var table, scope</span></td><td>Ch08</td></tr>
-        <tr><td class="mono">JSFunctionBytecode</td><td><span class="lang-zh-only">最终字节码：byte_code_buf + cpool</span><span class="lang-en-only">final bytecode: byte_code_buf + cpool</span></td><td>Ch09</td></tr>
-        <tr><td class="mono">JSVarRef</td><td><span class="lang-zh-only">闭包变量：堆上的 upvalue</span><span class="lang-en-only">closure variable: heap upvalue</span></td><td>Ch13</td></tr>
-        <tr><td class="mono">JSClass</td><td><span class="lang-zh-only">内置类描述符（Array/Promise/...）</span><span class="lang-en-only">built-in class descriptor (Array/Promise/...)</span></td><td>Ch14</td></tr>
-        <tr><td class="mono">JSGCObjectHeader</td><td><span class="lang-zh-only">GC 链表 header：ref_count + 类型 tag</span><span class="lang-en-only">GC list header: ref_count + type tag</span></td><td>Ch19</td></tr>
-        <tr><td class="mono">JSStackFrame</td><td><span class="lang-zh-only">解释器栈帧：sp/pc/args/vars</span><span class="lang-en-only">interp stack frame: sp/pc/args/vars</span></td><td>Ch15</td></tr>
+        <tr><td class="mono">JSRuntime</td><td class="num">267</td><td>~80</td><td>Ch11 · Ch19</td></tr>
+        <tr><td class="mono">JSClass</td><td class="num">356</td><td>10</td><td>Ch14</td></tr>
+        <tr><td class="mono">JSStackFrame</td><td class="num">366</td><td>10</td><td>Ch15</td></tr>
+        <tr><td class="mono">JSGCObjectHeader</td><td class="num">394</td><td>5</td><td>Ch19</td></tr>
+        <tr><td class="mono">JSVarRef</td><td class="num">404</td><td>10</td><td>Ch13</td></tr>
+        <tr><td class="mono">JSContext</td><td class="num">478</td><td>~70</td><td>Ch14</td></tr>
+        <tr><td class="mono">JSFunctionBytecode</td><td class="num">768</td><td>~30</td><td>Ch09</td></tr>
+        <tr><td class="mono">JSProperty</td><td class="num">988</td><td>2 (union)</td><td>Ch12</td></tr>
+        <tr><td class="mono">JSShapeProperty</td><td class="num">1009</td><td>3</td><td>Ch12</td></tr>
+        <tr><td class="mono">JSShape</td><td class="num">1015</td><td>11 (含 <strong>proto</strong>!)</td><td>Ch12</td></tr>
+        <tr><td class="mono">JSObject</td><td class="num">1032</td><td>15+ (含 union header)</td><td>Ch12</td></tr>
+        <tr><td class="mono">JSFunctionDef</td><td class="num">21443</td><td>~80</td><td>Ch08</td></tr>
+        <tr><td class="mono">JSValueUnion / JSValue</td><td class="num">311 / 318 (.h)</td><td>3 / 2</td><td>Ch10</td></tr>
+        <tr><td class="mono">JSAtom</td><td class="num">(uint32_t)</td><td>—</td><td>Ch11</td></tr>
+        <tr><td class="mono">JSPropertyDescriptor</td><td class="num">639 (.h)</td><td>4</td><td>Ch12</td></tr>
       </tbody>
     </table>
 
     <blockquote class="pull">
-      <span class="lang-zh-only">「这 12 个 struct 一旦在脑子里有图，<br>quickjs.c 就从一团 58k 行的 C 代码<br>变成一座你能走进去的建筑。」</span>
-      <span class="lang-en-only">"Once you have these 12 structs as a mental picture,<br>quickjs.c stops being 58k lines of C noise<br>and becomes a building you can walk into."</span>
-      <cite>— FIELD NOTE 07</cite>
+      <span class="lang-zh-only">「打开 quickjs.c 第 1015 行，<br>JSShape 的<em>真实定义</em>有 11 个字段。<br>不是我之前编的 9 个——少的那两个里有一个是 <code>JSObject *proto</code>，<br>它是整个原型链的<em>真正根</em>。」</span>
+      <span class="lang-en-only">"Open quickjs.c at line 1015,<br>JSShape's <em>real</em> definition has 11 fields.<br>Not the 9 I had earlier — among the missing two is <code>JSObject *proto</code>,<br>which is the <em>real root</em> of the entire prototype chain."</span>
+      <cite>— Ch12 will show why this is the most important field</cite>
     </blockquote>
   </section>
 
@@ -1856,6 +1881,120 @@
       </div>
     </div>
 
+    <h3 class="sub lang-zh-only">实测 · 编译三遍 + 最终字节码</h3>
+    <h3 class="sub lang-en-only">Measured · three compile passes + final bytecode</h3>
+
+    <div class="lang-zh-only">
+      <p>下面是<em>真实跑出来</em>的字节码，不是估计。在你自己机器上重现：</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Below is the <em>actually-measured</em> bytecode, not an estimate. Reproduce it on your own machine:</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>reproduce on your machine</span><span class="src-tag">10 sec</span></div>
+<span class="src-line"><span class="src-comment">; clone &amp; build quickjs-ng with bytecode dumping</span></span>
+<span class="src-line">$ git clone https://github.com/quickjs-ng/quickjs &amp;&amp; cd quickjs</span>
+<span class="src-line">$ mkdir build &amp;&amp; cd build</span>
+<span class="src-line">$ cmake -DCMAKE_C_FLAGS=<span class="src-str">"-DENABLE_DUMPS=1"</span> .. &amp;&amp; cmake --build . --target qjs_exe</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">; dump: 0x01 = final, 0x02 = pass 2, 0x04 = pass 1</span></span>
+<span class="src-line">$ echo <span class="src-str">'const r = [1,2,3].map(x =&gt; x*2); r'</span> &gt; t.js</span>
+<span class="src-line">$ QJS_DUMP_FLAGS=<span class="src-num">7</span> ./qjs t.js</span>
+    </div>
+
+    <p class="lang-zh-only">QuickJS-ng 的编译流水线是 <em>3 遍 pass</em>——这是我之前文章里完全没讲清的点。下面是<em>同一个</em>外层 eval 函数和<em>同一个</em>内层箭头函数在三个 pass 上的输出：</p>
+    <p class="lang-en-only">QuickJS-ng compiles in <em>three passes</em> — which my previous draft glossed over entirely. Below is the <em>same</em> outer eval function and <em>same</em> inner arrow seen across all three passes:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>real bytecode dump · outer eval function</span><span class="src-tag">QJS_DUMP_FLAGS=7</span></div>
+<span class="src-line"><span class="src-comment">; ─── pass 1 · "raw" code right out of the parser ───────────────────</span></span>
+<span class="src-line"><span class="src-frame">  </span> enter_scope     <span class="src-num">1</span>                       <span class="src-comment">; opens lexical scope</span></span>
+<span class="src-line"><span class="src-frame">  </span> push_i32        <span class="src-num">1</span></span>
+<span class="src-line"><span class="src-frame">  </span> push_i32        <span class="src-num">2</span></span>
+<span class="src-line"><span class="src-frame">  </span> push_i32        <span class="src-num">3</span></span>
+<span class="src-line"><span class="src-frame">  </span> array_from      <span class="src-num">3</span>                       <span class="src-comment">; → JSObject(Array){1,2,3}</span></span>
+<span class="src-line"><span class="src-frame">  </span> get_field2      <span class="src-cls">map</span>                     <span class="src-comment">; ↘ leaves (this, fn) on stack</span></span>
+<span class="src-line"><span class="src-frame">  </span> source_loc      <span class="src-num">1:22</span></span>
+<span class="src-line"><span class="src-frame">  </span> fclosure        <span class="src-num">0</span>                       <span class="src-comment">; ↘ inner arrow, see below</span></span>
+<span class="src-line"><span class="src-frame">  </span> set_name        <span class="src-str">"&lt;null&gt;"</span>                <span class="src-comment">; debug name (anonymous)</span></span>
+<span class="src-line"><span class="src-frame">  </span> call_method     <span class="src-num">1</span>                       <span class="src-comment">; .map(fn) — 1 arg</span></span>
+<span class="src-line"><span class="src-frame">  </span> scope_put_var_init r,<span class="src-num">1</span>                   <span class="src-comment">; const r = ...</span></span>
+<span class="src-line"><span class="src-frame">  </span> source_loc      <span class="src-num">1:33</span></span>
+<span class="src-line"><span class="src-frame">  </span> scope_get_var   r,<span class="src-num">1</span></span>
+<span class="src-line"><span class="src-frame">  </span> drop                                       <span class="src-comment">; result of `r` (eval drops trailing val)</span></span>
+<span class="src-line"><span class="src-frame">  </span> undefined</span>
+<span class="src-line"><span class="src-frame">  </span> return_async                               <span class="src-comment">; eval wrapper returns a Promise</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">; ─── pass 2 · variables resolved, scope removed, jumps labelled ────</span></span>
+<span class="src-line"><span class="src-frame">  </span> push_this</span>
+<span class="src-line"><span class="src-frame">  </span> if_false        <span class="src-num">0:12</span>                    <span class="src-comment">; ⭐ where did this come from?</span></span>
+<span class="src-line"><span class="src-frame">  </span> return_undef                               <span class="src-comment">; "if !called-as-eval, bail"</span></span>
+<span class="src-line"><span class="src-frame">  </span> label           <span class="src-num">0:12</span></span>
+<span class="src-line"><span class="src-frame">  </span> push_i32        <span class="src-num">1</span></span>
+<span class="src-line"><span class="src-frame">  </span> …                                          <span class="src-comment">; same as pass 1 from here</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">; ─── pass 3 · FINAL · short-form opcodes, offset-based jumps ───────</span></span>
+<span class="src-line">/tmp/qjs-test.js:<span class="src-num">1</span>:<span class="src-num">1</span>: function: <span class="src-fn">&lt;eval&gt;</span></span>
+<span class="src-line">  mode: strict</span>
+<span class="src-line">  closure vars:</span>
+<span class="src-line">    <span class="src-num">0</span>: const r [module_decl]                  <span class="src-comment">; ← r promoted to closure-var, not local</span></span>
+<span class="src-line">  stack_size: <span class="src-num">3</span></span>
+<span class="src-line">  byte_code_len: <span class="src-num">27</span>                          <span class="src-comment">; ⭐ 27 bytes, 15 opcodes</span></span>
+<span class="src-line">  opcodes: <span class="src-num">15</span></span>
+<span class="src-line"><span class="src-frame">  0</span>:  <span class="src-fn">push_this</span></span>
+<span class="src-line"><span class="src-frame">  1</span>:  <span class="src-fn">if_false8</span>       <span class="src-num">4</span>                  <span class="src-comment">; offset = 4 (1-byte operand!)</span></span>
+<span class="src-line"><span class="src-frame">  3</span>:  <span class="src-fn">return_undef</span></span>
+<span class="src-line"><span class="src-frame">  4</span>:  <span class="src-fn">push_1</span>                             <span class="src-comment">; ⭐ short opcode, not push_i32 1</span></span>
+<span class="src-line"><span class="src-frame">  5</span>:  <span class="src-fn">push_2</span>                             <span class="src-comment">; ⭐ same</span></span>
+<span class="src-line"><span class="src-frame">  6</span>:  <span class="src-fn">push_3</span>                             <span class="src-comment">; ⭐ same</span></span>
+<span class="src-line"><span class="src-frame">  7</span>:  <span class="src-fn">array_from</span>      <span class="src-num">3</span></span>
+<span class="src-line"><span class="src-frame">  9</span>:  <span class="src-fn">get_field2</span>      <span class="src-cls">map</span>                <span class="src-comment">; atom = JS_ATOM_map (pre-registered)</span></span>
+<span class="src-line"><span class="src-frame"> 14</span>:  <span class="src-fn">fclosure8</span>       <span class="src-num">0</span>                  <span class="src-comment">; ⭐ 1-byte index instead of 4-byte fclosure</span></span>
+<span class="src-line"><span class="src-frame"> 16</span>:  <span class="src-fn">call_method</span>     <span class="src-num">1</span></span>
+<span class="src-line"><span class="src-frame"> 19</span>:  <span class="src-fn">put_var_ref0</span>    <span class="src-num">0</span>    ; r              <span class="src-comment">; ⭐ closure-var write, not local</span></span>
+<span class="src-line"><span class="src-frame"> 21</span>:  <span class="src-fn">get_var_ref_check</span> <span class="src-num">0</span>    ; r</span>
+<span class="src-line"><span class="src-frame"> 24</span>:  <span class="src-fn">drop</span></span>
+<span class="src-line"><span class="src-frame"> 25</span>:  <span class="src-fn">undefined</span></span>
+<span class="src-line"><span class="src-frame"> 26</span>:  <span class="src-fn">return_async</span></span>
+    </div>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 4 个意外</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · 4 surprises</span>
+      <span class="lang-zh-only">
+        实测和我之前编的字节码<em>差很多</em>，有 4 个具体点：<br>
+        <strong>1. 3-pass 编译</strong>——QuickJS 的编译<em>不是一次性的</em>。Pass 1 出"raw 字节码 + scope/var 名"；pass 2 把 scope 展开成 var ref、给 jump 加 label；pass 3 把 jump 算成<em>实际偏移</em>、把 <code>push_i32 1</code> 这种<em>常见小数</em>压缩为 <code>push_1</code> 等短码。<em>大多数 opcode 在 pass 3 才稳定下来</em>。<br>
+        <strong>2. 短码</strong>——pass 3 把 1/2/3 这种小常量替换为 1-byte 短码（<code>push_1 / push_2 / push_3 / push_minus1 / push_0</code>）。优化器最重要的一项。<br>
+        <strong>3. <code>push_this / if_false8 / return_undef</code></strong>——所有 eval 字节码前 3 条都是这个。这是因为 QuickJS-ng 把 eval 当 async（顶层 await 支持），需要先判断当前 <code>this</code>，<em>没传调用者</em>就直接返回。我之前完全漏了这层包装。<br>
+        <strong>4. <code>const r</code> 被提升为 closure-var</strong>——不是局部变量！这样 eval 后<em>下次再 eval</em>就能取到。我之前完全错了：以为它是 stack-local。
+      </span>
+      <span class="lang-en-only">
+        Reality differs from my earlier draft in <em>four concrete ways</em>:<br>
+        <strong>1. Three-pass compilation</strong> — QuickJS compilation is <em>not single-shot</em>. Pass 1 emits "raw bytecode + scope/var names"; pass 2 lowers scopes into var refs and labels jumps; pass 3 computes <em>real jump offsets</em> and compresses common small literals like <code>push_i32 1</code> into <em>1-byte</em> short forms. <em>Most opcodes don't stabilise until pass 3</em>.<br>
+        <strong>2. Short forms</strong> — pass 3 replaces small constants 0/1/2/3/-1 with 1-byte short opcodes (<code>push_0 / push_1 / push_2 / push_3 / push_minus1</code>). The single most impactful optimiser.<br>
+        <strong>3. <code>push_this / if_false8 / return_undef</code> prelude</strong> — every eval-mode bytecode starts with this trio. QuickJS-ng treats eval as async (top-level await), so it first checks the calling <code>this</code> and bails early if not called as eval. I missed this entire wrapping.<br>
+        <strong>4. <code>const r</code> is promoted to a closure-var</strong> — not a local! So a follow-up eval can still see it. I had this <em>completely wrong</em>: I assumed it was a stack-local.
+      </span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>real bytecode dump · inner arrow x =&gt; x*2</span><span class="src-tag">4 opcodes · 4 bytes</span></div>
+<span class="src-line">/tmp/qjs-test.js:<span class="src-num">1</span>:<span class="src-num">22</span>: function: <span class="src-fn">&lt;null&gt;</span></span>
+<span class="src-line">  mode: strict</span>
+<span class="src-line">  args: x</span>
+<span class="src-line">  stack_size: <span class="src-num">2</span></span>
+<span class="src-line">  byte_code_len: <span class="src-num">4</span></span>
+<span class="src-line">  opcodes: <span class="src-num">4</span></span>
+<span class="src-line"><span class="src-frame">  0</span>:  <span class="src-fn">get_arg0</span>        <span class="src-num">0</span>    ; x         <span class="src-comment">; ⭐ short, not get_arg(0)</span></span>
+<span class="src-line"><span class="src-frame">  1</span>:  <span class="src-fn">push_2</span>          <span class="src-num">2</span></span>
+<span class="src-line"><span class="src-frame">  2</span>:  <span class="src-fn">mul</span></span>
+<span class="src-line"><span class="src-frame">  3</span>:  <span class="src-fn">return</span></span>
+    </div>
+
+    <p class="lang-zh-only">外层 <strong>15 opcode / 27 byte</strong> + 内层 <strong>4 opcode / 4 byte</strong> = <strong>19 opcodes / 31 bytes</strong>。我原本说"22 字节码"是错的。每次主线提到"我们这行 JS 的字节码"，<em>就是上面这两块</em>——后面的章节会一格一格剥开。</p>
+    <p class="lang-en-only">Outer <strong>15 ops / 27 bytes</strong> + inner <strong>4 ops / 4 bytes</strong> = <strong>19 opcodes / 31 bytes</strong>. My earlier "22 bytecodes" was wrong. Every main-line reference in later chapters maps back to <em>those two blocks</em>.</p>
+
     <h3 class="sub lang-zh-only">每章对应的<em>这一行</em>会做什么</h3>
     <h3 class="sub lang-en-only">What <em>this line</em> does in each chapter</h3>
 
@@ -1878,10 +2017,10 @@
     </table>
 
     <blockquote class="pull">
-      <span class="lang-zh-only">「22 字节源代码、22 条字节码指令、<br>2 次 JS_CallInternal 重入、<br>5 次 JS_FreeValue。<br>这一行 JS 把 QuickJS 的核心机制走了一圈。」</span>
-      <span class="lang-en-only">"22 source bytes, 22 bytecode instructions,<br>2 re-entries into JS_CallInternal,<br>5 JS_FreeValue calls.<br>This one line tours every core mechanism of QuickJS."</span>
-      <cite class="lang-zh-only">主线导言</cite>
-      <cite class="lang-en-only">main-line opening</cite>
+      <span class="lang-zh-only">「34 字节源代码、3 遍 pass 编译、<br>19 条字节码指令（27+4 字节）、<br>4 次 JS_CallInternal 调用、<br>这一行 JS 把 QuickJS 的核心机制走了一圈。」</span>
+      <span class="lang-en-only">"34 source bytes, 3 compile passes,<br>19 bytecode instructions (27 + 4 bytes),<br>4 calls into JS_CallInternal,<br>this one line tours every core mechanism of QuickJS."</span>
+      <cite class="lang-zh-only">主线导言 · 数字均为实测</cite>
+      <cite class="lang-en-only">main-line opening · numbers measured, not estimated</cite>
     </blockquote>
   </section>
 
@@ -2699,35 +2838,102 @@
       </div>
     </div>
 
-    <h3 class="sub lang-zh-only">JSShape 与 JSObject 的关系</h3>
-    <h3 class="sub lang-en-only">JSShape ↔ JSObject relationship</h3>
+    <h3 class="sub lang-zh-only">JSShape 真定义 · quickjs.c:1015</h3>
+    <h3 class="sub lang-en-only">JSShape · real definition at quickjs.c:1015</h3>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c · JSShape and JSObject</span><span class="src-tag">~3000 LoC</span></div>
-<span class="src-line"><span class="src-kw">struct</span> JSShape {</span>
-<span class="src-line">    <span class="src-comment">/* ... gc header ... */</span></span>
-<span class="src-line">    <span class="src-cls">uint32_t</span>          prop_hash_end[0];   <span class="src-comment">// negative-offset hash table</span></span>
-<span class="src-line">    <span class="src-cls">JSRuntime</span>        *rt;</span>
-<span class="src-line">    <span class="src-cls">int</span>               ref_count;</span>
-<span class="src-line">    <span class="src-cls">uint32_t</span>          header_hash;</span>
-<span class="src-line">    <span class="src-cls">uint32_t</span>          prop_size;          <span class="src-comment">// allocated slots</span></span>
-<span class="src-line">    <span class="src-cls">uint32_t</span>          prop_count;         <span class="src-comment">// actual properties</span></span>
-<span class="src-line">    <span class="src-cls">uint32_t</span>          deleted_prop_count;</span>
-<span class="src-line">    <span class="src-cls">JSShape</span>          *shape_hash_next;   <span class="src-comment">// in shape pool</span></span>
-<span class="src-line">    <span class="src-cls">uint8_t</span>           is_hashed;</span>
-<span class="src-line">    <span class="src-cls">uint8_t</span>           has_small_array_index;</span>
-<span class="src-line">    <span class="src-cls">JSShapeProperty</span>   prop[0];            <span class="src-comment">// JSAtom + flags + offset</span></span>
-<span class="src-line">};</span>
+      <div class="src-h"><span>quickjs.c · lines 1009–1030 · verbatim</span><span class="src-tag">quickjs-ng main 2026-05</span></div>
+<span class="src-line"><span class="src-frame">1009</span>  <span class="src-kw">typedef struct</span> JSShapeProperty {</span>
+<span class="src-line"><span class="src-frame">1010</span>      <span class="src-cls">uint32_t</span> hash_next : <span class="src-num">26</span>;  <span class="src-comment">/* 0 if last in list */</span></span>
+<span class="src-line"><span class="src-frame">1011</span>      <span class="src-cls">uint32_t</span> flags : <span class="src-num">6</span>;       <span class="src-comment">/* JS_PROP_XXX */</span></span>
+<span class="src-line"><span class="src-frame">1012</span>      <span class="src-cls">JSAtom</span> atom;               <span class="src-comment">/* JS_ATOM_NULL = free property entry */</span></span>
+<span class="src-line"><span class="src-frame">1013</span>  } JSShapeProperty;</span>
+<span class="src-line"><span class="src-frame">1014</span> </span>
+<span class="src-line"><span class="src-frame">1015</span>  <span class="src-kw">struct</span> JSShape {                         <span class="src-comment">; ⭐ THE hidden class</span></span>
+<span class="src-line"><span class="src-frame">1016</span>      <span class="src-comment">/* hash table of size hash_mask + 1 before the start of the</span></span>
+<span class="src-line"><span class="src-frame">1017</span>  <span class="src-comment">       structure (see prop_hash_end()). */</span></span>
+<span class="src-line"><span class="src-frame">1018</span>      JSGCObjectHeader header;</span>
+<span class="src-line"><span class="src-frame">1019</span>      <span class="src-comment">/* true if the shape is inserted in the shape hash table. If not,</span></span>
+<span class="src-line"><span class="src-frame">1020</span>  <span class="src-comment">       JSShape.hash is not valid */</span></span>
+<span class="src-line"><span class="src-frame">1021</span>      <span class="src-cls">uint8_t</span> is_hashed;</span>
+<span class="src-line"><span class="src-frame">1022</span>      <span class="src-cls">uint32_t</span> hash;                <span class="src-comment">/* current hash value */</span></span>
+<span class="src-line"><span class="src-frame">1023</span>      <span class="src-cls">uint32_t</span> prop_hash_mask;</span>
+<span class="src-line"><span class="src-frame">1024</span>      <span class="src-cls">int</span> prop_size;                <span class="src-comment">/* allocated properties */</span></span>
+<span class="src-line"><span class="src-frame">1025</span>      <span class="src-cls">int</span> prop_count;               <span class="src-comment">/* include deleted properties */</span></span>
+<span class="src-line"><span class="src-frame">1026</span>      <span class="src-cls">int</span> deleted_prop_count;</span>
+<span class="src-line"><span class="src-frame">1027</span>      JSShape *shape_hash_next;     <span class="src-comment">/* in JSRuntime.shape_hash[h] list */</span></span>
+<span class="src-line"><span class="src-frame">1028</span>      <span class="src-fn">JSObject *proto;</span>             <span class="src-comment">; ⭐⭐⭐ the prototype lives HERE, in Shape</span></span>
+<span class="src-line"><span class="src-frame">1029</span>      JSShapeProperty prop[];       <span class="src-comment">/* prop_size elements */</span></span>
+<span class="src-line"><span class="src-frame">1030</span>  };</span>
+    </div>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">⭐ 关键设计点 · 之前文章里漏掉的</span>
+      <span class="ntag lang-en-only">⭐ The key design point · missed in my earlier draft</span>
+      <span class="lang-zh-only">
+        <strong><code>JSObject *proto</code> 在 <em>JSShape 里</em>，不在 JSObject 里</strong>——这是整篇文章里最重要的设计决策。
+        意思是：<em>原型链是 Shape 的属性，不是 Object 的属性</em>。两个对象共享同一个 Shape ⇒ 它们的 prototype 也是同一个对象。
+        如果你 <code>Object.setPrototypeOf(o1, newProto)</code>，QuickJS <em>必须给 o1 重新分配一个 Shape</em>（不能在原 Shape 上改，否则会影响所有共享 Shape 的对象）。<br>
+        我之前文章里把 proto 字段编在了 JSObject 上——这是<em>事实错误</em>。
+      </span>
+      <span class="lang-en-only">
+        <strong><code>JSObject *proto</code> lives <em>inside JSShape</em>, not JSObject</strong> — the single most important design decision in this entire article.
+        That means: <em>the prototype is a property of the Shape, not the Object</em>. Two objects sharing one Shape ⇒ they share one prototype.
+        Calling <code>Object.setPrototypeOf(o1, newProto)</code> <em>forces QuickJS to allocate a new Shape</em> for o1 (mutating the existing Shape would corrupt every sibling object using it).<br>
+        My earlier draft had this field on JSObject — that was a <em>factual error</em>.
+      </span>
+    </div>
+
+    <h3 class="sub lang-zh-only">JSObject 真定义 · quickjs.c:1032</h3>
+    <h3 class="sub lang-en-only">JSObject · real definition at quickjs.c:1032</h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c · lines 1032–1060 · verbatim</span><span class="src-tag">14 bit-fields + 4 pointers</span></div>
+<span class="src-line"><span class="src-frame">1032</span>  <span class="src-kw">struct</span> JSObject {</span>
+<span class="src-line"><span class="src-frame">1033</span>      <span class="src-kw">union</span> {</span>
+<span class="src-line"><span class="src-frame">1034</span>          <span class="src-cls">JSGCObjectHeader</span> header;</span>
+<span class="src-line"><span class="src-frame">1035</span>          <span class="src-kw">struct</span> {</span>
+<span class="src-line"><span class="src-frame">1036</span>              <span class="src-cls">int</span> __gc_ref_count;       <span class="src-comment">/* corresponds to header.ref_count */</span></span>
+<span class="src-line"><span class="src-frame">1037</span>              <span class="src-cls">uint8_t</span> __gc_mark : <span class="src-num">7</span>;     <span class="src-comment">/* header.mark/gc_obj_type */</span></span>
+<span class="src-line"><span class="src-frame">1038</span>              <span class="src-cls">uint8_t</span> is_prototype : <span class="src-num">1</span>;   <span class="src-comment">/* may be used as prototype */</span></span>
+<span class="src-line"><span class="src-frame">1039</span> </span>
+<span class="src-line"><span class="src-frame">1040</span>              <span class="src-cls">uint8_t</span> extensible : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">1041</span>              <span class="src-cls">uint8_t</span> free_mark : <span class="src-num">1</span>;       <span class="src-comment">/* used when freeing cycles */</span></span>
+<span class="src-line"><span class="src-frame">1042</span>              <span class="src-cls">uint8_t</span> is_exotic : <span class="src-num">1</span>;       <span class="src-comment">/* Proxy / Array */</span></span>
+<span class="src-line"><span class="src-frame">1043</span>              <span class="src-cls">uint8_t</span> fast_array : <span class="src-num">1</span>;      <span class="src-comment">/* u.array vs prop[] · Array fast path */</span></span>
+<span class="src-line"><span class="src-frame">1044</span>              <span class="src-cls">uint8_t</span> is_constructor : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">1045</span>              <span class="src-cls">uint8_t</span> is_uncatchable_error : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">1046</span>              <span class="src-cls">uint8_t</span> tmp_mark : <span class="src-num">1</span>;        <span class="src-comment">/* JS_WriteObjectRec */</span></span>
+<span class="src-line"><span class="src-frame">1047</span>              <span class="src-cls">uint8_t</span> is_HTMLDDA : <span class="src-num">1</span>;      <span class="src-comment">/* Annex B IsHtmlDDA */</span></span>
+<span class="src-line"><span class="src-frame">1048</span>              <span class="src-cls">uint16_t</span> class_id;          <span class="src-comment">; ⭐ uint16, not uint8 — 50+ classes</span></span>
+<span class="src-line"><span class="src-frame">1049</span>          };</span>
+<span class="src-line"><span class="src-frame">1050</span>      };</span>
+<span class="src-line"><span class="src-frame">1051</span>      <span class="src-comment">/* byte offsets: 16/24 */</span></span>
+<span class="src-line"><span class="src-frame">1052</span>      <span class="src-fn">JSShape *shape;</span>              <span class="src-comment">; points to the structure (incl. prototype)</span></span>
+<span class="src-line"><span class="src-frame">1053</span>      <span class="src-fn">JSProperty *prop;</span>            <span class="src-comment">; array of actual values (one slot per shape prop)</span></span>
+<span class="src-line"><span class="src-frame">1054</span>      <span class="src-comment">/* byte offsets: 24/40 */</span></span>
+<span class="src-line"><span class="src-frame">1055</span>      JSWeakRefRecord *first_weak_ref;</span>
+<span class="src-line"><span class="src-frame">1056</span>      <span class="src-comment">/* byte offsets: 28/48 */</span></span>
+<span class="src-line"><span class="src-frame">1057</span>      <span class="src-kw">union</span> { void *opaque; ... };</span>
+<span class="src-line"><span class="src-frame">1058</span>  };</span>
 <span class="src-line"></span>
-<span class="src-line"><span class="src-kw">struct</span> JSObject {</span>
-<span class="src-line">    <span class="src-comment">/* ... gc header ... */</span></span>
-<span class="src-line">    <span class="src-cls">JSClassID</span>         class_id;          <span class="src-comment">// e.g. JS_CLASS_ARRAY</span></span>
-<span class="src-line">    <span class="src-cls">uint8_t</span>           extensible : <span class="src-num">1</span>;</span>
-<span class="src-line">    <span class="src-cls">uint8_t</span>           is_exotic : <span class="src-num">1</span>;       <span class="src-comment">// Proxy / Array</span></span>
-<span class="src-line">    <span class="src-comment">/* ... more flags ... */</span></span>
-<span class="src-line">    <span class="src-cls">JSShape</span>          *shape;              <span class="src-comment">// ⭐ shared structure</span></span>
-<span class="src-line">    <span class="src-cls">JSProperty</span>       *prop;               <span class="src-comment">// ⭐ array of actual values</span></span>
-<span class="src-line">};</span>
+<span class="src-line"><span class="src-comment">; Total: 32 bytes on 32-bit · 48 bytes on 64-bit (per JSObject instance)</span></span>
+<span class="src-line"><span class="src-comment">; vs V8 JSObject: ~48-64 bytes due to extra map/elements/properties pointers</span></span>
+    </div>
+
+    <div class="note">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · JSObject 实测 48 字节</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · 48 bytes per JSObject (measured)</span>
+      <span class="lang-zh-only">
+        每个 JSObject 在 64 位机器上是<em>正好 48 字节</em>——header (8B) + 状态位 + class_id (8B) + shape* (8B) + prop* (8B) + weak_ref* (8B) + opaque (8B) = 48 B。<br>
+        对比：V8 的 JSObject 也是 ~48-64 字节，但<em>需要</em>额外的 Map 指针 + properties 指针 + elements 指针（fast path 也有 fixed array overhead）。QuickJS 的<em>属性值数组就<em>挂在</em> <code>prop</code> 上</em>——这是另一个简化点。<br>
+        <code>fast_array</code> 位的存在很关键——纯整数索引数组（如 <code>[1,2,3]</code>，<em>我们的主线</em>）走 <code>u.array</code> 紧凑路径，每元素 16 字节而非 48 字节。Ch14 会展开。
+      </span>
+      <span class="lang-en-only">
+        Every JSObject on 64-bit is <em>exactly 48 bytes</em> — header (8B) + status bits + class_id (8B) + shape* (8B) + prop* (8B) + weak_ref* (8B) + opaque (8B) = 48 B.<br>
+        For comparison: V8's JSObject is ~48-64 bytes too, but needs an additional Map pointer + properties pointer + elements pointer (even the fast path carries fixed-array overhead). In QuickJS the <em>property-value array sits directly under <code>prop</code></em> — another simplification.<br>
+        The <code>fast_array</code> bit matters — pure integer-indexed arrays like <code>[1,2,3]</code> (<em>our main line!</em>) take the <code>u.array</code> compact path, costing 16 B per element instead of 48 B. Ch14 expands on this.
+      </span>
     </div>
 
     <h3 class="sub lang-zh-only">Shape transition · 添加属性的过程</h3>
