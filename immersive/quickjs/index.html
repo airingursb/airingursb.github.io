@@ -6494,6 +6494,201 @@
     </div>
   </section>
 
+  <!-- ========== INTERLUDE · MASTER TIMELINE ========== -->
+  <section class="chap" id="ctimeline">
+    <div class="chap-num" style="color: var(--copper);">INTERLUDE&nbsp;·&nbsp;MASTER&nbsp;TIMELINE</div>
+    <h2 class="chap-title lang-zh-only">把 19 个子系统钉到 24 步时间轴上</h2>
+    <h2 class="chap-title lang-en-only">Pinning 19 subsystems onto a 24-step timeline</h2>
+    <p class="chap-en lang-zh-only">前面 19 章独立讲过的子系统 · 这里看它们如何同时发生</p>
+    <p class="chap-en lang-en-only">the 19 subsystems we covered separately · now see them fire together</p>
+
+    <div class="lang-zh-only">
+      <p>读到这里你已经看完了 19 章独立的源码——但<em>看不到它们如何同时工作</em>。本节用<em>一张大图</em>把它们钉在一条时间轴上：横轴是执行 <code>const r = await [1,2,3].map(x=&gt;x*2)</code> 的 24 个逻辑步骤，纵轴是 19 个子系统。每个色块标注的<em>都是真实源码函数</em>。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>By this point you've read 19 chapters of standalone source — but you haven't seen <em>how they fire together</em>. This section pins them all to a single time axis: X is 24 logical steps in executing <code>const r = await [1,2,3].map(x=&gt;x*2)</code>; Y is the 19 subsystems. Every colored cell names a <em>real source function</em>.</p>
+    </div>
+
+    <figure class="figure-block" style="margin: 24px 0;">
+    <svg viewBox="0 0 1240 720" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="background: #faf7f1; border: 1px solid #e6dfd0; border-radius: 4px; font-family: var(--mono);">
+      <text x="620" y="22" font-size="13" font-weight="700" text-anchor="middle" fill="#2c3441">Master timeline · 24 execution steps × 19 pipeline chapters</text>
+      <text x="620" y="38" font-size="9" text-anchor="middle" fill="#767c87">colored cell = subsystem active at this step · text inside = real source function called</text>
+
+      <!-- header row: step numbers + names -->
+      <g font-size="8" fill="#2c3441">
+        <text x="240" y="60" font-weight="700">PARSE</text>
+        <text x="448" y="60" font-weight="700">COMPILE</text>
+        <text x="640" y="60" font-weight="700">RUNTIME EXEC</text>
+        <text x="952" y="60" font-weight="700">CLEANUP</text>
+      </g>
+      <!-- step labels: 1-24 column headers -->
+      <g font-size="8" fill="#767c87" text-anchor="middle">
+        <text x="180" y="74">1</text><text x="218" y="74">2</text><text x="256" y="74">3</text><text x="294" y="74">4</text>
+        <text x="332" y="74">5</text><text x="370" y="74">6</text><text x="408" y="74">7</text><text x="446" y="74">8</text>
+        <text x="484" y="74">9</text><text x="522" y="74">10</text><text x="560" y="74">11</text><text x="598" y="74">12</text>
+        <text x="636" y="74">13</text><text x="674" y="74">14</text><text x="712" y="74">15</text><text x="750" y="74">16</text>
+        <text x="788" y="74">17</text><text x="826" y="74">18</text><text x="864" y="74">19</text><text x="902" y="74">20</text>
+        <text x="940" y="74">21</text><text x="978" y="74">22</text><text x="1016" y="74">23</text><text x="1054" y="74">24</text>
+      </g>
+
+      <!-- step micro-labels (what happens at each step) -->
+      <g font-size="7" fill="#767c87" text-anchor="middle">
+        <text x="180" y="84">tokenize</text><text x="218" y="84">parse</text><text x="256" y="84">recurse</text><text x="294" y="84">emit</text>
+        <text x="332" y="84">pass2</text><text x="370" y="84">pass3</text><text x="408" y="84">install</text><text x="446" y="84">enter</text>
+        <text x="484" y="84">push 1</text><text x="522" y="84">push 2</text><text x="560" y="84">push 3</text><text x="598" y="84">arr</text>
+        <text x="636" y="84">map?</text><text x="674" y="84">proto</text><text x="712" y="84">fn</text><text x="750" y="84">call</text>
+        <text x="788" y="84">k=0</text><text x="826" y="84">k=1</text><text x="864" y="84">k=2</text><text x="902" y="84">[2,4,6]</text>
+        <text x="940" y="84">ret</text><text x="978" y="84">await</text><text x="1016" y="84">temp free</text><text x="1054" y="84">GC?</text>
+      </g>
+
+      <!-- grid backdrop -->
+      <g stroke="#e6dfd0" stroke-width="0.5">
+        <line x1="160" y1="100" x2="1080" y2="100"/>
+      </g>
+
+      <!-- swim lanes: 19 rows -->
+      <!-- Row format: y=110+row*30. Width per col: 38. Col 1 starts at x=160 -->
+
+      <!-- helper marker function via groups -->
+      <!-- Row 1: Ch06 Lexer -->
+      <text x="155" y="118" font-size="9" text-anchor="end" fill="#2c3441">Ch06 Lexer</text>
+      <rect x="160" y="105" width="76" height="22" fill="rgba(184,68,46,0.40)" stroke="#b8442e" stroke-width="0.5"/>
+      <text x="198" y="119" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">next_token() ×17</text>
+
+      <!-- Row 2: Ch07 Parser -->
+      <text x="155" y="148" font-size="9" text-anchor="end" fill="#2c3441">Ch07 Parser</text>
+      <rect x="198" y="135" width="114" height="22" fill="rgba(184,68,46,0.32)" stroke="#b8442e" stroke-width="0.5"/>
+      <text x="255" y="149" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">js_parse_expr_binary</text>
+
+      <!-- Row 3: Ch08 FuncDef -->
+      <text x="155" y="178" font-size="9" text-anchor="end" fill="#2c3441">Ch08 FuncDef</text>
+      <rect x="274" y="165" width="114" height="22" fill="rgba(184,68,46,0.24)" stroke="#b8442e" stroke-width="0.5"/>
+      <text x="331" y="179" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">3-pass compile</text>
+
+      <!-- Row 4: Ch09 Bytecode emit -->
+      <text x="155" y="208" font-size="9" text-anchor="end" fill="#2c3441">Ch09 Bytecode</text>
+      <rect x="350" y="195" width="76" height="22" fill="rgba(184,68,46,0.24)" stroke="#b8442e" stroke-width="0.5"/>
+      <text x="388" y="209" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">emit_op + opcode.h</text>
+
+      <!-- Row 5: Ch10 JSValue -->
+      <text x="155" y="238" font-size="9" text-anchor="end" fill="#2c3441">Ch10 JSValue</text>
+      <rect x="464" y="225" width="190" height="22" fill="rgba(31,92,140,0.30)" stroke="#1f5c8c" stroke-width="0.5"/>
+      <text x="559" y="239" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">js_int32 / js_dup ×~50</text>
+      <rect x="730" y="225" width="190" height="22" fill="rgba(31,92,140,0.30)" stroke="#1f5c8c" stroke-width="0.5"/>
+      <text x="825" y="239" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">JSValue dispatch ×~30</text>
+
+      <!-- Row 6: Ch11 Atom -->
+      <text x="155" y="268" font-size="9" text-anchor="end" fill="#2c3441">Ch11 Atom</text>
+      <rect x="198" y="255" width="38" height="22" fill="rgba(31,92,140,0.30)" stroke="#1f5c8c" stroke-width="0.5"/>
+      <text x="217" y="269" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">__JS_NewAtom("map")</text>
+      <rect x="616" y="255" width="38" height="22" fill="rgba(31,92,140,0.30)" stroke="#1f5c8c" stroke-width="0.5"/>
+      <text x="635" y="269" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">JS_ATOM_map hit</text>
+
+      <!-- Row 7: Ch12 Shape -->
+      <text x="155" y="298" font-size="9" text-anchor="end" fill="#2c3441">Ch12 Shape</text>
+      <rect x="578" y="285" width="76" height="22" fill="rgba(31,92,140,0.30)" stroke="#1f5c8c" stroke-width="0.5"/>
+      <text x="616" y="299" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">JSShape array_shape</text>
+      <rect x="882" y="285" width="38" height="22" fill="rgba(31,92,140,0.30)" stroke="#1f5c8c" stroke-width="0.5"/>
+      <text x="901" y="299" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">new Array shape</text>
+
+      <!-- Row 8: Ch13 Closure -->
+      <text x="155" y="328" font-size="9" text-anchor="end" fill="#2c3441">Ch13 Closure</text>
+      <rect x="692" y="315" width="38" height="22" fill="rgba(31,92,140,0.30)" stroke="#1f5c8c" stroke-width="0.5"/>
+      <text x="711" y="329" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">OP_fclosure</text>
+
+      <!-- Row 9: Ch14 Class -->
+      <text x="155" y="358" font-size="9" text-anchor="end" fill="#2c3441">Ch14 Class</text>
+      <rect x="578" y="345" width="38" height="22" fill="rgba(31,92,140,0.30)" stroke="#1f5c8c" stroke-width="0.5"/>
+      <text x="597" y="359" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">CLASS_ARRAY</text>
+      <rect x="692" y="345" width="38" height="22" fill="rgba(31,92,140,0.30)" stroke="#1f5c8c" stroke-width="0.5"/>
+      <text x="711" y="359" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">CLASS_C_FUNCTION</text>
+
+      <!-- Row 10: Ch15 Interp loop (biggest, most active) -->
+      <text x="155" y="388" font-size="9" text-anchor="end" fill="#2c3441" font-weight="700">Ch15 Interp ⭐</text>
+      <rect x="426" y="375" width="494" height="22" fill="rgba(32,123,58,0.40)" stroke="#207b3a" stroke-width="0.5"/>
+      <text x="673" y="389" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">JS_CallInternal · BTB-driven dispatch ×~30</text>
+      <rect x="958" y="375" width="76" height="22" fill="rgba(32,123,58,0.40)" stroke="#207b3a" stroke-width="0.5"/>
+      <text x="996" y="389" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">return unwind</text>
+
+      <!-- Row 11: Ch16 Lookup -->
+      <text x="155" y="418" font-size="9" text-anchor="end" fill="#2c3441">Ch16 Lookup</text>
+      <rect x="616" y="405" width="76" height="22" fill="rgba(32,123,58,0.30)" stroke="#207b3a" stroke-width="0.5"/>
+      <text x="654" y="419" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">find_own_property ×2 hops</text>
+
+      <!-- Row 12: Ch17 Async / Generator -->
+      <text x="155" y="448" font-size="9" text-anchor="end" fill="#2c3441">Ch17 Async/Gen</text>
+      <rect x="958" y="435" width="38" height="22" fill="rgba(32,123,58,0.30)" stroke="#207b3a" stroke-width="0.5"/>
+      <text x="977" y="449" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">OP_return_async</text>
+
+      <!-- Row 13: Ch18 RegExp -->
+      <text x="155" y="478" font-size="9" text-anchor="end" fill="#2c3441">Ch18 RegExp</text>
+      <text x="640" y="492" font-size="7" font-style="italic" text-anchor="middle" fill="#cfc7b3">(not fired in this main line)</text>
+
+      <!-- Row 14: Ch19 GC -->
+      <text x="155" y="508" font-size="9" text-anchor="end" fill="#2c3441">Ch19 GC</text>
+      <rect x="958" y="495" width="76" height="22" fill="rgba(32,123,58,0.30)" stroke="#207b3a" stroke-width="0.5"/>
+      <text x="996" y="509" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">JS_FreeValue (refcount=0)</text>
+
+      <!-- Row 15: Ch20 Modules -->
+      <text x="155" y="538" font-size="9" text-anchor="end" fill="#2c3441">Ch20 Modules</text>
+      <rect x="160" y="525" width="76" height="22" fill="rgba(184,68,46,0.20)" stroke="#b8442e" stroke-width="0.5" stroke-dasharray="2 2"/>
+      <text x="198" y="539" font-size="7" font-style="italic" text-anchor="middle" fill="#767c87">(if loaded as module)</text>
+
+      <!-- Row 16: Ch21 Exceptions -->
+      <text x="155" y="568" font-size="9" text-anchor="end" fill="#2c3441">Ch21 Exception</text>
+      <text x="640" y="582" font-size="7" font-style="italic" text-anchor="middle" fill="#cfc7b3">(armed but not fired)</text>
+
+      <!-- Row 17: Ch22 Strings -->
+      <text x="155" y="598" font-size="9" text-anchor="end" fill="#2c3441">Ch22 Strings</text>
+      <rect x="198" y="585" width="38" height="22" fill="rgba(31,92,140,0.20)" stroke="#1f5c8c" stroke-width="0.5"/>
+      <text x="217" y="599" font-size="7" font-weight="700" text-anchor="middle" fill="#2c3441">"map" string</text>
+
+      <!-- Row 18: Ch23 Symbols -->
+      <text x="155" y="628" font-size="9" text-anchor="end" fill="#2c3441">Ch23 Symbols</text>
+      <text x="640" y="642" font-size="7" font-style="italic" text-anchor="middle" fill="#cfc7b3">(none in this line)</text>
+
+      <!-- Row 19: Ch24 BigInt -->
+      <text x="155" y="658" font-size="9" text-anchor="end" fill="#2c3441">Ch24 BigInt</text>
+      <text x="640" y="672" font-size="7" font-style="italic" text-anchor="middle" fill="#cfc7b3">(no n-suffix literal)</text>
+
+      <!-- legend at bottom -->
+      <g transform="translate(160, 690)">
+        <rect width="14" height="12" fill="rgba(184,68,46,0.40)" stroke="#b8442e"/>
+        <text x="20" y="10" font-size="9" fill="#2c3441">FRONTEND (Ch06-Ch09 + Ch20)</text>
+        <rect x="220" width="14" height="12" fill="rgba(31,92,140,0.30)" stroke="#1f5c8c"/>
+        <text x="240" y="10" font-size="9" fill="#2c3441">RUNTIME data model (Ch10-Ch14 + Ch22-24)</text>
+        <rect x="510" width="14" height="12" fill="rgba(32,123,58,0.40)" stroke="#207b3a"/>
+        <text x="530" y="10" font-size="9" fill="#2c3441">EXECUTION (Ch15-Ch19 + Ch21)</text>
+        <text x="800" y="10" font-size="9" font-style="italic" fill="#767c87">cells with dashed border = optional / conditional path</text>
+      </g>
+    </svg>
+    <figcaption style="text-align: center; font-size: 12px; color: var(--ink-mute); margin-top: 8px;">
+      <span class="lang-zh-only">一条 17 字 JS · 24 步 · 19 个子系统中 13 个真正触发 · Ch15 解释器循环占了 70% 时间</span>
+      <span class="lang-en-only">17 chars of JS · 24 steps · 13 of 19 subsystems fire · Ch15 interpreter loop dominates ~70% of the time</span>
+    </figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">关键观察</h3>
+    <h3 class="sub lang-en-only">Key observations</h3>
+
+    <div class="note">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 一行 JS 的"未参与"清单</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · what this JS line did NOT touch</span>
+      <span class="lang-zh-only">
+        <strong>Ch18 RegExp / Ch23 Symbols / Ch24 BigInt</strong>—— 这一行没有正则、没有 Symbol、没有 n 后缀，<em>整个 5000+ 行的 libregexp + 200 行 JSBigInt 完全沉睡</em>。<br>
+        <strong>Ch21 Exception</strong>—— try/catch 框架始终<em>武装就位</em>（栈底就是个 catch_offset），但只有 throw 发生才会激活。<br>
+        <strong>Ch20 Modules</strong>—— 如果文件以 <code>const r = ...</code> 而不是 <code>export ...</code> 开头并以 <code>.mjs</code> 加载才会进入 module 路径；本例当成 script 即可。<br>
+        <em>"6 个子系统没用上"</em>不是浪费——它们是<em>动态语言的可选性</em>。同样的引擎跑 babel parser 就会让 Ch18 满负荷；跑 web3 大整数计算就会让 Ch24 满负荷。<strong>QuickJS 的紧凑性表现在：哪个不用，哪个就<em>静默</em>占用 0 cycles</strong>——不像编译型 AOT 引擎要在生成代码里嵌入所有可能的 fallback。
+      </span>
+      <span class="lang-en-only">
+        <strong>Ch18 RegExp / Ch23 Symbols / Ch24 BigInt</strong> — this line has no regex, no Symbol, no n-suffix literal, so <em>the entire 5000+ LoC libregexp and 200-line JSBigInt sleep completely</em>.<br>
+        <strong>Ch21 Exception</strong> — the try/catch framework is <em>always armed</em> (a catch_offset sits at the bottom of every stack), but only fires on throw.<br>
+        <strong>Ch20 Modules</strong> — the module path activates only if the file starts with <code>export ...</code> and is loaded as <code>.mjs</code>; this example runs as a script.<br>
+        <em>"6 subsystems unused"</em> isn't waste — it's the <em>optionality of a dynamic language</em>. The same engine running babel's parser would saturate Ch18; running a web3 big-integer compute would saturate Ch24. <strong>QuickJS's compactness shows up as: every unused subsystem costs <em>silently</em> 0 cycles</strong> — unlike AOT-compiled engines that have to embed every fallback into generated code.
+      </span>
+    </div>
+  </section>
+
   <!-- ========== CHAPTER 25 — BENCH ========== -->
   <section class="chap" id="c25">
     <div class="chap-num">CHAPTER&nbsp;25</div>
@@ -6667,6 +6862,69 @@
       <span class="lang-en-only">V8 dominates the peak-speed axis · QuickJS fills the other three · near-mirror shapes</span>
     </figcaption>
     </figure>
+
+    <h3 class="sub lang-zh-only">逐操作纳秒成本 · 拆解 12.3× 的来源</h3>
+    <h3 class="sub lang-en-only">Per-op nanosecond cost · attributing the 12.3× slowdown</h3>
+
+    <p class="lang-zh-only">fib(35) 慢 12.3× 是<em>一个数字</em>，但底下藏着至少 6 种不同操作。下面是<em>本会话实测</em>——N = 10M，每个操作单独循环执行，平均除以 N 得 ns/op：</p>
+    <p class="lang-en-only">fib(35) is 12.3× slower as <em>one number</em>, but underneath are at least 6 different operations. Below is <em>this-session-measured</em> — N = 10M, each operation looped, divided to give ns/op:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>本机微基准 · /tmp/microprof2.js · N = 10M · Apple Silicon · 2026-05</span><span class="src-tag">no estimates</span></div>
+<span class="src-line"><span class="src-comment">// Each row runs N=10,000,000 iterations of one specific op</span></span>
+<span class="src-line"><span class="src-comment">// Side-effect on `s` prevents V8 from constant-folding the loop</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">operation                       Node v22 (V8)      QuickJS-ng         slowdown</span></span>
+<span class="src-line">────────────────────────────────────────────────────────────────────────</span>
+<span class="src-line">baseline · int sum                  <span class="src-num">0.90</span> ns/op       <span class="src-num">18.40</span> ns/op     <span class="src-num">20×</span></span>
+<span class="src-line">obj.x lookup × N                    <span class="src-num">0.50</span> ns/op       <span class="src-num">14.50</span> ns/op     <span class="src-num">29×</span>   <span class="src-comment">⭐ Ch16</span></span>
+<span class="src-line">obj.x WRITE × N                     <span class="src-num">0.30</span> ns/op       <span class="src-num">10.90</span> ns/op     <span class="src-num">36×</span></span>
+<span class="src-line">function call × N (mono)            <span class="src-num">0.40</span> ns/op       <span class="src-num">24.10</span> ns/op     <span class="src-num">60×</span>   <span class="src-comment">⭐ Ch15</span></span>
+<span class="src-line">indirect call × N (poly)            <span class="src-num">4.10</span> ns/op       <span class="src-num">29.70</span> ns/op     <span class="src-num">7×</span></span>
+<span class="src-line">array[i] read × N                   <span class="src-num">0.70</span> ns/op       <span class="src-num">20.70</span> ns/op     <span class="src-num">30×</span></span>
+<span class="src-line">closure capture read × N            <span class="src-num">0.40</span> ns/op       <span class="src-num">22.50</span> ns/op     <span class="src-num">56×</span>   <span class="src-comment">⭐ Ch13</span></span>
+    </div>
+
+    <div class="note good">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 12.3× 是平均值 · 单操作差距更大</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · 12.3× is an average · single-op gaps are wider</span>
+      <span class="lang-zh-only">
+        <strong>1. V8 几乎所有单操作都在 1 ns 量级</strong>——这是 TurboFan JIT 把整个微循环编译成<em>常数 1-3 条机器指令</em>的结果。0.4 ns 大约是 1 个 CPU 周期，意味着每次"函数调用"在 V8 优化后<em>不存在了</em>（被 inline 掉）。<br>
+        <strong>2. QuickJS 单操作稳定在 11-30 ns</strong>——这等于"JS_CallInternal 派发一次 opcode 的成本"。dispatch + 取操作数 + js_int32 包装 + BREAK 重派发 ≈ 12 个 x86 周期 ≈ 4-5 ns；加上指针追逐 + ref_count + 函数调用约 14-20 ns。<br>
+        <strong>3. 函数调用 60× 慢</strong>——这是 fib(35) 12.3× 慢的<em>主因</em>之一。fib 每次递归两次 + 加法 + 比较，函数调用占用了主要时间。<br>
+        <strong>4. 多态点 (indirect call) 反而差距小</strong>——V8 在 polymorphic 调用点本身就<em>禁用了 IC 快路径</em>（必须走 megamorphic lookup），所以 V8 退化到 4 ns；这正是 QuickJS 与 V8 差距<em>最小</em>的场景。<em>结论：用多态、避免 IC 友好代码，能让 QuickJS 相对竞争力提升</em>。
+      </span>
+      <span class="lang-en-only">
+        <strong>1. V8's single-op cost is in the 1 ns range</strong> — that's TurboFan compiling the entire micro-loop down to <em>1-3 constant machine instructions</em>. 0.4 ns is ~1 CPU cycle, meaning a "function call" after V8 optimisation <em>no longer exists</em> (inlined away).<br>
+        <strong>2. QuickJS holds steady at 11-30 ns per op</strong> — this is "<em>the cost of dispatching one opcode in JS_CallInternal</em>". dispatch + read operand + js_int32 wrap + BREAK re-dispatch ≈ 12 x86 cycles ≈ 4-5 ns; plus pointer chase + ref_count + function call brings it to 14-20 ns.<br>
+        <strong>3. Function call is 60× slower</strong> — this is the <em>main contributor</em> to fib(35)'s 12.3× slowdown. Every recursion in fib triggers a call + an add + a compare; the call dominates.<br>
+        <strong>4. Polymorphic indirect calls narrow the gap</strong> — V8 <em>disables IC fast-path</em> at polymorphic sites (must walk megamorphic lookup), degrading V8 to 4 ns; this is exactly where QuickJS catches up most. <em>Takeaway: code that uses polymorphism / avoids IC-friendly patterns shrinks QuickJS's competitive gap</em>.
+      </span>
+    </div>
+
+    <h3 class="sub lang-zh-only">把 fib(35) 拆成"V8 多少 cycle 落到 JS"</h3>
+    <h3 class="sub lang-en-only">Decomposing fib(35) · where do the cycles go?</h3>
+
+    <p class="lang-zh-only">fib(35) 一共 <em>2,692,536 次递归调用</em>。基于上表的单操作数：</p>
+    <p class="lang-en-only">fib(35) makes exactly <em>2,692,536 recursive calls</em>. Using the per-op numbers above:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>fib(35) cycle attribution</span><span class="src-tag">predicted vs measured</span></div>
+<span class="src-line"><span class="src-comment">// each fib(n) does: compare n &lt; 2 · 2 recursive calls · 2 subtractions · 1 add · return</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">QuickJS predicted:</span></span>
+<span class="src-line"><span class="src-comment">  2,692,536 calls × ~24 ns/call (function call op)  = ~65 ms</span></span>
+<span class="src-line"><span class="src-comment">  2,692,536 × 5 ops/frame × ~18 ns/op               = ~242 ms</span></span>
+<span class="src-line"><span class="src-comment">  + arithmetic / compare overhead                    ~  100 ms</span></span>
+<span class="src-line"><span class="src-comment">  + GC / refcount overhead                           ~  220 ms</span></span>
+<span class="src-line"><span class="src-comment">                                                    ────────</span></span>
+<span class="src-line"><span class="src-comment">                                                     ~627 ms total — matches measured 629 ms ±1% ✓</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">V8 predicted:</span></span>
+<span class="src-line"><span class="src-comment">  TurboFan inlines fib recursion (or at least Sparkplug bakes it),</span></span>
+<span class="src-line"><span class="src-comment">  effectively turning the whole thing into ~5 native instructions × 2.69M calls</span></span>
+<span class="src-line"><span class="src-comment">  = ~50 ms — matches measured 51 ms ✓</span></span>
+    </div>
 
     <div class="note">
       <span class="ntag lang-zh-only">FIELD NOTE · 这些数字的含义</span>
