@@ -1,0 +1,49 @@
+---
+title: "一次请求的一生 —— HTTP/3 协议全景"
+date: "2026-05-16"
+tags: [网络协议, HTTP/3, QUIC, TLS, 性能工程]
+public: true
+summary: 一个 GET 请求要在 UDP 之上拼出 13 道工序、跨 4 个加密级、穿过 3 条流，才能让你看到一个 200 OK。把 QUIC、HTTP/3、QPACK 的字节、密钥、时序、源码全摊开。
+immersive:
+  url: /immersive/http3/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/http3/)
+
+这是 Field Note 系列的第六篇。前作《[字节码到像素的一生](/immersive/chromium-renderer/)》拆解了 Chromium 13 步渲染流水线。这一次把镜头往前推一段：在 Loading 那一格出现之前，字节是怎么从对端的网卡，跨过 UDP、QUIC、HTTP/3 与 QPACK 四层加密协议，落到你的进程里的。
+
+### 五章背景 + 一条主线 + 十三步协议流水线 + 五章综合
+
+1. **三个公式** — `HTTP = Semantics + Framing + Transport`，HTTP/1→2→3 只换下面两层。
+2. **家谱** — 1991 → 2026，30 年三条线（语义/帧/传输）的交错演进。
+3. **HTTP/2 的死结** — TCP HOL、2-RTT 握手、IP 绑死、协议僵化。
+4. **为什么是 UDP** — 不是 UDP 好，是 UDP 不被中间盒乱碰。
+5. **QUIC 全景** — 4 加密级 · 3 PN 空间 · 2 类 Header。
+
+接着是 13 步协议流水线，每步一章：
+
+```
+06 UDP Datagram   07 Handshake     08 0-RTT        09 Crypto layers
+10 Frame catalog  11 Stream mux    12 Loss recovery 13 Congestion ctl
+14 HTTP/3 frames  15 QPACK         16 Death of Push
+17 Migration      18 Anti-amp + MP-QUIC
+```
+
+最后是五章综合：实现现状、性能数据、工程实战、批评争议、HTTP/3 之后。
+
+### 这版深挖了什么
+
+- **字节级 wire format**：Long/Short Header 全字段拆解、Header Protection 的样本→mask 算法。
+- **完整 1-RTT/0-RTT 时序图**：三个 PN 空间、四个加密级别的精确边界、TLS 1.3 经 CRYPTO 帧的集成方式。
+- **28 种 QUIC 帧** 按"控制 / 可靠性 / 流 / 加密 + 扩展"四族整理；STREAM 帧 8 变体的 3-bit 拆解。
+- **QPACK 三招**：静态表扩 99、双向同步流、Required Insert Count 阻塞容忍。
+- **Server Push 之死**：Chrome 106 默认禁用的真实数据 + 103 Early Hints 的接力。
+- **连接迁移 Path Validation 完整时序** · Apple iCloud Private Relay 实战。
+- **拥塞控制可插拔**：NewReno / CUBIC / BBR v2/v3 在 Google / Cloudflare / Meta 的部署。
+- **生产数据**：YouTube 印度 4G 卡顿 −20-40% · Meta 错误率 −5% · Cloudflare 0-RTT TTFB −50ms · 何时 H3 不如 H2。
+- **工程实战**：HTTPS RR (RFC 9460) · `curl --http3` · Wireshark + SSLKEYLOGFILE · qlog / qvis · sysctl 调优。
+
+每章都有源 RFC 锚点、生产环境的具体数字、当前 2026 年的实现现状（Chrome QUICHE / Firefox neqo / Cloudflare quiche / nginx 1.26 / msquic / quic-go / quinn / s2n-quic / aioquic 等）。
+
+如果你只想看一张图把它们都串起来，就从沉浸式版的主线例子 *一次 GET ursb.me* 那一章开始读。

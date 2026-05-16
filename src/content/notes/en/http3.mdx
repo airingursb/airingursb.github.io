@@ -1,0 +1,49 @@
+---
+title: "The Life of a Request — A Field Map of HTTP/3"
+date: "2026-05-16"
+tags: [Network Protocols, HTTP/3, QUIC, TLS, Performance Engineering]
+public: true
+summary: A single GET has to cross 13 stages on top of UDP, four cryptographic levels and three streams before it can land a 200 OK. Wire formats, keys, timelines and source paths for QUIC, HTTP/3 and QPACK.
+immersive:
+  url: /immersive/http3/
+  label: Immersive
+---
+
+> This is an immersive long-form essay — best read in its dedicated layout → [Open the full version](/immersive/http3/)
+
+This is the sixth piece in the **Field Note** series. The previous one, «[Bytecode to Pixels](/immersive/chromium-renderer/)», walked through Chromium's 13-stage rendering pipeline. This time we rewind one step earlier: before the *Loading* stage even fires, how do the bytes climb out of the other side's NIC, through UDP, QUIC, HTTP/3 and QPACK — four layers of encrypted protocol — into your process?
+
+### Five preparatory chapters + one through-line + thirteen pipeline stages + five synthesis chapters
+
+1. **Three formulas** — `HTTP = Semantics + Framing + Transport`. HTTP/1→2→3 only swap the bottom two layers.
+2. **Family tree** — 1991 → 2026, thirty years of three lines (semantics / framing / transport) braiding together.
+3. **HTTP/2's deadlock** — TCP HOL, the 2-RTT handshake floor, IP-pinned connections, protocol ossification.
+4. **Why UDP** — not because UDP is good, but because middleboxes don't touch UDP.
+5. **QUIC at a glance** — 4 encryption levels · 3 PN spaces · 2 header types.
+
+Then thirteen pipeline stages, one chapter each:
+
+```
+06 UDP Datagram   07 Handshake     08 0-RTT        09 Crypto layers
+10 Frame catalog  11 Stream mux    12 Loss recovery 13 Congestion ctl
+14 HTTP/3 frames  15 QPACK         16 Death of Push
+17 Migration      18 Anti-amp + MP-QUIC
+```
+
+Finally five synthesis chapters: implementations, performance, field work, critique, and what's next.
+
+### What this expansion adds
+
+- **Byte-level wire formats**: every field of Long / Short headers; the sample → mask recipe for Header Protection.
+- **Full 1-RTT and 0-RTT timelines**: exact boundaries of three PN spaces and four encryption levels; how TLS 1.3 is carried via CRYPTO frames (not "TLS over QUIC").
+- **28 QUIC frame types**, grouped into four families (control / reliability / streams / crypto + extensions); the 3-bit decomposition of STREAM's eight variants.
+- **QPACK's three moves**: a 99-entry static table, bi-directional sync streams, Required Insert Count's tolerable blocking.
+- **Death of Server Push**: real Chrome telemetry behind the v106 default-disable, plus 103 Early Hints as the relay.
+- **Connection migration**: Path Validation timeline, with Apple iCloud Private Relay as the production case.
+- **Pluggable congestion control**: NewReno / CUBIC / BBR v2/v3 deployed at Google, Cloudflare, Meta.
+- **Production numbers**: YouTube India 4G stall −20-40% · Meta error rate −5% · Cloudflare 0-RTT TTFB −50ms · when H3 actually loses to H2.
+- **Field work**: HTTPS RR (RFC 9460), `curl --http3`, Wireshark + SSLKEYLOGFILE, qlog / qvis, sysctl tuning.
+
+Every chapter anchors to specific RFCs, real production numbers, and the 2026 implementation landscape (Chrome QUICHE, Firefox neqo, Cloudflare quiche, nginx 1.26, msquic, quic-go, quinn, s2n-quic, aioquic, and more).
+
+If you only have time for one diagram that ties everything together, start with the through-line example in the immersive version: *One GET ursb.me*.
