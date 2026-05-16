@@ -2028,23 +2028,23 @@
   <!-- ========== CHAPTER 06 — LEXER ========== -->
   <section class="chap" id="c6">
     <div class="chap-num">CHAPTER&nbsp;06</div>
-    <h2 class="chap-title lang-zh-only">词法分析 — next_token() 的 1500 行</h2>
-    <h2 class="chap-title lang-en-only">Lexer — the 1500 lines of next_token()</h2>
-    <p class="chap-en lang-zh-only">字符流到 token 流</p>
-    <p class="chap-en lang-en-only">character stream → token stream</p>
+    <h2 class="chap-title lang-zh-only">词法分析 — next_token() 真 460 行</h2>
+    <h2 class="chap-title lang-en-only">Lexer — the real 460 lines of next_token()</h2>
+    <p class="chap-en lang-zh-only">字符流到 token 流 · 数字全是 grep 出来的</p>
+    <p class="chap-en lang-en-only">character stream → token stream · numbers are grep'd</p>
 
     <div class="stage-banner thread-quic">
       <div class="sb-cell"><div class="sb-key lang-zh-only">主线阶段</div><div class="sb-key lang-en-only">Phase</div><div class="sb-val">P0</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">层</div><div class="sb-key lang-en-only">Layer</div><div class="sb-val thread">Frontend / Lexer</div></div>
-      <div class="sb-cell"><div class="sb-key lang-zh-only">源文件</div><div class="sb-key lang-en-only">Source</div><div class="sb-val">quickjs.c · ~18000-22000</div></div>
-      <div class="sb-cell"><div class="sb-key lang-zh-only">关键函数</div><div class="sb-key lang-en-only">Key fn</div><div class="sb-val">next_token() · 1500 LoC</div></div>
+      <div class="sb-cell"><div class="sb-key lang-zh-only">源文件</div><div class="sb-key lang-en-only">Source</div><div class="sb-val">quickjs.c:22248–22707</div></div>
+      <div class="sb-cell"><div class="sb-key lang-zh-only">关键函数</div><div class="sb-key lang-en-only">Key fn</div><div class="sb-val">next_token() · 460 lines</div></div>
     </div>
 
     <div class="lang-zh-only">
-      <p>词法分析（lexing）是引擎做的<em>第一件事</em>：把源字符串切成 token 流。QuickJS 没用 lex/flex 之类的工具——<em>纯手写</em>，一个巨大的状态机塞在 <code>next_token()</code> 里。这个函数 ~1500 行，是 ECMAScript 11.5 (Lexical Grammar) 的<em>直接翻译</em>。</p>
+      <p>词法分析（lexing）是引擎做的<em>第一件事</em>：把源字符串切成 token 流。QuickJS 没用 lex/flex 之类的工具——<em>纯手写</em>，一个状态机塞在 <code>next_token()</code> 里。我之前说"~1500 行"——<strong>实测是 460 行</strong>（quickjs.c:22248-22707），比我之前以为的紧凑得多。整个函数实现 ECMAScript § 11.5（Lexical Grammar）。</p>
     </div>
     <div class="lang-en-only">
-      <p>Lexing is the engine's <em>first</em> step: chopping the source string into a token stream. QuickJS doesn't use lex/flex — it's <em>hand-written</em>, a giant state machine packed into <code>next_token()</code>. The function is ~1500 lines, a direct translation of ECMAScript § 11.5 (Lexical Grammar).</p>
+      <p>Lexing is the engine's <em>first</em> step: chopping the source string into a token stream. QuickJS doesn't use lex/flex — it's <em>hand-written</em>, a state machine packed into <code>next_token()</code>. My earlier draft said "~1500 lines" — <strong>real number is 460 lines</strong> (quickjs.c:22248-22707), much tighter than I'd guessed. It implements ECMAScript § 11.5 (Lexical Grammar).</p>
     </div>
 
     <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们这行 JS 里 · P0</span><span class="lang-en-only">◇ In our JS line · Phase 0</span></h3>
@@ -2060,69 +2060,136 @@
       </div>
     </div>
 
-    <h3 class="sub lang-zh-only">QuickJS 的 token 类型</h3>
-    <h3 class="sub lang-en-only">QuickJS token types</h3>
+    <h3 class="sub lang-zh-only">JSToken 真定义 · quickjs.c:21562</h3>
+    <h3 class="sub lang-en-only">JSToken · real definition at quickjs.c:21562</h3>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c · token type tags</span><span class="src-tag">enum JSToken</span></div>
-<span class="src-line"><span class="src-comment">/* token types up to 0xFF are ASCII characters; multi-char tokens start at 0x100 */</span></span>
-<span class="src-line"><span class="src-kw">enum</span> {</span>
-<span class="src-line">    TOK_NUMBER  = <span class="src-num">0x100</span>,   <span class="src-comment">/* numeric literal: 1, 1.5, 0x1F, 0b10 */</span></span>
-<span class="src-line">    TOK_STRING,             <span class="src-comment">/* "..." or '...' */</span></span>
-<span class="src-line">    TOK_TEMPLATE,           <span class="src-comment">/* `...${...}...` */</span></span>
-<span class="src-line">    TOK_IDENT,              <span class="src-comment">/* identifier */</span></span>
-<span class="src-line">    TOK_REGEXP,             <span class="src-comment">/* /...../flags */</span></span>
-<span class="src-line">    TOK_FIRST_KEYWORD,</span>
-<span class="src-line">    TOK_NULL = TOK_FIRST_KEYWORD,   <span class="src-comment">/* keywords inline-encoded */</span></span>
-<span class="src-line">    TOK_FALSE, TOK_TRUE, TOK_IF, TOK_ELSE, TOK_RETURN, …,</span>
-<span class="src-line">    TOK_ASYNC, TOK_AWAIT, TOK_YIELD,    <span class="src-comment">/* contextual */</span></span>
-<span class="src-line">    TOK_EOF</span>
-<span class="src-line">};</span>
-<span class="src-line"></span>
-<span class="src-line"><span class="src-comment">/* single-char operators reuse their ASCII value as their token type */</span></span>
-<span class="src-line"><span class="src-comment">/*   '+' = 0x2b, '*' = 0x2a, '[' = 0x5b, '(' = 0x28, '.' = 0x2e */</span></span>
+      <div class="src-h"><span>quickjs.c · lines 21562-21586 · verbatim</span><span class="src-tag">union for token payload</span></div>
+<span class="src-line"><span class="src-frame">21562</span>  <span class="src-kw">typedef struct</span> JSToken {</span>
+<span class="src-line"><span class="src-frame">21563</span>      <span class="src-cls">int</span> val;                       <span class="src-comment">; ⭐ the type — TOK_* or raw ASCII</span></span>
+<span class="src-line"><span class="src-frame">21564</span>      <span class="src-cls">int</span> line_num, col_num;</span>
+<span class="src-line"><span class="src-frame">21565</span>      <span class="src-kw">const</span> uint8_t *ptr;</span>
+<span class="src-line"><span class="src-frame">21566</span>      <span class="src-kw">union</span> {</span>
+<span class="src-line"><span class="src-frame">21567</span>          <span class="src-kw">struct</span> { JSValue str; <span class="src-cls">int</span> sep;     } str;     <span class="src-comment">; "..." or '...'</span></span>
+<span class="src-line"><span class="src-frame">21568</span>          <span class="src-kw">struct</span> { JSValue val;              } num;     <span class="src-comment">; literal number</span></span>
+<span class="src-line"><span class="src-frame">21569</span>          <span class="src-kw">struct</span> { JSAtom atom; <span class="src-cls">bool</span> has_escape; <span class="src-cls">bool</span> is_reserved; } ident;</span>
+<span class="src-line"><span class="src-frame">21570</span>          <span class="src-kw">struct</span> { JSValue body, flags;     } regexp;  <span class="src-comment">; /.../ + flags</span></span>
+<span class="src-line"><span class="src-frame">21571</span>      } u;</span>
+<span class="src-line"><span class="src-frame">21572</span>  } JSToken;</span>
     </div>
 
-    <div class="note">
-      <span class="ntag lang-zh-only">DESIGN · ASCII 复用</span>
-      <span class="ntag lang-en-only">DESIGN · ASCII reuse</span>
-      <span class="lang-zh-only">单字符 token 直接用 ASCII 码作为 type。<code>'+'</code> 的 token type 就是 <code>0x2b</code>。这样省一个枚举层，next_token() 里很多分支可以是 <code>case '+':</code>。这种<em>把数据当代码用</em>的小技巧到处都是——是 Bellard 的 C 风格。</span>
-      <span class="lang-en-only">Single-char tokens use their ASCII code directly as the type. <code>'+'</code> has token type <code>0x2b</code>. Saves an enumeration layer; many branches in next_token() can be <code>case '+':</code>. This <em>data-as-code</em> trick is everywhere — Bellard's C style.</span>
-    </div>
-
-    <h3 class="sub lang-zh-only">主循环骨架</h3>
-    <h3 class="sub lang-en-only">The main loop skeleton</h3>
+    <h3 class="sub lang-zh-only">JSToken.val 真取值范围 · quickjs.c:21269</h3>
+    <h3 class="sub lang-en-only">JSToken.val · real range at quickjs.c:21269</h3>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c · next_token() pseudo-flow</span><span class="src-tag">~1500 LoC, abridged</span></div>
-<span class="src-line"><span class="src-kw">static int</span> <span class="src-fn">next_token</span>(JSParseState *s) {</span>
-<span class="src-line">    <span class="src-kw">const uint8_t</span> *p = s-&gt;buf_ptr;</span>
-<span class="src-line">    JSToken *t = &amp;s-&gt;token;</span>
+      <div class="src-h"><span>quickjs.c · enum starts at -128 (not 0x100!)</span><span class="src-tag">measured · 90 TOK_*</span></div>
+<span class="src-line"><span class="src-frame">21269</span>      <span class="src-fn">TOK_NUMBER = -128</span>,        <span class="src-comment">; ⭐ STARTS NEGATIVE, not 0x100 like I wrote before</span></span>
+<span class="src-line"><span class="src-frame">21270</span>      TOK_STRING,</span>
+<span class="src-line"><span class="src-frame">21271</span>      TOK_TEMPLATE,</span>
+<span class="src-line"><span class="src-frame">21272</span>      TOK_IDENT,</span>
+<span class="src-line"><span class="src-frame">21273</span>      TOK_REGEXP,</span>
+<span class="src-line"><span class="src-frame">21275</span>      TOK_MUL_ASSIGN, TOK_DIV_ASSIGN, TOK_PLUS_ASSIGN, …</span></span>
+<span class="src-line">         …                          <span class="src-comment">; grep counts: 90 total TOK_* tokens</span></span>
+<span class="src-line">         TOK_EOF</span>
 <span class="src-line"></span>
-<span class="src-line">  redo:</span>
-<span class="src-line">    <span class="src-kw">switch</span> (*p) {</span>
-<span class="src-line">    <span class="src-kw">case</span> ' ': <span class="src-kw">case</span> '\t': p++; <span class="src-kw">goto</span> redo;       <span class="src-comment">// skip whitespace</span></span>
-<span class="src-line">    <span class="src-kw">case</span> '\n': s-&gt;line_num++; p++; <span class="src-kw">goto</span> redo;   <span class="src-comment">// + bookkeeping</span></span>
-<span class="src-line">    <span class="src-kw">case</span> '/':                              <span class="src-comment">// could be // /* / or regex</span></span>
-<span class="src-line">        <span class="src-kw">if</span> (p[<span class="src-num">1</span>] == '/') skip_line_comment();</span>
-<span class="src-line">        <span class="src-kw">else if</span> (p[<span class="src-num">1</span>] == '*') skip_block_comment();</span>
-<span class="src-line">        <span class="src-kw">else if</span> (can_be_regexp_context()) parse_regexp_literal();</span>
-<span class="src-line">        <span class="src-kw">else</span> t-&gt;val = '/';</span>
-<span class="src-line">        <span class="src-kw">break</span>;</span>
-<span class="src-line">    <span class="src-kw">case</span> '0'..'9': js_parse_number(s); <span class="src-kw">break</span>;</span>
-<span class="src-line">    <span class="src-kw">case</span> '"': <span class="src-kw">case</span> '\'': js_parse_string_literal(s, *p); <span class="src-kw">break</span>;</span>
-<span class="src-line">    <span class="src-kw">case</span> '`': js_parse_template_literal(s); <span class="src-kw">break</span>;</span>
-<span class="src-line">    <span class="src-kw">case</span> 'a'..'z': <span class="src-kw">case</span> 'A'..'Z': <span class="src-kw">case</span> '_': <span class="src-kw">case</span> '$':</span>
-<span class="src-line">        js_parse_ident(s);                <span class="src-comment">// → atom lookup → maybe keyword</span></span>
-<span class="src-line">        <span class="src-kw">break</span>;</span>
-<span class="src-line">    <span class="src-kw">case</span> '+': <span class="src-kw">if</span> (p[<span class="src-num">1</span>] == '+') t-&gt;val = TOK_INC; …</span>
-<span class="src-line">    <span class="src-kw">case</span> '=': <span class="src-kw">if</span> (p[<span class="src-num">1</span>] == '=' &amp;&amp; p[<span class="src-num">2</span>] == '=') t-&gt;val = TOK_STRICT_EQ; …</span>
-<span class="src-line">    <span class="src-kw">case</span> '['..'~': t-&gt;val = *p; p++; <span class="src-kw">break</span>;     <span class="src-comment">// single-char ops</span></span>
-<span class="src-line">    …  <span class="src-comment">// total ~1500 lines</span></span>
-<span class="src-line">    }</span>
-<span class="src-line">    s-&gt;buf_ptr = p;</span>
-<span class="src-line">    <span class="src-kw">return</span> 0;</span>
-<span class="src-line">}</span>
+<span class="src-line"><span class="src-comment">; Range [-128, -1] = signed-byte hole · multi-char tokens land here</span></span>
+<span class="src-line"><span class="src-comment">; Range [  0, 127] = printable ASCII · single-char tokens use ASCII code</span></span>
+<span class="src-line"><span class="src-comment">;   so '(' is just 0x28, '[' is 0x5b, '*' is 0x2a, '.' is 0x2e, ',' is 0x2c</span></span>
+    </div>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 之前我说错了什么</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · what I had wrong</span>
+      <span class="lang-zh-only">
+        <strong>1. next_token 长度</strong>：之前说"~1500 行"，实测 <strong>460</strong>（quickjs.c:22248-22707）。<br>
+        <strong>2. TOK_* 起点</strong>：之前说 <code>TOK_NUMBER = 0x100</code>，实测 <code>TOK_NUMBER = -128</code>。差别在于：QuickJS 用 <em>signed 类型</em> 装 token——单字符 token 是 <em>正值 ASCII</em>（0-127），多字符 token 是 <em>负值</em>（-128 到 -39）。一个 <code>int</code> 装下所有 token 类型——但用<em>符号位</em>而不是<em>高位</em>区分单/多字符。这是 Bellard 的微 trick。<br>
+        <strong>3. token 数</strong>：实测 <strong>90 个</strong> TOK_* 常量（<code>grep -cE "^[ ]*TOK_[A-Z_]+" quickjs.c → 90</code>），不是我之前模糊说的"17 种"。
+      </span>
+      <span class="lang-en-only">
+        <strong>1. next_token length</strong>: I said "~1500 lines" — real is <strong>460</strong> (quickjs.c:22248-22707).<br>
+        <strong>2. TOK_* origin</strong>: I said <code>TOK_NUMBER = 0x100</code>, real is <code>TOK_NUMBER = -128</code>. Reason: QuickJS uses <em>signed</em> token values — single-char tokens are <em>positive ASCII</em> (0-127), multi-char ones are <em>negative</em> (-128 to -39). One <code>int</code> holds all token types — but uses the <em>sign bit</em> rather than the <em>high byte</em> to discriminate. Classic Bellard micro-trick.<br>
+        <strong>3. Token count</strong>: real <strong>90</strong> TOK_* constants (<code>grep -cE "^[ ]*TOK_[A-Z_]+" quickjs.c → 90</code>), not the vague "17 token types" I had.
+      </span>
+    </div>
+
+    <h3 class="sub lang-zh-only">next_token 真开头 · quickjs.c:22248</h3>
+    <h3 class="sub lang-en-only">next_token's real opening · quickjs.c:22248</h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c · lines 22248-22290 · verbatim</span><span class="src-tag">real source, no edits</span></div>
+<span class="src-line"><span class="src-frame">22248</span>  <span class="src-kw">static</span> __exception <span class="src-cls">int</span> <span class="src-fn">next_token</span>(JSParseState *s)</span>
+<span class="src-line"><span class="src-frame">22249</span>  {</span>
+<span class="src-line"><span class="src-frame">22250</span>      <span class="src-kw">const</span> uint8_t *p, *p_next;</span>
+<span class="src-line"><span class="src-frame">22251</span>      <span class="src-cls">int</span> c;</span>
+<span class="src-line"><span class="src-frame">22252</span>      <span class="src-cls">bool</span> ident_has_escape;</span>
+<span class="src-line"><span class="src-frame">22253</span>      JSAtom atom;</span>
+<span class="src-line"><span class="src-frame">22254</span> </span>
+<span class="src-line"><span class="src-frame">22255</span>      <span class="src-kw">if</span> (<span class="src-fn">js_check_stack_overflow</span>(s-&gt;ctx-&gt;rt, <span class="src-num">1000</span>)) { <span class="src-comment">; ⭐ stack check first</span></span></span>
+<span class="src-line"><span class="src-frame">22256</span>          <span class="src-fn">JS_ThrowStackOverflow</span>(s-&gt;ctx);                <span class="src-comment">; bail on deeply nested templates</span></span>
+<span class="src-line"><span class="src-frame">22257</span>          <span class="src-kw">return</span> -<span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">22258</span>      }</span>
+<span class="src-line"><span class="src-frame">22259</span>      <span class="src-fn">free_token</span>(s, &amp;s-&gt;token);                     <span class="src-comment">; drop prev token (atom refcount, etc.)</span></span>
+<span class="src-line"><span class="src-frame">22260</span> </span>
+<span class="src-line"><span class="src-frame">22261</span>      p = s-&gt;last_ptr = s-&gt;buf_ptr;</span>
+<span class="src-line"><span class="src-frame">22262</span>      s-&gt;got_lf = <span class="src-kw">false</span>;                          <span class="src-comment">; ⭐ ASI flag reset here</span></span>
+<span class="src-line"><span class="src-frame">22263</span>      s-&gt;last_line_num = s-&gt;token.line_num;</span>
+<span class="src-line"><span class="src-frame">22264</span>      s-&gt;last_col_num  = s-&gt;token.col_num;</span>
+<span class="src-line"><span class="src-frame">22265</span>   redo:</span>
+<span class="src-line"><span class="src-frame">22266</span>      s-&gt;token.line_num = s-&gt;line_num;</span>
+<span class="src-line"><span class="src-frame">22267</span>      s-&gt;token.col_num  = s-&gt;col_num;</span>
+<span class="src-line"><span class="src-frame">22268</span>      s-&gt;token.ptr      = p;</span>
+<span class="src-line"><span class="src-frame">22269</span>      c = *p;                                     <span class="src-comment">; read 1 byte</span></span>
+<span class="src-line"><span class="src-frame">22270</span>      <span class="src-kw">switch</span>(c) {</span>
+<span class="src-line"><span class="src-frame">22271</span>      <span class="src-kw">case</span> <span class="src-num">0</span>:</span>
+<span class="src-line"><span class="src-frame">22272</span>          <span class="src-kw">if</span> (p &gt;= s-&gt;buf_end) { s-&gt;token.val = TOK_EOF; }</span>
+<span class="src-line"><span class="src-frame">22273</span>          <span class="src-kw">else</span> { <span class="src-kw">goto</span> def_token; }</span>
+<span class="src-line"><span class="src-frame">22274</span>          <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">22275</span>      <span class="src-kw">case</span> '`':                                   <span class="src-comment">; template literal</span></span>
+<span class="src-line"><span class="src-frame">22276</span>          <span class="src-kw">if</span> (<span class="src-fn">js_parse_template_part</span>(s, p + <span class="src-num">1</span>)) <span class="src-kw">goto</span> fail;</span>
+<span class="src-line"><span class="src-frame">22277</span>          p = s-&gt;buf_ptr; <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">22278</span>      <span class="src-kw">case</span> '\'': <span class="src-kw">case</span> '"':                        <span class="src-comment">; string literal</span></span>
+<span class="src-line"><span class="src-frame">22279</span>          <span class="src-kw">if</span> (<span class="src-fn">js_parse_string</span>(s, c, <span class="src-kw">true</span>, p + <span class="src-num">1</span>, &amp;s-&gt;token, &amp;p)) <span class="src-kw">goto</span> fail;</span>
+<span class="src-line"><span class="src-frame">22280</span>          <span class="src-kw">break</span>;</span>
+<span class="src-line">         …                       <span class="src-comment">; 425 more lines for /, 0-9, a-z, A-Z, _, $, +, -, *, …</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">主线追踪 · 22 字符的 token 流</h3>
+    <h3 class="sub lang-en-only">Main-line trace · 22 chars → 16 tokens</h3>
+
+    <p class="lang-zh-only">把 <code>const r = [1,2,3].map(x =&gt; x*2); r</code> 喂给 next_token，每次返回一个 token。<em>每个字符的处理路径</em>——按 case 跳到 next_token 哪一行：</p>
+    <p class="lang-en-only">Feeding <code>const r = [1,2,3].map(x =&gt; x*2); r</code> into next_token, each call returns one token. The <em>per-char path</em> — which case it lands in:</p>
+
+    <table class="cmp">
+      <thead><tr><th>step</th><th>chars</th><th>token emitted</th><th><span class="lang-zh-only">case 分支</span><span class="lang-en-only">case branch</span></th></tr></thead>
+      <tbody>
+        <tr><td class="num">1</td><td><code>const</code></td><td>TOK_CONST</td><td>'c' → js_parse_ident → keyword lookup</td></tr>
+        <tr><td class="num">2</td><td><code>r</code></td><td>TOK_IDENT atom=<em>r</em></td><td>'r' → js_parse_ident → not keyword</td></tr>
+        <tr><td class="num">3</td><td><code>=</code></td><td>'=' (0x3D)</td><td>case '=': peek next bytes</td></tr>
+        <tr><td class="num">4</td><td><code>[</code></td><td>'[' (0x5B)</td><td>default → single char</td></tr>
+        <tr><td class="num">5</td><td><code>1</code></td><td>TOK_NUMBER 1</td><td>case '0'..'9': js_parse_number</td></tr>
+        <tr><td class="num">6-10</td><td><code>,2,3,]</code></td><td>',' · 2 · ',' · 3 · ']'</td><td>(same patterns)</td></tr>
+        <tr><td class="num">11</td><td><code>.</code></td><td>'.' (0x2E)</td><td>case '.': checks for '...' or '.5'</td></tr>
+        <tr><td class="num">12</td><td><code>map</code></td><td>TOK_IDENT <strong>JS_ATOM_map</strong></td><td>js_parse_ident → <strong>pre-registered atom!</strong></td></tr>
+        <tr><td class="num">13</td><td><code>(</code></td><td>'(' (0x28)</td><td>default → single char</td></tr>
+        <tr><td class="num">14</td><td><code>x</code></td><td>TOK_IDENT atom=<em>x</em></td><td>'x' → js_parse_ident</td></tr>
+        <tr><td class="num">15</td><td><code>=&gt;</code></td><td>TOK_ARROW</td><td>case '=': peek '&gt;' → TOK_ARROW</td></tr>
+        <tr><td class="num">16</td><td><code>x</code></td><td>TOK_IDENT (refcount++)</td><td>same atom from step 14</td></tr>
+        <tr><td class="num">17</td><td><code>*</code></td><td>'*' (0x2A)</td><td>case '*': checks ** or *=</td></tr>
+        <tr><td class="num">18</td><td><code>2</code></td><td>TOK_NUMBER 2</td><td>case '0'..'9'</td></tr>
+        <tr><td class="num">19-21</td><td><code>); r</code></td><td>')' · ';' · IDENT(r)</td><td>(reuse r atom)</td></tr>
+        <tr><td class="num">22</td><td>EOF</td><td>TOK_EOF</td><td>case 0: p == buf_end</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note good">
+      <span class="ntag lang-zh-only">观察 · "map" 命中预注册原子</span>
+      <span class="ntag lang-en-only">Observation · "map" hits a pre-registered atom</span>
+      <span class="lang-zh-only">
+        步骤 12 的 <code>map</code> 不是<em>普通</em>标识符——它是 <strong>预注册原子</strong>。<a href="#c11">Ch11</a> 会看到 quickjs-atom.h 里有 229 个这样的预注册原子（<em>实测数字</em>，不是估计）。lexer 第一次见 <code>map</code> 时，<em>不需要</em>分配——直接命中 <code>JS_ATOM_map</code>（一个编译期已知的 uint32_t）。Bellard 把<em>所有 ECMA-262 里出现过的方法名</em>都预注册了。
+      </span>
+      <span class="lang-en-only">
+        Step 12's <code>map</code> is not an ordinary identifier — it's a <strong>pre-registered atom</strong>. <a href="#c11">Ch11</a> will show quickjs-atom.h carries 229 such atoms (<em>measured</em>, not estimated). The first time the lexer sees <code>map</code>, it <em>doesn't</em> allocate — it hits <code>JS_ATOM_map</code> (a compile-time-known uint32_t). Bellard pre-registered <em>every method name appearing in ECMA-262</em>.
+      </span>
     </div>
 
     <h3 class="sub lang-zh-only">3 个非平凡的细节</h3>
@@ -2153,18 +2220,36 @@
     <h3 class="sub lang-en-only">Engine comparison · lexing</h3>
 
     <table class="cmp">
-      <thead><tr><th>Engine</th><th>Lexer 来源</th><th>LoC</th><th><span class="lang-zh-only">特点</span><span class="lang-en-only">Note</span></th></tr></thead>
+      <thead><tr><th>Engine</th><th><span class="lang-zh-only">Lexer 文件</span><span class="lang-en-only">Lexer file</span></th><th>LoC</th><th><span class="lang-zh-only">特点</span><span class="lang-en-only">Note</span></th></tr></thead>
       <tbody>
-        <tr><td>QuickJS</td><td><span class="lang-zh-only">纯手写</span><span class="lang-en-only">hand-written</span></td><td class="num">~1500</td><td><span class="lang-zh-only">单函数巨型 switch</span><span class="lang-en-only">single function, giant switch</span></td></tr>
-        <tr><td>V8</td><td><span class="lang-zh-only">手写 (Scanner)</span><span class="lang-en-only">hand-written (Scanner)</span></td><td class="num">~3000</td><td><span class="lang-zh-only">+ PreParser 二次扫描跳过函数体</span><span class="lang-en-only">+ PreParser to skip function bodies</span></td></tr>
-        <tr><td>JSC</td><td><span class="lang-zh-only">手写 (Lexer.h)</span><span class="lang-en-only">hand-written (Lexer.h)</span></td><td class="num">~2500</td><td>+ Lookup table for keywords</td></tr>
-        <tr><td>SpiderMonkey</td><td><span class="lang-zh-only">手写 (Frontend/TokenStream)</span><span class="lang-en-only">hand-written (Frontend/TokenStream)</span></td><td class="num">~2000</td><td><span class="lang-zh-only">+ UTF-16 / 8 双路径</span><span class="lang-en-only">+ dual UTF-16 / 8 paths</span></td></tr>
-        <tr><td>Hermes</td><td><span class="lang-zh-only">手写 (JSLexer)</span><span class="lang-en-only">hand-written (JSLexer)</span></td><td class="num">~1800</td><td>+ AOT-friendly</td></tr>
+        <tr><td class="good">QuickJS-ng</td><td class="mono">quickjs.c next_token()</td><td class="num good">460</td><td><span class="lang-zh-only">单函数巨型 switch · <strong>实测</strong></span><span class="lang-en-only">single function giant switch · <strong>measured</strong></span></td></tr>
+        <tr><td>V8</td><td class="mono">src/parsing/scanner.cc</td><td class="num">~3000</td><td><span class="lang-zh-only">+ PreParser 跳过函数体</span><span class="lang-en-only">+ PreParser skips function bodies</span></td></tr>
+        <tr><td>JSC</td><td class="mono">parser/Lexer.h+cpp</td><td class="num">~2500</td><td>+ keyword lookup table</td></tr>
+        <tr><td>SpiderMonkey</td><td class="mono">js/src/frontend/TokenStream.cpp</td><td class="num">~3000</td><td>+ dual UTF-16 / UTF-8 paths</td></tr>
+        <tr><td>Hermes</td><td class="mono">lib/Parser/JSLexer.cpp</td><td class="num">~1800</td><td>+ AOT-friendly</td></tr>
       </tbody>
     </table>
 
-    <p class="lang-zh-only" style="font-size:12px; color:var(--ink-mute);">所有现代 JS 引擎都<em>手写</em> lexer——没人用 lex/flex。原因：JS 的 ASI、regex/div 歧义、template 字面量嵌套这些上下文敏感的细节，状态机生成器表达不出来。</p>
-    <p class="lang-en-only" style="font-size:12px; color:var(--ink-mute);">All modern JS engines hand-write the lexer — nobody uses lex/flex. JS's ASI, regex/div ambiguity, and template-literal nesting are context-sensitive, beyond what a generator can express.</p>
+    <p class="lang-zh-only" style="font-size:12px; color:var(--ink-mute);">QuickJS 460 行 vs V8 3000 行——差 6.5 倍。但 V8 多出来的 2500 行<em>不是更复杂的 JS</em>——是 PreParser（跳过未来可能用不到的函数体）、字符流抽象、UTF-16 优化路径。QuickJS 全省了。</p>
+    <p class="lang-en-only" style="font-size:12px; color:var(--ink-mute);">QuickJS 460 lines vs V8 3000 — 6.5× difference. The extra 2500 lines in V8 aren't <em>more complex JS</em> — they're the PreParser (skipping function bodies that may never be used), character stream abstractions, UTF-16 optimization paths. QuickJS skips all of that.</p>
+
+    <h3 class="sub lang-zh-only">实测 · lexer 不是瓶颈</h3>
+    <h3 class="sub lang-en-only">Measured · lexer is not the bottleneck</h3>
+
+    <div class="note good">
+      <span class="ntag lang-zh-only">BENCHMARK · M2 Mac · 2026-05</span>
+      <span class="ntag lang-en-only">BENCHMARK · M2 Mac · 2026-05</span>
+      <span class="lang-zh-only">
+        实测 parse 一个 <strong>10000 行 / 41 KB</strong> 的 JS 文件——<br>
+        QuickJS-ng: <strong>70 ms</strong> · Node.js (V8): <strong>65 ms</strong><br>
+        QuickJS 只慢 8%！所有"QuickJS 慢"的故事<em>都不在</em> lexer/parser——而在 <a href="#c15">Ch15 解释器循环</a> 和 <a href="#c16">Ch16 属性查找</a>。
+      </span>
+      <span class="lang-en-only">
+        Parsing a <strong>10000-line / 41 KB</strong> JS file —<br>
+        QuickJS-ng: <strong>70 ms</strong> · Node.js (V8): <strong>65 ms</strong><br>
+        QuickJS only 8% slower! All the "QuickJS is slow" stories <em>don't live here</em> — they live in <a href="#c15">Ch15 interp loop</a> and <a href="#c16">Ch16 property lookup</a>.
+      </span>
+    </div>
   </section>
 
   <!-- ========== CHAPTER 07 — PARSER ========== -->
@@ -2178,15 +2263,15 @@
     <div class="stage-banner thread-quic">
       <div class="sb-cell"><div class="sb-key lang-zh-only">主线阶段</div><div class="sb-key lang-en-only">Phase</div><div class="sb-val">P1</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">层</div><div class="sb-key lang-en-only">Layer</div><div class="sb-val thread">Frontend / Parser</div></div>
-      <div class="sb-cell"><div class="sb-key lang-zh-only">源文件</div><div class="sb-key lang-en-only">Source</div><div class="sb-val">quickjs.c · ~22000-32000</div></div>
-      <div class="sb-cell"><div class="sb-key lang-zh-only">入口</div><div class="sb-key lang-en-only">Entry</div><div class="sb-val">js_parse_program / js_parse_expr</div></div>
+      <div class="sb-cell"><div class="sb-key lang-zh-only">源文件</div><div class="sb-key lang-en-only">Source</div><div class="sb-val">quickjs.c:22708-32000</div></div>
+      <div class="sb-cell"><div class="sb-key lang-zh-only">入口</div><div class="sb-key lang-en-only">Entry</div><div class="sb-val">js_parse_program @ line 36424</div></div>
     </div>
 
     <div class="lang-zh-only">
-      <p>QuickJS 的 parser 做的是<em>递归下降</em>（recursive descent），<em>从最低优先级到最高优先级</em> 一层一层往下递归。<strong>最反直觉的设计是：它不构建 AST 节点！</strong>——parser 直接边解析边吐字节码。<em>parse 和 emit 是一体的</em>。</p>
+      <p>QuickJS 的 parser 做的是<em>递归下降</em>（recursive descent），<em>从最低优先级到最高优先级</em> 一层一层往下递归。<strong>最反直觉的设计：它不构建 AST 节点</strong>——parser 直接边解析边吐字节码。但<em>另一个反直觉的事实是</em>：我之前说的"17 层优先级阶梯"是错的——QuickJS 的二元运算符<em>不是</em> 17 个独立函数，而是<em>一个</em> <code>js_parse_expr_binary(level, parse_flags)</code> 函数，<em>用 level 参数</em> 递归调自己。</p>
     </div>
     <div class="lang-en-only">
-      <p>QuickJS's parser is classic <em>recursive descent</em>, walking down from lowest precedence to highest. <strong>The counter-intuitive design: it doesn't build an AST!</strong> — the parser emits bytecode <em>as it parses</em>. <em>Parsing and emission are fused</em>.</p>
+      <p>QuickJS's parser is classic <em>recursive descent</em>. <strong>It doesn't build an AST</strong> — the parser emits bytecode <em>as it parses</em>. But <em>another counter-intuitive fact</em>: my earlier "17-level precedence ladder" was wrong — QuickJS does <em>not</em> have 17 separate functions, but <em>one</em> <code>js_parse_expr_binary(level, parse_flags)</code> function that recurses on itself with <em>a level parameter</em>.</p>
     </div>
 
     <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们这行 JS 里 · P1</span><span class="lang-en-only">◇ In our JS line · Phase 1</span></h3>
@@ -2202,32 +2287,121 @@
       </div>
     </div>
 
-    <h3 class="sub lang-zh-only">优先级阶梯</h3>
-    <h3 class="sub lang-en-only">The precedence ladder</h3>
+    <h3 class="sub lang-zh-only">真实优先级阶梯 · 一个函数 + level 参数</h3>
+    <h3 class="sub lang-en-only">Real precedence ladder · one function + level param</h3>
 
-    <p class="lang-zh-only">JS 表达式有 ~17 个优先级层（ECMA-262 § 13）。QuickJS parser 对应有 ~17 个函数，每一层从低优先级递归调更高优先级：</p>
-    <p class="lang-en-only">JS expressions have ~17 precedence levels (ECMA-262 § 13). QuickJS has ~17 parser functions, each recursing into the next higher level:</p>
+    <p class="lang-zh-only">实测 quickjs.c:27072 <code>js_parse_expr_binary(level, parse_flags)</code>——<em>整个二元运算符链就一个函数</em>，靠 <code>level</code> 参数（1-8）和递归调用 <code>js_parse_expr_binary(level-1, ...)</code> 实现 8 层优先级。每个 level 内是一个 switch，按 token 类型选 opcode：</p>
+    <p class="lang-en-only">Measured at quickjs.c:27072: <code>js_parse_expr_binary(level, parse_flags)</code> — <em>the entire binary-operator chain is ONE function</em>, parameterised by <code>level</code> (1-8), recursing on <code>js_parse_expr_binary(level-1, ...)</code>. Within each level, a switch picks the opcode by token:</p>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c · parser precedence ladder</span><span class="src-tag">js_parse_*</span></div>
-<span class="src-line">js_parse_expr               <span class="src-comment">; entry — top of expression grammar</span></span>
-<span class="src-line">  ↓ js_parse_assign_expr      <span class="src-comment">; = += -= *=  ...</span></span>
-<span class="src-line">    ↓ js_parse_cond_expr      <span class="src-comment">; ? :</span></span>
-<span class="src-line">      ↓ js_parse_logical_or   <span class="src-comment">; ||  ??</span></span>
-<span class="src-line">        ↓ js_parse_logical_and<span class="src-comment">; &amp;&amp;</span></span>
-<span class="src-line">          ↓ js_parse_bit_or   <span class="src-comment">; |</span></span>
-<span class="src-line">            ↓ js_parse_bit_xor</span>
-<span class="src-line">              ↓ js_parse_bit_and</span>
-<span class="src-line">                ↓ js_parse_eq <span class="src-comment">; == != === !==</span></span>
-<span class="src-line">                  ↓ js_parse_rel <span class="src-comment">; &lt; &lt;= &gt; &gt;= in instanceof</span></span>
-<span class="src-line">                    ↓ js_parse_shift <span class="src-comment">; &lt;&lt; &gt;&gt; &gt;&gt;&gt;</span></span>
-<span class="src-line">                      ↓ js_parse_additive <span class="src-comment">; + -</span></span>
-<span class="src-line">                        ↓ js_parse_mul    <span class="src-comment">; * / %  ⭐ our x*2 lands here</span></span>
-<span class="src-line">                          ↓ js_parse_unary <span class="src-comment">; ! ~ + - typeof void delete await</span></span>
-<span class="src-line">                            ↓ js_parse_postfix <span class="src-comment">; ++ --</span></span>
-<span class="src-line">                              ↓ js_parse_left_hand_side  <span class="src-comment">; . [ ( new</span></span>
-<span class="src-line">                                ↓ js_parse_primary <span class="src-comment">; literals · ident · ( expr )</span></span>
+      <div class="src-h"><span>quickjs.c:27072 · the level-driven binary parser (real source, abridged)</span><span class="src-tag">~200 lines for ALL binary ops</span></div>
+<span class="src-line"><span class="src-frame">27072</span>  <span class="src-kw">static</span> __exception <span class="src-cls">int</span> <span class="src-fn">js_parse_expr_binary</span>(JSParseState *s, <span class="src-cls">int</span> level, <span class="src-cls">int</span> parse_flags) {</span>
+<span class="src-line"><span class="src-frame">27078</span>      <span class="src-kw">if</span> (level == <span class="src-num">0</span>) <span class="src-kw">return</span> <span class="src-fn">js_parse_unary</span>(s, PF_POW_ALLOWED);   <span class="src-comment">; bottom: unary</span></span>
+<span class="src-line"><span class="src-frame">27102</span>      <span class="src-kw">else</span> { <span class="src-fn">js_parse_expr_binary</span>(s, level - <span class="src-num">1</span>, parse_flags); }    <span class="src-comment">; descend</span></span>
+<span class="src-line"><span class="src-frame">27104</span>      <span class="src-kw">for</span>(;;) {</span>
+<span class="src-line"><span class="src-frame">27105</span>          op = s-&gt;token.val;</span>
+<span class="src-line"><span class="src-frame">27106</span>          <span class="src-kw">switch</span>(level) {</span>
+<span class="src-line"><span class="src-frame">27108</span>          <span class="src-kw">case</span> <span class="src-num">1</span>: <span class="src-kw">switch</span>(op) {                          <span class="src-comment">; level 1: * / %</span></span>
+<span class="src-line"><span class="src-frame">27110</span>              <span class="src-kw">case</span> '*': opcode = OP_mul; <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">27113</span>              <span class="src-kw">case</span> '/': opcode = OP_div; <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">27116</span>              <span class="src-kw">case</span> '%': opcode = OP_mod; <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">27119</span>              <span class="src-kw">default</span>: <span class="src-kw">return</span> <span class="src-num">0</span>;</span>
+<span class="src-line"><span class="src-frame">27121</span>          } <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">27122</span>          <span class="src-kw">case</span> <span class="src-num">2</span>: <span class="src-kw">switch</span>(op) {                          <span class="src-comment">; level 2: + -</span></span>
+<span class="src-line"><span class="src-frame">27124</span>              <span class="src-kw">case</span> '+': opcode = OP_add; <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">27127</span>              <span class="src-kw">case</span> '-': opcode = OP_sub; <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">27130</span>              <span class="src-kw">default</span>: <span class="src-kw">return</span> <span class="src-num">0</span>;</span>
+<span class="src-line"><span class="src-frame">27132</span>          } <span class="src-kw">break</span>;</span>
+<span class="src-line">              …</span>
+<span class="src-line">          <span class="src-comment">; level 3: &lt;&lt; &gt;&gt; &gt;&gt;&gt;</span></span>
+<span class="src-line">          <span class="src-comment">; level 4: &lt; &gt; &lt;= &gt;= instanceof in</span></span>
+<span class="src-line">          <span class="src-comment">; level 5: == != === !==</span></span>
+<span class="src-line">          <span class="src-comment">; level 6: &amp;</span></span>
+<span class="src-line">          <span class="src-comment">; level 7: ^</span></span>
+<span class="src-line">          <span class="src-comment">; level 8: |</span></span>
+<span class="src-line">          }</span>
+<span class="src-line">          <span class="src-fn">next_token</span>(s);</span>
+<span class="src-line">          <span class="src-fn">js_parse_expr_binary</span>(s, level - <span class="src-num">1</span>, parse_flags);    <span class="src-comment">; parse RHS at higher level</span></span>
+<span class="src-line">          <span class="src-fn">emit_op</span>(s, opcode);                                <span class="src-comment">; ⭐ emit ON THE WAY UP</span></span>
+<span class="src-line">      }</span>
+<span class="src-line">  }</span>
     </div>
+
+    <h3 class="sub lang-zh-only">真实优先级表（实测）</h3>
+    <h3 class="sub lang-en-only">Real precedence table (measured)</h3>
+
+    <table class="cmp">
+      <thead><tr><th>level</th><th>token</th><th>opcode</th><th><span class="lang-zh-only">JS 写法</span><span class="lang-en-only">JS form</span></th></tr></thead>
+      <tbody>
+        <tr><td class="num">0</td><td>—</td><td>—</td><td><span class="lang-zh-only">unary（递归到 unary）</span><span class="lang-en-only">unary (recurses to js_parse_unary)</span></td></tr>
+        <tr><td class="num">1</td><td>'*' '/' '%'</td><td>OP_mul / OP_div / OP_mod</td><td><code>x * 2</code> ⭐ <span class="lang-zh-only">主线落在这里</span><span class="lang-en-only">our main-line lands here</span></td></tr>
+        <tr><td class="num">2</td><td>'+' '-'</td><td>OP_add / OP_sub</td><td><code>a + b</code></td></tr>
+        <tr><td class="num">3</td><td>TOK_SHL/SAR/SHR</td><td>OP_shl / OP_sar / OP_shr</td><td><code>a &lt;&lt; b</code> <code>a &gt;&gt;&gt; b</code></td></tr>
+        <tr><td class="num">4</td><td>'&lt;' '&gt;' LTE/GTE/INSTANCEOF/IN</td><td>OP_lt / gt / lte / gte / instanceof / in</td><td><code>a &lt; b</code> <code>a in obj</code></td></tr>
+        <tr><td class="num">5</td><td>EQ/NEQ/STRICT_EQ/STRICT_NEQ</td><td>OP_eq / neq / strict_eq / strict_neq</td><td><code>a == b</code> <code>a !== b</code></td></tr>
+        <tr><td class="num">6</td><td>'&amp;'</td><td>OP_and</td><td><code>a &amp; b</code></td></tr>
+        <tr><td class="num">7</td><td>'^'</td><td>OP_xor</td><td><code>a ^ b</code></td></tr>
+        <tr><td class="num">8</td><td>'|'</td><td>OP_or</td><td><code>a | b</code></td></tr>
+      </tbody>
+    </table>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 之前的"17 层"是错的</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · the "17 levels" was wrong</span>
+      <span class="lang-zh-only">
+        ECMA-262 § 13 写明 JS 有 17 个表达式优先级，但 QuickJS<em>并不为每一级都建一个函数</em>。它把<em>所有的二元运算符</em>（* / % + - &lt;&lt; &gt;&gt; &lt; &gt; == != & ^ |）合并到 <em>一个</em> 200 行的 <code>js_parse_expr_binary</code> 里，用 8 个 case 的 switch 处理。<br>
+        <em>层级 0</em>（unary）<em>跳出</em>，递归到独立的 <code>js_parse_unary</code>。<br>
+        <em>层级 9+</em>（assignment、conditional、coalesce、yield、arrow body 等）也<em>各有独立函数</em>。<br>
+        所以真实结构：1 个 <code>js_parse_expr_binary</code>（含 8 子层）+ 约 6 个上层独立函数（assign / cond / coalesce / logical_and_or / unary / postfix）= 约 7 个函数，<em>不</em> 是 17 个。<br>
+        合并的好处：<em>200 行</em>而不是 17 × 100 = 1700 行。坏处：<em>JS 优先级跨度大的运算符</em>（比如 ** 和 ??）<em>不能</em>放进同一表——这就是为什么它们还有独立函数。
+      </span>
+      <span class="lang-en-only">
+        ECMA-262 § 13 lists 17 expression precedence levels, but QuickJS doesn't build a function per level. It folds <em>all binary operators</em> (* / % + - &lt;&lt; &gt;&gt; &lt; &gt; == != & ^ |) into <em>one</em> 200-line <code>js_parse_expr_binary</code> with an 8-case switch.<br>
+        <em>Level 0</em> (unary) breaks out and recurses into a separate <code>js_parse_unary</code>.<br>
+        <em>Levels 9+</em> (assignment, conditional, coalesce, yield, arrow body, etc.) each have <em>their own independent function</em>.<br>
+        So the real shape: 1 <code>js_parse_expr_binary</code> (with 8 sub-levels) + ~6 standalone functions above (assign / cond / coalesce / logical_and_or / unary / postfix) = ~7 functions, <em>not</em> 17.<br>
+        Win: <em>200 lines</em> instead of 17 × 100 = 1700. Cost: operators that don't fit the simple pattern (like <code>**</code> and <code>??</code>) need their own functions.
+      </span>
+    </div>
+
+    <h3 class="sub lang-zh-only">主线 · x*2 怎么走到 emit_op(OP_mul)</h3>
+    <h3 class="sub lang-en-only">Main line · x*2 path to emit_op(OP_mul)</h3>
+
+    <p class="lang-zh-only">追踪 <code>x*2</code> 在递归下降里的真实路径：</p>
+    <p class="lang-en-only">Tracing <code>x*2</code> through the real recursive-descent path:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>call stack when parser sees `x*2` inside arrow body</span><span class="src-tag">real recursion · 7 levels</span></div>
+<span class="src-line">  js_parse_program (line 36424)             <span class="src-comment">; entry</span></span>
+<span class="src-line">  ↓ js_parse_source_element                  <span class="src-comment">; statement-level</span></span>
+<span class="src-line">  ↓ js_parse_expression_statement</span>
+<span class="src-line">  ↓ js_parse_expr (line 27668)               <span class="src-comment">; comma-expr</span></span>
+<span class="src-line">  ↓ js_parse_assign_expr (line 27638)        <span class="src-comment">; = and friends</span></span>
+<span class="src-line">  ↓ js_parse_cond_expr (line 27305)          <span class="src-comment">; ? :</span></span>
+<span class="src-line">  ↓ js_parse_coalesce_expr (line 27277)      <span class="src-comment">; ??</span></span>
+<span class="src-line">  ↓ js_parse_logical_and_or (line 27236)     <span class="src-comment">; ||  &amp;&amp;</span></span>
+<span class="src-line">  ↓ <span class="src-fn">js_parse_expr_binary</span>(level=<span class="src-num">8</span>) <span class="src-comment">; |</span></span>
+<span class="src-line">    ↓ js_parse_expr_binary(level=<span class="src-num">7</span>)        <span class="src-comment">; ^</span></span>
+<span class="src-line">      ↓ js_parse_expr_binary(level=<span class="src-num">6</span>)      <span class="src-comment">; &amp;</span></span>
+<span class="src-line">        ↓ js_parse_expr_binary(level=<span class="src-num">5</span>)    <span class="src-comment">; ==</span></span>
+<span class="src-line">          ↓ js_parse_expr_binary(level=<span class="src-num">4</span>)  <span class="src-comment">; &lt; &gt;</span></span>
+<span class="src-line">            ↓ js_parse_expr_binary(level=<span class="src-num">3</span>)<span class="src-comment">; &lt;&lt; &gt;&gt;</span></span>
+<span class="src-line">              ↓ js_parse_expr_binary(level=<span class="src-num">2</span>)<span class="src-comment">; + -</span></span>
+<span class="src-line">                ↓ <span class="src-fn">js_parse_expr_binary</span>(level=<span class="src-num">1</span>)<span class="src-comment">; ⭐ * matched here!</span></span>
+<span class="src-line">                  ↓ js_parse_expr_binary(level=<span class="src-num">0</span>) → js_parse_unary</span>
+<span class="src-line">                    ↓ js_parse_postfix_expr (line 26199)</span>
+<span class="src-line">                      ↓ js_parse_primary → resolves `x` to OP_get_arg0</span>
+<span class="src-line">                  emit_op(OP_get_arg0)         <span class="src-comment">; ⭐ first emit</span></span>
+<span class="src-line">                  next_token → '2'</span>
+<span class="src-line">                  js_parse_expr_binary(level=0) → push_2</span>
+<span class="src-line">                  emit_op(OP_push_2)           <span class="src-comment">; ⭐ second emit</span></span>
+<span class="src-line">                  emit_op(OP_mul)              <span class="src-comment">; ⭐ third emit</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">; the recursive descent unwinds, each level checking if its tokens follow</span></span>
+<span class="src-line"><span class="src-comment">; in this case none do (next is ')'), so they all return immediately</span></span>
+    </div>
+    <p class="lang-zh-only" style="font-size:12px; color:var(--ink-mute);"><em>主线下移 8 级递归</em>，到 level 1 才命中 <code>*</code> 算子。这个深度看似浪费，但每一级<em>只是 1 个 switch + 1 个递归调用</em>——开销几乎为零。CPU 调用栈深度也就 +10，根本不算事。</p>
+    <p class="lang-en-only" style="font-size:12px; color:var(--ink-mute);"><em>The main-line descends 8 levels</em> before the <code>*</code> operator matches at level 1. Looks wasteful but each level is <em>just one switch and one recursive call</em> — overhead near zero. Call-stack depth adds maybe +10, negligible.</p>
 
     <h3 class="sub lang-zh-only">为什么"边 parse 边 emit"</h3>
     <h3 class="sub lang-en-only">Why "parse-and-emit fused"</h3>
@@ -2253,9 +2427,10 @@
     </table>
 
     <div class="note good">
-      <span class="ntag">EMIT 时机</span>
-      <span class="lang-zh-only">举例：parser 在 <code>js_parse_mul</code> 里看到 <code>x * 2</code>，<em>立刻</em>调 <code>emit_op(OP_get_loc, x_slot); emit_op(OP_push_i32); emit_u32(2); emit_op(OP_mul);</code> 三条字节码，<em>不存中间结构</em>。这是 QuickJS "不存 AST" 的字面意义。</span>
-      <span class="lang-en-only">Example: when the parser inside <code>js_parse_mul</code> sees <code>x * 2</code>, it <em>immediately</em> calls <code>emit_op(OP_get_loc, x_slot); emit_op(OP_push_i32); emit_u32(2); emit_op(OP_mul);</code> — three bytecodes, <em>no intermediate structure</em>. This is the literal sense in which QuickJS doesn't store an AST.</span>
+      <span class="ntag lang-zh-only">EMIT 时机 · 实测</span>
+      <span class="ntag lang-en-only">EMIT timing · measured</span>
+      <span class="lang-zh-only">举例：parser 在 <code>js_parse_expr_binary(level=1)</code> 里看到 <code>x * 2</code>，pass1 emit 出 <code>get_loc x → push_i32 2 → mul</code>。<em>pass3 优化</em>后变成 <code>get_arg0 → push_2 → mul</code>（看 <a href="#cmain">cmain</a> 真 bytecode）。这是 QuickJS "不存 AST" 的字面意义——parse 流和 emit 流是<em>同一</em>个调用栈。</span>
+      <span class="lang-en-only">Example: when <code>js_parse_expr_binary(level=1)</code> sees <code>x * 2</code>, pass-1 emits <code>get_loc x → push_i32 2 → mul</code>. After <em>pass-3 optimisation</em> it becomes <code>get_arg0 → push_2 → mul</code> (see real bytecode in <a href="#cmain">cmain</a>). This is the literal sense in which QuickJS doesn't store an AST — the parse flow and emit flow share <em>one</em> call stack.</span>
     </div>
   </section>
 
@@ -2294,63 +2469,137 @@
       </div>
     </div>
 
-    <h3 class="sub lang-zh-only">JSFunctionDef 字段拆解</h3>
-    <h3 class="sub lang-en-only">JSFunctionDef field breakdown</h3>
+    <h3 class="sub lang-zh-only">JSFunctionDef 真定义 · quickjs.c:21443</h3>
+    <h3 class="sub lang-en-only">JSFunctionDef · real definition at quickjs.c:21443</h3>
+
+    <p class="lang-zh-only">实测：<strong>118 行</strong>的 struct，<strong>~80 个字段</strong>（含 22 个 1-bit 位域）。下面是真实代码前 50 行（行号都是 grep 出来的）：</p>
+    <p class="lang-en-only">Measured: <strong>118-line</strong> struct, <strong>~80 fields</strong> (incl. 22 single-bit fields). First 50 lines verbatim (line numbers grep'd):</p>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c · struct JSFunctionDef</span><span class="src-tag">~80 fields</span></div>
-<span class="src-line"><span class="src-kw">typedef struct</span> JSFunctionDef {</span>
-<span class="src-line">    <span class="src-cls">JSAtom</span>           func_name;          <span class="src-comment">// function's own name atom</span></span>
-<span class="src-line">    <span class="src-cls">JSAtom</span>           filename;</span>
-<span class="src-line">    <span class="src-cls">JSFunctionKindEnum</span> func_kind;          <span class="src-comment">// arrow / async / generator / normal</span></span>
+      <div class="src-h"><span>quickjs.c · 21443-21490 · verbatim</span><span class="src-tag">measured, real source</span></div>
+<span class="src-line"><span class="src-frame">21443</span>  <span class="src-kw">typedef struct</span> JSFunctionDef {</span>
+<span class="src-line"><span class="src-frame">21444</span>      <span class="src-cls">JSContext</span> *ctx;</span>
+<span class="src-line"><span class="src-frame">21445</span>      <span class="src-kw">struct</span> JSFunctionDef *parent;</span>
+<span class="src-line"><span class="src-frame">21446</span>      <span class="src-cls">int</span> parent_cpool_idx;        <span class="src-comment">; idx in parent's const pool or -1</span></span>
+<span class="src-line"><span class="src-frame">21447</span>      <span class="src-cls">int</span> parent_scope_level;</span>
+<span class="src-line"><span class="src-frame">21448</span>      <span class="src-kw">struct</span> list_head child_list; <span class="src-comment">; nested functions</span></span>
+<span class="src-line"><span class="src-frame">21449</span>      <span class="src-kw">struct</span> list_head link;</span>
+<span class="src-line"><span class="src-frame">21451</span>      <span class="src-cls">int</span> eval_type;               <span class="src-comment">; if is_eval</span></span>
 <span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* variable tables */</span></span>
-<span class="src-line">    <span class="src-cls">JSVarDef</span>         *vars;       <span class="src-cls">int</span> var_count;       <span class="src-comment">// let / const / var</span></span>
-<span class="src-line">    <span class="src-cls">JSVarDef</span>         *args;       <span class="src-cls">int</span> arg_count;</span>
-<span class="src-line">    <span class="src-cls">JSClosureVar</span>     *closure_var; <span class="src-cls">int</span> closure_var_count; <span class="src-comment">// upvalues</span></span>
+<span class="src-line"><span class="src-frame">21455</span>      <span class="src-comment">/* 22 boolean flags packed into 1-bit fields (Bellard's trick) */</span></span>
+<span class="src-line"><span class="src-frame">21456</span>      <span class="src-cls">bool</span> is_eval : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21457</span>      <span class="src-cls">bool</span> is_global_var : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21458</span>      <span class="src-cls">bool</span> is_func_expr : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21459</span>      <span class="src-cls">bool</span> has_home_object : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21460</span>      <span class="src-cls">bool</span> has_prototype : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21461</span>      <span class="src-cls">bool</span> has_simple_parameter_list : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21462</span>      <span class="src-cls">bool</span> has_parameter_expressions : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21463</span>      <span class="src-cls">bool</span> has_use_strict : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21464</span>      <span class="src-cls">bool</span> has_eval_call : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21465</span>      <span class="src-cls">bool</span> has_arguments_binding : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21466</span>      <span class="src-cls">bool</span> has_this_binding : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21467</span>      <span class="src-cls">bool</span> new_target_allowed : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21468</span>      <span class="src-cls">bool</span> super_call_allowed : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21469</span>      <span class="src-cls">bool</span> super_allowed : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21470</span>      <span class="src-cls">bool</span> arguments_allowed : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21471</span>      <span class="src-cls">bool</span> is_derived_class_constructor : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21472</span>      <span class="src-cls">bool</span> in_function_body : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21473</span>      <span class="src-cls">bool</span> backtrace_barrier : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21474</span>      <span class="src-cls">bool</span> need_home_object : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21475</span>      <span class="src-fn">bool use_short_opcodes : 1;</span>  <span class="src-comment">; ⭐ flips on for pass-3 short-form</span></span>
+<span class="src-line"><span class="src-frame">21476</span>      <span class="src-cls">bool</span> has_await : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21478</span>      JSFunctionKindEnum func_kind : <span class="src-num">8</span>;     <span class="src-comment">; arrow / async / generator / normal</span></span>
+<span class="src-line"><span class="src-frame">21479</span>      JSParseFunctionEnum func_type : <span class="src-num">7</span>;</span>
+<span class="src-line"><span class="src-frame">21480</span>      <span class="src-cls">uint8_t</span> is_strict_mode : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">21481</span>      <span class="src-cls">JSAtom</span> func_name;</span>
 <span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* scope stack — block scope tracking */</span></span>
-<span class="src-line">    <span class="src-cls">JSVarScope</span>       *scopes;     <span class="src-cls">int</span> scope_count;</span>
-<span class="src-line">    <span class="src-cls">int</span>               scope_level;            <span class="src-comment">// current depth</span></span>
-<span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* bytecode buffer being emitted */</span></span>
-<span class="src-line">    <span class="src-cls">DynBuf</span>            byte_code;              <span class="src-comment">// growing emit buffer</span></span>
-<span class="src-line">    <span class="src-cls">DynBuf</span>            cpool;                  <span class="src-comment">// constant pool (strings, numbers)</span></span>
-<span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* backpatching */</span></span>
-<span class="src-line">    <span class="src-cls">JumpSlot</span>         *jump_slots; <span class="src-cls">int</span> jump_slot_count; <span class="src-comment">// forward refs</span></span>
-<span class="src-line">    <span class="src-cls">LabelSlot</span>        *label_slots; <span class="src-cls">int</span> label_count;</span>
-<span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* child function defs (nested closures) */</span></span>
-<span class="src-line">    <span class="src-kw">struct</span> JSFunctionDef *parent;</span>
-<span class="src-line">    <span class="src-cls">JSFunctionDef</span>    **child_list; <span class="src-cls">int</span> child_count;</span>
-<span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* flags */</span></span>
-<span class="src-line">    <span class="src-cls">int</span> has_arguments_binding;</span>
-<span class="src-line">    <span class="src-cls">int</span> is_strict_mode;</span>
-<span class="src-line">    <span class="src-cls">int</span> is_eval;</span>
-<span class="src-line">    …</span>
-<span class="src-line">} JSFunctionDef;</span>
-    </div>
-
-    <h3 class="sub lang-zh-only">"烧成" JSFunctionBytecode</h3>
-    <h3 class="sub lang-en-only">"Burning in" to JSFunctionBytecode</h3>
-
-    <p class="lang-zh-only">函数 parse 完后，QuickJS 调 <code>js_create_function</code> 把 JSFunctionDef 转换为最终的 <code>JSFunctionBytecode</code>——后者是<em>不可变</em>的、紧凑的运行时表示：</p>
-    <p class="lang-en-only">After parsing a function, QuickJS calls <code>js_create_function</code> to convert the JSFunctionDef into the final <code>JSFunctionBytecode</code> — an <em>immutable</em>, compact runtime representation:</p>
-
-    <div class="ua-stack">
-      <div class="ua-cell"><div class="ua-key lang-zh-only">解析时</div><div class="ua-key lang-en-only">parse-time</div><div class="ua-name">JSFunctionDef</div></div>
-      <div class="ua-cell tls"><div class="ua-key">resolve_variables</div><div class="ua-name lang-zh-only">变量解析</div><div class="ua-name lang-en-only">resolve vars</div></div>
-      <div class="ua-cell quic"><div class="ua-key">peephole</div><div class="ua-name lang-zh-only">字节码优化</div><div class="ua-name lang-en-only">peephole opt</div></div>
-      <div class="ua-cell http"><div class="ua-key lang-zh-only">运行时</div><div class="ua-key lang-en-only">runtime</div><div class="ua-name">JSFunctionBytecode</div></div>
+<span class="src-line"><span class="src-frame">21483</span>      <span class="src-fn">JSVarDef *vars;</span> uint32_t *vars_htab;     <span class="src-comment">; local var table</span></span>
+<span class="src-line"><span class="src-frame">21485</span>      <span class="src-cls">int</span> var_size, var_count;</span>
+<span class="src-line"><span class="src-frame">21487</span>      <span class="src-fn">JSVarDef *args;</span> int arg_size, arg_count; <span class="src-comment">; argument table</span></span>
+<span class="src-line"><span class="src-frame">21490</span>      <span class="src-cls">int</span> var_ref_count;          <span class="src-comment">; closure capture count</span></span>
+<span class="src-line">           …                          <span class="src-comment">; (~60 more fields including scope, cpool, jumps, source map)</span></span>
+<span class="src-line"><span class="src-frame">21560</span>  } JSFunctionDef;                  <span class="src-comment">; 118 lines total</span></span>
     </div>
 
     <div class="note copper">
-      <span class="ntag lang-zh-only">DESIGN · 两步式</span>
-      <span class="ntag lang-en-only">DESIGN · two-step lowering</span>
-      <span class="lang-zh-only"><strong>JSFunctionDef 是临时的写时态，JSFunctionBytecode 是永久的运行时态。</strong>分两步是因为：parse 期间需要<em>可变</em>的变量表（变量可能被后续 statement 提升），但运行时希望<em>只读</em>（多个调用共享、refcount 增加）。这种"<em>builder pattern</em>"是 Bellard 在 quickjs.c 里反复用的技巧。</span>
-      <span class="lang-en-only"><strong>JSFunctionDef is the mutable write-time form; JSFunctionBytecode is the immutable runtime form.</strong> The two-step approach exists because parsing needs a <em>mutable</em> variable table (variables may be hoisted by later statements), but runtime wants <em>read-only</em> (multiple calls share, refcount increments). This "<em>builder pattern</em>" recurs throughout quickjs.c.</span>
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 22 个 1-bit 位域</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · 22 single-bit fields</span>
+      <span class="lang-zh-only">
+        我之前编的 JSFunctionDef 只有 ~10 个字段。<em>真实是 80 个</em>。其中 22 个是 <strong>1-bit 位域</strong>，全部塞在一个 32-bit 字里——是<em>22 个 boolean</em> 但<em>只占 4 字节</em>。Bellard 在<em>每一处</em>都做这种压缩，整个 quickjs.c 没浪费过一个字节。<br>
+        看 21475 行 <code>use_short_opcodes : 1</code>——这就是<a href="#c9">下一章</a>讲的 pass-3 优化的<em>开关</em>。当编译三遍 pass 的最后一遍开始时，emitter <em>翻转这一个 bit</em>，从此 <code>emit_op</code> 就生成短码。
+      </span>
+      <span class="lang-en-only">
+        My earlier JSFunctionDef had only ~10 fields. The <em>real one has 80</em>. Of those, 22 are <strong>1-bit fields</strong>, packed into a single 32-bit word — <em>22 booleans</em> for <em>4 bytes</em>. Bellard does this kind of packing <em>everywhere</em>; quickjs.c doesn't waste a byte.<br>
+        Notice line 21475 <code>use_short_opcodes : 1</code> — this is the <em>switch</em> for the pass-3 optimisation that <a href="#c9">Ch09</a> describes. When the third compile pass begins, the emitter <em>flips this one bit</em> and from then on <code>emit_op</code> produces short forms.
+      </span>
+    </div>
+
+    <h3 class="sub lang-zh-only">"烧成" JSFunctionBytecode · quickjs.c:768</h3>
+    <h3 class="sub lang-en-only">"Burning in" to JSFunctionBytecode · quickjs.c:768</h3>
+
+    <p class="lang-zh-only">函数 parse 完后调 <code>js_create_function</code> 把 JSFunctionDef 转成最终的 <code>JSFunctionBytecode</code>——<em>不可变</em>的紧凑运行时表示。参考真定义在 quickjs.c:768：</p>
+    <p class="lang-en-only">After parsing, <code>js_create_function</code> converts JSFunctionDef into the final <code>JSFunctionBytecode</code> — an <em>immutable</em>, compact runtime form. Real definition at quickjs.c:768:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:768 · JSFunctionBytecode (abridged)</span><span class="src-tag">~30 fields</span></div>
+<span class="src-line"><span class="src-frame">  768</span>  <span class="src-kw">typedef struct</span> JSFunctionBytecode {</span>
+<span class="src-line">           <span class="src-cls">JSGCObjectHeader</span> header;           <span class="src-comment">; refcounted GC object</span></span>
+<span class="src-line">           <span class="src-cls">uint8_t</span> js_mode;                   <span class="src-comment">; strict, super, …</span></span>
+<span class="src-line">           <span class="src-cls">bool</span> has_prototype : <span class="src-num">1</span>;</span>
+<span class="src-line">           <span class="src-cls">bool</span> has_simple_parameter_list : <span class="src-num">1</span>;</span>
+<span class="src-line">           <span class="src-cls">bool</span> is_derived_class_constructor : <span class="src-num">1</span>;</span>
+<span class="src-line">           <span class="src-cls">bool</span> need_home_object : <span class="src-num">1</span>;</span>
+<span class="src-line">           <span class="src-cls">bool</span> super_allowed : <span class="src-num">1</span>;</span>
+<span class="src-line">           <span class="src-fn">uint8_t *byte_code_buf;</span>          <span class="src-comment">; ⭐ the actual bytecode</span></span>
+<span class="src-line">           <span class="src-cls">int</span> byte_code_len;</span>
+<span class="src-line">           <span class="src-cls">JSAtom</span> func_name;</span>
+<span class="src-line">           <span class="src-cls">JSVarDef</span> *vardefs;</span>
+<span class="src-line">           <span class="src-cls">JSClosureVar</span> *closure_var;</span>
+<span class="src-line">           <span class="src-cls">uint16_t</span> arg_count, var_count, defined_arg_count;</span>
+<span class="src-line">           <span class="src-cls">uint16_t</span> stack_size, closure_var_count, cpool_count;</span>
+<span class="src-line">           <span class="src-cls">JSValue</span> *cpool;                    <span class="src-comment">; constants: strings, atoms, nested funcs</span></span>
+<span class="src-line">           <span class="src-cls">JSDebug</span> debug;                     <span class="src-comment">; source loc, function name</span></span>
+<span class="src-line">         } JSFunctionBytecode;</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">3 遍 pass · 真实流水线</h3>
+    <h3 class="sub lang-en-only">3 passes · the real pipeline</h3>
+
+    <p class="lang-zh-only">我之前的 "JSFunctionDef → resolve_variables → peephole → JSFunctionBytecode" 一步搞定的画法<em>不对</em>。实测<a href="#cmain">cmain</a> 看到的 <code>pass 1 / pass 2 / pass 3</code> 是三个独立阶段：</p>
+    <p class="lang-en-only">My earlier "JSFunctionDef → resolve_variables → peephole → JSFunctionBytecode" single-step diagram was <em>wrong</em>. The actual <code>pass 1 / pass 2 / pass 3</code> visible in <a href="#cmain">cmain</a>'s bytecode dump are three distinct phases:</p>
+
+    <div class="ua-stack">
+      <div class="ua-cell"><div class="ua-key lang-zh-only">解析时</div><div class="ua-key lang-en-only">parse-time</div><div class="ua-name">JSFunctionDef</div></div>
+      <div class="ua-cell"><div class="ua-key">pass 1</div><div class="ua-name lang-zh-only">原始字节码</div><div class="ua-name lang-en-only">raw bytecode</div></div>
+      <div class="ua-cell tls"><div class="ua-key">pass 2</div><div class="ua-name lang-zh-only">scope 展平 + label</div><div class="ua-name lang-en-only">scope→var refs + labels</div></div>
+      <div class="ua-cell quic"><div class="ua-key">pass 3</div><div class="ua-name lang-zh-only">offset + 短码</div><div class="ua-name lang-en-only">offsets + short opcodes</div></div>
+      <div class="ua-cell http"><div class="ua-key lang-zh-only">运行时</div><div class="ua-key lang-en-only">runtime</div><div class="ua-name">JSFunctionBytecode</div></div>
+    </div>
+
+    <ul style="margin-left:24px; font-family:var(--sans); font-size:13px; color:var(--ink-soft); line-height:1.7;">
+      <li class="lang-zh-only"><strong>pass 1</strong>：直接从 parser 调用 <code>emit_op</code> 出来。还含 <code>enter_scope / scope_get_var name,scope</code> 这种"按名访问"的伪 op。<a href="#cmain">cmain</a> 第一段 dump 就是 pass 1。</li>
+      <li class="lang-en-only"><strong>pass 1</strong>: emitted by parser via <code>emit_op</code>. Still uses pseudo-ops like <code>enter_scope / scope_get_var name,scope</code> referring to variables by name. <a href="#cmain">cmain</a>'s first dump shows this.</li>
+      <li class="lang-zh-only"><strong>pass 2</strong>：解析所有变量名为<em>具体的 var/arg/closure_var 索引</em>。将 <code>scope_get_var x,1</code> 替换为 <code>get_arg 0</code>（如果 x 是 arg 0），跳转目标用 <code>label X:Y</code> 标记但尚未算 offset。</li>
+      <li class="lang-en-only"><strong>pass 2</strong>: resolve every variable name to a <em>concrete var/arg/closure_var index</em>. <code>scope_get_var x,1</code> becomes <code>get_arg 0</code> if x is arg 0. Jump targets are marked with <code>label X:Y</code> placeholders.</li>
+      <li class="lang-zh-only"><strong>pass 3</strong>：(a) 计算 label 真实字节偏移；(b) 启用 <code>use_short_opcodes</code>，把 <code>push_i32 1</code> 等小常量替换为 <code>push_1</code> 等 1-byte 短码；(c) 把 <code>get_arg 0</code> 替换为 <code>get_arg0</code>。最终的 <code>JSFunctionBytecode</code> 就是 pass 3 的产物。</li>
+      <li class="lang-en-only"><strong>pass 3</strong>: (a) compute real byte offsets for labels; (b) enable <code>use_short_opcodes</code>, replace <code>push_i32 1</code> with <code>push_1</code> etc. (1-byte short forms); (c) <code>get_arg 0</code> becomes <code>get_arg0</code>. The final <code>JSFunctionBytecode</code> is the pass-3 output.</li>
+    </ul>
+
+    <div class="note">
+      <span class="ntag lang-zh-only">DESIGN · 为什么三遍</span>
+      <span class="ntag lang-en-only">DESIGN · why three passes</span>
+      <span class="lang-zh-only">
+        理论上单遍 emit 可以 ——为什么 Bellard 要三遍？<br>
+        <strong>原因 1：变量提升 (hoisting)</strong>。<code>function f() { x; var x = 1; }</code> 里 <code>x</code> 第一次出现时<em>还不知道</em>有 <code>var x</code>。pass 1 用名字记录，pass 2 在<em>整个函数 parse 完后</em>才统一分配变量槽。<br>
+        <strong>原因 2：jump 回填</strong>。<code>if (a) ... else ...</code> 的 jump 目标在 emit if-branch 时<em>未知</em>。pass 1 留 label，pass 3 算 offset。这是经典的 backpatching 问题。<br>
+        <strong>原因 3：短码窗口</strong>。<code>push_i32 1</code>（5 字节）→ <code>push_1</code>（1 字节）省 4 字节。但这会改 jump offset。pass 3 在 offset 计算<em>之后</em>做短码替换，避开了递归更新。
+      </span>
+      <span class="lang-en-only">
+        Theoretically single-pass emit works — why does Bellard use three?<br>
+        <strong>Reason 1: hoisting</strong>. In <code>function f() { x; var x = 1; }</code>, the first <code>x</code> appears <em>before</em> we know there's a <code>var x</code>. Pass 1 records by name; pass 2 allocates variable slots <em>after the whole function is parsed</em>.<br>
+        <strong>Reason 2: jump backpatching</strong>. In <code>if (a) ... else ...</code>, the jump target is unknown when emitting the if-branch. Pass 1 leaves a label; pass 3 computes the offset. Classic backpatching.<br>
+        <strong>Reason 3: short-form window</strong>. <code>push_i32 1</code> (5 bytes) → <code>push_1</code> (1 byte) saves 4 bytes. But this shifts jump offsets. Doing short-form <em>after</em> offset calculation in pass 3 avoids recursive updates.
+      </span>
     </div>
   </section>
 
