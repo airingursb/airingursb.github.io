@@ -1618,8 +1618,8 @@
         <div class="mc-tag lang-zh-only">痛 2 · 冷启动慢</div>
         <div class="mc-tag lang-en-only">PAIN 2 · cold start</div>
         <h6><span class="lang-zh-only">JIT 预热 30-50 ms</span><span class="lang-en-only">JIT warm-up 30-50 ms</span></h6>
-        <p class="lang-zh-only">V8 启动一个新 isolate 要 30-50 ms（加载 snapshot、初始化 GC、起 JIT 线程）。如果是 FaaS / 边缘计算每个请求一个 isolate，<em>每次都付这 30 ms</em>。QuickJS 启动 &lt; 1 ms。这就是 Cloudflare Workers 早期考虑 QuickJS 的原因。</p>
-        <p class="lang-en-only">V8's new isolate takes 30-50 ms to start up (snapshot load, GC init, JIT thread). On FaaS / edge per-request isolates, you pay <em>that 30 ms every time</em>. QuickJS starts in &lt; 1 ms — which is why Cloudflare Workers explored QuickJS early on.</p>
+        <p class="lang-zh-only">V8 启动一个新 isolate 要 30-50 ms（加载 snapshot、初始化 GC、起 JIT 线程）。如果是 FaaS / 边缘计算每个请求一个 isolate，<em>每次都付这 30 ms</em>。QuickJS 启动 &lt; 1 ms——所以社区里反复出现"用 QuickJS 替代 V8 做边缘计算"的尝试（实际上 Cloudflare 最终走的是 V8 isolate snapshot 复用，不是切换引擎）。</p>
+        <p class="lang-en-only">V8's new isolate takes 30-50 ms to start up (snapshot load, GC init, JIT thread). On FaaS / edge per-request isolates, you pay <em>that 30 ms every time</em>. QuickJS starts in &lt; 1 ms — which is why "use QuickJS for edge computing" keeps surfacing as a community experiment (Cloudflare's actual answer was V8 isolate snapshot reuse, not a different engine).</p>
       </div>
       <div class="mismatch-card gpu">
         <div class="mc-tag lang-zh-only">痛 3 · 内存大</div>
@@ -1855,7 +1855,7 @@
         <g transform="translate(512, 26)">
           <rect width="150" height="44" fill="rgba(184,68,46,0.18)" stroke="#b8442e"/>
           <text x="75" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#b8442e">Ch09 · Bytecode</text>
-          <text x="75" y="34" font-size="8" text-anchor="middle" fill="#767c87">X-macro × 9 · 246 ops</text>
+          <text x="75" y="34" font-size="8" text-anchor="middle" fill="#767c87">X-macro × 5 · 246 ops</text>
         </g>
       </g>
 
@@ -2883,25 +2883,37 @@
     <p class="lang-en-only">After parsing, <code>js_create_function</code> converts JSFunctionDef into the final <code>JSFunctionBytecode</code> — an <em>immutable</em>, compact runtime form. Real definition at quickjs.c:768:</p>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c:768 · JSFunctionBytecode (abridged)</span><span class="src-tag">~30 fields</span></div>
+      <div class="src-h"><span>quickjs.c:768 · JSFunctionBytecode (verbatim, 35 lines)</span><span class="src-tag">25 fields</span></div>
 <span class="src-line"><span class="src-frame">  768</span>  <span class="src-kw">typedef struct</span> JSFunctionBytecode {</span>
-<span class="src-line">           <span class="src-cls">JSGCObjectHeader</span> header;           <span class="src-comment">; refcounted GC object</span></span>
-<span class="src-line">           <span class="src-cls">uint8_t</span> js_mode;                   <span class="src-comment">; strict, super, …</span></span>
-<span class="src-line">           <span class="src-cls">bool</span> has_prototype : <span class="src-num">1</span>;</span>
-<span class="src-line">           <span class="src-cls">bool</span> has_simple_parameter_list : <span class="src-num">1</span>;</span>
-<span class="src-line">           <span class="src-cls">bool</span> is_derived_class_constructor : <span class="src-num">1</span>;</span>
-<span class="src-line">           <span class="src-cls">bool</span> need_home_object : <span class="src-num">1</span>;</span>
-<span class="src-line">           <span class="src-cls">bool</span> super_allowed : <span class="src-num">1</span>;</span>
-<span class="src-line">           <span class="src-fn">uint8_t *byte_code_buf;</span>          <span class="src-comment">; ⭐ the actual bytecode</span></span>
-<span class="src-line">           <span class="src-cls">int</span> byte_code_len;</span>
-<span class="src-line">           <span class="src-cls">JSAtom</span> func_name;</span>
-<span class="src-line">           <span class="src-cls">JSVarDef</span> *vardefs;</span>
-<span class="src-line">           <span class="src-cls">JSClosureVar</span> *closure_var;</span>
-<span class="src-line">           <span class="src-cls">uint16_t</span> arg_count, var_count, defined_arg_count;</span>
-<span class="src-line">           <span class="src-cls">uint16_t</span> stack_size, closure_var_count, cpool_count;</span>
-<span class="src-line">           <span class="src-cls">JSValue</span> *cpool;                    <span class="src-comment">; constants: strings, atoms, nested funcs</span></span>
-<span class="src-line">           <span class="src-cls">JSDebug</span> debug;                     <span class="src-comment">; source loc, function name</span></span>
-<span class="src-line">         } JSFunctionBytecode;</span>
+<span class="src-line"><span class="src-frame">  769</span>      <span class="src-cls">JSGCObjectHeader</span> header;                          <span class="src-comment">/* must come first */</span></span>
+<span class="src-line"><span class="src-frame">  770</span>      <span class="src-cls">uint8_t</span> is_strict_mode : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">  771</span>      <span class="src-cls">uint8_t</span> has_prototype : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">  772</span>      <span class="src-cls">uint8_t</span> has_simple_parameter_list : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">  773</span>      <span class="src-cls">uint8_t</span> is_derived_class_constructor : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">  775</span>      <span class="src-cls">uint8_t</span> need_home_object : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">  776</span>      <span class="src-cls">uint8_t</span> func_kind : <span class="src-num">2</span>;                            <span class="src-comment">/* normal/gen/async/async-gen */</span></span>
+<span class="src-line"><span class="src-frame">  777</span>      <span class="src-cls">uint8_t</span> new_target_allowed : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">  778</span>      <span class="src-cls">uint8_t</span> super_call_allowed : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">  779</span>      <span class="src-cls">uint8_t</span> super_allowed : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">  780</span>      <span class="src-cls">uint8_t</span> arguments_allowed : <span class="src-num">1</span>;</span>
+<span class="src-line"><span class="src-frame">  781</span>      <span class="src-cls">uint8_t</span> backtrace_barrier : <span class="src-num">1</span>;                    <span class="src-comment">/* stop backtrace here */</span></span>
+<span class="src-line"><span class="src-frame">  783</span>      <span class="src-fn">uint8_t *byte_code_buf;</span>                            <span class="src-comment">/* ⭐ the actual bytecode */</span></span>
+<span class="src-line"><span class="src-frame">  784</span>      <span class="src-cls">int</span> byte_code_len;</span>
+<span class="src-line"><span class="src-frame">  785</span>      <span class="src-cls">JSAtom</span> func_name;</span>
+<span class="src-line"><span class="src-frame">  786</span>      <span class="src-cls">JSVarDef</span> *vardefs;                                 <span class="src-comment">/* args + locals */</span></span>
+<span class="src-line"><span class="src-frame">  787</span>      <span class="src-cls">JSClosureVar</span> *closure_var;</span>
+<span class="src-line"><span class="src-frame">  788</span>      <span class="src-cls">uint16_t</span> arg_count, var_count, defined_arg_count;</span>
+<span class="src-line"><span class="src-frame">  791</span>      <span class="src-cls">uint16_t</span> stack_size;                               <span class="src-comment">/* max sp depth */</span></span>
+<span class="src-line"><span class="src-frame">  792</span>      <span class="src-cls">uint16_t</span> var_ref_count, closure_var_count;</span>
+<span class="src-line"><span class="src-frame">  794</span>      <span class="src-cls">int</span> cpool_count;</span>
+<span class="src-line"><span class="src-frame">  795</span>      <span class="src-cls">JSContext</span> *realm;                                 <span class="src-comment">/* function realm */</span></span>
+<span class="src-line"><span class="src-frame">  796</span>      <span class="src-cls">JSValue</span> *cpool;                                    <span class="src-comment">/* string/atom/nested-func constants */</span></span>
+<span class="src-line"><span class="src-frame">  797</span>      <span class="src-cls">JSAtom</span> filename;</span>
+<span class="src-line"><span class="src-frame">  798</span>      <span class="src-cls">int</span> line_num, col_num, source_len;</span>
+<span class="src-line"><span class="src-frame">  801</span>      <span class="src-cls">int</span> pc2line_len;</span>
+<span class="src-line"><span class="src-frame">  802</span>      <span class="src-cls">uint8_t</span> *pc2line_buf;                              <span class="src-comment">/* bytecode → source-line map */</span></span>
+<span class="src-line"><span class="src-frame">  803</span>      <span class="src-cls">char</span> *source;</span>
+<span class="src-line"><span class="src-frame">  804</span>  } JSFunctionBytecode;</span>
     </div>
 
     <h3 class="sub lang-zh-only">3 遍 pass · 真实流水线</h3>
@@ -3169,8 +3181,8 @@
 <span class="src-line"><span class="src-fn">FMT</span>(label_u16)</span>
     </div>
 
-    <h3 class="sub lang-zh-only">9 处展开 · X-macro 的实际放射</h3>
-    <h3 class="sub lang-en-only">9 expansions · the actual X-macro fan-out</h3>
+    <h3 class="sub lang-zh-only">5 处直接展开 · X-macro 的实际放射</h3>
+    <h3 class="sub lang-en-only">5 direct expansions · the actual X-macro fan-out</h3>
 
     <figure class="figure-block" style="margin: 24px 0;">
     <svg viewBox="0 0 880 460" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="background: #faf7f1; border: 1px solid #e6dfd0; border-radius: 4px; font-family: var(--mono);">
@@ -3180,7 +3192,7 @@
         </marker>
       </defs>
 
-      <text x="440" y="24" font-size="12" font-weight="700" text-anchor="middle" fill="#2c3441">quickjs-opcode.h · 9 #include sites, 9 expansions</text>
+      <text x="440" y="24" font-size="12" font-weight="700" text-anchor="middle" fill="#2c3441">quickjs-opcode.h · 5 #include sites in quickjs.c, 5 direct compile-time expansions</text>
       <text x="440" y="40" font-size="10" text-anchor="middle" fill="#767c87">one source-of-truth · DEF(name, size, n_pop, n_push, fmt) × 246 rows · FMT(type) × 30 rows</text>
 
       <!-- center source file -->
@@ -3195,81 +3207,91 @@
         <text x="100" y="108" font-size="9" text-anchor="middle" fill="#2c3441">pure declarative table</text>
       </g>
 
-      <!-- 9 consumers, arranged in a 3x3 grid -->
-      <g transform="translate(20, 220)">
-        <rect width="180" height="60" fill="rgba(31,92,140,0.12)" stroke="#1f5c8c"/>
-        <text x="90" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">1 · OPCodeEnum</text>
-        <text x="90" y="34" font-size="9" text-anchor="middle" fill="#2c3441">#define DEF(id,...) OP_##id,</text>
-        <text x="90" y="48" font-size="9" text-anchor="middle" fill="#767c87">→ enum { OP_push_i32, ... }</text>
+      <!-- 5 actual #include consumers -->
+      <g transform="translate(40, 220)">
+        <rect width="160" height="78" fill="rgba(31,92,140,0.12)" stroke="#1f5c8c"/>
+        <text x="80" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">1 · OP_FMT_* enum</text>
+        <text x="80" y="34" font-size="9" text-anchor="middle" fill="#767c87">quickjs.c:1150</text>
+        <text x="80" y="50" font-size="8" text-anchor="middle" fill="#2c3441">#define FMT(f) OP_FMT_##f,</text>
+        <text x="80" y="64" font-size="8" text-anchor="middle" fill="#767c87">→ format-type enum</text>
       </g>
-      <g transform="translate(220, 220)">
-        <rect width="180" height="60" fill="rgba(31,92,140,0.12)" stroke="#1f5c8c"/>
-        <text x="90" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">2 · dispatch_table[]</text>
-        <text x="90" y="34" font-size="9" text-anchor="middle" fill="#2c3441">DEF(id,...) &amp;&amp; case_OP_##id,</text>
-        <text x="90" y="48" font-size="9" text-anchor="middle" fill="#767c87">→ computed goto labels (Ch15)</text>
+      <g transform="translate(212, 220)">
+        <rect width="160" height="78" fill="rgba(31,92,140,0.12)" stroke="#1f5c8c"/>
+        <text x="80" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">2 · OPCodeEnum</text>
+        <text x="80" y="34" font-size="9" text-anchor="middle" fill="#767c87">quickjs.c:1159</text>
+        <text x="80" y="50" font-size="8" text-anchor="middle" fill="#2c3441">#define DEF(id,...) OP_##id,</text>
+        <text x="80" y="64" font-size="8" text-anchor="middle" fill="#767c87">→ enum {OP_push_i32, ...}</text>
       </g>
-      <g transform="translate(420, 220)">
-        <rect width="180" height="60" fill="rgba(31,92,140,0.12)" stroke="#1f5c8c"/>
-        <text x="90" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">3 · opcode_info[]</text>
-        <text x="90" y="34" font-size="9" text-anchor="middle" fill="#2c3441">{size,n_pop,n_push,fmt,name}</text>
-        <text x="90" y="48" font-size="9" text-anchor="middle" fill="#767c87">→ metadata for verifier+dump</text>
+      <g transform="translate(384, 220)">
+        <rect width="160" height="78" fill="rgba(31,92,140,0.12)" stroke="#1f5c8c"/>
+        <text x="80" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">3 · short-op enum</text>
+        <text x="80" y="34" font-size="9" text-anchor="middle" fill="#767c87">quickjs.c:1170</text>
+        <text x="80" y="50" font-size="8" text-anchor="middle" fill="#2c3441">#define def(id,...) OP_##id,</text>
+        <text x="80" y="64" font-size="8" text-anchor="middle" fill="#767c87">→ short-form variants</text>
       </g>
-      <g transform="translate(620, 220)">
-        <rect width="180" height="60" fill="rgba(31,92,140,0.12)" stroke="#1f5c8c"/>
-        <text x="90" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">4 · short-name table</text>
-        <text x="90" y="34" font-size="9" text-anchor="middle" fill="#2c3441">DEF(id,...) #id,</text>
-        <text x="90" y="48" font-size="9" text-anchor="middle" fill="#767c87">→ for qjs -d disassembler</text>
+      <g transform="translate(556, 220)">
+        <rect width="160" height="78" fill="rgba(32,123,58,0.12)" stroke="#207b3a"/>
+        <text x="80" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#207b3a">4 · dispatch_table[]</text>
+        <text x="80" y="34" font-size="9" text-anchor="middle" fill="#767c87">quickjs.c:17497</text>
+        <text x="80" y="50" font-size="8" text-anchor="middle" fill="#2c3441">DEF(id,...) &amp;&amp;case_OP_##id,</text>
+        <text x="80" y="64" font-size="8" text-anchor="middle" fill="#767c87">→ computed goto (Ch15)</text>
       </g>
-
-      <g transform="translate(20, 290)">
-        <rect width="180" height="60" fill="rgba(32,123,58,0.12)" stroke="#207b3a"/>
-        <text x="90" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#207b3a">5 · stack-effect check</text>
-        <text x="90" y="34" font-size="9" text-anchor="middle" fill="#2c3441">verify n_pop / n_push</text>
-        <text x="90" y="48" font-size="9" text-anchor="middle" fill="#767c87">→ resolve_variables pass</text>
-      </g>
-      <g transform="translate(220, 290)">
-        <rect width="180" height="60" fill="rgba(32,123,58,0.12)" stroke="#207b3a"/>
-        <text x="90" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#207b3a">6 · emit_op helpers</text>
-        <text x="90" y="34" font-size="9" text-anchor="middle" fill="#2c3441">case OP_x: ... emit fmt</text>
-        <text x="90" y="48" font-size="9" text-anchor="middle" fill="#767c87">→ used by parser (Ch07)</text>
-      </g>
-      <g transform="translate(420, 290)">
-        <rect width="180" height="60" fill="rgba(32,123,58,0.12)" stroke="#207b3a"/>
-        <text x="90" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#207b3a">7 · peephole optimiser</text>
-        <text x="90" y="34" font-size="9" text-anchor="middle" fill="#2c3441">match patterns, fold</text>
-        <text x="90" y="48" font-size="9" text-anchor="middle" fill="#767c87">→ short-form rewrite</text>
-      </g>
-      <g transform="translate(620, 290)">
-        <rect width="180" height="60" fill="rgba(32,123,58,0.12)" stroke="#207b3a"/>
-        <text x="90" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#207b3a">8 · bytecode serialiser</text>
-        <text x="90" y="34" font-size="9" text-anchor="middle" fill="#2c3441">JS_WriteFunctionBytecode</text>
-        <text x="90" y="48" font-size="9" text-anchor="middle" fill="#767c87">→ -c flag · qjsc</text>
+      <g transform="translate(728, 220)">
+        <rect width="120" height="78" fill="rgba(168,122,31,0.18)" stroke="#a87a1f"/>
+        <text x="60" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#a87a1f">5 · opcode_info[]</text>
+        <text x="60" y="34" font-size="9" text-anchor="middle" fill="#767c87">quickjs.c:21628</text>
+        <text x="60" y="50" font-size="8" text-anchor="middle" fill="#2c3441">{size,n_pop,n_push,fmt}</text>
+        <text x="60" y="64" font-size="8" text-anchor="middle" fill="#767c87">→ metadata table</text>
       </g>
 
-      <g transform="translate(320, 360)">
-        <rect width="240" height="60" fill="rgba(168,122,31,0.12)" stroke="#a87a1f"/>
-        <text x="120" y="18" font-size="10" font-weight="700" text-anchor="middle" fill="#a87a1f">9 · disassembler dump</text>
-        <text x="120" y="34" font-size="9" text-anchor="middle" fill="#2c3441">JS_DumpBytecode / qjs -d</text>
-        <text x="120" y="48" font-size="9" text-anchor="middle" fill="#767c87">→ how we got the 22-byte trace</text>
-      </g>
+      <!-- arrows fanning out from center to the 5 consumers -->
+      <line x1="370" y1="180" x2="120" y2="220" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
+      <line x1="400" y1="180" x2="292" y2="220" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
+      <line x1="440" y1="180" x2="464" y2="220" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
+      <line x1="480" y1="180" x2="636" y2="220" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
+      <line x1="510" y1="180" x2="788" y2="220" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
 
-      <!-- arrows fanning out from center -->
-      <line x1="380" y1="180" x2="110" y2="220" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
-      <line x1="400" y1="180" x2="310" y2="220" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
-      <line x1="440" y1="180" x2="510" y2="220" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
-      <line x1="500" y1="180" x2="710" y2="220" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
-      <line x1="370" y1="180" x2="110" y2="290" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
-      <line x1="410" y1="180" x2="310" y2="290" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
-      <line x1="430" y1="180" x2="510" y2="290" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
-      <line x1="470" y1="180" x2="710" y2="290" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
-      <line x1="440" y1="180" x2="440" y2="360" stroke="#2c3441" stroke-width="1" opacity="0.5" marker-end="url(#arr-xm)"/>
+      <!-- Downstream consumers row -->
+      <text x="440" y="320" font-size="10" font-weight="700" text-anchor="middle" fill="#767c87">downstream readers of these 5 tables (no #include of opcode.h needed)</text>
+
+      <g transform="translate(20, 332)">
+        <rect width="130" height="40" fill="rgba(32,123,58,0.06)" stroke="#207b3a" stroke-dasharray="2 2"/>
+        <text x="65" y="16" font-size="9" font-weight="700" text-anchor="middle" fill="#207b3a">emit_op helpers</text>
+        <text x="65" y="30" font-size="8" text-anchor="middle" fill="#767c87">parser uses OPCodeEnum</text>
+      </g>
+      <g transform="translate(160, 332)">
+        <rect width="130" height="40" fill="rgba(32,123,58,0.06)" stroke="#207b3a" stroke-dasharray="2 2"/>
+        <text x="65" y="16" font-size="9" font-weight="700" text-anchor="middle" fill="#207b3a">stack-effect verify</text>
+        <text x="65" y="30" font-size="8" text-anchor="middle" fill="#767c87">reads opcode_info</text>
+      </g>
+      <g transform="translate(300, 332)">
+        <rect width="130" height="40" fill="rgba(32,123,58,0.06)" stroke="#207b3a" stroke-dasharray="2 2"/>
+        <text x="65" y="16" font-size="9" font-weight="700" text-anchor="middle" fill="#207b3a">peephole/short-form</text>
+        <text x="65" y="30" font-size="8" text-anchor="middle" fill="#767c87">switch on OPCodeEnum</text>
+      </g>
+      <g transform="translate(440, 332)">
+        <rect width="130" height="40" fill="rgba(32,123,58,0.06)" stroke="#207b3a" stroke-dasharray="2 2"/>
+        <text x="65" y="16" font-size="9" font-weight="700" text-anchor="middle" fill="#207b3a">JS_DumpBytecode</text>
+        <text x="65" y="30" font-size="8" text-anchor="middle" fill="#767c87">reads opcode_info.fmt</text>
+      </g>
+      <g transform="translate(580, 332)">
+        <rect width="130" height="40" fill="rgba(32,123,58,0.06)" stroke="#207b3a" stroke-dasharray="2 2"/>
+        <text x="65" y="16" font-size="9" font-weight="700" text-anchor="middle" fill="#207b3a">JS_WriteFunctionBC</text>
+        <text x="65" y="30" font-size="8" text-anchor="middle" fill="#767c87">qjsc serialiser</text>
+      </g>
+      <g transform="translate(720, 332)">
+        <rect width="130" height="40" fill="rgba(32,123,58,0.06)" stroke="#207b3a" stroke-dasharray="2 2"/>
+        <text x="65" y="16" font-size="9" font-weight="700" text-anchor="middle" fill="#207b3a">resolve_variables</text>
+        <text x="65" y="30" font-size="8" text-anchor="middle" fill="#767c87">pass 2 of Ch08</text>
+      </g>
 
       <!-- summary -->
-      <text x="440" y="442" font-size="10" font-weight="700" text-anchor="middle" fill="#2c3441">Change one DEF line → all 9 consumers stay in sync. Zero possibility of dispatch table drift from enum.</text>
+      <text x="440" y="392" font-size="10" font-weight="700" text-anchor="middle" fill="#2c3441">Change one DEF line → 5 expansions regenerate → all downstream tables stay in sync.</text>
+      <text x="440" y="406" font-size="9" font-style="italic" text-anchor="middle" fill="#767c87">No way for dispatch_table to drift from OPCodeEnum, since both come from the same DEF line.</text>
     </svg>
     <figcaption style="text-align: center; font-size: 12px; color: var(--ink-mute); margin-top: 8px;">
-      <span class="lang-zh-only">一份 246 行的 DEF 表 · 9 处 #include 各自重定义 DEF 宏 · 编译期生成 9 个不可能不一致的下游表</span>
-      <span class="lang-en-only">One 246-row DEF table · 9 #include sites each redefine the DEF macro · 9 downstream tables that <em>cannot</em> drift apart</span>
+      <span class="lang-zh-only">一份 246 行的 DEF 表 · 5 处 #include 各自重定义 DEF 宏 · 编译期生成 5 个表 · 其余消费者读这 5 个表</span>
+      <span class="lang-en-only">One 246-row DEF table · 5 #include sites each redefine the DEF macro · 5 compile-time tables · downstream consumers read those tables</span>
     </figcaption>
     </figure>
 
@@ -3279,12 +3301,12 @@
       <span class="lang-zh-only">
         <strong>真实 opcode 数</strong>：246（<code>grep -cE "^DEF\(" quickjs-opcode.h → 246</code>），不是 "~250"。准确数字。<br>
         <strong>真实 fmt 数</strong>：30 种（不是我之前模糊讲的"4 类"）——很多是<em>短码变体</em>对应的格式（label8 / label16 区分 1 vs 2 字节跳转 offset；loc / loc8 区分用 var index 还是隐含短码 0..3）。<br>
-        <strong>X-macro 被 include 几次</strong>：实测 <code>grep -c "quickjs-opcode.h" quickjs.c → 9</code> 次。我之前说"6 处"，实际<em>9 处</em>——每处 <code>#define DEF/FMT</code> 不同的展开（enum 名字、dispatch_table、opcode_info、stack effect 检查、debug 名字、emit helpers、disassembler、peephole 优化、字节码序列化器）。
+        <strong>X-macro 被 include 几次</strong>：实测 <code>grep -c '^#include "quickjs-opcode.h"' quickjs.c → 5</code> 次（行 1150 / 1159 / 1170 / 17497 / 21628）。我之前说"9 处"是错的。这 5 处生成 5 个表（FMT enum / OPCodeEnum / 短码 enum / dispatch_table / opcode_info[]），其余的下游消费者（emit helpers、disassembler、peephole、serialiser）<em>不直接 include</em> opcode.h，而是读这 5 个表。
       </span>
       <span class="lang-en-only">
         <strong>Real opcode count</strong>: 246 (<code>grep -cE "^DEF\(" quickjs-opcode.h → 246</code>), not "~250". Exact.<br>
         <strong>Real fmt count</strong>: 30 types (not the vague "4 categories" I had) — many are <em>short-form variants</em> (label8 / label16 distinguish 1-byte vs 2-byte jump offsets; loc / loc8 distinguish var-index vs implicit short forms 0..3).<br>
-        <strong>X-macro #include count</strong>: <code>grep -c "quickjs-opcode.h" quickjs.c → 9</code>. I said "6", real is <em>9</em> — each with different <code>#define DEF/FMT</code> to produce: enum names, dispatch_table, opcode_info, stack-effect checker, debug names, emit helpers, disassembler, peephole optimiser, bytecode serialiser.
+        <strong>X-macro #include count</strong>: <code>grep -c '^#include "quickjs-opcode.h"' quickjs.c → 5</code> (lines 1150 / 1159 / 1170 / 17497 / 21628). My earlier "9" claim was wrong. Those 5 sites produce 5 tables (FMT enum / OPCodeEnum / short-op enum / dispatch_table / opcode_info[]); other downstream consumers (emit helpers, disassembler, peephole, serialiser) don't <code>#include</code> the file — they read these 5 tables.
       </span>
     </div>
 
@@ -3342,31 +3364,31 @@
     </div>
 
     <h3 class="sub lang-zh-only">真实 JS_TAG_* 枚举 · quickjs.h:160</h3>
-    <h3 class="sub lang-en-only">Real JS_TAG_* enum · quickjs.h:160</h3>
+    <h3 class="sub lang-en-only">Real JS_TAG_* enum · quickjs.h:161</h3>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.h · 160-181 verbatim</span><span class="src-tag">measured 2026-05</span></div>
-<span class="src-line"><span class="src-frame">160</span>  <span class="src-kw">enum</span> {</span>
-<span class="src-line"><span class="src-frame">161</span>      <span class="src-comment">/* all tags with a reference count are negative */</span></span>
-<span class="src-line"><span class="src-frame">162</span>      JS_TAG_FIRST       = <span class="src-num">-9</span>,  <span class="src-comment">/* first negative tag */</span></span>
-<span class="src-line"><span class="src-frame">163</span>      JS_TAG_BIG_INT     = <span class="src-num">-9</span>,</span>
-<span class="src-line"><span class="src-frame">164</span>      JS_TAG_SYMBOL      = <span class="src-num">-8</span>,</span>
-<span class="src-line"><span class="src-frame">165</span>      JS_TAG_STRING      = <span class="src-num">-7</span>,</span>
-<span class="src-line"><span class="src-frame">166</span>      <span class="src-fn">JS_TAG_STRING_ROPE = -6</span>,  <span class="src-comment">; ⭐ new in ng · string concat lazy buffer</span></span>
-<span class="src-line"><span class="src-frame">167</span>      JS_TAG_MODULE      = <span class="src-num">-3</span>,  <span class="src-comment">/* used internally */</span></span>
-<span class="src-line"><span class="src-frame">168</span>      JS_TAG_FUNCTION_BYTECODE = <span class="src-num">-2</span>,</span>
-<span class="src-line"><span class="src-frame">169</span>      JS_TAG_OBJECT      = <span class="src-num">-1</span>,</span>
-<span class="src-line"><span class="src-frame">170</span> </span>
-<span class="src-line"><span class="src-frame">171</span>      JS_TAG_INT         = <span class="src-num">0</span>,</span>
-<span class="src-line"><span class="src-frame">172</span>      JS_TAG_BOOL        = <span class="src-num">1</span>,</span>
-<span class="src-line"><span class="src-frame">173</span>      JS_TAG_NULL        = <span class="src-num">2</span>,</span>
-<span class="src-line"><span class="src-frame">174</span>      JS_TAG_UNDEFINED   = <span class="src-num">3</span>,</span>
-<span class="src-line"><span class="src-frame">175</span>      JS_TAG_UNINITIALIZED = <span class="src-num">4</span>,    <span class="src-comment">/* TDZ marker */</span></span>
-<span class="src-line"><span class="src-frame">176</span>      JS_TAG_CATCH_OFFSET = <span class="src-num">5</span>,</span>
-<span class="src-line"><span class="src-frame">177</span>      JS_TAG_EXCEPTION   = <span class="src-num">6</span>,</span>
-<span class="src-line"><span class="src-frame">178</span>      <span class="src-fn">JS_TAG_SHORT_BIG_INT = 7</span>,  <span class="src-comment">; ⭐ new in ng · small BigInt inline (no heap)</span></span>
-<span class="src-line"><span class="src-frame">179</span>      JS_TAG_FLOAT64     = <span class="src-num">8</span>,    <span class="src-comment">/* any larger is FLOAT64 with NaN boxing */</span></span>
-<span class="src-line"><span class="src-frame">180</span>  };</span>
+      <div class="src-h"><span>quickjs.h · 161-181 verbatim</span><span class="src-tag">measured 2026-05</span></div>
+<span class="src-line"><span class="src-frame">161</span>  <span class="src-kw">enum</span> {</span>
+<span class="src-line"><span class="src-frame">162</span>      <span class="src-comment">/* all tags with a reference count are negative */</span></span>
+<span class="src-line"><span class="src-frame">163</span>      JS_TAG_FIRST       = <span class="src-num">-9</span>,  <span class="src-comment">/* first negative tag */</span></span>
+<span class="src-line"><span class="src-frame">164</span>      JS_TAG_BIG_INT     = <span class="src-num">-9</span>,</span>
+<span class="src-line"><span class="src-frame">165</span>      JS_TAG_SYMBOL      = <span class="src-num">-8</span>,</span>
+<span class="src-line"><span class="src-frame">166</span>      JS_TAG_STRING      = <span class="src-num">-7</span>,</span>
+<span class="src-line"><span class="src-frame">167</span>      <span class="src-fn">JS_TAG_STRING_ROPE = -6</span>,                          <span class="src-comment">/* ⭐ ng · lazy concat rope */</span></span>
+<span class="src-line"><span class="src-frame">168</span>      JS_TAG_MODULE      = <span class="src-num">-3</span>,  <span class="src-comment">/* used internally */</span></span>
+<span class="src-line"><span class="src-frame">169</span>      JS_TAG_FUNCTION_BYTECODE = <span class="src-num">-2</span>, <span class="src-comment">/* used internally */</span></span>
+<span class="src-line"><span class="src-frame">170</span>      JS_TAG_OBJECT      = <span class="src-num">-1</span>,</span>
+<span class="src-line"><span class="src-frame">171</span> </span>
+<span class="src-line"><span class="src-frame">172</span>      JS_TAG_INT         = <span class="src-num">0</span>,</span>
+<span class="src-line"><span class="src-frame">173</span>      JS_TAG_BOOL        = <span class="src-num">1</span>,</span>
+<span class="src-line"><span class="src-frame">174</span>      JS_TAG_NULL        = <span class="src-num">2</span>,</span>
+<span class="src-line"><span class="src-frame">175</span>      JS_TAG_UNDEFINED   = <span class="src-num">3</span>,</span>
+<span class="src-line"><span class="src-frame">176</span>      JS_TAG_UNINITIALIZED = <span class="src-num">4</span>,</span>
+<span class="src-line"><span class="src-frame">177</span>      JS_TAG_CATCH_OFFSET = <span class="src-num">5</span>,</span>
+<span class="src-line"><span class="src-frame">178</span>      JS_TAG_EXCEPTION   = <span class="src-num">6</span>,</span>
+<span class="src-line"><span class="src-frame">179</span>      <span class="src-fn">JS_TAG_SHORT_BIG_INT = 7</span>,                         <span class="src-comment">/* ⭐ ng · small BigInt inline */</span></span>
+<span class="src-line"><span class="src-frame">180</span>      JS_TAG_FLOAT64     = <span class="src-num">8</span>,    <span class="src-comment">/* any larger tag is FLOAT64 if JS_NAN_BOXING */</span></span>
+<span class="src-line"><span class="src-frame">181</span>  };</span>
     </div>
 
     <div class="note copper">
@@ -3374,7 +3396,7 @@
       <span class="ntag lang-en-only">FIELD&nbsp;NOTE · my earlier tag table was wrong</span>
       <span class="lang-zh-only">
         我之前的 tag 表里 <strong>4 个错误</strong>：<br>
-        <strong>1. JS_TAG_FIRST = -11</strong> 错了——真实是 <strong>-9</strong>（quickjs.h:162）<br>
+        <strong>1. JS_TAG_FIRST = -11</strong> 错了——真实是 <strong>-9</strong>（quickjs.h:163）<br>
         <strong>2. JS_TAG_BIG_INT = -10</strong> 错了——真实是 <strong>-9</strong>（和 FIRST 重合）<br>
         <strong>3. JS_TAG_FLOAT64 = 7</strong> 错了——真实是 <strong>8</strong>，因为<em>新增了</em> JS_TAG_SHORT_BIG_INT = 7<br>
         <strong>4. 漏了 2 个新 tag</strong>：<br>
@@ -3384,7 +3406,7 @@
       </span>
       <span class="lang-en-only">
         My earlier tag table had <strong>4 errors</strong>:<br>
-        <strong>1. JS_TAG_FIRST = -11</strong> wrong — real is <strong>-9</strong> (quickjs.h:162)<br>
+        <strong>1. JS_TAG_FIRST = -11</strong> wrong — real is <strong>-9</strong> (quickjs.h:163)<br>
         <strong>2. JS_TAG_BIG_INT = -10</strong> wrong — real is <strong>-9</strong> (overlaps with FIRST)<br>
         <strong>3. JS_TAG_FLOAT64 = 7</strong> wrong — real is <strong>8</strong>, because <em>a new tag</em> JS_TAG_SHORT_BIG_INT = 7 was inserted<br>
         <strong>4. Missing 2 new tags</strong>:<br>
@@ -3736,7 +3758,7 @@
     <h3 class="sub lang-en-only">JSShape · real definition at quickjs.c:1015</h3>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c · lines 1009–1030 · verbatim</span><span class="src-tag">quickjs-ng main 2026-05</span></div>
+      <div class="src-h"><span>quickjs.c · lines 1009–1030 (annotated)</span><span class="src-tag">⭐ markers added; rest verbatim</span></div>
 <span class="src-line"><span class="src-frame">1009</span>  <span class="src-kw">typedef struct</span> JSShapeProperty {</span>
 <span class="src-line"><span class="src-frame">1010</span>      <span class="src-cls">uint32_t</span> hash_next : <span class="src-num">26</span>;  <span class="src-comment">/* 0 if last in list */</span></span>
 <span class="src-line"><span class="src-frame">1011</span>      <span class="src-cls">uint32_t</span> flags : <span class="src-num">6</span>;       <span class="src-comment">/* JS_PROP_XXX */</span></span>
@@ -3799,7 +3821,7 @@
 <span class="src-line"><span class="src-frame">1045</span>              <span class="src-cls">uint8_t</span> is_uncatchable_error : <span class="src-num">1</span>;</span>
 <span class="src-line"><span class="src-frame">1046</span>              <span class="src-cls">uint8_t</span> tmp_mark : <span class="src-num">1</span>;        <span class="src-comment">/* JS_WriteObjectRec */</span></span>
 <span class="src-line"><span class="src-frame">1047</span>              <span class="src-cls">uint8_t</span> is_HTMLDDA : <span class="src-num">1</span>;      <span class="src-comment">/* Annex B IsHtmlDDA */</span></span>
-<span class="src-line"><span class="src-frame">1048</span>              <span class="src-cls">uint16_t</span> class_id;          <span class="src-comment">; ⭐ uint16, not uint8 — 50+ classes</span></span>
+<span class="src-line"><span class="src-frame">1048</span>              <span class="src-cls">uint16_t</span> class_id;          <span class="src-comment">; ⭐ uint16, not uint8 — 64 predefined (INIT_COUNT = 65)</span></span>
 <span class="src-line"><span class="src-frame">1049</span>          };</span>
 <span class="src-line"><span class="src-frame">1050</span>      };</span>
 <span class="src-line"><span class="src-frame">1051</span>      <span class="src-comment">/* byte offsets: 16/24 */</span></span>
@@ -3964,7 +3986,7 @@
     </div>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c:404 · JSVarRef (verbatim)</span><span class="src-tag">26 lines · header-overlay union</span></div>
+      <div class="src-h"><span>quickjs.c:404 · JSVarRef (verbatim)</span><span class="src-tag">21 lines · header-overlay union</span></div>
 <span class="src-line"><span class="src-frame">   404</span>  <span class="src-kw">typedef struct</span> JSVarRef {</span>
 <span class="src-line"><span class="src-frame">   405</span>      <span class="src-kw">union</span> {</span>
 <span class="src-line"><span class="src-frame">   406</span>          JSGCObjectHeader header;          <span class="src-comment">/* must come first */</span></span>
@@ -4028,22 +4050,25 @@
     </div>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c:17230 · close_var_ref — the six lines that close a closure</span><span class="src-tag">stack → heap, verbatim</span></div>
-<span class="src-line"><span class="src-frame">17230</span>  <span class="src-kw">static void</span> <span class="src-fn">close_var_ref</span>(JSRuntime *rt, JSVarRef *var_ref) {</span>
-<span class="src-line"><span class="src-frame">17231</span>      var_ref-&gt;value  = <span class="src-fn">js_dup</span>(*var_ref-&gt;pvalue);    <span class="src-comment">// copy stack value → owned</span></span>
-<span class="src-line"><span class="src-frame">17232</span>      var_ref-&gt;pvalue = &amp;var_ref-&gt;value;           <span class="src-comment">// redirect pvalue → owned</span></span>
-<span class="src-line"><span class="src-frame">17233</span>      var_ref-&gt;is_detached = <span class="src-kw">true</span>;</span>
-<span class="src-line"><span class="src-frame">17234</span>      <span class="src-fn">add_gc_object</span>(rt, &amp;var_ref-&gt;header, JS_GC_OBJ_TYPE_VAR_REF);</span>
-<span class="src-line"><span class="src-frame">17235</span>  }</span>
+      <div class="src-h"><span>quickjs.c:17230 · close_var_ref — the seven lines that close a closure</span><span class="src-tag">stack → heap</span></div>
+<span class="src-line"><span class="src-frame">17230</span>  <span class="src-kw">static void</span> <span class="src-fn">close_var_ref</span>(JSRuntime *rt, JSVarRef *var_ref)</span>
+<span class="src-line"><span class="src-frame">17231</span>  {</span>
+<span class="src-line"><span class="src-frame">17232</span>      var_ref-&gt;value  = <span class="src-fn">js_dup</span>(*var_ref-&gt;pvalue);    <span class="src-comment">// copy stack value → owned</span></span>
+<span class="src-line"><span class="src-frame">17233</span>      var_ref-&gt;pvalue = &amp;var_ref-&gt;value;           <span class="src-comment">// redirect pvalue → owned</span></span>
+<span class="src-line"><span class="src-frame">17234</span>      <span class="src-comment">/* the reference is no longer to a local variable */</span></span>
+<span class="src-line"><span class="src-frame">17235</span>      var_ref-&gt;is_detached = <span class="src-kw">true</span>;</span>
+<span class="src-line"><span class="src-frame">17236</span>      <span class="src-fn">add_gc_object</span>(rt, &amp;var_ref-&gt;header, JS_GC_OBJ_TYPE_VAR_REF);</span>
+<span class="src-line"><span class="src-frame">17237</span>  }</span>
 <span class="src-line"></span>
-<span class="src-line"><span class="src-frame">17239</span>  <span class="src-kw">static void</span> <span class="src-fn">close_var_refs</span>(JSRuntime *rt, JSStackFrame *sf) {</span>
-<span class="src-line"><span class="src-frame">17240</span>      JSVarRef *var_ref;</span>
-<span class="src-line"><span class="src-frame">17241</span>      <span class="src-kw">int</span> i;</span>
-<span class="src-line"><span class="src-frame">17242</span>      <span class="src-kw">for</span> (i = <span class="src-num">0</span>; i &lt; sf-&gt;var_ref_count; i++) {</span>
-<span class="src-line"><span class="src-frame">17243</span>          var_ref = sf-&gt;var_refs[i];</span>
-<span class="src-line"><span class="src-frame">17244</span>          <span class="src-kw">if</span> (var_ref) <span class="src-fn">close_var_ref</span>(rt, var_ref);</span>
-<span class="src-line"><span class="src-frame">17245</span>      }</span>
-<span class="src-line"><span class="src-frame">17246</span>  }</span>
+<span class="src-line"><span class="src-frame">17239</span>  <span class="src-kw">static void</span> <span class="src-fn">close_var_refs</span>(JSRuntime *rt, JSStackFrame *sf)</span>
+<span class="src-line"><span class="src-frame">17240</span>  {</span>
+<span class="src-line"><span class="src-frame">17241</span>      JSVarRef *var_ref;</span>
+<span class="src-line"><span class="src-frame">17242</span>      <span class="src-kw">int</span> i;</span>
+<span class="src-line"><span class="src-frame">17244</span>      <span class="src-kw">for</span> (i = <span class="src-num">0</span>; i &lt; sf-&gt;var_ref_count; i++) {</span>
+<span class="src-line"><span class="src-frame">17245</span>          var_ref = sf-&gt;var_refs[i];</span>
+<span class="src-line"><span class="src-frame">17246</span>          <span class="src-kw">if</span> (var_ref) <span class="src-fn">close_var_ref</span>(rt, var_ref);</span>
+<span class="src-line"><span class="src-frame">17247</span>      }</span>
+<span class="src-line"><span class="src-frame">17248</span>  }</span>
 <span class="src-line"></span>
 <span class="src-line"><span class="src-comment">// Called from JS_CallInternal at lines 20160 and 20418 — right before any</span></span>
 <span class="src-line"><span class="src-comment">// path that destroys the stack frame (return, exception unwind, generator yield).</span></span>
@@ -4197,7 +4222,7 @@
       <div class="sb-cell"><div class="sb-key lang-zh-only">主线阶段</div><div class="sb-key lang-en-only">Phase</div><div class="sb-val">P8 · P11</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">层</div><div class="sb-key lang-en-only">Layer</div><div class="sb-val thread">Runtime / Builtins</div></div>
       <div class="sb-cell"><div class="sb-key">struct</div><div class="sb-val">JSClass · JSClassDef</div></div>
-      <div class="sb-cell"><div class="sb-key">count</div><div class="sb-val">~50 builtin classes</div></div>
+      <div class="sb-cell"><div class="sb-key">count</div><div class="sb-val">64 predefined classes</div></div>
     </div>
 
     <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们这行 JS 里 · Array 类</span><span class="lang-en-only">◇ In our JS line · Array class</span></h3>
@@ -4341,7 +4366,7 @@
     <div class="stage-banner thread-http">
       <div class="sb-cell"><div class="sb-key lang-zh-only">主线阶段</div><div class="sb-key lang-en-only">Phase</div><div class="sb-val">P4 / P12</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">层</div><div class="sb-key lang-en-only">Layer</div><div class="sb-val thread">Execution / Interpreter</div></div>
-      <div class="sb-cell"><div class="sb-key lang-zh-only">源</div><div class="sb-key lang-en-only">Source</div><div class="sb-val">quickjs.c:17466–20170</div></div>
+      <div class="sb-cell"><div class="sb-key lang-zh-only">源</div><div class="sb-key lang-en-only">Source</div><div class="sb-val">quickjs.c:17466–20169</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">长度</div><div class="sb-key lang-en-only">Length</div><div class="sb-val">2704 LoC · 1 function</div></div>
     </div>
 
@@ -4379,25 +4404,25 @@
     </div>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c:17483 · the two-mode dispatch macros (computed goto OR switch)</span><span class="src-tag">DIRECT_DISPATCH branches</span></div>
-<span class="src-line"><span class="src-frame">17489</span>  <span class="src-comment">#if !DIRECT_DISPATCH</span></span>
-<span class="src-line"><span class="src-frame">17490</span>  <span class="src-comment">#define SWITCH(pc)      DUMP_BYTECODE_OR_DONT(pc) switch (opcode = *pc++)</span></span>
-<span class="src-line"><span class="src-frame">17491</span>  <span class="src-comment">#define CASE(op)        case op</span></span>
-<span class="src-line"><span class="src-frame">17492</span>  <span class="src-comment">#define DEFAULT         default</span></span>
-<span class="src-line"><span class="src-frame">17493</span>  <span class="src-comment">#define BREAK           break</span></span>
-<span class="src-line"><span class="src-frame">17494</span>  <span class="src-comment">#else</span></span>
-<span class="src-line"><span class="src-frame">17495</span>      <span class="src-kw">__extension__</span> <span class="src-kw">static const</span> <span class="src-kw">void</span> * <span class="src-kw">const</span> dispatch_table[<span class="src-num">256</span>] = {</span>
-<span class="src-line"><span class="src-frame">17496</span>  <span class="src-comment">#define DEF(id, size, n_pop, n_push, f) &amp;&amp; case_OP_ ## id,</span></span>
-<span class="src-line"><span class="src-frame">17497</span>  <span class="src-comment">#define def(id, size, n_pop, n_push, f)</span></span>
-<span class="src-line"><span class="src-frame">17498</span>  <span class="src-comment">#include "quickjs-opcode.h"</span></span>
-<span class="src-line"><span class="src-frame">17499</span>          [ OP_COUNT ... <span class="src-num">255</span> ] = &amp;&amp;case_default      <span class="src-comment">// pad unused slots</span></span>
-<span class="src-line"><span class="src-frame">17500</span>      };</span>
-<span class="src-line"><span class="src-frame">17501</span>  <span class="src-comment">#define SWITCH(pc)      DUMP_BYTECODE_OR_DONT(pc) \</span></span>
-<span class="src-line"><span class="src-frame"></span>                       __extension__ ({ goto *dispatch_table[opcode = *pc++]; });</span>
-<span class="src-line"><span class="src-frame">17503</span>  <span class="src-comment">#define CASE(op)        case_ ## op</span></span>
-<span class="src-line"><span class="src-frame">17504</span>  <span class="src-comment">#define DEFAULT         case_default</span></span>
-<span class="src-line"><span class="src-frame">17505</span>  <span class="src-comment">#define BREAK           SWITCH(pc)            </span><span class="src-comment">// ⭐ tail-call into next dispatch</span></span>
-<span class="src-line"><span class="src-frame">17506</span>  <span class="src-comment">#endif</span></span>
+      <div class="src-h"><span>quickjs.c:17488 · the two-mode dispatch macros (computed goto OR switch)</span><span class="src-tag">DIRECT_DISPATCH branches</span></div>
+<span class="src-line"><span class="src-frame">17488</span>  <span class="src-comment">#if !DIRECT_DISPATCH</span></span>
+<span class="src-line"><span class="src-frame">17489</span>  <span class="src-comment">#define SWITCH(pc)      DUMP_BYTECODE_OR_DONT(pc) switch (opcode = *pc++)</span></span>
+<span class="src-line"><span class="src-frame">17490</span>  <span class="src-comment">#define CASE(op)        case op</span></span>
+<span class="src-line"><span class="src-frame">17491</span>  <span class="src-comment">#define DEFAULT         default</span></span>
+<span class="src-line"><span class="src-frame">17492</span>  <span class="src-comment">#define BREAK           break</span></span>
+<span class="src-line"><span class="src-frame">17493</span>  <span class="src-comment">#else</span></span>
+<span class="src-line"><span class="src-frame">17494</span>      <span class="src-kw">__extension__</span> <span class="src-kw">static const</span> <span class="src-kw">void</span> * <span class="src-kw">const</span> dispatch_table[<span class="src-num">256</span>] = {</span>
+<span class="src-line"><span class="src-frame">17495</span>  <span class="src-comment">#define DEF(id, size, n_pop, n_push, f) &amp;&amp; case_OP_ ## id,</span></span>
+<span class="src-line"><span class="src-frame">17496</span>  <span class="src-comment">#define def(id, size, n_pop, n_push, f)</span></span>
+<span class="src-line"><span class="src-frame">17497</span>  <span class="src-comment">#include "quickjs-opcode.h"</span></span>
+<span class="src-line"><span class="src-frame">17498</span>          [ OP_COUNT ... <span class="src-num">255</span> ] = &amp;&amp;case_default      <span class="src-comment">// pad unused slots</span></span>
+<span class="src-line"><span class="src-frame">17499</span>      };</span>
+<span class="src-line"><span class="src-frame">17500</span>  <span class="src-comment">#define SWITCH(pc)      DUMP_BYTECODE_OR_DONT(pc) \</span></span>
+<span class="src-line"><span class="src-frame">17501</span>                         __extension__ ({ goto *dispatch_table[opcode = *pc++]; });</span>
+<span class="src-line"><span class="src-frame">17502</span>  <span class="src-comment">#define CASE(op)        case_ ## op</span></span>
+<span class="src-line"><span class="src-frame">17503</span>  <span class="src-comment">#define DEFAULT         case_default</span></span>
+<span class="src-line"><span class="src-frame">17504</span>  <span class="src-comment">#define BREAK           SWITCH(pc)            </span><span class="src-comment">// ⭐ tail-call into next dispatch</span></span>
+<span class="src-line"><span class="src-frame">17505</span>  <span class="src-comment">#endif</span></span>
 <span class="src-line"></span>
 <span class="src-line"><span class="src-comment">// The trick: when DIRECT_DISPATCH is on, BREAK doesn't return to a loop top —</span></span>
 <span class="src-line"><span class="src-comment">// it expands to "goto *dispatch_table[*pc++]", which jumps DIRECTLY to the next</span></span>
@@ -4406,17 +4431,23 @@
     </div>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c:17605 · entering the main SWITCH + 5 example labels</span><span class="src-tag">all real, all verbatim</span></div>
-<span class="src-line"><span class="src-frame">17605</span>          SWITCH(pc) {</span>
-<span class="src-line"><span class="src-frame">17606</span>          CASE(OP_push_i32):</span>
-<span class="src-line"><span class="src-frame">17607</span>              *sp++ = <span class="src-fn">js_int32</span>(<span class="src-fn">get_u32</span>(pc));</span>
-<span class="src-line"><span class="src-frame">17608</span>              pc += <span class="src-num">4</span>;</span>
-<span class="src-line"><span class="src-frame">17609</span>              BREAK;</span>
-<span class="src-line"><span class="src-frame">17619</span>          CASE(OP_push_minus1):  CASE(OP_push_0):   CASE(OP_push_1):</span>
-<span class="src-line"><span class="src-frame">17621</span>          CASE(OP_push_2):       CASE(OP_push_3):   CASE(OP_push_4):</span>
-<span class="src-line"><span class="src-frame">17622</span>          CASE(OP_push_5):       CASE(OP_push_6):   CASE(OP_push_7):</span>
-<span class="src-line"><span class="src-frame">17629</span>              *sp++ = <span class="src-fn">js_int32</span>(opcode - OP_push_0);   <span class="src-comment">// ⭐ our `2` for x*2</span></span>
-<span class="src-line"><span class="src-frame">17630</span>              BREAK;                                  <span class="src-comment">//   one branch fires 9 opcodes</span></span>
+      <div class="src-h"><span>quickjs.c:17604 · entering the main SWITCH + 5 example labels</span><span class="src-tag">real source, condensed</span></div>
+<span class="src-line"><span class="src-frame">17604</span>          SWITCH(pc) {</span>
+<span class="src-line"><span class="src-frame">17605</span>          CASE(OP_push_i32):</span>
+<span class="src-line"><span class="src-frame">17606</span>              *sp++ = <span class="src-fn">js_int32</span>(<span class="src-fn">get_u32</span>(pc));</span>
+<span class="src-line"><span class="src-frame">17607</span>              pc += <span class="src-num">4</span>;</span>
+<span class="src-line"><span class="src-frame">17608</span>              BREAK;</span>
+<span class="src-line"><span class="src-frame">17617</span>          CASE(OP_push_minus1):</span>
+<span class="src-line"><span class="src-frame">17618</span>          CASE(OP_push_0):</span>
+<span class="src-line"><span class="src-frame">17619</span>          CASE(OP_push_1):</span>
+<span class="src-line"><span class="src-frame">17620</span>          CASE(OP_push_2):  <span class="src-comment">// ⭐ our `2` for x*2 falls through to the shared body</span></span>
+<span class="src-line"><span class="src-frame">17621</span>          CASE(OP_push_3):</span>
+<span class="src-line"><span class="src-frame">17622</span>          CASE(OP_push_4):</span>
+<span class="src-line"><span class="src-frame">17623</span>          CASE(OP_push_5):</span>
+<span class="src-line"><span class="src-frame">17624</span>          CASE(OP_push_6):</span>
+<span class="src-line"><span class="src-frame">17625</span>          CASE(OP_push_7):</span>
+<span class="src-line"><span class="src-frame">17626</span>              *sp++ = <span class="src-fn">js_int32</span>(opcode - OP_push_0);</span>
+<span class="src-line"><span class="src-frame">17627</span>              BREAK;                                  <span class="src-comment">// one branch fires 9 opcodes</span></span>
 <span class="src-line"><span class="src-frame">  …</span></span>
 <span class="src-line"><span class="src-frame">18383</span>          CASE(OP_get_arg0): *sp++ = <span class="src-fn">js_dup</span>(arg_buf[<span class="src-num">0</span>]); BREAK;  <span class="src-comment">// ⭐ our `x`</span></span>
 <span class="src-line"><span class="src-frame">18384</span>          CASE(OP_get_arg1): *sp++ = <span class="src-fn">js_dup</span>(arg_buf[<span class="src-num">1</span>]); BREAK;</span>
@@ -4649,7 +4680,7 @@
     </div>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c:6422 · find_own_property1 — the hash probe (verbatim, 20 lines)</span><span class="src-tag">inline · branch-predictor friendly</span></div>
+      <div class="src-h"><span>quickjs.c:6422 · find_own_property1 — the hash probe (annotated, real source 19 lines)</span><span class="src-tag">inline · branch-predictor friendly</span></div>
 <span class="src-line"><span class="src-frame">  6422</span>  <span class="src-kw">static inline</span> JSShapeProperty *<span class="src-fn">find_own_property1</span>(JSObject *p, JSAtom atom) {</span>
 <span class="src-line"><span class="src-frame">  6423</span>      JSShape *sh;</span>
 <span class="src-line"><span class="src-frame">  6424</span>      JSShapeProperty *pr, *prop;</span>
@@ -4676,7 +4707,7 @@
     </div>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c:6441 · find_own_property — same body, also returns the JSProperty</span><span class="src-tag">23 lines · returns both prs + pr</span></div>
+      <div class="src-h"><span>quickjs.c:6441 · find_own_property — same body, also returns the JSProperty</span><span class="src-tag">18 lines · returns both prs + pr</span></div>
 <span class="src-line"><span class="src-frame">  6441</span>  <span class="src-kw">static inline</span> JSShapeProperty *<span class="src-fn">find_own_property</span>(</span>
 <span class="src-line"><span class="src-frame">  6442</span>      JSProperty **ppr, JSObject *p, JSAtom atom) {</span>
 <span class="src-line"><span class="src-frame">  6443</span>      JSShape *sh; JSShapeProperty *pr, *prop; <span class="src-cls">intptr_t</span> h;</span>
@@ -4703,12 +4734,16 @@
     </div>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c:8647 · JS_GetPropertyInternal — the actual chain walk (lines 8705-8770)</span><span class="src-tag">verbatim core</span></div>
+      <div class="src-h"><span>quickjs.c:8647 · JS_GetPropertyInternal — the actual chain walk</span><span class="src-tag">annotated, real line numbers</span></div>
 <span class="src-line"><span class="src-frame">  8647</span>  <span class="src-kw">static</span> JSValue <span class="src-fn">JS_GetPropertyInternal</span>(JSContext *ctx, JSValueConst obj,</span>
 <span class="src-line"><span class="src-frame">  8648</span>                                            JSAtom prop, JSValueConst this_obj,</span>
-<span class="src-line"><span class="src-frame">  8649</span>                                            <span class="src-cls">bool</span> throw_ref_error) {</span>
-<span class="src-line"><span class="src-frame">  8650</span>      JSObject *p; JSProperty *pr; JSShapeProperty *prs;</span>
-<span class="src-line"><span class="src-frame">  8651</span>      <span class="src-cls">uint32_t</span> tag = <span class="src-fn">JS_VALUE_GET_TAG</span>(obj);</span>
+<span class="src-line"><span class="src-frame">  8649</span>                                            <span class="src-cls">bool</span> throw_ref_error)</span>
+<span class="src-line"><span class="src-frame">  8650</span>  {</span>
+<span class="src-line"><span class="src-frame">  8651</span>      JSObject *p;</span>
+<span class="src-line"><span class="src-frame">  8652</span>      JSProperty *pr;</span>
+<span class="src-line"><span class="src-frame">  8653</span>      JSShapeProperty *prs;</span>
+<span class="src-line"><span class="src-frame">  8654</span>      <span class="src-cls">uint32_t</span> tag;</span>
+<span class="src-line"><span class="src-frame">  8656</span>      tag = <span class="src-fn">JS_VALUE_GET_TAG</span>(obj);</span>
 <span class="src-line"><span class="src-frame">  8657</span>      <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(tag != JS_TAG_OBJECT)) {</span>
 <span class="src-line"><span class="src-frame">  8658</span>          <span class="src-kw">switch</span>(tag) {</span>
 <span class="src-line"><span class="src-frame">  8659</span>          <span class="src-kw">case</span> JS_TAG_NULL:</span>
@@ -4716,31 +4751,35 @@
 <span class="src-line"><span class="src-frame">  8661</span>          <span class="src-kw">case</span> JS_TAG_UNDEFINED:</span>
 <span class="src-line"><span class="src-frame">  8662</span>              <span class="src-kw">return</span> <span class="src-fn">JS_ThrowTypeErrorAtom</span>(ctx, <span class="src-str">"cannot read property '%s' of undefined"</span>, prop);</span>
 <span class="src-line"><span class="src-frame">  8665</span>          <span class="src-kw">case</span> JS_TAG_STRING:                  <span class="src-comment">// auto-box "abc".length</span></span>
-<span class="src-line"><span class="src-frame">  8666</span>              ... <span class="src-comment">// 14 lines: index OR length on JSString</span></span>
-<span class="src-line"><span class="src-frame">  8704</span>          }</span>
-<span class="src-line"><span class="src-frame">  8704</span>          p = <span class="src-fn">JS_VALUE_GET_OBJ</span>(<span class="src-fn">JS_GetPrototypePrimitive</span>(ctx, obj));</span>
-<span class="src-line"><span class="src-frame">  8706</span>      } <span class="src-kw">else</span> { p = <span class="src-fn">JS_VALUE_GET_OBJ</span>(obj); }</span>
-<span class="src-line"><span class="src-frame">  8707</span>      </span>
-<span class="src-line"><span class="src-frame">  8708</span>      <span class="src-kw">for</span>(;;) {                                              <span class="src-comment">// ⭐ prototype walk</span></span>
-<span class="src-line"><span class="src-frame">  8709</span>          prs = <span class="src-fn">find_own_property</span>(&amp;pr, p, prop);</span>
-<span class="src-line"><span class="src-frame">  8710</span>          <span class="src-kw">if</span> (prs) {                                          <span class="src-comment">// found</span></span>
-<span class="src-line"><span class="src-frame">  8711</span>              <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(prs-&gt;flags &amp; JS_PROP_TMASK)) {     <span class="src-comment">// getter/varref/auto</span></span>
-<span class="src-line"><span class="src-frame">  8713</span>                  <span class="src-kw">if</span> ((prs-&gt;flags &amp; JS_PROP_TMASK) == JS_PROP_GETSET) {</span>
+<span class="src-line"><span class="src-frame">  8666</span>              ... <span class="src-comment">// ~13 lines: index OR length on JSString</span></span>
+<span class="src-line"><span class="src-frame">  8696</span>          <span class="src-kw">default</span>: <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">  8698</span>          }</span>
+<span class="src-line"><span class="src-frame">  8699</span>          p = <span class="src-fn">JS_VALUE_GET_OBJ</span>(<span class="src-fn">JS_GetPrototypePrimitive</span>(ctx, obj));</span>
+<span class="src-line"><span class="src-frame">  8700</span>          <span class="src-kw">if</span> (!p)  <span class="src-kw">return</span> JS_UNDEFINED;</span>
+<span class="src-line"><span class="src-frame">  8701</span>      } <span class="src-kw">else</span> {</span>
+<span class="src-line"><span class="src-frame">  8702</span>          p = <span class="src-fn">JS_VALUE_GET_OBJ</span>(obj);</span>
+<span class="src-line"><span class="src-frame">  8703</span>      }</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-frame">  8706</span>      <span class="src-kw">for</span>(;;) {                                              <span class="src-comment">// ⭐ prototype walk</span></span>
+<span class="src-line"><span class="src-frame">  8707</span>          prs = <span class="src-fn">find_own_property</span>(&amp;pr, p, prop);</span>
+<span class="src-line"><span class="src-frame">  8708</span>          <span class="src-kw">if</span> (prs) {                                          <span class="src-comment">// found</span></span>
+<span class="src-line"><span class="src-frame">  8710</span>              <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(prs-&gt;flags &amp; JS_PROP_TMASK)) {     <span class="src-comment">// getter/varref/auto</span></span>
+<span class="src-line"><span class="src-frame">  8711</span>                  <span class="src-kw">if</span> ((prs-&gt;flags &amp; JS_PROP_TMASK) == JS_PROP_GETSET) {</span>
 <span class="src-line"><span class="src-frame">  8714</span>                      JSValue func = <span class="src-fn">JS_MKPTR</span>(JS_TAG_OBJECT, pr-&gt;u.getset.getter);</span>
-<span class="src-line"><span class="src-frame">  8716</span>                      <span class="src-kw">return</span> <span class="src-fn">JS_CallFree</span>(ctx, <span class="src-fn">js_dup</span>(func), this_obj, <span class="src-num">0</span>, <span class="src-num">NULL</span>);</span>
+<span class="src-line"><span class="src-frame">  8717</span>                      <span class="src-kw">return</span> <span class="src-fn">JS_CallFree</span>(ctx, <span class="src-fn">js_dup</span>(func), this_obj, <span class="src-num">0</span>, <span class="src-num">NULL</span>);</span>
 <span class="src-line"><span class="src-frame">  8720</span>                  } <span class="src-kw">else if</span> (... == JS_PROP_VARREF) {           <span class="src-comment">// closure var</span></span>
-<span class="src-line"><span class="src-frame">  8722</span>                      JSValue val = *pr-&gt;u.var_ref-&gt;pvalue;</span>
-<span class="src-line"><span class="src-frame">  8723</span>                      <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(<span class="src-fn">JS_IsUninitialized</span>(val)))</span>
-<span class="src-line"><span class="src-frame">  8724</span>                          <span class="src-kw">return</span> <span class="src-fn">JS_ThrowReferenceErrorUninitialized</span>(...);</span>
-<span class="src-line"><span class="src-frame">  8725</span>                      <span class="src-kw">return</span> <span class="src-fn">js_dup</span>(val);</span>
-<span class="src-line"><span class="src-frame">  8726</span>                  } <span class="src-kw">else if</span> (... == JS_PROP_AUTOINIT) {          <span class="src-comment">// lazy init</span></span>
-<span class="src-line"><span class="src-frame">  8729</span>                      <span class="src-kw">if</span> (<span class="src-fn">JS_AutoInitProperty</span>(ctx, p, prop, pr, prs))</span>
-<span class="src-line"><span class="src-frame">  8730</span>                          <span class="src-kw">return</span> JS_EXCEPTION;</span>
-<span class="src-line"><span class="src-frame">  8731</span>                      <span class="src-kw">continue</span>;                                   <span class="src-comment">// retry same prop</span></span>
-<span class="src-line"><span class="src-frame">  8732</span>                  }</span>
-<span class="src-line"><span class="src-frame">  8733</span>              } <span class="src-kw">else</span> {</span>
-<span class="src-line"><span class="src-frame">  8734</span>                  <span class="src-kw">return</span> <span class="src-fn">js_dup</span>(pr-&gt;u.value);                  <span class="src-comment">// ⭐ fast path</span></span>
-<span class="src-line"><span class="src-frame">  8735</span>              }</span>
+<span class="src-line"><span class="src-frame">  8721</span>                      JSValue val = *pr-&gt;u.var_ref-&gt;pvalue;</span>
+<span class="src-line"><span class="src-frame">  8722</span>                      <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(<span class="src-fn">JS_IsUninitialized</span>(val)))</span>
+<span class="src-line"><span class="src-frame">  8723</span>                          <span class="src-kw">return</span> <span class="src-fn">JS_ThrowReferenceErrorUninitialized</span>(...);</span>
+<span class="src-line"><span class="src-frame">  8724</span>                      <span class="src-kw">return</span> <span class="src-fn">js_dup</span>(val);</span>
+<span class="src-line"><span class="src-frame">  8725</span>                  } <span class="src-kw">else if</span> (... == JS_PROP_AUTOINIT) {          <span class="src-comment">// lazy init</span></span>
+<span class="src-line"><span class="src-frame">  8728</span>                      <span class="src-kw">if</span> (<span class="src-fn">JS_AutoInitProperty</span>(ctx, p, prop, pr, prs))</span>
+<span class="src-line"><span class="src-frame">  8729</span>                          <span class="src-kw">return</span> JS_EXCEPTION;</span>
+<span class="src-line"><span class="src-frame">  8730</span>                      <span class="src-kw">continue</span>;                                   <span class="src-comment">// retry same prop</span></span>
+<span class="src-line"><span class="src-frame">  8731</span>                  }</span>
+<span class="src-line"><span class="src-frame">  8732</span>              } <span class="src-kw">else</span> {</span>
+<span class="src-line"><span class="src-frame">  8733</span>                  <span class="src-kw">return</span> <span class="src-fn">js_dup</span>(pr-&gt;u.value);                  <span class="src-comment">// ⭐ fast path</span></span>
+<span class="src-line"><span class="src-frame">  8734</span>              }</span>
 <span class="src-line"><span class="src-frame">  8736</span>          }</span>
 <span class="src-line"><span class="src-frame">  8737</span>          <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(p-&gt;is_exotic)) {                      <span class="src-comment">// Array index / Proxy / TA</span></span>
 <span class="src-line"><span class="src-frame">  8739</span>              <span class="src-kw">if</span> (p-&gt;fast_array) {                            <span class="src-comment">// Array fast path</span></span>
@@ -5144,7 +5183,7 @@
     </div>
 
     <div class="src-stack">
-      <div class="src-h"><span>libregexp-opcode.h · 28 opcodes (verbatim X-macro)</span><span class="src-tag">whole file</span></div>
+      <div class="src-h"><span>libregexp-opcode.h · 30 opcodes (verbatim X-macro)</span><span class="src-tag">whole file</span></div>
 <span class="src-line"><span class="src-comment">// Each row is one DEF(name, size_in_bytes).</span></span>
 <span class="src-line"><span class="src-comment">// Same X-macro pattern as quickjs-opcode.h (Ch09) — one source, multiple expansions.</span></span>
 <span class="src-line"></span>
@@ -5167,7 +5206,7 @@
 <span class="src-line">DEF(prev, <span class="src-num">1</span>)                                       <span class="src-comment">// step backward (lookbehind)</span></span>
 <span class="src-line">DEF(simple_greedy_quant, <span class="src-num">17</span>)                    <span class="src-comment">// a* / a+ fast path</span></span>
 <span class="src-line"></span>
-<span class="src-line"><span class="src-comment">// 28 opcodes total. Compare V8 Irregexp's IR: ~80 instructions, then JIT-compiled.</span></span>
+<span class="src-line"><span class="src-comment">// 30 opcodes total. Compare V8 Irregexp's IR: ~80 instructions, then JIT-compiled.</span></span>
 <span class="src-line"><span class="src-comment">// QuickJS just interprets these — backtracking NFA, no compilation to native code.</span></span>
     </div>
 
@@ -5392,7 +5431,7 @@
     <p class="lang-en-only">Refcount's Achilles heel: <code>A.child = B; B.parent = A</code> → both refcount ≥ 1, never freed. The fix (used by Python / PHP / QuickJS): periodic <em>cycle detector</em>.</p>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c:382 · JSGCObjectHeader — real fields the GC uses</span><span class="src-tag">12 lines verbatim</span></div>
+      <div class="src-h"><span>quickjs.c:382 / 394 · JSGCObjectTypeEnum + JSGCObjectHeader</span><span class="src-tag">16 lines verbatim</span></div>
 <span class="src-line"><span class="src-frame">   382</span>  <span class="src-kw">typedef enum</span> {</span>
 <span class="src-line"><span class="src-frame">   383</span>      JS_GC_OBJ_TYPE_JS_OBJECT,</span>
 <span class="src-line"><span class="src-frame">   384</span>      JS_GC_OBJ_TYPE_FUNCTION_BYTECODE,</span>
@@ -5418,16 +5457,17 @@
     </div>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c:7053 · JS_RunGC — the entire collector is THREE lines</span><span class="src-tag">verbatim, no edit</span></div>
-<span class="src-line"><span class="src-frame">  7053</span>  <span class="src-kw">void</span> <span class="src-fn">JS_RunGC</span>(JSRuntime *rt) {</span>
-<span class="src-line"><span class="src-frame">  7054</span>      <span class="src-comment">/* decrement the reference of the children of each object. mark =</span></span>
-<span class="src-line"><span class="src-frame">      </span>         <span class="src-comment">1 after this pass. */</span></span>
+      <div class="src-h"><span>quickjs.c:7053 · JS_RunGC — the entire collector is THREE calls</span><span class="src-tag">verbatim</span></div>
+<span class="src-line"><span class="src-frame">  7053</span>  <span class="src-kw">void</span> <span class="src-fn">JS_RunGC</span>(JSRuntime *rt)</span>
+<span class="src-line"><span class="src-frame">  7054</span>  {</span>
+<span class="src-line"><span class="src-frame">  7055</span>      <span class="src-comment">/* decrement the reference of the children of each object. mark =</span></span>
+<span class="src-line"><span class="src-frame">  7056</span>         <span class="src-comment">1 after this pass. */</span></span>
 <span class="src-line"><span class="src-frame">  7057</span>      <span class="src-fn">gc_decref</span>(rt);                <span class="src-comment">// phase 1: subtract internal edges</span></span>
-<span class="src-line"><span class="src-frame">  7060</span>      <span class="src-comment">/* keep the GC objects with a non zero refcount and their childs */</span></span>
-<span class="src-line"><span class="src-frame">  7061</span>      <span class="src-fn">gc_scan</span>(rt);                  <span class="src-comment">// phase 2: re-add references from live roots</span></span>
-<span class="src-line"><span class="src-frame">  7063</span>      <span class="src-comment">/* free the GC objects in a cycle */</span></span>
-<span class="src-line"><span class="src-frame">  7064</span>      <span class="src-fn">gc_free_cycles</span>(rt);           <span class="src-comment">// phase 3: free whatever's still mark=1</span></span>
-<span class="src-line"><span class="src-frame">  7065</span>  }</span>
+<span class="src-line"><span class="src-frame">  7059</span>      <span class="src-comment">/* keep the GC objects with a non zero refcount and their childs */</span></span>
+<span class="src-line"><span class="src-frame">  7060</span>      <span class="src-fn">gc_scan</span>(rt);                  <span class="src-comment">// phase 2: re-add references from live roots</span></span>
+<span class="src-line"><span class="src-frame">  7062</span>      <span class="src-comment">/* free the GC objects in a cycle */</span></span>
+<span class="src-line"><span class="src-frame">  7063</span>      <span class="src-fn">gc_free_cycles</span>(rt);           <span class="src-comment">// phase 3: free whatever's still mark=1</span></span>
+<span class="src-line"><span class="src-frame">  7064</span>  }</span>
 <span class="src-line"></span>
 <span class="src-line"><span class="src-comment">// The algorithm is "trial deletion" / "Bacon-Rajan synchronous cycle collector" —</span></span>
 <span class="src-line"><span class="src-comment">// same family Python and PHP use. Three passes, no STW, no write barriers.</span></span>
@@ -5876,7 +5916,7 @@
         <tr><td>QuickJS-ng (community)</td><td>QuickJS fork (2023+)</td><td><span class="lang-zh-only">活跃维护 · bug 修复 · 性能补丁 · WPT 跑分</span><span class="lang-en-only">active maintenance · bug fixes · perf patches · WPT runs</span></td></tr>
         <tr><td>txiki.js</td><td>QuickJS-ng + libuv</td><td><span class="lang-zh-only">完整 JS 运行时（对标 Deno）· 含 fs/net/http</span><span class="lang-en-only">full JS runtime (Deno-class) · fs/net/http</span></td></tr>
         <tr><td>Just</td><td>QuickJS</td><td><span class="lang-zh-only">最小化容器化 JS runtime</span><span class="lang-en-only">minimal containerised JS runtime</span></td></tr>
-        <tr><td>Cloudflare Workers (early)</td><td>QuickJS (experimental)</td><td><span class="lang-zh-only">0ms 冷启动方案探索 (后切回 V8 isolate)</span><span class="lang-en-only">0ms cold-start exploration (later went V8 isolate)</span></td></tr>
+        <tr><td><span class="lang-zh-only">社区边缘计算实验</span><span class="lang-en-only">edge-compute community experiments</span></td><td>QuickJS</td><td><span class="lang-zh-only">用 0ms 启动换 V8 isolate 的工作流（多个独立尝试，无主流 CDN 采用）</span><span class="lang-en-only">trading 0-ms startup against V8 isolate workflows (multiple independent attempts; no mainstream CDN adopted)</span></td></tr>
         <tr><td>F-Droid scripts · LineageOS</td><td>QuickJS</td><td><span class="lang-zh-only">Android 应用脚本扩展</span><span class="lang-en-only">Android app scripting</span></td></tr>
         <tr><td>Tasker (Android)</td><td>QuickJS</td><td><span class="lang-zh-only">用户脚本执行</span><span class="lang-en-only">user script execution</span></td></tr>
         <tr><td>OpenWrt · 路由器固件</td><td>QuickJS</td><td><span class="lang-zh-only">配置脚本</span><span class="lang-en-only">config scripts</span></td></tr>
