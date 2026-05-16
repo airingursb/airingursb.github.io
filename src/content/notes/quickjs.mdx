@@ -1,0 +1,43 @@
+---
+title: "一行 JS 的一生 —— QuickJS 源码全景"
+date: "2026-05-16"
+tags: [JS 引擎, QuickJS, 解释器, 字节码, GC, 性能工程]
+public: true
+summary: 7 万行 C 怎么变成一行 [2,4,6]？逐行剖析 QuickJS 源码——从 lexer 到字节码到 3000 行解释器循环到引用计数 GC，每一步都对比 V8 / JSC / SpiderMonkey / Hermes 的等价设计。
+immersive:
+  url: /immersive/quickjs/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/quickjs/)
+
+这是 Field Note 系列的第七篇，姐妹篇是 [《V8 是怎么把 JS 跑快的》](/immersive/v8-fast-js/)（多层 JIT）和 [《从 Rust 到 SIMD》](/immersive/webassembly/)（WebAssembly）。本篇相反——讲<em>不上 JIT 的 JS 引擎</em>怎么做到完整 ES2023 + 70k 行 C + 700KB 二进制 + 即时启动。源码版本以 [quickjs-ng](https://github.com/quickjs-ng/quickjs) 主分支为准（兼容 Fabrice Bellard 原版 2024-01-13）。
+
+### 五章背景 + 一行主线 + 十四章流水线 + 五章综合
+
+把 `[1,2,3].map(x => x*2)` 喂给 QuickJS，一路追踪它的字节流：
+
+```
+06 Lexer     07 Parser    08 AST→FuncDef  09 Bytecode
+10 JSValue   11 Atom      12 Shape+Object 13 Closure   14 Class
+15 Interp    16 Lookup    17 Promise/Gen  18 RegExp    19 GC
+```
+
+每章下面都有 "◇ 在我们这行 JS 里" 的输入→输出卡，把这一章在主线里的位置钉牢。
+
+### 这版深挖了什么
+
+- **字节级 Value 表示**：32-bit NaN-boxing vs 64-bit tagged，对比 V8 的 Smi 压缩、JSC 的 NaN-box、Hermes 的相似设计。
+- **JSShape 隐藏类**：QuickJS 有 Shape 但<em>故意</em>没做 inline cache——为什么这是 hot path 比 V8 慢的核心原因。
+- **解释器主循环**：3000 行 switch + computed goto 的 direct threading 技巧。
+- **字节码 X-macro**：一份 250-opcode 定义生成 enum / dispatch table / metadata / emit helpers 6 个文件。
+- **闭包**：JSVarRef 的 stack→heap 转移机制（借鉴自 Lua upval）。
+- **GC**：引用计数 + 试探性递减循环检测算法（同 Python / PHP）。
+- **JIT 缺席**：4 条铁律（单文件、无 JIT、引用计数、无 IC）让 QuickJS 在 hot path 慢于 V8 10-20×，但<em>启动快 30×</em>、<em>内存小 20×</em>、<em>二进制小 40×</em>。
+- **嵌入实战**：30 行 C 把 JS 跑进你的项目；JSRuntime vs JSContext 的 realm 模型。
+- **生态版图**：QuickJS-ng / txiki.js / Just / Cloudflare Workers 早期实验 / Android 应用脚本。
+- **三维性能**：在峰值速度、启动时间、内存占用<em>三个维度</em>上，QuickJS 的位置和 V8 / JSC / SpiderMonkey / Hermes 完全相反。
+
+每一章都标了 quickjs.c 的<em>行号区间 + 关键函数名 + 关键 struct</em>，加上对应的 ECMAScript spec § 引用，所以你可以一边读这篇一边 grep 源码对照。
+
+> "JavaScript 引擎的世界里，V8 永远是 F1 赛车，QuickJS 永远是折叠自行车。世界需要<em>两者</em>。"

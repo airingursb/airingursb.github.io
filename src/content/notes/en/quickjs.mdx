@@ -1,0 +1,43 @@
+---
+title: "The Life of One JS Line — A Source-Level Field Map of QuickJS"
+date: "2026-05-16"
+tags: [JS Engines, QuickJS, Interpreter, Bytecode, GC, Performance Engineering]
+public: true
+summary: How 70 000 lines of C turn one line of JS into [2,4,6]. A source-level walkthrough of QuickJS — lexer, bytecode, the 3000-line interpreter loop, refcount GC — with every step compared against V8 / JSC / SpiderMonkey / Hermes.
+immersive:
+  url: /immersive/quickjs/
+  label: Immersive
+---
+
+> This is an immersive long-form essay — best read in its dedicated layout → [Open the full version](/immersive/quickjs/)
+
+This is the seventh piece in the **Field Note** series, siblings to «[How V8 makes JS fast](/immersive/v8-fast-js/)» (multi-tier JIT) and «[From Rust to SIMD](/immersive/webassembly/)» (WebAssembly). This one is the opposite — how a *JIT-less JS engine* ships full ES2023 in 70k lines of C, a 700 KB binary, and zero start-up cost. Source-level references track [quickjs-ng](https://github.com/quickjs-ng/quickjs) main (compatible with Fabrice Bellard's 2024-01-13 reference).
+
+### Five preparatory chapters + one through-line + fourteen pipeline stages + five synthesis chapters
+
+We feed `[1,2,3].map(x => x*2)` to QuickJS and trace its byte stream end to end:
+
+```
+06 Lexer     07 Parser    08 AST→FuncDef  09 Bytecode
+10 JSValue   11 Atom      12 Shape+Object 13 Closure   14 Class
+15 Interp    16 Lookup    17 Promise/Gen  18 RegExp    19 GC
+```
+
+Every pipeline chapter carries a "◇ In our JS line" input → output card anchoring its slice to the main line.
+
+### What this expansion adds
+
+- **Byte-level JSValue**: 32-bit NaN-boxing vs 64-bit tagged, compared to V8's Smi compression, JSC's NaN-box, Hermes's similar design.
+- **JSShape (hidden class)**: QuickJS has Shape but *deliberately* no inline caches — and that's the core reason its hot path is 10-20× slower than V8.
+- **Interpreter main loop**: 3000 lines of switch + computed goto with direct-threading tricks.
+- **Bytecode X-macros**: one 250-opcode definition generating enum / dispatch table / metadata / emit helpers across 6 files.
+- **Closures**: JSVarRef's stack→heap transfer mechanism (borrowed from Lua's upval).
+- **GC**: refcount + trial-deletion cycle collection (same algorithm as Python / PHP).
+- **No JIT**: four iron rules (single file, no JIT, refcount, no IC) make QuickJS 10-20× slower on hot paths but *30× faster startup*, *20× smaller memory*, *40× smaller binary*.
+- **Embedding playbook**: 30 lines of C to put JS into your project; JSRuntime vs JSContext realm model.
+- **Ecosystem map**: QuickJS-ng / txiki.js / Just / early Cloudflare Workers / Android app scripting.
+- **Three-dimensional perf**: across peak speed, startup, memory, QuickJS sits at the *exact opposite* corner from V8 / JSC / SpiderMonkey / Hermes.
+
+Every chapter cites quickjs.c line ranges + key function names + key structs, plus the relevant ECMAScript spec § — so you can `grep` the source alongside this essay.
+
+> "In the world of JS engines, V8 will always be the F1 race car; QuickJS will always be the folding bicycle. The world needs *both*."
