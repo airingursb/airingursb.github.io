@@ -3,7 +3,7 @@ title: "一次请求的一生 —— HTTP/3 协议全景"
 date: "2026-05-16"
 tags: [网络协议, HTTP/3, QUIC, TLS, 性能工程]
 public: true
-summary: 一个 GET 请求要在 UDP 之上拼出 13 道工序、跨 4 个加密级、穿过 3 条流，才能让你看到一个 200 OK。把 QUIC、HTTP/3、QPACK 的字节、密钥、时序、源码全摊开。
+summary: 一个 GET 请求要在 UDP 之上跑 13 道工序、跨 4 个加密级、穿过 3 类流，才能让你看到一个 200 OK。HTTP/3 与 QUIC 的全景手册，每一步都标 RFC 条款。
 immersive:
   url: /immersive/http3/
   label: 沉浸式
@@ -13,37 +13,133 @@ immersive:
 
 这是 Field Note 系列的第六篇。前作《[字节码到像素的一生](/immersive/chromium-renderer/)》拆解了 Chromium 13 步渲染流水线。这一次把镜头往前推一段：在 Loading 那一格出现之前，字节是怎么从对端的网卡，跨过 UDP、QUIC、HTTP/3 与 QPACK 四层加密协议，落到你的进程里的。
 
-### 五章背景 + 一条主线 + 十三步协议流水线 + 五章综合
+下面是文章核心的精华版。完整字节级拆解、所有 SVG 时序图和源码引用都在沉浸式版本里。
 
-1. **三个公式** — `HTTP = Semantics + Framing + Transport`，HTTP/1→2→3 只换下面两层。
-2. **家谱** — 1991 → 2026，30 年三条线（语义/帧/传输）的交错演进。
-3. **HTTP/2 的死结** — TCP HOL、2-RTT 握手、IP 绑死、协议僵化。
-4. **为什么是 UDP** — 不是 UDP 好，是 UDP 不被中间盒乱碰。
-5. **QUIC 全景** — 4 加密级 · 3 PN 空间 · 2 类 Header。
+## 为什么会有 HTTP/3
 
-接着是 13 步协议流水线，每步一章：
+`HTTP = Semantics + Framing + Transport`。HTTP/1 → 2 → 3 没换 Semantics（GET、POST、Headers 三十年没变），只换了下面两层。
+
+HTTP/2 已经把 framing 换成了二进制多路复用，但 Transport 还是 TCP。TCP 留下了四个绕不开的死结：
+
+1. **HOL（Head-of-Line）阻塞** — 一条 TCP 连接上若干 HTTP/2 流共用一个字节序号空间，任何一个包丢了，<em>所有</em>流都要等。流复用解决了 HTTP 层的 HOL，TCP 层的 HOL 又长出来了。
+2. **2-RTT 起步** — TCP 三次握手 1 RTT + TLS 1.2 两次往返 2 RTT，首字节最少 3 RTT。即便 TLS 1.3 优化到 1 RTT，TCP 那一层的 SYN/SYN-ACK 还是要付。
+3. **IP 绑死** — TCP 连接由四元组 {src_ip, src_port, dst_ip, dst_port} 唯一标识，手机从 Wi-Fi 切 5G 时 src_ip 变了，连接死。
+4. **协议僵化** — TCP 头部字段被全球中间盒读写、记忆、过滤了三十年，再想加新字段就被路上的某个旧防火墙吞掉。
+
+要解决这四点，要么在 TCP 上改（中间盒不让你改），要么换底层。
+
+## 为什么是 UDP
+
+不是 UDP 好——UDP 极其简陋。是 UDP <em>不被中间盒乱碰</em>。绝大多数防火墙和 NAT 只看 IP + UDP 端口，不解析 UDP 载荷。把 QUIC 的真正复杂度塞进 UDP 载荷里，等于把整个传输协议<em>挪到了用户态</em>——CPU 成本更高（后面会讲），但换来了进化空间。
+
+代价：每个 UDP 包都要进出用户态、做独立 AEAD 加解密、用户态维护拥塞窗口。Fastly 2020 公开实测，相同吞吐下 HTTP/3 比 HTTP/2 多花 <strong>1.5 ~ 2× CPU</strong>。Linux 上 `GSO` + `SO_REUSEPORT` + `io_uring` 三招能砍掉一半。Cloudflare 边缘还会用 XDP 在内核网络栈早段过滤 UDP/443，再省 20%。
+
+## QUIC 一眼全景
+
+- **4 个加密级别**：Initial / 0-RTT / Handshake / 1-RTT。每级独立的密钥、独立的 AEAD。
+- **3 个 PN（Packet Number）空间**：Initial、Handshake、Application。每个空间严格单调，互不串号。0-RTT 复用 Application 空间。
+- **2 类 Header**：Long Header（握手期，4 个子类型）和 Short Header（握手后的稳态，最小 1 字节标志位 + 1-4 字节 PN）。
+
+TLS 1.3 在 QUIC 里不是叠在上面，而是<em>嵌进去</em>的：QUIC 用 `CRYPTO 帧`承载 TLS 1.3 的握手 records，TLS 1.3 的 record layer 整层砍掉，QUIC 自己做加密包装。RFC 9001 的标题刻意叫 *"Using TLS to Secure QUIC"*——TLS 只剩两个角色：密钥协商引擎 + 身份认证。这就是为什么 stock OpenSSL 不能直接用，所有 QUIC 库都得 fork BoringSSL / quictls / s2n。
+
+## 一次 GET ursb.me 的一生（13 → 7 个关键节点）
 
 ```
-06 UDP Datagram   07 Handshake     08 0-RTT        09 Crypto layers
-10 Frame catalog  11 Stream mux    12 Loss recovery 13 Congestion ctl
-14 HTTP/3 frames  15 QPACK         16 Death of Push
-17 Migration      18 Anti-amp + MP-QUIC
+T+0      DNS 解析（HTTPS RR · DoH/DoQ）
+T+5ms    Initial[ClientHello + 0-RTT[GET /]] → 服务器
+T+25ms   Initial[ServerHello] + Handshake[EE/Cert/CertVerify/FIN]
+T+45ms   1-RTT[200 OK + HTML body]
+T+65ms   FIN + ACK，stream 0 关闭
+T+8min   PATH_CHALLENGE / RESPONSE（Wi-Fi → 5G 切换）
+T+15min  GOAWAY → CONNECTION_CLOSE → drain（3 PTO 后释放）
 ```
 
-最后是五章综合：实现现状、性能数据、工程实战、批评争议、HTTP/3 之后。
+总耗时：握手 + 数据 = **1 RTT**（首次访问），如果客户端有上次的 PSK ticket，可以塞进 ClientHello 一起发，达到 **0-RTT**（带请求）。
 
-### 这版深挖了什么
+## 0-RTT 不是免费午餐
 
-- **字节级 wire format**：Long/Short Header 全字段拆解、Header Protection 的样本→mask 算法。
-- **完整 1-RTT/0-RTT 时序图**：三个 PN 空间、四个加密级别的精确边界、TLS 1.3 经 CRYPTO 帧的集成方式。
-- **28 种 QUIC 帧** 按"控制 / 可靠性 / 流 / 加密 + 扩展"四族整理；STREAM 帧 8 变体的 3-bit 拆解。
-- **QPACK 三招**：静态表扩 99、双向同步流、Required Insert Count 阻塞容忍。
-- **Server Push 之死**：Chrome 106 默认禁用的真实数据 + 103 Early Hints 的接力。
-- **连接迁移 Path Validation 完整时序** · Apple iCloud Private Relay 实战。
-- **拥塞控制可插拔**：NewReno / CUBIC / BBR v2/v3 在 Google / Cloudflare / Meta 的部署。
-- **生产数据**：YouTube 印度 4G 卡顿 −20-40% · Meta 错误率 −5% · Cloudflare 0-RTT TTFB −50ms · 何时 H3 不如 H2。
-- **工程实战**：HTTPS RR (RFC 9460) · `curl --http3` · Wireshark + SSLKEYLOGFILE · qlog / qvis · sysctl 调优。
+0-RTT 的 PSK *没有新鲜度*。攻击者可以录下你的第一个 UDP 包重放任意多次——服务器无法区分"是你"还是"录像"。对查询型 GET 没问题，但 `POST /transfer/100USD` 重放就是 100 次转账。
 
-每章都有源 RFC 锚点、生产环境的具体数字、当前 2026 年的实现现状（Chrome QUICHE / Firefox neqo / Cloudflare quiche / nginx 1.26 / msquic / quic-go / quinn / s2n-quic / aioquic 等）。
+三道防线（缺一不可）：
 
-如果你只想看一张图把它们都串起来，就从沉浸式版的主线例子 *一次 GET ursb.me* 那一章开始读。
+1. **浏览器侧** — Chrome / Firefox 只在 idempotent 方法（GET、HEAD）上启用 0-RTT。
+2. **服务器侧** — RFC 8470：服务器转给上游时加 `Early-Data: 1` 头，应用层（如 Cloudflare Worker）可选"不处理"或返回 `425 Too Early`。
+3. **TLS 侧** — 服务器只在 ticket 发出后<em>有限时间窗</em>（通常 ≤ 10s）接受 0-RTT，PSK ID 进 Redis 做去重。
+
+Cloudflare 默认对 GET/HEAD 启用 0-RTT，回访用户中位 TTFB 降低 ~50 ms。
+
+## 帧字典 + QPACK 一笔带过
+
+解密一个 QUIC 包的 payload，你拿到的不是"一段数据"，而是一串<em>帧</em>。RFC 9000 §19 + RFC 9221 一共 28 种，分四族：
+
+- **控制（8）**：PADDING、PING、CONNECTION_CLOSE、HANDSHAKE_DONE、NEW_TOKEN、NEW_CONNECTION_ID、RETIRE_CONNECTION_ID、PATH_CHALLENGE/RESPONSE
+- **可靠性（2）**：ACK、ACK_ECN
+- **流 + 流控（12）**：STREAM（一种类型 8 个变体）、RESET_STREAM、STOP_SENDING、MAX_DATA 系列、MAX_STREAMS 系列
+- **加密 + 扩展（2）**：CRYPTO、DATAGRAM（RFC 9221）
+
+QPACK（HTTP/3 头部压缩，RFC 9204）是 HPACK 的"去序化"版。HPACK 的动态表依赖<em>严格同步</em>——Stream A 先到、Stream B 才能引用 A 插入的索引。QUIC 各流独立，HOL 又会回到应用层。QPACK 的三招：
+
+1. 静态表扩到 99 项，加入 `alt-svc`、`strict-transport-security`、`:scheme: https` 等现代 web 字段。
+2. 引入两条单向同步流：encoder 流（0x02）发"插入这条"指令，decoder 流（0x03）反向报告"已收到 N 条"。
+3. 每条 HEADERS 帧带 *Required Insert Count*。指令没到只阻塞<em>这一条</em>流，其它流照跑。`SETTINGS` 里可调"允许多少阻塞中的流"，默认 100。
+
+实测压缩率和 HPACK 差不多，QPACK 真正赢在<em>抗丢包</em>。
+
+## 连接迁移靠 CID
+
+Wi-Fi → 5G 切换瞬间，IP/port 全换，但 QUIC 服务器看的是 *Destination Connection ID*。CID 不变，连接照样活。新路径用 PATH_CHALLENGE / PATH_RESPONSE 做防伪迁验证。Apple iCloud Private Relay 是这一特性最大的生产案例——iPhone 在 Wi-Fi/5G 间频繁切换，中位 RTT 在切换瞬间没有可见抖动。
+
+## 性能：H3 抬下限，不抬上限
+
+| 场景 | 提升 |
+|---|---|
+| YouTube India 4G 视频卡顿 | −20 ~ −40% |
+| Meta App 请求错误率 | −5% |
+| Cloudflare 回访 0-RTT TTFB | −50 ms |
+| Apple iCloud Private Relay 切网 RTT 抖动 | ~0（看不出） |
+
+但 **H3 不是包治百病**：
+
+- **内网零丢包微服务**：TCP HOL 几乎不发生，H3 的 1.5× CPU 成本反而是负收益。gRPC 至今主流仍是 HTTP/2。
+- **企业网/金融网**：~8% 的连接尝试因 UDP/443 被防火墙阻断，Happy Eyeballs 自动回退到 H2，但用户先付了试错延迟。
+- **后端瓶颈**：如果 LCP 主要花在 SSR 或 JS 主线程上，省下来的 RTT 在水池里游泳，看不见。
+
+Patrick Meenan 的公论：**H3 抬升的是分布的下限——P95/P99 弱网用户体验**。如果你的产品没有 P95 弱网那一段（比如你只服务美国/欧洲城市光纤），花精力上 H3 的 ROI 接近零。
+
+## 工程实战速查
+
+- **协议发现**：旧路 `Alt-Svc: h3=":443"; ma=86400` 头——客户端记 24 小时，下次再走 H3；首屏永远拿不到 0-RTT。新路 `HTTPS RR`（RFC 9460），在 DNS 里直接告知 ALPN，首次访问就走 H3。
+- **客户端测试**：`curl --http3 -I https://ursb.me/`（需要 ngtcp2 或 quiche 编译）；`quiche-client https://ursb.me/`；Chrome DevTools → Network → 打开 Protocol 列，看是 `h3` 还是 `h2`。
+- **抓包**：`SSLKEYLOGFILE=keys.log` + `tcpdump udp port 443` → Wireshark 接 keylog 即可解密。
+- **调试**：QUIC 加密一切，pcap 看不到拥塞窗口、丢包、ACK 时序。<strong>qlog</strong>（draft-ietf-quic-qlog）是 IETF 标准的结构化 JSON 日志格式；扔到 [qvis.quictools.info](https://qvis.quictools.info) 可视化。不接 qlog 等于盲调。
+- **服务器调优**：`net.core.rmem_max` / `wmem_max` ≥ 2.5 MB；开 GSO/GRO；SO_REUSEPORT per-core + eBPF 路由；尝试 io_uring。
+
+## 如果你只记 10 件事
+
+1. **0-RTT ≠ 免费**——只能 GET/HEAD，POST/PUT 默认有重放风险，看 `Early-Data: 1` 头决定是否降级。
+2. **Initial 必须 padding 到 ≥ 1200 字节**——反放大攻击的 3× 预算从这里来。
+3. **TLS 1.3 在 QUIC 里被腰斩**——仅留密钥协商 + 身份认证；record 层整个砍掉。
+4. **4 加密级 / 3 PN 空间**——Initial / 0-RTT / Handshake / 1-RTT；PN 空间互相独立、各自单调。
+5. **28 种 QUIC 帧分四族**——控制 / 可靠性 / 流 / 加密+扩展。STREAM 一种 8 变体。
+6. **QPACK 用双向同步流杀 HOL**——encoder/decoder 流 + Required Insert Count，默认动态表 4 KB。
+7. **迁移靠 CID，不靠 IP**——Wi-Fi → 5G 切换连接不断，靠 PATH_CHALLENGE 防伪迁。
+8. **`Alt-Svc` 拿不到首屏 0-RTT**——要做就做 `HTTPS RR`（RFC 9460）。
+9. **H3 比 H2 多 1.5–2× CPU**——GSO + SO_REUSEPORT + io_uring 能砍掉一半。
+10. **H3 抬下限不抬上限**——P95/P99 弱网用户受益；光纤桌面感觉不出。
+
+加分一条：**qlog + qvis 是唯一可观测路径**——不接 qlog 等于盲调。
+
+## HTTP/3 之后
+
+HTTP/3 不是终点——它是 QUIC 作为<em>通用安全传输</em>找到的第一个杀手应用。QUIC 上正在长出一片新生态：
+
+- **WebTransport**（W3C + draft-ietf-webtrans-http3）取代 WebSocket：可靠双向流 + 不可靠 datagram，Chrome 自 97 起原生支持。
+- **MASQUE**（CONNECT-UDP RFC 9298、CONNECT-IP RFC 9484、Capsule RFC 9297）把任意流量塞进 H3 隧道；Apple iCloud Private Relay 是迄今最大的量产案例（两跳隔离架构）。
+- **Media over QUIC**（IETF MoQ WG）：亚秒级延迟 + CDN 可缓存的发布/订阅模型，目标取代体育直播 / 低延迟视频。
+- **HTTP/4**：IETF 当前共识"未来 5-10 年内不会有"。QUIC 的扩展机制（Datagram、KEY_UPDATE、ALPN、可插拔 cc）足够柔软，要加东西（抗量子加密、FEC、新拥塞算法）都可以作扩展挂上去。
+
+> "我们花三十年做了一个能装下未来三十年的传输层。"
+>
+> — Lars Eggert · IETF QUIC WG · 2022
+
+如果想看每一帧字节的精确边界、完整 1-RTT 时序、Header Protection 的 sample→mask 算法、QPACK 阻塞容忍可视化、qvis 拥塞窗口面板，请去 [沉浸式完整版](/immersive/http3/)。

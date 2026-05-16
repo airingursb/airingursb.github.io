@@ -13,37 +13,133 @@ immersive:
 
 This is the sixth piece in the **Field Note** series. The previous one, «[Bytecode to Pixels](/immersive/chromium-renderer/)», walked through Chromium's 13-stage rendering pipeline. This time we rewind one step earlier: before the *Loading* stage even fires, how do the bytes climb out of the other side's NIC, through UDP, QUIC, HTTP/3 and QPACK — four layers of encrypted protocol — into your process?
 
-### Five preparatory chapters + one through-line + thirteen pipeline stages + five synthesis chapters
+Below is a condensed read of the essay's core. The byte-level dissections, full SVG timelines and source references all live in the immersive version.
 
-1. **Three formulas** — `HTTP = Semantics + Framing + Transport`. HTTP/1→2→3 only swap the bottom two layers.
-2. **Family tree** — 1991 → 2026, thirty years of three lines (semantics / framing / transport) braiding together.
-3. **HTTP/2's deadlock** — TCP HOL, the 2-RTT handshake floor, IP-pinned connections, protocol ossification.
-4. **Why UDP** — not because UDP is good, but because middleboxes don't touch UDP.
-5. **QUIC at a glance** — 4 encryption levels · 3 PN spaces · 2 header types.
+## Why HTTP/3 exists
 
-Then thirteen pipeline stages, one chapter each:
+`HTTP = Semantics + Framing + Transport`. HTTP/1 → 2 → 3 never swapped Semantics (GET, POST, Headers have been stable for thirty years). They only swapped the bottom two layers.
+
+HTTP/2 already replaced framing with binary multiplexing, but Transport was still TCP. TCP left four problems no patch can address:
+
+1. **Head-of-Line blocking** — One TCP connection carries multiple HTTP/2 streams sharing a single byte-sequence space; one lost packet stalls *every* stream. Stream multiplexing eliminated HOL at the HTTP layer; TCP brought it right back.
+2. **2-RTT floor** — TCP three-way handshake (1 RTT) + TLS 1.2 (2 RTT) means 3 RTT before the first byte. Even with TLS 1.3 (1 RTT), the TCP SYN/SYN-ACK round is still there.
+3. **Pinned to IP** — A TCP connection is identified by {src_ip, src_port, dst_ip, dst_port}; when a phone switches Wi-Fi to 5G, src_ip changes and the connection dies.
+4. **Protocol ossification** — TCP header fields have been read, modified, cached and filtered by middleboxes for thirty years. Adding new fields gets eaten by some legacy firewall on the path.
+
+You either change TCP (middleboxes won't let you) or move underneath it.
+
+## Why UDP
+
+Not because UDP is great — UDP is bare-bones. Because UDP *isn't touched by middleboxes*. Most firewalls and NATs only inspect IP + UDP port; they don't parse the UDP payload. Stuff QUIC's real complexity inside the UDP payload, and you've effectively moved the transport into user space — costing more CPU (more on this) but buying evolution.
+
+The cost: every UDP packet crosses the user/kernel boundary, runs its own AEAD encrypt/decrypt, and carries user-space congestion control. Fastly's 2020 disclosure: at equal throughput, HTTP/3 burns **1.5 – 2× the CPU of HTTP/2 over TLS**. On Linux, `GSO` + `SO_REUSEPORT` + `io_uring` can halve that. Cloudflare's edge layers XDP to filter UDP/443 in the kernel fastpath for another 20%.
+
+## QUIC at a glance
+
+- **4 encryption levels**: Initial / 0-RTT / Handshake / 1-RTT. Each has its own keys and AEAD context.
+- **3 PN (Packet Number) spaces**: Initial, Handshake, Application. Each is strictly monotonic and independent. 0-RTT shares the Application space.
+- **2 header types**: Long Header (during handshake, four subtypes) and Short Header (steady-state post-handshake, minimum 1-byte flags + 1–4 byte PN).
+
+TLS 1.3 in QUIC isn't stacked on top — it's *embedded*. QUIC carries TLS 1.3 handshake records inside `CRYPTO frames`; TLS's record layer is amputated; QUIC handles packet wrapping itself. RFC 9001 is titled *"Using TLS to Secure QUIC"* on purpose — TLS plays only two roles: key-agreement engine + identity authentication. This is why stock OpenSSL won't work; every QUIC implementation forks BoringSSL, quictls or s2n.
+
+## The life of one GET ursb.me (13 → 7 key moments)
 
 ```
-06 UDP Datagram   07 Handshake     08 0-RTT        09 Crypto layers
-10 Frame catalog  11 Stream mux    12 Loss recovery 13 Congestion ctl
-14 HTTP/3 frames  15 QPACK         16 Death of Push
-17 Migration      18 Anti-amp + MP-QUIC
+T+0      DNS resolve (HTTPS RR · DoH / DoQ)
+T+5ms    Initial[ClientHello + 0-RTT[GET /]] → server
+T+25ms   Initial[ServerHello] + Handshake[EE/Cert/CertVerify/FIN]
+T+45ms   1-RTT[200 OK + HTML body]
+T+65ms   FIN + ACK, stream 0 closes
+T+8min   PATH_CHALLENGE / RESPONSE (Wi-Fi → 5G migration)
+T+15min  GOAWAY → CONNECTION_CLOSE → drain (3 PTO, then release)
 ```
 
-Finally five synthesis chapters: implementations, performance, field work, critique, and what's next.
+Total: handshake + first byte = **1 RTT** (first visit). If the client has a PSK ticket from last session, it can pack the request inside the ClientHello — **0-RTT** (data on the very first packet).
 
-### What this expansion adds
+## 0-RTT is not a free lunch
 
-- **Byte-level wire formats**: every field of Long / Short headers; the sample → mask recipe for Header Protection.
-- **Full 1-RTT and 0-RTT timelines**: exact boundaries of three PN spaces and four encryption levels; how TLS 1.3 is carried via CRYPTO frames (not "TLS over QUIC").
-- **28 QUIC frame types**, grouped into four families (control / reliability / streams / crypto + extensions); the 3-bit decomposition of STREAM's eight variants.
-- **QPACK's three moves**: a 99-entry static table, bi-directional sync streams, Required Insert Count's tolerable blocking.
-- **Death of Server Push**: real Chrome telemetry behind the v106 default-disable, plus 103 Early Hints as the relay.
-- **Connection migration**: Path Validation timeline, with Apple iCloud Private Relay as the production case.
-- **Pluggable congestion control**: NewReno / CUBIC / BBR v2/v3 deployed at Google, Cloudflare, Meta.
-- **Production numbers**: YouTube India 4G stall −20-40% · Meta error rate −5% · Cloudflare 0-RTT TTFB −50ms · when H3 actually loses to H2.
-- **Field work**: HTTPS RR (RFC 9460), `curl --http3`, Wireshark + SSLKEYLOGFILE, qlog / qvis, sysctl tuning.
+The 0-RTT PSK carries *no freshness*. An attacker can record your first UDP datagram and replay it forever — the server can't distinguish "you" from "tape rewind". Fine for an idempotent GET. Catastrophic for `POST /transfer/100USD` — that's 100 transfers.
 
-Every chapter anchors to specific RFCs, real production numbers, and the 2026 implementation landscape (Chrome QUICHE, Firefox neqo, Cloudflare quiche, nginx 1.26, msquic, quic-go, quinn, s2n-quic, aioquic, and more).
+Three defences (all required):
 
-If you only have time for one diagram that ties everything together, start with the through-line example in the immersive version: *One GET ursb.me*.
+1. **Client side** — Chrome / Firefox only enable 0-RTT on idempotent methods (GET, HEAD).
+2. **Server side** — RFC 8470: when forwarding 0-RTT-arrived requests upstream, the server adds `Early-Data: 1`. The application layer (e.g. a Cloudflare Worker) can choose to defer or return `425 Too Early`.
+3. **TLS side** — Server only accepts 0-RTT within a *narrow time window* (typically ≤ 10s) after ticket issuance, backed by a Redis-style cache recording "PSK IDs already seen" for dedup.
+
+Cloudflare enables 0-RTT for GET/HEAD by default; median TTFB for returning users drops ~50ms.
+
+## Frame catalog + QPACK in one breath
+
+Decrypt a QUIC packet's payload and you don't get "a chunk of data" — you get a chain of *frames*. RFC 9000 §19 + RFC 9221 define 28 frames, in four families:
+
+- **Control (8)**: PADDING, PING, CONNECTION_CLOSE, HANDSHAKE_DONE, NEW_TOKEN, NEW_CONNECTION_ID, RETIRE_CONNECTION_ID, PATH_CHALLENGE / RESPONSE.
+- **Reliability (2)**: ACK, ACK_ECN.
+- **Streams + flow control (12)**: STREAM (one type, 8 variants), RESET_STREAM, STOP_SENDING, MAX_DATA family, MAX_STREAMS family.
+- **Crypto + extensions (2)**: CRYPTO, DATAGRAM (RFC 9221).
+
+QPACK (HTTP/3 header compression, RFC 9204) is HPACK with the order-dependency removed. HPACK's dynamic table requires strict synchronisation — Stream A's insertion must arrive before Stream B references it. QUIC streams arrive independently; HOL would come right back at the app layer. QPACK's three moves:
+
+1. Static table grown to 99 entries, including modern web staples like `alt-svc`, `strict-transport-security`, `:scheme: https`.
+2. Two unidirectional sync streams: encoder (0x02) sends "insert this", decoder (0x03) reports back "received N so far".
+3. Each HEADERS frame carries a *Required Insert Count*. If the insert isn't there yet, only *that* HEADERS pends — other streams run on. `SETTINGS` configures the number of "blocked streams" tolerated, default 100.
+
+Measured compression ratios match HPACK; the real QPACK win is *resistance to loss*.
+
+## Migration is by CID, not by IP
+
+When Wi-Fi → 5G flips the IP/port pair, the QUIC server keys on the *Destination Connection ID*. CID is stable; the connection survives. The new path is validated via PATH_CHALLENGE / PATH_RESPONSE to prevent spoofed migration. Apple iCloud Private Relay is the largest production deployment — iPhones flip Wi-Fi/5G constantly, and median RTT shows no visible jitter at the switch.
+
+## Performance: H3 raises the floor, not the ceiling
+
+| Scenario | Win |
+|---|---|
+| YouTube India 4G video rebuffer | −20 ~ −40% |
+| Meta App request error rate | −5% |
+| Cloudflare returning-user 0-RTT TTFB | −50 ms |
+| Apple iCloud Private Relay network-switch RTT jitter | ~0 (imperceptible) |
+
+But **H3 is not a cure-all**:
+
+- **Intra-DC microservices**: TCP HOL almost never fires, and H3's 1.5× CPU cost is a net loss. gRPC still defaults to HTTP/2.
+- **Enterprise / financial networks**: ~8% of connection attempts get UDP/443 blocked; Happy Eyeballs auto-falls back to H2, but the user has already paid the "tried it and failed" latency.
+- **Backend-bound apps**: if LCP is dominated by SSR or JS main-thread work, the saved RTTs swim in a pond — invisible.
+
+Patrick Meenan's call: **H3 raises the floor of the distribution — the P95/P99 weak-link experience**. If your audience has no P95 weak-link segment (e.g. you only serve fiber-grade US/EU cities), the migration ROI is near zero.
+
+## Field-work cheatsheet
+
+- **Discovery**: old way is `Alt-Svc: h3=":443"; ma=86400` — client caches 24h, uses H3 from the next visit; first-time visitors never get 0-RTT. New way is `HTTPS RR` (RFC 9460): the browser learns ALPN at DNS resolution time and goes straight to H3 on first visit.
+- **Client testing**: `curl --http3 -I https://ursb.me/` (needs ngtcp2 or quiche-compiled curl); `quiche-client https://ursb.me/`; in Chrome DevTools → Network, enable the Protocol column to see `h3` vs `h2`.
+- **Packet capture**: `SSLKEYLOGFILE=keys.log` + `tcpdump udp port 443` → Wireshark with the keylog file decrypts it.
+- **Debugging**: QUIC encrypts everything; raw pcap shows nothing about cwnd, loss, or ACK timing. **qlog** (draft-ietf-quic-qlog) is an IETF-standard structured JSON log; drop it into [qvis.quictools.info](https://qvis.quictools.info) for visualisation. No qlog = flying blind.
+- **Server tuning**: `net.core.rmem_max` / `wmem_max` ≥ 2.5 MB; enable GSO/GRO; SO_REUSEPORT per-core with eBPF CID-routing; try io_uring.
+
+## If you only remember 10 things
+
+1. **0-RTT isn't free** — idempotent methods only; servers gate on `Early-Data: 1`.
+2. **Initial packets must pad to ≥ 1200 bytes** — anti-amplification 3× budget starts here.
+3. **TLS 1.3 inside QUIC is amputated** — key agreement + identity only; record layer gone.
+4. **4 encryption levels / 3 PN spaces** — Initial / 0-RTT / Handshake / 1-RTT; spaces independent and strictly monotonic.
+5. **28 QUIC frames in four families** — control / reliability / streams / crypto+ext. STREAM is one type with 8 variants.
+6. **QPACK kills HOL with two sync streams** — encoder + decoder streams + Required Insert Count; default 4 KB dynamic table.
+7. **Migration uses CID, not IP** — Wi-Fi → 5G survives; PATH_CHALLENGE prevents spoofing.
+8. **`Alt-Svc` can't deliver first-hit 0-RTT** — ship `HTTPS RR` (RFC 9460) instead.
+9. **H3 burns 1.5–2× the CPU of H2** — GSO + SO_REUSEPORT + io_uring can halve it.
+10. **H3 raises the floor, not the ceiling** — P95/P99 weak-link wins; fiber desktops feel nothing.
+
+Bonus: **qlog + qvis is the only observability path** — no qlog = flying blind.
+
+## After HTTP/3
+
+HTTP/3 isn't the finish line — it's the first killer app of QUIC as a *generic secure transport*. A whole ecosystem is growing on top:
+
+- **WebTransport** (W3C + draft-ietf-webtrans-http3) replaces WebSocket: reliable bidi streams + unreliable datagrams. Chrome shipped support in 97.
+- **MASQUE** (CONNECT-UDP RFC 9298, CONNECT-IP RFC 9484, Capsule RFC 9297) tunnels any traffic inside H3. Apple iCloud Private Relay is the largest production deployment — a two-hop architecture where neither side alone knows {client_ip, target}.
+- **Media over QUIC** (IETF MoQ WG): sub-second latency + CDN-cacheable pub/sub, slated to replace transport for sports streaming and low-latency video.
+- **HTTP/4**: IETF consensus is "no HTTP/4 for the next 5–10 years". QUIC's extension mechanisms (Datagram, KEY_UPDATE, ALPN, pluggable cc) are flexible enough — post-quantum crypto, FEC, new cc algorithms all fit as extensions, no new major version needed.
+
+> "Thirty years of work for a transport layer that can hold the next thirty."
+>
+> — Lars Eggert · IETF QUIC WG · 2022
+
+For exact byte boundaries of every frame, complete 1-RTT timelines, the Header Protection sample → mask recipe, the QPACK tolerable-blocking visualiser, and the qvis congestion-window panel, jump into the [immersive long-form](/immersive/http3/).
