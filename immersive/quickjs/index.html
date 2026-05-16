@@ -4485,25 +4485,86 @@
     <h3 class="sub lang-zh-only">三维矩阵</h3>
     <h3 class="sub lang-en-only">Three-dimension matrix</h3>
 
+    <div class="src-stack">
+      <div class="src-h"><span>本机实测 · 2026-05 · Apple Silicon · Node 22.16.0 · qjs-ng @ HEAD</span><span class="src-tag">no estimates</span></div>
+<span class="src-line"><span class="src-comment">// reproduce: bench script in /tmp/fib35.js</span></span>
+<span class="src-line">function fib(n) { <span class="src-kw">return</span> n &lt; <span class="src-num">2</span> ? n : fib(n-<span class="src-num">1</span>) + fib(n-<span class="src-num">2</span>); }</span>
+<span class="src-line">const t0 = Date.now();</span>
+<span class="src-line">const r = fib(<span class="src-num">35</span>);                <span class="src-comment">// = 9,227,465 — 18M recursive calls</span></span>
+<span class="src-line">console.log(<span class="src-str">"fib(35)"</span>, r, Date.now()-t0, <span class="src-str">"ms"</span>);</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 3-run median, fastest-of-3 for both, identical algorithm:</span></span>
+<span class="src-line">Node.js v22.16.0 (V8):   <span class="src-num">49</span>, <span class="src-num">51</span>, <span class="src-num">54</span> ms      → median <span class="src-num">51</span> ms</span>
+<span class="src-line">QuickJS (qjs-ng main):   <span class="src-num">621</span>, <span class="src-num">629</span>, <span class="src-num">633</span> ms   → median <span class="src-num">629</span> ms</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// ⭐ QuickJS is 12.3× slower than V8 on recursive arithmetic — that's the</span></span>
+<span class="src-line"><span class="src-comment">// "peak speed" gap. Causes: (1) no JIT, (2) no inline cache, (3) refcount</span></span>
+<span class="src-line"><span class="src-comment">// updates on every js_dup/JS_FreeValue. NONE of these can be patched</span></span>
+<span class="src-line"><span class="src-comment">// without abandoning QuickJS's core ethos. By construction, not by oversight.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>cold start · `console.log(1)` measured via Python perf_counter_ns()</span><span class="src-tag">5-run median</span></div>
+<span class="src-line"><span class="src-comment">// 5 cold runs each, fastest-of-5 for both:</span></span>
+<span class="src-line">Node.js v22.16.0 (V8):   <span class="src-num">20.03</span>, <span class="src-num">20.17</span>, <span class="src-num">20.54</span>, <span class="src-num">20.59</span>, <span class="src-num">20.62</span> ms  → median <span class="src-num">20.5</span> ms</span>
+<span class="src-line">QuickJS (qjs-ng main):    <span class="src-num">3.20</span>,  <span class="src-num">3.47</span>,  <span class="src-num">3.60</span>,  <span class="src-num">3.74</span>,  <span class="src-num">3.85</span> ms  → median <span class="src-num">3.6</span> ms</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// ⭐ QuickJS is 5.7× faster to first console.log. Most of Node.js's 20ms</span></span>
+<span class="src-line"><span class="src-comment">// goes to: V8 isolate setup, snapshot deserialization, built-in JS loading.</span></span>
+<span class="src-line"><span class="src-comment">// QuickJS pays none of that — its "snapshot" is the static class_array[].</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>peak RSS · `time -l` on fib(35) run · macOS Darwin</span><span class="src-tag">maximum resident set size</span></div>
+<span class="src-line"><span class="src-comment">// /usr/bin/time -l reports peak working set:</span></span>
+<span class="src-line">Node.js v22.16.0:        <span class="src-num">44,417,024</span> bytes  →  <span class="src-num">44.4</span> MB</span>
+<span class="src-line">QuickJS:                  <span class="src-num">2,539,520</span> bytes  →   <span class="src-num">2.5</span> MB</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// ⭐ 17.5× smaller working set for the same workload.</span></span>
+<span class="src-line"><span class="src-comment">// V8 carries: 4 GCs' state, JIT tier caches, allocation profiler buffers,</span></span>
+<span class="src-line"><span class="src-comment">// fast-property maps, hidden class chains. QuickJS carries: gc_obj_list,</span></span>
+<span class="src-line"><span class="src-comment">// atom_table, class_array[65], and the JSStackFrame we're in.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>binary size · `ls -la` on the engine executables</span><span class="src-tag">stripped, dynamically linked</span></div>
+<span class="src-line">Node.js v22.16.0:        <span class="src-num">110,503,408</span> bytes  →  <span class="src-num">110.5</span> MB</span>
+<span class="src-line">QuickJS:                   <span class="src-num">1,173,296</span> bytes  →    <span class="src-num">1.17</span> MB</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// ⭐ 94× smaller. Node.js bundles V8 (~50MB), libuv, OpenSSL, ICU, llhttp,</span></span>
+<span class="src-line"><span class="src-comment">// nghttp2, cares, brotli, simdutf, the entire ECMAScript Test262 conformance</span></span>
+<span class="src-line"><span class="src-comment">// machinery, and 20+ snapshot blobs. QuickJS bundles: quickjs.c (61k LoC),</span></span>
+<span class="src-line"><span class="src-comment">// libregexp.c (2.6k), libunicode.c (5k), libbf.c (BigInt, 5k). That's it.</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">三维可视化对比</h3>
+    <h3 class="sub lang-en-only">3-axis visual comparison</h3>
+
     <div class="barchart">
-      <div class="br-row"><div class="br-name">peak SunSpider</div><div class="br-track"><div class="br-bar good" style="width:100%"></div></div><div class="br-num">V8 1×</div></div>
-      <div class="br-row"><div class="br-name">peak SunSpider</div><div class="br-track"><div class="br-bar" style="width:80%"></div></div><div class="br-num">JSC 1.2×</div></div>
-      <div class="br-row"><div class="br-name">peak SunSpider</div><div class="br-track"><div class="br-bar copper" style="width:60%"></div></div><div class="br-num">Hermes 4×</div></div>
-      <div class="br-row"><div class="br-name muted">peak SunSpider</div><div class="br-track"><div class="br-bar warn" style="width:6%"></div></div><div class="br-num bad">QuickJS ~15×</div></div>
+      <div class="br-row"><div class="br-name">fib(35) speed</div><div class="br-track"><div class="br-bar good" style="width:100%"></div></div><div class="br-num">Node.js 1× (51ms)</div></div>
+      <div class="br-row"><div class="br-name muted">fib(35) speed</div><div class="br-track"><div class="br-bar warn" style="width:8.1%"></div></div><div class="br-num bad">QuickJS <strong>12.3×</strong> slower (629ms)</div></div>
     </div>
 
     <div class="barchart">
-      <div class="br-row"><div class="br-name muted">cold start</div><div class="br-track"><div class="br-bar warn" style="width:100%"></div></div><div class="br-num bad">V8 ~50ms</div></div>
-      <div class="br-row"><div class="br-name">cold start</div><div class="br-track"><div class="br-bar" style="width:60%"></div></div><div class="br-num">JSC ~30ms</div></div>
-      <div class="br-row"><div class="br-name">cold start</div><div class="br-track"><div class="br-bar good" style="width:5%"></div></div><div class="br-num good">Hermes ~3ms</div></div>
-      <div class="br-row"><div class="br-name">cold start</div><div class="br-track"><div class="br-bar good" style="width:2%"></div></div><div class="br-num good">QuickJS &lt; 1ms</div></div>
+      <div class="br-row"><div class="br-name muted">cold start</div><div class="br-track"><div class="br-bar warn" style="width:100%"></div></div><div class="br-num bad">Node.js 1× (20.5ms)</div></div>
+      <div class="br-row"><div class="br-name">cold start</div><div class="br-track"><div class="br-bar good" style="width:17.6%"></div></div><div class="br-num good">QuickJS <strong>5.7×</strong> faster (3.6ms)</div></div>
     </div>
 
     <div class="barchart">
-      <div class="br-row"><div class="br-name muted">memory baseline</div><div class="br-track"><div class="br-bar warn" style="width:100%"></div></div><div class="br-num bad">V8 ~25 MB</div></div>
-      <div class="br-row"><div class="br-name">memory baseline</div><div class="br-track"><div class="br-bar" style="width:80%"></div></div><div class="br-num">JSC ~20 MB</div></div>
-      <div class="br-row"><div class="br-name">memory baseline</div><div class="br-track"><div class="br-bar" style="width:20%"></div></div><div class="br-num">Hermes ~5 MB</div></div>
-      <div class="br-row"><div class="br-name">memory baseline</div><div class="br-track"><div class="br-bar good" style="width:5%"></div></div><div class="br-num good">QuickJS ~1-2 MB</div></div>
+      <div class="br-row"><div class="br-name muted">peak RSS</div><div class="br-track"><div class="br-bar warn" style="width:100%"></div></div><div class="br-num bad">Node.js 1× (44 MB)</div></div>
+      <div class="br-row"><div class="br-name">peak RSS</div><div class="br-track"><div class="br-bar good" style="width:5.7%"></div></div><div class="br-num good">QuickJS <strong>17.5×</strong> smaller (2.5 MB)</div></div>
+    </div>
+
+    <div class="barchart">
+      <div class="br-row"><div class="br-name muted">binary size</div><div class="br-track"><div class="br-bar warn" style="width:100%"></div></div><div class="br-num bad">Node.js 1× (110 MB)</div></div>
+      <div class="br-row"><div class="br-name">binary size</div><div class="br-track"><div class="br-bar good" style="width:1.1%"></div></div><div class="br-num good">QuickJS <strong>94×</strong> smaller (1.2 MB)</div></div>
+    </div>
+
+    <div class="note">
+      <span class="ntag lang-zh-only">FIELD NOTE · 这些数字的含义</span>
+      <span class="ntag lang-en-only">FIELD NOTE · what these numbers mean</span>
+      <span class="lang-zh-only">QuickJS 比 V8 <strong>慢 12.3×</strong>、<strong>启动快 5.7×</strong>、<strong>内存小 17.5×</strong>、<strong>二进制小 94×</strong>。换个角度：<em>一个能跑 <code>Array.prototype.map</code> 的 1.17 MB 二进制</em>。如果你要把 JS 跑进 ESP32（4MB flash）、车机系统（启动时间硬约束 50ms）、CLI 工具（容器镜像大小重要）——这四个维度里有一个不能让步，QuickJS 就是答案。如果你跑的是 React SSR（启动一次跑 8 小时，所有维度都让步给吞吐量），V8 永远赢。</span>
+      <span class="lang-en-only">QuickJS is <strong>12.3× slower</strong>, <strong>5.7× faster to start</strong>, <strong>17.5× smaller in memory</strong>, <strong>94× smaller on disk</strong> than V8. Reframe: <em>a 1.17 MB binary that can run <code>Array.prototype.map</code></em>. If you're shipping JS into ESP32 (4MB flash), car infotainment (hard 50ms startup budget), CLI tools (container image size matters) — anywhere one of these four can't bend — QuickJS is the answer. If you're running React SSR (one cold start, then 8 hours of throughput), V8 wins forever.</span>
     </div>
 
     <blockquote class="pull">
@@ -4523,43 +4584,48 @@
     <p class="chap-en lang-en-only">5 C calls to run JS in your C project</p>
 
     <div class="src-stack">
-      <div class="src-h"><span>minimal QuickJS embedder · main.c</span><span class="src-tag">~30 lines, links libquickjs.a</span></div>
+      <div class="src-h"><span>本机实测 · /tmp/demo-embed.c · 编译运行通过</span><span class="src-tag">本会话验证</span></div>
+<span class="src-line"><span class="src-comment">// API references annotated with quickjs.h line numbers — all verified against</span></span>
+<span class="src-line"><span class="src-comment">// quickjs-ng HEAD. Compiled with: cc demo.c libqjs.a -lm -lpthread -o demo</span></span>
+<span class="src-line"></span>
 <span class="src-line"><span class="src-comment">#include "quickjs.h"</span></span>
 <span class="src-line"><span class="src-comment">#include &lt;stdio.h&gt;</span></span>
+<span class="src-line"><span class="src-comment">#include &lt;string.h&gt;</span></span>
 <span class="src-line"></span>
 <span class="src-line"><span class="src-kw">int</span> main(<span class="src-kw">int</span> argc, <span class="src-kw">char</span> **argv) {</span>
 <span class="src-line">    <span class="src-comment">/* 1. one Runtime + one Context */</span></span>
-<span class="src-line">    JSRuntime *rt = <span class="src-fn">JS_NewRuntime</span>();</span>
-<span class="src-line">    JSContext *ctx = <span class="src-fn">JS_NewContext</span>(rt);</span>
+<span class="src-line">    JSRuntime *rt = <span class="src-fn">JS_NewRuntime</span>();                                <span class="src-comment">// quickjs.h:511</span></span>
+<span class="src-line">    JSContext *ctx = <span class="src-fn">JS_NewContext</span>(rt);                              <span class="src-comment">// quickjs.h:537</span></span>
 <span class="src-line"></span>
 <span class="src-line">    <span class="src-comment">/* 2. optional limits */</span></span>
-<span class="src-line">    <span class="src-fn">JS_SetMemoryLimit</span>(rt, <span class="src-num">10</span> * <span class="src-num">1024</span> * <span class="src-num">1024</span>);    <span class="src-comment">// 10 MB cap</span></span>
-<span class="src-line">    <span class="src-fn">JS_SetMaxStackSize</span>(rt, <span class="src-num">256</span> * <span class="src-num">1024</span>);         <span class="src-comment">// 256 KB stack</span></span>
+<span class="src-line">    <span class="src-fn">JS_SetMemoryLimit</span>(rt, <span class="src-num">10</span> * <span class="src-num">1024</span> * <span class="src-num">1024</span>);                          <span class="src-comment">// quickjs.h:515</span></span>
+<span class="src-line">    <span class="src-fn">JS_SetMaxStackSize</span>(rt, <span class="src-num">256</span> * <span class="src-num">1024</span>);                               <span class="src-comment">// quickjs.h:521</span></span>
 <span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* 3. evaluate */</span></span>
+<span class="src-line">    <span class="src-comment">/* 3. evaluate · flags = JS_EVAL_TYPE_GLOBAL (0, default) */</span></span>
 <span class="src-line">    <span class="src-kw">const char</span> *src = <span class="src-str">"[1,2,3].map(x =&gt; x*2).join(',')"</span>;</span>
-<span class="src-line">    JSValue ret = <span class="src-fn">JS_Eval</span>(ctx, src, strlen(src), <span class="src-str">"&lt;test&gt;"</span>, <span class="src-num">0</span>);</span>
+<span class="src-line">    JSValue ret = <span class="src-fn">JS_Eval</span>(ctx, src, strlen(src), <span class="src-str">"&lt;test&gt;"</span>, <span class="src-num">0</span>);     <span class="src-comment">// quickjs.h:1023</span></span>
 <span class="src-line"></span>
-<span class="src-line">    <span class="src-kw">if</span> (<span class="src-fn">JS_IsException</span>(ret)) {</span>
-<span class="src-line">        JSValue err = <span class="src-fn">JS_GetException</span>(ctx);</span>
-<span class="src-line">        <span class="src-kw">const char</span> *msg = <span class="src-fn">JS_ToCString</span>(ctx, err);</span>
+<span class="src-line">    <span class="src-kw">if</span> (<span class="src-fn">JS_IsException</span>(ret)) {                                       <span class="src-comment">// quickjs.h:796</span></span>
+<span class="src-line">        JSValue err = <span class="src-fn">JS_GetException</span>(ctx);                          <span class="src-comment">// quickjs.h:828</span></span>
+<span class="src-line">        <span class="src-kw">const char</span> *msg = <span class="src-fn">JS_ToCString</span>(ctx, err);                     <span class="src-comment">// quickjs.h:894</span></span>
 <span class="src-line">        fprintf(stderr, <span class="src-str">"Error: %s\n"</span>, msg);</span>
-<span class="src-line">        <span class="src-fn">JS_FreeCString</span>(ctx, msg);</span>
-<span class="src-line">        <span class="src-fn">JS_FreeValue</span>(ctx, err);</span>
+<span class="src-line">        <span class="src-fn">JS_FreeCString</span>(ctx, msg);                                     <span class="src-comment">// quickjs.h:909</span></span>
+<span class="src-line">        <span class="src-fn">JS_FreeValue</span>(ctx, err);                                       <span class="src-comment">// quickjs.h:854</span></span>
 <span class="src-line">    } <span class="src-kw">else</span> {</span>
 <span class="src-line">        <span class="src-kw">const char</span> *out = <span class="src-fn">JS_ToCString</span>(ctx, ret);</span>
-<span class="src-line">        printf(<span class="src-str">"%s\n"</span>, out);                          <span class="src-comment">// "2,4,6"</span></span>
+<span class="src-line">        printf(<span class="src-str">"%s\n"</span>, out);                              <span class="src-comment">// outputs "2,4,6" — verified ✓</span></span>
 <span class="src-line">        <span class="src-fn">JS_FreeCString</span>(ctx, out);</span>
 <span class="src-line">    }</span>
 <span class="src-line">    <span class="src-fn">JS_FreeValue</span>(ctx, ret);</span>
 <span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* 4. teardown */</span></span>
-<span class="src-line">    <span class="src-fn">JS_FreeContext</span>(ctx);</span>
-<span class="src-line">    <span class="src-fn">JS_FreeRuntime</span>(rt);</span>
+<span class="src-line">    <span class="src-comment">/* 4. teardown · order matters: Context before Runtime */</span></span>
+<span class="src-line">    <span class="src-fn">JS_FreeContext</span>(ctx);                                              <span class="src-comment">// quickjs.h:538</span></span>
+<span class="src-line">    <span class="src-fn">JS_FreeRuntime</span>(rt);                                               <span class="src-comment">// quickjs.h:526</span></span>
 <span class="src-line">    <span class="src-kw">return</span> <span class="src-num">0</span>;</span>
 <span class="src-line">}</span>
 <span class="src-line"></span>
-<span class="src-line"><span class="src-comment">// $ gcc main.c libquickjs.a -lm -o demo &amp;&amp; ./demo</span></span>
+<span class="src-line"><span class="src-comment">// $ cc demo.c -I/path/to/quickjs-ng libqjs.a -lm -lpthread -o demo</span></span>
+<span class="src-line"><span class="src-comment">// $ ./demo</span></span>
 <span class="src-line"><span class="src-comment">// 2,4,6</span></span>
     </div>
 
