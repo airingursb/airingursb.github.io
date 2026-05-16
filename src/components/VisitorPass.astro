@@ -1,0 +1,270 @@
+---
+// VisitorPass — 3D boarding-pass card showing visitor rank + online tribe.
+// All behavior is in the inline script below; component takes no props.
+---
+
+<div class="vp-wrap" id="visitorPass">
+  <div class="vp-pass" data-vp-tilt>
+    <div class="vp-head">
+      <span><span class="vp-dot"></span>URSB.ME</span>
+      <span>VISITOR_PASS</span>
+    </div>
+    <div class="vp-hero">
+      <div class="vp-hero-label" data-i18n="vp_label">YOU ARE VISITOR</div>
+      <div class="vp-hero-num">
+        <span class="vp-hash">#</span><span class="vp-total" id="vpTotal">--,---</span>
+      </div>
+      <div class="vp-online-row" id="vpOnlineRow" hidden>
+        <div class="vp-online-meta">
+          <span class="vp-live-dot"></span>
+          <span id="vpOnlineMeta">—</span>
+        </div>
+        <div class="vp-tribe" id="vpTribe"></div>
+      </div>
+    </div>
+    <hr class="vp-perf">
+    <div class="vp-data">
+      <div class="vp-cell">
+        <span class="vp-k" data-i18n="vp_today">TODAY</span>
+        <span class="vp-v" id="vpToday">#--</span>
+      </div>
+      <div class="vp-cell">
+        <span class="vp-k" data-i18n="vp_joined">JOINED</span>
+        <span class="vp-v" id="vpJoined">----.--.--</span>
+      </div>
+    </div>
+    <div class="vp-foot">
+      <span>URSB.ME ■ V1</span>
+      <span>WELCOME ABOARD</span>
+    </div>
+    <div class="vp-glare"></div>
+  </div>
+</div>
+
+<style>
+  .vp-wrap {
+    perspective: 1400px;
+    width: 100%;
+    max-width: 320px;
+    margin: 20px auto 0;
+  }
+  .vp-pass {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: var(--c-bg);
+    color: var(--c-text);
+    font-family: ui-monospace, "SF Mono", "Roboto Mono", monospace;
+    border-radius: 10px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    transform-style: preserve-3d;
+    transition: transform .2s ease-out;
+    will-change: transform;
+    box-shadow:
+      0 20px 50px -22px rgba(0,0,0,.22),
+      0 3px 8px rgba(0,0,0,.05),
+      inset 0 0 0 1px rgba(0,0,0,.06);
+  }
+  :global([data-mode="dark"]) .vp-pass {
+    box-shadow:
+      0 24px 56px -22px rgba(0,0,0,.55),
+      0 3px 8px rgba(0,0,0,.25),
+      inset 0 0 0 1px rgba(255,255,255,.06);
+  }
+  .vp-glare {
+    position: absolute; inset: 0;
+    border-radius: 10px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity .25s;
+    background: radial-gradient(
+      circle 200px at var(--mx, 50%) var(--my, 50%),
+      rgba(255,255,255,.35),
+      transparent 50%
+    );
+    mix-blend-mode: overlay;
+    z-index: 10;
+  }
+  :global([data-mode="dark"]) .vp-glare {
+    background: radial-gradient(
+      circle 200px at var(--mx, 50%) var(--my, 50%),
+      rgba(var(--accent-rgb), .2),
+      transparent 55%
+    );
+    mix-blend-mode: screen;
+  }
+  .vp-pass:hover .vp-glare { opacity: 1; }
+
+  .vp-head {
+    height: 28px;
+    background: var(--c-bg-alt);
+    border-bottom: 1px solid rgba(0,0,0,.06);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 14px;
+    font-size: 9.5px;
+    letter-spacing: .2em;
+    color: var(--c-text-muted);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  :global([data-mode="dark"]) .vp-head { border-bottom-color: rgba(255,255,255,.06); }
+  .vp-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 2px rgba(var(--accent-rgb), .18);
+    margin-right: 6px;
+    vertical-align: middle;
+    animation: vp-pulse 2s ease-in-out infinite;
+  }
+  @keyframes vp-pulse {
+    0%, 100% { box-shadow: 0 0 0 2px rgba(var(--accent-rgb), .18); }
+    50%      { box-shadow: 0 0 0 4px rgba(var(--accent-rgb), .05); }
+  }
+
+  .vp-hero {
+    flex: 1;
+    padding: 14px 18px 8px;
+    display: flex; flex-direction: column;
+    justify-content: center;
+  }
+  .vp-hero-label {
+    font-size: 9.5px;
+    letter-spacing: .26em;
+    color: var(--c-text-dim);
+    margin-bottom: 4px;
+  }
+  .vp-hero-num {
+    font-size: 36px;
+    font-weight: 700;
+    letter-spacing: -.01em;
+    font-feature-settings: "tnum";
+    color: var(--c-text);
+    line-height: 1.05;
+    display: flex; align-items: baseline; gap: 2px;
+  }
+  .vp-hash { color: var(--accent); }
+
+  .vp-online-row { margin-top: 10px; }
+  .vp-online-meta {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 9px; letter-spacing: .18em;
+    color: var(--c-text-dim);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .vp-online-meta b {
+    color: var(--c-text);
+    font-weight: 700;
+  }
+  .vp-live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 4px rgba(var(--accent-rgb), .6);
+    animation: vp-pulse 2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  .vp-tribe {
+    display: flex; gap: 4px; align-items: center;
+    min-height: 12px;
+  }
+  .vp-skull {
+    width: 14px; height: 12px;
+    position: relative;
+    flex-shrink: 0;
+  }
+  .vp-skull svg {
+    display: block; width: 100%; height: 100%;
+    image-rendering: pixelated;
+  }
+  .vp-skull.vp-you::after {
+    content: ""; position: absolute;
+    inset: -3px;
+    border: 1.5px solid var(--accent);
+    border-radius: 3px;
+    box-shadow: 0 0 6px rgba(var(--accent-rgb), .5);
+    animation: vp-ring-pulse 1.6s ease-in-out infinite;
+  }
+  @keyframes vp-ring-pulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(var(--accent-rgb), .5); }
+    50%      { box-shadow: 0 0 10px rgba(var(--accent-rgb), .25); }
+  }
+  .vp-tribe-more {
+    font-size: 9.5px;
+    color: var(--c-text-dim);
+    margin-left: 4px;
+    font-weight: 600;
+  }
+
+  .vp-perf {
+    border: none;
+    border-top: 1.5px dashed rgba(0,0,0,.14);
+    margin: 0 14px;
+  }
+  :global([data-mode="dark"]) .vp-perf { border-top-color: rgba(255,255,255,.14); }
+
+  .vp-data {
+    padding: 10px 16px 6px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px 14px;
+  }
+  .vp-k {
+    display: block;
+    font-size: 9px; letter-spacing: .22em;
+    color: var(--c-text-dim);
+    margin-bottom: 2px;
+  }
+  .vp-v {
+    font-size: 13px; color: var(--c-text);
+    font-weight: 600;
+    font-feature-settings: "tnum";
+  }
+
+  .vp-foot {
+    height: 26px;
+    background: var(--c-bg-alt);
+    border-top: 1px solid rgba(0,0,0,.06);
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 14px;
+    font-size: 9px; letter-spacing: .18em;
+    color: var(--c-text-dim);
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+  :global([data-mode="dark"]) .vp-foot { border-top-color: rgba(255,255,255,.06); }
+
+  .vp-pass::before, .vp-pass::after {
+    content: "";
+    position: absolute;
+    width: 12px; height: 12px;
+    background: var(--c-bg);
+    border-radius: 50%;
+    top: 86px;
+    z-index: 2;
+  }
+  .vp-pass::before { left: -6px; }
+  .vp-pass::after  { right: -6px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .vp-pass,
+    .vp-glare,
+    .vp-skull.vp-you::after,
+    .vp-dot,
+    .vp-live-dot {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    // Implementation added in subsequent tasks.
+  })();
+</script>
