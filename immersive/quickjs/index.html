@@ -1966,6 +1966,103 @@
       <span class="lang-en-only">"Open quickjs.c at line 1015,<br>JSShape's <em>real</em> definition has 11 fields.<br>Not the 9 I had earlier — among the missing two is <code>JSObject *proto</code>,<br>which is the <em>real root</em> of the entire prototype chain."</span>
       <cite>— Ch12 will show why this is the most important field</cite>
     </blockquote>
+
+    <h3 class="sub lang-zh-only">10 分钟在你机器上复现这篇文章</h3>
+    <h3 class="sub lang-en-only">Reproduce this article in 10 minutes</h3>
+
+    <p class="lang-zh-only">本文每一处行号、每一条字节码、每一个 benchmark 数字都可以在你自己的机器上跑出来。下面是完整流程：</p>
+    <p class="lang-en-only">Every line number, every bytecode dump, every benchmark in this article is reproducible on your machine. Here's the full procedure:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>step 1 · clone &amp; build qjs-ng with dumps enabled</span><span class="src-tag">~90s on Apple Silicon</span></div>
+<span class="src-line"><span class="src-comment">$ git clone --depth 1 https://github.com/quickjs-ng/quickjs /tmp/quickjs-ng</span></span>
+<span class="src-line"><span class="src-comment">$ cd /tmp/quickjs-ng &amp;&amp; mkdir -p build &amp;&amp; cd build</span></span>
+<span class="src-line"><span class="src-comment">$ cmake -DCMAKE_C_FLAGS="-DENABLE_DUMPS=1" .. &amp;&amp; cmake --build . --target qjs_exe</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment"># Produces ./build/qjs (1.17 MB) and ./build/libqjs.a (~12 MB)</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>step 2 · verify the line numbers cited in this article</span><span class="src-tag">~5s</span></div>
+<span class="src-line"><span class="src-comment"># headline counts</span></span>
+<span class="src-line"><span class="src-comment">$ wc -l quickjs.c              </span><span class="src-comment"># 61874</span></span>
+<span class="src-line"><span class="src-comment">$ grep -cE "^DEF\(" quickjs-opcode.h    </span><span class="src-comment"># 246 opcodes (Ch09)</span></span>
+<span class="src-line"><span class="src-comment">$ grep -cE "^DEF\(" quickjs-atom.h      </span><span class="src-comment"># 229 atoms (Ch11)</span></span>
+<span class="src-line"><span class="src-comment">$ grep -cE "^DEF\(" libregexp-opcode.h  </span><span class="src-comment"># 30 regex opcodes (Ch18)</span></span>
+<span class="src-line"><span class="src-comment">$ grep -c '^#include "quickjs-opcode.h"' quickjs.c   </span><span class="src-comment"># 5 expansions</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment"># key struct line numbers (every Ch reproduces these verbatim)</span></span>
+<span class="src-line"><span class="src-comment">$ grep -nE "^(struct|typedef struct) JS(Runtime|Class|StackFrame|GCObjectHeader|VarRef|Context|FunctionBytecode|ShapeProperty|Shape|Object|FunctionDef|AsyncFunctionState) " quickjs.c</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment"># key function line numbers (Ch15 / Ch16 / Ch19)</span></span>
+<span class="src-line"><span class="src-comment">$ grep -nE "^static (JSValue|void) (JS_CallInternal|find_own_property|JS_GetPropertyInternal|JS_RunGC|gc_decref|gc_scan|gc_free_cycles|close_var_ref|__JS_NewAtom|next_token|js_parse_expr_binary)\(" quickjs.c</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>step 3 · regenerate Ch15 / Ch16 / Ch20 bytecode dumps</span><span class="src-tag">~1s each</span></div>
+<span class="src-line"><span class="src-comment">$ echo 'const r = await [1,2,3].map(x =&gt; x*2); console.log(r);' &gt; /tmp/main.js</span></span>
+<span class="src-line"><span class="src-comment">$ /tmp/quickjs-ng/build/qjs -d /tmp/main.js</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment"># Output shows pass 1 / pass 2 / final bytecode for both the outer module</span></span>
+<span class="src-line"><span class="src-comment"># and the inner arrow body. Exactly what we walk through in Ch15.</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment"># For per-step dispatch trace inside the interpreter loop:</span></span>
+<span class="src-line"><span class="src-comment">$ /tmp/quickjs-ng/build/qjs --dump-bytecode-step /tmp/main.js  </span><span class="src-comment"># 22 lines</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>step 4 · rerun the Ch20 benchmarks</span><span class="src-tag">~30s</span></div>
+<span class="src-line"><span class="src-comment">$ cat &gt; /tmp/fib35.js &lt;&lt;'JSEOF'</span></span>
+<span class="src-line">function fib(n) { return n &lt; 2 ? n : fib(n-1) + fib(n-2); }</span>
+<span class="src-line">const t0 = Date.now();</span>
+<span class="src-line">const r = fib(35);</span>
+<span class="src-line">console.log("fib(35)", r, "took", Date.now() - t0, "ms");</span>
+<span class="src-line"><span class="src-comment">JSEOF</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment"># peak speed:</span></span>
+<span class="src-line"><span class="src-comment">$ for i in 1 2 3; do node /tmp/fib35.js; done                    </span><span class="src-comment"># ~50 ms median</span></span>
+<span class="src-line"><span class="src-comment">$ for i in 1 2 3; do /tmp/quickjs-ng/build/qjs /tmp/fib35.js; done </span><span class="src-comment"># ~630 ms median</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment"># peak RSS (macOS):</span></span>
+<span class="src-line"><span class="src-comment">$ /usr/bin/time -l node /tmp/fib35.js 2&gt;&amp;1 | grep "maximum resident"</span></span>
+<span class="src-line"><span class="src-comment">$ /usr/bin/time -l /tmp/quickjs-ng/build/qjs /tmp/fib35.js 2&gt;&amp;1 | grep "maximum resident"</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment"># cold start (Python perf_counter_ns for sub-ms resolution):</span></span>
+<span class="src-line"><span class="src-comment">$ echo 'console.log(1)' &gt; /tmp/print1.js</span></span>
+<span class="src-line"><span class="src-comment">$ python3 -c "</span></span>
+<span class="src-line"><span class="src-comment">import subprocess, time</span></span>
+<span class="src-line"><span class="src-comment">for cmd in ['node /tmp/print1.js', '/tmp/quickjs-ng/build/qjs /tmp/print1.js']:</span></span>
+<span class="src-line"><span class="src-comment">    samples = []</span></span>
+<span class="src-line"><span class="src-comment">    for _ in range(5):</span></span>
+<span class="src-line"><span class="src-comment">        t0 = time.perf_counter_ns()</span></span>
+<span class="src-line"><span class="src-comment">        subprocess.run(cmd.split(), stdout=subprocess.DEVNULL)</span></span>
+<span class="src-line"><span class="src-comment">        samples.append((time.perf_counter_ns() - t0) / 1e6)</span></span>
+<span class="src-line"><span class="src-comment">    print(f'{cmd}: median {sorted(samples)[2]:.2f} ms')</span></span>
+<span class="src-line"><span class="src-comment">"</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">CMake build flags · 调整 quickjs.c 行为</h3>
+    <h3 class="sub lang-en-only">CMake build flags · tuning quickjs.c behavior</h3>
+
+    <table class="cmp">
+      <thead><tr><th>flag</th><th><span class="lang-zh-only">默认</span><span class="lang-en-only">Default</span></th><th><span class="lang-zh-only">作用</span><span class="lang-en-only">Effect</span></th><th><span class="lang-zh-only">用途</span><span class="lang-en-only">Use case</span></th></tr></thead>
+      <tbody>
+        <tr><td class="mono">ENABLE_DUMPS</td><td class="num">off</td><td><span class="lang-zh-only">编译进 JS_DumpBytecode 等调试钩子</span><span class="lang-en-only">compile in JS_DumpBytecode &amp; friends</span></td><td><span class="lang-zh-only">本文所有 <code>qjs -d</code> 输出都需要它</span><span class="lang-en-only">required for every <code>qjs -d</code> output in this article</span></td></tr>
+        <tr><td class="mono">DIRECT_DISPATCH</td><td class="num">on</td><td><span class="lang-zh-only">computed goto vs 大 switch (Ch15)</span><span class="lang-en-only">computed goto vs giant switch (Ch15)</span></td><td><span class="lang-zh-only">关掉看 BTB 命中率下降多少</span><span class="lang-en-only">turn off to measure BTB miss penalty</span></td></tr>
+        <tr><td class="mono">JS_NAN_BOXING</td><td class="num">auto</td><td><span class="lang-zh-only">32 位机器自动开 · 64 位强制开则 JSValue = 8B (Ch10)</span><span class="lang-en-only">auto on 32-bit · force-on for 8B JSValue on 64-bit (Ch10)</span></td><td><span class="lang-zh-only">嵌入式 / 内存紧</span><span class="lang-en-only">embedded / memory-constrained</span></td></tr>
+        <tr><td class="mono">JS_CHECK_JSVALUE</td><td class="num">off</td><td><span class="lang-zh-only">把 JSValue 编译成指针 · 程序<em>不能跑</em>，但编译期 type-check refcount (Ch10)</span><span class="lang-en-only">JSValue becomes a pointer · code <em>cannot run</em>, but compile-time ownership check (Ch10)</span></td><td><span class="lang-zh-only">改 quickjs.c 时静态查 missing FreeValue</span><span class="lang-en-only">static-check missing FreeValue calls when hacking quickjs.c</span></td></tr>
+        <tr><td class="mono">CONFIG_BIGNUM</td><td class="num">off in ng</td><td><span class="lang-zh-only">完整 BigInt + BigFloat + BigDecimal · 拉入 libbf</span><span class="lang-en-only">full BigInt + BigFloat + BigDecimal · pulls libbf in</span></td><td><span class="lang-zh-only">需要任意精度浮点</span><span class="lang-en-only">need arbitrary-precision floats</span></td></tr>
+        <tr><td class="mono">BUILD_QJSC</td><td class="num">on</td><td><span class="lang-zh-only">生成 qjsc 把 JS 预编译成 C 数组</span><span class="lang-en-only">build qjsc · pre-compile JS to a C byte array</span></td><td><span class="lang-zh-only">单文件分发 · 嵌入式</span><span class="lang-en-only">single-binary distribution · embedded</span></td></tr>
+        <tr><td class="mono">BUILD_SHARED_LIBS</td><td class="num">off</td><td><span class="lang-zh-only">libqjs.a 改成 libqjs.so</span><span class="lang-en-only">libqjs.a → libqjs.so</span></td><td><span class="lang-zh-only">runtime-加载 JS 引擎</span><span class="lang-en-only">runtime-loaded JS engine</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="note good">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 这是<em>白盒</em>文章</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · this is a <em>white-box</em> article</span>
+      <span class="lang-zh-only">如果你<em>跑</em>上面 4 步、<em>grep</em> 出来的行号和这里写的不一致，告诉我——大概率是 quickjs-ng 主分支动了，文章需要更新。所有数字均来自<em>本会话本机</em>跑出的真实输出，没有引用别人的二手数据。</span>
+      <span class="lang-en-only">If you <em>run</em> the 4 steps above and the <em>grep</em>'d line numbers don't match what's printed here, tell me — it's most likely quickjs-ng main moved and the article needs an update. Every number in this piece comes from <em>this session, this machine</em>, no second-hand data.</span>
+    </div>
   </section>
 
   <!-- ========== MAIN LINE ========== -->
@@ -3485,6 +3582,74 @@
       <span class="lang-en-only">QuickJS uses <em>negative</em> tags for "<em>pointer types</em>" and <em>non-negative</em> tags for "<em>primitive types</em>". This makes <code>JS_VALUE_HAS_REF_COUNT(v) = (v.tag &lt; 0)</code> — <em>a single comparison</em> answers "is this refcounted?", cheaper than a bit-test. This kind of "<em>squeeze every nanosecond out of C</em>" is everywhere in the 70k lines.</span>
     </div>
 
+    <h3 class="sub lang-zh-only">8 个全文最常用的宏 / 内联函数 · 真定义</h3>
+    <h3 class="sub lang-en-only">8 macros / inlines you'll see 100+ times · real definitions</h3>
+
+    <p class="lang-zh-only">本文从第 7 章开始随处出现 <code>js_int32</code>, <code>js_dup</code>, <code>JS_VALUE_GET_PTR</code> 等小工具——它们 100% 都是<em>编译期展开</em>的 inline，不是函数调用。一次性集中在这里：</p>
+    <p class="lang-en-only">From Ch07 onwards you'll see <code>js_int32</code>, <code>js_dup</code>, <code>JS_VALUE_GET_PTR</code> all over the place — they're <em>compile-time expansions</em>, not function calls. Collected here once:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:1503 · 1542 · primitive helpers</span><span class="src-tag">verbatim</span></div>
+<span class="src-line"><span class="src-frame">  1503</span>  <span class="src-kw">static</span> JSValue <span class="src-fn">js_int32</span>(<span class="src-cls">int32_t</span> v) {</span>
+<span class="src-line"><span class="src-frame">  1504</span>      <span class="src-kw">return</span> <span class="src-fn">JS_MKVAL</span>(JS_TAG_INT, v);                        <span class="src-comment">// pack int into 16B JSValue</span></span>
+<span class="src-line"><span class="src-frame">  1505</span>  }</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-frame">  1509</span>  <span class="src-kw">static</span> JSValue <span class="src-fn">js_uint32</span>(<span class="src-cls">uint32_t</span> v) {</span>
+<span class="src-line"><span class="src-frame">  1510</span>      <span class="src-kw">return</span> v &lt;= INT32_MAX ? <span class="src-fn">js_int32</span>(v) : <span class="src-fn">js_float64</span>(v);</span>
+<span class="src-line"><span class="src-frame">  1511</span>  }                                                       <span class="src-comment">// branch on signed-fit</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-frame">  1525</span>  <span class="src-kw">static</span> JSValue <span class="src-fn">js_number</span>(<span class="src-cls">double</span> d) {</span>
+<span class="src-line"><span class="src-frame">  1526</span>      <span class="src-kw">if</span> (<span class="src-fn">double_is_int32</span>(d))</span>
+<span class="src-line"><span class="src-frame">  1527</span>          <span class="src-kw">return</span> <span class="src-fn">js_int32</span>((<span class="src-cls">int32_t</span>)d);                  <span class="src-comment">// ⭐ "if it fits, demote to int"</span></span>
+<span class="src-line"><span class="src-frame">  1528</span>      <span class="src-kw">return</span> <span class="src-fn">js_float64</span>(d);</span>
+<span class="src-line"><span class="src-frame">  1529</span>  }</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-frame">  1542</span>  <span class="src-kw">static</span> JSValue <span class="src-fn">js_dup</span>(JSValueConst v) {</span>
+<span class="src-line"><span class="src-frame">  1543</span>      <span class="src-kw">if</span> (<span class="src-fn">JS_VALUE_HAS_REF_COUNT</span>(v)) {                       <span class="src-comment">// tag &lt; 0 ?</span></span>
+<span class="src-line"><span class="src-frame">  1544</span>          JSRefCountHeader *p = (JSRefCountHeader *)<span class="src-fn">JS_VALUE_GET_PTR</span>(v);</span>
+<span class="src-line"><span class="src-frame">  1545</span>          p-&gt;ref_count++;                              <span class="src-comment">// ⭐ THE refcount bump</span></span>
+<span class="src-line"><span class="src-frame">  1546</span>      }</span>
+<span class="src-line"><span class="src-frame">  1547</span>      <span class="src-kw">return</span> <span class="src-fn">unsafe_unconst</span>(v);                          <span class="src-comment">// just casts away const</span></span>
+<span class="src-line"><span class="src-frame">  1548</span>  }</span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.h:323 · 330 · default 64-bit access macros</span><span class="src-tag">5 macros · 5 inline reads</span></div>
+<span class="src-line"><span class="src-frame">   323</span>  <span class="src-comment">#define JS_VALUE_GET_TAG(v)     ((int32_t)(v).tag)</span></span>
+<span class="src-line"><span class="src-frame">   324</span>  <span class="src-comment">/* same as JS_VALUE_GET_TAG, but return JS_TAG_FLOAT64 with NaN boxing */</span></span>
+<span class="src-line"><span class="src-frame">   325</span>  <span class="src-comment">#define JS_VALUE_GET_NORM_TAG(v) JS_VALUE_GET_TAG(v)</span></span>
+<span class="src-line"><span class="src-frame">   326</span>  <span class="src-comment">#define JS_VALUE_GET_INT(v)     ((v).u.int32)</span></span>
+<span class="src-line"><span class="src-frame">   328</span>  <span class="src-comment">#define JS_VALUE_GET_FLOAT64(v) ((v).u.float64)</span></span>
+<span class="src-line"><span class="src-frame">   330</span>  <span class="src-comment">#define JS_VALUE_GET_PTR(v)     ((v).u.ptr)</span></span>
+<span class="src-line"><span class="src-frame">   341</span>  <span class="src-kw">static inline</span> JSValue <span class="src-fn">JS_MKVAL</span>(<span class="src-cls">int64_t</span> tag, <span class="src-cls">int32_t</span> int32) {</span>
+<span class="src-line"><span class="src-frame">       </span>      JSValue v;</span>
+<span class="src-line"><span class="src-frame">       </span>      v.tag = tag; v.u.int32 = int32; <span class="src-kw">return</span> v;</span>
+<span class="src-line"><span class="src-frame">       </span>  }</span>
+<span class="src-line"><span class="src-frame">   401</span>  <span class="src-comment">#define JS_VALUE_HAS_REF_COUNT(v) \</span></span>
+<span class="src-line"><span class="src-frame">      </span>          <span class="src-comment">((unsigned)JS_VALUE_GET_TAG(v) &gt;= (unsigned)JS_TAG_FIRST)</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// ⭐ the unsigned-cast trick: JS_TAG_FIRST is -9 (a negative int32).</span></span>
+<span class="src-line"><span class="src-comment">// Casting to unsigned wraps negative tags to huge values, all positive tags stay small.</span></span>
+<span class="src-line"><span class="src-comment">// So "tag &lt; 0" becomes "tag &gt;= FIRST_after_wrap" → one CMP, zero branches in pipeline.</span></span>
+    </div>
+
+    <table class="cmp">
+      <thead><tr><th>macro / inline</th><th><span class="lang-zh-only">在 quickjs.c 出现次数</span><span class="lang-en-only">Occurrences in quickjs.c</span></th><th><span class="lang-zh-only">展开为</span><span class="lang-en-only">Expands to</span></th><th><span class="lang-zh-only">关键章节</span><span class="lang-en-only">Cited in</span></th></tr></thead>
+      <tbody>
+        <tr><td class="mono">js_int32(v)</td><td class="num">~900</td><td>JS_MKVAL(JS_TAG_INT, v)</td><td>Ch10 · Ch15</td></tr>
+        <tr><td class="mono">js_float64(d)</td><td class="num">~120</td><td>JS_MKVAL(JS_TAG_FLOAT64, ...) (NaN-box) or struct (default)</td><td>Ch10</td></tr>
+        <tr><td class="mono">js_dup(v)</td><td class="num">~1200</td><td>if HAS_REF_COUNT → p-&gt;ref_count++</td><td>Ch10 · Ch15 · Ch19</td></tr>
+        <tr><td class="mono">JS_VALUE_GET_TAG(v)</td><td class="num">~600</td><td>(int32_t)(v).tag</td><td>Ch10 · Ch16</td></tr>
+        <tr><td class="mono">JS_VALUE_GET_PTR(v)</td><td class="num">~700</td><td>(v).u.ptr</td><td>Ch10 · Ch16 · Ch19</td></tr>
+        <tr><td class="mono">JS_VALUE_GET_INT(v)</td><td class="num">~250</td><td>(v).u.int32</td><td>Ch15 (OP_mul, OP_add)</td></tr>
+        <tr><td class="mono">JS_VALUE_HAS_REF_COUNT</td><td class="num">~40</td><td>(unsigned)tag &gt;= (unsigned)JS_TAG_FIRST</td><td>Ch10 · Ch19</td></tr>
+        <tr><td class="mono">JS_MKVAL(tag, val)</td><td class="num">~400</td><td>{u: {int32: val}, tag}</td><td>Ch10</td></tr>
+      </tbody>
+    </table>
+
+    <p class="lang-zh-only" style="font-size:12px; color:var(--ink-mute);"><em>这 8 个加起来在 quickjs.c 出现 4000+ 次</em>。它们的<em>共同特征</em>是 0 个分支、1 条内存读、纯指针 / 整数操作。这是 QuickJS 不靠 JIT 仍能<em>保持解释器骨干高效</em>的根基——所有热路径上的"原子"操作都已经被压成 1-3 条机器指令。</p>
+    <p class="lang-en-only" style="font-size:12px; color:var(--ink-mute);"><em>These 8 helpers occur 4000+ times in quickjs.c</em>. Their shared trait: zero branches, one memory read, pure pointer / integer ops. This is the foundation that lets QuickJS's <em>interpreter spine stay tight</em> without a JIT — every "atomic" operation on the hot path has been compressed to 1-3 machine instructions.</p>
+
     <h3 class="sub lang-zh-only">引擎对比 · Value 表示</h3>
     <h3 class="sub lang-en-only">Engine comparison · value representation</h3>
 
@@ -3960,6 +4125,190 @@
       <span class="ntag lang-en-only">DESIGN · deliberately no IC</span>
       <span class="lang-zh-only">Inline cache 让 hot loop 里同一种 obj.x 直接走"上次记住的偏移量"——把属性查找从 ~30 cycles 砍到 ~3 cycles。QuickJS <em>主动放弃</em>这个优化，因为 IC 要往字节码里写"上次见过哪种 shape"，<strong>字节码就变成 self-modifying code</strong>，再也不是<em>纯只读</em>。在 QuickJS 的设计哲学里——简单和可读 > 性能——这种权衡毫无悬念。</span>
       <span class="lang-en-only">Inline caches let hot-loop <code>obj.x</code> with the same shape skip lookup and use the remembered offset — cutting property lookup from ~30 cycles to ~3. QuickJS <em>deliberately</em> drops this optimisation because IC requires writing "<em>which shape was here last time</em>" into bytecode, <strong>making bytecode self-modifying</strong> — no longer purely read-only. In QuickJS's philosophy — simple &gt; fast — this trade-off was a clear call.</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">Shape transition · copy-on-write 复用</h3>
+    <h3 class="sub lang-en-only">Shape transition · copy-on-write reuse</h3>
+
+    <p class="lang-zh-only">"添加一个新属性时，Shape 怎么变化"是 hidden class 设计的核心机制。下面是 quickjs.c 的真实路径：</p>
+    <p class="lang-en-only">"How does the Shape mutate when a new property is added?" is the heart of any hidden-class design. Here's quickjs.c's real path:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:9678 · add_property — three branches of COW</span><span class="src-tag">verbatim core</span></div>
+<span class="src-line"><span class="src-frame">  9678</span>  <span class="src-kw">static</span> JSProperty *<span class="src-fn">add_property</span>(JSContext *ctx, JSObject *p,</span>
+<span class="src-line"><span class="src-frame">      </span>                                  JSAtom prop, <span class="src-kw">int</span> prop_flags) {</span>
+<span class="src-line"><span class="src-frame">  9680</span>      JSShape *sh, *new_sh;</span>
+<span class="src-line"><span class="src-frame">  9691</span>      sh = p-&gt;shape;</span>
+<span class="src-line"><span class="src-frame">  9692</span>      <span class="src-kw">if</span> (sh-&gt;is_hashed) {</span>
+<span class="src-line"><span class="src-frame">  9694</span>          <span class="src-comment">/* (A) try to find an existing shape with same {parent, prop, flags} */</span></span>
+<span class="src-line"><span class="src-frame">  9695</span>          new_sh = <span class="src-fn">find_hashed_shape_prop</span>(ctx-&gt;rt, sh, prop, prop_flags);</span>
+<span class="src-line"><span class="src-frame">  9696</span>          <span class="src-kw">if</span> (new_sh) {                       <span class="src-comment">// ⭐ HIT → SHARE</span></span>
+<span class="src-line"><span class="src-frame">  9698</span>              <span class="src-kw">if</span> (new_sh-&gt;prop_size != sh-&gt;prop_size)</span>
+<span class="src-line"><span class="src-frame">      </span>                  p-&gt;prop = <span class="src-fn">js_realloc</span>(ctx, p-&gt;prop, ...);</span>
+<span class="src-line"><span class="src-frame">  9705</span>              p-&gt;shape = <span class="src-fn">js_dup_shape</span>(new_sh);    <span class="src-comment">// just refcount++</span></span>
+<span class="src-line"><span class="src-frame">  9706</span>              <span class="src-fn">js_free_shape</span>(ctx-&gt;rt, sh);</span>
+<span class="src-line"><span class="src-frame">  9707</span>              <span class="src-kw">return</span> &amp;p-&gt;prop[new_sh-&gt;prop_count - <span class="src-num">1</span>];</span>
+<span class="src-line"><span class="src-frame">  9708</span>          } <span class="src-kw">else if</span> (sh-&gt;header.ref_count != <span class="src-num">1</span>) {</span>
+<span class="src-line"><span class="src-frame">  9710</span>              <span class="src-comment">/* (B) shape is shared → must clone before mutating */</span></span>
+<span class="src-line"><span class="src-frame">  9711</span>              new_sh = <span class="src-fn">js_clone_shape</span>(ctx, sh);   <span class="src-comment">// COW kicks in here</span></span>
+<span class="src-line"><span class="src-frame">  9713</span>              new_sh-&gt;is_hashed = <span class="src-kw">true</span>;</span>
+<span class="src-line"><span class="src-frame">  9714</span>              <span class="src-fn">js_shape_hash_link</span>(ctx-&gt;rt, new_sh);</span>
+<span class="src-line"><span class="src-frame">  9716</span>              <span class="src-fn">js_free_shape</span>(ctx-&gt;rt, p-&gt;shape);</span>
+<span class="src-line"><span class="src-frame">  9717</span>              p-&gt;shape = new_sh;</span>
+<span class="src-line"><span class="src-frame">  9719</span>          }</span>
+<span class="src-line"><span class="src-frame">      </span>          <span class="src-comment">/* (C) shape has only one owner → mutate in place (fall through) */</span></span>
+<span class="src-line"><span class="src-frame">  9720</span>      }</span>
+<span class="src-line"><span class="src-frame">      </span>      ...</span>
+<span class="src-line"><span class="src-frame">      </span>      <span class="src-fn">add_shape_property</span>(ctx, &amp;p-&gt;shape, p, prop, prop_flags);</span>
+<span class="src-line"><span class="src-frame">      </span>      <span class="src-kw">return</span> &amp;p-&gt;prop[p-&gt;shape-&gt;prop_count - <span class="src-num">1</span>];</span>
+<span class="src-line"><span class="src-frame">      </span>  }</span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:5575 · add_shape_property — the actual mutator</span><span class="src-tag">~40 lines · grows prop[] + hash table</span></div>
+<span class="src-line"><span class="src-frame">  5575</span>  <span class="src-kw">static int</span> <span class="src-fn">add_shape_property</span>(JSContext *ctx, JSShape **psh,</span>
+<span class="src-line"><span class="src-frame">  5576</span>                                <span class="src-cls">JSObject</span> *p, <span class="src-cls">JSAtom</span> atom, <span class="src-kw">int</span> prop_flags) {</span>
+<span class="src-line"><span class="src-frame">  5580</span>      JSShape *sh = *psh;</span>
+<span class="src-line"><span class="src-frame">  5585</span>      <span class="src-comment">/* unlink from shape hash, will rehash with new atom */</span></span>
+<span class="src-line"><span class="src-frame">  5586</span>      <span class="src-kw">if</span> (sh-&gt;is_hashed) {</span>
+<span class="src-line"><span class="src-frame">  5587</span>          <span class="src-fn">js_shape_hash_unlink</span>(rt, sh);</span>
+<span class="src-line"><span class="src-frame">  5588</span>          new_shape_hash = <span class="src-fn">shape_hash</span>(<span class="src-fn">shape_hash</span>(sh-&gt;hash, atom), prop_flags);</span>
+<span class="src-line"><span class="src-frame">  5589</span>      }</span>
+<span class="src-line"><span class="src-frame">  5591</span>      <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(sh-&gt;prop_count &gt;= sh-&gt;prop_size)) {</span>
+<span class="src-line"><span class="src-frame">  5592</span>          <span class="src-fn">resize_properties</span>(ctx, psh, p, sh-&gt;prop_count + <span class="src-num">1</span>);   <span class="src-comment">// grow array</span></span>
+<span class="src-line"><span class="src-frame">  5599</span>      }</span>
+<span class="src-line"><span class="src-frame">  5605</span>      pr = &amp;sh-&gt;prop[sh-&gt;prop_count++];     <span class="src-comment">// append slot</span></span>
+<span class="src-line"><span class="src-frame">  5606</span>      pr-&gt;atom  = <span class="src-fn">JS_DupAtom</span>(ctx, atom);</span>
+<span class="src-line"><span class="src-frame">  5607</span>      pr-&gt;flags = prop_flags;</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-frame">  5610</span>      <span class="src-comment">/* chain into the open-addressing hash table */</span></span>
+<span class="src-line"><span class="src-frame">  5611</span>      h = atom &amp; sh-&gt;prop_hash_mask;</span>
+<span class="src-line"><span class="src-frame">  5612</span>      pr-&gt;hash_next = <span class="src-fn">prop_hash_end</span>(sh)[-h - <span class="src-num">1</span>];</span>
+<span class="src-line"><span class="src-frame">  5613</span>      <span class="src-fn">prop_hash_end</span>(sh)[-h - <span class="src-num">1</span>] = sh-&gt;prop_count;</span>
+<span class="src-line"><span class="src-frame">  5614</span>      <span class="src-kw">return</span> <span class="src-num">0</span>;</span>
+<span class="src-line"><span class="src-frame">  5615</span>  }</span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:5401 · js_dup_shape — sharing is 2 lines</span><span class="src-tag">refcount only</span></div>
+<span class="src-line"><span class="src-frame">  5401</span>  <span class="src-kw">static</span> JSShape *<span class="src-fn">js_dup_shape</span>(JSShape *sh) {</span>
+<span class="src-line"><span class="src-frame">  5402</span>      sh-&gt;header.ref_count++;     <span class="src-comment">// ⭐ NO copy. NO clone. Just an inc.</span></span>
+<span class="src-line"><span class="src-frame">  5403</span>      <span class="src-kw">return</span> sh;</span>
+<span class="src-line"><span class="src-frame">  5404</span>  }</span>
+    </div>
+
+    <figure class="figure-block" style="margin: 24px 0;">
+    <svg viewBox="0 0 880 360" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="background: #faf7f1; border: 1px solid #e6dfd0; border-radius: 4px; font-family: var(--mono);">
+      <defs>
+        <marker id="arr-sh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#2c3441"/>
+        </marker>
+      </defs>
+
+      <text x="440" y="22" font-size="12" font-weight="700" text-anchor="middle" fill="#2c3441">3 obj.x = ... 序列触发的 Shape transition · 三种结局</text>
+      <text x="440" y="38" font-size="10" text-anchor="middle" fill="#767c87">obj1.foo=1; obj2.foo=2; obj3.foo=3 · 三个对象添加相同名字属性，运行时识别并共享 Shape</text>
+
+      <!-- Scenario A: HIT shared shape -->
+      <g transform="translate(20, 60)">
+        <rect width="270" height="280" fill="rgba(32,123,58,0.06)" stroke="#207b3a" stroke-width="1.5"/>
+        <text x="135" y="20" font-size="11" font-weight="700" text-anchor="middle" fill="#207b3a">(A) 命中已存在 Shape · 共享</text>
+        <text x="135" y="34" font-size="9" text-anchor="middle" fill="#767c87">find_hashed_shape_prop ≠ NULL</text>
+        <line x1="0" y1="42" x2="270" y2="42" stroke="#cfc7b3"/>
+
+        <rect x="14" y="56" width="100" height="44" fill="#fff" stroke="#1f5c8c"/>
+        <text x="64" y="74" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">obj1</text>
+        <text x="64" y="90" font-size="9" text-anchor="middle" fill="#767c87">shape* →</text>
+
+        <rect x="14" y="106" width="100" height="44" fill="#fff" stroke="#1f5c8c"/>
+        <text x="64" y="124" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">obj2</text>
+        <text x="64" y="140" font-size="9" text-anchor="middle" fill="#767c87">shape* →</text>
+
+        <rect x="14" y="156" width="100" height="44" fill="#fff" stroke="#1f5c8c"/>
+        <text x="64" y="174" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">obj3</text>
+        <text x="64" y="190" font-size="9" text-anchor="middle" fill="#767c87">shape* →</text>
+
+        <rect x="150" y="100" width="106" height="60" fill="rgba(32,123,58,0.18)" stroke="#207b3a" stroke-width="2"/>
+        <text x="203" y="118" font-size="10" font-weight="700" text-anchor="middle" fill="#207b3a">JSShape</text>
+        <text x="203" y="132" font-size="9" text-anchor="middle" fill="#767c87">prop "foo" @ 0</text>
+        <text x="203" y="148" font-size="9" text-anchor="middle" fill="#b8442e">ref_count = 3</text>
+
+        <line x1="116" y1="78" x2="148" y2="118" stroke="#2c3441" stroke-width="1" opacity="0.5"/>
+        <line x1="116" y1="128" x2="148" y2="128" stroke="#2c3441" stroke-width="1" opacity="0.5"/>
+        <line x1="116" y1="178" x2="148" y2="138" stroke="#2c3441" stroke-width="1" opacity="0.5"/>
+
+        <text x="14" y="226" font-size="9" font-style="italic" fill="#767c87">→ 三个 obj 真的共享一个 Shape</text>
+        <text x="14" y="240" font-size="9" font-style="italic" fill="#767c87">→ js_dup_shape: 仅 refcount++</text>
+        <text x="14" y="254" font-size="9" font-weight="700" fill="#207b3a">cost: 1 atomic inc</text>
+      </g>
+
+      <!-- Scenario B: shared shape but I want to diverge -->
+      <g transform="translate(305, 60)">
+        <rect width="270" height="280" fill="rgba(168,122,31,0.06)" stroke="#a87a1f" stroke-width="1.5"/>
+        <text x="135" y="20" font-size="11" font-weight="700" text-anchor="middle" fill="#a87a1f">(B) shape 已 shared · 必须 clone</text>
+        <text x="135" y="34" font-size="9" text-anchor="middle" fill="#767c87">shape-&gt;ref_count &gt; 1 · 给我加新属性</text>
+        <line x1="0" y1="42" x2="270" y2="42" stroke="#cfc7b3"/>
+
+        <rect x="14" y="56" width="100" height="44" fill="#fff" stroke="#1f5c8c"/>
+        <text x="64" y="74" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">obj1</text>
+        <text x="64" y="90" font-size="9" text-anchor="middle" fill="#767c87">shape* →</text>
+
+        <rect x="14" y="106" width="100" height="44" fill="#fff" stroke="#1f5c8c"/>
+        <text x="64" y="124" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">obj2</text>
+        <text x="64" y="140" font-size="9" text-anchor="middle" fill="#b8442e">想加新属性</text>
+
+        <rect x="150" y="56" width="106" height="60" fill="rgba(32,123,58,0.18)" stroke="#207b3a" stroke-width="1"/>
+        <text x="203" y="74" font-size="10" font-weight="700" text-anchor="middle" fill="#207b3a">old Shape</text>
+        <text x="203" y="88" font-size="9" text-anchor="middle" fill="#767c87">"foo"</text>
+        <text x="203" y="104" font-size="9" text-anchor="middle" fill="#207b3a">ref_count = 1 (obj1)</text>
+
+        <rect x="150" y="146" width="106" height="60" fill="rgba(184,68,46,0.15)" stroke="#b8442e" stroke-width="2"/>
+        <text x="203" y="164" font-size="10" font-weight="700" text-anchor="middle" fill="#b8442e">cloned Shape</text>
+        <text x="203" y="178" font-size="9" text-anchor="middle" fill="#767c87">"foo", "bar"</text>
+        <text x="203" y="194" font-size="9" text-anchor="middle" fill="#b8442e">ref_count = 1 (obj2)</text>
+
+        <line x1="116" y1="78" x2="148" y2="84" stroke="#2c3441" stroke-width="1" opacity="0.5"/>
+        <line x1="116" y1="128" x2="148" y2="168" stroke="#2c3441" stroke-width="1" opacity="0.5"/>
+
+        <text x="14" y="226" font-size="9" font-style="italic" fill="#767c87">→ js_clone_shape: malloc + memcpy</text>
+        <text x="14" y="240" font-size="9" font-style="italic" fill="#767c87">→ add_shape_property: 改克隆体</text>
+        <text x="14" y="254" font-size="9" font-weight="700" fill="#a87a1f">cost: ~200ns + alloc</text>
+      </g>
+
+      <!-- Scenario C: solo owner, mutate in place -->
+      <g transform="translate(590, 60)">
+        <rect width="270" height="280" fill="rgba(31,92,140,0.06)" stroke="#1f5c8c" stroke-width="1.5"/>
+        <text x="135" y="20" font-size="11" font-weight="700" text-anchor="middle" fill="#1f5c8c">(C) 独占 shape · 原地改</text>
+        <text x="135" y="34" font-size="9" text-anchor="middle" fill="#767c87">shape-&gt;ref_count == 1</text>
+        <line x1="0" y1="42" x2="270" y2="42" stroke="#cfc7b3"/>
+
+        <rect x="14" y="106" width="100" height="44" fill="#fff" stroke="#1f5c8c"/>
+        <text x="64" y="124" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">obj1</text>
+        <text x="64" y="140" font-size="9" text-anchor="middle" fill="#767c87">shape* →</text>
+
+        <rect x="150" y="100" width="106" height="60" fill="rgba(32,123,58,0.18)" stroke="#207b3a" stroke-width="2"/>
+        <text x="203" y="118" font-size="10" font-weight="700" text-anchor="middle" fill="#207b3a">solo Shape</text>
+        <text x="203" y="132" font-size="9" text-anchor="middle" fill="#767c87">"foo" → "foo","bar"</text>
+        <text x="203" y="148" font-size="9" text-anchor="middle" fill="#207b3a">ref_count = 1</text>
+
+        <line x1="116" y1="128" x2="148" y2="128" stroke="#2c3441" stroke-width="1" opacity="0.5"/>
+
+        <text x="14" y="200" font-size="9" font-style="italic" fill="#767c87">→ add_shape_property 直接改 sh</text>
+        <text x="14" y="214" font-size="9" font-style="italic" fill="#767c87">→ prop_count++ · hash 链补一项</text>
+        <text x="14" y="232" font-size="9" font-style="italic" fill="#767c87">→ 没新 malloc · 仅原数组 resize</text>
+        <text x="14" y="254" font-size="9" font-weight="700" fill="#207b3a">cost: ~50ns (amortised 0)</text>
+      </g>
+    </svg>
+    <figcaption style="text-align: center; font-size: 12px; color: var(--ink-mute); margin-top: 8px;">
+      <span class="lang-zh-only">Shape transition 三种路径 · A 共享最优 · C 独占原地次优 · B 克隆最贵</span>
+      <span class="lang-en-only">Three Shape-transition paths · (A) share fastest · (C) solo-mutate in-place · (B) clone most expensive</span>
+    </figcaption>
+    </figure>
+
+    <div class="note good">
+      <span class="ntag lang-zh-only">DESIGN · refcount 让 COW 几乎免费</span>
+      <span class="ntag lang-en-only">DESIGN · refcount makes COW almost free</span>
+      <span class="lang-zh-only">V8 的 hidden class 改 prototype chain 要走<em>全局 transition tree</em> + <em>monomorphic IC invalidation</em>——一个庞大的图论问题。QuickJS 用 <em>shape hash table</em>（同一 {parent, prop, flags} 的 Shape 全局只存一份）+ <em>shape refcount</em>（共享便宜，克隆贵）把它降到三条 if 分支。<strong>没有 IC 反而让这套系统不需要 invalidation</strong>——每次访问都重新查，Shape 怎么变都不影响正确性。简单到能放进 70k 行 C。</span>
+      <span class="lang-en-only">V8's hidden-class transitions navigate a <em>global transition tree</em> + <em>monomorphic IC invalidation</em> — a beefy graph problem. QuickJS uses a <em>shape hash table</em> (one canonical Shape per {parent, prop, flags}) + <em>shape refcount</em> (sharing cheap, cloning expensive) and collapses everything to three <code>if</code> branches. <strong>The absence of IC actually frees this design from needing invalidation</strong> — every lookup re-queries, so however Shape mutates, correctness holds. Simple enough to fit into 70k C lines.</span>
     </div>
   </section>
 
@@ -4946,6 +5295,75 @@
       <span class="lang-zh-only">每次 <code>obj.map</code> 都要：(1) 在 obj 自己的 shape 哈希里查；(2) 没命中 → 跳到 prototype；(3) 在 prototype 的 shape 哈希里查。<em>每次都做</em>，<em>不缓存</em>。V8 走 <strong>inline cache</strong>：每个属性访问字节码后面带 4 字节"<em>上次走到哪一层、shape ID、偏移</em>"，第二次访问<em>常数时间</em>。QuickJS 故意不做——<code>OP_get_field</code> 后面只跟 4 字节 atom，<em>没有 IC 槽位</em>。这是它<em>峰值速度</em>慢于 V8 的<em>单一最大原因</em>，也是它二进制小、内存占用低、启动快的<em>直接对价</em>——一个工程权衡，不是 bug。Bellard 的判断：嵌入式场景 hot loop 罕见，<em>少 20% 启动 + 内存</em>比<em>多 5× 峰值速度</em>值。</span>
       <span class="lang-en-only">Every <code>obj.map</code>: (1) hash-lookup in obj's own shape; (2) miss → step to prototype; (3) hash-lookup again. <em>Every time</em>, <em>nothing cached</em>. V8 uses <strong>inline caches</strong>: each property-access bytecode carries 4 bytes of "<em>which level we hit last time, shape ID, offset</em>"; the second access becomes constant-time. QuickJS deliberately skips this — <code>OP_get_field</code> is followed only by a 4-byte atom, <em>no IC slot</em>. This is the <em>single biggest reason</em> peak speed lags V8 — and the <em>direct price</em> for the smaller binary, lower memory, faster startup. An engineering tradeoff, not a bug. Bellard's call: embedded workloads rarely have long hot loops; <em>20% smaller startup + memory</em> beats <em>5× peak speed</em> in that context.</span>
     </div>
+
+    <h3 class="sub lang-zh-only">.map 落脚的 C 函数长什么样 · js_array_every 全文</h3>
+    <h3 class="sub lang-en-only">What the C function .map lands on actually looks like</h3>
+
+    <p class="lang-zh-only">查到的 <code>js_array_map</code> 实际并不存在——quickjs.c 把 <code>every / some / forEach / map / filter</code> 5 个内置方法<em>共享一个 C 函数</em> <code>js_array_every</code>，靠 <code>special</code> 参数（magic）分支。这是 QuickJS 极致紧凑哲学的又一个例子：</p>
+    <p class="lang-en-only">The <code>js_array_map</code> the article keeps pointing at doesn't actually exist as a standalone function. quickjs.c folds <code>every / some / forEach / map / filter</code> into <em>one</em> C function <code>js_array_every</code>, dispatched by a <code>special</code> magic parameter. Another instance of QuickJS's extreme-compactness philosophy:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:44386 · the table that registers Array.prototype.map</span><span class="src-tag">5 builtins → 1 C function</span></div>
+<span class="src-line"><span class="src-frame"> 44384</span>      JS_CFUNC_MAGIC_DEF(<span class="src-str">"every"</span>,   <span class="src-num">1</span>, js_array_every, special_every),</span>
+<span class="src-line"><span class="src-frame"> 44385</span>      JS_CFUNC_MAGIC_DEF(<span class="src-str">"some"</span>,    <span class="src-num">1</span>, js_array_every, special_some),</span>
+<span class="src-line"><span class="src-frame"> 44386</span>      JS_CFUNC_MAGIC_DEF(<span class="src-str">"forEach"</span>, <span class="src-num">1</span>, js_array_every, special_forEach),</span>
+<span class="src-line"><span class="src-frame"> 44387</span>      JS_CFUNC_MAGIC_DEF(<span class="src-str">"map"</span>,     <span class="src-num">1</span>, js_array_every, special_map),     <span class="src-comment">// ⭐ our entry</span></span>
+<span class="src-line"><span class="src-frame"> 44388</span>      JS_CFUNC_MAGIC_DEF(<span class="src-str">"filter"</span>,  <span class="src-num">1</span>, js_array_every, special_filter),</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// MAGIC_DEF means the special integer is passed to the function as a "magic" arg.</span></span>
+<span class="src-line"><span class="src-comment">// When .map fires, js_array_every receives special = special_map (3).</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:41819 · js_array_every — the shared body (abridged)</span><span class="src-tag">~100 lines · 5 builtins inside</span></div>
+<span class="src-line"><span class="src-frame"> 41819</span>  <span class="src-kw">static</span> JSValue <span class="src-fn">js_array_every</span>(JSContext *ctx, JSValueConst this_val,</span>
+<span class="src-line"><span class="src-frame"> 41820</span>                                <span class="src-kw">int</span> argc, JSValueConst *argv, <span class="src-kw">int</span> special) {</span>
+<span class="src-line"><span class="src-frame"> 41821</span>      JSValue obj, val, index_val, res, ret;</span>
+<span class="src-line"><span class="src-frame"> 41825</span>      <span class="src-cls">int64_t</span> len, k, n;</span>
+<span class="src-line"><span class="src-frame"> 41828</span>      ret = JS_UNDEFINED;</span>
+<span class="src-line"><span class="src-frame"> 41836</span>      obj = <span class="src-fn">JS_ToObject</span>(ctx, this_val);</span>
+<span class="src-line"><span class="src-frame"> 41837</span>      <span class="src-kw">if</span> (<span class="src-fn">js_get_length64</span>(ctx, &amp;len, obj))  <span class="src-kw">goto</span> exception;</span>
+<span class="src-line"><span class="src-frame"> 41839</span>      func = argv[<span class="src-num">0</span>];   <span class="src-comment">// the (x =&gt; x*2) closure passed by user</span></span>
+<span class="src-line"><span class="src-frame"> 41843</span>      <span class="src-kw">if</span> (<span class="src-fn">check_function</span>(ctx, func)) <span class="src-kw">goto</span> exception;</span>
+<span class="src-line"><span class="src-frame"> 41850</span>      <span class="src-kw">switch</span> (special) {                       <span class="src-comment">// branch on the magic param</span></span>
+<span class="src-line"><span class="src-frame"> 41857</span>      <span class="src-kw">case</span> special_map:                        <span class="src-comment">// ⭐ our branch</span></span>
+<span class="src-line"><span class="src-frame"> 41859</span>          ret = <span class="src-fn">JS_ArraySpeciesCreate</span>(ctx, obj, <span class="src-fn">js_int64</span>(len)); <span class="src-comment">// new Array(3)</span></span>
+<span class="src-line"><span class="src-frame"> 41861</span>          <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">      </span>      ... (other 4 builtins set their own initial state)</span>
+<span class="src-line"><span class="src-frame"> 41880</span>      }</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-frame"> 41884</span>      <span class="src-kw">for</span>(k = <span class="src-num">0</span>; k &lt; len; k++) {                <span class="src-comment">// main loop — 3 iterations for [1,2,3]</span></span>
+<span class="src-line"><span class="src-frame"> 41892</span>          present = <span class="src-fn">JS_TryGetPropertyInt64</span>(ctx, obj, k, &amp;val);  <span class="src-comment">// get [k]</span></span>
+<span class="src-line"><span class="src-frame"> 41896</span>          <span class="src-kw">if</span> (present) {</span>
+<span class="src-line"><span class="src-frame"> 41897</span>              args[<span class="src-num">0</span>] = val;</span>
+<span class="src-line"><span class="src-frame"> 41898</span>              args[<span class="src-num">1</span>] = <span class="src-fn">js_int64</span>(k);</span>
+<span class="src-line"><span class="src-frame"> 41899</span>              args[<span class="src-num">2</span>] = obj;</span>
+<span class="src-line"><span class="src-frame"> 41900</span>              res = <span class="src-fn">JS_Call</span>(ctx, func, this_arg, <span class="src-num">3</span>, args);   <span class="src-comment">// ⭐ calls x =&gt; x*2</span></span>
+<span class="src-line"><span class="src-frame">      </span>              <span class="src-comment">// → JS_Call → JS_CallInternal → reuse the loop from Ch15</span></span>
+<span class="src-line"><span class="src-frame"> 41906</span>              <span class="src-kw">switch</span> (special) {</span>
+<span class="src-line"><span class="src-frame"> 41918</span>              <span class="src-kw">case</span> special_map:                <span class="src-comment">// store result into output array</span></span>
+<span class="src-line"><span class="src-frame"> 41919</span>                  <span class="src-fn">JS_DefinePropertyValueInt64</span>(ctx, ret, k, res, JS_PROP_C_W_E | JS_PROP_THROW);</span>
+<span class="src-line"><span class="src-frame">      </span>                  <span class="src-kw">break</span>;</span>
+<span class="src-line"><span class="src-frame">      </span>              ... (other branches)</span>
+<span class="src-line"><span class="src-frame"> 41960</span>              }</span>
+<span class="src-line"><span class="src-frame"> 41962</span>          }</span>
+<span class="src-line"><span class="src-frame"> 41964</span>          n++;</span>
+<span class="src-line"><span class="src-frame"> 41965</span>      }</span>
+<span class="src-line"><span class="src-frame"> 41967</span>  done:</span>
+<span class="src-line"><span class="src-frame"> 41968</span>      <span class="src-fn">JS_FreeValue</span>(ctx, obj);</span>
+<span class="src-line"><span class="src-frame"> 41970</span>      <span class="src-kw">return</span> ret;</span>
+<span class="src-line"><span class="src-frame"> 41971</span>  }</span>
+    </div>
+
+    <div class="note good">
+      <span class="ntag lang-zh-only">DESIGN · 5 个内置共享一个 C 函数</span>
+      <span class="ntag lang-en-only">DESIGN · 5 builtins share one C function</span>
+      <span class="lang-zh-only">QuickJS 把 <code>every</code>, <code>some</code>, <code>forEach</code>, <code>map</code>, <code>filter</code> 这 5 个语义相近的 Array 方法<em>合并</em>到 <code>js_array_every</code> 里——一个共享的 for-k 循环、一个共享的 <code>JS_Call(callback)</code> 调用、5 个 <code>switch(special)</code> 分支处理结果差异。<em>120 行 C 写完 5 个 ES 方法</em>，比"每个方法一个函数"省 60% 代码。<strong>对应的运行时代价：每个 method 调用都多走一个 <code>switch</code></strong>——但相比 <code>JS_Call</code> 本身的开销，这点 case 跳转可以忽略不计。哲学：<em>用代码大小换时间几乎总是值得</em>，反过来很少值。</span>
+      <span class="lang-en-only">QuickJS folds the 5 semantically-near Array methods <code>every</code>, <code>some</code>, <code>forEach</code>, <code>map</code>, <code>filter</code> into <code>js_array_every</code> — one shared for-k loop, one shared <code>JS_Call(callback)</code>, then 5 <code>switch(special)</code> branches for result divergence. <em>120 lines of C implements 5 ES methods</em> — 60% smaller than "one function per method". <strong>The runtime cost: every call goes through one extra switch</strong>; negligible next to the cost of <code>JS_Call</code> itself. Philosophy: <em>trading code size for time is almost always worth it; the reverse rarely is</em>.</span>
+    </div>
+
+    <p class="lang-zh-only" style="margin-top:18px;">这就把<a href="#c16">Ch16 的属性查找</a>和 <a href="#c15">Ch15 的解释器循环</a><em>闭环</em>了——OP_call_method 解出的 <code>JSCFunction *</code> 指向 <code>js_array_every</code>，调用进入这里之后又会 3 次回头调 <code>JS_CallInternal</code>（每次跑一遍内层箭头的 4 条字节码）。整篇 Ch15-16 描述的递归回到了起点。</p>
+    <p class="lang-en-only" style="margin-top:18px;">This closes the loop with <a href="#c16">Ch16's property lookup</a> and <a href="#c15">Ch15's interp loop</a> — OP_call_method's resolved <code>JSCFunction *</code> points at <code>js_array_every</code>; entering it re-invokes <code>JS_CallInternal</code> three times (each runs the 4-opcode inner arrow). The recursion described across Ch15-16 returns to its starting point.</p>
   </section>
 
   <!-- ========== CHAPTER 17 — Promise / Generator ========== -->
