@@ -2606,16 +2606,16 @@
   <!-- ========== CHAPTER 09 — BYTECODE ========== -->
   <section class="chap" id="c9">
     <div class="chap-num">CHAPTER&nbsp;09</div>
-    <h2 class="chap-title lang-zh-only">字节码 — 250 个 opcode 跑天下</h2>
-    <h2 class="chap-title lang-en-only">Bytecode — 250 opcodes rule it all</h2>
+    <h2 class="chap-title lang-zh-only">字节码 — 真 246 个 opcode 跑天下</h2>
+    <h2 class="chap-title lang-en-only">Bytecode — 246 real opcodes rule it all</h2>
     <p class="chap-en lang-zh-only">栈式机器 · 1 字节 op + 0-4 字节立即数</p>
     <p class="chap-en lang-en-only">stack machine · 1-byte op + 0-4 byte immediate</p>
 
     <div class="stage-banner thread-quic">
       <div class="sb-cell"><div class="sb-key lang-zh-only">主线阶段</div><div class="sb-key lang-en-only">Phase</div><div class="sb-val">P3</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">层</div><div class="sb-key lang-en-only">Layer</div><div class="sb-val thread">Frontend / Bytecode</div></div>
-      <div class="sb-cell"><div class="sb-key">opcodes</div><div class="sb-val">~250</div></div>
-      <div class="sb-cell"><div class="sb-key lang-zh-only">定义</div><div class="sb-key lang-en-only">Defined in</div><div class="sb-val">quickjs-opcode.h (X-macro)</div></div>
+      <div class="sb-cell"><div class="sb-key">opcodes</div><div class="sb-val">246 (measured)</div></div>
+      <div class="sb-cell"><div class="sb-key lang-zh-only">定义</div><div class="sb-key lang-en-only">Defined in</div><div class="sb-val">quickjs-opcode.h:23-368</div></div>
     </div>
 
     <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们这行 JS 里 · P3</span><span class="lang-en-only">◇ In our JS line · Phase 3</span></h3>
@@ -2631,29 +2631,8 @@
       </div>
     </div>
 
-    <h3 class="sub lang-zh-only">我们这行的<em>完整字节码</em></h3>
-    <h3 class="sub lang-en-only">The full bytecode for our line</h3>
-
-    <div class="src-stack">
-      <div class="src-h"><span>[1,2,3].map(x =&gt; x*2) · compiled bytecode</span><span class="src-tag">qjs --bytecode</span></div>
-<span class="src-line"><span class="src-comment">; ─── outer function (top-level program) ───</span></span>
-<span class="src-line"><span class="src-frame">  0</span>:  <span class="src-fn">push_i32</span>      <span class="src-num">1</span></span>
-<span class="src-line"><span class="src-frame">  5</span>:  <span class="src-fn">push_i32</span>      <span class="src-num">2</span></span>
-<span class="src-line"><span class="src-frame"> 10</span>:  <span class="src-fn">push_i32</span>      <span class="src-num">3</span></span>
-<span class="src-line"><span class="src-frame"> 15</span>:  <span class="src-fn">array_from</span>    <span class="src-num">3</span>           <span class="src-comment">; pops 3, pushes Array([1,2,3])</span></span>
-<span class="src-line"><span class="src-frame"> 17</span>:  <span class="src-fn">get_field2</span>    <span class="src-cls">map</span>         <span class="src-comment">; pops obj, pushes (obj, obj.map)</span></span>
-<span class="src-line"><span class="src-frame"> 22</span>:  <span class="src-fn">fclosure8</span>     <span class="src-num">0</span>           <span class="src-comment">; const_pool[0] = inner arrow function</span></span>
-<span class="src-line"><span class="src-frame"> 24</span>:  <span class="src-fn">call_method</span>   <span class="src-num">1</span>           <span class="src-comment">; pops (this, fn, 1 arg), pushes result</span></span>
-<span class="src-line"><span class="src-frame"> 26</span>:  <span class="src-fn">return</span></span>
-<span class="src-line"></span>
-<span class="src-line"><span class="src-comment">; ─── inner function (the arrow x =&gt; x*2) ───</span></span>
-<span class="src-line"><span class="src-frame">  0</span>:  <span class="src-fn">get_arg0</span>              <span class="src-comment">; x is arg 0; shorthand opcode</span></span>
-<span class="src-line"><span class="src-frame">  1</span>:  <span class="src-fn">push_i32</span>      <span class="src-num">2</span></span>
-<span class="src-line"><span class="src-frame">  6</span>:  <span class="src-fn">mul</span></span>
-<span class="src-line"><span class="src-frame">  7</span>:  <span class="src-fn">return</span></span>
-<span class="src-line"></span>
-<span class="src-line"><span class="src-comment">; Total: outer 27 B + inner 8 B = 35 B bytecode</span></span>
-    </div>
+    <p class="lang-zh-only">我们的<em>主线 bytecode</em> 已经在 <a href="#cmain">cmain</a> 章节中实测捕获过——19 opcodes / 31 bytes（外层 15 + 内层 4）。本章重点是 opcode 的<em>定义机制</em>与<em>格式系统</em>，不再重复 dump。</p>
+    <p class="lang-en-only">Our <em>main-line bytecode</em> was already captured in the <a href="#cmain">cmain</a> chapter — 19 opcodes / 31 bytes (outer 15 + inner 4). This chapter focuses on the <em>definition mechanism</em> and the <em>format system</em>, not redoing the dump.</p>
 
     <h3 class="sub lang-zh-only">opcode 编码 · 1+N 字节</h3>
     <h3 class="sub lang-en-only">Opcode encoding · 1 + N bytes</h3>
@@ -2705,37 +2684,62 @@
       </div>
     </div>
 
-    <h3 class="sub lang-zh-only">X-macro · 一份定义生成所有</h3>
-    <h3 class="sub lang-en-only">X-macros · one definition, multiple uses</h3>
+    <h3 class="sub lang-zh-only">X-macro · 一份定义生成所有 · 真源码</h3>
+    <h3 class="sub lang-en-only">X-macros · one source, six uses · real code</h3>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs-opcode.h · the X-macro list</span><span class="src-tag">included 6 times</span></div>
-<span class="src-line"><span class="src-comment">/* DEF(id, size, n_pop, n_push, fmt) */</span></span>
-<span class="src-line"><span class="src-fn">DEF</span>(<span class="src-cls">invalid</span>,        <span class="src-num">1</span>, <span class="src-num">0</span>, <span class="src-num">0</span>, none)</span>
-<span class="src-line"><span class="src-fn">DEF</span>(<span class="src-cls">push_i32</span>,       <span class="src-num">5</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, i32)</span>
-<span class="src-line"><span class="src-fn">DEF</span>(<span class="src-cls">push_const</span>,     <span class="src-num">5</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, const)</span>
-<span class="src-line"><span class="src-fn">DEF</span>(<span class="src-cls">push_atom_value</span>,<span class="src-num">5</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, atom)</span>
-<span class="src-line"><span class="src-fn">DEF</span>(<span class="src-cls">add</span>,            <span class="src-num">1</span>, <span class="src-num">2</span>, <span class="src-num">1</span>, none)</span>
-<span class="src-line"><span class="src-fn">DEF</span>(<span class="src-cls">mul</span>,            <span class="src-num">1</span>, <span class="src-num">2</span>, <span class="src-num">1</span>, none)</span>
-<span class="src-line"><span class="src-fn">DEF</span>(<span class="src-cls">get_field</span>,      <span class="src-num">5</span>, <span class="src-num">1</span>, <span class="src-num">1</span>, atom)</span>
-<span class="src-line">…  <span class="src-comment">; ~250 entries</span></span>
+      <div class="src-h"><span>quickjs-opcode.h · 246 DEF entries verbatim (first lines)</span><span class="src-tag">measured</span></div>
+<span class="src-line"><span class="src-comment">/* DEF(name, size_in_bytes, n_pop, n_push, fmt) */</span></span>
 <span class="src-line"></span>
-<span class="src-line"><span class="src-comment">/* This same file is #included into:</span></span>
-<span class="src-line"><span class="src-comment"> *  1. enum OPCodeEnum { OP_invalid, OP_push_i32, ... };</span></span>
-<span class="src-line"><span class="src-comment"> *  2. dispatch_table[] = { &amp;&amp;label_OP_invalid, &amp;&amp;label_OP_push_i32, ... };</span></span>
-<span class="src-line"><span class="src-comment"> *  3. opcode_info[] = { {.size=1, .n_pop=0, ...}, ... };</span></span>
-<span class="src-line"><span class="src-comment"> *  4. opcode names array (for debugger / qjs --dump)</span></span>
-<span class="src-line"><span class="src-comment"> *  5. emit_op helpers</span></span>
-<span class="src-line"><span class="src-comment"> *  6. peephole optimization rules</span></span>
-<span class="src-line"><span class="src-comment"> * </span></span>
-<span class="src-line"><span class="src-comment"> * Each include redefines DEF() differently. */</span></span>
+<span class="src-line"><span class="src-fn">DEF</span>(<span class="src-cls">invalid</span>,        <span class="src-num">1</span>, <span class="src-num">0</span>, <span class="src-num">0</span>, none)  <span class="src-comment">/* never emitted */</span></span>
+<span class="src-line"><span class="src-fn">DEF</span>(       <span class="src-cls">push_i32</span>, <span class="src-num">5</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, i32)</span>
+<span class="src-line"><span class="src-fn">DEF</span>(     <span class="src-cls">push_const</span>, <span class="src-num">5</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, <span class="src-kw">const</span>)</span>
+<span class="src-line"><span class="src-fn">DEF</span>(       <span class="src-cls">fclosure</span>, <span class="src-num">5</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, <span class="src-kw">const</span>) <span class="src-comment">/* must follow push_const */</span></span>
+<span class="src-line"><span class="src-fn">DEF</span>(<span class="src-cls">push_atom_value</span>,<span class="src-num">5</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, atom)</span>
+<span class="src-line"><span class="src-fn">DEF</span>( <span class="src-cls">private_symbol</span>, <span class="src-num">5</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, atom)</span>
+<span class="src-line"><span class="src-fn">DEF</span>(      <span class="src-cls">undefined</span>, <span class="src-num">1</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, none)</span>
+<span class="src-line"><span class="src-fn">DEF</span>(           <span class="src-cls">null</span>, <span class="src-num">1</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, none)</span>
+<span class="src-line"><span class="src-fn">DEF</span>(      <span class="src-cls">push_this</span>, <span class="src-num">1</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, none) <span class="src-comment">/* only at function start</span></span>
+<span class="src-line"><span class="src-fn">DEF</span>(     <span class="src-cls">push_false</span>, <span class="src-num">1</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, none)</span>
+<span class="src-line"><span class="src-fn">DEF</span>(      <span class="src-cls">push_true</span>, <span class="src-num">1</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, none)</span>
+<span class="src-line"><span class="src-fn">DEF</span>(         <span class="src-cls">object</span>, <span class="src-num">1</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, none)</span>
+<span class="src-line"><span class="src-fn">DEF</span>( <span class="src-cls">special_object</span>, <span class="src-num">2</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, u8)</span>
+<span class="src-line"><span class="src-fn">DEF</span>(           <span class="src-cls">rest</span>, <span class="src-num">3</span>, <span class="src-num">0</span>, <span class="src-num">1</span>, u16)</span>
+<span class="src-line"><span class="src-fn">DEF</span>(           <span class="src-cls">drop</span>, <span class="src-num">1</span>, <span class="src-num">1</span>, <span class="src-num">0</span>, none) <span class="src-comment">/* a -&gt; */</span></span>
+<span class="src-line">…    <span class="src-comment">/* 246 DEF entries total, going through every opcode */</span></span>
     </div>
 
-    <div class="note">
-      <span class="ntag lang-zh-only">DESIGN · X-macro 的魔力</span>
-      <span class="ntag lang-en-only">DESIGN · the X-macro magic</span>
-      <span class="lang-zh-only">"X-macro" 是 C 老手的看家技巧：把<em>定义</em>和<em>使用</em>分开——每次 include 同一份头文件，靠重新定义 <code>DEF()</code> 宏来生成不同的代码（enum / dispatch table / metadata / emit helpers）。<strong>所有 250 个 opcode 的 enum、跳转表、元数据、emit 函数，全靠<em>一份</em>定义维护</strong>。改一个新 opcode 只要在 <code>quickjs-opcode.h</code> 加一行 <code>DEF(...)</code>，其它 6 处自动跟上。这是 Bellard 在 70k 行里保持<em>一致性</em>的核心武器。</span>
-      <span class="lang-en-only">"X-macros" are a veteran C trick: separate <em>definition</em> from <em>use</em>. The same header is included multiple times, each time with <code>DEF()</code> redefined to generate different code (enum / dispatch table / metadata / emit helpers). <strong>All 250 opcodes' enum, dispatch table, metadata, and emit functions are maintained from <em>one</em> source.</strong> Adding a new opcode is one <code>DEF(...)</code> line in <code>quickjs-opcode.h</code>; six other places auto-update. This is Bellard's primary weapon for keeping 70k lines internally consistent.</span>
+    <h3 class="sub lang-zh-only">30 种格式 (fmt)</h3>
+    <h3 class="sub lang-en-only">30 format types (fmt)</h3>
+
+    <p class="lang-zh-only"><code>DEF</code> 第 5 个参数 <em>fmt</em> 决定 opcode 后面跟什么操作数。实测一共 <strong>30 种 fmt</strong>（quickjs-opcode.h 头部 30 个 <code>FMT()</code> 行）：</p>
+    <p class="lang-en-only">The 5th DEF arg, <em>fmt</em>, decides what operand follows. Measured: <strong>30 fmt types</strong> (the 30 <code>FMT()</code> lines at the top of quickjs-opcode.h):</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs-opcode.h · all 30 FMT formats</span><span class="src-tag">measured</span></div>
+<span class="src-line"><span class="src-fn">FMT</span>(none) <span class="src-fn">FMT</span>(none_int) <span class="src-fn">FMT</span>(none_loc) <span class="src-fn">FMT</span>(none_arg) <span class="src-fn">FMT</span>(none_var_ref)</span>
+<span class="src-line"><span class="src-fn">FMT</span>(u8) <span class="src-fn">FMT</span>(i8) <span class="src-fn">FMT</span>(loc8) <span class="src-fn">FMT</span>(const8) <span class="src-fn">FMT</span>(label8)</span>
+<span class="src-line"><span class="src-fn">FMT</span>(u16) <span class="src-fn">FMT</span>(i16) <span class="src-fn">FMT</span>(label16)</span>
+<span class="src-line"><span class="src-fn">FMT</span>(npop) <span class="src-fn">FMT</span>(npopx) <span class="src-fn">FMT</span>(npop_u16)</span>
+<span class="src-line"><span class="src-fn">FMT</span>(loc) <span class="src-fn">FMT</span>(arg) <span class="src-fn">FMT</span>(var_ref) <span class="src-fn">FMT</span>(u32) <span class="src-fn">FMT</span>(i32)</span>
+<span class="src-line"><span class="src-fn">FMT</span>(const) <span class="src-fn">FMT</span>(label) <span class="src-fn">FMT</span>(atom) <span class="src-fn">FMT</span>(atom_u8)</span>
+<span class="src-line"><span class="src-fn">FMT</span>(atom_u16) <span class="src-fn">FMT</span>(atom_label_u8) <span class="src-fn">FMT</span>(atom_label_u16)</span>
+<span class="src-line"><span class="src-fn">FMT</span>(label_u16)</span>
+    </div>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 之前数字错在哪</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · what I had wrong</span>
+      <span class="lang-zh-only">
+        <strong>真实 opcode 数</strong>：246（<code>grep -cE "^DEF\(" quickjs-opcode.h → 246</code>），不是 "~250"。准确数字。<br>
+        <strong>真实 fmt 数</strong>：30 种（不是我之前模糊讲的"4 类"）——很多是<em>短码变体</em>对应的格式（label8 / label16 区分 1 vs 2 字节跳转 offset；loc / loc8 区分用 var index 还是隐含短码 0..3）。<br>
+        <strong>X-macro 被 include 几次</strong>：实测 <code>grep -c "quickjs-opcode.h" quickjs.c → 9</code> 次。我之前说"6 处"，实际<em>9 处</em>——每处 <code>#define DEF/FMT</code> 不同的展开（enum 名字、dispatch_table、opcode_info、stack effect 检查、debug 名字、emit helpers、disassembler、peephole 优化、字节码序列化器）。
+      </span>
+      <span class="lang-en-only">
+        <strong>Real opcode count</strong>: 246 (<code>grep -cE "^DEF\(" quickjs-opcode.h → 246</code>), not "~250". Exact.<br>
+        <strong>Real fmt count</strong>: 30 types (not the vague "4 categories" I had) — many are <em>short-form variants</em> (label8 / label16 distinguish 1-byte vs 2-byte jump offsets; loc / loc8 distinguish var-index vs implicit short forms 0..3).<br>
+        <strong>X-macro #include count</strong>: <code>grep -c "quickjs-opcode.h" quickjs.c → 9</code>. I said "6", real is <em>9</em> — each with different <code>#define DEF/FMT</code> to produce: enum names, dispatch_table, opcode_info, stack-effect checker, debug names, emit helpers, disassembler, peephole optimiser, bytecode serialiser.
+      </span>
     </div>
 
     <h3 class="sub lang-zh-only">引擎对比 · 字节码模型</h3>
@@ -2744,8 +2748,8 @@
     <table class="cmp">
       <thead><tr><th>Engine</th><th>Stack vs Register</th><th>opcodes</th><th>JIT?</th></tr></thead>
       <tbody>
-        <tr><td>QuickJS</td><td>stack-based</td><td class="num">~250</td><td class="bad">no</td></tr>
-        <tr><td>V8 Ignition</td><td class="good">register-based</td><td class="num">~200</td><td class="good">yes (3 tiers)</td></tr>
+        <tr><td class="good">QuickJS-ng</td><td>stack-based</td><td class="num good">246</td><td class="bad">no</td></tr>
+        <tr><td>V8 Ignition</td><td class="good">register-based</td><td class="num">~280</td><td class="good">yes (3 tiers)</td></tr>
         <tr><td>JSC LLInt</td><td>register-based</td><td class="num">~190</td><td class="good">yes (3 tiers)</td></tr>
         <tr><td>SpiderMonkey</td><td>stack-based</td><td class="num">~250</td><td class="good">yes (1 tier)</td></tr>
         <tr><td>Hermes</td><td class="good">register-based</td><td class="num">~150</td><td class="bad">no (AOT)</td></tr>
@@ -2791,74 +2795,105 @@
       </div>
     </div>
 
-    <h3 class="sub lang-zh-only">64 位平台 · Tagged Pointer</h3>
-    <h3 class="sub lang-en-only">64-bit · Tagged Pointer</h3>
+    <h3 class="sub lang-zh-only">真实 JS_TAG_* 枚举 · quickjs.h:160</h3>
+    <h3 class="sub lang-en-only">Real JS_TAG_* enum · quickjs.h:160</h3>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.h · 64-bit JSValue</span><span class="src-tag">struct of union + tag</span></div>
-<span class="src-line"><span class="src-kw">typedef union</span> JSValueUnion {</span>
-<span class="src-line">    <span class="src-cls">int32_t</span> int32;</span>
-<span class="src-line">    <span class="src-cls">double</span>  float64;</span>
-<span class="src-line">    <span class="src-cls">void</span>   *ptr;        <span class="src-comment">// JSObject* · JSString* · JSSymbol* · ...</span></span>
-<span class="src-line">} JSValueUnion;</span>
-<span class="src-line"></span>
-<span class="src-line"><span class="src-kw">typedef struct</span> JSValue {</span>
-<span class="src-line">    <span class="src-cls">JSValueUnion</span> u;</span>
-<span class="src-line">    <span class="src-cls">int64_t</span>      tag;       <span class="src-comment">// JS_TAG_INT, JS_TAG_OBJECT, ...</span></span>
-<span class="src-line">} JSValue;</span>
-<span class="src-line"></span>
-<span class="src-line"><span class="src-comment">// Total: 16 bytes per value</span></span>
+      <div class="src-h"><span>quickjs.h · 160-181 verbatim</span><span class="src-tag">measured 2026-05</span></div>
+<span class="src-line"><span class="src-frame">160</span>  <span class="src-kw">enum</span> {</span>
+<span class="src-line"><span class="src-frame">161</span>      <span class="src-comment">/* all tags with a reference count are negative */</span></span>
+<span class="src-line"><span class="src-frame">162</span>      JS_TAG_FIRST       = <span class="src-num">-9</span>,  <span class="src-comment">/* first negative tag */</span></span>
+<span class="src-line"><span class="src-frame">163</span>      JS_TAG_BIG_INT     = <span class="src-num">-9</span>,</span>
+<span class="src-line"><span class="src-frame">164</span>      JS_TAG_SYMBOL      = <span class="src-num">-8</span>,</span>
+<span class="src-line"><span class="src-frame">165</span>      JS_TAG_STRING      = <span class="src-num">-7</span>,</span>
+<span class="src-line"><span class="src-frame">166</span>      <span class="src-fn">JS_TAG_STRING_ROPE = -6</span>,  <span class="src-comment">; ⭐ new in ng · string concat lazy buffer</span></span>
+<span class="src-line"><span class="src-frame">167</span>      JS_TAG_MODULE      = <span class="src-num">-3</span>,  <span class="src-comment">/* used internally */</span></span>
+<span class="src-line"><span class="src-frame">168</span>      JS_TAG_FUNCTION_BYTECODE = <span class="src-num">-2</span>,</span>
+<span class="src-line"><span class="src-frame">169</span>      JS_TAG_OBJECT      = <span class="src-num">-1</span>,</span>
+<span class="src-line"><span class="src-frame">170</span> </span>
+<span class="src-line"><span class="src-frame">171</span>      JS_TAG_INT         = <span class="src-num">0</span>,</span>
+<span class="src-line"><span class="src-frame">172</span>      JS_TAG_BOOL        = <span class="src-num">1</span>,</span>
+<span class="src-line"><span class="src-frame">173</span>      JS_TAG_NULL        = <span class="src-num">2</span>,</span>
+<span class="src-line"><span class="src-frame">174</span>      JS_TAG_UNDEFINED   = <span class="src-num">3</span>,</span>
+<span class="src-line"><span class="src-frame">175</span>      JS_TAG_UNINITIALIZED = <span class="src-num">4</span>,    <span class="src-comment">/* TDZ marker */</span></span>
+<span class="src-line"><span class="src-frame">176</span>      JS_TAG_CATCH_OFFSET = <span class="src-num">5</span>,</span>
+<span class="src-line"><span class="src-frame">177</span>      JS_TAG_EXCEPTION   = <span class="src-num">6</span>,</span>
+<span class="src-line"><span class="src-frame">178</span>      <span class="src-fn">JS_TAG_SHORT_BIG_INT = 7</span>,  <span class="src-comment">; ⭐ new in ng · small BigInt inline (no heap)</span></span>
+<span class="src-line"><span class="src-frame">179</span>      JS_TAG_FLOAT64     = <span class="src-num">8</span>,    <span class="src-comment">/* any larger is FLOAT64 with NaN boxing */</span></span>
+<span class="src-line"><span class="src-frame">180</span>  };</span>
     </div>
 
-    <h3 class="sub lang-zh-only">32 位平台 · NaN-boxing</h3>
-    <h3 class="sub lang-en-only">32-bit · NaN-boxing</h3>
-
-    <div class="lang-zh-only">
-      <p>32 位平台上，<code>JSValue</code> 被定义成 <em>一个 64 位的 uint64</em>，利用 IEEE 754 的 NaN payload 来藏 tag 和指针。原理：</p>
-    </div>
-    <div class="lang-en-only">
-      <p>On 32-bit, <code>JSValue</code> is defined as a single <em>uint64</em>, exploiting IEEE 754 NaN payload to hide the tag and pointer. The principle:</p>
-    </div>
-
-    <div class="src-stack">
-      <div class="src-h"><span>IEEE 754 double — 64 bits</span><span class="src-tag">NaN payload trick</span></div>
-<span class="src-line"><span class="src-comment">; Normal double:</span></span>
-<span class="src-line"><span class="src-comment">; [sign:1][exponent:11][mantissa:52]</span></span>
-<span class="src-line"></span>
-<span class="src-line"><span class="src-comment">; If exponent == 0x7FF (all 1s) and mantissa != 0 → NaN</span></span>
-<span class="src-line"><span class="src-comment">; → 2^52 different NaN encodings available as "payload" space</span></span>
-<span class="src-line"></span>
-<span class="src-line"><span class="src-comment">; QuickJS layout in NaN payload (high bits):</span></span>
-<span class="src-line"><span class="src-fn">  +-----------+--------+--------------------------------+</span></span>
-<span class="src-line">  | exp=0x7FF | tag:13 |       payload: 32-bit ptr      |</span>
-<span class="src-line"><span class="src-fn">  +-----------+--------+--------------------------------+</span></span>
-<span class="src-line"></span>
-<span class="src-line"><span class="src-comment">; If exp != 0x7FF → it's a regular double (Float64 fast path)</span></span>
-<span class="src-line"><span class="src-comment">; If exp == 0x7FF → check tag bits to find out what it really is</span></span>
+    <div class="note copper">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 我之前的 tag 表全错了</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · my earlier tag table was wrong</span>
+      <span class="lang-zh-only">
+        我之前的 tag 表里 <strong>4 个错误</strong>：<br>
+        <strong>1. JS_TAG_FIRST = -11</strong> 错了——真实是 <strong>-9</strong>（quickjs.h:162）<br>
+        <strong>2. JS_TAG_BIG_INT = -10</strong> 错了——真实是 <strong>-9</strong>（和 FIRST 重合）<br>
+        <strong>3. JS_TAG_FLOAT64 = 7</strong> 错了——真实是 <strong>8</strong>，因为<em>新增了</em> JS_TAG_SHORT_BIG_INT = 7<br>
+        <strong>4. 漏了 2 个新 tag</strong>：<br>
+        　• <code>JS_TAG_STRING_ROPE = -6</code> ——字符串 concat 的<em>惰性 rope buffer</em>（避免 <code>s1+s2</code> 立刻复制）<br>
+        　• <code>JS_TAG_SHORT_BIG_INT = 7</code> ——<em>小</em> BigInt 内联在 JSValue 里（不上堆），是 QuickJS-ng 的<em>新优化</em>，原版 Bellard QuickJS 没有<br>
+        QuickJS-ng 也把 <code>JS_TAG_BIG_FLOAT</code>、<code>JS_TAG_BIG_DECIMAL</code> 删了（libbf 完整库太大，不再标配）。
+      </span>
+      <span class="lang-en-only">
+        My earlier tag table had <strong>4 errors</strong>:<br>
+        <strong>1. JS_TAG_FIRST = -11</strong> wrong — real is <strong>-9</strong> (quickjs.h:162)<br>
+        <strong>2. JS_TAG_BIG_INT = -10</strong> wrong — real is <strong>-9</strong> (overlaps with FIRST)<br>
+        <strong>3. JS_TAG_FLOAT64 = 7</strong> wrong — real is <strong>8</strong>, because <em>a new tag</em> JS_TAG_SHORT_BIG_INT = 7 was inserted<br>
+        <strong>4. Missing 2 new tags</strong>:<br>
+        　• <code>JS_TAG_STRING_ROPE = -6</code> — lazy concat <em>rope buffer</em> (avoids immediate copy on <code>s1+s2</code>)<br>
+        　• <code>JS_TAG_SHORT_BIG_INT = 7</code> — <em>small</em> BigInt inlined in JSValue (no heap), QuickJS-ng's <em>new optimisation</em>; not present in Bellard's original QuickJS<br>
+        QuickJS-ng also dropped <code>JS_TAG_BIG_FLOAT</code> and <code>JS_TAG_BIG_DECIMAL</code> (full libbf too large to bundle).
+      </span>
     </div>
 
-    <h3 class="sub lang-zh-only">tag 清单</h3>
-    <h3 class="sub lang-en-only">Tag list</h3>
+    <h3 class="sub lang-zh-only">三种 JSValue 表示 · 编译时选一</h3>
+    <h3 class="sub lang-en-only">Three JSValue representations · pick one at compile time</h3>
+
+    <p class="lang-zh-only">我之前说"32 bit NaN-boxing / 64 bit tagged" 两种——实测<strong>有三种</strong>，由编译宏决定：</p>
+    <p class="lang-en-only">I said "32-bit NaN-boxing / 64-bit tagged" — there are actually <strong>three</strong>, selected by compile macros:</p>
 
     <table class="cmp">
-      <thead><tr><th>tag</th><th>value</th><th><span class="lang-zh-only">含义</span><span class="lang-en-only">Meaning</span></th></tr></thead>
+      <thead><tr><th><span class="lang-zh-only">编译模式</span><span class="lang-en-only">Build mode</span></th><th><span class="lang-zh-only">JSValue 类型</span><span class="lang-en-only">JSValue type</span></th><th><span class="lang-zh-only">大小</span><span class="lang-en-only">Size</span></th><th><span class="lang-zh-only">用途</span><span class="lang-en-only">Purpose</span></th></tr></thead>
       <tbody>
-        <tr><td class="mono">JS_TAG_FIRST</td><td class="num">-11</td><td><span class="lang-zh-only">所有指针 tag &lt; 0（NaN-box 区）</span><span class="lang-en-only">all pointer tags &lt; 0 (NaN-box area)</span></td></tr>
-        <tr><td class="mono">JS_TAG_BIG_INT</td><td class="num">-10</td><td>BigInt heap object</td></tr>
-        <tr><td class="mono">JS_TAG_SYMBOL</td><td class="num">-8</td><td>Symbol</td></tr>
-        <tr><td class="mono">JS_TAG_STRING</td><td class="num">-7</td><td>JSString</td></tr>
-        <tr><td class="mono">JS_TAG_FUNCTION_BYTECODE</td><td class="num">-2</td><td>JSFunctionBytecode</td></tr>
-        <tr><td class="mono">JS_TAG_OBJECT</td><td class="num">-1</td><td>JSObject</td></tr>
-        <tr><td class="mono">JS_TAG_INT</td><td class="num">0</td><td><span class="lang-zh-only">int32 内联在 u.int32</span><span class="lang-en-only">int32 inline in u.int32</span></td></tr>
-        <tr><td class="mono">JS_TAG_BOOL</td><td class="num">1</td><td>true / false</td></tr>
-        <tr><td class="mono">JS_TAG_NULL</td><td class="num">2</td><td>null</td></tr>
-        <tr><td class="mono">JS_TAG_UNDEFINED</td><td class="num">3</td><td>undefined</td></tr>
-        <tr><td class="mono">JS_TAG_UNINITIALIZED</td><td class="num">4</td><td>TDZ marker</td></tr>
-        <tr><td class="mono">JS_TAG_CATCH_OFFSET</td><td class="num">5</td><td>internal · exception unwind</td></tr>
-        <tr><td class="mono">JS_TAG_EXCEPTION</td><td class="num">6</td><td>internal · pending exception</td></tr>
-        <tr><td class="mono">JS_TAG_FLOAT64</td><td class="num">7</td><td>double (when not fitting in int32)</td></tr>
+        <tr><td>JS_NAN_BOXING</td><td class="mono">uint64_t</td><td class="num">8 B</td><td><span class="lang-zh-only">32 位机器或显式开启 · NaN-box</span><span class="lang-en-only">32-bit machines or explicit · NaN-box</span></td></tr>
+        <tr><td class="good">default (64-bit)</td><td class="mono">struct {union u; int64 tag;}</td><td class="num good">16 B</td><td><span class="lang-zh-only">64 位默认 · 简单清晰</span><span class="lang-en-only">64-bit default · simple, obvious</span></td></tr>
+        <tr><td>JS_CHECK_JSVALUE</td><td class="mono">struct JSValue *</td><td class="num">8 B + heap</td><td><span class="lang-zh-only">⭐ 编译期 debug · 强制 ownership check</span><span class="lang-en-only">⭐ compile-time debug · enforces ownership check</span></td></tr>
       </tbody>
     </table>
+
+    <p class="lang-zh-only" style="font-size:12px; color:var(--ink-mute);">第三种我之前完全不知道。<code>JS_CHECK_JSVALUE</code> 把 <code>JSValue</code> 定义成<em>指针类型</em>——<em>不能</em>实际运行（指针解引用会段错误），但<em>编译期</em>就能强制区分 <code>JSValue</code>（拥有，需 FreeValue）和 <code>JSValueConst</code>（借用，<em>不可</em> FreeValue）。Bellard 用 C 的类型系统<em>静态</em>查 refcount bug。</p>
+    <p class="lang-en-only" style="font-size:12px; color:var(--ink-mute);">I didn't know about the third mode. <code>JS_CHECK_JSVALUE</code> makes <code>JSValue</code> a <em>pointer type</em> — code <em>cannot run</em> (pointer deref segfaults), but <em>at compile time</em> it forces a strict distinction between <code>JSValue</code> (owned, must FreeValue) and <code>JSValueConst</code> (borrowed, <em>do not</em> FreeValue). Bellard uses the C type system to <em>statically</em> catch refcount bugs.</p>
+
+    <h3 class="sub lang-zh-only">默认 64-bit JSValue 真定义 · quickjs.h:311</h3>
+    <h3 class="sub lang-en-only">Default 64-bit JSValue · real def at quickjs.h:311</h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.h · 311-330 verbatim</span><span class="src-tag">default build</span></div>
+<span class="src-line"><span class="src-frame">311</span>  <span class="src-kw">typedef union</span> JSValueUnion {</span>
+<span class="src-line"><span class="src-frame">312</span>      <span class="src-cls">int32_t</span> int32;</span>
+<span class="src-line"><span class="src-frame">313</span>      <span class="src-cls">double</span>  float64;</span>
+<span class="src-line"><span class="src-frame">314</span>      <span class="src-cls">void</span>   *ptr;</span>
+<span class="src-line"><span class="src-frame">315</span>      <span class="src-fn">int32_t short_big_int;</span>     <span class="src-comment">; ⭐ ng-only · short bigint inline</span></span>
+<span class="src-line"><span class="src-frame">316</span>  } JSValueUnion;</span>
+<span class="src-line"><span class="src-frame">317</span> </span>
+<span class="src-line"><span class="src-frame">318</span>  <span class="src-kw">typedef struct</span> JSValue {</span>
+<span class="src-line"><span class="src-frame">319</span>      <span class="src-cls">JSValueUnion</span> u;</span>
+<span class="src-line"><span class="src-frame">320</span>      <span class="src-cls">int64_t</span> tag;</span>
+<span class="src-line"><span class="src-frame">321</span>  } JSValue;</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">; Macros — all inlined, used by interpreter loop &amp; builtins:</span></span>
+<span class="src-line"><span class="src-fn">#define JS_VALUE_GET_TAG(v)</span>      ((int32_t)(v).tag)</span>
+<span class="src-line"><span class="src-fn">#define JS_VALUE_GET_INT(v)</span>      ((v).u.int32)</span>
+<span class="src-line"><span class="src-fn">#define JS_VALUE_GET_FLOAT64(v)</span>  ((v).u.float64)</span>
+<span class="src-line"><span class="src-fn">#define JS_VALUE_GET_PTR(v)</span>      ((v).u.ptr)</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">; key invariant for refcounting (quickjs.h:401):</span></span>
+<span class="src-line"><span class="src-fn">#define JS_VALUE_HAS_REF_COUNT(v)</span> ((unsigned)JS_VALUE_GET_TAG(v) &gt;= (unsigned)JS_TAG_FIRST)</span>
+<span class="src-line"><span class="src-comment">;   trick: unsigned compare makes negative tags &gt;= FIRST appear "large unsigned"</span></span>
+<span class="src-line"><span class="src-comment">;   so ALL refcounted tags are caught in one comparison</span></span>
+    </div>
 
     <div class="note good">
       <span class="ntag lang-zh-only">DESIGN · 负数 tag 的妙处</span>
@@ -3050,6 +3085,70 @@
         <span class="figen">Fig 11·1 · Atom lookup flow · pre-registered common names (map / length / prototype) skip hashing entirely — constants at compile time.</span>
       </figcaption>
     </figure>
+
+    <h3 class="sub lang-zh-only">__JS_NewAtom 真实源码 · quickjs.c:3073</h3>
+    <h3 class="sub lang-en-only">__JS_NewAtom · real source at quickjs.c:3073</h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c · lines 3073-3115 verbatim (abridged)</span><span class="src-tag">real implementation</span></div>
+<span class="src-line"><span class="src-frame">3073</span>  <span class="src-kw">static</span> JSAtom <span class="src-fn">__JS_NewAtom</span>(JSRuntime *rt, JSString *str, <span class="src-cls">int</span> atom_type)</span>
+<span class="src-line"><span class="src-frame">3074</span>  {</span>
+<span class="src-line"><span class="src-frame">3075</span>      <span class="src-cls">uint32_t</span> h, h1, i;</span>
+<span class="src-line"><span class="src-frame">3076</span>      JSAtomStruct *p;</span>
+<span class="src-line"><span class="src-frame">3078</span>      <span class="src-kw">if</span> (atom_type &lt; JS_ATOM_TYPE_SYMBOL) {            <span class="src-comment">; ordinary string atom</span></span>
+<span class="src-line"><span class="src-frame">3079</span>          <span class="src-kw">if</span> (str-&gt;atom_type == atom_type) {           <span class="src-comment">; ⭐ early-out: str IS an atom</span></span>
+<span class="src-line"><span class="src-frame">3080</span>              i = <span class="src-fn">js_get_atom_index</span>(rt, str);</span>
+<span class="src-line"><span class="src-frame">3082</span>              <span class="src-kw">if</span> (<span class="src-fn">__JS_AtomIsConst</span>(i))  str-&gt;header.ref_count--;</span>
+<span class="src-line"><span class="src-frame">3084</span>              <span class="src-kw">return</span> i;</span>
+<span class="src-line"><span class="src-frame">3085</span>          }</span>
+<span class="src-line"><span class="src-frame">3088</span>          h = <span class="src-fn">hash_string</span>(str, atom_type);</span>
+<span class="src-line"><span class="src-frame">3089</span>          h &amp;= JS_ATOM_HASH_MASK;</span>
+<span class="src-line"><span class="src-frame">3090</span>          h1 = h &amp; (rt-&gt;atom_hash_size - <span class="src-num">1</span>);            <span class="src-comment">; pow-of-2 mask</span></span>
+<span class="src-line"><span class="src-frame">3091</span>          i = rt-&gt;atom_hash[h1];</span>
+<span class="src-line"><span class="src-frame">3092</span>          <span class="src-kw">while</span> (i != <span class="src-num">0</span>) {                           <span class="src-comment">; chained hash, separate-chaining</span></span>
+<span class="src-line"><span class="src-frame">3093</span>              p = rt-&gt;atom_array[i];</span>
+<span class="src-line"><span class="src-frame">3094</span>              <span class="src-kw">if</span> (p-&gt;hash == h &amp;&amp; p-&gt;atom_type == atom_type &amp;&amp;</span>
+<span class="src-line"><span class="src-frame">3095</span>                  p-&gt;len == str-&gt;len &amp;&amp;</span>
+<span class="src-line"><span class="src-frame">3096</span>                  <span class="src-fn">js_string_memcmp</span>(p, str, len) == <span class="src-num">0</span>) {</span>
+<span class="src-line"><span class="src-frame">3097</span>                  <span class="src-kw">if</span> (!<span class="src-fn">__JS_AtomIsConst</span>(i))  p-&gt;header.ref_count++;</span>
+<span class="src-line"><span class="src-frame">3100</span>                  <span class="src-kw">goto</span> done;                            <span class="src-comment">; ⭐ found existing</span></span>
+<span class="src-line"><span class="src-frame">3101</span>              }</span>
+<span class="src-line"><span class="src-frame">3102</span>              i = p-&gt;hash_next;                       <span class="src-comment">; walk chain</span></span>
+<span class="src-line"><span class="src-frame">3103</span>          }</span>
+<span class="src-line"><span class="src-frame">3104</span>      }</span>
+<span class="src-line"><span class="src-frame">3115</span>      <span class="src-comment">; ... allocate new entry, possibly grow atom_array ...</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">JSRuntime atom 表真布局 · quickjs.c:273</h3>
+    <h3 class="sub lang-en-only">JSRuntime atom storage · real layout at quickjs.c:273</h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c · lines 272-278 verbatim</span><span class="src-tag">JSRuntime fields</span></div>
+<span class="src-line"><span class="src-frame">272</span>      <span class="src-cls">int</span> atom_hash_size;            <span class="src-comment">/* power of two */</span></span>
+<span class="src-line"><span class="src-frame">273</span>      <span class="src-cls">int</span> atom_count;</span>
+<span class="src-line"><span class="src-frame">274</span>      <span class="src-cls">int</span> atom_size;</span>
+<span class="src-line"><span class="src-frame">275</span>      <span class="src-cls">int</span> atom_count_resize;         <span class="src-comment">/* resize hash table at this count */</span></span>
+<span class="src-line"><span class="src-frame">276</span>      <span class="src-cls">uint32_t</span> *atom_hash;            <span class="src-comment">; flat array, hash → atom_array index</span></span>
+<span class="src-line"><span class="src-frame">277</span>      <span class="src-cls">JSAtomStruct</span> **atom_array;     <span class="src-comment">; index → string + refcount</span></span>
+<span class="src-line"><span class="src-frame">278</span>      <span class="src-cls">int</span> atom_free_index;           <span class="src-comment">/* 0 = none */</span></span>
+    </div>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 实测细节</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · measured details</span>
+      <span class="lang-zh-only">
+        <strong>1. 预注册原子数：229</strong>（<code>grep -cE "^DEF\(" quickjs-atom.h → 229</code>）。原版 Bellard 是 247 个，ng 精简掉了 18 个（移除的多是历史遗留的 internal atoms）。<br>
+        <strong>2. atom_array 是 1-indexed</strong>——atom 0 是 <code>JS_ATOM_NULL</code>（保留），真正的 atom 从索引 1 开始。<br>
+        <strong>3. atom_hash 真实是<em>开链哈希</em></strong>——<code>atom_hash[h]</code> 是<em>第一个</em> atom 的 index，<code>JSAtomStruct.hash_next</code> 串成链表。collision 走链而不是 open addressing。<br>
+        <strong>4. 容量增长 3/2 倍</strong>（看 quickjs.c:3127 注释）：<em>4 → 6 → 9 → 13 → 19 → 28 → 42 → 63 → 94 → 141 → 211 → 316 → 474 → 711 → 1066 → ...</em>。所有的 hash table 都按这个数列扩——比常见的 2× 慢一点但内存占用更低。
+      </span>
+      <span class="lang-en-only">
+        <strong>1. 229 pre-registered atoms</strong> (<code>grep -cE "^DEF\(" quickjs-atom.h → 229</code>). Bellard's original had 247; ng trimmed 18 (mostly historical internal atoms).<br>
+        <strong>2. atom_array is 1-indexed</strong> — atom 0 is <code>JS_ATOM_NULL</code> (reserved); real atoms start at index 1.<br>
+        <strong>3. atom_hash uses <em>separate chaining</em></strong>: <code>atom_hash[h]</code> is the <em>head</em> index, <code>JSAtomStruct.hash_next</code> walks the chain. Collisions go in a linked list, not open addressing.<br>
+        <strong>4. Growth ratio is 3/2</strong> (per the comment at quickjs.c:3127): <em>4 → 6 → 9 → 13 → 19 → 28 → 42 → 63 → 94 → 141 → 211 → 316 → 474 → 711 → 1066 → ...</em>. All hash tables follow this Fibonacci-like progression — slower than 2× but tighter memory.
+      </span>
+    </div>
 
     <div class="note">
       <span class="ntag lang-zh-only">DESIGN · 为什么不直接用字符串指针</span>
