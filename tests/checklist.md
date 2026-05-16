@@ -450,3 +450,44 @@
 - [ ] 所有 `<a href="#cN">` 锚点平滑滚动
 - [ ] 全文风格匹配 chromium-renderer / http3（cobalt + copper + violet 蓝图调色板）
 - [ ] mdx 入口 `/notes/react-internals` 链回沉浸式版
+
+---
+
+## Visitor Pass Card (homepage sidebar, below Subscribe)
+
+> Spec: `docs/superpowers/specs/2026-05-17-visitor-pass-card-design.md`
+> Plan: `docs/superpowers/plans/2026-05-17-visitor-pass-card.md`
+
+### Layout & render
+- [ ] DOM: `#visitorPass .vp-pass` 存在于右侧栏
+- [ ] Screenshot (light mode): card 完整可见，280×280 左右
+- [ ] Screenshot (dark mode `data-mode="dark"`): card 背景 `#0d1117`，accent 为 `#4ade80`
+- [ ] Evaluate: `getComputedStyle(document.querySelector('.vp-skull')).width === '14px'`（global CSS 命中 JS 注入的 DOM）
+
+### Data
+- [ ] Evaluate: `#vpTotal` 文本能 parse 成数字且 > 28000（含历史 offset 28655）
+- [ ] Evaluate: `#vpToday` 文本匹配 `/^#\d+$/`
+- [ ] Evaluate: `#vpJoined` 文本匹配 `/^\d{4}\.\d{2}\.\d{2}$/`（今日日期）
+- [ ] Evaluate: 刷新页面后 sessionStorage 有 `visitor_v2` key，且 total 不变（无二次 increment）
+
+### Skull tribe
+- [ ] DOM: `.vp-tribe .vp-skull` 至少 1 个（取决于在线人数）
+- [ ] Evaluate: 至少 1 个 skull 有 `.vp-you` class（要么基于真实国家匹配，要么是 fallback 给最后一个）
+- [ ] Evaluate: skull 的 `<g>` `fill` 解析为合法颜色（accent / blue / purple 等）
+- [ ] Hover skull：原生 tooltip 显示国家名（如 "China · You"）
+- [ ] 在线人数 > 国家映射总和时，差额渲染为灰色"未知"skull（fill = `var(--c-text-dim)`）
+
+### 3D 动效
+- [ ] Hover 卡片：`#visitorPass .vp-pass` style.transform 包含 `rotateY` / `rotateX`
+- [ ] Mouseleave：transform 被清空
+- [ ] Evaluate: `prefers-reduced-motion: reduce` 下 transform 仍然 set 但 transition 为 none（动画被禁用）
+
+### i18n
+- [ ] EN locale: `.vp-hero-label` 文本为 "YOU ARE VISITOR"，`vp-k` 含 "TODAY"/"JOINED"
+- [ ] ZH locale: `.vp-hero-label` 文本为 "你是第"，含 "今日"/"加入"
+- [ ] 在线 meta 模板用单层 `<b>`（不能双重 `<b><b>`）
+
+### 容错
+- [ ] Supabase RPC 500 → card 仍渲染 `#--,---` 占位，无 console error 崩溃
+- [ ] `/api/online/count` 失败 → `.vp-online-row` 保持 `hidden`，主信息仍展示
+- [ ] 移动端 375×812 视口 → card 自适应不溢出

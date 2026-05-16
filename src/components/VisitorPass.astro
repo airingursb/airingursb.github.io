@@ -41,7 +41,9 @@
   </div>
 </div>
 
-<style>
+<style is:global>
+  /* Global so JS-injected skulls/tribe markup inherits these rules.
+     The vp-* prefix provides namespacing. */
   .vp-wrap {
     perspective: 1400px;
     width: 100%;
@@ -67,7 +69,7 @@
       0 3px 8px rgba(0,0,0,.05),
       inset 0 0 0 1px rgba(0,0,0,.06);
   }
-  :global([data-mode="dark"]) .vp-pass {
+  [data-mode="dark"] .vp-pass {
     box-shadow:
       0 24px 56px -22px rgba(0,0,0,.55),
       0 3px 8px rgba(0,0,0,.25),
@@ -87,7 +89,7 @@
     mix-blend-mode: overlay;
     z-index: 10;
   }
-  :global([data-mode="dark"]) .vp-glare {
+  [data-mode="dark"] .vp-glare {
     background: radial-gradient(
       circle 200px at var(--mx, 50%) var(--my, 50%),
       rgba(var(--accent-rgb), .2),
@@ -109,7 +111,7 @@
     font-weight: 600;
     flex-shrink: 0;
   }
-  :global([data-mode="dark"]) .vp-head { border-bottom-color: rgba(255,255,255,.06); }
+  [data-mode="dark"] .vp-head { border-bottom-color: rgba(255,255,255,.06); }
   .vp-dot {
     display: inline-block;
     width: 6px; height: 6px;
@@ -206,7 +208,7 @@
     border-top: 1.5px dashed rgba(0,0,0,.14);
     margin: 0 14px;
   }
-  :global([data-mode="dark"]) .vp-perf { border-top-color: rgba(255,255,255,.14); }
+  [data-mode="dark"] .vp-perf { border-top-color: rgba(255,255,255,.14); }
 
   .vp-data {
     padding: 10px 16px 6px;
@@ -237,7 +239,7 @@
     font-weight: 600;
     flex-shrink: 0;
   }
-  :global([data-mode="dark"]) .vp-foot { border-top-color: rgba(255,255,255,.06); }
+  [data-mode="dark"] .vp-foot { border-top-color: rgba(255,255,255,.06); }
 
   .vp-pass::before, .vp-pass::after {
     content: "";
@@ -265,6 +267,233 @@
 
 <script is:inline>
   (function () {
-    // Implementation added in subsequent tasks.
+    var pass = document.querySelector('#visitorPass .vp-pass');
+    if (!pass) return;
+
+    // ── 3D tilt + cursor-following glare ──────────────────────────────────
+    pass.addEventListener('mousemove', function (e) {
+      var r = pass.getBoundingClientRect();
+      var dx = (e.clientX - r.left - r.width / 2) / r.width;
+      var dy = (e.clientY - r.top - r.height / 2) / r.height;
+      var max = 9;
+      pass.style.transform =
+        'rotateY(' + (dx * max).toFixed(2) + 'deg) ' +
+        'rotateX(' + (-dy * max).toFixed(2) + 'deg) ' +
+        'translateZ(0)';
+      pass.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100) + '%');
+      pass.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100) + '%');
+    });
+    pass.addEventListener('mouseleave', function () {
+      pass.style.transform = '';
+    });
+
+    // ── Data fetch (total + today rank via Supabase RPC) ─────────────────
+    var SB_URL = 'https://pcoyocvqfipuydhvdsle.supabase.co';
+    var SB_KEY = 'sb_publishable_jieHU6yu3dPxSww2_B_KIg_9KcWg6wl';
+    var HISTORICAL_OFFSET = 28655;
+    var CACHE_KEY = 'visitor_v2';
+
+    var totalEl = document.getElementById('vpTotal');
+    var todayEl = document.getElementById('vpToday');
+    var joinedEl = document.getElementById('vpJoined');
+
+    function fmtTotal(n) {
+      return (n + HISTORICAL_OFFSET).toLocaleString('en-US');
+    }
+    function fmtJoined(d) {
+      var y = d.getFullYear();
+      var m = String(d.getMonth() + 1).padStart(2, '0');
+      var dd = String(d.getDate()).padStart(2, '0');
+      return y + '.' + m + '.' + dd;
+    }
+
+    function countUp(el, target, durationMs) {
+      var start = performance.now();
+      function frame(now) {
+        var p = Math.min(1, (now - start) / durationMs);
+        var eased = 1 - Math.pow(1 - p, 3);
+        el.textContent = fmtTotal(Math.round(target * eased));
+        if (p < 1) requestAnimationFrame(frame);
+        else el.textContent = fmtTotal(target);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    function render(data, animate) {
+      if (animate) countUp(totalEl, data.total, 600);
+      else totalEl.textContent = fmtTotal(data.total);
+      todayEl.textContent = '#' + data.today_rank;
+      joinedEl.textContent = fmtJoined(new Date());
+    }
+
+    var cached = null;
+    try { cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null'); } catch (_) {}
+
+    if (cached && typeof cached.total === 'number') {
+      render(cached, false);
+    } else {
+      fetch(SB_URL + '/rest/v1/rpc/increment_visitor_v2', {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: '{}'
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          if (!data || typeof data.total !== 'number') return;
+          try { sessionStorage.setItem(CACHE_KEY, JSON.stringify(data)); } catch (_) {}
+          render(data, true);
+        })
+        .catch(function () { /* leave placeholders on failure */ });
+    }
+
+    // ── Skull tribe (online presence) ──────────────────────────────────────
+    var ONLINE_API = 'https://chat.ursb.me/api/online/count';
+    var POLL_MS = 30000;
+    var MAX_SKULLS = 8;
+    var onlineRow = document.getElementById('vpOnlineRow');
+    var onlineMeta = document.getElementById('vpOnlineMeta');
+    var tribeEl = document.getElementById('vpTribe');
+
+    var REGION_BY_CC = {
+      CN: 'asia', JP: 'asia', KR: 'asia', TW: 'asia', HK: 'asia', SG: 'asia',
+      IN: 'asia', TH: 'asia', VN: 'asia', PH: 'asia', ID: 'asia', MY: 'asia',
+      AE: 'asia', SA: 'asia', IL: 'asia', TR: 'asia', PK: 'asia', BD: 'asia',
+      US: 'americas', CA: 'americas', MX: 'americas', BR: 'americas',
+      AR: 'americas', CL: 'americas', CO: 'americas', PE: 'americas',
+      GB: 'europe', DE: 'europe', FR: 'europe', NL: 'europe', ES: 'europe',
+      IT: 'europe', SE: 'europe', NO: 'europe', FI: 'europe', DK: 'europe',
+      PL: 'europe', CH: 'europe', AT: 'europe', BE: 'europe', IE: 'europe',
+      PT: 'europe', GR: 'europe', CZ: 'europe', RU: 'europe', UA: 'europe',
+      AU: 'oceania', NZ: 'oceania',
+      ZA: 'africa', EG: 'africa', NG: 'africa', KE: 'africa', MA: 'africa'
+    };
+    function regionColors() {
+      var isDark = document.documentElement.getAttribute('data-mode') !== 'light';
+      return isDark
+        ? { asia: 'var(--accent)', americas: '#60a5fa', europe: '#a78bfa', oceania: '#22d3ee', africa: '#fbbf24', unknown: 'var(--c-text-dim)' }
+        : { asia: 'var(--accent)', americas: '#2563eb', europe: '#7c3aed', oceania: '#0891b2', africa: '#d97706', unknown: 'var(--c-text-dim)' };
+    }
+
+    var SKULL_SVG = '<svg viewBox="0 0 16 14" shape-rendering="crispEdges" xmlns="http://www.w3.org/2000/svg"><g fill="{FILL}"><rect x="5" y="2" width="6" height="1"/><rect x="4" y="3" width="8" height="1"/><rect x="3" y="4" width="10" height="1"/><rect x="3" y="5" width="2" height="2"/><rect x="11" y="5" width="2" height="2"/><rect x="5" y="5" width="2" height="2"/><rect x="9" y="5" width="2" height="2"/><rect x="3" y="7" width="10" height="1"/><rect x="3" y="8" width="10" height="1"/><rect x="4" y="9" width="1" height="2"/><rect x="6" y="9" width="1" height="2"/><rect x="8" y="9" width="1" height="2"/><rect x="10" y="9" width="1" height="2"/><rect x="4" y="11" width="8" height="1"/><rect x="5" y="12" width="6" height="1"/></g></svg>';
+
+    function getMyCountry() {
+      try { return sessionStorage.getItem('vp_country') || null; } catch (_) { return null; }
+    }
+    window.addEventListener('visitor-country-ready', function () {
+      if (lastCounts) renderTribe(lastCounts);
+    });
+
+    function countryName(cc) {
+      if (!cc) return 'Unknown';
+      try {
+        return new Intl.DisplayNames(['en'], { type: 'region' }).of(cc) || cc;
+      } catch (_) { return cc; }
+    }
+
+    function expandCountriesToSkulls(countries, total) {
+      var skulls = [];
+      Object.keys(countries).forEach(function (cc) {
+        for (var i = 0; i < countries[cc]; i++) skulls.push(cc);
+      });
+      // Pad with null (unknown) for visitors whose country isn't resolved yet.
+      while (skulls.length < total) skulls.push(null);
+      return skulls;
+    }
+
+    function metaTemplate() {
+      if (window.t) {
+        var tpl = window.t('vp_online_meta');
+        if (tpl && tpl !== 'vp_online_meta') return tpl;
+      }
+      return '<b>{n}</b> here · <b>{r}</b> regions';
+    }
+
+    var lastCounts = null;
+
+    function renderTribe(counts) {
+      lastCounts = counts;
+      var total = counts.site || 0;
+      var countries = counts.countries || {};
+      var regionCount = Object.keys(countries).length;
+
+      if (total < 1) {
+        onlineRow.hidden = true;
+        return;
+      }
+      onlineRow.hidden = false;
+
+      onlineMeta.innerHTML = metaTemplate()
+        .replace('{n}', String(total))
+        .replace('{r}', String(regionCount));
+
+      var skulls = expandCountriesToSkulls(countries, total);
+      var myCC = getMyCountry();
+
+      skulls.sort(function (a, b) {
+        if (myCC) {
+          if (a === myCC && b !== myCC) return -1;
+          if (b === myCC && a !== myCC) return 1;
+        }
+        if (a === null && b !== null) return 1;
+        if (b === null && a !== null) return -1;
+        return (countries[b] || 0) - (countries[a] || 0);
+      });
+
+      var visible = skulls.slice(0, MAX_SKULLS);
+      var overflow = skulls.length - visible.length;
+      var youRendered = false;
+      var colors = regionColors();
+
+      tribeEl.innerHTML = '';
+      visible.forEach(function (cc) {
+        var region = cc ? (REGION_BY_CC[cc] || 'unknown') : 'unknown';
+        var fill = colors[region];
+        var isYou = !youRendered && myCC && cc === myCC;
+        if (isYou) youRendered = true;
+
+        var div = document.createElement('div');
+        div.className = 'vp-skull' + (isYou ? ' vp-you' : '');
+        div.title = countryName(cc) + (isYou ? ' · You' : '');
+        div.innerHTML = SKULL_SVG.replace('{FILL}', fill);
+        tribeEl.appendChild(div);
+      });
+
+      if (overflow > 0) {
+        var more = document.createElement('span');
+        more.className = 'vp-tribe-more';
+        more.textContent = '+' + overflow;
+        tribeEl.appendChild(more);
+      }
+
+      // Fallback: if country unknown AND nothing got marked, ring the rightmost
+      // skull as "you" so the UX cue still works.
+      if (!youRendered) {
+        var skullEls = tribeEl.querySelectorAll('.vp-skull');
+        if (skullEls.length > 0) {
+          var last = skullEls[skullEls.length - 1];
+          last.classList.add('vp-you');
+          last.title = last.title + ' · You';
+        }
+      }
+    }
+
+    function fetchOnline() {
+      fetch(ONLINE_API, { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (data) { if (data) renderTribe(data); })
+        .catch(function () {});
+    }
+
+    fetchOnline();
+    setInterval(fetchOnline, POLL_MS);
+
+    // Re-render meta line when language changes (the template comes from i18n).
+    window.addEventListener('langchange', function () {
+      if (lastCounts) renderTribe(lastCounts);
+    });
   })();
 </script>
