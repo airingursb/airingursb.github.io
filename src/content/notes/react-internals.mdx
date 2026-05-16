@@ -1,0 +1,118 @@
+---
+title: "一次 setState 的一生 —— React 渲染流水线全景"
+date: "2026-05-16"
+tags: [前端框架, React, Fiber, Scheduler, RSC, 性能工程]
+public: true
+summary: 30 章 · 32 张 SVG · 8577 行 · 双层标本 (Counter 简模板 + TodoBoard 全特性) · Fiber 双缓冲 · subtreeFlags bubble · root.current 翻转 · Lanes 31 位 + Entanglement + 饥饿提升 · Automatic Batching · Error Boundaries · Portal · Hooks 13 个 · Suspense/RSC throw-as-control-flow · Server Actions 闭包跨网络 · Streaming SSR + Selective Hydration · React Compiler IR (含 Memo Map 失效传播 + 3 种 escape hatch + Meta 200 应用实测) · Owner Stacks · 13 年源码考古 · 多端 HostConfig · React vs Vue/Solid/Svelte/Qwik/Astro 横切 · 4 周读源码计划 · 12 组易混名词 · 10 条 RFC 索引。
+immersive:
+  url: /immersive/react-internals/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/react-internals/)
+
+这是 Field Note 系列的第七篇。前作《[字节码到像素的一生](/immersive/chromium-renderer/)》拆解了 Chromium 13 步渲染流水线——浏览器把 HTML 变成像素的全过程。这一次把镜头往前推一段：在浏览器把 DOM 变成像素之前，React 是怎么把 `setState` 变成 DOM 的。
+
+### 五章背景 + Counter 四幕主线 + 十五步流水线 + 十章综合
+
+```
+I  · 背景 (5)
+   01 三个公式 · 02 家谱 · 03 为何重写 · 04 三层架构 · 05 流水线全景
+
+II · 主线 ✦
+   Counter — Mount → Click +1 → Click² → Unmount 四幕
+
+III · 流水线 (15)
+   RENDER (蓝)        06 JSX→Element · 07 Fiber 60 字段 · 08 双缓冲
+                     09 beginWork · 10 Reconciliation (含 lastPlacedIndex)
+                     11 completeWork (含 32 位 flag bitmap) · 12 Hooks 内核
+                     12B Hooks 巡礼 (useReducer/useImperative/Insertion/useFormStatus/useActionState/useOptimistic/useDebugValue)
+   COMMIT (铜)        13 BeforeMutation · 14 Mutation (含 Portal)
+                     15 Layout/Passive · 15B Error Boundaries
+   SCHEDULER (紫)     16 Lanes · 17 Time Slicing (含 Concurrent 的代价 + Entanglement + 饥饿提升)
+                     18 Suspense & Transitions
+
+IV · 综合 (10)
+   19 四幕全栈时间线 · 20 RSC (wire format + Server Actions + Streaming SSR + Selective Hydration)
+   21 React 19 (含 Compiler IR + Owner Stacks 实现) · 22 症状反查
+   23 实战 · DevTools Profiler · 24 实战 · Chrome Performance
+   25 13 年源码考古 · 26 多端 HostConfig 对照 · 27 附录 · 源码导航地图 · 28 术语表 (50+)
+```
+
+### 这版深挖了什么
+
+**Fiber 内核**
+- Fiber 节点的 60 个字段按"结构 / 状态 / 调度 / 提交"四簇拆解 + 完整字段地图 SVG
+- 28 种 fiber.tag 家谱（你写的 / 宿主 / 控制流 / 性能调度 / 内部）+ R19 三个新 tag 的"静默革命"
+- 双缓冲的真正代价：不是调度复杂，是<em>内存翻倍</em>
+- subtreeFlags 自底向上 bubble 的剪枝路径可视化
+- 32 位 effect flag bitmap 完整可视化
+
+**协调与提交**
+- Reconciliation O(n) diff 的三个赌注 + 带 key 列表的两遍算法
+- **lastPlacedIndex 贪心算法**——[A,B,C,D]→[B,C,D,A] 只 1 次 DOM 移动
+- beginWork bail-out 机制——`React.memo` 真正起作用的位置
+- Commit 三子阶段 + `root.current = wip` 翻转瞬间特写
+- useLayoutEffect vs useEffect 的物理位置时间线
+- Portal · React tree ≠ DOM tree 的第一个原语
+- Error Boundaries throw-and-catch 路径 + R19 三回调
+
+**Hooks 全家桶**
+- useState 链表 + dispatchSetState 真实路径
+- useReducer 是 useState 的"大哥"（前者实现里包含后者）
+- useContext 沿 fiber 树的依赖传播（propagateContextChange）
+- useMemo / useCallback 的 cache 槽真面目
+- useRef 极简实现（两行）+ useImperativeHandle 在 commit ref 阶段的位置
+- useSyncExternalStore 为什么 concurrent-safe（防 tearing）
+- useInsertionEffect 给 CSS-in-JS 库的专用窗口
+- React 19 表单三件套：useFormStatus 隐式 context · useActionState · useOptimistic
+- useDebugValue · useId 确定性 ID
+
+**调度器**
+- Lanes 31 位掩码完整阶梯（SyncLane/InputContinuous/Default/Transition×16/Retry×4/Idle/Offscreen）
+- MessageChannel 让步（为什么不用 rIC / setTimeout(0)），5ms 切片预算的来历
+- **Concurrent 的代价**：StrictMode 双 render · tearing 风险 · 心智负担 · 小应用反而更慢
+- **Entangled Lanes 车道纠缠**——防 store tearing 的精确机制
+- **5 秒饥饿提升**——低优先级 lane 等太久被强制按 SyncLane 跑
+
+**Suspense / Server Components**
+- `use()` throw Promise 沿 fiber.return 上溯的路径图
+- RSC wire format 6 种 row 类型完整解剖 + `$1 / $L1 / $F1 / $E` 引用机制
+- **Server Actions 闭包跨网络**——bundler manifest + POST + 反查
+- Streaming SSR + Selective Hydration 瀑布时间线
+- RSC vs SSR vs Streaming · 三层关系表
+
+**React 19 深处**
+- React Compiler IR + Memo Map + useMemoCache 原语
+- Compiler 的四条边界（不跨函数 · 不推 ref · 不重排 · 不替换 hook）
+- **Owner Stacks 实现机制**——`fiber._debugOwner` 链 · 渲染父 ≠ 结构父
+- Actions / useFormStatus 的隐式 context 设计
+
+**实战 profiling**
+- DevTools Profiler 三视图（commits 条 / flamegraph / "Why did this render?"）
+- "Why did this render?" 四种答案的修法表
+- Chrome Performance 三轨道（Timings · Components · Main）
+- INP / Forced reflow / commit microtask 三隐藏指标
+- 区分"<em>React 慢</em>" vs "<em>浏览器慢</em>" 的诊断表
+
+**历史 + 多端 + 源码地图（附录）**
+- 13 年时间线 SVG：FaxJS → 0.3 → Fiber → Hooks → Concurrent → RSC → 19
+- 3 个被丢弃的方向：Suspense for data 原版 · 文件扩展名 · React Forget × 4
+- 关键人物表：Jordan Walke / Sebastian Markbåge / Andrew Clark / Dan Abramov / Joe Savona / ...
+- 8 家 renderer 对照：DOM / Fabric / R3F / Ink / react-pdf / Skia / blessed
+- 同一棵 React 树 → 三处落地（DOM / iOS native / WebGL）的可视化
+- React Native Fabric 完整 HostConfig 实现（C++ JSI + 不可变 ShadowTree）
+- **4 周读源码计划**：W1 骨架 → W2 协调 → W3 提交 → W4 调度
+- 32 个 package · 13 个最重要文件 · 推荐阅读顺序
+
+**生态横向对比**
+- Preact 用 30KB 实现 React API（去掉 Fiber + 去掉 scheduler）
+- Solid.js 选择"<em>无 vDOM, 无双缓冲</em>"（细粒度反应式）
+- Vue 3 LIS 算法 vs React lastPlacedIndex 贪心
+- Astro Islands 跟 RSC 的对比（更激进的"<em>页面是静态的</em>"）
+
+每章源码定位对齐 React 19：`ReactFiber.js` / `ReactFiberBeginWork.js` / `ReactFiberCompleteWork.js` / `ReactChildFiber.js` / `ReactFiberLane.js` / `ReactFiberFlags.js` / `ReactFiberHooks.js` / `ReactFiberWorkLoop.js` / `ReactFiberCommitWork.js` / `ReactFiberThrow.js` / `ReactFiberHostConfig.js` / `scheduler/src/SchedulerPostTask.js` / `react-server/src/ReactFlightServer.js`。
+
+如果你只想看一张图把整条流水线串起来，就从沉浸式版的主线例子 *Counter 一生四幕* 开始读——一个 9 行的 `<Counter />` 组件被一次 setState 推过全流水线的全过程，时间精确到 0.05ms。每个流水线章节末尾都有一张 SPECIMEN 卡片，记录 Counter 在那一阶段的具体状态。
+
+完整阅读：**[一次 setState 的一生 — React 渲染流水线全景](/immersive/react-internals/)**
