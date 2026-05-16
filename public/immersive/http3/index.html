@@ -2960,7 +2960,7 @@
     </div>
 
 
-    <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们的 GET 请求里 · 主线阶段 1（恢复）/ Phase 1 (resumption)</span><span class="lang-en-only">◇ In our GET request · undefined</span></h3>
+    <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们的 GET 请求里 · 主线阶段 1(恢复)</span><span class="lang-en-only">◇ In our GET request · Phase 1 (resumption)</span></h3>
     <div class="io-pair">
       <div class="io-card in">
         <div class="io-key">INPUT</div>
@@ -3070,7 +3070,7 @@
     </div>
 
 
-    <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们的 GET 请求里 · 主线阶段 1-2（密钥派生）/ Phase 1-2 (key schedule)</span><span class="lang-en-only">◇ In our GET request · undefined</span></h3>
+    <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们的 GET 请求里 · 主线阶段 1-2(密钥派生)</span><span class="lang-en-only">◇ In our GET request · Phase 1-2 (key schedule)</span></h3>
     <div class="io-pair">
       <div class="io-card in">
         <div class="io-key">INPUT</div>
@@ -3559,7 +3559,7 @@
     </div>
 
 
-    <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们的 GET 请求里 · 主线阶段 3（如果丢包）/ Phase 3 (if lost)</span><span class="lang-en-only">◇ In our GET request · undefined</span></h3>
+    <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们的 GET 请求里 · 主线阶段 3(如果丢包)</span><span class="lang-en-only">◇ In our GET request · Phase 3 (if lost)</span></h3>
     <div class="io-pair">
       <div class="io-card in">
         <div class="io-key">INPUT</div>
@@ -3697,6 +3697,123 @@
       <span class="lang-zh-only">假设 PN 5 丢了，里面装的是 Stream A 的字节 0-1200。Stream A 必须等重传。但 PN 6 装的是 Stream B——<em>它的解密和应用层处理不需要等</em>。这就是 HTTP/3 干掉 TCP head-of-line 的关键：丢包只阻塞被丢的流，<strong>不阻塞其它流</strong>。</span>
       <span class="lang-en-only">Suppose PN 5 is lost — it carried Stream A bytes 0-1200. Stream A must wait for retransmission. But PN 6 carried Stream B — <em>its decryption and application-layer processing don't have to wait</em>. This is the key to HTTP/3 killing TCP HOL: loss blocks only the affected stream, <strong>never the others</strong>.</span>
     </div>
+
+    <!-- ===== SVG · Three loss detection mechanisms in QUIC ===== -->
+    <figure class="svg-figure" aria-label="QUIC three loss detection mechanisms: packet threshold, time threshold, PTO">
+      <span class="svg-tag">FIG 12 · loss detection · 3 triggers</span>
+      <svg viewBox="0 0 760 380" role="img" aria-labelledby="lossT lossD">
+        <title id="lossT">QUIC 三种丢包检测时序</title>
+        <desc id="lossD">A timeline showing how three independent mechanisms (packet threshold = 3, time threshold = 9/8 × max-RTT, PTO probe) detect a lost packet. Whichever fires first wins.</desc>
+
+        <text x="380" y="22" text-anchor="middle" class="t-label">3 LOSS DETECTION MECHANISMS · WHICHEVER FIRES FIRST WINS</text>
+
+        <!-- Time axis -->
+        <g transform="translate(0,60)">
+          <line x1="80" y1="0" x2="720" y2="0" class="stk-ink" stroke-width="1.2"/>
+          <text x="720" y="-6" text-anchor="end" class="t-mono-xs" style="fill:var(--ink-mute)">time →</text>
+          <g class="t-mono-xs" style="fill:var(--ink-mute)">
+            <text x="80"  y="-8" text-anchor="middle">T₀</text>
+            <text x="200" y="-8" text-anchor="middle">T₀ + 30 ms</text>
+            <text x="340" y="-8" text-anchor="middle">T₀ + 50 ms</text>
+            <text x="500" y="-8" text-anchor="middle">T₀ + 90 ms (9/8 RTT)</text>
+            <text x="680" y="-8" text-anchor="middle">T₀ + 280 ms (PTO)</text>
+          </g>
+        </g>
+
+        <!-- ============ PACKETS SENT (top row) ============ -->
+        <g transform="translate(0,90)">
+          <text x="50" y="14" text-anchor="end" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">SENT</text>
+
+          <!-- PN 13 -->
+          <circle cx="80" cy="12" r="9" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+          <text x="80" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">13</text>
+
+          <!-- PN 14 — the LOST one -->
+          <circle cx="120" cy="12" r="9" class="s-heat" stroke="var(--heat)" stroke-width="1.5" opacity="0.85"/>
+          <text x="120" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">14</text>
+          <text x="120" y="-3" text-anchor="middle" class="t-mono-xs" style="fill:var(--heat);font-weight:700">✗ LOST</text>
+
+          <!-- PN 15 -->
+          <circle cx="160" cy="12" r="9" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+          <text x="160" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">15</text>
+
+          <!-- PN 16 -->
+          <circle cx="220" cy="12" r="9" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+          <text x="220" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">16</text>
+
+          <!-- PN 17 -->
+          <circle cx="260" cy="12" r="9" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+          <text x="260" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">17</text>
+        </g>
+
+        <!-- ============ ACKS RECEIVED (second row) ============ -->
+        <g transform="translate(0,140)">
+          <text x="50" y="14" text-anchor="end" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">ACK ed</text>
+
+          <!-- ACK for 13 at 30ms -->
+          <circle cx="200" cy="12" r="9" class="s-good" opacity="0.85"/>
+          <text x="200" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">13</text>
+
+          <!-- ACK for 15 at 50ms -->
+          <circle cx="280" cy="12" r="9" class="s-good" opacity="0.85"/>
+          <text x="280" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">15</text>
+
+          <!-- ACK for 16 at 60ms (just past threshold marker) -->
+          <circle cx="320" cy="12" r="9" class="s-good" opacity="0.85"/>
+          <text x="320" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">16</text>
+
+          <!-- ACK for 17 at 65ms -->
+          <circle cx="360" cy="12" r="9" class="s-good" opacity="0.85"/>
+          <text x="360" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">17</text>
+
+          <!-- No ACK for 14 ever! -->
+        </g>
+
+        <!-- ============ 3 DETECTION TRIGGERS (3 rows below) ============ -->
+
+        <!-- 1 · Packet threshold (kPacketThreshold = 3) -->
+        <g transform="translate(0,190)">
+          <rect x="60" y="0" width="660" height="36" rx="3" class="s-blue-p" stroke="var(--blue)" stroke-width="1.5"/>
+          <text x="70" y="14" class="t-mono-xs" style="fill:var(--blue);font-weight:700">① PACKET THRESHOLD · kPacketThreshold = 3</text>
+          <text x="70" y="28" class="t-mono-xs" style="fill:var(--ink-soft)">PN 14 + 3 = PN 17 acked → declare PN 14 lost.  Triggered at T₀ + 65 ms.</text>
+          <!-- Marker on timeline -->
+          <line x1="340" y1="-100" x2="340" y2="0" class="stk-blue stk-dash" stroke-width="0.8"/>
+          <circle cx="340" cy="0" r="5" class="s-blue"/>
+          <text x="340" y="-44" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">FIRES ✓</text>
+        </g>
+
+        <!-- 2 · Time threshold (9/8 × max RTT) -->
+        <g transform="translate(0,240)">
+          <rect x="60" y="0" width="660" height="36" rx="3" class="s-cu-p" stroke="var(--copper)" stroke-width="1.5"/>
+          <text x="70" y="14" class="t-mono-xs" style="fill:var(--copper);font-weight:700">② TIME THRESHOLD · 9/8 × max(SRTT, latest_RTT)</text>
+          <text x="70" y="28" class="t-mono-xs" style="fill:var(--ink-soft)">PN 14 outstanding &gt; 90 ms → declare lost.  Backup for when ① doesn't fire (no later ACKs).</text>
+          <!-- Marker on timeline -->
+          <line x1="500" y1="-150" x2="500" y2="0" class="stk-cu stk-dash" stroke-width="0.8"/>
+          <circle cx="500" cy="0" r="5" class="s-cu"/>
+          <text x="500" y="-156" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">would fire at 90 ms (slower than ①)</text>
+        </g>
+
+        <!-- 3 · PTO (Probe Timeout) -->
+        <g transform="translate(0,290)">
+          <rect x="60" y="0" width="660" height="46" rx="3" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.5"/>
+          <text x="70" y="14" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">③ PTO (PROBE TIMEOUT) · smoothed_RTT + 4·rttvar + max_ack_delay, 2× per attempt</text>
+          <text x="70" y="28" class="t-mono-xs" style="fill:var(--ink-soft)">If NO acks arrive at all (tail loss): send probe packets to elicit any ACK.  First PTO ≈ 280 ms here.</text>
+          <text x="70" y="40" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">Doubles on every probe (280 → 560 → 1120 ms …) — bounded exponential backoff.</text>
+          <!-- Marker on timeline -->
+          <line x1="680" y1="-200" x2="680" y2="0" class="stk-gpu stk-dash" stroke-width="0.8"/>
+          <circle cx="680" cy="0" r="5" class="s-gpu"/>
+          <text x="680" y="-206" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">last resort</text>
+        </g>
+
+        <!-- Decision summary box -->
+        <g transform="translate(60,348)">
+          <rect width="660" height="22" rx="3" class="s-paper" stroke="var(--good)" stroke-width="1"/>
+          <text x="330" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--good);font-weight:700">→ ① fires first (T₀ + 65 ms) · loss declared · retransmit data with FRESH PN = 18 (see Fig "TCP vs QUIC")</text>
+        </g>
+      </svg>
+      <p class="svg-cap lang-zh-only">QUIC 用三种<em>独立</em>机制并行检测丢包,<strong>谁先触发谁赢</strong>:① <span style="color:var(--blue)">包数阈值</span>(kPacketThreshold = 3),收到比目标 PN 大 3 的 ACK 即判丢;② <span style="color:var(--copper)">时间阈值</span>(9/8 × max RTT),用作①的兜底;③ <span style="color:var(--gpu)">PTO</span>,处理"<em>整条尾部都没 ACK</em>"的死锁场景,指数 backoff。本图例里 ① 在 65 ms 处先触发,PTO 是<em>不会用到</em>的最后保险。RFC 9002 §6 把这三层判定写成<em>一个 timer + 一组规则</em>,后面伪代码会展开。</p>
+      <p class="svg-cap lang-en-only">QUIC runs three <em>independent</em> loss-detection mechanisms in parallel; <strong>whichever fires first wins</strong>: ① <span style="color:var(--blue)">packet threshold</span> (kPacketThreshold = 3) — an ACK arrives for a PN at least 3 above the suspect; ② <span style="color:var(--copper)">time threshold</span> (9/8 × max RTT) — backs up ①; ③ <span style="color:var(--gpu)">PTO</span> — for "<em>nothing was acked at all</em>" deadlock, with bounded exponential backoff. In this example ① fires first at 65 ms; PTO is the safety net you hope <em>never</em> trips. RFC 9002 §6 encodes all three behind <em>one timer + one rule set</em> — unfolded in the pseudocode below.</p>
+    </figure>
 
     <h3 class="sub" style="color: var(--gpu);"><span class="lang-zh-only">📖 RFC 9002 §6 · 丢包检测伪代码</span><span class="lang-en-only">📖 RFC 9002 §6 · Loss detection in pseudocode</span></h3>
 
@@ -4113,6 +4230,129 @@
       <p>HPACK (HTTP/2) depends on a <em>strictly synchronised</em> dynamic table. Server sends "<code>:status: 200</code>" on Stream A and says "<em>insert this, index 62</em>". The next stream can now refer to index 62 — assuming Stream A arrives before Stream B. HTTP/2 over TCP is naturally ordered, so this works.</p>
       <p>QUIC streams are independent and arrive concurrently. If Stream A's update hasn't landed yet but Stream B already references index 62 — <em>cannot decode</em>. The head-of-line blocking the transport layer worked so hard to kill comes roaring back at the app layer.</p>
     </div>
+
+    <!-- ===== SVG · QPACK three-stream architecture ===== -->
+    <figure class="svg-figure" aria-label="QPACK encoder + decoder + request stream architecture">
+      <span class="svg-tag">FIG 15 · QPACK · 3-stream architecture</span>
+      <svg viewBox="0 0 760 360" role="img" aria-labelledby="qpackT qpackD">
+        <title id="qpackT">QPACK 三流架构 · request + encoder + decoder</title>
+        <desc id="qpackD">QPACK splits header compression across three independent QUIC streams: bidirectional request streams carry header references, a unidirectional encoder stream carries dynamic-table inserts, a unidirectional decoder stream carries acknowledgements. The Required Insert Count (RIC) gate blocks a request stream only when its referenced inserts haven't arrived yet.</desc>
+
+        <text x="380" y="22" text-anchor="middle" class="t-label">QPACK · 3 STREAMS, NO CROSS-STREAM HEAD-OF-LINE BLOCK</text>
+
+        <!-- Client and server boxes -->
+        <g transform="translate(20,55)">
+          <rect width="100" height="260" rx="4" class="s-paper" stroke="var(--ink)" stroke-width="1.5"/>
+          <text x="50" y="18" text-anchor="middle" class="t-mono" style="font-weight:700">CLIENT</text>
+          <text x="50" y="32" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">Chrome</text>
+
+          <!-- Client dynamic table -->
+          <g transform="translate(10,50)">
+            <rect width="80" height="92" rx="3" class="s-paper2" stroke="var(--blue)" stroke-width="1"/>
+            <text x="40" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">dynamic table</text>
+            <text x="40" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">recv side</text>
+            <line x1="6" y1="36" x2="74" y2="36" class="stk-rule" stroke-width="0.4"/>
+            <text x="6" y="48" class="t-mono-xs" style="fill:var(--ink)">[62] :status: 200</text>
+            <text x="6" y="60" class="t-mono-xs" style="fill:var(--ink)">[63] hsts: max...</text>
+            <text x="6" y="72" class="t-mono-xs" style="fill:var(--ink-mute)">[64] (pending)</text>
+            <text x="6" y="84" class="t-mono-xs" style="fill:var(--ink-mute)">…</text>
+          </g>
+
+          <!-- Client decoder queue -->
+          <g transform="translate(10,154)">
+            <rect width="80" height="56" rx="3" class="s-cu-p" stroke="var(--copper)" stroke-width="1"/>
+            <text x="40" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">decoder out</text>
+            <text x="6" y="28" class="t-mono-xs" style="fill:var(--ink)">ack: Stream 0</text>
+            <text x="6" y="40" class="t-mono-xs" style="fill:var(--ink)">cancel: ...</text>
+            <text x="6" y="52" class="t-mono-xs" style="fill:var(--ink)">ICI: insert cnt</text>
+          </g>
+
+          <text x="50" y="244" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">decompresses</text>
+          <text x="50" y="256" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">request headers</text>
+        </g>
+
+        <g transform="translate(640,55)">
+          <rect width="100" height="260" rx="4" class="s-paper" stroke="var(--ink)" stroke-width="1.5"/>
+          <text x="50" y="18" text-anchor="middle" class="t-mono" style="font-weight:700">SERVER</text>
+          <text x="50" y="32" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">ursb.me</text>
+
+          <!-- Server encoder side -->
+          <g transform="translate(10,50)">
+            <rect width="80" height="92" rx="3" class="s-paper2" stroke="var(--blue)" stroke-width="1"/>
+            <text x="40" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">dynamic table</text>
+            <text x="40" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">send side</text>
+            <line x1="6" y1="36" x2="74" y2="36" class="stk-rule" stroke-width="0.4"/>
+            <text x="6" y="48" class="t-mono-xs" style="fill:var(--ink)">[62] :status: 200</text>
+            <text x="6" y="60" class="t-mono-xs" style="fill:var(--ink)">[63] hsts: max...</text>
+            <text x="6" y="72" class="t-mono-xs" style="fill:var(--ink)">[64] content-type</text>
+            <text x="6" y="84" class="t-mono-xs" style="fill:var(--ink-mute)">…</text>
+          </g>
+
+          <!-- Server encoder queue -->
+          <g transform="translate(10,154)">
+            <rect width="80" height="56" rx="3" class="s-acc-p" stroke="var(--accent)" stroke-width="1"/>
+            <text x="40" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">encoder out</text>
+            <text x="6" y="28" class="t-mono-xs" style="fill:var(--ink)">insert [64]</text>
+            <text x="6" y="40" class="t-mono-xs" style="fill:var(--ink)">duplicate [62]</text>
+            <text x="6" y="52" class="t-mono-xs" style="fill:var(--ink)">set table cap</text>
+          </g>
+
+          <text x="50" y="244" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">compresses</text>
+          <text x="50" y="256" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">response headers</text>
+        </g>
+
+        <!-- ===== 3 STREAMS in the middle ===== -->
+        <g transform="translate(130,75)">
+          <!-- Stream 0 · Request (bidirectional, client to server then server to client) -->
+          <g transform="translate(0,0)">
+            <rect width="500" height="36" rx="4" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.5"/>
+            <text x="10" y="14" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">Stream 0 · request (bidi)</text>
+            <text x="10" y="28" class="t-mono-xs" style="fill:var(--ink-mute)">→ GET / · with header refs [62][63][64]</text>
+            <!-- arrows -->
+            <path d="M 30,18 L 470,18" class="stk-gpu" stroke-width="1" fill="none" stroke-dasharray="3 2"/>
+            <polygon points="470,15 478,18 470,21" class="s-gpu"/>
+            <polygon points="30,15 22,18 30,21" class="s-gpu"/>
+          </g>
+
+          <!-- Encoder stream (server → client, uni) -->
+          <g transform="translate(0,86)">
+            <rect width="500" height="36" rx="4" class="s-acc-p" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="10" y="14" class="t-mono-xs" style="fill:var(--accent);font-weight:700">StreamID=7 · encoder (server-uni)</text>
+            <text x="10" y="28" class="t-mono-xs" style="fill:var(--ink-mute)">→ insert [64] content-type: text/html · server pushes dyn-table updates</text>
+            <path d="M 30,18 L 470,18" class="stk-acc" stroke-width="1.4" fill="none"/>
+            <polygon points="470,15 478,18 470,21" class="s-acc"/>
+          </g>
+
+          <!-- Decoder stream (client → server, uni) -->
+          <g transform="translate(0,138)">
+            <rect width="500" height="36" rx="4" class="s-cu-p" stroke="var(--copper)" stroke-width="1.5"/>
+            <text x="10" y="14" class="t-mono-xs" style="fill:var(--copper);font-weight:700">StreamID=10 · decoder (client-uni)</text>
+            <text x="10" y="28" class="t-mono-xs" style="fill:var(--ink-mute)">← Insert Count Increment · Section Ack · Stream Cancel</text>
+            <path d="M 470,18 L 30,18" class="stk-cu" stroke-width="1.4" fill="none"/>
+            <polygon points="30,15 22,18 30,21" class="s-cu"/>
+          </g>
+        </g>
+
+        <!-- ===== RIC gate annotation ===== -->
+        <g transform="translate(130,184)">
+          <rect width="500" height="86" rx="3" class="s-paper2" stroke="var(--heat)" stroke-width="1" stroke-dasharray="3 2"/>
+          <text x="10" y="18" class="t-mono-xs" style="fill:var(--heat);font-weight:700">⚠ REQUIRED INSERT COUNT (RIC) — the only blocking point</text>
+          <foreignObject x="10" y="24" width="480" height="60">
+            <p xmlns="http://www.w3.org/1999/xhtml" style="margin:0;font-family:var(--sans);font-size:12px;line-height:1.55;color:var(--ink-soft)">
+              每个请求流的 header block 头部携带一个 <code style="font-family:var(--mono);color:var(--copper)">RIC</code>:"我引用了 dynamic table 项 [64] 之前的所有插入,你的 receiver dyn-table.insert_count ≥ 64 时才能解开我"。如果 encoder stream 还没把 [64] 送到,这条 request stream <em>就地暂停</em>解头部,但<strong>不影响其他请求流</strong>——这是 QPACK 比 HPACK 高级的核心。
+            </p>
+          </foreignObject>
+        </g>
+
+        <!-- Bottom legend · stream IDs -->
+        <g transform="translate(130,310)">
+          <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">STREAM ID ASSIGNMENTS · per RFC 9204 §5</text>
+          <text x="0" y="14" class="t-mono-xs" style="fill:var(--ink-mute)">客户端发起: 0/4/8 (bidi) · 6/10 (uni for QPACK enc/dec) ·  服务端发起: 7/11 (uni for QPACK enc/dec) · 控制流 2/3</text>
+        </g>
+      </svg>
+      <p class="svg-cap lang-zh-only">QPACK 把头部压缩拆到 <strong>3 条独立 QUIC 流</strong>上:bidi 请求流(紫)携带<em>对动态表项的引用</em>,encoder 流(绿,server→client)推送<em>动态表插入</em>,decoder 流(橙,client→server)回报 <em>insert-count + section-ack + stream-cancel</em>。读者最该记的细节是<strong>RIC(Required Insert Count)闸门</strong>:每条请求流只<em>在自己引用的插入未到达时</em>暂停,不影响并发请求——这是 HPACK 在 QUIC 上"<em>把跨流 HOL 阻塞拽回来</em>"的根本性解。</p>
+      <p class="svg-cap lang-en-only">QPACK splits header compression across <strong>three independent QUIC streams</strong>: bidi request streams (purple) carry <em>references to dynamic-table entries</em>; the encoder stream (green, server→client) ships <em>dynamic-table inserts</em>; the decoder stream (copper, client→server) reports <em>insert-count + section-ack + stream-cancel</em>. The detail to remember is the <strong>Required Insert Count (RIC) gate</strong>: a request stream stalls <em>only when the inserts it references haven't arrived</em>, never on a sibling stream. This is the structural answer to HPACK's "<em>cross-stream HOL block resurrected on QUIC</em>" failure mode.</p>
+    </figure>
 
     <h3 class="sub lang-zh-only">QPACK 的三招</h3>
     <h3 class="sub lang-en-only">QPACK's three moves</h3>
