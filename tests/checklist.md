@@ -327,3 +327,126 @@
 - [x] `?eggDate=YYYY-MM-DD` query 参数预览任意日期（不入侵生产）
 - [x] `<480px` 移动端隐藏胶囊
 - [x] 单元测试：`tests/easter-egg-themes.test.mjs` 13 项全过（节日命中、双语、优先级、6 色合法性）
+
+## 从 Rust 到 SIMD · WebAssembly 的一生 (`/immersive/webassembly/`)
+
+### 批 1 — 结构与骨架
+- [ ] Hero 区中英 H1（Rust copper / SIMD gpu / 寄存器 accent 三色）+ deck + byline 4 项 + hero-notice 链回 chromium-renderer/v8-fast-js + pipeline-bar 13 段脉动
+- [ ] TOC v2 六大段 progress bar (4/1/6/6/5/4 比例) + 6 个 toc-group 覆盖全部 26 章
+- [ ] 26 个 `<section class="chap">` 全部存在(c1-c26 + cmain),无 id 重复,103 个内部锚点全部命中
+- [ ] 左侧 toc-side 桌面端可见(viewport ≥ 1320px),scroll 时 active 章节高亮跟随
+- [ ] 中英 lang-toggle 切换无残留;footer 内的 `<span lang="zh">/<span lang="en">` 同步切换
+- [ ] 桌面 1440 + 移动 390 两个视口无破版(移动端 stack-viz 单列 / toc-chips 单列 / cross-link 竖排)
+- [ ] gzip 后 HTML 体积 ≤ 80 KB(实际 ~ 382 KB 未压,gzip 估 ~ 50-60 KB)
+- [ ] 无 console error(允许 favicon/og 资源 404)
+
+### 批 2 — Act I 背景 4 章
+- [ ] Ch01 三个公式 · 三个 formula 块染 accent 绿色边、term/term-cu 色对 + Engine tier 拓扑对照表(6 引擎)
+- [ ] Ch02 家谱 · ftree pre 块时间线 2009–2026 + 4 阶段提案表 + 三个祖先 ladder(NaCl/Emscripten/asm.js)
+- [ ] Ch03 栈机 · stack-viz 双栏对比(wasm vs LLVM IR) + 4 张 mismatch-card + case-study fib(40) 字节对比
+- [ ] Ch04 JS 天花板 · 3 件天花板 ladder + v8-fast-js 引用 case-study + 6 行性能基准表 + tier-bar 包含
+
+### 批 3 — Act II 主线 The Hot Loop
+- [ ] Ch05 主线 cmain · hot.rs 11 行 Rust 完整;192 字节十六进制 + wat 展开版 + Liftoff/TurboFan 出码对比
+- [ ] tier-bar 性能图(JS / Liftoff / TurboFan / SIMD)四档
+- [ ] "回引地图"表格列出 22 章重访点
+
+### 批 4 — Act III 二进制解剖 6 章
+- [ ] Ch06 外壳 · 4 个 bin-row(magic/version/section type/payload)
+- [ ] Ch07 11 section · section-grid 12 卡片(含 DataCount)
+- [ ] Ch08 类型 · 9 行 cmp 表(numeric/vector/reference/GC) + tier-bar Hot Loop 类型分布
+- [ ] Ch09 指令集 · 6 张 mismatch-card 家族卡 + 3 行 bin-row 单指令拆解
+- [ ] Ch10 线性内存 · code-block memory 地图 + grow 代价说明
+- [ ] Ch11 验证 · stack-viz 类型栈实际走步 + 3 种类型错误表 + polymorphic stack 说明
+
+### 批 5 — Act IV 编译流水线 6 章
+- [ ] Ch12 Decode · dt-mock 流水线时间线(Network/IO/Compile/Main 四 thread)
+- [ ] Ch13 Validate · 4 引擎并行策略对照表
+- [ ] Ch14 Liftoff · 完整 x86-64 出码(~ 240 字节) + tier-up cmp/jne 触发器
+- [ ] Ch15 TurboFan · 6 步流程 ladder + Liftoff/TurboFan 6 维对比表
+- [ ] Ch16 Instantiate · 7 步 ladder + JS importObject 代码块
+- [ ] Ch17 JS↔Wasm · 4 种 trampoline 表 + JS-to-Wasm wrapper x86 代码 + 4 档历史 tier-bar(80→5 ns)
+
+### 批 6 — Act V 提案族 5 章
+- [ ] Ch18 Threads · 3 张 atomic 卡 + JS workers 代码 + Spectre 1.5 年延期史 + 多线程 tier-bar
+- [ ] Ch19 SIMD · v128 lane shape 6 行表 + Hot Loop SIMD 版 wat + Relaxed SIMD note
+- [ ] Ch20 GC · struct/array/i31/ref/cast wat 代码块 + 共享 GC 不等于共享对象模型
+- [ ] Ch21 Component Model · WIT 完整接口示例 + wit-bindgen 命令
+- [ ] Ch22 六提案 · section-grid 6 卡(tail/EH/memory64/JSPI/stack-switching/multi-memory) + tail-call wat 对比
+
+### 批 7 — Act VI 综合 4 章 + 底栏
+- [ ] Ch23 性能模型 · 性能 formula 公式块 + 3 场景 ladder + 4 张"反直觉"mismatch-card
+- [ ] Ch24 DevTools · 3 层调试信息对照表 + Chrome DevTools 启用 3 步 ladder
+- [ ] Ch25 战场 · 5 大产品段落 + 9 行案例汇总表(Figma/Photoshop/AutoCAD/Ruffle/ffmpeg/Blazor/1Password/CW)
+- [ ] Ch26 术语表 · 50 个 dt/dd 条目按 wasm / asm.js / MVP / 栈机 / LEB128 / ... 顺序 + 终章 pull-quote
+- [ ] 交互底栏(likes/views/comments)接入 https://chat.ursb.me + slug = "note/webassembly"
+- [ ] online-presence 6 档 tier 双语正确
+
+### 批 8 — v2 升级:12 张 SVG + 3 个新章节 + References 附录
+- [ ] CSS 新增 .svg-figure(蓝图风:背景网格 + s-acc/s-cu/s-gpu fill 类 + stk-* stroke 类 + t-mono/t-serif/t-title typography)
+- [ ] CSS 新增 .svg-figure.handdrawn 变体(t-hand 字体 + 不规则描边)
+- [ ] CSS 新增 .refs-block(W3C/IETF/RFC/CG/WG 5 色标签 + dt/dd grid)
+- [ ] CSS 新增 .w3c-pill 状态徽章(rec/cr/wd 三种)
+- [ ] CSS 新增 svg-flow / ts-step / sm-pop/push keyframes
+- [ ] Hero SVG (FIG · HERO) · 13 段流水线 + 4 phase 标 + 3 dot 沿 path 动画
+- [ ] Ch02 SVG (FIG 02) · 家谱时间线 · 4 血脉收敛到 2015 + 主干至 2026 · handdrawn 风
+- [ ] Ch06 SVG (FIG 06) · hot.wasm 192 字节按 section 比例图 + 前 16 字节 hex 放大
+- [ ] Ch07 SVG (FIG 07) · 11 section 引用拓扑 · 4 列(declare/body/init/host) + arrow markers
+- [ ] Ch08 SVG (FIG 08) · GC 后类型 lattice · anyref 顶 + i31/struct/array/funcref/externref + null bottom
+- [ ] Ch09 SVG (FIG 09) · 256 opcode 16×16 网格 · 6 家族染色 + 0xFB-0xFE 4 prefix
+- [ ] Ch10 SVG (FIG 10) · 4 GiB 地址空间 · ACTIVE + GUARD + PROT_NONE + SIGSEGV → RuntimeError 时序
+- [ ] Ch11 SVG (FIG 11) · 类型栈 7 步动画 · CSS keyframes 自动循环 7 秒
+- [ ] Ch15 SVG (FIG 15) · sea-of-nodes · LoadElimination 前 21 节点 vs 后 13 节点
+- [ ] Ch17 SVG (FIG 17) · trampoline 三栈帧 · JS / wrapper / wasm + r15/r14 装填 + 4 档历史 tier-bar
+- [ ] Ch18 SVG (FIG 18) · 共享内存拓扑 · main thread + 4 workers + 中央 SAB + COOP+COEP 提示
+- [ ] Ch19 SVG (FIG 19) · v128 寄存器 6 种 lane(i8x16/i16x8/i32x4/i64x2/f32x4/f64x2)
+- [ ] Ch21 SVG (FIG 21) · Component Model lift/lower · Rust String → ABI → Go string 三段
+- [ ] Ch27 新章节 · 安全模型 · 三层沙箱 ladder + Spectre 1.5 年延期史 + CVE 表 + WasmCert
+- [ ] Ch28 新章节 · 服务端 wasm · 6 平台对照表 + 5 档冷启动 tier-bar + WASI 0.2 + 3 限制
+- [ ] Ch29 新章节 · wasm 不能做什么 · 7 个硬限制 ladder + 每条配绕过办法
+- [ ] References 附录 · A 核心 W3C · B 提案 · C IEEE/RFC · D WASI · E 学术 · F 源码 · G 治理(共 7 个 refs-block ~ 45 条引用)
+- [ ] TOC v2 + 左侧 toc-side 同步更新 · 新增 4 个 appendix 链接
+- [ ] gzip 后 HTML 体积 ≤ 200 KB(实际 ~ 150 KB)
+- [ ] 全文最终统计:30 章 + 13 figure-svg + 15 表 + 22 code block + 7 refs-block + 14 pull-quote(双语 7 对)
+
+## 一次 setState 的一生 · React 渲染流水线 (`/immersive/react-internals/`)
+
+### 批 1 — 结构与骨架
+- [ ] Hero 区中英 H1（setState accent / React copper 双色）+ deck + byline 4 项 + hero-notice + pipeline-bar 12 段脉动
+- [ ] TOC v2 四大段 progress bar (5/1/13/5 比例) + 4 个 toc-group 覆盖全部 23 章 + 主线 ✦ chip
+- [ ] 24 个 `<section class="chap">` 全部存在（c1-c23 + cmain），无 id 重复
+- [ ] toc-side 左侧目录滚动时高亮当前章节（IntersectionObserver）
+
+### 批 2 — 内容章节
+- [ ] Ch01 三个公式 · formula 卡 + 三段说明（公式①声明式 / ②diff ≠ vDOM / ③调度才是革命）
+- [ ] Ch02 家谱 · FIG 02·1 13 年五个分水岭时间线 SVG + 5 行 ladder
+- [ ] Ch03 为何重写 · FIG 03·1 Stack 17ms 阻塞 vs Fiber 5ms 切片对比 SVG + mismatch-grid
+- [ ] Ch04 三层架构 · rulemap-grid 三层 + HostConfig 代码 + proc-grid 4 个 renderer
+- [ ] Ch05 流水线全景 · FIG 05·1 三列 13 步总览 SVG + cmp 表 phase 边界
+- [ ] cmain · Counter 9 行代码 + FIG ✦ 时间线（5 段 micro-task 着色）
+- [ ] Ch06 JSX→Element · jsx() 编译后代码 + Element 形状代码 + mismatch-grid Element vs Fiber
+- [ ] Ch07 Fiber · FIG 07·1 Counter 树（child 蓝 / sibling 铜 / return 灰虚线）+ 60 字段四簇代码
+- [ ] Ch08 双缓冲 · FIG 08·1 commit 前后指针交换图 + ladder 三条理由
+- [ ] Ch09 beginWork · workLoop 代码 + beginWork switch 代码 + bail-out 说明
+- [ ] Ch10 Reconciliation · rulemap-grid 三规则 + FIG 10·1 keyed list 两遍 diff SVG + key 反模式对比
+- [ ] Ch11 completeWork · 三件事 ladder + ReactFiberFlags 位掩码代码
+- [ ] Ch12 Hooks · renderWithHooks 代码 + FIG 12·1 hook 链表 SVG + dispatchSetState 代码
+- [ ] Ch13 BeforeMutation · 三个 commit 子阶段 proc-grid + getSnapshotBeforeUpdate 代码
+- [ ] Ch14 Mutation · cmp 表 flag→action→react-dom 调用 + commitRootImpl 代码（含 root.current = 切换）
+- [ ] Ch15 Layout/Passive · FIG 15·1 物理位置时间线 SVG + mismatch-grid layout vs passive
+- [ ] Ch16 Lanes · ReactFiberLane 代码 + FIG 16·1 优先级阶梯图 + bitwise 操作 cmp 表
+- [ ] Ch17 Time Slicing · 不用 rIC 的 3 个理由 ladder + scheduler 代码 + FIG 17·1 sync vs concurrent 时序图
+- [ ] Ch18 Suspense · use() 真实代码 + 8 步生命周期 case-study + Transition SearchBox 代码
+- [ ] Ch19 一次更新时间线 · FIG 19·1 全栈时间线（5 lane × 13 stage）SVG + 4 个 hotspot 标注
+- [ ] Ch20 RSC · mismatch-grid Server vs Client + RSC payload 实际格式
+- [ ] Ch21 React 19 · rulemap-grid 四件大事（use / Actions / Compiler / OwnerStacks）+ before/after compiler 对比
+- [ ] Ch22 症状反查 · cmp 表 10 条症状 → 章节映射
+- [ ] Ch23 术语表 · cmp 表 30 个名词 + Andrew Clark 引言 blockquote
+
+### 批 3 — 交互与样式
+- [ ] 中英双语切换（lang-toggle）持久化 localStorage
+- [ ] hero pipeline-bar 12 cell 脉动动画（蓝→铜→紫渐变）
+- [ ] toc-v2 progress 条点击跳转到对应 act
+- [ ] 所有 `<a href="#cN">` 锚点平滑滚动
+- [ ] 全文风格匹配 chromium-renderer / http3（cobalt + copper + violet 蓝图调色板）
+- [ ] mdx 入口 `/notes/react-internals` 链回沉浸式版
