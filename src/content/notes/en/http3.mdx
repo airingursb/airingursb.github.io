@@ -23,7 +23,7 @@ HTTP/2 already replaced framing with binary multiplexing, but Transport was stil
 
 1. **Head-of-Line blocking** — One TCP connection carries multiple HTTP/2 streams sharing a single byte-sequence space; one lost packet stalls *every* stream. Stream multiplexing eliminated HOL at the HTTP layer; TCP brought it right back.
 2. **2-RTT floor** — TCP three-way handshake (1 RTT) + TLS 1.2 (2 RTT) means 3 RTT before the first byte. Even with TLS 1.3 (1 RTT), the TCP SYN/SYN-ACK round is still there.
-3. **Pinned to IP** — A TCP connection is identified by {src_ip, src_port, dst_ip, dst_port}; when a phone switches Wi-Fi to 5G, src_ip changes and the connection dies.
+3. **Pinned to IP** — A TCP connection is identified by `{src_ip, src_port, dst_ip, dst_port}`; when a phone switches Wi-Fi to 5G, src_ip changes and the connection dies.
 4. **Protocol ossification** — TCP header fields have been read, modified, cached and filtered by middleboxes for thirty years. Adding new fields gets eaten by some legacy firewall on the path.
 
 You either change TCP (middleboxes won't let you) or move underneath it.
@@ -134,7 +134,7 @@ Bonus: **qlog + qvis is the only observability path** — no qlog = flying blind
 HTTP/3 isn't the finish line — it's the first killer app of QUIC as a *generic secure transport*. A whole ecosystem is growing on top:
 
 - **WebTransport** (W3C + draft-ietf-webtrans-http3) replaces WebSocket: reliable bidi streams + unreliable datagrams. Chrome shipped support in 97.
-- **MASQUE** (CONNECT-UDP RFC 9298, CONNECT-IP RFC 9484, Capsule RFC 9297) tunnels any traffic inside H3. Apple iCloud Private Relay is the largest production deployment — a two-hop architecture where neither side alone knows {client_ip, target}.
+- **MASQUE** (CONNECT-UDP RFC 9298, CONNECT-IP RFC 9484, Capsule RFC 9297) tunnels any traffic inside H3. Apple iCloud Private Relay is the largest production deployment — a two-hop architecture where neither side alone knows `{client_ip, target}`.
 - **Media over QUIC** (IETF MoQ WG): sub-second latency + CDN-cacheable pub/sub, slated to replace transport for sports streaming and low-latency video.
 - **HTTP/4**: IETF consensus is "no HTTP/4 for the next 5–10 years". QUIC's extension mechanisms (Datagram, KEY_UPDATE, ALPN, pluggable cc) are flexible enough — post-quantum crypto, FEC, new cc algorithms all fit as extensions, no new major version needed.
 

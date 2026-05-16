@@ -3895,42 +3895,151 @@
     </div>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c · property lookup flow</span><span class="src-tag">find_own_property + chain walk</span></div>
-<span class="src-line">JSValue <span class="src-fn">JS_GetPropertyInternal</span>(JSContext *ctx, JSValueConst obj, JSAtom prop) {</span>
-<span class="src-line">    JSObject *p = JS_VALUE_GET_OBJ(obj);</span>
+      <div class="src-h"><span>quickjs.c:6422 · find_own_property1 — the hash probe (verbatim, 20 lines)</span><span class="src-tag">inline · branch-predictor friendly</span></div>
+<span class="src-line"><span class="src-frame">  6422</span>  <span class="src-kw">static inline</span> JSShapeProperty *<span class="src-fn">find_own_property1</span>(JSObject *p, JSAtom atom) {</span>
+<span class="src-line"><span class="src-frame">  6423</span>      JSShape *sh;</span>
+<span class="src-line"><span class="src-frame">  6424</span>      JSShapeProperty *pr, *prop;</span>
+<span class="src-line"><span class="src-frame">  6425</span>      <span class="src-cls">intptr_t</span> h;</span>
+<span class="src-line"><span class="src-frame">  6426</span>      sh = p-&gt;shape;</span>
+<span class="src-line"><span class="src-frame">  6427</span>      h = (<span class="src-cls">uintptr_t</span>)atom &amp; sh-&gt;prop_hash_mask;          <span class="src-comment">// fold atom into bucket</span></span>
+<span class="src-line"><span class="src-frame">  6428</span>      h = <span class="src-fn">prop_hash_end</span>(sh)[-h - <span class="src-num">1</span>];                       <span class="src-comment">// hash table is stored</span></span>
+<span class="src-line"><span class="src-frame">       </span>                                                       <span class="src-comment">//   BEFORE the shape struct</span></span>
+<span class="src-line"><span class="src-frame">  6429</span>      prop = sh-&gt;prop;</span>
+<span class="src-line"><span class="src-frame">  6430</span>      <span class="src-kw">while</span> (h) {                                          <span class="src-comment">// follow open-addressing chain</span></span>
+<span class="src-line"><span class="src-frame">  6431</span>          pr = &amp;prop[h - <span class="src-num">1</span>];</span>
+<span class="src-line"><span class="src-frame">  6432</span>          <span class="src-kw">if</span> (<span class="src-fn">likely</span>(pr-&gt;atom == atom)) {                  <span class="src-comment">// ⭐ pointer compare!</span></span>
+<span class="src-line"><span class="src-frame">  6433</span>              <span class="src-kw">return</span> pr;</span>
+<span class="src-line"><span class="src-frame">  6434</span>          }</span>
+<span class="src-line"><span class="src-frame">  6435</span>          h = pr-&gt;hash_next;</span>
+<span class="src-line"><span class="src-frame">  6436</span>          <span class="src-comment">// hash_next is 1-based; 0 = end of chain</span></span>
+<span class="src-line"><span class="src-frame">  6437</span>      }</span>
+<span class="src-line"><span class="src-frame">  6438</span>      <span class="src-kw">return</span> <span class="src-num">NULL</span>;</span>
+<span class="src-line"><span class="src-frame">  6439</span>  }</span>
 <span class="src-line"></span>
-<span class="src-line">    <span class="src-kw">for</span>(;;) {</span>
-<span class="src-line">        <span class="src-comment">/* 1. exotic types first (Proxy / Array's integer indices) */</span></span>
-<span class="src-line">        <span class="src-kw">if</span> (p-&gt;is_exotic &amp;&amp; p-&gt;class_id == JS_CLASS_ARRAY) {</span>
-<span class="src-line">            <span class="src-kw">if</span> (is_integer_atom(prop)) <span class="src-kw">return</span> array_indexed_get(p, atom);</span>
-<span class="src-line">        }</span>
+<span class="src-line"><span class="src-comment">// Crucial detail: atom comparison is JSAtom == JSAtom (uint32_t).</span></span>
+<span class="src-line"><span class="src-comment">// Because all strings are interned (Ch11), this is a single CPU comparison —</span></span>
+<span class="src-line"><span class="src-comment">// no strcmp, no length check. V8/JSC do exactly the same trick.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:6441 · find_own_property — same body, also returns the JSProperty</span><span class="src-tag">23 lines · returns both prs + pr</span></div>
+<span class="src-line"><span class="src-frame">  6441</span>  <span class="src-kw">static inline</span> JSShapeProperty *<span class="src-fn">find_own_property</span>(</span>
+<span class="src-line"><span class="src-frame">  6442</span>      JSProperty **ppr, JSObject *p, JSAtom atom) {</span>
+<span class="src-line"><span class="src-frame">  6443</span>      JSShape *sh; JSShapeProperty *pr, *prop; <span class="src-cls">intptr_t</span> h;</span>
+<span class="src-line"><span class="src-frame">  6444</span>      sh = p-&gt;shape;</span>
+<span class="src-line"><span class="src-frame">  6445</span>      h = (<span class="src-cls">uintptr_t</span>)atom &amp; sh-&gt;prop_hash_mask;</span>
+<span class="src-line"><span class="src-frame">  6446</span>      h = <span class="src-fn">prop_hash_end</span>(sh)[-h - <span class="src-num">1</span>];</span>
+<span class="src-line"><span class="src-frame">  6447</span>      prop = sh-&gt;prop;</span>
+<span class="src-line"><span class="src-frame">  6448</span>      <span class="src-kw">while</span> (h) {</span>
+<span class="src-line"><span class="src-frame">  6449</span>          pr = &amp;prop[h - <span class="src-num">1</span>];</span>
+<span class="src-line"><span class="src-frame">  6450</span>          <span class="src-kw">if</span> (<span class="src-fn">likely</span>(pr-&gt;atom == atom)) {</span>
+<span class="src-line"><span class="src-frame">  6451</span>              *ppr = &amp;p-&gt;prop[h - <span class="src-num">1</span>];          <span class="src-comment">// ⭐ return the value slot too</span></span>
+<span class="src-line"><span class="src-frame">  6452</span>              <span class="src-kw">return</span> pr;</span>
+<span class="src-line"><span class="src-frame">  6453</span>          }</span>
+<span class="src-line"><span class="src-frame">  6454</span>          h = pr-&gt;hash_next;</span>
+<span class="src-line"><span class="src-frame">  6455</span>      }</span>
+<span class="src-line"><span class="src-frame">  6456</span>      *ppr = <span class="src-num">NULL</span>;</span>
+<span class="src-line"><span class="src-frame">  6457</span>      <span class="src-kw">return</span> pr;</span>
+<span class="src-line"><span class="src-frame">  6458</span>  }</span>
 <span class="src-line"></span>
-<span class="src-line">        <span class="src-comment">/* 2. own properties via Shape's hash table */</span></span>
-<span class="src-line">        JSShape *sh = p-&gt;shape;</span>
-<span class="src-line">        <span class="src-cls">JSShapeProperty</span> *prs = <span class="src-fn">find_own_property</span>(sh, prop);</span>
-<span class="src-line">        <span class="src-kw">if</span> (prs) {</span>
-<span class="src-line">            <span class="src-kw">return</span> <span class="src-fn">JS_DupValue</span>(ctx, p-&gt;prop[prs-&gt;offset].u.value);</span>
-<span class="src-line">        }</span>
+<span class="src-line"><span class="src-comment">// Notice: the two are near-identical. _1 returns just the shape entry</span></span>
+<span class="src-line"><span class="src-comment">// (for read-only "does it exist" checks). The full version also writes</span></span>
+<span class="src-line"><span class="src-comment">// *ppr so callers can read/write the value slot. Two functions because</span></span>
+<span class="src-line"><span class="src-comment">// the inline overhead matters: 5+ million calls/second on hot paths.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:8647 · JS_GetPropertyInternal — the actual chain walk (lines 8705-8770)</span><span class="src-tag">verbatim core</span></div>
+<span class="src-line"><span class="src-frame">  8647</span>  <span class="src-kw">static</span> JSValue <span class="src-fn">JS_GetPropertyInternal</span>(JSContext *ctx, JSValueConst obj,</span>
+<span class="src-line"><span class="src-frame">  8648</span>                                            JSAtom prop, JSValueConst this_obj,</span>
+<span class="src-line"><span class="src-frame">  8649</span>                                            <span class="src-cls">bool</span> throw_ref_error) {</span>
+<span class="src-line"><span class="src-frame">  8650</span>      JSObject *p; JSProperty *pr; JSShapeProperty *prs;</span>
+<span class="src-line"><span class="src-frame">  8651</span>      <span class="src-cls">uint32_t</span> tag = <span class="src-fn">JS_VALUE_GET_TAG</span>(obj);</span>
+<span class="src-line"><span class="src-frame">  8657</span>      <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(tag != JS_TAG_OBJECT)) {</span>
+<span class="src-line"><span class="src-frame">  8658</span>          <span class="src-kw">switch</span>(tag) {</span>
+<span class="src-line"><span class="src-frame">  8659</span>          <span class="src-kw">case</span> JS_TAG_NULL:</span>
+<span class="src-line"><span class="src-frame">  8660</span>              <span class="src-kw">return</span> <span class="src-fn">JS_ThrowTypeErrorAtom</span>(ctx, <span class="src-str">"cannot read property '%s' of null"</span>, prop);</span>
+<span class="src-line"><span class="src-frame">  8661</span>          <span class="src-kw">case</span> JS_TAG_UNDEFINED:</span>
+<span class="src-line"><span class="src-frame">  8662</span>              <span class="src-kw">return</span> <span class="src-fn">JS_ThrowTypeErrorAtom</span>(ctx, <span class="src-str">"cannot read property '%s' of undefined"</span>, prop);</span>
+<span class="src-line"><span class="src-frame">  8665</span>          <span class="src-kw">case</span> JS_TAG_STRING:                  <span class="src-comment">// auto-box "abc".length</span></span>
+<span class="src-line"><span class="src-frame">  8666</span>              ... <span class="src-comment">// 14 lines: index OR length on JSString</span></span>
+<span class="src-line"><span class="src-frame">  8704</span>          }</span>
+<span class="src-line"><span class="src-frame">  8704</span>          p = <span class="src-fn">JS_VALUE_GET_OBJ</span>(<span class="src-fn">JS_GetPrototypePrimitive</span>(ctx, obj));</span>
+<span class="src-line"><span class="src-frame">  8706</span>      } <span class="src-kw">else</span> { p = <span class="src-fn">JS_VALUE_GET_OBJ</span>(obj); }</span>
+<span class="src-line"><span class="src-frame">  8707</span>      </span>
+<span class="src-line"><span class="src-frame">  8708</span>      <span class="src-kw">for</span>(;;) {                                              <span class="src-comment">// ⭐ prototype walk</span></span>
+<span class="src-line"><span class="src-frame">  8709</span>          prs = <span class="src-fn">find_own_property</span>(&amp;pr, p, prop);</span>
+<span class="src-line"><span class="src-frame">  8710</span>          <span class="src-kw">if</span> (prs) {                                          <span class="src-comment">// found</span></span>
+<span class="src-line"><span class="src-frame">  8711</span>              <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(prs-&gt;flags &amp; JS_PROP_TMASK)) {     <span class="src-comment">// getter/varref/auto</span></span>
+<span class="src-line"><span class="src-frame">  8713</span>                  <span class="src-kw">if</span> ((prs-&gt;flags &amp; JS_PROP_TMASK) == JS_PROP_GETSET) {</span>
+<span class="src-line"><span class="src-frame">  8714</span>                      JSValue func = <span class="src-fn">JS_MKPTR</span>(JS_TAG_OBJECT, pr-&gt;u.getset.getter);</span>
+<span class="src-line"><span class="src-frame">  8716</span>                      <span class="src-kw">return</span> <span class="src-fn">JS_CallFree</span>(ctx, <span class="src-fn">js_dup</span>(func), this_obj, <span class="src-num">0</span>, <span class="src-num">NULL</span>);</span>
+<span class="src-line"><span class="src-frame">  8720</span>                  } <span class="src-kw">else if</span> (... == JS_PROP_VARREF) {           <span class="src-comment">// closure var</span></span>
+<span class="src-line"><span class="src-frame">  8722</span>                      JSValue val = *pr-&gt;u.var_ref-&gt;pvalue;</span>
+<span class="src-line"><span class="src-frame">  8723</span>                      <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(<span class="src-fn">JS_IsUninitialized</span>(val)))</span>
+<span class="src-line"><span class="src-frame">  8724</span>                          <span class="src-kw">return</span> <span class="src-fn">JS_ThrowReferenceErrorUninitialized</span>(...);</span>
+<span class="src-line"><span class="src-frame">  8725</span>                      <span class="src-kw">return</span> <span class="src-fn">js_dup</span>(val);</span>
+<span class="src-line"><span class="src-frame">  8726</span>                  } <span class="src-kw">else if</span> (... == JS_PROP_AUTOINIT) {          <span class="src-comment">// lazy init</span></span>
+<span class="src-line"><span class="src-frame">  8729</span>                      <span class="src-kw">if</span> (<span class="src-fn">JS_AutoInitProperty</span>(ctx, p, prop, pr, prs))</span>
+<span class="src-line"><span class="src-frame">  8730</span>                          <span class="src-kw">return</span> JS_EXCEPTION;</span>
+<span class="src-line"><span class="src-frame">  8731</span>                      <span class="src-kw">continue</span>;                                   <span class="src-comment">// retry same prop</span></span>
+<span class="src-line"><span class="src-frame">  8732</span>                  }</span>
+<span class="src-line"><span class="src-frame">  8733</span>              } <span class="src-kw">else</span> {</span>
+<span class="src-line"><span class="src-frame">  8734</span>                  <span class="src-kw">return</span> <span class="src-fn">js_dup</span>(pr-&gt;u.value);                  <span class="src-comment">// ⭐ fast path</span></span>
+<span class="src-line"><span class="src-frame">  8735</span>              }</span>
+<span class="src-line"><span class="src-frame">  8736</span>          }</span>
+<span class="src-line"><span class="src-frame">  8737</span>          <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(p-&gt;is_exotic)) {                      <span class="src-comment">// Array index / Proxy / TA</span></span>
+<span class="src-line"><span class="src-frame">  8739</span>              <span class="src-kw">if</span> (p-&gt;fast_array) {                            <span class="src-comment">// Array fast path</span></span>
+<span class="src-line"><span class="src-frame">  8740</span>                  <span class="src-kw">if</span> (<span class="src-fn">__JS_AtomIsTaggedInt</span>(prop)) {</span>
+<span class="src-line"><span class="src-frame">  8742</span>                      <span class="src-cls">uint32_t</span> idx = <span class="src-fn">__JS_AtomToUInt32</span>(prop);</span>
+<span class="src-line"><span class="src-frame">  8743</span>                      <span class="src-kw">if</span> (idx &lt; p-&gt;u.array.count)</span>
+<span class="src-line"><span class="src-frame">  8744</span>                          <span class="src-kw">return</span> <span class="src-fn">JS_GetPropertyUint32</span>(ctx, ...);</span>
+<span class="src-line"><span class="src-frame">  8745</span>                  }</span>
+<span class="src-line"><span class="src-frame">  8746</span>              } <span class="src-kw">else</span> {</span>
+<span class="src-line"><span class="src-frame">  8752</span>                  <span class="src-kw">const</span> JSClassExoticMethods *em =</span>
+<span class="src-line"><span class="src-frame">       </span>                      ctx-&gt;rt-&gt;class_array[p-&gt;class_id].exotic;</span>
+<span class="src-line"><span class="src-frame">  8753</span>                  <span class="src-kw">if</span> (em &amp;&amp; em-&gt;get_property)                  <span class="src-comment">// Proxy trap</span></span>
+<span class="src-line"><span class="src-frame">  8754</span>                      <span class="src-kw">return</span> em-&gt;<span class="src-fn">get_property</span>(ctx, ..., prop, this_obj);</span>
+<span class="src-line"><span class="src-frame">       </span>                  ... <span class="src-comment">// fall through to get_own_property if defined</span></span>
+<span class="src-line"><span class="src-frame">  8775</span>              }</span>
+<span class="src-line"><span class="src-frame">  8776</span>          }</span>
+<span class="src-line"><span class="src-frame">  8777</span>          p = p-&gt;shape-&gt;proto;                                <span class="src-comment">// ⭐ walk to parent prototype</span></span>
+<span class="src-line"><span class="src-frame">  8778</span>          <span class="src-kw">if</span> (!p)</span>
+<span class="src-line"><span class="src-frame">  8779</span>              <span class="src-kw">return</span> <span class="src-fn">throw_ref_error</span> ? <span class="src-fn">JS_ThrowReferenceError</span>(...) : JS_UNDEFINED;</span>
+<span class="src-line"><span class="src-frame">  8780</span>      }</span>
+<span class="src-line"><span class="src-frame">  8781</span>  }</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">主线 <code>[1,2,3].map</code> 的真实 lookup 路径</h3>
+    <h3 class="sub lang-en-only">Actual lookup path for our <code>[1,2,3].map</code></h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>lookup trace</span><span class="src-tag">2 prototype hops · 3 hash probes</span></div>
+<span class="src-line"><span class="src-frame">hop 1</span>  p = the Array instance [1,2,3]</span>
+<span class="src-line"><span class="src-frame">      </span>  find_own_property(&amp;pr, p, JS_ATOM_map)</span>
+<span class="src-line"><span class="src-frame">      </span>     prop_hash_mask = 3  (instance's shape has 1 own prop: "length")</span>
+<span class="src-line"><span class="src-frame">      </span>     hash bucket = (JS_ATOM_map &amp; 3) → empty bucket OR walks once to "length"</span>
+<span class="src-line"><span class="src-frame">      </span>     atom == JS_ATOM_map? NO  → return NULL</span>
+<span class="src-line"><span class="src-frame">      </span>  is_exotic? YES (Array). __JS_AtomIsTaggedInt("map")? NO → skip array path</span>
+<span class="src-line"><span class="src-frame">      </span>  p = p-&gt;shape-&gt;proto  // walk to Array.prototype</span>
 <span class="src-line"></span>
-<span class="src-line">        <span class="src-comment">/* 3. walk prototype chain */</span></span>
-<span class="src-line">        JSObject *proto = p-&gt;shape-&gt;proto;          <span class="src-comment">// e.g. Array.prototype</span></span>
-<span class="src-line">        <span class="src-kw">if</span> (!proto) <span class="src-kw">return</span> JS_UNDEFINED;</span>
-<span class="src-line">        p = proto;                                  <span class="src-comment">// continue loop</span></span>
-<span class="src-line">    }</span>
-<span class="src-line">}</span>
+<span class="src-line"><span class="src-frame">hop 2</span>  p = Array.prototype  (the canonical instance)</span>
+<span class="src-line"><span class="src-frame">      </span>  find_own_property(&amp;pr, p, JS_ATOM_map)</span>
+<span class="src-line"><span class="src-frame">      </span>     prop_hash_mask = 63  (Array.prototype has ~35 methods)</span>
+<span class="src-line"><span class="src-frame">      </span>     hash bucket = (JS_ATOM_map &amp; 63) → finds a chain</span>
+<span class="src-line"><span class="src-frame">      </span>     walk chain, atom == JS_ATOM_map → HIT</span>
+<span class="src-line"><span class="src-frame">      </span>  prs-&gt;flags &amp; JS_PROP_TMASK? NO  (normal value, not getter)</span>
+<span class="src-line"><span class="src-frame">      </span>  return js_dup(pr-&gt;u.value)  → JSValue wrapping js_array_map C function</span>
 <span class="src-line"></span>
-<span class="src-line"><span class="src-comment">/* Path for our [1,2,3].map: */</span></span>
-<span class="src-line"><span class="src-comment">/*   1. Array instance has no "map" → not own */</span></span>
-<span class="src-line"><span class="src-comment">/*   2. walk to Array.prototype                              */</span></span>
-<span class="src-line"><span class="src-comment">/*   3. find_own_property(Array.proto.shape, JS_ATOM_map) hits */</span></span>
-<span class="src-line"><span class="src-comment">/*   4. value is a JSCFunction wrapping the C function js_array_map */</span></span>
+<span class="src-line"><span class="src-comment">// Total: 2 prototype hops, ~3 hash slot reads. No caching. No ICs.</span></span>
+<span class="src-line"><span class="src-comment">// Each .map() invocation in a hot loop pays the same cost — every single time.</span></span>
     </div>
 
     <div class="note copper">
-      <span class="ntag lang-zh-only">DESIGN · 为什么慢</span>
-      <span class="ntag lang-en-only">DESIGN · why slow</span>
-      <span class="lang-zh-only">每次 <code>obj.map</code> 都要：(1) 在 obj 自己的 shape 哈希里查；(2) 没命中 → 跳到 prototype；(3) 在 prototype 的 shape 哈希里查。<em>每次都做</em>，<em>不缓存</em>。V8 有 inline cache 把"<em>上次走到哪一层、偏移多少</em>"记在调用点的字节码旁，再访问就<em>常数时间</em>。QuickJS 故意不做——这是它<em>峰值速度</em>慢于 V8 的<em>最大单一原因</em>。</span>
-      <span class="lang-en-only">Every <code>obj.map</code>: (1) hash-lookup in obj's own shape; (2) miss → step to prototype; (3) hash-lookup again. <em>Every time</em>, <em>nothing cached</em>. V8 has an inline cache that remembers "<em>which level did we hit, what was the offset</em>" right next to the call site in bytecode — next access becomes <em>constant time</em>. QuickJS skips this on purpose — the <em>single biggest reason</em> its peak speed is slower than V8.</span>
+      <span class="ntag lang-zh-only">DESIGN · 为什么慢 · 那个故意空着的 4-byte 字段</span>
+      <span class="ntag lang-en-only">DESIGN · why slow · the 4-byte field deliberately left empty</span>
+      <span class="lang-zh-only">每次 <code>obj.map</code> 都要：(1) 在 obj 自己的 shape 哈希里查；(2) 没命中 → 跳到 prototype；(3) 在 prototype 的 shape 哈希里查。<em>每次都做</em>，<em>不缓存</em>。V8 走 <strong>inline cache</strong>：每个属性访问字节码后面带 4 字节"<em>上次走到哪一层、shape ID、偏移</em>"，第二次访问<em>常数时间</em>。QuickJS 故意不做——<code>OP_get_field</code> 后面只跟 4 字节 atom，<em>没有 IC 槽位</em>。这是它<em>峰值速度</em>慢于 V8 的<em>单一最大原因</em>，也是它二进制小、内存占用低、启动快的<em>直接对价</em>——一个工程权衡，不是 bug。Bellard 的判断：嵌入式场景 hot loop 罕见，<em>少 20% 启动 + 内存</em>比<em>多 5× 峰值速度</em>值。</span>
+      <span class="lang-en-only">Every <code>obj.map</code>: (1) hash-lookup in obj's own shape; (2) miss → step to prototype; (3) hash-lookup again. <em>Every time</em>, <em>nothing cached</em>. V8 uses <strong>inline caches</strong>: each property-access bytecode carries 4 bytes of "<em>which level we hit last time, shape ID, offset</em>"; the second access becomes constant-time. QuickJS deliberately skips this — <code>OP_get_field</code> is followed only by a 4-byte atom, <em>no IC slot</em>. This is the <em>single biggest reason</em> peak speed lags V8 — and the <em>direct price</em> for the smaller binary, lower memory, faster startup. An engineering tradeoff, not a bug. Bellard's call: embedded workloads rarely have long hot loops; <em>20% smaller startup + memory</em> beats <em>5× peak speed</em> in that context.</span>
     </div>
   </section>
 
@@ -3956,37 +4065,89 @@
       <p>Generators / async functions look magical — <em>a function can "pause" at <code>yield</code> and resume from there next call</em>. Other languages (C coroutines) need setjmp/longjmp, ucontext, or compile-time function-body rewriting. QuickJS picks the third — <strong>state machine at the bytecode level</strong>.</p>
     </div>
 
-    <h3 class="sub lang-zh-only">挂起：复制栈帧到堆</h3>
-    <h3 class="sub lang-en-only">Suspend: copy stack frame to heap</h3>
+    <h3 class="sub lang-zh-only">JSAsyncFunctionState — 就这四个字段</h3>
+    <h3 class="sub lang-en-only">JSAsyncFunctionState — just four fields</h3>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c · OP_yield handling</span><span class="src-tag">~200 LoC</span></div>
-<span class="src-line">OP_yield_label:</span>
-<span class="src-line">    <span class="src-comment">/* 1. allocate heap state holder */</span></span>
-<span class="src-line">    JSAsyncFunctionState *state = js_malloc(<span class="src-kw">sizeof</span>(JSAsyncFunctionState));</span>
+      <div class="src-h"><span>quickjs.c:871 · JSAsyncFunctionState (verbatim, complete)</span><span class="src-tag">6 lines · the entire mechanism</span></div>
+<span class="src-line"><span class="src-frame">   871</span>  <span class="src-kw">typedef struct</span> JSAsyncFunctionState {</span>
+<span class="src-line"><span class="src-frame">   872</span>      <span class="src-cls">JSValue</span> this_val;            <span class="src-comment">// 'this' for the generator</span></span>
+<span class="src-line"><span class="src-frame">   873</span>      <span class="src-kw">int</span> argc;                    <span class="src-comment">// number of function arguments</span></span>
+<span class="src-line"><span class="src-frame">   874</span>      <span class="src-cls">bool</span> throw_flag;             <span class="src-comment">// resume by throwing into the generator</span></span>
+<span class="src-line"><span class="src-frame">   875</span>      <span class="src-cls">JSStackFrame</span> frame;          <span class="src-comment">// ⭐ the actual saved frame</span></span>
+<span class="src-line"><span class="src-frame">   876</span>  } JSAsyncFunctionState;</span>
 <span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* 2. snapshot everything live in the current frame */</span></span>
-<span class="src-line">    state-&gt;pc       = pc + <span class="src-num">1</span>;            <span class="src-comment">// where to resume</span></span>
-<span class="src-line">    state-&gt;sp       = sp - stack_buf;     <span class="src-comment">// stack depth</span></span>
-<span class="src-line">    state-&gt;stack    = js_malloc_dup(stack_buf, sp);</span>
-<span class="src-line">    state-&gt;local_buf= js_malloc_dup(local_buf, n_locals);</span>
-<span class="src-line">    state-&gt;var_refs = …  <span class="src-comment">// closure vars stay heap-rooted</span></span>
+<span class="src-line"><span class="src-comment">// That's it. No saved stack copy, no separate locals array — the JSStackFrame</span></span>
+<span class="src-line"><span class="src-comment">// itself holds cur_pc, cur_sp, var_buf, arg_buf, var_refs. The frame doesn't</span></span>
+<span class="src-line"><span class="src-comment">// even need to be heap-relocated: JS_CallInternal's frame is built INSIDE the</span></span>
+<span class="src-line"><span class="src-comment">// JSAsyncFunctionState in the first place (see async_func_init at line 20348).</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:20053 · OP_await / OP_yield / OP_yield_star — verbatim opcode bodies</span><span class="src-tag">3 lines each · suspend = return a sentinel</span></div>
+<span class="src-line"><span class="src-frame"> 20053</span>          CASE(OP_await):</span>
+<span class="src-line"><span class="src-frame"> 20054</span>              ret_val = <span class="src-fn">js_int32</span>(FUNC_RET_AWAIT);</span>
+<span class="src-line"><span class="src-frame"> 20055</span>              <span class="src-kw">goto</span> done_generator;</span>
+<span class="src-line"><span class="src-frame"> 20056</span>          CASE(OP_yield):</span>
+<span class="src-line"><span class="src-frame"> 20057</span>              ret_val = <span class="src-fn">js_int32</span>(FUNC_RET_YIELD);                <span class="src-comment">// ⭐ just a sentinel int</span></span>
+<span class="src-line"><span class="src-frame"> 20058</span>              <span class="src-kw">goto</span> done_generator;</span>
+<span class="src-line"><span class="src-frame"> 20059</span>          CASE(OP_yield_star):</span>
+<span class="src-line"><span class="src-frame"> 20060</span>          CASE(OP_async_yield_star):</span>
+<span class="src-line"><span class="src-frame"> 20061</span>              ret_val = <span class="src-fn">js_int32</span>(FUNC_RET_YIELD_STAR);</span>
+<span class="src-line"><span class="src-frame"> 20062</span>              <span class="src-kw">goto</span> done_generator;</span>
+<span class="src-line"><span class="src-frame"> 20063</span>          CASE(OP_return_async):</span>
+<span class="src-line"><span class="src-frame"> 20064</span>          CASE(OP_initial_yield):</span>
+<span class="src-line"><span class="src-frame"> 20065</span>              ret_val = JS_UNDEFINED;</span>
+<span class="src-line"><span class="src-frame"> 20066</span>              <span class="src-kw">goto</span> done_generator;</span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:20153 · the done_generator label — 3 lines that "suspend" the function</span><span class="src-tag">no malloc, no copy</span></div>
+<span class="src-line"><span class="src-frame"> 20152</span>      <span class="src-kw">if</span> (b-&gt;func_kind != JS_FUNC_NORMAL) {</span>
+<span class="src-line"><span class="src-frame"> 20153</span>      done_generator:</span>
+<span class="src-line"><span class="src-frame"> 20154</span>          sf-&gt;cur_pc = pc;          <span class="src-comment">// ⭐ "where am I"</span></span>
+<span class="src-line"><span class="src-frame"> 20155</span>          sf-&gt;cur_sp = sp;          <span class="src-comment">// ⭐ "how deep is my stack"</span></span>
+<span class="src-line"><span class="src-frame"> 20156</span>      } <span class="src-kw">else</span> {</span>
+<span class="src-line"><span class="src-frame"> 20157</span>      done:</span>
+<span class="src-line"><span class="src-frame"> 20158</span>          <span class="src-kw">if</span> (<span class="src-fn">unlikely</span>(sf-&gt;var_ref_count != <span class="src-num">0</span>))</span>
+<span class="src-line"><span class="src-frame"> 20159</span>              <span class="src-fn">close_var_refs</span>(rt, sf);   <span class="src-comment">// non-gen path: heap-promote closures</span></span>
+<span class="src-line"><span class="src-frame"> 20160</span>          <span class="src-kw">for</span>(pval = local_buf; pval &lt; sp; pval++)</span>
+<span class="src-line"><span class="src-frame"> 20161</span>              <span class="src-fn">JS_FreeValue</span>(ctx, *pval); <span class="src-comment">// non-gen: drop locals</span></span>
+<span class="src-line"><span class="src-frame"> 20162</span>      }</span>
+<span class="src-line"><span class="src-frame"> 20163</span>      rt-&gt;current_stack_frame = sf-&gt;prev_frame;</span>
+<span class="src-line"><span class="src-frame"> 20164</span>      <span class="src-kw">return</span> ret_val;</span>
 <span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* 3. attach state to the generator object */</span></span>
-<span class="src-line">    generator-&gt;state = state;</span>
+<span class="src-line"><span class="src-comment">// ⭐ Suspend ≠ "copy state to heap". Suspend = "the frame lives inside the</span></span>
+<span class="src-line"><span class="src-comment">// JSAsyncFunctionState in the generator object; just remember pc and sp and</span></span>
+<span class="src-line"><span class="src-frame">     </span><span class="src-comment">// don't free locals". That's the whole trick.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:20431 · async_func_resume — 13 lines, the entire resume mechanism</span><span class="src-tag">re-enters JS_CallInternal in-place</span></div>
+<span class="src-line"><span class="src-frame"> 20431</span>  <span class="src-kw">static</span> JSValue <span class="src-fn">async_func_resume</span>(JSContext *ctx, JSAsyncFunctionState *s) {</span>
+<span class="src-line"><span class="src-frame"> 20432</span>      JSValue func_obj;</span>
+<span class="src-line"><span class="src-frame"> 20433</span>      <span class="src-kw">if</span> (<span class="src-fn">js_check_stack_overflow</span>(ctx-&gt;rt, <span class="src-num">0</span>))</span>
+<span class="src-line"><span class="src-frame"> 20434</span>          <span class="src-kw">return</span> <span class="src-fn">JS_ThrowStackOverflow</span>(ctx);</span>
+<span class="src-line"><span class="src-frame"> 20436</span>      <span class="src-comment">/* the tag does not matter provided it is not an object */</span></span>
+<span class="src-line"><span class="src-frame"> 20437</span>      func_obj = <span class="src-fn">JS_MKPTR</span>(JS_TAG_INT, s);              <span class="src-comment">// pass JSAsyncFunctionState*</span></span>
+<span class="src-line"><span class="src-frame"> 20438</span>      <span class="src-kw">return</span> <span class="src-fn">JS_CallInternal</span>(ctx, func_obj, s-&gt;this_val,  <span class="src-comment">//   as the func_obj</span></span>
+<span class="src-line"><span class="src-frame">      </span>                             JS_UNDEFINED, s-&gt;argc, <span class="src-fn">vc</span>(s-&gt;frame.arg_buf),</span>
+<span class="src-line"><span class="src-frame">      </span>                             JS_CALL_FLAG_GENERATOR);   <span class="src-comment">// ⭐ the magic flag</span></span>
+<span class="src-line"><span class="src-frame"> 20439</span>  }</span>
 <span class="src-line"></span>
-<span class="src-line">    <span class="src-comment">/* 4. return the yielded value to the caller */</span></span>
-<span class="src-line">    <span class="src-kw">return</span> sp[-<span class="src-num">1</span>];                       <span class="src-comment">// resume happens in next gen.next()</span></span>
-<span class="src-line"></span>
-<span class="src-line"><span class="src-comment">// Resume: gen.next() → js_resume_async_function():</span></span>
-<span class="src-line"><span class="src-comment">//   copies state-&gt;stack and locals back, sets pc, re-enters JS_CallInternal</span></span>
+<span class="src-line"><span class="src-comment">// Back in JS_CallInternal at line 17510, when JS_CALL_FLAG_GENERATOR is set:</span></span>
+<span class="src-line"><span class="src-comment">//     sf = &amp;s-&gt;frame;                  // reuse the existing frame</span></span>
+<span class="src-line"><span class="src-comment">//     pc = sf-&gt;cur_pc;                 // resume at saved pc</span></span>
+<span class="src-line"><span class="src-comment">//     sp = sf-&gt;cur_sp;</span></span>
+<span class="src-line"><span class="src-comment">//     ... goto restart;                // back to the SWITCH(pc) dispatch</span></span>
+<span class="src-line"><span class="src-comment">// One conditional branch, then we're back in the giant dispatch loop, mid-function.</span></span>
     </div>
 
     <div class="note good">
-      <span class="ntag lang-zh-only">DESIGN · 字节码<em>就</em>是状态机</span>
-      <span class="ntag lang-en-only">DESIGN · bytecode <em>is</em> the state machine</span>
-      <span class="lang-zh-only">如果你看现代 JS 引擎（V8 / SpiderMonkey）的 generator/async 实现，会发现它们在<em>编译期</em>把函数体改写成<em>显式</em>的 switch 状态机。QuickJS 不需要——它的字节码<em>本身</em>就是状态机，<code>pc</code> 就是状态变量。挂起 = 保存 pc + stack + locals 到堆；恢复 = 全部复原后 goto。<em>简单得难以置信</em>——这就是 Bellard 的哲学：解决问题用最少的<em>概念</em>。</span>
-      <span class="lang-en-only">Look at modern engines (V8 / SpiderMonkey) and you'll see generator/async <em>compile-time-rewrite</em> the function body into an explicit switch state machine. QuickJS doesn't need that — its bytecode <em>is</em> already a state machine, with <code>pc</code> as the state. Suspend = save pc + stack + locals to heap; resume = restore everything and goto. <em>Embarrassingly simple</em> — Bellard's philosophy: solve problems with the fewest <em>concepts</em>.</span>
+      <span class="ntag lang-zh-only">DESIGN · 字节码<em>就</em>是状态机 · 但比想象中更激进</span>
+      <span class="ntag lang-en-only">DESIGN · bytecode <em>is</em> the state machine, more radical than expected</span>
+      <span class="lang-zh-only">V8/SpiderMonkey 的 <code>generator/async</code> 在<em>编译期</em>把函数体改写成<em>显式</em>的 switch 状态机——babel-style <code>regeneratorRuntime</code>。QuickJS 走第三条路：字节码<em>本身</em>就是状态机，<code>pc</code> 就是状态变量。<strong>但实际上比"在堆上复制栈"更精炼</strong>：<code>JSAsyncFunctionState</code> 把 <code>JSStackFrame</code> 内联进自己，<code>JS_CallInternal</code> 第一次调用就在 <em>generator object 的内存里</em>建立 frame；<code>yield</code> 只是把 pc 和 sp 写回 frame，<em>没有 malloc，没有 memcpy</em>。恢复时把 <code>JSAsyncFunctionState*</code> 当成 func_obj 传给 <code>JS_CallInternal</code>，flag 一开，直接复用现有 frame 跳回字节码。整个 <em>async/await/generator/async-generator</em> 子系统加起来不超过 800 行 C——而 V8 的 generator lowering pass 单独就 5000+ 行。</span>
+      <span class="lang-en-only">V8/SpiderMonkey rewrite generator/async at <em>compile time</em> into an explicit switch state machine — the babel <code>regeneratorRuntime</code> style. QuickJS picks a third path: bytecode <em>is</em> the state machine, with <code>pc</code> as the state. <strong>And it's tighter than "copy stack to heap"</strong>: <code>JSAsyncFunctionState</code> embeds <code>JSStackFrame</code> inline, so the first call to <code>JS_CallInternal</code> builds its frame <em>inside the generator object's memory</em>; <code>yield</code> just writes pc and sp back into the frame — <em>no malloc, no memcpy</em>. Resume passes <code>JSAsyncFunctionState*</code> as the func_obj to <code>JS_CallInternal</code>, flips the flag, and walks straight back into the same dispatch. The entire <em>async/await/generator/async-generator</em> subsystem is under 800 lines of C — V8's generator lowering pass alone is 5000+.</span>
     </div>
 
     <h3 class="sub lang-zh-only">Promise · 事件循环挂钩</h3>
@@ -4025,24 +4186,102 @@
       <div class="ua-cell"><div class="ua-key lang-zh-only">输入</div><div class="ua-key lang-en-only">Input</div><div class="ua-name">/(\w+) (\d+)/u</div></div>
       <div class="ua-cell tls"><div class="ua-key lang-zh-only">解析</div><div class="ua-key lang-en-only">Parse</div><div class="ua-name">lre_compile</div></div>
       <div class="ua-cell quic"><div class="ua-key lang-zh-only">字节码</div><div class="ua-key lang-en-only">Bytecode</div><div class="ua-name">~16 ops · 80 bytes</div></div>
-      <div class="ua-cell http"><div class="ua-key lang-zh-only">运行</div><div class="ua-key lang-en-only">Run</div><div class="ua-name">lre_exec · NFA simulation</div></div>
+      <div class="ua-cell http"><div class="ua-key lang-zh-only">运行</div><div class="ua-key lang-en-only">Run</div><div class="ua-name">lre_exec · backtracking</div></div>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>libregexp.h:50 · public API — only 2 entry points</span><span class="src-tag">verbatim</span></div>
+<span class="src-line"><span class="src-frame">    50</span>  <span class="src-cls">uint8_t</span> *<span class="src-fn">lre_compile</span>(<span class="src-kw">int</span> *plen, <span class="src-kw">char</span> *error_msg, <span class="src-kw">int</span> error_msg_size,</span>
+<span class="src-line"><span class="src-frame">    51</span>                       <span class="src-kw">const</span> <span class="src-kw">char</span> *buf, <span class="src-cls">size_t</span> buf_len, <span class="src-kw">int</span> re_flags,</span>
+<span class="src-line"><span class="src-frame">    52</span>                       <span class="src-kw">void</span> *opaque);                          <span class="src-comment">// → returns bytecode</span></span>
+<span class="src-line"><span class="src-frame">    56</span>  <span class="src-kw">int</span> <span class="src-fn">lre_exec</span>(<span class="src-cls">uint8_t</span> **capture,</span>
+<span class="src-line"><span class="src-frame">    57</span>               <span class="src-kw">const</span> <span class="src-cls">uint8_t</span> *bc_buf, <span class="src-kw">const</span> <span class="src-cls">uint8_t</span> *cbuf, <span class="src-kw">int</span> cindex, <span class="src-kw">int</span> clen,</span>
+<span class="src-line"><span class="src-frame">    58</span>               <span class="src-kw">int</span> cbuf_type, <span class="src-kw">void</span> *opaque);              <span class="src-comment">// → 1=match,0=no,&lt;0=err</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Two functions. Two. That's the entire interface QuickJS uses to talk to its</span></span>
+<span class="src-line"><span class="src-comment">// regex engine. compile takes a string, returns bytecode. exec takes bytecode</span></span>
+<span class="src-line"><span class="src-comment">// + input, fills capture[]. lre_realloc and lre_check_timeout are user hooks.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>libregexp-opcode.h · 28 opcodes (verbatim X-macro)</span><span class="src-tag">whole file</span></div>
+<span class="src-line"><span class="src-comment">// Each row is one DEF(name, size_in_bytes).</span></span>
+<span class="src-line"><span class="src-comment">// Same X-macro pattern as quickjs-opcode.h (Ch09) — one source, multiple expansions.</span></span>
+<span class="src-line"></span>
+<span class="src-line">DEF(invalid, <span class="src-num">1</span>)                  <span class="src-comment">// never used</span></span>
+<span class="src-line">DEF(char8,   <span class="src-num">2</span>)  DEF(char16, <span class="src-num">3</span>)   DEF(char32, <span class="src-num">5</span>)    <span class="src-comment">// literal char match</span></span>
+<span class="src-line">DEF(dot,     <span class="src-num">1</span>)  DEF(any, <span class="src-num">1</span>)                       <span class="src-comment">// . vs s-flag dotall</span></span>
+<span class="src-line">DEF(line_start, <span class="src-num">1</span>)  DEF(line_end, <span class="src-num">1</span>)            <span class="src-comment">// ^ $</span></span>
+<span class="src-line">DEF(<span class="src-kw">goto</span>, <span class="src-num">5</span>)                                       <span class="src-comment">// unconditional jump</span></span>
+<span class="src-line">DEF(split_goto_first, <span class="src-num">5</span>)  DEF(split_next_first, <span class="src-num">5</span>)  <span class="src-comment">// ⭐ backtrack split</span></span>
+<span class="src-line">DEF(match, <span class="src-num">1</span>)                                     <span class="src-comment">// pattern fully matched</span></span>
+<span class="src-line">DEF(save_start, <span class="src-num">2</span>)  DEF(save_end, <span class="src-num">2</span>)            <span class="src-comment">// ( and ) capture group</span></span>
+<span class="src-line">DEF(save_reset, <span class="src-num">3</span>)                              <span class="src-comment">// reset captures on alternation</span></span>
+<span class="src-line">DEF(loop, <span class="src-num">5</span>)                                      <span class="src-comment">// decrement-and-branch</span></span>
+<span class="src-line">DEF(push_i32, <span class="src-num">5</span>)  DEF(drop, <span class="src-num">1</span>)                   <span class="src-comment">// counter stack ops</span></span>
+<span class="src-line">DEF(word_boundary, <span class="src-num">1</span>)  DEF(not_word_boundary, <span class="src-num">1</span>)  <span class="src-comment">// \b \B</span></span>
+<span class="src-line">DEF(back_reference, <span class="src-num">2</span>)  DEF(backward_back_reference, <span class="src-num">2</span>)  <span class="src-comment">// \1 \2</span></span>
+<span class="src-line">DEF(range, <span class="src-num">3</span>)  DEF(range32, <span class="src-num">3</span>)                  <span class="src-comment">// [abc] / [က-⃿]</span></span>
+<span class="src-line">DEF(lookahead, <span class="src-num">5</span>)  DEF(negative_lookahead, <span class="src-num">5</span>)     <span class="src-comment">// (?=...) (?!...)</span></span>
+<span class="src-line">DEF(push_char_pos, <span class="src-num">1</span>)  DEF(check_advance, <span class="src-num">1</span>)      <span class="src-comment">// loop progress check</span></span>
+<span class="src-line">DEF(prev, <span class="src-num">1</span>)                                       <span class="src-comment">// step backward (lookbehind)</span></span>
+<span class="src-line">DEF(simple_greedy_quant, <span class="src-num">17</span>)                    <span class="src-comment">// a* / a+ fast path</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 28 opcodes total. Compare V8 Irregexp's IR: ~80 instructions, then JIT-compiled.</span></span>
+<span class="src-line"><span class="src-comment">// QuickJS just interprets these — backtracking NFA, no compilation to native code.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>libregexp.c:2497 · lre_exec — the entry point body (verbatim, 35 lines)</span><span class="src-tag">alloca, no malloc on hot path</span></div>
+<span class="src-line"><span class="src-frame">  2497</span>  <span class="src-kw">int</span> <span class="src-fn">lre_exec</span>(<span class="src-cls">uint8_t</span> **capture,</span>
+<span class="src-line"><span class="src-frame">  2498</span>               <span class="src-kw">const</span> <span class="src-cls">uint8_t</span> *bc_buf, <span class="src-kw">const</span> <span class="src-cls">uint8_t</span> *cbuf, <span class="src-kw">int</span> cindex, <span class="src-kw">int</span> clen,</span>
+<span class="src-line"><span class="src-frame">  2499</span>               <span class="src-kw">int</span> cbuf_type, <span class="src-kw">void</span> *opaque) {</span>
+<span class="src-line"><span class="src-frame">  2500</span>      REExecContext s_s, *s = &amp;s_s;</span>
+<span class="src-line"><span class="src-frame">  2501</span>      <span class="src-kw">int</span> re_flags, i, alloca_size, ret;</span>
+<span class="src-line"><span class="src-frame">  2502</span>      StackInt *stack_buf;</span>
+<span class="src-line"><span class="src-frame">  2504</span>      re_flags = <span class="src-fn">lre_get_flags</span>(bc_buf);</span>
+<span class="src-line"><span class="src-frame">  2505</span>      s-&gt;multi_line  = (re_flags &amp; LRE_FLAG_MULTILINE) != <span class="src-num">0</span>;</span>
+<span class="src-line"><span class="src-frame">  2506</span>      s-&gt;ignore_case = (re_flags &amp; LRE_FLAG_IGNORECASE) != <span class="src-num">0</span>;</span>
+<span class="src-line"><span class="src-frame">  2507</span>      s-&gt;is_unicode  = (re_flags &amp; LRE_FLAG_UNICODE) != <span class="src-num">0</span>;</span>
+<span class="src-line"><span class="src-frame">  2508</span>      s-&gt;capture_count   = bc_buf[RE_HEADER_CAPTURE_COUNT];</span>
+<span class="src-line"><span class="src-frame">  2509</span>      s-&gt;stack_size_max  = bc_buf[RE_HEADER_STACK_SIZE];</span>
+<span class="src-line"><span class="src-frame">  2510</span>      s-&gt;cbuf = cbuf;</span>
+<span class="src-line"><span class="src-frame">  2511</span>      s-&gt;cbuf_end = cbuf + (clen &lt;&lt; cbuf_type);</span>
+<span class="src-line"><span class="src-frame">  2512</span>      s-&gt;cbuf_type = cbuf_type;</span>
+<span class="src-line"><span class="src-frame">  2517</span>      s-&gt;interrupt_counter = INTERRUPT_COUNTER_INIT;</span>
+<span class="src-line"><span class="src-frame">  2518</span>      s-&gt;opaque = opaque;</span>
+<span class="src-line"><span class="src-frame">  2520</span>      s-&gt;state_size = <span class="src-kw">sizeof</span>(REExecState) +</span>
+<span class="src-line"><span class="src-frame">  2521</span>          s-&gt;capture_count * <span class="src-kw">sizeof</span>(capture[<span class="src-num">0</span>]) * <span class="src-num">2</span> +</span>
+<span class="src-line"><span class="src-frame">  2522</span>          s-&gt;stack_size_max * <span class="src-kw">sizeof</span>(stack_buf[<span class="src-num">0</span>]);</span>
+<span class="src-line"><span class="src-frame">  2523</span>      s-&gt;state_stack = <span class="src-num">NULL</span>;     <span class="src-comment">// grown by realloc only if backtracking deep</span></span>
+<span class="src-line"><span class="src-frame">  2527</span>      <span class="src-kw">for</span>(i = <span class="src-num">0</span>; i &lt; s-&gt;capture_count * <span class="src-num">2</span>; i++)</span>
+<span class="src-line"><span class="src-frame">  2528</span>          capture[i] = <span class="src-num">NULL</span>;</span>
+<span class="src-line"><span class="src-frame">  2529</span>      alloca_size = s-&gt;stack_size_max * <span class="src-kw">sizeof</span>(stack_buf[<span class="src-num">0</span>]);</span>
+<span class="src-line"><span class="src-frame">  2530</span>      stack_buf = <span class="src-fn">alloca</span>(alloca_size);   <span class="src-comment">// ⭐ stack-allocated backtrack stack!</span></span>
+<span class="src-line"><span class="src-frame">  2531</span>      ret = <span class="src-fn">lre_exec_backtrack</span>(s, capture, stack_buf, <span class="src-num">0</span>,</span>
+<span class="src-line"><span class="src-frame">  2532</span>                               bc_buf + RE_HEADER_LEN,</span>
+<span class="src-line"><span class="src-frame">  2533</span>                               cbuf + (cindex &lt;&lt; cbuf_type), <span class="src-kw">false</span>);</span>
+<span class="src-line"><span class="src-frame">  2534</span>      <span class="src-fn">lre_realloc</span>(s-&gt;opaque, s-&gt;state_stack, <span class="src-num">0</span>);</span>
+<span class="src-line"><span class="src-frame">  2535</span>      <span class="src-kw">return</span> ret;</span>
+<span class="src-line"><span class="src-frame">  2536</span>  }</span>
     </div>
 
     <table class="cmp">
-      <thead><tr><th>Engine</th><th>RegExp impl</th><th>LoC</th><th>JIT</th></tr></thead>
+      <thead><tr><th>Engine</th><th>RegExp impl</th><th>LoC</th><th>JIT</th><th>Algorithm</th></tr></thead>
       <tbody>
-        <tr><td class="good">QuickJS</td><td>libregexp</td><td class="num">~2500</td><td class="bad">no</td></tr>
-        <tr><td>V8</td><td>Irregexp</td><td class="num">~20 000</td><td class="good">yes</td></tr>
-        <tr><td>JSC</td><td>YARR</td><td class="num">~10 000</td><td class="good">yes</td></tr>
-        <tr><td>SpiderMonkey</td><td>Irregexp (V8 fork)</td><td class="num">~20 000</td><td class="good">yes</td></tr>
+        <tr><td class="good">QuickJS</td><td>libregexp</td><td class="num">~2600</td><td class="bad">no</td><td>backtracking NFA</td></tr>
+        <tr><td>V8</td><td>Irregexp</td><td class="num">~20 000</td><td class="good">yes</td><td>backtracking NFA + JIT</td></tr>
+        <tr><td>JSC</td><td>YARR</td><td class="num">~10 000</td><td class="good">yes</td><td>backtracking NFA + JIT</td></tr>
+        <tr><td>SpiderMonkey</td><td>Irregexp (V8 fork)</td><td class="num">~20 000</td><td class="good">yes</td><td>backtracking NFA + JIT</td></tr>
+        <tr><td>RE2 / Hyperscan</td><td>(non-JS)</td><td class="num">100k+</td><td class="good">DFA</td><td>no backtracking</td></tr>
       </tbody>
     </table>
 
     <div class="note">
-      <span class="ntag lang-zh-only">FIELD NOTE · 性能差距</span>
-      <span class="ntag lang-en-only">FIELD NOTE · performance gap</span>
-      <span class="lang-zh-only">在 RegExp 密集型负载（比如 babel parser），QuickJS 比 V8 慢 5-20 倍。但绝大多数 JS 代码<em>不</em> regex-bound。Bellard 的判断是：<em>用了正则就慢 10 倍</em>对嵌入式场景比<em>不能用 ES2022 正则</em> 可接受得多。这也是为什么 libregexp 是<em>独立文件</em>——嵌入者觉得不需要的话<em>可以删掉</em>，省 2500 行 + Unicode 表的 3000 行 = 5500 行。</span>
-      <span class="lang-en-only">For regex-heavy workloads (e.g. babel's parser), QuickJS is 5-20× slower than V8. But most JS code isn't regex-bound. Bellard's call: <em>"slow regex"</em> is acceptable for embedded; <em>"no ES2022 regex"</em> isn't. This is also why libregexp is a <em>separate file</em> — embedders who don't need it can <em>drop it</em>, saving 2500 + 3000 Unicode-table lines = 5500 lines.</span>
+      <span class="ntag lang-zh-only">FIELD NOTE · 性能差距 · 但仍是 backtracking</span>
+      <span class="ntag lang-en-only">FIELD NOTE · performance gap · still backtracking</span>
+      <span class="lang-zh-only">在 RegExp 密集型负载（比如 babel parser），QuickJS 比 V8 慢 5-20 倍——但<em>所有</em> JS 引擎（包括 V8、JSC、SpiderMonkey）都用 <strong>backtracking NFA</strong>，因为 ECMAScript 正则的 backreference (<code>\1</code>) 和 lookbehind 让它<em>无法</em>编译到纯 DFA（RE2 / Hyperscan 那样）。差距来自<em>JIT</em>：V8 把正则字节码编译成机器码，QuickJS 解释执行。但绝大多数 JS 代码<em>不</em> regex-bound。Bellard 的判断：<em>用了正则就慢 10 倍</em>对嵌入式场景比<em>不能用 ES2022 正则</em> 可接受得多。这也是为什么 libregexp 是<em>独立文件</em>——嵌入者觉得不需要的话<em>可以删掉</em>，省 2600 行 + Unicode 表 ≈ 5500 行。</span>
+      <span class="lang-en-only">For regex-heavy workloads (e.g. babel's parser), QuickJS is 5-20× slower than V8 — but <em>every</em> JS engine (V8, JSC, SpiderMonkey) uses <strong>backtracking NFA</strong>, because ECMAScript regex's backreferences (<code>\1</code>) and lookbehinds make it <em>impossible</em> to compile to pure DFA (the RE2 / Hyperscan path). The gap comes from <em>JIT</em>: V8 compiles regex bytecode to machine code; QuickJS interprets it. But most JS code isn't regex-bound. Bellard's call: <em>"slow regex"</em> is acceptable for embedded; <em>"no ES2022 regex"</em> isn't. This is also why libregexp is a <em>separate file</em> — embedders who don't need it can <em>drop it</em>, saving 2600 + Unicode-table lines ≈ 5500 total.</span>
     </div>
   </section>
 
@@ -4103,26 +4342,110 @@
     <p class="lang-en-only">Refcount's Achilles heel: <code>A.child = B; B.parent = A</code> → both refcount ≥ 1, never freed. The fix (used by Python / PHP / QuickJS): periodic <em>cycle detector</em>.</p>
 
     <div class="src-stack">
-      <div class="src-h"><span>quickjs.c · JS_RunGC · cycle detection pseudocode</span><span class="src-tag">trial-deletion algorithm</span></div>
-<span class="src-line"><span class="src-comment">/* every refcounted heap object lives in rt-&gt;gc_obj_list (doubly-linked) */</span></span>
+      <div class="src-h"><span>quickjs.c:382 · JSGCObjectHeader — real fields the GC uses</span><span class="src-tag">12 lines verbatim</span></div>
+<span class="src-line"><span class="src-frame">   382</span>  <span class="src-kw">typedef enum</span> {</span>
+<span class="src-line"><span class="src-frame">   383</span>      JS_GC_OBJ_TYPE_JS_OBJECT,</span>
+<span class="src-line"><span class="src-frame">   384</span>      JS_GC_OBJ_TYPE_FUNCTION_BYTECODE,</span>
+<span class="src-line"><span class="src-frame">   385</span>      JS_GC_OBJ_TYPE_SHAPE,</span>
+<span class="src-line"><span class="src-frame">   386</span>      JS_GC_OBJ_TYPE_VAR_REF,                <span class="src-comment">// ⭐ closures we built in Ch13</span></span>
+<span class="src-line"><span class="src-frame">   387</span>      JS_GC_OBJ_TYPE_ASYNC_FUNCTION,         <span class="src-comment">// ⭐ generators from Ch17</span></span>
+<span class="src-line"><span class="src-frame">   388</span>      JS_GC_OBJ_TYPE_JS_CONTEXT,</span>
+<span class="src-line"><span class="src-frame">   389</span>  } JSGCObjectTypeEnum;</span>
 <span class="src-line"></span>
-<span class="src-line"><span class="src-fn">JS_RunGC</span>(rt):</span>
-<span class="src-line">  <span class="src-comment">// 1. for each object, copy ref_count to mark</span></span>
-<span class="src-line">  <span class="src-kw">for</span> o <span class="src-kw">in</span> gc_obj_list:</span>
-<span class="src-line">    o.mark = o.ref_count</span>
+<span class="src-line"><span class="src-frame">   394</span>  <span class="src-kw">struct</span> JSGCObjectHeader {</span>
+<span class="src-line"><span class="src-frame">   395</span>      <span class="src-kw">int</span> ref_count;                         <span class="src-comment">// 32-bit, must come first</span></span>
+<span class="src-line"><span class="src-frame">   396</span>      JSGCObjectTypeEnum gc_obj_type : <span class="src-num">4</span>;     <span class="src-comment">// 6 types, fits in 4 bits</span></span>
+<span class="src-line"><span class="src-frame">   397</span>      <span class="src-cls">uint8_t</span> mark : <span class="src-num">1</span>;                      <span class="src-comment">// ⭐ the only GC scratch bit</span></span>
+<span class="src-line"><span class="src-frame">   398</span>      <span class="src-cls">uint8_t</span> dummy0 : <span class="src-num">3</span>;</span>
+<span class="src-line"><span class="src-frame">   399</span>      <span class="src-cls">uint8_t</span> dummy1;</span>
+<span class="src-line"><span class="src-frame">   400</span>      <span class="src-cls">uint16_t</span> dummy2;</span>
+<span class="src-line"><span class="src-frame">   401</span>      <span class="src-kw">struct</span> list_head link;                  <span class="src-comment">// doubly-linked into gc_obj_list</span></span>
+<span class="src-line"><span class="src-frame">   402</span>  };</span>
 <span class="src-line"></span>
-<span class="src-line">  <span class="src-comment">// 2. for each object, for each outbound reference,</span></span>
-<span class="src-line">  <span class="src-comment">//    decrement the target's mark</span></span>
-<span class="src-line">  <span class="src-kw">for</span> o <span class="src-kw">in</span> gc_obj_list:</span>
-<span class="src-line">    <span class="src-kw">for</span> ref <span class="src-kw">in</span> o.outgoing_refs():</span>
-<span class="src-line">      ref.mark--</span>
+<span class="src-line"><span class="src-comment">// Total header = 8 bytes on 32-bit, 16 on 64-bit. mark is ONE bit. Compare V8's</span></span>
+<span class="src-line"><span class="src-comment">// HiddenClass header: 32+ bytes for forwarding pointer, generation tag, mark bits,</span></span>
+<span class="src-line"><span class="src-comment">// remembered set bits — V8 has 3-5 generation × 2 epoch × multiple GC types.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:7053 · JS_RunGC — the entire collector is THREE lines</span><span class="src-tag">verbatim, no edit</span></div>
+<span class="src-line"><span class="src-frame">  7053</span>  <span class="src-kw">void</span> <span class="src-fn">JS_RunGC</span>(JSRuntime *rt) {</span>
+<span class="src-line"><span class="src-frame">  7054</span>      <span class="src-comment">/* decrement the reference of the children of each object. mark =</span></span>
+<span class="src-line"><span class="src-frame">      </span>         <span class="src-comment">1 after this pass. */</span></span>
+<span class="src-line"><span class="src-frame">  7057</span>      <span class="src-fn">gc_decref</span>(rt);                <span class="src-comment">// phase 1: subtract internal edges</span></span>
+<span class="src-line"><span class="src-frame">  7060</span>      <span class="src-comment">/* keep the GC objects with a non zero refcount and their childs */</span></span>
+<span class="src-line"><span class="src-frame">  7061</span>      <span class="src-fn">gc_scan</span>(rt);                  <span class="src-comment">// phase 2: re-add references from live roots</span></span>
+<span class="src-line"><span class="src-frame">  7063</span>      <span class="src-comment">/* free the GC objects in a cycle */</span></span>
+<span class="src-line"><span class="src-frame">  7064</span>      <span class="src-fn">gc_free_cycles</span>(rt);           <span class="src-comment">// phase 3: free whatever's still mark=1</span></span>
+<span class="src-line"><span class="src-frame">  7065</span>  }</span>
 <span class="src-line"></span>
-<span class="src-line">  <span class="src-comment">// 3. anything with mark &gt; 0 is reachable from "outside the cycle"</span></span>
-<span class="src-line">  <span class="src-comment">//    → live root</span></span>
-<span class="src-line">  <span class="src-comment">// 4. anything with mark == 0 is part of a cycle → free it</span></span>
-<span class="src-line">  <span class="src-kw">for</span> o <span class="src-kw">in</span> gc_obj_list:</span>
-<span class="src-line">    <span class="src-kw">if</span> o.mark == <span class="src-num">0</span>:</span>
-<span class="src-line">      free(o)</span>
+<span class="src-line"><span class="src-comment">// The algorithm is "trial deletion" / "Bacon-Rajan synchronous cycle collector" —</span></span>
+<span class="src-line"><span class="src-comment">// same family Python and PHP use. Three passes, no STW, no write barriers.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:6943 · gc_decref — phase 1, verbatim</span><span class="src-tag">19 lines</span></div>
+<span class="src-line"><span class="src-frame">  6943</span>  <span class="src-kw">static void</span> <span class="src-fn">gc_decref</span>(JSRuntime *rt) {</span>
+<span class="src-line"><span class="src-frame">  6944</span>      <span class="src-kw">struct</span> list_head *el, *el1;</span>
+<span class="src-line"><span class="src-frame">  6945</span>      JSGCObjectHeader *p;</span>
+<span class="src-line"><span class="src-frame">  6947</span>      <span class="src-fn">init_list_head</span>(&amp;rt-&gt;tmp_obj_list);</span>
+<span class="src-line"><span class="src-frame">  6952</span>      <span class="src-fn">list_for_each_safe</span>(el, el1, &amp;rt-&gt;gc_obj_list) {</span>
+<span class="src-line"><span class="src-frame">  6953</span>          p = <span class="src-fn">list_entry</span>(el, JSGCObjectHeader, link);</span>
+<span class="src-line"><span class="src-frame">  6954</span>          assert(p-&gt;mark == <span class="src-num">0</span>);</span>
+<span class="src-line"><span class="src-frame">  6955</span>          <span class="src-fn">mark_children</span>(rt, p, gc_decref_child);    <span class="src-comment">// ⭐ for each outbound</span></span>
+<span class="src-line"><span class="src-frame">      </span>                                                  <span class="src-comment">//   edge, decrement child</span></span>
+<span class="src-line"><span class="src-frame">  6956</span>          p-&gt;mark = <span class="src-num">1</span>;                              <span class="src-comment">// "trial-deleted"</span></span>
+<span class="src-line"><span class="src-frame">  6957</span>          <span class="src-kw">if</span> (p-&gt;ref_count == <span class="src-num">0</span>) {                  <span class="src-comment">// no external roots → move</span></span>
+<span class="src-line"><span class="src-frame">  6958</span>              <span class="src-fn">list_del</span>(&amp;p-&gt;link);                    <span class="src-comment">//   to tmp_obj_list</span></span>
+<span class="src-line"><span class="src-frame">  6959</span>              <span class="src-fn">list_add_tail</span>(&amp;p-&gt;link, &amp;rt-&gt;tmp_obj_list);</span>
+<span class="src-line"><span class="src-frame">  6960</span>          }</span>
+<span class="src-line"><span class="src-frame">  6961</span>      }</span>
+<span class="src-line"><span class="src-frame">  6962</span>  }</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// After this pass: any object whose refcount went to 0 has no external roots —</span></span>
+<span class="src-line"><span class="src-comment">// its only references are from inside the heap. Either real garbage or a cycle.</span></span>
+<span class="src-line"><span class="src-comment">// Objects with ref_count &gt; 0 STILL have references from outside (stack, globals).</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>quickjs.c:6982 · gc_scan — phase 2: undo decrements for everything reachable from live roots</span><span class="src-tag">verbatim</span></div>
+<span class="src-line"><span class="src-frame">  6982</span>  <span class="src-kw">static void</span> <span class="src-fn">gc_scan</span>(JSRuntime *rt) {</span>
+<span class="src-line"><span class="src-frame">  6983</span>      <span class="src-kw">struct</span> list_head *el;</span>
+<span class="src-line"><span class="src-frame">  6984</span>      JSGCObjectHeader *p;</span>
+<span class="src-line"><span class="src-frame">  6987</span>      <span class="src-comment">/* keep the objects with a refcount &gt; 0 and their children. */</span></span>
+<span class="src-line"><span class="src-frame">  6988</span>      <span class="src-fn">list_for_each</span>(el, &amp;rt-&gt;gc_obj_list) {     <span class="src-comment">// what stayed = live roots</span></span>
+<span class="src-line"><span class="src-frame">  6989</span>          p = <span class="src-fn">list_entry</span>(el, JSGCObjectHeader, link);</span>
+<span class="src-line"><span class="src-frame">  6990</span>          assert(p-&gt;ref_count &gt; <span class="src-num">0</span>);</span>
+<span class="src-line"><span class="src-frame">  6991</span>          p-&gt;mark = <span class="src-num">0</span>;                              <span class="src-comment">// reset for next GC cycle</span></span>
+<span class="src-line"><span class="src-frame">  6992</span>          <span class="src-fn">mark_children</span>(rt, p, gc_scan_incref_child); <span class="src-comment">// ⭐ re-add edges</span></span>
+<span class="src-line"><span class="src-frame">  6993</span>      }</span>
+<span class="src-line"><span class="src-frame">  6995</span>      <span class="src-comment">/* restore the refcount of the objects to be deleted. */</span></span>
+<span class="src-line"><span class="src-frame">  6996</span>      <span class="src-fn">list_for_each</span>(el, &amp;rt-&gt;tmp_obj_list) {    <span class="src-comment">// candidates</span></span>
+<span class="src-line"><span class="src-frame">  6997</span>          p = <span class="src-fn">list_entry</span>(el, JSGCObjectHeader, link);</span>
+<span class="src-line"><span class="src-frame">  6998</span>          <span class="src-fn">mark_children</span>(rt, p, gc_scan_incref_child2);</span>
+<span class="src-line"><span class="src-frame">  6999</span>      }</span>
+<span class="src-line"><span class="src-frame">  7000</span>  }</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Key invariant after gc_scan: anything still in tmp_obj_list has no path</span></span>
+<span class="src-line"><span class="src-comment">// from a live root — by definition a cycle (or unreachable garbage).</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">主线 <code>[1,2,3].map(x=&gt;x*2)</code> 跑完后 GC 看到什么</h3>
+    <h3 class="sub lang-en-only">What GC sees after our main line finishes</h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>gc trace · our main line</span><span class="src-tag">5 transient heap objects</span></div>
+<span class="src-line"><span class="src-comment">// after `[1,2,3].map(x=&gt;x*2)` completes, the following GC objects existed:</span></span>
+<span class="src-line"></span>
+<span class="src-line">JSObject  the [1,2,3] Array          ← refcount 0 after temp release (immediate free)</span>
+<span class="src-line">JSObject  the arrow x=&gt;x*2 closure   ← refcount 0 after call_method (immediate free)</span>
+<span class="src-line">JSObject  the [2,4,6] result Array   ← refcount 1 (held by `r`), survives</span>
+<span class="src-line">JSShape   the Array instance shape   ← refcount &gt;0 (shared), survives</span>
+<span class="src-line">JSShape   the Array.prototype shape  ← refcount &gt;0 (perma-rooted), survives</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 2 of the 5 freed before JS_RunGC ever has to scan. The cycle collector ran</span></span>
+<span class="src-line"><span class="src-comment">// 0 times for our main line — no cycles existed. This is the common case:</span></span>
+<span class="src-line"><span class="src-comment">// 90%+ of JS object lifetimes are tree-shaped and freed by plain refcount.</span></span>
     </div>
 
     <div class="note good">
