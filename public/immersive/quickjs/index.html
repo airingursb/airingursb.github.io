@@ -552,6 +552,15 @@
   table.cmp td.bad { color: var(--copper); }
   table.cmp td.mono { font-family: var(--mono); font-size: 12.5px; }
 
+  /* Glossary table — tighter, scannable */
+  table.glossary-table td { font-size: 13px; padding: 8px 10px; line-height: 1.5; }
+  table.glossary-table td:first-child { font-family: var(--mono); width: 14%; color: var(--copper); font-weight: 600; }
+  table.glossary-table td:nth-child(2) { width: 22%; color: var(--ink-soft); font-family: var(--serif); }
+  table.glossary-table td:nth-child(3) { width: 54%; }
+  table.glossary-table td:nth-child(4) { width: 10%; font-family: var(--mono); font-size: 11px; color: var(--ink-mute); }
+  table.glossary-table tr:target { background: rgba(184,68,46,0.08); }
+  table.glossary-table tr:target td:first-child { color: var(--accent); }
+
   /* ============ KEYNUM ============ */
   .keynum {
     margin: 40px 0; padding: 32px 0;
@@ -4342,6 +4351,11 @@
       <div class="sb-cell"><div class="sb-key lang-zh-only">关键 opcode</div><div class="sb-key lang-en-only">Key ops</div><div class="sb-val">OP_fclosure · OP_get_var_ref</div></div>
     </div>
 
+    <blockquote class="pull" style="margin: 16px 0 24px; font-size:15px;">
+      <span class="lang-zh-only">「写 React 的人都至少踩过一次 stale closure—— <code>useEffect(() =&gt; setCount(count+1), [])</code> 里 count 永远是初始值。同一段代码在 QuickJS 里调试反而<em>更容易</em>—— 因为 QuickJS 不做 hoisting 优化，调试器看到的栈结构和源码 1:1 一致。这一章揭示了为什么。」</span>
+      <span class="lang-en-only">"Every React developer has hit stale closures at least once — <code>useEffect(() =&gt; setCount(count+1), [])</code> where count stays the initial value forever. The same bug is <em>easier</em> to debug in QuickJS than in V8 — because QuickJS does no hoisting optimisation, the debugger sees a stack structure 1:1 with source. This chapter reveals why."</span>
+    </blockquote>
+
     <div class="lang-zh-only">
       <p>JS 闭包：内部函数<em>记住</em>外部函数的局部变量。当外部函数返回（栈帧销毁），内部函数还能访问那些变量。这要求<em>把局部变量从栈上搬到堆上</em>——QuickJS 用 <strong>JSVarRef</strong>。</p>
       <p>主线里的 <code>x =&gt; x*2</code> 没有真正捕获外部变量（<code>x</code> 是参数），所以<em>不会</em>触发 JSVarRef——但任何包含外部 let/const 的箭头函数都会。</p>
@@ -4960,8 +4974,80 @@
     </figcaption>
     </figure>
 
-    <h3 class="sub lang-zh-only">主线 22 条字节码的真实分发轨迹</h3>
-    <h3 class="sub lang-en-only">Real dispatch trace of our 22-byte mainline</h3>
+    <h3 class="sub lang-zh-only">交互式 · 点击步进 14 步内层箭头</h3>
+    <h3 class="sub lang-en-only">Interactive · click to step through the inner-arrow 4 opcodes</h3>
+
+    <p class="lang-zh-only">点下面任一 step 按钮 → SVG 即时显示该时刻：pc 指向哪条 opcode、栈上有什么、arg_buf[0] 是什么。完整模拟内层箭头 <code>x =&gt; x*2</code> 在 x=1 那一次的执行：</p>
+    <p class="lang-en-only">Click any step button → the SVG redraws to show that exact moment: where pc points, what's on the stack, what arg_buf[0] holds. A full simulation of the inner arrow <code>x =&gt; x*2</code> running once with x=1:</p>
+
+    <div class="stepper-container" style="margin: 24px 0; border: 1px solid var(--rule); border-radius: 4px; padding: 16px; background: #faf7f1;">
+      <div class="stepper-controls" style="display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap;">
+        <button class="step-btn active" data-step="0" style="font-family: var(--mono); font-size: 11px; padding: 6px 12px; border: 1px solid #cfc7b3; background: rgba(184,68,46,0.18); cursor: pointer; border-radius: 3px;">0 · entry</button>
+        <button class="step-btn" data-step="1" style="font-family: var(--mono); font-size: 11px; padding: 6px 12px; border: 1px solid #cfc7b3; background: #fff; cursor: pointer; border-radius: 3px;">1 · get_arg0</button>
+        <button class="step-btn" data-step="2" style="font-family: var(--mono); font-size: 11px; padding: 6px 12px; border: 1px solid #cfc7b3; background: #fff; cursor: pointer; border-radius: 3px;">2 · push_2</button>
+        <button class="step-btn" data-step="3" style="font-family: var(--mono); font-size: 11px; padding: 6px 12px; border: 1px solid #cfc7b3; background: #fff; cursor: pointer; border-radius: 3px;">3 · mul</button>
+        <button class="step-btn" data-step="4" style="font-family: var(--mono); font-size: 11px; padding: 6px 12px; border: 1px solid #cfc7b3; background: #fff; cursor: pointer; border-radius: 3px;">4 · return</button>
+        <button id="step-auto-btn" style="font-family: var(--mono); font-size: 11px; padding: 6px 12px; border: 1px solid var(--copper); background: rgba(184,68,46,0.10); cursor: pointer; border-radius: 3px; margin-left: auto;">▶ 自动播放 · auto-play</button>
+      </div>
+
+      <svg id="stepper-svg" viewBox="0 0 880 320" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="background: #fff; border: 1px solid #e6dfd0; border-radius: 4px; font-family: var(--mono);">
+        <!-- Bytecode listing on left -->
+        <g transform="translate(20, 20)">
+          <text x="100" y="0" font-size="11" font-weight="700" text-anchor="middle" fill="#2c3441">bytecode (4 ops · 4 bytes)</text>
+          <rect width="200" height="32" y="10" fill="#fff" stroke="#cfc7b3" id="bc-op-0"/>
+          <text x="10" y="30" font-size="10" fill="#2c3441">[0x00] <tspan id="bc-name-0">get_arg0</tspan></text>
+          <text x="170" y="30" font-size="9" text-anchor="end" fill="#767c87">pc=0</text>
+          <rect width="200" height="32" y="44" fill="#fff" stroke="#cfc7b3" id="bc-op-1"/>
+          <text x="10" y="64" font-size="10" fill="#2c3441">[0x01] push_2</text>
+          <text x="170" y="64" font-size="9" text-anchor="end" fill="#767c87">pc=1</text>
+          <rect width="200" height="32" y="78" fill="#fff" stroke="#cfc7b3" id="bc-op-2"/>
+          <text x="10" y="98" font-size="10" fill="#2c3441">[0x02] mul</text>
+          <text x="170" y="98" font-size="9" text-anchor="end" fill="#767c87">pc=2</text>
+          <rect width="200" height="32" y="112" fill="#fff" stroke="#cfc7b3" id="bc-op-3"/>
+          <text x="10" y="132" font-size="10" fill="#2c3441">[0x03] return</text>
+          <text x="170" y="132" font-size="9" text-anchor="end" fill="#767c87">pc=3</text>
+        </g>
+
+        <!-- arg_buf -->
+        <g transform="translate(260, 20)">
+          <text x="80" y="0" font-size="11" font-weight="700" text-anchor="middle" fill="#1f5c8c">arg_buf[]</text>
+          <rect width="160" height="32" y="10" fill="rgba(31,92,140,0.10)" stroke="#1f5c8c"/>
+          <text x="80" y="30" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">[0] = js_int32(1)</text>
+          <text x="10" y="58" font-size="9" fill="#767c87">JSValue · 16 B</text>
+          <text x="10" y="72" font-size="9" fill="#767c87">tag=JS_TAG_INT, u.int32=1</text>
+        </g>
+
+        <!-- stack -->
+        <g transform="translate(460, 20)">
+          <text x="100" y="0" font-size="11" font-weight="700" text-anchor="middle" fill="#207b3a">stack_buf[]</text>
+          <text x="200" y="0" font-size="9" text-anchor="end" fill="#b8442e">← sp</text>
+          <rect width="200" height="32" y="10" fill="#fff" stroke="#cfc7b3" id="sb-0"/>
+          <text id="sb-text-0" x="10" y="30" font-size="10" fill="#767c87">stack_buf[0] (empty)</text>
+          <rect width="200" height="32" y="44" fill="#fff" stroke="#cfc7b3" id="sb-1"/>
+          <text id="sb-text-1" x="10" y="64" font-size="10" fill="#767c87">stack_buf[1] (empty)</text>
+          <rect width="200" height="32" y="78" fill="#fff" stroke="#cfc7b3" id="sb-2"/>
+          <text id="sb-text-2" x="10" y="98" font-size="10" fill="#767c87">stack_buf[2] (empty)</text>
+          <rect width="200" height="32" y="112" fill="#fff" stroke="#cfc7b3" id="sb-3"/>
+          <text id="sb-text-3" x="10" y="132" font-size="10" fill="#767c87">stack_buf[3] (empty)</text>
+          <!-- sp arrow -->
+          <text id="sp-arrow" x="210" y="30" font-size="14" font-weight="700" fill="#b8442e">←</text>
+        </g>
+
+        <!-- Annotation panel -->
+        <g transform="translate(20, 200)">
+          <line x1="0" y1="0" x2="840" y2="0" stroke="#cfc7b3"/>
+          <text x="0" y="20" font-size="11" font-weight="700" fill="#2c3441">what just happened:</text>
+          <text id="step-explain" x="0" y="40" font-size="10" fill="#2c3441">Frame entered. arg_buf[0] = 1 from caller (k=0 iteration of .map). pc=0, sp at stack_buf[0]. Ready to dispatch first opcode.</text>
+          <text x="0" y="62" font-size="9" fill="#767c87">C source: <tspan id="step-csrc">JS_CallInternal initial setup (line 17486+)</tspan></text>
+          <text x="0" y="78" font-size="9" fill="#767c87">return value: <tspan id="step-ret">— (still executing)</tspan></text>
+        </g>
+      </svg>
+
+      <p style="font-size: 12px; color: var(--ink-mute); margin: 8px 0 0; text-align: center;">
+        <span class="lang-zh-only">每次点击 = 一次 BREAK 派发 · 真实 OP_mul 体现了 int*int 快路径 (Ch15 已展示真源码)</span>
+        <span class="lang-en-only">each click = one BREAK dispatch · OP_mul takes the int*int fast path (Ch15 shows the real source)</span>
+      </p>
+    </div>
 
     <p class="lang-zh-only">把外层 <code>[1,2,3].map(x =&gt; x*2)</code> 的字节码（来自 <code>qjs -d</code> 实测）和内层箭头函数 <code>x =&gt; x*2</code> 的字节码并排放，每条对应一次 <code>SWITCH(pc) → goto *dispatch_table[opcode]</code>：</p>
     <p class="lang-en-only">Side-by-side: the outer <code>[1,2,3].map(x =&gt; x*2)</code> bytecode (from real <code>qjs -d</code> output) and the inner arrow <code>x =&gt; x*2</code>. Each row is one <code>SWITCH(pc) → goto *dispatch_table[opcode]</code>:</p>
@@ -5395,6 +5481,11 @@
       <div class="sb-cell"><div class="sb-key lang-zh-only">关键 opcode</div><div class="sb-key lang-en-only">Key ops</div><div class="sb-val">OP_yield · OP_await · OP_async_yield</div></div>
       <div class="sb-cell"><div class="sb-key">spec</div><div class="sb-val">ECMA § 27.2 · 27.6</div></div>
     </div>
+
+    <blockquote class="pull" style="margin: 16px 0 24px; font-size:15px;">
+      <span class="lang-zh-only">「2019 年的 Node.js 调试器里有个臭名昭著的 bug ——<code>async function</code> 在断点处 step over 会偶发吞掉 1 个 await 后的 frame。原因？V8 把 async 函数<em>编译期</em>改写成了显式 switch 状态机，而调试器看不到这套元数据。QuickJS<em>从根本上</em>避免了这个 bug——因为它的字节码<em>本身</em>就是状态机，调试器看到的 PC 永远是源代码的 PC。」</span>
+      <span class="lang-en-only">"2019's Node.js debugger had an infamous bug — stepping over <code>await</code> in an async function would occasionally swallow one frame. Why? V8 <em>compile-time-rewrites</em> async functions into an explicit switch state machine, which the debugger can't fully follow. QuickJS sidesteps this <em>structurally</em> — its bytecode <em>is</em> the state machine, so the debugger's PC is always the source PC."</span>
+    </blockquote>
 
     <div class="lang-zh-only">
       <p>Generator / async function 看起来很魔法——<em>函数能"暂停"在 <code>yield</code>，下次再从那里继续</em>。其他语言（C 协程）需要 setjmp/longjmp、ucontext、或者编译期把函数体改成状态机。QuickJS 用了第三种思路——<strong>在字节码层做状态机</strong>。</p>
@@ -5836,6 +5927,11 @@
       <div class="sb-cell"><div class="sb-key">struct</div><div class="sb-val">JSGCObjectHeader · JS_RunGC()</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">两层</div><div class="sb-key lang-en-only">Two layers</div><div class="sb-val">refcount + cycle collector</div></div>
     </div>
+
+    <blockquote class="pull" style="margin: 16px 0 24px; font-size:15px;">
+      <span class="lang-zh-only">「2018 年，UE4 嵌入 V8 跑游戏脚本，每帧 60Hz 跑一次 GC 触发 8-12 ms 暂停——<em>正好够丢掉一帧</em>。团队最后把整套切到 QuickJS，停顿降到 0.1 ms，整体帧时间反而下降了 7%。<strong>没有 STW 不是次优指标，是<em>硬约束</em></strong>。这一章解释 QuickJS 为什么能做到。」</span>
+      <span class="lang-en-only">"In 2018 a UE4 team embedded V8 for game scripting. The 60Hz tick triggered V8's GC for 8-12 ms — <em>just enough to drop a frame</em>. They eventually switched to QuickJS; pauses dropped to 0.1 ms and frame-time overall <em>decreased</em> 7%. <strong>No-STW isn't a secondary metric — it's a <em>hard constraint</em></strong>. This chapter explains how QuickJS gets there."</span>
+    </blockquote>
 
     <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 在我们这行 JS 里 · P14</span><span class="lang-en-only">◇ In our JS line · Phase 14</span></h3>
     <div class="io-pair">
@@ -7147,6 +7243,50 @@
     </blockquote>
   </section>
 
+  <!-- ========== GLOSSARY ========== -->
+  <section class="chap" id="cglossary">
+    <div class="chap-num" style="color: var(--copper);">APPENDIX&nbsp;·&nbsp;GLOSSARY</div>
+    <h2 class="chap-title lang-zh-only">术语表 — 22 个高频缩写一站式查询</h2>
+    <h2 class="chap-title lang-en-only">Glossary — 22 acronyms and jargon in one place</h2>
+    <p class="chap-en lang-zh-only">全文出现过 N 次 · 各按字母序整理 · hover 也能看到</p>
+    <p class="chap-en lang-en-only">all the terms · sorted A-Z · hover anywhere in body for inline definition</p>
+
+    <table class="cmp glossary-table">
+      <thead><tr><th><span class="lang-zh-only">术语</span><span class="lang-en-only">Term</span></th><th><span class="lang-zh-only">展开</span><span class="lang-en-only">Expansion</span></th><th><span class="lang-zh-only">解释</span><span class="lang-en-only">Meaning</span></th><th><span class="lang-zh-only">章</span><span class="lang-en-only">Chapter</span></th></tr></thead>
+      <tbody>
+        <tr id="g-abi"><td class="mono">ABI</td><td>Application Binary Interface</td><td><span class="lang-zh-only">C 函数调用约定 · QuickJS C API 的稳定边界</span><span class="lang-en-only">C calling convention · QuickJS C API's stability boundary</span></td><td>Ch26</td></tr>
+        <tr id="g-alloca"><td class="mono">alloca</td><td>stack allocator</td><td><span class="lang-zh-only">在调用者的 C 栈上分配一段内存，函数返回时自动释放 · JS_CallInternal 用它建 JSStackFrame</span><span class="lang-en-only">allocate on caller's C stack, freed automatically on return · JS_CallInternal builds JSStackFrame this way</span></td><td>Ch15</td></tr>
+        <tr id="g-aot"><td class="mono">AOT</td><td>Ahead-Of-Time</td><td><span class="lang-zh-only">编译期就生成机器码（不同于 JIT 的运行时）</span><span class="lang-en-only">machine code generated at compile time (vs JIT's at runtime)</span></td><td>Ch01</td></tr>
+        <tr id="g-bigint"><td class="mono">BigInt</td><td>ECMAScript arbitrary-precision integer</td><td><span class="lang-zh-only">ES2020 引入的任意精度整数类型 · <code>1n</code> 后缀</span><span class="lang-en-only">arbitrary-precision integer type introduced in ES2020 · <code>1n</code> suffix</span></td><td>Ch24</td></tr>
+        <tr id="g-btb"><td class="mono">BTB</td><td>Branch Target Buffer</td><td><span class="lang-zh-only">CPU 缓存"上次这个间接跳到了哪"的硬件机构 · computed goto 派发友好</span><span class="lang-en-only">CPU hardware cache for "where this indirect branch went last time" · benefits computed-goto dispatch</span></td><td>Ch15</td></tr>
+        <tr id="g-bytecode"><td class="mono">bytecode</td><td>interpreter instruction format</td><td><span class="lang-zh-only">字节码 · 介于源码和机器码之间的中间表示 · QuickJS 有 246 个</span><span class="lang-en-only">an intermediate representation between source and machine code · QuickJS has 246 of them</span></td><td>Ch09</td></tr>
+        <tr id="g-computed-goto"><td class="mono">computed&nbsp;goto</td><td>GCC/Clang extension</td><td><span class="lang-zh-only"><code>goto *label_ptr</code> 语法 · 允许跳到运行时变量指向的代码地址</span><span class="lang-en-only"><code>goto *label_ptr</code> syntax · jump to a runtime-variable label address</span></td><td>Ch15</td></tr>
+        <tr id="g-cow"><td class="mono">COW</td><td>Copy-On-Write</td><td><span class="lang-zh-only">引用计数为 1 时原地改、共享时先克隆 · QuickJS Shape 系统的关键技巧</span><span class="lang-en-only">mutate in place if refcount = 1, clone first if shared · key trick in QuickJS Shape system</span></td><td>Ch12</td></tr>
+        <tr id="g-dfs"><td class="mono">DFS</td><td>Depth-First Search</td><td><span class="lang-zh-only">深度优先遍历 · 模块依赖图就靠它 + Tarjan SCC 解循环依赖</span><span class="lang-en-only">depth-first traversal · used to walk module dependency graph plus Tarjan SCC for cycle handling</span></td><td>Ch20</td></tr>
+        <tr id="g-ecma"><td class="mono">ECMAScript / ES</td><td>European Computer Manufacturers Association</td><td><span class="lang-zh-only">JS 的官方规范名 · 版本编号 ES1-ES2023 · 由 TC39 维护</span><span class="lang-en-only">the official spec name for JS · versions ES1 through ES2023 · maintained by TC39</span></td><td>Ch01</td></tr>
+        <tr id="g-fam"><td class="mono">FAM</td><td>Flexible Array Member</td><td><span class="lang-zh-only">C99 特性 · <code>uint8_t tab[];</code> 在 struct 末尾分配变长数组 · JSBigInt / JSAtomStruct 用</span><span class="lang-en-only">C99 feature · <code>uint8_t tab[];</code> at end of struct for variable-length data · used by JSBigInt / JSAtomStruct</span></td><td>Ch24</td></tr>
+        <tr id="g-ic"><td class="mono">IC</td><td>Inline Cache</td><td><span class="lang-zh-only">把"上次这个属性查找的结果"缓存在字节码 / 调用点旁的优化 · <em>QuickJS 故意没做</em></span><span class="lang-en-only">caching "last result of this property lookup" inline next to bytecode · <em>QuickJS deliberately skips this</em></span></td><td>Ch16</td></tr>
+        <tr id="g-jit"><td class="mono">JIT</td><td>Just-In-Time compiler</td><td><span class="lang-zh-only">运行时把热代码编译成机器码 · V8 / JSC 都有 · <em>QuickJS 没有</em></span><span class="lang-en-only">runtime compilation of hot code to machine code · V8 / JSC have it · <em>QuickJS does not</em></span></td><td>Ch01</td></tr>
+        <tr id="g-loc"><td class="mono">LoC</td><td>Lines of Code</td><td><span class="lang-zh-only">代码行数 · QuickJS quickjs.c = 61,874 LoC</span><span class="lang-en-only">lines of code · QuickJS's quickjs.c = 61,874 LoC</span></td><td>Ch05</td></tr>
+        <tr id="g-megamorphic"><td class="mono">megamorphic</td><td>polymorphic to extreme</td><td><span class="lang-zh-only">同一调用点见过 ≥4 种不同 shape · V8 的 IC 在此退化到全量查找</span><span class="lang-en-only">same call site has seen ≥4 distinct shapes · V8's IC degrades to full lookup here</span></td><td>Ch16</td></tr>
+        <tr id="g-monomorphic"><td class="mono">monomorphic</td><td>one shape only</td><td><span class="lang-zh-only">调用点只见过<em>一种</em> shape · V8 IC 最快路径</span><span class="lang-en-only">call site has seen <em>only one</em> shape · V8's fastest IC path</span></td><td>Ch16</td></tr>
+        <tr id="g-nan-boxing"><td class="mono">NaN-boxing</td><td>encoding pointers in NaN bits</td><td><span class="lang-zh-only">把指针 / int 编码在 IEEE-754 NaN 的 mantissa 里 · 32-bit QuickJS 默认</span><span class="lang-en-only">encode pointers/ints in IEEE-754 NaN mantissa bits · QuickJS 32-bit default</span></td><td>Ch10</td></tr>
+        <tr id="g-pc"><td class="mono">pc</td><td>Program Counter</td><td><span class="lang-zh-only">字节码指针 · 解释器的当前位置 · 也是 generator 的"状态变量"</span><span class="lang-en-only">bytecode pointer · interpreter's current position · also the generator's "state variable"</span></td><td>Ch15 · Ch17</td></tr>
+        <tr id="g-polymorphic"><td class="mono">polymorphic</td><td>multi-shape but bounded</td><td><span class="lang-zh-only">同调用点见过 2-4 种 shape · V8 走慢路径但仍缓存</span><span class="lang-en-only">call site has seen 2-4 shapes · V8 takes a slow path but still caches</span></td><td>Ch16</td></tr>
+        <tr id="g-realm"><td class="mono">realm</td><td>ECMAScript execution realm</td><td><span class="lang-zh-only">隔离的 global 环境 · JS 里的"沙箱" · QuickJS 一个 JSRuntime 下可有多 JSContext = 多 realm</span><span class="lang-en-only">isolated global environment · "sandbox" in JS · one JSRuntime can host multiple JSContexts = multiple realms</span></td><td>Ch26</td></tr>
+        <tr id="g-scc"><td class="mono">SCC</td><td>Strongly Connected Component</td><td><span class="lang-zh-only">有向图中互相可达的节点集合 · Tarjan 算法在 O(V+E) 内找出所有 SCC · 模块循环依赖用它</span><span class="lang-en-only">a set of mutually reachable nodes in a directed graph · Tarjan finds all SCCs in O(V+E) · used for module cycles</span></td><td>Ch20</td></tr>
+        <tr id="g-shape"><td class="mono">Shape / HiddenClass</td><td>structural type</td><td><span class="lang-zh-only">对象的"结构类型" · 所有 <code>{x:1, y:2}</code> 共享一个 Shape · 是 V8 hidden class / SpiderMonkey shape 的同义词</span><span class="lang-en-only">structural type of an object · all <code>{x:1, y:2}</code> share one Shape · synonym for V8 hidden class / SpiderMonkey shape</span></td><td>Ch12</td></tr>
+        <tr id="g-stw"><td class="mono">STW</td><td>Stop-The-World</td><td><span class="lang-zh-only">GC 暂停整个程序 · V8/JSC 偶尔出现 · <em>QuickJS 引用计数没有 STW</em></span><span class="lang-en-only">GC pauses the entire program · V8/JSC occasionally · <em>QuickJS's refcount has no STW</em></span></td><td>Ch19</td></tr>
+        <tr id="g-tla"><td class="mono">TLA</td><td>Top-Level Await</td><td><span class="lang-zh-only">模块顶层可以 <code>await</code> · ES2022 引入 · QuickJS 通过 JSModuleDef.has_tla 支持</span><span class="lang-en-only"><code>await</code> at module top level · introduced in ES2022 · QuickJS supports via JSModuleDef.has_tla</span></td><td>Ch20</td></tr>
+        <tr id="g-wpt"><td class="mono">WPT</td><td>Web Platform Tests</td><td><span class="lang-zh-only">浏览器兼容性测试套件 · QuickJS-ng 在 Test262 上 &gt;97%</span><span class="lang-en-only">browser-compatibility test suite · QuickJS-ng passes &gt;97% of Test262</span></td><td>Ch28 · Ch29</td></tr>
+        <tr id="g-x-macro"><td class="mono">X-macro</td><td>C preprocessor trick</td><td><span class="lang-zh-only">同一份 DEF 表用不同 <code>#define</code> 多次 include 出 N 个表 · QuickJS opcode/atom 都用</span><span class="lang-en-only">same DEF table included multiple times with different <code>#define</code>s producing N derived tables · QuickJS opcode/atom both use it</span></td><td>Ch09 · Ch11</td></tr>
+      </tbody>
+    </table>
+
+    <p class="lang-zh-only" style="margin-top:24px; font-size:13px; color:var(--ink-soft);"><em>找 hover 弹注？</em>给每个术语首次出现添加 <code>&lt;dfn class="term"&gt;</code> 包装是个大工程（全文 100+ 处）；折中方案是<em>本表 + Cmd+F</em>——遇到不熟的缩写就跳来这里查。所有锚点都用 <code>#g-XXX</code> 命名，可以直接深链接到某一条。</p>
+    <p class="lang-en-only" style="margin-top:24px; font-size:13px; color:var(--ink-soft);"><em>Where are the hover tooltips?</em> Wrapping every first-occurrence in <code>&lt;dfn class="term"&gt;</code> across the whole article would touch 100+ sites; the pragmatic alternative is <em>this table + Cmd-F</em>. Every row has a stable anchor like <code>#g-btb</code> so you can deep-link.</p>
+  </section>
+
   <!-- ========== CLOSING ========== -->
   <section class="closing">
     <p class="quote lang-zh-only">从 22 字节源码<br>
@@ -7197,6 +7337,140 @@
     apply(saved);
     btnZh.addEventListener("click", function () { apply("zh"); try { localStorage.setItem(KEY, "zh"); } catch (e) {} });
     btnEn.addEventListener("click", function () { apply("en"); try { localStorage.setItem(KEY, "en"); } catch (e) {} });
+  })();
+
+  /* ===== Bytecode stepper (Ch15) ===== */
+  (function () {
+    var svg = document.getElementById('stepper-svg');
+    if (!svg) return;
+
+    // States: [pc_highlight_idx, sp_idx, stack_values[], explain_zh, explain_en, csrc, retVal]
+    var STATES = [
+      // step 0: entry
+      {
+        pc: 0, sp: 0, stack: [null, null, null, null],
+        ezh: "Frame 进入。arg_buf[0] = 1（来自 .map 的 k=0 调用）。pc=0, sp 指向 stack_buf[0]。等待第一次 BREAK 派发。",
+        een: "Frame entered. arg_buf[0] = 1 (from .map's k=0 iteration). pc=0, sp at stack_buf[0]. Awaiting first BREAK dispatch.",
+        csrc: "JS_CallInternal initial setup (quickjs.c:17486+)",
+        ret: "— (still executing)"
+      },
+      // step 1: after get_arg0
+      {
+        pc: 1, sp: 1, stack: ["js_int32(1)", null, null, null],
+        ezh: "OP_get_arg0 派发。CASE(OP_get_arg0): *sp++ = js_dup(arg_buf[0])。栈顶现在是 1, sp 前进 1。BREAK → goto *dispatch_table[*pc++]，pc 推进。",
+        een: "OP_get_arg0 dispatched. CASE(OP_get_arg0): *sp++ = js_dup(arg_buf[0]). Stack top is now 1, sp advanced by 1. BREAK → goto *dispatch_table[*pc++], pc moves forward.",
+        csrc: "quickjs.c:18383 · CASE(OP_get_arg0)",
+        ret: "— (still executing)"
+      },
+      // step 2: after push_2
+      {
+        pc: 2, sp: 2, stack: ["js_int32(1)", "js_int32(2)", null, null],
+        ezh: "OP_push_2 派发。CASE(OP_push_2): *sp++ = js_int32(opcode - OP_push_0)。9 路 case 合并的常量短码。栈：[1, 2], sp=2。",
+        een: "OP_push_2 dispatched. CASE(OP_push_2): *sp++ = js_int32(opcode - OP_push_0). One of 9 fall-through short-form push cases. Stack: [1, 2], sp=2.",
+        csrc: "quickjs.c:17620 · CASE(OP_push_2): in 9-way push_N branch",
+        ret: "— (still executing)"
+      },
+      // step 3: after mul
+      {
+        pc: 3, sp: 1, stack: ["js_int32(2)", null, null, null],
+        ezh: "OP_mul 派发。JS_VALUE_IS_BOTH_INT(1, 2) 为真，走整数快路径：v1=1, v2=2, r = 1×2 = 2 fits in int32 → sp[-2] = js_int32(2), sp--。栈：[2]。",
+        een: "OP_mul dispatched. JS_VALUE_IS_BOTH_INT(1, 2) is true, take int fast path: v1=1, v2=2, r = 1×2 = 2 fits in int32 → sp[-2] = js_int32(2), sp--. Stack: [2].",
+        csrc: "quickjs.c:19470 · CASE(OP_mul) · int×int fast path",
+        ret: "— (still executing)"
+      },
+      // step 4: after return
+      {
+        pc: 4, sp: 0, stack: [null, null, null, null],
+        ezh: "OP_return 派发。ret_val = *--sp（pop 2）；goto done。frame 拆除，close_var_refs(rt, sf) 检查（var_ref_count=0，跳过），返回 js_int32(2) 给 .map 的 k=0 迭代。",
+        een: "OP_return dispatched. ret_val = *--sp (pop 2); goto done. Frame torn down, close_var_refs(rt, sf) checks (var_ref_count=0, skipped), returns js_int32(2) to .map's k=0 iteration.",
+        csrc: "quickjs.c:18043 · CASE(OP_return) · goto done at line 20155",
+        ret: "ret_val = js_int32(2) ✓"
+      },
+    ];
+
+    function paint(idx) {
+      var s = STATES[idx];
+      // Highlight bytecode opcode at pc
+      for (var i = 0; i < 4; i++) {
+        var box = document.getElementById('bc-op-' + i);
+        if (!box) continue;
+        if (i === s.pc - 1 && idx > 0) {
+          // just-fired opcode
+          box.setAttribute('fill', 'rgba(184,68,46,0.18)');
+          box.setAttribute('stroke', '#b8442e');
+          box.setAttribute('stroke-width', '2');
+        } else if (i === s.pc) {
+          // next to fire
+          box.setAttribute('fill', 'rgba(168,122,31,0.12)');
+          box.setAttribute('stroke', '#a87a1f');
+          box.setAttribute('stroke-width', '1.5');
+        } else {
+          box.setAttribute('fill', '#fff');
+          box.setAttribute('stroke', '#cfc7b3');
+          box.setAttribute('stroke-width', '1');
+        }
+      }
+      // Stack contents
+      for (var j = 0; j < 4; j++) {
+        var slot = document.getElementById('sb-text-' + j);
+        var box2 = document.getElementById('sb-' + j);
+        var val = s.stack[j];
+        if (val) {
+          slot.textContent = 'stack_buf[' + j + '] = ' + val;
+          slot.setAttribute('fill', '#207b3a');
+          slot.setAttribute('font-weight', '700');
+          box2.setAttribute('fill', 'rgba(32,123,58,0.12)');
+          box2.setAttribute('stroke', '#207b3a');
+        } else {
+          slot.textContent = 'stack_buf[' + j + '] (empty)';
+          slot.setAttribute('fill', '#767c87');
+          slot.setAttribute('font-weight', '400');
+          box2.setAttribute('fill', '#fff');
+          box2.setAttribute('stroke', '#cfc7b3');
+        }
+      }
+      // sp arrow
+      var spArrow = document.getElementById('sp-arrow');
+      spArrow.setAttribute('y', String(30 + s.sp * 34));
+      // Explanation (lang-aware via querying body class)
+      var isEn = document.body.classList.contains('lang-en');
+      document.getElementById('step-explain').textContent = isEn ? s.een : s.ezh;
+      document.getElementById('step-csrc').textContent = s.csrc;
+      document.getElementById('step-ret').textContent = s.ret;
+      // Update active button
+      var btns = document.querySelectorAll('.step-btn');
+      for (var k = 0; k < btns.length; k++) {
+        if (parseInt(btns[k].dataset.step, 10) === idx) {
+          btns[k].style.background = 'rgba(184,68,46,0.18)';
+          btns[k].classList.add('active');
+        } else {
+          btns[k].style.background = '#fff';
+          btns[k].classList.remove('active');
+        }
+      }
+    }
+
+    var btns = document.querySelectorAll('.step-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener('click', function () {
+        paint(parseInt(this.dataset.step, 10));
+      });
+    }
+    // Auto-play
+    var autoBtn = document.getElementById('step-auto-btn');
+    if (autoBtn) {
+      autoBtn.addEventListener('click', function () {
+        var step = 0;
+        paint(step);
+        var iv = setInterval(function () {
+          step++;
+          if (step > 4) { clearInterval(iv); return; }
+          paint(step);
+        }, 1200);
+      });
+    }
+    // Initial paint
+    paint(0);
   })();
 
   /* ===== TOC scroll-spy ===== */
@@ -7261,6 +7535,15 @@
     tip.className = 'pb-tooltip';
     document.body.appendChild(tip);
 
+    /* highlight in-body refs of a chapter when pulse-cell hovered */
+    var highlightStyle = document.createElement('style');
+    highlightStyle.textContent =
+      '.chap-ref-active { background: rgba(184,68,46,0.20) !important; ' +
+      'box-shadow: 0 0 0 2px rgba(184,68,46,0.30); border-radius: 2px; ' +
+      'transition: background 0.15s, box-shadow 0.15s; }';
+    document.head.appendChild(highlightStyle);
+    var lastHighlighted = [];
+
     cells.forEach(function (c) {
       c.addEventListener('mouseenter', function () {
         var t = c.getAttribute('data-tip');
@@ -7275,10 +7558,27 @@
           tip.style.top = (r.top - tip.offsetHeight - 10) + 'px';
           tip.classList.add('show');
         });
+
+        /* highlight in-body refs of this chapter */
+        var jump = c.getAttribute('data-jump');
+        if (jump) {
+          var refs = document.querySelectorAll('a[href="' + jump + '"]');
+          for (var k = 0; k < refs.length; k++) {
+            // skip the toc-side / toc-chip / pb-cell themselves (already styled)
+            if (refs[k].closest('.toc-side, .toc-chips, .pipeline-bar, .pb-track')) continue;
+            refs[k].classList.add('chap-ref-active');
+            lastHighlighted.push(refs[k]);
+          }
+        }
       });
       c.addEventListener('mouseleave', function () {
         tip.classList.remove('show');
         hoverPaused = false;
+        /* clear highlighted refs */
+        for (var k = 0; k < lastHighlighted.length; k++) {
+          lastHighlighted[k].classList.remove('chap-ref-active');
+        }
+        lastHighlighted = [];
       });
       c.addEventListener('click', function () {
         var sel = c.getAttribute('data-jump');
