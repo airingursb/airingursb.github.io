@@ -66,7 +66,18 @@
       keepalive: true
     })
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (counts) { if (counts) render(counts); })
+      .then(function (counts) {
+        if (!counts) return;
+        if (counts.country) {
+          try { sessionStorage.setItem('vp_country', counts.country); } catch (_) {}
+          try {
+            window.dispatchEvent(new CustomEvent('visitor-country-ready', {
+              detail: { country: counts.country }
+            }));
+          } catch (_) {}
+        }
+        render(counts);
+      })
       .catch(function () {});
   }
 
