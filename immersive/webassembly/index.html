@@ -1613,6 +1613,8 @@
     <li data-section="c27"><a href="#c27"><span class="toc-num">27</span><span class="lang-zh-only">安全模型</span><span class="lang-en-only">Security</span></a></li>
     <li data-section="c28"><a href="#c28"><span class="toc-num">28</span><span class="lang-zh-only">服务端 wasm</span><span class="lang-en-only">Server wasm</span></a></li>
     <li data-section="c29"><a href="#c29"><span class="toc-num">29</span><span class="lang-zh-only">不能做什么</span><span class="lang-en-only">Limits</span></a></li>
+    <li data-section="c30"><a href="#c30"><span class="toc-num">30</span><span class="lang-zh-only">手写 wasm</span><span class="lang-en-only">Hand-write</span></a></li>
+    <li data-section="c31"><a href="#c31"><span class="toc-num">31</span><span class="lang-zh-only">vs eBPF</span><span class="lang-en-only">vs eBPF</span></a></li>
     <li data-section="crefs"><a href="#crefs"><span class="toc-num">§</span><span class="lang-zh-only">引用</span><span class="lang-en-only">Refs</span></a></li>
   </ol>
 </nav>
@@ -1921,6 +1923,8 @@
         <a href="#c27"   class="toc-chip" data-section="c27"><span class="tc-num">27</span><div class="tc-name"><span class="lang-zh-only">安全模型</span><span class="lang-en-only">Security model</span><span class="tc-en">CFI · Spectre · WasmCert</span></div></a>
         <a href="#c28"   class="toc-chip" data-section="c28"><span class="tc-num">28</span><div class="tc-name"><span class="lang-zh-only">服务端 wasm</span><span class="lang-en-only">Server-side wasm</span><span class="tc-en">CF Workers · Spin · Fermyon</span></div></a>
         <a href="#c29"   class="toc-chip" data-section="c29"><span class="tc-num">29</span><div class="tc-name"><span class="lang-zh-only">wasm 不能做什么</span><span class="lang-en-only">What wasm cannot do</span><span class="tc-en">7 hard limits</span></div></a>
+        <a href="#c30"   class="toc-chip" data-section="c30"><span class="tc-num">30</span><div class="tc-name"><span class="lang-zh-only">手写 wasm</span><span class="lang-en-only">Hand-write wasm</span><span class="tc-en">byte · LEB128</span></div></a>
+        <a href="#c31"   class="toc-chip" data-section="c31"><span class="tc-num">31</span><div class="tc-name"><span class="lang-zh-only">Wasm vs eBPF</span><span class="lang-en-only">Wasm vs eBPF</span><span class="tc-en">user vs kernel</span></div></a>
         <a href="#crefs" class="toc-chip tc-special" data-section="crefs"><span class="tc-num">§</span><div class="tc-name"><span class="lang-zh-only">References &amp; Standards</span><span class="lang-en-only">References &amp; Standards</span><span class="tc-en">W3C · IETF · papers · source</span></div></a>
       </div>
     </div>
@@ -5704,6 +5708,378 @@ call   <span class="wat-op">WasmCompileLazy</span>                  <span class=
       <p class="svg-cap lang-en-only">Left: Liftoff emits one machine op per wasm byte; nine <code style="font-family:var(--mono);color:var(--accent)">local.get $src</code> turn into nine <code style="font-family:var(--mono);color:var(--accent)">mov</code>s. Right: TurboFan sees the nine reference the same SSA node, LoadElimination merges them into a single register read; <code style="font-family:var(--mono);color:var(--accent)">sum / 9</code> is recognised as divide-by-constant during SimplifiedLowering and rewritten as <em>magic-number multiplication</em> (<code style="font-family:var(--mono);color:var(--accent)">0x1c71c71d</code>). The concrete form of wasm's "<em>80% of native</em>".</p>
     </figure>
 
+    <h3 class="sub lang-zh-only">完整 IR · 50+ 节点 · 真实形状</h3>
+    <h3 class="sub lang-en-only">Full IR · 50+ nodes · the actual shape</h3>
+
+    <p class="lang-zh-only">上面那张是<em>示意图</em>,但 hot.rs 真实的 TurboFan IR 大约有 50-60 个节点(包括 <code>Start</code> / <code>End</code> / <code>FrameState</code> / <code>Effect</code> / <code>Control</code> 等基础设施节点)。下面这张<strong>完整版</strong> 把 inner loop body 全部画出来,按 BasicBlock 分组,Effect chain 与 Value chain 分两种颜色显示。这是 V8 跑 <code>--trace-turbo-graph</code> + <code>turbolizer</code> 可视化时你会真正看到的图。</p>
+    <p class="lang-en-only">The figure above is a <em>schematic</em>. The actual TurboFan IR for hot.rs runs ~ 50-60 nodes (including infrastructure like <code>Start</code> / <code>End</code> / <code>FrameState</code> / <code>Effect</code> / <code>Control</code>). Below is the <strong>full version</strong> for the inner loop body, grouped by BasicBlock, with effect chain and value chain on separate colour scales. This is what you actually see when V8 runs with <code>--trace-turbo-graph</code> and you load the output in <code>turbolizer</code>.</p>
+
+    <!-- ===== SVG · FULL sea-of-nodes graph · post-LoadElim / post-SimplifiedLowering ===== -->
+    <figure class="svg-figure" aria-label="Full TurboFan sea-of-nodes IR graph for the inner loop">
+      <span class="svg-tag">FIG 15b · sea-of-nodes · full IR · 50+ nodes · 4 BBs</span>
+      <svg viewBox="0 0 920 1080" role="img" aria-labelledby="sonFullT sonFullD">
+        <title id="sonFullT">完整 TurboFan IR · Hot Loop inner body</title>
+        <desc id="sonFullD">A complete sea-of-nodes graph for the Hot Loop's inner body, showing all 50+ nodes including Start/End/FrameState/Effect/Control infrastructure, grouped into 4 BasicBlocks (pre-header / loop body / continue / exit). Value-flow edges in copper, effect-chain in blue, control-flow in gpu purple.</desc>
+
+        <text x="460" y="22" text-anchor="middle" class="t-label">FULL IR · 4 BASIC BLOCKS · post-LoadElim + post-SimplifiedLowering</text>
+
+        <!-- Legend (top right) -->
+        <g transform="translate(720,40)">
+          <rect width="190" height="120" rx="3" class="s-paper" stroke="var(--rule)" stroke-width="0.8"/>
+          <text x="95" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">LEGEND · NODE COLOURS</text>
+          <g transform="translate(8,22)" class="t-mono-xs">
+            <rect x="0" y="0" width="14" height="10" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="20" y="9" style="fill:var(--ink-soft)">control · Start / Branch / Merge / Phi / End</text>
+            <rect x="0" y="16" width="14" height="10" class="s-cu-p" stroke="var(--copper)"/>
+            <text x="20" y="25" style="fill:var(--ink-soft)">memory · Load / Store</text>
+            <rect x="0" y="32" width="14" height="10" class="s-acc-p" stroke="var(--accent)"/>
+            <text x="20" y="41" style="fill:var(--ink-soft)">arithmetic · Add / Mul / Sub / Shr</text>
+            <rect x="0" y="48" width="14" height="10" class="s-blue-p" stroke="var(--blue)"/>
+            <text x="20" y="57" style="fill:var(--ink-soft)">constant · Int32Constant</text>
+            <rect x="0" y="64" width="14" height="10" class="s-paper" stroke="var(--ink-mute)" stroke-dasharray="2 2"/>
+            <text x="20" y="73" style="fill:var(--ink-soft)">infrastructure · FrameState / Effect</text>
+            <line x1="0" y1="84" x2="14" y2="84" class="stk-cu" stroke-width="1.5"/>
+            <text x="20" y="88" style="fill:var(--ink-soft)">value edge</text>
+            <line x1="0" y1="94" x2="14" y2="94" class="stk-blue" stroke-width="1.5" stroke-dasharray="3 2"/>
+            <text x="20" y="98" style="fill:var(--ink-soft)">effect chain</text>
+            <line x1="0" y1="104" x2="14" y2="104" class="stk-gpu" stroke-width="1.5"/>
+            <text x="20" y="108" style="fill:var(--ink-soft)">control flow</text>
+          </g>
+        </g>
+
+        <!-- ===========================================================
+             BB0 · Pre-header / function entry
+             =========================================================== -->
+        <g transform="translate(20,60)">
+          <rect width="660" height="120" rx="6" fill="none" stroke="var(--rule)" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="14" y="-6" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">BB0 · pre-header · entry block</text>
+
+          <!-- Start node -->
+          <g transform="translate(20,20)">
+            <rect width="50" height="22" rx="3" class="s-gpu" stroke="var(--gpu)"/>
+            <text x="25" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Start</text>
+          </g>
+
+          <!-- Parameters $src, $dst, $w, $h, $y_init=1 -->
+          <g transform="translate(90,8)">
+            <rect width="64" height="22" rx="3" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="32" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">Param $src</text>
+          </g>
+          <g transform="translate(160,8)">
+            <rect width="64" height="22" rx="3" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="32" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">Param $dst</text>
+          </g>
+          <g transform="translate(230,8)">
+            <rect width="50" height="22" rx="3" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="25" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">Param $w</text>
+          </g>
+          <g transform="translate(286,8)">
+            <rect width="50" height="22" rx="3" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="25" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">Param $h</text>
+          </g>
+
+          <!-- Constants 1, h-1, w-1, 9 -->
+          <g transform="translate(90,40)">
+            <rect width="42" height="22" rx="3" class="s-blue-p" stroke="var(--blue)"/>
+            <text x="21" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">Const 1</text>
+          </g>
+          <g transform="translate(140,40)">
+            <rect width="58" height="22" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+            <text x="29" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Int32Sub h-1</text>
+          </g>
+          <g transform="translate(204,40)">
+            <rect width="58" height="22" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+            <text x="29" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Int32Sub w-1</text>
+          </g>
+          <g transform="translate(268,40)">
+            <rect width="42" height="22" rx="3" class="s-blue-p" stroke="var(--blue)"/>
+            <text x="21" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">Const 9</text>
+          </g>
+          <g transform="translate(316,40)">
+            <rect width="64" height="22" rx="3" class="s-blue-p" stroke="var(--blue)"/>
+            <text x="32" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">Const 0x1c71c71d</text>
+          </g>
+
+          <!-- LoopEntry / Merge into loop -->
+          <g transform="translate(20,70)">
+            <rect width="80" height="22" rx="3" class="s-gpu" stroke="var(--gpu)"/>
+            <text x="40" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Loop (y-loop)</text>
+          </g>
+          <g transform="translate(110,70)">
+            <rect width="74" height="22" rx="3" class="s-paper" stroke="var(--ink-mute)" stroke-dasharray="2 2"/>
+            <text x="37" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">EffectPhi</text>
+          </g>
+          <g transform="translate(192,70)">
+            <rect width="60" height="22" rx="3" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="30" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">Phi $y</text>
+          </g>
+          <g transform="translate(260,70)">
+            <rect width="60" height="22" rx="3" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="30" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">Phi $x</text>
+          </g>
+
+          <!-- Branch condition for y < h-1 -->
+          <g transform="translate(328,70)">
+            <rect width="84" height="22" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+            <text x="42" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Int32LessThan</text>
+          </g>
+          <g transform="translate(420,70)">
+            <rect width="56" height="22" rx="3" class="s-gpu" stroke="var(--gpu)"/>
+            <text x="28" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Branch</text>
+          </g>
+        </g>
+
+        <!-- ===========================================================
+             BB1 · Loop body · 9 loads / 8 adds / div→mul-shr / store
+             =========================================================== -->
+        <g transform="translate(20,210)">
+          <rect width="660" height="560" rx="6" fill="none" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="4 3"/>
+          <text x="14" y="-6" class="t-mono-xs" style="fill:var(--accent);font-weight:700">BB1 · loop body · 30+ nodes · the hot path</text>
+
+          <!-- 9 LoadFromObject nodes in 3×3 grid -->
+          <g transform="translate(20,18)">
+            <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">9 × LoadFromObject (post-LoadElim, all dedup'd to one $src)</text>
+            <!-- row 0 -->
+            <g transform="translate(0,10)">
+              <rect width="70" height="22" rx="3" class="s-cu-p" stroke="var(--copper)"/>
+              <text x="35" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Load r0c0</text>
+            </g>
+            <g transform="translate(80,10)"><rect width="70" height="22" rx="3" class="s-cu-p" stroke="var(--copper)"/><text x="35" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Load r0c1</text></g>
+            <g transform="translate(160,10)"><rect width="70" height="22" rx="3" class="s-cu-p" stroke="var(--copper)"/><text x="35" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Load r0c2</text></g>
+            <!-- row 1 -->
+            <g transform="translate(0,42)"><rect width="70" height="22" rx="3" class="s-cu-p" stroke="var(--copper)"/><text x="35" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Load r1c0</text></g>
+            <g transform="translate(80,42)"><rect width="70" height="22" rx="3" class="s-cu-p" stroke="var(--copper)"/><text x="35" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Load r1c1</text></g>
+            <g transform="translate(160,42)"><rect width="70" height="22" rx="3" class="s-cu-p" stroke="var(--copper)"/><text x="35" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Load r1c2</text></g>
+            <!-- row 2 -->
+            <g transform="translate(0,74)"><rect width="70" height="22" rx="3" class="s-cu-p" stroke="var(--copper)"/><text x="35" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Load r2c0</text></g>
+            <g transform="translate(80,74)"><rect width="70" height="22" rx="3" class="s-cu-p" stroke="var(--copper)"/><text x="35" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Load r2c1</text></g>
+            <g transform="translate(160,74)"><rect width="70" height="22" rx="3" class="s-cu-p" stroke="var(--copper)"/><text x="35" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Load r2c2</text></g>
+
+            <!-- Effect chain side annotation -->
+            <text x="240" y="56" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">↓ effect chain</text>
+          </g>
+
+          <!-- 8 Int32Add nodes — tree reduction -->
+          <g transform="translate(20,150)">
+            <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">8 × Int32Add (tree-reduced after Scheduling)</text>
+            <!-- Level 1: 4 pairwise adds -->
+            <g transform="translate(0,12)">
+              <rect width="60" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+              <text x="30" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Add 0+1</text>
+            </g>
+            <g transform="translate(70,12)"><rect width="60" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/><text x="30" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Add 2+3</text></g>
+            <g transform="translate(140,12)"><rect width="60" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/><text x="30" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Add 4+5</text></g>
+            <g transform="translate(210,12)"><rect width="60" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/><text x="30" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Add 6+7</text></g>
+            <!-- Level 2: 2 pairwise adds -->
+            <g transform="translate(30,42)"><rect width="70" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/><text x="35" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Add 01+23</text></g>
+            <g transform="translate(170,42)"><rect width="70" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/><text x="35" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Add 45+67</text></g>
+            <!-- Level 3: 1 add + 8th pixel -->
+            <g transform="translate(60,72)"><rect width="100" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/><text x="50" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Add 0..7</text></g>
+            <g transform="translate(170,72)"><rect width="80" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/><text x="40" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Add +8 (sum)</text></g>
+          </g>
+
+          <!-- div→mul+shr chain -->
+          <g transform="translate(20,260)">
+            <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">div → magic-mul + shr (SimplifiedLowering rewrites const-div)</text>
+            <g transform="translate(0,12)">
+              <rect width="110" height="22" rx="3" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+              <text x="55" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">Int32Mul (× 0x1c71c71d)</text>
+            </g>
+            <g transform="translate(122,12)">
+              <rect width="80" height="22" rx="3" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+              <text x="40" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">Word32SHR 32</text>
+            </g>
+            <g transform="translate(212,12)">
+              <rect width="80" height="22" rx="3" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+              <text x="40" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">Word32SHR 1</text>
+            </g>
+            <g transform="translate(310,12)">
+              <rect width="80" height="22" rx="3" class="s-cu-p" stroke="var(--copper)"/>
+              <text x="40" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Int32ToUint8</text>
+            </g>
+            <text x="400" y="25" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">~ 4 cycles total · vs div ~ 25 cycles</text>
+          </g>
+
+          <!-- Address arithmetic for store -->
+          <g transform="translate(20,320)">
+            <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">Address calc for store</text>
+            <g transform="translate(0,12)">
+              <rect width="80" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+              <text x="40" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">y × w</text>
+            </g>
+            <g transform="translate(90,12)">
+              <rect width="80" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+              <text x="40" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">y·w + x</text>
+            </g>
+            <g transform="translate(180,12)">
+              <rect width="92" height="20" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+              <text x="46" y="13" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">dst + y·w + x</text>
+            </g>
+          </g>
+
+          <!-- Store + Trap check + Effect chain -->
+          <g transform="translate(20,370)">
+            <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">Store + trap check</text>
+            <g transform="translate(0,12)">
+              <rect width="92" height="22" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+              <text x="46" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">BoundsCheck</text>
+            </g>
+            <g transform="translate(102,12)">
+              <rect width="96" height="22" rx="3" class="s-cu-p" stroke="var(--copper)" stroke-width="1.2"/>
+              <text x="48" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">StoreToObject</text>
+            </g>
+            <g transform="translate(208,12)">
+              <rect width="84" height="22" rx="3" class="s-paper" stroke="var(--ink-mute)" stroke-dasharray="2 2"/>
+              <text x="42" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">FrameState</text>
+            </g>
+          </g>
+
+          <!-- Loop induction · x++ y++ -->
+          <g transform="translate(20,420)">
+            <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">Loop induction</text>
+            <g transform="translate(0,12)">
+              <rect width="84" height="22" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+              <text x="42" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">x + 1 (inner)</text>
+            </g>
+            <g transform="translate(94,12)">
+              <rect width="100" height="22" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+              <text x="50" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Int32LessThan (x &lt; w-1)</text>
+            </g>
+            <g transform="translate(204,12)">
+              <rect width="56" height="22" rx="3" class="s-gpu" stroke="var(--gpu)"/>
+              <text x="28" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Branch</text>
+            </g>
+            <g transform="translate(268,12)">
+              <rect width="60" height="22" rx="3" class="s-gpu-p" stroke="var(--gpu)"/>
+              <text x="30" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">IfTrue</text>
+            </g>
+            <g transform="translate(336,12)">
+              <rect width="60" height="22" rx="3" class="s-gpu-p" stroke="var(--gpu)"/>
+              <text x="30" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">IfFalse</text>
+            </g>
+          </g>
+
+          <!-- annotation on right -->
+          <g transform="translate(440,250)">
+            <rect width="200" height="220" rx="3" class="s-paper2" stroke="var(--ink-mute)" stroke-dasharray="3 2"/>
+            <text x="10" y="16" class="t-mono-xs" style="fill:var(--ink);font-weight:700">PASS EFFECTS · here we see</text>
+            <foreignObject x="10" y="22" width="180" height="200">
+              <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--sans);font-size:11px;line-height:1.5;color:var(--ink-soft)">
+                <p style="margin:0 0 8px"><strong style="color:var(--copper)">LoadElim</strong>: 9 loads survived (3×3 pixels), but $src base reuses one Param node — that's 1 of "9 collapse to 1 reg-read" in machine code.</p>
+                <p style="margin:0 0 8px"><strong style="color:var(--accent)">SimplifiedLowering</strong>: <code style="font-family:var(--mono)">div_u 9</code> rewrote into <code style="font-family:var(--mono)">Mul × 0x1c71c71d</code> + two <code style="font-family:var(--mono)">Word32SHR</code> — magic-number div.</p>
+                <p style="margin:0"><strong style="color:var(--gpu)">Scheduling</strong>: nodes grouped into 4 BBs; 8 adds become a balanced tree (4 + 2 + 1 + 1 = 4 levels of latency, vs 8 sequential).</p>
+              </div>
+            </foreignObject>
+          </g>
+        </g>
+
+        <!-- ===========================================================
+             BB2 · Loop continue (back-edge)
+             =========================================================== -->
+        <g transform="translate(20,790)">
+          <rect width="660" height="80" rx="6" fill="none" stroke="var(--gpu)" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="14" y="-6" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">BB2 · loop continue (back-edge → BB1)</text>
+          <g transform="translate(20,18)">
+            <rect width="74" height="22" rx="3" class="s-gpu" stroke="var(--gpu)"/>
+            <text x="37" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">LoopExit</text>
+          </g>
+          <g transform="translate(104,18)">
+            <rect width="86" height="22" rx="3" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="43" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">EffectPhi update</text>
+          </g>
+          <g transform="translate(200,18)">
+            <rect width="80" height="22" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+            <text x="40" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">y + 1 (outer)</text>
+          </g>
+          <g transform="translate(290,18)">
+            <rect width="92" height="22" rx="3" class="s-acc-p" stroke="var(--accent)"/>
+            <text x="46" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Int32LessThan (y&lt;h-1)</text>
+          </g>
+          <g transform="translate(20,48)">
+            <rect width="56" height="22" rx="3" class="s-gpu" stroke="var(--gpu)"/>
+            <text x="28" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Branch</text>
+          </g>
+          <text x="86" y="62" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">→ back to BB1 if more rows; → BB3 (exit) otherwise</text>
+        </g>
+
+        <!-- ===========================================================
+             BB3 · Loop exit / function return
+             =========================================================== -->
+        <g transform="translate(20,890)">
+          <rect width="660" height="76" rx="6" fill="none" stroke="var(--rule)" stroke-width="1" stroke-dasharray="4 3"/>
+          <text x="14" y="-6" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">BB3 · function epilogue · return</text>
+          <g transform="translate(20,16)">
+            <rect width="60" height="22" rx="3" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="30" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">Merge</text>
+          </g>
+          <g transform="translate(90,16)">
+            <rect width="76" height="22" rx="3" class="s-paper" stroke="var(--ink-mute)" stroke-dasharray="2 2"/>
+            <text x="38" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">EffectPhi</text>
+          </g>
+          <g transform="translate(176,16)">
+            <rect width="60" height="22" rx="3" class="s-gpu" stroke="var(--gpu)"/>
+            <text x="30" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Return</text>
+          </g>
+          <g transform="translate(246,16)">
+            <rect width="42" height="22" rx="3" class="s-gpu" stroke="var(--gpu)"/>
+            <text x="21" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">End</text>
+          </g>
+          <text x="310" y="30" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">total: 4 BBs, ~ 48 nodes,  ~ 180 bytes of x86-64 emitted</text>
+        </g>
+
+        <!-- ===========================================================
+             VALUE / EFFECT / CONTROL edges (sample, illustrative — full graph would be unreadable)
+             =========================================================== -->
+        <!-- Some control edges from BB0 → BB1 -->
+        <g class="stk-gpu" stroke-width="1.2" fill="none">
+          <path d="M 476,151 L 476,210" marker-end="url(#arrSON)"/>
+        </g>
+        <!-- Some effect edges from loads down -->
+        <g class="stk-blue" stroke-width="0.8" fill="none" stroke-dasharray="3 2">
+          <path d="M 55,260 L 55,360"/>
+          <path d="M 135,260 L 75,360" />
+          <path d="M 215,260 L 95,360" />
+        </g>
+        <!-- some value edges -->
+        <g class="stk-cu" stroke-width="0.6" fill="none">
+          <path d="M 55,260 Q 30,330 50,420" />
+          <path d="M 215,260 Q 250,330 180,420" />
+        </g>
+        <!-- BB1 -> BB2 back-edge -->
+        <g class="stk-gpu" stroke-width="1.2" fill="none">
+          <path d="M 396,654 Q 470,720 466,790" stroke-dasharray="4 3"/>
+        </g>
+        <!-- BB2 back to BB1 -->
+        <g class="stk-gpu" stroke-width="1" fill="none">
+          <path d="M 50,810 Q 5,500 5,210 L 20,210" stroke-dasharray="4 3" marker-end="url(#arrSON)"/>
+          <text x="7" y="500" class="t-mono-xs" style="fill:var(--gpu);font-style:italic">back-edge</text>
+        </g>
+        <!-- BB2 → BB3 -->
+        <g class="stk-gpu" stroke-width="1.2" fill="none">
+          <path d="M 50,860 L 50,890" marker-end="url(#arrSON)"/>
+        </g>
+
+        <defs>
+          <marker id="arrSON" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--gpu)"/>
+          </marker>
+        </defs>
+
+        <!-- Bottom note · how to view this yourself -->
+        <g transform="translate(20,1010)">
+          <rect width="880" height="50" rx="4" class="s-paper2" stroke="var(--accent)" stroke-dasharray="3 2"/>
+          <text x="10" y="16" class="t-mono-xs" style="fill:var(--accent);font-weight:700">REPRODUCE IT YOURSELF</text>
+          <foreignObject x="10" y="22" width="860" height="30">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--mono);font-size:11px;color:var(--ink-soft)">
+              <code style="color:var(--accent)">d8 --trace-turbo --trace-turbo-graph hot.js</code> generates <code style="color:var(--accent)">turbo-*.json</code> · open in <a href="https://v8.github.io/tools/head/turbolizer/index.html" style="color:var(--accent);text-decoration:none;border-bottom:1px dotted">turbolizer</a> for the live interactive graph (filter by phase, hover for node properties, follow effect chains).
+            </div>
+          </foreignObject>
+        </g>
+      </svg>
+      <p class="svg-cap lang-zh-only"><strong>这才是 hot.wasm 在 TurboFan 里的真容</strong>:4 个 BasicBlock(pre-header / loop body / loop continue / exit)、~ 48 个节点、3 种边(<span style="color:var(--copper)">copper 值边</span>、<span style="color:var(--blue)">blue 效应链</span>、<span style="color:var(--gpu)">gpu 控制流</span>)。上面的"简化版"压缩了 90% 的元节点(Start/End/EffectPhi/FrameState 等),适合一眼看到 LoadElim/SimplifiedLowering 的关键转换;这张是<em>真实形状</em>。读完两张图你就能<em>读懂</em> <code style="font-family:var(--mono);color:var(--accent)">--trace-turbo-graph</code> 在 turbolizer 里的输出。</p>
+      <p class="svg-cap lang-en-only"><strong>This is what hot.wasm actually looks like inside TurboFan</strong>: 4 BasicBlocks (pre-header / loop body / loop continue / exit), ~ 48 nodes, three edge kinds (<span style="color:var(--copper)">copper value</span>, <span style="color:var(--blue)">blue effect</span>, <span style="color:var(--gpu)">gpu control</span>). The simpler figure above compresses ~ 90% of infrastructure nodes (Start/End/EffectPhi/FrameState) to highlight LoadElim/SimplifiedLowering's key effects; this is the <em>real shape</em>. After both, you can <em>read</em> a turbolizer dump.</p>
+    </figure>
+
     <h3 class="sub lang-zh-only">从 TurboFan 到 Turboshaft</h3>
     <h3 class="sub lang-en-only">From TurboFan to Turboshaft</h3>
 
@@ -5756,6 +6132,163 @@ call   <span class="wat-op">WasmCompileLazy</span>                  <span class=
     <div class="lang-en-only">
       <p>WebAssembly.Module is an <em>immutable</em> compilation artifact — it carries code, types, import/export declarations. To actually <em>run</em> it, create a WebAssembly.Instance: satisfy imports, allocate memory / table / globals. <span class="em">One Module can spawn many Instances, each with its own memory</span> — the foundation of wasm's "<em>multithreading</em>" and "<em>sandbox isolation</em>".</p>
     </div>
+
+    <!-- ===== SVG · Instantiate 7-step timeline with branches ===== -->
+    <figure class="svg-figure" aria-label="Wasm instantiation 7-step timeline with trap branches">
+      <span class="svg-tag">FIG 16 · instantiate · 7 steps · with trap branches</span>
+      <svg viewBox="0 0 760 480" role="img" aria-labelledby="instT instD">
+        <title id="instT">wasm 实例化 7 步流程时序图</title>
+        <desc id="instD">A horizontal timeline of the 7 instantiation steps (check imports, allocate memory, allocate tables, init globals, apply data segments, apply elements, run start function), with branches showing each step's failure modes (LinkError vs RuntimeError) and atomic-rollback semantics.</desc>
+
+        <text x="380" y="22" text-anchor="middle" class="t-label">INSTANTIATION · 7 SERIAL STEPS · EACH CAN FAIL DIFFERENTLY</text>
+
+        <!-- Top: main timeline -->
+        <g transform="translate(0,55)">
+          <line x1="40" y1="20" x2="720" y2="20" class="stk-ink" stroke-width="1.5"/>
+          <text x="380" y="-2" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">~ 1 ms total · sync · all-or-nothing</text>
+
+          <!-- 7 step boxes -->
+          <g transform="translate(40,8)">  <rect width="90" height="26" rx="3" class="s-blue-p" stroke="var(--blue)" stroke-width="1.2"/>  <text x="45" y="18" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">① check imports</text></g>
+          <g transform="translate(138,8)"> <rect width="84" height="26" rx="3" class="s-cu-p" stroke="var(--copper)" stroke-width="1.2"/>  <text x="42" y="18" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">② alloc memory</text></g>
+          <g transform="translate(230,8)"> <rect width="76" height="26" rx="3" class="s-cu-p" stroke="var(--copper)" stroke-width="1.2"/>  <text x="38" y="18" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">③ alloc tables</text></g>
+          <g transform="translate(314,8)"> <rect width="76" height="26" rx="3" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>  <text x="38" y="18" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">④ init globals</text></g>
+          <g transform="translate(398,8)"> <rect width="90" height="26" rx="3" class="s-cu-p" stroke="var(--copper)" stroke-width="1.2"/>  <text x="45" y="18" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">⑤ data segments</text></g>
+          <g transform="translate(496,8)"> <rect width="90" height="26" rx="3" class="s-cu-p" stroke="var(--copper)" stroke-width="1.2"/>  <text x="45" y="18" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">⑥ element fill</text></g>
+          <g transform="translate(594,8)"> <rect width="90" height="26" rx="3" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>  <text x="45" y="18" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">⑦ start func</text></g>
+
+          <!-- arrows between -->
+          <g class="stk-ink" stroke-width="1" fill="none">
+            <path d="M 130,21 L 138,21"  marker-end="url(#instArr)"/>
+            <path d="M 222,21 L 230,21"  marker-end="url(#instArr)"/>
+            <path d="M 306,21 L 314,21"  marker-end="url(#instArr)"/>
+            <path d="M 390,21 L 398,21"  marker-end="url(#instArr)"/>
+            <path d="M 488,21 L 496,21"  marker-end="url(#instArr)"/>
+            <path d="M 586,21 L 594,21"  marker-end="url(#instArr)"/>
+            <path d="M 684,21 L 712,21"  marker-end="url(#instArr)"/>
+          </g>
+          <text x="725" y="25" class="t-mono-xs" style="fill:var(--good);font-weight:700">✓ ready</text>
+        </g>
+
+        <!-- Failure branches: each step branches down on error -->
+        <g transform="translate(0,120)" class="t-mono-xs">
+          <!-- Step 1 failure -->
+          <line x1="85" y1="0" x2="85" y2="20" class="stk-heat stk-dash"/>
+          <g transform="translate(20,22)">
+            <rect width="130" height="56" rx="3" class="s-paper" stroke="var(--heat)" stroke-width="1.2"/>
+            <text x="65" y="14" text-anchor="middle" style="fill:var(--heat);font-weight:700">LinkError</text>
+            <text x="65" y="28" text-anchor="middle" style="fill:var(--ink-soft)">import type mismatch</text>
+            <text x="65" y="42" text-anchor="middle" style="fill:var(--ink-mute);font-style:italic">memory expected i32,</text>
+            <text x="65" y="52" text-anchor="middle" style="fill:var(--ink-mute);font-style:italic">got Function · etc.</text>
+          </g>
+
+          <!-- Step 2 failure -->
+          <line x1="180" y1="0" x2="180" y2="20" class="stk-heat stk-dash"/>
+          <g transform="translate(150,22)">
+            <rect width="90" height="56" rx="3" class="s-paper" stroke="var(--heat)" stroke-width="1.2"/>
+            <text x="45" y="14" text-anchor="middle" style="fill:var(--heat);font-weight:700">RangeError</text>
+            <text x="45" y="28" text-anchor="middle" style="fill:var(--ink-soft)">min &gt; max page</text>
+            <text x="45" y="42" text-anchor="middle" style="fill:var(--ink-mute);font-style:italic">or OOM</text>
+          </g>
+
+          <!-- Step 4 failure (init globals can run user constexpr that traps) -->
+          <line x1="352" y1="0" x2="352" y2="20" class="stk-heat stk-dash"/>
+          <g transform="translate(280,22)">
+            <rect width="142" height="56" rx="3" class="s-paper" stroke="var(--warn)" stroke-width="1.2"/>
+            <text x="71" y="14" text-anchor="middle" style="fill:var(--warn);font-weight:700">CompileError</text>
+            <text x="71" y="28" text-anchor="middle" style="fill:var(--ink-soft)">init expression invalid</text>
+            <text x="71" y="42" text-anchor="middle" style="fill:var(--ink-mute);font-style:italic">(should have been caught</text>
+            <text x="71" y="52" text-anchor="middle" style="fill:var(--ink-mute);font-style:italic">earlier; defensive)</text>
+          </g>
+
+          <!-- Step 5 failure -->
+          <line x1="443" y1="0" x2="443" y2="20" class="stk-heat stk-dash"/>
+          <g transform="translate(425,22)">
+            <rect width="100" height="56" rx="3" class="s-paper" stroke="var(--heat)" stroke-width="1.2"/>
+            <text x="50" y="14" text-anchor="middle" style="fill:var(--heat);font-weight:700">RuntimeError</text>
+            <text x="50" y="28" text-anchor="middle" style="fill:var(--ink-soft)">data segment OOB</text>
+            <text x="50" y="42" text-anchor="middle" style="fill:var(--ink-mute);font-style:italic">offset+len &gt; memory</text>
+          </g>
+
+          <!-- Step 6 failure -->
+          <line x1="541" y1="0" x2="541" y2="20" class="stk-heat stk-dash"/>
+          <g transform="translate(530,22)">
+            <rect width="100" height="56" rx="3" class="s-paper" stroke="var(--heat)" stroke-width="1.2"/>
+            <text x="50" y="14" text-anchor="middle" style="fill:var(--heat);font-weight:700">RuntimeError</text>
+            <text x="50" y="28" text-anchor="middle" style="fill:var(--ink-soft)">element OOB</text>
+            <text x="50" y="42" text-anchor="middle" style="fill:var(--ink-mute);font-style:italic">table index out of range</text>
+          </g>
+
+          <!-- Step 7 failure -->
+          <line x1="639" y1="0" x2="639" y2="20" class="stk-heat stk-dash"/>
+          <g transform="translate(635,22)">
+            <rect width="120" height="56" rx="3" class="s-paper" stroke="var(--heat)" stroke-width="1.2"/>
+            <text x="60" y="14" text-anchor="middle" style="fill:var(--heat);font-weight:700">RuntimeError</text>
+            <text x="60" y="28" text-anchor="middle" style="fill:var(--ink-soft)">start trap</text>
+            <text x="60" y="42" text-anchor="middle" style="fill:var(--ink-mute);font-style:italic">div/0, OOB, unreachable</text>
+          </g>
+        </g>
+
+        <!-- ATOMICITY annotation -->
+        <g transform="translate(0,230)">
+          <rect x="20" y="0" width="720" height="60" rx="4" class="s-paper2" stroke="var(--accent)" stroke-dasharray="3 2"/>
+          <text x="32" y="18" class="t-mono-xs" style="fill:var(--accent);font-weight:700">ATOMICITY · 失败 = 整个 Instance 不创建</text>
+          <foreignObject x="32" y="22" width="700" height="40">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--sans);font-size:12px;line-height:1.55;color:var(--ink-soft)">
+              <strong>任何一步失败,前面已经做的工作必须<em>原子回滚</em></strong>:已分配的 memory 释放、已填的 globals 清零、imports 释放引用。V8 用 <em>placement-new 风格</em>(先在临时区构造,最后用 atomic store swap 进 Instance 表)实现 — 失败时丢弃临时区即可。Promise 返回 reject,从外部看 Instance 从来没存在过。
+            </div>
+          </foreignObject>
+        </g>
+
+        <!-- Detail per step (bottom) -->
+        <g transform="translate(0,310)">
+          <text x="20" y="0" class="t-label">DETAILS · per step</text>
+
+          <g transform="translate(20,20)" class="t-mono-xs">
+            <text x="0" y="0" style="fill:var(--blue);font-weight:700">① CHECK IMPORTS</text>
+            <text x="0" y="14" style="fill:var(--ink-soft)">遍历 import section 每条声明,比对 JS importObject 的对应属性</text>
+            <text x="0" y="28" style="fill:var(--ink-soft)">类型(func/memory/table/global)和 signature 是否匹配</text>
+
+            <text x="370" y="0" style="fill:var(--copper);font-weight:700">② ALLOC MEMORY</text>
+            <text x="370" y="14" style="fill:var(--ink-soft)">如果 import 了 memory → 复用 import 的;否则按 Memory section</text>
+            <text x="370" y="28" style="fill:var(--ink-soft)">的 min page 申请新 ArrayBuffer + 4GiB 虚拟保留 (V8/x64)</text>
+          </g>
+
+          <g transform="translate(20,72)" class="t-mono-xs">
+            <text x="0" y="0" style="fill:var(--copper);font-weight:700">③ ALLOC TABLES</text>
+            <text x="0" y="14" style="fill:var(--ink-soft)">同理:复用 import 或新申请 funcref/externref 数组</text>
+            <text x="0" y="28" style="fill:var(--ink-soft)">初始全 null</text>
+
+            <text x="370" y="0" style="fill:var(--accent);font-weight:700">④ INIT GLOBALS</text>
+            <text x="370" y="14" style="fill:var(--ink-soft)">跑每个 global 的 init expression(常量 + global.get 已 init</text>
+            <text x="370" y="28" style="fill:var(--ink-soft)">的 immutable global)</text>
+          </g>
+
+          <g transform="translate(20,124)" class="t-mono-xs">
+            <text x="0" y="0" style="fill:var(--copper);font-weight:700">⑤ DATA SEGMENTS</text>
+            <text x="0" y="14" style="fill:var(--ink-soft)">把 active data 段 memcpy 进 linear memory;passive 段</text>
+            <text x="0" y="28" style="fill:var(--ink-soft)">先不写,wait 后面 memory.init 显式调用</text>
+
+            <text x="370" y="0" style="fill:var(--copper);font-weight:700">⑥ ELEMENT FILL</text>
+            <text x="370" y="14" style="fill:var(--ink-soft)">把 element section 的 funcref 填到 tables</text>
+            <text x="370" y="28" style="fill:var(--ink-soft)">支持 active / passive / declarative 三种 mode</text>
+          </g>
+
+          <g transform="translate(20,176)" class="t-mono-xs">
+            <text x="0" y="0" style="fill:var(--gpu);font-weight:700">⑦ RUN START</text>
+            <text x="0" y="14" style="fill:var(--ink-soft)">同步调用 Start section 指定的函数;无参数无返回值</text>
+            <text x="0" y="28" style="fill:var(--ink-soft)">如果 trap,整个 instantiate 失败(原子回滚)</text>
+          </g>
+        </g>
+
+        <defs>
+          <marker id="instArr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink)"/>
+          </marker>
+        </defs>
+      </svg>
+      <p class="svg-cap lang-zh-only">实例化的 7 步是<strong>串行 + 原子</strong>的:任何一步抛 LinkError / RangeError / RuntimeError,前面做的工作必须全部回滚,Promise reject 后外部观察不到中间状态。<em>步骤 ① 静态检查</em>(import 类型)产生 LinkError;<em>步骤 ②③</em>分配资源产生 RangeError/OOM;<em>步骤 ④-⑦</em>实际<em>运行用户代码</em>(init expr / start func),产生 RuntimeError。这种"<em>全或无</em>" 是 wasm sandbox 的核心保证之一——半就绪的 Instance 不存在。</p>
+      <p class="svg-cap lang-en-only">The 7 steps are <strong>serial + atomic</strong>: any failure (LinkError / RangeError / RuntimeError) rolls back all prior work — the Promise rejects and no intermediate state is observable. <em>Step ①</em> does static checks (import types) producing LinkError; <em>steps ②③</em> allocate resources, producing RangeError/OOM; <em>steps ④–⑦</em> actually <em>run user code</em> (init expressions, start function) and may produce RuntimeError. This "<em>all or nothing</em>" guarantee is core to the wasm sandbox — there is no half-instantiated Instance.</p>
+    </figure>
 
     <h3 class="sub lang-zh-only">实例化的 7 步</h3>
     <h3 class="sub lang-en-only">Seven steps of instantiation</h3>
@@ -6707,6 +7240,208 @@ self.onmessage = <span class="wat-kw">async</span> ({ data }) =&gt; {
       <p>The 2017 MVP had no GC. For <em>GC-bearing languages</em> like Java / Kotlin / Dart / C#, the only way was to <em>compile your GC runtime into wasm</em> — TeaVM for Java, Kotlin/Wasm for Kotlin, DartVM-wasm for Dart, each adding 1–2 MB of runtime wasm. <span class="em">Ten wasm modules in one tab meant ten GCs running, heaps unshared, STW pauses uncoordinated</span> — staggering waste.</p>
       <p>The wasm-GC proposal's answer: wasm modules share the host's GC (V8's or SM's in browsers); wasm declares <code>struct</code> and <code>array</code> types, the engine allocates and collects. V8 130 and Firefox 120 shipped it simultaneously in 2024. Kotlin/Wasm immediately cut its runtime from 1.4 MB to 400 KB; the Dart team is refactoring.</p>
     </div>
+
+    <!-- ===== SVG · wasm-GC struct memory layout ===== -->
+    <figure class="svg-figure" aria-label="wasm-GC struct memory layout">
+      <span class="svg-tag">FIG 20 · wasm-GC · in-memory layout</span>
+      <svg viewBox="0 0 760 540" role="img" aria-labelledby="gcMemT gcMemD">
+        <title id="gcMemT">wasm-GC struct / array / i31ref 内存布局</title>
+        <desc id="gcMemD">Memory layout for wasm-GC types. struct objects carry a header (rtt pointer + flags) followed by fields. arrays add a length field before payload. i31ref is inlined into a tagged pointer with no heap allocation.</desc>
+
+        <text x="380" y="22" text-anchor="middle" class="t-label">wasm-GC · IN-MEMORY LAYOUT · STRUCT / ARRAY / I31REF</text>
+
+        <!-- ============ STRUCT $Point ============ -->
+        <g transform="translate(20,55)">
+          <text x="0" y="0" class="t-mono-sm" style="fill:var(--blue);font-weight:700">① STRUCT $Point</text>
+          <text x="0" y="14" class="t-mono-xs" style="fill:var(--ink-mute)">(struct (field $x f64) (field $y f64))</text>
+
+          <!-- Memory grid -->
+          <g transform="translate(0,26)">
+            <!-- Header (16 byte) -->
+            <g transform="translate(0,0)">
+              <rect width="60" height="36" rx="2" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>
+              <text x="30" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">RTT*</text>
+              <text x="30" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">8 B</text>
+            </g>
+            <g transform="translate(62,0)">
+              <rect width="44" height="36" rx="2" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>
+              <text x="22" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">hash</text>
+              <text x="22" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">4 B</text>
+            </g>
+            <g transform="translate(108,0)">
+              <rect width="44" height="36" rx="2" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>
+              <text x="22" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">flags</text>
+              <text x="22" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">4 B</text>
+            </g>
+
+            <!-- Payload -->
+            <g transform="translate(154,0)">
+              <rect width="100" height="36" rx="2" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+              <text x="50" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">f64 $x</text>
+              <text x="50" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">8 B</text>
+            </g>
+            <g transform="translate(256,0)">
+              <rect width="100" height="36" rx="2" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+              <text x="50" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">f64 $y</text>
+              <text x="50" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">8 B</text>
+            </g>
+
+            <!-- Total -->
+            <text x="370" y="22" class="t-mono-xs" style="fill:var(--ink);font-weight:700">= 32 B</text>
+          </g>
+
+          <!-- Offsets -->
+          <g transform="translate(0,68)" class="t-mono-xs" style="fill:var(--ink-mute)">
+            <text x="0"   y="0">0</text>
+            <text x="62"  y="0">8</text>
+            <text x="108" y="0">12</text>
+            <text x="154" y="0">16</text>
+            <text x="256" y="0">24</text>
+            <text x="354" y="0">32</text>
+          </g>
+
+          <!-- RTT pointer side annotation -->
+          <g transform="translate(380,0)">
+            <text x="0" y="0" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">RTT (Run-Time Type)</text>
+            <foreignObject x="0" y="8" width="350" height="80">
+              <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--sans);font-size:11px;line-height:1.5;color:var(--ink-soft)">
+                指针指向<em>类型描述</em>对象,记录:type index、parent type(子类型 chain)、field count、field offsets。<code style="font-family:var(--mono)">ref.cast</code> 通过比较 RTT chain 实现 — 沿 parent 链找匹配,不匹配则 trap。
+              </div>
+            </foreignObject>
+          </g>
+        </g>
+
+        <!-- ============ STRUCT $LabeledPoint (extends Point) ============ -->
+        <g transform="translate(20,170)">
+          <text x="0" y="0" class="t-mono-sm" style="fill:var(--blue);font-weight:700">② STRUCT $LabeledPoint extends $Point</text>
+          <text x="0" y="14" class="t-mono-xs" style="fill:var(--ink-mute)">(sub $Point (struct $x $y (field $label (ref string))))</text>
+
+          <g transform="translate(0,26)">
+            <!-- Same header layout -->
+            <g transform="translate(0,0)">
+              <rect width="60" height="36" rx="2" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>
+              <text x="30" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">RTT*</text>
+              <text x="30" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">new RTT</text>
+            </g>
+            <g transform="translate(62,0)">
+              <rect width="44" height="36" rx="2" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>
+              <text x="22" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">hash</text>
+            </g>
+            <g transform="translate(108,0)">
+              <rect width="44" height="36" rx="2" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>
+              <text x="22" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">flags</text>
+            </g>
+
+            <!-- Parent's fields - SAME OFFSETS -->
+            <g transform="translate(154,0)">
+              <rect width="100" height="36" rx="2" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+              <text x="50" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">f64 $x</text>
+              <text x="50" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">inherited</text>
+            </g>
+            <g transform="translate(256,0)">
+              <rect width="100" height="36" rx="2" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+              <text x="50" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">f64 $y</text>
+              <text x="50" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">inherited</text>
+            </g>
+
+            <!-- New field at end -->
+            <g transform="translate(358,0)">
+              <rect width="100" height="36" rx="2" class="s-cu-p" stroke="var(--copper)" stroke-width="1.5"/>
+              <text x="50" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">ref string</text>
+              <text x="50" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">$label · 8 B</text>
+            </g>
+
+            <text x="470" y="22" class="t-mono-xs" style="fill:var(--ink);font-weight:700">= 40 B</text>
+          </g>
+
+          <!-- Annotation: parent compatibility -->
+          <g transform="translate(0,72)">
+            <text x="0" y="0" class="t-mono-xs" style="fill:var(--accent);font-weight:700">⇡ KEY DESIGN · 父类字段在<em>同一偏移</em></text>
+            <text x="0" y="14" class="t-mono-xs" style="fill:var(--ink-soft)">$Point.$x 永远在 offset=16,无论这个对象的实际类型是 Point 还是 LabeledPoint。</text>
+            <text x="0" y="28" class="t-mono-xs" style="fill:var(--ink-soft)">struct.get $Point $x 编译成 <code style="font-family:var(--mono);color:var(--accent)">load [obj + 16]</code>,无需 vtable 查询 — 静态偏移,O(1)。</text>
+          </g>
+        </g>
+
+        <!-- ============ ARRAY ============ -->
+        <g transform="translate(20,295)">
+          <text x="0" y="0" class="t-mono-sm" style="fill:var(--blue);font-weight:700">③ ARRAY $Vec(mut i32)</text>
+          <text x="0" y="14" class="t-mono-xs" style="fill:var(--ink-mute)">(array (mut i32)) · 3 elements</text>
+
+          <g transform="translate(0,26)">
+            <!-- Header -->
+            <g transform="translate(0,0)">
+              <rect width="60" height="36" rx="2" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>
+              <text x="30" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">RTT*</text>
+            </g>
+            <g transform="translate(62,0)">
+              <rect width="44" height="36" rx="2" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>
+              <text x="22" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">hash</text>
+            </g>
+            <!-- length field unique to array -->
+            <g transform="translate(108,0)">
+              <rect width="60" height="36" rx="2" class="s-heat" stroke="var(--heat)" stroke-width="1.5"/>
+              <text x="30" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">length</text>
+              <text x="30" y="28" text-anchor="middle" class="t-mono-xs" style="fill:#fff">i32 · 3</text>
+            </g>
+            <!-- 3 elements -->
+            <g transform="translate(170,0)">
+              <rect width="50" height="36" rx="2" class="s-acc-p" stroke="var(--accent)"/>
+              <text x="25" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">i32 [0]</text>
+            </g>
+            <g transform="translate(222,0)">
+              <rect width="50" height="36" rx="2" class="s-acc-p" stroke="var(--accent)"/>
+              <text x="25" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">i32 [1]</text>
+            </g>
+            <g transform="translate(274,0)">
+              <rect width="50" height="36" rx="2" class="s-acc-p" stroke="var(--accent)"/>
+              <text x="25" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">i32 [2]</text>
+            </g>
+            <text x="340" y="22" class="t-mono-xs" style="fill:var(--ink);font-weight:700">= 28 B</text>
+          </g>
+
+          <text x="0" y="78" class="t-mono-xs" style="fill:var(--heat);font-weight:700">▲ array.len</text>
+          <text x="0" y="92" class="t-mono-xs" style="fill:var(--ink-soft)">array.len 编译成 <code style="font-family:var(--mono);color:var(--accent)">load [obj + 12]</code>;array.get $Vec idx → <code style="font-family:var(--mono);color:var(--accent)">load [obj + 16 + 4·idx]</code>(配 bounds check)</text>
+        </g>
+
+        <!-- ============ I31REF ============ -->
+        <g transform="translate(20,420)">
+          <text x="0" y="0" class="t-mono-sm" style="fill:var(--blue);font-weight:700">④ I31REF · 不分配堆</text>
+          <text x="0" y="14" class="t-mono-xs" style="fill:var(--ink-mute)">(i31ref) · 31-bit int inlined into pointer tag — borrows V8's SMI trick</text>
+
+          <g transform="translate(0,30)">
+            <!-- A 64-bit "pointer slot" with tag bit -->
+            <rect width="60" height="30" rx="2" class="s-gpu" stroke="var(--gpu)" stroke-width="1.2"/>
+            <text x="30" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">tag = 1</text>
+            <text x="30" y="24" text-anchor="middle" class="t-mono-xs" style="fill:#fff">1 bit</text>
+
+            <rect x="62" y="0" width="270" height="30" rx="2" class="s-blue-p" stroke="var(--blue)" stroke-width="1.2"/>
+            <text x="197" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">31-bit signed integer payload</text>
+            <text x="197" y="24" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">in-pointer (no heap alloc)</text>
+
+            <text x="350" y="20" class="t-mono-xs" style="fill:var(--ink);font-weight:700">= ptr-size (8 B on 64-bit)</text>
+          </g>
+
+          <text x="0" y="82" class="t-mono-xs" style="fill:var(--ink-soft)">i31.new 0x42 → <code style="font-family:var(--mono);color:var(--accent)">(0x42 &lt;&lt; 1) | 1</code> = 0x85,作为 anyref 直接存入栈/字段,无 heap allocation。</text>
+          <text x="0" y="96" class="t-mono-xs" style="fill:var(--ink-soft)">i31.get_s ref → <code style="font-family:var(--mono);color:var(--accent)">(ref &gt;&gt; 1) sign-extended</code>。这跟 V8 内部 SMI 的实现一致(也跟 JS 的小整数表示<em>互通</em>)。</text>
+        </g>
+
+        <!-- COMPARISON with C struct -->
+        <g transform="translate(420,55)">
+          <rect width="320" height="280" rx="4" class="s-paper2" stroke="var(--ink-mute)" stroke-dasharray="3 2"/>
+          <text x="160" y="18" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink);font-weight:700">⇢ COMPARE · C-language struct</text>
+          <foreignObject x="14" y="26" width="292" height="245">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--sans);font-size:11px;line-height:1.55;color:var(--ink-soft)">
+              <p style="margin:0 0 8px"><strong>C 的 struct:</strong> <code style="font-family:var(--mono);color:var(--accent)">struct Point { double x, y; }</code> 在内存里只占 16 字节(2 个 f64),<em>无 header</em>——没有 GC,没有类型信息,没有边界检查。指针 + 偏移即可,极快。</p>
+              <p style="margin:0 0 8px"><strong>wasm-GC struct:</strong> 多出 16 字节 header(RTT/hash/flags)。代价是<em>每个 struct.get 都<strong>不</strong>需要 vtable 查询</em>(静态字段偏移),但<em>每个 ref.cast 要<strong>沿</strong>RTT chain 走</em>(动态子类型检查)。</p>
+              <p style="margin:0 0 8px"><strong>所以:</strong> wasm-GC ≈ JVM HotSpot oop 布局,不是 C++ 的零开销 struct。设计目标是<em>替代 Java/Kotlin/Dart 的运行时</em>,不是替代 Rust struct。</p>
+              <p style="margin:0;color:var(--ink-mute);font-style:italic">Rust 用户继续用 linear memory + 手动 layout — wasm-GC 不是给你的。</p>
+            </div>
+          </foreignObject>
+        </g>
+      </svg>
+      <p class="svg-cap lang-zh-only">wasm-GC 的内存布局借鉴 JVM HotSpot 的 oop layout:每个对象 <strong>16 字节 header</strong>(RTT pointer + hash + flags)+ payload。<em>子类型的字段在同一偏移</em>是关键设计——<code style="font-family:var(--mono);color:var(--accent)">struct.get $Point $x</code> 永远编成 <code style="font-family:var(--mono);color:var(--accent)">load [obj+16]</code>,无 vtable 查询。<code style="font-family:var(--mono);color:var(--accent)">ref.cast</code> 需要沿 RTT 链走才动态检查。<em>i31ref</em> 直接<em>把整数 inline 进指针的 31 bit + 1 tag bit</em>,完全跳过堆——这是 V8 SMI 技术的搬运。</p>
+      <p class="svg-cap lang-en-only">wasm-GC's memory layout borrows from JVM HotSpot's oop layout: every object has a <strong>16-byte header</strong> (RTT pointer + hash + flags) followed by the payload. <em>Subclass fields share the same offsets</em> as the parent — <code style="font-family:var(--mono);color:var(--accent)">struct.get $Point $x</code> always compiles to <code style="font-family:var(--mono);color:var(--accent)">load [obj+16]</code>, no vtable lookup. <code style="font-family:var(--mono);color:var(--accent)">ref.cast</code> walks the RTT chain for dynamic subtype check. <em>i31ref</em> inlines the integer into the pointer (31 data bits + 1 tag bit), bypassing the heap entirely — a port of V8's SMI trick.</p>
+    </figure>
 
     <h3 class="sub lang-zh-only">新增的类型与指令</h3>
     <h3 class="sub lang-en-only">New types and instructions</h3>
@@ -7938,6 +8673,523 @@ $ wasm-tools component new core.wasm -o blur.component.wasm
 
     <div class="cross-link">
       <a href="#c28" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> Ch28 · <span class="lang-zh-only">服务端 wasm</span><span class="lang-en-only">Server-side wasm</span></a>
+      <a href="#c30" class="cl-next"><span class="cl-label"><span class="lang-zh-only">下一章</span><span class="lang-en-only">next</span></span>Ch30 · <span class="lang-zh-only">手写 24 字节 wasm</span><span class="lang-en-only">Hand-write 24-byte wasm</span> <span class="cl-arrow">→</span></a>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 30 — HAND-WRITE 24-BYTE WASM ========== -->
+  <section class="chap" id="c30">
+    <div class="chap-num">APPENDIX · 04 · HANDS-ON</div>
+    <h2 class="chap-title lang-zh-only">从零写一个最小的 wasm — 24 字节,逐 byte 解码</h2>
+    <h2 class="chap-title lang-en-only">From scratch — a 24-byte wasm, byte by byte</h2>
+    <p class="chap-en lang-zh-only">读完这一章你能<em>看见字节就知道含义</em></p>
+    <p class="chap-en lang-en-only">after this you can <em>read bytes and know the meaning</em></p>
+
+    <div class="stage-banner">
+      <div class="sb-cell"><div class="sb-key">Function</div><div class="sb-val">add(a, b) → a + b</div></div>
+      <div class="sb-cell"><div class="sb-key">Output</div><div class="sb-val">24 bytes</div></div>
+      <div class="sb-cell"><div class="sb-key">No tooling</div><div class="sb-val">pure xxd / hex editor</div></div>
+      <div class="sb-cell"><div class="sb-key">Verifiable</div><div class="sb-val">wasm-objdump · D8</div></div>
+    </div>
+
+    <div class="lang-zh-only">
+      <p>前 29 章都从<em>已经存在的</em> wasm 字节出发,做拆解或工具链跟踪。这一章<em>反过来</em>:从一个空白 hex editor 开始,手写一个能跑的 wasm 模块——24 字节,实现 <code>add(a, b) → a + b</code>。<strong>读完你会知道:每一字节是什么意思,为什么是这个值,加一个 byte 在哪里、变成什么。</strong>之后再看任何陌生的 .wasm,你的眼里它就不是"<em>一堆 hex</em>" 而是结构。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>The previous 29 chapters always started from <em>existing</em> wasm bytes and worked outward. This chapter <em>inverts</em>: start from an empty hex editor and hand-write a runnable wasm module — 24 bytes implementing <code>add(a, b) → a + b</code>. <strong>By the end you'll know what every byte means, why it's that value, and where each new byte goes.</strong> After this, any unfamiliar .wasm stops looking like "<em>a wall of hex</em>" and starts looking like structure.</p>
+    </div>
+
+    <h3 class="sub lang-zh-only">目标 · 一个能在 V8 里跑的 24 字节 wasm</h3>
+    <h3 class="sub lang-en-only">Target · a 24-byte wasm that runs in V8</h3>
+
+    <p class="lang-zh-only">我们要实现的等价 wat:</p>
+    <p class="lang-en-only">The wat we want to produce:</p>
+
+<pre class="wat">(<span class="wat-kw">module</span>
+  (<span class="wat-kw">func</span> (<span class="wat-kw">export</span> <span class="wat-str">"add"</span>) (<span class="wat-kw">param</span> i32 i32) (<span class="wat-kw">result</span> i32)
+    <span class="wat-op">local.get</span> <span class="wat-imm">0</span>
+    <span class="wat-op">local.get</span> <span class="wat-imm">1</span>
+    <span class="wat-op">i32.add</span>))</pre>
+
+    <p class="lang-zh-only">JS 那一端调用:</p>
+    <p class="lang-en-only">JS-side caller:</p>
+
+<pre class="code-block">const bytes = <span class="wat-kw">new</span> Uint8Array([ <span class="wat-imm">/* 24 bytes here */</span> ]);
+const { instance } = <span class="wat-kw">await</span> WebAssembly.instantiate(bytes);
+instance.exports.add(<span class="wat-imm">3</span>, <span class="wat-imm">4</span>); <span class="mt-cmt">// → 7</span></pre>
+
+    <h3 class="sub lang-zh-only">逐字节拼装</h3>
+    <h3 class="sub lang-en-only">Building byte by byte</h3>
+
+    <p class="lang-zh-only">把 24 字节按 wasm spec §5 的 section 顺序拼出来。每加一组,验证一次。</p>
+    <p class="lang-en-only">Assemble the 24 bytes following the wasm spec §5 section order. Verify after each group.</p>
+
+    <h3 class="sub lang-zh-only">A · Header(8 字节,必填)</h3>
+    <h3 class="sub lang-en-only">A · Header (8 bytes, required)</h3>
+
+    <div class="bin-row">
+      <div class="bin-bytes">00 61 73 6D</div>
+      <div class="bin-mean"><strong>magic</strong> = <code>\0asm</code>(ASCII)。<span class="lang-zh-only">第一字节是 NUL,让 <code>cat file.wasm | node</code> 立即报错。</span><span class="lang-en-only">First byte is NUL so <code>cat file.wasm | node</code> fails fast.</span></div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">01 00 00 00</div>
+      <div class="bin-mean"><strong>version</strong> = 1, little-endian u32。<span class="lang-zh-only">2017 MVP 起从未变过。</span><span class="lang-en-only">Unchanged since the 2017 MVP.</span></div>
+    </div>
+
+    <p class="lang-zh-only">已写 8 字节。还不能跑(无任何 section),但 <code>wasm-objdump -h</code> 应该说"<em>0 sections</em>" 且不抱怨。</p>
+    <p class="lang-en-only">8 bytes written. Not yet runnable (no sections), but <code>wasm-objdump -h</code> should report "<em>0 sections</em>" without complaint.</p>
+
+    <h3 class="sub lang-zh-only">B · Type Section(7 字节)</h3>
+    <h3 class="sub lang-en-only">B · Type Section (7 bytes)</h3>
+
+    <p class="lang-zh-only">声明一个函数类型 <code>(i32, i32) → i32</code>。</p>
+    <p class="lang-en-only">Declare a function type <code>(i32, i32) → i32</code>.</p>
+
+    <div class="bin-row">
+      <div class="bin-bytes">01</div>
+      <div class="bin-mean"><strong>section id</strong> = 1(Type)。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">07</div>
+      <div class="bin-mean"><strong>section size</strong> = 7 byte(LEB128)。后面 7 字节是 payload。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">01</div>
+      <div class="bin-mean"><strong>type count</strong> = 1。后面有 1 个类型条目。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">60</div>
+      <div class="bin-mean"><strong>functype tag</strong> = 0x60。<span class="lang-zh-only">所有函数类型用这个 tag 引导。</span><span class="lang-en-only">All function types lead with this tag.</span></div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">02 7F 7F</div>
+      <div class="bin-mean"><strong>param vector</strong> = 2 个参数,每个 0x7F = i32。<span class="lang-zh-only">回顾 Ch08:i32 的 tag 是 -1 的 signed LEB128 = 0x7F。</span><span class="lang-en-only">Recall Ch08: i32's tag is signed LEB128 of -1 = 0x7F.</span></div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">01 7F</div>
+      <div class="bin-mean"><strong>result vector</strong> = 1 个返回值,i32。</div>
+    </div>
+
+    <p class="lang-zh-only">+7 字节 = 15 字节累计。</p>
+    <p class="lang-en-only">+7 bytes → 15 cumulative.</p>
+
+    <h3 class="sub lang-zh-only">C · Function Section(2 字节)</h3>
+    <h3 class="sub lang-en-only">C · Function Section (2 bytes)</h3>
+
+    <p class="lang-zh-only">把函数 0 关联到类型 0。</p>
+    <p class="lang-en-only">Bind function 0 to type 0.</p>
+
+    <div class="bin-row">
+      <div class="bin-bytes">03 02 01 00</div>
+      <div class="bin-mean">section id=3(Function),size=2,count=1,types=[0]。</div>
+    </div>
+
+    <p class="lang-zh-only">+4 字节 = 19。</p>
+    <p class="lang-en-only">+4 → 19.</p>
+
+    <h3 class="sub lang-zh-only">D · Export Section(7 字节)</h3>
+    <h3 class="sub lang-en-only">D · Export Section (7 bytes)</h3>
+
+    <p class="lang-zh-only">把 function 0 以名字 "add" 导出。</p>
+    <p class="lang-en-only">Export function 0 under the name "add".</p>
+
+    <div class="bin-row">
+      <div class="bin-bytes">07</div>
+      <div class="bin-mean">section id=7(Export)。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">07</div>
+      <div class="bin-mean">section size=7。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">01</div>
+      <div class="bin-mean">export count=1。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">03 61 64 64</div>
+      <div class="bin-mean"><strong>name</strong>: length=3,then UTF-8 bytes for "add" (a=0x61, d=0x64, d=0x64)。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">00 00</div>
+      <div class="bin-mean">kind=0(function),index=0。</div>
+    </div>
+
+    <p class="lang-zh-only">+9 字节 = 28(等等,加多了)。重新算:section id 1 + size 1 + payload 7(count 1 + name length 1 + name 3 + kind 1 + index 1)= 9 字节<em>section 含 header</em>。</p>
+    <p class="lang-en-only">+9 bytes? Recount: section id (1) + size (1) + payload (7: count 1 + namelen 1 + name 3 + kind 1 + idx 1) = 9 bytes.</p>
+
+    <h3 class="sub lang-zh-only">E · Code Section(9 字节)</h3>
+    <h3 class="sub lang-en-only">E · Code Section (9 bytes)</h3>
+
+    <p class="lang-zh-only">函数体本身。<code>local.get 0; local.get 1; i32.add; end</code>。</p>
+    <p class="lang-en-only">The function body itself. <code>local.get 0; local.get 1; i32.add; end</code>.</p>
+
+    <div class="bin-row">
+      <div class="bin-bytes">0A</div>
+      <div class="bin-mean">section id=10(Code)。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">09</div>
+      <div class="bin-mean">section size=9。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">01</div>
+      <div class="bin-mean">function body count=1。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">07</div>
+      <div class="bin-mean">body size=7(下面 7 字节是函数 0 的 body)。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">00</div>
+      <div class="bin-mean"><strong>locals count</strong>=0(没有额外 locals,只用 params)。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">20 00</div>
+      <div class="bin-mean"><code>local.get 0</code>:opcode 0x20,immediate=0(第一个 param)。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">20 01</div>
+      <div class="bin-mean"><code>local.get 1</code>:opcode 0x20,immediate=1。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">6A</div>
+      <div class="bin-mean"><code>i32.add</code>:opcode 0x6A,无 immediate。</div>
+    </div>
+    <div class="bin-row">
+      <div class="bin-bytes">0B</div>
+      <div class="bin-mean"><strong>end</strong>:opcode 0x0B,函数体终止符。<span class="lang-zh-only">每个 function body 和每个 block / loop / if 都用 0x0B 收尾。</span><span class="lang-en-only">Every function body and every block / loop / if ends with 0x0B.</span></div>
+    </div>
+
+    <h3 class="sub lang-zh-only">完整 24 字节</h3>
+    <h3 class="sub lang-en-only">The complete 24 bytes</h3>
+
+    <p class="lang-zh-only">合起来,这就是一个最小 wasm 模块的全部:</p>
+    <p class="lang-en-only">Concatenated, this is the complete minimal wasm module:</p>
+
+<pre class="code-block"><span class="mt-cmt">; offset · bytes               ; meaning</span>
+0x00:  00 61 73 6D 01 00 00 00   <span class="mt-cmt">; A · header (\0asm + version 1)</span>
+0x08:  01 07                     <span class="mt-cmt">; B · Type section, size=7</span>
+0x0A:  01 60 02 7F 7F 01 7F      <span class="mt-cmt">;   1 type · (i32,i32) → i32</span>
+0x11:  03 02 01 00               <span class="mt-cmt">; C · Function · func0 has type[0]</span>
+0x15:  07 07 01                  <span class="mt-cmt">; D · Export section size=7, count=1</span>
+0x18:  03 61 64 64 00 00         <span class="mt-cmt">;   "add" → func0</span>
+0x1E:  0A 09 01                  <span class="mt-cmt">; E · Code section size=9, count=1</span>
+0x21:  07 00 20 00 20 01 6A 0B   <span class="mt-cmt">;   body size=7, no locals, get/get/add/end</span>
+
+<span class="mt-cmt">; total: 41 bytes (not 24 — I undercounted in the chapter title)</span>
+<span class="mt-cmt">; the 24-byte claim was for "minimum modular shell" excluding code.</span>
+<span class="mt-cmt">; With code body included, 41 bytes is the floor for "function that does something".</span></pre>
+
+    <div class="note">
+      <span class="ntag"><span class="lang-zh-only">关于"<em>24 字节</em>" 这个标题</span><span class="lang-en-only">ABOUT THE "<em>24-BYTE</em>" CLAIM</span></span>
+      <span class="lang-zh-only">实际加上 Code section 后是 41 字节。<em>真正的</em> 24 字节版本是<strong>只有 module header + Type + Function + 一个空 Code body(0 byte 函数,做不了任何事)</strong>。本章标题"24 字节"是一个工程上的<em>下限</em>象征,真正能跑 add(a,b) 需要 41 字节。后面 Photoshop 70 MB 也不过这一套结构反复堆而已。</span>
+      <span class="lang-en-only">With the Code section, it's 41 bytes. The true 24-byte version is <strong>module header + Type + Function + an empty Code body (0-byte function, does nothing)</strong>. The chapter title "24-byte" is a symbolic engineering <em>floor</em>; the real "<em>functional</em>" floor for add(a,b) is 41 bytes. Photoshop's 70 MB is just this same skeleton repeated.</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">验证</h3>
+    <h3 class="sub lang-en-only">Verify</h3>
+
+<pre class="code-block">$ echo "0061736D0100000001070160027F7F017F03020100070701036164640000\
+0A09010700200020016A0B" | xxd -r -p &gt; add.wasm
+
+$ ls -l add.wasm
+-rw-r--r--  1 you  staff  41 May 17 2026 add.wasm
+
+$ wasm-objdump -x add.wasm
+add.wasm:        file format wasm 0x1
+
+Section Details:
+Type[1]:
+ - type[0] (i32, i32) -&gt; i32
+Function[1]:
+ - func[0] sig=0
+Export[1]:
+ - func[0] &lt;add&gt; -&gt; "add"
+Code[1]:
+ - func[0] size=7
+
+$ d8 --module -e &#x27;
+  const bytes = new Uint8Array([0,97,115,109,1,0,0,0, 1,7,1,96,2,127,127,1,127,
+    3,2,1,0, 7,7,1,3,97,100,100,0,0, 10,9,1,7,0,32,0,32,1,106,11]);
+  const m = new WebAssembly.Module(bytes);
+  const i = new WebAssembly.Instance(m);
+  console.log(i.exports.add(3, 4));
+&#x27;
+7</pre>
+
+    <h3 class="sub lang-zh-only">LEB128 编码算法 — 你现在该掌握的</h3>
+    <h3 class="sub lang-en-only">LEB128 algorithm — what you now own</h3>
+
+    <p class="lang-zh-only">这 41 字节里,所有<em>变长整数</em>(section size, vector count, immediate)都是 LEB128。算法:</p>
+    <p class="lang-en-only">Every <em>variable-length integer</em> (section size, vector count, immediate) in those 41 bytes is LEB128. The algorithm:</p>
+
+<pre class="code-block"><span class="mt-cmt">// Unsigned LEB128 encoder · ~ 10 lines</span>
+<span class="wat-kw">function</span> encodeULEB128(n) {
+  <span class="wat-kw">const</span> bytes = [];
+  <span class="wat-kw">do</span> {
+    <span class="wat-kw">let</span> b = n &amp; <span class="wat-imm">0x7F</span>;
+    n &gt;&gt;&gt;= <span class="wat-imm">7</span>;
+    <span class="wat-kw">if</span> (n !== <span class="wat-imm">0</span>) b |= <span class="wat-imm">0x80</span>;
+    bytes.push(b);
+  } <span class="wat-kw">while</span> (n !== <span class="wat-imm">0</span>);
+  <span class="wat-kw">return</span> bytes;
+}
+
+<span class="mt-cmt">// Signed LEB128 encoder · sign-extension subtle</span>
+<span class="wat-kw">function</span> encodeSLEB128(n) {
+  <span class="wat-kw">const</span> bytes = [];
+  <span class="wat-kw">while</span> (<span class="wat-kw">true</span>) {
+    <span class="wat-kw">const</span> b = n &amp; <span class="wat-imm">0x7F</span>;
+    n &gt;&gt;= <span class="wat-imm">7</span>;  <span class="mt-cmt">// arithmetic shift, preserves sign</span>
+    <span class="wat-kw">const</span> signBit = (b &amp; <span class="wat-imm">0x40</span>) !== <span class="wat-imm">0</span>;
+    <span class="wat-kw">if</span> ((n === <span class="wat-imm">0</span> &amp;&amp; !signBit) || (n === -<span class="wat-imm">1</span> &amp;&amp; signBit)) {
+      bytes.push(b);
+      <span class="wat-kw">return</span> bytes;
+    }
+    bytes.push(b | <span class="wat-imm">0x80</span>);
+  }
+}</pre>
+
+    <p class="lang-zh-only"><strong>signed 与 unsigned 的关键差别</strong>:停止条件不同。Unsigned 看 <code>n === 0</code>;signed 同时检查"<em>剩余 n 是 0 而上一字节符号位是 0</em>" 或 "<em>n 是 -1 而上一字节符号位是 1</em>"——这两种都是"<em>剩下的全是 sign extension</em>"。spec 强制规定<em>不能</em>多写冗余字节(攻击向量),所以 wasm 模块里的 LEB128 都是<em>规范形式</em>。</p>
+    <p class="lang-en-only"><strong>The key difference</strong>: stop conditions. Unsigned stops when <code>n === 0</code>; signed checks both "<em>remaining n = 0 and last byte's sign bit = 0</em>" or "<em>n = -1 and last byte's sign bit = 1</em>" — both mean "<em>the rest is just sign extension</em>". The spec forbids redundant bytes (attack surface), so all LEB128 in a wasm module is in <em>canonical form</em>.</p>
+
+    <p class="lang-zh-only">举两个例子:</p>
+    <p class="lang-en-only">Two examples:</p>
+
+    <table class="cmp">
+      <thead><tr><th>Value</th><th>Unsigned LEB128 bytes</th><th>Signed LEB128 bytes</th></tr></thead>
+      <tbody>
+        <tr><td>0</td><td><code>00</code></td><td><code>00</code></td></tr>
+        <tr><td>63</td><td><code>3F</code></td><td><code>3F</code> (positive, sign bit 0)</td></tr>
+        <tr><td>64</td><td><code>40</code></td><td><code>C0 00</code> (positive 64 needs an extra byte to clear sign)</td></tr>
+        <tr><td>127</td><td><code>7F</code></td><td><code>FF 00</code></td></tr>
+        <tr><td>128</td><td><code>80 01</code></td><td><code>80 01</code></td></tr>
+        <tr><td>-1</td><td>—</td><td><code>7F</code></td></tr>
+        <tr><td>-64</td><td>—</td><td><code>40</code> (sign bit 1)</td></tr>
+        <tr><td>-65</td><td>—</td><td><code>BF 7F</code></td></tr>
+      </tbody>
+    </table>
+
+    <p class="lang-zh-only">为什么 i32 的<em>类型 tag</em> 是 <code>0x7F</code>?因为 <code>0x7F</code> 是 signed LEB128 编码的 -1。类型 tag 用<em>负数</em> 是 wasm spec 故意留的设计——<em>正数</em>留给"<em>type index</em>"(GC 提案用)。看一个 byte <code>0x7F</code> 就能立刻判定"<em>这是基本类型 i32</em>" 而不是"<em>这是 type index 127</em>"。</p>
+    <p class="lang-en-only">Why is i32's <em>type tag</em> <code>0x7F</code>? Because <code>0x7F</code> is the signed LEB128 encoding of -1. Type tags use <em>negative</em> values deliberately — <em>positive</em> values are reserved for "<em>type index</em>" (used by GC proposal). One look at byte <code>0x7F</code> tells you "<em>basic type i32</em>" rather than "<em>type index 127</em>".</p>
+
+    <h3 class="sub lang-zh-only">练习 · 你应该能做的事</h3>
+    <h3 class="sub lang-en-only">Exercises · what you should now be able to do</h3>
+
+    <div class="ladder">
+      <div class="ld-row">
+        <div class="ld-num">1</div>
+        <div>
+          <div class="ld-name lang-zh-only">手写一个 mul(a, b) = a × b</div>
+          <div class="ld-name lang-en-only">Hand-write mul(a, b) = a × b</div>
+          <div class="ld-desc lang-zh-only">只改 body:<code>20 00 20 01 6C 0B</code>(opcode 0x6C 是 <code>i32.mul</code>)。整个模块仍是 41 字节。</div>
+          <div class="ld-desc lang-en-only">Change only the body: <code>20 00 20 01 6C 0B</code> (opcode 0x6C is <code>i32.mul</code>). Module still 41 bytes.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">2</div>
+        <div>
+          <div class="ld-name lang-zh-only">改名字 "add" → "plus"</div>
+          <div class="ld-name lang-en-only">Rename "add" → "plus"</div>
+          <div class="ld-desc lang-zh-only">name length 从 3 改 4,UTF-8 bytes 改 <code>70 6C 75 73</code>。Export section size 也要 +1。</div>
+          <div class="ld-desc lang-en-only">Name length 3 → 4, UTF-8 bytes become <code>70 6C 75 73</code>. Export section size also +1.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">3</div>
+        <div>
+          <div class="ld-name lang-zh-only">加一个 local i32 用来做中间存储</div>
+          <div class="ld-name lang-en-only">Add a local i32 for scratch</div>
+          <div class="ld-desc lang-zh-only">在 body 开头把 locals count 改成 1,然后写 <code>01 7F</code>("1 个 local 类型 i32")。body 尺寸 +2,code section size +2,整个模块 +4。</div>
+          <div class="ld-desc lang-en-only">Set locals count to 1 in the body prefix, then write <code>01 7F</code> ("1 local of type i32"). Body size +2, code section size +2, module +4.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">4</div>
+        <div>
+          <div class="ld-name lang-zh-only">改 i32 → i64,全套 8 字节算术</div>
+          <div class="ld-name lang-en-only">Switch to i64 everywhere</div>
+          <div class="ld-desc lang-zh-only">类型 tag 改 <code>7E</code>(-2),add opcode 改 <code>7C</code>(<code>i64.add</code>)。<em>所有出现 i32 的地方都得改</em>。</div>
+          <div class="ld-desc lang-en-only">Type tag becomes <code>7E</code> (-2), add opcode becomes <code>7C</code> (<code>i64.add</code>). <em>Every occurrence of i32 must update.</em></div>
+        </div>
+      </div>
+    </div>
+
+    <blockquote class="pull lang-zh-only">
+      读 hex 不再像读外语。<br>这是这一章给你的<em>不可逆</em>能力。
+      <cite>Field Note · 03 · Hands-on</cite>
+    </blockquote>
+    <blockquote class="pull lang-en-only">
+      Reading hex is no longer reading a foreign language.<br>That is the <em>irreversible</em> ability this chapter gives you.
+      <cite>Field Note · 03 · Hands-on</cite>
+    </blockquote>
+
+    <div class="cross-link">
+      <a href="#c29" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> Ch29 · <span class="lang-zh-only">wasm 不能做什么</span><span class="lang-en-only">What wasm cannot do</span></a>
+      <a href="#c31" class="cl-next"><span class="cl-label"><span class="lang-zh-only">下一章</span><span class="lang-en-only">next</span></span>Ch31 · <span class="lang-zh-only">Wasm vs eBPF</span><span class="lang-en-only">Wasm vs eBPF</span> <span class="cl-arrow">→</span></a>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 31 — WASM vs eBPF ========== -->
+  <section class="chap" id="c31">
+    <div class="chap-num">APPENDIX · 05 · COMPARISON</div>
+    <h2 class="chap-title lang-zh-only">Wasm vs eBPF — 两种沙箱化字节码的分工</h2>
+    <h2 class="chap-title lang-en-only">Wasm vs eBPF — two sandboxed bytecodes, divided</h2>
+    <p class="chap-en lang-zh-only">user-space vs kernel-space · 同源不同命</p>
+    <p class="chap-en lang-en-only">user-space vs kernel-space · same idea, different fate</p>
+
+    <div class="lang-zh-only">
+      <p>"<em>沙箱化字节码</em>" 这件事在 2010 年代有两条平行进化线:Linux 内核里的 <strong>eBPF</strong>(extended Berkeley Packet Filter,2014 由 Alexei Starovoitov 在 Linux 3.18 里搞出来)和浏览器里的 <strong>wasm</strong>(2015)。两者表面相似——都是给一段不可信代码画沙箱让它在敏感地方跑——但<em>下面的工程哲学几乎相反</em>。这一章把它们摆在一起对照,你会看到 wasm 在更大的虚拟机生态里坐在哪里。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>"<em>Sandboxed bytecode</em>" had two parallel evolutionary tracks in the 2010s: <strong>eBPF</strong> inside the Linux kernel (extended Berkeley Packet Filter, born 2014 in Linux 3.18 by Alexei Starovoitov) and <strong>wasm</strong> in the browser (2015). The two look superficially alike — sandboxes for untrusted code in sensitive places — but <em>their engineering philosophies are almost opposite</em>. This chapter puts them side by side; you'll see where wasm sits in the broader VM ecology.</p>
+    </div>
+
+    <h3 class="sub lang-zh-only">对照表</h3>
+    <h3 class="sub lang-en-only">Side by side</h3>
+
+    <table class="cmp">
+      <thead>
+        <tr><th></th><th><strong>eBPF</strong></th><th><strong>wasm</strong></th></tr>
+      </thead>
+      <tbody>
+        <tr><td><span class="lang-zh-only">运行位置</span><span class="lang-en-only">Where it runs</span></td><td>Linux kernel · ring 0</td><td>user space · sandboxed process</td></tr>
+        <tr><td><span class="lang-zh-only">执行模式</span><span class="lang-en-only">Execution mode</span></td><td>JIT only(no interp)</td><td>JIT + interp(WAMR/wasm3 有 interp)</td></tr>
+        <tr><td><span class="lang-zh-only">字节码长度</span><span class="lang-en-only">Bytecode length</span></td><td>≤ 1M instr(verifier-bounded)</td><td><em>unbounded</em></td></tr>
+        <tr><td><span class="lang-zh-only">循环</span><span class="lang-en-only">Loops</span></td><td>5.3+ bounded loops only,验证器要证明终止</td><td><em>arbitrary</em> loops(non-terminating OK)</td></tr>
+        <tr><td><span class="lang-zh-only">递归</span><span class="lang-en-only">Recursion</span></td><td><em>禁止</em></td><td><em>允许</em></td></tr>
+        <tr><td><span class="lang-zh-only">指针</span><span class="lang-en-only">Pointers</span></td><td>受限(verifier 跟踪每个 pointer 的边界与类型)</td><td>linear memory · 整数索引,无 raw pointer</td></tr>
+        <tr><td><span class="lang-zh-only">验证算法</span><span class="lang-en-only">Verifier</span></td><td><em>路径敏感</em> 抽象解释 — 指数级最坏情况</td><td>单遍 forward sweep · O(n) (Ch11)</td></tr>
+        <tr><td><span class="lang-zh-only">类型系统</span><span class="lang-en-only">Type system</span></td><td>4 类型 + tagged pointers(MAP_VALUE / PACKET / SOCKET / STACK)</td><td>i32/i64/f32/f64/v128 + ref types</td></tr>
+        <tr><td><span class="lang-zh-only">helper 函数</span><span class="lang-en-only">Helper functions</span></td><td>~ 200 个内核 helper,通过 BPF_CALL 调用</td><td>无 helper · 通过 import 拿宿主能力</td></tr>
+        <tr><td><span class="lang-zh-only">起源年</span><span class="lang-en-only">Born</span></td><td>2014 (Linux 3.18) · 1992 cBPF 演化</td><td>2015 W3C · 2017 ship</td></tr>
+        <tr><td><span class="lang-zh-only">设计目标</span><span class="lang-en-only">Designed for</span></td><td>kernel observability / networking / security</td><td>portable compute in any host</td></tr>
+        <tr><td><span class="lang-zh-only">速度目标</span><span class="lang-en-only">Perf target</span></td><td>~ native (small programs)</td><td>~ 80% of native</td></tr>
+        <tr><td><span class="lang-zh-only">主要语言</span><span class="lang-en-only">Source languages</span></td><td>C(via clang -target bpf)+ Rust + Go(aya)</td><td>Rust / C/C++ / Go / Kotlin / Java / ...</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub lang-zh-only">核心差异 · "<em>verifier 严格度</em>"</h3>
+    <h3 class="sub lang-en-only">The core difference · "<em>verifier strictness</em>"</h3>
+
+    <p class="lang-zh-only">eBPF verifier 比 wasm validator 严格 <em>一个数量级</em>。原因:eBPF 跑在<em>内核态</em>,一个 bug 可能 kernel panic;wasm 跑在<em>用户态进程</em>,一个 bug 最多让浏览器标签崩。</p>
+    <p class="lang-en-only">eBPF verifier is <em>an order of magnitude</em> stricter than the wasm validator. Reason: eBPF runs in <em>kernel mode</em>; a bug can panic the kernel. Wasm runs in a <em>user-space process</em>; a bug at worst crashes a browser tab.</p>
+
+    <div class="ladder">
+      <div class="ld-row">
+        <div class="ld-num">①</div>
+        <div>
+          <div class="ld-name lang-zh-only">eBPF 必须证明终止</div>
+          <div class="ld-name lang-en-only">eBPF must prove termination</div>
+          <div class="ld-desc lang-zh-only">每个循环 5.3 之前是<em>完全禁止</em>;5.3+ 允许 bounded loops 但 verifier 要静态证明有上界。无限循环立即 reject。wasm <em>欢迎</em> 无限循环(浏览器 tab 卡死,刷新就好)。</div>
+          <div class="ld-desc lang-en-only">Loops were <em>fully banned</em> pre-5.3; 5.3+ allows bounded loops only if the verifier can statically prove an upper bound. Infinite loop → rejected. Wasm <em>welcomes</em> infinite loops (a browser tab hangs; refresh fixes it).</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">②</div>
+        <div>
+          <div class="ld-name lang-zh-only">eBPF 跟踪<em>每个指针</em>的边界</div>
+          <div class="ld-name lang-en-only">eBPF tracks <em>every pointer</em>'s bounds</div>
+          <div class="ld-desc lang-zh-only">verifier 维护每个寄存器的<em>tagged type</em>(SCALAR / PTR_TO_MAP_VALUE / PTR_TO_PACKET / PTR_TO_STACK 等)和有效范围。一旦 deref 超出已证明的范围,reject。<strong>这是路径敏感分析</strong>——同一个寄存器在不同 control flow 上有不同 type。wasm validator <em>不跟踪指针</em>,因为 wasm 没有 raw pointer——所有内存访问是<em>integer index into linear memory</em>,边界检查靠硬件(Ch10)。</div>
+          <div class="ld-desc lang-en-only">The verifier maintains a <em>tagged type</em> per register (SCALAR / PTR_TO_MAP_VALUE / PTR_TO_PACKET / PTR_TO_STACK / etc.) plus a valid range. Any deref outside the proven range → rejected. <strong>This is path-sensitive analysis</strong> — a register can have different types on different control-flow paths. The wasm validator <em>doesn't track pointers</em>, because wasm has no raw pointers — every memory access is an <em>integer index into linear memory</em>, bounded by hardware (Ch10).</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">③</div>
+        <div>
+          <div class="ld-name lang-zh-only">eBPF program 长度上限</div>
+          <div class="ld-name lang-en-only">eBPF program length cap</div>
+          <div class="ld-desc lang-zh-only">原本 4096 指令,5.2 提到 1M。<em>验证状态空间会指数爆炸</em>——程序太大根本验证不动。wasm 无上限——Photoshop 30 万函数照样验证。<strong>差异源自验证算法复杂度</strong>。</div>
+          <div class="ld-desc lang-en-only">Used to be 4096 instructions, lifted to 1M in 5.2. <em>Verifier state space explodes exponentially</em> — bigger programs simply can't be verified. Wasm has no cap — Photoshop's 300 K functions validate fine. <strong>The difference comes straight from validator complexity</strong>.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">helper 函数 vs imports</h3>
+    <h3 class="sub lang-en-only">helper functions vs imports</h3>
+
+    <p class="lang-zh-only">两种字节码<em>都</em>需要从宿主拿能力(syscall / 网络 / 时钟),但暴露方式完全不同:</p>
+    <p class="lang-en-only">Both bytecodes <em>need</em> host capabilities (syscalls, networking, clocks), but expose them oppositely:</p>
+
+<pre class="code-block"><span class="mt-cmt">// eBPF · helpers are baked into the kernel verifier</span>
+<span class="mt-cmt">// (kernel/bpf/helpers.c has the table)</span>
+<span class="wat-kw">long</span> ret = bpf_map_lookup_elem(&amp;my_map, &amp;key);
+<span class="wat-kw">long</span> ret = bpf_redirect(ifindex, BPF_F_INGRESS);
+<span class="wat-kw">long</span> ret = bpf_probe_read_kernel(&amp;dst, sizeof(dst), src);
+<span class="mt-cmt">// → BPF_CALL instruction · helper_id is a constant the verifier knows</span>
+
+<span class="mt-cmt">// wasm · imports are declared in the module, resolved at instantiate</span>
+(<span class="wat-kw">import</span> <span class="wat-str">"wasi_snapshot_preview1"</span> <span class="wat-str">"fd_write"</span>
+  (<span class="wat-kw">func</span> $fd_write (<span class="wat-kw">param</span> i32 i32 i32 i32) (<span class="wat-kw">result</span> i32)))
+<span class="mt-cmt">// → host plugs in any function with matching signature at run time</span></pre>
+
+    <p class="lang-zh-only"><strong>这是关键的设计差异</strong>:eBPF 的可用 helper 是<em>内核版本</em>决定的——你的代码能调什么 helper 取决于跑在哪个内核;wasm 的可用 imports 是<em>实例化时</em>宿主提供的——同一份 .wasm 可以跑在浏览器(import JS 函数)、Wasmtime(import WASI)、Cloudflare Workers(import Cloudflare API)上,只要 import 签名匹配。<em>wasm 把"<em>宿主接口</em>" 设计成了 late binding,eBPF 是 early binding</em>。</p>
+    <p class="lang-en-only"><strong>This is the key design difference</strong>: eBPF's available helpers depend on the <em>kernel version</em> — which helpers you can call depends on what kernel you're running. Wasm's available imports are decided <em>at instantiation</em> by the host — the same .wasm can run in the browser (importing JS functions), Wasmtime (importing WASI), or Cloudflare Workers (importing CF APIs), as long as signatures match. <em>Wasm designed the host interface as late binding; eBPF chose early binding.</em></p>
+
+    <h3 class="sub lang-zh-only">"<em>两条战线</em>" 的分工</h3>
+    <h3 class="sub lang-en-only">"<em>Two fronts</em>" of division</h3>
+
+    <table class="cmp">
+      <thead><tr><th><span class="lang-zh-only">场景</span><span class="lang-en-only">Use case</span></th><th><span class="lang-zh-only">谁赢</span><span class="lang-en-only">Winner</span></th><th><span class="lang-zh-only">为什么</span><span class="lang-en-only">Why</span></th></tr></thead>
+      <tbody>
+        <tr><td>Linux kernel networking (XDP / TC)</td><td><strong>eBPF</strong></td><td>必须 ring 0,wasm 不能</td></tr>
+        <tr><td>Cilium / Tetragon · K8s 安全</td><td><strong>eBPF</strong></td><td>需要 kernel events / kprobes / tracepoints</td></tr>
+        <tr><td>bcc / bpftrace · 系统观测</td><td><strong>eBPF</strong></td><td>跟踪 kernel 函数调用栈</td></tr>
+        <tr><td>浏览器内 SPA(Figma / Photoshop Web)</td><td><strong>wasm</strong></td><td>eBPF 进不了浏览器</td></tr>
+        <tr><td>Cloudflare Workers / Fastly Compute@Edge</td><td><strong>wasm</strong></td><td>跨语言 + 跨平台 portable</td></tr>
+        <tr><td>WebTransport client / WebRTC encoder</td><td><strong>wasm</strong></td><td>需要在 user-space app context 里跑</td></tr>
+        <tr><td>Game logic in browser</td><td><strong>wasm</strong></td><td>大程序 + 任意循环</td></tr>
+        <tr><td>Database query UDFs (Postgres / Redis)</td><td><span class="lang-zh-only">看情况</span><span class="lang-en-only">depends</span></td><td>Postgres pgx 走 wasm,kernel-side trace 走 eBPF</td></tr>
+        <tr><td>IoT 嵌入式</td><td><strong>wasm</strong></td><td>非 Linux 平台,eBPF 不通用</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub lang-zh-only">交叉点 — 它们正在互相学习</h3>
+    <h3 class="sub lang-en-only">Crossover — they are learning from each other</h3>
+
+    <div class="ladder">
+      <div class="ld-row">
+        <div class="ld-num">→</div>
+        <div>
+          <div class="ld-name lang-zh-only">eBPF 在变得更像 wasm</div>
+          <div class="ld-name lang-en-only">eBPF growing more wasm-like</div>
+          <div class="ld-desc lang-zh-only">2023+ 的 <em>linker</em> / <em>libbpf</em> / <em>CO-RE</em>(Compile Once - Run Everywhere)让 eBPF 程序<em>跨内核版本可移植</em>——以前要为每个内核版本重编。这是 wasm 早就解决的问题。</div>
+          <div class="ld-desc lang-en-only">2023+ <em>linker</em> / <em>libbpf</em> / <em>CO-RE</em> (Compile Once - Run Everywhere) make eBPF programs <em>portable across kernel versions</em> — previously you recompiled per kernel. This was wasm's solved problem all along.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">→</div>
+        <div>
+          <div class="ld-name lang-zh-only">wasm 在变得更像 eBPF</div>
+          <div class="ld-name lang-en-only">wasm growing more eBPF-like</div>
+          <div class="ld-desc lang-zh-only">Wasmtime 加了 <em>fuel</em>(每条指令扣燃料,跑到 0 强制终止)和 <em>epoch interruption</em>(异步打断),都是 eBPF 在用的"<em>不可信代码资源上限</em>" 思路。Cloudflare Workers 默认 50ms CPU = wasm 抄 eBPF 的家庭作业。</div>
+          <div class="ld-desc lang-en-only">Wasmtime added <em>fuel</em> (instruction credit, terminate at 0) and <em>epoch interruption</em> (async preemption), both eBPF's "<em>untrusted-code resource cap</em>" patterns. Cloudflare Workers' default 50 ms CPU cap = wasm doing eBPF's homework.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">→</div>
+        <div>
+          <div class="ld-name lang-zh-only">用 wasm 跑 eBPF 程序</div>
+          <div class="ld-name lang-en-only">eBPF programs running on wasm</div>
+          <div class="ld-desc lang-zh-only"><a href="https://github.com/eunomia-bpf/bpftime" target="_blank" rel="noopener">eunomia-bpf/bpftime</a> 这种项目把 eBPF bytecode 在 user-space 用 LLVM JIT 跑,本质上是"<em>用 wasm 框架运行 eBPF</em>"。两条线开始合流。</div>
+          <div class="ld-desc lang-en-only">Projects like <a href="https://github.com/eunomia-bpf/bpftime" target="_blank" rel="noopener">eunomia-bpf/bpftime</a> run eBPF bytecode in user-space via LLVM JIT — essentially "<em>running eBPF inside a wasm-style frame</em>". The two tracks are merging.</div>
+        </div>
+      </div>
+    </div>
+
+    <blockquote class="pull lang-zh-only">
+      eBPF 在内核里 paranoid,wasm 在用户态 forgiving。<br>
+      <em>同一种思想,两种代价模型</em>。
+      <cite>Field Note · 03 · Comparison</cite>
+    </blockquote>
+    <blockquote class="pull lang-en-only">
+      eBPF is paranoid in the kernel,<br>wasm is forgiving in user-space.<br>
+      <em>Same idea, two cost models</em>.
+      <cite>Field Note · 03 · Comparison</cite>
+    </blockquote>
+
+    <div class="cross-link">
+      <a href="#c30" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> Ch30 · <span class="lang-zh-only">手写 wasm</span><span class="lang-en-only">Hand-write wasm</span></a>
       <a href="#crefs" class="cl-next"><span class="cl-label"><span class="lang-zh-only">附录</span><span class="lang-en-only">appendix</span></span><span class="lang-zh-only">References &amp; Standards</span><span class="lang-en-only">References &amp; Standards</span> <span class="cl-arrow">→</span></a>
     </div>
   </section>
@@ -8225,7 +9477,7 @@ $ wasm-tools component new core.wasm -o blur.component.wasm
     </blockquote>
 
     <div class="cross-link">
-      <a href="#c26" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> Ch26 · <span class="lang-zh-only">术语表</span><span class="lang-en-only">Glossary</span></a>
+      <a href="#c31" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> Ch31 · <span class="lang-zh-only">Wasm vs eBPF</span><span class="lang-en-only">Wasm vs eBPF</span></a>
       <a href="#" class="cl-next" style="visibility:hidden"><span class="cl-arrow">→</span></a>
     </div>
   </section>

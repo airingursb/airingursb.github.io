@@ -1459,6 +1459,10 @@
     <li data-section="c22"><a href="#c22"><span class="toc-num">22</span><span class="lang-zh-only">工程实战</span><span class="lang-en-only">Field work</span></a></li>
     <li data-section="c23"><a href="#c23"><span class="toc-num">23</span><span class="lang-zh-only">争议</span><span class="lang-en-only">Critique</span></a></li>
     <li data-section="c24"><a href="#c24"><span class="toc-num">24</span><span class="lang-zh-only">之后</span><span class="lang-en-only">What's next</span></a></li>
+    <li data-section="c25"><a href="#c25"><span class="toc-num">25</span><span class="lang-zh-only">手写 QUIC</span><span class="lang-en-only">Hand-write</span></a></li>
+    <li data-section="c26"><a href="#c26"><span class="toc-num">26</span><span class="lang-zh-only">安全攻击面</span><span class="lang-en-only">Security</span></a></li>
+    <li data-section="c27"><a href="#c27"><span class="toc-num">27</span>MoQ</a></li>
+    <li data-section="h3refs"><a href="#h3refs"><span class="toc-num">§</span><span class="lang-zh-only">引用</span><span class="lang-en-only">Refs</span></a></li>
   </ol>
 </nav>
 
@@ -1689,6 +1693,10 @@
         <a href="#c22" class="toc-chip" data-section="c22"><span class="tc-num">22</span><div class="tc-name"><span class="lang-zh-only">工程实战</span><span class="lang-en-only">Field work</span><span class="tc-en">DNS · curl · Wireshark · qlog</span></div></a>
         <a href="#c23" class="toc-chip" data-section="c23"><span class="tc-num">23</span><div class="tc-name"><span class="lang-zh-only">批评与争议</span><span class="lang-en-only">Critique</span><span class="tc-en">CPU cost · kernel · DPI</span></div></a>
         <a href="#c24" class="toc-chip" data-section="c24"><span class="tc-num">24</span><div class="tc-name"><span class="lang-zh-only">之后</span><span class="lang-en-only">What's next</span><span class="tc-en">WebTransport · MASQUE · MoQ</span></div></a>
+        <a href="#c25" class="toc-chip" data-section="c25"><span class="tc-num">25</span><div class="tc-name"><span class="lang-zh-only">手写 QUIC</span><span class="lang-en-only">Hand-write QUIC</span><span class="tc-en">200 lines · quiche</span></div></a>
+        <a href="#c26" class="toc-chip" data-section="c26"><span class="tc-num">26</span><div class="tc-name"><span class="lang-zh-only">安全攻击面</span><span class="lang-en-only">QUIC security</span><span class="tc-en">7 classes · RFC 9000 §21</span></div></a>
+        <a href="#c27" class="toc-chip" data-section="c27"><span class="tc-num">27</span><div class="tc-name">MoQ Deep Dive<span class="tc-en">Twitch · Meta · 2026</span></div></a>
+        <a href="#h3refs" class="toc-chip tc-special" data-section="h3refs"><span class="tc-num">§</span><div class="tc-name"><span class="lang-zh-only">References</span><span class="lang-en-only">References</span><span class="tc-en">7 groups · 30 entries</span></div></a>
       </div>
     </div>
   </nav>
@@ -2893,6 +2901,227 @@
       <span class="lang-en-only">RFC 9000 §14.1 mandates <em>Initial packets ≥ 1200 bytes</em>. Two reasons: (1) <strong>anti-amplification</strong> — the client must "send enough first" so the server gets a 3× budget (see <a href="#c18">Ch18</a>) to send big responses; (2) <strong>PMTU floor</strong> — if path MTU &lt; 1200, the packet drops and the client falls back fast. The 1200 figure is <em>directly defined</em> by RFC 9000 as the floor (it is <em>not</em> derived from IPv6's 1280-byte MTU: IPv6 header 40 + UDP header 8 = 48, so 1280 − 48 = 1232, leaving 32 bytes more than 1200). RFC chose 1200 to leave that 32-byte cushion for IPv4 tunnels, 6to4, IPsec and other encapsulations.</span>
     </div>
 
+    <!-- ===== SVG · QUIC packet structure · BIT-LEVEL detail ===== -->
+    <figure class="svg-figure" aria-label="QUIC packet bit-level layout Long Header and Short Header">
+      <span class="svg-tag">FIG 06·2 · QUIC packet · BIT-LEVEL · long + short headers</span>
+      <svg viewBox="0 0 760 540" role="img" aria-labelledby="qpktT qpktD">
+        <title id="qpktT">QUIC 数据包 bit-level 布局 · Long Header vs Short Header</title>
+        <desc id="qpktD">Bit-level breakdown of QUIC long header (Initial / 0-RTT / Handshake / Retry) and short header (1-RTT), showing every flag bit per RFC 9000 §17.2 and §17.3 — Header Form, Fixed Bit, Long Packet Type / Spin Bit, Reserved Bits, Key Phase, Packet Number Length, then field-level layout below.</desc>
+
+        <text x="380" y="22" text-anchor="middle" class="t-label">QUIC PACKET · BIT-LEVEL · per RFC 9000 §17</text>
+
+        <!-- ============ LONG HEADER · first byte bit by bit ============ -->
+        <g transform="translate(20,50)">
+          <text x="0" y="0" class="t-mono-sm" style="fill:var(--blue);font-weight:700">LONG HEADER · first byte · 8 bits</text>
+          <text x="0" y="14" class="t-mono-xs" style="fill:var(--ink-mute)">used by Initial / 0-RTT / Handshake / Retry (RFC 9000 §17.2)</text>
+
+          <!-- 8 bit boxes -->
+          <g transform="translate(0,22)">
+            <!-- bit 0 (MSB): Header Form -->
+            <rect x="0" y="0" width="40" height="34" rx="2" class="s-gpu" stroke="var(--gpu)" stroke-width="1.2"/>
+            <text x="20" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">1</text>
+            <text x="20" y="26" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:8px">Header Form</text>
+
+            <!-- bit 1: Fixed Bit -->
+            <rect x="42" y="0" width="40" height="34" rx="2" class="s-good" stroke="var(--good)" stroke-width="1.2"/>
+            <text x="62" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">1</text>
+            <text x="62" y="26" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:8px">Fixed Bit</text>
+
+            <!-- bit 2-3: Long Packet Type -->
+            <rect x="84" y="0" width="84" height="34" rx="2" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="126" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">TT</text>
+            <text x="126" y="26" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink);font-size:8px">Long Packet Type</text>
+
+            <!-- bit 4-5: Reserved (encrypted in HP) -->
+            <rect x="170" y="0" width="84" height="34" rx="2" class="s-warn" opacity="0.7" stroke="var(--warn)" stroke-width="1.2"/>
+            <text x="212" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">RR</text>
+            <text x="212" y="26" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:8px">Reserved (HP)</text>
+
+            <!-- bit 6-7: Packet Number Length -->
+            <rect x="256" y="0" width="84" height="34" rx="2" class="s-cu-p" stroke="var(--copper)" stroke-width="1.2"/>
+            <text x="298" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">PP</text>
+            <text x="298" y="26" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink);font-size:8px">PN Length</text>
+          </g>
+
+          <!-- bit position labels -->
+          <g transform="translate(0,60)" class="t-mono-xs" style="fill:var(--ink-mute);font-size:9px">
+            <text x="20"  y="0" text-anchor="middle">7</text>
+            <text x="62"  y="0" text-anchor="middle">6</text>
+            <text x="105" y="0" text-anchor="middle">5</text>
+            <text x="147" y="0" text-anchor="middle">4</text>
+            <text x="191" y="0" text-anchor="middle">3</text>
+            <text x="233" y="0" text-anchor="middle">2</text>
+            <text x="277" y="0" text-anchor="middle">1</text>
+            <text x="319" y="0" text-anchor="middle">0</text>
+          </g>
+
+          <!-- explanation table -->
+          <g transform="translate(380,22)">
+            <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink);font-weight:700">BITS · explained</text>
+            <g transform="translate(0,12)" class="t-mono-xs" style="font-size:10px">
+              <text x="0" y="0" style="fill:var(--gpu)"><tspan font-weight="700">7</tspan> Header Form: 1 = long</text>
+              <text x="0" y="12" style="fill:var(--good)"><tspan font-weight="700">6</tspan> Fixed Bit: must be 1</text>
+              <text x="0" y="24" style="fill:var(--accent)"><tspan font-weight="700">5-4</tspan> Type: 00=Initial · 01=0-RTT · 10=Handshake · 11=Retry</text>
+              <text x="0" y="36" style="fill:var(--warn)"><tspan font-weight="700">3-2</tspan> Reserved: must be 00 after HP removal · trap if not</text>
+              <text x="0" y="48" style="fill:var(--copper)"><tspan font-weight="700">1-0</tspan> PN Length: 00=1B · 01=2B · 10=3B · 11=4B (encrypted by HP)</text>
+            </g>
+          </g>
+        </g>
+
+        <!-- ============ LONG HEADER · field-level layout ============ -->
+        <g transform="translate(20,170)">
+          <text x="0" y="0" class="t-mono-sm" style="fill:var(--blue);font-weight:700">LONG HEADER · fields after first byte</text>
+
+          <g transform="translate(0,14)">
+            <!-- Version -->
+            <rect x="0" y="0" width="80" height="36" rx="2" class="s-blue-p" stroke="var(--blue)"/>
+            <text x="40" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">Version</text>
+            <text x="40" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">32 bit · v1 = 0x01</text>
+
+            <!-- DCID Length -->
+            <rect x="82" y="0" width="42" height="36" rx="2" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="103" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">DCID Len</text>
+            <text x="103" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">8 bit</text>
+
+            <!-- DCID -->
+            <rect x="126" y="0" width="100" height="36" rx="2" class="s-cu-p" stroke="var(--copper)"/>
+            <text x="176" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">DCID</text>
+            <text x="176" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">0-20 byte · routing ID</text>
+
+            <!-- SCID Length -->
+            <rect x="228" y="0" width="42" height="36" rx="2" class="s-gpu-p" stroke="var(--gpu)"/>
+            <text x="249" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">SCID Len</text>
+            <text x="249" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">8 bit</text>
+
+            <!-- SCID -->
+            <rect x="272" y="0" width="100" height="36" rx="2" class="s-cu-p" stroke="var(--copper)"/>
+            <text x="322" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">SCID</text>
+            <text x="322" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">0-20 byte · sender ID</text>
+
+            <!-- type-specific (Token Length+Token for Initial, etc) -->
+            <rect x="374" y="0" width="120" height="36" rx="2" class="s-warn" opacity="0.6" stroke="var(--warn)"/>
+            <text x="434" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Type-specific</text>
+            <text x="434" y="28" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:9px">Token (Initial) · Retry token · etc.</text>
+
+            <!-- Length (var-int) -->
+            <rect x="496" y="0" width="80" height="36" rx="2" class="s-acc-p" stroke="var(--accent)"/>
+            <text x="536" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">Length</text>
+            <text x="536" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">var-int · 1-8 byte</text>
+
+            <!-- PN -->
+            <rect x="578" y="0" width="60" height="36" rx="2" class="s-warn" opacity="0.7" stroke="var(--warn)"/>
+            <text x="608" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">PN</text>
+            <text x="608" y="28" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:9px">1-4 B (HP)</text>
+
+            <!-- Payload (encrypted) -->
+            <rect x="640" y="0" width="80" height="36" rx="2" class="s-ink" />
+            <text x="680" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Payload</text>
+            <text x="680" y="28" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:9px">AEAD encrypted</text>
+          </g>
+        </g>
+
+        <!-- ============ SHORT HEADER (1-RTT) · first byte ============ -->
+        <g transform="translate(20,260)">
+          <text x="0" y="0" class="t-mono-sm" style="fill:var(--accent);font-weight:700">SHORT HEADER · first byte · 8 bits</text>
+          <text x="0" y="14" class="t-mono-xs" style="fill:var(--ink-mute)">used by 1-RTT (post-handshake) (RFC 9000 §17.3)</text>
+
+          <g transform="translate(0,22)">
+            <!-- bit 0: Header Form -->
+            <rect x="0" y="0" width="40" height="34" rx="2" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>
+            <text x="20" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">0</text>
+            <text x="20" y="26" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink);font-size:8px">Header Form</text>
+
+            <!-- bit 1: Fixed Bit -->
+            <rect x="42" y="0" width="40" height="34" rx="2" class="s-good" stroke="var(--good)" stroke-width="1.2"/>
+            <text x="62" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">1</text>
+            <text x="62" y="26" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:8px">Fixed Bit</text>
+
+            <!-- bit 2: Spin Bit -->
+            <rect x="84" y="0" width="40" height="34" rx="2" class="s-heat" opacity="0.85" stroke="var(--heat)" stroke-width="1.2"/>
+            <text x="104" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">S</text>
+            <text x="104" y="26" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:8px">Spin Bit ⚐</text>
+
+            <!-- bit 3-4: Reserved -->
+            <rect x="126" y="0" width="84" height="34" rx="2" class="s-warn" opacity="0.7" stroke="var(--warn)" stroke-width="1.2"/>
+            <text x="168" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">RR</text>
+            <text x="168" y="26" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:8px">Reserved (HP)</text>
+
+            <!-- bit 5: Key Phase -->
+            <rect x="212" y="0" width="40" height="34" rx="2" class="s-cu" stroke="var(--copper)" stroke-width="1.2"/>
+            <text x="232" y="14" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">K</text>
+            <text x="232" y="26" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:8px">Key Phase</text>
+
+            <!-- bit 6-7: Packet Number Length -->
+            <rect x="254" y="0" width="84" height="34" rx="2" class="s-cu-p" stroke="var(--copper)" stroke-width="1.2"/>
+            <text x="296" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">PP</text>
+            <text x="296" y="26" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink);font-size:8px">PN Length</text>
+          </g>
+
+          <!-- bit positions -->
+          <g transform="translate(0,60)" class="t-mono-xs" style="fill:var(--ink-mute);font-size:9px">
+            <text x="20"  y="0" text-anchor="middle">7</text>
+            <text x="62"  y="0" text-anchor="middle">6</text>
+            <text x="104" y="0" text-anchor="middle">5</text>
+            <text x="147" y="0" text-anchor="middle">4</text>
+            <text x="189" y="0" text-anchor="middle">3</text>
+            <text x="232" y="0" text-anchor="middle">2</text>
+            <text x="275" y="0" text-anchor="middle">1</text>
+            <text x="317" y="0" text-anchor="middle">0</text>
+          </g>
+
+          <!-- Side annotation -->
+          <g transform="translate(380,22)">
+            <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink);font-weight:700">BITS · explained</text>
+            <g transform="translate(0,12)" class="t-mono-xs" style="font-size:10px">
+              <text x="0" y="0" style="fill:var(--gpu)"><tspan font-weight="700">7</tspan> Header Form: 0 = short</text>
+              <text x="0" y="12" style="fill:var(--good)"><tspan font-weight="700">6</tspan> Fixed Bit: must be 1</text>
+              <text x="0" y="24" style="fill:var(--heat)"><tspan font-weight="700">5</tspan> Spin Bit: latency obs · flipped each RTT</text>
+              <text x="0" y="36" style="fill:var(--warn)"><tspan font-weight="700">4-3</tspan> Reserved (HP)</text>
+              <text x="0" y="48" style="fill:var(--copper)"><tspan font-weight="700">2</tspan> Key Phase: flips on key update</text>
+              <text x="0" y="60" style="fill:var(--copper)"><tspan font-weight="700">1-0</tspan> PN Length (HP)</text>
+            </g>
+          </g>
+        </g>
+
+        <!-- ============ SHORT HEADER · field-level ============ -->
+        <g transform="translate(20,380)">
+          <text x="0" y="0" class="t-mono-sm" style="fill:var(--accent);font-weight:700">SHORT HEADER · fields</text>
+
+          <g transform="translate(0,14)">
+            <!-- DCID (no length prefix for short header — recipient knows lengths from connection setup) -->
+            <rect x="0" y="0" width="170" height="36" rx="2" class="s-cu-p" stroke="var(--copper)"/>
+            <text x="85" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">DCID (no length byte!)</text>
+            <text x="85" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">0-20 byte · length pre-agreed</text>
+
+            <!-- PN -->
+            <rect x="172" y="0" width="60" height="36" rx="2" class="s-warn" opacity="0.7" stroke="var(--warn)"/>
+            <text x="202" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">PN</text>
+            <text x="202" y="28" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:9px">1-4 B (HP)</text>
+
+            <!-- Payload -->
+            <rect x="234" y="0" width="486" height="36" rx="2" class="s-ink"/>
+            <text x="477" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Payload (AEAD encrypted)</text>
+            <text x="477" y="28" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-size:9px">CRYPTO + STREAM + ACK + ... frames</text>
+          </g>
+
+          <text x="0" y="68" class="t-mono-xs" style="fill:var(--ink-soft);font-style:italic">↑ short header 比 long header 省 ~ 18 字节 / 包(无 Version / DCID Len / SCID Len+SCID / Length)。这是 1-RTT 阶段的小账。</text>
+        </g>
+
+        <!-- ============ Bottom comparison: payload area ============ -->
+        <g transform="translate(20,475)">
+          <rect width="720" height="56" rx="4" class="s-paper2" stroke="var(--accent)" stroke-dasharray="3 2"/>
+          <text x="14" y="18" class="t-mono-xs" style="fill:var(--accent);font-weight:700">HEADER PROTECTION (HP) · the bits marked (HP) are encrypted</text>
+          <foreignObject x="14" y="22" width="700" height="34">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--sans);font-size:11px;line-height:1.5;color:var(--ink-soft)">
+              Reserved bits + PN Length bits + the PN field are XOR-ed with a 5-byte mask derived from <code style="font-family:var(--mono);color:var(--accent)">AES-ECB(hp_key, sample)</code> where <code style="font-family:var(--mono);color:var(--accent)">sample</code> is 16 ciphertext bytes <em>at packet offset 4</em>. Middleboxes see only the Header Form / Fixed Bit / Spin Bit / Key Phase — enough to route, not enough to read PN for traffic analysis.
+            </div>
+          </foreignObject>
+        </g>
+      </svg>
+      <p class="svg-cap lang-zh-only">QUIC 包的<em>第一字节</em> 8 bit 全部承载结构信息:Header Form 区分长短 header、Fixed Bit 必须为 1(防 NAT 偶然匹配)、长 header 中 2 bit Long Packet Type 区分 Initial/0-RTT/Handshake/Retry、短 header 用其中 1 bit 作 Spin Bit 给运营商看 RTT、Key Phase 1 bit 标记密钥轮换。<strong>Reserved 和 PN Length 这 4 bit 是<em>加密的</em></strong>(Header Protection),让中间盒看不见 PN 做流量分析。 RFC 9000 §17 全部就在这两个字节里。</p>
+      <p class="svg-cap lang-en-only">The <em>first byte</em> of every QUIC packet carries all the routing structure: Header Form distinguishes long/short, Fixed Bit (must be 1) prevents accidental NAT collisions, the 2 Long Packet Type bits distinguish Initial/0-RTT/Handshake/Retry, while short header repurposes one bit as Spin Bit (operator RTT observability) and another as Key Phase (key-rotation marker). <strong>Reserved + PN Length (4 bits) are <em>encrypted</em></strong> by Header Protection so middleboxes can't read packet numbers for traffic analysis. RFC 9000 §17 entirely lives in these two bytes.</p>
+    </figure>
+
     <h3 class="sub lang-zh-only">Header Protection · 头部加密</h3>
     <h3 class="sub lang-en-only">Header Protection</h3>
 
@@ -2992,6 +3221,170 @@
         <span class="lang-zh-only">QUIC 1-RTT 握手时序 · 三种颜色 = 三个 PN 空间 · 注意客户端发送 Finished 时<em>同包带</em>了 GET。</span>
         <span class="figen">Fig 07·1 · QUIC 1-RTT handshake · three colours = three PN spaces · note the client packs GET inside the same datagram as Finished.</span>
       </figcaption>
+    </figure>
+
+    <!-- ===== SVG · Full TLS 1.3 + QUIC handshake message flow ===== -->
+    <figure class="svg-figure" aria-label="Full QUIC + TLS 1.3 handshake message flow">
+      <span class="svg-tag">FIG 07·2 · full handshake · QUIC packets × TLS messages</span>
+      <svg viewBox="0 0 760 700" role="img" aria-labelledby="hsT hsD">
+        <title id="hsT">完整 1-RTT 握手消息流</title>
+        <desc id="hsD">Every QUIC packet exchanged during a 1-RTT handshake, with each TLS 1.3 message and which CRYPTO offset it occupies, plus annotations on which key set protects which packet and when each key set becomes available.</desc>
+
+        <text x="380" y="22" text-anchor="middle" class="t-label">1-RTT HANDSHAKE · QUIC PACKETS × TLS MESSAGES × KEY SETS</text>
+
+        <!-- Two timelines -->
+        <g transform="translate(20,52)">
+          <text x="80" y="0" text-anchor="middle" class="t-mono-sm" style="fill:var(--blue);font-weight:700">CLIENT</text>
+          <line x1="80" y1="20" x2="80" y2="640" class="stk-blue" stroke-width="1.5"/>
+        </g>
+        <g transform="translate(580,52)">
+          <text x="80" y="0" text-anchor="middle" class="t-mono-sm" style="fill:var(--accent);font-weight:700">SERVER</text>
+          <line x1="80" y1="20" x2="80" y2="640" class="stk-acc" stroke-width="1.5"/>
+        </g>
+
+        <!-- Side: key set timeline -->
+        <g transform="translate(710,80)" class="t-mono-xs" style="fill:var(--ink-mute)">
+          <text x="0" y="0" style="font-weight:700">KEYS AVAILABLE</text>
+          <text x="0" y="40" style="fill:var(--blue)">Initial only</text>
+          <text x="0" y="170" style="fill:var(--accent)">+ Handshake</text>
+          <text x="0" y="450" style="fill:var(--copper)">+ 1-RTT</text>
+        </g>
+
+        <!-- ============ Round 1: Client → Server ============ -->
+        <g transform="translate(120,90)">
+          <text x="260" y="-2" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">① Initial[CRYPTO: ClientHello] · 1200 B padded</text>
+          <path d="M 0,12 L 540,18" class="stk-blue" stroke-width="1.4" marker-end="url(#hArrB)"/>
+          <text x="260" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">TLS msg: ClientHello · 0..516 · KeyShare, ALPN=h3, SNI, TP, signature_algos</text>
+          <text x="260" y="42" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">Protected by: Initial keys (salt-derived, public)</text>
+          <text x="260" y="56" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">+ PADDING to ≥ 1200 B · anti-amplification</text>
+        </g>
+
+        <!-- ============ Round 2: Server → Client · 3 coalesced packets ============ -->
+        <g transform="translate(120,170)">
+          <text x="260" y="-2" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">② Coalesced UDP datagram · 3 QUIC packets concatenated</text>
+
+          <!-- Packet 2a: Initial[ServerHello] -->
+          <path d="M 540,14 L 0,22" class="stk-blue" stroke-width="1.4" marker-end="url(#hArrA)"/>
+          <text x="280" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue)">Initial[CRYPTO: ServerHello] · 0..120</text>
+          <text x="280" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">→ derives handshake_secret · keys 0..3</text>
+
+          <!-- Packet 2b: Handshake[EE+Cert+CV+Fin part 1] -->
+          <path d="M 540,42 L 0,50" class="stk-acc" stroke-width="1.4" marker-end="url(#hArrA)"/>
+          <text x="280" y="42" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Handshake[CRYPTO: EE+Cert+CertVerify · 0..1100]</text>
+          <text x="280" y="56" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">Encrypted Extensions · server TP · Cert chain · CertVerify sig</text>
+
+          <!-- Packet 2c: Handshake[Finished] -->
+          <path d="M 540,70 L 0,78" class="stk-acc" stroke-width="1.4" marker-end="url(#hArrA)"/>
+          <text x="280" y="70" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Handshake[CRYPTO: Finished · 1100..1132 + ACK]</text>
+          <text x="280" y="84" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">verify_data = HMAC(handshake_secret, transcript_hash) · 32 B</text>
+        </g>
+
+        <!-- Key derivation annotation in margin -->
+        <g transform="translate(700,210)">
+          <line x1="0" y1="-20" x2="0" y2="60" class="stk-accent" stroke="var(--accent)" stroke-width="1" stroke-dasharray="3 2"/>
+          <text x="-2" y="30" class="t-mono-xs" style="fill:var(--accent);font-style:italic;font-weight:700">handshake</text>
+          <text x="-2" y="42" class="t-mono-xs" style="fill:var(--accent);font-style:italic;font-weight:700">keys live</text>
+        </g>
+
+        <!-- ============ Round 3: Client → Server · Finished + first 1-RTT ============ -->
+        <g transform="translate(120,290)">
+          <text x="260" y="-2" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">③ Coalesced · client confirms handshake AND opens 1-RTT</text>
+
+          <!-- Packet 3a: Handshake[Finished] -->
+          <path d="M 0,14 L 540,22" class="stk-acc" stroke-width="1.4" marker-end="url(#hArrB)"/>
+          <text x="280" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">Handshake[CRYPTO: Finished · 0..32]</text>
+          <text x="280" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">client Finished → derives master_secret → 1-RTT keys</text>
+
+          <!-- Packet 3b: 1-RTT[STREAM: GET / HTTP/3] -->
+          <path d="M 0,42 L 540,50" class="stk-cu" stroke-width="1.5" marker-end="url(#hArrCu)"/>
+          <text x="280" y="42" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">1-RTT[STREAM 0: GET / HTTP/3]</text>
+          <text x="280" y="56" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">Encrypted with 1-RTT keys · client may send before server confirms ③a</text>
+        </g>
+
+        <!-- 1-RTT keys available marker -->
+        <g transform="translate(700,330)">
+          <line x1="0" y1="0" x2="0" y2="60" class="stk-cu" stroke="var(--copper)" stroke-width="1" stroke-dasharray="3 2"/>
+          <text x="-2" y="30" class="t-mono-xs" style="fill:var(--copper);font-style:italic;font-weight:700">1-RTT keys</text>
+          <text x="-2" y="42" class="t-mono-xs" style="fill:var(--copper);font-style:italic;font-weight:700">live on</text>
+          <text x="-2" y="54" class="t-mono-xs" style="fill:var(--copper);font-style:italic;font-weight:700">CLIENT</text>
+        </g>
+
+        <!-- ============ Round 4: Server → Client · HANDSHAKE_DONE + Response ============ -->
+        <g transform="translate(120,395)">
+          <text x="260" y="-2" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">④ Server confirms handshake done, returns HTTP/3 response</text>
+
+          <!-- Packet 4a: 1-RTT[HANDSHAKE_DONE + NEW_CONNECTION_ID×3 + ACK] -->
+          <path d="M 540,14 L 0,22" class="stk-cu" stroke-width="1.5" marker-end="url(#hArrCu)"/>
+          <text x="280" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper)">1-RTT[HANDSHAKE_DONE + NEW_CONNECTION_ID×3 + ACK]</text>
+          <text x="280" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">Initial / Handshake keys are now safe to discard</text>
+
+          <!-- Packet 4b: 1-RTT[STREAM: 200 OK] -->
+          <path d="M 540,42 L 0,50" class="stk-cu" stroke-width="1.5" marker-end="url(#hArrCu)"/>
+          <text x="280" y="42" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">1-RTT[STREAM 0: HTTP/3 HEADERS + DATA (200 OK + body)]</text>
+          <text x="280" y="56" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">first 3 KB of response, on the same UDP packet pair</text>
+        </g>
+
+        <!-- ============ Summary table ============ -->
+        <g transform="translate(20,500)">
+          <rect width="720" height="180" rx="4" class="s-paper2" stroke="var(--accent)" stroke-dasharray="3 2"/>
+          <text x="14" y="18" class="t-mono-xs" style="fill:var(--accent);font-weight:700">PACKETS × KEYS × TLS MESSAGES · summary table</text>
+
+          <g transform="translate(14,28)" style="font-family:var(--mono);font-size:10.5px">
+            <!-- Header -->
+            <g transform="translate(0,8)" style="fill:var(--ink);font-weight:700">
+              <text x="0" y="0">QUIC packet type</text>
+              <text x="160" y="0">key set</text>
+              <text x="260" y="0">TLS 1.3 messages inside (CRYPTO frames)</text>
+              <text x="540" y="0">when</text>
+            </g>
+            <line x1="0" y1="14" x2="700" y2="14" class="stk-rule" stroke-width="0.6"/>
+
+            <g transform="translate(0,30)" style="fill:var(--ink-soft)">
+              <text x="0" y="0">Initial</text>
+              <text x="160" y="0" style="fill:var(--blue);font-weight:700">Initial</text>
+              <text x="260" y="0">ClientHello (CH); ServerHello (SH)</text>
+              <text x="540" y="0" style="fill:var(--ink-mute)">round 1 + 2a</text>
+            </g>
+            <g transform="translate(0,46)" style="fill:var(--ink-soft)">
+              <text x="0" y="0">Handshake</text>
+              <text x="160" y="0" style="fill:var(--accent);font-weight:700">Handshake</text>
+              <text x="260" y="0">EE, Certificate, CertVerify, Finished (both sides)</text>
+              <text x="540" y="0" style="fill:var(--ink-mute)">round 2b/c + 3a</text>
+            </g>
+            <g transform="translate(0,62)" style="fill:var(--ink-soft)">
+              <text x="0" y="0">0-RTT</text>
+              <text x="160" y="0" style="fill:var(--gpu);font-weight:700">0-RTT</text>
+              <text x="260" y="0">(none — carries STREAM frames, not TLS)</text>
+              <text x="540" y="0" style="fill:var(--ink-mute)">resumption only</text>
+            </g>
+            <g transform="translate(0,78)" style="fill:var(--ink-soft)">
+              <text x="0" y="0">1-RTT</text>
+              <text x="160" y="0" style="fill:var(--copper);font-weight:700">1-RTT</text>
+              <text x="260" y="0">NewSessionTicket (later); app data; HANDSHAKE_DONE</text>
+              <text x="540" y="0" style="fill:var(--ink-mute)">round 3b onwards</text>
+            </g>
+            <g transform="translate(0,94)" style="fill:var(--ink-soft)">
+              <text x="0" y="0">Retry</text>
+              <text x="160" y="0" style="fill:var(--warn);font-weight:700">(unencrypted)</text>
+              <text x="260" y="0">(none — stateless cookie response)</text>
+              <text x="540" y="0" style="fill:var(--ink-mute)">anti-DoS only</text>
+            </g>
+
+            <g transform="translate(0,118)" class="t-mono-xs" style="fill:var(--accent);font-style:italic">
+              <text x="0" y="0">→ 1 RTT total: round 1 = T₀, round 2 = T+½ RTT, round 3 starts at T+1 RTT,</text>
+              <text x="0" y="14">  round 4 returns at T+1½ RTT. Application data ready at T+1 RTT (client sends first GET).</text>
+            </g>
+          </g>
+        </g>
+
+        <defs>
+          <marker id="hArrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/></marker>
+          <marker id="hArrB" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--blue)"/></marker>
+          <marker id="hArrCu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--copper)"/></marker>
+        </defs>
+      </svg>
+      <p class="svg-cap lang-zh-only">完整的 1-RTT 握手包含 4 个 QUIC 包(实际是 6 个 packet 合并到 4 个 UDP datagram 里),每个包用<em>不同</em>的密钥集合保护:Initial keys(对所有人公开)→ Handshake keys(server 的 ServerHello 后)→ 1-RTT keys(双方 Finished 后)。TLS 1.3 的 ClientHello / ServerHello / EncryptedExtensions / Certificate / CertVerify / Finished 通过 CRYPTO 帧载入,但<em>不直接</em>组成 TLS record——QUIC 自己处理重传 + 排序。整个握手在 1 RTT 内完成,client 可以在<em>它发完自己的 Finished 那一刻</em>(round 3b)就开始发 HTTP request,不必等 server 确认。</p>
+      <p class="svg-cap lang-en-only">A full 1-RTT handshake involves 4 QUIC packets (actually ~ 6 packets coalesced into 4 UDP datagrams), each protected by a <em>different</em> key set: Initial keys (publicly derivable) → Handshake keys (after ServerHello) → 1-RTT keys (after both sides' Finished). TLS 1.3's ClientHello / ServerHello / EncryptedExtensions / Certificate / CertVerify / Finished are carried inside CRYPTO frames — but <em>not</em> assembled into actual TLS records; QUIC handles ordering and retransmission itself. The full handshake completes in 1 RTT; the client may start sending its first HTTP request <em>the moment it finishes its own Finished</em> (round 3b), without waiting for the server's confirmation.</p>
     </figure>
 
     <h3 class="sub lang-zh-only">TLS 1.3 进了哪里？</h3>
@@ -3301,6 +3694,166 @@
         <div class="io-val"><span class="lang-zh-only">4 级 × 3 = 12 个量</span><span class="lang-en-only">4 levels × 3 = 12 values</span><span class="small"><span class="lang-zh-only">(key 16B, iv 12B, hp 16B) for Initial/0-RTT/Handshake/1-RTT</span><span class="lang-en-only">(key 16B, iv 12B, hp 16B) for Initial/0-RTT/Handshake/1-RTT</span></span></div>
       </div>
     </div>
+
+    <!-- ===== SVG · Four QUIC key sets derivation timeline ===== -->
+    <figure class="svg-figure" aria-label="QUIC four key sets and their derivation timeline">
+      <span class="svg-tag">FIG 09 · QUIC key sets · 4 levels · HKDF tree</span>
+      <svg viewBox="0 0 760 540" role="img" aria-labelledby="keyT keyD">
+        <title id="keyT">QUIC 四套密钥的派生 + 生命周期</title>
+        <desc id="keyD">Timeline showing how QUIC derives Initial / 0-RTT / Handshake / 1-RTT key sets from different TLS 1.3 secrets, when each key set is used, and which packet types it protects.</desc>
+
+        <text x="380" y="22" text-anchor="middle" class="t-label">QUIC KEY SCHEDULE · 4 SECRET → 4 KEY SETS · PER RFC 9001 §5</text>
+
+        <!-- ============ TLS 1.3 secrets (top) ============ -->
+        <g transform="translate(0,50)">
+          <text x="20" y="0" class="t-mono-sm" style="fill:var(--ink-mute);font-weight:700">TLS 1.3 SECRETS (from RFC 8446 §7.1)</text>
+
+          <!-- Initial secret (computed from CID + salt, no TLS!) -->
+          <g transform="translate(20,12)">
+            <rect width="160" height="48" rx="3" class="s-blue-p" stroke="var(--blue)" stroke-width="1.2"/>
+            <text x="80" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">initial_secret</text>
+            <text x="80" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">HKDF(salt, client DCID)</text>
+            <text x="80" y="42" text-anchor="middle" class="t-mono-xs" style="fill:var(--heat);font-style:italic">public salt — no secrecy</text>
+          </g>
+
+          <!-- early_secret (PSK-based, for 0-RTT) -->
+          <g transform="translate(200,12)">
+            <rect width="160" height="48" rx="3" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.2"/>
+            <text x="80" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">early_secret</text>
+            <text x="80" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">HKDF(PSK, "")</text>
+            <text x="80" y="42" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">from resumption ticket</text>
+          </g>
+
+          <!-- handshake_secret -->
+          <g transform="translate(380,12)">
+            <rect width="160" height="48" rx="3" class="s-acc-p" stroke="var(--accent)" stroke-width="1.2"/>
+            <text x="80" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">handshake_secret</text>
+            <text x="80" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">HKDF(early, ECDHE)</text>
+            <text x="80" y="42" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">post-ServerHello</text>
+          </g>
+
+          <!-- master_secret -->
+          <g transform="translate(560,12)">
+            <rect width="160" height="48" rx="3" class="s-cu-p" stroke="var(--copper)" stroke-width="1.2"/>
+            <text x="80" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">master_secret</text>
+            <text x="80" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">HKDF(handshake, "")</text>
+            <text x="80" y="42" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">post-Finished</text>
+          </g>
+        </g>
+
+        <!-- HKDF derivation arrows -->
+        <g class="stk-mute" stroke-width="0.8" fill="none" stroke-dasharray="3 2">
+          <path d="M 100,114 L 100,160" marker-end="url(#kArr)"/>
+          <path d="M 280,114 L 280,160" marker-end="url(#kArr)"/>
+          <path d="M 460,114 L 460,160" marker-end="url(#kArr)"/>
+          <path d="M 640,114 L 640,160" marker-end="url(#kArr)"/>
+        </g>
+
+        <!-- ============ 4 key sets (middle) ============ -->
+        <g transform="translate(0,160)">
+          <text x="20" y="0" class="t-mono-sm" style="fill:var(--ink-mute);font-weight:700">FOUR QUIC KEY SETS · each set = { key 16B, iv 12B, hp_key 16B }</text>
+
+          <g transform="translate(20,14)">
+            <rect width="160" height="80" rx="3" class="s-blue" />
+            <text x="80" y="18" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">① Initial keys</text>
+            <text x="80" y="36" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.9">protects: Initial packets</text>
+            <text x="80" y="50" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.85">ClientHello, ServerHello,</text>
+            <text x="80" y="62" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.85">Retry, anti-amp ACKs</text>
+            <text x="80" y="76" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.75;font-style:italic">"encrypted" — but salt is public!</text>
+          </g>
+
+          <g transform="translate(200,14)">
+            <rect width="160" height="80" rx="3" class="s-gpu"/>
+            <text x="80" y="18" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">② 0-RTT keys</text>
+            <text x="80" y="36" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.9">protects: 0-RTT packets</text>
+            <text x="80" y="50" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.85">early data (GET / HEAD)</text>
+            <text x="80" y="64" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.85">on resumed sessions</text>
+            <text x="80" y="78" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.75;font-style:italic">optional · ticket-derived</text>
+          </g>
+
+          <g transform="translate(380,14)">
+            <rect width="160" height="80" rx="3" class="s-acc"/>
+            <text x="80" y="18" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">③ Handshake keys</text>
+            <text x="80" y="36" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.9">protects: Handshake packets</text>
+            <text x="80" y="50" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.85">EE, Cert, CertVerify,</text>
+            <text x="80" y="64" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.85">Finished, mid-handshake ACKs</text>
+            <text x="80" y="78" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.75;font-style:italic">truly encrypted</text>
+          </g>
+
+          <g transform="translate(560,14)">
+            <rect width="160" height="80" rx="3" class="s-cu"/>
+            <text x="80" y="18" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">④ 1-RTT keys</text>
+            <text x="80" y="36" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.9">protects: 1-RTT packets</text>
+            <text x="80" y="50" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.85">all application data</text>
+            <text x="80" y="64" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.85">post-handshake</text>
+            <text x="80" y="78" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.75;font-style:italic">forward-secret</text>
+          </g>
+        </g>
+
+        <!-- ============ Lifetime timeline ============ -->
+        <g transform="translate(0,275)">
+          <text x="20" y="0" class="t-mono-sm" style="fill:var(--ink-mute);font-weight:700">LIFETIME · when each set is alive</text>
+
+          <!-- Time axis -->
+          <line x1="20" y1="32" x2="740" y2="32" class="stk-ink" stroke-width="1"/>
+          <g class="t-mono-xs" style="fill:var(--ink-mute)">
+            <text x="20"  y="24" text-anchor="middle">T₀</text>
+            <text x="160" y="24" text-anchor="middle">ClientHello</text>
+            <text x="300" y="24" text-anchor="middle">ServerHello (~1 RTT)</text>
+            <text x="440" y="24" text-anchor="middle">Finished (handshake done)</text>
+            <text x="580" y="24" text-anchor="middle">application data</text>
+            <text x="720" y="24" text-anchor="middle">close</text>
+          </g>
+
+          <!-- ① Initial keys (active throughout handshake init phase) -->
+          <rect x="20" y="44" width="280" height="14" rx="2" class="s-blue" opacity="0.85"/>
+          <text x="160" y="55" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">① Initial keys (discarded after Handshake start)</text>
+
+          <!-- ② 0-RTT keys (only if resumption, brief life pre-Finished) -->
+          <rect x="100" y="64" width="200" height="14" rx="2" class="s-gpu" opacity="0.85"/>
+          <text x="200" y="75" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">② 0-RTT keys (optional · early data only)</text>
+
+          <!-- ③ Handshake keys (post-ClientHello processing through Finished) -->
+          <rect x="180" y="84" width="280" height="14" rx="2" class="s-acc" opacity="0.85"/>
+          <text x="320" y="95" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">③ Handshake keys (mid-handshake → discarded after Finished)</text>
+
+          <!-- ④ 1-RTT keys (post-Finished forever) -->
+          <rect x="440" y="104" width="280" height="14" rx="2" class="s-cu" opacity="0.85"/>
+          <text x="580" y="115" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">④ 1-RTT keys (forever · until close/key-update)</text>
+
+          <!-- Markers on time axis -->
+          <g class="stk-ink" stroke-width="0.8">
+            <line x1="20"  y1="28" x2="20"  y2="36"/>
+            <line x1="160" y1="28" x2="160" y2="36"/>
+            <line x1="300" y1="28" x2="300" y2="36"/>
+            <line x1="440" y1="28" x2="440" y2="36"/>
+            <line x1="580" y1="28" x2="580" y2="36"/>
+            <line x1="720" y1="28" x2="720" y2="36"/>
+          </g>
+        </g>
+
+        <!-- Key update annotation -->
+        <g transform="translate(20,430)">
+          <rect width="720" height="92" rx="4" class="s-paper2" stroke="var(--copper)" stroke-dasharray="3 2"/>
+          <text x="14" y="18" class="t-mono-xs" style="fill:var(--copper);font-weight:700">KEY UPDATE · rotating 1-RTT keys without re-handshake</text>
+          <foreignObject x="14" y="22" width="700" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--sans);font-size:12px;line-height:1.6;color:var(--ink-soft)">
+              QUIC's <strong>Key Phase bit</strong> (in the short header) is the only signal that 1-RTT keys have been rotated. Either side may initiate a rotation by:<br>
+              ① flipping its Key Phase bit on outgoing packets; ② receiver derives the next key set from <code style="font-family:var(--mono);color:var(--accent)">application_traffic_secret_{N+1} = HKDF(application_traffic_secret_N, "quic ku")</code>; ③ acks the change.<br>
+              <strong>Rules:</strong> at most one update per RTT (anti-flap), receiver tolerates packets from either phase during transition, must drop old keys after a few RTT to bound exposure. Used to defend against long-term key compromise.
+            </div>
+          </foreignObject>
+        </g>
+
+        <defs>
+          <marker id="kArr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink-mute)"/>
+          </marker>
+        </defs>
+      </svg>
+      <p class="svg-cap lang-zh-only">QUIC 用<strong>四套独立密钥</strong> 而非一套——每套包含 <code style="font-family:var(--mono);color:var(--accent)">key 16B + iv 12B + hp_key 16B</code>。四套对应 TLS 1.3 内部的四级 secret(initial / early / handshake / master),由 HKDF 派生。<em>Initial keys 的"<em>salt</em>" 是公开的</em>——所以 Initial 包<em>所有人都能解密</em>;真正的保密从 Handshake keys 开始。整套设计让<strong>每一类包用恰好够用的安全等级</strong>,handshake 期间能跨级别同时收发。Key update 通过短 header 的 Key Phase bit 不重握手即可轮换 1-RTT keys。</p>
+      <p class="svg-cap lang-en-only">QUIC uses <strong>four independent key sets</strong>, not one — each set contains <code style="font-family:var(--mono);color:var(--accent)">key 16B + iv 12B + hp_key 16B</code>. The four mirror TLS 1.3's secret hierarchy (initial / early / handshake / master), derived via HKDF. <em>Initial keys use a <em>public</em> salt</em> — so Initial packets are decryptable by anyone; real secrecy starts at Handshake keys. The design grants <strong>each packet class exactly the security level it needs</strong> while allowing cross-level packets to flow during handshake. Key update rotates 1-RTT keys without a re-handshake via the short header's Key Phase bit.</p>
+    </figure>
 
     <h3 class="sub lang-zh-only">四套密钥的派生时点</h3>
     <h3 class="sub lang-en-only">When each key set is derived</h3>
@@ -3698,6 +4251,179 @@
         <span class="lang-zh-only">一条 QUIC 连接里的 4 条平行流 · 请求双向流 + 控制流 + QPACK encoder/decoder · 帧可以挤进同一个 packet。</span>
         <span class="figen">Fig 11·1 · Four parallel streams inside one QUIC connection · request bidi + control + QPACK encoder/decoder · frames coalesce into the same packet.</span>
       </figcaption>
+    </figure>
+
+    <!-- ===== SVG · QUIC stream lifecycle state machine ===== -->
+    <figure class="svg-figure" aria-label="QUIC stream lifecycle state machine">
+      <span class="svg-tag">FIG 11 · stream state machine · sending + receiving</span>
+      <svg viewBox="0 0 760 500" role="img" aria-labelledby="strT strD">
+        <title id="strT">QUIC stream 生命周期状态机</title>
+        <desc id="strD">Bidirectional stream lifecycle: separate state machines for sending and receiving halves, with state transitions on STREAM (FIN), RESET_STREAM, STOP_SENDING, MAX_STREAM_DATA, and STREAM_DATA_BLOCKED frames.</desc>
+
+        <text x="380" y="22" text-anchor="middle" class="t-label">STREAM LIFECYCLE · TWO HALF-MACHINES · PER RFC 9000 §3</text>
+
+        <!-- ============ SENDING SIDE (left) ============ -->
+        <g transform="translate(20,50)">
+          <text x="160" y="0" text-anchor="middle" class="t-mono-sm" style="fill:var(--accent);font-weight:700">SENDING HALF</text>
+
+          <!-- Ready -->
+          <g transform="translate(120,16)">
+            <rect width="80" height="32" rx="16" class="s-acc-p" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">Ready</text>
+          </g>
+          <text x="160" y="62" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">app creates stream, no data yet</text>
+
+          <!-- Send -->
+          <g transform="translate(120,82)">
+            <rect width="80" height="32" rx="16" class="s-acc" stroke="var(--accent)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Send</text>
+          </g>
+          <text x="160" y="128" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">STREAM frames flow</text>
+
+          <!-- Data Sent -->
+          <g transform="translate(120,148)">
+            <rect width="80" height="32" rx="16" class="s-blue-p" stroke="var(--blue)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">Data Sent</text>
+          </g>
+          <text x="160" y="194" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">FIN written, awaiting ACK</text>
+
+          <!-- Data Recvd (terminal) -->
+          <g transform="translate(120,214)">
+            <rect width="80" height="32" rx="16" class="s-good" stroke="var(--good)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Data Recvd</text>
+          </g>
+          <text x="160" y="260" text-anchor="middle" class="t-mono-xs" style="fill:var(--good);font-style:italic">✓ all bytes ACK'd · terminal</text>
+
+          <!-- Reset Sent -->
+          <g transform="translate(20,148)">
+            <rect width="80" height="32" rx="16" class="s-heat" opacity="0.85" stroke="var(--heat)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Reset Sent</text>
+          </g>
+
+          <!-- Reset Recvd (terminal) -->
+          <g transform="translate(20,214)">
+            <rect width="80" height="32" rx="16" class="s-paper" stroke="var(--heat)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:var(--heat);font-weight:700">Reset Recvd</text>
+          </g>
+          <text x="60" y="260" text-anchor="middle" class="t-mono-xs" style="fill:var(--heat);font-style:italic">✗ RST_STREAM ACK'd</text>
+
+          <!-- Transition arrows · sending -->
+          <g class="stk-acc" stroke-width="1.2" fill="none">
+            <path d="M 160,48 L 160,80" marker-end="url(#sArrA)"/>
+            <text x="170" y="68" class="t-mono-xs" style="fill:var(--accent);font-style:italic">first STREAM</text>
+            <path d="M 160,114 L 160,146" marker-end="url(#sArrA)"/>
+            <text x="170" y="134" class="t-mono-xs" style="fill:var(--accent);font-style:italic">FIN set</text>
+            <path d="M 160,180 L 160,212" marker-end="url(#sArrA)"/>
+            <text x="170" y="200" class="t-mono-xs" style="fill:var(--accent);font-style:italic">all ACK'd</text>
+          </g>
+          <g class="stk-heat" stroke-width="1.2" fill="none">
+            <path d="M 130,114 L 60,146" marker-end="url(#sArrH)"/>
+            <text x="35" y="138" class="t-mono-xs" style="fill:var(--heat);font-style:italic">RST_STREAM</text>
+            <path d="M 60,180 L 60,212" marker-end="url(#sArrH)"/>
+            <text x="68" y="200" class="t-mono-xs" style="fill:var(--heat);font-style:italic">ACK'd</text>
+          </g>
+        </g>
+
+        <!-- Divider -->
+        <line x1="380" y1="55" x2="380" y2="320" class="stk-rule" stroke-width="1" stroke-dasharray="2 4"/>
+
+        <!-- ============ RECEIVING SIDE (right) ============ -->
+        <g transform="translate(400,50)">
+          <text x="160" y="0" text-anchor="middle" class="t-mono-sm" style="fill:var(--copper);font-weight:700">RECEIVING HALF</text>
+
+          <!-- Recv -->
+          <g transform="translate(120,16)">
+            <rect width="80" height="32" rx="16" class="s-cu-p" stroke="var(--copper)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Recv</text>
+          </g>
+          <text x="160" y="62" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">stream created upon first STREAM</text>
+
+          <!-- Size Known -->
+          <g transform="translate(120,82)">
+            <rect width="80" height="32" rx="16" class="s-cu" stroke="var(--copper)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Size Known</text>
+          </g>
+          <text x="160" y="128" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">peer FIN received</text>
+
+          <!-- Data Recvd -->
+          <g transform="translate(120,148)">
+            <rect width="80" height="32" rx="16" class="s-blue-p" stroke="var(--blue)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">Data Recvd</text>
+          </g>
+          <text x="160" y="194" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">all bytes contiguous up to FIN</text>
+
+          <!-- Data Read (terminal) -->
+          <g transform="translate(120,214)">
+            <rect width="80" height="32" rx="16" class="s-good" stroke="var(--good)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Data Read</text>
+          </g>
+          <text x="160" y="260" text-anchor="middle" class="t-mono-xs" style="fill:var(--good);font-style:italic">✓ app consumed · terminal</text>
+
+          <!-- Reset Recvd -->
+          <g transform="translate(20,82)">
+            <rect width="80" height="32" rx="16" class="s-heat" opacity="0.85" stroke="var(--heat)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">Reset Recvd</text>
+          </g>
+
+          <!-- Reset Read (terminal) -->
+          <g transform="translate(20,214)">
+            <rect width="80" height="32" rx="16" class="s-paper" stroke="var(--heat)" stroke-width="1.5"/>
+            <text x="40" y="20" text-anchor="middle" class="t-mono-xs" style="fill:var(--heat);font-weight:700">Reset Read</text>
+          </g>
+          <text x="60" y="260" text-anchor="middle" class="t-mono-xs" style="fill:var(--heat);font-style:italic">✗ app saw reset · terminal</text>
+
+          <!-- Transitions · receiving -->
+          <g class="stk-cu" stroke-width="1.2" fill="none">
+            <path d="M 160,48 L 160,80" marker-end="url(#sArrC)"/>
+            <text x="170" y="68" class="t-mono-xs" style="fill:var(--copper);font-style:italic">FIN received</text>
+            <path d="M 160,114 L 160,146" marker-end="url(#sArrC)"/>
+            <text x="170" y="134" class="t-mono-xs" style="fill:var(--copper);font-style:italic">all bytes arrive</text>
+            <path d="M 160,180 L 160,212" marker-end="url(#sArrC)"/>
+            <text x="170" y="200" class="t-mono-xs" style="fill:var(--copper);font-style:italic">app reads</text>
+          </g>
+          <g class="stk-heat" stroke-width="1.2" fill="none">
+            <path d="M 130,32 L 100,80" marker-end="url(#sArrH)"/>
+            <text x="10" y="76" class="t-mono-xs" style="fill:var(--heat);font-style:italic">RST_STREAM</text>
+            <path d="M 60,114 L 60,212" marker-end="url(#sArrH)" stroke-dasharray="4 2"/>
+            <text x="68" y="180" class="t-mono-xs" style="fill:var(--heat);font-style:italic">app sees reset</text>
+          </g>
+        </g>
+
+        <!-- Cross-arrows: STOP_SENDING (recv side reaches into sender's send half) -->
+        <g class="stk-warn" stroke-width="1.4" fill="none" stroke-dasharray="4 3">
+          <path d="M 440,82 L 380,82 L 240,148" marker-end="url(#sArrW)"/>
+        </g>
+        <text x="320" y="78" class="t-mono-xs" style="fill:var(--warn);font-weight:700">STOP_SENDING ↗</text>
+        <text x="320" y="92" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">recv side tells sender "<em>stop, I don't want this</em>"</text>
+        <text x="320" y="106" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">→ sender transitions to Reset Sent</text>
+
+        <!-- ============ Frame legend ============ -->
+        <g transform="translate(20,360)">
+          <rect width="720" height="130" rx="4" class="s-paper2" stroke="var(--rule)" stroke-dasharray="3 2"/>
+          <text x="14" y="18" class="t-mono-xs" style="fill:var(--ink);font-weight:700">FRAMES THAT DRIVE TRANSITIONS · 6 关键帧</text>
+          <foreignObject x="14" y="26" width="700" height="100">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--sans);font-size:12px;line-height:1.55;color:var(--ink-soft)">
+              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px 16px">
+                <div><strong style="color:var(--accent);font-family:var(--mono)">STREAM</strong> (0x08-0x0f): carries data; FIN bit ends sending half. 8 variants encode {offset present?, length present?, FIN?}.</div>
+                <div><strong style="color:var(--heat);font-family:var(--mono)">RESET_STREAM</strong> (0x04): sender aborts; recv goes to Reset Recvd. <em>Final size required</em>.</div>
+                <div><strong style="color:var(--warn);font-family:var(--mono)">STOP_SENDING</strong> (0x05): recv asks sender to abort. Triggers sender's RESET_STREAM.</div>
+                <div><strong style="color:var(--blue);font-family:var(--mono)">MAX_STREAM_DATA</strong> (0x11): grants more flow control credit per stream.</div>
+                <div><strong style="color:var(--gpu);font-family:var(--mono)">STREAM_DATA_BLOCKED</strong> (0x15): sender complains "<em>I'm flow-control blocked here</em>".</div>
+                <div><strong style="color:var(--copper);font-family:var(--mono)">MAX_STREAMS</strong> (0x12-0x13): grants more concurrent stream slots.</div>
+              </div>
+            </div>
+          </foreignObject>
+        </g>
+
+        <defs>
+          <marker id="sArrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/></marker>
+          <marker id="sArrC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--copper)"/></marker>
+          <marker id="sArrH" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--heat)"/></marker>
+          <marker id="sArrW" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--warn)"/></marker>
+        </defs>
+      </svg>
+      <p class="svg-cap lang-zh-only">QUIC stream 是<strong>双向 = 两套独立的半状态机</strong>(sending half + receiving half)。每个 endpoint 看到的 stream 有自己的 sending half 和 receiving half——它们独立转移。常规生命周期是 <code style="font-family:var(--mono);color:var(--accent)">Ready → Send → Data Sent → Data Recvd</code>(发送端)和 <code style="font-family:var(--mono);color:var(--copper)">Recv → Size Known → Data Recvd → Data Read</code>(接收端)。<em>RESET_STREAM</em> 让发送端进入 Reset Sent;<em>STOP_SENDING</em> 让<em>接收端</em>请求发送端 reset。这种<em>双向解耦</em> 是 HTTP/3 流多路复用的形式保证。</p>
+      <p class="svg-cap lang-en-only">A QUIC stream is <strong>bidirectional = two independent half state machines</strong> (sending half + receiving half). Each endpoint sees its own sending and receiving halves of a given stream — they transition independently. Normal lifecycle: <code style="font-family:var(--mono);color:var(--accent)">Ready → Send → Data Sent → Data Recvd</code> (sender) and <code style="font-family:var(--mono);color:var(--copper)">Recv → Size Known → Data Recvd → Data Read</code> (receiver). <em>RESET_STREAM</em> sends the sender into Reset Sent; <em>STOP_SENDING</em> lets the <em>receiver</em> ask the sender to reset. This <em>bidirectional decoupling</em> is the formal guarantee of HTTP/3 stream multiplexing.</p>
     </figure>
 
     <h3 class="sub lang-zh-only">流量控制 · 两级</h3>
@@ -4800,6 +5526,112 @@
 
     <p class="lang-zh-only">连接建立后，服务器和客户端不停发 <code>NEW_CONNECTION_ID</code> 帧，互相给对方备好"<em>未来可以用的 CID 列表</em>"。每个 CID 还附带一个 <em>Stateless Reset Token</em>——用于无状态重置。</p>
     <p class="lang-en-only">Once the connection is up, both sides keep emitting <code>NEW_CONNECTION_ID</code> frames, populating each other's "<em>list of CIDs you may use in future</em>". Each CID carries a <em>Stateless Reset Token</em> too — for stateless reset.</p>
+
+    <!-- ===== SVG · Connection migration step-by-step ===== -->
+    <figure class="svg-figure" aria-label="QUIC connection migration step-by-step timeline">
+      <span class="svg-tag">FIG 17 · connection migration · Wi-Fi → 5G · 5 steps</span>
+      <svg viewBox="0 0 760 540" role="img" aria-labelledby="migT migD">
+        <title id="migT">QUIC 连接迁移 step-by-step</title>
+        <desc id="migD">Five-step connection migration from Wi-Fi to 5G: client detects new path, sends PATH_CHALLENGE with new DCID, server validates RTT, server returns PATH_RESPONSE, client retires old DCID and the migration completes — all without interrupting the HTTP/3 request mid-flight.</desc>
+
+        <text x="380" y="22" text-anchor="middle" class="t-label">CONNECTION MIGRATION · Wi-Fi → 5G · 5 PACKETS · ~ 200 ms</text>
+
+        <!-- Two columns: Client (left) and Server (right) -->
+        <g transform="translate(20,52)">
+          <text x="80" y="0" text-anchor="middle" class="t-mono-sm" style="fill:var(--blue);font-weight:700">CLIENT</text>
+          <text x="80" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">phone · CID pool ready</text>
+          <line x1="80" y1="22" x2="80" y2="480" class="stk-blue" stroke-width="1.5"/>
+        </g>
+        <g transform="translate(580,52)">
+          <text x="80" y="0" text-anchor="middle" class="t-mono-sm" style="fill:var(--accent);font-weight:700">SERVER</text>
+          <text x="80" y="14" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">ursb.me · CID pool ready</text>
+          <line x1="80" y1="22" x2="80" y2="480" class="stk-acc" stroke-width="1.5"/>
+        </g>
+
+        <!-- ============ Step 0 · before migration ============ -->
+        <g transform="translate(120,90)">
+          <text x="260" y="0" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">⓪ BEFORE · normal H3 request on Wi-Fi</text>
+          <path d="M 0,12 L 540,18" class="stk-good" stroke-width="1.5" marker-end="url(#mArrG)"/>
+          <text x="260" y="10" text-anchor="middle" class="t-mono-xs" style="fill:var(--good)">STREAM frame · GET / · DCID=<code>0xab12</code></text>
+          <text x="260" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">src=192.168.1.42:52341 dst=39.105.102.252:443</text>
+        </g>
+
+        <!-- ============ Step 1 · network swap detected ============ -->
+        <g transform="translate(20,140)">
+          <rect x="0" y="0" width="160" height="44" rx="3" class="s-heat" opacity="0.85" stroke="var(--heat)"/>
+          <text x="80" y="16" text-anchor="middle" class="t-mono-xs" style="fill:#fff;font-weight:700">⚠ Wi-Fi disconnect</text>
+          <text x="80" y="28" text-anchor="middle" class="t-mono-xs" style="fill:#fff">OS hands phone</text>
+          <text x="80" y="38" text-anchor="middle" class="t-mono-xs" style="fill:#fff">a new local IP</text>
+        </g>
+        <text x="100" y="194" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">src=10.220.5.13:33012 (new!)</text>
+
+        <!-- ============ Step 2 · PATH_CHALLENGE with new DCID ============ -->
+        <g transform="translate(120,210)">
+          <text x="260" y="0" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">① PATH_CHALLENGE · 8 random bytes</text>
+          <path d="M 0,12 L 540,18" class="stk-cu" stroke-width="1.6" marker-end="url(#mArrC)"/>
+          <text x="260" y="10" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper)">DCID=<code>0xab12</code> (still old · server identifies us)</text>
+          <text x="260" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">PATH_CHALLENGE · data=0x77adef1234567890</text>
+          <text x="260" y="42" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">+ also sends a NEW_CONNECTION_ID 0xcd34 for future use</text>
+        </g>
+
+        <!-- ============ Step 3 · server replies PATH_RESPONSE ============ -->
+        <g transform="translate(120,275)">
+          <text x="260" y="0" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">② PATH_RESPONSE · echoes 8 bytes back</text>
+          <path d="M 540,12 L 0,18" class="stk-acc" stroke-width="1.6" marker-end="url(#mArrA)"/>
+          <text x="260" y="10" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent)">DCID=<code>0xef56</code> (new · from server's CID pool)</text>
+          <text x="260" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">PATH_RESPONSE · data=0x77adef1234567890 (same value)</text>
+          <text x="260" y="42" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">server measures RTT on new path · &lt; old RTT × 3 → ✓ ok</text>
+        </g>
+
+        <!-- ============ Step 4 · validate complete, swap active CID ============ -->
+        <g transform="translate(120,340)">
+          <text x="260" y="0" text-anchor="middle" class="t-mono-xs" style="fill:var(--good);font-weight:700">③ VALIDATED · client swaps active DCID</text>
+          <path d="M 0,12 L 540,18" class="stk-good" stroke-width="1.5" marker-end="url(#mArrG)"/>
+          <text x="260" y="10" text-anchor="middle" class="t-mono-xs" style="fill:var(--good)">STREAM frame continues · DCID=<code>0xef56</code> (new)</text>
+          <text x="260" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute);font-style:italic">src=10.220.5.13:33012 dst=39.105.102.252:443</text>
+        </g>
+
+        <!-- ============ Step 5 · retire old CID ============ -->
+        <g transform="translate(120,395)">
+          <text x="260" y="0" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">④ RETIRE_CONNECTION_ID · clean up</text>
+          <path d="M 0,12 L 540,18" class="stk-gpu" stroke-width="1.2" marker-end="url(#mArrGpu)"/>
+          <text x="260" y="10" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu)">RETIRE_CONNECTION_ID · old CID 0xab12 stops being valid</text>
+        </g>
+
+        <!-- Right side timeline annotations -->
+        <g transform="translate(700,90)">
+          <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">TIME</text>
+          <text x="0" y="14" class="t-mono-xs" style="fill:var(--ink-mute)">T₀</text>
+          <text x="0" y="64" class="t-mono-xs" style="fill:var(--heat)">T+50ms</text>
+          <text x="0" y="124" class="t-mono-xs" style="fill:var(--copper)">T+80ms</text>
+          <text x="0" y="190" class="t-mono-xs" style="fill:var(--accent)">T+120ms</text>
+          <text x="0" y="252" class="t-mono-xs" style="fill:var(--good)">T+150ms</text>
+          <text x="0" y="310" class="t-mono-xs" style="fill:var(--gpu)">T+200ms</text>
+        </g>
+
+        <!-- Bottom: 3 key invariants -->
+        <g transform="translate(20,455)">
+          <rect width="720" height="76" rx="4" class="s-paper2" stroke="var(--accent)" stroke-dasharray="3 2"/>
+          <text x="14" y="18" class="t-mono-xs" style="fill:var(--accent);font-weight:700">3 INVARIANTS THAT MAKE THIS WORK</text>
+          <foreignObject x="14" y="22" width="700" height="50">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-family:var(--sans);font-size:11.5px;line-height:1.5;color:var(--ink-soft)">
+              ① <strong>CID pool prepared in advance</strong> — both sides have issued ≥ 3 spare CIDs via NEW_CONNECTION_ID during the connection's life. No mid-migration "<em>negotiate new CID</em>" round-trip.<br>
+              ② <strong>Crypto state survives</strong> — all 1-RTT keys remain valid; encryption / decryption keeps working. Only routing changes.<br>
+              ③ <strong>Anti-amplification 3× cap</strong> — server cannot send more than 3× the bytes it received on the new path until validated. Defeats off-path attackers spoofing PATH_CHALLENGE to redirect traffic.
+            </div>
+          </foreignObject>
+        </g>
+
+        <defs>
+          <marker id="mArrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/></marker>
+          <marker id="mArrC" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--copper)"/></marker>
+          <marker id="mArrG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--good)"/></marker>
+          <marker id="mArrGpu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 0 0 L 10 5 L 0 10 z" fill="var(--gpu)"/></marker>
+        </defs>
+      </svg>
+      <p class="svg-cap lang-zh-only">连接迁移分 5 步,总耗时 ~ 200 ms,期间 H3 请求<em>不中断</em>:① OS 切到 5G 后客户端发现新 IP;② 客户端用<em>新 DCID</em> 发 PATH_CHALLENGE(8 字节随机数,要求 server 回 echo);③ server 验证 RTT 没超过旧路径 3× 就回 PATH_RESPONSE,带<em>新 SCID</em>;④ 客户端把后续 STREAM 切到新 DCID;⑤ 双方 RETIRE_CONNECTION_ID 释放旧 CID。<strong>关键在 CID pool</strong>——双方在连接活跃期就已经互相发了 ≥ 3 个备用 CID,无需迁移时谈判。<em>这是 TCP 在物理上不可能做的事</em>。</p>
+      <p class="svg-cap lang-en-only">Connection migration is 5 steps, ~ 200 ms total, during which the H3 request <em>does not break</em>: ① OS hands the phone a new IP after 5G hop; ② client sends PATH_CHALLENGE (8 random bytes) using a <em>new DCID</em> from the pool; ③ server validates RTT against the old path (must be &lt; 3×) and returns PATH_RESPONSE with its <em>new SCID</em>; ④ client routes subsequent STREAM frames over the new DCID; ⑤ both sides issue RETIRE_CONNECTION_ID. <strong>The key is the CID pool</strong> — both sides have pre-issued ≥ 3 spare CIDs during normal operation, so no negotiation round-trip at migration time. <em>This is physically impossible in TCP.</em></p>
+    </figure>
 
     <h3 class="sub lang-zh-only">Path Validation 流程</h3>
     <h3 class="sub lang-en-only">Path Validation flow</h3>
@@ -6055,6 +6887,572 @@
     </div>
   </section>
 
+  <!-- ========== CHAPTER 25 — HAND-WRITE A MINIMAL QUIC CLIENT ========== -->
+  <section class="chap" id="c25">
+    <div class="chap-num">APPENDIX · 01 · HANDS-ON</div>
+    <h2 class="chap-title lang-zh-only">从零写一个最小 QUIC 客户端 — 200 行 Rust + quiche</h2>
+    <h2 class="chap-title lang-en-only">From scratch — a minimal QUIC client in 200 lines of Rust + quiche</h2>
+    <p class="chap-en lang-zh-only">读完能写,不只是读懂</p>
+    <p class="chap-en lang-en-only">readable code you could rewrite from memory</p>
+
+    <div class="stage-banner thread-quic">
+      <div class="sb-cell"><div class="sb-key">Goal</div><div class="sb-val">GET https://cloudflare-quic.com</div></div>
+      <div class="sb-cell"><div class="sb-key">Library</div><div class="sb-val">cloudflare/quiche</div></div>
+      <div class="sb-cell"><div class="sb-key">Lines</div><div class="sb-val">~ 200 Rust</div></div>
+      <div class="sb-cell"><div class="sb-key">Verifiable</div><div class="sb-val">SSLKEYLOGFILE + Wireshark</div></div>
+    </div>
+
+    <div class="lang-zh-only">
+      <p>前 24 章读 wire 格式,这一章<em>反过来</em>:用 Cloudflare 的 <code>quiche</code> 库一步步实现一个能跑的 QUIC 客户端,发一个 GET 请求。完整代码 ~ 200 行 Rust,每段配 RFC 9000 / 9001 / 9114 章节引用。<strong>读完这一章你应该能从空 main.rs 起步,凭记忆复刻整个客户端。</strong></p>
+    </div>
+    <div class="lang-en-only">
+      <p>The previous 24 chapters read the wire format. This one <em>inverts</em>: build a working QUIC client step by step using Cloudflare's <code>quiche</code> library, sending one GET request. The complete code is ~ 200 lines of Rust, each section cross-referenced to RFC 9000 / 9001 / 9114. <strong>By the end you should be able to start with an empty main.rs and reproduce the whole client from memory.</strong></p>
+    </div>
+
+    <h3 class="sub lang-zh-only">A · 项目骨架</h3>
+    <h3 class="sub lang-en-only">A · Project skeleton</h3>
+
+<pre class="code-block"><span class="mt-cmt"># Cargo.toml</span>
+[package]
+name = "minquic"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+quiche = "0.21"   <span class="mt-cmt"># Cloudflare's QUIC implementation, BoringSSL inside</span>
+mio    = "0.8"    <span class="mt-cmt"># non-blocking UDP socket</span>
+ring   = "0.17"   <span class="mt-cmt"># for stateless reset token random</span>
+url    = "2.5"
+log    = "0.4"
+env_logger = "0.10"</pre>
+
+    <p class="lang-zh-only">三个依赖:quiche 做 QUIC + TLS;mio 做非阻塞 socket 事件循环;ring 给我们一些密码学杂活。整套<em>不到 1 MB 编译产物</em>。</p>
+    <p class="lang-en-only">Three dependencies: quiche for QUIC + TLS, mio for the non-blocking socket event loop, ring for cryptographic odd jobs. The whole thing compiles to <em>under 1 MB</em>.</p>
+
+    <h3 class="sub lang-zh-only">B · 创建 socket 与配置</h3>
+    <h3 class="sub lang-en-only">B · Socket and config</h3>
+
+<pre class="code-block"><span class="wat-kw">use</span> mio::net::UdpSocket;
+<span class="wat-kw">use</span> std::net::SocketAddr;
+
+<span class="wat-kw">fn</span> main() -&gt; Result&lt;(), Box&lt;<span class="wat-kw">dyn</span> std::error::Error&gt;&gt; {
+    env_logger::init();
+
+    <span class="mt-cmt">// ---- (1) Parse target URL --------------------------------</span>
+    <span class="wat-kw">let</span> url = url::Url::parse(<span class="wat-str">"https://cloudflare-quic.com/"</span>)?;
+    <span class="wat-kw">let</span> host = url.host_str().unwrap();
+    <span class="wat-kw">let</span> port = url.port_or_known_default().unwrap();
+    <span class="wat-kw">let</span> peer_addr: SocketAddr = format!(<span class="wat-str">"{}:{}"</span>, host, port)
+                                .to_socket_addrs()?.next().unwrap();
+
+    <span class="mt-cmt">// ---- (2) Bind a UDP socket (local) -----------------------</span>
+    <span class="wat-kw">let</span> local_addr: SocketAddr = <span class="wat-str">"0.0.0.0:0"</span>.parse()?;
+    <span class="wat-kw">let mut</span> socket = UdpSocket::bind(local_addr)?;
+    <span class="wat-kw">let mut</span> poll = mio::Poll::new()?;
+    <span class="wat-kw">let mut</span> events = mio::Events::with_capacity(<span class="wat-imm">1024</span>);
+    poll.registry().register(&amp;<span class="wat-kw">mut</span> socket, mio::Token(<span class="wat-imm">0</span>),
+                              mio::Interest::READABLE)?;
+
+    <span class="mt-cmt">// ---- (3) Build the quiche Config -------------------------</span>
+    <span class="wat-kw">let mut</span> config = quiche::Config::new(quiche::PROTOCOL_VERSION)?;  <span class="mt-cmt">// = 1 (RFC 9000)</span>
+    config.set_application_protos(&amp;[<span class="wat-str">b"h3"</span>])?;          <span class="mt-cmt">// ALPN: HTTP/3</span>
+    config.set_max_idle_timeout(<span class="wat-imm">5_000</span>);                <span class="mt-cmt">// ms</span>
+    config.set_max_recv_udp_payload_size(<span class="wat-imm">1350</span>);         <span class="mt-cmt">// avoid IPv6 PMTU issues</span>
+    config.set_max_send_udp_payload_size(<span class="wat-imm">1350</span>);
+    config.set_initial_max_data(<span class="wat-imm">10_000_000</span>);            <span class="mt-cmt">// flow control · conn-level</span>
+    config.set_initial_max_stream_data_bidi_local(<span class="wat-imm">1_000_000</span>);  <span class="mt-cmt">// per-stream</span>
+    config.set_initial_max_streams_bidi(<span class="wat-imm">100</span>);
+    config.set_initial_max_streams_uni(<span class="wat-imm">100</span>);
+    config.verify_peer(<span class="wat-kw">true</span>);                          <span class="mt-cmt">// TLS cert validation</span>
+    config.load_verify_locations_from_directory(<span class="wat-str">"/etc/ssl/certs"</span>)?;</pre>
+
+    <p class="lang-zh-only">三件事:① 解析 URL 拿到 <code>(host, port)</code>;② 起 UDP socket(local 0:0 让 OS 分配端口)+ mio poll;③ 构造 quiche Config——<em>ALPN=h3 必填</em>,5 秒空闲超时,1350 字节 UDP payload 上限(留 50 字节给 IPv6 头扩展),初始流量控制限额(10 MB conn + 1 MB stream),证书验证打开。</p>
+    <p class="lang-en-only">Three steps: ① parse URL to get <code>(host, port)</code>; ② bind UDP socket (local 0:0, let OS choose port) + mio poll; ③ build quiche Config — <em>ALPN=h3 is mandatory</em>, 5 s idle timeout, 1350-byte UDP payload cap (leaves 50 B for IPv6 header extensions), initial flow-control limits (10 MB connection + 1 MB stream), peer verification on.</p>
+
+    <h3 class="sub lang-zh-only">C · 生成 SCID 并发起 connect</h3>
+    <h3 class="sub lang-en-only">C · Generate SCID and connect</h3>
+
+<pre class="code-block">    <span class="mt-cmt">// ---- (4) Generate a random source CID --------------------</span>
+    <span class="wat-kw">let mut</span> scid = [<span class="wat-imm">0</span>; quiche::MAX_CONN_ID_LEN];   <span class="mt-cmt">// 20</span>
+    ring::rand::SystemRandom::new().fill(&amp;<span class="wat-kw">mut</span> scid)?;
+    <span class="wat-kw">let</span> scid = quiche::ConnectionId::from_ref(&amp;scid);
+
+    <span class="mt-cmt">// ---- (5) Initiate the connection -------------------------</span>
+    <span class="mt-cmt">// `quiche::connect` creates Initial keys (RFC 9001 §5.2),</span>
+    <span class="mt-cmt">// constructs ClientHello, and prepares to emit Initial packet.</span>
+    <span class="wat-kw">let mut</span> conn = quiche::connect(
+        <span class="wat-kw">Some</span>(host),               <span class="mt-cmt">// SNI</span>
+        &amp;scid,
+        local_addr,
+        peer_addr,
+        &amp;<span class="wat-kw">mut</span> config,
+    )?;
+
+    log::info!(<span class="wat-str">"connecting to {} from {}"</span>, peer_addr, local_addr);</pre>
+
+    <p class="lang-zh-only">关键的<em>第一次时刻</em>:<code>quiche::connect</code> 内部做了 RFC 9001 §5.2 全套——用 client DCID 做 HKDF 输入派生 Initial keys(salt 是公开常量)、构造 ClientHello(含 ALPN/SNI/transport parameters/keyshare),把它放进 CRYPTO 帧准备发送。此刻还没字节上线。</p>
+    <p class="lang-en-only">The crucial <em>first moment</em>: <code>quiche::connect</code> internally runs RFC 9001 §5.2 — derives Initial keys via HKDF on client DCID (salt is a public constant), constructs ClientHello (with ALPN/SNI/transport parameters/keyshare), and queues it into a CRYPTO frame. No bytes have hit the wire yet.</p>
+
+    <h3 class="sub lang-zh-only">D · 事件循环</h3>
+    <h3 class="sub lang-en-only">D · The event loop</h3>
+
+<pre class="code-block">    <span class="wat-kw">let mut</span> buf = [<span class="wat-imm">0</span>; <span class="wat-imm">65535</span>];
+    <span class="wat-kw">let mut</span> out = [<span class="wat-imm">0</span>; quiche::MAX_DATAGRAM_SIZE];   <span class="mt-cmt">// 1350</span>
+    <span class="wat-kw">let mut</span> req_sent = <span class="wat-kw">false</span>;
+
+    <span class="wat-kw">loop</span> {
+        <span class="mt-cmt">// (6) Send anything quiche has queued ------------------</span>
+        <span class="wat-kw">loop</span> {
+            <span class="wat-kw">let</span> (write, send_info) = <span class="wat-kw">match</span> conn.send(&amp;<span class="wat-kw">mut</span> out) {
+                <span class="wat-kw">Ok</span>(v) =&gt; v,
+                <span class="wat-kw">Err</span>(quiche::Error::Done) =&gt; <span class="wat-kw">break</span>,
+                <span class="wat-kw">Err</span>(e) =&gt; <span class="wat-kw">return Err</span>(e.into()),
+            };
+            socket.send_to(&amp;out[..write], &amp;send_info.to)?;
+            log::debug!(<span class="wat-str">"sent {} B to {}"</span>, write, send_info.to);
+        }
+
+        <span class="mt-cmt">// (7) Wait for either an incoming packet or the timeout</span>
+        <span class="wat-kw">let</span> timeout = conn.timeout();
+        poll.poll(&amp;<span class="wat-kw">mut</span> events, timeout)?;
+
+        <span class="mt-cmt">// timer fired (PTO, idle, etc.)</span>
+        <span class="wat-kw">if</span> events.is_empty() {
+            conn.on_timeout();
+            <span class="wat-kw">continue</span>;
+        }
+
+        <span class="mt-cmt">// (8) Drain UDP socket ----------------------------------</span>
+        <span class="wat-kw">while let Ok</span>((read, from)) = socket.recv_from(&amp;<span class="wat-kw">mut</span> buf) {
+            <span class="wat-kw">let</span> recv_info = quiche::RecvInfo { to: local_addr, from };
+            <span class="wat-kw">match</span> conn.recv(&amp;<span class="wat-kw">mut</span> buf[..read], recv_info) {
+                <span class="wat-kw">Ok</span>(_) =&gt; {},
+                <span class="wat-kw">Err</span>(e) =&gt; { log::warn!(<span class="wat-str">"recv: {}"</span>, e); <span class="wat-kw">break</span>; }
+            }
+        }
+
+        <span class="wat-kw">if</span> conn.is_closed() { <span class="wat-kw">break</span>; }
+
+        <span class="mt-cmt">// (9) Once handshake is done, send the GET --------------</span>
+        <span class="wat-kw">if</span> conn.is_established() &amp;&amp; !req_sent {
+            send_http3_request(&amp;<span class="wat-kw">mut</span> conn, host, <span class="wat-str">"/"</span>)?;
+            req_sent = <span class="wat-kw">true</span>;
+        }
+
+        <span class="mt-cmt">// (10) Drain readable streams ---------------------------</span>
+        <span class="wat-kw">for</span> stream_id <span class="wat-kw">in</span> conn.readable() {
+            <span class="wat-kw">while let Ok</span>((read, fin)) = conn.stream_recv(stream_id, &amp;<span class="wat-kw">mut</span> buf) {
+                std::io::stdout().write_all(&amp;buf[..read])?;
+                <span class="wat-kw">if</span> fin {
+                    log::info!(<span class="wat-str">"stream {} closed"</span>, stream_id);
+                    conn.close(<span class="wat-kw">true</span>, <span class="wat-imm">0x00</span>, <span class="wat-str">b"bye"</span>)?;
+                }
+            }
+        }
+    }
+
+    <span class="wat-kw">Ok</span>(())
+}</pre>
+
+    <p class="lang-zh-only">事件循环的 5 个步骤是<em>所有 QUIC 客户端的共同骨架</em>:(6) 把 quiche 排队待发的字节<em>全部</em>送出 → (7) <code>poll</code> 直到收到包<em>或</em> PTO/idle 超时(<code>conn.timeout()</code> 给出下次 deadline)→ (8) 把 socket 里所有 UDP 包灌进 <code>conn.recv</code> → (9) 握手完成后发 HTTP/3 request → (10) 读 readable streams 把 response 字节 dump 出来。<strong>quiche 不替你做 socket I/O 与 timer</strong>——它只是状态机,你必须自己驱动。</p>
+    <p class="lang-en-only">The five-step event loop is <em>the common skeleton for every QUIC client</em>: (6) drain quiche's pending send queue → (7) <code>poll</code> until a packet arrives <em>or</em> the PTO/idle timer fires (<code>conn.timeout()</code> tells you the next deadline) → (8) feed every UDP packet through <code>conn.recv</code> → (9) once handshake completes, send the HTTP/3 request → (10) read readable streams and dump response bytes. <strong>quiche does no socket I/O or timer handling for you</strong> — it's a state machine; you drive it.</p>
+
+    <h3 class="sub lang-zh-only">E · 发 HTTP/3 请求</h3>
+    <h3 class="sub lang-en-only">E · Send the HTTP/3 request</h3>
+
+<pre class="code-block"><span class="wat-kw">fn</span> send_http3_request(
+    conn: &amp;<span class="wat-kw">mut</span> quiche::Connection,
+    host: &amp;<span class="wat-kw">str</span>,
+    path: &amp;<span class="wat-kw">str</span>,
+) -&gt; Result&lt;(), quiche::h3::Error&gt; {
+    <span class="mt-cmt">// (E.1) Create H3 client on top of the QUIC conn ----------</span>
+    <span class="mt-cmt">// This opens StreamID=2 (control) and StreamID=6/10 (QPACK enc/dec)</span>
+    <span class="wat-kw">let</span> h3_config = quiche::h3::Config::new()?;
+    <span class="wat-kw">let mut</span> h3 = quiche::h3::Connection::with_transport(conn, &amp;h3_config)?;
+
+    <span class="mt-cmt">// (E.2) Build the request headers (RFC 9114 §4) -----------</span>
+    <span class="wat-kw">let</span> req_headers = vec![
+        quiche::h3::Header::new(<span class="wat-str">b":method"</span>, <span class="wat-str">b"GET"</span>),
+        quiche::h3::Header::new(<span class="wat-str">b":scheme"</span>, <span class="wat-str">b"https"</span>),
+        quiche::h3::Header::new(<span class="wat-str">b":authority"</span>, host.as_bytes()),
+        quiche::h3::Header::new(<span class="wat-str">b":path"</span>, path.as_bytes()),
+        quiche::h3::Header::new(<span class="wat-str">b"user-agent"</span>, <span class="wat-str">b"minquic/0.1"</span>),
+    ];
+
+    <span class="mt-cmt">// (E.3) Send · QPACK encodes headers, writes HEADERS frame</span>
+    <span class="mt-cmt">//       onto StreamID=0 (first client-initiated bidi stream)</span>
+    <span class="wat-kw">let</span> stream_id = h3.send_request(conn, &amp;req_headers, <span class="wat-kw">true</span>)?;
+    log::info!(<span class="wat-str">"sent request on stream {}"</span>, stream_id);
+
+    <span class="wat-kw">Ok</span>(())
+}</pre>
+
+    <p class="lang-zh-only">五件事在 <code>send_request</code> 里发生:① QPACK 把 5 个 pseudo-header 压缩成 ~ 12 字节(命中 static table 多次);② 包成 HEADERS frame (type=0x01);③ 写到 StreamID=0(第一条 client-initiated bidi);④ FIN flag set 因为我们没有 body;⑤ quiche 内部把 STREAM 帧排进 1-RTT 包发送队列。最后由事件循环步骤 (6) 真正送上线。</p>
+    <p class="lang-en-only">Five things happen inside <code>send_request</code>: ① QPACK compresses the 5 pseudo-headers into ~ 12 bytes (multiple static-table hits); ② wraps them in a HEADERS frame (type=0x01); ③ writes them to StreamID=0 (first client-initiated bidi); ④ sets FIN since we have no body; ⑤ quiche queues a STREAM frame into the 1-RTT send queue. Event-loop step (6) actually pushes the bytes out.</p>
+
+    <h3 class="sub lang-zh-only">F · 验证 — Wireshark + SSLKEYLOGFILE</h3>
+    <h3 class="sub lang-en-only">F · Verify — Wireshark + SSLKEYLOGFILE</h3>
+
+<pre class="code-block">$ SSLKEYLOGFILE=keys.log cargo run --release 2&gt;quic.log
+HTTP/3 200
+content-type: text/html
+content-length: 12345
+...
+
+$ <span class="mt-cmt"># in another shell, capture the UDP traffic:</span>
+$ sudo tcpdump -i en0 -w cap.pcap udp port 443
+
+$ <span class="mt-cmt"># Open cap.pcap in Wireshark:</span>
+$ <span class="mt-cmt"># Preferences → Protocols → TLS → (Pre)-Master-Secret log file = keys.log</span>
+$ <span class="mt-cmt"># Wireshark now decrypts QUIC and shows individual frames.</span></pre>
+
+    <div class="note copper">
+      <span class="ntag"><span class="lang-zh-only">SSLKEYLOGFILE — QUIC 调试最重要的环境变量</span><span class="lang-en-only">SSLKEYLOGFILE — the single most useful env var for QUIC debugging</span></span>
+      <span class="lang-zh-only">BoringSSL/quiche 看到这个环境变量后,会把<em>所有派生密钥</em>(initial / handshake / 1-RTT、双向)以 NSS Key Log Format 写入指定文件。Wireshark 拿到这个文件就能<em>事后解密整段抓包</em>——握手内容、frame 内容、payload 全部展开。<strong>没有这个,你只能看到 UDP 字节,什么协议级信息都没有。</strong>所有严肃的 QUIC 部署都<em>预留</em>了打开它的开关。</span>
+      <span class="lang-en-only">BoringSSL/quiche, when this env var is set, writes <em>every derived key</em> (initial / handshake / 1-RTT, both directions) to the file in NSS Key Log Format. Wireshark uses it to <em>retroactively decrypt the capture</em> — handshake contents, frame contents, payload all expand. <strong>Without it, you see only UDP bytes; no protocol-level info.</strong> Every serious QUIC deployment leaves a switch for this on standby.</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">G · 200 行做不到什么 — 边界</h3>
+    <h3 class="sub lang-en-only">G · What 200 lines doesn't do — boundaries</h3>
+
+    <div class="ladder">
+      <div class="ld-row">
+        <div class="ld-num">×</div>
+        <div>
+          <div class="ld-name lang-zh-only">不处理 0-RTT(会话恢复)</div>
+          <div class="ld-name lang-en-only">No 0-RTT (session resumption)</div>
+          <div class="ld-desc lang-zh-only">需要持久化 NewSessionTicket、跨进程存储 PSK、客户端启动时尝试 0-RTT 但失败时优雅回退。多 ~ 100 行。</div>
+          <div class="ld-desc lang-en-only">Requires persisting NewSessionTicket, cross-process PSK storage, attempt 0-RTT on startup with graceful fallback. ~ 100 more lines.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">×</div>
+        <div>
+          <div class="ld-name lang-zh-only">不处理连接迁移</div>
+          <div class="ld-name lang-en-only">No connection migration</div>
+          <div class="ld-desc lang-zh-only">需要 OS-level 网络变化通知(NetworkPath API on macOS, RouteChange on Win),发起 PATH_CHALLENGE 序列。生产代码 ~ 300 行。</div>
+          <div class="ld-desc lang-en-only">Needs OS-level network-change notifications (NetworkPath API on macOS, RouteChange on Win) and a PATH_CHALLENGE sequence. ~ 300 lines in production.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">×</div>
+        <div>
+          <div class="ld-name lang-zh-only">不处理 MTU discovery</div>
+          <div class="ld-name lang-en-only">No PMTU discovery</div>
+          <div class="ld-desc lang-zh-only">DPLPMTUD(RFC 8899)需要发探测包 + 二分搜索路径 MTU。生产代码必备,我们这里用 1350 写死。</div>
+          <div class="ld-desc lang-en-only">DPLPMTUD (RFC 8899) needs probe packets + binary search over path MTU. Production-grade requirement; we hard-code 1350.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">×</div>
+        <div>
+          <div class="ld-name lang-zh-only">不处理 GOAWAY / graceful shutdown</div>
+          <div class="ld-name lang-en-only">No GOAWAY / graceful shutdown</div>
+          <div class="ld-desc lang-zh-only">server 重启时发 GOAWAY,客户端要识别并避免开新 stream。<a href="https://www.rfc-editor.org/rfc/rfc9114#section-5.2">RFC 9114 §5.2</a>。</div>
+          <div class="ld-desc lang-en-only">Server emits GOAWAY on restart; client should recognise and stop opening new streams. <a href="https://www.rfc-editor.org/rfc/rfc9114#section-5.2">RFC 9114 §5.2</a>.</div>
+        </div>
+      </div>
+    </div>
+
+    <blockquote class="pull lang-zh-only">
+      读完<em>会写</em>,不只是<em>读懂</em>。<br>这是这一章的<em>不可逆</em>能力。
+      <cite>Field Note · 06 · Hands-on</cite>
+    </blockquote>
+    <blockquote class="pull lang-en-only">
+      You can now <em>write</em> it,<br>not just <em>read</em> it.<br>That's the <em>irreversible</em> ability this chapter gives.
+      <cite>Field Note · 06 · Hands-on</cite>
+    </blockquote>
+
+    <div class="cross-link">
+      <a href="#c24" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> Ch24 · <span class="lang-zh-only">HTTP/3 之后</span><span class="lang-en-only">After HTTP/3</span></a>
+      <a href="#c26" class="cl-next"><span class="cl-label"><span class="lang-zh-only">下一章</span><span class="lang-en-only">next</span></span>Ch26 · <span class="lang-zh-only">QUIC 安全攻击面</span><span class="lang-en-only">QUIC attack surface</span> <span class="cl-arrow">→</span></a>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 26 — QUIC ATTACK SURFACE ========== -->
+  <section class="chap" id="c26">
+    <div class="chap-num">APPENDIX · 02 · SECURITY</div>
+    <h2 class="chap-title lang-zh-only">QUIC 安全攻击面 — 0-RTT replay 之外的 7 类</h2>
+    <h2 class="chap-title lang-en-only">QUIC attack surface — seven classes beyond 0-RTT replay</h2>
+    <p class="chap-en lang-zh-only">RFC 9000 §21 摊开</p>
+    <p class="chap-en lang-en-only">RFC 9000 §21 unpacked</p>
+
+    <div class="lang-zh-only">
+      <p>Ch08 讲了 0-RTT replay。但 QUIC 的安全表面远不止这一条。<a href="https://www.rfc-editor.org/rfc/rfc9000#section-21">RFC 9000 §21</a> 单独列了 21 类已知威胁,这一章挑 7 类对部署者最重要的展开:① amplification(off-path)、② version downgrade、③ stateless reset(off-path 注入)、④ slow read DoS、⑤ linkability via CID、⑥ Optimistic ACK、⑦ handshake DoS。每一类配缓解方案与对应的 RFC 9000 章节。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Ch08 covered 0-RTT replay. But QUIC's attack surface is much wider. <a href="https://www.rfc-editor.org/rfc/rfc9000#section-21">RFC 9000 §21</a> enumerates 21 known threat classes; this chapter unpacks the seven most operationally important: ① amplification (off-path), ② version downgrade, ③ stateless reset injection, ④ slow read DoS, ⑤ linkability via CID, ⑥ Optimistic ACK, ⑦ handshake DoS. Each comes with mitigations and the RFC 9000 section that governs it.</p>
+    </div>
+
+    <h3 class="sub lang-zh-only">① Amplification attack(off-path)</h3>
+    <h3 class="sub lang-en-only">① Amplification attack (off-path)</h3>
+
+    <p class="lang-zh-only"><strong>威胁</strong>:攻击者伪造受害者源 IP,发一个小 ClientHello UDP 包给 QUIC 服务器;服务器回一个<em>大</em>的 Initial response(包含证书链,常见 3-5 KB)给"<em>受害者</em>"。<em>放大比 ~ 50×-100×</em>,这是 UDP-based reflection DoS 的标准模式。</p>
+    <p class="lang-en-only"><strong>Threat</strong>: attacker forges victim's source IP, sends a small ClientHello UDP datagram to a QUIC server; server sends a <em>large</em> Initial response (with certificate chain, usually 3-5 KB) to the "<em>victim</em>". <em>Amplification ratio ~ 50–100×</em>, the classic UDP reflection DoS pattern.</p>
+
+    <p class="lang-zh-only"><strong>缓解</strong>(RFC 9000 §8.1):</p>
+    <p class="lang-en-only"><strong>Mitigation</strong> (RFC 9000 §8.1):</p>
+
+    <div class="ladder">
+      <div class="ld-row">
+        <div class="ld-num">a</div>
+        <div>
+          <div class="ld-name lang-zh-only">3× 反放大上限</div>
+          <div class="ld-name lang-en-only">3× anti-amplification cap</div>
+          <div class="ld-desc lang-zh-only">服务器在<em>未验证路径</em>上发送的字节总数不能超过<strong>客户端来包的 3 倍</strong>。这是为什么 ClientHello 必须 padding 到 ≥ 1200 字节——给服务器 3600 字节预算够发证书链。</div>
+          <div class="ld-desc lang-en-only">Server can't send more than <strong>3× the bytes the client sent</strong> on an unvalidated path. That's why ClientHello must pad to ≥ 1200 bytes — gives the server a 3600-byte budget for the certificate chain.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">b</div>
+        <div>
+          <div class="ld-name lang-zh-only">Retry(stateless cookie)</div>
+          <div class="ld-name lang-en-only">Retry (stateless cookie)</div>
+          <div class="ld-desc lang-zh-only">服务器疑惑时回一个 ~ 70 byte Retry 包 + 加密 token。客户端必须把 token 在第二次 ClientHello 里 echo——这证明了它能在<em>那个 IP 上收包</em>。Off-path 攻击者拿不到 token,游戏结束。</div>
+          <div class="ld-desc lang-en-only">When suspicious, server sends a ~ 70-byte Retry packet with an encrypted token. Client must echo the token in its second ClientHello — proving it can <em>receive at that IP</em>. Off-path attacker can't get the token; game over.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">② Version downgrade</h3>
+    <h3 class="sub lang-en-only">② Version downgrade</h3>
+
+    <p class="lang-zh-only"><strong>威胁</strong>:active MITM 拦截 ClientHello,把 QUIC v1 改成更弱的 v0 / 不存在的实验版本,或者剥掉 ECH 扩展。</p>
+    <p class="lang-en-only"><strong>Threat</strong>: active MITM intercepts ClientHello, downgrades QUIC v1 to weaker v0 / a fake experimental version, or strips ECH extension.</p>
+
+    <p class="lang-zh-only"><strong>缓解</strong>:Version Negotiation 包(<a href="https://www.rfc-editor.org/rfc/rfc9000#section-6">RFC 9000 §6</a>)+ <strong>transport parameters 的 version_information</strong>(<a href="https://www.rfc-editor.org/rfc/rfc9368">RFC 9368</a>)。客户端在 TLS handshake 完成后把<em>自己看到的版本列表</em>和<em>server 在 VN 包里宣布的版本列表</em>对比,不一致 → handshake fail。这是<em>密码学绑定</em>下层版本与上层 TLS,downgrade 攻击必被发现。</p>
+    <p class="lang-en-only"><strong>Mitigation</strong>: Version Negotiation packet (<a href="https://www.rfc-editor.org/rfc/rfc9000#section-6">RFC 9000 §6</a>) + <strong>version_information transport parameter</strong> (<a href="https://www.rfc-editor.org/rfc/rfc9368">RFC 9368</a>). After TLS handshake completes, client compares <em>its observed version list</em> against <em>the server's announced VN list</em>; mismatch → handshake fails. This <em>cryptographically binds</em> the transport version to the TLS layer; downgrade is detected.</p>
+
+    <h3 class="sub lang-zh-only">③ Stateless reset injection</h3>
+    <h3 class="sub lang-en-only">③ Stateless reset injection</h3>
+
+    <p class="lang-zh-only"><strong>威胁</strong>:off-path 攻击者尝试构造一个看起来像 Stateless Reset 的包给受害者,期望<em>受害者关闭连接</em>。</p>
+    <p class="lang-en-only"><strong>Threat</strong>: off-path attacker constructs something that looks like a Stateless Reset for the victim, hoping the <em>victim closes the connection</em>.</p>
+
+    <p class="lang-zh-only"><strong>缓解</strong>:Stateless Reset 包尾部的 16 字节 <code>stateless_reset_token</code> 必须匹配<em>已经派发给该 CID 的 token</em>(通过 NEW_CONNECTION_ID 帧,<a href="https://www.rfc-editor.org/rfc/rfc9000#section-10.3">RFC 9000 §10.3</a>)。token 由 <code>HMAC(reset_secret, CID)</code> 派生——攻击者不知道 <code>reset_secret</code>(服务器内部)就无法伪造。</p>
+    <p class="lang-en-only"><strong>Mitigation</strong>: the 16-byte trailing <code>stateless_reset_token</code> must match <em>a token already distributed for that CID</em> (via NEW_CONNECTION_ID, <a href="https://www.rfc-editor.org/rfc/rfc9000#section-10.3">RFC 9000 §10.3</a>). Tokens are derived from <code>HMAC(reset_secret, CID)</code> — without the server's <code>reset_secret</code>, attackers can't forge.</p>
+
+    <h3 class="sub lang-zh-only">④ Slow Read DoS</h3>
+    <h3 class="sub lang-en-only">④ Slow Read DoS</h3>
+
+    <p class="lang-zh-only"><strong>威胁</strong>:攻击者建合法连接,但<em>故意缓慢读 response</em>——服务器在 stream flow-control 限额内必须一直缓存数据,占内存。10 万个慢客户端 = 服务器内存 OOM。这是 TCP "<em>Slowloris</em>" 在 QUIC 上的复制版。</p>
+    <p class="lang-en-only"><strong>Threat</strong>: attacker opens a legitimate connection but <em>reads the response very slowly</em> — server must keep data buffered within stream flow-control limits, occupying memory. 100 K slow clients → server OOM. The QUIC equivalent of TCP "<em>Slowloris</em>".</p>
+
+    <p class="lang-zh-only"><strong>缓解</strong>:三层防御。① stream flow-control 限额本身就限制了每流 buffer 大小;② idle timeout(默认 5-30s)断开长时间无活动连接;③ 应用层<em>主动监控</em> bytes/RTT 速率,异常低就 close。Cloudflare 实测把 idle timeout 调到 10s 后,慢客户端攻击成本上升 100×。</p>
+    <p class="lang-en-only"><strong>Mitigation</strong>: three layers. ① stream flow-control limits buffer per stream; ② idle timeout (default 5-30 s) closes long-idle connections; ③ app-layer <em>actively monitors</em> bytes/RTT rate and closes anomalously slow streams. Cloudflare measured 100× attack-cost increase after dropping idle timeout to 10 s.</p>
+
+    <h3 class="sub lang-zh-only">⑤ Linkability via Connection ID</h3>
+    <h3 class="sub lang-en-only">⑤ Linkability via Connection ID</h3>
+
+    <p class="lang-zh-only"><strong>威胁</strong>:CID 是 <em>明文</em>(routing 需要)。如果客户端跨 WiFi → 5G 时<em>没换 CID</em>,运营商通过 CID 把两个 IP 关联到同一个用户——隐私泄漏。</p>
+    <p class="lang-en-only"><strong>Threat</strong>: CIDs are <em>cleartext</em> (required for routing). If a client doesn't rotate CIDs when switching Wi-Fi → 5G, the operator can link both IPs to the same user via CID — privacy leak.</p>
+
+    <p class="lang-zh-only"><strong>缓解</strong>(RFC 9000 §5.1):客户端在 NEW_CONNECTION_ID 池里要<em>预备多个 CID</em>,在每次 path 切换时<em>必须</em>用新 CID,旧 CID 用 RETIRE_CONNECTION_ID 注销。<em>这是 connection migration 设计里隐藏的隐私保护</em>。</p>
+    <p class="lang-en-only"><strong>Mitigation</strong> (RFC 9000 §5.1): client maintains a NEW_CONNECTION_ID pool with <em>multiple spare CIDs</em>, <em>must</em> use a new CID on every path change, and retires the old one via RETIRE_CONNECTION_ID. <em>This is the privacy protection hidden inside connection migration's design.</em></p>
+
+    <h3 class="sub lang-zh-only">⑥ Optimistic ACK · 让发送端跑得太快</h3>
+    <h3 class="sub lang-en-only">⑥ Optimistic ACK · trick sender into accelerating</h3>
+
+    <p class="lang-zh-only"><strong>威胁</strong>:作为接收方,我可以发<em>提前的 ACK</em>(ACK 还没收到的 PN),骗发送端以为带宽很大、congestion window 应该涨。<em>congestion control 失效 → 发送端发太多 → 拥塞</em>。</p>
+    <p class="lang-en-only"><strong>Threat</strong>: as receiver, send <em>premature ACKs</em> (ACKing PNs not yet received) to trick the sender into thinking bandwidth is high and congestion window should grow. <em>Congestion control breaks → sender over-sends → real congestion</em>.</p>
+
+    <p class="lang-zh-only"><strong>缓解</strong>:QUIC 的 PN 是<em>strict monotonic</em>(Ch12)且<em>加密</em>——发 ACK 必须知道<em>实际</em>收到的 PN,不能猜。如果 ACK PN &gt; 最大已发 PN,连接会立刻进 protocol-violation 状态终止(RFC 9000 §13.1 中明确禁止)。这件事 TCP 时代发生过(因为 SEQ 明文),QUIC 通过<em>头部加密</em> 顺手堵了这个洞。</p>
+    <p class="lang-en-only"><strong>Mitigation</strong>: QUIC's PN is <em>strictly monotonic</em> (Ch12) and <em>encrypted</em> — to ACK a PN you must <em>actually</em> have received it; you can't guess. If an ACK references a PN beyond the largest sent, the connection immediately enters protocol-violation state and terminates (explicitly banned in RFC 9000 §13.1). This was a real TCP-era problem (SEQ was cleartext); QUIC closed the hole via <em>header protection</em>.</p>
+
+    <h3 class="sub lang-zh-only">⑦ Handshake DoS · 占着茅坑不拉屎</h3>
+    <h3 class="sub lang-en-only">⑦ Handshake DoS · half-open hoarding</h3>
+
+    <p class="lang-zh-only"><strong>威胁</strong>:攻击者发 N 万个 ClientHello,但永远不回 Finished——服务器在<em>每个</em>半连接上消耗内存。TCP 时代的 SYN flood 在 QUIC 上的对应物。</p>
+    <p class="lang-en-only"><strong>Threat</strong>: attacker fires N thousand ClientHellos but never sends Finished — server consumes memory on every <em>half-open</em>. The QUIC equivalent of TCP SYN flood.</p>
+
+    <p class="lang-zh-only"><strong>缓解</strong>:Retry 包(同 ① 那个 stateless cookie)+ <em>address validation token</em> 让服务器在确认客户端"<em>能真正收包</em>" 之前不分配 connection state。Cloudflare 的实现:正常情况下不发 Retry(省一个 RTT),只在<em>负载升高</em>时进入 Retry-required 模式。</p>
+    <p class="lang-en-only"><strong>Mitigation</strong>: Retry packet (same stateless cookie from ①) + <em>address validation token</em>. Server allocates no connection state until the client proves "<em>actually receives</em>" the cookie. Cloudflare's implementation: don't issue Retry by default (save one RTT); enter Retry-required mode only when <em>under load</em>.</p>
+
+    <h3 class="sub lang-zh-only">汇总 · 7 类威胁 + 3 个反复出现的模式</h3>
+    <h3 class="sub lang-en-only">Summary · 7 threats + 3 recurring patterns</h3>
+
+    <p class="lang-zh-only">读完这 7 类,你会发现 3 个反复出现的设计模式:<strong>①</strong> "<em>未验证之前不投入资源</em>"(amplification cap / Retry / address validation);<strong>②</strong> "<em>用加密绑定状态</em>"(reset_token / PN 加密 / version_info);<strong>③</strong> "<em>放心丢东西</em>"(stateless reset 不需要状态、Retry token 服务器无状态)。<em>QUIC 的安全设计哲学是"<em>能不维护状态就不维护</em>"</em>——比 TCP+TLS 时代的精神进步了一代。</p>
+    <p class="lang-en-only">After reading the seven, you'll notice three recurring design patterns: <strong>①</strong> "<em>no resource commitment before validation</em>" (amplification cap / Retry / address validation); <strong>②</strong> "<em>bind state with cryptography</em>" (reset_token / PN encryption / version_info); <strong>③</strong> "<em>be happy to forget</em>" (stateless reset needs no state; Retry token is server-stateless). <em>QUIC's security philosophy is "<em>don't keep state if you don't have to</em>"</em> — a generational improvement over the TCP+TLS era.</p>
+
+    <blockquote class="pull lang-zh-only">
+      安全设计的最高境界:<br>把"<em>什么都不记</em>" 变成可证明的防御。
+      <cite>Field Note · 06 · Security</cite>
+    </blockquote>
+    <blockquote class="pull lang-en-only">
+      The summit of security design:<br>turning "<em>forgetting everything</em>" into provable defence.
+      <cite>Field Note · 06 · Security</cite>
+    </blockquote>
+
+    <div class="cross-link">
+      <a href="#c25" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> Ch25 · <span class="lang-zh-only">手写 QUIC 客户端</span><span class="lang-en-only">Hand-write QUIC client</span></a>
+      <a href="#c27" class="cl-next"><span class="cl-label"><span class="lang-zh-only">下一章</span><span class="lang-en-only">next</span></span>Ch27 · MoQ <span class="cl-arrow">→</span></a>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 27 — MoQ DEEP DIVE ========== -->
+  <section class="chap" id="c27">
+    <div class="chap-num">APPENDIX · 03 · MoQ</div>
+    <h2 class="chap-title lang-zh-only">MoQ — Media over QUIC,QUIC 上的实时媒体</h2>
+    <h2 class="chap-title lang-en-only">MoQ — Media over QUIC, real-time media on QUIC</h2>
+    <p class="chap-en lang-zh-only">替代 RTMP / WebRTC 的候选</p>
+    <p class="chap-en lang-en-only">a candidate to replace RTMP / WebRTC</p>
+
+    <div class="lang-zh-only">
+      <p>实时媒体在 web 上长期被两种协议瓜分:<strong>RTMP</strong>(2002 Adobe 出,TCP-based,推流走世界但延迟 ~ 3-5s)和 <strong>WebRTC</strong>(2011,UDP + SRTP,延迟 100-200ms 但传输不可靠且 NAT 穿越复杂)。两者都不<em>同时</em>满足"<em>低延迟 + 可靠 + 大规模分发</em>"。<a href="https://datatracker.ietf.org/wg/moq/about/" target="_blank" rel="noopener">IETF MoQ WG</a>(2023 成立,Twitch / Meta / Cisco 主推)用 QUIC 重新设计了这件事——<strong>Media over QUIC Transport(MOQT)</strong>。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Real-time media on the web has long split between two protocols: <strong>RTMP</strong> (Adobe, 2002, TCP-based, ingests globally but with ~ 3-5 s latency) and <strong>WebRTC</strong> (2011, UDP + SRTP, 100-200 ms latency but unreliable and NAT-traversal-heavy). Neither <em>simultaneously</em> delivers "<em>low latency + reliable + large-scale distribution</em>". The <a href="https://datatracker.ietf.org/wg/moq/about/" target="_blank" rel="noopener">IETF MoQ WG</a> (chartered 2023, driven by Twitch / Meta / Cisco) redesigned it on QUIC — <strong>Media over QUIC Transport (MOQT)</strong>.</p>
+    </div>
+
+    <h3 class="sub lang-zh-only">MOQT 的核心抽象 · Track + Group + Object</h3>
+    <h3 class="sub lang-en-only">MOQT's core abstraction · Track + Group + Object</h3>
+
+    <div class="ladder">
+      <div class="ld-row">
+        <div class="ld-num">⒈</div>
+        <div>
+          <div class="ld-name lang-zh-only">Object · 最小可独立消费的字节单元</div>
+          <div class="ld-name lang-en-only">Object · smallest independently-consumable byte unit</div>
+          <div class="ld-desc lang-zh-only">一个 H.264 NAL unit、一个 Opus frame、一个 metadata blob——这是 MOQT 的"<em>包</em>"。带 (track_id, group_id, object_id) 三元组定位。</div>
+          <div class="ld-desc lang-en-only">One H.264 NAL unit, one Opus frame, one metadata blob — this is MOQT's "<em>packet</em>". Identified by (track_id, group_id, object_id) triple.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">⒉</div>
+        <div>
+          <div class="ld-name lang-zh-only">Group · 可独立解码的边界</div>
+          <div class="ld-name lang-en-only">Group · independently-decodable boundary</div>
+          <div class="ld-desc lang-zh-only">视频的 GoP(Group of Pictures)、音频的若干 frame 集合。<em>group 是 join 点</em>——观众可以从任何 group 起播,无需历史。MOQT 把 GoP 概念上升为<em>传输层概念</em>。</div>
+          <div class="ld-desc lang-en-only">A video GoP (Group of Pictures), an audio frame batch. <em>Group is the join point</em> — a viewer can start playback at any group, no history needed. MOQT lifts the GoP concept to <em>a transport-layer concept</em>.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">⒊</div>
+        <div>
+          <div class="ld-name lang-zh-only">Track · 一条 group 序列</div>
+          <div class="ld-name lang-en-only">Track · a sequence of groups</div>
+          <div class="ld-desc lang-zh-only">一条"<em>视频流</em>"=一条 Track。直播<em>同一个内容的多个比特率</em>=多条 Track(adaptive bitrate)。订阅是<em>track 粒度</em>。</div>
+          <div class="ld-desc lang-en-only">One "<em>video stream</em>" = one Track. Multiple bitrates of the same content = multiple Tracks (adaptive bitrate). Subscriptions happen at <em>track granularity</em>.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">⒋</div>
+        <div>
+          <div class="ld-name lang-zh-only">Namespace · 组织 tracks</div>
+          <div class="ld-name lang-en-only">Namespace · organising tracks</div>
+          <div class="ld-desc lang-zh-only">类似 URL path:<code>twitch.tv/airing/video/1080p</code>。relay 用 namespace 做路由——subscribe 一个 namespace 等同订阅其下所有 track。</div>
+          <div class="ld-desc lang-en-only">Like a URL path: <code>twitch.tv/airing/video/1080p</code>. Relays route by namespace — subscribing to a namespace is equivalent to subscribing to all its tracks.</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">五个控制平面消息</h3>
+    <h3 class="sub lang-en-only">Five control-plane messages</h3>
+
+<pre class="wat"><span class="mt-cmt">;; MOQT control messages (simplified · draft-ietf-moq-transport)</span>
+ANNOUNCE       namespace                <span class="mt-cmt">;; publisher: "I have content at this NS"</span>
+SUBSCRIBE      namespace track          <span class="mt-cmt">;; subscriber: "send me this track"</span>
+SUBSCRIBE_OK   subscription_id          <span class="mt-cmt">;; ack of subscribe</span>
+UNSUBSCRIBE    subscription_id          <span class="mt-cmt">;; "I'm done"</span>
+FETCH          namespace track group obj  <span class="mt-cmt">;; "give me a specific object" (catch-up)</span></pre>
+
+    <p class="lang-zh-only">这 5 个消息走在<em>双向 QUIC stream</em>上。OBJECT 消息(承载 media payload)<em>独立</em>走 unidirectional QUIC streams 或 DATAGRAM 帧——<em>per-object 选哪种取决于这一帧是不是允许丢</em>。</p>
+    <p class="lang-en-only">These 5 messages run on a <em>bidirectional QUIC stream</em>. OBJECT messages (carrying media payload) flow on <em>separate</em> unidirectional QUIC streams or DATAGRAM frames — <em>the choice per object depends on whether that frame is droppable</em>.</p>
+
+    <h3 class="sub lang-zh-only">为什么 QUIC 是合适的下层</h3>
+    <h3 class="sub lang-en-only">Why QUIC is the right substrate</h3>
+
+    <div class="mismatch-grid">
+      <div class="mismatch-card">
+        <div class="mc-tag">1</div>
+        <h6 class="lang-zh-only">streams + datagrams 双通道</h6>
+        <h6 class="lang-en-only">streams + datagrams · dual channels</h6>
+        <p class="lang-zh-only">音频 frame 不能丢 → 走 stream(可靠);视频 P-frame 可以丢 → 走 datagram(快但不可靠)。<em>每个 object 自己选</em>。</p>
+        <p class="lang-en-only">Audio frame must arrive → stream (reliable); video P-frame can drop → datagram (fast). <em>Each object chooses its own.</em></p>
+      </div>
+      <div class="mismatch-card">
+        <div class="mc-tag">2</div>
+        <h6 class="lang-zh-only">stream 间无 HOL block</h6>
+        <h6 class="lang-en-only">no cross-stream HOL block</h6>
+        <p class="lang-zh-only">一条<em>音频</em> stream 丢包不阻塞另一条<em>视频</em> stream——RTMP 在 TCP 上做不到。</p>
+        <p class="lang-en-only">A lost packet on an <em>audio</em> stream doesn't block a <em>video</em> stream — RTMP on TCP cannot do this.</p>
+      </div>
+      <div class="mismatch-card">
+        <div class="mc-tag">3</div>
+        <h6 class="lang-zh-only">连接迁移</h6>
+        <h6 class="lang-en-only">connection migration</h6>
+        <p class="lang-zh-only">直播观众坐地铁,Wi-Fi → 5G 不断流。WebRTC 通过 ICE 重启来"<em>恢复</em>",几秒卡顿。</p>
+        <p class="lang-en-only">A live viewer on the subway, Wi-Fi → 5G, no stream drop. WebRTC "<em>recovers</em>" by restarting ICE — several seconds of stutter.</p>
+      </div>
+      <div class="mismatch-card">
+        <div class="mc-tag">4</div>
+        <h6 class="lang-zh-only">原生加密 + 路由信息可见</h6>
+        <h6 class="lang-en-only">native encryption + visible routing</h6>
+        <p class="lang-zh-only">payload AEAD,但 CID/namespace 可被 relay 看到 → CDN 可以路由<em>但看不见内容</em>。HLS over HTTPS 的两难局面被解开。</p>
+        <p class="lang-en-only">AEAD payload, but CIDs / namespaces stay visible to relays → CDNs can route <em>without seeing content</em>. HLS-over-HTTPS's old dilemma dissolves.</p>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">relay tree · 大规模分发的关键</h3>
+    <h3 class="sub lang-en-only">Relay tree · key to large-scale distribution</h3>
+
+    <p class="lang-zh-only">直播一个明星 Twitch 频道 = 1 个 publisher + 10 万 subscriber。绝对不可能直接连——必须有 relay 网络。MOQT 的关键设计:<em>relay 是协议级 first-class concept</em>(不像 WebRTC 的 SFU 是后接的)。</p>
+    <p class="lang-en-only">A popular Twitch channel = 1 publisher + 100 K subscribers. Direct connect is impossible — a relay network is required. MOQT's key design choice: <em>relays are first-class protocol concepts</em> (unlike WebRTC's SFU bolted on after the fact).</p>
+
+<pre class="code-block"><span class="mt-cmt">;; relay tree topology · text-mode diagram</span>
+
+         publisher (Twitch ingest)
+              |
+              v
+   +----------+----------+
+   |                     |
+ relay A (US-East)    relay B (EU)
+   |                     |
+   +--+----+----+      +-+---+----+
+   |  |    |    |      |     |    |
+ v1 v2   v3   v4     v5    v6   v7      <span class="mt-cmt">; viewers</span>
+
+每条边:1 个 QUIC connection · namespace = twitch.tv/airing/
+每个 viewer 只和<em>最近的 relay</em>建立连接 — geographic + cost optimised
+publisher 不知道谁是 final viewer · CDN 完全代理这件事</pre>
+
+    <h3 class="sub lang-zh-only">实战时间表(2026 年视角)</h3>
+    <h3 class="sub lang-en-only">Reality timeline (as of 2026)</h3>
+
+    <table class="cmp">
+      <thead><tr><th>Year</th><th>Milestone</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>2022</td><td>Twitch's "<em>Warp</em>" prototype (Luke Curley)</td><td>internal demo</td></tr>
+        <tr><td>2023</td><td>IETF MoQ WG chartered</td><td>charter approved</td></tr>
+        <tr><td>2024</td><td>draft-ietf-moq-transport-04</td><td>first multi-vendor interop</td></tr>
+        <tr><td>2025</td><td>draft-ietf-moq-transport-10</td><td>WGLC entered</td></tr>
+        <tr><td>2026 H1</td><td>Twitch beta with select streamers</td><td><strong>now</strong></td></tr>
+        <tr><td>2026 H2</td><td>Meta · Instagram Live trial</td><td>announced</td></tr>
+        <tr><td>2027 (est.)</td><td>RFC publication</td><td>—</td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub lang-zh-only">MoQ 替代 WebRTC 还是 RTMP?</h3>
+    <h3 class="sub lang-en-only">Will MoQ replace WebRTC or RTMP?</h3>
+
+    <p class="lang-zh-only">两者都<strong>不完全</strong>。<em>RTMP 在 ingest 侧</em>(主播 → 平台)2026 已经被 WHIP/WHEP / SRT 和 MoQ 实验性替代;<em>WebRTC 在低延迟 P2P 通话</em>(Discord / FaceTime)<em>不会</em>被 MoQ 替代,因为 P2P + SFU 那套机制 MoQ 没有对等替代。<strong>MoQ 真正的领地是"<em>大规模单向分发 + 低延迟</em>"</strong>——这正是 Twitch / YouTube Live / 体育赛事直播 / 在线教育那个市场。</p>
+    <p class="lang-en-only">Neither <strong>completely</strong>. <em>RTMP on the ingest side</em> (creator → platform) is already being supplanted by WHIP/WHEP / SRT and experimental MoQ in 2026. <em>WebRTC in low-latency P2P calls</em> (Discord / FaceTime) <em>won't</em> be replaced by MoQ — its P2P + SFU mechanisms have no MoQ equivalent. <strong>MoQ's real territory is "<em>large-scale one-to-many distribution + low latency</em>"</strong> — exactly the Twitch / YouTube Live / sports streaming / online-education market.</p>
+
+    <blockquote class="pull lang-zh-only">
+      直播平台 2026 年这场迁移,<br>是过去 20 年最大的一次。
+      <cite>Field Note · 06 · MoQ</cite>
+    </blockquote>
+    <blockquote class="pull lang-en-only">
+      The live-streaming migration of 2026<br>is the biggest move in the field in twenty years.
+      <cite>Field Note · 06 · MoQ</cite>
+    </blockquote>
+
+    <div class="cross-link">
+      <a href="#c26" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> Ch26 · <span class="lang-zh-only">QUIC 安全攻击面</span><span class="lang-en-only">QUIC attack surface</span></a>
+      <a href="#h3refs" class="cl-next"><span class="cl-label"><span class="lang-zh-only">附录</span><span class="lang-en-only">appendix</span></span><span class="lang-zh-only">References</span><span class="lang-en-only">References</span> <span class="cl-arrow">→</span></a>
+    </div>
+  </section>
+
   <!-- ========== APPENDIX · REFERENCES &amp; STANDARDS ========== -->
   <section class="chap" id="h3refs">
     <div class="chap-num">APPENDIX · STANDARDS</div>
@@ -6298,6 +7696,11 @@
         <dt>tls</dt>
         <dd><a href="https://datatracker.ietf.org/wg/tls/about/" target="_blank" rel="noopener">datatracker.ietf.org/wg/tls</a> · <span class="lang-zh-only">TLS 1.3 + ECH + Encrypted SNI 持续在演进。</span><span class="lang-en-only">TLS 1.3 + ECH + Encrypted SNI still evolving.</span></dd>
       </dl>
+    </div>
+
+    <div class="cross-link" style="margin-bottom: 28px;">
+      <a href="#c27" class="cl-prev"><span class="cl-label"><span class="lang-zh-only">上一章</span><span class="lang-en-only">previous</span></span><span class="cl-arrow">←</span> Ch27 · MoQ</a>
+      <a href="#" class="cl-next" style="visibility:hidden"><span class="cl-arrow">→</span></a>
     </div>
 
     <blockquote class="pull lang-zh-only" style="border-left-color: var(--copper);">
