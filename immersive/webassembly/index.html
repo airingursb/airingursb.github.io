@@ -5357,6 +5357,49 @@ const mod = await WebAssembly.<span class="wat-op">compileStreaming</span>(fetch
     <p class="lang-zh-only">这段~ 240 字节的 x86-64 代码就是 Liftoff 对 hot.wasm 的输出。三个观察:① <code>$src</code> 在每次 load 前都<em>重新</em>从 <code>[rbp-0x08]</code> 加载——Liftoff 不知道也不分析 "<em>这个值我刚加载过</em>";② <code>sum / 9</code> 用了真 <code>div</code> 指令,~25 cycle;③ 函数体没有 SIMD 化。<strong>但出码时间在 200 µs 量级——这正是它要的</strong>。</p>
     <p class="lang-en-only">~240 bytes of x86-64 is Liftoff's output for hot.wasm. Three notes: ① <code>$src</code> is <em>reloaded</em> from <code>[rbp-0x08]</code> before every load — Liftoff doesn't know it just loaded this; ② <code>sum / 9</code> uses a real <code>div</code>, ~25 cycles; ③ no SIMD. <strong>But codegen time is ~200 µs — exactly the target.</strong></p>
 
+    <h3 class="sub lang-zh-only">同一段 wasm,在 ARM64 上长什么样</h3>
+    <h3 class="sub lang-en-only">Same wasm, on ARM64</h3>
+
+    <p class="lang-zh-only">把同一个 hot.wasm 喂给 ARM64 上的 Liftoff(M-series Mac / 移动设备),出码的算法骨架<em>完全一致</em>,只是指令集换:</p>
+    <p class="lang-en-only">Feed the same hot.wasm into Liftoff on ARM64 (M-series Mac / mobile devices); the algorithm skeleton is <em>identical</em>, only the ISA changes:</p>
+
+<pre class="code-block"><span class="mt-cmt">; Liftoff output for blur3 (ARM64, simplified · M1 Pro)</span>
+0x000000 stp   x29, x30, [sp, #-16]!     <span class="mt-cmt">; push fp, lr</span>
+0x000004 mov   x29, sp
+0x000008 sub   sp, sp, #0x40              <span class="mt-cmt">; reserve 8 slots</span>
+0x00000c str   x0,  [x29, #-8]            <span class="mt-cmt">; spill $src (arg 0, ABI: x0)</span>
+0x000010 str   x1,  [x29, #-16]           <span class="mt-cmt">; spill $dst</span>
+0x000014 str   w2,  [x29, #-24]           <span class="mt-cmt">; spill $w (32-bit)</span>
+0x000018 str   w3,  [x29, #-28]           <span class="mt-cmt">; spill $h</span>
+...
+<span class="mt-cmt">; inner: load src[idx]</span>
+0x000040 ldr   x9, [x29, #-8]             <span class="mt-cmt">; reload $src</span>
+0x000044 ldr   x10, [x29, #-32]           <span class="mt-cmt">; reload computed index</span>
+0x000048 ldrb  w11, [x28, x9]             <span class="mt-cmt">; load byte (x28 = wasm mem base, V8 convention)</span>
+0x00004c add   x12, x9, x10
+0x000050 ldrb  w13, [x28, x12]
+0x000054 ldr   w14, [x29, #-40]           <span class="mt-cmt">; reload sum</span>
+0x000058 add   w14, w14, w11
+0x00005c str   w14, [x29, #-40]           <span class="mt-cmt">; store sum back</span>
+<span class="mt-cmt">; ... same pattern repeats 8 more times — no register reuse</span>
+...
+<span class="mt-cmt">; sum / 9 — ARM64 has a single-cycle udiv (unlike x86's slow div)</span>
+0x0000c0 ldr   w0, [x29, #-40]
+0x0000c4 mov   w1, #9
+0x0000c8 udiv  w0, w0, w1                 <span class="mt-cmt">; ~7 cycles (vs x86 div ~25)</span>
+
+<span class="mt-cmt">; tier-up counter</span>
+0x0000e0 ldr   w12, [x26, #0x40]          <span class="mt-cmt">; x26 = instance pointer (V8 ARM64 convention)</span>
+0x0000e4 cmp   w12, #0x100
+0x0000e8 b.ne  +0x8
+0x0000ec bl    WasmCompileLazy
+...
+0x000110 ldp   x29, x30, [sp], #16
+0x000114 ret</pre>
+
+    <p class="lang-zh-only">几个细节:<strong>①</strong> 角色寄存器换了:x86 的 <code>r15 / r13 / rbp</code> 对应 ARM64 的 <code>x28 / x26 / x29</code>(V8 内部 calling convention);<strong>②</strong> 调用约定不一样:x86 用 <code>rdi/rsi/rdx/rcx</code> 传前 4 参数,ARM64 用 <code>x0/x1/x2/x3</code>;<strong>③</strong> ARM64 的 <code>udiv</code> 是单指令 ~ 7 cycle,比 x86 的 <code>div</code>(~ 25 cycle)显著快——所以 Liftoff 出码的"<em>naïve div</em>" 在 ARM64 上代价小,Liftoff/TurboFan 性能差距比 x86 上小;<strong>④</strong> <em>算法骨架完全一样</em>——全 spill、不做 register allocation、单遍出码、嵌入 tier-up 计数器。<span class="em">这正是 wasm "<em>ISA neutral</em>" 承诺的具体形式</span>:同一份字节,在 x86 / ARM64 / RISC-V / s390x 上跑出来的 Liftoff 输出结构同形,只换指令。</p>
+    <p class="lang-en-only">A few details: <strong>①</strong> register roles change: x86's <code>r15 / r13 / rbp</code> map to ARM64's <code>x28 / x26 / x29</code> (V8 internal calling convention); <strong>②</strong> ABI differs: x86 passes the first 4 args in <code>rdi/rsi/rdx/rcx</code>; ARM64 in <code>x0/x1/x2/x3</code>; <strong>③</strong> ARM64's <code>udiv</code> is a single-instruction ~ 7 cycle op vs x86's <code>div</code> ~ 25 cycles — so Liftoff's "naïve div" is cheaper on ARM64, and the Liftoff/TurboFan gap is smaller on ARM than on x86; <strong>④</strong> <em>the algorithm skeleton is identical</em> — full spill, no register allocation, single-pass codegen, embedded tier-up counter. <span class="em">This is the concrete form of wasm's "<em>ISA-neutral</em>" promise</span>: the same bytes produce structurally identical Liftoff output on x86 / ARM64 / RISC-V / s390x — only instructions swap.</p>
+
     <h3 class="sub lang-zh-only">Tier-up 触发机制</h3>
     <h3 class="sub lang-en-only">The tier-up trigger</h3>
 
@@ -6057,6 +6100,163 @@ jmp    back</pre>
     <h2 class="pi-name lang-en-only">Every extension is a compromise.</h2>
     <p class="pi-note lang-zh-only">MVP 之后 8 年,wasm 加了 ~15 个生效中的提案。这 5 章只挑最重要的展开:Threads 把共享内存接进 wasm 沙箱;SIMD 用 16 字节寄存器给 inner loop 提速 6 倍;GC 让 Java/Kotlin/Dart 不再背着自己的运行时;Component Model 给 wasm 一个跨语言 ABI;以及还有六个候选提案在排队。<em>每个提案都要回答"<em>怎么不破坏 portable + safe + fast + compact 四目标</em>"</em>——这是 wasm 委员会评审的根本问题。</p>
     <p class="pi-note lang-en-only">Eight years post-MVP, wasm has shipped ~15 live proposals. These five chapters cover the most consequential: Threads plug shared memory into the sandbox; SIMD turns 16-byte registers into 6× inner-loop speedups; GC frees Java/Kotlin/Dart from shipping their own runtimes; Component Model gives wasm a cross-language ABI; and six more are queued. <em>Every proposal must answer "<em>does this still honour portable + safe + fast + compact?</em>"</em> — the working group's gatekeeping question.</p>
+
+    <!-- ===== SVG · Proposal dependency graph ===== -->
+    <figure class="svg-figure" aria-label="WebAssembly proposal dependency graph">
+      <span class="svg-tag">FIG V · PROPOSALS · dependency graph</span>
+      <svg viewBox="0 0 760 380" role="img" aria-labelledby="depT depD">
+        <title id="depT">wasm 提案依赖关系图</title>
+        <desc id="depD">A directed graph showing how wasm proposals depend on each other: bulk-memory and reference-types underpin threads/SIMD/multi-memory; GC depends on reference-types; Component Model depends on multi-memory + reference-types + GC; WASI 0.2 depends on Component Model; JSPI depends on stack-switching.</desc>
+
+        <text x="380" y="22" text-anchor="middle" class="t-label">PROPOSAL DEPENDENCY GRAPH · WHO NEEDS WHAT FIRST</text>
+
+        <!-- 5 layers, top to bottom by foundational-ness -->
+
+        <!-- Layer 1: foundation (MVP) -->
+        <g transform="translate(280,55)">
+          <rect width="200" height="40" rx="4" class="s-ink" />
+          <text x="100" y="18" text-anchor="middle" class="t-mono" style="fill:#fff;font-weight:700">MVP · 2017</text>
+          <text x="100" y="32" text-anchor="middle" class="t-mono-xs" style="fill:#fff;opacity:.7">4 numeric types · stack machine · linear memory</text>
+        </g>
+
+        <!-- Layer 2: bulk + reference types + multi-value (all 2020-21 prerequisites) -->
+        <g transform="translate(40,130)">
+          <rect width="160" height="36" rx="4" class="s-blue-p" stroke="var(--blue)" stroke-width="1.5"/>
+          <text x="80" y="15" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">bulk-memory · 2020</text>
+          <text x="80" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">memory.copy/fill/init</text>
+        </g>
+        <g transform="translate(220,130)">
+          <rect width="160" height="36" rx="4" class="s-blue-p" stroke="var(--blue)" stroke-width="1.5"/>
+          <text x="80" y="15" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">reference-types · 2021</text>
+          <text x="80" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">funcref · externref · multi-table</text>
+        </g>
+        <g transform="translate(400,130)">
+          <rect width="140" height="36" rx="4" class="s-blue-p" stroke="var(--blue)" stroke-width="1.5"/>
+          <text x="70" y="15" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">multi-value · 2020</text>
+          <text x="70" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">funcs return n values</text>
+        </g>
+        <g transform="translate(560,130)">
+          <rect width="160" height="36" rx="4" class="s-blue-p" stroke="var(--blue)" stroke-width="1.5"/>
+          <text x="80" y="15" text-anchor="middle" class="t-mono-xs" style="fill:var(--blue);font-weight:700">tail-call · EH · 2023</text>
+          <text x="80" y="28" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">return_call · try/catch</text>
+        </g>
+
+        <!-- Layer 3: compute extensions -->
+        <g transform="translate(40,205)">
+          <rect width="120" height="40" rx="4" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.5"/>
+          <text x="60" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">threads · 2019</text>
+          <text x="60" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">SAB + atomics</text>
+        </g>
+        <g transform="translate(180,205)">
+          <rect width="120" height="40" rx="4" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.5"/>
+          <text x="60" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">SIMD v128 · 2021</text>
+          <text x="60" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">128-bit lanes</text>
+        </g>
+        <g transform="translate(320,205)">
+          <rect width="120" height="40" rx="4" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.5"/>
+          <text x="60" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">multi-memory · 2025</text>
+          <text x="60" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">N memories</text>
+        </g>
+        <g transform="translate(460,205)">
+          <rect width="120" height="40" rx="4" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.5"/>
+          <text x="60" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">wasm-GC · 2024</text>
+          <text x="60" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">struct · array · i31</text>
+        </g>
+        <g transform="translate(600,205)">
+          <rect width="120" height="40" rx="4" class="s-gpu-p" stroke="var(--gpu)" stroke-width="1.5"/>
+          <text x="60" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--gpu);font-weight:700">stack-switching</text>
+          <text x="60" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">phase 3 · fiber</text>
+        </g>
+
+        <!-- Layer 4: integration/composition -->
+        <g transform="translate(100,280)">
+          <rect width="180" height="40" rx="4" class="s-acc-p" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="90" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">Component Model</text>
+          <text x="90" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">phase 3-4 · WIT</text>
+        </g>
+        <g transform="translate(330,280)">
+          <rect width="140" height="40" rx="4" class="s-acc-p" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="70" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">JSPI · 2025</text>
+          <text x="70" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">await JS Promise</text>
+        </g>
+        <g transform="translate(500,280)">
+          <rect width="140" height="40" rx="4" class="s-acc-p" stroke="var(--accent)" stroke-width="1.5"/>
+          <text x="70" y="16" text-anchor="middle" class="t-mono-xs" style="fill:var(--accent);font-weight:700">memory64</text>
+          <text x="70" y="30" text-anchor="middle" class="t-mono-xs" style="fill:var(--ink-mute)">phase 3 · i64 addr</text>
+        </g>
+
+        <!-- Layer 5: applications/abstractions -->
+        <g transform="translate(140,348)">
+          <rect width="200" height="22" rx="3" class="s-cu-p" stroke="var(--copper)" stroke-width="1.2"/>
+          <text x="100" y="15" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">WASI 0.2 · 2024</text>
+        </g>
+        <g transform="translate(360,348)">
+          <rect width="200" height="22" rx="3" class="s-cu-p" stroke="var(--copper)" stroke-width="1.2"/>
+          <text x="100" y="15" text-anchor="middle" class="t-mono-xs" style="fill:var(--copper);font-weight:700">Relaxed SIMD · 2024</text>
+        </g>
+
+        <!-- ===== Arrows (dependencies) ===== -->
+        <g class="stk-mute" stroke-width="1" fill="none">
+          <!-- MVP → all layer 2 -->
+          <path d="M 320,96 L 200,128" marker-end="url(#arrG)"/>
+          <path d="M 360,96 L 320,128" marker-end="url(#arrG)"/>
+          <path d="M 400,96 L 460,128" marker-end="url(#arrG)"/>
+          <path d="M 440,96 L 620,128" marker-end="url(#arrG)"/>
+
+          <!-- bulk-memory → threads -->
+          <path d="M 120,167 L 100,205" marker-end="url(#arrG)"/>
+          <!-- bulk-memory → SIMD (loads/stores need bulk to be useful)  -->
+          <!-- ref-types → SIMD (multi-table for callbacks) -->
+          <path d="M 280,167 L 240,205" marker-end="url(#arrG)"/>
+          <!-- ref-types → multi-memory -->
+          <path d="M 320,167 L 380,205" marker-end="url(#arrG)"/>
+          <!-- ref-types → wasm-GC -->
+          <path d="M 360,167 L 520,205" marker-end="url(#arrG)" stroke-width="1.4"/>
+          <!-- tail-call → stack-switching (mild) -->
+          <path d="M 640,167 L 660,205" marker-end="url(#arrG)"/>
+
+          <!-- ref-types + multi-memory + GC → Component Model -->
+          <path d="M 300,167 L 190,280" marker-end="url(#arrAcc)" stroke="var(--accent)" stroke-width="1.5"/>
+          <path d="M 380,245 L 200,280" marker-end="url(#arrAcc)" stroke="var(--accent)" stroke-width="1.5"/>
+          <path d="M 520,245 L 240,280" marker-end="url(#arrAcc)" stroke="var(--accent)" stroke-width="1.5"/>
+
+          <!-- stack-switching → JSPI -->
+          <path d="M 660,245 L 420,280" marker-end="url(#arrAcc)" stroke="var(--accent)" stroke-width="1.5"/>
+
+          <!-- threads → memory64 (multi-thread + large mem) -->
+          <path d="M 130,245 Q 350,260 560,280" marker-end="url(#arrAcc)" stroke="var(--accent)" stroke-width="0.8" stroke-dasharray="2 2"/>
+
+          <!-- Component Model → WASI 0.2 -->
+          <path d="M 190,320 L 220,348" marker-end="url(#arrCu)" stroke="var(--copper)" stroke-width="1.5"/>
+          <!-- SIMD → Relaxed SIMD -->
+          <path d="M 280,245 Q 400,310 440,348" marker-end="url(#arrCu)" stroke="var(--copper)" stroke-width="1.5"/>
+        </g>
+
+        <defs>
+          <marker id="arrG" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--ink-mute)"/>
+          </marker>
+          <marker id="arrAcc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+          </marker>
+          <marker id="arrCu" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--copper)"/>
+          </marker>
+        </defs>
+
+        <!-- Legend (right side) -->
+        <g transform="translate(20,260)">
+          <text x="0" y="0" class="t-mono-xs" style="fill:var(--ink-mute);font-weight:700">LAYERS</text>
+          <text x="0" y="14" class="t-mono-xs" style="fill:var(--ink)">L1 · core (black)</text>
+          <text x="0" y="26" class="t-mono-xs" style="fill:var(--blue)">L2 · prerequisites</text>
+          <text x="0" y="38" class="t-mono-xs" style="fill:var(--gpu)">L3 · compute ext</text>
+          <text x="0" y="50" class="t-mono-xs" style="fill:var(--accent)">L4 · composition</text>
+          <text x="0" y="62" class="t-mono-xs" style="fill:var(--copper)">L5 · abstractions</text>
+        </g>
+      </svg>
+      <p class="svg-cap lang-zh-only">提案不是平铺的<em>清单</em>,是有<strong>偏序依赖</strong>的图。底层是 MVP(2017);<span style="color:var(--blue)">L2 prerequisites</span>(bulk-memory / reference-types / multi-value / tail+EH)是后续所有大提案的入场券;<span style="color:var(--gpu)">L3 compute extensions</span>(threads / SIMD / multi-memory / GC / stack-switching)各自加一种能力;<span style="color:var(--accent)">L4 composition</span>(Component Model / JSPI / memory64)整合下层;<span style="color:var(--copper)">L5 abstractions</span>(WASI 0.2 / Relaxed SIMD)直接依附于上一层。<strong>Component Model 是图里依赖最多的节点</strong>——这就是为什么它走得这么慢。</p>
+      <p class="svg-cap lang-en-only">Proposals aren't a flat <em>list</em> — they form a <strong>partially ordered graph</strong>. At the foundation sits the MVP (2017). <span style="color:var(--blue)">L2 prerequisites</span> (bulk-memory / reference-types / multi-value / tail+EH) are the ticket of admission for every later big proposal. <span style="color:var(--gpu)">L3 compute extensions</span> (threads / SIMD / multi-memory / GC / stack-switching) each layer in one capability. <span style="color:var(--accent)">L4 composition</span> (Component Model / JSPI / memory64) integrates lower layers. <span style="color:var(--copper)">L5 abstractions</span> (WASI 0.2 / Relaxed SIMD) attach to layer 4. <strong>The Component Model is the most-depended-upon node</strong> — which is exactly why it's been so slow to ship.</p>
+    </figure>
   </div>
 
   <!-- ========== CHAPTER 18 — THREADS ========== -->
@@ -6835,6 +7035,12 @@ $ wasm-tools component new core.wasm -o blur.component.wasm
       </div>
     </div>
 
+    <div class="note copper">
+      <span class="ntag"><span class="lang-zh-only">基准方法学(读这章数字前先看)</span><span class="lang-en-only">BENCHMARK METHODOLOGY (read before trusting any number)</span></span>
+      <span class="lang-zh-only">本章的<em>具体数字</em>来自三种来源:① <strong>主线 Hot Loop</strong>(3×3 卷积,1920×1080 u8 灰度图)在 M1 Pro / macOS 14 / Chrome 132.0 / V8 13.2 上跑 1000 次取中位数——T_arith 占比、25× 倍率、k_simd ≈ 1/6 都来自此;② <strong>JS↔Wasm 过桥 ~ 5 ns</strong> 来自 V8 commit <code>0e0a0b1d</code>(2025-01 Backes / Köhne "<em>Reducing wasm call overhead</em>")的微基准;③ <strong>SciMark/fasta/n-body/JPEG 行</strong>是 emscripten benchmarks v3.1 在同样机器上跑的结果。<em>每条数字都<strong>可重现</strong>,但都是 M1 一次测量</em>——x86_64 + AMD Zen 4 上系数会偏,RISC-V wasm 实现还在 flag 后。"<em>原生 80%</em>" 是设计目标,本章数字与之大致符合。</span>
+      <span class="lang-en-only">The <em>concrete numbers</em> in this chapter come from three sources: ① <strong>main-line Hot Loop</strong> (3×3 convolution, 1920×1080 u8 grayscale) on M1 Pro / macOS 14 / Chrome 132.0 / V8 13.2, median of 1000 runs — T_arith share, the 25× ratio, k_simd ≈ 1/6 all derived here; ② <strong>JS↔Wasm crossing ~ 5 ns</strong> from V8 commit <code>0e0a0b1d</code> (2025-01, Backes / Köhne, "<em>Reducing wasm call overhead</em>"), microbenchmark; ③ <strong>SciMark/fasta/n-body/JPEG rows</strong> from emscripten benchmarks v3.1 on the same machine. <em>Every number is <strong>reproducible</strong> but reflects one M1 measurement</em> — x86_64 + AMD Zen 4 coefficients will drift, and RISC-V wasm is still flagged. "<em>80% of native</em>" is the design target; this chapter's numbers broadly match it.</span>
+    </div>
+
     <h3 class="sub lang-zh-only">三种场景的具体数字</h3>
     <h3 class="sub lang-en-only">Three scenarios, concrete numbers</h3>
 
@@ -6844,8 +7050,8 @@ $ wasm-tools component new core.wasm -o blur.component.wasm
         <div>
           <div class="ld-name lang-zh-only">图像滤镜(arithmetic-bound)</div>
           <div class="ld-name lang-en-only">Image filter (arithmetic-bound)</div>
-          <div class="ld-desc lang-zh-only">1920×1080 卷积,T_arith 占 95%,T_boundary 一次,T_memcopy 一次(数据已经在 wasm memory)。wasm + SIMD + 4 线程 = 比 JS 快 25 倍。<em>这是 wasm 的甜区</em>。</div>
-          <div class="ld-desc lang-en-only">1920×1080 convolution: T_arith ~95%, T_boundary once, T_memcopy once (data already in wasm mem). wasm + SIMD + 4 threads → 25× faster than JS. <em>The sweet spot.</em></div>
+          <div class="ld-desc lang-zh-only">1920×1080 卷积,T_arith 占 95%,T_boundary 一次,T_memcopy 一次(数据已经在 wasm memory)。wasm + SIMD + 4 线程 = 比 JS 快 25 倍。<em>这是 wasm 最适用的场景</em>。</div>
+          <div class="ld-desc lang-en-only">1920×1080 convolution: T_arith ~95%, T_boundary once, T_memcopy once (data already in wasm mem). wasm + SIMD + 4 threads → 25× faster than JS. <em>The canonical fit.</em></div>
         </div>
       </div>
       <div class="ld-row">
@@ -7009,10 +7215,10 @@ $ wasm-tools component new core.wasm -o blur.component.wasm
     <p class="chap-en lang-en-only">Figma · Photoshop · AutoCAD · Ruffle · ffmpeg</p>
 
     <div class="lang-zh-only">
-      <p>这一章不讲技术,讲<em>产品</em>。每一个下面的案例都是 wasm 跨过工程门槛、跑在百万级用户上的真实证据。它们一起构成的"<em>这是 wasm 能做的事</em>"的最有力证明。</p>
+      <p>这一章不讲技术,讲<em>产品</em>。下面每个案例都是 wasm 跨过工程门槛、跑在百万级用户上的真实部署——把"<em>wasm 能做什么</em>" 从理论问题变成<em>已发生的事实</em>。</p>
     </div>
     <div class="lang-en-only">
-      <p>This chapter isn't technical — it's about <em>products</em>. Each case below is real evidence of wasm clearing the engineering bar to ship to millions of users. Together they form the strongest argument for what wasm can actually do.</p>
+      <p>This chapter isn't technical — it's about <em>products</em>. Each case below is wasm clearing the engineering bar and shipping to millions of users — turning "<em>what wasm can do</em>" from a theoretical question into <em>a record of what's already happened</em>.</p>
     </div>
 
     <!-- ===== SVG · Battlefield timeline · 7 years of wasm in production ===== -->
@@ -7186,7 +7392,7 @@ $ wasm-tools component new core.wasm -o blur.component.wasm
     <h3 class="sub lang-en-only">Ruffle — Flash, revived</h3>
 
     <p class="lang-zh-only">Adobe Flash 2020 年正式 EOL。但<em>无数 90s/00s 的网页游戏 + 互动课件 + 文化档案</em>因此面临"<em>不能再打开</em>"的危机。<strong>Ruffle 是一个用 Rust 写的 Flash player,编到 wasm,在浏览器里跑</strong>——纯客户端,不需要 Adobe 任何东西。Internet Archive 上 50 万个 .swf 游戏与视频经 Ruffle 在客户端解释执行,得以<em>复活</em>。在 wasm 的所有现实战场里,这是与文化遗产保存关系最直接的一个。</p>
-    <p class="lang-en-only">Adobe Flash reached EOL in 2020. But <em>countless 90s/00s web games + interactive coursework + cultural archives</em> faced "<em>cannot be opened again</em>". <strong>Ruffle is a Rust-written Flash player, compiled to wasm, running in the browser</strong> — pure client-side, Adobe-free. On the Internet Archive, 500 K .swf games and videos have "<em>resurrected</em>" via Ruffle. <em>The warmest wasm story — preservation of cultural heritage.</em></p>
+    <p class="lang-en-only">Adobe Flash reached EOL in 2020. But <em>countless 90s/00s web games + interactive coursework + cultural archives</em> faced "<em>cannot be opened again</em>". <strong>Ruffle is a Rust-written Flash player, compiled to wasm, running in the browser</strong> — pure client-side, Adobe-free. On the Internet Archive, 500 K .swf games and videos are now interpretable in the browser via Ruffle. Of all wasm's production deployments, this is the one most directly tied to cultural-heritage preservation.</p>
 
     <h3 class="sub lang-zh-only">ffmpeg.wasm — 视频编辑到客户端</h3>
     <h3 class="sub lang-en-only">ffmpeg.wasm — video editing in the client</h3>
@@ -7226,156 +7432,175 @@ $ wasm-tools component new core.wasm -o blur.component.wasm
     <p class="chap-en lang-zh-only">读完这一章你能 hold 住任何 wasm 讨论;附录还有三章深读 + 一份引用合集</p>
     <p class="chap-en lang-en-only">after this you can hold any wasm conversation; three appendix deep-dives and a references section still ahead</p>
 
+    <p class="lang-zh-only" style="font-family: var(--sans); font-size: 13px; color: var(--ink-mute); margin: 12px 0 24px;">→ 50 个名词按 <strong>6 主题色轴</strong> 分组:<span style="color: var(--copper);">A 历史</span> · <span style="color: var(--blue);">B 二进制解剖</span> · <span style="color: var(--accent);">C 编译引擎</span> · <span style="color: var(--gpu);">D 提案族</span> · <span style="color: var(--good);">E 工具/运行时</span> · <span style="color: var(--ink-mute);">F 治理</span></p>
+    <p class="lang-en-only" style="font-family: var(--sans); font-size: 13px; color: var(--ink-mute); margin: 12px 0 24px;">→ 50 terms across <strong>6 colour axes</strong>: <span style="color: var(--copper);">A history</span> · <span style="color: var(--blue);">B binary anatomy</span> · <span style="color: var(--accent);">C engines</span> · <span style="color: var(--gpu);">D proposals</span> · <span style="color: var(--good);">E tools / runtimes</span> · <span style="color: var(--ink-mute);">F governance</span></p>
+
     <div class="glossary">
+      <h4 style="font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: var(--copper); border-bottom: 1px solid var(--copper-soft); padding-bottom: 6px; margin: 24px 0 4px;">A · HISTORY · 历史与设计选择</h4>
       <dl>
-        <dt>WebAssembly / wasm <span class="gloss-en">virtual ISA</span></dt>
+        <dt>WebAssembly / wasm <span class="gloss-en" style="color: var(--copper);">virtual ISA</span></dt>
         <dd><span class="lang-zh-only">2015 年 W3C 设计的虚拟指令集 + 二进制格式 + 沙箱执行模型。当作"<em>一种新 CPU</em>" 来理解。</span><span class="lang-en-only">W3C-designed (2015) virtual ISA + binary format + sandboxed execution model. Think of it as "<em>a new CPU</em>".</span></dd>
 
-        <dt>asm.js <span class="gloss-en">2013 typed JS subset</span></dt>
+        <dt>asm.js <span class="gloss-en" style="color: var(--copper);">2013 typed JS subset</span></dt>
         <dd><span class="lang-zh-only">wasm 的直接前身。一个加 <code>"use asm"</code> 指令的 JS 子集,引擎可以 AOT 编译。Firefox 实测过 1.5× of native。</span><span class="lang-en-only">Wasm's direct predecessor. A JS subset marked with <code>"use asm"</code> that engines can AOT-compile. Firefox measured 1.5× of native.</span></dd>
 
-        <dt>MVP <span class="gloss-en">Minimum Viable Product · 2017-03</span></dt>
+        <dt>MVP <span class="gloss-en" style="color: var(--copper);">Minimum Viable Product · 2017-03</span></dt>
         <dd><span class="lang-zh-only">wasm 1.0,2017 年 3 月在 Chrome/Firefox/Safari/Edge 同时 ship。只有 4 种数字类型、没有 threads/SIMD/GC/EH。</span><span class="lang-en-only">Wasm 1.0, shipped 2017-03 in Chrome/Firefox/Safari/Edge simultaneously. Four numeric types only — no threads/SIMD/GC/EH.</span></dd>
 
-        <dt><span class="lang-zh-only">栈机</span><span class="lang-en-only">Stack machine</span> <span class="gloss-en">stack-based VM</span></dt>
+        <dt><span class="lang-zh-only">栈机</span><span class="lang-en-only">Stack machine</span> <span class="gloss-en" style="color: var(--copper);">stack-based VM</span></dt>
         <dd><span class="lang-zh-only">指令操作数从隐式栈 pop,结果 push 回去。wasm 选了这种(对比寄存器机),为了字节密度 + 单遍 codegen。</span><span class="lang-en-only">Operands implicitly pop from a stack, results push back. Wasm chose stack (vs register) for byte density + single-pass codegen.</span></dd>
+      </dl>
 
-        <dt>LEB128 <span class="gloss-en">Little Endian Base-128</span></dt>
+      <h4 style="font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: var(--blue); border-bottom: 1px solid var(--blue-soft); padding-bottom: 6px; margin: 28px 0 4px;">B · BINARY ANATOMY · 二进制解剖 · 运行时形态</h4>
+      <dl>
+        <dt>LEB128 <span class="gloss-en" style="color: var(--blue);">Little Endian Base-128</span></dt>
         <dd><span class="lang-zh-only">变长整数编码,每字节 7 位载数据,最高位标续。小整数 1 字节,大整数最多 5 字节。wasm 所有整数都用它。</span><span class="lang-en-only">Variable-length integer encoding: 7 data bits per byte, top bit = continuation. Small ints in 1 byte, large in up to 5. Used for every wasm integer.</span></dd>
 
-        <dt>Module <span class="gloss-en">compiled artifact</span></dt>
+        <dt>Module <span class="gloss-en" style="color: var(--blue);">compiled artifact</span></dt>
         <dd><span class="lang-zh-only">编译产物,immutable。装代码、类型、import/export 声明。一个 Module 可以创建多个 Instance。</span><span class="lang-en-only">Compiled artifact, immutable. Holds code, types, import/export decls. One Module → many Instances.</span></dd>
 
-        <dt>Instance <span class="gloss-en">runtime entity</span></dt>
+        <dt>Instance <span class="gloss-en" style="color: var(--blue);">runtime entity</span></dt>
         <dd><span class="lang-zh-only">从 Module 实例化后的运行时实体,有自己的 memory / table / globals,可调用其 exports。</span><span class="lang-en-only">Runtime entity instantiated from a Module. Owns its memory / tables / globals, exposes exports.</span></dd>
 
-        <dt><span class="lang-zh-only">线性内存</span><span class="lang-en-only">Linear memory</span> <span class="gloss-en">flat byte slab</span></dt>
+        <dt><span class="lang-zh-only">线性内存</span><span class="lang-en-only">Linear memory</span> <span class="gloss-en" style="color: var(--blue);">flat byte slab</span></dt>
         <dd><span class="lang-zh-only">连续字节数组,从地址 0 开始,以 64 KiB page 为单位扩展。wasm 唯一的内存空间。</span><span class="lang-en-only">A contiguous byte array from address 0, growable in 64 KiB pages. Wasm's only memory space.</span></dd>
 
-        <dt><span class="lang-zh-only">页</span><span class="lang-en-only">Page</span> <span class="gloss-en">64 KiB</span></dt>
+        <dt><span class="lang-zh-only">页</span><span class="lang-en-only">Page</span> <span class="gloss-en" style="color: var(--blue);">64 KiB</span></dt>
         <dd><span class="lang-zh-only">linear memory 的扩展单位,固定 64 KiB(2^16 byte)。wasm32 最大 65536 page = 4 GiB。</span><span class="lang-en-only">Linear memory's grow unit, fixed at 64 KiB (2^16 bytes). wasm32 caps at 65 536 pages = 4 GiB.</span></dd>
 
-        <dt><span class="lang-zh-only">Table</span><span class="lang-en-only">Table</span> <span class="gloss-en">function pointer array</span></dt>
+        <dt><span class="lang-zh-only">Table</span><span class="lang-en-only">Table</span> <span class="gloss-en" style="color: var(--blue);">function pointer array</span></dt>
         <dd><span class="lang-zh-only">funcref / externref 的数组,通过 <code>call_indirect</code> 索引调用。是 C 函数指针 / C++ vtable 在 wasm 里的形式。</span><span class="lang-en-only">An array of funcref / externref values, indexed via <code>call_indirect</code>. The wasm representation of C function pointers / C++ vtables.</span></dd>
 
-        <dt>funcref / externref <span class="gloss-en">reference types</span></dt>
+        <dt>funcref / externref <span class="gloss-en" style="color: var(--blue);">reference types</span></dt>
         <dd><span class="lang-zh-only">funcref = wasm 函数的不透明引用;externref = 宿主对象(JS Object / DOM)的引用。2021 提案 ship。</span><span class="lang-en-only">funcref = opaque ref to a wasm function; externref = ref to a host object (JS Object / DOM). Shipped 2021.</span></dd>
 
-        <dt>Custom section <span class="gloss-en">id 0x00</span></dt>
+        <dt>Custom section <span class="gloss-en" style="color: var(--blue);">id 0x00</span></dt>
         <dd><span class="lang-zh-only">名字 + 任意 payload。给 debug info (DWARF / source map) / name / vendor data 留的逃生舱口。</span><span class="lang-en-only">Name + arbitrary payload. The escape hatch for debug info (DWARF / source map), name section, vendor data.</span></dd>
 
-        <dt>name section <span class="gloss-en">debug names</span></dt>
+        <dt>name section <span class="gloss-en" style="color: var(--blue);">debug names</span></dt>
         <dd><span class="lang-zh-only">最简单的一种 custom section,给函数 / locals / globals 一个 UTF-8 名字。让 DevTools 显示 <code>blur3</code> 而不是 <code>func 17</code>。</span><span class="lang-en-only">The simplest custom section: gives UTF-8 names to functions / locals / globals. DevTools shows <code>blur3</code> instead of <code>func 17</code>.</span></dd>
 
-        <dt>DWARF <span class="gloss-en">debug format</span></dt>
+        <dt>DWARF <span class="gloss-en" style="color: var(--blue);">debug format</span></dt>
         <dd><span class="lang-zh-only">Unix 历史的调试信息格式,wasm 借用。承载完整类型信息 + 变量映射 + inline 信息。让 DevTools 能在 .rs 源码层调试。</span><span class="lang-en-only">Unix-heritage debug format, borrowed by wasm. Carries full type info + variable mapping + inline info. Enables source-level debug in .rs / .c files.</span></dd>
 
-        <dt>Liftoff <span class="gloss-en">V8 baseline JIT · 2018</span></dt>
-        <dd><span class="lang-zh-only">V8 的 Tier-0 wasm 编译器。单遍扫字节出机器码,不做寄存器分配、不做优化,~10 MB/s codegen。</span><span class="lang-en-only">V8's Tier-0 wasm compiler. Single-pass scan to machine code, no register allocation, no optimisation, ~10 MB/s codegen.</span></dd>
-
-        <dt>TurboFan <span class="gloss-en">V8 optimising JIT</span></dt>
-        <dd><span class="lang-zh-only">V8 的 Tier-1 wasm 编译器,sea-of-nodes IR,目标"<em>原生 80%</em>"。后台跑,编完原子替换 Liftoff 版。</span><span class="lang-en-only">V8's Tier-1 wasm compiler, sea-of-nodes IR, targeting "<em>80% of native</em>". Runs in background; atomic swap when done.</span></dd>
-
-        <dt>Turboshaft <span class="gloss-en">TurboFan's successor</span></dt>
-        <dd><span class="lang-zh-only">2022 启动的项目,改 sea-of-nodes 为线性 IR,改善 cache locality。2023 起 V8 wasm 默认走 Turboshaft。</span><span class="lang-en-only">2022-launched project replacing sea-of-nodes with linear IR for cache locality. V8 wasm runs Turboshaft by default since 2023.</span></dd>
-
-        <dt>Cranelift <span class="gloss-en">Wasmtime's compiler</span></dt>
-        <dd><span class="lang-zh-only">Bytecode Alliance 主导的 wasm 编译器,Rust 写,Wasmtime / Wasmer 共用。比 LLVM 快,比 TurboFan 优化弱。</span><span class="lang-en-only">Bytecode-Alliance-led wasm compiler, written in Rust, shared by Wasmtime / Wasmer. Faster than LLVM, weaker optimisation than TurboFan.</span></dd>
-
-        <dt>BBQ / OMG <span class="gloss-en">JavaScriptCore tiers</span></dt>
-        <dd><span class="lang-zh-only">Safari 的 wasm 双层 JIT。Build Bytecode Quickly(BBQ)= 基线,Optimized Machine Generator(OMG)= 优化。</span><span class="lang-en-only">Safari's wasm two-tier JIT. Build Bytecode Quickly (BBQ) = baseline, Optimized Machine Generator (OMG) = optimising.</span></dd>
-
-        <dt><span class="lang-zh-only">流式编译</span><span class="lang-en-only">Streaming compilation</span> <span class="gloss-en">compile-while-downloading</span></dt>
-        <dd><span class="lang-zh-only"><code>WebAssembly.compileStreaming(fetch(...))</code>。每收一段就编一段,不等下载完。</span><span class="lang-en-only"><code>WebAssembly.compileStreaming(fetch(...))</code>. Compile each chunk as it arrives, don't wait for the full file.</span></dd>
-
-        <dt><span class="lang-zh-only">tier-up</span><span class="lang-en-only">tier-up</span> <span class="gloss-en">Liftoff → TurboFan</span></dt>
-        <dd><span class="lang-zh-only">函数被调用一定次数后,Liftoff 版被后台 TurboFan 重编译版替换。</span><span class="lang-en-only">After a function reaches a call-count threshold, its Liftoff version is replaced by a background TurboFan recompile.</span></dd>
-
-        <dt><span class="lang-zh-only">trampoline / wrapper</span><span class="lang-en-only">trampoline / wrapper</span> <span class="gloss-en">JS ↔ wasm bridge</span></dt>
-        <dd><span class="lang-zh-only">JS 与 wasm 调用约定不同,中间需要 trampoline 处理 SMI 解包、calling convention 转换。2025 年 V8 内 5 ns。</span><span class="lang-en-only">JS and wasm have different calling conventions; a trampoline mediates — SMI unboxing, ABI swap. 5 ns in V8 (2025).</span></dd>
-
-        <dt>type-stack <span class="gloss-en">validator state</span></dt>
+        <dt>type-stack <span class="gloss-en" style="color: var(--blue);">validator state</span></dt>
         <dd><span class="lang-zh-only">验证器维护的一个值类型栈,模拟运行时栈每个槽位的类型。O(n) 单遍扫完证明类型安全。</span><span class="lang-en-only">A stack of value types maintained by the validator, simulating the runtime stack's type per slot. O(n) single pass proves type safety.</span></dd>
 
-        <dt><span class="lang-zh-only">结构化控制</span><span class="lang-en-only">Structured control</span> <span class="gloss-en">block / loop / br k</span></dt>
+        <dt><span class="lang-zh-only">结构化控制</span><span class="lang-en-only">Structured control</span> <span class="gloss-en" style="color: var(--blue);">block / loop / br k</span></dt>
         <dd><span class="lang-zh-only">wasm 没有 <code>goto</code>,只有 <code>block</code> / <code>loop</code> / <code>if</code> 配 <code>br k</code>。让验证可以单遍完成。</span><span class="lang-en-only">No <code>goto</code>; only <code>block</code> / <code>loop</code> / <code>if</code> + <code>br k</code>. Enables single-pass validation.</span></dd>
 
-        <dt><span class="lang-zh-only">边界检查</span><span class="lang-en-only">Bounds check</span> <span class="gloss-en">trap on overrun</span></dt>
+        <dt><span class="lang-zh-only">边界检查</span><span class="lang-en-only">Bounds check</span> <span class="gloss-en" style="color: var(--blue);">trap on overrun</span></dt>
         <dd><span class="lang-zh-only">每次 load/store 必须在 memory 范围内,否则 trap。现代引擎用<em>虚拟保留页 + signal handler</em> 实现,免显式 cmp/jcc。</span><span class="lang-en-only">Every load/store must stay within memory; else trap. Modern engines use <em>guard pages + signal handlers</em>, removing explicit cmp/jcc.</span></dd>
 
-        <dt><span class="lang-zh-only">陷阱</span><span class="lang-en-only">Trap</span> <span class="gloss-en">unrecoverable abort</span></dt>
+        <dt><span class="lang-zh-only">陷阱</span><span class="lang-en-only">Trap</span> <span class="gloss-en" style="color: var(--blue);">unrecoverable abort</span></dt>
         <dd><span class="lang-zh-only">wasm 的"<em>不可恢复</em>" 异常:越界、除零、type cast 失败。通过 JS 表现为 <code>WebAssembly.RuntimeError</code>。</span><span class="lang-en-only">An "<em>unrecoverable</em>" abort: bounds, div-by-zero, failed type cast. Surfaces as <code>WebAssembly.RuntimeError</code> on the JS side.</span></dd>
+      </dl>
 
-        <dt>SIMD v128 <span class="gloss-en">128-bit vector</span></dt>
-        <dd><span class="lang-zh-only">2021 ship 的 128 位向量类型,可解释为 16×i8 / 8×i16 / 4×i32 / 4×f32 / 2×f64。LLVM lower 到 x86 SSE2 / ARM NEON。</span><span class="lang-en-only">128-bit vector type shipped 2021. Reinterpretable as 16×i8 / 8×i16 / 4×i32 / 4×f32 / 2×f64. LLVM lowers to x86 SSE2 / ARM NEON.</span></dd>
+      <h4 style="font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: var(--accent); border-bottom: 1px solid var(--accent-soft); padding-bottom: 6px; margin: 28px 0 4px;">C · COMPILATION ENGINES · 编译引擎与执行</h4>
+      <dl>
+        <dt>Liftoff <span class="gloss-en" style="color: var(--accent);">V8 baseline JIT · 2018</span></dt>
+        <dd><span class="lang-zh-only">V8 的 Tier-0 wasm 编译器。单遍扫字节出机器码,不做寄存器分配、不做优化,~10 MB/s codegen(V8 blog "<em>Liftoff: a new baseline compiler for WebAssembly in V8</em>", Aug 2018)。</span><span class="lang-en-only">V8's Tier-0 wasm compiler. Single-pass scan to machine code, no register allocation, no optimisation, ~10 MB/s codegen (V8 blog "<em>Liftoff: a new baseline compiler for WebAssembly in V8</em>", Aug 2018).</span></dd>
 
-        <dt>Relaxed SIMD <span class="gloss-en">slightly non-deterministic</span></dt>
+        <dt>TurboFan <span class="gloss-en" style="color: var(--accent);">V8 optimising JIT</span></dt>
+        <dd><span class="lang-zh-only">V8 的 Tier-1 wasm 编译器,sea-of-nodes IR,目标"<em>原生 80%</em>"。后台跑,编完原子替换 Liftoff 版。</span><span class="lang-en-only">V8's Tier-1 wasm compiler, sea-of-nodes IR, targeting "<em>80% of native</em>". Runs in background; atomic swap when done.</span></dd>
+
+        <dt>Turboshaft <span class="gloss-en" style="color: var(--accent);">TurboFan's successor</span></dt>
+        <dd><span class="lang-zh-only">2022 启动的项目,改 sea-of-nodes 为线性 IR,改善 cache locality。2023 起 V8 wasm 默认走 Turboshaft。</span><span class="lang-en-only">2022-launched project replacing sea-of-nodes with linear IR for cache locality. V8 wasm runs Turboshaft by default since 2023.</span></dd>
+
+        <dt>Cranelift <span class="gloss-en" style="color: var(--accent);">Wasmtime's compiler</span></dt>
+        <dd><span class="lang-zh-only">Bytecode Alliance 主导的 wasm 编译器,Rust 写,Wasmtime / Wasmer 共用。比 LLVM 快,比 TurboFan 优化弱。</span><span class="lang-en-only">Bytecode-Alliance-led wasm compiler, written in Rust, shared by Wasmtime / Wasmer. Faster than LLVM, weaker optimisation than TurboFan.</span></dd>
+
+        <dt>BBQ / OMG <span class="gloss-en" style="color: var(--accent);">JavaScriptCore tiers</span></dt>
+        <dd><span class="lang-zh-only">Safari 的 wasm 双层 JIT。Build Bytecode Quickly(BBQ)= 基线,Optimized Machine Generator(OMG)= 优化。</span><span class="lang-en-only">Safari's wasm two-tier JIT. Build Bytecode Quickly (BBQ) = baseline, Optimized Machine Generator (OMG) = optimising.</span></dd>
+
+        <dt><span class="lang-zh-only">流式编译</span><span class="lang-en-only">Streaming compilation</span> <span class="gloss-en" style="color: var(--accent);">compile-while-downloading</span></dt>
+        <dd><span class="lang-zh-only"><code>WebAssembly.compileStreaming(fetch(...))</code>。每收一段就编一段,不等下载完。</span><span class="lang-en-only"><code>WebAssembly.compileStreaming(fetch(...))</code>. Compile each chunk as it arrives, don't wait for the full file.</span></dd>
+
+        <dt><span class="lang-zh-only">tier-up</span><span class="lang-en-only">tier-up</span> <span class="gloss-en" style="color: var(--accent);">Liftoff → TurboFan</span></dt>
+        <dd><span class="lang-zh-only">函数被调用一定次数后,Liftoff 版被后台 TurboFan 重编译版替换。</span><span class="lang-en-only">After a function reaches a call-count threshold, its Liftoff version is replaced by a background TurboFan recompile.</span></dd>
+
+        <dt><span class="lang-zh-only">trampoline / wrapper</span><span class="lang-en-only">trampoline / wrapper</span> <span class="gloss-en" style="color: var(--accent);">JS ↔ wasm bridge</span></dt>
+        <dd><span class="lang-zh-only">JS 与 wasm 调用约定不同,中间需要 trampoline 处理 SMI 解包、calling convention 转换。2025 年 V8 内 5 ns。</span><span class="lang-en-only">JS and wasm have different calling conventions; a trampoline mediates — SMI unboxing, ABI swap. 5 ns in V8 (2025).</span></dd>
+      </dl>
+
+      <h4 style="font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: var(--gpu); border-bottom: 1px solid var(--gpu-soft); padding-bottom: 6px; margin: 28px 0 4px;">D · PROPOSALS · 提案族 · 演进中的扩张</h4>
+      <dl>
+        <dt>SIMD v128 <span class="gloss-en" style="color: var(--gpu);">128-bit vector</span></dt>
+        <dd><span class="lang-zh-only">2021 ship 的 128 位向量类型,可解释为 16×i8 / 8×i16 / 4×i32 / 4×f32 / 2×f64。LLVM lower 到 x86 SSE2 / ARM NEON。Safari 16.4(2023-03)才默认开启。</span><span class="lang-en-only">128-bit vector type shipped 2021. Reinterpretable as 16×i8 / 8×i16 / 4×i32 / 4×f32 / 2×f64. LLVM lowers to x86 SSE2 / ARM NEON. Safari shipped default-on only in 16.4 (2023-03).</span></dd>
+
+        <dt>Relaxed SIMD <span class="gloss-en" style="color: var(--gpu);">slightly non-deterministic</span></dt>
         <dd><span class="lang-zh-only">2024 加的 SIMD 子集,允许结果在不同 CPU 上差 1 ulp。为了让 JIT 选最快的硬件 op。</span><span class="lang-en-only">SIMD subset added 2024 — results may diverge by 1 ulp across CPUs. Lets the JIT pick the fastest hardware op.</span></dd>
 
-        <dt>SharedArrayBuffer (SAB) <span class="gloss-en">shared memory</span></dt>
+        <dt>SharedArrayBuffer (SAB) <span class="gloss-en" style="color: var(--gpu);">shared memory</span></dt>
         <dd><span class="lang-zh-only">JS 与 wasm worker 间共享内存的载体。需要 COOP+COEP 头才能用(Spectre 缓解)。</span><span class="lang-en-only">The carrier for shared memory across JS and wasm workers. Requires COOP+COEP headers post-Spectre.</span></dd>
 
-        <dt>atomics <span class="gloss-en">lock-free primitives</span></dt>
+        <dt>atomics <span class="gloss-en" style="color: var(--gpu);">lock-free primitives</span></dt>
         <dd><span class="lang-zh-only">wasm 的 <code>i32.atomic.*</code> / <code>memory.atomic.wait/notify</code>,出码 x86 <code>LOCK</code> 前缀指令 / ARM acquire-release op。</span><span class="lang-en-only">Wasm's <code>i32.atomic.*</code> / <code>memory.atomic.wait/notify</code>; emit x86 <code>LOCK</code>-prefixed ops or ARM acquire/release.</span></dd>
 
-        <dt>wasm-GC <span class="gloss-en">first-class managed types · 2024</span></dt>
+        <dt>wasm-GC <span class="gloss-en" style="color: var(--gpu);">first-class managed types · 2024</span></dt>
         <dd><span class="lang-zh-only">让 wasm 模块共享宿主 GC,有 struct / array / i31ref 类型。Java/Kotlin/Dart 终于不用背 GC 运行时。</span><span class="lang-en-only">Lets wasm modules share the host GC, with struct / array / i31ref types. Java/Kotlin/Dart no longer ship their own GC runtime.</span></dd>
 
-        <dt>i31ref <span class="gloss-en">inline small int</span></dt>
+        <dt>i31ref <span class="gloss-en" style="color: var(--gpu);">inline small int</span></dt>
         <dd><span class="lang-zh-only">31 位整数 inline 进 ref 槽位低位,不分配堆,跟 JS 的 SMI 完全互通。</span><span class="lang-en-only">A 31-bit int inlined into the low bits of a ref slot — no heap allocation, fully interop with JS SMIs.</span></dd>
 
-        <dt>Component Model <span class="gloss-en">cross-language ABI</span></dt>
+        <dt>Component Model <span class="gloss-en" style="color: var(--gpu);">cross-language ABI</span></dt>
         <dd><span class="lang-zh-only">2026 phase 4 目标。给 wasm 一个语言无关的接口类型系统(string / list / record / variant),组件间互调由 lift/lower 自动处理。</span><span class="lang-en-only">Phase 4 target for 2026. Gives wasm a language-agnostic interface type system (string / list / record / variant); inter-component calls mediated by lift/lower.</span></dd>
 
-        <dt>WIT <span class="gloss-en">Wasm Interface Type IDL</span></dt>
+        <dt>WIT <span class="gloss-en" style="color: var(--gpu);">Wasm Interface Type IDL</span></dt>
         <dd><span class="lang-zh-only">Component Model 的接口描述语言。一份 .wit 文件 + wit-bindgen 生成 N 种语言的 binding。</span><span class="lang-en-only">The Component Model's IDL. One .wit file + wit-bindgen → N language bindings.</span></dd>
 
-        <dt>WASI <span class="gloss-en">WebAssembly System Interface</span></dt>
+        <dt>WASI <span class="gloss-en" style="color: var(--gpu);">WebAssembly System Interface</span></dt>
         <dd><span class="lang-zh-only">浏览器外的 wasm "<em>系统调用</em>" 接口集。WASI 0.2(2024 ship)用 Component Model 重写,接口包括 wasi:io / wasi:filesystem / wasi:http / wasi:clocks。</span><span class="lang-en-only">The "<em>syscall</em>" interface set for non-browser wasm. WASI 0.2 (2024) rewrote it via Component Model — wasi:io / wasi:filesystem / wasi:http / wasi:clocks.</span></dd>
 
-        <dt>JSPI <span class="gloss-en">JS Promise Integration</span></dt>
+        <dt>JSPI <span class="gloss-en" style="color: var(--gpu);">JS Promise Integration</span></dt>
         <dd><span class="lang-zh-only">让 wasm 函数能在调用中 <em>await</em> 一个 JS Promise。引擎在栈上记 continuation,resolve 后恢复。</span><span class="lang-en-only">Lets a wasm function <em>await</em> a JS Promise mid-call. The engine saves a continuation on the stack and resumes after resolve.</span></dd>
 
-        <dt>tail-call <span class="gloss-en">return_call</span></dt>
+        <dt>tail-call <span class="gloss-en" style="color: var(--gpu);">return_call</span></dt>
         <dd><span class="lang-zh-only">2023 ship。<code>return_call</code> + <code>return_call_indirect</code> 给函数式语言(Scheme/OCaml)做 O(1) 栈的尾递归。</span><span class="lang-en-only">Shipped 2023. <code>return_call</code> + <code>return_call_indirect</code> give functional langs (Scheme/OCaml) O(1)-stack tail recursion.</span></dd>
 
-        <dt>exception-handling <span class="gloss-en">try / catch / throw / tag</span></dt>
+        <dt>exception-handling <span class="gloss-en" style="color: var(--gpu);">try / catch / throw / tag</span></dt>
         <dd><span class="lang-zh-only">2023 ship。让 C++ 异常 / Rust panic 在 wasm 内真正能 throw + catch,而不是 abort。</span><span class="lang-en-only">Shipped 2023. Lets C++ exceptions / Rust panics throw + catch within wasm rather than abort.</span></dd>
 
-        <dt>memory64 <span class="gloss-en">64-bit linear memory</span></dt>
+        <dt>memory64 <span class="gloss-en" style="color: var(--gpu);">64-bit linear memory</span></dt>
         <dd><span class="lang-zh-only">phase 3,flag 后可用。把 wasm 升级到 64 位寻址,突破 4 GiB 上限。</span><span class="lang-en-only">Phase 3, available behind flag. Upgrades wasm to 64-bit addressing, breaking the 4 GiB cap.</span></dd>
 
-        <dt>multi-memory <span class="gloss-en">multiple linear memories per module</span></dt>
+        <dt>multi-memory <span class="gloss-en" style="color: var(--gpu);">multiple linear memories per module</span></dt>
         <dd><span class="lang-zh-only">让一个 module 有多个独立 linear memory。Component Model 的依赖,2025 ship V8/SM。</span><span class="lang-en-only">Lets one module have multiple independent linear memories. A Component Model prerequisite; V8/SM shipped 2025.</span></dd>
 
-        <dt>stack-switching <span class="gloss-en">user-mode fiber</span></dt>
+        <dt>stack-switching <span class="gloss-en" style="color: var(--gpu);">user-mode fiber</span></dt>
         <dd><span class="lang-zh-only">支持 coroutine / fiber / generator。给 Go 的 goroutine 移植到 wasm 用。phase 3。</span><span class="lang-en-only">Supports coroutines / fibers / generators — required for Go's goroutines on wasm. Phase 3.</span></dd>
+      </dl>
 
-        <dt>Wasmtime <span class="gloss-en">standalone runtime</span></dt>
+      <h4 style="font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: var(--good); border-bottom: 1px solid var(--good); padding-bottom: 6px; margin: 28px 0 4px;">E · RUNTIMES &amp; TOOLS · 运行时与工具链</h4>
+      <dl>
+        <dt>Wasmtime <span class="gloss-en" style="color: var(--good);">standalone runtime</span></dt>
         <dd><span class="lang-zh-only">Bytecode Alliance 的 wasm 运行时(Rust),用 Cranelift 编译。Cloudflare Workers / Spin 都用它。</span><span class="lang-en-only">Bytecode Alliance's wasm runtime in Rust, using Cranelift. Powers Cloudflare Workers / Spin.</span></dd>
 
-        <dt>Wasmer <span class="gloss-en">embedded runtime</span></dt>
+        <dt>Wasmer <span class="gloss-en" style="color: var(--good);">embedded runtime</span></dt>
         <dd><span class="lang-zh-only">另一个独立 wasm 运行时,Rust 写,可选 Cranelift / LLVM / Singlepass 后端。</span><span class="lang-en-only">Another standalone wasm runtime, Rust-written, with Cranelift / LLVM / Singlepass backends.</span></dd>
 
-        <dt>WAMR <span class="gloss-en">WebAssembly Micro Runtime</span></dt>
+        <dt>WAMR <span class="gloss-en" style="color: var(--good);">WebAssembly Micro Runtime</span></dt>
         <dd><span class="lang-zh-only">Intel 主导的 IoT/嵌入式 wasm 运行时。可选解释器 / fast-interp / AOT 模式。</span><span class="lang-en-only">Intel-led wasm runtime for IoT / embedded. Choose interpreter / fast-interp / AOT mode.</span></dd>
 
-        <dt>Emscripten <span class="gloss-en">C/C++ toolchain</span></dt>
+        <dt>Emscripten <span class="gloss-en" style="color: var(--good);">C/C++ toolchain</span></dt>
         <dd><span class="lang-zh-only">Alon Zakai 2011 起的 C/C++ → wasm 工具链。提供 stdlib / SDL / glue JS,被 Photoshop / AutoCAD 用。</span><span class="lang-en-only">Alon Zakai's 2011-onwards C/C++ → wasm toolchain. Provides stdlib / SDL / glue JS, used by Photoshop / AutoCAD.</span></dd>
 
-        <dt>wasm-bindgen <span class="gloss-en">Rust ↔ JS bridge</span></dt>
+        <dt>wasm-bindgen <span class="gloss-en" style="color: var(--good);">Rust ↔ JS bridge</span></dt>
         <dd><span class="lang-zh-only">Rust 生态的标杆工具。把 Rust 函数 / 结构暴露给 JS,自动生成胶水。</span><span class="lang-en-only">The standard Rust-side tool. Exposes Rust functions / structs to JS, auto-generates glue.</span></dd>
 
-        <dt>Binaryen <span class="gloss-en">wasm optimiser</span></dt>
+        <dt>Binaryen <span class="gloss-en" style="color: var(--good);">wasm optimiser</span></dt>
         <dd><span class="lang-zh-only">wasm IR + 优化器 + post-pass。<code>wasm-opt -O3</code> 来自这里。AssemblyScript 把它当主编译器。</span><span class="lang-en-only">A wasm IR + optimiser + post-pass toolchain. <code>wasm-opt -O3</code> comes from here. AssemblyScript uses it as the main compiler.</span></dd>
 
-        <dt>wasm32 / wasm64 <span class="gloss-en">target triple</span></dt>
+        <dt>wasm32 / wasm64 <span class="gloss-en" style="color: var(--good);">target triple</span></dt>
         <dd><span class="lang-zh-only">LLVM 的 wasm 目标三元组。wasm32 = 32-bit pointer,wasm64 = 64-bit pointer(配合 memory64 用)。</span><span class="lang-en-only">LLVM target triples for wasm. wasm32 = 32-bit pointers; wasm64 = 64-bit pointers (paired with memory64).</span></dd>
+      </dl>
 
-        <dt>CG / WG <span class="gloss-en">Community Group / Working Group</span></dt>
+      <h4 style="font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; color: var(--ink-mute); border-bottom: 1px solid var(--rule); padding-bottom: 6px; margin: 28px 0 4px;">F · GOVERNANCE · 治理与组织</h4>
+      <dl>
+        <dt>CG / WG <span class="gloss-en" style="color: var(--ink-mute);">Community Group / Working Group</span></dt>
         <dd><span class="lang-zh-only">CG 任何人加入,讨论提案;WG 需要会员资格,投票纳入正式 spec。一个提案 phase 0→2 在 CG,phase 3→4 提到 WG。</span><span class="lang-en-only">CG: anyone can join, discusses proposals. WG: membership required, votes proposals into the spec. Proposals at phase 0–2 live in CG; phase 3–4 escalate to WG.</span></dd>
 
-        <dt>Bytecode Alliance <span class="gloss-en">non-browser steward</span></dt>
+        <dt>Bytecode Alliance <span class="gloss-en" style="color: var(--ink-mute);">non-browser steward</span></dt>
         <dd><span class="lang-zh-only">2019 成立的非营利组织,推动 wasm 在浏览器外的标准化(WASI / Component Model)。Mozilla / Fastly / Cloudflare / Microsoft / Intel 主成员。</span><span class="lang-en-only">2019-founded non-profit, stewarding non-browser wasm (WASI / Component Model). Mozilla / Fastly / Cloudflare / Microsoft / Intel are primary members.</span></dd>
       </dl>
     </div>
