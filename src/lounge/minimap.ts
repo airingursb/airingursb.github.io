@@ -14,20 +14,26 @@ export type MapRoom = {
 export type MapEdge = { a: string; b: string }
 
 export const MAP_ROOMS: MapRoom[] = [
-  { id: 'room_grove',    label: 'Grove',    x: 20,  y: 12, w: 16, h: 7 },
-  { id: 'room_library',  label: 'Library',  x: 70,  y: 12, w: 18, h: 7 },
-  { id: 'room_balcony',  label: 'Balcony',  x: 20,  y: 38, w: 16, h: 7 },
-  { id: 'room_lobby',    label: 'Lobby',    x: 70,  y: 38, w: 22, h: 10 },
-  { id: 'room_dj_floor', label: 'DJ Floor', x: 120, y: 38, w: 16, h: 7 },
-  { id: 'room_beach',    label: 'Beach',    x: 20,  y: 68, w: 16, h: 7 },
-  { id: 'room_home',     label: 'Home',     x: 70,  y: 68, w: 22, h: 7 }
+  { id: 'room_grove',    label: 'Grove',    x: 16,  y: 12, w: 13, h: 6 },
+  { id: 'room_library',  label: 'Library',  x: 64,  y: 12, w: 16, h: 6 },
+  { id: 'room_workshop', label: 'Workshop', x: 110, y: 12, w: 16, h: 6 },
+  { id: 'room_rooftop',  label: 'Rooftop',  x: 64,  y: 26, w: 16, h: 5 },
+  { id: 'room_balcony',  label: 'Balcony',  x: 16,  y: 38, w: 13, h: 6 },
+  { id: 'room_lobby',    label: 'Lobby',    x: 64,  y: 38, w: 20, h: 9 },
+  { id: 'room_dj_floor', label: 'DJ Floor', x: 116, y: 38, w: 14, h: 6 },
+  { id: 'room_kitchen',  label: 'Kitchen',  x: 30,  y: 50, w: 13, h: 5 },
+  { id: 'room_beach',    label: 'Beach',    x: 16,  y: 68, w: 13, h: 6 },
+  { id: 'room_home',     label: 'Home',     x: 64,  y: 68, w: 20, h: 6 }
 ]
 
 export const MAP_EDGES: MapEdge[] = [
   { a: 'room_library',  b: 'room_lobby'    },
+  { a: 'room_library',  b: 'room_workshop' },
   { a: 'room_lobby',    b: 'room_balcony'  },
   { a: 'room_lobby',    b: 'room_dj_floor' },
   { a: 'room_lobby',    b: 'room_home'     },
+  { a: 'room_lobby',    b: 'room_kitchen'  },
+  { a: 'room_lobby',    b: 'room_rooftop'  },
   { a: 'room_balcony',  b: 'room_beach'    },
   { a: 'room_balcony',  b: 'room_grove'    }
 ]
