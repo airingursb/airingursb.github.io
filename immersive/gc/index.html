@@ -3030,11 +3030,58 @@
       </tbody>
     </table>
 
+    <h3 class="sub lang-zh-only">三个堆 + 一个例外 · BEAM 真正的内存模型</h3>
+    <h3 class="sub lang-en-only">Three heaps + one exception · BEAM's actual memory model</h3>
+
+    <p class="lang-zh-only">"每进程独立堆" 只是<em>一阶</em>描述。BEAM 的真实内存模型是 <strong>三个堆 + 一个例外</strong>：</p>
+    <p class="lang-en-only">"Per-process heap" is the <em>first-order</em> description. BEAM's actual model is <strong>three heaps + one exception</strong>:</p>
+
+    <ol style="margin-left:24px; font-family:var(--sans); font-size:14px; line-height:1.8;">
+      <li class="lang-zh-only"><strong>Young heap（每进程）</strong>——Cheney 复制 · 默认 233 字 · 满了就触发 minor GC</li>
+      <li class="lang-en-only"><strong>Young heap (per-process)</strong> — Cheney copying · 233 words default · triggers minor GC when full</li>
+      <li class="lang-zh-only"><strong>Old heap（每进程）</strong>——熬过 N 次 minor 的活对象升入 · mark-sweep major GC 才清理</li>
+      <li class="lang-en-only"><strong>Old heap (per-process)</strong> — survivors of N minor GCs are promoted here · cleaned by mark-sweep major GC</li>
+      <li class="lang-zh-only"><strong>Heap fragments</strong>（<code>ErlHeapFragment</code>，每进程）——临时分配缓冲 · 收到消息、调内置函数返回大对象时<em>无法即时分配到主堆</em>就放这里，下次 GC 时迁移</li>
+      <li class="lang-en-only"><strong>Heap fragments</strong> (<code>ErlHeapFragment</code>, per-process) — temporary allocation buffers · used when a message arrives or a BIF returns something too large to fit on the main heap, migrated into the main heap at the next GC</li>
+      <li class="lang-zh-only">⭐ <strong>Refc binary heap（全局共享）</strong>——大于 64 字节的 binary（如网络数据包、文件内容）<em>不</em>放进程堆，而放全局 <code>Binary</code> 节点 + 进程堆里只放<em>引用计数的 ProcBin 指针</em>。<em>消息传递时只复制指针 + bump refcount</em>，不复制数据本身。<strong>这就是 WhatsApp 能在单台机器跑 200 万连接的根本原因</strong>。</li>
+      <li class="lang-en-only">⭐ <strong>Refc binary heap (global / shared)</strong> — binaries larger than 64 bytes (e.g. network packets, file contents) do <em>not</em> sit on the process heap. They live in a global <code>Binary</code> arena, with each process heap holding only a refcounted <code>ProcBin</code> pointer. <em>Message passing copies the pointer + bumps the refcount</em>, not the data itself. <strong>This is the root reason WhatsApp can fit 2 million connections on a single machine.</strong></li>
+    </ol>
+
+    <div class="src-stack">
+      <div class="src-h"><span>OTP · erts/emulator/beam/erl_message.h:198 · ErlHeapFragment</span><span class="src-tag">verbatim</span></div>
+<span class="src-line"><span class="src-frame">   195</span>  <span class="src-comment">/* heap fragment · used when there isn't sufficient room in the process</span></span>
+<span class="src-line"><span class="src-frame">       </span>     <span class="src-comment">heap and we can't do a GC */</span></span>
+<span class="src-line"><span class="src-frame">   198</span>  <span class="src-kw">typedef struct</span> erl_heap_fragment ErlHeapFragment;</span>
+<span class="src-line"><span class="src-frame">   199</span>  <span class="src-kw">struct</span> erl_heap_fragment {</span>
+<span class="src-line"><span class="src-frame">   200</span>      ErlHeapFragment* next;          <span class="src-comment">/* next heap fragment */</span></span>
+<span class="src-line"><span class="src-frame">   201</span>      ErlOffHeap off_heap;            <span class="src-comment">/* offset heap data */</span></span>
+<span class="src-line"><span class="src-frame">   202</span>      <span class="src-cls">Uint</span> alloc_size;                <span class="src-comment">/* total alloc size in words */</span></span>
+<span class="src-line"><span class="src-frame">   203</span>      <span class="src-cls">Uint</span> used_size;                 <span class="src-comment">/* terms to be moved to heap by GC */</span></span>
+<span class="src-line"><span class="src-frame">   204</span>      <span class="src-cls">Eterm</span> mem[<span class="src-num">1</span>];                   <span class="src-comment">/* data */</span></span>
+<span class="src-line"><span class="src-frame">   205</span>  };</span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>OTP · erts/emulator/beam/erl_binary.h:63 · the shared Binary node</span><span class="src-tag">verbatim · the WhatsApp trick</span></div>
+<span class="src-line"><span class="src-frame">    63</span>  <span class="src-kw">typedef struct</span> binary {</span>
+<span class="src-line"><span class="src-frame">    64</span>      <span class="src-kw">struct</span> binary_internals intern;    <span class="src-comment">// includes refcount + flags</span></span>
+<span class="src-line"><span class="src-frame">    65</span>      <span class="src-cls">SWord</span> orig_size;</span>
+<span class="src-line"><span class="src-frame">    69</span>      <span class="src-kw">char</span> orig_bytes[<span class="src-num">1</span>];                <span class="src-comment">// ⭐ payload (FAM) lives here ONCE</span></span>
+<span class="src-line"><span class="src-frame">    70</span>  } Binary;</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// When process A sends a 1 MB binary to processes B and C:</span></span>
+<span class="src-line"><span class="src-comment">//   ONE Binary struct allocated globally (1 MB payload, refcount = 3)</span></span>
+<span class="src-line"><span class="src-comment">//   THREE ProcBin pointers in A's, B's, C's process heap (~16 bytes each)</span></span>
+<span class="src-line"><span class="src-comment">// Per-process GC only handles the ProcBin pointers. The Binary itself</span></span>
+<span class="src-line"><span class="src-comment">// is freed by erts_bin_release when the last refcount hits 0.</span></span>
+<span class="src-line"><span class="src-comment">// Per-process GC cost stays O(small) regardless of binary payload size.</span></span>
+    </div>
+
     <div class="note good">
       <span class="ntag lang-zh-only">DESIGN · 为什么没人模仿 Erlang</span>
       <span class="ntag lang-en-only">DESIGN · why no one copied Erlang's design</span>
-      <span class="lang-zh-only">Erlang 模型<em>极致</em>地解决了 GC 停顿问题——<em>没有全局停顿就是没有</em>。但<em>极少有语言</em>模仿这个设计，原因是：(a) 要求<em>不可变数据</em>（消息必须 copy，不能共享指针）；(b) 要求 <em>actor 模型</em>（无共享内存的"线程"）；(c) <em>消息传递成本高</em>——每次发消息都要 deep copy。这些是<em>语言层面的根本设计</em>，不是后期能加的。<strong>Pony 试图保留 Erlang 的隔离 + 增加零拷贝消息（用 reference capabilities），但远没有 Erlang 成功</strong>。OCaml 5 的 multicore 也走了类似路线（每 domain 自己的 heap），但仍允许共享。</span>
-      <span class="lang-en-only">Erlang's model is the <em>extreme</em> solution to GC pauses — <em>no global pause because there is none</em>. But <em>almost no language copied</em> this design. Why: (a) requires <em>immutable data</em> (messages must copy, can't share pointers); (b) requires the <em>actor model</em> (threads with no shared memory); (c) <em>message passing is expensive</em> — every send does deep copy. These are <em>language-level fundamentals</em>, not retrofitable. <strong>Pony tried to keep the isolation and add zero-copy via reference capabilities, but never approached Erlang's adoption</strong>. OCaml 5's multicore went a similar way (per-domain heaps), but still allows sharing.</span>
+      <span class="lang-zh-only">Erlang 模型<em>极致</em>地解决了 GC 停顿问题——<em>没有全局停顿就是没有</em>。但<em>极少有语言</em>模仿这个设计，原因是：(a) 要求<em>不可变数据</em>（小消息必须 copy，不能共享指针）；(b) 要求 <em>actor 模型</em>（无共享内存的"线程"）；(c) <em>大数据用 refc binary 兜底</em>——这个机制 = 全局堆 + refcount + ProcBin 间接层 + finalizer 链，<em>复杂度极高</em>，几乎是另一个 GC 子系统。<strong>Pony 试图用 reference capabilities（类型系统级别）替代 refc binary，但开发体验远差于 Erlang</strong>。OCaml 5 multicore 也走 per-domain heap 路线但保留共享 + GC barrier，不再是"<em>纯隔离</em>"。<em>"per-actor heap" 听起来简单，背后要 4 个堆 + 1 个全局表才完整</em>——这是没人模仿的真正原因。</span>
+      <span class="lang-en-only">Erlang's model is the <em>extreme</em> solution to GC pauses — <em>no global pause because there is none</em>. But <em>almost no language copied</em> this design, for three reasons: (a) requires <em>immutable data</em> (small messages must copy, can't share pointers); (b) requires the <em>actor model</em> (threads with no shared memory); (c) <em>large data needs the refc-binary escape hatch</em> — this mechanism = global heap + refcount + ProcBin indirection layer + finalizer chain, <em>extremely complex</em>, essentially a second GC subsystem. <strong>Pony tried reference capabilities (type-system level) instead of refc binary, but the developer experience is far worse than Erlang's</strong>. OCaml 5 multicore also went per-domain heap but kept shared + GC barriers — no longer "<em>pure isolation</em>". The honest summary: <em>"per-actor heap" sounds simple but actually needs 4 heaps + 1 global table to complete</em> — that's the real reason no one copied it.</span>
     </div>
   </section>
 
@@ -3310,22 +3357,110 @@
 <span class="src-line"><span class="src-comment">// No reference counting, no marking, no scanning — just function calls.</span></span>
     </div>
 
+    <h3 class="sub lang-zh-only">真 cargo asm · "drop 在编译产物里"不是比喻</h3>
+    <h3 class="sub lang-en-only">Real cargo asm · "drop in the binary" isn't a metaphor</h3>
+
+    <p class="lang-zh-only">为了证明 "<em>Rust 把 free 编进编译产物</em>" 不是夸张，写一个最小函数让 Box 离开作用域：</p>
+    <p class="lang-en-only">To prove that "<em>Rust bakes free into the binary</em>" isn't a metaphor, write a minimal function letting a Box leave scope:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>/tmp/drop_demo.rs · rustc 1.95.0 -O</span><span class="src-tag">source</span></div>
+<span class="src-line"><span class="src-kw">struct</span> Item { n: i32 }</span>
+<span class="src-line"></span>
+<span class="src-line">#[inline(never)]</span>
+<span class="src-line"><span class="src-kw">pub fn</span> use_item(it: Box&lt;Item&gt;) -&gt; i32 {</span>
+<span class="src-line">    <span class="src-kw">let</span> n = it.n + 1;</span>
+<span class="src-line">    n</span>
+<span class="src-line">}   <span class="src-comment">// compiler emits drop here — Box goes out of scope</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>$ rustc -O --emit=asm drop_demo.rs → ARM64 output (verbatim)</span><span class="src-tag">本机实测 2026-05</span></div>
+<span class="src-line"><span class="src-comment">__ZN9drop_demo8use_item17h78541bec4a8681c4E:</span></span>
+<span class="src-line">    stp     x20, x19, [sp, #-32]!         <span class="src-comment">; save callee-saved regs</span></span>
+<span class="src-line">    stp     x29, x30, [sp, #16]</span>
+<span class="src-line">    add     x29, sp, #16</span>
+<span class="src-line">    ldr     w19, [x0]                     <span class="src-comment">; ⭐ load it.n into w19</span></span>
+<span class="src-line">    mov     w1, #4                        <span class="src-comment">; size = 4 (sizeof Item)</span></span>
+<span class="src-line">    mov     w2, #4                        <span class="src-comment">; align = 4</span></span>
+<span class="src-line">    bl      ___rust_dealloc               <span class="src-comment">; ⭐ CALL THE DEALLOCATOR</span></span>
+<span class="src-line">    add     w0, w19, #1                   <span class="src-comment">; return n + 1</span></span>
+<span class="src-line">    ldp     x29, x30, [sp, #16]</span>
+<span class="src-line">    ldp     x20, x19, [sp], #32</span>
+<span class="src-line">    ret</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 11 instructions total. The bl __rust_dealloc is THE FREE — compiled in,</span></span>
+<span class="src-line"><span class="src-comment">// no runtime GC subsystem, no refcount header, no mark bit. The borrow</span></span>
+<span class="src-line"><span class="src-comment">// checker decided at compile time that `it` could not possibly outlive</span></span>
+<span class="src-line"><span class="src-comment">// this function, then emitted dealloc at the last possible PC where the</span></span>
+<span class="src-line"><span class="src-comment">// load of `it.n` is no longer needed (NLL — non-lexical lifetimes).</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">NLL · borrow checker 怎么决定 drop 在哪</h3>
+    <h3 class="sub lang-en-only">NLL · how the borrow checker decides where drop goes</h3>
+
+    <p class="lang-zh-only">Rust 2018 之前用<em>词法作用域</em>决定生命周期（即"<em>从 let 到 闭花括号</em>"）。NLL（<em>Non-Lexical Lifetimes</em>，2018）改成<em>基于使用</em>的生命周期：</p>
+    <p class="lang-en-only">Before Rust 2018, lifetimes were <em>lexical</em> — "<em>from <code>let</code> to closing brace</em>". NLL (<em>Non-Lexical Lifetimes</em>, 2018) changed lifetimes to <em>use-based</em>:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>NLL example · 借用何时结束</span><span class="src-tag">2018+ behaviour</span></div>
+<span class="src-line"><span class="src-kw">fn</span> example() {</span>
+<span class="src-line">    <span class="src-kw">let mut</span> v = vec![<span class="src-num">1</span>, <span class="src-num">2</span>, <span class="src-num">3</span>];</span>
+<span class="src-line">    <span class="src-kw">let</span> first = &amp;v[<span class="src-num">0</span>];          <span class="src-comment">// immutable borrow starts</span></span>
+<span class="src-line">    println!(<span class="src-str">"{}"</span>, first);       <span class="src-comment">// ⭐ NLL: borrow ENDS here (last use)</span></span>
+<span class="src-line">    v.push(<span class="src-num">4</span>);                  <span class="src-comment">// mutable borrow — OK because immutable ended</span></span>
+<span class="src-line">}                            <span class="src-comment">// v dropped here · compiler emits Vec::drop</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Pre-NLL (2017 Rust): immutable borrow lasts until end of function</span></span>
+<span class="src-line"><span class="src-comment">// scope, so v.push() would have been a compile error. NLL examines actual</span></span>
+<span class="src-line"><span class="src-comment">// use points and frees the borrow at last use — much less rigid.</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">Drop glue · 嵌套结构怎么递归 free</h3>
+    <h3 class="sub lang-en-only">Drop glue · how nested structures recursively free</h3>
+
+    <p class="lang-zh-only">复杂对象（如 <code>Vec&lt;Box&lt;HashMap&lt;String, Vec&lt;u8&gt;&gt;&gt;&gt;</code>）的析构是<em>编译期生成的</em>递归调用链，叫 <strong>drop glue</strong>：</p>
+    <p class="lang-en-only">Complex objects like <code>Vec&lt;Box&lt;HashMap&lt;String, Vec&lt;u8&gt;&gt;&gt;&gt;</code> are destructed via a <em>compile-time-generated</em> recursive call chain — <strong>drop glue</strong>:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>drop glue · what the compiler generates for Vec&lt;Box&lt;HashMap&lt;String, Vec&lt;u8&gt;&gt;&gt;&gt;</span><span class="src-tag">conceptual</span></div>
+<span class="src-line"><span class="src-comment">// when the outer Vec is dropped:</span></span>
+<span class="src-line">drop_in_place::&lt;Vec&lt;Box&lt;HashMap&lt;..&gt;&gt;&gt;&gt;:</span>
+<span class="src-line">  <span class="src-kw">for</span> i <span class="src-kw">in</span> 0..self.len:</span>
+<span class="src-line">    drop_in_place::&lt;Box&lt;HashMap&lt;..&gt;&gt;&gt;(&amp;self.ptr.add(i))   <span class="src-comment">// recurse</span></span>
+<span class="src-line">      drop_in_place::&lt;HashMap&lt;String, Vec&lt;u8&gt;&gt;&gt;(box.deref_mut())</span>
+<span class="src-line">        <span class="src-kw">for</span> (k, v) <span class="src-kw">in</span> self.entries:</span>
+<span class="src-line">          drop_in_place::&lt;String&gt;(&amp;k)        <span class="src-comment">// → dealloc string buffer</span></span>
+<span class="src-line">          drop_in_place::&lt;Vec&lt;u8&gt;&gt;(&amp;v)       <span class="src-comment">// → dealloc bytes</span></span>
+<span class="src-line">        dealloc(self.entries.ptr)            <span class="src-comment">// → dealloc table</span></span>
+<span class="src-line">      dealloc(box.ptr)                       <span class="src-comment">// → dealloc box itself</span></span>
+<span class="src-line">  dealloc(self.ptr)                          <span class="src-comment">// → dealloc outer Vec buffer</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Each "drop_in_place::&lt;T&gt;" is a monomorphized function the compiler emits</span></span>
+<span class="src-line"><span class="src-comment">// once per concrete T. LLVM frequently inlines short ones. The whole tree</span></span>
+<span class="src-line"><span class="src-comment">// is determined at compile time — no GC, no runtime type inspection.</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">opt-in 层级 · 从无 GC 到完整 tracing</h3>
+    <h3 class="sub lang-en-only">opt-in escape ladder · from no-GC to full tracing</h3>
+
     <table class="cmp">
-      <thead><tr><th><span class="lang-zh-only">语言/方案</span><span class="lang-en-only">Language/scheme</span></th><th><span class="lang-zh-only">机制</span><span class="lang-en-only">Mechanism</span></th><th><span class="lang-zh-only">特点</span><span class="lang-en-only">Note</span></th></tr></thead>
+      <thead><tr><th><span class="lang-zh-only">层级</span><span class="lang-en-only">Level</span></th><th><span class="lang-zh-only">机制</span><span class="lang-en-only">Mechanism</span></th><th><span class="lang-zh-only">运行时成本</span><span class="lang-en-only">Runtime cost</span></th><th><span class="lang-zh-only">何时用</span><span class="lang-en-only">When</span></th></tr></thead>
       <tbody>
-        <tr><td>Rust</td><td>ownership + borrow check + Drop</td><td><span class="lang-zh-only">业界最严的所有权系统</span><span class="lang-en-only">strictest ownership system in industry</span></td></tr>
-        <tr><td>C++ (modern)</td><td>RAII + unique_ptr / shared_ptr</td><td><span class="lang-zh-only">unique_ptr 等价 Rust Box · shared_ptr 等价 Arc</span><span class="lang-en-only">unique_ptr ≈ Rust Box · shared_ptr ≈ Arc</span></td></tr>
-        <tr><td>Zig</td><td><span class="lang-zh-only">显式 allocator + defer</span><span class="lang-en-only">explicit allocator + defer</span></td><td><span class="lang-zh-only">每个分配显式说"用哪个 allocator"</span><span class="lang-en-only">every allocation states "which allocator"</span></td></tr>
-        <tr><td>Vale (experimental)</td><td><span class="lang-zh-only">"generational references" · gen-checked pointers</span><span class="lang-en-only">generational references · gen-checked pointers</span></td><td><span class="lang-zh-only">介于 GC 和 Rust 之间</span><span class="lang-en-only">between GC and Rust</span></td></tr>
-        <tr><td>Cone, Cyclone, Mojo</td><td><span class="lang-zh-only">各种 ownership + region 实验</span><span class="lang-en-only">various ownership + region experiments</span></td><td><span class="lang-zh-only">学术 + 早期商业</span><span class="lang-en-only">academic + early commercial</span></td></tr>
+        <tr><td><strong>0 · 默认</strong></td><td><code>Box&lt;T&gt;</code> / <code>&amp;T</code> / <code>&amp;mut T</code></td><td class="good">0 (compile-time)</td><td><span class="lang-zh-only">99% 业务代码</span><span class="lang-en-only">99% of code</span></td></tr>
+        <tr><td><strong>1 · 共享所有权</strong></td><td><code>Rc&lt;T&gt;</code> (单线程)</td><td>~3 ns per clone/drop</td><td><span class="lang-zh-only">引用图非树形</span><span class="lang-en-only">non-tree reference graph</span></td></tr>
+        <tr><td><strong>2 · 跨线程共享</strong></td><td><code>Arc&lt;T&gt;</code></td><td>~10 ns per clone (atomic)</td><td><span class="lang-zh-only">多线程共享</span><span class="lang-en-only">cross-thread shared state</span></td></tr>
+        <tr><td><strong>3 · 内部可变</strong></td><td><code>RefCell&lt;T&gt;</code> / <code>Mutex&lt;T&gt;</code></td><td><span class="lang-zh-only">运行时借用检查</span><span class="lang-en-only">runtime borrow check</span></td><td><span class="lang-zh-only">编译期分析不出来时</span><span class="lang-en-only">compiler can't prove static</span></td></tr>
+        <tr><td><strong>4 · 显式 unsafe</strong></td><td><code>unsafe { ptr::* }</code></td><td class="good">0 (你自己保证)</td><td><span class="lang-zh-only">FFI / SIMD / 写裸数据结构</span><span class="lang-en-only">FFI / SIMD / hand-rolled data structures</span></td></tr>
+        <tr><td><strong>5 · 完整 tracing GC</strong></td><td>servo's <code>Heap&lt;T&gt;</code></td><td>tracing GC overhead</td><td><span class="lang-zh-only">桥接 JS / DOM 节点</span><span class="lang-en-only">JS / DOM interop</span></td></tr>
       </tbody>
     </table>
 
     <div class="note">
       <span class="ntag lang-zh-only">DESIGN · "Rust 没 GC" 不完全准确</span>
       <span class="ntag lang-en-only">DESIGN · "Rust has no GC" isn't fully accurate</span>
-      <span class="lang-zh-only">Rust <em>主流</em>代码不使用 GC——但<strong>它提供了 opt-in 引用计数</strong>：<code>Rc&lt;T&gt;</code>（单线程）和 <code>Arc&lt;T&gt;</code>（多线程）就是<em>显式</em>的 refcount 容器，开发者主动选择。Servo（Mozilla 的浏览器引擎）甚至自带了一个完整的 tracing GC（叫 spidermonkey-bindings 里的 <code>Heap&lt;T&gt;</code>）用来桥接 JS。所以更准确的说法是<em>"Rust 默认无 GC, 但允许局部 opt-in"</em>——这种灵活是其他无 GC 语言（C/Zig）做不到的。</span>
-      <span class="lang-en-only">Mainstream Rust code uses no GC — but <strong>it offers opt-in reference counting</strong>: <code>Rc&lt;T&gt;</code> (single-thread) and <code>Arc&lt;T&gt;</code> (multi-thread) are explicit refcount containers chosen by the developer. Servo (Mozilla's browser engine) even ships a full tracing GC (the <code>Heap&lt;T&gt;</code> in spidermonkey-bindings) for JS interop. So the more accurate framing is "<em>Rust is no-GC by default, but allows local opt-in</em>" — a flexibility C and Zig don't offer.</span>
+      <span class="lang-zh-only">Rust <em>主流</em>代码停留在 Level 0-1，<em>真正没有运行时 GC</em>。但 Level 5（Servo 的 <code>Heap&lt;T&gt;</code>）是<em>完整 tracing GC</em>——用于桥接 SpiderMonkey 的 JS 对象 + DOM 节点（这些天然是循环图，refcount 不够）。这种 <em>5 级 opt-in 阶梯</em>是 Rust 设计哲学的核心：<strong>"零成本是<em>默认</em>，但允许你<em>逐级</em>付钱换便利"</strong>。C / Zig 没 GC 也没 opt-in；Go / Java 永远要付 GC 钱即使你不需要——Rust 的弹性两边都没有。</span>
+      <span class="lang-en-only">Mainstream Rust stays at Levels 0-1, <em>genuinely no runtime GC</em>. But Level 5 (Servo's <code>Heap&lt;T&gt;</code>) is a <em>full tracing GC</em> — used to bridge SpiderMonkey's JS objects + DOM nodes (which are naturally cyclic graphs; refcount alone leaks). This <em>5-level opt-in ladder</em> is core to Rust's design philosophy: <strong>"zero cost is the <em>default</em>; you pay <em>incrementally</em> for convenience"</strong>. C / Zig have no GC and no opt-in. Go / Java always pay for GC even if you don't need it. Rust's elasticity is unique.</span>
     </div>
   </section>
 
@@ -3461,6 +3596,63 @@
         <tr><td><strong>The Garbage Collection Handbook</strong> (Jones · Hosking · Moss)</td><td><span class="lang-zh-only">⭐ 这本书的<em>学术源头</em> · 700 页</span><span class="lang-en-only">⭐ the academic source of this article · 700 pages</span></td><td><span class="lang-zh-only">2011 / 2023 第二版</span><span class="lang-en-only">2011 / 2023 second edition</span></td></tr>
       </tbody>
     </table>
+
+    <h3 class="sub lang-zh-only">Bacon-Rajan 算法 · 整本书引用 4 次的算法 · 终于讲清楚</h3>
+    <h3 class="sub lang-en-only">Bacon-Rajan algorithm · the algorithm cited 4 times in this article · finally explained</h3>
+
+    <p class="lang-zh-only">David Bacon + V. T. Rajan 2001 年 IBM Watson 提出了 "<em>concurrent cycle collection in reference counted systems</em>"——后来 CPython（Ch15）、PHP Zend、QuickJS（Ch19 of the QuickJS article）都<em>结构上</em>采用了它。本书前面 4 处都说"<em>Bacon-Rajan trial deletion</em>"但都没展开。这里补上：</p>
+    <p class="lang-en-only">David Bacon + V. T. Rajan at IBM Watson, 2001: "<em>Concurrent Cycle Collection in Reference Counted Systems</em>" — adopted <em>structurally</em> by CPython (Ch15), PHP Zend, and QuickJS (Ch19 of the QuickJS article). This article cited "<em>Bacon-Rajan trial deletion</em>" four times without unpacking it. Here's the explainer:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>Bacon-Rajan 2001 · 5-color trial deletion · the algorithm</span><span class="src-tag">algorithm card</span></div>
+<span class="src-line"><span class="src-comment">// Setup: every refcounted object carries a COLOR field (2 bits) in</span></span>
+<span class="src-line"><span class="src-comment">// addition to refcount. Colors: BLACK · GRAY · WHITE · PURPLE · ORANGE</span></span>
+<span class="src-line"><span class="src-comment">//                                                  ↑ candidate roots</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// On every refcount decrement (not just hitting zero):</span></span>
+<span class="src-line"><span class="src-fn">dec_ref</span>(obj):</span>
+<span class="src-line">  obj.refcount -= <span class="src-num">1</span></span>
+<span class="src-line">  <span class="src-kw">if</span> obj.refcount == <span class="src-num">0</span>:</span>
+<span class="src-line">    release(obj)                          <span class="src-comment">// free + cascading dec on children</span></span>
+<span class="src-line">  <span class="src-kw">else if</span> obj.color != PURPLE:           <span class="src-comment">// ⭐ POTENTIAL cycle root</span></span>
+<span class="src-line">    obj.color = PURPLE                    <span class="src-comment">//   "this object survived a dec but didn't hit 0"</span></span>
+<span class="src-line">    add_to_roots_buffer(obj)              <span class="src-comment">//   queue for cycle scan</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// When the roots buffer fills (default ~10k entries), run cycle detection:</span></span>
+<span class="src-line"><span class="src-fn">collect_cycles</span>():</span>
+<span class="src-line">  <span class="src-comment">// PHASE 1: mark gray · subtract internal edges (trial deletion)</span></span>
+<span class="src-line">  <span class="src-kw">for</span> root <span class="src-kw">in</span> roots_buffer:</span>
+<span class="src-line">    <span class="src-kw">if</span> root.color == PURPLE: mark_gray(root)</span>
+<span class="src-line">  mark_gray(obj):                         <span class="src-comment">// DFS</span></span>
+<span class="src-line">    <span class="src-kw">if</span> obj.color != GRAY:</span>
+<span class="src-line">      obj.color = GRAY</span>
+<span class="src-line">      <span class="src-kw">for</span> child <span class="src-kw">in</span> obj.children:</span>
+<span class="src-line">        child.refcount -= <span class="src-num">1</span>             <span class="src-comment">// ⭐ TRIAL DELETE the edge</span></span>
+<span class="src-line">        mark_gray(child)</span>
+<span class="src-line"></span>
+<span class="src-line">  <span class="src-comment">// PHASE 2: scan · refs &gt; 0 means reachable from OUTSIDE the gray graph</span></span>
+<span class="src-line">  <span class="src-kw">for</span> root <span class="src-kw">in</span> roots_buffer:</span>
+<span class="src-line">    scan(root)</span>
+<span class="src-line">  scan(obj):</span>
+<span class="src-line">    <span class="src-kw">if</span> obj.color == GRAY:</span>
+<span class="src-line">      <span class="src-kw">if</span> obj.refcount &gt; <span class="src-num">0</span>:</span>
+<span class="src-line">        scan_black(obj)                   <span class="src-comment">// reachable from outside · restore counts</span></span>
+<span class="src-line">      <span class="src-kw">else</span>:</span>
+<span class="src-line">        obj.color = WHITE                 <span class="src-comment">// only inside-cycle refs → free candidate</span></span>
+<span class="src-line">        <span class="src-kw">for</span> child <span class="src-kw">in</span> obj.children: scan(child)</span>
+<span class="src-line">  scan_black(obj):                        <span class="src-comment">// undo the trial delete: restore counts</span></span>
+<span class="src-line">    obj.color = BLACK</span>
+<span class="src-line">    <span class="src-kw">for</span> child <span class="src-kw">in</span> obj.children:</span>
+<span class="src-line">      child.refcount += <span class="src-num">1</span></span>
+<span class="src-line">      <span class="src-kw">if</span> child.color != BLACK: scan_black(child)</span>
+<span class="src-line"></span>
+<span class="src-line">  <span class="src-comment">// PHASE 3: collect · WHITE objects are unreachable cycles</span></span>
+<span class="src-line">  <span class="src-kw">for</span> root <span class="src-kw">in</span> roots_buffer:</span>
+<span class="src-line">    collect_white(root)                   <span class="src-comment">// free + recurse</span></span>
+    </div>
+
+    <p class="lang-zh-only" style="margin-top:18px;"><strong>关键洞察</strong>：<em>每次 dec 都<strong>染 PURPLE</strong>，但只有偶尔（buffer 满）<strong>跑一次</strong> trial-deletion</em>。这样把循环检测的代价<em>从"每次 dec 都付"摊销到"buffer 满才付"</em>，平均到每次 dec 只多了 ~2 ns。<em>5 种颜色</em>（vs Dijkstra 三色）允许算法<em>区分</em>："仅 dec 过的可疑对象"（PURPLE）/ "trial-deletion 中" (GRAY) / "确认死了" (WHITE) / "确认活着" (BLACK) / "已被前一轮处理" (ORANGE)。<br><br>本书<em>4 次</em>提到 Bacon-Rajan 的章节：Ch06 Refcount 字段表、Ch15 Hybrid 设计、Ch19 QuickJS（QuickJS 那篇文章的对应章）、本章——现在你拿到了完整算法卡。</p>
+    <p class="lang-en-only" style="margin-top:18px;"><strong>Key insight</strong>: <em>every dec stains the object <strong>PURPLE</strong>, but only occasionally (when the buffer fills) does the algorithm <strong>actually run</strong> trial-deletion</em>. This amortises cycle detection from "<em>pay on every dec</em>" to "<em>pay only when the buffer fills</em>", averaging ~2 ns added to each dec. The <em>5 colors</em> (vs Dijkstra's 3) let the algorithm <em>distinguish</em>: "candidate via dec but didn't hit 0" (PURPLE) / "in trial-deletion" (GRAY) / "confirmed dead" (WHITE) / "confirmed live" (BLACK) / "already processed this round" (ORANGE).<br><br>This article mentions Bacon-Rajan <em>4 times</em>: Ch06 (refcount comparison table), Ch15 (hybrid design), Ch19 QuickJS (the article's sibling), this chapter — now you have the full algorithm card.</p>
 
     <div class="note">
       <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · GC 研究的当下方向</span>
