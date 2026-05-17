@@ -1,7 +1,7 @@
 import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
 import { connect, sendPos } from '../net'
-import { REGIONS, ccToRegion, type Region } from '../config'
+import { REGIONS, WALK_SPEED, ccToRegion, type Region } from '../config'
 
 type Direction = 'up' | 'down' | 'left' | 'right'
 
@@ -11,6 +11,11 @@ export class LobbyScene extends Phaser.Scene {
   private peers = new Map<string, { bear: Bear; lastUpdate: number }>()
   private statusEl: HTMLDivElement | null = null
   private myCC: string | null = null
+  private cursors?: Phaser.Types.Input.Keyboard.CursorKeys
+  private wasd?: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key }
+  private mapInfo: { widthPx: number; heightPx: number; collisionRects: Array<{ x: number; y: number; w: number; h: number }> } = {
+    widthPx: 480, heightPx: 320, collisionRects: []
+  }
 
   constructor() {
     super({ key: 'Lobby' })
@@ -60,6 +65,18 @@ export class LobbyScene extends Phaser.Scene {
       w: (o.width as number) ?? 0,
       h: (o.height as number) ?? 0
     }))
+    this.mapInfo = { widthPx: map.widthInPixels, heightPx: map.heightInPixels, collisionRects }
+
+    // Keyboard: arrow keys + WASD
+    if (this.input.keyboard) {
+      this.cursors = this.input.keyboard.createCursorKeys()
+      this.wasd = {
+        W: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W),
+        A: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A),
+        S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
+        D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
+      }
+    }
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       let tx = p.worldX
@@ -148,9 +165,87 @@ export class LobbyScene extends Phaser.Scene {
     })
   }
 
+  private collidesAt(x: number, y: number): boolean {
+    for (const r of this.mapInfo.collisionRects) {
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return true
+    }
+    return false
+  }
+
+  private clampToWalkable(x: number, y: number): { x: number; y: number } {
+    return {
+      x: Math.max(20, Math.min(this.mapInfo.widthPx - 20, x)),
+      y: Math.max(20, Math.min(this.mapInfo.heightPx - 12, y))
+    }
+  }
+
+  private applyKeyboard(dtMs: number): boolean {
+    if (!this.myBear) return false
+    const left = (this.cursors?.left.isDown ?? false) || (this.wasd?.A.isDown ?? false)
+    const right = (this.cursors?.right.isDown ?? false) || (this.wasd?.D.isDown ?? false)
+    const up = (this.cursors?.up.isDown ?? false) || (this.wasd?.W.isDown ?? false)
+    const down = (this.cursors?.down.isDown ?? false) || (this.wasd?.S.isDown ?? false)
+
+    if (!left && !right && !up && !down) return false
+
+    // Cancel any click-target and move by velocity instead.
+    this.myBear.target = null
+    let vx = (right ? 1 : 0) - (left ? 1 : 0)
+    let vy = (down ? 1 : 0) - (up ? 1 : 0)
+    // Normalize diagonal
+    if (vx !== 0 && vy !== 0) {
+      const inv = 1 / Math.sqrt(2)
+      vx *= inv
+      vy *= inv
+    }
+    const step = (WALK_SPEED * dtMs) / 1000
+    let nx = this.myBear.x + vx * step
+    let ny = this.myBear.y + vy * step
+    const clamped = this.clampToWalkable(nx, ny)
+    nx = clamped.x
+    ny = clamped.y
+    // Collision: try axis-separated movement so player can slide along walls
+    if (this.collidesAt(nx, ny)) {
+      // Try X-only
+      const nx2 = this.clampToWalkable(this.myBear.x + vx * step, this.myBear.y).x
+      if (!this.collidesAt(nx2, this.myBear.y)) {
+        nx = nx2; ny = this.myBear.y
+      } else {
+        // Try Y-only
+        const ny2 = this.clampToWalkable(this.myBear.x, this.myBear.y + vy * step).y
+        if (!this.collidesAt(this.myBear.x, ny2)) {
+          nx = this.myBear.x; ny = ny2
+        } else {
+          nx = this.myBear.x; ny = this.myBear.y
+        }
+      }
+    }
+
+    this.myBear.sprite.x = nx
+    this.myBear.sprite.y = ny
+
+    // Pick a facing direction from velocity
+    this.myDirection = Math.abs(vx) > Math.abs(vy)
+      ? (vx > 0 ? 'right' : 'left')
+      : (vy > 0 ? 'down' : 'up')
+    this.myBear.facing = this.myDirection
+    this.myBear.state = 'walk'
+    this.myBear.playWalk()
+    return true
+  }
+
   update(_time: number, dtMs: number) {
     if (this.myBear) {
-      this.myBear.update(dtMs, false)
+      const usedKeyboard = this.applyKeyboard(dtMs)
+      if (!usedKeyboard) {
+        // No key held this frame: if we were walking via keyboard last frame,
+        // settle to idle (target system handles click-walk).
+        if (!this.myBear.target && this.myBear.state === 'walk') {
+          this.myBear.state = 'idle'
+          this.myBear.playIdle()
+        }
+        this.myBear.update(dtMs, false)
+      }
       const stateStr = this.myBear.state === 'walk'
         ? `walk_${this.myDirection}`
         : `idle_${this.myDirection}`
