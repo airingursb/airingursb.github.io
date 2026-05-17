@@ -672,6 +672,11 @@ let invPanelEl: HTMLElement | null = null
 let invCountEl: HTMLElement | null = null
 let invTotalEl: HTMLElement | null = null
 let invListEl: HTMLElement | null = null
+let invGridEl: HTMLElement | null = null            // V8.2
+let invViewBtnGrid: HTMLButtonElement | null = null
+let invViewBtnList: HTMLButtonElement | null = null
+let invCurrentView: 'grid' | 'list' = 'grid'
+const INVENTORY_GRID_SLOTS = 36
 let invDataProvider: (() => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null; placedInHome?: boolean }>; total: number; collected: number; canPlace?: boolean }) | null = null
 let onInventoryPlace: ((id: string, name: string) => void) | null = null
 
@@ -684,6 +689,11 @@ export function setInventoryDataProvider(provider: () => { items: Array<{ id: st
     invCountEl = document.getElementById('lounge-inv-count')
     invTotalEl = document.getElementById('lounge-inv-total')
     invListEl = document.getElementById('lounge-inv-list')
+    invGridEl = document.getElementById('lounge-inv-grid')
+    invViewBtnGrid = document.getElementById('lounge-inv-view-grid') as HTMLButtonElement | null
+    invViewBtnList = document.getElementById('lounge-inv-view-list') as HTMLButtonElement | null
+    if (invViewBtnGrid) invViewBtnGrid.addEventListener('click', () => setInventoryView('grid'))
+    if (invViewBtnList) invViewBtnList.addEventListener('click', () => setInventoryView('list'))
     if (invBtnEl) {
       invBtnEl.addEventListener('click', (e) => {
         e.stopPropagation()
@@ -695,11 +705,52 @@ export function setInventoryDataProvider(provider: () => { items: Array<{ id: st
   }
 }
 
+function setInventoryView(view: 'grid' | 'list') {
+  invCurrentView = view
+  if (invGridEl) invGridEl.hidden = view !== 'grid'
+  if (invListEl) invListEl.hidden = view !== 'list'
+  if (invViewBtnGrid) invViewBtnGrid.classList.toggle('active', view === 'grid')
+  if (invViewBtnList) invViewBtnList.classList.toggle('active', view === 'list')
+  if (invDataProvider) renderInventory()
+}
+
+function renderInventoryGrid(data: ReturnType<NonNullable<typeof invDataProvider>>) {
+  if (!invGridEl) return
+  invGridEl.innerHTML = ''
+  const collected = data.items.filter(it => it.collected)
+  for (let i = 0; i < INVENTORY_GRID_SLOTS; i++) {
+    const slot = document.createElement('div')
+    slot.className = 'inv-slot'
+    const it = collected[i]
+    if (it) {
+      slot.classList.add('filled')
+      slot.title = it.giftedByName ? `${it.name}  ·  🎁 ${it.giftedByName}` : it.name
+      const icon = document.createElement('span')
+      icon.className = 'inv-icon'
+      icon.textContent = '✦'
+      slot.appendChild(icon)
+      if (data.canPlace) {
+        slot.addEventListener('click', () => {
+          if (it.placedInHome) return
+          hideInventoryPanel()
+          onInventoryPlace?.(it.id, it.name)
+        })
+      }
+    }
+    invGridEl.appendChild(slot)
+  }
+}
+
 function renderInventory() {
-  if (!invDataProvider || !invListEl || !invCountEl || !invTotalEl) return
+  if (!invDataProvider || !invCountEl || !invTotalEl) return
   const data = invDataProvider()
   invCountEl.textContent = String(data.collected)
   invTotalEl.textContent = String(data.total)
+  if (invCurrentView === 'grid') {
+    renderInventoryGrid(data)
+    return
+  }
+  if (!invListEl) return
   invListEl.innerHTML = ''
   for (const it of data.items) {
     const li = document.createElement('li')

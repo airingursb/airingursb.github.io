@@ -72,9 +72,16 @@
     </div>
     <div id="lounge-door-label" class="ui-door-label" hidden></div>
     <div id="lounge-inventory-panel" class="ui-inventory-panel" hidden>
-      <h3>Pebbles</h3>
-      <p class="count"><span id="lounge-inv-count">0</span> / <span id="lounge-inv-total">0</span></p>
-      <ul id="lounge-inv-list"></ul>
+      <div class="inv-header">
+        <h3>Inventory</h3>
+        <div class="inv-view-toggle" role="tablist">
+          <button id="lounge-inv-view-grid" type="button" data-view="grid" class="inv-tab active">Grid</button>
+          <button id="lounge-inv-view-list" type="button" data-view="list" class="inv-tab">List</button>
+        </div>
+      </div>
+      <p class="count">Pebbles: <span id="lounge-inv-count">0</span> / <span id="lounge-inv-total">0</span></p>
+      <div id="lounge-inv-grid" class="inv-grid"></div>
+      <ul id="lounge-inv-list" hidden></ul>
     </div>
     <div id="lounge-info-panel" class="ui-info-panel" hidden>
       <h3>Identity</h3>
@@ -913,6 +920,69 @@
   .ui-inventory-panel li.is-locked { color: #555; }
   .ui-inventory-panel li::before { content: '◯'; font-size: 14px; }
   .ui-inventory-panel li.is-collected::before { content: '✦'; }
+
+  /* V8.2 — Inventory grid (6×6 = 36 slots) */
+  .ui-inventory-panel .inv-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .ui-inventory-panel .inv-view-toggle { display: flex; gap: 2px; }
+  .ui-inventory-panel .inv-tab {
+    background: rgba(120,140,200,.15);
+    border: 1px solid rgba(120,140,200,.3);
+    color: #c0c8d8;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace; font-size: 10px;
+    cursor: pointer;
+  }
+  .ui-inventory-panel .inv-tab.active {
+    background: rgba(120,140,200,.4);
+    color: #fff;
+    border-color: rgba(180,200,255,.5);
+  }
+  .ui-inventory-panel .inv-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 3px;
+    padding: 4px;
+    background: rgba(40,50,80,.4);
+    border-radius: 6px;
+    border: 1px solid rgba(120,140,200,.25);
+  }
+  .ui-inventory-panel .inv-slot {
+    aspect-ratio: 1;
+    background: rgba(20,28,46,.7);
+    border: 1px solid rgba(120,140,200,.18);
+    border-radius: 3px;
+    position: relative;
+    display: flex; align-items: center; justify-content: center;
+    cursor: default;
+  }
+  .ui-inventory-panel .inv-slot.filled {
+    background: rgba(255,209,102,.18);
+    border-color: rgba(255,209,102,.5);
+    cursor: pointer;
+  }
+  .ui-inventory-panel .inv-slot.filled:hover { background: rgba(255,209,102,.35); }
+  .ui-inventory-panel .inv-slot .inv-icon { font-size: 12px; color: #ffd166; }
+  .ui-inventory-panel .inv-slot .inv-count {
+    position: absolute; bottom: 0; right: 1px;
+    font-size: 8px; color: #fff;
+    background: rgba(0,0,0,.6);
+    padding: 0 2px;
+    border-radius: 2px;
+  }
+  .ui-inventory-panel .inv-slot[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.9);
+    color: #fff;
+    padding: 3px 7px; border-radius: 4px;
+    font-size: 10px; white-space: nowrap;
+    pointer-events: none; z-index: 10;
+  }
 
   .ui-name-modal {
     position: fixed;
