@@ -157,7 +157,7 @@ for (const t of manifest.audio?.booth ?? []) {
 const NPC_FILE = join(ROOT, 'public', 'lounge', 'data', 'npcs.json')
 const REGIONS = ['asia','americas','europe','oceania','africa','unknown']
 const FACINGS = ['up','down','left','right']
-const NPC_STATES = ['idle','sit','dance']
+const NPC_STATES = ['idle','sit','dance','sleep']
 const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/
 const NPC_ID_RE = /^npc_[a-z_]+$/
 let npcCount = 0
