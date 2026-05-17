@@ -1,0 +1,72 @@
+---
+// Astro client island — mounts Phaser game on /lounge.
+---
+
+<div id="lounge-root">
+  <div id="lounge-mount"></div>
+  <a href="/" class="lounge-back" title="Back to homepage">←</a>
+</div>
+
+<style is:global>
+  body:has(#lounge-root) {
+    overflow: hidden;
+    background: #0d1117;
+  }
+  #lounge-root {
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #lounge-mount {
+    width: 100vw;
+    height: 100vh;
+  }
+  #lounge-mount canvas {
+    image-rendering: pixelated;
+    cursor: crosshair;
+  }
+  .lounge-back {
+    position: absolute; top: 16px; left: 16px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+    color: #e6edf3;
+    display: flex; align-items: center; justify-content: center;
+    font-family: ui-monospace, monospace;
+    font-size: 18px;
+    text-decoration: none;
+    z-index: 100;
+    transition: background .15s;
+  }
+  .lounge-back:hover { background: rgba(255,255,255,.16); }
+  .lounge-status {
+    position: absolute; bottom: 24px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,.7);
+    color: #e6edf3;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    z-index: 100;
+  }
+</style>
+
+<script>
+  import { bootGame } from '../lounge/game'
+
+  function start() {
+    const mount = document.getElementById('lounge-mount')
+    if (!mount) return
+    bootGame(mount)
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start)
+  } else {
+    start()
+  }
+</script>
