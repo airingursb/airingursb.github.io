@@ -71,6 +71,22 @@ const WALK_LEFT_B = applyLegShift(IDLE_LEFT, false)
 const WALK_RIGHT_A = applyLegShift(IDLE_RIGHT, true)
 const WALK_RIGHT_B = applyLegShift(IDLE_RIGHT, false)
 
+// Wave: right arm extended upward (top-right column pixels become arm)
+const WAVE_DOWN = BEAR_FRAME.map((row, i) => {
+  if (i === 0) return [0,0,1,1,0,0,0,0,0,1,1,1,1]
+  if (i === 1) return [0,1,3,2,1,0,0,0,1,2,3,1,1]
+  if (i === 2) return [0,1,2,2,1,1,1,1,1,2,2,1,1]
+  if (i === 3) return [1,2,2,2,2,2,2,2,2,2,2,2,1]
+  return row
+})
+
+// Sit: legs tucked, replaces row 13 with horizontal sit base and clears row 14
+const SIT_DOWN = BEAR_FRAME.map((row, i) => {
+  if (i === 13) return [0,0,0,1,1,1,1,1,1,1,0,0,0]
+  if (i === 14) return [0,0,0,0,0,0,0,0,0,0,0,0,0]
+  return row
+})
+
 const REGION_PALETTE = {
   asia:    { outline: '#6B4C30', body: '#A07850', belly: '#D4B896' },
   americas:{ outline: '#B5601A', body: '#E89B4B', belly: '#F8D9A8' },
@@ -92,7 +108,9 @@ const FRAMES = [
   ['walk_left_0',  WALK_LEFT_A],
   ['walk_left_1',  WALK_LEFT_B],
   ['walk_right_0', WALK_RIGHT_A],
-  ['walk_right_1', WALK_RIGHT_B]
+  ['walk_right_1', WALK_RIGHT_B],
+  ['wave',         WAVE_DOWN],
+  ['sit',          SIT_DOWN]
 ]
 
 const FRAME_W = 32
@@ -168,7 +186,9 @@ const manifest = {
     walk_down:  { frames: ['walk_down_0',  'walk_down_1'],  fps: 8, loop: true },
     walk_up:    { frames: ['walk_up_0',    'walk_up_1'],    fps: 8, loop: true },
     walk_left:  { frames: ['walk_left_0',  'walk_left_1'],  fps: 8, loop: true },
-    walk_right: { frames: ['walk_right_0', 'walk_right_1'], fps: 8, loop: true }
+    walk_right: { frames: ['walk_right_0', 'walk_right_1'], fps: 8, loop: true },
+    wave:       { frames: ['wave'], fps: 1, loop: false },
+    sit:        { frames: ['sit'],  fps: 1, loop: false }
   }
 }
 mkdirSync(OUT_DIR, { recursive: true })
