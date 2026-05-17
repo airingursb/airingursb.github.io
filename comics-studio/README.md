@@ -1,66 +1,143 @@
 # Comics Studio — 四格创作工作台
 
-> 用 Codex / Midjourney / Stable Diffusion / 任意图像 AI 出图 → 发给 Telegram bot 发布。
-> Bot 只负责发布，**不再做任何 AI 生图或文案**。你拿到的图就是最终上线的图。
+> 用 Codex / Midjourney / Stable Diffusion / 任意图像 AI 出图 → 通过 `publish.mjs` 推送到发布流水线。
+> 发布 bot 只接收图片，不再做 AI 生图或文案。
+
+—
 
 ## 📁 目录结构
 
 ```
 comics-studio/
-├── README.md          ← 这份（工作流 + 规则）
-├── PROMPT.md          ← 主提示词模板（填 4 格场景即可用）
-├── refs/              ← 角色 reference 图（每次生图都要喂给模型）
+├── README.md          ← 这份（agents 必读）
+├── PROMPT.md          ← 主提示词模板（场景描述 + MJ 参数）
+├── publish.mjs        ← 发布命令：把草稿推到 Telegram preview
+├── package.json       ← deps (@aws-sdk/client-s3, @supabase/supabase-js)
+├── refs/              ← 角色 reference 图（不要改）
 │   ├── panda.png         (主角 Airing 熊猫)
 │   ├── moflow-ink.png    (AI 伙伴 Moflow)
 │   └── style-prompt.md   (style 描述参考)
-├── drafts/            ← 你的工作区（gitignored，随便扔）
-└── .gitignore
+└── drafts/            ← 你的产出区
+    └── <YYYY-MM-DD-slug>/
+        ├── strip.png       (你画的 2×2 四格图)
+        └── meta.json       (标题 + 元数据)
 ```
 
-## 🎨 工作流
+—
 
-1. 想一个主题——一句话日记片段（"今天 debug 三小时发现是少了个分号"）
-2. 让 Codex / 你自己 写 4 格的具体场景描述
-3. 把场景描述填进 `PROMPT.md` 的 `{PANEL_1..4}` 占位符
-4. 调你选的图像模型生图，挂上 `refs/panda.png` + `refs/moflow-ink.png`
-   - Midjourney：`--cref <panda url> --cref <moflow-ink url> --cw 100`
-   - Stable Diffusion：用 IP-Adapter 加角色参考
-   - GPT-image / DALL-E：用 images.edit API 传 reference
-5. 多试几次（一般 4-8 张里能挑到满意的），存到 `drafts/{slug}.png`
-6. 满意了 → Telegram DM `@airing_comics_bot`：
-   - **发图（必须）**：直接发图片
-   - **caption（可选）**：就是标题。**只写一行字**。不填的话标题用"未命名"
-7. bot 回 `*草稿就绪* · 「标题」` + [✅ 发布 | ❌ 删]
-8. ✅ 一下 → 分配 No. N → 触发 GH Actions deploy → ~3min 后 `ursb.me/comics/N` 上线
+## 🤝 Drawing Agent 契约
 
-## 📐 出图硬性规则
+**别的 Agent 负责画画，画完按下面格式落到 `drafts/`，发布流水线就能接住。**
 
-- **2×2 grid 布局**，方形（1:1 比例）
-- **角色必须跟 refs/ 里的一致** —— 用 character reference 功能锁死
-- **图里不放文字** —— 没有对白气泡、没有题字、没有标签、没有屏幕上的字。bot 不会处理图里的文字
-- **水墨手绘风格** —— 避免 3D / 卡通 / vector / 照片质感
-- **背景极简** —— 桌角、窗台、一只茶杯就够，不要复杂场景
+每一期一个独立子目录：`drafts/<YYYY-MM-DD-slug>/`，里面必须有两个文件：
 
-## 🎭 起承转合（剧本结构建议）
+### `strip.png`
+- 2×2 grid 四格漫画
+- 方形（1:1），建议 1024×1024 或更高
+- 已经按 `PROMPT.md` 出过图、角色与 `refs/` 一致
+- 图里**不要有文字**（除非那是手写日记艺术效果，但 caption/标题不要画进去）
 
-每一期都按这个节奏走，避免流水账：
+### `meta.json`
+```json
+{
+  "title": "分号",
+  "title_en": "The Semicolon",
+  "source_text": "今天 debug 三小时，发现是少了个分号",
+  "tags": ["debug", "心情"]
+}
+```
 
-- **Panel 1（起 qǐ）**：具体感官的开场。一个画面，不是一个 label。
-- **Panel 2（承 chéng）**：让画面展开。细节累积。
-- **Panel 3（转 zhuǎn）**：某种变化。时间过了 / 一个念头打断 / 身体注意到了什么。**不是反转**，是转折。
-- **Panel 4（合 hé）**：余韵。**不是包袱**。一个安静的画面、一句没答出来的话、有时甚至全无对白。
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `title` | ✅ | 中文标题（≤12字），也作为 fallback 英文标题 |
+| `title_en` | ❌ | 英文标题（≤6词），不填用 `title` 兜底 |
+| `source_text` | ❌ | 日记片段，显示在 /comics/[id] 详情页图下方 |
+| `tags` | ❌ | 1-3 个短 tag |
+
+—
+
+## 🚀 发布流水线
+
+```
+你（或 Agent）DONE 一个 draft
+  ↓
+$ node comics-studio/publish.mjs drafts/<slug>
+  ↓
+1. 在 Supabase 建 draft row
+2. 上传 strip.png 到 R2 (strip/<rowId>/v1/strip.png)
+3. 用 Telegram Bot API 推 preview 到管理员 DM (带 [✅ 发布 | ❌ 删] 按钮)
+  ↓
+你在 Telegram tap ✅ → 分配 No. N → 触发 GH Actions deploy → ~3min 后 ursb.me/comics/N 上线
+```
+
+### 一次性安装 deps
+
+```bash
+cd comics-studio && npm install
+```
+
+### 运行
+
+```bash
+# 从仓库根目录运行
+node comics-studio/publish.mjs drafts/2026-05-17-semicolon
+
+# 或者：
+# node comics-studio/publish.mjs comics-studio/drafts/2026-05-17-semicolon
+```
+
+脚本会自动从下列文件里读取 env vars（先后顺序，先找到的优先）：
+
+1. `comics-studio/.env`
+2. `services/blog-api/.env`
+3. `.env`（仓库根）
+
+需要的 env keys：
+```
+BLOG_SUPABASE_URL=
+BLOG_SUPABASE_SERVICE_KEY=
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=
+R2_PUBLIC_BASE=
+COMICS_TELEGRAM_BOT_TOKEN=
+ADMIN_TELEGRAM_USER_ID=
+```
+
+—
+
+## 📐 出图规则（agents 也要遵守）
+
+- **2×2 grid 布局**，方形 1:1
+- **角色必须与 `refs/` 一致** —— 用 MJ `--cref` / SD IP-Adapter
+- **图里不放文字** —— 没有对白气泡、题字、屏幕字
+- **水墨手绘风格** —— 不要 3D / 卡通 / vector / 照片质感
+- **背景极简** —— 桌角、窗台、一只茶杯就够
+
+## 🎭 起承转合（每期都按这个节奏，避免流水账）
+
+- **Panel 1（起）**：具体感官开场，一个画面不是 label
+- **Panel 2（承）**：让画面展开，细节累积
+- **Panel 3（转）**：变化（时间过去 / 一个念头打断 / 身体注意到了什么）。不是反转，是转折
+- **Panel 4（合）**：余韵。不是包袱。有时甚至全无对白
+
+—
 
 ## 🚫 不要做的事
 
-- 不要试图让图像模型画出对白文字 —— 90% 翻车率，特别是中文
-- 不要为同一个想法发两次 —— 用 ❌ 删掉再发新的
-- 不要改 `refs/panda.png` 和 `refs/moflow-ink.png` —— 一旦改了，所有以前的漫画在视觉上就脱节了
-- 不要在 caption 里写一长串源文本 —— caption 就是标题。源文本以后会做成 markdown 自定义字段
+- 不要改 `refs/panda.png` 和 `refs/moflow-ink.png` —— 一旦改了，以前所有漫画在视觉上脱节
+- 不要试图让图像模型画对白文字 —— 90% 翻车率
+- 不要在 `meta.json.title` 里塞一长串 —— 标题 ≤12 字，源文本放 `source_text`
+- 不要在 `drafts/` 之外手工删 R2 / Supabase 数据 —— 走流水线
 
-## 🔗 相关链接
+—
 
-- Bot: `@airing_comics_bot` （Telegram）
-- 主站：[ursb.me/comics](https://ursb.me/comics) （目前 nav 入口隐藏中，模块还在开发）
-- DB：Supabase 项目 `pcoyocvqfipuydhvdsle`, 表 `comics`
-- 图片存储：Cloudflare R2 `strip/{rowId}/v1/strip.png`
-- 部署 pipeline：bot → Supabase Edge Function `comics-bot` → R2 + Supabase → GH Actions `repository_dispatch`
+## 🔗 相关
+
+- Bot：`@airing_comics_bot` （Telegram）
+- 主站：[ursb.me/comics](https://ursb.me/comics) （nav 入口现在隐藏中）
+- DB：Supabase `pcoyocvqfipuydhvdsle`, 表 `comics`
+- 图片：Cloudflare R2 `strip/{rowId}/v1/strip.png`
+- 发布触发器：Supabase Edge Function `comics-bot` → R2 + Supabase → GH Actions `repository_dispatch`
+- 完整 spec：`docs/superpowers/specs/2026-05-16-comics-design.md`
