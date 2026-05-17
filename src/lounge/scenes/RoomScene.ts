@@ -10,6 +10,7 @@ import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt,
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
+import { getWeatherForDate } from '../weather'
 import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted } from '../identity'
 import { loadNpcManifest, getActiveBracket, pickDialog, type NpcDef, type NpcManifest } from '../npcs'
 
@@ -196,6 +197,7 @@ export class RoomScene extends Phaser.Scene {
     ensurePixelTexture(this)
     this.setupAtmosphere(map.widthInPixels, map.heightInPixels)
     this.setupParticles(map.widthInPixels, map.heightInPixels)
+    this.setupWeather(map.widthInPixels, map.heightInPixels)
     this.loadAndStartNpcs()
     this.loadAndStartPebbles()
     this.loadAndStartSeasons(map.widthInPixels, map.heightInPixels)
@@ -1392,6 +1394,53 @@ export class RoomScene extends Phaser.Scene {
           })
         }
       }
+    }
+  }
+
+  // V6.4 — Weather: deterministic from date, falls back to clear.
+  //   • Outdoor rooms (balcony, beach, grove): full effect — clouds + rain/snow particles
+  //   • Indoor rooms: lighter cloudy tint only; no particles indoors
+  //   • Skipped on prefers-reduced-motion
+  private setupWeather(widthPx: number, heightPx: number) {
+    if (prefersReducedMotion()) return
+    const today = new Date()
+    const weather = getWeatherForDate(today)
+    if (weather === 'clear') return
+    const isOutdoor = (this.currentRoomId === 'room_balcony' || this.currentRoomId === 'room_beach' || this.currentRoomId === 'room_grove')
+    // Cloudy tint overlay (above the night atmosphere)
+    if (weather === 'cloudy' || weather === 'rain' || weather === 'snow' || weather === 'storm') {
+      const tintAlpha = (weather === 'storm') ? 0.32 : (weather === 'rain' ? 0.22 : weather === 'snow' ? 0.18 : 0.12)
+      this.add.rectangle(0, 0, widthPx, heightPx, 0x6878a0, tintAlpha)
+        .setOrigin(0).setDepth(1001).setBlendMode(Phaser.BlendModes.MULTIPLY)
+    }
+    if (!isOutdoor) return  // indoor rooms get tint only
+
+    ensurePixelTexture(this)
+    if (weather === 'rain' || weather === 'storm') {
+      this.add.particles(0, 0, PIXEL_TEX_KEY, {
+        x: { min: 0, max: widthPx }, y: -10,
+        lifespan: 1200, quantity: (weather === 'storm' ? 4 : 2), frequency: 60,
+        speedX: { min: -10, max: -2 },
+        speedY: { min: 280, max: 360 },
+        scale: { start: 1.5, end: 1.5 },
+        tint: 0x8fb8d8, alpha: { start: 0.7, end: 0.4 }
+      }).setDepth(1002)
+      // Splash burst at ground
+      this.add.particles(0, 0, PIXEL_TEX_KEY, {
+        x: { min: 0, max: widthPx }, y: heightPx - 4,
+        lifespan: 220, quantity: (weather === 'storm' ? 2 : 1), frequency: 100,
+        speedY: { min: -30, max: -10 }, speedX: { min: -20, max: 20 },
+        scale: 1, tint: 0xa0c8e0, alpha: { start: 0.5, end: 0 }
+      }).setDepth(1002)
+    } else if (weather === 'snow') {
+      this.add.particles(0, 0, PIXEL_TEX_KEY, {
+        x: { min: 0, max: widthPx }, y: -10,
+        lifespan: 6000, quantity: 1, frequency: 80,
+        speedY: { min: 25, max: 45 }, speedX: { min: -8, max: 8 },
+        scale: { start: 1.4, end: 1.4 },
+        tint: 0xffffff, alpha: { start: 0.85, end: 0.5 },
+        rotate: { min: 0, max: 360 }
+      }).setDepth(1002)
     }
   }
 
