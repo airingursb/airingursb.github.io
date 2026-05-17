@@ -1061,3 +1061,32 @@
 
 ### Reduced motion
 - [ ] Pad flash still happens (it's an info signal) but Full Jam particle burst is suppressed
+
+## Lounge V5.0 (Beach biome — Era 4 begins)
+
+### Beach room
+- [ ] Balcony south wall has a new driftwood-plank door at tile (12, 14)
+- [ ] Walking through Balcony south door → travels to `room_beach`
+- [ ] Beach room is 480×320 with sand floor, cliff borders, 4 palm trees
+- [ ] 2 driftwood logs as sit interactables (one east, one west)
+- [ ] 2 beach umbrellas (decorative)
+- [ ] Beach north door → back to Balcony at `from_beach` spawn
+
+### Tileset
+- [ ] `outdoor_beach_v0` tileset loads (visible: sand floor, cliff walls, driftwood, umbrella, palm)
+- [ ] Tiles look distinct from indoor_lobby_v0
+
+### Ambient + particles
+- [ ] Waves ambient loop plays (filtered pink noise via tremolo)
+- [ ] Seagulls (white particles) drift east across the sky every ~3.5s
+
+### Pebbles
+- [ ] 3 new pebbles: Coral / Driftwood / Tide at fixed spots
+- [ ] Inventory total now 16
+
+### Server
+- [ ] `room_beach` in VALID_ROOMS + ROOM_FLOORS
+- [ ] Welcome.last_room = 'room_beach' triggers client scene.restart
+
+### Validator
+- [ ] `npm run lounge:validate` reports "6 rooms, 2 tilesets, 16 pebbles"
