@@ -13,7 +13,8 @@ import { getOverlayAt } from '../atmosphere'
 import { getWeatherForDate } from '../weather'
 import { footstepDust, clickRipple, pebbleSparkle, sitImpact, waveArc, letterFlutter } from '../feedback'
 import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted } from '../identity'
-import { loadNpcManifest, getActiveBracket, pickDialog, type NpcDef, type NpcManifest } from '../npcs'
+import { loadNpcManifest, getActiveBracket, pickDialog, buildDialogContext, type NpcDef, type NpcManifest } from '../npcs'
+import { getActiveFestivalId } from '../festivals'
 
 const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
@@ -1662,7 +1663,14 @@ export class RoomScene extends Phaser.Scene {
   private handleNpcClick(id: string) {
     const entry = this.npcBears.get(id)
     if (!entry) return
-    const line = pickDialog(entry.def, this.npcDialogMemory)
+    // V7.0 — build dialog context from runtime state (friendship + active festival + first-meeting)
+    const friendship = this.friendships.get(id)
+    const ctx = buildDialogContext({
+      heart: friendship?.level ?? 0,
+      event: getActiveFestivalId() ?? undefined,
+      isFirstMeeting: !this.npcDialogMemory.has(id)
+    })
+    const line = pickDialog(entry.def, this.npcDialogMemory, ctx)
     const screen = this.bearScreenPos(entry.bear)
     showBubble('npc_' + id, line, screen.x, screen.y)
   }
