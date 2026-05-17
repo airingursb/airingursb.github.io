@@ -17,5 +17,7 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
     scene: [RoomScene]
   })
   game.scene.start('Room', { roomId: DEFAULT_ROOM, spawnPoint: 'default' })
+  // Expose for debugging / smoke tests
+  ;(window as any).__loungeGame = game
   return game
 }

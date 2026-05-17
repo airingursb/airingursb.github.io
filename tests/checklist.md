@@ -848,3 +848,28 @@
 - [ ] LangSwitch 在 /comics ↔ /en/comics 间正确切换
 - [ ] dark mode 下 panel background `#1a1a1a` 与白图边缘对比清晰
 - [ ] 移动端 (375px) 标题字号缩放、archive 2 列、详情页 panels 1 列
+
+## Lounge V3.2 (Listening Booth)
+
+### Booth in DJ Floor
+- [ ] Walk into DJ Floor → near interactable at south of booth (240, 224) → "🎧 listen" prompt shows
+- [ ] Press E or click booth rect → picker opens with 4 tracks
+- [ ] Tracks listed: Dawn Drift, Midnight Drift, Static Haze, Warm Bath
+- [ ] Click a track → audio plays (loops), pill shows "🎧 Now: <track>" at bottom-center
+- [ ] Selected track button highlighted green
+- [ ] Click different track → previous stops, new starts
+- [ ] Stop button → audio stops + pill hides
+- [ ] Close button → picker hides but audio continues
+- [ ] Press Escape → picker hides
+
+### Walk-away monitor
+- [ ] While track plays, walk >80px from booth → audio fades/stops + pill hides
+- [ ] Walking back doesn't auto-resume (must click again)
+
+### Volume integration
+- [ ] Track plays at ambient channel volume (master × ambient)
+- [ ] Slide ambient slider → track volume changes immediately
+
+### Validator
+- [ ] `npm run lounge:validate` shows "4 booth tracks", exit 0
+- [ ] Rename one track .ogg + .mp3 → validator exit 1

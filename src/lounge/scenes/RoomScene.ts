@@ -3,7 +3,8 @@ import { Bear, registerBearAnimations } from '../bear'
 import { connect, sendPos, sendAct, sendRoomChange, sendName, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg } from '../net'
 import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, type Region, type RoomId } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
-import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay } from '../ui'
+import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying } from '../ui'
+import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
 import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted } from '../identity'
@@ -69,6 +70,9 @@ export class RoomScene extends Phaser.Scene {
   private npcBears = new Map<string, { bear: Bear; def: NpcDef }>()
   private npcDialogMemory = new Map<string, string>()
   private npcRefreshTimer?: Phaser.Time.TimerEvent
+  private boothTracks: BoothTrack[] = []
+  private activeBoothInteractable: Interactable | null = null
+  private currentBoothTrackId: string | null = null
 
   constructor() {
     super({ key: 'Room' })
@@ -98,6 +102,12 @@ export class RoomScene extends Phaser.Scene {
     }
     const ra = ROOM_AUDIO[this.currentRoomId]
     if (ra) preloadRoomAudio(this, ra.bgmKey, ra.bgmPath, ra.ambKey, ra.ambPath)
+
+    // V3.2 — only DJ Floor has the booth, preload synchronously
+    if (this.currentRoomId === 'room_dj_floor') {
+      this.boothTracks = getBoothTracks()
+      preloadBoothTracks(this, this.boothTracks)
+    }
   }
 
   create() {
@@ -366,6 +376,9 @@ export class RoomScene extends Phaser.Scene {
       const wy = (typeof m.last_y === 'number') ? m.last_y : undefined
       this.transitioning = true
       stopRoomAudio()
+      stopBoothTrack()
+      hideNowPlaying()
+      hideBoothPicker()
       if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
       if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
       sendRoomChange(m.last_room)
@@ -609,6 +622,11 @@ export class RoomScene extends Phaser.Scene {
   }
 
   private activateInteractable(it: Interactable) {
+    if (it.kind === 'listen') {
+      this.activeBoothInteractable = it
+      this.openBoothPicker()
+      return
+    }
     if (it.kind !== 'sit') return
     if (!this.myBear) return
     if (this.currentSitInteractable === it && this.myBear.state === 'sit') {
@@ -620,6 +638,42 @@ export class RoomScene extends Phaser.Scene {
     this.myBear.walkTo(it.anchorX, it.anchorY)
     this.myDirection = it.facing
     this.currentSitInteractable = it
+  }
+
+  private openBoothPicker() {
+    if (!this.boothTracks || this.boothTracks.length === 0) return
+    showBoothPicker(
+      this.boothTracks.map(t => ({ id: t.id, name: t.name })),
+      this.currentBoothTrackId,
+      (id) => {
+        const t = this.boothTracks.find(x => x.id === id)
+        if (!t) return
+        playBoothTrack(this, t)
+        this.currentBoothTrackId = id
+        const name = getCurrentTrackName()
+        if (name) showNowPlaying(name)
+      },
+      () => {
+        stopBoothTrack()
+        this.currentBoothTrackId = null
+        hideNowPlaying()
+      }
+    )
+  }
+
+  private monitorBoothDistance() {
+    if (!this.currentBoothTrackId || !this.activeBoothInteractable || !this.myBear) return
+    const it = this.activeBoothInteractable
+    const cx = it.x + it.w / 2
+    const cy = it.y + it.h / 2
+    const d = Math.hypot(this.myBear.x - cx, this.myBear.y - cy)
+    if (d > 80) {
+      stopBoothTrack()
+      this.currentBoothTrackId = null
+      hideNowPlaying()
+      hideBoothPicker()
+      this.activeBoothInteractable = null
+    }
   }
 
   private collidesAt(x: number, y: number): boolean {
@@ -710,6 +764,9 @@ export class RoomScene extends Phaser.Scene {
         const fade = !prefersReducedMotion()
         const doRestart = () => {
           stopRoomAudio()
+          stopBoothTrack()
+          hideNowPlaying()
+          hideBoothPicker()
           if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
           if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
           sendRoomChange(targetRoom)
@@ -778,6 +835,7 @@ export class RoomScene extends Phaser.Scene {
       sendPos(this.myBear.x, this.myBear.y, stateStr, vx, vy, this.currentRoomId)
       this.checkPortals()
       this.checkInteractableProximity()
+      this.monitorBoothDistance()
     }
     this.peers.forEach((p) => p.bear.update(dtMs, true))
     this.npcBears.forEach((entry) => entry.bear.update(dtMs, true))

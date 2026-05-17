@@ -139,6 +139,20 @@ for (const path of manifest.audio?.ambient ?? []) {
   checkFile(path, `manifest.ambient[]`, /* soft */ true)
 }
 
+// 7b. Booth tracks (V3.2) — hard check, these ship with the build
+let boothCount = 0
+for (const t of manifest.audio?.booth ?? []) {
+  boothCount++
+  if (!t.id || !/^[a-z][a-z0-9_]*$/.test(t.id)) err(`booth track id "${t.id}" invalid`)
+  if (!t.name || typeof t.name !== 'string') err(`booth track ${t.id}: missing name`)
+  if (!t.file) { err(`booth track ${t.id}: missing file`); continue }
+  // Accept either .ogg or .mp3 fallback
+  const oggOk = existsSync(join(ASSETS_DIR, t.file))
+  const mp3Path = t.file.replace(/\.ogg$/, '.mp3')
+  const mp3Ok = existsSync(join(ASSETS_DIR, mp3Path))
+  if (!oggOk && !mp3Ok) err(`booth track ${t.id}: missing both ${t.file} and ${mp3Path}`)
+}
+
 // 8. NPC manifest validation (V3.1)
 const NPC_FILE = join(ROOT, 'public', 'lounge', 'data', 'npcs.json')
 const REGIONS = ['asia','americas','europe','oceania','africa','unknown']
@@ -210,7 +224,7 @@ if (!existsSync(NPC_FILE)) {
 ok(`Declared: ${manifest.rooms?.length ?? 0} rooms, ${manifest.tilesets?.length ?? 0} tilesets, ` +
    `${manifest.sprites?.length ?? 0} sprite sets, ${manifest.audio?.sfx?.length ?? 0} SFX, ` +
    `${manifest.audio?.bgm?.length ?? 0} BGM slots, ${manifest.audio?.ambient?.length ?? 0} ambient slots, ` +
-   `${npcCount} NPCs`)
+   `${boothCount} booth tracks, ${npcCount} NPCs`)
 
 function printAndExit() {
   for (const m of okmsgs)  console.log(`✓ ${m}`)

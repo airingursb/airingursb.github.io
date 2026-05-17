@@ -182,6 +182,7 @@ export function initUI() {
       hideSayInput()
       hideVolumePanel()
       hideInfoPanel()
+      hideBoothPicker()
     }
   })
 }
@@ -349,4 +350,82 @@ export function hideInfoPanel() {
 export function showReplacedOverlay() {
   if (!replacedOverlayEl) return
   replacedOverlayEl.hidden = false
+}
+
+// V3.2 — Listening Booth picker + now-playing pill
+
+let boothPickerEl: HTMLElement | null = null
+let boothListEl: HTMLElement | null = null
+let boothStopBtn: HTMLButtonElement | null = null
+let boothCloseBtn: HTMLButtonElement | null = null
+let nowPlayingEl: HTMLElement | null = null
+let nowPlayingNameEl: HTMLElement | null = null
+
+export function showBoothPicker(
+  tracks: Array<{ id: string; name: string }>,
+  currentId: string | null,
+  onPick: (id: string) => void,
+  onStop: () => void
+) {
+  if (!boothPickerEl) boothPickerEl = document.getElementById('lounge-booth-picker')
+  if (!boothListEl) boothListEl = document.getElementById('lounge-booth-list')
+  if (!boothStopBtn) boothStopBtn = document.getElementById('lounge-booth-stop') as HTMLButtonElement | null
+  if (!boothCloseBtn) boothCloseBtn = document.getElementById('lounge-booth-close') as HTMLButtonElement | null
+  if (!boothPickerEl || !boothListEl) return
+
+  boothListEl.innerHTML = ''
+  for (const t of tracks) {
+    const li = document.createElement('li')
+    const btn = document.createElement('button')
+    btn.type = 'button'
+    btn.textContent = t.name
+    btn.setAttribute('data-track-id', t.id)
+    if (t.id === currentId) btn.classList.add('is-playing')
+    btn.addEventListener('click', () => onPick(t.id))
+    li.appendChild(btn)
+    boothListEl.appendChild(li)
+  }
+  if (boothStopBtn) {
+    boothStopBtn.onclick = () => onStop()
+  }
+  if (boothCloseBtn) {
+    boothCloseBtn.onclick = () => hideBoothPicker()
+  }
+  boothPickerEl.hidden = false
+  playSfx('menu_open')
+}
+
+export function hideBoothPicker() {
+  if (!boothPickerEl) boothPickerEl = document.getElementById('lounge-booth-picker')
+  if (!boothPickerEl || boothPickerEl.hidden) return
+  boothPickerEl.hidden = true
+  playSfx('menu_close')
+}
+
+export function isBoothPickerOpen(): boolean {
+  if (!boothPickerEl) boothPickerEl = document.getElementById('lounge-booth-picker')
+  return !!boothPickerEl && !boothPickerEl.hidden
+}
+
+export function showNowPlaying(name: string) {
+  if (!nowPlayingEl) nowPlayingEl = document.getElementById('lounge-now-playing')
+  if (!nowPlayingNameEl) nowPlayingNameEl = document.getElementById('lounge-now-playing-name')
+  if (!nowPlayingEl || !nowPlayingNameEl) return
+  nowPlayingNameEl.textContent = name
+  nowPlayingEl.hidden = false
+  // Update "is-playing" highlight in picker if open
+  if (boothListEl) {
+    boothListEl.querySelectorAll('button').forEach((b) => {
+      b.classList.toggle('is-playing', b.textContent === name)
+    })
+  }
+}
+
+export function hideNowPlaying() {
+  if (!nowPlayingEl) nowPlayingEl = document.getElementById('lounge-now-playing')
+  if (!nowPlayingEl) return
+  nowPlayingEl.hidden = true
+  if (boothListEl) {
+    boothListEl.querySelectorAll('button.is-playing').forEach((b) => b.classList.remove('is-playing'))
+  }
 }
