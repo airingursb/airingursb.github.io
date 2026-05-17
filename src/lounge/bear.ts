@@ -51,6 +51,7 @@ export class Bear {
   stateUntil = 0
   reducedMotion = false
   private baseY = 0
+  private nameLabel?: Phaser.GameObjects.Text
 
   constructor(scene: Phaser.Scene, x: number, y: number, region: Region) {
     this.scene = scene
@@ -58,7 +59,20 @@ export class Bear {
     this.sprite = scene.add.sprite(x, y, `bear_${region}`, 'idle_down')
     this.sprite.setOrigin(0.5, 1)
     this.baseY = y
+    this.nameLabel = scene.add.text(x, y - 52, '', {
+      fontFamily: 'ui-monospace, monospace',
+      fontSize: '9px',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 2,
+      resolution: 2
+    }).setOrigin(0.5, 1).setDepth(6)
     this.playIdle()
+  }
+
+  setDisplayName(name: string | null) {
+    if (!this.nameLabel) return
+    this.nameLabel.setText(name && name.length > 0 ? name : '')
   }
 
   walkTo(x: number, y: number) {
@@ -110,6 +124,10 @@ export class Bear {
 
   update(dtMs: number, isPeer = false) {
     const now = performance.now()
+    if (this.nameLabel) {
+      this.nameLabel.x = this.sprite.x
+      this.nameLabel.y = this.sprite.y - 52
+    }
 
     if (this.stateUntil > 0 && now >= this.stateUntil) {
       this.state = 'idle'
@@ -177,7 +195,10 @@ export class Bear {
     else this.playIdle()
   }
 
-  destroy() { this.sprite.destroy() }
+  destroy() {
+    this.nameLabel?.destroy()
+    this.sprite.destroy()
+  }
 
   get x() { return this.sprite.x }
   get y() { return this.sprite.y }

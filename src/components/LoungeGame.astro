@@ -7,6 +7,35 @@
   <div id="lounge-ui">
     <button id="lounge-mute" class="ui-mute-btn" aria-label="Toggle sound">🔊</button>
     <button id="lounge-volume-btn" class="ui-volume-btn" aria-label="Volume settings">⚙</button>
+    <button id="lounge-info-btn" class="ui-info-btn" aria-label="Identity">ⓘ</button>
+    <div id="lounge-info-panel" class="ui-info-panel" hidden>
+      <h3>Identity</h3>
+      <dl>
+        <dt>Name</dt><dd id="lounge-info-name">—</dd>
+        <dt>Region</dt><dd id="lounge-info-region">—</dd>
+        <dt>ID</dt><dd id="lounge-info-id">—</dd>
+      </dl>
+      <button type="button" id="lounge-info-rename">Change name</button>
+    </div>
+    <div id="lounge-name-modal" class="ui-name-modal" hidden>
+      <div class="ui-name-modal-backdrop"></div>
+      <div class="ui-name-modal-card">
+        <h3 id="lounge-name-modal-title">How should we call you?</h3>
+        <input type="text" id="lounge-name-input" maxlength="16" autocomplete="off" placeholder="Your name">
+        <p class="hint">1–16 chars</p>
+        <p id="lounge-name-error" class="error" hidden></p>
+        <div class="actions">
+          <button type="button" id="lounge-name-skip">Skip</button>
+          <button type="button" id="lounge-name-save">Save</button>
+        </div>
+      </div>
+    </div>
+    <div id="lounge-replaced-overlay" class="ui-replaced-overlay" hidden>
+      <div>
+        <p>This tab was replaced by a newer session.</p>
+        <p class="hint">Close this tab — your character is active elsewhere.</p>
+      </div>
+    </div>
     <div id="lounge-volume-panel" class="ui-volume-panel" hidden>
       <label><span>Master</span><input type="range" data-channel="master" min="0" max="100"></label>
       <label><span>SFX</span><input type="range" data-channel="sfx" min="0" max="100"></label>
@@ -146,6 +175,136 @@
     width: 100%;
     accent-color: #4ade80;
   }
+
+  .ui-info-btn {
+    position: absolute;
+    top: 16px; right: 108px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,.08);
+    color: #e6edf3;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background .15s;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .ui-info-btn:hover { background: rgba(255,255,255,.16); }
+  .ui-info-btn:focus-visible { outline: 2px solid #4ade80; outline-offset: 2px; }
+
+  .ui-info-panel {
+    position: absolute;
+    top: 60px; right: 16px;
+    width: 240px;
+    background: rgba(0,0,0,.85);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: #e6edf3;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .ui-info-panel[hidden] { display: none; }
+  .ui-info-panel h3 { margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+  .ui-info-panel dl { margin: 0 0 12px; display: grid; grid-template-columns: 60px 1fr; gap: 4px 8px; }
+  .ui-info-panel dt { color: #888; }
+  .ui-info-panel dd { margin: 0; word-break: break-all; }
+  .ui-info-panel button {
+    width: 100%;
+    padding: 6px 10px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.08);
+    color: #e6edf3;
+    border-radius: 6px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .ui-info-panel button:hover { background: rgba(255,255,255,.16); }
+
+  .ui-name-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .ui-name-modal[hidden] { display: none; }
+  .ui-name-modal-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,.6);
+    backdrop-filter: blur(2px);
+  }
+  .ui-name-modal-card {
+    position: relative;
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px;
+    padding: 24px;
+    width: 320px;
+    color: #e6edf3;
+    font-family: ui-monospace, monospace;
+    box-shadow: 0 10px 40px rgba(0,0,0,.5);
+  }
+  .ui-name-modal-card h3 {
+    margin: 0 0 16px;
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .ui-name-modal-card input {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(0,0,0,.4);
+    color: #fff;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+  }
+  .ui-name-modal-card input:focus { border-color: #4ade80; }
+  .ui-name-modal-card .hint { margin: 6px 0 0; font-size: 11px; color: #888; }
+  .ui-name-modal-card .error { margin: 6px 0 0; font-size: 11px; color: #ff7070; }
+  .ui-name-modal-card .actions { margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end; }
+  .ui-name-modal-card button {
+    padding: 8px 16px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.08);
+    color: #e6edf3;
+    border-radius: 6px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background .15s;
+  }
+  .ui-name-modal-card button#lounge-name-save {
+    background: #4ade80;
+    color: #0d1117;
+    border-color: #4ade80;
+    font-weight: 600;
+  }
+  .ui-name-modal-card button:hover { background: rgba(255,255,255,.16); }
+  .ui-name-modal-card button#lounge-name-save:hover { background: #5fea8e; }
+
+  .ui-replaced-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,.85);
+    color: #e6edf3;
+    font-family: ui-monospace, monospace;
+    text-align: center;
+  }
+  .ui-replaced-overlay[hidden] { display: none; }
+  .ui-replaced-overlay p { margin: 0 0 8px; font-size: 14px; }
+  .ui-replaced-overlay .hint { font-size: 12px; color: #888; }
 
   /* Radial emote menu */
   .ui-emote-menu {

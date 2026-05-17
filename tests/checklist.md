@@ -750,3 +750,48 @@
 - [ ] Renaming any required file (e.g. `library.tmj`) → validator exits 1 with clear message
 - [ ] Restoring the file → exits 0 again
 - [ ] Orphan `.tmj` (not in manifest) → flagged as error
+
+## Lounge V3.0 (account + persistent character)
+
+### First-time visitor flow
+- [ ] Open `/lounge` fresh (clear localStorage) → name modal appears
+- [ ] Modal has "How should we call you?", input (1-16 char), Skip button, Save button
+- [ ] Skip → modal closes, bear label shows `Bear from {region}`, no DB row
+- [ ] Save with empty input → error "Please enter a name"
+- [ ] Save with 17+ chars → input maxlength caps; if bypassed, server rejects
+- [ ] Save with blocked word (`<script`, `fuck`) → error "That name is not allowed"
+- [ ] Save with valid name → modal closes, label shows name immediately
+
+### Persistence
+- [ ] Walk to a specific position → wait ~32s → close tab → reopen → spawn at last position
+- [ ] Walk to DJ floor → close → reopen → spawn directly in DJ floor (not lobby)
+- [ ] Name persists across reload — no modal shown on return
+- [ ] localStorage keys present: `lounge_visitor_id`, `lounge_display_name`, `lounge_name_prompted`
+
+### Info panel (ⓘ)
+- [ ] Click ⓘ button → panel shows Name / Region / ID (last 8 chars)
+- [ ] Click "Change name" → name modal appears pre-filled
+- [ ] Submit new name → label updates immediately above bear
+- [ ] Click outside panel or press Escape → panel closes
+
+### Session replacement
+- [ ] Tab A connected → open Tab B with same visitor_id → Tab A receives "replaced" overlay
+- [ ] Tab A overlay says "This tab was replaced by a newer session"
+- [ ] Tab A does NOT auto-reconnect
+- [ ] Tab B works normally
+
+### Multi-client
+- [ ] Other peers' names visible above their bears
+- [ ] If peer renames, label updates in real-time (via name_changed broadcast)
+- [ ] Anonymous peers show `Bear from {region}` based on their CC
+
+### Backwards compat
+- [ ] v=2 client (older protocol) can still connect; receives no welcome, spawns at lobby default
+- [ ] No DB row created for v=2 clients (no persistence)
+
+### Server batching
+- [ ] WS smoke: server flushes last_pos to DB within 30s OR on disconnect (whichever first)
+- [ ] No DB hammering: pos updates at 10Hz don't write to DB every tick
+
+### Validator
+- [ ] `npm run lounge:validate` still exits 0 (V3.0 didn't add assets)

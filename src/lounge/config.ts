@@ -76,8 +76,8 @@ export function prefersReducedMotion(): boolean {
   }
 }
 
-// Multi-room / protocol v=2 (V2.2+V2.3)
-export const PROTOCOL_VERSION = 2
+// Multi-room / protocol v=3 (V3.0 — adds persistence: welcome/name/name_changed/replaced)
+export const PROTOCOL_VERSION = 3
 
 export const VALID_ROOMS = ['room_lobby', 'room_dj_floor', 'room_balcony', 'room_library'] as const
 export type RoomId = typeof VALID_ROOMS[number]
@@ -98,3 +98,16 @@ export const VOLUME_DEFAULTS: Record<VolumeChannel, number> = {
   ambient: 0.7
 }
 export const VOLUME_STORAGE_KEY = 'lounge_volume_v1'
+
+// V3.0 — display name validation (defense in depth; server is source of truth)
+export const NAME_MAX = 16
+const NAME_BLOCKLIST = ['<script', 'fuck', 'shit']
+export function validateClientName(s: string): { ok: true; value: string } | { ok: false; reason: string } {
+  if (typeof s !== 'string') return { ok: false, reason: 'type' }
+  const v = s.normalize('NFC').trim()
+  if (v.length === 0) return { ok: false, reason: 'empty' }
+  if (v.length > NAME_MAX) return { ok: false, reason: 'too_long' }
+  const low = v.toLowerCase()
+  if (NAME_BLOCKLIST.some((w) => low.indexOf(w) !== -1)) return { ok: false, reason: 'blocked' }
+  return { ok: true, value: v }
+}

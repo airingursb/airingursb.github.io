@@ -1,11 +1,12 @@
 import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
-import { connect, sendPos, sendAct, sendRoomChange, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg } from '../net'
+import { connect, sendPos, sendAct, sendRoomChange, sendName, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg } from '../net'
 import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, type Region, type RoomId } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
-import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos } from '../ui'
+import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay } from '../ui'
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
+import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted } from '../identity'
 
 const ROOM_AUDIO: Record<RoomId, { bgmKey: string; bgmPath: string; ambKey: string; ambPath: string }> = {
   room_lobby:    { bgmKey: 'bgm_lobby_day',      bgmPath: '/lounge/assets/audio/bgm/lobby_day.ogg',
@@ -55,14 +56,21 @@ export class RoomScene extends Phaser.Scene {
   private atmosphereOverlay?: Phaser.GameObjects.Rectangle
   private atmosphereTimer?: Phaser.Time.TimerEvent
   private particleEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
+  private myDisplayName: string | null = null
+  private myRegion: Region = 'unknown'
+  private welcomeApplied = false
+  private pendingSpawn: { x: number; y: number } | null = null
 
   constructor() {
     super({ key: 'Room' })
   }
 
-  init(data: { roomId?: RoomId; spawnPoint?: string }) {
+  init(data: { roomId?: RoomId; spawnPoint?: string; welcomeX?: number; welcomeY?: number }) {
     this.currentRoomId = (data?.roomId && isValidRoom(data.roomId)) ? data.roomId : DEFAULT_ROOM
     this.spawnPointName = data?.spawnPoint ?? 'default'
+    this.pendingSpawn = (typeof data?.welcomeX === 'number' && typeof data?.welcomeY === 'number')
+      ? { x: data.welcomeX, y: data.welcomeY } : null
+    this.welcomeApplied = false
   }
 
   preload() {
@@ -107,13 +115,20 @@ export class RoomScene extends Phaser.Scene {
 
     const spawnObj = map.findObject('spawn_points', (o) => o.name === this.spawnPointName)
       ?? map.findObject('spawn_points', (o) => o.name === 'default')
-    const spawnX = (spawnObj?.x as number | undefined) ?? 240
-    const spawnY = (spawnObj?.y as number | undefined) ?? 296
+    const defaultSpawnX = (spawnObj?.x as number | undefined) ?? 240
+    const defaultSpawnY = (spawnObj?.y as number | undefined) ?? 296
+    const spawnX = this.pendingSpawn?.x ?? defaultSpawnX
+    const spawnY = this.pendingSpawn?.y ?? defaultSpawnY
 
     try { this.myCC = sessionStorage.getItem('vp_country') } catch { this.myCC = null }
-    const myRegion: Region = ccToRegion(this.myCC)
-    this.myBear = new Bear(this, spawnX, spawnY, myRegion)
+    this.myRegion = ccToRegion(this.myCC)
+    this.myBear = new Bear(this, spawnX, spawnY, this.myRegion)
     this.myBear.sprite.setDepth(5)
+
+    // Apply locally-cached display name immediately (will be overridden by welcome msg)
+    const localIdentity = getIdentity()
+    this.myDisplayName = localIdentity.display_name
+    this.myBear.setDisplayName(this.fallbackName(this.myDisplayName))
 
     const collisionLayer = map.getObjectLayer('collision')
     const collisionRects = (collisionLayer?.objects ?? []).map((o) => ({
@@ -257,6 +272,7 @@ export class RoomScene extends Phaser.Scene {
           if (p.room !== this.currentRoomId) continue
           const bear = new Bear(this, p.x, p.y, ccToRegion(p.cc))
           bear.sprite.setDepth(5)
+          bear.setDisplayName(this.fallbackName(p.display_name ?? null, ccToRegion(p.cc)))
           this.peers.set(p.id, { bear, lastUpdate: performance.now() })
         }
       },
@@ -265,6 +281,7 @@ export class RoomScene extends Phaser.Scene {
         if (this.peers.has(m.id)) return
         const bear = new Bear(this, m.x, m.y, ccToRegion(m.cc))
         bear.sprite.setDepth(5)
+        bear.setDisplayName(this.fallbackName(m.display_name ?? null, ccToRegion(m.cc)))
         this.peers.set(m.id, { bear, lastUpdate: performance.now() })
       },
       onLeave: (m: LeaveMsg) => {
@@ -277,6 +294,7 @@ export class RoomScene extends Phaser.Scene {
         if (!peer) {
           const bear = new Bear(this, m.x, m.y, 'unknown')
           bear.sprite.setDepth(5)
+          bear.setDisplayName(this.fallbackName(null, 'unknown'))
           peer = { bear, lastUpdate: performance.now() }
           this.peers.set(m.id, peer)
         }
@@ -292,12 +310,104 @@ export class RoomScene extends Phaser.Scene {
           this.statusEl.style.display = ''
           this.statusEl.textContent = 'lounge at capacity'
         }
+      },
+      onWelcome: (m: WelcomeMsg) => this.applyWelcome(m),
+      onNameChanged: (m: NameChangedMsg) => this.applyNameChanged(m),
+      onReplaced: () => {
+        showReplacedOverlay()
+        // Game still runs visually but no new server interaction; net.ts also stops reconnect
       }
     }, this.currentRoomId)
+
+    setInfoPanelDataProvider(
+      () => ({
+        visitorId: getIdentity().visitor_id,
+        displayName: this.myDisplayName,
+        region: this.myRegion
+      }),
+      () => this.openRenameModal()
+    )
 
     if (!prefersReducedMotion()) {
       this.cameras.main.fadeIn(200, 0, 0, 0)
     }
+  }
+
+  private fallbackName(name: string | null, region?: Region): string {
+    if (name && name.length > 0) return name
+    return `Bear from ${region ?? this.myRegion}`
+  }
+
+  private applyWelcome(m: WelcomeMsg) {
+    if (this.welcomeApplied) return
+    this.welcomeApplied = true
+
+    // If server has a different last_room, transition there (using existing scene.restart pipeline)
+    if (m.last_room && m.last_room !== this.currentRoomId && isValidRoom(m.last_room)) {
+      const wx = (typeof m.last_x === 'number') ? m.last_x : undefined
+      const wy = (typeof m.last_y === 'number') ? m.last_y : undefined
+      this.transitioning = true
+      stopRoomAudio()
+      if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
+      sendRoomChange(m.last_room)
+      this.scene.restart({ roomId: m.last_room, spawnPoint: 'default', welcomeX: wx, welcomeY: wy })
+      return
+    }
+
+    // Same room: apply spawn override if provided (and not already applied via pendingSpawn)
+    if (this.myBear && typeof m.last_x === 'number' && typeof m.last_y === 'number') {
+      const lx = m.last_x, ly = m.last_y
+      if (!this.collidesAt(lx, ly)) {
+        this.myBear.sprite.x = lx
+        this.myBear.sprite.y = ly
+      }
+    }
+
+    // Display name
+    if (m.display_name) {
+      this.myDisplayName = m.display_name
+      setLocalDisplayName(m.display_name)
+    } else {
+      this.myDisplayName = null
+    }
+    if (this.myBear) this.myBear.setDisplayName(this.fallbackName(this.myDisplayName))
+
+    // First-visit modal
+    if (m.display_name === null && isFirstVisit()) {
+      showNameModal(null, (chosen) => {
+        markNameChoicePrompted()
+        if (chosen != null) {
+          sendName(chosen)
+          setLocalDisplayName(chosen)
+          this.myDisplayName = chosen
+          this.myBear?.setDisplayName(this.fallbackName(chosen))
+        }
+      })
+    }
+  }
+
+  private applyNameChanged(m: NameChangedMsg) {
+    // Server doesn't tell us our own peer id (it's `you` in snap). We track via the local identity check.
+    const peer = this.peers.get(m.id)
+    if (peer) {
+      peer.bear.setDisplayName(this.fallbackName(m.display_name, peer.bear.region))
+    } else {
+      // It's us — broadcast loop-back. Update own bear + cache.
+      this.myDisplayName = m.display_name
+      setLocalDisplayName(m.display_name)
+      this.myBear?.setDisplayName(this.fallbackName(m.display_name))
+    }
+  }
+
+  private openRenameModal() {
+    showNameModal(this.myDisplayName, (chosen) => {
+      if (chosen != null) {
+        sendName(chosen)
+        setLocalDisplayName(chosen)
+        this.myDisplayName = chosen
+        this.myBear?.setDisplayName(this.fallbackName(chosen))
+      }
+    })
   }
 
   private setupAtmosphere(widthPx: number, heightPx: number) {

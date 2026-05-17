@@ -1,5 +1,5 @@
 import { playSfx } from './audio'
-import { prefersReducedMotion, type VolumeChannel } from './config'
+import { prefersReducedMotion, validateClientName, type VolumeChannel } from './config'
 import { getVolume, setVolume } from './volume'
 
 export type EmoteVerb = 'wave' | 'sit' | 'dance' | 'say'
@@ -15,6 +15,22 @@ let sayInput: HTMLInputElement | null = null
 let bubblesEl: HTMLElement | null = null
 let volumeBtnEl: HTMLElement | null = null
 let volumePanelEl: HTMLElement | null = null
+let infoBtnEl: HTMLElement | null = null
+let infoPanelEl: HTMLElement | null = null
+let infoNameEl: HTMLElement | null = null
+let infoRegionEl: HTMLElement | null = null
+let infoIdEl: HTMLElement | null = null
+let infoRenameBtn: HTMLButtonElement | null = null
+let nameModalEl: HTMLElement | null = null
+let nameInputEl: HTMLInputElement | null = null
+let nameErrorEl: HTMLElement | null = null
+let nameSkipBtn: HTMLButtonElement | null = null
+let nameSaveBtn: HTMLButtonElement | null = null
+let nameModalBackdrop: HTMLElement | null = null
+let replacedOverlayEl: HTMLElement | null = null
+let onInfoRenameRequest: (() => void) | null = null
+let onInfoOpenRequest: (() => void) | null = null
+let onNameModalSubmit: ((name: string | null) => void) | null = null
 
 const activeBubbles = new Map<string, { el: HTMLDivElement; until: number }>()
 
@@ -33,6 +49,59 @@ export function initUI() {
   bubblesEl = document.getElementById('lounge-bubbles')
   volumeBtnEl = document.getElementById('lounge-volume-btn')
   volumePanelEl = document.getElementById('lounge-volume-panel')
+  infoBtnEl = document.getElementById('lounge-info-btn')
+  infoPanelEl = document.getElementById('lounge-info-panel')
+  infoNameEl = document.getElementById('lounge-info-name')
+  infoRegionEl = document.getElementById('lounge-info-region')
+  infoIdEl = document.getElementById('lounge-info-id')
+  infoRenameBtn = document.getElementById('lounge-info-rename') as HTMLButtonElement | null
+  nameModalEl = document.getElementById('lounge-name-modal')
+  nameInputEl = document.getElementById('lounge-name-input') as HTMLInputElement | null
+  nameErrorEl = document.getElementById('lounge-name-error')
+  nameSkipBtn = document.getElementById('lounge-name-skip') as HTMLButtonElement | null
+  nameSaveBtn = document.getElementById('lounge-name-save') as HTMLButtonElement | null
+  nameModalBackdrop = nameModalEl?.querySelector('.ui-name-modal-backdrop') ?? null
+  replacedOverlayEl = document.getElementById('lounge-replaced-overlay')
+
+  if (infoBtnEl) {
+    infoBtnEl.addEventListener('click', (e) => {
+      e.stopPropagation()
+      if (infoPanelEl && infoPanelEl.hidden) {
+        onInfoOpenRequest?.()
+        infoPanelEl.hidden = false
+        playSfx('menu_open')
+      } else {
+        hideInfoPanel()
+      }
+    })
+  }
+  if (infoPanelEl) infoPanelEl.addEventListener('click', (e) => e.stopPropagation())
+  if (infoRenameBtn) {
+    infoRenameBtn.addEventListener('click', () => {
+      hideInfoPanel()
+      onInfoRenameRequest?.()
+    })
+  }
+
+  if (nameSaveBtn) {
+    nameSaveBtn.addEventListener('click', () => submitNameModal())
+  }
+  if (nameSkipBtn) {
+    nameSkipBtn.addEventListener('click', () => {
+      const cb = onNameModalSubmit
+      hideNameModal()
+      cb?.(null)
+    })
+  }
+  if (nameInputEl) {
+    nameInputEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); submitNameModal() }
+      else if (e.key === 'Escape') { e.preventDefault(); const cb = onNameModalSubmit; hideNameModal(); cb?.(null) }
+    })
+  }
+  if (nameModalBackdrop) {
+    nameModalBackdrop.addEventListener('click', () => { /* require explicit choice */ })
+  }
 
   if (volumeBtnEl && volumePanelEl) {
     const sliders = volumePanelEl.querySelectorAll<HTMLInputElement>('input[type=range][data-channel]')
@@ -97,6 +166,11 @@ export function initUI() {
         hideVolumePanel()
       }
     }
+    if (infoPanelEl && !infoPanelEl.hidden) {
+      if (!target.closest('#lounge-info-panel') && !target.closest('#lounge-info-btn')) {
+        hideInfoPanel()
+      }
+    }
     if (!menuEl || menuEl.hidden) return
     if (target.closest('#lounge-emote-menu')) return
     if (target.closest('canvas')) return
@@ -107,6 +181,7 @@ export function initUI() {
       hideMenu()
       hideSayInput()
       hideVolumePanel()
+      hideInfoPanel()
     }
   })
 }
@@ -211,4 +286,67 @@ export function updateInteractPromptPos(screenX: number, screenY: number) {
   if (!promptEl) return
   promptEl.style.left = `${screenX}px`
   promptEl.style.top = `${screenY}px`
+}
+
+// V3.0 — name modal, info panel, replaced overlay
+
+function submitNameModal() {
+  if (!nameInputEl || !nameSaveBtn) return
+  const raw = nameInputEl.value
+  const v = validateClientName(raw)
+  if (!v.ok) {
+    if (nameErrorEl) {
+      const map: Record<string, string> = {
+        empty: 'Please enter a name (or click Skip).',
+        too_long: 'Name must be 16 characters or fewer.',
+        blocked: 'That name is not allowed.',
+        type: 'Invalid input.'
+      }
+      nameErrorEl.textContent = map[v.reason] ?? 'Invalid name.'
+      nameErrorEl.hidden = false
+    }
+    nameInputEl.focus()
+    return
+  }
+  const cb = onNameModalSubmit
+  hideNameModal()
+  cb?.(v.value)
+}
+
+export function showNameModal(currentName: string | null, onSubmit: (name: string | null) => void) {
+  if (!nameModalEl || !nameInputEl) return
+  onNameModalSubmit = onSubmit
+  nameInputEl.value = currentName ?? ''
+  if (nameErrorEl) { nameErrorEl.textContent = ''; nameErrorEl.hidden = true }
+  nameModalEl.hidden = false
+  // Defer focus until after the show-paint so input is visible/focusable
+  requestAnimationFrame(() => nameInputEl?.focus())
+}
+
+export function hideNameModal() {
+  if (!nameModalEl) return
+  nameModalEl.hidden = true
+  onNameModalSubmit = null
+}
+
+export function setInfoPanelDataProvider(provider: () => { visitorId: string; displayName: string | null; region: string },
+                                         onRename: () => void) {
+  onInfoOpenRequest = () => {
+    const data = provider()
+    if (infoNameEl)   infoNameEl.textContent   = data.displayName ?? '(anonymous)'
+    if (infoRegionEl) infoRegionEl.textContent = data.region
+    if (infoIdEl)     infoIdEl.textContent     = '…' + data.visitorId.slice(-8)
+  }
+  onInfoRenameRequest = onRename
+}
+
+export function hideInfoPanel() {
+  if (!infoPanelEl || infoPanelEl.hidden) return
+  infoPanelEl.hidden = true
+  playSfx('menu_close')
+}
+
+export function showReplacedOverlay() {
+  if (!replacedOverlayEl) return
+  replacedOverlayEl.hidden = false
 }

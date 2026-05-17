@@ -4,14 +4,28 @@ export type SnapMsg = {
   v: number
   t: 'snap'
   you: string
-  peers: Array<{ id: string; x: number; y: number; cc: string | null; state: string; room: RoomId }>
+  peers: Array<{ id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null }>
 }
-export type JoinMsg = { v: number; t: 'join'; id: string; x: number; y: number; cc: string | null; state: string; room: RoomId }
+export type JoinMsg = { v: number; t: 'join'; id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null }
 export type LeaveMsg = { v: number; t: 'leave'; id: string; room: RoomId }
 export type PosMsg = { v: number; t: 'pos'; id: string; x: number; y: number; vx?: number; vy?: number; state: string; room: RoomId }
 export type ActMsg = { v: number; t: 'act'; id: string; verb: string; text?: string; room: RoomId }
 export type FullMsg = { v: number; t: 'full' }
+export type WelcomeMsg = {
+  v: number; t: 'welcome'
+  visitor_id: string | null
+  display_name: string | null
+  last_room: RoomId | null
+  last_x: number | null
+  last_y: number | null
+  region: string
+}
+export type NameChangedMsg = { v: number; t: 'name_changed'; id: string; display_name: string }
+export type ReplacedMsg = { v: number; t: 'replaced' }
+export type ErrorMsg = { v: number; t: 'error'; reason: string; detail?: string }
+
 export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | ActMsg | FullMsg
+  | WelcomeMsg | NameChangedMsg | ReplacedMsg | ErrorMsg
 
 export type NetCallbacks = {
   onSnap: (m: SnapMsg) => void
@@ -21,20 +35,35 @@ export type NetCallbacks = {
   onAct: (m: ActMsg) => void
   onFull: () => void
   onConnectionChange: (state: 'connecting' | 'open' | 'closed') => void
+  onWelcome?: (m: WelcomeMsg) => void
+  onNameChanged?: (m: NameChangedMsg) => void
+  onReplaced?: () => void
+  onError?: (m: ErrorMsg) => void
 }
 
 let ws: WebSocket | null = null
 let backoff = 1000
 let cb: NetCallbacks | null = null
 let initialRoom: RoomId = DEFAULT_ROOM
+let replaced = false   // set true on `replaced` msg or close code 4001; stops auto-reconnect
 
+/**
+ * Connect to lounge WebSocket. Idempotent — if a socket is already
+ * connecting/open, this just updates the callbacks without opening a new one.
+ * Use sendRoomChange() to transition the existing socket to another room.
+ */
 export function connect(callbacks: NetCallbacks, room: RoomId = DEFAULT_ROOM) {
   cb = callbacks
   initialRoom = room
+  if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+    cb?.onConnectionChange(ws.readyState === WebSocket.OPEN ? 'open' : 'connecting')
+    return
+  }
   openSocket()
 }
 
 function openSocket() {
+  if (replaced) return
   cb?.onConnectionChange('connecting')
   try { ws = new WebSocket(WS_URL) } catch { scheduleReconnect(); return }
 
@@ -59,15 +88,31 @@ function openSocket() {
     else if (msg.t === 'pos') cb?.onPos(msg)
     else if (msg.t === 'act') cb?.onAct(msg)
     else if (msg.t === 'full') cb?.onFull()
+    else if (msg.t === 'welcome') cb?.onWelcome?.(msg)
+    else if (msg.t === 'name_changed') cb?.onNameChanged?.(msg)
+    else if (msg.t === 'replaced') {
+      replaced = true
+      cb?.onReplaced?.()
+    }
+    else if (msg.t === 'error') cb?.onError?.(msg)
   })
 
-  ws.addEventListener('close', () => scheduleReconnect())
+  ws.addEventListener('close', (ev) => {
+    if (ev.code === 4001) {
+      replaced = true
+      cb?.onReplaced?.()
+      cb?.onConnectionChange('closed')
+      return
+    }
+    scheduleReconnect()
+  })
   ws.addEventListener('error', () => {})
 }
 
 function scheduleReconnect() {
   ws = null
   cb?.onConnectionChange('closed')
+  if (replaced) return
   setTimeout(openSocket, backoff)
   backoff = Math.min(backoff * 2, 30_000)
 }
@@ -104,4 +149,9 @@ export function sendAct(verb: string, text?: string, room: RoomId = DEFAULT_ROOM
   const msg: { v: number; t: 'act'; verb: string; text?: string; room: RoomId } = { v: PROTOCOL_VERSION, t: 'act', verb, room }
   if (text != null) msg.text = text
   ws.send(JSON.stringify(msg))
+}
+
+export function sendName(name: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'name', display_name: name }))
 }
