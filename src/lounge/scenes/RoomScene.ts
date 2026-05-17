@@ -1718,6 +1718,21 @@ export class RoomScene extends Phaser.Scene {
       bear.applyEmote('sit', 0, prefersReducedMotion())
     } else if (b.state === 'dance') {
       bear.applyEmote('dance', 365 * 24 * 3600 * 1000, prefersReducedMotion())
+    } else if (b.state === 'sleep') {
+      // V7.6 — sleeping NPC: sit pose, dimmer alpha, floating "zZz" indicator
+      bear.applyEmote('sit', 0, prefersReducedMotion())
+      bear.sprite.setAlpha(0.55)
+      const zzz = this.add.text(b.x, b.y - 56, 'zZz', {
+        fontFamily: 'ui-monospace, monospace',
+        fontSize: '10px', color: '#a0c8ff', stroke: '#000', strokeThickness: 2,
+        resolution: 2
+      }).setOrigin(0.5, 1).setDepth(6)
+      this.tweens.add({
+        targets: zzz, alpha: { from: 0.5, to: 1 },
+        y: zzz.y - 6, duration: 1600, yoyo: true, repeat: -1, ease: 'Sine.InOut'
+      })
+      // Stash on the bear sprite so despawn can clean it up
+      ;(bear.sprite as any).__sleep_zzz = zzz
     } else {
       bear.playIdle()
     }
@@ -1727,6 +1742,8 @@ export class RoomScene extends Phaser.Scene {
   private despawnNpc(id: string) {
     const entry = this.npcBears.get(id)
     if (!entry) return
+    const zzz = (entry.bear.sprite as any).__sleep_zzz as Phaser.GameObjects.Text | undefined
+    if (zzz) zzz.destroy()
     entry.bear.destroy()
     this.npcBears.delete(id)
   }

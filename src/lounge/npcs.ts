@@ -1,7 +1,7 @@
 import type { Region, RoomId } from './config'
 import type { Direction } from './bear'
 
-export type NpcState = 'idle' | 'sit' | 'dance'
+export type NpcState = 'idle' | 'sit' | 'dance' | 'sleep'
 
 export type ScheduleBracket = {
   from: string   // "HH:MM"
