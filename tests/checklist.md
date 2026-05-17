@@ -574,3 +574,45 @@
 ### Mobile / a11y
 - [ ] Touch = click; tap floor → walk; tap own bear → menu opens
 - [ ] 375×812 viewport scales canvas, controls reachable
+
+---
+
+## Lounge V2.0 (`/lounge`, Phaser scaffold)
+
+> Spec: `docs/superpowers/specs/2026-05-17-lounge-v2.0-phaser-scaffold-design.md`
+> Plan: `docs/superpowers/plans/2026-05-17-lounge-v2.0-phaser-scaffold.md`
+> Root docs: `lounge-v2-master-roadmap.md`, `lounge-v2-architecture-principles.md`, `lounge-v2-asset-pipeline.md`
+
+### Mount & render
+- [ ] GET `/lounge` mounts a Phaser canvas (1 canvas under `#lounge-mount`)
+- [ ] Tilemap renders (wood floor, brick walls, door, table+chairs, plant)
+- [ ] Own bear spawns at the spawn point (door, ~240,296)
+- [ ] No console errors
+
+### Movement
+- [ ] Click on floor → bear walks there with 4-direction animation
+- [ ] Click on furniture → target snapped to edge (collision avoidance)
+- [ ] Click outside walls → target clamped to walkable area
+- [ ] Walking up shows back-of-head sprite (no eyes/nose visible)
+- [ ] Walking down shows full face (eyes + cheeks)
+- [ ] Walking left/right shows side-profile (single eye visible)
+
+### Multiplayer
+- [ ] Open in two browsers → each sees the other's bear
+- [ ] Position updates within ~150ms
+- [ ] Closing one tab → other sees disappear within ~1s
+- [ ] Server accepts `hi` messages without visitor_id (backwards compat)
+- [ ] Server accepts `hi` messages WITH visitor_id (Era 2 ladder hook works)
+
+### Functional regressions vs V1 (intentional — restored in V2.1)
+- [ ] No radial interaction menu (clicking own bear walks, doesn't open menu)
+- [ ] No speech bubbles
+- [ ] No emote verbs (wave/sit/dance/say)
+
+### Performance
+- [ ] Bundle size /lounge ≤ 800 KB gzipped
+- [ ] Steady 60 FPS with 1-3 peers visible
+- [ ] No memory leak across long sessions
+
+### Known V2.0 limitations (to address in later phases)
+- [ ] `prefers-reduced-motion` does not yet pause walk animation (V2.1)
