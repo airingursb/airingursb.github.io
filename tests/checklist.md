@@ -667,3 +667,42 @@
 - [ ] BGM file not yet present (V2.1.1 patch)
 - [ ] Ambient sounds not present (V2.4 atmosphere)
 - [ ] Per-channel volume sliders not present (V2.4)
+
+---
+
+## Lounge V2.2+V2.3 (`/lounge`, multi-room + interactables)
+
+> Spec: `docs/superpowers/specs/2026-05-17-lounge-v2.2-v2.3-multi-room-interactables-design.md`
+> Plan: `docs/superpowers/plans/2026-05-17-lounge-v2.2-v2.3-multi-room-interactables.md`
+
+### Rooms
+- [ ] `/lounge` opens in Lobby (default room)
+- [ ] Lobby has 2 doors visible (east + west walls)
+- [ ] Walking into east door → fades to black → spawns in DJ Floor at `from_lobby` point
+- [ ] DJ Floor has 1 door (west wall) back to Lobby
+- [ ] Walking into Balcony door (west of Lobby) → spawns in Balcony at `from_lobby`
+- [ ] Each room renders its own tilemap (different layout / furniture)
+
+### Multiplayer room scoping
+- [ ] Two browsers in different rooms → each sees 0 peers from the other room
+- [ ] Two browsers in same room → see each other
+- [ ] Player moves through portal → other room's peers see them join; old room's peers see them leave
+
+### Interactables
+- [ ] Standing near a couch → `[E] sit` floats above own bear's head
+- [ ] Pressing E → bear walks to couch anchor + sits
+- [ ] Sitting → bear stays seated (state persists)
+- [ ] Pressing E again while sitting → bear stands up (sit toggles off)
+- [ ] Moving via WASD/arrow keys while sitting → bear stands up + walks
+- [ ] Clicking the couch directly → same as pressing E
+- [ ] Walking away from couch (out of proximity) → prompt disappears
+
+### Protocol compatibility
+- [ ] v=1 client (no room field) defaults to room_lobby (smoke-tested via Node script)
+- [ ] v=2 client sends room field on hi/pos
+- [ ] Server clamps pos updates to per-room floor bounds
+- [ ] Un-greeted peers don't receive cross-room broadcasts (race fix)
+
+### Reduced motion
+- [ ] Portal transitions are instant (no fade) under reduced-motion
+- [ ] All emote behaviors from V2.1 still respect reduced-motion
