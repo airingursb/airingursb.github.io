@@ -1,0 +1,36 @@
+---
+// src/components/comics/ComicCover.astro
+import type { Comic } from '../../lib/comics';
+import ComicPanel from './ComicPanel.astro';
+
+interface Props {
+  comic: Comic;
+  lang: 'zh' | 'en';
+}
+const { comic, lang } = Astro.props;
+
+function formatDate(s: string, locale: string) {
+  const d = new Date(s || comic.created_at);
+  return d.toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  });
+}
+
+const detailHref = lang === 'en'
+  ? `/en/comics/${comic.issue_number}`
+  : `/comics/${comic.issue_number}`;
+---
+
+<article class="comics-hero">
+  <div class="meta">
+    <span class="issue">No. {comic.issue_number}</span>
+    <span>{formatDate(comic.published_at, lang)}</span>
+    {comic.tags?.map((t) => <span class="tag">#{t}</span>)}
+  </div>
+  <a href={detailHref} style="text-decoration:none;color:inherit;">
+    <h2 class="heading">{comic.title[lang] || comic.title.zh}</h2>
+  </a>
+  <div class="grid">
+    {comic.panels.map((p) => <ComicPanel panel={p} lang={lang} />)}
+  </div>
+</article>
