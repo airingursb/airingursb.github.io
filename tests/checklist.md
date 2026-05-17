@@ -1149,3 +1149,27 @@
 - [ ] All public lounge endpoints return `Access-Control-Allow-Origin: *`
 - [ ] OPTIONS preflight returns 204 for any Origin
 - [ ] Cache-Control: public, max-age=30
+
+## Lounge V6.0 (Navigation + visibility patch — Era 5 begins)
+
+### Country flag
+- [ ] Own bear label shows `🇨🇳 Name` instead of `Bear from asia`
+- [ ] Peer bear with CC shows their flag
+- [ ] Anonymous + no CC → `🌍 Bear`
+
+### Minimap (bottom-left)
+- [ ] Shows 6 rooms with connections (Library / Balcony / Lobby / DJ Floor / Beach / Home)
+- [ ] Current room highlighted green
+- [ ] Rooms with NPCs marked with gold border + small dot
+- [ ] Refreshes every 30s for schedule drift
+
+### Door labels
+- [ ] Walking within 48px of a portal → `→ <Room Name>` floats above own bear
+- [ ] Disappears when walking away
+- [ ] Home portal shows "Home" not the dynamic room_home_<hash>
+
+### NPC schedule widening
+- [ ] Mio: 06-12 Lobby / 12-18 Balcony / 18-22 Library — covers 16h/day
+- [ ] Kai: 14-04 DJ Floor — covers 14h
+- [ ] Pip (new): 24/7 in Lobby — every visitor sees at least one NPC immediately
+- [ ] Pip's dialog tells visitor about doors and basic mechanics

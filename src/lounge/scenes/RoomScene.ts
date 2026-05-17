@@ -3,7 +3,8 @@ import { Bear, registerBearAnimations } from '../bear'
 import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendGift, sendDm, requestDmThread, sendDmRead, sendPlace, sendPickup, requestHomeDecorations, sendJamTap, sendLetterDrop, requestLettersInRoom, requestWishes, sendWishSubmit, sendWishVote, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry, type GiftEntry, type GiftReceivedMsg, type GiftSentOkMsg, type GiftFailedMsg, type DmReceivedMsg, type DmSentOkMsg, type DmFailedMsg, type DmThreadMsg, type DmEntry, type HomeDecoration, type PlaceOkMsg, type PlaceFailedMsg, type PickupOkMsg, type PickupFailedMsg, type HomeDecorationBroadcast, type HomeDecorationsResponseMsg, type JamTapMsg, type JamBurstMsg, type LetterEntry, type LetterDropOkMsg, type LetterDropFailedMsg, type LetterAppearedMsg, type LettersInRoomMsg, type WishesListMsg, type WishSubmitOkMsg, type WishVoteOkMsg, type WishFailedMsg } from '../net'
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
-import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, type Region, type RoomId } from '../config'
+import { renderMinimap, showDoorLabel, hideDoorLabel, MAP_ROOMS } from '../minimap'
+import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, type Region, type RoomId } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
 import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
@@ -87,6 +88,7 @@ export class RoomScene extends Phaser.Scene {
   private holidayEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
   // V4.0 — friendship
   private peerVisitorIds = new Map<string, string>()      // session id → visitor_id
+  private peerCCs = new Map<string, string | null>()      // session id → country code (for flag display)
   private friendships = new Map<string, FriendshipEntry>() // friend_visitor_id → entry
   private lastClickedPeerId: string | null = null         // for directed wave
   // V4.1 — gifts + DMs
@@ -188,6 +190,9 @@ export class RoomScene extends Phaser.Scene {
     this.loadAndStartSeasons(map.widthInPixels, map.heightInPixels)
     // Request letters for this room (after WS welcome + snap arrive)
     this.time.delayedCall(800, () => requestLettersInRoom(this.currentRoomId))
+    // V6.0 — Minimap (initial render; refresh every 30s for NPC schedule drift)
+    this.refreshMinimap()
+    this.time.addEvent({ delay: 30_000, loop: true, callback: () => this.refreshMinimap() })
 
     // V4.2 — if in a home room, render decorations.
     if (isHomeRoom(this.currentRoomId)) {
@@ -398,11 +403,13 @@ export class RoomScene extends Phaser.Scene {
         this.peers.forEach((p) => p.bear.destroy())
         this.peers.clear()
         this.peerVisitorIds.clear()
+        this.peerCCs.clear()
         for (const p of m.peers) {
           if (p.room !== this.currentRoomId) continue
           const bear = new Bear(this, p.x, p.y, ccToRegion(p.cc))
           bear.sprite.setDepth(5)
-          bear.setDisplayName(this.fallbackName(p.display_name ?? null, ccToRegion(p.cc)))
+          bear.setDisplayName(this.fallbackName(p.display_name ?? null, p.cc))
+          this.peerCCs.set(p.id, p.cc)
           if (p.visitor_id) {
             this.peerVisitorIds.set(p.id, p.visitor_id)
             const fr = this.friendships.get(p.visitor_id)
@@ -416,7 +423,8 @@ export class RoomScene extends Phaser.Scene {
         if (this.peers.has(m.id)) return
         const bear = new Bear(this, m.x, m.y, ccToRegion(m.cc))
         bear.sprite.setDepth(5)
-        bear.setDisplayName(this.fallbackName(m.display_name ?? null, ccToRegion(m.cc)))
+        bear.setDisplayName(this.fallbackName(m.display_name ?? null, m.cc))
+        this.peerCCs.set(m.id, m.cc)
         if (m.visitor_id) {
           this.peerVisitorIds.set(m.id, m.visitor_id)
           const fr = this.friendships.get(m.visitor_id)
@@ -428,6 +436,7 @@ export class RoomScene extends Phaser.Scene {
         const peer = this.peers.get(m.id)
         if (peer) { peer.bear.destroy(); this.peers.delete(m.id) }
         this.peerVisitorIds.delete(m.id)
+        this.peerCCs.delete(m.id)
       },
       onPos: (m: PosMsg) => {
         if (m.room !== this.currentRoomId) return
@@ -435,7 +444,7 @@ export class RoomScene extends Phaser.Scene {
         if (!peer) {
           const bear = new Bear(this, m.x, m.y, 'unknown')
           bear.sprite.setDepth(5)
-          bear.setDisplayName(this.fallbackName(null, 'unknown'))
+          bear.setDisplayName(this.fallbackName(null, null))
           peer = { bear, lastUpdate: performance.now() }
           this.peers.set(m.id, peer)
         }
@@ -604,9 +613,17 @@ export class RoomScene extends Phaser.Scene {
     }
   }
 
-  private fallbackName(name: string | null, region?: Region): string {
-    if (name && name.length > 0) return name
-    return `Bear from ${region ?? this.myRegion}`
+  /**
+   * Bear label format. Country flag always prefixes when known.
+   *   Named visitor + CC:    "🇨🇳 Pat"
+   *   Named visitor, no CC:  "🌍 Pat"
+   *   Anonymous + CC:        "🇨🇳 Bear"
+   *   Anonymous, no CC:      "🌍 Bear"
+   */
+  private fallbackName(name: string | null, cc?: string | null): string {
+    const flag = ccToFlag(cc ?? this.myCC)
+    if (name && name.length > 0) return `${flag} ${name}`
+    return `${flag} Bear`
   }
 
   private applyWelcome(m: WelcomeMsg) {
@@ -702,7 +719,7 @@ export class RoomScene extends Phaser.Scene {
     // Server doesn't tell us our own peer id (it's `you` in snap). We track via the local identity check.
     const peer = this.peers.get(m.id)
     if (peer) {
-      peer.bear.setDisplayName(this.fallbackName(m.display_name, peer.bear.region))
+      peer.bear.setDisplayName(this.fallbackName(m.display_name, this.peerCCs.get(m.id) ?? null))
     } else {
       // It's us — broadcast loop-back. Update own bear + cache.
       this.myDisplayName = m.display_name
@@ -1458,6 +1475,7 @@ export class RoomScene extends Phaser.Scene {
   private async loadAndStartNpcs() {
     this.npcManifest = await loadNpcManifest()
     this.refreshNpcs()
+    this.refreshMinimap()  // now that we know NPC locations, repaint the minimap dots
     this.npcRefreshTimer = this.time.addEvent({
       delay: NPC_REFRESH_MS,
       loop: true,
@@ -1662,6 +1680,59 @@ export class RoomScene extends Phaser.Scene {
     target.applyEmote(verb, def.durationMs, prefersReducedMotion())
   }
 
+  // V6.0 — door proximity (floating "→ Library" label near portals)
+  private nearbyDoorPortal: Portal | null = null
+
+  private checkDoorProximity() {
+    if (!this.myBear) return
+    const PROX = 48
+    let nearest: Portal | null = null
+    let bestD = Infinity
+    for (const p of this.portals) {
+      const cx = p.x + p.w / 2
+      const cy = p.y + p.h / 2
+      const d = Math.hypot(cx - this.myBear.x, cy - this.myBear.y)
+      if (d < PROX && d < bestD) { nearest = p; bestD = d }
+    }
+    if (nearest !== this.nearbyDoorPortal) {
+      this.nearbyDoorPortal = nearest
+      if (!nearest) hideDoorLabel()
+    }
+    if (this.nearbyDoorPortal && this.myBear) {
+      const screen = this.bearScreenPos(this.myBear)
+      const target = this.nearbyDoorPortal.targetRoom
+      let roomLabel = MAP_ROOMS.find(r => r.id === target)?.label
+      if (!roomLabel) {
+        if (isHomeRoom(target) || target === ('room_home_self' as RoomId)) roomLabel = 'Home'
+        else roomLabel = String(target)
+      }
+      showDoorLabel(`→ ${roomLabel}`, screen.x, screen.y - 12)
+    }
+  }
+
+  /** V6.0 — refresh minimap. Computes which rooms currently have NPCs. */
+  private refreshMinimap() {
+    const npcRooms: string[] = []
+    if (this.npcManifest) {
+      const now = new Date()
+      for (const def of this.npcManifest.npcs) {
+        for (const b of def.schedule) {
+          // Mirror getActiveBracket logic (don't import again to keep this O(N) local)
+          const from = b.from.split(':').map(Number)
+          const to = b.to.split(':').map(Number)
+          const fromMin = from[0]*60+from[1]
+          const toMin = to[0]*60+to[1]
+          const minutes = now.getHours()*60+now.getMinutes()
+          if (toMin === 1439 ? (minutes >= fromMin && minutes <= toMin) : (minutes >= fromMin && minutes < toMin)) {
+            npcRooms.push(b.room)
+            break
+          }
+        }
+      }
+    }
+    renderMinimap(this.currentRoomId, npcRooms)
+  }
+
   private checkPortals() {
     if (this.transitioning || !this.myBear) return
     for (const p of this.portals) {
@@ -1681,6 +1752,7 @@ export class RoomScene extends Phaser.Scene {
           this.seasonalEmitter?.destroy(); this.seasonalEmitter = undefined
           this.holidayEmitter?.destroy(); this.holidayEmitter = undefined
           this.seasonOverlay?.destroy(); this.seasonOverlay = undefined
+          hideDoorLabel()
           sendRoomChange(targetRoom)
           this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
         }
@@ -1750,6 +1822,7 @@ export class RoomScene extends Phaser.Scene {
       this.checkPortals()
       this.checkInteractableProximity()
       this.monitorBoothDistance()
+      this.checkDoorProximity()
     }
     this.peers.forEach((p) => p.bear.update(dtMs, true))
     this.npcBears.forEach((entry) => entry.bear.update(dtMs, true))

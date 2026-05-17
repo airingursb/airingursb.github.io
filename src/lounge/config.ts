@@ -32,6 +32,26 @@ export function ccToRegion(cc: string | null | undefined): Region {
   return REGION_BY_CC[cc.toUpperCase()] || 'unknown'
 }
 
+/** Convert 2-letter country code → flag emoji. Returns 🌍 if unknown. */
+export function ccToFlag(cc: string | null | undefined): string {
+  if (!cc || !/^[A-Za-z]{2}$/.test(cc)) return '🌍'
+  const c = cc.toUpperCase()
+  return String.fromCodePoint(
+    0x1F1E6 + c.charCodeAt(0) - 65,
+    0x1F1E6 + c.charCodeAt(1) - 65
+  )
+}
+
+/** Human-readable country name from CC, fallback to "Unknown". */
+export function ccToCountryName(cc: string | null | undefined): string {
+  if (!cc) return 'Unknown'
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(cc.toUpperCase()) || cc
+  } catch {
+    return cc
+  }
+}
+
 export function getOrCreateVisitorId(): string {
   try {
     const existing = localStorage.getItem('lounge_visitor_id')
