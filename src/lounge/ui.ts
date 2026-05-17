@@ -226,6 +226,8 @@ export function initUI() {
     }
   })
   ensureQuestsRefs()
+  ensureCameraRefs()
+  ensureMemoriesRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -425,6 +427,105 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat') {
   if (!infoSpeciesBtn) return
   infoSpeciesBtn.dataset.species = currentSpecies
   infoSpeciesBtn.textContent = currentSpecies === 'bear' ? 'Switch to 🐱 Cat' : 'Switch to 🐻 Bear'
+}
+
+// V8.3 — Camera tool button + memories panel
+import { getEquippedTool, setEquippedTool, listMemories, deleteMemory } from './memories'
+
+let cameraBtn: HTMLButtonElement | null = null
+let memoriesPanelEl: HTMLElement | null = null
+let memoriesListEl: HTMLElement | null = null
+let memoriesEmptyEl: HTMLElement | null = null
+let memoriesCloseBtn: HTMLButtonElement | null = null
+let memoriesOpenBtn: HTMLButtonElement | null = null
+
+function paintCameraBtn() {
+  if (!cameraBtn) return
+  const equipped = getEquippedTool() === 'camera'
+  cameraBtn.classList.toggle('equipped', equipped)
+  cameraBtn.title = equipped
+    ? 'Camera equipped — click anywhere to capture (right-click to put away)'
+    : 'Equip camera (click anywhere to capture)'
+}
+
+function ensureCameraRefs() {
+  if (cameraBtn) return
+  cameraBtn = document.getElementById('lounge-camera-btn') as HTMLButtonElement | null
+  if (cameraBtn) {
+    cameraBtn.addEventListener('click', () => {
+      const next = getEquippedTool() === 'camera' ? 'none' : 'camera'
+      setEquippedTool(next)
+      paintCameraBtn()
+    })
+    cameraBtn.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      setEquippedTool('none')
+      paintCameraBtn()
+    })
+  }
+  paintCameraBtn()
+}
+
+function ensureMemoriesRefs() {
+  if (memoriesPanelEl) return
+  memoriesPanelEl  = document.getElementById('lounge-memories-panel')
+  memoriesListEl   = document.getElementById('lounge-memories-list')
+  memoriesEmptyEl  = document.getElementById('lounge-memories-empty')
+  memoriesCloseBtn = document.getElementById('lounge-memories-close') as HTMLButtonElement | null
+  memoriesOpenBtn  = document.getElementById('lounge-info-memories') as HTMLButtonElement | null
+  if (memoriesCloseBtn) memoriesCloseBtn.addEventListener('click', () => hideMemoriesPanel())
+  if (memoriesOpenBtn) memoriesOpenBtn.addEventListener('click', () => { hideInfoPanel(); showMemoriesPanel() })
+  if (memoriesPanelEl) memoriesPanelEl.addEventListener('click', (e) => {
+    if (e.target === memoriesPanelEl) hideMemoriesPanel()
+  })
+}
+
+export function showMemoriesPanel() {
+  ensureMemoriesRefs()
+  if (!memoriesPanelEl) return
+  renderMemories()
+  memoriesPanelEl.hidden = false
+  playSfx('menu_open')
+}
+
+export function hideMemoriesPanel() {
+  if (!memoriesPanelEl) return
+  memoriesPanelEl.hidden = true
+  playSfx('menu_close')
+}
+
+function renderMemories() {
+  if (!memoriesListEl || !memoriesEmptyEl) return
+  const list = listMemories()
+  memoriesListEl.innerHTML = ''
+  memoriesEmptyEl.hidden = list.length > 0
+  for (const m of list) {
+    const tile = document.createElement('div')
+    tile.className = 'mem-tile'
+    const time = document.createElement('div')
+    time.className = 'mem-time'
+    time.textContent = '📷 ' + m.gameTime
+    const room = document.createElement('div')
+    room.className = 'mem-room'
+    room.textContent = m.roomLabel
+    const meta = document.createElement('div')
+    meta.className = 'mem-meta'
+    const parts: string[] = []
+    if (m.visibleNpcs.length > 0) parts.push(`with ${m.visibleNpcs.join(', ')}`)
+    if (m.visiblePeers.length > 0) parts.push(`+${m.visiblePeers.length} peer${m.visiblePeers.length > 1 ? 's' : ''}`)
+    if (m.weather) parts.push(m.weather)
+    meta.textContent = parts.join(' · ') || new Date(m.realTimestamp).toLocaleString()
+    const del = document.createElement('button')
+    del.className = 'mem-delete'
+    del.type = 'button'
+    del.textContent = '×'
+    del.addEventListener('click', () => { deleteMemory(m.id); renderMemories() })
+    tile.appendChild(time)
+    tile.appendChild(room)
+    tile.appendChild(meta)
+    tile.appendChild(del)
+    memoriesListEl.appendChild(tile)
+  }
 }
 
 // V8.0 — Game time clock + toggle

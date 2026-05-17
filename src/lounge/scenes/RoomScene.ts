@@ -18,6 +18,7 @@ import { getActiveFestivalId, getActiveFestival } from '../festivals'
 import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
+import { getEquippedTool, captureMemory } from '../memories'
 
 const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
@@ -332,6 +333,12 @@ export class RoomScene extends Phaser.Scene {
 
       // V6.6 — every click gets a small ring ripple for tactile feedback
       clickRipple(this, wx, wy)
+
+      // V8.3 — camera equipped → capture a memory at the click point
+      if (getEquippedTool() === 'camera') {
+        this.captureMomentHere(wx, wy)
+        return
+      }
 
       // V5.1 — letter has highest priority (small clickable icon)
       if (this.tryReadLetterAt(wx, wy)) return
@@ -1761,6 +1768,35 @@ export class RoomScene extends Phaser.Scene {
     if (zzz) zzz.destroy()
     entry.bear.destroy()
     this.npcBears.delete(id)
+  }
+
+  // V8.3 — Camera capture: build a Memory from current scene state and play a flash + sound.
+  private captureMomentHere(_wx: number, _wy: number) {
+    const npcs = Array.from(this.npcBears.values()).map(e => e.def.name)
+    const peers = Array.from(this.peers.values()).map(p => p.bear)
+    const weather = getWeatherForDate(new Date())
+    const labelMap: Record<string, string> = {
+      room_lobby: 'Lobby', room_dj_floor: 'DJ Floor', room_balcony: 'Balcony',
+      room_library: 'Library', room_beach: 'Beach', room_grove: 'Grove',
+      room_kitchen: 'Kitchen', room_workshop: 'Workshop', room_rooftop: 'Rooftop'
+    }
+    const roomLabel = isHomeRoom(this.currentRoomId) ? 'Home' : (labelMap[this.currentRoomId] ?? this.currentRoomId)
+    captureMemory({
+      roomId: this.currentRoomId, roomLabel,
+      visibleNpcs: npcs,
+      visiblePeers: peers.map((_, i) => `peer_${i}`),
+      weather: weather === 'clear' ? undefined : weather
+    })
+    // White flash overlay
+    const flash = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0xffffff, 0.85)
+      .setOrigin(0).setDepth(1500).setScrollFactor(0)
+    this.tweens.add({
+      targets: flash, alpha: 0,
+      duration: 350,
+      onComplete: () => flash.destroy()
+    })
+    consumeEnergy(ENERGY_COST.tool_use)
+    showToast('📷 Memory captured', 1600)
   }
 
   // V7.7 — Sequential cutscene runner.
