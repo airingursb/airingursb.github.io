@@ -491,3 +491,39 @@
 - [ ] Supabase RPC 500 → card 仍渲染 `#--,---` 占位，无 console error 崩溃
 - [ ] `/api/online/count` 失败 → `.vp-online-row` 保持 `hidden`，主信息仍展示
 - [ ] 移动端 375×812 视口 → card 自适应不溢出
+
+---
+
+## Online Popover Scene (homepage, click `.online-line` under mascot)
+
+> Spec: `docs/superpowers/specs/2026-05-17-online-popover-scene-design.md`
+> Plan: `docs/superpowers/plans/2026-05-17-online-popover-scene.md`
+
+### Render
+- [ ] Click `.online-line` → popover opens with country list visible
+- [ ] Scene SVG visible BELOW the country list
+- [ ] Scene shows ~28 furniture pieces (bookshelf / jukebox / DJ booth / vending / TVs / plants / etc.)
+- [ ] Bear count == `min(count.site, 7)`; `+N` overflow marker visible when total > 7
+
+### Data & "you"
+- [ ] Bears colored by region (CN=brown, US=orange, JP=brown, DE=purple, AU=blue, ZA=yellow)
+- [ ] Current visitor's bear (if `sessionStorage.vp_country` set & matches an online country) has accent green ring with pulse
+- [ ] Bears assigned to fixed slot positions — never random
+
+### Animation
+- [ ] Random bear briefly blinks every ~6-10 seconds while popover is OPEN
+- [ ] String light bulbs fade in/out (5s loop, staggered)
+- [ ] Disco ball inner circle gently pulses (4s loop)
+- [ ] Closing popover stops the blink interval (verify `el._vpsBlinkTimer == null`)
+- [ ] Reopening popover restarts blinks
+- [ ] `prefers-reduced-motion: reduce` → bear blinks skipped, CSS animations disabled
+
+### Theme & layout
+- [ ] Scene renders identically in both light + dark mode (self-contained dark scene)
+- [ ] 375×812 mobile viewport → scene scales proportionally, no overflow
+
+### Edge cases
+- [ ] `total === 0` → no scene rendered (popover keeps country list)
+- [ ] `total === 1` → 1 bear in slot 1, scene otherwise empty
+- [ ] All countries unknown → bears all grey (`#888888`)
+- [ ] `vp_country` null → no bear gets the ring
