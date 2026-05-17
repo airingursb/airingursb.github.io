@@ -228,6 +228,7 @@ export function initUI() {
   ensureQuestsRefs()
   ensureCameraRefs()
   ensureMemoriesRefs()
+  ensureShellsRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -427,6 +428,85 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat') {
   if (!infoSpeciesBtn) return
   infoSpeciesBtn.dataset.species = currentSpecies
   infoSpeciesBtn.textContent = currentSpecies === 'bear' ? 'Switch to 🐱 Cat' : 'Switch to 🐻 Bear'
+}
+
+// V8.4 — Shells counter + Mio's Shop
+import { getShells, spendShells, onShellsChange, SHOP, hasPurchased, markPurchased, type ShopItem } from './shells'
+
+let shellsCounterEl: HTMLElement | null = null
+let shellsNumEl: HTMLElement | null = null
+let shopPanelEl: HTMLElement | null = null
+let shopListEl: HTMLElement | null = null
+let shopBalanceEl: HTMLElement | null = null
+let shopCloseBtn: HTMLButtonElement | null = null
+let shopOpenBtn: HTMLButtonElement | null = null
+
+function ensureShellsRefs() {
+  if (shellsCounterEl) return
+  shellsCounterEl = document.getElementById('lounge-shells')
+  shellsNumEl     = document.getElementById('lounge-shells-num')
+  shopPanelEl     = document.getElementById('lounge-shop-panel')
+  shopListEl      = document.getElementById('lounge-shop-list')
+  shopBalanceEl   = document.getElementById('lounge-shop-balance')
+  shopCloseBtn    = document.getElementById('lounge-shop-close') as HTMLButtonElement | null
+  shopOpenBtn     = document.getElementById('lounge-info-shop') as HTMLButtonElement | null
+  if (shopCloseBtn) shopCloseBtn.addEventListener('click', () => hideShopPanel())
+  if (shopOpenBtn) shopOpenBtn.addEventListener('click', () => { hideInfoPanel(); showShopPanel() })
+  if (shopPanelEl) shopPanelEl.addEventListener('click', (e) => {
+    if (e.target === shopPanelEl) hideShopPanel()
+  })
+  paintShellsCounter(getShells())
+  onShellsChange(paintShellsCounter)
+}
+
+function paintShellsCounter(v: number) {
+  if (shellsNumEl) shellsNumEl.textContent = String(v)
+}
+
+export function showShopPanel() {
+  ensureShellsRefs()
+  if (!shopPanelEl) return
+  renderShop()
+  shopPanelEl.hidden = false
+  playSfx('menu_open')
+}
+
+export function hideShopPanel() {
+  if (!shopPanelEl) return
+  shopPanelEl.hidden = true
+  playSfx('menu_close')
+}
+
+function renderShop() {
+  if (!shopListEl || !shopBalanceEl) return
+  const bal = getShells()
+  shopBalanceEl.textContent = String(bal)
+  shopListEl.innerHTML = ''
+  for (const item of SHOP) {
+    const owned = hasPurchased(item.id)
+    const canAfford = bal >= item.cost
+    const row = document.createElement('div')
+    row.className = 'shop-item'
+    const name = document.createElement('div')
+    name.className = 'si-name'
+    const title = document.createElement('div'); title.className = 'si-title'; title.textContent = item.name
+    const blurb = document.createElement('div'); blurb.className = 'si-blurb'; blurb.textContent = item.blurb
+    name.appendChild(title); name.appendChild(blurb)
+    const cost = document.createElement('div'); cost.className = 'si-cost'; cost.textContent = `🐚 ${item.cost}`
+    const buy = document.createElement('button'); buy.type = 'button'
+    buy.textContent = owned ? 'Owned' : 'Buy'
+    buy.disabled = owned || !canAfford
+    buy.addEventListener('click', () => buyItem(item))
+    row.appendChild(name); row.appendChild(cost); row.appendChild(buy)
+    shopListEl.appendChild(row)
+  }
+}
+
+function buyItem(item: ShopItem) {
+  if (hasPurchased(item.id)) return
+  if (!spendShells(item.cost)) return
+  markPurchased(item.id)
+  renderShop()
 }
 
 // V8.3 — Camera tool button + memories panel

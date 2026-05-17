@@ -19,6 +19,7 @@ import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollec
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 import { getEquippedTool, captureMemory } from '../memories'
+import { awardShells, claimDailyVisitBonus, SHELL_REWARD } from '../shells'
 
 const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
@@ -669,6 +670,12 @@ export class RoomScene extends Phaser.Scene {
     // V7.4 — quest progress on room visit
     onRoomVisitedQuest(this.currentRoomId)
 
+    // V8.4 — once per UTC day, award the daily-visit shells bonus
+    const dailyBonus = claimDailyVisitBonus()
+    if (dailyBonus > 0) {
+      this.time.delayedCall(2200, () => showToast(`🐚 +${dailyBonus} shells (daily visit)`, 2800))
+    }
+
     // V7.7 — try to run a cutscene on room entry (NPCs spawn shortly after,
     // so delay a bit). At most one cutscene per scene boot.
     this.time.delayedCall(1500, () => {
@@ -978,6 +985,9 @@ export class RoomScene extends Phaser.Scene {
     refreshInventoryPanel()
     const itemName = getAllPebbles().find(p => p.id === m.item_id)?.name ?? m.item_id
     showToast(`🎁 ${m.from_name ?? '(anonymous)'} gifted you "${itemName}"`)
+    // V8.4 — accepting a gift earns shells
+    awardShells(SHELL_REWARD.gift_accepted)
+    this.time.delayedCall(2000, () => showToast(`🐚 +${SHELL_REWARD.gift_accepted} shells (gift accepted)`, 2000))
   }
 
   private applyDmSentOk(m: DmSentOkMsg) {
@@ -1904,6 +1914,11 @@ export class RoomScene extends Phaser.Scene {
     onWaveAtQuest(id)
     // V8.1 — talking takes a sip of energy
     consumeEnergy(ENERGY_COST.interact)
+    // V8.4 — meeting an NPC for the first time awards a few shells
+    if (ctx.isFirstMeeting) {
+      awardShells(SHELL_REWARD.npc_first_meet)
+      this.time.delayedCall(700, () => showToast(`🐚 +${SHELL_REWARD.npc_first_meet} shells (first meet ${entry.def.name})`, 2400))
+    }
   }
 
   private tryInteract() {
