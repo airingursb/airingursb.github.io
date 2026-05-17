@@ -1644,6 +1644,39 @@
       <span class="lang-zh-only">如果你在后面任何一章看到 "<em>write barrier</em>" "<em>root scan</em>" "<em>safepoint</em>" 想不起来含义——回到本章。术语表（最后一章）也会再列一次。</span>
       <span class="lang-en-only">If any later chapter says "<em>write barrier</em>" / "<em>root scan</em>" / "<em>safepoint</em>" and you blank — come back here. The glossary at the end repeats them too.</span>
     </div>
+
+    <h3 class="sub lang-zh-only">本文 benchmark 的方法论</h3>
+    <h3 class="sub lang-en-only">Benchmark methodology used throughout</h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>environment · so you can spot the variance</span><span class="src-tag">2026-05</span></div>
+<span class="src-line"><span class="src-comment">// Machine:    Apple Silicon (M-series, 16 GB RAM)</span></span>
+<span class="src-line"><span class="src-comment">// OS:         macOS Darwin 25.x (kernel-level mmap policy varies — affects ZGC)</span></span>
+<span class="src-line"><span class="src-comment">// Allocator:  system default per runtime (CPython PyMalloc · Lua mallocator</span></span>
+<span class="src-line"><span class="src-comment">//                                          · Go mcache · JVM ParallelGC</span></span>
+<span class="src-line"><span class="src-comment">//                                          · Node V8 default · Rust system)</span></span>
+<span class="src-line"><span class="src-comment">// Versions:   CPython 3.13 · Lua 5.4.7 · OCaml 5.2 · Node v22.16 · Go 1.23</span></span>
+<span class="src-line"><span class="src-comment">//             Rust 1.85 -O · JDK 21 + ZGC · Erlang/OTP 27</span></span>
+<span class="src-line"><span class="src-comment">// Repetitions: each timing is single-run, no warm-up unless the runtime is JITed</span></span>
+<span class="src-line"><span class="src-comment">//              (Node/JVM ran 3x; values shown are median).</span></span>
+<span class="src-line"><span class="src-comment">// Variance:   readers reproducing on different machines should expect 2-4×</span></span>
+<span class="src-line"><span class="src-comment">//             absolute spread on alloc/free numbers · order-of-magnitude</span></span>
+<span class="src-line"><span class="src-comment">//             ratios (e.g. "Lua's 580ms vs Rust's 15ms · 38× faster Rust")</span></span>
+<span class="src-line"><span class="src-comment">//             should still hold across hardware.</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Source files:</span></span>
+<span class="src-line"><span class="src-comment">//   /tmp/mainline.py   /tmp/mainline.lua    /tmp/mainline.ml</span></span>
+<span class="src-line"><span class="src-comment">//   /tmp/mainline.js   /tmp/mainline.go     /tmp/mainline.rs</span></span>
+<span class="src-line"><span class="src-comment">//   /tmp/Mainline.java  /tmp/mainline.erl</span></span>
+<span class="src-line"><span class="src-comment">// Each file is shown verbatim in its corresponding chapter (Ch06-Ch16).</span></span>
+    </div>
+
+    <div class="note">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 数字会变 · 排序不会</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · numbers vary, the ranking doesn't</span>
+      <span class="lang-zh-only">你在自己机器上跑这些 benchmark <em>大概率</em>得到不同的绝对数字——M1 Pro 比 M3 Max 慢 ~30%、Linux 比 macOS GC 表现可能差 10-50%、jemalloc 比 system malloc 在 fragmentation 场景下能差 2×。<em>但相对排序基本稳定</em>：Rust 永远比 Lua 快 30× 量级，ZGC 永远 sub-ms 而 Parallel 永远 10-200ms。所以本文每个数字都标了来源，你<em>应该</em>在自己机器上跑一次验证排序，而不是把绝对值奉为真理。</span>
+      <span class="lang-en-only">Running these benchmarks on your machine will <em>likely</em> yield different absolute numbers — M1 Pro is ~30% slower than M3 Max, Linux GC behaviour can differ from macOS by 10-50%, jemalloc vs system malloc can be 2× apart on fragmentation-heavy workloads. <em>The relative ordering, however, is stable</em>: Rust is always ~30× faster than Lua, ZGC is always sub-ms while Parallel is always 10-200 ms. Each benchmark in this article cites its source code; you <em>should</em> re-run them locally to verify the ordering, not treat the absolute values as canon.</span>
+    </div>
   </section>
 
   <!-- ========== MAIN LINE — 1M OBJECTS ========== -->
@@ -1898,6 +1931,55 @@
       <span class="lang-en-only"><em>People assume "refcount = same-line free = zero overhead"</em> — wrong. Our <code>lst = None</code> <em>synchronously blocks for 28 ms</em>. The GIL is held during this; <em>all other Python threads pause</em> — effectively a 28-ms STW, just <em>programmer-predictable</em>. With <code>__del__</code> finalisers, it's longer. <strong>Refcount isn't no-GC — it <em>amortises GC across every assignment</em></strong>. Ch07 Mark-Sweep concentrates the same 28 ms into one big pause, but makes allocation itself faster.</span>
     </div>
 
+    <h3 class="sub lang-zh-only">循环兜底 · PEP 442 算法 5 阶段</h3>
+    <h3 class="sub lang-en-only">Cycle backstop · PEP 442 in 5 phases</h3>
+
+    <p class="lang-zh-only">引用计数对循环 <code>A→B→A</code> 永远漏放——CPython 加了一个<em>独立</em>的循环检测器（Python/gc.c, ~2200 行），按"<em>试探性递减</em>"算法（Bacon-Rajan 2001）跑。代码 5 个 phase 干这件事：</p>
+    <p class="lang-en-only">Refcount leaks cycles <code>A→B→A</code> forever. CPython adds an <em>independent</em> cycle detector (Python/gc.c, ~2200 lines) running the "<em>trial deletion</em>" algorithm (Bacon-Rajan 2001). The code does 5 phases:</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span>PEP 442 trial-deletion · 5-phase sketch (real flow of gc_collect_main)</span><span class="src-tag">algorithm card</span></div>
+<span class="src-line"><span class="src-comment">// Operates on the "generation 0/1/2" linked lists of TRACKED containers</span></span>
+<span class="src-line"><span class="src-comment">// only. Non-containers (int, str, float) are unaffected — refcount alone</span></span>
+<span class="src-line"><span class="src-comment">// handles them.</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">phase 1 · update_refs</span>(containers):     <span class="src-comment">// gc.c:397</span></span>
+<span class="src-line">  <span class="src-kw">for</span> each container c:</span>
+<span class="src-line">    c.gc_refs := c.ob_refcnt        <span class="src-comment">// snapshot true refcount</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">phase 2 · subtract_refs</span>(containers):</span>
+<span class="src-line">  <span class="src-kw">for</span> each container c:</span>
+<span class="src-line">    <span class="src-kw">for</span> each outbound pointer c -&gt; child:</span>
+<span class="src-line">      <span class="src-kw">if</span> child <span class="src-kw">in</span> containers:</span>
+<span class="src-line">        child.gc_refs -= <span class="src-num">1</span>          <span class="src-comment">// "subtract internal edges"</span></span>
+<span class="src-line">  <span class="src-comment">// after this: c.gc_refs &gt; 0 ↔ reachable from OUTSIDE the container set</span></span>
+<span class="src-line">  <span class="src-comment">//             c.gc_refs == 0 ↔ only inside-cycle refs remain</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">phase 3 · move_unreachable</span>(containers, unreachable):</span>
+<span class="src-line">  <span class="src-kw">for</span> each c <span class="src-kw">with</span> gc_refs == <span class="src-num">0</span>:</span>
+<span class="src-line">    move c to unreachable list   <span class="src-comment">// candidates to free</span></span>
+<span class="src-line">  <span class="src-comment">// but: a candidate may still be reached via a non-candidate</span></span>
+<span class="src-line">  <span class="src-comment">// (e.g. cycle is referenced from a list that has external refs).</span></span>
+<span class="src-line">  <span class="src-comment">// the algorithm walks back: if a kept container points to an unreachable,</span></span>
+<span class="src-line">  <span class="src-comment">// move it back to "reachable". iterate until fixed point.</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">phase 4 · finalize_garbage</span>(unreachable):</span>
+<span class="src-line">  <span class="src-kw">for</span> each c <span class="src-kw">in</span> unreachable:</span>
+<span class="src-line">    <span class="src-kw">if</span> c.tp_finalize: <span class="src-fn">call</span>(c.tp_finalize)   <span class="src-comment">// __del__ · since PEP 442</span></span>
+<span class="src-line">  <span class="src-comment">// re-check unreachability — __del__ might resurrect objects</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">phase 5 · delete_garbage</span>(unreachable):</span>
+<span class="src-line">  <span class="src-kw">for</span> each c <span class="src-kw">in</span> unreachable:</span>
+<span class="src-line">    actually <span class="src-fn">_Py_Dealloc</span>(c)                <span class="src-comment">// drops the cycle</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Pre-PEP 442 (i.e. PHP, Perl, pre-3.4 Python), __del__ on cyclic objects</span></span>
+<span class="src-line"><span class="src-comment">// caused gc to GIVE UP and leak the cycle. PEP 442's contribution: finalize</span></span>
+<span class="src-line"><span class="src-comment">// and re-detect, allow __del__ to resurrect, free the rest.</span></span>
+    </div>
+
+    <p class="lang-zh-only" style="margin-top:18px; font-size:13px; color:var(--ink-soft);">这 5 阶段在 QuickJS（Ch16 Bacon-Rajan 算法卡）和 PHP Zend GC 里<em>结构上完全一样</em>——只是字段名不同（QuickJS 用 <code>mark</code> 而非 <code>gc_refs</code>，PHP 用 <code>buffered</code> 列表）。<strong>整个引用计数家族 + 循环兜底 = 一个算法 + 4 个适配</strong>。</p>
+    <p class="lang-en-only" style="margin-top:18px; font-size:13px; color:var(--ink-soft);">These 5 phases are <em>structurally identical</em> across QuickJS (see Ch16's Bacon-Rajan algorithm card) and PHP Zend GC — only field names differ (QuickJS uses <code>mark</code> instead of <code>gc_refs</code>; PHP uses a <code>buffered</code> list). <strong>The whole refcount family + cycle backstop = one algorithm + four adaptations</strong>.</p>
+
     <h3 class="sub lang-zh-only">这家族的 7 个量产语言</h3>
     <h3 class="sub lang-en-only">7 production languages in this family</h3>
 
@@ -1926,7 +2008,7 @@
     <div class="stage-banner thread-quic">
       <div class="sb-cell"><div class="sb-key lang-zh-only">家族</div><div class="sb-key lang-en-only">Family</div><div class="sb-val thread">Mark-Sweep (1959 McCarthy)</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">同行 free</div><div class="sb-key lang-en-only">Same-line free</div><div class="sb-val bad">✗ No</div></div>
-      <div class="sb-cell"><div class="sb-key>STW</div><div class="sb-val">µs—s (heap-proportional)</div></div>
+      <div class="sb-cell"><div class="sb-key">STW</div><div class="sb-val">µs—s (heap-proportional)</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">致命缺陷</div><div class="sb-key lang-en-only">Fatal flaw</div><div class="sb-val">fragmentation</div></div>
     </div>
 
@@ -2178,7 +2260,7 @@
     <div class="stage-banner thread-tls">
       <div class="sb-cell"><div class="sb-key lang-zh-only">家族</div><div class="sb-key lang-en-only">Family</div><div class="sb-val thread">Copying (1969 Cheney)</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">同行 free</div><div class="sb-key lang-en-only">Same-line free</div><div class="sb-val bad">✗ No</div></div>
-      <div class="sb-cell"><div class="sb-key>STW</div><div class="sb-val">O(live), not O(heap)</div></div>
+      <div class="sb-cell"><div class="sb-key">STW</div><div class="sb-val">O(live), not O(heap)</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">代价</div><div class="sb-key lang-en-only">Cost</div><div class="sb-val">2× memory headroom</div></div>
     </div>
 
@@ -2356,8 +2438,8 @@
     <div class="stage-banner thread-quic">
       <div class="sb-cell"><div class="sb-key lang-zh-only">家族</div><div class="sb-key lang-en-only">Family</div><div class="sb-val thread">Generational (1984 Lieberman)</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">弱分代假设</div><div class="sb-key lang-en-only">Weak hypothesis</div><div class="sb-val">~90% obj die young</div></div>
-      <div class="sb-cell"><div class="sb-key>young STW</div><div class="sb-val">~1 ms (small region)</div></div>
-      <div class="sb-cell"><div class="sb-key>major STW</div><div class="sb-val">10-100 ms (rare)</div></div>
+      <div class="sb-cell"><div class="sb-key">young STW</div><div class="sb-val">~1 ms (small region)</div></div>
+      <div class="sb-cell"><div class="sb-key">major STW</div><div class="sb-val">10-100 ms (rare)</div></div>
     </div>
 
     <div class="lang-zh-only">
@@ -2533,7 +2615,7 @@
     <div class="stage-banner thread-quic">
       <div class="sb-cell"><div class="sb-key lang-zh-only">家族</div><div class="sb-key lang-en-only">Family</div><div class="sb-val thread">Incremental</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">关键</div><div class="sb-key lang-en-only">Key</div><div class="sb-val">slice + write barrier</div></div>
-      <div class="sb-cell"><div class="sb-key>STW per slice</div><div class="sb-val">~0.1-1 ms</div></div>
+      <div class="sb-cell"><div class="sb-key">STW per slice</div><div class="sb-val">~0.1-1 ms</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">总开销</div><div class="sb-key lang-en-only">Total cost</div><div class="sb-val">+10-30% vs STW</div></div>
     </div>
 
@@ -2573,6 +2655,57 @@
 <span class="src-line">                         barrier cost per alloc ≈ ~10 ns</span>
     </div>
 
+    <h3 class="sub lang-zh-only">Lua · lgc.c · 真源码两段</h3>
+    <h3 class="sub lang-en-only">Lua · lgc.c · two real-source fragments</h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>lgc.c:1710 · incstep · the slice scheduler</span><span class="src-tag">verbatim</span></div>
+<span class="src-line"><span class="src-frame">  1710</span>  <span class="src-kw">static void</span> <span class="src-fn">incstep</span> (lua_State *L, global_State *g) {</span>
+<span class="src-line"><span class="src-frame">  1711</span>      <span class="src-cls">l_mem</span> stepsize = <span class="src-fn">applygcparam</span>(g, STEPSIZE, <span class="src-num">100</span>);</span>
+<span class="src-line"><span class="src-frame">  1712</span>      <span class="src-cls">l_mem</span> work2do = <span class="src-fn">applygcparam</span>(g, STEPMUL, stepsize / <span class="src-kw">sizeof</span>(<span class="src-kw">void</span>*));</span>
+<span class="src-line"><span class="src-frame">  1715</span>      <span class="src-kw">int</span> fast = (work2do == <span class="src-num">0</span>);                <span class="src-comment">// 0 = full collection</span></span>
+<span class="src-line"><span class="src-frame">  1716</span>      <span class="src-kw">do</span> {                                       <span class="src-comment">// ⭐ repeat until enough work</span></span>
+<span class="src-line"><span class="src-frame">  1717</span>          stres = <span class="src-fn">singlestep</span>(L, fast);             <span class="src-comment">//   one indivisible unit</span></span>
+<span class="src-line"><span class="src-frame">  1718</span>          <span class="src-kw">if</span> (stres == step2minor) <span class="src-kw">return</span>;        <span class="src-comment">// generational mode</span></span>
+<span class="src-line"><span class="src-frame">  1720</span>          <span class="src-kw">else if</span> (stres == step2pause || (stres == atomicstep &amp;&amp; !fast))</span>
+<span class="src-line"><span class="src-frame">  1721</span>              <span class="src-kw">break</span>;                             <span class="src-comment">// end of cycle</span></span>
+<span class="src-line"><span class="src-frame">  1722</span>          <span class="src-kw">else</span> work2do -= stres;</span>
+<span class="src-line"><span class="src-frame">  1723</span>      } <span class="src-kw">while</span> (fast || work2do &gt; <span class="src-num">0</span>);</span>
+<span class="src-line"><span class="src-frame">  1726</span>      <span class="src-kw">if</span> (g-&gt;gcstate == GCSpause) <span class="src-fn">setpause</span>(g);</span>
+<span class="src-line"><span class="src-frame">  1728</span>      <span class="src-kw">else</span> <span class="src-fn">luaE_setdebt</span>(g, stepsize);</span>
+<span class="src-line"><span class="src-frame">  1729</span>  }</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// One incstep does up to `work2do` units of GC work, then returns. Triggered</span></span>
+<span class="src-line"><span class="src-comment">// on heap growth via luaE_setdebt(). 1M iterations → ~100 incsteps → max 0.7 ms each.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>lgc.c:246 + 268 · the TWO barriers · forward vs backward</span><span class="src-tag">verbatim · Lua's clever twist</span></div>
+<span class="src-line"><span class="src-frame">   246</span>  <span class="src-kw">void</span> <span class="src-fn">luaC_barrier_</span> (lua_State *L, GCObject *o, GCObject *v) {</span>
+<span class="src-line"><span class="src-frame">      </span>      <span class="src-comment">// FORWARD barrier (Dijkstra-style): black o now points to white v</span></span>
+<span class="src-line"><span class="src-frame">   249</span>      <span class="src-kw">if</span> (<span class="src-fn">keepinvariant</span>(g)) {</span>
+<span class="src-line"><span class="src-frame">   250</span>          <span class="src-fn">reallymarkobject</span>(g, v);             <span class="src-comment">// ⭐ shade NEW target → restore invariant</span></span>
+<span class="src-line"><span class="src-frame">   251</span>          <span class="src-kw">if</span> (<span class="src-fn">isold</span>(o)) <span class="src-fn">setage</span>(v, G_OLD0);    <span class="src-comment">// generational nudge</span></span>
+<span class="src-line"><span class="src-frame">   253</span>      } <span class="src-kw">else</span> {                                <span class="src-comment">// sweep phase: just paint o white</span></span>
+<span class="src-line"><span class="src-frame">   257</span>          <span class="src-fn">makewhite</span>(g, o);</span>
+<span class="src-line"><span class="src-frame">   258</span>      }</span>
+<span class="src-line"><span class="src-frame">   259</span>  }</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-frame">   268</span>  <span class="src-kw">void</span> <span class="src-fn">luaC_barrierback_</span> (lua_State *L, GCObject *o) {</span>
+<span class="src-line"><span class="src-frame">      </span>      <span class="src-comment">// BACKWARD barrier (Yuasa-ish): black container o was written to. don't</span></span>
+<span class="src-line"><span class="src-frame">      </span>      <span class="src-comment">// shade the new value (cheaper); instead, REGREYIFY o so we re-scan it</span></span>
+<span class="src-line"><span class="src-frame">      </span>      <span class="src-comment">// at the next atomic phase.</span></span>
+<span class="src-line"><span class="src-frame">   275</span>      <span class="src-kw">if</span> (<span class="src-fn">getage</span>(o) == G_TOUCHED2)</span>
+<span class="src-line"><span class="src-frame">   276</span>          <span class="src-fn">set2gray</span>(o);                        <span class="src-comment">// already in chain: just regray</span></span>
+<span class="src-line"><span class="src-frame">   277</span>      <span class="src-kw">else</span></span>
+<span class="src-line"><span class="src-frame">   278</span>          <span class="src-fn">linkobjgclist</span>(o, g-&gt;grayagain);     <span class="src-comment">// ⭐ defer re-scan to atomic</span></span>
+<span class="src-line"><span class="src-frame">   279</span>      <span class="src-kw">if</span> (<span class="src-fn">isold</span>(o)) <span class="src-fn">setage</span>(o, G_TOUCHED1);</span>
+<span class="src-line"><span class="src-frame">   280</span>  }</span>
+    </div>
+
+    <p class="lang-zh-only"><strong>关键设计：哪种 barrier 用在哪里</strong>。Lua 把对象分两类：<em>叶节点</em>（function、closure、userdata）用 <code>luaC_barrier_</code>（forward / Dijkstra：写入时立即 shade 新值）；<em>容器</em>（table、stack）用 <code>luaC_barrierback_</code>（backward / Yuasa-ish：把容器自己 regrey，下次 atomic 一并 re-scan）。<em>为什么分</em>？容器写入<em>频繁</em>（<code>t[i] = x</code> 在 hot loop 里到处都是）——如果每次都 shade 新值，barrier 开销会爆炸。而把整个容器 regrey 是 O(1)，atomic 阶段统一处理，<em>总成本反而更低</em>。Lua 5.4 这套分流策略让<em>同样吞吐</em>下增量比 Mark-Sweep 多花 ~25% CPU，但<em>最大暂停从 94ms 降到 0.7ms</em>。</p>
+    <p class="lang-en-only"><strong>The key design: which barrier where</strong>. Lua splits objects in two: <em>leaves</em> (function, closure, userdata) use <code>luaC_barrier_</code> (forward / Dijkstra — shade the new value on write); <em>containers</em> (table, stack) use <code>luaC_barrierback_</code> (backward / Yuasa-ish — regreyify the container itself, defer the re-scan to atomic). <em>Why split</em>? Container writes are <em>frequent</em> (<code>t[i] = x</code> in any hot loop) — if every write shaded the new value, barrier cost would explode. Regreyifying the whole container is O(1); the atomic phase re-scans all touched containers in one go — <em>net cost is lower</em>. Lua 5.4's split lets incremental cost ~25% more CPU than non-incremental Mark-Sweep <em>for the same throughput</em>, but cuts max pause from 94 ms to 0.7 ms.</p>
+
     <h3 class="sub lang-zh-only">主线 4 问 · Lua Incremental</h3>
     <h3 class="sub lang-en-only">Main-line 4 questions · Lua Incremental</h3>
 
@@ -2605,7 +2738,7 @@
     <div class="stage-banner thread-http">
       <div class="sb-cell"><div class="sb-key lang-zh-only">家族</div><div class="sb-key lang-en-only">Family</div><div class="sb-val thread">Concurrent (1978+)</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">关键</div><div class="sb-key lang-en-only">Key</div><div class="sb-val">tri-color + barriers + lock-free</div></div>
-      <div class="sb-cell"><div class="sb-key>STW</div><div class="sb-val good">sub-ms</div></div>
+      <div class="sb-cell"><div class="sb-key">STW</div><div class="sb-val good">sub-ms</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">代价</div><div class="sb-key lang-en-only">Cost</div><div class="sb-val">+15-25% CPU (barriers)</div></div>
     </div>
 
@@ -2809,7 +2942,7 @@
     <div class="stage-banner thread-http">
       <div class="sb-cell"><div class="sb-key lang-zh-only">家族</div><div class="sb-key lang-en-only">Family</div><div class="sb-val thread">Per-actor regions</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">代表</div><div class="sb-key lang-en-only">Lead</div><div class="sb-val">Erlang BEAM (1986)</div></div>
-      <div class="sb-cell"><div class="sb-key>global STW</div><div class="sb-val good">never</div></div>
+      <div class="sb-cell"><div class="sb-key">global STW</div><div class="sb-val good">never</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">代价</div><div class="sb-key lang-en-only">Cost</div><div class="sb-val">no shared mutable state</div></div>
     </div>
 
@@ -2916,7 +3049,7 @@
     <div class="stage-banner thread-tls">
       <div class="sb-cell"><div class="sb-key lang-zh-only">家族</div><div class="sb-key lang-en-only">Family</div><div class="sb-val thread">Colored pointers (2014 ZGC)</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">关键</div><div class="sb-key lang-en-only">Key</div><div class="sb-val">load barrier · forwarding via bits</div></div>
-      <div class="sb-cell"><div class="sb-key>STW</div><div class="sb-val good">always sub-ms</div></div>
+      <div class="sb-cell"><div class="sb-key">STW</div><div class="sb-val good">always sub-ms</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">堆大小</div><div class="sb-key lang-en-only">Heap size</div><div class="sb-val">8 MB — 16 TB</div></div>
     </div>
 
@@ -3099,7 +3232,7 @@
     <div class="stage-banner thread-quic">
       <div class="sb-cell"><div class="sb-key lang-zh-only">家族</div><div class="sb-key lang-en-only">Family</div><div class="sb-val thread">No runtime GC</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">代表</div><div class="sb-key lang-en-only">Lead</div><div class="sb-val">Rust (2014) · C++ RAII</div></div>
-      <div class="sb-cell"><div class="sb-key>STW</div><div class="sb-val good">0 ms (none)</div></div>
+      <div class="sb-cell"><div class="sb-key">STW</div><div class="sb-val good">0 ms (none)</div></div>
       <div class="sb-cell"><div class="sb-key lang-zh-only">代价</div><div class="sb-key lang-en-only">Cost</div><div class="sb-val">compile-time complexity</div></div>
     </div>
 
@@ -3227,28 +3360,48 @@
     <h3 class="sub lang-en-only">CPython PEP 442 · refcount + cycle detector in practice</h3>
 
     <div class="src-stack">
-      <div class="src-h"><span>CPython · Modules/gcmodule.c (PEP 442 cycle detector)</span><span class="src-tag">simplified</span></div>
-<span class="src-line"><span class="src-comment">// Every container PyObject (list, dict, set, tuple-with-refs, class)</span></span>
-<span class="src-line"><span class="src-comment">// carries an extra GC header. Non-containers (int, str, float) don't.</span></span>
+      <div class="src-h"><span>CPython · Include/internal/pycore_interp_structs.h:158 · PyGC_Head (verbatim)</span><span class="src-tag">8 lines · sits before object</span></div>
+<span class="src-line"><span class="src-frame">   155</span>  <span class="src-comment">/****** Garbage collector **********/</span></span>
+<span class="src-line"><span class="src-frame">   157</span>  <span class="src-comment">/* GC information is stored BEFORE the object structure. */</span></span>
+<span class="src-line"><span class="src-frame">   158</span>  <span class="src-kw">typedef struct</span> {</span>
+<span class="src-line"><span class="src-frame">   159</span>      <span class="src-comment">// Tagged pointer to next object in the list.</span></span>
+<span class="src-line"><span class="src-frame">   160</span>      <span class="src-comment">// 0 means the object is not tracked</span></span>
+<span class="src-line"><span class="src-frame">   163</span>      _Py_ALIGNED_DEF(_PyObject_MIN_ALIGNMENT, <span class="src-cls">uintptr_t</span>) _gc_next;</span>
+<span class="src-line"><span class="src-frame">   165</span>      <span class="src-comment">// Tagged pointer to previous object in the list.</span></span>
+<span class="src-line"><span class="src-frame">   166</span>      <span class="src-comment">// Lowest two bits are used for flags documented later.</span></span>
+<span class="src-line"><span class="src-frame">   168</span>      <span class="src-cls">uintptr_t</span> _gc_prev;</span>
+<span class="src-line"><span class="src-frame">   169</span>  } PyGC_Head;</span>
 <span class="src-line"></span>
-<span class="src-line"><span class="src-kw">typedef struct</span> {</span>
-<span class="src-line">    <span class="src-cls">PyObject_HEAD</span></span>
-<span class="src-line">    PyGC_Head gc_head;   <span class="src-comment">// only present on container types</span></span>
-<span class="src-line">    ...</span>
-<span class="src-line">} PyContainerObject;</span>
+<span class="src-line"><span class="src-comment">// 16 bytes total. Prepended by _PyObject_GC_New only on container types</span></span>
+<span class="src-line"><span class="src-comment">// (list, dict, set, tuple-with-refs, class, ...). _Py_AS_GC(op) recovers it</span></span>
+<span class="src-line"><span class="src-comment">// by subtracting sizeof(PyGC_Head) from the object pointer.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>CPython · Python/gc.c:397 · update_refs · phase 1 of trial-deletion</span><span class="src-tag">verbatim, the body</span></div>
+<span class="src-line"><span class="src-frame">   397</span>  <span class="src-fn">update_refs</span>(PyGC_Head *containers) {</span>
+<span class="src-line"><span class="src-frame">   398</span>      PyGC_Head *next;</span>
+<span class="src-line"><span class="src-frame">   399</span>      PyGC_Head *gc = <span class="src-fn">GC_NEXT</span>(containers);</span>
+<span class="src-line"><span class="src-frame">   402</span>      <span class="src-kw">while</span> (gc != containers) {</span>
+<span class="src-line"><span class="src-frame">   403</span>          next = <span class="src-fn">GC_NEXT</span>(gc);</span>
+<span class="src-line"><span class="src-frame">   404</span>          PyObject *op = <span class="src-fn">FROM_GC</span>(gc);</span>
+<span class="src-line"><span class="src-frame">   405</span>          <span class="src-kw">if</span> (<span class="src-fn">_Py_IsImmortal</span>(op)) {                <span class="src-comment">// immortal: skip</span></span>
+<span class="src-line"><span class="src-frame">   407</span>              <span class="src-fn">_PyObject_GC_UNTRACK</span>(op);</span>
+<span class="src-line"><span class="src-frame">   408</span>              gc = next; <span class="src-kw">continue</span>;</span>
+<span class="src-line"><span class="src-frame">   411</span>          }</span>
+<span class="src-line"><span class="src-frame">   412</span>          <span class="src-fn">gc_reset_refs</span>(gc, <span class="src-fn">Py_REFCNT</span>(op));     <span class="src-comment">// ⭐ gc_refs := ob_refcnt</span></span>
+<span class="src-line"><span class="src-frame">   413</span>          <span class="src-comment">/* Python's cyclic gc should never see an incoming refcount of 0:</span></span>
+<span class="src-line"><span class="src-frame">       </span>             <span class="src-comment">if something decref'd to 0, it was deallocated immediately. */</span></span>
+<span class="src-line"><span class="src-frame">       </span>          gc = next;</span>
+<span class="src-line"><span class="src-frame">       </span>      }</span>
+<span class="src-line"><span class="src-frame">       </span>  }</span>
 <span class="src-line"></span>
-<span class="src-line"><span class="src-comment">// gc_collect() runs on heap-growth threshold (default: gen0 if 700 allocs):</span></span>
-<span class="src-line"><span class="src-kw">static long</span> <span class="src-fn">gc_collect</span>(PyThreadState *tstate, <span class="src-kw">int</span> generation, ...) {</span>
-<span class="src-line">    <span class="src-fn">update_refs</span>(containers);             <span class="src-comment">// copy ob_refcnt → gc_refs</span></span>
-<span class="src-line">    <span class="src-fn">subtract_refs</span>(containers);           <span class="src-comment">// for each outbound, decrement target's gc_refs</span></span>
-<span class="src-line">    <span class="src-comment">/* any object with gc_refs &gt; 0 reachable from outside</span></span>
-<span class="src-line">       gc_refs == 0 may be in a cycle: move to "unreachable" list */</span>
-<span class="src-line">    <span class="src-fn">move_unreachable</span>(containers, unreachable);</span>
-<span class="src-line">    <span class="src-fn">finalize_garbage</span>(unreachable);       <span class="src-comment">// call __del__</span></span>
-<span class="src-line">    <span class="src-fn">delete_garbage</span>(unreachable);         <span class="src-comment">// actually free</span></span>
-<span class="src-line">}</span>
-<span class="src-line"></span>
-<span class="src-line"><span class="src-comment">// QuickJS's Ch19 cycle collector (Bacon-Rajan) is structurally identical.</span></span>
+<span class="src-line"><span class="src-comment">// Phase 2 (subtract_refs · gc.c:~440): for each outbound pointer of every</span></span>
+<span class="src-line"><span class="src-comment">// container, decrement the target's gc_refs. Phase 3 (move_unreachable):</span></span>
+<span class="src-line"><span class="src-comment">// objects with gc_refs &gt; 0 are reachable from outside; gc_refs == 0 means</span></span>
+<span class="src-line"><span class="src-comment">// only inside-cycle refs remain — move them to the "unreachable" list.</span></span>
+<span class="src-line"><span class="src-comment">// Phase 4 calls __del__, phase 5 frees. QuickJS Ch19 uses the same algorithm</span></span>
+<span class="src-line"><span class="src-comment">// (Bacon-Rajan trial deletion) — see Ch16 for the algorithm card.</span></span>
     </div>
 
     <p class="lang-zh-only"><strong>这个混合架构覆盖了 Python 99% 的 GC 行为</strong>：refcount 处理掉 99% 的对象（每次 dec 同步释放），cycle detector 在堆增长触发时清理 1% 的循环对象。我们 Ch06 测的 28ms 同步释放是 refcount 部分；如果有循环，会多一个~50ms 的 cycle detection 周期。</p>
@@ -3604,7 +3757,7 @@
         <li><strong>线性类型在主流语言探索</strong>→ Vale "generational references"、Carbon "lifetime annotations"、Mojo "ownership system" 都在试图<em>降低 Rust 严苛度</em>而仍保持无 GC。</li>
         <li><strong>ML-guided GC</strong>→ Google / Meta 已在内部用模型预测对象寿命，自动调 nursery 大小。学术界 5 年内会主流化。</li>
         <li><strong>异构内存（CXL）</strong>→ GC 需要把冷对象迁移到大容量慢内存（CXL Memory Pool），热对象保留在 DRAM。新一代 GC 必须 NUMA + tier-aware。</li>
-        <li><strong>WebAssembly GC 提案</strong>（Phase 4, 2024）→ Wasm 加了原生 GC，让 GC 语言（Java、Python、Go）在浏览器里跑得更快。Dart 已上线，更多语言跟进。</li>
+        <li><strong>WebAssembly GC 提案</strong>（Phase 4, 2024）→ Wasm 加了原生 GC，让 GC 语言（Java、Python、Go）在浏览器里跑得更快。Dart 是<em>第一个把生产编译器</em>（dart2wasm）<em>对到 Wasm-GC</em> 的主流语言；Kotlin/Wasm、Scala.js 等跟进中。</li>
       </ul>
     </div>
     <div class="lang-en-only">
@@ -3615,7 +3768,7 @@
         <li><strong>Linear types in mainstream languages</strong> → Vale's "generational references", Carbon's "lifetime annotations", Mojo's "ownership" all try to <em>relax Rust's strictness</em> while keeping no-GC.</li>
         <li><strong>ML-guided GC</strong> → Google / Meta already use internal models to predict object lifetimes and auto-tune nurseries. Academia will mainstream this within 5 years.</li>
         <li><strong>Heterogeneous memory (CXL)</strong> → GC must migrate cold objects to large slow memory (CXL Memory Pool), keep hot in DRAM. Next-gen GCs must be NUMA + tier-aware.</li>
-        <li><strong>WebAssembly GC proposal</strong> (Phase 4, 2024) → Wasm added native GC, making GC'd languages (Java, Python, Go) run faster in browsers. Dart shipped first; more languages following.</li>
+        <li><strong>WebAssembly GC proposal</strong> (Phase 4, 2024) → Wasm added native GC, making GC'd languages (Java, Python, Go) run faster in browsers. Dart was the first mainstream language to ship a <em>production compiler</em> (dart2wasm) targeting Wasm-GC; Kotlin/Wasm, Scala.js, and others are following.</li>
       </ul>
     </div>
 
