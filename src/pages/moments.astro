@@ -5,7 +5,7 @@ import { tSite } from '../lib/i18n';
 import { fetchComics } from '../lib/comics';
 
 const s = tSite('zh').moments;
-const latestComics = (await fetchComics()).slice(0, 3);
+const latestComics = (await fetchComics()).slice(0, 12);
 
 // ── Build-time: fetch moments from Supabase ──
 const SUPABASE_URL = import.meta.env.BLOG_SUPABASE_URL || process.env.BLOG_SUPABASE_URL || '';
@@ -400,15 +400,30 @@ for (const m of staticMoments) {
     text-decoration: none;
   }
   .strip-see-all:hover { color: var(--c-text); }
+  /* Horizontal carousel — fixed card width, scroll if more than fit */
   .comics-strip-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    display: flex;
     gap: 16px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 6px; /* room for native scrollbar without clipping cards */
+    scrollbar-width: thin;
+  }
+  .comics-strip-row::-webkit-scrollbar {
+    height: 4px;
+  }
+  .comics-strip-row::-webkit-scrollbar-thumb {
+    background: var(--c-border);
+    border-radius: 2px;
   }
   .strip-card {
     text-decoration: none;
     color: inherit;
     display: block;
+    flex: 0 0 200px;       /* fixed card width */
+    scroll-snap-align: start;
   }
   .strip-thumb {
     aspect-ratio: 1 / 1;
@@ -451,6 +466,7 @@ for (const m of staticMoments) {
   @media (max-width: 640px) {
     .comics-strip-inner { padding: 0 20px; }
     .comics-strip-row { gap: 10px; }
+    .strip-card { flex: 0 0 150px; }
     .strip-caption { font-size: 11px; }
   }
   .header-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
