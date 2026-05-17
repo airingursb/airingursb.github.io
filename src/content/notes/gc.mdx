@@ -1,0 +1,57 @@
+---
+title: "一段内存的多重死亡 —— 11 个 GC 家族的家谱"
+date: "2026-05-17"
+tags: [GC, 运行时, 内存, 编程语言, 性能工程]
+public: true
+summary: 同一行 list = null，在 CPython 里立刻释放、在 V8 里等下次 minor GC、在 ZGC 里 sub-ms 并发完成、在 Erlang 里整个进程死了才整体 free、在 Rust 里编译期就被 drop 了。20+ 个运行时跨语言 GC 比较——按算法家族分章，每章一个真实主线代码。
+immersive:
+  url: /immersive/gc/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/gc/)
+
+这是 Field Note 系列的第八篇，姐妹篇是 [《一行 JS 的一生 · QuickJS 源码详解》](/immersive/quickjs/)（讲一个引擎全栈）和 [《V8 是怎么把 JS 跑快的》](/immersive/v8-fast-js/)（讲多层 JIT）。本篇相反——<em>横向跨</em>所有语言，讲所有现代运行时<em>怎么收尸</em>。
+
+### 主线：同一行代码，11 种家族，11 种命运
+
+```
+let list = []
+for i in 0..1_000_000:
+    list.push({ n: i })
+list = null            // ⭐ 关键这一行
+```
+
+这 17 个字符的代码在不同 GC 里发生的事完全不同：
+
+- **CPython** refcount：`lst = None` 同行同步释放 1M 对象，~28 ms 内全部 free。
+- **Swift ARC**：同样同行释放，但需要程序员手动 `weak` 打破循环。
+- **V8 Orinoco**：什么都不立即发生——等下次 minor GC（typically ~50ms 后）。
+- **JVM ZGC**：concurrent，并发标记+整理，应用线程几乎不感觉到。
+- **Go**：tri-color concurrent，下一次 GC pacer 触发时清理。
+- **Erlang BEAM**：GC 只在<em>每个进程内</em>跑——这堆数据如果在进程里，进程死了整片 free。
+- **Rust**：编译期就被 drop 了，根本没运行时 GC。
+
+11 个家族 + 20+ 实现，每个都用上面这段代码作主线。
+
+### 11 个家族
+
+```
+06 Refcount       07 Mark-Sweep    08 Copying · Cheney    09 Generational
+10 Incremental    11 Concurrent    12 Region / per-actor  13 Colored ptr
+14 No-GC          15 Hybrid        16 Academic
+```
+
+每章下面都有"<em>主线 4 问</em>"卡片：何时 free、STW 多长、CPU 多少、堆形态如何。
+
+### 这版深挖了什么
+
+- **同一行代码的 11 种命运**：CPython 28ms 同步 free vs ZGC 0.5ms 并发整理 vs Erlang 进程死才 free。
+- **每个算法家族的真源码**：从 CPython `Py_DECREF` 到 Go runtime/mgc.go 到 ZGC `ZBarrier` 到 Erlang `gc_minor`。
+- **5 个永恒权衡**：pause / throughput / memory / 启动 / 心智负担。没有 GC 在 5 个轴都拿满。
+- **生产事故簿**：Discord Go→Rust、Twitter Ruby→Scala、Pinterest Python tuning、LinkedIn JVM。
+- **调优决策树**：根据 latency / throughput / memory / 启动 选 GC。
+- **60 年家谱**：1959 McCarthy mark-sweep → 1969 Cheney 复制 → 1984 Lieberman 分代 → 2014 ZGC → 2023 Generational ZGC。
+- **未来方向**：Carbon / Vale 的"线性 GC"探索，Rust ownership 之后的下一步。
+
+> "McCarthy 在 1959 年说 *让程序自动管内存*。六十多年了，我们还在<em>讨论怎么管</em>。"

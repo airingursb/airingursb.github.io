@@ -1,0 +1,57 @@
+---
+title: "Many Ways to Die — A Family Map of 11 Garbage Collectors"
+date: "2026-05-17"
+tags: [GC, Runtimes, Memory, Programming Languages, Performance Engineering]
+public: true
+summary: The same line `list = null` frees immediately in CPython, waits for the next minor GC in V8, completes sub-ms concurrently in ZGC, dies only when the actor dies in Erlang, and was dropped at compile time in Rust. A cross-language tour of garbage collection across 20+ runtimes, organised by algorithm family, threaded by one main-line program.
+immersive:
+  url: /immersive/gc/
+  label: Immersive
+---
+
+> This is an immersive long-form essay — best read in its dedicated layout → [Open the full version](/immersive/gc/)
+
+The eighth piece in the **Field Note** series, siblings to «[The Life of One JS Line · QuickJS Source-Level Walkthrough](/immersive/quickjs/)» (one engine, full stack) and «[How V8 makes JS fast](/immersive/v8-fast-js/)» (multi-tier JIT). This one cuts *across* languages — how every modern runtime *handles its dead*.
+
+### Main line: one program, 11 families, 11 fates
+
+```
+let list = []
+for i in 0..1_000_000:
+    list.push({ n: i })
+list = null            // ⭐ the moment of "many ways to die"
+```
+
+Those 17 characters behave radically differently across GCs:
+
+- **CPython** refcount: `lst = None` synchronously frees 1M objects within ~28 ms.
+- **Swift ARC**: same-line free, but the programmer manually breaks cycles via `weak`.
+- **V8 Orinoco**: nothing immediate — waits for the next minor GC (typically ~50ms later).
+- **JVM ZGC**: concurrent — mark and compact in the background, app threads barely notice.
+- **Go**: tri-color concurrent — cleaned at the next GC pacer fire.
+- **Erlang BEAM**: GC runs *per-process* only — if this data is inside the actor, dies when the actor dies.
+- **Rust**: dropped at compile time — no runtime GC exists.
+
+11 families + 20+ implementations, all using the same code as the main line.
+
+### 11 families
+
+```
+06 Refcount       07 Mark-Sweep    08 Copying · Cheney    09 Generational
+10 Incremental    11 Concurrent    12 Region / per-actor  13 Colored ptr
+14 No-GC          15 Hybrid        16 Academic
+```
+
+Every chapter answers the same 4 questions: when is memory freed, how long is the STW, how much CPU, what's the heap shape after.
+
+### What this article digs into
+
+- **11 fates of one line**: CPython 28 ms synchronous vs ZGC 0.5 ms concurrent vs Erlang "dies with the process".
+- **Real source from each family**: from CPython's `Py_DECREF` to Go's `runtime/mgc.go` to ZGC's `ZBarrier` to Erlang's `gc_minor`.
+- **5 eternal tradeoffs**: pause / throughput / memory / startup / mental overhead. No GC wins all 5.
+- **Production stories**: Discord Go→Rust, Twitter Ruby→Scala, Pinterest Python tuning, LinkedIn JVM.
+- **Tuning decision tree**: pick a GC by latency / throughput / memory / startup.
+- **60-year family tree**: 1959 McCarthy mark-sweep → 1969 Cheney copying → 1984 Lieberman generational → 2014 ZGC → 2023 Generational ZGC.
+- **What's next**: Carbon / Vale's "linear GC" experiments, post-Rust ownership directions.
+
+> "McCarthy said in 1959: *let programs manage memory themselves*. Sixty-plus years later, we're still *debating how*."
