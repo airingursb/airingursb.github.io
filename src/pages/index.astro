@@ -3,7 +3,6 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import photosData from '../data/photos.json';
 import '../styles/workouts.css';
 import WorkoutCardPreview from '../components/workouts/WorkoutCardPreview.astro';
-import VisitorPass from '../components/VisitorPass.astro';
 import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
 
 const recentPhotos = (photosData as Array<any>)
@@ -1857,7 +1856,7 @@ const recentPhotos = (photosData as Array<any>)
       </div>
     </div>
 
-    <VisitorPass />
+    <div class="visitor-counter" id="visitorCounter"></div>
 
     <div class="uptime">
       <span class="heartbeat">
@@ -3009,6 +3008,60 @@ const recentPhotos = (photosData as Array<any>)
       });
     })();
 
+    // ── Visitor Counter ──
+    // Counter tracks visits since 2025-01 via Supabase.
+    // Historical offset: 24,419 (2025 full year) + 4,236 (2026 Jan-Mar) = 28,655
+    // Note: visitor data from 2014-2024 was lost during previous site migrations
+    // and is NOT included in this count. The offset only covers verifiable records.
+    (function () {
+      var SB_URL = 'https://pcoyocvqfipuydhvdsle.supabase.co';
+      var SB_KEY = 'sb_publishable_jieHU6yu3dPxSww2_B_KIg_9KcWg6wl';
+      var HISTORICAL_OFFSET = 28655; // 2025: 24419 + 2026 Jan-Mar: 4236
+      var el = document.getElementById('visitorCounter');
+      var counted = sessionStorage.getItem('visitor_counted');
+
+      function show(n) {
+        n = n + HISTORICAL_OFFSET;
+        var padded = String(n).padStart(8, '0');
+        var suffix = t('visitor_suffix') || '';
+        el.innerHTML = t('visitor_prefix') + '<span class="visitor-count">' + padded + '</span>' + suffix;
+        el.classList.add('loaded');
+      }
+
+      if (counted) {
+        window._i18nReady.then(function () {
+          show(parseInt(counted, 10));
+        });
+        return;
+      }
+
+      fetch(SB_URL + '/rest/v1/rpc/increment_visitor', {
+        method: 'POST',
+        headers: {
+          'apikey': SB_KEY,
+          'Authorization': 'Bearer ' + SB_KEY,
+          'Content-Type': 'application/json'
+        },
+        body: '{}'
+      })
+        .then(function (r) { return r.json(); })
+        .then(function (count) {
+          sessionStorage.setItem('visitor_counted', count);
+          window._i18nReady.then(function () {
+            show(count);
+          });
+        })
+        .catch(function () { });
+
+      window.addEventListener('langchange', function() {
+        var c = sessionStorage.getItem('visitor_counted');
+        if (c) {
+          window._i18nReady.then(function () {
+            show(parseInt(c, 10));
+          });
+        }
+      });
+    })();
   </script>
 
   <!-- Music Tooltip -->
