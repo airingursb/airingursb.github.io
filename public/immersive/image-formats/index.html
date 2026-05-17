@@ -1513,6 +1513,31 @@ section.chap[data-phase="nx"]  .auto-list > li::before { color: var(--nx);  opac
     color: var(--ink-mute);
   }
 </style>
+<!-- lang-url-param:v1 -->
+<script>
+/* SEO: honor ?lang=en|zh URL param so the page first-paints in the requested
+   language. Without this, a Google-indexed /immersive/X/?lang=en URL would
+   still render zh until the user clicks the toggle. */
+(function() {
+  try {
+    var p = new URLSearchParams(location.search);
+    var lang = p.get('lang');
+    if (lang === 'en' || lang === 'zh') {
+      try { localStorage.setItem('ursb-lang', lang); } catch (e) {}
+      try { localStorage.setItem('article_lang', lang); } catch (e) {}
+      if (lang === 'en') {
+        document.documentElement.lang = 'en';
+      } else {
+        document.documentElement.lang = 'zh-CN';
+      }
+      document.addEventListener('DOMContentLoaded', function() {
+        if (lang === 'en') document.body.classList.add('lang-en');
+        else document.body.classList.remove('lang-en');
+      });
+    }
+  } catch (e) {}
+})();
+</script>
 </head>
 <body class="lang-zh">
 

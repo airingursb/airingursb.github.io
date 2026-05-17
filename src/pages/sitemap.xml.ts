@@ -1,5 +1,7 @@
 import type { APIContext } from 'astro';
 import { getCollection } from 'astro:content';
+import fs from 'node:fs';
+import path from 'node:path';
 
 export async function GET(context: APIContext) {
   const site = context.site!.origin;
@@ -101,6 +103,49 @@ ${lastmodXml}    <changefreq>${opts.changefreq}</changefreq>
       const lastmod = new Date(note.data.date).toISOString().split('T')[0];
       urls.push(singleUrl(`/en/notes/${note.id}/`, { lastmod, changefreq: 'monthly', priority: '0.7' }));
     }
+  }
+
+  // Immersive long-form articles — flagship content under /immersive/{slug}/.
+  // Each is a single HTML file with built-in zh/en toggle. We list every subdir
+  // of public/immersive/ that ships an index.html, emit hreflang pairs pointing
+  // to the same URL with the ?lang=en hint for the EN flavour (a small inline
+  // script in each article reads that param and applies the right language on
+  // first paint, so the EN URL Google indexes truly is EN-first).
+  try {
+    const immersiveDir = path.resolve('./public/immersive');
+    const entries = fs.readdirSync(immersiveDir, { withFileTypes: true })
+      .filter(e => e.isDirectory())
+      .map(e => e.name);
+    for (const slug of entries) {
+      const indexPath = path.join(immersiveDir, slug, 'index.html');
+      if (!fs.existsSync(indexPath)) continue;
+      const stat = fs.statSync(indexPath);
+      const lastmod = stat.mtime.toISOString().split('T')[0];
+      const zhLoc = site + '/immersive/' + slug + '/';
+      const enLoc = site + '/immersive/' + slug + '/?lang=en';
+      const hrefLangBlock =
+        '    <xhtml:link rel="alternate" hreflang="zh-CN" href="' + zhLoc + '"/>\n' +
+        '    <xhtml:link rel="alternate" hreflang="en" href="' + enLoc + '"/>\n' +
+        '    <xhtml:link rel="alternate" hreflang="x-default" href="' + zhLoc + '"/>';
+      urls.push(
+        '  <url>\n' +
+        '    <loc>' + zhLoc + '</loc>\n' +
+        '    <lastmod>' + lastmod + '</lastmod>\n' +
+        '    <changefreq>monthly</changefreq>\n' +
+        '    <priority>0.9</priority>\n' +
+        hrefLangBlock + '\n' +
+        '  </url>\n' +
+        '  <url>\n' +
+        '    <loc>' + enLoc + '</loc>\n' +
+        '    <lastmod>' + lastmod + '</lastmod>\n' +
+        '    <changefreq>monthly</changefreq>\n' +
+        '    <priority>0.9</priority>\n' +
+        hrefLangBlock + '\n' +
+        '  </url>'
+      );
+    }
+  } catch (err) {
+    console.warn('[sitemap] failed to scan public/immersive:', err);
   }
 
   // Tags: bilingual (tag keys shared across languages)
