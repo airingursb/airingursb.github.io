@@ -229,6 +229,7 @@ export function initUI() {
   ensureCameraRefs()
   ensureMemoriesRefs()
   ensureShellsRefs()
+  ensureSleepRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -428,6 +429,47 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat') {
   if (!infoSpeciesBtn) return
   infoSpeciesBtn.dataset.species = currentSpecies
   infoSpeciesBtn.textContent = currentSpecies === 'bear' ? 'Switch to 🐱 Cat' : 'Switch to 🐻 Bear'
+}
+
+// V8.5 — Sleep overlay
+let sleepOverlayEl: HTMLElement | null = null
+let sleepTitleEl: HTMLElement | null = null
+let sleepBlurbEl: HTMLElement | null = null
+let sleepTimeEl: HTMLElement | null = null
+let sleepGoBtn: HTMLButtonElement | null = null
+let sleepStayBtn: HTMLButtonElement | null = null
+let onSleepChosen: ((slept: boolean) => void) | null = null
+
+function ensureSleepRefs() {
+  if (sleepOverlayEl) return
+  sleepOverlayEl = document.getElementById('lounge-sleep-overlay')
+  sleepTitleEl   = document.getElementById('lounge-sleep-title')
+  sleepBlurbEl   = document.getElementById('lounge-sleep-blurb')
+  sleepTimeEl    = document.getElementById('lounge-sleep-time')
+  sleepGoBtn     = document.getElementById('lounge-sleep-go')   as HTMLButtonElement | null
+  sleepStayBtn   = document.getElementById('lounge-sleep-stay') as HTMLButtonElement | null
+  if (sleepGoBtn)   sleepGoBtn.addEventListener('click',   () => { const cb = onSleepChosen; hideSleepOverlay(); cb?.(true) })
+  if (sleepStayBtn) sleepStayBtn.addEventListener('click', () => { const cb = onSleepChosen; hideSleepOverlay(); cb?.(false) })
+}
+
+export function showSleepOverlay(opts: { time: string; venue: 'home' | 'floor'; onChoice: (slept: boolean) => void }) {
+  ensureSleepRefs()
+  if (!sleepOverlayEl) return
+  if (sleepTimeEl) sleepTimeEl.textContent = opts.time
+  if (sleepTitleEl) sleepTitleEl.textContent = opts.venue === 'home' ? 'You are home.' : 'The day ends.'
+  if (sleepBlurbEl) sleepBlurbEl.textContent = opts.venue === 'home'
+    ? 'Sleep in your own bed → full restore.'
+    : 'No bed here — sleeping on the floor gives half restore.'
+  onSleepChosen = opts.onChoice
+  sleepOverlayEl.hidden = false
+  playSfx('menu_open')
+}
+
+export function hideSleepOverlay() {
+  if (!sleepOverlayEl) return
+  sleepOverlayEl.hidden = true
+  onSleepChosen = null
+  playSfx('menu_close')
 }
 
 // V8.4 — Shells counter + Mio's Shop

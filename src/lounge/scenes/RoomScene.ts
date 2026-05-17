@@ -20,6 +20,9 @@ import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } f
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD } from '../shells'
+import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
+import { showSleepOverlay } from '../ui'
+import { formatGameTime, getGameNow } from '../gametime'
 
 const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
@@ -226,6 +229,8 @@ export class RoomScene extends Phaser.Scene {
     // V6.0 — Minimap (initial render; refresh every 30s for NPC schedule drift)
     this.refreshMinimap()
     this.time.addEvent({ delay: 30_000, loop: true, callback: () => this.refreshMinimap() })
+    // V8.5 — poll every 20s for "should we trigger today's sleep prompt"
+    this.time.addEvent({ delay: 20_000, loop: true, callback: () => this.checkSleepPrompt() })
 
     // V4.2 — if in a home room, render decorations.
     if (isHomeRoom(this.currentRoomId)) {
@@ -1778,6 +1783,28 @@ export class RoomScene extends Phaser.Scene {
     if (zzz) zzz.destroy()
     entry.bear.destroy()
     this.npcBears.delete(id)
+  }
+
+  // V8.5 — Once per game-day, when game time crosses 02:00, prompt the player to sleep.
+  private checkSleepPrompt() {
+    if (!shouldPromptSleep()) return
+    markSleepPrompted()
+    const venue = isHomeRoom(this.currentRoomId) ? 'home' : 'floor'
+    showSleepOverlay({
+      time: formatGameTime(getGameNow()),
+      venue,
+      onChoice: (slept) => {
+        if (!slept) {
+          showToast('You stayed up. Energy will be hard tomorrow.', 2500)
+          return
+        }
+        const res = performSleep(this.currentRoomId)
+        const msg = res.venue === 'home'
+          ? `💤 Slept at home. Energy restored to ${res.restored}.`
+          : `💤 Slept rough. +${res.restored} energy.`
+        showToast(msg, 3000)
+      }
+    })
   }
 
   // V8.3 — Camera capture: build a Memory from current scene state and play a flash + sound.
