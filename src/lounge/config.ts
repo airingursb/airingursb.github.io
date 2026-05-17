@@ -79,7 +79,7 @@ export function prefersReducedMotion(): boolean {
 // Multi-room / protocol v=2 (V2.2+V2.3)
 export const PROTOCOL_VERSION = 2
 
-export const VALID_ROOMS = ['room_lobby', 'room_dj_floor', 'room_balcony'] as const
+export const VALID_ROOMS = ['room_lobby', 'room_dj_floor', 'room_balcony', 'room_library'] as const
 export type RoomId = typeof VALID_ROOMS[number]
 export const DEFAULT_ROOM: RoomId = 'room_lobby'
 
@@ -87,3 +87,14 @@ export function isValidRoom(s: string | null | undefined): s is RoomId {
   if (!s) return false
   return (VALID_ROOMS as readonly string[]).indexOf(s) !== -1
 }
+
+// Volume channels (V2.4)
+export const VOLUME_CHANNELS = ['master', 'sfx', 'bgm', 'ambient'] as const
+export type VolumeChannel = typeof VOLUME_CHANNELS[number]
+export const VOLUME_DEFAULTS: Record<VolumeChannel, number> = {
+  master: 0.5,
+  sfx: 1.0,
+  bgm: 0.7,
+  ambient: 0.7
+}
+export const VOLUME_STORAGE_KEY = 'lounge_volume_v1'

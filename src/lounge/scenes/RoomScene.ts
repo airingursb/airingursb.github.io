@@ -2,9 +2,32 @@ import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
 import { connect, sendPos, sendAct, sendRoomChange, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg } from '../net'
 import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, type Region, type RoomId } from '../config'
-import { preloadAudio, bindAudio, playSfx } from '../audio'
+import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
 import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos } from '../ui'
 import { getEmote } from '../emotes'
+import { getOverlayAt } from '../atmosphere'
+
+const ROOM_AUDIO: Record<RoomId, { bgmKey: string; bgmPath: string; ambKey: string; ambPath: string }> = {
+  room_lobby:    { bgmKey: 'bgm_lobby_day',      bgmPath: '/lounge/assets/audio/bgm/lobby_day.ogg',
+                   ambKey: 'amb_cafe_chatter',   ambPath: '/lounge/assets/audio/ambient/cafe_chatter.ogg' },
+  room_dj_floor: { bgmKey: 'bgm_dj_floor_party', bgmPath: '/lounge/assets/audio/bgm/dj_floor_party.ogg',
+                   ambKey: 'amb_beat_thump',     ambPath: '/lounge/assets/audio/ambient/beat_thump.ogg' },
+  room_balcony:  { bgmKey: 'bgm_balcony_outside',bgmPath: '/lounge/assets/audio/bgm/balcony_outside.ogg',
+                   ambKey: 'amb_wind',           ambPath: '/lounge/assets/audio/ambient/wind.ogg' },
+  room_library:  { bgmKey: 'bgm_library_quiet',  bgmPath: '/lounge/assets/audio/bgm/library_quiet.ogg',
+                   ambKey: 'amb_pages_turning',  ambPath: '/lounge/assets/audio/ambient/pages_turning.ogg' }
+}
+
+const PIXEL_TEX_KEY = 'lounge_pixel'
+
+function ensurePixelTexture(scene: Phaser.Scene) {
+  if (scene.textures.exists(PIXEL_TEX_KEY)) return
+  const g = scene.add.graphics({ x: 0, y: 0 })
+  g.fillStyle(0xffffff, 1)
+  g.fillRect(0, 0, 2, 2)
+  g.generateTexture(PIXEL_TEX_KEY, 2, 2)
+  g.destroy()
+}
 
 type Direction = 'up' | 'down' | 'left' | 'right'
 
@@ -29,6 +52,9 @@ export class RoomScene extends Phaser.Scene {
   private nearbyInteractable: Interactable | null = null
   private currentSitInteractable: Interactable | null = null
   private transitioning = false
+  private atmosphereOverlay?: Phaser.GameObjects.Rectangle
+  private atmosphereTimer?: Phaser.Time.TimerEvent
+  private particleEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
 
   constructor() {
     super({ key: 'Room' })
@@ -44,6 +70,7 @@ export class RoomScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('room_lobby',    '/lounge/assets/rooms/lobby.tmj')
     this.load.tilemapTiledJSON('room_dj_floor', '/lounge/assets/rooms/dj_floor.tmj')
     this.load.tilemapTiledJSON('room_balcony',  '/lounge/assets/rooms/balcony.tmj')
+    this.load.tilemapTiledJSON('room_library',  '/lounge/assets/rooms/library.tmj')
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
     for (const region of REGIONS) {
       this.load.atlas(
@@ -52,6 +79,8 @@ export class RoomScene extends Phaser.Scene {
         `/lounge/assets/sprites/bear/${region}/sprite.json`
       )
     }
+    const ra = ROOM_AUDIO[this.currentRoomId]
+    if (ra) preloadRoomAudio(this, ra.bgmKey, ra.bgmPath, ra.ambKey, ra.ambPath)
   }
 
   create() {
@@ -65,6 +94,16 @@ export class RoomScene extends Phaser.Scene {
 
     registerBearAnimations(this, REGIONS)
     bindAudio(this)
+
+    const ra = ROOM_AUDIO[this.currentRoomId]
+    if (ra) {
+      playRoomBgm(this, ra.bgmKey)
+      playRoomAmbient(this, ra.ambKey)
+    }
+
+    ensurePixelTexture(this)
+    this.setupAtmosphere(map.widthInPixels, map.heightInPixels)
+    this.setupParticles(map.widthInPixels, map.heightInPixels)
 
     const spawnObj = map.findObject('spawn_points', (o) => o.name === this.spawnPointName)
       ?? map.findObject('spawn_points', (o) => o.name === 'default')
@@ -261,6 +300,114 @@ export class RoomScene extends Phaser.Scene {
     }
   }
 
+  private setupAtmosphere(widthPx: number, heightPx: number) {
+    this.atmosphereOverlay = this.add.rectangle(0, 0, widthPx, heightPx, 0xffffff, 0)
+      .setOrigin(0)
+      .setDepth(1000)
+      .setBlendMode(Phaser.BlendModes.MULTIPLY)
+    this.refreshAtmosphere(true)
+    this.atmosphereTimer = this.time.addEvent({
+      delay: 30_000,
+      loop: true,
+      callback: () => this.refreshAtmosphere(false)
+    })
+  }
+
+  private refreshAtmosphere(immediate: boolean) {
+    if (!this.atmosphereOverlay) return
+    const o = getOverlayAt()
+    if (immediate || prefersReducedMotion()) {
+      this.atmosphereOverlay.fillColor = o.color
+      this.atmosphereOverlay.fillAlpha = o.alpha
+      return
+    }
+    this.tweens.add({
+      targets: this.atmosphereOverlay,
+      fillAlpha: o.alpha,
+      duration: 800,
+      onStart: () => {
+        if (this.atmosphereOverlay) this.atmosphereOverlay.fillColor = o.color
+      }
+    })
+  }
+
+  private setupParticles(_widthPx: number, _heightPx: number) {
+    if (prefersReducedMotion()) return
+    const roomId = this.currentRoomId
+    let cfg: { x: number; y: number; emit: Phaser.Types.GameObjects.Particles.ParticleEmitterConfig } | null = null
+
+    if (roomId === 'room_lobby') {
+      cfg = {
+        x: 240, y: 160,
+        emit: {
+          emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(0, 0, 460, 280), quantity: 1 } as any,
+          frequency: 1500,
+          lifespan: 12000,
+          quantity: 1,
+          maxAliveParticles: 8,
+          speedX: { min: -5, max: 5 },
+          speedY: { min: -8, max: -2 },
+          alpha: { start: 0.25, end: 0 },
+          scale: 1,
+          tint: 0xfff0c0
+        }
+      }
+    } else if (roomId === 'room_dj_floor') {
+      cfg = {
+        x: 120, y: 80,
+        emit: {
+          emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(-40, -20, 80, 40), quantity: 1 } as any,
+          frequency: 1200,
+          lifespan: 4000,
+          quantity: 1,
+          maxAliveParticles: 4,
+          speedY: { min: -20, max: -10 },
+          speedX: { min: -8, max: 8 },
+          alpha: { start: 0.5, end: 0 },
+          scale: 1.5,
+          tint: 0xff80ff
+        }
+      }
+    } else if (roomId === 'room_balcony') {
+      cfg = {
+        x: 200, y: 20,
+        emit: {
+          emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(-180, 0, 360, 10), quantity: 1 } as any,
+          frequency: 1800,
+          lifespan: 8000,
+          quantity: 1,
+          maxAliveParticles: 6,
+          speedY: { min: 6, max: 12 },
+          speedX: { min: -10, max: 10 },
+          alpha: { start: 0.5, end: 0 },
+          scale: 1.5,
+          tint: 0xa0d060
+        }
+      }
+    } else if (roomId === 'room_library') {
+      cfg = {
+        x: 200, y: 144,
+        emit: {
+          emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(-180, -100, 360, 200), quantity: 1 } as any,
+          frequency: 2500,
+          lifespan: 10000,
+          quantity: 1,
+          maxAliveParticles: 4,
+          speedY: { min: -3, max: 3 },
+          speedX: { min: -3, max: 3 },
+          alpha: { start: 0.2, end: 0 },
+          scale: 1,
+          tint: 0xfff0c0
+        }
+      }
+    }
+
+    if (cfg) {
+      this.particleEmitter = this.add.particles(cfg.x, cfg.y, PIXEL_TEX_KEY, cfg.emit)
+      this.particleEmitter.setDepth(500)
+    }
+  }
+
   private tryInteract() {
     if (this.nearbyInteractable) {
       this.activateInteractable(this.nearbyInteractable)
@@ -371,15 +518,17 @@ export class RoomScene extends Phaser.Scene {
         const targetRoom = p.targetRoom
         const targetSpawn = p.targetSpawn
         const fade = !prefersReducedMotion()
-        if (fade) {
-          this.cameras.main.fadeOut(200, 0, 0, 0)
-          this.cameras.main.once('camerafadeoutcomplete', () => {
-            sendRoomChange(targetRoom)
-            this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
-          })
-        } else {
+        const doRestart = () => {
+          stopRoomAudio()
+          if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
           sendRoomChange(targetRoom)
           this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
+        }
+        if (fade) {
+          this.cameras.main.fadeOut(200, 0, 0, 0)
+          this.cameras.main.once('camerafadeoutcomplete', doRestart)
+        } else {
+          doRestart()
         }
         return
       }

@@ -1,5 +1,6 @@
 import { playSfx } from './audio'
-import { prefersReducedMotion } from './config'
+import { prefersReducedMotion, type VolumeChannel } from './config'
+import { getVolume, setVolume } from './volume'
 
 export type EmoteVerb = 'wave' | 'sit' | 'dance' | 'say'
 
@@ -12,6 +13,8 @@ let menuEl: HTMLElement | null = null
 let sayForm: HTMLFormElement | null = null
 let sayInput: HTMLInputElement | null = null
 let bubblesEl: HTMLElement | null = null
+let volumeBtnEl: HTMLElement | null = null
+let volumePanelEl: HTMLElement | null = null
 
 const activeBubbles = new Map<string, { el: HTMLDivElement; until: number }>()
 
@@ -28,6 +31,30 @@ export function initUI() {
   sayForm = document.getElementById('lounge-say-form') as HTMLFormElement | null
   sayInput = document.getElementById('lounge-say-input') as HTMLInputElement | null
   bubblesEl = document.getElementById('lounge-bubbles')
+  volumeBtnEl = document.getElementById('lounge-volume-btn')
+  volumePanelEl = document.getElementById('lounge-volume-panel')
+
+  if (volumeBtnEl && volumePanelEl) {
+    const sliders = volumePanelEl.querySelectorAll<HTMLInputElement>('input[type=range][data-channel]')
+    sliders.forEach((slider) => {
+      const ch = slider.getAttribute('data-channel') as VolumeChannel
+      slider.value = String(Math.round(getVolume(ch) * 100))
+      slider.addEventListener('input', () => {
+        const v = Number(slider.value) / 100
+        setVolume(ch, v)
+      })
+    })
+    volumeBtnEl.addEventListener('click', (e) => {
+      e.stopPropagation()
+      if (volumePanelEl!.hidden) {
+        volumePanelEl!.hidden = false
+        playSfx('menu_open')
+      } else {
+        hideVolumePanel()
+      }
+    })
+    volumePanelEl.addEventListener('click', (e) => e.stopPropagation())
+  }
 
   if (menuEl) {
     menuEl.addEventListener('click', (e) => {
@@ -64,15 +91,22 @@ export function initUI() {
   }
 
   document.addEventListener('click', (e) => {
+    const target = e.target as HTMLElement
+    if (volumePanelEl && !volumePanelEl.hidden) {
+      if (!target.closest('#lounge-volume-panel') && !target.closest('#lounge-volume-btn')) {
+        hideVolumePanel()
+      }
+    }
     if (!menuEl || menuEl.hidden) return
-    if ((e.target as HTMLElement).closest('#lounge-emote-menu')) return
-    if ((e.target as HTMLElement).closest('canvas')) return
+    if (target.closest('#lounge-emote-menu')) return
+    if (target.closest('canvas')) return
     hideMenu()
   })
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       hideMenu()
       hideSayInput()
+      hideVolumePanel()
     }
   })
 }
@@ -94,6 +128,12 @@ export function showMenuAt(screenX: number, screenY: number) {
 export function hideMenu() {
   if (!menuEl || menuEl.hidden) return
   menuEl.hidden = true
+  playSfx('menu_close')
+}
+
+export function hideVolumePanel() {
+  if (!volumePanelEl || volumePanelEl.hidden) return
+  volumePanelEl.hidden = true
   playSfx('menu_close')
 }
 

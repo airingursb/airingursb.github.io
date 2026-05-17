@@ -706,3 +706,47 @@
 ### Reduced motion
 - [ ] Portal transitions are instant (no fade) under reduced-motion
 - [ ] All emote behaviors from V2.1 still respect reduced-motion
+
+
+## Lounge V2.4 + V2.5 (atmosphere + pipeline maturity)
+
+### Rooms (all 4 walkable)
+- [ ] `/lounge` opens in Lobby with 3 visible doors (east → DJ, west → Balcony, north → Library)
+- [ ] Walk into north door → fade → spawn in Library at `from_lobby`
+- [ ] Library has bookshelves along north wall + reading chairs
+- [ ] South door of Library back to Lobby spawns at `from_library` (just south of north door)
+- [ ] All 6 portal directions work: lobby↔dj_floor, lobby↔balcony, lobby↔library
+
+### Day / night atmosphere
+- [ ] Tint overlay matches local clock phase (dawn ≈ peach, day ≈ no tint, dusk ≈ purple, night ≈ deep blue)
+- [ ] Overlay persists across room transitions (no flicker)
+- [ ] Within ±15 min of phase boundaries the color is a blend of the two phases
+
+### Ambient particles
+- [ ] Lobby: slow drifting dust motes (warm tint)
+- [ ] DJ Floor: pink music-note particles near the booth
+- [ ] Balcony: green falling leaves drifting diagonally
+- [ ] Library: subtle warm glints, very low alpha
+- [ ] Under `prefers-reduced-motion`, no particles spawn
+
+### Volume controls
+- [ ] ⚙️ gear button next to mute button opens panel
+- [ ] Panel has 4 sliders (Master / SFX / BGM / Ambient), values persist via localStorage
+- [ ] Dragging SFX slider changes next playSfx volume immediately
+- [ ] Closing via outside-click or Escape works
+- [ ] Reload page → sliders restore previous values
+- [ ] Bumping `lounge_volume_v1` storage key (manual delete) → resets to defaults
+
+### Audio framework (no files yet)
+- [ ] With BGM/ambient files missing, page loads with no console errors related to audio
+- [ ] `npm run lounge:validate` reports the missing audio as warnings (not errors), exit 0
+
+### Library interactables
+- [ ] Reading chair (left, facing up) → walks to it + sits
+- [ ] Center chair pair (facing each other) → both work, sit toggle works
+
+### Asset validator
+- [ ] `npm run lounge:validate` exits 0 in clean state
+- [ ] Renaming any required file (e.g. `library.tmj`) → validator exits 1 with clear message
+- [ ] Restoring the file → exits 0 again
+- [ ] Orphan `.tmj` (not in manifest) → flagged as error
