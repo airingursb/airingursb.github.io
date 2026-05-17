@@ -1173,3 +1173,36 @@
 - [ ] Kai: 14-04 DJ Floor — covers 14h
 - [ ] Pip (new): 24/7 in Lobby — every visitor sees at least one NPC immediately
 - [ ] Pip's dialog tells visitor about doors and basic mechanics
+
+## Lounge V6.1 (Indoor tileset v1 — Lobby refactor)
+
+### Tileset bake
+- [ ] `node scripts/lounge/bake-tileset-v1.mjs` → emits `public/lounge/assets/tilesets/indoor_lobby_v1/{tiles.png,tiles.json}`
+- [ ] Tileset is 8×4 grid = 32 tiles, 128×64 px total
+- [ ] tiles.json declares `name: "indoor_lobby_v1"`, `columns: 8`, `tilecount: 32`
+- [ ] Legacy IDs 1-6 (floor/wall/door/table/chair/plant) preserved with upgraded art
+
+### Lobby refactor
+- [ ] `node scripts/lounge/patch-lobby-v1.mjs` re-points `lobby.tmj` tileset to v1
+- [ ] Floor variants (tiles 7/8/9) sprinkled across interior wood — visible color/grain variation
+- [ ] Top wall has windows (light blue panes) and 2 sconces; library door tile preserved
+- [ ] Left/right walls show painting + clock on top of brick
+- [ ] Fireplace (top-left) renders: stone mantle + glowing logs (red/orange/yellow flame pixels)
+- [ ] 2 bookshelves on right wall: top tile shows colored book spines, bottom tile shows cabinet doors with brass handles
+- [ ] Floor lamp standing (cream shade + wood pole + dark base)
+- [ ] Vase with flowers near top-right
+- [ ] New 3-tile purple sofa (left/center/right) at bottom-left interior — sit interactable
+- [ ] Existing centered table now has side-view chairs (tiles 28/29) flanking it
+- [ ] 3 hanging lanterns visible at top of room (above-layer, brass + warm glow)
+- [ ] Accent rug (tile 30) on floor near left
+
+### Backward compat
+- [ ] Existing collision/spawn/portal objects untouched (DJ Floor portal still works, balcony portal still works, etc)
+- [ ] DJ Floor + Library + Balcony rooms still render correctly (still use `indoor_lobby_v0`)
+- [ ] Bears still walk on floor without z-fighting against fireplace/bookshelves/lamp/vase/sofa (new collision rects added)
+- [ ] Clicking new sofa triggers sit animation with bear at anchor 120,264 facing down
+
+### Client loader
+- [ ] `RoomScene.ts` preloads both `indoor_lobby_v0` AND `indoor_lobby_v1` images
+- [ ] Tileset chosen by name from TMJ — no warnings in console about missing tilesets
+- [ ] Build clean (`npm run build` passes); validate clean (`npm run lounge:validate` no new errors)

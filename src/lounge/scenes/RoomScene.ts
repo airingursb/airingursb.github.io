@@ -128,6 +128,7 @@ export class RoomScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('room_home_template', '/lounge/assets/rooms/home.tmj')
     this.load.tilemapTiledJSON('room_beach',    '/lounge/assets/rooms/beach.tmj')
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
+    this.load.image('indoor_lobby_v1', '/lounge/assets/tilesets/indoor_lobby_v1/tiles.png')
     this.load.image('outdoor_beach_v0', '/lounge/assets/tilesets/outdoor_beach_v0/tiles.png')
     for (const region of REGIONS) {
       this.load.atlas(
@@ -161,9 +162,10 @@ export class RoomScene extends Phaser.Scene {
   create() {
     const mapKey = isHomeRoom(this.currentRoomId) ? 'room_home_template' : this.currentRoomId
     const map = this.make.tilemap({ key: mapKey })
-    // Tilemap may reference 'indoor_lobby_v0' OR 'outdoor_beach_v0' (V5.0+).
-    // Add all known tilesets — Phaser uses the one whose name matches the map's tileset entry.
+    // Tilemap may reference any of these tilesets. Phaser uses whichever name matches
+    // the map's tileset entry; others return null and are ignored.
     const tileset = (
+      map.addTilesetImage('indoor_lobby_v1', 'indoor_lobby_v1') ??
       map.addTilesetImage('outdoor_beach_v0', 'outdoor_beach_v0') ??
       map.addTilesetImage('indoor_lobby_v0', 'indoor_lobby_v0')
     )!
