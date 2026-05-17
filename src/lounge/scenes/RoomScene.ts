@@ -1,9 +1,10 @@
 import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
-import { connect, sendPos, sendAct, sendRoomChange, sendName, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg } from '../net'
+import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg } from '../net'
+import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, type Region, type RoomId } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
-import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying } from '../ui'
+import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
@@ -73,6 +74,8 @@ export class RoomScene extends Phaser.Scene {
   private boothTracks: BoothTrack[] = []
   private activeBoothInteractable: Interactable | null = null
   private currentBoothTrackId: string | null = null
+  private inventory = new Set<string>()
+  private pebbleSprites = new Map<string, Phaser.GameObjects.Sprite>()
 
   constructor() {
     super({ key: 'Room' })
@@ -132,6 +135,7 @@ export class RoomScene extends Phaser.Scene {
     this.setupAtmosphere(map.widthInPixels, map.heightInPixels)
     this.setupParticles(map.widthInPixels, map.heightInPixels)
     this.loadAndStartNpcs()
+    this.loadAndStartPebbles()
 
     const spawnObj = map.findObject('spawn_points', (o) => o.name === this.spawnPointName)
       ?? map.findObject('spawn_points', (o) => o.name === 'default')
@@ -239,6 +243,8 @@ export class RoomScene extends Phaser.Scene {
         }
       }
 
+      if (this.tryCollectPebbleAt(wx, wy)) return
+
       for (const it of this.interactables) {
         if (wx >= it.x && wx <= it.x + it.w && wy >= it.y && wy <= it.y + it.h) {
           this.activateInteractable(it)
@@ -343,8 +349,8 @@ export class RoomScene extends Phaser.Scene {
       onNameChanged: (m: NameChangedMsg) => this.applyNameChanged(m),
       onReplaced: () => {
         showReplacedOverlay()
-        // Game still runs visually but no new server interaction; net.ts also stops reconnect
-      }
+      },
+      onCollected: (m: CollectedMsg) => this.applyCollected(m)
     }, this.currentRoomId)
 
     setInfoPanelDataProvider(
@@ -355,6 +361,20 @@ export class RoomScene extends Phaser.Scene {
       }),
       () => this.openRenameModal()
     )
+
+    setInventoryDataProvider(() => {
+      const all = getAllPebbles()
+      const items = all.map(p => ({
+        id: p.id,
+        name: p.name,
+        collected: this.inventory.has(p.id)
+      }))
+      return {
+        items,
+        total: all.length,
+        collected: items.filter(i => i.collected).length
+      }
+    })
 
     if (!prefersReducedMotion()) {
       this.cameras.main.fadeIn(200, 0, 0, 0)
@@ -404,6 +424,13 @@ export class RoomScene extends Phaser.Scene {
     }
     if (this.myBear) this.myBear.setDisplayName(this.fallbackName(this.myDisplayName))
 
+    // Inventory
+    this.inventory.clear()
+    if (Array.isArray(m.inventory)) {
+      for (const id of m.inventory) this.inventory.add(id)
+    }
+    this.refreshPebbles()
+
     // First-visit modal
     if (m.display_name === null && isFirstVisit()) {
       showNameModal(null, (chosen) => {
@@ -440,6 +467,70 @@ export class RoomScene extends Phaser.Scene {
         this.myBear?.setDisplayName(this.fallbackName(chosen))
       }
     })
+  }
+
+  private async loadAndStartPebbles() {
+    await loadPebbles()
+    this.refreshPebbles()
+  }
+
+  private refreshPebbles() {
+    // Destroy existing sprites
+    this.pebbleSprites.forEach((s) => s.destroy())
+    this.pebbleSprites.clear()
+    // Spawn pebbles in current room that are NOT in inventory
+    const inRoom = getPebblesInRoom(this.currentRoomId)
+    for (const p of inRoom) {
+      if (this.inventory.has(p.id)) continue
+      ensurePixelTexture(this)
+      const sprite = this.add.sprite(p.x, p.y, PIXEL_TEX_KEY)
+      sprite.setScale(4)
+      sprite.setTint(0xffd166)
+      sprite.setDepth(4)
+      sprite.setOrigin(0.5, 0.5)
+      sprite.setData('pebble_id', p.id)
+      // Slow bob tween
+      if (!prefersReducedMotion()) {
+        this.tweens.add({
+          targets: sprite, y: p.y - 3, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.inOut'
+        })
+        this.tweens.add({
+          targets: sprite, alpha: 0.6, duration: 1800, yoyo: true, repeat: -1, ease: 'Sine.inOut'
+        })
+      }
+      this.pebbleSprites.set(p.id, sprite)
+    }
+  }
+
+  private tryCollectPebbleAt(wx: number, wy: number): boolean {
+    for (const [id, sprite] of this.pebbleSprites) {
+      if (Math.abs(wx - sprite.x) < 12 && Math.abs(wy - sprite.y) < 12) {
+        sendCollect(id)
+        this.inventory.add(id)
+        refreshInventoryPanel()
+        const pebble = findPebble(id)
+        if (pebble) {
+          const screen = {
+            x: this.scale.canvasBounds.x + sprite.x * this.scale.displayScale.x,
+            y: this.scale.canvasBounds.y + sprite.y * this.scale.displayScale.y
+          }
+          showBubble('pebble_' + id, '✦ ' + pebble.name, screen.x, screen.y)
+        }
+        this.tweens.add({
+          targets: sprite,
+          alpha: 0, scale: 8,
+          duration: 350,
+          onComplete: () => { sprite.destroy(); this.pebbleSprites.delete(id) }
+        })
+        return true
+      }
+    }
+    return false
+  }
+
+  private applyCollected(m: CollectedMsg) {
+    this.inventory.add(m.item_id)
+    refreshInventoryPanel()
   }
 
   private setupAtmosphere(widthPx: number, heightPx: number) {

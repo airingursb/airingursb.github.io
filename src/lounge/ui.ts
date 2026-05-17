@@ -171,6 +171,11 @@ export function initUI() {
         hideInfoPanel()
       }
     }
+    if (invPanelEl && !invPanelEl.hidden) {
+      if (!target.closest('#lounge-inventory-panel') && !target.closest('#lounge-inventory-btn')) {
+        hideInventoryPanel()
+      }
+    }
     if (!menuEl || menuEl.hidden) return
     if (target.closest('#lounge-emote-menu')) return
     if (target.closest('canvas')) return
@@ -183,6 +188,7 @@ export function initUI() {
       hideVolumePanel()
       hideInfoPanel()
       hideBoothPicker()
+      hideInventoryPanel()
     }
   })
 }
@@ -428,4 +434,56 @@ export function hideNowPlaying() {
   if (boothListEl) {
     boothListEl.querySelectorAll('button.is-playing').forEach((b) => b.classList.remove('is-playing'))
   }
+}
+
+// V3.3 — Inventory panel
+
+let invBtnEl: HTMLElement | null = null
+let invPanelEl: HTMLElement | null = null
+let invCountEl: HTMLElement | null = null
+let invTotalEl: HTMLElement | null = null
+let invListEl: HTMLElement | null = null
+let invDataProvider: (() => { items: Array<{ id: string; name: string; collected: boolean }>; total: number; collected: number }) | null = null
+
+export function setInventoryDataProvider(provider: () => { items: Array<{ id: string; name: string; collected: boolean }>; total: number; collected: number }) {
+  invDataProvider = provider
+  if (!invBtnEl) {
+    invBtnEl = document.getElementById('lounge-inventory-btn')
+    invPanelEl = document.getElementById('lounge-inventory-panel')
+    invCountEl = document.getElementById('lounge-inv-count')
+    invTotalEl = document.getElementById('lounge-inv-total')
+    invListEl = document.getElementById('lounge-inv-list')
+    if (invBtnEl) {
+      invBtnEl.addEventListener('click', (e) => {
+        e.stopPropagation()
+        if (invPanelEl?.hidden) { renderInventory(); invPanelEl.hidden = false; playSfx('menu_open') }
+        else hideInventoryPanel()
+      })
+    }
+    if (invPanelEl) invPanelEl.addEventListener('click', (e) => e.stopPropagation())
+  }
+}
+
+function renderInventory() {
+  if (!invDataProvider || !invListEl || !invCountEl || !invTotalEl) return
+  const data = invDataProvider()
+  invCountEl.textContent = String(data.collected)
+  invTotalEl.textContent = String(data.total)
+  invListEl.innerHTML = ''
+  for (const it of data.items) {
+    const li = document.createElement('li')
+    li.className = it.collected ? 'is-collected' : 'is-locked'
+    li.textContent = it.collected ? it.name : '???'
+    invListEl.appendChild(li)
+  }
+}
+
+export function refreshInventoryPanel() {
+  if (invPanelEl && !invPanelEl.hidden) renderInventory()
+}
+
+export function hideInventoryPanel() {
+  if (!invPanelEl || invPanelEl.hidden) return
+  invPanelEl.hidden = true
+  playSfx('menu_close')
 }

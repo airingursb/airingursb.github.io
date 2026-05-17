@@ -873,3 +873,33 @@
 ### Validator
 - [ ] `npm run lounge:validate` shows "4 booth tracks", exit 0
 - [ ] Rename one track .ogg + .mp3 → validator exit 1
+
+## Lounge V3.3 (Pebbles inventory)
+
+### Pebbles in rooms
+- [ ] Each room has 3-4 tiny golden pebbles at fixed positions
+- [ ] Pebbles slow-bob (sine tween) and gently pulse alpha
+- [ ] Under reduced-motion, no animation
+- [ ] Click a pebble within 12px → fade-out + scale-up animation + bubble shows "✦ <name>"
+
+### Inventory
+- [ ] 📦 button (top-right cluster, 3rd from right) opens panel
+- [ ] Panel shows "X / 13" count + grid of items
+- [ ] Collected items show in gold with ✦ prefix
+- [ ] Uncollected items show "???" in dim
+- [ ] Close via Escape, outside click, or 📦 toggle
+- [ ] Reload page → collected items persist (server-loaded inventory)
+
+### Server
+- [ ] WS `collect {item_id}` returns `collected {item_id, newly:true}` first time
+- [ ] Same item again → `collected {newly:false}`
+- [ ] Invalid item_id format → `error {reason:'invalid_item'}`
+
+### Multi-room
+- [ ] Walk to DJ Floor → see 3 different pebbles
+- [ ] Collect one → not visible on return
+- [ ] Each player has independent inventory
+
+### Validator
+- [ ] `npm run lounge:validate` shows "13 pebbles", exit 0
+- [ ] Inject duplicate id → exit 1

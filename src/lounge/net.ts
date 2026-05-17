@@ -19,13 +19,15 @@ export type WelcomeMsg = {
   last_x: number | null
   last_y: number | null
   region: string
+  inventory?: string[]
 }
+export type CollectedMsg = { v: number; t: 'collected'; item_id: string; newly: boolean }
 export type NameChangedMsg = { v: number; t: 'name_changed'; id: string; display_name: string }
 export type ReplacedMsg = { v: number; t: 'replaced' }
 export type ErrorMsg = { v: number; t: 'error'; reason: string; detail?: string }
 
 export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | ActMsg | FullMsg
-  | WelcomeMsg | NameChangedMsg | ReplacedMsg | ErrorMsg
+  | WelcomeMsg | NameChangedMsg | ReplacedMsg | ErrorMsg | CollectedMsg
 
 export type NetCallbacks = {
   onSnap: (m: SnapMsg) => void
@@ -39,6 +41,7 @@ export type NetCallbacks = {
   onNameChanged?: (m: NameChangedMsg) => void
   onReplaced?: () => void
   onError?: (m: ErrorMsg) => void
+  onCollected?: (m: CollectedMsg) => void
 }
 
 let ws: WebSocket | null = null
@@ -95,6 +98,7 @@ function openSocket() {
       cb?.onReplaced?.()
     }
     else if (msg.t === 'error') cb?.onError?.(msg)
+    else if (msg.t === 'collected') cb?.onCollected?.(msg)
   })
 
   ws.addEventListener('close', (ev) => {
@@ -154,4 +158,9 @@ export function sendAct(verb: string, text?: string, room: RoomId = DEFAULT_ROOM
 export function sendName(name: string) {
   if (!ws || ws.readyState !== 1) return
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'name', display_name: name }))
+}
+
+export function sendCollect(item_id: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'collect', item_id }))
 }

@@ -220,11 +220,42 @@ if (!existsSync(NPC_FILE)) {
   }
 }
 
+// 9. Pebbles manifest (V3.3)
+const PEBBLES_FILE = join(ROOT, 'public', 'lounge', 'data', 'pebbles.json')
+const PEBBLE_ID_RE = /^pebble_[a-z][a-z0-9_]*$/
+let pebbleCount = 0
+if (!existsSync(PEBBLES_FILE)) {
+  warn('pebbles.json missing')
+} else {
+  try {
+    const pm = JSON.parse(readFileSync(PEBBLES_FILE, 'utf8'))
+    if (!Array.isArray(pm.pebbles)) {
+      err('pebbles.json: missing or invalid "pebbles" array')
+    } else {
+      pebbleCount = pm.pebbles.length
+      const validRooms = new Set((manifest.rooms ?? []).map(r => r.id))
+      const seenIds = new Set()
+      for (const p of pm.pebbles) {
+        const label = `pebble ${p.id}`
+        if (!PEBBLE_ID_RE.test(p.id ?? '')) err(`${label}: id doesn't match ${PEBBLE_ID_RE}`)
+        if (seenIds.has(p.id)) err(`${label}: duplicate id`)
+        seenIds.add(p.id)
+        if (!validRooms.has(p.room)) err(`${label}: room "${p.room}" not in manifest`)
+        if (!Number.isInteger(p.x) || p.x < 0 || p.x > 1000) err(`${label}: x out of range`)
+        if (!Number.isInteger(p.y) || p.y < 0 || p.y > 1000) err(`${label}: y out of range`)
+        if (typeof p.name !== 'string' || p.name.length === 0 || p.name.length > 32) err(`${label}: invalid name`)
+      }
+    }
+  } catch (e) {
+    err(`pebbles.json: invalid JSON — ${e.message}`)
+  }
+}
+
 // Summary
 ok(`Declared: ${manifest.rooms?.length ?? 0} rooms, ${manifest.tilesets?.length ?? 0} tilesets, ` +
    `${manifest.sprites?.length ?? 0} sprite sets, ${manifest.audio?.sfx?.length ?? 0} SFX, ` +
    `${manifest.audio?.bgm?.length ?? 0} BGM slots, ${manifest.audio?.ambient?.length ?? 0} ambient slots, ` +
-   `${boothCount} booth tracks, ${npcCount} NPCs`)
+   `${boothCount} booth tracks, ${npcCount} NPCs, ${pebbleCount} pebbles`)
 
 function printAndExit() {
   for (const m of okmsgs)  console.log(`✓ ${m}`)
