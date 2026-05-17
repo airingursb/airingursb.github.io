@@ -53,6 +53,11 @@ export type HomeDecorationBroadcast = { v: number; t: 'home_decoration'; owner: 
 export type HomeDecorationsResponseMsg = { v: number; t: 'home_decorations'; owner_visitor_id: string; decorations: HomeDecoration[] }
 export type JamTapMsg = { v: number; t: 'jam_tap'; id: string; visitor_id: string | null; pad_index: number; cc: string | null; region: string }
 export type JamBurstMsg = { v: number; t: 'jam_burst'; tier: 'jam' | 'circle' | 'full'; distinct_visitors: number; distinct_pads: number; bonus_per_pair: number; awarded_pairs: number }
+export type LetterEntry = { id: number; author_visitor_id: string; author_name: string | null; x: number; y: number; content: string; dropped_at: string }
+export type LetterDropOkMsg = { v: number; t: 'letter_drop_ok'; id: number; x: number; y: number; content: string; dropped_at: string }
+export type LetterDropFailedMsg = { v: number; t: 'letter_drop_failed'; reason: string }
+export type LetterAppearedMsg = { v: number; t: 'letter_appeared'; id: number; author_visitor_id: string; author_name: string | null; room: string; x: number; y: number; content: string; dropped_at: string }
+export type LettersInRoomMsg = { v: number; t: 'letters_in_room'; room: string; letters: LetterEntry[] }
 export type NameChangedMsg = { v: number; t: 'name_changed'; id: string; display_name: string }
 export type ReplacedMsg = { v: number; t: 'replaced' }
 export type ErrorMsg = { v: number; t: 'error'; reason: string; detail?: string }
@@ -64,6 +69,7 @@ export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | ActMsg | FullMsg
   | PlaceOkMsg | PlaceFailedMsg | PickupOkMsg | PickupFailedMsg
   | HomeDecorationBroadcast | HomeDecorationsResponseMsg
   | JamTapMsg | JamBurstMsg
+  | LetterDropOkMsg | LetterDropFailedMsg | LetterAppearedMsg | LettersInRoomMsg
 
 export type NetCallbacks = {
   onSnap: (m: SnapMsg) => void
@@ -95,6 +101,10 @@ export type NetCallbacks = {
   onHomeDecorations?: (m: HomeDecorationsResponseMsg) => void
   onJamTap?: (m: JamTapMsg) => void
   onJamBurst?: (m: JamBurstMsg) => void
+  onLetterDropOk?: (m: LetterDropOkMsg) => void
+  onLetterDropFailed?: (m: LetterDropFailedMsg) => void
+  onLetterAppeared?: (m: LetterAppearedMsg) => void
+  onLettersInRoom?: (m: LettersInRoomMsg) => void
 }
 
 let ws: WebSocket | null = null
@@ -169,6 +179,10 @@ function openSocket() {
     else if (msg.t === 'home_decorations') cb?.onHomeDecorations?.(msg)
     else if (msg.t === 'jam_tap') cb?.onJamTap?.(msg)
     else if (msg.t === 'jam_burst') cb?.onJamBurst?.(msg)
+    else if (msg.t === 'letter_drop_ok') cb?.onLetterDropOk?.(msg)
+    else if (msg.t === 'letter_drop_failed') cb?.onLetterDropFailed?.(msg)
+    else if (msg.t === 'letter_appeared') cb?.onLetterAppeared?.(msg)
+    else if (msg.t === 'letters_in_room') cb?.onLettersInRoom?.(msg)
   })
 
   ws.addEventListener('close', (ev) => {
@@ -272,4 +286,14 @@ export function requestHomeDecorations(owner_visitor_id: string) {
 export function sendJamTap(pad_index: number) {
   if (!ws || ws.readyState !== 1) return
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'jam_tap', pad_index }))
+}
+
+export function sendLetterDrop(content: string, x: number, y: number) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'letter_drop', content, x: Math.round(x), y: Math.round(y) }))
+}
+
+export function requestLettersInRoom(room: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'letters', room }))
 }

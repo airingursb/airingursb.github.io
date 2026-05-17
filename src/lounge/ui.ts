@@ -2,7 +2,7 @@ import { playSfx } from './audio'
 import { prefersReducedMotion, validateClientName, type VolumeChannel } from './config'
 import { getVolume, setVolume } from './volume'
 
-export type EmoteVerb = 'wave' | 'sit' | 'dance' | 'say'
+export type EmoteVerb = 'wave' | 'sit' | 'dance' | 'say' | 'letter'
 
 export type UIEvent = { type: 'verb'; verb: EmoteVerb; text?: string }
 
@@ -135,7 +135,11 @@ export function initUI() {
         showSayInput()
         return
       }
-      playSfx(verb)
+      if (verb === 'letter') {
+        emit({ type: 'verb', verb })
+        return
+      }
+      playSfx(verb as 'wave' | 'sit' | 'dance')
       emit({ type: 'verb', verb })
     })
   }
@@ -202,6 +206,8 @@ export function initUI() {
       hideMessagesPanel()
       hideGiftModal()
       hidePeerMenu()
+      hideLetterModal()
+      hideLetterRead()
     }
   })
 }
@@ -815,4 +821,100 @@ export function hideMessagesPanel() {
 
 export function getCurrentThreadFriendId(): string | null {
   return currentThreadFriendId
+}
+
+// V5.1 — Letter modal + read card
+
+let letterModalEl: HTMLElement | null = null
+let letterInputEl: HTMLTextAreaElement | null = null
+let letterErrorEl: HTMLElement | null = null
+let letterCountEl: HTMLElement | null = null
+let letterSaveBtn: HTMLButtonElement | null = null
+let letterCancelBtn: HTMLButtonElement | null = null
+let letterReadEl: HTMLElement | null = null
+let letterReadAuthorEl: HTMLElement | null = null
+let letterReadAgoEl: HTMLElement | null = null
+let letterReadContentEl: HTMLElement | null = null
+let letterReadCloseBtn: HTMLButtonElement | null = null
+let onLetterModalSubmit: ((content: string | null) => void) | null = null
+
+export function showLetterModal(onSubmit: (content: string | null) => void) {
+  if (!letterModalEl) {
+    letterModalEl = document.getElementById('lounge-letter-modal')
+    letterInputEl = document.getElementById('lounge-letter-input') as HTMLTextAreaElement | null
+    letterErrorEl = document.getElementById('lounge-letter-error')
+    letterCountEl = document.getElementById('lounge-letter-count')
+    letterSaveBtn = document.getElementById('lounge-letter-save') as HTMLButtonElement | null
+    letterCancelBtn = document.getElementById('lounge-letter-cancel') as HTMLButtonElement | null
+
+    letterSaveBtn?.addEventListener('click', () => submitLetterModal())
+    letterCancelBtn?.addEventListener('click', () => { const cb = onLetterModalSubmit; hideLetterModal(); cb?.(null) })
+    letterInputEl?.addEventListener('input', () => {
+      if (letterCountEl && letterInputEl) letterCountEl.textContent = String(letterInputEl.value.length)
+    })
+    letterInputEl?.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); const cb = onLetterModalSubmit; hideLetterModal(); cb?.(null) }
+      else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submitLetterModal() }
+    })
+  }
+  if (!letterModalEl || !letterInputEl) return
+  onLetterModalSubmit = onSubmit
+  letterInputEl.value = ''
+  if (letterCountEl) letterCountEl.textContent = '0'
+  if (letterErrorEl) { letterErrorEl.hidden = true; letterErrorEl.textContent = '' }
+  letterModalEl.hidden = false
+  requestAnimationFrame(() => letterInputEl?.focus())
+}
+
+function submitLetterModal() {
+  if (!letterInputEl) return
+  const text = letterInputEl.value.trim()
+  if (text.length === 0 || text.length > 80) {
+    if (letterErrorEl) {
+      letterErrorEl.textContent = text.length === 0 ? 'Please write something.' : 'Max 80 characters.'
+      letterErrorEl.hidden = false
+    }
+    letterInputEl.focus()
+    return
+  }
+  const cb = onLetterModalSubmit
+  hideLetterModal()
+  cb?.(text)
+}
+
+export function hideLetterModal() {
+  if (!letterModalEl) return
+  letterModalEl.hidden = true
+  onLetterModalSubmit = null
+}
+
+function timeAgo(iso: string): string {
+  try {
+    const ms = Date.now() - new Date(iso).getTime()
+    if (ms < 60_000) return 'just now'
+    if (ms < 3600_000) return Math.round(ms / 60_000) + 'm ago'
+    if (ms < 86400_000) return Math.round(ms / 3600_000) + 'h ago'
+    return Math.round(ms / 86400_000) + 'd ago'
+  } catch { return '' }
+}
+
+export function showLetterRead(author: string | null, content: string, dropped_at: string) {
+  if (!letterReadEl) {
+    letterReadEl = document.getElementById('lounge-letter-read')
+    letterReadAuthorEl = document.getElementById('lounge-letter-read-author')
+    letterReadAgoEl = document.getElementById('lounge-letter-read-ago')
+    letterReadContentEl = document.getElementById('lounge-letter-read-content')
+    letterReadCloseBtn = document.getElementById('lounge-letter-read-close') as HTMLButtonElement | null
+    letterReadCloseBtn?.addEventListener('click', () => hideLetterRead())
+  }
+  if (!letterReadEl || !letterReadAuthorEl || !letterReadAgoEl || !letterReadContentEl) return
+  letterReadAuthorEl.textContent = author || '(anonymous)'
+  letterReadAgoEl.textContent = timeAgo(dropped_at)
+  letterReadContentEl.textContent = content
+  letterReadEl.hidden = false
+}
+
+export function hideLetterRead() {
+  if (!letterReadEl) return
+  letterReadEl.hidden = true
 }

@@ -1,11 +1,11 @@
 import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
-import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendGift, sendDm, requestDmThread, sendDmRead, sendPlace, sendPickup, requestHomeDecorations, sendJamTap, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry, type GiftEntry, type GiftReceivedMsg, type GiftSentOkMsg, type GiftFailedMsg, type DmReceivedMsg, type DmSentOkMsg, type DmFailedMsg, type DmThreadMsg, type DmEntry, type HomeDecoration, type PlaceOkMsg, type PlaceFailedMsg, type PickupOkMsg, type PickupFailedMsg, type HomeDecorationBroadcast, type HomeDecorationsResponseMsg, type JamTapMsg, type JamBurstMsg } from '../net'
+import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendGift, sendDm, requestDmThread, sendDmRead, sendPlace, sendPickup, requestHomeDecorations, sendJamTap, sendLetterDrop, requestLettersInRoom, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry, type GiftEntry, type GiftReceivedMsg, type GiftSentOkMsg, type GiftFailedMsg, type DmReceivedMsg, type DmSentOkMsg, type DmFailedMsg, type DmThreadMsg, type DmEntry, type HomeDecoration, type PlaceOkMsg, type PlaceFailedMsg, type PickupOkMsg, type PickupFailedMsg, type HomeDecorationBroadcast, type HomeDecorationsResponseMsg, type JamTapMsg, type JamBurstMsg, type LetterEntry, type LetterDropOkMsg, type LetterDropFailedMsg, type LetterAppearedMsg, type LettersInRoomMsg } from '../net'
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
 import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, type Region, type RoomId } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
-import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId } from '../ui'
+import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
@@ -101,6 +101,9 @@ export class RoomScene extends Phaser.Scene {
   private placeModeIndicator?: Phaser.GameObjects.Text
   // V4.3 — jam pads
   private jamPads = new Map<number, Phaser.GameObjects.Rectangle>()
+  // V5.1 — letters
+  private letters = new Map<number, LetterEntry>()
+  private letterSprites = new Map<number, Phaser.GameObjects.Text>()
 
   constructor() {
     super({ key: 'Room' })
@@ -183,6 +186,8 @@ export class RoomScene extends Phaser.Scene {
     this.loadAndStartNpcs()
     this.loadAndStartPebbles()
     this.loadAndStartSeasons(map.widthInPixels, map.heightInPixels)
+    // Request letters for this room (after WS welcome + snap arrive)
+    this.time.delayedCall(800, () => requestLettersInRoom(this.currentRoomId))
 
     // V4.2 — if in a home room, render decorations.
     if (isHomeRoom(this.currentRoomId)) {
@@ -286,6 +291,9 @@ export class RoomScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const wx = p.worldX, wy = p.worldY
 
+      // V5.1 — letter has highest priority (small clickable icon)
+      if (this.tryReadLetterAt(wx, wy)) return
+
       // V4.2 — place mode: click floor to place; click own decoration to pick up
       if (this.placeMode) {
         if (this.tryPlaceAt(wx, wy)) return
@@ -355,6 +363,16 @@ export class RoomScene extends Phaser.Scene {
 
     onUIEvent((e) => {
       if (e.type === 'verb') {
+        // V5.1 — 'letter' opens drop modal (doesn't go through sendAct)
+        if (e.verb === 'letter') {
+          if (!this.myBear) return
+          const dropX = this.myBear.x
+          const dropY = this.myBear.y
+          showLetterModal((content) => {
+            if (content) sendLetterDrop(content, dropX, dropY)
+          })
+          return
+        }
         sendAct(e.verb, e.text, this.currentRoomId)
         this.applyAct(undefined, e.verb, e.text)
       }
@@ -455,7 +473,11 @@ export class RoomScene extends Phaser.Scene {
       onHomeDecoration: (m: HomeDecorationBroadcast) => this.applyHomeDecorationBroadcast(m),
       onHomeDecorations: (m: HomeDecorationsResponseMsg) => this.applyHomeDecorationsResponse(m),
       onJamTap: (m: JamTapMsg) => this.applyJamTap(m),
-      onJamBurst: (m: JamBurstMsg) => this.applyJamBurst(m)
+      onJamBurst: (m: JamBurstMsg) => this.applyJamBurst(m),
+      onLetterDropOk: (m: LetterDropOkMsg) => this.applyLetterDropOk(m),
+      onLetterDropFailed: (m: LetterDropFailedMsg) => this.applyLetterDropFailed(m),
+      onLetterAppeared: (m: LetterAppearedMsg) => this.applyLetterAppeared(m),
+      onLettersInRoom: (m: LettersInRoomMsg) => this.applyLettersInRoom(m)
     }, this.currentRoomId)
 
     setInfoPanelDataProvider(
@@ -984,6 +1006,96 @@ export class RoomScene extends Phaser.Scene {
       burst.explode(30)
       this.time.delayedCall(1500, () => burst.destroy())
     }
+  }
+
+  // V5.1 — Letters
+
+  private renderLetters() {
+    this.letterSprites.forEach(s => s.destroy())
+    this.letterSprites.clear()
+    for (const [id, l] of this.letters) this.spawnLetterSprite(id, l)
+  }
+
+  private spawnLetterSprite(id: number, l: LetterEntry) {
+    const text = this.add.text(l.x, l.y, '📜', {
+      fontSize: '14px',
+      resolution: 2
+    }).setOrigin(0.5, 0.5).setDepth(4).setInteractive({ useHandCursor: true })
+    // Slow bob
+    if (!prefersReducedMotion()) {
+      this.tweens.add({
+        targets: text, y: l.y - 2, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut'
+      })
+    }
+    this.letterSprites.set(id, text)
+  }
+
+  private tryReadLetterAt(wx: number, wy: number): boolean {
+    for (const [id, sprite] of this.letterSprites) {
+      if (Math.abs(wx - sprite.x) < 12 && Math.abs(wy - sprite.y) < 12) {
+        const letter = this.letters.get(id)
+        if (letter) {
+          showLetterRead(letter.author_name, letter.content, letter.dropped_at)
+          return true
+        }
+      }
+    }
+    return false
+  }
+
+  private applyLetterDropOk(m: LetterDropOkMsg) {
+    // Add own letter to the local map + render (server doesn't broadcast back to sender)
+    const myId = getIdentity().visitor_id
+    const entry: LetterEntry = {
+      id: m.id, author_visitor_id: myId, author_name: this.myDisplayName,
+      x: m.x, y: m.y, content: m.content, dropped_at: m.dropped_at
+    }
+    // Replace any prior letter of mine in this room (UNIQUE per room+author)
+    for (const [oldId, l] of this.letters) {
+      if (l.author_visitor_id === myId) {
+        this.letterSprites.get(oldId)?.destroy()
+        this.letterSprites.delete(oldId)
+        this.letters.delete(oldId)
+      }
+    }
+    this.letters.set(m.id, entry)
+    this.spawnLetterSprite(m.id, entry)
+    showToast(`📜 Note dropped`)
+  }
+
+  private applyLetterDropFailed(m: LetterDropFailedMsg) {
+    const map: Record<string, string> = {
+      rate_limited: '📜 Slow down — too many notes',
+      length: '📜 1-80 chars',
+      blocked: '📜 Note blocked',
+      invalid: '📜 Invalid'
+    }
+    showToast(map[m.reason] ?? `📜 Drop failed (${m.reason})`)
+  }
+
+  private applyLetterAppeared(m: LetterAppearedMsg) {
+    if (m.room !== this.currentRoomId) return
+    // Replace any prior letter from this author in this room
+    for (const [oldId, l] of this.letters) {
+      if (l.author_visitor_id === m.author_visitor_id) {
+        this.letterSprites.get(oldId)?.destroy()
+        this.letterSprites.delete(oldId)
+        this.letters.delete(oldId)
+      }
+    }
+    const entry: LetterEntry = {
+      id: m.id, author_visitor_id: m.author_visitor_id, author_name: m.author_name,
+      x: m.x, y: m.y, content: m.content, dropped_at: m.dropped_at
+    }
+    this.letters.set(m.id, entry)
+    this.spawnLetterSprite(m.id, entry)
+  }
+
+  private applyLettersInRoom(m: LettersInRoomMsg) {
+    if (m.room !== this.currentRoomId) return
+    this.letters.clear()
+    for (const l of m.letters) this.letters.set(l.id, l)
+    this.renderLetters()
   }
 
   // V4.2 — Home decorations

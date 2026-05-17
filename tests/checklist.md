@@ -1090,3 +1090,32 @@
 
 ### Validator
 - [ ] `npm run lounge:validate` reports "6 rooms, 2 tilesets, 16 pebbles"
+
+## Lounge V5.1 (Letters / Notes)
+
+### Drop a note
+- [ ] Click own bear → emote menu shows new 📜 button
+- [ ] Click 📜 → modal opens with textarea (1-80 char limit, live counter)
+- [ ] Type + click Drop → server roundtrip → "📜 Note dropped" toast
+- [ ] A 📜 icon appears at your bear's position with gentle bob animation
+- [ ] One letter per room per author — dropping again overwrites + repositions
+
+### Read notes
+- [ ] Click any 📜 in the room → parchment-styled read card shows author / time-ago / content
+- [ ] Close via Close button or Escape
+- [ ] Letters from other peers appear via `letter_appeared` broadcast (real-time)
+
+### Cross-room
+- [ ] Walk to another room → new room's letters loaded via `letters {room}` request
+- [ ] Previous room's letter sprites cleaned up
+
+### Constraints
+- [ ] >3 drops/hour → "📜 Slow down — too many notes"
+- [ ] Empty content → modal error "Please write something"
+- [ ] Content with blocklist word (script/fuck/shit) → "📜 Note blocked"
+- [ ] Content >80 chars → maxlength caps; server rejects anyway with "1-80 chars"
+
+### Server protocol
+- [ ] `letter_drop {content, x, y}` → `letter_drop_ok` or `letter_drop_failed`
+- [ ] `letters {room}` → `letters_in_room {room, letters: [...]}`
+- [ ] `letter_appeared` broadcast on drop (visible to peers in same room)

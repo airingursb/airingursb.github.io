@@ -100,6 +100,28 @@
       <button data-verb="sit" title="Sit">🪑</button>
       <button data-verb="dance" title="Dance">💃</button>
       <button data-verb="say" title="Say">💬</button>
+      <button data-verb="letter" title="Drop note">📜</button>
+    </div>
+    <div id="lounge-letter-modal" class="ui-letter-modal" hidden>
+      <div class="ui-letter-modal-backdrop"></div>
+      <div class="ui-letter-modal-card">
+        <h3>📜 Drop a note here</h3>
+        <p class="hint">Anyone who walks by can read it. 1-80 chars.</p>
+        <textarea id="lounge-letter-input" maxlength="80" placeholder="Your note…" rows="3"></textarea>
+        <p id="lounge-letter-error" class="error" hidden></p>
+        <p class="char-count"><span id="lounge-letter-count">0</span> / 80</p>
+        <div class="actions">
+          <button type="button" id="lounge-letter-cancel">Cancel</button>
+          <button type="button" id="lounge-letter-save">Drop</button>
+        </div>
+      </div>
+    </div>
+    <div id="lounge-letter-read" class="ui-letter-read" hidden>
+      <div class="ui-letter-read-card">
+        <p class="meta">📜 by <span id="lounge-letter-read-author">someone</span> · <span id="lounge-letter-read-ago">just now</span></p>
+        <p id="lounge-letter-read-content" class="content"></p>
+        <button type="button" id="lounge-letter-read-close">Close</button>
+      </div>
     </div>
     <form id="lounge-say-form" class="ui-say" hidden>
       <input type="text" id="lounge-say-input" maxlength="60" placeholder="say something…" autocomplete="off">
@@ -511,6 +533,105 @@
   }
   .ui-toast[hidden] { display: none; }
   .ui-toast.is-fading { opacity: 0; }
+
+  /* V5.1 — Letter modal (drop) */
+  .ui-letter-modal {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ui-letter-modal[hidden] { display: none; }
+  .ui-letter-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+  .ui-letter-modal-card {
+    position: relative;
+    background: #2a2418;
+    border: 1px solid #6b4226;
+    border-radius: 10px;
+    padding: 18px 22px;
+    width: 320px;
+    color: #f5e8d8;
+    font-family: ui-monospace, monospace;
+    box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  }
+  .ui-letter-modal-card h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+  .ui-letter-modal-card .hint { margin: 0 0 12px; font-size: 11px; color: #b59c7a; }
+  .ui-letter-modal-card textarea {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 6px;
+    border: 1px solid #6b4226;
+    background: rgba(0,0,0,.4);
+    color: #fff;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.4;
+    resize: vertical;
+    box-sizing: border-box;
+    outline: none;
+  }
+  .ui-letter-modal-card textarea:focus { border-color: #ffd166; }
+  .ui-letter-modal-card .char-count {
+    margin: 4px 0 12px; font-size: 10px; color: #8a7a52; text-align: right;
+  }
+  .ui-letter-modal-card .error { margin: 4px 0 0; font-size: 11px; color: #ff8866; }
+  .ui-letter-modal-card .actions { display: flex; gap: 8px; justify-content: flex-end; }
+  .ui-letter-modal-card .actions button {
+    padding: 6px 14px;
+    border: 1px solid #6b4226;
+    background: rgba(255,255,255,.06);
+    color: #f5e8d8;
+    border-radius: 6px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .ui-letter-modal-card button#lounge-letter-save {
+    background: #d97706; color: #1a1208; border-color: #d97706; font-weight: 600;
+  }
+
+  /* V5.1 — Letter read card */
+  .ui-letter-read {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.4);
+  }
+  .ui-letter-read[hidden] { display: none; }
+  .ui-letter-read-card {
+    background: #f5e8d8;
+    border: 2px solid #6b4226;
+    border-radius: 4px;
+    padding: 20px 24px;
+    width: 320px;
+    color: #2a1f0e;
+    font-family: ui-monospace, monospace;
+    box-shadow: 0 8px 32px rgba(0,0,0,.4);
+    transform: rotate(-1deg);
+  }
+  .ui-letter-read-card .meta {
+    margin: 0 0 10px;
+    font-size: 11px;
+    color: #6b4226;
+    border-bottom: 1px dashed #8a6438;
+    padding-bottom: 8px;
+  }
+  .ui-letter-read-card .content {
+    margin: 0 0 14px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #2a1f0e;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  .ui-letter-read-card button {
+    padding: 6px 14px;
+    border: 1px solid #6b4226;
+    background: rgba(0,0,0,.05);
+    color: #2a1f0e;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .ui-letter-read-card button:hover { background: rgba(0,0,0,.12); }
 
   .ui-inventory-btn {
     position: absolute;
