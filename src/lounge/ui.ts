@@ -142,3 +142,33 @@ export function updateBubblePos(bearId: string, screenX: number, screenY: number
   entry.el.style.left = `${screenX}px`
   entry.el.style.top = `${screenY}px`
 }
+
+let promptEl: HTMLElement | null = null
+let promptVerbEl: HTMLElement | null = null
+
+export function showInteractPrompt(verb: string) {
+  if (!promptEl) {
+    promptEl = document.getElementById('lounge-interact-prompt')
+    promptVerbEl = document.getElementById('lounge-interact-verb')
+  }
+  if (!promptEl || !promptVerbEl) return
+  promptVerbEl.textContent = verb
+  promptEl.hidden = false
+}
+
+export function hideInteractPrompt() {
+  if (!promptEl) {
+    promptEl = document.getElementById('lounge-interact-prompt')
+  }
+  if (!promptEl) return
+  promptEl.hidden = true
+}
+
+export function updateInteractPromptPos(screenX: number, screenY: number) {
+  if (!promptEl) {
+    promptEl = document.getElementById('lounge-interact-prompt')
+  }
+  if (!promptEl) return
+  promptEl.style.left = `${screenX}px`
+  promptEl.style.top = `${screenY}px`
+}

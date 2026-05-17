@@ -1,14 +1,19 @@
 import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
-import { connect, sendPos, sendAct, type ActMsg } from '../net'
-import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, type Region } from '../config'
+import { connect, sendPos, sendAct, sendRoomChange, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg } from '../net'
+import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, type Region, type RoomId } from '../config'
 import { preloadAudio, bindAudio, playSfx } from '../audio'
-import { onUIEvent, showMenuAt, showBubble, updateBubblePos } from '../ui'
+import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos } from '../ui'
 import { getEmote } from '../emotes'
 
 type Direction = 'up' | 'down' | 'left' | 'right'
 
-export class LobbyScene extends Phaser.Scene {
+type Portal = { x: number; y: number; w: number; h: number; targetRoom: RoomId; targetSpawn: string }
+type Interactable = { x: number; y: number; w: number; h: number; kind: string; anchorX: number; anchorY: number; facing: Direction; name: string }
+
+export class RoomScene extends Phaser.Scene {
+  private currentRoomId: RoomId = DEFAULT_ROOM
+  private spawnPointName = 'default'
   private myBear?: Bear
   private myDirection: Direction = 'down'
   private peers = new Map<string, { bear: Bear; lastUpdate: number }>()
@@ -16,18 +21,29 @@ export class LobbyScene extends Phaser.Scene {
   private myCC: string | null = null
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys
   private wasd?: { W: Phaser.Input.Keyboard.Key; A: Phaser.Input.Keyboard.Key; S: Phaser.Input.Keyboard.Key; D: Phaser.Input.Keyboard.Key }
-  private mapInfo: { widthPx: number; heightPx: number; collisionRects: Array<{ x: number; y: number; w: number; h: number }> } = {
-    widthPx: 480, heightPx: 320, collisionRects: []
-  }
+  private eKey?: Phaser.Input.Keyboard.Key
+  private mapInfo = { widthPx: 480, heightPx: 320, collisionRects: [] as Array<{ x: number; y: number; w: number; h: number }> }
   private autoWaveOnArrive = false
+  private portals: Portal[] = []
+  private interactables: Interactable[] = []
+  private nearbyInteractable: Interactable | null = null
+  private currentSitInteractable: Interactable | null = null
+  private transitioning = false
 
   constructor() {
-    super({ key: 'Lobby' })
+    super({ key: 'Room' })
+  }
+
+  init(data: { roomId?: RoomId; spawnPoint?: string }) {
+    this.currentRoomId = (data?.roomId && isValidRoom(data.roomId)) ? data.roomId : DEFAULT_ROOM
+    this.spawnPointName = data?.spawnPoint ?? 'default'
   }
 
   preload() {
     preloadAudio(this)
-    this.load.tilemapTiledJSON('lobby', '/lounge/assets/rooms/lobby.tmj')
+    this.load.tilemapTiledJSON('room_lobby',    '/lounge/assets/rooms/lobby.tmj')
+    this.load.tilemapTiledJSON('room_dj_floor', '/lounge/assets/rooms/dj_floor.tmj')
+    this.load.tilemapTiledJSON('room_balcony',  '/lounge/assets/rooms/balcony.tmj')
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
     for (const region of REGIONS) {
       this.load.atlas(
@@ -39,7 +55,7 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   create() {
-    const map = this.make.tilemap({ key: 'lobby' })
+    const map = this.make.tilemap({ key: this.currentRoomId })
     const tileset = map.addTilesetImage('indoor_lobby_v0', 'indoor_lobby_v0')!
 
     map.createLayer('floor', tileset, 0, 0)
@@ -49,18 +65,13 @@ export class LobbyScene extends Phaser.Scene {
 
     registerBearAnimations(this, REGIONS)
     bindAudio(this)
-    this.time.delayedCall(100, () => playSfx('click', 0.5))
 
-    const spawnObj = map.findObject('spawn_points', (o) => o.name === 'default')
+    const spawnObj = map.findObject('spawn_points', (o) => o.name === this.spawnPointName)
+      ?? map.findObject('spawn_points', (o) => o.name === 'default')
     const spawnX = (spawnObj?.x as number | undefined) ?? 240
     const spawnY = (spawnObj?.y as number | undefined) ?? 296
 
-    try {
-      this.myCC = sessionStorage.getItem('vp_country')
-    } catch {
-      this.myCC = null
-    }
-
+    try { this.myCC = sessionStorage.getItem('vp_country') } catch { this.myCC = null }
     const myRegion: Region = ccToRegion(this.myCC)
     this.myBear = new Bear(this, spawnX, spawnY, myRegion)
     this.myBear.sprite.setDepth(5)
@@ -74,7 +85,37 @@ export class LobbyScene extends Phaser.Scene {
     }))
     this.mapInfo = { widthPx: map.widthInPixels, heightPx: map.heightInPixels, collisionRects }
 
-    // Keyboard: arrow keys + WASD
+    const portalsLayer = map.getObjectLayer('portals')
+    this.portals = (portalsLayer?.objects ?? []).map((o) => {
+      const props = (o.properties ?? []) as Array<{ name: string; value: unknown }>
+      const get = (name: string) => props.find((p) => p.name === name)?.value
+      return {
+        x: (o.x as number) ?? 0,
+        y: (o.y as number) ?? 0,
+        w: (o.width as number) ?? 0,
+        h: (o.height as number) ?? 0,
+        targetRoom: get('target_room') as RoomId,
+        targetSpawn: (get('target_spawn') as string) ?? 'default'
+      }
+    })
+
+    const interactsLayer = map.getObjectLayer('interactables')
+    this.interactables = (interactsLayer?.objects ?? []).map((o) => {
+      const props = (o.properties ?? []) as Array<{ name: string; value: unknown }>
+      const get = (name: string) => props.find((p) => p.name === name)?.value
+      return {
+        name: (o.name as string) ?? '',
+        x: (o.x as number) ?? 0,
+        y: (o.y as number) ?? 0,
+        w: (o.width as number) ?? 0,
+        h: (o.height as number) ?? 0,
+        kind: (get('kind') as string) ?? 'unknown',
+        anchorX: (get('anchor_x') as number) ?? ((o.x as number) + ((o.width as number) ?? 16) / 2),
+        anchorY: (get('anchor_y') as number) ?? ((o.y as number) + ((o.height as number) ?? 16) / 2),
+        facing: ((get('facing') as Direction) ?? 'down')
+      }
+    })
+
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys()
       this.wasd = {
@@ -83,26 +124,25 @@ export class LobbyScene extends Phaser.Scene {
         S: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S),
         D: this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D)
       }
+      this.eKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)
+      this.eKey.on('down', () => this.tryInteract())
     }
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      const wx = p.worldX
-      const wy = p.worldY
+      const wx = p.worldX, wy = p.worldY
 
-      // Click on own bear → open emote menu at bear's screen position
       if (this.myBear) {
         const b = this.myBear
         if (Math.abs(wx - b.x) < 14 && wy > b.y - 50 && wy < b.y) {
-          const screenX = this.scale.canvasBounds.x + b.x * this.scale.displayScale.x
-          const screenY = this.scale.canvasBounds.y + (b.y - 30) * this.scale.displayScale.y
-          showMenuAt(screenX, screenY)
+          const sX = this.scale.canvasBounds.x + b.x * this.scale.displayScale.x
+          const sY = this.scale.canvasBounds.y + (b.y - 30) * this.scale.displayScale.y
+          showMenuAt(sX, sY)
           return
         }
       }
 
-      // Click on a peer -> walk near them + auto-wave on arrival
-      for (const [, p] of this.peers) {
-        const b = p.bear
+      for (const [, p2] of this.peers) {
+        const b = p2.bear
         if (Math.abs(wx - b.x) < 14 && wy > b.y - 50 && wy < b.y) {
           const destX = Math.max(20, Math.min(map.widthInPixels - 20, b.x - 30))
           const destY = Math.max(20, Math.min(map.heightInPixels - 12, b.y))
@@ -117,19 +157,21 @@ export class LobbyScene extends Phaser.Scene {
         }
       }
 
-      // Floor walk-to
+      for (const it of this.interactables) {
+        if (wx >= it.x && wx <= it.x + it.w && wy >= it.y && wy <= it.y + it.h) {
+          this.activateInteractable(it)
+          return
+        }
+      }
+
       this.autoWaveOnArrive = false
-      let tx = wx
-      let ty = wy
+      let tx = wx, ty = wy
       tx = Math.max(20, Math.min(map.widthInPixels - 20, tx))
       ty = Math.max(20, Math.min(map.heightInPixels - 12, ty))
-
       for (const r of collisionRects) {
         if (tx >= r.x && tx <= r.x + r.w && ty >= r.y && ty <= r.y + r.h) {
-          const dxL = tx - r.x
-          const dxR = r.x + r.w - tx
-          const dyT = ty - r.y
-          const dyB = r.y + r.h - ty
+          const dxL = tx - r.x, dxR = r.x + r.w - tx
+          const dyT = ty - r.y, dyB = r.y + r.h - ty
           const m = Math.min(dxL, dxR, dyT, dyB)
           if (m === dxL) tx = r.x - 4
           else if (m === dxR) tx = r.x + r.w + 4
@@ -138,7 +180,6 @@ export class LobbyScene extends Phaser.Scene {
           break
         }
       }
-
       this.myBear?.walkTo(tx, ty)
       const dx = tx - this.myBear!.x
       const dy = ty - this.myBear!.y
@@ -149,7 +190,7 @@ export class LobbyScene extends Phaser.Scene {
 
     onUIEvent((e) => {
       if (e.type === 'verb') {
-        sendAct(e.verb, e.text)
+        sendAct(e.verb, e.text, this.currentRoomId)
         this.applyAct(undefined, e.verb, e.text)
       }
     })
@@ -170,29 +211,29 @@ export class LobbyScene extends Phaser.Scene {
           this.statusEl.textContent = state === 'connecting' ? 'connecting…' : 'reconnecting…'
         }
       },
-      onSnap: (m) => {
+      onSnap: (m: SnapMsg) => {
         this.peers.forEach((p) => p.bear.destroy())
         this.peers.clear()
         for (const p of m.peers) {
+          if (p.room !== this.currentRoomId) continue
           const bear = new Bear(this, p.x, p.y, ccToRegion(p.cc))
           bear.sprite.setDepth(5)
           this.peers.set(p.id, { bear, lastUpdate: performance.now() })
         }
       },
-      onJoin: (m) => {
+      onJoin: (m: JoinMsg) => {
+        if (m.room !== this.currentRoomId) return
         if (this.peers.has(m.id)) return
         const bear = new Bear(this, m.x, m.y, ccToRegion(m.cc))
         bear.sprite.setDepth(5)
         this.peers.set(m.id, { bear, lastUpdate: performance.now() })
       },
-      onLeave: (m) => {
+      onLeave: (m: LeaveMsg) => {
         const peer = this.peers.get(m.id)
-        if (peer) {
-          peer.bear.destroy()
-          this.peers.delete(m.id)
-        }
+        if (peer) { peer.bear.destroy(); this.peers.delete(m.id) }
       },
-      onPos: (m) => {
+      onPos: (m: PosMsg) => {
+        if (m.room !== this.currentRoomId) return
         let peer = this.peers.get(m.id)
         if (!peer) {
           const bear = new Bear(this, m.x, m.y, 'unknown')
@@ -204,6 +245,7 @@ export class LobbyScene extends Phaser.Scene {
         peer.bear.setRemoteTarget(m.x, m.y, m.vx ?? 0, m.vy ?? 0)
       },
       onAct: (m: ActMsg) => {
+        if (m.room !== this.currentRoomId) return
         this.applyAct(m.id, m.verb, m.text)
       },
       onFull: () => {
@@ -212,7 +254,35 @@ export class LobbyScene extends Phaser.Scene {
           this.statusEl.textContent = 'lounge at capacity'
         }
       }
-    })
+    }, this.currentRoomId)
+
+    if (!prefersReducedMotion()) {
+      this.cameras.main.fadeIn(200, 0, 0, 0)
+    }
+  }
+
+  private tryInteract() {
+    if (this.nearbyInteractable) {
+      this.activateInteractable(this.nearbyInteractable)
+    } else if (this.currentSitInteractable && this.myBear?.state === 'sit') {
+      sendAct('sit', undefined, this.currentRoomId)
+      this.applyAct(undefined, 'sit')
+      this.currentSitInteractable = null
+    }
+  }
+
+  private activateInteractable(it: Interactable) {
+    if (it.kind !== 'sit') return
+    if (!this.myBear) return
+    if (this.currentSitInteractable === it && this.myBear.state === 'sit') {
+      sendAct('sit', undefined, this.currentRoomId)
+      this.applyAct(undefined, 'sit')
+      this.currentSitInteractable = null
+      return
+    }
+    this.myBear.walkTo(it.anchorX, it.anchorY)
+    this.myDirection = it.facing
+    this.currentSitInteractable = it
   }
 
   private collidesAt(x: number, y: number): boolean {
@@ -235,46 +305,34 @@ export class LobbyScene extends Phaser.Scene {
     const right = (this.cursors?.right.isDown ?? false) || (this.wasd?.D.isDown ?? false)
     const up = (this.cursors?.up.isDown ?? false) || (this.wasd?.W.isDown ?? false)
     const down = (this.cursors?.down.isDown ?? false) || (this.wasd?.S.isDown ?? false)
-
     if (!left && !right && !up && !down) return false
 
-    // Cancel any click-target and move by velocity instead.
     this.myBear.target = null
+    if (this.myBear.state === 'sit') {
+      this.currentSitInteractable = null
+    }
     let vx = (right ? 1 : 0) - (left ? 1 : 0)
     let vy = (down ? 1 : 0) - (up ? 1 : 0)
-    // Normalize diagonal
     if (vx !== 0 && vy !== 0) {
       const inv = 1 / Math.sqrt(2)
-      vx *= inv
-      vy *= inv
+      vx *= inv; vy *= inv
     }
     const step = (WALK_SPEED * dtMs) / 1000
     let nx = this.myBear.x + vx * step
     let ny = this.myBear.y + vy * step
     const clamped = this.clampToWalkable(nx, ny)
-    nx = clamped.x
-    ny = clamped.y
-    // Collision: try axis-separated movement so player can slide along walls
+    nx = clamped.x; ny = clamped.y
     if (this.collidesAt(nx, ny)) {
-      // Try X-only
       const nx2 = this.clampToWalkable(this.myBear.x + vx * step, this.myBear.y).x
-      if (!this.collidesAt(nx2, this.myBear.y)) {
-        nx = nx2; ny = this.myBear.y
-      } else {
-        // Try Y-only
+      if (!this.collidesAt(nx2, this.myBear.y)) { nx = nx2; ny = this.myBear.y }
+      else {
         const ny2 = this.clampToWalkable(this.myBear.x, this.myBear.y + vy * step).y
-        if (!this.collidesAt(this.myBear.x, ny2)) {
-          nx = this.myBear.x; ny = ny2
-        } else {
-          nx = this.myBear.x; ny = this.myBear.y
-        }
+        if (!this.collidesAt(this.myBear.x, ny2)) { nx = this.myBear.x; ny = ny2 }
+        else { nx = this.myBear.x; ny = this.myBear.y }
       }
     }
-
     this.myBear.sprite.x = nx
     this.myBear.sprite.y = ny
-
-    // Pick a facing direction from velocity
     this.myDirection = Math.abs(vx) > Math.abs(vy)
       ? (vx > 0 ? 'right' : 'left')
       : (vy > 0 ? 'down' : 'up')
@@ -296,14 +354,57 @@ export class LobbyScene extends Phaser.Scene {
     if (!def) return
     const target = peerId ? this.peers.get(peerId)?.bear : this.myBear
     if (!target) return
-
     if (verb === 'say' && text) {
       const sb = this.bearScreenPos(target)
       showBubble(peerId ?? '__me__', text, sb.x, sb.y)
       return
     }
-
     target.applyEmote(verb, def.durationMs, prefersReducedMotion())
+  }
+
+  private checkPortals() {
+    if (this.transitioning || !this.myBear) return
+    for (const p of this.portals) {
+      if (this.myBear.x >= p.x && this.myBear.x <= p.x + p.w &&
+          this.myBear.y >= p.y && this.myBear.y <= p.y + p.h) {
+        this.transitioning = true
+        const targetRoom = p.targetRoom
+        const targetSpawn = p.targetSpawn
+        const fade = !prefersReducedMotion()
+        if (fade) {
+          this.cameras.main.fadeOut(200, 0, 0, 0)
+          this.cameras.main.once('camerafadeoutcomplete', () => {
+            sendRoomChange(targetRoom)
+            this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
+          })
+        } else {
+          sendRoomChange(targetRoom)
+          this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
+        }
+        return
+      }
+    }
+  }
+
+  private checkInteractableProximity() {
+    if (!this.myBear) return
+    const PROX = 32
+    let nearest: Interactable | null = null
+    let bestD = Infinity
+    for (const it of this.interactables) {
+      const cx = it.anchorX, cy = it.anchorY
+      const d = Math.hypot(cx - this.myBear.x, cy - this.myBear.y)
+      if (d < PROX && d < bestD) { nearest = it; bestD = d }
+    }
+    if (nearest !== this.nearbyInteractable) {
+      this.nearbyInteractable = nearest
+      if (nearest) showInteractPrompt(nearest.kind)
+      else hideInteractPrompt()
+    }
+    if (this.nearbyInteractable) {
+      const s = this.bearScreenPos(this.myBear)
+      updateInteractPromptPos(s.x, s.y - 30)
+    }
   }
 
   update(_time: number, dtMs: number) {
@@ -316,22 +417,29 @@ export class LobbyScene extends Phaser.Scene {
         }
         this.myBear.update(dtMs, false)
       }
-      // Auto-wave when click-to-walk-to-peer settles
       if (this.autoWaveOnArrive && this.myBear.state === 'idle' && !this.myBear.target) {
         this.autoWaveOnArrive = false
-        sendAct('wave')
+        sendAct('wave', undefined, this.currentRoomId)
         this.applyAct(undefined, 'wave')
+      }
+      if (this.currentSitInteractable && this.myBear.state === 'idle' && !this.myBear.target) {
+        const it = this.currentSitInteractable
+        if (Math.abs(this.myBear.x - it.anchorX) < 2 && Math.abs(this.myBear.y - it.anchorY) < 2) {
+          this.myBear.facing = it.facing
+          sendAct('sit', undefined, this.currentRoomId)
+          this.applyAct(undefined, 'sit')
+        }
       }
       const stateStr = this.myBear.state === 'walk'
         ? `walk_${this.myDirection}`
         : `idle_${this.myDirection}`
       const vx = this.myBear.target ? this.myBear.target.x - this.myBear.x : 0
       const vy = this.myBear.target ? this.myBear.target.y - this.myBear.y : 0
-      sendPos(this.myBear.x, this.myBear.y, stateStr, vx, vy)
+      sendPos(this.myBear.x, this.myBear.y, stateStr, vx, vy, this.currentRoomId)
+      this.checkPortals()
+      this.checkInteractableProximity()
     }
     this.peers.forEach((p) => p.bear.update(dtMs, true))
-
-    // Refresh bubble positions each frame
     if (this.myBear) {
       const s = this.bearScreenPos(this.myBear)
       updateBubblePos('__me__', s.x, s.y)
