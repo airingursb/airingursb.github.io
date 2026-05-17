@@ -14,7 +14,7 @@ import { getWeatherForDate } from '../weather'
 import { footstepDust, clickRipple, pebbleSparkle, sitImpact, waveArc, letterFlutter } from '../feedback'
 import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted } from '../identity'
 import { loadNpcManifest, getActiveBracket, pickDialog, buildDialogContext, type NpcDef, type NpcManifest } from '../npcs'
-import { getActiveFestivalId } from '../festivals'
+import { getActiveFestivalId, getActiveFestival } from '../festivals'
 
 const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
@@ -206,6 +206,7 @@ export class RoomScene extends Phaser.Scene {
     this.setupAtmosphere(map.widthInPixels, map.heightInPixels)
     this.setupParticles(map.widthInPixels, map.heightInPixels)
     this.setupWeather(map.widthInPixels, map.heightInPixels)
+    this.setupFestival(map.widthInPixels, map.heightInPixels)
     this.loadAndStartNpcs()
     this.loadAndStartPebbles()
     this.loadAndStartSeasons(map.widthInPixels, map.heightInPixels)
@@ -1431,6 +1432,67 @@ export class RoomScene extends Phaser.Scene {
           })
         }
       }
+    }
+  }
+
+  // V7.3 — Festival visual layer + top banner UI.
+  //   Banner: shown if any festival is active today (regardless of room).
+  //   Decorations: rendered only in host_room — small particle / overlay accent.
+  private setupFestival(widthPx: number, heightPx: number) {
+    const fest = getActiveFestival()
+    const banner = document.getElementById('lounge-festival-banner') as HTMLElement | null
+    const bannerEmoji = document.getElementById('lounge-festival-banner-emoji') as HTMLElement | null
+    const bannerText = document.getElementById('lounge-festival-banner-text') as HTMLElement | null
+    if (!fest) {
+      if (banner) banner.hidden = true
+      return
+    }
+    if (banner && bannerEmoji && bannerText) {
+      bannerEmoji.textContent = fest.emoji
+      bannerText.textContent = `${fest.name} — ${fest.blurb}`
+      banner.hidden = false
+    }
+    if (this.currentRoomId !== fest.host_room) return
+    // Host-room decoration overlay
+    if (prefersReducedMotion()) return
+    ensurePixelTexture(this)
+    if (fest.decoration === 'tea') {
+      // gentle pink petals drifting down
+      this.add.particles(0, 0, PIXEL_TEX_KEY, {
+        x: { min: 0, max: widthPx }, y: -5,
+        lifespan: 7000, quantity: 1, frequency: 220,
+        speedY: { min: 12, max: 24 }, speedX: { min: -10, max: 10 },
+        scale: 1.4, tint: [0xffc0cb, 0xff8fb0, 0xffe0ec],
+        alpha: { start: 0.85, end: 0.4 }, rotate: { min: 0, max: 360 }
+      }).setDepth(999)
+    } else if (fest.decoration === 'bonfire') {
+      // warm sparks rising in center of room
+      this.add.particles(widthPx / 2, heightPx - 40, PIXEL_TEX_KEY, {
+        lifespan: 1400, quantity: 2, frequency: 80,
+        speedY: { min: -50, max: -20 }, speedX: { min: -15, max: 15 },
+        scale: { start: 1.5, end: 0 },
+        tint: [0xff6020, 0xffa040, 0xffe080],
+        alpha: { start: 0.95, end: 0 },
+        blendMode: Phaser.BlendModes.ADD
+      }).setDepth(999)
+    } else if (fest.decoration === 'harvest') {
+      // gold leaves falling
+      this.add.particles(0, 0, PIXEL_TEX_KEY, {
+        x: { min: 0, max: widthPx }, y: -5,
+        lifespan: 6500, quantity: 1, frequency: 280,
+        speedY: { min: 18, max: 32 }, speedX: { min: -16, max: 16 },
+        scale: 1.6, tint: [0xd87a20, 0xe8a040, 0xb05010, 0xf8c060],
+        alpha: { start: 0.9, end: 0.5 }, rotate: { min: 0, max: 360 }
+      }).setDepth(999)
+    } else if (fest.decoration === 'gifts') {
+      // snow + occasional gift-box flash
+      this.add.particles(0, 0, PIXEL_TEX_KEY, {
+        x: { min: 0, max: widthPx }, y: -5,
+        lifespan: 6000, quantity: 1, frequency: 100,
+        speedY: { min: 25, max: 45 }, speedX: { min: -8, max: 8 },
+        scale: 1.3, tint: 0xffffff,
+        alpha: { start: 0.85, end: 0.5 }, rotate: { min: 0, max: 360 }
+      }).setDepth(999)
     }
   }
 
