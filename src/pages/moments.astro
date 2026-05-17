@@ -5,7 +5,14 @@ import { tSite } from '../lib/i18n';
 import { fetchComics } from '../lib/comics';
 
 const s = tSite('zh').moments;
-const latestComics = (await fetchComics()).slice(0, 12);
+const allComics = await fetchComics();
+const latestComics = allComics.slice(0, 12);
+
+function formatStripDate(s: string): string {
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
+}
 
 // ── Build-time: fetch moments from Supabase ──
 const SUPABASE_URL = import.meta.env.BLOG_SUPABASE_URL || process.env.BLOG_SUPABASE_URL || '';
@@ -121,6 +128,15 @@ for (const m of staticMoments) {
     momentImageByDate[dk] = m.images[0];
   }
 }
+// Merge comics into the calendar
+for (const c of allComics) {
+  const dk = getDateKey(c.published_at);
+  if (!dk) continue;
+  momentCountByDate[dk] = (momentCountByDate[dk] || 0) + 1;
+  if (!momentImageByDate[dk] && c.panels?.url) {
+    momentImageByDate[dk] = c.panels.url;
+  }
+}
 ---
 
 <BaseLayout title={`${s.title} | Airing`} lang="zh">
@@ -171,8 +187,11 @@ for (const m of staticMoments) {
                   <img src={c.panels?.url} alt={c.title?.zh} loading="lazy" />
                 </div>
                 <div class="strip-caption">
-                  <span class="strip-issue">No. {c.issue_number}</span>
-                  <span class="strip-title">{c.title?.zh}</span>
+                  <div class="strip-meta">
+                    <span class="strip-issue">No. {c.issue_number}</span>
+                    <span class="strip-date">{formatStripDate(c.published_at)}</span>
+                  </div>
+                  <div class="strip-title">{c.title?.zh}</div>
                 </div>
               </a>
             ))}
@@ -445,16 +464,22 @@ for (const m of staticMoments) {
   }
   .strip-caption {
     font-size: 12px;
+    line-height: 1.35;
+  }
+  .strip-meta {
     display: flex;
     gap: 8px;
     align-items: baseline;
-    line-height: 1.35;
+    color: var(--c-text-soft, #888);
+    margin-bottom: 2px;
   }
   .strip-issue {
     font-weight: 700;
-    color: var(--c-text-soft, #888);
     letter-spacing: 0.04em;
-    flex-shrink: 0;
+  }
+  .strip-date {
+    font-size: 11px;
+    color: var(--c-text-dim);
   }
   .strip-title {
     color: var(--c-text);
