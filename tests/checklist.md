@@ -527,3 +527,50 @@
 - [ ] `total === 1` → 1 bear in slot 1, scene otherwise empty
 - [ ] All countries unknown → bears all grey (`#888888`)
 - [ ] `vp_country` null → no bear gets the ring
+
+---
+
+## Lounge Page (`/lounge`, sub-project B-MVP)
+
+> Spec: `docs/superpowers/specs/2026-05-17-lounge-page-design.md`
+> Plan: `docs/superpowers/plans/2026-05-17-lounge-page.md`
+
+### Page render
+- [ ] GET `/lounge` returns page; canvas fills viewport (1600×900 logical, scaled)
+- [ ] Furniture scene visible (couches, tables, DJ booth, bookshelves, posters, neon sign, disco ball)
+- [ ] Back button top-left works
+
+### Movement
+- [ ] Own bear spawns at door (bottom-center, ~800,760)
+- [ ] Click on floor → bear walks there with leg animation
+- [ ] Click outside walkable area → clamps to floor edge
+- [ ] Bear faces direction of travel (sprite flips horizontally)
+
+### Multiplayer
+- [ ] Open in 2 browsers → each sees the other's bear within ~1s
+- [ ] Movement syncs within ~150ms (interpolated, smooth)
+- [ ] Closing one tab → other sees disappear within ~1s
+
+### Interactions
+- [ ] Click own bear → radial menu (👋🪑💃💬) pops up at bear position
+- [ ] Wave → right arm raises 1.5s, peers see it
+- [ ] Sit → legs disappear, persists until clicked again
+- [ ] Dance → 3s bounce loop, peers see it
+- [ ] Say → text input at bottom; Enter sends; speech bubble for 3s
+- [ ] Click another bear → walks to them + auto-wave on arrival
+
+### Resilience
+- [ ] WS disconnect → "reconnecting…" toast, exponential backoff
+- [ ] Server restart → all clients re-snapshot when reconnected
+- [ ] Cap at 50 connections → 51st gets "at capacity" toast
+- [ ] Spam position updates → server rate-limits silently
+- [ ] Send `say` text > 60 chars → server clamps to 60
+- [ ] Send `say` containing blocklist word → dropped silently
+
+### Entrypoint
+- [ ] Homepage popover under mascot has `See more →` link at bottom
+- [ ] Clicking → navigates to `/lounge`
+
+### Mobile / a11y
+- [ ] Touch = click; tap floor → walk; tap own bear → menu opens
+- [ ] 375×812 viewport scales canvas, controls reachable
