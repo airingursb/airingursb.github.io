@@ -21,7 +21,7 @@ import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '..
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD } from '../shells'
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
-import { showSleepOverlay, refreshMailboxBadge } from '../ui'
+import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
 import { seedMailForToday, unreadCount as mailUnread } from '../mailbox'
 
@@ -579,6 +579,22 @@ export class RoomScene extends Phaser.Scene {
       import('../config').then(({ setMySpecies }) => setMySpecies(next))
       this.myBear?.setSpecies(next)
       updateSpeciesButtonLabel(next)
+    })
+
+    // V8.7 — progress panel data provider (pebbles + friendships + npc count)
+    setProgressDataProvider(() => {
+      const allPebbles = getAllPebbles()
+      const friendsArr = Array.from(this.friendships.values()).map(f => ({ level: f.level, display_name: f.display_name }))
+      // npc total = manifest npcs (excluding human visitors). We have 11.
+      const npcIds = new Set<string>()
+      this.npcBears.forEach((_v, k) => npcIds.add(k))
+      if (this.npcManifest) for (const n of this.npcManifest.npcs) npcIds.add(n.id)
+      return {
+        pebblesCollected: this.inventory.size,
+        pebblesTotal: allPebbles.length,
+        friendships: friendsArr,
+        totalNpcs: Math.max(npcIds.size, 11)
+      }
     })
 
     setupWishboard(

@@ -231,6 +231,7 @@ export function initUI() {
   ensureShellsRefs()
   ensureSleepRefs()
   ensureMailboxRefs()
+  ensureProgressRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -430,6 +431,81 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat') {
   if (!infoSpeciesBtn) return
   infoSpeciesBtn.dataset.species = currentSpecies
   infoSpeciesBtn.textContent = currentSpecies === 'bear' ? 'Switch to 🐱 Cat' : 'Switch to 🐻 Bear'
+}
+
+// V8.7 — Progress / "Your Story" panel
+import { buildProgress, type ProgressMetric } from './progress'
+
+let progressPanelEl: HTMLElement | null = null
+let progressListEl: HTMLElement | null = null
+let progressSummaryEl: HTMLElement | null = null
+let progressCloseBtn: HTMLButtonElement | null = null
+let progressOpenBtn: HTMLButtonElement | null = null
+let progressDataProvider: (() => Parameters<typeof buildProgress>[0]) | null = null
+
+export function setProgressDataProvider(p: () => Parameters<typeof buildProgress>[0]) {
+  progressDataProvider = p
+}
+
+function ensureProgressRefs() {
+  if (progressPanelEl) return
+  progressPanelEl   = document.getElementById('lounge-progress-panel')
+  progressListEl    = document.getElementById('lounge-progress-list')
+  progressSummaryEl = document.getElementById('lounge-progress-summary')
+  progressCloseBtn  = document.getElementById('lounge-progress-close') as HTMLButtonElement | null
+  progressOpenBtn   = document.getElementById('lounge-info-progress') as HTMLButtonElement | null
+  if (progressCloseBtn) progressCloseBtn.addEventListener('click', () => hideProgressPanel())
+  if (progressOpenBtn) progressOpenBtn.addEventListener('click', () => { hideInfoPanel(); showProgressPanel() })
+  if (progressPanelEl) progressPanelEl.addEventListener('click', (e) => {
+    if (e.target === progressPanelEl) hideProgressPanel()
+  })
+}
+
+export function showProgressPanel() {
+  ensureProgressRefs()
+  if (!progressPanelEl) return
+  renderProgress()
+  progressPanelEl.hidden = false
+  playSfx('menu_open')
+}
+
+export function hideProgressPanel() {
+  if (!progressPanelEl) return
+  progressPanelEl.hidden = true
+  playSfx('menu_close')
+}
+
+function renderProgress() {
+  if (!progressListEl || !progressSummaryEl) return
+  if (!progressDataProvider) {
+    progressSummaryEl.textContent = 'Progress data is not ready yet — try again in a moment.'
+    progressListEl.innerHTML = ''
+    return
+  }
+  const { metrics, summary } = buildProgress(progressDataProvider())
+  progressSummaryEl.textContent = summary
+  progressListEl.innerHTML = ''
+  for (const m of metrics) {
+    const li = document.createElement('li')
+    li.className = 'prog-item'
+    const row = document.createElement('div'); row.className = 'p-row'
+    const label = document.createElement('span'); label.className = 'p-label'; label.textContent = m.label
+    const value = document.createElement('span'); value.className = 'p-value'; value.textContent = m.value
+    row.appendChild(label); row.appendChild(value)
+    li.appendChild(row)
+    if (m.ratio) {
+      const bar = document.createElement('div'); bar.className = 'p-bar'
+      const fill = document.createElement('div'); fill.className = 'p-fill'
+      const pct = m.ratio.need > 0 ? Math.min(100, (m.ratio.have / m.ratio.need) * 100) : 0
+      fill.style.width = pct + '%'
+      bar.appendChild(fill); li.appendChild(bar)
+    }
+    if (m.hint) {
+      const hint = document.createElement('div'); hint.className = 'p-hint'; hint.textContent = m.hint
+      li.appendChild(hint)
+    }
+    progressListEl.appendChild(li)
+  }
 }
 
 // V8.6 — Mailbox panel + badge
