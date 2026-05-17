@@ -7,6 +7,11 @@ import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt,
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
 import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted } from '../identity'
+import { loadNpcManifest, getActiveBracket, pickDialog, type NpcDef, type NpcManifest } from '../npcs'
+
+const NPC_LABEL_COLOR = '#ffd166'
+const NPC_LABEL_PREFIX = '✦ '
+const NPC_REFRESH_MS = 10_000
 
 const ROOM_AUDIO: Record<RoomId, { bgmKey: string; bgmPath: string; ambKey: string; ambPath: string }> = {
   room_lobby:    { bgmKey: 'bgm_lobby_day',      bgmPath: '/lounge/assets/audio/bgm/lobby_day.ogg',
@@ -60,6 +65,10 @@ export class RoomScene extends Phaser.Scene {
   private myRegion: Region = 'unknown'
   private welcomeApplied = false
   private pendingSpawn: { x: number; y: number } | null = null
+  private npcManifest: NpcManifest | null = null
+  private npcBears = new Map<string, { bear: Bear; def: NpcDef }>()
+  private npcDialogMemory = new Map<string, string>()
+  private npcRefreshTimer?: Phaser.Time.TimerEvent
 
   constructor() {
     super({ key: 'Room' })
@@ -112,6 +121,7 @@ export class RoomScene extends Phaser.Scene {
     ensurePixelTexture(this)
     this.setupAtmosphere(map.widthInPixels, map.heightInPixels)
     this.setupParticles(map.widthInPixels, map.heightInPixels)
+    this.loadAndStartNpcs()
 
     const spawnObj = map.findObject('spawn_points', (o) => o.name === this.spawnPointName)
       ?? map.findObject('spawn_points', (o) => o.name === 'default')
@@ -191,6 +201,14 @@ export class RoomScene extends Phaser.Scene {
           const sX = this.scale.canvasBounds.x + b.x * this.scale.displayScale.x
           const sY = this.scale.canvasBounds.y + (b.y - 30) * this.scale.displayScale.y
           showMenuAt(sX, sY)
+          return
+        }
+      }
+
+      for (const [npcId, entry] of this.npcBears) {
+        const b = entry.bear
+        if (Math.abs(wx - b.x) < 14 && wy > b.y - 50 && wy < b.y) {
+          this.handleNpcClick(npcId)
           return
         }
       }
@@ -349,6 +367,7 @@ export class RoomScene extends Phaser.Scene {
       this.transitioning = true
       stopRoomAudio()
       if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
+      if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
       sendRoomChange(m.last_room)
       this.scene.restart({ roomId: m.last_room, spawnPoint: 'default', welcomeX: wx, welcomeY: wy })
       return
@@ -518,6 +537,67 @@ export class RoomScene extends Phaser.Scene {
     }
   }
 
+  private async loadAndStartNpcs() {
+    this.npcManifest = await loadNpcManifest()
+    this.refreshNpcs()
+    this.npcRefreshTimer = this.time.addEvent({
+      delay: NPC_REFRESH_MS,
+      loop: true,
+      callback: () => this.refreshNpcs()
+    })
+  }
+
+  private refreshNpcs() {
+    if (!this.npcManifest) return
+    const now = new Date()
+    const active = new Map<string, { def: NpcDef; bracket: { x: number; y: number; state: string; room: string } }>()
+    for (const def of this.npcManifest.npcs) {
+      const b = getActiveBracket(def, now)
+      if (b && b.room === this.currentRoomId) {
+        active.set(def.id, { def, bracket: b })
+      }
+    }
+    // Despawn anyone not active here anymore
+    for (const id of Array.from(this.npcBears.keys())) {
+      if (!active.has(id)) this.despawnNpc(id)
+    }
+    // Spawn newly-active NPCs
+    for (const [id, { def, bracket }] of active) {
+      if (!this.npcBears.has(id)) this.spawnNpc(def, bracket as any)
+    }
+  }
+
+  private spawnNpc(def: NpcDef, b: { x: number; y: number; state: string }) {
+    const bear = new Bear(this, b.x, b.y, def.region)
+    bear.sprite.setDepth(4)
+    bear.sprite.setAlpha(0.95)
+    bear.facing = def.facing
+    bear.setDisplayName(def.name, { color: NPC_LABEL_COLOR, prefix: NPC_LABEL_PREFIX })
+    if (b.state === 'sit') {
+      bear.applyEmote('sit', 0, prefersReducedMotion())
+    } else if (b.state === 'dance') {
+      bear.applyEmote('dance', 365 * 24 * 3600 * 1000, prefersReducedMotion())
+    } else {
+      bear.playIdle()
+    }
+    this.npcBears.set(def.id, { bear, def })
+  }
+
+  private despawnNpc(id: string) {
+    const entry = this.npcBears.get(id)
+    if (!entry) return
+    entry.bear.destroy()
+    this.npcBears.delete(id)
+  }
+
+  private handleNpcClick(id: string) {
+    const entry = this.npcBears.get(id)
+    if (!entry) return
+    const line = pickDialog(entry.def, this.npcDialogMemory)
+    const screen = this.bearScreenPos(entry.bear)
+    showBubble('npc_' + id, line, screen.x, screen.y)
+  }
+
   private tryInteract() {
     if (this.nearbyInteractable) {
       this.activateInteractable(this.nearbyInteractable)
@@ -631,6 +711,7 @@ export class RoomScene extends Phaser.Scene {
         const doRestart = () => {
           stopRoomAudio()
           if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
+          if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
           sendRoomChange(targetRoom)
           this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
         }
@@ -699,6 +780,7 @@ export class RoomScene extends Phaser.Scene {
       this.checkInteractableProximity()
     }
     this.peers.forEach((p) => p.bear.update(dtMs, true))
+    this.npcBears.forEach((entry) => entry.bear.update(dtMs, true))
     if (this.myBear) {
       const s = this.bearScreenPos(this.myBear)
       updateBubblePos('__me__', s.x, s.y)
@@ -706,6 +788,10 @@ export class RoomScene extends Phaser.Scene {
     this.peers.forEach((p, id) => {
       const s = this.bearScreenPos(p.bear)
       updateBubblePos(id, s.x, s.y)
+    })
+    this.npcBears.forEach((entry, id) => {
+      const s = this.bearScreenPos(entry.bear)
+      updateBubblePos('npc_' + id, s.x, s.y)
     })
   }
 }

@@ -139,10 +139,78 @@ for (const path of manifest.audio?.ambient ?? []) {
   checkFile(path, `manifest.ambient[]`, /* soft */ true)
 }
 
+// 8. NPC manifest validation (V3.1)
+const NPC_FILE = join(ROOT, 'public', 'lounge', 'data', 'npcs.json')
+const REGIONS = ['asia','americas','europe','oceania','africa','unknown']
+const FACINGS = ['up','down','left','right']
+const NPC_STATES = ['idle','sit','dance']
+const HHMM = /^([01]\d|2[0-3]):([0-5]\d)$/
+const NPC_ID_RE = /^npc_[a-z_]+$/
+let npcCount = 0
+if (!existsSync(NPC_FILE)) {
+  warn('npcs.json missing — no NPCs declared')
+} else {
+  try {
+    const nm = JSON.parse(readFileSync(NPC_FILE, 'utf8'))
+    if (!Array.isArray(nm.npcs)) {
+      err('npcs.json: missing or invalid "npcs" array')
+    } else {
+      npcCount = nm.npcs.length
+      // Lookup tables for room floor bounds from manifest
+      const roomFloors = {}
+      // We don't have ROOM_FLOORS here; just check room is in VALID_ROOMS via manifest.rooms.
+      const validRooms = new Set((manifest.rooms ?? []).map(r => r.id))
+
+      for (const def of nm.npcs) {
+        const label = `npc ${def.id}`
+        if (!NPC_ID_RE.test(def.id ?? '')) err(`${label}: id doesn't match ${NPC_ID_RE}`)
+        if (typeof def.name !== 'string' || def.name.length === 0 || def.name.length > 24) err(`${label}: invalid name`)
+        if (!REGIONS.includes(def.region)) err(`${label}: invalid region "${def.region}"`)
+        if (!FACINGS.includes(def.facing)) err(`${label}: invalid facing "${def.facing}"`)
+        if (!Array.isArray(def.schedule) || def.schedule.length === 0) err(`${label}: schedule must be non-empty array`)
+        if (!Array.isArray(def.dialog_pool) || def.dialog_pool.length === 0 || def.dialog_pool.length > 10) {
+          err(`${label}: dialog_pool must be 1-10 entries`)
+        } else {
+          for (const line of def.dialog_pool) {
+            if (typeof line !== 'string' || line.length === 0 || line.length > 80) {
+              err(`${label}: dialog_pool entry must be 1-80 char string ("${String(line).slice(0,20)}...")`)
+            }
+          }
+        }
+        // Schedule validation
+        if (Array.isArray(def.schedule)) {
+          const sorted = [...def.schedule].map((b, i) => ({ ...b, _idx: i }))
+            .filter(b => HHMM.test(b.from) && HHMM.test(b.to))
+          for (const b of def.schedule) {
+            if (!HHMM.test(b.from)) err(`${label}: bracket from "${b.from}" not HH:MM`)
+            if (!HHMM.test(b.to)) err(`${label}: bracket to "${b.to}" not HH:MM`)
+            if (!validRooms.has(b.room)) err(`${label}: bracket room "${b.room}" not in manifest`)
+            if (!NPC_STATES.includes(b.state)) err(`${label}: bracket state "${b.state}" not in ${NPC_STATES.join('|')}`)
+            // x/y range: we don't have floor bounds here, so just check non-negative + integer
+            if (!Number.isInteger(b.x) || b.x < 0 || b.x > 1000) err(`${label}: bracket x=${b.x} out of plausible range`)
+            if (!Number.isInteger(b.y) || b.y < 0 || b.y > 1000) err(`${label}: bracket y=${b.y} out of plausible range`)
+          }
+          // Overlap detection within this NPC
+          const minOf = (s) => { const m = HHMM.exec(s); return m ? +m[1] * 60 + +m[2] : NaN }
+          sorted.sort((a, b) => minOf(a.from) - minOf(b.from))
+          for (let i = 1; i < sorted.length; i++) {
+            const prevTo = minOf(sorted[i - 1].to)
+            const curFrom = minOf(sorted[i].from)
+            if (curFrom < prevTo) err(`${label}: bracket [${sorted[i].from}, ${sorted[i].to}) overlaps with prior [${sorted[i-1].from}, ${sorted[i-1].to})`)
+          }
+        }
+      }
+    }
+  } catch (e) {
+    err(`npcs.json: invalid JSON — ${e.message}`)
+  }
+}
+
 // Summary
 ok(`Declared: ${manifest.rooms?.length ?? 0} rooms, ${manifest.tilesets?.length ?? 0} tilesets, ` +
    `${manifest.sprites?.length ?? 0} sprite sets, ${manifest.audio?.sfx?.length ?? 0} SFX, ` +
-   `${manifest.audio?.bgm?.length ?? 0} BGM slots, ${manifest.audio?.ambient?.length ?? 0} ambient slots`)
+   `${manifest.audio?.bgm?.length ?? 0} BGM slots, ${manifest.audio?.ambient?.length ?? 0} ambient slots, ` +
+   `${npcCount} NPCs`)
 
 function printAndExit() {
   for (const m of okmsgs)  console.log(`✓ ${m}`)

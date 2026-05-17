@@ -795,3 +795,43 @@
 
 ### Validator
 - [ ] `npm run lounge:validate` still exits 0 (V3.0 didn't add assets)
+
+## Lounge V3.1 (NPC framework)
+
+### NPCs present at correct times
+- [ ] 06:00-12:00 local: Mio visible in Lobby with gold `✦ Mio` label
+- [ ] 12:00-18:00 local: Mio absent from Lobby, present in Balcony
+- [ ] 18:00-19:00 local: No NPCs anywhere (gap)
+- [ ] 19:00-03:00 local: Kai visible in DJ Floor near booth, dancing
+- [ ] 03:00-06:00 local: No NPCs anywhere
+
+### NPC visuals
+- [ ] Label is gold (#ffd166) with `✦ ` prefix
+- [ ] Sprite is slightly translucent (alpha ~0.95)
+- [ ] Sprite renders below player depth (player walks in front)
+- [ ] Sit state: NPC stays in sit pose
+- [ ] Dance state: NPC bounces (or static if reduced motion)
+
+### NPC interaction
+- [ ] Click Mio → dialog bubble appears with one of 5 lines
+- [ ] Click again within 5s → different line (memory excludes last)
+- [ ] After 3s, bubble fades
+- [ ] Click Kai → similar behavior
+
+### Player vs NPC click priority
+- [ ] Click own bear → emote menu (not NPC behind)
+- [ ] Click NPC → dialog (not floor click behind)
+- [ ] Click empty floor near NPC → walk (not NPC interaction)
+- [ ] Player walks THROUGH NPCs (no collision)
+
+### Schedule refresh
+- [ ] At a time boundary (e.g. 12:00), Mio teleports from Lobby to Balcony within 10s
+- [ ] No console errors when NPC spawn/despawn happens
+
+### Persistence on portal
+- [ ] Walk through portal — NPCs from old room destroyed; NPCs of new room (if any) spawn
+
+### Validator
+- [ ] `npm run lounge:validate` shows "X NPCs" in summary, exit 0
+- [ ] Inject overlap in npcs.json → exit 1 with clear message
+- [ ] Inject bad room name → exit 1 with clear message

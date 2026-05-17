@@ -70,9 +70,13 @@ export class Bear {
     this.playIdle()
   }
 
-  setDisplayName(name: string | null) {
+  setDisplayName(name: string | null, opts?: { color?: string; prefix?: string }) {
     if (!this.nameLabel) return
-    this.nameLabel.setText(name && name.length > 0 ? name : '')
+    const text = name && name.length > 0
+      ? (opts?.prefix ? `${opts.prefix}${name}` : name)
+      : ''
+    this.nameLabel.setText(text)
+    this.nameLabel.setColor(opts?.color ?? '#ffffff')
   }
 
   walkTo(x: number, y: number) {
