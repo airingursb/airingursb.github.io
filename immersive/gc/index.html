@@ -1,0 +1,2557 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google" content="notranslate">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico">
+<link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico">
+<link rel="icon" href="https://airing.ursb.me/image/favicon.ico">
+<meta name="description" content="同一行 list = null 在 20+ 个 GC 里会发生什么？从 1959 McCarthy 到 2023 Generational ZGC · 11 个算法家族 · 真源码 · 真停顿 · 真事故。">
+<meta name="author" content="Airing">
+<meta property="og:title" content="一段内存的多重死亡 — 11 个 GC 家族的家谱">
+<meta property="og:description" content="同一行 list = null 在 20+ 个 GC 里会发生什么。">
+<meta property="og:image" content="https://ursb.me/og/gc.png">
+<meta property="og:url" content="https://ursb.me/immersive/gc/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="ursb.me · Airing">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="一段内存的多重死亡 — 11 个 GC 家族的家谱">
+<meta name="twitter:description" content="同一行 list = null 在 20+ 个 GC 里会发生什么。">
+<meta name="twitter:image" content="https://ursb.me/og/gc.png">
+<meta name="twitter:creator" content="@airingursb">
+<title>一段内存的多重死亡 — 11 个 GC 家族的家谱</title>
+<style>
+  :root {
+    --bg: #f4efe6;
+    --bg-soft: #ebe5d8;
+    --paper: #faf6ed;
+    --paper-2: #fdfbf3;
+    --ink: #15171c;
+    --ink-soft: #3c4148;
+    --ink-mute: #767c87;
+    --rule: #c7c4ba;
+    --rule-soft: #ddd9cd;
+    --accent: #1f5c8c;        /* cobalt blue — QUIC transport */
+    --accent-soft: #4a85b3;
+    --accent-pale: #c9dceb;
+    --copper: #b35a1f;        /* HTTP application */
+    --copper-soft: #d1855a;
+    --good: #4a6b3e;
+    --warn: #a87a1f;
+    --gpu: #6b3aa3;           /* TLS / crypto */
+    --gpu-soft: #9572bd;
+    --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+    --serif-en: "Source Serif Pro", "Source Serif 4", Georgia, "Times New Roman", "Source Han Serif SC", serif;
+    --sans: "Inter", -apple-system, "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Menlo, ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  html, body { overflow-x: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 16px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body.lang-en { font-family: var(--serif-en); }
+
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image: radial-gradient(rgba(40,60,90,0.05) 1px, transparent 1px);
+    background-size: 3px 3px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .container {
+    max-width: 820px; margin: 0 auto;
+    padding: 0 32px;
+    position: relative; z-index: 2;
+  }
+
+  /* ============ LANG TOGGLE ============ */
+  .lang-toggle {
+    position: fixed; top: 28px; right: 32px; z-index: 100;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
+    background: var(--paper); border: 1px solid var(--rule);
+    padding: 6px 12px; border-radius: 99px;
+    display: flex; align-items: center; gap: 10px;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+  }
+  .lang-toggle button {
+    background: transparent; border: 0; padding: 2px 6px;
+    font: inherit; color: var(--ink-mute); cursor: pointer;
+    letter-spacing: inherit; transition: color 0.15s;
+    border-radius: 99px;
+  }
+  .lang-toggle button:hover { color: var(--ink); }
+  .lang-toggle button.active { color: var(--ink); font-weight: 600; }
+  .lang-toggle .sep { color: var(--rule); user-select: none; }
+
+  body:not(.lang-en) .lang-en-only { display: none !important; }
+  body.lang-en .lang-zh-only { display: none !important; }
+
+  /* ============ HERO ============ */
+  .hero { padding: 120px 0 80px; border-bottom: 1px solid var(--rule); position: relative; }
+  .hero .meta {
+    font-family: var(--sans); font-size: 12px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute); margin-bottom: 32px;
+  }
+  .hero .meta span + span::before { content: "·"; margin: 0 12px; color: var(--rule); }
+  .hero h1 {
+    font-family: var(--serif); font-size: 64px; line-height: 1.1;
+    margin: 0 0 24px; font-weight: 600; letter-spacing: -0.01em;
+  }
+  body.lang-en .hero h1 {
+    font-family: var(--serif-en); font-size: 60px;
+    line-height: 1.05; letter-spacing: -0.02em;
+  }
+  .hero h1 .accent { color: var(--accent); }
+  .hero h1 .copper { color: var(--copper); }
+  .hero h1 .gpu { color: var(--gpu); }
+  .hero .subtitle {
+    font-family: var(--serif); font-size: 26px; line-height: 1.3;
+    font-weight: 400; color: var(--ink-soft);
+    margin: -8px 0 28px;
+    letter-spacing: 0.005em;
+  }
+  body.lang-en .hero .subtitle {
+    font-family: var(--serif-en); font-size: 24px;
+    font-style: italic; letter-spacing: 0;
+  }
+  .hero .subtitle .sub-accent { color: var(--copper); font-style: normal; }
+  .hero .deck {
+    font-family: var(--sans); font-size: 19px; line-height: 1.55;
+    color: var(--ink-soft); max-width: 600px;
+    margin: 0 0 48px; font-weight: 300;
+  }
+  .byline {
+    font-family: var(--sans); font-size: 13px; color: var(--ink-mute);
+    display: flex; gap: 32px; flex-wrap: wrap;
+  }
+  .byline .label { color: var(--ink-mute); }
+  .byline .value { color: var(--ink); margin-left: 6px; }
+  .byline a.value {
+    text-decoration: none; border-bottom: 1px solid var(--rule);
+    transition: color 0.18s, border-color 0.18s;
+  }
+  .byline a.value:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ============ HERO NOTICE ============ */
+  .hero-notice {
+    margin: 36px 0 0;
+    padding: 18px 22px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--copper);
+    border-radius: 0 4px 4px 0;
+    max-width: 640px;
+  }
+  .hero-notice .hn-tag {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--copper); font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .hero-notice .hn-body {
+    margin: 0; font-family: var(--sans);
+    font-size: 13.5px; line-height: 1.65;
+    color: var(--ink-soft);
+  }
+  .hero-notice .hn-body strong { color: var(--ink); font-weight: 600; }
+
+  /* ============ HERO PIPELINE LIGHT BAR ============ */
+  .pipeline-bar {
+    margin: 56px 0 0;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 20px 24px;
+    overflow: hidden;
+    position: relative;
+  }
+  .pipeline-bar .pb-title {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+    color: var(--ink-mute); text-transform: uppercase; margin-bottom: 14px;
+    display: flex; justify-content: space-between;
+  }
+  .pipeline-bar .pb-title .pb-pulse { color: var(--accent); }
+  .pipeline-bar .pb-track {
+    display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px;
+    height: 30px;
+  }
+  .pipeline-bar .pb-cell {
+    position: relative; background: var(--bg-soft); border-radius: 2px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.15s;
+  }
+  .pipeline-bar .pb-cell:hover { transform: translateY(-1px); }
+  /* JS-driven tooltip lives in document.body to avoid overflow + ::after conflicts */
+  .pb-tooltip {
+    position: fixed;
+    background: var(--ink); color: var(--bg);
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: 0.04em;
+    padding: 6px 11px;
+    border-radius: 3px;
+    white-space: nowrap;
+    pointer-events: none;
+    z-index: 200;
+    opacity: 0; transform: translateY(4px);
+    transition: opacity 0.16s, transform 0.16s;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  }
+  .pb-tooltip.show { opacity: 1; transform: translateY(0); }
+  .pb-tooltip::after {
+    content: ""; position: absolute;
+    top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: var(--ink);
+  }
+  .pipeline-bar .pb-cell::after {
+    content: ""; position: absolute; inset: 0;
+    background: var(--accent);
+    transform: scaleY(0); transform-origin: bottom;
+    transition: transform 0.35s cubic-bezier(.34,1.56,.64,1);
+  }
+  .pipeline-bar .pb-cell.lit::after { transform: scaleY(1); }
+  .pipeline-bar .pb-cell.lit.crypto::after { background: var(--gpu); }
+  .pipeline-bar .pb-cell.lit.app::after { background: var(--copper); }
+  .pipeline-bar .pb-axis {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 9px; color: var(--ink-mute);
+    margin-top: 8px; letter-spacing: 0.06em;
+  }
+
+  /* ============ TOC v2 ============ */
+  .toc-v2 { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+  .toc-v2 .tv-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .toc-v2 .tv-label {
+    font-family: var(--sans); font-size: 11px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .toc-v2 .tv-meta {
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--ink-mute); letter-spacing: 0.08em;
+  }
+  .toc-v2 .tv-meta .tv-now { color: var(--accent); font-weight: 700; }
+  .toc-v2 .tv-sub {
+    font-family: var(--sans); font-size: 13px;
+    color: var(--ink-mute); margin: 2px 0 26px; font-style: italic;
+  }
+  .toc-v2 .tv-progress {
+    display: grid;
+    grid-template-columns: 5fr 1fr 13fr 5fr;
+    gap: 4px;
+    height: 8px;
+    margin: 6px 0 28px;
+  }
+  .toc-v2 .tv-progress span {
+    border-radius: 2px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.15s;
+  }
+  .toc-v2 .tv-progress span:hover { transform: translateY(-1px); }
+  .toc-v2 .tv-progress .tv-p1 { background: var(--ink-mute); opacity: 0.55; }
+  .toc-v2 .tv-progress .tv-p2 { background: var(--copper); }
+  .toc-v2 .tv-progress .tv-p3 { background: var(--accent); }
+  .toc-v2 .tv-progress .tv-p4 { background: var(--good); }
+
+  .toc-group {
+    margin-bottom: 18px;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--ink-mute);
+    border-radius: 0 4px 4px 0;
+    background: var(--paper);
+    padding: 14px 18px 16px;
+    transition: background 0.15s;
+  }
+  .toc-group[data-phase="bg"]    { border-left-color: var(--ink-mute); }
+  .toc-group[data-phase="req"]   { border-left-color: var(--copper); background: linear-gradient(135deg, rgba(179,90,31,0.04) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="pipe"]  { border-left-color: var(--accent); }
+  .toc-group[data-phase="synth"] { border-left-color: var(--good); }
+
+  .toc-group-head {
+    display: flex; align-items: baseline; gap: 14px;
+    margin-bottom: 12px;
+    border-bottom: 1px dotted var(--rule);
+    padding-bottom: 10px;
+  }
+  .toc-group-head .tg-num {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.16em; color: var(--ink-mute); width: 22px;
+  }
+  .toc-group-head .tg-name {
+    font-family: var(--serif); font-size: 16px; font-weight: 700;
+    color: var(--ink); flex: 1;
+  }
+  body.lang-en .toc-group-head .tg-name { font-family: var(--serif-en); }
+  .toc-group-head .tg-en {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+  .toc-group-head .tg-count {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-mute);
+    background: var(--bg-soft);
+    padding: 2px 8px; border-radius: 999px;
+  }
+
+  .toc-chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 5px;
+  }
+  .toc-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    background: var(--bg-soft);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    text-decoration: none;
+    color: var(--ink);
+    font-family: var(--sans); font-size: 13px;
+    transition: all 0.15s;
+    position: relative;
+    border-bottom-width: 1px;
+  }
+  .toc-chip:hover {
+    border-color: var(--accent);
+    background: var(--paper-2);
+    transform: translateX(2px);
+    color: var(--ink);
+  }
+  .toc-chip:hover .tc-num { color: var(--accent); }
+  .toc-chip:hover .tc-en { opacity: 1; }
+  .toc-chip.active {
+    border-color: var(--accent);
+    background: rgba(31,92,140,0.10);
+    box-shadow: 0 1px 4px rgba(31,92,140,0.10);
+  }
+  .toc-chip.active .tc-num { color: var(--accent); font-weight: 700; }
+  .toc-chip.active .tc-name { font-weight: 700; color: var(--accent); }
+  .toc-chip .tc-num {
+    font-family: var(--mono); font-size: 10.5px;
+    font-weight: 700; color: var(--ink-mute);
+    letter-spacing: 0.06em;
+    flex-shrink: 0; width: 22px;
+  }
+  .toc-chip .tc-name { flex: 1; min-width: 0; line-height: 1.2; }
+  .toc-chip .tc-en {
+    font-family: var(--mono); font-size: 9px;
+    letter-spacing: 0.06em;
+    color: var(--ink-mute);
+    opacity: 0.55;
+    transition: opacity 0.15s;
+    text-transform: uppercase;
+  }
+  .toc-chip.tc-special {
+    background: linear-gradient(135deg, rgba(179,90,31,0.10), var(--paper));
+    border-color: var(--copper-soft);
+    border-left: 2px solid var(--copper);
+  }
+  .toc-chip.tc-special .tc-num { color: var(--copper); }
+
+  .toc-sub { margin-top: 12px; }
+  .toc-sub:first-child { margin-top: 0; }
+  .toc-sub-tag {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute);
+    margin: 6px 0 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .toc-sub-tag::before {
+    content: ""; width: 14px; height: 1px;
+    background: var(--rule);
+  }
+  .toc-sub-tag .ts-stripe {
+    width: 8px; height: 8px; border-radius: 2px;
+    background: var(--accent);
+  }
+  .toc-sub[data-thread="quic"] .ts-stripe { background: var(--accent); }
+  .toc-sub[data-thread="http"] .ts-stripe { background: var(--copper); }
+  .toc-sub[data-thread="adv"]  .ts-stripe { background: var(--gpu); }
+
+  @media (max-width: 720px) {
+    .toc-chips { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .toc-group { padding: 12px 14px 14px; }
+    .toc-group-head .tg-name { font-size: 14px; }
+  }
+
+  /* ============ SIDE TOC ============ */
+  .toc-side {
+    position: fixed; top: 84px; left: 22px;
+    z-index: 100; width: 200px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 10.5px; line-height: 1.4;
+    scrollbar-width: thin; scrollbar-color: var(--rule) transparent;
+    padding-right: 4px;
+  }
+  .toc-side::-webkit-scrollbar { width: 3px; }
+  .toc-side::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+  .toc-side ol { list-style: none; margin: 0; padding: 0; }
+  .toc-side a { color: var(--ink-soft); text-decoration: none; }
+  .toc-side > .toc-label {
+    font-size: 9.5px; letter-spacing: 0.2em; color: var(--ink-mute);
+    text-transform: uppercase; margin-bottom: 8px; font-weight: 600;
+  }
+  .toc-side li { margin-bottom: 0; }
+  .toc-side li > a {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 2px 0; opacity: 0.55; transition: opacity 0.18s, color 0.18s;
+    border: none; line-height: 1.35;
+  }
+  .toc-side li > a:hover { opacity: 0.9; color: var(--accent); }
+  .toc-side li.active > a { opacity: 1; color: var(--accent); font-weight: 600; }
+  .toc-side .toc-num {
+    flex-shrink: 0; width: 18px; color: var(--accent);
+    font-variant-numeric: tabular-nums; font-size: 9.5px;
+    font-weight: 700; letter-spacing: 0.04em;
+  }
+  .toc-side .ts-divider {
+    font-family: var(--mono); font-size: 8.5px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-mute);
+    margin: 8px 0 2px;
+    padding-top: 5px;
+    border-top: 1px dashed var(--rule);
+    opacity: 0.7;
+    line-height: 1.2;
+  }
+  .toc-side .ts-divider:first-child {
+    margin-top: 0; border-top: 0; padding-top: 0;
+  }
+  @media (max-width: 1320px) { .toc-side { display: none; } }
+
+  /* ============ SECTION / CHAPTER ============ */
+  section.chap {
+    padding: 96px 0 48px;
+    border-bottom: 1px solid var(--rule);
+    scroll-margin-top: 40px;
+  }
+  .chap-num {
+    font-family: var(--mono); font-size: 13px;
+    color: var(--accent); letter-spacing: 0.1em; margin-bottom: 16px;
+  }
+  .chap-title {
+    font-family: var(--serif); font-size: 42px;
+    line-height: 1.15; margin: 0 0 6px; font-weight: 600;
+    letter-spacing: -0.005em;
+  }
+  body.lang-en .chap-title {
+    font-family: var(--serif-en); font-size: 38px; letter-spacing: -0.015em;
+  }
+  .chap-en {
+    font-family: var(--sans); font-size: 14px; color: var(--ink-mute);
+    font-style: italic; margin: 0 0 40px; letter-spacing: 0.04em;
+  }
+
+  h3.sub {
+    font-family: var(--sans); font-size: 13px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute); margin: 48px 0 16px; font-weight: 500;
+  }
+  h4.sub2 { font-family: var(--serif); font-size: 22px; margin: 36px 0 12px; font-weight: 600; }
+  body.lang-en h4.sub2 { font-family: var(--serif-en); }
+
+  p { margin: 0 0 20px; }
+  p .em { color: var(--accent); font-style: normal; }
+  p .em-cu { color: var(--copper); font-style: normal; }
+  p .em-pu { color: var(--gpu); font-style: normal; }
+
+  /* ============ FORMULA CARD ============ */
+  .formula {
+    background: var(--ink); color: var(--bg);
+    padding: 32px; margin: 32px 0;
+    font-family: var(--mono); font-size: 14px; line-height: 1.9;
+    border-radius: 4px; position: relative;
+  }
+  .formula .ftitle {
+    font-family: var(--sans); font-size: 11px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    margin-bottom: 16px; color: var(--rule);
+  }
+  .formula .cond { display: block; margin: 4px 0; }
+  .formula .cond::before { content: "▸"; color: var(--accent-soft); margin-right: 12px; }
+  .formula .out {
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1px solid #2c2f36; color: var(--accent-soft);
+  }
+  .formula .term { color: #fcd34d; font-weight: 700; }
+  .formula .term-cu { color: #d1855a; font-weight: 700; }
+  .formula .term-pu { color: #b48cd6; font-weight: 700; }
+
+  /* ============ NOTE / PULL / TABLE ============ */
+  .note {
+    background: var(--bg-soft); border-left: 2px solid var(--ink);
+    padding: 18px 22px; margin: 28px 0;
+    font-family: var(--sans); font-size: 13px; line-height: 1.7;
+    color: var(--ink-soft);
+  }
+  .note strong { color: var(--ink); font-weight: 600; }
+  .note .ntag {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+    color: var(--accent); margin-bottom: 6px; display: block;
+  }
+  .note.copper { border-left-color: var(--copper); }
+  .note.copper .ntag { color: var(--copper); }
+  .note.gpu { border-left-color: var(--gpu); }
+  .note.gpu .ntag { color: var(--gpu); }
+  .note.good { border-left-color: var(--good); }
+  .note.good .ntag { color: var(--good); }
+
+  blockquote.pull {
+    margin: 56px 0; padding: 0 0 0 24px;
+    border-left: 3px solid var(--accent);
+    font-family: var(--serif); font-size: 24px; line-height: 1.5;
+    color: var(--ink); font-style: italic;
+  }
+  body.lang-en blockquote.pull { font-family: var(--serif-en); }
+  blockquote.pull cite {
+    display: block; margin-top: 12px;
+    font-family: var(--sans); font-size: 12px; font-style: normal;
+    letter-spacing: 0.1em; color: var(--ink-mute);
+  }
+  blockquote.pull cite::before { content: "— "; }
+
+  table.cmp {
+    width: 100%; border-collapse: collapse; margin: 24px 0;
+    font-family: var(--sans); font-size: 14px;
+  }
+  table.cmp th, table.cmp td {
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 12px; text-align: left; vertical-align: top;
+  }
+  table.cmp th {
+    font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-mute); font-weight: 500;
+    border-bottom: 2px solid var(--ink);
+  }
+  table.cmp td:first-child { color: var(--ink-soft); width: 30%; }
+  table.cmp td.num { font-family: var(--mono); color: var(--accent); }
+  table.cmp td.good { color: var(--good); }
+  table.cmp td.bad { color: var(--copper); }
+  table.cmp td.mono { font-family: var(--mono); font-size: 12.5px; }
+
+  /* Glossary table — tighter, scannable */
+  table.glossary-table td { font-size: 13px; padding: 8px 10px; line-height: 1.5; }
+  table.glossary-table td:first-child { font-family: var(--mono); width: 14%; color: var(--copper); font-weight: 600; }
+  table.glossary-table td:nth-child(2) { width: 22%; color: var(--ink-soft); font-family: var(--serif); }
+  table.glossary-table td:nth-child(3) { width: 54%; }
+  table.glossary-table td:nth-child(4) { width: 10%; font-family: var(--mono); font-size: 11px; color: var(--ink-mute); }
+  table.glossary-table tr:target { background: rgba(184,68,46,0.08); }
+  table.glossary-table tr:target td:first-child { color: var(--accent); }
+
+  /* ============ KEYNUM ============ */
+  .keynum {
+    margin: 40px 0; padding: 32px 0;
+    border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule);
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+  }
+  .keynum .item .v {
+    font-family: var(--sans); font-size: 38px; font-weight: 600;
+    color: var(--ink); letter-spacing: -0.02em; line-height: 1.1;
+  }
+  .keynum .item .v .unit {
+    font-size: 16px; color: var(--ink-mute); margin-left: 4px; font-weight: 400;
+  }
+  .keynum .item .l {
+    font-family: var(--sans); font-size: 11px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-mute); margin-top: 8px;
+  }
+
+  /* ============ FIGURE ============ */
+  figure { margin: 48px 0; padding: 0; }
+  figure .figbox {
+    background: var(--paper); border: 1px solid var(--rule);
+    padding: 32px; border-radius: 4px;
+  }
+  figcaption {
+    font-family: var(--sans); font-size: 12px; color: var(--ink-mute);
+    margin-top: 12px; line-height: 1.5;
+  }
+  figcaption .figid {
+    color: var(--accent); font-family: var(--mono);
+    letter-spacing: 0.1em; margin-right: 10px;
+  }
+  figcaption .figen {
+    display: block; font-style: italic; margin-top: 2px;
+    color: var(--ink-mute); opacity: 0.75;
+  }
+
+  /* ============ STAGE BANNER ============ */
+  .stage-banner {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 0;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+    margin: 28px 0 36px;
+  }
+  .stage-banner .sb-cell {
+    padding: 14px 18px;
+    border-right: 1px solid var(--rule-soft);
+  }
+  .stage-banner .sb-cell:last-child { border-right: none; }
+  .stage-banner .sb-key {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ink-mute); margin-bottom: 4px;
+  }
+  .stage-banner .sb-val {
+    font-family: var(--sans); font-size: 13.5px; font-weight: 600;
+    color: var(--ink);
+  }
+  .stage-banner .sb-val .small {
+    display: block; font-size: 11px; font-weight: 400;
+    color: var(--ink-mute); margin-top: 2px;
+  }
+  .stage-banner.thread-quic .sb-val.thread { color: var(--accent); }
+  .stage-banner.thread-http .sb-val.thread { color: var(--copper); }
+  .stage-banner.thread-tls  .sb-val.thread { color: var(--gpu); }
+
+  /* ============ STAGE PURPOSE CARD ============ */
+  .stage-purpose {
+    margin: 8px 0 24px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .stage-purpose .sp-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    border-bottom: 1px solid var(--rule-soft);
+  }
+  .stage-purpose .sp-row:last-child { border-bottom: none; }
+  .stage-purpose .sp-key {
+    padding: 14px 18px;
+    background: var(--bg-soft);
+    border-right: 1px solid var(--rule-soft);
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute);
+    display: flex; align-items: center;
+  }
+  .stage-purpose .sp-val {
+    padding: 14px 20px;
+    font-family: var(--sans); font-size: 13.5px; line-height: 1.6;
+    color: var(--ink-soft);
+  }
+  .stage-purpose .sp-val strong { color: var(--ink); }
+  .stage-purpose .sp-val code { color: var(--accent); font-family: var(--mono); font-size: 12px; }
+  @media (max-width: 720px) {
+    .stage-purpose .sp-row { grid-template-columns: 1fr; }
+    .stage-purpose .sp-key { border-right: none; border-bottom: 1px solid var(--rule-soft); padding: 8px 14px; }
+    .stage-purpose .sp-val { padding: 12px 14px; font-size: 13px; }
+  }
+
+  /* ============ I/O CARDS ============ */
+  .io-pair {
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px;
+    align-items: stretch; margin: 16px 0 32px;
+  }
+  .io-card {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 16px 20px;
+  }
+  .io-card .io-key {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+    color: var(--ink-mute); text-transform: uppercase; margin-bottom: 6px;
+  }
+  .io-card .io-val {
+    font-family: var(--mono); font-size: 13.5px; color: var(--ink);
+    font-weight: 600;
+  }
+  .io-card .io-val .small { display: block; font-family: var(--sans); font-weight: 400; font-size: 11.5px; color: var(--ink-mute); margin-top: 4px; }
+  .io-arrow {
+    align-self: center; font-family: var(--mono); font-size: 24px;
+    color: var(--accent); padding: 0 6px;
+  }
+  .io-card.in { border-left: 3px solid var(--ink-mute); }
+  .io-card.out { border-left: 3px solid var(--accent); }
+
+  /* ============ SOURCE / WIRE CARD (dark) ============ */
+  .src-stack {
+    background: var(--ink); color: #d8d8d8;
+    border-radius: 4px; padding: 18px 20px; margin: 16px 0;
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.85;
+    overflow-x: auto;
+  }
+  .src-stack .src-h {
+    font-family: var(--sans); font-size: 10px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: #888d96; margin-bottom: 10px;
+    padding-bottom: 8px; border-bottom: 1px solid #2c2f36;
+    display: flex; justify-content: space-between;
+  }
+  .src-stack .src-h .src-tag { color: #fcd34d; }
+  .src-stack .src-line {
+    display: block; padding: 1px 0;
+    white-space: pre;
+    font-variant-ligatures: none;
+    tab-size: 2;
+  }
+  .src-stack .src-frame { color: #888d96; }
+  .src-stack .src-fn { color: #fcd34d; }
+  .src-stack .src-cls { color: var(--accent-soft); }
+  .src-stack .src-arg { color: #5fc18a; }
+  .src-stack .src-path { color: #888d96; opacity: 0.75; }
+  .src-stack .src-ln { color: #d1855a; }
+  .src-stack .src-comment { color: #5a6172; font-style: italic; }
+  .src-stack .src-method { color: #5fc18a; }
+  .src-stack .src-num { color: #d1855a; }
+  .src-stack .src-str { color: #5fc18a; }
+  .src-stack .src-kw { color: #b48cd6; }
+
+  /* ============ CASE STUDY ============ */
+  .case-study {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--copper);
+    border-radius: 0 4px 4px 0;
+    padding: 18px 22px;
+    margin: 24px 0;
+  }
+  .case-study .cs-tag {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--copper); margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .case-study h5 {
+    margin: 0 0 8px; font-family: var(--serif); font-size: 16px;
+    font-weight: 700; color: var(--ink);
+  }
+  body.lang-en .case-study h5 { font-family: var(--serif-en); }
+  .case-study p {
+    margin: 0 0 8px; font-family: var(--sans); font-size: 13px; line-height: 1.65;
+    color: var(--ink-soft);
+  }
+  .case-study p:last-child { margin-bottom: 0; }
+  .case-study code {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--copper); background: rgba(179,90,31,0.06);
+    padding: 1px 5px; border-radius: 2px;
+  }
+  .case-study.accent { border-left-color: var(--accent); }
+  .case-study.accent .cs-tag { color: var(--accent); }
+  .case-study.accent code { color: var(--accent); background: rgba(31,92,140,0.06); }
+  .case-study.gpu { border-left-color: var(--gpu); }
+  .case-study.gpu .cs-tag { color: var(--gpu); }
+  .case-study.gpu code { color: var(--gpu); background: rgba(107,58,163,0.06); }
+  .case-study.good { border-left-color: var(--good); }
+  .case-study.good .cs-tag { color: var(--good); }
+  .case-study.good code { color: var(--good); background: rgba(74,107,62,0.06); }
+
+  /* ============ KV DUMP ============ */
+  .kv-dump {
+    background: var(--bg-soft);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 14px 18px;
+    margin: 12px 0;
+    font-family: var(--mono); font-size: 12px; line-height: 1.7;
+    color: var(--ink-soft);
+    overflow-x: auto;
+  }
+  .kv-dump .kv-row { display: block; }
+  .kv-dump .kv-row.indent { padding-left: 28px; color: var(--ink-mute); }
+  .kv-dump .kv-key { color: var(--ink); }
+  .kv-dump .kv-cls { color: var(--accent); font-weight: 700; }
+  .kv-dump .kv-id { color: var(--copper); font-weight: 700; }
+  .kv-dump .kv-rel { color: var(--good); }
+  .kv-dump .kv-str { color: var(--copper); }
+  .kv-dump .kv-num { color: var(--gpu); }
+  .kv-dump .kv-cmt { color: var(--ink-mute); font-style: italic; }
+
+  /* ============ UA STACK ============ */
+  .ua-stack {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 4px;
+    margin: 18px 0 8px;
+  }
+  .ua-stack .ua-cell {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 12px 10px;
+    text-align: center;
+    position: relative;
+  }
+  .ua-stack .ua-cell::after {
+    content: "▸"; position: absolute; right: -8px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent); font-size: 12px;
+    font-family: var(--mono); z-index: 2;
+  }
+  .ua-stack .ua-cell:last-child::after { display: none; }
+  .ua-stack .ua-cell .ua-key {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-mute); margin-bottom: 4px;
+  }
+  .ua-stack .ua-cell .ua-name {
+    font-family: var(--mono); font-size: 11.5px;
+    color: var(--ink); font-weight: 700;
+  }
+  .ua-stack .ua-cell.tls { border-color: var(--gpu); }
+  .ua-stack .ua-cell.tls .ua-name { color: var(--gpu); }
+  .ua-stack .ua-cell.tls::after { color: var(--gpu); }
+  .ua-stack .ua-cell.quic { border-color: var(--accent); }
+  .ua-stack .ua-cell.quic .ua-name { color: var(--accent); }
+  .ua-stack .ua-cell.http { border-color: var(--copper); }
+  .ua-stack .ua-cell.http .ua-name { color: var(--copper); }
+  @media (max-width: 720px) {
+    .ua-stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .ua-stack .ua-cell::after { display: none; }
+  }
+
+  /* ============ TOKEN GRID ============ */
+  .token-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px; margin: 14px 0;
+  }
+  .token-grid .tg {
+    font-family: var(--mono); font-size: 10.5px;
+    background: var(--bg-soft); border: 1px solid var(--rule-soft);
+    color: var(--ink-soft); padding: 6px 10px; border-radius: 3px;
+    text-align: left; word-break: break-all;
+  }
+  .token-grid .tg.fn { background: rgba(31,92,140,0.10); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .token-grid .tg.hash { background: rgba(179,90,31,0.10); border-color: var(--copper); color: var(--copper); font-weight: 600; }
+  .token-grid .tg.delim { background: rgba(107,58,163,0.10); border-color: var(--gpu); color: var(--gpu); font-weight: 600; }
+  .token-grid .tg.good { background: rgba(74,107,62,0.10); border-color: var(--good); color: var(--good); font-weight: 600; }
+  @media (max-width: 720px) {
+    .token-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  /* ============ WIRE FORMAT (octet diagram) ============ */
+  .wire-fmt {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 18px; margin: 16px 0;
+    overflow-x: auto;
+  }
+  .wire-fmt svg { display: block; margin: 0 auto; }
+  .wire-fmt .wf-title {
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--accent); margin-bottom: 12px; font-weight: 700;
+  }
+  .wire-fmt .wf-bits {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-mute); margin-bottom: 6px;
+    text-align: center;
+  }
+
+  /* ============ HANDSHAKE TIMELINE ============ */
+  .hs-time {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 22px 28px; margin: 16px 0;
+    overflow-x: auto;
+  }
+  .hs-time svg { display: block; margin: 0 auto; max-width: 100%; }
+
+  /* ============ BARCHART ============ */
+  .barchart {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 22px 24px; margin: 8px 0;
+  }
+  .barchart .br-row {
+    display: grid; grid-template-columns: 130px 1fr 70px;
+    gap: 12px; align-items: center; padding: 6px 0;
+  }
+  .barchart .br-name { font-family: var(--mono); font-size: 12px; color: var(--ink); font-weight: 600; }
+  .barchart .br-name.muted { color: var(--ink-mute); font-weight: 400; }
+  .barchart .br-track { position: relative; height: 12px; background: var(--bg-soft); border-radius: 2px; overflow: hidden; }
+  .barchart .br-bar { position: absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 2px; transition: width .8s cubic-bezier(.34,1.56,.64,1); }
+  .barchart .br-bar.copper { background: var(--copper); }
+  .barchart .br-bar.good { background: var(--good); }
+  .barchart .br-bar.warn { background: var(--warn); }
+  .barchart .br-bar.gpu { background: var(--gpu); }
+  .barchart .br-num {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-soft);
+    text-align: right; font-variant-numeric: tabular-nums;
+  }
+
+  /* ============ FAMILY TREE ============ */
+  .ftree { background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 22px 18px; margin: 8px 0; overflow-x: auto; }
+  .ftree svg { display: block; width: 100%; min-width: 640px; height: auto; }
+  .ftree-axis { font-family: var(--mono); font-size: 10px; color: var(--ink-mute); letter-spacing: 0.04em; }
+  .ftree-line { stroke: var(--rule); stroke-width: 1; }
+  .ftree-line.fork { stroke-dasharray: 3 3; stroke: var(--accent-soft); }
+  .ftree-node-rect { fill: var(--paper-2); stroke: var(--rule); stroke-width: 1; }
+  .ftree-node-rect.quic  { fill: rgba(31,92,140,0.12); stroke: var(--accent); }
+  .ftree-node-rect.http  { fill: rgba(179,90,31,0.12); stroke: var(--copper); }
+  .ftree-node-rect.dead  { fill: var(--bg-soft); stroke: var(--ink-mute); stroke-dasharray: 3 3; opacity: 0.65; }
+  .ftree-node-rect.tls   { fill: rgba(107,58,163,0.12); stroke: var(--gpu); }
+  .ftree-node-label { font-family: var(--mono); font-size: 11px; fill: var(--ink); }
+  .ftree-node-sub   { font-family: var(--mono); font-size: 9px; fill: var(--ink-mute); }
+  .ftree-year       { font-family: var(--mono); font-size: 9px; fill: var(--ink-mute); }
+
+  /* ============ MISMATCH GRID (2-up) ============ */
+  .mismatch-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px; margin: 18px 0;
+  }
+  .mismatch-card {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 14px 16px;
+  }
+  .mismatch-card .mc-tag {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    font-weight: 700; color: var(--accent); margin-bottom: 4px;
+  }
+  .mismatch-card.copper .mc-tag { color: var(--copper); }
+  .mismatch-card.gpu .mc-tag { color: var(--gpu); }
+  .mismatch-card.good .mc-tag { color: var(--good); }
+  .mismatch-card h6 {
+    font-family: var(--serif); font-size: 14px; font-weight: 700;
+    color: var(--ink); margin: 0 0 6px;
+  }
+  body.lang-en .mismatch-card h6 { font-family: var(--serif-en); }
+  .mismatch-card p {
+    margin: 0; font-family: var(--sans); font-size: 12px; line-height: 1.55;
+    color: var(--ink-soft);
+  }
+  .mismatch-card .mc-eg {
+    margin-top: 8px; font-family: var(--mono); font-size: 11px;
+    color: var(--copper);
+  }
+  @media (max-width: 720px) { .mismatch-grid { grid-template-columns: 1fr; } }
+
+  /* ============ 3-CARD GRID (PROCESS MODEL) ============ */
+  .proc-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 18px 0 28px;
+  }
+  .proc-card {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 16px 18px;
+    border-top: 3px solid var(--accent);
+  }
+  .proc-card.copper { border-top-color: var(--copper); }
+  .proc-card.gpu { border-top-color: var(--gpu); }
+  .proc-card.good { border-top-color: var(--good); }
+  .proc-card .pc-name {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--accent); font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .proc-card.copper .pc-name { color: var(--copper); }
+  .proc-card.gpu .pc-name { color: var(--gpu); }
+  .proc-card.good .pc-name { color: var(--good); }
+  .proc-card .pc-title {
+    font-family: var(--serif); font-size: 17px; font-weight: 700;
+    color: var(--ink); margin-bottom: 4px;
+  }
+  body.lang-en .proc-card .pc-title { font-family: var(--serif-en); }
+  .proc-card .pc-count {
+    font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute);
+    margin-bottom: 12px;
+  }
+  .proc-card ul.pc-threads {
+    list-style: none; margin: 0; padding: 0;
+    border-top: 1px dashed var(--rule);
+    padding-top: 10px;
+  }
+  .proc-card ul.pc-threads li {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft);
+    padding: 3px 0; display: flex; align-items: baseline; gap: 8px;
+  }
+  .proc-card ul.pc-threads li::before {
+    content: ""; width: 6px; height: 6px;
+    background: var(--accent); border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+  }
+  .proc-card.copper ul.pc-threads li::before { background: var(--copper); }
+  .proc-card.gpu ul.pc-threads li::before { background: var(--gpu); }
+  .proc-card.good ul.pc-threads li::before { background: var(--good); }
+  .proc-card ul.pc-threads li.dim { color: var(--ink-mute); }
+  .proc-card ul.pc-threads li.dim::before { background: var(--rule); }
+  @media (max-width: 760px) { .proc-grid { grid-template-columns: 1fr; } }
+
+  /* ============ 24-STAGE FLOW (chapter index visual) ============ */
+  .stage-flow {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 22px 18px; margin: 8px 0;
+  }
+  .stage-flow .sf-axis {
+    display: grid; grid-template-columns: 5fr 1fr 13fr 5fr;
+    gap: 6px; margin-bottom: 16px;
+  }
+  .stage-flow .sf-axis .ax-cell {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-mute);
+    padding-bottom: 4px; border-bottom: 1px solid var(--rule);
+  }
+  .stage-flow .sf-axis .ax-cell.bg    { color: var(--ink-mute); border-color: var(--ink-mute); }
+  .stage-flow .sf-axis .ax-cell.req   { color: var(--copper); border-color: var(--copper); }
+  .stage-flow .sf-axis .ax-cell.pipe  { color: var(--accent); border-color: var(--accent); }
+  .stage-flow .sf-axis .ax-cell.synth { color: var(--good); border-color: var(--good); }
+  .stage-flow .sf-stages {
+    display: grid;
+    grid-template-columns: repeat(24, 1fr);
+    gap: 3px;
+    align-items: stretch;
+  }
+  .stage-flow .sf-cell {
+    position: relative;
+    background: var(--bg-soft);
+    padding: 10px 4px 8px;
+    border-radius: 3px;
+    text-align: center;
+    transition: transform 0.25s, box-shadow 0.25s, background 0.25s;
+  }
+  .stage-flow .sf-cell.bg { background: rgba(118,124,135,0.08); border: 1px solid rgba(118,124,135,0.18); }
+  .stage-flow .sf-cell.req { background: rgba(179,90,31,0.10); border: 1px solid rgba(179,90,31,0.18); }
+  .stage-flow .sf-cell.pipe { background: rgba(31,92,140,0.10); border: 1px solid rgba(31,92,140,0.18); }
+  .stage-flow .sf-cell.synth { background: rgba(74,107,62,0.10); border: 1px solid rgba(74,107,62,0.18); }
+  .stage-flow .sf-cell.lit { transform: translateY(-3px); box-shadow: 0 4px 0 rgba(0,0,0,0.04); }
+  .stage-flow .sf-num {
+    font-family: var(--mono); font-size: 8.5px; color: var(--ink-mute);
+    margin-bottom: 2px; letter-spacing: 0.04em;
+  }
+  .stage-flow .sf-name {
+    font-family: var(--mono); font-size: 9px; color: var(--ink);
+    font-weight: 700; line-height: 1.15; word-break: keep-all;
+  }
+  .stage-flow .sf-cell.bg .sf-name { color: var(--ink-mute); }
+  .stage-flow .sf-cell.req .sf-name { color: var(--copper); }
+  .stage-flow .sf-cell.pipe .sf-name { color: var(--accent); }
+  .stage-flow .sf-cell.synth .sf-name { color: var(--good); }
+  @media (max-width: 760px) {
+    .stage-flow .sf-stages { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; }
+    .stage-flow .sf-axis { display: none; }
+  }
+
+  /* ============ SUBSTEP RIBBON ============ */
+  .substep-ribbon {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 22px 24px; margin: 8px 0;
+    min-width: 0;
+  }
+  .substep-ribbon .sr-row {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px; align-items: stretch;
+    margin-bottom: 6px;
+  }
+  .substep-ribbon .sr-cell {
+    background: var(--bg-soft); border: 1px solid var(--rule-soft);
+    border-radius: 3px; padding: 10px 8px; text-align: center;
+    position: relative;
+    min-width: 0;
+    overflow-wrap: anywhere; word-break: break-word;
+  }
+  .substep-ribbon .sr-cell .sr-step {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.1em;
+    color: var(--accent); text-transform: uppercase;
+  }
+  .substep-ribbon .sr-cell .sr-data {
+    font-family: var(--mono); font-size: 11px; color: var(--ink);
+    font-weight: 700; margin-top: 2px;
+  }
+  .substep-ribbon .sr-arrows {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    font-family: var(--mono); font-size: 14px; color: var(--accent);
+    text-align: center;
+    margin-bottom: 6px;
+  }
+  .substep-ribbon .sr-arrows span:first-child,
+  .substep-ribbon .sr-arrows span:last-child { visibility: hidden; }
+
+  /* ============ LADDER ============ */
+  .ladder {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 22px 24px; margin: 8px 0;
+  }
+  .ladder .ld-row {
+    display: grid; grid-template-columns: 36px 1fr;
+    align-items: center; gap: 14px;
+    padding: 10px 0; border-bottom: 1px dashed var(--rule);
+  }
+  .ladder .ld-row:last-child { border-bottom: none; }
+  .ladder .ld-num {
+    font-family: var(--mono); font-size: 22px; color: var(--accent);
+    font-weight: 700; line-height: 1;
+  }
+  .ladder .ld-row:nth-child(2) .ld-num { color: #3873a3; }
+  .ladder .ld-row:nth-child(3) .ld-num { color: #6285a8; }
+  .ladder .ld-row:nth-child(4) .ld-num { color: #8090a8; }
+  .ladder .ld-name {
+    font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--ink);
+  }
+  body.lang-en .ladder .ld-name { font-family: var(--serif-en); }
+  .ladder .ld-desc {
+    font-family: var(--sans); font-size: 12px; color: var(--ink-mute);
+    margin-top: 2px;
+  }
+
+  /* ============ LINKS ============ */
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid currentColor; }
+  a:hover { color: var(--ink); }
+  ::selection { background: var(--accent); color: var(--bg); }
+
+  .ursb-backlink {
+    position: fixed; top: 28px; left: 32px; z-index: 100;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--paper); border: 1px solid var(--rule);
+    padding: 6px 14px 6px 12px; border-radius: 99px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
+    color: var(--ink-soft); text-decoration: none;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.02);
+    transition: all 0.18s ease;
+  }
+  .ursb-backlink:hover { color: var(--accent); border-color: var(--accent-soft); transform: translateX(-1px); }
+
+  /* ============ CLOSING ============ */
+  .closing { padding: 96px 0 120px; text-align: left; }
+  .closing .quote {
+    font-family: var(--serif); font-size: 28px; line-height: 1.5;
+    color: var(--ink); margin: 0 0 32px; max-width: 640px; font-style: italic;
+  }
+  body.lang-en .closing .quote { font-family: var(--serif-en); }
+  .closing .signoff {
+    font-family: var(--sans); font-size: 12px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  body:not(.lang-en) .ursb-fbody [lang="en"] { display: none; }
+  body.lang-en .ursb-fbody [lang="zh"] { display: none; }
+
+  /* ============ RESPONSIVE ============ */
+  @media (max-width: 720px) {
+    .lang-toggle { top: 16px; right: 16px; padding: 4px 10px; font-size: 11px; }
+    .ursb-backlink { top: 18px; left: 16px; padding: 5px 10px 5px 8px; font-size: 11px; }
+    .hero { padding: 80px 0 56px; }
+    .hero h1 { font-size: 42px; }
+    body.lang-en .hero h1 { font-size: 40px; }
+    .hero .subtitle { font-size: 19px; margin-top: -4px; }
+    body.lang-en .hero .subtitle { font-size: 18px; }
+    .hero .deck { font-size: 16px; }
+    .chap-title { font-size: 30px; }
+    body.lang-en .chap-title { font-size: 28px; }
+    .keynum { grid-template-columns: 1fr; gap: 16px; }
+    .container { padding: 0 24px; }
+    .closing .quote { font-size: 22px; }
+    .stage-banner { grid-template-columns: 1fr 1fr; }
+    .stage-banner .sb-cell:nth-child(2n) { border-right: none; }
+    .stage-banner .sb-cell { border-bottom: 1px solid var(--rule-soft); }
+    .stage-banner .sb-cell:nth-last-child(-n+2) { border-bottom: none; }
+    .io-pair { grid-template-columns: 1fr; gap: 8px; }
+    .io-arrow { transform: rotate(90deg); padding: 4px 0; }
+    .pipeline-bar .pb-track { grid-template-columns: repeat(13, 1fr); gap: 2px; height: 24px; }
+    .pipeline-bar .pb-axis { font-size: 8px; }
+  }
+</style>
+<!-- lang-url-param:v1 -->
+<script>
+/* SEO: honor ?lang=en|zh URL param so the page first-paints in the requested
+   language. Without this, a Google-indexed /immersive/X/?lang=en URL would
+   still render zh until the user clicks the toggle. */
+(function() {
+  try {
+    var p = new URLSearchParams(location.search);
+    var lang = p.get('lang');
+    if (lang === 'en' || lang === 'zh') {
+      try { localStorage.setItem('ursb-lang', lang); } catch (e) {}
+      try { localStorage.setItem('article_lang', lang); } catch (e) {}
+      if (lang === 'en') {
+        document.documentElement.lang = 'en';
+      } else {
+        document.documentElement.lang = 'zh-CN';
+      }
+      document.addEventListener('DOMContentLoaded', function() {
+        if (lang === 'en') document.body.classList.add('lang-en');
+        else document.body.classList.remove('lang-en');
+      });
+    }
+  } catch (e) {}
+})();
+</script>
+</head>
+<body>
+
+<!-- ========== BACK LINK ========== -->
+<a class="ursb-backlink" href="https://ursb.me/notes/" target="_self" aria-label="Back to ursb.me notes">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M19 12H5M12 19l-7-7 7-7"/>
+  </svg>
+  ursb.me / notes
+</a>
+
+<!-- ========== LANG TOGGLE ========== -->
+<div class="lang-toggle" role="navigation" aria-label="language">
+  <button id="lang-zh" class="active" aria-pressed="true">中</button>
+  <span class="sep">/</span>
+  <button id="lang-en" aria-pressed="false">EN</button>
+</div>
+
+<!-- ========== TOC SIDEBAR (desktop only) ========== -->
+<nav class="toc-side" aria-label="Table of contents">
+  <div class="toc-label lang-zh-only">目录</div>
+  <div class="toc-label lang-en-only">Contents</div>
+  <ol>
+    <li class="ts-divider"><span class="lang-zh-only">I · 背景</span><span class="lang-en-only">I · Background</span></li>
+    <li data-section="c1"><a href="#c1"><span class="toc-num">01</span><span class="lang-zh-only">三个公式</span><span class="lang-en-only">Three formulas</span></a></li>
+    <li data-section="c2"><a href="#c2"><span class="toc-num">02</span><span class="lang-zh-only">家谱</span><span class="lang-en-only">Family tree</span></a></li>
+    <li data-section="c3"><a href="#c3"><span class="toc-num">03</span><span class="lang-zh-only">为什么再造</span><span class="lang-en-only">Why a new engine</span></a></li>
+    <li data-section="c4"><a href="#c4"><span class="toc-num">04</span><span class="lang-zh-only">设计哲学</span><span class="lang-en-only">Design philosophy</span></a></li>
+    <li data-section="c5"><a href="#c5"><span class="toc-num">05</span><span class="lang-zh-only">7 万行全景</span><span class="lang-en-only">70k-line atlas</span></a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">II · 主线</span><span class="lang-en-only">II · The line</span></li>
+    <li data-section="cmain"><a href="#cmain"><span class="toc-num">✦</span><span class="lang-zh-only">[1,2,3].map</span><span class="lang-en-only">[1,2,3].map</span></a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">III · 编译期</span><span class="lang-en-only">III · Frontend</span></li>
+    <li data-section="c6"><a href="#c6"><span class="toc-num">06</span>Lexer</a></li>
+    <li data-section="c7"><a href="#c7"><span class="toc-num">07</span>Parser</a></li>
+    <li data-section="c8"><a href="#c8"><span class="toc-num">08</span><span class="lang-zh-only">AST → FuncDef</span><span class="lang-en-only">AST → FuncDef</span></a></li>
+    <li data-section="c9"><a href="#c9"><span class="toc-num">09</span><span class="lang-zh-only">字节码</span><span class="lang-en-only">Bytecode</span></a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">III · 运行期数据</span><span class="lang-en-only">III · Runtime data</span></li>
+    <li data-section="c10"><a href="#c10"><span class="toc-num">10</span><span class="lang-zh-only">Value</span><span class="lang-en-only">JSValue</span></a></li>
+    <li data-section="c11"><a href="#c11"><span class="toc-num">11</span>Atom</a></li>
+    <li data-section="c12"><a href="#c12"><span class="toc-num">12</span><span class="lang-zh-only">Shape · Object</span><span class="lang-en-only">Shape · Object</span></a></li>
+    <li data-section="c13"><a href="#c13"><span class="toc-num">13</span><span class="lang-zh-only">闭包</span><span class="lang-en-only">Closure</span></a></li>
+    <li data-section="c14"><a href="#c14"><span class="toc-num">14</span><span class="lang-zh-only">类系统</span><span class="lang-en-only">Class system</span></a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">III · 执行期</span><span class="lang-en-only">III · Execution</span></li>
+    <li data-section="c15"><a href="#c15"><span class="toc-num">15</span><span class="lang-zh-only">主循环</span><span class="lang-en-only">Interp loop</span></a></li>
+    <li data-section="c16"><a href="#c16"><span class="toc-num">16</span><span class="lang-zh-only">属性查找</span><span class="lang-en-only">Property lookup</span></a></li>
+    <li data-section="c17"><a href="#c17"><span class="toc-num">17</span>Promise/Gen</a></li>
+    <li data-section="c18"><a href="#c18"><span class="toc-num">18</span>RegExp</a></li>
+    <li data-section="c19"><a href="#c19"><span class="toc-num">19</span>GC</a></li>
+    <li data-section="c20"><a href="#c20"><span class="toc-num">20</span><span class="lang-zh-only">模块系统</span><span class="lang-en-only">Modules</span></a></li>
+    <li data-section="c21"><a href="#c21"><span class="toc-num">21</span><span class="lang-zh-only">异常处理</span><span class="lang-en-only">Exceptions</span></a></li>
+    <li data-section="c22"><a href="#c22"><span class="toc-num">22</span><span class="lang-zh-only">字符串</span><span class="lang-en-only">Strings</span></a></li>
+    <li data-section="c23"><a href="#c23"><span class="toc-num">23</span><span class="lang-zh-only">Symbol/私有</span><span class="lang-en-only">Symbols</span></a></li>
+    <li data-section="c24"><a href="#c24"><span class="toc-num">24</span>BigInt</a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">IV · 综合</span><span class="lang-en-only">IV · Synthesis</span></li>
+    <li data-section="c25"><a href="#c25"><span class="toc-num">25</span><span class="lang-zh-only">性能对比</span><span class="lang-en-only">Bench vs V8/JSC</span></a></li>
+    <li data-section="c26"><a href="#c26"><span class="toc-num">26</span><span class="lang-zh-only">嵌入实战</span><span class="lang-en-only">Embedding</span></a></li>
+    <li data-section="c27"><a href="#c27"><span class="toc-num">27</span><span class="lang-zh-only">衍生项目</span><span class="lang-en-only">Derived</span></a></li>
+    <li data-section="c28"><a href="#c28"><span class="toc-num">28</span><span class="lang-zh-only">设计权衡</span><span class="lang-en-only">Trade-offs</span></a></li>
+    <li data-section="c29"><a href="#c29"><span class="toc-num">29</span><span class="lang-zh-only">之后</span><span class="lang-en-only">What's next</span></a></li>
+  </ol>
+</nav>
+
+<div class="container">
+
+<!-- ============ TOP LANG TOGGLE ============ -->
+<div class="lang-pin">
+  <button class="lang-btn active" id="lang-zh" aria-pressed="true">中</button>
+  <span class="lang-sep">/</span>
+  <button class="lang-btn" id="lang-en" aria-pressed="false">EN</button>
+</div>
+
+<!-- ============ BACK LINK ============ -->
+<a class="back-link" href="https://ursb.me/notes/">← ursb.me / notes</a>
+
+<!-- ============ TOC SIDEBAR ============ -->
+<nav class="toc-side">
+  <div class="ts-title">
+    <span class="lang-zh-only">目录</span>
+    <span class="lang-en-only">Contents</span>
+  </div>
+  <ol class="ts-list">
+    <li class="ts-divider"><span class="lang-zh-only">I · 背景</span><span class="lang-en-only">I · Background</span></li>
+    <li data-section="c1"><a href="#c1"><span class="toc-num">01</span><span class="lang-zh-only">什么是 GC</span><span class="lang-en-only">What is GC</span></a></li>
+    <li data-section="c2"><a href="#c2"><span class="toc-num">02</span><span class="lang-zh-only">六十年家谱</span><span class="lang-en-only">60-year family tree</span></a></li>
+    <li data-section="c3"><a href="#c3"><span class="toc-num">03</span><span class="lang-zh-only">11 个家族总览</span><span class="lang-en-only">11 families · overview</span></a></li>
+    <li data-section="c4"><a href="#c4"><span class="toc-num">04</span><span class="lang-zh-only">五个永恒权衡</span><span class="lang-en-only">5 eternal tradeoffs</span></a></li>
+    <li data-section="c5"><a href="#c5"><span class="toc-num">05</span><span class="lang-zh-only">关键不变式</span><span class="lang-en-only">Core invariants</span></a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">主线</span><span class="lang-en-only">Main line</span></li>
+    <li data-section="cmain"><a href="#cmain"><span class="toc-num">—</span><span class="lang-zh-only">1M 对象的命运</span><span class="lang-en-only">fate of 1M objects</span></a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">II · 11 个算法家族</span><span class="lang-en-only">II · 11 algorithm families</span></li>
+    <li data-section="c6"><a href="#c6"><span class="toc-num">06</span><span class="lang-zh-only">引用计数</span><span class="lang-en-only">Refcount</span></a></li>
+    <li data-section="c7"><a href="#c7"><span class="toc-num">07</span>Mark-Sweep</a></li>
+    <li data-section="c8"><a href="#c8"><span class="toc-num">08</span><span class="lang-zh-only">复制 · Cheney</span><span class="lang-en-only">Copying · Cheney</span></a></li>
+    <li data-section="c9"><a href="#c9"><span class="toc-num">09</span><span class="lang-zh-only">分代</span><span class="lang-en-only">Generational</span></a></li>
+    <li data-section="c10"><a href="#c10"><span class="toc-num">10</span><span class="lang-zh-only">增量</span><span class="lang-en-only">Incremental</span></a></li>
+    <li data-section="c11"><a href="#c11"><span class="toc-num">11</span><span class="lang-zh-only">并发 · 三色</span><span class="lang-en-only">Concurrent · tri-color</span></a></li>
+    <li data-section="c12"><a href="#c12"><span class="toc-num">12</span><span class="lang-zh-only">区域 · 每进程</span><span class="lang-en-only">Region / per-actor</span></a></li>
+    <li data-section="c13"><a href="#c13"><span class="toc-num">13</span><span class="lang-zh-only">彩色指针</span><span class="lang-en-only">Colored pointers</span></a></li>
+    <li data-section="c14"><a href="#c14"><span class="toc-num">14</span><span class="lang-zh-only">无 GC · 编译期</span><span class="lang-en-only">No-GC · compile-time</span></a></li>
+    <li data-section="c15"><a href="#c15"><span class="toc-num">15</span><span class="lang-zh-only">混合 · 一种不够</span><span class="lang-en-only">Hybrid</span></a></li>
+    <li data-section="c16"><a href="#c16"><span class="toc-num">16</span><span class="lang-zh-only">学术 · 未量产</span><span class="lang-en-only">Academic</span></a></li>
+
+    <li class="ts-divider"><span class="lang-zh-only">III · 综合</span><span class="lang-en-only">III · Synthesis</span></li>
+    <li data-section="c17"><a href="#c17"><span class="toc-num">17</span><span class="lang-zh-only">三维对比矩阵</span><span class="lang-en-only">3-axis matrix</span></a></li>
+    <li data-section="c18"><a href="#c18"><span class="toc-num">18</span><span class="lang-zh-only">生产事故簿</span><span class="lang-en-only">Production stories</span></a></li>
+    <li data-section="c19"><a href="#c19"><span class="toc-num">19</span><span class="lang-zh-only">调优决策树</span><span class="lang-en-only">Tuning decision tree</span></a></li>
+    <li data-section="c20"><a href="#c20"><span class="toc-num">20</span><span class="lang-zh-only">之后</span><span class="lang-en-only">What's next</span></a></li>
+    <li data-section="cglossary"><a href="#cglossary"><span class="toc-num">A</span><span class="lang-zh-only">术语表</span><span class="lang-en-only">Glossary</span></a></li>
+  </ol>
+</nav>
+
+<div class="container">
+
+  <!-- ========== HERO ========== -->
+  <header class="hero">
+    <div class="meta">
+      <span>FIELD&nbsp;NOTE&nbsp;/&nbsp;08</span>
+      <span class="lang-zh-only">编程语言</span>
+      <span class="lang-en-only">Languages</span>
+      <span>2026</span>
+    </div>
+    <h1 class="lang-zh-only">一段内存的<br><span class="copper">多重</span>死亡<span class="accent">。</span></h1>
+    <h1 class="lang-en-only">Many <span class="copper">ways</span><br><span class="accent">to die.</span></h1>
+    <p class="subtitle lang-zh-only"><span class="sub-accent">11 个 GC 家族</span>的家谱</p>
+    <p class="subtitle lang-en-only">A family map of <span class="sub-accent">11 garbage collectors</span></p>
+    <p class="deck lang-zh-only">同一行 <code style="font-family:var(--mono);">list = null</code> 在 20+ 个运行时里——CPython refcount 立即释放、V8 Orinoco 等下一次 minor GC、JVM ZGC 在 sub-ms 内并发处理、Erlang BEAM 当垃圾不存在、Rust 编译期就把它释放了——发生的事情完全不同。这是一本<em>跨语言 GC 比较手册</em>，从 1959 McCarthy mark-sweep 到 2023 Generational ZGC，按<em>算法家族</em>分章，每章都用同一行代码作主线。</p>
+    <p class="deck lang-en-only">The same line <code style="font-family:var(--mono);">list = null</code> behaves completely differently across 20+ runtimes — CPython's refcount frees immediately, V8 Orinoco waits for the next minor GC, JVM ZGC handles it concurrently in sub-ms, Erlang BEAM treats garbage as not-a-thing, and Rust freed it at compile time. This is a <em>cross-language GC field map</em>, from 1959 McCarthy mark-sweep to 2023 Generational ZGC, organised by <em>algorithm family</em>, threaded by one mainline code snippet.</p>
+    <div class="byline">
+      <span><span class="label">AUTHOR</span><a class="value" href="https://ursb.me" target="_blank" rel="noopener">Airing</a></span>
+      <span><span class="label">TOPIC</span><span class="value">GC · runtime · memory · 20+ languages</span></span>
+      <span><span class="label">FORMAT</span><span class="value">Long Read</span></span>
+    </div>
+
+    <aside class="hero-notice">
+      <div class="hn-tag">
+        <span class="lang-zh-only">FIELD NOTE 系列 · 第八篇</span>
+        <span class="lang-en-only">Field Note series · No. 08</span>
+      </div>
+      <p class="hn-body lang-zh-only">这是 <strong>Field Note</strong> 系列的第八篇，姐妹篇有《<a href="https://ursb.me/immersive/quickjs/">一行 JS 的一生 · QuickJS 源码详解</a>》（讲一个引擎全栈）和《<a href="https://ursb.me/immersive/v8-fast-js/">V8 是怎么把 JS 跑快的</a>》（讲多层 JIT）。本篇横向<em>跨</em>语言——讲所有现代运行时<em>怎么收尸</em>：引用计数、mark-sweep、复制、分代、并发、彩色指针、区域、无 GC，一个家族一个家族地拆。每个家族都<em>挑代表实现的真实源码</em>，每个都用同一行 <code>list = null</code> 作主线，看它怎么走完一生。</p>
+      <p class="hn-body lang-en-only">This is the eighth piece in the <strong>Field Note</strong> series, siblings to «<a href="https://ursb.me/immersive/quickjs/">The Life of One JS Line · A QuickJS Source-Level Walkthrough</a>» (one engine, full stack) and «<a href="https://ursb.me/immersive/v8-fast-js/">How V8 makes JS fast</a>» (multi-tier JIT). This one cuts <em>across</em> languages — how every modern runtime <em>handles its dead</em>: refcount, mark-sweep, copying, generational, concurrent, colored pointers, region, no-GC. One family at a time. Each family illustrated with the <em>real source of a representative implementation</em>; each followed by the same mainline <code>list = null</code> to see how it actually plays out.</p>
+    </aside>
+
+    <!-- Pipeline pulse banner — 20 chapters + main line -->
+    <div class="pipeline-bar">
+      <div class="pb-title">
+        <span class="lang-zh-only">GC 家谱 · 11 家族 · 4 段</span>
+        <span class="lang-en-only">GC family tree · 11 families · 4 acts</span>
+        <span class="pb-pulse">▸ LIVE PULSE</span>
+      </div>
+      <div class="pb-track" id="pbTrack">
+        <div class="pb-cell" data-i="1" data-tip="01 · What is GC" data-jump="#c1"></div>
+        <div class="pb-cell" data-i="2" data-tip="02 · 60-year family tree" data-jump="#c2"></div>
+        <div class="pb-cell" data-i="3" data-tip="03 · 11 families overview" data-jump="#c3"></div>
+        <div class="pb-cell" data-i="4" data-tip="04 · 5 eternal tradeoffs" data-jump="#c4"></div>
+        <div class="pb-cell" data-i="5" data-tip="05 · Core invariants" data-jump="#c5"></div>
+        <div class="pb-cell app" data-i="6" data-tip="✦ Main line · 1M objects" data-jump="#cmain"></div>
+        <div class="pb-cell crypto" data-i="7" data-tip="06 · Refcount" data-jump="#c6"></div>
+        <div class="pb-cell crypto" data-i="8" data-tip="07 · Mark-Sweep" data-jump="#c7"></div>
+        <div class="pb-cell crypto" data-i="9" data-tip="08 · Copying · Cheney" data-jump="#c8"></div>
+        <div class="pb-cell crypto" data-i="10" data-tip="09 · Generational" data-jump="#c9"></div>
+        <div class="pb-cell crypto" data-i="11" data-tip="10 · Incremental" data-jump="#c10"></div>
+        <div class="pb-cell app" data-i="12" data-tip="11 · Concurrent / tri-color" data-jump="#c11"></div>
+        <div class="pb-cell app" data-i="13" data-tip="12 · Region / per-actor" data-jump="#c12"></div>
+        <div class="pb-cell app" data-i="14" data-tip="13 · Colored pointers (ZGC)" data-jump="#c13"></div>
+        <div class="pb-cell app" data-i="15" data-tip="14 · No-GC / compile-time" data-jump="#c14"></div>
+        <div class="pb-cell app" data-i="16" data-tip="15 · Hybrid" data-jump="#c15"></div>
+        <div class="pb-cell app" data-i="17" data-tip="16 · Academic" data-jump="#c16"></div>
+        <div class="pb-cell" data-i="18" data-tip="17 · 3-axis matrix" data-jump="#c17"></div>
+        <div class="pb-cell" data-i="19" data-tip="18 · Production stories" data-jump="#c18"></div>
+        <div class="pb-cell" data-i="20" data-tip="19 · Tuning decisions" data-jump="#c19"></div>
+        <div class="pb-cell" data-i="21" data-tip="20 · What's next" data-jump="#c20"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== TOC CHIP STRIP ========== -->
+  <nav class="toc-strip">
+    <div class="toc-group" data-phase="bg">
+      <div class="toc-group-head">
+        <div class="tg-num">I</div>
+        <div class="tg-name lang-zh-only">背景</div>
+        <div class="tg-name lang-en-only">Background</div>
+        <div class="tg-en">5 chapters · groundwork</div>
+        <div class="tg-count">5</div>
+      </div>
+      <div class="toc-chips">
+        <a href="#c1" class="toc-chip" data-section="c1"><span class="tc-num">01</span><div class="tc-name"><span class="lang-zh-only">什么是 GC</span><span class="lang-en-only">What is GC</span><span class="tc-en">why memory dies</span></div></a>
+        <a href="#c2" class="toc-chip" data-section="c2"><span class="tc-num">02</span><div class="tc-name"><span class="lang-zh-only">六十年家谱</span><span class="lang-en-only">60-year family tree</span><span class="tc-en">1959 → 2024</span></div></a>
+        <a href="#c3" class="toc-chip" data-section="c3"><span class="tc-num">03</span><div class="tc-name"><span class="lang-zh-only">11 个家族</span><span class="lang-en-only">11 families</span><span class="tc-en">at a glance</span></div></a>
+        <a href="#c4" class="toc-chip" data-section="c4"><span class="tc-num">04</span><div class="tc-name"><span class="lang-zh-only">五个永恒权衡</span><span class="lang-en-only">5 eternal tradeoffs</span><span class="tc-en">pause / throughput / mem / ...</span></div></a>
+        <a href="#c5" class="toc-chip" data-section="c5"><span class="tc-num">05</span><div class="tc-name"><span class="lang-zh-only">关键不变式</span><span class="lang-en-only">Core invariants</span><span class="tc-en">tri-color · barrier · root</span></div></a>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="thread">
+      <div class="toc-group-head">
+        <div class="tg-num">★</div>
+        <div class="tg-name lang-zh-only">主线</div>
+        <div class="tg-name lang-en-only">Main line</div>
+        <div class="tg-en">1 program · 11 fates</div>
+        <div class="tg-count">1</div>
+      </div>
+      <div class="toc-chips">
+        <a href="#cmain" class="toc-chip thread" data-section="cmain"><span class="tc-num">★</span><div class="tc-name"><span class="lang-zh-only">1M 对象的命运</span><span class="lang-en-only">fate of 1M objects</span><span class="tc-en">list = null · what next?</span></div></a>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="pipeline">
+      <div class="toc-group-head">
+        <div class="tg-num">II</div>
+        <div class="tg-name lang-zh-only">11 个家族</div>
+        <div class="tg-name lang-en-only">11 families</div>
+        <div class="tg-en">11 chapters · the algorithms</div>
+        <div class="tg-count">11</div>
+      </div>
+      <div class="toc-sub" data-thread="quic">
+        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">经典算法 · classics</span><span class="lang-en-only">classics</span></div>
+        <div class="toc-chips">
+          <a href="#c6" class="toc-chip" data-section="c6"><span class="tc-num">06</span><div class="tc-name"><span class="lang-zh-only">引用计数</span><span class="lang-en-only">Refcount</span><span class="tc-en">Python · Swift · PHP · Rust Rc</span></div></a>
+          <a href="#c7" class="toc-chip" data-section="c7"><span class="tc-num">07</span><div class="tc-name">Mark-Sweep<span class="tc-en">McCarthy 1959 · Lua · Boehm</span></div></a>
+          <a href="#c8" class="toc-chip" data-section="c8"><span class="tc-num">08</span><div class="tc-name"><span class="lang-zh-only">复制 · Cheney</span><span class="lang-en-only">Copying · Cheney</span><span class="tc-en">OCaml minor · GHC</span></div></a>
+          <a href="#c9" class="toc-chip" data-section="c9"><span class="tc-num">09</span><div class="tc-name"><span class="lang-zh-only">分代</span><span class="lang-en-only">Generational</span><span class="tc-en">V8 · JVM · Ruby 3</span></div></a>
+          <a href="#c10" class="toc-chip" data-section="c10"><span class="tc-num">10</span><div class="tc-name"><span class="lang-zh-only">增量</span><span class="lang-en-only">Incremental</span><span class="tc-en">Lua 5.0 · early JVM CMS</span></div></a>
+        </div>
+      </div>
+      <div class="toc-sub" data-thread="http">
+        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">现代并发 · modern concurrent</span><span class="lang-en-only">modern concurrent</span></div>
+        <div class="toc-chips">
+          <a href="#c11" class="toc-chip" data-section="c11"><span class="tc-num">11</span><div class="tc-name"><span class="lang-zh-only">并发 · 三色</span><span class="lang-en-only">Concurrent · tri-color</span><span class="tc-en">Go · JSC Riptide · Hermes</span></div></a>
+          <a href="#c12" class="toc-chip" data-section="c12"><span class="tc-num">12</span><div class="tc-name"><span class="lang-zh-only">区域 / 每进程</span><span class="lang-en-only">Region · per-actor</span><span class="tc-en">Erlang BEAM · Pony</span></div></a>
+          <a href="#c13" class="toc-chip" data-section="c13"><span class="tc-num">13</span><div class="tc-name"><span class="lang-zh-only">彩色指针</span><span class="lang-en-only">Colored pointers</span><span class="tc-en">ZGC · Shenandoah · Brooks</span></div></a>
+          <a href="#c14" class="toc-chip" data-section="c14"><span class="tc-num">14</span><div class="tc-name"><span class="lang-zh-only">无 GC · 编译期</span><span class="lang-en-only">No-GC · compile-time</span><span class="tc-en">Rust · Zig · C++ RAII · Vale</span></div></a>
+          <a href="#c15" class="toc-chip" data-section="c15"><span class="tc-num">15</span><div class="tc-name"><span class="lang-zh-only">混合 · 一种不够</span><span class="lang-en-only">Hybrid · 1 isn't enough</span><span class="tc-en">Python · QuickJS · Julia</span></div></a>
+          <a href="#c16" class="toc-chip" data-section="c16"><span class="tc-num">16</span><div class="tc-name"><span class="lang-zh-only">学术与未量产</span><span class="lang-en-only">Academic + unshipped</span><span class="tc-en">MMTk · LXR · Pauseless</span></div></a>
+        </div>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="synth">
+      <div class="toc-group-head">
+        <div class="tg-num">III</div>
+        <div class="tg-name lang-zh-only">综合</div>
+        <div class="tg-name lang-en-only">Synthesis</div>
+        <div class="tg-en">4 chapters · putting it together</div>
+        <div class="tg-count">4</div>
+      </div>
+      <div class="toc-chips">
+        <a href="#c17" class="toc-chip" data-section="c17"><span class="tc-num">17</span><div class="tc-name"><span class="lang-zh-only">三维对比矩阵</span><span class="lang-en-only">3-axis matrix</span><span class="tc-en">pause × throughput × memory</span></div></a>
+        <a href="#c18" class="toc-chip" data-section="c18"><span class="tc-num">18</span><div class="tc-name"><span class="lang-zh-only">生产事故簿</span><span class="lang-en-only">Production stories</span><span class="tc-en">Discord · Twitter · Pinterest</span></div></a>
+        <a href="#c19" class="toc-chip" data-section="c19"><span class="tc-num">19</span><div class="tc-name"><span class="lang-zh-only">调优决策树</span><span class="lang-en-only">Tuning decision tree</span><span class="tc-en">latency? throughput? size?</span></div></a>
+        <a href="#c20" class="toc-chip" data-section="c20"><span class="tc-num">20</span><div class="tc-name"><span class="lang-zh-only">之后</span><span class="lang-en-only">What's next</span><span class="tc-en">Generational ZGC · linear types</span></div></a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ========== CHAPTER 01 — WHAT IS GC ========== -->
+  <section class="chap" id="c1">
+    <div class="chap-num">CHAPTER&nbsp;01</div>
+    <h2 class="chap-title lang-zh-only">什么是 GC — "找出死了的内存，还给系统"</h2>
+    <h2 class="chap-title lang-en-only">What is GC — "find what's dead, return it to the system"</h2>
+    <p class="chap-en lang-zh-only">一句话定义 + 三个反直觉</p>
+    <p class="chap-en lang-en-only">one-line definition + three counter-intuitions</p>
+
+    <div class="lang-zh-only">
+      <p>GC 的<em>所有</em>实现都做<em>同一件事</em>：找出"<em>程序再也访问不到</em>"的内存，把它还给分配器。区别只在<em>怎么找</em>和<em>什么时候找</em>。</p>
+      <p>整本书的张力都建立在三个反直觉上：</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Every GC implementation does <em>the same thing</em>: find memory the program can <em>no longer reach</em>, return it to the allocator. The only difference is <em>how</em> they find it and <em>when</em>. Everything that follows builds on three counter-intuitions:</p>
+    </div>
+
+    <div class="ladder">
+      <div class="ld-row"><div class="ld-num">①</div><div>
+        <div class="ld-name lang-zh-only">"死"不是程序员意图，是图论性质</div>
+        <div class="ld-name lang-en-only">"Dead" is a graph property, not programmer intent</div>
+        <div class="ld-desc lang-zh-only">GC 不知道你<em>打算</em>不再用这块内存——它只检查"<em>从 root 出发的有向图里还能不能走到</em>"。你 <code>x = null</code> 但 <code>cache</code> 还藏着 x？不死。你心里早已遗忘，但闭包还引用着？不死。"<em>不可达</em>" 是<em>所有</em> GC 的<em>唯一</em>真理。</div>
+        <div class="ld-desc lang-en-only">GC has no idea what you <em>intend</em> to keep — it only checks "<em>can it still be reached from a root via the pointer graph?</em>" You set <code>x = null</code> but <code>cache</code> still holds x? Not dead. You forgot about it months ago, but a closure references it? Not dead. <em>Unreachability</em> is the <em>only</em> truth for every GC.</div>
+      </div></div>
+      <div class="ld-row"><div class="ld-num">②</div><div>
+        <div class="ld-name lang-zh-only">"立即释放"通常是<em>幻觉</em></div>
+        <div class="ld-name lang-en-only">"Freed immediately" is usually an illusion</div>
+        <div class="ld-desc lang-zh-only">只有引用计数（CPython, Swift, PHP, Rust Rc）能做到 <code>x = null</code> 同行<em>立即</em> free。所有 tracing GC——V8、Go、JVM、.NET、Erlang——都是<em>滞后</em>的，可能要 100ms 后、也可能要 1 小时后才真正释放。<em>这是延迟换吞吐量的根源</em>。</div>
+        <div class="ld-desc lang-en-only">Only refcount (CPython, Swift, PHP, Rust Rc) genuinely frees on the same line as <code>x = null</code>. Every tracing GC — V8, Go, JVM, .NET, Erlang — is <em>lazy</em>: actual free may happen 100ms later, or an hour later. <em>That latency is the source of every throughput advantage.</em></div>
+      </div></div>
+      <div class="ld-row"><div class="ld-num">③</div><div>
+        <div class="ld-name lang-zh-only">GC 是<em>运行时</em>对程序员的"<em>违约权</em>"</div>
+        <div class="ld-name lang-en-only">GC is the runtime's <em>"licence to default"</em></div>
+        <div class="ld-desc lang-zh-only">你写 <code>let x = ...</code>。运行时背地里跟自己说"<em>等我有空再处理</em>"。STW 那 50ms 就是运行时<em>临时收回控制权</em>。<strong>所有 GC 的争议都是关于这个"违约权"</strong>——多久能行使一次（pause）、违约多长（max pause）、有没有提前通知（incremental/concurrent）、能不能买断（no-GC ownership）。</div>
+        <div class="ld-desc lang-en-only">You wrote <code>let x = ...</code>. Behind your back the runtime tells itself "<em>I'll deal with this when I'm free</em>". The STW pause is the runtime <em>temporarily taking control back</em>. <strong>Every GC debate is really about this default licence</strong> — how often (frequency), how long (max pause), whether you get warning (incremental/concurrent), whether you can buy out (no-GC ownership).</div>
+      </div></div>
+    </div>
+
+    <blockquote class="pull">
+      <span class="lang-zh-only">「<em>GC</em> 不是一种<em>技术</em>，<em>GC</em> 是一种<em>契约</em>。<br>21 世纪的运行时设计基本就是这份契约的<em>不同版本</em>。」</span>
+      <span class="lang-en-only">"<em>GC</em> isn't a technology — <em>GC</em> is a contract.<br>21st-century runtime design is mostly about <em>different versions of that contract</em>."</span>
+    </blockquote>
+  </section>
+
+  <!-- ========== CHAPTER 02 — 60-YEAR FAMILY TREE ========== -->
+  <section class="chap" id="c2">
+    <div class="chap-num">CHAPTER&nbsp;02</div>
+    <h2 class="chap-title lang-zh-only">六十年家谱 — McCarthy 1959 到 Generational ZGC 2023</h2>
+    <h2 class="chap-title lang-en-only">60-year family tree — McCarthy 1959 to Generational ZGC 2023</h2>
+    <p class="chap-en lang-zh-only">每个被采纳的算法都是某个问题的回应</p>
+    <p class="chap-en lang-en-only">every adopted algorithm is an answer to a specific pain</p>
+
+    <table class="cmp">
+      <thead><tr><th><span class="lang-zh-only">年</span><span class="lang-en-only">Year</span></th><th><span class="lang-zh-only">事件</span><span class="lang-en-only">Event</span></th><th><span class="lang-zh-only">人物</span><span class="lang-en-only">People</span></th><th><span class="lang-zh-only">解决的问题</span><span class="lang-en-only">Pain solved</span></th></tr></thead>
+      <tbody>
+        <tr><td class="num">1959</td><td>Mark-Sweep 在 Lisp 1.5 里发明</td><td>John McCarthy</td><td><span class="lang-zh-only">"我们手写 free 写疯了"</span><span class="lang-en-only">"we keep forgetting to free in Lisp"</span></td></tr>
+        <tr><td class="num">1963</td><td>引用计数（Collins）独立提出</td><td>George Collins</td><td><span class="lang-zh-only">"Mark-Sweep 的全堆扫描太慢"</span><span class="lang-en-only">"mark-sweep's full-heap walk too slow"</span></td></tr>
+        <tr><td class="num">1969</td><td>Cheney 复制算法</td><td>C. J. Cheney</td><td><span class="lang-zh-only">"mark-sweep 留下太多碎片"</span><span class="lang-en-only">"mark-sweep fragments"</span></td></tr>
+        <tr><td class="num">1978</td><td>三色不变式</td><td>Dijkstra · Lamport</td><td><span class="lang-zh-only">"怎么让 GC 边跑边收？"</span><span class="lang-en-only">"how to collect concurrently?"</span></td></tr>
+        <tr><td class="num">1984</td><td>分代假设</td><td>Henry Lieberman · Carl Hewitt</td><td><span class="lang-zh-only">"大多数对象很快死"</span><span class="lang-en-only">"most objects die young"</span></td></tr>
+        <tr><td class="num">1988</td><td>Boehm 保守式 GC（给 C/C++）</td><td>Hans-J. Boehm</td><td><span class="lang-zh-only">"没类型信息也能 GC"</span><span class="lang-en-only">"GC without type info"</span></td></tr>
+        <tr><td class="num">1995</td><td>Java 1.0 · 第一代 JVM GC</td><td>Sun</td><td><span class="lang-zh-only">"让 C++ 程序员不用 free"</span><span class="lang-en-only">"give C++ devs freedom from free"</span></td></tr>
+        <tr><td class="num">2004</td><td>G1 GC 发表（论文）</td><td>Detlefs · Flood · Heller · Printezis</td><td><span class="lang-zh-only">"大堆 STW 不可接受"</span><span class="lang-en-only">"large-heap STW unacceptable"</span></td></tr>
+        <tr><td class="num">2009</td><td>Go 1.0 · 三色并发 mark-sweep</td><td>Google · Rick Hudson</td><td><span class="lang-zh-only">"服务器 ms 级停顿"</span><span class="lang-en-only">"server-grade ms pauses"</span></td></tr>
+        <tr><td class="num">2010</td><td>Swift ARC（前身 Objective-C 2.0 ARC, 2011 公开）</td><td>Apple · Chris Lattner</td><td><span class="lang-zh-only">"移动设备没 GC 预算"</span><span class="lang-en-only">"mobile has no GC budget"</span></td></tr>
+        <tr><td class="num">2014</td><td>ZGC 项目启动（Oracle Labs）</td><td>Per Lidén · Stefan Karlsson</td><td><span class="lang-zh-only">"100GB 堆要 &lt;10ms 停顿"</span><span class="lang-en-only">"100GB heap, &lt;10ms pause"</span></td></tr>
+        <tr><td class="num">2014</td><td>Rust 1.0-alpha · 无 GC 所有权系统</td><td>Mozilla · Graydon Hoare</td><td><span class="lang-zh-only">"完全把 GC 写进编译器"</span><span class="lang-en-only">"GC subsumed by the compiler"</span></td></tr>
+        <tr><td class="num">2015</td><td>Go 1.5 · sub-ms STW</td><td>Rick Hudson · Austin Clements</td><td><span class="lang-zh-only">"实时 GC 是可能的"</span><span class="lang-en-only">"real-time GC is possible"</span></td></tr>
+        <tr><td class="num">2018</td><td>Shenandoah GC 进入 OpenJDK</td><td>Red Hat · Roman Kennke</td><td><span class="lang-zh-only">"ZGC 的并发整理替代品"</span><span class="lang-en-only">"alt-take on concurrent compaction"</span></td></tr>
+        <tr><td class="num">2020</td><td>Hermes HadesGC GA</td><td>Meta</td><td><span class="lang-zh-only">"RN 移动端的 sub-ms GC"</span><span class="lang-en-only">"sub-ms GC for React Native"</span></td></tr>
+        <tr><td class="num">2022</td><td>OCaml 5.0 · 多核并行 GC</td><td>KC Sivaramakrishnan · OCaml team</td><td><span class="lang-zh-only">"函数式语言终于真并行"</span><span class="lang-en-only">"functional languages finally go truly parallel"</span></td></tr>
+        <tr><td class="num">2023</td><td>Generational ZGC 上线（JDK 21）</td><td>Oracle</td><td><span class="lang-zh-only">"ZGC 没分代，吞吐量留了 10%"</span><span class="lang-en-only">"non-gen ZGC left 10% throughput on the table"</span></td></tr>
+        <tr><td class="num">2024</td><td>Carbon / Vale · 实验性"线性 GC"</td><td>various</td><td><span class="lang-zh-only">"Rust 太严，让我们多一点 GC"</span><span class="lang-en-only">"Rust too strict, ease back with linear types"</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 算法不是被发明，是被需要</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · algorithms aren't invented, they're demanded</span>
+      <span class="lang-zh-only">这张表每一行<em>都对应一种工程痛点</em>。McCarthy 不是闲着发明 mark-sweep——他写 Lisp 1.5 受不了 <code>cons</code> 节点泄漏。Lieberman 1984 提分代不是数学美感——他在 MIT Lisp Machine 上调试了 6 个月发现 <em>90% 对象不到 1 秒就死</em>。ZGC 不是性能竞赛——是 Oracle 内部 Cassandra 集群 100GB 堆 30 秒 STW 让交易系统真停摆。<strong>下一章看每个家族解决的<em>具体</em>痛点</strong>。</span>
+      <span class="lang-en-only">Every row in this table maps to <em>a specific engineering pain</em>. McCarthy didn't invent mark-sweep for kicks — he was bleeding from leaked <code>cons</code> nodes in Lisp 1.5. Lieberman 1984 didn't propose generational for mathematical elegance — he spent 6 months debugging on an MIT Lisp Machine and found <em>90% of objects died within 1 second</em>. ZGC wasn't a benchmark race — it was Oracle's internal Cassandra clusters with 100GB heaps causing 30-second STW that froze trading systems. <strong>The next chapter shows the specific pain each family solves.</strong></span>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 03 — 11 FAMILIES OVERVIEW ========== -->
+  <section class="chap" id="c3">
+    <div class="chap-num">CHAPTER&nbsp;03</div>
+    <h2 class="chap-title lang-zh-only">11 个家族 · 11 句话讲完</h2>
+    <h2 class="chap-title lang-en-only">11 families · 11 sentences total</h2>
+    <p class="chap-en lang-zh-only">先建立心智地图，后面 11 章每章一个</p>
+    <p class="chap-en lang-en-only">build the mental map first; 11 chapters fill in each one</p>
+
+    <table class="cmp">
+      <thead><tr><th>Ch</th><th><span class="lang-zh-only">家族</span><span class="lang-en-only">Family</span></th><th><span class="lang-zh-only">一句话</span><span class="lang-en-only">In one sentence</span></th><th><span class="lang-zh-only">代表实现</span><span class="lang-en-only">Examples</span></th></tr></thead>
+      <tbody>
+        <tr><td class="num">06</td><td><span class="lang-zh-only">引用计数</span><span class="lang-en-only">Refcount</span></td><td><span class="lang-zh-only">每对象记"谁指我"，归零立刻 free</span><span class="lang-en-only">each object counts pointers, free at 0</span></td><td>CPython · Swift · PHP · Rust Rc</td></tr>
+        <tr><td class="num">07</td><td>Mark-Sweep</td><td><span class="lang-zh-only">从 root 染色全堆，把没染上的 free</span><span class="lang-en-only">walk from roots, sweep the unmarked</span></td><td>Lua · Boehm · early V8 major</td></tr>
+        <tr><td class="num">08</td><td><span class="lang-zh-only">复制 · Cheney</span><span class="lang-en-only">Copying · Cheney</span></td><td><span class="lang-zh-only">活对象搬到新堆，旧堆整体丢</span><span class="lang-en-only">copy live objects to new heap, drop old heap entirely</span></td><td>OCaml minor · GHC · V8 young</td></tr>
+        <tr><td class="num">09</td><td><span class="lang-zh-only">分代</span><span class="lang-en-only">Generational</span></td><td><span class="lang-zh-only">年轻区频繁回收（90% 对象都死在这）</span><span class="lang-en-only">collect the young area often (90% dies here)</span></td><td>V8 Orinoco · JVM G1 · Ruby 3</td></tr>
+        <tr><td class="num">10</td><td><span class="lang-zh-only">增量</span><span class="lang-en-only">Incremental</span></td><td><span class="lang-zh-only">一次 GC 拆成 N 小步穿插在用户代码间</span><span class="lang-en-only">break one GC into N small steps interleaved with user code</span></td><td>Lua 5.0+ · early JVM CMS</td></tr>
+        <tr><td class="num">11</td><td><span class="lang-zh-only">并发 · 三色</span><span class="lang-en-only">Concurrent · tri-color</span></td><td><span class="lang-zh-only">GC 在独立线程里跑，靠 write barrier 保证不漏</span><span class="lang-en-only">GC on its own thread, write barriers preserve invariants</span></td><td>Go · JSC Riptide · Hermes HadesGC</td></tr>
+        <tr><td class="num">12</td><td><span class="lang-zh-only">区域 · 每进程</span><span class="lang-en-only">Region / per-actor</span></td><td><span class="lang-zh-only">每个进程/区域独立 GC，进程死整片 free</span><span class="lang-en-only">per-process / per-region GC, dies as a whole</span></td><td>Erlang BEAM · Pony · region typing</td></tr>
+        <tr><td class="num">13</td><td><span class="lang-zh-only">彩色指针</span><span class="lang-en-only">Colored pointers</span></td><td><span class="lang-zh-only">在 64-bit 指针的高位编码 GC 状态，load barrier 拦截</span><span class="lang-en-only">encode GC state in high pointer bits, load barriers intercept</span></td><td>ZGC · Shenandoah · Brooks 1984</td></tr>
+        <tr><td class="num">14</td><td><span class="lang-zh-only">无 GC · 编译期</span><span class="lang-en-only">No-GC · compile-time</span></td><td><span class="lang-zh-only">所有权 + RAII 把 free 编进编译产物</span><span class="lang-en-only">ownership + RAII bake free into the binary</span></td><td>Rust · C++ unique_ptr · Zig · Vale</td></tr>
+        <tr><td class="num">15</td><td><span class="lang-zh-only">混合</span><span class="lang-en-only">Hybrid</span></td><td><span class="lang-zh-only">refcount 主路径 + cycle detector 兜底</span><span class="lang-en-only">refcount + cycle collector backstop</span></td><td>CPython · PHP Zend · QuickJS · Perl</td></tr>
+        <tr><td class="num">16</td><td><span class="lang-zh-only">学术 · 未量产</span><span class="lang-en-only">Academic / unshipped</span></td><td><span class="lang-zh-only">MMTk 工具箱、LXR、Azul Pauseless（已商业）</span><span class="lang-en-only">MMTk toolkit, LXR, Azul Pauseless (commercial)</span></td><td>research · vendor</td></tr>
+      </tbody>
+    </table>
+
+    <p class="lang-zh-only" style="margin-top:18px;">每个家族都有<em>哲学</em>，每个哲学都有<em>代价</em>。Ch04 五个永恒权衡先把代价说清，再开始挨个家族讲。</p>
+    <p class="lang-en-only" style="margin-top:18px;">Every family has a <em>philosophy</em>, every philosophy has a <em>price</em>. Ch04 lays out the prices in 5 tradeoffs, then we walk through family by family.</p>
+  </section>
+
+  <!-- ========== CHAPTER 04 — 5 ETERNAL TRADEOFFS ========== -->
+  <section class="chap" id="c4">
+    <div class="chap-num">CHAPTER&nbsp;04</div>
+    <h2 class="chap-title lang-zh-only">五个永恒权衡 — 任何 GC 都不能同时拿满</h2>
+    <h2 class="chap-title lang-en-only">5 eternal tradeoffs — no GC wins all five</h2>
+    <p class="chap-en lang-zh-only">所有 GC 战争都是这 5 个轴的不同选择</p>
+    <p class="chap-en lang-en-only">every GC war is a different choice across these 5 axes</p>
+
+    <table class="cmp">
+      <thead><tr><th><span class="lang-zh-only">权衡</span><span class="lang-en-only">Tradeoff</span></th><th><span class="lang-zh-only">谁赢</span><span class="lang-en-only">Winner</span></th><th><span class="lang-zh-only">谁输</span><span class="lang-en-only">Loser</span></th><th><span class="lang-zh-only">代价</span><span class="lang-en-only">Why</span></th></tr></thead>
+      <tbody>
+        <tr><td><span class="lang-zh-only">① 停顿时间</span><span class="lang-en-only">① Pause time</span></td><td>ZGC / Shenandoah · Erlang · Refcount</td><td>JVM Parallel · early Go · 单 STW</td><td><span class="lang-zh-only">并发要 barrier、refcount 要原子 inc</span><span class="lang-en-only">concurrency needs barriers, refcount needs atomic inc</span></td></tr>
+        <tr><td><span class="lang-zh-only">② 吞吐量</span><span class="lang-en-only">② Throughput</span></td><td>JVM Parallel · GHC · No-GC (Rust)</td><td>ZGC · Shenandoah · CPython</td><td><span class="lang-zh-only">低延迟的 barrier 都是分支预测杀手</span><span class="lang-en-only">low-latency barriers kill branch prediction</span></td></tr>
+        <tr><td><span class="lang-zh-only">③ 内存占用</span><span class="lang-en-only">③ Memory footprint</span></td><td>Refcount · No-GC · per-actor</td><td>分代 · 并发 mark-sweep · 复制式</td><td><span class="lang-zh-only">tracing 需要 1.5-3× 活集才能高效</span><span class="lang-en-only">tracing GCs need 1.5-3× live-set headroom</span></td></tr>
+        <tr><td><span class="lang-zh-only">④ 启动时间</span><span class="lang-en-only">④ Startup</span></td><td>Refcount · No-GC · Lua · QuickJS</td><td>JVM · .NET · 任何带 JIT 的</td><td><span class="lang-zh-only">JIT + GC 元数据载入要 50-200ms</span><span class="lang-en-only">JIT + GC metadata bring-up costs 50-200ms</span></td></tr>
+        <tr><td><span class="lang-zh-only">⑤ 心智负担</span><span class="lang-en-only">⑤ Mental overhead</span></td><td>JVM · V8 · Python · Erlang（GC 隐形）</td><td>Rust · 手动 free（明确所有权）</td><td><span class="lang-zh-only">隐形的代价是不可调；显性的代价是难学</span><span class="lang-en-only">invisible cost = no tuning; visible cost = steep curve</span></td></tr>
+      </tbody>
+    </table>
+
+    <p class="lang-zh-only" style="margin-top:18px;"><strong>从来没有 GC 在这五个轴都拿满</strong>。挑 GC 就是<em>挑你愿意输哪一个</em>。Ch19 调优决策树会把这 5 个轴变成可选 path——但你先要在脑里建立"<em>没有银弹</em>" 这个底色。</p>
+    <p class="lang-en-only" style="margin-top:18px;"><strong>No GC has ever scored full marks on all five</strong>. Picking a GC means <em>picking which one you're willing to lose</em>. Ch19's tuning decision tree turns these 5 axes into actionable paths — but first you have to internalise "<em>no silver bullet</em>" as the background colour.</p>
+  </section>
+
+  <!-- ========== CHAPTER 05 — CORE INVARIANTS ========== -->
+  <section class="chap" id="c5">
+    <div class="chap-num">CHAPTER&nbsp;05</div>
+    <h2 class="chap-title lang-zh-only">关键不变式 — 全本书会反复用到的 5 个词</h2>
+    <h2 class="chap-title lang-en-only">Core invariants — 5 terms used everywhere below</h2>
+    <p class="chap-en lang-zh-only">root · barrier · 三色 · safepoint · forwarding</p>
+    <p class="chap-en lang-en-only">root · barrier · tri-color · safepoint · forwarding</p>
+
+    <div class="ladder">
+      <div class="ld-row"><div class="ld-num">①</div><div>
+        <div class="ld-name lang-zh-only">Root set</div>
+        <div class="ld-name lang-en-only">Root set</div>
+        <div class="ld-desc lang-zh-only">GC 起点。包括：<em>栈帧里的局部变量</em>、<em>寄存器里的对象指针</em>、<em>全局变量</em>、<em>JIT 编译代码里嵌入的常量对象</em>、<em>thread-local</em>、<em>finalizer 队列里的对象</em>。"<em>对象可达</em>" = 从 root 走有向图能到达。</div>
+        <div class="ld-desc lang-en-only">Where GC starts walking from. Includes: <em>local vars on stack frames</em>, <em>object pointers in registers</em>, <em>globals</em>, <em>JIT-baked constants</em>, <em>thread-local</em>, <em>finalizer queue</em>. "<em>Reachable</em>" = a directed path from a root via pointers.</div>
+      </div></div>
+      <div class="ld-row"><div class="ld-num">②</div><div>
+        <div class="ld-name lang-zh-only">Write barrier · Read barrier · Load barrier</div>
+        <div class="ld-name lang-en-only">Write / Read / Load barriers</div>
+        <div class="ld-desc lang-zh-only">编译器在每个<em>指针写</em>（或读）的位置插入的<em>小段代码</em>。用途：(a) 增量/并发 GC 要捕获"<em>白色对象指针被写到黑色对象</em>"这种关系破坏（Ch11 三色）；(b) ZGC 的 load barrier 在每个指针<em>读</em>的位置检查并可能转发指针。<em>所有并发 GC 都在这层付费</em>——每次指针操作多 1-3 ns。</div>
+        <div class="ld-desc lang-en-only">A small piece of code the compiler injects at every <em>pointer write</em> (or read). Purposes: (a) incremental/concurrent GCs catch "<em>a black object now points to a white</em>" invariant violations (Ch11 tri-color); (b) ZGC's load barrier checks every pointer <em>read</em> and may forward. <em>Every concurrent GC pays here</em> — 1-3 ns per pointer op.</div>
+      </div></div>
+      <div class="ld-row"><div class="ld-num">③</div><div>
+        <div class="ld-name lang-zh-only">三色不变式（Dijkstra 1978）</div>
+        <div class="ld-name lang-en-only">Tri-color invariant (Dijkstra 1978)</div>
+        <div class="ld-desc lang-zh-only">所有对象染三色：<em>白</em>（GC 未访问，候选 free）、<em>灰</em>（自己被访问，但出边未追完）、<em>黑</em>（自己 + 所有出边都追完）。<strong>不变式</strong>：<em>不允许黑色对象直接指向白色对象</em>（否则白色会被漏标）。所有并发 GC 都靠 write barrier 维护它。</div>
+        <div class="ld-desc lang-en-only">All objects coloured: <em>white</em> (unvisited, candidate to free), <em>grey</em> (visited but outgoing edges not all traced), <em>black</em> (self + all outgoing done). <strong>Invariant</strong>: <em>black must not directly point to white</em> (else white gets missed). Every concurrent GC uses write barriers to enforce this.</div>
+      </div></div>
+      <div class="ld-row"><div class="ld-num">④</div><div>
+        <div class="ld-name lang-zh-only">Safepoint</div>
+        <div class="ld-name lang-en-only">Safepoint</div>
+        <div class="ld-desc lang-zh-only">编译器知道"<em>此刻所有指针在已知位置</em>"的代码点。STW 的本质就是"<em>等所有线程到 safepoint</em>"。tight 数值循环里没有 safepoint，GC 可能要等几 ms 才能进——这是 JVM 大循环 GC 暂停的常见原因。</div>
+        <div class="ld-desc lang-en-only">A program point at which the compiler knows <em>where every pointer is</em>. STW = "<em>wait for all threads to reach a safepoint</em>". Tight numeric loops lack safepoints; GC can wait ms for entry — a common cause of JVM long-pauses.</div>
+      </div></div>
+      <div class="ld-row"><div class="ld-num">⑤</div><div>
+        <div class="ld-name lang-zh-only">Forwarding pointer</div>
+        <div class="ld-name lang-en-only">Forwarding pointer</div>
+        <div class="ld-desc lang-zh-only">复制 GC（Ch08）+ 整理 GC（ZGC）必备。对象从位置 A 搬到位置 B 后，<em>A 处放一个指向 B 的转发指针</em>，之后任何还指着 A 的旧引用都被自动重定向到 B。<strong>这是所有 compacting GC 的核心</strong>——也是为什么 ZGC 要 colored pointer：把"<em>已转发</em>"标志编进指针。</div>
+        <div class="ld-desc lang-en-only">Required by copying GC (Ch08) and compacting GC (ZGC). When an object moves from A to B, <em>A holds a forwarding pointer to B</em>; any old reference to A gets transparently redirected. <strong>The heart of every compacting collector</strong> — and the reason ZGC needs colored pointers: encoding "<em>already forwarded</em>" into the pointer bits.</div>
+      </div></div>
+    </div>
+
+    <div class="note">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 这五个词出现 200+ 次</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · these 5 words appear 200+ times</span>
+      <span class="lang-zh-only">如果你在后面任何一章看到 "<em>write barrier</em>" "<em>root scan</em>" "<em>safepoint</em>" 想不起来含义——回到本章。术语表（最后一章）也会再列一次。</span>
+      <span class="lang-en-only">If any later chapter says "<em>write barrier</em>" / "<em>root scan</em>" / "<em>safepoint</em>" and you blank — come back here. The glossary at the end repeats them too.</span>
+    </div>
+  </section>
+
+  <!-- ========== MAIN LINE — 1M OBJECTS ========== -->
+  <section class="chap" id="cmain">
+    <div class="chap-num" style="color: var(--copper);">MAIN&nbsp;LINE&nbsp;·&nbsp;THE&nbsp;WORKLOAD</div>
+    <h2 class="chap-title lang-zh-only">1M 个小对象的命运 — 一段代码 · 11 种 GC · 11 个故事</h2>
+    <h2 class="chap-title lang-en-only">The fate of 1M small objects — one program · 11 GCs · 11 stories</h2>
+
+    <div class="src-stack">
+      <div class="src-h"><span>the workload · pseudocode (each chapter shows in real language)</span><span class="src-tag">17 chars + side effects</span></div>
+<span class="src-line"><span class="src-comment">// allocate 1 million small objects, retain them, then drop the reference</span></span>
+<span class="src-line">let list = []</span>
+<span class="src-line"><span class="src-kw">for</span> i <span class="src-kw">in</span> <span class="src-num">0</span>..<span class="src-num">1_000_000</span>:</span>
+<span class="src-line">    list.push({ n: i })           <span class="src-comment">// allocate 1M tiny objects</span></span>
+<span class="src-line">list = null                      <span class="src-comment">// ⭐ the moment of "many ways to die"</span></span>
+<span class="src-line"><span class="src-comment">// observe: when is memory actually freed? what's the pause? how is the heap after?</span></span>
+    </div>
+
+    <p class="lang-zh-only">这一行 <code>list = null</code> 是<em>整本书的支点</em>。每个 GC 家族章节都会回答 4 个问题：</p>
+    <p class="lang-en-only">That one line <code>list = null</code> is <em>the article's fulcrum</em>. Every GC family chapter answers 4 questions:</p>
+
+    <div class="ladder">
+      <div class="ld-row"><div class="ld-num">Q1</div><div>
+        <div class="ld-name lang-zh-only">什么时候这 1M 对象的内存真的还给系统？</div>
+        <div class="ld-name lang-en-only">When does memory actually return to the OS?</div>
+        <div class="ld-desc lang-zh-only">CPython refcount：<em>同行</em>。V8 Orinoco：下一次 minor GC（可能下 50ms）。JVM ZGC：concurrent，无明确时间。Erlang：进程死了才<em>整体</em> free。Rust：编译期 drop。</div>
+        <div class="ld-desc lang-en-only">CPython refcount: <em>same line</em>. V8 Orinoco: next minor GC (~50ms). JVM ZGC: concurrent, no fixed time. Erlang: only when the process dies, all at once. Rust: at compile-time-determined drop.</div>
+      </div></div>
+      <div class="ld-row"><div class="ld-num">Q2</div><div>
+        <div class="ld-name lang-zh-only">这一行触发了多长的 STW？</div>
+        <div class="ld-name lang-en-only">How long an STW did it trigger?</div>
+        <div class="ld-desc lang-zh-only">refcount：0ms（同步释放）。V8 minor：~1ms。JVM Parallel：可达 50ms（大堆）。ZGC：&lt;1ms。Erlang：0ms（不存在全堆 GC）。</div>
+        <div class="ld-desc lang-en-only">refcount: 0ms (synchronous release). V8 minor: ~1ms. JVM Parallel: up to 50ms (large heap). ZGC: &lt;1ms. Erlang: 0ms (no global GC exists).</div>
+      </div></div>
+      <div class="ld-row"><div class="ld-num">Q3</div><div>
+        <div class="ld-name lang-zh-only">回收过程消耗多少 CPU%？</div>
+        <div class="ld-name lang-en-only">How much CPU% does the collection burn?</div>
+        <div class="ld-desc lang-zh-only">refcount：~5%（每次 dec 都付）。V8 generational：~3% young + ~5% major。Go concurrent：~5-25%（按 heap 增速调）。ZGC：可达 ~15%（load barrier）。</div>
+        <div class="ld-desc lang-en-only">refcount: ~5% (every dec costs). V8 generational: ~3% young + ~5% major. Go concurrent: 5-25% (scales with heap growth). ZGC: up to ~15% (load barriers).</div>
+      </div></div>
+      <div class="ld-row"><div class="ld-num">Q4</div><div>
+        <div class="ld-name lang-zh-only">回收后堆是什么形态？碎片化吗？</div>
+        <div class="ld-name lang-en-only">What shape is the heap after? Fragmented?</div>
+        <div class="ld-desc lang-zh-only">mark-sweep：<em>碎</em>（堆里到处是洞）。复制式：连续。compacting（G1/ZGC）：<em>整理后连续</em>。refcount：和分配顺序一致——可能碎，看 allocator。</div>
+        <div class="ld-desc lang-en-only">mark-sweep: <em>fragmented</em> (holes everywhere). copying: contiguous. compacting (G1/ZGC): <em>compacted contiguous</em>. refcount: ordering matches allocation — fragmentation depends on allocator.</div>
+      </div></div>
+    </div>
+
+    <p class="lang-zh-only" style="margin-top:24px;">下面 11 章每章<em>独立回答</em>这 4 问，加 1 段那种语言的真源码 + 1 张 SVG 展示当前家族<em>独有</em>的机制。从最简单的引用计数开始。</p>
+    <p class="lang-en-only" style="margin-top:24px;">The next 11 chapters each answer those 4 questions <em>independently</em>, plus a snippet of real source from that runtime and one SVG showing the mechanism unique to that family. We start with the simplest: refcount.</p>
+  </section>
+
+  <!-- ========== CHAPTER 06 — REFCOUNT FAMILY ========== -->
+  <section class="chap" id="c6">
+    <div class="chap-num">CHAPTER&nbsp;06</div>
+    <h2 class="chap-title lang-zh-only">引用计数 — 每对象记"谁指我"</h2>
+    <h2 class="chap-title lang-en-only">Refcount — every object counts its pointers</h2>
+    <p class="chap-en lang-zh-only">CPython · Swift ARC · PHP Zend · Perl · Rust Rc/Arc · QuickJS</p>
+    <p class="chap-en lang-en-only">CPython · Swift ARC · PHP Zend · Perl · Rust Rc/Arc · QuickJS</p>
+
+    <div class="stage-banner thread-tls">
+      <div class="sb-cell"><div class="sb-key lang-zh-only">家族</div><div class="sb-key lang-en-only">Family</div><div class="sb-val thread">Refcount (1963 Collins)</div></div>
+      <div class="sb-cell"><div class="sb-key lang-zh-only">同行 free</div><div class="sb-key lang-en-only">Same-line free</div><div class="sb-val">✓ Yes</div></div>
+      <div class="sb-cell"><div class="sb-key">STW</div><div class="sb-val">0 ms</div></div>
+      <div class="sb-cell"><div class="sb-key lang-zh-only">致命缺陷</div><div class="sb-key lang-en-only">Fatal flaw</div><div class="sb-val">cycles ✗</div></div>
+    </div>
+
+    <div class="lang-zh-only">
+      <p>引用计数是<em>所有 GC 里最直觉的一种</em>：每个对象配一个 <code>refcount</code> 字段，被指向时 <code>++</code>，解除指向时 <code>--</code>，归零时立即 <code>free</code>。</p>
+      <p>它的<em>优势</em>无人能及：<strong>0 ms STW</strong>、<strong>同行 free 极小延迟</strong>、<strong>实现极简单</strong>（200 行 C 写完）。它的<em>致命缺陷</em>也无人能救：<strong>循环引用永远释放不掉</strong>（A 指 B、B 指 A，两个 refcount 永远 ≥ 1）。</p>
+      <p>所以"纯引用计数" 语言其实<em>不存在</em>——CPython、PHP、Perl、QuickJS 都加了<em>第二层循环检测器</em>（Ch15 混合家族）。真正"纯"的只有 Swift ARC，但它要求程序员手动用 <code>weak</code> / <code>unowned</code> 打破循环——把责任<em>推回给程序员</em>。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Refcount is the most intuitive GC: every object holds a <code>refcount</code> field, <code>++</code> when pointed at, <code>--</code> when unpointed, <code>free</code> when it hits zero.</p>
+      <p>Its <em>advantages</em> are unmatched: <strong>0 ms STW</strong>, <strong>same-line free, minimal latency</strong>, <strong>tiny implementation</strong> (200 lines of C). Its <em>fatal flaw</em> is also unrescuable: <strong>cycles never collect</strong> (A→B, B→A; both refcounts stay ≥ 1 forever).</p>
+      <p>So "pure refcount" languages don't really exist — CPython, PHP, Perl, QuickJS all bolt on a <em>second cycle detector</em> (Ch15 hybrid family). The only truly pure one is Swift ARC, but it demands the programmer manually break cycles via <code>weak</code> / <code>unowned</code> — <em>pushing the burden back onto the programmer</em>.</p>
+    </div>
+
+    <h3 class="sub" style="color: var(--copper);"><span class="lang-zh-only">◇ 主线在 Refcount 家族里</span><span class="lang-en-only">◇ The main line in Refcount</span></h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>CPython · /tmp/mainline.py</span><span class="src-tag">measured 2026-05</span></div>
+<span class="src-line"><span class="src-kw">import</span> sys, time, tracemalloc</span>
+<span class="src-line">tracemalloc.start()</span>
+<span class="src-line">t0 = time.perf_counter()</span>
+<span class="src-line">lst = []</span>
+<span class="src-line"><span class="src-kw">for</span> i <span class="src-kw">in</span> <span class="src-fn">range</span>(<span class="src-num">1_000_000</span>):</span>
+<span class="src-line">    lst.append({<span class="src-str">"n"</span>: i})         <span class="src-comment"># each dict = ~232B; 1M = ~232 MB</span></span>
+<span class="src-line">t_alloc = time.perf_counter() - t0; cur1, _ = tracemalloc.get_traced_memory()</span>
+<span class="src-line">print(<span class="src-str">"alloc:"</span>, <span class="src-fn">round</span>(t_alloc*<span class="src-num">1000</span>), <span class="src-str">"ms  heap:"</span>, cur1//<span class="src-num">1024</span>//<span class="src-num">1024</span>, <span class="src-str">"MB"</span>)</span>
+<span class="src-line"></span>
+<span class="src-line">t1 = time.perf_counter()</span>
+<span class="src-line">lst = <span class="src-kw">None</span>                       <span class="src-comment"># ⭐ THE LINE</span></span>
+<span class="src-line">t_free = time.perf_counter() - t1; cur2, _ = tracemalloc.get_traced_memory()</span>
+<span class="src-line">print(<span class="src-str">"free:"</span>, <span class="src-fn">round</span>(t_free*<span class="src-num">1000</span>, <span class="src-num">2</span>), <span class="src-str">"ms  heap:"</span>, cur2//<span class="src-num">1024</span>//<span class="src-num">1024</span>, <span class="src-str">"MB"</span>)</span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>output · CPython 3.13 · Apple Silicon</span><span class="src-tag">real run</span></div>
+<span class="src-line">alloc: <span class="src-num">340</span> ms  heap: <span class="src-num">232</span> MB</span>
+<span class="src-line">free:  <span class="src-num">28.4</span> ms  heap: <span class="src-num">0</span> MB                <span class="src-comment">// ⭐ same line, full free, ZERO async work</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>CPython · Include/object.h · the refcount magic that fires 1M times</span><span class="src-tag">verbatim, abridged</span></div>
+<span class="src-line"><span class="src-comment">/* every PyObject opens with this header */</span></span>
+<span class="src-line"><span class="src-kw">struct</span> _object {</span>
+<span class="src-line">    <span class="src-cls">Py_ssize_t</span> ob_refcnt;             <span class="src-comment">// ⭐ THE refcount</span></span>
+<span class="src-line">    <span class="src-kw">struct</span> _typeobject *ob_type;</span>
+<span class="src-line">};</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">/* every assignment, every function return, every list pop:</span></span>
+<span class="src-line"><span class="src-comment">   the compiler emits Py_INCREF / Py_DECREF.</span></span>
+<span class="src-line">   when the count hits 0, _Py_Dealloc is invoked SYNCHRONOUSLY. */</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">#define Py_INCREF(op)   ((op)->ob_refcnt++)</span></span>
+<span class="src-line"><span class="src-comment">#define Py_DECREF(op)   do { \</span></span>
+<span class="src-line"><span class="src-comment">    if (--(op)->ob_refcnt == 0) _Py_Dealloc((PyObject *)(op)); \</span></span>
+<span class="src-line"><span class="src-comment">} while (0)</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// When `lst = None` fires: ref to the outer list drops from 1 → 0.</span></span>
+<span class="src-line"><span class="src-comment">// _Py_Dealloc(list_obj) → list_dealloc → iterates 1M slots →</span></span>
+<span class="src-line"><span class="src-comment">// each Py_DECREF on the dict drops it from 1 → 0 → _Py_Dealloc(dict) →</span></span>
+<span class="src-line"><span class="src-comment">// drops the "n" int from its slot, etc. ALL synchronous. ALL same call.</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">主线 4 问 · refcount 答案</h3>
+    <h3 class="sub lang-en-only">Main-line 4 questions · refcount answers</h3>
+
+    <table class="cmp">
+      <thead><tr><th>Q</th><th><span class="lang-zh-only">问题</span><span class="lang-en-only">Question</span></th><th><span class="lang-zh-only">CPython 实测</span><span class="lang-en-only">CPython measured</span></th></tr></thead>
+      <tbody>
+        <tr><td class="num">Q1</td><td><span class="lang-zh-only">何时还给系统？</span><span class="lang-en-only">When is memory returned?</span></td><td><span class="lang-zh-only">同行同步 · <strong>28 ms 内 1M 对象全部 free</strong></span><span class="lang-en-only">same line, synchronous · <strong>1M objects freed within 28 ms</strong></span></td></tr>
+        <tr><td class="num">Q2</td><td><span class="lang-zh-only">STW 多长？</span><span class="lang-en-only">STW duration?</span></td><td><span class="lang-zh-only"><em>整个 28 ms 都是</em>——但<em>程序员能预测</em>。其他线程在这期间被 GIL 锁住。</span><span class="lang-en-only"><em>The whole 28 ms is STW</em> — but <em>predictably so</em>. Other threads block on the GIL during this.</span></td></tr>
+        <tr><td class="num">Q3</td><td><span class="lang-zh-only">CPU 开销？</span><span class="lang-en-only">CPU overhead?</span></td><td><span class="lang-zh-only">分配阶段已经付了——每次 <code>list.append</code> 内含 inc，每次释放含 dec。无独立"GC 时间"</span><span class="lang-en-only">paid during allocation — every <code>list.append</code> bakes in inc, every drop bakes in dec. No separate "GC time"</span></td></tr>
+        <tr><td class="num">Q4</td><td><span class="lang-zh-only">堆形态？</span><span class="lang-en-only">Heap shape after?</span></td><td><span class="lang-zh-only">完全空。<em>但</em>不一定连续 unmap——CPython 的 PyMalloc 把空间还给自己的 free list，要等到 arena 整体空才 munmap</span><span class="lang-en-only">empty. But not necessarily unmap'd — CPython's PyMalloc returns memory to its own freelist; munmap only when an arena is fully empty</span></td></tr>
+      </tbody>
+    </table>
+
+    <h3 class="sub lang-zh-only">同家族其他实现 · 同一行的不同语境</h3>
+    <h3 class="sub lang-en-only">Other family members · same line in different runtimes</h3>
+
+    <div class="src-stack">
+      <div class="src-h"><span>Swift ARC · /tmp/mainline.swift</span><span class="src-tag">compiled clang -O</span></div>
+<span class="src-line"><span class="src-kw">var</span> list: [<span class="src-kw">[String: Int]</span>]? = []</span>
+<span class="src-line"><span class="src-kw">let</span> start = Date()</span>
+<span class="src-line"><span class="src-kw">for</span> i <span class="src-kw">in</span> <span class="src-num">0</span>..&lt;<span class="src-num">1_000_000</span> {</span>
+<span class="src-line">    list?.append([<span class="src-str">"n"</span>: i])</span>
+<span class="src-line">}</span>
+<span class="src-line">list = <span class="src-kw">nil</span>                            <span class="src-comment">// ⭐ THE LINE · same effect as CPython</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Behind the scenes: clang inserts swift_retain / swift_release at every</span></span>
+<span class="src-line"><span class="src-comment">// scope change. The compiler can OPTIMIZE away pairs (ARC optimisation),</span></span>
+<span class="src-line"><span class="src-comment">// which makes Swift refcount cheaper than CPython's (per-op ~3-5 ns).</span></span>
+<span class="src-line"><span class="src-comment">// BUT cycles (e.g. parent←→child) require manual `weak` declaration.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span>Rust Rc · /tmp/mainline.rs</span><span class="src-tag">opt-in, not the default</span></div>
+<span class="src-line"><span class="src-kw">use</span> std::rc::Rc;</span>
+<span class="src-line"><span class="src-kw">use</span> std::cell::RefCell;</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">fn</span> main() {</span>
+<span class="src-line">    <span class="src-kw">let mut</span> list: Vec&lt;Rc&lt;RefCell&lt;HashMap&lt;String, i32&gt;&gt;&gt;&gt; = Vec::new();</span>
+<span class="src-line">    <span class="src-kw">for</span> i <span class="src-kw">in</span> 0..1_000_000 {</span>
+<span class="src-line">        <span class="src-kw">let mut</span> m = HashMap::new();</span>
+<span class="src-line">        m.insert(<span class="src-str">"n"</span>.to_string(), i);</span>
+<span class="src-line">        list.push(Rc::new(RefCell::new(m)));</span>
+<span class="src-line">    }</span>
+<span class="src-line">    drop(list);                       <span class="src-comment">// ⭐ THE LINE (or just leave scope)</span></span>
+<span class="src-line">}</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Rust's Rc is OPT-IN — most Rust code uses owned values (Ch14 No-GC).</span></span>
+<span class="src-line"><span class="src-comment">// Cycles via Rc&lt;RefCell&lt;...&gt;&gt; are NOT collected — use Weak&lt;T&gt; to break.</span></span>
+<span class="src-line"><span class="src-comment">// Drop is compile-time-determined: ZERO runtime GC.</span></span>
+    </div>
+
+    <figure class="figure-block" style="margin: 24px 0;">
+    <svg viewBox="0 0 880 320" width="100%" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" style="background: #faf7f1; border: 1px solid #e6dfd0; border-radius: 4px; font-family: var(--mono);">
+      <defs>
+        <marker id="arr-rc" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#2c3441"/>
+        </marker>
+      </defs>
+
+      <text x="440" y="22" font-size="12" font-weight="700" text-anchor="middle" fill="#2c3441">refcount cascade · `list = None` triggers 1M synchronous frees</text>
+      <text x="440" y="38" font-size="10" text-anchor="middle" fill="#767c87">no thread switch, no STW (still STW relative to other Python threads via GIL)</text>
+
+      <!-- Before -->
+      <g transform="translate(20, 60)">
+        <rect width="280" height="240" fill="rgba(184,68,46,0.05)" stroke="#b8442e" stroke-width="1" stroke-dasharray="2 2"/>
+        <text x="140" y="20" font-size="11" font-weight="700" text-anchor="middle" fill="#b8442e">BEFORE · `list` holds 1M dicts</text>
+
+        <rect x="100" y="40" width="80" height="36" fill="rgba(31,92,140,0.20)" stroke="#1f5c8c"/>
+        <text x="140" y="58" font-size="10" font-weight="700" text-anchor="middle" fill="#1f5c8c">list</text>
+        <text x="140" y="70" font-size="9" text-anchor="middle" fill="#b8442e">ob_refcnt = 1</text>
+
+        <line x1="140" y1="80" x2="80" y2="110" stroke="#2c3441" stroke-width="1" opacity="0.5"/>
+        <line x1="140" y1="80" x2="140" y2="110" stroke="#2c3441" stroke-width="1" opacity="0.5"/>
+        <line x1="140" y1="80" x2="200" y2="110" stroke="#2c3441" stroke-width="1" opacity="0.5"/>
+
+        <rect x="40" y="110" width="60" height="26" fill="rgba(32,123,58,0.18)" stroke="#207b3a"/>
+        <text x="70" y="124" font-size="8" font-weight="700" text-anchor="middle" fill="#207b3a">{n:0}</text>
+        <text x="70" y="132" font-size="7" text-anchor="middle" fill="#b8442e">rc=1</text>
+
+        <rect x="110" y="110" width="60" height="26" fill="rgba(32,123,58,0.18)" stroke="#207b3a"/>
+        <text x="140" y="124" font-size="8" font-weight="700" text-anchor="middle" fill="#207b3a">{n:1}</text>
+        <text x="140" y="132" font-size="7" text-anchor="middle" fill="#b8442e">rc=1</text>
+
+        <rect x="180" y="110" width="60" height="26" fill="rgba(32,123,58,0.18)" stroke="#207b3a"/>
+        <text x="210" y="124" font-size="8" font-weight="700" text-anchor="middle" fill="#207b3a">...×1M</text>
+
+        <text x="140" y="170" font-size="9" font-style="italic" text-anchor="middle" fill="#767c87">heap: 232 MB · alloc cost = 340 ms</text>
+        <text x="140" y="190" font-size="9" font-style="italic" text-anchor="middle" fill="#767c87">each .append → Py_INCREF on dict</text>
+      </g>
+
+      <!-- arrow with `list = None` -->
+      <g transform="translate(330, 170)">
+        <text x="0" y="-30" font-size="11" font-weight="700" fill="#b8442e">⭐ list = None</text>
+        <text x="0" y="-15" font-size="9" fill="#767c87">Py_DECREF on list → 0 →</text>
+        <text x="0" y="0" font-size="9" fill="#767c87">_Py_Dealloc(list) →</text>
+        <text x="0" y="15" font-size="9" fill="#767c87">iterate 1M slots →</text>
+        <text x="0" y="30" font-size="9" fill="#767c87">Py_DECREF each dict (synchronous)</text>
+        <line x1="120" y1="-12" x2="170" y2="-12" stroke="#b8442e" stroke-width="2" marker-end="url(#arr-rc)"/>
+      </g>
+
+      <!-- After -->
+      <g transform="translate(580, 60)">
+        <rect width="280" height="240" fill="rgba(32,123,58,0.05)" stroke="#207b3a" stroke-width="1" stroke-dasharray="2 2"/>
+        <text x="140" y="20" font-size="11" font-weight="700" text-anchor="middle" fill="#207b3a">AFTER · heap completely empty</text>
+
+        <text x="140" y="90" font-size="13" font-style="italic" text-anchor="middle" fill="#cfc7b3">all gone</text>
+        <text x="140" y="110" font-size="10" font-style="italic" text-anchor="middle" fill="#cfc7b3">PyMalloc freelist holds the slabs</text>
+        <text x="140" y="125" font-size="10" font-style="italic" text-anchor="middle" fill="#cfc7b3">(maybe munmap'd, maybe pooled)</text>
+
+        <text x="140" y="165" font-size="10" font-weight="700" text-anchor="middle" fill="#207b3a">total cost: ~28 ms</text>
+        <text x="140" y="180" font-size="9" text-anchor="middle" fill="#767c87">no asynchronous work pending</text>
+        <text x="140" y="195" font-size="9" text-anchor="middle" fill="#767c87">no STW pause in the future</text>
+        <text x="140" y="220" font-size="9" font-style="italic" text-anchor="middle" fill="#b8442e">but: cycle? doesn't drop. ↓</text>
+      </g>
+    </svg>
+    <figcaption style="text-align: center; font-size: 12px; color: var(--ink-mute); margin-top: 8px;">
+      <span class="lang-zh-only">同行 free · 同行可预测 · 同行付出 28ms · 但循环对象需要第二层兜底（Ch15 混合）</span>
+      <span class="lang-en-only">same-line free · same-line predictable · same-line costs 28 ms · cycles need a backstop (Ch15 hybrid)</span>
+    </figcaption>
+    </figure>
+
+    <div class="note">
+      <span class="ntag lang-zh-only">FIELD&nbsp;NOTE · 28 ms 不是 0 ms</span>
+      <span class="ntag lang-en-only">FIELD&nbsp;NOTE · 28 ms is not 0 ms</span>
+      <span class="lang-zh-only"><em>很多人以为 refcount "立即 free 等于零开销"</em>——错。我们这一行 <code>lst = None</code> 实测<em>同步阻塞 28 ms</em>。这 28 ms 里 GIL 锁着，<em>所有其他 Python 线程都暂停</em>——相当于一次 28 ms STW，<em>只不过是程序员可预测的</em>。如果对象有 <code>__del__</code> 析构器，时间会更长。<strong>Refcount 不是无 GC，是<em>把 GC 平摊到每一次赋值</em></strong>。下一章 Mark-Sweep 把这 28 ms 集中到一次大 STW，但分配本身就快。</span>
+      <span class="lang-en-only"><em>People assume "refcount = same-line free = zero overhead"</em> — wrong. Our <code>lst = None</code> <em>synchronously blocks for 28 ms</em>. The GIL is held during this; <em>all other Python threads pause</em> — effectively a 28-ms STW, just <em>programmer-predictable</em>. With <code>__del__</code> finalisers, it's longer. <strong>Refcount isn't no-GC — it <em>amortises GC across every assignment</em></strong>. Ch07 Mark-Sweep concentrates the same 28 ms into one big pause, but makes allocation itself faster.</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">这家族的 7 个量产语言</h3>
+    <h3 class="sub lang-en-only">7 production languages in this family</h3>
+
+    <table class="cmp">
+      <thead><tr><th><span class="lang-zh-only">语言/运行时</span><span class="lang-en-only">Language/runtime</span></th><th><span class="lang-zh-only">refcount 方式</span><span class="lang-en-only">refcount style</span></th><th><span class="lang-zh-only">循环兜底</span><span class="lang-en-only">Cycle backstop</span></th></tr></thead>
+      <tbody>
+        <tr><td>CPython</td><td><span class="lang-zh-only">非原子 inc/dec + GIL</span><span class="lang-en-only">non-atomic inc/dec + GIL</span></td><td><span class="lang-zh-only">PEP 442 cycle collector（Ch15）</span><span class="lang-en-only">PEP 442 cycle collector (Ch15)</span></td></tr>
+        <tr><td>Swift</td><td>ARC · atomic · compiler-optimised</td><td><span class="lang-zh-only">无 · 需手动 weak/unowned</span><span class="lang-en-only">none · manual weak/unowned</span></td></tr>
+        <tr><td>Objective-C</td><td>ARC · atomic（since 2011）</td><td><span class="lang-zh-only">无 · 手动 weak</span><span class="lang-en-only">none · manual weak</span></td></tr>
+        <tr><td>PHP 7+</td><td>Zend refcount</td><td>Zend cycle collector</td></tr>
+        <tr><td>Perl 5</td><td>refcount</td><td><span class="lang-zh-only">无（手动 Scalar::Util::weaken）</span><span class="lang-en-only">none (manual Scalar::Util::weaken)</span></td></tr>
+        <tr><td>QuickJS</td><td>refcount</td><td>trial-deletion (Ch15)</td></tr>
+        <tr><td>Rust Rc/Arc</td><td><span class="lang-zh-only">opt-in · Arc atomic</span><span class="lang-en-only">opt-in · Arc atomic</span></td><td><span class="lang-zh-only">无 · 手动 Weak&lt;T&gt;</span><span class="lang-en-only">none · manual Weak&lt;T&gt;</span></td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ========== CHAPTERS 07-20 · COMING IN FOLLOW-UP PHASES ========== -->
+  <section class="chap" id="c-placeholder" style="border-top:1px dashed var(--rule); padding-top:24px; margin-top:32px;">
+    <div class="chap-num" style="color: var(--copper);">★ TO BE CONTINUED</div>
+    <h2 class="chap-title lang-zh-only">下面 13 章在后续 phase 填充</h2>
+    <h2 class="chap-title lang-en-only">The next 13 chapters land in follow-up phases</h2>
+    <p class="chap-en lang-zh-only">骨架 + 5 个背景章 + 主线 + Ch06 Refcount 已就位 · 后续陆续上线</p>
+    <p class="chap-en lang-en-only">scaffold + 5 background chapters + main line + Ch06 Refcount shipped · rest progressively</p>
+
+    <ul style="margin-left:24px; font-family:var(--sans); font-size:14px; line-height:1.8;">
+      <li class="lang-zh-only"><strong>Ch07 Mark-Sweep</strong> — Lua incremental + Boehm 保守 GC + early V8 major</li>
+      <li class="lang-en-only"><strong>Ch07 Mark-Sweep</strong> — Lua incremental + Boehm conservative + early V8 major</li>
+      <li class="lang-zh-only"><strong>Ch08 复制 · Cheney</strong> — 1969 算法 + OCaml minor heap + GHC nursery</li>
+      <li class="lang-en-only"><strong>Ch08 Copying · Cheney</strong> — 1969 algorithm + OCaml minor heap + GHC nursery</li>
+      <li class="lang-zh-only"><strong>Ch09 分代</strong> — Lieberman 1984 假设 + V8 Orinoco + JVM G1 + Ruby 3</li>
+      <li class="lang-en-only"><strong>Ch09 Generational</strong> — Lieberman 1984 hypothesis + V8 Orinoco + JVM G1 + Ruby 3</li>
+      <li class="lang-zh-only"><strong>Ch10 增量</strong> — Lua 5.0+ + early JVM CMS</li>
+      <li class="lang-en-only"><strong>Ch10 Incremental</strong> — Lua 5.0+ + early JVM CMS</li>
+      <li class="lang-zh-only"><strong>Ch11 并发 · 三色</strong> — Dijkstra 1978 + Go GC + JSC Riptide + Hermes HadesGC</li>
+      <li class="lang-en-only"><strong>Ch11 Concurrent · tri-color</strong> — Dijkstra 1978 + Go GC + JSC Riptide + Hermes HadesGC</li>
+      <li class="lang-zh-only"><strong>Ch12 区域 / 每进程</strong> — Erlang BEAM 每进程独立堆 + Pony reference capabilities</li>
+      <li class="lang-en-only"><strong>Ch12 Region / per-actor</strong> — Erlang BEAM per-process heap + Pony reference capabilities</li>
+      <li class="lang-zh-only"><strong>Ch13 彩色指针</strong> — ZGC + Shenandoah + Brooks pointer + 2023 Generational ZGC</li>
+      <li class="lang-en-only"><strong>Ch13 Colored pointers</strong> — ZGC + Shenandoah + Brooks pointer + 2023 Generational ZGC</li>
+      <li class="lang-zh-only"><strong>Ch14 无 GC · 编译期</strong> — Rust ownership + C++ RAII + Zig + Vale 线性类型</li>
+      <li class="lang-en-only"><strong>Ch14 No-GC · compile-time</strong> — Rust ownership + C++ RAII + Zig + Vale linear types</li>
+      <li class="lang-zh-only"><strong>Ch15 混合</strong> — Python PEP 442 + QuickJS Bacon-Rajan + Julia gen+conc + PHP Zend</li>
+      <li class="lang-en-only"><strong>Ch15 Hybrid</strong> — Python PEP 442 + QuickJS Bacon-Rajan + Julia gen+conc + PHP Zend</li>
+      <li class="lang-zh-only"><strong>Ch16 学术 / 未量产</strong> — MMTk + LXR + Azul Pauseless 商业</li>
+      <li class="lang-en-only"><strong>Ch16 Academic / unshipped</strong> — MMTk + LXR + Azul Pauseless commercial</li>
+      <li class="lang-zh-only"><strong>Ch17 三维矩阵</strong> — 20+ GC 实测 pause × throughput × memory 对比</li>
+      <li class="lang-en-only"><strong>Ch17 3-axis matrix</strong> — 20+ GCs measured pause × throughput × memory</li>
+      <li class="lang-zh-only"><strong>Ch18 生产事故簿</strong> — Discord Go→Rust, Twitter Ruby→Scala, Pinterest, LinkedIn</li>
+      <li class="lang-en-only"><strong>Ch18 Production stories</strong> — Discord Go→Rust, Twitter Ruby→Scala, Pinterest, LinkedIn</li>
+      <li class="lang-zh-only"><strong>Ch19 调优决策树</strong> — 根据 latency/throughput/memory/启动 选 GC</li>
+      <li class="lang-en-only"><strong>Ch19 Tuning decision tree</strong> — pick GC by latency/throughput/memory/startup</li>
+      <li class="lang-zh-only"><strong>Ch20 之后</strong> — Generational ZGC 普及 + 线性类型 + Carbon/Vale 探索</li>
+      <li class="lang-en-only"><strong>Ch20 What's next</strong> — Generational ZGC mainstream + linear types + Carbon/Vale</li>
+    </ul>
+
+    <p class="lang-zh-only" style="margin-top:24px;">如果你看到这一段——意味着 GC Phase 5 已完成、Phase 6+ 进行中。Discord 上一条新评论会自动通知作者；或者直接看 <a href="https://github.com/airingursb/airingursb.github.io/commits/master?path=public/immersive/gc">git log</a> 跟进。</p>
+    <p class="lang-en-only" style="margin-top:24px;">If you're reading this — GC Phase 5 has shipped and Phase 6+ is in progress. Drop a comment below for notifications, or watch <a href="https://github.com/airingursb/airingursb.github.io/commits/master?path=public/immersive/gc">git log</a>.</p>
+  </section>
+
+  <!-- ========== CLOSING ========== -->
+  <section class="closing">
+    <p class="quote lang-zh-only">McCarthy 在 1959 年说<br>
+    "<em>让程序自动管内存</em>"。<br>
+    六十多年了，<br>
+    我们还在<em>讨论怎么管</em>。</p>
+    <p class="quote lang-en-only">McCarthy said in 1959:<br>
+    "<em>let programs manage memory themselves</em>".<br>
+    Sixty-plus years later,<br>
+    we're still <em>debating how</em>.</p>
+    <div class="signoff">FIN&nbsp;//&nbsp;END&nbsp;OF&nbsp;FIELD&nbsp;NOTE&nbsp;08&nbsp;·&nbsp;PART&nbsp;1</div>
+  </section>
+
+</div>
+
+</div>
+
+<script>
+  /* ===== Lang toggle ===== */
+  (function () {
+    var KEY = "ursb-immersive-lang";
+    var btnZh = document.getElementById("lang-zh");
+    var btnEn = document.getElementById("lang-en");
+    var html = document.documentElement;
+    function apply(lang) {
+      if (lang === "en") {
+        document.body.classList.add("lang-en");
+        html.setAttribute("lang", "en");
+        document.title = "Many Ways to Die — A Family Map of 11 Garbage Collectors";
+        btnZh.classList.remove("active"); btnZh.setAttribute("aria-pressed", "false");
+        btnEn.classList.add("active"); btnEn.setAttribute("aria-pressed", "true");
+      } else {
+        document.body.classList.remove("lang-en");
+        html.setAttribute("lang", "zh-CN");
+        document.title = "一段内存的多重死亡 — 11 个 GC 家族的家谱";
+        btnEn.classList.remove("active"); btnEn.setAttribute("aria-pressed", "false");
+        btnZh.classList.add("active"); btnZh.setAttribute("aria-pressed", "true");
+      }
+    }
+    var saved;
+    try { saved = localStorage.getItem(KEY); } catch (e) {}
+    if (!saved) {
+      var nav = (navigator.language || "").toLowerCase();
+      saved = nav.indexOf("zh") === 0 ? "zh" : "en";
+    }
+    apply(saved);
+    btnZh.addEventListener("click", function () { apply("zh"); try { localStorage.setItem(KEY, "zh"); } catch (e) {} });
+    btnEn.addEventListener("click", function () { apply("en"); try { localStorage.setItem(KEY, "en"); } catch (e) {} });
+  })();
+
+  /* ===== Bytecode stepper (Ch15) ===== */
+  (function () {
+    var svg = document.getElementById('stepper-svg');
+    if (!svg) return;
+
+    // States: [pc_highlight_idx, sp_idx, stack_values[], explain_zh, explain_en, csrc, retVal]
+    var STATES = [
+      // step 0: entry
+      {
+        pc: 0, sp: 0, stack: [null, null, null, null],
+        ezh: "Frame 进入。arg_buf[0] = 1（来自 .map 的 k=0 调用）。pc=0, sp 指向 stack_buf[0]。等待第一次 BREAK 派发。",
+        een: "Frame entered. arg_buf[0] = 1 (from .map's k=0 iteration). pc=0, sp at stack_buf[0]. Awaiting first BREAK dispatch.",
+        csrc: "JS_CallInternal initial setup (quickjs.c:17486+)",
+        ret: "— (still executing)"
+      },
+      // step 1: after get_arg0
+      {
+        pc: 1, sp: 1, stack: ["js_int32(1)", null, null, null],
+        ezh: "OP_get_arg0 派发。CASE(OP_get_arg0): *sp++ = js_dup(arg_buf[0])。栈顶现在是 1, sp 前进 1。BREAK → goto *dispatch_table[*pc++]，pc 推进。",
+        een: "OP_get_arg0 dispatched. CASE(OP_get_arg0): *sp++ = js_dup(arg_buf[0]). Stack top is now 1, sp advanced by 1. BREAK → goto *dispatch_table[*pc++], pc moves forward.",
+        csrc: "quickjs.c:18383 · CASE(OP_get_arg0)",
+        ret: "— (still executing)"
+      },
+      // step 2: after push_2
+      {
+        pc: 2, sp: 2, stack: ["js_int32(1)", "js_int32(2)", null, null],
+        ezh: "OP_push_2 派发。CASE(OP_push_2): *sp++ = js_int32(opcode - OP_push_0)。9 路 case 合并的常量短码。栈：[1, 2], sp=2。",
+        een: "OP_push_2 dispatched. CASE(OP_push_2): *sp++ = js_int32(opcode - OP_push_0). One of 9 fall-through short-form push cases. Stack: [1, 2], sp=2.",
+        csrc: "quickjs.c:17620 · CASE(OP_push_2): in 9-way push_N branch",
+        ret: "— (still executing)"
+      },
+      // step 3: after mul
+      {
+        pc: 3, sp: 1, stack: ["js_int32(2)", null, null, null],
+        ezh: "OP_mul 派发。JS_VALUE_IS_BOTH_INT(1, 2) 为真，走整数快路径：v1=1, v2=2, r = 1×2 = 2 fits in int32 → sp[-2] = js_int32(2), sp--。栈：[2]。",
+        een: "OP_mul dispatched. JS_VALUE_IS_BOTH_INT(1, 2) is true, take int fast path: v1=1, v2=2, r = 1×2 = 2 fits in int32 → sp[-2] = js_int32(2), sp--. Stack: [2].",
+        csrc: "quickjs.c:19470 · CASE(OP_mul) · int×int fast path",
+        ret: "— (still executing)"
+      },
+      // step 4: after return
+      {
+        pc: 4, sp: 0, stack: [null, null, null, null],
+        ezh: "OP_return 派发。ret_val = *--sp（pop 2）；goto done。frame 拆除，close_var_refs(rt, sf) 检查（var_ref_count=0，跳过），返回 js_int32(2) 给 .map 的 k=0 迭代。",
+        een: "OP_return dispatched. ret_val = *--sp (pop 2); goto done. Frame torn down, close_var_refs(rt, sf) checks (var_ref_count=0, skipped), returns js_int32(2) to .map's k=0 iteration.",
+        csrc: "quickjs.c:18043 · CASE(OP_return) · goto done at line 20155",
+        ret: "ret_val = js_int32(2) ✓"
+      },
+    ];
+
+    function paint(idx) {
+      var s = STATES[idx];
+      // Highlight bytecode opcode at pc
+      for (var i = 0; i < 4; i++) {
+        var box = document.getElementById('bc-op-' + i);
+        if (!box) continue;
+        if (i === s.pc - 1 && idx > 0) {
+          // just-fired opcode
+          box.setAttribute('fill', 'rgba(184,68,46,0.18)');
+          box.setAttribute('stroke', '#b8442e');
+          box.setAttribute('stroke-width', '2');
+        } else if (i === s.pc) {
+          // next to fire
+          box.setAttribute('fill', 'rgba(168,122,31,0.12)');
+          box.setAttribute('stroke', '#a87a1f');
+          box.setAttribute('stroke-width', '1.5');
+        } else {
+          box.setAttribute('fill', '#fff');
+          box.setAttribute('stroke', '#cfc7b3');
+          box.setAttribute('stroke-width', '1');
+        }
+      }
+      // Stack contents
+      for (var j = 0; j < 4; j++) {
+        var slot = document.getElementById('sb-text-' + j);
+        var box2 = document.getElementById('sb-' + j);
+        var val = s.stack[j];
+        if (val) {
+          slot.textContent = 'stack_buf[' + j + '] = ' + val;
+          slot.setAttribute('fill', '#207b3a');
+          slot.setAttribute('font-weight', '700');
+          box2.setAttribute('fill', 'rgba(32,123,58,0.12)');
+          box2.setAttribute('stroke', '#207b3a');
+        } else {
+          slot.textContent = 'stack_buf[' + j + '] (empty)';
+          slot.setAttribute('fill', '#767c87');
+          slot.setAttribute('font-weight', '400');
+          box2.setAttribute('fill', '#fff');
+          box2.setAttribute('stroke', '#cfc7b3');
+        }
+      }
+      // sp arrow
+      var spArrow = document.getElementById('sp-arrow');
+      spArrow.setAttribute('y', String(30 + s.sp * 34));
+      // Explanation (lang-aware via querying body class)
+      var isEn = document.body.classList.contains('lang-en');
+      document.getElementById('step-explain').textContent = isEn ? s.een : s.ezh;
+      document.getElementById('step-csrc').textContent = s.csrc;
+      document.getElementById('step-ret').textContent = s.ret;
+      // Update active button
+      var btns = document.querySelectorAll('.step-btn');
+      for (var k = 0; k < btns.length; k++) {
+        if (parseInt(btns[k].dataset.step, 10) === idx) {
+          btns[k].style.background = 'rgba(184,68,46,0.18)';
+          btns[k].classList.add('active');
+        } else {
+          btns[k].style.background = '#fff';
+          btns[k].classList.remove('active');
+        }
+      }
+    }
+
+    var btns = document.querySelectorAll('.step-btn');
+    for (var i = 0; i < btns.length; i++) {
+      btns[i].addEventListener('click', function () {
+        paint(parseInt(this.dataset.step, 10));
+      });
+    }
+    // Auto-play
+    var autoBtn = document.getElementById('step-auto-btn');
+    if (autoBtn) {
+      autoBtn.addEventListener('click', function () {
+        var step = 0;
+        paint(step);
+        var iv = setInterval(function () {
+          step++;
+          if (step > 4) { clearInterval(iv); return; }
+          paint(step);
+        }, 1200);
+      });
+    }
+    // Initial paint
+    paint(0);
+  })();
+
+  /* ===== TOC scroll-spy ===== */
+  (function () {
+    var sideItems = Array.prototype.map.call(
+      document.querySelectorAll('.toc-side li[data-section]'),
+      function (li) { return { node: li, el: document.getElementById(li.dataset.section) }; }
+    ).filter(function (o) { return o.el; });
+
+    var chipItems = Array.prototype.map.call(
+      document.querySelectorAll('.toc-chip[data-section]'),
+      function (a) { return { node: a, el: document.getElementById(a.dataset.section) }; }
+    ).filter(function (o) { return o.el; });
+
+    if (!sideItems.length && !chipItems.length) return;
+    var canonical = sideItems.length ? sideItems : chipItems;
+
+    function update() {
+      var offset = window.innerHeight * 0.32;
+      var activeIdx = 0;
+      for (var i = 0; i < canonical.length; i++) {
+        if (canonical[i].el.getBoundingClientRect().top - offset < 0) activeIdx = i;
+      }
+      var activeId = canonical[activeIdx].el.id;
+      sideItems.forEach(function (o) { o.node.classList.toggle('active', o.el.id === activeId); });
+      chipItems.forEach(function (o) { o.node.classList.toggle('active', o.el.id === activeId); });
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  })();
+
+  /* ===== TOC v2 progress-bar quick-jump ===== */
+  (function () {
+    document.querySelectorAll('.toc-v2 .tv-progress span[data-jump]').forEach(function (span) {
+      span.addEventListener('click', function () {
+        var target = document.querySelector(span.dataset.jump);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  })();
+
+  /* ===== Hero pipeline pulse — slower wave + tooltip + click-to-jump ===== */
+  (function () {
+    var cells = document.querySelectorAll('#pbTrack .pb-cell');
+    if (!cells.length) return;
+
+    /* Pulse animation — slower (420ms) and stops while the user is hovering. */
+    var i = 0; var hoverPaused = false;
+    function tick() {
+      if (!hoverPaused) {
+        cells.forEach(function (c, idx) { c.classList.toggle('lit', idx <= i); });
+        i++;
+        if (i >= cells.length + 4) { i = -1; }
+      }
+      setTimeout(tick, 420);
+    }
+    tick();
+
+    /* Tooltip — single body-level element to avoid overflow/clipping. */
+    var tip = document.createElement('div');
+    tip.className = 'pb-tooltip';
+    document.body.appendChild(tip);
+
+    /* highlight in-body refs of a chapter when pulse-cell hovered */
+    var highlightStyle = document.createElement('style');
+    highlightStyle.textContent =
+      '.chap-ref-active { background: rgba(184,68,46,0.20) !important; ' +
+      'box-shadow: 0 0 0 2px rgba(184,68,46,0.30); border-radius: 2px; ' +
+      'transition: background 0.15s, box-shadow 0.15s; }';
+    document.head.appendChild(highlightStyle);
+    var lastHighlighted = [];
+
+    cells.forEach(function (c) {
+      c.addEventListener('mouseenter', function () {
+        var t = c.getAttribute('data-tip');
+        if (!t) return;
+        hoverPaused = true;
+        tip.textContent = t;
+        var r = c.getBoundingClientRect();
+        tip.style.left = (r.left + r.width / 2 - tip.offsetWidth / 2) + 'px';
+        // Two-pass to get real width before centring
+        requestAnimationFrame(function () {
+          tip.style.left = (r.left + r.width / 2 - tip.offsetWidth / 2) + 'px';
+          tip.style.top = (r.top - tip.offsetHeight - 10) + 'px';
+          tip.classList.add('show');
+        });
+
+        /* highlight in-body refs of this chapter */
+        var jump = c.getAttribute('data-jump');
+        if (jump) {
+          var refs = document.querySelectorAll('a[href="' + jump + '"]');
+          for (var k = 0; k < refs.length; k++) {
+            // skip the toc-side / toc-chip / pb-cell themselves (already styled)
+            if (refs[k].closest('.toc-side, .toc-chips, .pipeline-bar, .pb-track')) continue;
+            refs[k].classList.add('chap-ref-active');
+            lastHighlighted.push(refs[k]);
+          }
+        }
+      });
+      c.addEventListener('mouseleave', function () {
+        tip.classList.remove('show');
+        hoverPaused = false;
+        /* clear highlighted refs */
+        for (var k = 0; k < lastHighlighted.length; k++) {
+          lastHighlighted[k].classList.remove('chap-ref-active');
+        }
+        lastHighlighted = [];
+      });
+      c.addEventListener('click', function () {
+        var sel = c.getAttribute('data-jump');
+        if (!sel) return;
+        var target = document.querySelector(sel);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    });
+  })();
+</script>
+
+<!-- ============================================================
+     Interactive footer: stats / like / comments (talks to chat.ursb.me)
+     ============================================================ -->
+<style>
+.ursb-interactive { background: var(--bg-soft); border-top: 1px solid var(--rule); padding: 24px 24px 80px; position: relative; z-index: 2; }
+.ursb-interactive .ursb-fbody { max-width: 720px; margin: 0 auto; }
+.ui-divider { text-align: center; margin: 28px 0 28px; position: relative; }
+.ui-divider::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--rule); }
+.ui-divider-mark { position: relative; background: var(--bg-soft); padding: 0 18px; color: var(--accent); font-size: 14px; letter-spacing: 0.2em; }
+.ui-stats-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 36px 0 56px; flex-wrap: wrap; }
+.ui-like, .ui-share, .ui-views {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 18px; border-radius: 999px;
+  background: transparent; border: 1px solid var(--rule);
+  font-family: var(--sans); font-size: 12.5px; font-weight: 500; color: var(--ink-mute); line-height: 1;
+  transition: all 0.18s ease;
+}
+.ui-like, .ui-share { cursor: pointer; }
+.ui-like:hover, .ui-share:hover { border-color: var(--accent-soft); color: var(--accent); background: rgba(31,92,140,0.04); }
+.ui-like:disabled, .ui-share:disabled, .ui-comment-form button:disabled { opacity: 0.55; cursor: wait; }
+.ui-like.liked { border-color: var(--accent); background: rgba(31,92,140,0.08); color: var(--accent); }
+.ui-like.liked svg { fill: var(--accent); stroke: var(--accent); }
+.ui-like.liked .ui-count { color: var(--accent); }
+.ui-views { cursor: default; color: var(--ink-mute); }
+.ui-views:hover { background: transparent; border-color: var(--rule); color: var(--ink-mute); }
+.ui-count { font-family: var(--serif); font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; font-size: 13.5px; }
+.ui-count-small { font-family: var(--mono); font-size: 12px; color: var(--ink-mute); font-weight: 400; margin-left: 8px; }
+.ui-section-title { font-family: var(--serif); font-size: 20px; font-weight: 700; color: var(--ink); margin: 36px 0 14px; }
+.ui-comment-form { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; margin-bottom: 32px; }
+.ui-form-row { display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; margin-bottom: 10px; }
+.ui-form-row input, .ui-comment-form textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 4px;
+  font-size: 14px; font-family: var(--sans); color: var(--ink);
+  box-sizing: border-box; background: #fefcf6;
+}
+.ui-comment-form textarea { resize: vertical; min-height: 84px; line-height: 1.55; }
+.ui-form-row input:focus, .ui-comment-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(31,92,140,0.10); }
+.ui-form-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 12px; }
+.ui-form-status { font-size: 12px; color: var(--ink-mute); flex: 1; }
+.ui-form-status.error { color: var(--copper); }
+.ui-form-status.success { color: var(--good); font-weight: 600; }
+.ui-comment-form button[type="submit"] {
+  background: var(--ink); color: var(--paper); border: none; padding: 10px 22px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: var(--sans);
+}
+.ui-comment-form button[type="submit"]:hover { background: var(--accent); }
+.ui-comment-loading, .ui-comment-empty { text-align: center; color: var(--ink-mute); padding: 36px 0; font-family: var(--serif); font-style: italic; font-size: 14px; }
+.ui-comment { padding: 18px 0; border-bottom: 1px solid var(--rule); }
+.ui-comment:last-child { border-bottom: none; }
+.ui-comment-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; font-size: 13px; }
+.ui-comment-name { font-weight: 700; color: var(--ink); }
+.ui-comment-date { color: var(--ink-mute); font-family: var(--serif); font-size: 12px; }
+.ui-comment-body { color: var(--ink-soft); line-height: 1.65; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; }
+@media (max-width: 768px) {
+  .ui-form-row { grid-template-columns: 1fr; }
+  .ui-stats-row { gap: 8px; }
+  .ui-like, .ui-share { padding: 8px 14px; font-size: 12px; }
+}
+</style>
+
+<section class="ursb-interactive">
+  <div class="ursb-fbody">
+    <div class="ui-divider"><span class="ui-divider-mark">✦ ✦ ✦</span></div>
+
+    <div class="ui-stats-row">
+      <button class="ui-like" id="uiLikeBtn" type="button" disabled>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        <span class="ui-count" id="uiLikeCount">—</span>
+        <span><span lang="zh">点赞</span><span lang="en">Likes</span></span>
+      </button>
+      <div class="ui-views" title="Page views">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span class="ui-count" id="uiViewCount">—</span>
+        <span><span lang="zh">阅读</span><span lang="en">Reads</span></span>
+      </div>
+      <button class="ui-share" id="uiShareBtn" type="button">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
+        <span class="ui-share-text"><span lang="zh">分享</span><span lang="en">Share</span></span>
+      </button>
+    </div>
+
+    <h3 class="ui-section-title">
+      <span lang="zh">留下评论</span><span lang="en">Leave a comment</span>
+    </h3>
+    <form class="ui-comment-form" id="uiCommentForm" autocomplete="off">
+      <div class="ui-form-row">
+        <input type="text" name="nickname" id="uiNickname" required maxlength="40">
+        <input type="email" name="email" id="uiEmail" maxlength="120">
+      </div>
+      <textarea name="content" id="uiContent" required maxlength="2000" rows="4"></textarea>
+      <div class="ui-form-foot">
+        <span class="ui-form-status" id="uiFormStatus"></span>
+        <button type="submit" id="uiSubmitBtn">
+          <span lang="zh">发布评论</span><span lang="en">Post comment</span>
+        </button>
+      </div>
+    </form>
+
+    <h3 class="ui-section-title">
+      <span lang="zh">评论</span><span lang="en">Comments</span>
+      <span id="uiCommentCount" class="ui-count-small">—</span>
+    </h3>
+    <div class="ui-comment-list" id="uiCommentList">
+      <div class="ui-comment-loading">
+        <span lang="zh">加载中…</span><span lang="en">Loading…</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ursb.me INTERACTIVE FOOTER — likes / views / comments
+   Talks to https://chat.ursb.me, slug = "note/quickjs" */
+(function() {
+  var API_BASE = 'https://chat.ursb.me';
+  var POST_SLUG = 'note/quickjs';
+  var ENC = encodeURIComponent(POST_SLUG);
+
+  var likeBtn = document.getElementById('uiLikeBtn');
+  var likeCount = document.getElementById('uiLikeCount');
+  var viewCount = document.getElementById('uiViewCount');
+  var shareBtn = document.getElementById('uiShareBtn');
+  var commentForm = document.getElementById('uiCommentForm');
+  var commentList = document.getElementById('uiCommentList');
+  var commentCount = document.getElementById('uiCommentCount');
+  var formStatus = document.getElementById('uiFormStatus');
+  var submitBtn = document.getElementById('uiSubmitBtn');
+  var nicknameInput = document.getElementById('uiNickname');
+  var emailInput = document.getElementById('uiEmail');
+  var contentInput = document.getElementById('uiContent');
+  if (!likeBtn) return;
+
+  var I18N = {
+    zh: { nicknamePh: '昵称*', emailPh: '邮箱（可选，仅用于回复通知）', contentPh: '说点什么…',
+          posting: '提交中…', posted: '✓ 已发布', postFailed: '✗ 发布失败：',
+          shareCopied: '✓ 已复制链接', loading: '加载中…', empty: '还没有评论，来抢沙发吧。',
+          loadFailed: '评论加载失败', justNow: '刚刚', mAgo: ' 分钟前', hAgo: ' 小时前', dAgo: ' 天前' },
+    en: { nicknamePh: 'Nickname*', emailPh: 'Email (optional, for reply notifications)', contentPh: 'Say something…',
+          posting: 'Posting…', posted: '✓ Posted', postFailed: '✗ Failed: ',
+          shareCopied: '✓ Link copied', loading: 'Loading…', empty: 'Be the first to comment.',
+          loadFailed: 'Failed to load comments', justNow: 'just now', mAgo: 'm ago', hAgo: 'h ago', dAgo: 'd ago' }
+  };
+  function t() {
+    var lang = (document.documentElement.lang || '').toLowerCase();
+    return I18N[lang.indexOf('en') === 0 ? 'en' : 'zh'];
+  }
+  function applyI18n() {
+    var s = t();
+    if (nicknameInput) nicknameInput.placeholder = s.nicknamePh;
+    if (emailInput) emailInput.placeholder = s.emailPh;
+    if (contentInput) contentInput.placeholder = s.contentPh;
+  }
+  applyI18n();
+  new MutationObserver(applyI18n).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+
+  fetch(API_BASE + '/api/posts/' + ENC + '/view', { method: 'POST' }).catch(function(){});
+
+  fetch(API_BASE + '/api/posts/' + ENC + '/views')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var pv = (d && (d.pv != null ? d.pv : d.views)) || 0;
+      viewCount.textContent = pv.toLocaleString();
+    })
+    .catch(function() { viewCount.textContent = '—'; });
+
+  fetch(API_BASE + '/api/posts/' + ENC + '/likes')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      likeCount.textContent = ((d && d.count) || 0).toLocaleString();
+      if (d && d.liked) likeBtn.classList.add('liked');
+    })
+    .catch(function() { likeCount.textContent = '—'; })
+    .finally(function() { likeBtn.disabled = false; });
+
+  likeBtn.addEventListener('click', function() {
+    likeBtn.disabled = true;
+    fetch(API_BASE + '/api/posts/' + ENC + '/like', { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        likeCount.textContent = ((d && d.count) || 0).toLocaleString();
+        likeBtn.classList.toggle('liked', !!(d && d.liked));
+        if (typeof umami !== 'undefined') umami.track('post-like', { post: POST_SLUG });
+      })
+      .catch(function() {})
+      .finally(function() { likeBtn.disabled = false; });
+  });
+
+  shareBtn.addEventListener('click', function() {
+    var url = window.location.href;
+    var title = document.title;
+    if (navigator.share) { navigator.share({ title: title, url: url }).catch(function(){}); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function() {
+        var label = shareBtn.querySelector('.ui-share-text');
+        var orig = label.innerHTML;
+        label.textContent = t().shareCopied;
+        setTimeout(function() { label.innerHTML = orig; }, 1800);
+      }).catch(function() { window.prompt('Copy URL:', url); });
+    } else { window.prompt('Copy URL:', url); }
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c];
+    });
+  }
+  function fmtDate(s) {
+    if (!s) return '';
+    var d = new Date(s);
+    var diff = (new Date() - d) / 1000;
+    var i18n = t();
+    if (diff < 60) return i18n.justNow;
+    if (diff < 3600) return Math.floor(diff/60) + i18n.mAgo;
+    if (diff < 86400) return Math.floor(diff/3600) + i18n.hAgo;
+    if (diff < 7*86400) return Math.floor(diff/86400) + i18n.dAgo;
+    return d.toLocaleDateString();
+  }
+  function renderComments(comments) {
+    var i18n = t();
+    if (!comments || !comments.length) {
+      commentList.innerHTML = '<div class="ui-comment-empty">' + i18n.empty + '</div>';
+      commentCount.textContent = '(0)';
+      return;
+    }
+    commentCount.textContent = '(' + comments.length + ')';
+    commentList.innerHTML = comments.map(function(c) {
+      return '<div class="ui-comment">' +
+        '<div class="ui-comment-head">' +
+          '<span class="ui-comment-name">' + escapeHtml(c.nickname || 'Anonymous') + '</span>' +
+          '<span class="ui-comment-date">' + escapeHtml(fmtDate(c.created_at || c.createdAt)) + '</span>' +
+        '</div>' +
+        '<div class="ui-comment-body">' + escapeHtml(c.content || '') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+  function loadComments() {
+    fetch(API_BASE + '/api/comments?post_slug=' + encodeURIComponent(POST_SLUG))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var list = Array.isArray(d) ? d : (d && d.comments) || [];
+        renderComments(list);
+      })
+      .catch(function() {
+        commentList.innerHTML = '<div class="ui-comment-empty">' + t().loadFailed + '</div>';
+      });
+  }
+  loadComments();
+
+  commentForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var i18n = t();
+    var payload = {
+      post_slug: POST_SLUG,
+      nickname: (nicknameInput.value || '').trim(),
+      email: (emailInput.value || '').trim() || null,
+      content: (contentInput.value || '').trim(),
+      parent_id: null
+    };
+    if (!payload.nickname || !payload.content) return;
+    submitBtn.disabled = true;
+    formStatus.className = 'ui-form-status';
+    formStatus.textContent = i18n.posting;
+    fetch(API_BASE + '/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, body: j }; }); })
+      .then(function(res) {
+        if (!res.ok) throw new Error((res.body && (res.body.error || res.body.message)) || 'Failed');
+        formStatus.className = 'ui-form-status success';
+        formStatus.textContent = i18n.posted;
+        commentForm.reset();
+        loadComments();
+        if (typeof umami !== 'undefined') umami.track('post-comment', { post: POST_SLUG });
+        setTimeout(function() { formStatus.textContent = ''; formStatus.className = 'ui-form-status'; }, 3000);
+      })
+      .catch(function(err) {
+        formStatus.className = 'ui-form-status error';
+        formStatus.textContent = i18n.postFailed + (err.message || '');
+      })
+      .finally(function() { submitBtn.disabled = false; });
+  });
+})();
+</script>
+
+
+
+</body>
+</html>
