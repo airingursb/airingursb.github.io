@@ -16,6 +16,7 @@ import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted 
 import { loadNpcManifest, getActiveBracket, pickDialog, buildDialogContext, type NpcDef, type NpcManifest } from '../npcs'
 import { getActiveFestivalId, getActiveFestival } from '../festivals'
 import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
+import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
 
 const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
@@ -72,6 +73,7 @@ export class RoomScene extends Phaser.Scene {
   private currentSitInteractable: Interactable | null = null
   private transitioning = false
   private atmosphereOverlay?: Phaser.GameObjects.Rectangle
+  private cutsceneFadeRect?: Phaser.GameObjects.Rectangle  // V7.7
   private atmosphereTimer?: Phaser.Time.TimerEvent
   private particleEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
   private myDisplayName: string | null = null
@@ -656,6 +658,16 @@ export class RoomScene extends Phaser.Scene {
 
     // V7.4 — quest progress on room visit
     onRoomVisitedQuest(this.currentRoomId)
+
+    // V7.7 — try to run a cutscene on room entry (NPCs spawn shortly after,
+    // so delay a bit). At most one cutscene per scene boot.
+    this.time.delayedCall(1500, () => {
+      const cut = findCutsceneForRoom(this.currentRoomId, new Date(), {
+        friendships: this.friendships,
+        activeEvent: getActiveFestivalId()
+      })
+      if (cut) this.runCutscene(cut)
+    })
 
     // Drain cached welcome (set by applyWelcome before this scene was restarted)
     if (welcomeCache) {
@@ -1746,6 +1758,82 @@ export class RoomScene extends Phaser.Scene {
     if (zzz) zzz.destroy()
     entry.bear.destroy()
     this.npcBears.delete(id)
+  }
+
+  // V7.7 — Sequential cutscene runner.
+  private async runCutscene(def: CutsceneDef) {
+    markFired(def.id)
+    for (const step of def.steps) {
+      await this.runCutsceneStep(step)
+    }
+  }
+
+  private runCutsceneStep(step: CutsceneStep): Promise<void> {
+    return new Promise<void>((resolve) => {
+      const cam = this.cameras.main
+      switch (step.type) {
+        case 'wait':
+          this.time.delayedCall(step.ms, () => resolve())
+          return
+        case 'say': {
+          const entry = this.npcBears.get(step.npc_id)
+          if (entry) {
+            const screen = this.bearScreenPos(entry.bear)
+            showBubble('cutscene_' + step.npc_id + '_' + Date.now(), step.text, screen.x, screen.y)
+          }
+          this.time.delayedCall(step.duration_ms ?? 2400, () => resolve())
+          return
+        }
+        case 'camera_pan':
+          cam.pan(step.x, step.y, step.duration_ms, 'Sine.InOut', false, (_c, p) => {
+            if (p >= 1) resolve()
+          })
+          // pan callback fires repeatedly; resolve on next tick if it didn't yet
+          this.time.delayedCall(step.duration_ms + 50, () => resolve())
+          return
+        case 'camera_zoom':
+          cam.zoomTo(step.zoom, step.duration_ms, 'Sine.InOut', false, (_c, p) => {
+            if (p >= 1) resolve()
+          })
+          this.time.delayedCall(step.duration_ms + 50, () => resolve())
+          return
+        case 'move_npc': {
+          const entry = this.npcBears.get(step.npc_id)
+          if (entry) {
+            const bear = entry.bear
+            this.tweens.add({
+              targets: bear.sprite,
+              x: step.x, y: step.y,
+              duration: step.duration_ms,
+              onComplete: () => resolve()
+            })
+          } else {
+            resolve()
+          }
+          return
+        }
+        case 'fade': {
+          if (!this.cutsceneFadeRect) {
+            this.cutsceneFadeRect = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, step.color ?? 0x000000, 0)
+              .setOrigin(0).setDepth(1500).setScrollFactor(0)
+          }
+          if (step.color !== undefined) this.cutsceneFadeRect.fillColor = step.color
+          this.tweens.add({
+            targets: this.cutsceneFadeRect,
+            fillAlpha: step.alpha,
+            duration: step.duration_ms,
+            onComplete: () => resolve()
+          })
+          return
+        }
+        case 'shake':
+          cam.shake(step.duration_ms, step.intensity ?? 0.005)
+          this.time.delayedCall(step.duration_ms + 50, () => resolve())
+          return
+        default:
+          resolve()
+      }
+    })
   }
 
   private handleNpcClick(id: string) {
