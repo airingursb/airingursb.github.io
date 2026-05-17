@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// V6.1 — indoor_lobby_v1: 32 tiles, 8 cols × 4 rows.
+// V6.1 / V6.1.1 — indoor_lobby_v1: 40 tiles, 8 cols × 5 rows.
 // Tile IDs 1-6 stay layout-compatible with v0 (legacy lobby data still works),
 // art is upgraded. IDs 7-32 are new — floor variants, walls with depth, props.
 //
@@ -20,6 +20,10 @@
 //    25 sofa left             26 sofa center         27 sofa right
 //    28 chair side-left       29 chair side-right    30 large rug center
 //    31 flower vase           32 ceiling beam (above-layer ornament)
+//   Row 4 (DJ Floor decor — added V6.1.1):
+//    33 speaker stack         34 turntable/mixer     35 dance-floor neon A (cyan)
+//    36 dance-floor neon B (magenta)                 37 disco ball (above-layer)
+//    38 strobe panel (wall)   39 neon "DJ" sign      40 subwoofer (wide)
 //
 // Run: node scripts/lounge/bake-tileset-v1.mjs
 
@@ -33,7 +37,7 @@ const OUT = join(ROOT, 'public', 'lounge', 'assets', 'tilesets', 'indoor_lobby_v
 
 const TILE = 16
 const COLS = 8
-const ROWS = 4
+const ROWS = 5
 const W = TILE * COLS
 const H = TILE * ROWS
 
@@ -464,8 +468,131 @@ function tile32_beam(ox, oy) {
   rect(ox, oy, TILE, 4, C.wood_dark)
   rect(ox, oy + 1, TILE, 1, '#502810')
   rect(ox, oy + 3, TILE, 1, C.wall_dark)
-  // wood grain
   for (let x = 0; x < TILE; x += 3) px(ox + x, oy + 2, '#3a2010')
+}
+
+// ─── Row 4: DJ Floor tiles ───────────────────────────────────────────────
+// 33: speaker stack (tall black cabinet with cone)
+function tile33_speaker(ox, oy) {
+  // back panel (wall)
+  rect(ox, oy, TILE, TILE, C.wall_main)
+  // cabinet
+  rect(ox + 2, oy + 1, 12, 15, '#1a1a1a')
+  rect(ox + 3, oy + 2, 10, 13, '#2a2a2a')
+  // tweeter (top small cone)
+  ctx.fillStyle = '#404040'; ctx.beginPath(); ctx.arc(ox + 8, oy + 5, 2, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = '#0a0a0a'; ctx.beginPath(); ctx.arc(ox + 8, oy + 5, 1, 0, Math.PI * 2); ctx.fill()
+  // woofer (bottom large cone)
+  ctx.fillStyle = '#404040'; ctx.beginPath(); ctx.arc(ox + 8, oy + 11, 4, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = '#202020'; ctx.beginPath(); ctx.arc(ox + 8, oy + 11, 3, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = '#0a0a0a'; ctx.beginPath(); ctx.arc(ox + 8, oy + 11, 1.5, 0, Math.PI * 2); ctx.fill()
+  // LED
+  px(ox + 4, oy + 3, '#00ff80')
+}
+
+// 34: turntable / mixer (DJ booth deck)
+function tile34_turntable(ox, oy) {
+  // base
+  rect(ox, oy, TILE, TILE, C.wood_dark)
+  rect(ox + 1, oy + 1, TILE - 2, TILE - 2, '#1a1a1a')
+  // platter (circular)
+  ctx.fillStyle = '#303030'; ctx.beginPath(); ctx.arc(ox + 8, oy + 8, 6, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = '#1a1a1a'; ctx.beginPath(); ctx.arc(ox + 8, oy + 8, 5, 0, Math.PI * 2); ctx.fill()
+  // center spindle + label
+  ctx.fillStyle = '#c04080'; ctx.beginPath(); ctx.arc(ox + 8, oy + 8, 2, 0, Math.PI * 2); ctx.fill()
+  px(ox + 8, oy + 8, '#ffffff')
+  // tone arm
+  ctx.fillStyle = '#a0a0a0'
+  ctx.fillRect(ox + 11, oy + 4, 1, 4); ctx.fillRect(ox + 10, oy + 7, 2, 1)
+  // pitch slider
+  rect(ox + 2, oy + 13, 5, 2, '#303030')
+  px(ox + 5, oy + 13, '#ff4080')
+  // LEDs on side
+  px(ox + 14, oy + 3, '#00ff80'); px(ox + 14, oy + 5, '#ff4080')
+}
+
+// 35: dance-floor neon A (cyan-lit square)
+function tile35_floorA(ox, oy) {
+  rect(ox, oy, TILE, TILE, '#080820')
+  // inner glow
+  rect(ox + 2, oy + 2, TILE - 4, TILE - 4, '#103060')
+  rect(ox + 3, oy + 3, TILE - 6, TILE - 6, '#2080c0')
+  rect(ox + 5, oy + 5, TILE - 10, TILE - 10, '#40e0ff')
+  // bright corners
+  px(ox + 1, oy + 1, '#80f0ff'); px(ox + 14, oy + 1, '#80f0ff')
+  px(ox + 1, oy + 14, '#80f0ff'); px(ox + 14, oy + 14, '#80f0ff')
+}
+
+// 36: dance-floor neon B (magenta-lit square)
+function tile36_floorB(ox, oy) {
+  rect(ox, oy, TILE, TILE, '#100018')
+  rect(ox + 2, oy + 2, TILE - 4, TILE - 4, '#601060')
+  rect(ox + 3, oy + 3, TILE - 6, TILE - 6, '#c020a0')
+  rect(ox + 5, oy + 5, TILE - 10, TILE - 10, '#ff60e0')
+  px(ox + 1, oy + 1, '#ffa0f0'); px(ox + 14, oy + 1, '#ffa0f0')
+  px(ox + 1, oy + 14, '#ffa0f0'); px(ox + 14, oy + 14, '#ffa0f0')
+}
+
+// 37: disco ball (above-layer; hangs from ceiling)
+function tile37_discoball(ox, oy) {
+  // chain
+  rect(ox + 7, oy, 2, 3, '#808080')
+  // ball (round, faceted)
+  const cx = ox + 8, cy = oy + 8
+  ctx.fillStyle = '#a0a0a0'; ctx.beginPath(); ctx.arc(cx, cy, 5, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = '#d0d0d0'; ctx.beginPath(); ctx.arc(cx - 1, cy - 1, 3, 0, Math.PI * 2); ctx.fill()
+  // facet highlights
+  px(cx - 2, cy - 2, '#ffffff'); px(cx + 2, cy + 1, '#ffffff')
+  px(cx, cy + 2, '#ffffff'); px(cx + 1, cy - 2, '#ffffff')
+  // facet grid
+  ctx.fillStyle = 'rgba(0,0,0,0.3)'
+  ctx.fillRect(cx - 4, cy, 9, 1); ctx.fillRect(cx, cy - 4, 1, 9)
+  // sparkle beams (2 small dots near ball)
+  px(ox + 2, oy + 14, '#ffffff'); px(ox + 13, oy + 13, '#ffffff')
+}
+
+// 38: strobe panel (wall light bars)
+function tile38_strobe(ox, oy) {
+  tile2_wall(ox, oy)
+  // panel
+  rect(ox + 2, oy + 4, 12, 8, '#202020')
+  // light bars
+  rect(ox + 3, oy + 5, 10, 1, '#ff4080')
+  rect(ox + 3, oy + 7, 10, 1, '#40e0ff')
+  rect(ox + 3, oy + 9, 10, 1, '#ffff60')
+  rect(ox + 3, oy + 11, 10, 1, '#80ff80')
+  // highlights (animated illusion)
+  px(ox + 12, oy + 5, '#ffe0f0'); px(ox + 4, oy + 7, '#a0f0ff')
+  px(ox + 12, oy + 9, '#ffffa0'); px(ox + 4, oy + 11, '#c0ffc0')
+}
+
+// 39: neon "DJ" sign
+function tile39_neonDJ(ox, oy) {
+  tile2_wall(ox, oy)
+  // glow halo
+  rect(ox + 1, oy + 3, 14, 10, 'rgba(255,64,128,0.15)')
+  // D
+  ctx.fillStyle = '#ff60c0'
+  ctx.fillRect(ox + 3, oy + 5, 1, 6); ctx.fillRect(ox + 4, oy + 5, 2, 1); ctx.fillRect(ox + 6, oy + 6, 1, 4); ctx.fillRect(ox + 4, oy + 10, 2, 1)
+  // J
+  ctx.fillRect(ox + 11, oy + 5, 1, 6); ctx.fillRect(ox + 10, oy + 10, 1, 1); ctx.fillRect(ox + 9, oy + 9, 1, 1)
+  ctx.fillRect(ox + 9, oy + 5, 3, 1)
+  // bright cores
+  ctx.fillStyle = '#ffc0ff'
+  px(ox + 3, oy + 7, '#ffc0ff'); px(ox + 11, oy + 8, '#ffc0ff')
+}
+
+// 40: subwoofer (wide horizontal speaker)
+function tile40_subwoofer(ox, oy) {
+  rect(ox, oy, TILE, TILE, C.wall_main)
+  rect(ox + 1, oy + 4, TILE - 2, 11, '#1a1a1a')
+  rect(ox + 2, oy + 5, TILE - 4, 9, '#2a2a2a')
+  // big cone
+  ctx.fillStyle = '#404040'; ctx.beginPath(); ctx.arc(ox + 8, oy + 10, 5, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = '#202020'; ctx.beginPath(); ctx.arc(ox + 8, oy + 10, 4, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = '#0a0a0a'; ctx.beginPath(); ctx.arc(ox + 8, oy + 10, 2, 0, Math.PI * 2); ctx.fill()
+  // LEDs
+  px(ox + 3, oy + 6, '#00ff80'); px(ox + 12, oy + 6, '#ff4080')
 }
 
 // Render — in tile order
@@ -477,7 +604,9 @@ const renderers = [
   tile17_painting, tile18_bookshelfTop, tile19_bookshelfBot, tile20_clock,
   tile21_lantern, tile22_floorLamp, tile23_fireplaceLogs, tile24_fireplaceMantle,
   tile25_sofaLeft, tile26_sofaCenter, tile27_sofaRight, tile28_chairSideL,
-  tile29_chairSideR, tile30_rugCenter, tile31_vase, tile32_beam
+  tile29_chairSideR, tile30_rugCenter, tile31_vase, tile32_beam,
+  tile33_speaker, tile34_turntable, tile35_floorA, tile36_floorB,
+  tile37_discoball, tile38_strobe, tile39_neonDJ, tile40_subwoofer
 ]
 for (let i = 0; i < renderers.length; i++) {
   const [ox, oy] = tileXY(i)
@@ -491,7 +620,7 @@ const meta = {
   schema_version: 1,
   name: 'indoor_lobby_v1',
   tile_width: TILE, tile_height: TILE,
-  tile_count: 32, columns: COLS,
+  tile_count: 40, columns: COLS,
   image: 'tiles.png', image_width: W, image_height: H,
   tiles: [
     { id: 0, kind: 'floor' },
@@ -514,7 +643,11 @@ const meta = {
     { id: 24, kind: 'furniture', collision: true }, { id: 25, kind: 'furniture', collision: true },
     { id: 26, kind: 'furniture', collision: true }, { id: 27, kind: 'furniture', collision: true },
     { id: 28, kind: 'furniture', collision: true }, { id: 29, kind: 'decor' },
-    { id: 30, kind: 'furniture', collision: true }, { id: 31, kind: 'decor' }
+    { id: 30, kind: 'furniture', collision: true }, { id: 31, kind: 'decor' },
+    { id: 32, kind: 'furniture', collision: true }, { id: 33, kind: 'furniture', collision: true },
+    { id: 34, kind: 'floor' }, { id: 35, kind: 'floor' },
+    { id: 36, kind: 'decor' }, { id: 37, kind: 'wall', collision: true },
+    { id: 38, kind: 'wall', collision: true }, { id: 39, kind: 'furniture', collision: true }
   ]
 }
 writeFileSync(join(OUT, 'tiles.json'), JSON.stringify(meta, null, 2))

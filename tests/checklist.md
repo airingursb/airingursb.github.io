@@ -1206,3 +1206,30 @@
 - [ ] `RoomScene.ts` preloads both `indoor_lobby_v0` AND `indoor_lobby_v1` images
 - [ ] Tileset chosen by name from TMJ — no warnings in console about missing tilesets
 - [ ] Build clean (`npm run build` passes); validate clean (`npm run lounge:validate` no new errors)
+
+## Lounge V6.1.1 (DJ Floor + Library refactored to v1)
+
+### Tileset extension
+- [ ] `indoor_lobby_v1` now 40 tiles (8×5 grid, 128×80 px)
+- [ ] New IDs 33-40 = speaker stack / turntable / dance-floor neon A (cyan) / dance-floor neon B (magenta) / disco ball / strobe panel / neon DJ sign / subwoofer
+- [ ] All 32 V6.1 tiles still render correctly (no shift in tile IDs)
+
+### DJ Floor refactor
+- [ ] `node scripts/lounge/patch-dj-floor-v1.mjs` re-points `dj_floor.tmj` tileset to v1
+- [ ] Dance floor at center: 10×3 checkered cyan/magenta neon squares
+- [ ] 4 speaker stacks in 4 corners (black cabinets, green LED, woofer + tweeter cones)
+- [ ] 2 subwoofers flanking the bottom couches
+- [ ] 2 turntables on the booth (circular platters with magenta center label + tone arm)
+- [ ] Top wall: 4 strobe panels (RGB light bars) + 1 neon "DJ" sign at center + 2 sconces
+- [ ] Disco ball hangs in center of dance floor (above-layer, faceted sphere)
+- [ ] Existing jam pads + couches + DJ booth interactables unaffected
+
+### Library refactor
+- [ ] `node scripts/lounge/patch-library-v1.mjs` re-points `library.tmj` tileset to v1
+- [ ] Bookshelves drawn at all 16 north-wall + 8 side-wall positions (visible book spines)
+- [ ] Top wall: 4 windows + 1 clock
+- [ ] Side walls: 2 paintings + 2 sconces
+- [ ] 2 reading nooks (bottom-left + bottom-right): 3-tile sofa + floor lamp + accent rug each
+- [ ] 3 hanging lanterns in center
+- [ ] 2 new sit interactables (`sofa_l_sit`, `sofa_r_sit`) functional
+- [ ] Existing table + chairs + portal to lobby unaffected
