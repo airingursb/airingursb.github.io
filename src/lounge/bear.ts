@@ -52,6 +52,7 @@ export class Bear {
   reducedMotion = false
   private baseY = 0
   private nameLabel?: Phaser.GameObjects.Text
+  private heartLabel?: Phaser.GameObjects.Text
 
   constructor(scene: Phaser.Scene, x: number, y: number, region: Region) {
     this.scene = scene
@@ -67,7 +68,25 @@ export class Bear {
       strokeThickness: 2,
       resolution: 2
     }).setOrigin(0.5, 1).setDepth(6)
+    this.heartLabel = scene.add.text(x, y - 62, '', {
+      fontFamily: 'ui-monospace, monospace',
+      fontSize: '10px',
+      color: '#ffb0c0',
+      resolution: 2
+    }).setOrigin(0.5, 1).setDepth(6)
     this.playIdle()
+  }
+
+  setFriendshipLevel(level: number) {
+    if (!this.heartLabel) return
+    const map: Record<number, { glyph: string; color: string }> = {
+      1: { glyph: '♡', color: '#ffb0c0' },
+      2: { glyph: '♥', color: '#ff4060' },
+      3: { glyph: '✦', color: '#ffd166' }
+    }
+    const cfg = map[level]
+    if (!cfg) { this.heartLabel.setText(''); return }
+    this.heartLabel.setText(cfg.glyph).setColor(cfg.color)
   }
 
   setDisplayName(name: string | null, opts?: { color?: string; prefix?: string }) {
@@ -131,6 +150,10 @@ export class Bear {
     if (this.nameLabel) {
       this.nameLabel.x = this.sprite.x
       this.nameLabel.y = this.sprite.y - 52
+    }
+    if (this.heartLabel) {
+      this.heartLabel.x = this.sprite.x
+      this.heartLabel.y = this.sprite.y - 62
     }
 
     if (this.stateUntil > 0 && now >= this.stateUntil) {
@@ -201,6 +224,7 @@ export class Bear {
 
   destroy() {
     this.nameLabel?.destroy()
+    this.heartLabel?.destroy()
     this.sprite.destroy()
   }
 

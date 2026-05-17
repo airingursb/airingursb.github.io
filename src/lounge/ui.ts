@@ -336,13 +336,46 @@ export function hideNameModal() {
   onNameModalSubmit = null
 }
 
-export function setInfoPanelDataProvider(provider: () => { visitorId: string; displayName: string | null; region: string },
-                                         onRename: () => void) {
+export function setInfoPanelDataProvider(
+  provider: () => {
+    visitorId: string; displayName: string | null; region: string;
+    friends?: Array<{ display_name: string | null; score: number; level: number }>
+  },
+  onRename: () => void
+) {
   onInfoOpenRequest = () => {
     const data = provider()
     if (infoNameEl)   infoNameEl.textContent   = data.displayName ?? '(anonymous)'
     if (infoRegionEl) infoRegionEl.textContent = data.region
     if (infoIdEl)     infoIdEl.textContent     = '…' + data.visitorId.slice(-8)
+    const listEl = document.getElementById('lounge-info-friends')
+    const emptyEl = document.getElementById('lounge-info-friends-empty')
+    if (listEl) {
+      listEl.innerHTML = ''
+      const friends = data.friends ?? []
+      if (friends.length === 0) {
+        if (emptyEl) emptyEl.hidden = false
+      } else {
+        if (emptyEl) emptyEl.hidden = true
+        const glyphs = ['—', '♡', '♥', '✦']
+        for (const f of friends) {
+          const li = document.createElement('li')
+          const heart = document.createElement('span')
+          heart.className = `heart-${f.level}`
+          heart.textContent = glyphs[f.level] ?? '—'
+          const name = document.createElement('span')
+          name.className = 'name'
+          name.textContent = f.display_name ?? '(anonymous)'
+          const score = document.createElement('span')
+          score.className = 'score'
+          score.textContent = String(f.score)
+          li.appendChild(heart)
+          li.appendChild(name)
+          li.appendChild(score)
+          listEl.appendChild(li)
+        }
+      }
+    }
   }
   onInfoRenameRequest = onRename
 }

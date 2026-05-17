@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
-import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg } from '../net'
+import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry } from '../net'
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
 import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, type Region, type RoomId } from '../config'
@@ -80,6 +80,10 @@ export class RoomScene extends Phaser.Scene {
   private seasonOverlay?: Phaser.GameObjects.Rectangle
   private seasonalEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
   private holidayEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
+  // V4.0 — friendship
+  private peerVisitorIds = new Map<string, string>()      // session id → visitor_id
+  private friendships = new Map<string, FriendshipEntry>() // friend_visitor_id → entry
+  private lastClickedPeerId: string | null = null         // for directed wave
 
   constructor() {
     super({ key: 'Room' })
@@ -232,7 +236,7 @@ export class RoomScene extends Phaser.Scene {
         }
       }
 
-      for (const [, p2] of this.peers) {
+      for (const [peerSessionId, p2] of this.peers) {
         const b = p2.bear
         if (Math.abs(wx - b.x) < 14 && wy > b.y - 50 && wy < b.y) {
           const destX = Math.max(20, Math.min(map.widthInPixels - 20, b.x - 30))
@@ -244,6 +248,7 @@ export class RoomScene extends Phaser.Scene {
             ? (ddx > 0 ? 'right' : 'left')
             : (ddy > 0 ? 'down' : 'up')
           this.autoWaveOnArrive = true
+          this.lastClickedPeerId = peerSessionId
           return
         }
       }
@@ -307,11 +312,17 @@ export class RoomScene extends Phaser.Scene {
       onSnap: (m: SnapMsg) => {
         this.peers.forEach((p) => p.bear.destroy())
         this.peers.clear()
+        this.peerVisitorIds.clear()
         for (const p of m.peers) {
           if (p.room !== this.currentRoomId) continue
           const bear = new Bear(this, p.x, p.y, ccToRegion(p.cc))
           bear.sprite.setDepth(5)
           bear.setDisplayName(this.fallbackName(p.display_name ?? null, ccToRegion(p.cc)))
+          if (p.visitor_id) {
+            this.peerVisitorIds.set(p.id, p.visitor_id)
+            const fr = this.friendships.get(p.visitor_id)
+            if (fr) bear.setFriendshipLevel(fr.level)
+          }
           this.peers.set(p.id, { bear, lastUpdate: performance.now() })
         }
       },
@@ -321,11 +332,17 @@ export class RoomScene extends Phaser.Scene {
         const bear = new Bear(this, m.x, m.y, ccToRegion(m.cc))
         bear.sprite.setDepth(5)
         bear.setDisplayName(this.fallbackName(m.display_name ?? null, ccToRegion(m.cc)))
+        if (m.visitor_id) {
+          this.peerVisitorIds.set(m.id, m.visitor_id)
+          const fr = this.friendships.get(m.visitor_id)
+          if (fr) bear.setFriendshipLevel(fr.level)
+        }
         this.peers.set(m.id, { bear, lastUpdate: performance.now() })
       },
       onLeave: (m: LeaveMsg) => {
         const peer = this.peers.get(m.id)
         if (peer) { peer.bear.destroy(); this.peers.delete(m.id) }
+        this.peerVisitorIds.delete(m.id)
       },
       onPos: (m: PosMsg) => {
         if (m.room !== this.currentRoomId) return
@@ -355,15 +372,23 @@ export class RoomScene extends Phaser.Scene {
       onReplaced: () => {
         showReplacedOverlay()
       },
-      onCollected: (m: CollectedMsg) => this.applyCollected(m)
+      onCollected: (m: CollectedMsg) => this.applyCollected(m),
+      onFriendUpdate: (m: FriendUpdateMsg) => this.applyFriendUpdate(m)
     }, this.currentRoomId)
 
     setInfoPanelDataProvider(
-      () => ({
-        visitorId: getIdentity().visitor_id,
-        displayName: this.myDisplayName,
-        region: this.myRegion
-      }),
+      () => {
+        const friends = Array.from(this.friendships.values())
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 10)
+          .map(f => ({ display_name: f.display_name, score: f.score, level: f.level }))
+        return {
+          visitorId: getIdentity().visitor_id,
+          displayName: this.myDisplayName,
+          region: this.myRegion,
+          friends
+        }
+      },
       () => this.openRenameModal()
     )
 
@@ -438,6 +463,19 @@ export class RoomScene extends Phaser.Scene {
       for (const id of m.inventory) this.inventory.add(id)
     }
     this.refreshPebbles()
+
+    // Friendships
+    this.friendships.clear()
+    if (Array.isArray(m.friendships)) {
+      for (const f of m.friendships) this.friendships.set(f.friend_id, f)
+    }
+    // Refresh hearts for currently-rendered peers (race-safe in case snap landed first)
+    this.peers.forEach((entry, sessionId) => {
+      const vid = this.peerVisitorIds.get(sessionId)
+      if (!vid) return
+      const fr = this.friendships.get(vid)
+      entry.bear.setFriendshipLevel(fr?.level ?? 0)
+    })
 
     // First-visit modal
     if (m.display_name === null && isFirstVisit()) {
@@ -539,6 +577,20 @@ export class RoomScene extends Phaser.Scene {
   private applyCollected(m: CollectedMsg) {
     this.inventory.add(m.item_id)
     refreshInventoryPanel()
+  }
+
+  private applyFriendUpdate(m: FriendUpdateMsg) {
+    const existing = this.friendships.get(m.friend_id)
+    const display_name = existing?.display_name ?? null
+    this.friendships.set(m.friend_id, {
+      friend_id: m.friend_id, display_name, score: m.score, level: m.level
+    })
+    // Update heart on any currently-rendered peer whose visitor_id matches
+    this.peerVisitorIds.forEach((vid, sessionId) => {
+      if (vid !== m.friend_id) return
+      const peer = this.peers.get(sessionId)
+      peer?.bear.setFriendshipLevel(m.level)
+    })
   }
 
   private async loadAndStartSeasons(widthPx: number, heightPx: number) {
@@ -1007,7 +1059,9 @@ export class RoomScene extends Phaser.Scene {
       }
       if (this.autoWaveOnArrive && this.myBear.state === 'idle' && !this.myBear.target) {
         this.autoWaveOnArrive = false
-        sendAct('wave', undefined, this.currentRoomId)
+        const target = this.lastClickedPeerId ?? undefined
+        this.lastClickedPeerId = null
+        sendAct('wave', undefined, this.currentRoomId, target)
         this.applyAct(undefined, 'wave')
       }
       if (this.currentSitInteractable && this.myBear.state === 'idle' && !this.myBear.target) {

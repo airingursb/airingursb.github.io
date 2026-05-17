@@ -4,13 +4,19 @@ export type SnapMsg = {
   v: number
   t: 'snap'
   you: string
-  peers: Array<{ id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null }>
+  peers: Array<{ id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null }>
 }
-export type JoinMsg = { v: number; t: 'join'; id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null }
+export type JoinMsg = { v: number; t: 'join'; id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null }
 export type LeaveMsg = { v: number; t: 'leave'; id: string; room: RoomId }
 export type PosMsg = { v: number; t: 'pos'; id: string; x: number; y: number; vx?: number; vy?: number; state: string; room: RoomId }
 export type ActMsg = { v: number; t: 'act'; id: string; verb: string; text?: string; room: RoomId }
 export type FullMsg = { v: number; t: 'full' }
+export type FriendshipEntry = {
+  friend_id: string
+  display_name: string | null
+  score: number
+  level: number
+}
 export type WelcomeMsg = {
   v: number; t: 'welcome'
   visitor_id: string | null
@@ -20,14 +26,16 @@ export type WelcomeMsg = {
   last_y: number | null
   region: string
   inventory?: string[]
+  friendships?: FriendshipEntry[]
 }
 export type CollectedMsg = { v: number; t: 'collected'; item_id: string; newly: boolean }
+export type FriendUpdateMsg = { v: number; t: 'friend_update'; friend_id: string; score: number; level: number }
 export type NameChangedMsg = { v: number; t: 'name_changed'; id: string; display_name: string }
 export type ReplacedMsg = { v: number; t: 'replaced' }
 export type ErrorMsg = { v: number; t: 'error'; reason: string; detail?: string }
 
 export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | ActMsg | FullMsg
-  | WelcomeMsg | NameChangedMsg | ReplacedMsg | ErrorMsg | CollectedMsg
+  | WelcomeMsg | NameChangedMsg | ReplacedMsg | ErrorMsg | CollectedMsg | FriendUpdateMsg
 
 export type NetCallbacks = {
   onSnap: (m: SnapMsg) => void
@@ -42,6 +50,7 @@ export type NetCallbacks = {
   onReplaced?: () => void
   onError?: (m: ErrorMsg) => void
   onCollected?: (m: CollectedMsg) => void
+  onFriendUpdate?: (m: FriendUpdateMsg) => void
 }
 
 let ws: WebSocket | null = null
@@ -99,6 +108,7 @@ function openSocket() {
     }
     else if (msg.t === 'error') cb?.onError?.(msg)
     else if (msg.t === 'collected') cb?.onCollected?.(msg)
+    else if (msg.t === 'friend_update') cb?.onFriendUpdate?.(msg)
   })
 
   ws.addEventListener('close', (ev) => {
@@ -148,10 +158,11 @@ export function sendRoomChange(room: RoomId) {
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'pos', x: 0, y: 0, vx: 0, vy: 0, state: 'idle', room }))
 }
 
-export function sendAct(verb: string, text?: string, room: RoomId = DEFAULT_ROOM) {
+export function sendAct(verb: string, text?: string, room: RoomId = DEFAULT_ROOM, target?: string) {
   if (!ws || ws.readyState !== 1) return
-  const msg: { v: number; t: 'act'; verb: string; text?: string; room: RoomId } = { v: PROTOCOL_VERSION, t: 'act', verb, room }
+  const msg: { v: number; t: 'act'; verb: string; text?: string; room: RoomId; target?: string } = { v: PROTOCOL_VERSION, t: 'act', verb, room }
   if (text != null) msg.text = text
+  if (target) msg.target = target
   ws.send(JSON.stringify(msg))
 }
 

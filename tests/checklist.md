@@ -926,3 +926,36 @@
 ### Validator
 - [ ] `npm run lounge:validate` shows "4 seasons, 2 holidays", exit 0
 - [ ] Bad particle name in seasons.json → exit 1
+
+## Lounge V4.0 (Friendship)
+
+### Scoring
+- [ ] Two greeted v=3 peers in same room → server +1/min per pair (cap 30/session per pair)
+- [ ] Click on peer bear → bear walks toward them + waves; server scores +5 to that pair
+- [ ] Pair where visitor_a === visitor_b: server ignores (self-double-tab not exploitable)
+- [ ] Score persists in lounge_friendships (visitor_a < visitor_b canonical)
+
+### Welcome.friendships
+- [ ] Returning visitor with prior friendships → welcome includes top 10 (sorted by score desc)
+- [ ] New visitor → welcome.friendships is []
+
+### Real-time friend_update
+- [ ] When score changes, BOTH peers in the pair receive `friend_update {friend_id, score, level}`
+- [ ] Other peers do NOT receive it (private)
+
+### Heart visualization
+- [ ] Level 0 (0-10): no heart above peer
+- [ ] Level 1 (11-50): ♡ pale pink
+- [ ] Level 2 (51-200): ♥ red
+- [ ] Level 3 (201+): ✦ gold
+
+### Info panel Friends section
+- [ ] Click ⓘ → panel shows "Friends" heading + top 10 list
+- [ ] No friendships → "No friendships yet — spend time with peers."
+- [ ] Each entry: heart glyph (colored by level), display name (or "(anonymous)"), score
+- [ ] Sorted by score desc
+
+### Privacy
+- [ ] No public friendship leaderboard
+- [ ] friend_update only sent to the two parties
+- [ ] welcome.friendships only contains your own list (server scoped by visitor_id)
