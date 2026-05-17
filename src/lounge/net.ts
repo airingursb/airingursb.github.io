@@ -58,6 +58,12 @@ export type LetterDropOkMsg = { v: number; t: 'letter_drop_ok'; id: number; x: n
 export type LetterDropFailedMsg = { v: number; t: 'letter_drop_failed'; reason: string }
 export type LetterAppearedMsg = { v: number; t: 'letter_appeared'; id: number; author_visitor_id: string; author_name: string | null; room: string; x: number; y: number; content: string; dropped_at: string }
 export type LettersInRoomMsg = { v: number; t: 'letters_in_room'; room: string; letters: LetterEntry[] }
+export type WishCategory = 'sprite' | 'room' | 'dialog' | 'other'
+export type WishEntry = { id: number; author_visitor_id: string; author_name: string | null; category: WishCategory; content: string; submitted_at: string; vote_count: number; voted_by_me: boolean }
+export type WishesListMsg = { v: number; t: 'wishes_list'; wishes: WishEntry[] }
+export type WishSubmitOkMsg = { v: number; t: 'wish_submit_ok'; id: number; category: WishCategory; content: string; submitted_at: string }
+export type WishVoteOkMsg = { v: number; t: 'wish_vote_ok'; wish_id: number; voted: boolean }
+export type WishFailedMsg = { v: number; t: 'wish_failed'; reason: string }
 export type NameChangedMsg = { v: number; t: 'name_changed'; id: string; display_name: string }
 export type ReplacedMsg = { v: number; t: 'replaced' }
 export type ErrorMsg = { v: number; t: 'error'; reason: string; detail?: string }
@@ -70,6 +76,7 @@ export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | ActMsg | FullMsg
   | HomeDecorationBroadcast | HomeDecorationsResponseMsg
   | JamTapMsg | JamBurstMsg
   | LetterDropOkMsg | LetterDropFailedMsg | LetterAppearedMsg | LettersInRoomMsg
+  | WishesListMsg | WishSubmitOkMsg | WishVoteOkMsg | WishFailedMsg
 
 export type NetCallbacks = {
   onSnap: (m: SnapMsg) => void
@@ -105,6 +112,10 @@ export type NetCallbacks = {
   onLetterDropFailed?: (m: LetterDropFailedMsg) => void
   onLetterAppeared?: (m: LetterAppearedMsg) => void
   onLettersInRoom?: (m: LettersInRoomMsg) => void
+  onWishesList?: (m: WishesListMsg) => void
+  onWishSubmitOk?: (m: WishSubmitOkMsg) => void
+  onWishVoteOk?: (m: WishVoteOkMsg) => void
+  onWishFailed?: (m: WishFailedMsg) => void
 }
 
 let ws: WebSocket | null = null
@@ -183,6 +194,10 @@ function openSocket() {
     else if (msg.t === 'letter_drop_failed') cb?.onLetterDropFailed?.(msg)
     else if (msg.t === 'letter_appeared') cb?.onLetterAppeared?.(msg)
     else if (msg.t === 'letters_in_room') cb?.onLettersInRoom?.(msg)
+    else if (msg.t === 'wishes_list') cb?.onWishesList?.(msg)
+    else if (msg.t === 'wish_submit_ok') cb?.onWishSubmitOk?.(msg)
+    else if (msg.t === 'wish_vote_ok') cb?.onWishVoteOk?.(msg)
+    else if (msg.t === 'wish_failed') cb?.onWishFailed?.(msg)
   })
 
   ws.addEventListener('close', (ev) => {
@@ -296,4 +311,17 @@ export function sendLetterDrop(content: string, x: number, y: number) {
 export function requestLettersInRoom(room: string) {
   if (!ws || ws.readyState !== 1) return
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'letters', room }))
+}
+
+export function requestWishes() {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'wishes' }))
+}
+export function sendWishSubmit(category: 'sprite' | 'room' | 'dialog' | 'other', content: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'wish_submit', category, content }))
+}
+export function sendWishVote(wish_id: number) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'wish_vote', wish_id }))
 }

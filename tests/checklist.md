@@ -1119,3 +1119,33 @@
 - [ ] `letter_drop {content, x, y}` → `letter_drop_ok` or `letter_drop_failed`
 - [ ] `letters {room}` → `letters_in_room {room, letters: [...]}`
 - [ ] `letter_appeared` broadcast on drop (visible to peers in same room)
+
+## Lounge V5.2 (Wishboard)
+
+### Submit
+- [ ] 🌟 button (top-right cluster, leftmost) opens Wishboard panel
+- [ ] Form has category select + textarea (1-140 char counter)
+- [ ] Submit → toast "🌟 Wish submitted" → list refreshes with new wish on top (own wish highlighted)
+- [ ] Resubmit by same author → upserts (overwrites prior wish)
+
+### Vote
+- [ ] Click ☆ button → toggles vote (★ filled green when voted)
+- [ ] Vote count updates immediately
+- [ ] Can un-vote by clicking again
+
+### Server
+- [ ] `wish_submit {category, content}` → `wish_submit_ok` + refreshed `wishes_list`
+- [ ] `wish_vote {wish_id}` → `wish_vote_ok {voted}` + refreshed list
+- [ ] Blocklist words rejected; >140 chars rejected; invalid category rejected
+
+## Lounge V5.3 (Modding hooks — public API)
+
+### Endpoints
+- [ ] GET `/api/lounge/stats` → runtime room counts + DB row totals + generated_at
+- [ ] GET `/api/lounge/manifest` → public asset manifests (rooms, sprites, NPCs, seasons, pebbles)
+- [ ] GET `/api/lounge/wishes` → anonymized top wishes (no visitor_ids)
+
+### CORS
+- [ ] All public lounge endpoints return `Access-Control-Allow-Origin: *`
+- [ ] OPTIONS preflight returns 204 for any Origin
+- [ ] Cache-Control: public, max-age=30

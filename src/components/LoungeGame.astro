@@ -10,6 +10,26 @@
     <button id="lounge-info-btn" class="ui-info-btn" aria-label="Identity">ⓘ</button>
     <button id="lounge-inventory-btn" class="ui-inventory-btn" aria-label="Inventory">📦</button>
     <button id="lounge-messages-btn" class="ui-messages-btn" aria-label="Messages">✉<span id="lounge-messages-badge" class="badge" hidden>0</span></button>
+    <button id="lounge-wishboard-btn" class="ui-wishboard-btn" aria-label="Wishboard">🌟</button>
+    <div id="lounge-wishboard-panel" class="ui-wishboard-panel" hidden>
+      <h3>🌟 Wishboard</h3>
+      <p class="subtitle">Suggest a sprite, room, dialog or anything else for the lounge. Vote on others' ideas.</p>
+      <form id="lounge-wish-form">
+        <select id="lounge-wish-category">
+          <option value="sprite">Sprite</option>
+          <option value="room">Room</option>
+          <option value="dialog">Dialog</option>
+          <option value="other">Other</option>
+        </select>
+        <textarea id="lounge-wish-input" maxlength="140" placeholder="My wish for the lounge..." rows="2"></textarea>
+        <div class="form-foot">
+          <span id="lounge-wish-count">0</span> / 140
+          <button type="submit">Submit</button>
+        </div>
+      </form>
+      <ul id="lounge-wish-list" class="wishes"></ul>
+      <p id="lounge-wish-empty" class="empty" hidden>No wishes yet — be the first.</p>
+    </div>
     <div id="lounge-messages-panel" class="ui-messages-panel" hidden>
       <h3>Messages</h3>
       <div id="lounge-messages-empty" class="empty">No messages yet. Wave to a friend, then send one.</div>
@@ -632,6 +652,94 @@
     cursor: pointer;
   }
   .ui-letter-read-card button:hover { background: rgba(0,0,0,.12); }
+
+  /* V5.2 — Wishboard */
+  .ui-wishboard-btn {
+    position: absolute;
+    top: 16px; right: 246px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,.08);
+    color: #e6edf3;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background .15s;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  .ui-wishboard-btn:hover { background: rgba(255,255,255,.16); }
+
+  .ui-wishboard-panel {
+    position: absolute;
+    top: 60px; right: 16px;
+    width: 320px;
+    max-height: 80vh;
+    overflow-y: auto;
+    background: rgba(0,0,0,.92);
+    border-radius: 10px;
+    padding: 14px 16px;
+    color: #e6edf3;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .ui-wishboard-panel[hidden] { display: none; }
+  .ui-wishboard-panel h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; color: #ffd166; }
+  .ui-wishboard-panel .subtitle { margin: 0 0 12px; font-size: 11px; color: #888; line-height: 1.4; }
+  .ui-wishboard-panel form { display: grid; gap: 6px; margin-bottom: 14px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,.1); }
+  .ui-wishboard-panel select,
+  .ui-wishboard-panel textarea {
+    width: 100%;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(0,0,0,.4);
+    color: #fff;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    box-sizing: border-box;
+    outline: none;
+  }
+  .ui-wishboard-panel textarea { resize: vertical; min-height: 40px; }
+  .ui-wishboard-panel textarea:focus,
+  .ui-wishboard-panel select:focus { border-color: #ffd166; }
+  .ui-wishboard-panel .form-foot {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11px; color: #888;
+  }
+  .ui-wishboard-panel .form-foot button {
+    padding: 4px 12px;
+    background: #ffd166; color: #1a1a1a;
+    border: none; border-radius: 5px;
+    font-family: ui-monospace, monospace; font-size: 11px;
+    font-weight: 600; cursor: pointer;
+  }
+  .ui-wishboard-panel .wishes { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+  .ui-wishboard-panel .wishes li {
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.04);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 6px 8px;
+  }
+  .ui-wishboard-panel .wishes li.is-mine { background: rgba(255,209,102,.10); border: 1px solid rgba(255,209,102,.3); }
+  .ui-wishboard-panel .wishes .category { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #888; }
+  .ui-wishboard-panel .wishes .content { grid-column: 1 / -1; font-size: 12px; line-height: 1.4; }
+  .ui-wishboard-panel .wishes .meta { grid-column: 1 / -1; font-size: 10px; color: #666; }
+  .ui-wishboard-panel .wishes .vote-btn {
+    padding: 4px 8px;
+    border: 1px solid rgba(255,255,255,.15);
+    background: transparent;
+    color: #888;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+  }
+  .ui-wishboard-panel .wishes .vote-btn:hover { background: rgba(255,255,255,.08); }
+  .ui-wishboard-panel .wishes .vote-btn.voted { background: rgba(74,222,128,.15); border-color: #4ade80; color: #4ade80; }
+  .ui-wishboard-panel .empty { font-size: 11px; color: #666; font-style: italic; margin: 8px 0 0; }
 
   .ui-inventory-btn {
     position: absolute;

@@ -190,6 +190,11 @@ export function initUI() {
         hidePeerMenu()
       }
     }
+    if (wishboardPanelEl && !wishboardPanelEl.hidden) {
+      if (!target.closest('#lounge-wishboard-panel') && !target.closest('#lounge-wishboard-btn')) {
+        hideWishboardPanel()
+      }
+    }
     if (!menuEl || menuEl.hidden) return
     if (target.closest('#lounge-emote-menu')) return
     if (target.closest('canvas')) return
@@ -208,6 +213,7 @@ export function initUI() {
       hidePeerMenu()
       hideLetterModal()
       hideLetterRead()
+      hideWishboardPanel()
     }
   })
 }
@@ -917,4 +923,103 @@ export function showLetterRead(author: string | null, content: string, dropped_a
 export function hideLetterRead() {
   if (!letterReadEl) return
   letterReadEl.hidden = true
+}
+
+// V5.2 — Wishboard
+
+type WishUI = { id: number; author_visitor_id: string; author_name: string | null; category: string; content: string; submitted_at: string; vote_count: number; voted_by_me: boolean }
+let wishboardBtnEl: HTMLElement | null = null
+let wishboardPanelEl: HTMLElement | null = null
+let wishboardListEl: HTMLElement | null = null
+let wishboardEmptyEl: HTMLElement | null = null
+let wishboardFormEl: HTMLFormElement | null = null
+let wishboardCategoryEl: HTMLSelectElement | null = null
+let wishboardInputEl: HTMLTextAreaElement | null = null
+let wishboardCountEl: HTMLElement | null = null
+let onWishboardOpen: (() => void) | null = null
+let onWishSubmit: ((category: string, content: string) => void) | null = null
+let onWishToggleVote: ((wish_id: number) => void) | null = null
+let myVisitorIdForWishes = ''
+
+export function setupWishboard(
+  myVisitorId: string,
+  onOpen: () => void,
+  onSubmit: (category: string, content: string) => void,
+  onToggleVote: (wish_id: number) => void
+) {
+  myVisitorIdForWishes = myVisitorId
+  onWishboardOpen = onOpen
+  onWishSubmit = onSubmit
+  onWishToggleVote = onToggleVote
+  if (!wishboardBtnEl) {
+    wishboardBtnEl = document.getElementById('lounge-wishboard-btn')
+    wishboardPanelEl = document.getElementById('lounge-wishboard-panel')
+    wishboardListEl = document.getElementById('lounge-wish-list')
+    wishboardEmptyEl = document.getElementById('lounge-wish-empty')
+    wishboardFormEl = document.getElementById('lounge-wish-form') as HTMLFormElement | null
+    wishboardCategoryEl = document.getElementById('lounge-wish-category') as HTMLSelectElement | null
+    wishboardInputEl = document.getElementById('lounge-wish-input') as HTMLTextAreaElement | null
+    wishboardCountEl = document.getElementById('lounge-wish-count')
+
+    wishboardBtnEl?.addEventListener('click', (e) => {
+      e.stopPropagation()
+      if (wishboardPanelEl?.hidden) {
+        wishboardPanelEl.hidden = false
+        playSfx('menu_open')
+        onWishboardOpen?.()
+      } else hideWishboardPanel()
+    })
+    wishboardPanelEl?.addEventListener('click', (e) => e.stopPropagation())
+    wishboardInputEl?.addEventListener('input', () => {
+      if (wishboardCountEl && wishboardInputEl) wishboardCountEl.textContent = String(wishboardInputEl.value.length)
+    })
+    wishboardFormEl?.addEventListener('submit', (e) => {
+      e.preventDefault()
+      const cat = wishboardCategoryEl?.value ?? 'other'
+      const content = wishboardInputEl?.value?.trim() ?? ''
+      if (!content) return
+      onWishSubmit?.(cat, content)
+      if (wishboardInputEl) wishboardInputEl.value = ''
+      if (wishboardCountEl) wishboardCountEl.textContent = '0'
+    })
+  }
+}
+
+export function renderWishboard(wishes: WishUI[]) {
+  if (!wishboardListEl || !wishboardEmptyEl) return
+  wishboardListEl.innerHTML = ''
+  if (wishes.length === 0) {
+    wishboardEmptyEl.hidden = false
+    return
+  }
+  wishboardEmptyEl.hidden = true
+  for (const w of wishes) {
+    const li = document.createElement('li')
+    if (w.author_visitor_id === myVisitorIdForWishes) li.classList.add('is-mine')
+    const cat = document.createElement('span')
+    cat.className = 'category'
+    cat.textContent = w.category
+    const voteBtn = document.createElement('button')
+    voteBtn.className = 'vote-btn' + (w.voted_by_me ? ' voted' : '')
+    voteBtn.type = 'button'
+    voteBtn.textContent = (w.voted_by_me ? '★ ' : '☆ ') + w.vote_count
+    voteBtn.addEventListener('click', () => onWishToggleVote?.(w.id))
+    const content = document.createElement('span')
+    content.className = 'content'
+    content.textContent = w.content
+    const meta = document.createElement('span')
+    meta.className = 'meta'
+    meta.textContent = `by ${w.author_name ?? '(anonymous)'}`
+    li.appendChild(cat)
+    li.appendChild(voteBtn)
+    li.appendChild(content)
+    li.appendChild(meta)
+    wishboardListEl.appendChild(li)
+  }
+}
+
+export function hideWishboardPanel() {
+  if (!wishboardPanelEl || wishboardPanelEl.hidden) return
+  wishboardPanelEl.hidden = true
+  playSfx('menu_close')
 }
