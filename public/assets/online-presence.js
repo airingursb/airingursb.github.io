@@ -695,6 +695,13 @@
         return;
       }
 
+      // If the click landed on a link inside the popover (e.g. "See more →"),
+      // let the browser navigate normally — don't preventDefault.
+      var clickedLink = target && target.closest ? target.closest('a') : null;
+      if (clickedLink && trigger.contains(clickedLink)) {
+        return;
+      }
+
       event.preventDefault();
       event.stopPropagation();
       var willOpen = !trigger.classList.contains('online-popover-open');
