@@ -616,3 +616,54 @@
 
 ### Known V2.0 limitations (to address in later phases)
 - [ ] `prefers-reduced-motion` does not yet pause walk animation (V2.1)
+
+---
+
+## Lounge V2.1 (`/lounge`, audio + UI + emotes)
+
+> Spec: `docs/superpowers/specs/2026-05-17-lounge-v2.1-audio-ui-emotes-design.md`
+> Plan: `docs/superpowers/plans/2026-05-17-lounge-v2.1-audio-ui-emotes.md`
+
+### Audio
+- [ ] Click anywhere on `/lounge` produces a faint click SFX (after first user gesture)
+- [ ] Walking → footstep alternates roughly every other step
+- [ ] Mute button visible top-right, 36×36, 🔊 default
+- [ ] Click mute button → all audio silenced, button shows 🔇
+- [ ] Reload page → mute state persists (localStorage `lounge_muted`)
+- [ ] Each emote verb has distinct SFX (wave / sit / dance / say / menu_open / menu_close)
+
+### Emote menu + verbs
+- [ ] Click own bear → radial menu appears at bear's screen position
+- [ ] Menu has 4 buttons: 👋 🪑 💃 💬
+- [ ] Esc closes menu
+- [ ] Click outside menu (on canvas) closes menu
+- [ ] Click 💬 → text input appears at bottom, focused
+- [ ] Type + Enter → speech bubble above own bear for 3s
+- [ ] Wave: bear's right arm raises 1.5s, peers see it
+- [ ] Sit: bear sits, persists until clicked again (toggle)
+- [ ] Dance: bear bounces 3s with walk-cycle frames
+- [ ] Say: speech bubble shows for 3s, peers see it
+
+### Click peer interaction
+- [ ] Click another bear → own bear walks near them + auto-waves on arrival
+
+### Speech bubble lifecycle
+- [ ] Bubble positioned over the bear's head
+- [ ] Bubble follows bear as they walk (updates each frame)
+- [ ] Bubble fades out at 3s (instant under reduced-motion)
+- [ ] Only one bubble per bear at a time
+
+### Reduced motion
+- [ ] `prefers-reduced-motion: reduce`: walk frame static, no cycle
+- [ ] Dance still happens (state + SFX) but no Y bounce
+- [ ] Menu opens instantly (no scale animation)
+- [ ] Bubble fade is instant
+
+### Server (V2.1 bug fix)
+- [ ] WS server `act` rate limit allows immediate first emote (was silently dropping all emotes pre-fix)
+- [ ] Subsequent emotes throttled to ~1 per 3s per visitor
+
+### Known V2.1 gaps (deferred)
+- [ ] BGM file not yet present (V2.1.1 patch)
+- [ ] Ambient sounds not present (V2.4 atmosphere)
+- [ ] Per-channel volume sliders not present (V2.4)
