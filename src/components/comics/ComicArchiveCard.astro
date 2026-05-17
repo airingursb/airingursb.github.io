@@ -1,0 +1,24 @@
+---
+// src/components/comics/ComicArchiveCard.astro
+import type { Comic } from '../../lib/comics';
+
+interface Props {
+  comic: Comic;
+  lang: 'zh' | 'en';
+}
+const { comic, lang } = Astro.props;
+const href = lang === 'en'
+  ? `/en/comics/${comic.issue_number}`
+  : `/comics/${comic.issue_number}`;
+const title = comic.title[lang] || comic.title.zh;
+---
+
+<a href={href} class="card">
+  <div class="grid">
+    {comic.panels.map((p) => (
+      <img src={p.url} alt="" loading="lazy" style="width:100%;height:100%;object-fit:cover;display:block;" />
+    ))}
+  </div>
+  <div class="cap-issue">No. {comic.issue_number}</div>
+  <div class="cap-title">{title}</div>
+</a>

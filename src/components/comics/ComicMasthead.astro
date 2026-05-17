@@ -1,0 +1,85 @@
+---
+// src/components/comics/ComicMasthead.astro
+// Self-contained masthead for comics pages with "Comics" highlighted.
+import LangSwitch from '../LangSwitch.astro';
+
+interface Props {
+  lang: 'zh' | 'en';
+}
+const { lang } = Astro.props;
+
+const links = lang === 'en'
+  ? [
+      { href: '/en/blog', label: 'Blog', hide: true },
+      { href: '/en/archive', label: 'Archive', hide: true },
+      { href: '/en/moments', label: 'Moment' },
+      { href: '/en/notes', label: 'Notes' },
+      { href: '/photos', label: 'Photos' },
+      { href: '/en/comics', label: 'Comics', active: true },
+      { href: '/en/friends', label: 'Friends' },
+    ]
+  : [
+      { href: '/blog', label: 'Blog', hide: true },
+      { href: '/archive', label: 'Archive', hide: true },
+      { href: '/moments', label: 'Moment' },
+      { href: '/notes', label: 'Notes' },
+      { href: '/photos', label: 'Photos' },
+      { href: '/comics', label: '四格', active: true },
+      { href: '/friends', label: 'Friends' },
+    ];
+
+const brand = "Airing's Blog";
+const currentPath = lang === 'en' ? '/en/comics' : '/comics';
+const homeHref = lang === 'en' ? '/en/blog' : '/blog';
+---
+
+<header class="masthead">
+  <div class="mast-inner">
+    <div class="mast-top-rule"></div>
+    <div class="mast-bar">
+      <a href={homeHref} class="mast-brand">{brand}</a>
+      <div class="mast-links">
+        {links.map((l) => {
+          const classes = [l.active ? 'mast-link-active' : '', l.hide ? 'mast-hide-mobile' : ''].filter(Boolean).join(' ');
+          return <a href={l.href} class={classes || undefined}>{l.label}</a>;
+        })}
+      </div>
+    </div>
+    <div class="mast-lang-line">
+      <LangSwitch lang={lang} currentPath={currentPath} hasEnVersion={true} />
+    </div>
+    <div class="mast-bottom-rule"></div>
+  </div>
+</header>
+
+<style>
+  /* Mirror the masthead styles from moments.astro so this component is self-contained */
+  .masthead { width: 100%; }
+  .mast-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
+  .mast-top-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
+  .mast-bar {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 0; position: relative;
+  }
+  .mast-brand {
+    font-size: 11px; color: var(--c-text-muted); text-decoration: none;
+    letter-spacing: 0.12em; text-transform: uppercase; font-weight: 600;
+  }
+  .mast-brand:hover { color: var(--c-text); }
+  .mast-links { display: flex; gap: 16px; }
+  .mast-links a {
+    font-size: 11px; color: var(--c-text-dim); text-decoration: none;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .mast-links a:hover, .mast-link-active { color: var(--c-text) !important; }
+  .mast-bottom-rule { height: 1px; background: var(--c-border); }
+  .mast-lang-line {
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 8px 0;
+  }
+  @media (max-width: 768px) {
+    .mast-inner { padding: 0 20px; }
+    .mast-hide-mobile { display: none; }
+  }
+</style>

@@ -1,0 +1,28 @@
+---
+// src/components/comics/ComicPanel.astro
+import type { ComicPanel } from '../../lib/comics';
+
+interface Props {
+  panel: ComicPanel;
+  lang: 'zh' | 'en';
+}
+const { panel, lang } = Astro.props;
+
+const positionClass: Record<string, string> = {
+  'top-left': 'tl',
+  'top-right': 'tr',
+  'bottom-left': 'bl',
+  'bottom-right': 'br',
+  'hidden': 'hidden',
+};
+const pos = positionClass[panel.dialog.position] || 'hidden';
+const dialog = panel.dialog[lang] || panel.dialog.zh || '';
+const alt = panel.alt[lang] || panel.alt.zh || '';
+---
+
+<div class="comic-panel">
+  <img src={panel.url} alt={alt} loading="lazy" />
+  {dialog && pos !== 'hidden' && (
+    <div class={`bubble ${pos}`}>{dialog}</div>
+  )}
+</div>

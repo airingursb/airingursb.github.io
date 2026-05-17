@@ -707,6 +707,7 @@
 - [ ] Portal transitions are instant (no fade) under reduced-motion
 - [ ] All emote behaviors from V2.1 still respect reduced-motion
 
+<<<<<<< HEAD
 
 ## Lounge V2.4 + V2.5 (atmosphere + pipeline maturity)
 
@@ -835,3 +836,15 @@
 - [ ] `npm run lounge:validate` shows "X NPCs" in summary, exit 0
 - [ ] Inject overlap in npcs.json → exit 1 with clear message
 - [ ] Inject bad room name → exit 1 with clear message
+
+## /comics (四格)
+
+- [ ] `/comics` 页面打开，masthead "四格" 高亮，hero block 渲染 4 张图
+- [ ] hero 标题序号 `No. N` 与 Supabase 最新 approved 一致
+- [ ] 至少 1 张图带 dialog bubble，位置 (tl/tr/bl/br) 正确
+- [ ] 往期 archive 网格 desktop 3 列、mobile 2 列
+- [ ] 点 archive card 跳 `/comics/<n>`，详情页 4 panel 大图 + 源文本 + 上下期导航
+- [ ] `/en/comics` 显示英文标题、英文 dialog、英文按钮
+- [ ] LangSwitch 在 /comics ↔ /en/comics 间正确切换
+- [ ] dark mode 下 panel background `#1a1a1a` 与白图边缘对比清晰
+- [ ] 移动端 (375px) 标题字号缩放、archive 2 列、详情页 panels 1 列

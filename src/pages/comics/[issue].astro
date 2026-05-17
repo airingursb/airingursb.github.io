@@ -1,0 +1,56 @@
+---
+// src/pages/comics/[issue].astro
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ComicMasthead from '../../components/comics/ComicMasthead.astro';
+import ComicPanel from '../../components/comics/ComicPanel.astro';
+import { fetchComics } from '../../lib/comics';
+import { siteStrings } from '../../lib/i18n';
+import '../../styles/comics.css';
+
+export async function getStaticPaths() {
+  const comics = await fetchComics();
+  return comics.map((c, i) => ({
+    params: { issue: String(c.issue_number) },
+    props: {
+      comic: c,
+      prev: comics[i + 1] || null,
+      next: comics[i - 1] || null,
+    },
+  }));
+}
+
+const s = siteStrings.zh.comics;
+const { comic, prev, next } = Astro.props;
+const date = new Date(comic.published_at || comic.created_at).toLocaleDateString('zh-CN', {
+  year: 'numeric', month: 'long', day: 'numeric',
+});
+---
+
+<BaseLayout
+  title={`${s.issuePrefix} ${comic.issue_number} · ${comic.title.zh} · ${s.title}`}
+  description={comic.source_text}
+  lang="zh"
+>
+  <ComicMasthead lang="zh" />
+  <main class="comics-page comic-detail">
+    <div class="meta" style="font-size:13px;color:#888;letter-spacing:0.04em;margin-bottom:8px;">
+      <strong style="color:#444;">{s.issuePrefix} {comic.issue_number}</strong>
+      · {date}
+      {comic.tags?.map((t) => <span style="margin-left:8px;">#{t}</span>)}
+    </div>
+    <h1 style="font-family:ui-serif,'Songti SC',Georgia,serif;font-size:2rem;margin:0 0 32px;">
+      {comic.title.zh}
+    </h1>
+
+    <div class="panels">
+      {comic.panels.map((p) => <ComicPanel panel={p} lang="zh" />)}
+    </div>
+
+    <div class="source">「{comic.source_text}」</div>
+
+    <nav class="nav">
+      {prev ? <a href={`/comics/${prev.issue_number}`}>← {s.prev} No. {prev.issue_number}</a> : <span />}
+      {next ? <a href={`/comics/${next.issue_number}`}>{s.next} No. {next.issue_number} →</a> : <span />}
+    </nav>
+  </main>
+</BaseLayout>
