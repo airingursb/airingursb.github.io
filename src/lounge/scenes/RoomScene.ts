@@ -242,6 +242,9 @@ export class RoomScene extends Phaser.Scene {
     try { this.myCC = sessionStorage.getItem('vp_country') } catch { this.myCC = null }
     this.myRegion = ccToRegion(this.myCC)
     this.myBear = new Bear(this, spawnX, spawnY, this.myRegion, getMySpecies())
+    // V6.7 — camera follows player smoothly. No-op for rooms that match canvas (currently all);
+    // useful as future rooms grow larger than 480×320.
+    this.cameras.main.startFollow(this.myBear.sprite, true, 0.08, 0.08)
     this.myBear.sprite.setDepth(5)
 
     // Apply locally-cached display name immediately (will be overridden by welcome msg)
@@ -637,9 +640,13 @@ export class RoomScene extends Phaser.Scene {
       }
     )
 
+    // V6.7 — softer crossfade-in (warm cream tone instead of harsh black) + camera
+    // bounds so once any future room exceeds 480×320, follow becomes a real follow.
     if (!prefersReducedMotion()) {
-      this.cameras.main.fadeIn(200, 0, 0, 0)
+      this.cameras.main.fadeIn(220, 248, 240, 220)
     }
+    this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels)
+    // myBear isn't created yet at this point — wire follow once it exists, below.
 
     // Drain cached welcome (set by applyWelcome before this scene was restarted)
     if (welcomeCache) {
@@ -1065,7 +1072,7 @@ export class RoomScene extends Phaser.Scene {
     }
     showToast(labels[m.tier] ?? '🎵 Jam!', m.tier === 'full' ? 3500 : 2500)
 
-    // Bigger celebration for full jam: brief sparkle burst
+    // Bigger celebration for full jam: brief sparkle burst + screen shake
     if (m.tier === 'full' && !prefersReducedMotion()) {
       ensurePixelTexture(this)
       const burst = this.add.particles(this.mapInfo.widthPx / 2, this.mapInfo.heightPx / 2, PIXEL_TEX_KEY, {
@@ -1079,6 +1086,8 @@ export class RoomScene extends Phaser.Scene {
       burst.setDepth(900)
       burst.explode(30)
       this.time.delayedCall(1500, () => burst.destroy())
+      // V6.7 — small screen shake for impact
+      this.cameras.main.shake(200, 0.006)
     }
   }
 
@@ -1881,7 +1890,8 @@ export class RoomScene extends Phaser.Scene {
           this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
         }
         if (fade) {
-          this.cameras.main.fadeOut(200, 0, 0, 0)
+          // V6.7 — fade to warm cream rather than harsh black for softer transition
+          this.cameras.main.fadeOut(220, 248, 240, 220)
           this.cameras.main.once('camerafadeoutcomplete', doRestart)
         } else {
           doRestart()
