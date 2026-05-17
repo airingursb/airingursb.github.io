@@ -226,6 +226,7 @@ export function initUI() {
     }
   })
   ensureQuestsRefs()
+  initGameTimeClock()
 }
 
 export function showMenuAt(screenX: number, screenY: number) {
@@ -423,6 +424,56 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat') {
   if (!infoSpeciesBtn) return
   infoSpeciesBtn.dataset.species = currentSpecies
   infoSpeciesBtn.textContent = currentSpecies === 'bear' ? 'Switch to 🐱 Cat' : 'Switch to 🐻 Bear'
+}
+
+// V8.0 — Game time clock + toggle
+import { isGameTimeEnabled, setGameTimeEnabled, formatGameTime, getGameNow } from './gametime'
+
+let clockEl: HTMLElement | null = null
+let clockTimeEl: HTMLElement | null = null
+let clockModeEl: HTMLElement | null = null
+let gametimeBtn: HTMLButtonElement | null = null
+let clockTimer: number | null = null
+
+function ensureClockRefs() {
+  if (clockEl) return
+  clockEl = document.getElementById('lounge-clock')
+  clockTimeEl = document.getElementById('lounge-clock-time')
+  clockModeEl = document.getElementById('lounge-clock-mode')
+  gametimeBtn = document.getElementById('lounge-info-gametime') as HTMLButtonElement | null
+}
+
+function applyClockMode(enabled: boolean) {
+  ensureClockRefs()
+  if (clockEl) clockEl.hidden = !enabled
+  if (clockModeEl) clockModeEl.textContent = enabled ? 'game' : 'real'
+  if (gametimeBtn) {
+    gametimeBtn.dataset.on = enabled ? '1' : '0'
+    gametimeBtn.textContent = enabled ? '⏰ Game time: on' : '⏰ Game time: off'
+  }
+}
+
+function tickClock() {
+  ensureClockRefs()
+  if (!clockEl || !clockTimeEl) return
+  if (!isGameTimeEnabled()) return
+  clockTimeEl.textContent = formatGameTime(getGameNow())
+}
+
+export function initGameTimeClock() {
+  ensureClockRefs()
+  applyClockMode(isGameTimeEnabled())
+  if (clockTimer) clearInterval(clockTimer)
+  clockTimer = window.setInterval(tickClock, 5000)
+  tickClock()
+  if (gametimeBtn) {
+    gametimeBtn.addEventListener('click', () => {
+      const next = !isGameTimeEnabled()
+      setGameTimeEnabled(next)
+      applyClockMode(next)
+      tickClock()
+    })
+  }
 }
 
 // V7.4 — Quests panel

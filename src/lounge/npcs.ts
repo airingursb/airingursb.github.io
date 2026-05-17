@@ -1,5 +1,6 @@
 import type { Region, RoomId } from './config'
 import type { Direction } from './bear'
+import { getGameNow } from './gametime'
 
 export type NpcState = 'idle' | 'sit' | 'dance' | 'sleep'
 
@@ -66,7 +67,7 @@ function parseHHMM(s: string): number {
 }
 
 /** Return the first matching bracket for now's minutes-of-day, or null. */
-export function getActiveBracket(def: NpcDef, now: Date = new Date()): ScheduleBracket | null {
+export function getActiveBracket(def: NpcDef, now: Date = getGameNow()): ScheduleBracket | null {
   const minutes = now.getHours() * 60 + now.getMinutes()
   for (const b of def.schedule) {
     const from = parseHHMM(b.from)
@@ -106,7 +107,7 @@ function seasonOf(d: Date): DialogContext['season'] {
   return 'winter'
 }
 
-export function buildDialogContext(opts: { heart?: number; event?: string; isFirstMeeting?: boolean } = {}, now: Date = new Date()): DialogContext {
+export function buildDialogContext(opts: { heart?: number; event?: string; isFirstMeeting?: boolean } = {}, now: Date = getGameNow()): DialogContext {
   return {
     season: seasonOf(now),
     time: timeBucket(now),

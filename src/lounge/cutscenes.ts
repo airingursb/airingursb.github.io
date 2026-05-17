@@ -107,7 +107,8 @@ function parseHHMM(s: string): number {
 }
 
 /** Find the first cutscene whose trigger matches, that hasn't fired yet. */
-export function findCutsceneForRoom(roomId: string, now: Date = new Date(), opts: {
+import { getGameNow } from './gametime'
+export function findCutsceneForRoom(roomId: string, now: Date = getGameNow(), opts: {
   friendships?: Map<string, { level: number }>,
   activeEvent?: string | null
 } = {}): CutsceneDef | null {
