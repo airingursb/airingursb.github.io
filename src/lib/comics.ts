@@ -1,9 +1,18 @@
 // src/lib/comics.ts
 // Build-time Supabase fetch of all approved comics.
 
-export interface ComicPanels {
-  urls: { zh: string; en: string };
+export type Quadrant = 'tl' | 'tr' | 'bl' | 'br';
+export type BubblePosition = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'hidden';
+
+export interface ComicCell {
+  quadrant: Quadrant;
+  dialog: { zh: string; en: string; position: BubblePosition };
   alt: { zh: string; en: string };
+}
+
+export interface ComicPanels {
+  url: string;       // single 2×2 strip image (text-free)
+  cells: ComicCell[]; // 4 entries with dialog/alt/quadrant
 }
 
 export interface Comic {

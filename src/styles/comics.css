@@ -1,7 +1,5 @@
 /* src/styles/comics.css */
 
-/* Override global body flex-center so the page lays out top-to-bottom.
-   Mirrors the pattern used in blog.astro / moments.astro. */
 body:has(.comics-page) {
   display: block;
   padding: 0;
@@ -32,7 +30,7 @@ body:has(.comics-page) {
   letter-spacing: 0.04em;
 }
 
-/* ── Hero block: one big strip image ─────────────────────────────── */
+/* ── Hero block ──────────────────────────────────────────────── */
 .comics-hero {
   margin-bottom: 80px;
 }
@@ -60,25 +58,67 @@ body:has(.comics-page) {
   margin: 0 0 16px;
 }
 
-.comics-hero .strip-link {
-  display: block;
-  text-decoration: none;
-}
-
-.comics-hero .strip-img {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1 / 1;
-  object-fit: contain;
+/* ── 2×2 strip grid (hero + detail) ──────────────────────────────── */
+.strip-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
   background: #fff;
+  border: 1px solid #e8e8e8;
   border-radius: 4px;
-  display: block;
-  transition: transform 0.2s ease;
+  padding: 6px;
+  margin: 0 0 16px;
 }
 
-.comics-hero .strip-link:hover .strip-img {
-  transform: translateY(-2px);
+.strip-grid.detail {
+  margin: 32px 0;
 }
+
+/* ── Single panel (one quadrant of the strip image) ──────────── */
+.comic-panel {
+  position: relative;
+  background: #fff;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+  border-radius: 2px;
+}
+
+.comic-panel img {
+  /* Image is the full 2×2 strip — show 200% size, position to show one quadrant */
+  width: 200%;
+  height: 200%;
+  position: absolute;
+  display: block;
+  object-fit: cover;
+}
+
+.comic-panel.q-tl img { top: 0;    left: 0; }
+.comic-panel.q-tr img { top: 0;    right: 0; }
+.comic-panel.q-bl img { bottom: 0; left: 0; }
+.comic-panel.q-br img { bottom: 0; right: 0; }
+
+/* ── Dialog bubble (CSS overlay) ──────────────────────────────── */
+.comic-panel .bubble {
+  position: absolute;
+  max-width: 80%;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1.5px solid #2a2a2a;
+  border-radius: 14px;
+  padding: 6px 10px;
+  font-size: clamp(10px, 1.4vw, 13px);
+  color: #2a2a2a;
+  line-height: 1.35;
+  font-family: -apple-system, "Source Han Sans SC", "PingFang SC", sans-serif;
+  white-space: pre-wrap;
+  z-index: 1;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+.comic-panel .bubble.tl { top: 6%; left: 6%; }
+.comic-panel .bubble.tr { top: 6%; right: 6%; }
+.comic-panel .bubble.bl { bottom: 6%; left: 6%; }
+.comic-panel .bubble.br { bottom: 6%; right: 6%; }
+.comic-panel .bubble.hidden { display: none; }
 
 /* ── Archive grid ────────────────────────────────────────────────── */
 .comics-archive-label {
@@ -115,6 +155,7 @@ body:has(.comics-page) {
   overflow: hidden;
   margin-bottom: 10px;
   transition: transform 0.2s ease;
+  border: 1px solid #e8e8e8;
 }
 
 .comics-archive .card .thumb img {
@@ -142,18 +183,7 @@ body:has(.comics-page) {
   margin-top: 2px;
 }
 
-/* ── Detail page ─────────────────────────────────────────────────── */
-.comic-detail .strip-img-full {
-  width: 100%;
-  height: auto;
-  aspect-ratio: 1 / 1;
-  object-fit: contain;
-  background: #fff;
-  border-radius: 4px;
-  display: block;
-  margin: 32px 0;
-}
-
+/* ── Detail page extras ──────────────────────────────────────── */
 .comic-detail .source {
   font-style: italic;
   color: #555;
