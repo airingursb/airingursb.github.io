@@ -25,10 +25,11 @@
 (function () {
   var cfg = window.__ONLINE_CONFIG__ || {};
   var pageId = cfg.pageId || null;
-  var apiBase = cfg.apiBase ||
-    ((location.hostname === 'localhost' || location.hostname === '127.0.0.1')
-      ? (location.protocol + '//' + location.hostname + ':3001')
-      : 'https://chat.ursb.me');
+  // Default to prod (chat.ursb.me CORS whitelists localhost:4321-4323 so
+  // local dev "just works" without spinning up a blog-api locally).
+  // To target a local blog-api, set window.__ONLINE_CONFIG__ = { apiBase: 'http://localhost:3001' }
+  // before this script loads.
+  var apiBase = cfg.apiBase || 'https://chat.ursb.me';
 
   var HEARTBEAT_MS = 30000;
   var POLL_MS = 30000;
