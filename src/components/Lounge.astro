@@ -54,6 +54,164 @@
     var ctx = canvas.getContext('2d');
     ctx.imageSmoothingEnabled = false;
 
+    // ─── Bear constants ─────────────────────────────────────────────────
+    var BEAR_FRAME = [
+      [0,0,1,1,0,0,0,0,0,1,1,0,0],
+      [0,1,3,2,1,0,0,0,1,2,3,1,0],
+      [0,1,2,2,1,1,1,1,1,2,2,1,0],
+      [1,2,2,2,2,2,2,2,2,2,2,2,1],
+      [1,2,2,4,2,2,2,2,2,4,2,2,1],
+      [1,2,2,2,2,2,2,2,2,2,2,2,1],
+      [1,2,2,6,2,2,4,2,2,6,2,2,1],
+      [1,2,2,2,2,2,2,2,2,2,2,2,1],
+      [0,1,2,2,2,2,2,2,2,2,2,1,0],
+      [0,0,1,1,2,2,2,2,2,1,1,0,0],
+      [0,0,1,2,2,3,3,3,2,2,1,0,0],
+      [0,0,1,2,3,3,3,3,3,2,1,0,0],
+      [0,0,1,2,2,2,2,2,2,2,1,0,0],
+      [0,0,0,1,2,1,0,1,2,1,0,0,0],
+      [0,0,0,1,1,0,0,0,1,1,0,0,0]
+    ];
+    var BEAR_FRAME_WALK_A = BEAR_FRAME.map(function (row, i) {
+      if (i === 13) return [0,0,0,1,2,1,0,0,1,2,1,0,0];
+      if (i === 14) return [0,0,0,1,1,0,0,0,0,1,1,0,0];
+      return row;
+    });
+    var BEAR_FRAME_WALK_B = BEAR_FRAME.map(function (row, i) {
+      if (i === 13) return [0,0,1,2,1,0,0,1,2,1,0,0,0];
+      if (i === 14) return [0,0,1,1,0,0,0,0,1,1,0,0,0];
+      return row;
+    });
+    var BEAR_FRAME_SIT = BEAR_FRAME.map(function (row, i) {
+      if (i === 13) return [0,0,0,1,1,1,1,1,1,1,0,0,0];
+      if (i === 14) return [0,0,0,0,0,0,0,0,0,0,0,0,0];
+      return row;
+    });
+    var BEAR_FRAME_WAVE = BEAR_FRAME.map(function (row, i) {
+      if (i === 3) return [1,2,2,2,2,2,2,2,2,2,2,2,1];
+      if (i === 2) return [0,1,2,2,1,1,1,1,1,2,2,1,1];
+      if (i === 1) return [0,1,3,2,1,0,0,0,1,2,3,1,1];
+      if (i === 0) return [0,0,1,1,0,0,0,0,0,1,1,1,1];
+      return row;
+    });
+
+    var REGION_BY_CC = {
+      CN:'asia',JP:'asia',KR:'asia',TW:'asia',HK:'asia',SG:'asia',IN:'asia',
+      TH:'asia',VN:'asia',PH:'asia',ID:'asia',MY:'asia',AE:'asia',SA:'asia',
+      IL:'asia',TR:'asia',PK:'asia',BD:'asia',
+      US:'americas',CA:'americas',MX:'americas',BR:'americas',AR:'americas',
+      CL:'americas',CO:'americas',PE:'americas',
+      GB:'europe',DE:'europe',FR:'europe',NL:'europe',ES:'europe',IT:'europe',
+      SE:'europe',NO:'europe',FI:'europe',DK:'europe',PL:'europe',CH:'europe',
+      AT:'europe',BE:'europe',IE:'europe',PT:'europe',GR:'europe',CZ:'europe',
+      RU:'europe',UA:'europe',
+      AU:'oceania',NZ:'oceania',
+      ZA:'africa',EG:'africa',NG:'africa',KE:'africa',MA:'africa'
+    };
+    var REGION_PALETTE = {
+      asia:    { outline:'#6B4C30', body:'#A07850', belly:'#D4B896' },
+      americas:{ outline:'#B5601A', body:'#E89B4B', belly:'#F8D9A8' },
+      europe:  { outline:'#5A3E7E', body:'#9F7CC8', belly:'#DFD0F0' },
+      oceania: { outline:'#2E5E8C', body:'#6FA3D9', belly:'#B8D9F0' },
+      africa:  { outline:'#B58E1A', body:'#E8C24B', belly:'#F8E8A8' },
+      unknown: { outline:'#3a3a3a', body:'#888888', belly:'#bbbbbb' }
+    };
+
+    var BEAR_SCALE = 4;
+    var BEAR_W = 13 * BEAR_SCALE;
+    var BEAR_H = 15 * BEAR_SCALE;
+
+    var bearCache = {};
+    function bearKey(region, frameKey) { return region + '|' + frameKey; }
+    function bakeBear(palette, frame) {
+      var off = document.createElement('canvas');
+      off.width = BEAR_W; off.height = BEAR_H;
+      var c = off.getContext('2d');
+      c.imageSmoothingEnabled = false;
+      for (var y = 0; y < frame.length; y++) {
+        for (var x = 0; x < frame[y].length; x++) {
+          var v = frame[y][x];
+          if (v === 0) continue;
+          if (v === 1) c.fillStyle = palette.outline;
+          else if (v === 2) c.fillStyle = palette.body;
+          else if (v === 3) c.fillStyle = palette.belly;
+          else if (v === 4) c.fillStyle = '#1a1a1a';
+          else if (v === 5) c.fillStyle = '#fff';
+          else if (v === 6) c.fillStyle = '#FF9EAD';
+          c.fillRect(x * BEAR_SCALE, y * BEAR_SCALE, BEAR_SCALE, BEAR_SCALE);
+        }
+      }
+      return off;
+    }
+    function getBearBitmap(region, frameKey) {
+      var k = bearKey(region, frameKey);
+      if (bearCache[k]) return bearCache[k];
+      var pal = REGION_PALETTE[region] || REGION_PALETTE.unknown;
+      var frame =
+        frameKey === 'walkA' ? BEAR_FRAME_WALK_A :
+        frameKey === 'walkB' ? BEAR_FRAME_WALK_B :
+        frameKey === 'sit'   ? BEAR_FRAME_SIT   :
+        frameKey === 'wave'  ? BEAR_FRAME_WAVE  :
+        BEAR_FRAME;
+      bearCache[k] = bakeBear(pal, frame);
+      return bearCache[k];
+    }
+
+    // ─── Walkable area + own bear state ─────────────────────────────────
+    var FLOOR = { left: 80, right: 1520, top: 480, bottom: 820 };
+    var SPAWN = { x: 800, y: 760 };
+    var WALK_SPEED = 80;
+
+    var me = {
+      x: SPAWN.x, y: SPAWN.y,
+      targetX: SPAWN.x, targetY: SPAWN.y,
+      facing: 1,
+      state: 'idle',
+      stateUntil: 0,
+      walkPhase: 0,
+      region: 'unknown',
+      bubble: null
+    };
+    try {
+      var cc = sessionStorage.getItem('vp_country');
+      if (cc) me.region = REGION_BY_CC[cc.toUpperCase()] || 'unknown';
+    } catch (_) {}
+
+    function clampToFloor(x, y) {
+      return {
+        x: Math.max(FLOOR.left, Math.min(FLOOR.right, x)),
+        y: Math.max(FLOOR.top, Math.min(FLOOR.bottom, y))
+      };
+    }
+
+    canvas.addEventListener('click', function (e) {
+      var r = canvas.getBoundingClientRect();
+      var sx = canvas.width / r.width;
+      var sy = canvas.height / r.height;
+      var cx = (e.clientX - r.left) * sx;
+      var cy = (e.clientY - r.top)  * sy;
+      var clamped = clampToFloor(cx, cy);
+      me.targetX = clamped.x;
+      me.targetY = clamped.y;
+      me.state = 'walk';
+      me.facing = clamped.x >= me.x ? 1 : -1;
+    });
+    canvas.addEventListener('touchend', function (e) {
+      if (e.changedTouches.length === 0) return;
+      var t = e.changedTouches[0];
+      var r = canvas.getBoundingClientRect();
+      var sx = canvas.width / r.width;
+      var sy = canvas.height / r.height;
+      var cx = (t.clientX - r.left) * sx;
+      var cy = (t.clientY - r.top)  * sy;
+      var clamped = clampToFloor(cx, cy);
+      me.targetX = clamped.x;
+      me.targetY = clamped.y;
+      me.state = 'walk';
+      me.facing = clamped.x >= me.x ? 1 : -1;
+      e.preventDefault();
+    }, { passive: false });
+
     // ─── Furniture SVG (scaled-up D-max scene; viewBox 1600x900) ────────
     function svg(content) {
       return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
@@ -107,16 +265,60 @@
     loadFurniture();
 
     // ─── Render loop ────────────────────────────────────────────────────
-    function frame() {
+    var lastT = 0;
+    function frame(now) {
+      var dt = lastT ? (now - lastT) / 1000 : 0;
+      lastT = now;
+
+      var dx = me.targetX - me.x;
+      var dy = me.targetY - me.y;
+      var dist = Math.hypot(dx, dy);
+      if (dist > 2) {
+        var step = WALK_SPEED * dt;
+        if (step > dist) step = dist;
+        me.x += (dx / dist) * step;
+        me.y += (dy / dist) * step;
+        me.walkPhase += dt * 8;
+      } else {
+        me.x = me.targetX; me.y = me.targetY;
+        if (me.state === 'walk') me.state = 'idle';
+      }
+      if (me.state !== 'walk' && me.stateUntil && now > me.stateUntil) {
+        me.state = 'idle'; me.stateUntil = 0;
+      }
+
       if (furnitureBitmap) {
         ctx.drawImage(furnitureBitmap, 0, 0, 1600, 900);
       } else {
         ctx.fillStyle = '#0d1117';
         ctx.fillRect(0, 0, 1600, 900);
       }
+      drawBear(me);
+
       requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
+
+    function drawBear(b) {
+      var frameKey =
+        b.state === 'sit'   ? 'sit' :
+        b.state === 'wave'  ? 'wave' :
+        b.state === 'walk'  ? (Math.floor(b.walkPhase) % 2 === 0 ? 'walkA' : 'walkB') :
+        b.state === 'dance' ? (Math.floor(performance.now() / 200) % 2 === 0 ? 'walkA' : 'walkB') :
+        'normal';
+      var bm = getBearBitmap(b.region, frameKey);
+      var bounce = b.state === 'dance' ? Math.sin(performance.now() / 120) * 3 : 0;
+      var dx2 = Math.round(b.x - BEAR_W / 2);
+      var dy2 = Math.round(b.y - BEAR_H + bounce);
+      if (b.facing === -1) {
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(bm, -dx2 - BEAR_W, dy2);
+        ctx.restore();
+      } else {
+        ctx.drawImage(bm, dx2, dy2);
+      }
+    }
 
     // ─── Toast helper (used in later phases) ────────────────────────────
     var toastEl = document.getElementById('loungeToast');
