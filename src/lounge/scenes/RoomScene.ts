@@ -21,8 +21,9 @@ import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '..
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD } from '../shells'
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
-import { showSleepOverlay } from '../ui'
+import { showSleepOverlay, refreshMailboxBadge } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
+import { seedMailForToday, unreadCount as mailUnread } from '../mailbox'
 
 const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
@@ -770,6 +771,17 @@ export class RoomScene extends Phaser.Scene {
     if (Array.isArray(m.friendships)) {
       for (const f of m.friendships) this.friendships.set(f.friend_id, f)
     }
+    // V8.6 — seed NPC mail (welcome, festival invites, completed quests, friendship milestones)
+    try {
+      const fmap = new Map<string, { level: number; display_name?: string | null }>()
+      for (const [k, v] of this.friendships) fmap.set(k, { level: v.level, display_name: v.display_name })
+      const isFirstEverVisit = !localStorage.getItem('lounge_visitor_id_seen_once')
+      try { localStorage.setItem('lounge_visitor_id_seen_once', '1') } catch {}
+      seedMailForToday({ isFirstEverVisit, friendships: fmap })
+      refreshMailboxBadge()
+      const n = mailUnread()
+      if (n > 0) this.time.delayedCall(1800, () => showToast(`📬 ${n} new in mailbox`, 2400))
+    } catch (e) { console.warn('mail seed failed', e) }
     // Refresh hearts for currently-rendered peers
     this.peers.forEach((entry, sessionId) => {
       const vid = this.peerVisitorIds.get(sessionId)

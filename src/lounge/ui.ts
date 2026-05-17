@@ -230,6 +230,7 @@ export function initUI() {
   ensureMemoriesRefs()
   ensureShellsRefs()
   ensureSleepRefs()
+  ensureMailboxRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -429,6 +430,85 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat') {
   if (!infoSpeciesBtn) return
   infoSpeciesBtn.dataset.species = currentSpecies
   infoSpeciesBtn.textContent = currentSpecies === 'bear' ? 'Switch to 🐱 Cat' : 'Switch to 🐻 Bear'
+}
+
+// V8.6 — Mailbox panel + badge
+import { listMail, unreadCount, markRead, deleteMail } from './mailbox'
+
+let mailboxPanelEl: HTMLElement | null = null
+let mailboxListEl: HTMLElement | null = null
+let mailboxEmptyEl: HTMLElement | null = null
+let mailboxCloseBtn: HTMLButtonElement | null = null
+let mailboxOpenBtn: HTMLButtonElement | null = null
+let mailboxBadgeEl: HTMLElement | null = null
+
+function ensureMailboxRefs() {
+  if (mailboxPanelEl) return
+  mailboxPanelEl = document.getElementById('lounge-mailbox-panel')
+  mailboxListEl  = document.getElementById('lounge-mailbox-list')
+  mailboxEmptyEl = document.getElementById('lounge-mailbox-empty')
+  mailboxCloseBtn = document.getElementById('lounge-mailbox-close') as HTMLButtonElement | null
+  mailboxOpenBtn  = document.getElementById('lounge-info-mailbox') as HTMLButtonElement | null
+  mailboxBadgeEl  = document.getElementById('lounge-mailbox-badge')
+  if (mailboxCloseBtn) mailboxCloseBtn.addEventListener('click', () => hideMailboxPanel())
+  if (mailboxOpenBtn) mailboxOpenBtn.addEventListener('click', () => { hideInfoPanel(); showMailboxPanel() })
+  if (mailboxPanelEl) mailboxPanelEl.addEventListener('click', (e) => {
+    if (e.target === mailboxPanelEl) hideMailboxPanel()
+  })
+  paintMailboxBadge()
+}
+
+export function refreshMailboxBadge() { paintMailboxBadge() }
+
+function paintMailboxBadge() {
+  ensureMailboxRefs()
+  if (!mailboxBadgeEl) return
+  const n = unreadCount()
+  if (n > 0) {
+    mailboxBadgeEl.textContent = String(n)
+    mailboxBadgeEl.hidden = false
+  } else {
+    mailboxBadgeEl.hidden = true
+  }
+}
+
+export function showMailboxPanel() {
+  ensureMailboxRefs()
+  if (!mailboxPanelEl) return
+  renderMailbox()
+  mailboxPanelEl.hidden = false
+  playSfx('menu_open')
+}
+
+export function hideMailboxPanel() {
+  if (!mailboxPanelEl) return
+  mailboxPanelEl.hidden = true
+  paintMailboxBadge()
+  playSfx('menu_close')
+}
+
+function renderMailbox() {
+  if (!mailboxListEl || !mailboxEmptyEl) return
+  const all = listMail()
+  mailboxListEl.innerHTML = ''
+  mailboxEmptyEl.hidden = all.length > 0
+  for (const m of all) {
+    const card = document.createElement('div')
+    card.className = 'mb-letter' + (m.read ? '' : ' unread')
+    const from = document.createElement('div'); from.className = 'mb-from'
+    from.textContent = `from ${m.from_npc_name}`
+    const subj = document.createElement('div'); subj.className = 'mb-subj'; subj.textContent = m.subject
+    const body = document.createElement('div'); body.className = 'mb-body'; body.textContent = m.body
+    const time = document.createElement('div'); time.className = 'mb-time'
+    time.textContent = new Date(m.sent_at).toLocaleString()
+    const del = document.createElement('button'); del.className = 'mb-delete'; del.type = 'button'; del.textContent = '×'
+    del.addEventListener('click', (e) => { e.stopPropagation(); deleteMail(m.id); renderMailbox(); paintMailboxBadge() })
+    card.appendChild(from); card.appendChild(subj); card.appendChild(body); card.appendChild(time); card.appendChild(del)
+    card.addEventListener('click', () => {
+      if (!m.read) { markRead(m.id); card.classList.remove('unread'); paintMailboxBadge() }
+    })
+    mailboxListEl.appendChild(card)
+  }
 }
 
 // V8.5 — Sleep overlay
