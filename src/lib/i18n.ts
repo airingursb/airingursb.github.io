@@ -12,7 +12,7 @@ export const siteStrings = {
       archive: 'Archive',
       moments: 'Moment',
       photos: 'Photos',
-      comics: '四格',
+      comics: 'Comics',
       notes: 'Notes',
       friends: 'Friends',
       search: 'Search',
@@ -66,7 +66,7 @@ export const siteStrings = {
     },
     comics: {
       title: '四格',
-      desc: 'by 小航 & Moflow — 一周一遭，记录趋势与情绪。',
+      desc: 'by Airing & Moflow — 一周一遭，记录趋势与情绪。',
       archiveLabel: '— 往期 —',
       issuePrefix: 'No.',
       source: '源文本',
