@@ -1,0 +1,36 @@
+---
+// src/pages/en/comics.astro
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ComicMasthead from '../../components/comics/ComicMasthead.astro';
+import ComicCover from '../../components/comics/ComicCover.astro';
+import ComicArchiveCard from '../../components/comics/ComicArchiveCard.astro';
+import { fetchComics } from '../../lib/comics';
+import { siteStrings } from '../../lib/i18n';
+import '../../styles/comics.css';
+
+const s = siteStrings.en.comics;
+const comics = await fetchComics();
+const latest = comics[0];
+const archive = comics.slice(1);
+---
+
+<BaseLayout title={`${s.title} · Airing`} description={s.desc} lang="en">
+  <ComicMasthead lang="en" />
+  <main class="comics-page">
+    <h1 class="comics-title">{s.title}</h1>
+    <p class="comics-byline">{s.desc}</p>
+
+    {latest ? <ComicCover comic={latest} lang="en" /> : (
+      <p style="color:#888;">{s.emptyState}</p>
+    )}
+
+    {archive.length > 0 && (
+      <>
+        <h3 class="comics-archive-label">{s.archiveLabel}</h3>
+        <div class="comics-archive">
+          {archive.map((c) => <ComicArchiveCard comic={c} lang="en" />)}
+        </div>
+      </>
+    )}
+  </main>
+</BaseLayout>
