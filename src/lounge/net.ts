@@ -27,15 +27,29 @@ export type WelcomeMsg = {
   region: string
   inventory?: string[]
   friendships?: FriendshipEntry[]
+  gifts_received?: GiftEntry[]
+  unread_dm_count?: number
 }
 export type CollectedMsg = { v: number; t: 'collected'; item_id: string; newly: boolean }
 export type FriendUpdateMsg = { v: number; t: 'friend_update'; friend_id: string; score: number; level: number }
+export type GiftEntry = { id: number; from_visitor: string; from_name: string | null; item_id: string; sent_at: string }
+export type GiftSentOkMsg = { v: number; t: 'gift_sent_ok'; to: string; item_id: string }
+export type GiftFailedMsg = { v: number; t: 'gift_failed'; reason: string }
+export type GiftReceivedMsg = { v: number; t: 'gift_received'; from: string; from_name: string | null; item_id: string; sent_at: string }
+export type DmEntry = { id: number; from_visitor: string; to_visitor: string; message: string; sent_at: string; read_at: string | null }
+export type DmSentOkMsg = { v: number; t: 'dm_sent_ok'; id: number; to: string; text: string; sent_at: string }
+export type DmFailedMsg = { v: number; t: 'dm_failed'; reason: string }
+export type DmReceivedMsg = { v: number; t: 'dm_received'; id: number; from: string; from_name: string | null; text: string; sent_at: string }
+export type DmThreadMsg = { v: number; t: 'dm_thread'; other: string; messages: DmEntry[] }
+export type DmReadAckMsg = { v: number; t: 'dm_read_ack'; from: string }
 export type NameChangedMsg = { v: number; t: 'name_changed'; id: string; display_name: string }
 export type ReplacedMsg = { v: number; t: 'replaced' }
 export type ErrorMsg = { v: number; t: 'error'; reason: string; detail?: string }
 
 export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | ActMsg | FullMsg
   | WelcomeMsg | NameChangedMsg | ReplacedMsg | ErrorMsg | CollectedMsg | FriendUpdateMsg
+  | GiftSentOkMsg | GiftFailedMsg | GiftReceivedMsg
+  | DmSentOkMsg | DmFailedMsg | DmReceivedMsg | DmThreadMsg | DmReadAckMsg
 
 export type NetCallbacks = {
   onSnap: (m: SnapMsg) => void
@@ -51,6 +65,14 @@ export type NetCallbacks = {
   onError?: (m: ErrorMsg) => void
   onCollected?: (m: CollectedMsg) => void
   onFriendUpdate?: (m: FriendUpdateMsg) => void
+  onGiftSentOk?: (m: GiftSentOkMsg) => void
+  onGiftFailed?: (m: GiftFailedMsg) => void
+  onGiftReceived?: (m: GiftReceivedMsg) => void
+  onDmSentOk?: (m: DmSentOkMsg) => void
+  onDmFailed?: (m: DmFailedMsg) => void
+  onDmReceived?: (m: DmReceivedMsg) => void
+  onDmThread?: (m: DmThreadMsg) => void
+  onDmReadAck?: (m: DmReadAckMsg) => void
 }
 
 let ws: WebSocket | null = null
@@ -109,6 +131,14 @@ function openSocket() {
     else if (msg.t === 'error') cb?.onError?.(msg)
     else if (msg.t === 'collected') cb?.onCollected?.(msg)
     else if (msg.t === 'friend_update') cb?.onFriendUpdate?.(msg)
+    else if (msg.t === 'gift_sent_ok') cb?.onGiftSentOk?.(msg)
+    else if (msg.t === 'gift_failed') cb?.onGiftFailed?.(msg)
+    else if (msg.t === 'gift_received') cb?.onGiftReceived?.(msg)
+    else if (msg.t === 'dm_sent_ok') cb?.onDmSentOk?.(msg)
+    else if (msg.t === 'dm_failed') cb?.onDmFailed?.(msg)
+    else if (msg.t === 'dm_received') cb?.onDmReceived?.(msg)
+    else if (msg.t === 'dm_thread') cb?.onDmThread?.(msg)
+    else if (msg.t === 'dm_read_ack') cb?.onDmReadAck?.(msg)
   })
 
   ws.addEventListener('close', (ev) => {
@@ -174,4 +204,24 @@ export function sendName(name: string) {
 export function sendCollect(item_id: string) {
   if (!ws || ws.readyState !== 1) return
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'collect', item_id }))
+}
+
+export function sendGift(to: string, item_id: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'gift', to, item_id }))
+}
+
+export function sendDm(to: string, text: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'dm', to, text }))
+}
+
+export function requestDmThread(other: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'dm_thread', other }))
+}
+
+export function sendDmRead(from: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'dm_read', from }))
 }

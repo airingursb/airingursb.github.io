@@ -959,3 +959,38 @@
 - [ ] No public friendship leaderboard
 - [ ] friend_update only sent to the two parties
 - [ ] welcome.friendships only contains your own list (server scoped by visitor_id)
+
+## Lounge V4.1 (Gifts + DMs)
+
+### Gifts
+- [ ] Click peer bear → peer menu shows: Wave / Gift pebble / Send DM
+- [ ] Click "Gift pebble" — modal opens listing your collected pebbles
+- [ ] Pick a pebble → toast "🎁 Sent ... to <name>"
+- [ ] Recipient (if online) gets toast "🎁 <you> gifted you ..."
+- [ ] Recipient's inventory shows item with "🎁 (sender)" annotation
+- [ ] Already-gifted item shown greyed-out in modal
+- [ ] Gift to non-friend → "🎁 You need to be friends first"
+
+### DMs
+- [ ] Click peer bear → "Send DM" opens messages panel + selects that friend's thread
+- [ ] Type 140 chars max, send → message appears in thread (out class, green-tinted)
+- [ ] Recipient (online) gets toast preview + badge increments
+- [ ] Recipient (offline) sees badge "N" on next login
+- [ ] Open thread → marks as read on server, badge decrements
+- [ ] DM to non-friend → "✉ Friends only"
+- [ ] DM with blocklist word → "✉ Message blocked"
+- [ ] Empty/oversized DM → "✉ 1-140 chars"
+
+### Welcome hydration
+- [ ] `welcome.gifts_received: [{from, from_name, item_id, sent_at}]` populates correctly
+- [ ] `welcome.unread_dm_count: N` populates badge
+
+### Rate limiting
+- [ ] >3 gifts/min → "🎁 Slow down"
+- [ ] >5 DMs/min → "✉ Slow down"
+
+### Server
+- [ ] WS `gift {to, item_id}` → `gift_sent_ok` or `gift_failed {reason}`
+- [ ] WS `dm {to, text}` → `dm_sent_ok` or `dm_failed {reason}`
+- [ ] WS `dm_thread {other}` → `dm_thread {other, messages}`
+- [ ] WS `dm_read {from}` → `dm_read_ack`

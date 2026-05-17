@@ -1,11 +1,11 @@
 import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
-import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry } from '../net'
+import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendGift, sendDm, requestDmThread, sendDmRead, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry, type GiftEntry, type GiftReceivedMsg, type GiftSentOkMsg, type GiftFailedMsg, type DmReceivedMsg, type DmSentOkMsg, type DmFailedMsg, type DmThreadMsg, type DmEntry } from '../net'
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
 import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, type Region, type RoomId } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
-import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel } from '../ui'
+import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
@@ -84,6 +84,11 @@ export class RoomScene extends Phaser.Scene {
   private peerVisitorIds = new Map<string, string>()      // session id → visitor_id
   private friendships = new Map<string, FriendshipEntry>() // friend_visitor_id → entry
   private lastClickedPeerId: string | null = null         // for directed wave
+  // V4.1 — gifts + DMs
+  private giftsReceived: GiftEntry[] = []
+  private giftsSentFromMe = new Set<string>()             // item_ids I've gifted to anyone (for "already gifted" UX hint)
+  private dmThreads = new Map<string, DmEntry[]>()        // friend visitor_id → cached recent messages
+  private unreadDmCount = 0
 
   constructor() {
     super({ key: 'Room' })
@@ -239,16 +244,7 @@ export class RoomScene extends Phaser.Scene {
       for (const [peerSessionId, p2] of this.peers) {
         const b = p2.bear
         if (Math.abs(wx - b.x) < 14 && wy > b.y - 50 && wy < b.y) {
-          const destX = Math.max(20, Math.min(map.widthInPixels - 20, b.x - 30))
-          const destY = Math.max(20, Math.min(map.heightInPixels - 12, b.y))
-          this.myBear?.walkTo(destX, destY)
-          const ddx = destX - this.myBear!.x
-          const ddy = destY - this.myBear!.y
-          this.myDirection = Math.abs(ddx) > Math.abs(ddy)
-            ? (ddx > 0 ? 'right' : 'left')
-            : (ddy > 0 ? 'down' : 'up')
-          this.autoWaveOnArrive = true
-          this.lastClickedPeerId = peerSessionId
+          this.openPeerMenu(peerSessionId, p2.bear)
           return
         }
       }
@@ -373,7 +369,14 @@ export class RoomScene extends Phaser.Scene {
         showReplacedOverlay()
       },
       onCollected: (m: CollectedMsg) => this.applyCollected(m),
-      onFriendUpdate: (m: FriendUpdateMsg) => this.applyFriendUpdate(m)
+      onFriendUpdate: (m: FriendUpdateMsg) => this.applyFriendUpdate(m),
+      onGiftSentOk: (m: GiftSentOkMsg) => this.applyGiftSentOk(m),
+      onGiftFailed: (m: GiftFailedMsg) => this.applyGiftFailed(m),
+      onGiftReceived: (m: GiftReceivedMsg) => this.applyGiftReceived(m),
+      onDmSentOk: (m: DmSentOkMsg) => this.applyDmSentOk(m),
+      onDmFailed: (m: DmFailedMsg) => this.applyDmFailed(m),
+      onDmReceived: (m: DmReceivedMsg) => this.applyDmReceived(m),
+      onDmThread: (m: DmThreadMsg) => this.applyDmThread(m)
     }, this.currentRoomId)
 
     setInfoPanelDataProvider(
@@ -394,10 +397,15 @@ export class RoomScene extends Phaser.Scene {
 
     setInventoryDataProvider(() => {
       const all = getAllPebbles()
+      const giftByItemId = new Map<string, string>()
+      for (const g of this.giftsReceived) {
+        giftByItemId.set(g.item_id, g.from_name ?? '(anonymous)')
+      }
       const items = all.map(p => ({
         id: p.id,
         name: p.name,
-        collected: this.inventory.has(p.id)
+        collected: this.inventory.has(p.id),
+        giftedByName: giftByItemId.get(p.id) ?? null
       }))
       return {
         items,
@@ -405,6 +413,58 @@ export class RoomScene extends Phaser.Scene {
         collected: items.filter(i => i.collected).length
       }
     })
+
+    setMessagesProvider(
+      () => {
+        const threads: Array<{ friend_id: string; friend_name: string; unread: number; preview: string }> = []
+        // Use friendships as the basis: only friends can DM
+        for (const f of this.friendships.values()) {
+          const msgs = this.dmThreads.get(f.friend_id) ?? []
+          const unread = msgs.filter(m => m.to_visitor === getIdentity().visitor_id && !m.read_at).length
+          const last = msgs[0]
+          const preview = last ? (last.from_visitor === getIdentity().visitor_id ? `you: ${last.message}` : last.message) : '—'
+          threads.push({
+            friend_id: f.friend_id,
+            friend_name: f.display_name ?? '(anonymous)',
+            unread,
+            preview
+          })
+        }
+        // Sort: unread first, then by latest message
+        threads.sort((a, b) => (b.unread - a.unread) || 0)
+        return { threads, unreadTotal: this.unreadDmCount }
+      },
+      (friend_id) => {
+        return (this.dmThreads.get(friend_id) ?? []).map(m => ({
+          id: m.id,
+          mine: m.from_visitor === getIdentity().visitor_id,
+          text: m.message,
+          sent_at: m.sent_at,
+          read: !!m.read_at
+        }))
+      },
+      (friend_id) => {
+        requestDmThread(friend_id)
+        // Mark as read locally + server
+        const msgs = this.dmThreads.get(friend_id) ?? []
+        const myId = getIdentity().visitor_id
+        let cleared = 0
+        for (const m of msgs) {
+          if (m.to_visitor === myId && !m.read_at) {
+            m.read_at = new Date().toISOString()
+            cleared++
+          }
+        }
+        if (cleared > 0) {
+          this.unreadDmCount = Math.max(0, this.unreadDmCount - cleared)
+          refreshMessagesBadge(this.unreadDmCount)
+          sendDmRead(friend_id)
+        }
+      },
+      (friend_id, text) => {
+        sendDm(friend_id, text)
+      }
+    )
 
     if (!prefersReducedMotion()) {
       this.cameras.main.fadeIn(200, 0, 0, 0)
@@ -469,13 +529,19 @@ export class RoomScene extends Phaser.Scene {
     if (Array.isArray(m.friendships)) {
       for (const f of m.friendships) this.friendships.set(f.friend_id, f)
     }
-    // Refresh hearts for currently-rendered peers (race-safe in case snap landed first)
+    // Refresh hearts for currently-rendered peers
     this.peers.forEach((entry, sessionId) => {
       const vid = this.peerVisitorIds.get(sessionId)
       if (!vid) return
       const fr = this.friendships.get(vid)
       entry.bear.setFriendshipLevel(fr?.level ?? 0)
     })
+
+    // V4.1 — gifts received + unread DM count
+    this.giftsReceived = Array.isArray(m.gifts_received) ? m.gifts_received : []
+    this.unreadDmCount = m.unread_dm_count ?? 0
+    refreshMessagesBadge(this.unreadDmCount)
+    refreshInventoryPanel()
 
     // First-visit modal
     if (m.display_name === null && isFirstVisit()) {
@@ -577,6 +643,148 @@ export class RoomScene extends Phaser.Scene {
   private applyCollected(m: CollectedMsg) {
     this.inventory.add(m.item_id)
     refreshInventoryPanel()
+  }
+
+  private openPeerMenu(peerSessionId: string, peerBear: Bear) {
+    const screen = this.bearScreenPos(peerBear)
+    showPeerMenu(screen.x, screen.y, (action) => {
+      if (action === 'wave') {
+        this.walkToAndWave(peerSessionId, peerBear)
+      } else if (action === 'gift') {
+        this.openGiftFlow(peerSessionId)
+      } else if (action === 'dm') {
+        this.openDmFlow(peerSessionId)
+      }
+    })
+  }
+
+  private walkToAndWave(peerSessionId: string, peerBear: Bear) {
+    if (!this.myBear) return
+    const map = { widthInPixels: this.mapInfo.widthPx, heightInPixels: this.mapInfo.heightPx }
+    const destX = Math.max(20, Math.min(map.widthInPixels - 20, peerBear.x - 30))
+    const destY = Math.max(20, Math.min(map.heightInPixels - 12, peerBear.y))
+    this.myBear.walkTo(destX, destY)
+    const ddx = destX - this.myBear.x
+    const ddy = destY - this.myBear.y
+    this.myDirection = Math.abs(ddx) > Math.abs(ddy)
+      ? (ddx > 0 ? 'right' : 'left')
+      : (ddy > 0 ? 'down' : 'up')
+    this.autoWaveOnArrive = true
+    this.lastClickedPeerId = peerSessionId
+  }
+
+  private openGiftFlow(peerSessionId: string) {
+    const friendVisitorId = this.peerVisitorIds.get(peerSessionId)
+    if (!friendVisitorId) { showToast('Need friendship first — wave at them.'); return }
+    const friend = this.friendships.get(friendVisitorId)
+    if (!friend || friend.score === 0) {
+      showToast('Wave at them first to become friends.'); return
+    }
+    const allPebbles = getAllPebbles()
+    const entries = allPebbles
+      .filter(p => this.inventory.has(p.id))
+      .map(p => ({
+        item_id: p.id,
+        name: p.name,
+        alreadySent: this.giftsSentFromMe.has(p.id + '|' + friendVisitorId)
+      }))
+    const friendName = friend.display_name ?? '(anonymous)'
+    showGiftModal(friendName, entries, (item_id) => {
+      sendGift(friendVisitorId, item_id)
+      this.giftsSentFromMe.add(item_id + '|' + friendVisitorId)
+    })
+  }
+
+  private openDmFlow(peerSessionId: string) {
+    const friendVisitorId = this.peerVisitorIds.get(peerSessionId)
+    if (!friendVisitorId) { showToast('Need friendship first — wave at them.'); return }
+    const friend = this.friendships.get(friendVisitorId)
+    if (!friend || friend.score === 0) {
+      showToast('Wave at them first to become friends.'); return
+    }
+    // Open messages panel + jump to thread for this friend
+    // To minimise refactor, we'll just open the messages panel and request that thread
+    const btn = document.getElementById('lounge-messages-btn') as HTMLButtonElement | null
+    if (btn) btn.click()
+    setTimeout(() => {
+      const liToFind = Array.from(document.querySelectorAll<HTMLElement>('#lounge-messages-list li'))
+        .find(li => li.querySelector('.name')?.textContent === (friend.display_name ?? '(anonymous)'))
+      ;(liToFind as HTMLElement | undefined)?.click()
+    }, 50)
+  }
+
+  private applyGiftSentOk(m: GiftSentOkMsg) {
+    const itemName = getAllPebbles().find(p => p.id === m.item_id)?.name ?? m.item_id
+    const friend = this.friendships.get(m.to)
+    showToast(`🎁 Sent "${itemName}" to ${friend?.display_name ?? '(anonymous)'}`)
+  }
+
+  private applyGiftFailed(m: GiftFailedMsg) {
+    const map: Record<string, string> = {
+      rate_limited: '🎁 Slow down — too many gifts',
+      not_friend: '🎁 You need to be friends first',
+      duplicate: '🎁 Already sent this one',
+      invalid: '🎁 Gift rejected (invalid)',
+      db_unavailable: '🎁 Server unavailable',
+      db_error: '🎁 Server error',
+      exception: '🎁 Server error'
+    }
+    showToast(map[m.reason] ?? `🎁 Gift failed (${m.reason})`)
+  }
+
+  private applyGiftReceived(m: GiftReceivedMsg) {
+    this.giftsReceived.unshift({
+      id: 0, from_visitor: m.from, from_name: m.from_name, item_id: m.item_id, sent_at: m.sent_at
+    })
+    this.inventory.add(m.item_id)
+    refreshInventoryPanel()
+    const itemName = getAllPebbles().find(p => p.id === m.item_id)?.name ?? m.item_id
+    showToast(`🎁 ${m.from_name ?? '(anonymous)'} gifted you "${itemName}"`)
+  }
+
+  private applyDmSentOk(m: DmSentOkMsg) {
+    const thread = this.dmThreads.get(m.to) ?? []
+    thread.unshift({
+      id: m.id, from_visitor: getIdentity().visitor_id, to_visitor: m.to,
+      message: m.text, sent_at: m.sent_at, read_at: null
+    })
+    this.dmThreads.set(m.to, thread)
+    if (getCurrentThreadFriendId() === m.to) renderThreadView()
+  }
+
+  private applyDmFailed(m: DmFailedMsg) {
+    const map: Record<string, string> = {
+      rate_limited: '✉ Slow down — too many messages',
+      not_friend: '✉ Friends only',
+      length: '✉ 1-140 chars',
+      blocked: '✉ Message blocked',
+      invalid: '✉ Invalid message'
+    }
+    showToast(map[m.reason] ?? `✉ DM failed (${m.reason})`)
+  }
+
+  private applyDmReceived(m: DmReceivedMsg) {
+    const thread = this.dmThreads.get(m.from) ?? []
+    thread.unshift({
+      id: m.id, from_visitor: m.from, to_visitor: getIdentity().visitor_id,
+      message: m.text, sent_at: m.sent_at, read_at: null
+    })
+    this.dmThreads.set(m.from, thread)
+    // Mark as read if user is currently viewing this thread
+    if (getCurrentThreadFriendId() === m.from) {
+      thread[0].read_at = new Date().toISOString()
+      sendDmRead(m.from)
+      renderThreadView()
+    } else {
+      this.unreadDmCount += 1
+      refreshMessagesBadge(this.unreadDmCount)
+      showToast(`✉ ${m.from_name ?? '(anonymous)'}: ${m.text.slice(0, 40)}${m.text.length > 40 ? '…' : ''}`)
+    }
+  }
+
+  private applyDmThread(m: DmThreadMsg) {
+    this.dmThreads.set(m.other, m.messages)
+    if (getCurrentThreadFriendId() === m.other) renderThreadView()
   }
 
   private applyFriendUpdate(m: FriendUpdateMsg) {

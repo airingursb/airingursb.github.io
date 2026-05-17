@@ -176,6 +176,16 @@ export function initUI() {
         hideInventoryPanel()
       }
     }
+    if (messagesPanelEl && !messagesPanelEl.hidden) {
+      if (!target.closest('#lounge-messages-panel') && !target.closest('#lounge-messages-btn')) {
+        hideMessagesPanel()
+      }
+    }
+    if (peerMenuEl && !peerMenuEl.hidden) {
+      if (!target.closest('#lounge-peer-menu') && !target.closest('canvas')) {
+        hidePeerMenu()
+      }
+    }
     if (!menuEl || menuEl.hidden) return
     if (target.closest('#lounge-emote-menu')) return
     if (target.closest('canvas')) return
@@ -189,6 +199,9 @@ export function initUI() {
       hideInfoPanel()
       hideBoothPicker()
       hideInventoryPanel()
+      hideMessagesPanel()
+      hideGiftModal()
+      hidePeerMenu()
     }
   })
 }
@@ -476,9 +489,9 @@ let invPanelEl: HTMLElement | null = null
 let invCountEl: HTMLElement | null = null
 let invTotalEl: HTMLElement | null = null
 let invListEl: HTMLElement | null = null
-let invDataProvider: (() => { items: Array<{ id: string; name: string; collected: boolean }>; total: number; collected: number }) | null = null
+let invDataProvider: (() => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null }>; total: number; collected: number }) | null = null
 
-export function setInventoryDataProvider(provider: () => { items: Array<{ id: string; name: string; collected: boolean }>; total: number; collected: number }) {
+export function setInventoryDataProvider(provider: () => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null }>; total: number; collected: number }) {
   invDataProvider = provider
   if (!invBtnEl) {
     invBtnEl = document.getElementById('lounge-inventory-btn')
@@ -506,7 +519,14 @@ function renderInventory() {
   for (const it of data.items) {
     const li = document.createElement('li')
     li.className = it.collected ? 'is-collected' : 'is-locked'
-    li.textContent = it.collected ? it.name : '???'
+    if (it.collected) {
+      const label = it.giftedByName
+        ? `${it.name} · 🎁 ${it.giftedByName}`
+        : it.name
+      li.textContent = label
+    } else {
+      li.textContent = '???'
+    }
     invListEl.appendChild(li)
   }
 }
@@ -519,4 +539,258 @@ export function hideInventoryPanel() {
   if (!invPanelEl || invPanelEl.hidden) return
   invPanelEl.hidden = true
   playSfx('menu_close')
+}
+
+// V4.1 — Peer-click menu, gift modal, messages panel, toast
+
+let peerMenuEl: HTMLElement | null = null
+let giftModalEl: HTMLElement | null = null
+let giftToNameEl: HTMLElement | null = null
+let giftListEl: HTMLElement | null = null
+let giftEmptyEl: HTMLElement | null = null
+let giftCancelBtn: HTMLButtonElement | null = null
+let toastEl: HTMLElement | null = null
+let messagesBtnEl: HTMLElement | null = null
+let messagesBadgeEl: HTMLElement | null = null
+let messagesPanelEl: HTMLElement | null = null
+let messagesListEl: HTMLElement | null = null
+let messagesEmptyEl: HTMLElement | null = null
+let threadViewEl: HTMLElement | null = null
+let threadNameEl: HTMLElement | null = null
+let threadMessagesEl: HTMLElement | null = null
+let threadFormEl: HTMLFormElement | null = null
+let threadInputEl: HTMLInputElement | null = null
+let threadBackBtn: HTMLButtonElement | null = null
+
+type PeerMenuAction = 'wave' | 'gift' | 'dm'
+let onPeerMenuAction: ((action: PeerMenuAction) => void) | null = null
+
+export function showPeerMenu(screenX: number, screenY: number, onAction: (action: PeerMenuAction) => void) {
+  if (!peerMenuEl) peerMenuEl = document.getElementById('lounge-peer-menu')
+  if (!peerMenuEl) return
+  onPeerMenuAction = onAction
+  peerMenuEl.style.left = `${screenX}px`
+  peerMenuEl.style.top = `${screenY - 8}px`
+  peerMenuEl.hidden = false
+  if (!peerMenuEl.dataset.bound) {
+    peerMenuEl.dataset.bound = '1'
+    peerMenuEl.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
+      if (!btn) return
+      const action = btn.getAttribute('data-action') as PeerMenuAction
+      hidePeerMenu()
+      onPeerMenuAction?.(action)
+    })
+    peerMenuEl.addEventListener('click', (e) => e.stopPropagation())
+  }
+}
+
+export function hidePeerMenu() {
+  if (!peerMenuEl) peerMenuEl = document.getElementById('lounge-peer-menu')
+  if (!peerMenuEl || peerMenuEl.hidden) return
+  peerMenuEl.hidden = true
+}
+
+type GiftListEntry = { item_id: string; name: string; alreadySent: boolean }
+let onGiftPick: ((item_id: string) => void) | null = null
+
+export function showGiftModal(toName: string, entries: GiftListEntry[], onPick: (item_id: string) => void) {
+  if (!giftModalEl) {
+    giftModalEl = document.getElementById('lounge-gift-modal')
+    giftToNameEl = document.getElementById('lounge-gift-to-name')
+    giftListEl = document.getElementById('lounge-gift-list')
+    giftEmptyEl = document.getElementById('lounge-gift-empty')
+    giftCancelBtn = document.getElementById('lounge-gift-cancel') as HTMLButtonElement | null
+    if (giftCancelBtn) giftCancelBtn.addEventListener('click', () => hideGiftModal())
+  }
+  if (!giftModalEl || !giftToNameEl || !giftListEl || !giftEmptyEl) return
+  onGiftPick = onPick
+  giftToNameEl.textContent = toName
+  giftListEl.innerHTML = ''
+  if (entries.length === 0) {
+    giftEmptyEl.hidden = false
+  } else {
+    giftEmptyEl.hidden = true
+    for (const e of entries) {
+      const li = document.createElement('li')
+      if (e.alreadySent) li.className = 'is-already-sent'
+      const btn = document.createElement('button')
+      btn.type = 'button'
+      btn.textContent = e.alreadySent ? `${e.name} (already gifted)` : e.name
+      btn.disabled = e.alreadySent
+      btn.addEventListener('click', () => {
+        if (e.alreadySent) return
+        hideGiftModal()
+        onGiftPick?.(e.item_id)
+      })
+      li.appendChild(btn)
+      giftListEl.appendChild(li)
+    }
+  }
+  giftModalEl.hidden = false
+}
+
+export function hideGiftModal() {
+  if (!giftModalEl) giftModalEl = document.getElementById('lounge-gift-modal')
+  if (!giftModalEl) return
+  giftModalEl.hidden = true
+  onGiftPick = null
+}
+
+let toastTimer: number | null = null
+export function showToast(text: string, durationMs = 2400) {
+  if (!toastEl) toastEl = document.getElementById('lounge-toast')
+  if (!toastEl) return
+  toastEl.textContent = text
+  toastEl.classList.remove('is-fading')
+  toastEl.hidden = false
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => {
+    toastEl?.classList.add('is-fading')
+    setTimeout(() => { if (toastEl) toastEl.hidden = true }, 320)
+  }, durationMs)
+}
+
+// Messages
+
+type MessagesDataProvider = () => {
+  threads: Array<{ friend_id: string; friend_name: string; unread: number; preview: string }>
+  unreadTotal: number
+}
+type ThreadDataProvider = (friend_id: string) => Array<{ id: number; mine: boolean; text: string; sent_at: string; read: boolean }>
+
+let messagesProvider: MessagesDataProvider | null = null
+let threadProvider: ThreadDataProvider | null = null
+let onRequestThread: ((friend_id: string) => void) | null = null
+let onSendThreadMessage: ((friend_id: string, text: string) => void) | null = null
+let currentThreadFriendId: string | null = null
+
+export function setMessagesProvider(
+  provider: MessagesDataProvider,
+  threadGetter: ThreadDataProvider,
+  onOpenThread: (friend_id: string) => void,
+  onSend: (friend_id: string, text: string) => void
+) {
+  messagesProvider = provider
+  threadProvider = threadGetter
+  onRequestThread = onOpenThread
+  onSendThreadMessage = onSend
+
+  if (!messagesBtnEl) {
+    messagesBtnEl = document.getElementById('lounge-messages-btn')
+    messagesBadgeEl = document.getElementById('lounge-messages-badge')
+    messagesPanelEl = document.getElementById('lounge-messages-panel')
+    messagesListEl = document.getElementById('lounge-messages-list')
+    messagesEmptyEl = document.getElementById('lounge-messages-empty')
+    threadViewEl = document.getElementById('lounge-thread-view')
+    threadNameEl = document.getElementById('lounge-thread-name')
+    threadMessagesEl = document.getElementById('lounge-thread-messages')
+    threadFormEl = document.getElementById('lounge-thread-form') as HTMLFormElement | null
+    threadInputEl = document.getElementById('lounge-thread-input') as HTMLInputElement | null
+    threadBackBtn = document.getElementById('lounge-thread-back') as HTMLButtonElement | null
+
+    if (messagesBtnEl) {
+      messagesBtnEl.addEventListener('click', (e) => {
+        e.stopPropagation()
+        if (messagesPanelEl?.hidden) { renderMessagesPanel(); messagesPanelEl.hidden = false; playSfx('menu_open') }
+        else hideMessagesPanel()
+      })
+    }
+    if (messagesPanelEl) messagesPanelEl.addEventListener('click', (e) => e.stopPropagation())
+    if (threadBackBtn) threadBackBtn.addEventListener('click', () => closeThreadView())
+    if (threadFormEl) {
+      threadFormEl.addEventListener('submit', (e) => {
+        e.preventDefault()
+        const text = threadInputEl?.value?.trim() ?? ''
+        if (!text || !currentThreadFriendId) return
+        onSendThreadMessage?.(currentThreadFriendId, text)
+        if (threadInputEl) threadInputEl.value = ''
+      })
+    }
+  }
+}
+
+function renderMessagesPanel() {
+  if (!messagesProvider || !messagesListEl || !messagesEmptyEl) return
+  closeThreadView()
+  const data = messagesProvider()
+  messagesListEl.innerHTML = ''
+  if (data.threads.length === 0) {
+    messagesEmptyEl.hidden = false
+    messagesListEl.hidden = true
+  } else {
+    messagesEmptyEl.hidden = true
+    messagesListEl.hidden = false
+    for (const t of data.threads) {
+      const li = document.createElement('li')
+      if (t.unread > 0) li.classList.add('has-unread')
+      const name = document.createElement('span')
+      name.className = 'name'
+      name.textContent = t.friend_name
+      const unread = document.createElement('span')
+      unread.className = 'unread'
+      unread.textContent = t.unread > 0 ? `${t.unread} new` : ''
+      const preview = document.createElement('span')
+      preview.className = 'preview'
+      preview.textContent = t.preview
+      li.appendChild(name)
+      li.appendChild(unread)
+      li.appendChild(preview)
+      li.addEventListener('click', () => openThreadView(t.friend_id, t.friend_name))
+      messagesListEl.appendChild(li)
+    }
+  }
+}
+
+function openThreadView(friend_id: string, friend_name: string) {
+  if (!threadViewEl || !threadNameEl || !messagesListEl || !messagesEmptyEl) return
+  currentThreadFriendId = friend_id
+  threadNameEl.textContent = friend_name
+  messagesListEl.hidden = true
+  messagesEmptyEl.hidden = true
+  threadViewEl.hidden = false
+  onRequestThread?.(friend_id)
+  renderThreadView()
+  threadInputEl?.focus()
+}
+
+function closeThreadView() {
+  if (!threadViewEl) return
+  threadViewEl.hidden = true
+  currentThreadFriendId = null
+}
+
+export function renderThreadView() {
+  if (!threadMessagesEl || !threadProvider || !currentThreadFriendId) return
+  threadMessagesEl.innerHTML = ''
+  const messages = threadProvider(currentThreadFriendId)
+  for (const m of messages.slice().reverse()) {
+    const li = document.createElement('li')
+    li.className = m.mine ? 'out' : 'in'
+    li.textContent = m.text
+    threadMessagesEl.appendChild(li)
+  }
+  threadMessagesEl.scrollTop = threadMessagesEl.scrollHeight
+}
+
+export function refreshMessagesBadge(unread: number) {
+  if (!messagesBadgeEl) messagesBadgeEl = document.getElementById('lounge-messages-badge')
+  if (!messagesBadgeEl) return
+  if (unread > 0) {
+    messagesBadgeEl.textContent = unread > 99 ? '99+' : String(unread)
+    messagesBadgeEl.hidden = false
+  } else {
+    messagesBadgeEl.hidden = true
+  }
+}
+
+export function hideMessagesPanel() {
+  if (!messagesPanelEl || messagesPanelEl.hidden) return
+  messagesPanelEl.hidden = true
+  closeThreadView()
+  playSfx('menu_close')
+}
+
+export function getCurrentThreadFriendId(): string | null {
+  return currentThreadFriendId
 }

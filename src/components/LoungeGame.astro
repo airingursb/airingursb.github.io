@@ -9,6 +9,39 @@
     <button id="lounge-volume-btn" class="ui-volume-btn" aria-label="Volume settings">⚙</button>
     <button id="lounge-info-btn" class="ui-info-btn" aria-label="Identity">ⓘ</button>
     <button id="lounge-inventory-btn" class="ui-inventory-btn" aria-label="Inventory">📦</button>
+    <button id="lounge-messages-btn" class="ui-messages-btn" aria-label="Messages">✉<span id="lounge-messages-badge" class="badge" hidden>0</span></button>
+    <div id="lounge-messages-panel" class="ui-messages-panel" hidden>
+      <h3>Messages</h3>
+      <div id="lounge-messages-empty" class="empty">No messages yet. Wave to a friend, then send one.</div>
+      <ul id="lounge-messages-list" class="threads"></ul>
+      <div id="lounge-thread-view" class="thread-view" hidden>
+        <button type="button" class="back" id="lounge-thread-back">← Back</button>
+        <h4 id="lounge-thread-name">Friend</h4>
+        <ul id="lounge-thread-messages"></ul>
+        <form id="lounge-thread-form">
+          <input type="text" id="lounge-thread-input" maxlength="140" placeholder="Say something…" autocomplete="off">
+          <button type="submit">Send</button>
+        </form>
+      </div>
+    </div>
+    <div id="lounge-peer-menu" class="ui-peer-menu" hidden>
+      <button type="button" data-action="wave">👋 Wave</button>
+      <button type="button" data-action="gift">🎁 Gift pebble</button>
+      <button type="button" data-action="dm">✉ Send DM</button>
+    </div>
+    <div id="lounge-gift-modal" class="ui-gift-modal" hidden>
+      <div class="ui-gift-modal-backdrop"></div>
+      <div class="ui-gift-modal-card">
+        <h3>Pick a pebble to gift</h3>
+        <p class="gift-recipient">to <span id="lounge-gift-to-name">Friend</span></p>
+        <ul id="lounge-gift-list"></ul>
+        <p id="lounge-gift-empty" class="empty" hidden>You haven't collected any pebbles yet.</p>
+        <div class="actions">
+          <button type="button" id="lounge-gift-cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <div id="lounge-toast" class="ui-toast" hidden></div>
     <div id="lounge-inventory-panel" class="ui-inventory-panel" hidden>
       <h3>Pebbles</h3>
       <p class="count"><span id="lounge-inv-count">0</span> / <span id="lounge-inv-total">0</span></p>
@@ -272,6 +305,212 @@
   .ui-info-panel .friends-empty {
     margin: 6px 0 0; font-size: 11px; color: #666; font-style: italic;
   }
+
+  /* V4.1 — Messages */
+  .ui-messages-btn {
+    position: absolute;
+    top: 16px; right: 200px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,.08);
+    color: #e6edf3;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background .15s;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+    position: absolute;
+  }
+  .ui-messages-btn:hover { background: rgba(255,255,255,.16); }
+  .ui-messages-btn .badge {
+    position: absolute;
+    top: -2px; right: -2px;
+    min-width: 16px; height: 16px;
+    background: #ff4060;
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 700;
+    color: white;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 4px;
+    box-sizing: border-box;
+  }
+  .ui-messages-btn .badge[hidden] { display: none; }
+
+  .ui-messages-panel {
+    position: absolute;
+    top: 60px; right: 16px;
+    width: 280px;
+    max-height: 70vh;
+    overflow-y: auto;
+    background: rgba(0,0,0,.92);
+    border-radius: 10px;
+    padding: 12px 14px;
+    color: #e6edf3;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .ui-messages-panel[hidden] { display: none; }
+  .ui-messages-panel h3 { margin: 0 0 10px; font-size: 13px; font-weight: 600; }
+  .ui-messages-panel h4 { margin: 0 0 8px; font-size: 12px; font-weight: 600; color: #ffd166; }
+  .ui-messages-panel .empty { font-size: 11px; color: #666; font-style: italic; margin: 0; }
+  .ui-messages-panel .threads { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  .ui-messages-panel .threads li {
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: rgba(255,255,255,.05);
+    cursor: pointer;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 4px;
+  }
+  .ui-messages-panel .threads li:hover { background: rgba(255,255,255,.12); }
+  .ui-messages-panel .threads li.has-unread { border-left: 2px solid #ff4060; }
+  .ui-messages-panel .threads li .name { font-weight: 600; }
+  .ui-messages-panel .threads li .unread { color: #ff4060; font-size: 10px; }
+  .ui-messages-panel .threads li .preview { grid-column: 1 / -1; color: #888; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .ui-messages-panel .thread-view { display: flex; flex-direction: column; gap: 8px; }
+  .ui-messages-panel .thread-view[hidden] { display: none; }
+  .ui-messages-panel .thread-view .back {
+    align-self: flex-start;
+    padding: 4px 8px; border: 1px solid rgba(255,255,255,.15);
+    background: transparent; color: #aaa; border-radius: 4px;
+    font-family: ui-monospace, monospace; font-size: 11px;
+    cursor: pointer;
+  }
+  .ui-messages-panel .thread-view ul {
+    list-style: none; padding: 0; margin: 0;
+    max-height: 280px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .ui-messages-panel .thread-view li {
+    padding: 6px 10px;
+    border-radius: 8px;
+    max-width: 80%;
+    word-wrap: break-word;
+  }
+  .ui-messages-panel .thread-view li.in { background: rgba(255,255,255,.08); align-self: flex-start; }
+  .ui-messages-panel .thread-view li.out { background: rgba(74,222,128,.16); color: #4ade80; align-self: flex-end; }
+  .ui-messages-panel .thread-view form {
+    display: grid; grid-template-columns: 1fr auto; gap: 6px;
+    margin-top: 4px;
+  }
+  .ui-messages-panel .thread-view input {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(0,0,0,.4);
+    color: #fff;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    outline: none;
+  }
+  .ui-messages-panel .thread-view input:focus { border-color: #4ade80; }
+  .ui-messages-panel .thread-view button[type=submit] {
+    padding: 6px 12px;
+    background: #4ade80; color: #0d1117;
+    border: none; border-radius: 6px;
+    font-family: ui-monospace, monospace; font-size: 11px;
+    font-weight: 600; cursor: pointer;
+  }
+
+  /* Peer-click menu */
+  .ui-peer-menu {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    background: rgba(0,0,0,.92);
+    border-radius: 8px;
+    transform: translate(-50%, -100%);
+    z-index: 80;
+  }
+  .ui-peer-menu[hidden] { display: none; }
+  .ui-peer-menu button {
+    padding: 6px 14px;
+    border: none;
+    background: rgba(255,255,255,.08);
+    color: #e6edf3;
+    border-radius: 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .ui-peer-menu button:hover { background: rgba(255,255,255,.18); }
+
+  /* Gift modal */
+  .ui-gift-modal {
+    position: fixed; inset: 0; z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ui-gift-modal[hidden] { display: none; }
+  .ui-gift-modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,.6); }
+  .ui-gift-modal-card {
+    position: relative;
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px;
+    padding: 20px 22px;
+    width: 320px;
+    max-height: 60vh;
+    overflow-y: auto;
+    color: #e6edf3;
+    font-family: ui-monospace, monospace;
+  }
+  .ui-gift-modal-card h3 { margin: 0 0 6px; font-size: 14px; font-weight: 600; }
+  .ui-gift-modal-card .gift-recipient { margin: 0 0 14px; font-size: 12px; color: #888; }
+  .ui-gift-modal-card .gift-recipient span { color: #ffd166; }
+  .ui-gift-modal-card ul { list-style: none; margin: 0 0 14px; padding: 0; display: grid; gap: 4px; }
+  .ui-gift-modal-card ul li button {
+    width: 100%;
+    text-align: left;
+    padding: 8px 12px;
+    border: 1px solid rgba(255,255,255,.15);
+    background: rgba(255,255,255,.06);
+    color: #e6edf3;
+    border-radius: 6px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .ui-gift-modal-card ul li button:hover { background: rgba(255,255,255,.14); }
+  .ui-gift-modal-card ul li.is-already-sent button { opacity: .4; cursor: not-allowed; }
+  .ui-gift-modal-card .empty { color: #666; font-style: italic; margin: 10px 0 14px; font-size: 11px; }
+  .ui-gift-modal-card .actions { display: flex; justify-content: flex-end; }
+  .ui-gift-modal-card .actions button {
+    padding: 6px 14px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.08);
+    color: #e6edf3;
+    border-radius: 6px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  /* Toast (transient notification) */
+  .ui-toast {
+    position: absolute;
+    top: 70px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,.92);
+    color: #ffd166;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,209,102,.4);
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    z-index: 250;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity .3s;
+  }
+  .ui-toast[hidden] { display: none; }
+  .ui-toast.is-fading { opacity: 0; }
 
   .ui-inventory-btn {
     position: absolute;
