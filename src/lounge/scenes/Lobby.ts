@@ -19,6 +19,7 @@ export class LobbyScene extends Phaser.Scene {
   private mapInfo: { widthPx: number; heightPx: number; collisionRects: Array<{ x: number; y: number; w: number; h: number }> } = {
     widthPx: 480, heightPx: 320, collisionRects: []
   }
+  private autoWaveOnArrive = false
 
   constructor() {
     super({ key: 'Lobby' })
@@ -99,9 +100,25 @@ export class LobbyScene extends Phaser.Scene {
         }
       }
 
-      // (Phase 7 will add peer hit-test here.)
+      // Click on a peer -> walk near them + auto-wave on arrival
+      for (const [, p] of this.peers) {
+        const b = p.bear
+        if (Math.abs(wx - b.x) < 14 && wy > b.y - 50 && wy < b.y) {
+          const destX = Math.max(20, Math.min(map.widthInPixels - 20, b.x - 30))
+          const destY = Math.max(20, Math.min(map.heightInPixels - 12, b.y))
+          this.myBear?.walkTo(destX, destY)
+          const ddx = destX - this.myBear!.x
+          const ddy = destY - this.myBear!.y
+          this.myDirection = Math.abs(ddx) > Math.abs(ddy)
+            ? (ddx > 0 ? 'right' : 'left')
+            : (ddy > 0 ? 'down' : 'up')
+          this.autoWaveOnArrive = true
+          return
+        }
+      }
 
       // Floor walk-to
+      this.autoWaveOnArrive = false
       let tx = wx
       let ty = wy
       tx = Math.max(20, Math.min(map.widthInPixels - 20, tx))
@@ -298,6 +315,12 @@ export class LobbyScene extends Phaser.Scene {
           this.myBear.playIdle()
         }
         this.myBear.update(dtMs, false)
+      }
+      // Auto-wave when click-to-walk-to-peer settles
+      if (this.autoWaveOnArrive && this.myBear.state === 'idle' && !this.myBear.target) {
+        this.autoWaveOnArrive = false
+        sendAct('wave')
+        this.applyAct(undefined, 'wave')
       }
       const stateStr = this.myBear.state === 'walk'
         ? `walk_${this.myDirection}`
