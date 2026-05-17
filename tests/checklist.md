@@ -903,3 +903,26 @@
 ### Validator
 - [ ] `npm run lounge:validate` shows "13 pebbles", exit 0
 - [ ] Inject duplicate id → exit 1
+
+## Lounge V3.4 (Seasonal content)
+
+### Seasons (real local clock)
+- [ ] Mar-May: spring tint (greenish) + pink petal particles drift down
+- [ ] Jun-Aug: summer tint (warm gold) + soft yellow sunlight particles
+- [ ] Sep-Nov: fall tint (orange) + brown leaf particles drift diagonally
+- [ ] Dec-Feb: winter tint (cool blue) + white snowflakes drift down
+
+### Holidays (override or stack on season)
+- [ ] CN New Year (Feb 14-22 window 2026): red lantern particles rise from bottom
+- [ ] Christmas (Dec 21-26 window each year): light-blue snowflake particles + cooler tint
+
+### Stacking
+- [ ] During Christmas (winter + holiday): see both winter snow + holiday snowflakes
+- [ ] During CN NY (winter + holiday): see both snow + red lanterns
+
+### Reduced motion
+- [ ] `prefers-reduced-motion: reduce` → no seasonal tint, no seasonal particles
+
+### Validator
+- [ ] `npm run lounge:validate` shows "4 seasons, 2 holidays", exit 0
+- [ ] Bad particle name in seasons.json → exit 1

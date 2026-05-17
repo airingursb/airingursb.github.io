@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
 import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg } from '../net'
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
+import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
 import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, type Region, type RoomId } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
 import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel } from '../ui'
@@ -76,6 +77,9 @@ export class RoomScene extends Phaser.Scene {
   private currentBoothTrackId: string | null = null
   private inventory = new Set<string>()
   private pebbleSprites = new Map<string, Phaser.GameObjects.Sprite>()
+  private seasonOverlay?: Phaser.GameObjects.Rectangle
+  private seasonalEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
+  private holidayEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
 
   constructor() {
     super({ key: 'Room' })
@@ -136,6 +140,7 @@ export class RoomScene extends Phaser.Scene {
     this.setupParticles(map.widthInPixels, map.heightInPixels)
     this.loadAndStartNpcs()
     this.loadAndStartPebbles()
+    this.loadAndStartSeasons(map.widthInPixels, map.heightInPixels)
 
     const spawnObj = map.findObject('spawn_points', (o) => o.name === this.spawnPointName)
       ?? map.findObject('spawn_points', (o) => o.name === 'default')
@@ -401,6 +406,9 @@ export class RoomScene extends Phaser.Scene {
       hideBoothPicker()
       if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
       if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
+      this.seasonalEmitter?.destroy(); this.seasonalEmitter = undefined
+      this.holidayEmitter?.destroy(); this.holidayEmitter = undefined
+      this.seasonOverlay?.destroy(); this.seasonOverlay = undefined
       sendRoomChange(m.last_room)
       this.scene.restart({ roomId: m.last_room, spawnPoint: 'default', welcomeX: wx, welcomeY: wy })
       return
@@ -531,6 +539,95 @@ export class RoomScene extends Phaser.Scene {
   private applyCollected(m: CollectedMsg) {
     this.inventory.add(m.item_id)
     refreshInventoryPanel()
+  }
+
+  private async loadAndStartSeasons(widthPx: number, heightPx: number) {
+    await loadSeasons()
+    this.applySeasonalAtmosphere(widthPx, heightPx)
+  }
+
+  private applySeasonalAtmosphere(widthPx: number, heightPx: number) {
+    if (prefersReducedMotion()) return
+    const season = getCurrentSeason()
+    const holiday = getCurrentHoliday()
+
+    // Holiday tint overrides season tint
+    const tintSource = holiday ?? season
+    if (tintSource) {
+      this.seasonOverlay = this.add.rectangle(0, 0, widthPx, heightPx, hexToInt(tintSource.tint), tintSource.alpha)
+        .setOrigin(0)
+        .setDepth(999)
+        .setBlendMode(Phaser.BlendModes.MULTIPLY)
+    }
+
+    // Stack particles: season first, holiday on top
+    if (season) {
+      this.seasonalEmitter = this.spawnSeasonalParticles(season.particle, season.id, widthPx, heightPx)
+    }
+    if (holiday) {
+      this.holidayEmitter = this.spawnSeasonalParticles(holiday.particle, holiday.id, widthPx, heightPx)
+    }
+  }
+
+  private spawnSeasonalParticles(kind: string, _label: string, widthPx: number, heightPx: number)
+    : Phaser.GameObjects.Particles.ParticleEmitter | undefined {
+    // Spawn config per known kind. Returns the emitter (or undefined if unknown).
+    let config: { tint: number; speedY: { min: number; max: number }; speedX: { min: number; max: number };
+                  lifespan: number; alpha: { start: number; end: number }; scale: number;
+                  frequency: number; maxAlive: number; spawnZoneY?: number } | null = null
+
+    switch (kind) {
+      case 'petals':
+        config = { tint: 0xffb0d0, speedY: { min: 4, max: 12 }, speedX: { min: -8, max: 8 },
+                   lifespan: 9000, alpha: { start: 0.6, end: 0 }, scale: 1.5,
+                   frequency: 800, maxAlive: 12 }
+        break
+      case 'sunlight':
+        config = { tint: 0xfff0a0, speedY: { min: -1, max: 3 }, speedX: { min: -3, max: 3 },
+                   lifespan: 6000, alpha: { start: 0.3, end: 0 }, scale: 1,
+                   frequency: 1200, maxAlive: 8 }
+        break
+      case 'leaves':
+        config = { tint: 0xd06030, speedY: { min: 5, max: 14 }, speedX: { min: -10, max: 10 },
+                   lifespan: 8000, alpha: { start: 0.6, end: 0 }, scale: 2,
+                   frequency: 1000, maxAlive: 8 }
+        break
+      case 'snow':
+        config = { tint: 0xffffff, speedY: { min: 6, max: 14 }, speedX: { min: -5, max: 5 },
+                   lifespan: 10000, alpha: { start: 0.8, end: 0 }, scale: 1.5,
+                   frequency: 500, maxAlive: 20 }
+        break
+      case 'lanterns':
+        config = { tint: 0xff4040, speedY: { min: -8, max: -3 }, speedX: { min: -3, max: 3 },
+                   lifespan: 8000, alpha: { start: 0.7, end: 0 }, scale: 2.5,
+                   frequency: 900, maxAlive: 10 }
+        break
+      case 'snowflakes':
+        config = { tint: 0xe0f0ff, speedY: { min: 4, max: 10 }, speedX: { min: -8, max: 8 },
+                   lifespan: 9000, alpha: { start: 0.85, end: 0 }, scale: 2,
+                   frequency: 600, maxAlive: 14 }
+        break
+      default:
+        return undefined
+    }
+
+    // Rising particles (negative speedY) spawn at the bottom; falling at the top.
+    const rising = config.speedY.max < 0
+    const spawnY = rising ? heightPx - 10 : 0
+    const e = this.add.particles(widthPx / 2, spawnY, PIXEL_TEX_KEY, {
+      emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(-widthPx / 2, 0, widthPx, 10), quantity: 1 } as any,
+      frequency: config.frequency,
+      lifespan: config.lifespan,
+      quantity: 1,
+      maxAliveParticles: config.maxAlive,
+      speedX: config.speedX,
+      speedY: config.speedY,
+      alpha: config.alpha,
+      scale: config.scale,
+      tint: config.tint
+    })
+    e.setDepth(500)
+    return e
   }
 
   private setupAtmosphere(widthPx: number, heightPx: number) {
@@ -860,6 +957,9 @@ export class RoomScene extends Phaser.Scene {
           hideBoothPicker()
           if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
           if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
+          this.seasonalEmitter?.destroy(); this.seasonalEmitter = undefined
+          this.holidayEmitter?.destroy(); this.holidayEmitter = undefined
+          this.seasonOverlay?.destroy(); this.seasonOverlay = undefined
           sendRoomChange(targetRoom)
           this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
         }

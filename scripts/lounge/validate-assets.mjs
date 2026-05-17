@@ -251,11 +251,57 @@ if (!existsSync(PEBBLES_FILE)) {
   }
 }
 
+// 10. Seasons manifest (V3.4)
+const SEASONS_FILE = join(ROOT, 'public', 'lounge', 'data', 'seasons.json')
+const HEX_RE = /^#([0-9a-f]{6})$/i
+const ALLOWED_PARTICLES = ['petals','sunlight','leaves','snow','lanterns','snowflakes']
+let seasonCount = 0
+let holidayCount = 0
+if (!existsSync(SEASONS_FILE)) {
+  warn('seasons.json missing')
+} else {
+  try {
+    const sm = JSON.parse(readFileSync(SEASONS_FILE, 'utf8'))
+    if (!Array.isArray(sm.seasons)) err('seasons.json: missing seasons array')
+    if (!Array.isArray(sm.holidays)) err('seasons.json: missing holidays array')
+    seasonCount = sm.seasons?.length ?? 0
+    holidayCount = sm.holidays?.length ?? 0
+
+    // Validate seasons: 4 seasons, months 1-12 cover all
+    const monthCoverage = new Set()
+    for (const s of sm.seasons ?? []) {
+      if (!s.id || typeof s.id !== 'string') err(`season missing id`)
+      if (!Array.isArray(s.months) || s.months.some(m => m < 1 || m > 12)) err(`season ${s.id}: invalid months`)
+      for (const m of s.months ?? []) monthCoverage.add(m)
+      if (!HEX_RE.test(s.tint ?? '')) err(`season ${s.id}: invalid tint`)
+      if (typeof s.alpha !== 'number' || s.alpha < 0 || s.alpha > 1) err(`season ${s.id}: invalid alpha`)
+      if (!ALLOWED_PARTICLES.includes(s.particle)) err(`season ${s.id}: particle "${s.particle}" not in ${ALLOWED_PARTICLES.join('|')}`)
+    }
+    if (monthCoverage.size !== 12) warn(`seasons only cover ${monthCoverage.size}/12 months`)
+
+    for (const h of sm.holidays ?? []) {
+      if (!h.id) err('holiday missing id')
+      if (!HEX_RE.test(h.tint ?? '')) err(`holiday ${h.id}: invalid tint`)
+      if (typeof h.alpha !== 'number' || h.alpha < 0 || h.alpha > 1) err(`holiday ${h.id}: invalid alpha`)
+      if (!ALLOWED_PARTICLES.includes(h.particle)) err(`holiday ${h.id}: invalid particle`)
+      if (!Array.isArray(h.windows) || h.windows.length === 0) err(`holiday ${h.id}: needs windows`)
+      for (const w of h.windows ?? []) {
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(w.from) || !/^\d{4}-\d{2}-\d{2}$/.test(w.to))
+          err(`holiday ${h.id}: window has bad YYYY-MM-DD`)
+        if (w.from > w.to) err(`holiday ${h.id}: window from > to`)
+      }
+    }
+  } catch (e) {
+    err(`seasons.json: invalid JSON — ${e.message}`)
+  }
+}
+
 // Summary
 ok(`Declared: ${manifest.rooms?.length ?? 0} rooms, ${manifest.tilesets?.length ?? 0} tilesets, ` +
    `${manifest.sprites?.length ?? 0} sprite sets, ${manifest.audio?.sfx?.length ?? 0} SFX, ` +
    `${manifest.audio?.bgm?.length ?? 0} BGM slots, ${manifest.audio?.ambient?.length ?? 0} ambient slots, ` +
-   `${boothCount} booth tracks, ${npcCount} NPCs, ${pebbleCount} pebbles`)
+   `${boothCount} booth tracks, ${npcCount} NPCs, ${pebbleCount} pebbles, ` +
+   `${seasonCount} seasons, ${holidayCount} holidays`)
 
 function printAndExit() {
   for (const m of okmsgs)  console.log(`✓ ${m}`)
