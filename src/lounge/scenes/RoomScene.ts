@@ -15,6 +15,7 @@ import { footstepDust, clickRipple, pebbleSparkle, sitImpact, waveArc, letterFlu
 import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted } from '../identity'
 import { loadNpcManifest, getActiveBracket, pickDialog, buildDialogContext, type NpcDef, type NpcManifest } from '../npcs'
 import { getActiveFestivalId, getActiveFestival } from '../festivals'
+import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
 
 const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
@@ -650,6 +651,9 @@ export class RoomScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels)
     // myBear isn't created yet at this point — wire follow once it exists, below.
 
+    // V7.4 — quest progress on room visit
+    onRoomVisitedQuest(this.currentRoomId)
+
     // Drain cached welcome (set by applyWelcome before this scene was restarted)
     if (welcomeCache) {
       const cached = welcomeCache
@@ -827,6 +831,8 @@ export class RoomScene extends Phaser.Scene {
         refreshInventoryPanel()
         // V6.6 — sparkle burst at pickup point
         pebbleSparkle(this, sprite.x, sprite.y)
+        // V7.4 — quest progress
+        onPebbleCollectedQuest(id)
         const pebble = findPebble(id)
         if (pebble) {
           const screen = {
@@ -1735,6 +1741,20 @@ export class RoomScene extends Phaser.Scene {
     const line = pickDialog(entry.def, this.npcDialogMemory, ctx)
     const screen = this.bearScreenPos(entry.bear)
     showBubble('npc_' + id, line, screen.x, screen.y)
+    // V7.4 — auto-give quests this NPC has, if friendship prereq met and not yet accepted
+    for (const q of QUESTS) {
+      if (q.giver_npc !== id) continue
+      const heart = friendship?.level ?? 0
+      if (heart < (q.prereq_heart ?? 0)) continue
+      const st = getQuestState(q.id)
+      if (st.accepted) continue
+      acceptQuest(q.id)
+      showToast(`📋 New quest: ${q.title}`, 3000)
+      // Only auto-give one per click to avoid spam
+      break
+    }
+    // V7.4 — count NPC click as "wave at" for quest progress
+    onWaveAtQuest(id)
   }
 
   private tryInteract() {

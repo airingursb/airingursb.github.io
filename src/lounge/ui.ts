@@ -222,8 +222,10 @@ export function initUI() {
       hideLetterModal()
       hideLetterRead()
       hideWishboardPanel()
+      hideQuestsPanel()
     }
   })
+  ensureQuestsRefs()
 }
 
 export function showMenuAt(screenX: number, screenY: number) {
@@ -421,6 +423,79 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat') {
   if (!infoSpeciesBtn) return
   infoSpeciesBtn.dataset.species = currentSpecies
   infoSpeciesBtn.textContent = currentSpecies === 'bear' ? 'Switch to 🐱 Cat' : 'Switch to 🐻 Bear'
+}
+
+// V7.4 — Quests panel
+import { listAcceptedQuests, type QuestDef } from './quests'
+let questsPanelEl: HTMLElement | null = null
+let questsListEl: HTMLElement | null = null
+let questsEmptyEl: HTMLElement | null = null
+let questsCloseBtn: HTMLButtonElement | null = null
+let questsOpenBtn: HTMLButtonElement | null = null
+
+function ensureQuestsRefs() {
+  if (questsPanelEl) return
+  questsPanelEl = document.getElementById('lounge-quests-panel')
+  questsListEl  = document.getElementById('lounge-quests-list')
+  questsEmptyEl = document.getElementById('lounge-quests-empty')
+  questsCloseBtn = document.getElementById('lounge-quests-close') as HTMLButtonElement | null
+  questsOpenBtn  = document.getElementById('lounge-info-quests') as HTMLButtonElement | null
+  if (questsCloseBtn) questsCloseBtn.addEventListener('click', () => hideQuestsPanel())
+  if (questsOpenBtn) questsOpenBtn.addEventListener('click', () => { hideInfoPanel(); showQuestsPanel() })
+  if (questsPanelEl) questsPanelEl.addEventListener('click', (e) => {
+    if (e.target === questsPanelEl) hideQuestsPanel()
+  })
+}
+
+export function showQuestsPanel() {
+  ensureQuestsRefs()
+  if (!questsPanelEl) return
+  renderQuests()
+  questsPanelEl.hidden = false
+  playSfx('menu_open')
+}
+
+export function hideQuestsPanel() {
+  if (!questsPanelEl) return
+  questsPanelEl.hidden = true
+  playSfx('menu_close')
+}
+
+function renderQuests() {
+  if (!questsListEl || !questsEmptyEl) return
+  const accepted = listAcceptedQuests()
+  questsListEl.innerHTML = ''
+  questsEmptyEl.hidden = accepted.length > 0
+  for (const { def, state } of accepted) {
+    const card = document.createElement('div')
+    card.className = 'qp-quest' + (state.completed ? ' done' : '')
+    const title = document.createElement('div')
+    title.className = 'qp-title'
+    title.textContent = def.title
+    const giver = document.createElement('div')
+    giver.className = 'qp-giver'
+    giver.textContent = `from ${def.giver_npc.replace('npc_', '').replace(/^./, c => c.toUpperCase())}`
+    const blurb = document.createElement('p')
+    blurb.className = 'qp-blurb'
+    blurb.textContent = def.blurb
+    card.appendChild(title)
+    card.appendChild(giver)
+    card.appendChild(blurb)
+    for (const step of def.steps) {
+      const sEl = document.createElement('div')
+      const done = state.completedSteps.includes(step.id)
+      sEl.className = 'qp-step' + (done ? ' done' : '')
+      sEl.textContent = `${done ? '✓' : '○'}  ${step.description}`
+      card.appendChild(sEl)
+    }
+    if (state.completed) {
+      const reward = document.createElement('div')
+      reward.className = 'qp-reward'
+      reward.textContent = '🎁 ' + def.reward
+      card.appendChild(reward)
+    }
+    questsListEl.appendChild(card)
+  }
 }
 
 export function hideInfoPanel() {
