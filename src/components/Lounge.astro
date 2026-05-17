@@ -212,6 +212,102 @@
       e.preventDefault();
     }, { passive: false });
 
+    // ─── Peers + WebSocket client ───────────────────────────────────────
+    var peers = {};
+    var myId = null;
+    var ws = null;
+    var wsBackoff = 1000;
+
+    function ccToRegion(cc) {
+      if (!cc) return 'unknown';
+      return REGION_BY_CC[cc.toUpperCase()] || 'unknown';
+    }
+
+    function ensurePeer(id) {
+      if (!peers[id]) {
+        peers[id] = {
+          x: SPAWN.x, y: SPAWN.y,
+          tx: SPAWN.x, ty: SPAWN.y,
+          cc: null, region: 'unknown',
+          state: 'idle', stateUntil: 0,
+          walkPhase: 0, facing: 1,
+          bubble: null
+        };
+      }
+      return peers[id];
+    }
+
+    function connectWs() {
+      try {
+        ws = new WebSocket('wss://chat.ursb.me/api/lounge/ws');
+      } catch (e) { scheduleReconnect(); return; }
+      ws.addEventListener('open', function () {
+        wsBackoff = 1000;
+        var cc = null;
+        try { cc = sessionStorage.getItem('vp_country'); } catch (_) {}
+        ws.send(JSON.stringify({ t: 'hi', cc: cc || null }));
+      });
+      ws.addEventListener('message', function (e) {
+        var msg;
+        try { msg = JSON.parse(e.data); } catch (_) { return; }
+        if (msg.t === 'snap') {
+          myId = msg.you;
+          peers = {};
+          (msg.peers || []).forEach(function (p) {
+            var peer = ensurePeer(p.id);
+            peer.x = peer.tx = p.x; peer.y = peer.ty = p.y;
+            peer.cc = p.cc; peer.region = ccToRegion(p.cc);
+            peer.state = p.state;
+          });
+        } else if (msg.t === 'join') {
+          var pj = ensurePeer(msg.id);
+          pj.x = pj.tx = msg.x; pj.y = pj.ty = msg.y;
+          pj.cc = msg.cc; pj.region = ccToRegion(msg.cc);
+          pj.state = msg.state;
+        } else if (msg.t === 'leave') {
+          delete peers[msg.id];
+        } else if (msg.t === 'pos') {
+          var pp = ensurePeer(msg.id);
+          pp.tx = msg.x; pp.ty = msg.y;
+          pp.state = msg.state;
+          pp.facing = (msg.vx || 0) >= 0 ? 1 : -1;
+        } else if (msg.t === 'act') {
+          var pa = msg.id === myId ? me : ensurePeer(msg.id);
+          if (msg.verb === 'wave') { pa.state = 'wave'; pa.stateUntil = performance.now() + 1500; }
+          else if (msg.verb === 'sit') { pa.state = pa.state === 'sit' ? 'idle' : 'sit'; pa.stateUntil = 0; }
+          else if (msg.verb === 'dance') { pa.state = 'dance'; pa.stateUntil = performance.now() + 3000; }
+          else if (msg.verb === 'say') {
+            pa.bubble = { text: msg.text || '', until: performance.now() + 3000 };
+          }
+        } else if (msg.t === 'full') {
+          window._loungeToast('Lounge at capacity — try again in a moment.', 5000);
+        }
+      });
+      ws.addEventListener('close', function () { scheduleReconnect(); });
+      ws.addEventListener('error', function () {});
+    }
+    function scheduleReconnect() {
+      ws = null;
+      window._loungeToast('reconnecting…', 1500);
+      setTimeout(connectWs, wsBackoff);
+      wsBackoff = Math.min(wsBackoff * 2, 30_000);
+    }
+    connectWs();
+
+    var lastSentT = 0;
+    var lastSent = { x: -1, y: -1, state: '' };
+    function maybeSendPos() {
+      if (!ws || ws.readyState !== 1) return;
+      var t = performance.now();
+      if (t - lastSentT < 100) return;
+      if (Math.abs(me.x - lastSent.x) < 0.5 && Math.abs(me.y - lastSent.y) < 0.5 && me.state === lastSent.state) return;
+      lastSentT = t;
+      lastSent.x = me.x; lastSent.y = me.y; lastSent.state = me.state;
+      var vx = me.targetX - me.x;
+      var vy = me.targetY - me.y;
+      ws.send(JSON.stringify({ t: 'pos', x: me.x, y: me.y, vx: vx, vy: vy, state: me.state }));
+    }
+
     // ─── Furniture SVG (scaled-up D-max scene; viewBox 1600x900) ────────
     function svg(content) {
       return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
@@ -286,6 +382,26 @@
       if (me.state !== 'walk' && me.stateUntil && now > me.stateUntil) {
         me.state = 'idle'; me.stateUntil = 0;
       }
+      if (me.bubble && now > me.bubble.until) me.bubble = null;
+      maybeSendPos();
+
+      Object.keys(peers).forEach(function (id) {
+        var p = peers[id];
+        var pdx = p.tx - p.x, pdy = p.ty - p.y;
+        var pdist = Math.hypot(pdx, pdy);
+        if (pdist > 1) {
+          var pstep = WALK_SPEED * 1.2 * dt;
+          if (pstep > pdist) pstep = pdist;
+          p.x += (pdx / pdist) * pstep;
+          p.y += (pdy / pdist) * pstep;
+          p.walkPhase += dt * 8;
+          p.state = 'walk';
+        } else if (p.state === 'walk') {
+          p.state = 'idle';
+        }
+        if (p.stateUntil && now > p.stateUntil) { p.state = 'idle'; p.stateUntil = 0; }
+        if (p.bubble && now > p.bubble.until) p.bubble = null;
+      });
 
       if (furnitureBitmap) {
         ctx.drawImage(furnitureBitmap, 0, 0, 1600, 900);
@@ -293,11 +409,44 @@
         ctx.fillStyle = '#0d1117';
         ctx.fillRect(0, 0, 1600, 900);
       }
-      drawBear(me);
+      var all = [{ bear: me, isMe: true }];
+      Object.keys(peers).forEach(function (id) { all.push({ bear: peers[id], isMe: false }); });
+      all.sort(function (a, b) { return a.bear.y - b.bear.y; });
+      all.forEach(function (entry) {
+        if (entry.isMe) drawMeGlow(entry.bear);
+        drawBear(entry.bear);
+        if (entry.bear.bubble) drawBubble(entry.bear);
+      });
 
       requestAnimationFrame(frame);
     }
     requestAnimationFrame(frame);
+
+    function drawMeGlow(b) {
+      ctx.fillStyle = 'rgba(74,222,128,.22)';
+      ctx.beginPath();
+      ctx.ellipse(b.x, b.y, BEAR_W * 0.7, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    function drawBubble(b) {
+      var text = b.bubble.text;
+      ctx.font = '16px ui-monospace, monospace';
+      var tw = ctx.measureText(text).width;
+      var bw = Math.max(40, tw + 16);
+      var bh = 26;
+      var bx = b.x - bw / 2;
+      var by = b.y - BEAR_H - bh - 8;
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = '#1a1a1a'; ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      if (ctx.roundRect) ctx.roundRect(bx, by, bw, bh, 6);
+      else ctx.rect(bx, by, bw, bh);
+      ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#1a1a1a';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'center';
+      ctx.fillText(text, b.x, by + bh / 2);
+    }
 
     function drawBear(b) {
       var frameKey =
