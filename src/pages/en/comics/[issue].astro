@@ -2,7 +2,6 @@
 // src/pages/en/comics/[issue].astro
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ComicMasthead from '../../../components/comics/ComicMasthead.astro';
-import ComicPanel from '../../../components/comics/ComicPanel.astro';
 import { fetchComics } from '../../../lib/comics';
 import { siteStrings } from '../../../lib/i18n';
 import '../../../styles/comics.css';
@@ -24,6 +23,8 @@ const { comic, prev, next } = Astro.props;
 const date = new Date(comic.published_at || comic.created_at).toLocaleDateString('en-US', {
   year: 'numeric', month: 'long', day: 'numeric',
 });
+const imgUrl = comic.panels?.urls?.en || comic.panels?.urls?.zh || '';
+const altText = comic.panels?.alt?.en || comic.panels?.alt?.zh || comic.title.en;
 ---
 
 <BaseLayout
@@ -42,9 +43,7 @@ const date = new Date(comic.published_at || comic.created_at).toLocaleDateString
       {comic.title.en}
     </h1>
 
-    <div class="panels">
-      {comic.panels.map((p) => <ComicPanel panel={p} lang="en" />)}
-    </div>
+    {imgUrl && <img class="strip-img-full" src={imgUrl} alt={altText} />}
 
     <div class="source">"{comic.source_text}"</div>
 

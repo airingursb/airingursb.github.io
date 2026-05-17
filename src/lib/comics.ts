@@ -1,17 +1,16 @@
 // src/lib/comics.ts
 // Build-time Supabase fetch of all approved comics.
 
-export interface ComicPanel {
-  url: string;
+export interface ComicPanels {
+  urls: { zh: string; en: string };
   alt: { zh: string; en: string };
-  dialog: { zh: string; en: string; position: 'top-left'|'top-right'|'bottom-left'|'bottom-right'|'hidden' };
 }
 
 export interface Comic {
   id: string;
   issue_number: number;
   source_text: string;
-  panels: ComicPanel[];
+  panels: ComicPanels;
   title: { zh: string; en: string };
   tags: string[];
   published_at: string;

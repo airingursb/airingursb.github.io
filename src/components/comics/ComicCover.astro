@@ -1,7 +1,6 @@
 ---
 // src/components/comics/ComicCover.astro
 import type { Comic } from '../../lib/comics';
-import ComicPanel from './ComicPanel.astro';
 
 interface Props {
   comic: Comic;
@@ -19,6 +18,8 @@ function formatDate(s: string, locale: string) {
 const detailHref = lang === 'en'
   ? `/en/comics/${comic.issue_number}`
   : `/comics/${comic.issue_number}`;
+const imgUrl = comic.panels?.urls?.[lang] || comic.panels?.urls?.zh || '';
+const altText = comic.panels?.alt?.[lang] || comic.panels?.alt?.zh || comic.title[lang];
 ---
 
 <article class="comics-hero">
@@ -30,7 +31,9 @@ const detailHref = lang === 'en'
   <a href={detailHref} style="text-decoration:none;color:inherit;">
     <h2 class="heading">{comic.title[lang] || comic.title.zh}</h2>
   </a>
-  <div class="grid">
-    {comic.panels.map((p) => <ComicPanel panel={p} lang={lang} />)}
-  </div>
+  {imgUrl && (
+    <a href={detailHref} class="strip-link">
+      <img class="strip-img" src={imgUrl} alt={altText} loading="lazy" />
+    </a>
+  )}
 </article>
