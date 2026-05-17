@@ -53,10 +53,13 @@ export class Bear {
   private baseY = 0
   private nameLabel?: Phaser.GameObjects.Text
   private heartLabel?: Phaser.GameObjects.Text
+  private shadow?: Phaser.GameObjects.Ellipse  // V6.3 — soft ground shadow
 
   constructor(scene: Phaser.Scene, x: number, y: number, region: Region) {
     this.scene = scene
     this.region = region
+    // V6.3 — shadow rendered first so it sits behind the sprite
+    this.shadow = scene.add.ellipse(x, y - 1, 14, 5, 0x000000, 0.32).setDepth(3)
     this.sprite = scene.add.sprite(x, y, `bear_${region}`, 'idle_down')
     this.sprite.setOrigin(0.5, 1)
     this.baseY = y
@@ -147,6 +150,10 @@ export class Bear {
 
   update(dtMs: number, isPeer = false) {
     const now = performance.now()
+    if (this.shadow) {
+      this.shadow.x = this.sprite.x
+      this.shadow.y = this.sprite.y - 1
+    }
     if (this.nameLabel) {
       this.nameLabel.x = this.sprite.x
       this.nameLabel.y = this.sprite.y - 52
@@ -225,6 +232,7 @@ export class Bear {
   destroy() {
     this.nameLabel?.destroy()
     this.heartLabel?.destroy()
+    this.shadow?.destroy()
     this.sprite.destroy()
   }
 

@@ -174,9 +174,15 @@ export class RoomScene extends Phaser.Scene {
     )!
 
     map.createLayer('floor', tileset, 0, 0)
-    map.createLayer('furniture_below', tileset, 0, 0)
+    const fb = map.createLayer('furniture_below', tileset, 0, 0)
     const above = map.createLayer('furniture_above', tileset, 0, 0)
     above?.setDepth(10)
+
+    // V6.3 — at night (18:00-06:00), draw soft warm glow on light-source tiles.
+    // Tile IDs (indoor_lobby_v1):
+    //   14 = wall sconce, 21 = hanging lantern, 22 = floor lamp,
+    //   23 = fireplace logs, 38 = strobe panel, 39 = neon DJ
+    this.addNightGlow(map, [fb, above].filter(Boolean) as Phaser.Tilemaps.TilemapLayer[])
 
     registerBearAnimations(this, REGIONS)
     bindAudio(this)
@@ -1350,6 +1356,43 @@ export class RoomScene extends Phaser.Scene {
     })
     e.setDepth(500)
     return e
+  }
+
+  // V6.3 — paint warm glow circles on light-source tiles at night (18:00-06:00).
+  // Glow circles sit under furniture_above layer so they look like the lantern is lit.
+  private addNightGlow(map: Phaser.Tilemaps.Tilemap, layers: Phaser.Tilemaps.TilemapLayer[]) {
+    const hour = new Date().getHours()
+    const isNight = hour >= 18 || hour < 6
+    if (!isNight) return
+    // Light-emitter tile IDs (1-indexed Tiled gid; v1 tileset's IDs)
+    const GLOW_TILES = new Set([14, 21, 22, 23, 38, 39])
+    const TILE = 16
+    for (const layer of layers) {
+      if (!layer) continue
+      const grid = layer.layer.data
+      for (let y = 0; y < layer.layer.height; y++) {
+        for (let x = 0; x < layer.layer.width; x++) {
+          const t = grid[y][x]
+          if (!t || !GLOW_TILES.has(t.index)) continue
+          const cx = x * TILE + TILE / 2
+          const cy = y * TILE + TILE / 2
+          // Color by tile type: neon DJ = pink, strobe = white, others = warm orange
+          let color = 0xffd070
+          if (t.index === 38) color = 0xffffff
+          else if (t.index === 39) color = 0xff80c0
+          const glow = this.add.circle(cx, cy, 22, color, 0.35)
+            .setBlendMode(Phaser.BlendModes.ADD)
+            .setDepth(9)  // under above-layer (10)
+          // Subtle flicker
+          this.tweens.add({
+            targets: glow,
+            alpha: { from: 0.30, to: 0.42 },
+            duration: 800 + Math.random() * 500,
+            yoyo: true, repeat: -1, ease: 'Sine.InOut'
+          })
+        }
+      }
+    }
   }
 
   private setupAtmosphere(widthPx: number, heightPx: number) {
