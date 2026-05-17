@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A. GLITCH — Cyber Prototypes</title>
+<link rel="stylesheet" href="./shared.css">
+<style>
+  body.glitching {
+    animation: scene-shake 0.42s steps(8, end);
+  }
+  @keyframes scene-shake {
+    0%   { transform: translate(0); filter: hue-rotate(0deg); }
+    10%  { transform: translate(-3px, 2px) skewX(0.6deg); filter: hue-rotate(15deg); }
+    20%  { transform: translate(3px, -1px); }
+    30%  { transform: translate(-2px, 0) skewX(-0.4deg); filter: hue-rotate(-10deg); }
+    40%  { transform: translate(2px, 1px); }
+    50%  { transform: translate(-1px, -2px); filter: hue-rotate(20deg); }
+    60%  { transform: translate(2px, 0); }
+    70%  { transform: translate(0, 1px); }
+    80%  { transform: translate(-1px, 0); }
+    100% { transform: translate(0); filter: hue-rotate(0deg); }
+  }
+
+  body.glitching .greeting,
+  body.glitching .name,
+  body.glitching .role,
+  body.glitching .chat-prompt,
+  body.glitching .chat-input,
+  body.glitching .links a,
+  body.glitching .sep,
+  body.glitching .social span,
+  body.glitching .below h2,
+  body.glitching .below .post-title,
+  body.glitching .below .post-meta,
+  body.glitching .below p {
+    animation: rgb-shift 0.42s steps(8, end);
+  }
+
+  @keyframes rgb-shift {
+    0%, 100% { text-shadow: 0 0 transparent; }
+    10% { text-shadow: 3px 0 var(--neon-red), -3px 0 var(--neon-cyan); }
+    25% { text-shadow: -2px 1px var(--neon-red), 2px -1px var(--neon-cyan); }
+    40% { text-shadow: 4px 0 var(--neon-red), -4px 0 var(--neon-cyan); }
+    55% { text-shadow: -1px 0 var(--neon-red), 1px 0 var(--neon-cyan); }
+    70% { text-shadow: 2px 1px var(--neon-red), -2px -1px var(--neon-cyan); }
+    85% { text-shadow: -1px 0 var(--neon-red), 1px 0 var(--neon-cyan); }
+  }
+
+  body.glitching.high { animation-duration: 0.7s; }
+  body.glitching.low  { animation-duration: 0.24s; }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg, transparent 0 6px, rgba(255, 0, 110, 0.04) 6px 7px
+    );
+    pointer-events: none;
+    opacity: 0;
+    z-index: 9998;
+    transition: opacity 0.08s;
+  }
+  body.glitching::before {
+    opacity: 1;
+    animation: slice-shift 0.42s steps(20, end);
+  }
+  @keyframes slice-shift {
+    0%, 100% { transform: translateY(0); }
+    20% { transform: translateY(8px); }
+    40% { transform: translateY(-12px); }
+    60% { transform: translateY(4px); }
+    80% { transform: translateY(-6px); }
+  }
+
+  /* slice band: a horizontal strip that yanks during glitch */
+  body::after {
+    content: '';
+    position: fixed;
+    left: 0; right: 0;
+    height: 24px;
+    top: 30%;
+    pointer-events: none;
+    z-index: 9999;
+    background: linear-gradient(180deg,
+      transparent,
+      rgba(0, 220, 255, 0.10) 30%,
+      rgba(255, 0, 110, 0.10) 70%,
+      transparent);
+    opacity: 0;
+  }
+  body.glitching::after {
+    opacity: 1;
+    animation: slice-yank 0.42s steps(6, end);
+  }
+  @keyframes slice-yank {
+    0%   { transform: translateX(0); top: 22%; }
+    20%  { transform: translateX(-40px); top: 38%; }
+    40%  { transform: translateX(28px); top: 52%; }
+    60%  { transform: translateX(-12px); top: 18%; }
+    80%  { transform: translateX(20px); top: 64%; }
+    100% { transform: translateX(0); top: 22%; }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar" id="topbar"></div>
+  <div class="scene"><div class="card" id="mockCard"></div></div>
+  <div class="below" id="below"></div>
+
+  <script src="./shared.js"></script>
+  <script>
+    GLITCH.init('A', 'GLITCH', 'Chromatic-aberration burst every 3–7 s. Like a corrupt frame.', {
+      trigger: true, live: true, intensity: true
+    });
+
+    var live = true;
+    var intensity = 'medium';
+    var loopTimer = null;
+
+    function trigger(intens) {
+      var b = document.body;
+      b.classList.remove('low', 'medium', 'high');
+      b.classList.add(intens || intensity);
+      // restart animation
+      b.classList.remove('glitching');
+      void b.offsetWidth;
+      b.classList.add('glitching');
+      var dur = intens === 'high' ? 700 : intens === 'low' ? 240 : 420;
+      setTimeout(function() { b.classList.remove('glitching'); }, dur + 30);
+    }
+
+    function loop() {
+      if (!live) return;
+      trigger(intensity);
+      var min = intensity === 'high' ? 1500 : intensity === 'low' ? 4500 : 2800;
+      var max = intensity === 'high' ? 4000 : intensity === 'low' ? 9000 : 6500;
+      loopTimer = setTimeout(loop, min + Math.random() * (max - min));
+    }
+
+    document.getElementById('triggerBtn').addEventListener('click', function() { trigger(intensity); });
+    document.getElementById('liveBtn').addEventListener('click', function() {
+      live = !live;
+      this.textContent = live ? 'Auto: ON' : 'Auto: OFF';
+      this.classList.toggle('live', live);
+      if (live) loop();
+      else if (loopTimer) clearTimeout(loopTimer);
+    });
+    document.getElementById('intensitySel').addEventListener('change', function() {
+      intensity = this.value;
+    });
+
+    // initial: kick off after first scramble settles
+    setTimeout(function() {
+      trigger('medium');
+      loop();
+    }, 1200);
+
+    // hover the name = manual glitch
+    setTimeout(function() {
+      var name = document.querySelector('.name');
+      if (name) name.addEventListener('mouseenter', function() { trigger('high'); });
+    }, 200);
+  </script>
+</body>
+</html>

@@ -1,7 +1,6 @@
 ---
 // src/components/comics/ComicCover.astro
 import type { Comic } from '../../lib/comics';
-import ComicPanel from './ComicPanel.astro';
 
 interface Props {
   comic: Comic;
@@ -20,8 +19,7 @@ const detailHref = lang === 'en'
   ? `/en/comics/${comic.issue_number}`
   : `/comics/${comic.issue_number}`;
 const imgUrl = comic.panels?.url || '';
-const cells = comic.panels?.cells || [];
-const altBase = cells.map(c => c.alt?.[lang] || c.alt?.zh).filter(Boolean).join('；') || comic.title[lang];
+const altText = comic.panels?.alt?.[lang] || comic.panels?.alt?.zh || comic.title[lang];
 ---
 
 <article class="comics-hero">
@@ -33,11 +31,9 @@ const altBase = cells.map(c => c.alt?.[lang] || c.alt?.zh).filter(Boolean).join(
   <a href={detailHref} style="text-decoration:none;color:inherit;">
     <h2 class="heading">{comic.title[lang] || comic.title.zh}</h2>
   </a>
-  {imgUrl && cells.length === 4 && (
-    <div class="strip-grid">
-      {cells.map((cell) => (
-        <ComicPanel imgUrl={imgUrl} altText={altBase} cell={cell} lang={lang} />
-      ))}
-    </div>
+  {imgUrl && (
+    <a href={detailHref} class="strip-link">
+      <img class="strip-img" src={imgUrl} alt={altText} loading="lazy" />
+    </a>
   )}
 </article>

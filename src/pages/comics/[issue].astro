@@ -2,7 +2,6 @@
 // src/pages/comics/[issue].astro
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import ComicMasthead from '../../components/comics/ComicMasthead.astro';
-import ComicPanel from '../../components/comics/ComicPanel.astro';
 import { fetchComics } from '../../lib/comics';
 import { siteStrings } from '../../lib/i18n';
 import '../../styles/comics.css';
@@ -25,13 +24,12 @@ const date = new Date(comic.published_at || comic.created_at).toLocaleDateString
   year: 'numeric', month: 'long', day: 'numeric',
 });
 const imgUrl = comic.panels?.url || '';
-const cells = comic.panels?.cells || [];
-const altBase = cells.map((c: any) => c.alt?.zh).filter(Boolean).join('；') || comic.title.zh;
+const altText = comic.panels?.alt?.zh || comic.title.zh;
 ---
 
 <BaseLayout
   title={`${s.issuePrefix} ${comic.issue_number} · ${comic.title.zh} · ${s.title}`}
-  description={comic.source_text}
+  description={comic.source_text || comic.title.zh}
   lang="zh"
 >
   <ComicMasthead lang="zh" />
@@ -45,15 +43,11 @@ const altBase = cells.map((c: any) => c.alt?.zh).filter(Boolean).join('；') || 
       {comic.title.zh}
     </h1>
 
-    {imgUrl && cells.length === 4 && (
-      <div class="strip-grid detail">
-        {cells.map((cell: any) => (
-          <ComicPanel imgUrl={imgUrl} altText={altBase} cell={cell} lang="zh" />
-        ))}
-      </div>
-    )}
+    {imgUrl && <img class="strip-img-full" src={imgUrl} alt={altText} />}
 
-    <div class="source">「{comic.source_text}」</div>
+    {comic.source_text && comic.source_text !== comic.title.zh && (
+      <div class="source">「{comic.source_text}」</div>
+    )}
 
     <nav class="nav">
       {prev ? <a href={`/comics/${prev.issue_number}`}>← {s.prev} No. {prev.issue_number}</a> : <span />}

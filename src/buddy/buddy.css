@@ -1,0 +1,206 @@
+/* Buddy System - Pet widget styles */
+
+#buddy-container {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  z-index: 900;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  user-select: none;
+  pointer-events: none;
+}
+
+#buddy-container > * {
+  pointer-events: auto;
+}
+
+/* Sprite */
+.buddy-sprite {
+  font-family: 'Courier New', 'Menlo', 'Monaco', monospace;
+  font-size: 11px;
+  line-height: 1.2;
+  margin: 0;
+  padding: 8px;
+  cursor: pointer;
+  color: var(--buddy-color, #888);
+  background: var(--c-bg, #fff);
+  border: 1px solid color-mix(in srgb, var(--buddy-color, #888) 30%, transparent);
+  border-radius: 8px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  white-space: pre;
+}
+
+.buddy-sprite:hover {
+  transform: scale(1.08);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--buddy-color, #888) 25%, transparent);
+}
+
+/* Rarity color variables */
+.rarity-common    { --buddy-color: #888; }
+.rarity-uncommon  { --buddy-color: #22c55e; }
+.rarity-rare      { --buddy-color: #3b82f6; }
+.rarity-epic      { --buddy-color: #a855f7; }
+.rarity-legendary { --buddy-color: #f59e0b; }
+
+/* Shiny effect */
+.buddy-shiny .buddy-sprite {
+  animation: buddy-shimmer 2s ease-in-out infinite;
+}
+
+@keyframes buddy-shimmer {
+  0%, 100% { text-shadow: 0 0 4px var(--buddy-color); }
+  50% { text-shadow: 0 0 12px var(--buddy-color), 0 0 24px var(--buddy-color); }
+}
+
+/* Legendary glow */
+.rarity-legendary .buddy-sprite {
+  box-shadow: 0 0 8px color-mix(in srgb, #f59e0b 40%, transparent);
+}
+
+/* Speech bubble */
+.buddy-bubble {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  background: var(--c-bg, #fff);
+  border: 1px solid color-mix(in srgb, var(--buddy-color, #888) 40%, transparent);
+  border-radius: 10px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--c-text, #333);
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+  pointer-events: none;
+  max-width: 160px;
+}
+
+.buddy-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  right: 20px;
+  width: 8px;
+  height: 8px;
+  background: var(--c-bg, #fff);
+  border-right: 1px solid color-mix(in srgb, var(--buddy-color, #888) 40%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--buddy-color, #888) 40%, transparent);
+  transform: rotate(45deg);
+}
+
+.buddy-bubble.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Stats card */
+.buddy-card {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  background: var(--c-bg, #fff);
+  border: 1px solid color-mix(in srgb, var(--buddy-color, #888) 35%, transparent);
+  border-radius: 12px;
+  padding: 14px 16px;
+  min-width: 180px;
+  opacity: 0;
+  transform: translateY(6px) scale(0.95);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+}
+
+.buddy-card.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.buddy-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2px;
+}
+
+.buddy-card-species {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--c-text, #333);
+}
+
+.buddy-card-rarity {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.buddy-card-stars {
+  font-size: 12px;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+}
+
+.buddy-card-hat {
+  font-size: 12px;
+  color: var(--c-text-secondary, #666);
+  margin-bottom: 8px;
+}
+
+.buddy-stat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  font-size: 11px;
+}
+
+.buddy-stat-name {
+  width: 32px;
+  color: var(--c-text-secondary, #666);
+  flex-shrink: 0;
+}
+
+.buddy-stat-bar {
+  flex: 1;
+  height: 6px;
+  background: color-mix(in srgb, var(--c-text, #333) 10%, transparent);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.buddy-stat-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s ease;
+}
+
+.buddy-stat-val {
+  width: 24px;
+  text-align: right;
+  color: var(--c-text-secondary, #666);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Dark mode adjustments */
+[data-mode="dark"] .buddy-sprite {
+  background: var(--c-bg, #1a1a1a);
+}
+
+[data-mode="dark"] .buddy-bubble {
+  background: var(--c-bg, #1a1a1a);
+}
+
+[data-mode="dark"] .buddy-card {
+  background: var(--c-bg, #1a1a1a);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+/* Hide on mobile - too small for ASCII art */
+@media (max-width: 768px) {
+  #buddy-container {
+    display: none;
+  }
+}

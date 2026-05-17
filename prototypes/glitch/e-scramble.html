@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E. SCRAMBLE BURSTS — Cyber Prototypes</title>
+<link rel="stylesheet" href="./shared.css">
+<style>
+  /* a faint accent flash when something scrambles */
+  .scramble-flash {
+    position: relative;
+  }
+  .scramble-flash::after {
+    content: '';
+    position: absolute;
+    left: -4px; right: -4px; top: -2px; bottom: -2px;
+    background: rgba(var(--accent-rgb), 0.10);
+    pointer-events: none;
+    opacity: 0;
+    border-radius: 2px;
+    transition: opacity 0.4s;
+  }
+  .scramble-flash.flashing::after { opacity: 1; transition: opacity 0.05s; }
+</style>
+</head>
+<body>
+  <div class="topbar" id="topbar"></div>
+  <div class="scene"><div class="card" id="mockCard"></div></div>
+  <div class="below" id="below"></div>
+
+  <script src="./shared.js"></script>
+  <script>
+    GLITCH.init('E', 'SCRAMBLE BURSTS', 'Text re-decrypts as it enters view + occasional re-scrambles on scroll.', {
+      trigger: true, live: true, intensity: false
+    });
+
+    var live = true;
+    var triggerLoop = null;
+    var allScrambles = [];
+
+    function flash(el) {
+      el.classList.add('scramble-flash', 'flashing');
+      setTimeout(function() { el.classList.remove('flashing'); }, 60);
+    }
+
+    function scrambleEl(el, opts) {
+      if (!el) return;
+      var t = (el.textContent || '').trim();
+      if (!t) return;
+      flash(el);
+      GLITCH.scramble(el, t, opts || { duration: 600 });
+    }
+
+    // 1) On enter view: scramble each .scrambleable once
+    var seen = new WeakSet();
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(e) {
+        if (!e.isIntersecting || seen.has(e.target)) return;
+        seen.add(e.target);
+        scrambleEl(e.target, { duration: 520, from: 'random' });
+      });
+    }, { threshold: 0.45 });
+
+    function bind() {
+      document.querySelectorAll('.scrambleable').forEach(function(el) {
+        if (el.__bound) return;
+        el.__bound = true;
+        allScrambles.push(el);
+        io.observe(el);
+      });
+    }
+    bind();
+
+    // 2) Scroll-velocity bursts: when user scrolls fast, re-scramble a few visible items
+    var lastScrollY = window.scrollY;
+    var lastScrollT = performance.now();
+    var lastBurst = 0;
+    window.addEventListener('scroll', function() {
+      var now = performance.now();
+      var dt = Math.max(8, now - lastScrollT);
+      var v = Math.abs(window.scrollY - lastScrollY) / dt * 1000;
+      lastScrollY = window.scrollY; lastScrollT = now;
+      if (v > 1500 && now - lastBurst > 700) {
+        lastBurst = now;
+        burstVisible(2);
+      }
+    });
+
+    function visible() {
+      return allScrambles.filter(function(el) {
+        var r = el.getBoundingClientRect();
+        return r.bottom > 60 && r.top < window.innerHeight - 40;
+      });
+    }
+
+    function burstVisible(count) {
+      var v = visible();
+      if (!v.length) return;
+      for (var i = 0; i < count && v.length; i++) {
+        var idx = Math.floor(Math.random() * v.length);
+        var el = v.splice(idx, 1)[0];
+        scrambleEl(el, { duration: 460, from: 'random', settleDuration: 140 });
+      }
+    }
+
+    // 3) Auto: every 3.5–7s, re-scramble 1 random visible element
+    function loop() {
+      if (!live) return;
+      burstVisible(1);
+      var next = 3500 + Math.random() * 3500;
+      triggerLoop = setTimeout(loop, next);
+    }
+
+    document.getElementById('triggerBtn').addEventListener('click', function() { burstVisible(3); });
+    document.getElementById('liveBtn').addEventListener('click', function() {
+      live = !live;
+      this.textContent = live ? 'Auto: ON' : 'Auto: OFF';
+      this.classList.toggle('live', live);
+      if (live) loop();
+      else if (triggerLoop) clearTimeout(triggerLoop);
+    });
+
+    setTimeout(loop, 2500);
+  </script>
+</body>
+</html>

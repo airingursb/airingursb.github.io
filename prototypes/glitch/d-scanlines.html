@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D. SCANLINES — Cyber Prototypes</title>
+<link rel="stylesheet" href="./shared.css">
+<style>
+  /* permanent scanlines */
+  .scanlines {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 9998;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0 2px,
+      rgba(0, 0, 0, 0.28) 2px 3px
+    );
+    mix-blend-mode: multiply;
+  }
+  .scanlines.low  { background: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0,0,0,0.18) 3px 4px); }
+  .scanlines.high { background: repeating-linear-gradient(0deg, transparent 0 1.5px, rgba(0,0,0,0.42) 1.5px 2.5px); }
+
+  /* vignette */
+  .vignette {
+    position: fixed; inset: 0;
+    pointer-events: none;
+    z-index: 9997;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 50%,
+      rgba(0, 0, 0, 0.55) 100%
+    );
+  }
+
+  /* slow rolling bar of brightness */
+  .roll-bar {
+    position: fixed; left: 0; right: 0; height: 110px;
+    pointer-events: none;
+    z-index: 9999;
+    background: linear-gradient(180deg,
+      transparent,
+      rgba(255, 255, 255, 0.045) 50%,
+      transparent);
+    animation: roll 7s linear infinite;
+  }
+  @keyframes roll {
+    from { top: -120px; }
+    to   { top: 110vh; }
+  }
+
+  /* whole page brightness flicker */
+  body { animation: flicker 6s infinite; }
+  @keyframes flicker {
+    0%, 100%  { filter: brightness(1); }
+    3%        { filter: brightness(0.82); }
+    4%, 47%   { filter: brightness(1); }
+    48%       { filter: brightness(0.7); }
+    49%       { filter: brightness(1.06); }
+    50%, 70%  { filter: brightness(1); }
+    71%       { filter: brightness(0.88); }
+    72%       { filter: brightness(1); }
+  }
+
+  /* subtle accent glow on text — CRT bloom */
+  .name {
+    text-shadow:
+      0 0 6px rgba(var(--accent-rgb), 0.25),
+      0 0 18px rgba(var(--accent-rgb), 0.10);
+  }
+
+  /* periodic full-screen drop frame */
+  body.dropframe {
+    animation: drop 0.18s steps(2, end);
+  }
+  @keyframes drop {
+    0%   { filter: brightness(0.4) saturate(0.5); }
+    50%  { filter: brightness(1.4) saturate(2); }
+    100% { filter: brightness(1); }
+  }
+</style>
+</head>
+<body>
+  <div class="topbar" id="topbar"></div>
+  <div class="scene"><div class="card" id="mockCard"></div></div>
+  <div class="below" id="below"></div>
+
+  <div class="scanlines" id="scanlines"></div>
+  <div class="vignette"></div>
+  <div class="roll-bar"></div>
+
+  <script src="./shared.js"></script>
+  <script>
+    GLITCH.init('D', 'SCANLINES + FLICKER', 'Always-on CRT scanlines, slow rolling bar, brightness flicker.', {
+      trigger: true, live: true, intensity: true
+    });
+
+    var live = true;
+    var loopTimer = null;
+    var scanlines = document.getElementById('scanlines');
+
+    function setIntensity(v) {
+      scanlines.className = 'scanlines';
+      if (v !== 'medium') scanlines.classList.add(v);
+    }
+
+    function dropFrame() {
+      var b = document.body;
+      b.classList.remove('dropframe');
+      void b.offsetWidth;
+      b.classList.add('dropframe');
+      setTimeout(function() { b.classList.remove('dropframe'); }, 220);
+    }
+
+    function loop() {
+      if (!live) return;
+      dropFrame();
+      var next = 5000 + Math.random() * 7000;
+      loopTimer = setTimeout(loop, next);
+    }
+
+    document.getElementById('triggerBtn').addEventListener('click', dropFrame);
+    document.getElementById('liveBtn').addEventListener('click', function() {
+      live = !live;
+      this.textContent = live ? 'Auto: ON' : 'Auto: OFF';
+      this.classList.toggle('live', live);
+      if (live) loop();
+      else if (loopTimer) clearTimeout(loopTimer);
+    });
+    document.getElementById('intensitySel').addEventListener('change', function() {
+      setIntensity(this.value);
+    });
+
+    setTimeout(loop, 3000);
+  </script>
+</body>
+</html>
