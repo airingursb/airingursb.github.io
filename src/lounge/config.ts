@@ -64,6 +64,22 @@ export function getOrCreateVisitorId(): string {
   }
 }
 
+// V6.5 — Character species. Local-only for now (no network propagation);
+// other players + NPCs always render as bear. V6.5.1 will add propagation.
+export const SPECIES = ['bear', 'cat'] as const
+export type Species = typeof SPECIES[number]
+const SPECIES_STORAGE_KEY = 'lounge_species_v1'
+export function getMySpecies(): Species {
+  try {
+    const v = localStorage.getItem(SPECIES_STORAGE_KEY)
+    if (v && (SPECIES as readonly string[]).indexOf(v) !== -1) return v as Species
+  } catch {}
+  return 'bear'
+}
+export function setMySpecies(s: Species) {
+  try { localStorage.setItem(SPECIES_STORAGE_KEY, s) } catch {}
+}
+
 export function getMyCC(): string | null {
   try {
     return sessionStorage.getItem('vp_country')

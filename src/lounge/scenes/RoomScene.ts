@@ -4,9 +4,9 @@ import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendG
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
 import { renderMinimap, showDoorLabel, hideDoorLabel, MAP_ROOMS } from '../minimap'
-import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, type Region, type RoomId } from '../config'
+import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, type Region, type RoomId } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
-import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard } from '../ui'
+import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard, setOnSpeciesToggle, updateSpeciesButtonLabel } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
@@ -139,6 +139,12 @@ export class RoomScene extends Phaser.Scene {
         `/lounge/assets/sprites/bear/${region}/sprite.png`,
         `/lounge/assets/sprites/bear/${region}/sprite.json`
       )
+      // V6.5 — also preload cat species sprites
+      this.load.atlas(
+        `cat_${region}`,
+        `/lounge/assets/sprites/cat/${region}/sprite.png`,
+        `/lounge/assets/sprites/cat/${region}/sprite.json`
+      )
     }
     const ra = ROOM_AUDIO[this.currentRoomId]
     if (ra) preloadRoomAudio(this, ra.bgmKey, ra.bgmPath, ra.ambKey, ra.ambPath)
@@ -234,7 +240,7 @@ export class RoomScene extends Phaser.Scene {
 
     try { this.myCC = sessionStorage.getItem('vp_country') } catch { this.myCC = null }
     this.myRegion = ccToRegion(this.myCC)
-    this.myBear = new Bear(this, spawnX, spawnY, this.myRegion)
+    this.myBear = new Bear(this, spawnX, spawnY, this.myRegion, getMySpecies())
     this.myBear.sprite.setDepth(5)
 
     // Apply locally-cached display name immediately (will be overridden by welcome msg)
@@ -527,6 +533,15 @@ export class RoomScene extends Phaser.Scene {
       },
       () => this.openRenameModal()
     )
+
+    // V6.5 — species toggle: flips bear ↔ cat, applies to own sprite, persists locally.
+    updateSpeciesButtonLabel(getMySpecies())
+    setOnSpeciesToggle(() => {
+      const next = getMySpecies() === 'bear' ? 'cat' : 'bear'
+      import('../config').then(({ setMySpecies }) => setMySpecies(next))
+      this.myBear?.setSpecies(next)
+      updateSpeciesButtonLabel(next)
+    })
 
     setupWishboard(
       getIdentity().visitor_id,

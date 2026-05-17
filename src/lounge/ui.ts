@@ -29,6 +29,8 @@ let nameSaveBtn: HTMLButtonElement | null = null
 let nameModalBackdrop: HTMLElement | null = null
 let replacedOverlayEl: HTMLElement | null = null
 let onInfoRenameRequest: (() => void) | null = null
+let onInfoSpeciesToggleRequest: (() => void) | null = null
+let infoSpeciesBtn: HTMLButtonElement | null = null
 let onInfoOpenRequest: (() => void) | null = null
 let onNameModalSubmit: ((name: string | null) => void) | null = null
 
@@ -55,6 +57,7 @@ export function initUI() {
   infoRegionEl = document.getElementById('lounge-info-region')
   infoIdEl = document.getElementById('lounge-info-id')
   infoRenameBtn = document.getElementById('lounge-info-rename') as HTMLButtonElement | null
+  infoSpeciesBtn = document.getElementById('lounge-info-species') as HTMLButtonElement | null
   nameModalEl = document.getElementById('lounge-name-modal')
   nameInputEl = document.getElementById('lounge-name-input') as HTMLInputElement | null
   nameErrorEl = document.getElementById('lounge-name-error')
@@ -80,6 +83,11 @@ export function initUI() {
     infoRenameBtn.addEventListener('click', () => {
       hideInfoPanel()
       onInfoRenameRequest?.()
+    })
+  }
+  if (infoSpeciesBtn) {
+    infoSpeciesBtn.addEventListener('click', () => {
+      onInfoSpeciesToggleRequest?.()
     })
   }
 
@@ -403,6 +411,16 @@ export function setInfoPanelDataProvider(
     }
   }
   onInfoRenameRequest = onRename
+}
+
+// V6.5 — set the species-toggle callback. Caller updates Bear sprite + persists pref.
+export function setOnSpeciesToggle(handler: () => void) {
+  onInfoSpeciesToggleRequest = handler
+}
+export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat') {
+  if (!infoSpeciesBtn) return
+  infoSpeciesBtn.dataset.species = currentSpecies
+  infoSpeciesBtn.textContent = currentSpecies === 'bear' ? 'Switch to 🐱 Cat' : 'Switch to 🐻 Bear'
 }
 
 export function hideInfoPanel() {

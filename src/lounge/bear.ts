@@ -1,42 +1,43 @@
 import Phaser from 'phaser'
-import { WALK_SPEED, type Region } from './config'
+import { WALK_SPEED, type Region, type Species, SPECIES } from './config'
 
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type BearState = 'idle' | 'walk' | 'wave' | 'sit' | 'dance'
 
 export function registerBearAnimations(scene: Phaser.Scene, regions: readonly Region[]) {
-  for (const region of regions) {
-    const key = `bear_${region}`
-    for (const dir of ['up', 'down', 'left', 'right'] as const) {
-      const idleKey = `${key}_idle_${dir}`
-      if (!scene.anims.exists(idleKey)) {
-        scene.anims.create({
-          key: idleKey,
-          frames: [{ key, frame: `idle_${dir}` }],
-          frameRate: 1,
-          repeat: -1
-        })
+  for (const species of SPECIES) {
+    for (const region of regions) {
+      const key = `${species}_${region}`
+      if (!scene.textures.exists(key)) continue  // species atlas may not be preloaded
+      for (const dir of ['up', 'down', 'left', 'right'] as const) {
+        const idleKey = `${key}_idle_${dir}`
+        if (!scene.anims.exists(idleKey)) {
+          scene.anims.create({
+            key: idleKey,
+            frames: [{ key, frame: `idle_${dir}` }],
+            frameRate: 1, repeat: -1
+          })
+        }
+        const walkKey = `${key}_walk_${dir}`
+        if (!scene.anims.exists(walkKey)) {
+          scene.anims.create({
+            key: walkKey,
+            frames: [
+              { key, frame: `walk_${dir}_0` },
+              { key, frame: `walk_${dir}_1` }
+            ],
+            frameRate: 8, repeat: -1
+          })
+        }
       }
-      const walkKey = `${key}_walk_${dir}`
-      if (!scene.anims.exists(walkKey)) {
-        scene.anims.create({
-          key: walkKey,
-          frames: [
-            { key, frame: `walk_${dir}_0` },
-            { key, frame: `walk_${dir}_1` }
-          ],
-          frameRate: 8,
-          repeat: -1
-        })
+      const waveKey = `${key}_wave`
+      if (!scene.anims.exists(waveKey)) {
+        scene.anims.create({ key: waveKey, frames: [{ key, frame: 'wave' }], frameRate: 1, repeat: 0 })
       }
-    }
-    const waveKey = `${key}_wave`
-    if (!scene.anims.exists(waveKey)) {
-      scene.anims.create({ key: waveKey, frames: [{ key, frame: 'wave' }], frameRate: 1, repeat: 0 })
-    }
-    const sitKey = `${key}_sit`
-    if (!scene.anims.exists(sitKey)) {
-      scene.anims.create({ key: sitKey, frames: [{ key, frame: 'sit' }], frameRate: 1, repeat: 0 })
+      const sitKey = `${key}_sit`
+      if (!scene.anims.exists(sitKey)) {
+        scene.anims.create({ key: sitKey, frames: [{ key, frame: 'sit' }], frameRate: 1, repeat: 0 })
+      }
     }
   }
 }
@@ -45,6 +46,7 @@ export class Bear {
   scene: Phaser.Scene
   sprite: Phaser.GameObjects.Sprite
   region: Region
+  species: Species = 'bear'
   target: { x: number; y: number } | null = null
   facing: Direction = 'down'
   state: BearState = 'idle'
@@ -55,12 +57,15 @@ export class Bear {
   private heartLabel?: Phaser.GameObjects.Text
   private shadow?: Phaser.GameObjects.Ellipse  // V6.3 — soft ground shadow
 
-  constructor(scene: Phaser.Scene, x: number, y: number, region: Region) {
+  constructor(scene: Phaser.Scene, x: number, y: number, region: Region, species: Species = 'bear') {
     this.scene = scene
     this.region = region
+    this.species = species
     // V6.3 — shadow rendered first so it sits behind the sprite
     this.shadow = scene.add.ellipse(x, y - 1, 14, 5, 0x000000, 0.32).setDepth(3)
-    this.sprite = scene.add.sprite(x, y, `bear_${region}`, 'idle_down')
+    const texKey = `${species}_${region}`
+    const finalKey = scene.textures.exists(texKey) ? texKey : `bear_${region}`
+    this.sprite = scene.add.sprite(x, y, finalKey, 'idle_down')
     this.sprite.setOrigin(0.5, 1)
     this.baseY = y
     this.nameLabel = scene.add.text(x, y - 52, '', {
@@ -212,17 +217,30 @@ export class Bear {
       this.sprite.anims.stop()
       this.sprite.setFrame(`walk_${this.facing}_0`)
     } else {
-      this.sprite.anims.play(`bear_${this.region}_walk_${this.facing}`, true)
+      this.sprite.anims.play(`${this.species}_${this.region}_walk_${this.facing}`, true)
     }
   }
-  playIdle() { this.sprite.anims.play(`bear_${this.region}_idle_${this.facing}`, true) }
-  playWave() { this.sprite.anims.play(`bear_${this.region}_wave`, true) }
-  playSit()  { this.sprite.anims.play(`bear_${this.region}_sit`, true) }
+  playIdle() { this.sprite.anims.play(`${this.species}_${this.region}_idle_${this.facing}`, true) }
+  playWave() { this.sprite.anims.play(`${this.species}_${this.region}_wave`, true) }
+  playSit()  { this.sprite.anims.play(`${this.species}_${this.region}_sit`, true) }
 
   setRegion(region: Region) {
     if (region === this.region) return
     this.region = region
-    this.sprite.setTexture(`bear_${region}`)
+    const texKey = `${this.species}_${region}`
+    this.sprite.setTexture(this.scene.textures.exists(texKey) ? texKey : `bear_${region}`)
+    if (this.state === 'walk') this.playWalk()
+    else if (this.state === 'wave') this.playWave()
+    else if (this.state === 'sit') this.playSit()
+    else this.playIdle()
+  }
+
+  // V6.5 — change species (e.g. user toggles bear ↔ cat).
+  setSpecies(species: Species) {
+    if (species === this.species) return
+    this.species = species
+    const texKey = `${species}_${this.region}`
+    this.sprite.setTexture(this.scene.textures.exists(texKey) ? texKey : `bear_${this.region}`)
     if (this.state === 'walk') this.playWalk()
     else if (this.state === 'wave') this.playWave()
     else if (this.state === 'sit') this.playSit()
