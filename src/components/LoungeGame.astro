@@ -6,6 +6,17 @@
   <div id="lounge-mount"></div>
   <div id="lounge-ui">
     <button id="lounge-mute" class="ui-mute-btn" aria-label="Toggle sound">🔊</button>
+    <div id="lounge-emote-menu" class="ui-emote-menu" hidden>
+      <button data-verb="wave" title="Wave">👋</button>
+      <button data-verb="sit" title="Sit">🪑</button>
+      <button data-verb="dance" title="Dance">💃</button>
+      <button data-verb="say" title="Say">💬</button>
+    </div>
+    <form id="lounge-say-form" class="ui-say" hidden>
+      <input type="text" id="lounge-say-input" maxlength="60" placeholder="say something…" autocomplete="off">
+    </form>
+    <div id="lounge-bubbles" class="ui-bubbles"></div>
+    <div id="lounge-dialog" class="ui-dialog" hidden></div>
   </div>
   <a href="/" class="lounge-back" title="Back to homepage">←</a>
 </div>
@@ -80,16 +91,112 @@
   }
   .ui-mute-btn:hover { background: rgba(255,255,255,.16); }
   .ui-mute-btn:focus-visible { outline: 2px solid #4ade80; outline-offset: 2px; }
+
+  /* Radial emote menu */
+  .ui-emote-menu {
+    position: absolute;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 8px;
+    background: rgba(0,0,0,.85);
+    border-radius: 12px;
+    transform: translate(-50%, -50%) scale(1);
+    transform-origin: center;
+    transition: transform .15s ease-out, opacity .15s;
+    opacity: 1;
+  }
+  .ui-emote-menu[hidden] { display: none; }
+  .ui-emote-menu.is-opening {
+    transform: translate(-50%, -50%) scale(0.6);
+    opacity: 0;
+  }
+  .ui-emote-menu button {
+    width: 44px; height: 44px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255,255,255,.1);
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    transition: background .15s, transform .1s;
+  }
+  .ui-emote-menu button:hover { background: rgba(255,255,255,.25); }
+  .ui-emote-menu button:active { transform: scale(0.92); }
+  .ui-emote-menu button:focus-visible { outline: 2px solid #4ade80; outline-offset: 2px; }
+
+  /* Say input */
+  .ui-say {
+    position: absolute;
+    bottom: 64px; left: 50%;
+    transform: translateX(-50%);
+  }
+  .ui-say[hidden] { display: none; }
+  .ui-say input {
+    width: 320px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(0,0,0,.7);
+    color: #fff;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    outline: none;
+  }
+  .ui-say input:focus { border-color: #4ade80; }
+
+  /* Speech bubbles */
+  .ui-bubbles { position: absolute; inset: 0; pointer-events: none; }
+  .ui-bubble {
+    position: absolute;
+    background: #fff;
+    color: #1a1a1a;
+    border: 1.5px solid #1a1a1a;
+    border-radius: 8px;
+    padding: 4px 10px;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.2;
+    white-space: nowrap;
+    transform: translate(-50%, -100%);
+    opacity: 1;
+    transition: opacity .2s;
+  }
+  .ui-bubble.is-fading { opacity: 0; }
+
+  /* Dialog (reserved for V2.2+; styled but not used in V2.1) */
+  .ui-dialog {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 25vh;
+    background: linear-gradient(180deg, rgba(20,14,8,0.92), rgba(20,14,8,0.98));
+    border-top: 4px solid #6b4226;
+    color: #f5e8d8;
+    padding: 16px 24px;
+    font-family: ui-monospace, monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+  }
+  .ui-dialog[hidden] { display: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ui-emote-menu,
+    .ui-bubble,
+    .ui-mute-btn { transition: none !important; }
+  }
 </style>
 
 <script>
   import { bootGame } from '../lounge/game'
   import { isMuted, toggleMute, playSfx } from '../lounge/audio'
+  import { initUI } from '../lounge/ui'
 
   function start() {
     const mount = document.getElementById('lounge-mount')
     if (!mount) return
     bootGame(mount)
+    initUI()
 
     const muteBtn = document.getElementById('lounge-mute') as HTMLButtonElement | null
     if (muteBtn) {
