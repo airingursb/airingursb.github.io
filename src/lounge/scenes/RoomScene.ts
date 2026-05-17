@@ -16,7 +16,7 @@ const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
 const NPC_REFRESH_MS = 10_000
 
-const ROOM_AUDIO: Record<string, { bgmKey: string; bgmPath: string; ambKey: string; ambPath: string }> = {
+const ROOM_AUDIO: Record<RoomId, { bgmKey: string; bgmPath: string; ambKey: string; ambPath: string }> = {
   room_lobby:    { bgmKey: 'bgm_lobby_day',      bgmPath: '/lounge/assets/audio/bgm/lobby_day.ogg',
                    ambKey: 'amb_cafe_chatter',   ambPath: '/lounge/assets/audio/ambient/cafe_chatter.ogg' },
   room_dj_floor: { bgmKey: 'bgm_dj_floor_party', bgmPath: '/lounge/assets/audio/bgm/dj_floor_party.ogg',
@@ -24,9 +24,7 @@ const ROOM_AUDIO: Record<string, { bgmKey: string; bgmPath: string; ambKey: stri
   room_balcony:  { bgmKey: 'bgm_balcony_outside',bgmPath: '/lounge/assets/audio/bgm/balcony_outside.ogg',
                    ambKey: 'amb_wind',           ambPath: '/lounge/assets/audio/ambient/wind.ogg' },
   room_library:  { bgmKey: 'bgm_library_quiet',  bgmPath: '/lounge/assets/audio/bgm/library_quiet.ogg',
-                   ambKey: 'amb_pages_turning',  ambPath: '/lounge/assets/audio/ambient/pages_turning.ogg' },
-  room_beach:    { bgmKey: 'bgm_beach_calm',     bgmPath: '/lounge/assets/audio/bgm/beach_calm.ogg',
-                   ambKey: 'amb_waves',          ambPath: '/lounge/assets/audio/ambient/waves.ogg' }
+                   ambKey: 'amb_pages_turning',  ambPath: '/lounge/assets/audio/ambient/pages_turning.ogg' }
 }
 
 const PIXEL_TEX_KEY = 'lounge_pixel'
@@ -121,9 +119,7 @@ export class RoomScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('room_balcony',  '/lounge/assets/rooms/balcony.tmj')
     this.load.tilemapTiledJSON('room_library',  '/lounge/assets/rooms/library.tmj')
     this.load.tilemapTiledJSON('room_home_template', '/lounge/assets/rooms/home.tmj')
-    this.load.tilemapTiledJSON('room_beach',    '/lounge/assets/rooms/beach.tmj')
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
-    this.load.image('outdoor_beach_v0', '/lounge/assets/tilesets/outdoor_beach_v0/tiles.png')
     for (const region of REGIONS) {
       this.load.atlas(
         `bear_${region}`,
@@ -156,12 +152,7 @@ export class RoomScene extends Phaser.Scene {
   create() {
     const mapKey = isHomeRoom(this.currentRoomId) ? 'room_home_template' : this.currentRoomId
     const map = this.make.tilemap({ key: mapKey })
-    // Tilemap may reference 'indoor_lobby_v0' OR 'outdoor_beach_v0' (V5.0+).
-    // Add all known tilesets — Phaser uses the one whose name matches the map's tileset entry.
-    const tileset = (
-      map.addTilesetImage('outdoor_beach_v0', 'outdoor_beach_v0') ??
-      map.addTilesetImage('indoor_lobby_v0', 'indoor_lobby_v0')
-    )!
+    const tileset = map.addTilesetImage('indoor_lobby_v0', 'indoor_lobby_v0')!
 
     map.createLayer('floor', tileset, 0, 0)
     map.createLayer('furniture_below', tileset, 0, 0)
@@ -1299,23 +1290,6 @@ export class RoomScene extends Phaser.Scene {
           alpha: { start: 0.2, end: 0 },
           scale: 1,
           tint: 0xfff0c0
-        }
-      }
-    } else if (roomId === 'room_beach') {
-      // Seagulls flying horizontally across the sky
-      cfg = {
-        x: -10, y: 40,
-        emit: {
-          emitZone: { type: 'random', source: new Phaser.Geom.Rectangle(0, 0, 1, 60), quantity: 1 } as any,
-          frequency: 3500,
-          lifespan: 8000,
-          quantity: 1,
-          maxAliveParticles: 3,
-          speedX: { min: 60, max: 90 },
-          speedY: { min: -3, max: 3 },
-          alpha: { start: 0.8, end: 0.5 },
-          scale: 2,
-          tint: 0xffffff
         }
       }
     }
