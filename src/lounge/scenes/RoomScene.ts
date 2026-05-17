@@ -127,9 +127,11 @@ export class RoomScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('room_library',  '/lounge/assets/rooms/library.tmj')
     this.load.tilemapTiledJSON('room_home_template', '/lounge/assets/rooms/home.tmj')
     this.load.tilemapTiledJSON('room_beach',    '/lounge/assets/rooms/beach.tmj')
+    this.load.tilemapTiledJSON('room_grove',    '/lounge/assets/rooms/grove.tmj')
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
     this.load.image('indoor_lobby_v1', '/lounge/assets/tilesets/indoor_lobby_v1/tiles.png')
     this.load.image('outdoor_beach_v0', '/lounge/assets/tilesets/outdoor_beach_v0/tiles.png')
+    this.load.image('outdoor_grove_v1', '/lounge/assets/tilesets/outdoor_grove_v1/tiles.png')
     for (const region of REGIONS) {
       this.load.atlas(
         `bear_${region}`,
@@ -166,6 +168,7 @@ export class RoomScene extends Phaser.Scene {
     // the map's tileset entry; others return null and are ignored.
     const tileset = (
       map.addTilesetImage('indoor_lobby_v1', 'indoor_lobby_v1') ??
+      map.addTilesetImage('outdoor_grove_v1', 'outdoor_grove_v1') ??
       map.addTilesetImage('outdoor_beach_v0', 'outdoor_beach_v0') ??
       map.addTilesetImage('indoor_lobby_v0', 'indoor_lobby_v0')
     )!
