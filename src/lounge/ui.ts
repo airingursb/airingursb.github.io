@@ -227,6 +227,7 @@ export function initUI() {
   })
   ensureQuestsRefs()
   initGameTimeClock()
+  initEnergyBar()
 }
 
 export function showMenuAt(screenX: number, screenY: number) {
@@ -458,6 +459,32 @@ function tickClock() {
   if (!clockEl || !clockTimeEl) return
   if (!isGameTimeEnabled()) return
   clockTimeEl.textContent = formatGameTime(getGameNow())
+}
+
+// V8.1 — Energy bar UI
+import { getEnergy, onEnergyChange, ENERGY_MAX } from './energy'
+let energyBarEl: HTMLElement | null = null
+let energyFillEl: HTMLElement | null = null
+let energyNumEl: HTMLElement | null = null
+
+function ensureEnergyRefs() {
+  if (energyBarEl) return
+  energyBarEl  = document.getElementById('lounge-energy')
+  energyFillEl = document.getElementById('lounge-energy-fill')
+  energyNumEl  = document.getElementById('lounge-energy-num')
+}
+function paintEnergy(value: number) {
+  ensureEnergyRefs()
+  if (!energyBarEl || !energyFillEl || !energyNumEl) return
+  const pct = Math.max(0, Math.min(100, (value / ENERGY_MAX) * 100))
+  energyFillEl.style.width = pct + '%'
+  energyNumEl.textContent = String(Math.round(value))
+  energyBarEl.classList.toggle('low',  value < 30 && value >= 10)
+  energyBarEl.classList.toggle('crit', value < 10)
+}
+export function initEnergyBar() {
+  paintEnergy(getEnergy())
+  onEnergyChange((v) => paintEnergy(v))
 }
 
 export function initGameTimeClock() {

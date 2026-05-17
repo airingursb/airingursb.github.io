@@ -17,6 +17,7 @@ import { loadNpcManifest, getActiveBracket, pickDialog, buildDialogContext, type
 import { getActiveFestivalId, getActiveFestival } from '../festivals'
 import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
+import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 
 const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
@@ -74,6 +75,8 @@ export class RoomScene extends Phaser.Scene {
   private transitioning = false
   private atmosphereOverlay?: Phaser.GameObjects.Rectangle
   private cutsceneFadeRect?: Phaser.GameObjects.Rectangle  // V7.7
+  private energyDrainBucket = 0
+  private energyRestoreBucket = 0
   private atmosphereTimer?: Phaser.Time.TimerEvent
   private particleEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
   private myDisplayName: string | null = null
@@ -1863,6 +1866,8 @@ export class RoomScene extends Phaser.Scene {
     }
     // V7.4 — count NPC click as "wave at" for quest progress
     onWaveAtQuest(id)
+    // V8.1 — talking takes a sip of energy
+    consumeEnergy(ENERGY_COST.interact)
   }
 
   private tryInteract() {
@@ -2122,6 +2127,7 @@ export class RoomScene extends Phaser.Scene {
 
   update(_time: number, dtMs: number) {
     if (this.myBear) {
+      const prevX = this.myBear.x, prevY = this.myBear.y
       const usedKeyboard = this.applyKeyboard(dtMs)
       if (!usedKeyboard) {
         if (!this.myBear.target && this.myBear.state === 'walk') {
@@ -2129,6 +2135,25 @@ export class RoomScene extends Phaser.Scene {
           this.myBear.playIdle()
         }
         this.myBear.update(dtMs, false)
+      }
+      // V8.1 — energy: drain by distance walked, restore slowly while sitting
+      const dx = this.myBear.x - prevX, dy = this.myBear.y - prevY
+      const dist = Math.hypot(dx, dy)
+      if (dist > 0.1) {
+        // 30 tiles = 480px = 1 energy → 480/30 px per energy = 16 px/energy
+        // accumulate fractional energy in a private bucket to avoid 0/0 drift
+        this.energyDrainBucket = (this.energyDrainBucket ?? 0) + dist * ENERGY_COST.walk_per_tile / 16
+        if (this.energyDrainBucket >= 1) {
+          consumeEnergy(Math.floor(this.energyDrainBucket))
+          this.energyDrainBucket -= Math.floor(this.energyDrainBucket)
+        }
+      } else if (this.myBear.state === 'sit') {
+        // restore +1 every ~3s while sitting
+        this.energyRestoreBucket = (this.energyRestoreBucket ?? 0) + dtMs / 3000
+        if (this.energyRestoreBucket >= 1) {
+          restoreEnergy(Math.floor(this.energyRestoreBucket))
+          this.energyRestoreBucket -= Math.floor(this.energyRestoreBucket)
+        }
       }
       if (this.autoWaveOnArrive && this.myBear.state === 'idle' && !this.myBear.target) {
         this.autoWaveOnArrive = false
