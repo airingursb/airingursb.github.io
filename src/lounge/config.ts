@@ -79,13 +79,30 @@ export function prefersReducedMotion(): boolean {
 // Multi-room / protocol v=3 (V3.0 — adds persistence: welcome/name/name_changed/replaced)
 export const PROTOCOL_VERSION = 3
 
-export const VALID_ROOMS = ['room_lobby', 'room_dj_floor', 'room_balcony', 'room_library'] as const
-export type RoomId = typeof VALID_ROOMS[number]
-export const DEFAULT_ROOM: RoomId = 'room_lobby'
+export const STATIC_ROOMS = ['room_lobby', 'room_dj_floor', 'room_balcony', 'room_library'] as const
+export type StaticRoomId = typeof STATIC_ROOMS[number]
+// Home rooms have dynamic ids like 'room_home_<8hex>'.
+export type RoomId = StaticRoomId | `room_home_${string}`
+export const DEFAULT_ROOM: StaticRoomId = 'room_lobby'
+
+// Back-compat for code that imports VALID_ROOMS.
+export const VALID_ROOMS = STATIC_ROOMS
+
+const HOME_ROOM_RE = /^room_home_[0-9a-f]{8}$/
 
 export function isValidRoom(s: string | null | undefined): s is RoomId {
   if (!s) return false
-  return (VALID_ROOMS as readonly string[]).indexOf(s) !== -1
+  if ((STATIC_ROOMS as readonly string[]).indexOf(s) !== -1) return true
+  if (HOME_ROOM_RE.test(s)) return true
+  return false
+}
+
+export function isHomeRoom(s: string): boolean {
+  return HOME_ROOM_RE.test(s)
+}
+
+export function homeRoomFor(visitor_id: string): RoomId {
+  return ('room_home_' + visitor_id.slice(0, 8)) as RoomId
 }
 
 // Volume channels (V2.4)

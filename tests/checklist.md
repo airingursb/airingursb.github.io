@@ -994,3 +994,40 @@
 - [ ] WS `dm {to, text}` → `dm_sent_ok` or `dm_failed {reason}`
 - [ ] WS `dm_thread {other}` → `dm_thread {other, messages}`
 - [ ] WS `dm_read {from}` → `dm_read_ack`
+
+## Lounge V4.2 (Player Homes)
+
+### Home access
+- [ ] Lobby south wall has a new door at tile (14, 19)
+- [ ] Walking through south door → travels to `room_home_<your_short_id>`
+- [ ] Home room is 320×192 (smaller than other rooms) with wood floor + brick walls + 2 plants flanking north door
+- [ ] North door in home → back to Lobby `from_home` spawn
+
+### Decorations
+- [ ] In own home, open inventory (📦) → each collected pebble shows a "Place" button
+- [ ] Click "Place" → place mode activated, inventory closes, indicator shows "Click floor to place '<name>'"
+- [ ] Click empty floor → server places, sprite renders as golden pebble, "📦 Placed." toast
+- [ ] Click already-placed pebble in own home → "📦 Picked up." toast, decoration removed
+- [ ] Already-placed pebble shows "✓" instead of "Place" in inventory
+- [ ] Place mode cancellable with Escape
+
+### Constraints
+- [ ] Place an item you don't own → "📦 You don't own this pebble"
+- [ ] Place same item twice in same home → second is a no-op (already placed via UNIQUE)
+- [ ] After placing 30 items → cap reached error
+
+### Visit friend's home
+- [ ] (Not in V4.2 — defer to V4.2.1 Homes-directory panel)
+- [ ] Server-side support is in place: hi with `room: room_home_<other_short>` works
+- [ ] Read-only in others' homes — Place button hidden, click on decoration does nothing
+
+### Welcome hydration
+- [ ] `welcome.my_home_room: "room_home_<short>"` populates
+- [ ] `welcome.my_home_decorations: [{item_id, x, y}]` populates
+- [ ] Cross-room welcome (e.g. last_room = home) triggers scene.restart → decorations render correctly
+
+### Server protocol
+- [ ] `place {item_id, x, y}` → `place_ok {item_id, x, y}` or `place_failed {reason}`
+- [ ] `pickup {item_id}` → `pickup_ok` or `pickup_failed`
+- [ ] `home_decorations {owner_visitor_id}` → `home_decorations {owner_visitor_id, decorations}`
+- [ ] `home_decoration {owner, action, item_id, x?, y?}` broadcast to same-room peers

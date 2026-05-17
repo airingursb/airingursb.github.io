@@ -489,9 +489,11 @@ let invPanelEl: HTMLElement | null = null
 let invCountEl: HTMLElement | null = null
 let invTotalEl: HTMLElement | null = null
 let invListEl: HTMLElement | null = null
-let invDataProvider: (() => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null }>; total: number; collected: number }) | null = null
+let invDataProvider: (() => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null; placedInHome?: boolean }>; total: number; collected: number; canPlace?: boolean }) | null = null
+let onInventoryPlace: ((id: string, name: string) => void) | null = null
 
-export function setInventoryDataProvider(provider: () => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null }>; total: number; collected: number }) {
+export function setInventoryDataProvider(provider: () => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null; placedInHome?: boolean }>; total: number; collected: number; canPlace?: boolean }, onPlace?: (id: string, name: string) => void) {
+  if (onPlace) onInventoryPlace = onPlace
   invDataProvider = provider
   if (!invBtnEl) {
     invBtnEl = document.getElementById('lounge-inventory-btn')
@@ -523,7 +525,27 @@ function renderInventory() {
       const label = it.giftedByName
         ? `${it.name} · 🎁 ${it.giftedByName}`
         : it.name
-      li.textContent = label
+      const nameSpan = document.createElement('span')
+      nameSpan.textContent = label
+      nameSpan.style.flex = '1'
+      li.style.display = 'flex'
+      li.style.alignItems = 'center'
+      li.style.gap = '6px'
+      li.appendChild(nameSpan)
+      if (data.canPlace) {
+        const btn = document.createElement('button')
+        btn.type = 'button'
+        btn.textContent = it.placedInHome ? '✓' : 'Place'
+        btn.disabled = !!it.placedInHome
+        btn.style.cssText = 'padding:2px 6px;font-size:10px;border-radius:3px;background:rgba(255,209,102,.18);color:#ffd166;border:1px solid rgba(255,209,102,.4);cursor:pointer;font-family:inherit;'
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          if (it.placedInHome) return
+          hideInventoryPanel()
+          onInventoryPlace?.(it.id, it.name)
+        })
+        li.appendChild(btn)
+      }
     } else {
       li.textContent = '???'
     }

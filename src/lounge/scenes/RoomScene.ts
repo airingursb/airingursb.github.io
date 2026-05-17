@@ -1,9 +1,9 @@
 import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
-import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendGift, sendDm, requestDmThread, sendDmRead, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry, type GiftEntry, type GiftReceivedMsg, type GiftSentOkMsg, type GiftFailedMsg, type DmReceivedMsg, type DmSentOkMsg, type DmFailedMsg, type DmThreadMsg, type DmEntry } from '../net'
+import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendGift, sendDm, requestDmThread, sendDmRead, sendPlace, sendPickup, requestHomeDecorations, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry, type GiftEntry, type GiftReceivedMsg, type GiftSentOkMsg, type GiftFailedMsg, type DmReceivedMsg, type DmSentOkMsg, type DmFailedMsg, type DmThreadMsg, type DmEntry, type HomeDecoration, type PlaceOkMsg, type PlaceFailedMsg, type PickupOkMsg, type PickupFailedMsg, type HomeDecorationBroadcast, type HomeDecorationsResponseMsg } from '../net'
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
-import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, type Region, type RoomId } from '../config'
+import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, type Region, type RoomId } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
 import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
@@ -28,6 +28,9 @@ const ROOM_AUDIO: Record<RoomId, { bgmKey: string; bgmPath: string; ambKey: stri
 }
 
 const PIXEL_TEX_KEY = 'lounge_pixel'
+
+// Module-level cache so welcome data survives scene.restart when applyWelcome triggers a cross-room transition.
+let welcomeCache: WelcomeMsg | null = null
 
 function ensurePixelTexture(scene: Phaser.Scene) {
   if (scene.textures.exists(PIXEL_TEX_KEY)) return
@@ -89,6 +92,11 @@ export class RoomScene extends Phaser.Scene {
   private giftsSentFromMe = new Set<string>()             // item_ids I've gifted to anyone (for "already gifted" UX hint)
   private dmThreads = new Map<string, DmEntry[]>()        // friend visitor_id → cached recent messages
   private unreadDmCount = 0
+  // V4.2 — homes
+  private myHomeDecorations: HomeDecoration[] = []
+  private homeDecorationSprites = new Map<string, Phaser.GameObjects.Sprite>()
+  private placeMode: { item_id: string; name: string } | null = null
+  private placeModeIndicator?: Phaser.GameObjects.Text
 
   constructor() {
     super({ key: 'Room' })
@@ -108,6 +116,7 @@ export class RoomScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('room_dj_floor', '/lounge/assets/rooms/dj_floor.tmj')
     this.load.tilemapTiledJSON('room_balcony',  '/lounge/assets/rooms/balcony.tmj')
     this.load.tilemapTiledJSON('room_library',  '/lounge/assets/rooms/library.tmj')
+    this.load.tilemapTiledJSON('room_home_template', '/lounge/assets/rooms/home.tmj')
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
     for (const region of REGIONS) {
       this.load.atlas(
@@ -127,7 +136,8 @@ export class RoomScene extends Phaser.Scene {
   }
 
   create() {
-    const map = this.make.tilemap({ key: this.currentRoomId })
+    const mapKey = isHomeRoom(this.currentRoomId) ? 'room_home_template' : this.currentRoomId
+    const map = this.make.tilemap({ key: mapKey })
     const tileset = map.addTilesetImage('indoor_lobby_v0', 'indoor_lobby_v0')!
 
     map.createLayer('floor', tileset, 0, 0)
@@ -150,6 +160,24 @@ export class RoomScene extends Phaser.Scene {
     this.loadAndStartNpcs()
     this.loadAndStartPebbles()
     this.loadAndStartSeasons(map.widthInPixels, map.heightInPixels)
+
+    // V4.2 — if in a home room, render decorations.
+    if (isHomeRoom(this.currentRoomId)) {
+      if (this.amInMyHome()) {
+        // Use cached decorations from welcome
+        this.renderHomeDecorations(this.myHomeDecorations)
+      } else {
+        // Friend's home — request fresh decorations
+        const ownerShort = this.currentRoomId.slice('room_home_'.length)
+        // Find friend by visitor_id short prefix
+        for (const f of this.friendships.values()) {
+          if (f.friend_id.startsWith(ownerShort)) {
+            requestHomeDecorations(f.friend_id)
+            break
+          }
+        }
+      }
+    }
 
     const spawnObj = map.findObject('spawn_points', (o) => o.name === this.spawnPointName)
       ?? map.findObject('spawn_points', (o) => o.name === 'default')
@@ -181,12 +209,17 @@ export class RoomScene extends Phaser.Scene {
     this.portals = (portalsLayer?.objects ?? []).map((o) => {
       const props = (o.properties ?? []) as Array<{ name: string; value: unknown }>
       const get = (name: string) => props.find((p) => p.name === name)?.value
+      let targetRoom = get('target_room') as RoomId
+      // Resolve placeholder: 'room_home_self' → caller's own home room id
+      if (targetRoom === ('room_home_self' as unknown as RoomId)) {
+        targetRoom = homeRoomForVisitor(getIdentity().visitor_id)
+      }
       return {
         x: (o.x as number) ?? 0,
         y: (o.y as number) ?? 0,
         w: (o.width as number) ?? 0,
         h: (o.height as number) ?? 0,
-        targetRoom: get('target_room') as RoomId,
+        targetRoom,
         targetSpawn: (get('target_spawn') as string) ?? 'default'
       }
     })
@@ -218,10 +251,20 @@ export class RoomScene extends Phaser.Scene {
       }
       this.eKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)
       this.eKey.on('down', () => this.tryInteract())
+      const escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
+      escKey.on('down', () => { if (this.placeMode) this.exitPlaceMode() })
     }
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const wx = p.worldX, wy = p.worldY
+
+      // V4.2 — place mode: click floor to place; click own decoration to pick up
+      if (this.placeMode) {
+        if (this.tryPlaceAt(wx, wy)) return
+      }
+      if (this.amInMyHome()) {
+        if (this.tryPickupHomeDecorationAt(wx, wy)) return
+      }
 
       if (this.myBear) {
         const b = this.myBear
@@ -376,7 +419,13 @@ export class RoomScene extends Phaser.Scene {
       onDmSentOk: (m: DmSentOkMsg) => this.applyDmSentOk(m),
       onDmFailed: (m: DmFailedMsg) => this.applyDmFailed(m),
       onDmReceived: (m: DmReceivedMsg) => this.applyDmReceived(m),
-      onDmThread: (m: DmThreadMsg) => this.applyDmThread(m)
+      onDmThread: (m: DmThreadMsg) => this.applyDmThread(m),
+      onPlaceOk: (m: PlaceOkMsg) => this.applyPlaceOk(m),
+      onPlaceFailed: (m: PlaceFailedMsg) => this.applyPlaceFailed(m),
+      onPickupOk: (m: PickupOkMsg) => this.applyPickupOk(m),
+      onPickupFailed: (m: PickupFailedMsg) => this.applyPickupFailed(m),
+      onHomeDecoration: (m: HomeDecorationBroadcast) => this.applyHomeDecorationBroadcast(m),
+      onHomeDecorations: (m: HomeDecorationsResponseMsg) => this.applyHomeDecorationsResponse(m)
     }, this.currentRoomId)
 
     setInfoPanelDataProvider(
@@ -395,24 +444,30 @@ export class RoomScene extends Phaser.Scene {
       () => this.openRenameModal()
     )
 
-    setInventoryDataProvider(() => {
-      const all = getAllPebbles()
-      const giftByItemId = new Map<string, string>()
-      for (const g of this.giftsReceived) {
-        giftByItemId.set(g.item_id, g.from_name ?? '(anonymous)')
-      }
-      const items = all.map(p => ({
-        id: p.id,
-        name: p.name,
-        collected: this.inventory.has(p.id),
-        giftedByName: giftByItemId.get(p.id) ?? null
-      }))
-      return {
-        items,
-        total: all.length,
-        collected: items.filter(i => i.collected).length
-      }
-    })
+    setInventoryDataProvider(
+      () => {
+        const all = getAllPebbles()
+        const giftByItemId = new Map<string, string>()
+        for (const g of this.giftsReceived) {
+          giftByItemId.set(g.item_id, g.from_name ?? '(anonymous)')
+        }
+        const placedIds = new Set(this.myHomeDecorations.map(d => d.item_id))
+        const items = all.map(p => ({
+          id: p.id,
+          name: p.name,
+          collected: this.inventory.has(p.id),
+          giftedByName: giftByItemId.get(p.id) ?? null,
+          placedInHome: placedIds.has(p.id)
+        }))
+        return {
+          items,
+          total: all.length,
+          collected: items.filter(i => i.collected).length,
+          canPlace: this.amInMyHome()
+        }
+      },
+      (id, name) => this.enterPlaceMode(id, name)
+    )
 
     setMessagesProvider(
       () => {
@@ -469,6 +524,15 @@ export class RoomScene extends Phaser.Scene {
     if (!prefersReducedMotion()) {
       this.cameras.main.fadeIn(200, 0, 0, 0)
     }
+
+    // Drain cached welcome (set by applyWelcome before this scene was restarted)
+    if (welcomeCache) {
+      const cached = welcomeCache
+      welcomeCache = null
+      // Re-apply non-spawn parts of welcome on this scene (already-spawned bear etc.)
+      this.welcomeApplied = false
+      this.applyWelcome(cached)
+    }
   }
 
   private fallbackName(name: string | null, region?: Region): string {
@@ -479,6 +543,9 @@ export class RoomScene extends Phaser.Scene {
   private applyWelcome(m: WelcomeMsg) {
     if (this.welcomeApplied) return
     this.welcomeApplied = true
+
+    // Stash welcome data on a module-level cache so the post-restart scene can read it.
+    welcomeCache = m
 
     // If server has a different last_room, transition there (using existing scene.restart pipeline)
     if (m.last_room && m.last_room !== this.currentRoomId && isValidRoom(m.last_room)) {
@@ -542,6 +609,11 @@ export class RoomScene extends Phaser.Scene {
     this.unreadDmCount = m.unread_dm_count ?? 0
     refreshMessagesBadge(this.unreadDmCount)
     refreshInventoryPanel()
+
+    // V4.2 — homes
+    this.myHomeDecorations = Array.isArray(m.my_home_decorations) ? m.my_home_decorations : []
+    // If we're currently in our own home, render the decorations
+    if (this.amInMyHome()) this.renderHomeDecorations(this.myHomeDecorations)
 
     // First-visit modal
     if (m.display_name === null && isFirstVisit()) {
@@ -799,6 +871,132 @@ export class RoomScene extends Phaser.Scene {
       const peer = this.peers.get(sessionId)
       peer?.bear.setFriendshipLevel(m.level)
     })
+  }
+
+  // V4.2 — Home decorations
+
+  private amInMyHome(): boolean {
+    return this.currentRoomId === homeRoomForVisitor(getIdentity().visitor_id)
+  }
+
+  private renderHomeDecorations(decorations: HomeDecoration[]) {
+    this.homeDecorationSprites.forEach(s => s.destroy())
+    this.homeDecorationSprites.clear()
+    ensurePixelTexture(this)
+    for (const d of decorations) {
+      const sprite = this.add.sprite(d.x, d.y, PIXEL_TEX_KEY)
+      sprite.setScale(5)
+      sprite.setTint(0xffd166)
+      sprite.setDepth(4)
+      sprite.setOrigin(0.5, 0.5)
+      sprite.setAlpha(0.92)
+      sprite.setData('item_id', d.item_id)
+      this.homeDecorationSprites.set(d.item_id, sprite)
+    }
+  }
+
+  enterPlaceMode(item_id: string, name: string) {
+    this.placeMode = { item_id, name }
+    if (!this.placeModeIndicator) {
+      this.placeModeIndicator = this.add.text(this.cameras.main.width / 2, 20, '', {
+        fontFamily: 'ui-monospace, monospace',
+        fontSize: '10px',
+        color: '#ffd166',
+        backgroundColor: '#000000c0',
+        padding: { left: 8, right: 8, top: 4, bottom: 4 }
+      }).setOrigin(0.5, 0).setDepth(2000).setScrollFactor(0)
+    }
+    this.placeModeIndicator.setText(`Click floor to place "${name}" — Esc to cancel`)
+    this.placeModeIndicator.setVisible(true)
+  }
+
+  exitPlaceMode() {
+    this.placeMode = null
+    this.placeModeIndicator?.setVisible(false)
+  }
+
+  private tryPlaceAt(wx: number, wy: number): boolean {
+    if (!this.placeMode || !this.amInMyHome()) return false
+    // Don't place on top of an existing decoration
+    for (const [, s] of this.homeDecorationSprites) {
+      if (Math.abs(wx - s.x) < 12 && Math.abs(wy - s.y) < 12) return false
+    }
+    sendPlace(this.placeMode.item_id, wx, wy)
+    // optimistic — wait for server confirm to actually render
+    showToast(`📦 Placing "${this.placeMode.name}"…`)
+    return true
+  }
+
+  private tryPickupHomeDecorationAt(wx: number, wy: number): boolean {
+    if (!this.amInMyHome()) return false
+    for (const [id, s] of this.homeDecorationSprites) {
+      if (Math.abs(wx - s.x) < 14 && Math.abs(wy - s.y) < 14) {
+        sendPickup(id)
+        showToast(`📦 Picking up…`)
+        return true
+      }
+    }
+    return false
+  }
+
+  private applyPlaceOk(m: PlaceOkMsg) {
+    this.myHomeDecorations.push({ item_id: m.item_id, x: m.x, y: m.y })
+    // Render the new sprite
+    ensurePixelTexture(this)
+    const sprite = this.add.sprite(m.x, m.y, PIXEL_TEX_KEY)
+    sprite.setScale(5).setTint(0xffd166).setDepth(4).setOrigin(0.5, 0.5).setAlpha(0.92)
+    sprite.setData('item_id', m.item_id)
+    this.homeDecorationSprites.set(m.item_id, sprite)
+    this.exitPlaceMode()
+    showToast(`📦 Placed.`)
+  }
+
+  private applyPlaceFailed(m: PlaceFailedMsg) {
+    const map: Record<string, string> = {
+      not_in_home: '📦 Must be in your home',
+      not_owned: '📦 You don\'t own this pebble',
+      cap: '📦 Home decoration cap (30) reached',
+      invalid: '📦 Invalid placement'
+    }
+    showToast(map[m.reason] ?? `📦 Place failed (${m.reason})`)
+    this.exitPlaceMode()
+  }
+
+  private applyPickupOk(m: PickupOkMsg) {
+    this.myHomeDecorations = this.myHomeDecorations.filter(d => d.item_id !== m.item_id)
+    const s = this.homeDecorationSprites.get(m.item_id)
+    if (s) {
+      this.tweens.add({
+        targets: s, alpha: 0, scale: 8, duration: 250,
+        onComplete: () => { s.destroy(); this.homeDecorationSprites.delete(m.item_id) }
+      })
+    }
+    showToast(`📦 Picked up.`)
+  }
+
+  private applyPickupFailed(m: PickupFailedMsg) {
+    showToast(`📦 Pickup failed (${m.reason})`)
+  }
+
+  private applyHomeDecorationBroadcast(m: HomeDecorationBroadcast) {
+    if (m.action === 'place' && typeof m.x === 'number' && typeof m.y === 'number') {
+      ensurePixelTexture(this)
+      const sprite = this.add.sprite(m.x, m.y, PIXEL_TEX_KEY)
+      sprite.setScale(5).setTint(0xffd166).setDepth(4).setOrigin(0.5, 0.5).setAlpha(0.92)
+      sprite.setData('item_id', m.item_id)
+      this.homeDecorationSprites.set(m.item_id, sprite)
+    } else if (m.action === 'pickup') {
+      const s = this.homeDecorationSprites.get(m.item_id)
+      if (s) { s.destroy(); this.homeDecorationSprites.delete(m.item_id) }
+    }
+  }
+
+  private applyHomeDecorationsResponse(m: HomeDecorationsResponseMsg) {
+    // Only render if we're currently in this owner's home
+    const ownerHome = 'room_home_' + m.owner_visitor_id.slice(0, 8)
+    if (this.currentRoomId === ownerHome) {
+      this.renderHomeDecorations(m.decorations)
+    }
   }
 
   private async loadAndStartSeasons(widthPx: number, heightPx: number) {

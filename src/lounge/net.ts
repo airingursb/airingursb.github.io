@@ -29,6 +29,8 @@ export type WelcomeMsg = {
   friendships?: FriendshipEntry[]
   gifts_received?: GiftEntry[]
   unread_dm_count?: number
+  my_home_room?: string | null
+  my_home_decorations?: HomeDecoration[]
 }
 export type CollectedMsg = { v: number; t: 'collected'; item_id: string; newly: boolean }
 export type FriendUpdateMsg = { v: number; t: 'friend_update'; friend_id: string; score: number; level: number }
@@ -42,6 +44,13 @@ export type DmFailedMsg = { v: number; t: 'dm_failed'; reason: string }
 export type DmReceivedMsg = { v: number; t: 'dm_received'; id: number; from: string; from_name: string | null; text: string; sent_at: string }
 export type DmThreadMsg = { v: number; t: 'dm_thread'; other: string; messages: DmEntry[] }
 export type DmReadAckMsg = { v: number; t: 'dm_read_ack'; from: string }
+export type HomeDecoration = { item_id: string; x: number; y: number }
+export type PlaceOkMsg = { v: number; t: 'place_ok'; item_id: string; x: number; y: number }
+export type PlaceFailedMsg = { v: number; t: 'place_failed'; reason: string }
+export type PickupOkMsg = { v: number; t: 'pickup_ok'; item_id: string }
+export type PickupFailedMsg = { v: number; t: 'pickup_failed'; reason: string }
+export type HomeDecorationBroadcast = { v: number; t: 'home_decoration'; owner: string; action: 'place' | 'pickup'; item_id: string; x?: number; y?: number }
+export type HomeDecorationsResponseMsg = { v: number; t: 'home_decorations'; owner_visitor_id: string; decorations: HomeDecoration[] }
 export type NameChangedMsg = { v: number; t: 'name_changed'; id: string; display_name: string }
 export type ReplacedMsg = { v: number; t: 'replaced' }
 export type ErrorMsg = { v: number; t: 'error'; reason: string; detail?: string }
@@ -50,6 +59,8 @@ export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | ActMsg | FullMsg
   | WelcomeMsg | NameChangedMsg | ReplacedMsg | ErrorMsg | CollectedMsg | FriendUpdateMsg
   | GiftSentOkMsg | GiftFailedMsg | GiftReceivedMsg
   | DmSentOkMsg | DmFailedMsg | DmReceivedMsg | DmThreadMsg | DmReadAckMsg
+  | PlaceOkMsg | PlaceFailedMsg | PickupOkMsg | PickupFailedMsg
+  | HomeDecorationBroadcast | HomeDecorationsResponseMsg
 
 export type NetCallbacks = {
   onSnap: (m: SnapMsg) => void
@@ -73,6 +84,12 @@ export type NetCallbacks = {
   onDmReceived?: (m: DmReceivedMsg) => void
   onDmThread?: (m: DmThreadMsg) => void
   onDmReadAck?: (m: DmReadAckMsg) => void
+  onPlaceOk?: (m: PlaceOkMsg) => void
+  onPlaceFailed?: (m: PlaceFailedMsg) => void
+  onPickupOk?: (m: PickupOkMsg) => void
+  onPickupFailed?: (m: PickupFailedMsg) => void
+  onHomeDecoration?: (m: HomeDecorationBroadcast) => void
+  onHomeDecorations?: (m: HomeDecorationsResponseMsg) => void
 }
 
 let ws: WebSocket | null = null
@@ -139,6 +156,12 @@ function openSocket() {
     else if (msg.t === 'dm_received') cb?.onDmReceived?.(msg)
     else if (msg.t === 'dm_thread') cb?.onDmThread?.(msg)
     else if (msg.t === 'dm_read_ack') cb?.onDmReadAck?.(msg)
+    else if (msg.t === 'place_ok') cb?.onPlaceOk?.(msg)
+    else if (msg.t === 'place_failed') cb?.onPlaceFailed?.(msg)
+    else if (msg.t === 'pickup_ok') cb?.onPickupOk?.(msg)
+    else if (msg.t === 'pickup_failed') cb?.onPickupFailed?.(msg)
+    else if (msg.t === 'home_decoration') cb?.onHomeDecoration?.(msg)
+    else if (msg.t === 'home_decorations') cb?.onHomeDecorations?.(msg)
   })
 
   ws.addEventListener('close', (ev) => {
@@ -224,4 +247,17 @@ export function requestDmThread(other: string) {
 export function sendDmRead(from: string) {
   if (!ws || ws.readyState !== 1) return
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'dm_read', from }))
+}
+
+export function sendPlace(item_id: string, x: number, y: number) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'place', item_id, x: Math.round(x), y: Math.round(y) }))
+}
+export function sendPickup(item_id: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'pickup', item_id }))
+}
+export function requestHomeDecorations(owner_visitor_id: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'home_decorations', owner_visitor_id }))
 }
