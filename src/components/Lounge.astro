@@ -1,0 +1,132 @@
+---
+// Lounge — multiplayer pixel room. All behavior is inline JS below.
+---
+
+<div class="lounge-root">
+  <canvas id="loungeCanvas" width="1600" height="900"></canvas>
+  <div class="lounge-toast" id="loungeToast" hidden></div>
+  <a href="/" class="lounge-back" title="Back to homepage">←</a>
+</div>
+
+<style is:global>
+  .lounge-root {
+    position: fixed; inset: 0;
+    background: #0d1117;
+    display: flex; align-items: center; justify-content: center;
+  }
+  #loungeCanvas {
+    width: 100vw; height: 100vh;
+    max-width: 100vw;
+    object-fit: contain;
+    image-rendering: pixelated;
+    cursor: crosshair;
+  }
+  .lounge-back {
+    position: absolute; top: 16px; left: 16px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.08);
+    color: #e6edf3;
+    display: flex; align-items: center; justify-content: center;
+    font-family: ui-monospace, monospace;
+    font-size: 18px;
+    text-decoration: none;
+    z-index: 100;
+    transition: background .15s;
+  }
+  .lounge-back:hover { background: rgba(255,255,255,.16); }
+  .lounge-toast {
+    position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,.7);
+    color: #e6edf3;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+    z-index: 100;
+  }
+</style>
+
+<script is:inline>
+  (function () {
+    var canvas = document.getElementById('loungeCanvas');
+    if (!canvas) return;
+    var ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    // ─── Furniture SVG (scaled-up D-max scene; viewBox 1600x900) ────────
+    function svg(content) {
+      return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" shape-rendering="crispEdges">' + content + '</svg>'
+      );
+    }
+
+    function poster(x, y, color) { return '<g transform="translate(' + x + ',' + y + ')"><rect width="80" height="100" fill="' + color + '" stroke="#000" stroke-width="2"/><rect x="8" y="8" width="64" height="56" fill="rgba(255,255,255,.2)"/></g>'; }
+    function pic(x, y, color) { return '<g transform="translate(' + x + ',' + y + ')"><rect width="64" height="56" fill="#6b4226" stroke="#3a2412" stroke-width="2"/><rect x="4" y="4" width="56" height="48" fill="' + color + '"/></g>'; }
+    function plant(x, y) { return '<g transform="translate(' + x + ',' + y + ')"><rect x="24" y="80" width="48" height="24" fill="#6B4226"/><path d="M40 80 Q16 40 32 0 Q56 32 48 72 Z" fill="#3a7a3a"/><path d="M56 80 Q88 48 72 8 Q48 40 64 72 Z" fill="#4a9a4a"/></g>'; }
+    function couch(x, y, color, lighter) { return '<g transform="translate(' + x + ',' + y + ')"><rect x="0" y="48" width="240" height="72" rx="12" fill="' + color + '" stroke="#3a1a5a" stroke-width="2"/><rect x="0" y="16" width="240" height="48" rx="8" fill="' + lighter + '" stroke="#3a1a5a" stroke-width="2"/></g>'; }
+    function table(x, y) { return '<g transform="translate(' + x + ',' + y + ')"><ellipse cx="88" cy="32" rx="88" ry="20" fill="#6b4226" stroke="#3a2412" stroke-width="2"/><ellipse cx="88" cy="24" rx="88" ry="20" fill="#a07850"/></g>'; }
+    function djbooth(x, y) { return '<g transform="translate(' + x + ',' + y + ')"><rect width="220" height="100" fill="#1a1a1a" stroke="#000" stroke-width="2"/><rect x="10" y="10" width="200" height="30" fill="#7c3aed"/><text x="20" y="32" font-family="ui-monospace,monospace" font-size="20" font-weight="700" fill="#fff">DJ AIRING</text><circle cx="60" cy="70" r="20" fill="#fbbf24"/><circle cx="60" cy="70" r="10" fill="#1a1a1a"/><circle cx="160" cy="70" r="20" fill="#fbbf24"/><circle cx="160" cy="70" r="10" fill="#1a1a1a"/></g>'; }
+    function bookshelf(x, y) { return '<g transform="translate(' + x + ',' + y + ')"><rect width="120" height="220" fill="#3a2412" stroke="#1a0a04" stroke-width="2"/><rect x="8" y="8" width="104" height="60" fill="#6b4226"/><rect x="8" y="76" width="104" height="60" fill="#6b4226"/><rect x="8" y="144" width="104" height="60" fill="#6b4226"/><rect x="14" y="12" width="14" height="48" fill="#e89b4b"/><rect x="32" y="14" width="12" height="46" fill="#9f7cc8"/><rect x="48" y="20" width="16" height="40" fill="#7dba7d"/><rect x="68" y="14" width="14" height="46" fill="#f590b0"/><rect x="86" y="22" width="20" height="38" fill="#6fa3d9"/></g>'; }
+    function vending(x, y) { return '<g transform="translate(' + x + ',' + y + ')"><rect width="100" height="200" fill="#e11d48" stroke="#7a0d2a" stroke-width="2"/><rect x="8" y="12" width="84" height="84" fill="#1a1a1a"/><rect x="14" y="20" width="20" height="32" fill="#fbbf24"/><rect x="40" y="20" width="20" height="32" fill="#4ade80"/><rect x="66" y="20" width="20" height="32" fill="#60a5fa"/><rect x="14" y="56" width="20" height="32" fill="#f590b0"/><rect x="40" y="56" width="20" height="32" fill="#a78bfa"/><rect x="66" y="56" width="20" height="32" fill="#e89b4b"/></g>'; }
+    function tv(x, y) { return '<g transform="translate(' + x + ',' + y + ')"><rect x="0" y="24" width="160" height="100" fill="#1a1a1a" stroke="#000" stroke-width="2"/><rect x="8" y="32" width="144" height="84" fill="#7fc6ee"/><rect x="8" y="32" width="144" height="28" fill="#5b9bdb"/><circle cx="60" cy="76" r="14" fill="#fbbf24"/><rect x="72" y="124" width="16" height="24" fill="#3a2412"/><rect x="48" y="148" width="64" height="8" fill="#6b4226"/></g>'; }
+    function beanbag(x, y, color) { return '<g transform="translate(' + x + ',' + y + ')"><ellipse cx="56" cy="56" rx="56" ry="32" fill="' + color + '" stroke="#7a3a0a" stroke-width="2"/></g>'; }
+    function neon(x, y, txt, color) { return '<g transform="translate(' + x + ',' + y + ')"><rect width="200" height="56" rx="6" fill="#1a1a1a" stroke="' + color + '" stroke-width="3"/><text x="100" y="36" font-family="ui-monospace,monospace" font-size="20" font-weight="700" fill="' + color + '" text-anchor="middle">' + txt + '</text></g>'; }
+    function discoball() { return '<g transform="translate(800,140)"><line x1="0" y1="-120" x2="0" y2="-30" stroke="#3a3a3a" stroke-width="2"/><defs><radialGradient id="db"><stop offset="0%" stop-color="#fff"/><stop offset="60%" stop-color="#a78bfa"/><stop offset="100%" stop-color="#5a3e7e"/></radialGradient></defs><circle r="24" fill="url(#db)" stroke="#5a3e7e" stroke-width="2"/></g>'; }
+    function rug() { return '<ellipse cx="800" cy="780" rx="700" ry="60" fill="#7c3aed" opacity="0.15"/>'; }
+
+    var sceneSvgString =
+      '<defs><pattern id="tile" x="0" y="0" width="64" height="64" patternUnits="userSpaceOnUse"><rect width="64" height="64" fill="#26304a"/><rect width="32" height="32" fill="#2e3852"/><rect x="32" y="32" width="32" height="32" fill="#2e3852"/></pattern></defs>' +
+      '<rect width="1600" height="900" fill="url(#tile)"/>' +
+      '<rect width="1600" height="180" fill="#1f2a40"/>' +
+      '<line x1="0" y1="180" x2="1600" y2="180" stroke="#3a4868" stroke-width="2"/>' +
+      neon(700, 30, "AIRING'S", '#e11d48') +
+      poster(80, 80, '#4ade80') + poster(200, 80, '#e89b4b') + poster(320, 80, '#6fa3d9') + poster(440, 80, '#f590b0') +
+      pic(1100, 90, '#fbbf24') + pic(1180, 90, '#6fa3d9') + pic(1260, 90, '#a78bfa') +
+      poster(1380, 80, '#e89b4b') + poster(1420, 80, '#9f7cc8') +
+      discoball() +
+      plant(40, 220) + bookshelf(160, 220) + djbooth(320, 250) + vending(580, 260) + plant(720, 250) + tv(820, 260) + plant(1020, 250) + bookshelf(1120, 220) + plant(1260, 250) + vending(1380, 260) +
+      couch(80, 540, '#7c3aed', '#a78bfa') + table(380, 600) +
+      couch(620, 540, '#3a7a3a', '#7dba7d') + table(920, 600) +
+      couch(1160, 540, '#e11d48', '#f590b0') + table(1460, 600) +
+      rug() +
+      beanbag(40, 720, '#fbbf24') + beanbag(1480, 720, '#4ade80');
+
+    var furnitureBitmap = null;
+    function loadFurniture() {
+      var img = new Image();
+      img.onload = function () {
+        if (window.createImageBitmap) {
+          createImageBitmap(img).then(function (bm) { furnitureBitmap = bm; }).catch(function () { furnitureBitmap = img; });
+        } else {
+          furnitureBitmap = img;
+        }
+      };
+      img.src = svg(sceneSvgString);
+    }
+    loadFurniture();
+
+    // ─── Render loop ────────────────────────────────────────────────────
+    function frame() {
+      if (furnitureBitmap) {
+        ctx.drawImage(furnitureBitmap, 0, 0, 1600, 900);
+      } else {
+        ctx.fillStyle = '#0d1117';
+        ctx.fillRect(0, 0, 1600, 900);
+      }
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    // ─── Toast helper (used in later phases) ────────────────────────────
+    var toastEl = document.getElementById('loungeToast');
+    var toastTimer = null;
+    window._loungeToast = function (msg, ms) {
+      if (!toastEl) return;
+      toastEl.textContent = msg;
+      toastEl.hidden = false;
+      if (toastTimer) clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { toastEl.hidden = true; }, ms || 3000);
+    };
+  })();
+</script>
