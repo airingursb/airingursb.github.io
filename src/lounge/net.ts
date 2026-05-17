@@ -9,13 +9,15 @@ export type JoinMsg = { t: 'join'; id: string; x: number; y: number; cc: string 
 export type LeaveMsg = { t: 'leave'; id: string }
 export type PosMsg = { t: 'pos'; id: string; x: number; y: number; vx?: number; vy?: number; state: string }
 export type FullMsg = { t: 'full' }
-export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | FullMsg
+export type ActMsg = { t: 'act'; id: string; verb: string; text?: string }
+export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | FullMsg | ActMsg
 
 export type NetCallbacks = {
   onSnap: (m: SnapMsg) => void
   onJoin: (m: JoinMsg) => void
   onLeave: (m: LeaveMsg) => void
   onPos: (m: PosMsg) => void
+  onAct: (m: ActMsg) => void
   onFull: () => void
   onConnectionChange: (state: 'connecting' | 'open' | 'closed') => void
 }
@@ -59,6 +61,7 @@ function openSocket() {
     else if (msg.t === 'join') cb?.onJoin(msg)
     else if (msg.t === 'leave') cb?.onLeave(msg)
     else if (msg.t === 'pos') cb?.onPos(msg)
+    else if (msg.t === 'act') cb?.onAct(msg)
     else if (msg.t === 'full') cb?.onFull()
   })
 
@@ -94,4 +97,11 @@ export function sendPos(x: number, y: number, state: string, vx: number, vy: num
   lastSent.y = y
   lastSent.state = state
   ws.send(JSON.stringify({ t: 'pos', x, y, vx, vy, state }))
+}
+
+export function sendAct(verb: string, text?: string) {
+  if (!ws || ws.readyState !== 1) return
+  const msg: { t: 'act'; verb: string; text?: string } = { t: 'act', verb }
+  if (text != null) msg.text = text
+  ws.send(JSON.stringify(msg))
 }

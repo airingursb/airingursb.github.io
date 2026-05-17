@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { WALK_SPEED, type Region } from './config'
 
 export type Direction = 'up' | 'down' | 'left' | 'right'
+export type BearState = 'idle' | 'walk' | 'wave' | 'sit' | 'dance'
 
 export function registerBearAnimations(scene: Phaser.Scene, regions: readonly Region[]) {
   for (const region of regions) {
@@ -29,6 +30,14 @@ export function registerBearAnimations(scene: Phaser.Scene, regions: readonly Re
         })
       }
     }
+    const waveKey = `${key}_wave`
+    if (!scene.anims.exists(waveKey)) {
+      scene.anims.create({ key: waveKey, frames: [{ key, frame: 'wave' }], frameRate: 1, repeat: 0 })
+    }
+    const sitKey = `${key}_sit`
+    if (!scene.anims.exists(sitKey)) {
+      scene.anims.create({ key: sitKey, frames: [{ key, frame: 'sit' }], frameRate: 1, repeat: 0 })
+    }
   }
 }
 
@@ -38,13 +47,17 @@ export class Bear {
   region: Region
   target: { x: number; y: number } | null = null
   facing: Direction = 'down'
-  state: 'idle' | 'walk' = 'idle'
+  state: BearState = 'idle'
+  stateUntil = 0
+  reducedMotion = false
+  private baseY = 0
 
   constructor(scene: Phaser.Scene, x: number, y: number, region: Region) {
     this.scene = scene
     this.region = region
     this.sprite = scene.add.sprite(x, y, `bear_${region}`, 'idle_down')
     this.sprite.setOrigin(0.5, 1)
+    this.baseY = y
     this.playIdle()
   }
 
@@ -64,11 +77,59 @@ export class Bear {
     this.facing = Math.abs(vx) > Math.abs(vy)
       ? (vx >= 0 ? 'right' : 'left')
       : (vy >= 0 ? 'down' : 'up')
-    this.state = 'walk'
-    this.playWalk()
+    if (this.state === 'idle') this.state = 'walk'
+    if (this.state === 'walk') this.playWalk()
+  }
+
+  applyEmote(verb: string, durationMs: number, reducedMotion: boolean) {
+    this.reducedMotion = reducedMotion
+    const now = performance.now()
+    if (verb === 'wave') {
+      this.state = 'wave'
+      this.stateUntil = now + durationMs
+      this.playWave()
+    } else if (verb === 'sit') {
+      if (this.state === 'sit') {
+        this.state = 'idle'
+        this.stateUntil = 0
+        this.playIdle()
+      } else {
+        this.state = 'sit'
+        this.stateUntil = 0
+        this.target = null
+        this.playSit()
+      }
+    } else if (verb === 'dance') {
+      this.state = 'dance'
+      this.stateUntil = now + durationMs
+      this.target = null
+      this.baseY = this.sprite.y
+      this.playWalk()
+    }
   }
 
   update(dtMs: number, isPeer = false) {
+    const now = performance.now()
+
+    if (this.stateUntil > 0 && now >= this.stateUntil) {
+      this.state = 'idle'
+      this.stateUntil = 0
+      this.sprite.y = this.baseY
+      this.playIdle()
+    }
+
+    if (this.state === 'sit' || this.state === 'wave') {
+      return
+    }
+
+    if (this.state === 'dance') {
+      if (!this.reducedMotion) {
+        const bounce = Math.sin(now / 120) * 4
+        this.sprite.y = this.baseY + bounce
+      }
+      return
+    }
+
     if (!this.target) return
     const dx = this.target.x - this.sprite.x
     const dy = this.target.y - this.sprite.y
@@ -79,6 +140,7 @@ export class Bear {
       this.sprite.y = this.target.y
       this.target = null
       this.state = 'idle'
+      this.baseY = this.sprite.y
       this.playIdle()
       return
     }
@@ -86,32 +148,37 @@ export class Bear {
     const step = Math.min((speed * dtMs) / 1000, dist)
     this.sprite.x += (dx / dist) * step
     this.sprite.y += (dy / dist) * step
+    this.baseY = this.sprite.y
+    if (this.reducedMotion) {
+      this.sprite.anims.stop()
+      this.sprite.setFrame(`walk_${this.facing}_0`)
+    }
   }
 
   playWalk() {
-    this.sprite.anims.play(`bear_${this.region}_walk_${this.facing}`, true)
+    if (this.reducedMotion) {
+      this.sprite.anims.stop()
+      this.sprite.setFrame(`walk_${this.facing}_0`)
+    } else {
+      this.sprite.anims.play(`bear_${this.region}_walk_${this.facing}`, true)
+    }
   }
-
-  playIdle() {
-    this.sprite.anims.play(`bear_${this.region}_idle_${this.facing}`, true)
-  }
+  playIdle() { this.sprite.anims.play(`bear_${this.region}_idle_${this.facing}`, true) }
+  playWave() { this.sprite.anims.play(`bear_${this.region}_wave`, true) }
+  playSit()  { this.sprite.anims.play(`bear_${this.region}_sit`, true) }
 
   setRegion(region: Region) {
     if (region === this.region) return
     this.region = region
     this.sprite.setTexture(`bear_${region}`)
     if (this.state === 'walk') this.playWalk()
+    else if (this.state === 'wave') this.playWave()
+    else if (this.state === 'sit') this.playSit()
     else this.playIdle()
   }
 
-  destroy() {
-    this.sprite.destroy()
-  }
+  destroy() { this.sprite.destroy() }
 
-  get x() {
-    return this.sprite.x
-  }
-  get y() {
-    return this.sprite.y
-  }
+  get x() { return this.sprite.x }
+  get y() { return this.sprite.y }
 }

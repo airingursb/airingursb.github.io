@@ -1,8 +1,10 @@
 import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
-import { connect, sendPos } from '../net'
-import { REGIONS, WALK_SPEED, ccToRegion, type Region } from '../config'
+import { connect, sendPos, sendAct, type ActMsg } from '../net'
+import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, type Region } from '../config'
 import { preloadAudio, bindAudio, playSfx } from '../audio'
+import { onUIEvent, showMenuAt, showBubble, updateBubblePos } from '../ui'
+import { getEmote } from '../emotes'
 
 type Direction = 'up' | 'down' | 'left' | 'right'
 
@@ -83,8 +85,25 @@ export class LobbyScene extends Phaser.Scene {
     }
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
-      let tx = p.worldX
-      let ty = p.worldY
+      const wx = p.worldX
+      const wy = p.worldY
+
+      // Click on own bear → open emote menu at bear's screen position
+      if (this.myBear) {
+        const b = this.myBear
+        if (Math.abs(wx - b.x) < 14 && wy > b.y - 50 && wy < b.y) {
+          const screenX = this.scale.canvasBounds.x + b.x * this.scale.displayScale.x
+          const screenY = this.scale.canvasBounds.y + (b.y - 30) * this.scale.displayScale.y
+          showMenuAt(screenX, screenY)
+          return
+        }
+      }
+
+      // (Phase 7 will add peer hit-test here.)
+
+      // Floor walk-to
+      let tx = wx
+      let ty = wy
       tx = Math.max(20, Math.min(map.widthInPixels - 20, tx))
       ty = Math.max(20, Math.min(map.heightInPixels - 12, ty))
 
@@ -109,6 +128,13 @@ export class LobbyScene extends Phaser.Scene {
       this.myDirection = Math.abs(dx) > Math.abs(dy)
         ? (dx > 0 ? 'right' : 'left')
         : (dy > 0 ? 'down' : 'up')
+    })
+
+    onUIEvent((e) => {
+      if (e.type === 'verb') {
+        sendAct(e.verb, e.text)
+        this.applyAct(undefined, e.verb, e.text)
+      }
     })
 
     this.statusEl = document.createElement('div')
@@ -159,6 +185,9 @@ export class LobbyScene extends Phaser.Scene {
         }
         peer.lastUpdate = performance.now()
         peer.bear.setRemoteTarget(m.x, m.y, m.vx ?? 0, m.vy ?? 0)
+      },
+      onAct: (m: ActMsg) => {
+        this.applyAct(m.id, m.verb, m.text)
       },
       onFull: () => {
         if (this.statusEl) {
@@ -238,12 +267,32 @@ export class LobbyScene extends Phaser.Scene {
     return true
   }
 
+  private bearScreenPos(b: Bear): { x: number; y: number } {
+    return {
+      x: this.scale.canvasBounds.x + b.x * this.scale.displayScale.x,
+      y: this.scale.canvasBounds.y + (b.y - 50) * this.scale.displayScale.y
+    }
+  }
+
+  private applyAct(peerId: string | undefined, verb: string, text?: string) {
+    const def = getEmote(verb)
+    if (!def) return
+    const target = peerId ? this.peers.get(peerId)?.bear : this.myBear
+    if (!target) return
+
+    if (verb === 'say' && text) {
+      const sb = this.bearScreenPos(target)
+      showBubble(peerId ?? '__me__', text, sb.x, sb.y)
+      return
+    }
+
+    target.applyEmote(verb, def.durationMs, prefersReducedMotion())
+  }
+
   update(_time: number, dtMs: number) {
     if (this.myBear) {
       const usedKeyboard = this.applyKeyboard(dtMs)
       if (!usedKeyboard) {
-        // No key held this frame: if we were walking via keyboard last frame,
-        // settle to idle (target system handles click-walk).
         if (!this.myBear.target && this.myBear.state === 'walk') {
           this.myBear.state = 'idle'
           this.myBear.playIdle()
@@ -258,5 +307,15 @@ export class LobbyScene extends Phaser.Scene {
       sendPos(this.myBear.x, this.myBear.y, stateStr, vx, vy)
     }
     this.peers.forEach((p) => p.bear.update(dtMs, true))
+
+    // Refresh bubble positions each frame
+    if (this.myBear) {
+      const s = this.bearScreenPos(this.myBear)
+      updateBubblePos('__me__', s.x, s.y)
+    }
+    this.peers.forEach((p, id) => {
+      const s = this.bearScreenPos(p.bear)
+      updateBubblePos(id, s.x, s.y)
+    })
   }
 }
