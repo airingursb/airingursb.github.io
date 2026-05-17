@@ -4,6 +4,9 @@
 
 <div id="lounge-root">
   <div id="lounge-mount"></div>
+  <div id="lounge-ui">
+    <button id="lounge-mute" class="ui-mute-btn" aria-label="Toggle sound">🔊</button>
+  </div>
   <a href="/" class="lounge-back" title="Back to homepage">←</a>
 </div>
 
@@ -53,15 +56,51 @@
     font-size: 13px;
     z-index: 100;
   }
+  #lounge-ui {
+    position: absolute; inset: 0;
+    pointer-events: none;
+    z-index: 50;
+  }
+  #lounge-ui > * { pointer-events: auto; }
+  .ui-mute-btn {
+    position: absolute;
+    top: 16px; right: 16px;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: rgba(255,255,255,.08);
+    color: #e6edf3;
+    font-size: 18px;
+    cursor: pointer;
+    transition: background .15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  .ui-mute-btn:hover { background: rgba(255,255,255,.16); }
+  .ui-mute-btn:focus-visible { outline: 2px solid #4ade80; outline-offset: 2px; }
 </style>
 
 <script>
   import { bootGame } from '../lounge/game'
+  import { isMuted, toggleMute, playSfx } from '../lounge/audio'
 
   function start() {
     const mount = document.getElementById('lounge-mount')
     if (!mount) return
     bootGame(mount)
+
+    const muteBtn = document.getElementById('lounge-mute') as HTMLButtonElement | null
+    if (muteBtn) {
+      const refresh = () => { muteBtn.textContent = isMuted() ? '🔇' : '🔊' }
+      refresh()
+      muteBtn.addEventListener('click', () => {
+        toggleMute()
+        refresh()
+        playSfx('click')
+      })
+    }
   }
 
   if (document.readyState === 'loading') {

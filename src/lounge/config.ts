@@ -51,3 +51,27 @@ export function getMyCC(): string | null {
     return null
   }
 }
+
+// Audio / motion settings
+export const AUDIO_SFX_KEYS = [
+  'click', 'footstep_a', 'footstep_b',
+  'wave', 'sit', 'dance', 'say',
+  'menu_open', 'menu_close'
+] as const
+export type SfxKey = typeof AUDIO_SFX_KEYS[number]
+
+export const AUDIO_DEFAULTS = {
+  master: 0.5,
+  sfx: 1.0,
+  bgm: 0.7
+}
+
+export const MUTE_STORAGE_KEY = 'lounge_muted'
+
+export function prefersReducedMotion(): boolean {
+  try {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  } catch {
+    return false
+  }
+}

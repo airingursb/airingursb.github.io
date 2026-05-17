@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
 import { connect, sendPos } from '../net'
 import { REGIONS, WALK_SPEED, ccToRegion, type Region } from '../config'
+import { preloadAudio, bindAudio, playSfx } from '../audio'
 
 type Direction = 'up' | 'down' | 'left' | 'right'
 
@@ -22,6 +23,7 @@ export class LobbyScene extends Phaser.Scene {
   }
 
   preload() {
+    preloadAudio(this)
     this.load.tilemapTiledJSON('lobby', '/lounge/assets/rooms/lobby.tmj')
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
     for (const region of REGIONS) {
@@ -43,6 +45,8 @@ export class LobbyScene extends Phaser.Scene {
     above?.setDepth(10)
 
     registerBearAnimations(this, REGIONS)
+    bindAudio(this)
+    this.time.delayedCall(100, () => playSfx('click', 0.5))
 
     const spawnObj = map.findObject('spawn_points', (o) => o.name === 'default')
     const spawnX = (spawnObj?.x as number | undefined) ?? 240
