@@ -51,6 +51,8 @@ export type PickupOkMsg = { v: number; t: 'pickup_ok'; item_id: string }
 export type PickupFailedMsg = { v: number; t: 'pickup_failed'; reason: string }
 export type HomeDecorationBroadcast = { v: number; t: 'home_decoration'; owner: string; action: 'place' | 'pickup'; item_id: string; x?: number; y?: number }
 export type HomeDecorationsResponseMsg = { v: number; t: 'home_decorations'; owner_visitor_id: string; decorations: HomeDecoration[] }
+export type JamTapMsg = { v: number; t: 'jam_tap'; id: string; visitor_id: string | null; pad_index: number; cc: string | null; region: string }
+export type JamBurstMsg = { v: number; t: 'jam_burst'; tier: 'jam' | 'circle' | 'full'; distinct_visitors: number; distinct_pads: number; bonus_per_pair: number; awarded_pairs: number }
 export type NameChangedMsg = { v: number; t: 'name_changed'; id: string; display_name: string }
 export type ReplacedMsg = { v: number; t: 'replaced' }
 export type ErrorMsg = { v: number; t: 'error'; reason: string; detail?: string }
@@ -61,6 +63,7 @@ export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | ActMsg | FullMsg
   | DmSentOkMsg | DmFailedMsg | DmReceivedMsg | DmThreadMsg | DmReadAckMsg
   | PlaceOkMsg | PlaceFailedMsg | PickupOkMsg | PickupFailedMsg
   | HomeDecorationBroadcast | HomeDecorationsResponseMsg
+  | JamTapMsg | JamBurstMsg
 
 export type NetCallbacks = {
   onSnap: (m: SnapMsg) => void
@@ -90,6 +93,8 @@ export type NetCallbacks = {
   onPickupFailed?: (m: PickupFailedMsg) => void
   onHomeDecoration?: (m: HomeDecorationBroadcast) => void
   onHomeDecorations?: (m: HomeDecorationsResponseMsg) => void
+  onJamTap?: (m: JamTapMsg) => void
+  onJamBurst?: (m: JamBurstMsg) => void
 }
 
 let ws: WebSocket | null = null
@@ -162,6 +167,8 @@ function openSocket() {
     else if (msg.t === 'pickup_failed') cb?.onPickupFailed?.(msg)
     else if (msg.t === 'home_decoration') cb?.onHomeDecoration?.(msg)
     else if (msg.t === 'home_decorations') cb?.onHomeDecorations?.(msg)
+    else if (msg.t === 'jam_tap') cb?.onJamTap?.(msg)
+    else if (msg.t === 'jam_burst') cb?.onJamBurst?.(msg)
   })
 
   ws.addEventListener('close', (ev) => {
@@ -260,4 +267,9 @@ export function sendPickup(item_id: string) {
 export function requestHomeDecorations(owner_visitor_id: string) {
   if (!ws || ws.readyState !== 1) return
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'home_decorations', owner_visitor_id }))
+}
+
+export function sendJamTap(pad_index: number) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'jam_tap', pad_index }))
 }

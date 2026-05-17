@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { Bear, registerBearAnimations } from '../bear'
-import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendGift, sendDm, requestDmThread, sendDmRead, sendPlace, sendPickup, requestHomeDecorations, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry, type GiftEntry, type GiftReceivedMsg, type GiftSentOkMsg, type GiftFailedMsg, type DmReceivedMsg, type DmSentOkMsg, type DmFailedMsg, type DmThreadMsg, type DmEntry, type HomeDecoration, type PlaceOkMsg, type PlaceFailedMsg, type PickupOkMsg, type PickupFailedMsg, type HomeDecorationBroadcast, type HomeDecorationsResponseMsg } from '../net'
+import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendGift, sendDm, requestDmThread, sendDmRead, sendPlace, sendPickup, requestHomeDecorations, sendJamTap, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry, type GiftEntry, type GiftReceivedMsg, type GiftSentOkMsg, type GiftFailedMsg, type DmReceivedMsg, type DmSentOkMsg, type DmFailedMsg, type DmThreadMsg, type DmEntry, type HomeDecoration, type PlaceOkMsg, type PlaceFailedMsg, type PickupOkMsg, type PickupFailedMsg, type HomeDecorationBroadcast, type HomeDecorationsResponseMsg, type JamTapMsg, type JamBurstMsg } from '../net'
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
 import { REGIONS, WALK_SPEED, ccToRegion, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, type Region, type RoomId } from '../config'
@@ -44,7 +44,7 @@ function ensurePixelTexture(scene: Phaser.Scene) {
 type Direction = 'up' | 'down' | 'left' | 'right'
 
 type Portal = { x: number; y: number; w: number; h: number; targetRoom: RoomId; targetSpawn: string }
-type Interactable = { x: number; y: number; w: number; h: number; kind: string; anchorX: number; anchorY: number; facing: Direction; name: string }
+type Interactable = { x: number; y: number; w: number; h: number; kind: string; anchorX: number; anchorY: number; facing: Direction; name: string; padIndex?: number }
 
 export class RoomScene extends Phaser.Scene {
   private currentRoomId: RoomId = DEFAULT_ROOM
@@ -97,6 +97,8 @@ export class RoomScene extends Phaser.Scene {
   private homeDecorationSprites = new Map<string, Phaser.GameObjects.Sprite>()
   private placeMode: { item_id: string; name: string } | null = null
   private placeModeIndicator?: Phaser.GameObjects.Text
+  // V4.3 — jam pads
+  private jamPads = new Map<number, Phaser.GameObjects.Rectangle>()
 
   constructor() {
     super({ key: 'Room' })
@@ -132,6 +134,18 @@ export class RoomScene extends Phaser.Scene {
     if (this.currentRoomId === 'room_dj_floor') {
       this.boothTracks = getBoothTracks()
       preloadBoothTracks(this, this.boothTracks)
+      // V4.3 — preload jam pad notes
+      for (let i = 1; i <= 4; i++) {
+        const key = `jam_pad${i}`
+        if (!this.cache.audio.exists(key)) {
+          try {
+            this.load.audio(key, [
+              `/lounge/assets/audio/jam/pad${i}.ogg`,
+              `/lounge/assets/audio/jam/pad${i}.mp3`
+            ])
+          } catch {}
+        }
+      }
     }
   }
 
@@ -228,6 +242,7 @@ export class RoomScene extends Phaser.Scene {
     this.interactables = (interactsLayer?.objects ?? []).map((o) => {
       const props = (o.properties ?? []) as Array<{ name: string; value: unknown }>
       const get = (name: string) => props.find((p) => p.name === name)?.value
+      const padIndex = get('pad_index')
       return {
         name: (o.name as string) ?? '',
         x: (o.x as number) ?? 0,
@@ -237,9 +252,13 @@ export class RoomScene extends Phaser.Scene {
         kind: (get('kind') as string) ?? 'unknown',
         anchorX: (get('anchor_x') as number) ?? ((o.x as number) + ((o.width as number) ?? 16) / 2),
         anchorY: (get('anchor_y') as number) ?? ((o.y as number) + ((o.height as number) ?? 16) / 2),
-        facing: ((get('facing') as Direction) ?? 'down')
+        facing: ((get('facing') as Direction) ?? 'down'),
+        padIndex: typeof padIndex === 'number' ? padIndex : undefined
       }
     })
+
+    // V4.3 — render jam pads as colored rectangles
+    this.renderJamPads()
 
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys()
@@ -425,7 +444,9 @@ export class RoomScene extends Phaser.Scene {
       onPickupOk: (m: PickupOkMsg) => this.applyPickupOk(m),
       onPickupFailed: (m: PickupFailedMsg) => this.applyPickupFailed(m),
       onHomeDecoration: (m: HomeDecorationBroadcast) => this.applyHomeDecorationBroadcast(m),
-      onHomeDecorations: (m: HomeDecorationsResponseMsg) => this.applyHomeDecorationsResponse(m)
+      onHomeDecorations: (m: HomeDecorationsResponseMsg) => this.applyHomeDecorationsResponse(m),
+      onJamTap: (m: JamTapMsg) => this.applyJamTap(m),
+      onJamBurst: (m: JamBurstMsg) => this.applyJamBurst(m)
     }, this.currentRoomId)
 
     setInfoPanelDataProvider(
@@ -873,6 +894,89 @@ export class RoomScene extends Phaser.Scene {
     })
   }
 
+  // V4.3 — Jam Pads
+
+  private static readonly JAM_COLORS: Record<number, number> = {
+    1: 0xff5050,  // C — red
+    2: 0xffd166,  // E — yellow
+    3: 0x4ade80,  // G — green
+    4: 0x60a5fa   // B — blue
+  }
+
+  private renderJamPads() {
+    this.jamPads.forEach(r => r.destroy())
+    this.jamPads.clear()
+    for (const it of this.interactables) {
+      if (it.kind !== 'jam' || typeof it.padIndex !== 'number') continue
+      const color = RoomScene.JAM_COLORS[it.padIndex] ?? 0xffffff
+      const rect = this.add.rectangle(it.x + it.w / 2, it.y + it.h / 2, it.w - 2, it.h - 2, color, 0.35)
+        .setStrokeStyle(1, color, 0.8)
+        .setDepth(4)
+      this.jamPads.set(it.padIndex, rect)
+    }
+  }
+
+  private tapJamPad(padIndex: number, it: Interactable) {
+    sendJamTap(padIndex)
+    // Optimistic local feedback (server will echo + we'll flash on echo too)
+    this.flashJamPad(padIndex, RoomScene.JAM_COLORS[padIndex])
+    this.playJamNote(padIndex)
+    // Walk own bear over to it for visual cohesion
+    if (this.myBear) {
+      this.myBear.walkTo(it.anchorX, it.anchorY)
+      this.myDirection = it.facing
+    }
+  }
+
+  private flashJamPad(padIndex: number, color: number) {
+    const rect = this.jamPads.get(padIndex)
+    if (!rect) return
+    rect.setFillStyle(color, 0.9)
+    rect.setScale(1.4)
+    this.tweens.add({
+      targets: rect, scale: 1, duration: 350, ease: 'Cubic.out',
+      onComplete: () => rect.setFillStyle(color, 0.35)
+    })
+  }
+
+  private playJamNote(padIndex: number) {
+    const key = `jam_pad${padIndex}`
+    if (!this.cache.audio.exists(key)) return
+    try { this.sound.play(key, { volume: 0.7 }) } catch {}
+  }
+
+  private applyJamTap(m: JamTapMsg) {
+    // Don't double-play our own (we already flashed optimistically)
+    if (m.visitor_id && m.visitor_id === getIdentity().visitor_id) return
+    this.flashJamPad(m.pad_index, RoomScene.JAM_COLORS[m.pad_index] ?? 0xffffff)
+    this.playJamNote(m.pad_index)
+  }
+
+  private applyJamBurst(m: JamBurstMsg) {
+    const labels: Record<string, string> = {
+      jam: `🎵 Jam! (${m.distinct_visitors} visitors, +${m.bonus_per_pair} each)`,
+      circle: `✨ Jam Circle! (${m.distinct_visitors} visitors, +${m.bonus_per_pair} each)`,
+      full: `🎵 Full Jam! all 4 pads, +${m.bonus_per_pair} each`
+    }
+    showToast(labels[m.tier] ?? '🎵 Jam!', m.tier === 'full' ? 3500 : 2500)
+
+    // Bigger celebration for full jam: brief sparkle burst
+    if (m.tier === 'full' && !prefersReducedMotion()) {
+      ensurePixelTexture(this)
+      const burst = this.add.particles(this.mapInfo.widthPx / 2, this.mapInfo.heightPx / 2, PIXEL_TEX_KEY, {
+        speed: { min: 60, max: 200 },
+        lifespan: 1200,
+        quantity: 30,
+        scale: { start: 3, end: 0 },
+        alpha: { start: 1, end: 0 },
+        tint: [0xff5050, 0xffd166, 0x4ade80, 0x60a5fa]
+      })
+      burst.setDepth(900)
+      burst.explode(30)
+      this.time.delayedCall(1500, () => burst.destroy())
+    }
+  }
+
   // V4.2 — Home decorations
 
   private amInMyHome(): boolean {
@@ -1271,6 +1375,10 @@ export class RoomScene extends Phaser.Scene {
     if (it.kind === 'listen') {
       this.activeBoothInteractable = it
       this.openBoothPicker()
+      return
+    }
+    if (it.kind === 'jam' && typeof it.padIndex === 'number') {
+      this.tapJamPad(it.padIndex, it)
       return
     }
     if (it.kind !== 'sit') return

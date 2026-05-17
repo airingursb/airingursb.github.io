@@ -1031,3 +1031,33 @@
 - [ ] `pickup {item_id}` → `pickup_ok` or `pickup_failed`
 - [ ] `home_decorations {owner_visitor_id}` → `home_decorations {owner_visitor_id, decorations}`
 - [ ] `home_decoration {owner, action, item_id, x?, y?}` broadcast to same-room peers
+
+## Lounge V4.3 (Jam Pads — Era 3 finale)
+
+### Pad rendering
+- [ ] In DJ Floor, 4 colored pads visible at center: red (C), yellow (E), green (G), blue (B) in a 2×2 grid
+- [ ] Walking near a pad → "🎵 jam" interaction prompt above own bear
+- [ ] Pads have subtle border + 35% fill alpha when idle
+
+### Tap mechanics
+- [ ] Click a pad → bear walks to it + pad flashes (scale-up + opacity surge) + plays note
+- [ ] Press E near pad → same behavior
+- [ ] Other peers see the same flash + hear the note when you tap
+
+### Co-op detection
+- [ ] 2 visitors tap any pads within 4s → "🎵 Jam!" toast + each pair +2 friendship (`friend_update` push)
+- [ ] 3 visitors tap → "✨ Jam Circle!" toast + each pair +5 friendship
+- [ ] 4 distinct pads tapped from 2+ visitors within 4s → "🎵 Full Jam!" toast + sparkle burst particle effect + each pair +10
+- [ ] Same tier only awards once per sliding window (no spam)
+
+### Constraints
+- [ ] Solo tapping → no jam_burst, no score
+- [ ] Per-pair daily cap: 30 jam points (after which extra jams don't add)
+- [ ] Per-visitor rate limit: 6 taps/min (excess silently dropped)
+
+### Server
+- [ ] WS `jam_tap {pad_index}` → broadcast `jam_tap {id, visitor_id, pad_index, region}` to room
+- [ ] Co-op transitions → broadcast `jam_burst {tier, distinct_visitors, distinct_pads, bonus_per_pair, awarded_pairs}` + per-pair friend_update pushes
+
+### Reduced motion
+- [ ] Pad flash still happens (it's an info signal) but Full Jam particle burst is suppressed
