@@ -1,5 +1,6 @@
 import Phaser from 'phaser'
 import { WALK_SPEED, type Region, type Species, SPECIES } from './config'
+import { footstepDust } from './feedback'
 
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type BearState = 'idle' | 'walk' | 'wave' | 'sit' | 'dance'
@@ -56,6 +57,7 @@ export class Bear {
   private nameLabel?: Phaser.GameObjects.Text
   private heartLabel?: Phaser.GameObjects.Text
   private shadow?: Phaser.GameObjects.Ellipse  // V6.3 — soft ground shadow
+  private lastDustAt = 0                       // V6.6 — last footstep-dust timestamp
 
   constructor(scene: Phaser.Scene, x: number, y: number, region: Region, species: Species = 'bear') {
     this.scene = scene
@@ -206,6 +208,11 @@ export class Bear {
     this.sprite.x += (dx / dist) * step
     this.sprite.y += (dy / dist) * step
     this.baseY = this.sprite.y
+    // V6.6 — occasional footstep dust under feet (every ~280ms while walking)
+    if (now - this.lastDustAt > 280 && !this.reducedMotion) {
+      this.lastDustAt = now
+      footstepDust(this.scene, this.sprite.x, this.sprite.y - 1)
+    }
     if (this.reducedMotion) {
       this.sprite.anims.stop()
       this.sprite.setFrame(`walk_${this.facing}_0`)

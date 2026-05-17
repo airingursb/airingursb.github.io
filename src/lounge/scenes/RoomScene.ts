@@ -11,6 +11,7 @@ import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, get
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
 import { getWeatherForDate } from '../weather'
+import { footstepDust, clickRipple, pebbleSparkle, sitImpact, waveArc, letterFlutter } from '../feedback'
 import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted } from '../identity'
 import { loadNpcManifest, getActiveBracket, pickDialog, type NpcDef, type NpcManifest } from '../npcs'
 
@@ -315,6 +316,9 @@ export class RoomScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const wx = p.worldX, wy = p.worldY
 
+      // V6.6 — every click gets a small ring ripple for tactile feedback
+      clickRipple(this, wx, wy)
+
       // V5.1 — letter has highest priority (small clickable icon)
       if (this.tryReadLetterAt(wx, wy)) return
 
@@ -392,6 +396,7 @@ export class RoomScene extends Phaser.Scene {
           if (!this.myBear) return
           const dropX = this.myBear.x
           const dropY = this.myBear.y
+          letterFlutter(this, dropX, dropY)
           showLetterModal((content) => {
             if (content) sendLetterDrop(content, dropX, dropY)
           })
@@ -399,6 +404,11 @@ export class RoomScene extends Phaser.Scene {
         }
         sendAct(e.verb, e.text, this.currentRoomId)
         this.applyAct(undefined, e.verb, e.text)
+        // V6.6 — local feedback for the player's own actions
+        if (this.myBear) {
+          if (e.verb === 'wave')      waveArc(this, this.myBear.x, this.myBear.y)
+          else if (e.verb === 'sit')  sitImpact(this, this.myBear.x, this.myBear.y)
+        }
       }
     })
 
@@ -806,6 +816,8 @@ export class RoomScene extends Phaser.Scene {
         sendCollect(id)
         this.inventory.add(id)
         refreshInventoryPanel()
+        // V6.6 — sparkle burst at pickup point
+        pebbleSparkle(this, sprite.x, sprite.y)
         const pebble = findPebble(id)
         if (pebble) {
           const screen = {
