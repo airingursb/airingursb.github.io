@@ -41,7 +41,20 @@
         'margin: 10px auto 6px;' +
         'border-radius: 6px;' +
         'image-rendering: pixelated;' +
-      '}';
+      '}' +
+      '.online-country-popover .online-see-more {' +
+        'display: block;' +
+        'text-align: center;' +
+        'margin-top: 6px;' +
+        'padding: 6px 12px;' +
+        'font-family: ui-monospace, monospace;' +
+        'font-size: 11px;' +
+        'letter-spacing: .1em;' +
+        'color: var(--accent, #4ade80);' +
+        'text-decoration: none;' +
+        'border-top: 1px solid rgba(255,255,255,.08);' +
+      '}' +
+      '.online-country-popover .online-see-more:hover { color: #fff; }';
     document.head.appendChild(s);
   })();
   // Default to prod (chat.ursb.me CORS whitelists localhost:4321-4323 so
@@ -655,6 +668,7 @@
         '<span class="online-country-list">' + list + '</span>' +
         sceneHtml +
         '<span class="online-country-total">' + escapeHtml(totalTemplate.replace('{n}', String(n))) + '</span>' +
+        '<a class="online-see-more" href="/lounge">See more →</a>' +
       '</span>';
   }
 
