@@ -2,8 +2,10 @@
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LangSwitch from '../../components/LangSwitch.astro';
 import { tSite } from '../../lib/i18n';
+import { fetchComics } from '../../lib/comics';
 
 const s = tSite('en').moments;
+const latestComics = (await fetchComics()).slice(0, 3);
 
 // ── Build-time: fetch moments from Supabase ──
 const SUPABASE_URL = import.meta.env.BLOG_SUPABASE_URL || process.env.BLOG_SUPABASE_URL || '';
@@ -154,6 +156,31 @@ for (const m of staticMoments) {
         <p class="page-desc">{s.desc}</p>
       </div>
     </header>
+
+    <!-- Comics strip (latest 3 approved). Hidden when empty. -->
+    {latestComics.length > 0 && (
+      <section class="comics-strip-section">
+        <div class="comics-strip-inner">
+          <div class="comics-strip-head">
+            <span class="strip-label">Latest Comics</span>
+            <a class="strip-see-all" href="/en/comics">See all →</a>
+          </div>
+          <div class="comics-strip-row">
+            {latestComics.map((c) => (
+              <a href={`/en/comics/${c.issue_number}`} class="strip-card">
+                <div class="strip-thumb">
+                  <img src={c.panels?.url} alt={c.title?.en || c.title?.zh} loading="lazy" />
+                </div>
+                <div class="strip-caption">
+                  <span class="strip-issue">No. {c.issue_number}</span>
+                  <span class="strip-title">{c.title?.en || c.title?.zh}</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+    )}
 
     <!-- Content -->
     <section class="content-section">
@@ -343,6 +370,62 @@ for (const m of staticMoments) {
 
   /* ── Page Header ── */
   .page-header { border-bottom: 1px solid var(--c-border); padding: 48px 0; }
+
+  /* ── Comics strip ── */
+  .comics-strip-section {
+    border-bottom: 1px solid var(--c-border);
+    padding: 28px 0 32px;
+  }
+  .comics-strip-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 48px;
+  }
+  .comics-strip-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 14px;
+  }
+  .strip-label {
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--c-text-muted);
+    font-weight: 700;
+  }
+  .strip-see-all {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--c-text-dim);
+    text-decoration: none;
+  }
+  .strip-see-all:hover { color: var(--c-text); }
+  .comics-strip-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .strip-card { text-decoration: none; color: inherit; display: block; }
+  .strip-thumb {
+    aspect-ratio: 1 / 1;
+    background: #fff;
+    border: 1px solid var(--c-border);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 8px;
+    transition: transform 0.2s ease;
+  }
+  .strip-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .strip-card:hover .strip-thumb { transform: translateY(-2px); }
+  .strip-caption { font-size: 12px; display: flex; gap: 8px; align-items: baseline; line-height: 1.35; }
+  .strip-issue { font-weight: 700; color: var(--c-text-soft, #888); letter-spacing: 0.04em; flex-shrink: 0; }
+  .strip-title { color: var(--c-text); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  @media (max-width: 640px) {
+    .comics-strip-inner { padding: 0 20px; }
+    .comics-strip-row { gap: 10px; }
+    .strip-caption { font-size: 11px; }
+  }
   .header-inner { max-width: 1200px; margin: 0 auto; padding: 0 48px; }
   .page-title {
     font-size: 36px; font-weight: 800; color: var(--c-text);

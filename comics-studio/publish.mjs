@@ -122,28 +122,45 @@ if (insErr) {
 }
 console.log(`✓ row created · id=${row.id}`);
 
-// ── 2. Upload to R2 ──────────────────────────────────────────────
-const r2 = new S3Client({
-  region: 'auto',
-  endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-  credentials: {
-    accessKeyId: process.env.R2_ACCESS_KEY_ID,
-    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-  },
-});
-const key = `strip/${row.id}/v1/strip.png`;
-await r2.send(new PutObjectCommand({
-  Bucket: process.env.R2_BUCKET,
-  Key: key,
-  Body: imageBytes,
-  ContentType: 'image/png',
-}));
-const url = `${process.env.R2_PUBLIC_BASE.replace(/\/$/, '')}/${key}`;
-console.log(`✓ uploaded to R2 · ${url}`);
+// Cleanup helper — hard-delete the draft row if a later step fails.
+async function rollback(reason) {
+  console.error(`✗ ${reason}`);
+  try {
+    await sb.from('comics').delete().eq('id', row.id);
+    console.error(`  (rolled back · row ${row.id} deleted)`);
+  } catch (e) {
+    console.error(`  (rollback failed; please \`DELETE FROM comics WHERE id='${row.id}'\` manually)`);
+  }
+  process.exit(1);
+}
 
-await sb.from('comics').update({
-  panels: { url, alt: { zh: titleZh, en: titleEn } },
-}).eq('id', row.id);
+// ── 2. Upload to R2 ──────────────────────────────────────────────
+let url;
+try {
+  const r2 = new S3Client({
+    region: 'auto',
+    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+    credentials: {
+      accessKeyId: process.env.R2_ACCESS_KEY_ID,
+      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
+    },
+  });
+  const key = `strip/${row.id}/v1/strip.png`;
+  await r2.send(new PutObjectCommand({
+    Bucket: process.env.R2_BUCKET,
+    Key: key,
+    Body: imageBytes,
+    ContentType: 'image/png',
+  }));
+  url = `${process.env.R2_PUBLIC_BASE.replace(/\/$/, '')}/${key}`;
+  console.log(`✓ uploaded to R2 · ${url}`);
+
+  await sb.from('comics').update({
+    panels: { url, alt: { zh: titleZh, en: titleEn } },
+  }).eq('id', row.id);
+} catch (e) {
+  await rollback(`R2 upload failed: ${e.message || e}`);
+}
 
 // ── 3. Send Telegram preview to admin ───────────────────────────
 const tgToken = process.env.COMICS_TELEGRAM_BOT_TOKEN;
@@ -158,24 +175,34 @@ const tgCall = async (method, body) => {
   return json.result;
 };
 
-await tgCall('sendPhoto', {
-  chat_id: adminId,
-  photo: url,
-  caption: `*草稿* · 「${titleZh}」` + (titleEn !== titleZh ? ` / 「${titleEn}」` : ''),
-  parse_mode: 'Markdown',
-});
+try {
+  await tgCall('sendPhoto', {
+    chat_id: adminId,
+    photo: url,
+    caption: `*草稿* · 「${titleZh}」` + (titleEn !== titleZh ? ` / 「${titleEn}」` : ''),
+    parse_mode: 'Markdown',
+  });
 
-const kbMsg = await tgCall('sendMessage', {
-  chat_id: adminId,
-  text: '选择操作：',
-  reply_markup: {
-    inline_keyboard: [[
-      { text: '✅ 发布', callback_data: `strip:approve:${row.id}` },
-      { text: '❌ 删', callback_data: `strip:cancel:${row.id}` },
-    ]],
-  },
-});
-await sb.from('comics').update({ telegram_preview_msg_id: kbMsg.message_id }).eq('id', row.id);
+  const kbMsg = await tgCall('sendMessage', {
+    chat_id: adminId,
+    text: '选择操作：',
+    reply_markup: {
+      inline_keyboard: [[
+        { text: '✅ 发布', callback_data: `strip:approve:${row.id}` },
+        { text: '❌ 删', callback_data: `strip:cancel:${row.id}` },
+      ]],
+    },
+  });
+  await sb.from('comics').update({ telegram_preview_msg_id: kbMsg.message_id }).eq('id', row.id);
 
-console.log(`✓ Preview pushed to Telegram. Tap ✅ in your DM to publish.`);
-console.log(`   row.id = ${row.id}`);
+  console.log(`✓ Preview pushed to Telegram. Tap ✅ in your DM to publish.`);
+  console.log(`   row.id = ${row.id}`);
+} catch (e) {
+  // Don't rollback — image is already on R2, row has the URL.
+  // Just tell the user how to recover.
+  console.error(`✗ Telegram preview failed: ${e.message || e}`);
+  console.error(`  Row + image are intact. To approve manually:`);
+  console.error(`    SQL: UPDATE comics SET issue_number=(SELECT comics_allocate_issue()), approved=true, published_at=now() WHERE id='${row.id}';`);
+  console.error(`    Then fire dispatch: curl -X POST -H "Authorization: Bearer \$GH_DISPATCH_TOKEN" https://api.github.com/repos/airingursb/airingursb.github.io/dispatches -d '{"event_type":"strip-published"}'`);
+  process.exit(1);
+}
