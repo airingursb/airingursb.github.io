@@ -83,6 +83,7 @@ export class RoomScene extends Phaser.Scene {
   private cutsceneFadeRect?: Phaser.GameObjects.Rectangle  // V7.7
   private energyDrainBucket = 0
   private energyRestoreBucket = 0
+  private lastSpeciesToggleAt?: number   // P7-review I7
   private atmosphereTimer?: Phaser.Time.TimerEvent
   private particleEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
   private myDisplayName: string | null = null
@@ -203,33 +204,33 @@ export class RoomScene extends Phaser.Scene {
     const above = map.createLayer('furniture_above', tileset, 0, 0)
     above?.setDepth(10)
 
-    // E5-P1b — animate selected tile indices by swapping in-place at intervals.
-    // Animation tables: tileIdx (1-indexed Tiled gid) → array of frames.
-    //   Water tile 8 cycles 8↔41↔45 every 480ms.
-    //   Oak canopy tile 26 cycles 26↔42 every 1200ms (slow rustle).
-    //   Pine canopy tile 28 cycles 28↔43 every 1300ms.
-    //   Palm canopy tile 40 cycles 40↔44 every 1100ms.
-    const ANIMS: Array<{ frames: number[]; ms: number }> = [
-      { frames: [8, 41, 45], ms: 480 },
-      { frames: [26, 42], ms: 1200 },
-      { frames: [28, 43], ms: 1300 },
-      { frames: [40, 44], ms: 1100 }
-    ]
-    const animLayers = [floorLayer, fb, above].filter(Boolean) as Phaser.Tilemaps.TilemapLayer[]
-    for (const a of ANIMS) {
-      let phase = 0
-      this.time.addEvent({
-        delay: a.ms, loop: true,
-        callback: () => {
-          phase = (phase + 1) % a.frames.length
-          const from = a.frames[(phase + a.frames.length - 1) % a.frames.length]
-          const to   = a.frames[phase]
-          if (from === to) return
-          for (const layer of animLayers) {
-            layer.replaceByIndex(from, to)
+    // E5-P1b — Tile-index animations. CRITICAL: these gids only have meaning
+    // in outdoor_grove_v1 (water 8, oak canopy 26, pine canopy 28, palm 40).
+    // In indoor_lobby_v1 the same ids are sofa/chair/floor variants, so we
+    // must gate by tileset name or the animator will corrupt indoor rooms.
+    if (tileset?.name === 'outdoor_grove_v1') {
+      const ANIMS: Array<{ frames: number[]; ms: number }> = [
+        { frames: [8, 41, 45], ms: 480 },
+        { frames: [26, 42], ms: 1200 },
+        { frames: [28, 43], ms: 1300 },
+        { frames: [40, 44], ms: 1100 }
+      ]
+      const animLayers = [floorLayer, fb, above].filter(Boolean) as Phaser.Tilemaps.TilemapLayer[]
+      for (const a of ANIMS) {
+        let phase = 0
+        this.time.addEvent({
+          delay: a.ms, loop: true,
+          callback: () => {
+            phase = (phase + 1) % a.frames.length
+            const from = a.frames[(phase + a.frames.length - 1) % a.frames.length]
+            const to   = a.frames[phase]
+            if (from === to) return
+            for (const layer of animLayers) {
+              layer.replaceByIndex(from, to)
+            }
           }
-        }
-      })
+        })
+      }
     }
 
     // V6.3 — at night (18:00-06:00), draw soft warm glow on light-source tiles.
@@ -622,6 +623,7 @@ export class RoomScene extends Phaser.Scene {
       updateSpeciesButtonLabel(next)
       const { sendSpecies } = await import('../net')
       sendSpecies(next)
+      this.lastSpeciesToggleAt = performance.now()  // P7-review I7
     })
 
     // E5-P1a — first-visit species picker. Shown when localStorage has no
@@ -869,10 +871,12 @@ export class RoomScene extends Phaser.Scene {
     if (m.progress_token) {
       import('../progress_sync').then(({ setProgressToken }) => setProgressToken(m.progress_token ?? null))
     }
-    // E5-P0c — reconcile species: server is canonical. If it differs from
-    // local, update local + sprite to match.
-    if (m.species && m.species !== getMySpecies()) {
-      const s = m.species as 'bear' | 'cat'
+    // E5-P0c + P7-review I7 — reconcile species, but skip if we just toggled
+    // locally (in-flight sendSpecies may not have hit the DB yet). Recently =
+    // last 5s.
+    const recentToggle = (performance.now() - (this.lastSpeciesToggleAt ?? -Infinity)) < 5000
+    if (m.species && m.species !== getMySpecies() && !recentToggle) {
+      const s = m.species as 'bear' | 'cat' | 'fox' | 'capybara' | 'bird'
       import('../config').then(({ setMySpecies }) => setMySpecies(s))
       this.myBear?.setSpecies(s)
       updateSpeciesButtonLabel(s)
@@ -1664,9 +1668,11 @@ export class RoomScene extends Phaser.Scene {
   //   • Window tiles now ALSO get a tint at sunrise/sunset/night so daylight
   //     reflection through the glass changes with time of day
   private addNightGlow(map: Phaser.Tilemaps.Tilemap, layers: Phaser.Tilemaps.TilemapLayer[]) {
-    const hour = new Date().getHours()
+    // E5-P2b review I1+I2: use game time (not wall clock) + non-overlapping
+    // sunset window (17 + 6) so 18:xx isn't double-counted as both states.
+    const hour = getGameNow().getHours()
     const isNight = hour >= 18 || hour < 6
-    const isSunset = hour === 17 || hour === 18 || hour === 6 || hour === 7
+    const isSunset = (hour === 17 || hour === 6) && !isNight
 
     // E5-P2b — bake a soft-gradient texture once, reuse across all glows
     const GLOW_TEX = 'lounge_soft_glow'
@@ -1889,15 +1895,16 @@ export class RoomScene extends Phaser.Scene {
       }).setDepth(1002)
       // E5-P1c — snow accumulation: a white overlay above the floor whose
       // alpha grows over real-time. Capped at 0.45 so the room is still
-      // readable. Persists per scene boot; resets on room change.
+      // readable. Cleanup on shutdown (P7-review fix I3).
       const snow = this.add.rectangle(0, 0, widthPx, heightPx, 0xffffff, 0)
         .setOrigin(0).setDepth(995)
         .setBlendMode(Phaser.BlendModes.SCREEN)
-      // 30s game-time → +0.04 alpha → max 0.45 reached after ~5.5 min
-      this.time.addEvent({
+      const snowTimer = this.time.addEvent({
         delay: 30_000, loop: true,
         callback: () => { if (snow.fillAlpha < 0.45) snow.fillAlpha += 0.04 }
       })
+      this.events.once('shutdown', () => { snowTimer.remove(false); snow.destroy() })
+      this.events.once('destroy',  () => { snowTimer.remove(false); snow.destroy() })
     }
 
     // E5-P1c — weather ambient audio. Hooks into existing audio system;
@@ -1909,17 +1916,24 @@ export class RoomScene extends Phaser.Scene {
     }
   }
 
-  // E5-P1c — load + loop a weather ambient track (no-op if file missing).
+  // E5-P1c + P7-review fix I4 — load + loop a weather ambient track. Stop on
+  // scene shutdown so room transitions don't accumulate looping ambients.
+  private weatherSound?: Phaser.Sound.BaseSound
   private tryPlayWeatherAmbient(key: string, url: string) {
-    if (this.cache.audio.exists(key)) {
-      this.sound.play(key, { loop: true, volume: 0.25 })
-      return
+    const start = () => {
+      try {
+        this.weatherSound = this.sound.add(key, { loop: true, volume: 0.25 })
+        this.weatherSound.play()
+      } catch {}
     }
-    this.load.audio(key, [url])
-    this.load.once(`filecomplete-audio-${key}`, () => {
-      try { this.sound.play(key, { loop: true, volume: 0.25 }) } catch {}
-    })
-    this.load.start()
+    if (this.cache.audio.exists(key)) { start(); }
+    else {
+      this.load.audio(key, [url])
+      this.load.once(`filecomplete-audio-${key}`, start)
+      this.load.start()
+    }
+    this.events.once('shutdown', () => { try { this.weatherSound?.stop() } catch {} })
+    this.events.once('destroy',  () => { try { this.weatherSound?.stop() } catch {} })
   }
 
   private setupAtmosphere(widthPx: number, heightPx: number) {

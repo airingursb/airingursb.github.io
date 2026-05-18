@@ -69,12 +69,23 @@ for (let x = 1; x < W - 1; x++) {
   if (floor.data[idx(x, 18)] === 33 || floor.data[idx(x, 18)] === 34) floor.data[idx(x, 18)] = 8
 }
 
-// 5. Drop palm canopies on the above-layer wherever a palm trunk (39) sits
+// 5. Drop palm canopies on the above-layer wherever a palm trunk (39) sits.
+//    P0a review fix C2: v0 placed palms on fa (above-layer), not fb. After
+//    remap the trunks live in fa, so we have to scan both layers.
 for (let y = 1; y < H; y++) {
   for (let x = 0; x < W; x++) {
-    if (fb.data[idx(x, y)] === 39 && y > 0) fa.data[idx(x, y - 1)] = 40
+    const isTrunk = fb.data[idx(x, y)] === 39 || fa.data[idx(x, y)] === 39
+    if (isTrunk && y > 0 && fa.data[idx(x, y - 1)] === 0) {
+      fa.data[idx(x, y - 1)] = 40
+    }
   }
 }
+
+// 6. P0a review fix I8: place a driftwood log (37) at the portal cell so the
+//    affordance survives the migration. Beach portal is at (32, 0, 16, 16)
+//    according to original collision; the spawn point from balcony is at
+//    (32, 32). Drop a log at col 1 row 2 for visual cue.
+if (fb.data[idx(1, 2)] === 0) fb.data[idx(1, 2)] = 37
 
 writeFileSync(FILE, JSON.stringify(map, null, 2) + '\n')
 console.log('OK beach.tmj migrated → outdoor_grove_v1 (sand + shore + palm canopies)')
