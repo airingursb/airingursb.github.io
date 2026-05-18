@@ -662,6 +662,11 @@ export class RoomScene extends Phaser.Scene {
       }
       this.eKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E)
       this.eKey.on('down', () => this.tryInteract())
+      // Door-portal entry via Enter (matches the "↵ click" hint on the
+      // floating door label). Without this binding the hint was a lie and
+      // users had to find the orange pill at the bottom to teleport.
+      const enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER)
+      enterKey.on('down', () => this.tryInteract())
       const escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
       escKey.on('down', () => { if (this.placeMode) this.exitPlaceMode() })
     }
@@ -3031,6 +3036,10 @@ export class RoomScene extends Phaser.Scene {
       sendAct('sit', undefined, this.currentRoomId)
       this.applyAct(undefined, 'sit')
       this.currentSitInteractable = null
+    } else if (this.nearbyDoorPortal) {
+      // Door portal: pressing E / Enter near a door teleports through it,
+      // matching the visible "↵ click" hint on the floating door label.
+      this.enterPortal(this.nearbyDoorPortal)
     }
   }
 
