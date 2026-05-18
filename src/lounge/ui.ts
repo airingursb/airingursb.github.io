@@ -235,6 +235,7 @@ export function initUI() {
   ensureWaRefs()
   ensureSkRefs()
   ensureCfRefs()
+  ensureBdRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -447,6 +448,81 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat' | 'fox' 
 export function nextSpeciesFrom(s: string): 'bear'|'cat'|'fox'|'capybara'|'bird' {
   const idx = SPECIES_CYCLE.findIndex(x => x.id === s)
   return SPECIES_CYCLE[(idx === -1 ? 0 : (idx + 1) % SPECIES_CYCLE.length)].id
+}
+
+// V9.3 — Building / Home extensions
+import { EXTENSION_DEFS, hasExtension, tryBuild, extraHomeCap } from './building'
+import { getMaterial, MATERIALS, type MaterialId } from './resources'
+
+let bdPanelEl: HTMLElement | null = null
+let bdListEl: HTMLElement | null = null
+let bdCloseBtn: HTMLButtonElement | null = null
+let bdOpenBtn: HTMLButtonElement | null = null
+
+function ensureBdRefs() {
+  if (bdPanelEl) return
+  bdPanelEl = document.getElementById('lounge-build-panel')
+  bdListEl  = document.getElementById('lounge-build-list')
+  bdCloseBtn = document.getElementById('lounge-build-close') as HTMLButtonElement | null
+  bdOpenBtn  = document.getElementById('lounge-info-build') as HTMLButtonElement | null
+  if (bdCloseBtn) bdCloseBtn.addEventListener('click', () => hideBuildPanel())
+  if (bdOpenBtn) bdOpenBtn.addEventListener('click', () => { hideInfoPanel(); showBuildPanel() })
+  if (bdPanelEl) bdPanelEl.addEventListener('click', (e) => { if (e.target === bdPanelEl) hideBuildPanel() })
+}
+
+export function showBuildPanel() {
+  ensureBdRefs()
+  if (!bdPanelEl) return
+  renderBuild()
+  bdPanelEl.hidden = false
+  playSfx('menu_open')
+}
+export function hideBuildPanel() {
+  if (!bdPanelEl) return
+  bdPanelEl.hidden = true
+  playSfx('menu_close')
+}
+function renderBuild() {
+  if (!bdListEl) return
+  bdListEl.innerHTML = ''
+  const shells = getShells()
+  for (const e of EXTENSION_DEFS) {
+    const owned = hasExtension(e.id)
+    const prereqOK = !e.prereq || hasExtension(e.prereq)
+    const matOk = Object.entries(e.cost.materials).every(([m, n]) => getMaterial(m as MaterialId) >= (n ?? 0))
+    const canBuild = !owned && prereqOK && matOk && shells >= e.cost.shells
+    const li = document.createElement('li')
+    li.className = 'bd-item' + (owned ? ' owned' : '')
+    const em = document.createElement('span'); em.className = 'bd-emoji'; em.textContent = e.emoji
+    const name = document.createElement('div'); name.className = 'bd-name'
+    const t = document.createElement('div'); t.className = 'bd-title'; t.textContent = e.name
+    const b = document.createElement('div'); b.className = 'bd-blurb-inline'; b.textContent = e.blurb
+    const cost = document.createElement('div'); cost.className = 'bd-cost'
+    const matStr = Object.entries(e.cost.materials).map(([m, n]) => `${MATERIALS[m as MaterialId].emoji} ${n}`).join(' + ')
+    cost.textContent = owned
+      ? '✓ Owned'
+      : `cost: 🐚 ${e.cost.shells}${matStr ? '  +  ' + matStr : ''}` + (e.prereq && !hasExtension(e.prereq) ? `  🔒 needs ${e.prereq}` : '')
+    name.appendChild(t); name.appendChild(b); name.appendChild(cost)
+    const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = owned ? 'Owned' : 'Build'
+    btn.disabled = !canBuild
+    btn.addEventListener('click', () => {
+      const res = tryBuild(e.id)
+      if (res.ok) {
+        showToast(`${e.emoji} Built ${e.name} (+${e.extraDecoCap} home slots)`, 3200)
+        renderBuild()
+      } else {
+        const reasonMsg: Record<string, string> = {
+          already_owned:    'You already have this.',
+          missing_prereq:   'You need the previous tier first.',
+          not_enough_shells:'Not enough shells.',
+          missing_material: 'Missing a material — go gather more.'
+        }
+        showToast(reasonMsg[res.reason] ?? 'Cannot build.', 2400)
+      }
+    })
+    li.appendChild(em); li.appendChild(name); li.appendChild(btn)
+    bdListEl.appendChild(li)
+  }
 }
 
 // V9.1 — Recipe Book / Crafting
