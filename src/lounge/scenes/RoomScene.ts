@@ -759,6 +759,10 @@ export class RoomScene extends Phaser.Scene {
   private applyWelcome(m: WelcomeMsg) {
     if (this.welcomeApplied) return
     this.welcomeApplied = true
+    // P7 — pass HMAC token to sync layer so PUT can authenticate
+    if (m.progress_token) {
+      import('../progress_sync').then(({ setProgressToken }) => setProgressToken(m.progress_token ?? null))
+    }
 
     // Stash welcome data on a module-level cache so the post-restart scene can read it.
     welcomeCache = m
@@ -1569,21 +1573,24 @@ export class RoomScene extends Phaser.Scene {
             const f = getActiveFestival()
             if (!f) return
             if (hasCompletedTodaysActivity(f.id)) return
-            markActivityDone(f.id)
+            // P7-fix: only mark activity done AFTER rewards land, so a thrown
+            // shop-state write doesn't burn the slot without paying out.
             const res = rollActivity(f.id)
-            if (res.shellReward > 0) awardShells(res.shellReward)
-            if (res.itemReward) {
-              // Map shop_<id> back to purchase id so it appears in inventory
-              const shopId = res.itemReward.id.replace('shop_', '')
-              try {
+            try {
+              if (res.shellReward > 0) awardShells(res.shellReward)
+              if (res.itemReward) {
+                const shopId = res.itemReward.id.replace('shop_', '')
                 const raw = localStorage.getItem('lounge_purchases_v1') || '{}'
                 const m = JSON.parse(raw)
                 if (!m[shopId]) m[shopId] = Date.now()
                 localStorage.setItem('lounge_purchases_v1', JSON.stringify(m))
-              } catch {}
+              }
+              markActivityDone(f.id)
+              showToast(res.message, 3800)
+              actionBtn.hidden = true
+            } catch (e) {
+              showToast('Activity reward failed — try again.', 2400)
             }
-            showToast(res.message, 3800)
-            actionBtn.hidden = true
           })
         }
       } else {

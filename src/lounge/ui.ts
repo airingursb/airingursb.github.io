@@ -1092,17 +1092,31 @@ export function setInventoryDataProvider(provider: () => { items: Array<{ id: st
         const itemId = e.dataTransfer?.getData('text/plain')
         if (!itemId) return
         if (itemId.startsWith('shop_')) {
-          // Remove purchase from localStorage so the item disappears next render
+          // P7-fix: refund 50% of original cost so trashing isn't a free re-buy.
+          // Find the SHOP entry by id; if found, refund half its cost.
           try {
+            const shopId = itemId.replace('shop_', '')
+            // SHOP catalog is in shells.ts but we already imported it for shop UI
+            const item = SHOP.find(s => s.id === shopId as any)
+            if (item) {
+              const refund = Math.floor(item.cost / 2)
+              // bump shells by refund
+              const cur = Number(localStorage.getItem('lounge_shells_v1') || '0')
+              localStorage.setItem('lounge_shells_v1', String(cur + refund))
+            }
             const raw = localStorage.getItem('lounge_purchases_v1') || '{}'
             const m = JSON.parse(raw)
-            delete m[itemId.replace('shop_', '')]
+            delete m[shopId]
             localStorage.setItem('lounge_purchases_v1', JSON.stringify(m))
             renderInventory()
+            // also clean up dead ids from inv_order
+            const order = loadInvOrder().filter(id => id !== itemId)
+            saveInvOrder(order)
+            showToast(`Discarded. Half-refund issued.`, 2000)
           } catch {}
         } else {
           // Pebbles can't be trashed (server-side state)
-          import('./ui').then(ui => ui.showToast?.('That can\'t be discarded.', 1800))
+          showToast('That can\'t be discarded.', 1800)
         }
       })
     }
@@ -1172,10 +1186,12 @@ function renderInventoryGrid(data: ReturnType<NonNullable<typeof invDataProvider
     slot.addEventListener('drop', (e) => {
       e.preventDefault()
       slot.classList.remove('drop-target')
+      // P7-fix: reject non-text/plain drops (e.g. file drag from OS)
+      const types = e.dataTransfer?.types
+      if (!types || !Array.from(types).includes('text/plain')) return
       const draggedId = e.dataTransfer?.getData('text/plain')
       if (!draggedId) return
       const targetIdx = Number(slot.dataset.slotIndex || '0')
-      // Build new order from current ordered list
       const ids = ordered.map(o => o.id)
       const draggedIdx = ids.indexOf(draggedId)
       if (draggedIdx < 0) return

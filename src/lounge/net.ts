@@ -31,6 +31,8 @@ export type WelcomeMsg = {
   unread_dm_count?: number
   my_home_room?: string | null
   my_home_decorations?: HomeDecoration[]
+  // P7 — HMAC token for authenticated PUT to /api/lounge/progress
+  progress_token?: string | null
 }
 export type CollectedMsg = { v: number; t: 'collected'; item_id: string; newly: boolean }
 export type FriendUpdateMsg = { v: number; t: 'friend_update'; friend_id: string; score: number; level: number }
