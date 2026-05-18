@@ -19,7 +19,7 @@ import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollec
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 import { getEquippedTool, captureMemory } from '../memories'
-import { awardShells, claimDailyVisitBonus, SHELL_REWARD } from '../shells'
+import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased } from '../shells'
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
 import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
@@ -619,11 +619,32 @@ export class RoomScene extends Phaser.Scene {
           giftedByName: giftByItemId.get(p.id) ?? null,
           placedInHome: placedIds.has(p.id)
         }))
+        // P1 — append decoration items the player purchased from Mio's shop
+        // (lantern_keepsake / fox_figurine / sketch_print). These behave like
+        // collected pebbles + are placeable in Home.
+        const SHOP_DECO: Array<{ id: string; name: string }> = [
+          { id: 'shop_lantern_keepsake', name: 'Lantern Keepsake' },
+          { id: 'shop_fox_figurine',     name: 'Fox Figurine' },
+          { id: 'shop_sketch_print',     name: 'Sketch Print (Cole)' }
+        ]
+        for (const d of SHOP_DECO) {
+          const shopId = d.id.replace('shop_', '') as 'lantern_keepsake' | 'fox_figurine' | 'sketch_print'
+          if (!hasPurchased(shopId)) continue
+          items.push({
+            id: d.id,
+            name: d.name,
+            collected: true,
+            giftedByName: 'Mio\'s Shop',
+            placedInHome: placedIds.has(d.id)
+          })
+        }
         return {
           items,
-          total: all.length,
+          total: all.length + SHOP_DECO.filter(d => hasPurchased(d.id.replace('shop_', '') as any)).length,
           collected: items.filter(i => i.collected).length,
-          canPlace: this.amInMyHome()
+          canPlace: this.amInMyHome(),
+          // P1 — pebble_bag_plus expands the grid view by 8 slots
+          gridSlots: hasPurchased('pebble_bag_plus') ? 44 : 36
         }
       },
       (id, name) => this.enterPlaceMode(id, name)

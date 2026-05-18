@@ -1059,7 +1059,7 @@ const INVENTORY_GRID_SLOTS = 36
 let invDataProvider: (() => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null; placedInHome?: boolean }>; total: number; collected: number; canPlace?: boolean }) | null = null
 let onInventoryPlace: ((id: string, name: string) => void) | null = null
 
-export function setInventoryDataProvider(provider: () => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null; placedInHome?: boolean }>; total: number; collected: number; canPlace?: boolean }, onPlace?: (id: string, name: string) => void) {
+export function setInventoryDataProvider(provider: () => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null; placedInHome?: boolean }>; total: number; collected: number; canPlace?: boolean; gridSlots?: number }, onPlace?: (id: string, name: string) => void) {
   if (onPlace) onInventoryPlace = onPlace
   invDataProvider = provider
   if (!invBtnEl) {
@@ -1097,7 +1097,9 @@ function renderInventoryGrid(data: ReturnType<NonNullable<typeof invDataProvider
   if (!invGridEl) return
   invGridEl.innerHTML = ''
   const collected = data.items.filter(it => it.collected)
-  for (let i = 0; i < INVENTORY_GRID_SLOTS; i++) {
+  // P1 — pebble_bag_plus expands slot count from 36 → 44
+  const slots = data.gridSlots ?? INVENTORY_GRID_SLOTS
+  for (let i = 0; i < slots; i++) {
     const slot = document.createElement('div')
     slot.className = 'inv-slot'
     const it = collected[i]
