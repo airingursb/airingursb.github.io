@@ -232,6 +232,7 @@ export function initUI() {
   ensureSleepRefs()
   ensureMailboxRefs()
   ensureProgressRefs()
+  ensureWaRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -431,6 +432,66 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat') {
   if (!infoSpeciesBtn) return
   infoSpeciesBtn.dataset.species = currentSpecies
   infoSpeciesBtn.textContent = currentSpecies === 'bear' ? 'Switch to 🐱 Cat' : 'Switch to 🐻 Bear'
+}
+
+// E5-P0b — "Who's around" panel
+let waPanelEl: HTMLElement | null = null
+let waListEl: HTMLElement | null = null
+let waEmptyEl: HTMLElement | null = null
+let waCloseBtn: HTMLButtonElement | null = null
+let waOpenBtn: HTMLButtonElement | null = null
+
+export type WhosAroundEntry = {
+  name: string
+  roomLabel: string
+  state: 'idle' | 'sit' | 'dance' | 'sleep' | 'offline'
+  nextChangeAt?: string | null  // 'HH:MM' formatted, optional
+}
+let waProvider: (() => WhosAroundEntry[]) | null = null
+export function setWhosAroundProvider(p: () => WhosAroundEntry[]) { waProvider = p }
+
+function ensureWaRefs() {
+  if (waPanelEl) return
+  waPanelEl = document.getElementById('lounge-whosaround-panel')
+  waListEl  = document.getElementById('lounge-whosaround-list')
+  waEmptyEl = document.getElementById('lounge-whosaround-empty')
+  waCloseBtn = document.getElementById('lounge-whosaround-close') as HTMLButtonElement | null
+  waOpenBtn  = document.getElementById('lounge-info-whosaround') as HTMLButtonElement | null
+  if (waCloseBtn) waCloseBtn.addEventListener('click', () => hideWhosAroundPanel())
+  if (waOpenBtn) waOpenBtn.addEventListener('click', () => { hideInfoPanel(); showWhosAroundPanel() })
+  if (waPanelEl) waPanelEl.addEventListener('click', (e) => { if (e.target === waPanelEl) hideWhosAroundPanel() })
+}
+export function showWhosAroundPanel() {
+  ensureWaRefs()
+  if (!waPanelEl) return
+  renderWa()
+  waPanelEl.hidden = false
+  playSfx('menu_open')
+}
+export function hideWhosAroundPanel() {
+  if (!waPanelEl) return
+  waPanelEl.hidden = true
+  playSfx('menu_close')
+}
+function renderWa() {
+  if (!waListEl || !waEmptyEl) return
+  const entries = waProvider ? waProvider() : []
+  waListEl.innerHTML = ''
+  waEmptyEl.hidden = entries.length > 0
+  const stateIcon: Record<string, string> = { idle: '🚶', sit: '🪑', dance: '💃', sleep: '💤', offline: '—' }
+  for (const e of entries) {
+    const li = document.createElement('li')
+    li.className = 'wa-item' + (e.state === 'sleep' ? ' is-asleep' : '')
+    const ico = document.createElement('span'); ico.className = 'wa-state-icon'; ico.textContent = stateIcon[e.state] ?? '·'
+    const name = document.createElement('span'); name.className = 'wa-name'; name.textContent = e.name
+    const where = document.createElement('span'); where.className = 'wa-where'; where.textContent = e.roomLabel
+    li.appendChild(ico); li.appendChild(name); li.appendChild(where)
+    if (e.nextChangeAt) {
+      const n = document.createElement('span'); n.className = 'wa-next'; n.textContent = `→ ${e.nextChangeAt}`
+      li.appendChild(n)
+    }
+    waListEl.appendChild(li)
+  }
 }
 
 // V8.7 — Progress / "Your Story" panel

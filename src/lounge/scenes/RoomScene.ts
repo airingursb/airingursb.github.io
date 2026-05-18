@@ -21,7 +21,7 @@ import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '..
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased } from '../shells'
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
-import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider } from '../ui'
+import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
 import { seedMailForToday, unreadCount as mailUnread } from '../mailbox'
 
@@ -599,6 +599,55 @@ export class RoomScene extends Phaser.Scene {
         friendships: friendsArr,
         totalNpcs: Math.max(npcIds.size, 11)
       }
+    })
+
+    // E5-P0b — Who's around panel: for every NPC in manifest, report current
+    // bracket (room + state) and the formatted HH:MM of the next bracket change.
+    setWhosAroundProvider((): WhosAroundEntry[] => {
+      const npcs = this.npcManifest?.npcs ?? []
+      const labelMap: Record<string, string> = {
+        room_lobby: 'Lobby', room_dj_floor: 'DJ Floor', room_balcony: 'Balcony',
+        room_library: 'Library', room_beach: 'Beach', room_grove: 'Grove',
+        room_kitchen: 'Kitchen', room_workshop: 'Workshop', room_rooftop: 'Rooftop',
+        room_bedroom_mio: "Mio's room", room_bedroom_halle: "Halle's room",
+        room_bedroom_sora: "Sora's room", room_bedroom_theo: "Theo's room"
+      }
+      const now = getGameNow()
+      const minutes = now.getHours() * 60 + now.getMinutes()
+      const out: WhosAroundEntry[] = []
+      for (const def of npcs) {
+        const active = getActiveBracket(def, now)
+        if (!active) {
+          out.push({ name: def.name, roomLabel: '—', state: 'offline' })
+          continue
+        }
+        // Find next bracket boundary
+        let nextMin: number | null = null
+        for (const b of def.schedule) {
+          const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(b.from)
+          if (!m) continue
+          const t = parseInt(m[1], 10) * 60 + parseInt(m[2], 10)
+          if (t > minutes && (nextMin == null || t < nextMin)) nextMin = t
+        }
+        let nextStr: string | null = null
+        if (nextMin != null) {
+          const h = String(Math.floor(nextMin / 60)).padStart(2, '0')
+          const m = String(nextMin % 60).padStart(2, '0')
+          nextStr = `${h}:${m}`
+        }
+        out.push({
+          name: def.name,
+          roomLabel: labelMap[active.room] ?? active.room,
+          state: active.state as any,
+          nextChangeAt: nextStr
+        })
+      }
+      // Sort: not-asleep first, then by name
+      out.sort((a, b) => {
+        if ((a.state === 'sleep') !== (b.state === 'sleep')) return a.state === 'sleep' ? 1 : -1
+        return a.name.localeCompare(b.name)
+      })
+      return out
     })
 
     setupWishboard(
