@@ -22,6 +22,10 @@ let _bannerHandler: ((text: string | null) => void) | null = null
 let _ownScoreSubmitted = false
 let _payoutGranted = false
 let _initialized = false
+// V14.8-review C3 — track the session id we're currently tracking so payout
+// flags reset when a new session starts (otherwise a second cook-along in
+// the same Kitchen visit can't pay out because _payoutGranted is stuck true).
+let _activeSessionId: string | null = null
 
 export function setCookBannerHandler(fn: (text: string | null) => void) {
   _bannerHandler = fn
@@ -44,6 +48,7 @@ export function leaveCookAlongIfNeeded(currentRoomId: string) {
   if (s && s.kind === KIND) sendGroupLeave(s.id)
   _ownScoreSubmitted = false
   _payoutGranted = false
+  _activeSessionId = null
   _bannerHandler?.(null)
 }
 
@@ -78,8 +83,16 @@ function handleSessionChange(s: GroupSession | null) {
   if (!s || s.kind !== KIND) {
     _ownScoreSubmitted = false
     _payoutGranted = false
+    _activeSessionId = null
     _bannerHandler?.(null)
     return
+  }
+  // V14.8-review C3 — new session arriving (e.g. user starts a second
+  // cook-along after the first finished): reset flags before evaluating.
+  if (s.id !== _activeSessionId) {
+    _activeSessionId = s.id
+    _ownScoreSubmitted = false
+    _payoutGranted = false
   }
   refreshBanner()
   // If everyone in the session has submitted (or deadline passed), trigger payout once

@@ -21,6 +21,9 @@ const COMBO_SESSION_MS = 60_000
 let _initialized = false
 let _bannerHandler: ((text: string | null) => void) | null = null
 let _payoutGranted = false
+// V14.8-review C3 — track active session id so payout flag resets between
+// sessions (same bug class as group_cook).
+let _activeSessionId: string | null = null
 
 export function setJamBannerHandler(fn: (text: string | null) => void) {
   _bannerHandler = fn
@@ -74,11 +77,20 @@ function onComboHit() {
 }
 
 function handleSessionChange(s: GroupSession | null) {
-  if (!s || s.kind !== KIND) { _bannerHandler?.(null); return }
+  if (!s || s.kind !== KIND) {
+    _activeSessionId = null
+    _payoutGranted = false
+    _bannerHandler?.(null)
+    return
+  }
+  if (s.id !== _activeSessionId) {
+    _activeSessionId = s.id
+    _payoutGranted = false
+  }
   refreshBanner()
   const combos = Number((s.state as any).combos ?? 0)
   const deadline = Number((s.state as any).deadline ?? 0)
-  if (!_payoutGranted && (combos >= COMBO_TARGET || Date.now() > deadline) && s.members.length >= 2 && combos >= COMBO_TARGET) {
+  if (!_payoutGranted && combos >= COMBO_TARGET && s.members.length >= 2) {
     awardShells(5)
     _payoutGranted = true
     _bannerHandler?.(`🎧 Jam Combo ×${combos} — +5 shells!`)

@@ -93,33 +93,32 @@ export function startOrJoinDance() {
   if (existing) {
     sendGroupJoin(existing.id)
   } else {
-    sendGroupCreate(KIND, ROOM as any, {
-      startedAt: Date.now(),
-      endsAt: Date.now() + ROUND_MS,
-      cues: scheduleCues(),
-      stamina: 0
-    })
+    // V14.8-review I2 — cues are relative offsets from session startedAt
+    // (not absolute epoch ms), so every client's local timer aligns to the
+    // server-supplied startedAt instead of host wall-clock drift.
+    sendGroupCreate(KIND, ROOM as any, { cues: scheduleCueOffsets() })
   }
 }
 
-function scheduleCues(): Array<{ dir: Dir; at: number }> {
-  const out: Array<{ dir: Dir; at: number }> = []
+function scheduleCueOffsets(): Array<{ dir: Dir; offsetMs: number }> {
+  const out: Array<{ dir: Dir; offsetMs: number }> = []
   const step = Math.floor(ROUND_MS / CUE_COUNT)
   for (let i = 0; i < CUE_COUNT; i++) {
     out.push({
       dir: DIRS[Math.floor(Math.random() * DIRS.length)],
-      at: Date.now() + (i + 1) * step
+      offsetMs: (i + 1) * step
     })
   }
   return out
 }
 
 let _cueTimers: number[] = []
-function scheduleClientCues(cues: Array<{ dir: Dir; at: number }>) {
+function scheduleClientCues(cues: Array<{ dir: Dir; offsetMs: number }>, startedAt: number) {
   for (const t of _cueTimers) clearTimeout(t)
   _cueTimers = []
   for (const c of cues) {
-    const dt = c.at - Date.now()
+    const at = startedAt + c.offsetMs
+    const dt = at - Date.now()
     if (dt < 0) continue
     _cueTimers.push(window.setTimeout(() => {
       _currentCue = c.dir
@@ -143,9 +142,11 @@ function handleSessionChange(s: GroupSession | null) {
   }
   ensureOverlay()
   showOverlay(true)
-  // First time receiving this session — schedule the cues from its state
+  // First time receiving this session — schedule the cues from its state.
+  // startedAt comes from the server, so every client uses the same anchor.
   const cues = (s.state as any).cues
-  if (Array.isArray(cues) && _cueTimers.length === 0) scheduleClientCues(cues as any)
+  const startedAt = Number((s.state as any).startedAt) || Date.now()
+  if (Array.isArray(cues) && _cueTimers.length === 0) scheduleClientCues(cues as any, startedAt)
   if (_staminaEl) _staminaEl.textContent = `${(s.state as any).stamina ?? 0} / ${STAMINA_TARGET}`
   if (!_countdownTimer) {
     _countdownTimer = window.setInterval(() => {

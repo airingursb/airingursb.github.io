@@ -14,13 +14,21 @@ const KIND = 'npc_event'
 const PRE_WINDOW_MIN = 5
 const ACTIVE_WINDOW_MIN = 10
 
+export type EventSlot = {
+  dayOfWeek: number    // 0=Sun, 1=Mon, ..., 6=Sat (UTC)
+  hour: number          // UTC 0-23
+}
+
 export type NpcEvent = {
   id: string
   npc_id: string
   npc_name: string
   room: string
-  dayOfWeek: number    // 0=Sun, 1=Mon, ..., 6=Sat (UTC)
-  hour: number          // UTC 0-23
+  /** V14.8-review I4 — multiple slots per event so users across timezones
+   *  can attend at least one. Reward is keyed by occurrence-date so a user
+   *  attending both slots in one week double-counts (acceptable: nobody
+   *  spans two continents in one week). */
+  slots: EventSlot[]
   title: string
   blurb: string
   emoji: string
@@ -33,7 +41,8 @@ export const NPC_EVENT_SCHEDULE: NpcEvent[] = [
     id: 'mox_workshop_demo',
     npc_id: 'npc_mox', npc_name: 'Mox',
     room: 'room_workshop',
-    dayOfWeek: 1, hour: 20,   // Mon 20:00 UTC
+    // Mon 20:00 UTC (= 21:00 CET / 13:00 PT) + Mon 12:00 UTC (= 20:00 CN / 13:00 CET / 04:00 PT)
+    slots: [{ dayOfWeek: 1, hour: 20 }, { dayOfWeek: 1, hour: 12 }],
     emoji: '🔧',
     title: 'Workshop Demo',
     blurb: 'Mox shows a tiny new gadget she rebuilt.',
@@ -47,7 +56,8 @@ export const NPC_EVENT_SCHEDULE: NpcEvent[] = [
     id: 'iris_grove_story',
     npc_id: 'npc_iris', npc_name: 'Iris',
     room: 'room_grove',
-    dayOfWeek: 3, hour: 19,   // Wed 19:00 UTC
+    // Wed 19:00 UTC + Wed 11:00 UTC (= 19:00 CN / 12:00 CET / 04:00 PT)
+    slots: [{ dayOfWeek: 3, hour: 19 }, { dayOfWeek: 3, hour: 11 }],
     emoji: '🌿',
     title: 'Grove Story Time',
     blurb: 'Iris tells one short flower fable.',
@@ -61,7 +71,8 @@ export const NPC_EVENT_SCHEDULE: NpcEvent[] = [
     id: 'halle_library_reading',
     npc_id: 'npc_halle', npc_name: 'Halle',
     room: 'room_library',
-    dayOfWeek: 6, hour: 19,   // Sat 19:00 UTC
+    // Sat 19:00 UTC + Sat 12:00 UTC (= 20:00 CN / 13:00 CET / 05:00 PT)
+    slots: [{ dayOfWeek: 6, hour: 19 }, { dayOfWeek: 6, hour: 12 }],
     emoji: '📖',
     title: 'Library Reading',
     blurb: 'Halle reads a half-page from her memoir.',
@@ -77,7 +88,8 @@ export const NPC_EVENT_SCHEDULE: NpcEvent[] = [
     id: 'friday_fireworks',
     npc_id: '', npc_name: 'The Lounge',
     room: 'room_rooftop',
-    dayOfWeek: 5, hour: 22,   // Fri 22:00 UTC
+    // Fri 22:00 UTC + Fri 13:00 UTC (= 21:00 CN / 14:00 CET / 06:00 PT)
+    slots: [{ dayOfWeek: 5, hour: 22 }, { dayOfWeek: 5, hour: 13 }],
     emoji: '🎆',
     title: 'Friday Fireworks',
     blurb: 'The whole lounge meets on the Rooftop.',
@@ -92,10 +104,12 @@ export type EventStatus = {
   endsInMin: number
 }
 
-/** Returns the event closest to now (pre or active), else null. */
+/** Returns the event closest to now (pre or active), else null.
+ *  V14.8-review I4 — checks every slot per event and surfaces the nearest. */
 export function currentEventStatus(now: Date = new Date()): EventStatus | null {
   for (const ev of NPC_EVENT_SCHEDULE) {
     const startUtc = nextOrCurrentOccurrence(ev, now)
+    if (!startUtc) continue
     const startMs = startUtc.getTime()
     const endMs = startMs + ACTIVE_WINDOW_MIN * 60_000
     const preMs = startMs - PRE_WINDOW_MIN * 60_000
@@ -109,39 +123,48 @@ export function currentEventStatus(now: Date = new Date()): EventStatus | null {
   return null
 }
 
-function nextOrCurrentOccurrence(ev: NpcEvent, now: Date): Date {
-  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), ev.hour, 0, 0))
-  const dow = d.getUTCDay()
-  const diff = (ev.dayOfWeek - dow + 7) % 7
-  d.setUTCDate(d.getUTCDate() + diff)
-  // If event already passed today (same dow but hour earlier), the diff
-  // would be 0 — push to next week.
-  if (d.getTime() < now.getTime() - ACTIVE_WINDOW_MIN * 60_000) {
-    d.setUTCDate(d.getUTCDate() + 7)
+/** Find the nearest slot occurrence for an event (could be in either
+ *  direction within an ACTIVE_WINDOW; otherwise the closest upcoming). */
+function nextOrCurrentOccurrence(ev: NpcEvent, now: Date): Date | null {
+  let best: Date | null = null
+  let bestDelta = Infinity
+  for (const slot of ev.slots) {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), slot.hour, 0, 0))
+    const dow = d.getUTCDay()
+    const diff = (slot.dayOfWeek - dow + 7) % 7
+    d.setUTCDate(d.getUTCDate() + diff)
+    if (d.getTime() < now.getTime() - ACTIVE_WINDOW_MIN * 60_000) {
+      d.setUTCDate(d.getUTCDate() + 7)
+    }
+    const delta = d.getTime() - now.getTime()
+    // Prefer slots currently within active window; otherwise nearest upcoming
+    if (delta < bestDelta) { bestDelta = delta; best = d }
   }
-  return d
+  return best
+}
+
+/** V14.8-review C4 — occurrence-date key replaces the off-by-one weekKey.
+ *  Each scheduled slot occurrence has a unique YYYY-MM-DD, so the per-event
+ *  payout is naturally deduped without ISO-week math edge cases. */
+function occurrenceKey(ev: NpcEvent, now: Date = new Date()): string | null {
+  const occ = nextOrCurrentOccurrence(ev, now)
+  if (!occ) return null
+  return occ.toISOString().slice(0, 10)
 }
 
 const SEEN_KEY = 'lounge_npc_event_attended_v1'
-function hasAttended(eventId: string, weekKey: string): boolean {
+function hasAttended(eventId: string, occKey: string): boolean {
   try {
     const map = JSON.parse(localStorage.getItem(SEEN_KEY) || '{}')
-    return !!map[`${eventId}|${weekKey}`]
+    return !!map[`${eventId}|${occKey}`]
   } catch { return false }
 }
-function markAttended(eventId: string, weekKey: string) {
+function markAttended(eventId: string, occKey: string) {
   try {
     const map = JSON.parse(localStorage.getItem(SEEN_KEY) || '{}')
-    map[`${eventId}|${weekKey}`] = Date.now()
+    map[`${eventId}|${occKey}`] = Date.now()
     localStorage.setItem(SEEN_KEY, JSON.stringify(map))
   } catch {}
-}
-function weekKey(d: Date = new Date()): string {
-  // ISO week-ish: year + week-of-year
-  const y = d.getUTCFullYear()
-  const start = Date.UTC(y, 0, 1)
-  const week = Math.floor(((d.getTime() - start) / 86400_000 + new Date(start).getUTCDay()) / 7)
-  return `${y}w${week}`
 }
 
 let _bannerHandler: ((info: { text: string; cta?: string } | null) => void) | null = null
@@ -193,10 +216,13 @@ export function tickNpcEvents(currentRoomId: string) {
 function handleSessionChange(s: GroupSession | null) {
   if (!s || s.kind !== KIND) { _activeAttended = false; return }
   const eventId = (s.state as any).event_id
-  const wk = weekKey()
-  if (eventId && !_activeAttended && !hasAttended(eventId, wk)) {
+  if (!eventId) return
+  const ev = NPC_EVENT_SCHEDULE.find(e => e.id === eventId)
+  if (!ev) return
+  const key = occurrenceKey(ev)
+  if (key && !_activeAttended && !hasAttended(eventId, key)) {
     _activeAttended = true
-    markAttended(eventId, wk)
+    markAttended(eventId, key)
     awardShells(10)
   }
 }

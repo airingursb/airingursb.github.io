@@ -78,6 +78,10 @@ export class Bear {
   state: BearState = 'idle'
   stateUntil = 0
   reducedMotion = false
+  // V14.8-review C1 — public displayName accessor for nearby-peer queries
+  // (group photo member list). The rendered nameLabel.text includes marriage
+  // prefixes etc., so callers must read this raw field instead.
+  displayName: string | null = null
   private baseY = 0
   private nameLabel?: Phaser.GameObjects.Text
   private heartLabel?: Phaser.GameObjects.Text
@@ -125,9 +129,10 @@ export class Bear {
   }
 
   setDisplayName(name: string | null, opts?: { color?: string; prefix?: string }) {
+    this.displayName = name && name.length > 0 ? name : null
     if (!this.nameLabel) return
-    const text = name && name.length > 0
-      ? (opts?.prefix ? `${opts.prefix}${name}` : name)
+    const text = this.displayName
+      ? (opts?.prefix ? `${opts.prefix}${this.displayName}` : this.displayName)
       : ''
     this.nameLabel.setText(text)
     this.nameLabel.setColor(opts?.color ?? '#ffffff')
