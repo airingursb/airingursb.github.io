@@ -2070,6 +2070,13 @@ let pcBioEl: HTMLElement | null = null
 let pcEmptyEl: HTMLElement | null = null
 let pcPinnedSection: HTMLElement | null = null
 let pcPinnedListEl: HTMLElement | null = null
+let pcPhotosSection: HTMLElement | null = null
+let pcPhotosGridEl: HTMLElement | null = null
+// V20.3 — handler the scene wires to send a reaction over WS
+let onPhotoReact: ((ownerVisitorId: string, photoId: string, emoji: string) => void) | null = null
+export function setOnPhotoReact(fn: (ownerVisitorId: string, photoId: string, emoji: string) => void) {
+  onPhotoReact = fn
+}
 
 function ensurePcRefs() {
   if (pcEl) return
@@ -2081,6 +2088,8 @@ function ensurePcRefs() {
   pcEmptyEl = document.getElementById('lounge-profile-card-empty')
   pcPinnedSection = document.getElementById('lounge-profile-card-pinned')
   pcPinnedListEl = document.getElementById('lounge-profile-card-pinned-list')
+  pcPhotosSection = document.getElementById('lounge-profile-card-photos')
+  pcPhotosGridEl = document.getElementById('lounge-profile-card-photos-grid')
   const closeBtn = document.getElementById('lounge-profile-card-close')
   if (!pcEl) return
   closeBtn?.addEventListener('click', () => hideProfileCard())
@@ -2093,7 +2102,8 @@ export function showProfileCard(displayName: string, profile: {
   status: string | null
   mood: string | null
   pinned_achievements: string[]
-} | null) {
+  pinned_photos?: Array<{ id: string; dataUrl: string; roomLabel: string; takenAt: number }>
+} | null, ownerVisitorId?: string | null) {
   ensurePcRefs()
   if (!pcEl) return
   if (pcNameEl) pcNameEl.textContent = displayName || 'Anonymous'
@@ -2125,8 +2135,88 @@ export function showProfileCard(displayName: string, profile: {
       }
     })
   }
+  // V20.2 — render pinned photos grid (up to 3). Tiles open the lightbox
+  // when clicked; V20.3 reactions row sits below each tile.
+  const photos = profile?.pinned_photos ?? []
+  if (pcPhotosSection) pcPhotosSection.hidden = photos.length === 0
+  if (pcPhotosGridEl) {
+    pcPhotosGridEl.innerHTML = ''
+    for (const photo of photos) {
+      const wrapper = document.createElement('div')
+      const tile = document.createElement('div')
+      tile.className = 'pc-photo-tile'
+      const img = document.createElement('img')
+      img.src = photo.dataUrl
+      img.alt = photo.roomLabel
+      img.title = `${photo.roomLabel} · ${new Date(photo.takenAt).toLocaleString()}`
+      tile.appendChild(img)
+      tile.addEventListener('click', () => openProfilePhotoLightbox(photo))
+      wrapper.appendChild(tile)
+      // V20.3 — reactions: clickable preset emojis (+ live counts from cache)
+      if (ownerVisitorId) {
+        const row = document.createElement('div')
+        row.className = 'pc-photo-reactions'
+        const reactions = getPhotoReactionsFor(ownerVisitorId, photo.id)
+        const PRESETS = ['❤️', '😂', '✨', '👏', '🌧']
+        for (const emoji of PRESETS) {
+          const count = reactions.get(emoji)?.count ?? 0
+          if (count === 0) continue
+          const chip = document.createElement('button')
+          chip.type = 'button'
+          chip.className = 'pc-photo-reaction' + (reactions.get(emoji)?.mine ? ' is-mine' : '')
+          chip.textContent = `${emoji} ${count}`
+          chip.addEventListener('click', (e) => {
+            e.stopPropagation()
+            onPhotoReact?.(ownerVisitorId, photo.id, emoji)
+          })
+          row.appendChild(chip)
+        }
+        const addBtn = document.createElement('button')
+        addBtn.type = 'button'
+        addBtn.className = 'pc-photo-react-add'
+        addBtn.textContent = '+'
+        addBtn.title = 'React'
+        addBtn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          // Tiny inline picker — let user pick from the preset row.
+          const pick = window.prompt('React with an emoji (one):', '❤️')
+          if (pick) onPhotoReact?.(ownerVisitorId, photo.id, Array.from(pick.trim())[0] ?? '')
+        })
+        row.appendChild(addBtn)
+        wrapper.appendChild(row)
+      }
+      pcPhotosGridEl.appendChild(wrapper)
+    }
+  }
   pcEl.hidden = false
 }
+
+function openProfilePhotoLightbox(photo: { dataUrl: string; roomLabel: string; takenAt: number }) {
+  const box = document.createElement('div')
+  box.className = 'ph-lightbox'
+  const img = document.createElement('img'); img.src = photo.dataUrl
+  const cap = document.createElement('div'); cap.className = 'ph-cap'
+  cap.textContent = `${photo.roomLabel} · ${new Date(photo.takenAt).toLocaleString()}`
+  box.appendChild(img); box.appendChild(cap)
+  box.addEventListener('click', () => box.remove())
+  document.body.appendChild(box)
+}
+
+// V20.3 — local cache of reactions per (owner, photo). Populated by net.ts
+// onPhotoReactions broadcast. Returns Map<emoji, {count, mine}>.
+const photoReactionCache = new Map<string, Map<string, { count: number; mine: boolean }>>()
+function reactionKey(ownerVid: string, photoId: string): string {
+  return `${ownerVid}|${photoId}`
+}
+export function setPhotoReactions(ownerVid: string, photoId: string, perEmoji: Array<{ emoji: string; count: number; mine: boolean }>) {
+  const m = new Map<string, { count: number; mine: boolean }>()
+  for (const e of perEmoji) m.set(e.emoji, { count: e.count, mine: e.mine })
+  photoReactionCache.set(reactionKey(ownerVid, photoId), m)
+}
+function getPhotoReactionsFor(ownerVid: string, photoId: string): Map<string, { count: number; mine: boolean }> {
+  return photoReactionCache.get(reactionKey(ownerVid, photoId)) ?? new Map()
+}
+
 export function hideProfileCard() {
   if (!pcEl) return
   pcEl.hidden = true

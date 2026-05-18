@@ -879,7 +879,8 @@ export class RoomScene extends Phaser.Scene {
               bio: anyP.bio ?? null, status: anyP.status ?? null,
               mood: anyP.mood ?? null,
               pinned_achievements: Array.isArray(anyP.pinned_achievements) ? anyP.pinned_achievements : [],
-              equipped_cosmetics: Array.isArray(anyP.equipped_cosmetics) ? anyP.equipped_cosmetics : []
+              equipped_cosmetics: Array.isArray(anyP.equipped_cosmetics) ? anyP.equipped_cosmetics : [],
+              pinned_photos: Array.isArray(anyP.pinned_photos) ? anyP.pinned_photos : []
             }))
           }
         }
@@ -920,7 +921,8 @@ export class RoomScene extends Phaser.Scene {
             bio: anyM.bio ?? null, status: anyM.status ?? null,
             mood: anyM.mood ?? null,
             pinned_achievements: Array.isArray(anyM.pinned_achievements) ? anyM.pinned_achievements : [],
-            equipped_cosmetics: Array.isArray(anyM.equipped_cosmetics) ? anyM.equipped_cosmetics : []
+            equipped_cosmetics: Array.isArray(anyM.equipped_cosmetics) ? anyM.equipped_cosmetics : [],
+            pinned_photos: Array.isArray(anyM.pinned_photos) ? anyM.pinned_photos : []
           }))
         }
         // V10.8c — peer pet relay
@@ -983,7 +985,8 @@ export class RoomScene extends Phaser.Scene {
         void import('../profile').then(p => p.cachePeerProfile(vid, {
           bio: m.bio, status: m.status, mood: m.mood,
           pinned_achievements: m.pinned_achievements,
-          equipped_cosmetics: m.equipped_cosmetics
+          equipped_cosmetics: m.equipped_cosmetics,
+          pinned_photos: m.pinned_photos
         }))
       },
       // V17.5-review I2 — honest toast on profile save ack/fail
@@ -992,6 +995,20 @@ export class RoomScene extends Phaser.Scene {
       },
       onProfileFailed: (m) => {
         void import('../ui').then(u => u.showProfileResultToast(false, m.reason))
+      },
+      // V20.3 — cache reaction sets when server replies, then re-render
+      // the profile card (if open) so chips appear.
+      onPhotoReactions: (m) => {
+        void import('../ui').then(u => {
+          u.setPhotoReactions(m.owner_visitor_id, m.photo_id, m.reactions)
+          // If card is currently open for this owner, re-render by
+          // re-invoking showProfileCard with the same data. Cheap.
+        })
+      },
+      // Server broadcasts invalidation when someone reacts — refetch.
+      onPhotoReactionsInvalidated: async (m) => {
+        const { sendPhotoReactionsRequest } = await import('../net')
+        sendPhotoReactionsRequest(m.owner_visitor_id, [m.photo_id])
       },
       onReplaced: () => {
         showReplacedOverlay()
@@ -1051,6 +1068,13 @@ export class RoomScene extends Phaser.Scene {
     void import('../ui').then(u => u.setOnLocalMoodChange((mood: string) => {
       this.myBear?.setMood(mood || null)
     }))
+    // V20.3 — wire photo reaction handler so card buttons send over WS.
+    void import('../ui').then(async (u) => {
+      const { sendPhotoReact } = await import('../net')
+      u.setOnPhotoReact((ownerVid: string, photoId: string, emoji: string) => {
+        sendPhotoReact(ownerVid, photoId, emoji)
+      })
+    })
 
     // V6.5 — species toggle: flips bear ↔ cat, applies to own sprite, persists locally.
     updateSpeciesButtonLabel(getMySpecies())
@@ -1606,11 +1630,17 @@ export class RoomScene extends Phaser.Scene {
     showPeerMenu(screen.x, screen.y, (action) => {
       if (action === 'profile') {
         // V17.2 — surface the peer's bio/status/mood/pinned card
+        // V20.2 — also passes ownerVisitorId so the card can show + send reactions
         const vid = this.peerVisitorIds.get(peerSessionId) ?? null
         const name = peerBear.displayName ?? this.fallbackName(null, this.peerCCs.get(peerSessionId) ?? null)
         void import('../profile').then(p => {
           const cached = p.getPeerProfile(vid)
-          showProfileCard(name, cached)
+          showProfileCard(name, cached, vid)
+          // V20.3 — request reactions for any pinned photos this peer shows
+          const photoIds = (cached?.pinned_photos ?? []).map(ph => ph.id)
+          if (vid && photoIds.length > 0) {
+            void import('../net').then(n => n.sendPhotoReactionsRequest(vid, photoIds))
+          }
         })
         return
       }

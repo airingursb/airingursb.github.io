@@ -17,6 +17,7 @@ export type ProfileChangedMsg = {
   mood: string | null
   pinned_achievements: string[]
   equipped_cosmetics?: string[]
+  pinned_photos?: Array<{ id: string; dataUrl: string; roomLabel: string; takenAt: number }>
 }
 // V17.5-review — explicit ack/fail so the client can show a truthful toast
 // V18.3 — also carries cosmetic state back so client can reconcile
@@ -29,6 +30,16 @@ export type ProfileOkMsg = {
 }
 export type ProfileFailedMsg = {
   v: number; t: 'profile_failed'; reason: string; retry_after_ms?: number
+}
+// V20.3 — photo reactions
+export type PhotoReactionsMsg = {
+  v: number; t: 'photo_reactions'
+  owner_visitor_id: string; photo_id: string
+  reactions: Array<{ emoji: string; count: number; mine: boolean }>
+}
+export type PhotoReactionsInvalidatedMsg = {
+  v: number; t: 'photo_reactions_invalidated'
+  owner_visitor_id: string; photo_id: string
 }
 export type LeaveMsg = { v: number; t: 'leave'; id: string; room: RoomId }
 export type PosMsg = { v: number; t: 'pos'; id: string; x: number; y: number; vx?: number; vy?: number; state: string; room: RoomId }
@@ -119,6 +130,8 @@ export type NetCallbacks = {
   onProfileChanged?: (m: ProfileChangedMsg) => void
   onProfileOk?: (m: ProfileOkMsg) => void
   onProfileFailed?: (m: ProfileFailedMsg) => void
+  onPhotoReactions?: (m: PhotoReactionsMsg) => void
+  onPhotoReactionsInvalidated?: (m: PhotoReactionsInvalidatedMsg) => void
   onReplaced?: () => void
   onError?: (m: ErrorMsg) => void
   onCollected?: (m: CollectedMsg) => void
@@ -220,6 +233,8 @@ function openSocket() {
     else if (msg.t === 'profile_changed') cb?.onProfileChanged?.(msg)
     else if (msg.t === 'profile_ok') cb?.onProfileOk?.(msg)
     else if (msg.t === 'profile_failed') cb?.onProfileFailed?.(msg)
+    else if (msg.t === 'photo_reactions') cb?.onPhotoReactions?.(msg)
+    else if (msg.t === 'photo_reactions_invalidated') cb?.onPhotoReactionsInvalidated?.(msg)
     else if (msg.t === 'replaced') {
       replaced = true
       cb?.onReplaced?.()
@@ -329,9 +344,20 @@ export function isLoungeConnected(): boolean {
   return !!ws && ws.readyState === 1
 }
 
+// V20.3 — toggle / request photo reactions
+export function sendPhotoReact(owner_visitor_id: string, photo_id: string, emoji: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'photo_react', owner_visitor_id, photo_id, emoji }))
+}
+export function sendPhotoReactionsRequest(owner_visitor_id: string, photo_ids: string[]) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'photo_reactions_request', owner_visitor_id, photo_ids }))
+}
+
 // V17.0 — push profile fields (bio/status/mood/pinned_achievements). Any
 // undefined field is omitted so partial updates are supported.
 // V18.3 — extended with equipped_cosmetics + owned_cosmetics.
+// V20.0 — extended with pinned_photos (small thumbnails for profile card).
 export function sendProfile(patch: {
   bio?: string | null
   status?: string | null
@@ -339,6 +365,7 @@ export function sendProfile(patch: {
   pinned_achievements?: string[]
   equipped_cosmetics?: string[]
   owned_cosmetics?: string[]
+  pinned_photos?: Array<{ id: string; dataUrl: string; roomLabel: string; takenAt: number }>
 }) {
   if (!ws || ws.readyState !== 1) return
   const msg: Record<string, unknown> = { v: PROTOCOL_VERSION, t: 'profile' }

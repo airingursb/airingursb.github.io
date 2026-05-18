@@ -7,6 +7,14 @@ const BIO_KEY = 'lounge_bio_v1'
 const STATUS_KEY = 'lounge_status_v1'
 const MOOD_KEY = 'lounge_mood_v1'
 const PINNED_KEY = 'lounge_pinned_achievements_v1'
+const PINNED_PHOTOS_KEY = 'lounge_pinned_photos_v1'
+
+export type PinnedPhoto = {
+  id: string         // matches the local Photo.id
+  dataUrl: string    // PNG base64 (small thumbnail — see savePinnedPhotos for size discipline)
+  roomLabel: string
+  takenAt: number
+}
 
 export const BIO_MAX_LEN = 140
 export const STATUS_MAX_LEN = 60
@@ -49,6 +57,15 @@ export function setPinnedAchievements(ids: string[]) {
   writeJson(PINNED_KEY, ids.slice(0, 3))
 }
 
+export function getPinnedPhotos(): PinnedPhoto[] {
+  const arr = readJson<PinnedPhoto[]>(PINNED_PHOTOS_KEY, [])
+  return Array.isArray(arr) ? arr.slice(0, 3) : []
+}
+export function setPinnedPhotos(photos: PinnedPhoto[]) {
+  // Cap at 3 entries; let savePinnedPhotos enforce per-entry byte budget.
+  writeJson(PINNED_PHOTOS_KEY, photos.slice(0, 3))
+}
+
 /** Hydrate local storage from server welcome (server is source of truth on
  *  first connect across devices). V17.5-review I1 fix: any key PRESENT in
  *  the welcome message is authoritative — including explicit nulls, which
@@ -68,6 +85,10 @@ export function applyWelcomeProfile(m: {
   if ('mood' in m) setMood(m.mood ?? '')
   if ('pinned_achievements' in m) {
     setPinnedAchievements(Array.isArray(m.pinned_achievements) ? m.pinned_achievements : [])
+  }
+  if ('pinned_photos' in (m as any)) {
+    const arr = (m as any).pinned_photos
+    setPinnedPhotos(Array.isArray(arr) ? arr : [])
   }
   // V18.3 — cosmetics. Server is authoritative across devices.
   if ('equipped_cosmetics' in m || 'owned_cosmetics' in m) {
@@ -93,19 +114,21 @@ export type PeerProfile = {
   mood: string | null
   pinned_achievements: string[]
   equipped_cosmetics: string[]
+  pinned_photos: PinnedPhoto[]
 }
 
 const peerProfiles = new Map<string, PeerProfile>()
 
 export function cachePeerProfile(visitor_id: string | null | undefined, p: Partial<PeerProfile>) {
   if (!visitor_id) return
-  const prev = peerProfiles.get(visitor_id) ?? { bio: null, status: null, mood: null, pinned_achievements: [], equipped_cosmetics: [] }
+  const prev = peerProfiles.get(visitor_id) ?? { bio: null, status: null, mood: null, pinned_achievements: [], equipped_cosmetics: [], pinned_photos: [] }
   peerProfiles.set(visitor_id, {
     bio: 'bio' in p ? (p.bio ?? null) : prev.bio,
     status: 'status' in p ? (p.status ?? null) : prev.status,
     mood: 'mood' in p ? (p.mood ?? null) : prev.mood,
     pinned_achievements: 'pinned_achievements' in p ? (p.pinned_achievements ?? []) : prev.pinned_achievements,
-    equipped_cosmetics: 'equipped_cosmetics' in p ? (p.equipped_cosmetics ?? []) : prev.equipped_cosmetics
+    equipped_cosmetics: 'equipped_cosmetics' in p ? (p.equipped_cosmetics ?? []) : prev.equipped_cosmetics,
+    pinned_photos: 'pinned_photos' in p ? (p.pinned_photos ?? []) : prev.pinned_photos
   })
 }
 export function getPeerProfile(visitor_id: string | null | undefined): PeerProfile | null {
