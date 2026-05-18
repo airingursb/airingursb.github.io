@@ -305,6 +305,8 @@ export function recordEvent(ev: AchievementEvent) {
     }
     case 'random_event_attended': {
       // V21.3 — count-based + all-types completion
+      // V21.4-review I1 — read RANDOM_EVENTS.length live so adding a 5th
+      // event doesn't fire `_all` early (or break it if hardcoded grew stale).
       const n = incCounter('random_events_attended')
       if (n >= 1) markUnlocked('random_event_first')
       if (n >= 3) markUnlocked('random_event_3')
@@ -315,9 +317,10 @@ export function recordEvent(ev: AchievementEvent) {
           seen.push(ev.event_id)
           localStorage.setItem(SET_KEY, JSON.stringify(seen))
         }
-        // RANDOM_EVENTS has 4 entries (registry lives in random_events.ts);
-        // hardcoding 4 here matches V21.1's RANDOM_EVENTS.length.
-        if (seen.length >= 4) markUnlocked('random_event_all')
+        // Lazy-loaded so achievements.ts has no cycle into random_events.ts
+        void import('./random_events').then(m => {
+          if (seen.length >= m.RANDOM_EVENTS.length) markUnlocked('random_event_all')
+        })
       } catch {}
       return
     }

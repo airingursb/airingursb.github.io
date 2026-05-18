@@ -3406,15 +3406,26 @@ export class RoomScene extends Phaser.Scene {
         duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut'
       })
     }
-    // Make ring interactive
+    // V21.4-review I3 — make BOTH the ring AND the label clickable. Users
+    // instinctively tap the emoji+title text; a ring-only hitbox felt
+    // unresponsive.
     ring.setInteractive(new Phaser.Geom.Circle(0, 0, 16), Phaser.Geom.Circle.Contains)
     ring.on('pointerdown', () => this.attendRandomEvent())
+    label.setInteractive({ useHandCursor: true })
+    label.on('pointerdown', () => this.attendRandomEvent())
     this.randomEventSprite = container
   }
 
   private attendRandomEvent() {
     const active = getActiveEvent()
-    if (!active) return
+    if (!active) {
+      // V21.4-review I2 — sparkle may still be on screen between expiry
+      // and the next 30s tick. Despawn now + give the user feedback so
+      // tap-tap-tap doesn't feel broken.
+      this.refreshRandomEventSprite(null)
+      showToast('Just missed it — next event coming soon.', 2200)
+      return
+    }
     const def = attendEvent(active.def.id)
     if (!def) return
     // Reward — small shells bump + toast + record achievement
