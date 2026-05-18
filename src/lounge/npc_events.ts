@@ -70,6 +70,18 @@ export const NPC_EVENT_SCHEDULE: NpcEvent[] = [
       "'The library taught me silence isn't empty. It's a held breath.'",
       "That's it. Sit a while. Don't say anything for a minute."
     ]
+  },
+  // V14.7 — Friday Fireworks (public, no hosting NPC). RoomScene's
+  // fireworks particle handler keys on event_id === 'friday_fireworks'.
+  {
+    id: 'friday_fireworks',
+    npc_id: '', npc_name: 'The Lounge',
+    room: 'room_rooftop',
+    dayOfWeek: 5, hour: 22,   // Fri 22:00 UTC
+    emoji: '🎆',
+    title: 'Friday Fireworks',
+    blurb: 'The whole lounge meets on the Rooftop.',
+    lines: []
   }
 ]
 

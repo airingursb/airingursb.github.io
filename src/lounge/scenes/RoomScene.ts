@@ -148,6 +148,7 @@ export class RoomScene extends Phaser.Scene {
   private seasonOverlay?: Phaser.GameObjects.Rectangle
   private seasonalEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
   private holidayEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
+  private fireworksTimer?: Phaser.Time.TimerEvent           // V14.7
   // V4.0 — friendship
   private peerVisitorIds = new Map<string, string>()      // session id → visitor_id
   private peerCCs = new Map<string, string | null>()      // session id → country code (for flag display)
@@ -463,6 +464,37 @@ export class RoomScene extends Phaser.Scene {
       })
     }
     tickNpcEvents(this.currentRoomId)
+
+    // V14.7 — friday fireworks visual: when in Rooftop during the active
+    // window, spawn periodic firework particle bursts in the sky area.
+    this.fireworksTimer?.remove(false); this.fireworksTimer = undefined
+    {
+      const status = currentEventStatus()
+      if (status && status.state === 'active' &&
+          status.event.id === 'friday_fireworks' &&
+          this.currentRoomId === 'room_rooftop') {
+        ensurePixelTexture(this)
+        const FIREWORK_COLORS = [0xff6080, 0x80ffa0, 0xffd166, 0x80b0ff, 0xff80c0]
+        this.fireworksTimer = this.time.addEvent({
+          delay: 800, loop: true, callback: () => {
+            const x = 80 + Math.random() * (this.mapInfo.widthPx - 160)
+            const y = 32 + Math.random() * 60
+            const color = FIREWORK_COLORS[Math.floor(Math.random() * FIREWORK_COLORS.length)]
+            const burst = this.add.particles(x, y, PIXEL_TEX_KEY, {
+              speed: { min: 60, max: 140 },
+              lifespan: 1100,
+              quantity: 30,
+              scale: { start: 2, end: 0 },
+              tint: color,
+              alpha: { start: 1, end: 0 }
+            })
+            this.time.delayedCall(120, () => burst.stop())
+            this.time.delayedCall(1300, () => burst.destroy())
+          }
+        })
+        this.events.once('shutdown', () => { this.fireworksTimer?.remove(false); this.fireworksTimer = undefined })
+      }
+    }
 
     // V12.1 — bind the community board to this room each scene boot
     {
