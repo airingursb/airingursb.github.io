@@ -1052,10 +1052,18 @@ let invCountEl: HTMLElement | null = null
 let invTotalEl: HTMLElement | null = null
 let invListEl: HTMLElement | null = null
 let invGridEl: HTMLElement | null = null            // V8.2
+let invTrashEl: HTMLElement | null = null           // P3
 let invViewBtnGrid: HTMLButtonElement | null = null
 let invViewBtnList: HTMLButtonElement | null = null
 let invCurrentView: 'grid' | 'list' = 'grid'
 const INVENTORY_GRID_SLOTS = 36
+const INV_ORDER_KEY = 'lounge_inv_order_v1'         // P3 — drag-drop persisted order
+function loadInvOrder(): string[] {
+  try { return JSON.parse(localStorage.getItem(INV_ORDER_KEY) || '[]') as string[] } catch { return [] }
+}
+function saveInvOrder(order: string[]) {
+  try { localStorage.setItem(INV_ORDER_KEY, JSON.stringify(order)) } catch {}
+}
 let invDataProvider: (() => { items: Array<{ id: string; name: string; collected: boolean; giftedByName?: string | null; placedInHome?: boolean }>; total: number; collected: number; canPlace?: boolean }) | null = null
 let onInventoryPlace: ((id: string, name: string) => void) | null = null
 
@@ -1069,10 +1077,35 @@ export function setInventoryDataProvider(provider: () => { items: Array<{ id: st
     invTotalEl = document.getElementById('lounge-inv-total')
     invListEl = document.getElementById('lounge-inv-list')
     invGridEl = document.getElementById('lounge-inv-grid')
+    invTrashEl = document.getElementById('lounge-inv-trash')
     invViewBtnGrid = document.getElementById('lounge-inv-view-grid') as HTMLButtonElement | null
     invViewBtnList = document.getElementById('lounge-inv-view-list') as HTMLButtonElement | null
     if (invViewBtnGrid) invViewBtnGrid.addEventListener('click', () => setInventoryView('grid'))
     if (invViewBtnList) invViewBtnList.addEventListener('click', () => setInventoryView('list'))
+    // P3 — trash slot accepts drops of shop_* items (deletes purchase)
+    if (invTrashEl) {
+      invTrashEl.addEventListener('dragover', (e) => { e.preventDefault(); invTrashEl?.classList.add('drop-target') })
+      invTrashEl.addEventListener('dragleave', () => invTrashEl?.classList.remove('drop-target'))
+      invTrashEl.addEventListener('drop', (e) => {
+        e.preventDefault()
+        invTrashEl?.classList.remove('drop-target')
+        const itemId = e.dataTransfer?.getData('text/plain')
+        if (!itemId) return
+        if (itemId.startsWith('shop_')) {
+          // Remove purchase from localStorage so the item disappears next render
+          try {
+            const raw = localStorage.getItem('lounge_purchases_v1') || '{}'
+            const m = JSON.parse(raw)
+            delete m[itemId.replace('shop_', '')]
+            localStorage.setItem('lounge_purchases_v1', JSON.stringify(m))
+            renderInventory()
+          } catch {}
+        } else {
+          // Pebbles can't be trashed (server-side state)
+          import('./ui').then(ui => ui.showToast?.('That can\'t be discarded.', 1800))
+        }
+      })
+    }
     if (invBtnEl) {
       invBtnEl.addEventListener('click', (e) => {
         e.stopPropagation()
@@ -1097,14 +1130,23 @@ function renderInventoryGrid(data: ReturnType<NonNullable<typeof invDataProvider
   if (!invGridEl) return
   invGridEl.innerHTML = ''
   const collected = data.items.filter(it => it.collected)
+  // P3 — apply persisted drag-drop order; new items append in collection order
+  const savedOrder = loadInvOrder()
+  const byId = new Map(collected.map(it => [it.id, it]))
+  const ordered: typeof collected = []
+  for (const id of savedOrder) { const it = byId.get(id); if (it) { ordered.push(it); byId.delete(id) } }
+  for (const [, it] of byId) ordered.push(it)
   // P1 — pebble_bag_plus expands slot count from 36 → 44
   const slots = data.gridSlots ?? INVENTORY_GRID_SLOTS
   for (let i = 0; i < slots; i++) {
     const slot = document.createElement('div')
     slot.className = 'inv-slot'
-    const it = collected[i]
+    slot.dataset.slotIndex = String(i)
+    const it = ordered[i]
     if (it) {
       slot.classList.add('filled')
+      slot.draggable = true
+      slot.dataset.itemId = it.id
       slot.title = it.giftedByName ? `${it.name}  ·  🎁 ${it.giftedByName}` : it.name
       const icon = document.createElement('span')
       icon.className = 'inv-icon'
@@ -1117,7 +1159,31 @@ function renderInventoryGrid(data: ReturnType<NonNullable<typeof invDataProvider
           onInventoryPlace?.(it.id, it.name)
         })
       }
+      // P3 — drag handlers
+      slot.addEventListener('dragstart', (e) => {
+        slot.classList.add('dragging')
+        e.dataTransfer?.setData('text/plain', it.id)
+        if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+      })
+      slot.addEventListener('dragend', () => slot.classList.remove('dragging'))
     }
+    slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('drop-target') })
+    slot.addEventListener('dragleave', () => slot.classList.remove('drop-target'))
+    slot.addEventListener('drop', (e) => {
+      e.preventDefault()
+      slot.classList.remove('drop-target')
+      const draggedId = e.dataTransfer?.getData('text/plain')
+      if (!draggedId) return
+      const targetIdx = Number(slot.dataset.slotIndex || '0')
+      // Build new order from current ordered list
+      const ids = ordered.map(o => o.id)
+      const draggedIdx = ids.indexOf(draggedId)
+      if (draggedIdx < 0) return
+      ids.splice(draggedIdx, 1)
+      ids.splice(Math.min(targetIdx, ids.length), 0, draggedId)
+      saveInvOrder(ids)
+      renderInventory()
+    })
     invGridEl.appendChild(slot)
   }
 }

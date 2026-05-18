@@ -29,7 +29,9 @@ const STORAGE_KEYS = [
   'lounge_species_v1',
   'lounge_visitor_id_seen_once',
   'lounge_cutscenes_v1',
-  'lounge_tool_v1'
+  'lounge_tool_v1',
+  'lounge_inv_order_v1',
+  'lounge_festivals_done_v1'
 ] as const
 
 function snapshotLocal(): Record<string, string | null> {
