@@ -1233,3 +1233,69 @@
 - [ ] 3 hanging lanterns in center
 - [ ] 2 new sit interactables (`sofa_l_sit`, `sofa_r_sit`) functional
 - [ ] Existing table + chairs + portal to lobby unaffected
+
+---
+
+## Lounge V10 (Era 9 — Living World)
+
+> Spec: see V10.0–V10.8 commit messages on master.
+> Smoke-test runner: `node scripts/lounge/_dev-shot-v10-smoke.mjs`
+
+### V10.0 — 4 new NPC bedrooms (Marin/Cole/Wren/Dane)
+- [ ] Walking into Lobby portal at (32, 16) loads `room_bedroom_marin`
+- [ ] Library top-left + middle portals load `room_bedroom_cole` and `room_bedroom_wren`
+- [ ] DJ Floor top-left portal loads `room_bedroom_dane`
+- [ ] Minimap title shows "Marin's room" (not raw id) inside each new bedroom
+- [ ] Each NPC's sleep bracket in `npcs.json` points at their own bedroom
+
+### V10.1 — NPC heart system + 44 deep cutscenes
+- [ ] Talking to an NPC awards +1 heart point (cap 5/day per NPC)
+- [ ] Giving an item to an NPC awards +5 points (cap 1 gift/day per NPC)
+- [ ] Completing an NPC's quest awards +15 points (once per quest id)
+- [ ] At 30 points (heart 4), Mio's `mio_h4` cutscene fires on next Lobby entry
+- [ ] At 200 points (heart 10), `*_h10` cutscene is reachable
+- [ ] `findCutsceneForRoom` reads `getNpcHeartLevel`, not the player friendships map
+
+### V10.2 / V10.8b — Pet system
+- [ ] 🐾 top-bar button opens the adoption panel
+- [ ] Picking kitten/puppy/bunny saves to `lounge_pet_v1`
+- [ ] On next scene boot, the chosen pet sprite renders behind the player
+- [ ] Each species uses its own atlas (kitten=cat, puppy=puppy, bunny=bunny) — NOT just a tint
+- [ ] "Feed today" disables until next UTC day; +1 affection per feed
+- [ ] At affection 10: kitten gives +10% gift shells, puppy +5 max energy, bunny +5% walk speed (cache invalidated immediately)
+
+### V10.3 — Marriage
+- [ ] Marriage Pebble 💍 buyable in Mio's shop for 100 shells; stack count shown in panel
+- [ ] Clicking NPC at heart 10 holding a pebble shows propose confirm
+- [ ] Accepting consumes pebble + sets `lounge_marriage_v1` + fires hearts cutscene
+- [ ] Spouse renders in Home room during 07:00–10:00 and 18:00–22:00 game time
+- [ ] First Home visit per UTC day shows a greeting bubble
+
+### V10.4 + V10.7 — Achievement album (51 unlocks)
+- [ ] 🏆 button opens album grouped by 7 categories
+- [ ] Unlock fires a golden top-center toast + +5/15/30/50 shells by tier
+- [ ] All 51 achievements have a recordEvent emit site (verified via smoke test)
+
+### V10.5 — Photo mode
+- [ ] Equip 📷, click in canvas → saves a 240×160 PNG to `lounge_photos_v1`
+- [ ] White flash overlay appears AFTER the snapshot (so captured frame is clean)
+- [ ] 🖼️ button opens album; click thumbnail opens lightbox; ✕ deletes
+- [ ] Cap is 25 photos; oldest evicted on overflow
+
+### V10.6 — Friend activity notifications
+- [ ] Friend onJoin → 'online' mail (24h throttle per friend)
+- [ ] Friend in your Home → 'home_visit' mail (30min throttle)
+- [ ] Friend drops letter → 'sent_letter' mail (30min throttle)
+- [ ] Info panel toggle 🔔/🔕 suppresses new mail when off
+- [ ] Throttle map prunes entries older than 48h
+
+### V10.8c — Pet multiplayer broadcast
+- [ ] WS `hi` includes `pet_species` + `pet_name`
+- [ ] Server relays `pet_species`/`pet_name` in `join` + `snap`
+- [ ] Peer with adopted pet renders the pet sprite behind their bear
+- [ ] Peer pet destroyed on `leave` + on scene shutdown (no leaks)
+- [ ] Requires `./scripts/deploy-blog-api.sh` to ship the server side
+
+### V10.8d — Smoke test runner
+- [ ] `node scripts/lounge/_dev-shot-v10-smoke.mjs` exits 0 with all 4 cases ✅
+- [ ] Tests cover: heart-4 gate, marriage flow, V10.7 new achievements, friend-notif toggle

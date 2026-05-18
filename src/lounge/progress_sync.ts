@@ -62,7 +62,9 @@ const STORAGE_KEYS = [
   'lounge_achievements_v1',
   'lounge_achievement_counters_v1',
   'lounge_achievement_npcs_met_v1',
-  'lounge_friend_notifs_enabled_v1'
+  'lounge_friend_notifs_enabled_v1',
+  'lounge_npc_hearts_quest_credit_v1',
+  'lounge_npc_gift_daily_v1'
 ] as const
 
 type Snapshot = Record<string, string | null>

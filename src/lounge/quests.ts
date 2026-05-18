@@ -130,11 +130,20 @@ export function markStepDone(quest_id: string, step_id: string) {
   if (s.completedSteps.includes(step_id)) return
   s.completedSteps.push(step_id)
   const def = QUESTS.find(q => q.id === quest_id)
+  let justCompleted = false
   if (def && def.steps.every(step => s.completedSteps.includes(step.id))) {
     s.completed = true
     s.completedAt = Date.now()
+    justCompleted = true
   }
   saveAll(all)
+  // V10.8a — finishing a quest gives the giver NPC +15 hearts. Lazy import
+  // to avoid a cycle (npc_hearts is dependency-light).
+  if (justCompleted && def) {
+    try {
+      void import('./npc_hearts').then(m => m.addNpcQuestHeart(def.giver_npc, def.id))
+    } catch {}
+  }
 }
 
 // Triggers that should drive step completion. Called from RoomScene at the

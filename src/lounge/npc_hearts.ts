@@ -19,22 +19,29 @@
 const STORAGE_KEY = 'lounge_npc_hearts_v1'
 const DAILY_KEY   = 'lounge_npc_hearts_daily_v1'
 
-/** Cumulative-points threshold for each level. Index i = threshold for lv i+1. */
+/** Cumulative-points threshold for each level. Index i = threshold for lv i+1.
+ *  V10.8a rebalance: the original V10.1 curve put heart 4 at 100 points and
+ *  heart 10 at 900 — with a 5/day talk-only cap that's 20 / 180 days, so the
+ *  44 heart-4/6/8/10 cutscenes plus the marriage prereq were effectively
+ *  unreachable in normal play. New curve + 3 income paths make the arc
+ *  reachable for an engaged daily player. */
 const LEVEL_THRESHOLDS: number[] = [
-  10,   // lv 1
-  25,   // lv 2
-  50,   // lv 3
-  100,  // lv 4
-  175,  // lv 5
-  280,  // lv 6
-  400,  // lv 7
-  550,  // lv 8
-  720,  // lv 9
-  900   // lv 10
+  4,    // lv 1
+  10,   // lv 2
+  18,   // lv 3
+  30,   // lv 4
+  45,   // lv 5
+  65,   // lv 6
+  90,   // lv 7
+  120,  // lv 8
+  155,  // lv 9
+  200   // lv 10
 ]
 export const MAX_HEART_LEVEL = LEVEL_THRESHOLDS.length
 
 const DAILY_TALK_CAP = 5
+const GIFT_POINTS  = 5         // V10.8a — addNpcGiftHeart (NPC accepts a gift)
+const QUEST_POINTS = 15        // V10.8a — addNpcQuestHeart (quest from this NPC completed)
 
 type Hearts = Record<string, number>
 type DailyMap = { day: string, talk: Record<string, number> }
@@ -91,6 +98,29 @@ export function addNpcTalkHeart(npcId: string): number {
   saveDaily(d)
   addNpcHeart(npcId, 1)
   return 1
+}
+
+/** V10.8a — Give an item to an NPC. Returns the level *after* the gain so
+ *  callers can show the new heart in a toast. Not daily-capped because the
+ *  inventory itself caps how many gifts you can hand over in a day. */
+export function addNpcGiftHeart(npcId: string): number {
+  addNpcHeart(npcId, GIFT_POINTS)
+  return getNpcHeartLevel(npcId)
+}
+
+/** V10.8a — Quest from `npcId` was completed. Idempotent per-quest: caller
+ *  passes a unique quest id and we record once. */
+export function addNpcQuestHeart(npcId: string, questId: string): number {
+  try {
+    const key = 'lounge_npc_hearts_quest_credit_v1'
+    const raw = localStorage.getItem(key) || '[]'
+    const credited = JSON.parse(raw) as string[]
+    if (credited.includes(questId)) return getNpcHeartLevel(npcId)
+    credited.push(questId)
+    localStorage.setItem(key, JSON.stringify(credited.slice(-200)))
+  } catch {}
+  addNpcHeart(npcId, QUEST_POINTS)
+  return getNpcHeartLevel(npcId)
 }
 
 /** Returns a map of every known NPC id → level. Useful for the album / wedding-prereq panel. */

@@ -4,9 +4,9 @@ export type SnapMsg = {
   v: number
   t: 'snap'
   you: string
-  peers: Array<{ id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null; species?: string }>
+  peers: Array<{ id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null; species?: string; pet_species?: string | null; pet_name?: string | null }>
 }
-export type JoinMsg = { v: number; t: 'join'; id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null; species?: string }
+export type JoinMsg = { v: number; t: 'join'; id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null; species?: string; pet_species?: string | null; pet_name?: string | null }
 export type SpeciesChangedMsg = { v: number; t: 'species_changed'; id: string; species: string }
 export type LeaveMsg = { v: number; t: 'leave'; id: string; room: RoomId }
 export type PosMsg = { v: number; t: 'pos'; id: string; x: number; y: number; vx?: number; vy?: number; state: string; room: RoomId }
@@ -153,6 +153,21 @@ function openSocket() {
   ws.addEventListener('open', () => {
     backoff = 1000
     cb?.onConnectionChange('open')
+    // V10.8c — relay pet info so peers can render each other's pets.
+    // Server treats both fields as opaque relay (validates pet_species against
+    // ['kitten','puppy','bunny'] for safety).
+    let pet_species: string | null = null
+    let pet_name: string | null = null
+    try {
+      const raw = localStorage.getItem('lounge_pet_v1')
+      if (raw) {
+        const p = JSON.parse(raw)
+        if (p?.species && ['kitten','puppy','bunny'].includes(p.species)) {
+          pet_species = p.species
+          pet_name = typeof p.name === 'string' ? p.name.slice(0, 16) : null
+        }
+      }
+    } catch {}
     ws!.send(JSON.stringify({
       v: PROTOCOL_VERSION,
       t: 'hi',
@@ -160,7 +175,8 @@ function openSocket() {
       visitor_id: getOrCreateVisitorId(),
       room: initialRoom,
       // E5-P0c — server treats local pref as a hint; DB value is canonical
-      species: getMySpecies()
+      species: getMySpecies(),
+      pet_species, pet_name
     }))
   })
 

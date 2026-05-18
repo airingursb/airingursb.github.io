@@ -1,14 +1,50 @@
-// V10.2 — Pet follower sprite. Owns a small tinted cat-atlas sprite that
-// follows the player with smoothing. Re-instantiated per scene (room boot).
-//
-// Why cat atlas: avoids baking three new pet atlases just for V10.2. The
-// PET_SPECIES tint differentiates kitten/puppy/bunny while keeping art cost
-// at zero. PetSprite assumes the cat atlas for at least one region is already
-// loaded — the caller (RoomScene) gates on ensureSpeciesLoaded('cat').
+// V10.2 → V10.8b — Pet follower sprite. Three distinct atlas families now:
+//   - kitten → cat_<region>   (preloaded via existing ensureSpeciesLoaded)
+//   - puppy  → puppy_<region> (lazy-loaded inline below)
+//   - bunny  → bunny_<region> (lazy-loaded inline below)
+// Tints are kept as a small accent (kitten = orange, puppy = warm, bunny = pale).
 
 import Phaser from 'phaser'
 import type { Region } from './config'
 import { getPet, getPetSpecies, type PetState } from './pets'
+
+// V10.8b — atlas-family selector for each pet species.
+function atlasFamilyFor(species: PetState['species']): 'cat' | 'puppy' | 'bunny' {
+  if (species === 'kitten') return 'cat'
+  return species
+}
+
+/** Loads the per-region pet atlas + registers its animations, then resolves.
+ *  Idempotent across calls for the same key. */
+export async function ensurePetAtlasLoaded(
+  scene: Phaser.Scene, species: PetState['species'], region: Region
+): Promise<void> {
+  const family = atlasFamilyFor(species)
+  const key = `${family}_${region}`
+  if (scene.textures.exists(key)) { registerPetAnims(scene, family, region); return }
+  await new Promise<void>((resolve) => {
+    scene.load.atlas(key,
+      `/lounge/assets/sprites/${family}/${region}/sprite.png`,
+      `/lounge/assets/sprites/${family}/${region}/sprite.json`)
+    scene.load.once(`filecomplete-json-${key}`, () => { registerPetAnims(scene, family, region); resolve() })
+    scene.load.once(`loaderror`, () => resolve())  // best-effort; PetSprite no-ops if missing
+    scene.load.start()
+  })
+}
+
+function registerPetAnims(scene: Phaser.Scene, family: string, region: Region) {
+  const key = `${family}_${region}`
+  for (const dir of ['up', 'down', 'left', 'right'] as const) {
+    const idleKey = `${key}_idle_${dir}`
+    if (!scene.anims.exists(idleKey)) {
+      scene.anims.create({ key: idleKey, frames: [{ key, frame: `idle_${dir}` }], frameRate: 1, repeat: -1 })
+    }
+    const walkKey = `${key}_walk_${dir}`
+    if (!scene.anims.exists(walkKey)) {
+      scene.anims.create({ key: walkKey, frames: [{ key, frame: `walk_${dir}_0` }, { key, frame: `walk_${dir}_1` }], frameRate: 8, repeat: -1 })
+    }
+  }
+}
 
 const FOLLOW_OFFSET = 18           // px behind the player
 const FOLLOW_SPEED = 0.12          // lerp factor per frame (~60fps)
@@ -25,12 +61,21 @@ export class PetSprite {
   private lastWalkAt = 0
   private state: 'idle' | 'walk' = 'idle'
 
-  constructor(scene: Phaser.Scene, x: number, y: number, region: Region) {
+  private atlasKey = 'cat_unknown'
+
+  /** Pass an explicit `petOverride` to construct a peer's pet; omit to use
+   *  the local player's pet (V10.2 behavior). */
+  constructor(scene: Phaser.Scene, x: number, y: number, region: Region, petOverride?: { species: PetState['species']; name: string }) {
     this.scene = scene
     this.region = region
-    const pet = getPet()
+    const pet = petOverride
+      ? { species: petOverride.species, name: petOverride.name, affection: 0, lastFedDay: null, adoptedAt: 0 } as PetState
+      : getPet()
     if (!pet) return                  // no-op shell; getPet null = no adoption
-    const texKey = `cat_${region}`
+    // V10.8b — pick atlas family by species (kitten→cat, puppy→puppy, bunny→bunny)
+    const family = atlasFamilyFor(pet.species)
+    const texKey = `${family}_${region}`
+    this.atlasKey = texKey
     if (!scene.textures.exists(texKey)) return  // caller should have preloaded
     const def = getPetSpecies(pet.species)
     this.shadow = scene.add.ellipse(x, y - 1, 10, 4, 0x000000, 0.28).setDepth(3)
@@ -114,12 +159,12 @@ export class PetSprite {
 
   private playIdle() {
     if (!this.sprite) return
-    const key = `cat_${this.region}_idle_${this.facing}`
+    const key = `${this.atlasKey}_idle_${this.facing}`
     if (this.scene.anims.exists(key)) this.sprite.play(key)
   }
   private playWalk() {
     if (!this.sprite) return
-    const key = `cat_${this.region}_walk_${this.facing}`
+    const key = `${this.atlasKey}_walk_${this.facing}`
     if (this.scene.anims.exists(key)) this.sprite.play(key)
   }
 }

@@ -26,6 +26,23 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
     scene: [RoomScene]
   })
   game.scene.start('Room', { roomId: DEFAULT_ROOM, spawnPoint: 'default' })
+  // V10.8d — expose a small test bridge so smoke scripts can drive the V10
+  // achievement + mailbox + heart APIs without dynamic-importing TS sources.
+  Promise.all([
+    import('./achievements'), import('./mailbox'),
+    import('./npc_hearts'), import('./pets')
+  ]).then(([ach, mail, hearts, pets]) => {
+    ;(window as any).__loungeTest = {
+      recordAchievement: ach.recordEvent,
+      getAchievementUnlocked: ach.getUnlocked,
+      setFriendNotifsEnabled: mail.setFriendNotifsEnabled,
+      isFriendNotifsEnabled: mail.isFriendNotifsEnabled,
+      notifyFriendActivity: mail.notifyFriendActivity,
+      mailUnreadCount: mail.unreadCount,
+      getNpcHeartLevel: hearts.getNpcHeartLevel,
+      getPet: pets.getPet
+    }
+  })
   // V10.2 — bind the pet button's click handler on first frame so opening the
   // panel works before the first room scene finishes booting. _ensurePetUiInit
   // is the side effect of importing the module's open-button listener init.

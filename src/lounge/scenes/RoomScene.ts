@@ -17,9 +17,9 @@ import { loadNpcManifest, getActiveBracket, pickDialog, buildDialogContext, type
 import { getActiveFestivalId, getActiveFestival, hasCompletedTodaysActivity, markActivityDone, rollActivity } from '../festivals'
 import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
-import { addNpcTalkHeart, getNpcHeartLevel } from '../npc_hearts'
-import { hasPet, activePetPerk } from '../pets'
-import { PetSprite } from '../pet_sprite'
+import { addNpcTalkHeart, getNpcHeartLevel, addNpcGiftHeart } from '../npc_hearts'
+import { hasPet, activePetPerk, getPet } from '../pets'
+import { PetSprite, ensurePetAtlasLoaded } from '../pet_sprite'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
 import { recordEvent as recordAchievement, onAchievementUnlocked } from '../achievements'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
@@ -102,6 +102,7 @@ export class RoomScene extends Phaser.Scene {
   private npcManifest: NpcManifest | null = null
   private npcBears = new Map<string, { bear: Bear; def: NpcDef }>()
   private petSprite?: PetSprite                                    // V10.2 — follower
+  private peerPets = new Map<string, PetSprite>()                  // V10.8c — peers' pet followers, keyed by session id
   private npcDialogMemory = new Map<string, string>()
   private npcRefreshTimer?: Phaser.Time.TimerEvent
   private boothTracks: BoothTrack[] = []
@@ -356,15 +357,22 @@ export class RoomScene extends Phaser.Scene {
     // already adopted a pet (otherwise getPet() returns null and PetSprite
     // no-ops).
     if (hasPet()) {
-      this.ensureSpeciesLoaded('cat' as any).then(() => {
-        this.petSprite = new PetSprite(this, spawnX - 18, spawnY, this.myRegion)
-      })
+      // V10.8b — load the actual pet atlas family (kitten→cat, puppy, bunny)
+      const pet = getPet()
+      if (pet) {
+        ensurePetAtlasLoaded(this, pet.species, this.myRegion).then(() => {
+          this.petSprite = new PetSprite(this, spawnX - 18, spawnY, this.myRegion)
+        })
+      }
     }
     // V10.7-review C2 fix: destroy the pet sprite on scene shutdown so room
     // transitions don't leak references onto a stale display list.
+    // V10.8c — also clean up peer pets.
     this.events.once('shutdown', () => {
       this.petSprite?.destroy()
       this.petSprite = undefined
+      this.peerPets.forEach(p => p.destroy())
+      this.peerPets.clear()
     })
 
     // Apply locally-cached display name immediately (will be overridden by welcome msg)
@@ -562,6 +570,9 @@ export class RoomScene extends Phaser.Scene {
         this.peers.clear()
         this.peerVisitorIds.clear()
         this.peerCCs.clear()
+        // V10.8c — also clear peer pets so we don't leak across rooms
+        this.peerPets.forEach(p => p.destroy())
+        this.peerPets.clear()
         for (const p of m.peers) {
           if (p.room !== this.currentRoomId) continue
           // E5-P0c — render peer with their actual species (default bear)
@@ -580,6 +591,10 @@ export class RoomScene extends Phaser.Scene {
           // Lazy-load the real atlas in background, then upgrade the sprite
           if (species !== 'bear') {
             this.ensureSpeciesLoaded(species).then(() => bear.setSpecies(species))
+          }
+          // V10.8c — also rehydrate peer's pet
+          if (p.pet_species && ['kitten','puppy','bunny'].includes(p.pet_species)) {
+            this.spawnPeerPet(p.id, p.pet_species as any, p.pet_name ?? '', p.x - 18, p.y, ccToRegion(p.cc))
           }
         }
       },
@@ -608,12 +623,19 @@ export class RoomScene extends Phaser.Scene {
         if (species !== 'bear') {
           this.ensureSpeciesLoaded(species).then(() => bear.setSpecies(species))
         }
+        // V10.8c — peer pet relay
+        if (m.pet_species && ['kitten','puppy','bunny'].includes(m.pet_species)) {
+          this.spawnPeerPet(m.id, m.pet_species as any, m.pet_name ?? '', m.x - 18, m.y, ccToRegion(m.cc))
+        }
       },
       onLeave: (m: LeaveMsg) => {
         const peer = this.peers.get(m.id)
         if (peer) { peer.bear.destroy(); this.peers.delete(m.id) }
         this.peerVisitorIds.delete(m.id)
         this.peerCCs.delete(m.id)
+        // V10.8c — clean up the peer's pet if any
+        const pp = this.peerPets.get(m.id)
+        if (pp) { pp.destroy(); this.peerPets.delete(m.id) }
       },
       onPos: (m: PosMsg) => {
         if (m.room !== this.currentRoomId) return
@@ -2536,6 +2558,17 @@ export class RoomScene extends Phaser.Scene {
     awardXp('memory_making', 3)  // V9.0
   }
 
+  // V10.8c — instantiate a peer's pet sprite (lazy-loads the atlas).
+  private spawnPeerPet(sessionId: string, species: 'kitten'|'puppy'|'bunny', name: string, x: number, y: number, region: Region) {
+    if (this.peerPets.has(sessionId)) return
+    ensurePetAtlasLoaded(this, species, region).then(() => {
+      // The peer might have left or the scene might have been torn down.
+      if (!this.peers.has(sessionId) || !this.scene.isActive()) return
+      const ps = new PetSprite(this, x, y, region, { species, name })
+      this.peerPets.set(sessionId, ps)
+    })
+  }
+
   // V10.5 helper — white camera-shutter flash overlay
   private addCameraFlash() {
     const flash = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0xffffff, 0.85)
@@ -2635,9 +2668,35 @@ export class RoomScene extends Phaser.Scene {
     // not from this.friendships (which only holds player↔player relationships).
     // Each click is also worth +1 heart-point (daily-capped per NPC).
     addNpcTalkHeart(id)
-    const npcHeart = getNpcHeartLevel(id)
+    let npcHeart = getNpcHeartLevel(id)
     recordAchievement({ type: 'npc_met', npcId: id })
     recordAchievement({ type: 'npc_heart', level: npcHeart })
+
+    // V10.8a — "Give to NPC" path: if the player has anything in their
+    // pebble inventory and hasn't already gifted this NPC today, surface a
+    // browser confirm to hand over the most-recent item for +5 hearts.
+    // Daily-cap key prevents farming; UI is intentionally light-weight (a
+    // future PR can swap window.confirm for a proper picker).
+    try {
+      const giftDailyKey = 'lounge_npc_gift_daily_v1'
+      const today = new Date().toISOString().slice(0, 10)
+      const raw = JSON.parse(localStorage.getItem(giftDailyKey) || '{}') as { day: string; given: string[] }
+      const state = (raw.day === today) ? raw : { day: today, given: [] as string[] }
+      const items = Array.from(this.inventory)
+      if (items.length > 0 && !state.given.includes(id)) {
+        const itemId = items[items.length - 1]
+        const itemName = getAllPebbles().find(p => p.id === itemId)?.name ?? itemId
+        if (window.confirm(`🎁 Give "${itemName}" to ${entry.def.name}? (+5 hearts)`)) {
+          this.inventory.delete(itemId)
+          refreshInventoryPanel()
+          state.given.push(id)
+          localStorage.setItem(giftDailyKey, JSON.stringify(state))
+          npcHeart = addNpcGiftHeart(id)
+          recordAchievement({ type: 'npc_heart', level: npcHeart })
+          showToast(`💗 ${entry.def.name} loved it — heart ${npcHeart}/10`, 2400)
+        }
+      }
+    } catch {}
     const ctx = buildDialogContext({
       heart: npcHeart,
       event: getActiveFestivalId() ?? undefined,
@@ -2990,6 +3049,11 @@ export class RoomScene extends Phaser.Scene {
       // V10.2 — pet follows player. Update after player so the offset is
       // computed from the just-moved position.
       this.petSprite?.update(this.myBear.x, this.myBear.y, this.myBear.facing)
+      // V10.8c — peers' pets follow their owners
+      this.peerPets.forEach((pet, sessionId) => {
+        const peer = this.peers.get(sessionId)
+        if (peer) pet.update(peer.bear.x, peer.bear.y, peer.bear.facing)
+      })
       // V8.1 — energy: drain by distance walked, restore slowly while sitting
       const dx = this.myBear.x - prevX, dy = this.myBear.y - prevY
       const dist = Math.hypot(dx, dy)
