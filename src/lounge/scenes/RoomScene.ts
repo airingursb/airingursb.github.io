@@ -1614,15 +1614,55 @@ export class RoomScene extends Phaser.Scene {
     return e
   }
 
-  // V6.3 — paint warm glow circles on light-source tiles at night (18:00-06:00).
-  // Glow circles sit under furniture_above layer so they look like the lantern is lit.
+  // V6.3 + E5-P2b — radial-gradient glow on light-source tiles at night.
+  //   • Soft radial falloff (was hard circle) via baked gradient texture
+  //   • Window tiles now ALSO get a tint at sunrise/sunset/night so daylight
+  //     reflection through the glass changes with time of day
   private addNightGlow(map: Phaser.Tilemaps.Tilemap, layers: Phaser.Tilemaps.TilemapLayer[]) {
     const hour = new Date().getHours()
     const isNight = hour >= 18 || hour < 6
+    const isSunset = hour === 17 || hour === 18 || hour === 6 || hour === 7
+
+    // E5-P2b — bake a soft-gradient texture once, reuse across all glows
+    const GLOW_TEX = 'lounge_soft_glow'
+    if (!this.textures.exists(GLOW_TEX)) {
+      const size = 64
+      const c = document.createElement('canvas')
+      c.width = size; c.height = size
+      const g = c.getContext('2d')!
+      const grd = g.createRadialGradient(size/2, size/2, 0, size/2, size/2, size/2)
+      grd.addColorStop(0, 'rgba(255,255,255,1)')
+      grd.addColorStop(0.5, 'rgba(255,255,255,0.4)')
+      grd.addColorStop(1, 'rgba(255,255,255,0)')
+      g.fillStyle = grd; g.fillRect(0, 0, size, size)
+      this.textures.addCanvas(GLOW_TEX, c)
+    }
+
+    // Window tiles (id 13) get a tint when sun is low
+    const WINDOW_ID = 13
+    const TILE = 16
+    if (isSunset || isNight) {
+      for (const layer of layers) {
+        const grid = layer?.layer?.data
+        if (!grid) continue
+        for (let y = 0; y < layer.layer.height; y++) {
+          for (let x = 0; x < layer.layer.width; x++) {
+            if (grid[y][x]?.index !== WINDOW_ID) continue
+            const cx = x * TILE + TILE / 2
+            const cy = y * TILE + TILE / 2
+            const winColor = isNight ? 0x2a3a6a : 0xff8a40  // night = deep blue, sunset = orange
+            const winAlpha = isNight ? 0.45 : 0.35
+            this.add.rectangle(x * TILE, y * TILE, TILE, TILE, winColor, winAlpha)
+              .setOrigin(0).setDepth(9).setBlendMode(Phaser.BlendModes.MULTIPLY)
+          }
+        }
+      }
+    }
+
     if (!isNight) return
+
     // Light-emitter tile IDs (1-indexed Tiled gid; v1 tileset's IDs)
     const GLOW_TILES = new Set([14, 21, 22, 23, 38, 39])
-    const TILE = 16
     for (const layer of layers) {
       if (!layer) continue
       const grid = layer.layer.data
@@ -1633,16 +1673,20 @@ export class RoomScene extends Phaser.Scene {
           const cx = x * TILE + TILE / 2
           const cy = y * TILE + TILE / 2
           // Color by tile type: neon DJ = pink, strobe = white, others = warm orange
-          let color = 0xffd070
-          if (t.index === 38) color = 0xffffff
-          else if (t.index === 39) color = 0xff80c0
-          const glow = this.add.circle(cx, cy, 22, color, 0.35)
+          let tint = 0xffd070
+          if (t.index === 38) tint = 0xffffff
+          else if (t.index === 39) tint = 0xff80c0
+          // E5-P2b — sprite from baked gradient texture for soft radial falloff
+          const glow = this.add.image(cx, cy, GLOW_TEX)
+            .setTint(tint)
             .setBlendMode(Phaser.BlendModes.ADD)
-            .setDepth(9)  // under above-layer (10)
-          // Subtle flicker
+            .setDepth(9)
+            .setAlpha(0.55)
+            .setScale(1.4)  // 64 × 1.4 ≈ 90px radius
           this.tweens.add({
             targets: glow,
-            alpha: { from: 0.30, to: 0.42 },
+            alpha: { from: 0.45, to: 0.65 },
+            scale: { from: 1.35, to: 1.45 },
             duration: 800 + Math.random() * 500,
             yoyo: true, repeat: -1, ease: 'Sine.InOut'
           })
