@@ -1,5 +1,5 @@
 import { playSfx } from './audio'
-import { prefersReducedMotion, validateClientName, type VolumeChannel } from './config'
+import { prefersReducedMotion, validateClientName, type VolumeChannel, type Species } from './config'
 import { getVolume, setVolume } from './volume'
 
 export type EmoteVerb = 'wave' | 'sit' | 'dance' | 'say' | 'letter'
@@ -440,21 +440,30 @@ export function setInfoPanelDataProvider(
 export function setOnSpeciesToggle(handler: () => void) {
   onInfoSpeciesToggleRequest = handler
 }
-const SPECIES_CYCLE: Array<{ id: 'bear'|'cat'|'fox'|'capybara'|'bird'; emoji: string; label: string }> = [
+// V16.0 — Single source of truth: every player-choosable species lives here.
+// Adding a new entry automatically extends the picker grid (LoungeGame.astro
+// reads the same SPECIES from config.ts) and the info-panel switch cycle.
+const SPECIES_CYCLE: Array<{ id: Species; emoji: string; label: string }> = [
   { id: 'bear',     emoji: '🐻', label: 'Bear' },
   { id: 'cat',      emoji: '🐱', label: 'Cat' },
   { id: 'fox',      emoji: '🦊', label: 'Fox' },
   { id: 'capybara', emoji: '🦦', label: 'Capybara' },
-  { id: 'bird',     emoji: '🐦', label: 'Bird' }
+  { id: 'bird',     emoji: '🐦', label: 'Bird' },
+  { id: 'bunny',    emoji: '🐰', label: 'Bunny' },
+  { id: 'puppy',    emoji: '🐶', label: 'Puppy' },
+  { id: 'panda',    emoji: '🐼', label: 'Panda' },
+  { id: 'hamster',  emoji: '🐹', label: 'Hamster' },
+  { id: 'penguin',  emoji: '🐧', label: 'Penguin' },
+  { id: 'frog',     emoji: '🐸', label: 'Frog' }
 ]
-export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat' | 'fox' | 'capybara' | 'bird') {
+export function updateSpeciesButtonLabel(currentSpecies: Species) {
   if (!infoSpeciesBtn) return
   const idx = SPECIES_CYCLE.findIndex(s => s.id === currentSpecies)
   const next = SPECIES_CYCLE[(idx + 1) % SPECIES_CYCLE.length]
   infoSpeciesBtn.dataset.species = currentSpecies
   infoSpeciesBtn.textContent = `Switch to ${next.emoji} ${next.label}`
 }
-export function nextSpeciesFrom(s: string): 'bear'|'cat'|'fox'|'capybara'|'bird' {
+export function nextSpeciesFrom(s: string): Species {
   const idx = SPECIES_CYCLE.findIndex(x => x.id === s)
   return SPECIES_CYCLE[(idx === -1 ? 0 : (idx + 1) % SPECIES_CYCLE.length)].id
 }
@@ -879,7 +888,7 @@ function renderSkills() {
 
 // E5-P1a — First-visit species picker
 let spPickerEl: HTMLElement | null = null
-let spOnPick: ((s: 'bear'|'cat'|'fox'|'capybara'|'bird') => void) | null = null
+let spOnPick: ((s: Species) => void) | null = null
 
 function ensureSpRefs() {
   if (spPickerEl) return
@@ -888,14 +897,14 @@ function ensureSpRefs() {
     spPickerEl.addEventListener('click', (e) => {
       const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.sp-tile')
       if (!btn) return
-      const s = btn.dataset.species as 'bear'|'cat'|'fox'|'capybara'|'bird'
+      const s = btn.dataset.species as Species
       if (!s) return
       hideSpeciesPicker()
       spOnPick?.(s)
     })
   }
 }
-export function showSpeciesPicker(onPick: (s: 'bear'|'cat'|'fox'|'capybara'|'bird') => void) {
+export function showSpeciesPicker(onPick: (s: Species) => void) {
   ensureSpRefs()
   if (!spPickerEl) return
   spOnPick = onPick

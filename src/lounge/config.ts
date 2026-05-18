@@ -64,9 +64,10 @@ export function getOrCreateVisitorId(): string {
   }
 }
 
-// V6.5 — Character species. Local-only for now (no network propagation);
-// other players + NPCs always render as bear. V6.5.1 will add propagation.
-export const SPECIES = ['bear', 'cat', 'fox', 'capybara', 'bird'] as const
+// V6.5 — Character species. V16.0 expanded the player-choosable set to
+// include bunny + puppy (atlases already existed as pet sprites with
+// identical frame layout, so no bake step needed).
+export const SPECIES = ['bear', 'cat', 'fox', 'capybara', 'bird', 'bunny', 'puppy', 'panda', 'hamster', 'penguin', 'frog'] as const
 export type Species = typeof SPECIES[number]
 const SPECIES_STORAGE_KEY = 'lounge_species_v1'
 export function getMySpecies(): Species {

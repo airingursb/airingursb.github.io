@@ -145,10 +145,129 @@ const BIRD_PALETTES = {
   unknown: { outline: '#3a3a3a', body: '#808080', belly: '#c0c0c0', ear_inside: '#3a3a3a', cheek: '#a0a0a0', nose: '#606060' }
 }
 
+// V16.1 — Four additional species: panda, hamster, penguin, frog.
+// Each follows the same 13×15 layout so makeIdle{Up,Left,Right}, applyLegShift,
+// makeWave, makeSit handle direction + walk + emote derivation for free.
+
+// Panda: dark ears + eye patches + limbs on a near-white body.
+// slot 5 = patch (used for ear interiors, eye masks, and limbs).
+const PANDA_FRAME = [
+  [0,1,1,0,0,0,0,0,0,0,1,1,0],
+  [0,1,5,1,0,0,0,0,0,1,5,1,0],
+  [1,5,5,1,0,0,0,0,0,1,5,5,1],
+  [1,2,2,2,1,1,1,1,1,2,2,2,1],
+  [1,2,5,4,5,2,2,2,5,4,5,2,1],   // eye-patches around the eyes
+  [1,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,2,2,2,2,7,2,2,2,2,2,1],   // small nose
+  [1,2,2,2,3,3,3,3,3,2,2,2,1],
+  [0,1,2,2,2,2,2,2,2,2,2,1,0],
+  [0,0,1,5,2,2,2,2,2,5,1,0,0],   // dark fore-paws
+  [0,0,1,5,3,3,3,3,3,5,1,0,0],
+  [0,0,1,5,3,3,3,3,3,5,1,0,0],
+  [0,0,1,2,2,2,2,2,2,2,1,0,0],
+  [0,0,0,1,5,1,0,1,5,1,0,0,0],   // dark hind paws
+  [0,0,0,1,1,0,0,0,1,1,0,0,0]
+]
+const PANDA_PALETTES = {
+  asia:    { outline: '#1a1a1a', body: '#f0f0f0', belly: '#f8f8f8', patch: '#2a2a2a', cheek: '#fbd1d1', nose: '#1a1a1a' },
+  americas:{ outline: '#1a1a1a', body: '#ebebe5', belly: '#f5f5ef', patch: '#222222', cheek: '#fbc8c8', nose: '#1a1a1a' },
+  europe:  { outline: '#1a1a1a', body: '#eeeae3', belly: '#f6f2eb', patch: '#262626', cheek: '#f8c0c0', nose: '#1a1a1a' },
+  oceania: { outline: '#1a1a1a', body: '#f4f0e8', belly: '#fbf7ef', patch: '#262626', cheek: '#fbc8c0', nose: '#1a1a1a' },
+  africa:  { outline: '#1a1a1a', body: '#eee5d8', belly: '#f8efdf', patch: '#2a2018', cheek: '#fbb8a0', nose: '#1a1a1a' },
+  unknown: { outline: '#2a2a2a', body: '#d0d0d0', belly: '#dcdcdc', patch: '#404040', cheek: '#c8b0b0', nose: '#1a1a1a' }
+}
+
+// Hamster: small, plump, big pink cheek pouches (slot 6).
+const HAMSTER_FRAME = [
+  [0,0,1,1,0,0,0,0,0,1,1,0,0],
+  [0,1,2,2,1,0,0,0,1,2,2,1,0],   // tiny ears
+  [1,2,2,2,2,1,1,1,2,2,2,2,1],
+  [1,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,2,4,2,2,2,2,2,4,2,2,1],   // eyes
+  [1,6,2,2,2,2,2,2,2,2,2,6,1],   // pouched cheeks
+  [1,6,2,2,2,2,7,2,2,2,2,6,1],   // nose
+  [1,2,2,2,2,1,1,1,2,2,2,2,1],
+  [0,1,2,2,2,2,2,2,2,2,2,1,0],
+  [0,1,2,3,3,3,3,3,3,3,2,1,0],
+  [0,1,2,3,3,3,3,3,3,3,2,1,0],
+  [0,1,2,3,3,3,3,3,3,3,2,1,0],
+  [0,1,2,2,2,2,2,2,2,2,2,1,0],
+  [0,0,1,2,1,0,0,0,1,2,1,0,0],
+  [0,0,1,1,0,0,0,0,0,1,1,0,0]
+]
+const HAMSTER_PALETTES = {
+  asia:    { outline: '#6a4818', body: '#e0b070', belly: '#f8dcb0', ear_inside: '#f0c890', cheek: '#ffb8b8', nose: '#1a1a1a' },
+  americas:{ outline: '#7a4828', body: '#d09058', belly: '#f0c890', ear_inside: '#e0a878', cheek: '#ff9898', nose: '#1a1a1a' },
+  europe:  { outline: '#5a3818', body: '#b08858', belly: '#e0c098', ear_inside: '#c0a078', cheek: '#f8a8b8', nose: '#1a1a1a' },
+  oceania: { outline: '#6a5028', body: '#c89868', belly: '#e8c890', ear_inside: '#d8b088', cheek: '#ff9080', nose: '#1a1a1a' },
+  africa:  { outline: '#5a3010', body: '#a87040', belly: '#d8a878', ear_inside: '#b88858', cheek: '#ff7060', nose: '#1a1a1a' },
+  unknown: { outline: '#4a3020', body: '#907060', belly: '#b09080', ear_inside: '#a08070', cheek: '#c08080', nose: '#1a1a1a' }
+}
+
+// Penguin: tuxedo silhouette — black body + head, white belly oval,
+// orange-yellow beak + feet (both via slot 6).
+const PENGUIN_FRAME = [
+  [0,0,0,1,1,1,1,1,1,1,0,0,0],
+  [0,0,1,2,2,2,2,2,2,2,1,0,0],
+  [0,1,2,2,2,2,2,2,2,2,2,1,0],
+  [0,1,2,2,4,2,2,2,4,2,2,1,0],   // eyes
+  [0,1,2,2,2,2,6,2,2,2,2,1,0],   // beak top
+  [0,1,2,2,2,2,6,2,2,2,2,1,0],   // beak bottom
+  [1,2,2,2,3,3,3,3,3,2,2,2,1],
+  [1,2,2,3,3,3,3,3,3,3,2,2,1],
+  [1,2,3,3,3,3,3,3,3,3,3,2,1],   // wide white belly
+  [1,2,3,3,3,3,3,3,3,3,3,2,1],
+  [1,2,3,3,3,3,3,3,3,3,3,2,1],
+  [1,2,2,3,3,3,3,3,3,3,2,2,1],
+  [0,1,2,2,3,3,3,3,3,2,2,1,0],
+  [0,0,1,6,6,0,0,0,6,6,1,0,0],   // orange feet
+  [0,0,1,1,0,0,0,0,0,1,1,0,0]
+]
+const PENGUIN_PALETTES = {
+  asia:    { outline: '#0a0a0a', body: '#1a2438', belly: '#f8f8f0', ear_inside: '#1a2438', cheek: '#ff9020', nose: '#ff9020' },
+  americas:{ outline: '#0a0a0a', body: '#202020', belly: '#f8f8f0', ear_inside: '#202020', cheek: '#ffa040', nose: '#ffa040' },
+  europe:  { outline: '#0a0a0a', body: '#2a2a32', belly: '#f0f0e8', ear_inside: '#2a2a32', cheek: '#ffb840', nose: '#ffb840' },
+  oceania: { outline: '#0a0a0a', body: '#181a28', belly: '#f8f8f0', ear_inside: '#181a28', cheek: '#ff8830', nose: '#ff8830' },
+  africa:  { outline: '#1a0a0a', body: '#2a2018', belly: '#f8e8c8', ear_inside: '#2a2018', cheek: '#ff7820', nose: '#ff7820' },
+  unknown: { outline: '#2a2a2a', body: '#454545', belly: '#d8d8d0', ear_inside: '#454545', cheek: '#c08040', nose: '#c08040' }
+}
+
+// Frog: smooth round body, bulging side-eyes, wide mouth, pale belly.
+const FROG_FRAME = [
+  [0,0,0,0,1,1,1,1,1,0,0,0,0],
+  [0,1,1,1,2,2,2,2,2,1,1,1,0],   // eye-stalks bulging out the sides
+  [1,5,2,1,4,2,2,2,4,1,2,5,1],   // big black eyes (slot 4) framed by outline
+  [1,2,2,2,2,2,2,2,2,2,2,2,1],
+  [0,1,2,2,2,2,2,2,2,2,2,1,0],
+  [0,1,2,1,2,2,2,2,2,1,2,1,0],   // upturned mouth corners
+  [0,1,2,2,1,1,1,1,1,2,2,1,0],
+  [1,2,2,2,2,2,2,2,2,2,2,2,1],
+  [1,2,2,3,3,3,3,3,3,3,2,2,1],
+  [1,2,3,3,3,3,3,3,3,3,3,2,1],
+  [1,2,3,3,3,3,3,3,3,3,3,2,1],
+  [1,2,3,3,3,3,3,3,3,3,3,2,1],
+  [1,2,2,3,3,3,3,3,3,3,2,2,1],
+  [0,1,2,2,2,2,2,2,2,2,2,1,0],
+  [0,0,1,2,1,0,0,0,1,2,1,0,0]
+]
+const FROG_PALETTES = {
+  asia:    { outline: '#1a3818', body: '#5aa838', belly: '#e0e8a0', spot: '#3a7820', cheek: '#5aa838', nose: '#1a1a1a' },
+  americas:{ outline: '#1a4020', body: '#48a058', belly: '#d0e090', spot: '#2a7028', cheek: '#48a058', nose: '#1a1a1a' },
+  europe:  { outline: '#2a3818', body: '#78a050', belly: '#e8e8b0', spot: '#487830', cheek: '#78a050', nose: '#1a1a1a' },
+  oceania: { outline: '#1a4830', body: '#40a878', belly: '#c8e8c0', spot: '#287858', cheek: '#40a878', nose: '#1a1a1a' },
+  africa:  { outline: '#2a3818', body: '#88a040', belly: '#e8e088', spot: '#587820', cheek: '#88a040', nose: '#1a1a1a' },
+  unknown: { outline: '#2a3838', body: '#608070', belly: '#a8b8a0', spot: '#406050', cheek: '#608070', nose: '#1a1a1a' }
+}
+
 const SPECIES_DEFS = [
-  { id: 'fox',      frame: FOX_FRAME,  palettes: FOX_PALETTES,  paletteNames: { 5: 'ear_inside', 6: 'cheek', 7: 'nose' } },
-  { id: 'capybara', frame: CAPY_FRAME, palettes: CAPY_PALETTES, paletteNames: { 5: 'ear_inside', 6: 'cheek', 7: 'nose' } },
-  { id: 'bird',     frame: BIRD_FRAME, palettes: BIRD_PALETTES, paletteNames: { 5: 'wing_mark', 6: 'beak', 7: 'beak' } }
+  { id: 'fox',      frame: FOX_FRAME,     palettes: FOX_PALETTES,     paletteNames: { 5: 'ear_inside', 6: 'cheek', 7: 'nose' } },
+  { id: 'capybara', frame: CAPY_FRAME,    palettes: CAPY_PALETTES,    paletteNames: { 5: 'ear_inside', 6: 'cheek', 7: 'nose' } },
+  { id: 'bird',     frame: BIRD_FRAME,    palettes: BIRD_PALETTES,    paletteNames: { 5: 'wing_mark', 6: 'beak', 7: 'beak' } },
+  // V16.1 additions
+  { id: 'panda',    frame: PANDA_FRAME,   palettes: PANDA_PALETTES,   paletteNames: { 5: 'patch',      6: 'cheek', 7: 'nose' } },
+  { id: 'hamster',  frame: HAMSTER_FRAME, palettes: HAMSTER_PALETTES, paletteNames: { 5: 'ear_inside', 6: 'cheek', 7: 'nose' } },
+  { id: 'penguin',  frame: PENGUIN_FRAME, palettes: PENGUIN_PALETTES, paletteNames: { 5: 'ear_inside', 6: 'cheek', 7: 'nose' } },
+  { id: 'frog',     frame: FROG_FRAME,    palettes: FROG_PALETTES,    paletteNames: { 5: 'spot',       6: 'cheek', 7: 'nose' } }
 ]
 
 // ─── Frame layout ─────────────────────────────────────────────────────
@@ -224,4 +343,4 @@ for (const def of SPECIES_DEFS) {
     console.log(`OK ${def.id}/${region}`)
   }
 }
-console.log('OK fox + capybara + bird × 6 regions = 18 atlases')
+console.log(`OK ${SPECIES_DEFS.length} species × 6 regions = ${SPECIES_DEFS.length * 6} atlases`)

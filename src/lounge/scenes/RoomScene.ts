@@ -2758,7 +2758,18 @@ export class RoomScene extends Phaser.Scene {
   }
 
   private spawnNpc(def: NpcDef, b: { x: number; y: number; state: string }) {
-    const bear = new Bear(this, b.x, b.y, def.region)
+    // V16.2 — NPCs can have a custom species (defaults to 'bear'). Bear
+    // class falls back to the bear texture if the atlas isn't loaded, so
+    // we kick off ensureSpeciesLoaded in parallel and re-apply once ready;
+    // the NPC briefly shows as a bear then morphs when the atlas lands.
+    const species = def.species ?? 'bear'
+    const bear = new Bear(this, b.x, b.y, def.region, species)
+    if (species !== 'bear') {
+      this.ensureSpeciesLoaded(species).then(() => {
+        const entry = this.npcBears.get(def.id)
+        if (entry && entry.bear === bear) bear.setSpecies(species)
+      })
+    }
     bear.sprite.setDepth(4)
     bear.sprite.setAlpha(0.95)
     bear.facing = def.facing

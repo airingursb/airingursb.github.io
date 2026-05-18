@@ -1,4 +1,4 @@
-import type { Region, RoomId } from './config'
+import type { Region, RoomId, Species } from './config'
 import type { Direction } from './bear'
 import { getGameNow } from './gametime'
 
@@ -38,6 +38,9 @@ export type NpcDef = {
   id: string
   name: string
   region: Region
+  /** V16.2 — optional; defaults to 'bear' so NPCs without a species field
+   *  keep their original look. Manifest can override per NPC for variety. */
+  species?: Species
   facing: Direction
   schedule: ScheduleBracket[]
   dialog_pool: string[]               // fallback
