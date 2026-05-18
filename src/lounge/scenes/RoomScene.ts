@@ -23,6 +23,7 @@ import { PetSprite, ensurePetAtlasLoaded } from '../pet_sprite'
 import { touchInput, consumeActionTap } from '../touch_input'
 import { setBoardRoom, setBoardDisplayName } from '../board_ui'
 import { setBoardProgressToken } from '../board'
+import { setVisitsProgressToken } from '../home_visits'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
 import { recordEvent as recordAchievement, onAchievementUnlocked } from '../achievements'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
@@ -1071,6 +1072,8 @@ export class RoomScene extends Phaser.Scene {
       import('../progress_sync').then(({ setProgressToken }) => setProgressToken(m.progress_token ?? null))
       // V12.1 — same token gates the board POST/DELETE endpoints
       setBoardProgressToken(m.progress_token)
+      // V12.5 — same token gates the home visit log read
+      setVisitsProgressToken(m.progress_token)
     }
     // V12.1 — display name for the board post author field
     setBoardDisplayName(m.display_name ?? this.myDisplayName ?? null)

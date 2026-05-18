@@ -1449,6 +1449,39 @@ export function initGameTimeClock() {
       tickClock()
     })
   }
+  // V12.5 — home visit log panel (opens from info-panel button)
+  const visitsBtn = document.getElementById('lounge-info-visits') as HTMLButtonElement | null
+  const visitsPanel = document.getElementById('lounge-visits-panel') as HTMLElement | null
+  const visitsListEl = document.getElementById('lounge-visits-list') as HTMLElement | null
+  const visitsEmptyEl = document.getElementById('lounge-visits-empty') as HTMLElement | null
+  const visitsCloseBtn = document.getElementById('lounge-visits-close') as HTMLButtonElement | null
+  if (visitsBtn && visitsPanel && visitsListEl && visitsEmptyEl && visitsCloseBtn) {
+    const shortAgo = (iso: string): string => {
+      const ms = Date.now() - new Date(iso).getTime()
+      if (ms < 3600_000)  return `${Math.max(1, Math.floor(ms / 60_000))}m ago`
+      if (ms < 86400_000) return `${Math.floor(ms / 3600_000)}h ago`
+      return `${Math.floor(ms / 86400_000)}d ago`
+    }
+    const render = async () => {
+      const visits = await (await import('./home_visits')).fetchMyHomeVisits()
+      visitsListEl.innerHTML = ''
+      visitsEmptyEl.hidden = visits.length > 0
+      for (const v of visits) {
+        const li = document.createElement('li')
+        const name = document.createElement('span'); name.className = 'vs-name'
+        name.textContent = v.guest_name || 'anonymous'
+        const time = document.createElement('span'); time.className = 'vs-time'; time.textContent = shortAgo(v.visited_at)
+        li.appendChild(name); li.appendChild(time)
+        visitsListEl.appendChild(li)
+      }
+    }
+    visitsBtn.addEventListener('click', () => {
+      hideInfoPanel()
+      visitsPanel.hidden = false
+      void render()
+    })
+    visitsCloseBtn.addEventListener('click', () => { visitsPanel.hidden = true })
+  }
   // V10.6 — friend notifications toggle (lives in the same Info panel column)
   const fnBtn = document.getElementById('lounge-info-friend-notifs') as HTMLButtonElement | null
   if (fnBtn) {
