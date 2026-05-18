@@ -2,7 +2,7 @@ import { playSfx } from './audio'
 import { prefersReducedMotion, validateClientName, type VolumeChannel, type Species } from './config'
 import { getVolume, setVolume } from './volume'
 
-export type EmoteVerb = 'wave' | 'sit' | 'dance' | 'say' | 'letter'
+export type EmoteVerb = 'wave' | 'sit' | 'dance' | 'say' | 'letter' | 'think' | 'laugh' | 'cheer' | 'point'
 
 export type UIEvent = { type: 'verb'; verb: EmoteVerb; text?: string }
 

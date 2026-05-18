@@ -3534,6 +3534,21 @@ export class RoomScene extends Phaser.Scene {
       showBubble(peerId ?? '__me__', text, sb.x, sb.y)
       return
     }
+    // V17.3 — bubble-style emotes pop a glyph above the bear. We still call
+    // applyEmote('wave',...) for `cheer`/`point` so they get a tiny anim
+    // pulse; `think`/`laugh` are quieter (no sprite swap).
+    const BUBBLE_VERBS: Record<string, string> = {
+      think: '💭', laugh: '😂', cheer: '🎉', point: '👉'
+    }
+    const glyph = BUBBLE_VERBS[verb]
+    if (glyph) {
+      const sb = this.bearScreenPos(target)
+      showBubble(peerId ?? '__me__', glyph, sb.x, sb.y)
+      if (verb === 'cheer' || verb === 'point') {
+        target.applyEmote('wave', def.durationMs, prefersReducedMotion())
+      }
+      return
+    }
     target.applyEmote(verb, def.durationMs, prefersReducedMotion())
   }
 
