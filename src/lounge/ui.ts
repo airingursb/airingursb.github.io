@@ -236,6 +236,7 @@ export function initUI() {
   ensureSkRefs()
   ensureCfRefs()
   ensureBdRefs()
+  ensureGcRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -448,6 +449,90 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat' | 'fox' 
 export function nextSpeciesFrom(s: string): 'bear'|'cat'|'fox'|'capybara'|'bird' {
   const idx = SPECIES_CYCLE.findIndex(x => x.id === s)
   return SPECIES_CYCLE[(idx === -1 ? 0 : (idx + 1) % SPECIES_CYCLE.length)].id
+}
+
+// V9.5 — Care for the Grove panel
+import { getFlower, tryPlant, tryWater, uprootFlower } from './grove_care'
+
+let gcPanelEl: HTMLElement | null = null
+let gcStateEl: HTMLElement | null = null
+let gcControlsEl: HTMLElement | null = null
+let gcCloseBtn: HTMLButtonElement | null = null
+let gcOpenBtn: HTMLButtonElement | null = null
+
+function ensureGcRefs() {
+  if (gcPanelEl) return
+  gcPanelEl = document.getElementById('lounge-grovecare-panel')
+  gcStateEl = document.getElementById('lounge-grovecare-state')
+  gcControlsEl = document.getElementById('lounge-grovecare-controls')
+  gcCloseBtn = document.getElementById('lounge-grovecare-close') as HTMLButtonElement | null
+  gcOpenBtn  = document.getElementById('lounge-info-grovecare') as HTMLButtonElement | null
+  if (gcCloseBtn) gcCloseBtn.addEventListener('click', () => hideGroveCarePanel())
+  if (gcOpenBtn) gcOpenBtn.addEventListener('click', () => { hideInfoPanel(); showGroveCarePanel() })
+  if (gcPanelEl) gcPanelEl.addEventListener('click', (e) => { if (e.target === gcPanelEl) hideGroveCarePanel() })
+}
+
+export function showGroveCarePanel() {
+  ensureGcRefs()
+  if (!gcPanelEl) return
+  renderGroveCare()
+  gcPanelEl.hidden = false
+  playSfx('menu_open')
+}
+export function hideGroveCarePanel() {
+  if (!gcPanelEl) return
+  gcPanelEl.hidden = true
+  playSfx('menu_close')
+}
+function renderGroveCare() {
+  if (!gcStateEl || !gcControlsEl) return
+  const flower = getFlower()
+  gcStateEl.innerHTML = ''
+  gcControlsEl.innerHTML = ''
+  if (!flower) {
+    gcStateEl.textContent = 'You haven\'t planted a flower yet.'
+    for (const v of ['yellow', 'pink', 'white'] as const) {
+      const btn = document.createElement('button'); btn.type = 'button'
+      const emoji = v === 'yellow' ? '🌼' : v === 'pink' ? '🌸' : '🤍'
+      btn.textContent = `Plant ${emoji} (🐚 5)`
+      btn.addEventListener('click', () => {
+        const r = tryPlant(v)
+        if (r.ok) { showToast(`${emoji} Planted. Water daily for 5 days to bloom.`, 3200); renderGroveCare() }
+        else showToast('Not enough shells.', 2000)
+      })
+      gcControlsEl.appendChild(btn)
+    }
+    return
+  }
+  const today = new Date().toISOString().slice(0, 10)
+  const wateredToday = flower.wateredDays.includes(today)
+  const days = flower.wateredDays.length
+  const variety = flower.variety === 'yellow' ? '🌼' : flower.variety === 'pink' ? '🌸' : '🤍'
+  if (flower.bloomedDay) {
+    gcStateEl.innerHTML = `${variety} <strong>Bloomed!</strong> ${flower.bloomedDay}<br>Your flower contributes to the Grove atmosphere.`
+    const btn = document.createElement('button'); btn.type = 'button'
+    btn.textContent = 'Uproot & start again'
+    btn.addEventListener('click', () => { uprootFlower(); renderGroveCare() })
+    gcControlsEl.appendChild(btn)
+  } else {
+    gcStateEl.innerHTML = `${variety} Planted ${flower.plantedDay}<br>Watered ${days} / 5 days${wateredToday ? ' (✓ today)' : ''}`
+    const btn = document.createElement('button'); btn.type = 'button'
+    btn.textContent = wateredToday ? 'Watered today ✓' : 'Water (− 4 ⚡)'
+    btn.disabled = wateredToday
+    btn.addEventListener('click', () => {
+      const r = tryWater()
+      if (r.ok) {
+        if (r.bloomed) showToast(`${variety} 🌟 Bloomed! Atmosphere bonus active.`, 3500)
+        else showToast(`💧 +1 day (${r.daysWatered}/5)`, 2200)
+        renderGroveCare()
+      } else if (r.reason === 'already_watered_today') {
+        showToast('Already watered today. Come back tomorrow.', 2000)
+      } else {
+        showToast('Cannot water right now.', 2000)
+      }
+    })
+    gcControlsEl.appendChild(btn)
+  }
 }
 
 // V9.3 — Building / Home extensions
