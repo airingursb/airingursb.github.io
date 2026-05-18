@@ -75,6 +75,8 @@ export function hasCompletedTodaysActivity(festivalId: string): boolean {
 /** Mark today's activity as done. */
 export function markActivityDone(festivalId: string) {
   const m = loadActLog(); m[festivalId] = utcDay(); saveActLog(m)
+  // V10.7-review C3 fix: emit achievement event
+  try { void import('./achievements').then(a => a.recordEvent({ type: 'festival_attended' })) } catch {}
 }
 
 export type FestivalActivityResult = {

@@ -6,7 +6,12 @@
 // belong in IndexedDB; not worth the complexity for the V10.5 MVP.
 
 const STORAGE_KEY = 'lounge_photos_v1'
-const MAX_PHOTOS = 15
+// V10.7-review I4 + N6 fix: raise from 15 → 25 so the `photos_25` achievement
+// is reachable, and downscale captured frames before saving so 25 photos fit
+// in the ~5MB localStorage budget shared with all other lounge state.
+const MAX_PHOTOS = 25
+const THUMB_W = 240   // downscaled width — halves the bytes per photo
+const THUMB_H = 160
 
 export type Photo = {
   id: string

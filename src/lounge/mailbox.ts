@@ -66,7 +66,17 @@ function addMail(m: Omit<NpcMail, 'id' | 'sent_at' | 'read'>): NpcMail {
 
 const FRIEND_NOTIFS_ENABLED_KEY = 'lounge_friend_notifs_enabled_v1'
 const FRIEND_NOTIFS_THROTTLE_KEY = 'lounge_friend_notifs_throttle_v1'
-const THROTTLE_MS = 30 * 60_000
+// V10.7-review I3 fix: bump 'online' to 24h so reconnect blips don't ping
+// the inbox; keep 'home_visit' and 'sent_letter' at 30min so the player still
+// sees frequent letters and home visits.
+const THROTTLE_MS_BY_KIND: Record<string, number> = {
+  online:       24 * 60 * 60_000,
+  home_visit:   30 * 60_000,
+  sent_letter:  30 * 60_000
+}
+// V10.7-review I2 fix: prune throttle map entries older than 48h on each
+// access so it doesn't grow forever.
+const THROTTLE_PRUNE_MS = 48 * 60 * 60_000
 
 export type FriendActivityKind = 'online' | 'home_visit' | 'sent_letter'
 
@@ -81,10 +91,20 @@ function shouldFireForFriend(friendId: string, kind: FriendActivityKind): boolea
   try {
     const raw = localStorage.getItem(FRIEND_NOTIFS_THROTTLE_KEY) || '{}'
     const map = JSON.parse(raw) as Record<string, number>
+    const now = Date.now()
+    // I2 — prune stale keys older than 48h
+    for (const k of Object.keys(map)) {
+      if (now - map[k] > THROTTLE_PRUNE_MS) delete map[k]
+    }
+    const throttleMs = THROTTLE_MS_BY_KIND[kind] ?? 30 * 60_000
     const key = `${friendId}:${kind}`
     const last = map[key] ?? 0
-    if (Date.now() - last < THROTTLE_MS) return false
-    map[key] = Date.now()
+    if (now - last < throttleMs) {
+      // write back pruned state even on early return
+      localStorage.setItem(FRIEND_NOTIFS_THROTTLE_KEY, JSON.stringify(map))
+      return false
+    }
+    map[key] = now
     localStorage.setItem(FRIEND_NOTIFS_THROTTLE_KEY, JSON.stringify(map))
     return true
   } catch { return true }

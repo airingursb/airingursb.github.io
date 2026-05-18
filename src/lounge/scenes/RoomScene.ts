@@ -360,6 +360,12 @@ export class RoomScene extends Phaser.Scene {
         this.petSprite = new PetSprite(this, spawnX - 18, spawnY, this.myRegion)
       })
     }
+    // V10.7-review C2 fix: destroy the pet sprite on scene shutdown so room
+    // transitions don't leak references onto a stale display list.
+    this.events.once('shutdown', () => {
+      this.petSprite?.destroy()
+      this.petSprite = undefined
+    })
 
     // Apply locally-cached display name immediately (will be overridden by welcome msg)
     const localIdentity = getIdentity()
@@ -1349,6 +1355,8 @@ export class RoomScene extends Phaser.Scene {
     this.friendships.set(m.friend_id, {
       friend_id: m.friend_id, display_name, score: m.score, level: m.level
     })
+    // V10.7-review C3 fix: feed player↔player friendship level to achievements
+    recordAchievement({ type: 'friend_level', level: m.level })
     // Update heart on any currently-rendered peer whose visitor_id matches
     this.peerVisitorIds.forEach((vid, sessionId) => {
       if (vid !== m.friend_id) return
@@ -1585,6 +1593,8 @@ export class RoomScene extends Phaser.Scene {
       if (Math.abs(wx - s.x) < 12 && Math.abs(wy - s.y) < 12) return false
     }
     sendPlace(this.placeMode.item_id, wx, wy)
+    // V10.7-review C3 fix: home decoration placement → achievement
+    recordAchievement({ type: 'home_decoration_placed' })
     // optimistic — wait for server confirm to actually render
     showToast(`📦 Placing "${this.placeMode.name}"…`)
     return true
@@ -2356,6 +2366,8 @@ export class RoomScene extends Phaser.Scene {
 
   private async loadAndStartNpcs() {
     this.npcManifest = await loadNpcManifest()
+    // V10.7-review N3 fix: publish manifest count so meet_all_npcs scales
+    ;(window as any).__loungeNpcCount = this.npcManifest.npcs.length
     this.refreshNpcs()
     this.refreshMinimap()  // now that we know NPC locations, repaint the minimap dots
     this.npcRefreshTimer = this.time.addEvent({
@@ -2506,9 +2518,13 @@ export class RoomScene extends Phaser.Scene {
       renderer.snapshot((image) => {
         snapshotPending = false
         if (image instanceof HTMLImageElement) {
+          // V10.7-review I4 fix: downscale to 240×160 before storing so we
+          // stay well under the localStorage 5MB budget across 25 photos.
           const c = document.createElement('canvas')
-          c.width = image.naturalWidth; c.height = image.naturalHeight
-          c.getContext('2d')!.drawImage(image, 0, 0)
+          c.width = 240; c.height = 160
+          const ctx = c.getContext('2d')!
+          ctx.imageSmoothingEnabled = false
+          ctx.drawImage(image, 0, 0, c.width, c.height)
           savePhoto({ roomLabel, dataUrl: c.toDataURL('image/png'), width: c.width, height: c.height })
         }
         this.addCameraFlash()
@@ -2665,8 +2681,11 @@ export class RoomScene extends Phaser.Scene {
     } else {
       awardXp('hospitality', 1)
     }
-    // V9.0 — high-heart NPC interaction also feeds companionship
-    if ((friendship?.level ?? 0) >= 2) awardXp('companionship', 2)
+    // V9.0 → V10.1 fix — high-heart NPC interaction feeds companionship XP.
+    // Earlier code referenced `friendship?.level` which was a stale leftover
+    // from the player↔player friendship lookup (undeclared identifier =
+    // ReferenceError every click). NPC hearts live in npc_hearts now.
+    if (npcHeart >= 2) awardXp('companionship', 2)
   }
 
   private tryInteract() {

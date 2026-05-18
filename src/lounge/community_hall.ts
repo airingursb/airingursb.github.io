@@ -101,6 +101,12 @@ export function isBundleUnlocked(unlockId: string): boolean {
 }
 function markUnlocked(unlockId: string) {
   const m = loadUnlocks(); m[unlockId] = Date.now(); saveUnlocks(m)
+  // V10.7-review C3 fix: emit achievement event on bundle completion. We
+  // detect "allComplete" as "every bundle now has an unlock recorded".
+  try {
+    const allComplete = BUNDLES.every(b => m[b.reward_unlock_id])
+    void import('./achievements').then(a => a.recordEvent({ type: 'bundle_completed', allComplete }))
+  } catch {}
 }
 
 const STORAGE_KEY = 'lounge_bundles_v1'   // per-bundle filled slots map: { [bundleId]: { [slotIdx]: amountFilled or true } }

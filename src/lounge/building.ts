@@ -80,6 +80,16 @@ export function tryBuild(tier: ExtensionTier): BuildResult {
   const map = load()
   map[tier] = utcDay()
   save(map)
+  // V10.7-review C3 fix: emit achievement events. `home_extension_built`
+  // covers `build_carpenter`; `home_tier` derives a numeric tier from the
+  // count of owned extensions (matches V10.4 album).
+  try {
+    const ownedCount = EXTENSION_DEFS.filter(e => hasExtension(e.id)).length
+    void import('./achievements').then(a => {
+      a.recordEvent({ type: 'home_extension_built' })
+      a.recordEvent({ type: 'home_tier', tier: ownedCount })
+    })
+  } catch {}
   return { ok: true }
 }
 

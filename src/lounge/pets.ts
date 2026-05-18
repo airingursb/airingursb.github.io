@@ -94,6 +94,12 @@ export function feedPet(): number | null {
   // V10.4 — achievement
   const newLevel = p.affection
   import('./achievements').then(m => m.recordEvent({ type: 'pet_affection', level: newLevel }))
+  // V10.7-review I1 fix: bunny walk-speed perk reads happen via a cached
+  // value in bear.ts; invalidate it right when affection ticks over 10 so
+  // the +5% applies the same session (not after a reload).
+  if (newLevel >= MAX_AFFECTION) {
+    import('./bear').then(b => b.invalidateWalkSpeedCache?.())
+  }
   return p.affection
 }
 

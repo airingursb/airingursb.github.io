@@ -6,8 +6,16 @@ import { walkSpeedMultiplier, onLevelUp } from './skills'
 // V9.7-review I3 fix: cache walkSpeedMultiplier (computed from skill XP via
 // localStorage) so Bear.update doesn't read localStorage every frame. Refresh
 // only on Wayfaring level-up.
+// V10.7-review I1 fix: also recompute when the bunny pet hits max affection
+// (it adds +5% via walkSpeedMultiplier but Wayfaring level didn't change,
+// so the cache stayed stale). The cleanest invalidation hook is via the
+// 'storage' event for cross-tab and a direct invalidation when pets.feedPet
+// pushes the affection over 10.
 let cachedWalkSpeedMultiplier = 1
 let cachedInited = false
+export function invalidateWalkSpeedCache() {
+  cachedWalkSpeedMultiplier = walkSpeedMultiplier()
+}
 function getCachedWalkSpeedMultiplier(): number {
   if (!cachedInited) {
     cachedWalkSpeedMultiplier = walkSpeedMultiplier()

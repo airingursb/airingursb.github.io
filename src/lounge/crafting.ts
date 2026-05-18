@@ -139,9 +139,16 @@ export function tryCraft(r: Recipe, env: CraftEnv): CraftResult {
     map[decoStorageKey(r.output.id)] = Date.now()
     localStorage.setItem('lounge_purchases_v1', JSON.stringify(map))
   } catch {}
-  // V10.4 — achievement (craft + recipe discovered if first time)
+  // V10.4 / V10.7-review C3 fix: achievement events. craft_made on each
+  // success, plus recipe_discovered with the running count of recipes the
+  // player has currently unlocked (cumulative; doesn't require a brand-new
+  // recipe — close enough for the album).
   try {
-    void import('./achievements').then(m => m.recordEvent({ type: 'craft_made' }))
+    const unlockedCount = RECIPES.filter(rr => isUnlocked(rr)).length
+    void import('./achievements').then(m => {
+      m.recordEvent({ type: 'craft_made' })
+      m.recordEvent({ type: 'recipe_discovered', totalDiscovered: unlockedCount, totalAvailable: RECIPES.length })
+    })
   } catch {}
   return { ok: true, outputId: r.output.id, outputName: r.output.name }
 }

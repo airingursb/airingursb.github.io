@@ -187,7 +187,10 @@ export function recordEvent(ev: AchievementEvent) {
         if (!set.includes(ev.npcId)) {
           set.push(ev.npcId)
           localStorage.setItem(NPC_MET_SET_KEY, JSON.stringify(set))
-          if (set.length >= 11) markUnlocked('meet_all_npcs')
+          // V10.7-review N3 fix: compare against the live manifest count so
+          // adding a 12th NPC doesn't make the achievement unreachable.
+          const target = (window as any).__loungeNpcCount ?? 11
+          if (set.length >= target) markUnlocked('meet_all_npcs')
         }
       } catch {}
       return
