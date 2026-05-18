@@ -25,6 +25,7 @@ import { setBoardRoom, setBoardDisplayName } from '../board_ui'
 import { setBoardProgressToken } from '../board'
 import { setVisitsProgressToken } from '../home_visits'
 import { portalHidden, getSeasonalInteractableFor } from '../seasonal_rules'
+import { maybeJoinMorningCoffee, leaveMorningCoffeeIfNeeded, setCoffeeBannerHandler } from '../morning_coffee'
 import { setPartyProgressToken } from '../party'
 import { setPartyOnEnter, setPartyDisplayName } from '../party_ui'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
@@ -369,6 +370,18 @@ export class RoomScene extends Phaser.Scene {
     this.time.addEvent({ delay: 30_000, loop: true, callback: () => this.refreshMinimap() })
     // V8.5 — poll every 20s for "should we trigger today's sleep prompt"
     this.time.addEvent({ delay: 20_000, loop: true, callback: () => this.checkSleepPrompt() })
+
+    // V14.1 — morning coffee: try to join when entering Lobby in window,
+    // leave when leaving the Lobby.
+    leaveMorningCoffeeIfNeeded(this.currentRoomId)
+    maybeJoinMorningCoffee(this.currentRoomId)
+    setCoffeeBannerHandler((text) => {
+      const el = document.getElementById('lounge-coffee-banner')
+      const tx = document.getElementById('lounge-coffee-banner-text')
+      if (!el) return
+      if (text) { if (tx) tx.textContent = text; el.hidden = false }
+      else el.hidden = true
+    })
 
     // V12.1 — bind the community board to this room each scene boot
     {

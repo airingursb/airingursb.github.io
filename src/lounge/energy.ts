@@ -6,8 +6,9 @@ const STORAGE_KEY_DATE  = 'lounge_energy_date_v1'   // last-modified date key (Y
 
 const ENERGY_MAX_BASE = 100
 const PUPPY_BONUS = 5   // V10.2 — puppy pet at max affection
-const BATH_BONUS  = 10  // V13.1 — bath buff (24h after standing up from tub)
-const POOL_BONUS  = 5   // V13.7 — summer rooftop pool (24h)
+const BATH_BONUS   = 10  // V13.1 — bath buff (24h after standing up from tub)
+const POOL_BONUS   = 5   // V13.7 — summer rooftop pool (24h)
+const COFFEE_BONUS = 5   // V14.1 — morning coffee group ritual (24h)
 /** Per-call max so pet adoption / bath visit mid-session adjusts the cap. */
 export function getEnergyMax(): number {
   let max = ENERGY_MAX_BASE
@@ -25,6 +26,10 @@ export function getEnergyMax(): number {
   try {
     const until = Number(localStorage.getItem('lounge_pool_buff_until') || '0')
     if (Date.now() < until) max += POOL_BONUS
+  } catch {}
+  try {
+    const until = Number(localStorage.getItem('lounge_coffee_buff_until') || '0')
+    if (Date.now() < until) max += COFFEE_BONUS
   } catch {}
   return max
 }

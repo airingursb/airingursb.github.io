@@ -69,7 +69,9 @@ const STORAGE_KEYS = [
   'lounge_minigame_scores_v1',
   'lounge_bath_buff_until',
   'lounge_pool_buff_until',
-  'lounge_pumpkin_day'
+  'lounge_pumpkin_day',
+  'lounge_coffee_buff_until',
+  'lounge_coffee_buff_day'
 ] as const
 
 type Snapshot = Record<string, string | null>
