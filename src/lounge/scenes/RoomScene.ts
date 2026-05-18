@@ -998,11 +998,12 @@ export class RoomScene extends Phaser.Scene {
       },
       // V20.3 — cache reaction sets when server replies, then re-render
       // the profile card (if open) so chips appear.
+      // V20.4-review C1 — rerenderProfileCardIfOpen actually performs the
+      // re-render; without this, first-open showed a blank chip row.
       onPhotoReactions: (m) => {
         void import('../ui').then(u => {
           u.setPhotoReactions(m.owner_visitor_id, m.photo_id, m.reactions)
-          // If card is currently open for this owner, re-render by
-          // re-invoking showProfileCard with the same data. Cheap.
+          u.rerenderProfileCardIfOpen(m.owner_visitor_id)
         })
       },
       // Server broadcasts invalidation when someone reacts — refetch.

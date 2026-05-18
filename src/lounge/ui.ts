@@ -2077,6 +2077,15 @@ let onPhotoReact: ((ownerVisitorId: string, photoId: string, emoji: string) => v
 export function setOnPhotoReact(fn: (ownerVisitorId: string, photoId: string, emoji: string) => void) {
   onPhotoReact = fn
 }
+// V20.4-review C1 — remember the last-opened card so we can re-render
+// it in place when reactions arrive (otherwise first open shows blank
+// chip row until close+reopen).
+type ProfileCardContext = {
+  displayName: string
+  profile: Parameters<typeof showProfileCard>[1]
+  ownerVisitorId: string | null
+} | null
+let pcOpenContext: ProfileCardContext = null
 
 function ensurePcRefs() {
   if (pcEl) return
@@ -2104,6 +2113,8 @@ export function showProfileCard(displayName: string, profile: {
   pinned_achievements: string[]
   pinned_photos?: Array<{ id: string; dataUrl: string; roomLabel: string; takenAt: number }>
 } | null, ownerVisitorId?: string | null) {
+  // V20.4-review C1 — snapshot context for live re-render on reaction events.
+  pcOpenContext = { displayName, profile, ownerVisitorId: ownerVisitorId ?? null }
   ensurePcRefs()
   if (!pcEl) return
   if (pcNameEl) pcNameEl.textContent = displayName || 'Anonymous'
@@ -2171,18 +2182,36 @@ export function showProfileCard(displayName: string, profile: {
           })
           row.appendChild(chip)
         }
+        // V20.4-review I3 — inline emoji picker (replaces the ugly
+        // window.prompt which also silently dropped non-emoji text).
+        // Toggles a row of preset chips below the "+" button.
         const addBtn = document.createElement('button')
         addBtn.type = 'button'
         addBtn.className = 'pc-photo-react-add'
         addBtn.textContent = '+'
         addBtn.title = 'React'
+        const picker = document.createElement('div')
+        picker.className = 'pc-photo-react-picker'
+        picker.hidden = true
+        const EXTRAS = ['🔥', '💯', '🥹', '🐻', '🌟', '🤗', '😎', '🎵']
+        for (const emoji of EXTRAS) {
+          const btn = document.createElement('button')
+          btn.type = 'button'
+          btn.className = 'pc-photo-react-pick'
+          btn.textContent = emoji
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation()
+            picker.hidden = true
+            onPhotoReact?.(ownerVisitorId, photo.id, emoji)
+          })
+          picker.appendChild(btn)
+        }
         addBtn.addEventListener('click', (e) => {
           e.stopPropagation()
-          // Tiny inline picker — let user pick from the preset row.
-          const pick = window.prompt('React with an emoji (one):', '❤️')
-          if (pick) onPhotoReact?.(ownerVisitorId, photo.id, Array.from(pick.trim())[0] ?? '')
+          picker.hidden = !picker.hidden
         })
         row.appendChild(addBtn)
+        row.appendChild(picker)
         wrapper.appendChild(row)
       }
       pcPhotosGridEl.appendChild(wrapper)
@@ -2220,6 +2249,15 @@ function getPhotoReactionsFor(ownerVid: string, photoId: string): Map<string, { 
 export function hideProfileCard() {
   if (!pcEl) return
   pcEl.hidden = true
+  pcOpenContext = null
+}
+/** V20.4-review C1 — re-renders the profile card with whatever cached data
+ *  is current (incl. just-arrived photo reactions) if it's open for the
+ *  given owner. */
+export function rerenderProfileCardIfOpen(ownerVisitorId: string) {
+  if (!pcOpenContext || pcOpenContext.ownerVisitorId !== ownerVisitorId) return
+  if (!pcEl || pcEl.hidden) return
+  showProfileCard(pcOpenContext.displayName, pcOpenContext.profile, pcOpenContext.ownerVisitorId)
 }
 
 type GiftListEntry = { item_id: string; name: string; alreadySent: boolean }
