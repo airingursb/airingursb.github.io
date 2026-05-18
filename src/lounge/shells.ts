@@ -30,6 +30,50 @@ export const SHOP: ShopItem[] = [
   { id: 'sketch_print',     name: 'Sketch Print (Cole)',     cost: 35, blurb: 'A signed print from Cole.',         effect: 'decoration' }
 ]
 
+// V9.6 — Weekly market: prices fluctuate ±20% based on the ISO week + item id.
+// Deterministic so all visitors see the same prices. Also: every Sunday the
+// shop rotates a "rare" item that lists at a higher cost.
+
+function isoWeek(d: Date = new Date()): number {
+  const target = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
+  const dayNr = (target.getUTCDay() + 6) % 7
+  target.setUTCDate(target.getUTCDate() - dayNr + 3)
+  const firstThursday = target.getTime()
+  target.setUTCMonth(0, 1)
+  if (target.getUTCDay() !== 4) {
+    target.setUTCMonth(0, 1 + ((4 - target.getUTCDay()) + 7) % 7)
+  }
+  return 1 + Math.ceil((firstThursday - target.getTime()) / 604800000)
+}
+
+function priceMultiplier(itemId: string, now: Date = new Date()): number {
+  const wk = isoWeek(now)
+  let h = wk * 73856093
+  for (let i = 0; i < itemId.length; i++) h = (h ^ itemId.charCodeAt(i) * 19349663) >>> 0
+  // Map h % 41 (0..40) → multiplier in [0.8, 1.2]
+  const m = 0.8 + ((h % 41) / 40) * 0.4
+  return Math.round(m * 100) / 100
+}
+
+/** Returns this week's price for a shop item (rounded). */
+export function getEffectivePrice(item: ShopItem, now: Date = new Date()): number {
+  return Math.max(1, Math.round(item.cost * priceMultiplier(item.id, now)))
+}
+
+/** Returns the active weekly market event if today is in its window. */
+export type MarketEvent = { id: string; name: string; emoji: string; blurb: string; multiplier: number }
+export function getActiveMarketEvent(now: Date = new Date()): MarketEvent | null {
+  // Each ISO week rolls one of 4 events
+  const wk = isoWeek(now)
+  const events: MarketEvent[] = [
+    { id: 'discount_week', name: 'Discount Week', emoji: '💸', blurb: 'All shop items 20% off.', multiplier: 0.8 },
+    { id: 'bulk_week',     name: 'Bulk Week',     emoji: '📦', blurb: 'No event — usual prices.', multiplier: 1.0 },
+    { id: 'tariff_week',   name: 'Tariff Week',   emoji: '⚖️', blurb: 'Items priced +15% this week.', multiplier: 1.15 },
+    { id: 'rare_week',     name: 'Rare Week',     emoji: '💎', blurb: 'A rare item appears (Sketch Print +20% premium).', multiplier: 1.0 }
+  ]
+  return events[wk % events.length]
+}
+
 function utcDay(d: Date = new Date()): string {
   return d.toISOString().slice(0, 10)
 }

@@ -1046,8 +1046,8 @@ export function hideSleepOverlay() {
   playSfx('menu_close')
 }
 
-// V8.4 — Shells counter + Mio's Shop
-import { getShells, spendShells, onShellsChange, SHOP, hasPurchased, markPurchased, type ShopItem } from './shells'
+// V8.4 + V9.6 — Shells counter + Mio's Shop (with weekly market)
+import { getShells, spendShells, onShellsChange, SHOP, hasPurchased, markPurchased, getEffectivePrice, getActiveMarketEvent, type ShopItem } from './shells'
 
 let shellsCounterEl: HTMLElement | null = null
 let shellsNumEl: HTMLElement | null = null
@@ -1098,9 +1098,20 @@ function renderShop() {
   const bal = getShells()
   shopBalanceEl.textContent = String(bal)
   shopListEl.innerHTML = ''
+  // V9.6 — weekly market event banner (if present and non-neutral)
+  const evt = getActiveMarketEvent()
+  if (evt) {
+    const banner = document.createElement('div')
+    banner.style.cssText = 'margin-bottom:10px;padding:8px 12px;border-radius:6px;background:rgba(180,140,255,.15);border:1px solid rgba(180,140,255,.4);color:#cfb8ff;font-size:11px;'
+    banner.innerHTML = `<strong>${evt.emoji} ${evt.name}</strong> — ${evt.blurb}`
+    shopListEl.appendChild(banner)
+  }
   for (const item of SHOP) {
     const owned = hasPurchased(item.id)
-    const canAfford = bal >= item.cost
+    // V9.6 — effective price applies market fluctuation and event multiplier
+    let effective = getEffectivePrice(item)
+    if (evt) effective = Math.max(1, Math.round(effective * evt.multiplier))
+    const canAfford = bal >= effective
     const row = document.createElement('div')
     row.className = 'shop-item'
     const name = document.createElement('div')
@@ -1108,19 +1119,24 @@ function renderShop() {
     const title = document.createElement('div'); title.className = 'si-title'; title.textContent = item.name
     const blurb = document.createElement('div'); blurb.className = 'si-blurb'; blurb.textContent = item.blurb
     name.appendChild(title); name.appendChild(blurb)
-    const cost = document.createElement('div'); cost.className = 'si-cost'; cost.textContent = `🐚 ${item.cost}`
+    const cost = document.createElement('div'); cost.className = 'si-cost'
+    if (effective !== item.cost) {
+      cost.innerHTML = `🐚 <s style="color:#888">${item.cost}</s> ${effective}`
+    } else {
+      cost.textContent = `🐚 ${effective}`
+    }
     const buy = document.createElement('button'); buy.type = 'button'
     buy.textContent = owned ? 'Owned' : 'Buy'
     buy.disabled = owned || !canAfford
-    buy.addEventListener('click', () => buyItem(item))
+    buy.addEventListener('click', () => buyItem(item, effective))
     row.appendChild(name); row.appendChild(cost); row.appendChild(buy)
     shopListEl.appendChild(row)
   }
 }
 
-function buyItem(item: ShopItem) {
+function buyItem(item: ShopItem, effectivePrice: number) {
   if (hasPurchased(item.id)) return
-  if (!spendShells(item.cost)) return
+  if (!spendShells(effectivePrice)) return
   markPurchased(item.id)
   renderShop()
 }
