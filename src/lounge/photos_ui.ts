@@ -61,7 +61,10 @@ function render() {
     img.addEventListener('click', () => openLightbox(p.dataUrl, p.roomLabel, fmtDate(p.takenAt)))
     const meta = document.createElement('div')
     meta.className = 'ph-meta'
-    meta.textContent = `${p.roomLabel} · ${fmtDate(p.takenAt)}`
+    // V14.6 — group photo: append member count
+    const memberBadge = p.members && p.members.length > 0 ? ` · 👥 ${p.members.length}` : ''
+    meta.textContent = `${p.roomLabel} · ${fmtDate(p.takenAt)}${memberBadge}`
+    if (p.members && p.members.length > 0) meta.title = `with ${p.members.join(', ')}`
     const del = document.createElement('button')
     del.className = 'ph-del'; del.type = 'button'; del.textContent = '✕'
     del.title = 'Delete this photo'

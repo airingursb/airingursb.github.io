@@ -20,6 +20,8 @@ export type Photo = {
   dataUrl: string          // image/png base64
   width: number
   height: number
+  // V14.6 — group photo: list of co-present peers' display names
+  members?: string[]
 }
 
 function loadAll(): Photo[] {

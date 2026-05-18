@@ -2772,7 +2772,25 @@ export class RoomScene extends Phaser.Scene {
           const ctx = c.getContext('2d')!
           ctx.imageSmoothingEnabled = false
           ctx.drawImage(image, 0, 0, c.width, c.height)
-          savePhoto({ roomLabel, dataUrl: c.toDataURL('image/png'), width: c.width, height: c.height })
+          // V14.6 — group photo: list peers within 120px of bear when shutter fired
+          const NEAR = 120
+          const nearby: string[] = []
+          if (this.myBear) {
+            for (const [, p] of this.peers) {
+              const d = Math.hypot(p.bear.x - this.myBear.x, p.bear.y - this.myBear.y)
+              if (d <= NEAR) {
+                const name = (p.bear as any).displayName
+                  ?? (p.bear as any).nameLabel?.text
+                  ?? null
+                nearby.push(typeof name === 'string' ? name : 'someone')
+              }
+            }
+          }
+          savePhoto({
+            roomLabel, dataUrl: c.toDataURL('image/png'),
+            width: c.width, height: c.height,
+            members: nearby.length > 0 ? nearby : undefined
+          })
         }
         this.addCameraFlash()
       })
