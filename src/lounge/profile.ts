@@ -60,12 +60,25 @@ export function applyWelcomeProfile(m: {
   status?: string | null
   mood?: string | null
   pinned_achievements?: string[] | null
+  equipped_cosmetics?: string[] | null
+  owned_cosmetics?: string[] | null
 }) {
   if ('bio' in m) setBio(m.bio ?? '')
   if ('status' in m) setStatus(m.status ?? '')
   if ('mood' in m) setMood(m.mood ?? '')
   if ('pinned_achievements' in m) {
     setPinnedAchievements(Array.isArray(m.pinned_achievements) ? m.pinned_achievements : [])
+  }
+  // V18.3 — cosmetics. Server is authoritative across devices.
+  if ('equipped_cosmetics' in m || 'owned_cosmetics' in m) {
+    void import('./cosmetics').then(c => {
+      if ('owned_cosmetics' in m) {
+        c.setOwnedCosmetics(Array.isArray(m.owned_cosmetics) ? m.owned_cosmetics : [])
+      }
+      if ('equipped_cosmetics' in m) {
+        c.setEquippedCosmetics(Array.isArray(m.equipped_cosmetics) ? m.equipped_cosmetics : [])
+      }
+    })
   }
 }
 
@@ -79,18 +92,20 @@ export type PeerProfile = {
   status: string | null
   mood: string | null
   pinned_achievements: string[]
+  equipped_cosmetics: string[]
 }
 
 const peerProfiles = new Map<string, PeerProfile>()
 
 export function cachePeerProfile(visitor_id: string | null | undefined, p: Partial<PeerProfile>) {
   if (!visitor_id) return
-  const prev = peerProfiles.get(visitor_id) ?? { bio: null, status: null, mood: null, pinned_achievements: [] }
+  const prev = peerProfiles.get(visitor_id) ?? { bio: null, status: null, mood: null, pinned_achievements: [], equipped_cosmetics: [] }
   peerProfiles.set(visitor_id, {
     bio: 'bio' in p ? (p.bio ?? null) : prev.bio,
     status: 'status' in p ? (p.status ?? null) : prev.status,
     mood: 'mood' in p ? (p.mood ?? null) : prev.mood,
-    pinned_achievements: 'pinned_achievements' in p ? (p.pinned_achievements ?? []) : prev.pinned_achievements
+    pinned_achievements: 'pinned_achievements' in p ? (p.pinned_achievements ?? []) : prev.pinned_achievements,
+    equipped_cosmetics: 'equipped_cosmetics' in p ? (p.equipped_cosmetics ?? []) : prev.equipped_cosmetics
   })
 }
 export function getPeerProfile(visitor_id: string | null | undefined): PeerProfile | null {

@@ -562,6 +562,23 @@ export class RoomScene extends Phaser.Scene {
     // V17.1 — apply persisted mood (works before welcome lands, since
     // localStorage was hydrated last session or by applyWelcomeProfile)
     void import('../profile').then(p => this.myBear?.setMood(p.getMood() || null))
+    // V18.0 — apply persisted cosmetics to myBear
+    void import('../cosmetics').then(c => this.myBear?.setCosmetics(c.getEquippedCosmetics()))
+    // V18.2 — when wardrobe equip/unequip happens, re-apply to bear and
+    // push to server (in V18.3 onward — for now just updates the bear).
+    void import('../wardrobe_ui').then(w => {
+      w.setOnWardrobeChange(async (equipped) => {
+        this.myBear?.setCosmetics(equipped)
+        const { sendProfile } = await import('../net')
+        sendProfile({ equipped_cosmetics: equipped })
+      })
+      w.setOnWardrobePurchase(async (_id, equipped) => {
+        // Also sync owned set so the server remembers what the player unlocked.
+        const { getOwnedCosmetics } = await import('../cosmetics')
+        const { sendProfile } = await import('../net')
+        sendProfile({ equipped_cosmetics: equipped, owned_cosmetics: getOwnedCosmetics() })
+      })
+    })
     // V6.7 — camera follows player smoothly. No-op for rooms that match canvas (currently all);
     // useful as future rooms grow larger than 480×320.
     this.cameras.main.startFollow(this.myBear.sprite, true, 0.08, 0.08)
@@ -852,13 +869,16 @@ export class RoomScene extends Phaser.Scene {
           }
           // V17.0 — cache profile fields the snap carries (server adds them on snap)
           // V17.1 — also apply mood to bear so peer's mood emoji appears immediately
+          // V18.4 — and cosmetics so the bear arrives in the room already wearing them
           const anyP = p as any
           if (typeof anyP.mood === 'string') bear.setMood(anyP.mood || null)
+          if (Array.isArray(anyP.equipped_cosmetics)) bear.setCosmetics(anyP.equipped_cosmetics)
           if (p.visitor_id) {
             void import('../profile').then(prof => prof.cachePeerProfile(p.visitor_id!, {
               bio: anyP.bio ?? null, status: anyP.status ?? null,
               mood: anyP.mood ?? null,
-              pinned_achievements: Array.isArray(anyP.pinned_achievements) ? anyP.pinned_achievements : []
+              pinned_achievements: Array.isArray(anyP.pinned_achievements) ? anyP.pinned_achievements : [],
+              equipped_cosmetics: Array.isArray(anyP.equipped_cosmetics) ? anyP.equipped_cosmetics : []
             }))
           }
         }
@@ -890,13 +910,16 @@ export class RoomScene extends Phaser.Scene {
         }
         // V17.0 — cache profile fields the join carries
         // V17.1 — also apply mood to the peer's bear immediately
+        // V18.4 — and cosmetics so the bear renders with hat from the moment they arrive
         const anyM = m as any
         if (typeof anyM.mood === 'string') bear.setMood(anyM.mood || null)
+        if (Array.isArray(anyM.equipped_cosmetics)) bear.setCosmetics(anyM.equipped_cosmetics)
         if (m.visitor_id) {
           void import('../profile').then(prof => prof.cachePeerProfile(m.visitor_id!, {
             bio: anyM.bio ?? null, status: anyM.status ?? null,
             mood: anyM.mood ?? null,
-            pinned_achievements: Array.isArray(anyM.pinned_achievements) ? anyM.pinned_achievements : []
+            pinned_achievements: Array.isArray(anyM.pinned_achievements) ? anyM.pinned_achievements : [],
+            equipped_cosmetics: Array.isArray(anyM.equipped_cosmetics) ? anyM.equipped_cosmetics : []
           }))
         }
         // V10.8c — peer pet relay
@@ -948,13 +971,18 @@ export class RoomScene extends Phaser.Scene {
       },
       // V17.0 — cache peer profile updates (V17.2 card reads from cache)
       // V17.1 — also update the peer bear's mood emoji live
+      // V18.4 — and re-equip cosmetics live so wardrobe changes show up
       onProfileChanged: (m) => {
         const vid = this.peerVisitorIds.get(m.id) ?? null
         const peer = this.peers.get(m.id)
-        if (peer) peer.bear.setMood(m.mood || null)
+        if (peer) {
+          peer.bear.setMood(m.mood || null)
+          if (Array.isArray(m.equipped_cosmetics)) peer.bear.setCosmetics(m.equipped_cosmetics)
+        }
         void import('../profile').then(p => p.cachePeerProfile(vid, {
           bio: m.bio, status: m.status, mood: m.mood,
-          pinned_achievements: m.pinned_achievements
+          pinned_achievements: m.pinned_achievements,
+          equipped_cosmetics: m.equipped_cosmetics
         }))
       },
       // V17.5-review I2 — honest toast on profile save ack/fail

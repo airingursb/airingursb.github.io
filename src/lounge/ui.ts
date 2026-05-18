@@ -64,6 +64,12 @@ export function initUI() {
     hideInfoPanel()
     showProfileEditor()
   })
+  // V18.2 — wardrobe button
+  const infoWardrobeBtn = document.getElementById('lounge-info-wardrobe') as HTMLButtonElement | null
+  infoWardrobeBtn?.addEventListener('click', () => {
+    hideInfoPanel()
+    void import('./wardrobe_ui').then(w => w.showWardrobe())
+  })
   nameModalEl = document.getElementById('lounge-name-modal')
   nameInputEl = document.getElementById('lounge-name-input') as HTMLInputElement | null
   nameErrorEl = document.getElementById('lounge-name-error')

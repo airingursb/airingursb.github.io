@@ -9,18 +9,23 @@ export type SnapMsg = {
 export type JoinMsg = { v: number; t: 'join'; id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null; species?: string; pet_species?: string | null; pet_name?: string | null }
 export type SpeciesChangedMsg = { v: number; t: 'species_changed'; id: string; species: string }
 // V17.0 — server broadcasts when a peer changes bio/status/mood/pinned
+// V18.3 — extended with equipped_cosmetics (owned is private to self)
 export type ProfileChangedMsg = {
   v: number; t: 'profile_changed'; id: string
   bio: string | null
   status: string | null
   mood: string | null
   pinned_achievements: string[]
+  equipped_cosmetics?: string[]
 }
 // V17.5-review — explicit ack/fail so the client can show a truthful toast
+// V18.3 — also carries cosmetic state back so client can reconcile
 export type ProfileOkMsg = {
   v: number; t: 'profile_ok'
   bio: string | null; status: string | null
   mood: string | null; pinned_achievements: string[]
+  equipped_cosmetics?: string[]
+  owned_cosmetics?: string[]
 }
 export type ProfileFailedMsg = {
   v: number; t: 'profile_failed'; reason: string; retry_after_ms?: number
@@ -320,11 +325,14 @@ export function sendSpecies(species: string) {
 
 // V17.0 — push profile fields (bio/status/mood/pinned_achievements). Any
 // undefined field is omitted so partial updates are supported.
+// V18.3 — extended with equipped_cosmetics + owned_cosmetics.
 export function sendProfile(patch: {
   bio?: string | null
   status?: string | null
   mood?: string | null
   pinned_achievements?: string[]
+  equipped_cosmetics?: string[]
+  owned_cosmetics?: string[]
 }) {
   if (!ws || ws.readyState !== 1) return
   const msg: Record<string, unknown> = { v: PROTOCOL_VERSION, t: 'profile' }

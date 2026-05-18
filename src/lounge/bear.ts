@@ -2,6 +2,7 @@ import Phaser from 'phaser'
 import { WALK_SPEED, type Region, type Species, SPECIES } from './config'
 import { footstepDust } from './feedback'
 import { walkSpeedMultiplier, onLevelUp } from './skills'
+import { sortForRender as sortCosmeticsForRender } from './cosmetics'
 
 // V9.7-review I3 fix: cache walkSpeedMultiplier (computed from skill XP via
 // localStorage) so Bear.update doesn't read localStorage every frame. Refresh
@@ -86,6 +87,12 @@ export class Bear {
   private nameLabel?: Phaser.GameObjects.Text
   private heartLabel?: Phaser.GameObjects.Text
   private moodLabel?: Phaser.GameObjects.Text   // V17.1 — floating mood emoji
+  // V18.0 — equipped cosmetic containers. Re-built whenever setCosmetics
+  // is called OR when facing changes (per-frame redraw is cheap since
+  // each cosmetic is 4-6 Graphics rects).
+  private cosmeticContainers: Phaser.GameObjects.Container[] = []
+  private cosmeticIds: string[] = []
+  private lastCosmeticFacing: Direction | null = null
   private shadow?: Phaser.GameObjects.Ellipse  // V6.3 — soft ground shadow
   private lastDustAt = 0                       // V6.6 — last footstep-dust timestamp
 
@@ -128,6 +135,26 @@ export class Bear {
   setMood(glyph: string | null) {
     if (!this.moodLabel) return
     this.moodLabel.setText(glyph ?? '')
+  }
+
+  /** V18.0 — set equipped cosmetic ids. Re-draws on next update tick. */
+  setCosmetics(ids: string[]) {
+    // Avoid rebuild if identical (e.g. snap-replay with same data)
+    if (this.cosmeticIds.length === ids.length && this.cosmeticIds.every((v, i) => v === ids[i])) return
+    this.cosmeticIds = [...ids]
+    this.lastCosmeticFacing = null   // force rebuild on next update()
+  }
+
+  private rebuildCosmetics() {
+    for (const c of this.cosmeticContainers) c.destroy()
+    this.cosmeticContainers = []
+    if (this.cosmeticIds.length === 0) return
+    const defs = sortCosmeticsForRender(this.cosmeticIds)
+    for (const def of defs) {
+      const container = def.draw(this.scene, this.facing)
+      container.setDepth(this.sprite.depth + 1)
+      this.cosmeticContainers.push(container)
+    }
   }
 
   setFriendshipLevel(level: number) {
@@ -216,6 +243,16 @@ export class Bear {
     if (this.moodLabel) {
       this.moodLabel.x = this.sprite.x
       this.moodLabel.y = this.sprite.y - 74
+    }
+    // V18.0 — keep cosmetic containers anchored to the bear; rebuild if
+    // facing changed so directional cosmetics (cap brim, glasses) update.
+    if (this.cosmeticIds.length > 0 && this.facing !== this.lastCosmeticFacing) {
+      this.lastCosmeticFacing = this.facing
+      this.rebuildCosmetics()
+    }
+    for (const c of this.cosmeticContainers) {
+      c.x = this.sprite.x
+      c.y = this.sprite.y
     }
 
     if (this.stateUntil > 0 && now >= this.stateUntil) {
@@ -308,6 +345,8 @@ export class Bear {
     this.nameLabel?.destroy()
     this.heartLabel?.destroy()
     this.moodLabel?.destroy()
+    for (const c of this.cosmeticContainers) c.destroy()
+    this.cosmeticContainers = []
     this.shadow?.destroy()
     this.sprite.destroy()
   }
