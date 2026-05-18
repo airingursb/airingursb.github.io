@@ -22,7 +22,7 @@ import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased } from '../shells'
 import { awardXp, onLevelUp, walkSpeedMultiplier, bonusInventorySlots, SKILLS, type SkillId } from '../skills'
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
-import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry, showSpeciesPicker } from '../ui'
+import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry, showSpeciesPicker, setCraftEnvProvider } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
 import { seedMailForToday, unreadCount as mailUnread } from '../mailbox'
 
@@ -710,6 +710,21 @@ export class RoomScene extends Phaser.Scene {
       }
     })
 
+    // V9.1 — crafting env provider: exposes pebble inventory + materials.
+    // Materials (V9.2 placeholder): empty until resource gathering ships;
+    // recipes that need materials will fail with missing_material.
+    setCraftEnvProvider(() => ({
+      inventoryHas: (id: string) => this.inventory.has(id),
+      inventorySize: this.inventory.size,
+      pebbleIds: Array.from(this.inventory),
+      removePebble: (id: string) => {
+        this.inventory.delete(id)
+        refreshInventoryPanel()
+      },
+      hasMaterial: (_id: string) => 0,
+      removeMaterial: (_id: string, _n: number) => {}
+    }))
+
     // E5-P0b — Who's around panel: for every NPC in manifest, report current
     // bracket (room + state) and the formatted HH:MM of the next bracket change.
     setWhosAroundProvider((): WhosAroundEntry[] => {
@@ -788,22 +803,26 @@ export class RoomScene extends Phaser.Scene {
           giftedByName: giftByItemId.get(p.id) ?? null,
           placedInHome: placedIds.has(p.id)
         }))
-        // P1 — append decoration items the player purchased from Mio's shop
-        // (lantern_keepsake / fox_figurine / sketch_print). These behave like
-        // collected pebbles + are placeable in Home.
-        const SHOP_DECO: Array<{ id: string; name: string }> = [
-          { id: 'shop_lantern_keepsake', name: 'Lantern Keepsake' },
-          { id: 'shop_fox_figurine',     name: 'Fox Figurine' },
-          { id: 'shop_sketch_print',     name: 'Sketch Print (Cole)' }
+        // P1 + V9.1 — append decoration items the player owns (shop purchase
+        // OR crafted). All use the same lounge_purchases_v1 storage flag.
+        const OWNED_DECO: Array<{ id: string; name: string; source: string }> = [
+          { id: 'shop_lantern_keepsake',  name: 'Lantern Keepsake',          source: "Mio's Shop" },
+          { id: 'shop_fox_figurine',      name: 'Fox Figurine',              source: "Mio's Shop" },
+          { id: 'shop_sketch_print',      name: 'Sketch Print (Cole)',       source: "Mio's Shop" },
+          { id: 'craft_friendship_charm', name: 'Friendship Charm',          source: 'crafted' },
+          { id: 'craft_memory_locket',    name: 'Memory Locket',             source: 'crafted' },
+          { id: 'craft_wanderer_compass', name: "Wanderer's Compass",        source: 'crafted' },
+          { id: 'craft_curator_lamp',     name: "Curator's Lamp",            source: 'crafted' },
+          { id: 'craft_shared_kettle',    name: 'Shared Kettle',             source: 'crafted' }
         ]
-        for (const d of SHOP_DECO) {
-          const shopId = d.id.replace('shop_', '') as 'lantern_keepsake' | 'fox_figurine' | 'sketch_print'
-          if (!hasPurchased(shopId)) continue
+        for (const d of OWNED_DECO) {
+          const key = d.id.replace(/^(shop_|craft_)/, '')
+          if (!hasPurchased(key as any)) continue
           items.push({
             id: d.id,
             name: d.name,
             collected: true,
-            giftedByName: 'Mio\'s Shop',
+            giftedByName: d.source,
             placedInHome: placedIds.has(d.id)
           })
         }
@@ -811,7 +830,7 @@ export class RoomScene extends Phaser.Scene {
         const shopSlots = hasPurchased('pebble_bag_plus') ? 8 : 0
         return {
           items,
-          total: all.length + SHOP_DECO.filter(d => hasPurchased(d.id.replace('shop_', '') as any)).length,
+          total: all.length + OWNED_DECO.filter(d => hasPurchased(d.id.replace(/^(shop_|craft_)/, '') as any)).length,
           collected: items.filter(i => i.collected).length,
           canPlace: this.amInMyHome(),
           gridSlots: 36 + shopSlots + bonusInventorySlots()

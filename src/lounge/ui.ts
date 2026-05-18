@@ -234,6 +234,7 @@ export function initUI() {
   ensureProgressRefs()
   ensureWaRefs()
   ensureSkRefs()
+  ensureCfRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -446,6 +447,101 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat' | 'fox' 
 export function nextSpeciesFrom(s: string): 'bear'|'cat'|'fox'|'capybara'|'bird' {
   const idx = SPECIES_CYCLE.findIndex(x => x.id === s)
   return SPECIES_CYCLE[(idx === -1 ? 0 : (idx + 1) % SPECIES_CYCLE.length)].id
+}
+
+// V9.1 — Recipe Book / Crafting
+import { RECIPES, isUnlocked, tryCraft, type Recipe, type CraftEnv } from './crafting'
+
+let cfPanelEl: HTMLElement | null = null
+let cfListEl: HTMLElement | null = null
+let cfShellsEl: HTMLElement | null = null
+let cfEmptyEl: HTMLElement | null = null
+let cfCloseBtn: HTMLButtonElement | null = null
+let cfOpenBtn: HTMLButtonElement | null = null
+let craftEnvProvider: (() => CraftEnv) | null = null
+
+export function setCraftEnvProvider(p: () => CraftEnv) { craftEnvProvider = p }
+
+function ensureCfRefs() {
+  if (cfPanelEl) return
+  cfPanelEl  = document.getElementById('lounge-craft-panel')
+  cfListEl   = document.getElementById('lounge-craft-list')
+  cfShellsEl = document.getElementById('lounge-craft-shells')
+  cfEmptyEl  = document.getElementById('lounge-craft-empty')
+  cfCloseBtn = document.getElementById('lounge-craft-close') as HTMLButtonElement | null
+  cfOpenBtn  = document.getElementById('lounge-info-craft') as HTMLButtonElement | null
+  if (cfCloseBtn) cfCloseBtn.addEventListener('click', () => hideCraftPanel())
+  if (cfOpenBtn) cfOpenBtn.addEventListener('click', () => { hideInfoPanel(); showCraftPanel() })
+  if (cfPanelEl) cfPanelEl.addEventListener('click', (e) => { if (e.target === cfPanelEl) hideCraftPanel() })
+}
+
+export function showCraftPanel() {
+  ensureCfRefs()
+  if (!cfPanelEl) return
+  renderCraft()
+  cfPanelEl.hidden = false
+  playSfx('menu_open')
+}
+export function hideCraftPanel() {
+  if (!cfPanelEl) return
+  cfPanelEl.hidden = true
+  playSfx('menu_close')
+}
+
+function describeCost(c: import('./crafting').Cost): string {
+  switch (c.kind) {
+    case 'any_pebble': return `${c.count} pebble${c.count > 1 ? 's' : ''}`
+    case 'pebble':     return `pebble ${c.id}`
+    case 'shells':     return `🐚 ${c.count}`
+    case 'material':   return `${c.count}× ${c.id}`
+  }
+}
+
+function renderCraft() {
+  if (!cfListEl || !cfEmptyEl || !cfShellsEl) return
+  const env = craftEnvProvider?.()
+  cfShellsEl.textContent = String(getShells())
+  cfListEl.innerHTML = ''
+  let shown = 0
+  for (const r of RECIPES) {
+    const unlocked = isUnlocked(r)
+    if (!unlocked) {
+      // show as locked teaser
+    }
+    shown++
+    const li = document.createElement('li')
+    li.className = 'cf-item' + (unlocked ? '' : ' locked')
+    const e = document.createElement('span'); e.className = 'cf-emoji'; e.textContent = r.emoji
+    const name = document.createElement('div'); name.className = 'cf-name'
+    const t = document.createElement('div'); t.className = 'cf-title'; t.textContent = r.name
+    const b = document.createElement('div'); b.className = 'cf-blurb'; b.textContent = r.blurb
+    const costs = document.createElement('div'); costs.className = 'cf-costs'
+    if (unlocked) costs.textContent = 'cost: ' + r.costs.map(describeCost).join('  +  ')
+    else costs.textContent = `🔒 requires ${r.unlock!.skill} lv ${r.unlock!.level}`
+    name.appendChild(t); name.appendChild(b); name.appendChild(costs)
+    const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = unlocked ? 'Craft' : 'Locked'
+    btn.disabled = !unlocked
+    btn.addEventListener('click', () => {
+      if (!env) return
+      const res = tryCraft(r, env)
+      if (res.ok) {
+        showToast(`🧪 Crafted ${res.outputName}`, 2800)
+        renderCraft()
+      } else {
+        const reasonMsg: Record<string, string> = {
+          locked: 'You haven\'t unlocked this yet.',
+          not_enough_pebbles: 'Not enough pebbles.',
+          not_enough_shells: 'Not enough shells.',
+          missing_material: 'Missing a material.',
+          already_owned: 'You already have one.'
+        }
+        showToast(`🧪 ${reasonMsg[res.reason] ?? 'Cannot craft.'}`, 2200)
+      }
+    })
+    li.appendChild(e); li.appendChild(name); li.appendChild(btn)
+    cfListEl.appendChild(li)
+  }
+  cfEmptyEl.hidden = shown > 0
 }
 
 // V9.0 — Skills panel
