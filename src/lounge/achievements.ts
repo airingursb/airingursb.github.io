@@ -49,6 +49,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'story_mox_cricket',     name: "Cricket Returned",  blurb: "Hear Mox's brass cricket story to the end.",     tier: 3, category: 'social' },
   { id: 'story_iris_moonflower', name: 'Moonflower Bloomed', blurb: "Hear Iris's moonflower story to the end.",      tier: 3, category: 'social' },
   { id: 'story_halle_bookmark',  name: 'Page Seventeen',     blurb: "Hear Halle's page seventeen story to the end.", tier: 3, category: 'social' },
+  // V21.3 — random world events (count-based)
+  { id: 'random_event_first',  name: 'Right Place, Right Time', blurb: 'Attend any random world event.',           tier: 1, category: 'activities' },
+  { id: 'random_event_3',      name: 'Wanderer',                blurb: 'Attend 3 random world events.',             tier: 2, category: 'activities' },
+  { id: 'random_event_all',    name: 'Always Listening',        blurb: 'Attend every type of random world event.',  tier: 4, category: 'activities' },
   // ─── Crafting / Gathering ──────────────────────────────────
   { id: 'craft_first',    name: 'First Craft',          blurb: 'Craft anything.',                                 tier: 1, category: 'crafting' },
   { id: 'craft_5',        name: 'Apprentice Maker',     blurb: 'Craft 5 items.',                                  tier: 2, category: 'crafting' },
@@ -169,6 +173,8 @@ export type AchievementEvent =
   | { type: 'minigame_finished'; gameId: string; score: number }
   // V19.4 — NPC personal story complete (story id = achievement id)
   | { type: 'story_complete'; story_id: string }
+  // V21.3 — random world event attended
+  | { type: 'random_event_attended'; event_id: string }
 
 const NPC_MET_SET_KEY = 'lounge_achievement_npcs_met_v1'
 
@@ -295,6 +301,24 @@ export function recordEvent(ev: AchievementEvent) {
     case 'story_complete': {
       // V19.4 — story id maps 1:1 to achievement id (story_mox_cricket etc.)
       markUnlocked(ev.story_id)
+      return
+    }
+    case 'random_event_attended': {
+      // V21.3 — count-based + all-types completion
+      const n = incCounter('random_events_attended')
+      if (n >= 1) markUnlocked('random_event_first')
+      if (n >= 3) markUnlocked('random_event_3')
+      try {
+        const SET_KEY = 'lounge_random_events_seen_v1'
+        const seen = JSON.parse(localStorage.getItem(SET_KEY) || '[]') as string[]
+        if (!seen.includes(ev.event_id)) {
+          seen.push(ev.event_id)
+          localStorage.setItem(SET_KEY, JSON.stringify(seen))
+        }
+        // RANDOM_EVENTS has 4 entries (registry lives in random_events.ts);
+        // hardcoding 4 here matches V21.1's RANDOM_EVENTS.length.
+        if (seen.length >= 4) markUnlocked('random_event_all')
+      } catch {}
       return
     }
   }

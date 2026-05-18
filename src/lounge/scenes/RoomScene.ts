@@ -32,6 +32,7 @@ import { maybeJoinMorningCoffee, leaveMorningCoffeeIfNeeded, setCoffeeBannerHand
 import { maybeNoticeCookAlong, leaveCookAlongIfNeeded, setCookBannerHandler, startOrJoinCookAlong } from '../group_cook'
 import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJamBurstTier } from '../group_jam'
 import { tickNpcEvents, leaveNpcEventIfNeeded, setEventBannerHandler, currentEventStatus } from '../npc_events'
+import { tickRandomEvents, getActiveEvent, attendEvent, type ActiveEvent } from '../random_events'
 import { startOrJoinDance, leaveDanceIfNeeded, initDance } from '../group_dance'
 import { setPartyProgressToken } from '../party'
 import { setPartyOnEnter, setPartyDisplayName } from '../party_ui'
@@ -165,6 +166,9 @@ export class RoomScene extends Phaser.Scene {
   private seasonalEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
   private holidayEmitter?: Phaser.GameObjects.Particles.ParticleEmitter
   private fireworksTimer?: Phaser.Time.TimerEvent           // V14.7
+  // V21.2 — random event interactable + check timer
+  private randomEventSprite?: Phaser.GameObjects.Container
+  private randomEventTimer?: Phaser.Time.TimerEvent
   // V4.0 — friendship
   private peerVisitorIds = new Map<string, string>()      // session id → visitor_id
   private peerCCs = new Map<string, string | null>()      // session id → country code (for flag display)
@@ -516,6 +520,33 @@ export class RoomScene extends Phaser.Scene {
         })
         this.events.once('shutdown', () => { this.fireworksTimer?.remove(false); this.fireworksTimer = undefined })
       }
+    }
+
+    // V21.0 — random event scheduler: tick every 30s to spawn/clear events.
+    // Tick once at create() so a fresh page-load picks up an in-progress event.
+    this.applyRandomEventState()
+    this.randomEventTimer = this.time.addEvent({
+      delay: 30_000, loop: true, callback: () => this.applyRandomEventState()
+    })
+    this.events.once('shutdown', () => {
+      this.randomEventTimer?.remove(false); this.randomEventTimer = undefined
+      this.randomEventSprite?.destroy(); this.randomEventSprite = undefined
+    })
+    // Click handler on the banner to teleport to the event room.
+    const reBanner = document.getElementById('lounge-random-event-banner')
+    if (reBanner && !reBanner.dataset.bound) {
+      reBanner.dataset.bound = '1'
+      reBanner.addEventListener('click', () => {
+        const active = getActiveEvent()
+        if (!active) return
+        let targetRoom: RoomId = active.def.room
+        if (targetRoom === ('room_home_self' as RoomId)) {
+          targetRoom = homeRoomForVisitor(getIdentity().visitor_id) as RoomId
+        }
+        if (this.currentRoomId === targetRoom) return
+        sendRoomChange(targetRoom)
+        this.scene.restart({ roomId: targetRoom, spawnPoint: 'default' })
+      })
     }
 
     // V12.1 — bind the community board to this room each scene boot
@@ -3300,6 +3331,99 @@ export class RoomScene extends Phaser.Scene {
           resolve()
       }
     })
+  }
+
+  // V21.0 — apply current random event state to UI + scene. Banner reflects
+  // the active event; sprite only spawns when we're in the event's room.
+  private applyRandomEventState() {
+    const active = tickRandomEvents()
+    const banner = document.getElementById('lounge-random-event-banner')
+    const emojiEl = document.getElementById('lounge-random-event-emoji')
+    const titleEl = document.getElementById('lounge-random-event-title')
+    const metaEl = document.getElementById('lounge-random-event-meta')
+    if (banner && emojiEl && titleEl && metaEl) {
+      if (!active) {
+        banner.hidden = true
+      } else {
+        banner.hidden = false
+        emojiEl.textContent = active.def.emoji
+        titleEl.textContent = active.def.title
+        let targetRoom: RoomId = active.def.room
+        if (targetRoom === ('room_home_self' as RoomId)) {
+          targetRoom = homeRoomForVisitor(getIdentity().visitor_id) as RoomId
+        }
+        const inRoom = this.currentRoomId === targetRoom
+        const minutesLeft = Math.max(0, Math.ceil((active.expiresAt - Date.now()) / 60_000))
+        metaEl.textContent = inRoom
+          ? `Click the sparkle · ${minutesLeft}m left`
+          : `In ${targetRoom.replace('room_', '')} · ${minutesLeft}m left`
+      }
+    }
+    // Spawn / despawn the in-room interactable
+    this.refreshRandomEventSprite(active)
+  }
+
+  private refreshRandomEventSprite(active: ActiveEvent | null) {
+    // Resolve event room (handle 'room_home_self' alias)
+    let targetRoom: RoomId | null = null
+    if (active) {
+      targetRoom = active.def.room
+      if (targetRoom === ('room_home_self' as RoomId)) {
+        targetRoom = homeRoomForVisitor(getIdentity().visitor_id) as RoomId
+      }
+    }
+    const shouldShow = !!active && this.currentRoomId === targetRoom
+    if (!shouldShow) {
+      this.randomEventSprite?.destroy()
+      this.randomEventSprite = undefined
+      return
+    }
+    if (this.randomEventSprite) return  // already showing
+    // Build a small pulsing sparkle container in a fixed safe spot per-room.
+    // Center-ish, slightly up so it doesn't overlap room furniture too often.
+    const x = Math.floor(this.mapInfo.widthPx * 0.55)
+    const y = Math.floor(this.mapInfo.heightPx * 0.55)
+    const container = this.add.container(x, y).setDepth(8)
+    const ring = this.add.graphics()
+    ring.fillStyle(0xffd166, 1)
+    ring.fillCircle(0, 0, 6)
+    ring.lineStyle(2, 0xfff8e0, 1)
+    ring.strokeCircle(0, 0, 9)
+    container.add(ring)
+    const label = this.add.text(0, -22, `${active!.def.emoji} ${active!.def.title}`, {
+      fontFamily: 'ui-monospace, monospace',
+      fontSize: '9px',
+      color: '#fff',
+      stroke: '#000',
+      strokeThickness: 2,
+      resolution: 2
+    }).setOrigin(0.5, 1)
+    container.add(label)
+    // Pulse tween
+    if (!prefersReducedMotion()) {
+      this.tweens.add({
+        targets: ring, scale: { from: 1, to: 1.3 },
+        duration: 700, yoyo: true, repeat: -1, ease: 'Sine.InOut'
+      })
+    }
+    // Make ring interactive
+    ring.setInteractive(new Phaser.Geom.Circle(0, 0, 16), Phaser.Geom.Circle.Contains)
+    ring.on('pointerdown', () => this.attendRandomEvent())
+    this.randomEventSprite = container
+  }
+
+  private attendRandomEvent() {
+    const active = getActiveEvent()
+    if (!active) return
+    const def = attendEvent(active.def.id)
+    if (!def) return
+    // Reward — small shells bump + toast + record achievement
+    void import('../shells').then(s => s.addShells(def.reward_shells))
+    showToast(`${def.emoji} ${def.title} attended — +${def.reward_shells} 🐚`, 2800)
+    recordAchievement({ type: 'random_event_attended', event_id: def.id })
+    // Refresh UI
+    this.randomEventSprite?.destroy(); this.randomEventSprite = undefined
+    this.applyRandomEventState()
   }
 
   // V19.5-review C3 — per-NPC click debounce so a double-click can't fire
