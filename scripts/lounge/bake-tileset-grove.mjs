@@ -44,7 +44,7 @@ const OUT = join(ROOT, 'public', 'lounge', 'assets', 'tilesets', 'outdoor_grove_
 
 const TILE = 16
 const COLS = 8
-const ROWS = 5
+const ROWS = 6
 const W = TILE * COLS
 const H = TILE * ROWS
 
@@ -497,12 +497,80 @@ function tile40(ox, oy) {
   px(ox + 6, oy + 8, '#5a3a1a'); px(ox + 9, oy + 8, '#5a3a1a')
 }
 
+// ─── Row 5: E5-P1b animated tile frames ────────────────────────────────
+// 41 water flowing frame B — ripples shifted right by 4px
+function tile41(ox, oy) {
+  rect(ox, oy, TILE, TILE, C.water_a)
+  for (let y = 2; y < TILE; y += 4) {
+    ctx.fillStyle = C.water_b; ctx.fillRect(ox, oy + y, TILE, 1)
+  }
+  px(ox + 7, oy + 4, C.water_hl); px(ox + 13, oy + 9, C.water_hl)
+  px(ox + 2, oy + 14, C.water_hl); px(ox + 9, oy + 1, C.water_hl)
+}
+
+// 42 oak canopy frame B — lighter highlights shifted
+function tile42(ox, oy) {
+  ctx.fillStyle = C.leaf_a
+  ctx.beginPath(); ctx.arc(ox + 8, oy + 12, 8, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = C.leaf_b
+  ctx.beginPath(); ctx.arc(ox + 9, oy + 11, 6, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = C.leaf_c
+  ctx.beginPath(); ctx.arc(ox + 10, oy + 10, 3, 0, Math.PI * 2); ctx.fill()
+  // sparkle highlights in different spots
+  px(ox + 11, oy + 9, '#80d080'); px(ox + 4, oy + 10, C.leaf_c)
+  px(ox + 12, oy + 13, C.leaf_c); px(ox + 6, oy + 14, C.leaf_c)
+}
+
+// 43 pine canopy frame B — slight tip wobble
+function tile43(ox, oy) {
+  ctx.fillStyle = C.pine_a
+  ctx.beginPath(); ctx.moveTo(ox + 2, oy + 14); ctx.lineTo(ox + 14, oy + 14); ctx.lineTo(ox + 9, oy + 0); ctx.closePath(); ctx.fill()
+  ctx.fillStyle = C.pine_b
+  ctx.beginPath(); ctx.moveTo(ox + 4, oy + 12); ctx.lineTo(ox + 12, oy + 12); ctx.lineTo(ox + 9, oy + 2); ctx.closePath(); ctx.fill()
+  ctx.fillStyle = C.pine_c
+  ctx.beginPath(); ctx.moveTo(ox + 6, oy + 8); ctx.lineTo(ox + 10, oy + 8); ctx.lineTo(ox + 9, oy + 4); ctx.closePath(); ctx.fill()
+  px(ox + 9, oy + 3, '#80d080')
+}
+
+// 44 palm canopy frame B — fronds shifted slightly
+function tile44(ox, oy) {
+  ctx.fillStyle = '#3a8a3a'
+  ctx.fillRect(ox + 3, oy + 7, 4, 2)
+  ctx.fillRect(ox + 9, oy + 7, 4, 2)
+  ctx.fillRect(ox + 6, oy + 5, 4, 2)
+  ctx.fillRect(ox + 4, oy + 8, 6, 1)
+  ctx.fillRect(ox + 2, oy + 9, 3, 1)
+  ctx.fillRect(ox + 11, oy + 9, 3, 1)
+  ctx.fillStyle = '#5aaa5a'
+  ctx.fillRect(ox + 4, oy + 6, 1, 1); ctx.fillRect(ox + 11, oy + 6, 1, 1)
+  ctx.fillRect(ox + 7, oy + 4, 2, 1)
+  px(ox + 6, oy + 9, '#5a3a1a'); px(ox + 9, oy + 9, '#5a3a1a')
+}
+
+// 45 water flowing frame C — ripples shifted left
+function tile45(ox, oy) {
+  rect(ox, oy, TILE, TILE, C.water_a)
+  for (let y = 1; y < TILE; y += 4) {
+    ctx.fillStyle = C.water_b; ctx.fillRect(ox, oy + y, TILE, 1)
+  }
+  px(ox + 11, oy + 3, C.water_hl); px(ox + 4, oy + 8, C.water_hl)
+  px(ox + 14, oy + 12, C.water_hl); px(ox + 6, oy + 14, C.water_hl)
+}
+
+// 46 reserve
+function tile46(ox, oy) { rect(ox, oy, TILE, TILE, '#22232a') }
+// 47 reserve
+function tile47(ox, oy) { rect(ox, oy, TILE, TILE, '#22232a') }
+// 48 reserve
+function tile48(ox, oy) { rect(ox, oy, TILE, TILE, '#22232a') }
+
 const renderers = [
   tile1, tile2, tile3, tile4, tile5, tile6, tile7, tile8,
   tile9, tile10, tile11, tile12, tile13, tile14, tile15, tile16,
   tile17, tile18, tile19, tile20, tile21, tile22, tile23, tile24,
   tile25, tile26, tile27, tile28, tile29, tile30, tile31, tile32,
-  tile33, tile34, tile35, tile36, tile37, tile38, tile39, tile40
+  tile33, tile34, tile35, tile36, tile37, tile38, tile39, tile40,
+  tile41, tile42, tile43, tile44, tile45, tile46, tile47, tile48
 ]
 for (let i = 0; i < renderers.length; i++) {
   const [ox, oy] = tileXY(i)
@@ -516,7 +584,7 @@ const meta = {
   schema_version: 1,
   name: 'outdoor_grove_v1',
   tile_width: TILE, tile_height: TILE,
-  tile_count: 40, columns: COLS,
+  tile_count: 48, columns: COLS,
   image: 'tiles.png', image_width: W, image_height: H,
   tiles: [
     { id: 0, kind: 'floor' }, { id: 1, kind: 'floor' }, { id: 2, kind: 'floor' },
@@ -537,7 +605,12 @@ const meta = {
     { id: 32, kind: 'floor' }, { id: 33, kind: 'floor' },
     { id: 34, kind: 'floor' }, { id: 35, kind: 'floor' },
     { id: 36, kind: 'furniture', collision: true }, { id: 37, kind: 'furniture', collision: true },
-    { id: 38, kind: 'furniture', collision: true }, { id: 39, kind: 'decor' }
+    { id: 38, kind: 'furniture', collision: true }, { id: 39, kind: 'decor' },
+    // E5-P1b animated frames (referenced by tileset.animation array — never placed directly)
+    { id: 40, kind: 'floor' }, { id: 41, kind: 'decor' },
+    { id: 42, kind: 'decor' }, { id: 43, kind: 'decor' },
+    { id: 44, kind: 'floor' }, { id: 45, kind: 'reserve' },
+    { id: 46, kind: 'reserve' }, { id: 47, kind: 'reserve' }
   ]
 }
 writeFileSync(join(OUT, 'tiles.json'), JSON.stringify(meta, null, 2))

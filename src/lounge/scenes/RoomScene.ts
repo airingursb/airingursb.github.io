@@ -198,10 +198,39 @@ export class RoomScene extends Phaser.Scene {
       map.addTilesetImage('indoor_lobby_v0', 'indoor_lobby_v0')
     )!
 
-    map.createLayer('floor', tileset, 0, 0)
+    const floorLayer = map.createLayer('floor', tileset, 0, 0)
     const fb = map.createLayer('furniture_below', tileset, 0, 0)
     const above = map.createLayer('furniture_above', tileset, 0, 0)
     above?.setDepth(10)
+
+    // E5-P1b — animate selected tile indices by swapping in-place at intervals.
+    // Animation tables: tileIdx (1-indexed Tiled gid) → array of frames.
+    //   Water tile 8 cycles 8↔41↔45 every 480ms.
+    //   Oak canopy tile 26 cycles 26↔42 every 1200ms (slow rustle).
+    //   Pine canopy tile 28 cycles 28↔43 every 1300ms.
+    //   Palm canopy tile 40 cycles 40↔44 every 1100ms.
+    const ANIMS: Array<{ frames: number[]; ms: number }> = [
+      { frames: [8, 41, 45], ms: 480 },
+      { frames: [26, 42], ms: 1200 },
+      { frames: [28, 43], ms: 1300 },
+      { frames: [40, 44], ms: 1100 }
+    ]
+    const animLayers = [floorLayer, fb, above].filter(Boolean) as Phaser.Tilemaps.TilemapLayer[]
+    for (const a of ANIMS) {
+      let phase = 0
+      this.time.addEvent({
+        delay: a.ms, loop: true,
+        callback: () => {
+          phase = (phase + 1) % a.frames.length
+          const from = a.frames[(phase + a.frames.length - 1) % a.frames.length]
+          const to   = a.frames[phase]
+          if (from === to) return
+          for (const layer of animLayers) {
+            layer.replaceByIndex(from, to)
+          }
+        }
+      })
+    }
 
     // V6.3 — at night (18:00-06:00), draw soft warm glow on light-source tiles.
     // Tile IDs (indoor_lobby_v1):
