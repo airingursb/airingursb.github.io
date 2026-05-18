@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// V6.1 / V6.1.1 — indoor_lobby_v1: 40 tiles, 8 cols × 5 rows.
+// V6.1 / V6.1.1 / E5-P2a — indoor_lobby_v1: 48 tiles, 8 cols × 6 rows.
 // Tile IDs 1-6 stay layout-compatible with v0 (legacy lobby data still works),
 // art is upgraded. IDs 7-32 are new — floor variants, walls with depth, props.
 //
@@ -37,7 +37,7 @@ const OUT = join(ROOT, 'public', 'lounge', 'assets', 'tilesets', 'indoor_lobby_v
 
 const TILE = 16
 const COLS = 8
-const ROWS = 5
+const ROWS = 6
 const W = TILE * COLS
 const H = TILE * ROWS
 
@@ -595,6 +595,103 @@ function tile40_subwoofer(ox, oy) {
   px(ox + 3, oy + 6, '#00ff80'); px(ox + 12, oy + 6, '#ff4080')
 }
 
+// ─── Row 5: E5-P2a extras ─────────────────────────────────────────────
+// 41: flower patch (white/blue) — 3rd flower color
+function tile41_flowerW(ox, oy) {
+  floorBase(ox, oy)
+  const spots = [[4, 5], [10, 4], [6, 10], [12, 11], [3, 12]]
+  for (const [x, y] of spots) {
+    px(ox + x, oy + y, '#a0c8ff')
+    px(ox + x + 1, oy + y, '#ffffff')
+    px(ox + x, oy + y + 1, '#80b0e8')
+    px(ox + x + 1, oy + y + 1, '#a0c0ff')
+  }
+}
+
+// 42: carpet edge S (rug bottom — fringe on bottom)
+function tile42_carpetS(ox, oy) {
+  rect(ox, oy, TILE, TILE - 4, C.carpet_main)
+  floorBase(ox, oy)
+  rect(ox, oy, TILE, TILE - 4, C.carpet_main)
+  for (let x = 0; x < TILE; x += 2) {
+    ctx.fillStyle = C.carpet_gold; ctx.fillRect(ox + x, oy + TILE - 2, 1, 2)
+  }
+  rect(ox, oy + TILE - 4, TILE, 1, C.carpet_dark)
+  rect(ox, oy + TILE - 5, TILE, 1, C.carpet_gold)
+}
+
+// 43: carpet edge W (rug left — fringe on left)
+function tile43_carpetW(ox, oy) {
+  floorBase(ox, oy)
+  rect(ox + 4, oy, TILE - 4, TILE, C.carpet_main)
+  for (let y = 0; y < TILE; y += 2) {
+    ctx.fillStyle = C.carpet_gold; ctx.fillRect(ox + 2, oy + y, 2, 1)
+  }
+  rect(ox + 4, oy, 1, TILE, C.carpet_gold)
+  rect(ox + 5, oy, 1, TILE, C.carpet_dark)
+}
+
+// 44: carpet edge E (rug right — fringe on right)
+function tile44_carpetE(ox, oy) {
+  floorBase(ox, oy)
+  rect(ox, oy, TILE - 4, TILE, C.carpet_main)
+  for (let y = 0; y < TILE; y += 2) {
+    ctx.fillStyle = C.carpet_gold; ctx.fillRect(ox + TILE - 4, oy + y, 2, 1)
+  }
+  rect(ox + TILE - 5, oy, 1, TILE, C.carpet_gold)
+  rect(ox + TILE - 6, oy, 1, TILE, C.carpet_dark)
+}
+
+// 45: wall mirror — frame + reflective glass with hint of room
+function tile45_mirror(ox, oy) {
+  tile2_wall(ox, oy)
+  // frame
+  rect(ox + 3, oy + 2, 10, 12, C.brass_dim)
+  rect(ox + 4, oy + 3, 8, 10, C.brass)
+  // glass
+  rect(ox + 5, oy + 4, 6, 8, '#a0c0e0')
+  // hint of a room in reflection (white blob + dark line)
+  px(ox + 6, oy + 5, '#ffffff'); px(ox + 9, oy + 7, '#ffffff')
+  rect(ox + 6, oy + 10, 4, 1, '#80a0c0')
+}
+
+// 46: chair facing up (back faces viewer)
+function tile46_chairUp(ox, oy) {
+  // back (closer to viewer = bottom)
+  rect(ox + 3, oy + 9, 10, 4, C.wall_main)
+  rect(ox + 4, oy + 10, 8, 2, C.wall_hl)
+  // seat
+  rect(ox + 3, oy + 3, 10, 7, C.wood_main)
+  rect(ox + 4, oy + 4, 8, 5, C.cream)
+  // legs (just the front 2 visible)
+  px(ox + 3, oy + 13, C.wall_dark); px(ox + 3, oy + 14, C.wall_dark)
+  px(ox + 12, oy + 13, C.wall_dark); px(ox + 12, oy + 14, C.wall_dark)
+}
+
+// 47: small armchair (cushy, single seat)
+function tile47_armchair(ox, oy) {
+  // arms (left + right)
+  rect(ox + 1, oy + 5, 3, 10, '#7a4060')
+  rect(ox + 12, oy + 5, 3, 10, '#7a4060')
+  // back
+  rect(ox + 3, oy + 3, 10, 6, '#8a5070')
+  // seat cushion
+  rect(ox + 3, oy + 9, 10, 5, '#a07088')
+  rect(ox + 4, oy + 10, 8, 3, '#c090a8')
+  // base
+  rect(ox + 1, oy + 14, 14, 2, C.wood_dark)
+}
+
+// 48: small round table (1×1)
+function tile48_smallTable(ox, oy) {
+  // table top (round)
+  ctx.fillStyle = C.wood_dark; ctx.beginPath(); ctx.arc(ox + 8, oy + 6, 6, 0, Math.PI * 2); ctx.fill()
+  ctx.fillStyle = C.wood_main; ctx.beginPath(); ctx.arc(ox + 8, oy + 6, 5, 0, Math.PI * 2); ctx.fill()
+  // pedestal
+  rect(ox + 7, oy + 10, 2, 4, C.wood_dark)
+  rect(ox + 5, oy + 14, 6, 1, C.wood_dark)
+}
+
 // Render — in tile order
 const renderers = [
   tile1_floorA, tile2_wall, tile3_door, tile4_table, tile5_chair, tile6_plant,
@@ -606,7 +703,9 @@ const renderers = [
   tile25_sofaLeft, tile26_sofaCenter, tile27_sofaRight, tile28_chairSideL,
   tile29_chairSideR, tile30_rugCenter, tile31_vase, tile32_beam,
   tile33_speaker, tile34_turntable, tile35_floorA, tile36_floorB,
-  tile37_discoball, tile38_strobe, tile39_neonDJ, tile40_subwoofer
+  tile37_discoball, tile38_strobe, tile39_neonDJ, tile40_subwoofer,
+  tile41_flowerW, tile42_carpetS, tile43_carpetW, tile44_carpetE,
+  tile45_mirror, tile46_chairUp, tile47_armchair, tile48_smallTable
 ]
 for (let i = 0; i < renderers.length; i++) {
   const [ox, oy] = tileXY(i)
@@ -620,7 +719,7 @@ const meta = {
   schema_version: 1,
   name: 'indoor_lobby_v1',
   tile_width: TILE, tile_height: TILE,
-  tile_count: 40, columns: COLS,
+  tile_count: 48, columns: COLS,
   image: 'tiles.png', image_width: W, image_height: H,
   tiles: [
     { id: 0, kind: 'floor' },
@@ -647,7 +746,12 @@ const meta = {
     { id: 32, kind: 'furniture', collision: true }, { id: 33, kind: 'furniture', collision: true },
     { id: 34, kind: 'floor' }, { id: 35, kind: 'floor' },
     { id: 36, kind: 'decor' }, { id: 37, kind: 'wall', collision: true },
-    { id: 38, kind: 'wall', collision: true }, { id: 39, kind: 'furniture', collision: true }
+    { id: 38, kind: 'wall', collision: true }, { id: 39, kind: 'furniture', collision: true },
+    // E5-P2a — additions: 3rd flower, full carpet edges, mirror, more furniture
+    { id: 40, kind: 'floor' }, { id: 41, kind: 'floor' },
+    { id: 42, kind: 'floor' }, { id: 43, kind: 'floor' },
+    { id: 44, kind: 'decor' }, { id: 45, kind: 'furniture', collision: true },
+    { id: 46, kind: 'furniture', collision: true }, { id: 47, kind: 'furniture', collision: true }
   ]
 }
 writeFileSync(join(OUT, 'tiles.json'), JSON.stringify(meta, null, 2))
