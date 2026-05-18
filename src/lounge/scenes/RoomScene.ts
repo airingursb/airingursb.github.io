@@ -444,7 +444,12 @@ export class RoomScene extends Phaser.Scene {
     this.mapInfo = { widthPx: map.widthInPixels, heightPx: map.heightInPixels, collisionRects }
 
     const portalsLayer = map.getObjectLayer('portals')
-    this.portals = (portalsLayer?.objects ?? []).map((o) => {
+    // V12.8-review C1 fix: party rooms reuse the lobby TMJ, but the lobby's
+    // portal objects would teleport party players right back out (to library,
+    // beach, etc.). A party room is an ephemeral 4h hangout, not a hub —
+    // skip portals entirely so the room is a sealed space.
+    const portalObjects = isPartyRoom ? [] : (portalsLayer?.objects ?? [])
+    this.portals = portalObjects.map((o) => {
       const props = (o.properties ?? []) as Array<{ name: string; value: unknown }>
       const get = (name: string) => props.find((p) => p.name === name)?.value
       let targetRoom = get('target_room') as RoomId
@@ -1051,13 +1056,15 @@ export class RoomScene extends Phaser.Scene {
       if (cut) this.runCutscene(cut)
     })
 
-    // Drain cached welcome (set by applyWelcome before this scene was restarted)
+    // V12.8-review I5 fix: keep welcomeCache populated across scene restarts.
+    // The earlier impl nulled it after the first restart, so a second home/
+    // party transition booted a scene with empty friendships / decorations /
+    // gifts → friend-home decorations never rendered, peer hearts blank.
+    // welcomeCache only clears on full WS disconnect (handled in net.ts via
+    // setProgressToken(null), unrelated to scene lifecycle).
     if (welcomeCache) {
-      const cached = welcomeCache
-      welcomeCache = null
-      // Re-apply non-spawn parts of welcome on this scene (already-spawned bear etc.)
       this.welcomeApplied = false
-      this.applyWelcome(cached)
+      this.applyWelcome(welcomeCache)
     }
   }
 
