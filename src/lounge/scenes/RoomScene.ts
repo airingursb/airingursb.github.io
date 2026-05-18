@@ -167,6 +167,8 @@ export class RoomScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('room_bedroom_cole',  '/lounge/assets/rooms/bedroom_cole.tmj')
     this.load.tilemapTiledJSON('room_bedroom_wren',  '/lounge/assets/rooms/bedroom_wren.tmj')
     this.load.tilemapTiledJSON('room_bedroom_dane',  '/lounge/assets/rooms/bedroom_dane.tmj')
+    this.load.tilemapTiledJSON('room_bedroom_iris',  '/lounge/assets/rooms/bedroom_iris.tmj')
+    this.load.tilemapTiledJSON('room_bedroom_mox',   '/lounge/assets/rooms/bedroom_mox.tmj')
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
     this.load.image('indoor_lobby_v1', '/lounge/assets/tilesets/indoor_lobby_v1/tiles.png')
     this.load.image('outdoor_beach_v0', '/lounge/assets/tilesets/outdoor_beach_v0/tiles.png')
@@ -809,7 +811,8 @@ export class RoomScene extends Phaser.Scene {
         room_bedroom_mio: "Mio's room", room_bedroom_halle: "Halle's room",
         room_bedroom_sora: "Sora's room", room_bedroom_theo: "Theo's room",
         room_bedroom_marin: "Marin's room", room_bedroom_cole: "Cole's room",
-        room_bedroom_wren: "Wren's room", room_bedroom_dane: "Dane's room"
+        room_bedroom_wren: "Wren's room", room_bedroom_dane: "Dane's room",
+        room_bedroom_iris: "Iris's room", room_bedroom_mox: "Mox's room"
       }
       const now = getGameNow()
       const minutes = now.getHours() * 60 + now.getMinutes()

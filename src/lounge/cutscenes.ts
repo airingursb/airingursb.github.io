@@ -474,6 +474,65 @@ export const CUTSCENES: CutsceneDef[] = [
     { type: 'say', npc_id: 'npc_dane', text: "Track switching now. This one — I dance this one only with people I trust.", duration_ms: 3600 },
     { type: 'shake', duration_ms: 400, intensity: 0.006 },
     { type: 'say', npc_id: 'npc_dane', text: "Floor's empty. Just you and me. Come on.", duration_ms: 3000 }
+  ]},
+
+  // ─── V11.5 — Iris (grove florist) heart arc (2/4/6/8/10) ──────────
+  { id: 'iris_h2',  trigger: { room: 'room_grove', heart_npc_id: 'npc_iris', heart_min: 2 }, steps: [
+    { type: 'wait', ms: 600 },
+    { type: 'say', npc_id: 'npc_iris', text: "Hey — I saved you a packet of cosmos seeds. Easy starter.", duration_ms: 3000 },
+    { type: 'say', npc_id: 'npc_iris', text: "Plant them anywhere with light. They forgive a lot.", duration_ms: 3000 }
+  ]},
+  { id: 'iris_h4',  trigger: { room: 'room_grove', heart_npc_id: 'npc_iris', heart_min: 4 }, steps: [
+    { type: 'wait', ms: 600 },
+    { type: 'say', npc_id: 'npc_iris', text: "I grew up in a flower stall. My mother named me after the first iris to open each spring.", duration_ms: 3600 },
+    { type: 'say', npc_id: 'npc_iris', text: "I miss her. Plants help me remember her without it hurting.", duration_ms: 3400 }
+  ]},
+  { id: 'iris_h6',  trigger: { room: 'room_grove', heart_npc_id: 'npc_iris', heart_min: 6 }, steps: [
+    { type: 'wait', ms: 600 },
+    { type: 'say', npc_id: 'npc_iris', text: "Lost the camellia bed to frost last month. Spent two days replanting and one day crying.", duration_ms: 3800 },
+    { type: 'say', npc_id: 'npc_iris', text: "You stopped by with tea. I haven't forgotten.", duration_ms: 3000 }
+  ]},
+  { id: 'iris_h8',  trigger: { room: 'room_grove', heart_npc_id: 'npc_iris', heart_min: 8 }, steps: [
+    { type: 'wait', ms: 700 },
+    { type: 'say', npc_id: 'npc_iris', text: "I'm starting a small nursery next spring. Real plot, real customers.", duration_ms: 3200 },
+    { type: 'say', npc_id: 'npc_iris', text: "First bouquet of opening day — that one's yours. No charge, ever.", duration_ms: 3400 }
+  ]},
+  { id: 'iris_h10', trigger: { room: 'room_grove', heart_npc_id: 'npc_iris', heart_min: 10 }, steps: [
+    { type: 'wait', ms: 800 },
+    { type: 'say', npc_id: 'npc_iris', text: "Walk with me to the back of the grove.", duration_ms: 2400 },
+    { type: 'camera_pan', x: 280, y: 200, duration_ms: 1800 },
+    { type: 'say', npc_id: 'npc_iris', text: "The blue iris hybrid I named after you — it bloomed last night. First one.", duration_ms: 3600 },
+    { type: 'say', npc_id: 'npc_iris', text: "It opens at dusk and closes at dawn. Like a quiet kept promise.", duration_ms: 3600 }
+  ]},
+
+  // ─── V11.5 — Mox (workshop mechanic) heart arc ────────────────────
+  { id: 'mox_h2',  trigger: { room: 'room_workshop', heart_npc_id: 'npc_mox', heart_min: 2 }, steps: [
+    { type: 'wait', ms: 600 },
+    { type: 'say', npc_id: 'npc_mox', text: "Fixed your headphones. They were never broken — wrong impedance.", duration_ms: 3000 },
+    { type: 'say', npc_id: 'npc_mox', text: "Don't thank me. Bring me coffee instead.", duration_ms: 2400 }
+  ]},
+  { id: 'mox_h4',  trigger: { room: 'room_workshop', heart_npc_id: 'npc_mox', heart_min: 4 }, steps: [
+    { type: 'wait', ms: 600 },
+    { type: 'say', npc_id: 'npc_mox', text: "First thing I ever built was a doorbell. I was nine. It zapped me twice.", duration_ms: 3400 },
+    { type: 'say', npc_id: 'npc_mox', text: "Been fixing things since. It's the only way I think clearly.", duration_ms: 3200 }
+  ]},
+  { id: 'mox_h6',  trigger: { room: 'room_workshop', heart_npc_id: 'npc_mox', heart_min: 6 }, steps: [
+    { type: 'wait', ms: 600 },
+    { type: 'say', npc_id: 'npc_mox', text: "Old job paid better. Quit two years back. Couldn't stand making things meant to break.", duration_ms: 3800 },
+    { type: 'say', npc_id: 'npc_mox', text: "Lounge pays in coffee and conversation. I'm okay with the trade.", duration_ms: 3400 }
+  ]},
+  { id: 'mox_h8',  trigger: { room: 'room_workshop', heart_npc_id: 'npc_mox', heart_min: 8 }, steps: [
+    { type: 'wait', ms: 700 },
+    { type: 'say', npc_id: 'npc_mox', text: "Working on a music box. Plays a melody nobody's heard.", duration_ms: 3000 },
+    { type: 'say', npc_id: 'npc_mox', text: "When it's done I want you to hear it first.", duration_ms: 2800 }
+  ]},
+  { id: 'mox_h10', trigger: { room: 'room_workshop', heart_npc_id: 'npc_mox', heart_min: 10 }, steps: [
+    { type: 'wait', ms: 800 },
+    { type: 'say', npc_id: 'npc_mox', text: "Sit on the workbench. Close your eyes.", duration_ms: 2600 },
+    { type: 'wait', ms: 1200 },
+    { type: 'say', npc_id: 'npc_mox', text: "The music box. I tuned it to your name's vowels.", duration_ms: 3200 },
+    { type: 'shake', duration_ms: 300, intensity: 0.004 },
+    { type: 'say', npc_id: 'npc_mox', text: "It plays once a year, on the day you first walked in here. Today.", duration_ms: 3600 }
   ]}
 ]
 
