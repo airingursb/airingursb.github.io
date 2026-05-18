@@ -24,6 +24,7 @@ import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble
 import { recordEvent as recordAchievement, onAchievementUnlocked } from '../achievements'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 import { getEquippedTool, captureMemory } from '../memories'
+import { savePhoto } from '../photos'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased, decoStorageKey } from '../shells'
 import { awardXp, onLevelUp, walkSpeedMultiplier, bonusInventorySlots, SKILLS, type SkillId } from '../skills'
 import { getActiveSpots, markPicked, addMaterial, removeMaterial as removeMaterialFn, getMaterial, MATERIALS, type MaterialId, type Spot as ResourceSpot } from '../resources'
@@ -2485,7 +2486,31 @@ export class RoomScene extends Phaser.Scene {
       visiblePeers: peers.map((_, i) => `peer_${i}`),
       weather: weather === 'clear' ? undefined : weather
     })
-    // White flash overlay
+    // V10.5 — capture pixels from the live WebGL framebuffer BEFORE adding
+    // the flash overlay. Snapshot is async-deferred to the next render, so
+    // we defer the flash add until the snapshot callback fires.
+    let snapshotPending = true
+    try {
+      const renderer = this.game.renderer as Phaser.Renderer.WebGL.WebGLRenderer | Phaser.Renderer.Canvas.CanvasRenderer
+      renderer.snapshot((image) => {
+        snapshotPending = false
+        if (image instanceof HTMLImageElement) {
+          const c = document.createElement('canvas')
+          c.width = image.naturalWidth; c.height = image.naturalHeight
+          c.getContext('2d')!.drawImage(image, 0, 0)
+          savePhoto({ roomLabel, dataUrl: c.toDataURL('image/png'), width: c.width, height: c.height })
+        }
+        this.addCameraFlash()
+      })
+    } catch { snapshotPending = false }
+    if (!snapshotPending) this.addCameraFlash()
+    consumeEnergy(ENERGY_COST.tool_use)
+    showToast('📷 Memory captured', 1600)
+    awardXp('memory_making', 3)  // V9.0
+  }
+
+  // V10.5 helper — white camera-shutter flash overlay
+  private addCameraFlash() {
     const flash = this.add.rectangle(0, 0, this.cameras.main.width, this.cameras.main.height, 0xffffff, 0.85)
       .setOrigin(0).setDepth(1500).setScrollFactor(0)
     this.tweens.add({
@@ -2493,9 +2518,6 @@ export class RoomScene extends Phaser.Scene {
       duration: 350,
       onComplete: () => flash.destroy()
     })
-    consumeEnergy(ENERGY_COST.tool_use)
-    showToast('📷 Memory captured', 1600)
-    awardXp('memory_making', 3)  // V9.0
   }
 
   // V7.7 — Sequential cutscene runner.
