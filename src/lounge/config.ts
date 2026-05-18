@@ -115,7 +115,7 @@ export function prefersReducedMotion(): boolean {
 // Multi-room / protocol v=3 (V3.0 — adds persistence: welcome/name/name_changed/replaced)
 export const PROTOCOL_VERSION = 3
 
-export const STATIC_ROOMS = ['room_lobby', 'room_dj_floor', 'room_balcony', 'room_library', 'room_beach', 'room_grove', 'room_kitchen', 'room_workshop', 'room_rooftop', 'room_bedroom_mio', 'room_bedroom_halle', 'room_bedroom_sora', 'room_bedroom_theo'] as const
+export const STATIC_ROOMS = ['room_lobby', 'room_dj_floor', 'room_balcony', 'room_library', 'room_beach', 'room_grove', 'room_kitchen', 'room_workshop', 'room_rooftop', 'room_bedroom_mio', 'room_bedroom_halle', 'room_bedroom_sora', 'room_bedroom_theo', 'room_bedroom_marin', 'room_bedroom_cole', 'room_bedroom_wren', 'room_bedroom_dane'] as const
 export type StaticRoomId = typeof STATIC_ROOMS[number]
 // Home rooms have dynamic ids like 'room_home_<8hex>'.
 export type RoomId = StaticRoomId | `room_home_${string}`

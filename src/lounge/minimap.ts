@@ -61,6 +61,13 @@ function mapKeyFor(roomId: string): string {
 }
 
 function labelFor(roomId: string): string {
+  // V10.0 — NPC bedrooms aren't on the world map (they're personal), but
+  // the minimap title bar still needs a readable name when you're inside one.
+  const bedroom = /^room_bedroom_([a-z]+)$/.exec(roomId)
+  if (bedroom) {
+    const name = bedroom[1].charAt(0).toUpperCase() + bedroom[1].slice(1)
+    return `${name}'s room`
+  }
   const key = mapKeyFor(roomId)
   return ROOM_BY_ID.get(key)?.label ?? roomId
 }
