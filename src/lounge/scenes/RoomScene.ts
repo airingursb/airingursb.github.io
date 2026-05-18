@@ -195,6 +195,12 @@ export class RoomScene extends Phaser.Scene {
     this.pendingSpawn = (typeof data?.welcomeX === 'number' && typeof data?.welcomeY === 'number')
       ? { x: data.welcomeX, y: data.welcomeY } : null
     this.welcomeApplied = false
+    // CRITICAL: Phaser reuses the scene instance across restart(); class
+    // field initializers only run in the constructor (once). Without this
+    // reset, `transitioning` stays true after the first portal transition
+    // and every subsequent portal early-returns in checkPortals/enterPortal,
+    // breaking all doors in every room after the first.
+    this.transitioning = false
   }
 
   preload() {
@@ -992,6 +998,13 @@ export class RoomScene extends Phaser.Scene {
           showSpeciesPicker(async (s) => {
             const { setMySpecies } = await import('../config')
             setMySpecies(s)
+            // CRITICAL: species atlases are lazy-loaded. Without
+            // ensureSpeciesLoaded, setSpecies falls back to the default
+            // 'bear_${region}' texture (see Bear.setSpecies in bear.ts) so
+            // the player sees a bear regardless of what they picked. The
+            // peer-side species change path already awaits this — the
+            // first-visit picker was the only spot missing it.
+            await this.ensureSpeciesLoaded(s)
             this.myBear?.setSpecies(s)
             updateSpeciesButtonLabel(s)
             const { sendSpecies } = await import('../net')
@@ -1290,8 +1303,13 @@ export class RoomScene extends Phaser.Scene {
     if (m.species && m.species !== getMySpecies() && !recentToggle) {
       const s = m.species as 'bear' | 'cat' | 'fox' | 'capybara' | 'bird'
       import('../config').then(({ setMySpecies }) => setMySpecies(s))
-      this.myBear?.setSpecies(s)
-      updateSpeciesButtonLabel(s)
+      // Same lazy-load gotcha as the species picker: setSpecies silently
+      // falls back to bear when the atlas isn't cached, so we have to
+      // await the atlas before applying.
+      this.ensureSpeciesLoaded(s).then(() => {
+        this.myBear?.setSpecies(s)
+        updateSpeciesButtonLabel(s)
+      })
     }
 
     // Stash welcome data on a module-level cache so the post-restart scene can read it.
