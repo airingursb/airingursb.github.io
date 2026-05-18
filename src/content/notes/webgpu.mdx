@@ -1,0 +1,58 @@
+---
+title: "一次 dispatch 的八重翻译 — WebGPU 全栈源码深读"
+date: "2026-05-18"
+tags: [WebGPU, GPU, 图形, WGSL, Dawn, wgpu, 系统]
+public: true
+summary: 一行 pass.dispatchWorkgroups() 到 GPU 之间要被翻译八次——JS → Blink WebIDL → Renderer Wire → Mojo IPC → Dawn 验证 → Tint(WGSL→SPIR-V/MSL/HLSL) → Metal/D3D12/Vulkan → 驱动 ISA。25 章纵向切开 WebGPU 全栈，Dawn + wgpu 双栈对照，真源码 · 真延迟 · 一个 compute matmul 作主线。
+immersive:
+  url: /immersive/webgpu/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/webgpu/)
+
+这是 Field Note 系列的第九篇，姐妹篇有 [《一行 JS 的一生 · QuickJS 源码详解》](/immersive/quickjs/)（一个引擎全栈）、[《V8 是怎么把 JS 跑快的》](/immersive/v8-fast-js/)（多层 JIT）、以及 [《一段内存的多重死亡 · 11 个 GC 家族的家谱》](/immersive/gc/)（横向跨语言）。本篇<em>纵向</em>切开一个全栈——从一行 JS API 走到一条 GPU 指令。
+
+### 主线：1M 浮点平方 · 40 行 JS · 8 层翻译
+
+```js
+const buf = device.createBuffer({ size: 4 * 1048576, usage: STORAGE | COPY_DST });
+const shader = device.createShaderModule({ code: `
+  @group(0) @binding(0) var<storage, read_write> data: array<f32>;
+  @compute @workgroup_size(64)
+  fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    data[gid.x] = data[gid.x] * data[gid.x];
+  }`});
+pass.dispatchWorkgroups(16384);   // ⭐ 这一行要被翻译 8 次
+```
+
+这一行 `dispatchWorkgroups` 在到达 GPU 核之前的旅程：
+
+- **① JS → WebIDL**（Blink） · &lt;1 µs
+- **② Wire 序列化**（Dawn Wire client） · ~5 µs
+- **③ Mojo IPC**（Renderer → GPU process） · ~30 µs
+- **④ Dawn 验证 + state tracking** · ~10 µs
+- **⑤ Tint 编译**（WGSL → MSL/HLSL/SPIR-V） · ~5 ms（首次） · 缓存后 0
+- **⑥ 原生 API 调用**（Metal/D3D12/Vulkan） · ~20 µs
+- **⑦ 驱动编译**（→ GPU ISA） · ~10 ms（首次） · 缓存后 0
+- **⑧ GPU 命令处理器 dispatch** · ~200 µs
+
+总计：暖缓存 ~450 µs / 冷缓存首次 ~15 ms。
+
+### 25 章 · 7 部分
+
+- **I · 背景**（5 章）：五个公式、十二年家谱、为什么不直接 Vulkan、设计哲学、三栈全景
+- **II · 主线**：一个 compute 工作流
+- **III · API 表面**（5 章）：Adapter & Device · Buffer/映射/生命周期 · WGSL · Pipeline & BindGroup · Encoder & Queue
+- **IV · 跨进程**（3 章）：Renderer ↔ GPU process IPC · Validation/错误域 · 设备丢失与恢复
+- **V · 编译链**（4 章）：Tint（Dawn 前端）· Naga（wgpu 前端）· SPIR-V/MSL/HLSL 三后端 · Metal/D3D12/Vulkan 原生映射
+- **VI · 计算 & AI**（4 章）：Workgroup/Subgroup · matmul 优化 · transformers.js · FP16/atomics/timestamps
+- **VII · 综合**（4 章）：vs WebGL/WebCL 6 轴矩阵 · 生产故事簿 · 限制/指纹/安全 · 之后
+
+### 真源码 · 真栈
+
+- **Dawn**（Chrome，C++）：`src/dawn/native/` 验证 · `src/tint/lang/wgsl/` 编译
+- **wgpu**（Firefox + Deno + Bevy + Servo，Rust）：`wgpu-core/` · `naga/src/back/`
+- **WebKit**（Safari）：自家 WGSL→MSL（不是 Tint 也不是 Naga）
+
+> "WebGPU 不是 Vulkan-lite，而是另一个<em>设计点</em>——在不可信代码（JS）里安全暴露 GPU。同样的硬件，两种使用人群，两种 API 形状。"

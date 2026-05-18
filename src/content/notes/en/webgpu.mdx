@@ -1,0 +1,58 @@
+---
+title: "Eight Translations of One Dispatch — A WebGPU Stack Source-Level Walkthrough"
+date: "2026-05-18"
+tags: [WebGPU, GPU, Graphics, WGSL, Dawn, wgpu, Systems]
+public: true
+summary: One `pass.dispatchWorkgroups()` call traverses eight translations before it reaches GPU silicon — JS → Blink WebIDL → Renderer Wire → Mojo IPC → Dawn validation → Tint(WGSL→SPIR-V/MSL/HLSL) → Metal/D3D12/Vulkan → driver ISA. A 25-chapter vertical dissection of the full WebGPU stack — Dawn + wgpu side by side, real source, real latencies, threaded by a compute matmul.
+immersive:
+  url: /immersive/webgpu/
+  label: Immersive
+---
+
+> This is an immersive long-form essay — best read in its dedicated layout → [Open the full version](/immersive/webgpu/)
+
+The ninth piece in the **Field Note** series, siblings to «[The Life of One JS Line · QuickJS Source-Level Walkthrough](/immersive/quickjs/)» (one engine, full stack), «[How V8 makes JS fast](/immersive/v8-fast-js/)» (multi-tier JIT), and «[Many Ways to Die · 11 GC Families](/immersive/gc/)» (cross-language GC). This one cuts *vertically* through a full stack — from one JS API call down to one GPU instruction.
+
+### Main line: 1M floats squared · 40 lines of JS · 8 translations
+
+```js
+const buf = device.createBuffer({ size: 4 * 1048576, usage: STORAGE | COPY_DST });
+const shader = device.createShaderModule({ code: `
+  @group(0) @binding(0) var<storage, read_write> data: array<f32>;
+  @compute @workgroup_size(64)
+  fn main(@builtin(global_invocation_id) gid: vec3<u32>) {
+    data[gid.x] = data[gid.x] * data[gid.x];
+  }`});
+pass.dispatchWorkgroups(16384);   // ⭐ this one line is translated 8 times
+```
+
+The journey of that one `dispatchWorkgroups` before it reaches a GPU core:
+
+- **① JS → WebIDL** (Blink) · &lt;1 µs
+- **② Wire serialisation** (Dawn Wire client) · ~5 µs
+- **③ Mojo IPC** (Renderer → GPU process) · ~30 µs
+- **④ Dawn validation + state tracking** · ~10 µs
+- **⑤ Tint compile** (WGSL → MSL/HLSL/SPIR-V) · ~5 ms first · 0 cached
+- **⑥ Native API call** (Metal/D3D12/Vulkan) · ~20 µs
+- **⑦ Driver compile** (→ GPU ISA) · ~10 ms first · 0 cached
+- **⑧ GPU CP dispatches** · ~200 µs
+
+Total: ~450 µs warm / ~15 ms cold first-time.
+
+### 25 chapters · 7 parts
+
+- **I · Background** (5 ch): five formulas · 12-year family tree · why not Vulkan · design philosophy · three-stack atlas
+- **II · Main line**: one compute workflow
+- **III · API surface** (5 ch): Adapter & Device · Buffers/mapping/lifetimes · WGSL · Pipeline & BindGroup · Encoder & Queue
+- **IV · Cross-process** (3 ch): Renderer ↔ GPU process IPC · Validation/error scopes · Device loss & recovery
+- **V · Compiler chain** (4 ch): Tint (Dawn frontend) · Naga (wgpu frontend) · SPIR-V/MSL/HLSL three backends · Metal/D3D12/Vulkan native call mapping
+- **VI · Compute & AI** (4 ch): Workgroup/Subgroup · matmul optimisation · transformers.js · FP16/atomics/timestamps
+- **VII · Synthesis** (4 ch): vs WebGL/WebCL 6-axis matrix · production stories · limits/fingerprinting/security · what's next
+
+### Real source · real stacks
+
+- **Dawn** (Chrome, C++): `src/dawn/native/` validation · `src/tint/lang/wgsl/` compiler
+- **wgpu** (Firefox + Deno + Bevy + Servo, Rust): `wgpu-core/` · `naga/src/back/`
+- **WebKit** (Safari): in-house WGSL→MSL (neither Tint nor Naga)
+
+> "WebGPU isn't Vulkan-lite — it's a different *design point*. Safely exposing the GPU to untrusted code (JS). Same hardware, two audiences, two API shapes."
