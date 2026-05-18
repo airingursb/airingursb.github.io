@@ -847,6 +847,15 @@ export class RoomScene extends Phaser.Scene {
           if (p.pet_species && ['kitten','puppy','bunny'].includes(p.pet_species)) {
             this.spawnPeerPet(p.id, p.pet_species as any, p.pet_name ?? '', p.x - 18, p.y, ccToRegion(p.cc))
           }
+          // V17.0 — cache profile fields the snap carries (server adds them on snap)
+          const anyP = p as any
+          if (p.visitor_id) {
+            void import('../profile').then(prof => prof.cachePeerProfile(p.visitor_id!, {
+              bio: anyP.bio ?? null, status: anyP.status ?? null,
+              mood: anyP.mood ?? null,
+              pinned_achievements: Array.isArray(anyP.pinned_achievements) ? anyP.pinned_achievements : []
+            }))
+          }
         }
       },
       onJoin: (m: JoinMsg) => {
@@ -873,6 +882,15 @@ export class RoomScene extends Phaser.Scene {
         this.peers.set(m.id, { bear, lastUpdate: performance.now() })
         if (species !== 'bear') {
           this.ensureSpeciesLoaded(species).then(() => bear.setSpecies(species))
+        }
+        // V17.0 — cache profile fields the join carries
+        const anyM = m as any
+        if (m.visitor_id) {
+          void import('../profile').then(prof => prof.cachePeerProfile(m.visitor_id!, {
+            bio: anyM.bio ?? null, status: anyM.status ?? null,
+            mood: anyM.mood ?? null,
+            pinned_achievements: Array.isArray(anyM.pinned_achievements) ? anyM.pinned_achievements : []
+          }))
         }
         // V10.8c — peer pet relay
         if (m.pet_species && ['kitten','puppy','bunny'].includes(m.pet_species)) {
@@ -920,6 +938,14 @@ export class RoomScene extends Phaser.Scene {
         this.ensureSpeciesLoaded(m.species as any).then(() => {
           peer.bear.setSpecies(m.species as any)
         })
+      },
+      // V17.0 — cache peer profile updates (V17.2 card reads from cache)
+      onProfileChanged: (m) => {
+        const vid = this.peerVisitorIds.get(m.id) ?? null
+        void import('../profile').then(p => p.cachePeerProfile(vid, {
+          bio: m.bio, status: m.status, mood: m.mood,
+          pinned_achievements: m.pinned_achievements
+        }))
       },
       onReplaced: () => {
         showReplacedOverlay()
@@ -1315,6 +1341,10 @@ export class RoomScene extends Phaser.Scene {
         updateSpeciesButtonLabel(s)
       })
     }
+
+    // V17.0 — hydrate local profile from server's canonical values so a new
+    // device picks up bio/status/mood/pinned set elsewhere.
+    import('../profile').then(p => p.applyWelcomeProfile(m))
 
     // Stash welcome data on a module-level cache so the post-restart scene can read it.
     welcomeCache = m

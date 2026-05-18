@@ -58,6 +58,12 @@ export function initUI() {
   infoIdEl = document.getElementById('lounge-info-id')
   infoRenameBtn = document.getElementById('lounge-info-rename') as HTMLButtonElement | null
   infoSpeciesBtn = document.getElementById('lounge-info-species') as HTMLButtonElement | null
+  // V17.0 — bio/status editor button (lazy-bound below in ensureRefs body)
+  const infoProfileBtn = document.getElementById('lounge-info-profile') as HTMLButtonElement | null
+  infoProfileBtn?.addEventListener('click', () => {
+    hideInfoPanel()
+    showProfileEditor()
+  })
   nameModalEl = document.getElementById('lounge-name-modal')
   nameInputEl = document.getElementById('lounge-name-input') as HTMLInputElement | null
   nameErrorEl = document.getElementById('lounge-name-error')
@@ -904,6 +910,64 @@ function ensureSpRefs() {
     })
   }
 }
+// V17.0 — Profile editor (bio + status). Lazy module-init so the panel
+// only binds listeners once the DOM exists (avoids SSR-time errors).
+import { getBio, getStatus, setBio, setStatus, BIO_MAX_LEN, STATUS_MAX_LEN } from './profile'
+import { sendProfile } from './net'
+let peEl: HTMLElement | null = null
+let peBioInput: HTMLTextAreaElement | null = null
+let peStatusInput: HTMLInputElement | null = null
+let peBioCount: HTMLElement | null = null
+let peStatusCount: HTMLElement | null = null
+
+function ensurePeRefs() {
+  if (peEl) return
+  peEl = document.getElementById('lounge-profile-edit')
+  peBioInput = document.getElementById('lounge-profile-bio') as HTMLTextAreaElement | null
+  peStatusInput = document.getElementById('lounge-profile-status') as HTMLInputElement | null
+  peBioCount = document.getElementById('lounge-profile-bio-count')
+  peStatusCount = document.getElementById('lounge-profile-status-count')
+  const saveBtn = document.getElementById('lounge-profile-save')
+  const cancelBtn = document.getElementById('lounge-profile-cancel')
+  if (!peEl) return
+  const updateCounts = () => {
+    if (peBioCount && peBioInput) peBioCount.textContent = `${peBioInput.value.length} / ${BIO_MAX_LEN}`
+    if (peStatusCount && peStatusInput) peStatusCount.textContent = `${peStatusInput.value.length} / ${STATUS_MAX_LEN}`
+  }
+  peBioInput?.addEventListener('input', updateCounts)
+  peStatusInput?.addEventListener('input', updateCounts)
+  saveBtn?.addEventListener('click', () => {
+    const bio = peBioInput?.value?.trim() ?? ''
+    const status = peStatusInput?.value?.trim() ?? ''
+    setBio(bio)
+    setStatus(status)
+    // Server treats empty string as clear → null
+    sendProfile({ bio, status })
+    hideProfileEditor()
+    showToast('✍️ Profile saved.', 1800)
+  })
+  cancelBtn?.addEventListener('click', () => hideProfileEditor())
+  // Click outside the card dismisses
+  peEl.addEventListener('click', (e) => {
+    if (e.target === peEl) hideProfileEditor()
+  })
+}
+export function showProfileEditor() {
+  ensurePeRefs()
+  if (!peEl) return
+  // Load current values
+  if (peBioInput) peBioInput.value = getBio()
+  if (peStatusInput) peStatusInput.value = getStatus()
+  if (peBioCount && peBioInput) peBioCount.textContent = `${peBioInput.value.length} / ${BIO_MAX_LEN}`
+  if (peStatusCount && peStatusInput) peStatusCount.textContent = `${peStatusInput.value.length} / ${STATUS_MAX_LEN}`
+  peEl.hidden = false
+  peStatusInput?.focus()
+}
+export function hideProfileEditor() {
+  ensurePeRefs()
+  if (peEl) peEl.hidden = true
+}
+
 export function showSpeciesPicker(onPick: (s: Species) => void) {
   ensureSpRefs()
   if (!spPickerEl) return

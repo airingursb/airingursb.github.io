@@ -8,6 +8,14 @@ export type SnapMsg = {
 }
 export type JoinMsg = { v: number; t: 'join'; id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null; species?: string; pet_species?: string | null; pet_name?: string | null }
 export type SpeciesChangedMsg = { v: number; t: 'species_changed'; id: string; species: string }
+// V17.0 — server broadcasts when a peer changes bio/status/mood/pinned
+export type ProfileChangedMsg = {
+  v: number; t: 'profile_changed'; id: string
+  bio: string | null
+  status: string | null
+  mood: string | null
+  pinned_achievements: string[]
+}
 export type LeaveMsg = { v: number; t: 'leave'; id: string; room: RoomId }
 export type PosMsg = { v: number; t: 'pos'; id: string; x: number; y: number; vx?: number; vy?: number; state: string; room: RoomId }
 export type ActMsg = { v: number; t: 'act'; id: string; verb: string; text?: string; room: RoomId }
@@ -94,6 +102,7 @@ export type NetCallbacks = {
   onWelcome?: (m: WelcomeMsg) => void
   onNameChanged?: (m: NameChangedMsg) => void
   onSpeciesChanged?: (m: SpeciesChangedMsg) => void
+  onProfileChanged?: (m: ProfileChangedMsg) => void
   onReplaced?: () => void
   onError?: (m: ErrorMsg) => void
   onCollected?: (m: CollectedMsg) => void
@@ -192,6 +201,7 @@ function openSocket() {
     else if (msg.t === 'welcome') cb?.onWelcome?.(msg)
     else if (msg.t === 'name_changed') cb?.onNameChanged?.(msg)
     else if (msg.t === 'species_changed') cb?.onSpeciesChanged?.(msg)
+    else if (msg.t === 'profile_changed') cb?.onProfileChanged?.(msg)
     else if (msg.t === 'replaced') {
       replaced = true
       cb?.onReplaced?.()
@@ -293,6 +303,20 @@ export function sendName(name: string) {
 export function sendSpecies(species: string) {
   if (!ws || ws.readyState !== 1) return
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'species', species }))
+}
+
+// V17.0 — push profile fields (bio/status/mood/pinned_achievements). Any
+// undefined field is omitted so partial updates are supported.
+export function sendProfile(patch: {
+  bio?: string | null
+  status?: string | null
+  mood?: string | null
+  pinned_achievements?: string[]
+}) {
+  if (!ws || ws.readyState !== 1) return
+  const msg: Record<string, unknown> = { v: PROTOCOL_VERSION, t: 'profile' }
+  for (const [k, v] of Object.entries(patch)) if (v !== undefined) msg[k] = v
+  ws.send(JSON.stringify(msg))
 }
 
 export function sendCollect(item_id: string) {

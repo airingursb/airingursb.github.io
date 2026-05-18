@@ -127,6 +127,8 @@
       </dl>
       <button type="button" id="lounge-info-rename">Change name</button>
       <button type="button" id="lounge-info-species" data-species="bear">Switch to 🐱 Cat</button>
+      <!-- V17.0 — bio + status (drives the V17.2 profile card others see) -->
+      <button type="button" id="lounge-info-profile">✍️ Edit bio &amp; status</button>
       <button type="button" id="lounge-info-quests">📋 Quests</button>
       <button type="button" id="lounge-info-whosaround">👥 Who's around</button>
       <button type="button" id="lounge-info-memories">📷 Memories</button>
@@ -343,6 +345,27 @@
           <button type="button" class="sp-tile" data-species="frog">
             <span class="sp-emoji">🐸</span><span class="sp-label">Frog</span>
           </button>
+        </div>
+      </div>
+    </div>
+    <!-- V17.0 — bio/status editor -->
+    <div id="lounge-profile-edit" class="ui-profile-edit" hidden>
+      <div class="pe-card">
+        <h3>Your profile</h3>
+        <p class="pe-blurb">Others see this when they click your character.</p>
+        <label class="pe-field">
+          <span class="pe-label">Status (one line)</span>
+          <input id="lounge-profile-status" type="text" maxlength="60" placeholder="🌧 watching the rain" />
+          <span id="lounge-profile-status-count" class="pe-count">0 / 60</span>
+        </label>
+        <label class="pe-field">
+          <span class="pe-label">Bio (about you)</span>
+          <textarea id="lounge-profile-bio" maxlength="140" rows="3" placeholder="I came for the music, stayed for Halle's library."></textarea>
+          <span id="lounge-profile-bio-count" class="pe-count">0 / 140</span>
+        </label>
+        <div class="pe-actions">
+          <button type="button" id="lounge-profile-cancel">Cancel</button>
+          <button type="button" id="lounge-profile-save" class="pe-primary">Save</button>
         </div>
       </div>
     </div>
@@ -2956,6 +2979,72 @@
     z-index: 250;
   }
   .ui-species-picker[hidden] { display: none; }
+  /* V17.0 — bio/status editor modal */
+  .ui-profile-edit {
+    position: fixed; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,.78);
+    z-index: 250;
+  }
+  .ui-profile-edit[hidden] { display: none; }
+  .pe-card {
+    background: #1a1f2e;
+    border: 1px solid rgba(140,180,240,.4);
+    color: #e6edf3;
+    padding: 24px 28px;
+    border-radius: 12px;
+    font-family: ui-monospace, monospace;
+    box-shadow: 0 6px 32px rgba(0,0,0,.7);
+    width: min(440px, calc(100vw - 32px));
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+  }
+  .pe-card h3 { margin: 0 0 4px; font-size: 16px; color: #fff; }
+  .pe-card .pe-blurb { color: #8a9bc0; font-size: 11px; margin: 0 0 16px; }
+  .pe-field { display: block; margin-bottom: 14px; position: relative; }
+  .pe-field .pe-label {
+    display: block; font-size: 11px; color: #c0c8d8;
+    margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .pe-field input, .pe-field textarea {
+    width: 100%;
+    background: #0a0d18;
+    border: 1px solid rgba(140,180,240,.25);
+    color: #e6edf3;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+    box-sizing: border-box;
+    resize: vertical;
+  }
+  .pe-field input:focus, .pe-field textarea:focus {
+    outline: none;
+    border-color: rgba(140,180,240,.6);
+  }
+  .pe-field .pe-count {
+    position: absolute; right: 4px; bottom: -16px;
+    font-size: 10px; color: #6a7892;
+  }
+  .pe-actions {
+    display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px;
+  }
+  .pe-actions button {
+    padding: 8px 16px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(140,180,240,.25);
+    color: #c0c8d8;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: ui-monospace, monospace; font-size: 12px;
+  }
+  .pe-actions button:hover { background: rgba(255,255,255,.12); }
+  .pe-actions .pe-primary {
+    background: rgba(80,140,240,.4);
+    color: #fff;
+    border-color: rgba(120,180,255,.6);
+  }
+  .pe-actions .pe-primary:hover { background: rgba(100,160,255,.55); }
   .sp-card {
     background: #1a1f2e;
     border: 1px solid rgba(140,180,240,.4);
