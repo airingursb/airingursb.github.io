@@ -1,6 +1,8 @@
-// V6.6 — Action feedback particles. Small reusable burst helpers
-// that paint reactive flashes when the player does things.
-// All call sites pass the scene + world coords; nothing knows about UI state.
+// V6.6 + E5-P3 — Action feedback particles with emitter pooling.
+//
+// Each effect kind owns ONE Phaser.GameObjects.Particles.ParticleEmitter that
+// stays attached to the scene. Call sites invoke .explode(count, x, y) so we
+// don't allocate per-event.
 
 import Phaser from 'phaser'
 
@@ -15,19 +17,73 @@ export function ensurePixel(scene: Phaser.Scene) {
   g.destroy()
 }
 
-// Tiny grey dust puff at the feet — fires from Bear.update on direction change or arrival.
-export function footstepDust(scene: Phaser.Scene, x: number, y: number) {
-  ensurePixel(scene)
-  scene.add.particles(x, y, PIXEL_TEX_KEY, {
-    lifespan: 350, quantity: 3, speed: { min: 6, max: 18 },
-    angle: { min: 200, max: 340 },
-    scale: { start: 1.2, end: 0 },
-    alpha: { start: 0.55, end: 0 },
-    tint: 0xc8b89c, gravityY: 30
-  }).setDepth(2).setActive(true).explode(3, x, y)
+// Per-scene pool registry. Keyed by scene + effect kind.
+const POOL_KEY = '__lounge_emitter_pool'
+
+type EmitterKind = 'dust' | 'sparkle' | 'sitImpact'
+
+function getPool(scene: Phaser.Scene): Partial<Record<EmitterKind, Phaser.GameObjects.Particles.ParticleEmitter>> {
+  const reg = scene as any
+  if (!reg[POOL_KEY]) reg[POOL_KEY] = {}
+  return reg[POOL_KEY]
 }
 
-// Click ripple — concentric expanding ring at the click world position.
+function getOrMakeEmitter(scene: Phaser.Scene, kind: EmitterKind): Phaser.GameObjects.Particles.ParticleEmitter {
+  ensurePixel(scene)
+  const pool = getPool(scene)
+  if (pool[kind] && (pool[kind] as any).scene === scene) return pool[kind]!
+  let emitter: Phaser.GameObjects.Particles.ParticleEmitter
+  if (kind === 'dust') {
+    emitter = scene.add.particles(0, 0, PIXEL_TEX_KEY, {
+      lifespan: 350, speed: { min: 6, max: 18 },
+      angle: { min: 200, max: 340 },
+      scale: { start: 1.2, end: 0 },
+      alpha: { start: 0.55, end: 0 },
+      tint: 0xc8b89c, gravityY: 30,
+      emitting: false
+    }).setDepth(2)
+  } else if (kind === 'sparkle') {
+    emitter = scene.add.particles(0, 0, PIXEL_TEX_KEY, {
+      lifespan: 700, speed: { min: 25, max: 70 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 1.8, end: 0 },
+      alpha: { start: 1, end: 0 },
+      tint: [0xfff0a0, 0xffe040, 0xffffff],
+      blendMode: Phaser.BlendModes.ADD,
+      emitting: false
+    }).setDepth(7)
+  } else {  // sitImpact
+    emitter = scene.add.particles(0, 0, PIXEL_TEX_KEY, {
+      lifespan: 450, speed: { min: 18, max: 32 },
+      angle: { min: 0, max: 360 },
+      scale: { start: 1.3, end: 0 },
+      alpha: { start: 0.65, end: 0 },
+      tint: 0xc8b89c, gravityY: 20,
+      emitting: false
+    }).setDepth(2)
+  }
+  pool[kind] = emitter
+  // Drop pool entry when scene shuts down so next scene boot rebuilds
+  scene.events.once('shutdown', () => { delete pool[kind] })
+  scene.events.once('destroy', () => { delete pool[kind] })
+  return emitter
+}
+
+// ─── Public API (call signature unchanged from V6.6) ──────────────────
+
+export function footstepDust(scene: Phaser.Scene, x: number, y: number) {
+  getOrMakeEmitter(scene, 'dust').explode(3, x, y)
+}
+
+export function pebbleSparkle(scene: Phaser.Scene, x: number, y: number) {
+  getOrMakeEmitter(scene, 'sparkle').explode(12, x, y)
+}
+
+export function sitImpact(scene: Phaser.Scene, x: number, y: number) {
+  getOrMakeEmitter(scene, 'sitImpact').explode(6, x, y)
+}
+
+// Click ripple — uses single Circle tween per call, no emitter.
 export function clickRipple(scene: Phaser.Scene, x: number, y: number, color = 0xffe070) {
   const ring = scene.add.circle(x, y, 4, color, 0).setStrokeStyle(2, color, 0.7).setDepth(6)
   scene.tweens.add({
@@ -38,34 +94,7 @@ export function clickRipple(scene: Phaser.Scene, x: number, y: number, color = 0
   })
 }
 
-// Pebble pickup sparkle — bright burst at pickup point.
-export function pebbleSparkle(scene: Phaser.Scene, x: number, y: number) {
-  ensurePixel(scene)
-  scene.add.particles(x, y, PIXEL_TEX_KEY, {
-    lifespan: 700, quantity: 12,
-    speed: { min: 25, max: 70 },
-    angle: { min: 0, max: 360 },
-    scale: { start: 1.8, end: 0 },
-    alpha: { start: 1, end: 0 },
-    tint: [0xfff0a0, 0xffe040, 0xffffff],
-    blendMode: Phaser.BlendModes.ADD
-  }).setDepth(7).explode(12, x, y)
-}
-
-// Sit-down impact dust — small ring of dust at character feet.
-export function sitImpact(scene: Phaser.Scene, x: number, y: number) {
-  ensurePixel(scene)
-  scene.add.particles(x, y, PIXEL_TEX_KEY, {
-    lifespan: 450, quantity: 6,
-    speed: { min: 18, max: 32 },
-    angle: { min: 0, max: 360 },
-    scale: { start: 1.3, end: 0 },
-    alpha: { start: 0.65, end: 0 },
-    tint: 0xc8b89c, gravityY: 20
-  }).setDepth(2).explode(6, x, y)
-}
-
-// Wave arc — semicircular trail of small dots above the bear's head.
+// Wave arc — 5 dots above head, each tween-dispatched then destroyed.
 export function waveArc(scene: Phaser.Scene, x: number, y: number) {
   ensurePixel(scene)
   const centerY = y - 28
@@ -83,7 +112,7 @@ export function waveArc(scene: Phaser.Scene, x: number, y: number) {
   }
 }
 
-// Letter-drop flutter — paper-like falling rectangles.
+// Letter flutter — small one-shot, doesn't fire often; per-call allocation is fine.
 export function letterFlutter(scene: Phaser.Scene, x: number, y: number) {
   for (let i = 0; i < 4; i++) {
     const paper = scene.add.rectangle(x, y - 10, 4, 5, 0xfff8dc, 0.95)
