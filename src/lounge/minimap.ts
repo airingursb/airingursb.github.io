@@ -129,18 +129,27 @@ export function hideMinimap() {
   if (panelEl) panelEl.hidden = true
 }
 
-// Door labels (floating "→ DJ Floor" near portal)
+// V6.0 → V9-fix — Door label. Now fixed bottom-center via CSS, no per-frame
+// positioning needed. screenX/screenY params kept for API compatibility but
+// ignored. Click triggers room transition (handler registered by RoomScene).
 let doorLabelEl: HTMLElement | null = null
-export function showDoorLabel(text: string, screenX: number, screenY: number) {
+let doorLabelOnClick: (() => void) | null = null
+
+export function showDoorLabel(text: string, _screenX?: number, _screenY?: number) {
   if (!doorLabelEl) doorLabelEl = document.getElementById('lounge-door-label')
   if (!doorLabelEl) return
   doorLabelEl.textContent = text
-  doorLabelEl.style.left = `${screenX}px`
-  doorLabelEl.style.top = `${screenY}px`
   doorLabelEl.hidden = false
+  if (!doorLabelEl.dataset.bound) {
+    doorLabelEl.dataset.bound = '1'
+    doorLabelEl.addEventListener('click', () => doorLabelOnClick?.())
+  }
 }
 export function hideDoorLabel() {
   if (!doorLabelEl) doorLabelEl = document.getElementById('lounge-door-label')
   if (!doorLabelEl) return
   doorLabelEl.hidden = true
+}
+export function setDoorLabelClickHandler(fn: () => void) {
+  doorLabelOnClick = fn
 }

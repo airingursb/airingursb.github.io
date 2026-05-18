@@ -827,24 +827,42 @@
   .ui-minimap .mm-legend .dot.here { background: #4ade80; }
   .ui-minimap .mm-legend .dot.npc { background: #ffd166; }
 
-  /* V6.0 — Door label (floats above bear when near portal) */
+  /* V6.0 + V9-fix — Door hint: fixed bottom-center pill, always visible &
+     never overlapping the top UI. Clickable to trigger room transition. */
   .ui-door-label {
-    position: absolute;
-    background: rgba(0,0,0,.92);
-    color: #e6edf3;
-    padding: 4px 10px;
-    border-radius: 6px;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, rgba(255,209,102,.95), rgba(255,170,80,.95));
+    color: #2a1810;
+    padding: 8px 18px;
+    border-radius: 18px;
     font-family: ui-monospace, monospace;
-    font-size: 11px;
-    font-weight: 600;
-    transform: translate(-50%, -100%);
-    pointer-events: none;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    pointer-events: auto;
     white-space: nowrap;
-    z-index: 60;
-    border: 1px solid rgba(255,209,102,.4);
-    color: #ffd166;
+    z-index: 80;
+    border: 1px solid rgba(180,120,40,.6);
+    box-shadow: 0 4px 16px rgba(0,0,0,.4);
+    transition: transform .15s, filter .15s;
+    animation: door-label-bob 1.6s ease-in-out infinite;
   }
+  .ui-door-label:hover { filter: brightness(1.08); transform: translateX(-50%) translateY(-2px); }
   .ui-door-label[hidden] { display: none; }
+  .ui-door-label::after {
+    content: '  ↵ click';
+    font-size: 10px;
+    color: #5a3a10;
+    margin-left: 4px;
+    opacity: .8;
+  }
+  @keyframes door-label-bob {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50%      { transform: translateX(-50%) translateY(-3px); }
+  }
 
   /* V5.1 — Letter modal (drop) */
   .ui-letter-modal {

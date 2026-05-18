@@ -3,7 +3,7 @@ import { Bear, registerBearAnimations } from '../bear'
 import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendGift, sendDm, requestDmThread, sendDmRead, sendPlace, sendPickup, requestHomeDecorations, sendJamTap, sendLetterDrop, requestLettersInRoom, requestWishes, sendWishSubmit, sendWishVote, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry, type GiftEntry, type GiftReceivedMsg, type GiftSentOkMsg, type GiftFailedMsg, type DmReceivedMsg, type DmSentOkMsg, type DmFailedMsg, type DmThreadMsg, type DmEntry, type HomeDecoration, type PlaceOkMsg, type PlaceFailedMsg, type PickupOkMsg, type PickupFailedMsg, type HomeDecorationBroadcast, type HomeDecorationsResponseMsg, type JamTapMsg, type JamBurstMsg, type LetterEntry, type LetterDropOkMsg, type LetterDropFailedMsg, type LetterAppearedMsg, type LettersInRoomMsg, type WishesListMsg, type WishSubmitOkMsg, type WishVoteOkMsg, type WishFailedMsg } from '../net'
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
-import { renderMinimap, showDoorLabel, hideDoorLabel, MAP_ROOMS } from '../minimap'
+import { renderMinimap, showDoorLabel, hideDoorLabel, setDoorLabelClickHandler, MAP_ROOMS } from '../minimap'
 import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, type Region, type RoomId, type Species } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
 import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard, setOnSpeciesToggle, updateSpeciesButtonLabel } from '../ui'
@@ -2727,7 +2727,14 @@ export class RoomScene extends Phaser.Scene {
         if (isHomeRoom(target) || target === ('room_home_self' as RoomId)) roomLabel = 'Home'
         else roomLabel = String(target)
       }
+      // V9-fix: label now lives at the bear's screen position; minimap.ts
+      // flips it below the bear if screenY < 80 (avoids top-UI overlap).
       showDoorLabel(`→ ${roomLabel}`, screen.x, screen.y - 12)
+      // Each frame re-bind the click handler to fire enterPortal on the
+      // currently-nearby portal (so walking past one portal to another
+      // updates the click target).
+      const portal = this.nearbyDoorPortal
+      setDoorLabelClickHandler(() => this.enterPortal(portal))
     }
   }
 
@@ -2759,33 +2766,40 @@ export class RoomScene extends Phaser.Scene {
     for (const p of this.portals) {
       if (this.myBear.x >= p.x && this.myBear.x <= p.x + p.w &&
           this.myBear.y >= p.y && this.myBear.y <= p.y + p.h) {
-        this.transitioning = true
-        const targetRoom = p.targetRoom
-        const targetSpawn = p.targetSpawn
-        const fade = !prefersReducedMotion()
-        const doRestart = () => {
-          stopRoomAudio()
-          stopBoothTrack()
-          hideNowPlaying()
-          hideBoothPicker()
-          if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
-          if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
-          this.seasonalEmitter?.destroy(); this.seasonalEmitter = undefined
-          this.holidayEmitter?.destroy(); this.holidayEmitter = undefined
-          this.seasonOverlay?.destroy(); this.seasonOverlay = undefined
-          hideDoorLabel()
-          sendRoomChange(targetRoom)
-          this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
-        }
-        if (fade) {
-          // V6.7 — fade to warm cream rather than harsh black for softer transition
-          this.cameras.main.fadeOut(220, 248, 240, 220)
-          this.cameras.main.once('camerafadeoutcomplete', doRestart)
-        } else {
-          doRestart()
-        }
+        this.enterPortal(p)
         return
       }
+    }
+  }
+
+  // V9-fix: shared portal-transition. Called by checkPortals (player walked
+  // INTO the rect) and by the door label click handler (player clicks the
+  // floating "→ Lobby" hint without walking in).
+  private enterPortal(p: Portal) {
+    if (this.transitioning) return
+    this.transitioning = true
+    const targetRoom = p.targetRoom
+    const targetSpawn = p.targetSpawn
+    const fade = !prefersReducedMotion()
+    const doRestart = () => {
+      stopRoomAudio()
+      stopBoothTrack()
+      hideNowPlaying()
+      hideBoothPicker()
+      if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
+      if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
+      this.seasonalEmitter?.destroy(); this.seasonalEmitter = undefined
+      this.holidayEmitter?.destroy(); this.holidayEmitter = undefined
+      this.seasonOverlay?.destroy(); this.seasonOverlay = undefined
+      hideDoorLabel()
+      sendRoomChange(targetRoom)
+      this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
+    }
+    if (fade) {
+      this.cameras.main.fadeOut(220, 248, 240, 220)
+      this.cameras.main.once('camerafadeoutcomplete', doRestart)
+    } else {
+      doRestart()
     }
   }
 
