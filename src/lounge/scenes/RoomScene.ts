@@ -135,7 +135,10 @@ export class RoomScene extends Phaser.Scene {
   private welcomeApplied = false
   private pendingSpawn: { x: number; y: number } | null = null
   private npcManifest: NpcManifest | null = null
-  private npcBears = new Map<string, { bear: Bear; def: NpcDef }>()
+  // V15.0 — ambientNextAt drives idle-NPC ambient action cycling so they
+  // don't read as mannequins. ambientHomeX/Y remember the spawn position so
+  // a wandering NPC can return to its post (V15.1 will use these).
+  private npcBears = new Map<string, { bear: Bear; def: NpcDef; ambientNextAt: number; homeX: number; homeY: number }>()
   private petSprite?: PetSprite                                    // V10.2 — follower
   private peerPets = new Map<string, PetSprite>()                  // V10.8c — peers' pet followers, keyed by session id
   private npcDialogMemory = new Map<string, string>()
@@ -2742,7 +2745,50 @@ export class RoomScene extends Phaser.Scene {
     } else {
       bear.playIdle()
     }
-    this.npcBears.set(def.id, { bear, def })
+    this.npcBears.set(def.id, {
+      bear, def,
+      // Stagger initial ambient ticks so 3 NPCs in one room don't all wave
+      // on the same frame.
+      ambientNextAt: performance.now() + 5000 + Math.random() * 10000,
+      homeX: b.x, homeY: b.y
+    })
+  }
+
+  // V15.0 — ambient action cycle: idle NPCs occasionally change facing,
+  // wave briefly, or sit down for a moment. Skips NPCs that are already
+  // in a deliberate pose (sit/sleep/dance) so we don't fight scheduled
+  // bracket state, and skips during reduced-motion (only does the cheap
+  // facing-change variant).
+  private tickNpcAmbient(entry: { bear: Bear; def: NpcDef; ambientNextAt: number }, now: number) {
+    if (now < entry.ambientNextAt) return
+    const reschedule = (minMs = 8000, maxMs = 15000) => {
+      entry.ambientNextAt = now + minMs + Math.random() * (maxMs - minMs)
+    }
+    // Only act on idle, grounded NPCs — never disturb a sit/sleep/dance pose
+    // (scheduled brackets put NPCs into those states deliberately) or a
+    // walking NPC (V15.1 wandering owns that).
+    if (entry.bear.state !== 'idle' || entry.bear.target) { reschedule(); return }
+    const reduced = prefersReducedMotion()
+    const r = Math.random()
+    if (r < 0.6 || reduced) {
+      // Look another direction (cheap, animation-free)
+      const dirs = ['up', 'down', 'left', 'right'] as const
+      const next = dirs[Math.floor(Math.random() * dirs.length)]
+      if (next !== entry.bear.facing) {
+        entry.bear.facing = next
+        entry.bear.playIdle()
+      }
+    } else if (r < 0.85) {
+      // Brief wave
+      entry.bear.applyEmote('wave', 1500, reduced)
+    } else {
+      // Brief sit-down — applyEmote('sit') toggles, so a second call stands them back up
+      entry.bear.applyEmote('sit', 0, reduced)
+      this.time.delayedCall(3500 + Math.random() * 2500, () => {
+        if (entry.bear.state === 'sit') entry.bear.applyEmote('sit', 0, reduced)
+      })
+    }
+    reschedule()
   }
 
   private despawnNpc(id: string) {
@@ -3447,7 +3493,11 @@ export class RoomScene extends Phaser.Scene {
       this.checkDoorProximity()
     }
     this.peers.forEach((p) => p.bear.update(dtMs, true))
-    this.npcBears.forEach((entry) => entry.bear.update(dtMs, true))
+    const now = performance.now()
+    this.npcBears.forEach((entry) => {
+      entry.bear.update(dtMs, true)
+      this.tickNpcAmbient(entry, now)
+    })
     if (this.myBear) {
       const s = this.bearScreenPos(this.myBear)
       updateBubblePos('__me__', s.x, s.y)
