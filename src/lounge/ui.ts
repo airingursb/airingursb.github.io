@@ -2112,9 +2112,10 @@ let letterReadAuthorEl: HTMLElement | null = null
 let letterReadAgoEl: HTMLElement | null = null
 let letterReadContentEl: HTMLElement | null = null
 let letterReadCloseBtn: HTMLButtonElement | null = null
-let onLetterModalSubmit: ((content: string | null) => void) | null = null
+let onLetterModalSubmit: ((content: string | null, eternal: boolean) => void) | null = null
+let letterEternalEl: HTMLInputElement | null = null
 
-export function showLetterModal(onSubmit: (content: string | null) => void) {
+export function showLetterModal(onSubmit: (content: string | null, eternal: boolean) => void) {
   if (!letterModalEl) {
     letterModalEl = document.getElementById('lounge-letter-modal')
     letterInputEl = document.getElementById('lounge-letter-input') as HTMLTextAreaElement | null
@@ -2122,14 +2123,16 @@ export function showLetterModal(onSubmit: (content: string | null) => void) {
     letterCountEl = document.getElementById('lounge-letter-count')
     letterSaveBtn = document.getElementById('lounge-letter-save') as HTMLButtonElement | null
     letterCancelBtn = document.getElementById('lounge-letter-cancel') as HTMLButtonElement | null
+    // V12.2 — eternal checkbox
+    letterEternalEl = document.getElementById('lounge-letter-eternal') as HTMLInputElement | null
 
     letterSaveBtn?.addEventListener('click', () => submitLetterModal())
-    letterCancelBtn?.addEventListener('click', () => { const cb = onLetterModalSubmit; hideLetterModal(); cb?.(null) })
+    letterCancelBtn?.addEventListener('click', () => { const cb = onLetterModalSubmit; hideLetterModal(); cb?.(null, false) })
     letterInputEl?.addEventListener('input', () => {
       if (letterCountEl && letterInputEl) letterCountEl.textContent = String(letterInputEl.value.length)
     })
     letterInputEl?.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') { e.preventDefault(); const cb = onLetterModalSubmit; hideLetterModal(); cb?.(null) }
+      if (e.key === 'Escape') { e.preventDefault(); const cb = onLetterModalSubmit; hideLetterModal(); cb?.(null, false) }
       else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); submitLetterModal() }
     })
   }
@@ -2138,6 +2141,7 @@ export function showLetterModal(onSubmit: (content: string | null) => void) {
   letterInputEl.value = ''
   if (letterCountEl) letterCountEl.textContent = '0'
   if (letterErrorEl) { letterErrorEl.hidden = true; letterErrorEl.textContent = '' }
+  if (letterEternalEl) letterEternalEl.checked = false
   letterModalEl.hidden = false
   requestAnimationFrame(() => letterInputEl?.focus())
 }
@@ -2154,8 +2158,9 @@ function submitLetterModal() {
     return
   }
   const cb = onLetterModalSubmit
+  const eternal = !!letterEternalEl?.checked
   hideLetterModal()
-  cb?.(text)
+  cb?.(text, eternal)
 }
 
 export function hideLetterModal() {

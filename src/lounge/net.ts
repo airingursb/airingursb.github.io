@@ -58,10 +58,10 @@ export type HomeDecorationBroadcast = { v: number; t: 'home_decoration'; owner: 
 export type HomeDecorationsResponseMsg = { v: number; t: 'home_decorations'; owner_visitor_id: string; decorations: HomeDecoration[] }
 export type JamTapMsg = { v: number; t: 'jam_tap'; id: string; visitor_id: string | null; pad_index: number; cc: string | null; region: string }
 export type JamBurstMsg = { v: number; t: 'jam_burst'; tier: 'jam' | 'circle' | 'full'; distinct_visitors: number; distinct_pads: number; bonus_per_pair: number; awarded_pairs: number }
-export type LetterEntry = { id: number; author_visitor_id: string; author_name: string | null; x: number; y: number; content: string; dropped_at: string }
-export type LetterDropOkMsg = { v: number; t: 'letter_drop_ok'; id: number; x: number; y: number; content: string; dropped_at: string }
+export type LetterEntry = { id: number; author_visitor_id: string; author_name: string | null; x: number; y: number; content: string; dropped_at: string; eternal?: boolean }
+export type LetterDropOkMsg = { v: number; t: 'letter_drop_ok'; id: number; x: number; y: number; content: string; dropped_at: string; eternal?: boolean }
 export type LetterDropFailedMsg = { v: number; t: 'letter_drop_failed'; reason: string }
-export type LetterAppearedMsg = { v: number; t: 'letter_appeared'; id: number; author_visitor_id: string; author_name: string | null; room: string; x: number; y: number; content: string; dropped_at: string }
+export type LetterAppearedMsg = { v: number; t: 'letter_appeared'; id: number; author_visitor_id: string; author_name: string | null; room: string; x: number; y: number; content: string; dropped_at: string; eternal?: boolean }
 export type LettersInRoomMsg = { v: number; t: 'letters_in_room'; room: string; letters: LetterEntry[] }
 export type WishCategory = 'sprite' | 'room' | 'dialog' | 'other'
 export type WishEntry = { id: number; author_visitor_id: string; author_name: string | null; category: WishCategory; content: string; submitted_at: string; vote_count: number; voted_by_me: boolean }
@@ -334,9 +334,13 @@ export function sendJamTap(pad_index: number) {
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'jam_tap', pad_index }))
 }
 
-export function sendLetterDrop(content: string, x: number, y: number) {
+export function sendLetterDrop(content: string, x: number, y: number, opts: { eternal?: boolean } = {}) {
   if (!ws || ws.readyState !== 1) return
-  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'letter_drop', content, x: Math.round(x), y: Math.round(y) }))
+  ws.send(JSON.stringify({
+    v: PROTOCOL_VERSION, t: 'letter_drop', content,
+    x: Math.round(x), y: Math.round(y),
+    eternal: opts.eternal === true
+  }))
 }
 
 export function requestLettersInRoom(room: string) {

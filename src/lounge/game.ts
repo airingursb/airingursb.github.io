@@ -35,8 +35,8 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
   // achievement + mailbox + heart APIs without dynamic-importing TS sources.
   Promise.all([
     import('./achievements'), import('./mailbox'),
-    import('./npc_hearts'), import('./pets')
-  ]).then(([ach, mail, hearts, pets]) => {
+    import('./npc_hearts'), import('./pets'), import('./net')
+  ]).then(([ach, mail, hearts, pets, net]) => {
     ;(window as any).__loungeTest = {
       recordAchievement: ach.recordEvent,
       getAchievementUnlocked: ach.getUnlocked,
@@ -45,7 +45,10 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
       notifyFriendActivity: mail.notifyFriendActivity,
       mailUnreadCount: mail.unreadCount,
       getNpcHeartLevel: hearts.getNpcHeartLevel,
-      getPet: pets.getPet
+      getPet: pets.getPet,
+      // V12.2 — expose sendLetterDrop for smoke tests
+      sendLetterDrop: net.sendLetterDrop,
+      requestLettersInRoom: net.requestLettersInRoom
     }
   })
   // V10.2 — bind the pet button's click handler on first frame so opening the

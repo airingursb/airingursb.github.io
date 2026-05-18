@@ -577,8 +577,11 @@ export class RoomScene extends Phaser.Scene {
           const dropX = this.myBear.x
           const dropY = this.myBear.y
           letterFlutter(this, dropX, dropY)
-          showLetterModal((content) => {
-            if (content) { sendLetterDrop(content, dropX, dropY); recordAchievement({ type: 'letter_dropped' }) }
+          showLetterModal((content, eternal) => {
+            if (content) {
+              sendLetterDrop(content, dropX, dropY, { eternal })
+              recordAchievement({ type: 'letter_dropped' })
+            }
           })
           return
         }
@@ -1530,7 +1533,10 @@ export class RoomScene extends Phaser.Scene {
   }
 
   private spawnLetterSprite(id: number, l: LetterEntry) {
-    const text = this.add.text(l.x, l.y, '📜', {
+    // V12.2 — eternal letters render as a 漂流瓶 (drift bottle) emoji so
+    // players can tell them apart from regular pinned notes.
+    const glyph = l.eternal ? '🌊' : '📜'
+    const text = this.add.text(l.x, l.y, glyph, {
       fontSize: '14px',
       resolution: 2
     }).setOrigin(0.5, 0.5).setDepth(4).setInteractive({ useHandCursor: true })
@@ -1601,7 +1607,7 @@ export class RoomScene extends Phaser.Scene {
     }
     const entry: LetterEntry = {
       id: m.id, author_visitor_id: m.author_visitor_id, author_name: m.author_name,
-      x: m.x, y: m.y, content: m.content, dropped_at: m.dropped_at
+      x: m.x, y: m.y, content: m.content, dropped_at: m.dropped_at, eternal: m.eternal === true
     }
     this.letters.set(m.id, entry)
     this.spawnLetterSprite(m.id, entry)
