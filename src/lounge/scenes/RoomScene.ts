@@ -1282,6 +1282,18 @@ export class RoomScene extends Phaser.Scene {
         this.openGiftFlow(peerSessionId)
       } else if (action === 'dm') {
         this.openDmFlow(peerSessionId)
+      } else if (action === 'visit_home') {
+        // V12.4 — visit this peer's home. Friend-only gate keeps stranger
+        // homes private; non-friends get a toast explaining why.
+        const vid = this.peerVisitorIds.get(peerSessionId)
+        if (!vid) { showToast('Could not find that visitor.'); return }
+        if (!this.friendships.has(vid)) {
+          showToast("You need to be friends to visit their home — spend time in the same room.", 2800)
+          return
+        }
+        const targetRoom = `room_home_${vid.slice(0, 8)}` as RoomId
+        sendRoomChange(targetRoom)
+        this.scene.restart({ roomId: targetRoom, spawnPoint: 'default' })
       }
     })
   }

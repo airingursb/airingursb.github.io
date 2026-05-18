@@ -1866,7 +1866,7 @@ let threadFormEl: HTMLFormElement | null = null
 let threadInputEl: HTMLInputElement | null = null
 let threadBackBtn: HTMLButtonElement | null = null
 
-type PeerMenuAction = 'wave' | 'gift' | 'dm'
+type PeerMenuAction = 'wave' | 'gift' | 'dm' | 'visit_home'   // V12.4
 let onPeerMenuAction: ((action: PeerMenuAction) => void) | null = null
 
 export function showPeerMenu(screenX: number, screenY: number, onAction: (action: PeerMenuAction) => void) {
