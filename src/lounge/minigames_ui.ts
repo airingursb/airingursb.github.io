@@ -7,6 +7,9 @@ import { awardShells } from './shells'
 import { runDice } from './minigame_dice'
 import { runRhythm } from './minigame_rhythm'
 import { runCook } from './minigame_cook'
+import { runWord } from './minigame_word'
+import { runShell } from './minigame_shell'
+import { runGarden } from './minigame_garden'
 
 let overlayEl: HTMLElement | null = null
 let titleEl: HTMLElement | null = null
@@ -89,6 +92,9 @@ function startGame(id: string) {
   if (id === 'dice')   runDice(stageEl, onFinish)
   if (id === 'rhythm') runRhythm(stageEl, onFinish)
   if (id === 'cook')   runCook(stageEl, onFinish)
+  if (id === 'word')   runWord(stageEl, onFinish)
+  if (id === 'shell')  runShell(stageEl, onFinish)
+  if (id === 'garden') runGarden(stageEl, onFinish)
 }
 
 function finishGame(id: string, score: number) {

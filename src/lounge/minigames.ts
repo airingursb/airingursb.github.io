@@ -43,6 +43,34 @@ export const MINIGAMES: MinigameDef[] = [
     room: 'room_kitchen',
     bestScoreLabel: 'best precision',
     reward: (s) => Math.floor(s / 20)
+  },
+  // V11.7 — batch 2
+  {
+    id: 'word',
+    emoji: '📚',
+    name: 'Library Word Puzzle',
+    blurb: '5 short words missing one letter — pick the right fill.',
+    room: 'room_library',
+    bestScoreLabel: 'best score',
+    reward: (s) => Math.floor(s / 20)   // 100 max → 5 shells
+  },
+  {
+    id: 'shell',
+    emoji: '🐚',
+    name: 'Beach Shell Hunt',
+    blurb: 'Find 5 hidden shells in 10 clicks. Bonus for finding all.',
+    room: 'room_beach',
+    bestScoreLabel: 'best haul',
+    reward: (s) => Math.floor(s / 20)
+  },
+  {
+    id: 'garden',
+    emoji: '🌱',
+    name: 'Grove Garden Tending',
+    blurb: '4 plants ask for water/sun/pruning. 30 seconds. Don\'t miss a need.',
+    room: 'room_grove',
+    bestScoreLabel: 'best tally',
+    reward: (s) => Math.max(0, Math.floor(s / 5))
   }
 ]
 
