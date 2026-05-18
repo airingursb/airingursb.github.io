@@ -38,6 +38,7 @@
     <button id="lounge-pet-btn" class="ui-pet-btn" aria-label="Pet">🐾</button>
     <button id="lounge-achievements-btn" class="ui-ach-btn" aria-label="Achievements">🏆</button>
     <button id="lounge-photos-btn" class="ui-photos-btn" aria-label="Photo Album">🖼️</button>
+    <button id="lounge-minigame-btn" class="ui-mg-btn" aria-label="Mini-games">🎮</button>
     <button id="lounge-inventory-btn" class="ui-inventory-btn" aria-label="Inventory">📦</button>
     <button id="lounge-messages-btn" class="ui-messages-btn" aria-label="Messages">✉<span id="lounge-messages-badge" class="badge" hidden>0</span></button>
     <button id="lounge-wishboard-btn" class="ui-wishboard-btn" aria-label="Wishboard">🌟</button>
@@ -292,6 +293,20 @@
           <button type="button" class="sp-tile" data-species="bird">
             <span class="sp-emoji">🐦</span><span class="sp-label">Bird</span>
           </button>
+        </div>
+      </div>
+    </div>
+    <div id="lounge-minigame-overlay" class="ui-mg-overlay" hidden>
+      <div class="mg-card">
+        <div class="mg-head">
+          <h3 id="lounge-minigame-title">🎮 Mini-games</h3>
+          <button type="button" id="lounge-minigame-back" hidden>← Back</button>
+        </div>
+        <p id="lounge-minigame-blurb" class="mg-blurb-main"></p>
+        <div id="lounge-minigame-picker" class="mg-picker"></div>
+        <div id="lounge-minigame-stage" class="mg-stage"></div>
+        <div class="mg-actions">
+          <button type="button" id="lounge-minigame-close">Close</button>
         </div>
       </div>
     </div>
@@ -713,6 +728,128 @@
   }
   .ui-info-btn:hover { background: rgba(255,255,255,.16); }
   .ui-info-btn:focus-visible { outline: 2px solid #4ade80; outline-offset: 2px; }
+
+  /* V11.6 — Mini-game button + overlay + game UIs */
+  .ui-mg-btn {
+    position: absolute;
+    top: 16px; right: 430px;
+    width: 36px; height: 36px;
+    border-radius: 50%; border: none;
+    background: rgba(255,255,255,.08); color: #e6edf3;
+    font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s; line-height: 1;
+  }
+  .ui-mg-btn:hover { background: rgba(255,255,255,.16); }
+  .ui-mg-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.5);
+    z-index: 75;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .ui-mg-overlay[hidden] { display: none; }
+  .mg-card {
+    width: 480px; max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 80px); overflow-y: auto;
+    background: rgba(20,20,30,.96);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px; padding: 16px;
+    color: #e6edf3;
+  }
+  .mg-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .mg-head h3 { margin: 0; font-size: 15px; }
+  .mg-head button { background: transparent; color: rgba(255,255,255,.6); border: none; cursor: pointer; font-size: 12px; }
+  .mg-blurb-main { font-size: 12px; opacity: .75; margin: 0 0 12px; }
+  .mg-picker { display: grid; gap: 8px; }
+  .mg-tile {
+    display: flex; align-items: center; gap: 12px;
+    text-align: left; padding: 10px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 6px; cursor: pointer; color: inherit;
+    font-family: inherit;
+  }
+  .mg-tile:hover { background: rgba(255,255,255,.1); }
+  .mg-emoji { font-size: 28px; }
+  .mg-body .mg-name { font-weight: 700; font-size: 13px; }
+  .mg-body .mg-blurb { font-size: 11px; opacity: .75; margin-top: 2px; }
+  .mg-body .mg-meta { font-size: 10px; opacity: .55; margin-top: 4px; }
+  .mg-stage { padding: 12px 0; min-height: 220px; }
+  .mg-primary {
+    background: linear-gradient(135deg, #ffd166, #ffaa50);
+    color: #2a1810; border: none; padding: 8px 20px;
+    border-radius: 6px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
+  .mg-primary:disabled { opacity: 0.5; cursor: wait; }
+  .mg-actions { text-align: right; margin-top: 12px; }
+  .mg-actions button { background: rgba(255,255,255,.1); color: inherit; border: 1px solid rgba(255,255,255,.2); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-family: inherit; }
+  .mg-results { text-align: center; padding: 20px; }
+  .mg-results-score { font-size: 18px; margin-bottom: 8px; }
+  .mg-results-best { color: #ffd166; font-weight: 700; margin-bottom: 4px; }
+  .mg-results-reward { color: #4ade80; margin-bottom: 12px; }
+  .mg-results-actions { display: flex; gap: 8px; justify-content: center; }
+  .mg-results-actions button { padding: 6px 14px; cursor: pointer; }
+
+  /* Dice game */
+  .mg-dice-board { display: flex; justify-content: center; gap: 16px; margin-bottom: 12px; }
+  .mg-dice {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, #fff, #ddd);
+    color: #222;
+    border-radius: 10px; font-size: 32px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 3px 8px rgba(0,0,0,.4);
+  }
+  .mg-dice-meta, .mg-dice-best { text-align: center; font-size: 12px; margin: 4px 0; opacity: .85; }
+  .mg-dice-board + .mg-dice-meta { margin-top: 4px; }
+  .mg-dice + .mg-dice-best { margin-bottom: 12px; }
+  #mg-roll { display: block; margin: 12px auto 0; }
+
+  /* Rhythm game */
+  .mg-rhythm-meta { text-align: center; font-size: 12px; opacity: .85; margin-bottom: 8px; }
+  .mg-rhythm-board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; height: 220px; background: rgba(0,0,0,.4); padding: 4px; border-radius: 6px; position: relative; overflow: hidden; }
+  .mg-rh-lane { position: relative; background: rgba(255,255,255,.04); border-radius: 4px; cursor: pointer; }
+  .mg-rh-lane:active { background: rgba(255,255,255,.1); }
+  .mg-rh-key { position: absolute; bottom: 4px; left: 0; right: 0; text-align: center; font-size: 14px; opacity: .5; }
+  .mg-rh-lane::after { content: ''; position: absolute; left: 0; right: 0; bottom: 22px; height: 2px; background: rgba(255,209,102,.6); }
+  .mg-rh-note { position: absolute; left: 4px; right: 4px; top: -22px; height: 22px; background: linear-gradient(135deg, #4ade80, #60d090); border-radius: 4px; animation: mg-rh-fall linear forwards; }
+  .mg-rh-note.mg-rh-hit { background: linear-gradient(135deg, #ffd166, #ffaa50); transform: scale(0.8); transition: transform .15s; }
+  .mg-rh-note.mg-rh-fade { opacity: 0; transition: opacity .3s; }
+  @keyframes mg-rh-fall { to { top: calc(100% - 22px); } }
+  .mg-rhythm-stats { text-align: center; font-size: 12px; margin: 8px 0; }
+  #mg-rh-start { display: block; margin: 0 auto; }
+
+  /* Cook game */
+  .mg-cook-meta { text-align: center; font-size: 12px; opacity: .85; margin-bottom: 12px; }
+  .mg-cook-bar { position: relative; height: 32px; background: rgba(255,255,255,.08); border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+  .mg-cook-zone { position: absolute; top: 0; bottom: 0; background: rgba(74,222,128,.4); }
+  .mg-cook-marker { position: absolute; top: 0; bottom: 0; width: 4px; background: #ffd166; box-shadow: 0 0 6px #ffd166; }
+  .mg-cook-stats { text-align: center; font-size: 12px; margin-bottom: 12px; }
+  #mg-cook-stop { display: block; margin: 0 auto; }
+
+  /* Mobile: bring 🎮 into the bottom strip */
+  @media (max-width: 600px) {
+    .ui-mg-btn {
+      position: fixed !important;
+      top: auto !important; right: auto !important;
+      bottom: 10px !important;
+      left: calc(50vw + 171px) !important;
+      width: 36px !important; height: 36px !important;
+      z-index: 90 !important;
+    }
+    /* shift other right-side buttons so the strip stays centered */
+    .ui-mute-btn      { left: calc(50vw - 190px) !important; }
+    .ui-volume-btn    { left: calc(50vw - 152px) !important; }
+    .ui-info-btn      { left: calc(50vw - 114px) !important; }
+    .ui-inventory-btn { left: calc(50vw - 76px)  !important; }
+    .ui-messages-btn  { left: calc(50vw - 38px)  !important; }
+    .ui-wishboard-btn { left: calc(50vw)         !important; }
+    .ui-pet-btn       { left: calc(50vw + 38px)  !important; }
+    .ui-ach-btn       { left: calc(50vw + 76px)  !important; }
+    .ui-photos-btn    { left: calc(50vw + 114px) !important; }
+    .ui-mg-btn        { left: calc(50vw + 152px) !important; }
+    .mg-card { max-height: calc(100vh - 100px); }
+  }
 
   /* V10.5 — Photo album button + panel + lightbox */
   .ui-photos-btn {
