@@ -248,6 +248,7 @@ export class RoomScene extends Phaser.Scene {
     }
 
     ensurePixelTexture(this)
+    this.setupParallaxBackground(map.widthInPixels, map.heightInPixels)
     this.setupAtmosphere(map.widthInPixels, map.heightInPixels)
     this.setupParticles(map.widthInPixels, map.heightInPixels)
     this.setupWeather(map.widthInPixels, map.heightInPixels)
@@ -1612,6 +1613,50 @@ export class RoomScene extends Phaser.Scene {
     })
     e.setDepth(500)
     return e
+  }
+
+  // E5-P2c — Per-room parallax background. A subtle tinted TileSprite at
+  // depth -10 (behind the tilemap) whose tilePosition drifts slowly. Color
+  // chosen per room family. Skipped under prefers-reduced-motion.
+  private setupParallaxBackground(widthPx: number, heightPx: number) {
+    if (prefersReducedMotion()) return
+    const TEX = 'lounge_parallax_noise'
+    if (!this.textures.exists(TEX)) {
+      const size = 64
+      const c = document.createElement('canvas')
+      c.width = size; c.height = size
+      const g = c.getContext('2d')!
+      // Soft diagonal noise pattern (deterministic)
+      for (let y = 0; y < size; y++) {
+        for (let x = 0; x < size; x++) {
+          const v = (Math.sin(x * 0.13 + y * 0.07) + Math.cos(x * 0.09 - y * 0.11)) * 0.5
+          const a = Math.max(0, Math.min(255, 60 + v * 40))
+          g.fillStyle = `rgba(255,255,255,${(a / 255).toFixed(2)})`
+          g.fillRect(x, y, 1, 1)
+        }
+      }
+      this.textures.addCanvas(TEX, c)
+    }
+    // Per-room tint
+    let tint = 0x404060
+    const r = this.currentRoomId
+    if (r === 'room_balcony' || r === 'room_beach' || r === 'room_grove') tint = 0x4a78a8
+    else if (r === 'room_dj_floor')                                       tint = 0x6020a0
+    else if (r === 'room_library' || r.startsWith('room_bedroom_'))        tint = 0x504030
+    else if (r === 'room_rooftop')                                        tint = 0x1a2050
+    else if (r === 'room_kitchen' || r === 'room_workshop')               tint = 0x5a4032
+    const bg = this.add.tileSprite(0, 0, widthPx, heightPx, TEX)
+      .setOrigin(0).setDepth(-10).setAlpha(0.18).setTint(tint)
+      .setBlendMode(Phaser.BlendModes.MULTIPLY)
+    // Subtle drift — completes a tile in ~30s
+    this.tweens.add({
+      targets: bg.tilePositionX !== undefined ? bg : null,
+      duration: 30_000, loop: -1,
+      onUpdate: (tween) => {
+        bg.tilePositionX = tween.progress * 64
+        bg.tilePositionY = tween.progress * 32
+      }
+    })
   }
 
   // V6.3 + E5-P2b — radial-gradient glow on light-source tiles at night.
