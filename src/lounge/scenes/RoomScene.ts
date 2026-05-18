@@ -18,7 +18,7 @@ import { getActiveFestivalId, getActiveFestival, hasCompletedTodaysActivity, mar
 import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
 import { addNpcTalkHeart, getNpcHeartLevel, addNpcGiftHeart } from '../npc_hearts'
-import { pickAmbientLine } from '../npc_ambient'
+import { pickAmbientLine, pickNoticeLine } from '../npc_ambient'
 import { hasPet, activePetPerk, getPet } from '../pets'
 import { PetSprite, ensurePetAtlasLoaded } from '../pet_sprite'
 import { touchInput, consumeActionTap } from '../touch_input'
@@ -2763,6 +2763,27 @@ export class RoomScene extends Phaser.Scene {
       bubbleNextAt: performance.now() + 30000 + Math.random() * 60000,
       homeX: b.x, homeY: b.y
     })
+    // V15.3 — shortly after the NPC appears (which also fires when the
+    // player walks into their room → scene restart → loadAndStartNpcs),
+    // turn to face the player and ~30% of the time pop a brief greeting.
+    // Skip 'sit'/'sleep'/'dance' poses to respect the schedule bracket.
+    if (b.state === 'idle') {
+      this.time.delayedCall(300 + Math.random() * 500, () => {
+        const entry = this.npcBears.get(def.id)
+        if (!entry || !this.myBear) return
+        if (entry.bear.state !== 'idle') return
+        const dx = this.myBear.x - entry.bear.x
+        const dy = this.myBear.y - entry.bear.y
+        entry.bear.facing = Math.abs(dx) > Math.abs(dy)
+          ? (dx >= 0 ? 'right' : 'left')
+          : (dy >= 0 ? 'down' : 'up')
+        entry.bear.playIdle()
+        if (Math.random() < 0.3) {
+          const screen = this.bearScreenPos(entry.bear)
+          showBubble('npc_' + def.id, pickNoticeLine(def.id), screen.x, screen.y)
+        }
+      })
+    }
   }
 
   // V15.0 — ambient action cycle: idle NPCs occasionally change facing,
