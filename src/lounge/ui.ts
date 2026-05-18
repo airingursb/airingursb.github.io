@@ -281,6 +281,13 @@ export function hideSayInput() {
   sayInput.value = ''
 }
 
+// V15.6-review C1 — lets callers (V15.2 ambient bubble tick) check whether
+// a more important bubble (player-triggered dialog or NPC notice) is on
+// screen before stomping it with a low-priority ambient line.
+export function hasActiveBubble(bearId: string): boolean {
+  return activeBubbles.has(bearId)
+}
+
 export function showBubble(bearId: string, text: string, screenX: number, screenY: number) {
   if (!bubblesEl) return
   const existing = activeBubbles.get(bearId)

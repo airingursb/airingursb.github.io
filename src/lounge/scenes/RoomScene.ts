@@ -6,7 +6,7 @@ import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../s
 import { renderMinimap, showDoorLabel, hideDoorLabel, setDoorLabelClickHandler, MAP_ROOMS } from '../minimap'
 import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, type Region, type RoomId, type Species } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
-import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard, setOnSpeciesToggle, updateSpeciesButtonLabel } from '../ui'
+import { onUIEvent, showMenuAt, showBubble, hasActiveBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard, setOnSpeciesToggle, updateSpeciesButtonLabel } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
@@ -2769,11 +2769,14 @@ export class RoomScene extends Phaser.Scene {
     }
     this.npcBears.set(def.id, {
       bear, def,
+      // V15.6-review C3 — use this.time.now (Phaser scene clock, pauses on
+      // background) instead of performance.now() (kept advancing in
+      // background → on tab-resume every NPC fires every tick at once).
       // Stagger initial ambient ticks so 3 NPCs in one room don't all wave
       // on the same frame.
-      ambientNextAt: performance.now() + 5000 + Math.random() * 10000,
-      wanderNextAt: performance.now() + 10000 + Math.random() * 10000,
-      bubbleNextAt: performance.now() + 30000 + Math.random() * 60000,
+      ambientNextAt: this.time.now + 5000 + Math.random() * 10000,
+      wanderNextAt: this.time.now + 10000 + Math.random() * 10000,
+      bubbleNextAt: this.time.now + 45000 + Math.random() * 45000,
       homeX: b.x, homeY: b.y
     })
     // V15.3 — shortly after the NPC appears (which also fires when the
@@ -2804,7 +2807,7 @@ export class RoomScene extends Phaser.Scene {
   // in a deliberate pose (sit/sleep/dance) so we don't fight scheduled
   // bracket state, and skips during reduced-motion (only does the cheap
   // facing-change variant).
-  private tickNpcAmbient(entry: { bear: Bear; def: NpcDef; ambientNextAt: number }, now: number) {
+  private tickNpcAmbient(entry: { bear: Bear; def: NpcDef; ambientNextAt: number }, id: string, now: number) {
     if (now < entry.ambientNextAt) return
     const reschedule = (minMs = 8000, maxMs = 15000) => {
       entry.ambientNextAt = now + minMs + Math.random() * (maxMs - minMs)
@@ -2827,10 +2830,16 @@ export class RoomScene extends Phaser.Scene {
       // Brief wave
       entry.bear.applyEmote('wave', 1500, reduced)
     } else {
-      // Brief sit-down — applyEmote('sit') toggles, so a second call stands them back up
+      // Brief sit-down — applyEmote('sit') toggles, so a second call stands
+      // them back up. V15.6-review C2 — re-fetch from npcBears in the
+      // callback so we don't poke a destroyed sprite if the NPC's schedule
+      // bracket changed and despawned/respawned this NPC in the interim.
+      const originalBear = entry.bear
       entry.bear.applyEmote('sit', 0, reduced)
       this.time.delayedCall(3500 + Math.random() * 2500, () => {
-        if (entry.bear.state === 'sit') entry.bear.applyEmote('sit', 0, reduced)
+        const e = this.npcBears.get(id)
+        if (!e || e.bear !== originalBear) return  // despawned or respawned with fresh sprite
+        if (e.bear.state === 'sit') e.bear.applyEmote('sit', 0, reduced)
       })
     }
     reschedule()
@@ -2875,8 +2884,13 @@ export class RoomScene extends Phaser.Scene {
     const reschedule = (minMs = 45000, maxMs = 90000) => {
       entry.bubbleNextAt = now + minMs + Math.random() * (maxMs - minMs)
     }
-    // Don't talk over the player's just-triggered NPC dialog (handleNpcClick
-    // uses the same 'npc_' + id key with a 3s lifetime via ui.showBubble).
+    // V15.6-review C1 — three guards the original comment promised but
+    // didn't implement: skip non-idle (sit/sleep/dance), skip walking,
+    // skip if a higher-priority bubble (player dialog or V15.3 notice) is
+    // already on screen for this NPC. Without these, an ambient *humming*
+    // can stomp a just-clicked dialog line or float above a sleeping NPC.
+    if (entry.bear.state !== 'idle' || entry.bear.target) { reschedule(); return }
+    if (hasActiveBubble('npc_' + id)) { reschedule(); return }
     const screen = this.bearScreenPos(entry.bear)
     const line = pickAmbientLine(id)
     showBubble('npc_' + id, line, screen.x, screen.y)
@@ -3618,10 +3632,13 @@ export class RoomScene extends Phaser.Scene {
       this.checkDoorProximity()
     }
     this.peers.forEach((p) => p.bear.update(dtMs, true))
-    const now = performance.now()
+    // V15.6-review C3 — Phaser scene clock pauses on background tabs;
+    // performance.now() doesn't, which would burst-fire all NPC ticks at
+    // resume time.
+    const now = this.time.now
     this.npcBears.forEach((entry, id) => {
       entry.bear.update(dtMs, true)
-      this.tickNpcAmbient(entry, now)
+      this.tickNpcAmbient(entry, id, now)
       this.tickNpcWander(entry, now)
       this.tickNpcBubble(entry, id, now)
     })
