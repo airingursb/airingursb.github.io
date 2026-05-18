@@ -4,6 +4,18 @@
 
 <div id="lounge-root">
   <div id="lounge-mount"></div>
+  <!-- V11.1 — Touch input overlay. Hidden by default; CSS reveals when
+       body.is-touch.is-narrow (mobile only). Buttons set touchInput flags
+       that RoomScene's keyboard reader OR-s into the movement state. -->
+  <div id="lounge-touch-overlay" hidden>
+    <div id="lounge-dpad" class="touch-dpad">
+      <button type="button" id="lounge-dpad-up"    class="td-btn td-up"    aria-label="Up">▲</button>
+      <button type="button" id="lounge-dpad-left"  class="td-btn td-left"  aria-label="Left">◀</button>
+      <button type="button" id="lounge-dpad-right" class="td-btn td-right" aria-label="Right">▶</button>
+      <button type="button" id="lounge-dpad-down"  class="td-btn td-down"  aria-label="Down">▼</button>
+    </div>
+    <button type="button" id="lounge-action-btn" class="touch-action-btn" aria-label="Interact">A</button>
+  </div>
   <div id="lounge-ui">
     <button id="lounge-mute" class="ui-mute-btn" aria-label="Toggle sound">🔊</button>
     <button id="lounge-volume-btn" class="ui-volume-btn" aria-label="Volume settings">⚙</button>
@@ -412,6 +424,59 @@
     image-rendering: pixelated;
     cursor: crosshair;
   }
+
+  /* V11.1 — Touch input overlay: D-pad bottom-left, action button bottom-right.
+     Default hidden; revealed by body.is-touch.is-narrow (mobile-only). */
+  #lounge-touch-overlay { display: none; }
+  body.is-touch.is-narrow #lounge-touch-overlay {
+    display: block;
+    position: fixed; inset: 0;
+    pointer-events: none;       /* container is pass-through; buttons opt in */
+    z-index: 85;
+  }
+  .touch-dpad {
+    position: absolute;
+    bottom: 60px;               /* above the action-button strip */
+    left: 12px;
+    width: 132px; height: 132px;
+    pointer-events: none;
+  }
+  .touch-dpad .td-btn {
+    position: absolute;
+    width: 44px; height: 44px;
+    background: rgba(20,20,30,.6);
+    border: 1px solid rgba(255,255,255,.25);
+    color: #fff;
+    border-radius: 8px;
+    font-size: 16px;
+    line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: auto;
+    user-select: none;
+    touch-action: none;          /* prevent scroll while holding */
+  }
+  .touch-dpad .td-btn:active { background: rgba(80,160,80,.6); }
+  .touch-dpad .td-up    { top: 0;  left: 44px; }
+  .touch-dpad .td-left  { top: 44px; left: 0; }
+  .touch-dpad .td-right { top: 44px; left: 88px; }
+  .touch-dpad .td-down  { top: 88px; left: 44px; }
+  .touch-action-btn {
+    position: absolute;
+    bottom: 70px;
+    right: 16px;
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: rgba(255,200,80,.85);
+    color: #2a1810;
+    border: 2px solid rgba(180,120,40,.7);
+    font-size: 22px;
+    font-weight: 700;
+    pointer-events: auto;
+    user-select: none;
+    touch-action: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  }
+  .touch-action-btn:active { background: rgba(255,160,60,.95); transform: scale(0.95); }
 
   /* V11.0 — Mobile foundation: the 9 top-bar action buttons collide with
      the top-left energy/camera/shells UI on phone screens. On narrow

@@ -6,6 +6,7 @@ import { togglePetPanel as _ensurePetUiInit } from './pet_ui'
 import { togglePanel as _ensureAchUiInit } from './achievements_ui'
 import { togglePanel as _ensurePhotosUiInit } from './photos_ui'
 import { isMobile, isTouchDevice, isNarrowViewport, onViewportChange } from './mobile'
+import { initTouchInput } from './touch_input'
 
 export function bootGame(parent: HTMLElement): Phaser.Game {
   // Era 6/7 P0 — install progress sync before any game code reads localStorage,
@@ -56,9 +57,14 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
     document.body.classList.toggle('is-mobile', isMobile())
     document.body.classList.toggle('is-touch', isTouchDevice())
     document.body.classList.toggle('is-narrow', isNarrowViewport())
+    // V11.1 — un-hide the touch overlay element so its CSS display rule kicks in
+    const overlay = document.getElementById('lounge-touch-overlay')
+    if (overlay) overlay.hidden = false
   }
   applyMobileClass()
   onViewportChange(applyMobileClass)
+  // V11.1 — bind D-pad + action button listeners
+  initTouchInput()
   // Expose for debugging / smoke tests
   ;(window as any).__loungeGame = game
   return game

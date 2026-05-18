@@ -20,6 +20,7 @@ import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } f
 import { addNpcTalkHeart, getNpcHeartLevel, addNpcGiftHeart } from '../npc_hearts'
 import { hasPet, activePetPerk, getPet } from '../pets'
 import { PetSprite, ensurePetAtlasLoaded } from '../pet_sprite'
+import { touchInput, consumeActionTap } from '../touch_input'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
 import { recordEvent as recordAchievement, onAchievementUnlocked } from '../achievements'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
@@ -2832,10 +2833,10 @@ export class RoomScene extends Phaser.Scene {
 
   private applyKeyboard(dtMs: number): boolean {
     if (!this.myBear) return false
-    const left = (this.cursors?.left.isDown ?? false) || (this.wasd?.A.isDown ?? false)
-    const right = (this.cursors?.right.isDown ?? false) || (this.wasd?.D.isDown ?? false)
-    const up = (this.cursors?.up.isDown ?? false) || (this.wasd?.W.isDown ?? false)
-    const down = (this.cursors?.down.isDown ?? false) || (this.wasd?.S.isDown ?? false)
+    const left  = (this.cursors?.left.isDown  ?? false) || (this.wasd?.A.isDown ?? false) || touchInput.left
+    const right = (this.cursors?.right.isDown ?? false) || (this.wasd?.D.isDown ?? false) || touchInput.right
+    const up    = (this.cursors?.up.isDown    ?? false) || (this.wasd?.W.isDown ?? false) || touchInput.up
+    const down  = (this.cursors?.down.isDown  ?? false) || (this.wasd?.S.isDown ?? false) || touchInput.down
     if (!left && !right && !up && !down) return false
 
     this.myBear.target = null
@@ -3037,6 +3038,9 @@ export class RoomScene extends Phaser.Scene {
 
   update(_time: number, dtMs: number) {
     if (this.myBear) {
+      // V11.1 — touch action button is one shot per tap; consume here so
+      // the keyboard path is reused (tryInteract handles all the context).
+      if (consumeActionTap()) this.tryInteract()
       const prevX = this.myBear.x, prevY = this.myBear.y
       const usedKeyboard = this.applyKeyboard(dtMs)
       if (!usedKeyboard) {
