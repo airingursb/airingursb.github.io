@@ -6,7 +6,7 @@ import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../s
 import { renderMinimap, showDoorLabel, hideDoorLabel, setDoorLabelClickHandler, MAP_ROOMS } from '../minimap'
 import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, type Region, type RoomId, type Species } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
-import { onUIEvent, showMenuAt, showBubble, hasActiveBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard, setOnSpeciesToggle, updateSpeciesButtonLabel } from '../ui'
+import { onUIEvent, showMenuAt, showBubble, hasActiveBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard, setOnSpeciesToggle, updateSpeciesButtonLabel, showProfileCard } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
 import { getEmote } from '../emotes'
 import { getOverlayAt } from '../atmosphere'
@@ -1559,6 +1559,16 @@ export class RoomScene extends Phaser.Scene {
   private openPeerMenu(peerSessionId: string, peerBear: Bear) {
     const screen = this.bearScreenPos(peerBear)
     showPeerMenu(screen.x, screen.y, (action) => {
+      if (action === 'profile') {
+        // V17.2 — surface the peer's bio/status/mood/pinned card
+        const vid = this.peerVisitorIds.get(peerSessionId) ?? null
+        const name = peerBear.displayName ?? this.fallbackName(null, this.peerCCs.get(peerSessionId) ?? null)
+        void import('../profile').then(p => {
+          const cached = p.getPeerProfile(vid)
+          showProfileCard(name, cached)
+        })
+        return
+      }
       if (action === 'wave') {
         this.walkToAndWave(peerSessionId, peerBear)
       } else if (action === 'gift') {

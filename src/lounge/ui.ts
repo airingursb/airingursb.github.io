@@ -2005,7 +2005,7 @@ let threadFormEl: HTMLFormElement | null = null
 let threadInputEl: HTMLInputElement | null = null
 let threadBackBtn: HTMLButtonElement | null = null
 
-type PeerMenuAction = 'wave' | 'gift' | 'dm' | 'visit_home'   // V12.4
+type PeerMenuAction = 'profile' | 'wave' | 'gift' | 'dm' | 'visit_home'   // V12.4 + V17.2
 let onPeerMenuAction: ((action: PeerMenuAction) => void) | null = null
 
 export function showPeerMenu(screenX: number, screenY: number, onAction: (action: PeerMenuAction) => void) {
@@ -2032,6 +2032,65 @@ export function hidePeerMenu() {
   if (!peerMenuEl) peerMenuEl = document.getElementById('lounge-peer-menu')
   if (!peerMenuEl || peerMenuEl.hidden) return
   peerMenuEl.hidden = true
+}
+
+// V17.2 — Profile card modal. Shows bio/status/mood/pinned for a peer
+// (or self) by reading from the profile cache the WS layer populates.
+let pcEl: HTMLElement | null = null
+let pcNameEl: HTMLElement | null = null
+let pcMoodEl: HTMLElement | null = null
+let pcStatusEl: HTMLElement | null = null
+let pcBioEl: HTMLElement | null = null
+let pcEmptyEl: HTMLElement | null = null
+let pcPinnedSection: HTMLElement | null = null
+let pcPinnedListEl: HTMLElement | null = null
+
+function ensurePcRefs() {
+  if (pcEl) return
+  pcEl = document.getElementById('lounge-profile-card')
+  pcNameEl = document.getElementById('lounge-profile-card-name')
+  pcMoodEl = document.getElementById('lounge-profile-card-mood')
+  pcStatusEl = document.getElementById('lounge-profile-card-status')
+  pcBioEl = document.getElementById('lounge-profile-card-bio')
+  pcEmptyEl = document.getElementById('lounge-profile-card-empty')
+  pcPinnedSection = document.getElementById('lounge-profile-card-pinned')
+  pcPinnedListEl = document.getElementById('lounge-profile-card-pinned-list')
+  const closeBtn = document.getElementById('lounge-profile-card-close')
+  if (!pcEl) return
+  closeBtn?.addEventListener('click', () => hideProfileCard())
+  pcEl.addEventListener('click', (e) => {
+    if (e.target === pcEl) hideProfileCard()
+  })
+}
+export function showProfileCard(displayName: string, profile: {
+  bio: string | null
+  status: string | null
+  mood: string | null
+  pinned_achievements: string[]
+} | null) {
+  ensurePcRefs()
+  if (!pcEl) return
+  if (pcNameEl) pcNameEl.textContent = displayName || 'Anonymous'
+  if (pcMoodEl) pcMoodEl.textContent = profile?.mood ?? ''
+  if (pcStatusEl) pcStatusEl.textContent = profile?.status ?? ''
+  if (pcBioEl) pcBioEl.textContent = profile?.bio ?? ''
+  const hasContent = !!(profile && (profile.bio || profile.status || profile.mood))
+  if (pcEmptyEl) pcEmptyEl.hidden = hasContent
+  const pinned = profile?.pinned_achievements ?? []
+  if (pcPinnedSection) pcPinnedSection.hidden = pinned.length === 0
+  if (pcPinnedListEl) {
+    pcPinnedListEl.innerHTML = ''
+    for (const ach of pinned) {
+      const li = document.createElement('li')
+      li.textContent = ach
+      pcPinnedListEl.appendChild(li)
+    }
+  }
+  pcEl.hidden = false
+}
+export function hideProfileCard() {
+  if (!pcEl) return
+  pcEl.hidden = true
 }
 
 type GiftListEntry = { item_id: string; name: string; alreadySent: boolean }
