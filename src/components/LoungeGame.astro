@@ -391,6 +391,10 @@
   body:has(#lounge-root) {
     overflow: hidden;
     background: #0d1117;
+    /* V11.0 — prevent iOS double-tap zoom + pull-to-refresh, and forbid
+       overscroll so dragging in the canvas doesn't bounce the page. */
+    touch-action: manipulation;
+    overscroll-behavior: none;
   }
   #lounge-root {
     position: fixed;
@@ -407,6 +411,68 @@
   #lounge-mount canvas {
     image-rendering: pixelated;
     cursor: crosshair;
+  }
+
+  /* V11.0 — Mobile foundation: the 9 top-bar action buttons collide with
+     the top-left energy/camera/shells UI on phone screens. On narrow
+     viewports we relocate them to a bottom-of-screen strip (also more
+     thumb-reachable) and shrink fixed-width panels to fit. */
+  @media (max-width: 600px) {
+    .ui-mute-btn, .ui-volume-btn, .ui-info-btn, .ui-pet-btn, .ui-ach-btn,
+    .ui-photos-btn, .ui-inventory-btn, .ui-messages-btn, .ui-wishboard-btn {
+      position: fixed !important;
+      top: auto !important;
+      bottom: 10px !important;
+      right: auto !important;
+      width: 36px !important;
+      height: 36px !important;
+      font-size: 15px !important;
+      z-index: 90 !important;
+    }
+    /* Bottom strip, 9 buttons × 38px = 342px → fits on 360px wide screens.
+       Anchored to viewport horizontal center via right offsets relative
+       to the strip's center. (Simpler: left:px from the screen left.) */
+    .ui-mute-btn      { left: calc(50vw - 171px) !important; }
+    .ui-volume-btn    { left: calc(50vw - 133px) !important; }
+    .ui-info-btn      { left: calc(50vw - 95px)  !important; }
+    .ui-inventory-btn { left: calc(50vw - 57px)  !important; }
+    .ui-messages-btn  { left: calc(50vw - 19px)  !important; }
+    .ui-wishboard-btn { left: calc(50vw + 19px)  !important; }
+    .ui-pet-btn       { left: calc(50vw + 57px)  !important; }
+    .ui-ach-btn       { left: calc(50vw + 95px)  !important; }
+    .ui-photos-btn    { left: calc(50vw + 133px) !important; }
+
+    /* Panels: full-viewport width with small inset; cap height as scroll
+       region so never overflow. Top: 8px (no top-bar to clear anymore). */
+    .ui-pet-panel, .ui-ach-panel, .ui-photos-panel,
+    .ui-shop-panel, .ui-skills-panel, .ui-mailbox-panel,
+    .ui-craft-panel, .ui-whosaround-panel, .ui-progress-panel,
+    .ui-bundles-panel, .ui-info-panel {
+      position: fixed !important;
+      left: 8px !important;
+      right: 8px !important;
+      top: 56px !important;
+      bottom: 60px !important;    /* leave room for the bottom button strip */
+      width: auto !important;
+      max-width: none !important;
+      max-height: none !important;
+      overflow-y: auto;
+    }
+    /* Back arrow stays top-left but smaller and inset for iOS notch. */
+    .lounge-back {
+      top: 8px !important;
+      left: 8px !important;
+      width: 32px !important;
+      height: 32px !important;
+    }
+    /* Messages-btn carries a badge child — keep it visible at the new size */
+    .ui-messages-btn .badge {
+      top: -4px !important; right: -4px !important;
+      font-size: 9px !important; padding: 0 4px !important;
+    }
+    /* Door label sits at bottom-center desktop; on mobile the bottom is
+       occupied by the action button strip, so lift it above. */
+    .ui-door-label { bottom: 60px !important; }
   }
   .lounge-back {
     position: absolute; top: 16px; left: 16px;

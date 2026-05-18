@@ -5,6 +5,7 @@ import { installProgressSync, pullProgress } from './progress_sync'
 import { togglePetPanel as _ensurePetUiInit } from './pet_ui'
 import { togglePanel as _ensureAchUiInit } from './achievements_ui'
 import { togglePanel as _ensurePhotosUiInit } from './photos_ui'
+import { isMobile, isTouchDevice, isNarrowViewport, onViewportChange } from './mobile'
 
 export function bootGame(parent: HTMLElement): Phaser.Game {
   // Era 6/7 P0 — install progress sync before any game code reads localStorage,
@@ -49,6 +50,15 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
   void _ensurePetUiInit
   void _ensureAchUiInit
   void _ensurePhotosUiInit
+  // V11.0 — tag the body with a class so CSS or peer components can
+  // adapt before each scene boots. Re-tag on viewport change.
+  const applyMobileClass = () => {
+    document.body.classList.toggle('is-mobile', isMobile())
+    document.body.classList.toggle('is-touch', isTouchDevice())
+    document.body.classList.toggle('is-narrow', isNarrowViewport())
+  }
+  applyMobileClass()
+  onViewportChange(applyMobileClass)
   // Expose for debugging / smoke tests
   ;(window as any).__loungeGame = game
   return game
