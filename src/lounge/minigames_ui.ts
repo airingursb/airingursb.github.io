@@ -78,6 +78,16 @@ function showPicker() {
   }
 }
 
+// V13.8-review C1 fix — exported wrapper that opens the overlay then
+// launches the named game. Replaces the earlier brittle DOM-text-match
+// inside RoomScene's arcade-cabinet handler (which silently dropped the
+// Cook cabinet because 'cook' isn't a substring of 'Stir-fry Timing').
+export function openGame(id: string) {
+  if (!ensure() || !overlayEl) return
+  overlayEl.hidden = false
+  startGame(id)
+}
+
 function startGame(id: string) {
   if (!ensure() || !pickerEl || !stageEl || !titleEl || !blurbEl) return
   const def = MINIGAMES.find(m => m.id === id)

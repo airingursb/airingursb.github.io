@@ -96,17 +96,22 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
     if (!s) return
     if (s.currentRoomId === roomId) return    // already here, no-op
     const z = _TRANSIT_ZONES.find(z => z.id === roomId)
-    void Promise.all([import('./energy'), import('./net'), import('./ui')]).then(
-      ([e, net, ui]) => {
-        if (z && z.cost > 0 && e.getEnergy() < z.cost) {
-          ui.showToast(`⚡ Not enough energy (need ${z.cost})`, 2000)
-          return
-        }
-        if (z && z.cost > 0) e.consumeEnergy(z.cost)
-        net.sendRoomChange(roomId as any)
-        s.scene.restart({ roomId, spawnPoint: 'default' })
+    void Promise.all([
+      import('./energy'), import('./net'), import('./ui'), import('./seasonal_rules')
+    ]).then(([e, net, ui, seas]) => {
+      // V13.8-review I5 fix: enforce seasonal portal rules on transit too.
+      // Earlier, winter player could 🚇 → Beach despite the balcony→beach
+      // portal being filtered out.
+      const reason = seas.portalBlockedReason(s.currentRoomId, { name: 'transit', targetRoom: roomId })
+      if (reason) { ui.showToast(reason, 2400); return }
+      if (z && z.cost > 0 && e.getEnergy() < z.cost) {
+        ui.showToast(`⚡ Not enough energy (need ${z.cost})`, 2000)
+        return
       }
-    )
+      if (z && z.cost > 0) e.consumeEnergy(z.cost)
+      net.sendRoomChange(roomId as any)
+      s.scene.restart({ roomId, spawnPoint: 'default' })
+    })
   })
   // Expose for debugging / smoke tests
   ;(window as any).__loungeGame = game

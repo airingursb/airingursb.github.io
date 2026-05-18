@@ -132,7 +132,7 @@ buildRoom({
   ],
   spawns: [
     { name: 'default', x: 96, y: 112 },
-    { name: 'from_lobby', x: 96, y: 120 }
+    { name: 'from_lobby', x: 96, y: 104 }
   ],
   portals: [
     { name: 'to_lobby', x: 96, y: 128, w: 16, h: 16,
@@ -177,7 +177,7 @@ buildRoom({
   ],
   spawns: [
     { name: 'default', x: 96, y: 112 },
-    { name: 'from_lobby', x: 96, y: 120 }
+    { name: 'from_lobby', x: 96, y: 104 }
   ],
   portals: [
     { name: 'to_lobby', x: 96, y: 128, w: 16, h: 16,
@@ -228,7 +228,7 @@ buildRoom({
   ],
   spawns: [
     { name: 'default', x: 96, y: 112 },
-    { name: 'from_lobby', x: 96, y: 120 }
+    { name: 'from_lobby', x: 96, y: 104 }
   ],
   portals: [
     { name: 'to_lobby', x: 96, y: 128, w: 16, h: 16,

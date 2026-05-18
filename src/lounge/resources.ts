@@ -2,13 +2,23 @@
 // respawn daily. Click a sparkle → +1 of that material. Materials live in
 // localStorage and are consumed by V9.1 recipes.
 
-export type MaterialId = 'leaves' | 'shells' | 'driftwood' | 'berries'
+// V13.8-review C3 fix: add the 4 greenhouse rare materials + autumn
+// pumpkin to the type so V13.3 / V13.7 grants surface in inventory
+// and can later be referenced by recipes/achievements.
+export type MaterialId =
+  | 'leaves' | 'shells' | 'driftwood' | 'berries'
+  | 'rare_orchid' | 'rare_moss' | 'rare_seed' | 'rare_root' | 'pumpkin'
 
 export const MATERIALS: Record<MaterialId, { name: string; emoji: string }> = {
-  leaves:    { name: 'Leaves',    emoji: '🍃' },
-  shells:    { name: 'Shells',    emoji: '🐚' },
-  driftwood: { name: 'Driftwood', emoji: '🪵' },
-  berries:   { name: 'Berries',   emoji: '🫐' }
+  leaves:      { name: 'Leaves',       emoji: '🍃' },
+  shells:      { name: 'Shells',       emoji: '🐚' },
+  driftwood:   { name: 'Driftwood',    emoji: '🪵' },
+  berries:     { name: 'Berries',      emoji: '🫐' },
+  rare_orchid: { name: 'Rare Orchid',  emoji: '🪷' },
+  rare_moss:   { name: 'Rare Moss',    emoji: '🌿' },
+  rare_seed:   { name: 'Rare Seed',    emoji: '🌰' },
+  rare_root:   { name: 'Rare Root',    emoji: '🥔' },
+  pumpkin:     { name: 'Pumpkin',      emoji: '🎃' }
 }
 
 // Per-room spot manifests. (x, y) is world coords (pixels).

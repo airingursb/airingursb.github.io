@@ -2896,23 +2896,25 @@ export class RoomScene extends Phaser.Scene {
       this.tapJamPad(it.padIndex, it)
       return
     }
-    // V13.2 — arcade cabinet launches the matching mini-game
+    // V13.2 → V13.8-review C1 fix: arcade cabinet launches the matching
+    // mini-game directly via the new openGame() entry point. Earlier
+    // impl matched tile text and silently dropped the Cook cabinet.
     if (it.kind === 'minigame' && it.gameId) {
-      void import('../minigames_ui').then(m => {
-        // toggle() opens the picker; we want to jump straight to this game.
-        // Easiest: open the panel then click the matching tile programmatically.
-        m.toggle()
-        // Give the picker a frame to render then click the right tile
-        setTimeout(() => {
-          const tiles = Array.from(document.querySelectorAll('.mg-tile')) as HTMLElement[]
-          const target = tiles.find(t => t.querySelector('.mg-name')?.textContent?.toLowerCase().includes(it.gameId ?? ''))
-          target?.click()
-        }, 100)
-      })
+      void import('../minigames_ui').then(m => m.openGame(it.gameId!))
       return
     }
-    // V13.3 — gather rare materials from greenhouse spots
+    // V13.3 → V13.8-review C2 fix: daily cap per spot. Without it the
+    // player could hold E and farm rare materials indefinitely.
     if (it.kind === 'gather_spot' && it.material) {
+      const today = new Date().toISOString().slice(0, 10)
+      const key = `lounge_gather_${it.name}_day`
+      try {
+        if (localStorage.getItem(key) === today) {
+          showToast('🌱 Already harvested today.', 1600)
+          return
+        }
+        localStorage.setItem(key, today)
+      } catch {}
       void import('../resources').then(r => {
         if (typeof (r as any).addMaterial === 'function') {
           (r as any).addMaterial(it.material as any, 1)

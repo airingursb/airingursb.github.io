@@ -18,9 +18,13 @@ export function portalBlockedReason(srcRoom: string, p: PortalDescriptor): strin
   const season = getCurrentSeason()
   const sid = season?.id ?? ''
   if (sid === 'winter') {
-    // balcony → beach is the only easy beach access from the lobby loop
-    if (srcRoom === 'room_balcony' && p.targetRoom === 'room_beach') {
-      return '❄️ The shore path is snowed over — try via the Grove'
+    // V13.6: shore is snowed over in winter. Apply globally for transit
+    // (srcRoom === 'transit') and specifically for balcony→beach for
+    // portal walks. From other rooms the player would have to detour
+    // anyway; only block transit + balcony.
+    if (p.targetRoom === 'room_beach' &&
+        (srcRoom === 'room_balcony' || srcRoom === 'transit')) {
+      return '❄️ The shore path is snowed over — wait for spring'
     }
   }
   return null
@@ -58,9 +62,12 @@ export function getSeasonalInteractableFor(roomId: string): SeasonalInteractable
     }
   }
   // Autumn (named 'fall' in the manifest): grove pumpkin patch.
+  // V13.8-review C4 fix — original (320, 200) was inside pond_water;
+  // (64, 240) was inside tree_f. (160, 224) is clear of all colliders
+  // in grove.tmj (verified: not in any wall/tree/pond/bench rect).
   if (sid === 'fall' && roomId === 'room_grove') {
     return {
-      name: 'grove_pumpkin', x: 320, y: 200, w: 32, h: 32,
+      name: 'grove_pumpkin', x: 160, y: 224, w: 32, h: 32,
       kind: 'seasonal_pumpkin', emoji: '🎃',
       blurb: 'Pumpkin patch — harvest for +1 pumpkin material'
     }
