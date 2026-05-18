@@ -117,19 +117,22 @@ export const PROTOCOL_VERSION = 3
 
 export const STATIC_ROOMS = ['room_lobby', 'room_dj_floor', 'room_balcony', 'room_library', 'room_beach', 'room_grove', 'room_kitchen', 'room_workshop', 'room_rooftop', 'room_bedroom_mio', 'room_bedroom_halle', 'room_bedroom_sora', 'room_bedroom_theo', 'room_bedroom_marin', 'room_bedroom_cole', 'room_bedroom_wren', 'room_bedroom_dane', 'room_bedroom_iris', 'room_bedroom_mox'] as const
 export type StaticRoomId = typeof STATIC_ROOMS[number]
-// Home rooms have dynamic ids like 'room_home_<8hex>'.
-export type RoomId = StaticRoomId | `room_home_${string}`
+// Home rooms have dynamic ids like 'room_home_<8hex>'. Party rooms (V12.7)
+// have dynamic ids like 'room_party_<6 chars from PARTY_CODE_ALPHABET>'.
+export type RoomId = StaticRoomId | `room_home_${string}` | `room_party_${string}`
 export const DEFAULT_ROOM: StaticRoomId = 'room_lobby'
 
 // Back-compat for code that imports VALID_ROOMS.
 export const VALID_ROOMS = STATIC_ROOMS
 
 const HOME_ROOM_RE = /^room_home_[0-9a-f]{8}$/
+const PARTY_ROOM_RE = /^room_party_[A-Z2-9]{6}$/
 
 export function isValidRoom(s: string | null | undefined): s is RoomId {
   if (!s) return false
   if ((STATIC_ROOMS as readonly string[]).indexOf(s) !== -1) return true
   if (HOME_ROOM_RE.test(s)) return true
+  if (PARTY_ROOM_RE.test(s)) return true
   return false
 }
 

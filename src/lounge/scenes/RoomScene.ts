@@ -24,6 +24,8 @@ import { touchInput, consumeActionTap } from '../touch_input'
 import { setBoardRoom, setBoardDisplayName } from '../board_ui'
 import { setBoardProgressToken } from '../board'
 import { setVisitsProgressToken } from '../home_visits'
+import { setPartyProgressToken } from '../party'
+import { setPartyOnEnter, setPartyDisplayName } from '../party_ui'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
 import { recordEvent as recordAchievement, onAchievementUnlocked } from '../achievements'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
@@ -237,7 +239,15 @@ export class RoomScene extends Phaser.Scene {
   create() {
     // V10.4 — log every room entry for the discovery-tier achievements
     recordAchievement({ type: 'visit_room', roomId: this.currentRoomId })
-    const mapKey = isHomeRoom(this.currentRoomId) ? 'room_home_template' : this.currentRoomId
+    // V12.7 — party rooms (room_party_<6chars>) reuse the lobby tilemap so
+    // we don't need to bake a dedicated map. Server-side PARTY_FLOOR
+    // already mirrors lobby's bounds.
+    const isPartyRoom = /^room_party_[A-Z2-9]{6}$/.test(this.currentRoomId)
+    const mapKey = isHomeRoom(this.currentRoomId)
+      ? 'room_home_template'
+      : isPartyRoom
+        ? 'room_lobby'
+        : this.currentRoomId
     const map = this.make.tilemap({ key: mapKey })
     // Tilemap may reference any of these tilesets. Phaser uses whichever name matches
     // the map's tileset entry; others return null and are ignored.
@@ -1074,9 +1084,13 @@ export class RoomScene extends Phaser.Scene {
       setBoardProgressToken(m.progress_token)
       // V12.5 — same token gates the home visit log read
       setVisitsProgressToken(m.progress_token)
+      // V12.7 — party-room create requires the same HMAC token
+      setPartyProgressToken(m.progress_token)
     }
     // V12.1 — display name for the board post author field
     setBoardDisplayName(m.display_name ?? this.myDisplayName ?? null)
+    // V12.7 — same name shows as the party room owner
+    setPartyDisplayName(m.display_name ?? this.myDisplayName ?? null)
     // E5-P0c + P7-review I7 — reconcile species, but skip if we just toggled
     // locally (in-flight sendSpecies may not have hit the DB yet). Recently =
     // last 5s.

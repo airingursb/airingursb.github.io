@@ -10,6 +10,7 @@ import { initTouchInput } from './touch_input'
 import { maybeStartTour } from './onboarding_ui'
 import { toggle as _ensureMinigameUiInit } from './minigames_ui'
 import { toggle as _ensureBoardUiInit } from './board_ui'
+import { setPartyOnEnter } from './party_ui'
 
 export function bootGame(parent: HTMLElement): Phaser.Game {
   // Era 6/7 P0 — install progress sync before any game code reads localStorage,
@@ -77,6 +78,15 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
   void _ensureMinigameUiInit
   // V12.1 — bind community board button + overlay
   void _ensureBoardUiInit
+  // V12.7 — when the user clicks "Enter party" the panel asks the game
+  // to restart into the party room
+  setPartyOnEnter((roomId) => {
+    const g = (window as any).__loungeGame
+    const s = g?.scene?.getScenes?.(true)?.[0] ?? g?.scene?.scenes?.[0]
+    if (!s) return
+    void import('./net').then(({ sendRoomChange }) => sendRoomChange(roomId as any))
+    s.scene.restart({ roomId, spawnPoint: 'default' })
+  })
   // Expose for debugging / smoke tests
   ;(window as any).__loungeGame = game
   return game
