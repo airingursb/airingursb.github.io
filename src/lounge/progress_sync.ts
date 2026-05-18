@@ -55,7 +55,8 @@ const STORAGE_KEYS = [
   'lounge_bundles_v1',
   'lounge_bundle_unlocks_v1',
   'lounge_npc_hearts_v1',
-  'lounge_npc_hearts_daily_v1'
+  'lounge_npc_hearts_daily_v1',
+  'lounge_pet_v1'
 ] as const
 
 type Snapshot = Record<string, string | null>

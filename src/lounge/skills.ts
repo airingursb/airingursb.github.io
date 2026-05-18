@@ -94,9 +94,20 @@ export function awardXp(skill: SkillId, amount: number) {
 
 // ─── Perks: small functions read by other systems ───────────────────
 
-/** Walk speed multiplier from Wayfaring. Level 0 → 1.0, +0.03 per level → max 1.30. */
+/** Walk speed multiplier from Wayfaring. Level 0 → 1.0, +0.03 per level → max 1.30.
+ *  V10.2: bunny pet at max affection adds +0.05. */
 export function walkSpeedMultiplier(): number {
-  return 1 + getLevel('wayfaring') * 0.03
+  // Local require-pattern avoided to keep skills.ts dependency-free in case it
+  // imports skills (no cycle today, but defensive). Inline lookup is fine.
+  let mult = 1 + getLevel('wayfaring') * 0.03
+  try {
+    const raw = localStorage.getItem('lounge_pet_v1')
+    if (raw) {
+      const p = JSON.parse(raw)
+      if (p?.species === 'bunny' && p?.affection >= 10) mult += 0.05
+    }
+  } catch {}
+  return mult
 }
 
 /** Bonus letter slots from Hospitality. Level 3 → +1, level 6 → +2, level 9 → +3. */

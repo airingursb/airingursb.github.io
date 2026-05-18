@@ -4,7 +4,23 @@
 const STORAGE_KEY_VALUE = 'lounge_energy_v1'
 const STORAGE_KEY_DATE  = 'lounge_energy_date_v1'   // last-modified date key (YYYY-MM-DD UTC)
 
-export const ENERGY_MAX = 100
+const ENERGY_MAX_BASE = 100
+const PUPPY_BONUS = 5   // V10.2 — puppy pet at max affection
+/** Per-call max so pet adoption mid-session adjusts the cap. */
+export function getEnergyMax(): number {
+  try {
+    const raw = localStorage.getItem('lounge_pet_v1')
+    if (raw) {
+      const p = JSON.parse(raw)
+      if (p?.species === 'puppy' && p?.affection >= 10) return ENERGY_MAX_BASE + PUPPY_BONUS
+    }
+  } catch {}
+  return ENERGY_MAX_BASE
+}
+// Back-compat: old call sites import a static MAX. Computed lazily via getter
+// would require module rewrite; instead we expose the base value here as the
+// nominal cap and clamp through getEnergyMax() in setEnergy.
+export const ENERGY_MAX = ENERGY_MAX_BASE
 
 export const COST = {
   walk_per_tile: 1 / 30,   // 30 tiles drained → -1
@@ -21,10 +37,11 @@ function readRaw(): { value: number; date: string } {
   try {
     const v = Number(localStorage.getItem(STORAGE_KEY_VALUE))
     const d = localStorage.getItem(STORAGE_KEY_DATE) ?? ''
-    if (!isFinite(v)) return { value: ENERGY_MAX, date: utcDay() }
-    return { value: Math.max(0, Math.min(ENERGY_MAX, v)), date: d || utcDay() }
+    const cap = getEnergyMax()
+    if (!isFinite(v)) return { value: cap, date: utcDay() }
+    return { value: Math.max(0, Math.min(cap, v)), date: d || utcDay() }
   } catch {
-    return { value: ENERGY_MAX, date: utcDay() }
+    return { value: getEnergyMax(), date: utcDay() }
   }
 }
 
@@ -39,16 +56,17 @@ function writeRaw(value: number, date: string) {
 export function getEnergy(): number {
   const { value, date } = readRaw()
   const today = utcDay()
+  const cap = getEnergyMax()
   if (date !== today) {
-    // First load of a new day → restore to full
-    writeRaw(ENERGY_MAX, today)
-    return ENERGY_MAX
+    // First load of a new day → restore to full (cap includes pet perk)
+    writeRaw(cap, today)
+    return cap
   }
   return value
 }
 
 export function setEnergy(value: number) {
-  const clamped = Math.max(0, Math.min(ENERGY_MAX, value))
+  const clamped = Math.max(0, Math.min(getEnergyMax(), value))
   writeRaw(clamped, utcDay())
 }
 

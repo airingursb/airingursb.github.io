@@ -18,6 +18,8 @@ import { getActiveFestivalId, getActiveFestival, hasCompletedTodaysActivity, mar
 import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
 import { addNpcTalkHeart, getNpcHeartLevel } from '../npc_hearts'
+import { hasPet, activePetPerk } from '../pets'
+import { PetSprite } from '../pet_sprite'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased, decoStorageKey } from '../shells'
@@ -96,6 +98,7 @@ export class RoomScene extends Phaser.Scene {
   private pendingSpawn: { x: number; y: number } | null = null
   private npcManifest: NpcManifest | null = null
   private npcBears = new Map<string, { bear: Bear; def: NpcDef }>()
+  private petSprite?: PetSprite                                    // V10.2 — follower
   private npcDialogMemory = new Map<string, string>()
   private npcRefreshTimer?: Phaser.Time.TimerEvent
   private boothTracks: BoothTrack[] = []
@@ -342,6 +345,16 @@ export class RoomScene extends Phaser.Scene {
     // useful as future rooms grow larger than 480×320.
     this.cameras.main.startFollow(this.myBear.sprite, true, 0.08, 0.08)
     this.myBear.sprite.setDepth(5)
+
+    // V10.2 — Pet follower. Lazy-loads cat atlas (universal art) then spawns
+    // the small follower behind the player. Bound only when the player has
+    // already adopted a pet (otherwise getPet() returns null and PetSprite
+    // no-ops).
+    if (hasPet()) {
+      this.ensureSpeciesLoaded('cat' as any).then(() => {
+        this.petSprite = new PetSprite(this, spawnX - 18, spawnY, this.myRegion)
+      })
+    }
 
     // Apply locally-cached display name immediately (will be overridden by welcome msg)
     const localIdentity = getIdentity()
@@ -1264,9 +1277,11 @@ export class RoomScene extends Phaser.Scene {
     refreshInventoryPanel()
     const itemName = getAllPebbles().find(p => p.id === m.item_id)?.name ?? m.item_id
     showToast(`🎁 ${m.from_name ?? '(anonymous)'} gifted you "${itemName}"`)
-    // V8.4 — accepting a gift earns shells
-    awardShells(SHELL_REWARD.gift_accepted)
-    this.time.delayedCall(2000, () => showToast(`🐚 +${SHELL_REWARD.gift_accepted} shells (gift accepted)`, 2000))
+    // V8.4 — accepting a gift earns shells. V10.2: kitten pet perk → +10%.
+    let reward = SHELL_REWARD.gift_accepted
+    if (activePetPerk() === 'pet_kitten_shells') reward = Math.ceil(reward * 1.1)
+    awardShells(reward)
+    this.time.delayedCall(2000, () => showToast(`🐚 +${reward} shells (gift accepted)`, 2000))
   }
 
   private applyDmSentOk(m: DmSentOkMsg) {
@@ -2844,6 +2859,9 @@ export class RoomScene extends Phaser.Scene {
         }
         this.myBear.update(dtMs, false)
       }
+      // V10.2 — pet follows player. Update after player so the offset is
+      // computed from the just-moved position.
+      this.petSprite?.update(this.myBear.x, this.myBear.y, this.myBear.facing)
       // V8.1 — energy: drain by distance walked, restore slowly while sitting
       const dx = this.myBear.x - prevX, dy = this.myBear.y - prevY
       const dist = Math.hypot(dx, dy)
