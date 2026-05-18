@@ -19,6 +19,7 @@ import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollec
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
 import { addNpcTalkHeart, getNpcHeartLevel, addNpcGiftHeart } from '../npc_hearts'
 import { pickAmbientLine, pickNoticeLine } from '../npc_ambient'
+import { pickExchange, pickPairFromPresent } from '../npc_smalltalk'
 import { hasPet, activePetPerk, getPet } from '../pets'
 import { PetSprite, ensurePetAtlasLoaded } from '../pet_sprite'
 import { touchInput, consumeActionTap } from '../touch_input'
@@ -152,6 +153,8 @@ export class RoomScene extends Phaser.Scene {
   private peerPets = new Map<string, PetSprite>()                  // V10.8c — peers' pet followers, keyed by session id
   private npcDialogMemory = new Map<string, string>()
   private npcRefreshTimer?: Phaser.Time.TimerEvent
+  // V15.5 — pairwise NPC small-talk timer (scene-level, not per-NPC)
+  private npcSmalltalkTimer?: Phaser.Time.TimerEvent
   private boothTracks: BoothTrack[] = []
   private activeBoothInteractable: Interactable | null = null
   private currentBoothTrackId: string | null = null
@@ -1305,6 +1308,7 @@ export class RoomScene extends Phaser.Scene {
       hideBoothPicker()
       if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
       if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
+      if (this.npcSmalltalkTimer) { this.npcSmalltalkTimer.remove(false); this.npcSmalltalkTimer = undefined }
       this.seasonalEmitter?.destroy(); this.seasonalEmitter = undefined
       this.holidayEmitter?.destroy(); this.holidayEmitter = undefined
       this.seasonOverlay?.destroy(); this.seasonOverlay = undefined
@@ -2671,6 +2675,15 @@ export class RoomScene extends Phaser.Scene {
       loop: true,
       callback: () => this.refreshNpcs()
     })
+    // V15.5 — small-talk timer: every 60-120s, if 2+ NPCs are co-present,
+    // fire a paired exchange. Single timer per scene (cheaper than per-NPC).
+    const startSmalltalk = () => {
+      this.npcSmalltalkTimer = this.time.delayedCall(60_000 + Math.random() * 60_000, () => {
+        this.maybeRunNpcSmalltalk()
+        startSmalltalk()
+      })
+    }
+    startSmalltalk()
   }
 
   private refreshNpcs() {
@@ -2821,6 +2834,35 @@ export class RoomScene extends Phaser.Scene {
       })
     }
     reschedule()
+  }
+
+  // V15.5 — pick two co-present idle NPCs and run a paired exchange. Skips
+  // when fewer than 2 idle NPCs are present (sit/sleep/dance shouldn't be
+  // interrupted), and skips when the player is currently in dialog so we
+  // don't talk over the latest player-triggered bubble.
+  private maybeRunNpcSmalltalk() {
+    const idle: string[] = []
+    this.npcBears.forEach((entry, id) => {
+      if (entry.bear.state === 'idle' && !entry.bear.target) idle.push(id)
+    })
+    if (idle.length < 2) return
+    const exchange = pickExchange(idle)
+    if (!exchange) return
+    const pair = pickPairFromPresent(idle, exchange)
+    if (!pair) return
+    const [idA, idB] = pair
+    const entryA = this.npcBears.get(idA)
+    const entryB = this.npcBears.get(idB)
+    if (!entryA || !entryB) return
+    const sA = this.bearScreenPos(entryA.bear)
+    showBubble('npc_' + idA, exchange.a, sA.x, sA.y)
+    // Brief pause then B replies. Use scene timer so it dies on scene restart.
+    this.time.delayedCall(2400 + Math.random() * 600, () => {
+      const e = this.npcBears.get(idB)
+      if (!e) return
+      const sB = this.bearScreenPos(e.bear)
+      showBubble('npc_' + idB, exchange.b, sB.x, sB.y)
+    })
   }
 
   // V15.2 — unprompted "thought" bubbles from idle NPCs. Low rate (~45-90s
@@ -3471,6 +3513,7 @@ export class RoomScene extends Phaser.Scene {
       hideBoothPicker()
       if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
       if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
+      if (this.npcSmalltalkTimer) { this.npcSmalltalkTimer.remove(false); this.npcSmalltalkTimer = undefined }
       this.seasonalEmitter?.destroy(); this.seasonalEmitter = undefined
       this.holidayEmitter?.destroy(); this.holidayEmitter = undefined
       this.seasonOverlay?.destroy(); this.seasonOverlay = undefined
