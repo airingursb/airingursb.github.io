@@ -24,6 +24,7 @@ import { touchInput, consumeActionTap } from '../touch_input'
 import { setBoardRoom, setBoardDisplayName } from '../board_ui'
 import { setBoardProgressToken } from '../board'
 import { setVisitsProgressToken } from '../home_visits'
+import { portalHidden, getSeasonalInteractableFor } from '../seasonal_rules'
 import { setPartyProgressToken } from '../party'
 import { setPartyOnEnter, setPartyDisplayName } from '../party_ui'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
@@ -458,7 +459,15 @@ export class RoomScene extends Phaser.Scene {
     // portal objects would teleport party players right back out (to library,
     // beach, etc.). A party room is an ephemeral 4h hangout, not a hub —
     // skip portals entirely so the room is a sealed space.
-    const portalObjects = isPartyRoom ? [] : (portalsLayer?.objects ?? [])
+    let portalObjects = isPartyRoom ? [] : (portalsLayer?.objects ?? [])
+    // V13.6 — seasonal geometry: filter portals based on current season.
+    // Currently winter blocks balcony→beach (toast tells the player why).
+    portalObjects = portalObjects.filter((o: any) => {
+      const props = (o.properties ?? []) as Array<{ name: string; value: unknown }>
+      const target = props.find((p) => p.name === 'target_room')?.value
+      if (typeof target !== 'string') return true
+      return !portalHidden(this.currentRoomId, { name: (o.name as string) ?? '', targetRoom: target })
+    })
     this.portals = portalObjects.map((o) => {
       const props = (o.properties ?? []) as Array<{ name: string; value: unknown }>
       const get = (name: string) => props.find((p) => p.name === name)?.value
@@ -478,7 +487,20 @@ export class RoomScene extends Phaser.Scene {
     })
 
     const interactsLayer = map.getObjectLayer('interactables')
-    this.interactables = (interactsLayer?.objects ?? []).map((o) => {
+    // V13.7 — append a seasonal interactable to this room if one applies
+    // right now (summer pool / fall pumpkin). Inserted before the map's
+    // own interactables so prox-check stays simple.
+    const seasonalIt = getSeasonalInteractableFor(this.currentRoomId)
+    const allInteractObjs: any[] = [
+      ...(seasonalIt ? [{
+        name: seasonalIt.name,
+        x: seasonalIt.x, y: seasonalIt.y,
+        width: seasonalIt.w, height: seasonalIt.h,
+        properties: [{ name: 'kind', type: 'string', value: seasonalIt.kind }]
+      }] : []),
+      ...(interactsLayer?.objects ?? [])
+    ]
+    this.interactables = allInteractObjs.map((o) => {
       const props = (o.properties ?? []) as Array<{ name: string; value: unknown }>
       const get = (name: string) => props.find((p) => p.name === name)?.value
       const padIndex = get('pad_index')
@@ -2897,6 +2919,28 @@ export class RoomScene extends Phaser.Scene {
         }
       })
       showToast(`🌱 +1 ${it.material!.replace('_', ' ')}`, 1800)
+      return
+    }
+    // V13.7 — summer pool: +5 max-energy buff for 24h (separate key from bath)
+    if (it.kind === 'seasonal_pool') {
+      try {
+        localStorage.setItem('lounge_pool_buff_until', String(Date.now() + 86400_000))
+        showToast('🏊 Pool buff: +5 max energy until tomorrow', 2400)
+      } catch {}
+      return
+    }
+    // V13.7 — autumn pumpkin: +1 pumpkin material per click (daily-capped)
+    if (it.kind === 'seasonal_pumpkin') {
+      const today = new Date().toISOString().slice(0, 10)
+      try {
+        const last = localStorage.getItem('lounge_pumpkin_day') || ''
+        if (last === today) { showToast('🎃 Already harvested today.', 1800); return }
+        localStorage.setItem('lounge_pumpkin_day', today)
+        void import('../resources').then(r => {
+          if (typeof (r as any).addMaterial === 'function') (r as any).addMaterial('pumpkin' as any, 1)
+        })
+        showToast('🎃 +1 pumpkin', 1800)
+      } catch {}
       return
     }
     if (it.kind !== 'sit') return
