@@ -116,6 +116,11 @@ function finishGame(id: string, score: number) {
       m.recordEvent({ type: 'minigame_finished', gameId: id, score })
     )
   } catch {}
+  // V14.2 — if a cook-along session is active, contribute this score to
+  // the shared pot. (Module no-ops if you're not in a cook_along session.)
+  if (id === 'cook') {
+    try { void import('./group_cook').then(g => g.submitCookScore(score)) } catch {}
+  }
   if (!stageEl) return
   // Show a results card
   const card = document.createElement('div')

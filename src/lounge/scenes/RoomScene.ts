@@ -26,6 +26,7 @@ import { setBoardProgressToken } from '../board'
 import { setVisitsProgressToken } from '../home_visits'
 import { portalHidden, getSeasonalInteractableFor } from '../seasonal_rules'
 import { maybeJoinMorningCoffee, leaveMorningCoffeeIfNeeded, setCoffeeBannerHandler } from '../morning_coffee'
+import { maybeNoticeCookAlong, leaveCookAlongIfNeeded, setCookBannerHandler, startOrJoinCookAlong } from '../group_cook'
 import { setPartyProgressToken } from '../party'
 import { setPartyOnEnter, setPartyDisplayName } from '../party_ui'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
@@ -382,6 +383,29 @@ export class RoomScene extends Phaser.Scene {
       if (text) { if (tx) tx.textContent = text; el.hidden = false }
       else el.hidden = true
     })
+
+    // V14.2 — cook-along: notice on Kitchen entry, leave when not Kitchen
+    leaveCookAlongIfNeeded(this.currentRoomId)
+    maybeNoticeCookAlong(this.currentRoomId)
+    setCookBannerHandler((text) => {
+      const el = document.getElementById('lounge-cook-banner')
+      const tx = document.getElementById('lounge-cook-banner-text')
+      const btn = document.getElementById('lounge-cook-join') as HTMLButtonElement | null
+      if (!el) return
+      if (text) {
+        if (tx) tx.textContent = text
+        // Show "Join" button only when not yet in the session
+        const inSession = !!((window as any).__loungeTest?.getCurrentGroup?.())
+        if (btn) btn.hidden = inSession
+        el.hidden = false
+      } else el.hidden = true
+    })
+    // Wire "Start/Join cook-along" once
+    const cookBtn = document.getElementById('lounge-cook-join') as HTMLButtonElement | null
+    if (cookBtn && !cookBtn.dataset.bound) {
+      cookBtn.dataset.bound = '1'
+      cookBtn.addEventListener('click', () => startOrJoinCookAlong())
+    }
 
     // V12.1 — bind the community board to this room each scene boot
     {
