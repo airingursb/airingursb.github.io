@@ -16,7 +16,7 @@ export type NpcMail = {
   body: string
   sent_at: number       // ms timestamp when it was generated/dropped
   read: boolean
-  kind: 'festival' | 'quest' | 'friendship' | 'welcome' | 'general'
+  kind: 'festival' | 'quest' | 'friendship' | 'welcome' | 'general' | 'friend_activity'
 }
 
 const STORAGE_KEY = 'lounge_npc_mail_v1'
@@ -52,6 +52,71 @@ function addMail(m: Omit<NpcMail, 'id' | 'sent_at' | 'read'>): NpcMail {
   }
   saveAll([mail, ...loadAll()])
   return mail
+}
+
+// V10.6 — friend-activity notifications.
+//
+// Three event kinds map into one mail row each:
+//   - 'online'      : friend just joined any room (we see their JoinMsg)
+//   - 'home_visit'  : friend entered the player's Home room
+//   - 'sent_letter' : friend dropped a letter (we see LetterAppearedMsg)
+//
+// Throttling: same friend × same kind throttled to once per 30 minutes so a
+// friend bouncing between rooms doesn't spam the mailbox.
+
+const FRIEND_NOTIFS_ENABLED_KEY = 'lounge_friend_notifs_enabled_v1'
+const FRIEND_NOTIFS_THROTTLE_KEY = 'lounge_friend_notifs_throttle_v1'
+const THROTTLE_MS = 30 * 60_000
+
+export type FriendActivityKind = 'online' | 'home_visit' | 'sent_letter'
+
+export function isFriendNotifsEnabled(): boolean {
+  try { return localStorage.getItem(FRIEND_NOTIFS_ENABLED_KEY) !== '0' } catch { return true }
+}
+export function setFriendNotifsEnabled(on: boolean) {
+  try { localStorage.setItem(FRIEND_NOTIFS_ENABLED_KEY, on ? '1' : '0') } catch {}
+}
+
+function shouldFireForFriend(friendId: string, kind: FriendActivityKind): boolean {
+  try {
+    const raw = localStorage.getItem(FRIEND_NOTIFS_THROTTLE_KEY) || '{}'
+    const map = JSON.parse(raw) as Record<string, number>
+    const key = `${friendId}:${kind}`
+    const last = map[key] ?? 0
+    if (Date.now() - last < THROTTLE_MS) return false
+    map[key] = Date.now()
+    localStorage.setItem(FRIEND_NOTIFS_THROTTLE_KEY, JSON.stringify(map))
+    return true
+  } catch { return true }
+}
+
+export function notifyFriendActivity(opts: {
+  friend_id: string
+  friend_name: string | null
+  kind: FriendActivityKind
+}) {
+  if (!isFriendNotifsEnabled()) return
+  if (!shouldFireForFriend(opts.friend_id, opts.kind)) return
+  const name = opts.friend_name?.trim() || 'A friend'
+  const map: Record<FriendActivityKind, { subject: string; body: string }> = {
+    online: {
+      subject: `${name} just came online`,
+      body: `${name} is in the lounge. Drop by and say hi.`
+    },
+    home_visit: {
+      subject: `${name} dropped by your Home`,
+      body: `${name} let themselves into your Home. Hope you tidied.`
+    },
+    sent_letter: {
+      subject: `${name} left you a letter`,
+      body: `${name} just dropped a note for you. Check the world.`
+    }
+  }
+  const { subject, body } = map[opts.kind]
+  addMail({
+    from_npc_id: opts.friend_id, from_npc_name: name,
+    subject, body, kind: 'friend_activity'
+  })
 }
 
 function loadSeeded(): string[] {

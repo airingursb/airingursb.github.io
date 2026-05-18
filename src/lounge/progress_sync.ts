@@ -61,7 +61,8 @@ const STORAGE_KEYS = [
   'lounge_marriage_pebble_v1',
   'lounge_achievements_v1',
   'lounge_achievement_counters_v1',
-  'lounge_achievement_npcs_met_v1'
+  'lounge_achievement_npcs_met_v1',
+  'lounge_friend_notifs_enabled_v1'
 ] as const
 
 type Snapshot = Record<string, string | null>

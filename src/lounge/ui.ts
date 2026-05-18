@@ -1449,6 +1449,22 @@ export function initGameTimeClock() {
       tickClock()
     })
   }
+  // V10.6 — friend notifications toggle (lives in the same Info panel column)
+  const fnBtn = document.getElementById('lounge-info-friend-notifs') as HTMLButtonElement | null
+  if (fnBtn) {
+    import('./mailbox').then(m => {
+      const paint = (on: boolean) => {
+        fnBtn.dataset.on = on ? '1' : '0'
+        fnBtn.textContent = on ? '🔔 Friend notifications: on' : '🔕 Friend notifications: off'
+      }
+      paint(m.isFriendNotifsEnabled())
+      fnBtn.addEventListener('click', () => {
+        const next = !m.isFriendNotifsEnabled()
+        m.setFriendNotifsEnabled(next)
+        paint(next)
+      })
+    })
+  }
 }
 
 // V7.4 — Quests panel

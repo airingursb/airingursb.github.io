@@ -32,7 +32,7 @@ import { activityForRoom, hasCompletedToday as hasCoopDoneToday, awardActivity a
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
 import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry, showSpeciesPicker, setCraftEnvProvider, setBundleAutoProvider } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
-import { seedMailForToday, unreadCount as mailUnread } from '../mailbox'
+import { seedMailForToday, unreadCount as mailUnread, notifyFriendActivity } from '../mailbox'
 
 const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
@@ -588,7 +588,15 @@ export class RoomScene extends Phaser.Scene {
         if (m.visitor_id) {
           this.peerVisitorIds.set(m.id, m.visitor_id)
           const fr = this.friendships.get(m.visitor_id)
-          if (fr) bear.setFriendshipLevel(fr.level)
+          if (fr) {
+            bear.setFriendshipLevel(fr.level)
+            // V10.6 — friend visible (online or in this room). If the room is
+            // my own Home, that's a "home_visit", else a generic "online".
+            const myHome = `room_home_${getIdentity().visitor_id.slice(0, 8)}`
+            const kind = this.currentRoomId === myHome ? 'home_visit' : 'online'
+            notifyFriendActivity({ friend_id: m.visitor_id, friend_name: fr.display_name ?? null, kind })
+            refreshMailboxBadge()
+          }
         }
         this.peers.set(m.id, { bear, lastUpdate: performance.now() })
         if (species !== 'bear') {
@@ -1501,6 +1509,9 @@ export class RoomScene extends Phaser.Scene {
   }
 
   private applyLetterAppeared(m: LetterAppearedMsg) {
+    // V10.6 — if the letter author is a friend, notify regardless of room.
+    const fr = this.friendships.get(m.author_visitor_id)
+    if (fr) { notifyFriendActivity({ friend_id: m.author_visitor_id, friend_name: m.author_name ?? fr.display_name ?? null, kind: 'sent_letter' }); refreshMailboxBadge() }
     if (m.room !== this.currentRoomId) return
     // Replace any prior letter from this author in this room
     for (const [oldId, l] of this.letters) {
