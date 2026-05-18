@@ -559,6 +559,9 @@ export class RoomScene extends Phaser.Scene {
     try { this.myCC = sessionStorage.getItem('vp_country') } catch { this.myCC = null }
     this.myRegion = ccToRegion(this.myCC)
     this.myBear = new Bear(this, spawnX, spawnY, this.myRegion, getMySpecies())
+    // V17.1 — apply persisted mood (works before welcome lands, since
+    // localStorage was hydrated last session or by applyWelcomeProfile)
+    void import('../profile').then(p => this.myBear?.setMood(p.getMood() || null))
     // V6.7 — camera follows player smoothly. No-op for rooms that match canvas (currently all);
     // useful as future rooms grow larger than 480×320.
     this.cameras.main.startFollow(this.myBear.sprite, true, 0.08, 0.08)
@@ -848,7 +851,9 @@ export class RoomScene extends Phaser.Scene {
             this.spawnPeerPet(p.id, p.pet_species as any, p.pet_name ?? '', p.x - 18, p.y, ccToRegion(p.cc))
           }
           // V17.0 — cache profile fields the snap carries (server adds them on snap)
+          // V17.1 — also apply mood to bear so peer's mood emoji appears immediately
           const anyP = p as any
+          if (typeof anyP.mood === 'string') bear.setMood(anyP.mood || null)
           if (p.visitor_id) {
             void import('../profile').then(prof => prof.cachePeerProfile(p.visitor_id!, {
               bio: anyP.bio ?? null, status: anyP.status ?? null,
@@ -884,7 +889,9 @@ export class RoomScene extends Phaser.Scene {
           this.ensureSpeciesLoaded(species).then(() => bear.setSpecies(species))
         }
         // V17.0 — cache profile fields the join carries
+        // V17.1 — also apply mood to the peer's bear immediately
         const anyM = m as any
+        if (typeof anyM.mood === 'string') bear.setMood(anyM.mood || null)
         if (m.visitor_id) {
           void import('../profile').then(prof => prof.cachePeerProfile(m.visitor_id!, {
             bio: anyM.bio ?? null, status: anyM.status ?? null,
@@ -940,8 +947,11 @@ export class RoomScene extends Phaser.Scene {
         })
       },
       // V17.0 — cache peer profile updates (V17.2 card reads from cache)
+      // V17.1 — also update the peer bear's mood emoji live
       onProfileChanged: (m) => {
         const vid = this.peerVisitorIds.get(m.id) ?? null
+        const peer = this.peers.get(m.id)
+        if (peer) peer.bear.setMood(m.mood || null)
         void import('../profile').then(p => p.cachePeerProfile(vid, {
           bio: m.bio, status: m.status, mood: m.mood,
           pinned_achievements: m.pinned_achievements
@@ -998,6 +1008,13 @@ export class RoomScene extends Phaser.Scene {
       },
       () => this.openRenameModal()
     )
+
+    // V17.1 — when the profile editor saves a new mood, apply it to my bear
+    // immediately (don't wait for the server's profile_changed echo since
+    // that broadcast goes to peers only — not back to self).
+    void import('../ui').then(u => u.setOnLocalMoodChange((mood: string) => {
+      this.myBear?.setMood(mood || null)
+    }))
 
     // V6.5 — species toggle: flips bear ↔ cat, applies to own sprite, persists locally.
     updateSpeciesButtonLabel(getMySpecies())
@@ -1344,7 +1361,11 @@ export class RoomScene extends Phaser.Scene {
 
     // V17.0 — hydrate local profile from server's canonical values so a new
     // device picks up bio/status/mood/pinned set elsewhere.
-    import('../profile').then(p => p.applyWelcomeProfile(m))
+    // V17.1 — also push the hydrated mood onto myBear immediately.
+    import('../profile').then(p => {
+      p.applyWelcomeProfile(m)
+      this.myBear?.setMood(p.getMood() || null)
+    })
 
     // Stash welcome data on a module-level cache so the post-restart scene can read it.
     welcomeCache = m

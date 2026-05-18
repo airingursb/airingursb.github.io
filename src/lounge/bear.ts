@@ -85,6 +85,7 @@ export class Bear {
   private baseY = 0
   private nameLabel?: Phaser.GameObjects.Text
   private heartLabel?: Phaser.GameObjects.Text
+  private moodLabel?: Phaser.GameObjects.Text   // V17.1 — floating mood emoji
   private shadow?: Phaser.GameObjects.Ellipse  // V6.3 — soft ground shadow
   private lastDustAt = 0                       // V6.6 — last footstep-dust timestamp
 
@@ -113,7 +114,20 @@ export class Bear {
       color: '#ffb0c0',
       resolution: 2
     }).setOrigin(0.5, 1).setDepth(6)
+    // V17.1 — mood emoji floats just above the heart, sits hidden until
+    // setMood() is called with a non-empty glyph
+    this.moodLabel = scene.add.text(x, y - 74, '', {
+      fontFamily: 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif',
+      fontSize: '14px',
+      resolution: 2
+    }).setOrigin(0.5, 1).setDepth(6)
     this.playIdle()
+  }
+
+  /** V17.1 — set the floating mood emoji (empty/null clears it). */
+  setMood(glyph: string | null) {
+    if (!this.moodLabel) return
+    this.moodLabel.setText(glyph ?? '')
   }
 
   setFriendshipLevel(level: number) {
@@ -198,6 +212,10 @@ export class Bear {
     if (this.heartLabel) {
       this.heartLabel.x = this.sprite.x
       this.heartLabel.y = this.sprite.y - 62
+    }
+    if (this.moodLabel) {
+      this.moodLabel.x = this.sprite.x
+      this.moodLabel.y = this.sprite.y - 74
     }
 
     if (this.stateUntil > 0 && now >= this.stateUntil) {
@@ -289,6 +307,7 @@ export class Bear {
   destroy() {
     this.nameLabel?.destroy()
     this.heartLabel?.destroy()
+    this.moodLabel?.destroy()
     this.shadow?.destroy()
     this.sprite.destroy()
   }

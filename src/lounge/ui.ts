@@ -912,13 +912,21 @@ function ensureSpRefs() {
 }
 // V17.0 — Profile editor (bio + status). Lazy module-init so the panel
 // only binds listeners once the DOM exists (avoids SSR-time errors).
-import { getBio, getStatus, setBio, setStatus, BIO_MAX_LEN, STATUS_MAX_LEN } from './profile'
+import { getBio, getStatus, getMood, setBio, setStatus, setMood, BIO_MAX_LEN, STATUS_MAX_LEN } from './profile'
 import { sendProfile } from './net'
 let peEl: HTMLElement | null = null
 let peBioInput: HTMLTextAreaElement | null = null
 let peStatusInput: HTMLInputElement | null = null
 let peBioCount: HTMLElement | null = null
 let peStatusCount: HTMLElement | null = null
+let peMoodGrid: HTMLElement | null = null
+let peSelectedMood = ''
+
+// V17.1 — let the caller (RoomScene) be notified when local mood changes so
+// it can apply the emoji to myBear immediately (without waiting for the
+// profile_changed echo from the server). Set by setOnLocalMoodChange.
+let onLocalMoodChange: ((mood: string) => void) | null = null
+export function setOnLocalMoodChange(fn: (mood: string) => void) { onLocalMoodChange = fn }
 
 function ensurePeRefs() {
   if (peEl) return
@@ -927,6 +935,7 @@ function ensurePeRefs() {
   peStatusInput = document.getElementById('lounge-profile-status') as HTMLInputElement | null
   peBioCount = document.getElementById('lounge-profile-bio-count')
   peStatusCount = document.getElementById('lounge-profile-status-count')
+  peMoodGrid = document.getElementById('lounge-profile-mood-grid')
   const saveBtn = document.getElementById('lounge-profile-save')
   const cancelBtn = document.getElementById('lounge-profile-cancel')
   if (!peEl) return
@@ -936,13 +945,24 @@ function ensurePeRefs() {
   }
   peBioInput?.addEventListener('input', updateCounts)
   peStatusInput?.addEventListener('input', updateCounts)
+  // V17.1 — mood picker: clicking a tile selects it (highlight)
+  peMoodGrid?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.pe-mood')
+    if (!btn) return
+    peSelectedMood = btn.dataset.mood ?? ''
+    peMoodGrid?.querySelectorAll('.pe-mood').forEach(b => b.classList.toggle('is-selected', b === btn))
+  })
   saveBtn?.addEventListener('click', () => {
     const bio = peBioInput?.value?.trim() ?? ''
     const status = peStatusInput?.value?.trim() ?? ''
+    const mood = peSelectedMood
     setBio(bio)
     setStatus(status)
+    setMood(mood)
     // Server treats empty string as clear → null
-    sendProfile({ bio, status })
+    sendProfile({ bio, status, mood })
+    // V17.1 — apply mood to local bear immediately (don't wait for echo)
+    onLocalMoodChange?.(mood)
     hideProfileEditor()
     showToast('✍️ Profile saved.', 1800)
   })
@@ -958,6 +978,12 @@ export function showProfileEditor() {
   // Load current values
   if (peBioInput) peBioInput.value = getBio()
   if (peStatusInput) peStatusInput.value = getStatus()
+  peSelectedMood = getMood()
+  if (peMoodGrid) {
+    peMoodGrid.querySelectorAll<HTMLButtonElement>('.pe-mood').forEach(b => {
+      b.classList.toggle('is-selected', (b.dataset.mood ?? '') === peSelectedMood)
+    })
+  }
   if (peBioCount && peBioInput) peBioCount.textContent = `${peBioInput.value.length} / ${BIO_MAX_LEN}`
   if (peStatusCount && peStatusInput) peStatusCount.textContent = `${peStatusInput.value.length} / ${STATUS_MAX_LEN}`
   peEl.hidden = false
