@@ -1,5 +1,12 @@
 #!/usr/bin/env node
 // V6.1 / V6.1.1 / E5-P2a — indoor_lobby_v1: 48 tiles, 8 cols × 6 rows.
+//
+// NOTE on spec coverage (N4 correction): the original V6.1 spec mentioned
+// "8-corner-aware transition tiles + 4 edge transitions" for floor/wall
+// boundaries. We did NOT ship 8-corner pieces — only 4 directional carpet
+// edges (N=10, S=42, W=43, E=44) plus 1 NW corner (12). True 8-corner
+// transitions (inner/outer × 4 directions = 8 tiles per material) are a
+// V6.1.2 followup if smoother room boundaries are needed. See audit doc.
 // Tile IDs 1-6 stay layout-compatible with v0 (legacy lobby data still works),
 // art is upgraded. IDs 7-32 are new — floor variants, walls with depth, props.
 //

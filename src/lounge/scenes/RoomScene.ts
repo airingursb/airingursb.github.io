@@ -155,9 +155,13 @@ export class RoomScene extends Phaser.Scene {
     this.load.image('indoor_lobby_v1', '/lounge/assets/tilesets/indoor_lobby_v1/tiles.png')
     this.load.image('outdoor_beach_v0', '/lounge/assets/tilesets/outdoor_beach_v0/tiles.png')
     this.load.image('outdoor_grove_v1', '/lounge/assets/tilesets/outdoor_grove_v1/tiles.png')
+    // E5-P1a + N1 — preload only bear (universal fallback) + the local
+    // player's chosen species. Other species lazy-load when a peer with
+    // that species joins (see ensureSpeciesLoaded).
+    const mine = getMySpecies()
+    const speciesToPreload = new Set<string>(['bear', mine])
     for (const region of REGIONS) {
-      // E5-P1a — preload all 5 species × 6 regions = 30 atlases
-      for (const sp of ['bear', 'cat', 'fox', 'capybara', 'bird']) {
+      for (const sp of speciesToPreload) {
         this.load.atlas(
           `${sp}_${region}`,
           `/lounge/assets/sprites/${sp}/${region}/sprite.png`,
@@ -204,19 +208,36 @@ export class RoomScene extends Phaser.Scene {
     const above = map.createLayer('furniture_above', tileset, 0, 0)
     above?.setDepth(10)
 
-    // E5-P1b — Tile-index animations. CRITICAL: these gids only have meaning
-    // in outdoor_grove_v1 (water 8, oak canopy 26, pine canopy 28, palm 40).
-    // In indoor_lobby_v1 the same ids are sofa/chair/floor variants, so we
-    // must gate by tileset name or the animator will corrupt indoor rooms.
+    // E5-P1b + N5 — Tile-index animations. Gated by tileset (avoids corrupting
+    // indoor rooms). Per layer, pre-scan to find which animated frame indices
+    // actually exist — skip replaceByIndex on layers that have none. For a
+    // 30×20 map × 3 layers × 4 anims, this can cut 15k+ tile scans/sec down
+    // to near zero on rooms that only use a few of the animated tiles.
     if (tileset?.name === 'outdoor_grove_v1') {
-      const ANIMS: Array<{ frames: number[]; ms: number }> = [
-        { frames: [8, 41, 45], ms: 480 },
-        { frames: [26, 42], ms: 1200 },
-        { frames: [28, 43], ms: 1300 },
-        { frames: [40, 44], ms: 1100 }
+      const ANIMS: Array<{ frames: number[]; ms: number; layerHasIt: boolean[] }> = [
+        { frames: [8, 41, 45], ms: 480,  layerHasIt: [] },
+        { frames: [26, 42],    ms: 1200, layerHasIt: [] },
+        { frames: [28, 43],    ms: 1300, layerHasIt: [] },
+        { frames: [40, 44],    ms: 1100, layerHasIt: [] }
       ]
       const animLayers = [floorLayer, fb, above].filter(Boolean) as Phaser.Tilemaps.TilemapLayer[]
+      // Pre-scan: per (anim, layer) → does any cell currently hold a frame in this anim's set?
       for (const a of ANIMS) {
+        const frameSet = new Set(a.frames)
+        for (let li = 0; li < animLayers.length; li++) {
+          const grid = animLayers[li].layer.data
+          let found = false
+          outer: for (let y = 0; y < grid.length; y++) {
+            const row = grid[y]
+            for (let x = 0; x < row.length; x++) {
+              if (frameSet.has(row[x]?.index)) { found = true; break outer }
+            }
+          }
+          a.layerHasIt.push(found)
+        }
+      }
+      for (const a of ANIMS) {
+        if (!a.layerHasIt.some(Boolean)) continue   // skip entire anim if no layer has it
         let phase = 0
         this.time.addEvent({
           delay: a.ms, loop: true,
@@ -225,8 +246,9 @@ export class RoomScene extends Phaser.Scene {
             const from = a.frames[(phase + a.frames.length - 1) % a.frames.length]
             const to   = a.frames[phase]
             if (from === to) return
-            for (const layer of animLayers) {
-              layer.replaceByIndex(from, to)
+            for (let li = 0; li < animLayers.length; li++) {
+              if (!a.layerHasIt[li]) continue   // skip layers known to lack this anim
+              animLayers[li].replaceByIndex(from, to)
             }
           }
         })
@@ -497,6 +519,7 @@ export class RoomScene extends Phaser.Scene {
           if (p.room !== this.currentRoomId) continue
           // E5-P0c — render peer with their actual species (default bear)
           const species = (p.species as any) || 'bear'
+          // N1 — Bear ctor falls back to bear texture if species atlas missing
           const bear = new Bear(this, p.x, p.y, ccToRegion(p.cc), species)
           bear.sprite.setDepth(5)
           bear.setDisplayName(this.fallbackName(p.display_name ?? null, p.cc))
@@ -507,6 +530,10 @@ export class RoomScene extends Phaser.Scene {
             if (fr) bear.setFriendshipLevel(fr.level)
           }
           this.peers.set(p.id, { bear, lastUpdate: performance.now() })
+          // Lazy-load the real atlas in background, then upgrade the sprite
+          if (species !== 'bear') {
+            this.ensureSpeciesLoaded(species).then(() => bear.setSpecies(species))
+          }
         }
       },
       onJoin: (m: JoinMsg) => {
@@ -523,6 +550,9 @@ export class RoomScene extends Phaser.Scene {
           if (fr) bear.setFriendshipLevel(fr.level)
         }
         this.peers.set(m.id, { bear, lastUpdate: performance.now() })
+        if (species !== 'bear') {
+          this.ensureSpeciesLoaded(species).then(() => bear.setSpecies(species))
+        }
       },
       onLeave: (m: LeaveMsg) => {
         const peer = this.peers.get(m.id)
@@ -557,7 +587,11 @@ export class RoomScene extends Phaser.Scene {
       onNameChanged: (m: NameChangedMsg) => this.applyNameChanged(m),
       onSpeciesChanged: (m) => {
         const peer = this.peers.get(m.id)
-        if (peer) peer.bear.setSpecies(m.species as any)
+        if (!peer) return
+        // N1 — if this species atlas isn't loaded yet, fetch then apply
+        this.ensureSpeciesLoaded(m.species as any).then(() => {
+          peer.bear.setSpecies(m.species as any)
+        })
       },
       onReplaced: () => {
         showReplacedOverlay()
@@ -617,6 +651,8 @@ export class RoomScene extends Phaser.Scene {
       // E5-P1a — cycle through all 5 species (bear→cat→fox→capybara→bird→bear)
       const { nextSpeciesFrom } = await import('../ui')
       const next = nextSpeciesFrom(getMySpecies()) as any
+      // N1 — ensure target atlas loaded before swap so we don't flash bear
+      await this.ensureSpeciesLoaded(next)
       const { setMySpecies } = await import('../config')
       setMySpecies(next)
       this.myBear?.setSpecies(next)
@@ -680,19 +716,26 @@ export class RoomScene extends Phaser.Scene {
           out.push({ name: def.name, roomLabel: '—', state: 'offline' })
           continue
         }
-        // Find next bracket boundary
+        // N6 — Find next bracket boundary. If none later today, wrap to the
+        // earliest bracket of the next day (prefixed with "+1d ").
         let nextMin: number | null = null
+        let earliestMin: number | null = null   // for wrap
         for (const b of def.schedule) {
           const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(b.from)
           if (!m) continue
           const t = parseInt(m[1], 10) * 60 + parseInt(m[2], 10)
           if (t > minutes && (nextMin == null || t < nextMin)) nextMin = t
+          if (earliestMin == null || t < earliestMin) earliestMin = t
         }
         let nextStr: string | null = null
         if (nextMin != null) {
           const h = String(Math.floor(nextMin / 60)).padStart(2, '0')
           const m = String(nextMin % 60).padStart(2, '0')
           nextStr = `${h}:${m}`
+        } else if (earliestMin != null) {
+          const h = String(Math.floor(earliestMin / 60)).padStart(2, '0')
+          const m = String(earliestMin % 60).padStart(2, '0')
+          nextStr = `+1d ${h}:${m}`
         }
         out.push({
           name: def.name,
@@ -1619,6 +1662,44 @@ export class RoomScene extends Phaser.Scene {
     return e
   }
 
+  // N1 — Lazy-load a species' atlas (all 6 region tints) on demand.
+  // Returns a promise that resolves when every region atlas is in cache,
+  // or immediately if they already are. Idempotent / dedup'd via the
+  // speciesLoadInFlight map so multiple peers joining at once don't double-load.
+  private speciesLoadInFlight = new Map<string, Promise<void>>()
+  private ensureSpeciesLoaded(species: 'bear'|'cat'|'fox'|'capybara'|'bird'): Promise<void> {
+    if (species === 'bear') return Promise.resolve()
+    // Check if every region already cached
+    const allLoaded = REGIONS.every(r => this.textures.exists(`${species}_${r}`))
+    if (allLoaded) return Promise.resolve()
+    const pending = this.speciesLoadInFlight.get(species)
+    if (pending) return pending
+    const p = new Promise<void>((resolve) => {
+      let remaining = 0
+      for (const region of REGIONS) {
+        const key = `${species}_${region}`
+        if (this.textures.exists(key)) continue
+        remaining++
+        this.load.atlas(
+          key,
+          `/lounge/assets/sprites/${species}/${region}/sprite.png`,
+          `/lounge/assets/sprites/${species}/${region}/sprite.json`
+        )
+        this.load.once(`filecomplete-json-${key}`, () => {
+          remaining--
+          if (remaining <= 0) {
+            registerBearAnimations(this, REGIONS)
+            resolve()
+          }
+        })
+      }
+      if (remaining === 0) resolve()
+      else this.load.start()
+    }).finally(() => this.speciesLoadInFlight.delete(species))
+    this.speciesLoadInFlight.set(species, p)
+    return p
+  }
+
   // E5-P2c — Per-room parallax background. A subtle tinted TileSprite at
   // depth -10 (behind the tilemap) whose tilePosition drifts slowly. Color
   // chosen per room family. Skipped under prefers-reduced-motion.
@@ -1652,15 +1733,18 @@ export class RoomScene extends Phaser.Scene {
     const bg = this.add.tileSprite(0, 0, widthPx, heightPx, TEX)
       .setOrigin(0).setDepth(-10).setAlpha(0.18).setTint(tint)
       .setBlendMode(Phaser.BlendModes.MULTIPLY)
-    // Subtle drift — completes a tile in ~30s
-    this.tweens.add({
-      targets: bg.tilePositionX !== undefined ? bg : null,
-      duration: 30_000, loop: -1,
-      onUpdate: (tween) => {
-        bg.tilePositionX = tween.progress * 64
-        bg.tilePositionY = tween.progress * 32
-      }
-    })
+    // N2 — Continuous drift via per-frame delta (no progress 1→0 snap).
+    // ~64 px / 30s on X, ~32 px / 30s on Y → smooth wrap, no visible reset.
+    const SPEED_X = 64 / 30_000  // px per ms
+    const SPEED_Y = 32 / 30_000
+    const handler = (_t: number, dtMs: number) => {
+      bg.tilePositionX += SPEED_X * dtMs
+      bg.tilePositionY += SPEED_Y * dtMs
+    }
+    this.events.on('update', handler)
+    const detach = () => this.events.off('update', handler)
+    this.events.once('shutdown', detach)
+    this.events.once('destroy',  detach)
   }
 
   // V6.3 + E5-P2b — radial-gradient glow on light-source tiles at night.
