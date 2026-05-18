@@ -28,6 +28,9 @@ export type DialogCondition = {
 export type DialogBranch = {
   condition?: DialogCondition
   lines: string[]
+  /** V9.7-review C1 fix: secret branches only become eligible when
+   *  Companionship skill >= 5 (unlocksHiddenNpcLines). */
+  secret?: boolean
 }
 
 export type NpcDef = {
@@ -137,7 +140,21 @@ export function pickDialog(
 ): string {
   let pool = def.dialog_pool
   if (def.dialog_branches && def.dialog_branches.length > 0 && ctx) {
+    // V9.7-review C1 fix: gate secret branches behind Companionship skill 5+
+    let secretsUnlocked = false
+    try {
+      const raw = localStorage.getItem('lounge_skills_v1')
+      if (raw) {
+        const skills = JSON.parse(raw)
+        const xp = Number(skills.companionship ?? 0)
+        const LEVEL_XP = [10, 25, 50, 90, 140, 200, 280, 380, 500, 650]
+        let level = 0, acc = 0
+        for (let i = 0; i < LEVEL_XP.length; i++) { acc += LEVEL_XP[i]; if (xp >= acc) level = i + 1; else break }
+        secretsUnlocked = level >= 5
+      }
+    } catch {}
     for (const branch of def.dialog_branches) {
+      if (branch.secret && !secretsUnlocked) continue
       if (matchesBranch(branch.condition, ctx) && branch.lines.length > 0) {
         pool = branch.lines
         break

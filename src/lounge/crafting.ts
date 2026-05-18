@@ -11,7 +11,7 @@
 // shop_*-in-inventory pipeline added in P1).
 
 import { getLevel } from './skills'
-import { spendShells } from './shells'
+import { spendShells, getShells } from './shells'
 
 export type Cost =
   | { kind: 'any_pebble'; count: number }
@@ -103,7 +103,8 @@ export function tryCraft(r: Recipe, env: CraftEnv): CraftResult {
       if (map[r.output.id.replace('shop_', '')]) return { ok: false, reason: 'already_owned' }
     } catch {}
   }
-  // Check costs
+  // V9.7-review C3 fix: real precheck for all kinds BEFORE any spend, so
+  // atomicity is correct even when costs reorder.
   for (const c of r.costs) {
     if (c.kind === 'any_pebble') {
       if (env.pebbleIds.length < c.count) return { ok: false, reason: 'not_enough_pebbles' }
@@ -112,7 +113,7 @@ export function tryCraft(r: Recipe, env: CraftEnv): CraftResult {
     } else if (c.kind === 'material') {
       if (env.hasMaterial(c.id) < c.count) return { ok: false, reason: 'missing_material' }
     } else if (c.kind === 'shells') {
-      if (!spendShells(0)) { /* no-op probe; shells will be consumed in pass 2 */ }
+      if (getShells() < c.count) return { ok: false, reason: 'not_enough_shells' }
     }
   }
   // Pay shells first (atomic in shells.ts via spendShells)

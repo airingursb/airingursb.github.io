@@ -90,35 +90,53 @@ function mergeValue(key: string, local: string | null, remote: string | null): s
     for (const v of lj) { const k = typeof v === 'string' ? v : JSON.stringify(v); if (!seen.has(k)) { seen.add(k); out.push(v) } }
     return JSON.stringify(out)
   }
-  // Objects: merge by key. For each key, recurse (treat values as opaque strings here).
-  // For 'completedSteps' arrays inside quest state, union. For numbers, take max.
-  // For timestamps, take later. For everything else, prefer local (more recent
-  // writes likely happened locally).
+  // Objects: deep semantic merge.
+  // V9.7-review I5 fix: recurse into nested objects (e.g. lounge_bundles_v1 is
+  // { bundleId: { slotIdx: count } }). Earlier shallow merge would let the
+  // shorter side wipe nested slot fills. Now: per key, choose max for numbers,
+  // union for arrays, and recurse into nested objects.
   if (lj && rj && typeof lj === 'object' && typeof rj === 'object') {
-    const merged: Record<string, unknown> = { ...rj, ...lj }
-    for (const k of Object.keys(merged)) {
-      const lv = (lj as any)[k], rv = (rj as any)[k]
-      if (Array.isArray(lv) && Array.isArray(rv)) {
-        const u = new Set<unknown>([...rv, ...lv])
-        merged[k] = Array.from(u)
-      } else if (typeof lv === 'number' && typeof rv === 'number') {
-        merged[k] = Math.max(lv, rv)
-      } else if (lv && rv && typeof lv === 'object' && typeof rv === 'object') {
-        // Quest state shape: { accepted, completedSteps, completed, acceptedAt }
-        merged[k] = { ...rv, ...lv }
-        const lsteps = (lv as any).completedSteps, rsteps = (rv as any).completedSteps
-        if (Array.isArray(lsteps) && Array.isArray(rsteps)) {
-          (merged[k] as any).completedSteps = Array.from(new Set([...rsteps, ...lsteps]))
-        }
-        const lc = (lv as any).completed, rc = (rv as any).completed
-        if (lc || rc) (merged[k] as any).completed = true
-        const lat = (lv as any).completedAt, rat = (rv as any).completedAt
-        if (lat || rat) (merged[k] as any).completedAt = Math.max(lat || 0, rat || 0)
-      }
-    }
-    return JSON.stringify(merged)
+    return JSON.stringify(deepMergeObjects(lj, rj))
   }
   return local
+}
+
+function deepMergeObjects(lj: any, rj: any): any {
+  const merged: Record<string, unknown> = { ...rj }
+  for (const k of Object.keys(lj)) {
+    const lv = lj[k], rv = rj[k]
+    if (rv === undefined) { merged[k] = lv; continue }
+    if (Array.isArray(lv) && Array.isArray(rv)) {
+      // Union (semantic-equal by JSON repr)
+      const seen = new Set<string>()
+      const out: unknown[] = []
+      for (const v of rv) { const key = JSON.stringify(v); if (!seen.has(key)) { seen.add(key); out.push(v) } }
+      for (const v of lv) { const key = JSON.stringify(v); if (!seen.has(key)) { seen.add(key); out.push(v) } }
+      merged[k] = out
+    } else if (typeof lv === 'number' && typeof rv === 'number') {
+      merged[k] = Math.max(lv, rv)
+    } else if (typeof lv === 'boolean' && typeof rv === 'boolean') {
+      merged[k] = lv || rv
+    } else if (lv && rv && typeof lv === 'object' && typeof rv === 'object') {
+      // Recurse into nested objects
+      const innerMerged = deepMergeObjects(lv, rv)
+      // Quest-shape extras: completedAt = max, completed = OR
+      if ('completedSteps' in (lv as any) || 'completedSteps' in (rv as any)) {
+        const ls = (lv as any).completedSteps, rs = (rv as any).completedSteps
+        if (Array.isArray(ls) && Array.isArray(rs)) {
+          ;(innerMerged as any).completedSteps = Array.from(new Set([...rs, ...ls]))
+        }
+        if ((lv as any).completed || (rv as any).completed) (innerMerged as any).completed = true
+        const lat = (lv as any).completedAt, rat = (rv as any).completedAt
+        if (lat || rat) (innerMerged as any).completedAt = Math.max(lat || 0, rat || 0)
+      }
+      merged[k] = innerMerged
+    } else {
+      // Scalars (strings, etc): prefer local
+      merged[k] = lv
+    }
+  }
+  return merged
 }
 
 function applySnapshot(remote: Snapshot) {

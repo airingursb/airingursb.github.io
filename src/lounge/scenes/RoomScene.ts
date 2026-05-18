@@ -1583,7 +1583,7 @@ export class RoomScene extends Phaser.Scene {
     const map: Record<string, string> = {
       not_in_home: '📦 Must be in your home',
       not_owned: '📦 You don\'t own this pebble',
-      cap: '📦 Home decoration cap (30) reached',
+      cap: `📦 Home decoration cap reached — build more extensions to expand`,
       invalid: '📦 Invalid placement'
     }
     showToast(map[m.reason] ?? `📦 Place failed (${m.reason})`)
@@ -1770,8 +1770,9 @@ export class RoomScene extends Phaser.Scene {
     return p
   }
 
-  // V9.4 — Show co-op activity banner in matching room, run timer on Start.
-  private coopTimerId: number | null = null
+  // V9.4 + V9.7-review I1 — co-op activity banner. Uses Phaser's scene timer
+  // (pauses with the scene when tab is backgrounded) instead of window.setInterval.
+  private coopTimer?: Phaser.Time.TimerEvent
   private setupCoopActivity() {
     const banner = document.getElementById('lounge-coop-banner') as HTMLElement | null
     const emoji  = document.getElementById('lounge-coop-emoji')  as HTMLElement | null
@@ -1779,7 +1780,7 @@ export class RoomScene extends Phaser.Scene {
     const startBtn = document.getElementById('lounge-coop-start') as HTMLButtonElement | null
     const timerEl  = document.getElementById('lounge-coop-timer') as HTMLElement | null
     if (!banner || !emoji || !text || !startBtn || !timerEl) return
-    if (this.coopTimerId) { window.clearInterval(this.coopTimerId); this.coopTimerId = null }
+    if (this.coopTimer) { this.coopTimer.remove(false); this.coopTimer = undefined }
     timerEl.hidden = true
     const a = activityForRoom(this.currentRoomId)
     if (!a || hasCoopDoneToday(a.id)) { banner.hidden = true; return }
@@ -1789,28 +1790,29 @@ export class RoomScene extends Phaser.Scene {
     startBtn.disabled = false
     startBtn.textContent = 'Start'
     banner.hidden = false
-    // Avoid stacking listeners on scene restart
     const handler = () => {
       startBtn.disabled = true
       timerEl.hidden = false
       let remaining = a.durationSec
       timerEl.textContent = `${remaining}s`
-      this.coopTimerId = window.setInterval(() => {
-        remaining -= 1
-        if (remaining <= 0) {
-          window.clearInterval(this.coopTimerId!); this.coopTimerId = null
-          awardCoopActivity(a)
-          showToast(`${a.emoji} +🐚 ${a.shells} · +${a.companionshipXp} companionship`, 3500)
-          banner.hidden = true
-        } else {
-          timerEl.textContent = `${remaining}s`
+      this.coopTimer = this.time.addEvent({
+        delay: 1000, repeat: a.durationSec - 1,
+        callback: () => {
+          remaining -= 1
+          if (remaining <= 0) {
+            awardCoopActivity(a)
+            showToast(`${a.emoji} +🐚 ${a.shells} · +${a.companionshipXp} companionship`, 3500)
+            banner.hidden = true
+            this.coopTimer = undefined
+          } else {
+            timerEl.textContent = `${remaining}s`
+          }
         }
-      }, 1000)
+      })
     }
     startBtn.onclick = handler
-    // Cleanup on scene shutdown
     this.events.once('shutdown', () => {
-      if (this.coopTimerId) { window.clearInterval(this.coopTimerId); this.coopTimerId = null }
+      if (this.coopTimer) { this.coopTimer.remove(false); this.coopTimer = undefined }
       banner.hidden = true
       startBtn.onclick = null as any
     })
@@ -1831,7 +1833,7 @@ export class RoomScene extends Phaser.Scene {
       // sparkly square + emoji label
       const sprite = this.add.text(spot.x, spot.y, meta.emoji, {
         fontSize: '14px', stroke: '#000', strokeThickness: 3
-      }).setOrigin(0.5, 0.5).setDepth(3).setInteractive({ useHandCursor: true })
+      }).setOrigin(0.5, 0.5).setDepth(6).setInteractive({ useHandCursor: true })
       // pulse
       this.tweens.add({
         targets: sprite, alpha: { from: 0.7, to: 1 }, scale: { from: 0.95, to: 1.1 },

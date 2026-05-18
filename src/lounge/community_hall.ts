@@ -130,12 +130,14 @@ export function tryContribute(bundleId: string, slotIdx: number): ContributeResu
   const filled = getFilled(bundleId, slotIdx)
   if (slot.kind === 'shells') {
     if (filled >= slot.count) return { ok: false, reason: 'already_full' }
-    const need = slot.count - filled
+    const need = Math.max(0, slot.count - filled)
+    if (need === 0) return { ok: false, reason: 'already_full' }
     if (!spendShells(need)) return { ok: false, reason: 'not_enough' }
     log[bundleId][slotIdx] = slot.count
   } else if (slot.kind === 'material') {
     if (filled >= slot.count) return { ok: false, reason: 'already_full' }
-    const need = slot.count - filled
+    const need = Math.max(0, slot.count - filled)
+    if (need === 0) return { ok: false, reason: 'already_full' }
     if (getMaterial(slot.id) < need) return { ok: false, reason: 'not_enough' }
     removeMaterial(slot.id, need)
     log[bundleId][slotIdx] = slot.count

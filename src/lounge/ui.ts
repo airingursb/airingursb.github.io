@@ -634,6 +634,8 @@ function renderGroveCare() {
         renderGroveCare()
       } else if (r.reason === 'already_watered_today') {
         showToast('Already watered today. Come back tomorrow.', 2000)
+      } else if (r.reason === 'not_enough_energy') {
+        showToast('Too tired to water — rest first.', 2000)
       } else {
         showToast('Cannot water right now.', 2000)
       }

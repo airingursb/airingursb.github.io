@@ -63,13 +63,16 @@ export function getEffectivePrice(item: ShopItem, now: Date = new Date()): numbe
 /** Returns the active weekly market event if today is in its window. */
 export type MarketEvent = { id: string; name: string; emoji: string; blurb: string; multiplier: number }
 export function getActiveMarketEvent(now: Date = new Date()): MarketEvent | null {
-  // Each ISO week rolls one of 4 events
+  // Each ISO week rolls one of 4 outcomes. V9.7-review I6: return null for
+  // the neutral "bulk" week so the UI doesn't show a banner for nothing.
+  // Removed the false "+20% premium" claim from rare_week — that feature
+  // isn't actually implemented yet; rare_week stays as a flavor banner.
   const wk = isoWeek(now)
-  const events: MarketEvent[] = [
+  const events: Array<MarketEvent | null> = [
     { id: 'discount_week', name: 'Discount Week', emoji: '💸', blurb: 'All shop items 20% off.', multiplier: 0.8 },
-    { id: 'bulk_week',     name: 'Bulk Week',     emoji: '📦', blurb: 'No event — usual prices.', multiplier: 1.0 },
+    null,
     { id: 'tariff_week',   name: 'Tariff Week',   emoji: '⚖️', blurb: 'Items priced +15% this week.', multiplier: 1.15 },
-    { id: 'rare_week',     name: 'Rare Week',     emoji: '💎', blurb: 'A rare item appears (Sketch Print +20% premium).', multiplier: 1.0 }
+    { id: 'rare_week',     name: 'Rare Week',     emoji: '💎', blurb: 'Mio is in a generous mood — keep an eye out.', multiplier: 1.0 }
   ]
   return events[wk % events.length]
 }

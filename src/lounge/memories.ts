@@ -18,7 +18,23 @@ export type Memory = {
 }
 
 const STORAGE_KEY = 'lounge_memories_v1'
-const MAX_MEMORIES = 36
+const DEFAULT_MAX_MEMORIES = 36
+
+// V9.7-review C1 fix: memoryCap from skills.ts increases this.
+// Lazy-import to avoid circular dep at module load.
+function effectiveMax(): number {
+  try {
+    // dynamic require pattern: read skills xp directly
+    const raw = localStorage.getItem('lounge_skills_v1')
+    if (!raw) return DEFAULT_MAX_MEMORIES
+    const skills = JSON.parse(raw)
+    const xp = Number(skills.memory_making ?? 0)
+    const LEVEL_XP = [10, 25, 50, 90, 140, 200, 280, 380, 500, 650]
+    let level = 0, acc = 0
+    for (let i = 0; i < LEVEL_XP.length; i++) { acc += LEVEL_XP[i]; if (xp >= acc) level = i + 1; else break }
+    return DEFAULT_MAX_MEMORIES + Math.floor(level / 3) * 12
+  } catch { return DEFAULT_MAX_MEMORIES }
+}
 
 function loadAll(): Memory[] {
   try {
@@ -30,7 +46,7 @@ function loadAll(): Memory[] {
 }
 
 function saveAll(memories: Memory[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(memories.slice(0, MAX_MEMORIES))) } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(memories.slice(0, effectiveMax()))) } catch {}
 }
 
 export function captureMemory(opts: {

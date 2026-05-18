@@ -14,7 +14,7 @@
 //   • Future V9.5.1: shared leaderboard via lounge_progress aggregation
 
 import { spendShells } from './shells'
-import { consumeEnergy } from './energy'
+import { consumeEnergy, getEnergy } from './energy'
 import { awardXp } from './skills'
 
 export type FlowerState = {
@@ -52,13 +52,16 @@ export function tryPlant(variety: FlowerState['variety']): PlantResult {
   return { ok: true }
 }
 
-export type WaterResult = { ok: true; daysWatered: number; bloomed: boolean } | { ok: false; reason: 'no_flower' | 'already_watered_today' | 'bloomed_already' }
+export type WaterResult = { ok: true; daysWatered: number; bloomed: boolean } | { ok: false; reason: 'no_flower' | 'already_watered_today' | 'bloomed_already' | 'not_enough_energy' }
 export function tryWater(): WaterResult {
   const f = getFlower()
   if (!f) return { ok: false, reason: 'no_flower' }
   if (f.bloomedDay) return { ok: false, reason: 'bloomed_already' }
   const today = utcDay()
   if (f.wateredDays.includes(today)) return { ok: false, reason: 'already_watered_today' }
+  // V9.7-review C4 fix: must have enough energy. Energy clamps to ≥0 so
+  // without this check, a 0-energy player would water for free.
+  if (getEnergy() < WATER_ENERGY) return { ok: false, reason: 'not_enough_energy' }
   consumeEnergy(WATER_ENERGY)
   const updated: FlowerState = { ...f, wateredDays: [...f.wateredDays, today] }
   if (updated.wateredDays.length >= BLOOM_DAYS) {

@@ -1,7 +1,23 @@
 import Phaser from 'phaser'
 import { WALK_SPEED, type Region, type Species, SPECIES } from './config'
 import { footstepDust } from './feedback'
-import { walkSpeedMultiplier } from './skills'
+import { walkSpeedMultiplier, onLevelUp } from './skills'
+
+// V9.7-review I3 fix: cache walkSpeedMultiplier (computed from skill XP via
+// localStorage) so Bear.update doesn't read localStorage every frame. Refresh
+// only on Wayfaring level-up.
+let cachedWalkSpeedMultiplier = 1
+let cachedInited = false
+function getCachedWalkSpeedMultiplier(): number {
+  if (!cachedInited) {
+    cachedWalkSpeedMultiplier = walkSpeedMultiplier()
+    onLevelUp((skill) => {
+      if (skill === 'wayfaring') cachedWalkSpeedMultiplier = walkSpeedMultiplier()
+    })
+    cachedInited = true
+  }
+  return cachedWalkSpeedMultiplier
+}
 
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type BearState = 'idle' | 'walk' | 'wave' | 'sit' | 'dance'
@@ -204,8 +220,8 @@ export class Bear {
       this.playIdle()
       return
     }
-    // V9.0 — Wayfaring perk: local player's walk speed scales with level
-    const mult = isPeer ? 1.2 : walkSpeedMultiplier()
+    // V9.0 + V9.7-review I3 — Wayfaring perk; cached multiplier
+    const mult = isPeer ? 1.2 : getCachedWalkSpeedMultiplier()
     const speed = WALK_SPEED * mult
     const step = Math.min((speed * dtMs) / 1000, dist)
     this.sprite.x += (dx / dist) * step
