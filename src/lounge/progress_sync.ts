@@ -53,7 +53,9 @@ const STORAGE_KEYS = [
   'lounge_coop_done_v1',
   'lounge_grove_flower_v1',
   'lounge_bundles_v1',
-  'lounge_bundle_unlocks_v1'
+  'lounge_bundle_unlocks_v1',
+  'lounge_npc_hearts_v1',
+  'lounge_npc_hearts_daily_v1'
 ] as const
 
 type Snapshot = Record<string, string | null>

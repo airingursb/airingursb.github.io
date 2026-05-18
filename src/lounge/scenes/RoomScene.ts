@@ -17,6 +17,7 @@ import { loadNpcManifest, getActiveBracket, pickDialog, buildDialogContext, type
 import { getActiveFestivalId, getActiveFestival, hasCompletedTodaysActivity, markActivityDone, rollActivity } from '../festivals'
 import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
+import { addNpcTalkHeart, getNpcHeartLevel } from '../npc_hearts'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased, decoStorageKey } from '../shells'
@@ -2522,10 +2523,13 @@ export class RoomScene extends Phaser.Scene {
   private handleNpcClick(id: string) {
     const entry = this.npcBears.get(id)
     if (!entry) return
-    // V7.0 — build dialog context from runtime state (friendship + active festival + first-meeting)
-    const friendship = this.friendships.get(id)
+    // V7.0 → V10.1 — heart is now read from per-NPC heart points (npc_hearts),
+    // not from this.friendships (which only holds player↔player relationships).
+    // Each click is also worth +1 heart-point (daily-capped per NPC).
+    addNpcTalkHeart(id)
+    const npcHeart = getNpcHeartLevel(id)
     const ctx = buildDialogContext({
-      heart: friendship?.level ?? 0,
+      heart: npcHeart,
       event: getActiveFestivalId() ?? undefined,
       isFirstMeeting: !this.npcDialogMemory.has(id)
     })
@@ -2535,8 +2539,7 @@ export class RoomScene extends Phaser.Scene {
     // V7.4 — auto-give quests this NPC has, if friendship prereq met and not yet accepted
     for (const q of QUESTS) {
       if (q.giver_npc !== id) continue
-      const heart = friendship?.level ?? 0
-      if (heart < (q.prereq_heart ?? 0)) continue
+      if (npcHeart < (q.prereq_heart ?? 0)) continue
       const st = getQuestState(q.id)
       if (st.accepted) continue
       acceptQuest(q.id)
