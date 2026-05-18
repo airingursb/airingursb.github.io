@@ -237,6 +237,7 @@ export function initUI() {
   ensureCfRefs()
   ensureBdRefs()
   ensureGcRefs()
+  ensureBnRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -449,6 +450,112 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat' | 'fox' 
 export function nextSpeciesFrom(s: string): 'bear'|'cat'|'fox'|'capybara'|'bird' {
   const idx = SPECIES_CYCLE.findIndex(x => x.id === s)
   return SPECIES_CYCLE[(idx === -1 ? 0 : (idx + 1) % SPECIES_CYCLE.length)].id
+}
+
+// V9.7 — Community Hall bundles
+import { BUNDLES, getFilled, checkAutoSlots, tryContribute, isBundleComplete, type BundleSlot } from './community_hall'
+import { MATERIALS as MAT_META, type MaterialId } from './resources'
+
+let bnPanelEl: HTMLElement | null = null
+let bnListEl: HTMLElement | null = null
+let bnCloseBtn: HTMLButtonElement | null = null
+let bnOpenBtn: HTMLButtonElement | null = null
+let bundleAutoProvider: (() => { memoriesCount: number; friendshipsMaxLevels: number[] }) | null = null
+
+export function setBundleAutoProvider(p: () => { memoriesCount: number; friendshipsMaxLevels: number[] }) {
+  bundleAutoProvider = p
+}
+
+function ensureBnRefs() {
+  if (bnPanelEl) return
+  bnPanelEl = document.getElementById('lounge-bundles-panel')
+  bnListEl  = document.getElementById('lounge-bundles-list')
+  bnCloseBtn = document.getElementById('lounge-bundles-close') as HTMLButtonElement | null
+  bnOpenBtn  = document.getElementById('lounge-info-bundles') as HTMLButtonElement | null
+  if (bnCloseBtn) bnCloseBtn.addEventListener('click', () => hideBundlesPanel())
+  if (bnOpenBtn) bnOpenBtn.addEventListener('click', () => { hideInfoPanel(); showBundlesPanel() })
+  if (bnPanelEl) bnPanelEl.addEventListener('click', (e) => { if (e.target === bnPanelEl) hideBundlesPanel() })
+}
+
+export function showBundlesPanel() {
+  ensureBnRefs()
+  if (!bnPanelEl) return
+  if (bundleAutoProvider) checkAutoSlots(bundleAutoProvider())
+  renderBundles()
+  bnPanelEl.hidden = false
+  playSfx('menu_open')
+}
+export function hideBundlesPanel() {
+  if (!bnPanelEl) return
+  bnPanelEl.hidden = true
+  playSfx('menu_close')
+}
+
+function slotLabel(slot: BundleSlot): string {
+  switch (slot.kind) {
+    case 'shells':      return `🐚 shells`
+    case 'material':    return `${MAT_META[slot.id].emoji} ${MAT_META[slot.id].name}`
+    case 'memory':      return `📷 memories`
+    case 'friendship':  return `💞 heart ${slot.minLevel}+`
+  }
+}
+function slotMax(slot: BundleSlot): number {
+  if (slot.kind === 'friendship') return slot.minCount
+  return slot.count
+}
+
+function renderBundles() {
+  if (!bnListEl) return
+  bnListEl.innerHTML = ''
+  for (const b of BUNDLES) {
+    const li = document.createElement('li')
+    const done = isBundleComplete(b)
+    li.className = 'bn-item' + (done ? ' done' : '')
+    const t = document.createElement('div'); t.className = 'bn-title'
+    t.textContent = `${b.emoji} ${b.name}` + (done ? ' ✓' : '')
+    li.appendChild(t)
+    const bl = document.createElement('div'); bl.className = 'bn-blurb-inline'; bl.textContent = b.blurb
+    li.appendChild(bl)
+    b.slots.forEach((slot, i) => {
+      const row = document.createElement('div'); row.className = 'bn-slot'
+      const lbl = document.createElement('span'); lbl.className = 'bn-slot-label'; lbl.textContent = slotLabel(slot)
+      const bar = document.createElement('div'); bar.className = 'bn-slot-bar'
+      const fill = document.createElement('div'); fill.className = 'bn-slot-fill'
+      const filled = getFilled(b.id, i)
+      const max = slotMax(slot)
+      const pct = Math.min(100, (filled / max) * 100)
+      fill.style.width = pct + '%'
+      if (filled >= max) fill.classList.add('full')
+      bar.appendChild(fill)
+      const cnt = document.createElement('span'); cnt.className = 'bn-slot-count'; cnt.textContent = `${Math.min(filled, max)} / ${max}`
+      row.appendChild(lbl); row.appendChild(bar); row.appendChild(cnt)
+      if (slot.kind === 'shells' || slot.kind === 'material') {
+        const btn = document.createElement('button'); btn.type = 'button'
+        btn.textContent = filled >= max ? '✓' : 'Pay'
+        btn.disabled = filled >= max
+        btn.addEventListener('click', () => {
+          const r = tryContribute(b.id, i)
+          if (r.ok) {
+            if (r.completedBundle) showToast(`🏛 Bundle complete: ${b.name}! Reward: ${b.reward}`, 4500)
+            else showToast('Contribution added.', 1600)
+            renderBundles()
+          } else {
+            const msg: Record<string, string> = {
+              already_full:'Slot already complete.',
+              not_enough:  'Not enough to fill the rest.',
+              cannot_check:'Auto-tracked — keep playing.'
+            }
+            showToast(msg[r.reason], 2000)
+          }
+        })
+        row.appendChild(btn)
+      }
+      li.appendChild(row)
+    })
+    const rw = document.createElement('div'); rw.className = 'bn-reward'; rw.textContent = '🎁 ' + b.reward
+    li.appendChild(rw)
+    bnListEl.appendChild(li)
+  }
 }
 
 // V9.5 — Care for the Grove panel

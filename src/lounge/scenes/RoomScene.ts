@@ -24,7 +24,7 @@ import { awardXp, onLevelUp, walkSpeedMultiplier, bonusInventorySlots, SKILLS, t
 import { getActiveSpots, markPicked, addMaterial, removeMaterial as removeMaterialFn, getMaterial, MATERIALS, type MaterialId, type Spot as ResourceSpot } from '../resources'
 import { activityForRoom, hasCompletedToday as hasCoopDoneToday, awardActivity as awardCoopActivity } from '../coop'
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
-import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry, showSpeciesPicker, setCraftEnvProvider } from '../ui'
+import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry, showSpeciesPicker, setCraftEnvProvider, setBundleAutoProvider } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
 import { seedMailForToday, unreadCount as mailUnread } from '../mailbox'
 
@@ -717,6 +717,14 @@ export class RoomScene extends Phaser.Scene {
     // V9.1 — crafting env provider: exposes pebble inventory + materials.
     // Materials (V9.2 placeholder): empty until resource gathering ships;
     // recipes that need materials will fail with missing_material.
+    // V9.7 — Bundle auto-slot provider: memories count + per-NPC friendship levels
+    setBundleAutoProvider(() => {
+      let memCount = 0
+      try { memCount = JSON.parse(localStorage.getItem('lounge_memories_v1') || '[]').length } catch {}
+      const levels = Array.from(this.friendships.values()).map(f => f.level ?? 0)
+      return { memoriesCount: memCount, friendshipsMaxLevels: levels }
+    })
+
     setCraftEnvProvider(() => ({
       inventoryHas: (id: string) => this.inventory.has(id),
       inventorySize: this.inventory.size,
