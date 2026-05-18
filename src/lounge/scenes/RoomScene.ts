@@ -29,6 +29,7 @@ import { maybeJoinMorningCoffee, leaveMorningCoffeeIfNeeded, setCoffeeBannerHand
 import { maybeNoticeCookAlong, leaveCookAlongIfNeeded, setCookBannerHandler, startOrJoinCookAlong } from '../group_cook'
 import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJamBurstTier } from '../group_jam'
 import { tickNpcEvents, leaveNpcEventIfNeeded, setEventBannerHandler, currentEventStatus } from '../npc_events'
+import { startOrJoinDance, leaveDanceIfNeeded, initDance } from '../group_dance'
 import { setPartyProgressToken } from '../party'
 import { setPartyOnEnter, setPartyDisplayName } from '../party_ui'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
@@ -424,6 +425,14 @@ export class RoomScene extends Phaser.Scene {
       if (text) { if (tx) tx.textContent = text; el.hidden = false }
       else el.hidden = true
     })
+    // V14.5 — dance: leave on room change, init listener, wire Start button
+    leaveDanceIfNeeded(this.currentRoomId)
+    initDance()
+    const danceBtn = document.getElementById('lounge-dance-start') as HTMLButtonElement | null
+    if (danceBtn && !danceBtn.dataset.bound) {
+      danceBtn.dataset.bound = '1'
+      danceBtn.addEventListener('click', () => startOrJoinDance())
+    }
 
     // V14.4 — NPC-hosted scheduled events banner + auto-join
     leaveNpcEventIfNeeded(this.currentRoomId)
