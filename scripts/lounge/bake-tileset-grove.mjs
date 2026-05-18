@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// V6.2 — outdoor_grove_v1: 32 tiles, 8 cols × 4 rows (128×64).
+// V6.2 + E5-P0a — outdoor_grove_v1: 40 tiles, 8 cols × 5 rows (128×80).
+// (Original 32 grove tiles + 8 sand/shore tiles added to enable Beach migration.)
 //
 // Tile map (1-indexed in Tiled's firstgid space):
 //   Row 0 (ground variants + base materials):
@@ -24,6 +25,12 @@
 //    27 pine tree bottom        28 pine tree top
 //    29 flower patch (yellow)   30 flower patch (pink)
 //    31 mushroom cluster        32 bench (wooden, sit anchor)
+//   Row 4 (E5-P0a — sand / shore / beach decor):
+//    33 sand plain              34 sand + tiny shells
+//    35 sand-grass edge N (grass above, sand below)
+//    36 sand-shore S (sand above, shore-water below)
+//    37 driftwood log           38 beach umbrella (red+white)
+//    39 palm tree bottom        40 palm tree top
 //
 // Run: node scripts/lounge/bake-tileset-grove.mjs
 
@@ -37,7 +44,7 @@ const OUT = join(ROOT, 'public', 'lounge', 'assets', 'tilesets', 'outdoor_grove_
 
 const TILE = 16
 const COLS = 8
-const ROWS = 4
+const ROWS = 5
 const W = TILE * COLS
 const H = TILE * ROWS
 
@@ -386,11 +393,116 @@ function tile32(ox, oy) {
   rect(ox + 13, oy + 5, 1, 3, C.wood_dark)
 }
 
+// ─── Row 4: E5-P0a sand / shore / beach decor ─────────────────────
+const SAND = {
+  main: '#e8d59c', dark: '#c8b078', hl: '#f0dcaa', grain: '#a8907a'
+}
+
+function sandBase(ox, oy) {
+  rect(ox, oy, TILE, TILE, SAND.main)
+  for (let i = 0; i < 10; i++) {
+    const x = (i * 11 + oy * 5) % TILE
+    const y = (i * 13 + ox * 7) % TILE
+    px(ox + x, oy + y, (i % 3 === 0) ? SAND.dark : SAND.hl)
+  }
+}
+
+// 33 sand plain
+function tile33(ox, oy) { sandBase(ox, oy) }
+
+// 34 sand + tiny shells
+function tile34(ox, oy) {
+  sandBase(ox, oy)
+  // small shell shapes
+  rect(ox + 4, oy + 5, 3, 2, '#f0d8b8')
+  px(ox + 4, oy + 6, '#a08868')
+  px(ox + 11, oy + 10, '#a08868')
+  rect(ox + 10, oy + 10, 3, 2, '#f0d8b8')
+}
+
+// 35 sand-grass edge N (grass above, sand below)
+function tile35(ox, oy) {
+  rect(ox, oy, TILE, 6, C.grass_a)
+  rect(ox, oy + 6, TILE, 10, SAND.main)
+  // jagged boundary
+  for (let x = 0; x < TILE; x += 2) px(ox + x, oy + 5, SAND.dark)
+  // grass blades drooping
+  ctx.fillStyle = C.grass_c
+  ctx.fillRect(ox + 3, oy + 2, 1, 3); ctx.fillRect(ox + 9, oy + 1, 1, 4)
+}
+
+// 36 sand-shore S (sand above, shore-water below; for the southern beach edge)
+function tile36(ox, oy) {
+  rect(ox, oy, TILE, 10, SAND.main)
+  rect(ox, oy + 10, TILE, 6, C.water_a)
+  for (let y = 10; y < TILE; y += 4) {
+    ctx.fillStyle = C.water_b; ctx.fillRect(ox, oy + y, TILE, 1)
+  }
+  // wet sand band
+  rect(ox, oy + 9, TILE, 1, '#bca680')
+  // foam dots
+  px(ox + 2, oy + 11, C.water_hl); px(ox + 9, oy + 12, C.water_hl); px(ox + 13, oy + 11, C.water_hl)
+}
+
+// 37 driftwood log (horizontal, sand base)
+function tile37(ox, oy) {
+  sandBase(ox, oy)
+  rect(ox + 1, oy + 6, TILE - 2, 7, '#8a6a4a')
+  rect(ox + 1, oy + 7, TILE - 2, 1, '#a88858')
+  ctx.fillStyle = '#5a4a2a'
+  ctx.fillRect(ox + 2, oy + 9, TILE - 4, 1)
+  px(ox + 1, oy + 9, '#705838'); px(ox + TILE - 2, oy + 9, '#705838')
+}
+
+// 38 beach umbrella (red+white striped)
+function tile38(ox, oy) {
+  sandBase(ox, oy)
+  // pole
+  rect(ox + 7, oy + 4, 1, 11, '#5a4a2a')
+  // umbrella top — semicircle of red/white stripes
+  ctx.fillStyle = '#d04040'
+  for (let dy = 0; dy < 4; dy++) {
+    const w = 12 - dy * 2
+    ctx.fillRect(ox + Math.floor(8 - w / 2), oy + dy + 1, w, 1)
+  }
+  ctx.fillStyle = '#ffffff'
+  px(ox + 4, oy + 2); px(ox + 8, oy + 1); px(ox + 11, oy + 2)
+  px(ox + 5, oy + 4); px(ox + 10, oy + 4)
+}
+
+// 39 palm tree bottom (trunk on sand)
+function tile39(ox, oy) {
+  sandBase(ox, oy)
+  rect(ox + 7, oy + 4, 2, 12, '#8a5a36')
+  rect(ox + 7, oy + 4, 1, 12, '#a07850')
+  // base flare
+  rect(ox + 6, oy + 14, 4, 2, '#5a3a1a')
+}
+
+// 40 palm tree top (canopy + coconuts) — above-layer
+function tile40(ox, oy) {
+  // fronds
+  ctx.fillStyle = '#3a8a3a'
+  ctx.fillRect(ox + 4, oy + 6, 4, 2)
+  ctx.fillRect(ox + 8, oy + 6, 4, 2)
+  ctx.fillRect(ox + 6, oy + 4, 4, 2)
+  ctx.fillRect(ox + 5, oy + 7, 6, 1)
+  ctx.fillRect(ox + 3, oy + 8, 3, 1)
+  ctx.fillRect(ox + 10, oy + 8, 3, 1)
+  // lighter highlights
+  ctx.fillStyle = '#5aaa5a'
+  ctx.fillRect(ox + 5, oy + 5, 1, 1); ctx.fillRect(ox + 10, oy + 5, 1, 1)
+  ctx.fillRect(ox + 7, oy + 3, 2, 1)
+  // coconuts
+  px(ox + 6, oy + 8, '#5a3a1a'); px(ox + 9, oy + 8, '#5a3a1a')
+}
+
 const renderers = [
   tile1, tile2, tile3, tile4, tile5, tile6, tile7, tile8,
   tile9, tile10, tile11, tile12, tile13, tile14, tile15, tile16,
   tile17, tile18, tile19, tile20, tile21, tile22, tile23, tile24,
-  tile25, tile26, tile27, tile28, tile29, tile30, tile31, tile32
+  tile25, tile26, tile27, tile28, tile29, tile30, tile31, tile32,
+  tile33, tile34, tile35, tile36, tile37, tile38, tile39, tile40
 ]
 for (let i = 0; i < renderers.length; i++) {
   const [ox, oy] = tileXY(i)
@@ -404,7 +516,7 @@ const meta = {
   schema_version: 1,
   name: 'outdoor_grove_v1',
   tile_width: TILE, tile_height: TILE,
-  tile_count: 32, columns: COLS,
+  tile_count: 40, columns: COLS,
   image: 'tiles.png', image_width: W, image_height: H,
   tiles: [
     { id: 0, kind: 'floor' }, { id: 1, kind: 'floor' }, { id: 2, kind: 'floor' },
@@ -421,7 +533,11 @@ const meta = {
     { id: 24, kind: 'furniture', collision: true }, { id: 25, kind: 'decor' },
     { id: 26, kind: 'furniture', collision: true }, { id: 27, kind: 'decor' },
     { id: 28, kind: 'decor' }, { id: 29, kind: 'decor' },
-    { id: 30, kind: 'decor' }, { id: 31, kind: 'furniture', collision: true }
+    { id: 30, kind: 'decor' }, { id: 31, kind: 'furniture', collision: true },
+    { id: 32, kind: 'floor' }, { id: 33, kind: 'floor' },
+    { id: 34, kind: 'floor' }, { id: 35, kind: 'floor' },
+    { id: 36, kind: 'furniture', collision: true }, { id: 37, kind: 'furniture', collision: true },
+    { id: 38, kind: 'furniture', collision: true }, { id: 39, kind: 'decor' }
   ]
 }
 writeFileSync(join(OUT, 'tiles.json'), JSON.stringify(meta, null, 2))
