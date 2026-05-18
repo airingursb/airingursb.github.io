@@ -4,7 +4,7 @@ import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendG
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
 import { renderMinimap, showDoorLabel, hideDoorLabel, MAP_ROOMS } from '../minimap'
-import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, type Region, type RoomId } from '../config'
+import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, type Region, type RoomId, type Species } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
 import { onUIEvent, showMenuAt, showBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard, setOnSpeciesToggle, updateSpeciesButtonLabel } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
@@ -213,6 +213,11 @@ export class RoomScene extends Phaser.Scene {
     // actually exist — skip replaceByIndex on layers that have none. For a
     // 30×20 map × 3 layers × 4 anims, this can cut 15k+ tile scans/sec down
     // to near zero on rooms that only use a few of the animated tiles.
+    //
+    // Caveat (intentional): the layerHasIt cache is built ONCE here. If any
+    // future code dynamically writes an animated frame id into a layer that
+    // didn't have one at boot, that layer won't be picked up. We don't mutate
+    // tilemaps post-boot today; revisit if that changes.
     if (tileset?.name === 'outdoor_grove_v1') {
       const ANIMS: Array<{ frames: number[]; ms: number; layerHasIt: boolean[] }> = [
         { frames: [8, 41, 45], ms: 480,  layerHasIt: [] },
@@ -1667,7 +1672,7 @@ export class RoomScene extends Phaser.Scene {
   // or immediately if they already are. Idempotent / dedup'd via the
   // speciesLoadInFlight map so multiple peers joining at once don't double-load.
   private speciesLoadInFlight = new Map<string, Promise<void>>()
-  private ensureSpeciesLoaded(species: 'bear'|'cat'|'fox'|'capybara'|'bird'): Promise<void> {
+  private ensureSpeciesLoaded(species: Species): Promise<void> {
     if (species === 'bear') return Promise.resolve()
     // Check if every region already cached
     const allLoaded = REGIONS.every(r => this.textures.exists(`${species}_${r}`))
