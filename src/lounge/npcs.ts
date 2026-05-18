@@ -24,6 +24,7 @@ export type DialogCondition = {
   time?: 'morning' | 'afternoon' | 'evening' | 'night'  // 6-12 / 12-17 / 17-22 / 22-6
   event?: string       // e.g. 'spring_open_house', set when festival active
   first_meeting?: boolean  // true → only on first interaction this session
+  bundle?: string      // N5: gated by Community Hall bundle reward_unlock_id
 }
 export type DialogBranch = {
   condition?: DialogCondition
@@ -128,6 +129,15 @@ function matchesBranch(c: DialogCondition | undefined, ctx: DialogContext): bool
   if (c.time && c.time !== ctx.time) return false
   if (c.event && c.event !== ctx.event) return false
   if (c.first_meeting !== undefined && c.first_meeting !== ctx.isFirstMeeting) return false
+  // N5: bundle unlock gate
+  if (c.bundle) {
+    try {
+      // Inline read to avoid a circular import (community_hall imports skills/etc).
+      const raw = localStorage.getItem('lounge_bundle_unlocks_v1') || '{}'
+      const unlocks = JSON.parse(raw)
+      if (!unlocks[c.bundle]) return false
+    } catch { return false }
+  }
   return true
 }
 

@@ -11,7 +11,7 @@
 // shop_*-in-inventory pipeline added in P1).
 
 import { getLevel } from './skills'
-import { spendShells, getShells } from './shells'
+import { spendShells, getShells, decoStorageKey } from './shells'
 
 export type Cost =
   | { kind: 'any_pebble'; count: number }
@@ -100,7 +100,7 @@ export function tryCraft(r: Recipe, env: CraftEnv): CraftResult {
     try {
       const raw = localStorage.getItem('lounge_purchases_v1') || '{}'
       const map = JSON.parse(raw)
-      if (map[r.output.id.replace('shop_', '')]) return { ok: false, reason: 'already_owned' }
+      if (map[decoStorageKey(r.output.id)]) return { ok: false, reason: 'already_owned' }
     } catch {}
   }
   // V9.7-review C3 fix: real precheck for all kinds BEFORE any spend, so
@@ -136,7 +136,7 @@ export function tryCraft(r: Recipe, env: CraftEnv): CraftResult {
   try {
     const raw = localStorage.getItem('lounge_purchases_v1') || '{}'
     const map = JSON.parse(raw)
-    map[r.output.id.replace('shop_', '')] = Date.now()
+    map[decoStorageKey(r.output.id)] = Date.now()
     localStorage.setItem('lounge_purchases_v1', JSON.stringify(map))
   } catch {}
   return { ok: true, outputId: r.output.id, outputName: r.output.name }

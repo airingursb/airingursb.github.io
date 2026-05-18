@@ -28,7 +28,11 @@ export type Bundle = {
   emoji: string
   blurb: string
   slots: BundleSlot[]
+  /** Human-readable reward shown in UI. */
   reward: string
+  /** N5: machine ID consumed by npcs.ts (dialog `bundle:`) and cutscenes.ts
+   *  (trigger `bundle:`) to gate content behind bundle completion. */
+  reward_unlock_id: string
 }
 
 export const BUNDLES: Bundle[] = [
@@ -41,7 +45,8 @@ export const BUNDLES: Bundle[] = [
       { kind: 'material', id: 'leaves', count: 8 },
       { kind: 'material', id: 'berries', count: 4 }
     ],
-    reward: 'Unlocks Mio\'s Spring Brew dialog branch'
+    reward: "Unlocks Mio's Spring Brew dialog branch",
+    reward_unlock_id: 'mio_spring_brew'
   },
   {
     id: 'bundle_summer_bonfire',
@@ -52,7 +57,8 @@ export const BUNDLES: Bundle[] = [
       { kind: 'memory', count: 3 },
       { kind: 'friendship', minLevel: 2, minCount: 3 }
     ],
-    reward: 'Unlocks Sora\'s Sea Lore cutscene'
+    reward: "Unlocks Sora's Sea Lore cutscene",
+    reward_unlock_id: 'sora_sea_lore'
   },
   {
     id: 'bundle_autumn_harvest',
@@ -63,7 +69,8 @@ export const BUNDLES: Bundle[] = [
       { kind: 'material', id: 'leaves',  count: 16 },
       { kind: 'shells',   count: 60 }
     ],
-    reward: 'Unlocks Theo\'s rare-seed gift'
+    reward: "Unlocks Theo's rare-seed gift dialog",
+    reward_unlock_id: 'theo_rare_seed'
   },
   {
     id: 'bundle_winter_carols',
@@ -74,9 +81,27 @@ export const BUNDLES: Bundle[] = [
       { kind: 'friendship', minLevel: 3, minCount: 2 },
       { kind: 'shells', count: 50 }
     ],
-    reward: 'Unlocks Halle\'s Winter Reading cutscene'
+    reward: "Unlocks Halle's Winter Reading cutscene",
+    reward_unlock_id: 'halle_winter_reading'
   }
 ]
+
+// N5: track which bundle rewards have been unlocked. Set when a bundle
+// completes; checked by npcs/cutscenes to gate content.
+const UNLOCK_KEY = 'lounge_bundle_unlocks_v1'
+function loadUnlocks(): Record<string, number> {
+  try { return JSON.parse(localStorage.getItem(UNLOCK_KEY) || '{}') } catch { return {} }
+}
+function saveUnlocks(m: Record<string, number>) {
+  try { localStorage.setItem(UNLOCK_KEY, JSON.stringify(m)) } catch {}
+}
+/** True if the bundle unlock has been awarded. */
+export function isBundleUnlocked(unlockId: string): boolean {
+  return !!loadUnlocks()[unlockId]
+}
+function markUnlocked(unlockId: string) {
+  const m = loadUnlocks(); m[unlockId] = Date.now(); saveUnlocks(m)
+}
 
 const STORAGE_KEY = 'lounge_bundles_v1'   // per-bundle filled slots map: { [bundleId]: { [slotIdx]: amountFilled or true } }
 type FilledLog = Record<string, Record<number, number | boolean>>
@@ -118,6 +143,13 @@ export function checkAutoSlots(opts: { memoriesCount: number; friendshipsMaxLeve
     })
   }
   if (changed) save(log)
+  // N5: backfill — for bundles already complete (whether from this code path
+  // or from before reward_unlock_id existed), ensure the unlock flag is set.
+  for (const b of BUNDLES) {
+    if (isBundleComplete(b) && !isBundleUnlocked(b.reward_unlock_id)) {
+      markUnlocked(b.reward_unlock_id)
+    }
+  }
 }
 
 export function tryContribute(bundleId: string, slotIdx: number): ContributeResult {
@@ -147,7 +179,10 @@ export function tryContribute(bundleId: string, slotIdx: number): ContributeResu
   save(log)
   // Check completion
   const completed = isBundleComplete(b)
-  if (completed) awardXp('companionship', 10)
+  if (completed) {
+    awardXp('companionship', 10)
+    markUnlocked(b.reward_unlock_id)   // N5: gate content for NPCs/cutscenes
+  }
   return { ok: true, completedBundle: completed }
 }
 

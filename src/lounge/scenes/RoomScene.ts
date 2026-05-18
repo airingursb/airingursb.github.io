@@ -19,7 +19,7 @@ import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollec
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 import { getEquippedTool, captureMemory } from '../memories'
-import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased } from '../shells'
+import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased, decoStorageKey } from '../shells'
 import { awardXp, onLevelUp, walkSpeedMultiplier, bonusInventorySlots, SKILLS, type SkillId } from '../skills'
 import { getActiveSpots, markPicked, addMaterial, removeMaterial as removeMaterialFn, getMaterial, MATERIALS, type MaterialId, type Spot as ResourceSpot } from '../resources'
 import { activityForRoom, hasCompletedToday as hasCoopDoneToday, awardActivity as awardCoopActivity } from '../coop'
@@ -829,8 +829,7 @@ export class RoomScene extends Phaser.Scene {
           { id: 'craft_shared_kettle',    name: 'Shared Kettle',             source: 'crafted' }
         ]
         for (const d of OWNED_DECO) {
-          const key = d.id.replace(/^(shop_|craft_)/, '')
-          if (!hasPurchased(key as any)) continue
+          if (!hasPurchased(decoStorageKey(d.id) as any)) continue
           items.push({
             id: d.id,
             name: d.name,
@@ -843,7 +842,7 @@ export class RoomScene extends Phaser.Scene {
         const shopSlots = hasPurchased('pebble_bag_plus') ? 8 : 0
         return {
           items,
-          total: all.length + OWNED_DECO.filter(d => hasPurchased(d.id.replace(/^(shop_|craft_)/, '') as any)).length,
+          total: all.length + OWNED_DECO.filter(d => hasPurchased(decoStorageKey(d.id) as any)).length,
           collected: items.filter(i => i.collected).length,
           canPlace: this.amInMyHome(),
           gridSlots: 36 + shopSlots + bonusInventorySlots()
@@ -2041,7 +2040,7 @@ export class RoomScene extends Phaser.Scene {
             try {
               if (res.shellReward > 0) awardShells(res.shellReward)
               if (res.itemReward) {
-                const shopId = res.itemReward.id.replace('shop_', '')
+                const shopId = decoStorageKey(res.itemReward.id)
                 const raw = localStorage.getItem('lounge_purchases_v1') || '{}'
                 const m = JSON.parse(raw)
                 if (!m[shopId]) m[shopId] = Date.now()

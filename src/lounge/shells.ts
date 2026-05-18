@@ -132,6 +132,14 @@ export function markPurchased(id: ShopItemId) {
   try { localStorage.setItem(STORAGE_PURCHASES, JSON.stringify(m)) } catch {}
 }
 
+/** N1/N2: shared helper for stripping the deco prefix used by shop_* (Mio
+ *  purchases) and craft_* (V9.1 crafted decorations). Inverse of how the
+ *  inventory provider in RoomScene tags items. Both kinds share the same
+ *  lounge_purchases_v1 storage map keyed by the bare id. */
+export function decoStorageKey(prefixedId: string): string {
+  return prefixedId.replace(/^(shop_|craft_)/, '')
+}
+
 const listeners: Array<(value: number) => void> = []
 export function onShellsChange(fn: (value: number) => void) { listeners.push(fn) }
 function notify(v: number) { for (const l of listeners) l(v) }

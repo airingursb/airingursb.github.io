@@ -27,6 +27,7 @@ export type CutsceneTrigger = {
   heart_min?: number                           // requires friendship with giver_npc
   heart_npc_id?: string                        // who the friendship is with
   event?: string                               // active festival id required
+  bundle?: string                              // N5: Community Hall bundle reward_unlock_id required
 }
 
 export type CutsceneDef = {
@@ -180,6 +181,34 @@ export const CUTSCENES: CutsceneDef[] = [
       { type: 'shake', duration_ms: 600, intensity: 0.008 },
       { type: 'say', npc_id: 'npc_dane', text: "This one's for you. Don't sit down.", duration_ms: 3000 }
     ]
+  },
+
+  // N5: bundle-gated cutscenes — fire once when the player enters the right
+  // room after completing the Community Hall bundle that unlocks them.
+  {
+    id: 'sora_sea_lore_cutscene',
+    trigger: { room: 'room_beach', bundle: 'sora_sea_lore' },
+    steps: [
+      { type: 'wait', ms: 700 },
+      { type: 'say', npc_id: 'npc_sora', text: '🔥 The bonfire kit you stocked is lit. Sit with me?', duration_ms: 2800 },
+      { type: 'camera_pan', x: 240, y: 200, duration_ms: 1800 },
+      { type: 'say', npc_id: 'npc_sora', text: 'You see that line out past the shore? That\'s where the old wreck sits.', duration_ms: 3200 },
+      { type: 'wait', ms: 800 },
+      { type: 'say', npc_id: 'npc_sora', text: 'My grandmother said her grandmother dove there. Found things. Lost things.', duration_ms: 3400 },
+      { type: 'say', npc_id: 'npc_sora', text: 'Some nights the wind makes it sing. That\'s the sea lore. Listen.', duration_ms: 3500 }
+    ]
+  },
+  {
+    id: 'halle_winter_reading_cutscene',
+    trigger: { room: 'room_library', bundle: 'halle_winter_reading' },
+    steps: [
+      { type: 'wait', ms: 600 },
+      { type: 'say', npc_id: 'npc_halle', text: '❄️ The songbook is shelved. Pull a chair.', duration_ms: 2400 },
+      { type: 'camera_pan', x: 96, y: 144, duration_ms: 1500 },
+      { type: 'say', npc_id: 'npc_halle', text: 'Winter carols, hand-copied. I started this in my twenties.', duration_ms: 3200 },
+      { type: 'wait', ms: 700 },
+      { type: 'say', npc_id: 'npc_halle', text: 'Read aloud whichever page falls open. Tradition.', duration_ms: 3000 }
+    ]
   }
 ]
 
@@ -235,6 +264,14 @@ export function findCutsceneForRoom(roomId: string, now: Date = getGameNow(), op
     if (c.trigger.heart_min !== undefined && c.trigger.heart_npc_id) {
       const fr = opts.friendships?.get(c.trigger.heart_npc_id)
       if (!fr || fr.level < c.trigger.heart_min) continue
+    }
+    // N5: bundle gate
+    if (c.trigger.bundle) {
+      try {
+        const raw = localStorage.getItem('lounge_bundle_unlocks_v1') || '{}'
+        const unlocks = JSON.parse(raw)
+        if (!unlocks[c.trigger.bundle]) continue
+      } catch { continue }
     }
     if (!c.replay && hasFired(c.id)) continue
     return c

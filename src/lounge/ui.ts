@@ -1156,7 +1156,7 @@ export function hideSleepOverlay() {
 }
 
 // V8.4 + V9.6 — Shells counter + Mio's Shop (with weekly market)
-import { getShells, spendShells, onShellsChange, SHOP, hasPurchased, markPurchased, getEffectivePrice, getActiveMarketEvent, type ShopItem } from './shells'
+import { getShells, spendShells, onShellsChange, SHOP, hasPurchased, markPurchased, getEffectivePrice, getActiveMarketEvent, decoStorageKey, type ShopItem } from './shells'
 
 let shellsCounterEl: HTMLElement | null = null
 let shellsNumEl: HTMLElement | null = null
@@ -1638,7 +1638,7 @@ export function setInventoryDataProvider(provider: () => { items: Array<{ id: st
           // P7-fix: refund 50% of original cost so trashing isn't a free re-buy.
           // Find the SHOP entry by id; if found, refund half its cost.
           try {
-            const shopId = itemId.replace('shop_', '')
+            const shopId = decoStorageKey(itemId)
             // SHOP catalog is in shells.ts but we already imported it for shop UI
             const item = SHOP.find(s => s.id === shopId as any)
             if (item) {

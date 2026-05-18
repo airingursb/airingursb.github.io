@@ -21,6 +21,13 @@ const API_BASE = 'https://chat.ursb.me'
 const ENDPOINT = '/api/lounge/progress'
 const PUSH_DEBOUNCE_MS = 1500
 
+// N6: schema_version 2 = added Era 7/8 keys (skills, materials, buildings,
+// coop_done, grove_flower, bundles, bundle_unlocks) + deepMergeObjects
+// conflict policy. Bumped so a future server-side migration could route
+// migrations cleanly. Blob shape is still backward-compatible (extra keys
+// in v2 are simply absent from v1 readers).
+const SCHEMA_VERSION = 2
+
 const STORAGE_KEYS = [
   'lounge_quests_v1',
   'lounge_shells_v1',
@@ -45,7 +52,8 @@ const STORAGE_KEYS = [
   'lounge_buildings_v1',
   'lounge_coop_done_v1',
   'lounge_grove_flower_v1',
-  'lounge_bundles_v1'
+  'lounge_bundles_v1',
+  'lounge_bundle_unlocks_v1'
 ] as const
 
 type Snapshot = Record<string, string | null>
@@ -195,7 +203,7 @@ async function doPush() {
     await fetch(`${API_BASE}${ENDPOINT}?visitor_id=${encodeURIComponent(vid)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'X-Progress-Token': progressToken },
-      body: JSON.stringify({ data, schema_version: 1 })
+      body: JSON.stringify({ data, schema_version: SCHEMA_VERSION })
     })
   } catch {}
 }
@@ -216,7 +224,7 @@ export function installProgressSync() {
     if (!pulledOnce || !progressToken) return
     try {
       const vid = getOrCreateVisitorId()
-      const blob = new Blob([JSON.stringify({ data: snapshotLocal(), schema_version: 1, token: progressToken })], { type: 'application/json' })
+      const blob = new Blob([JSON.stringify({ data: snapshotLocal(), schema_version: SCHEMA_VERSION, token: progressToken })], { type: 'application/json' })
       navigator.sendBeacon?.(`${API_BASE}${ENDPOINT}?visitor_id=${encodeURIComponent(vid)}&token=${encodeURIComponent(progressToken)}`, blob)
     } catch {}
   })
