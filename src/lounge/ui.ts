@@ -1216,7 +1216,9 @@ function renderShop() {
     shopListEl.appendChild(banner)
   }
   for (const item of SHOP) {
-    const owned = hasPurchased(item.id)
+    // V10.3 — marriage_pebble is consumable; show stack count instead of "Owned".
+    const isPebble = item.id === 'marriage_pebble'
+    const owned = !isPebble && hasPurchased(item.id)
     // V9.6 — effective price applies market fluctuation and event multiplier
     let effective = getEffectivePrice(item)
     if (evt) effective = Math.max(1, Math.round(effective * evt.multiplier))
@@ -1227,7 +1229,17 @@ function renderShop() {
     name.className = 'si-name'
     const title = document.createElement('div'); title.className = 'si-title'; title.textContent = item.name
     const blurb = document.createElement('div'); blurb.className = 'si-blurb'; blurb.textContent = item.blurb
-    name.appendChild(title); name.appendChild(blurb)
+    if (isPebble) {
+      try {
+        const count = Number(localStorage.getItem('lounge_marriage_pebble_v1') || '0')
+        if (count > 0) {
+          const own = document.createElement('div')
+          own.className = 'si-blurb'; own.style.color = '#ffd166'
+          own.textContent = `You have ${count} in your bag.`
+          name.appendChild(title); name.appendChild(blurb); name.appendChild(own)
+        } else { name.appendChild(title); name.appendChild(blurb) }
+      } catch { name.appendChild(title); name.appendChild(blurb) }
+    } else { name.appendChild(title); name.appendChild(blurb) }
     const cost = document.createElement('div'); cost.className = 'si-cost'
     if (effective !== item.cost) {
       cost.innerHTML = `🐚 <s style="color:#888">${item.cost}</s> ${effective}`
@@ -1244,6 +1256,13 @@ function renderShop() {
 }
 
 function buyItem(item: ShopItem, effectivePrice: number) {
+  // V10.3 — marriage_pebble is a consumable; don't mark hasPurchased so the
+  // player can re-buy after each propose. Stack via marriage.addMarriagePebble.
+  if (item.id === 'marriage_pebble') {
+    if (!spendShells(effectivePrice)) return
+    import('./marriage').then(m => { m.addMarriagePebble(1); renderShop() })
+    return
+  }
   if (hasPurchased(item.id)) return
   if (!spendShells(effectivePrice)) return
   markPurchased(item.id)

@@ -12,14 +12,14 @@ export const SHELL_REWARD = {
   npc_first_meet: 3
 }
 
-export type ShopItemId = 'extra_letters' | 'pebble_bag_plus' | 'lantern_keepsake' | 'fox_figurine' | 'sketch_print'
+export type ShopItemId = 'extra_letters' | 'pebble_bag_plus' | 'lantern_keepsake' | 'fox_figurine' | 'sketch_print' | 'marriage_pebble'
 export type ShopItem = {
   id: ShopItemId
   name: string
   cost: number
   blurb: string
   /** what unlocking does — purely cosmetic / informational for MVP */
-  effect: 'letter_slots' | 'inventory_slots' | 'decoration'
+  effect: 'letter_slots' | 'inventory_slots' | 'decoration' | 'marriage'
 }
 
 export const SHOP: ShopItem[] = [
@@ -27,7 +27,9 @@ export const SHOP: ShopItem[] = [
   { id: 'pebble_bag_plus',  name: 'Pebble Bag (+8 slots)',   cost: 30, blurb: 'More room in your inventory.',     effect: 'inventory_slots' },
   { id: 'lantern_keepsake', name: 'Lantern Keepsake',        cost: 18, blurb: 'A small hanging lantern for Home.', effect: 'decoration' },
   { id: 'fox_figurine',     name: 'Fox Figurine',            cost: 22, blurb: 'A tiny carved fox.',                effect: 'decoration' },
-  { id: 'sketch_print',     name: 'Sketch Print (Cole)',     cost: 35, blurb: 'A signed print from Cole.',         effect: 'decoration' }
+  { id: 'sketch_print',     name: 'Sketch Print (Cole)',     cost: 35, blurb: 'A signed print from Cole.',         effect: 'decoration' },
+  // V10.3 — marriage proposal item. Consumed on propose (re-purchasable).
+  { id: 'marriage_pebble',  name: 'Marriage Pebble 💍',      cost: 100, blurb: 'Gift to an NPC at heart 10 to propose.', effect: 'marriage' }
 ]
 
 // V9.6 — Weekly market: prices fluctuate ±20% based on the ISO week + item id.

@@ -20,6 +20,7 @@ import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } f
 import { addNpcTalkHeart, getNpcHeartLevel } from '../npc_hearts'
 import { hasPet, activePetPerk } from '../pets'
 import { PetSprite } from '../pet_sprite'
+import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased, decoStorageKey } from '../shells'
@@ -2357,6 +2358,24 @@ export class RoomScene extends Phaser.Scene {
         active.set(def.id, { def, bracket: b })
       }
     }
+    // V10.3 — spouse override: when the player is in their own Home room AND
+    // it's a morning/evening window, force-add the spouse here even if their
+    // canonical schedule says they should be elsewhere.
+    const marriage = getMarriage()
+    if (marriage && isHomeRoom(this.currentRoomId)) {
+      const win = spousePresenceWindow(now)
+      if (win) {
+        const def = this.npcManifest.npcs.find(n => n.id === marriage.partner_npc_id)
+        if (def) {
+          // Center-ish, sitting. Reuse the same home interior coords used by
+          // existing NPC schedules so the position feels intentional.
+          active.set(def.id, {
+            def,
+            bracket: { x: 100, y: 80, state: 'sit', room: this.currentRoomId }
+          })
+        }
+      }
+    }
     // Despawn anyone not active here anymore
     for (const id of Array.from(this.npcBears.keys())) {
       if (!active.has(id)) this.despawnNpc(id)
@@ -2364,6 +2383,21 @@ export class RoomScene extends Phaser.Scene {
     // Spawn newly-active NPCs
     for (const [id, { def, bracket }] of active) {
       if (!this.npcBears.has(id)) this.spawnNpc(def, bracket as any)
+    }
+    // V10.3 — once-per-day spouse greeting when entering Home with spouse present
+    if (marriage && isHomeRoom(this.currentRoomId) && spousePresenceWindow(now) && shouldGreetToday()) {
+      const def = this.npcManifest.npcs.find(n => n.id === marriage.partner_npc_id)
+      if (def) {
+        markGreetedToday()
+        this.time.delayedCall(500, () => {
+          const e = this.npcBears.get(def.id)
+          if (e) {
+            const screen = this.bearScreenPos(e.bear)
+            const lines = ['Welcome home, love.', 'I missed you today.', 'Tea is on.', 'Sit with me a minute.']
+            showBubble('spouse_greet', lines[Math.floor(Math.random() * lines.length)], screen.x, screen.y)
+          }
+        })
+      }
     }
   }
 
@@ -2551,6 +2585,16 @@ export class RoomScene extends Phaser.Scene {
     const line = pickDialog(entry.def, this.npcDialogMemory, ctx)
     const screen = this.bearScreenPos(entry.bear)
     showBubble('npc_' + id, line, screen.x, screen.y)
+    // V10.3 — at heart 10 + holding a marriage pebble + not yet married,
+    // surface a propose prompt. Confirm via showToast click? Simpler: window.confirm.
+    if (npcHeart >= 10 && getMarriagePebbleCount() > 0 && !getMarriage()) {
+      const accept = window.confirm(`💍 Propose to ${entry.def.name}?`)
+      if (accept && consumeMarriagePebble()) {
+        setMarriage(id)
+        showToast(`💍 You and ${entry.def.name} are partners.`, 5000)
+        this.runWeddingCutscene(entry.def.name, screen.x, screen.y)
+      }
+    }
     // V7.4 — auto-give quests this NPC has, if friendship prereq met and not yet accepted
     for (const q of QUESTS) {
       if (q.giver_npc !== id) continue
@@ -2710,6 +2754,25 @@ export class RoomScene extends Phaser.Scene {
       x: this.scale.canvasBounds.x + b.x * this.scale.displayScale.x,
       y: this.scale.canvasBounds.y + (b.y - 50) * this.scale.displayScale.y
     }
+  }
+
+  // V10.3 — tiny in-place celebration after proposing. Hearts + glow tween.
+  private runWeddingCutscene(partnerName: string, screenX: number, screenY: number) {
+    // Burst hearts above both bears
+    for (let i = 0; i < 8; i++) {
+      const txt = this.add.text(this.myBear.x + (Math.random() - 0.5) * 20, this.myBear.y - 30, '💖', {
+        fontSize: '14px', resolution: 2
+      }).setOrigin(0.5, 1).setDepth(20)
+      this.tweens.add({
+        targets: txt,
+        y: this.myBear.y - 60 - Math.random() * 20,
+        alpha: 0,
+        duration: 1500 + Math.random() * 400,
+        ease: 'Sine.easeOut',
+        onComplete: () => txt.destroy()
+      })
+    }
+    showBubble('wedding', `💖 ${partnerName} ♥ you`, screenX, screenY - 20)
   }
 
   private applyAct(peerId: string | undefined, verb: string, text?: string) {
