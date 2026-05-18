@@ -70,6 +70,12 @@ export function initUI() {
     hideInfoPanel()
     void import('./wardrobe_ui').then(w => w.showWardrobe())
   })
+  // V19.3 — NPC stories button
+  const infoStoriesBtn = document.getElementById('lounge-info-stories') as HTMLButtonElement | null
+  infoStoriesBtn?.addEventListener('click', () => {
+    hideInfoPanel()
+    void import('./stories_ui').then(s => s.showStories())
+  })
   nameModalEl = document.getElementById('lounge-name-modal')
   nameInputEl = document.getElementById('lounge-name-input') as HTMLInputElement | null
   nameErrorEl = document.getElementById('lounge-name-error')

@@ -45,6 +45,10 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'heart_first_10', name: 'Soulmate-Adjacent',    blurb: 'Reach heart 10 with any NPC.',                    tier: 4, category: 'social' },
   { id: 'marriage',       name: 'Tied the Knot',        blurb: 'Marry an NPC.',                                   tier: 4, category: 'social' },
   { id: 'letter_first',   name: 'Pen Pal',              blurb: 'Drop a letter for someone.',                      tier: 1, category: 'social' },
+  // V19.4 — NPC personal storyline completions
+  { id: 'story_mox_cricket',     name: "Cricket Returned",  blurb: "Hear Mox's brass cricket story to the end.",     tier: 3, category: 'social' },
+  { id: 'story_iris_moonflower', name: 'Moonflower Bloomed', blurb: "Hear Iris's moonflower story to the end.",      tier: 3, category: 'social' },
+  { id: 'story_halle_bookmark',  name: 'Page Seventeen',     blurb: "Hear Halle's page seventeen story to the end.", tier: 3, category: 'social' },
   // ─── Crafting / Gathering ──────────────────────────────────
   { id: 'craft_first',    name: 'First Craft',          blurb: 'Craft anything.',                                 tier: 1, category: 'crafting' },
   { id: 'craft_5',        name: 'Apprentice Maker',     blurb: 'Craft 5 items.',                                  tier: 2, category: 'crafting' },
@@ -163,6 +167,8 @@ export type AchievementEvent =
   | { type: 'home_tier'; tier: number }
   | { type: 'home_extension_built' }
   | { type: 'minigame_finished'; gameId: string; score: number }
+  // V19.4 — NPC personal story complete (story id = achievement id)
+  | { type: 'story_complete'; story_id: string }
 
 const NPC_MET_SET_KEY = 'lounge_achievement_npcs_met_v1'
 
@@ -284,6 +290,11 @@ export function recordEvent(ev: AchievementEvent) {
         case 'shell':  if (ev.score >= 150) markUnlocked('minigame_shell_all');      break
         case 'garden': if (ev.score >= 20)  markUnlocked('minigame_garden_high');    break
       }
+      return
+    }
+    case 'story_complete': {
+      // V19.4 — story id maps 1:1 to achievement id (story_mox_cricket etc.)
+      markUnlocked(ev.story_id)
       return
     }
   }

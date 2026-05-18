@@ -149,12 +149,51 @@ function mkNeckBow(scene: Phaser.Scene, _facing: Direction): Phaser.GameObjects.
 function mkBackCape(scene: Phaser.Scene, facing: Direction): Phaser.GameObjects.Container {
   const c = scene.add.container(0, 0)
   const g = scene.add.graphics()
-  // Cape draped behind — only visible from sides + front
+  // Cape draped behind — narrower in side profile, wider when back/front
   if (facing === 'left' || facing === 'right') {
     rect(g, 0x6020a0, -3 * PIX, -10 * PIX, 6 * PIX, 12 * PIX)
   } else {
     rect(g, 0x6020a0, -5 * PIX, -10 * PIX, 10 * PIX, 12 * PIX)
     rect(g, 0x4010a0, -5 * PIX,  0,         10 * PIX, 2 * PIX)  // fringe
+  }
+  c.add(g)
+  return c
+}
+
+// V19.4 — story-quest reward cosmetics (not in shop, unlocked via stories).
+function mkNeckCricketPin(scene: Phaser.Scene, _facing: Direction): Phaser.GameObjects.Container {
+  const c = scene.add.container(0, 0)
+  const g = scene.add.graphics()
+  // Brass cricket pin on the chest — Mox's gift.
+  rect(g, 0xc89030, -2 * PIX, -8 * PIX, 4 * PIX, 3 * PIX)
+  rect(g, 0xe8b048, -1 * PIX, -7 * PIX, 2 * PIX, 1 * PIX)
+  rect(g, 0xc89030, -3 * PIX, -7 * PIX, 1 * PIX, 1 * PIX)   // antennae
+  rect(g, 0xc89030,  2 * PIX, -7 * PIX, 1 * PIX, 1 * PIX)
+  c.add(g)
+  return c
+}
+function mkHatMoonflower(scene: Phaser.Scene, _facing: Direction): Phaser.GameObjects.Container {
+  const c = scene.add.container(0, 0)
+  const g = scene.add.graphics()
+  // Pale blue flower tucked into the hair, Iris's gift.
+  rect(g, 0x88c8ff,  3 * PIX, -22 * PIX, 2 * PIX, 2 * PIX)  // petal
+  rect(g, 0x88c8ff,  5 * PIX, -22 * PIX, 2 * PIX, 2 * PIX)
+  rect(g, 0x88c8ff,  4 * PIX, -24 * PIX, 2 * PIX, 2 * PIX)
+  rect(g, 0x88c8ff,  4 * PIX, -20 * PIX, 2 * PIX, 2 * PIX)
+  rect(g, 0xffe060,  4 * PIX, -22 * PIX, 2 * PIX, 2 * PIX)  // center
+  c.add(g)
+  return c
+}
+function mkBackBookmark(scene: Phaser.Scene, facing: Direction): Phaser.GameObjects.Container {
+  const c = scene.add.container(0, 0)
+  const g = scene.add.graphics()
+  // Tasselled bookmark peeking from a back pocket, Halle's gift.
+  if (facing === 'left' || facing === 'right') {
+    rect(g, 0xc04040, -2 * PIX, -4 * PIX, 1, 6 * PIX)
+    rect(g, 0xc04040, -2 * PIX,  2 * PIX, 2 * PIX, 1 * PIX)
+  } else {
+    rect(g, 0xc04040,  3 * PIX, -4 * PIX, 1 * PIX, 6 * PIX)
+    rect(g, 0xffd166, 3 * PIX,  2 * PIX, 1 * PIX, 1 * PIX)   // tassel
   }
   c.add(g)
   return c
@@ -171,7 +210,11 @@ export const COSMETICS: CosmeticDef[] = [
   { id: 'bow',       name: 'Pink Bow',     slot: 'neck', rarity: 'common',  cost: 25, blurb: 'A small soft bow.',                draw: mkNeckBow      },
   { id: 'antennae',  name: 'Bug Antennae', slot: 'hat',  rarity: 'rare',    cost: 80, blurb: 'Two pink bulbs that wobble.',      draw: mkHatAntennae  },
   { id: 'crown',     name: 'Jewel Crown',  slot: 'hat',  rarity: 'rare',    cost: 120, blurb: 'For the lounge royalty.',         draw: mkHatCrown     },
-  { id: 'cape',      name: 'Purple Cape',  slot: 'back', rarity: 'rare',    cost: 100, blurb: 'Drapes dramatically.',            draw: mkBackCape     }
+  { id: 'cape',      name: 'Purple Cape',  slot: 'back', rarity: 'rare',    cost: 100, blurb: 'Drapes dramatically.',            draw: mkBackCape     },
+  // V19.4 — quest rewards (cost 0 = unreachable via shop, granted by stories)
+  { id: 'cricket_pin', name: 'Brass Cricket Pin', slot: 'neck', rarity: 'rare', cost: 0, blurb: "Mox's tiny rebuild — chirps in C minor.", draw: mkNeckCricketPin },
+  { id: 'moonflower',  name: 'Moonflower',        slot: 'hat',  rarity: 'rare', cost: 0, blurb: "Iris's bloom — opens at sundown.",       draw: mkHatMoonflower },
+  { id: 'bookmark',    name: 'Tasselled Bookmark', slot: 'back', rarity: 'rare', cost: 0, blurb: "Halle's marker — holds your place.",     draw: mkBackBookmark }
 ]
 
 export function getCosmetic(id: string): CosmeticDef | null {

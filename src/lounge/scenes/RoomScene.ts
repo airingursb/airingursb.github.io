@@ -14,6 +14,7 @@ import { getWeatherForDate } from '../weather'
 import { footstepDust, clickRipple, pebbleSparkle, sitImpact, waveArc, letterFlutter } from '../feedback'
 import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted } from '../identity'
 import { loadNpcManifest, getActiveBracket, pickDialog, buildDialogContext, type NpcDef, type NpcManifest } from '../npcs'
+import { consumeStoryStep } from '../npc_stories'
 import { getActiveFestivalId, getActiveFestival, hasCompletedTodaysActivity, markActivityDone, rollActivity } from '../festivals'
 import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
@@ -2798,6 +2799,8 @@ export class RoomScene extends Phaser.Scene {
     this.npcManifest = await loadNpcManifest()
     // V10.7-review N3 fix: publish manifest count so meet_all_npcs scales
     ;(window as any).__loungeNpcCount = this.npcManifest.npcs.length
+    // V19.3 — expose manifest so stories_ui can look up npc names
+    ;(window as any).__loungeNpcManifest = this.npcManifest
     this.refreshNpcs()
     this.refreshMinimap()  // now that we know NPC locations, repaint the minimap dots
     this.npcRefreshTimer = this.time.addEvent({
@@ -3309,7 +3312,24 @@ export class RoomScene extends Phaser.Scene {
       event: getActiveFestivalId() ?? undefined,
       isFirstMeeting: !this.npcDialogMemory.has(id)
     })
-    const line = pickDialog(entry.def, this.npcDialogMemory, ctx)
+    // V19.2 — story step takes precedence over normal dialog when eligible.
+    // Each click advances at most one story step; on the final step, the
+    // story-complete reward fires (cosmetic unlock + achievement).
+    const storyLine = consumeStoryStep(id, npcHeart, (story) => {
+      // Reward: grant + auto-equip the cosmetic, record achievement, toast.
+      void import('../cosmetics').then(c => {
+        c.addOwnedCosmetic(story.reward_cosmetic)
+        c.equipCosmetic(story.reward_cosmetic)
+        void import('../net').then(net => net.sendProfile({
+          equipped_cosmetics: c.getEquippedCosmetics(),
+          owned_cosmetics: c.getOwnedCosmetics()
+        }))
+        this.myBear?.setCosmetics(c.getEquippedCosmetics())
+      })
+      recordAchievement({ type: 'story_complete', story_id: story.id })
+      showToast(`📖 ${story.title} — complete!`, 3200)
+    })
+    const line = storyLine ?? pickDialog(entry.def, this.npcDialogMemory, ctx)
     const screen = this.bearScreenPos(entry.bear)
     showBubble('npc_' + id, line, screen.x, screen.y)
     // V10.3 — at heart 10 + holding a marriage pebble + not yet married,
