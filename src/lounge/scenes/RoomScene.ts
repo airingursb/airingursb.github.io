@@ -1301,7 +1301,11 @@ export class RoomScene extends Phaser.Scene {
     // last 5s.
     const recentToggle = (performance.now() - (this.lastSpeciesToggleAt ?? -Infinity)) < 5000
     if (m.species && m.species !== getMySpecies() && !recentToggle) {
-      const s = m.species as 'bear' | 'cat' | 'fox' | 'capybara' | 'bird'
+      // V16.4-review I1 — was hardcoded to the original 5-species union and
+      // would silently rot the day someone adds runtime narrowing in
+      // setMySpecies. Use the shared Species type so future additions
+      // (bunny/puppy/panda/hamster/penguin/frog and beyond) just work.
+      const s = m.species as Species
       import('../config').then(({ setMySpecies }) => setMySpecies(s))
       // Same lazy-load gotcha as the species picker: setSpecies silently
       // falls back to bear when the atlas isn't cached, so we have to
@@ -2120,9 +2124,12 @@ export class RoomScene extends Phaser.Scene {
           if (remaining <= 0) finish()
         })
       }
-      // Loader errors → still resolve so caller falls back to bear texture
+      // Loader errors → still resolve so caller falls back to bear texture.
+      // V16.4-review N1 — emit a console.warn so a flaky CDN / asset typo
+      // is debuggable instead of silently rendering as bear.
       const onError = (file: Phaser.Loader.File) => {
         if (file.key?.startsWith(`${species}_`)) {
+          console.warn(`[lounge] species '${species}' atlas load failed (${file.key}); falling back to bear`)
           remaining = 0
           finish()
         }
