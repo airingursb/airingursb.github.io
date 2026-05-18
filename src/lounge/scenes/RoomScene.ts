@@ -18,6 +18,7 @@ import { getActiveFestivalId, getActiveFestival, hasCompletedTodaysActivity, mar
 import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
 import { addNpcTalkHeart, getNpcHeartLevel, addNpcGiftHeart } from '../npc_hearts'
+import { pickAmbientLine } from '../npc_ambient'
 import { hasPet, activePetPerk, getPet } from '../pets'
 import { PetSprite, ensurePetAtlasLoaded } from '../pet_sprite'
 import { touchInput, consumeActionTap } from '../touch_input'
@@ -139,10 +140,12 @@ export class RoomScene extends Phaser.Scene {
   // don't read as mannequins. homeX/Y remember the spawn position so a
   // wandering NPC can stay within a small radius and not roam the room.
   // V15.1 — wanderNextAt drives short walks between home-relative points.
+  // V15.2 — bubbleNextAt drives unprompted *thought* bubbles (humming, etc.).
   private npcBears = new Map<string, {
     bear: Bear; def: NpcDef
     ambientNextAt: number
     wanderNextAt: number
+    bubbleNextAt: number
     homeX: number; homeY: number
   }>()
   private petSprite?: PetSprite                                    // V10.2 — follower
@@ -2757,6 +2760,7 @@ export class RoomScene extends Phaser.Scene {
       // on the same frame.
       ambientNextAt: performance.now() + 5000 + Math.random() * 10000,
       wanderNextAt: performance.now() + 10000 + Math.random() * 10000,
+      bubbleNextAt: performance.now() + 30000 + Math.random() * 60000,
       homeX: b.x, homeY: b.y
     })
   }
@@ -2795,6 +2799,24 @@ export class RoomScene extends Phaser.Scene {
         if (entry.bear.state === 'sit') entry.bear.applyEmote('sit', 0, reduced)
       })
     }
+    reschedule()
+  }
+
+  // V15.2 — unprompted "thought" bubbles from idle NPCs. Low rate (~45-90s
+  // between attempts) and skipped when the NPC is currently in dialog with
+  // the player so we don't stomp the latest line. Always-on (no
+  // reduced-motion gate) because it's static text — the ambient *humming*
+  // is exactly the kind of life-signal users complain is missing.
+  private tickNpcBubble(entry: { bear: Bear; bubbleNextAt: number }, id: string, now: number) {
+    if (now < entry.bubbleNextAt) return
+    const reschedule = (minMs = 45000, maxMs = 90000) => {
+      entry.bubbleNextAt = now + minMs + Math.random() * (maxMs - minMs)
+    }
+    // Don't talk over the player's just-triggered NPC dialog (handleNpcClick
+    // uses the same 'npc_' + id key with a 3s lifetime via ui.showBubble).
+    const screen = this.bearScreenPos(entry.bear)
+    const line = pickAmbientLine(id)
+    showBubble('npc_' + id, line, screen.x, screen.y)
     reschedule()
   }
 
@@ -3533,10 +3555,11 @@ export class RoomScene extends Phaser.Scene {
     }
     this.peers.forEach((p) => p.bear.update(dtMs, true))
     const now = performance.now()
-    this.npcBears.forEach((entry) => {
+    this.npcBears.forEach((entry, id) => {
       entry.bear.update(dtMs, true)
       this.tickNpcAmbient(entry, now)
       this.tickNpcWander(entry, now)
+      this.tickNpcBubble(entry, id, now)
     })
     if (this.myBear) {
       const s = this.bearScreenPos(this.myBear)
