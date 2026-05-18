@@ -136,9 +136,15 @@ export class RoomScene extends Phaser.Scene {
   private pendingSpawn: { x: number; y: number } | null = null
   private npcManifest: NpcManifest | null = null
   // V15.0 — ambientNextAt drives idle-NPC ambient action cycling so they
-  // don't read as mannequins. ambientHomeX/Y remember the spawn position so
-  // a wandering NPC can return to its post (V15.1 will use these).
-  private npcBears = new Map<string, { bear: Bear; def: NpcDef; ambientNextAt: number; homeX: number; homeY: number }>()
+  // don't read as mannequins. homeX/Y remember the spawn position so a
+  // wandering NPC can stay within a small radius and not roam the room.
+  // V15.1 — wanderNextAt drives short walks between home-relative points.
+  private npcBears = new Map<string, {
+    bear: Bear; def: NpcDef
+    ambientNextAt: number
+    wanderNextAt: number
+    homeX: number; homeY: number
+  }>()
   private petSprite?: PetSprite                                    // V10.2 — follower
   private peerPets = new Map<string, PetSprite>()                  // V10.8c — peers' pet followers, keyed by session id
   private npcDialogMemory = new Map<string, string>()
@@ -2750,6 +2756,7 @@ export class RoomScene extends Phaser.Scene {
       // Stagger initial ambient ticks so 3 NPCs in one room don't all wave
       // on the same frame.
       ambientNextAt: performance.now() + 5000 + Math.random() * 10000,
+      wanderNextAt: performance.now() + 10000 + Math.random() * 10000,
       homeX: b.x, homeY: b.y
     })
   }
@@ -2788,6 +2795,38 @@ export class RoomScene extends Phaser.Scene {
         if (entry.bear.state === 'sit') entry.bear.applyEmote('sit', 0, reduced)
       })
     }
+    reschedule()
+  }
+
+  // V15.1 — short wandering walks within ~60px of the spawn point so the
+  // NPC moves around its station rather than glueing to one pixel. Skips
+  // non-idle / already-walking NPCs and respects the room's collision
+  // rects (same push-out logic the player-click walkTo uses).
+  private tickNpcWander(entry: { bear: Bear; def: NpcDef; wanderNextAt: number; homeX: number; homeY: number }, now: number) {
+    if (now < entry.wanderNextAt) return
+    const reschedule = (minMs = 8000, maxMs = 16000) => {
+      entry.wanderNextAt = now + minMs + Math.random() * (maxMs - minMs)
+    }
+    if (entry.bear.state !== 'idle' || entry.bear.target) { reschedule(); return }
+    if (prefersReducedMotion()) { reschedule(); return }
+    const RADIUS = 60
+    let tx = entry.homeX + (Math.random() - 0.5) * RADIUS * 2
+    let ty = entry.homeY + (Math.random() - 0.5) * RADIUS * 2
+    tx = Math.max(20, Math.min(this.mapInfo.widthPx - 20, tx))
+    ty = Math.max(20, Math.min(this.mapInfo.heightPx - 12, ty))
+    for (const r of this.mapInfo.collisionRects) {
+      if (tx >= r.x && tx <= r.x + r.w && ty >= r.y && ty <= r.y + r.h) {
+        const dxL = tx - r.x, dxR = r.x + r.w - tx
+        const dyT = ty - r.y, dyB = r.y + r.h - ty
+        const m = Math.min(dxL, dxR, dyT, dyB)
+        if (m === dxL) tx = r.x - 4
+        else if (m === dxR) tx = r.x + r.w + 4
+        else if (m === dyT) ty = r.y - 4
+        else ty = r.y + r.h + 4
+        break
+      }
+    }
+    entry.bear.walkTo(tx, ty)
     reschedule()
   }
 
@@ -3497,6 +3536,7 @@ export class RoomScene extends Phaser.Scene {
     this.npcBears.forEach((entry) => {
       entry.bear.update(dtMs, true)
       this.tickNpcAmbient(entry, now)
+      this.tickNpcWander(entry, now)
     })
     if (this.myBear) {
       const s = this.bearScreenPos(this.myBear)
