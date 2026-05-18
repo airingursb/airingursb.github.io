@@ -22,6 +22,7 @@ import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased } from '../shells'
 import { awardXp, onLevelUp, walkSpeedMultiplier, bonusInventorySlots, SKILLS, type SkillId } from '../skills'
 import { getActiveSpots, markPicked, addMaterial, removeMaterial as removeMaterialFn, getMaterial, MATERIALS, type MaterialId, type Spot as ResourceSpot } from '../resources'
+import { activityForRoom, hasCompletedToday as hasCoopDoneToday, awardActivity as awardCoopActivity } from '../coop'
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
 import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry, showSpeciesPicker, setCraftEnvProvider } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
@@ -283,6 +284,7 @@ export class RoomScene extends Phaser.Scene {
     this.setupParticles(map.widthInPixels, map.heightInPixels)
     this.setupWeather(map.widthInPixels, map.heightInPixels)
     this.setupFestival(map.widthInPixels, map.heightInPixels)
+    this.setupCoopActivity()
     this.loadAndStartNpcs()
     this.loadAndStartPebbles()
     this.spawnResourceSpots()
@@ -1758,6 +1760,52 @@ export class RoomScene extends Phaser.Scene {
     }).finally(() => this.speciesLoadInFlight.delete(species))
     this.speciesLoadInFlight.set(species, p)
     return p
+  }
+
+  // V9.4 — Show co-op activity banner in matching room, run timer on Start.
+  private coopTimerId: number | null = null
+  private setupCoopActivity() {
+    const banner = document.getElementById('lounge-coop-banner') as HTMLElement | null
+    const emoji  = document.getElementById('lounge-coop-emoji')  as HTMLElement | null
+    const text   = document.getElementById('lounge-coop-text')   as HTMLElement | null
+    const startBtn = document.getElementById('lounge-coop-start') as HTMLButtonElement | null
+    const timerEl  = document.getElementById('lounge-coop-timer') as HTMLElement | null
+    if (!banner || !emoji || !text || !startBtn || !timerEl) return
+    if (this.coopTimerId) { window.clearInterval(this.coopTimerId); this.coopTimerId = null }
+    timerEl.hidden = true
+    const a = activityForRoom(this.currentRoomId)
+    if (!a || hasCoopDoneToday(a.id)) { banner.hidden = true; return }
+    emoji.textContent = a.emoji
+    text.textContent  = `${a.name} — ${a.blurb}`
+    startBtn.hidden = false
+    startBtn.disabled = false
+    startBtn.textContent = 'Start'
+    banner.hidden = false
+    // Avoid stacking listeners on scene restart
+    const handler = () => {
+      startBtn.disabled = true
+      timerEl.hidden = false
+      let remaining = a.durationSec
+      timerEl.textContent = `${remaining}s`
+      this.coopTimerId = window.setInterval(() => {
+        remaining -= 1
+        if (remaining <= 0) {
+          window.clearInterval(this.coopTimerId!); this.coopTimerId = null
+          awardCoopActivity(a)
+          showToast(`${a.emoji} +🐚 ${a.shells} · +${a.companionshipXp} companionship`, 3500)
+          banner.hidden = true
+        } else {
+          timerEl.textContent = `${remaining}s`
+        }
+      }, 1000)
+    }
+    startBtn.onclick = handler
+    // Cleanup on scene shutdown
+    this.events.once('shutdown', () => {
+      if (this.coopTimerId) { window.clearInterval(this.coopTimerId); this.coopTimerId = null }
+      banner.hidden = true
+      startBtn.onclick = null as any
+    })
   }
 
   // V9.2 — Render gather spots in the current room. Each spot is a small
