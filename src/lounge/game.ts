@@ -9,6 +9,7 @@ import { isMobile, isTouchDevice, isNarrowViewport, onViewportChange } from './m
 import { initTouchInput } from './touch_input'
 import { maybeStartTour } from './onboarding_ui'
 import { toggle as _ensureMinigameUiInit } from './minigames_ui'
+import { toggle as _ensureBoardUiInit } from './board_ui'
 
 export function bootGame(parent: HTMLElement): Phaser.Game {
   // Era 6/7 P0 — install progress sync before any game code reads localStorage,
@@ -71,6 +72,8 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
   maybeStartTour()
   // V11.6 — bind mini-game button + overlay
   void _ensureMinigameUiInit
+  // V12.1 — bind community board button + overlay
+  void _ensureBoardUiInit
   // Expose for debugging / smoke tests
   ;(window as any).__loungeGame = game
   return game

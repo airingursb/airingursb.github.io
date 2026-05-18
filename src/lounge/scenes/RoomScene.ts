@@ -21,6 +21,8 @@ import { addNpcTalkHeart, getNpcHeartLevel, addNpcGiftHeart } from '../npc_heart
 import { hasPet, activePetPerk, getPet } from '../pets'
 import { PetSprite, ensurePetAtlasLoaded } from '../pet_sprite'
 import { touchInput, consumeActionTap } from '../touch_input'
+import { setBoardRoom, setBoardDisplayName } from '../board_ui'
+import { setBoardProgressToken } from '../board'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
 import { recordEvent as recordAchievement, onAchievementUnlocked } from '../achievements'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
@@ -346,6 +348,19 @@ export class RoomScene extends Phaser.Scene {
     this.time.addEvent({ delay: 30_000, loop: true, callback: () => this.refreshMinimap() })
     // V8.5 — poll every 20s for "should we trigger today's sleep prompt"
     this.time.addEvent({ delay: 20_000, loop: true, callback: () => this.checkSleepPrompt() })
+
+    // V12.1 — bind the community board to this room each scene boot
+    {
+      const lm: Record<string, string> = {
+        room_lobby: 'Lobby', room_dj_floor: 'DJ Floor', room_balcony: 'Balcony',
+        room_library: 'Library', room_beach: 'Beach', room_grove: 'Grove',
+        room_kitchen: 'Kitchen', room_workshop: 'Workshop', room_rooftop: 'Rooftop'
+      }
+      const lbl = isHomeRoom(this.currentRoomId)
+        ? 'Home'
+        : (lm[this.currentRoomId] ?? this.currentRoomId.replace('room_', ''))
+      setBoardRoom(this.currentRoomId, lbl)
+    }
 
     // V4.2 — if in a home room, render decorations.
     if (isHomeRoom(this.currentRoomId)) {
@@ -1051,7 +1066,11 @@ export class RoomScene extends Phaser.Scene {
     // P7 — pass HMAC token to sync layer so PUT can authenticate
     if (m.progress_token) {
       import('../progress_sync').then(({ setProgressToken }) => setProgressToken(m.progress_token ?? null))
+      // V12.1 — same token gates the board POST/DELETE endpoints
+      setBoardProgressToken(m.progress_token)
     }
+    // V12.1 — display name for the board post author field
+    setBoardDisplayName(m.display_name ?? this.myDisplayName ?? null)
     // E5-P0c + P7-review I7 — reconcile species, but skip if we just toggled
     // locally (in-flight sendSpecies may not have hit the DB yet). Recently =
     // last 5s.

@@ -39,6 +39,7 @@
     <button id="lounge-achievements-btn" class="ui-ach-btn" aria-label="Achievements">🏆</button>
     <button id="lounge-photos-btn" class="ui-photos-btn" aria-label="Photo Album">🖼️</button>
     <button id="lounge-minigame-btn" class="ui-mg-btn" aria-label="Mini-games">🎮</button>
+    <button id="lounge-board-btn" class="ui-board-btn" aria-label="Community board">📌<span id="lounge-board-badge" class="badge" hidden>0</span></button>
     <button id="lounge-inventory-btn" class="ui-inventory-btn" aria-label="Inventory">📦</button>
     <button id="lounge-messages-btn" class="ui-messages-btn" aria-label="Messages">✉<span id="lounge-messages-badge" class="badge" hidden>0</span></button>
     <button id="lounge-wishboard-btn" class="ui-wishboard-btn" aria-label="Wishboard">🌟</button>
@@ -293,6 +294,29 @@
           <button type="button" class="sp-tile" data-species="bird">
             <span class="sp-emoji">🐦</span><span class="sp-label">Bird</span>
           </button>
+        </div>
+      </div>
+    </div>
+    <div id="lounge-board-panel" class="ui-board-panel" hidden>
+      <div class="bd-card">
+        <h3>📌 Board · <span id="lounge-board-room">…</span></h3>
+        <p class="bd-blurb">Pinned to this room for 7 days. 3 posts/hour, 200 chars.</p>
+        <div class="bd-form">
+          <select id="lounge-board-cat" class="bd-cat">
+            <option value="note">📝 note</option>
+            <option value="event">📅 event</option>
+            <option value="question">❓ question</option>
+            <option value="shout">📣 shout</option>
+          </select>
+          <textarea id="lounge-board-text" class="bd-text" rows="2" maxlength="200" placeholder="Pin something for everyone in this room…"></textarea>
+          <div class="bd-formfoot">
+            <span id="lounge-board-count" class="bd-count">0 / 200</span>
+            <button type="button" id="lounge-board-submit" class="bd-submit">Pin 📌</button>
+          </div>
+        </div>
+        <div id="lounge-board-list" class="bd-list"></div>
+        <div class="bd-actions">
+          <button type="button" id="lounge-board-close">Close</button>
         </div>
       </div>
     </div>
@@ -729,6 +753,73 @@
   .ui-info-btn:hover { background: rgba(255,255,255,.16); }
   .ui-info-btn:focus-visible { outline: 2px solid #4ade80; outline-offset: 2px; }
 
+  /* V12.1 — Community board button + panel */
+  .ui-board-btn {
+    position: absolute;
+    top: 16px; right: 476px;
+    width: 36px; height: 36px;
+    border-radius: 50%; border: none;
+    background: rgba(255,255,255,.08); color: #e6edf3;
+    font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s; line-height: 1;
+  }
+  .ui-board-btn:hover { background: rgba(255,255,255,.16); }
+  .ui-board-btn .badge {
+    position: absolute; top: -4px; right: -4px;
+    background: #ff5060; color: #fff;
+    font-size: 9px; padding: 1px 5px; border-radius: 8px;
+    font-family: ui-monospace, monospace;
+  }
+  .ui-board-btn .badge[hidden] { display: none; }
+  .ui-board-panel {
+    position: absolute;
+    top: 60px; right: 16px;
+    width: 360px; max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    background: rgba(20,20,30,.96);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px; padding: 12px; color: #e6edf3;
+    z-index: 70;
+  }
+  .ui-board-panel[hidden] { display: none; }
+  .ui-board-panel h3 { margin: 0 0 4px; font-size: 14px; }
+  .ui-board-panel .bd-blurb { font-size: 11px; opacity: .7; margin: 0 0 10px; }
+  .ui-board-panel .bd-form { background: rgba(255,255,255,.04); padding: 8px; border-radius: 6px; margin-bottom: 10px; }
+  .ui-board-panel .bd-cat {
+    width: 100%; background: rgba(0,0,0,.5); color: inherit;
+    border: 1px solid rgba(255,255,255,.2); padding: 5px;
+    border-radius: 4px; margin-bottom: 6px; font-family: inherit;
+  }
+  .ui-board-panel .bd-text {
+    width: 100%; box-sizing: border-box;
+    background: rgba(0,0,0,.5); color: inherit;
+    border: 1px solid rgba(255,255,255,.2); padding: 6px;
+    border-radius: 4px; resize: none;
+    font-family: inherit; font-size: 12px;
+  }
+  .ui-board-panel .bd-formfoot { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; }
+  .ui-board-panel .bd-count { font-size: 11px; opacity: .7; }
+  .ui-board-panel .bd-submit {
+    background: linear-gradient(135deg, #ffd166, #ffaa50);
+    color: #2a1810; border: none; padding: 5px 12px;
+    border-radius: 4px; font-weight: 700; font-size: 12px;
+    cursor: pointer; font-family: inherit;
+  }
+  .ui-board-panel .bd-submit:disabled { opacity: .5; cursor: wait; }
+  .ui-board-panel .bd-list { display: flex; flex-direction: column; gap: 6px; }
+  .ui-board-panel .bd-empty { font-size: 12px; opacity: .6; text-align: center; padding: 16px; }
+  .ui-board-panel .bd-row { position: relative; background: rgba(255,255,255,.04); padding: 8px; border-radius: 4px; border-left: 3px solid rgba(255,209,102,.4); }
+  .ui-board-panel .bd-head { display: flex; gap: 6px; align-items: center; font-size: 11px; opacity: .8; margin-bottom: 4px; }
+  .ui-board-panel .bd-emoji { font-size: 14px; }
+  .ui-board-panel .bd-name { font-weight: 700; }
+  .ui-board-panel .bd-time { margin-left: auto; opacity: .6; }
+  .ui-board-panel .bd-body { font-size: 12px; line-height: 1.4; word-wrap: break-word; }
+  .ui-board-panel .bd-del { position: absolute; top: 4px; right: 4px; background: transparent; color: rgba(255,255,255,.5); border: none; cursor: pointer; font-size: 12px; padding: 2px 6px; }
+  .ui-board-panel .bd-del:hover { color: #ff6080; }
+  .ui-board-panel .bd-actions { margin-top: 10px; text-align: right; }
+  .ui-board-panel .bd-actions button { background: rgba(255,255,255,.1); color: inherit; border: 1px solid rgba(255,255,255,.2); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-family: inherit; }
+
   /* V11.6 — Mini-game button + overlay + game UIs */
   .ui-mg-btn {
     position: absolute;
@@ -862,26 +953,27 @@
   @media (max-width: 600px) {
     .ui-mute-btn, .ui-volume-btn, .ui-info-btn, .ui-pet-btn, .ui-ach-btn,
     .ui-photos-btn, .ui-inventory-btn, .ui-messages-btn, .ui-wishboard-btn,
-    .ui-mg-btn {
+    .ui-mg-btn, .ui-board-btn {
       width: 32px !important; height: 32px !important;
     }
-    .ui-mg-btn {
+    .ui-mg-btn, .ui-board-btn {
       position: fixed !important;
       top: auto !important; right: auto !important;
       bottom: 10px !important;
       z-index: 90 !important;
     }
-    /* Centered strip: 10 buttons × 34px = 340px → 170 each side of center. */
-    .ui-mute-btn      { left: calc(50vw - 170px) !important; }
-    .ui-volume-btn    { left: calc(50vw - 136px) !important; }
-    .ui-info-btn      { left: calc(50vw - 102px) !important; }
-    .ui-inventory-btn { left: calc(50vw - 68px)  !important; }
-    .ui-messages-btn  { left: calc(50vw - 34px)  !important; }
-    .ui-wishboard-btn { left: calc(50vw)         !important; }
-    .ui-pet-btn       { left: calc(50vw + 34px)  !important; }
-    .ui-ach-btn       { left: calc(50vw + 68px)  !important; }
-    .ui-photos-btn    { left: calc(50vw + 102px) !important; }
-    .ui-mg-btn        { left: calc(50vw + 136px) !important; }
+    /* Centered strip: 11 buttons × 32px = 352px → 176 each side. Tight on 360. */
+    .ui-mute-btn      { left: calc(50vw - 176px) !important; }
+    .ui-volume-btn    { left: calc(50vw - 144px) !important; }
+    .ui-info-btn      { left: calc(50vw - 112px) !important; }
+    .ui-inventory-btn { left: calc(50vw - 80px)  !important; }
+    .ui-messages-btn  { left: calc(50vw - 48px)  !important; }
+    .ui-wishboard-btn { left: calc(50vw - 16px)  !important; }
+    .ui-pet-btn       { left: calc(50vw + 16px)  !important; }
+    .ui-ach-btn       { left: calc(50vw + 48px)  !important; }
+    .ui-photos-btn    { left: calc(50vw + 80px)  !important; }
+    .ui-mg-btn        { left: calc(50vw + 112px) !important; }
+    .ui-board-btn     { left: calc(50vw + 144px) !important; }
     .mg-card { max-height: calc(100vh - 100px); }
   }
 
@@ -891,22 +983,24 @@
   @media (max-width: 400px) {
     .ui-mute-btn, .ui-volume-btn, .ui-info-btn, .ui-inventory-btn,
     .ui-messages-btn, .ui-wishboard-btn, .ui-pet-btn, .ui-ach-btn,
-    .ui-photos-btn, .ui-mg-btn {
+    .ui-photos-btn, .ui-mg-btn, .ui-board-btn {
       width: 28px !important; height: 28px !important;
       font-size: 13px !important;
     }
-    /* Row 1 (5 buttons × 30px spacing → 150px wide, centered) */
-    .ui-mute-btn      { left: calc(50vw - 75px)  !important; bottom: 46px !important; }
-    .ui-volume-btn    { left: calc(50vw - 45px)  !important; bottom: 46px !important; }
-    .ui-info-btn      { left: calc(50vw - 15px)  !important; bottom: 46px !important; }
-    .ui-inventory-btn { left: calc(50vw + 15px)  !important; bottom: 46px !important; }
-    .ui-messages-btn  { left: calc(50vw + 45px)  !important; bottom: 46px !important; }
-    /* Row 2 */
-    .ui-wishboard-btn { left: calc(50vw - 75px)  !important; bottom: 12px !important; }
-    .ui-pet-btn       { left: calc(50vw - 45px)  !important; bottom: 12px !important; }
-    .ui-ach-btn       { left: calc(50vw - 15px)  !important; bottom: 12px !important; }
-    .ui-photos-btn    { left: calc(50vw + 15px)  !important; bottom: 12px !important; }
-    .ui-mg-btn        { left: calc(50vw + 45px)  !important; bottom: 12px !important; }
+    /* 11 buttons → 6 + 5 grid */
+    /* Row 1 (6 buttons × 30px = 180px wide, centered) */
+    .ui-mute-btn      { left: calc(50vw - 90px)  !important; bottom: 46px !important; }
+    .ui-volume-btn    { left: calc(50vw - 60px)  !important; bottom: 46px !important; }
+    .ui-info-btn      { left: calc(50vw - 30px)  !important; bottom: 46px !important; }
+    .ui-inventory-btn { left: calc(50vw)         !important; bottom: 46px !important; }
+    .ui-messages-btn  { left: calc(50vw + 30px)  !important; bottom: 46px !important; }
+    .ui-wishboard-btn { left: calc(50vw + 60px)  !important; bottom: 46px !important; }
+    /* Row 2 (5 buttons) */
+    .ui-pet-btn       { left: calc(50vw - 75px)  !important; bottom: 12px !important; }
+    .ui-ach-btn       { left: calc(50vw - 45px)  !important; bottom: 12px !important; }
+    .ui-photos-btn    { left: calc(50vw - 15px)  !important; bottom: 12px !important; }
+    .ui-mg-btn        { left: calc(50vw + 15px)  !important; bottom: 12px !important; }
+    .ui-board-btn     { left: calc(50vw + 45px)  !important; bottom: 12px !important; }
     /* Door label and D-pad lift further so 2-row strip clears */
     .ui-door-label { bottom: 90px !important; }
     .touch-dpad    { bottom: 90px !important; }
