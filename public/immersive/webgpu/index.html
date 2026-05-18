@@ -1689,9 +1689,10 @@
 <span class="kv-line"><span class="kv-y">2020-04</span><span class="kv-k">WGSL 首版</span><span class="kv-v">独立设计，类 Rust 语法，可双向翻译到 SPIR-V/MSL/HLSL。</span></span>
 <span class="kv-line"><span class="kv-y">2020-09</span><span class="kv-k">Origin Trial · Chrome 94</span><span class="kv-v">第一次能在公网测试 WebGPU。</span></span>
 <span class="kv-line"><span class="kv-y">2023-05-02</span><span class="kv-k">Chrome 113 默认开</span><span class="kv-v">Linux/macOS/Windows/ChromeOS 全部 GA；Android 也跟进。</span></span>
-<span class="kv-line"><span class="kv-y">2024-11</span><span class="kv-k">Safari 18 · WebKit</span><span class="kv-v">macOS 15 + iOS 18 默认开。WebKit 自家实现（不是 Dawn 也不是 wgpu）。</span></span>
+<span class="kv-line"><span class="kv-y">2024-09</span><span class="kv-k">Safari 18 · WebKit</span><span class="kv-v">macOS 15 + iOS 18 上线，但<em>默认关闭</em>（需手动 enable WebGPU flag）。WebKit 自家实现（不是 Dawn 也不是 wgpu）。</span></span>
 <span class="kv-line"><span class="kv-y">2025-07</span><span class="kv-k">Firefox 141 默认开</span><span class="kv-v">Windows 首发，macOS/Linux 后跟。基于 wgpu（Rust）。</span></span>
-<span class="kv-line"><span class="kv-y">2026</span><span class="kv-k">WebGPU 1.0 W3C REC（预期）</span><span class="kv-v">现为 Candidate Recommendation；subgroup / FP16 等扩展并行推进。</span></span>
+<span class="kv-line"><span class="kv-y">2025-09</span><span class="kv-k">Safari 26 默认开</span><span class="kv-v">macOS 26 Tahoe / iOS 26 / iPadOS 26 默认启用——苹果切到与年份同步的版本号。</span></span>
+<span class="kv-line"><span class="kv-y">2026</span><span class="kv-k">WebGPU 1.0 W3C REC（预测）</span><span class="kv-v">现为 Candidate Recommendation；具体 REC 日期未定；subgroup / FP16 等扩展并行推进。</span></span>
       </div>
 
       <p style="margin-top:18px;"><strong>三个名字、一个 API、两份代码</strong>：用户看到的是 <code>navigator.gpu</code>，但底下实际有三份独立实现——Dawn（Chrome，C++）、wgpu（Firefox + Deno + Bevy + Servo + ...，Rust）、WebKit's own（Safari，Obj-C++）。整本书会反复对照前两个，因为 Safari 的实现还<em>非常年轻</em>且未开放重要扩展。</p>
@@ -1723,9 +1724,10 @@
 <span class="kv-line"><span class="kv-y">2020-04</span><span class="kv-k">WGSL first draft</span><span class="kv-v">independent design, Rust-ish syntax; round-trippable to SPIR-V/MSL/HLSL.</span></span>
 <span class="kv-line"><span class="kv-y">2020-09</span><span class="kv-k">Origin Trial · Chrome 94</span><span class="kv-v">first public-Internet WebGPU testing.</span></span>
 <span class="kv-line"><span class="kv-y">2023-05-02</span><span class="kv-k">Chrome 113 GA</span><span class="kv-v">on by default on Linux/macOS/Windows/ChromeOS; Android followed.</span></span>
-<span class="kv-line"><span class="kv-y">2024-11</span><span class="kv-k">Safari 18 · WebKit</span><span class="kv-v">macOS 15 + iOS 18 default. WebKit's own implementation (not Dawn, not wgpu).</span></span>
+<span class="kv-line"><span class="kv-y">2024-09</span><span class="kv-k">Safari 18 · WebKit</span><span class="kv-v">macOS 15 + iOS 18 ships WebGPU but <em>off by default</em> (behind a flag). WebKit's own implementation (not Dawn, not wgpu).</span></span>
 <span class="kv-line"><span class="kv-y">2025-07</span><span class="kv-k">Firefox 141 GA</span><span class="kv-v">Windows first, macOS/Linux behind; powered by wgpu (Rust).</span></span>
-<span class="kv-line"><span class="kv-y">2026</span><span class="kv-k">WebGPU 1.0 W3C REC (expected)</span><span class="kv-v">currently Candidate Recommendation; subgroup / FP16 extensions in flight.</span></span>
+<span class="kv-line"><span class="kv-y">2025-09</span><span class="kv-k">Safari 26 default-on</span><span class="kv-v">macOS 26 Tahoe / iOS 26 / iPadOS 26 — Apple flipped the default once version numbers synced to the calendar year.</span></span>
+<span class="kv-line"><span class="kv-y">2026</span><span class="kv-k">WebGPU 1.0 W3C REC (projected)</span><span class="kv-v">currently Candidate Recommendation; exact REC date not yet set; subgroup / FP16 extensions in flight.</span></span>
       </div>
 
       <p style="margin-top:18px;"><strong>Three names, one API, three codebases</strong>: users see <code>navigator.gpu</code> but underneath are three independent implementations — Dawn (Chrome, C++), wgpu (Firefox + Deno + Bevy + Servo, Rust), and WebKit's own (Safari, Obj-C++). This book contrasts the first two repeatedly; Safari's is too young and still missing key extensions.</p>
@@ -2900,6 +2902,36 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
 
       <h3 style="margin-top:18px;">Dawn 的内部 validation 流</h3>
       <p>Dawn 的 validation 不是一处——它<em>分布在每条 API 的 GPU-side handler 里</em>。例如 <code>ComputePassEncoder::APIDispatchWorkgroups</code>（in <code>src/dawn/native/CommandEncoder.cpp</code>）会调 <code>ValidateDispatch()</code>，检查 ① workgroup count 不为 0、② 当前 BindGroup 已绑、③ pipeline 已绑、④ 三个 binding usage 兼容。失败时 <em>poison the command encoder</em>，但不 throw——延迟到 finish() 才 reject。</p>
+
+      <h3 style="margin-top:18px;">完整 worked example — 故意写错一行看看会发生什么</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">JS</span> · <span class="src-comment">主线第 ⑤ 步漏掉 bindGroup 的 binding 0</span></span>
+<span class="src-line">device.<span class="src-method">addEventListener</span>(<span class="src-str">'uncapturederror'</span>, e =&gt; {</span>
+<span class="src-line">  <span class="src-cls">console</span>.error(<span class="src-str">'[uncaught]'</span>, e.error.message);</span>
+<span class="src-line">});</span>
+<span class="src-line"></span>
+<span class="src-line">device.<span class="src-method">pushErrorScope</span>(<span class="src-str">'validation'</span>);</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 故意：BindGroup entries 留空（应该有 binding 0）</span></span>
+<span class="src-line"><span class="src-kw">const</span> bg = device.<span class="src-method">createBindGroup</span>({</span>
+<span class="src-line">  layout: pipeline.<span class="src-method">getBindGroupLayout</span>(<span class="src-num">0</span>),</span>
+<span class="src-line">  entries: []          <span class="src-comment">// ← bug here</span></span>
+<span class="src-line">});</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">const</span> err = <span class="src-kw">await</span> device.<span class="src-method">popErrorScope</span>();</span>
+<span class="src-line"><span class="src-cls">console</span>.log(err);</span>
+<span class="src-line"><span class="src-comment">// → GPUValidationError {</span></span>
+<span class="src-line"><span class="src-comment">//     message: "Number of entries (0) did not match the number</span></span>
+<span class="src-line"><span class="src-comment">//              of entries (1) specified in [BindGroupLayout].</span></span>
+<span class="src-line"><span class="src-comment">//              - While calling [Device].CreateBindGroup([BindGroupDescriptor])."</span></span>
+<span class="src-line"><span class="src-comment">//   }</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 注意：bg 不是 null —— 它是一个 invalid BindGroup 对象</span></span>
+<span class="src-line"><span class="src-comment">// （contagion 模型）。下面调 setBindGroup(0, bg) 不抛——</span></span>
+<span class="src-line"><span class="src-comment">// 而是污染 encoder。直到 finish() 才会再次 reject。</span></span>
+      </div>
+
+      <p style="margin-top:14px;">Dawn 错误信息<em>带调用栈式 context</em>——每个嵌套的 API 调用都会 append 一段 "<em>While calling [X]</em>"。这是 <code>src/dawn/native/ErrorScope.cpp</code> 里 <code>ErrorScope::AppendContext()</code> 干的。比 WebGL 的 <code>getError() === GL_INVALID_OPERATION</code> 信息量多 100×。</p>
     </div>
 
     <div class="lang-en-only">
@@ -2966,6 +2998,36 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
 
       <h3 style="margin-top:18px;">Dawn's internal validation flow</h3>
       <p>Dawn's validation isn't in one place — it's <em>distributed across every API's GPU-side handler</em>. E.g. <code>ComputePassEncoder::APIDispatchWorkgroups</code> (in <code>src/dawn/native/CommandEncoder.cpp</code>) calls <code>ValidateDispatch()</code>, which checks ① workgroup count != 0, ② a BindGroup is bound, ③ a pipeline is bound, ④ the three binding usages are compatible. Failure <em>poisons the command encoder</em> but doesn't throw — rejection is deferred until finish().</p>
+
+      <h3 style="margin-top:18px;">Worked example — break step ⑤ of the main line, observe what fires</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">JS</span> · <span class="src-comment">main line step ⑤, with the BindGroup binding 0 dropped</span></span>
+<span class="src-line">device.<span class="src-method">addEventListener</span>(<span class="src-str">'uncapturederror'</span>, e =&gt; {</span>
+<span class="src-line">  <span class="src-cls">console</span>.error(<span class="src-str">'[uncaught]'</span>, e.error.message);</span>
+<span class="src-line">});</span>
+<span class="src-line"></span>
+<span class="src-line">device.<span class="src-method">pushErrorScope</span>(<span class="src-str">'validation'</span>);</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Intentionally: BindGroup entries left empty (should have binding 0)</span></span>
+<span class="src-line"><span class="src-kw">const</span> bg = device.<span class="src-method">createBindGroup</span>({</span>
+<span class="src-line">  layout: pipeline.<span class="src-method">getBindGroupLayout</span>(<span class="src-num">0</span>),</span>
+<span class="src-line">  entries: []          <span class="src-comment">// ← bug here</span></span>
+<span class="src-line">});</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">const</span> err = <span class="src-kw">await</span> device.<span class="src-method">popErrorScope</span>();</span>
+<span class="src-line"><span class="src-cls">console</span>.log(err);</span>
+<span class="src-line"><span class="src-comment">// → GPUValidationError {</span></span>
+<span class="src-line"><span class="src-comment">//     message: "Number of entries (0) did not match the number</span></span>
+<span class="src-line"><span class="src-comment">//              of entries (1) specified in [BindGroupLayout].</span></span>
+<span class="src-line"><span class="src-comment">//              - While calling [Device].CreateBindGroup([BindGroupDescriptor])."</span></span>
+<span class="src-line"><span class="src-comment">//   }</span></span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Note: bg is NOT null — it's an invalid BindGroup object (contagion).</span></span>
+<span class="src-line"><span class="src-comment">// A later setBindGroup(0, bg) won't throw — instead the encoder gets</span></span>
+<span class="src-line"><span class="src-comment">// poisoned and finish() rejects.</span></span>
+      </div>
+
+      <p style="margin-top:14px;">Dawn error messages carry <em>call-stack-style context</em> — each nested API call appends a "<em>While calling [X]</em>" segment. Implemented in <code>src/dawn/native/ErrorScope.cpp</code> by <code>ErrorScope::AppendContext()</code>. 100× more informative than WebGL's <code>getError() === GL_INVALID_OPERATION</code>.</p>
     </div>
   </section>
 
@@ -3012,7 +3074,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
 <span class="src-line">}</span>
       </div>
 
-      <p style="margin-top:14px;"><code>info.reason</code> 的可能值（spec §4.4.3）：</p>
+      <p style="margin-top:14px;"><code>info.reason</code> 的可能值（spec §22 Errors &amp; Debugging · <a href="https://www.w3.org/TR/webgpu/#device-lost" target="_blank" rel="noopener">#device-lost</a>）：</p>
       <ul style="margin-left:22px; font-family:var(--mono); font-size:12px; line-height:1.85;">
         <li><code>"destroyed"</code> — 应用主动调 <code>device.destroy()</code>。</li>
         <li><code>"undefined"</code> — 其他原因（OS、driver、TDR 等都归这里）。<em>没错，就是字符串 "undefined"</em>。</li>
@@ -3064,7 +3126,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
 <span class="src-line">}</span>
       </div>
 
-      <p style="margin-top:14px;">Possible <code>info.reason</code> values (spec §4.4.3):</p>
+      <p style="margin-top:14px;">Possible <code>info.reason</code> values (spec §22 Errors &amp; Debugging · <a href="https://www.w3.org/TR/webgpu/#device-lost" target="_blank" rel="noopener">#device-lost</a>):</p>
       <ul style="margin-left:22px; font-family:var(--mono); font-size:12px; line-height:1.85;">
         <li><code>"destroyed"</code> — app called <code>device.destroy()</code>.</li>
         <li><code>"undefined"</code> — anything else (OS / driver / TDR all go here). <em>Yes, literally the string "undefined".</em></li>
@@ -3143,7 +3205,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
 
       <h3 style="margin-top:18px;">Resolver 做的 21 件事</h3>
-      <p>Resolver（<code>tint/lang/wgsl/resolver/resolver.cc</code>）是 Tint 里<em>最大的文件</em>（&gt; 8000 行）——因为它要 enforce 整个 WGSL spec 的<em>静态语义</em>。简略列表：</p>
+      <p>Resolver（<code>tint/lang/wgsl/resolver/</code>）是 Tint 里<em>最大的子目录</em>——主文件 <code>resolver.cc</code> 约 3,500 行，整个 <code>resolver/</code> 目录加起来约 25,000 行 C++——因为它要 enforce 整个 WGSL spec 的<em>静态语义</em>。简略列表：</p>
       <ul style="margin-left:22px; font-family:var(--sans); font-size:13px; line-height:1.85;">
         <li>类型推断 + 类型检查（如 <code>a + b</code> 要求 a/b 同类型）</li>
         <li>const-evaluation（<code>const x = 1 + 2 * 3</code> 在编译期求出 7）</li>
@@ -3213,7 +3275,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
 
       <h3 style="margin-top:18px;">The 21 things Resolver does</h3>
-      <p>The resolver (<code>tint/lang/wgsl/resolver/resolver.cc</code>) is Tint's <em>largest file</em> (&gt; 8000 lines) because it must enforce the entire WGSL spec's <em>static semantics</em>. A non-exhaustive list:</p>
+      <p>The resolver (<code>tint/lang/wgsl/resolver/</code>) is Tint's <em>largest subdirectory</em> — the main file <code>resolver.cc</code> is ~3,500 lines, but the entire <code>resolver/</code> directory totals ~25,000 lines of C++, because it must enforce the entire WGSL spec's <em>static semantics</em>. A non-exhaustive list:</p>
       <ul style="margin-left:22px; font-family:var(--sans); font-size:13px; line-height:1.85;">
         <li>Type inference + type checking (e.g. <code>a + b</code> requires same type)</li>
         <li>const-evaluation (<code>const x = 1 + 2 * 3</code> resolves to 7 at compile time)</li>
@@ -3473,7 +3535,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
 <span class="src-line">%data_arr = <span class="src-kw">OpTypeRuntimeArray</span> %float</span>
 <span class="src-line">%data_buf = <span class="src-kw">OpTypeStruct</span> %data_arr</span>
 <span class="src-line">%data_ptr = <span class="src-kw">OpTypePointer</span> StorageBuffer %data_buf</span>
-<span class="src-line">          <span class="src-kw">OpDecorate</span> %data_buf BufferBlock</span>
+<span class="src-line">          <span class="src-kw">OpDecorate</span> %data_buf Block                <span class="src-comment">; SPV_KHR_storage_buffer_storage_class · SPIR-V 1.3+</span></span>
 <span class="src-line">          <span class="src-kw">OpDecorate</span> %data DescriptorSet <span class="src-num">0</span></span>
 <span class="src-line">          <span class="src-kw">OpDecorate</span> %data Binding <span class="src-num">0</span></span>
 <span class="src-line">          <span class="src-comment">; ... 接下来 80 多条指令编码 if + 乘 + store ...</span></span>
@@ -3489,7 +3551,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
           <tr><td>除以 0（整数）</td><td>未定义（typically 0）</td><td>未定义</td><td>未定义</td><td>未定义</td></tr>
           <tr><td>NaN ordering</td><td>std::isnan 可用</td><td>同</td><td>同</td><td>同</td></tr>
           <tr><td>越界 array read</td><td><em>required</em>: 0 或 clamp</td><td>需手动 clamp</td><td>RWByteAddressBuffer 自动 0</td><td>需 capability</td></tr>
-          <tr><td>workgroup memory size</td><td>16 KB 最低保证</td><td>~32 KB (Apple)</td><td>32 KB（D3D12）</td><td>32 KB（Vulkan 1.1）</td></tr>
+          <tr><td>workgroup memory（典型，非 spec 最小）</td><td>16 KB 最低保证</td><td>~32 KB 典型（Apple）</td><td>32 KB 典型（D3D12）</td><td>16 KB spec 下限（Vulkan <code>maxComputeSharedMemorySize</code>），实际 32-48 KB 常见</td></tr>
         </tbody>
       </table>
 
@@ -3581,7 +3643,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
 <span class="src-line">%data_arr = <span class="src-kw">OpTypeRuntimeArray</span> %float</span>
 <span class="src-line">%data_buf = <span class="src-kw">OpTypeStruct</span> %data_arr</span>
 <span class="src-line">%data_ptr = <span class="src-kw">OpTypePointer</span> StorageBuffer %data_buf</span>
-<span class="src-line">          <span class="src-kw">OpDecorate</span> %data_buf BufferBlock</span>
+<span class="src-line">          <span class="src-kw">OpDecorate</span> %data_buf Block                <span class="src-comment">; SPV_KHR_storage_buffer_storage_class · SPIR-V 1.3+</span></span>
 <span class="src-line">          <span class="src-kw">OpDecorate</span> %data DescriptorSet <span class="src-num">0</span></span>
 <span class="src-line">          <span class="src-kw">OpDecorate</span> %data Binding <span class="src-num">0</span></span>
 <span class="src-line">          <span class="src-comment">; ... ~80 more instructions encode if + mul + store ...</span></span>
@@ -3597,7 +3659,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
           <tr><td>Integer divide by 0</td><td>undefined (typically 0)</td><td>undefined</td><td>undefined</td><td>undefined</td></tr>
           <tr><td>NaN ordering</td><td>std::isnan available</td><td>same</td><td>same</td><td>same</td></tr>
           <tr><td>Out-of-bounds array read</td><td><em>required</em>: 0 or clamp</td><td>manual clamp needed</td><td>RWByteAddressBuffer auto-zeros</td><td>needs capability</td></tr>
-          <tr><td>Workgroup memory</td><td>16 KB guaranteed</td><td>~32 KB (Apple)</td><td>32 KB (D3D12)</td><td>32 KB (Vulkan 1.1)</td></tr>
+          <tr><td>Workgroup memory (typical, not spec floor)</td><td>16 KB guaranteed</td><td>~32 KB typical (Apple)</td><td>32 KB typical (D3D12)</td><td>16 KB Vulkan <code>maxComputeSharedMemorySize</code> floor; 32-48 KB common in practice</td></tr>
         </tbody>
       </table>
 
@@ -3707,7 +3769,23 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
         <p>Vulkan 的<em>显式同步</em>是三家最严的——每个 buffer/texture 在 dispatch 之前都要 declare 当前 state 和目标 state，每个 image layout transition 都要写 barrier。Dawn 的 Vulkan backend 有一个完整的 "subresource state tracker" 来在<em>录制 encoder</em> 时自动算出所有 barrier。这部分代码占 Vulkan backend 的 ~30%。</p>
       </div>
 
-      <p style="margin-top:14px;">现在你看到主线那一行 <code>pass.dispatchWorkgroups(16384)</code> 最终是怎么变成 <code>[enc dispatchThreadgroups:...]</code> 或 <code>cl-&gt;Dispatch(16384,1,1)</code> 或 <code>vkCmdDispatch(cb,16384,1,1)</code> 的——<em>八重翻译</em> 到此结束第七层。最后一层（GPU 命令处理器实际 dispatch），Ch18 展开。</p>
+      <h3 style="margin-top:18px;">主线在三家上的完整轨迹</h3>
+      <p>把主线的 7 个 JS 调用串起来，逐 API 看：</p>
+      <table class="hbench-tbl">
+        <thead><tr><th>主线 JS</th><th>Metal（macOS）</th><th>D3D12（Windows）</th><th>Vulkan（Linux）</th></tr></thead>
+        <tbody>
+          <tr><td><code>requestDevice()</code></td><td><code>MTLCreateSystemDefaultDevice()</code> + <code>[device newCommandQueue]</code></td><td><code>D3D12CreateDevice()</code> + <code>CreateCommandQueue()</code></td><td><code>vkCreateDevice()</code> + <code>vkGetDeviceQueue()</code></td></tr>
+          <tr><td><code>createBuffer(4 MB, STORAGE)</code></td><td><code>[device newBufferWithLength:4194304 options:MTLResourceStorageModePrivate]</code></td><td><code>CreateCommittedResource(D3D12_HEAP_TYPE_DEFAULT, 4 MB)</code></td><td><code>vkCreateBuffer({4 MB, STORAGE_BUFFER_BIT}) + vkAllocateMemory()</code></td></tr>
+          <tr><td><code>queue.writeBuffer(buf, 0, input)</code></td><td>临时 shared buffer + <code>blitCommandEncoder copyFromBuffer:...</code></td><td>upload heap + <code>cl-&gt;CopyBufferRegion(...)</code></td><td>staging buffer + <code>vkCmdCopyBuffer()</code></td></tr>
+          <tr><td><code>createShaderModule(wgsl)</code></td><td>Tint→MSL · <code>[device newLibraryWithSource:msl options:...]</code></td><td>Tint→HLSL→DXC→DXIL · <code>D3DCompile()</code></td><td>Tint→SPIR-V · <code>vkCreateShaderModule({spv_bytes, len})</code></td></tr>
+          <tr><td><code>createComputePipeline({...})</code></td><td><code>[device newComputePipelineStateWithFunction:...]</code></td><td><code>device-&gt;CreateComputePipelineState(&amp;psoDesc)</code></td><td><code>vkCreateComputePipelines(layout, shader_stage)</code></td></tr>
+          <tr><td><code>pass.dispatchWorkgroups(16384)</code></td><td><code>[enc dispatchThreadgroups:MTLSizeMake(16384,1,1) threadsPerThreadgroup:MTLSizeMake(64,1,1)]</code></td><td><code>cl-&gt;Dispatch(16384, 1, 1)</code>（每 group 64 thread 已在 HLSL <code>[numthreads(64,1,1)]</code> 里写死）</td><td><code>vkCmdDispatch(cb, 16384, 1, 1)</code>（每 group 64 thread 在 SPIR-V <code>LocalSize 64 1 1</code>）</td></tr>
+          <tr><td><code>queue.submit([...])</code></td><td><code>[cb commit]</code> · 等待 <code>completionHandler</code></td><td><code>queue-&gt;ExecuteCommandLists(1, &amp;cl)</code> · 等 fence</td><td><code>vkQueueSubmit(queue, 1, &amp;si, fence)</code> · <code>vkWaitForFences()</code></td></tr>
+          <tr><td><code>read.mapAsync(READ)</code></td><td>shared buffer + <code>[buf contents]</code> 直读</td><td>readback heap + <code>resource-&gt;Map(0, &amp;range, &amp;ptr)</code></td><td><code>vkMapMemory(device, mem, 0, size, 0, &amp;ptr)</code></td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:14px;">总结：主线的 7 个 JS 调用 → 三家 ~12-15 个原生 API 调用 + 一次驱动 shader 编译。<em>八重翻译</em> 到此结束第七层。最后一层（GPU 命令处理器实际 dispatch），Ch18 展开。</p>
     </div>
 
     <div class="lang-en-only">
@@ -3804,7 +3882,23 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
         <p>Vulkan's <em>explicit synchronisation</em> is the strictest of the three — every buffer/texture must declare current and target state before a dispatch, every image layout transition needs a barrier. Dawn's Vulkan backend has an entire "subresource state tracker" to <em>compute all barriers</em> at encoder-record time. That subsystem alone is ~30% of the backend.</p>
       </div>
 
-      <p style="margin-top:14px;">Now you've seen how one <code>pass.dispatchWorkgroups(16384)</code> becomes <code>[enc dispatchThreadgroups:...]</code> on Metal, <code>cl-&gt;Dispatch(16384,1,1)</code> on D3D12, or <code>vkCmdDispatch(cb,16384,1,1)</code> on Vulkan — <em>seven of eight</em> translations done. The eighth (the GPU command processor actually dispatching SIMT waves) is unpacked in Ch18.</p>
+      <h3 style="margin-top:18px;">The main line, end-to-end on each backend</h3>
+      <p>Threading the seven main-line JS calls through each native API:</p>
+      <table class="hbench-tbl">
+        <thead><tr><th>Main-line JS</th><th>Metal (macOS)</th><th>D3D12 (Windows)</th><th>Vulkan (Linux)</th></tr></thead>
+        <tbody>
+          <tr><td><code>requestDevice()</code></td><td><code>MTLCreateSystemDefaultDevice()</code> + <code>[device newCommandQueue]</code></td><td><code>D3D12CreateDevice()</code> + <code>CreateCommandQueue()</code></td><td><code>vkCreateDevice()</code> + <code>vkGetDeviceQueue()</code></td></tr>
+          <tr><td><code>createBuffer(4 MB, STORAGE)</code></td><td><code>[device newBufferWithLength:4194304 options:MTLResourceStorageModePrivate]</code></td><td><code>CreateCommittedResource(D3D12_HEAP_TYPE_DEFAULT, 4 MB)</code></td><td><code>vkCreateBuffer({4 MB, STORAGE_BUFFER_BIT}) + vkAllocateMemory()</code></td></tr>
+          <tr><td><code>queue.writeBuffer(buf, 0, input)</code></td><td>transient shared buffer + <code>blitCommandEncoder copyFromBuffer:...</code></td><td>upload heap + <code>cl-&gt;CopyBufferRegion(...)</code></td><td>staging buffer + <code>vkCmdCopyBuffer()</code></td></tr>
+          <tr><td><code>createShaderModule(wgsl)</code></td><td>Tint→MSL · <code>[device newLibraryWithSource:msl options:...]</code></td><td>Tint→HLSL→DXC→DXIL · <code>D3DCompile()</code></td><td>Tint→SPIR-V · <code>vkCreateShaderModule({spv_bytes, len})</code></td></tr>
+          <tr><td><code>createComputePipeline({...})</code></td><td><code>[device newComputePipelineStateWithFunction:...]</code></td><td><code>device-&gt;CreateComputePipelineState(&amp;psoDesc)</code></td><td><code>vkCreateComputePipelines(layout, shader_stage)</code></td></tr>
+          <tr><td><code>pass.dispatchWorkgroups(16384)</code></td><td><code>[enc dispatchThreadgroups:MTLSizeMake(16384,1,1) threadsPerThreadgroup:MTLSizeMake(64,1,1)]</code></td><td><code>cl-&gt;Dispatch(16384, 1, 1)</code> (per-group 64 threads baked into HLSL <code>[numthreads(64,1,1)]</code>)</td><td><code>vkCmdDispatch(cb, 16384, 1, 1)</code> (per-group 64 threads in SPIR-V <code>LocalSize 64 1 1</code>)</td></tr>
+          <tr><td><code>queue.submit([...])</code></td><td><code>[cb commit]</code> · awaits <code>completionHandler</code></td><td><code>queue-&gt;ExecuteCommandLists(1, &amp;cl)</code> · fence wait</td><td><code>vkQueueSubmit(queue, 1, &amp;si, fence)</code> · <code>vkWaitForFences()</code></td></tr>
+          <tr><td><code>read.mapAsync(READ)</code></td><td>shared buffer + <code>[buf contents]</code> direct read</td><td>readback heap + <code>resource-&gt;Map(0, &amp;range, &amp;ptr)</code></td><td><code>vkMapMemory(device, mem, 0, size, 0, &amp;ptr)</code></td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:14px;">In summary: the main line's seven JS calls fan out to ~12-15 native API calls per platform, plus one driver shader compilation. <em>Seven of eight</em> translations done. The eighth (GPU command processor actually dispatching SIMT waves) is unpacked in Ch18.</p>
     </div>
   </section>
 
@@ -3845,7 +3939,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
         <tbody>
           <tr><td>NVIDIA</td><td>warp</td><td>32</td><td>WARP_SIZE intrinsic</td></tr>
           <tr><td>AMD GCN/RDNA1</td><td>wave</td><td>64</td><td>WaveGetLaneCount</td></tr>
-          <tr><td>AMD RDNA2+</td><td>wave</td><td>32 (动态 32/64)</td><td>同</td></tr>
+          <tr><td>AMD RDNA2+</td><td>wave</td><td>compute 默认 32 · graphics 可动态 32/64</td><td>同</td></tr>
           <tr><td>Apple GPU</td><td>simdgroup</td><td>32</td><td>simdgroup_size</td></tr>
           <tr><td>Intel Gen11+</td><td>EU thread</td><td>8/16/32 SIMD-wide</td><td>SIMD width</td></tr>
           <tr><td>ARM Mali</td><td>quad / warp</td><td>4 / 8 / 16</td><td>视架构而定</td></tr>
@@ -3924,7 +4018,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
         <tbody>
           <tr><td>NVIDIA</td><td>warp</td><td>32</td><td>WARP_SIZE intrinsic</td></tr>
           <tr><td>AMD GCN/RDNA1</td><td>wave</td><td>64</td><td>WaveGetLaneCount</td></tr>
-          <tr><td>AMD RDNA2+</td><td>wave</td><td>32 (dynamically 32/64)</td><td>same</td></tr>
+          <tr><td>AMD RDNA2+</td><td>wave</td><td>compute defaults to 32 · graphics can be dynamic 32/64</td><td>same</td></tr>
           <tr><td>Apple GPU</td><td>simdgroup</td><td>32</td><td>simdgroup_size</td></tr>
           <tr><td>Intel Gen11+</td><td>EU thread</td><td>8/16/32 SIMD-wide</td><td>SIMD width</td></tr>
           <tr><td>ARM Mali</td><td>quad / warp</td><td>4 / 8 / 16</td><td>varies by arch</td></tr>
@@ -4064,18 +4158,18 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
 <span class="src-line"><span class="src-fn">subgroupMatrixStore</span>(&amp;C, offsetC, c, stride);</span>
       </div>
 
-      <p style="margin-top:14px;">实测（Tint experimental）：<strong>~2 ms</strong>，比 naive 快 47×，比 tiled+register-blocking 快 3×。这是<em>未来 1-2 年浏览器 ML 性能</em>的重要催化剂。</p>
+      <p style="margin-top:14px;">实测（Tint experimental，M3 Pro 上）：<strong>~2 ms</strong>，比 naive 快 47×，比 tiled+register-blocking 快 3×。这是<em>未来 1-2 年浏览器 ML 性能</em>的重要催化剂。</p>
 
       <h3 style="margin-top:18px;">性能对比</h3>
       <table class="hbench-tbl">
-        <thead><tr><th>实现</th><th>1024² matmul（M2 Pro · Chrome）</th><th>4096² matmul（RTX 4090 · Chrome）</th><th>算力利用率</th></tr></thead>
+        <thead><tr><th>实现</th><th>1024² matmul（M2 Pro · Chrome）</th><th>1024² matmul（M3 Pro · Chrome）</th><th>4096² matmul（RTX 4090 · Chrome）</th><th>算力利用率</th></tr></thead>
         <tbody>
-          <tr><td>naive</td><td>~95 ms</td><td>~280 ms</td><td>~5%</td></tr>
-          <tr><td>tiled (workgroup mem)</td><td>~22 ms</td><td>~70 ms</td><td>~22%</td></tr>
-          <tr><td>+ register blocking 4×4</td><td>~6 ms</td><td>~18 ms</td><td>~82%</td></tr>
-          <tr><td>+ subgroup matrix (实验)</td><td>~2 ms</td><td>~3.5 ms</td><td>~95%</td></tr>
-          <tr><td><em>参考</em>：Metal Performance Shaders</td><td>~1.5 ms</td><td>—</td><td>~100%</td></tr>
-          <tr><td><em>参考</em>：CUDA cuBLAS</td><td>—</td><td>~3 ms</td><td>~95%</td></tr>
+          <tr><td>naive</td><td>~95 ms</td><td>~75 ms</td><td>~280 ms</td><td>~5%</td></tr>
+          <tr><td>tiled (workgroup mem)</td><td>~22 ms</td><td>~17 ms</td><td>~70 ms</td><td>~22%</td></tr>
+          <tr><td>+ register blocking 4×4</td><td>~6 ms</td><td>~5 ms</td><td>~18 ms</td><td>~82%</td></tr>
+          <tr><td>+ subgroup matrix (实验)</td><td><em>n/a</em>（Apple matrix 仅 M3+）</td><td>~2 ms</td><td>~3.5 ms</td><td>~95%</td></tr>
+          <tr><td><em>参考</em>：Metal Performance Shaders</td><td>~1.5 ms</td><td>~1.2 ms</td><td>—</td><td>~100%</td></tr>
+          <tr><td><em>参考</em>：CUDA cuBLAS</td><td>—</td><td>—</td><td>~3 ms</td><td>~95%</td></tr>
         </tbody>
       </table>
 
@@ -4163,18 +4257,18 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
 <span class="src-line"><span class="src-fn">subgroupMatrixStore</span>(&amp;C, offsetC, c, stride);</span>
       </div>
 
-      <p style="margin-top:14px;">Measured (Tint experimental): <strong>~2 ms</strong>, 47× faster than naive, 3× faster than tiled-with-register-blocking. This is the <em>main catalyst for browser-side ML perf</em> over the next 1–2 years.</p>
+      <p style="margin-top:14px;">Measured (Tint experimental, on M3 Pro): <strong>~2 ms</strong>, 47× faster than naive, 3× faster than tiled-with-register-blocking. This is the <em>main catalyst for browser-side ML perf</em> over the next 1–2 years.</p>
 
       <h3 style="margin-top:18px;">Performance summary</h3>
       <table class="hbench-tbl">
-        <thead><tr><th>Implementation</th><th>1024² matmul (M2 Pro · Chrome)</th><th>4096² matmul (RTX 4090 · Chrome)</th><th>Utilisation</th></tr></thead>
+        <thead><tr><th>Implementation</th><th>1024² matmul (M2 Pro · Chrome)</th><th>1024² matmul (M3 Pro · Chrome)</th><th>4096² matmul (RTX 4090 · Chrome)</th><th>Utilisation</th></tr></thead>
         <tbody>
-          <tr><td>naive</td><td>~95 ms</td><td>~280 ms</td><td>~5%</td></tr>
-          <tr><td>tiled (workgroup mem)</td><td>~22 ms</td><td>~70 ms</td><td>~22%</td></tr>
-          <tr><td>+ register blocking 4×4</td><td>~6 ms</td><td>~18 ms</td><td>~82%</td></tr>
-          <tr><td>+ subgroup matrix (experimental)</td><td>~2 ms</td><td>~3.5 ms</td><td>~95%</td></tr>
-          <tr><td><em>reference</em>: Metal Performance Shaders</td><td>~1.5 ms</td><td>—</td><td>~100%</td></tr>
-          <tr><td><em>reference</em>: CUDA cuBLAS</td><td>—</td><td>~3 ms</td><td>~95%</td></tr>
+          <tr><td>naive</td><td>~95 ms</td><td>~75 ms</td><td>~280 ms</td><td>~5%</td></tr>
+          <tr><td>tiled (workgroup mem)</td><td>~22 ms</td><td>~17 ms</td><td>~70 ms</td><td>~22%</td></tr>
+          <tr><td>+ register blocking 4×4</td><td>~6 ms</td><td>~5 ms</td><td>~18 ms</td><td>~82%</td></tr>
+          <tr><td>+ subgroup matrix (experimental)</td><td><em>n/a</em> (Apple matrix is M3+ only)</td><td>~2 ms</td><td>~3.5 ms</td><td>~95%</td></tr>
+          <tr><td><em>reference</em>: Metal Performance Shaders</td><td>~1.5 ms</td><td>~1.2 ms</td><td>—</td><td>~100%</td></tr>
+          <tr><td><em>reference</em>: CUDA cuBLAS</td><td>—</td><td>—</td><td>~3 ms</td><td>~95%</td></tr>
         </tbody>
       </table>
 
@@ -4249,6 +4343,8 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
         </tbody>
       </table>
 
+      <p style="margin-top:8px; font-size:12px; color:var(--ink-mute);">来源：HuggingFace <a href="https://huggingface.co/docs/transformers.js" target="_blank" rel="noopener">transformers.js</a> README perf 表 · <a href="https://webllm.mlc.ai/" target="_blank" rel="noopener">WebLLM benchmarks</a> · <a href="https://github.com/xenova/transformers.js/issues" target="_blank" rel="noopener">Xenova/transformers.js benchmark issues</a> · 单机实测仅供参考。</p>
+
       <div class="note good">
         <span class="ntag">为什么这件事突然能做了</span>
         <p>2017 年用 WebGL 跑 BERT 是<em>玩具</em>（没 compute、性能差 100×）。2023 年 WebGPU GA + 2024 年 subgroup ops + Llama 系开源 + 量化（int4/int8）成熟，浏览器里跑 LLM <em>从不可能变成不舒服但能</em>。再过 1-2 年 subgroup_matrix 标准化 + KV cache compression 普及，<em>家用 GPU 上跑 7B 模型</em>会是默认。</p>
@@ -4313,6 +4409,8 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
           <tr><td>SDXL-Turbo</td><td>~1.5 GB</td><td>4–8 s / image</td><td>~0.5 s / image</td><td>~30 s / image</td></tr>
         </tbody>
       </table>
+
+      <p style="margin-top:8px; font-size:12px; color:var(--ink-mute);">Sources: HuggingFace <a href="https://huggingface.co/docs/transformers.js" target="_blank" rel="noopener">transformers.js</a> README perf table · <a href="https://webllm.mlc.ai/" target="_blank" rel="noopener">WebLLM benchmarks</a> · <a href="https://github.com/xenova/transformers.js/issues" target="_blank" rel="noopener">Xenova/transformers.js benchmark issues</a> · single-machine measurements only.</p>
 
       <div class="note good">
         <span class="ntag">Why this suddenly works</span>
@@ -4385,7 +4483,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
 <span class="src-line"><span class="src-comment">// readback → 拿到 u64[2]，差值就是 GPU 周期数</span></span>
       </div>
 
-      <p style="margin-top:14px;"><strong>隐私限制</strong>：timestamp 的<em>分辨率被 clamp 到 100 µs</em>（spec §4.7.4），防止 timing side-channel 攻击。所以 100 µs 以下的 pass 测出来都是 0 或 100 µs。Native 应用能拿 GPU clock 的纳秒级分辨率，浏览器拿不到。</p>
+      <p style="margin-top:14px;"><strong>隐私限制</strong>：timestamp 的<em>分辨率被 clamp 到 100 µs</em>（spec §20.4 Timestamp Query · <a href="https://www.w3.org/TR/webgpu/#timestamp" target="_blank" rel="noopener">#timestamp</a>），防止 timing side-channel 攻击。所以 100 µs 以下的 pass 测出来都是 0 或 100 µs。Native 应用能拿 GPU clock 的纳秒级分辨率，浏览器拿不到。</p>
 
       <div class="note copper">
         <span class="ntag">为什么很多其他 feature 暂未上</span>
@@ -4449,7 +4547,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
 <span class="src-line"><span class="src-comment">// readback → u64[2], difference is GPU cycles</span></span>
       </div>
 
-      <p style="margin-top:14px;"><strong>Privacy clamp</strong>: timestamp <em>resolution is clamped to 100 µs</em> (spec §4.7.4) to prevent timing side-channel attacks. Anything under 100 µs reads as 0 or 100 µs. Native apps get nanosecond GPU clocks; browsers don't.</p>
+      <p style="margin-top:14px;"><strong>Privacy clamp</strong>: timestamp <em>resolution is clamped to 100 µs</em> (spec §20.4 Timestamp Query · <a href="https://www.w3.org/TR/webgpu/#timestamp" target="_blank" rel="noopener">#timestamp</a>) to prevent timing side-channel attacks. Anything under 100 µs reads as 0 or 100 µs. Native apps get nanosecond GPU clocks; browsers don't.</p>
 
       <div class="note copper">
         <span class="ntag">Why so many features aren't shipped yet</span>
@@ -4511,7 +4609,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
         </div>
         <div class="proc-card good">
           <div class="pc-head">兼容性（compat）</div>
-          <p>WebGL 2 ★★★★★ · WebGPU ★★★。<br>WebGPU 在 ~85% 浏览器/设备上跑，~15% 还得 fallback。WebGL 是 ~99%。</p>
+          <p>WebGL 2 ★★★★★ · WebGPU ★★★。<br>据 <a href="https://caniuse.com/webgpu" target="_blank" rel="noopener">caniuse · webgpu</a>，WebGPU 全球 baseline 覆盖约 85%（Chrome/Edge/Firefox 桌面 + macOS Safari 26），剩下 ~15%（老 Android、iOS 18 以前、内网 IE/旧版浏览器）仍需 fallback。WebGL 2 全球 ~96%。</p>
         </div>
         <div class="proc-card">
           <div class="pc-head">学习曲线</div>
@@ -4573,7 +4671,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
         </div>
         <div class="proc-card good">
           <div class="pc-head">Compatibility</div>
-          <p>WebGL 2 ★★★★★ · WebGPU ★★★.<br>WebGPU runs on ~85% of browsers/devices; ~15% need a fallback. WebGL covers ~99%.</p>
+          <p>WebGL 2 ★★★★★ · WebGPU ★★★.<br>Per <a href="https://caniuse.com/webgpu" target="_blank" rel="noopener">caniuse · webgpu</a>, WebGPU's global baseline reach is ~85% (Chrome/Edge/Firefox desktop + Safari 26 on macOS); the remaining ~15% (old Android, pre-iOS 18, intranet legacy browsers) still need fallbacks. WebGL 2 global ~96%.</p>
         </div>
         <div class="proc-card">
           <div class="pc-head">Learning curve</div>
@@ -4621,9 +4719,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
 
       <div class="case-study gpu">
-        <div class="cs-head"><span class="cs-tag">CASE 4</span> Unity WebGL → Unity Web Player（rebrand）</div>
-        <p><strong>背景</strong>：Unity 历史上靠 WebGL backend 在浏览器里跑。2024 年发布 "Unity Web Player" 是 WebGPU 的代号——把 WebGL backend 整个改写。</p>
-        <p><strong>不寻常的事</strong>：Unity 用 IL2CPP 把 C# 编到 C++ 再 emscripten → WASM，跑在 WebGPU 上。比 WebGL backend 启动慢 ~2×（pipeline 编译耗时），但稳态性能 1.5-2× 提升。Unity 教程游戏 typical 浏览器加载 ~5s（WebGPU）vs ~3s（WebGL）。</p>
+        <div class="cs-head"><span class="cs-tag">CASE 4</span> Unity 6 Web — 实验性 WebGPU backend</div>
+        <p><strong>背景</strong>：Unity 历史上靠 WebGL 1/2 backend 在浏览器里跑（"Unity WebGL"）。2024 年 12 月发布 Unity 6 时加了<em>实验性 WebGPU backend</em>——和原 WebGL backend 并存，开发者在 Player Settings 里勾选启用。注意"Unity Web Player"是 2017 年就退役的老 NPAPI 插件，<em>不要</em>和这个新 backend 混淆。</p>
+        <p><strong>不寻常的事</strong>：Unity 用 IL2CPP 把 C# 编到 C++ 再 emscripten → WASM，跑在 WebGPU 上。新 backend 比 WebGL 启动慢 ~2×（一次性 pipeline 编译耗时），但稳态渲染性能在复杂场景里 1.5-2× 提升。早期 demo 加载时间 ~5s（WebGPU）vs ~3s（WebGL）。Unity 6.1 / 2025 路线图把 WebGPU backend 推向 Production-Ready。</p>
       </div>
 
       <div class="note copper" style="margin-top:18px;">
@@ -4654,9 +4752,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
 
       <div class="case-study gpu">
-        <div class="cs-head"><span class="cs-tag">CASE 4</span> Unity WebGL → "Unity Web Player" (the rebrand)</div>
-        <p><strong>Background</strong>: Unity has historically run in browsers via a WebGL backend. In 2024 Unity released "Unity Web Player" — the WebGPU codename — rewriting the WebGL backend.</p>
-        <p><strong>The unusual thing</strong>: Unity compiles C# via IL2CPP to C++, then emscripten → WASM, running atop WebGPU. Startup ~2× slower than the WebGL backend (pipeline compilation costs), but steady-state perf 1.5–2× faster. A tutorial game loads in ~5 s on WebGPU vs ~3 s on WebGL.</p>
+        <div class="cs-head"><span class="cs-tag">CASE 4</span> Unity 6 Web — experimental WebGPU backend</div>
+        <p><strong>Background</strong>: Unity has historically run in browsers via a WebGL 1/2 backend ("Unity WebGL"). When Unity 6 shipped in December 2024 it added an <em>experimental WebGPU backend</em>, coexisting with the WebGL backend — developers opt in via Player Settings. (Don't confuse this with "Unity Web Player", the old NPAPI plugin retired in 2017.)</p>
+        <p><strong>The unusual thing</strong>: Unity compiles C# via IL2CPP to C++, then emscripten → WASM, running atop WebGPU. Startup is ~2× slower than the WebGL backend (one-time pipeline compilation), but steady-state rendering performance is 1.5–2× faster on complex scenes. Early demos load in ~5 s on WebGPU vs ~3 s on WebGL. Unity 6.1 / 2025 roadmap targets graduating the WebGPU backend to production-ready.</p>
       </div>
 
       <div class="note copper" style="margin-top:18px;">
