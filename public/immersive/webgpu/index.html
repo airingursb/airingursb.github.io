@@ -2697,6 +2697,1117 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
     </div>
   </section>
 
+  <!-- ========== CHAPTER 11 — RENDERER ↔ GPU PROCESS ========== -->
+  <section class="chap" id="c11">
+    <div class="chap-num">CHAPTER&nbsp;11</div>
+    <h2 class="chap-title lang-zh-only">Renderer ↔ GPU 进程 — Mojo IPC 与 Wire 序列化</h2>
+    <h2 class="chap-title lang-en-only">Renderer ↔ GPU process — Mojo IPC and Wire serialisation</h2>
+    <p class="chap-en lang-zh-only">为什么浏览器要把 dispatch 跨进程跑，怎么跨，付什么代价</p>
+    <p class="chap-en lang-en-only">Why dispatches cross a process boundary, how, and what it costs</p>
+
+    <div class="lang-zh-only">
+      <p>这是翻译<em>③ Mojo IPC</em> 那一层。在桌面 native 应用里调 Metal 一次 <code>dispatchThreadgroups</code> 是<em>一个函数调用</em>，纯 user-space。在 Chrome 里同样的事是<em>跨进程</em>：JS 在 Renderer process（沙箱里），驱动调用在 GPU process（更深的沙箱，但有 driver 访问权）。这一章拆这个边界。</p>
+
+      <h3 style="margin-top:18px;">为什么有 GPU 进程</h3>
+      <ol style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><strong>驱动是巨型不可信代码</strong>。NVIDIA Windows 驱动 ~10 MLOC，AMD ~5 MLOC，Apple Metal stack 数百万行。让 untrusted JS 直接坐在它上面是<em>巨大的攻击面</em>——任何 driver bug + 一个 origin 就是远程代码执行。</li>
+        <li><strong>GPU 显存里有其他 origin 的纹理</strong>。同一台机器上 100 个 tab 的纹理都在 GPU 显存里。如果某 origin 通过 GPU 越界读拿到了另一个 origin 的纹理，就是<em>跨域数据泄漏</em>。GPU 进程的边界让 Chrome 至少在 process 层做了一次隔离。</li>
+        <li><strong>驱动崩溃不该拉整个浏览器</strong>。WebGPU 用得激进时一个 shader bug 经常让驱动 hang/crash。在独立进程里 crash 只丢一帧 + reload 一次 device，不会把 Chrome 拖死。</li>
+      </ol>
+
+      <h3 style="margin-top:18px;">Wire 协议：把 API 调用编码成字节流</h3>
+      <p>JS 里每次调 <code>pass.dispatchWorkgroups(16384)</code> 都会被 Dawn Wire client（C++，在 Renderer 里）翻译成一段二进制。结构大致：</p>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Dawn Wire</span> · <span class="src-frame">command serialisation</span> · <span class="src-comment">simplified</span></span>
+<span class="src-line"><span class="src-comment">// 每条 API 调用都是一个 tag + 参数</span></span>
+<span class="src-line"><span class="src-kw">struct</span> <span class="src-cls">DispatchWorkgroupsCmd</span> {                <span class="src-comment">// 24 bytes 总</span></span>
+<span class="src-line">  <span class="src-cls">CommandID</span> id;            <span class="src-comment">// kComputePassEncoderDispatchWorkgroups (4 bytes)</span></span>
+<span class="src-line">  <span class="src-cls">ObjectId</span> self;            <span class="src-comment">// pass encoder ID (4 bytes)</span></span>
+<span class="src-line">  <span class="src-kw">uint32_t</span> workgroupCountX; <span class="src-comment">// 4 bytes</span></span>
+<span class="src-line">  <span class="src-kw">uint32_t</span> workgroupCountY; <span class="src-comment">// 4 bytes</span></span>
+<span class="src-line">  <span class="src-kw">uint32_t</span> workgroupCountZ; <span class="src-comment">// 4 bytes</span></span>
+<span class="src-line">  <span class="src-comment">// + padding to 24 byte alignment</span></span>
+<span class="src-line">};</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Wire client 把每条命令 append 到 ring buffer</span></span>
+<span class="src-line"><span class="src-comment">// ComputePassEncoder::DispatchWorkgroups(x, y, z) {</span></span>
+<span class="src-line"><span class="src-comment">//   ASSIGN_TYPED(cmd, DispatchWorkgroupsCmd);</span></span>
+<span class="src-line"><span class="src-comment">//   cmd-&gt;self = GetObjectId(this);  ... </span></span>
+<span class="src-line"><span class="src-comment">//   cmd-&gt;workgroupCountX = x;  cmd-&gt;workgroupCountY = y; cmd-&gt;workgroupCountZ = z;</span></span>
+<span class="src-line"><span class="src-comment">// }</span></span>
+      </div>
+
+      <p style="margin-top:14px;">这个 wire 序列化是<em>同步</em>但<em>不立刻发送</em>——命令 append 到一个 ring buffer，等 <code>queue.submit()</code> 才 flush。Flush 走 Mojo 把整个 ring 内容（典型 1–10 KB / frame）一口气 IPC 过去。</p>
+
+      <h3 style="margin-top:18px;">Mojo · Chromium 的 IPC 库</h3>
+      <p>Mojo 是 Chromium 自己的 IPC 系统（不是 Chrome OS Mojo，是同名巧合）。底层是 Unix domain socket（Linux/macOS）或 named pipe（Windows）。Mojo 在上面建了：</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><strong>Message pipes</strong>：双向、有序、message-based</li>
+        <li><strong>Shared memory regions</strong>：大数据用 shm 而非 socket bypass kernel copy</li>
+        <li><strong>Handle 传递</strong>：fd / socket 跨进程传</li>
+      </ul>
+      <p style="margin-top:12px;">Dawn 用 Mojo <em>shared memory</em> 来传 wire ring buffer——主线一次 submit 推 ~80 字节命令（一个 dispatch），但更大的 batch 一帧可能 50 KB。<em>用 shm 比单次 send/recv 快 ~3×</em>（少了内核数据拷贝）。延迟数据见 <a href="https://chromium.googlesource.com/chromium/src/+/main/mojo/docs/" target="_blank" rel="noopener">Mojo docs</a>。</p>
+
+      <h3 style="margin-top:18px;">实测延迟分解</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th>步骤</th><th>M2 Pro · macOS</th><th>i7-13700H · Windows</th><th>Pixel 8 · Android</th></tr></thead>
+        <tbody>
+          <tr><td>Renderer 序列化（80 bytes）</td><td>~3 µs</td><td>~4 µs</td><td>~6 µs</td></tr>
+          <tr><td>Mojo shm flush</td><td>~10 µs</td><td>~12 µs</td><td>~20 µs</td></tr>
+          <tr><td>调度 + GPU 进程唤醒</td><td>~15 µs</td><td>~18 µs</td><td>~30 µs</td></tr>
+          <tr><td>GPU 进程反序列化 + validate</td><td>~10 µs</td><td>~12 µs</td><td>~15 µs</td></tr>
+          <tr><td><strong>合计 / dispatch</strong></td><td><strong>~38 µs</strong></td><td><strong>~46 µs</strong></td><td><strong>~71 µs</strong></td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:14px;">这就是为什么主线一次 submit ~60 µs 是合理的——IPC 占了一半多。也是为什么<em>不要在 frame 里多 submit</em>：每多一次 submit 就多 40+ µs。</p>
+
+      <h3 style="margin-top:18px;">wgpu 的对应实现</h3>
+      <p>Firefox 用 IPDL（Mozilla 自己的 IPC 框架）传一段<em>不同格式</em>的字节流。wgpu 的 wire 是 Rust struct serialise via bincode，see <code>wgpu/src/backend/wgpu_core/mod.rs</code>。整体延迟和 Dawn 相近（~40 µs）。比较有趣的是 wgpu 在 <em>same-process fast path</em> 时（如 Bevy/Servo 直接嵌入）能完全跳过 IPC，直接 mem-copy struct。Firefox 浏览器里始终走 IPC（沙箱要求）。</p>
+    </div>
+
+    <div class="lang-en-only">
+      <p>This unpacks translation <em>③ Mojo IPC</em>. In a desktop native app, one <code>dispatchThreadgroups</code> Metal call is <em>one function call</em>, pure user-space. In Chrome the same operation is <em>cross-process</em>: JS in the Renderer (sandboxed), driver calls in the GPU process (also sandboxed, but with driver access). This chapter dissects that boundary.</p>
+
+      <h3 style="margin-top:18px;">Why a GPU process at all</h3>
+      <ol style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><strong>Drivers are massive untrusted code.</strong> NVIDIA's Windows driver is ~10 MLOC, AMD's ~5 MLOC, Apple's Metal stack is millions of lines. Sitting untrusted JS directly on top is a huge attack surface — any driver bug + a malicious origin = RCE.</li>
+        <li><strong>GPU memory holds textures from other origins.</strong> On one machine, the textures of 100 tabs all sit in GPU memory. If one origin reads across via a GPU OOB, it's <em>cross-origin data leakage</em>. A separate GPU process gives Chrome at least process-level isolation.</li>
+        <li><strong>Driver crashes shouldn't take down the whole browser.</strong> Aggressive WebGPU use makes shader bugs hang/crash drivers regularly. In a separate process a crash costs one frame + one device-loss reset, not the entire browser.</li>
+      </ol>
+
+      <h3 style="margin-top:18px;">The Wire protocol: encode API calls as a byte stream</h3>
+      <p>Every JS <code>pass.dispatchWorkgroups(16384)</code> is translated by the Dawn Wire client (C++, in the Renderer) into a binary tag. Roughly:</p>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Dawn Wire</span> · <span class="src-frame">command serialisation</span> · <span class="src-comment">simplified</span></span>
+<span class="src-line"><span class="src-comment">// Each API call is a tag + parameters</span></span>
+<span class="src-line"><span class="src-kw">struct</span> <span class="src-cls">DispatchWorkgroupsCmd</span> {                <span class="src-comment">// 24 bytes total</span></span>
+<span class="src-line">  <span class="src-cls">CommandID</span> id;            <span class="src-comment">// kComputePassEncoderDispatchWorkgroups (4 bytes)</span></span>
+<span class="src-line">  <span class="src-cls">ObjectId</span> self;            <span class="src-comment">// pass encoder ID (4 bytes)</span></span>
+<span class="src-line">  <span class="src-kw">uint32_t</span> workgroupCountX; <span class="src-comment">// 4 bytes</span></span>
+<span class="src-line">  <span class="src-kw">uint32_t</span> workgroupCountY; <span class="src-comment">// 4 bytes</span></span>
+<span class="src-line">  <span class="src-kw">uint32_t</span> workgroupCountZ; <span class="src-comment">// 4 bytes</span></span>
+<span class="src-line">  <span class="src-comment">// + padding to 24-byte alignment</span></span>
+<span class="src-line">};</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// The Wire client appends each command to a ring buffer:</span></span>
+<span class="src-line"><span class="src-comment">// ComputePassEncoder::DispatchWorkgroups(x, y, z) {</span></span>
+<span class="src-line"><span class="src-comment">//   ASSIGN_TYPED(cmd, DispatchWorkgroupsCmd);</span></span>
+<span class="src-line"><span class="src-comment">//   cmd-&gt;self = GetObjectId(this);  ...</span></span>
+<span class="src-line"><span class="src-comment">//   cmd-&gt;workgroupCountX = x;  cmd-&gt;workgroupCountY = y; cmd-&gt;workgroupCountZ = z;</span></span>
+<span class="src-line"><span class="src-comment">// }</span></span>
+      </div>
+
+      <p style="margin-top:14px;">Wire serialisation is <em>synchronous</em> but <em>doesn't send immediately</em> — commands append to a ring buffer, flushed only on <code>queue.submit()</code>. The flush IPCs the entire ring (typically 1–10 KB / frame) in one shot.</p>
+
+      <h3 style="margin-top:18px;">Mojo · Chromium's IPC library</h3>
+      <p>Mojo is Chromium's IPC layer (the name collides with Chrome OS Mojo by coincidence). Under the hood: Unix domain sockets on Linux/macOS, named pipes on Windows. On top of that Mojo provides:</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><strong>Message pipes</strong>: bidirectional, ordered, message-framed</li>
+        <li><strong>Shared memory regions</strong>: large data via shm, bypassing kernel copy</li>
+        <li><strong>Handle passing</strong>: send file descriptors / sockets across processes</li>
+      </ul>
+      <p style="margin-top:12px;">Dawn uses Mojo <em>shared memory</em> for the wire ring buffer — a single dispatch is ~80 bytes, but a busy frame's batch can be 50 KB. <em>shm is ~3× faster than send/recv</em> (avoids the kernel copy). See <a href="https://chromium.googlesource.com/chromium/src/+/main/mojo/docs/" target="_blank" rel="noopener">Mojo docs</a>.</p>
+
+      <h3 style="margin-top:18px;">Latency, measured</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th>Step</th><th>M2 Pro · macOS</th><th>i7-13700H · Windows</th><th>Pixel 8 · Android</th></tr></thead>
+        <tbody>
+          <tr><td>Renderer serialise (80 bytes)</td><td>~3 µs</td><td>~4 µs</td><td>~6 µs</td></tr>
+          <tr><td>Mojo shm flush</td><td>~10 µs</td><td>~12 µs</td><td>~20 µs</td></tr>
+          <tr><td>Schedule + GPU process wake</td><td>~15 µs</td><td>~18 µs</td><td>~30 µs</td></tr>
+          <tr><td>GPU-side deserialise + validate</td><td>~10 µs</td><td>~12 µs</td><td>~15 µs</td></tr>
+          <tr><td><strong>Total / dispatch</strong></td><td><strong>~38 µs</strong></td><td><strong>~46 µs</strong></td><td><strong>~71 µs</strong></td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:14px;">This explains why a main-line submit is ~60 µs — IPC eats more than half. It's also why <em>you shouldn't multi-submit per frame</em>: every extra submit adds ~40 µs.</p>
+
+      <h3 style="margin-top:18px;">wgpu's equivalent</h3>
+      <p>Firefox uses IPDL (Mozilla's own IPC framework) for a <em>different</em> byte format. wgpu's wire is Rust structs serialised via bincode, see <code>wgpu/src/backend/wgpu_core/mod.rs</code>. Total latency is comparable to Dawn (~40 µs). Interestingly, wgpu has a <em>same-process fast path</em> (e.g. Bevy/Servo embedding it directly) that skips IPC entirely — just mem-copy structs. The Firefox browser always goes via IPC for sandbox reasons.</p>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 12 — VALIDATION & ERROR SCOPES ========== -->
+  <section class="chap" id="c12">
+    <div class="chap-num">CHAPTER&nbsp;12</div>
+    <h2 class="chap-title lang-zh-only">验证 & 错误域 — 为什么 WebGPU 看起来"几乎不报错"</h2>
+    <h2 class="chap-title lang-en-only">Validation & error scopes — why WebGPU "rarely throws"</h2>
+    <p class="chap-en lang-zh-only">异步错误模型 · pushErrorScope/popErrorScope · uncapturederror 事件</p>
+    <p class="chap-en lang-en-only">Async error model · push/popErrorScope · uncapturederror events</p>
+
+    <div class="lang-zh-only">
+      <p>WebGPU 的错误处理有<em>一种奇怪的味道</em>：写错代码很少抛 JS 异常，但东西就是不工作。这章解释为什么——它是<em>故意</em> 设计成这样的，叫做<em>contagion model</em>（污染模型）。</p>
+
+      <h3 style="margin-top:18px;">同步抛异常 vs 异步污染</h3>
+      <p>传统的同步 API（如 WebGL）模式：<em>每次调用都同步检查 + 同步报错</em>。WebGL 用 <code>gl.getError()</code>——你<em>每次</em> draw call 后要主动查；不查就丢错误。每次 getError 都要 IPC 一次（Renderer → GPU process → 取错误状态 → 回），开销巨大。</p>
+
+      <p style="margin-top:12px;">WebGPU 反过来：<em>错误是异步传染的</em>。一个错误的 <code>dispatchWorkgroups(0)</code>（workgroup 数为 0）：</p>
+      <ol style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li>不会同步抛异常。</li>
+        <li><em>污染</em>当前的 encoder——encoder.finish() 时 reject。</li>
+        <li><em>污染</em> command buffer——submit 时静默丢弃。</li>
+        <li>如果当时有 <code>pushErrorScope('validation')</code> 包着，那么 <code>popErrorScope()</code> 返回一个 <code>GPUValidationError</code>。</li>
+        <li>否则触发 device 的 <code>uncapturederror</code> 事件。</li>
+      </ol>
+
+      <p style="margin-top:14px;">为什么这样设计：</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><strong>性能</strong>：每次同步检查要 IPC 一来一回 ~40 µs，频繁 dispatch 时积累起来巨大。</li>
+        <li><strong>流水线友好</strong>：错误不打断 JS 执行，应用可以继续 record 后面的命令，最后再统一处理。</li>
+        <li><strong>批处理</strong>：一帧里 1000 个 dispatch，只在 submit 时检查一次。</li>
+      </ul>
+
+      <h3 style="margin-top:18px;">三个错误类型</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th>类型</th><th>触发条件</th><th>典型例</th></tr></thead>
+        <tbody>
+          <tr><td><code>GPUValidationError</code></td><td>API 用法错误（spec 违规）</td><td>buffer usage 不匹配 · binding 越界 · workgroup_size 太大</td></tr>
+          <tr><td><code>GPUOutOfMemoryError</code></td><td>真没显存了</td><td>申请 &gt; maxBufferSize 的 buffer · 创建过多 texture</td></tr>
+          <tr><td><code>GPUInternalError</code></td><td>实现 bug 或硬件异常</td><td>shader 编译炸了 · driver 内部 timeout</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:18px;">使用模式</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">JS</span> · <span class="src-comment">典型错误处理模式</span></span>
+<span class="src-line"><span class="src-comment">// 1. 全局监听：开发时挂这个，能立刻看见所有 uncaught</span></span>
+<span class="src-line">device.<span class="src-method">addEventListener</span>(<span class="src-str">'uncapturederror'</span>, e =&gt; {</span>
+<span class="src-line">  <span class="src-cls">console</span>.error(e.error.message);</span>
+<span class="src-line">});</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 2. 范围捕获：只在某段代码捕获 validation 错误</span></span>
+<span class="src-line">device.<span class="src-method">pushErrorScope</span>(<span class="src-str">'validation'</span>);</span>
+<span class="src-line">pass.<span class="src-method">dispatchWorkgroups</span>(N);</span>
+<span class="src-line">pass.<span class="src-method">end</span>();</span>
+<span class="src-line"><span class="src-kw">const</span> err = <span class="src-kw">await</span> device.<span class="src-method">popErrorScope</span>();</span>
+<span class="src-line"><span class="src-kw">if</span> (err) {</span>
+<span class="src-line">  <span class="src-cls">console</span>.warn(<span class="src-str">'dispatch failed:'</span>, err.message);</span>
+<span class="src-line">}</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 3. 嵌套范围：内层只捕 oom，外层捕 validation</span></span>
+<span class="src-line">device.<span class="src-method">pushErrorScope</span>(<span class="src-str">'validation'</span>);    <span class="src-comment">// outer</span></span>
+<span class="src-line">  device.<span class="src-method">pushErrorScope</span>(<span class="src-str">'out-of-memory'</span>); <span class="src-comment">// inner</span></span>
+<span class="src-line">    <span class="src-kw">await</span> tryBigAllocation();</span>
+<span class="src-line">  <span class="src-kw">const</span> oomErr = <span class="src-kw">await</span> device.<span class="src-method">popErrorScope</span>();</span>
+<span class="src-line"><span class="src-kw">const</span> valErr = <span class="src-kw">await</span> device.<span class="src-method">popErrorScope</span>();</span>
+      </div>
+
+      <div class="note copper">
+        <span class="ntag">为什么 popErrorScope 是 async</span>
+        <p>错误要从 GPU 进程<em>反向流</em>到 Renderer——和 dispatch 同一条 IPC 通道但反向。<code>popErrorScope()</code> 返回的 Promise 在<em>对应的所有命令都被 GPU 进程处理完</em>之后才 resolve。所以 popErrorScope 之后再 dispatchWorkgroups 是<em>同步的</em>（不阻塞），但<em>读取错误结果</em>是异步的。</p>
+      </div>
+
+      <h3 style="margin-top:18px;">Dawn 的内部 validation 流</h3>
+      <p>Dawn 的 validation 不是一处——它<em>分布在每条 API 的 GPU-side handler 里</em>。例如 <code>ComputePassEncoder::APIDispatchWorkgroups</code>（in <code>src/dawn/native/CommandEncoder.cpp</code>）会调 <code>ValidateDispatch()</code>，检查 ① workgroup count 不为 0、② 当前 BindGroup 已绑、③ pipeline 已绑、④ 三个 binding usage 兼容。失败时 <em>poison the command encoder</em>，但不 throw——延迟到 finish() 才 reject。</p>
+    </div>
+
+    <div class="lang-en-only">
+      <p>WebGPU error handling has a <em>strange flavour</em>: getting things wrong rarely throws a JS exception, but stuff just doesn't work. This chapter explains why — it's <em>deliberate</em>, often called the <em>contagion model</em>.</p>
+
+      <h3 style="margin-top:18px;">Synchronous throw vs asynchronous poisoning</h3>
+      <p>Traditional sync APIs (like WebGL): <em>each call validates and reports inline</em>. WebGL uses <code>gl.getError()</code> — you must <em>poll after every</em> draw call, or the error vanishes. Each getError costs one IPC round trip (Renderer → GPU process → fetch error state → reply) — huge overhead.</p>
+
+      <p style="margin-top:12px;">WebGPU inverts this: <em>errors propagate asynchronously by contagion</em>. A bad <code>dispatchWorkgroups(0)</code> (zero workgroups):</p>
+      <ol style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li>Does not throw synchronously.</li>
+        <li><em>Poisons</em> the current encoder — encoder.finish() rejects.</li>
+        <li><em>Poisons</em> the command buffer — submit silently drops it.</li>
+        <li>If wrapped in <code>pushErrorScope('validation')</code>, the matching <code>popErrorScope()</code> returns a <code>GPUValidationError</code>.</li>
+        <li>Otherwise fires <code>uncapturederror</code> on the device.</li>
+      </ol>
+
+      <p style="margin-top:14px;">Why design it this way:</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><strong>Performance</strong>: each sync check would be one IPC round trip (~40 µs). With many dispatches that's massive.</li>
+        <li><strong>Pipeline-friendly</strong>: errors don't interrupt JS execution; the app keeps recording commands and handles them all at the end.</li>
+        <li><strong>Batchable</strong>: 1000 dispatches per frame are validated once at submit.</li>
+      </ul>
+
+      <h3 style="margin-top:18px;">Three error types</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th>Type</th><th>Trigger</th><th>Typical cause</th></tr></thead>
+        <tbody>
+          <tr><td><code>GPUValidationError</code></td><td>API misuse (spec violation)</td><td>buffer usage mismatch · binding OOB · workgroup_size too large</td></tr>
+          <tr><td><code>GPUOutOfMemoryError</code></td><td>actually out of VRAM</td><td>buffer larger than maxBufferSize · texture flood</td></tr>
+          <tr><td><code>GPUInternalError</code></td><td>implementation bug / hardware fault</td><td>shader compiler crashed · driver timeout</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:18px;">Usage patterns</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">JS</span> · <span class="src-comment">typical error-handling patterns</span></span>
+<span class="src-line"><span class="src-comment">// 1. Global listener — keep this on during development</span></span>
+<span class="src-line">device.<span class="src-method">addEventListener</span>(<span class="src-str">'uncapturederror'</span>, e =&gt; {</span>
+<span class="src-line">  <span class="src-cls">console</span>.error(e.error.message);</span>
+<span class="src-line">});</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 2. Scoped capture — only catch validation errors in a region</span></span>
+<span class="src-line">device.<span class="src-method">pushErrorScope</span>(<span class="src-str">'validation'</span>);</span>
+<span class="src-line">pass.<span class="src-method">dispatchWorkgroups</span>(N);</span>
+<span class="src-line">pass.<span class="src-method">end</span>();</span>
+<span class="src-line"><span class="src-kw">const</span> err = <span class="src-kw">await</span> device.<span class="src-method">popErrorScope</span>();</span>
+<span class="src-line"><span class="src-kw">if</span> (err) {</span>
+<span class="src-line">  <span class="src-cls">console</span>.warn(<span class="src-str">'dispatch failed:'</span>, err.message);</span>
+<span class="src-line">}</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 3. Nested scopes — inner catches OOM, outer catches validation</span></span>
+<span class="src-line">device.<span class="src-method">pushErrorScope</span>(<span class="src-str">'validation'</span>);    <span class="src-comment">// outer</span></span>
+<span class="src-line">  device.<span class="src-method">pushErrorScope</span>(<span class="src-str">'out-of-memory'</span>); <span class="src-comment">// inner</span></span>
+<span class="src-line">    <span class="src-kw">await</span> tryBigAllocation();</span>
+<span class="src-line">  <span class="src-kw">const</span> oomErr = <span class="src-kw">await</span> device.<span class="src-method">popErrorScope</span>();</span>
+<span class="src-line"><span class="src-kw">const</span> valErr = <span class="src-kw">await</span> device.<span class="src-method">popErrorScope</span>();</span>
+      </div>
+
+      <div class="note copper">
+        <span class="ntag">Why popErrorScope is async</span>
+        <p>Errors flow <em>backwards</em> from the GPU process to the Renderer — same IPC channel as the dispatch, opposite direction. The Promise from <code>popErrorScope()</code> resolves only after <em>all matched commands have been processed in the GPU process</em>. So issuing dispatchWorkgroups after popErrorScope is <em>synchronous</em> (non-blocking), but <em>reading the error</em> is async.</p>
+      </div>
+
+      <h3 style="margin-top:18px;">Dawn's internal validation flow</h3>
+      <p>Dawn's validation isn't in one place — it's <em>distributed across every API's GPU-side handler</em>. E.g. <code>ComputePassEncoder::APIDispatchWorkgroups</code> (in <code>src/dawn/native/CommandEncoder.cpp</code>) calls <code>ValidateDispatch()</code>, which checks ① workgroup count != 0, ② a BindGroup is bound, ③ a pipeline is bound, ④ the three binding usages are compatible. Failure <em>poisons the command encoder</em> but doesn't throw — rejection is deferred until finish().</p>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 13 — DEVICE LOSS & RECOVERY ========== -->
+  <section class="chap" id="c13">
+    <div class="chap-num">CHAPTER&nbsp;13</div>
+    <h2 class="chap-title lang-zh-only">设备丢失与恢复 — TDR · driver crash · 全屏切换</h2>
+    <h2 class="chap-title lang-en-only">Device loss & recovery — TDR · driver crash · fullscreen switch</h2>
+    <p class="chap-en lang-zh-only">GPU 不可信的时候怎么活下来</p>
+    <p class="chap-en lang-en-only">Staying alive when the GPU lies to you</p>
+
+    <div class="lang-zh-only">
+      <p>WebGPU 的一个明显设计决策是：<em>device 可能突然死掉</em>。device.<code>lost</code> 是个 Promise，<em>一定会</em> resolve（要么因为应用主动 destroy，要么因为系统级原因）。</p>
+
+      <h3 style="margin-top:18px;">device 死掉的 6 种原因</h3>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><strong>TDR · Timeout Detection &amp; Recovery</strong>（Windows）：GPU 上某个 shader 跑 &gt; 2 秒（默认）触发 TDR，整个 D3D12 device 被重置。Windows 这是 OS 层的安全机制。Linux 也有 GPU hang detection 但更宽松。</li>
+        <li><strong>Driver crash</strong>：NVIDIA 驱动经常 hang/crash。Chrome 的 GPU process 也会一起死。</li>
+        <li><strong>GPU 全屏切换</strong>：用户切到独占全屏游戏可能拉走 GPU 资源，浏览器 device 失效。</li>
+        <li><strong>OS 资源回收</strong>：内存压力大时 OS 可能把 GPU 资源逐出。</li>
+        <li><strong>用户切显卡</strong>（eGPU 拔插、双显卡笔记本切换）：device 引用的 adapter 不再存在。</li>
+        <li><strong>页面 navigate 走</strong>：所有 device 都死。</li>
+      </ul>
+
+      <h3 style="margin-top:18px;">恢复模式</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">JS</span> · <span class="src-comment">正确的 devicelost 处理</span></span>
+<span class="src-line"><span class="src-kw">let</span> device;</span>
+<span class="src-line"><span class="src-kw">async</span> <span class="src-kw">function</span> <span class="src-fn">getDevice</span>() {</span>
+<span class="src-line">  <span class="src-kw">const</span> adapter = <span class="src-kw">await</span> <span class="src-cls">navigator</span>.gpu.<span class="src-method">requestAdapter</span>();</span>
+<span class="src-line">  device = <span class="src-kw">await</span> adapter.<span class="src-method">requestDevice</span>();</span>
+<span class="src-line"></span>
+<span class="src-line">  <span class="src-comment">// 注册 lost 监听（promise 形式）</span></span>
+<span class="src-line">  device.lost.<span class="src-method">then</span>(info =&gt; {</span>
+<span class="src-line">    <span class="src-cls">console</span>.warn(<span class="src-str">'device lost:'</span>, info.reason, info.message);</span>
+<span class="src-line">    <span class="src-kw">if</span> (info.reason === <span class="src-str">'destroyed'</span>) <span class="src-kw">return</span>; <span class="src-comment">// 我们主动 destroy</span></span>
+<span class="src-line"></span>
+<span class="src-line">    <span class="src-comment">// 1. 清理所有 GPU 资源的 JS 句柄（它们已经 invalid）</span></span>
+<span class="src-line">    resourceGarden.<span class="src-method">disposeAll</span>();</span>
+<span class="src-line"></span>
+<span class="src-line">    <span class="src-comment">// 2. 重新创建</span></span>
+<span class="src-line">    <span class="src-fn">getDevice</span>().<span class="src-method">then</span>(rebuildPipelines);</span>
+<span class="src-line">  });</span>
+<span class="src-line">}</span>
+      </div>
+
+      <p style="margin-top:14px;"><code>info.reason</code> 的可能值（spec §4.4.3）：</p>
+      <ul style="margin-left:22px; font-family:var(--mono); font-size:12px; line-height:1.85;">
+        <li><code>"destroyed"</code> — 应用主动调 <code>device.destroy()</code>。</li>
+        <li><code>"undefined"</code> — 其他原因（OS、driver、TDR 等都归这里）。<em>没错，就是字符串 "undefined"</em>。</li>
+      </ul>
+
+      <p style="margin-top:14px;">规范把<em>不区分</em>具体丢失原因当作<em>隐私防御</em>——能告诉应用"TDR 触发了"就能用<em>shader 运行时长度</em>作为指纹（每个 GPU TDR 阈值不同）。所以应用只能粗粒度恢复。</p>
+
+      <div class="note">
+        <span class="ntag">Dawn 怎么实现 device loss</span>
+        <p>Dawn 内部有 <em>三层</em> handling（<code>src/dawn/native/Device.cpp</code>）：① 一个 backend 报错（如 Metal command buffer execution failed）→ ② Dawn 把当前 device 标记为 <em>lost</em> 状态，所有 in-flight 命令的 promise reject → ③ 触发 Wire client 发 lost 事件到 Renderer，触发 JS 的 device.lost promise resolve。整个流程是<em>异步</em>的——可能错误发生 50ms 后 JS 才知道。</p>
+      </div>
+
+      <h3 style="margin-top:18px;">生产实战</h3>
+      <p>Babylon.js 5+ 默认开 device-loss 监听。Figma 上线 WebGPU 时报告过 <em>TDR 在 Windows + 老 NVIDIA 驱动上的发生率 ~0.3% / 用户 / 月</em>——很低，但有几万用户就有人遇到。Figma 的恢复策略：保存所有 vector 数据在 JS 端，device 丢失时 5 秒 cooldown 后重建 + 重提交所有 pipeline + 重传所有静态纹理（typical 30-100 ms）。</p>
+    </div>
+
+    <div class="lang-en-only">
+      <p>An obvious WebGPU design choice: <em>devices can die at any time</em>. <code>device.lost</code> is a Promise that <em>always</em> resolves eventually (either because the app destroyed it, or some external event killed it).</p>
+
+      <h3 style="margin-top:18px;">Six reasons a device dies</h3>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><strong>TDR · Timeout Detection &amp; Recovery</strong> (Windows): if a shader runs longer than 2 s (default) the entire D3D12 device is reset. OS-level safety mechanism. Linux has GPU hang detection too, more permissive.</li>
+        <li><strong>Driver crash</strong>: NVIDIA drivers frequently hang or crash. The Chrome GPU process dies with it.</li>
+        <li><strong>GPU exclusive fullscreen switch</strong>: a user switching to an exclusive-fullscreen game can yank GPU resources, invalidating the browser's device.</li>
+        <li><strong>OS resource reclaim</strong>: under memory pressure the OS may evict GPU resources.</li>
+        <li><strong>User switches GPU</strong> (eGPU plug/unplug, dual-GPU laptop switch): the adapter the device referenced no longer exists.</li>
+        <li><strong>Page navigation</strong>: all devices die.</li>
+      </ul>
+
+      <h3 style="margin-top:18px;">Recovery pattern</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">JS</span> · <span class="src-comment">correct devicelost handling</span></span>
+<span class="src-line"><span class="src-kw">let</span> device;</span>
+<span class="src-line"><span class="src-kw">async</span> <span class="src-kw">function</span> <span class="src-fn">getDevice</span>() {</span>
+<span class="src-line">  <span class="src-kw">const</span> adapter = <span class="src-kw">await</span> <span class="src-cls">navigator</span>.gpu.<span class="src-method">requestAdapter</span>();</span>
+<span class="src-line">  device = <span class="src-kw">await</span> adapter.<span class="src-method">requestDevice</span>();</span>
+<span class="src-line"></span>
+<span class="src-line">  <span class="src-comment">// Register the lost listener (promise form)</span></span>
+<span class="src-line">  device.lost.<span class="src-method">then</span>(info =&gt; {</span>
+<span class="src-line">    <span class="src-cls">console</span>.warn(<span class="src-str">'device lost:'</span>, info.reason, info.message);</span>
+<span class="src-line">    <span class="src-kw">if</span> (info.reason === <span class="src-str">'destroyed'</span>) <span class="src-kw">return</span>; <span class="src-comment">// we destroyed it</span></span>
+<span class="src-line"></span>
+<span class="src-line">    <span class="src-comment">// 1. Drop all JS references to GPU resources (they're invalid)</span></span>
+<span class="src-line">    resourceGarden.<span class="src-method">disposeAll</span>();</span>
+<span class="src-line"></span>
+<span class="src-line">    <span class="src-comment">// 2. Re-create</span></span>
+<span class="src-line">    <span class="src-fn">getDevice</span>().<span class="src-method">then</span>(rebuildPipelines);</span>
+<span class="src-line">  });</span>
+<span class="src-line">}</span>
+      </div>
+
+      <p style="margin-top:14px;">Possible <code>info.reason</code> values (spec §4.4.3):</p>
+      <ul style="margin-left:22px; font-family:var(--mono); font-size:12px; line-height:1.85;">
+        <li><code>"destroyed"</code> — app called <code>device.destroy()</code>.</li>
+        <li><code>"undefined"</code> — anything else (OS / driver / TDR all go here). <em>Yes, literally the string "undefined".</em></li>
+      </ul>
+
+      <p style="margin-top:14px;">The spec keeps <em>device-loss reason coarse</em> as a <em>privacy defence</em> — telling the app "TDR fired" would let an attacker use <em>shader runtime length</em> as a fingerprint (every GPU has a different TDR threshold). So apps only get coarse-grained recovery info.</p>
+
+      <div class="note">
+        <span class="ntag">How Dawn implements device loss</span>
+        <p>Dawn has <em>three layers</em> of handling (<code>src/dawn/native/Device.cpp</code>): ① a backend reports an error (e.g. Metal command-buffer execution failed) → ② Dawn marks the current device as <em>lost</em> and rejects all in-flight command promises → ③ Wire client fires a lost event to the Renderer, which resolves JS's device.lost promise. The whole flow is <em>asynchronous</em> — JS may learn about the error 50ms after it happened.</p>
+      </div>
+
+      <h3 style="margin-top:18px;">Production reality</h3>
+      <p>Babylon.js 5+ ships device-loss listening on by default. Figma reported when launching WebGPU that <em>TDR on Windows + older NVIDIA drivers occurs at ~0.3% / user / month</em> — small, but with millions of users some hit it. Figma's recovery: keep all vector data in JS, 5-second cooldown after loss, then rebuild + resubmit all pipelines + retransfer all static textures (typically 30–100 ms).</p>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 14 — TINT (DAWN FRONTEND) ========== -->
+  <section class="chap" id="c14">
+    <div class="chap-num">CHAPTER&nbsp;14</div>
+    <h2 class="chap-title lang-zh-only">Tint — Dawn 的 WGSL 前端</h2>
+    <h2 class="chap-title lang-en-only">Tint — Dawn's WGSL frontend</h2>
+    <p class="chap-en lang-zh-only">parser → resolver → IR → writer 的四阶段编译器</p>
+    <p class="chap-en lang-en-only">A four-stage compiler: parser → resolver → IR → writer</p>
+
+    <div class="lang-zh-only">
+      <p>Tint 是 Chromium 项目里把 WGSL 翻译到 3 种原生 shader 语言的<em>编译器子项目</em>。地址：<code>chromium/src/third_party/dawn/src/tint/</code>。约 11 万行 C++，由 Google 主要维护，但 Apple/Intel 也有 commit。</p>
+
+      <h3 style="margin-top:18px;">为什么不复用 SPIRV-Cross / DXC / spirv-tools</h3>
+      <p>原本工作组想：写一个 WGSL→SPIR-V 前端，然后 SPIR-V→MSL 走 SPIRV-Cross，SPIR-V→HLSL 走 SPIRV-Cross，HLSL→DXIL 走 DXC。<em>实际尝试后发现</em>：</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li>SPIRV-Cross 历史上有大量 CVE（Khronos 的解析器从 native gamedev 用例进化而来，安全模型不够）。</li>
+        <li>多跳翻译<em>累积语义损失</em>：WGSL 语义 → SPIR-V → MSL 的 round trip 可能丢精度（如 NaN 处理、FP 优化决策）。</li>
+        <li>WebGPU 规定 WGSL 语义<em>严格</em>，每跳都要重新 enforce。</li>
+      </ul>
+      <p style="margin-top:12px;">于是 Tint 走<em>一跳直达</em>：每个 backend 直接从 Tint IR 翻到目标语言。架构清晰、安全可控、性能更好。</p>
+
+      <h3 style="margin-top:18px;">Tint 四阶段</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th>阶段</th><th>路径</th><th>输入</th><th>输出</th><th>典型耗时（一个 shader）</th></tr></thead>
+        <tbody>
+          <tr><td>1. Parse</td><td><code>tint/lang/wgsl/reader/</code></td><td>WGSL 源文本</td><td>AST</td><td>~0.5 ms</td></tr>
+          <tr><td>2. Resolve</td><td><code>tint/lang/wgsl/resolver/</code></td><td>AST</td><td>typed AST（含 type、constant value）</td><td>~1 ms</td></tr>
+          <tr><td>3. Lower to IR</td><td><code>tint/lang/wgsl/program_to_ir/</code></td><td>typed AST</td><td>Tint IR（SSA）</td><td>~0.5 ms</td></tr>
+          <tr><td>4a. Writer · MSL</td><td><code>tint/lang/msl/writer/</code></td><td>IR</td><td>Metal Shading Language</td><td>~1 ms</td></tr>
+          <tr><td>4b. Writer · HLSL</td><td><code>tint/lang/hlsl/writer/</code></td><td>IR</td><td>HLSL（再被 DXC 编 DXIL）</td><td>~1.5 ms</td></tr>
+          <tr><td>4c. Writer · SPIR-V</td><td><code>tint/lang/spirv/writer/</code></td><td>IR</td><td>SPIR-V binary</td><td>~1 ms</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:12px;">主线那段 16 行 WGSL 全程 ~3 ms（首次）。缓存后 0——Dawn 把编译产物 keyed on <code>(WGSL source hash, backend type, target API version)</code> 缓存到 device-scoped HashMap，二次 createShaderModule 直接复用。</p>
+
+      <h3 style="margin-top:18px;">Tint IR 长什么样</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Tint IR</span> · <span class="src-frame">tint/lang/core/ir/</span> · <span class="src-comment">main-line shader after lowering</span></span>
+<span class="src-line"><span class="src-comment">// Tint IR 是 SSA，每条 Value 类型明确，结构类似 LLVM IR 但</span></span>
+<span class="src-line"><span class="src-comment">// 简化了很多（专门服务 shader 编译，不需要 alias 分析）</span></span>
+<span class="src-line"></span>
+<span class="src-line">%main = <span class="src-kw">func</span>(%gid: vec3&lt;u32&gt;) {</span>
+<span class="src-line">  $B1: {</span>
+<span class="src-line">    %2:u32  = access %gid, 0u                <span class="src-comment">// gid.x</span></span>
+<span class="src-line">    %3:ptr&lt;storage, array&lt;f32&gt;, read_write&gt; = access @data</span>
+<span class="src-line">    %4:u32  = arrayLength %3                 <span class="src-comment">// 内置函数</span></span>
+<span class="src-line">    %5:bool = lt %2, %4                      <span class="src-comment">// i &lt; arrayLength(&amp;data)</span></span>
+<span class="src-line">    <span class="src-kw">if</span> %5 [<span class="src-kw">true</span>: $B2] {</span>
+<span class="src-line">      $B2: {</span>
+<span class="src-line">        %6:ptr&lt;storage, f32, read_write&gt; = access %3, %2</span>
+<span class="src-line">        %7:f32 = load %6                     <span class="src-comment">// data[i]</span></span>
+<span class="src-line">        %8:f32 = mul %7, %7                  <span class="src-comment">// data[i] * data[i]</span></span>
+<span class="src-line">        store %6, %8                         <span class="src-comment">// data[i] = ...</span></span>
+<span class="src-line">      }</span>
+<span class="src-line">    }</span>
+<span class="src-line">    <span class="src-kw">ret</span></span>
+<span class="src-line">  }</span>
+<span class="src-line">}</span>
+      </div>
+
+      <h3 style="margin-top:18px;">Resolver 做的 21 件事</h3>
+      <p>Resolver（<code>tint/lang/wgsl/resolver/resolver.cc</code>）是 Tint 里<em>最大的文件</em>（&gt; 8000 行）——因为它要 enforce 整个 WGSL spec 的<em>静态语义</em>。简略列表：</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:13px; line-height:1.85;">
+        <li>类型推断 + 类型检查（如 <code>a + b</code> 要求 a/b 同类型）</li>
+        <li>const-evaluation（<code>const x = 1 + 2 * 3</code> 在编译期求出 7）</li>
+        <li>地址空间合法性（<code>function</code> 不能跨 invocation 共享）</li>
+        <li>function 参数 / 返回值合法性</li>
+        <li>资源 binding 唯一性（同一 group/binding 只能有一个声明）</li>
+        <li>workgroup_size 表达式必须是 const-expression</li>
+        <li>recursion 检查（WGSL 不允许递归）</li>
+        <li>diagnostic filter（<code>@diagnostic(off, derivative_uniformity)</code>）</li>
+        <li>uniform-flow 分析（fragment 派生在 non-uniform 控制流里要报警）</li>
+        <li>...另外 12 项</li>
+      </ul>
+
+      <p style="margin-top:12px;">Resolver 失败 → 整个 ShaderModule 创建失败 → 抛 <code>GPUValidationError</code> 到 JS。这种错误<em>是同步可见的</em>——通过 <code>shader.getCompilationInfo()</code> async API 拿到详细信息。</p>
+    </div>
+
+    <div class="lang-en-only">
+      <p>Tint is the Chromium subproject that translates WGSL into three native shader languages. Path: <code>chromium/src/third_party/dawn/src/tint/</code>. About 110k lines of C++, maintained mostly by Google with Apple/Intel contributions.</p>
+
+      <h3 style="margin-top:18px;">Why not reuse SPIRV-Cross / DXC / spirv-tools</h3>
+      <p>The working group's first plan: write a WGSL→SPIR-V frontend, then SPIR-V→MSL via SPIRV-Cross, SPIR-V→HLSL via SPIRV-Cross, HLSL→DXIL via DXC. <em>In practice</em>:</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li>SPIRV-Cross has accumulated many CVEs (the Khronos parser comes from gamedev needs, weak threat model).</li>
+        <li>Multi-hop translation <em>accumulates semantic loss</em>: WGSL → SPIR-V → MSL can lose precision (NaN handling, FP optimisation decisions).</li>
+        <li>WebGPU requires <em>strict</em> WGSL semantics; every hop has to re-enforce them.</li>
+      </ul>
+      <p style="margin-top:12px;">So Tint takes <em>one direct hop</em>: each backend walks Tint IR straight to the target language. Cleaner architecture, controllable security, better performance.</p>
+
+      <h3 style="margin-top:18px;">The four Tint stages</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th>Stage</th><th>Path</th><th>Input</th><th>Output</th><th>Typical (one shader)</th></tr></thead>
+        <tbody>
+          <tr><td>1. Parse</td><td><code>tint/lang/wgsl/reader/</code></td><td>WGSL source</td><td>AST</td><td>~0.5 ms</td></tr>
+          <tr><td>2. Resolve</td><td><code>tint/lang/wgsl/resolver/</code></td><td>AST</td><td>typed AST (types + const values)</td><td>~1 ms</td></tr>
+          <tr><td>3. Lower to IR</td><td><code>tint/lang/wgsl/program_to_ir/</code></td><td>typed AST</td><td>Tint IR (SSA)</td><td>~0.5 ms</td></tr>
+          <tr><td>4a. Writer · MSL</td><td><code>tint/lang/msl/writer/</code></td><td>IR</td><td>Metal Shading Language</td><td>~1 ms</td></tr>
+          <tr><td>4b. Writer · HLSL</td><td><code>tint/lang/hlsl/writer/</code></td><td>IR</td><td>HLSL (DXC then → DXIL)</td><td>~1.5 ms</td></tr>
+          <tr><td>4c. Writer · SPIR-V</td><td><code>tint/lang/spirv/writer/</code></td><td>IR</td><td>SPIR-V binary</td><td>~1 ms</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:12px;">Our main line's 16-line WGSL takes ~3 ms end-to-end first time. Cached afterwards — Dawn keys compilation results on <code>(WGSL source hash, backend type, target API version)</code> in a device-scoped HashMap; second createShaderModule reuses.</p>
+
+      <h3 style="margin-top:18px;">What Tint IR looks like</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Tint IR</span> · <span class="src-frame">tint/lang/core/ir/</span> · <span class="src-comment">main-line shader after lowering</span></span>
+<span class="src-line"><span class="src-comment">// Tint IR is SSA. Every Value has a definite type. Looks like</span></span>
+<span class="src-line"><span class="src-comment">// LLVM IR but simpler — purpose-built for shader compilation.</span></span>
+<span class="src-line"></span>
+<span class="src-line">%main = <span class="src-kw">func</span>(%gid: vec3&lt;u32&gt;) {</span>
+<span class="src-line">  $B1: {</span>
+<span class="src-line">    %2:u32  = access %gid, 0u                <span class="src-comment">// gid.x</span></span>
+<span class="src-line">    %3:ptr&lt;storage, array&lt;f32&gt;, read_write&gt; = access @data</span>
+<span class="src-line">    %4:u32  = arrayLength %3                 <span class="src-comment">// builtin</span></span>
+<span class="src-line">    %5:bool = lt %2, %4                      <span class="src-comment">// i &lt; arrayLength(&amp;data)</span></span>
+<span class="src-line">    <span class="src-kw">if</span> %5 [<span class="src-kw">true</span>: $B2] {</span>
+<span class="src-line">      $B2: {</span>
+<span class="src-line">        %6:ptr&lt;storage, f32, read_write&gt; = access %3, %2</span>
+<span class="src-line">        %7:f32 = load %6                     <span class="src-comment">// data[i]</span></span>
+<span class="src-line">        %8:f32 = mul %7, %7                  <span class="src-comment">// data[i] * data[i]</span></span>
+<span class="src-line">        store %6, %8                         <span class="src-comment">// data[i] = ...</span></span>
+<span class="src-line">      }</span>
+<span class="src-line">    }</span>
+<span class="src-line">    <span class="src-kw">ret</span></span>
+<span class="src-line">  }</span>
+<span class="src-line">}</span>
+      </div>
+
+      <h3 style="margin-top:18px;">The 21 things Resolver does</h3>
+      <p>The resolver (<code>tint/lang/wgsl/resolver/resolver.cc</code>) is Tint's <em>largest file</em> (&gt; 8000 lines) because it must enforce the entire WGSL spec's <em>static semantics</em>. A non-exhaustive list:</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:13px; line-height:1.85;">
+        <li>Type inference + type checking (e.g. <code>a + b</code> requires same type)</li>
+        <li>const-evaluation (<code>const x = 1 + 2 * 3</code> resolves to 7 at compile time)</li>
+        <li>Address-space legality (<code>function</code> can't be shared across invocations)</li>
+        <li>Function parameter / return type legality</li>
+        <li>Resource-binding uniqueness (one declaration per group/binding)</li>
+        <li>workgroup_size expression must be a const-expression</li>
+        <li>Recursion check (WGSL forbids recursion)</li>
+        <li>Diagnostic filters (<code>@diagnostic(off, derivative_uniformity)</code>)</li>
+        <li>Uniform-flow analysis (fragment derivatives in non-uniform control flow warn)</li>
+        <li>… and 12 more</li>
+      </ul>
+
+      <p style="margin-top:12px;">Resolver failure → ShaderModule creation fails → <code>GPUValidationError</code> raised on JS. This error <em>is observable</em> — via the async <code>shader.getCompilationInfo()</code> you get a structured list of messages.</p>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 15 — NAGA (WGPU FRONTEND) ========== -->
+  <section class="chap" id="c15">
+    <div class="chap-num">CHAPTER&nbsp;15</div>
+    <h2 class="chap-title lang-zh-only">Naga — wgpu 的 WGSL 前端</h2>
+    <h2 class="chap-title lang-en-only">Naga — wgpu's WGSL frontend</h2>
+    <p class="chap-en lang-zh-only">Rust · arena IR · 编译给 Firefox / Bevy / Deno 共用</p>
+    <p class="chap-en lang-en-only">Rust · arena IR · powers Firefox / Bevy / Deno alike</p>
+
+    <div class="lang-zh-only">
+      <p>Naga 是 Tint 的 Rust 对应物。地址：<a href="https://github.com/gfx-rs/wgpu/tree/trunk/naga" target="_blank" rel="noopener">github.com/gfx-rs/wgpu/tree/trunk/naga</a>。约 6 万行 Rust，gfx-rs 团队维护。它和 Tint 干同样的事——WGSL 翻译到 MSL / HLSL / SPIR-V / GLSL（外加 WGSL→WGSL re-print）——但<em>架构很不一样</em>。</p>
+
+      <h3 style="margin-top:18px;">最大的差异：Arena IR</h3>
+      <p>Tint 用经典的<em>对象图</em>——每个 IR 节点都是一个堆分配的 C++ 对象，靠 <code>Block*</code> / <code>Value*</code> 指针互引。Naga 反过来——用<em>arena</em>（slab allocator）：</p>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Naga</span> · <span class="src-frame">naga/src/lib.rs</span> · <span class="src-comment">Module 数据结构</span></span>
+<span class="src-line"><span class="src-kw">pub struct</span> <span class="src-cls">Module</span> {</span>
+<span class="src-line">    <span class="src-comment">// 所有 Type 存在一个 Arena 里，节点引用是 Handle&lt;Type&gt;（u32 index）</span></span>
+<span class="src-line">    <span class="src-kw">pub</span> types: <span class="src-cls">UniqueArena</span>&lt;<span class="src-cls">Type</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> constants: <span class="src-cls">Arena</span>&lt;<span class="src-cls">Constant</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> overrides: <span class="src-cls">Arena</span>&lt;<span class="src-cls">Override</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> global_variables: <span class="src-cls">Arena</span>&lt;<span class="src-cls">GlobalVariable</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> functions: <span class="src-cls">Arena</span>&lt;<span class="src-cls">Function</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> entry_points: <span class="src-cls">Vec</span>&lt;<span class="src-cls">EntryPoint</span>&gt;,</span>
+<span class="src-line">}</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">pub struct</span> <span class="src-cls">Function</span> {</span>
+<span class="src-line">    <span class="src-kw">pub</span> name: <span class="src-cls">Option</span>&lt;<span class="src-cls">String</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> arguments: <span class="src-cls">Vec</span>&lt;<span class="src-cls">FunctionArgument</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> result: <span class="src-cls">Option</span>&lt;<span class="src-cls">FunctionResult</span>&gt;,</span>
+<span class="src-line">    <span class="src-comment">// Local 变量、Expression、Statement 都各自 arena 化</span></span>
+<span class="src-line">    <span class="src-kw">pub</span> local_variables: <span class="src-cls">Arena</span>&lt;<span class="src-cls">LocalVariable</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> expressions: <span class="src-cls">Arena</span>&lt;<span class="src-cls">Expression</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> body: <span class="src-cls">Block</span>,</span>
+<span class="src-line">}</span>
+      </div>
+
+      <p style="margin-top:14px;">为什么用 arena：</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><strong>Rust 友好</strong>：避免 <code>Box&lt;T&gt;</code> 满天飞和 borrow checker 难题。<code>Handle&lt;T&gt;</code> 是 <code>Copy</code>，arena 是<em>不可变借用</em>。</li>
+        <li><strong>缓存友好</strong>：所有同类节点连续布局在内存里，扫一次 IR cache 命中率高。</li>
+        <li><strong>序列化便宜</strong>：整个 Module 可以 zero-copy serialise（如 <code>bincode</code>），让 Firefox 在 GPU 进程间传 IR 极快。</li>
+        <li><strong>易做静态分析</strong>：所有 Expression 是平铺的 SSA，写 visitor 不用 trait object。</li>
+      </ul>
+
+      <h3 style="margin-top:18px;">Naga 的四个前端</h3>
+      <p>Naga 不只有 WGSL 前端——它还能<em>反向</em>读 SPIR-V、GLSL 当输入：</p>
+      <table class="hbench-tbl">
+        <thead><tr><th>前端</th><th>路径</th><th>用途</th></tr></thead>
+        <tbody>
+          <tr><td>WGSL → Module</td><td><code>naga/src/front/wgsl/</code></td><td>主路径，wgpu 用</td></tr>
+          <tr><td>SPIR-V → Module</td><td><code>naga/src/front/spv/</code></td><td>把外部 shader 引入 wgpu</td></tr>
+          <tr><td>GLSL → Module</td><td><code>naga/src/front/glsl/</code></td><td>从 OpenGL 项目迁移用</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:12px;">这是 Naga 比 Tint 灵活的地方——Tint <em>只</em> 接 WGSL。但 WebGPU 浏览器实现只用 WGSL 输入，所以这种灵活性主要服务 wgpu 在非浏览器场景（Bevy 引擎、Deno runtime、Servo）。</p>
+
+      <h3 style="margin-top:18px;">Naga 的四个后端</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th>后端</th><th>路径</th><th>使用方</th></tr></thead>
+        <tbody>
+          <tr><td>Module → MSL</td><td><code>naga/src/back/msl/</code></td><td>Firefox macOS, Bevy macOS</td></tr>
+          <tr><td>Module → HLSL</td><td><code>naga/src/back/hlsl/</code></td><td>Firefox Windows（→ DXC → DXIL）</td></tr>
+          <tr><td>Module → SPIR-V</td><td><code>naga/src/back/spv/</code></td><td>Firefox Linux, Bevy Vulkan</td></tr>
+          <tr><td>Module → GLSL</td><td><code>naga/src/back/glsl/</code></td><td>WebGL 兼容（兜底）</td></tr>
+          <tr><td>Module → WGSL</td><td><code>naga/src/back/wgsl/</code></td><td>调试 / round trip 验证</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:18px;">编译速度</h3>
+      <p>Naga 的 WGSL→MSL 在 M2 Pro 上对主线那段 16 行约 <em>1.2 ms</em>，比 Tint 略快（~3 ms）。差距主要来自 Rust 的 monomorphization 和 arena 的局部性。在 wgpu 的内部 benchmark 上（<code>wgpu/wgpu-types/benches/</code>），Naga 编译 1000 行复杂 shader 约 15 ms，Tint 约 25–30 ms。两者都<em>远快于</em>原生 driver 编译（spirv-tools/glslc/DXC 都 100+ ms）。</p>
+
+      <div class="note">
+        <span class="ntag">两个项目的 spec 拥护方式不一样</span>
+        <p>Tint 的代码组织<em>紧贴 WGSL spec 章节号</em>——<code>tint/lang/wgsl/resolver/uniformity.cc</code> 直接对应 spec §13 uniformity analysis。Naga 的代码组织<em>按数据流</em>——前端折叠各种 source 语言进 Module，后端把 Module 翻成各种 target。两种风格都对，但 Tint 更适合 spec 实现者（一一对应）、Naga 更适合 graphics engine 嵌入者（IR 友好）。</p>
+      </div>
+    </div>
+
+    <div class="lang-en-only">
+      <p>Naga is Tint's Rust counterpart. Repo: <a href="https://github.com/gfx-rs/wgpu/tree/trunk/naga" target="_blank" rel="noopener">github.com/gfx-rs/wgpu/tree/trunk/naga</a>. About 60k lines of Rust, maintained by the gfx-rs team. It does the same job as Tint — translate WGSL into MSL / HLSL / SPIR-V / GLSL (plus a WGSL re-printer) — but its <em>architecture is very different</em>.</p>
+
+      <h3 style="margin-top:18px;">The biggest difference: arena IR</h3>
+      <p>Tint uses a classic <em>object graph</em> — each IR node is a heap-allocated C++ object referenced via <code>Block*</code> / <code>Value*</code>. Naga inverts this and uses <em>arenas</em> (slab allocators):</p>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Naga</span> · <span class="src-frame">naga/src/lib.rs</span> · <span class="src-comment">Module structure</span></span>
+<span class="src-line"><span class="src-kw">pub struct</span> <span class="src-cls">Module</span> {</span>
+<span class="src-line">    <span class="src-comment">// All Types live in one Arena; references are Handle&lt;Type&gt; (u32 index)</span></span>
+<span class="src-line">    <span class="src-kw">pub</span> types: <span class="src-cls">UniqueArena</span>&lt;<span class="src-cls">Type</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> constants: <span class="src-cls">Arena</span>&lt;<span class="src-cls">Constant</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> overrides: <span class="src-cls">Arena</span>&lt;<span class="src-cls">Override</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> global_variables: <span class="src-cls">Arena</span>&lt;<span class="src-cls">GlobalVariable</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> functions: <span class="src-cls">Arena</span>&lt;<span class="src-cls">Function</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> entry_points: <span class="src-cls">Vec</span>&lt;<span class="src-cls">EntryPoint</span>&gt;,</span>
+<span class="src-line">}</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">pub struct</span> <span class="src-cls">Function</span> {</span>
+<span class="src-line">    <span class="src-kw">pub</span> name: <span class="src-cls">Option</span>&lt;<span class="src-cls">String</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> arguments: <span class="src-cls">Vec</span>&lt;<span class="src-cls">FunctionArgument</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> result: <span class="src-cls">Option</span>&lt;<span class="src-cls">FunctionResult</span>&gt;,</span>
+<span class="src-line">    <span class="src-comment">// Locals, expressions, statements each in their own arena</span></span>
+<span class="src-line">    <span class="src-kw">pub</span> local_variables: <span class="src-cls">Arena</span>&lt;<span class="src-cls">LocalVariable</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> expressions: <span class="src-cls">Arena</span>&lt;<span class="src-cls">Expression</span>&gt;,</span>
+<span class="src-line">    <span class="src-kw">pub</span> body: <span class="src-cls">Block</span>,</span>
+<span class="src-line">}</span>
+      </div>
+
+      <p style="margin-top:14px;">Why arenas:</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><strong>Rust-friendly</strong>: no <code>Box&lt;T&gt;</code> everywhere; <code>Handle&lt;T&gt;</code> is <code>Copy</code>; arenas are <em>immutably borrowed</em>, the borrow checker is happy.</li>
+        <li><strong>Cache-friendly</strong>: same-kind nodes live contiguously; one pass walks IR with high cache hit rate.</li>
+        <li><strong>Cheap to serialise</strong>: an entire Module can be zero-copy serialised (e.g. via <code>bincode</code>), making cross-process IR transfer in Firefox very fast.</li>
+        <li><strong>Easy static analysis</strong>: flat SSA — write visitors without trait objects.</li>
+      </ul>
+
+      <h3 style="margin-top:18px;">Naga's four frontends</h3>
+      <p>Naga isn't WGSL-only — it can <em>read back</em> SPIR-V and GLSL as input:</p>
+      <table class="hbench-tbl">
+        <thead><tr><th>Frontend</th><th>Path</th><th>Use</th></tr></thead>
+        <tbody>
+          <tr><td>WGSL → Module</td><td><code>naga/src/front/wgsl/</code></td><td>main path, wgpu</td></tr>
+          <tr><td>SPIR-V → Module</td><td><code>naga/src/front/spv/</code></td><td>importing external shaders</td></tr>
+          <tr><td>GLSL → Module</td><td><code>naga/src/front/glsl/</code></td><td>migration from OpenGL projects</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:12px;">That's where Naga is more flexible than Tint — Tint accepts <em>only</em> WGSL. But browser WebGPU only feeds WGSL, so this flexibility serves wgpu in non-browser contexts (Bevy, Deno, Servo).</p>
+
+      <h3 style="margin-top:18px;">Naga's four backends</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th>Backend</th><th>Path</th><th>Consumer</th></tr></thead>
+        <tbody>
+          <tr><td>Module → MSL</td><td><code>naga/src/back/msl/</code></td><td>Firefox macOS, Bevy macOS</td></tr>
+          <tr><td>Module → HLSL</td><td><code>naga/src/back/hlsl/</code></td><td>Firefox Windows (→ DXC → DXIL)</td></tr>
+          <tr><td>Module → SPIR-V</td><td><code>naga/src/back/spv/</code></td><td>Firefox Linux, Bevy Vulkan</td></tr>
+          <tr><td>Module → GLSL</td><td><code>naga/src/back/glsl/</code></td><td>WebGL fallback</td></tr>
+          <tr><td>Module → WGSL</td><td><code>naga/src/back/wgsl/</code></td><td>debug / round-trip testing</td></tr>
+        </tbody>
+      </table>
+
+      <h3 style="margin-top:18px;">Compilation speed</h3>
+      <p>Naga's WGSL→MSL on M2 Pro for our 16-line shader is about <em>1.2 ms</em>, slightly faster than Tint's ~3 ms. The gap comes from Rust monomorphisation and arena locality. On wgpu's internal benchmarks (<code>wgpu/wgpu-types/benches/</code>), Naga compiles a 1000-line shader in ~15 ms vs Tint's ~25–30 ms. Both are <em>far faster</em> than native driver compilation (spirv-tools/glslc/DXC all run 100+ ms).</p>
+
+      <div class="note">
+        <span class="ntag">Two projects, two organising principles</span>
+        <p>Tint's source layout <em>follows WGSL spec chapters</em> — e.g. <code>tint/lang/wgsl/resolver/uniformity.cc</code> maps to spec §13 uniformity analysis. Naga's layout <em>follows data flow</em> — frontends fold various source languages into Module, backends fold Module into various targets. Both are valid; Tint is friendlier to spec implementers (one-to-one mapping), Naga to engine embedders (IR-friendly).</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 16 — SPIR-V · MSL · HLSL ========== -->
+  <section class="chap" id="c16">
+    <div class="chap-num">CHAPTER&nbsp;16</div>
+    <h2 class="chap-title lang-zh-only">三个翻译目标 — SPIR-V · MSL · HLSL</h2>
+    <h2 class="chap-title lang-en-only">Three translation targets — SPIR-V · MSL · HLSL</h2>
+    <p class="chap-en lang-zh-only">同一行 WGSL，翻译到三种 shader 语言后长什么样</p>
+    <p class="chap-en lang-en-only">The same WGSL line, in three shading languages</p>
+
+    <div class="lang-zh-only">
+      <p>WGSL 进了 Tint/Naga，出来的不再是源代码而是<em>三种格式</em>之一。这一章把<em>同一段</em>主线 WGSL 翻译到三个目标，看每种目标长什么样、各自有什么 quirk。</p>
+
+      <h3 style="margin-top:18px;">输入 WGSL（主线）</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">INPUT</span> · WGSL</span>
+<span class="src-line">@group(<span class="src-num">0</span>) @binding(<span class="src-num">0</span>) <span class="src-kw">var</span>&lt;storage, read_write&gt; data: <span class="src-cls">array</span>&lt;f32&gt;;</span>
+<span class="src-line">@compute @workgroup_size(<span class="src-num">64</span>)</span>
+<span class="src-line"><span class="src-kw">fn</span> <span class="src-fn">main</span>(@builtin(global_invocation_id) gid: vec3&lt;u32&gt;) {</span>
+<span class="src-line">  <span class="src-kw">let</span> i = gid.x;</span>
+<span class="src-line">  <span class="src-kw">if</span> (i &lt; <span class="src-fn">arrayLength</span>(&amp;data)) {</span>
+<span class="src-line">    data[i] = data[i] * data[i];</span>
+<span class="src-line">  }</span>
+<span class="src-line">}</span>
+      </div>
+
+      <h3 style="margin-top:18px;">输出 1 · MSL（Metal Shading Language）</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">OUTPUT · Metal</span> · 用于 macOS · iOS · iPadOS</span>
+<span class="src-line"><span class="src-kw">#include</span> &lt;metal_stdlib&gt;</span>
+<span class="src-line"><span class="src-kw">using namespace</span> metal;</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">struct</span> <span class="src-cls">tint_module_vars_struct</span> {</span>
+<span class="src-line">  <span class="src-cls">device</span> array&lt;<span class="src-kw">float</span>, <span class="src-num">1</span>&gt;* data;</span>
+<span class="src-line">  <span class="src-kw">const constant</span> <span class="src-cls">uint</span>* tint_array_length;</span>
+<span class="src-line">};</span>
+<span class="src-line"></span>
+<span class="src-line">kernel <span class="src-kw">void</span> <span class="src-fn">main_</span>(</span>
+<span class="src-line">    <span class="src-cls">uint3</span> gid [[thread_position_in_grid]],</span>
+<span class="src-line">    <span class="src-cls">tint_module_vars_struct</span> tv [[buffer(<span class="src-num">0</span>)]])</span>
+<span class="src-line">{</span>
+<span class="src-line">  <span class="src-kw">uint</span> i = gid.x;</span>
+<span class="src-line">  <span class="src-kw">if</span> (i &lt; *tv.tint_array_length) {</span>
+<span class="src-line">    tv.data[i] = tv.data[i] * tv.data[i];</span>
+<span class="src-line">  }</span>
+<span class="src-line">}</span>
+      </div>
+
+      <p style="margin-top:14px;">注意点：</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><code>device</code> = MSL 的 storage 地址空间，对应 WGSL <code>storage</code>。</li>
+        <li><code>kernel</code> = MSL 的 compute shader 入口（不是 <code>fragment</code> 或 <code>vertex</code>）。</li>
+        <li><code>[[thread_position_in_grid]]</code> = MSL builtin，对应 WGSL <code>@builtin(global_invocation_id)</code>。</li>
+        <li><code>arrayLength(&amp;data)</code> 不存在于 MSL——Tint 把它<em>编译成 uniform 常量</em>，由 Dawn 在 dispatch 时填进去。这是 Tint 的<em>语义适配层</em>。</li>
+      </ul>
+
+      <h3 style="margin-top:18px;">输出 2 · HLSL（DirectX 12 用）</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">OUTPUT · HLSL</span> · 用于 Windows D3D12</span>
+<span class="src-line"><span class="src-comment">// Tint 输出 SM 6.0 HLSL，然后由 DXC 编成 DXIL</span></span>
+<span class="src-line"><span class="src-cls">RWByteAddressBuffer</span> data : register(u0);</span>
+<span class="src-line"></span>
+<span class="src-line">[numthreads(<span class="src-num">64</span>, <span class="src-num">1</span>, <span class="src-num">1</span>)]</span>
+<span class="src-line"><span class="src-kw">void</span> <span class="src-fn">main</span>(uint3 gid : SV_DispatchThreadID) {</span>
+<span class="src-line">  uint i = gid.x;</span>
+<span class="src-line">  uint dataLength;</span>
+<span class="src-line">  data.GetDimensions(dataLength);</span>
+<span class="src-line">  dataLength /= <span class="src-num">4</span>;  <span class="src-comment">// byte → f32</span></span>
+<span class="src-line">  <span class="src-kw">if</span> (i &lt; dataLength) {</span>
+<span class="src-line">    <span class="src-kw">float</span> v = asfloat(data.Load(i * <span class="src-num">4</span>));</span>
+<span class="src-line">    data.Store(i * <span class="src-num">4</span>, asuint(v * v));</span>
+<span class="src-line">  }</span>
+<span class="src-line">}</span>
+      </div>
+
+      <p style="margin-top:14px;">D3D12 的 storage buffer 用 <code>RWByteAddressBuffer</code>，<em>所有访问都按字节</em>。Tint 把 <code>data[i]</code>（f32 数组）翻译成 <code>data.Load(i * 4)</code> 加 <code>asfloat()</code>。这是<em>巨大语义跳变</em>——也是 HLSL 后端比 MSL 后端复杂的根本原因。</p>
+
+      <h3 style="margin-top:18px;">输出 3 · SPIR-V（Vulkan 用）</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">OUTPUT · SPIR-V</span> · 用于 Linux Vulkan · Android</span>
+<span class="src-line"><span class="src-comment">// SPIR-V 是二进制 IR，下面是 SPIRV-Dis 反汇编</span></span>
+<span class="src-line">; Module Version 1.3</span>
+<span class="src-line">; Generator: Tint 1.x</span>
+<span class="src-line">                <span class="src-kw">OpCapability</span> Shader</span>
+<span class="src-line">                <span class="src-kw">OpMemoryModel</span> Logical GLSL450</span>
+<span class="src-line">                <span class="src-kw">OpEntryPoint</span> GLCompute %main "main" %gid</span>
+<span class="src-line">                <span class="src-kw">OpExecutionMode</span> %main LocalSize <span class="src-num">64</span> <span class="src-num">1</span> <span class="src-num">1</span></span>
+<span class="src-line"></span>
+<span class="src-line">%void   = <span class="src-kw">OpTypeVoid</span></span>
+<span class="src-line">%float  = <span class="src-kw">OpTypeFloat</span> <span class="src-num">32</span></span>
+<span class="src-line">%uint   = <span class="src-kw">OpTypeInt</span> <span class="src-num">32</span> <span class="src-num">0</span></span>
+<span class="src-line">%v3uint = <span class="src-kw">OpTypeVector</span> %uint <span class="src-num">3</span></span>
+<span class="src-line">%data_arr = <span class="src-kw">OpTypeRuntimeArray</span> %float</span>
+<span class="src-line">%data_buf = <span class="src-kw">OpTypeStruct</span> %data_arr</span>
+<span class="src-line">%data_ptr = <span class="src-kw">OpTypePointer</span> StorageBuffer %data_buf</span>
+<span class="src-line">          <span class="src-kw">OpDecorate</span> %data_buf BufferBlock</span>
+<span class="src-line">          <span class="src-kw">OpDecorate</span> %data DescriptorSet <span class="src-num">0</span></span>
+<span class="src-line">          <span class="src-kw">OpDecorate</span> %data Binding <span class="src-num">0</span></span>
+<span class="src-line">          <span class="src-comment">; ... 接下来 80 多条指令编码 if + 乘 + store ...</span></span>
+      </div>
+
+      <p style="margin-top:14px;">SPIR-V 是<em>二进制 IR</em>，下面给的是 spirv-dis 的可读版本。一个 16 行 WGSL 出来约 120 条 SPIR-V 指令、二进制 ~600 字节。SPIR-V 的优点是<em>可被驱动直接吃</em>、Khronos 已经有十几个 vendor 实现；缺点是<em>不可读</em>、debug 必须 spirv-dis。</p>
+
+      <h3 style="margin-top:18px;">三个目标的语义对齐</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th>语义</th><th>WGSL</th><th>MSL</th><th>HLSL</th><th>SPIR-V</th></tr></thead>
+        <tbody>
+          <tr><td>整数溢出</td><td>wrap (2's complement)</td><td>wrap</td><td>wrap</td><td>wrap (with OpDecorate)</td></tr>
+          <tr><td>除以 0（整数）</td><td>未定义（typically 0）</td><td>未定义</td><td>未定义</td><td>未定义</td></tr>
+          <tr><td>NaN ordering</td><td>std::isnan 可用</td><td>同</td><td>同</td><td>同</td></tr>
+          <tr><td>越界 array read</td><td><em>required</em>: 0 或 clamp</td><td>需手动 clamp</td><td>RWByteAddressBuffer 自动 0</td><td>需 capability</td></tr>
+          <tr><td>workgroup memory size</td><td>16 KB 最低保证</td><td>~32 KB (Apple)</td><td>32 KB（D3D12）</td><td>32 KB（Vulkan 1.1）</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:14px;">注意"越界 read"那行——WGSL spec 强制规定<em>越界读必须 0 或 clamp</em>（不能 UB）。这是 WebGPU 安全模型的核心。Tint/Naga 的<em>每个 backend</em>都要 patch 进相应保护代码：MSL 加显式 if 判断、HLSL 用 RWByteAddressBuffer 自带的保护、SPIR-V 加 RobustBufferAccess capability。</p>
+    </div>
+
+    <div class="lang-en-only">
+      <p>WGSL goes into Tint/Naga and comes out as <em>one of three formats</em>. This chapter translates the <em>same</em> main-line WGSL to all three targets, side by side, with the quirks each one brings.</p>
+
+      <h3 style="margin-top:18px;">Input WGSL (the main line)</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">INPUT</span> · WGSL</span>
+<span class="src-line">@group(<span class="src-num">0</span>) @binding(<span class="src-num">0</span>) <span class="src-kw">var</span>&lt;storage, read_write&gt; data: <span class="src-cls">array</span>&lt;f32&gt;;</span>
+<span class="src-line">@compute @workgroup_size(<span class="src-num">64</span>)</span>
+<span class="src-line"><span class="src-kw">fn</span> <span class="src-fn">main</span>(@builtin(global_invocation_id) gid: vec3&lt;u32&gt;) {</span>
+<span class="src-line">  <span class="src-kw">let</span> i = gid.x;</span>
+<span class="src-line">  <span class="src-kw">if</span> (i &lt; <span class="src-fn">arrayLength</span>(&amp;data)) {</span>
+<span class="src-line">    data[i] = data[i] * data[i];</span>
+<span class="src-line">  }</span>
+<span class="src-line">}</span>
+      </div>
+
+      <h3 style="margin-top:18px;">Output 1 · MSL (Metal Shading Language)</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">OUTPUT · Metal</span> · for macOS · iOS · iPadOS</span>
+<span class="src-line"><span class="src-kw">#include</span> &lt;metal_stdlib&gt;</span>
+<span class="src-line"><span class="src-kw">using namespace</span> metal;</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-kw">struct</span> <span class="src-cls">tint_module_vars_struct</span> {</span>
+<span class="src-line">  <span class="src-cls">device</span> array&lt;<span class="src-kw">float</span>, <span class="src-num">1</span>&gt;* data;</span>
+<span class="src-line">  <span class="src-kw">const constant</span> <span class="src-cls">uint</span>* tint_array_length;</span>
+<span class="src-line">};</span>
+<span class="src-line"></span>
+<span class="src-line">kernel <span class="src-kw">void</span> <span class="src-fn">main_</span>(</span>
+<span class="src-line">    <span class="src-cls">uint3</span> gid [[thread_position_in_grid]],</span>
+<span class="src-line">    <span class="src-cls">tint_module_vars_struct</span> tv [[buffer(<span class="src-num">0</span>)]])</span>
+<span class="src-line">{</span>
+<span class="src-line">  <span class="src-kw">uint</span> i = gid.x;</span>
+<span class="src-line">  <span class="src-kw">if</span> (i &lt; *tv.tint_array_length) {</span>
+<span class="src-line">    tv.data[i] = tv.data[i] * tv.data[i];</span>
+<span class="src-line">  }</span>
+<span class="src-line">}</span>
+      </div>
+
+      <p style="margin-top:14px;">Things to notice:</p>
+      <ul style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
+        <li><code>device</code> = MSL's storage address space, equivalent to WGSL <code>storage</code>.</li>
+        <li><code>kernel</code> = MSL's compute-shader entry (not <code>fragment</code>, not <code>vertex</code>).</li>
+        <li><code>[[thread_position_in_grid]]</code> = MSL builtin, maps WGSL <code>@builtin(global_invocation_id)</code>.</li>
+        <li><code>arrayLength(&amp;data)</code> doesn't exist in MSL — Tint <em>compiles it into a uniform constant</em> filled in by Dawn at dispatch time. This is Tint's <em>semantic adaptation layer</em>.</li>
+      </ul>
+
+      <h3 style="margin-top:18px;">Output 2 · HLSL (for D3D12)</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">OUTPUT · HLSL</span> · for Windows D3D12</span>
+<span class="src-line"><span class="src-comment">// Tint emits Shader Model 6.0 HLSL; DXC then compiles it to DXIL</span></span>
+<span class="src-line"><span class="src-cls">RWByteAddressBuffer</span> data : register(u0);</span>
+<span class="src-line"></span>
+<span class="src-line">[numthreads(<span class="src-num">64</span>, <span class="src-num">1</span>, <span class="src-num">1</span>)]</span>
+<span class="src-line"><span class="src-kw">void</span> <span class="src-fn">main</span>(uint3 gid : SV_DispatchThreadID) {</span>
+<span class="src-line">  uint i = gid.x;</span>
+<span class="src-line">  uint dataLength;</span>
+<span class="src-line">  data.GetDimensions(dataLength);</span>
+<span class="src-line">  dataLength /= <span class="src-num">4</span>;  <span class="src-comment">// bytes → f32 count</span></span>
+<span class="src-line">  <span class="src-kw">if</span> (i &lt; dataLength) {</span>
+<span class="src-line">    <span class="src-kw">float</span> v = asfloat(data.Load(i * <span class="src-num">4</span>));</span>
+<span class="src-line">    data.Store(i * <span class="src-num">4</span>, asuint(v * v));</span>
+<span class="src-line">  }</span>
+<span class="src-line">}</span>
+      </div>
+
+      <p style="margin-top:14px;">D3D12 storage buffers are <code>RWByteAddressBuffer</code>; <em>all access is byte-addressed</em>. Tint translates <code>data[i]</code> (an f32 array) into <code>data.Load(i * 4)</code> + <code>asfloat()</code>. This is a <em>huge semantic shift</em> and the reason the HLSL backend is harder than the MSL backend.</p>
+
+      <h3 style="margin-top:18px;">Output 3 · SPIR-V (for Vulkan)</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">OUTPUT · SPIR-V</span> · for Linux Vulkan · Android</span>
+<span class="src-line"><span class="src-comment">// SPIR-V is binary IR; below is spirv-dis output</span></span>
+<span class="src-line">; Module Version 1.3</span>
+<span class="src-line">; Generator: Tint 1.x</span>
+<span class="src-line">                <span class="src-kw">OpCapability</span> Shader</span>
+<span class="src-line">                <span class="src-kw">OpMemoryModel</span> Logical GLSL450</span>
+<span class="src-line">                <span class="src-kw">OpEntryPoint</span> GLCompute %main "main" %gid</span>
+<span class="src-line">                <span class="src-kw">OpExecutionMode</span> %main LocalSize <span class="src-num">64</span> <span class="src-num">1</span> <span class="src-num">1</span></span>
+<span class="src-line"></span>
+<span class="src-line">%void   = <span class="src-kw">OpTypeVoid</span></span>
+<span class="src-line">%float  = <span class="src-kw">OpTypeFloat</span> <span class="src-num">32</span></span>
+<span class="src-line">%uint   = <span class="src-kw">OpTypeInt</span> <span class="src-num">32</span> <span class="src-num">0</span></span>
+<span class="src-line">%v3uint = <span class="src-kw">OpTypeVector</span> %uint <span class="src-num">3</span></span>
+<span class="src-line">%data_arr = <span class="src-kw">OpTypeRuntimeArray</span> %float</span>
+<span class="src-line">%data_buf = <span class="src-kw">OpTypeStruct</span> %data_arr</span>
+<span class="src-line">%data_ptr = <span class="src-kw">OpTypePointer</span> StorageBuffer %data_buf</span>
+<span class="src-line">          <span class="src-kw">OpDecorate</span> %data_buf BufferBlock</span>
+<span class="src-line">          <span class="src-kw">OpDecorate</span> %data DescriptorSet <span class="src-num">0</span></span>
+<span class="src-line">          <span class="src-kw">OpDecorate</span> %data Binding <span class="src-num">0</span></span>
+<span class="src-line">          <span class="src-comment">; ... ~80 more instructions encode if + mul + store ...</span></span>
+      </div>
+
+      <p style="margin-top:14px;">SPIR-V is <em>binary IR</em>; the text above is spirv-dis output. Our 16-line WGSL becomes ~120 SPIR-V instructions, ~600 bytes binary. SPIR-V's advantage: <em>directly consumable by drivers</em>, dozens of vendor implementations already exist. Disadvantage: <em>unreadable</em>; debugging requires spirv-dis.</p>
+
+      <h3 style="margin-top:18px;">Semantic alignment across targets</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th>Semantic</th><th>WGSL</th><th>MSL</th><th>HLSL</th><th>SPIR-V</th></tr></thead>
+        <tbody>
+          <tr><td>Integer overflow</td><td>wraps (two's complement)</td><td>wraps</td><td>wraps</td><td>wraps (with OpDecorate)</td></tr>
+          <tr><td>Integer divide by 0</td><td>undefined (typically 0)</td><td>undefined</td><td>undefined</td><td>undefined</td></tr>
+          <tr><td>NaN ordering</td><td>std::isnan available</td><td>same</td><td>same</td><td>same</td></tr>
+          <tr><td>Out-of-bounds array read</td><td><em>required</em>: 0 or clamp</td><td>manual clamp needed</td><td>RWByteAddressBuffer auto-zeros</td><td>needs capability</td></tr>
+          <tr><td>Workgroup memory</td><td>16 KB guaranteed</td><td>~32 KB (Apple)</td><td>32 KB (D3D12)</td><td>32 KB (Vulkan 1.1)</td></tr>
+        </tbody>
+      </table>
+
+      <p style="margin-top:14px;">Note the "out-of-bounds read" row — WGSL spec <em>mandates 0 or clamp</em> on OOB reads (no UB allowed). That's core to WebGPU's safety model. Tint/Naga's <em>every backend</em> patches in the corresponding protection: MSL adds an explicit if-bound check, HLSL uses RWByteAddressBuffer's built-in zeroing, SPIR-V adds the RobustBufferAccess capability.</p>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 17 — METAL · D3D12 · VULKAN ========== -->
+  <section class="chap" id="c17">
+    <div class="chap-num">CHAPTER&nbsp;17</div>
+    <h2 class="chap-title lang-zh-only">原生 API 映射 — Metal · D3D12 · Vulkan</h2>
+    <h2 class="chap-title lang-en-only">Native API mapping — Metal · D3D12 · Vulkan</h2>
+    <p class="chap-en lang-zh-only">同一个 WebGPU dispatch，在三个原生 API 下的调用链</p>
+    <p class="chap-en lang-en-only">One WebGPU dispatch, mapped to three native API call chains</p>
+
+    <div class="lang-zh-only">
+      <p>这是翻译⑥的最后一步。Dawn / wgpu 拿到编译好的 shader 后要把它<em>变成原生 API 调用</em>。这一章把主线 ⑥ 在三个原生 API 下的<em>完整调用链</em>列出来。</p>
+
+      <h3 style="margin-top:18px;">主线提交 → Metal（macOS · iOS）</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Dawn</span> · <span class="src-frame">src/dawn/native/metal/CommandBufferMTL.mm</span></span>
+<span class="src-line"><span class="src-comment">// WebGPU dispatchWorkgroups(16384) 在 Metal 下：</span></span>
+<span class="src-line">id&lt;MTLCommandQueue&gt; queue = ...;</span>
+<span class="src-line">id&lt;MTLCommandBuffer&gt; cb = [queue commandBuffer];</span>
+<span class="src-line">id&lt;MTLComputeCommandEncoder&gt; enc = [cb computeCommandEncoder];</span>
+<span class="src-line"></span>
+<span class="src-line">[enc setComputePipelineState:pipelineState];</span>
+<span class="src-line">[enc setBuffer:dataBuffer offset:<span class="src-num">0</span> atIndex:<span class="src-num">0</span>];</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 一次 dispatch · workgroupCount × workgroupSize</span></span>
+<span class="src-line">[enc dispatchThreadgroups:<span class="src-cls">MTLSizeMake</span>(<span class="src-num">16384</span>, <span class="src-num">1</span>, <span class="src-num">1</span>)</span>
+<span class="src-line">    threadsPerThreadgroup:<span class="src-cls">MTLSizeMake</span>(<span class="src-num">64</span>, <span class="src-num">1</span>, <span class="src-num">1</span>)];</span>
+<span class="src-line"></span>
+<span class="src-line">[enc endEncoding];</span>
+<span class="src-line">[cb commit];</span>
+      </div>
+
+      <p style="margin-top:14px;">Metal 的优点：<em>类型一致</em>——dispatch 直接传 threadgroup 数 + 每 threadgroup 线程数（对应 WGSL <code>workgroupCount</code> + <code>workgroup_size</code>）。Apple GPU 直接用这套模型，没有翻译损失。Apple Silicon 上 Dawn 测得 dispatch 命令<em>本身</em>~10 µs（命令录制），等待 GPU 执行另算。</p>
+
+      <h3 style="margin-top:18px;">主线提交 → D3D12（Windows）</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Dawn</span> · <span class="src-frame">src/dawn/native/d3d12/CommandBufferD3D12.cpp</span></span>
+<span class="src-line"><span class="src-comment">// 同一行 dispatchWorkgroups(16384) 在 D3D12 下：</span></span>
+<span class="src-line">ID3D12CommandAllocator* allocator = ...;</span>
+<span class="src-line">ID3D12GraphicsCommandList* cl = ...;</span>
+<span class="src-line">cl-&gt;<span class="src-method">Reset</span>(allocator, <span class="src-kw">nullptr</span>);</span>
+<span class="src-line"></span>
+<span class="src-line">cl-&gt;<span class="src-method">SetPipelineState</span>(pipelineState);</span>
+<span class="src-line">cl-&gt;<span class="src-method">SetComputeRootSignature</span>(rootSignature);</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Descriptor heap 切换（如有必要）</span></span>
+<span class="src-line">cl-&gt;<span class="src-method">SetDescriptorHeaps</span>(<span class="src-num">2</span>, heaps);</span>
+<span class="src-line">cl-&gt;<span class="src-method">SetComputeRootDescriptorTable</span>(<span class="src-num">0</span>, dataDescriptor);</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// 显式 resource barrier · D3D12 比 Metal 要求多</span></span>
+<span class="src-line">D3D12_RESOURCE_BARRIER barrier = ...;</span>
+<span class="src-line">cl-&gt;<span class="src-method">ResourceBarrier</span>(<span class="src-num">1</span>, &amp;barrier);</span>
+<span class="src-line"></span>
+<span class="src-line">cl-&gt;<span class="src-method">Dispatch</span>(<span class="src-num">16384</span>, <span class="src-num">1</span>, <span class="src-num">1</span>);</span>
+<span class="src-line"></span>
+<span class="src-line">cl-&gt;<span class="src-method">Close</span>();</span>
+<span class="src-line">ID3D12CommandQueue* q = ...;</span>
+<span class="src-line">q-&gt;<span class="src-method">ExecuteCommandLists</span>(<span class="src-num">1</span>, &amp;cl);</span>
+      </div>
+
+      <p style="margin-top:14px;">D3D12 多两个东西：① <em>root signature</em>（每个 pipeline 必须显式给出整个 binding shape）和 ② <em>resource barrier</em>（每个资源状态变化必须显式宣告）。Dawn 的 D3D12 backend 比 Metal 多 ~2× 代码量就因为要处理这两个。</p>
+
+      <h3 style="margin-top:18px;">主线提交 → Vulkan（Linux · Android）</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Dawn</span> · <span class="src-frame">src/dawn/native/vulkan/CommandBufferVk.cpp</span></span>
+<span class="src-line"><span class="src-comment">// 同一行 dispatch 在 Vulkan 下：</span></span>
+<span class="src-line">VkCommandBuffer cb = ...;</span>
+<span class="src-line">vkBeginCommandBuffer(cb, &amp;beginInfo);</span>
+<span class="src-line"></span>
+<span class="src-line">vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);</span>
+<span class="src-line">vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE,</span>
+<span class="src-line">    pipelineLayout, <span class="src-num">0</span>, <span class="src-num">1</span>, &amp;descriptorSet, <span class="src-num">0</span>, <span class="src-kw">nullptr</span>);</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// pipeline barrier（比 D3D12 还显式）</span></span>
+<span class="src-line">vkCmdPipelineBarrier(cb, srcStage, dstStage, <span class="src-num">0</span>,</span>
+<span class="src-line">    <span class="src-num">0</span>, <span class="src-kw">nullptr</span>, <span class="src-num">1</span>, &amp;bufferBarrier, <span class="src-num">0</span>, <span class="src-kw">nullptr</span>);</span>
+<span class="src-line"></span>
+<span class="src-line">vkCmdDispatch(cb, <span class="src-num">16384</span>, <span class="src-num">1</span>, <span class="src-num">1</span>);</span>
+<span class="src-line"></span>
+<span class="src-line">vkEndCommandBuffer(cb);</span>
+<span class="src-line"></span>
+<span class="src-line">VkSubmitInfo si = ...;</span>
+<span class="src-line">si.commandBufferCount = <span class="src-num">1</span>;  si.pCommandBuffers = &amp;cb;</span>
+<span class="src-line">vkQueueSubmit(queue, <span class="src-num">1</span>, &amp;si, fence);</span>
+      </div>
+
+      <h3 style="margin-top:18px;">三家差异速查</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th></th><th>Metal</th><th>D3D12</th><th>Vulkan</th></tr></thead>
+        <tbody>
+          <tr><td>命令 buffer 类型</td><td><code>MTLCommandBuffer</code></td><td><code>ID3D12GraphicsCommandList</code></td><td><code>VkCommandBuffer</code></td></tr>
+          <tr><td>Pipeline 状态</td><td>argument buffer 自动</td><td>root signature 显式</td><td>descriptor set + pipeline layout 显式</td></tr>
+          <tr><td>Resource barrier</td><td>大部分自动</td><td>显式 <code>ResourceBarrier</code></td><td>显式 <code>vkCmdPipelineBarrier</code>（最严）</td></tr>
+          <tr><td>Threadgroup vs threads</td><td>threadgroup 和 thread 都显</td><td>numthreads 在 shader; Dispatch 是 group 数</td><td>同 D3D12</td></tr>
+          <tr><td>同步原语</td><td>MTLFence (event-based)</td><td>ID3D12Fence (value-based)</td><td>VkFence / VkSemaphore (binary)</td></tr>
+          <tr><td>Dawn 后端代码量</td><td>~3.5 万行 Obj-C++</td><td>~5 万行 C++</td><td>~5.5 万行 C++</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <span class="ntag">为什么 Vulkan 后端最大</span>
+        <p>Vulkan 的<em>显式同步</em>是三家最严的——每个 buffer/texture 在 dispatch 之前都要 declare 当前 state 和目标 state，每个 image layout transition 都要写 barrier。Dawn 的 Vulkan backend 有一个完整的 "subresource state tracker" 来在<em>录制 encoder</em> 时自动算出所有 barrier。这部分代码占 Vulkan backend 的 ~30%。</p>
+      </div>
+
+      <p style="margin-top:14px;">现在你看到主线那一行 <code>pass.dispatchWorkgroups(16384)</code> 最终是怎么变成 <code>[enc dispatchThreadgroups:...]</code> 或 <code>cl-&gt;Dispatch(16384,1,1)</code> 或 <code>vkCmdDispatch(cb,16384,1,1)</code> 的——<em>八重翻译</em> 到此结束第七层。最后一层（GPU 命令处理器实际 dispatch），Ch18 展开。</p>
+    </div>
+
+    <div class="lang-en-only">
+      <p>This unpacks translation step ⑥. Once Dawn / wgpu has the compiled shader, it must <em>translate into native API calls</em>. This chapter shows the <em>complete call chain</em> for main line ⑥ on all three native APIs.</p>
+
+      <h3 style="margin-top:18px;">Main line submit → Metal (macOS · iOS)</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Dawn</span> · <span class="src-frame">src/dawn/native/metal/CommandBufferMTL.mm</span></span>
+<span class="src-line"><span class="src-comment">// WebGPU dispatchWorkgroups(16384) on Metal:</span></span>
+<span class="src-line">id&lt;MTLCommandQueue&gt; queue = ...;</span>
+<span class="src-line">id&lt;MTLCommandBuffer&gt; cb = [queue commandBuffer];</span>
+<span class="src-line">id&lt;MTLComputeCommandEncoder&gt; enc = [cb computeCommandEncoder];</span>
+<span class="src-line"></span>
+<span class="src-line">[enc setComputePipelineState:pipelineState];</span>
+<span class="src-line">[enc setBuffer:dataBuffer offset:<span class="src-num">0</span> atIndex:<span class="src-num">0</span>];</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// one dispatch · workgroup count × per-workgroup threads</span></span>
+<span class="src-line">[enc dispatchThreadgroups:<span class="src-cls">MTLSizeMake</span>(<span class="src-num">16384</span>, <span class="src-num">1</span>, <span class="src-num">1</span>)</span>
+<span class="src-line">    threadsPerThreadgroup:<span class="src-cls">MTLSizeMake</span>(<span class="src-num">64</span>, <span class="src-num">1</span>, <span class="src-num">1</span>)];</span>
+<span class="src-line"></span>
+<span class="src-line">[enc endEncoding];</span>
+<span class="src-line">[cb commit];</span>
+      </div>
+
+      <p style="margin-top:14px;">Metal's strength: <em>type-aligned</em> — dispatch takes both threadgroup count and per-threadgroup thread count (matching WGSL <code>workgroupCount</code> + <code>workgroup_size</code>). Apple GPUs natively use this model — no translation lossage. On Apple Silicon, Dawn measures the dispatch <em>command itself</em> at ~10 µs (command recording); GPU execution is separate.</p>
+
+      <h3 style="margin-top:18px;">Main line submit → D3D12 (Windows)</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Dawn</span> · <span class="src-frame">src/dawn/native/d3d12/CommandBufferD3D12.cpp</span></span>
+<span class="src-line"><span class="src-comment">// Same dispatchWorkgroups(16384) on D3D12:</span></span>
+<span class="src-line">ID3D12CommandAllocator* allocator = ...;</span>
+<span class="src-line">ID3D12GraphicsCommandList* cl = ...;</span>
+<span class="src-line">cl-&gt;<span class="src-method">Reset</span>(allocator, <span class="src-kw">nullptr</span>);</span>
+<span class="src-line"></span>
+<span class="src-line">cl-&gt;<span class="src-method">SetPipelineState</span>(pipelineState);</span>
+<span class="src-line">cl-&gt;<span class="src-method">SetComputeRootSignature</span>(rootSignature);</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Descriptor heap switch (if needed)</span></span>
+<span class="src-line">cl-&gt;<span class="src-method">SetDescriptorHeaps</span>(<span class="src-num">2</span>, heaps);</span>
+<span class="src-line">cl-&gt;<span class="src-method">SetComputeRootDescriptorTable</span>(<span class="src-num">0</span>, dataDescriptor);</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Explicit resource barrier · D3D12 needs more than Metal</span></span>
+<span class="src-line">D3D12_RESOURCE_BARRIER barrier = ...;</span>
+<span class="src-line">cl-&gt;<span class="src-method">ResourceBarrier</span>(<span class="src-num">1</span>, &amp;barrier);</span>
+<span class="src-line"></span>
+<span class="src-line">cl-&gt;<span class="src-method">Dispatch</span>(<span class="src-num">16384</span>, <span class="src-num">1</span>, <span class="src-num">1</span>);</span>
+<span class="src-line"></span>
+<span class="src-line">cl-&gt;<span class="src-method">Close</span>();</span>
+<span class="src-line">ID3D12CommandQueue* q = ...;</span>
+<span class="src-line">q-&gt;<span class="src-method">ExecuteCommandLists</span>(<span class="src-num">1</span>, &amp;cl);</span>
+      </div>
+
+      <p style="margin-top:14px;">D3D12 has two extra concepts: ① <em>root signature</em> (every pipeline must explicitly declare its full binding shape) and ② <em>resource barriers</em> (every resource state change must be declared explicitly). Dawn's D3D12 backend is ~2× the code of its Metal backend mostly because of these.</p>
+
+      <h3 style="margin-top:18px;">Main line submit → Vulkan (Linux · Android)</h3>
+      <div class="src-stack">
+<span class="src-h"><span class="src-tag">Dawn</span> · <span class="src-frame">src/dawn/native/vulkan/CommandBufferVk.cpp</span></span>
+<span class="src-line"><span class="src-comment">// Same dispatch on Vulkan:</span></span>
+<span class="src-line">VkCommandBuffer cb = ...;</span>
+<span class="src-line">vkBeginCommandBuffer(cb, &amp;beginInfo);</span>
+<span class="src-line"></span>
+<span class="src-line">vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);</span>
+<span class="src-line">vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_COMPUTE,</span>
+<span class="src-line">    pipelineLayout, <span class="src-num">0</span>, <span class="src-num">1</span>, &amp;descriptorSet, <span class="src-num">0</span>, <span class="src-kw">nullptr</span>);</span>
+<span class="src-line"></span>
+<span class="src-line"><span class="src-comment">// Pipeline barrier — even more explicit than D3D12</span></span>
+<span class="src-line">vkCmdPipelineBarrier(cb, srcStage, dstStage, <span class="src-num">0</span>,</span>
+<span class="src-line">    <span class="src-num">0</span>, <span class="src-kw">nullptr</span>, <span class="src-num">1</span>, &amp;bufferBarrier, <span class="src-num">0</span>, <span class="src-kw">nullptr</span>);</span>
+<span class="src-line"></span>
+<span class="src-line">vkCmdDispatch(cb, <span class="src-num">16384</span>, <span class="src-num">1</span>, <span class="src-num">1</span>);</span>
+<span class="src-line"></span>
+<span class="src-line">vkEndCommandBuffer(cb);</span>
+<span class="src-line"></span>
+<span class="src-line">VkSubmitInfo si = ...;</span>
+<span class="src-line">si.commandBufferCount = <span class="src-num">1</span>;  si.pCommandBuffers = &amp;cb;</span>
+<span class="src-line">vkQueueSubmit(queue, <span class="src-num">1</span>, &amp;si, fence);</span>
+      </div>
+
+      <h3 style="margin-top:18px;">Three-API quick reference</h3>
+      <table class="hbench-tbl">
+        <thead><tr><th></th><th>Metal</th><th>D3D12</th><th>Vulkan</th></tr></thead>
+        <tbody>
+          <tr><td>Command buffer type</td><td><code>MTLCommandBuffer</code></td><td><code>ID3D12GraphicsCommandList</code></td><td><code>VkCommandBuffer</code></td></tr>
+          <tr><td>Pipeline state binding</td><td>argument buffer (auto)</td><td>root signature (explicit)</td><td>descriptor set + pipeline layout (explicit)</td></tr>
+          <tr><td>Resource barriers</td><td>mostly automatic</td><td>explicit <code>ResourceBarrier</code></td><td>explicit <code>vkCmdPipelineBarrier</code> (strictest)</td></tr>
+          <tr><td>Threadgroup vs threads</td><td>both explicit</td><td>numthreads in shader; Dispatch counts groups</td><td>same as D3D12</td></tr>
+          <tr><td>Sync primitives</td><td>MTLFence (event-based)</td><td>ID3D12Fence (value-based)</td><td>VkFence / VkSemaphore (binary)</td></tr>
+          <tr><td>Dawn backend size</td><td>~35k lines Obj-C++</td><td>~50k lines C++</td><td>~55k lines C++</td></tr>
+        </tbody>
+      </table>
+
+      <div class="note">
+        <span class="ntag">Why the Vulkan backend is biggest</span>
+        <p>Vulkan's <em>explicit synchronisation</em> is the strictest of the three — every buffer/texture must declare current and target state before a dispatch, every image layout transition needs a barrier. Dawn's Vulkan backend has an entire "subresource state tracker" to <em>compute all barriers</em> at encoder-record time. That subsystem alone is ~30% of the backend.</p>
+      </div>
+
+      <p style="margin-top:14px;">Now you've seen how one <code>pass.dispatchWorkgroups(16384)</code> becomes <code>[enc dispatchThreadgroups:...]</code> on Metal, <code>cl-&gt;Dispatch(16384,1,1)</code> on D3D12, or <code>vkCmdDispatch(cb,16384,1,1)</code> on Vulkan — <em>seven of eight</em> translations done. The eighth (the GPU command processor actually dispatching SIMT waves) is unpacked in Ch18.</p>
+    </div>
+  </section>
+
 </div>
 
 <script>
