@@ -28,6 +28,7 @@ import { portalHidden, getSeasonalInteractableFor } from '../seasonal_rules'
 import { maybeJoinMorningCoffee, leaveMorningCoffeeIfNeeded, setCoffeeBannerHandler } from '../morning_coffee'
 import { maybeNoticeCookAlong, leaveCookAlongIfNeeded, setCookBannerHandler, startOrJoinCookAlong } from '../group_cook'
 import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJamBurstTier } from '../group_jam'
+import { tickNpcEvents, leaveNpcEventIfNeeded, setEventBannerHandler, currentEventStatus } from '../npc_events'
 import { setPartyProgressToken } from '../party'
 import { setPartyOnEnter, setPartyDisplayName } from '../party_ui'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
@@ -423,6 +424,36 @@ export class RoomScene extends Phaser.Scene {
       if (text) { if (tx) tx.textContent = text; el.hidden = false }
       else el.hidden = true
     })
+
+    // V14.4 — NPC-hosted scheduled events banner + auto-join
+    leaveNpcEventIfNeeded(this.currentRoomId)
+    setEventBannerHandler((info) => {
+      const el = document.getElementById('lounge-event-banner')
+      const tx = document.getElementById('lounge-event-banner-text')
+      const cta = document.getElementById('lounge-event-banner-cta') as HTMLButtonElement | null
+      if (!el) return
+      if (info) {
+        if (tx) tx.textContent = info.text
+        if (cta) { cta.hidden = !info.cta; cta.textContent = info.cta ?? '' }
+        el.hidden = false
+      } else el.hidden = true
+    }, () => {
+      // CTA: teleport to the event room if not already there
+      const status = currentEventStatus()
+      if (!status) return
+      if (this.currentRoomId !== status.event.room) {
+        sendRoomChange(status.event.room as RoomId)
+        this.scene.restart({ roomId: status.event.room as RoomId, spawnPoint: 'default' })
+      }
+    })
+    const eventCta = document.getElementById('lounge-event-banner-cta') as HTMLButtonElement | null
+    if (eventCta && !eventCta.dataset.bound) {
+      eventCta.dataset.bound = '1'
+      eventCta.addEventListener('click', () => {
+        import('../npc_events').then(m => m.triggerEventCta())
+      })
+    }
+    tickNpcEvents(this.currentRoomId)
 
     // V12.1 — bind the community board to this room each scene boot
     {
