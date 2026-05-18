@@ -323,6 +323,12 @@ export function sendSpecies(species: string) {
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'species', species }))
 }
 
+// V18.6-review C3 — let UI guard against actions that lose state if WS is
+// down (e.g. shop purchases that spend shells before syncing).
+export function isLoungeConnected(): boolean {
+  return !!ws && ws.readyState === 1
+}
+
 // V17.0 — push profile fields (bio/status/mood/pinned_achievements). Any
 // undefined field is omitted so partial updates are supported.
 // V18.3 — extended with equipped_cosmetics + owned_cosmetics.

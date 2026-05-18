@@ -6,6 +6,7 @@
 import { COSMETICS, type CosmeticSlot, getEquippedCosmetics, getOwnedCosmetics, equipCosmetic, unequipCosmetic } from './cosmetics'
 import { getShells, spendShells } from './shells'
 import { addOwnedCosmetic } from './cosmetics'
+import { isLoungeConnected } from './net'
 
 const SLOT_LABELS: Record<CosmeticSlot, string> = {
   hat: '👒 Hat', face: '👓 Face', neck: '🎀 Neck', back: '🎒 Back'
@@ -39,6 +40,14 @@ function tryBuy(id: string) {
   const def = COSMETICS.find(c => c.id === id)
   if (!def) return
   const cost = def.cost
+  // V18.6-review C3 — refuse to charge shells if the WS is down. Otherwise
+  // we'd spend locally, push the new owned set to a closed socket, then
+  // overwrite local with the server's old (no-purchase) state on reconnect.
+  // Player would lose both shells AND the item.
+  if (!isLoungeConnected()) {
+    void import('./ui').then(u => u.showToast('⚠ Connection lost — try again when reconnected.', 2200))
+    return
+  }
   if (!spendShells(cost)) {
     // Show a toast — lazy-load to avoid circular import
     void import('./ui').then(u => u.showToast(`🐚 Not enough shells (need ${cost}).`, 1800))

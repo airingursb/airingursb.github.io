@@ -137,10 +137,14 @@ export class Bear {
     this.moodLabel.setText(glyph ?? '')
   }
 
-  /** V18.0 — set equipped cosmetic ids. Re-draws on next update tick. */
+  /** V18.0 — set equipped cosmetic ids. Re-draws on next update tick.
+   *  V18.6-review I2 — identity check ignores ordering by comparing the
+   *  rendered key set, so a server reorder of the same items doesn't
+   *  trigger an unnecessary rebuild. */
   setCosmetics(ids: string[]) {
-    // Avoid rebuild if identical (e.g. snap-replay with same data)
-    if (this.cosmeticIds.length === ids.length && this.cosmeticIds.every((v, i) => v === ids[i])) return
+    const a = sortCosmeticsForRender(this.cosmeticIds).map(d => d.id).join(',')
+    const b = sortCosmeticsForRender(ids).map(d => d.id).join(',')
+    if (a === b) return
     this.cosmeticIds = [...ids]
     this.lastCosmeticFacing = null   // force rebuild on next update()
   }
@@ -152,7 +156,10 @@ export class Bear {
     const defs = sortCosmeticsForRender(this.cosmeticIds)
     for (const def of defs) {
       const container = def.draw(this.scene, this.facing)
-      container.setDepth(this.sprite.depth + 1)
+      // V18.6-review I1 — sprite depth 5, labels depth 6. Sit cosmetics
+      // exactly between (5.5) so they always render over the sprite but
+      // never above the name/heart/mood labels at depth 6.
+      container.setDepth(this.sprite.depth + 0.5)
       this.cosmeticContainers.push(container)
     }
   }

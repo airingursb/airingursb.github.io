@@ -1397,9 +1397,18 @@ export class RoomScene extends Phaser.Scene {
     // V17.0 — hydrate local profile from server's canonical values so a new
     // device picks up bio/status/mood/pinned set elsewhere.
     // V17.1 — also push the hydrated mood onto myBear immediately.
-    import('../profile').then(p => {
+    // V18.6-review I4 — applyWelcomeProfile mutates owned + equipped
+    // cosmetics asynchronously (lazy import of cosmetics module). Re-apply
+    // to myBear after that resolves so stale local cosmetics from a prior
+    // session don't linger on the bear after welcome lands with the
+    // server's authoritative empty set.
+    import('../profile').then(async (p) => {
       p.applyWelcomeProfile(m)
       this.myBear?.setMood(p.getMood() || null)
+      const cosmeticsMod = await import('../cosmetics')
+      // Give applyWelcomeProfile's own dynamic import a microtask to land.
+      await Promise.resolve()
+      this.myBear?.setCosmetics(cosmeticsMod.getEquippedCosmetics())
     })
 
     // Stash welcome data on a module-level cache so the post-restart scene can read it.
