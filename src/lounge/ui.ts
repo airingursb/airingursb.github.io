@@ -233,6 +233,7 @@ export function initUI() {
   ensureMailboxRefs()
   ensureProgressRefs()
   ensureWaRefs()
+  ensureSkRefs()
   initGameTimeClock()
   initEnergyBar()
 }
@@ -445,6 +446,62 @@ export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat' | 'fox' 
 export function nextSpeciesFrom(s: string): 'bear'|'cat'|'fox'|'capybara'|'bird' {
   const idx = SPECIES_CYCLE.findIndex(x => x.id === s)
   return SPECIES_CYCLE[(idx === -1 ? 0 : (idx + 1) % SPECIES_CYCLE.length)].id
+}
+
+// V9.0 — Skills panel
+import { SKILLS, getProgress, MAX_LEVEL } from './skills'
+
+let skPanelEl: HTMLElement | null = null
+let skListEl: HTMLElement | null = null
+let skCloseBtn: HTMLButtonElement | null = null
+let skOpenBtn: HTMLButtonElement | null = null
+
+function ensureSkRefs() {
+  if (skPanelEl) return
+  skPanelEl = document.getElementById('lounge-skills-panel')
+  skListEl  = document.getElementById('lounge-skills-list')
+  skCloseBtn = document.getElementById('lounge-skills-close') as HTMLButtonElement | null
+  skOpenBtn  = document.getElementById('lounge-info-skills') as HTMLButtonElement | null
+  if (skCloseBtn) skCloseBtn.addEventListener('click', () => hideSkillsPanel())
+  if (skOpenBtn) skOpenBtn.addEventListener('click', () => { hideInfoPanel(); showSkillsPanel() })
+  if (skPanelEl) skPanelEl.addEventListener('click', (e) => { if (e.target === skPanelEl) hideSkillsPanel() })
+}
+
+export function showSkillsPanel() {
+  ensureSkRefs()
+  if (!skPanelEl) return
+  renderSkills()
+  skPanelEl.hidden = false
+  playSfx('menu_open')
+}
+export function hideSkillsPanel() {
+  if (!skPanelEl) return
+  skPanelEl.hidden = true
+  playSfx('menu_close')
+}
+function renderSkills() {
+  if (!skListEl) return
+  skListEl.innerHTML = ''
+  for (const meta of SKILLS) {
+    const p = getProgress(meta.id)
+    const li = document.createElement('li')
+    li.className = 'sk-item'
+    const row = document.createElement('div'); row.className = 'sk-row'
+    const e = document.createElement('span'); e.className = 'sk-emoji'; e.textContent = meta.emoji
+    const n = document.createElement('span'); n.className = 'sk-name'; n.textContent = meta.name
+    const l = document.createElement('span'); l.className = 'sk-level'; l.textContent = `lv ${p.level}/${MAX_LEVEL}`
+    row.appendChild(e); row.appendChild(n); row.appendChild(l)
+    li.appendChild(row)
+    if (p.xpForNext > 0) {
+      const bar = document.createElement('div'); bar.className = 'sk-bar'
+      const fill = document.createElement('div'); fill.className = 'sk-fill'
+      fill.style.width = `${(p.xpInLevel / p.xpForNext) * 100}%`
+      bar.appendChild(fill); li.appendChild(bar)
+    }
+    const b = document.createElement('div'); b.className = 'sk-blurb'; b.textContent = meta.blurb
+    li.appendChild(b)
+    skListEl.appendChild(li)
+  }
 }
 
 // E5-P1a — First-visit species picker

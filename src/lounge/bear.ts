@@ -1,6 +1,7 @@
 import Phaser from 'phaser'
 import { WALK_SPEED, type Region, type Species, SPECIES } from './config'
 import { footstepDust } from './feedback'
+import { walkSpeedMultiplier } from './skills'
 
 export type Direction = 'up' | 'down' | 'left' | 'right'
 export type BearState = 'idle' | 'walk' | 'wave' | 'sit' | 'dance'
@@ -203,7 +204,9 @@ export class Bear {
       this.playIdle()
       return
     }
-    const speed = isPeer ? WALK_SPEED * 1.2 : WALK_SPEED
+    // V9.0 — Wayfaring perk: local player's walk speed scales with level
+    const mult = isPeer ? 1.2 : walkSpeedMultiplier()
+    const speed = WALK_SPEED * mult
     const step = Math.min((speed * dtMs) / 1000, dist)
     this.sprite.x += (dx / dist) * step
     this.sprite.y += (dy / dist) * step

@@ -20,6 +20,7 @@ import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } f
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased } from '../shells'
+import { awardXp, onLevelUp, walkSpeedMultiplier, bonusInventorySlots, SKILLS, type SkillId } from '../skills'
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
 import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry, showSpeciesPicker } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
@@ -286,6 +287,14 @@ export class RoomScene extends Phaser.Scene {
     this.loadAndStartSeasons(map.widthInPixels, map.heightInPixels)
     // Request letters for this room (after WS welcome + snap arrive)
     this.time.delayedCall(800, () => requestLettersInRoom(this.currentRoomId))
+
+    // V9.0 — level-up toast (registered once per scene boot)
+    onLevelUp((skill, level) => {
+      const meta = SKILLS.find(s => s.id === skill)
+      const name = meta?.name ?? skill
+      const emoji = meta?.emoji ?? '✨'
+      showToast(`${emoji} ${name} lv ${level}!`, 3500)
+    })
     // V6.0 — Minimap (initial render; refresh every 30s for NPC schedule drift)
     this.refreshMinimap()
     this.time.addEvent({ delay: 30_000, loop: true, callback: () => this.refreshMinimap() })
@@ -798,13 +807,14 @@ export class RoomScene extends Phaser.Scene {
             placedInHome: placedIds.has(d.id)
           })
         }
+        // V9.0 — Curating perk grants additional slots on top of shop's +8
+        const shopSlots = hasPurchased('pebble_bag_plus') ? 8 : 0
         return {
           items,
           total: all.length + SHOP_DECO.filter(d => hasPurchased(d.id.replace('shop_', '') as any)).length,
           collected: items.filter(i => i.collected).length,
           canPlace: this.amInMyHome(),
-          // P1 — pebble_bag_plus expands the grid view by 8 slots
-          gridSlots: hasPurchased('pebble_bag_plus') ? 44 : 36
+          gridSlots: 36 + shopSlots + bonusInventorySlots()
         }
       },
       (id, name) => this.enterPlaceMode(id, name)
@@ -872,6 +882,8 @@ export class RoomScene extends Phaser.Scene {
 
     // V7.4 — quest progress on room visit
     onRoomVisitedQuest(this.currentRoomId)
+    // V9.0 — room transitions feed Wayfaring
+    awardXp('wayfaring', 1)
 
     // V8.4 — once per UTC day, award the daily-visit shells bonus
     const dailyBonus = claimDailyVisitBonus()
@@ -1190,6 +1202,7 @@ export class RoomScene extends Phaser.Scene {
     const itemName = getAllPebbles().find(p => p.id === m.item_id)?.name ?? m.item_id
     const friend = this.friendships.get(m.to)
     showToast(`🎁 Sent "${itemName}" to ${friend?.display_name ?? '(anonymous)'}`)
+    awardXp('hospitality', 3)  // V9.0
   }
 
   private applyGiftFailed(m: GiftFailedMsg) {
@@ -1527,6 +1540,10 @@ export class RoomScene extends Phaser.Scene {
     sprite.setData('item_id', m.item_id)
     this.homeDecorationSprites.set(m.item_id, sprite)
     this.exitPlaceMode()
+    // V9.0 — placing a decoration feeds Curating; bigger reward if it's a
+    // new item-kind they haven't placed before.
+    const distinct = new Set(this.myHomeDecorations.map(d => d.item_id))
+    awardXp('curating', distinct.size === this.myHomeDecorations.length ? 5 : 1)
     showToast(`📦 Placed.`)
   }
 
@@ -2287,6 +2304,7 @@ export class RoomScene extends Phaser.Scene {
     })
     consumeEnergy(ENERGY_COST.tool_use)
     showToast('📷 Memory captured', 1600)
+    awardXp('memory_making', 3)  // V9.0
   }
 
   // V7.7 — Sequential cutscene runner.
@@ -2398,7 +2416,13 @@ export class RoomScene extends Phaser.Scene {
     if (ctx.isFirstMeeting) {
       awardShells(SHELL_REWARD.npc_first_meet)
       this.time.delayedCall(700, () => showToast(`🐚 +${SHELL_REWARD.npc_first_meet} shells (first meet ${entry.def.name})`, 2400))
+      // V9.0 — meeting an NPC counts as hospitality XP
+      awardXp('hospitality', 5)
+    } else {
+      awardXp('hospitality', 1)
     }
+    // V9.0 — high-heart NPC interaction also feeds companionship
+    if ((friendship?.level ?? 0) >= 2) awardXp('companionship', 2)
   }
 
   private tryInteract() {
