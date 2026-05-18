@@ -21,7 +21,7 @@ import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '..
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased } from '../shells'
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
-import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry } from '../ui'
+import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry, showSpeciesPicker } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
 import { seedMailForToday, unreadCount as mailUnread } from '../mailbox'
 
@@ -155,17 +155,14 @@ export class RoomScene extends Phaser.Scene {
     this.load.image('outdoor_beach_v0', '/lounge/assets/tilesets/outdoor_beach_v0/tiles.png')
     this.load.image('outdoor_grove_v1', '/lounge/assets/tilesets/outdoor_grove_v1/tiles.png')
     for (const region of REGIONS) {
-      this.load.atlas(
-        `bear_${region}`,
-        `/lounge/assets/sprites/bear/${region}/sprite.png`,
-        `/lounge/assets/sprites/bear/${region}/sprite.json`
-      )
-      // V6.5 — also preload cat species sprites
-      this.load.atlas(
-        `cat_${region}`,
-        `/lounge/assets/sprites/cat/${region}/sprite.png`,
-        `/lounge/assets/sprites/cat/${region}/sprite.json`
-      )
+      // E5-P1a — preload all 5 species × 6 regions = 30 atlases
+      for (const sp of ['bear', 'cat', 'fox', 'capybara', 'bird']) {
+        this.load.atlas(
+          `${sp}_${region}`,
+          `/lounge/assets/sprites/${sp}/${region}/sprite.png`,
+          `/lounge/assets/sprites/${sp}/${region}/sprite.json`
+        )
+      }
     }
     const ra = ROOM_AUDIO[this.currentRoomId]
     if (ra) preloadRoomAudio(this, ra.bgmKey, ra.bgmPath, ra.ambKey, ra.ambPath)
@@ -585,14 +582,35 @@ export class RoomScene extends Phaser.Scene {
 
     // V6.5 — species toggle: flips bear ↔ cat, applies to own sprite, persists locally.
     updateSpeciesButtonLabel(getMySpecies())
-    setOnSpeciesToggle(() => {
-      const next = getMySpecies() === 'bear' ? 'cat' : 'bear'
-      import('../config').then(({ setMySpecies }) => setMySpecies(next))
+    setOnSpeciesToggle(async () => {
+      // E5-P1a — cycle through all 5 species (bear→cat→fox→capybara→bird→bear)
+      const { nextSpeciesFrom } = await import('../ui')
+      const next = nextSpeciesFrom(getMySpecies()) as any
+      const { setMySpecies } = await import('../config')
+      setMySpecies(next)
       this.myBear?.setSpecies(next)
       updateSpeciesButtonLabel(next)
-      // E5-P0c — notify server so other peers re-render with the new sprite
-      import('../net').then(({ sendSpecies }) => sendSpecies(next))
+      const { sendSpecies } = await import('../net')
+      sendSpecies(next)
     })
+
+    // E5-P1a — first-visit species picker. Shown when localStorage has no
+    // lounge_species_v1 entry (i.e. visitor never picked).
+    try {
+      if (!localStorage.getItem('lounge_species_v1')) {
+        this.time.delayedCall(1500, () => {
+          showSpeciesPicker(async (s) => {
+            const { setMySpecies } = await import('../config')
+            setMySpecies(s)
+            this.myBear?.setSpecies(s)
+            updateSpeciesButtonLabel(s)
+            const { sendSpecies } = await import('../net')
+            sendSpecies(s)
+            showToast(`You chose ${s}. You can change it anytime in info panel.`, 3000)
+          })
+        })
+      }
+    } catch {}
 
     // V8.7 — progress panel data provider (pebbles + friendships + npc count)
     setProgressDataProvider(() => {

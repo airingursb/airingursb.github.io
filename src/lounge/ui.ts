@@ -428,10 +428,53 @@ export function setInfoPanelDataProvider(
 export function setOnSpeciesToggle(handler: () => void) {
   onInfoSpeciesToggleRequest = handler
 }
-export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat') {
+const SPECIES_CYCLE: Array<{ id: 'bear'|'cat'|'fox'|'capybara'|'bird'; emoji: string; label: string }> = [
+  { id: 'bear',     emoji: '🐻', label: 'Bear' },
+  { id: 'cat',      emoji: '🐱', label: 'Cat' },
+  { id: 'fox',      emoji: '🦊', label: 'Fox' },
+  { id: 'capybara', emoji: '🦦', label: 'Capybara' },
+  { id: 'bird',     emoji: '🐦', label: 'Bird' }
+]
+export function updateSpeciesButtonLabel(currentSpecies: 'bear' | 'cat' | 'fox' | 'capybara' | 'bird') {
   if (!infoSpeciesBtn) return
+  const idx = SPECIES_CYCLE.findIndex(s => s.id === currentSpecies)
+  const next = SPECIES_CYCLE[(idx + 1) % SPECIES_CYCLE.length]
   infoSpeciesBtn.dataset.species = currentSpecies
-  infoSpeciesBtn.textContent = currentSpecies === 'bear' ? 'Switch to 🐱 Cat' : 'Switch to 🐻 Bear'
+  infoSpeciesBtn.textContent = `Switch to ${next.emoji} ${next.label}`
+}
+export function nextSpeciesFrom(s: string): 'bear'|'cat'|'fox'|'capybara'|'bird' {
+  const idx = SPECIES_CYCLE.findIndex(x => x.id === s)
+  return SPECIES_CYCLE[(idx === -1 ? 0 : (idx + 1) % SPECIES_CYCLE.length)].id
+}
+
+// E5-P1a — First-visit species picker
+let spPickerEl: HTMLElement | null = null
+let spOnPick: ((s: 'bear'|'cat'|'fox'|'capybara'|'bird') => void) | null = null
+
+function ensureSpRefs() {
+  if (spPickerEl) return
+  spPickerEl = document.getElementById('lounge-species-picker')
+  if (spPickerEl) {
+    spPickerEl.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.sp-tile')
+      if (!btn) return
+      const s = btn.dataset.species as 'bear'|'cat'|'fox'|'capybara'|'bird'
+      if (!s) return
+      hideSpeciesPicker()
+      spOnPick?.(s)
+    })
+  }
+}
+export function showSpeciesPicker(onPick: (s: 'bear'|'cat'|'fox'|'capybara'|'bird') => void) {
+  ensureSpRefs()
+  if (!spPickerEl) return
+  spOnPick = onPick
+  spPickerEl.hidden = false
+}
+export function hideSpeciesPicker() {
+  if (!spPickerEl) return
+  spPickerEl.hidden = true
+  spOnPick = null
 }
 
 // E5-P0b — "Who's around" panel
