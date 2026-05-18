@@ -964,7 +964,9 @@ function ensurePeRefs() {
     // V17.1 — apply mood to local bear immediately (don't wait for echo)
     onLocalMoodChange?.(mood)
     hideProfileEditor()
-    showToast('✍️ Profile saved.', 1800)
+    // V17.5-review I2 — neutral "saving" toast; the real ack/fail toast
+    // comes from showProfileResultToast() once the server replies.
+    showToast('✍️ Saving profile…', 1400)
   })
   cancelBtn?.addEventListener('click', () => hideProfileEditor())
   // Click outside the card dismisses
@@ -992,6 +994,18 @@ export function showProfileEditor() {
 export function hideProfileEditor() {
   ensurePeRefs()
   if (peEl) peEl.hidden = true
+}
+
+// V17.5-review I2 — toast helper RoomScene calls when profile_ok /
+// profile_failed lands. Decoupled so net.ts callbacks don't import ui.ts.
+export function showProfileResultToast(ok: boolean, reason?: string) {
+  if (ok) {
+    showToast('✍️ Profile saved.', 1800)
+  } else if (reason === 'rate_limit') {
+    showToast('🐢 Saving too fast — try again in a moment.', 2400)
+  } else {
+    showToast(`✍️ Profile save failed: ${reason ?? 'unknown'}`, 2800)
+  }
 }
 
 export function showSpeciesPicker(onPick: (s: Species) => void) {

@@ -16,6 +16,15 @@ export type ProfileChangedMsg = {
   mood: string | null
   pinned_achievements: string[]
 }
+// V17.5-review — explicit ack/fail so the client can show a truthful toast
+export type ProfileOkMsg = {
+  v: number; t: 'profile_ok'
+  bio: string | null; status: string | null
+  mood: string | null; pinned_achievements: string[]
+}
+export type ProfileFailedMsg = {
+  v: number; t: 'profile_failed'; reason: string; retry_after_ms?: number
+}
 export type LeaveMsg = { v: number; t: 'leave'; id: string; room: RoomId }
 export type PosMsg = { v: number; t: 'pos'; id: string; x: number; y: number; vx?: number; vy?: number; state: string; room: RoomId }
 export type ActMsg = { v: number; t: 'act'; id: string; verb: string; text?: string; room: RoomId }
@@ -103,6 +112,8 @@ export type NetCallbacks = {
   onNameChanged?: (m: NameChangedMsg) => void
   onSpeciesChanged?: (m: SpeciesChangedMsg) => void
   onProfileChanged?: (m: ProfileChangedMsg) => void
+  onProfileOk?: (m: ProfileOkMsg) => void
+  onProfileFailed?: (m: ProfileFailedMsg) => void
   onReplaced?: () => void
   onError?: (m: ErrorMsg) => void
   onCollected?: (m: CollectedMsg) => void
@@ -202,6 +213,8 @@ function openSocket() {
     else if (msg.t === 'name_changed') cb?.onNameChanged?.(msg)
     else if (msg.t === 'species_changed') cb?.onSpeciesChanged?.(msg)
     else if (msg.t === 'profile_changed') cb?.onProfileChanged?.(msg)
+    else if (msg.t === 'profile_ok') cb?.onProfileOk?.(msg)
+    else if (msg.t === 'profile_failed') cb?.onProfileFailed?.(msg)
     else if (msg.t === 'replaced') {
       replaced = true
       cb?.onReplaced?.()

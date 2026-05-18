@@ -50,19 +50,23 @@ export function setPinnedAchievements(ids: string[]) {
 }
 
 /** Hydrate local storage from server welcome (server is source of truth on
- *  first connect across devices). Only overwrites when the server value is
- *  non-null — avoids wiping a local-only draft if the player set something
- *  before the welcome landed (rare but possible on slow networks). */
+ *  first connect across devices). V17.5-review I1 fix: any key PRESENT in
+ *  the welcome message is authoritative — including explicit nulls, which
+ *  represent "user cleared this field on another device". The previous
+ *  guard (`typeof === 'string'`) silently skipped nulls and let stale local
+ *  values resurface and get re-saved on next edit. */
 export function applyWelcomeProfile(m: {
   bio?: string | null
   status?: string | null
   mood?: string | null
-  pinned_achievements?: string[]
+  pinned_achievements?: string[] | null
 }) {
-  if (typeof m.bio === 'string') setBio(m.bio)
-  if (typeof m.status === 'string') setStatus(m.status)
-  if (typeof m.mood === 'string') setMood(m.mood)
-  if (Array.isArray(m.pinned_achievements)) setPinnedAchievements(m.pinned_achievements)
+  if ('bio' in m) setBio(m.bio ?? '')
+  if ('status' in m) setStatus(m.status ?? '')
+  if ('mood' in m) setMood(m.mood ?? '')
+  if ('pinned_achievements' in m) {
+    setPinnedAchievements(Array.isArray(m.pinned_achievements) ? m.pinned_achievements : [])
+  }
 }
 
 // ─── Peer profile cache ────────────────────────────────────────────────

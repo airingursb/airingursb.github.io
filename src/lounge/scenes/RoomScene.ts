@@ -957,6 +957,13 @@ export class RoomScene extends Phaser.Scene {
           pinned_achievements: m.pinned_achievements
         }))
       },
+      // V17.5-review I2 — honest toast on profile save ack/fail
+      onProfileOk: () => {
+        void import('../ui').then(u => u.showProfileResultToast(true))
+      },
+      onProfileFailed: (m) => {
+        void import('../ui').then(u => u.showProfileResultToast(false, m.reason))
+      },
       onReplaced: () => {
         showReplacedOverlay()
       },
