@@ -21,6 +21,7 @@ import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '..
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased } from '../shells'
 import { awardXp, onLevelUp, walkSpeedMultiplier, bonusInventorySlots, SKILLS, type SkillId } from '../skills'
+import { getActiveSpots, markPicked, addMaterial, removeMaterial as removeMaterialFn, getMaterial, MATERIALS, type MaterialId, type Spot as ResourceSpot } from '../resources'
 import { shouldPromptSleep, markSleepPrompted, performSleep } from '../sleep'
 import { showSleepOverlay, refreshMailboxBadge, setProgressDataProvider, setWhosAroundProvider, type WhosAroundEntry, showSpeciesPicker, setCraftEnvProvider } from '../ui'
 import { formatGameTime, getGameNow } from '../gametime'
@@ -284,6 +285,7 @@ export class RoomScene extends Phaser.Scene {
     this.setupFestival(map.widthInPixels, map.heightInPixels)
     this.loadAndStartNpcs()
     this.loadAndStartPebbles()
+    this.spawnResourceSpots()
     this.loadAndStartSeasons(map.widthInPixels, map.heightInPixels)
     // Request letters for this room (after WS welcome + snap arrive)
     this.time.delayedCall(800, () => requestLettersInRoom(this.currentRoomId))
@@ -721,8 +723,9 @@ export class RoomScene extends Phaser.Scene {
         this.inventory.delete(id)
         refreshInventoryPanel()
       },
-      hasMaterial: (_id: string) => 0,
-      removeMaterial: (_id: string, _n: number) => {}
+      // V9.2 — real materials from gathering
+      hasMaterial: (id: string) => getMaterial(id as MaterialId),
+      removeMaterial: (id: string, n: number) => { removeMaterialFn(id as MaterialId, n) }
     }))
 
     // E5-P0b — Who's around panel: for every NPC in manifest, report current
@@ -1755,6 +1758,57 @@ export class RoomScene extends Phaser.Scene {
     }).finally(() => this.speciesLoadInFlight.delete(species))
     this.speciesLoadInFlight.set(species, p)
     return p
+  }
+
+  // V9.2 — Render gather spots in the current room. Each spot is a small
+  // sprite with a label; click handler awards a material + sparkles.
+  private resourceSpotSprites: Phaser.GameObjects.GameObject[] = []
+  private spawnResourceSpots() {
+    // Clean previous (scene restart will create a fresh array)
+    for (const s of this.resourceSpotSprites) s.destroy()
+    this.resourceSpotSprites = []
+    const spots = getActiveSpots(this.currentRoomId)
+    if (spots.length === 0) return
+    ensurePixelTexture(this)
+    for (const spot of spots) {
+      const meta = MATERIALS[spot.material]
+      // sparkly square + emoji label
+      const sprite = this.add.text(spot.x, spot.y, meta.emoji, {
+        fontSize: '14px', stroke: '#000', strokeThickness: 3
+      }).setOrigin(0.5, 0.5).setDepth(3).setInteractive({ useHandCursor: true })
+      // pulse
+      this.tweens.add({
+        targets: sprite, alpha: { from: 0.7, to: 1 }, scale: { from: 0.95, to: 1.1 },
+        duration: 700 + Math.random() * 300, yoyo: true, repeat: -1, ease: 'Sine.InOut'
+      })
+      sprite.on('pointerdown', (p: Phaser.Input.Pointer) => {
+        p.event.stopPropagation()
+        this.gatherSpot(spot, sprite)
+      })
+      this.resourceSpotSprites.push(sprite)
+    }
+  }
+
+  private gatherSpot(spot: ResourceSpot, sprite: Phaser.GameObjects.Text) {
+    if (!this.myBear) return
+    // Proximity check: within ~40px
+    const dx = this.myBear.x - spot.x, dy = this.myBear.y - spot.y
+    if (Math.hypot(dx, dy) > 48) {
+      showToast('Walk closer to gather.', 1400)
+      return
+    }
+    markPicked(spot.id)
+    addMaterial(spot.material, 1)
+    const meta = MATERIALS[spot.material]
+    pebbleSparkle(this, spot.x, spot.y)
+    showToast(`${meta.emoji} +1 ${meta.name}`, 1800)
+    // Fade out + remove
+    this.tweens.add({
+      targets: sprite, alpha: 0, scale: 1.5, duration: 350,
+      onComplete: () => { sprite.destroy() }
+    })
+    // V9.0 — gathering feeds Wayfaring slightly
+    awardXp('wayfaring', 1)
   }
 
   // E5-P2c — Per-room parallax background. A subtle tinted TileSprite at
