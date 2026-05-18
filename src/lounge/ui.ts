@@ -2080,11 +2080,24 @@ export function showProfileCard(displayName: string, profile: {
   if (pcPinnedSection) pcPinnedSection.hidden = pinned.length === 0
   if (pcPinnedListEl) {
     pcPinnedListEl.innerHTML = ''
-    for (const ach of pinned) {
-      const li = document.createElement('li')
-      li.textContent = ach
-      pcPinnedListEl.appendChild(li)
-    }
+    // V17.4 — resolve achievement id → human-readable name + tier reward.
+    // Lazy-load so the card module doesn't pull in the whole achievements
+    // registry on first paint; tiny delay between card open and pin
+    // labels showing is acceptable.
+    void import('./achievements').then(({ ACHIEVEMENTS, TIER_REWARD }) => {
+      if (!pcPinnedListEl) return
+      pcPinnedListEl.innerHTML = ''
+      for (const id of pinned) {
+        const def = ACHIEVEMENTS.find(a => a.id === id)
+        const li = document.createElement('li')
+        if (def) {
+          li.innerHTML = `<strong>${def.name}</strong> <span style="opacity:.65">· 🐚 ${TIER_REWARD[def.tier]}</span>`
+        } else {
+          li.textContent = id   // unknown id (e.g. renamed) — show raw
+        }
+        pcPinnedListEl.appendChild(li)
+      }
+    })
   }
   pcEl.hidden = false
 }

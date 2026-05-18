@@ -1,6 +1,13 @@
 // V10.4 — Achievement album panel + unlock toast.
+// V17.4 — Each unlocked row gets a ★/☆ pin toggle (max 3 pinned, surfaces
+// on the profile card via V17.0 sync). Reads/writes go through profile.ts
+// so the value also lands in localStorage + Supabase.
 
 import { ACHIEVEMENTS, TIER_REWARD, getUnlocked, onAchievementUnlocked, type AchievementDef } from './achievements'
+import { getPinnedAchievements, setPinnedAchievements } from './profile'
+import { sendProfile } from './net'
+
+const MAX_PINS = 3
 
 let panelEl: HTMLElement | null = null
 let listEl: HTMLElement | null = null
@@ -30,12 +37,34 @@ export function showPanel() {
   renderAll()
 }
 
+function togglePin(achId: string) {
+  const current = getPinnedAchievements()
+  const idx = current.indexOf(achId)
+  let next: string[]
+  if (idx >= 0) {
+    next = current.filter(x => x !== achId)
+  } else {
+    if (current.length >= MAX_PINS) {
+      // Replace the oldest pin (FIFO) so the player isn't blocked from
+      // pinning a new one without going back to unpin first.
+      next = [...current.slice(1), achId]
+    } else {
+      next = [...current, achId]
+    }
+  }
+  setPinnedAchievements(next)
+  sendProfile({ pinned_achievements: next })
+  renderAll()
+}
+
 function renderAll() {
   if (!listEl || !countEl) return
   listEl.innerHTML = ''
   const unlocked = getUnlocked()
   const totalUnlocked = Object.keys(unlocked).length
-  countEl.textContent = `${totalUnlocked} / ${ACHIEVEMENTS.length}`
+  const pinned = new Set(getPinnedAchievements())
+  countEl.textContent = `${totalUnlocked} / ${ACHIEVEMENTS.length}` +
+    (pinned.size > 0 ? ` · ⭐ ${pinned.size}/${MAX_PINS} pinned` : '')
   // Group by category
   const groups = new Map<string, AchievementDef[]>()
   for (const a of ACHIEVEMENTS) {
@@ -52,11 +81,13 @@ function renderAll() {
     h.textContent = labels[cat] ?? cat
     listEl.appendChild(h)
     for (const a of items) {
+      const isUnlocked = !!unlocked[a.id]
+      const isPinned = pinned.has(a.id)
       const row = document.createElement('div')
-      row.className = 'ach-row' + (unlocked[a.id] ? ' unlocked' : ' locked')
+      row.className = 'ach-row' + (isUnlocked ? ' unlocked' : ' locked')
       const titleSpan = document.createElement('div')
       titleSpan.className = 'ach-title'
-      titleSpan.textContent = (unlocked[a.id] ? '✓ ' : '· ') + a.name
+      titleSpan.textContent = (isUnlocked ? '✓ ' : '· ') + a.name
       const blurbSpan = document.createElement('div')
       blurbSpan.className = 'ach-blurb'
       blurbSpan.textContent = a.blurb
@@ -64,6 +95,16 @@ function renderAll() {
       rewSpan.className = 'ach-reward'
       rewSpan.textContent = `🐚 ${TIER_REWARD[a.tier]}`
       row.appendChild(titleSpan); row.appendChild(blurbSpan); row.appendChild(rewSpan)
+      // V17.4 — pin button (only for unlocked achievements; locked ones can't be pinned)
+      if (isUnlocked) {
+        const pinBtn = document.createElement('button')
+        pinBtn.type = 'button'
+        pinBtn.className = 'ach-pin' + (isPinned ? ' is-pinned' : '')
+        pinBtn.textContent = isPinned ? '★' : '☆'
+        pinBtn.title = isPinned ? 'Unpin from profile' : 'Pin to profile (max 3)'
+        pinBtn.addEventListener('click', () => togglePin(a.id))
+        row.appendChild(pinBtn)
+      }
       listEl.appendChild(row)
     }
   }
