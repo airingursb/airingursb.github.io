@@ -1798,7 +1798,39 @@ export class RoomScene extends Phaser.Scene {
         tint: 0xffffff, alpha: { start: 0.85, end: 0.5 },
         rotate: { min: 0, max: 360 }
       }).setDepth(1002)
+      // E5-P1c — snow accumulation: a white overlay above the floor whose
+      // alpha grows over real-time. Capped at 0.45 so the room is still
+      // readable. Persists per scene boot; resets on room change.
+      const snow = this.add.rectangle(0, 0, widthPx, heightPx, 0xffffff, 0)
+        .setOrigin(0).setDepth(995)
+        .setBlendMode(Phaser.BlendModes.SCREEN)
+      // 30s game-time → +0.04 alpha → max 0.45 reached after ~5.5 min
+      this.time.addEvent({
+        delay: 30_000, loop: true,
+        callback: () => { if (snow.fillAlpha < 0.45) snow.fillAlpha += 0.04 }
+      })
     }
+
+    // E5-P1c — weather ambient audio. Hooks into existing audio system;
+    // if the .ogg files aren't deployed yet the calls silent-fail safely.
+    if (weather === 'rain' || weather === 'storm') {
+      this.tryPlayWeatherAmbient('weather_rain', '/lounge/assets/audio/ambient/rain.ogg')
+    } else if (weather === 'snow') {
+      this.tryPlayWeatherAmbient('weather_wind', '/lounge/assets/audio/ambient/wind.ogg')
+    }
+  }
+
+  // E5-P1c — load + loop a weather ambient track (no-op if file missing).
+  private tryPlayWeatherAmbient(key: string, url: string) {
+    if (this.cache.audio.exists(key)) {
+      this.sound.play(key, { loop: true, volume: 0.25 })
+      return
+    }
+    this.load.audio(key, [url])
+    this.load.once(`filecomplete-audio-${key}`, () => {
+      try { this.sound.play(key, { loop: true, volume: 0.25 }) } catch {}
+    })
+    this.load.start()
   }
 
   private setupAtmosphere(widthPx: number, heightPx: number) {
