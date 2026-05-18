@@ -11,6 +11,7 @@ import { maybeStartTour } from './onboarding_ui'
 import { toggle as _ensureMinigameUiInit } from './minigames_ui'
 import { toggle as _ensureBoardUiInit } from './board_ui'
 import { setPartyOnEnter } from './party_ui'
+import { setTransitOnTeleport, ZONES as _TRANSIT_ZONES } from './transit_ui'
 
 export function bootGame(parent: HTMLElement): Phaser.Game {
   // Era 6/7 P0 — install progress sync before any game code reads localStorage,
@@ -86,6 +87,26 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
     if (!s) return
     void import('./net').then(({ sendRoomChange }) => sendRoomChange(roomId as any))
     s.scene.restart({ roomId, spawnPoint: 'default' })
+  })
+  // V13.5 — transit hub teleport. Same path as party enter, plus the
+  // energy cost from the zone definition (skip if zone is current room).
+  setTransitOnTeleport((roomId) => {
+    const g = (window as any).__loungeGame
+    const s = g?.scene?.getScenes?.(true)?.[0] ?? g?.scene?.scenes?.[0]
+    if (!s) return
+    if (s.currentRoomId === roomId) return    // already here, no-op
+    const z = _TRANSIT_ZONES.find(z => z.id === roomId)
+    void Promise.all([import('./energy'), import('./net'), import('./ui')]).then(
+      ([e, net, ui]) => {
+        if (z && z.cost > 0 && e.getEnergy() < z.cost) {
+          ui.showToast(`⚡ Not enough energy (need ${z.cost})`, 2000)
+          return
+        }
+        if (z && z.cost > 0) e.consumeEnergy(z.cost)
+        net.sendRoomChange(roomId as any)
+        s.scene.restart({ roomId, spawnPoint: 'default' })
+      }
+    )
   })
   // Expose for debugging / smoke tests
   ;(window as any).__loungeGame = game

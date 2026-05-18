@@ -40,6 +40,7 @@
     <button id="lounge-photos-btn" class="ui-photos-btn" aria-label="Photo Album">🖼️</button>
     <button id="lounge-minigame-btn" class="ui-mg-btn" aria-label="Mini-games">🎮</button>
     <button id="lounge-board-btn" class="ui-board-btn" aria-label="Community board">📌<span id="lounge-board-badge" class="badge" hidden>0</span></button>
+    <button id="lounge-transit-btn" class="ui-transit-btn" aria-label="Transit hub">🚇</button>
     <button id="lounge-inventory-btn" class="ui-inventory-btn" aria-label="Inventory">📦</button>
     <button id="lounge-messages-btn" class="ui-messages-btn" aria-label="Messages">✉<span id="lounge-messages-badge" class="badge" hidden>0</span></button>
     <button id="lounge-wishboard-btn" class="ui-wishboard-btn" aria-label="Wishboard">🌟</button>
@@ -297,6 +298,16 @@
           <button type="button" class="sp-tile" data-species="bird">
             <span class="sp-emoji">🐦</span><span class="sp-label">Bird</span>
           </button>
+        </div>
+      </div>
+    </div>
+    <div id="lounge-transit-panel" class="ui-transit-panel" hidden>
+      <div class="tr-card">
+        <h3>🚇 Transit Hub</h3>
+        <p class="tr-blurb">Skip the walking. Energy cost based on zone distance.</p>
+        <div id="lounge-transit-list" class="tr-grid"></div>
+        <div class="tr-actions">
+          <button type="button" id="lounge-transit-close">Close</button>
         </div>
       </div>
     </div>
@@ -792,6 +803,47 @@
   .ui-info-btn:hover { background: rgba(255,255,255,.16); }
   .ui-info-btn:focus-visible { outline: 2px solid #4ade80; outline-offset: 2px; }
 
+  /* V13.5 — Transit hub button + panel */
+  .ui-transit-btn {
+    position: absolute;
+    top: 16px; right: 522px;
+    width: 36px; height: 36px;
+    border-radius: 50%; border: none;
+    background: rgba(255,255,255,.08); color: #e6edf3;
+    font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s; line-height: 1;
+  }
+  .ui-transit-btn:hover { background: rgba(255,255,255,.16); }
+  .ui-transit-panel {
+    position: absolute;
+    top: 60px; right: 16px;
+    width: 340px; max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    background: rgba(20,20,30,.96);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 8px; padding: 12px; color: #e6edf3;
+    z-index: 72;
+  }
+  .ui-transit-panel[hidden] { display: none; }
+  .ui-transit-panel h3 { margin: 0 0 4px; font-size: 14px; }
+  .ui-transit-panel .tr-blurb { font-size: 11px; opacity: .7; margin: 0 0 10px; }
+  .ui-transit-panel .tr-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .ui-transit-panel .tr-tile {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 8px 4px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 6px; color: inherit; cursor: pointer;
+    font-family: inherit;
+  }
+  .ui-transit-panel .tr-tile:hover { background: rgba(255,255,255,.1); }
+  .ui-transit-panel .tr-emoji { font-size: 20px; }
+  .ui-transit-panel .tr-label { font-size: 11px; font-weight: 600; margin-top: 2px; }
+  .ui-transit-panel .tr-cost  { font-size: 10px; opacity: .6; margin-top: 2px; color: #ffd166; }
+  .ui-transit-panel .tr-actions { margin-top: 10px; text-align: right; }
+  .ui-transit-panel .tr-actions button { background: rgba(255,255,255,.1); color: inherit; border: 1px solid rgba(255,255,255,.2); padding: 4px 10px; border-radius: 4px; cursor: pointer; font-family: inherit; }
+
   /* V12.7 — Party room panel */
   .ui-party-panel {
     position: absolute;
@@ -1060,27 +1112,28 @@
   @media (max-width: 600px) {
     .ui-mute-btn, .ui-volume-btn, .ui-info-btn, .ui-pet-btn, .ui-ach-btn,
     .ui-photos-btn, .ui-inventory-btn, .ui-messages-btn, .ui-wishboard-btn,
-    .ui-mg-btn, .ui-board-btn {
-      width: 32px !important; height: 32px !important;
+    .ui-mg-btn, .ui-board-btn, .ui-transit-btn {
+      width: 28px !important; height: 28px !important;
     }
-    .ui-mg-btn, .ui-board-btn {
+    .ui-mg-btn, .ui-board-btn, .ui-transit-btn {
       position: fixed !important;
       top: auto !important; right: auto !important;
       bottom: 10px !important;
       z-index: 90 !important;
     }
-    /* Centered strip: 11 buttons × 32px = 352px → 176 each side. Tight on 360. */
-    .ui-mute-btn      { left: calc(50vw - 176px) !important; }
-    .ui-volume-btn    { left: calc(50vw - 144px) !important; }
-    .ui-info-btn      { left: calc(50vw - 112px) !important; }
-    .ui-inventory-btn { left: calc(50vw - 80px)  !important; }
-    .ui-messages-btn  { left: calc(50vw - 48px)  !important; }
-    .ui-wishboard-btn { left: calc(50vw - 16px)  !important; }
-    .ui-pet-btn       { left: calc(50vw + 16px)  !important; }
-    .ui-ach-btn       { left: calc(50vw + 48px)  !important; }
-    .ui-photos-btn    { left: calc(50vw + 80px)  !important; }
-    .ui-mg-btn        { left: calc(50vw + 112px) !important; }
-    .ui-board-btn     { left: calc(50vw + 144px) !important; }
+    /* Centered strip: 12 buttons × 28 width + 30px spacing = 360px exactly. */
+    .ui-mute-btn      { left: calc(50vw - 180px) !important; }
+    .ui-volume-btn    { left: calc(50vw - 150px) !important; }
+    .ui-info-btn      { left: calc(50vw - 120px) !important; }
+    .ui-inventory-btn { left: calc(50vw - 90px)  !important; }
+    .ui-messages-btn  { left: calc(50vw - 60px)  !important; }
+    .ui-wishboard-btn { left: calc(50vw - 30px)  !important; }
+    .ui-pet-btn       { left: calc(50vw)         !important; }
+    .ui-ach-btn       { left: calc(50vw + 30px)  !important; }
+    .ui-photos-btn    { left: calc(50vw + 60px)  !important; }
+    .ui-mg-btn        { left: calc(50vw + 90px)  !important; }
+    .ui-board-btn     { left: calc(50vw + 120px) !important; }
+    .ui-transit-btn   { left: calc(50vw + 150px) !important; }
     .mg-card { max-height: calc(100vh - 100px); }
   }
 
@@ -1090,24 +1143,25 @@
   @media (max-width: 400px) {
     .ui-mute-btn, .ui-volume-btn, .ui-info-btn, .ui-inventory-btn,
     .ui-messages-btn, .ui-wishboard-btn, .ui-pet-btn, .ui-ach-btn,
-    .ui-photos-btn, .ui-mg-btn, .ui-board-btn {
+    .ui-photos-btn, .ui-mg-btn, .ui-board-btn, .ui-transit-btn {
       width: 28px !important; height: 28px !important;
       font-size: 13px !important;
     }
-    /* 11 buttons → 6 + 5 grid */
-    /* Row 1 (6 buttons × 30px = 180px wide, centered) */
+    /* 12 buttons → 6 + 6 grid, 30px spacing → 180px row width */
+    /* Row 1 */
     .ui-mute-btn      { left: calc(50vw - 90px)  !important; bottom: 46px !important; }
     .ui-volume-btn    { left: calc(50vw - 60px)  !important; bottom: 46px !important; }
     .ui-info-btn      { left: calc(50vw - 30px)  !important; bottom: 46px !important; }
     .ui-inventory-btn { left: calc(50vw)         !important; bottom: 46px !important; }
     .ui-messages-btn  { left: calc(50vw + 30px)  !important; bottom: 46px !important; }
     .ui-wishboard-btn { left: calc(50vw + 60px)  !important; bottom: 46px !important; }
-    /* Row 2 (5 buttons) */
-    .ui-pet-btn       { left: calc(50vw - 75px)  !important; bottom: 12px !important; }
-    .ui-ach-btn       { left: calc(50vw - 45px)  !important; bottom: 12px !important; }
-    .ui-photos-btn    { left: calc(50vw - 15px)  !important; bottom: 12px !important; }
-    .ui-mg-btn        { left: calc(50vw + 15px)  !important; bottom: 12px !important; }
-    .ui-board-btn     { left: calc(50vw + 45px)  !important; bottom: 12px !important; }
+    /* Row 2 */
+    .ui-pet-btn       { left: calc(50vw - 90px)  !important; bottom: 12px !important; }
+    .ui-ach-btn       { left: calc(50vw - 60px)  !important; bottom: 12px !important; }
+    .ui-photos-btn    { left: calc(50vw - 30px)  !important; bottom: 12px !important; }
+    .ui-mg-btn        { left: calc(50vw)         !important; bottom: 12px !important; }
+    .ui-board-btn     { left: calc(50vw + 30px)  !important; bottom: 12px !important; }
+    .ui-transit-btn   { left: calc(50vw + 60px)  !important; bottom: 12px !important; }
     /* Door label and D-pad lift further so 2-row strip clears */
     .ui-door-label { bottom: 90px !important; }
     .touch-dpad    { bottom: 90px !important; }
