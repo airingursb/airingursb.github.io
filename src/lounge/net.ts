@@ -223,6 +223,10 @@ function openSocket() {
     else if (msg.t === 'wish_submit_ok') cb?.onWishSubmitOk?.(msg)
     else if (msg.t === 'wish_vote_ok') cb?.onWishVoteOk?.(msg)
     else if (msg.t === 'wish_failed') cb?.onWishFailed?.(msg)
+    // V14.0 — group session protocol. Route to group.ts.
+    else if (typeof msg.t === 'string' && msg.t.startsWith('group_')) {
+      void import('./group').then(g => g.applyGroupMsg(msg))
+    }
   })
 
   ws.addEventListener('close', (ev) => {
@@ -327,6 +331,29 @@ export function sendPickup(item_id: string) {
 export function requestHomeDecorations(owner_visitor_id: string) {
   if (!ws || ws.readyState !== 1) return
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'home_decorations', owner_visitor_id }))
+}
+
+// V14.0 — Group session client senders. Server replies via 'group_*'
+// messages routed into ./group.applyGroupMsg by the dispatch above.
+export function sendGroupCreate(kind: string, room: RoomId, state?: Record<string, unknown>) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'group_create', kind, room, state }))
+}
+export function sendGroupJoin(session_id: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'group_join', session_id }))
+}
+export function sendGroupLeave(session_id: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'group_leave', session_id }))
+}
+export function sendGroupState(session_id: string, patch: Record<string, unknown>) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'group_state', session_id, patch }))
+}
+export function sendGroupList(filter?: { kind?: string; room?: string }) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'group_list', ...(filter ?? {}) }))
 }
 
 export function sendJamTap(pad_index: number) {
