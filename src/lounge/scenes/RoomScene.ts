@@ -1674,8 +1674,17 @@ export class RoomScene extends Phaser.Scene {
     if (allLoaded) return Promise.resolve()
     const pending = this.speciesLoadInFlight.get(species)
     if (pending) return pending
+    // N-review I2 — also handle load errors + a 10s timeout so a 404 doesn't
+    // leave the promise pending forever (which would also lock speciesLoadInFlight).
     const p = new Promise<void>((resolve) => {
       let remaining = 0
+      const settled = { done: false }
+      const finish = () => {
+        if (settled.done) return
+        settled.done = true
+        registerBearAnimations(this, REGIONS)
+        resolve()
+      }
       for (const region of REGIONS) {
         const key = `${species}_${region}`
         if (this.textures.exists(key)) continue
@@ -1687,12 +1696,19 @@ export class RoomScene extends Phaser.Scene {
         )
         this.load.once(`filecomplete-json-${key}`, () => {
           remaining--
-          if (remaining <= 0) {
-            registerBearAnimations(this, REGIONS)
-            resolve()
-          }
+          if (remaining <= 0) finish()
         })
       }
+      // Loader errors → still resolve so caller falls back to bear texture
+      const onError = (file: Phaser.Loader.File) => {
+        if (file.key?.startsWith(`${species}_`)) {
+          remaining = 0
+          finish()
+        }
+      }
+      this.load.on('loaderror', onError)
+      // Safety timeout
+      this.time.delayedCall(10_000, finish)
       if (remaining === 0) resolve()
       else this.load.start()
     }).finally(() => this.speciesLoadInFlight.delete(species))
@@ -1738,6 +1754,7 @@ export class RoomScene extends Phaser.Scene {
     const SPEED_X = 64 / 30_000  // px per ms
     const SPEED_Y = 32 / 30_000
     const handler = (_t: number, dtMs: number) => {
+      if (!bg.active) return   // N-review I3 — guard if Phaser fired one last update post-destroy
       bg.tilePositionX += SPEED_X * dtMs
       bg.tilePositionY += SPEED_Y * dtMs
     }

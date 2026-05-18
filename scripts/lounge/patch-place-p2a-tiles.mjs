@@ -66,11 +66,12 @@ patch('kitchen.tmj', [
   ['furniture_below', 13, 7, 48]    // round table right
 ])
 
-// 4 bedrooms — mirror on left wall (col 0 is the wall tile, can't replace
-// it; instead put mirror on the wall row at col 9, row 1)
+// 4 bedrooms — mirror tile 45 replaces a wall cell on row 0. Mirror art
+// includes the wall behind the frame (it's `tile2_wall + brass frame + glass`),
+// so the wall silhouette is preserved. Placement: col 9 row 0 = top wall, right side.
 for (const f of ['bedroom_mio.tmj', 'bedroom_halle.tmj', 'bedroom_sora.tmj', 'bedroom_theo.tmj']) {
   patch(f, [
-    ['floor', 9, 0, 45]   // mirror on top wall right side
+    ['floor', 9, 0, 45]
   ])
 }
 
