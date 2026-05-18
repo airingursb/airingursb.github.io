@@ -61,6 +61,20 @@ export function runRhythm(stage: HTMLElement, onFinish: (score: number) => void)
   }
   window.addEventListener('keydown', onKey)
 
+  // V11.8-review I3 fix: cancel pending timers + remove keydown listener
+  // if the user closes the overlay mid-game (stage element is detached
+  // when picker re-renders or hide() runs).
+  const timers: number[] = []
+  const cleanup = () => {
+    for (const t of timers) clearTimeout(t)
+    window.removeEventListener('keydown', onKey)
+  }
+  // Heuristic: if our stage root is removed from the DOM, abort.
+  const aliveCheck = window.setInterval(() => {
+    if (!stage.isConnected) { cleanup(); window.clearInterval(aliveCheck) }
+  }, 500)
+  timers.push(aliveCheck as unknown as number)
+
   startBtn.addEventListener('click', () => {
     if (started) return
     started = true
@@ -68,14 +82,15 @@ export function runRhythm(stage: HTMLElement, onFinish: (score: number) => void)
     startBtn.textContent = 'Go!'
     const t0 = performance.now()
     for (let i = 0; i < NOTE_COUNT; i++) {
-      setTimeout(() => spawnNote(t0 + i * SPACING), i * SPACING)
+      timers.push(window.setTimeout(() => spawnNote(t0 + i * SPACING), i * SPACING))
     }
     // Finish window — after last note's hit time + a small buffer
-    setTimeout(() => {
-      window.removeEventListener('keydown', onKey)
+    timers.push(window.setTimeout(() => {
+      cleanup()
+      if (!stage.isConnected) return
       const accuracy = Math.round((hits / NOTE_COUNT) * 100)
       onFinish(accuracy)
-    }, NOTE_COUNT * SPACING + FALL_DURATION + 400)
+    }, NOTE_COUNT * SPACING + FALL_DURATION + 400))
   })
 
   function spawnNote(scheduledSpawn: number) {

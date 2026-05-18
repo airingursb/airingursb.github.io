@@ -39,17 +39,36 @@ const NPC_LABEL_COLOR = '#ffd166'
 const NPC_LABEL_PREFIX = '✦ '
 const NPC_REFRESH_MS = 10_000
 
+// V11.3 + V11.8-review C1 fix — every room must be in this map or the
+// audio loader silently skips it. Previously only 5 of 20 rooms had BGM
+// (the rest played silent). All 10 bedrooms share bedroom_night.
 const ROOM_AUDIO: Record<string, { bgmKey: string; bgmPath: string; ambKey: string; ambPath: string }> = {
-  room_lobby:    { bgmKey: 'bgm_lobby_day',      bgmPath: '/lounge/assets/audio/bgm/lobby_day.ogg',
-                   ambKey: 'amb_cafe_chatter',   ambPath: '/lounge/assets/audio/ambient/cafe_chatter.ogg' },
-  room_dj_floor: { bgmKey: 'bgm_dj_floor_party', bgmPath: '/lounge/assets/audio/bgm/dj_floor_party.ogg',
-                   ambKey: 'amb_beat_thump',     ambPath: '/lounge/assets/audio/ambient/beat_thump.ogg' },
-  room_balcony:  { bgmKey: 'bgm_balcony_outside',bgmPath: '/lounge/assets/audio/bgm/balcony_outside.ogg',
-                   ambKey: 'amb_wind',           ambPath: '/lounge/assets/audio/ambient/wind.ogg' },
-  room_library:  { bgmKey: 'bgm_library_quiet',  bgmPath: '/lounge/assets/audio/bgm/library_quiet.ogg',
-                   ambKey: 'amb_pages_turning',  ambPath: '/lounge/assets/audio/ambient/pages_turning.ogg' },
-  room_beach:    { bgmKey: 'bgm_beach_calm',     bgmPath: '/lounge/assets/audio/bgm/beach_calm.ogg',
-                   ambKey: 'amb_waves',          ambPath: '/lounge/assets/audio/ambient/waves.ogg' }
+  room_lobby:    { bgmKey: 'bgm_lobby_day',       bgmPath: '/lounge/assets/audio/bgm/lobby_day.ogg',
+                   ambKey: 'amb_cafe_chatter',    ambPath: '/lounge/assets/audio/ambient/cafe_chatter.ogg' },
+  room_dj_floor: { bgmKey: 'bgm_dj_floor_party',  bgmPath: '/lounge/assets/audio/bgm/dj_floor_party.ogg',
+                   ambKey: 'amb_beat_thump',      ambPath: '/lounge/assets/audio/ambient/beat_thump.ogg' },
+  room_balcony:  { bgmKey: 'bgm_balcony_outside', bgmPath: '/lounge/assets/audio/bgm/balcony_outside.ogg',
+                   ambKey: 'amb_wind',            ambPath: '/lounge/assets/audio/ambient/wind.ogg' },
+  room_library:  { bgmKey: 'bgm_library_quiet',   bgmPath: '/lounge/assets/audio/bgm/library_quiet.ogg',
+                   ambKey: 'amb_pages_turning',   ambPath: '/lounge/assets/audio/ambient/pages_turning.ogg' },
+  room_beach:    { bgmKey: 'bgm_beach_sun',       bgmPath: '/lounge/assets/audio/bgm/beach_sun.ogg',
+                   ambKey: 'amb_waves',           ambPath: '/lounge/assets/audio/ambient/waves.ogg' },
+  room_grove:    { bgmKey: 'bgm_grove_breeze',    bgmPath: '/lounge/assets/audio/bgm/grove_breeze.ogg',
+                   ambKey: 'amb_wind',            ambPath: '/lounge/assets/audio/ambient/wind.ogg' },
+  room_kitchen:  { bgmKey: 'bgm_kitchen_warm',    bgmPath: '/lounge/assets/audio/bgm/kitchen_warm.ogg',    ambKey: '', ambPath: '' },
+  room_workshop: { bgmKey: 'bgm_workshop_tinker', bgmPath: '/lounge/assets/audio/bgm/workshop_tinker.ogg', ambKey: '', ambPath: '' },
+  room_rooftop:  { bgmKey: 'bgm_rooftop_dusk',    bgmPath: '/lounge/assets/audio/bgm/rooftop_dusk.ogg',    ambKey: '', ambPath: '' },
+  room_home_template:  { bgmKey: 'bgm_home_lullaby',   bgmPath: '/lounge/assets/audio/bgm/home_lullaby.ogg',  ambKey: '', ambPath: '' },
+  room_bedroom_mio:    { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
+  room_bedroom_halle:  { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
+  room_bedroom_sora:   { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
+  room_bedroom_theo:   { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
+  room_bedroom_marin:  { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
+  room_bedroom_cole:   { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
+  room_bedroom_wren:   { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
+  room_bedroom_dane:   { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
+  room_bedroom_iris:   { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
+  room_bedroom_mox:    { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' }
 }
 
 const PIXEL_TEX_KEY = 'lounge_pixel'
@@ -187,7 +206,10 @@ export class RoomScene extends Phaser.Scene {
         )
       }
     }
-    const ra = ROOM_AUDIO[this.currentRoomId]
+    // V11.8-review C1 fix: dynamic home rooms (room_home_<8hex>) inherit
+    // the home_template entry so they get the lullaby BGM too.
+    const audioKey = isHomeRoom(this.currentRoomId) ? 'room_home_template' : this.currentRoomId
+    const ra = ROOM_AUDIO[audioKey]
     if (ra) preloadRoomAudio(this, ra.bgmKey, ra.bgmPath, ra.ambKey, ra.ambPath)
 
     // V3.2 — only DJ Floor has the booth, preload synchronously
@@ -289,7 +311,10 @@ export class RoomScene extends Phaser.Scene {
     registerBearAnimations(this, REGIONS)
     bindAudio(this)
 
-    const ra = ROOM_AUDIO[this.currentRoomId]
+    // V11.8-review C1 fix: dynamic home rooms (room_home_<8hex>) inherit
+    // the home_template entry so they get the lullaby BGM too.
+    const audioKey = isHomeRoom(this.currentRoomId) ? 'room_home_template' : this.currentRoomId
+    const ra = ROOM_AUDIO[audioKey]
     if (ra) {
       playRoomBgm(this, ra.bgmKey)
       playRoomAmbient(this, ra.ambKey)

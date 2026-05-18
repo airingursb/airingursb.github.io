@@ -67,7 +67,10 @@ export function runGarden(stage: HTMLElement, onFinish: (score: number) => void)
     if (!running) return
     if (p.currentNeed === a) { score++; flash(p.el, 'mg-garden-correct') }
     else                      { score--; flash(p.el, 'mg-garden-wrong') }
-    scoreEl.textContent = String(score)
+    // V11.8-review I4 fix: clamp the displayed score so the live counter
+    // never shows negatives (the recorded score already clamps via
+    // Math.max in onFinish, so this is purely a UX fix).
+    scoreEl.textContent = String(Math.max(0, score))
     setNeed(p, null)
   }
 
@@ -86,7 +89,10 @@ export function runGarden(stage: HTMLElement, onFinish: (score: number) => void)
       if (p.currentNeed && performance.now() - p.needSince > TIMEOUT_PER_NEED) {
         score--
         flash(p.el, 'mg-garden-wrong')
-        scoreEl.textContent = String(score)
+        // V11.8-review I4 fix: clamp the displayed score so the live counter
+    // never shows negatives (the recorded score already clamps via
+    // Math.max in onFinish, so this is purely a UX fix).
+    scoreEl.textContent = String(Math.max(0, score))
         setNeed(p, null)
       }
     }

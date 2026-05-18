@@ -1,8 +1,14 @@
 // V11.6 — Stir-fry Timing mini-game.
 //
+// V11.8-review C2 fix: rewritten as a single state machine because the
+// earlier addEventListener + .onclick-mutation pattern collided after
+// attempt 1 and the player got stuck mid-sweep.
+//
 // A horizontal bar fills left→right and bounces back. Player clicks Stop
 // to lock the marker. Score 0-200 based on distance from the green zone
 // center. Two attempts → best wins.
+
+type CookState = 'sweep' | 'between' | 'done'
 
 export function runCook(stage: HTMLElement, onFinish: (score: number) => void) {
   stage.innerHTML = `
@@ -21,7 +27,6 @@ export function runCook(stage: HTMLElement, onFinish: (score: number) => void) {
   const bestEl = stage.querySelector('#mg-cook-best') as HTMLElement
   const stopBtn = stage.querySelector('#mg-cook-stop') as HTMLButtonElement
 
-  // Random green zone (re-randomized on each retry)
   let zoneCenter = 30 + Math.random() * 40
   const zoneHalf = 10
   const placeZone = () => {
@@ -33,13 +38,13 @@ export function runCook(stage: HTMLElement, onFinish: (score: number) => void) {
   let attempts = 2
   let bestScore = 0
   let raf = 0
-  let pos = 0           // 0..1 (sweeping back-and-forth)
+  let pos = 0
   let dir = 1
-  let running = true
-  const SPEED = 0.012   // % per frame
+  let state: CookState = 'sweep'
+  const SPEED = 0.012
 
   function tick() {
-    if (!running) return
+    if (state !== 'sweep') return
     pos += dir * SPEED
     if (pos > 1) { pos = 1; dir = -1 }
     if (pos < 0) { pos = 0; dir =  1 }
@@ -48,33 +53,28 @@ export function runCook(stage: HTMLElement, onFinish: (score: number) => void) {
   }
   tick()
 
+  // Single handler that branches by state — no .onclick mutation, no
+  // listener stacking, no leftover scoring after attempts exhausted.
   stopBtn.addEventListener('click', () => {
-    if (attempts <= 0) return
-    running = false
-    cancelAnimationFrame(raf)
-    const markerPct = pos * 100
-    const dist = Math.abs(markerPct - zoneCenter)
-    // Score: 200 if dead-center, ramps down linearly. Outside zone → 0.
-    let score = 0
-    if (dist <= zoneHalf) score = Math.round(200 * (1 - dist / zoneHalf))
-    if (score > bestScore) { bestScore = score; bestEl.textContent = String(bestScore) }
-    attempts--
-    leftEl.textContent = String(attempts)
-    if (attempts > 0) {
-      // Retry button replaces Stop
-      stopBtn.textContent = 'Try again'
-      stopBtn.onclick = () => {
-        stopBtn.textContent = 'Stop ⏹'
-        stopBtn.onclick = null
-        // Re-randomize zone and restart sweep
-        zoneCenter = 30 + Math.random() * 40
-        placeZone()
-        running = true
-        tick()
-      }
-    } else {
-      stopBtn.textContent = 'Finish'
-      stopBtn.onclick = () => onFinish(bestScore)
+    if (state === 'sweep') {
+      state = 'between'
+      cancelAnimationFrame(raf)
+      const dist = Math.abs(pos * 100 - zoneCenter)
+      let score = 0
+      if (dist <= zoneHalf) score = Math.round(200 * (1 - dist / zoneHalf))
+      if (score > bestScore) { bestScore = score; bestEl.textContent = String(bestScore) }
+      attempts--
+      leftEl.textContent = String(attempts)
+      if (attempts > 0) { stopBtn.textContent = 'Try again' }
+      else { state = 'done'; stopBtn.textContent = 'Finish' }
+    } else if (state === 'between') {
+      zoneCenter = 30 + Math.random() * 40
+      placeZone()
+      state = 'sweep'
+      stopBtn.textContent = 'Stop ⏹'
+      tick()
+    } else if (state === 'done') {
+      onFinish(bestScore)
     }
   })
 }

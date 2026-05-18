@@ -13,7 +13,7 @@ const ALPH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 export function runWord(stage: HTMLElement, onFinish: (score: number) => void) {
   const ROUNDS = 5
-  const picks = []
+  const picks: string[] = []
   // Pick 5 random words
   const pool = [...WORDS]
   for (let i = 0; i < ROUNDS; i++) {
@@ -39,7 +39,7 @@ export function runWord(stage: HTMLElement, onFinish: (score: number) => void) {
     const blankIdx = Math.floor(Math.random() * word.length)
     const answer = word[blankIdx]
     // Display with blank
-    display.textContent = word.split('').map((c, i) => i === blankIdx ? '_' : c).join(' ')
+    display.textContent = word.split('').map((c: string, i: number) => i === blankIdx ? '_' : c).join(' ')
     // 4 choices: 1 correct + 3 random distractors
     const distractors = new Set<string>()
     while (distractors.size < 3) {
