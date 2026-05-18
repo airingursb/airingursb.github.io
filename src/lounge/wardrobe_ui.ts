@@ -40,6 +40,13 @@ function tryBuy(id: string) {
   const def = COSMETICS.find(c => c.id === id)
   if (!def) return
   const cost = def.cost
+  // V19.5-review C2 — quest_only items must never be buyable, even at
+  // cost 0 (spendShells(0) returns true, which previously allowed
+  // free-clicking a story reward without doing the story).
+  if (def.quest_only) {
+    void import('./ui').then(u => u.showToast('📖 This one is earned, not bought.', 1800))
+    return
+  }
   // V18.6-review C3 — refuse to charge shells if the WS is down. Otherwise
   // we'd spend locally, push the new owned set to a closed socket, then
   // overwrite local with the server's old (no-purchase) state on reconnect.
@@ -82,6 +89,10 @@ function renderAll() {
     for (const item of items) {
       const isOwned = owned.has(item.id)
       const isEquipped = equipped.has(item.id)
+      // V19.5-review C2 — quest_only items are hidden from the wardrobe
+      // entirely until owned. Once earned, they show with a "📖 Quest"
+      // meta line instead of a price.
+      if (item.quest_only && !isOwned) continue
       const tile = document.createElement('button')
       tile.type = 'button'
       tile.className = 'wr-tile' + (isEquipped ? ' is-equipped' : '') + (!isOwned ? ' is-locked' : '')
@@ -91,7 +102,7 @@ function renderAll() {
       const meta = document.createElement('span')
       meta.className = 'wr-tile-meta'
       if (isEquipped) meta.textContent = 'Equipped · click to unequip'
-      else if (isOwned) meta.textContent = item.blurb
+      else if (isOwned) meta.textContent = item.quest_only ? '📖 Quest reward · click to equip' : item.blurb
       else meta.textContent = `🔒 ${item.cost} 🐚 · click to buy`
       tile.appendChild(name); tile.appendChild(meta)
       tile.addEventListener('click', () => {

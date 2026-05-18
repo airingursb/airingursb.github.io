@@ -36,7 +36,9 @@ export const NPC_STORIES: NpcStory[] = [
   // V19.1 — Mox the engineer is missing a tiny brass cricket she rebuilt.
   // Heart 3 = she mentions it; 5 = asks for help; 8 = gives the pin.
   {
-    id: 'mox_brass_cricket',
+    // V19.5-review C1 — id must equal the achievement registry id so
+    // markUnlocked(story.id) hits the right ACHIEVEMENTS entry.
+    id: 'story_mox_cricket',
     npc_id: 'npc_mox',
     title: "Mox's Brass Cricket",
     blurb: 'A small mechanical cricket she rebuilt has gone missing.',
@@ -51,7 +53,7 @@ export const NPC_STORIES: NpcStory[] = [
   // V19.1 — Iris the gardener waits for the moonflower to bloom.
   // Heart 3 = mentions it; 5 = invites you to come see it; 8 = gives you a cutting.
   {
-    id: 'iris_moonflower',
+    id: 'story_iris_moonflower',
     npc_id: 'npc_iris',
     title: 'The Moonflower',
     blurb: "A flower in Iris's grove that only blooms when someone is genuinely sad nearby.",
@@ -65,7 +67,7 @@ export const NPC_STORIES: NpcStory[] = [
   },
   // V19.1 — Halle the librarian and the secret of page seventeen.
   {
-    id: 'halle_page_seventeen',
+    id: 'story_halle_bookmark',
     npc_id: 'npc_halle',
     title: 'Page Seventeen',
     blurb: "Halle reads exactly one page from a memoir she keeps under the counter — page seventeen, never the others.",

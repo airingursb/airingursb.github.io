@@ -27,6 +27,11 @@ export type CosmeticDef = {
   /** Shop cost in shells. Starter cosmetics are free (cost: 0). */
   cost: number
   blurb: string
+  /** V19.5-review C2 — when true, this cosmetic is locked behind a quest
+   *  / story / achievement and must NEVER be buyable from the shop. The
+   *  wardrobe skips rendering quest-only items the player doesn't own,
+   *  and tryBuy refuses to purchase them even at cost 0. */
+  quest_only?: boolean
   /** Draw the cosmetic for a bear standing at (anchorX, anchorY) facing
    *  the given direction. The returned container is positioned at the
    *  anchor; the caller re-parents and re-positions per frame. */
@@ -211,10 +216,11 @@ export const COSMETICS: CosmeticDef[] = [
   { id: 'antennae',  name: 'Bug Antennae', slot: 'hat',  rarity: 'rare',    cost: 80, blurb: 'Two pink bulbs that wobble.',      draw: mkHatAntennae  },
   { id: 'crown',     name: 'Jewel Crown',  slot: 'hat',  rarity: 'rare',    cost: 120, blurb: 'For the lounge royalty.',         draw: mkHatCrown     },
   { id: 'cape',      name: 'Purple Cape',  slot: 'back', rarity: 'rare',    cost: 100, blurb: 'Drapes dramatically.',            draw: mkBackCape     },
-  // V19.4 — quest rewards (cost 0 = unreachable via shop, granted by stories)
-  { id: 'cricket_pin', name: 'Brass Cricket Pin', slot: 'neck', rarity: 'rare', cost: 0, blurb: "Mox's tiny rebuild — chirps in C minor.", draw: mkNeckCricketPin },
-  { id: 'moonflower',  name: 'Moonflower',        slot: 'hat',  rarity: 'rare', cost: 0, blurb: "Iris's bloom — opens at sundown.",       draw: mkHatMoonflower },
-  { id: 'bookmark',    name: 'Tasselled Bookmark', slot: 'back', rarity: 'rare', cost: 0, blurb: "Halle's marker — holds your place.",     draw: mkBackBookmark }
+  // V19.4 — quest rewards. quest_only:true means the wardrobe hides them
+  // until owned and tryBuy refuses to purchase them (V19.5-review C2 fix).
+  { id: 'cricket_pin', name: 'Brass Cricket Pin', slot: 'neck', rarity: 'rare', cost: 0, quest_only: true, blurb: "Mox's tiny rebuild — chirps in C minor.", draw: mkNeckCricketPin },
+  { id: 'moonflower',  name: 'Moonflower',        slot: 'hat',  rarity: 'rare', cost: 0, quest_only: true, blurb: "Iris's bloom — opens at sundown.",       draw: mkHatMoonflower },
+  { id: 'bookmark',    name: 'Tasselled Bookmark', slot: 'back', rarity: 'rare', cost: 0, quest_only: true, blurb: "Halle's marker — holds your place.",     draw: mkBackBookmark }
 ]
 
 export function getCosmetic(id: string): CosmeticDef | null {

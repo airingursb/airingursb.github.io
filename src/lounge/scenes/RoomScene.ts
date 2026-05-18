@@ -3271,9 +3271,17 @@ export class RoomScene extends Phaser.Scene {
     })
   }
 
+  // V19.5-review C3 — per-NPC click debounce so a double-click can't fire
+  // consumeStoryStep twice; the second call returns null but the second
+  // pickDialog overwrites the emotional finale line with a generic one.
+  private npcClickDebounce = new Map<string, number>()
   private handleNpcClick(id: string) {
     const entry = this.npcBears.get(id)
     if (!entry) return
+    const lastClick = this.npcClickDebounce.get(id) ?? 0
+    const now = this.time.now
+    if (now - lastClick < 700) return
+    this.npcClickDebounce.set(id, now)
     // V7.0 → V10.1 — heart is now read from per-NPC heart points (npc_hearts),
     // not from this.friendships (which only holds player↔player relationships).
     // Each click is also worth +1 heart-point (daily-capped per NPC).
