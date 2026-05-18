@@ -26,6 +26,14 @@ export const MAP_ROOMS: MapRoom[] = [
   { id: 'room_home',     label: 'Home',     x: 64,  y: 68, w: 20, h: 6 }
 ]
 
+// V13.4 — 2nd floor: rendered as a stacked layer above the main map.
+// `floor` field added to MapRoom for layer assignment in renderMinimap.
+export const MAP_ROOMS_2F: MapRoom[] = [
+  { id: 'room_bath',       label: 'Bath',       x: 22, y: 86, w: 9,  h: 5 },
+  { id: 'room_arcade',     label: 'Arcade',     x: 64, y: 86, w: 11, h: 5 },
+  { id: 'room_greenhouse', label: 'Greenhse',   x: 110, y: 86, w: 11, h: 5 }
+]
+
 export const MAP_EDGES: MapEdge[] = [
   { a: 'room_library',  b: 'room_lobby'    },
   { a: 'room_library',  b: 'room_workshop' },
@@ -37,8 +45,14 @@ export const MAP_EDGES: MapEdge[] = [
   { a: 'room_balcony',  b: 'room_beach'    },
   { a: 'room_balcony',  b: 'room_grove'    }
 ]
+// V13.4 — staircase edges between Lobby (1F) and 2F rooms
+export const MAP_EDGES_2F: MapEdge[] = [
+  { a: 'room_lobby', b: 'room_bath' },
+  { a: 'room_lobby', b: 'room_arcade' },
+  { a: 'room_lobby', b: 'room_greenhouse' }
+]
 
-const ROOM_BY_ID = new Map(MAP_ROOMS.map(r => [r.id, r]))
+const ROOM_BY_ID = new Map([...MAP_ROOMS, ...MAP_ROOMS_2F].map(r => [r.id, r]))
 
 let titleEl: HTMLElement | null = null
 let svgEl: SVGSVGElement | null = null
@@ -82,6 +96,19 @@ export function renderMinimap(currentRoomId: string, npcRoomIds: string[]) {
   // Clear
   while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild)
 
+  // V13.4 — draw 2F edges with a dashed "stairs" style, then 1F edges normally
+  for (const e of MAP_EDGES_2F) {
+    const a = ROOM_BY_ID.get(e.a); const b = ROOM_BY_ID.get(e.b)
+    if (!a || !b) continue
+    const line = document.createElementNS(SVG_NS, 'line')
+    line.setAttribute('class', 'mm-edge mm-stair')
+    line.setAttribute('x1', String(a.x))
+    line.setAttribute('y1', String(a.y))
+    line.setAttribute('x2', String(b.x))
+    line.setAttribute('y2', String(b.y))
+    line.setAttribute('stroke-dasharray', '2,2')
+    svgEl.appendChild(line)
+  }
   // Edges
   for (const e of MAP_EDGES) {
     const a = ROOM_BY_ID.get(e.a); const b = ROOM_BY_ID.get(e.b)
@@ -98,8 +125,8 @@ export function renderMinimap(currentRoomId: string, npcRoomIds: string[]) {
   const currentKey = mapKeyFor(currentRoomId)
   const npcKeys = new Set(npcRoomIds.map(mapKeyFor))
 
-  // Rooms
-  for (const r of MAP_ROOMS) {
+  // Rooms — 1F first, then 2F overlay
+  for (const r of [...MAP_ROOMS, ...MAP_ROOMS_2F]) {
     const rect = document.createElementNS(SVG_NS, 'rect')
     let cls = 'mm-room'
     if (r.id === currentKey) cls += ' here'

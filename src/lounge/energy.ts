@@ -6,16 +6,22 @@ const STORAGE_KEY_DATE  = 'lounge_energy_date_v1'   // last-modified date key (Y
 
 const ENERGY_MAX_BASE = 100
 const PUPPY_BONUS = 5   // V10.2 — puppy pet at max affection
-/** Per-call max so pet adoption mid-session adjusts the cap. */
+const BATH_BONUS  = 10  // V13.1 — bath buff (24h after standing up from tub)
+/** Per-call max so pet adoption / bath visit mid-session adjusts the cap. */
 export function getEnergyMax(): number {
+  let max = ENERGY_MAX_BASE
   try {
     const raw = localStorage.getItem('lounge_pet_v1')
     if (raw) {
       const p = JSON.parse(raw)
-      if (p?.species === 'puppy' && p?.affection >= 10) return ENERGY_MAX_BASE + PUPPY_BONUS
+      if (p?.species === 'puppy' && p?.affection >= 10) max += PUPPY_BONUS
     }
   } catch {}
-  return ENERGY_MAX_BASE
+  try {
+    const until = Number(localStorage.getItem('lounge_bath_buff_until') || '0')
+    if (Date.now() < until) max += BATH_BONUS
+  } catch {}
+  return max
 }
 // Back-compat: old call sites import a static MAX. Computed lazily via getter
 // would require module rewrite; instead we expose the base value here as the

@@ -73,7 +73,11 @@ const ROOM_AUDIO: Record<string, { bgmKey: string; bgmPath: string; ambKey: stri
   room_bedroom_wren:   { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
   room_bedroom_dane:   { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
   room_bedroom_iris:   { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
-  room_bedroom_mox:    { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' }
+  room_bedroom_mox:    { bgmKey: 'bgm_bedroom_night',  bgmPath: '/lounge/assets/audio/bgm/bedroom_night.ogg', ambKey: '', ambPath: '' },
+  // V13.1-V13.3 — 2nd floor rooms
+  room_bath:        { bgmKey: 'bgm_home_lullaby',     bgmPath: '/lounge/assets/audio/bgm/home_lullaby.ogg',    ambKey: '', ambPath: '' },
+  room_arcade:      { bgmKey: 'bgm_dj_floor_party',   bgmPath: '/lounge/assets/audio/bgm/dj_floor_party.ogg',  ambKey: 'amb_beat_thump', ambPath: '/lounge/assets/audio/ambient/beat_thump.ogg' },
+  room_greenhouse:  { bgmKey: 'bgm_grove_breeze',     bgmPath: '/lounge/assets/audio/bgm/grove_breeze.ogg',    ambKey: '', ambPath: '' }
 }
 
 const PIXEL_TEX_KEY = 'lounge_pixel'
@@ -93,7 +97,7 @@ function ensurePixelTexture(scene: Phaser.Scene) {
 type Direction = 'up' | 'down' | 'left' | 'right'
 
 type Portal = { x: number; y: number; w: number; h: number; targetRoom: RoomId; targetSpawn: string }
-type Interactable = { x: number; y: number; w: number; h: number; kind: string; anchorX: number; anchorY: number; facing: Direction; name: string; padIndex?: number }
+type Interactable = { x: number; y: number; w: number; h: number; kind: string; anchorX: number; anchorY: number; facing: Direction; name: string; padIndex?: number; gameId?: string; material?: string; bathBuff?: boolean }
 
 export class RoomScene extends Phaser.Scene {
   private currentRoomId: RoomId = DEFAULT_ROOM
@@ -193,10 +197,14 @@ export class RoomScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('room_bedroom_dane',  '/lounge/assets/rooms/bedroom_dane.tmj')
     this.load.tilemapTiledJSON('room_bedroom_iris',  '/lounge/assets/rooms/bedroom_iris.tmj')
     this.load.tilemapTiledJSON('room_bedroom_mox',   '/lounge/assets/rooms/bedroom_mox.tmj')
+    this.load.tilemapTiledJSON('room_bath',          '/lounge/assets/rooms/bath.tmj')
+    this.load.tilemapTiledJSON('room_arcade',        '/lounge/assets/rooms/arcade.tmj')
+    this.load.tilemapTiledJSON('room_greenhouse',    '/lounge/assets/rooms/greenhouse.tmj')
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
     this.load.image('indoor_lobby_v1', '/lounge/assets/tilesets/indoor_lobby_v1/tiles.png')
     this.load.image('outdoor_beach_v0', '/lounge/assets/tilesets/outdoor_beach_v0/tiles.png')
     this.load.image('outdoor_grove_v1', '/lounge/assets/tilesets/outdoor_grove_v1/tiles.png')
+    this.load.image('indoor_2f_v0',     '/lounge/assets/tilesets/indoor_2f_v0/tiles.png')
     // E5-P1a + N1 — preload only bear (universal fallback) + the local
     // player's chosen species. Other species lazy-load when a peer with
     // that species joins (see ensureSpeciesLoaded).
@@ -252,6 +260,7 @@ export class RoomScene extends Phaser.Scene {
     // Tilemap may reference any of these tilesets. Phaser uses whichever name matches
     // the map's tileset entry; others return null and are ignored.
     const tileset = (
+      map.addTilesetImage('indoor_2f_v0',     'indoor_2f_v0') ??
       map.addTilesetImage('indoor_lobby_v1', 'indoor_lobby_v1') ??
       map.addTilesetImage('outdoor_grove_v1', 'outdoor_grove_v1') ??
       map.addTilesetImage('outdoor_beach_v0', 'outdoor_beach_v0') ??
@@ -365,7 +374,8 @@ export class RoomScene extends Phaser.Scene {
       const lm: Record<string, string> = {
         room_lobby: 'Lobby', room_dj_floor: 'DJ Floor', room_balcony: 'Balcony',
         room_library: 'Library', room_beach: 'Beach', room_grove: 'Grove',
-        room_kitchen: 'Kitchen', room_workshop: 'Workshop', room_rooftop: 'Rooftop'
+        room_kitchen: 'Kitchen', room_workshop: 'Workshop', room_rooftop: 'Rooftop',
+        room_bath: 'Bath House', room_arcade: 'Arcade', room_greenhouse: 'Greenhouse'
       }
       const lbl = isHomeRoom(this.currentRoomId)
         ? 'Home'
@@ -482,7 +492,12 @@ export class RoomScene extends Phaser.Scene {
         anchorX: (get('anchor_x') as number) ?? ((o.x as number) + ((o.width as number) ?? 16) / 2),
         anchorY: (get('anchor_y') as number) ?? ((o.y as number) + ((o.height as number) ?? 16) / 2),
         facing: ((get('facing') as Direction) ?? 'down'),
-        padIndex: typeof padIndex === 'number' ? padIndex : undefined
+        padIndex: typeof padIndex === 'number' ? padIndex : undefined,
+        // V13.2/V13.3 — new interactable kinds (arcade cabinets + gather spots)
+        gameId: typeof get('game_id') === 'string' ? get('game_id') as string : undefined,
+        material: typeof get('material') === 'string' ? get('material') as string : undefined,
+        // V13.1 — bath_buff flag on the tub_sit interactable
+        bathBuff: get('bath_buff') === true
       }
     })
 
@@ -871,7 +886,9 @@ export class RoomScene extends Phaser.Scene {
         room_bedroom_sora: "Sora's room", room_bedroom_theo: "Theo's room",
         room_bedroom_marin: "Marin's room", room_bedroom_cole: "Cole's room",
         room_bedroom_wren: "Wren's room", room_bedroom_dane: "Dane's room",
-        room_bedroom_iris: "Iris's room", room_bedroom_mox: "Mox's room"
+        room_bedroom_iris: "Iris's room", room_bedroom_mox: "Mox's room",
+        // V13.1-V13.3 — 2nd floor
+        room_bath: "Bath House", room_arcade: "Arcade", room_greenhouse: "Greenhouse"
       }
       const now = getGameNow()
       const minutes = now.getHours() * 60 + now.getMinutes()
@@ -2857,12 +2874,46 @@ export class RoomScene extends Phaser.Scene {
       this.tapJamPad(it.padIndex, it)
       return
     }
+    // V13.2 — arcade cabinet launches the matching mini-game
+    if (it.kind === 'minigame' && it.gameId) {
+      void import('../minigames_ui').then(m => {
+        // toggle() opens the picker; we want to jump straight to this game.
+        // Easiest: open the panel then click the matching tile programmatically.
+        m.toggle()
+        // Give the picker a frame to render then click the right tile
+        setTimeout(() => {
+          const tiles = Array.from(document.querySelectorAll('.mg-tile')) as HTMLElement[]
+          const target = tiles.find(t => t.querySelector('.mg-name')?.textContent?.toLowerCase().includes(it.gameId ?? ''))
+          target?.click()
+        }, 100)
+      })
+      return
+    }
+    // V13.3 — gather rare materials from greenhouse spots
+    if (it.kind === 'gather_spot' && it.material) {
+      void import('../resources').then(r => {
+        if (typeof (r as any).addMaterial === 'function') {
+          (r as any).addMaterial(it.material as any, 1)
+        }
+      })
+      showToast(`🌱 +1 ${it.material!.replace('_', ' ')}`, 1800)
+      return
+    }
     if (it.kind !== 'sit') return
     if (!this.myBear) return
     if (this.currentSitInteractable === it && this.myBear.state === 'sit') {
       sendAct('sit', undefined, this.currentRoomId)
       this.applyAct(undefined, 'sit')
       this.currentSitInteractable = null
+      // V13.1 — bath buff: standing up from tub grants +10 max-energy
+      // for the rest of the UTC day (stored in localStorage as a flag
+      // read by energy.getEnergyMax).
+      if (it.bathBuff) {
+        try {
+          localStorage.setItem('lounge_bath_buff_until', String(Date.now() + 86400_000))
+          showToast('♨️ Bath buff: +10 max energy until tomorrow', 2400)
+        } catch {}
+      }
       return
     }
     this.myBear.walkTo(it.anchorX, it.anchorY)
