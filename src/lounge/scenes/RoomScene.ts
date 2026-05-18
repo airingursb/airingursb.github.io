@@ -27,6 +27,7 @@ import { setVisitsProgressToken } from '../home_visits'
 import { portalHidden, getSeasonalInteractableFor } from '../seasonal_rules'
 import { maybeJoinMorningCoffee, leaveMorningCoffeeIfNeeded, setCoffeeBannerHandler } from '../morning_coffee'
 import { maybeNoticeCookAlong, leaveCookAlongIfNeeded, setCookBannerHandler, startOrJoinCookAlong } from '../group_cook'
+import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJamBurstTier } from '../group_jam'
 import { setPartyProgressToken } from '../party'
 import { setPartyOnEnter, setPartyDisplayName } from '../party_ui'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
@@ -406,6 +407,22 @@ export class RoomScene extends Phaser.Scene {
       cookBtn.dataset.bound = '1'
       cookBtn.addEventListener('click', () => startOrJoinCookAlong())
     }
+
+    // V14.3 — jam combo on DJ Floor (only when ≥1 peer present)
+    leaveJamComboIfNeeded(this.currentRoomId)
+    if (this.currentRoomId === 'room_dj_floor') {
+      // Delay so the snap message can populate peers first
+      this.time.delayedCall(1500, () => {
+        maybeJoinJamCombo(this.currentRoomId, this.peers.size)
+      })
+    }
+    setJamBannerHandler((text) => {
+      const el = document.getElementById('lounge-jam-banner')
+      const tx = document.getElementById('lounge-jam-banner-text')
+      if (!el) return
+      if (text) { if (tx) tx.textContent = text; el.hidden = false }
+      else el.hidden = true
+    })
 
     // V12.1 — bind the community board to this room each scene boot
     {
@@ -1616,6 +1633,8 @@ export class RoomScene extends Phaser.Scene {
       full: `🎵 Full Jam! all 4 pads, +${m.bonus_per_pair} each`
     }
     showToast(labels[m.tier] ?? '🎵 Jam!', m.tier === 'full' ? 3500 : 2500)
+    // V14.3 — bubble tier up to the jam_combo group session counter
+    noticeJamBurstTier(m.tier)
 
     // Bigger celebration for full jam: brief sparkle burst + screen shake
     if (m.tier === 'full' && !prefersReducedMotion()) {
