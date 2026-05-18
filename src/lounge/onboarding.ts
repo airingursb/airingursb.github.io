@@ -28,8 +28,10 @@ export const ONBOARDING_STEPS: OnboardingStep[] = [
   },
   {
     target: '.ui-info-btn',
-    title: 'Top-bar shortcuts',
-    body: 'ⓘ for your profile, 📦 inventory, ✉ messages, 🐾 pet, 🏆 achievements, 🖼 photos.',
+    title: 'Action buttons',
+    // V11.9c — wording works for both desktop (top-right) and mobile
+    // (bottom strip). Spotlight calc auto-flips placement on mobile.
+    body: 'ⓘ profile · 📦 inventory · ✉ messages · 🐾 pet · 🏆 achievements · 🖼 photos · 🎮 games.',
     placement: 'bottom'
   },
   {

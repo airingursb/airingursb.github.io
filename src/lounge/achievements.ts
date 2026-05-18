@@ -80,7 +80,15 @@ export const ACHIEVEMENTS: AchievementDef[] = [
   { id: 'home_furnished',  name: 'First Decoration', blurb: 'Place a decoration in your Home.',  tier: 1, category: 'building' },
   { id: 'home_tier2',      name: 'Bigger Place',     blurb: 'Upgrade your Home to tier 2.',       tier: 3, category: 'building' },
   { id: 'home_tier3',      name: 'Manor',            blurb: 'Upgrade your Home to tier 3.',       tier: 4, category: 'building' },
-  { id: 'build_carpenter', name: 'Carpenter',        blurb: 'Build any home extension.',          tier: 2, category: 'building' }
+  { id: 'build_carpenter', name: 'Carpenter',        blurb: 'Build any home extension.',          tier: 2, category: 'building' },
+  // V11.9b — mini-game achievements (6). Categorized as 'activities' so they
+  // sit alongside jam/festival/cutscenes in the album.
+  { id: 'minigame_first',          name: 'First Game',           blurb: 'Finish any mini-game.',                  tier: 1, category: 'activities' },
+  { id: 'minigame_dice_12',        name: 'Snake Eyes Reversed',  blurb: 'Roll a double six in Lobby Dice (12).',  tier: 3, category: 'activities' },
+  { id: 'minigame_rhythm_perfect', name: 'Flawless Set',         blurb: 'Hit every note in DJ Rhythm (100%).',    tier: 4, category: 'activities' },
+  { id: 'minigame_word_perfect',   name: 'Wordsmith',            blurb: 'All 5 right in Library Word Puzzle.',    tier: 3, category: 'activities' },
+  { id: 'minigame_shell_all',      name: 'Tide Reader',          blurb: 'Find all 5 shells in Beach Shell Hunt.', tier: 3, category: 'activities' },
+  { id: 'minigame_garden_high',    name: 'Green Thumb',          blurb: 'Score 20+ in Grove Garden Tending.',     tier: 3, category: 'activities' }
 ]
 
 type UnlockMap = Record<string, number>
@@ -154,6 +162,7 @@ export type AchievementEvent =
   | { type: 'home_decoration_placed' }
   | { type: 'home_tier'; tier: number }
   | { type: 'home_extension_built' }
+  | { type: 'minigame_finished'; gameId: string; score: number }
 
 const NPC_MET_SET_KEY = 'lounge_achievement_npcs_met_v1'
 
@@ -265,5 +274,17 @@ export function recordEvent(ev: AchievementEvent) {
       return
     }
     case 'home_extension_built': markUnlocked('build_carpenter'); return
+    case 'minigame_finished': {
+      // V11.9b — first-finish + per-game high-score badges
+      markUnlocked('minigame_first')
+      switch (ev.gameId) {
+        case 'dice':   if (ev.score >= 12)  markUnlocked('minigame_dice_12');        break
+        case 'rhythm': if (ev.score >= 100) markUnlocked('minigame_rhythm_perfect'); break
+        case 'word':   if (ev.score >= 100) markUnlocked('minigame_word_perfect');   break
+        case 'shell':  if (ev.score >= 150) markUnlocked('minigame_shell_all');      break
+        case 'garden': if (ev.score >= 20)  markUnlocked('minigame_garden_high');    break
+      }
+      return
+    }
   }
 }

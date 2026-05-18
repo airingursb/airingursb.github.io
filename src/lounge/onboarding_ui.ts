@@ -106,6 +106,14 @@ function positionTooltip(rect: DOMRect, placement: 'top'|'bottom'|'left'|'right'
   t.style.transform = 'none'
   const tw = 280, th = 140  // approximate, used for off-screen guards
   const vw = window.innerWidth, vh = window.innerHeight
+  // V11.9c — smart placement override for mobile: if the target sits in the
+  // bottom third of the viewport (action strip on mobile), force tooltip
+  // 'top'. Top-third targets force 'bottom'. Avoids tooltip dropping off
+  // screen below a button strip.
+  if (vw < 600) {
+    if (rect.top > vh * 0.65) placement = 'top'
+    else if (rect.bottom < vh * 0.35) placement = 'bottom'
+  }
   let left = 16, top = 16
   switch (placement) {
     case 'bottom':

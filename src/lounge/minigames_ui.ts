@@ -100,6 +100,12 @@ function startGame(id: string) {
 function finishGame(id: string, score: number) {
   const { newBest, reward } = recordScore(id, score)
   if (reward > 0) awardShells(reward)
+  // V11.9b — feed the achievement album (first-finish + per-game badges)
+  try {
+    void import('./achievements').then(m =>
+      m.recordEvent({ type: 'minigame_finished', gameId: id, score })
+    )
+  } catch {}
   if (!stageEl) return
   // Show a results card
   const card = document.createElement('div')
