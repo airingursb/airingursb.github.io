@@ -14,7 +14,7 @@ import { getWeatherForDate } from '../weather'
 import { footstepDust, clickRipple, pebbleSparkle, sitImpact, waveArc, letterFlutter } from '../feedback'
 import { getIdentity, setLocalDisplayName, isFirstVisit, markNameChoicePrompted } from '../identity'
 import { loadNpcManifest, getActiveBracket, pickDialog, buildDialogContext, type NpcDef, type NpcManifest } from '../npcs'
-import { getActiveFestivalId, getActiveFestival } from '../festivals'
+import { getActiveFestivalId, getActiveFestival, hasCompletedTodaysActivity, markActivityDone, rollActivity } from '../festivals'
 import { QUESTS, acceptQuest, getQuestState, onPebbleCollected as onPebbleCollectedQuest, onRoomVisited as onRoomVisitedQuest, onWaveAt as onWaveAtQuest } from '../quests'
 import { findCutsceneForRoom, markFired, type CutsceneStep, type CutsceneDef } from '../cutscenes'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
@@ -1550,6 +1550,45 @@ export class RoomScene extends Phaser.Scene {
       bannerEmoji.textContent = fest.emoji
       bannerText.textContent = `${fest.name} — ${fest.blurb}`
       banner.hidden = false
+    }
+    // P6 — show the "Join 🎟" button in the banner if we're in the host room
+    //       and the activity hasn't been done today
+    const actionBtn = document.getElementById('lounge-festival-action') as HTMLButtonElement | null
+    if (actionBtn) {
+      if (this.currentRoomId === fest.host_room && !hasCompletedTodaysActivity(fest.id)) {
+        actionBtn.hidden = false
+        actionBtn.textContent = (
+          fest.id === 'spring_open_house' ? 'Enter raffle 🎟' :
+          fest.id === 'summer_solstice'   ? 'Join bonfire 🔥' :
+          fest.id === 'autumn_harvest'    ? 'Trade pebbles 🍂' :
+          fest.id === 'winter_festival'   ? 'Open gift 🎁' : 'Join 🎟'
+        )
+        if (!actionBtn.dataset.bound) {
+          actionBtn.dataset.bound = '1'
+          actionBtn.addEventListener('click', () => {
+            const f = getActiveFestival()
+            if (!f) return
+            if (hasCompletedTodaysActivity(f.id)) return
+            markActivityDone(f.id)
+            const res = rollActivity(f.id)
+            if (res.shellReward > 0) awardShells(res.shellReward)
+            if (res.itemReward) {
+              // Map shop_<id> back to purchase id so it appears in inventory
+              const shopId = res.itemReward.id.replace('shop_', '')
+              try {
+                const raw = localStorage.getItem('lounge_purchases_v1') || '{}'
+                const m = JSON.parse(raw)
+                if (!m[shopId]) m[shopId] = Date.now()
+                localStorage.setItem('lounge_purchases_v1', JSON.stringify(m))
+              } catch {}
+            }
+            showToast(res.message, 3800)
+            actionBtn.hidden = true
+          })
+        }
+      } else {
+        actionBtn.hidden = true
+      }
     }
     if (this.currentRoomId !== fest.host_room) return
     // Host-room decoration overlay
