@@ -1,12 +1,13 @@
-import { WS_URL, PROTOCOL_VERSION, DEFAULT_ROOM, getOrCreateVisitorId, getMyCC, type RoomId } from './config'
+import { WS_URL, PROTOCOL_VERSION, DEFAULT_ROOM, getOrCreateVisitorId, getMyCC, getMySpecies, type RoomId } from './config'
 
 export type SnapMsg = {
   v: number
   t: 'snap'
   you: string
-  peers: Array<{ id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null }>
+  peers: Array<{ id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null; species?: string }>
 }
-export type JoinMsg = { v: number; t: 'join'; id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null }
+export type JoinMsg = { v: number; t: 'join'; id: string; x: number; y: number; cc: string | null; state: string; room: RoomId; display_name?: string | null; visitor_id?: string | null; species?: string }
+export type SpeciesChangedMsg = { v: number; t: 'species_changed'; id: string; species: string }
 export type LeaveMsg = { v: number; t: 'leave'; id: string; room: RoomId }
 export type PosMsg = { v: number; t: 'pos'; id: string; x: number; y: number; vx?: number; vy?: number; state: string; room: RoomId }
 export type ActMsg = { v: number; t: 'act'; id: string; verb: string; text?: string; room: RoomId }
@@ -33,6 +34,8 @@ export type WelcomeMsg = {
   my_home_decorations?: HomeDecoration[]
   // P7 — HMAC token for authenticated PUT to /api/lounge/progress
   progress_token?: string | null
+  // E5-P0c — server's canonical species for this visitor (lounge_visitors.species)
+  species?: string
 }
 export type CollectedMsg = { v: number; t: 'collected'; item_id: string; newly: boolean }
 export type FriendUpdateMsg = { v: number; t: 'friend_update'; friend_id: string; score: number; level: number }
@@ -71,7 +74,7 @@ export type ReplacedMsg = { v: number; t: 'replaced' }
 export type ErrorMsg = { v: number; t: 'error'; reason: string; detail?: string }
 
 export type ServerMsg = SnapMsg | JoinMsg | LeaveMsg | PosMsg | ActMsg | FullMsg
-  | WelcomeMsg | NameChangedMsg | ReplacedMsg | ErrorMsg | CollectedMsg | FriendUpdateMsg
+  | WelcomeMsg | NameChangedMsg | SpeciesChangedMsg | ReplacedMsg | ErrorMsg | CollectedMsg | FriendUpdateMsg
   | GiftSentOkMsg | GiftFailedMsg | GiftReceivedMsg
   | DmSentOkMsg | DmFailedMsg | DmReceivedMsg | DmThreadMsg | DmReadAckMsg
   | PlaceOkMsg | PlaceFailedMsg | PickupOkMsg | PickupFailedMsg
@@ -90,6 +93,7 @@ export type NetCallbacks = {
   onConnectionChange: (state: 'connecting' | 'open' | 'closed') => void
   onWelcome?: (m: WelcomeMsg) => void
   onNameChanged?: (m: NameChangedMsg) => void
+  onSpeciesChanged?: (m: SpeciesChangedMsg) => void
   onReplaced?: () => void
   onError?: (m: ErrorMsg) => void
   onCollected?: (m: CollectedMsg) => void
@@ -154,7 +158,9 @@ function openSocket() {
       t: 'hi',
       cc: getMyCC(),
       visitor_id: getOrCreateVisitorId(),
-      room: initialRoom
+      room: initialRoom,
+      // E5-P0c — server treats local pref as a hint; DB value is canonical
+      species: getMySpecies()
     }))
   })
 
@@ -169,6 +175,7 @@ function openSocket() {
     else if (msg.t === 'full') cb?.onFull()
     else if (msg.t === 'welcome') cb?.onWelcome?.(msg)
     else if (msg.t === 'name_changed') cb?.onNameChanged?.(msg)
+    else if (msg.t === 'species_changed') cb?.onSpeciesChanged?.(msg)
     else if (msg.t === 'replaced') {
       replaced = true
       cb?.onReplaced?.()
@@ -260,6 +267,12 @@ export function sendAct(verb: string, text?: string, room: RoomId = DEFAULT_ROOM
 export function sendName(name: string) {
   if (!ws || ws.readyState !== 1) return
   ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'name', display_name: name }))
+}
+
+// E5-P0c — notify server when player toggles species
+export function sendSpecies(species: string) {
+  if (!ws || ws.readyState !== 1) return
+  ws.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'species', species }))
 }
 
 export function sendCollect(item_id: string) {

@@ -467,7 +467,9 @@ export class RoomScene extends Phaser.Scene {
         this.peerCCs.clear()
         for (const p of m.peers) {
           if (p.room !== this.currentRoomId) continue
-          const bear = new Bear(this, p.x, p.y, ccToRegion(p.cc))
+          // E5-P0c — render peer with their actual species (default bear)
+          const species = (p.species as any) || 'bear'
+          const bear = new Bear(this, p.x, p.y, ccToRegion(p.cc), species)
           bear.sprite.setDepth(5)
           bear.setDisplayName(this.fallbackName(p.display_name ?? null, p.cc))
           this.peerCCs.set(p.id, p.cc)
@@ -482,7 +484,8 @@ export class RoomScene extends Phaser.Scene {
       onJoin: (m: JoinMsg) => {
         if (m.room !== this.currentRoomId) return
         if (this.peers.has(m.id)) return
-        const bear = new Bear(this, m.x, m.y, ccToRegion(m.cc))
+        const species = (m.species as any) || 'bear'
+        const bear = new Bear(this, m.x, m.y, ccToRegion(m.cc), species)
         bear.sprite.setDepth(5)
         bear.setDisplayName(this.fallbackName(m.display_name ?? null, m.cc))
         this.peerCCs.set(m.id, m.cc)
@@ -524,6 +527,10 @@ export class RoomScene extends Phaser.Scene {
       },
       onWelcome: (m: WelcomeMsg) => this.applyWelcome(m),
       onNameChanged: (m: NameChangedMsg) => this.applyNameChanged(m),
+      onSpeciesChanged: (m) => {
+        const peer = this.peers.get(m.id)
+        if (peer) peer.bear.setSpecies(m.species as any)
+      },
       onReplaced: () => {
         showReplacedOverlay()
       },
@@ -583,6 +590,8 @@ export class RoomScene extends Phaser.Scene {
       import('../config').then(({ setMySpecies }) => setMySpecies(next))
       this.myBear?.setSpecies(next)
       updateSpeciesButtonLabel(next)
+      // E5-P0c — notify server so other peers re-render with the new sprite
+      import('../net').then(({ sendSpecies }) => sendSpecies(next))
     })
 
     // V8.7 — progress panel data provider (pebbles + friendships + npc count)
@@ -811,6 +820,14 @@ export class RoomScene extends Phaser.Scene {
     // P7 — pass HMAC token to sync layer so PUT can authenticate
     if (m.progress_token) {
       import('../progress_sync').then(({ setProgressToken }) => setProgressToken(m.progress_token ?? null))
+    }
+    // E5-P0c — reconcile species: server is canonical. If it differs from
+    // local, update local + sprite to match.
+    if (m.species && m.species !== getMySpecies()) {
+      const s = m.species as 'bear' | 'cat'
+      import('../config').then(({ setMySpecies }) => setMySpecies(s))
+      this.myBear?.setSpecies(s)
+      updateSpeciesButtonLabel(s)
     }
 
     // Stash welcome data on a module-level cache so the post-restart scene can read it.
