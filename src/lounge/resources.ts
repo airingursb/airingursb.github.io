@@ -56,6 +56,8 @@ export function addMaterial(id: MaterialId, n = 1) {
   const m = loadMats()
   m[id] = (m[id] ?? 0) + n
   saveMats(m)
+  // V10.4 — every material grant counts as a gather event for achievements
+  try { void import('./achievements').then(a => a.recordEvent({ type: 'gather' })) } catch {}
 }
 export function removeMaterial(id: MaterialId, n = 1): boolean {
   const m = loadMats()

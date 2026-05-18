@@ -66,6 +66,8 @@ export function adoptPet(species: PetSpecies, name: string): PetState {
     species, name: trimmed, affection: 0, lastFedDay: null, adoptedAt: Date.now()
   }
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(pet)) } catch {}
+  // V10.4 — achievement
+  import('./achievements').then(m => m.recordEvent({ type: 'pet_adopted' }))
   return pet
 }
 
@@ -89,6 +91,9 @@ export function feedPet(): number | null {
   p.lastFedDay = todayUTC()
   p.affection = Math.min(MAX_AFFECTION, p.affection + FEED_AFFECTION_GAIN)
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(p)) } catch {}
+  // V10.4 — achievement
+  const newLevel = p.affection
+  import('./achievements').then(m => m.recordEvent({ type: 'pet_affection', level: newLevel }))
   return p.affection
 }
 

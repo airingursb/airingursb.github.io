@@ -139,5 +139,9 @@ export function tryCraft(r: Recipe, env: CraftEnv): CraftResult {
     map[decoStorageKey(r.output.id)] = Date.now()
     localStorage.setItem('lounge_purchases_v1', JSON.stringify(map))
   } catch {}
+  // V10.4 — achievement (craft + recipe discovered if first time)
+  try {
+    void import('./achievements').then(m => m.recordEvent({ type: 'craft_made' }))
+  } catch {}
   return { ok: true, outputId: r.output.id, outputName: r.output.name }
 }

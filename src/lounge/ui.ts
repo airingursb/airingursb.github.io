@@ -1261,11 +1261,18 @@ function buyItem(item: ShopItem, effectivePrice: number) {
   if (item.id === 'marriage_pebble') {
     if (!spendShells(effectivePrice)) return
     import('./marriage').then(m => { m.addMarriagePebble(1); renderShop() })
+    import('./achievements').then(m => m.recordEvent({ type: 'shop_purchase', itemId: item.id }))
     return
   }
   if (hasPurchased(item.id)) return
   if (!spendShells(effectivePrice)) return
   markPurchased(item.id)
+  // V10.4 — record shop purchase achievement. Also detect "all decor owned".
+  import('./achievements').then(m => {
+    const decorIds = SHOP.filter(s => s.effect === 'decoration').map(s => s.id)
+    const allDecorOwned = decorIds.every(id => hasPurchased(id))
+    m.recordEvent({ type: 'shop_purchase', itemId: item.id, allDecorOwned })
+  })
   renderShop()
 }
 

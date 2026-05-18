@@ -144,4 +144,11 @@ export function decoStorageKey(prefixedId: string): string {
 
 const listeners: Array<(value: number) => void> = []
 export function onShellsChange(fn: (value: number) => void) { listeners.push(fn) }
-function notify(v: number) { for (const l of listeners) l(v) }
+function notify(v: number) {
+  for (const l of listeners) l(v)
+  // V10.4: feed shells balance into the achievement system. Lazy require to
+  // avoid a circular import (achievements → shells.awardShells).
+  try {
+    void import('./achievements').then(m => m.recordEvent({ type: 'shells_balance', value: v }))
+  } catch {}
+}

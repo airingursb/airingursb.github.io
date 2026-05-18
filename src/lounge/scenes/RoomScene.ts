@@ -21,6 +21,7 @@ import { addNpcTalkHeart, getNpcHeartLevel } from '../npc_hearts'
 import { hasPet, activePetPerk } from '../pets'
 import { PetSprite } from '../pet_sprite'
 import { getMarriage, setMarriage, getMarriagePebbleCount, consumeMarriagePebble, shouldGreetToday, markGreetedToday, spousePresenceWindow } from '../marriage'
+import { recordEvent as recordAchievement, onAchievementUnlocked } from '../achievements'
 import { getEnergy, consumeEnergy, restoreEnergy, COST as ENERGY_COST } from '../energy'
 import { getEquippedTool, captureMemory } from '../memories'
 import { awardShells, claimDailyVisitBonus, SHELL_REWARD, hasPurchased, decoStorageKey } from '../shells'
@@ -204,6 +205,8 @@ export class RoomScene extends Phaser.Scene {
   }
 
   create() {
+    // V10.4 — log every room entry for the discovery-tier achievements
+    recordAchievement({ type: 'visit_room', roomId: this.currentRoomId })
     const mapKey = isHomeRoom(this.currentRoomId) ? 'room_home_template' : this.currentRoomId
     const map = this.make.tilemap({ key: mapKey })
     // Tilemap may reference any of these tilesets. Phaser uses whichever name matches
@@ -517,7 +520,7 @@ export class RoomScene extends Phaser.Scene {
           const dropY = this.myBear.y
           letterFlutter(this, dropX, dropY)
           showLetterModal((content) => {
-            if (content) sendLetterDrop(content, dropX, dropY)
+            if (content) { sendLetterDrop(content, dropX, dropY); recordAchievement({ type: 'letter_dropped' }) }
           })
           return
         }
@@ -1255,6 +1258,7 @@ export class RoomScene extends Phaser.Scene {
     const friend = this.friendships.get(m.to)
     showToast(`🎁 Sent "${itemName}" to ${friend?.display_name ?? '(anonymous)'}`)
     awardXp('hospitality', 3)  // V9.0
+    recordAchievement({ type: 'gift_sent' })
   }
 
   private applyGiftFailed(m: GiftFailedMsg) {
@@ -1368,6 +1372,7 @@ export class RoomScene extends Phaser.Scene {
 
   private tapJamPad(padIndex: number, it: Interactable) {
     sendJamTap(padIndex)
+    recordAchievement({ type: 'jam_tap' })
     // Optimistic local feedback (server will echo + we'll flash on echo too)
     this.flashJamPad(padIndex, RoomScene.JAM_COLORS[padIndex])
     this.playJamNote(padIndex)
@@ -2496,6 +2501,11 @@ export class RoomScene extends Phaser.Scene {
   // V7.7 — Sequential cutscene runner.
   private async runCutscene(def: CutsceneDef) {
     markFired(def.id)
+    // V10.4: count cutscenes seen for the achievement album
+    try {
+      const raw = JSON.parse(localStorage.getItem('lounge_cutscenes_v1') || '{}') as Record<string, number>
+      recordAchievement({ type: 'cutscene_played', total: Object.keys(raw).length })
+    } catch {}
     for (const step of def.steps) {
       await this.runCutsceneStep(step)
     }
@@ -2577,6 +2587,8 @@ export class RoomScene extends Phaser.Scene {
     // Each click is also worth +1 heart-point (daily-capped per NPC).
     addNpcTalkHeart(id)
     const npcHeart = getNpcHeartLevel(id)
+    recordAchievement({ type: 'npc_met', npcId: id })
+    recordAchievement({ type: 'npc_heart', level: npcHeart })
     const ctx = buildDialogContext({
       heart: npcHeart,
       event: getActiveFestivalId() ?? undefined,
@@ -2593,6 +2605,7 @@ export class RoomScene extends Phaser.Scene {
         setMarriage(id)
         showToast(`💍 You and ${entry.def.name} are partners.`, 5000)
         this.runWeddingCutscene(entry.def.name, screen.x, screen.y)
+        recordAchievement({ type: 'marriage' })
       }
     }
     // V7.4 — auto-give quests this NPC has, if friendship prereq met and not yet accepted

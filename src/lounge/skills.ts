@@ -89,6 +89,11 @@ export function awardXp(skill: SkillId, amount: number) {
   const afterLevel = getLevel(skill, after[skill])
   if (afterLevel > beforeLevel) {
     for (const l of listeners) l(skill, afterLevel)
+    // V10.4 — record level-up for achievements (lazy require to avoid cycle)
+    try {
+      const allLevels = SKILLS.map(s => getLevel(s.id, after[s.id] ?? 0))
+      void import('./achievements').then(m => m.recordEvent({ type: 'skill_level_up', level: afterLevel, allLevels }))
+    } catch {}
   }
 }
 
