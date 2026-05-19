@@ -173,91 +173,94 @@ body:has(.comics-page) {
 }
 .comic-detail .nav a:hover { color: #000; }
 
-/* ── Issue index sidebar (detail page) ─────────────────────────────── */
-.comic-index {
-  position: fixed;
-  top: 96px;
-  right: 32px;
-  width: 200px;
-  max-height: calc(100vh - 140px);
-  z-index: 5;
-  display: none; /* shown on wide viewports */
+/* ── Back issues archive (detail page footer) ──────────────────────── */
+/* Newspaper-style table of contents — thick top rule + hairline row
+   separators, small-caps label, monospace numbers, serif titles.
+   Sits at the bottom of the detail page and replaces the older
+   prev/next strip so the reader can jump to any issue in one click
+   without competing for attention while reading the comic itself. */
+.comic-toc {
+  margin-top: 64px;
 }
-@media (min-width: 1280px) {
-  .comic-index { display: block; }
-}
-.comic-index-inner {
-  display: flex;
-  flex-direction: column;
-  max-height: inherit;
-  border-left: 1px solid #e8e8e8;
-  padding-left: 18px;
-}
-.comic-index-head {
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: #999;
-  font-weight: 700;
+.comic-toc-rule {
+  height: 1px;
+  background: var(--c-text);
   margin-bottom: 14px;
 }
-.comic-index-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-  padding-right: 4px;
+.comic-toc-label {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  font-weight: 600;
+  margin-bottom: 2px;
 }
-.comic-index-list::-webkit-scrollbar { width: 4px; }
-.comic-index-list::-webkit-scrollbar-thumb {
-  background: #d8d8d8;
-  border-radius: 2px;
+.comic-toc-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
-.comic-index-item {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  padding: 6px 8px 6px 10px;
-  margin-left: -10px;
+.comic-toc-list li {
+  border-bottom: 1px solid var(--c-border);
+}
+.comic-toc-list li:first-child {
+  border-top: 1px solid var(--c-border);
+}
+.comic-toc .toc-row {
+  display: grid;
+  grid-template-columns: 64px 1fr auto;
+  align-items: baseline;
+  gap: 14px;
+  padding: 14px 0;
   text-decoration: none;
   color: inherit;
-  border-radius: 3px;
-  border-left: 2px solid transparent;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  transition: background 0.15s, color 0.15s;
 }
-.comic-index-item:hover {
-  background: #f6f6f6;
+.comic-toc a.toc-row:hover { background: rgba(var(--c-overlay-rgb), 0.04); }
+.comic-toc a.toc-row:hover .toc-title { color: var(--c-text); }
+.comic-toc .toc-num {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--c-text-dim);
+  font-weight: 600;
 }
-.comic-index-item.is-current {
-  border-left-color: #444;
-  background: #f0f0f0;
+.comic-toc .toc-title {
+  font-family: ui-serif, "Songti SC", "STSong", Georgia, serif;
+  font-size: 16px;
+  color: var(--c-text-muted);
+  line-height: 1.3;
 }
-.comic-index-num {
+.comic-toc .toc-date {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--c-text-dim);
+  text-align: right;
+  justify-self: end;
+}
+.comic-toc .toc-here {
   font-family: "SF Mono", Menlo, monospace;
   font-size: 10.5px;
-  letter-spacing: 0.08em;
-  color: #aaa;
-  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--c-text-dim);
+  margin-left: 8px;
+  font-weight: normal;
 }
-.comic-index-item.is-current .comic-index-num { color: #444; }
-.comic-index-title {
-  font-size: 13px;
-  color: #555;
-  line-height: 1.35;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-.comic-index-item.is-current .comic-index-title {
-  color: #111;
-  font-weight: 600;
-}
+.comic-toc .is-current .toc-num { color: var(--c-text); }
+.comic-toc .is-current .toc-title { color: var(--c-text); font-weight: 600; }
+.comic-toc .is-current .toc-row { cursor: default; }
 
-/* Slightly more breathing room on ultra-wide so the sidebar floats out
-   of the centered 880px column. */
-@media (min-width: 1440px) {
-  .comic-index { right: max(32px, calc((100vw - 880px) / 2 - 220px)); }
+@media (max-width: 640px) {
+  .comic-toc .toc-row {
+    grid-template-columns: 56px 1fr;
+    grid-template-rows: auto auto;
+    row-gap: 4px;
+  }
+  .comic-toc .toc-date {
+    grid-column: 2;
+    text-align: left;
+    justify-self: start;
+  }
 }

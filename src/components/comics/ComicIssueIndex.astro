@@ -1,9 +1,10 @@
 ---
 // src/components/comics/ComicIssueIndex.astro
-// Sticky right-side index for the comic detail page — lets the reader
-// jump between issues without using the prev/next buttons one by one.
-// Hidden on narrow viewports (<1280px) where there isn't room beside the
-// centered 880px main column.
+// Inline "back issues" archive at the bottom of the comic detail page.
+// Styled like a newspaper masthead's archive index — hairline separators,
+// small-caps label, monospace numbers, serif titles. Replaces the original
+// prev/next nav so the reader can jump to any issue with one click without
+// breaking the immersion of the comic itself.
 import type { Comic } from '../../lib/comics';
 
 interface Props {
@@ -14,23 +15,43 @@ interface Props {
 
 const { comics, current, lang } = Astro.props;
 const base = lang === 'en' ? '/en/comics' : '/comics';
-const heading = lang === 'en' ? 'All issues' : '全部期数';
+const label = lang === 'en' ? 'Back Issues' : '往期目录';
+const youAreHere = lang === 'en' ? 'You are here' : '正在阅读';
+
+const formatDate = (s: string) =>
+  new Date(s).toLocaleDateString(lang === 'en' ? 'en-US' : 'zh-CN', {
+    year: 'numeric', month: 'short', day: 'numeric',
+  });
 ---
 
-<aside class="comic-index" aria-label={heading}>
-  <div class="comic-index-inner">
-    <div class="comic-index-head">{heading}</div>
-    <nav class="comic-index-list">
-      {comics.map((c) => (
-        <a
-          href={`${base}/${c.issue_number}`}
-          class={`comic-index-item${c.issue_number === current ? ' is-current' : ''}`}
-          aria-current={c.issue_number === current ? 'page' : undefined}
-        >
-          <span class="comic-index-num">No. {String(c.issue_number).padStart(2, '0')}</span>
-          <span class="comic-index-title">{c.title[lang] || c.title.zh}</span>
-        </a>
-      ))}
-    </nav>
-  </div>
-</aside>
+<section class="comic-toc" aria-label={label}>
+  <div class="comic-toc-rule"></div>
+  <div class="comic-toc-label">{label}</div>
+  <ol class="comic-toc-list">
+    {comics.map((c) => {
+      const isCurrent = c.issue_number === current;
+      const title = c.title[lang] || c.title.zh;
+      const dateStr = formatDate(c.published_at || c.created_at);
+      const num = `No. ${String(c.issue_number).padStart(2, '0')}`;
+      return (
+        <li class={isCurrent ? 'is-current' : undefined}>
+          {isCurrent ? (
+            <span class="toc-row">
+              <span class="toc-num">{num}</span>
+              <span class="toc-title">
+                {title}<span class="toc-here">— {youAreHere}</span>
+              </span>
+              <span class="toc-date">{dateStr}</span>
+            </span>
+          ) : (
+            <a class="toc-row" href={`${base}/${c.issue_number}`}>
+              <span class="toc-num">{num}</span>
+              <span class="toc-title">{title}</span>
+              <span class="toc-date">{dateStr}</span>
+            </a>
+          )}
+        </li>
+      );
+    })}
+  </ol>
+</section>
