@@ -235,6 +235,16 @@ export class RoomScene extends Phaser.Scene {
     // and every subsequent portal early-returns in checkPortals/enterPortal,
     // breaking all doors in every room after the first.
     this.transitioning = false
+    // V23.32 — same class-field-survival issue with the NPC + peer maps.
+    // Phaser destroys sprites on shutdown but the Bear objects in these
+    // Maps survive into the next scene, holding stale .sprite refs whose
+    // .anims is undefined. First update() in the new room then calls
+    // tickNpcWander → bear.walkTo → bear.playWalk → undefined.play and
+    // throws, halting the entire scene update loop — observable as
+    // "player stuck after walking into a new room".
+    this.npcBears.clear()
+    this.peers.clear()
+    this.peerPets.clear()
   }
 
   preload() {
