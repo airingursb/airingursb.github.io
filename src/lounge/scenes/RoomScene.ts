@@ -38,6 +38,7 @@ import { TransitNpcController } from '../transit_npcs'
 import { spawnAmbientPets, tickAmbientPetProximity } from '../ambient_pets'
 import { spawnSeasonalDecor } from '../seasonal_decor'
 import { spawnTimeDecor } from '../time_decor'
+import { spawnRoomDecals } from '../room_decals'
 import { startAmbientSfx } from '../ambient_sfx'
 import { spawnRoomMotion } from '../room_motion'
 import { spawnWildlife } from '../wildlife'
@@ -3162,6 +3163,11 @@ export class RoomScene extends Phaser.Scene {
     const timeDispose = spawnTimeDecor(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())
     this.events.once('shutdown', timeDispose)
     this.events.once('destroy',  timeDispose)
+    // V23.25 — per-room overlay decals (books in library, steam + utensils
+    // in kitchen, anvil + sawdust in workshop, weather vane on rooftop).
+    const decalDispose = spawnRoomDecals(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())
+    this.events.once('shutdown', decalDispose)
+    this.events.once('destroy',  decalDispose)
     // V23.4 — sparse ambient micro-SFX (bell chime in library, gull cry on
     // the beach, etc.). Web-Audio synth, gated by player's SFX volume.
     const ambientSfxDispose = startAmbientSfx(this.currentRoomId)
