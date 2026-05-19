@@ -3,6 +3,7 @@ import { Bear, registerBearAnimations } from '../bear'
 import { connect, sendPos, sendAct, sendRoomChange, sendName, sendCollect, sendGift, sendDm, requestDmThread, sendDmRead, sendPlace, sendPickup, requestHomeDecorations, sendJamTap, sendLetterDrop, requestLettersInRoom, requestWishes, sendWishSubmit, sendWishVote, type ActMsg, type SnapMsg, type JoinMsg, type LeaveMsg, type PosMsg, type WelcomeMsg, type NameChangedMsg, type CollectedMsg, type FriendUpdateMsg, type FriendshipEntry, type GiftEntry, type GiftReceivedMsg, type GiftSentOkMsg, type GiftFailedMsg, type DmReceivedMsg, type DmSentOkMsg, type DmFailedMsg, type DmThreadMsg, type DmEntry, type HomeDecoration, type PlaceOkMsg, type PlaceFailedMsg, type PickupOkMsg, type PickupFailedMsg, type HomeDecorationBroadcast, type HomeDecorationsResponseMsg, type JamTapMsg, type JamBurstMsg, type LetterEntry, type LetterDropOkMsg, type LetterDropFailedMsg, type LetterAppearedMsg, type LettersInRoomMsg, type WishesListMsg, type WishSubmitOkMsg, type WishVoteOkMsg, type WishFailedMsg } from '../net'
 import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble } from '../pebbles'
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
+import { getCurrentPhase } from '../atmosphere'
 import { renderMinimap, showDoorLabel, hideDoorLabel, setDoorLabelClickHandler, MAP_ROOMS } from '../minimap'
 import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, type Region, type RoomId, type Species } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
@@ -34,7 +35,7 @@ import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJa
 import { tickNpcEvents, leaveNpcEventIfNeeded, setEventBannerHandler, currentEventStatus } from '../npc_events'
 import { tickRandomEvents, getActiveEvent, attendEvent, type ActiveEvent } from '../random_events'
 import { TransitNpcController } from '../transit_npcs'
-import { spawnAmbientPets } from '../ambient_pets'
+import { spawnAmbientPets, tickAmbientPetProximity } from '../ambient_pets'
 import { spawnSeasonalDecor } from '../seasonal_decor'
 import { spawnTimeDecor } from '../time_decor'
 import { startAmbientSfx } from '../ambient_sfx'
@@ -181,6 +182,11 @@ export class RoomScene extends Phaser.Scene {
   private transitNpcs?: TransitNpcController
   // V23.9 — footprint tracker (sand / snow)
   private footprintTracker?: FootprintTracker
+  // V23.12 — ambient pet sprites reference for proximity ticking
+  private ambientPetSprites: Phaser.GameObjects.Container[] = []
+  // V23.14 — winter breath puff state
+  private breathPuffTimer?: Phaser.Time.TimerEvent
+  private lastBearMoveAt = 0
   // V4.0 — friendship
   private peerVisitorIds = new Map<string, string>()      // session id → visitor_id
   private peerCCs = new Map<string, string | null>()      // session id → country code (for flag display)
@@ -2991,7 +2997,7 @@ export class RoomScene extends Phaser.Scene {
     // skipped in personal homes + private party rooms.
     const TRANSIT_ROOMS = new Set(['room_lobby', 'room_dj_floor', 'room_library', 'room_grove', 'room_beach', 'room_balcony'])
     if (TRANSIT_ROOMS.has(this.currentRoomId)) {
-      this.transitNpcs = new TransitNpcController(this, this.mapInfo.widthPx, this.mapInfo.heightPx)
+      this.transitNpcs = new TransitNpcController(this, this.mapInfo.widthPx, this.mapInfo.heightPx, this.currentRoomId)
       this.transitNpcs.start()
       this.events.once('shutdown', () => { this.transitNpcs?.destroy(); this.transitNpcs = undefined })
       this.events.once('destroy',  () => { this.transitNpcs?.destroy(); this.transitNpcs = undefined })
@@ -3004,6 +3010,8 @@ export class RoomScene extends Phaser.Scene {
     const cleanupPets = () => { for (const s of ambientPetSprites) s.destroy() }
     this.events.once('shutdown', cleanupPets)
     this.events.once('destroy',  cleanupPets)
+    // V23.12 — proximity-react ticker (stored so update() can use)
+    this.ambientPetSprites = ambientPetSprites
     // V23.2 — seasonal decorations (cherry blossoms in spring grove, etc.).
     // Layered on top of weather (snow + season co-exist).
     const seasonalDispose = spawnSeasonalDecor(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())
@@ -3034,6 +3042,37 @@ export class RoomScene extends Phaser.Scene {
       this.footprintTracker = new FootprintTracker(this, this.currentRoomId)
       this.events.once('shutdown', () => { this.footprintTracker?.destroy(); this.footprintTracker = undefined })
       this.events.once('destroy',  () => { this.footprintTracker?.destroy(); this.footprintTracker = undefined })
+    }
+    // V23.16 — grove bird-startle Easter egg. Invisible hitzone covers the
+    // canopy area (top ~30% of the room); clicking it flushes a small flock
+    // of bird particles that fly off in fan + a brief chirp burst.
+    if (this.currentRoomId === 'room_grove') {
+      const canopy = this.add.zone(this.mapInfo.widthPx / 2, this.mapInfo.heightPx * 0.18,
+                                   this.mapInfo.widthPx * 0.8, this.mapInfo.heightPx * 0.32)
+      canopy.setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true })
+      canopy.on('pointerdown', (p: Phaser.Input.Pointer) => {
+        this.startleGroveBirds(p.worldX, p.worldY)
+      })
+      this.events.once('shutdown', () => { try { canopy.destroy() } catch {} })
+      this.events.once('destroy',  () => { try { canopy.destroy() } catch {} })
+    }
+
+    // V23.14 — winter breath puff: outdoor + winter + cool phase + player idle.
+    // The timer checks every 4-6s; the actual puff only spawns when all
+    // conditions hold at that instant.
+    if (!prefersReducedMotion()) {
+      const OUTDOOR = new Set(['room_beach', 'room_balcony', 'room_grove', 'room_rooftop'])
+      if (OUTDOOR.has(this.currentRoomId)) {
+        const startBreath = () => {
+          this.breathPuffTimer = this.time.delayedCall(4000 + Math.random() * 2000, () => {
+            this.tryBreathPuff()
+            startBreath()
+          })
+        }
+        startBreath()
+        this.events.once('shutdown', () => { this.breathPuffTimer?.remove(false); this.breathPuffTimer = undefined })
+        this.events.once('destroy',  () => { this.breathPuffTimer?.remove(false); this.breathPuffTimer = undefined })
+      }
     }
     // V15.5 — small-talk timer: every 60-120s, if 2+ NPCs are co-present,
     // fire a paired exchange. Single timer per scene (cheaper than per-NPC).
@@ -3169,8 +3208,131 @@ export class RoomScene extends Phaser.Scene {
           const screen = this.bearScreenPos(entry.bear)
           showBubble('npc_' + def.id, pickNoticeLine(def.id), screen.x, screen.y)
         }
+        // V23.13 — high-heart NPCs emit a small floating ❤ on room entry.
+        // Tier-gated so casual acquaintances don't spam hearts: heart 5
+        // (Soulmate-Adjacent precursor) is the friendship threshold.
+        if (getNpcHeartLevel(def.id) >= 5) {
+          this.spawnHeartParticle(entry.bear.x, entry.bear.y - 48)
+        }
       })
     }
+  }
+
+  /** V23.16 — bird flock startle. Spawns 4-6 small birds that fly outward
+   *  from (x, y) and disappear off-screen. Each bird is a tiny 2-tone
+   *  Container with a flapping wing tween. Plays a brief synth chirp
+   *  burst (lazy import to avoid pulling Web Audio when not needed). */
+  private startleGroveBirds(centerX: number, centerY: number) {
+    const count = 4 + Math.floor(Math.random() * 3)  // 4-6 birds
+    for (let i = 0; i < count; i++) {
+      const angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 0.9  // mostly upward, fan ±81°
+      const speed = 120 + Math.random() * 80
+      const targetX = centerX + Math.cos(angle) * speed * 4
+      const targetY = centerY + Math.sin(angle) * speed * 4
+      const bird = this.add.container(centerX + (Math.random() - 0.5) * 16, centerY + (Math.random() - 0.5) * 8).setDepth(990)
+      const wing = this.add.rectangle(0, 0, 5, 1, 0x3a2820)
+      const body = this.add.rectangle(0, 0, 1, 2, 0x3a2820)
+      bird.add([wing, body])
+      this.tweens.add({
+        targets: wing, scaleX: { from: 1, to: 0.4 },
+        duration: 90, yoyo: true, repeat: -1, ease: 'Sine.inOut'
+      })
+      this.tweens.add({
+        targets: bird, x: targetX, y: targetY,
+        duration: 1400 + Math.random() * 400, ease: 'Sine.out',
+        onComplete: () => bird.destroy()
+      })
+    }
+    // Brief chirp burst (re-uses the V23.4 birdChirp shape but bypasses
+    // the rate-limited ambient_sfx scheduler since this is a one-shot
+    // user-triggered burst).
+    {
+      const Ctor = (window as any).AudioContext || (window as any).webkitAudioContext
+      if (!Ctor) return
+      try {
+        const ctx = new Ctor()
+        if (ctx.state === 'suspended') void ctx.resume()
+        const master = ctx.createGain()
+        master.gain.value = 0.18
+        master.connect(ctx.destination)
+        const t = ctx.currentTime
+        for (let i = 0; i < count; i++) {
+          const start = t + i * 0.06
+          const osc = ctx.createOscillator()
+          const env = ctx.createGain()
+          osc.type = 'sine'
+          osc.frequency.setValueAtTime(2400 + Math.random() * 800, start)
+          osc.frequency.exponentialRampToValueAtTime(3600 + Math.random() * 600, start + 0.07)
+          env.gain.setValueAtTime(0, start)
+          env.gain.linearRampToValueAtTime(0.12, start + 0.005)
+          env.gain.exponentialRampToValueAtTime(0.001, start + 0.12)
+          osc.connect(env); env.connect(master)
+          osc.start(start); osc.stop(start + 0.13)
+        }
+        setTimeout(() => { try { ctx.close() } catch {} }, 2000)
+      } catch {}
+    }
+  }
+
+  /** V23.14 — winter breath puff. Spawns 3 tiny white pixels at the bear's
+   *  mouth that drift up + fade. Conditions checked at fire time:
+   *  current season is 'winter', current phase is dawn/dusk/night (cool
+   *  hours), and the player has been idle (no movement) for ≥ 3s. */
+  private tryBreathPuff() {
+    if (!this.myBear) return
+    if (this.time.now - this.lastBearMoveAt < 3000) return  // still moving
+    const season = getCurrentSeason()?.id
+    if (season !== 'winter') return
+    const phase = getCurrentPhase()
+    if (phase === 'day') return  // sun's out, no visible breath
+    // Bear sprite is 32×48 with origin (0.5, 1) — mouth ~ y - 14, x +/- 4 by facing
+    const mouthOffsetX = this.myBear.facing === 'left' ? -4 : this.myBear.facing === 'right' ? 4 : 0
+    const mouthOffsetY = -18
+    const mx = this.myBear.x + mouthOffsetX
+    const my = this.myBear.y + mouthOffsetY
+    ensurePixelTexture(this)
+    const puff = this.add.particles(mx, my, PIXEL_TEX_KEY, {
+      x: { min: -1, max: 1 }, y: 0,
+      lifespan: 1200, quantity: 3, frequency: -1,
+      speedX: { min: this.myBear.facing === 'left' ? -16 : this.myBear.facing === 'right' ? 4 : -6,
+                max: this.myBear.facing === 'left' ? -4 : this.myBear.facing === 'right' ? 16 : 6 },
+      speedY: { min: -12, max: -5 },
+      scale: { start: 1.4, end: 2.6 },
+      tint: 0xf8f8ff, alpha: { start: 0.7, end: 0 }
+    }).setDepth(6)
+    puff.explode(3, mx, my)
+    this.time.delayedCall(1300, () => { try { puff.destroy() } catch {} })
+  }
+
+  /** V23.13 — small ❤ that floats up + fades, anchored to scene world coords.
+   *  Used by the NPC notice path (V15.3) when player has high heart with
+   *  the NPC. One per spawnNpc → one per room visit per NPC. */
+  private spawnHeartParticle(x: number, y: number) {
+    const heart = this.add.container(x, y).setDepth(7)
+    // Two-pixel ❤ shape (3 wide, 3 tall) via small rects.
+    const g = this.add.graphics()
+    g.fillStyle(0xff4060, 1)
+    // Top: two lobes
+    g.fillRect(-2, -2, 2, 2)
+    g.fillRect( 1, -2, 2, 2)
+    // Middle: full row
+    g.fillRect(-2,  0, 5, 2)
+    // Bottom: point
+    g.fillRect(-1,  2, 3, 1)
+    g.fillRect( 0,  3, 1, 1)
+    heart.add(g)
+    heart.setAlpha(0)
+    this.tweens.add({
+      targets: heart, alpha: { from: 0, to: 1 }, y: y - 4,
+      duration: 240, ease: 'Sine.out',
+      onComplete: () => {
+        this.tweens.add({
+          targets: heart, alpha: 0, y: heart.y - 18,
+          duration: 1100, ease: 'Sine.in',
+          onComplete: () => heart.destroy()
+        })
+      }
+    })
   }
 
   // V15.0 — ambient action cycle: idle NPCs occasionally change facing,
@@ -4104,6 +4266,14 @@ export class RoomScene extends Phaser.Scene {
       // V23.9 — drop footprints when walking on sand / snow
       if (this.footprintTracker?.isActive()) {
         this.footprintTracker.onMove(this.myBear.x, this.myBear.y, this.myBear.facing)
+      }
+      // V23.12 — ambient pet proximity reactions
+      if (this.ambientPetSprites.length > 0) {
+        tickAmbientPetProximity(this, this.ambientPetSprites, this.myBear.x, this.myBear.y, this.time.now)
+      }
+      // V23.14 — track last movement timestamp for the breath-puff idle gate
+      if (this.myBear.state === 'walk' || this.myBear.target) {
+        this.lastBearMoveAt = this.time.now
       }
       // V10.8c — peers' pets follow their owners
       this.peerPets.forEach((pet, sessionId) => {

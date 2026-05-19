@@ -12,6 +12,7 @@
 import type Phaser from 'phaser'
 import { Bear, type Direction } from './bear'
 import { ccToRegion, SPECIES, type Species, prefersReducedMotion } from './config'
+import { footprintKindFor, type FootprintKind } from './footprints'
 
 const MIN_COOLDOWN_MS = 90_000
 const MAX_COOLDOWN_MS = 180_000
@@ -24,6 +25,11 @@ type Walker = {
   midX: number
   facingForward: Direction
   pauseUntil: number
+  // V23.15 — per-walker footprint state (alternating L/R + travel counter).
+  fpLastX: number
+  fpLastY: number
+  fpTravel: number
+  fpParity: 0 | 1
 }
 
 export class TransitNpcController {
@@ -33,12 +39,17 @@ export class TransitNpcController {
   private walkers: Walker[] = []
   private timer?: Phaser.Time.TimerEvent
   private speciesPool: Species[]
+  // V23.15 — footprint kind for this room (null = no prints, 'sand' / 'snow' = leave them)
+  private footprintKind: FootprintKind
+  /** All footprint sprites this controller has dropped, capped + auto-pruned. */
+  private footprints: Phaser.GameObjects.Container[] = []
 
-  constructor(scene: Phaser.Scene, mapWidthPx: number, mapHeightPx: number) {
+  constructor(scene: Phaser.Scene, mapWidthPx: number, mapHeightPx: number, roomId: string) {
     this.scene = scene
     this.mapWidthPx = mapWidthPx
     this.mapHeightPx = mapHeightPx
     this.speciesPool = [...SPECIES]
+    this.footprintKind = footprintKindFor(roomId)
   }
 
   start() {
@@ -52,6 +63,10 @@ export class TransitNpcController {
     const stillAlive: Walker[] = []
     for (const w of this.walkers) {
       w.bear.update(dtMs, true)
+      // V23.15 — drop footprints on snow/sand if this room supports them
+      if (this.footprintKind) {
+        this.tryDropFootprint(w)
+      }
       // State machine
       if (w.stage === 'walking_to_midpoint') {
         if (Math.abs(w.bear.x - w.midX) < 4) {
@@ -95,6 +110,58 @@ export class TransitNpcController {
     this.timer = undefined
     for (const w of this.walkers) { try { w.bear.destroy() } catch {} }
     this.walkers.length = 0
+    // V23.15 — destroy any leftover transit footprints (they would
+    // otherwise leak across scene shutdown since they're scene-owned).
+    for (const f of this.footprints) { try { f.destroy() } catch {} }
+    this.footprints.length = 0
+  }
+
+  /** V23.15 — drop a footprint behind a walker every ~24px traveled,
+   *  alternating L/R via per-walker parity. Identical visual style to
+   *  the player's footprint module to keep the world coherent. */
+  private tryDropFootprint(w: Walker) {
+    const dx = w.bear.x - w.fpLastX
+    const dy = w.bear.y - w.fpLastY
+    w.fpTravel += Math.hypot(dx, dy)
+    w.fpLastX = w.bear.x; w.fpLastY = w.bear.y
+    if (w.fpTravel < 24) return
+    w.fpTravel = 0
+    const sideOffset = 2.5
+    let ox = 0, oy = 0
+    const side = w.fpParity === 0 ? -1 : 1
+    switch (w.bear.facing) {
+      case 'up':    ox =  side * sideOffset; break
+      case 'down':  ox = -side * sideOffset; break
+      case 'left':  oy = -side * sideOffset; break
+      case 'right': oy =  side * sideOffset; break
+    }
+    w.fpParity = (1 - w.fpParity) as 0 | 1
+    const kind = this.footprintKind
+    if (!kind) return
+    const main = kind === 'snow' ? 0xa0c0d8 : 0x806848
+    const c = this.scene.add.container(w.bear.x + ox, w.bear.y + oy - 1).setDepth(2)
+    const pad  = this.scene.add.rectangle(0, 0, 4, 2, main, 0.55)
+    const toe1 = this.scene.add.rectangle(2, -1.5, 1, 1, main, 0.45)
+    const toe2 = this.scene.add.rectangle(2.5, 0, 1, 1, main, 0.45)
+    const toe3 = this.scene.add.rectangle(2, 1.5, 1, 1, main, 0.45)
+    c.add([pad, toe1, toe2, toe3])
+    const angleByFacing: Record<Direction, number> = { right: 0, left: 180, down: 90, up: 270 }
+    c.setAngle(angleByFacing[w.bear.facing])
+    this.footprints.push(c)
+    const dur = 8000 + Math.random() * 4000
+    this.scene.tweens.add({
+      targets: c, alpha: 0, duration: dur, ease: 'Sine.in',
+      onComplete: () => {
+        try { c.destroy() } catch {}
+        const i = this.footprints.indexOf(c)
+        if (i >= 0) this.footprints.splice(i, 1)
+      }
+    })
+    // Cap to avoid unbounded growth on a never-shutting-down room
+    while (this.footprints.length > 60) {
+      const old = this.footprints.shift()
+      if (old) { try { old.destroy() } catch {} }
+    }
   }
 
   private scheduleNext(delayMs?: number) {
@@ -138,7 +205,11 @@ export class TransitNpcController {
         stage: willPauseThis ? 'walking_to_midpoint' : 'walking_direct',
         midX: midX + offsetX,
         facingForward,
-        pauseUntil: 0
+        pauseUntil: 0,
+        fpLastX: bear.sprite.x,
+        fpLastY: bear.sprite.y,
+        fpTravel: 0,
+        fpParity: 0
       }
     }
 

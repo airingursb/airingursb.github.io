@@ -123,6 +123,22 @@ function renderPet(
   return c
 }
 
+/** V23.12 — per-pet runtime state for proximity reactions. Stored on
+ *  the sprite container's data manager so RoomScene's tick can read +
+ *  mutate without leaking module-level state. */
+type PetRuntimeState = {
+  kind: AmbientPetKind
+  homeX: number
+  homeY: number
+  alert: boolean         // currently in "noticed player" pose
+  lastReactionAt: number // ms timestamp of last small twitch
+  /** Optional alert-indicator child (a thought-mark / open-eye dot). */
+  alertMark?: Phaser.GameObjects.Container
+}
+
+const PET_ALERT_RADIUS = 44       // px — start reacting
+const PET_ALERT_EXIT_RADIUS = 64  // hysteresis — calm down past this
+
 /** Spawn all ambient pets configured for the given room. Returns a list
  *  of created sprites + their tween so the caller can clean up on
  *  scene shutdown. */
@@ -166,9 +182,131 @@ export function spawnAmbientPets(
       reacting = true
       reactToClick(scene, sprite, p.kind, p.x, p.y, () => { reacting = false })
     })
+    // V23.12 — stash runtime state so the scene's per-frame proximity
+    // tick (tickAmbientPetProximity below) can react without piercing
+    // module boundaries.
+    sprite.setData('petState', {
+      kind: p.kind, homeX: p.x, homeY: p.y, alert: false, lastReactionAt: 0
+    } as PetRuntimeState)
     sprites.push(sprite)
   }
   return sprites
+}
+
+/** V23.12 — called each frame from RoomScene. Walks every ambient pet
+ *  sprite and toggles its alert pose based on distance to the player.
+ *  Uses hysteresis (different enter / exit radii) so a player hovering
+ *  near the threshold doesn't flicker the pet's pose every frame. */
+export function tickAmbientPetProximity(
+  scene: Phaser.Scene,
+  sprites: Phaser.GameObjects.Container[],
+  playerX: number,
+  playerY: number,
+  now: number
+) {
+  for (const sprite of sprites) {
+    const state = sprite.getData('petState') as PetRuntimeState | undefined
+    if (!state) continue
+    const dist = Math.hypot(playerX - state.homeX, playerY - state.homeY)
+    if (!state.alert && dist < PET_ALERT_RADIUS) {
+      state.alert = true
+      onPetAlertEnter(scene, sprite, state, now)
+    } else if (state.alert && dist > PET_ALERT_EXIT_RADIUS) {
+      state.alert = false
+      onPetAlertExit(scene, sprite, state)
+    } else if (state.alert && now - state.lastReactionAt > 8000) {
+      // While alert, do a tiny twitch every ~8s so it doesn't freeze in pose
+      state.lastReactionAt = now
+      onPetAlertTwitch(scene, sprite, state)
+    }
+  }
+}
+
+function onPetAlertEnter(
+  scene: Phaser.Scene,
+  sprite: Phaser.GameObjects.Container,
+  state: PetRuntimeState,
+  now: number
+) {
+  state.lastReactionAt = now
+  // Spawn a small "!" alert mark above the pet
+  const mark = scene.add.container(0, -12)
+  const dot = scene.add.rectangle(0, 0, 1, 3, 0xffd166)
+  const dotBase = scene.add.rectangle(0, 2.5, 1, 1, 0xffd166)
+  mark.add([dot, dotBase])
+  mark.setAlpha(0)
+  sprite.add(mark)
+  state.alertMark = mark
+  scene.tweens.add({
+    targets: mark, alpha: { from: 0, to: 1 }, y: -14,
+    duration: 220, ease: 'Sine.out'
+  })
+  // Body reaction: cat lifts head (y-scale 1.1), dog tilts angle, bunny y-up
+  if (state.kind === 'sleeping_cat') {
+    scene.tweens.add({
+      targets: sprite, scaleY: 1.08,
+      duration: 180, ease: 'Sine.out'
+    })
+  } else if (state.kind === 'sitting_dog') {
+    scene.tweens.add({
+      targets: sprite, angle: 5,
+      duration: 200, yoyo: true, ease: 'Sine.inOut'
+    })
+  } else if (state.kind === 'curled_bunny') {
+    scene.tweens.add({
+      targets: sprite, y: state.homeY - 2,
+      duration: 220, ease: 'Sine.out'
+    })
+  }
+}
+
+function onPetAlertExit(
+  scene: Phaser.Scene,
+  sprite: Phaser.GameObjects.Container,
+  state: PetRuntimeState
+) {
+  // Fade + destroy alert mark
+  if (state.alertMark) {
+    const mark = state.alertMark
+    scene.tweens.add({
+      targets: mark, alpha: 0,
+      duration: 200, onComplete: () => { try { mark.destroy() } catch {} }
+    })
+    state.alertMark = undefined
+  }
+  // Revert pose
+  if (state.kind === 'sleeping_cat') {
+    scene.tweens.add({ targets: sprite, scaleY: 1, duration: 220, ease: 'Sine.in' })
+  } else if (state.kind === 'curled_bunny') {
+    scene.tweens.add({ targets: sprite, y: state.homeY, duration: 240, ease: 'Sine.in' })
+  }
+  // Dog already reverts via the alert-enter yoyo, no exit work needed.
+}
+
+function onPetAlertTwitch(
+  scene: Phaser.Scene,
+  sprite: Phaser.GameObjects.Container,
+  state: PetRuntimeState
+) {
+  // Tiny secondary twitch — bunny does a small extra hop, dog wags once,
+  // cat scales slightly more then back.
+  if (state.kind === 'curled_bunny') {
+    scene.tweens.add({
+      targets: sprite, y: state.homeY - 4,
+      duration: 140, yoyo: true, ease: 'Sine.inOut'
+    })
+  } else if (state.kind === 'sitting_dog') {
+    scene.tweens.add({
+      targets: sprite, angle: { from: -3, to: 3 },
+      duration: 90, yoyo: true, repeat: 3, ease: 'Sine.inOut',
+      onComplete: () => sprite.setAngle(0)
+    })
+  } else if (state.kind === 'sleeping_cat') {
+    scene.tweens.add({
+      targets: sprite, scaleY: { from: 1.08, to: 1.15 },
+      duration: 180, yoyo: true, ease: 'Sine.inOut'
+    })
+  }
 }
 
 function reactToClick(
