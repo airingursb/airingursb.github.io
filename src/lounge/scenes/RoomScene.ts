@@ -188,7 +188,10 @@ export class RoomScene extends Phaser.Scene {
   private jamPads = new Map<number, Phaser.GameObjects.Rectangle>()
   // V5.1 — letters
   private letters = new Map<number, LetterEntry>()
-  private letterSprites = new Map<number, Phaser.GameObjects.Text>()
+  // V22.5 — letter sprites are now pixel-art Containers (V22.5 replaced
+  // the emoji Text). Container exposes x/y the same way Text did, so
+  // tryReadLetterAt still works.
+  private letterSprites = new Map<number, Phaser.GameObjects.Container>()
 
   constructor() {
     super({ key: 'Room' })
@@ -1947,20 +1950,121 @@ export class RoomScene extends Phaser.Scene {
   }
 
   private spawnLetterSprite(id: number, l: LetterEntry) {
-    // V12.2 — eternal letters render as a 漂流瓶 (drift bottle) emoji so
-    // players can tell them apart from regular pinned notes.
-    const glyph = l.eternal ? '🌊' : '📜'
-    const text = this.add.text(l.x, l.y, glyph, {
-      fontSize: '14px',
-      resolution: 2
-    }).setOrigin(0.5, 0.5).setDepth(4).setInteractive({ useHandCursor: true })
-    // Slow bob
+    // V22.5 — replaced the 📜 / 🌊 emoji with pixel-art Phaser Graphics
+    // containers so floor letters share the visual language of the bear
+    // sprites + V22 UI icons. Eternal letters render as a corked bottle
+    // (drift bottle); regular letters as a folded paper.
+    const container = l.eternal
+      ? this.drawDriftBottleSprite(l.x, l.y)
+      : this.drawLetterPaperSprite(l.x, l.y)
+    container.setDepth(4)
+    // Make a generously-sized hit area so taps land easily on mobile.
+    container.setInteractive(new Phaser.Geom.Rectangle(-10, -10, 20, 20), Phaser.Geom.Rectangle.Contains)
+    container.input!.cursor = 'pointer'
     if (!prefersReducedMotion()) {
       this.tweens.add({
-        targets: text, y: l.y - 2, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut'
+        targets: container, y: l.y - 2, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut'
       })
     }
-    this.letterSprites.set(id, text)
+    this.letterSprites.set(id, container)
+  }
+
+  /** V22.5 — folded paper, 14×11 px @ 1.5 game-px each. */
+  private drawLetterPaperSprite(x: number, y: number): Phaser.GameObjects.Container {
+    const c = this.add.container(x, y)
+    const g = this.add.graphics()
+    const PIX = 1.5
+    // Color palette
+    const OUTLINE = 0x3a2820, PAPER = 0xf0e6c8, FOLD = 0xc8b888, TEXT = 0x7a6040
+    // Pixel grid (16×12; '.'=transparent, '1'=outline, '4'=paper, '2'=fold, '5'=text)
+    const GRID = [
+      '................',
+      '..11111111111...',
+      '..14444444441...',
+      '..1422222444l...',
+      '..1422224444l...',
+      '..1422244444l...',
+      '..14555555441...',
+      '..14444444441...',
+      '..14555555441...',
+      '..11111111111...',
+      '................',
+      '................'
+    ]
+    const W = 16, H = 12
+    const offX = -W * PIX / 2, offY = -H * PIX / 2
+    for (let py = 0; py < GRID.length; py++) {
+      const row = GRID[py]
+      for (let px = 0; px < row.length; px++) {
+        const ch = row[px]
+        if (ch === '.') continue
+        let color: number
+        switch (ch) {
+          case '1': color = OUTLINE; break
+          case '4': color = PAPER; break
+          case '2': color = FOLD; break
+          case '5': color = TEXT; break
+          case 'l': color = 0x2a1810; break  // shadow edge
+          default: continue
+        }
+        g.fillStyle(color, 1)
+        g.fillRect(offX + px * PIX, offY + py * PIX, PIX, PIX)
+      }
+    }
+    c.add(g)
+    return c
+  }
+
+  /** V22.5 — corked drift bottle, 12×16 px @ 1.5 game-px each. */
+  private drawDriftBottleSprite(x: number, y: number): Phaser.GameObjects.Container {
+    const c = this.add.container(x, y)
+    const g = this.add.graphics()
+    const PIX = 1.5
+    const OUTLINE = 0x1a3838, GLASS = 0x80c8d8, CORK = 0xa87848, PAPER = 0xe6dcc4, SHINE = 0xffffff
+    const GRID = [
+      '................',
+      '......11........',
+      '.....1331.......',
+      '......11........',
+      '......11........',
+      '.....1441.......',
+      '....144441......',
+      '...12444421.....',
+      '..1224444421....',
+      '..1224554421....',
+      '..1224554421....',
+      '..1224444421....',
+      '..1224444421....',
+      '..1224444421....',
+      '..122444442l....',
+      '..111111111l....'
+    ]
+    const W = 16, H = 16
+    const offX = -W * PIX / 2, offY = -H * PIX / 2
+    for (let py = 0; py < GRID.length; py++) {
+      const row = GRID[py]
+      for (let px = 0; px < row.length; px++) {
+        const ch = row[px]
+        if (ch === '.') continue
+        let color: number, alpha = 1
+        switch (ch) {
+          case '1': color = OUTLINE; break
+          case '2': color = GLASS; alpha = 0.85; break
+          case '3': color = CORK; break
+          case '4': color = GLASS; alpha = 0.55; break  // glass body fill
+          case '5': color = PAPER; break                  // rolled note inside
+          case 'l': color = OUTLINE; alpha = 0.5; break   // shadow edge
+          default: continue
+        }
+        g.fillStyle(color, alpha)
+        g.fillRect(offX + px * PIX, offY + py * PIX, PIX, PIX)
+      }
+    }
+    // A tiny shine pixel on the bottle shoulder
+    g.fillStyle(SHINE, 0.6)
+    g.fillRect(offX + 3 * PIX, offY + 8 * PIX, PIX, PIX)
+    c.add(g)
+    return c
   }
 
   private tryReadLetterAt(wx: number, wy: number): boolean {
