@@ -186,7 +186,15 @@ export class RoomScene extends Phaser.Scene {
   private ambientPetSprites: Phaser.GameObjects.Container[] = []
   // V23.14 — winter breath puff state
   private breathPuffTimer?: Phaser.Time.TimerEvent
-  private lastBearMoveAt = 0
+  // V23.17-review I4 — sentinel so the first idle-check after spawn
+  // doesn't immediately satisfy (now - 0 > 3000) on every fresh scene.
+  private lastBearMoveAt = -1
+  private _lastBearPosX?: number
+  private _lastBearPosY?: number
+  // V23.13 + V23.17-review I1 — per-NPC heart-particle cooldown so
+  // repeated room re-entries (each respawns NPCs) don't spam hearts.
+  private heartParticleCooldown = new Map<string, number>()
+  private static readonly HEART_PARTICLE_COOLDOWN_MS = 60_000
   // V4.0 — friendship
   private peerVisitorIds = new Map<string, string>()      // session id → visitor_id
   private peerCCs = new Map<string, string | null>()      // session id → country code (for flag display)
@@ -3049,7 +3057,10 @@ export class RoomScene extends Phaser.Scene {
     if (this.currentRoomId === 'room_grove') {
       const canopy = this.add.zone(this.mapInfo.widthPx / 2, this.mapInfo.heightPx * 0.18,
                                    this.mapInfo.widthPx * 0.8, this.mapInfo.heightPx * 0.32)
-      canopy.setOrigin(0.5, 0.5).setInteractive({ useHandCursor: true })
+      // V23.17-review I3 — depth -1 so any clickable in the canopy area
+      // (NPCs, decor, seasonal blossoms) wins click priority over us;
+      // canopy is only the fallback.
+      canopy.setOrigin(0.5, 0.5).setDepth(-1).setInteractive({ useHandCursor: true })
       canopy.on('pointerdown', (p: Phaser.Input.Pointer) => {
         this.startleGroveBirds(p.worldX, p.worldY)
       })
@@ -3211,8 +3222,14 @@ export class RoomScene extends Phaser.Scene {
         // V23.13 — high-heart NPCs emit a small floating ❤ on room entry.
         // Tier-gated so casual acquaintances don't spam hearts: heart 5
         // (Soulmate-Adjacent precursor) is the friendship threshold.
+        // V23.17-review I1 — per-NPC cooldown so re-entering rooms (which
+        // respawns NPCs) doesn't refire the heart every time.
         if (getNpcHeartLevel(def.id) >= 5) {
-          this.spawnHeartParticle(entry.bear.x, entry.bear.y - 48)
+          const lastHeart = this.heartParticleCooldown.get(def.id) ?? 0
+          if (this.time.now - lastHeart >= RoomScene.HEART_PARTICLE_COOLDOWN_MS) {
+            this.heartParticleCooldown.set(def.id, this.time.now)
+            this.spawnHeartParticle(entry.bear.x, entry.bear.y - 48)
+          }
         }
       })
     }
@@ -3280,6 +3297,9 @@ export class RoomScene extends Phaser.Scene {
    *  hours), and the player has been idle (no movement) for ≥ 3s. */
   private tryBreathPuff() {
     if (!this.myBear) return
+    // V23.17-review I4 — sentinel -1 means "never moved yet" — don't fire
+    // breath on a freshly loaded scene before the player has stood still.
+    if (this.lastBearMoveAt < 0) return
     if (this.time.now - this.lastBearMoveAt < 3000) return  // still moving
     const season = getCurrentSeason()?.id
     if (season !== 'winter') return
@@ -3300,7 +3320,10 @@ export class RoomScene extends Phaser.Scene {
       scale: { start: 1.4, end: 2.6 },
       tint: 0xf8f8ff, alpha: { start: 0.7, end: 0 }
     }).setDepth(6)
-    puff.explode(3, mx, my)
+    // V23.17-review C1 — explode() with no args emits at the emitter's
+    // own world position. Passing (mx, my) again double-positions to
+    // (2·mx, 2·my). Same bug class as V23.11-review C3 (fish splash).
+    puff.explode(3)
     this.time.delayedCall(1300, () => { try { puff.destroy() } catch {} })
   }
 
@@ -4271,10 +4294,20 @@ export class RoomScene extends Phaser.Scene {
       if (this.ambientPetSprites.length > 0) {
         tickAmbientPetProximity(this, this.ambientPetSprites, this.myBear.x, this.myBear.y, this.time.now)
       }
-      // V23.14 — track last movement timestamp for the breath-puff idle gate
-      if (this.myBear.state === 'walk' || this.myBear.target) {
+      // V23.14 — track last movement timestamp for the breath-puff idle
+      // gate. V23.17-review I5 — diff position instead of state to catch
+      // keyboard-driven walks where state/target flicker between frames.
+      const bdx = this.myBear.x - (this._lastBearPosX ?? this.myBear.x)
+      const bdy = this.myBear.y - (this._lastBearPosY ?? this.myBear.y)
+      if (bdx * bdx + bdy * bdy > 0.04) {  // moved more than ~0.2px
+        this.lastBearMoveAt = this.time.now
+      } else if (this.lastBearMoveAt < 0) {
+        // First idle moment after spawn — anchor the timer here so
+        // breath can start firing after the player stays still 3s.
         this.lastBearMoveAt = this.time.now
       }
+      this._lastBearPosX = this.myBear.x
+      this._lastBearPosY = this.myBear.y
       // V10.8c — peers' pets follow their owners
       this.peerPets.forEach((pet, sessionId) => {
         const peer = this.peers.get(sessionId)
