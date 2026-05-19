@@ -840,6 +840,14 @@ export class RoomScene extends Phaser.Scene {
       let tx = wx, ty = wy
       tx = Math.max(20, Math.min(map.widthInPixels - 20, tx))
       ty = Math.max(20, Math.min(map.heightInPixels - 12, ty))
+      // V23.24-review C2 — beach water is a tilemap background with no
+      // collision rect, so a click in the upper 45% (water area) would
+      // walk the bear ONTO the water visually. Clamp ty down to just
+      // below the waterline so the bear approaches the shore instead.
+      if (this.currentRoomId === 'room_beach') {
+        const shoreY = Math.floor(map.heightInPixels * 0.48)
+        if (ty < shoreY) ty = shoreY
+      }
       for (const r of collisionRects) {
         if (tx >= r.x && tx <= r.x + r.w && ty >= r.y && ty <= r.y + r.h) {
           const dxL = tx - r.x, dxR = r.x + r.w - tx
@@ -2796,7 +2804,10 @@ export class RoomScene extends Phaser.Scene {
     const today = new Date()
     const weather = getWeatherForDate(today)
     if (weather === 'clear') return
-    const isOutdoor = (this.currentRoomId === 'room_balcony' || this.currentRoomId === 'room_beach' || this.currentRoomId === 'room_grove')
+    // V23.24-review C1 — rooftop was missing from this set, so V23.20
+    // lightning + thunder never fired on the most sky-facing room.
+    // (V23.21 SKY_ROOMS and the wildlife OUTDOOR set both include it.)
+    const isOutdoor = (this.currentRoomId === 'room_balcony' || this.currentRoomId === 'room_beach' || this.currentRoomId === 'room_grove' || this.currentRoomId === 'room_rooftop')
     // Cloudy tint overlay (above the night atmosphere)
     if (weather === 'cloudy' || weather === 'rain' || weather === 'snow' || weather === 'storm') {
       const tintAlpha = (weather === 'storm') ? 0.32 : (weather === 'rain' ? 0.22 : weather === 'snow' ? 0.18 : 0.12)
@@ -3377,7 +3388,6 @@ export class RoomScene extends Phaser.Scene {
    *  band, water ripple at the beach's water area, dust at the library
    *  bookshelf row. Non-blocking — bear still walks to click point. */
   private tryNaturalElementClick(wx: number, wy: number) {
-    const w = this.mapInfo.widthPx
     const h = this.mapInfo.heightPx
     if (this.currentRoomId === 'room_grove') {
       // Lower 50% of the room is the flowering ground band
@@ -3389,19 +3399,19 @@ export class RoomScene extends Phaser.Scene {
       // Wall band where bookshelves usually sit (upper third minus top decor)
       if (wy > h * 0.18 && wy < h * 0.45) this.naturalBurst(wx, wy, 'dust')
     }
-    void w  // silence unused — keeps the line for symmetry across rooms
   }
 
   private naturalBurst(x: number, y: number, kind: 'pollen' | 'ripple' | 'dust') {
     ensurePixelTexture(this)
     if (kind === 'ripple') {
-      // Two expanding concentric circles
+      // V23.24-review I3 — initial radius bumped 2 → 5 so the ring is
+      // legible from frame 0 (was a 1-px speck at scale 0.8).
       for (let i = 0; i < 2; i++) {
-        const ring = this.add.circle(x, y, 2, 0xa0d8e8, 0)
-          .setStrokeStyle(1, 0xa0e0f0, 0.85)
+        const ring = this.add.circle(x, y, 5, 0xa0d8e8, 0)
+          .setStrokeStyle(1, 0xa0e0f0, 0.9)
           .setDepth(990)
         this.tweens.add({
-          targets: ring, scale: { from: 0.8, to: 4 + i * 1.5 }, alpha: { from: 0.8, to: 0 },
+          targets: ring, scale: { from: 0.6, to: 3 + i * 1.2 }, alpha: { from: 0.85, to: 0 },
           delay: i * 150, duration: 700, ease: 'Sine.out',
           onComplete: () => ring.destroy()
         })
