@@ -38,6 +38,9 @@ import { spawnAmbientPets } from '../ambient_pets'
 import { spawnSeasonalDecor } from '../seasonal_decor'
 import { spawnTimeDecor } from '../time_decor'
 import { startAmbientSfx } from '../ambient_sfx'
+import { spawnRoomMotion } from '../room_motion'
+import { spawnWildlife } from '../wildlife'
+import { FootprintTracker } from '../footprints'
 import { startOrJoinDance, leaveDanceIfNeeded, initDance } from '../group_dance'
 import { setPartyProgressToken } from '../party'
 import { setPartyOnEnter, setPartyDisplayName } from '../party_ui'
@@ -176,6 +179,8 @@ export class RoomScene extends Phaser.Scene {
   private randomEventTimer?: Phaser.Time.TimerEvent
   // V23.0 — transit NPCs (background bears walking through)
   private transitNpcs?: TransitNpcController
+  // V23.9 — footprint tracker (sand / snow)
+  private footprintTracker?: FootprintTracker
   // V4.0 — friendship
   private peerVisitorIds = new Map<string, string>()      // session id → visitor_id
   private peerCCs = new Map<string, string | null>()      // session id → country code (for flag display)
@@ -3013,6 +3018,23 @@ export class RoomScene extends Phaser.Scene {
     const ambientSfxDispose = startAmbientSfx(this.currentRoomId)
     this.events.once('shutdown', ambientSfxDispose)
     this.events.once('destroy',  ambientSfxDispose)
+    // V23.7 — per-room small motion details (clock pendulum, candle flame,
+    // stove + kettle steam, wind chime).
+    const roomMotionDispose = spawnRoomMotion(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())
+    this.events.once('shutdown', roomMotionDispose)
+    this.events.once('destroy',  roomMotionDispose)
+    // V23.8 — wildlife particles (butterflies, dragonfly, bats, fish jump).
+    // Gated on season × time-of-day × room.
+    const wildlifeDispose = spawnWildlife(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())
+    this.events.once('shutdown', wildlifeDispose)
+    this.events.once('destroy',  wildlifeDispose)
+    // V23.9 — footprint tracker. Only active on beach (sand) or any
+    // outdoor room when weather is snow. onMove() is called from update().
+    if (!prefersReducedMotion()) {
+      this.footprintTracker = new FootprintTracker(this, this.currentRoomId)
+      this.events.once('shutdown', () => { this.footprintTracker?.destroy(); this.footprintTracker = undefined })
+      this.events.once('destroy',  () => { this.footprintTracker?.destroy(); this.footprintTracker = undefined })
+    }
     // V15.5 — small-talk timer: every 60-120s, if 2+ NPCs are co-present,
     // fire a paired exchange. Single timer per scene (cheaper than per-NPC).
     const startSmalltalk = () => {
@@ -4079,6 +4101,10 @@ export class RoomScene extends Phaser.Scene {
       // V10.2 — pet follows player. Update after player so the offset is
       // computed from the just-moved position.
       this.petSprite?.update(this.myBear.x, this.myBear.y, this.myBear.facing)
+      // V23.9 — drop footprints when walking on sand / snow
+      if (this.footprintTracker?.isActive()) {
+        this.footprintTracker.onMove(this.myBear.x, this.myBear.y, this.myBear.facing)
+      }
       // V10.8c — peers' pets follow their owners
       this.peerPets.forEach((pet, sessionId) => {
         const peer = this.peers.get(sessionId)

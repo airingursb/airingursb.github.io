@@ -2,36 +2,35 @@
 //
 // Background bears that enter from one edge of the room, walk in a
 // straight line to the opposite edge, and despawn. No interaction, no
-// dialog, no name labels. Their job is to make the room feel inhabited
-// even when no players are around.
+// dialog, no name labels.
 //
-// Rules:
-//   - One transit bear at a time per scene (avoid clutter)
-//   - Spawn cooldown: 90-180 seconds after the previous one despawns
-//   - Walk speed slightly slower than player (40 px/s)
-//   - Random species + region for visual variety
-//   - Reduced-motion mode: skip entirely (matches the rest of the lounge)
-//
-// All state is in-scene — no persistence needed. Cleanup on scene
-// shutdown by destroying any active sprite + clearing the timer.
+// V23.10 additions:
+//   - 30% chance the NPC pauses at the midpoint and "looks around" for
+//     2-4s before continuing (changes facing twice)
+//   - 25% chance a PAIR of NPCs spawns together with ~16px x-offset
 
 import type Phaser from 'phaser'
-import { Bear } from './bear'
+import { Bear, type Direction } from './bear'
 import { ccToRegion, SPECIES, type Species, prefersReducedMotion } from './config'
 
-// V23.5-review I1 — the TRANSIT_SPEED constant was dead (Bear.walkTo uses
-// the global WALK_SPEED with no per-instance override). Removed rather
-// than wired through Bear — current speed reads fine in playtesting.
 const MIN_COOLDOWN_MS = 90_000
 const MAX_COOLDOWN_MS = 180_000
 
-/** Per-scene state holder. RoomScene owns one instance and ticks it. */
+type Walker = {
+  bear: Bear
+  exitX: number
+  /** Walk phase: in transit → optional midpoint pause → continuing → exit. */
+  stage: 'walking_to_midpoint' | 'pausing' | 'walking_to_exit' | 'walking_direct'
+  midX: number
+  facingForward: Direction
+  pauseUntil: number
+}
+
 export class TransitNpcController {
   private scene: Phaser.Scene
   private mapWidthPx: number
   private mapHeightPx: number
-  private currentBear: Bear | null = null
-  private exitX = 0
+  private walkers: Walker[] = []
   private timer?: Phaser.Time.TimerEvent
   private speciesPool: Species[]
 
@@ -39,65 +38,116 @@ export class TransitNpcController {
     this.scene = scene
     this.mapWidthPx = mapWidthPx
     this.mapHeightPx = mapHeightPx
-    // Avoid bear-only sameness — include the visually-distinct V16 species
     this.speciesPool = [...SPECIES]
   }
 
   start() {
     if (prefersReducedMotion()) return
-    this.scheduleNext(MIN_COOLDOWN_MS / 3)   // first one comes faster than steady-state
+    this.scheduleNext(MIN_COOLDOWN_MS / 3)
   }
 
-  /** Called every frame from the scene's update(). */
   tick(dtMs: number) {
-    if (!this.currentBear) return
-    this.currentBear.update(dtMs, true)
-    // Despawn when reached exit
-    if (Math.abs(this.currentBear.x - this.exitX) < 4) {
-      this.currentBear.destroy()
-      this.currentBear = null
+    if (this.walkers.length === 0) return
+    const now = this.scene.time.now
+    const stillAlive: Walker[] = []
+    for (const w of this.walkers) {
+      w.bear.update(dtMs, true)
+      // State machine
+      if (w.stage === 'walking_to_midpoint') {
+        if (Math.abs(w.bear.x - w.midX) < 4) {
+          // Reached midpoint — pause and look around
+          w.stage = 'pausing'
+          w.pauseUntil = now + 2000 + Math.random() * 2000
+          w.bear.target = null  // stop walking
+          // Look up briefly, then to the side
+          w.bear.facing = 'up'
+          w.bear.playIdle()
+          this.scene.time.delayedCall(700, () => {
+            if (w.bear.scene) {
+              w.bear.facing = (Math.random() < 0.5 ? 'left' : 'right')
+              w.bear.playIdle()
+            }
+          })
+        }
+      } else if (w.stage === 'pausing') {
+        if (now >= w.pauseUntil) {
+          // Resume — restore forward facing, walk to exit
+          w.bear.facing = w.facingForward
+          w.bear.walkTo(w.exitX, w.bear.y)
+          w.stage = 'walking_to_exit'
+        }
+      } else if (w.stage === 'walking_to_exit' || w.stage === 'walking_direct') {
+        if (Math.abs(w.bear.x - w.exitX) < 4) {
+          w.bear.destroy()
+          continue
+        }
+      }
+      stillAlive.push(w)
+    }
+    this.walkers = stillAlive
+    if (this.walkers.length === 0 && !this.timer) {
       this.scheduleNext()
     }
   }
 
-  /** Cleanup on scene shutdown. */
   destroy() {
     this.timer?.remove(false)
     this.timer = undefined
-    this.currentBear?.destroy()
-    this.currentBear = null
+    for (const w of this.walkers) { try { w.bear.destroy() } catch {} }
+    this.walkers.length = 0
   }
 
   private scheduleNext(delayMs?: number) {
     const delay = delayMs ?? (MIN_COOLDOWN_MS + Math.random() * (MAX_COOLDOWN_MS - MIN_COOLDOWN_MS))
-    this.timer = this.scene.time.delayedCall(delay, () => this.spawn())
+    this.timer = this.scene.time.delayedCall(delay, () => {
+      this.timer = undefined
+      this.spawn()
+    })
   }
 
   private spawn() {
-    if (this.currentBear) return  // shouldn't happen but guard
-    // Pick a random horizontal lane in the lower half of the room
-    const y = this.mapHeightPx * 0.4 + Math.random() * (this.mapHeightPx * 0.4)
+    if (this.walkers.length > 0) return
+    const isPair = Math.random() < 0.25
+    const willPause = !isPair && Math.random() < 0.3   // never pause when pair-walking
     const fromLeft = Math.random() < 0.5
+    const baseY = this.mapHeightPx * 0.4 + Math.random() * (this.mapHeightPx * 0.4)
     const startX = fromLeft ? -16 : this.mapWidthPx + 16
-    this.exitX = fromLeft ? this.mapWidthPx + 16 : -16
-    // V23.5-review I2 — bias the species pool to atlases already cached
-    // this session. Otherwise un-cached species (e.g. panda before a
-    // panda peer joined) render as bear-fallback for the whole walk.
+    const exitX = fromLeft ? this.mapWidthPx + 16 : -16
+    const midX = this.mapWidthPx / 2
     const region = ccToRegion(null)
-    const cachedPool = this.speciesPool.filter(sp =>
-      sp === 'bear' || this.scene.textures.exists(`${sp}_${region}`)
-    )
-    const pickFrom = cachedPool.length > 0 ? cachedPool : this.speciesPool
-    const species = pickFrom[Math.floor(Math.random() * pickFrom.length)]
-    const bear = new Bear(this.scene, startX, y, region, species)
-    bear.sprite.setDepth(3)        // behind player (depth 5) so it really feels background
-    bear.sprite.setAlpha(0.85)
-    bear.facing = fromLeft ? 'right' : 'left'
-    bear.walkTo(this.exitX, y)
-    // V18-style cosmetic atlas may not be loaded for this species. Bear's
-    // setSpecies fallback already handles that — sprite will render as
-    // bear texture if the species atlas isn't ready. We skip the
-    // ensureSpeciesLoaded dance to keep transit NPCs lightweight.
-    this.currentBear = bear
+    const pick = (): Species => {
+      const cached = this.speciesPool.filter(sp =>
+        sp === 'bear' || this.scene.textures.exists(`${sp}_${region}`)
+      )
+      const pool = cached.length > 0 ? cached : this.speciesPool
+      return pool[Math.floor(Math.random() * pool.length)]
+    }
+    const facingForward: Direction = fromLeft ? 'right' : 'left'
+
+    const makeWalker = (offsetX: number, offsetY: number, willPauseThis: boolean): Walker => {
+      const species = pick()
+      const bear = new Bear(this.scene, startX + offsetX, baseY + offsetY, region, species)
+      bear.sprite.setDepth(3)
+      bear.sprite.setAlpha(0.85)
+      bear.facing = facingForward
+      const target = willPauseThis ? midX + offsetX : exitX
+      bear.walkTo(target, baseY + offsetY)
+      return {
+        bear,
+        exitX,
+        stage: willPauseThis ? 'walking_to_midpoint' : 'walking_direct',
+        midX: midX + offsetX,
+        facingForward,
+        pauseUntil: 0
+      }
+    }
+
+    if (isPair) {
+      // Two bears side by side, slight y-stagger so they don't fully overlap
+      this.walkers.push(makeWalker(0, 0, false))
+      this.walkers.push(makeWalker(fromLeft ? -16 : 16, 4, false))
+    } else {
+      this.walkers.push(makeWalker(0, 0, willPause))
+    }
   }
 }

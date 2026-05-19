@@ -154,7 +154,53 @@ export function spawnAmbientPets(
         yoyo: true, repeat: -1, ease: 'Sine.inOut'
       })
     }
+    // V23.6 — click reaction. Each species has a distinct gesture:
+    //   cat → quick stretch (scale-x up briefly)
+    //   dog → tail wag (rotate small angle yoyo a few times)
+    //   bunny → hop (jump y up then back)
+    sprite.setInteractive(new Phaser.Geom.Rectangle(-12, -10, 24, 20), Phaser.Geom.Rectangle.Contains)
+    sprite.input!.cursor = 'pointer'
+    let reacting = false
+    sprite.on('pointerdown', () => {
+      if (reacting) return
+      reacting = true
+      reactToClick(scene, sprite, p.kind, p.x, p.y, () => { reacting = false })
+    })
     sprites.push(sprite)
   }
   return sprites
+}
+
+function reactToClick(
+  scene: Phaser.Scene,
+  sprite: Phaser.GameObjects.Container,
+  kind: AmbientPetKind,
+  homeX: number,
+  homeY: number,
+  done: () => void
+) {
+  if (kind === 'sleeping_cat') {
+    // Stretch: brief x-scale up + slight x-translate
+    scene.tweens.add({
+      targets: sprite, scaleX: 1.25, x: homeX - 2,
+      duration: 220, yoyo: true, repeat: 0, ease: 'Sine.inOut',
+      onComplete: done
+    })
+  } else if (kind === 'sitting_dog') {
+    // Tail wag: rotate the whole sprite slightly L/R 3 times
+    scene.tweens.add({
+      targets: sprite, angle: 6,
+      duration: 110, yoyo: true, repeat: 5, ease: 'Sine.inOut',
+      onComplete: () => { sprite.setAngle(0); done() }
+    })
+  } else if (kind === 'curled_bunny') {
+    // Hop: arc up 6px then back; two hops
+    scene.tweens.add({
+      targets: sprite, y: homeY - 6,
+      duration: 180, yoyo: true, repeat: 1, ease: 'Sine.inOut',
+      onComplete: () => { sprite.setY(homeY); done() }
+    })
+  } else {
+    done()
+  }
 }
