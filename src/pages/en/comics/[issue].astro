@@ -2,6 +2,7 @@
 // src/pages/en/comics/[issue].astro
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ComicMasthead from '../../../components/comics/ComicMasthead.astro';
+import ComicIssueIndex from '../../../components/comics/ComicIssueIndex.astro';
 import { fetchComics } from '../../../lib/comics';
 import { siteStrings } from '../../../lib/i18n';
 import '../../../styles/comics.css';
@@ -14,12 +15,13 @@ export async function getStaticPaths() {
       comic: c,
       prev: comics[i + 1] || null,
       next: comics[i - 1] || null,
+      allComics: comics,
     },
   }));
 }
 
 const s = siteStrings.en.comics;
-const { comic, prev, next } = Astro.props;
+const { comic, prev, next, allComics } = Astro.props;
 const date = new Date(comic.published_at || comic.created_at).toLocaleDateString('en-US', {
   year: 'numeric', month: 'long', day: 'numeric',
 });
@@ -33,6 +35,7 @@ const altText = comic.panels?.alt?.en || comic.panels?.alt?.zh || comic.title.en
   lang="en"
 >
   <ComicMasthead lang="en" />
+  <ComicIssueIndex comics={allComics} current={comic.issue_number} lang="en" />
   <main class="comics-page comic-detail">
     <div class="meta" style="font-size:13px;color:#888;letter-spacing:0.04em;margin-bottom:8px;">
       <strong style="color:#444;">{s.issuePrefix} {comic.issue_number}</strong>

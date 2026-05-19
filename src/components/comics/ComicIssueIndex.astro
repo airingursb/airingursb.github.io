@@ -1,0 +1,36 @@
+---
+// src/components/comics/ComicIssueIndex.astro
+// Sticky right-side index for the comic detail page — lets the reader
+// jump between issues without using the prev/next buttons one by one.
+// Hidden on narrow viewports (<1280px) where there isn't room beside the
+// centered 880px main column.
+import type { Comic } from '../../lib/comics';
+
+interface Props {
+  comics: Comic[];
+  current: number;
+  lang: 'zh' | 'en';
+}
+
+const { comics, current, lang } = Astro.props;
+const base = lang === 'en' ? '/en/comics' : '/comics';
+const heading = lang === 'en' ? 'All issues' : '全部期数';
+---
+
+<aside class="comic-index" aria-label={heading}>
+  <div class="comic-index-inner">
+    <div class="comic-index-head">{heading}</div>
+    <nav class="comic-index-list">
+      {comics.map((c) => (
+        <a
+          href={`${base}/${c.issue_number}`}
+          class={`comic-index-item${c.issue_number === current ? ' is-current' : ''}`}
+          aria-current={c.issue_number === current ? 'page' : undefined}
+        >
+          <span class="comic-index-num">No. {String(c.issue_number).padStart(2, '0')}</span>
+          <span class="comic-index-title">{c.title[lang] || c.title.zh}</span>
+        </a>
+      ))}
+    </nav>
+  </div>
+</aside>
