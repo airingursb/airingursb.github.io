@@ -12,11 +12,12 @@
 import Phaser from 'phaser'
 import type { Direction } from './bear'
 import { getWeatherForDate } from './weather'
+import { OUTDOOR_ROOMS } from './config'
 
 export type FootprintKind = 'sand' | 'snow' | null
 
 const FOOTPRINT_ROOMS_SAND = new Set(['room_beach'])
-const FOOTPRINT_ROOMS_OUTDOOR = new Set(['room_beach', 'room_balcony', 'room_grove', 'room_rooftop'])
+const FOOTPRINT_ROOMS_OUTDOOR = OUTDOOR_ROOMS
 
 /** Decide whether the player's current room should leave footprints, and
  *  if so what kind. Returns null if the surface doesn't accept prints

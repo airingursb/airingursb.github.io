@@ -14,6 +14,7 @@
 
 import Phaser from 'phaser'
 import { getCurrentPhase } from './atmosphere'
+import { OUTDOOR_ROOMS } from './config'
 
 export type TimeDecorDispose = () => void
 
@@ -70,8 +71,8 @@ export function spawnTimeDecor(
     // V23.21 — twinkling stars in the sky band of outdoor rooms. Sparse,
     // 10-14 stars in the top ~25% of the room with staggered alpha tweens
     // so they don't all blink in sync.
-    const SKY_ROOMS = new Set(['room_rooftop', 'room_beach', 'room_balcony', 'room_grove'])
-    if (SKY_ROOMS.has(roomId)) {
+    // V23.28 — sky rooms = outdoor rooms (same set, shared constant)
+    if (OUTDOOR_ROOMS.has(roomId as any)) {
       const starCount = 10 + Math.floor(Math.random() * 5)
       for (let i = 0; i < starCount; i++) {
         const sx = 8 + Math.random() * (mapWidthPx - 16)

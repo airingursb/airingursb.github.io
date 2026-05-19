@@ -5,7 +5,7 @@ import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble }
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
 import { getCurrentPhase } from '../atmosphere'
 import { renderMinimap, showDoorLabel, hideDoorLabel, setDoorLabelClickHandler, MAP_ROOMS } from '../minimap'
-import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, type Region, type RoomId, type Species } from '../config'
+import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, isOutdoorRoom, type Region, type RoomId, type Species } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
 import { onUIEvent, showMenuAt, showBubble, hasActiveBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard, setOnSpeciesToggle, updateSpeciesButtonLabel, showProfileCard } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
@@ -35,7 +35,7 @@ import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJa
 import { tickNpcEvents, leaveNpcEventIfNeeded, setEventBannerHandler, currentEventStatus } from '../npc_events'
 import { tickRandomEvents, getActiveEvent, attendEvent, type ActiveEvent } from '../random_events'
 import { TransitNpcController } from '../transit_npcs'
-import { spawnAmbientPets, tickAmbientPetProximity } from '../ambient_pets'
+import { spawnAmbientPets, tickAmbientPetProximity, reactPetsToPlayerEmote } from '../ambient_pets'
 import { spawnSeasonalDecor } from '../seasonal_decor'
 import { spawnTimeDecor } from '../time_decor'
 import { spawnRoomDecals } from '../room_decals'
@@ -908,6 +908,12 @@ export class RoomScene extends Phaser.Scene {
         // exchange reads as call-and-response, not a robotic mirror.
         if (this.myBear && (e.verb === 'wave' || e.verb === 'dance')) {
           this.handleNpcReplyToEmote(e.verb)
+          // V23.31 — ambient pets within ~70px also react with a happy
+          // gesture (bigger hop / wag / stretch). Distinct from V23.12
+          // proximity alert: this only fires on the player's emote.
+          if (this.ambientPetSprites.length > 0) {
+            reactPetsToPlayerEmote(this, this.ambientPetSprites, this.myBear.x, this.myBear.y, e.verb)
+          }
         }
       }
     })
@@ -2815,10 +2821,8 @@ export class RoomScene extends Phaser.Scene {
     const today = new Date()
     const weather = getWeatherForDate(today)
     if (weather === 'clear') return
-    // V23.24-review C1 — rooftop was missing from this set, so V23.20
-    // lightning + thunder never fired on the most sky-facing room.
-    // (V23.21 SKY_ROOMS and the wildlife OUTDOOR set both include it.)
-    const isOutdoor = (this.currentRoomId === 'room_balcony' || this.currentRoomId === 'room_beach' || this.currentRoomId === 'room_grove' || this.currentRoomId === 'room_rooftop')
+    // V23.28 — shared OUTDOOR_ROOMS constant from config.ts.
+    const isOutdoor = isOutdoorRoom(this.currentRoomId)
     // Cloudy tint overlay (above the night atmosphere)
     if (weather === 'cloudy' || weather === 'rain' || weather === 'snow' || weather === 'storm') {
       const tintAlpha = (weather === 'storm') ? 0.32 : (weather === 'rain' ? 0.22 : weather === 'snow' ? 0.18 : 0.12)
@@ -3236,8 +3240,7 @@ export class RoomScene extends Phaser.Scene {
     // The timer checks every 4-6s; the actual puff only spawns when all
     // conditions hold at that instant.
     if (!prefersReducedMotion()) {
-      const OUTDOOR = new Set(['room_beach', 'room_balcony', 'room_grove', 'room_rooftop'])
-      if (OUTDOOR.has(this.currentRoomId)) {
+      if (isOutdoorRoom(this.currentRoomId)) {
         const startBreath = () => {
           this.breathPuffTimer = this.time.delayedCall(4000 + Math.random() * 2000, () => {
             this.tryBreathPuff()

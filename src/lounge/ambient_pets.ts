@@ -283,6 +283,53 @@ function onPetAlertExit(
   // Dog already reverts via the alert-enter yoyo, no exit work needed.
 }
 
+/** V23.31 — when the player waves or dances nearby, each ambient pet
+ *  within ~70px reacts back with a happy gesture (bigger hop / wag /
+ *  stretch). Distinct from the alert-twitch (which is "noticed you")
+ *  in that it's stronger and only fires on the player's social action. */
+export function reactPetsToPlayerEmote(
+  scene: Phaser.Scene,
+  sprites: Phaser.GameObjects.Container[],
+  playerX: number,
+  playerY: number,
+  verb: string
+) {
+  if (verb !== 'wave' && verb !== 'dance') return
+  const REACT_RADIUS = 70
+  const strong = verb === 'dance'
+  for (const sprite of sprites) {
+    const state = sprite.getData('petState') as PetRuntimeState | undefined
+    if (!state) continue
+    const dist = Math.hypot(playerX - state.homeX, playerY - state.homeY)
+    if (dist > REACT_RADIUS) continue
+    // Small randomized delay so reactions stagger when multiple pets are
+    // in range — feels more lifelike than a synchronized snap.
+    scene.time.delayedCall(120 + Math.random() * 280, () => {
+      if (!sprite.scene) return
+      if (state.kind === 'curled_bunny') {
+        const hop = strong ? 7 : 4
+        scene.tweens.add({
+          targets: sprite, y: state.homeY - hop,
+          duration: 180, yoyo: true, repeat: strong ? 1 : 0, ease: 'Sine.inOut'
+        })
+      } else if (state.kind === 'sitting_dog') {
+        const angle = strong ? 8 : 5
+        scene.tweens.add({
+          targets: sprite, angle: { from: -angle, to: angle },
+          duration: 110, yoyo: true, repeat: strong ? 4 : 2, ease: 'Sine.inOut',
+          onComplete: () => sprite.setAngle(0)
+        })
+      } else if (state.kind === 'sleeping_cat') {
+        const stretch = strong ? 1.18 : 1.10
+        scene.tweens.add({
+          targets: sprite, scaleY: stretch,
+          duration: 220, yoyo: true, ease: 'Sine.inOut'
+        })
+      }
+    })
+  }
+}
+
 function onPetAlertTwitch(
   scene: Phaser.Scene,
   sprite: Phaser.GameObjects.Container,
