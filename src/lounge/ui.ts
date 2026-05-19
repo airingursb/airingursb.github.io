@@ -45,6 +45,9 @@ export function onUIEvent(l: Listener) {
 }
 
 export function initUI() {
+  // V22.0 — replace data-icon spans with pixel SVG icons. Idempotent;
+  // safe to re-call if more icon-tagged elements get inserted dynamically.
+  void import('./icons').then(m => m.hydrateIcons())
   menuEl = document.getElementById('lounge-emote-menu')
   sayForm = document.getElementById('lounge-say-form') as HTMLFormElement | null
   sayInput = document.getElementById('lounge-say-input') as HTMLInputElement | null
@@ -1530,7 +1533,11 @@ function applyClockMode(enabled: boolean) {
   if (clockModeEl) clockModeEl.textContent = enabled ? 'game' : 'real'
   if (gametimeBtn) {
     gametimeBtn.dataset.on = enabled ? '1' : '0'
-    gametimeBtn.textContent = enabled ? '⏰ Game time: on' : '⏰ Game time: off'
+    // V22.1 — preserve the pixel icon. textContent reset would wipe the
+    // SVG, so re-render label-only and re-hydrate on next tick.
+    gametimeBtn.textContent = enabled ? 'Game time: on' : 'Game time: off'
+    delete gametimeBtn.dataset.iconRendered
+    void import('./icons').then(m => m.hydrateIcons(gametimeBtn!.parentElement ?? undefined))
   }
 }
 
@@ -1620,7 +1627,10 @@ export function initGameTimeClock() {
     import('./mailbox').then(m => {
       const paint = (on: boolean) => {
         fnBtn.dataset.on = on ? '1' : '0'
-        fnBtn.textContent = on ? '🔔 Friend notifications: on' : '🔕 Friend notifications: off'
+        // V22.1 — text-only label; pixel icon is re-hydrated below.
+        fnBtn.textContent = on ? 'Friend notifications: on' : 'Friend notifications: off'
+        delete fnBtn.dataset.iconRendered
+        void import('./icons').then(m => m.hydrateIcons(fnBtn.parentElement ?? undefined))
       }
       paint(m.isFriendNotifsEnabled())
       fnBtn.addEventListener('click', () => {

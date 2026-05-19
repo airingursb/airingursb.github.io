@@ -187,15 +187,16 @@ export function tickNpcEvents(currentRoomId: string) {
   }
   const status = currentEventStatus()
   if (!status) { _bannerHandler?.(null); return }
+  // V22.2 — emoji prefix dropped from banner text; pixel calendar icon
+  // lives in the banner DOM and reads via data-icon.
   if (status.state === 'pre') {
     _bannerHandler?.({
-      text: `${status.event.emoji} ${status.event.npc_name}: ${status.event.title} in ${status.startsInMin} min @ ${status.event.room.replace('room_', '')}`
+      text: `${status.event.npc_name}: ${status.event.title} in ${status.startsInMin} min @ ${status.event.room.replace('room_', '')}`
     })
     return
   }
-  // active
   _bannerHandler?.({
-    text: `${status.event.emoji} ${status.event.title} LIVE @ ${status.event.room.replace('room_', '')} — ${status.endsInMin} min left`,
+    text: `${status.event.title} LIVE @ ${status.event.room.replace('room_', '')} — ${status.endsInMin} min left`,
     cta: currentRoomId === status.event.room ? 'Watch' : `Go to ${status.event.room.replace('room_', '')}`
   })
   // Auto-join the event group session when in the host room

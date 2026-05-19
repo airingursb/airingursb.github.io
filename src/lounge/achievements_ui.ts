@@ -71,14 +71,26 @@ function renderAll() {
     if (!groups.has(a.category)) groups.set(a.category, [])
     groups.get(a.category)!.push(a)
   }
-  const labels: Record<string, string> = {
-    discovery: '🗺️ Discovery', social: '🤝 Social', crafting: '🔨 Crafting',
-    skills: '⚡ Skills', economy: '💰 Economy', activities: '🎉 Activities', building: '🏠 Building'
+  // V22.3 — labels split into (icon, name) so we can inject pixel SVG.
+  const labels: Record<string, { icon: string; name: string }> = {
+    discovery:  { icon: 'cat_discovery',  name: 'Discovery' },
+    social:     { icon: 'cat_social',     name: 'Social' },
+    crafting:   { icon: 'cat_crafting',   name: 'Crafting' },
+    skills:     { icon: 'cat_skills',     name: 'Skills' },
+    economy:    { icon: 'cat_economy',    name: 'Economy' },
+    activities: { icon: 'cat_activities', name: 'Activities' },
+    building:   { icon: 'cat_building',   name: 'Building' }
   }
   for (const [cat, items] of groups) {
     const h = document.createElement('div')
     h.className = 'ach-section'
-    h.textContent = labels[cat] ?? cat
+    const meta = labels[cat]
+    if (meta) {
+      h.setAttribute('data-icon', meta.icon)
+      h.appendChild(document.createTextNode(meta.name))
+    } else {
+      h.textContent = cat
+    }
     listEl.appendChild(h)
     for (const a of items) {
       const isUnlocked = !!unlocked[a.id]
@@ -108,6 +120,8 @@ function renderAll() {
       listEl.appendChild(row)
     }
   }
+  // V22.3 — hydrate category icons + any future tagged elements in the list
+  void import('./icons').then(m => listEl && m.hydrateIcons(listEl))
 }
 
 function spawnToast(def: AchievementDef) {

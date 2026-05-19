@@ -66,7 +66,7 @@ export function maybeJoinMorningCoffee(currentRoomId: string) {
         else if (Date.now() - _quorumSince >= QUORUM_HOLD_MS) awardCoffeeBuff()
       } else { _quorumSince = 0 }
       // Refresh banner text
-      _onBannerChange?.(`☕ Morning Coffee — ${s.members.length} here${isCoffeeBuffActive() ? ' · buff earned ✓' : ''}`)
+      _onBannerChange?.(`Morning Coffee — ${s.members.length} here${isCoffeeBuffActive() ? ' · buff earned ✓' : ''}`)
     }, 3000)
   }
   // Refresh known sessions, then either join or create
@@ -86,7 +86,7 @@ function handleSessionChange(s: GroupSession | null) {
     _onBannerChange?.(null)
     return
   }
-  _onBannerChange?.(`☕ Morning Coffee — ${s.members.length} here${isCoffeeBuffActive() ? ' · buff earned ✓' : ''}`)
+  _onBannerChange?.(`Morning Coffee — ${s.members.length} here${isCoffeeBuffActive() ? ' · buff earned ✓' : ''}`)
 }
 
 /** Leave the coffee circle (called when player walks out of Lobby). */

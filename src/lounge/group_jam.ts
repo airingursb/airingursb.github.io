@@ -93,7 +93,7 @@ function handleSessionChange(s: GroupSession | null) {
   if (!_payoutGranted && combos >= COMBO_TARGET && s.members.length >= 2) {
     awardShells(5)
     _payoutGranted = true
-    _bannerHandler?.(`🎧 Jam Combo ×${combos} — +5 shells!`)
+    _bannerHandler?.(`Jam Combo ×${combos} — +5 shells!`)
   }
 }
 
@@ -101,5 +101,5 @@ function refreshBanner() {
   const s = getCurrentSession()
   if (!s || s.kind !== KIND) { _bannerHandler?.(null); return }
   const combos = Number((s.state as any).combos ?? 0)
-  _bannerHandler?.(`🎧 Jam Combo: ${combos} / ${COMBO_TARGET} · ${s.members.length} on the floor`)
+  _bannerHandler?.(`Jam Combo: ${combos} / ${COMBO_TARGET} · ${s.members.length} on the floor`)
 }

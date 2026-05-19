@@ -105,7 +105,7 @@ function handleSessionChange(s: GroupSession | null) {
     const reward = Math.max(0, Math.floor(totalScore / 10))
     if (reward > 0) awardShells(reward)
     _payoutGranted = true
-    _bannerHandler?.(`🍳 Cook-along finished — total ${totalScore} · +${reward} shells`)
+    _bannerHandler?.(`Cook-along finished — total ${totalScore} · +${reward} shells`)
   }
 }
 
@@ -118,5 +118,5 @@ function refreshBanner() {
   const scores = (s.state as any).scores ?? {}
   const submitted = Object.keys(scores).length
   const remainingSec = Math.max(0, Math.floor((Number((s.state as any).deadlineAt) - Date.now()) / 1000))
-  _bannerHandler?.(`🍳 Cook-along: ${s.members.length} joined · ${submitted} done · ${remainingSec}s left`)
+  _bannerHandler?.(`Cook-along: ${s.members.length} joined · ${submitted} done · ${remainingSec}s left`)
 }
