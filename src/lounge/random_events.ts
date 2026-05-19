@@ -14,12 +14,16 @@
 // cooldown after the previous event ENDS (whether attended or expired).
 
 import type { RoomId } from './config'
+import type { IconName } from './icons'
 
 export type RandomEventDef = {
   id: string
   title: string
   blurb: string         // shown in the banner / event log
-  emoji: string
+  emoji: string         // legacy — kept for log/toast contexts
+  /** V22.4-review I4 — pixel icon for the banner (single source of truth;
+   *  RoomScene used to duplicate this mapping). */
+  icon: IconName
   /** The room where the player must show up to interact. */
   room: RoomId
   /** Total lifetime once spawned. */
@@ -33,7 +37,7 @@ export const RANDOM_EVENTS: RandomEventDef[] = [
     id: 'traveling_salesman',
     title: 'Traveling Salesman',
     blurb: 'A bear with an oversized backpack is hawking rare pebbles in the Lobby.',
-    emoji: '🛒',
+    emoji: '🛒', icon: 'salesman',
     room: 'room_lobby' as RoomId,
     duration_ms: 10 * 60_000,
     reward_shells: 8
@@ -42,7 +46,7 @@ export const RANDOM_EVENTS: RandomEventDef[] = [
     id: 'meteor_shower',
     title: 'Meteor Shower',
     blurb: 'Quick — head to the Rooftop. Streaks tonight.',
-    emoji: '☄️',
+    emoji: '☄️', icon: 'meteor',
     room: 'room_rooftop' as RoomId,
     duration_ms: 10 * 60_000,
     reward_shells: 6
@@ -51,7 +55,7 @@ export const RANDOM_EVENTS: RandomEventDef[] = [
     id: 'lost_pebble',
     title: 'Lost Pebble',
     blurb: 'Someone reported a glowing pebble washed up on the Beach.',
-    emoji: '🪨',
+    emoji: '🪨', icon: 'pebble',
     room: 'room_beach' as RoomId,
     duration_ms: 10 * 60_000,
     reward_shells: 5
@@ -60,7 +64,7 @@ export const RANDOM_EVENTS: RandomEventDef[] = [
     id: 'postcard',
     title: 'Postcard Delivery',
     blurb: 'A postcard from a former resident — check your Home.',
-    emoji: '📮',
+    emoji: '📮', icon: 'postcard',
     room: 'room_home_self' as RoomId,  // resolved to the player's home at attend time
     duration_ms: 15 * 60_000,
     reward_shells: 5

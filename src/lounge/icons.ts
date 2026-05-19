@@ -8,8 +8,13 @@
 // Grid chars:
 //   '.' = transparent
 //   '1' = outline (currentColor)
-//   '2' = body fill (slightly muted current — uses opacity .6)
+//   '2' = body fill (currentColor opacity .55)
 //   '3' = accent (var --icon-accent, default warm yellow)
+//   'a' = currentColor opacity .35
+//   '4' = currentColor opacity .25 (dim outline / shading)
+//   'd' = accent opacity .7
+// V22.4-review I2 — the legacy 'l' (lowercase L) character was visually
+// indistinguishable from '1' in the source grids; renamed to '4'.
 //
 // Icons are declared inline (one tagged-template per name). The
 // `iconSvg(name)` function returns a string of <svg>…</svg> ready to
@@ -120,7 +125,7 @@ const ICONS: Record<IconName, string[]> = {
     '................',
     '..11111111111...',
     '.122222222221...',
-    '.12211111122l...',
+    '.122111111224...',
     '.122112211221...',
     '.122112211221...',
     '.122112211221...',
@@ -308,15 +313,15 @@ const ICONS: Record<IconName, string[]> = {
   party: [
     '................',
     '.....11111......',
-    '....122222l.....',
-    '...12222222l....',
+    '....1222224.....',
+    '...122222224....',
     '..12233322221...',
     '..1232.232221...',
     '..12333322221...',
     '..12222222221...',
     '..12222222221...',
     '...12222221.....',
-    '....1222l1......',
+    '....122241......',
     '.....1.1........',
     '.....1.1........',
     '....1...1.......',
@@ -350,10 +355,10 @@ const ICONS: Record<IconName, string[]> = {
     '.....122221.....',
     '.....12d221.....',
     '.....12d221.....',
-    '....1233332l....',
+    '....12333324....',
     '..11122222221...',
-    '..1222222222l1..',
-    '..1.111111111l..',
+    '..122222222241..',
+    '..1.1111111114..',
     '................',
     '................',
     '................',
@@ -377,7 +382,7 @@ const ICONS: Record<IconName, string[]> = {
     '.12222221.222221',
     '.12222221.222221',
     '.122222212222221',
-    '.1111111111111l.',
+    '.11111111111114.',
     '................'
   ],
   // Coffee cup
@@ -387,15 +392,15 @@ const ICONS: Record<IconName, string[]> = {
     '...1.1.1........',
     '..111111111111..',
     '..1aaaaaaaa1.1..',
-    '..1aaaaaaaa11l..',
+    '..1aaaaaaaa114..',
     '..1aaaaaaaa1.1..',
     '..1aaaaaaaa1.1..',
-    '..1aaaaaaaa11l..',
+    '..1aaaaaaaa114..',
     '..1aaaaaaaa1.1..',
     '..1aaaaaaaa1....',
     '..1aaaaaaaa1....',
     '..11111111111...',
-    '...11111111l....',
+    '...111111114....',
     '................',
     '................'
   ],
@@ -413,8 +418,8 @@ const ICONS: Record<IconName, string[]> = {
     '.122222222222221',
     '.122222222222221',
     '.122222222222221',
-    '..11111111111l..',
-    '...11111111l....',
+    '..111111111114..',
+    '...111111114....',
     '................',
     '................'
   ],
@@ -461,7 +466,7 @@ const ICONS: Record<IconName, string[]> = {
     '................',
     '....1.1.....1.1.',
     '....1.1.....1.1.',
-    '..11111111111l..',
+    '..111111111114..',
     '..1aaaaaaaaaa1..',
     '..1aaaaaaaaaa1..',
     '..1a11a11a11a1..',
@@ -471,7 +476,7 @@ const ICONS: Record<IconName, string[]> = {
     '..1a11a11a11a1..',
     '..1a1.a1.a1.a1..',
     '..1aaaaaaaaaa1..',
-    '..11111111111l..',
+    '..111111111114..',
     '................',
     '................'
   ],
@@ -490,7 +495,7 @@ const ICONS: Record<IconName, string[]> = {
     '....12333321....',
     '....12333321....',
     '....122222221...',
-    '....11111111l...',
+    '....111111114...',
     '................',
     '................'
   ],
@@ -527,7 +532,7 @@ const ICONS: Record<IconName, string[]> = {
     '....1aaaaaa1....',
     '....1aaaaaa1....',
     '.....1aaaa1.....',
-    '......111l......',
+    '......1114......',
     '................',
     '................',
     '................'
@@ -547,8 +552,8 @@ const ICONS: Record<IconName, string[]> = {
     '.12.........321.',
     '.12.111.....321.',
     '.12.........321.',
-    '.122222222232l..',
-    '..111111111l....',
+    '.1222222222324..',
+    '..1111111114....',
     '................'
   ],
   // Category: Discovery (map)
@@ -581,7 +586,7 @@ const ICONS: Record<IconName, string[]> = {
     '..11.1aaa3.11...',
     '.1aa11aaa311aa1.',
     '.1aaaaaaaaaaaa1.',
-    '..11aaaaaaaa1l..',
+    '..11aaaaaaaa14..',
     '...1aaaaaaa1....',
     '....11111111....',
     '................',
@@ -618,14 +623,14 @@ const ICONS: Record<IconName, string[]> = {
     '....133333321...',
     '...1333333321...',
     '..133333333321..',
-    '..1111133331l...',
+    '..11111333314...',
     '.......1331.....',
     '......1331......',
     '.....1331.......',
     '....1331........',
-    '...133l.........',
-    '..133l..........',
-    '..11l...........'
+    '...1334.........',
+    '..1334..........',
+    '..114...........'
   ],
   // Category: Economy (coin)
   cat_economy: [
@@ -677,10 +682,10 @@ const ICONS: Record<IconName, string[]> = {
     '..1111111111111.',
     '..1aaaaaaaaaa1..',
     '..1aa1111aaaa1..',
-    '..1aa1ll1aaaa1..',
-    '..1aa1ll1aa11a..',
-    '..1aa1ll1aa11l..',
-    '..1aaaaaaaa11l..',
+    '..1aa1441aaaa1..',
+    '..1aa1441aa11a..',
+    '..1aa1441aa114..',
+    '..1aaaaaaaa114..',
     '..111111111111..',
     '................'
   ],
@@ -781,11 +786,20 @@ const ICONS: Record<IconName, string[]> = {
   ]
 }
 
+// V22.4-review N5 — memoize because hydrate may be called per page-load
+// across all 30+ icons. Cheap (one string per icon for the session).
+const svgCache = new Map<IconName, string>()
+
 // Render one grid → SVG string. Uses currentColor for outline + body
 // (with opacity .6 on body), and var(--icon-accent) for accent.
 export function iconSvg(name: IconName): string {
+  const cached = svgCache.get(name)
+  if (cached) return cached
   const grid = ICONS[name]
-  if (!grid) return ''
+  if (!grid) {
+    console.warn('[lounge/icons] unknown icon name:', name)
+    return ''
+  }
   const rects: string[] = []
   for (let y = 0; y < grid.length; y++) {
     const row = grid[y]
@@ -799,41 +813,31 @@ export function iconSvg(name: IconName): string {
         case '2': fill = 'currentColor'; opacity = '0.55'; break
         case '3': fill = ACCENT_VAR; break
         case 'a': fill = 'currentColor'; opacity = '0.35'; break
-        case 'l': fill = 'currentColor'; opacity = '0.25'; break
+        case '4': fill = 'currentColor'; opacity = '0.25'; break
         case 'd': fill = ACCENT_VAR; opacity = '0.7'; break
         default: continue
       }
       rects.push(`<rect x="${x}" y="${y}" width="1" height="1" fill="${fill}" opacity="${opacity}"/>`)
     }
   }
-  return `<svg class="px-icon" viewBox="0 0 16 16" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true">${rects.join('')}</svg>`
+  const svg = `<svg class="px-icon" viewBox="0 0 16 16" width="16" height="16" shape-rendering="crispEdges" aria-hidden="true">${rects.join('')}</svg>`
+  svgCache.set(name, svg)
+  return svg
 }
 
 /** Scan `[data-icon]` elements under root (default: document) and replace
  *  their content with the rendered SVG. Safe to call multiple times —
- *  marks elements with `data-icon-rendered="1"` to skip on re-runs. */
+ *  marks elements with `data-icon-rendered="1"` to skip on re-runs.
+ *  V22.4-review I1 — also marks elements with unknown icon names so we
+ *  don't re-warn on every rescan. Use `insertAdjacentHTML('afterbegin')`
+ *  to avoid serializing + reparsing existing children (preserves badge
+ *  references / event listeners). */
 export function hydrateIcons(root: ParentNode = document) {
   const els = root.querySelectorAll<HTMLElement>('[data-icon]:not([data-icon-rendered="1"])')
   els.forEach(el => {
     const name = el.dataset.icon as IconName
-    if (!ICONS[name]) return
-    el.innerHTML = iconSvg(name) + el.innerHTML
     el.dataset.iconRendered = '1'
+    if (!ICONS[name]) return  // iconSvg already warned about unknown name
+    el.insertAdjacentHTML('afterbegin', iconSvg(name))
   })
-}
-
-/** Get the icon name corresponding to a current label (e.g. "📋 Quests"
- *  → 'quests'). Used by V22.1 hydration of legacy emoji-prefixed buttons. */
-export const EMOJI_TO_ICON: Partial<Record<string, IconName>> = {
-  '📋': 'quests', '👥': 'whosaround', '📷': 'memories', '🐚': 'shop',
-  '📬': 'mailbox', '🎯': 'skills', '🧪': 'recipe', '🏗': 'build',
-  '🌱': 'grove', '🏛': 'hall', '✨': 'story', '⏰': 'clock',
-  '🔔': 'bell', '🚪': 'door', '🎉': 'party', '✍️': 'edit_profile',
-  '👒': 'wardrobe', '📖': 'stories',
-  // V22.2 banners
-  '☕': 'coffee', '🍳': 'cook', '🎧': 'jam', '💃': 'dance',
-  '🛒': 'salesman', '☄️': 'meteor', '🪨': 'pebble', '📮': 'postcard',
-  // V22.3 categories (when keyword categories are used)
-  '🗺️': 'cat_discovery', '🤝': 'cat_social', '🔨': 'cat_crafting',
-  '⚡': 'cat_skills', '💰': 'cat_economy', '🏠': 'cat_building'
 }

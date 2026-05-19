@@ -3346,20 +3346,12 @@ export class RoomScene extends Phaser.Scene {
         banner.hidden = true
       } else {
         banner.hidden = false
-        // V22.2 — map event id → pixel icon. Set data-icon then hydrate.
-        const ICON_FOR_EVENT: Record<string, string> = {
-          traveling_salesman: 'salesman',
-          meteor_shower: 'meteor',
-          lost_pebble: 'pebble',
-          postcard: 'postcard'
-        }
-        const iconName = ICON_FOR_EVENT[active.def.id]
-        if (iconName) {
-          iconEl.setAttribute('data-icon', iconName)
-          iconEl.innerHTML = ''
-          delete iconEl.dataset.iconRendered
-          void import('../icons').then(m => m.hydrateIcons(banner))
-        }
+        // V22.4-review I4 — icon name lives on the event def itself; this
+        // call site was a duplicated source-of-truth before.
+        iconEl.setAttribute('data-icon', active.def.icon)
+        iconEl.innerHTML = ''
+        delete iconEl.dataset.iconRendered
+        void import('../icons').then(m => m.hydrateIcons(banner))
         titleEl.textContent = active.def.title
         let targetRoom: RoomId = active.def.room
         if (targetRoom === ('room_home_self' as RoomId)) {
