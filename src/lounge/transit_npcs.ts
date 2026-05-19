@@ -19,7 +19,9 @@ import type Phaser from 'phaser'
 import { Bear } from './bear'
 import { ccToRegion, SPECIES, type Species, prefersReducedMotion } from './config'
 
-const TRANSIT_SPEED = 40    // px/sec
+// V23.5-review I1 — the TRANSIT_SPEED constant was dead (Bear.walkTo uses
+// the global WALK_SPEED with no per-instance override). Removed rather
+// than wired through Bear — current speed reads fine in playtesting.
 const MIN_COOLDOWN_MS = 90_000
 const MAX_COOLDOWN_MS = 180_000
 
@@ -78,9 +80,16 @@ export class TransitNpcController {
     const fromLeft = Math.random() < 0.5
     const startX = fromLeft ? -16 : this.mapWidthPx + 16
     this.exitX = fromLeft ? this.mapWidthPx + 16 : -16
-    const species = this.speciesPool[Math.floor(Math.random() * this.speciesPool.length)]
-    // Region is irrelevant for transit; just pick a stable one. 'unknown' guarantees existence.
-    const bear = new Bear(this.scene, startX, y, ccToRegion(null), species)
+    // V23.5-review I2 — bias the species pool to atlases already cached
+    // this session. Otherwise un-cached species (e.g. panda before a
+    // panda peer joined) render as bear-fallback for the whole walk.
+    const region = ccToRegion(null)
+    const cachedPool = this.speciesPool.filter(sp =>
+      sp === 'bear' || this.scene.textures.exists(`${sp}_${region}`)
+    )
+    const pickFrom = cachedPool.length > 0 ? cachedPool : this.speciesPool
+    const species = pickFrom[Math.floor(Math.random() * pickFrom.length)]
+    const bear = new Bear(this.scene, startX, y, region, species)
     bear.sprite.setDepth(3)        // behind player (depth 5) so it really feels background
     bear.sprite.setAlpha(0.85)
     bear.facing = fromLeft ? 'right' : 'left'

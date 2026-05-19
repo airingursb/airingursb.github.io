@@ -13,6 +13,7 @@
 // the player's SFX volume control.
 
 import { getVolume } from './volume'
+import { getCurrentPhase } from './atmosphere'
 
 type SoundFn = (ctx: AudioContext, destination: AudioNode) => void
 
@@ -128,21 +129,31 @@ const pageFlutter: SoundFn = (ctx, dest) => {
 
 // ─── Per-room sound bank ────────────────────────────────────────────────
 
+type Phase = 'dawn' | 'day' | 'dusk' | 'night'
+
+type SoundEntry = SoundFn | { sound: SoundFn; phases: Phase[] }
+
 type RoomSoundConfig = {
-  /** Each entry is one possible micro-SFX for the room. Picker rolls
-   *  one per tick uniformly. */
-  sounds: SoundFn[]
+  /** Each entry is one possible micro-SFX for the room. Entries can be
+   *  unconditional (raw fn) or phase-gated (only valid at certain
+   *  times of day — e.g. crickets only at night). */
+  sounds: SoundEntry[]
   /** Min / max ms between ticks (jittered each round). */
   intervalMs: [number, number]
 }
 
+// V23.5-review I8 — cricket/firefly-class sounds are gated to night,
+// bird/gull-class to day/dawn/dusk. Bell + coin work any time.
 const ROOM_SFX: Record<string, RoomSoundConfig> = {
-  room_library:  { sounds: [bellChime, pageFlutter],    intervalMs: [45_000, 90_000] },
-  room_grove:    { sounds: [birdChirp, cricketChirp],   intervalMs: [30_000, 75_000] },
-  room_beach:    { sounds: [gullCry],                   intervalMs: [40_000, 90_000] },
-  room_lobby:    { sounds: [coinClink, bellChime],      intervalMs: [60_000, 120_000] },
-  room_balcony:  { sounds: [birdChirp],                 intervalMs: [60_000, 120_000] },
-  room_rooftop:  { sounds: [cricketChirp],              intervalMs: [60_000, 120_000] },
+  room_library:  { sounds: [bellChime, pageFlutter],                                                        intervalMs: [45_000, 90_000] },
+  room_grove:    { sounds: [{ sound: birdChirp, phases: ['dawn','day','dusk'] }, { sound: cricketChirp, phases: ['night'] }],
+                                                                                                            intervalMs: [30_000, 75_000] },
+  room_beach:    { sounds: [{ sound: gullCry, phases: ['dawn','day','dusk'] }],                            intervalMs: [40_000, 90_000] },
+  room_lobby:    { sounds: [coinClink, bellChime],                                                          intervalMs: [60_000, 120_000] },
+  room_balcony:  { sounds: [{ sound: birdChirp, phases: ['dawn','day','dusk'] }, { sound: cricketChirp, phases: ['night'] }],
+                                                                                                            intervalMs: [60_000, 120_000] },
+  room_rooftop:  { sounds: [{ sound: cricketChirp, phases: ['night'] }, { sound: bellChime, phases: ['dawn','day','dusk'] }],
+                                                                                                            intervalMs: [60_000, 120_000] },
   // Indoor crafting / kitchen rooms intentionally omitted — their BGM is
   // already busy enough; adding more layer would clutter.
 }
@@ -155,21 +166,31 @@ export function startAmbientSfx(roomId: string): AmbientSfxDispose {
   if (!cfg) return () => {}
   let timer: number | null = null
   const fire = () => {
+    // V23.5-review I7 — skip when tab is backgrounded (timer still runs
+    // every 30-120s otherwise, doing pointless work + churning the picker).
+    if (typeof document !== 'undefined' && document.visibilityState !== 'visible') {
+      schedule(); return
+    }
     const ctx = getCtx()
     if (ctx) {
-      // Try to resume in case the user hasn't interacted yet (Chrome
-      // autoplay policy). resume() returns a promise; ignore failures.
       if (ctx.state === 'suspended') { try { void ctx.resume() } catch {} }
-      // Player's SFX gain (default 1.0). Multiply by 0.35 to stay soft.
       const volume = (getVolume('sfx') ?? 1) * 0.35
       if (volume > 0.005) {
-        const master = ctx.createGain()
-        master.gain.value = volume
-        master.connect(ctx.destination)
-        const sound = cfg.sounds[Math.floor(Math.random() * cfg.sounds.length)]
-        try { sound(ctx, master) } catch {}
-        // Auto-disconnect after a generous window so the GC reclaims nodes.
-        setTimeout(() => { try { master.disconnect() } catch {} }, 3000)
+        // V23.5-review I8 — phase-gate any sound entry that declared one.
+        const phase = getCurrentPhase() as Phase
+        const eligible: SoundFn[] = []
+        for (const entry of cfg.sounds) {
+          if (typeof entry === 'function') eligible.push(entry)
+          else if (entry.phases.includes(phase)) eligible.push(entry.sound)
+        }
+        if (eligible.length > 0) {
+          const master = ctx.createGain()
+          master.gain.value = volume
+          master.connect(ctx.destination)
+          const sound = eligible[Math.floor(Math.random() * eligible.length)]
+          try { sound(ctx, master) } catch {}
+          setTimeout(() => { try { master.disconnect() } catch {} }, 3000)
+        }
       }
     }
     schedule()

@@ -2992,9 +2992,13 @@ export class RoomScene extends Phaser.Scene {
       this.events.once('destroy',  () => { this.transitNpcs?.destroy(); this.transitNpcs = undefined })
     }
     // V23.1 — ambient pets per room (sleeping cat / sitting dog / curled bunny).
-    // Pure decoration; cleaned up on scene shutdown via standard child destroy.
+    // V23.5-review I4 — register both shutdown AND destroy listeners for
+    // parity with V23.2-4. Phaser usually fires shutdown, but a forced
+    // game destroy mid-preload races would leak the pets without this.
     const ambientPetSprites = spawnAmbientPets(this, this.currentRoomId, prefersReducedMotion())
-    this.events.once('shutdown', () => { for (const s of ambientPetSprites) s.destroy() })
+    const cleanupPets = () => { for (const s of ambientPetSprites) s.destroy() }
+    this.events.once('shutdown', cleanupPets)
+    this.events.once('destroy',  cleanupPets)
     // V23.2 — seasonal decorations (cherry blossoms in spring grove, etc.).
     // Layered on top of weather (snow + season co-exist).
     const seasonalDispose = spawnSeasonalDecor(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())
