@@ -33,6 +33,11 @@ import { maybeNoticeCookAlong, leaveCookAlongIfNeeded, setCookBannerHandler, sta
 import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJamBurstTier } from '../group_jam'
 import { tickNpcEvents, leaveNpcEventIfNeeded, setEventBannerHandler, currentEventStatus } from '../npc_events'
 import { tickRandomEvents, getActiveEvent, attendEvent, type ActiveEvent } from '../random_events'
+import { TransitNpcController } from '../transit_npcs'
+import { spawnAmbientPets } from '../ambient_pets'
+import { spawnSeasonalDecor } from '../seasonal_decor'
+import { spawnTimeDecor } from '../time_decor'
+import { startAmbientSfx } from '../ambient_sfx'
 import { startOrJoinDance, leaveDanceIfNeeded, initDance } from '../group_dance'
 import { setPartyProgressToken } from '../party'
 import { setPartyOnEnter, setPartyDisplayName } from '../party_ui'
@@ -169,6 +174,8 @@ export class RoomScene extends Phaser.Scene {
   // V21.2 — random event interactable + check timer
   private randomEventSprite?: Phaser.GameObjects.Container
   private randomEventTimer?: Phaser.Time.TimerEvent
+  // V23.0 — transit NPCs (background bears walking through)
+  private transitNpcs?: TransitNpcController
   // V4.0 — friendship
   private peerVisitorIds = new Map<string, string>()      // session id → visitor_id
   private peerCCs = new Map<string, string | null>()      // session id → country code (for flag display)
@@ -2974,6 +2981,34 @@ export class RoomScene extends Phaser.Scene {
       loop: true,
       callback: () => this.refreshNpcs()
     })
+    // V23.0 — transit NPCs: a background bear walks across the room
+    // every 90-180s. Only in "social" rooms (lobby/dj/library/grove/beach),
+    // skipped in personal homes + private party rooms.
+    const TRANSIT_ROOMS = new Set(['room_lobby', 'room_dj_floor', 'room_library', 'room_grove', 'room_beach', 'room_balcony'])
+    if (TRANSIT_ROOMS.has(this.currentRoomId)) {
+      this.transitNpcs = new TransitNpcController(this, this.mapInfo.widthPx, this.mapInfo.heightPx)
+      this.transitNpcs.start()
+      this.events.once('shutdown', () => { this.transitNpcs?.destroy(); this.transitNpcs = undefined })
+      this.events.once('destroy',  () => { this.transitNpcs?.destroy(); this.transitNpcs = undefined })
+    }
+    // V23.1 — ambient pets per room (sleeping cat / sitting dog / curled bunny).
+    // Pure decoration; cleaned up on scene shutdown via standard child destroy.
+    const ambientPetSprites = spawnAmbientPets(this, this.currentRoomId, prefersReducedMotion())
+    this.events.once('shutdown', () => { for (const s of ambientPetSprites) s.destroy() })
+    // V23.2 — seasonal decorations (cherry blossoms in spring grove, etc.).
+    // Layered on top of weather (snow + season co-exist).
+    const seasonalDispose = spawnSeasonalDecor(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())
+    this.events.once('shutdown', seasonalDispose)
+    this.events.once('destroy',  seasonalDispose)
+    // V23.3 — time-of-day flourishes (sun shafts at day, fireflies at night).
+    const timeDispose = spawnTimeDecor(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())
+    this.events.once('shutdown', timeDispose)
+    this.events.once('destroy',  timeDispose)
+    // V23.4 — sparse ambient micro-SFX (bell chime in library, gull cry on
+    // the beach, etc.). Web-Audio synth, gated by player's SFX volume.
+    const ambientSfxDispose = startAmbientSfx(this.currentRoomId)
+    this.events.once('shutdown', ambientSfxDispose)
+    this.events.once('destroy',  ambientSfxDispose)
     // V15.5 — small-talk timer: every 60-120s, if 2+ NPCs are co-present,
     // fire a paired exchange. Single timer per scene (cheaper than per-NPC).
     const startSmalltalk = () => {
@@ -4101,6 +4136,8 @@ export class RoomScene extends Phaser.Scene {
       this.tickNpcWander(entry, now)
       this.tickNpcBubble(entry, id, now)
     })
+    // V23.0 — transit NPCs walk through periodically
+    this.transitNpcs?.tick(dtMs)
     if (this.myBear) {
       const s = this.bearScreenPos(this.myBear)
       updateBubblePos('__me__', s.x, s.y)
