@@ -123,17 +123,6 @@ export type StaticRoomId = typeof STATIC_ROOMS[number]
 export type RoomId = StaticRoomId | `room_home_${string}` | `room_party_${string}`
 export const DEFAULT_ROOM: StaticRoomId = 'room_lobby'
 
-// V23.28 — single source of truth for "is this room outdoors?"
-// Used by weather (storm/rain/snow gating), wildlife, time_decor sky
-// stars, footprints (sand/snow tracking), and per-scene logic. Adding
-// a new outdoor room? Append here and all subsystems pick it up.
-export const OUTDOOR_ROOMS = new Set<StaticRoomId>([
-  'room_beach', 'room_balcony', 'room_grove', 'room_rooftop'
-])
-export function isOutdoorRoom(roomId: string): boolean {
-  return OUTDOOR_ROOMS.has(roomId as StaticRoomId)
-}
-
 // Back-compat for code that imports VALID_ROOMS.
 export const VALID_ROOMS = STATIC_ROOMS
 

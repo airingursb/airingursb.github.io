@@ -3,34 +3,6 @@ import { WALK_SPEED, type Region, type Species, SPECIES } from './config'
 import { footstepDust } from './feedback'
 import { walkSpeedMultiplier, onLevelUp } from './skills'
 import { sortForRender as sortCosmeticsForRender } from './cosmetics'
-import { getCurrentPhase } from './atmosphere'
-
-// V23.29 — phase-aware shadow transform. Computed once per second per
-// scene (phase changes slowly), reads getCurrentPhase. Sets scale and
-// alpha so the shadow looks short+round at noon, long+faint at dawn
-// (cast east) / dusk (cast west), and nearly invisible at night.
-let _shadowPhaseCache: { until: number; scaleX: number; scaleY: number; alpha: number; offsetX: number } | null = null
-function getShadowParams() {
-  const now = performance.now()
-  if (_shadowPhaseCache && now < _shadowPhaseCache.until) return _shadowPhaseCache
-  const phase = getCurrentPhase()
-  let params: { scaleX: number; scaleY: number; alpha: number; offsetX: number }
-  switch (phase) {
-    case 'dawn':  params = { scaleX: 2.0, scaleY: 0.7, alpha: 0.22, offsetX:  6 }; break
-    case 'dusk':  params = { scaleX: 2.0, scaleY: 0.7, alpha: 0.22, offsetX: -6 }; break
-    case 'night': params = { scaleX: 0.85, scaleY: 0.85, alpha: 0.12, offsetX: 0 }; break
-    case 'day':
-    default:      params = { scaleX: 1.0, scaleY: 1.0, alpha: 0.32, offsetX: 0 }; break
-  }
-  _shadowPhaseCache = { until: now + 1000, ...params }
-  return _shadowPhaseCache
-}
-function applyShadowPhaseTransform(shadow: Phaser.GameObjects.Ellipse) {
-  const p = getShadowParams()
-  shadow.setScale(p.scaleX, p.scaleY)
-  shadow.setAlpha(p.alpha)
-  shadow.x = shadow.x + p.offsetX
-}
 
 // V9.7-review I3 fix: cache walkSpeedMultiplier (computed from skill XP via
 // localStorage) so Bear.update doesn't read localStorage every frame. Refresh
@@ -266,13 +238,6 @@ export class Bear {
     if (this.shadow) {
       this.shadow.x = this.sprite.x
       this.shadow.y = this.sprite.y - 1
-      // V23.29 — phase-aware shadow shape. At dawn/dusk the sun is low
-      // and shadows stretch sideways; at noon they're tight and round;
-      // at night there's no sun-cast so the shadow nearly disappears.
-      // Origin shifted to the casting edge so the stretch grows AWAY
-      // from the bear rather than scaling out symmetrically.
-      const t = applyShadowPhaseTransform
-      if (t) t(this.shadow)
     }
     if (this.nameLabel) {
       this.nameLabel.x = this.sprite.x

@@ -14,7 +14,6 @@
 
 import Phaser from 'phaser'
 import { getCurrentSeason } from './seasons'
-import { getWindStrength } from './atmosphere'
 
 // Local copy of the same pixel-texture helper RoomScene uses for particles.
 const PIXEL_TEX_KEY = 'lounge_pixel'
@@ -48,14 +47,6 @@ export function spawnSeasonalDecor(
 
   ensurePixelTexture(scene)
 
-  // V23.30 — shared wind direction so all drifting outdoor particles
-  // (blossoms, leaves, sand) agree on which way the wind is blowing today.
-  const wind = getWindStrength()   // [-1, +1], stable per day
-  const driftBase = 8              // baseline drift speed magnitude
-  const driftSpan = 6              // turbulence around the base
-  const lo = wind * driftBase - driftSpan
-  const hi = wind * driftBase + driftSpan
-
   // ─── Spring ───────────────────────────────────────────────────────
   if (sid === 'spring') {
     // Cherry blossoms in the grove — slow drifting pink particles
@@ -64,7 +55,7 @@ export function spawnSeasonalDecor(
         x: { min: 0, max: mapWidthPx }, y: -8,
         lifespan: 7000, quantity: 1, frequency: 220,
         speedY: { min: 18, max: 30 },
-        speedX: { min: lo, max: hi },
+        speedX: { min: -12, max: 4 },
         scale: { start: 1.6, end: 1.6 },
         tint: [0xffc8d8, 0xffb0c8, 0xffdce8],
         alpha: { start: 0.85, end: 0.4 },
@@ -118,7 +109,7 @@ export function spawnSeasonalDecor(
         x: { min: 0, max: mapWidthPx }, y: -8,
         lifespan: 6500, quantity: 1, frequency: 280,
         speedY: { min: 22, max: 38 },
-        speedX: { min: lo - 2, max: hi + 2 },   // leaves swing wider than blossoms
+        speedX: { min: -14, max: 6 },
         scale: { start: 1.8, end: 1.6 },
         tint: [0xd07840, 0xb86028, 0xe89060, 0xa84830],
         alpha: { start: 0.95, end: 0.55 },
@@ -127,16 +118,11 @@ export function spawnSeasonalDecor(
       objects.push(emitter)
     }
     if (roomId === 'room_beach') {
-      // Occasional dry gust — horizontal pebble streaks. Flows WITH the
-      // wind so the gust originates from the upwind side of the screen
-      // and exits downwind. Magnitude tied to wind strength.
-      const gustSign = wind >= 0 ? 1 : -1
-      const gustSpeed = 60 + 30 * Math.abs(wind)
+      // Occasional dry gust — horizontal pebble streaks
       const emitter = scene.add.particles(0, 0, PIXEL_TEX_KEY, {
-        x: gustSign > 0 ? -10 : mapWidthPx + 10,
-        y: { min: mapHeightPx * 0.55, max: mapHeightPx * 0.75 },
+        x: -10, y: { min: mapHeightPx * 0.55, max: mapHeightPx * 0.75 },
         lifespan: 2200, quantity: 1, frequency: 1400,
-        speedX: { min: gustSpeed * gustSign, max: (gustSpeed + 30) * gustSign },
+        speedX: { min: 60, max: 90 },
         scale: { start: 0.8, end: 0.4 },
         tint: 0xc8a878, alpha: { start: 0.6, end: 0 }
       }).setDepth(990)

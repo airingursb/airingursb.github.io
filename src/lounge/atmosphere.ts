@@ -57,23 +57,3 @@ export function getOverlayAt(now: Date = new Date()): { color: number; alpha: nu
   }
   return PHASE_COLORS[getCurrentPhase(now)]
 }
-
-// V23.30 — coherent wind direction.
-//
-// Drifting outdoor particles (cherry blossoms in spring grove, autumn
-// leaves in grove/balcony, beach sand) previously each picked their own
-// asymmetric drift in seasonal_decor.ts. That looked incoherent — the
-// blossoms blew west while sand blew east. A single shared wind angle
-// per day makes the world feel like one weather system.
-//
-// Deterministic per day so a player who reloads in the same session
-// sees the same wind, but it shifts overnight.
-export function getWindStrength(now: Date = new Date()): number {
-  // Hash YYYYMMDD into a stable [-1, +1] value
-  const dayKey = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate()
-  // Simple LCG-style scramble to avoid neighboring days being too similar
-  const h = (dayKey * 9301 + 49297) % 233280
-  // Map to [-1, +1] but bias away from exactly 0 (always SOME wind)
-  const raw = (h / 233280) * 2 - 1
-  return raw >= 0 ? Math.max(0.4, raw) : Math.min(-0.4, raw)
-}
