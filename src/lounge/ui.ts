@@ -920,8 +920,15 @@ function ensureSpRefs() {
       if (!btn) return
       const s = btn.dataset.species as Species
       if (!s) return
+      // V23.18 BUG FIX — capture callback BEFORE hideSpeciesPicker()
+      // nullifies spOnPick (mirrors the nameModal pattern at line 102).
+      // The previous order swapped this: hide first → spOnPick=null
+      // → the next line called null and the species change silently
+      // dropped. This is the "no matter what I pick I'm still a bear"
+      // bug the user kept reporting through V16, V17, V18, V22.
+      const cb = spOnPick
       hideSpeciesPicker()
-      spOnPick?.(s)
+      cb?.(s)
     })
   }
 }

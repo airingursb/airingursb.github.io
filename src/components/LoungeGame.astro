@@ -680,12 +680,18 @@
   }
 
   /* V11.2 — Onboarding overlay. Backdrop + spotlight cutout (via large
-     box-shadow) + tooltip card. Pointer-events: none on backdrop so the
-     spotlight area stays clickable for live demos in later steps. */
+     box-shadow) + tooltip card. V23.18 BUG FIX — container was
+     pointer-events: auto despite the comment saying otherwise; this
+     swallowed clicks meant for HIGHER-z elements like the species
+     picker (z 250). The "spotlight stays clickable for live demos"
+     intent is preserved because (a) the spotlight child is itself
+     pointer-events: none and (b) the holes in the box-shadow cutout
+     pass through to whatever is beneath. The tooltip child gets
+     pointer-events: auto so its Skip/Next buttons still work. */
   .ui-onboarding {
     position: fixed; inset: 0;
     z-index: 200;
-    pointer-events: auto;
+    pointer-events: none;
   }
   .ui-onboarding[hidden] { display: none; }
   .ob-spotlight {
@@ -706,6 +712,7 @@
     font-family: ui-monospace, monospace;
     transition: all .3s ease;
     box-shadow: 0 4px 16px rgba(0,0,0,.5);
+    pointer-events: auto;
   }
   .ob-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
   .ob-counter { font-size: 11px; opacity: .6; }
