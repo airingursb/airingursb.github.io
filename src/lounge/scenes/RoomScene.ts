@@ -810,8 +810,14 @@ export class RoomScene extends Phaser.Scene {
       if (this.myBear) {
         const b = this.myBear
         if (Math.abs(wx - b.x) < 14 && wy > b.y - 50 && wy < b.y) {
-          const sX = this.scale.canvasBounds.x + b.x * this.scale.displayScale.x
-          const sY = this.scale.canvasBounds.y + (b.y - 30) * this.scale.displayScale.y
+          // V23.35 — bear x/y are world coords; without camera scroll/zoom
+          // the menu pinned to the canvas top-left whenever the camera had
+          // moved. Convert world→canvas via camera matrix, then canvas→CSS.
+          const cam = this.cameras.main
+          const canvasX = (b.x - cam.worldView.x) * cam.zoom
+          const canvasY = (b.y - 30 - cam.worldView.y) * cam.zoom
+          const sX = this.scale.canvasBounds.x + canvasX * this.scale.displayScale.x
+          const sY = this.scale.canvasBounds.y + canvasY * this.scale.displayScale.y
           showMenuAt(sX, sY)
           return
         }

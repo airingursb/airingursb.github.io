@@ -265,9 +265,26 @@ export function initUI() {
 
 export function showMenuAt(screenX: number, screenY: number) {
   if (!menuEl) return
-  menuEl.style.left = `${screenX}px`
-  menuEl.style.top = `${screenY - 30}px`
+  // V23.35 — anchor the menu's CENTER at (screenX, screenY-30) so it sits
+  // just above the bear's head, then clamp so the panel stays inside the
+  // viewport (previously it could pin to the corner under the energy bar).
+  // The CSS uses transform: translate(-50%, -50%), so style.left/top is the
+  // visual center — we measure the rect at offscreen to know how much room
+  // to leave on each side.
+  menuEl.style.left = '-9999px'
+  menuEl.style.top = '-9999px'
   menuEl.hidden = false
+  const rect = menuEl.getBoundingClientRect()
+  const halfW = rect.width / 2
+  const halfH = rect.height / 2
+  const margin = 12
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  const desiredY = screenY - 30
+  const cx = Math.max(halfW + margin, Math.min(vw - halfW - margin, screenX))
+  const cy = Math.max(halfH + margin, Math.min(vh - halfH - margin, desiredY))
+  menuEl.style.left = `${cx}px`
+  menuEl.style.top = `${cy}px`
   playSfx('menu_open')
   if (!prefersReducedMotion()) {
     menuEl.classList.add('is-opening')
