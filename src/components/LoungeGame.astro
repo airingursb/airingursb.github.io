@@ -199,6 +199,20 @@
     </div>
     <div id="lounge-info-panel" class="ui-info-panel" hidden>
       <h3>Identity</h3>
+      <!-- V3.0-A — account banner (anon vs signed-in views, JS toggles) -->
+      <div id="nook-account-banner" class="nook-account-banner" hidden>
+        <div id="nook-account-anon" class="nook-banner-anon" hidden>
+          <p class="nook-banner-line"><strong>🍵 Sign in</strong> to sync across devices, message friends, and meet the AI companion.</p>
+          <button type="button" id="nook-account-signin-btn" class="nook-banner-cta">Sign in</button>
+        </div>
+        <div id="nook-account-signed" class="nook-banner-signed" hidden>
+          <p class="nook-banner-line">Signed in as <strong id="nook-account-email">—</strong></p>
+          <div class="nook-banner-actions">
+            <button type="button" id="nook-account-blog-toggle" class="nook-banner-cta-mini">Manage blog subscription</button>
+            <button type="button" id="nook-account-signout-btn" class="nook-banner-cta-mini">Sign out</button>
+          </div>
+        </div>
+      </div>
       <dl>
         <dt>Name</dt><dd id="lounge-info-name">—</dd>
         <dt>Region</dt><dd id="lounge-info-region">—</dd>
@@ -678,6 +692,72 @@
       <kbd>E</kbd> <span id="lounge-interact-verb">interact</span>
     </div>
     <div id="lounge-dialog" class="ui-dialog" hidden></div>
+
+    <!-- V3.0-A — auth overlays (login, claim, gated-feature prompt) -->
+    <div id="nook-auth-overlay" class="auth-overlay" hidden>
+      <div class="auth-backdrop"></div>
+      <div class="auth-card">
+        <button type="button" id="nook-auth-close" class="auth-close" aria-label="Close">✕</button>
+        <h2 class="auth-title">🍵 Welcome to your nook</h2>
+        <p class="auth-blurb">Sign in to save across devices, unlock social, and meet the AI companion.</p>
+
+        <button type="button" id="nook-auth-google" class="auth-oauth-btn auth-google">
+          <span class="auth-oauth-icon">G</span> Continue with Google
+        </button>
+        <button type="button" id="nook-auth-github" class="auth-oauth-btn auth-github">
+          <span class="auth-oauth-icon">⌥</span> Continue with GitHub
+        </button>
+
+        <div class="auth-divider"><span>or</span></div>
+
+        <form id="nook-auth-magic-form" class="auth-magic-form">
+          <label class="auth-label" for="nook-auth-email">Email</label>
+          <input type="email" id="nook-auth-email" required autocomplete="email" placeholder="your@email.com">
+
+          <label class="auth-checkbox">
+            <input type="checkbox" id="nook-auth-blog" checked>
+            <span>Subscribe to Airing's blog (weekly, one click to unsub)</span>
+          </label>
+
+          <button type="submit" id="nook-auth-magic-submit" class="auth-magic-btn">Send me a magic link</button>
+          <p id="nook-auth-status" class="auth-status"></p>
+        </form>
+
+        <p class="auth-footer">Already in? Same form — magic link signs you in.</p>
+      </div>
+    </div>
+
+    <div id="nook-claim-modal" class="auth-overlay" hidden>
+      <div class="auth-backdrop"></div>
+      <div class="auth-card">
+        <h2 class="auth-title">Welcome back, <span id="nook-claim-name">visitor</span> 🍵</h2>
+        <p class="auth-blurb">We found your visit history on this device. Claim it into your account?</p>
+        <ul class="claim-list">
+          <li><span class="claim-icon">📦</span> Inventory <strong id="nook-claim-inventory">0</strong></li>
+          <li><span class="claim-icon">🏠</span> Decorations <strong id="nook-claim-decorations">0</strong></li>
+          <li><span class="claim-icon">👋</span> Friends <strong id="nook-claim-friendships">0</strong></li>
+          <li><span class="claim-icon">📜</span> Letters <strong id="nook-claim-letters">0</strong></li>
+          <li><span class="claim-icon">✉</span> DMs <strong id="nook-claim-dms">0</strong></li>
+          <li><span class="claim-icon">🎁</span> Gifts <strong id="nook-claim-gifts">0</strong></li>
+        </ul>
+        <div class="auth-actions">
+          <button type="button" id="nook-claim-keep" class="auth-primary-btn">Claim into my account</button>
+          <button type="button" id="nook-claim-discard" class="auth-secondary-btn">Start fresh, discard</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="nook-gated-prompt" class="auth-overlay auth-overlay-small" hidden>
+      <div class="auth-backdrop"></div>
+      <div class="auth-card auth-card-small">
+        <h3 class="auth-title">🍵 Sign in to use <span id="nook-gated-feature">this</span></h3>
+        <p class="auth-blurb">Save your stuff across devices and unlock social.</p>
+        <div class="auth-actions">
+          <button type="button" id="nook-gated-signin" class="auth-primary-btn">Sign in</button>
+          <button type="button" id="nook-gated-cancel" class="auth-secondary-btn">Not now</button>
+        </div>
+      </div>
+    </div>
   </div>
   <a href="/" class="lounge-back" title="Back to homepage">←</a>
 </div>
@@ -3899,18 +3979,283 @@
     .ui-bubble,
     .ui-mute-btn { transition: none !important; }
   }
+
+  /* V3.0-A — auth overlays (wooden game style, matches V23.34 toolbar) */
+  .auth-overlay {
+    position: fixed; inset: 0;
+    z-index: 300;
+    display: flex; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .auth-overlay[hidden] { display: none; }
+  .auth-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(20, 14, 8, 0.65);
+    backdrop-filter: blur(2px);
+  }
+  .auth-card {
+    position: relative;
+    width: 100%; max-width: 380px;
+    background: rgba(244, 234, 213, 0.98);
+    border: 2px solid rgba(60, 32, 16, 0.85);
+    border-radius: 14px;
+    padding: 28px 24px 22px;
+    color: #2a1810;
+    font-family: ui-monospace, monospace;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  }
+  .auth-card-small { max-width: 320px; padding: 22px 20px; }
+  .auth-close {
+    position: absolute; top: 8px; right: 8px;
+    width: 28px; height: 28px;
+    background: transparent; border: none; cursor: pointer;
+    color: #5c4030; font-size: 16px; font-family: inherit;
+    border-radius: 50%;
+  }
+  .auth-close:hover { background: rgba(60, 32, 16, 0.1); }
+  .auth-title {
+    font-size: 18px; font-weight: 700;
+    margin: 0 0 6px;
+    color: #2a1810;
+  }
+  .auth-blurb {
+    font-size: 12px; line-height: 1.5;
+    color: #5c4030;
+    margin: 0 0 18px;
+  }
+  .auth-oauth-btn {
+    display: flex; align-items: center; justify-content: center;
+    gap: 10px;
+    width: 100%;
+    background: rgba(232, 216, 176, 0.95);
+    border: 2px solid rgba(60, 32, 16, 0.85);
+    color: #2a1810;
+    padding: 11px 16px;
+    border-radius: 10px;
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+    margin: 0 0 10px;
+    box-shadow: 0 2px 0 rgba(60, 32, 16, 0.4);
+    transition: transform .1s, background .15s;
+  }
+  .auth-oauth-btn:hover {
+    background: rgba(248, 232, 192, 1);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 0 rgba(60, 32, 16, 0.45);
+  }
+  .auth-oauth-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(60, 32, 16, 0.4); }
+  .auth-oauth-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #2a1810; color: #f4ead5;
+    font-size: 12px; font-weight: 700;
+  }
+  .auth-divider {
+    display: flex; align-items: center;
+    margin: 14px 0;
+    color: #8a6a4a;
+    font-size: 11px;
+  }
+  .auth-divider::before, .auth-divider::after {
+    content: ''; flex: 1;
+    height: 1px; background: rgba(60, 32, 16, 0.25);
+  }
+  .auth-divider span { padding: 0 12px; }
+  .auth-magic-form {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .auth-label {
+    font-size: 11px; font-weight: 700;
+    color: #5c4030; text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 2px;
+  }
+  .auth-magic-form input[type=email] {
+    width: 100%;
+    padding: 10px 12px;
+    border: 2px solid rgba(60, 32, 16, 0.6);
+    border-radius: 8px;
+    background: #fbf5e3;
+    color: #2a1810;
+    font-family: inherit; font-size: 14px;
+    box-sizing: border-box;
+  }
+  .auth-magic-form input[type=email]:focus {
+    outline: none;
+    border-color: #a26b3a;
+    background: #fff;
+  }
+  .auth-checkbox {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 12px; color: #5c4030;
+    cursor: pointer;
+    padding: 6px 0;
+    line-height: 1.4;
+  }
+  .auth-checkbox input { margin-top: 2px; flex-shrink: 0; }
+  .auth-magic-btn {
+    background: #2a1810;
+    color: #f4ead5;
+    border: 2px solid #2a1810;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+    margin-top: 4px;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+    transition: transform .1s, background .15s;
+  }
+  .auth-magic-btn:hover { background: #3d2418; transform: translateY(-1px); }
+  .auth-magic-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+  .auth-magic-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .auth-status {
+    font-size: 11px; line-height: 1.4;
+    margin: 6px 0 0;
+    min-height: 1.2em;
+  }
+  .auth-footer {
+    font-size: 10px; color: #8a6a4a;
+    margin: 18px 0 0;
+    text-align: center;
+  }
+
+  /* Claim modal list */
+  .claim-list {
+    list-style: none; padding: 0; margin: 0 0 18px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px;
+    background: rgba(232, 216, 176, 0.6);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .claim-list li {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px;
+    color: #5c4030;
+  }
+  .claim-list .claim-icon { font-size: 14px; }
+  .claim-list strong {
+    margin-left: auto;
+    color: #2a1810;
+    font-weight: 700;
+  }
+
+  .auth-actions {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .auth-primary-btn {
+    background: #2a1810; color: #f4ead5;
+    border: 2px solid #2a1810;
+    padding: 11px 16px; border-radius: 10px;
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+    transition: transform .1s;
+  }
+  .auth-primary-btn:hover { background: #3d2418; transform: translateY(-1px); }
+  .auth-primary-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+  .auth-secondary-btn {
+    background: rgba(232, 216, 176, 0.95);
+    border: 2px solid rgba(60, 32, 16, 0.85);
+    color: #2a1810;
+    padding: 11px 16px; border-radius: 10px;
+    font-family: inherit; font-size: 14px; font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 0 rgba(60, 32, 16, 0.4);
+    transition: transform .1s, background .15s;
+  }
+  .auth-secondary-btn:hover { background: rgba(248, 232, 192, 1); transform: translateY(-1px); }
+  .auth-secondary-btn:active { transform: translateY(1px); box-shadow: 0 1px 0 rgba(60, 32, 16, 0.4); }
+
+  @media (max-width: 480px) {
+    .auth-card { padding: 22px 18px 18px; }
+    .claim-list { grid-template-columns: 1fr; }
+  }
+
+  /* V3.0-A — account banner inside identity panel */
+  .nook-account-banner {
+    background: rgba(232, 216, 176, 0.45);
+    border: 1px solid rgba(60, 32, 16, 0.3);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+  }
+  .nook-account-banner[hidden] { display: none; }
+  .nook-account-banner > div[hidden] { display: none; }
+  .nook-banner-line {
+    font-size: 12px; line-height: 1.4;
+    margin: 0 0 8px;
+    color: #5c4030;
+  }
+  .nook-banner-line strong { color: #2a1810; }
+  .nook-banner-cta {
+    background: #2a1810; color: #f4ead5;
+    border: 2px solid #2a1810;
+    padding: 8px 16px; border-radius: 8px;
+    font-family: inherit; font-size: 12px; font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3);
+  }
+  .nook-banner-cta:hover { background: #3d2418; }
+  .nook-banner-actions {
+    display: flex; gap: 6px; flex-wrap: wrap;
+  }
+  .nook-banner-cta-mini {
+    background: transparent;
+    border: 1px solid rgba(60, 32, 16, 0.55);
+    color: #5c4030;
+    padding: 4px 10px; border-radius: 6px;
+    font-family: inherit; font-size: 10px; font-weight: 700;
+    cursor: pointer;
+  }
+  .nook-banner-cta-mini:hover { background: rgba(60, 32, 16, 0.1); color: #2a1810; }
 </style>
 
 <script>
   import { bootGame } from '../lounge/game'
   import { isMuted, toggleMute, playSfx } from '../lounge/audio'
   import { initUI } from '../lounge/ui'
+  import { onAccountChange, logout, setBlogSubscription } from '../lounge/auth'
+  import { showLogin } from '../lounge/auth_ui'
 
   function start() {
     const mount = document.getElementById('lounge-mount')
     if (!mount) return
     bootGame(mount)
     initUI()
+
+    // V3.0-A — wire account banner inside Identity panel
+    const banner    = document.getElementById('nook-account-banner')
+    const anonBox   = document.getElementById('nook-account-anon')
+    const signedBox = document.getElementById('nook-account-signed')
+    const emailEl   = document.getElementById('nook-account-email')
+    const signinBtn = document.getElementById('nook-account-signin-btn')
+    const signoutBtn = document.getElementById('nook-account-signout-btn')
+    const blogToggleBtn = document.getElementById('nook-account-blog-toggle')
+
+    signinBtn?.addEventListener('click', () => { showLogin(); playSfx('click') })
+    signoutBtn?.addEventListener('click', async () => {
+      playSfx('click')
+      await logout()
+      // soft reload to clear in-game state tied to old session
+      setTimeout(() => location.reload(), 200)
+    })
+    blogToggleBtn?.addEventListener('click', async () => {
+      const wantSub = confirm('Subscribe to Airing\'s blog newsletter? (Cancel = unsubscribe.)')
+      const result = await setBlogSubscription(wantSub)
+      alert(result.ok ? (wantSub ? 'Subscribed ✓' : 'Unsubscribed ✓') : `Failed: ${result.error}`)
+    })
+
+    onAccountChange((account) => {
+      if (!banner || !anonBox || !signedBox) return
+      banner.hidden = false
+      if (account) {
+        anonBox.hidden = true
+        signedBox.hidden = false
+        if (emailEl) emailEl.textContent = account.email
+      } else {
+        anonBox.hidden = false
+        signedBox.hidden = true
+      }
+    })
 
     const muteBtn = document.getElementById('lounge-mute') as HTMLButtonElement | null
     if (muteBtn) {

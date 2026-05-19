@@ -261,6 +261,11 @@ export function initUI() {
   ensureBnRefs()
   initGameTimeClock()
   initEnergyBar()
+  // V3.0-A — initialise account state, then show claim modal if a fresh
+  // login just happened (cookie set by blog-api callback).
+  void import('./auth').then(m => m.initAuth().then(() => {
+    void import('./auth_ui').then(ui => ui.maybeShowClaim())
+  }))
 }
 
 export function showMenuAt(screenX: number, screenY: number) {
