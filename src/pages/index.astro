@@ -4,11 +4,19 @@ import photosData from '../data/photos.json';
 import '../styles/workouts.css';
 import WorkoutCardPreview from '../components/workouts/WorkoutCardPreview.astro';
 import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
+import { fetchComics } from '../lib/comics';
 
 const recentPhotos = (photosData as Array<any>)
   .slice()
   .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime())
   .slice(0, 12);
+
+const allComics = await fetchComics();
+const latestComic = allComics[0];
+const formatComicDate = (s: string, locale: 'zh' | 'en') =>
+  new Date(s).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
+    year: 'numeric', month: 'long', day: 'numeric',
+  });
 ---
 <BaseLayout title="Hi, folks | Airing">
   <Fragment slot="head">
@@ -203,6 +211,17 @@ const recentPhotos = (photosData as Array<any>)
           enItems.forEach(function(el) { el.style.display = currentLang === 'en' ? '' : 'none'; });
         }
       });
+
+      // Toggle comics card titles by language
+      var comicsCard = document.getElementById('comics-card');
+      if (comicsCard) {
+        comicsCard.querySelectorAll('.comics-strip-title-zh').forEach(function(el) {
+          el.style.display = currentLang === 'zh' ? '' : 'none';
+        });
+        comicsCard.querySelectorAll('.comics-strip-title-en').forEach(function(el) {
+          el.style.display = currentLang === 'en' ? '' : 'none';
+        });
+      }
     }
 
     window.switchLang = function(lang) {
@@ -1138,6 +1157,40 @@ const recentPhotos = (photosData as Array<any>)
             </a>
         <!-- TELEGRAM_END -->
       </div>
+
+      <!-- Comics (四格) -->
+      {allComics.length > 0 && (
+        <div class="card card-comics" id="comics-card">
+          <div class="section-title-row">
+            <span class="section-title" data-i18n="sec_comics">四格</span>
+            <a class="photos-strip-more" href="/comics" data-href-zh="/comics" data-href-en="/en/comics" data-i18n="cm_view_all">查看全部 →</a>
+          </div>
+          <div class="comics-strip" role="list">
+            {allComics.slice(0, 8).map((c: any) => (
+              <a
+                class="comics-strip-item"
+                role="listitem"
+                href={`/comics/${c.issue_number}`}
+                data-href-zh={`/comics/${c.issue_number}`}
+                data-href-en={`/en/comics/${c.issue_number}`}
+              >
+                <div class="comics-strip-thumb">
+                  <img
+                    src={c.panels.url}
+                    alt={c.panels?.alt?.zh || c.title.zh}
+                    loading="lazy"
+                  />
+                </div>
+                <div class="comics-strip-cap">
+                  <span class="comics-strip-issue">No. {c.issue_number}</span>
+                  <span class="comics-strip-title comics-strip-title-zh">{c.title.zh}</span>
+                  <span class="comics-strip-title comics-strip-title-en">{c.title.en}</span>
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       <!-- Photos -->
       <div class="card card-photos" id="photos-card">
