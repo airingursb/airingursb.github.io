@@ -73,11 +73,19 @@ export function spawnWildlife(
         duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.inOut'
       })
     }
-    // First one after a short delay, then every 30-60s
+    // V23.11-review C1 — re-jitter on each loop. Phaser's addEvent stores
+    // delay as a fixed number at construction; loop:true re-uses the same
+    // value, so the spec's "30-60s per loop" was actually "X seconds every
+    // loop where X is fixed". Self-rescheduling delayedCall fixes it.
+    const rearmButterfly = () => {
+      const ev = scene.time.delayedCall(30_000 + Math.random() * 30_000, () => {
+        spawnButterfly()
+        rearmButterfly()
+      })
+      timers.push(ev)
+    }
     timers.push(scene.time.delayedCall(4000, spawnButterfly))
-    timers.push(scene.time.addEvent({
-      delay: 30_000 + Math.random() * 30_000, loop: true, callback: spawnButterfly
-    }))
+    rearmButterfly()
   }
 
   // ─── Dragonfly at grove dusk ────────────────────────────────────
@@ -107,8 +115,15 @@ export function spawnWildlife(
         duration: 600, yoyo: true, repeat: -1, ease: 'Sine.inOut'
       })
     }
+    const rearmDragonfly = () => {
+      const ev = scene.time.delayedCall(40_000 + Math.random() * 20_000, () => {
+        spawnDragonfly()
+        rearmDragonfly()
+      })
+      timers.push(ev)
+    }
     timers.push(scene.time.delayedCall(8000, spawnDragonfly))
-    timers.push(scene.time.addEvent({ delay: 40_000, loop: true, callback: spawnDragonfly }))
+    rearmDragonfly()
   }
 
   // ─── Bats at rooftop night ──────────────────────────────────────
@@ -139,8 +154,15 @@ export function spawnWildlife(
         duration: 420, yoyo: true, repeat: -1, ease: 'Sine.inOut'
       })
     }
+    const rearmBat = () => {
+      const ev = scene.time.delayedCall(50_000 + Math.random() * 30_000, () => {
+        spawnBat()
+        rearmBat()
+      })
+      timers.push(ev)
+    }
     timers.push(scene.time.delayedCall(6000, spawnBat))
-    timers.push(scene.time.addEvent({ delay: 50_000, loop: true, callback: spawnBat }))
+    rearmBat()
   }
 
   // ─── Fish jump at the beach (any time) ──────────────────────────
@@ -167,24 +189,32 @@ export function spawnWildlife(
         delay: 480, duration: 480, ease: 'Sine.in',
         onComplete: () => {
           // Tiny splash particles, then destroy fish
+          // V23.11-review I3 — explode() with no args emits at the
+          // emitter's own world position. Passing (x+32, waterY) again
+          // double-positioned and could drift the splash 1 tile.
           const splash = scene.add.particles(x + 32, waterY, PIXEL_TEX_KEY, {
             x: 0, y: 0,
             lifespan: 400, quantity: 6, frequency: -1,
             speedY: { min: -40, max: -10 }, speedX: { min: -30, max: 30 },
             scale: 1, tint: 0xc0e0f0, alpha: { start: 0.8, end: 0 }
           }).setDepth(992)
-          splash.explode(6, x + 32, waterY)
+          splash.explode(6)
           objects.push(splash)
           scene.time.delayedCall(500, () => { try { splash.destroy() } catch {} })
           fish.destroy()
         }
       })
     }
-    // First splash later, then every 40-90s
+    // First splash later, then every 40-90s (re-jittered each loop)
+    const rearmFish = () => {
+      const ev = scene.time.delayedCall(40_000 + Math.random() * 50_000, () => {
+        spawnFishJump()
+        rearmFish()
+      })
+      timers.push(ev)
+    }
     timers.push(scene.time.delayedCall(12_000 + Math.random() * 8000, spawnFishJump))
-    timers.push(scene.time.addEvent({
-      delay: 40_000 + Math.random() * 50_000, loop: true, callback: spawnFishJump
-    }))
+    rearmFish()
   }
 
   return dispose

@@ -70,6 +70,11 @@ function drawFootprint(
 export class FootprintTracker {
   private scene: Phaser.Scene
   private kind: FootprintKind
+  // V23.11-review I2 — explicit init flag instead of sentinel (0,0).
+  // Defends against any future code path that spawns the bear at exactly
+  // (0,0) (test fixtures, cutscenes) — otherwise the first onMove would
+  // count (0,0)→spawn as travel and drop a misplaced print.
+  private initialized = false
   private lastX = 0
   private lastY = 0
   private travel = 0
@@ -87,7 +92,11 @@ export class FootprintTracker {
   /** Call each frame with the bear's current position + facing. */
   onMove(x: number, y: number, facing: Direction) {
     if (!this.kind) return
-    if (this.lastX === 0 && this.lastY === 0) { this.lastX = x; this.lastY = y; return }
+    if (!this.initialized) {
+      this.initialized = true
+      this.lastX = x; this.lastY = y
+      return
+    }
     const dx = x - this.lastX, dy = y - this.lastY
     this.travel += Math.hypot(dx, dy)
     this.lastX = x; this.lastY = y
