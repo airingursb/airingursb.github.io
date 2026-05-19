@@ -67,6 +67,31 @@ export function spawnTimeDecor(
   // ─── Night: fireflies in the grove, aurora on the rooftop ──────
   if (phase === 'night' && !reducedMotion) {
     ensurePixelTexture(scene)
+    // V23.21 — twinkling stars in the sky band of outdoor rooms. Sparse,
+    // 10-14 stars in the top ~25% of the room with staggered alpha tweens
+    // so they don't all blink in sync.
+    const SKY_ROOMS = new Set(['room_rooftop', 'room_beach', 'room_balcony', 'room_grove'])
+    if (SKY_ROOMS.has(roomId)) {
+      const starCount = 10 + Math.floor(Math.random() * 5)
+      for (let i = 0; i < starCount; i++) {
+        const sx = 8 + Math.random() * (mapWidthPx - 16)
+        const sy = 6 + Math.random() * (mapHeightPx * 0.22)
+        // Mix of 1×1 (small) and 2×1 (slightly brighter) stars for variety
+        const isBig = Math.random() < 0.3
+        const w = isBig ? 2 : 1
+        const star = scene.add.rectangle(sx, sy, w, 1, 0xffffff, 0.85)
+          .setDepth(989).setBlendMode(Phaser.BlendModes.SCREEN)
+        objects.push(star)
+        // Stagger twinkle by phase-offset so the field shimmers organically
+        const tween = scene.tweens.add({
+          targets: star, alpha: { from: 0.3, to: 1 },
+          duration: 800 + Math.random() * 1200,
+          delay: Math.random() * 1500,
+          yoyo: true, repeat: -1, ease: 'Sine.inOut'
+        })
+        objects.push({ destroy: () => tween.remove() })
+      }
+    }
     if (roomId === 'room_grove') {
       // Slow drifting yellow specks that fade out as they live
       const fireflies = scene.add.particles(0, 0, PIXEL_TEX_KEY, {

@@ -831,6 +831,11 @@ export class RoomScene extends Phaser.Scene {
         }
       }
 
+      // V23.22 — natural element click effects (pollen / ripple / dust).
+      // Non-blocking: spawns the particle burst AND lets the bear walk
+      // there. Per-room placements + visual effect both inline below.
+      this.tryNaturalElementClick(wx, wy)
+
       this.autoWaveOnArrive = false
       let tx = wx, ty = wy
       tx = Math.max(20, Math.min(map.widthInPixels - 20, tx))
@@ -877,6 +882,13 @@ export class RoomScene extends Phaser.Scene {
         if (this.myBear) {
           if (e.verb === 'wave')      waveArc(this, this.myBear.x, this.myBear.y)
           else if (e.verb === 'sit')  sitImpact(this, this.myBear.x, this.myBear.y)
+        }
+        // V23.19 — NPC reactions to the player's emote. Nearby idle NPCs
+        // (within 80px) have a 40% chance to wave back, and an 80% chance
+        // to join in dancing. Triggered after a short delay so the social
+        // exchange reads as call-and-response, not a robotic mirror.
+        if (this.myBear && (e.verb === 'wave' || e.verb === 'dance')) {
+          this.handleNpcReplyToEmote(e.verb)
         }
       }
     })
@@ -2840,6 +2852,116 @@ export class RoomScene extends Phaser.Scene {
     } else if (weather === 'snow') {
       this.tryPlayWeatherAmbient('weather_wind', '/lounge/assets/audio/ambient/wind.ogg')
     }
+    // V23.20 — lightning + thunder during storms. Every 30-90s spawn a
+    // brief white flash overlay; 1-3s later play a synth thunder boom
+    // (delay simulates light vs sound speed). Only when isOutdoor so the
+    // visual makes sense (rain still hits indoor windows but lightning
+    // through a wall reads as a bug).
+    if (weather === 'storm' && isOutdoor) {
+      const fireLightning = () => {
+        const flash = this.add.rectangle(0, 0, widthPx, heightPx, 0xffffff, 0)
+          .setOrigin(0).setDepth(1003).setBlendMode(Phaser.BlendModes.SCREEN)
+        // Double flash for realism (real lightning is multi-stroke)
+        this.tweens.add({
+          targets: flash, alpha: { from: 0, to: 0.65 },
+          duration: 60, yoyo: true,
+          onComplete: () => {
+            this.tweens.add({
+              targets: flash, alpha: { from: 0, to: 0.45 },
+              delay: 80, duration: 70, yoyo: true,
+              onComplete: () => flash.destroy()
+            })
+          }
+        })
+        // Thunder synth ~1-3s after lightning
+        const thunderDelay = 1000 + Math.random() * 2000
+        this.time.delayedCall(thunderDelay, () => this.playThunderBoom())
+      }
+      const startLightning = () => {
+        this.lightningTimer = this.time.delayedCall(30_000 + Math.random() * 60_000, () => {
+          if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+            fireLightning()
+          }
+          startLightning()
+        })
+      }
+      startLightning()
+      this.events.once('shutdown', () => { this.lightningTimer?.remove(false); this.lightningTimer = undefined })
+      this.events.once('destroy',  () => { this.lightningTimer?.remove(false); this.lightningTimer = undefined })
+    }
+  }
+
+  private lightningTimer?: Phaser.Time.TimerEvent
+  // V23.23 — player auto-idle gesture timer
+  private idleGestureTimer?: Phaser.Time.TimerEvent
+
+  /** V23.23 — small player-only ambient gesture when truly idle. Skips
+   *  if the bear isn't in 'idle' state or hasn't been still ≥30s. Pure
+   *  client-local; doesn't broadcast over WS (other peers see the
+   *  position-stop, that's enough).
+   *  Action mix: 60% change facing, 30% brief wave, 10% sit-and-stand. */
+  private tryIdleGesture() {
+    if (!this.myBear) return
+    if (this.myBear.state !== 'idle' || this.myBear.target) return
+    if (this.lastBearMoveAt < 0) return
+    if (this.time.now - this.lastBearMoveAt < 30_000) return
+    const reduced = prefersReducedMotion()
+    const r = Math.random()
+    if (r < 0.6) {
+      const dirs = ['up', 'down', 'left', 'right'] as const
+      const next = dirs[Math.floor(Math.random() * dirs.length)]
+      if (next !== this.myBear.facing) {
+        this.myBear.facing = next
+        this.myBear.playIdle()
+      }
+    } else if (r < 0.9) {
+      this.myBear.applyEmote('wave', 1500, reduced)
+    } else {
+      this.myBear.applyEmote('sit', 0, reduced)
+      this.time.delayedCall(3500 + Math.random() * 2500, () => {
+        if (this.myBear && this.myBear.state === 'sit') {
+          this.myBear.applyEmote('sit', 0, reduced)
+        }
+      })
+    }
+  }
+
+  /** V23.20 — synthesized thunder rumble: filtered low-freq noise burst
+   *  with long decay. Uses Web Audio API directly (same pattern as
+   *  V23.16 bird startle), gated by the player's SFX volume. */
+  private playThunderBoom() {
+    const Ctor = (window as any).AudioContext || (window as any).webkitAudioContext
+    if (!Ctor) return
+    try {
+      const ctx = new Ctor()
+      if (ctx.state === 'suspended') void ctx.resume()
+      const t = ctx.currentTime
+      const dur = 2.4
+      // Brown-noise-ish buffer
+      const bufferSize = Math.floor(ctx.sampleRate * dur)
+      const buf = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+      const data = buf.getChannelData(0)
+      let lastOut = 0
+      for (let i = 0; i < bufferSize; i++) {
+        const white = (Math.random() * 2 - 1)
+        data[i] = (lastOut + 0.02 * white) / 1.02
+        lastOut = data[i]
+      }
+      const src = ctx.createBufferSource(); src.buffer = buf
+      const filter = ctx.createBiquadFilter()
+      filter.type = 'lowpass'; filter.frequency.value = 200; filter.Q.value = 0.7
+      const master = ctx.createGain()
+      // Sharp attack, long decay
+      master.gain.setValueAtTime(0, t)
+      master.gain.linearRampToValueAtTime(0.7, t + 0.04)
+      master.gain.exponentialRampToValueAtTime(0.001, t + dur)
+      const vol = ctx.createGain()
+      const sfxVol = 0.6  // thunder is a feature; let it cut through
+      vol.gain.value = sfxVol
+      src.connect(filter); filter.connect(master); master.connect(vol); vol.connect(ctx.destination)
+      src.start(t); src.stop(t + dur)
+      setTimeout(() => { try { ctx.close() } catch {} }, (dur + 0.2) * 1000)
+    } catch {}
   }
 
   // E5-P1c + P7-review fix I4 — load + loop a weather ambient track. Stop on
@@ -3068,6 +3190,21 @@ export class RoomScene extends Phaser.Scene {
       this.events.once('destroy',  () => { try { canopy.destroy() } catch {} })
     }
 
+    // V23.23 — player auto-idle gestures. After 30s of no movement, the
+    // bear occasionally changes facing / briefly waves / sits-stands.
+    // Self-rescheduling so we don't pile work on the scene tick.
+    if (!prefersReducedMotion()) {
+      const armIdleGesture = () => {
+        this.idleGestureTimer = this.time.delayedCall(15_000 + Math.random() * 15_000, () => {
+          this.tryIdleGesture()
+          armIdleGesture()
+        })
+      }
+      armIdleGesture()
+      this.events.once('shutdown', () => { this.idleGestureTimer?.remove(false); this.idleGestureTimer = undefined })
+      this.events.once('destroy',  () => { this.idleGestureTimer?.remove(false); this.idleGestureTimer = undefined })
+    }
+
     // V23.14 — winter breath puff: outdoor + winter + cool phase + player idle.
     // The timer checks every 4-6s; the actual puff only spawns when all
     // conditions hold at that instant.
@@ -3233,6 +3370,85 @@ export class RoomScene extends Phaser.Scene {
         }
       })
     }
+  }
+
+  /** V23.22 — fire a small particle burst when the player clicks a
+   *  "natural" zone in select rooms: pollen in the grove's flowering
+   *  band, water ripple at the beach's water area, dust at the library
+   *  bookshelf row. Non-blocking — bear still walks to click point. */
+  private tryNaturalElementClick(wx: number, wy: number) {
+    const w = this.mapInfo.widthPx
+    const h = this.mapInfo.heightPx
+    if (this.currentRoomId === 'room_grove') {
+      // Lower 50% of the room is the flowering ground band
+      if (wy > h * 0.5) this.naturalBurst(wx, wy, 'pollen')
+    } else if (this.currentRoomId === 'room_beach') {
+      // Top 45% of the room is the water area
+      if (wy < h * 0.45) this.naturalBurst(wx, wy, 'ripple')
+    } else if (this.currentRoomId === 'room_library') {
+      // Wall band where bookshelves usually sit (upper third minus top decor)
+      if (wy > h * 0.18 && wy < h * 0.45) this.naturalBurst(wx, wy, 'dust')
+    }
+    void w  // silence unused — keeps the line for symmetry across rooms
+  }
+
+  private naturalBurst(x: number, y: number, kind: 'pollen' | 'ripple' | 'dust') {
+    ensurePixelTexture(this)
+    if (kind === 'ripple') {
+      // Two expanding concentric circles
+      for (let i = 0; i < 2; i++) {
+        const ring = this.add.circle(x, y, 2, 0xa0d8e8, 0)
+          .setStrokeStyle(1, 0xa0e0f0, 0.85)
+          .setDepth(990)
+        this.tweens.add({
+          targets: ring, scale: { from: 0.8, to: 4 + i * 1.5 }, alpha: { from: 0.8, to: 0 },
+          delay: i * 150, duration: 700, ease: 'Sine.out',
+          onComplete: () => ring.destroy()
+        })
+      }
+      return
+    }
+    const tint = kind === 'pollen' ? 0xffd860 : 0xc8b890
+    const burst = this.add.particles(x, y, PIXEL_TEX_KEY, {
+      x: 0, y: 0,
+      lifespan: 700, quantity: 8, frequency: -1,
+      speedX: { min: -30, max: 30 },
+      speedY: kind === 'pollen' ? { min: -40, max: -10 } : { min: -8, max: 8 },
+      scale: { start: 1.2, end: 0.6 },
+      tint, alpha: { start: 0.85, end: 0 }
+    }).setDepth(991)
+    burst.explode(8)
+    this.time.delayedCall(800, () => { try { burst.destroy() } catch {} })
+  }
+
+  /** V23.19 — when the player waves or dances, nearby idle NPCs may
+   *  reciprocate after a short delay. Wave: 40% chance back. Dance:
+   *  80% chance (more contagious — easier to get NPCs joining a party).
+   *  Skips NPCs that are sit/sleep/dance-already so we don't disturb
+   *  their scheduled bracket pose. */
+  private handleNpcReplyToEmote(verb: 'wave' | 'dance') {
+    if (!this.myBear) return
+    const NEAR = 80
+    const chance = verb === 'wave' ? 0.4 : 0.8
+    const delayMin = 350, delayMax = 700
+    this.npcBears.forEach((entry, id) => {
+      if (entry.bear.state !== 'idle') return
+      const dx = entry.bear.x - this.myBear!.x
+      const dy = entry.bear.y - this.myBear!.y
+      if (Math.hypot(dx, dy) > NEAR) return
+      if (Math.random() > chance) return
+      this.time.delayedCall(delayMin + Math.random() * (delayMax - delayMin), () => {
+        const e = this.npcBears.get(id)
+        if (!e || e.bear.state !== 'idle') return
+        // Face the player when replying
+        e.bear.facing = Math.abs(dx) > Math.abs(dy)
+          ? (dx >= 0 ? 'left' : 'right')   // dx is npc-player; if positive, npc is right of player → face left
+          : (dy >= 0 ? 'up' : 'down')
+        e.bear.playIdle()
+        const def = verb === 'wave' ? { dur: 1500 } : { dur: 3000 }
+        e.bear.applyEmote(verb, def.dur, prefersReducedMotion())
+      })
+    })
   }
 
   /** V23.16 — bird flock startle. Spawns 4-6 small birds that fly outward
