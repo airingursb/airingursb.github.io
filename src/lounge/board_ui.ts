@@ -116,7 +116,8 @@ async function onSubmit() {
       no_token: 'Hold on — still connecting.',
       bad_room: 'No room context yet.'
     }
-    alert(msg[r.reason] ?? `Post failed (${r.reason})`)
+    const { showAlert } = await import('./modal_ui')
+    void showAlert(msg[r.reason] ?? `Post failed (${r.reason})`, 'Post failed')
   }
 }
 
@@ -161,7 +162,14 @@ function renderPost(p: BoardPost, myVid: string): HTMLElement {
     del.type = 'button'; del.className = 'bd-del'; del.textContent = '✕'
     del.title = 'Delete your post'
     del.addEventListener('click', async () => {
-      if (!window.confirm('Delete this post?')) return
+      const { showConfirm } = await import('./modal_ui')
+      const yes = await showConfirm({
+        title: 'Delete this post?',
+        primaryLabel: 'Delete',
+        secondaryLabel: 'Keep',
+        danger: true,
+      })
+      if (!yes) return
       const ok = await deleteBoardPost(p.id)
       if (ok) refresh()
     })

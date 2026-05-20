@@ -4066,7 +4066,7 @@ export class RoomScene extends Phaser.Scene {
   // consumeStoryStep twice; the second call returns null but the second
   // pickDialog overwrites the emotional finale line with a generic one.
   private npcClickDebounce = new Map<string, number>()
-  private handleNpcClick(id: string) {
+  private async handleNpcClick(id: string) {
     const entry = this.npcBears.get(id)
     if (!entry) return
     const lastClick = this.npcClickDebounce.get(id) ?? 0
@@ -4083,9 +4083,8 @@ export class RoomScene extends Phaser.Scene {
 
     // V10.8a — "Give to NPC" path: if the player has anything in their
     // pebble inventory and hasn't already gifted this NPC today, surface a
-    // browser confirm to hand over the most-recent item for +5 hearts.
-    // Daily-cap key prevents farming; UI is intentionally light-weight (a
-    // future PR can swap window.confirm for a proper picker).
+    // wooden modal to hand over the most-recent item for +5 hearts.
+    // Daily-cap key prevents farming.
     try {
       const giftDailyKey = 'lounge_npc_gift_daily_v1'
       const today = new Date().toISOString().slice(0, 10)
@@ -4095,7 +4094,14 @@ export class RoomScene extends Phaser.Scene {
       if (items.length > 0 && !state.given.includes(id)) {
         const itemId = items[items.length - 1]
         const itemName = getAllPebbles().find(p => p.id === itemId)?.name ?? itemId
-        if (window.confirm(`🎁 Give "${itemName}" to ${entry.def.name}? (+5 hearts)`)) {
+        const { showConfirm } = await import('../modal_ui')
+        const accept = await showConfirm({
+          title: `🎁 Give "${itemName}" to ${entry.def.name}?`,
+          message: 'They\'ll love it. +5 hearts.',
+          primaryLabel: 'Give',
+          secondaryLabel: 'Keep',
+        })
+        if (accept) {
           this.inventory.delete(itemId)
           refreshInventoryPanel()
           state.given.push(id)
@@ -4132,9 +4138,15 @@ export class RoomScene extends Phaser.Scene {
     const screen = this.bearScreenPos(entry.bear)
     showBubble('npc_' + id, line, screen.x, screen.y)
     // V10.3 — at heart 10 + holding a marriage pebble + not yet married,
-    // surface a propose prompt. Confirm via showToast click? Simpler: window.confirm.
+    // surface a propose prompt via wooden modal.
     if (npcHeart >= 10 && getMarriagePebbleCount() > 0 && !getMarriage()) {
-      const accept = window.confirm(`💍 Propose to ${entry.def.name}?`)
+      const { showConfirm } = await import('../modal_ui')
+      const accept = await showConfirm({
+        title: `💍 Propose to ${entry.def.name}?`,
+        message: 'Use a marriage pebble. There\'s no undo.',
+        primaryLabel: 'Propose',
+        secondaryLabel: 'Not yet',
+      })
       if (accept && consumeMarriagePebble()) {
         setMarriage(id)
         showToast(`💍 You and ${entry.def.name} are partners.`, 5000)

@@ -120,8 +120,15 @@ function render() {
     const del = document.createElement('button')
     del.className = 'ph-del'; del.type = 'button'; del.textContent = '✕'
     del.title = 'Delete this photo'
-    del.addEventListener('click', () => {
-      if (window.confirm('Delete this photo?')) {
+    del.addEventListener('click', async () => {
+      const { showConfirm } = await import('./modal_ui')
+      const yes = await showConfirm({
+        title: 'Delete this photo?',
+        primaryLabel: 'Delete',
+        secondaryLabel: 'Keep',
+        danger: true,
+      })
+      if (yes) {
         // V20.0 — also remove from pinned set so we don't sync a broken id
         const stillPinned = getPinnedPhotos().filter(x => x.id !== p.id)
         if (stillPinned.length !== getPinnedPhotos().length) {

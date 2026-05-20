@@ -4344,14 +4344,15 @@
       deleteConfirmBtn.disabled = true
       deleteConfirmBtn.textContent = 'Deleting...'
       const result = await deleteAccount()
+      const { showAlert } = await import('../lounge/modal_ui')
       if (result.ok) {
         if (deleteModal) deleteModal.hidden = true
-        alert('Account deleted. Reloading...')
+        await showAlert('Account deleted. Reloading...', 'Done')
         setTimeout(() => location.reload(), 200)
       } else {
         deleteConfirmBtn.disabled = false
         deleteConfirmBtn.textContent = 'Delete account permanently'
-        alert(`Delete failed: ${result.error}`)
+        await showAlert(`Delete failed: ${result.error}`, 'Error')
       }
     })
 
