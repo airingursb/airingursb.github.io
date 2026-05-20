@@ -1543,8 +1543,19 @@ export class RoomScene extends Phaser.Scene {
     // Stash welcome data on a module-level cache so the post-restart scene can read it.
     welcomeCache = m
 
-    // If server has a different last_room, transition there (using existing scene.restart pipeline)
-    if (m.last_room && m.last_room !== this.currentRoomId && isValidRoom(m.last_room)) {
+    // Snap-back to server's last_room is ONLY for fresh page loads (where the
+    // client lands at DEFAULT_ROOM = lobby by default). After the user has
+    // manually navigated (via transit / door / portal), `currentRoomId` is
+    // the user's intentional choice — the cached welcome message from before
+    // that navigation is stale and must NOT yank them back.
+    //
+    // Bug 2026-05-20: this guard was missing. Every scene.restart re-ran
+    // applyWelcome from welcomeCache, saw stale `last_room` mismatch with
+    // newly-set currentRoomId, and triggered a second restart that yanked
+    // the user back. Symptom: "切房间内容一模一样" + species reverts to bear
+    // because the scene re-initialized.
+    if (m.last_room && m.last_room !== this.currentRoomId && isValidRoom(m.last_room)
+        && this.currentRoomId === DEFAULT_ROOM) {
       const wx = (typeof m.last_x === 'number') ? m.last_x : undefined
       const wy = (typeof m.last_y === 'number') ? m.last_y : undefined
       this.transitioning = true
