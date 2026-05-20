@@ -2082,11 +2082,21 @@ export function showPeerMenu(screenX: number, screenY: number, onAction: (action
   peerMenuEl.hidden = false
   if (!peerMenuEl.dataset.bound) {
     peerMenuEl.dataset.bound = '1'
-    peerMenuEl.addEventListener('click', (e) => {
+    peerMenuEl.addEventListener('click', async (e) => {
       const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-action]')
       if (!btn) return
       const action = btn.getAttribute('data-action') as PeerMenuAction
       hidePeerMenu()
+      // V3.0-A.4 — gift + DM are writes requiring account. Profile/wave/
+      // visit_home stay anonymous (read-only or ephemeral).
+      if (action === 'gift' || action === 'dm') {
+        const [authMod, authUiMod] = await Promise.all([
+          import('./auth'),
+          import('./auth_ui'),
+        ])
+        await authMod.initAuth()
+        if (!authUiMod.requireLogin(action === 'gift' ? 'Gifts' : 'DMs')) return
+      }
       onPeerMenuAction?.(action)
     })
     peerMenuEl.addEventListener('click', (e) => e.stopPropagation())
@@ -2661,11 +2671,18 @@ export function setupWishboard(
     wishboardInputEl?.addEventListener('input', () => {
       if (wishboardCountEl && wishboardInputEl) wishboardCountEl.textContent = String(wishboardInputEl.value.length)
     })
-    wishboardFormEl?.addEventListener('submit', (e) => {
+    wishboardFormEl?.addEventListener('submit', async (e) => {
       e.preventDefault()
       const cat = wishboardCategoryEl?.value ?? 'other'
       const content = wishboardInputEl?.value?.trim() ?? ''
       if (!content) return
+      // V3.0-A.4 — wish submit + vote write requires account
+      const [authMod, authUiMod] = await Promise.all([
+        import('./auth'),
+        import('./auth_ui'),
+      ])
+      await authMod.initAuth()
+      if (!authUiMod.requireLogin('Wishboard')) return
       onWishSubmit?.(cat, content)
       if (wishboardInputEl) wishboardInputEl.value = ''
       if (wishboardCountEl) wishboardCountEl.textContent = '0'
@@ -2691,7 +2708,16 @@ export function renderWishboard(wishes: WishUI[]) {
     voteBtn.className = 'vote-btn' + (w.voted_by_me ? ' voted' : '')
     voteBtn.type = 'button'
     voteBtn.textContent = (w.voted_by_me ? '★ ' : '☆ ') + w.vote_count
-    voteBtn.addEventListener('click', () => onWishToggleVote?.(w.id))
+    voteBtn.addEventListener('click', async () => {
+      // V3.0-A.4 — voting is a write, requires account
+      const [authMod, authUiMod] = await Promise.all([
+        import('./auth'),
+        import('./auth_ui'),
+      ])
+      await authMod.initAuth()
+      if (!authUiMod.requireLogin('Wishboard voting')) return
+      onWishToggleVote?.(w.id)
+    })
     const content = document.createElement('span')
     content.className = 'content'
     content.textContent = w.content

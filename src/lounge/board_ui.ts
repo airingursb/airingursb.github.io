@@ -88,6 +88,15 @@ async function onSubmit() {
   if (!currentRoom) return
   const content = formTextEl.value.trim()
   if (!content) return
+  // V3.0-A.4 — board reads are anonymous; posting requires an account so
+  // the author has a stable cross-device identity (and so abuse is
+  // attributable).
+  const [authMod, authUiMod] = await Promise.all([
+    import('./auth'),
+    import('./auth_ui'),
+  ])
+  await authMod.initAuth()
+  if (!authUiMod.requireLogin('Board posts')) return
   formSubmitEl.disabled = true
   const r = await createBoardPost({
     room: currentRoom,
