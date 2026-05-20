@@ -105,6 +105,14 @@ const PIXEL_TEX_KEY = 'lounge_pixel'
 // Module-level cache so welcome data survives scene.restart when applyWelcome triggers a cross-room transition.
 let welcomeCache: WelcomeMsg | null = null
 
+// V3.0-A.9 — track whether the FIRST welcome's last_room snap-back has
+// already been honored (or refused) once. After that flips true, every
+// subsequent applyWelcome call skips the snap-back regardless of what
+// room the user is currently in. Fixes the bug where transit beach→lobby
+// would loop (lobby = DEFAULT_ROOM, the previous guard reopened on every
+// scene.restart into lobby).
+let firstWelcomeSnapBackResolved = false
+
 function ensurePixelTexture(scene: Phaser.Scene) {
   if (scene.textures.exists(PIXEL_TEX_KEY)) return
   const g = scene.add.graphics({ x: 0, y: 0 })
@@ -1543,19 +1551,25 @@ export class RoomScene extends Phaser.Scene {
     // Stash welcome data on a module-level cache so the post-restart scene can read it.
     welcomeCache = m
 
-    // Snap-back to server's last_room is ONLY for fresh page loads (where the
-    // client lands at DEFAULT_ROOM = lobby by default). After the user has
-    // manually navigated (via transit / door / portal), `currentRoomId` is
-    // the user's intentional choice — the cached welcome message from before
-    // that navigation is stale and must NOT yank them back.
+    // V3.0-A.9 — Snap-back happens AT MOST ONCE per JS context (the first
+    // welcome message after page load). The PREVIOUS guard checked
+    // `currentRoomId === DEFAULT_ROOM` but DEFAULT_ROOM = lobby, so
+    // transit beach→lobby reopened the guard and looped (snap back to
+    // beach → init → restart to lobby → snap back to beach → ...).
     //
-    // Bug 2026-05-20: this guard was missing. Every scene.restart re-ran
-    // applyWelcome from welcomeCache, saw stale `last_room` mismatch with
-    // newly-set currentRoomId, and triggered a second restart that yanked
-    // the user back. Symptom: "切房间内容一模一样" + species reverts to bear
-    // because the scene re-initialized.
-    if (m.last_room && m.last_room !== this.currentRoomId && isValidRoom(m.last_room)
-        && this.currentRoomId === DEFAULT_ROOM) {
+    // Now we track a module-level flag that flips true after the first
+    // applyWelcome's snap-back decision (whether taken or skipped).
+    // Subsequent applyWelcome calls — which fire when scene.restart
+    // re-runs from welcomeCache — never re-trigger snap-back.
+    const shouldSnapBack =
+      !firstWelcomeSnapBackResolved
+      && m.last_room
+      && m.last_room !== this.currentRoomId
+      && isValidRoom(m.last_room)
+    firstWelcomeSnapBackResolved = true
+
+    if (shouldSnapBack) {
+      const targetRoom = m.last_room as RoomId  // shouldSnapBack guarantees non-null + valid
       const wx = (typeof m.last_x === 'number') ? m.last_x : undefined
       const wy = (typeof m.last_y === 'number') ? m.last_y : undefined
       this.transitioning = true
@@ -1569,8 +1583,8 @@ export class RoomScene extends Phaser.Scene {
       this.seasonalEmitter?.destroy(); this.seasonalEmitter = undefined
       this.holidayEmitter?.destroy(); this.holidayEmitter = undefined
       this.seasonOverlay?.destroy(); this.seasonOverlay = undefined
-      sendRoomChange(m.last_room)
-      this.scene.restart({ roomId: m.last_room, spawnPoint: 'default', welcomeX: wx, welcomeY: wy })
+      sendRoomChange(targetRoom)
+      this.scene.restart({ roomId: targetRoom, spawnPoint: 'default', welcomeX: wx, welcomeY: wy })
       return
     }
 
