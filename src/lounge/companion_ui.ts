@@ -62,17 +62,29 @@ function ensure(): HTMLElement {
     if (!text || inflight) return
     inflight = true
     if (inputEl) inputEl.value = ''
-    if (sendBtnEl) sendBtnEl.disabled = true
+    if (sendBtnEl) { sendBtnEl.disabled = true; sendBtnEl.textContent = '…' }
     appendBubble('user', text)
+
+    // V3.0-B.1 — show typing indicator until first delta arrives, so the
+    // user knows 觉 is thinking (network + Kimi cold-start can be 2-3s).
     const bubbleEl = appendBubble('assistant', '')
+    bubbleEl.classList.add('nook-companion-thinking')
+    bubbleEl.textContent = ''
+    let firstDeltaSeen = false
+
     try {
       await sendMessage(text, currentHints, (ev) => {
         if (ev.type === 'delta') {
+          if (!firstDeltaSeen) {
+            firstDeltaSeen = true
+            bubbleEl.classList.remove('nook-companion-thinking')
+          }
           bubbleEl.textContent = (bubbleEl.textContent ?? '') + ev.text
           scrollToBottom()
         } else if (ev.type === 'done') {
           updateCounter(ev.usage.sent, ev.usage.cap)
         } else if (ev.type === 'error') {
+          bubbleEl.classList.remove('nook-companion-thinking')
           if (ev.code === 'NOT_AUTHENTICATED') {
             bubbleEl.textContent = '（先登录才能跟觉聊天）'
           } else if (ev.code === 'DAILY_CAP_REACHED') {
@@ -83,8 +95,14 @@ function ensure(): HTMLElement {
         }
       })
     } finally {
+      // Guard: if stream closed without any delta (e.g. silent failure),
+      // remove the indicator + give the user a hint.
+      if (!firstDeltaSeen && bubbleEl.classList.contains('nook-companion-thinking')) {
+        bubbleEl.classList.remove('nook-companion-thinking')
+        if (!bubbleEl.textContent) bubbleEl.textContent = '（觉没接住——再试一次？）'
+      }
       inflight = false
-      if (sendBtnEl) sendBtnEl.disabled = false
+      if (sendBtnEl) { sendBtnEl.disabled = false; sendBtnEl.textContent = '→' }
       inputEl?.focus()
     }
   })
