@@ -116,7 +116,113 @@ export function spawnTimeDecor(
       })
       objects.push(aurora, { destroy: () => tween.remove() })
     }
+
+    // V3.0-C — shooting stars in outdoor rooms at night.
+    // Rare, magical, 60-90s between stars. One streak at a time.
+    if (OUTDOOR_ROOMS.has(roomId as any)) {
+      const scheduleNextStar = () => {
+        const delay = 60_000 + Math.random() * 30_000
+        const timer = scene.time.delayedCall(delay, () => {
+          spawnShootingStar(scene, mapWidthPx, mapHeightPx, objects)
+          scheduleNextStar()
+        })
+        objects.push({ destroy: () => timer.remove(false) })
+      }
+      // First star can appear sooner (5-20s) so you notice the feature
+      const firstDelay = 5_000 + Math.random() * 15_000
+      const firstTimer = scene.time.delayedCall(firstDelay, () => {
+        spawnShootingStar(scene, mapWidthPx, mapHeightPx, objects)
+        scheduleNextStar()
+      })
+      objects.push({ destroy: () => firstTimer.remove(false) })
+    }
+  }
+
+  // ─── Dawn: birds in outdoor rooms ────────────────────────────────
+  // V3.0-C — a small flock crosses the sky once when scene loads at dawn.
+  // Loose V formation, 3-5 birds, ~10s flight. They despawn after crossing.
+  if (phase === 'dawn' && !reducedMotion && OUTDOOR_ROOMS.has(roomId as any)) {
+    ensurePixelTexture(scene)
+    const birdCount = 3 + Math.floor(Math.random() * 3)
+    const direction = Math.random() < 0.5 ? 'left-to-right' : 'right-to-left'
+    const startX = direction === 'left-to-right' ? -20 : mapWidthPx + 20
+    const endX   = direction === 'left-to-right' ? mapWidthPx + 20 : -20
+    const yBase  = 18 + Math.random() * (mapHeightPx * 0.12)
+
+    for (let i = 0; i < birdCount; i++) {
+      // V-formation offset: leader at 0, others trail behind & to the side
+      const trail = i * 8
+      const wingY = yBase + (i % 2 === 0 ? -i * 2 : i * 1.5)
+      const bird = scene.add.rectangle(
+        startX + (direction === 'left-to-right' ? -trail : trail),
+        wingY, 2, 1, 0x2a2a2a, 0.85
+      ).setDepth(990)
+      objects.push(bird)
+      const tween = scene.tweens.add({
+        targets: bird,
+        x: endX,
+        duration: 10_000 + Math.random() * 2_000,
+        ease: 'Sine.inOut',
+        onComplete: () => bird.destroy(),
+      })
+      objects.push({ destroy: () => tween.remove() })
+      // Subtle wing flap via y oscillation
+      const flap = scene.tweens.add({
+        targets: bird,
+        y: wingY - 1.5,
+        duration: 220,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.inOut',
+      })
+      objects.push({ destroy: () => flap.remove() })
+    }
   }
 
   return dispose
+}
+
+/** V3.0-C — single shooting star across the night sky. Self-disposing. */
+function spawnShootingStar(
+  scene: Phaser.Scene,
+  mapWidthPx: number,
+  mapHeightPx: number,
+  objects: Array<{ destroy: () => void }>
+) {
+  // Start in upper-third, diagonal down 30deg, length ~40px
+  const startX = Math.random() * mapWidthPx * 0.7
+  const startY = 4 + Math.random() * (mapHeightPx * 0.18)
+  const dx = 60 + Math.random() * 80
+  const dy = dx * 0.45
+
+  const head = scene.add.rectangle(startX, startY, 2, 2, 0xffffff, 1)
+    .setDepth(993).setBlendMode(Phaser.BlendModes.SCREEN)
+  const trail = scene.add.line(0, 0, startX, startY, startX, startY, 0xffffff, 0.6)
+    .setLineWidth(1).setDepth(992).setBlendMode(Phaser.BlendModes.SCREEN)
+
+  let tracked = true
+  const tween = scene.tweens.add({
+    targets: head,
+    x: startX + dx,
+    y: startY + dy,
+    duration: 700,
+    ease: 'Quad.out',
+    onUpdate: () => {
+      if (tracked) trail.setTo(startX, startY, head.x, head.y)
+    },
+    onComplete: () => {
+      tracked = false
+      // Fade out the trail over 250ms
+      scene.tweens.add({
+        targets: trail, alpha: 0, duration: 250,
+        onComplete: () => { try { trail.destroy() } catch {} }
+      })
+      try { head.destroy() } catch {}
+    },
+  })
+
+  objects.push(
+    { destroy: () => { try { head.destroy() } catch {}; try { trail.destroy() } catch {} } },
+    { destroy: () => tween.remove() }
+  )
 }
