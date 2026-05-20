@@ -76,6 +76,21 @@ export async function initAuth(): Promise<Account | null> {
     _currentAccount = null
   }
   notify()
+  // V3.0-A.5 — if we're signed in but this device's visitor isn't linked to
+  // the account yet, attempt a silent claim. Safe because:
+  //   • visitor not in DB yet → RPC returns visitor_not_found, no-op
+  //   • already linked to this account → re-claim is idempotent no-op
+  //   • linked to a different account → RPC returns already_claimed,
+  //     we ignore silently (DON'T show the claim modal — that's reserved
+  //     for the post-callback cookie-driven flow where user explicitly
+  //     just signed in)
+  if (_currentAccount) {
+    try {
+      const vid = getOrCreateVisitorId()
+      // fire-and-forget; failures don't break the boot
+      void claimVisitor(vid).catch(() => null)
+    } catch {}
+  }
   return _currentAccount
 }
 
