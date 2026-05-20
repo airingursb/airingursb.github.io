@@ -45,6 +45,9 @@ export type NpcDef = {
   schedule: ScheduleBracket[]
   dialog_pool: string[]               // fallback
   dialog_branches?: DialogBranch[]    // V7.0 — optional, takes precedence
+  /** V3.0-B — when true, clicking opens the AI companion chat overlay
+   *  instead of showing a canned dialog bubble. Used for 觉 (Jué) only. */
+  ai_companion?: boolean
 }
 
 export type NpcManifest = {

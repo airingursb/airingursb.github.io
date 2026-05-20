@@ -4073,6 +4073,25 @@ export class RoomScene extends Phaser.Scene {
     const now = this.time.now
     if (now - lastClick < 700) return
     this.npcClickDebounce.set(id, now)
+
+    // V3.0-B — AI companion (觉) routes to chat overlay, NOT the canned
+    // dialog bubble. Companion NPC defs set ai_companion: true in npcs.json.
+    if (entry.def.ai_companion) {
+      const [{ openCompanionChat }, { getCurrentPhase }] = await Promise.all([
+        import('../companion_ui'),
+        import('../atmosphere'),
+      ])
+      const phaseMap: Record<string, string> = { dawn: '清晨', day: '白天', dusk: '傍晚', night: '深夜' }
+      const phase = getCurrentPhase?.() ?? 'day'
+      void openCompanionChat({
+        time_phase: phaseMap[phase] ?? '白天',
+        // weather omitted — backend defaults to '晴'. V3.0-B-MEM could
+        // wire real weather (lounge doesn't expose it cleanly yet).
+        current_room: 'library',
+        language: navigator.language?.startsWith('zh') ? '中文' : '英文',
+      })
+      return
+    }
     // V7.0 → V10.1 — heart is now read from per-NPC heart points (npc_hearts),
     // not from this.friendships (which only holds player↔player relationships).
     // Each click is also worth +1 heart-point (daily-capped per NPC).
