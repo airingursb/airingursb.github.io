@@ -138,6 +138,83 @@ export function spawnTimeDecor(
     }
   }
 
+  // ─── Dusk: boat silhouette on the beach horizon ─────────────────
+  // V3.0-C batch 2 — a single distant boat drifts across the water band
+  // during dusk. Slow, silent, slightly transparent — read as "someone
+  // else is out there." Reuses the same drift-direction as today's wind
+  // so it feels coherent with petals/leaves/gust.
+  if (phase === 'dusk' && !reducedMotion && roomId === 'room_beach') {
+    ensurePixelTexture(scene)
+    // Hull on water band (lower third of map)
+    const yBase = mapHeightPx * 0.78
+    // Direction: with today's wind sign (positive → drift east → enter from west)
+    const wind = Math.sign(Math.sin(Date.now() / 86400000)) || 1   // simple per-day flip
+    const startX = wind > 0 ? -16 : mapWidthPx + 16
+    const endX   = wind > 0 ? mapWidthPx + 16 : -16
+
+    // Hull is two stacked rectangles for a tiny pixel-art silhouette
+    const hull = scene.add.rectangle(startX, yBase, 14, 2, 0x2a1810, 0.55).setDepth(989)
+    const mast = scene.add.rectangle(startX, yBase - 4, 1, 5, 0x2a1810, 0.55).setDepth(989)
+    const sail = scene.add.rectangle(startX, yBase - 5, 4, 4, 0x6a4030, 0.45).setDepth(989)
+    objects.push(hull, mast, sail)
+
+    const tween = scene.tweens.add({
+      targets: [hull, mast, sail],
+      x: endX,
+      duration: 90_000,  // 90 seconds to cross — slow & ambient
+      ease: 'Linear',
+      onComplete: () => {
+        try { hull.destroy(); mast.destroy(); sail.destroy() } catch {}
+      },
+    })
+    objects.push({ destroy: () => tween.remove() })
+  }
+
+  // ─── Night: cozy library + rooftop owl ───────────────────────────
+  // V3.0-C batch 2 — library gets a small sleeping cat curled on the
+  // central rug (companion energy to 觉 already there). Rooftop gets a
+  // silhouette owl on the north railing that occasionally turns its head.
+  if (phase === 'night' && !reducedMotion) {
+    if (roomId === 'room_library') {
+      // Curled gray cat at center-floor. Tiny — 6×3 oval body + 3×3 head.
+      ensurePixelTexture(scene)
+      const cx = mapWidthPx * 0.5
+      const cy = mapHeightPx * 0.68
+      const body = scene.add.rectangle(cx, cy, 8, 4, 0x6a5848, 0.85).setDepth(3)
+      const head = scene.add.rectangle(cx + 5, cy - 2, 3, 3, 0x6a5848, 0.95).setDepth(3)
+      const ear1 = scene.add.rectangle(cx + 4, cy - 4, 1, 1, 0x6a5848, 0.95).setDepth(3)
+      const ear2 = scene.add.rectangle(cx + 6, cy - 4, 1, 1, 0x6a5848, 0.95).setDepth(3)
+      objects.push(body, head, ear1, ear2)
+      // Subtle breathing — body y oscillates by 0.5px
+      const breath = scene.tweens.add({
+        targets: body, y: cy - 0.5,
+        duration: 2400, yoyo: true, repeat: -1, ease: 'Sine.inOut',
+      })
+      objects.push({ destroy: () => breath.remove() })
+    }
+    if (roomId === 'room_rooftop') {
+      // Owl on the north railing. 4×5 silhouette, head turn = brief flip
+      // of which side the "eye" pixel is on.
+      const ox = mapWidthPx * 0.78
+      const oy = 26
+      const body = scene.add.rectangle(ox, oy, 4, 5, 0x141414, 0.9).setDepth(988)
+      const eye  = scene.add.rectangle(ox - 1, oy - 1, 1, 1, 0xffeb70, 1).setDepth(989)
+      objects.push(body, eye)
+      // Every 6-10s, head "turns" — eye flicks to other side then back
+      let turnTimer: Phaser.Time.TimerEvent | null = null
+      const scheduleTurn = () => {
+        const delay = 6000 + Math.random() * 4000
+        turnTimer = scene.time.delayedCall(delay, () => {
+          eye.x = ox + 1   // turn right
+          scene.time.delayedCall(900, () => { eye.x = ox - 1 })  // turn back
+          scheduleTurn()
+        })
+      }
+      scheduleTurn()
+      objects.push({ destroy: () => { if (turnTimer) turnTimer.remove(false) } })
+    }
+  }
+
   // ─── Dawn: birds in outdoor rooms ────────────────────────────────
   // V3.0-C — a small flock crosses the sky once when scene loads at dawn.
   // Loose V formation, 3-5 birds, ~10s flight. They despawn after crossing.
