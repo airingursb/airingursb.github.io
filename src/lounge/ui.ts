@@ -2398,8 +2398,17 @@ export function setMessagesProvider(
     threadBackBtn = document.getElementById('lounge-thread-back') as HTMLButtonElement | null
 
     if (messagesBtnEl) {
-      messagesBtnEl.addEventListener('click', (e) => {
+      messagesBtnEl.addEventListener('click', async (e) => {
         e.stopPropagation()
+        // V3.0-A.2 — DMs are an account feature (cross-device persistence
+        // + social). Anonymous click shows the soft "Sign in to use DMs"
+        // prompt. Lazy-import auth modules to avoid coupling ui.ts → auth.
+        const [authMod, authUiMod] = await Promise.all([
+          import('./auth'),
+          import('./auth_ui'),
+        ])
+        await authMod.initAuth()  // no-op if already initialised
+        if (!authUiMod.requireLogin('DMs')) return
         if (messagesPanelEl?.hidden) { renderMessagesPanel(); messagesPanelEl.hidden = false; playSfx('menu_open') }
         else hideMessagesPanel()
       })
