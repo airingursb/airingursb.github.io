@@ -1657,6 +1657,14 @@ export class RoomScene extends Phaser.Scene {
         setLocalDisplayName(chosen)
         this.myDisplayName = chosen
         this.myBear?.setDisplayName(this.fallbackName(chosen))
+        // V3.0-A.1 — if signed in, propagate to account so it survives device
+        // switches and reaches all linked lounge_visitors rows server-side.
+        void import('../auth').then(async (a) => {
+          if (a.isLoggedIn()) {
+            const r = await a.updateDisplayName(chosen)
+            if (!r.ok) console.warn('[nook] account name update failed:', r.error)
+          }
+        })
       }
     })
   }

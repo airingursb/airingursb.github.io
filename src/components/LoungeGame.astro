@@ -207,9 +207,14 @@
         </div>
         <div id="nook-account-signed" class="nook-banner-signed" hidden>
           <p class="nook-banner-line">Signed in as <strong id="nook-account-email">—</strong></p>
+          <label class="nook-banner-checkbox">
+            <input type="checkbox" id="nook-account-blog-checkbox">
+            <span>Subscribe to Airing's blog (weekly)</span>
+            <span id="nook-account-blog-status" class="nook-banner-tag" hidden>saving...</span>
+          </label>
           <div class="nook-banner-actions">
-            <button type="button" id="nook-account-blog-toggle" class="nook-banner-cta-mini">Manage blog subscription</button>
             <button type="button" id="nook-account-signout-btn" class="nook-banner-cta-mini">Sign out</button>
+            <button type="button" id="nook-account-delete-btn" class="nook-banner-cta-mini nook-banner-cta-danger">Delete account</button>
           </div>
         </div>
       </div>
@@ -747,6 +752,26 @@
         <div class="auth-actions">
           <button type="button" id="nook-claim-keep" class="auth-primary-btn">Claim into my account</button>
           <button type="button" id="nook-claim-discard" class="auth-secondary-btn">Start fresh, discard</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="nook-delete-modal" class="auth-overlay" hidden>
+      <div class="auth-backdrop"></div>
+      <div class="auth-card auth-card-small">
+        <h3 class="auth-title">⚠ Delete your account?</h3>
+        <p class="auth-blurb">
+          Your account, display name, email link, and the visitor character on this device will be removed.
+          Public traces (letters you dropped, board posts) stay as "former visitor" so the world doesn't break.
+          <strong>This can't be undone.</strong>
+        </p>
+        <label class="auth-checkbox">
+          <input type="checkbox" id="nook-delete-confirm-check">
+          <span>I understand this is permanent</span>
+        </label>
+        <div class="auth-actions">
+          <button type="button" id="nook-delete-confirm-btn" class="auth-primary-btn auth-danger-btn" disabled>Delete account permanently</button>
+          <button type="button" id="nook-delete-cancel-btn" class="auth-secondary-btn">Cancel</button>
         </div>
       </div>
     </div>
@@ -4211,13 +4236,48 @@
     cursor: pointer;
   }
   .nook-banner-cta-mini:hover { background: rgba(60, 32, 16, 0.1); color: #2a1810; }
+  /* V3.0-A.1 — danger variant for Delete account */
+  .nook-banner-cta-danger {
+    border-color: rgba(170, 48, 48, 0.6) !important;
+    color: #8a3030 !important;
+  }
+  .nook-banner-cta-danger:hover {
+    background: rgba(170, 48, 48, 0.1) !important;
+    color: #6a2020 !important;
+  }
+  /* Inline blog subscription checkbox */
+  .nook-banner-checkbox {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: #5c4030;
+    cursor: pointer;
+    margin: 6px 0 8px;
+  }
+  .nook-banner-checkbox input { margin: 0; flex-shrink: 0; cursor: pointer; }
+  .nook-banner-checkbox:hover { color: #2a1810; }
+  .nook-banner-tag {
+    background: rgba(60, 32, 16, 0.15);
+    color: #5c4030;
+    font-size: 9px; padding: 1px 6px; border-radius: 5px;
+    font-style: italic;
+  }
+  /* Delete-modal danger button — different palette from regular primary */
+  .auth-danger-btn {
+    background: #8a3030 !important;
+    border-color: #8a3030 !important;
+  }
+  .auth-danger-btn:hover { background: #6a2020 !important; }
+  .auth-danger-btn:disabled {
+    background: rgba(138, 48, 48, 0.4) !important;
+    border-color: rgba(138, 48, 48, 0.4) !important;
+    cursor: not-allowed;
+  }
 </style>
 
 <script>
   import { bootGame } from '../lounge/game'
   import { isMuted, toggleMute, playSfx } from '../lounge/audio'
   import { initUI } from '../lounge/ui'
-  import { onAccountChange, logout, setBlogSubscription } from '../lounge/auth'
+  import { onAccountChange, logout, setBlogSubscription, deleteAccount, getCurrentAccount } from '../lounge/auth'
   import { showLogin } from '../lounge/auth_ui'
 
   function start() {
@@ -4233,19 +4293,68 @@
     const emailEl   = document.getElementById('nook-account-email')
     const signinBtn = document.getElementById('nook-account-signin-btn')
     const signoutBtn = document.getElementById('nook-account-signout-btn')
-    const blogToggleBtn = document.getElementById('nook-account-blog-toggle')
+    const blogChk   = document.getElementById('nook-account-blog-checkbox') as HTMLInputElement | null
+    const blogStatus = document.getElementById('nook-account-blog-status')
+    const deleteBtn = document.getElementById('nook-account-delete-btn')
 
     signinBtn?.addEventListener('click', () => { showLogin(); playSfx('click') })
     signoutBtn?.addEventListener('click', async () => {
       playSfx('click')
       await logout()
-      // soft reload to clear in-game state tied to old session
       setTimeout(() => location.reload(), 200)
     })
-    blogToggleBtn?.addEventListener('click', async () => {
-      const wantSub = confirm('Subscribe to Airing\'s blog newsletter? (Cancel = unsubscribe.)')
+
+    // V3.0-A.1 — inline checkbox for blog subscription. Auto-saves on toggle.
+    blogChk?.addEventListener('change', async () => {
+      if (!blogChk) return
+      const wantSub = blogChk.checked
+      blogChk.disabled = true
+      if (blogStatus) { blogStatus.hidden = false; blogStatus.textContent = 'saving...' }
       const result = await setBlogSubscription(wantSub)
-      alert(result.ok ? (wantSub ? 'Subscribed ✓' : 'Unsubscribed ✓') : `Failed: ${result.error}`)
+      blogChk.disabled = false
+      if (blogStatus) {
+        blogStatus.textContent = result.ok ? (wantSub ? 'subscribed ✓' : 'unsubscribed') : `error: ${result.error}`
+        setTimeout(() => { if (blogStatus) blogStatus.hidden = true }, 2000)
+      }
+      if (!result.ok) blogChk.checked = !wantSub // revert
+    })
+
+    // V3.0-A.1 — Delete account modal (two-step confirmation)
+    const deleteModal      = document.getElementById('nook-delete-modal')
+    const deleteCheck      = document.getElementById('nook-delete-confirm-check') as HTMLInputElement | null
+    const deleteConfirmBtn = document.getElementById('nook-delete-confirm-btn') as HTMLButtonElement | null
+    const deleteCancelBtn  = document.getElementById('nook-delete-cancel-btn')
+
+    deleteBtn?.addEventListener('click', () => {
+      if (deleteModal) deleteModal.hidden = false
+      if (deleteCheck) deleteCheck.checked = false
+      if (deleteConfirmBtn) deleteConfirmBtn.disabled = true
+      playSfx('menu_open')
+    })
+    deleteCheck?.addEventListener('change', () => {
+      if (deleteConfirmBtn) deleteConfirmBtn.disabled = !deleteCheck.checked
+    })
+    deleteCancelBtn?.addEventListener('click', () => {
+      if (deleteModal) deleteModal.hidden = true
+      playSfx('menu_close')
+    })
+    deleteModal?.querySelector('.auth-backdrop')?.addEventListener('click', () => {
+      if (deleteModal) deleteModal.hidden = true
+    })
+    deleteConfirmBtn?.addEventListener('click', async () => {
+      if (!deleteConfirmBtn) return
+      deleteConfirmBtn.disabled = true
+      deleteConfirmBtn.textContent = 'Deleting...'
+      const result = await deleteAccount()
+      if (result.ok) {
+        if (deleteModal) deleteModal.hidden = true
+        alert('Account deleted. Reloading...')
+        setTimeout(() => location.reload(), 200)
+      } else {
+        deleteConfirmBtn.disabled = false
+        deleteConfirmBtn.textContent = 'Delete account permanently'
+        alert(`Delete failed: ${result.error}`)
+      }
     })
 
     onAccountChange((account) => {
@@ -4255,6 +4364,8 @@
         anonBox.hidden = true
         signedBox.hidden = false
         if (emailEl) emailEl.textContent = account.email
+        // Reflect current blog subscription state in checkbox
+        if (blogChk) blogChk.checked = !!account.blog_subscriber_id
       } else {
         anonBox.hidden = false
         signedBox.hidden = true
