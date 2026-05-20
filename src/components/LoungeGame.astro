@@ -207,6 +207,12 @@
         </div>
         <div id="nook-account-signed" class="nook-banner-signed" hidden>
           <p class="nook-banner-line">Signed in as <strong id="nook-account-email">—</strong></p>
+          <!-- V3.0-A.10 — inline display name editor (Enter to save). -->
+          <label class="nook-banner-name-edit">
+            <span>Name</span>
+            <input type="text" id="nook-account-name-input" maxlength="32" autocomplete="off">
+            <span id="nook-account-name-status" class="nook-banner-tag" hidden></span>
+          </label>
           <label class="nook-banner-checkbox">
             <input type="checkbox" id="nook-account-blog-checkbox">
             <span>Subscribe to Airing's blog (weekly)</span>
@@ -4360,6 +4366,32 @@
     background: rgba(170, 48, 48, 0.1) !important;
     color: #6a2020 !important;
   }
+  /* V3.0-A.10 — inline display name editor */
+  .nook-banner-name-edit {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 11px; color: #5c4030;
+    margin: 4px 0 6px;
+  }
+  .nook-banner-name-edit > span:first-child {
+    flex-shrink: 0; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+    font-size: 9px;
+  }
+  .nook-banner-name-edit input {
+    flex: 1; min-width: 0;
+    padding: 4px 8px;
+    border: 1.5px solid rgba(60, 32, 16, 0.5);
+    border-radius: 6px;
+    background: #fbf5e3;
+    color: #2a1810;
+    font-family: ui-monospace, monospace;
+    font-size: 12px;
+  }
+  .nook-banner-name-edit input:focus {
+    outline: none; border-color: #a26b3a; background: #fff;
+  }
+  .nook-banner-name-edit input:disabled { opacity: 0.5; }
+
   /* Inline blog subscription checkbox */
   .nook-banner-checkbox {
     display: flex; align-items: center; gap: 6px;
@@ -4392,7 +4424,7 @@
   import { bootGame } from '../lounge/game'
   import { isMuted, toggleMute, playSfx } from '../lounge/audio'
   import { initUI } from '../lounge/ui'
-  import { onAccountChange, logout, setBlogSubscription, deleteAccount, getCurrentAccount } from '../lounge/auth'
+  import { onAccountChange, logout, setBlogSubscription, deleteAccount, getCurrentAccount, updateDisplayName } from '../lounge/auth'
   import { showLogin } from '../lounge/auth_ui'
 
   function start() {
@@ -4420,6 +4452,44 @@
     })
 
     // V3.0-A.1 — inline checkbox for blog subscription. Auto-saves on toggle.
+    // V3.0-A.10 — inline display name editor (Enter to save, or blur).
+    const nameInput   = document.getElementById('nook-account-name-input') as HTMLInputElement | null
+    const nameStatus  = document.getElementById('nook-account-name-status')
+    let nameSaveTimer: ReturnType<typeof setTimeout> | null = null
+    let lastSavedName = ''
+    const flashStatus = (text: string, color = '#5a7c4e') => {
+      if (!nameStatus) return
+      nameStatus.textContent = text
+      nameStatus.style.color = color
+      nameStatus.hidden = false
+      setTimeout(() => { if (nameStatus) nameStatus.hidden = true }, 1800)
+    }
+    const saveName = async () => {
+      if (!nameInput) return
+      const next = nameInput.value.trim()
+      if (!next || next === lastSavedName) return
+      nameInput.disabled = true
+      const result = await updateDisplayName(next)
+      nameInput.disabled = false
+      if (result.ok) {
+        lastSavedName = next
+        flashStatus('saved ✓')
+        // V3.0-A.10 — also notify in-world layer so the bear sprite's
+        // name updates immediately (without waiting for a page reload).
+        document.dispatchEvent(new CustomEvent('nook:displayname:change', { detail: next }))
+      } else {
+        flashStatus(`error: ${result.error ?? '?'}`, '#aa3030')
+        nameInput.value = lastSavedName
+      }
+    }
+    nameInput?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); void saveName() }
+    })
+    nameInput?.addEventListener('blur', () => {
+      if (nameSaveTimer) clearTimeout(nameSaveTimer)
+      nameSaveTimer = setTimeout(() => void saveName(), 100)
+    })
+
     blogChk?.addEventListener('change', async () => {
       if (!blogChk) return
       const wantSub = blogChk.checked
@@ -4482,6 +4552,11 @@
         if (emailEl) emailEl.textContent = account.email
         // Reflect current blog subscription state in checkbox
         if (blogChk) blogChk.checked = !!account.blog_subscriber_id
+        // V3.0-A.10 — seed the display-name input + remember baseline
+        if (nameInput) {
+          nameInput.value = account.display_name ?? ''
+          lastSavedName = account.display_name ?? ''
+        }
       } else {
         anonBox.hidden = false
         signedBox.hidden = true

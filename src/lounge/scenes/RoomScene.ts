@@ -1188,6 +1188,18 @@ export class RoomScene extends Phaser.Scene {
       })
     })
 
+    // V3.0-A.10 — inline name editor in settings panel dispatches this event
+    // when account display_name changes. Sync the in-world bear sprite +
+    // localStorage + broadcast WS so peers see the new name immediately.
+    document.addEventListener('nook:displayname:change', (e: any) => {
+      const next = typeof e?.detail === 'string' ? e.detail.trim() : ''
+      if (!next || next === this.myDisplayName) return
+      sendName(next)
+      setLocalDisplayName(next)
+      this.myDisplayName = next
+      this.myBear?.setDisplayName(this.fallbackName(next))
+    })
+
     // V6.5 — species toggle: flips bear ↔ cat, applies to own sprite, persists locally.
     updateSpeciesButtonLabel(getMySpecies())
     setOnSpeciesToggle(async () => {

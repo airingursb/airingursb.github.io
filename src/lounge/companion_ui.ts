@@ -9,6 +9,7 @@
 import { playSfx } from './audio'
 import { sendMessage, getUsage } from './companion_api'
 import { isLoggedIn } from './auth'
+import { showToast } from './ui'
 
 let rootEl: HTMLElement | null = null
 let historyEl: HTMLElement | null = null
@@ -85,12 +86,20 @@ function ensure(): HTMLElement {
           updateCounter(ev.usage.sent, ev.usage.cap)
         } else if (ev.type === 'error') {
           bubbleEl.classList.remove('nook-companion-thinking')
+          // V3.0-A.10 — route most errors to toast (less intrusive than
+          // inline-in-bubble); leave the bubble as 觉's actual partial reply.
           if (ev.code === 'NOT_AUTHENTICATED') {
             bubbleEl.textContent = '（先登录才能跟觉聊天）'
           } else if (ev.code === 'DAILY_CAP_REACHED') {
-            bubbleEl.textContent = ev.message || '今天聊够了，明早再来。'
+            bubbleEl.textContent = '今天聊够了，明早再来。'
+            showToast(ev.message || '今天 30 条聊够了 · 明早北京时间 0 点重置', 4000)
+          } else if (!bubbleEl.textContent) {
+            // No partial reply yet — show toast and a neutral bubble
+            bubbleEl.textContent = '（觉走神了）'
+            showToast(`觉走神了：${ev.message}`, 3000)
           } else {
-            bubbleEl.textContent = (bubbleEl.textContent ?? '') + ` … (${ev.message})`
+            // Mid-reply error — keep partial text, toast the issue
+            showToast(`流断了：${ev.message}`, 3000)
           }
         }
       })
