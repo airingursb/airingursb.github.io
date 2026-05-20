@@ -33,7 +33,7 @@ function ensure(): HTMLElement {
   rootEl.innerHTML = `
     <div class="nook-companion-card">
       <div class="nook-companion-header">
-        <span class="nook-companion-name">觉</span>
+        <span class="nook-companion-name">Mochi</span>
         <span class="nook-companion-where">· library</span>
         <span class="nook-companion-counter" id="nook-companion-counter">— / 30</span>
         <button type="button" class="nook-companion-close" aria-label="Close">✕</button>
@@ -89,14 +89,14 @@ function ensure(): HTMLElement {
           // V3.0-A.10 — route most errors to toast (less intrusive than
           // inline-in-bubble); leave the bubble as 觉's actual partial reply.
           if (ev.code === 'NOT_AUTHENTICATED') {
-            bubbleEl.textContent = '（先登录才能跟觉聊天）'
+            bubbleEl.textContent = '（先登录才能跟 Mochi 聊天）'
           } else if (ev.code === 'DAILY_CAP_REACHED') {
             bubbleEl.textContent = '今天聊够了，明早再来。'
             showToast(ev.message || '今天 30 条聊够了 · 明早北京时间 0 点重置', 4000)
           } else if (!bubbleEl.textContent) {
             // No partial reply yet — show toast and a neutral bubble
-            bubbleEl.textContent = '（觉走神了）'
-            showToast(`觉走神了：${ev.message}`, 3000)
+            bubbleEl.textContent = '（Mochi 走神了）'
+            showToast(`Mochi 走神了：${ev.message}`, 3000)
           } else {
             // Mid-reply error — keep partial text, toast the issue
             showToast(`流断了：${ev.message}`, 3000)
@@ -108,7 +108,7 @@ function ensure(): HTMLElement {
       // remove the indicator + give the user a hint.
       if (!firstDeltaSeen && bubbleEl.classList.contains('nook-companion-thinking')) {
         bubbleEl.classList.remove('nook-companion-thinking')
-        if (!bubbleEl.textContent) bubbleEl.textContent = '（觉没接住——再试一次？）'
+        if (!bubbleEl.textContent) bubbleEl.textContent = '（Mochi 没接住——再试一次？）'
       }
       inflight = false
       if (sendBtnEl) { sendBtnEl.disabled = false; sendBtnEl.textContent = '→' }
