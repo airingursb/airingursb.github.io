@@ -1,10 +1,12 @@
-// V3.0-B — 觉's chat overlay.
+// V3.0-B-MEM-V3 — AI companion chat overlay (multi-NPC).
 //
 // Lightweight wooden dialog box at the bottom of the screen. Shows a
 // scrolling history + text input + usage counter. NOT a fullscreen modal —
-// you stay in the world, can still see 觉 + your bear.
+// you stay in the world, can still see the NPC + your bear.
 //
 // Lazy-built DOM (created on first open, never destroyed — toggled via hidden).
+// When opened for a different NPC, only the header chip + history list reset;
+// the input + counter persist.
 
 import { playSfx } from './audio'
 import { sendMessage, getUsage } from './companion_api'
@@ -16,8 +18,13 @@ let historyEl: HTMLElement | null = null
 let inputEl: HTMLInputElement | null = null
 let sendBtnEl: HTMLButtonElement | null = null
 let counterEl: HTMLElement | null = null
+let nameEl: HTMLElement | null = null
+let whereEl: HTMLElement | null = null
 
 type Hints = { time_phase?: string; weather?: string; current_room?: string; language?: string }
+type OpenArgs = Hints & { npc_id: string; npc_name: string; npc_where?: string }
+
+let currentNpcId = 'npc_jue'
 let currentHints: Hints = {}
 
 let inflight = false
@@ -52,6 +59,8 @@ function ensure(): HTMLElement {
   inputEl = rootEl.querySelector('.nook-companion-input') as HTMLInputElement
   sendBtnEl = rootEl.querySelector('.nook-companion-send') as HTMLButtonElement
   counterEl = rootEl.querySelector('#nook-companion-counter') as HTMLElement
+  nameEl = rootEl.querySelector('.nook-companion-name') as HTMLElement
+  whereEl = rootEl.querySelector('.nook-companion-where') as HTMLElement
   const closeBtn = rootEl.querySelector('.nook-companion-close') as HTMLButtonElement
   const form = rootEl.querySelector('form') as HTMLFormElement
 
@@ -74,7 +83,7 @@ function ensure(): HTMLElement {
     let firstDeltaSeen = false
 
     try {
-      await sendMessage(text, currentHints, (ev) => {
+      await sendMessage(currentNpcId, text, currentHints, (ev) => {
         if (ev.type === 'delta') {
           if (!firstDeltaSeen) {
             firstDeltaSeen = true
@@ -88,17 +97,16 @@ function ensure(): HTMLElement {
           bubbleEl.classList.remove('nook-companion-thinking')
           // V3.0-A.10 — route most errors to toast (less intrusive than
           // inline-in-bubble); leave the bubble as 觉's actual partial reply.
+          const npcName = nameEl?.textContent || 'NPC'
           if (ev.code === 'NOT_AUTHENTICATED') {
-            bubbleEl.textContent = '（先登录才能跟 Mochi 聊天）'
+            bubbleEl.textContent = `（先登录才能跟 ${npcName} 聊天）`
           } else if (ev.code === 'DAILY_CAP_REACHED') {
             bubbleEl.textContent = '今天聊够了，明早再来。'
             showToast(ev.message || '今天 30 条聊够了 · 明早北京时间 0 点重置', 4000)
           } else if (!bubbleEl.textContent) {
-            // No partial reply yet — show toast and a neutral bubble
-            bubbleEl.textContent = '（Mochi 走神了）'
-            showToast(`Mochi 走神了：${ev.message}`, 3000)
+            bubbleEl.textContent = `（${npcName} 走神了）`
+            showToast(`${npcName} 走神了：${ev.message}`, 3000)
           } else {
-            // Mid-reply error — keep partial text, toast the issue
             showToast(`流断了：${ev.message}`, 3000)
           }
         }
@@ -108,7 +116,10 @@ function ensure(): HTMLElement {
       // remove the indicator + give the user a hint.
       if (!firstDeltaSeen && bubbleEl.classList.contains('nook-companion-thinking')) {
         bubbleEl.classList.remove('nook-companion-thinking')
-        if (!bubbleEl.textContent) bubbleEl.textContent = '（Mochi 没接住——再试一次？）'
+        if (!bubbleEl.textContent) {
+          const npcName = nameEl?.textContent || 'NPC'
+          bubbleEl.textContent = `（${npcName} 没接住——再试一次？）`
+        }
       }
       inflight = false
       if (sendBtnEl) { sendBtnEl.disabled = false; sendBtnEl.textContent = '→' }
@@ -143,26 +154,31 @@ function updateCounter(sent: number, cap: number) {
   if (counterEl) counterEl.textContent = `${sent} / ${cap}`
 }
 
-/** Open the chat overlay. If not logged in, shows a single gate message. */
-export async function openCompanionChat(hints: Hints = {}) {
+/** Open the chat overlay for a specific NPC. Resets history view if switching NPCs. */
+export async function openCompanionChat(args: OpenArgs) {
+  const { npc_id, npc_name, npc_where, ...hints } = args
+  const npcSwitch = npc_id !== currentNpcId
+  currentNpcId = npc_id
   currentHints = hints
   const root = ensure()
 
   if (!isLoggedIn()) {
-    // Soft-gate via the existing gated prompt
     const { requireLogin } = await import('./auth_ui')
     requireLogin('AI companion')
     return
   }
 
+  // Update header chip + clear stale transcript when switching NPCs
+  if (nameEl) nameEl.textContent = npc_name
+  if (whereEl) whereEl.textContent = npc_where ? `· ${npc_where}` : ''
+  if (npcSwitch && historyEl) historyEl.innerHTML = ''
+
   root.hidden = false
   playSfx('menu_open')
 
-  // Fetch usage counter (silent fail if endpoint hiccups)
   const usage = await getUsage()
   if (usage) updateCounter(usage.sent, usage.cap)
 
-  // Focus input after slight delay (allows CSS transition)
   setTimeout(() => inputEl?.focus(), 100)
 }
 

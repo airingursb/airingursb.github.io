@@ -4100,8 +4100,9 @@ export class RoomScene extends Phaser.Scene {
     if (now - lastClick < 700) return
     this.npcClickDebounce.set(id, now)
 
-    // V3.0-B — AI companion (觉) routes to chat overlay, NOT the canned
-    // dialog bubble. Companion NPC defs set ai_companion: true in npcs.json.
+    // V3.0-B-MEM-V3 — AI NPCs route to chat overlay (per-NPC scoping).
+    // Backend npc-souls.js owns the personality; we just pass npc_id +
+    // display name + current room.
     if (entry.def.ai_companion) {
       const [{ openCompanionChat }, { getCurrentPhase }] = await Promise.all([
         import('../companion_ui'),
@@ -4109,11 +4110,13 @@ export class RoomScene extends Phaser.Scene {
       ])
       const phaseMap: Record<string, string> = { dawn: '清晨', day: '白天', dusk: '傍晚', night: '深夜' }
       const phase = getCurrentPhase?.() ?? 'day'
+      const roomPretty = this.currentRoomId.replace(/^room_/, '')
       void openCompanionChat({
+        npc_id: id,
+        npc_name: entry.def.name,
+        npc_where: roomPretty,
         time_phase: phaseMap[phase] ?? '白天',
-        // weather omitted — backend defaults to '晴'. V3.0-B-MEM could
-        // wire real weather (lounge doesn't expose it cleanly yet).
-        current_room: 'library',
+        current_room: roomPretty,
         language: navigator.language?.startsWith('zh') ? '中文' : '英文',
       })
       return

@@ -37,6 +37,7 @@ export async function getUsage(): Promise<CompanionUsage | null> {
  * embedded in the message body — caller can update counter.
  */
 export async function sendMessage(
+  npcId: string,
   text: string,
   hints: { time_phase?: string; weather?: string; current_room?: string; language?: string },
   onEvent: (e: CompanionEvent) => void
@@ -45,7 +46,7 @@ export async function sendMessage(
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: text, ...hints }),
+    body: JSON.stringify({ npc_id: npcId, message: text, ...hints }),
   })
 
   if (res.status === 429) {

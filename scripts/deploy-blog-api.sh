@@ -71,7 +71,7 @@ if [ "$mode" = "logs" ]; then
 fi
 
 echo "[deploy] rsync $LOCAL_DIR/ -> $SERVER:$REMOTE_DIR/"
-sshpass -p "$ALIYUN_PASSWORD" rsync -az --delete \
+SSHPASS="$ALIYUN_PASSWORD" sshpass -e rsync -az --delete \
   --exclude=node_modules/ \
   --exclude=.env \
   --exclude=knowledge-full-backup.md \
