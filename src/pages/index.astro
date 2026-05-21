@@ -3070,14 +3070,16 @@ const formatComicDate = (s: string, locale: 'zh' | 'en') =>
     })();
 
     // ── Visitor Counter ──
-    // Counter tracks visits since 2025-01 via Supabase.
+    // Counter tracks visits since 2025-01.
     // Historical offset: 24,419 (2025 full year) + 4,236 (2026 Jan-Mar) = 28,655
-    // Note: visitor data from 2014-2024 was lost during previous site migrations
-    // and is NOT included in this count. The offset only covers verifiable records.
+    // Note: visitor data from 2014-2024 was lost during previous site migrations.
+    //
+    // Was direct Supabase RPC; replaced 2026-05-21 with blog-api proxy that
+    // batches writes in memory (~10min flush) — RPC was the largest disk-IO
+    // consumer on the Supabase free tier.
     (function () {
-      var SB_URL = 'https://pcoyocvqfipuydhvdsle.supabase.co';
-      var SB_KEY = 'sb_publishable_jieHU6yu3dPxSww2_B_KIg_9KcWg6wl';
-      var HISTORICAL_OFFSET = 28655; // 2025: 24419 + 2026 Jan-Mar: 4236
+      var COUNTER_API = 'https://chat.ursb.me/api/visitor/increment';
+      var HISTORICAL_OFFSET = 28655;
       var el = document.getElementById('visitorCounter');
       var counted = sessionStorage.getItem('visitor_counted');
 
@@ -3096,18 +3098,11 @@ const formatComicDate = (s: string, locale: 'zh' | 'en') =>
         return;
       }
 
-      fetch(SB_URL + '/rest/v1/rpc/increment_visitor', {
-        method: 'POST',
-        headers: {
-          'apikey': SB_KEY,
-          'Authorization': 'Bearer ' + SB_KEY,
-          'Content-Type': 'application/json'
-        },
-        body: '{}'
-      })
+      fetch(COUNTER_API, { method: 'POST' })
         .then(function (r) { return r.json(); })
-        .then(function (count) {
-          sessionStorage.setItem('visitor_counted', count);
+        .then(function (resp) {
+          var count = resp && typeof resp.count === 'number' ? resp.count : 0;
+          if (count > 0) sessionStorage.setItem('visitor_counted', count);
           window._i18nReady.then(function () {
             show(count);
           });
