@@ -220,6 +220,7 @@
           </label>
           <div class="nook-banner-actions">
             <button type="button" id="nook-account-signout-btn" class="nook-banner-cta-mini">Sign out</button>
+            <button type="button" id="nook-account-signout-all-btn" class="nook-banner-cta-mini">Sign out everywhere</button>
             <button type="button" id="nook-account-delete-btn" class="nook-banner-cta-mini nook-banner-cta-danger">Delete account</button>
           </div>
         </div>
@@ -4424,7 +4425,7 @@
   import { bootGame } from '../lounge/game'
   import { isMuted, toggleMute, playSfx } from '../lounge/audio'
   import { initUI } from '../lounge/ui'
-  import { onAccountChange, logout, setBlogSubscription, deleteAccount, getCurrentAccount, updateDisplayName } from '../lounge/auth'
+  import { onAccountChange, logout, logoutEverywhere, setBlogSubscription, deleteAccount, getCurrentAccount, updateDisplayName } from '../lounge/auth'
   import { showLogin } from '../lounge/auth_ui'
 
   function start() {
@@ -4440,6 +4441,7 @@
     const emailEl   = document.getElementById('nook-account-email')
     const signinBtn = document.getElementById('nook-account-signin-btn')
     const signoutBtn = document.getElementById('nook-account-signout-btn')
+    const signoutAllBtn = document.getElementById('nook-account-signout-all-btn')
     const blogChk   = document.getElementById('nook-account-blog-checkbox') as HTMLInputElement | null
     const blogStatus = document.getElementById('nook-account-blog-status')
     const deleteBtn = document.getElementById('nook-account-delete-btn')
@@ -4448,6 +4450,18 @@
     signoutBtn?.addEventListener('click', async () => {
       playSfx('click')
       await logout()
+      setTimeout(() => location.reload(), 200)
+    })
+    signoutAllBtn?.addEventListener('click', async () => {
+      playSfx('click')
+      const { showConfirm } = await import('../lounge/modal_ui')
+      const ok = await showConfirm({
+        title: 'Sign out everywhere?',
+        message: 'This invalidates every device signed in with this account. Other browsers / phones will be bounced to Sign in next time they make a request.',
+        primaryLabel: 'Sign out all',
+      })
+      if (!ok) return
+      await logoutEverywhere()
       setTimeout(() => location.reload(), 200)
     })
 

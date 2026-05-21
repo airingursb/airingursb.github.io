@@ -146,9 +146,32 @@ export async function requestMagicLink(opts: {
 
 // ── Session management ─────────────────────────────────────────────────────
 
+/**
+ * Local logout: clears THIS device's cookies. Other devices stay signed in.
+ * For "sign out from everywhere", use logoutEverywhere() below.
+ */
 export async function logout(): Promise<void> {
   try {
     await fetch(`${API_BASE}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+  } catch {
+    // ignore — local state still cleared
+  }
+  _currentAccount = null
+  notify()
+}
+
+/**
+ * Global logout: revokes ALL refresh tokens for this account. Other
+ * devices/browsers signed in with the same account will be bounced to
+ * "Sign in" on their next request (when their access token expires
+ * within ~1h, or sooner if they call /auth/me).
+ */
+export async function logoutEverywhere(): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/auth/logout-everywhere`, {
       method: 'POST',
       credentials: 'include',
     })
