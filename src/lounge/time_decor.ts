@@ -215,6 +215,61 @@ export function spawnTimeDecor(
     }
   }
 
+  // ─── Dawn: shells washing up on the beach (low tide) ────────────
+  // V3.0-C batch 3 — 3-5 tiny shells scattered on the sand band at dawn.
+  // Pure decor; persist for the whole dawn phase, disappear on scene
+  // restart into day. Different palettes (coral/white/pink) so they read
+  // as a collection, not copies.
+  if (phase === 'dawn' && roomId === 'room_beach') {
+    const sandTop = mapHeightPx * 0.62
+    const sandBot = mapHeightPx * 0.92
+    const palettes = [
+      { body: 0xe8b8a8, ridge: 0xc89888 },   // coral
+      { body: 0xf0e0d0, ridge: 0xd8c0a8 },   // pearl
+      { body: 0xe8c8d8, ridge: 0xc8a0b8 },   // pink
+      { body: 0xd8c0a0, ridge: 0xb8a080 },   // sand
+    ]
+    const shellCount = 3 + Math.floor(Math.random() * 3)
+    const used: Array<[number, number]> = []
+    for (let i = 0; i < shellCount; i++) {
+      // Avoid overlap with previous shells (min 12px apart)
+      let sx = 0, sy = 0, tries = 0
+      do {
+        sx = 16 + Math.random() * (mapWidthPx - 32)
+        sy = sandTop + Math.random() * (sandBot - sandTop)
+        tries++
+      } while (tries < 6 && used.some(([ux, uy]) => Math.hypot(sx - ux, sy - uy) < 12))
+      used.push([sx, sy])
+
+      const p = palettes[Math.floor(Math.random() * palettes.length)]
+      // 3×2 body + 1px ridge highlight = recognizable shell silhouette
+      const body  = scene.add.rectangle(sx, sy, 3, 2, p.body, 0.95).setDepth(3)
+      const ridge = scene.add.rectangle(sx, sy - 1, 1, 1, p.ridge, 0.95).setDepth(4)
+      objects.push(body, ridge)
+    }
+  }
+
+  // ─── Lobby: mail truck drives by, once per real day ──────────────
+  // V3.0-C batch 3 — small postal van crosses the bottom band of the
+  // lobby (read as "street outside the door"). One-shot per visitor per
+  // day, gated by localStorage. Spawn 10-60s after the player has been
+  // in the lobby, so it feels accidental not scripted.
+  if (!reducedMotion && roomId === 'room_lobby') {
+    try {
+      const today = new Date().toISOString().slice(0, 10)
+      const LS_KEY = 'lounge_mail_truck_last_seen'
+      const last = localStorage.getItem(LS_KEY)
+      if (last !== today) {
+        const delayMs = 10_000 + Math.random() * 50_000
+        const timer = scene.time.delayedCall(delayMs, () => {
+          spawnMailTruck(scene, mapWidthPx, mapHeightPx, objects)
+          try { localStorage.setItem(LS_KEY, today) } catch {}
+        })
+        objects.push({ destroy: () => timer.remove(false) })
+      }
+    } catch {}
+  }
+
   // ─── Dawn: birds in outdoor rooms ────────────────────────────────
   // V3.0-C — a small flock crosses the sky once when scene loads at dawn.
   // Loose V formation, 3-5 birds, ~10s flight. They despawn after crossing.
@@ -257,6 +312,53 @@ export function spawnTimeDecor(
   }
 
   return dispose
+}
+
+/** V3.0-C batch 3 — daily mail truck across the lobby street band. */
+function spawnMailTruck(
+  scene: Phaser.Scene,
+  mapWidthPx: number,
+  mapHeightPx: number,
+  objects: Array<{ destroy: () => void }>
+) {
+  // Direction: random per spawn so it doesn't always feel the same
+  const ltr = Math.random() < 0.5
+  const startX = ltr ? -22 : mapWidthPx + 22
+  const endX   = ltr ? mapWidthPx + 22 : -22
+  const yBase  = mapHeightPx * 0.95   // bottom band ≈ "street outside"
+
+  // Pixel-art postal van: white body + red roof + 2 black wheels.
+  // Tiny — same scale as bears (~12px wide).
+  const body   = scene.add.rectangle(startX, yBase, 14, 5, 0xf2eada, 0.95).setDepth(50)
+  const roof   = scene.add.rectangle(startX, yBase - 3, 14, 2, 0xb84838, 0.95).setDepth(51)
+  const window = scene.add.rectangle(startX + (ltr ? 4 : -4), yBase - 1, 3, 2, 0x6a98c0, 0.9).setDepth(52)
+  const wheel1 = scene.add.rectangle(startX - 4, yBase + 3, 2, 2, 0x1a1a1a, 1).setDepth(52)
+  const wheel2 = scene.add.rectangle(startX + 4, yBase + 3, 2, 2, 0x1a1a1a, 1).setDepth(52)
+  const parts: Phaser.GameObjects.Rectangle[] = [body, roof, window, wheel1, wheel2]
+  parts.forEach((p) => objects.push(p))
+
+  // Drive across
+  const driveDx = endX - startX
+  const tween = scene.tweens.add({
+    targets: parts,
+    x: `+=${driveDx}`,
+    duration: 12_000,
+    ease: 'Linear',
+    onComplete: () => parts.forEach((p) => { try { p.destroy() } catch {} }),
+  })
+  objects.push({ destroy: () => tween.remove() })
+
+  // Subtle wheel rotation via tiny y-bounce (we don't actually rotate;
+  // rotation on 2×2 pixels looks like noise. A 1px bounce reads as motion.)
+  const bounce = scene.tweens.add({
+    targets: [wheel1, wheel2],
+    y: yBase + 4,
+    duration: 180,
+    yoyo: true,
+    repeat: -1,
+    ease: 'Sine.inOut',
+  })
+  objects.push({ destroy: () => bounce.remove() })
 }
 
 /** V3.0-C — single shooting star across the night sky. Self-disposing. */
