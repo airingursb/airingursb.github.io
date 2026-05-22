@@ -107,6 +107,154 @@ export async function spawnFestivalDecor(
   const objects: Array<{ destroy: () => void }> = []
   const dispose = () => { for (const o of objects) { try { o.destroy() } catch {} } }
 
+  // ── V3.0-X · Overnight B2 — additional festival decoration types ───
+  if (hints.red_lanterns) {
+    // 2 hanging red lanterns (春节)
+    for (let i = 0; i < 2; i++) {
+      const x = mapWidthPx * (0.25 + i * 0.5)
+      const stem = scene.add.rectangle(x, 6, 1, 8, 0x4a1010).setDepth(2)
+      const body = scene.add.circle(x, 14, 5, 0xc23030).setDepth(2)
+      const tassel = scene.add.rectangle(x, 22, 1, 4, 0xc23030, 0.8).setDepth(2)
+      objects.push(stem, body, tassel)
+      const sway = scene.tweens.add({ targets: [body, tassel], x: x + 0.3, duration: 2800, yoyo: true, repeat: -1, ease: 'Sine.inOut' })
+      objects.push({ destroy: () => sway.remove() })
+    }
+  }
+  if (hints.milky_way_stars) {
+    // Denser star field (七夕)
+    for (let i = 0; i < 25; i++) {
+      const sx = Math.random() * mapWidthPx
+      const sy = 4 + Math.random() * (mapHeightPx * 0.3)
+      const s = scene.add.rectangle(sx, sy, 1, 1, 0xfff7c0, 0.7 + Math.random() * 0.3).setDepth(2)
+      objects.push(s)
+      const twinkle = scene.tweens.add({ targets: s, alpha: 0.2, duration: 1500 + Math.random() * 1500, yoyo: true, repeat: -1, ease: 'Sine.inOut' })
+      objects.push({ destroy: () => twinkle.remove() })
+    }
+  }
+  if (hints.pink_petals) {
+    // Drifting pink petals (七夕 valentine vibe)
+    for (let i = 0; i < 6; i++) {
+      const px = Math.random() * mapWidthPx
+      const py = -4 - Math.random() * 20
+      const petal = scene.add.rectangle(px, py, 2, 2, 0xf2b5c9, 0.85).setDepth(3)
+      objects.push(petal)
+      const drift = scene.tweens.add({
+        targets: petal,
+        y: mapHeightPx + 4,
+        x: px + (Math.random() - 0.5) * 30,
+        duration: 12_000 + Math.random() * 6_000,
+        repeat: -1,
+        ease: 'Linear',
+      })
+      objects.push({ destroy: () => drift.remove() })
+    }
+  }
+  if (hints.full_moon) {
+    // Big bright moon (中秋)
+    const moon = scene.add.circle(mapWidthPx * 0.85, 18, 8, 0xfff5d0, 1).setDepth(2)
+    const halo = scene.add.circle(mapWidthPx * 0.85, 18, 12, 0xfff5d0, 0.2).setDepth(1)
+    objects.push(moon, halo)
+  }
+  if (hints.mooncake_plate) {
+    const { x, y } = hints.mooncake_plate
+    const plate = scene.add.circle(x, y, 6, 0xd8c8a0, 0.95).setDepth(3)
+    const cake1 = scene.add.circle(x - 2, y, 2, 0xa86838, 1).setDepth(4)
+    const cake2 = scene.add.circle(x + 2, y - 1, 2, 0xa86838, 1).setDepth(4)
+    objects.push(plate, cake1, cake2)
+  }
+  if (hints.pumpkin_lanterns) {
+    // 3 jack-o-lanterns on the floor
+    for (let i = 0; i < 3; i++) {
+      const x = mapWidthPx * (0.3 + i * 0.2)
+      const y = mapHeightPx * 0.85
+      const pumpkin = scene.add.circle(x, y, 5, 0xd87020, 1).setDepth(3)
+      const eye1 = scene.add.rectangle(x - 2, y - 1, 1, 2, 0xffe080, 1).setDepth(4)
+      const eye2 = scene.add.rectangle(x + 2, y - 1, 1, 2, 0xffe080, 1).setDepth(4)
+      const mouth = scene.add.rectangle(x, y + 2, 3, 1, 0xffe080, 1).setDepth(4)
+      objects.push(pumpkin, eye1, eye2, mouth)
+    }
+  }
+  if (hints.spooky_mist) {
+    // Greenish low mist (grove halloween)
+    const mist = scene.add.rectangle(mapWidthPx / 2, mapHeightPx - 10, mapWidthPx, 14, 0x4a6a4a, 0.15).setDepth(2)
+    objects.push(mist)
+    const pulse = scene.tweens.add({ targets: mist, alpha: 0.25, duration: 3000, yoyo: true, repeat: -1, ease: 'Sine.inOut' })
+    objects.push({ destroy: () => pulse.remove() })
+  }
+  if (hints.chrysanthemum_pot) {
+    const { x, y } = hints.chrysanthemum_pot
+    const pot = scene.add.rectangle(x, y + 2, 4, 4, 0x6a4030, 1).setDepth(3)
+    for (let i = 0; i < 5; i++) {
+      const petal = scene.add.circle(x + (i - 2), y - 2, 1.2, 0xe8c050, 1).setDepth(4)
+      objects.push(petal)
+    }
+    objects.push(pot)
+  }
+  if (hints.steam_warmth) {
+    // Warm steam from a soup pot in lobby (冬至)
+    for (let i = 0; i < 3; i++) {
+      const x = mapWidthPx * 0.5 + (i - 1) * 4
+      const steam = scene.add.rectangle(x, mapHeightPx * 0.85, 2, 6, 0xe8e8d0, 0.4).setDepth(3)
+      objects.push(steam)
+      const rise = scene.tweens.add({ targets: steam, y: steam.y - 24, alpha: 0, duration: 3500 + i * 400, repeat: -1, ease: 'Sine.in' })
+      objects.push({ destroy: () => rise.remove() })
+    }
+  }
+  if (hints.firelight_warm) {
+    // Warm orange wash on bottom of library (冬至 firelight)
+    const glow = scene.add.rectangle(mapWidthPx / 2, mapHeightPx * 0.9, mapWidthPx * 0.7, mapHeightPx * 0.2, 0xff9050, 0.12).setBlendMode(Phaser.BlendModes.SCREEN).setDepth(2)
+    objects.push(glow)
+  }
+  if (hints.xmas_tree) {
+    const { x, y } = hints.xmas_tree
+    // Tiny triangular tree
+    const t1 = scene.add.rectangle(x, y - 8, 4, 4, 0x2a6a3a, 1).setDepth(3)
+    const t2 = scene.add.rectangle(x, y - 4, 8, 4, 0x2a6a3a, 1).setDepth(3)
+    const t3 = scene.add.rectangle(x, y, 12, 4, 0x2a6a3a, 1).setDepth(3)
+    const star = scene.add.rectangle(x, y - 11, 2, 2, 0xfff5d0, 1).setDepth(4)
+    // Ornament dots
+    const orn1 = scene.add.circle(x - 3, y, 1, 0xff4040, 1).setDepth(4)
+    const orn2 = scene.add.circle(x + 3, y - 4, 1, 0xffd060, 1).setDepth(4)
+    objects.push(t1, t2, t3, star, orn1, orn2)
+  }
+  if (hints.snowflakes) {
+    for (let i = 0; i < 12; i++) {
+      const sx = Math.random() * mapWidthPx
+      const sy = -4 - Math.random() * 20
+      const flake = scene.add.rectangle(sx, sy, 1, 1, 0xffffff, 0.95).setDepth(3)
+      objects.push(flake)
+      const fall = scene.tweens.add({
+        targets: flake,
+        y: mapHeightPx + 4,
+        x: sx + (Math.random() - 0.5) * 20,
+        duration: 8000 + Math.random() * 5000,
+        repeat: -1,
+        ease: 'Linear',
+      })
+      objects.push({ destroy: () => fall.remove() })
+    }
+  }
+  if (hints.fireworks) {
+    // Recurring firework bursts
+    const spawnBurst = () => {
+      const bx = mapWidthPx * (0.2 + Math.random() * 0.6)
+      const by = mapHeightPx * (0.15 + Math.random() * 0.2)
+      const colors = [0xff6b6b, 0xffd060, 0x6bd0ff, 0xc070ff, 0xf2b5c9]
+      const color = colors[Math.floor(Math.random() * colors.length)]
+      const sparks: Phaser.GameObjects.Rectangle[] = []
+      for (let i = 0; i < 8; i++) {
+        const angle = (Math.PI * 2 * i) / 8
+        const dx = Math.cos(angle) * 14
+        const dy = Math.sin(angle) * 14
+        const s = scene.add.rectangle(bx, by, 1, 1, color, 1).setDepth(5)
+        sparks.push(s)
+        scene.tweens.add({ targets: s, x: bx + dx, y: by + dy, alpha: 0, duration: 1200, ease: 'Quad.out', onComplete: () => { try { s.destroy() } catch {} } })
+      }
+    }
+    const burstTimer = scene.time.addEvent({ delay: 3500, loop: true, callback: spawnBurst })
+    objects.push({ destroy: () => burstTimer.remove(false) })
+  }
+
   // ── Red ribbons (端午 festive vibe) ─────────────────────────────
   if (hints.red_ribbons) {
     // Draw 4 hanging ribbons across the top of the room
