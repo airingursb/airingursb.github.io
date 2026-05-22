@@ -75,7 +75,7 @@
   </script><link rel="stylesheet" href="/_astro/BaseLayout.CGf5H3zH.css">
 <style>.lang-switch[data-astro-cid-r2b4e7hz]{font-size:.85em;letter-spacing:.02em;white-space:nowrap}.lang-active[data-astro-cid-r2b4e7hz]{font-weight:700;color:var(--c-text, #1a1a1a)}.lang-sep[data-astro-cid-r2b4e7hz]{margin:0 .3em;color:var(--c-muted, #999)}.lang-link[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);text-decoration:none;transition:color .15s}.lang-link[data-astro-cid-r2b4e7hz]:hover{color:var(--c-text, #1a1a1a)}.lang-disabled[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);opacity:.4;cursor:not-allowed}
 </style>
-<link rel="stylesheet" href="/_astro/PostLayout.DSjKDBEq.css"></head> <body>   <noscript><link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"></noscript>  <div class="post-page" data-lang="zh" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>2022年10月16日</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-hide-mobile" data-astro-cid-gjtny2mx>Blog</a> <a href="/moments" data-astro-cid-gjtny2mx>Moment</a> <a href="/notes" data-astro-cid-gjtny2mx>Notes</a> <a href="/photos" data-astro-cid-gjtny2mx>Photos</a> <a href="/friends" data-astro-cid-gjtny2mx>Friends</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> <div class="mast-lang-line" data-astro-cid-gjtny2mx> <span class="lang-switch" data-astro-cid-r2b4e7hz> <strong class="lang-active" data-astro-cid-r2b4e7hz>中</strong> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <a href="/en/posts/chromium-renderer" class="lang-link" data-lang-switch="en" data-astro-cid-r2b4e7hz>EN</a> </span>  <script>
+<link rel="stylesheet" href="/_astro/PostLayout.DWI0010U.css"></head> <body>   <noscript><link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"></noscript>  <div class="post-page" data-lang="zh" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>2022年10月16日</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-hide-mobile" data-astro-cid-gjtny2mx>Blog</a> <a href="/moments" data-astro-cid-gjtny2mx>Moment</a> <a href="/notes" data-astro-cid-gjtny2mx>Notes</a> <a href="/photos" data-astro-cid-gjtny2mx>Photos</a> <a href="/friends" data-astro-cid-gjtny2mx>Friends</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> <div class="mast-lang-line" data-astro-cid-gjtny2mx> <span class="lang-switch" data-astro-cid-r2b4e7hz> <strong class="lang-active" data-astro-cid-r2b4e7hz>中</strong> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <a href="/en/posts/chromium-renderer" class="lang-link" data-lang-switch="en" data-astro-cid-r2b4e7hz>EN</a> </span>  <script>
   // Persist language preference on click
   document.querySelectorAll('[data-lang-switch]').forEach(function(el) {
     el.addEventListener('click', function() {
@@ -1934,10 +1934,14 @@ Display compositor（viz process compositor thread）会接受多个进程传递
             '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
             '<span>' + (c.likes || 0) + '</span>' +
           '</button>' +
+          renderReactions(c) +
           '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
         '</div>' +
         '<div class="bc-replies-container"></div>' +
       '</div>';
+
+    // V3.0-X · Overnight C1 — wire reaction chips + add-reaction popover
+    wireReactionUI(div, c);
 
     // Like button — optimistic update
     div.querySelector('.bc-like-btn').addEventListener('click', function() {
@@ -1982,6 +1986,72 @@ Display compositor（viz process compositor thread）会接受多个进程传递
     }
 
     return div;
+  }
+
+  // V3.0-X · Overnight C1 — emoji reactions render + wire
+  var REACTION_PALETTE = ['❤️', '😂', '🤔', '👀', '🔥', '🙏', '👏'];
+  function renderReactions(c) {
+    var counts = c.reactions || {};
+    var keys = Object.keys(counts);
+    var chips = keys.map(function(emoji) {
+      var n = counts[emoji];
+      return '<button class="bc-react-chip" data-id="' + c.id + '" data-emoji="' + esc(emoji) + '">' + emoji + ' <span>' + n + '</span></button>';
+    }).join('');
+    var addBtn = '<button class="bc-react-add-btn" data-id="' + c.id + '" title="Add reaction">+ 😊</button>';
+    return '<span class="bc-reactions">' + chips + addBtn + '</span>';
+  }
+  function wireReactionUI(div, c) {
+    var chips = div.querySelectorAll('.bc-react-chip');
+    chips.forEach(function(chip) {
+      chip.addEventListener('click', function(e) {
+        e.stopPropagation();
+        sendReact(c.id, chip.getAttribute('data-emoji'), c, div);
+      });
+    });
+    var addBtn = div.querySelector('.bc-react-add-btn');
+    if (addBtn) {
+      addBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        // Inline popover with the palette
+        var existing = div.querySelector('.bc-react-palette');
+        if (existing) { existing.remove(); return; }
+        var pop = document.createElement('div');
+        pop.className = 'bc-react-palette';
+        REACTION_PALETTE.forEach(function(em) {
+          var b = document.createElement('button');
+          b.textContent = em;
+          b.addEventListener('click', function(ev) {
+            ev.stopPropagation();
+            sendReact(c.id, em, c, div);
+            pop.remove();
+          });
+          pop.appendChild(b);
+        });
+        addBtn.parentNode.appendChild(pop);
+        // Close on outside click
+        setTimeout(function() {
+          document.addEventListener('click', function close() {
+            try { pop.remove() } catch {}
+            document.removeEventListener('click', close);
+          }, { once: true });
+        }, 0);
+      });
+    }
+  }
+  function sendReact(commentId, emoji, comment, div) {
+    apiPost('/api/comments/' + commentId + '/react', { emoji: emoji }).then(function(res) {
+      if (!res || !res.reactions) return;
+      comment.reactions = res.reactions;
+      // Re-render the reaction row in place
+      var oldRow = div.querySelector('.bc-reactions');
+      if (oldRow) {
+        var tmp = document.createElement('div');
+        tmp.innerHTML = renderReactions(comment);
+        var newRow = tmp.firstChild;
+        oldRow.replaceWith(newRow);
+        wireReactionUI(div, comment);
+      }
+    }).catch(function() {});
   }
 
   // Submit bottom comment
