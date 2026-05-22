@@ -1709,8 +1709,15 @@ export function hideQuestsPanel() {
 
 function renderQuests() {
   if (!questsListEl || !questsEmptyEl) return
-  const accepted = listAcceptedQuests()
   questsListEl.innerHTML = ''
+
+  // V3.0-X · Overnight 1 — fetch & render AI-companion-suggested quests
+  // first (they're more dynamic / time-sensitive). Player quests below.
+  void renderCompanionQuests(questsListEl).catch(() => {})
+
+  const accepted = listAcceptedQuests()
+  // "empty" only when BOTH lists are empty — companion ones load async so
+  // start optimistic and update after the fetch completes.
   questsEmptyEl.hidden = accepted.length > 0
   for (const { def, state } of accepted) {
     const card = document.createElement('div')
@@ -1741,6 +1748,105 @@ function renderQuests() {
       card.appendChild(reward)
     }
     questsListEl.appendChild(card)
+  }
+}
+
+type CompanionQuestRow = {
+  slug: string; npc_id: string; state: string;
+  suggested_at?: string; accepted_at?: string; completed_at?: string;
+  title: string; description: string; reward_heart: number;
+  room_object: any;
+}
+
+async function renderCompanionQuests(parent: HTMLElement) {
+  let quests: CompanionQuestRow[] = []
+  try {
+    const res = await fetch('https://chat.ursb.me/api/ai-companion/quests', { credentials: 'include' })
+    if (!res.ok) return
+    const body = await res.json()
+    quests = body.quests || []
+  } catch { return }
+
+  // Group by state — suggested + accepted on top
+  const active = quests.filter((q) => q.state === 'suggested' || q.state === 'accepted')
+  const completed = quests.filter((q) => q.state === 'completed').slice(0, 5)
+  if (active.length === 0 && completed.length === 0) return
+
+  // Section header
+  const header = document.createElement('div')
+  header.className = 'qp-section-header'
+  header.textContent = '🐻 NPC 提的事'
+  parent.insertBefore(header, parent.firstChild)
+
+  // Render in reverse order so insertBefore puts them right after header
+  for (const q of [...completed, ...active].reverse()) {
+    const card = document.createElement('div')
+    card.className = 'qp-quest qp-companion' + (q.state === 'completed' ? ' done' : '')
+    const title = document.createElement('div')
+    title.className = 'qp-title'
+    title.textContent = q.title
+    const giver = document.createElement('div')
+    giver.className = 'qp-giver'
+    giver.textContent = `from ${q.npc_id.replace('npc_', '').replace(/^./, c => c.toUpperCase())}`
+    const blurb = document.createElement('p')
+    blurb.className = 'qp-blurb'
+    blurb.textContent = q.description || ''
+    card.appendChild(title)
+    card.appendChild(giver)
+    if (q.description) card.appendChild(blurb)
+
+    if (q.state === 'suggested' || q.state === 'accepted') {
+      const actions = document.createElement('div')
+      actions.className = 'qp-actions'
+      const complete = document.createElement('button')
+      complete.type = 'button'
+      complete.className = 'qp-btn qp-btn-primary'
+      complete.textContent = '完成了'
+      complete.addEventListener('click', async () => {
+        complete.disabled = true
+        await transitionCompanionQuest(q.slug, 'complete')
+        renderQuests()
+      })
+      const decline = document.createElement('button')
+      decline.type = 'button'
+      decline.className = 'qp-btn'
+      decline.textContent = '跳过'
+      decline.addEventListener('click', async () => {
+        decline.disabled = true
+        await transitionCompanionQuest(q.slug, 'decline')
+        renderQuests()
+      })
+      actions.appendChild(complete)
+      actions.appendChild(decline)
+      card.appendChild(actions)
+    } else if (q.state === 'completed') {
+      const reward = document.createElement('div')
+      reward.className = 'qp-reward'
+      reward.textContent = `✓ 完成 · +${q.reward_heart || 1} heart`
+      card.appendChild(reward)
+    }
+
+    parent.insertBefore(card, header.nextSibling)
+  }
+}
+
+async function transitionCompanionQuest(slug: string, action: 'accept' | 'decline' | 'complete') {
+  try {
+    const res = await fetch(`https://chat.ursb.me/api/ai-companion/quests/${slug}/${action}`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    })
+    if (res.ok) {
+      const body = await res.json()
+      if (action === 'complete') {
+        showToast(`📜 完成了 · +${body.reward_heart || 1} heart`, 2500)
+        playSfx('item_collect')
+      }
+    }
+  } catch (err) {
+    console.warn('[quest] transition failed:', err)
   }
 }
 

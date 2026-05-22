@@ -3230,6 +3230,17 @@ export class RoomScene extends Phaser.Scene {
     const timeDispose = spawnTimeDecor(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())
     this.events.once('shutdown', timeDispose)
     this.events.once('destroy',  timeDispose)
+    // V3.0-X · Overnight 3 — festival decorations (date-gated red ribbons,
+    // rice sack interactable on beach during 端午, etc.). Async because
+    // it needs to fetch /api/ai-companion/festival.
+    let festivalDispose: (() => void) | null = null
+    void import('../festival').then(({ spawnFestivalDecor }) =>
+      spawnFestivalDecor(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx)
+    ).then((dispose) => {
+      festivalDispose = dispose
+    }).catch(() => {})
+    this.events.once('shutdown', () => festivalDispose?.())
+    this.events.once('destroy',  () => festivalDispose?.())
     // V23.25 — per-room overlay decals (books in library, steam + utensils
     // in kitchen, anvil + sawdust in workshop, weather vane on rooftop).
     const decalDispose = spawnRoomDecals(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())
