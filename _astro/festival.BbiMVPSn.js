@@ -1,4 +1,4 @@
-import{k as g}from"./LoungeGame.astro_astro_type_script_index_0_lang.DUUvGvNC.js";import{showAlert as b}from"./modal_ui.7Pv9BK8p.js";const _="https://chat.ursb.me";let h=null,u=null;async function k(){return h||u||(u=fetch(`${_}/api/ai-companion/festival`,{credentials:"include"}).then(async t=>{if(!t.ok)return{active:null,progress:null};const s=await t.json();return h=s,s}).catch(()=>({active:null,progress:null})).finally(()=>{u=null}),u)}function z(){h=null}async function x(){const t=[`Mio: 来，坐这儿。
+import{k as g}from"./LoungeGame.astro_astro_type_script_index_0_lang.7OyC1jPU.js";import{showAlert as b}from"./modal_ui.BoBlYTEI.js";const _="https://chat.ursb.me";let h=null,u=null;async function k(){return h||u||(u=fetch(`${_}/api/ai-companion/festival`,{credentials:"include"}).then(async t=>{if(!t.ok)return{active:null,progress:null};const s=await t.json();return h=s,s}).catch(()=>({active:null,progress:null})).finally(()=>{u=null}),u)}function z(){h=null}async function x(){const t=[`Mio: 来，坐这儿。
 
 （她把一片粽叶递给你。慢慢的。）`,`Mio: ...折成漏斗。米要压实。
 
