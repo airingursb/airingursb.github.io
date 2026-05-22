@@ -27,3 +27,50 @@ jobs:
           UMAMI_API_KEY: ${{ secrets.UMAMI_API_KEY }}
           UMAMI_WEBSITE_ID: ${{ secrets.UMAMI_WEBSITE_ID }}
         run: python3 scripts/daily_report.py
+
+      # ── Nightly NPC chores (best-effort, never block report) ─────────────
+      # All endpoints are idempotent — failing one doesn't break the others.
+      - name: NPC nightly diaries
+        if: success() || failure()
+        continue-on-error: true
+        run: |
+          curl -fsS -X POST -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+            https://chat.ursb.me/api/admin/companion/nightly-diaries
+        env:
+          ADMIN_TOKEN: ${{ secrets.BLOG_API_ADMIN_TOKEN }}
+
+      - name: NPC initiative letters (Mon/Thu only)
+        if: github.event.schedule == '3 1 * * *' && (env.WEEKDAY == '1' || env.WEEKDAY == '4')
+        continue-on-error: true
+        run: |
+          WEEKDAY=$(date -u +%u)
+          if [ "$WEEKDAY" = "1" ] || [ "$WEEKDAY" = "4" ]; then
+            curl -fsS -X POST -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+              https://chat.ursb.me/api/admin/companion/initiative-letters
+          fi
+        env:
+          ADMIN_TOKEN: ${{ secrets.BLOG_API_ADMIN_TOKEN }}
+
+      - name: Mochi weekly reading digest (Sunday only)
+        continue-on-error: true
+        run: |
+          WEEKDAY=$(date -u +%u)
+          if [ "$WEEKDAY" = "7" ]; then
+            curl -fsS -X POST -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+              https://chat.ursb.me/api/admin/companion/mochi-reading-digest
+          fi
+        env:
+          ADMIN_TOKEN: ${{ secrets.BLOG_API_ADMIN_TOKEN }}
+
+      - name: Sync Readwise highlights (daily incremental)
+        continue-on-error: true
+        env:
+          READWISE_TOKEN: ${{ secrets.READWISE_TOKEN }}
+          BLOG_SUPABASE_URL: ${{ secrets.BLOG_SUPABASE_URL }}
+          BLOG_SUPABASE_SERVICE_KEY: ${{ secrets.BLOG_SUPABASE_SERVICE_KEY }}
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+        run: |
+          if [ -n "$READWISE_TOKEN" ] && [ -n "$SILICONFLOW_API_KEY" ]; then
+            cd services/blog-api 2>/dev/null && npm ci --omit=dev --no-audit --no-fund || true
+            cd "${GITHUB_WORKSPACE}/services/blog-api" 2>/dev/null && node scripts/sync-readwise.mjs || true
+          fi
