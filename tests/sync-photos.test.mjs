@@ -51,10 +51,13 @@ test('scanSource handles missing sidecar gracefully', async () => {
 test('scanSource throws on duplicate slugs', async () => {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'photos-test-'));
   try {
+    // Sidecars now live in `meta/` (changed during photos refactor) —
+    // the test was written for the old flat layout.
+    await fs.mkdir(path.join(tmp, 'meta'));
     await fs.writeFile(path.join(tmp, 'foo.jpg'), 'fake');
-    await fs.writeFile(path.join(tmp, 'foo.md'), '---\nslug: same\n---\n');
+    await fs.writeFile(path.join(tmp, 'meta', 'foo.md'), '---\nslug: same\n---\n');
     await fs.writeFile(path.join(tmp, 'bar.jpg'), 'fake');
-    await fs.writeFile(path.join(tmp, 'bar.md'), '---\nslug: same\n---\n');
+    await fs.writeFile(path.join(tmp, 'meta', 'bar.md'), '---\nslug: same\n---\n');
     await assert.rejects(() => scanSource(tmp), /Duplicate slug/);
   } finally {
     await fs.rm(tmp, { recursive: true, force: true });

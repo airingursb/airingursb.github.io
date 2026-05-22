@@ -3199,6 +3199,8 @@ export class RoomScene extends Phaser.Scene {
       loop: true,
       callback: () => this.refreshNpcs()
     })
+    // V3.0-X · C — first-time-visitor onboarding via Pip.
+    this.maybeRunPipOnboarding()
     // V23.0 — transit NPCs: a background bear walks across the room
     // every 90-180s. Only in "social" rooms (lobby/dj/library/grove/beach),
     // skipped in personal homes + private party rooms.
@@ -3365,6 +3367,46 @@ export class RoomScene extends Phaser.Scene {
         })
       }
     }
+  }
+
+  /**
+   * V3.0-X · C — Pip's first-time-visitor 3-bubble greeting.
+   * Fires once per browser (localStorage flag). Requires Pip is in the
+   * current room. If player isn't in lobby, no-op (Pip's home).
+   */
+  private maybeRunPipOnboarding() {
+    const FLAG = 'nook_onboarded_v1'
+    try {
+      if (localStorage.getItem(FLAG)) return
+    } catch { return }
+    if (this.currentRoomId !== 'room_lobby') return
+    const pipEntry = this.npcBears.get('npc_pip')
+    if (!pipEntry) return  // Pip not in lobby right now; we'll catch them next time
+
+    const lines = [
+      'Hey, you found us!',
+      "This is nook — make yourself at home. There's a library to the north, beach to the south.",
+      "If you ever want to talk to someone, head into the library — Mochi's usually there. He's a good listener.",
+    ]
+
+    let i = 0
+    const fire = () => {
+      const fresh = this.npcBears.get('npc_pip')
+      if (!fresh) return  // Pip wandered off, abort gracefully
+      const sb = fresh.bear.getSpeechBubblePos?.() ?? { x: fresh.bear.x, y: fresh.bear.y - 30 }
+      const screen = this.cameras.main.getWorldPoint
+        ? { x: sb.x, y: sb.y }  // bubbles already use world coords via ui.ts
+        : sb
+      showBubble('npc_npc_pip', lines[i], screen.x, screen.y)
+      i++
+      if (i < lines.length) {
+        this.time.delayedCall(4500, fire)
+      } else {
+        try { localStorage.setItem(FLAG, new Date().toISOString()) } catch {}
+      }
+    }
+    // Small delay so Pip is fully on-screen before talking
+    this.time.delayedCall(2000, fire)
   }
 
   private spawnNpc(def: NpcDef, b: { x: number; y: number; state: string }) {
