@@ -6,6 +6,7 @@
 
 import Phaser from 'phaser'
 import { showToast } from './ui'
+import { showAlert } from './modal_ui'
 
 const API_BASE = 'https://chat.ursb.me'
 
@@ -47,6 +48,27 @@ export async function getFestivalState() {
 
 /** Force refresh (e.g. after advancing a step). */
 export function invalidateFestivalCache() { cached = null }
+
+/**
+ * "包粽子" group ceremony — a sequence of NPC lines + final reward.
+ * Triggered when user clicks the sparkly ✨包 object in lobby (A5).
+ */
+export async function runZongziCeremony() {
+  // Lightweight sequence: 4 lines via showAlert in series, then advance.
+  const lines = [
+    'Mio: 来，坐这儿。\n\n（她把一片粽叶递给你。慢慢的。）',
+    'Mio: ...折成漏斗。米要压实。\n\n（你笨拙地包了一只。歪的。她没说什么。）',
+    'Mio: 嗯。\n\n（你又包了三只。这次像样了。）',
+    'Mio: 收着吧，挂家里。\n\n（你拿到了一只手工粽子挂饰。永久 memento。）',
+  ]
+  for (const line of lines) {
+    await showAlert(line, '端午 · 包粽子')
+  }
+  const r = await advanceFestivalStep('group_wrap_zongzi')
+  if (r.ok && r.final) {
+    showToast('🎋 端午圆满 · 拿到了粽子挂饰', 3500)
+  }
+}
 
 export async function advanceFestivalStep(stepId: string): Promise<{ ok: boolean; final?: boolean }> {
   try {
@@ -115,6 +137,27 @@ export async function spawnFestivalDecor(
       const body = scene.add.rectangle(zx, zy, 5, 5, 0x3e6b3a, 0.95).setDepth(3)
       const ribbon = scene.add.rectangle(zx, zy, 1, 6, 0xa02020, 0.95).setDepth(4)
       objects.push(body, ribbon)
+    }
+
+    // V3.0-X · Overnight A5 — "包粽子" group event interactable.
+    // Visible only between step 3 (rice given) and step 4 (group event done).
+    // Click → modal sequence → advanceStep('group_wrap_zongzi') →
+    // unlocks reward + permanent fact.
+    if (!progress?.steps_completed?.includes('group_wrap_zongzi')) {
+      const ex = x + 14
+      const ey = y - 4
+      const sparkle = scene.add.rectangle(ex, ey, 3, 3, 0xfff099, 1).setDepth(8)
+      const label = scene.add.text(ex, ey - 10, '✨ 包', { fontSize: '10px', color: '#a02020' }).setOrigin(0.5).setDepth(8)
+      sparkle.setInteractive({ useHandCursor: true })
+      const pulse = scene.tweens.add({
+        targets: sparkle, scale: 1.6, alpha: 0.5,
+        duration: 1000, yoyo: true, repeat: -1, ease: 'Sine.inOut',
+      })
+      sparkle.on('pointerdown', async () => {
+        try { sparkle.destroy(); label.destroy(); pulse.remove() } catch {}
+        await runZongziCeremony()
+      })
+      objects.push(sparkle, label, { destroy: () => pulse.remove() })
     }
   }
 

@@ -3241,6 +3241,16 @@ export class RoomScene extends Phaser.Scene {
     }).catch(() => {})
     this.events.once('shutdown', () => festivalDispose?.())
     this.events.once('destroy',  () => festivalDispose?.())
+    // V3.0-X · Overnight A2 — quest-driven interactable objects (e.g.
+    // Mochi's 《雪国》 in workshop). Same dispose pattern as festival.
+    let questObjDispose: (() => void) | null = null
+    void import('../quest_room_objects').then(({ spawnQuestRoomObjects }) =>
+      spawnQuestRoomObjects(this, this.currentRoomId)
+    ).then((dispose) => {
+      questObjDispose = dispose
+    }).catch(() => {})
+    this.events.once('shutdown', () => questObjDispose?.())
+    this.events.once('destroy',  () => questObjDispose?.())
     // V23.25 — per-room overlay decals (books in library, steam + utensils
     // in kitchen, anvil + sawdust in workshop, weather vane on rooftop).
     const decalDispose = spawnRoomDecals(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx, prefersReducedMotion())

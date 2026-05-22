@@ -53,6 +53,7 @@ function ensure(): HTMLElement {
       <div class="nook-companion-header">
         <span class="nook-companion-name">Mochi</span>
         <span class="nook-companion-where">· library</span>
+        <button type="button" class="nook-companion-diary-btn" id="nook-companion-diary-btn" title="ta 最近写的日记">📔</button>
         <button type="button" class="nook-companion-group-toggle" id="nook-companion-group-toggle" hidden title="群聊 (让同房间的 NPC 都听见)">👥</button>
         <span class="nook-companion-counter" id="nook-companion-counter">— / 30</span>
         <button type="button" class="nook-companion-close" aria-label="Close">✕</button>
@@ -62,6 +63,15 @@ function ensure(): HTMLElement {
         <input type="text" class="nook-companion-input" placeholder="说点什么…" maxlength="500" autocomplete="off">
         <button type="submit" class="nook-companion-send">→</button>
       </form>
+    </div>
+    <div class="nook-diary-modal" id="nook-diary-modal" hidden>
+      <div class="nook-diary-card">
+        <div class="nook-diary-header">
+          <span class="nook-diary-title">📔 <span id="nook-diary-npc-name">NPC</span> 的日记</span>
+          <button type="button" class="nook-diary-close" aria-label="Close">✕</button>
+        </div>
+        <ul class="nook-diary-list" id="nook-diary-list"></ul>
+      </div>
     </div>
   `
 
@@ -78,6 +88,16 @@ function ensure(): HTMLElement {
   const form = rootEl.querySelector('form') as HTMLFormElement
 
   closeBtn.addEventListener('click', () => hide())
+  // V3.0-X · A6 — diary modal toggle
+  const diaryBtn = rootEl.querySelector('#nook-companion-diary-btn') as HTMLButtonElement | null
+  diaryBtn?.addEventListener('click', () => openDiaryModal())
+  const diaryModal = rootEl.querySelector('#nook-diary-modal') as HTMLElement | null
+  const diaryClose = rootEl.querySelector('.nook-diary-close') as HTMLButtonElement | null
+  diaryClose?.addEventListener('click', () => { if (diaryModal) diaryModal.hidden = true })
+  diaryModal?.addEventListener('click', (e) => {
+    if (e.target === diaryModal) diaryModal.hidden = true
+  })
+
   groupToggleEl?.addEventListener('click', () => {
     groupModeOn = !groupModeOn
     if (groupToggleEl) {
@@ -243,6 +263,43 @@ export async function openCompanionChat(args: OpenArgs) {
   if (usage) updateCounter(usage.sent, usage.cap)
 
   setTimeout(() => inputEl?.focus(), 100)
+}
+
+async function openDiaryModal() {
+  if (!rootEl) return
+  const modal = rootEl.querySelector('#nook-diary-modal') as HTMLElement | null
+  const list = rootEl.querySelector('#nook-diary-list') as HTMLElement | null
+  const title = rootEl.querySelector('#nook-diary-npc-name') as HTMLElement | null
+  if (!modal || !list) return
+  if (title) title.textContent = currentNpcName
+  list.innerHTML = '<li class="nook-diary-loading">读取中…</li>'
+  modal.hidden = false
+  try {
+    const res = await fetch(`https://chat.ursb.me/api/ai-companion/diary/${currentNpcId}?days=21`, { credentials: 'include' })
+    if (!res.ok) { list.innerHTML = '<li class="nook-diary-empty">没拿到日记</li>'; return }
+    const body = await res.json()
+    const entries = (body.entries ?? []) as Array<{ entry_date: string; summary: string; message_count?: number; kind?: string }>
+    if (entries.length === 0) {
+      list.innerHTML = `<li class="nook-diary-empty">${currentNpcName} 最近没写日记。</li>`
+      return
+    }
+    list.innerHTML = ''
+    for (const e of entries) {
+      const li = document.createElement('li')
+      li.className = 'nook-diary-entry' + (e.kind === 'reading' ? ' is-reading' : '')
+      const meta = document.createElement('span')
+      meta.className = 'nook-diary-date'
+      meta.textContent = e.entry_date + (e.kind === 'reading' ? ' · 📖 读书' : '')
+      const body = document.createElement('p')
+      body.className = 'nook-diary-text'
+      body.textContent = e.summary
+      li.appendChild(meta)
+      li.appendChild(body)
+      list.appendChild(li)
+    }
+  } catch (err) {
+    list.innerHTML = '<li class="nook-diary-empty">日记暂时不可读：' + String((err as Error)?.message ?? err) + '</li>'
+  }
 }
 
 /** Group-chat turn: send to all AI NPCs in current room, render one bubble per speaker. */
