@@ -13,9 +13,13 @@ export type CompanionUsage = {
 }
 
 export type CompanionEvent =
-  | { type: 'delta'; text: string }
+  | { type: 'delta'; text: string; npc_id?: string }
   | { type: 'done'; usage: CompanionUsage }
-  | { type: 'error'; code: string; message: string }
+  | { type: 'error'; code: string; message: string; npc_id?: string }
+  // V3.0-X · E — group-chat protocol additions
+  | { type: 'speaker_start'; npc_id: string; npc_name: string }
+  | { type: 'speaker_end'; npc_id: string }
+  | { type: 'all_done'; usage: CompanionUsage }
 
 /** Fetch current daily usage. Returns null if not authenticated. */
 export async function getUsage(): Promise<CompanionUsage | null> {
@@ -42,11 +46,29 @@ export async function sendMessage(
   hints: { time_phase?: string; weather?: string; current_room?: string; language?: string },
   onEvent: (e: CompanionEvent) => void
 ): Promise<void> {
-  const res = await fetch(`${API_BASE}/api/ai-companion/chat`, {
+  return _streamChatRequest('/api/ai-companion/chat', { npc_id: npcId, message: text, ...hints }, onEvent)
+}
+
+/** V3.0-X · E — group chat: 2+ NPCs reply serially, each seeing the prior. */
+export async function sendGroupMessage(
+  npcIds: string[],
+  text: string,
+  hints: { time_phase?: string; weather?: string; current_room?: string; language?: string },
+  onEvent: (e: CompanionEvent) => void
+): Promise<void> {
+  return _streamChatRequest('/api/ai-companion/group-chat', { npc_ids: npcIds, message: text, ...hints }, onEvent)
+}
+
+async function _streamChatRequest(
+  path: string,
+  body: Record<string, unknown>,
+  onEvent: (e: CompanionEvent) => void
+): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, {
     method: 'POST',
     credentials: 'include',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ npc_id: npcId, message: text, ...hints }),
+    body: JSON.stringify(body),
   })
 
   if (res.status === 429) {

@@ -9,7 +9,7 @@
 // the input + counter persist.
 
 import { playSfx } from './audio'
-import { sendMessage, getUsage } from './companion_api'
+import { sendMessage, sendGroupMessage, getUsage } from './companion_api'
 import { isLoggedIn } from './auth'
 import { showToast } from './ui'
 
@@ -20,12 +20,23 @@ let sendBtnEl: HTMLButtonElement | null = null
 let counterEl: HTMLElement | null = null
 let nameEl: HTMLElement | null = null
 let whereEl: HTMLElement | null = null
+let groupToggleEl: HTMLButtonElement | null = null
 
 type Hints = { time_phase?: string; weather?: string; current_room?: string; language?: string }
-type OpenArgs = Hints & { npc_id: string; npc_name: string; npc_where?: string }
+type RoomNpc = { id: string; name: string }
+type OpenArgs = Hints & {
+  npc_id: string;
+  npc_name: string;
+  npc_where?: string;
+  // V3.0-X · E — other AI NPCs in same room (used for 群聊 toggle)
+  other_room_npcs?: RoomNpc[]
+}
 
 let currentNpcId = 'npc_jue'
+let currentNpcName = 'Mochi'
 let currentHints: Hints = {}
+let otherRoomNpcs: RoomNpc[] = []  // other AI NPCs in current room
+let groupModeOn = false
 
 let inflight = false
 
@@ -42,6 +53,7 @@ function ensure(): HTMLElement {
       <div class="nook-companion-header">
         <span class="nook-companion-name">Mochi</span>
         <span class="nook-companion-where">· library</span>
+        <button type="button" class="nook-companion-group-toggle" id="nook-companion-group-toggle" hidden title="群聊 (让同房间的 NPC 都听见)">👥</button>
         <span class="nook-companion-counter" id="nook-companion-counter">— / 30</span>
         <button type="button" class="nook-companion-close" aria-label="Close">✕</button>
       </div>
@@ -61,10 +73,21 @@ function ensure(): HTMLElement {
   counterEl = rootEl.querySelector('#nook-companion-counter') as HTMLElement
   nameEl = rootEl.querySelector('.nook-companion-name') as HTMLElement
   whereEl = rootEl.querySelector('.nook-companion-where') as HTMLElement
+  groupToggleEl = rootEl.querySelector('#nook-companion-group-toggle') as HTMLButtonElement
   const closeBtn = rootEl.querySelector('.nook-companion-close') as HTMLButtonElement
   const form = rootEl.querySelector('form') as HTMLFormElement
 
   closeBtn.addEventListener('click', () => hide())
+  groupToggleEl?.addEventListener('click', () => {
+    groupModeOn = !groupModeOn
+    if (groupToggleEl) {
+      groupToggleEl.classList.toggle('on', groupModeOn)
+      groupToggleEl.title = groupModeOn
+        ? `群聊 ON · 同房间的 ${[currentNpcName, ...otherRoomNpcs.map((n) => n.name)].join(' / ')} 都会发言`
+        : '群聊 (让同房间的 NPC 都听见)'
+    }
+    showToast(groupModeOn ? `群聊开了 · ${otherRoomNpcs.length + 1} 人在场` : '群聊关了', 2000)
+  })
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault()
@@ -74,6 +97,18 @@ function ensure(): HTMLElement {
     if (inputEl) inputEl.value = ''
     if (sendBtnEl) { sendBtnEl.disabled = true; sendBtnEl.textContent = '…' }
     appendBubble('user', text)
+
+    // Group-mode dispatch — different streaming protocol (per-NPC bubbles)
+    if (groupModeOn && otherRoomNpcs.length > 0) {
+      try {
+        await runGroupTurn(text)
+      } finally {
+        inflight = false
+        if (sendBtnEl) { sendBtnEl.disabled = false; sendBtnEl.textContent = '→' }
+        inputEl?.focus()
+      }
+      return
+    }
 
     // V3.0-B.1 — show typing indicator until first delta arrives, so the
     // user knows 觉 is thinking (network + Kimi cold-start can be 2-3s).
@@ -135,11 +170,28 @@ function ensure(): HTMLElement {
   return rootEl
 }
 
-function appendBubble(role: 'user' | 'assistant', text: string): HTMLElement {
+function appendBubble(role: 'user' | 'assistant', text: string, speakerName?: string): HTMLElement {
   if (!historyEl) return document.createElement('div')
   const li = document.createElement('li')
   li.className = `nook-companion-bubble nook-companion-${role}`
-  li.textContent = text
+  // V3.0-X · E — when group mode emits per-NPC bubbles, prefix with name
+  if (speakerName) {
+    const label = document.createElement('span')
+    label.className = 'nook-companion-speaker'
+    label.textContent = speakerName
+    li.appendChild(label)
+    const body = document.createElement('span')
+    body.className = 'nook-companion-bubble-body'
+    body.textContent = text
+    li.appendChild(body)
+    // Return the body span so callers can keep updating textContent on it
+    Object.defineProperty(li, 'textContent', {
+      get() { return body.textContent ?? '' },
+      set(v: string) { body.textContent = v },
+    })
+  } else {
+    li.textContent = text
+  }
   historyEl.appendChild(li)
   scrollToBottom()
   return li
@@ -156,10 +208,15 @@ function updateCounter(sent: number, cap: number) {
 
 /** Open the chat overlay for a specific NPC. Resets history view if switching NPCs. */
 export async function openCompanionChat(args: OpenArgs) {
-  const { npc_id, npc_name, npc_where, ...hints } = args
+  const { npc_id, npc_name, npc_where, other_room_npcs, ...hints } = args
   const npcSwitch = npc_id !== currentNpcId
   currentNpcId = npc_id
+  currentNpcName = npc_name
   currentHints = hints
+  otherRoomNpcs = Array.isArray(other_room_npcs) ? other_room_npcs : []
+  // Reset group mode when switching NPC or re-opening
+  if (npcSwitch) groupModeOn = false
+
   const root = ensure()
 
   if (!isLoggedIn()) {
@@ -173,6 +230,12 @@ export async function openCompanionChat(args: OpenArgs) {
   if (whereEl) whereEl.textContent = npc_where ? `· ${npc_where}` : ''
   if (npcSwitch && historyEl) historyEl.innerHTML = ''
 
+  // Show 👥 toggle only when there's another AI NPC to talk to in this room
+  if (groupToggleEl) {
+    groupToggleEl.hidden = otherRoomNpcs.length === 0
+    groupToggleEl.classList.toggle('on', groupModeOn)
+  }
+
   root.hidden = false
   playSfx('menu_open')
 
@@ -180,6 +243,54 @@ export async function openCompanionChat(args: OpenArgs) {
   if (usage) updateCounter(usage.sent, usage.cap)
 
   setTimeout(() => inputEl?.focus(), 100)
+}
+
+/** Group-chat turn: send to all AI NPCs in current room, render one bubble per speaker. */
+async function runGroupTurn(text: string) {
+  const npcIds = [currentNpcId, ...otherRoomNpcs.map((n) => n.id)]
+
+  // Map npc_id → its in-progress bubble element + name
+  const bubbleByNpc = new Map<string, { el: HTMLElement; firstSeen: boolean }>()
+
+  let currentSpeaker: string | null = null
+
+  await sendGroupMessage(npcIds, text, currentHints, (ev) => {
+    if (ev.type === 'speaker_start') {
+      currentSpeaker = ev.npc_id
+      const bubble = appendBubble('assistant', '', ev.npc_name)
+      bubble.classList.add('nook-companion-thinking')
+      bubble.textContent = ''
+      bubbleByNpc.set(ev.npc_id, { el: bubble, firstSeen: false })
+      scrollToBottom()
+    } else if (ev.type === 'delta') {
+      const id = ev.npc_id || currentSpeaker || ''
+      const entry = bubbleByNpc.get(id)
+      if (!entry) return
+      if (!entry.firstSeen) {
+        entry.firstSeen = true
+        entry.el.classList.remove('nook-companion-thinking')
+      }
+      entry.el.textContent = (entry.el.textContent ?? '') + ev.text
+      scrollToBottom()
+    } else if (ev.type === 'speaker_end') {
+      const entry = bubbleByNpc.get(ev.npc_id)
+      if (entry && !entry.firstSeen) {
+        entry.el.classList.remove('nook-companion-thinking')
+        if (!entry.el.textContent) entry.el.textContent = '（没接住——再试一次？）'
+      }
+    } else if (ev.type === 'error') {
+      const id = ev.npc_id || currentSpeaker || ''
+      const entry = bubbleByNpc.get(id)
+      if (entry) {
+        entry.el.classList.remove('nook-companion-thinking')
+        if (!entry.el.textContent) entry.el.textContent = `（${ev.message}）`
+      } else {
+        showToast(`群聊出错：${ev.message}`, 3000)
+      }
+    } else if (ev.type === 'all_done') {
+      updateCounter(ev.usage.sent, ev.usage.cap)
+    }
+  })
 }
 
 export function hide() {

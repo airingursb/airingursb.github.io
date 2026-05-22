@@ -4153,10 +4153,19 @@ export class RoomScene extends Phaser.Scene {
       const phaseMap: Record<string, string> = { dawn: '清晨', day: '白天', dusk: '傍晚', night: '深夜' }
       const phase = getCurrentPhase?.() ?? 'day'
       const roomPretty = this.currentRoomId.replace(/^room_/, '')
+      // V3.0-X · E — pass OTHER AI NPCs currently rendered in this room so
+      // the chat overlay can offer a 群聊 toggle.
+      const otherRoomNpcs: Array<{ id: string; name: string }> = []
+      for (const [otherId, e] of this.npcBears) {
+        if (otherId !== id && e.def.ai_companion) {
+          otherRoomNpcs.push({ id: otherId, name: e.def.name })
+        }
+      }
       void openCompanionChat({
         npc_id: id,
         npc_name: entry.def.name,
         npc_where: roomPretty,
+        other_room_npcs: otherRoomNpcs,
         time_phase: phaseMap[phase] ?? '白天',
         current_room: roomPretty,
         language: navigator.language?.startsWith('zh') ? '中文' : '英文',
