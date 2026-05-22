@@ -1,4 +1,6 @@
 ---
+import fs from 'node:fs';
+import path from 'node:path';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import photosData from '../data/photos.json';
 import '../styles/workouts.css';
@@ -17,6 +19,22 @@ const formatComicDate = (s: string, locale: 'zh' | 'en') =>
   new Date(s).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
+
+// Footer "data updated on …" — was a hardcoded i18n string that never moved.
+// Read the most recent mtime in src/data/ (everything in there is generated
+// by scripts/update_feed.py + collect_local_data.py, so newest mtime IS the
+// last data refresh).
+const dataDir = path.resolve('./src/data');
+let latestDataMs = 0;
+try {
+  for (const f of fs.readdirSync(dataDir)) {
+    const stat = fs.statSync(path.join(dataDir, f));
+    if (stat.mtimeMs > latestDataMs) latestDataMs = stat.mtimeMs;
+  }
+} catch {}
+const dataUpdatedDate = latestDataMs ? new Date(latestDataMs) : new Date();
+const dataUpdatedZh = `${dataUpdatedDate.getFullYear()} 年 ${dataUpdatedDate.getMonth() + 1} 月 ${dataUpdatedDate.getDate()} 日`;
+const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 ---
 <BaseLayout title="Hi, folks | Airing">
   <Fragment slot="head">
@@ -170,9 +188,17 @@ const formatComicDate = (s: string, locale: 'zh' | 'en') =>
     window._i18nReady = loadTranslations();
 
     function applyTranslations() {
+      var currentLang = (document.documentElement.lang || 'zh').toLowerCase().startsWith('en') ? 'en' : 'zh';
       document.querySelectorAll('[data-i18n]').forEach(function(el) {
         var key = el.getAttribute('data-i18n');
         var val = t(key);
+        // {date} placeholder — current users: data_updated. Element provides
+        // both languages via data-date-zh / data-date-en so we can swap on
+        // lang change without rebuilding.
+        if (val.indexOf('{date}') !== -1) {
+          var d = el.getAttribute('data-date-' + currentLang) || el.getAttribute('data-date-zh') || '';
+          val = val.replace('{date}', d);
+        }
         if (key === 'letter_paid_desc' || key === 'chat_limit') {
           el.innerHTML = val;
         } else {
@@ -1938,7 +1964,7 @@ const formatComicDate = (s: string, locale: 'zh' | 'en') =>
     <div class="footer">
       <div class="data-updated">
         <span class="pulse-dot"></span>
-        <span class="data-updated-text" data-i18n="data_updated">Data updated on Mar 24, 2026</span>
+        <span class="data-updated-text" data-i18n="data_updated" data-date-zh={dataUpdatedZh} data-date-en={dataUpdatedEn}>Data updated on {dataUpdatedEn}</span>
       </div>
       <a href="https://beian.miit.gov.cn" target="_blank">&copy; 粤ICP备16057808号-1</a>
     </div>
