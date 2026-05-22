@@ -1,0 +1,101 @@
+---
+// V3.0-X · Overnight C5 — Public shared-clip viewer.
+// Static page; reads ?t=<token> at runtime + fetches from blog-api.
+import BaseLayout from '../layouts/BaseLayout.astro';
+---
+<BaseLayout title="Clip · Airing">
+  <main class="clip-page" id="clipPage">
+    <p class="clip-loading">Loading…</p>
+  </main>
+</BaseLayout>
+
+<style>
+  .clip-page {
+    max-width: 540px;
+    margin: 5rem auto;
+    padding: 1.5rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .clip-card {
+    background: #f4ead5;
+    border: 3px solid #2a1810;
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: 0 6px 0 #2a1810;
+    color: #2a1810;
+  }
+  .clip-header {
+    display: flex; justify-content: space-between;
+    font-size: 12px; color: #8b6f4f;
+    margin-bottom: 16px;
+  }
+  .clip-context {
+    font-size: 13px; color: #5c4030;
+    border-left: 3px solid #c0a575;
+    padding-left: 10px; margin: 0 0 18px;
+  }
+  .clip-body {
+    margin: 0 0 24px;
+    font-size: 15px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    border: none; padding: 0;
+  }
+  .clip-footer { text-align: center; padding-top: 12px; border-top: 1px dashed #c0a575; }
+  .clip-cta {
+    display: inline-block; padding: 8px 18px;
+    background: #2a1810; color: #f4ead5;
+    border-radius: 8px; text-decoration: none;
+    font-size: 13px; font-weight: 700;
+  }
+  .clip-cta:hover { background: #5c4030; }
+  .clip-error, .clip-loading { text-align: center; color: #8b6f4f; padding: 2rem 0; }
+</style>
+
+<script is:inline>
+  (async function () {
+    const NPC_NAMES = {
+      npc_jue: 'Mochi (麻糬)',
+      npc_pip: 'Pip',
+      npc_mio: 'Mio',
+      npc_ren: 'Ren',
+    };
+    const root = document.getElementById('clipPage');
+    const params = new URLSearchParams(location.search);
+    const token = params.get('t');
+    if (!token) {
+      root.innerHTML = '<p class="clip-error">Missing share token.</p>';
+      return;
+    }
+    try {
+      const res = await fetch(`https://chat.ursb.me/api/ai-companion/clip/share/${encodeURIComponent(token)}`);
+      if (!res.ok) {
+        root.innerHTML = '<p class="clip-error">Clip not found or revoked.</p>';
+        return;
+      }
+      const body = await res.json();
+      const clip = body.clip;
+      const npcName = NPC_NAMES[clip.npc_id] || clip.npc_id;
+      const date = new Date(clip.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      root.innerHTML = `
+        <article class="clip-card">
+          <header class="clip-header">
+            <span>From <strong>${npcName}</strong>, in nook</span>
+            <time>${date}</time>
+          </header>
+          ${clip.context_user_msg ? `<p class="clip-context">someone asked: <em>"${escapeHtml(clip.context_user_msg)}"</em></p>` : ''}
+          <blockquote class="clip-body">${escapeHtml(clip.text)}</blockquote>
+          <footer class="clip-footer">
+            <a href="/nook/" class="clip-cta">go to nook → meet ${escapeHtml(npcName)} yourself</a>
+          </footer>
+        </article>
+      `;
+      document.title = `${npcName} said something · Airing`;
+    } catch (err) {
+      root.innerHTML = '<p class="clip-error">Failed to load.</p>';
+    }
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+  })();
+</script>

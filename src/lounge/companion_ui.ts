@@ -204,13 +204,56 @@ function appendBubble(role: 'user' | 'assistant', text: string, speakerName?: st
     body.className = 'nook-companion-bubble-body'
     body.textContent = text
     li.appendChild(body)
-    // Return the body span so callers can keep updating textContent on it
     Object.defineProperty(li, 'textContent', {
       get() { return body.textContent ?? '' },
       set(v: string) { body.textContent = v },
     })
   } else {
     li.textContent = text
+  }
+  // V3.0-X · Overnight C5 — save-to-clip button on assistant bubbles
+  if (role === 'assistant') {
+    const clip = document.createElement('button')
+    clip.type = 'button'
+    clip.className = 'nook-companion-clip-btn'
+    clip.title = '保存这句话'
+    clip.textContent = '💾'
+    clip.addEventListener('click', async (e) => {
+      e.stopPropagation()
+      const text = li.textContent ?? ''
+      if (!text.trim()) return
+      // Grab the most recent user bubble as context
+      let contextUserMsg = ''
+      let prev = li.previousElementSibling
+      while (prev) {
+        if (prev.classList.contains('nook-companion-user')) {
+          contextUserMsg = prev.textContent ?? ''
+          break
+        }
+        prev = prev.previousElementSibling
+      }
+      clip.disabled = true; clip.textContent = '…'
+      try {
+        const res = await fetch(`https://chat.ursb.me/api/ai-companion/clip`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ npc_id: currentNpcId, text, context_user_msg: contextUserMsg }),
+        })
+        if (res.ok) {
+          clip.textContent = '✓'
+          showToast('已保存到你的 clips · 在设置里看', 2500)
+          setTimeout(() => { clip.textContent = '💾'; clip.disabled = false }, 2000)
+        } else {
+          clip.textContent = '!'
+          clip.disabled = false
+        }
+      } catch {
+        clip.textContent = '!'
+        clip.disabled = false
+      }
+    })
+    li.appendChild(clip)
   }
   historyEl.appendChild(li)
   scrollToBottom()
