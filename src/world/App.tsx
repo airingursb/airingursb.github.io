@@ -45,6 +45,7 @@ import DistantIslands from './DistantIslands'
 import Campfire from './Campfire'
 import CloudShadows from './CloudShadows'
 import ZoneHitboxes from './ZoneHitboxes'
+import MochiNPC from './MochiNPC'
 // Sub-A iter-10: Rainbow + HotAirBalloon + Scarecrow cut to protect cabin
 // as the visual hero. (Files left on disk for easy re-enable.)
 
@@ -110,6 +111,7 @@ export default function App() {
       <Critters />
       <Atmospherics />
       <Avatar />
+      <MochiNPC />
       <DistantIslands />
       <Campfire />
       <CloudShadows />
