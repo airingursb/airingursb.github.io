@@ -106,7 +106,7 @@
 - **Size:** 128×128 px
 - **Prompt:** A medium-sized pine tree, isometric 45-degree view. Soft layered triangular canopy of muted sage-green needles in 3 distinct tiers. A small visible patch of warm brown trunk at the base. Hand-painted, slightly stylized. Sprite occupies the full height of the canvas. Transparent background, no ground shadow.
 
-### D02 — Small round bush  `[ ]`
+### D02 — Small round bush  `[x]`
 - **File:** `output/decorations/D02-bush.png`
 - **Size:** 128×128 px
 - **Prompt:** A small round shrub bush, isometric 45-degree view. Soft cluster of moss-green foliage clumps in a roughly spherical shape, with 2-3 tiny pale-pink berries peeking out. Sits flat on the ground. Hand-painted softness. Transparent background, no ground shadow.
