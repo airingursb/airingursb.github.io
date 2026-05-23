@@ -4638,6 +4638,83 @@
     border-color: rgba(138, 48, 48, 0.4) !important;
     cursor: not-allowed;
   }
+
+  /* ── SHU-611 · Mobile (≤600px) responsive pass ─────────────────────────
+     Goal: nook playable on iPhone portrait without the chat overlay
+     covering the whole room. Bottom-sheet style chat + tighter HUD. */
+  @media (max-width: 600px) {
+    /* Chat overlay → true bottom sheet, leaves top 60% of screen for room view. */
+    .nook-companion-overlay {
+      left: 0; right: 0; bottom: 0;
+      transform: none;
+      width: 100vw; max-width: none;
+    }
+    .nook-companion-card {
+      max-height: 50vh;
+      border-radius: 12px 12px 0 0;     /* flush bottom, rounded top = sheet feel */
+      border-bottom: none;
+      border-left: none;
+      border-right: none;
+      box-shadow: 0 -6px 24px rgba(0,0,0,.5);
+    }
+    .nook-companion-header {
+      padding: 10px 12px 6px;
+      gap: 6px;
+      flex-wrap: wrap;                  /* drop counter to row 2 on tiny screens */
+    }
+    .nook-companion-name { font-size: 14px; }
+    .nook-companion-where { font-size: 10px; }
+    /* Touch-friendly header buttons — 32px tap target */
+    .nook-companion-diary-btn,
+    .nook-companion-memory-btn,
+    .nook-companion-group-toggle {
+      min-width: 32px; min-height: 32px;
+      padding: 4px 8px;
+    }
+    .nook-companion-close {
+      min-width: 32px; min-height: 32px;
+    }
+    .nook-companion-counter {
+      font-size: 9px;
+      order: 99;                        /* push to end of flex row */
+    }
+    /* Hide touch D-pad while chat overlay open — body.has-chat-open
+       set/unset by companion_ui.ts on show()/hide(). */
+    body.is-touch.is-narrow.has-chat-open #lounge-touch-overlay {
+      display: none;
+    }
+
+    /* Modal cards (memory + diary) — give them more screen real estate */
+    .nook-memory-card,
+    .nook-diary-card {
+      width: 96vw;
+      max-height: 88vh;
+    }
+    .nook-memory-list,
+    .nook-diary-list {
+      padding: 10px 12px;
+    }
+    .nook-memory-entry {
+      grid-template-columns: 1fr auto;  /* key+value collapse to 1 col, del button right */
+      grid-template-rows: auto auto;
+      gap: 4px 8px;
+    }
+    .nook-memory-key {
+      grid-column: 1 / 2; grid-row: 1 / 2;
+      font-size: 9px;
+    }
+    .nook-memory-value {
+      grid-column: 1 / 2; grid-row: 2 / 3;
+      font-size: 13px;                  /* a touch larger for readability */
+    }
+    .nook-memory-del {
+      grid-column: 2 / 3; grid-row: 1 / 3;
+    }
+
+    /* Quest panel — already responsive (min(440px,90vw)) but tighten padding */
+    .qp-card { padding: 14px 14px; }
+    .qp-quest { padding: 8px 10px; }
+  }
 </style>
 
 <script>

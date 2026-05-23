@@ -321,6 +321,8 @@ export async function openCompanionChat(args: OpenArgs) {
   }
 
   root.hidden = false
+  // SHU-611 — let mobile CSS hide the touch D-pad while chat is open
+  document.body.classList.add('has-chat-open')
   playSfx('menu_open')
 
   const usage = await getUsage()
@@ -527,5 +529,6 @@ async function runGroupTurn(text: string) {
 export function hide() {
   if (!rootEl || rootEl.hidden) return
   rootEl.hidden = true
+  document.body.classList.remove('has-chat-open')  // SHU-611 — restore D-pad
   playSfx('menu_close')
 }

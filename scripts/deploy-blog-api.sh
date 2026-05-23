@@ -71,7 +71,11 @@ if [ "$mode" = "logs" ]; then
 fi
 
 echo "[deploy] rsync $LOCAL_DIR/ -> $SERVER:$REMOTE_DIR/"
-SSHPASS="$ALIYUN_PASSWORD" sshpass -e rsync -az --delete \
+# Note: use `sshpass -p` (not `-e`). `-e` (SSHPASS env) does NOT propagate
+# to rsync's child ssh process reliably — saw "Permission denied" 2026-05-23.
+# `-p` passes the password directly to sshpass, which then handles the
+# subprocess's tty correctly.
+sshpass -p "$ALIYUN_PASSWORD" rsync -az --delete \
   --exclude=node_modules/ \
   --exclude=.env \
   --exclude=knowledge-full-backup.md \
