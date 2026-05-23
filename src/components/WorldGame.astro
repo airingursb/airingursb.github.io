@@ -4,13 +4,23 @@
 import App from '../world/App'
 import WorldUI from '../world/WorldUI'
 import ZonePanel from '../world/ZonePanel'
+import articlesData from '../data/articles.json'
+import musicData from '../data/music.json'
+import highlightsData from '../data/highlights.json'
+
+const initialData = {
+  blog: (articlesData as any[]).slice(0, 12),
+  music: ((musicData as any).periods?.find((p: any) => p.key === '1month')?.artists
+    ?? (musicData as any).periods?.[0]?.artists ?? []).slice(0, 12),
+  reading: ((highlightsData as any).highlights ?? []).slice(0, 10),
+}
 ---
 <div id="world-root">
   <App client:only="react" />
   <WorldUI client:only="react" />
-  <ZonePanel client:only="react" />
+  <ZonePanel client:only="react" initialData={initialData} />
   <div class="world-help">
-    <span class="world-help-keys">drag</span> 旋转 · <span class="world-help-keys">scroll</span> 缩放
+    <span class="world-help-keys">drag</span> 旋转 · <span class="world-help-keys">scroll</span> 缩放 · <span class="world-help-keys">click</span> 互动
   </div>
 </div>
 
@@ -91,6 +101,17 @@ import ZonePanel from '../world/ZonePanel'
   @keyframes world-panel-slide {
     from { opacity: 0; transform: translateX(20px); }
     to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes world-panel-slide-out {
+    from { opacity: 1; transform: translateX(0); }
+    to { opacity: 0; transform: translateX(20px); }
+  }
+  .world-panel--closing {
+    animation: world-panel-slide-out 180ms ease-in forwards !important;
+  }
+  .world-panel-more {
+    color: #FFD9A8 !important;
+    font-weight: 600;
   }
   .world-panel-head {
     display: flex;

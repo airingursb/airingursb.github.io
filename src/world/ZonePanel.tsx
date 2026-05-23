@@ -1,143 +1,131 @@
 // HTML panel that slides in from the right when a zone is clicked.
-// Lives outside the Canvas (in WorldGame.astro), listens for
-// 'world-zone-click' events. Renders zone-specific content view.
+// Mounted outside the Canvas in WorldGame.astro. Data is loaded
+// build-time via Astro imports and passed as initialData prop.
 
 import { useEffect, useState } from 'react'
 import type { Interaction } from './zones'
 
-interface BlogEntry { title: string; slug: string; pubDate: string; tags: string[] }
-interface ComicsEntry { id: number; title: string; cover: string }
-interface MusicEntry { name: string; artist: string; playcount: number }
-interface ReadingEntry { title: string; author: string }
+interface BlogEntry { title: string; link: string; date: string }
+interface MusicArtist { name: string; plays: number; pct: number }
+interface HighlightEntry { id: number; title: string; author: string; text?: string; url?: string }
+
+interface InitialData {
+  blog: BlogEntry[]
+  music: MusicArtist[]
+  reading: HighlightEntry[]
+}
 
 const LABELS: Record<Interaction, string> = {
-  chat: 'Mochi · 闲谈',
+  chat: 'Mochi · 木屋',
   blog: 'Blog · 文章',
   comics: 'Comics · 四格漫画',
   music: 'Music · 最近在听',
   reading: 'Reading · 在读',
 }
 
-export default function ZonePanel() {
+export default function ZonePanel({ initialData }: { initialData?: InitialData }) {
   const [zone, setZone] = useState<Interaction | null>(null)
-  const [data, setData] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
+  const [closing, setClosing] = useState(false)
 
+  // Listen for click events from in-canvas hitboxes
   useEffect(() => {
     function handler(e: Event) {
       const detail = (e as CustomEvent).detail
+      setClosing(false)
       setZone(detail.kind as Interaction)
-      setData(null)
-      setLoading(true)
     }
     window.addEventListener('world-zone-click', handler)
     return () => window.removeEventListener('world-zone-click', handler)
   }, [])
 
+  // ESC key to close
   useEffect(() => {
-    if (!zone) return
-    setLoading(true)
-    loadData(zone)
-      .then((d) => setData(d))
-      .catch((err) => setData({ error: String(err.message ?? err) }))
-      .finally(() => setLoading(false))
-  }, [zone])
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && zone) close()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  })
+
+  // Reset cursor on unmount (in case hitbox pointerOut never fires)
+  useEffect(() => () => { document.body.style.cursor = 'auto' }, [])
+
+  function close() {
+    setClosing(true)
+    setTimeout(() => { setZone(null); setClosing(false) }, 180)
+  }
 
   if (!zone) return null
 
   return (
-    <div className="world-panel">
+    <div className={`world-panel${closing ? ' world-panel--closing' : ''}`}>
       <div className="world-panel-head">
         <span className="world-panel-title">{LABELS[zone]}</span>
-        <button className="world-panel-close" onClick={() => setZone(null)} aria-label="Close">✕</button>
+        <button className="world-panel-close" onClick={close} aria-label="Close">✕</button>
       </div>
       <div className="world-panel-body">
-        {loading && <div className="world-panel-loading">加载中…</div>}
-        {!loading && data?.error && <div className="world-panel-error">{data.error}</div>}
-        {!loading && data && !data.error && renderZoneContent(zone, data)}
+        {renderZoneContent(zone, initialData)}
       </div>
     </div>
   )
 }
 
-async function loadData(zone: Interaction): Promise<any> {
-  switch (zone) {
-    case 'blog': {
-      const r = await fetch('/data/feed.json')
-      if (!r.ok) throw new Error('feed.json 404')
-      const j = await r.json()
-      const blog = (j.blog as any[] || []).slice(0, 12)
-      return { entries: blog as BlogEntry[] }
-    }
-    case 'comics': {
-      // Comics are listed in feed.json under comics array
-      const r = await fetch('/data/feed.json')
-      if (!r.ok) throw new Error('feed.json 404')
-      const j = await r.json()
-      return { entries: (j.comics as ComicsEntry[] || []).slice(0, 12) }
-    }
-    case 'music': {
-      const r = await fetch('/data/feed.json')
-      if (!r.ok) throw new Error('feed.json 404')
-      const j = await r.json()
-      return { entries: (j.lastfm?.recent || j.music || []).slice(0, 12) as MusicEntry[] }
-    }
-    case 'reading': {
-      const r = await fetch('/data/feed.json')
-      if (!r.ok) throw new Error('feed.json 404')
-      const j = await r.json()
-      return { entries: (j.readwise?.books || j.reading || []).slice(0, 8) as ReadingEntry[] }
-    }
-    case 'chat':
-      return { message: '坐下来跟 Mochi 聊聊（聊天功能待接入）' }
-  }
-}
-
-function renderZoneContent(zone: Interaction, data: any) {
+function renderZoneContent(zone: Interaction, data?: InitialData) {
   switch (zone) {
     case 'chat':
-      return <div className="world-panel-message">{data.message}</div>
+      return (
+        <div className="world-panel-message">
+          <p>木屋的火堆边，Mochi 在等你。</p>
+          <p className="world-panel-meta">（chat 入口待接，目前请用 <a href="/nook" className="world-panel-link">/nook</a>）</p>
+        </div>
+      )
     case 'blog':
       return (
         <ul className="world-panel-list">
-          {data.entries.map((e: BlogEntry, i: number) => (
+          {(data?.blog ?? []).map((e, i) => (
             <li key={i} className="world-panel-row">
-              <a href={`/blog/${e.slug}`} className="world-panel-link">{e.title}</a>
-              <span className="world-panel-meta">{e.pubDate?.slice(0, 10)}</span>
+              <a href={e.link} className="world-panel-link">{e.title}</a>
+              <span className="world-panel-meta">{e.date}</span>
             </li>
           ))}
+          <li className="world-panel-row">
+            <a href="/blog" className="world-panel-link world-panel-more">更多文章 →</a>
+          </li>
         </ul>
       )
     case 'comics':
       return (
-        <ul className="world-panel-list">
-          {data.entries.map((e: ComicsEntry, i: number) => (
-            <li key={i} className="world-panel-row">
-              <a href={`/comics`} className="world-panel-link">#{e.id} · {e.title}</a>
-            </li>
-          ))}
-        </ul>
+        <div className="world-panel-message">
+          <p>四格漫画都在这里 ↓</p>
+          <p><a href="/comics" className="world-panel-link world-panel-more">前往 /comics →</a></p>
+        </div>
       )
     case 'music':
       return (
         <ul className="world-panel-list">
-          {data.entries.map((e: MusicEntry, i: number) => (
+          {(data?.music ?? []).map((a, i) => (
             <li key={i} className="world-panel-row">
-              <span className="world-panel-link">{e.name}</span>
-              <span className="world-panel-meta">{e.artist}</span>
+              <span className="world-panel-link">{a.name}</span>
+              <span className="world-panel-meta">{a.plays} plays</span>
             </li>
           ))}
+          <li className="world-panel-row">
+            <a href="/music" className="world-panel-link world-panel-more">完整 Last.fm 数据 →</a>
+          </li>
         </ul>
       )
     case 'reading':
       return (
         <ul className="world-panel-list">
-          {data.entries.map((e: ReadingEntry, i: number) => (
+          {(data?.reading ?? []).map((h, i) => (
             <li key={i} className="world-panel-row">
-              <span className="world-panel-link">{e.title}</span>
-              <span className="world-panel-meta">{e.author}</span>
+              <a href={h.url || '#'} className="world-panel-link" target="_blank" rel="noopener">{h.title}</a>
+              <span className="world-panel-meta">{h.author}</span>
             </li>
           ))}
+          <li className="world-panel-row">
+            <a href="/reading" className="world-panel-link world-panel-more">更多划线 →</a>
+          </li>
         </ul>
       )
   }
