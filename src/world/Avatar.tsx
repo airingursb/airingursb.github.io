@@ -2,7 +2,9 @@
 // integration. Receives lighting from directional sun, has contact
 // shadow disc, locked vertical so doesn't pitch on camera dolly.
 
+import { useRef } from 'react'
 import { useTexture, Billboard } from '@react-three/drei'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 
 const AVATAR_URL = '/world/sprites/character/B01-idle-south.png'
@@ -13,8 +15,17 @@ export default function Avatar() {
   const height = 1.4
   const width = height * aspect
 
-  // Position: standing in front of cabin door
-  const pos: [number, number, number] = [-2.0, 0.95, 0.5]
+  // Standing in front of cabin door (cabin pos [-2, -1])
+  const baseY = 0.95
+  const pos: [number, number, number] = [-2.0, baseY, 0.5]
+  const meshRef = useRef<THREE.Mesh>(null)
+
+  // Idle breathing — gentle Y oscillation
+  useFrame((s) => {
+    if (!meshRef.current) return
+    const t = s.clock.elapsedTime
+    meshRef.current.position.y = Math.sin(t * 1.4) * 0.04
+  })
 
   return (
     <group>
@@ -23,11 +34,9 @@ export default function Avatar() {
         <circleGeometry args={[0.45, 16]} />
         <meshStandardMaterial color="#000000" transparent opacity={0.45} roughness={1} />
       </mesh>
-      {/* The billboarded sprite — uses standardMaterial so sun affects it,
-          slight emissive so it doesn't go fully dark in shadows. lockY so
-          it stays upright when the camera tilts. */}
+      {/* Billboarded sprite, slight idle bob inside the billboard */}
       <Billboard position={pos} follow={true} lockY>
-        <mesh castShadow>
+        <mesh ref={meshRef} castShadow>
           <planeGeometry args={[width, height]} />
           <meshStandardMaterial
             map={tex}

@@ -2,6 +2,10 @@
 // door wreath, bird feeder, small dinghy at pond. These props sell
 // "someone lives here every day" beyond just "scene of objects."
 
+import { useRef } from 'react'
+import * as THREE from 'three'
+import { useFrame } from '@react-three/fiber'
+
 const WOOD          = '#8E6A45'
 const WOOD_DARK     = '#5D452B'
 const WOOD_LIGHT    = '#A88560'
@@ -17,6 +21,27 @@ const ROPE          = '#A48B6E'
 const METAL_RED     = '#8B4848'  // muted red so mailbox isn't a competing hot-spot
 const METAL_FLAG    = '#A03030'
 const SEED_BROWN    = '#7A5B3C'
+
+// Single swaying garment for clothesline — sway pivots from pinch point
+function SwayingGarment({ cx, color, w, h, phase }: { cx: number; color: string; w: number; h: number; phase: number }) {
+  const ref = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    if (!ref.current) return
+    ref.current.rotation.z = Math.sin(s.clock.elapsedTime * 1.2 + phase) * 0.08
+  })
+  return (
+    <group ref={ref} position={[cx, 1.42, 0]}>
+      <mesh position={[0, 0.04, 0]}>
+        <boxGeometry args={[0.04, 0.04, 0.04]} />
+        <meshStandardMaterial color={WOOD_LIGHT} />
+      </mesh>
+      <mesh position={[0, -h / 2, 0]} castShadow>
+        <boxGeometry args={[w, h, 0.04]} />
+        <meshStandardMaterial color={color} roughness={0.9} />
+      </mesh>
+    </group>
+  )
+}
 
 function VegetableGarden() {
   // Raised bed with rows of carrots + tomatoes near cabin (west side)
@@ -160,25 +185,21 @@ function Clothesline() {
           <meshStandardMaterial color={FABRIC_BLUE} roughness={0.92} />
         </mesh>
       </group>
-      {/* 4 hanging items — pinch wide top, drape bottom */}
+      {/* 4 hanging items — sway gently in breeze */}
       {[
-        [-0.85, FABRIC_BLUE, 0.28, 0.36],
-        [-0.25, FABRIC_CREAM, 0.32, 0.4],
-        [ 0.3,  FABRIC_GREEN, 0.3, 0.34],
-        [ 0.85, FABRIC_BLUE, 0.26, 0.38],
-      ].map(([cx, color, w, h], i) => (
-        <group key={`cl${i}`} position={[cx as number, 1.42, 0]}>
-          {/* Clothespin */}
-          <mesh position={[0, 0.04, 0]}>
-            <boxGeometry args={[0.04, 0.04, 0.04]} />
-            <meshStandardMaterial color={WOOD_LIGHT} />
-          </mesh>
-          {/* Garment */}
-          <mesh position={[0, -(h as number) / 2, 0]} castShadow>
-            <boxGeometry args={[w as number, h as number, 0.04]} />
-            <meshStandardMaterial color={color as string} roughness={0.9} />
-          </mesh>
-        </group>
+        [-0.85, FABRIC_BLUE, 0.28, 0.36, 0],
+        [-0.25, FABRIC_CREAM, 0.32, 0.4, 0.6],
+        [ 0.3,  FABRIC_GREEN, 0.3, 0.34, 1.2],
+        [ 0.85, FABRIC_BLUE, 0.26, 0.38, 1.8],
+      ].map(([cx, color, w, h, phase], i) => (
+        <SwayingGarment
+          key={`cl${i}`}
+          cx={cx as number}
+          color={color as string}
+          w={w as number}
+          h={h as number}
+          phase={phase as number}
+        />
       ))}
     </group>
   )

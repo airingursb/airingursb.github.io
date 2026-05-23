@@ -100,10 +100,8 @@ export default function App() {
       <Critters />
       <Atmospherics />
       <Avatar />
-      <HotAirBalloon />
       <DistantIslands />
       <Campfire />
-      <Rainbow />
       <CloudShadows />
       <Lanterns />
       <ContactShadowsLayer />
