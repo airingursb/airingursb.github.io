@@ -1,0 +1,109 @@
+// In-cabin Mochi chat — uses the same /api/ai-companion/chat endpoint
+// at chat.ursb.me that the nook companion UI uses. Streams replies via
+// SSE-style delta events.
+//
+// Mounted as a tab inside the chat ZonePanel when the user clicks the
+// cabin. Falls back to a static message if the API rejects (e.g. local
+// dev cross-origin 401).
+
+import { useEffect, useRef, useState } from 'react'
+
+interface Msg { role: 'user' | 'assistant'; text: string }
+
+const API = 'https://chat.ursb.me/api/ai-companion/chat'
+
+export default function ChatBox() {
+  const [msgs, setMsgs] = useState<Msg[]>([
+    { role: 'assistant', text: '坐下来吧。火堆暖暖的，要聊点什么？' },
+  ])
+  const [input, setInput] = useState('')
+  const [pending, setPending] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const histRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    histRef.current?.scrollTo(0, histRef.current.scrollHeight)
+  }, [msgs, pending])
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault()
+    const text = input.trim()
+    if (!text || pending) return
+    setInput('')
+    setMsgs((m) => [...m, { role: 'user', text }])
+    setPending(true)
+    setError(null)
+    try {
+      const res = await fetch(API, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ npc_id: 'npc_jue', message: text, world_3d: 'world_cabin' }),
+      })
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
+      if (!res.body) throw new Error('no body')
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let assembled = ''
+      let buf = ''
+      let started = false
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          const t = line.trim()
+          if (!t.startsWith('data:')) continue
+          try {
+            const parsed = JSON.parse(t.slice(5).trim())
+            if (parsed.type === 'delta' && typeof parsed.text === 'string') {
+              assembled += parsed.text
+              if (!started) {
+                started = true
+                setMsgs((m) => [...m, { role: 'assistant', text: assembled }])
+              } else {
+                setMsgs((m) => {
+                  const c = [...m]
+                  c[c.length - 1] = { role: 'assistant', text: assembled }
+                  return c
+                })
+              }
+            }
+          } catch {}
+        }
+      }
+      if (!assembled) throw new Error('empty stream')
+    } catch (err) {
+      const msg = (err as Error).message || 'unknown'
+      setError(msg.includes('401') ? '需要先登录（在 chat.ursb.me 登录后再来）' : `Mochi 走神了：${msg}`)
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <div className="world-chat">
+      <div className="world-chat-history" ref={histRef}>
+        {msgs.map((m, i) => (
+          <div key={i} className={`world-chat-msg world-chat-msg-${m.role}`}>{m.text}</div>
+        ))}
+        {pending && <div className="world-chat-msg world-chat-msg-assistant world-chat-pending">…</div>}
+        {error && <div className="world-chat-error">{error}</div>}
+      </div>
+      <form onSubmit={send} className="world-chat-form">
+        <input
+          className="world-chat-input"
+          type="text"
+          placeholder="跟 Mochi 说点什么…"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          maxLength={500}
+        />
+        <button type="submit" className="world-chat-send" disabled={pending}>→</button>
+      </form>
+    </div>
+  )
+}

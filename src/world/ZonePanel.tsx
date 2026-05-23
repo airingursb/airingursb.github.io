@@ -4,6 +4,7 @@
 
 import { useEffect, useState } from 'react'
 import type { Interaction } from './zones'
+import ChatBox from './ChatBox'
 
 interface BlogEntry { title: string; link: string; date: string }
 interface MusicArtist { name: string; plays: number; pct: number }
@@ -73,12 +74,7 @@ export default function ZonePanel({ initialData }: { initialData?: InitialData }
 function renderZoneContent(zone: Interaction, data?: InitialData) {
   switch (zone) {
     case 'chat':
-      return (
-        <div className="world-panel-message">
-          <p>木屋的火堆边，Mochi 在等你。</p>
-          <p className="world-panel-meta">（chat 入口待接，目前请用 <a href="/nook" className="world-panel-link">/nook</a>）</p>
-        </div>
-      )
+      return <ChatBox />
     case 'blog':
       return (
         <ul className="world-panel-list">
