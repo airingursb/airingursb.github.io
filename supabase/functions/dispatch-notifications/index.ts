@@ -1,16 +1,24 @@
 // supabase/functions/dispatch-notifications/index.ts
 //
+// V5 (2026-05-23): hardened after death-spiral incident — the V3 version
+// could hang 25-51s per call when pooler was saturated, causing pg_cron
+// to pile up http_post calls and bring the entire DB plane down.
+//
 // Aliyun cannot reach api.telegram.org (GFW). blog-api enqueues into
 // `notification_queue`; this Edge Function (running on non-China infra)
 // drains the queue and delivers messages to Telegram.
 //
 // Invocation paths:
 //   1. Database Webhook on INSERT INTO notification_queue → realtime per-row
-//   2. pg_cron every minute → batch sweep (handles quiet-hour digests,
-//      hourly noise digests, and any row missed by the webhook)
+//   2. pg_cron every minute (jobid=1) → batch sweep
+//   3. pg_cron every hour ?mode=hourly (jobid=2) → noise digest
 //
-// Auth: verify_jwt=false. Caller must present `x-dispatch-secret` matching
-// the DISPATCH_SECRET env var (set both on the function and on the SQL side).
+// V5 safety bounds (vs V3):
+//   - MAX_ROWS 200 → 50: caps worst-case sequential sends per tick
+//   - DEADLINE_MS 25s: function returns early; remaining rows next tick
+//   - TG_TIMEOUT_MS 10s → 5s: faster failure if Telegram congested
+//
+// Auth: verify_jwt=false. Caller must present `x-dispatch-secret`.
 
 import 'jsr:@supabase/functions-js/edge-runtime.d.ts';
 import { createClient } from '@supabase/supabase-js';
@@ -23,7 +31,10 @@ const NOISE_CHAT = Deno.env.get('BLOG_TG_NOISE_CHAT_ID') ?? MAIN_CHAT;
 const DISPATCH_SECRET = Deno.env.get('DISPATCH_SECRET') ?? '';
 
 const TZ_OFFSET_HOURS = 8;
-const QUIET_END_BJT = 9; // morning summary boundary
+const QUIET_END_BJT = 9;
+const MAX_ROWS = 50;
+const DEADLINE_MS = 25_000;
+const TG_TIMEOUT_MS = 5_000;
 
 type Row = {
   id: number;
@@ -45,7 +56,7 @@ async function sendToTelegram(channel: string, text: string): Promise<void> {
   if (!chatId) throw new Error('BLOG_TG_CHAT_ID unset');
 
   const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 10_000);
+  const timer = setTimeout(() => ctrl.abort(), TG_TIMEOUT_MS);
   try {
     const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
       method: 'POST',
@@ -149,7 +160,7 @@ async function deliverOne(row: Row, db = sb()): Promise<'sent' | 'skipped' | 'fa
  * Sweep all pending rows: scheduled_for <= now AND sent_at IS NULL.
  * Handles both live rows and morning-flush rows (collapsed into one summary).
  */
-async function processPending(): Promise<{ sent: number; skipped: number; failed: number }> {
+async function processPending(deadline: number): Promise<{ sent: number; skipped: number; failed: number; deadline_hit: boolean }> {
   const db = sb();
   const { data: rows, error } = await db
     .from('notification_queue')
@@ -157,13 +168,13 @@ async function processPending(): Promise<{ sent: number; skipped: number; failed
     .is('sent_at', null)
     .lte('scheduled_for', new Date().toISOString())
     .order('scheduled_for', { ascending: true })
-    .limit(200);
+    .limit(MAX_ROWS);
 
   if (error) {
     console.error('[dispatch] query error:', error.message);
-    return { sent: 0, skipped: 0, failed: 0 };
+    return { sent: 0, skipped: 0, failed: 0, deadline_hit: false };
   }
-  if (!rows?.length) return { sent: 0, skipped: 0, failed: 0 };
+  if (!rows?.length) return { sent: 0, skipped: 0, failed: 0, deadline_hit: false };
 
   const typed = rows as Row[];
   const flushBoundary = lastFlushBoundary();
@@ -173,14 +184,16 @@ async function processPending(): Promise<{ sent: number; skipped: number; failed
   const liveRows = typed.filter((r) => !flushRows.includes(r));
 
   let sent = 0, skipped = 0, failed = 0;
+  let deadline_hit = false;
   for (const r of liveRows) {
+    if (Date.now() > deadline) { deadline_hit = true; break; }
     const res = await deliverOne(r, db);
     if (res === 'sent') sent++;
     else if (res === 'skipped') skipped++;
     else failed++;
   }
 
-  if (flushRows.length > 0) {
+  if (!deadline_hit && flushRows.length > 0) {
     const summary = buildMorningSummary(flushRows);
     if (summary) {
       // Claim all flush rows first; only send if at least one was claimed.
@@ -203,7 +216,7 @@ async function processPending(): Promise<{ sent: number; skipped: number; failed
     }
   }
 
-  return { sent, skipped, failed };
+  return { sent, skipped, failed, deadline_hit };
 }
 
 /**
@@ -279,6 +292,7 @@ Deno.serve(async (req: Request) => {
 
   const url = new URL(req.url);
   const mode = url.searchParams.get('mode'); // 'hourly' | null
+  const deadline = Date.now() + DEADLINE_MS;
 
   let body: any = null;
   try { body = await req.json(); } catch { /* no body */ }
@@ -292,9 +306,8 @@ Deno.serve(async (req: Request) => {
     }
 
     // Webhook payload shape: { type:'INSERT', table, schema, record:{...} }
-    // We could try to deliver just that row, but processPending() is idempotent
-    // and handles batch + race conditions correctly, so just sweep.
-    const result = await processPending();
+    // processPending() is idempotent + handles race conditions; just sweep.
+    const result = await processPending(deadline);
     return new Response(JSON.stringify({ ok: true, mode: 'sweep', webhookRowId: body?.record?.id ?? null, ...result }), {
       headers: { 'content-type': 'application/json' },
     });
