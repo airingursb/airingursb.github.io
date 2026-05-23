@@ -348,7 +348,14 @@ async function openMemoryModal() {
       return
     }
     const body = await res.json()
-    const facts = (body.facts ?? []) as Array<{ id: number; key: string; value: string; observed_at: string }>
+    const facts = (body.facts ?? []) as Array<{
+      id: number;
+      key: string;
+      value: string;
+      observed_at: string;
+      importance?: number;
+      source_message_id?: number | null;
+    }>
     if (facts.length === 0) {
       list.innerHTML = `<li class="nook-memory-empty">${currentNpcName} 还没记下任何关于你的事。多聊聊看。</li>`
       return
@@ -361,7 +368,14 @@ async function openMemoryModal() {
 
 function renderMemoryList(
   list: HTMLElement,
-  facts: Array<{ id: number; key: string; value: string; observed_at: string }>,
+  facts: Array<{
+    id: number;
+    key: string;
+    value: string;
+    observed_at: string;
+    importance?: number;
+    source_message_id?: number | null;
+  }>,
 ) {
   list.innerHTML = ''
   for (const f of facts) {
@@ -371,11 +385,27 @@ function renderMemoryList(
 
     const meta = document.createElement('span')
     meta.className = 'nook-memory-key'
-    meta.textContent = f.key
+    // SHU-624: show importance as ★ count (1-10 → 1-3 stars buckets) so users
+    // can see why a fact survives or gets evicted.
+    const imp = typeof f.importance === 'number' ? f.importance : 5
+    const stars = imp >= 8 ? '★★★' : imp >= 5 ? '★★' : '★'
+    meta.textContent = `${stars} ${f.key}`
+    meta.title = `importance ${imp}/10`
 
     const value = document.createElement('p')
     value.className = 'nook-memory-value'
+    // SHU-625: hint when the source message is preserved (debug aid)
+    const sourceHint = f.source_message_id
+      ? ` ← #${f.source_message_id}`
+      : ''
     value.textContent = f.value
+    if (sourceHint) {
+      const src = document.createElement('span')
+      src.className = 'nook-memory-source'
+      src.textContent = sourceHint
+      src.title = '从哪条对话提取的（msg id，便于 debug）'
+      value.appendChild(src)
+    }
 
     const del = document.createElement('button')
     del.type = 'button'
