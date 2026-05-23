@@ -8,6 +8,7 @@
 import * as THREE from 'three'
 import { useMemo } from 'react'
 import { ISLAND_RIM, TERRAIN_BUMPS } from './zones'
+import { sharedNoiseMap } from './noiseTexture'
 
 const GRASS_LIGHT = '#9EC785'  // brighter daytime grass
 const GRASS_MID   = '#7FB36A'
@@ -88,12 +89,21 @@ export default function Island() {
     return arr
   }, [])
 
+  // Procedural noise normal for grass micro-detail
+  const noiseMap = useMemo(() => {
+    const t = sharedNoiseMap()
+    const cloned = t.clone()
+    cloned.repeat.set(8, 8)
+    cloned.needsUpdate = true
+    return cloned
+  }, [])
+
   // Cliff stone chunks — irregular layered pieces
   return (
     <group>
       {/* Grass top */}
       <mesh geometry={grassGeo} position={[0, 0, 0]} receiveShadow castShadow>
-        <meshStandardMaterial color={GRASS_LIGHT} roughness={0.95} flatShading />
+        <meshStandardMaterial color={GRASS_LIGHT} roughness={0.95} flatShading normalMap={noiseMap} normalScale={new THREE.Vector2(0.3, 0.3)} />
       </mesh>
 
       {/* Grass color patches scattered for variation */}

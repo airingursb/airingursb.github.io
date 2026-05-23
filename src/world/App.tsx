@@ -57,12 +57,13 @@ export default function App() {
       <Void />
 
       {/* === Lighting === */}
-      <hemisphereLight args={['#cfe6ff', '#8a7d5e', 0.7]} />
-      <ambientLight intensity={0.45} color="#fff6e0" />
+      <hemisphereLight args={['#cfe6ff', '#8a7d5e', 0.4]} />
+      <ambientLight intensity={0.28} color="#fff0d0" />
+      {/* Golden-hour sun — low + saturated warm orange */}
       <directionalLight
-        position={[18, 9, 6]}
-        intensity={2.0}
-        color="#FFD9A0"
+        position={[22, 5, 8]}
+        intensity={2.6}
+        color="#FFB870"
         castShadow
         shadow-mapSize={[3072, 3072]}
         shadow-camera-near={1}
@@ -120,7 +121,7 @@ export default function App() {
       <EffectComposer multisampling={0}>
         {/* DepthOfField — diorama-style miniature feel:
             keeps the cabin focal area sharp while softening distant cliffs */}
-        <DepthOfField focusDistance={0.012} focalLength={0.025} bokehScale={2.5} />
+        <DepthOfField focusDistance={0.025} focalLength={0.05} bokehScale={3.5} />
         {/* SSAO — crevice darkening at every junction */}
         <SSAO
           samples={20}

@@ -10,10 +10,10 @@ export default function Sky() {
   return (
     <>
       {/* Atmospheric sky — sun pos must MATCH App.tsx directionalLight pos
-          so shadows + sky disc agree (Sub-A iter-3 gap #3). */}
+          for shadow/sky cohesion. Golden-hour low angle. */}
       <DreiSky
         distance={450000}
-        sunPosition={[18, 9, 6]}
+        sunPosition={[22, 5, 8]}
         mieCoefficient={0.005}
         mieDirectionalG={0.85}
         rayleigh={1.8}
