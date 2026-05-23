@@ -45,7 +45,7 @@
 - **Ref:** attach `refs/panda.png`
 - **Prompt:** The Airing panda character (see attached reference) standing upright in a relaxed bipedal idle pose, facing the viewer directly. Front-three-quarter isometric view (camera is slightly above and slightly to the side, 45-degree angle). Arms hanging relaxed at sides. Calm soft expression looking ahead. Both feet visible on the ground. Sprite occupies roughly the lower 80% of the canvas vertically. Transparent background, no ground shadow.
 
-### B02 — Avatar idle, facing right (east)  `[ ]`
+### B02 — Avatar idle, facing right (east)  `[x]`
 - **File:** `output/character/B02-idle-east.png`
 - **Size:** 256×256 px
 - **Ref:** attach `refs/panda.png`
