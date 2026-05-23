@@ -70,7 +70,7 @@
 > 这些是"作品展示区"的核心 prop。玩家走到附近会触发对应类别的作品列表面板。
 > **每个都比角色稍大或同高**，作为环境锚点。
 
-### C01 — Cozy bookshelf (BLOG)  `[ ]`
+### C01 — Cozy bookshelf (BLOG)  `[x]`
 - **File:** `output/buildings/C01-bookshelf.png`
 - **Size:** 256×256 px
 - **Prompt:** A warm wooden bookshelf, isometric 45-degree view, 3 shelves stacked tall. Rows of colorful book spines (assorted warm-tone covers — terracotta, cream, dusty olive, faded teal). A small framed photo and a tiny potted succulent on top. Aged oak wood with soft grain. Looks inviting and lived-in, like a personal library. Transparent background, no ground shadow.
