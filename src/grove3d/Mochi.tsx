@@ -94,38 +94,100 @@ export default function Mochi() {
     >
       <CapsuleCollider args={[0.4, 0.4]} />
       <group ref={visual}>
-        {/* Body — chubbier, taller than player */}
-        <mesh position={[0, 0, 0]} castShadow>
-          <capsuleGeometry args={[0.4, 0.7, 8, 16]} />
+        {/* High-poly bear — chubbier + larger than player species, distinct identity */}
+
+        {/* Body capsule (32 cap × 48 radial = ~3.5k tris) */}
+        <mesh position={[0, 0, 0]} castShadow receiveShadow>
+          <capsuleGeometry args={[0.4, 0.7, 32, 48]} />
           <meshStandardMaterial color="#523018" roughness={0.85} />
         </mesh>
-        {/* Head */}
+
+        {/* Lighter belly patch — Heap Plaza ornament density */}
+        <mesh position={[0, 0, 0.36]} castShadow>
+          <sphereGeometry args={[0.3, 28, 22]} />
+          <meshStandardMaterial color="#7a4828" roughness={0.85} />
+        </mesh>
+
+        {/* Head (high-res 64×48 = ~6k tris) */}
         <mesh position={[0, 0.78, 0]} castShadow>
-          <sphereGeometry args={[0.34, 16, 12]} />
+          <sphereGeometry args={[0.36, 64, 48]} />
           <meshStandardMaterial color="#523018" roughness={0.85} />
         </mesh>
-        {/* Round bear ears */}
-        <mesh position={[-0.22, 1.0, 0]} castShadow>
-          <sphereGeometry args={[0.13, 12, 8]} />
-          <meshStandardMaterial color="#3a1a08" roughness={0.85} />
-        </mesh>
-        <mesh position={[0.22, 1.0, 0]} castShadow>
-          <sphereGeometry args={[0.13, 12, 8]} />
-          <meshStandardMaterial color="#3a1a08" roughness={0.85} />
-        </mesh>
-        {/* Snout (lighter patch) */}
-        <mesh position={[0, 0.72, 0.28]} castShadow>
-          <sphereGeometry args={[0.16, 12, 8]} />
+
+        {/* Round bear ears with inner pads */}
+        {[-1, 1].map((side) => (
+          <group key={side} position={[side * 0.25, 1.02, 0]}>
+            <mesh castShadow>
+              <sphereGeometry args={[0.14, 32, 24]} />
+              <meshStandardMaterial color="#3a1a08" roughness={0.85} />
+            </mesh>
+            <mesh position={[0, 0, 0.025]}>
+              <sphereGeometry args={[0.09, 24, 18]} />
+              <meshStandardMaterial color="#7a3838" roughness={0.85} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Snout protrusion + nose */}
+        <mesh position={[0, 0.7, 0.3]} castShadow>
+          <sphereGeometry args={[0.17, 24, 20]} />
           <meshStandardMaterial color="#a07050" roughness={0.85} />
         </mesh>
-        {/* Scarf — small narrative detail */}
-        <mesh position={[0, 0.45, 0]} castShadow>
-          <torusGeometry args={[0.38, 0.1, 8, 16]} />
+        <mesh position={[0, 0.74, 0.42]} castShadow>
+          <sphereGeometry args={[0.045, 16, 12]} />
+          <meshStandardMaterial color="#0a0606" roughness={0.3} />
+        </mesh>
+
+        {/* Eyes (two contemplative dots) */}
+        {[-1, 1].map((side) => (
+          <group key={side} position={[side * 0.13, 0.86, 0.31]}>
+            <mesh castShadow>
+              <sphereGeometry args={[0.045, 16, 12]} />
+              <meshStandardMaterial color="#f8efe0" roughness={0.3} />
+            </mesh>
+            <mesh position={[0, 0, 0.025]}>
+              <sphereGeometry args={[0.025, 12, 10]} />
+              <meshStandardMaterial color="#1a0808" roughness={0.2} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Subtle brows give him a "thinking" look */}
+        {[-1, 1].map((side) => (
+          <mesh key={side} position={[side * 0.13, 0.93, 0.31]} rotation={[0, 0, side * 0.25]} castShadow>
+            <boxGeometry args={[0.07, 0.012, 0.012]} />
+            <meshStandardMaterial color="#3a1a08" roughness={0.85} />
+          </mesh>
+        ))}
+
+        {/* 4 legs (high-res cylinders) */}
+        {[
+          [-0.16, -0.35,  0.16], [0.16, -0.35,  0.16],
+          [-0.16, -0.35, -0.16], [0.16, -0.35, -0.16],
+        ].map(([x, y, z], i) => (
+          <mesh key={i} position={[x, y, z]} castShadow>
+            <cylinderGeometry args={[0.13, 0.15, 0.3, 20]} />
+            <meshStandardMaterial color="#3a1a08" roughness={0.85} />
+          </mesh>
+        ))}
+
+        {/* Scarf — wraps neck (torus + fold flaps), narrative detail */}
+        <mesh position={[0, 0.5, 0]} castShadow>
+          <torusGeometry args={[0.39, 0.085, 16, 32]} />
           <meshStandardMaterial color="#7a3838" roughness={0.7} />
+        </mesh>
+        {/* Scarf hanging tail */}
+        <mesh position={[0.18, 0.32, 0.18]} rotation={[0.2, 0.5, 0.1]} castShadow>
+          <boxGeometry args={[0.08, 0.32, 0.04]} />
+          <meshStandardMaterial color="#7a3838" roughness={0.7} />
+        </mesh>
+        <mesh position={[0.22, 0.18, 0.2]} rotation={[0.3, 0.5, 0.05]} castShadow>
+          <boxGeometry args={[0.08, 0.06, 0.045]} />
+          <meshStandardMaterial color="#5a2828" roughness={0.65} />
         </mesh>
 
         {/* Name billboard */}
-        <Billboard position={[0, 1.6, 0]}>
+        <Billboard position={[0, 1.5, 0]}>
           <Text fontSize={0.2} color="#f4ead5" outlineWidth={0.014} outlineColor="#2a1810" anchorY="bottom">
             Mochi
           </Text>
