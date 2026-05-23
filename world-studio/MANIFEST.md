@@ -27,7 +27,7 @@
 - **Size:** 128×128 px
 - **Prompt:** A single seamless isometric shallow water tile, 128×128 pixels. Misty teal water surface with very gentle painted ripples (concentric soft circles), one or two pale highlight reflections suggesting a sky above. Soft and dreamy, not photoreal. Diamond-shaped tile only, transparent elsewhere. Must tile seamlessly.
 
-### A05 — Sandy dirt tile  `[ ]`
+### A05 — Sandy dirt tile  `[x]`
 - **File:** `output/tiles/A05-sand.png`
 - **Size:** 128×128 px
 - **Prompt:** A single seamless isometric sandy dirt path tile, 128×128 pixels. Warm sandy-beige soil with a few tiny pebbles and a hint of grass at one corner. Hand-painted soft texture. Diamond-shaped tile only, transparent elsewhere. Must tile seamlessly.
