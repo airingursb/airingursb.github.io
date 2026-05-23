@@ -39,6 +39,18 @@ jobs:
         env:
           ADMIN_TOKEN: ${{ secrets.BLOG_API_ADMIN_TOKEN }}
 
+      # SHU-598: backfill embeddings for facts/episodes that were written
+      # with embedding=NULL because they hit the per-NPC daily quota.
+      # Idempotent — only touches rows where embedding IS NULL.
+      - name: Backfill missing embeddings (SHU-598)
+        if: success() || failure()
+        continue-on-error: true
+        run: |
+          curl -fsS -X POST -H "Authorization: Bearer ${ADMIN_TOKEN}" \
+            https://chat.ursb.me/api/admin/companion/backfill-embeddings
+        env:
+          ADMIN_TOKEN: ${{ secrets.BLOG_API_ADMIN_TOKEN }}
+
       - name: NPC initiative letters (Mon/Thu only)
         if: github.event.schedule == '3 1 * * *' && (env.WEEKDAY == '1' || env.WEEKDAY == '4')
         continue-on-error: true
