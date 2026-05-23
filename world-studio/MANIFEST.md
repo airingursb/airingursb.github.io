@@ -7,7 +7,7 @@
 
 ## A · Ground Tiles (5 张 · 128×128 PNG · 透明背景)
 
-### A01 — Grass tile  `[ ]`
+### A01 — Grass tile  `[x]`
 - **File:** `output/tiles/A01-grass.png`
 - **Size:** 128×128 px
 - **Prompt:** A single seamless isometric grass tile, 128×128 pixels, viewed from above at 45-degree angle. Soft sage-green grass blades with subtle hand-painted texture, a few darker moss patches and one or two tiny yellow wildflowers for variation. Top-down rhombus shape filling the canvas. Transparent background (NOT a square — only the diamond-shaped tile area is opaque). Must tile seamlessly when placed next to copies of itself on all 4 sides.
