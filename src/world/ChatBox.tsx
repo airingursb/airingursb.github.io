@@ -20,10 +20,14 @@ export default function ChatBox() {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const histRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     histRef.current?.scrollTo(0, histRef.current.scrollHeight)
   }, [msgs, pending])
+
+  // Abort any in-flight stream when this component unmounts (panel close)
+  useEffect(() => () => { abortRef.current?.abort() }, [])
 
   async function send(e: React.FormEvent) {
     e.preventDefault()
@@ -33,12 +37,15 @@ export default function ChatBox() {
     setMsgs((m) => [...m, { role: 'user', text }])
     setPending(true)
     setError(null)
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
     try {
       const res = await fetch(API, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ npc_id: 'npc_jue', message: text, world_3d: 'world_cabin' }),
+        signal: ctrl.signal,
       })
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
       if (!res.body) throw new Error('no body')
@@ -77,10 +84,12 @@ export default function ChatBox() {
       }
       if (!assembled) throw new Error('empty stream')
     } catch (err) {
+      if ((err as Error).name === 'AbortError') return  // panel closed mid-stream
       const msg = (err as Error).message || 'unknown'
       setError(msg.includes('401') ? '需要先登录（在 chat.ursb.me 登录后再来）' : `Mochi 走神了：${msg}`)
     } finally {
       setPending(false)
+      abortRef.current = null
     }
   }
 

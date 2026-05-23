@@ -48,6 +48,7 @@ import CloudShadows from './CloudShadows'
 import ZoneHitboxes from './ZoneHitboxes'
 import MochiNPC from './MochiNPC'
 import ZoneHints from './ZoneHints'
+import AmbientFX from './AmbientFX'
 // Sub-A iter-10: Rainbow + HotAirBalloon + Scarecrow cut to protect cabin
 // as the visual hero. (Files left on disk for easy re-enable.)
 
@@ -135,6 +136,7 @@ export default function App() {
         <ContactShadowsLayer />
         <ZoneHitboxes />
         <ZoneHints />
+        <AmbientFX />
       </Suspense>
 
       {/* === Camera — slow rotation, raised target so cabin roof + gazebo are centered === */}

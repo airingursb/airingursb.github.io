@@ -12,11 +12,11 @@ const AVATAR_URL = '/world/sprites/character/B01-idle-south.png'
 export default function Avatar() {
   const tex = useTexture(AVATAR_URL)
   const aspect = 1.0
-  const height = 1.4
+  const height = 1.6
   const width = height * aspect
 
   // Standing in front of cabin door (cabin pos [-2, -1])
-  const baseY = 0.95
+  const baseY = 1.05
   const pos: [number, number, number] = [-2.0, baseY, 0.5]
   const meshRef = useRef<THREE.Mesh>(null)
 

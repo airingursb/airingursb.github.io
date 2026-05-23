@@ -15,7 +15,8 @@ const SCARF_DARK   = '#7E2424'
 
 export default function MochiNPC() {
   // Position: just east of cabin door (cabin at [-2, -1], door faces +Z south)
-  const pos: [number, number, number] = [-0.6, 0.6, 1.4]
+  // Slightly forward + larger so he's a visible companion to the avatar
+  const pos: [number, number, number] = [-0.6, 0.75, 1.6]
   const headRef = useRef<THREE.Group>(null)
   const bodyRef = useRef<THREE.Group>(null)
 
