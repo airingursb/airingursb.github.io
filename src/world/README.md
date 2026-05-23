@@ -106,6 +106,34 @@ Detection: `prefers-reduced-motion` / mobile UA / CPU cores ≤ 4 / RAM ≤ 4
 - **Change a building** → edit the corresponding component file. Each is
   self-contained; no cross-imports.
 
+## Iteration log
+
+Built across 35+ sub-agent-reviewed iterations. Key beats:
+1-5: blockout, geometry, materials, layout
+6-12: Sub-A critiques applied — organic foliage, sun cohesion, scale anchors
+13-17: composition discipline cut (rainbow / balloon / scarecrow removed)
+18-21: avatar / Mochi NPC / zone interaction layer + real data
+22-26: theme toggle, camera reset, photo snap, mobile media queries
+27-30: typed event bus, ESC/backdrop close, panel toggle, perf gating
+31-35: ErrorBoundary, theme persist, iOS focus fix, loader splash
+
+Every commit has the iter number for traceability.
+
+## Production-readiness checklist
+
+- [x] Build clean (no TS errors)
+- [x] Mobile responsive (max-width 720 media query)
+- [x] iPhone notch safe-area for buttons
+- [x] Adaptive perf tier (low/medium/high)
+- [x] ErrorBoundary fallback
+- [x] Suspense + WorldLoader splash
+- [x] Real data wired (articles + music + highlights)
+- [x] Chat with graceful 401 + AbortController
+- [x] Theme persistence
+- [x] ZoneHints localStorage
+- [x] ESC + backdrop click + same-zone toggle to close
+- [x] A11y labels on chat input + send button
+
 ## Building / running
 
 ```
