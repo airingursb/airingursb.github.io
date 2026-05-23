@@ -85,7 +85,7 @@
 - **Size:** 256×256 px
 - **Prompt:** A small wooden side table with a vintage vinyl record player on top, isometric 45-degree view. Record is mid-spin (subtle motion blur lines around the edge). A few vinyl record sleeves leaning against the table's leg. Warm amber light glowing from inside the player. Cozy and slightly nostalgic. Transparent background, no ground shadow.
 
-### C04 — Reading nook armchair (READING)  `[ ]`
+### C04 — Reading nook armchair (READING)  `[x]`
 - **File:** `output/buildings/C04-armchair.png`
 - **Size:** 256×256 px
 - **Prompt:** A plush over-stuffed armchair upholstered in soft dusty-rose linen, isometric 45-degree view. An open book lies face-down on the seat (suggesting "just got up"). A folded knit blanket draped over one arm. A small side table next to it holds a steaming cup of tea. Warm and inviting, the kind of chair you sink into for hours. Transparent background, no ground shadow.
