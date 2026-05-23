@@ -9,18 +9,32 @@ import { ZONES } from './zones'
 
 const HINT_COLOR = '#FFD9A8'
 
+// LocalStorage key so returning visitors don't see the hints again
+const SEEN_KEY = 'world-hints-seen-v1'
+
 export default function ZoneHints() {
-  const [show, setShow] = useState(true)
+  const [show, setShow] = useState(() => {
+    if (typeof window === 'undefined') return false
+    try { return localStorage.getItem(SEEN_KEY) !== '1' } catch { return true }
+  })
+
   useEffect(() => {
-    const id = setTimeout(() => setShow(false), 12000)
+    if (!show) return
+    const id = setTimeout(() => {
+      setShow(false)
+      try { localStorage.setItem(SEEN_KEY, '1') } catch {}
+    }, 12000)
     // Also hide once any zone is clicked
-    const onClick = () => setShow(false)
+    const onClick = () => {
+      setShow(false)
+      try { localStorage.setItem(SEEN_KEY, '1') } catch {}
+    }
     window.addEventListener('world-zone-click', onClick)
     return () => {
       clearTimeout(id)
       window.removeEventListener('world-zone-click', onClick)
     }
-  }, [])
+  }, [show])
 
   return (
     <group>

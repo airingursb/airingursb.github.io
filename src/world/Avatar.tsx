@@ -45,7 +45,7 @@ export default function Avatar() {
             side={THREE.DoubleSide}
             emissive="#ffffff"
             emissiveMap={tex}
-            emissiveIntensity={0.25}
+            emissiveIntensity={0.15}
             roughness={0.9}
           />
         </mesh>

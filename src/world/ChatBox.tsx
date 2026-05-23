@@ -106,12 +106,19 @@ export default function ChatBox() {
         <input
           className="world-chat-input"
           type="text"
+          aria-label="Send a message to Mochi"
           placeholder="跟 Mochi 说点什么…"
+          autoComplete="off"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           maxLength={500}
         />
-        <button type="submit" className="world-chat-send" disabled={pending}>→</button>
+        <button
+          type="submit"
+          className="world-chat-send"
+          disabled={pending}
+          aria-label="Send message"
+        >→</button>
       </form>
     </div>
   )
