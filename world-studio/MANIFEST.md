@@ -101,7 +101,7 @@
 
 > 用来填充场景空地，避免空旷感。
 
-### D01 — Pine tree  `[ ]`
+### D01 — Pine tree  `[x]`
 - **File:** `output/decorations/D01-pine.png`
 - **Size:** 128×128 px
 - **Prompt:** A medium-sized pine tree, isometric 45-degree view. Soft layered triangular canopy of muted sage-green needles in 3 distinct tiers. A small visible patch of warm brown trunk at the base. Hand-painted, slightly stylized. Sprite occupies the full height of the canvas. Transparent background, no ground shadow.
