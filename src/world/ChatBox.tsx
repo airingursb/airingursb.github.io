@@ -14,7 +14,7 @@ const API = 'https://chat.ursb.me/api/ai-companion/chat'
 
 export default function ChatBox() {
   const [msgs, setMsgs] = useState<Msg[]>([
-    { role: 'assistant', text: '坐下来吧。火堆暖暖的，要聊点什么？' },
+    { role: 'assistant', text: '坐下来吧。火堆暖暖的——今天想聊点什么？最近读到的、写到的、想到的，都行。' },
   ])
   const [input, setInput] = useState('')
   const [pending, setPending] = useState(false)
@@ -115,7 +115,8 @@ export default function ChatBox() {
       <div className="world-chat-history" ref={histRef}>
         {msgs.map((m, i) => (
           <div key={i} className={`world-chat-msg world-chat-msg-${m.role}`}>
-            {m.text.includes('nook')
+            {/* Only linkify Mochi messages, not what the user typed back */}
+            {m.role === 'assistant' && m.text.includes('nook')
               ? m.text.split('nook').flatMap((part, j, arr) =>
                   j === arr.length - 1
                     ? [part]
