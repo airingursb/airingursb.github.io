@@ -6,18 +6,18 @@
 import { Sky as DreiSky, Cloud, Clouds } from '@react-three/drei'
 import * as THREE from 'three'
 
-export default function Sky() {
+export default function Sky({ theme = 'day' }: { theme?: 'day' | 'dusk' }) {
+  const sunPos: [number, number, number] = theme === 'day' ? [20, 11, 9] : [18, 4, 14]
+  // Dusk: lower sun + more turbidity + more rayleigh = redder horizon
   return (
     <>
-      {/* Atmospheric sky — sun pos must MATCH App.tsx directionalLight pos
-          for shadow/sky cohesion. Golden-hour low angle. */}
       <DreiSky
         distance={450000}
-        sunPosition={[20, 11, 9]}
-        mieCoefficient={0.005}
-        mieDirectionalG={0.85}
-        rayleigh={1.8}
-        turbidity={6}
+        sunPosition={sunPos}
+        mieCoefficient={theme === 'day' ? 0.005 : 0.01}
+        mieDirectionalG={theme === 'day' ? 0.85 : 0.92}
+        rayleigh={theme === 'day' ? 1.8 : 3.5}
+        turbidity={theme === 'day' ? 6 : 10}
       />
 
       {/* Puffy clouds — drifting white masses far away */}

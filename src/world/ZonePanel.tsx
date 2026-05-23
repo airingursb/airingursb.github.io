@@ -32,12 +32,19 @@ export default function ZonePanel({ initialData }: { initialData?: InitialData }
   useEffect(() => {
     function handler(e: Event) {
       const detail = (e as CustomEvent).detail
-      setClosing(false)
-      setZone(detail.kind as Interaction)
+      const next = detail.kind as Interaction
+      // If a different zone is already open, animate out first then swap
+      if (zone && zone !== next) {
+        setClosing(true)
+        setTimeout(() => { setZone(next); setClosing(false) }, 180)
+      } else {
+        setClosing(false)
+        setZone(next)
+      }
     }
     window.addEventListener('world-zone-click', handler)
     return () => window.removeEventListener('world-zone-click', handler)
-  }, [])
+  }, [zone])
 
   // ESC key to close (deps array so it doesn't re-register every render)
   useEffect(() => {

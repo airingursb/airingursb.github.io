@@ -155,7 +155,7 @@ export default function App() {
       {/* Fog tinted to theme */}
       <fog attach="fog" args={[theme === 'day' ? '#F4E4C8' : '#D89A78', 55, 140]} />
 
-      <Sky />
+      <Sky theme={theme} />
       <Void />
 
       <ThemeAwareLights theme={theme} />

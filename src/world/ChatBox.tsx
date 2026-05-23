@@ -86,7 +86,20 @@ export default function ChatBox() {
     } catch (err) {
       if ((err as Error).name === 'AbortError') return  // panel closed mid-stream
       const msg = (err as Error).message || 'unknown'
-      setError(msg.includes('401') ? '需要先登录（在 chat.ursb.me 登录后再来）' : `Mochi 走神了：${msg}`)
+      // 401 is the common "not logged in" case for first-time visitors.
+      // Don't expose the raw error — give a friendly seed-reply hinting at
+      // the path forward, and offer a fallback /nook link.
+      if (msg.includes('401')) {
+        setMsgs((m) => [
+          ...m,
+          {
+            role: 'assistant',
+            text: '（我看着你，没说话——你还没在这个世界登记过名字。要不要先到 nook 那边坐一坐？回头我们再聊。）',
+          },
+        ])
+      } else {
+        setError(`Mochi 走神了：${msg}`)
+      }
     } finally {
       setPending(false)
       abortRef.current = null
