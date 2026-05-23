@@ -20,11 +20,18 @@ export default function ChatBox() {
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const histRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     histRef.current?.scrollTo(0, histRef.current.scrollHeight)
   }, [msgs, pending])
+
+  // Auto-focus input when chat panel opens
+  useEffect(() => {
+    const id = setTimeout(() => inputRef.current?.focus(), 200)
+    return () => clearTimeout(id)
+  }, [])
 
   // Abort any in-flight stream when this component unmounts (panel close)
   useEffect(() => () => { abortRef.current?.abort() }, [])
@@ -130,6 +137,7 @@ export default function ChatBox() {
       </div>
       <form onSubmit={send} className="world-chat-form">
         <input
+          ref={inputRef}
           className="world-chat-input"
           type="text"
           aria-label="Send a message to Mochi"
