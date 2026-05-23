@@ -1878,6 +1878,64 @@ StyleRecalc(node)       =  ∩<sub>r ∈ rules</sub>  (r touches node) → O(mat
       <span class="lang-en-only">① "<em>Why doesn't hover stutter?</em>" — InvalidationSet only flags one element dirty, no full-page recompute. ② "<em>Is color-mix expensive?</em>" — runs in stage ⑥; ~5 µs for these 4 lines. ③ "<em>Does the transition use GPU?</em>" — background-color transitions <em>can't</em> offload (Ch24); stay on the main thread but are cheap. ④ "<em>How does @container know container size?</em>" — reads the layout's contentBoxSize during stage ⑤ · see Ch26. The next 20 chapters dissect every cell down to source-line.</span>
     </div>
 
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg">
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">color-mix(in &lt;color-space&gt;, red, blue) · DIFFERENT SPACES, DIFFERENT MIDPOINTS</text>
+
+          <!-- 4 gradient bars showing color-mix in 4 different color spaces -->
+          <text x="40" y="60" font-family="JetBrains Mono" font-size="9" fill="#15171c">srgb (gamma encoded):</text>
+          <defs>
+            <linearGradient id="srgb_grad" x1="0%" x2="100%">
+              <stop offset="0%" stop-color="rgb(255,0,0)"/>
+              <stop offset="50%" stop-color="rgb(128,0,128)"/>
+              <stop offset="100%" stop-color="rgb(0,0,255)"/>
+            </linearGradient>
+            <linearGradient id="srgblin_grad" x1="0%" x2="100%">
+              <stop offset="0%" stop-color="rgb(255,0,0)"/>
+              <stop offset="50%" stop-color="rgb(188,0,188)"/>
+              <stop offset="100%" stop-color="rgb(0,0,255)"/>
+            </linearGradient>
+            <linearGradient id="oklch_grad" x1="0%" x2="100%">
+              <stop offset="0%" stop-color="rgb(255,0,0)"/>
+              <stop offset="50%" stop-color="rgb(180,100,200)"/>
+              <stop offset="100%" stop-color="rgb(0,0,255)"/>
+            </linearGradient>
+            <linearGradient id="lab_grad" x1="0%" x2="100%">
+              <stop offset="0%" stop-color="rgb(255,0,0)"/>
+              <stop offset="50%" stop-color="rgb(150,80,160)"/>
+              <stop offset="100%" stop-color="rgb(0,0,255)"/>
+            </linearGradient>
+          </defs>
+          <rect x="220" y="48" width="500" height="22" fill="url(#srgb_grad)" stroke="#15171c"/>
+          <text x="470" y="63" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#fdfbf3">midpoint = rgb(128, 0, 128) · gamma-bent → muddy</text>
+
+          <text x="40" y="100" font-family="JetBrains Mono" font-size="9" fill="#15171c">srgb-linear:</text>
+          <rect x="220" y="88" width="500" height="22" fill="url(#srgblin_grad)" stroke="#15171c"/>
+          <text x="470" y="103" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#fdfbf3">linear-light midpoint · less muddy</text>
+
+          <text x="40" y="140" font-family="JetBrains Mono" font-size="9" fill="#15171c">oklch (perceptual):</text>
+          <rect x="220" y="128" width="500" height="22" fill="url(#oklch_grad)" stroke="#15171c"/>
+          <text x="470" y="143" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#fdfbf3">perceptually uniform midpoint · clean</text>
+
+          <text x="40" y="180" font-family="JetBrains Mono" font-size="9" fill="#15171c">lab (CIE):</text>
+          <rect x="220" y="168" width="500" height="22" fill="url(#lab_grad)" stroke="#15171c"/>
+          <text x="470" y="183" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#fdfbf3">CIE perceptual · similar to oklch</text>
+
+          <!-- Note -->
+          <line x1="40" y1="210" x2="720" y2="210" stroke="#c7c4ba"/>
+          <text x="40" y="228" font-family="Inter" font-size="11" fill="#15171c">同样是"<em>50% red + 50% blue</em>",不同 color space 给的中点<em>差很多</em>。<strong>sRGB 是 gamma-encoded</strong>,直接 lerp 出灰暗污浊色;<strong>oklch / lab 是感知均匀</strong>,中点真的看起来"<em>居中</em>"。这就是 2024 加 color-mix 的目的: 让作者能<em>选</em>在哪个空间插值。</text>
+          <text x="40" y="248" font-family="Inter" font-size="11" fill="#15171c"><strong>实战</strong>: 几乎总是用 <code>color-mix(in oklch, ...)</code>,除非有<em>明确</em>的 srgb 兼容性需求。Tailwind 4 / Material 3 已默认 oklch。</text>
+          <text x="40" y="266" font-family="Inter" font-size="9" font-style="italic" fill="#767c87">Color mixing in non-uniform spaces (sRGB) was the dominant approach pre-2024 — and is the dominant source of "<em>why is my gradient muddy</em>" complaints.</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;28·1</span>
+        <span class="lang-zh-only"><code>color-mix(in &lt;space&gt;, red, blue)</code> 在 4 个色彩空间里的<em>同一</em>计算结果。<strong>sRGB</strong> gamma 编码非线性,中点是<em>污浊紫</em>;<strong>srgb-linear</strong> 在线性光空间插值,稍好但仍有色相偏移;<strong>oklch / lab</strong> 是<em>感知均匀</em>空间,中点真的看起来在中间。这就是 CSS Color 5 把 <code>in &lt;space&gt;</code> 设成<em>必选参数</em>的原因——直接用 sRGB 是<em>错</em>,但要让作者明确选择。</span>
+        <span class="figen">Fig 28·1 · <code>color-mix(in &lt;space&gt;, red, blue)</code> evaluated in 4 color spaces. <strong>sRGB</strong> is gamma-encoded → midpoint is <em>muddy purple</em>; <strong>srgb-linear</strong> mixes in linear-light space, slightly better but still has hue shift; <strong>oklch / lab</strong> are <em>perceptually uniform</em> — the midpoint actually looks centered. This is why CSS Color 5 made <code>in &lt;space&gt;</code> a <em>required</em> argument — sRGB mixing is wrong, but authors must make the choice explicitly.</span>
+      </figcaption>
+    </figure>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -2186,6 +2244,69 @@ StyleRecalc(node)       =  ∩<sub>r ∈ rules</sub>  (r touches node) → O(mat
         <li>No bad-string / bad-url · clean slice · feeds the parser (Ch7)</li>
       </ul>
     </aside>
+
+    <h3 class="sub lang-zh-only">真实的 ConsumeQualifiedRule 主循环</h3>
+    <h3 class="sub lang-en-only">Real ConsumeQualifiedRule loop</h3>
+
+    <pre class="code"><span class="cm">// core/css/parser/css_parser_impl.cc · simplified, the heart of CSS parsing</span>
+
+<span class="ty">StyleRule</span>* <span class="ty">CSSParserImpl</span>::<span class="fn">ConsumeQualifiedRule</span>(<span class="ty">CSSParserTokenStream</span>&amp; stream,
+                                              <span class="ty">AllowedRulesType</span> allowed) {
+  <span class="cm">// ① CONSUME THE PRELUDE (selector list, ending at "{" or ";")</span>
+  <span class="kw">const</span> <span class="ty">wtf_size_t</span> prelude_start = stream.<span class="fn">Offset</span>();
+  <span class="kw">while</span> (!stream.<span class="fn">AtEnd</span>() &amp;&amp;
+         stream.<span class="fn">UncheckedPeek</span>().<span class="fn">GetType</span>() != kLeftBraceToken) {
+    stream.<span class="fn">ConsumeIncludingWhitespace</span>();   <span class="cm">// build up selector tokens</span>
+  }
+
+  <span class="kw">if</span> (stream.<span class="fn">AtEnd</span>()) <span class="kw">return</span> <span class="kw">nullptr</span>;   <span class="cm">// no "{" found — invalid rule, discard</span>
+
+  <span class="cm">// ② PARSE THE PRELUDE INTO A SELECTOR LIST</span>
+  <span class="ty">CSSSelectorList</span>* selector_list = <span class="fn">CSSSelectorParser</span>::<span class="fn">ParseSelector</span>(
+      stream.<span class="fn">RangeUntilOffset</span>(prelude_start, stream.<span class="fn">Offset</span>()), context_);
+  <span class="kw">if</span> (!selector_list-&gt;<span class="fn">IsValid</span>()) {
+    <span class="cm">// invalid selector — drop the WHOLE rule incl. declarations · Ch9 forgiveness</span>
+    <span class="fn">ConsumeBlockContents</span>(stream, /*allow_nested=*/<span class="kw">false</span>);
+    <span class="kw">return</span> <span class="kw">nullptr</span>;
+  }
+
+  <span class="cm">// ③ CONSUME THE BLOCK "{ declarations }"</span>
+  <span class="ty">CSSParserTokenStream</span>::<span class="ty">BlockGuard</span> guard(stream);   <span class="cm">// auto-skip to matching "}"</span>
+
+  HeapVector&lt;<span class="ty">CSSPropertyValue</span>&gt; properties;
+  <span class="fn">ConsumeDeclarationList</span>(stream, properties);
+
+  <span class="cm">// ④ BUILD THE CSSStyleRule</span>
+  <span class="kw">return</span> <span class="ty">StyleRule</span>::<span class="fn">Create</span>(*selector_list,
+      <span class="ty">CSSPropertyValueSet</span>::<span class="fn">Create</span>(properties, context_-&gt;<span class="fn">Mode</span>()));
+}
+
+<span class="cm">// ConsumeDeclarationList loops over "ident: value;" until "}":</span>
+<span class="kw">void</span> <span class="ty">CSSParserImpl</span>::<span class="fn">ConsumeDeclarationList</span>(<span class="ty">CSSParserTokenStream</span>&amp; stream,
+                                            HeapVector&lt;<span class="ty">CSSPropertyValue</span>&gt;&amp; out) {
+  <span class="kw">while</span> (!stream.<span class="fn">AtEnd</span>()) {
+    <span class="kw">switch</span> (stream.<span class="fn">UncheckedPeek</span>().<span class="fn">GetType</span>()) {
+      <span class="kw">case</span> kWhitespaceToken: <span class="kw">case</span> kSemicolonToken:
+        stream.<span class="fn">UncheckedConsume</span>(); <span class="kw">break</span>;
+      <span class="kw">case</span> kIdentToken:
+        <span class="fn">ConsumeDeclaration</span>(stream, out, /*important_allowed=*/<span class="kw">true</span>);
+        <span class="kw">break</span>;
+      <span class="kw">case</span> kAtKeywordToken:
+        <span class="fn">ConsumeNestedRule</span>(stream, out);    <span class="cm">// CSS Nesting · Ch27</span>
+        <span class="kw">break</span>;
+      <span class="kw">default</span>:
+        <span class="cm">// drop bad token, resync at next ";" — Ch9</span>
+        <span class="fn">ConsumeErrorBlock</span>(stream); <span class="kw">break</span>;
+    }
+  }
+}</pre>
+
+    <div class="note good">
+      <span class="ntag lang-zh-only">parser 状态机的真实尺寸</span>
+      <span class="ntag lang-en-only">The parser's real footprint</span>
+      <span class="lang-zh-only">完整 <code>css_parser_impl.cc</code> 是 <strong>3 600 行</strong> C++,跟 30 年 CSS spec 的演化轨迹完全平行。每个新特性(@layer / @scope / @container / nesting)都给 parser 加一个或几个 switch case。但<em>核心循环</em>(consume rule → consume declaration list)从 1996 年至今几乎没变——只是分支越来越多。</span>
+      <span class="lang-en-only">The full <code>css_parser_impl.cc</code> is <strong>3 600 lines</strong> of C++, tracking 30 years of CSS spec evolution. Each new feature (@layer / @scope / @container / nesting) adds one or a few switch cases. But the <em>core loop</em> (consume rule → consume declaration list) has barely changed since 1996 — only the branches multiplied.</span>
+    </div>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -2659,6 +2780,74 @@ document.adoptedStyleSheets = [sheet2];           <span class="cm">// shadow-DOM
       <span class="lang-zh-only">1996 年 Web 上充满"<em>给 IE 写的 hack</em>"和"<em>未来 CSS 版本的新属性</em>"。如果 CSS 像 JS 那样 strict,任何一个不识别的属性会让<em>整页</em>失去样式——老浏览器看到 <code>border-radius: 4px</code> 直接挂。CSS 团队选了"<em>识别不了就跳过</em>"——这就是为什么<em>同一份样式表</em>可以在 IE6 和 Chrome 130 里<em>都跑出合理结果</em>。<strong>每个 CSS 新特性的引入都依赖这个</strong>: 旧浏览器看到 <code>color-mix(...)</code> 不认识就跳过,fallback 到前一行 <code>background: #6699cc</code>(渐进增强)。CSS 的整条向前兼容性都建立在 "<em>parse error never stops parsing</em>" 上。</span>
       <span class="lang-en-only">Web in 1996 was full of "<em>hacks for IE</em>" and "<em>properties from a future CSS version</em>". If CSS were strict like JS, one unrecognised property would kill the <em>entire page's</em> styling — old browsers seeing <code>border-radius: 4px</code> would crash. The CSS team chose "<em>skip what you can't parse</em>" — that's why <em>the same stylesheet</em> renders sensibly in both IE6 and Chrome 130. <strong>Every new CSS feature relies on this</strong>: old browsers see <code>color-mix(...)</code>, don't recognise it, skip it, fall back to the prior <code>background: #6699cc</code> (progressive enhancement). All of CSS's forward compatibility rests on "<em>parse error never stops parsing</em>".</span>
     </div>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="errArr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#15171c"/></marker>
+            <marker id="errRed" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b35a1f"/></marker>
+          </defs>
+
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">ERROR RECOVERY FSM · WHEN TO STOP DROPPING TOKENS</text>
+
+          <!-- Start node -->
+          <rect x="40" y="60" width="120" height="36" fill="#fdfbf3" stroke="#15171c" rx="3"/>
+          <text x="100" y="80" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#15171c">parsing OK</text>
+          <text x="100" y="92" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">accumulate tokens</text>
+
+          <!-- Error trigger -->
+          <path d="M160,78 L210,78" stroke="#b35a1f" stroke-width="1" marker-end="url(#errRed)"/>
+          <text x="185" y="71" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#b35a1f">bad token</text>
+
+          <!-- 4 recovery types based on context -->
+          <rect x="220" y="60" width="180" height="36" fill="#f0d4bc" stroke="#b35a1f" rx="3"/>
+          <text x="310" y="80" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">where am I?</text>
+          <text x="310" y="92" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#b35a1f">switch on context</text>
+
+          <!-- Branch: in declaration -->
+          <path d="M400,75 L450,75" stroke="#15171c" stroke-width="0.8" marker-end="url(#errArr)"/>
+          <text x="425" y="68" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">in decl</text>
+
+          <rect x="460" y="60" width="260" height="44" fill="#fdfbf3" stroke="#b35a1f" rx="3"/>
+          <text x="590" y="78" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">① skip to next ";"</text>
+          <text x="590" y="92" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">drop one declaration · resume rule</text>
+
+          <!-- Branch: in selector -->
+          <path d="M310,96 L310,130" stroke="#15171c" stroke-width="0.8" marker-end="url(#errArr)"/>
+          <text x="350" y="118" font-family="JetBrains Mono" font-size="8" fill="#15171c">in selector</text>
+
+          <rect x="220" y="130" width="280" height="44" fill="#fdfbf3" stroke="#b35a1f" rx="3"/>
+          <text x="360" y="148" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">② skip to matching "}"</text>
+          <text x="360" y="162" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">drop the whole rule (selector + declarations)</text>
+
+          <!-- Branch: in @-rule -->
+          <path d="M310,96 L310,200" stroke="#15171c" stroke-width="0.8" marker-end="url(#errArr)"/>
+          <text x="350" y="195" font-family="JetBrains Mono" font-size="8" fill="#15171c">in @-rule</text>
+
+          <rect x="220" y="200" width="280" height="44" fill="#fdfbf3" stroke="#b35a1f" rx="3"/>
+          <text x="360" y="218" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">③ skip to ";" or matching "}"</text>
+          <text x="360" y="232" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">drop the whole at-rule</text>
+
+          <!-- Branch: unclosed -->
+          <path d="M310,96 L310,270" stroke="#15171c" stroke-width="0.8" marker-end="url(#errArr)"/>
+          <text x="350" y="265" font-family="JetBrains Mono" font-size="8" fill="#15171c">unclosed string / paren</text>
+
+          <rect x="220" y="270" width="280" height="44" fill="#fdfbf3" stroke="#b35a1f" rx="3"/>
+          <text x="360" y="288" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">④ EOF — drop rest of file</text>
+          <text x="360" y="302" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">tokenizer emits BadStringToken / BadUrlToken</text>
+
+          <!-- Loop back to "parsing OK" -->
+          <path d="M460,82 Q150,30 100,60" stroke="#4a6b3e" stroke-width="1.2" stroke-dasharray="3 2" fill="none" marker-end="url(#errArr)"/>
+          <text x="280" y="40" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#4a6b3e">resync — continue parsing rest of file</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;09·1</span>
+        <span class="lang-zh-only">CSS 错误恢复的有限状态机。出错后,parser <em>看自己在哪</em>决定丢什么: declaration 错丢一句到 ";" · selector 错丢整条规则到 "}" · @-rule 错丢整个 at-rule · 未闭合 (string / paren) 直接 EOF 丢剩余文件。<em>关键</em>: 恢复后 parser <em>不停</em> · 跳过坏位置继续读 — 这就是 1996 Lie 和 Bos 写入 spec 的"<em>forgiveness</em>"教条,让 CSS 跨 30 年兼容。</span>
+        <span class="figen">Fig 09·1 · The error-recovery FSM. On bad token, parser <em>checks where it is</em>: bad declaration → drop to ";"; bad selector → drop whole rule to "}"; bad at-rule → drop entire at-rule; unclosed (string / paren) → EOF drops rest of file. <em>Critical</em>: parser <em>never stops</em> · skips and continues — this is the "<em>forgiveness</em>" doctrine Lie &amp; Bos wrote into spec in 1996, what makes CSS compatible across 30 years.</span>
+      </figcaption>
+    </figure>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -3150,6 +3339,70 @@ document.adoptedStyleSheets = [sheet2];           <span class="cm">// shadow-DOM
       <span class="lang-zh-only">注意 <code>kIndirectAdjacent (~)</code> 失败时返回 <strong>kSelectorFailsAllSiblings</strong>,而不是 <code>kSelectorFailsLocally</code>。这是 Blink 的一个剪枝优化: 一旦 "<code>X ~ Y</code>" 在<em>所有</em>前面兄弟中都没找到 X,那么<em>这条选择器对当前元素及其所有右侧兄弟都不会匹</em>——caller 收到这个返回会跳过整条兄弟链。这一个 enum 值 = 几个数量级的 selector match 加速。</span>
       <span class="lang-en-only">Notice that <code>kIndirectAdjacent (~)</code> failure returns <strong>kSelectorFailsAllSiblings</strong>, not <code>kSelectorFailsLocally</code>. This is a Blink pruning optimisation: once "<code>X ~ Y</code>" has failed to find X among <em>all</em> preceding siblings, the selector <em>cannot</em> match the current element or any of its later siblings — caller skips the entire sibling chain. One enum value = orders of magnitude in matching speedup.</span>
     </div>
+
+    <h3 class="sub lang-zh-only">RuleSet 的真实 add 路径</h3>
+    <h3 class="sub lang-en-only">RuleSet's real add path</h3>
+
+    <pre class="code"><span class="cm">// core/css/rule_set.cc · simplified — what runs when a new stylesheet enters CSSOM</span>
+
+<span class="kw">void</span> <span class="ty">RuleSet</span>::<span class="fn">AddRule</span>(<span class="kw">const</span> <span class="ty">RuleData</span>&amp; rule_data) {
+  <span class="cm">// ① IDENTIFY THE RIGHTMOST SIMPLE SELECTOR (the "key")</span>
+  <span class="kw">const</span> <span class="ty">CSSSelector</span>* selector = rule_data.<span class="fn">Selector</span>();   <span class="cm">// head of linked list (= rightmost)</span>
+
+  <span class="kw">switch</span> (selector-&gt;<span class="fn">Match</span>()) {
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kId:
+      id_rules_.<span class="fn">Add</span>(selector-&gt;<span class="fn">Value</span>(), rule_data); <span class="kw">break</span>;
+
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kClass:
+      class_rules_.<span class="fn">Add</span>(selector-&gt;<span class="fn">Value</span>(), rule_data); <span class="kw">break</span>;
+
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kTag:
+      <span class="cm">// store by lowercased tag name; "*" goes to universal bucket</span>
+      <span class="kw">if</span> (selector-&gt;<span class="fn">TagQName</span>().<span class="fn">LocalName</span>() == g_star_atom)
+        universal_rules_.<span class="fn">push_back</span>(rule_data);
+      <span class="kw">else</span>
+        tag_rules_.<span class="fn">Add</span>(selector-&gt;<span class="fn">TagQName</span>().<span class="fn">LocalName</span>().<span class="fn">LowerASCII</span>(), rule_data);
+      <span class="kw">break</span>;
+
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kAttributeSet:
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kAttributeExact:
+      attribute_rules_.<span class="fn">Add</span>(selector-&gt;<span class="fn">Attribute</span>().<span class="fn">LocalName</span>(), rule_data); <span class="kw">break</span>;
+
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kPseudoClass:
+      <span class="cm">// pseudo-class rules go into specialized buckets</span>
+      <span class="kw">if</span> (selector-&gt;<span class="fn">GetPseudoType</span>() == <span class="ty">CSSSelector</span>::kPseudoHover)
+        hover_rules_.<span class="fn">push_back</span>(rule_data);
+      <span class="kw">else</span> <span class="kw">if</span> (selector-&gt;<span class="fn">GetPseudoType</span>() == <span class="ty">CSSSelector</span>::kPseudoHas)
+        has_rules_.<span class="fn">push_back</span>(rule_data);    <span class="cm">// Ch14</span>
+      <span class="kw">else</span>
+        universal_rules_.<span class="fn">push_back</span>(rule_data);   <span class="cm">// fall back</span>
+      <span class="kw">break</span>;
+
+    <span class="kw">default</span>:
+      universal_rules_.<span class="fn">push_back</span>(rule_data);
+  }
+
+  <span class="cm">// ② BUILD THE ANCESTOR BLOOM (FIG 13·1)</span>
+  rule_data.<span class="fn">descendant_invalidation_set</span>-&gt;<span class="fn">ComputeAncestorBloom</span>(selector);
+
+  <span class="cm">// ③ REGISTER WITH INVALIDATION FEATURE SET (Ch20)</span>
+  features_-&gt;<span class="fn">CollectFeaturesFromRuleData</span>(rule_data);
+}</pre>
+
+    <pre class="code"><span class="cm">// Probe: matching an element against the RuleSet</span>
+
+<span class="ty">RuleSet</span>::<span class="ty">RuleSpan</span> <span class="ty">RuleSet</span>::<span class="fn">CandidatesForElement</span>(<span class="kw">const</span> <span class="ty">Element</span>&amp; e) {
+  <span class="ty">RuleSpan</span> candidates;
+  candidates += universal_rules_;
+  <span class="kw">if</span> (e.<span class="fn">HasID</span>()) candidates += id_rules_.<span class="fn">Get</span>(e.<span class="fn">IdForStyleResolution</span>());
+  <span class="kw">for</span> (<span class="kw">const</span> <span class="ty">AtomicString</span>&amp; cls : e.<span class="fn">ClassNames</span>())
+    candidates += class_rules_.<span class="fn">Get</span>(cls);
+  candidates += tag_rules_.<span class="fn">Get</span>(e.<span class="fn">LocalNameForSelectorMatching</span>());
+  <span class="kw">for</span> (<span class="ty">QName</span> attr : e.<span class="fn">PresenceAttributes</span>())
+    candidates += attribute_rules_.<span class="fn">Get</span>(attr.<span class="fn">LocalName</span>());
+  <span class="kw">if</span> (e.<span class="fn">HoverState</span>()) candidates += hover_rules_;
+  <span class="kw">return</span> candidates;   <span class="cm">// typically 5-20 entries out of 10 000 rules</span>
+}</pre>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -3775,6 +4028,72 @@ candidates += rule_set.universal_rules_;
       </ul>
     </aside>
 
+    <h3 class="sub lang-zh-only">CSSSelector::GetSpecificity 真实代码</h3>
+    <h3 class="sub lang-en-only">CSSSelector::GetSpecificity actual code</h3>
+
+    <pre class="code"><span class="cm">// core/css/css_selector.cc · simplified GetSpecificity walk</span>
+
+<span class="ty">unsigned</span> <span class="ty">CSSSelector</span>::<span class="fn">Specificity</span>() <span class="kw">const</span> {
+  <span class="kw">unsigned</span> a = <span class="num">0</span>, b = <span class="num">0</span>, c = <span class="num">0</span>;
+
+  <span class="cm">// Walk the entire compound chain (head → tail via tag_history_)</span>
+  <span class="kw">for</span> (<span class="kw">const</span> <span class="ty">CSSSelector</span>* sel = <span class="kw">this</span>; sel; sel = sel-&gt;<span class="fn">TagHistory</span>()) {
+    <span class="kw">switch</span> (sel-&gt;<span class="fn">Match</span>()) {
+      <span class="kw">case</span> kId:
+        ++a; <span class="kw">break</span>;
+
+      <span class="kw">case</span> kClass:
+      <span class="kw">case</span> kAttributeExact:
+      <span class="kw">case</span> kAttributeSet:
+      <span class="kw">case</span> kAttributeHyphen:
+      <span class="kw">case</span> kAttributeList:
+      <span class="kw">case</span> kAttributeContain:
+      <span class="kw">case</span> kAttributeBegin:
+      <span class="kw">case</span> kAttributeEnd:
+        ++b; <span class="kw">break</span>;
+
+      <span class="kw">case</span> kPseudoClass:
+        <span class="cm">// :is() / :where() / :has() — pick MAX inside</span>
+        <span class="kw">switch</span> (sel-&gt;<span class="fn">GetPseudoType</span>()) {
+          <span class="kw">case</span> kPseudoIs:
+          <span class="kw">case</span> kPseudoHas:
+          <span class="kw">case</span> kPseudoNot: {
+            <span class="kw">unsigned</span> max_a = <span class="num">0</span>, max_b = <span class="num">0</span>, max_c = <span class="num">0</span>;
+            <span class="kw">for</span> (<span class="kw">const</span> <span class="ty">CSSSelector</span>* sub : sel-&gt;<span class="fn">SelectorList</span>()) {
+              <span class="kw">auto</span> [sa, sb, sc] = sub-&gt;<span class="fn">DecomposeSpecificity</span>();
+              <span class="kw">if</span> (<span class="ty">SpecificityTuple</span>{sa, sb, sc} &gt; <span class="ty">SpecificityTuple</span>{max_a, max_b, max_c}) {
+                max_a = sa; max_b = sb; max_c = sc;
+              }
+            }
+            a += max_a; b += max_b; c += max_c; <span class="kw">break</span>;
+          }
+          <span class="kw">case</span> kPseudoWhere:    <span class="cm">// :where() adds 0!</span>
+            <span class="kw">break</span>;
+          <span class="kw">default</span>:
+            ++b;             <span class="cm">// :hover, :focus, :checked etc — count as class</span>
+        }
+        <span class="kw">break</span>;
+
+      <span class="kw">case</span> kTag:
+        <span class="kw">if</span> (sel-&gt;<span class="fn">TagQName</span>().<span class="fn">LocalName</span>() != g_star_atom)
+          ++c;               <span class="cm">// "*" counts 0</span>
+        <span class="kw">break</span>;
+
+      <span class="kw">case</span> kPseudoElement:
+        ++c; <span class="kw">break</span>;          <span class="cm">// ::before / ::after — pseudo-element counts in c</span>
+    }
+  }
+  <span class="cm">// PACK into 32-bit: 8 bits a (cap 255) | 8 bits b | 16 bits c</span>
+  <span class="kw">return</span> (a &lt;&lt; <span class="num">24</span>) | (b &lt;&lt; <span class="num">16</span>) | c;
+}</pre>
+
+    <div class="note magenta">
+      <span class="ntag lang-zh-only">specificity 不会真的溢出</span>
+      <span class="ntag lang-en-only">Specificity (almost) doesn't overflow</span>
+      <span class="lang-zh-only">Blink 给 a 留了 8 位(255 个 id)、b 留 8 位(255 个 class)、c 留 16 位(65535 个 tag)。在<em>正常</em> CSS 里到不了——但<em>边界情况</em>: 一个手写的 256-id 选择器 <code>#a#a#a#a...#a</code> 会让 a 字段<em>溢出</em>,在 Blink 里实际是 <em>saturating</em>(留在 255)。Firefox 也类似。所以理论上 256 个 id 不等于 1 个 wraparound,实际就是 255 个 id 的上限。<em>没人写过</em>这种代码,但 spec 允许 — 算 Blink 的一个 1-byte 假设。</span>
+      <span class="lang-en-only">Blink reserves 8 bits for a (255 ids), 8 bits for b (255 classes), 16 bits for c (65535 tags). In <em>normal</em> CSS you can't hit them, but at the <em>edge</em>: a hand-written 256-id selector <code>#a#a#a#a...#a</code> would <em>overflow</em> a — Blink saturates at 255. Firefox is similar. So 256 ids don't wrap; they cap. <em>No one writes</em> this, but the spec allows it — counted as Blink's 1-byte assumption.</span>
+    </div>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -3906,6 +4225,62 @@ candidates += rule_set.universal_rules_;
         <span class="figen">Fig 17·1 · The real @layer priority stack. <em>Priority increases top-to-bottom</em>: UA · named layers (in declared order) · <strong>unlayered (wins)</strong>. This is why The Card's @container .card (unlayered) <em>beats</em> the @layer base .card. Library code into named layers, business code unlayered — business always wins.</span>
       </figcaption>
     </figure>
+
+    <h3 class="sub lang-zh-only">CSSVariableData::ResolveTokenRange · 真实代码</h3>
+    <h3 class="sub lang-en-only">CSSVariableData::ResolveTokenRange · real code</h3>
+
+    <pre class="code"><span class="cm">// core/css/css_variable_data.cc · simplified var() resolution</span>
+
+<span class="kw">bool</span> <span class="ty">CSSVariableData</span>::<span class="fn">ResolveTokenRange</span>(
+    <span class="kw">const</span> <span class="ty">StyleResolverState</span>&amp; state,
+    <span class="ty">CSSParserTokenRange</span> range,
+    Vector&lt;<span class="ty">CSSParserToken</span>&gt;&amp; out_tokens,
+    HashSet&lt;<span class="ty">AtomicString</span>&gt;&amp; visiting) {     <span class="cm">// ← cycle-detection set</span>
+
+  <span class="kw">while</span> (!range.<span class="fn">AtEnd</span>()) {
+    <span class="kw">const</span> <span class="ty">CSSParserToken</span>&amp; token = range.<span class="fn">Peek</span>();
+
+    <span class="kw">if</span> (token.<span class="fn">FunctionId</span>() == kVarFunction) {
+      range.<span class="fn">ConsumeIncludingWhitespace</span>();           <span class="cm">// eat "var("</span>
+      <span class="ty">AtomicString</span> var_name = range.<span class="fn">ConsumeIdent</span>();
+
+      <span class="cm">// ① cycle detect</span>
+      <span class="kw">if</span> (!visiting.<span class="fn">insert</span>(var_name).is_new_entry) {
+        <span class="cm">// already visiting this variable → cycle!</span>
+        <span class="kw">return</span> <span class="kw">false</span>;
+      }
+
+      <span class="cm">// ② resolve recursively</span>
+      <span class="ty">CSSVariableData</span>* var_data = state.<span class="fn">CustomProperty</span>(var_name);
+      Vector&lt;<span class="ty">CSSParserToken</span>&gt; substituted;
+      <span class="kw">bool</span> ok = <span class="kw">false</span>;
+      <span class="kw">if</span> (var_data) {
+        ok = <span class="fn">ResolveTokenRange</span>(state, var_data-&gt;<span class="fn">TokenRange</span>(),
+                                substituted, visiting);
+      }
+
+      <span class="cm">// ③ pop from visit set (DFS unwind)</span>
+      visiting.<span class="fn">erase</span>(var_name);
+
+      <span class="kw">if</span> (ok) {
+        out_tokens.<span class="fn">AppendVector</span>(substituted);
+      } <span class="kw">else</span> {
+        <span class="cm">// ④ failed — try fallback (var() second arg)</span>
+        <span class="kw">if</span> (range.<span class="fn">Peek</span>().<span class="fn">GetType</span>() == kCommaToken) {
+          range.<span class="fn">ConsumeIncludingWhitespace</span>();
+          <span class="kw">if</span> (!<span class="fn">ResolveTokenRange</span>(state, range, out_tokens, visiting))
+            <span class="kw">return</span> <span class="kw">false</span>;
+        } <span class="kw">else</span> {
+          <span class="kw">return</span> <span class="kw">false</span>;     <span class="cm">// no fallback → guaranteed-invalid</span>
+        }
+      }
+      range.<span class="fn">ConsumeIncludingWhitespace</span>();   <span class="cm">// eat ")"</span>
+    } <span class="kw">else</span> {
+      out_tokens.<span class="fn">push_back</span>(range.<span class="fn">Consume</span>());
+    }
+  }
+  <span class="kw">return</span> <span class="kw">true</span>;
+}</pre>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -4454,6 +4829,108 @@ candidates += rule_set.universal_rules_;
       <span class="lang-en-only"><code>+</code> (next-sibling) only inspects one node; <code>~</code> (subsequent-sibling) inspects every following sibling. In a long rendered list (<code>li ~ li</code> patterns), <code>~</code>'s invalidation cost grows linearly with list length — flipping one li's class can dirty 1000 siblings. <strong>Practical tip</strong>: if you need "<em>style all subsequent siblings</em>", prefer CSS counters or nth-child — their InvalidationSets are tighter.</span>
     </div>
 
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg">
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">COMBINATOR WALK PATTERNS · 5 different shapes of invalidation work</text>
+
+          <!-- 5 columns, each showing a small DOM with arrow indicating which nodes the invalidation walks -->
+
+          <!-- Column 1: A B (descendant) -->
+          <text x="100" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#15171c">A B</text>
+          <text x="100" y="68" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">descendant</text>
+          <rect x="60" y="80" width="80" height="20" fill="#fcd34d" stroke="#a87a1f"/>
+          <text x="100" y="94" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#a87a1f">A</text>
+          <g stroke="#a83a6b" stroke-width="0.6">
+            <line x1="100" y1="100" x2="80" y2="115"/>
+            <line x1="100" y1="100" x2="120" y2="115"/>
+          </g>
+          <rect x="60" y="115" width="40" height="18" fill="#e8d4e0" stroke="#a83a6b"/>
+          <rect x="105" y="115" width="40" height="18" fill="#e8d4e0" stroke="#a83a6b"/>
+          <g stroke="#a83a6b" stroke-width="0.6">
+            <line x1="80" y1="133" x2="65" y2="150"/>
+            <line x1="80" y1="133" x2="95" y2="150"/>
+            <line x1="125" y1="133" x2="125" y2="150"/>
+          </g>
+          <rect x="50" y="150" width="30" height="18" fill="#e8d4e0" stroke="#a83a6b"/>
+          <rect x="83" y="150" width="30" height="18" fill="#e8d4e0" stroke="#a83a6b"/>
+          <rect x="115" y="150" width="30" height="18" fill="#e8d4e0" stroke="#a83a6b"/>
+          <text x="100" y="190" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a83a6b" font-weight="700">walk ALL descendants</text>
+          <text x="100" y="202" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">O(subtree)</text>
+
+          <!-- Column 2: A > B -->
+          <text x="240" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#15171c">A &gt; B</text>
+          <text x="240" y="68" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">direct child</text>
+          <rect x="200" y="80" width="80" height="20" fill="#fcd34d" stroke="#a87a1f"/>
+          <text x="240" y="94" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#a87a1f">A</text>
+          <g stroke="#a83a6b" stroke-width="0.6">
+            <line x1="240" y1="100" x2="220" y2="115"/>
+            <line x1="240" y1="100" x2="260" y2="115"/>
+          </g>
+          <rect x="200" y="115" width="40" height="18" fill="#e8d4e0" stroke="#a83a6b"/>
+          <rect x="245" y="115" width="40" height="18" fill="#e8d4e0" stroke="#a83a6b"/>
+          <g stroke="#c7c4ba" stroke-width="0.6" stroke-dasharray="2 2">
+            <line x1="220" y1="133" x2="205" y2="150"/>
+            <line x1="220" y1="133" x2="235" y2="150"/>
+            <line x1="265" y1="133" x2="265" y2="150"/>
+          </g>
+          <rect x="190" y="150" width="30" height="18" fill="#fdfbf3" stroke="#c7c4ba" stroke-dasharray="2 2"/>
+          <rect x="223" y="150" width="30" height="18" fill="#fdfbf3" stroke="#c7c4ba" stroke-dasharray="2 2"/>
+          <rect x="255" y="150" width="30" height="18" fill="#fdfbf3" stroke="#c7c4ba" stroke-dasharray="2 2"/>
+          <text x="240" y="190" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a83a6b" font-weight="700">walk DIRECT children</text>
+          <text x="240" y="202" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">O(children)</text>
+
+          <!-- Column 3: A + B -->
+          <text x="380" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#15171c">A + B</text>
+          <text x="380" y="68" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">next sibling</text>
+          <rect x="340" y="80" width="40" height="20" fill="#fcd34d" stroke="#a87a1f"/>
+          <text x="360" y="94" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#a87a1f">A</text>
+          <rect x="385" y="80" width="40" height="20" fill="#e8d4e0" stroke="#a83a6b" stroke-width="2"/>
+          <text x="405" y="94" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#a83a6b">B</text>
+          <rect x="430" y="80" width="40" height="20" fill="#fdfbf3" stroke="#c7c4ba" stroke-dasharray="2 2"/>
+          <text x="380" y="190" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a83a6b" font-weight="700">walk EXACTLY 1 sibling</text>
+          <text x="380" y="202" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">O(1)</text>
+
+          <!-- Column 4: A ~ B -->
+          <text x="520" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#15171c">A ~ B</text>
+          <text x="520" y="68" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">subsequent sibling</text>
+          <rect x="465" y="80" width="35" height="20" fill="#fcd34d" stroke="#a87a1f"/>
+          <text x="482" y="94" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#a87a1f">A</text>
+          <rect x="503" y="80" width="35" height="20" fill="#e8d4e0" stroke="#a83a6b" stroke-width="2"/>
+          <text x="520" y="94" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#a83a6b">B</text>
+          <rect x="541" y="80" width="35" height="20" fill="#e8d4e0" stroke="#a83a6b" stroke-width="2"/>
+          <text x="558" y="94" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#a83a6b">B</text>
+          <text x="520" y="190" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a83a6b" font-weight="700">walk ALL later siblings</text>
+          <text x="520" y="202" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">O(siblings) ⚠️</text>
+
+          <!-- Column 5: A:has(B) -->
+          <text x="660" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#15171c">A:has(B)</text>
+          <text x="660" y="68" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">backward (Ch14)</text>
+          <rect x="620" y="80" width="80" height="20" fill="#e8d4e0" stroke="#a83a6b" stroke-width="2"/>
+          <text x="660" y="94" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#a83a6b">A</text>
+          <g stroke="#a83a6b" stroke-width="0.6">
+            <line x1="660" y1="100" x2="640" y2="115"/>
+            <line x1="660" y1="100" x2="680" y2="115"/>
+          </g>
+          <rect x="620" y="115" width="40" height="18" fill="#e8d4e0" stroke="#a83a6b"/>
+          <rect x="665" y="115" width="40" height="18" fill="#fcd34d" stroke="#a87a1f"/>
+          <text x="685" y="128" font-family="JetBrains Mono" font-size="9" fill="#a87a1f">B</text>
+          <text x="660" y="190" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a83a6b" font-weight="700">walk UP + DOWN</text>
+          <text x="660" y="202" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">O(ancestors · subtree)</text>
+
+          <line x1="40" y1="230" x2="720" y2="230" stroke="#c7c4ba"/>
+          <text x="40" y="250" font-family="Inter" font-size="11" fill="#15171c"><strong>读图</strong>: 黄色是<em>变化的元素</em>(class flipped),<em>紫色</em>是被 invalidation 走到的节点,<em>虚框</em>是<em>没</em>走到的。不同 combinator 决定 walk 形状,直接影响 invalidation 成本。</text>
+          <text x="40" y="270" font-family="Inter" font-size="11" fill="#15171c"><strong>实战建议</strong>: <code>+</code> (next-sibling) 比 <code>~</code> (subsequent-sibling) 便宜量级 — 长列表里慎用 <code>~</code>。:has() 是最重的,但能换掉一类 JS hack。</text>
+          <text x="40" y="290" font-family="Inter" font-size="9" font-style="italic" fill="#767c87">Diagram colour key: yellow = the element whose class changed; magenta-filled = nodes the invalidation walks; dashed boxes = untouched.</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;21·1</span>
+        <span class="lang-zh-only">5 种 combinator 对应的 5 种<em>walk 形状</em>。<em>descendant</em>(空格)走整棵后代子树;<em>child</em>(<code>&gt;</code>)只走<em>直接子</em>;<em>next-sibling</em>(<code>+</code>)只看 1 个;<em>subsequent-sibling</em>(<code>~</code>)走<em>所有</em>后续兄弟 — 长列表里这是个炸弹;<em>:has()</em>是<em>反向</em>,先 walk up 找祖先,再 down 找其他匹配子树。invalidation cost 几何形状一目了然。</span>
+        <span class="figen">Fig 21·1 · 5 combinators map to 5 <em>walk shapes</em>. <em>descendant</em> (whitespace) traverses the whole subtree; <em>child</em> (<code>&gt;</code>) only direct children; <em>next-sibling</em> (<code>+</code>) checks 1; <em>subsequent-sibling</em> (<code>~</code>) walks <em>all</em> later siblings — a bomb in long lists; <em>:has()</em> is backward, walking up to ancestors then down for other matching subtrees. Geometric cost is visible at a glance.</span>
+      </figcaption>
+    </figure>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -4568,6 +5045,93 @@ candidates += rule_set.universal_rules_;
         <span class="figid">FIG&nbsp;23·1</span>
         <span class="lang-zh-only">Web Animations 的<em>三件套</em>数据模型。<strong>Animation</strong> 是控制对象(play / pause / 时间);<strong>KeyframeEffect</strong> 是"<em>对什么 element 做什么</em>"(target + keyframes + timing);<strong>AnimationTimeline</strong> 是"<em>时间从哪来</em>"(wall-clock 或 ScrollTimeline 或 ViewTimeline)。CSS transition / CSS animation / JS element.animate() 是<em>三种语法糖</em>,desugar 到同一个 model — 所以 DevTools Animations 面板能同时控制三者。</span>
         <span class="figen">Fig 23·1 · Web Animations' three-piece data model. <strong>Animation</strong> is the controller (play / pause / time); <strong>KeyframeEffect</strong> is "<em>what to do on which element</em>" (target + keyframes + timing); <strong>AnimationTimeline</strong> is "<em>where time comes from</em>" (wall-clock or ScrollTimeline or ViewTimeline). CSS transition / CSS animation / JS element.animate() are <em>three syntactic sugars</em> over the same model — which is why DevTools Animations panel controls all three uniformly.</span>
+      </figcaption>
+    </figure>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg">
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">STYLE RECALC TRIGGER · ACTION → SCOPE OF RECALC</text>
+
+          <!-- Heatmap-style table -->
+          <g font-family="JetBrains Mono" font-size="9">
+            <text x="60" y="55" font-weight="700" fill="#15171c">ACTION</text>
+            <text x="280" y="55" font-weight="700" fill="#15171c">SCOPE</text>
+            <text x="490" y="55" font-weight="700" fill="#15171c">COST</text>
+            <text x="620" y="55" font-weight="700" fill="#15171c">FREQUENCY</text>
+          </g>
+
+          <line x1="40" y1="62" x2="720" y2="62" stroke="#15171c" stroke-width="0.5"/>
+
+          <!-- Row 1: classList -->
+          <text x="60" y="80" font-family="JetBrains Mono" font-size="9" fill="#15171c">el.classList.add('x')</text>
+          <text x="280" y="80" font-family="JetBrains Mono" font-size="9" fill="#a83a6b">invalSet for "x" only</text>
+          <rect x="490" y="73" width="40" height="12" fill="#d8e6cd" stroke="#4a6b3e"/>
+          <text x="535" y="82" font-family="JetBrains Mono" font-size="8" fill="#4a6b3e">low</text>
+          <text x="620" y="80" font-family="JetBrains Mono" font-size="9" fill="#767c87">very common</text>
+
+          <!-- Row 2: hover -->
+          <text x="60" y="100" font-family="JetBrains Mono" font-size="9" fill="#15171c">mouse hover</text>
+          <text x="280" y="100" font-family="JetBrains Mono" font-size="9" fill="#a83a6b">invalSet for :hover</text>
+          <rect x="490" y="93" width="40" height="12" fill="#d8e6cd" stroke="#4a6b3e"/>
+          <text x="535" y="102" font-family="JetBrains Mono" font-size="8" fill="#4a6b3e">low</text>
+          <text x="620" y="100" font-family="JetBrains Mono" font-size="9" fill="#767c87">extremely common</text>
+
+          <!-- Row 3: :root var -->
+          <text x="60" y="120" font-family="JetBrains Mono" font-size="9" fill="#15171c">:root style.--brand = '...'</text>
+          <text x="280" y="120" font-family="JetBrains Mono" font-size="9" fill="#b35a1f">ALL using var(--brand)</text>
+          <rect x="490" y="113" width="120" height="12" fill="#f0d4bc" stroke="#b35a1f"/>
+          <text x="617" y="122" font-family="JetBrains Mono" font-size="8" fill="#b35a1f">⚠️ HIGH</text>
+          <text x="620" y="120" font-family="JetBrains Mono" font-size="9" fill="#767c87">theme toggle</text>
+
+          <!-- Row 4: resize -->
+          <text x="60" y="140" font-family="JetBrains Mono" font-size="9" fill="#15171c">window resize</text>
+          <text x="280" y="140" font-family="JetBrains Mono" font-size="9" fill="#15171c">@media / @container affected</text>
+          <rect x="490" y="133" width="80" height="12" fill="#fcd34d" stroke="#a87a1f"/>
+          <text x="577" y="142" font-family="JetBrains Mono" font-size="8" fill="#a87a1f">medium</text>
+          <text x="620" y="140" font-family="JetBrains Mono" font-size="9" fill="#767c87">user resize</text>
+
+          <!-- Row 5: appendChild -->
+          <text x="60" y="160" font-family="JetBrains Mono" font-size="9" fill="#15171c">body.appendChild(el)</text>
+          <text x="280" y="160" font-family="JetBrains Mono" font-size="9" fill="#15171c">new element + siblings</text>
+          <rect x="490" y="153" width="60" height="12" fill="#fcd34d" stroke="#a87a1f"/>
+          <text x="557" y="162" font-family="JetBrains Mono" font-size="8" fill="#a87a1f">medium</text>
+          <text x="620" y="160" font-family="JetBrains Mono" font-size="9" fill="#767c87">react render</text>
+
+          <!-- Row 6: el.style -->
+          <text x="60" y="180" font-family="JetBrains Mono" font-size="9" fill="#15171c">el.style.padding = '1rem'</text>
+          <text x="280" y="180" font-family="JetBrains Mono" font-size="9" fill="#15171c">this element only</text>
+          <rect x="490" y="173" width="30" height="12" fill="#d8e6cd" stroke="#4a6b3e"/>
+          <text x="525" y="182" font-family="JetBrains Mono" font-size="8" fill="#4a6b3e">trivial</text>
+          <text x="620" y="180" font-family="JetBrains Mono" font-size="9" fill="#767c87">animations</text>
+
+          <!-- Row 7: title -->
+          <text x="60" y="200" font-family="JetBrains Mono" font-size="9" fill="#767c87">document.title = '...'</text>
+          <text x="280" y="200" font-family="JetBrains Mono" font-size="9" fill="#767c87" font-style="italic">NONE</text>
+          <text x="490" y="208" font-family="JetBrains Mono" font-size="8" fill="#4a6b3e">0</text>
+          <text x="620" y="200" font-family="JetBrains Mono" font-size="9" fill="#767c87">low</text>
+
+          <!-- Row 8: scroll -->
+          <text x="60" y="220" font-family="JetBrains Mono" font-size="9" fill="#767c87">window.scrollTo(...)</text>
+          <text x="280" y="220" font-family="JetBrains Mono" font-size="9" fill="#767c87" font-style="italic">NONE (unless scroll-driven anim)</text>
+          <text x="490" y="228" font-family="JetBrains Mono" font-size="8" fill="#4a6b3e">0</text>
+          <text x="620" y="220" font-family="JetBrains Mono" font-size="9" fill="#767c87">extremely common</text>
+
+          <!-- Row 9: getComputedStyle -->
+          <text x="60" y="240" font-family="JetBrains Mono" font-size="9" fill="#b35a1f">getComputedStyle(el).width</text>
+          <text x="280" y="240" font-family="JetBrains Mono" font-size="9" fill="#b35a1f">⚠️ forces SYNC layout</text>
+          <rect x="490" y="233" width="100" height="12" fill="#f0d4bc" stroke="#b35a1f"/>
+          <text x="597" y="242" font-family="JetBrains Mono" font-size="8" fill="#b35a1f">⚠️ HIGH</text>
+          <text x="620" y="240" font-family="JetBrains Mono" font-size="9" fill="#767c87">layout thrash trap</text>
+
+          <line x1="40" y1="252" x2="720" y2="252" stroke="#15171c" stroke-width="0.5"/>
+          <text x="40" y="270" font-family="Inter" font-size="10" font-style="italic" fill="#767c87">底两条(title / scroll)<em>无</em> recalc · 最贵的是 :root var 改动(波及全页用 var 的元素)和 getComputedStyle 同步 layout — Ch29 详谈缓解</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;22·1</span>
+        <span class="lang-zh-only">9 种常见操作触发的 recalc 范围 / 成本对照。<em>最贵两条</em>: <code>:root</code> 上改 var()(波及<em>所有用它的元素</em>,典型 dark-mode toggle 噩梦)+ <code>getComputedStyle()</code>(同步触发 layout)。<em>免费两条</em>: <code>document.title</code> 改 + scroll(不触发 recalc,除非用 scroll-driven anim · Ch25)。</span>
+        <span class="figen">Fig 22·1 · 9 common actions and their recalc scope / cost. <em>Two most expensive</em>: changing var() on <code>:root</code> (cascades to <em>every</em> element using it — the classic dark-mode toggle nightmare) + <code>getComputedStyle()</code> (synchronously forces layout). <em>Two free</em>: <code>document.title</code> changes and scroll (no recalc, unless scroll-driven anim · Ch25).</span>
       </figcaption>
     </figure>
 
@@ -4788,6 +5352,56 @@ animation.<span class="fn">play</span>();   <span class="cm">// auto-cleanup whe
       </figcaption>
     </figure>
 
+    <h3 class="sub lang-zh-only">Compositor 怎么决定<em>谁该 promote</em></h3>
+    <h3 class="sub lang-en-only">How the compositor decides <em>who gets promoted</em></h3>
+
+    <pre class="code"><span class="cm">// core/paint/paint_layer.cc · simplified Layerizer decision</span>
+
+<span class="ty">CompositingReasons</span> <span class="ty">PaintLayer</span>::<span class="fn">DirectCompositingReasons</span>() <span class="kw">const</span> {
+  <span class="ty">CompositingReasons</span> reasons = <span class="ty">CompositingReason</span>::kNone;
+
+  <span class="cm">// ① TRANSFORM that animates or is 3D</span>
+  <span class="kw">if</span> (style_-&gt;<span class="fn">HasTransform</span>() &amp;&amp;
+      (style_-&gt;<span class="fn">Has3DTransform</span>() || <span class="fn">HasActiveTransformAnimation</span>())) {
+    reasons |= <span class="ty">CompositingReason</span>::k3DTransform;
+  }
+
+  <span class="cm">// ② OPACITY that animates</span>
+  <span class="kw">if</span> (<span class="fn">HasActiveOpacityAnimation</span>()) {
+    reasons |= <span class="ty">CompositingReason</span>::kActiveOpacityAnimation;
+  }
+
+  <span class="cm">// ③ FILTER (any filter forces a layer for offload)</span>
+  <span class="kw">if</span> (style_-&gt;<span class="fn">HasNonInitialBackdropFilter</span>() ||
+      <span class="fn">HasActiveFilterAnimation</span>()) {
+    reasons |= <span class="ty">CompositingReason</span>::kBackdropFilter;
+  }
+
+  <span class="cm">// ④ will-change hint — user said "this WILL animate"</span>
+  <span class="kw">if</span> (style_-&gt;<span class="fn">HasWillChangeTransformHint</span>() ||
+      style_-&gt;<span class="fn">HasWillChangeOpacityHint</span>()) {
+    reasons |= <span class="ty">CompositingReason</span>::kWillChangeTransform;
+  }
+
+  <span class="cm">// ⑤ position: fixed if scrolling matters</span>
+  <span class="kw">if</span> (style_-&gt;<span class="fn">GetPosition</span>() == EPosition::kFixed &amp;&amp;
+      <span class="fn">DescendantsHaveScrollableAreas</span>()) {
+    reasons |= <span class="ty">CompositingReason</span>::kFixedPosition;
+  }
+
+  <span class="cm">// ⑥ canvas / video / iframe / WebGL — always their own layer</span>
+  <span class="kw">if</span> (<span class="fn">IsVideoElement</span>() || <span class="fn">IsCanvasElement</span>() || <span class="fn">IsIFrame</span>()) {
+    reasons |= <span class="ty">CompositingReason</span>::kVideo;
+  }
+
+  <span class="kw">return</span> reasons;
+}
+
+<span class="cm">// "Layerizer" runs this for every PaintLayer and stitches together the layer tree.</span>
+<span class="cm">// A page with 5000 elements and 0 transforms/opacity/will-change typically has</span>
+<span class="cm">// JUST ONE compositor layer (the root). The Card adds ZERO additional layers</span>
+<span class="cm">// because its transition is on background (non-offloadable).</span></pre>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -4836,6 +5450,66 @@ window.<span class="fn">addEventListener</span>(<span class="str">'scroll'</span
   <span class="prop">animation-timeline</span>: view();
   <span class="prop">animation-range</span>: entry <span class="num">0%</span> cover <span class="num">50%</span>;   <span class="cm">/* play as it scrolls in */</span>
 }</pre>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg">
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">scroll-timeline · TIME SOURCE = SCROLL POSITION</text>
+
+          <!-- Viewport on left -->
+          <text x="100" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#15171c">scroll container</text>
+          <rect x="40" y="65" width="120" height="120" fill="#fdfbf3" stroke="#15171c" stroke-width="1.5"/>
+          <text x="100" y="80" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">scroll height: 3000px</text>
+
+          <!-- viewport window -->
+          <rect x="50" y="100" width="100" height="60" fill="#fdfbf3" stroke="#a83a6b" stroke-width="2"/>
+          <text x="100" y="135" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#a83a6b">viewport</text>
+
+          <!-- arrow showing scroll position -->
+          <text x="170" y="105" font-family="JetBrains Mono" font-size="8" fill="#767c87">scrollY = 500px</text>
+          <text x="170" y="120" font-family="JetBrains Mono" font-size="8" fill="#767c87">progress = 500/2000</text>
+          <text x="170" y="135" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#a83a6b">= 25%</text>
+
+          <!-- arrow to animation timeline on right -->
+          <text x="320" y="125" font-family="JetBrains Mono" font-size="10" fill="#15171c">→</text>
+
+          <!-- Animation timeline -->
+          <text x="540" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#15171c">ANIMATION (driven)</text>
+
+          <!-- keyframes bar -->
+          <rect x="350" y="80" width="320" height="20" fill="#e3d5f0" stroke="#6b3aa3"/>
+          <text x="358" y="95" font-family="JetBrains Mono" font-size="8" fill="#15171c">0%</text>
+          <text x="668" y="95" font-family="JetBrains Mono" font-size="8" fill="#15171c" text-anchor="end">100%</text>
+
+          <!-- progress indicator -->
+          <rect x="350" y="80" width="80" height="20" fill="#6b3aa3" opacity="0.4"/>
+          <line x1="430" y1="75" x2="430" y2="105" stroke="#6b3aa3" stroke-width="2"/>
+          <text x="430" y="120" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#6b3aa3">25%</text>
+
+          <!-- keyframe at 0% and 100% -->
+          <text x="360" y="135" font-family="JetBrains Mono" font-size="9" fill="#15171c">from {</text>
+          <text x="365" y="148" font-family="JetBrains Mono" font-size="9" fill="#15171c">  transform: translateY(0)</text>
+          <text x="360" y="161" font-family="JetBrains Mono" font-size="9" fill="#15171c">}</text>
+
+          <text x="540" y="135" font-family="JetBrains Mono" font-size="9" fill="#15171c">to {</text>
+          <text x="545" y="148" font-family="JetBrains Mono" font-size="9" fill="#15171c">  transform: translateY(-200)</text>
+          <text x="540" y="161" font-family="JetBrains Mono" font-size="9" fill="#15171c">}</text>
+
+          <!-- current interpolated value -->
+          <text x="360" y="184" font-family="JetBrains Mono" font-size="9" fill="#a83a6b" font-weight="700">current → translateY(-50)</text>
+          <text x="540" y="184" font-family="JetBrains Mono" font-size="8" fill="#767c87">(25% × -200 = -50)</text>
+
+          <line x1="40" y1="200" x2="720" y2="200" stroke="#c7c4ba"/>
+          <text x="40" y="218" font-family="Inter" font-size="11" fill="#15171c">关键: animation 的 <em>时间源</em> 不再是 wall-clock,而是 scroll progress。<strong>compositor 直接读 scroll offset</strong>,不经过主线程 — 这就是为什么 CSS scroll-driven 比 JS scroll listener 快几个数量级。</text>
+          <text x="40" y="232" font-family="Inter" font-size="9" font-style="italic" fill="#767c87">Key: animation's <em>time source</em> is scroll progress, not wall-clock. <strong>Compositor reads scroll offset directly</strong>, bypassing main thread — orders of magnitude faster than JS scroll listeners.</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;25·1</span>
+        <span class="lang-zh-only">scroll-driven animation 的<em>时间映射</em>。viewport 在 3000px 文档里滚到 500px 处 → progress = 500/2000 = 25% → 动画也对应跑到 25% → <code>transform: translateY(-50)</code>(0% 起,100% 到 -200px 之间线性插值)。<em>compositor 线程独自完成这一切</em> — JS scroll listener 那种"<em>每帧一次主线程往返</em>"的成本被消除。</span>
+        <span class="figen">Fig 25·1 · Time mapping of a scroll-driven animation. Viewport in a 3000px document scrolled to 500px → progress = 500/2000 = 25% → animation also runs to 25% → <code>transform: translateY(-50)</code> (lerp between 0 and -200px). <em>The compositor thread does all of this</em> — eliminating the "<em>main-thread roundtrip per frame</em>" cost of JS scroll listeners.</em></span>
+      </figcaption>
+    </figure>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -5028,6 +5702,54 @@ window.<span class="fn">addEventListener</span>(<span class="str">'scroll'</span
       <span class="lang-zh-only">CSS nesting <em>编译时</em>就能确定语义,但 selectors 仍按 standard 解析。<strong>禁用<em>不带 &amp; 的嵌套</em>简单选择器</strong>: <code>.card { div { ... } }</code> 在 Sass 是合法的(展开成 <code>.card div</code>),但 CSS 不允许——因为 CSS parser 看到 <code>div</code> 会跟外层 <code>.card</code> 上下文混淆。必须写 <code>.card { &amp; div { ... } }</code>。这是 CSS team 为了向前兼容做的折中。</span>
       <span class="lang-en-only">CSS nesting's semantics are decided at <em>parse time</em>, but selectors still follow standard parsing rules. <strong>Bare-tag nesting is forbidden</strong>: <code>.card { div { ... } }</code> is valid Sass (expands to <code>.card div</code>), but illegal in CSS — the parser would confuse <code>div</code> as a property name in the outer <code>.card</code> context. Must write <code>.card { &amp; div { ... } }</code>. A trade-off for forward compatibility.</span>
     </div>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg">
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">CSS NESTING · SOURCE → FLAT EXPANSION (what parser actually stores)</text>
+
+          <!-- Source -->
+          <text x="180" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#1f5c8c">SOURCE (nested)</text>
+          <rect x="40" y="65" width="300" height="160" fill="#fdfbf3" stroke="#1f5c8c" rx="3"/>
+          <text x="50" y="82" font-family="JetBrains Mono" font-size="9" fill="#15171c">.card {</text>
+          <text x="55" y="96" font-family="JetBrains Mono" font-size="9" fill="#15171c">  padding: 1rem;</text>
+          <text x="55" y="110" font-family="JetBrains Mono" font-size="9" fill="#15171c"></text>
+          <text x="55" y="124" font-family="JetBrains Mono" font-size="9" fill="#15171c">  &amp; .title {</text>
+          <text x="60" y="138" font-family="JetBrains Mono" font-size="9" fill="#15171c">    font-weight: bold;</text>
+          <text x="55" y="152" font-family="JetBrains Mono" font-size="9" fill="#15171c">  }</text>
+          <text x="55" y="166" font-family="JetBrains Mono" font-size="9" fill="#15171c"></text>
+          <text x="55" y="180" font-family="JetBrains Mono" font-size="9" fill="#15171c">  &amp;:hover {</text>
+          <text x="60" y="194" font-family="JetBrains Mono" font-size="9" fill="#15171c">    background: blue;</text>
+          <text x="55" y="208" font-family="JetBrains Mono" font-size="9" fill="#15171c">  }</text>
+          <text x="50" y="222" font-family="JetBrains Mono" font-size="9" fill="#15171c">}</text>
+
+          <!-- Arrow -->
+          <text x="360" y="142" font-family="JetBrains Mono" font-size="12" fill="#15171c">→</text>
+
+          <!-- Flat output -->
+          <text x="540" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">FLAT (CSSOM)</text>
+          <rect x="380" y="65" width="340" height="160" fill="#fdfbf3" stroke="#b35a1f" rx="3"/>
+          <text x="390" y="82" font-family="JetBrains Mono" font-size="9" fill="#15171c">CSSStyleRule { selector: ".card",</text>
+          <text x="400" y="96" font-family="JetBrains Mono" font-size="9" fill="#15171c">  declarations: [padding: 1rem]</text>
+          <text x="390" y="110" font-family="JetBrains Mono" font-size="9" fill="#15171c">}</text>
+
+          <text x="390" y="130" font-family="JetBrains Mono" font-size="9" fill="#15171c">CSSStyleRule { selector: ".card .title",</text>
+          <text x="400" y="144" font-family="JetBrains Mono" font-size="9" fill="#15171c">  declarations: [font-weight: bold]</text>
+          <text x="390" y="158" font-family="JetBrains Mono" font-size="9" fill="#15171c">}</text>
+
+          <text x="390" y="178" font-family="JetBrains Mono" font-size="9" fill="#15171c">CSSStyleRule { selector: ".card:hover",</text>
+          <text x="400" y="192" font-family="JetBrains Mono" font-size="9" fill="#15171c">  declarations: [background: blue]</text>
+          <text x="390" y="206" font-family="JetBrains Mono" font-size="9" fill="#15171c">}</text>
+
+          <text x="540" y="222" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a83a6b" font-style="italic">→ 3 flat rules in CSSOM · cascade treats them independently</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;27·1</span>
+        <span class="lang-zh-only">CSS Nesting 是<em>语法糖</em>—— parser 在 <code>ConsumeQualifiedRule</code> 时<em>展开</em>嵌套的 <code>&amp;</code> 引用,生成多条独立的 CSSStyleRule。CSSOM 看到的是<em>扁平结构</em>,Cascade(Ch15)对每条规则<em>独立</em>跑 — 它<em>不知道</em> 原 source 是嵌套的。这就是为什么嵌套不影响 specificity / cascade 行为,只影响<em>书写体验</em>。</span>
+        <span class="figen">Fig 27·1 · CSS Nesting is <em>syntactic sugar</em> — the parser in <code>ConsumeQualifiedRule</code> <em>expands</em> nested <code>&amp;</code> references into multiple independent CSSStyleRules. CSSOM sees the <em>flat structure</em>; Cascade (Ch15) runs <em>independently</em> on each rule — it <em>doesn't know</em> the source was nested. That's why nesting doesn't affect specificity / cascade behavior, only authoring ergonomics.</span>
+      </figcaption>
+    </figure>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
