@@ -8,7 +8,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-interface Msg { role: 'user' | 'assistant'; text: string }
+interface Msg { role: 'user' | 'assistant'; text: string; hasNook?: boolean }
 
 const API = 'https://chat.ursb.me/api/ai-companion/chat'
 
@@ -89,12 +89,16 @@ export default function ChatBox() {
       // 401 is the common "not logged in" case for first-time visitors.
       // Don't expose the raw error — give a friendly seed-reply hinting at
       // the path forward, and offer a fallback /nook link.
-      if (msg.includes('401')) {
+      if (msg.includes('401') || msg.includes('empty stream')) {
+        // 401 = not logged in. Empty stream = rate limit / silent backend.
+        // Both surface as in-character "Mochi paused" instead of raw error.
         setMsgs((m) => [
           ...m,
           {
             role: 'assistant',
-            text: '（我看着你，没说话——你还没在这个世界登记过名字。要不要先到 nook 那边坐一坐？回头我们再聊。）',
+            text: msg.includes('401')
+              ? '（我看着你，没说话——你还没在这个世界登记过名字。要不要先到 nook 那边坐一坐？）'
+              : '（Mochi 沉默了一会儿，火堆噼啪——再问一句试试？）',
           },
         ])
       } else {
@@ -110,7 +114,15 @@ export default function ChatBox() {
     <div className="world-chat">
       <div className="world-chat-history" ref={histRef}>
         {msgs.map((m, i) => (
-          <div key={i} className={`world-chat-msg world-chat-msg-${m.role}`}>{m.text}</div>
+          <div key={i} className={`world-chat-msg world-chat-msg-${m.role}`}>
+            {m.text.includes('nook')
+              ? m.text.split('nook').flatMap((part, j, arr) =>
+                  j === arr.length - 1
+                    ? [part]
+                    : [part, <a key={`nook${j}`} href="/nook" className="world-chat-link">nook</a>]
+                )
+              : m.text}
+          </div>
         ))}
         {pending && <div className="world-chat-msg world-chat-msg-assistant world-chat-pending">…</div>}
         {error && <div className="world-chat-error">{error}</div>}
