@@ -39,7 +39,7 @@
 > 主角 = Airing 熊猫。**支持 image2 ref 的话，每张都附 `refs/panda.png`**。
 > 4 张是同一个角色不同朝向的待机帧。**保持比例/颜色/特征一模一样**。
 
-### B01 — Avatar idle, facing camera (front-south)  `[ ]`
+### B01 — Avatar idle, facing camera (front-south)  `[x]`
 - **File:** `output/character/B01-idle-south.png`
 - **Size:** 256×256 px
 - **Ref:** attach `refs/panda.png`
