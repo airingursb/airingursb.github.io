@@ -5,4 +5,78 @@ import LoungeGame from '../components/LoungeGame.astro'
 
 <BaseLayout title="Nook · Airing" description="A small cozy corner — wander rooms, meet visitors, sit a while.">
   <LoungeGame />
+
+  {/* SHU-733 Phase 8 · 2D ↔ 3D pocket world iframe portal */}
+  <button id="grove-portal-btn" type="button">🌸 跟 Mochi 散步 (3D 实验)</button>
+
+  <script is:inline>
+    (function () {
+      let iframe = null
+
+      function getSpecies() {
+        try { return localStorage.getItem('lounge_species_v1') || 'bear' }
+        catch { return 'bear' }
+      }
+
+      window.addEventListener('open-pocket-world', function (e) {
+        if (iframe) return
+        const slug = (e.detail && e.detail.slug) || 'mochi-grove'
+        const species = encodeURIComponent(getSpecies())
+        iframe = document.createElement('iframe')
+        iframe.src = '/nook/inner/' + slug + '/?species=' + species
+        iframe.id = 'grove-portal-iframe'
+        iframe.allow = 'pointer-lock'
+        Object.assign(iframe.style, {
+          position: 'fixed', inset: '0',
+          width: '100vw', height: '100vh',
+          border: '0', zIndex: '10000',
+          background: '#050610',
+        })
+        document.body.appendChild(iframe)
+      })
+
+      window.addEventListener('message', function (e) {
+        if (e.origin !== window.location.origin) return
+        const data = e.data || {}
+        if (data.type === 'exit' && iframe) {
+          iframe.remove()
+          iframe = null
+          if (data.quest_completed) {
+            // TODO Phase 9: emit quest-complete event so 2D quest panel updates + heart bump
+            console.log('[nook] mochi_grove_walk completed via 3D')
+          }
+        }
+        if (data.type === 'ready' && iframe) {
+          console.log('[nook] grove3d ready')
+        }
+      })
+
+      // Temporary entry button — will become a Phaser sparkle in grove room
+      const btn = document.getElementById('grove-portal-btn')
+      if (btn) {
+        btn.addEventListener('click', function () {
+          window.dispatchEvent(new CustomEvent('open-pocket-world', { detail: { slug: 'mochi-grove' } }))
+        })
+      }
+    })()
+  </script>
+
+  <style>
+    #grove-portal-btn {
+      position: fixed;
+      top: 16px; right: 16px;
+      z-index: 250;
+      padding: 8px 14px;
+      background: rgba(20, 24, 36, 0.85);
+      color: #f4ead5;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      backdrop-filter: blur(4px);
+      transition: background 120ms;
+    }
+    #grove-portal-btn:hover { background: rgba(40, 50, 80, 0.9); }
+  </style>
 </BaseLayout>
