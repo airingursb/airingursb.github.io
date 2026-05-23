@@ -83,7 +83,9 @@ src/world/
 | `world-zone-click` | ZoneHitboxes | Opens ZonePanel for that zone |
 | `world-reset-camera` | WorldUI 🎯 button | Snaps OrbitControls.reset() |
 | `world-theme` | WorldUI 🌙/☀️ button | Day↔dusk lighting + Sky swap |
-| `world-interact` | (legacy) | Old toast handler in WorldGame.ts |
+
+All routed through `events.ts` typed `emit/on` bus — no raw
+`window.dispatchEvent` / `addEventListener` for world events.
 
 ## Adaptive quality
 
