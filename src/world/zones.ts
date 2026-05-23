@@ -97,7 +97,7 @@ export const LANTERN_POSITIONS: Array<[number, number]> = [
   [-10.0, 2.8],
 ]
 
-/** ~45 trees scattered across the much larger island. Mix of pines + birches + oaks + 2 maple + 1 cherry accent. */
+/** ~45 trees — scale axis varies for non-uniform canopy height. */
 export const TREE_POSITIONS: Array<[number, number, number, 'pine' | 'birch' | 'oak' | 'maple' | 'cherry']> = [
   // Perimeter belt
   [-18.0, -3.0, 1.3, 'pine'],

@@ -38,11 +38,17 @@ export default function Void() {
         <Cloud seed={205} segments={28} position={[  6, -36,  30]} bounds={[14, 3, 12]} volume={8} color="#B8C8DC" opacity={0.65} fade={28} />
       </Clouds>
 
-      {/* Misty far horizon — soft haze ring on the horizon line */}
-      <mesh position={[0, -8, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[55, 95, 64]} />
-        <meshBasicMaterial color="#D7E9F5" transparent opacity={0.35} side={THREE.DoubleSide} />
-      </mesh>
+      {/* Far horizon wrapped with extra cloud belt — no hard ring */}
+      <Clouds material={THREE.MeshBasicMaterial} limit={400}>
+        <Cloud seed={301} segments={24} position={[ 60, -8,   0]} bounds={[8, 4, 12]} volume={5} color="#D7E9F5" opacity={0.5} fade={36} />
+        <Cloud seed={302} segments={24} position={[-60, -8,   0]} bounds={[8, 4, 12]} volume={5} color="#D7E9F5" opacity={0.5} fade={36} />
+        <Cloud seed={303} segments={24} position={[  0, -8,  60]} bounds={[12, 4, 8]} volume={5} color="#D7E9F5" opacity={0.5} fade={36} />
+        <Cloud seed={304} segments={24} position={[  0, -8, -60]} bounds={[12, 4, 8]} volume={5} color="#D7E9F5" opacity={0.5} fade={36} />
+        <Cloud seed={305} segments={22} position={[ 42, -6,  42]} bounds={[10, 4, 8]} volume={5} color="#E0EBF5" opacity={0.42} fade={32} />
+        <Cloud seed={306} segments={22} position={[-42, -6,  42]} bounds={[10, 4, 8]} volume={5} color="#E0EBF5" opacity={0.42} fade={32} />
+        <Cloud seed={307} segments={22} position={[ 42, -6, -42]} bounds={[10, 4, 8]} volume={5} color="#E0EBF5" opacity={0.42} fade={32} />
+        <Cloud seed={308} segments={22} position={[-42, -6, -42]} bounds={[10, 4, 8]} volume={5} color="#E0EBF5" opacity={0.42} fade={32} />
+      </Clouds>
     </group>
   )
 }

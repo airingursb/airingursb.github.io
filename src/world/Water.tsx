@@ -36,7 +36,8 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
     for (let i = 0; i < pos.count; i++) {
       const px = pos.getX(i), pz = pos.getZ(i)
       const d = Math.hypot(px, pz)
-      pos.setY(i, Math.sin(t * 1.8 + d * 1.6) * 0.04 + Math.cos(t * 0.9 + px * 1.2) * 0.02)
+      // Calm pond — small ripples only
+      pos.setY(i, Math.sin(t * 1.2 + d * 1.2) * 0.012 + Math.cos(t * 0.6 + px * 0.8) * 0.008)
     }
     pos.needsUpdate = true
     m.geometry.computeVertexNormals()
@@ -54,14 +55,14 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
       <mesh ref={surf} geometry={geo}>
         <MeshTransmissionMaterial
           color={WATER_TOP}
-          thickness={0.5}
-          roughness={0.1}
-          transmission={0.85}
-          chromaticAberration={0.04}
-          distortion={0.2}
-          distortionScale={0.4}
+          thickness={0.4}
+          roughness={0.06}
+          transmission={0.7}
+          chromaticAberration={0.02}
+          distortion={0.05}
+          distortionScale={0.2}
           ior={1.33}
-          temporalDistortion={0.1}
+          temporalDistortion={0}
           backside
         />
       </mesh>

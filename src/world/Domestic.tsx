@@ -14,7 +14,7 @@ const FABRIC_BLUE   = '#7088AA'
 const FABRIC_CREAM  = '#F4EAD5'
 const FABRIC_GREEN  = '#5A8268'
 const ROPE          = '#A48B6E'
-const METAL_RED     = '#A03030'
+const METAL_RED     = '#8B4848'  // muted red so mailbox isn't a competing hot-spot
 const METAL_FLAG    = '#A03030'
 const SEED_BROWN    = '#7A5B3C'
 
@@ -96,6 +96,24 @@ function VegetableGarden() {
           <meshStandardMaterial color={WOOD_LIGHT} />
         </mesh>
       </group>
+      {/* === Micro-story: watering can next to garden === */}
+      <group position={[-0.6, 0.1, 0.7]}>
+        {/* Body */}
+        <mesh castShadow>
+          <cylinderGeometry args={[0.1, 0.12, 0.18, 10]} />
+          <meshStandardMaterial color="#6B8B5A" roughness={0.7} metalness={0.3} />
+        </mesh>
+        {/* Spout */}
+        <mesh position={[0.15, 0.04, 0]} rotation={[0, 0, -Math.PI / 3]} castShadow>
+          <cylinderGeometry args={[0.018, 0.028, 0.2, 6]} />
+          <meshStandardMaterial color="#6B8B5A" roughness={0.7} metalness={0.3} />
+        </mesh>
+        {/* Handle */}
+        <mesh position={[-0.05, 0.13, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.08, 0.012, 6, 12, Math.PI]} />
+          <meshStandardMaterial color="#6B8B5A" roughness={0.7} metalness={0.3} />
+        </mesh>
+      </group>
     </group>
   )
 }
@@ -123,6 +141,25 @@ function Clothesline() {
         <cylinderGeometry args={[0.008, 0.008, 2.4, 4]} />
         <meshStandardMaterial color={ROPE} />
       </mesh>
+      {/* Micro-story: woven laundry basket beneath the line */}
+      <group position={[0, 0.13, 0.5]}>
+        <mesh castShadow receiveShadow>
+          <cylinderGeometry args={[0.22, 0.18, 0.22, 14]} />
+          <meshStandardMaterial color="#B89A6E" roughness={0.92} />
+        </mesh>
+        {/* Folded white shirt on top */}
+        <mesh position={[0, 0.14, 0]} castShadow>
+          <boxGeometry args={[0.28, 0.04, 0.2]} />
+          <meshStandardMaterial color={FABRIC_CREAM} roughness={0.9} />
+        </mesh>
+      </group>
+      {/* Fallen sock — micro detail */}
+      <group position={[0.2, 0.05, 0.65]} rotation={[0, 0.5, 0]}>
+        <mesh castShadow>
+          <boxGeometry args={[0.06, 0.04, 0.16]} />
+          <meshStandardMaterial color={FABRIC_BLUE} roughness={0.92} />
+        </mesh>
+      </group>
       {/* 4 hanging items — pinch wide top, drape bottom */}
       {[
         [-0.85, FABRIC_BLUE, 0.28, 0.36],
@@ -173,6 +210,11 @@ function Mailbox() {
           <meshStandardMaterial color={METAL_FLAG} />
         </mesh>
       </group>
+      {/* Micro-story: envelope peeking out of the box */}
+      <mesh position={[0.16, 1.13, 0.15]} rotation={[0, Math.PI / 6, Math.PI / 14]} castShadow>
+        <boxGeometry args={[0.18, 0.12, 0.01]} />
+        <meshStandardMaterial color={FABRIC_CREAM} roughness={0.88} />
+      </mesh>
     </group>
   )
 }
@@ -333,6 +375,29 @@ function PondDock() {
         <cylinderGeometry args={[0.008, 0.008, 0.5, 4]} />
         <meshStandardMaterial color={ROPE} />
       </mesh>
+      {/* Micro-story: fishing rod leaning on dock railing */}
+      <group position={[-0.5, 0.4, -0.3]} rotation={[0, 0, Math.PI / 4]}>
+        <mesh castShadow>
+          <cylinderGeometry args={[0.012, 0.006, 1.4, 6]} />
+          <meshStandardMaterial color={WOOD_DARK} roughness={0.92} />
+        </mesh>
+        {/* Small reel */}
+        <mesh position={[0, -0.5, 0.04]} castShadow>
+          <cylinderGeometry args={[0.04, 0.04, 0.04, 8]} />
+          <meshStandardMaterial color="#2A2018" roughness={0.4} metalness={0.7} />
+        </mesh>
+      </group>
+      {/* Bait bucket */}
+      <group position={[-0.2, 0.2, -0.15]}>
+        <mesh castShadow>
+          <cylinderGeometry args={[0.07, 0.08, 0.14, 10]} />
+          <meshStandardMaterial color="#8B6FB0" roughness={0.7} metalness={0.3} />
+        </mesh>
+        <mesh position={[0, 0.08, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.06, 0.008, 4, 12]} />
+          <meshStandardMaterial color="#2A2018" />
+        </mesh>
+      </group>
     </group>
   )
 }

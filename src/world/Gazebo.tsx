@@ -2,13 +2,15 @@
 // climbing on posts per Sub-A's recommendation.
 
 import { getZone } from './zones'
+import WindSway from './WindSway'
 
 const STONE_BASE = '#8E8579'
 const STONE_DK   = '#6B6358'
 const WOOD       = '#8E6A45'
 const WOOD_DARK  = '#5D452B'
-const SHINGLE_A  = '#4A2F1C'
-const SHINGLE_B  = '#3A2516'
+// Re-skin roof as oxidized copper patina — visually differs from cabin shingle
+const COPPER_PATINA_A = '#4A8B6E'
+const COPPER_PATINA_B = '#3A7558'
 const IVY        = '#5A7A4C'
 const IVY_DARK   = '#4A6B40'
 const CHIME      = '#C8B89A'
@@ -114,7 +116,7 @@ export default function Gazebo() {
           return (
             <mesh key={`roof${i}`} position={[0, y + h / 2, 0]} castShadow>
               <cylinderGeometry args={[r1, r0, h, 6, 1]} />
-              <meshStandardMaterial color={i % 2 ? SHINGLE_B : SHINGLE_A} roughness={0.92} flatShading />
+              <meshStandardMaterial color={i % 2 ? COPPER_PATINA_B : COPPER_PATINA_A} roughness={0.35} metalness={0.6} flatShading />
             </mesh>
           )
         })
@@ -167,7 +169,8 @@ export default function Gazebo() {
         </group>
       ))}
 
-      {/* === Wind chime hanging from roof corner === */}
+      {/* === Wind chime hanging from roof corner — sways in breeze === */}
+      <WindSway amp={0.18} freq={0.9} phase={2.5}>
       <group position={[0.7, 0.45 + POST_H, 0.5]}>
         {/* Top cross brace */}
         <mesh position={[0, 0, 0]}>
@@ -190,6 +193,7 @@ export default function Gazebo() {
           )
         })}
       </group>
+      </WindSway>
     </group>
   )
 }

@@ -72,6 +72,14 @@ export default function Sky() {
           opacity={0.7}
           fade={22}
         />
+        {/* High cirrus wisps — thin streaks high above */}
+        <Cloud seed={11} segments={20} position={[-32, 45,   8]} bounds={[22, 1, 5]} volume={3} color="#ffffff" opacity={0.32} fade={28} />
+        <Cloud seed={12} segments={20} position={[ 28, 48,  -6]} bounds={[24, 1, 5]} volume={3} color="#ffffff" opacity={0.28} fade={28} />
+        <Cloud seed={13} segments={20} position={[  4, 50,  22]} bounds={[20, 1, 4]} volume={3} color="#ffffff" opacity={0.32} fade={28} />
+        <Cloud seed={14} segments={20} position={[-22, 52, -24]} bounds={[22, 1, 5]} volume={3} color="#ffffff" opacity={0.28} fade={28} />
+        <Cloud seed={15} segments={18} position={[ 36, 55,  18]} bounds={[18, 1, 4]} volume={2} color="#ffffff" opacity={0.25} fade={28} />
+        <Cloud seed={16} segments={18} position={[-12, 42,  32]} bounds={[20, 1, 5]} volume={3} color="#ffffff" opacity={0.3} fade={28} />
+        <Cloud seed={17} segments={18} position={[  0, 55, -32]} bounds={[18, 1, 4]} volume={3} color="#ffffff" opacity={0.3} fade={28} />
       </Clouds>
     </>
   )

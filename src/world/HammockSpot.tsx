@@ -1,7 +1,9 @@
 // Reading nook — two pines + hammock + campfire ring + open book.
 // Per Sub-A: add lived-in retreat details (campfire ring, book on hammock).
 
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import { getZone } from './zones'
 
 const TRUNK_LIGHT = '#7A5E3E'
@@ -62,12 +64,23 @@ export default function HammockSpot() {
     return arr
   }, [])
 
+  // Hammock sway — both rotation and translation
+  const hammockRef = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    if (hammockRef.current) {
+      const t = s.clock.elapsedTime
+      hammockRef.current.rotation.z = Math.sin(t * 0.6) * 0.06
+      hammockRef.current.position.x = Math.sin(t * 0.4) * 0.08
+    }
+  })
+
   return (
     <group position={[x, 0, zPos]}>
       <Pine scale={1.05} position={[-1.4, 0, 0]} />
       <Pine scale={1.0}  position={[ 1.4, 0, 0]} />
 
-      {/* Hammock */}
+      {/* Hammock (swings) */}
+      <group ref={hammockRef}>
       {hammockSegments.map(([hx, hy, hz], i) => (
         <mesh key={`h${i}`} position={[hx, hy, hz]} castShadow>
           <sphereGeometry args={[0.12, 8, 6]} />
@@ -80,6 +93,7 @@ export default function HammockSpot() {
           <meshStandardMaterial color={HAMMOCK} roughness={0.85} />
         </mesh>
       ))}
+      </group>
 
       {/* Rope knots at tree attachments */}
       {[-1.2, 1.2].map((rx, i) => (

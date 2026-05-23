@@ -5,6 +5,7 @@
 import * as THREE from 'three'
 import { useMemo } from 'react'
 import { TREE_POSITIONS, FILLER_POSITIONS } from './zones'
+import WindSway from './WindSway'
 
 const PINE_TRUNK    = '#5A4128'
 const PINE_FOL_A    = '#5A7A4C'
@@ -25,7 +26,7 @@ const MAPLE_B       = '#E29A4A'
 const MAPLE_C       = '#C0451E'
 
 const CHERRY_TRUNK  = '#5C3A22'
-const CHERRY_A      = '#F4C3D8'
+const CHERRY_A      = '#E8D2DC'  // muted from #F4C3D8 — stop competing with mailbox red
 const CHERRY_B      = '#E89AB8'
 const CHERRY_C      = '#FFE2EE'
 
@@ -370,15 +371,21 @@ function Daisy({ scale = 1 }: { scale?: number }) {
 export default function Forest() {
   return (
     <group>
-      {TREE_POSITIONS.map(([x, z, scale, species], i) => (
-        <group key={`t${i}`} position={[x, 0, z]}>
-          {species === 'pine' && <Pine scale={scale} seed={i} />}
-          {species === 'birch' && <Birch scale={scale} seed={i} />}
-          {species === 'oak' && <Oak scale={scale} seed={i} />}
-          {species === 'maple' && <Maple scale={scale} seed={i} />}
-          {species === 'cherry' && <Cherry scale={scale} seed={i} />}
-        </group>
-      ))}
+      {TREE_POSITIONS.map(([x, z, scale, species], i) => {
+        const yStretch = 0.75 + ((i * 31) % 11) * 0.08
+        return (
+          <group key={`t${i}`} position={[x, 0, z]} scale={[1, yStretch, 1]}>
+            {/* Wind sway around base — tree canopy gently rocks */}
+            <WindSway amp={0.015 + (i % 3) * 0.005} freq={0.6 + (i % 5) * 0.08} phase={i * 0.4}>
+              {species === 'pine' && <Pine scale={scale} seed={i} />}
+              {species === 'birch' && <Birch scale={scale} seed={i} />}
+              {species === 'oak' && <Oak scale={scale} seed={i} />}
+              {species === 'maple' && <Maple scale={scale} seed={i} />}
+              {species === 'cherry' && <Cherry scale={scale} seed={i} />}
+            </WindSway>
+          </group>
+        )
+      })}
       {FILLER_POSITIONS.map(([x, z, kind, scale], i) => (
         <group key={`f${i}`} position={[x, 0, z]}>
           {kind === 'bush' && <Bush scale={scale} seed={i} />}

@@ -7,7 +7,7 @@
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast, SSAO } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { ACESFilmicToneMapping } from 'three'
 import Island from './Island'
@@ -29,6 +29,9 @@ import Weathervane from './Weathervane'
 import ContactShadowsLayer from './ContactShadowsLayer'
 import Domestic from './Domestic'
 import Scarecrow from './Scarecrow'
+import PathEdges from './PathEdges'
+import SoilHalos from './SoilHalos'
+import Atmospherics from './Atmospherics'
 
 export default function App() {
   return (
@@ -53,7 +56,7 @@ export default function App() {
       <ambientLight intensity={0.45} color="#fff6e0" />
       <directionalLight
         position={[18, 9, 6]}
-        intensity={1.4}
+        intensity={2.0}
         color="#FFD9A0"
         castShadow
         shadow-mapSize={[3072, 3072]}
@@ -66,13 +69,17 @@ export default function App() {
         shadow-bias={-0.0005}
       />
       <directionalLight position={[-14, 12, -10]} intensity={0.32} color="#b0d5e8" />
+      {/* Rim light — cool cyan from camera-right rear to detach silhouettes */}
+      <directionalLight position={[-20, 8, 20]} intensity={0.45} color="#a8d8e8" />
 
       {/* === The diorama === */}
       <Island />
       <ForestPath />
+      <PathEdges />
       <Water />
       <Forest />
       <GroundCover />
+      <SoilHalos />
       <Cabin />
       <Weathervane />
       <Gazebo />
@@ -83,25 +90,38 @@ export default function App() {
       <Domestic />
       <Scarecrow />
       <Critters />
+      <Atmospherics />
       <Lanterns />
       <ContactShadowsLayer />
 
       {/* === Camera — slow rotation, raised target so cabin roof + gazebo are centered === */}
       <OrbitControls
-        target={[0, 3.5, 0]}
+        target={[0, 5, 0]}
         enablePan={false}
         enableZoom={true}
         minDistance={22}
-        maxDistance={70}
-        minPolarAngle={Math.PI * 0.22}
+        maxDistance={50}
+        minPolarAngle={Math.PI * 0.12}
         maxPolarAngle={Math.PI * 0.44}
         autoRotate
         autoRotateSpeed={0.1}
       />
 
       <EffectComposer multisampling={0}>
-        <Bloom intensity={0.4} luminanceThreshold={0.85} luminanceSmoothing={0.4} mipmapBlur />
-        <BrightnessContrast brightness={0.02} contrast={0.06} />
+        {/* SSAO — bake crevice shadow into every junction */}
+        <SSAO
+          samples={20}
+          radius={0.15}
+          intensity={26}
+          luminanceInfluence={0.6}
+          color={0x000000}
+          worldDistanceThreshold={0.5}
+          worldDistanceFalloff={0.3}
+          worldProximityThreshold={3}
+          worldProximityFalloff={0.5}
+        />
+        <Bloom intensity={0.5} luminanceThreshold={0.8} luminanceSmoothing={0.4} mipmapBlur />
+        <BrightnessContrast brightness={0.02} contrast={0.08} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
         <SMAA />
       </EffectComposer>

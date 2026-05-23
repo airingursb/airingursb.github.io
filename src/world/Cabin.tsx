@@ -16,6 +16,7 @@ const CHINKING   = '#D4C4A8'
 const STONE      = '#8E8579'
 const STONE_DK   = '#6B6358'
 const PLANK      = '#7A5B3C'
+const DOOR_RED   = '#A03030'  // hero saturated accent (Sub-A iter-5 gap #5)
 const SHINGLE_PALETTE = ['#5C3A22', '#4A2F1C', '#6E4A2E', '#3A2516', '#8B5E3C']
 const SHINGLE_MOSS = '#7A9268'
 const WINDOW     = '#FFE4A8'
@@ -204,12 +205,12 @@ export default function Cabin() {
         )
       })}
 
-      {/* === Door === */}
+      {/* === Door — painted red as the scene's hero accent === */}
       <group position={[0, 0.32 + doorH/2, CABIN_D/2]}>
         {[-0.3, -0.1, 0.1, 0.3].map((dx, i) => (
           <mesh key={`dp${i}`} position={[dx, 0, 0.01]} castShadow>
             <boxGeometry args={[0.21, doorH, 0.04]} />
-            <meshStandardMaterial color={PLANK} roughness={0.88} />
+            <meshStandardMaterial color={DOOR_RED} roughness={0.7} />
           </mesh>
         ))}
         {[-doorH/2 + 0.2, doorH/2 - 0.2].map((dy, i) => (
