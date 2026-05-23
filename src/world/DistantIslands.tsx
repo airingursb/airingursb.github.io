@@ -98,10 +98,9 @@ import { useFrame } from '@react-three/fiber'
 export default function DistantIslands() {
   return (
     <group>
-      <TinyIsland position={[-40, 0, -25]} scale={1.6} tree={true} />
+      {/* Pulled back to 4 → 2 for cleaner horizon — keep windmill island + far one */}
       <TinyIsland position={[42, -5, 30]} scale={1.4} tree={false} windmill={true} />
       <TinyIsland position={[-30, -8, 40]} scale={1.2} tree={true} />
-      <TinyIsland position={[55, 3, -10]} scale={1.8} tree={true} />
     </group>
   )
 }

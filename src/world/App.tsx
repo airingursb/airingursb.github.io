@@ -28,16 +28,15 @@ import Critters from './Critters'
 import Weathervane from './Weathervane'
 import ContactShadowsLayer from './ContactShadowsLayer'
 import Domestic from './Domestic'
-import Scarecrow from './Scarecrow'
 import PathEdges from './PathEdges'
 import SoilHalos from './SoilHalos'
 import Atmospherics from './Atmospherics'
 import Avatar from './Avatar'
-import HotAirBalloon from './HotAirBalloon'
 import DistantIslands from './DistantIslands'
 import Campfire from './Campfire'
-import Rainbow from './Rainbow'
 import CloudShadows from './CloudShadows'
+// Sub-A iter-10: Rainbow + HotAirBalloon + Scarecrow cut to protect cabin
+// as the visual hero. (Files left on disk for easy re-enable.)
 
 export default function App() {
   return (
@@ -98,7 +97,6 @@ export default function App() {
       <EaselClearing />
       <Storytelling />
       <Domestic />
-      <Scarecrow />
       <Critters />
       <Atmospherics />
       <Avatar />
