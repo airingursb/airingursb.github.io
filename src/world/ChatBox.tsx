@@ -27,9 +27,12 @@ export default function ChatBox() {
     histRef.current?.scrollTo(0, histRef.current.scrollHeight)
   }, [msgs, pending])
 
-  // Auto-focus input when chat panel opens
+  // Auto-focus input when chat panel opens. preventScroll keeps iOS
+  // Safari from yanking the page when chat opens via panel-swap.
   useEffect(() => {
-    const id = setTimeout(() => inputRef.current?.focus(), 200)
+    const id = setTimeout(() => {
+      inputRef.current?.focus({ preventScroll: true })
+    }, 200)
     return () => clearTimeout(id)
   }, [])
 
