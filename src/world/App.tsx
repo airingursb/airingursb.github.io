@@ -7,7 +7,7 @@
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast, SSAO } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast, SSAO, DepthOfField, Vignette } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { ACESFilmicToneMapping } from 'three'
 import Island from './Island'
@@ -34,6 +34,7 @@ import SoilHalos from './SoilHalos'
 import Atmospherics from './Atmospherics'
 import Avatar from './Avatar'
 import HotAirBalloon from './HotAirBalloon'
+import DistantIslands from './DistantIslands'
 
 export default function App() {
   return (
@@ -95,6 +96,7 @@ export default function App() {
       <Atmospherics />
       <Avatar />
       <HotAirBalloon />
+      <DistantIslands />
       <Lanterns />
       <ContactShadowsLayer />
 
@@ -112,7 +114,10 @@ export default function App() {
       />
 
       <EffectComposer multisampling={0}>
-        {/* SSAO — bake crevice shadow into every junction */}
+        {/* DepthOfField — diorama-style miniature feel:
+            keeps the cabin focal area sharp while softening distant cliffs */}
+        <DepthOfField focusDistance={0.012} focalLength={0.025} bokehScale={2.5} />
+        {/* SSAO — crevice darkening at every junction */}
         <SSAO
           samples={20}
           radius={0.15}
@@ -126,6 +131,7 @@ export default function App() {
         />
         <Bloom intensity={0.7} luminanceThreshold={0.55} luminanceSmoothing={0.6} mipmapBlur />
         <BrightnessContrast brightness={0.02} contrast={0.08} />
+        <Vignette eskil={false} offset={0.18} darkness={0.35} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
         <SMAA />
       </EffectComposer>

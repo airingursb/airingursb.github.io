@@ -214,6 +214,35 @@ export default function Critters() {
         opacity={0.8}
       />
 
+      {/* Bees buzzing around lavender patches */}
+      <Sparkles
+        count={4}
+        scale={[1.5, 1, 1.5]}
+        position={[-2.4, 0.6, 0.6]}
+        size={3}
+        speed={1.2}
+        color="#FCD757"
+        opacity={0.7}
+      />
+      <Sparkles
+        count={3}
+        scale={[1.2, 1, 1.2]}
+        position={[2.4, 0.6, 0.6]}
+        size={3}
+        speed={1.2}
+        color="#FCD757"
+        opacity={0.7}
+      />
+      <Sparkles
+        count={3}
+        scale={[1.2, 1, 1.2]}
+        position={[8, 0.6, 4]}
+        size={3}
+        speed={1.2}
+        color="#FCD757"
+        opacity={0.7}
+      />
+
       {/* Fireflies near hammock */}
       <Sparkles
         count={8}

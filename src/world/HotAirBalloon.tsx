@@ -26,21 +26,19 @@ export default function HotAirBalloon() {
 
   return (
     <group ref={ref}>
-      {/* Balloon body — sphere with vertical stripes */}
+      {/* Balloon body — solid base */}
       <mesh position={[0, 1.2, 0]} castShadow>
-        <sphereGeometry args={[1.4, 16, 14]} />
+        <sphereGeometry args={[1.4, 24, 18]} />
         <meshStandardMaterial color={BALLOON_PINK} roughness={0.8} />
       </mesh>
-      {/* Cream alternating stripes */}
+      {/* Vertical stripes via sphere slices (phiStart/phiLength) — curve
+          with the sphere instead of floating planes peeling off. */}
       {Array.from({ length: 6 }).map((_, i) => {
-        const a = (i / 6) * Math.PI * 2
+        const sliceStart = (i / 6) * Math.PI * 2
+        const sliceLen = (Math.PI * 2) / 6 * 0.5  // half-width per stripe
         return (
-          <mesh
-            key={`stripe${i}`}
-            position={[Math.cos(a) * 1.41, 1.2, Math.sin(a) * 1.41]}
-            rotation={[0, a + Math.PI / 2, 0]}
-          >
-            <planeGeometry args={[0.4, 2.0]} />
+          <mesh key={`stripe${i}`} position={[0, 1.2, 0]} castShadow>
+            <sphereGeometry args={[1.405, 16, 14, sliceStart, sliceLen]} />
             <meshStandardMaterial color={i % 2 ? BALLOON_CREAM : BALLOON_RED} roughness={0.8} side={THREE.DoubleSide} />
           </mesh>
         )

@@ -261,6 +261,17 @@ export default function Cabin() {
         </mesh>
         {/* Strong interior point light visible through window */}
         <pointLight position={[0, 0, -0.15]} color="#FFD58F" intensity={1.4} distance={3} decay={2} />
+        {/* Spotlight at window mouth — spills warm glow onto porch */}
+        <spotLight
+          position={[0, 0, 0.05]}
+          target-position={[0.4, -1.0, 1.5]}
+          angle={0.7}
+          penumbra={0.5}
+          intensity={0.6}
+          color="#FFE4A8"
+          distance={3}
+          decay={2}
+        />
         {/* Window frame (glass + mullions in front of cavity) */}
         <mesh position={[0, 0, 0.05]}>
           <planeGeometry args={[0.6, 0.6]} />
