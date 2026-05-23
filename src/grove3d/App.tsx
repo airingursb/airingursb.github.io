@@ -91,13 +91,18 @@ export default function App() {
           far={6}
         />
         {/* Post-processing — Bloom only on high/medium quality (saves perf on low) */}
-        <EffectComposer multisampling={0}>
-          {q.bloom && (
+        {q.bloom ? (
+          <EffectComposer multisampling={0}>
             <Bloom intensity={0.45} luminanceThreshold={0.6} luminanceSmoothing={0.4} mipmapBlur />
-          )}
-          <Vignette eskil={false} offset={0.2} darkness={0.55} />
-          <SMAA />
-        </EffectComposer>
+            <Vignette eskil={false} offset={0.2} darkness={0.55} />
+            <SMAA />
+          </EffectComposer>
+        ) : (
+          <EffectComposer multisampling={0}>
+            <Vignette eskil={false} offset={0.2} darkness={0.55} />
+            <SMAA />
+          </EffectComposer>
+        )}
       </Suspense>
     </Canvas>
     <LoadingScreen />
