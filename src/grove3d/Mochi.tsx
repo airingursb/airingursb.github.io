@@ -1,4 +1,4 @@
-// SHU-733 Phase 4 · Mochi NPC with simple path AI
+// SHU-733/736 Phase 4 · Mochi NPC with simple path AI
 //
 // State machine:
 //   - waits at spawn (head tracks player)
@@ -6,15 +6,17 @@
 //   - if player sits on stone (stage=seated) → walks to opposite side of stone, sits
 //   - looks at player at all times via head/torso rotation
 //
-// Visual: distinct stylized bear (larger, darker than player-species-bear, with scarf).
-// Future Phase 4: swap placeholder for real bear GLB.
+// Visual: GLBAvatar loads /grove3d/models/mochi.glb when present, else
+// falls back to procedural bear (with the historic hand-modeled scarf etc.
+// living inside ProceduralAnimal for the species='bear' config).
 
-import { useRef, useEffect } from 'react'
+import { useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { RigidBody, CapsuleCollider, type RapierRigidBody } from '@react-three/rapier'
 import { Billboard, Text } from '@react-three/drei'
 import * as THREE from 'three'
 import { useGroveStore } from './store'
+import GLBAvatar from './GLBAvatar'
 
 const PLAYER_DETECT_RADIUS = 8
 const STOP_DISTANCE = 1.8
@@ -93,101 +95,11 @@ export default function Mochi() {
       colliders={false}
     >
       <CapsuleCollider args={[0.4, 0.4]} />
-      <group ref={visual}>
-        {/* High-poly bear — chubbier + larger than player species, distinct identity */}
-
-        {/* Body capsule (32 cap × 48 radial = ~3.5k tris) */}
-        <mesh position={[0, 0, 0]} castShadow receiveShadow>
-          <capsuleGeometry args={[0.4, 0.7, 32, 48]} />
-          <meshStandardMaterial color="#523018" roughness={0.85} />
-        </mesh>
-
-        {/* Lighter belly patch — Heap Plaza ornament density */}
-        <mesh position={[0, 0, 0.36]} castShadow>
-          <sphereGeometry args={[0.3, 28, 22]} />
-          <meshStandardMaterial color="#7a4828" roughness={0.85} />
-        </mesh>
-
-        {/* Head (high-res 64×48 = ~6k tris) */}
-        <mesh position={[0, 0.78, 0]} castShadow>
-          <sphereGeometry args={[0.36, 64, 48]} />
-          <meshStandardMaterial color="#523018" roughness={0.85} />
-        </mesh>
-
-        {/* Round bear ears with inner pads */}
-        {[-1, 1].map((side) => (
-          <group key={side} position={[side * 0.25, 1.02, 0]}>
-            <mesh castShadow>
-              <sphereGeometry args={[0.14, 32, 24]} />
-              <meshStandardMaterial color="#3a1a08" roughness={0.85} />
-            </mesh>
-            <mesh position={[0, 0, 0.025]}>
-              <sphereGeometry args={[0.09, 24, 18]} />
-              <meshStandardMaterial color="#7a3838" roughness={0.85} />
-            </mesh>
-          </group>
-        ))}
-
-        {/* Snout protrusion + nose */}
-        <mesh position={[0, 0.7, 0.3]} castShadow>
-          <sphereGeometry args={[0.17, 24, 20]} />
-          <meshStandardMaterial color="#a07050" roughness={0.85} />
-        </mesh>
-        <mesh position={[0, 0.74, 0.42]} castShadow>
-          <sphereGeometry args={[0.045, 16, 12]} />
-          <meshStandardMaterial color="#0a0606" roughness={0.3} />
-        </mesh>
-
-        {/* Eyes (two contemplative dots) */}
-        {[-1, 1].map((side) => (
-          <group key={side} position={[side * 0.13, 0.86, 0.31]}>
-            <mesh castShadow>
-              <sphereGeometry args={[0.045, 16, 12]} />
-              <meshStandardMaterial color="#f8efe0" roughness={0.3} />
-            </mesh>
-            <mesh position={[0, 0, 0.025]}>
-              <sphereGeometry args={[0.025, 12, 10]} />
-              <meshStandardMaterial color="#1a0808" roughness={0.2} />
-            </mesh>
-          </group>
-        ))}
-
-        {/* Subtle brows give him a "thinking" look */}
-        {[-1, 1].map((side) => (
-          <mesh key={side} position={[side * 0.13, 0.93, 0.31]} rotation={[0, 0, side * 0.25]} castShadow>
-            <boxGeometry args={[0.07, 0.012, 0.012]} />
-            <meshStandardMaterial color="#3a1a08" roughness={0.85} />
-          </mesh>
-        ))}
-
-        {/* 4 legs (high-res cylinders) */}
-        {[
-          [-0.16, -0.35,  0.16], [0.16, -0.35,  0.16],
-          [-0.16, -0.35, -0.16], [0.16, -0.35, -0.16],
-        ].map(([x, y, z], i) => (
-          <mesh key={i} position={[x, y, z]} castShadow>
-            <cylinderGeometry args={[0.13, 0.15, 0.3, 20]} />
-            <meshStandardMaterial color="#3a1a08" roughness={0.85} />
-          </mesh>
-        ))}
-
-        {/* Scarf — wraps neck (torus + fold flaps), narrative detail */}
-        <mesh position={[0, 0.5, 0]} castShadow>
-          <torusGeometry args={[0.39, 0.085, 16, 32]} />
-          <meshStandardMaterial color="#7a3838" roughness={0.7} />
-        </mesh>
-        {/* Scarf hanging tail */}
-        <mesh position={[0.18, 0.32, 0.18]} rotation={[0.2, 0.5, 0.1]} castShadow>
-          <boxGeometry args={[0.08, 0.32, 0.04]} />
-          <meshStandardMaterial color="#7a3838" roughness={0.7} />
-        </mesh>
-        <mesh position={[0.22, 0.18, 0.2]} rotation={[0.3, 0.5, 0.05]} castShadow>
-          <boxGeometry args={[0.08, 0.06, 0.045]} />
-          <meshStandardMaterial color="#5a2828" roughness={0.65} />
-        </mesh>
-
-        {/* Name billboard */}
-        <Billboard position={[0, 1.5, 0]}>
+      <group ref={visual} position={[0, -0.6, 0]}>
+        {/* GLBAvatar loads /grove3d/models/mochi.glb when present; otherwise
+            the procedural bear (species='bear') stands in. */}
+        <GLBAvatar species="bear" modelKey="mochi" />
+        <Billboard position={[0, 2.1, 0]}>
           <Text fontSize={0.2} color="#f4ead5" outlineWidth={0.014} outlineColor="#2a1810" anchorY="bottom">
             Mochi
           </Text>

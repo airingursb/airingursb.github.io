@@ -1,16 +1,11 @@
-// SHU-733 · Player species avatar — high-poly procedural via ProceduralAnimal
+// SHU-733/736 · Player species avatar — GLB-first with procedural fallback.
 //
-// Originally tried GLB auto-load + placeholder capsule fallback, but per
-// 2026-05-23 design call we ship procedural meshes directly (~10-15k tris
-// per species) so each species reads as a distinct, detailed character
-// without needing to source 11 CC0 GLBs.
-//
-// Animation: useFrame-driven mesh group transforms (walk = sin-wave limb
-// rotation, idle = breath + head bob + tail sway, jump = compress legs).
-// No skeletal bone rig.
+// Tries /grove3d/models/{species}.glb. If file isn't uploaded yet (the
+// common case until the user runs Meshy/Tripo/Rodin), GLBAvatar silently
+// falls back to ProceduralAnimal, so the scene still renders something.
 
 import { type MutableRefObject } from 'react'
-import ProceduralAnimal from './ProceduralAnimal'
+import GLBAvatar from './GLBAvatar'
 
 interface Props {
   species: string
@@ -18,5 +13,5 @@ interface Props {
 }
 
 export default function PlayerAvatar({ species, animState }: Props) {
-  return <ProceduralAnimal species={species} animState={animState} />
+  return <GLBAvatar species={species} animState={animState} />
 }
