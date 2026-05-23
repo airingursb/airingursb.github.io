@@ -118,13 +118,16 @@ CREATE TABLE IF NOT EXISTS public.npc_diary (
 -- ── companion_quests ──────────────────────────────────────────────────────
 -- Per-account quest state. Quest catalog lives in code (services/blog-api/lib/quests.js).
 CREATE TABLE IF NOT EXISTS public.companion_quests (
-  id          bigserial    PRIMARY KEY,
-  account_id  uuid         NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
-  slug        text         NOT NULL,
-  state       text         NOT NULL DEFAULT 'suggested',  -- 'suggested'|'accepted'|'completed'|'declined'
-  evidence    jsonb        DEFAULT '{}'::jsonb,
-  created_at  timestamptz  NOT NULL DEFAULT now(),
-  updated_at  timestamptz  NOT NULL DEFAULT now(),
+  id                  bigserial    PRIMARY KEY,
+  account_id          uuid         NOT NULL REFERENCES public.accounts(id) ON DELETE CASCADE,
+  slug                text         NOT NULL,
+  state               text         NOT NULL DEFAULT 'suggested',  -- 'suggested'|'accepted'|'completed'|'declined'
+  npc_id              text,                                       -- ❓ may not be present; derived from slug
+  suggested_at        timestamptz  DEFAULT now(),
+  accepted_at         timestamptz,
+  declined_at         timestamptz,
+  completed_at        timestamptz,
+  completion_evidence text,                                       -- ≤500 chars, what the user said when completing
   UNIQUE (account_id, slug)
 );
 
