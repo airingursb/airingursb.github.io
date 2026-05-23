@@ -75,7 +75,7 @@
 - **Size:** 256×256 px
 - **Prompt:** A warm wooden bookshelf, isometric 45-degree view, 3 shelves stacked tall. Rows of colorful book spines (assorted warm-tone covers — terracotta, cream, dusty olive, faded teal). A small framed photo and a tiny potted succulent on top. Aged oak wood with soft grain. Looks inviting and lived-in, like a personal library. Transparent background, no ground shadow.
 
-### C02 — Easel with painted comic panel (COMICS)  `[ ]`
+### C02 — Easel with painted comic panel (COMICS)  `[x]`
 - **File:** `output/buildings/C02-easel.png`
 - **Size:** 256×256 px
 - **Prompt:** A wooden art easel, isometric 45-degree view, holding a small square canvas painted with a charming 4-panel comic strip in a 2×2 grid (the comic shows tiny pandas — generic abstract suggestion of the comic, not legible text). Brushes in a jar at the easel's base. A folded apron draped over one leg. Warm cinnamon wood. Transparent background, no ground shadow.
