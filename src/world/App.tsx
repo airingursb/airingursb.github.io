@@ -35,6 +35,8 @@ import Atmospherics from './Atmospherics'
 import Avatar from './Avatar'
 import HotAirBalloon from './HotAirBalloon'
 import DistantIslands from './DistantIslands'
+import Campfire from './Campfire'
+import Rainbow from './Rainbow'
 
 export default function App() {
   return (
@@ -97,6 +99,8 @@ export default function App() {
       <Avatar />
       <HotAirBalloon />
       <DistantIslands />
+      <Campfire />
+      <Rainbow />
       <Lanterns />
       <ContactShadowsLayer />
 
