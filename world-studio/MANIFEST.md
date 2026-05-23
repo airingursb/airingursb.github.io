@@ -12,7 +12,7 @@
 - **Size:** 128×128 px
 - **Prompt:** A single seamless isometric grass tile, 128×128 pixels, viewed from above at 45-degree angle. Soft sage-green grass blades with subtle hand-painted texture, a few darker moss patches and one or two tiny yellow wildflowers for variation. Top-down rhombus shape filling the canvas. Transparent background (NOT a square — only the diamond-shaped tile area is opaque). Must tile seamlessly when placed next to copies of itself on all 4 sides.
 
-### A02 — Stone path tile  `[ ]`
+### A02 — Stone path tile  `[x]`
 - **File:** `output/tiles/A02-stone.png`
 - **Size:** 128×128 px
 - **Prompt:** A single seamless isometric stone path tile, 128×128 pixels. Cobblestone arrangement of 3-5 rounded warm grey-beige river stones fitted together with moss in the cracks. Hand-painted soft shading, slight wear on the stones. Diamond-shaped tile area only, transparent elsewhere. Must tile seamlessly with copies of itself.
