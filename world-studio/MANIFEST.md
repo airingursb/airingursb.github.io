@@ -111,7 +111,7 @@
 - **Size:** 128×128 px
 - **Prompt:** A small round shrub bush, isometric 45-degree view. Soft cluster of moss-green foliage clumps in a roughly spherical shape, with 2-3 tiny pale-pink berries peeking out. Sits flat on the ground. Hand-painted softness. Transparent background, no ground shadow.
 
-### D03 — Mossy rock cluster  `[ ]`
+### D03 — Mossy rock cluster  `[x]`
 - **File:** `output/decorations/D03-rocks.png`
 - **Size:** 128×128 px
 - **Prompt:** A cluster of 3 rounded river rocks of varying sizes (large, medium, small), isometric 45-degree view. Cool grey-beige stone color with patches of soft moss-green on the tops. Smooth weathered shapes, not angular. Transparent background, no ground shadow.
