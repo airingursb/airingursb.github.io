@@ -80,7 +80,7 @@
 - **Size:** 256×256 px
 - **Prompt:** A wooden art easel, isometric 45-degree view, holding a small square canvas painted with a charming 4-panel comic strip in a 2×2 grid (the comic shows tiny pandas — generic abstract suggestion of the comic, not legible text). Brushes in a jar at the easel's base. A folded apron draped over one leg. Warm cinnamon wood. Transparent background, no ground shadow.
 
-### C03 — Vintage record player table (MUSIC)  `[ ]`
+### C03 — Vintage record player table (MUSIC)  `[x]`
 - **File:** `output/buildings/C03-record-player.png`
 - **Size:** 256×256 px
 - **Prompt:** A small wooden side table with a vintage vinyl record player on top, isometric 45-degree view. Record is mid-spin (subtle motion blur lines around the edge). A few vinyl record sleeves leaning against the table's leg. Warm amber light glowing from inside the player. Cozy and slightly nostalgic. Transparent background, no ground shadow.
