@@ -116,7 +116,7 @@
 - **Size:** 128×128 px
 - **Prompt:** A cluster of 3 rounded river rocks of varying sizes (large, medium, small), isometric 45-degree view. Cool grey-beige stone color with patches of soft moss-green on the tops. Smooth weathered shapes, not angular. Transparent background, no ground shadow.
 
-### D04 — Warm wooden lamp post  `[ ]`
+### D04 — Warm wooden lamp post  `[x]`
 - **File:** `output/decorations/D04-lamp.png`
 - **Size:** 128×128 px
 - **Prompt:** A short wooden lamp post, isometric 45-degree view. Cinnamon-wood vertical post with a small lantern-style glass enclosure on top emitting a warm yellow glow (the glow should be drawn into the sprite). The lantern has a tiny gabled roof. Cozy fairytale feel. Sprite occupies most of the canvas vertically. Transparent background, no ground shadow.
