@@ -57,7 +57,7 @@
 - **Ref:** attach `refs/panda.png`
 - **Prompt:** Same Airing panda character as B01 (attached reference), facing away from the camera (north, back view). Back of the round head visible with the distinctive black ears in silhouette. White back fur with the characteristic black saddle. Both feet visible. Relaxed bipedal idle. Transparent background, no ground shadow. Must be visually consistent with B01 — same character, just turned around.
 
-### B04 — Avatar idle, facing left (west)  `[ ]`
+### B04 — Avatar idle, facing left (west)  `[x]`
 - **File:** `output/character/B04-idle-west.png`
 - **Size:** 256×256 px
 - **Ref:** attach `refs/panda.png`
