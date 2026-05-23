@@ -51,7 +51,7 @@
 - **Ref:** attach `refs/panda.png`
 - **Prompt:** Same Airing panda character as B01 (attached reference), same proportions and palette, same relaxed bipedal idle pose, but now turned to face right (east) in profile-three-quarter view. Head pointed right, body angled 45 degrees from the camera. Both feet still on the ground. Tail/back of head partially visible. Transparent background, no ground shadow. Must be visually consistent with B01 — same character, just rotated.
 
-### B03 — Avatar idle, facing away (back-north)  `[ ]`
+### B03 — Avatar idle, facing away (back-north)  `[x]`
 - **File:** `output/character/B03-idle-north.png`
 - **Size:** 256×256 px
 - **Ref:** attach `refs/panda.png`
