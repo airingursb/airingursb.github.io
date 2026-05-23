@@ -1,9 +1,18 @@
-// World — Airing's Forest Cabin Island (iteration 4 · daytime + polish).
+// World — Airing's Forest Cabin Island.
 //
-// Adds: cloud sea void treatment, transmission-material water + animated
-// waterfall, critters (cat/ducks/deer/birds/butterflies/fireflies),
-// weathervane focal silhouette, contact shadows, autumn maple + cherry
-// blossom color accents, raised camera target.
+// Final layout (iter 15):
+//   - Organic 22-unit-radius floating island with cliff drop + cloud sea
+//   - Log cabin (HERO) with smoke + warm window glow + red door + porch
+//   - 4 outdoor zones: hammock (north), easel (west), gazebo (east),
+//     bookdeck (south), campfire (at hammock)
+//   - 45 procedural trees (5 species) + 35 fillers + ground cover
+//   - River + pond + waterfall + bridge
+//   - Critters: cat / ducks / deer + sparkle birds/butterflies/bees
+//   - Domestic: garden / clothesline / mailbox / wreath / feeder / dock
+//   - Atmospherics: falling leaves + V-formation birds + dust motes
+//   - Lighting: warm afternoon ACES + SSAO + Bloom + subtle DoF
+//   - Avatar: panda billboard at cabin porch (idle breathing)
+//   - Distant: 2 mini islands with windmill
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -35,6 +44,7 @@ import Avatar from './Avatar'
 import DistantIslands from './DistantIslands'
 import Campfire from './Campfire'
 import CloudShadows from './CloudShadows'
+import ZoneHitboxes from './ZoneHitboxes'
 // Sub-A iter-10: Rainbow + HotAirBalloon + Scarecrow cut to protect cabin
 // as the visual hero. (Files left on disk for easy re-enable.)
 
@@ -105,6 +115,7 @@ export default function App() {
       <CloudShadows />
       <Lanterns />
       <ContactShadowsLayer />
+      <ZoneHitboxes />
 
       {/* === Camera — slow rotation, raised target so cabin roof + gazebo are centered === */}
       <OrbitControls
