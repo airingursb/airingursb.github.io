@@ -35,6 +35,9 @@ jobs:
         run: python3 scripts/update_feed.py
 
       - name: Sync moments from Telegram
+        # Non-critical analytics-style sync. Supabase IO budget can exhaust
+        # (esp. on long runs), and that must NOT block the static site deploy.
+        continue-on-error: true
         env:
           BLOG_SUPABASE_URL: ${{ secrets.BLOG_SUPABASE_URL }}
           BLOG_SUPABASE_SERVICE_KEY: ${{ secrets.BLOG_SUPABASE_SERVICE_KEY }}
