@@ -11,14 +11,17 @@ import Scene from './Scene'
 import ChatOverlay from './ChatOverlay'
 import Tutorial from './Tutorial'
 import MobileJoystick from './MobileJoystick'
+import LoadingScreen from './LoadingScreen'
 import { useGroveStore, postToParent } from './store'
 import { acceptQuest } from './api'
 import { connectWorld, disconnectWorld } from './ws'
+import { getQualitySettings } from './quality'
 
 export default function App() {
   const setSpecies = useGroveStore((s) => s.setSpecies)
   const setDisplayName = useGroveStore((s) => s.setDisplayName)
   const setStage = useGroveStore((s) => s.setStage)
+  const q = getQualitySettings()
 
   // Bootstrap: read query params + signal ready + accept quest (idempotent)
   useEffect(() => {
@@ -50,12 +53,12 @@ export default function App() {
     <>
     <Canvas
       shadows
-      dpr={[1, 2]}
+      dpr={q.dpr as [number, number]}
       camera={{ position: [4, 3, 6], fov: 55 }}
       gl={{ antialias: true, alpha: false }}
     >
       <color attach="background" args={['#0a0e1c']} />
-      <fog attach="fog" args={['#0a0e1c', 12, 40]} />
+      <fog attach="fog" args={['#0a0e1c', 12, q.fog]} />
 
       {/* Moon ambient + key */}
       <ambientLight intensity={0.25} color="#7088aa" />
@@ -64,7 +67,7 @@ export default function App() {
         intensity={1.1}
         color="#c5d4e8"
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={[q.shadowMapSize, q.shadowMapSize]}
         shadow-camera-near={0.5}
         shadow-camera-far={50}
         shadow-camera-left={-15}
@@ -74,10 +77,11 @@ export default function App() {
       />
 
       <Suspense fallback={null}>
+        <SceneReadyEmitter />
         {/* HDR night ambience (drei preset) — costs ~256KB HDRI but huge
             visual upgrade. material clearcoat / transmission start to read. */}
         <Environment preset="night" />
-        <Stars radius={50} depth={40} count={1500} factor={3} fade speed={0.3} />
+        <Stars radius={50} depth={40} count={q.starCount} factor={3} fade speed={0.3} />
         <Scene />
         <ContactShadows
           position={[0, 0.01, 0]}
@@ -86,19 +90,31 @@ export default function App() {
           blur={2.5}
           far={6}
         />
-        {/* Post-processing — Bloom on the lantern emissives + soft vignette + SMAA */}
+        {/* Post-processing — Bloom only on high/medium quality (saves perf on low) */}
         <EffectComposer multisampling={0}>
-          <Bloom intensity={0.45} luminanceThreshold={0.6} luminanceSmoothing={0.4} mipmapBlur />
+          {q.bloom && (
+            <Bloom intensity={0.45} luminanceThreshold={0.6} luminanceSmoothing={0.4} mipmapBlur />
+          )}
           <Vignette eskil={false} offset={0.2} darkness={0.55} />
           <SMAA />
         </EffectComposer>
       </Suspense>
-
-      {/* TODO: replace OrbitControls with proper Player + camera follow */}
     </Canvas>
+    <LoadingScreen />
     <Tutorial />
     <ChatOverlay />
     <MobileJoystick />
     </>
   )
+}
+
+/** Fires once after Suspense resolves, telling LoadingScreen to fade out. */
+function SceneReadyEmitter() {
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      window.dispatchEvent(new CustomEvent('grove3d-ready'))
+    })
+    return () => cancelAnimationFrame(id)
+  }, [])
+  return null
 }

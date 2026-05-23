@@ -33,6 +33,7 @@ import { maybeJoinMorningCoffee, leaveMorningCoffeeIfNeeded, setCoffeeBannerHand
 import { maybeNoticeCookAlong, leaveCookAlongIfNeeded, setCookBannerHandler, startOrJoinCookAlong } from '../group_cook'
 import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJamBurstTier } from '../group_jam'
 import { tickNpcEvents, leaveNpcEventIfNeeded, setEventBannerHandler, currentEventStatus } from '../npc_events'
+import { setupGrovePortal, teardownGrovePortal } from '../grove_portal'
 import { tickRandomEvents, getActiveEvent, attendEvent, type ActiveEvent } from '../random_events'
 import { TransitNpcController } from '../transit_npcs'
 import { spawnAmbientPets, tickAmbientPetProximity, reactPetsToPlayerEmote } from '../ambient_pets'
@@ -538,6 +539,12 @@ export class RoomScene extends Phaser.Scene {
       })
     }
     tickNpcEvents(this.currentRoomId)
+
+    // SHU-733 Phase 8 · in-game sparkle entry to 3D Mochi Grove pocket world.
+    // No-op for any room other than 'room_grove'.
+    setupGrovePortal(this, this.currentRoomId)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGrovePortal)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGrovePortal)
 
     // V14.7 — friday fireworks visual: when in Rooftop during the active
     // window, spawn periodic firework particle bursts in the sky area.
