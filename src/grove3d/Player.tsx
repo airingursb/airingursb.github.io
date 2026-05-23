@@ -18,7 +18,10 @@ const WALK_SPEED = 4
 const RUN_SPEED  = 7
 const JUMP_IMPULSE = 5
 const MOUSE_SENS = 0.0028
-const CAMERA_OFFSET = new THREE.Vector3(0, 2.2, 4.5)
+// SHU-733 · third-person camera convention: camera sits BEHIND the player,
+// player faces +Z (after GLB rotation fix), W moves +Z into the scene away
+// from camera. Was +4.5 (in front of player), now -4.5 (behind).
+const CAMERA_OFFSET = new THREE.Vector3(0, 2.2, -4.5)
 
 interface Props {
   spawn?: [number, number, number]
@@ -31,7 +34,7 @@ export default function Player({ spawn = [-2, 1.2, 4] }: Props) {
   const keys = useRef<Record<string, boolean>>({})
   const yaw = useRef(0)
   const pitch = useRef(-0.15)
-  const animState = useRef<'idle' | 'walking' | 'running' | 'jumping'>('idle')
+  const animState = useRef<'idle' | 'walking' | 'running' | 'jumping' | 'sitting'>('idle')
   const lastJumpAt = useRef(0)
   const species = useGroveStore((s) => s.species)
   const setStage = useGroveStore((s) => s.setStage)
@@ -71,7 +74,9 @@ export default function Player({ spawn = [-2, 1.2, 4] }: Props) {
 
     // Build move vector from keys (relative to yaw)
     const forward = (keys.current.KeyW ? 1 : 0) - (keys.current.KeyS ? 1 : 0)
-    const strafe  = (keys.current.KeyD ? 1 : 0) - (keys.current.KeyA ? 1 : 0)
+    // Camera sits at -Z behind player (looking +Z). In that view, world +X
+    // is the camera's LEFT, so strafe sign must invert to make D = right.
+    const strafe  = (keys.current.KeyA ? 1 : 0) - (keys.current.KeyD ? 1 : 0)
     const running = !!keys.current.ShiftLeft
     const moving = forward !== 0 || strafe !== 0
     const speed = running ? RUN_SPEED : WALK_SPEED
@@ -95,6 +100,8 @@ export default function Player({ spawn = [-2, 1.2, 4] }: Props) {
       const faceAngle = Math.atan2(vx, vz)
       visual.current.rotation.y = THREE.MathUtils.lerp(visual.current.rotation.y, faceAngle, 0.18)
       animState.current = running ? 'running' : 'walking'
+    } else if (stage === 'seated') {
+      animState.current = 'sitting'
     } else if (Math.abs(cur.y) < 0.3) {
       animState.current = 'idle'
     }
@@ -144,7 +151,10 @@ export default function Player({ spawn = [-2, 1.2, 4] }: Props) {
       linearDamping={4}
     >
       <CapsuleCollider args={[0.35, 0.35]} />
-      <group ref={visual}>
+      {/* Capsule center settles at y=0.7 (radius+halfHeight). Mesh feet are
+          at mesh-space y=0, so drop the visual by 0.7 to plant the feet on
+          the ground. Matches Mochi NPC's -0.6 offset (its body is at y=0.6). */}
+      <group ref={visual} position={[0, -0.7, 0]}>
         <PlayerAvatar species={species} animState={animState} />
       </group>
     </RigidBody>

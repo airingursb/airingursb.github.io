@@ -28,6 +28,7 @@ export default function Mochi() {
   const body = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
   const playerPosCache = useRef(new THREE.Vector3(0, 0, 0))
+  const animState = useRef<'idle' | 'walking' | 'running' | 'jumping' | 'sitting'>('idle')
   const stage = useGroveStore((s) => s.stage)
   const { scene } = useThree()
 
@@ -48,8 +49,10 @@ export default function Mochi() {
     if (playerPos) playerPosCache.current.copy(playerPos as unknown as THREE.Vector3)
 
     const myPos = body.current.translation()
+    // Stone cylinder radius is ~0.95 (SittingStone.tsx), so sit at least 1.3m
+    // from center to avoid clipping into the stone.
     const target = stage === 'seated' || stage === 'beside'
-      ? new THREE.Vector3(SITTING_STONE.x - 0.4, 0, SITTING_STONE.z + 0.4) // sit opposite player
+      ? new THREE.Vector3(SITTING_STONE.x - 1.3, 0, SITTING_STONE.z + 1.0)
       : (() => {
           const dx = playerPosCache.current.x - myPos.x
           const dz = playerPosCache.current.z - myPos.z
@@ -78,12 +81,14 @@ export default function Mochi() {
       // Face direction of travel
       const faceAngle = Math.atan2(dx, dz)
       visual.current.rotation.y = THREE.MathUtils.lerp(visual.current.rotation.y, faceAngle, 0.12)
+      animState.current = 'walking'
     } else {
-      // Stationary — face the player
+      // Stationary — face the player; sit if player has sat down
       const dxp = playerPosCache.current.x - myPos.x
       const dzp = playerPosCache.current.z - myPos.z
       const faceAngle = Math.atan2(dxp, dzp)
       visual.current.rotation.y = THREE.MathUtils.lerp(visual.current.rotation.y, faceAngle, 0.06)
+      animState.current = stage === 'seated' || stage === 'beside' ? 'sitting' : 'idle'
     }
   })
 
@@ -98,7 +103,7 @@ export default function Mochi() {
       <group ref={visual} position={[0, -0.6, 0]}>
         {/* GLBAvatar loads /grove3d/models/mochi.glb when present; otherwise
             the procedural bear (species='bear') stands in. */}
-        <GLBAvatar species="bear" modelKey="mochi" />
+        <GLBAvatar species="bear" modelKey="mochi" animState={animState} />
         <Billboard position={[0, 2.1, 0]}>
           <Text fontSize={0.2} color="#f4ead5" outlineWidth={0.014} outlineColor="#2a1810" anchorY="bottom">
             Mochi

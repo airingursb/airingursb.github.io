@@ -19,18 +19,28 @@ import { Suspense, useEffect, useMemo, useRef, useState, type MutableRefObject }
 import { useGLTF, useAnimations } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+// SkeletonUtils.clone properly re-binds bones for SkinnedMesh — scene.clone()
+// alone leaves the cloned mesh referencing the ORIGINAL skeleton, breaking
+// per-instance pose (and sometimes making the mesh render at 0 size).
+import { clone as cloneWithSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import ProceduralAnimal from './ProceduralAnimal'
+
+/** SHU-736 debug mode — force every avatar (player + Mochi NPC) to use the
+ *  bear GLB while we lock down the visual style. Set to null once each
+ *  species has its own GLB shipped in public/grove3d/models/. */
+const DEBUG_FORCE_MODEL: string | null = 'bear'
 
 interface Props {
   species: string
   /** Override the GLB filename when it differs from species (e.g. NPC Mochi
    *  uses 'mochi.glb' but its procedural fallback is the bear species). */
   modelKey?: string
-  animState?: MutableRefObject<'idle' | 'walking' | 'running' | 'jumping'>
+  animState?: MutableRefObject<AnimState>
 }
 
 export default function GLBAvatar({ species, modelKey, animState }: Props) {
-  const url = `/grove3d/models/${modelKey ?? species}.glb`
+  const effectiveKey = DEBUG_FORCE_MODEL ?? modelKey ?? species
+  const url = `/grove3d/models/${effectiveKey}.glb`
   const [status, setStatus] = useState<'checking' | 'present' | 'missing'>('checking')
 
   useEffect(() => {
@@ -56,67 +66,141 @@ export default function GLBAvatar({ species, modelKey, animState }: Props) {
   )
 }
 
-function GLBMesh({ url, animState }: { url: string; animState?: MutableRefObject<'idle' | 'walking' | 'running' | 'jumping'> }) {
+function GLBMesh({ url, animState }: { url: string; animState?: MutableRefObject<AnimState> }) {
   const { scene, animations } = useGLTF(url)
   const group = useRef<THREE.Group>(null)
-  // Clone once so multiple instances (peers + player) don't share material refs
-  const cloned = useMemo(() => scene.clone(true), [scene])
-  const { actions, mixer } = useAnimations(animations, group)
+  const innerGroup = useRef<THREE.Group>(null)
+  // Each instance must have its own bone hierarchy — scene.clone() reuses
+  // skeleton references and renders nothing for SkinnedMesh. Use SkeletonUtils.
+  const cloned = useMemo(() => cloneWithSkeleton(scene) as THREE.Object3D, [scene])
+  const { actions } = useAnimations(animations, group)
+  const hasClips = Object.keys(actions).length > 0
 
-  // Enable shadows on every mesh in the imported scene
+  // Enable shadows + grab references to the bones we manipulate for sit pose.
+  // Bear rig uses Mixamo-ish names — Hips, LeftUpLeg, RightUpLeg, etc.
+  const bones = useMemo(() => ({
+    hips: null as THREE.Bone | null,
+    luL: null as THREE.Bone | null,  // LeftUpLeg
+    ruL: null as THREE.Bone | null,  // RightUpLeg
+    lL:  null as THREE.Bone | null,  // LeftLeg
+    rL:  null as THREE.Bone | null,  // RightLeg
+    spine: null as THREE.Bone | null,
+    // Snapshot of rest pose so we can restore after exiting sit
+    restHips: new THREE.Euler(),
+    restLuL: new THREE.Euler(),
+    restRuL: new THREE.Euler(),
+    restLL: new THREE.Euler(),
+    restRL: new THREE.Euler(),
+    restSpine: new THREE.Euler(),
+    restHipsY: 0,
+  }), [cloned])
+
   useEffect(() => {
     cloned.traverse((o) => {
       const m = o as THREE.Mesh
-      if (m.isMesh) {
-        m.castShadow = true
-        m.receiveShadow = true
+      if (m.isMesh) { m.castShadow = true; m.receiveShadow = true }
+      const b = o as THREE.Bone
+      if (b.isBone) {
+        if (b.name === 'Hips')        { bones.hips = b;  bones.restHips.copy(b.rotation); bones.restHipsY = b.position.y }
+        else if (b.name === 'LeftUpLeg')  { bones.luL = b; bones.restLuL.copy(b.rotation) }
+        else if (b.name === 'RightUpLeg') { bones.ruL = b; bones.restRuL.copy(b.rotation) }
+        else if (b.name === 'LeftLeg')    { bones.lL = b;  bones.restLL.copy(b.rotation)  }
+        else if (b.name === 'RightLeg')   { bones.rL = b;  bones.restRL.copy(b.rotation)  }
+        else if (b.name === 'Spine')      { bones.spine = b; bones.restSpine.copy(b.rotation) }
       }
     })
-  }, [cloned])
+  }, [cloned, bones])
 
-  // Crossfade between named clips driven by animState
-  const lastState = useRef<string | null>(null)
+  // Each-frame driver: clip crossfade + per-state special handling
+  const lastState = useRef<AnimState | null>(null)
   useFrame(() => {
-    const state = animState?.current ?? 'idle'
-    if (state === lastState.current) return
-    lastState.current = state
-    const target = clipFor(state, actions)
-    if (!target) return
-    // fade out everything else
-    for (const name in actions) {
-      const a = actions[name]
-      if (!a) continue
-      if (a === target) continue
-      a.fadeOut(0.2)
+    const stateNow = animState?.current ?? 'idle'
+
+    if (hasClips) {
+      // Sit overrides clips entirely — we hand-pose bones instead
+      if (stateNow === 'sitting') {
+        for (const name in actions) actions[name]?.stop()
+        applySitPose(bones)
+        return
+      }
+      // Restore rest pose if we just exited sit
+      if (lastState.current === 'sitting') restoreRestPose(bones)
+
+      if (stateNow === lastState.current) return
+      lastState.current = stateNow
+      const target = clipFor(stateNow, actions)
+      if (!target) return
+      for (const name in actions) {
+        const a = actions[name]
+        if (!a || a === target) continue
+        a.fadeOut(0.2)
+      }
+      target.reset().fadeIn(0.2).play()
+      // Walking clip slowed way down reads as a gentle idle sway —
+      // bear doesn't ship with a real Idle clip from Meshy rigging.
+      target.timeScale = stateNow === 'idle' ? 0.2 : 1.0
     }
-    target.reset().fadeIn(0.2).play()
   })
 
+  // bear.glb faces +Z natively; no orientation correction needed here.
+  // Per-model overrides (if a different GLB faces -Z) can go here later.
   return (
     <group ref={group}>
-      <primitive object={cloned} />
+      <group ref={innerGroup}>
+        <primitive object={cloned} />
+      </group>
     </group>
   )
 }
 
-/** Best-effort match: AI-generated rigs name clips inconsistently. */
-function clipFor(state: string, actions: Record<string, THREE.AnimationAction | null>): THREE.AnimationAction | null {
+type AnimState = 'idle' | 'walking' | 'running' | 'jumping' | 'sitting'
+
+/** Best-effort clip match. Meshy rigging names clips like
+ *  `Armature|walking_man|baselayer` and `Armature|running|baselayer`. */
+function clipFor(state: AnimState, actions: Record<string, THREE.AnimationAction | null>): THREE.AnimationAction | null {
   const want =
-    state === 'running' ? ['Run', 'Running', 'run'] :
-    state === 'walking' ? ['Walk', 'Walking', 'walk'] :
-    state === 'jumping' ? ['Jump', 'jump', 'Idle', 'idle'] :
-                          ['Idle', 'idle', 'Stand', 'TPose', 'T-Pose']
-  for (const name of want) {
-    const a = actions[name]
-    if (a) return a
-    // Loose match — many exporters mangle names
+    state === 'running' ? ['running', 'run'] :
+    state === 'walking' ? ['walking', 'walk'] :
+    state === 'jumping' ? ['jump', 'walking'] :
+    state === 'idle'    ? ['walking', 'idle'] :  // slow-walk = idle sway
+                          ['walking', 'idle']
+  for (const tok of want) {
     for (const k of Object.keys(actions)) {
-      if (k.toLowerCase().includes(name.toLowerCase()) && actions[k]) return actions[k]!
+      if (k.toLowerCase().includes(tok) && actions[k]) return actions[k]!
     }
   }
-  // First available clip as last resort (rather than nothing)
-  for (const k of Object.keys(actions)) {
-    if (actions[k]) return actions[k]
-  }
+  for (const k of Object.keys(actions)) if (actions[k]) return actions[k]
   return null
+}
+
+interface BoneRefs {
+  hips: THREE.Bone | null
+  luL: THREE.Bone | null; ruL: THREE.Bone | null
+  lL: THREE.Bone | null;  rL: THREE.Bone | null
+  spine: THREE.Bone | null
+  restHips: THREE.Euler; restLuL: THREE.Euler; restRuL: THREE.Euler
+  restLL: THREE.Euler;   restRL: THREE.Euler;  restSpine: THREE.Euler
+  restHipsY: number
+}
+
+/** Sit pose: knees folded forward, hips dropped, slight forward lean. */
+function applySitPose(b: BoneRefs) {
+  if (b.hips) {
+    b.hips.position.y = b.restHipsY - 0.45
+    b.hips.rotation.set(0.25, 0, 0)
+  }
+  if (b.luL) b.luL.rotation.set(-Math.PI / 2, 0, 0)
+  if (b.ruL) b.ruL.rotation.set(-Math.PI / 2, 0, 0)
+  if (b.lL)  b.lL.rotation.set(Math.PI / 2 + 0.1, 0, 0)
+  if (b.rL)  b.rL.rotation.set(Math.PI / 2 + 0.1, 0, 0)
+  if (b.spine) b.spine.rotation.set(-0.08, 0, 0)  // small back-lean to balance
+}
+
+function restoreRestPose(b: BoneRefs) {
+  if (b.hips) { b.hips.position.y = b.restHipsY; b.hips.rotation.copy(b.restHips) }
+  if (b.luL) b.luL.rotation.copy(b.restLuL)
+  if (b.ruL) b.ruL.rotation.copy(b.restRuL)
+  if (b.lL)  b.lL.rotation.copy(b.restLL)
+  if (b.rL)  b.rL.rotation.copy(b.restRL)
+  if (b.spine) b.spine.rotation.copy(b.restSpine)
 }
