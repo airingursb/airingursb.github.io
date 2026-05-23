@@ -1,5 +1,9 @@
 // supabase/functions/dispatch-notifications/index.ts
 //
+// V8 (SHU-588): bounded retries — release() now also increments retry_count
+// via release_notification() / release_notifications_bulk() RPCs; sweep query
+// filters .lt('retry_count', 5) so permanently bad rows stop being re-pulled.
+//
 // V5 (2026-05-23): hardened after death-spiral incident — the V3 version
 // could hang 25-51s per call when pooler was saturated, causing pg_cron
 // to pile up http_post calls and bring the entire DB plane down.
@@ -35,6 +39,7 @@ const QUIET_END_BJT = 9;
 const MAX_ROWS = 50;
 const DEADLINE_MS = 25_000;
 const TG_TIMEOUT_MS = 5_000;
+const MAX_RETRIES = 5;
 
 type Row = {
   id: number;
@@ -132,7 +137,14 @@ async function claim(id: number, db = sb()): Promise<Row | null> {
 }
 
 async function release(id: number, db = sb()): Promise<void> {
-  await db.from('notification_queue').update({ sent_at: null }).eq('id', id);
+  // SHU-588: increment retry_count atomically so the row drops out of the
+  // pending index once it hits MAX_RETRIES.
+  await db.rpc('release_notification', { p_id: id });
+}
+
+async function releaseBulk(ids: number[], db = sb()): Promise<void> {
+  if (ids.length === 0) return;
+  await db.rpc('release_notifications_bulk', { p_ids: ids });
 }
 
 /**
@@ -166,6 +178,7 @@ async function processPending(deadline: number): Promise<{ sent: number; skipped
     .from('notification_queue')
     .select('*')
     .is('sent_at', null)
+    .lt('retry_count', MAX_RETRIES)
     .lte('scheduled_for', new Date().toISOString())
     .order('scheduled_for', { ascending: true })
     .limit(MAX_ROWS);
@@ -208,8 +221,7 @@ async function processPending(deadline: number): Promise<{ sent: number; skipped
           sent += claimedIds.length;
         } catch (e) {
           console.error('[dispatch] flush send error:', (e as Error).message);
-          // Release everything we claimed
-          await db.from('notification_queue').update({ sent_at: null }).in('id', claimedIds);
+          await releaseBulk(claimedIds, db);
           failed += claimedIds.length;
         }
       }
@@ -232,6 +244,7 @@ async function runHourlyDigest(): Promise<{ sent: number }> {
     .in('event_type', ['like', 'chat'])
     .eq('channel', 'noise')
     .is('sent_at', null)
+    .lt('retry_count', MAX_RETRIES)
     .gte('created_at', since);
   if (error) {
     console.error('[dispatch] hourly query error:', error.message);
@@ -277,7 +290,7 @@ async function runHourlyDigest(): Promise<{ sent: number }> {
     return { sent: claimedIds.length };
   } catch (e) {
     console.error('[dispatch] hourly send error:', (e as Error).message);
-    await db.from('notification_queue').update({ sent_at: null }).in('id', claimedIds);
+    await releaseBulk(claimedIds, db);
     return { sent: 0 };
   }
 }
