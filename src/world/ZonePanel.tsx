@@ -32,7 +32,12 @@ export default function ZonePanel({ initialData }: { initialData?: InitialData }
   // Listen for click events from in-canvas hitboxes (typed event bus)
   useEffect(() => {
     return on('world-zone-click', ({ kind }) => {
-      // If a different zone is already open, animate out first then swap
+      // Clicking the same zone again toggles closed (matches user expectation)
+      if (zone === kind) {
+        close()
+        return
+      }
+      // Different zone open → animate out, then swap
       if (zone && zone !== kind) {
         setClosing(true)
         setTimeout(() => { setZone(kind); setClosing(false) }, 180)
