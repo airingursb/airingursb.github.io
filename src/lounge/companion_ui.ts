@@ -54,6 +54,7 @@ function ensure(): HTMLElement {
         <span class="nook-companion-name">Mochi</span>
         <span class="nook-companion-where">· library</span>
         <button type="button" class="nook-companion-diary-btn" id="nook-companion-diary-btn" title="ta 最近写的日记">📔</button>
+        <button type="button" class="nook-companion-memory-btn" id="nook-companion-memory-btn" title="ta 记住关于你的事 (可删)">🧠</button>
         <button type="button" class="nook-companion-group-toggle" id="nook-companion-group-toggle" hidden title="群聊 (让同房间的 NPC 都听见)">👥</button>
         <span class="nook-companion-counter" id="nook-companion-counter">— / 30</span>
         <button type="button" class="nook-companion-close" aria-label="Close">✕</button>
@@ -71,6 +72,16 @@ function ensure(): HTMLElement {
           <button type="button" class="nook-diary-close" aria-label="Close">✕</button>
         </div>
         <ul class="nook-diary-list" id="nook-diary-list"></ul>
+      </div>
+    </div>
+    <div class="nook-memory-modal" id="nook-memory-modal" hidden>
+      <div class="nook-memory-card">
+        <div class="nook-memory-header">
+          <span class="nook-memory-title">🧠 <span id="nook-memory-npc-name">NPC</span> 记得关于你的事</span>
+          <button type="button" class="nook-memory-close" aria-label="Close">✕</button>
+        </div>
+        <p class="nook-memory-hint">删掉某条 = 让 ta 立刻"忘记"。下次再聊到时不会再提。</p>
+        <ul class="nook-memory-list" id="nook-memory-list"></ul>
       </div>
     </div>
   `
@@ -96,6 +107,16 @@ function ensure(): HTMLElement {
   diaryClose?.addEventListener('click', () => { if (diaryModal) diaryModal.hidden = true })
   diaryModal?.addEventListener('click', (e) => {
     if (e.target === diaryModal) diaryModal.hidden = true
+  })
+
+  // SHU-599 — memory modal: list facts NPC remembers, allow per-fact delete
+  const memoryBtn = rootEl.querySelector('#nook-companion-memory-btn') as HTMLButtonElement | null
+  memoryBtn?.addEventListener('click', () => openMemoryModal())
+  const memoryModal = rootEl.querySelector('#nook-memory-modal') as HTMLElement | null
+  const memoryClose = rootEl.querySelector('.nook-memory-close') as HTMLButtonElement | null
+  memoryClose?.addEventListener('click', () => { if (memoryModal) memoryModal.hidden = true })
+  memoryModal?.addEventListener('click', (e) => {
+    if (e.target === memoryModal) memoryModal.hidden = true
   })
 
   groupToggleEl?.addEventListener('click', () => {
@@ -306,6 +327,86 @@ export async function openCompanionChat(args: OpenArgs) {
   if (usage) updateCounter(usage.sent, usage.cap)
 
   setTimeout(() => inputEl?.focus(), 100)
+}
+
+async function openMemoryModal() {
+  if (!rootEl) return
+  const modal = rootEl.querySelector('#nook-memory-modal') as HTMLElement | null
+  const list = rootEl.querySelector('#nook-memory-list') as HTMLElement | null
+  const title = rootEl.querySelector('#nook-memory-npc-name') as HTMLElement | null
+  if (!modal || !list) return
+  if (title) title.textContent = currentNpcName
+  list.innerHTML = '<li class="nook-memory-loading">读取中…</li>'
+  modal.hidden = false
+  try {
+    const res = await fetch(`https://chat.ursb.me/api/ai-companion/facts/${currentNpcId}`, { credentials: 'include' })
+    if (!res.ok) {
+      const code = res.status === 401 ? 'login-required' : 'failed'
+      list.innerHTML = code === 'login-required'
+        ? '<li class="nook-memory-empty">登录后才能看 ta 记住了你什么。</li>'
+        : '<li class="nook-memory-empty">没拿到记忆列表</li>'
+      return
+    }
+    const body = await res.json()
+    const facts = (body.facts ?? []) as Array<{ id: number; key: string; value: string; observed_at: string }>
+    if (facts.length === 0) {
+      list.innerHTML = `<li class="nook-memory-empty">${currentNpcName} 还没记下任何关于你的事。多聊聊看。</li>`
+      return
+    }
+    renderMemoryList(list, facts)
+  } catch (err) {
+    list.innerHTML = '<li class="nook-memory-empty">记忆暂时不可读：' + String((err as Error)?.message ?? err) + '</li>'
+  }
+}
+
+function renderMemoryList(
+  list: HTMLElement,
+  facts: Array<{ id: number; key: string; value: string; observed_at: string }>,
+) {
+  list.innerHTML = ''
+  for (const f of facts) {
+    const li = document.createElement('li')
+    li.className = 'nook-memory-entry'
+    li.dataset.factId = String(f.id)
+
+    const meta = document.createElement('span')
+    meta.className = 'nook-memory-key'
+    meta.textContent = f.key
+
+    const value = document.createElement('p')
+    value.className = 'nook-memory-value'
+    value.textContent = f.value
+
+    const del = document.createElement('button')
+    del.type = 'button'
+    del.className = 'nook-memory-del'
+    del.title = '让 ta 忘记这条'
+    del.textContent = '×'
+    del.addEventListener('click', async () => {
+      if (del.disabled) return
+      del.disabled = true
+      del.textContent = '…'
+      try {
+        const res = await fetch(`https://chat.ursb.me/api/ai-companion/facts/${f.id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        li.style.opacity = '0.4'
+        li.style.textDecoration = 'line-through'
+        del.textContent = '✓'
+      } catch (err) {
+        del.disabled = false
+        del.textContent = '×'
+        alert('删除失败：' + ((err as Error)?.message ?? err))
+      }
+    })
+
+    li.appendChild(meta)
+    li.appendChild(value)
+    li.appendChild(del)
+    list.appendChild(li)
+  }
 }
 
 async function openDiaryModal() {
