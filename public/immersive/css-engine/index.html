@@ -2881,6 +2881,72 @@ document.adoptedStyleSheets = [sheet2];           <span class="cm">// shadow-DOM
       <span class="lang-en-only">This is the <em>most counterintuitive but most important</em> implementation choice in CSS selector matching. Source-code <em>reads</em> "<code>div.card .btn:hover</code>" left-to-right; SelectorChecker (Ch12) matches <em>right-to-left</em> — starts at the rightmost <code>:hover</code>, then walks up the parent chain. Reason in Ch12, briefly: <em>most elements don't match anything, and starting at the most specific part prunes earliest</em>.</span>
     </div>
 
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="selArr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#15171c"/></marker>
+          </defs>
+
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">"div.main &gt; .card:hover" · CSSSelector LINKED LIST</text>
+
+          <!-- Selector source as written -->
+          <text x="40" y="55" font-family="JetBrains Mono" font-size="11" fill="#15171c">SOURCE:</text>
+          <text x="100" y="55" font-family="JetBrains Mono" font-size="11" fill="#15171c">div.main &gt; .card:hover</text>
+          <text x="290" y="55" font-family="JetBrains Mono" font-size="9" fill="#767c87">(reads left-to-right)</text>
+
+          <!-- Linked list layout: head on right (rightmost compound), tail on left -->
+          <text x="40" y="100" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#15171c">CSSSELECTOR LIST (head = rightmost, walk via tag_history_):</text>
+
+          <!-- node[0] :hover -->
+          <rect x="540" y="120" width="170" height="80" fill="#e8d4e0" stroke="#a83a6b" stroke-width="2"/>
+          <text x="625" y="140" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#a83a6b">node[0] ← HEAD</text>
+          <text x="550" y="158" font-family="JetBrains Mono" font-size="8" fill="#15171c">match=PseudoClass</text>
+          <text x="550" y="170" font-family="JetBrains Mono" font-size="8" fill="#15171c">pseudo_type=PseudoHover</text>
+          <text x="550" y="182" font-family="JetBrains Mono" font-size="8" fill="#15171c">relation=SubSelector</text>
+          <text x="550" y="194" font-family="JetBrains Mono" font-size="8" fill="#15171c">tag_history_ →</text>
+
+          <!-- node[1] .card -->
+          <rect x="370" y="120" width="160" height="80" fill="#d8e6cd" stroke="#4a6b3e"/>
+          <text x="450" y="140" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#4a6b3e">node[1]</text>
+          <text x="380" y="158" font-family="JetBrains Mono" font-size="8" fill="#15171c">match=Class</text>
+          <text x="380" y="170" font-family="JetBrains Mono" font-size="8" fill="#15171c">value="card"</text>
+          <text x="380" y="182" font-family="JetBrains Mono" font-size="8" fill="#15171c">relation=Child (&gt;)</text>
+          <text x="380" y="194" font-family="JetBrains Mono" font-size="8" fill="#15171c">tag_history_ →</text>
+
+          <!-- node[2] .main -->
+          <rect x="200" y="120" width="160" height="80" fill="#d8e6cd" stroke="#4a6b3e"/>
+          <text x="280" y="140" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#4a6b3e">node[2]</text>
+          <text x="210" y="158" font-family="JetBrains Mono" font-size="8" fill="#15171c">match=Class</text>
+          <text x="210" y="170" font-family="JetBrains Mono" font-size="8" fill="#15171c">value="main"</text>
+          <text x="210" y="182" font-family="JetBrains Mono" font-size="8" fill="#15171c">relation=SubSelector</text>
+          <text x="210" y="194" font-family="JetBrains Mono" font-size="8" fill="#15171c">tag_history_ →</text>
+
+          <!-- node[3] div -->
+          <rect x="30" y="120" width="160" height="80" fill="#c9dceb" stroke="#1f5c8c"/>
+          <text x="110" y="140" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#1f5c8c">node[3] ← TAIL</text>
+          <text x="40" y="158" font-family="JetBrains Mono" font-size="8" fill="#15171c">match=Tag</text>
+          <text x="40" y="170" font-family="JetBrains Mono" font-size="8" fill="#15171c">value="div"</text>
+          <text x="40" y="182" font-family="JetBrains Mono" font-size="8" fill="#15171c">relation=SubSelector</text>
+          <text x="40" y="194" font-family="JetBrains Mono" font-size="8" fill="#15171c">tag_history_ = null</text>
+
+          <!-- arrows -->
+          <path d="M540,160 L530,160" stroke="#15171c" stroke-width="1" marker-end="url(#selArr)"/>
+          <path d="M370,160 L360,160" stroke="#15171c" stroke-width="1" marker-end="url(#selArr)"/>
+          <path d="M200,160 L190,160" stroke="#15171c" stroke-width="1" marker-end="url(#selArr)"/>
+
+          <text x="380" y="230" text-anchor="middle" font-family="Inter" font-size="11" fill="#15171c">SelectorChecker (Ch12) 从 <em>head</em> (右) 开始,沿 tag_history_ 走到 <em>tail</em> (左) · "<em>右到左</em>"匹配名字真正的来源</text>
+          <text x="380" y="248" text-anchor="middle" font-family="Inter" font-size="10" fill="#767c87" font-style="italic">SelectorChecker (Ch12) starts at <em>head</em> (right) and walks tag_history_ to <em>tail</em> (left) · the literal origin of "<em>right-to-left</em>" matching</text>
+          <text x="380" y="266" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#767c87">relation field 表示 "<em>从我到下一节点之间的组合器</em>": SubSelector (compound 内) · Child (&gt;) · Descendant (空格) · DirectAdjacent (+) · IndirectAdjacent (~)</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;11·1</span>
+        <span class="lang-zh-only">"<code>div.main &gt; .card:hover</code>"在 CSSOM 里是一条<strong>4 节点链表</strong>,head 是<em>最右</em>的 <code>:hover</code>,tail 是<em>最左</em>的 <code>div</code>。这种<em>反向</em>存储是 right-to-left 匹配的<em>物理来源</em>: 从 head 起<em>顺着 tag_history_ 走</em>,自然就是"右到左"。每个节点的 <code>relation</code> 字段记<em>它跟下一节点之间的组合器</em>(child / descendant / sibling)。</span>
+        <span class="figen">Fig 11·1 · "<code>div.main &gt; .card:hover</code>" lives as a <strong>4-node linked list</strong>: head is the <em>rightmost</em> <code>:hover</code>; tail is the <em>leftmost</em> <code>div</code>. This <em>reverse</em> storage is the <em>physical origin</em> of right-to-left matching — start at head and walk <code>tag_history_</code> forward, you're going right-to-left. Each node's <code>relation</code> records <em>the combinator between it and the next node</em> (child / descendant / sibling).</span>
+      </figcaption>
+    </figure>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -3011,6 +3077,79 @@ document.adoptedStyleSheets = [sheet2];           <span class="cm">// shadow-DOM
         <li>All 4 rules in <em>only ~150 ns</em> (Bloom filter from Ch13 prunes most cases further)</li>
       </ul>
     </aside>
+
+    <h3 class="sub lang-zh-only">真实的 MatchSelector 源码</h3>
+    <h3 class="sub lang-en-only">Real MatchSelector source</h3>
+
+    <pre class="code"><span class="cm">// third_party/blink/renderer/core/css/selector_checker.cc (~line 220) · simplified</span>
+
+<span class="kw">enum class</span> <span class="ty">MatchStatus</span> { kSelectorMatches, kSelectorFailsLocally, kSelectorFailsAllSiblings };
+
+<span class="ty">MatchStatus</span> <span class="ty">SelectorChecker</span>::<span class="fn">MatchSelector</span>(
+    <span class="kw">const</span> <span class="ty">SelectorCheckingContext</span>&amp; context, <span class="ty">MatchResult</span>&amp; result) {
+
+  <span class="cm">// ① CHECK CURRENT COMPOUND (the rightmost simple-selector group)</span>
+  <span class="kw">if</span> (!<span class="fn">CheckOne</span>(context, result)) {
+    <span class="kw">return</span> <span class="ty">MatchStatus</span>::kSelectorFailsLocally;
+  }
+
+  <span class="cm">// ② IF NO MORE COMPOUNDS — DONE (this was the leftmost)</span>
+  <span class="kw">if</span> (context.selector-&gt;<span class="fn">Relation</span>() == <span class="ty">CSSSelector</span>::kSubSelector)
+    <span class="kw">return</span> <span class="ty">MatchStatus</span>::kSelectorMatches;
+
+  <span class="cm">// ③ RECURSIVELY MATCH PARENT/SIBLING ACCORDING TO COMBINATOR</span>
+  <span class="ty">SelectorCheckingContext</span> next_context = context;
+  next_context.selector = context.selector-&gt;<span class="fn">TagHistory</span>();
+
+  <span class="kw">switch</span> (context.selector-&gt;<span class="fn">Relation</span>()) {
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kDescendant:
+      <span class="cm">// walk up parent chain — bail when any ancestor matches the parent selector</span>
+      <span class="kw">for</span> (next_context.element = context.element-&gt;<span class="fn">parentElement</span>();
+           next_context.element;
+           next_context.element = next_context.element-&gt;<span class="fn">parentElement</span>()) {
+        <span class="kw">if</span> (<span class="fn">MatchSelector</span>(next_context, result) == kSelectorMatches)
+          <span class="kw">return</span> kSelectorMatches;
+      }
+      <span class="kw">return</span> kSelectorFailsLocally;
+
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kChild:
+      <span class="cm">// only check direct parent</span>
+      next_context.element = context.element-&gt;<span class="fn">parentElement</span>();
+      <span class="kw">return</span> next_context.element ? <span class="fn">MatchSelector</span>(next_context, result)
+                                  : kSelectorFailsLocally;
+
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kDirectAdjacent:
+      next_context.element = <span class="fn">ElementTraversal</span>::<span class="fn">PreviousSibling</span>(*context.element);
+      <span class="kw">return</span> next_context.element ? <span class="fn">MatchSelector</span>(next_context, result)
+                                  : kSelectorFailsLocally;
+
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kIndirectAdjacent:
+      <span class="cm">// scan all preceding siblings</span>
+      <span class="kw">for</span> (next_context.element = <span class="fn">ElementTraversal</span>::<span class="fn">PreviousSibling</span>(*context.element);
+           next_context.element;
+           next_context.element = <span class="fn">ElementTraversal</span>::<span class="fn">PreviousSibling</span>(*next_context.element)) {
+        <span class="kw">if</span> (<span class="fn">MatchSelector</span>(next_context, result) == kSelectorMatches)
+          <span class="kw">return</span> kSelectorMatches;
+      }
+      <span class="kw">return</span> kSelectorFailsAllSiblings;
+
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kRelativeDescendant:    <span class="cm">// :has() forward</span>
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kRelativeChild:
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kRelativeDirectAdjacent:
+    <span class="kw">case</span> <span class="ty">CSSSelector</span>::kRelativeIndirectAdjacent:
+      <span class="kw">return</span> <span class="fn">MatchHasPseudoClass</span>(context, result);  <span class="cm">// special — Ch14</span>
+
+    <span class="kw">default</span>:
+      <span class="kw">return</span> kSelectorFailsLocally;
+  }
+}</pre>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">为什么有 kSelectorFailsAllSiblings</span>
+      <span class="ntag lang-en-only">Why kSelectorFailsAllSiblings exists</span>
+      <span class="lang-zh-only">注意 <code>kIndirectAdjacent (~)</code> 失败时返回 <strong>kSelectorFailsAllSiblings</strong>,而不是 <code>kSelectorFailsLocally</code>。这是 Blink 的一个剪枝优化: 一旦 "<code>X ~ Y</code>" 在<em>所有</em>前面兄弟中都没找到 X,那么<em>这条选择器对当前元素及其所有右侧兄弟都不会匹</em>——caller 收到这个返回会跳过整条兄弟链。这一个 enum 值 = 几个数量级的 selector match 加速。</span>
+      <span class="lang-en-only">Notice that <code>kIndirectAdjacent (~)</code> failure returns <strong>kSelectorFailsAllSiblings</strong>, not <code>kSelectorFailsLocally</code>. This is a Blink pruning optimisation: once "<code>X ~ Y</code>" has failed to find X among <em>all</em> preceding siblings, the selector <em>cannot</em> match the current element or any of its later siblings — caller skips the entire sibling chain. One enum value = orders of magnitude in matching speedup.</span>
+    </div>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -3272,6 +3411,68 @@ candidates += rule_set.universal_rules_;
       <span class="lang-en-only">A "parent selector" was proposed for CSS2 and killed. Two reasons: ① <strong>perf</strong> — classic right-to-left matching assumes "<em>the selector terminates at the current element</em>"; <code>:has()</code> breaks that assumption and requires bi-directional invalidation when the DOM changes. ② <strong>circular references</strong> — <code>a:has(b)</code> + <code>b:has(a)</code> would loop. Blink solved both in 2023 with a <em>new invalidation model</em> (Ch20 details) and <em>nesting depth limits</em> (no <code>:has()</code> inside <code>:has()</code>). The hardware 20 years ago couldn't have handled it.</span>
     </div>
 
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="hasArr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#a83a6b"/></marker>
+          </defs>
+
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">":has()" · BACKWARD INVALIDATION (the new dimension)</text>
+
+          <!-- Selector at top -->
+          <text x="380" y="50" text-anchor="middle" font-family="JetBrains Mono" font-size="11" fill="#15171c">RULE: <tspan font-family="JetBrains Mono" font-weight="700">form:has(input:invalid) { border: red; }</tspan></text>
+
+          <!-- DOM tree -->
+          <rect x="40" y="80" width="80" height="22" fill="#fcd34d" stroke="#a87a1f" stroke-width="2"/>
+          <text x="80" y="95" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#a87a1f">form ★</text>
+          <text x="130" y="95" font-family="JetBrains Mono" font-size="8" fill="#a87a1f">← will re-style if child is invalid</text>
+
+          <line x1="80" y1="102" x2="80" y2="115" stroke="#1f5c8c" stroke-width="0.7"/>
+          <line x1="60" y1="115" x2="40" y2="135" stroke="#1f5c8c" stroke-width="0.7"/>
+          <line x1="80" y1="115" x2="80" y2="135" stroke="#1f5c8c" stroke-width="0.7"/>
+          <line x1="100" y1="115" x2="120" y2="135" stroke="#1f5c8c" stroke-width="0.7"/>
+
+          <rect x="10" y="135" width="60" height="22" fill="#c9dceb" stroke="#1f5c8c"/>
+          <text x="40" y="150" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#1f5c8c">label</text>
+
+          <rect x="50" y="135" width="60" height="22" fill="#e8d4e0" stroke="#a83a6b" stroke-width="2"/>
+          <text x="80" y="150" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#a83a6b">input ★</text>
+          <text x="115" y="150" font-family="JetBrains Mono" font-size="8" fill="#a83a6b">← becomes :invalid</text>
+
+          <rect x="100" y="135" width="40" height="22" fill="#c9dceb" stroke="#1f5c8c"/>
+          <text x="120" y="150" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#1f5c8c">btn</text>
+
+          <!-- Invalidation walk arrows -->
+          <path d="M80,135 Q140,120 80,102" stroke="#a83a6b" stroke-width="1.8" fill="none" marker-end="url(#hasArr)"/>
+          <text x="200" y="122" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#a83a6b">walk UP</text>
+          <text x="200" y="136" font-family="JetBrains Mono" font-size="8" fill="#a83a6b">find ancestor matching :has()'s <em>outer</em> compound</text>
+
+          <!-- Comparison: traditional descendant -->
+          <line x1="280" y1="80" x2="280" y2="200" stroke="#c7c4ba" stroke-dasharray="3 2"/>
+
+          <text x="400" y="80" font-family="JetBrains Mono" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#15171c">TRADITIONAL (descendant)</text>
+          <text x="400" y="98" font-family="JetBrains Mono" font-size="9" fill="#767c87">RULE: <tspan fill="#15171c">.parent .child { ... }</tspan></text>
+          <text x="400" y="116" font-family="JetBrains Mono" font-size="9" fill="#767c87">parent class change → walk DOWN to find .child</text>
+          <text x="400" y="130" font-family="JetBrains Mono" font-size="9" fill="#767c87">child change → only that child re-styles</text>
+          <text x="400" y="148" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#4a6b3e">→ DescendantInvalidationSet · existed since 2014</text>
+
+          <text x="400" y="180" font-family="JetBrains Mono" font-size="10" font-weight="700" letter-spacing="0.14em" fill="#15171c">:has() (REVERSE)</text>
+          <text x="400" y="198" font-family="JetBrains Mono" font-size="9" fill="#767c87">RULE: <tspan fill="#15171c">form:has(input:invalid) { ... }</tspan></text>
+          <text x="400" y="216" font-family="JetBrains Mono" font-size="9" fill="#767c87">child changes :invalid state → walk UP to ancestor form</text>
+          <text x="400" y="230" font-family="JetBrains Mono" font-size="9" fill="#767c87">then ALSO walk DOWN to find <em>other matching</em> input siblings</text>
+          <text x="400" y="248" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#a83a6b">→ HasInvalidationSet · NEW in 2023</text>
+
+          <text x="40" y="265" font-family="Inter" font-size="9" fill="#767c87" font-style="italic">实测代价: 启用 :has() 的页面 invalidation 工作 +30-100%。Blink 用<em>嵌套深度限制</em>(:has() 内不能再 :has())防止 worst-case 爆炸。</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;14·1</span>
+        <span class="lang-zh-only">:has() 给 CSS 引擎加了<em>反向</em>失效维度。传统选择器: 父元素变 → 找后代 (descendant invalidation)。:has(): <em>子元素</em>变 → 走 UP 找匹配 :has() 外层的祖先,然后再 DOWN 看是否还有<em>其他子树</em>触发同一规则。这就是为什么 :has() "<em>看上去像简单功能</em>" 但<em>等了 20 年才 ship</em>——它要求 invalidation 引擎重写。</span>
+        <span class="figen">Fig 14·1 · :has() adds a <em>reverse</em> dimension to invalidation. Classic selectors: parent changes → walk down to descendants (descendant invalidation). :has(): <em>child</em> changes → walk UP to find an ancestor matching :has()'s outer compound, then DOWN again to find <em>other</em> subtrees that may still trigger the same rule. This is why :has() <em>looks like a simple feature</em> but <em>took 20 years to ship</em> — it required rewriting the invalidation engine.</span>
+      </figcaption>
+    </figure>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -3385,6 +3586,55 @@ candidates += rule_set.universal_rules_;
         <li>Cascade ~2 µs total (argmax per property)</li>
       </ul>
     </aside>
+
+    <h3 class="sub lang-zh-only">StyleCascade.cc · 8 步代码层面是 12 个 priority 字段</h3>
+    <h3 class="sub lang-en-only">StyleCascade.cc · 8 spec steps map to 12 priority fields</h3>
+
+    <pre class="code"><span class="cm">// third_party/blink/renderer/core/css/resolver/cascade_priority.h · simplified</span>
+
+<span class="cm">// CascadePriority is a 64-bit struct that packs all the tie-breakers from</span>
+<span class="cm">// FIG 15·1 into one comparable integer.</span>
+<span class="cm">// Higher value = wins.</span>
+
+<span class="kw">struct</span> <span class="ty">CascadePriority</span> {
+  <span class="cm">// Bits laid out big-endian to enable lexicographic compare via &lt;:</span>
+  uint64_t important : <span class="num">1</span>;          <span class="cm">// !important reverses origin order</span>
+  uint64_t origin : <span class="num">3</span>;             <span class="cm">// UserAgent / User / Author / Animation / Transition</span>
+  uint64_t tree_order : <span class="num">16</span>;        <span class="cm">// shadow-tree depth · author scope</span>
+  uint64_t layer_order : <span class="num">16</span>;       <span class="cm">// @layer ordering · unlayered = max</span>
+  uint64_t specificity : <span class="num">24</span>;       <span class="cm">// (a,b,c) packed as 8+8+8 bits</span>
+  uint64_t position : <span class="num">4</span>;           <span class="cm">// order of appearance (fallback)</span>
+
+  <span class="kw">bool</span> <span class="kw">operator</span>&lt;(<span class="kw">const</span> <span class="ty">CascadePriority</span>&amp; o) <span class="kw">const</span> {
+    <span class="kw">return</span> <span class="fn">AsBits</span>() &lt; o.<span class="fn">AsBits</span>();   <span class="cm">// single 64-bit compare</span>
+  }
+};
+
+<span class="cm">// StyleCascade::Apply() · simplified main loop</span>
+<span class="kw">void</span> <span class="ty">StyleCascade</span>::<span class="fn">Apply</span>(<span class="ty">CascadeFilter</span> filter) {
+  <span class="ty">CascadeMap</span> &amp; map = matched_properties_;   <span class="cm">// declaration set per property</span>
+
+  <span class="kw">for</span> (<span class="ty">CSSPropertyID</span> id : map.<span class="fn">Properties</span>()) {
+    <span class="ty">CascadePriority</span> best = <span class="ty">CascadePriority</span>::<span class="fn">Min</span>();
+    <span class="ty">CSSPropertyValue</span> winner;
+
+    <span class="kw">for</span> (<span class="kw">auto</span>&amp; entry : map.<span class="fn">FindRevert</span>(id)) {
+      <span class="kw">if</span> (entry.priority &gt; best) {
+        best = entry.priority;
+        winner = entry.value;       <span class="cm">// single argmax per property</span>
+      }
+    }
+
+    state_-&gt;<span class="fn">StyleBuilder</span>().<span class="fn">SetProperty</span>(id, winner);
+  }
+}</pre>
+
+    <div class="note good">
+      <span class="ntag lang-zh-only">把 cascade 压成<em>整数比较</em></span>
+      <span class="ntag lang-en-only">Cascade compressed to <em>integer compare</em></span>
+      <span class="lang-zh-only">spec 描述 cascade 是"<em>8 步金字塔</em>",实现里 Blink 把所有 tie-breaker 打包成<strong>一个 64-bit 整数</strong> · 一次 <code>&lt;</code> 比较就能决出胜负。这是性能关键: 一个页面跑 cascade 时,每个属性可能要比 5-10 个候选,每次 priority 比较就是一条 CPU 指令。没有这种压缩,cascade 会跑慢一个量级。</span>
+      <span class="lang-en-only">The spec describes cascade as an "<em>8-step pyramid</em>"; the implementation packs every tie-breaker into <strong>one 64-bit integer</strong> · a single <code>&lt;</code> decides. This is critical for perf: each property may compare 5-10 candidates per cascade, and each priority compare is one CPU instruction. Without this packing, cascade would run an order of magnitude slower.</span>
+    </div>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -3598,6 +3848,65 @@ candidates += rule_set.universal_rules_;
       </ul>
     </aside>
 
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 300" xmlns="http://www.w3.org/2000/svg">
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">@layer STACK · WHO BEATS WHOM (bottom wins · stack top = lowest priority)</text>
+
+          <!-- Source declaration order on left -->
+          <text x="100" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#1f5c8c">DECLARATION ORDER</text>
+
+          <text x="40" y="80" font-family="JetBrains Mono" font-size="10" fill="#15171c">@layer reset, base, theme, utilities;</text>
+          <text x="40" y="95" font-family="JetBrains Mono" font-size="9" fill="#767c87">@layer reset { .x { color: gray } }</text>
+          <text x="40" y="110" font-family="JetBrains Mono" font-size="9" fill="#767c87">@layer base { .x { color: red } }</text>
+          <text x="40" y="125" font-family="JetBrains Mono" font-size="9" fill="#767c87">.x { color: blue }      ← unlayered</text>
+          <text x="40" y="140" font-family="JetBrains Mono" font-size="9" fill="#767c87">@layer theme { .x { color: green } }</text>
+          <text x="40" y="155" font-family="JetBrains Mono" font-size="9" fill="#767c87">@layer utilities { .x { color: orange } }</text>
+
+          <!-- Stack visualization on right -->
+          <text x="540" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">CASCADE STACK (top = lowest priority)</text>
+
+          <!-- Top: lowest priority — UA  -->
+          <rect x="400" y="70" width="280" height="24" fill="#fdfbf3" stroke="#767c87"/>
+          <text x="540" y="86" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#767c87">UA · browser defaults (Ch4)</text>
+
+          <!-- reset layer -->
+          <rect x="400" y="98" width="280" height="24" fill="#fdfbf3" stroke="#767c87"/>
+          <text x="540" y="114" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#15171c">@layer reset · color: gray</text>
+
+          <!-- base layer -->
+          <rect x="400" y="126" width="280" height="24" fill="#fdfbf3" stroke="#767c87"/>
+          <text x="540" y="142" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#15171c">@layer base · color: red</text>
+
+          <!-- theme layer -->
+          <rect x="400" y="154" width="280" height="24" fill="#fdfbf3" stroke="#767c87"/>
+          <text x="540" y="170" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#15171c">@layer theme · color: green</text>
+
+          <!-- utilities layer -->
+          <rect x="400" y="182" width="280" height="24" fill="#fdfbf3" stroke="#767c87"/>
+          <text x="540" y="198" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#15171c">@layer utilities · color: orange</text>
+
+          <!-- Unlayered (winner) -->
+          <rect x="400" y="210" width="280" height="32" fill="#fcd34d" stroke="#a87a1f" stroke-width="2"/>
+          <text x="540" y="227" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#a87a1f">UNLAYERED · color: blue ★ WINS</text>
+          <text x="540" y="238" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a87a1f">"naked" .x { color: blue }</text>
+
+          <!-- Arrow indicating priority increases downward -->
+          <line x1="700" y1="70" x2="700" y2="242" stroke="#b35a1f" stroke-width="1.5" stroke-dasharray="3 2"/>
+          <text x="715" y="80" font-family="JetBrains Mono" font-size="8" fill="#b35a1f">low</text>
+          <text x="715" y="240" font-family="JetBrains Mono" font-size="8" fill="#b35a1f" font-weight="700">high</text>
+
+          <text x="380" y="270" text-anchor="middle" font-family="Inter" font-size="11" fill="#15171c"><strong>关键反直觉</strong>: 把规则放进任何 named @layer 都让它<em>变弱</em>。<em>unlayered</em> 永远是 author tier 里<strong>最高优先级</strong>(在 step ④ 阶段)。</text>
+          <text x="380" y="288" text-anchor="middle" font-family="Inter" font-size="9" fill="#767c87" font-style="italic">Counterintuitive: putting a rule into <em>any</em> named @layer makes it weaker. <em>Unlayered</em> is always the highest-priority slot in the author tier (step ④).</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;17·1</span>
+        <span class="lang-zh-only">@layer 栈的真实优先级图。<em>从顶到底优先级递增</em>: UA · 命名层(按声明顺序) · <strong>unlayered (赢)</strong>。这就是 The Card 例子里 @container 内的 .card(unlayered)<em>赢</em> @layer base 内的 .card 的原因。把 framework 代码放命名层,业务代码不进任何层 — 业务永远赢。</span>
+        <span class="figen">Fig 17·1 · The real @layer priority stack. <em>Priority increases top-to-bottom</em>: UA · named layers (in declared order) · <strong>unlayered (wins)</strong>. This is why The Card's @container .card (unlayered) <em>beats</em> the @layer base .card. Library code into named layers, business code unlayered — business always wins.</span>
+      </figcaption>
+    </figure>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -3694,6 +4003,59 @@ candidates += rule_set.universal_rules_;
       </ul>
     </aside>
 
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="varArr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#15171c"/></marker>
+            <marker id="varRed" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b35a1f"/></marker>
+          </defs>
+
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">var() CYCLE DETECTION · DFS with visit-mark</text>
+
+          <!-- Source CSS -->
+          <text x="40" y="50" font-family="JetBrains Mono" font-size="10" fill="#15171c">:root {</text>
+          <text x="50" y="65" font-family="JetBrains Mono" font-size="10" fill="#15171c">  <tspan fill="#a83a6b">--a</tspan>: <tspan fill="#1f5c8c">var(--b)</tspan>;</text>
+          <text x="50" y="80" font-family="JetBrains Mono" font-size="10" fill="#15171c">  <tspan fill="#a83a6b">--b</tspan>: <tspan fill="#1f5c8c">var(--c)</tspan>;</text>
+          <text x="50" y="95" font-family="JetBrains Mono" font-size="10" fill="#15171c">  <tspan fill="#a83a6b">--c</tspan>: <tspan fill="#1f5c8c">var(--a)</tspan>;   <tspan fill="#b35a1f">/* CYCLE! */</tspan></text>
+          <text x="40" y="110" font-family="JetBrains Mono" font-size="10" fill="#15171c">}</text>
+
+          <!-- Variable resolution graph on right -->
+          <circle cx="320" cy="80" r="22" fill="#e8d4e0" stroke="#a83a6b" stroke-width="1.5"/>
+          <text x="320" y="84" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#a83a6b">--a</text>
+
+          <circle cx="440" cy="80" r="22" fill="#e8d4e0" stroke="#a83a6b" stroke-width="1.5"/>
+          <text x="440" y="84" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#a83a6b">--b</text>
+
+          <circle cx="560" cy="80" r="22" fill="#e8d4e0" stroke="#a83a6b" stroke-width="1.5"/>
+          <text x="560" y="84" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#a83a6b">--c</text>
+
+          <!-- Resolution arrows + cycle back -->
+          <path d="M342,80 L418,80" stroke="#15171c" stroke-width="1.2" marker-end="url(#varArr)"/>
+          <text x="380" y="73" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">refs</text>
+
+          <path d="M462,80 L538,80" stroke="#15171c" stroke-width="1.2" marker-end="url(#varArr)"/>
+          <text x="500" y="73" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">refs</text>
+
+          <path d="M560,102 Q560,150 320,150 Q320,102 320,102" stroke="#b35a1f" stroke-width="1.5" fill="none" stroke-dasharray="3 2" marker-end="url(#varRed)"/>
+          <text x="440" y="170" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">CYCLE DETECTED</text>
+
+          <!-- Algorithm -->
+          <line x1="40" y1="195" x2="720" y2="195" stroke="#c7c4ba"/>
+          <text x="40" y="213" font-family="JetBrains Mono" font-size="9" font-weight="700" letter-spacing="0.14em" fill="#15171c">ALGORITHM · CSSVariableData::Resolve()</text>
+          <text x="40" y="230" font-family="JetBrains Mono" font-size="9" fill="#15171c">  1. mark current variable as <em>visiting</em> (push to in-progress set)</text>
+          <text x="40" y="244" font-family="JetBrains Mono" font-size="9" fill="#15171c">  2. for each var(--x) in its value, recurse</text>
+          <text x="40" y="258" font-family="JetBrains Mono" font-size="9" fill="#15171c">  3. if recursion encounters a variable <em>already in the visiting set</em> → mark all 3 as <em>guaranteed-invalid</em></text>
+          <text x="40" y="272" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">  4. cycle-broken variables fall back to their var() default arg, or to <em>initial value</em> if none</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;18·1</span>
+        <span class="lang-zh-only">var() 循环检测。Blink 用经典<em>DFS + 访问标记</em>: 解析变量时把它放进<em>正在访问</em>集合,递归 resolve 其值里的 var();如果递归遇到<em>已经在访问中</em>的变量,环成立 — 把链上所有变量标 <em>guaranteed-invalid</em>。这些变量在使用处会 fallback 到 var() 的 default 参数或 initial value。所以 var(--a, red) 在循环情况下变成 red。</span>
+        <span class="figen">Fig 18·1 · var() cycle detection. Blink uses classic <em>DFS + visit-mark</em>: when resolving a variable, push it into a <em>visiting</em> set; recurse to resolve nested var() refs; if recursion hits a variable <em>already visiting</em>, cycle confirmed — mark every variable on the chain as <em>guaranteed-invalid</em>. At use sites, these fall back to var()'s default arg or to initial value. So <code>var(--a, red)</code> under a cycle becomes <em>red</em>.</span>
+      </figcaption>
+    </figure>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -3762,6 +4124,65 @@ candidates += rule_set.universal_rules_;
         <li><code>el.computedStyleMap().get('padding')</code> returns <code>CSSUnitValue{value: 1, unit: 'rem'}</code> · the true computed</li>
       </ul>
     </aside>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="valArr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#15171c"/></marker>
+          </defs>
+
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">"width: 50%" · FOUR VALUE STAGES (parent width = 200px @1×)</text>
+
+          <!-- 4 boxes left to right -->
+          <rect x="30" y="60" width="160" height="80" fill="#c9dceb" stroke="#1f5c8c" rx="3"/>
+          <text x="110" y="80" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#1f5c8c">① SPECIFIED</text>
+          <text x="110" y="100" text-anchor="middle" font-family="JetBrains Mono" font-size="14" font-weight="700" fill="#15171c">"50%"</text>
+          <text x="110" y="120" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">cascade picked this</text>
+          <text x="110" y="132" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">declaration's value</text>
+
+          <path d="M192,100 L220,100" stroke="#15171c" stroke-width="1" marker-end="url(#valArr)"/>
+          <text x="206" y="92" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">resolve</text>
+          <text x="206" y="115" text-anchor="middle" font-family="JetBrains Mono" font-size="7" fill="#767c87">var() etc.</text>
+
+          <rect x="222" y="60" width="160" height="80" fill="#e8d4e0" stroke="#a83a6b" rx="3"/>
+          <text x="302" y="80" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#a83a6b">② COMPUTED</text>
+          <text x="302" y="100" text-anchor="middle" font-family="JetBrains Mono" font-size="14" font-weight="700" fill="#15171c">"50%"</text>
+          <text x="302" y="120" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">% still kept (Ch19)</text>
+          <text x="302" y="132" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">em → px ✓</text>
+
+          <path d="M384,100 L412,100" stroke="#15171c" stroke-width="1" marker-end="url(#valArr)"/>
+          <text x="398" y="92" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">layout</text>
+
+          <rect x="414" y="60" width="160" height="80" fill="#d8e6cd" stroke="#4a6b3e" rx="3"/>
+          <text x="494" y="80" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#4a6b3e">③ USED</text>
+          <text x="494" y="100" text-anchor="middle" font-family="JetBrains Mono" font-size="14" font-weight="700" fill="#15171c">"100px"</text>
+          <text x="494" y="120" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">200 × 0.5 = 100</text>
+          <text x="494" y="132" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">layout-aware</text>
+
+          <path d="M576,100 L604,100" stroke="#15171c" stroke-width="1" marker-end="url(#valArr)"/>
+          <text x="590" y="92" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#15171c">snap</text>
+
+          <rect x="606" y="60" width="130" height="80" fill="#f0d4bc" stroke="#b35a1f" rx="3"/>
+          <text x="671" y="80" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#b35a1f">④ ACTUAL</text>
+          <text x="671" y="100" text-anchor="middle" font-family="JetBrains Mono" font-size="14" font-weight="700" fill="#15171c">"100px"</text>
+          <text x="671" y="120" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">no snap @ 1×</text>
+          <text x="671" y="132" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">99.5 @ 2× / etc.</text>
+
+          <!-- Annotations: which JS API reads what -->
+          <line x1="40" y1="170" x2="720" y2="170" stroke="#c7c4ba"/>
+          <text x="40" y="190" font-family="JetBrains Mono" font-size="9" font-weight="700" letter-spacing="0.14em" fill="#15171c">JS APIS READ</text>
+
+          <text x="40" y="208" font-family="JetBrains Mono" font-size="9" fill="#15171c"><tspan font-family="JetBrains Mono" fill="#a83a6b">el.computedStyleMap().get('width')</tspan> → reads <strong>② computed</strong> · returns CSSUnitValue{50, '%'}</text>
+          <text x="40" y="224" font-family="JetBrains Mono" font-size="9" fill="#15171c"><tspan font-family="JetBrains Mono" fill="#4a6b3e">getComputedStyle(el).width</tspan> → reads <strong>③ used</strong> · returns "100px" · <strong>despite the API name!</strong></text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;19·1</span>
+        <span class="lang-zh-only">同一个 <code>width: 50%</code> 在 CSS 引擎里走过<em>四个不同的值</em>。最常被搞错的: <code>getComputedStyle()</code> 名字叫 "computed" 但<em>返回的是 used</em>(layout 后的 px 值);要真 computed 必须走 Houdini 的 <code>computedStyleMap()</code>。这就是 Ch10 警告 <code>getComputedStyle()</code> 会<em>同步触发 layout</em> 的根本原因——它读的是 layout 之后才存在的 used value。</span>
+        <span class="figen">Fig 19·1 · The same <code>width: 50%</code> passes through <em>four distinct values</em> in the engine. Most-misunderstood: <code>getComputedStyle()</code> is named "computed" but <em>returns used</em> (post-layout px). For true computed, use Houdini's <code>computedStyleMap()</code>. This is the root cause of Ch10's warning that <code>getComputedStyle()</code> <em>synchronously triggers layout</em> — it reads the used value which doesn't exist until layout finishes.</span>
+      </figcaption>
+    </figure>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -3949,6 +4370,48 @@ candidates += rule_set.universal_rules_;
       </ul>
     </aside>
 
+    <h3 class="sub lang-zh-only">StyleInvalidator.cc · 实际 walk 代码</h3>
+    <h3 class="sub lang-en-only">StyleInvalidator.cc · the actual walk</h3>
+
+    <pre class="code"><span class="cm">// core/css/invalidation/style_invalidator.cc · ~simplified</span>
+
+<span class="kw">void</span> <span class="ty">StyleInvalidator</span>::<span class="fn">InvalidateForClassChange</span>(
+    <span class="ty">Element</span>&amp; element, <span class="kw">const</span> <span class="ty">AtomicString</span>&amp; changed_class) {
+
+  <span class="cm">// ① Look up which InvalidationSet was precomputed for this class name</span>
+  <span class="kw">const</span> <span class="ty">InvalidationSet</span>* set =
+      rule_feature_set_-&gt;class_invalidation_sets_.<span class="fn">at</span>(changed_class);
+  <span class="kw">if</span> (!set) <span class="kw">return</span>;   <span class="cm">// no rule uses ".foo" in any cascading way</span>
+
+  <span class="cm">// ② Always dirty THIS element if class name matters at all</span>
+  element.<span class="fn">SetNeedsStyleRecalc</span>(<span class="ty">kLocalStyleChange</span>);
+
+  <span class="cm">// ③ Walk descendants if the invalidation set says "descendant"</span>
+  <span class="kw">if</span> (set-&gt;<span class="fn">type</span>() == <span class="ty">InvalidationType</span>::kInvalidateDescendants) {
+    <span class="kw">for</span> (<span class="ty">Element</span>&amp; descendant : <span class="fn">ElementTraversal</span>::<span class="fn">DescendantsOf</span>(element)) {
+      <span class="kw">if</span> (set-&gt;<span class="fn">InvalidatesElement</span>(descendant)) {
+        descendant.<span class="fn">SetNeedsStyleRecalc</span>(<span class="ty">kLocalStyleChange</span>);
+      }
+    }
+  }
+
+  <span class="cm">// ④ Sibling invalidation — only walk the affected siblings</span>
+  <span class="kw">if</span> (set-&gt;<span class="fn">type</span>() == <span class="ty">InvalidationType</span>::kInvalidateSiblings) {
+    <span class="ty">Element</span>* sibling = <span class="fn">ElementTraversal</span>::<span class="fn">NextSibling</span>(element);
+    <span class="kw">for</span> (; sibling; sibling = <span class="fn">ElementTraversal</span>::<span class="fn">NextSibling</span>(*sibling)) {
+      <span class="kw">if</span> (set-&gt;<span class="fn">InvalidatesElement</span>(*sibling)) {
+        sibling-&gt;<span class="fn">SetNeedsStyleRecalc</span>(<span class="ty">kLocalStyleChange</span>);
+      }
+      <span class="kw">if</span> (!set-&gt;<span class="fn">invalidates_subsequent_siblings</span>()) <span class="kw">break</span>;   <span class="cm">// "+" stops here</span>
+    }
+  }
+
+  <span class="cm">// ⑤ :has() — backward walk, see Ch14</span>
+  <span class="kw">if</span> (<span class="kw">const</span> <span class="kw">auto</span>&amp; has_set = set-&gt;<span class="fn">SiblingInvalidationSet</span>()) {
+    <span class="fn">InvalidateHasAncestor</span>(element, has_set);
+  }
+}</pre>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -4065,6 +4528,48 @@ candidates += rule_set.universal_rules_;
         <li>Measured: hovering 100 .card elements in sequence · total invalidation+recalc ~5 ms · well below the 8 ms jank threshold</li>
       </ul>
     </aside>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 240" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="aniArr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b3aa3"/></marker>
+          </defs>
+
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">Web Animations · Animation + Effect + Timeline (one model, three syntaxes)</text>
+
+          <!-- Animation object -->
+          <rect x="240" y="50" width="280" height="60" fill="#e3d5f0" stroke="#6b3aa3" stroke-width="2" rx="3"/>
+          <text x="380" y="68" text-anchor="middle" font-family="JetBrains Mono" font-size="11" font-weight="700" fill="#6b3aa3">Animation (controller)</text>
+          <text x="380" y="84" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#15171c">play() · pause() · reverse() · finished</text>
+          <text x="380" y="98" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#15171c">play_state, start_time, playback_rate</text>
+
+          <!-- KeyframeEffect -->
+          <line x1="320" y1="110" x2="220" y2="135" stroke="#6b3aa3" stroke-width="0.8"/>
+          <line x1="440" y1="110" x2="540" y2="135" stroke="#6b3aa3" stroke-width="0.8"/>
+
+          <rect x="60" y="135" width="320" height="80" fill="#e3d5f0" stroke="#6b3aa3" rx="3"/>
+          <text x="220" y="155" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#6b3aa3">KeyframeEffect (what)</text>
+          <text x="70" y="172" font-family="JetBrains Mono" font-size="9" fill="#15171c">target_: Element*</text>
+          <text x="70" y="186" font-family="JetBrains Mono" font-size="9" fill="#15171c">keyframes_: [{bg: red, off: 0}, {bg: blue, off: 1}]</text>
+          <text x="70" y="200" font-family="JetBrains Mono" font-size="9" fill="#15171c">timing: {duration: 200ms, easing: ease}</text>
+
+          <rect x="400" y="135" width="280" height="80" fill="#e3d5f0" stroke="#6b3aa3" rx="3"/>
+          <text x="540" y="155" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#6b3aa3">AnimationTimeline (when)</text>
+          <text x="410" y="172" font-family="JetBrains Mono" font-size="9" fill="#15171c">DocumentTimeline · wall-clock</text>
+          <text x="410" y="186" font-family="JetBrains Mono" font-size="9" fill="#15171c">ScrollTimeline · scroll position (Ch25)</text>
+          <text x="410" y="200" font-family="JetBrains Mono" font-size="9" fill="#15171c">ViewTimeline · element entering vp</text>
+
+          <!-- Three sugar entries pointing to same model -->
+          <text x="40" y="240" font-family="JetBrains Mono" font-size="9" fill="#767c87">3 ways into this model: <tspan fill="#15171c">CSS transition</tspan> · <tspan fill="#15171c">CSS @keyframes animation</tspan> · <tspan fill="#15171c">JS new Animation()/element.animate()</tspan> — all desugar identically</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;23·1</span>
+        <span class="lang-zh-only">Web Animations 的<em>三件套</em>数据模型。<strong>Animation</strong> 是控制对象(play / pause / 时间);<strong>KeyframeEffect</strong> 是"<em>对什么 element 做什么</em>"(target + keyframes + timing);<strong>AnimationTimeline</strong> 是"<em>时间从哪来</em>"(wall-clock 或 ScrollTimeline 或 ViewTimeline)。CSS transition / CSS animation / JS element.animate() 是<em>三种语法糖</em>,desugar 到同一个 model — 所以 DevTools Animations 面板能同时控制三者。</span>
+        <span class="figen">Fig 23·1 · Web Animations' three-piece data model. <strong>Animation</strong> is the controller (play / pause / time); <strong>KeyframeEffect</strong> is "<em>what to do on which element</em>" (target + keyframes + timing); <strong>AnimationTimeline</strong> is "<em>where time comes from</em>" (wall-clock or ScrollTimeline or ViewTimeline). CSS transition / CSS animation / JS element.animate() are <em>three syntactic sugars</em> over the same model — which is why DevTools Animations panel controls all three uniformly.</span>
+      </figcaption>
+    </figure>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -4237,6 +4742,51 @@ animation.<span class="fn">play</span>();   <span class="cm">// auto-cleanup whe
         <li>This is the <em>actual reason</em> web-perf guides say "<em>animate transform, not background</em>": background isn't slow per se, but it <em>must run on main thread</em></li>
       </ul>
     </aside>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 280" xmlns="http://www.w3.org/2000/svg">
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.16em" fill="#15171c" font-weight="700">COMPOSITOR LAYER TREE · WHICH ELEMENTS GET A LAYER</text>
+
+          <!-- DOM on left -->
+          <text x="100" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#1f5c8c">DOM</text>
+          <rect x="40" y="65" width="120" height="22" fill="#c9dceb" stroke="#1f5c8c"/>
+          <text x="100" y="80" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#1f5c8c">body</text>
+          <line x1="100" y1="87" x2="100" y2="100" stroke="#1f5c8c" stroke-width="0.7"/>
+          <rect x="40" y="100" width="120" height="22" fill="#c9dceb" stroke="#1f5c8c"/>
+          <text x="100" y="115" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#1f5c8c">header</text>
+          <line x1="100" y1="122" x2="100" y2="135" stroke="#1f5c8c" stroke-width="0.7"/>
+          <rect x="40" y="135" width="120" height="22" fill="#c9dceb" stroke="#1f5c8c"/>
+          <text x="100" y="150" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#1f5c8c">.card</text>
+          <line x1="100" y1="157" x2="100" y2="170" stroke="#1f5c8c" stroke-width="0.7"/>
+          <rect x="40" y="170" width="120" height="22" fill="#fcd34d" stroke="#a87a1f" stroke-width="2"/>
+          <text x="100" y="185" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#a87a1f">.modal ★ transform</text>
+          <line x1="100" y1="192" x2="100" y2="205" stroke="#1f5c8c" stroke-width="0.7"/>
+          <rect x="40" y="205" width="120" height="22" fill="#c9dceb" stroke="#1f5c8c"/>
+          <text x="100" y="220" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#1f5c8c">p.text</text>
+
+          <!-- Composited Layer Tree on right -->
+          <text x="540" y="55" text-anchor="middle" font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">COMPOSITED LAYER TREE</text>
+          <rect x="380" y="65" width="320" height="32" fill="#f0d4bc" stroke="#b35a1f" rx="2"/>
+          <text x="540" y="84" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#b35a1f">Layer 1: ROOT (body + header + .card + p.text)</text>
+          <text x="540" y="95" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">main thread paints to this layer's bitmap</text>
+
+          <line x1="540" y1="97" x2="540" y2="115" stroke="#b35a1f" stroke-width="0.7"/>
+          <rect x="380" y="115" width="320" height="38" fill="#fcd34d" stroke="#a87a1f" stroke-width="2" rx="2"/>
+          <text x="540" y="134" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" fill="#a87a1f">Layer 2: .modal (separate)</text>
+          <text x="540" y="145" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a87a1f">promoted by transform · GPU shader can animate</text>
+
+          <!-- Promote triggers -->
+          <text x="40" y="255" font-family="JetBrains Mono" font-size="9" font-weight="700" letter-spacing="0.14em" fill="#15171c">PROMOTE TO OWN LAYER:</text>
+          <text x="40" y="270" font-family="Inter" font-size="10" fill="#15171c">transform / opacity / filter · 3D transform · will-change: transform · video / canvas · position: fixed (in certain cases)</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;24·1</span>
+        <span class="lang-zh-only">Compositor 看到的<em>不是</em> DOM 树 — 它看到的是<em>Layer 树</em>。绝大多数元素共享 ROOT layer(主线程画到这里);只有用了 <code>transform</code> / <code>opacity</code> / <code>will-change</code> 等的元素被<em>promote</em> 为<em>独立 layer</em>。GPU compositor 只对这些独立 layer 做动画 — 这就是为什么 <code>transform: translateX</code> 比 <code>left</code> 快几百倍。<strong>但 layer 不是 free</strong>: 每个 layer ~50-200 KB GPU 显存,几百个 layer 会撑爆低端 Android。</span>
+        <span class="figen">Fig 24·1 · Compositor sees <em>not</em> the DOM tree — it sees the <em>Layer tree</em>. Most elements share the ROOT layer (main thread paints into it); only elements using <code>transform</code> / <code>opacity</code> / <code>will-change</code> etc. get <em>promoted</em> to their own layer. GPU compositor animates only those independent layers — hence <code>transform: translateX</code> is hundreds of times faster than <code>left</code>. <strong>But layers aren't free</strong>: ~50-200 KB GPU memory each; hundreds can OOM low-end Android.</span>
+      </figcaption>
+    </figure>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
