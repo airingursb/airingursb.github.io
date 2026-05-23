@@ -121,7 +121,7 @@
 - **Size:** 128×128 px
 - **Prompt:** A short wooden lamp post, isometric 45-degree view. Cinnamon-wood vertical post with a small lantern-style glass enclosure on top emitting a warm yellow glow (the glow should be drawn into the sprite). The lantern has a tiny gabled roof. Cozy fairytale feel. Sprite occupies most of the canvas vertically. Transparent background, no ground shadow.
 
-### D05 — Lavender flower patch  `[ ]`
+### D05 — Lavender flower patch  `[x]`
 - **File:** `output/decorations/D05-lavender.png`
 - **Size:** 128×128 px
 - **Prompt:** A small patch of lavender flowers, isometric 45-degree view. 5-7 tall slender stems with soft dusty-purple flower spikes at the top, set in a low cluster of pale green leaves at the base. Hand-painted softness, slight variation in heights. Transparent background, no ground shadow.
@@ -130,9 +130,9 @@
 
 ## 进度
 
-- [ ] A 系列 (5/5)
-- [ ] B 系列 (4/4)
-- [ ] C 系列 (5/5)
-- [ ] D 系列 (5/5)
+- [x] A 系列 (5/5)
+- [x] B 系列 (4/4)
+- [x] C 系列 (5/5)
+- [x] D 系列 (5/5)
 
 全部完成后通知用户。
