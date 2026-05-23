@@ -1,0 +1,42 @@
+---
+title: "一段 CSS 的一生 —— Chromium 样式引擎全景"
+date: "2026-05-23"
+tags: [CSS, 浏览器引擎, Blink, 性能工程, 渲染管线]
+public: true
+draft: true
+summary: 一份 4 行的 .css 文件要穿过 9 道工序、命中 3 棵索引树、参与 8 步级联,才能让屏幕上某个像素变成 oklch 蓝。把每一步的 Blink 源码行号、CSSOM 字段、级联规则、容器查询/@layer/:has() 的实现细节,全部摊开。
+immersive:
+  url: /immersive/css-engine/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文,建议在专属页面阅读 → [进入完整版](/immersive/css-engine/)
+
+这是 [《字节码到像素的一生》](/immersive/chromium-renderer/) 与 [《V8 是怎么把 JS 跑快的》](/immersive/v8-fast-js/) 的姐妹篇。前两篇问"<em>浏览器拿到字节后怎么变像素</em>"和"<em>JS 怎么变快</em>",这一篇问中间最容易被忽略的那一段: <strong>样式表怎么从 4 行字符串变成每个 DOM 节点的 ComputedStyle</strong>。
+
+### 一份 4 行 CSS 走完 9 道工序
+
+文章追着同一段 CSS——一个用上了 custom property + @layer + 伪类 + color-mix + transition + container query + oklch 的 4 行声明——走完它从字节流到屏幕的一生:
+
+```
+01 tokenize  02 parse  03 CSSOM  04 selector match
+05 cascade   06 resolve var  07 compute  08 invalidate  09 animate
+```
+
+Ch6-22 各章顶部都会标 `STAGE X/9`,告诉你<em>站在哪一格</em>。
+
+### 31 章 · 9 个 Act 全景
+
+- **Act I 背景**(4 章): 三个公式、CSS 1996-2026 家谱、在渲染管线里的位置、author/user/UA 三层模型
+- **Act II 主线**: The Card——4 行 CSS 的全局图
+- **Act III 解析**(5 章): tokenizer · CSSOM · @import · 错误恢复 · CSSOM↔DOM 关系
+- **Act IV 选择器匹配**(4 章): parser · SelectorChecker · Bloom filter / RuleSet · :has() / :is()
+- **Act V 级联与求值**(5 章): 8 步 cascade · specificity · @layer · custom property · 四值模型
+- **Act VI 失效与重算**(3 章): InvalidationSet · sibling/descendant · StyleRecalc
+- **Act VII 动画**(3 章): transition/animation 数据模型 · compositor offload · scroll-driven
+- **Act VIII 现代特性**(3 章): container queries · @scope/nesting · anchor positioning/view-transitions/color-mix
+- **Act IX 综合**(3 章): 性能模型 · DevTools · References
+
+读完你会知道: 一份 .css 文件,从被 Blink fetch、tokenize、parse、build 成 CSSOM、被 SelectorChecker 匹上 DOM 节点、参与 8 步级联、解算出 oklch 颜色、产生 ComputedStyle、被 InvalidationSet 守护、在动画里跨帧重算——每一步在哪个文件、哪一行 C++、占多少字节、花多少 µs。
+
+完整阅读: **[一段 CSS 的一生 —— Chromium 样式引擎全景](/immersive/css-engine/)**

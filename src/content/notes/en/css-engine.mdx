@@ -1,0 +1,42 @@
+---
+title: "The Life of a Stylesheet — Inside Chromium's CSS Engine"
+date: "2026-05-23"
+tags: [CSS, Browser Engine, Blink, Performance Engineering, Rendering Pipeline]
+public: true
+draft: true
+summary: A 4-line stylesheet has to traverse 9 stages, hit 3 index trees, and participate in an 8-step cascade before one pixel on screen turns oklch blue. Every step unfolded — Blink source-line citations, CSSOM field layouts, cascade rules, container queries / @layer / :has() internals.
+immersive:
+  url: /immersive/css-engine/
+  label: Immersive
+---
+
+> This is an immersive long-form essay — best read in its dedicated layout → [Open the full version](/immersive/css-engine/)
+
+A companion to [«Bytecode to Pixels»](/immersive/chromium-renderer/) and [«How V8 Makes JS Fast»](/immersive/v8-fast-js/). Those ask <em>how HTML turns into pixels</em> and <em>how JS gets fast</em>; this one tackles the most overlooked stretch in between — <strong>how a stylesheet becomes a ComputedStyle on every DOM node</strong>.
+
+### One 4-line stylesheet, 9 stages
+
+The article follows one CSS specimen — a 4-line declaration that lights up custom properties + @layer + pseudo-class + color-mix + transition + container query + oklch — through its life from byte stream to pixel:
+
+```
+01 tokenize  02 parse  03 CSSOM  04 selector match
+05 cascade   06 resolve var  07 compute  08 invalidate  09 animate
+```
+
+Ch6-22 each carry a `STAGE X/9` banner telling you <em>which box you're standing in</em>.
+
+### 31 chapters across 9 acts
+
+- **Act I · Background** (4 ch): three formulas, CSS family tree 1996-2026, position in pipeline, author/user/UA layers
+- **Act II · Main-line**: The Card — the 4-line CSS in panorama
+- **Act III · Parsing** (5 ch): tokenizer · CSSOM · @import · error recovery · CSSOM↔DOM relation
+- **Act IV · Selector matching** (4 ch): parser · SelectorChecker · Bloom filter / RuleSet · :has() / :is()
+- **Act V · Cascade & resolution** (5 ch): 8-step cascade · specificity · @layer · custom property · four-value model
+- **Act VI · Invalidation** (3 ch): InvalidationSet · sibling/descendant · StyleRecalc
+- **Act VII · Animation** (3 ch): transition/animation data model · compositor offload · scroll-driven
+- **Act VIII · Modern features** (3 ch): container queries · @scope/nesting · anchor positioning/view-transitions/color-mix
+- **Act IX · Synthesis** (3 ch): performance model · DevTools · References
+
+By the end you'll know: how a .css file is fetched, tokenized, parsed, built into a CSSOM, matched against DOM nodes by SelectorChecker, run through an 8-step cascade, resolved to an oklch colour, condensed into a ComputedStyle, guarded by an InvalidationSet, and recomputed across frames by an animation — at every step, which file, which C++ line, how many bytes, how many microseconds.
+
+Read the full piece: **[The Life of a Stylesheet — Inside Chromium's CSS Engine](/immersive/css-engine/)**

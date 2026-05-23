@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google" content="notranslate">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico">
+<link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico">
+<link rel="icon" href="https://airing.ursb.me/image/favicon.ico">
+<meta name="description" content="一份 4 行的 .css 文件要穿过 9 道工序、命中 3 棵索引树、参与 8 步级联,才能让屏幕上某个像素变成 oklch 蓝。拆解 Chromium 样式引擎全栈——从字节流到 computed value。">
+<meta name="author" content="Airing">
+<meta property="og:title" content="一段 CSS 的一生 — Chromium 样式引擎全景">
+<meta property="og:description" content="一份 4 行的 .css 文件要穿过 9 道工序、命中 3 棵索引树、参与 8 步级联——Chromium CSS 引擎全栈手册。">
+<meta property="og:image" content="https://ursb.me/og/css-engine.png">
+<meta property="og:url" content="https://ursb.me/immersive/css-engine/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="ursb.me · Airing">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="一段 CSS 的一生 — Chromium 样式引擎全景">
+<meta name="twitter:description" content="一份 4 行的 .css 文件要穿过 9 道工序、命中 3 棵索引树、参与 8 步级联。">
+<meta name="twitter:image" content="https://ursb.me/og/css-engine.png">
+<meta name="twitter:creator" content="@airingursb">
+<title>一段 CSS 的一生 — Chromium 样式引擎全景</title>
+<!-- lang-url-param:v1 -->
+<script>
+/* SEO: honor ?lang=en|zh URL param so the page first-paints in the requested
+   language. Without this, a Google-indexed /immersive/X/?lang=en URL would
+   still render zh until the user clicks the toggle. */
+(function() {
+  try {
+    var p = new URLSearchParams(location.search);
+    var lang = p.get('lang');
+    if (lang === 'en' || lang === 'zh') {
+      try { localStorage.setItem('ursb-lang', lang); } catch (e) {}
+      try { localStorage.setItem('article_lang', lang); } catch (e) {}
+      if (lang === 'en') {
+        document.documentElement.lang = 'en';
+      } else {
+        document.documentElement.lang = 'zh-CN';
+      }
+      document.addEventListener('DOMContentLoaded', function() {
+        if (lang === 'en') document.body.classList.add('lang-en');
+        else document.body.classList.remove('lang-en');
+      });
+    }
+  } catch (e) {}
+})();
+</script>
+<style>
+  :root {
+    --bg: #f4efe6;
+    --bg-soft: #ebe5d8;
+    --paper: #faf6ed;
+    --paper-2: #fdfbf3;
+    --ink: #15171c;
+    --ink-soft: #3c4148;
+    --ink-mute: #767c87;
+    --rule: #c7c4ba;
+    --rule-soft: #ddd9cd;
+    --accent: #1f5c8c;        /* cobalt — parser / CSSOM */
+    --accent-soft: #4a85b3;
+    --accent-pale: #c9dceb;
+    --copper: #b35a1f;        /* cascade · the "cascading" of CSS */
+    --copper-soft: #d1855a;
+    --good: #4a6b3e;          /* computed values / matched */
+    --warn: #a87a1f;
+    --gpu: #6b3aa3;           /* compositor / animation */
+    --gpu-soft: #9572bd;
+    --magenta: #a83a6b;       /* custom properties · the "variable" colour */
+    --magenta-soft: #c97a9c;
+    --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+    --serif-en: "Source Serif Pro", "Source Serif 4", Georgia, "Times New Roman", serif;
+    --sans: "Inter", -apple-system, "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Menlo, ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; }
+  body {
+    background: var(--bg); color: var(--ink);
+    font-family: var(--serif); font-size: 16px; line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body.lang-en { font-family: var(--serif-en); }
+  body::before {
+    content: ""; position: fixed; inset: 0;
+    background-image: radial-gradient(rgba(40,60,90,0.05) 1px, transparent 1px);
+    background-size: 3px 3px;
+    pointer-events: none; z-index: 1;
+  }
+  .container { max-width: 820px; margin: 0 auto; padding: 0 32px; position: relative; z-index: 2; }
+  a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--accent-pale); }
+  a:hover { color: var(--ink); border-bottom-color: var(--ink); }
+  code { font-family: var(--mono); font-size: 0.92em; background: var(--bg-soft); padding: 1px 5px; border-radius: 2px; color: var(--copper); }
+
+  /* ======= LANG TOGGLE ======= */
+  .lang-toggle {
+    position: fixed; top: 28px; right: 32px; z-index: 100;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
+    background: var(--paper); border: 1px solid var(--rule);
+    padding: 6px 12px; border-radius: 99px;
+    display: flex; align-items: center; gap: 10px;
+    backdrop-filter: blur(6px);
+  }
+  .lang-toggle button {
+    background: transparent; border: 0; padding: 2px 6px;
+    font: inherit; color: var(--ink-mute); cursor: pointer;
+    letter-spacing: inherit; transition: color 0.15s; border-radius: 99px;
+  }
+  .lang-toggle button.active { color: var(--ink); font-weight: 600; }
+  .lang-toggle .sep { color: var(--rule); }
+  body:not(.lang-en) .lang-en-only { display: none !important; }
+  body.lang-en .lang-zh-only { display: none !important; }
+
+  /* ======= BACK LINK ======= */
+  .ursb-backlink {
+    position: fixed; top: 28px; left: 32px; z-index: 100;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
+    color: var(--ink-mute); display: flex; align-items: center; gap: 6px;
+    background: var(--paper); border: 1px solid var(--rule);
+    padding: 6px 12px; border-radius: 99px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .ursb-backlink:hover { color: var(--ink); border-color: var(--ink); }
+
+  /* ======= HERO ======= */
+  .hero { padding: 120px 0 80px; border-bottom: 1px solid var(--rule); }
+  .hero .meta {
+    font-family: var(--sans); font-size: 12px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute); margin-bottom: 32px;
+  }
+  .hero .meta span + span::before { content: "·"; margin: 0 12px; color: var(--rule); }
+  .hero h1 {
+    font-family: var(--serif); font-size: 64px; line-height: 1.1;
+    margin: 0 0 24px; font-weight: 600; letter-spacing: -0.01em;
+  }
+  body.lang-en .hero h1 { font-family: var(--serif-en); font-size: 60px; letter-spacing: -0.02em; line-height: 1.05; }
+  .hero h1 .accent { color: var(--accent); }
+  .hero h1 .copper { color: var(--copper); }
+  .hero h1 .magenta { color: var(--magenta); }
+  .hero h1 .gpu { color: var(--gpu); }
+  .hero .deck {
+    font-family: var(--sans); font-size: 19px; line-height: 1.55;
+    color: var(--ink-soft); max-width: 620px;
+    margin: 0 0 48px; font-weight: 300;
+  }
+  .byline {
+    font-family: var(--sans); font-size: 13px; color: var(--ink-mute);
+    display: flex; gap: 32px; flex-wrap: wrap;
+  }
+  .byline .label { color: var(--ink-mute); }
+  .byline .value { color: var(--ink); margin-left: 6px; }
+
+  .hero-notice {
+    margin: 36px 0 0;
+    padding: 18px 22px;
+    background: var(--paper); border: 1px solid var(--rule);
+    border-left: 3px solid var(--copper); border-radius: 0 4px 4px 0;
+    max-width: 640px;
+  }
+  .hero-notice .hn-tag {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--copper); font-weight: 700; margin-bottom: 8px;
+  }
+  .hero-notice .hn-body {
+    margin: 0; font-family: var(--sans);
+    font-size: 13.5px; line-height: 1.65; color: var(--ink-soft);
+  }
+  .hero-notice .hn-body strong { color: var(--ink); font-weight: 600; }
+
+  /* ======= HERO PIPELINE BAR ======= */
+  .pipeline-bar {
+    margin: 56px 0 0;
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 20px 24px;
+  }
+  .pipeline-bar .pb-title {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+    color: var(--ink-mute); text-transform: uppercase; margin-bottom: 14px;
+    display: flex; justify-content: space-between;
+  }
+  .pipeline-bar .pb-title .pb-pulse { color: var(--accent); }
+  .pipeline-bar .pb-track {
+    display: grid; grid-template-columns: repeat(9, 1fr); gap: 4px; height: 30px;
+  }
+  .pipeline-bar .pb-cell {
+    background: var(--bg-soft); border-radius: 2px;
+    position: relative; overflow: hidden;
+  }
+  .pipeline-bar .pb-cell::after {
+    content: ""; position: absolute; inset: 0;
+    background: var(--accent); transform: scaleY(0); transform-origin: bottom;
+    transition: transform 0.4s cubic-bezier(.34,1.56,.64,1);
+  }
+  .pipeline-bar .pb-cell.lit::after { transform: scaleY(1); }
+  .pipeline-bar .pb-cell.cascade.lit::after { background: var(--copper); }
+  .pipeline-bar .pb-cell.invalid.lit::after { background: var(--magenta); }
+  .pipeline-bar .pb-cell.anim.lit::after { background: var(--gpu); }
+  .pipeline-bar .pb-axis {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 9px; color: var(--ink-mute);
+    margin-top: 8px; letter-spacing: 0.06em;
+  }
+
+  /* ======= TOC v2 ======= */
+  .toc-v2 { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+  .toc-v2 .tv-head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+  .toc-v2 .tv-label {
+    font-family: var(--sans); font-size: 11px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--ink-mute);
+  }
+  .toc-v2 .tv-meta {
+    font-family: var(--mono); font-size: 10.5px; color: var(--ink-mute);
+  }
+  .toc-v2 .tv-meta .tv-now { color: var(--accent); font-weight: 700; }
+  .toc-v2 .tv-sub {
+    font-family: var(--sans); font-size: 13px; color: var(--ink-mute);
+    margin: 2px 0 26px; font-style: italic;
+  }
+
+  .toc-group {
+    margin-bottom: 18px;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--ink-mute);
+    border-radius: 0 4px 4px 0;
+    background: var(--paper);
+    padding: 14px 18px 16px;
+  }
+  .toc-group[data-phase="bg"]      { border-left-color: var(--ink-mute); }
+  .toc-group[data-phase="main"]    { border-left-color: var(--copper); background: linear-gradient(135deg, rgba(179,90,31,0.04) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="parse"]   { border-left-color: var(--accent); }
+  .toc-group[data-phase="match"]   { border-left-color: var(--good); }
+  .toc-group[data-phase="cascade"] { border-left-color: var(--copper); }
+  .toc-group[data-phase="invalid"] { border-left-color: var(--magenta); }
+  .toc-group[data-phase="anim"]    { border-left-color: var(--gpu); }
+  .toc-group[data-phase="modern"]  { border-left-color: var(--magenta); }
+  .toc-group[data-phase="synth"]   { border-left-color: var(--good); }
+
+  .toc-group-head {
+    display: flex; align-items: baseline; gap: 14px; margin-bottom: 12px;
+    border-bottom: 1px dotted var(--rule); padding-bottom: 10px;
+  }
+  .toc-group-head .tg-num {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    color: var(--ink-mute); width: 22px;
+  }
+  .toc-group-head .tg-name {
+    font-family: var(--serif); font-size: 16px; font-weight: 700; flex: 1;
+  }
+  body.lang-en .toc-group-head .tg-name { font-family: var(--serif-en); }
+  .toc-group-head .tg-en {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ink-mute);
+  }
+  .toc-group-head .tg-count {
+    font-family: var(--mono); font-size: 10px; color: var(--ink-mute);
+    background: var(--bg-soft); padding: 2px 8px; border-radius: 999px;
+  }
+
+  .toc-chips {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 5px;
+  }
+  .toc-chip {
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 12px;
+    background: var(--bg-soft); border: 1px solid var(--rule-soft);
+    border-radius: 3px; text-decoration: none; color: var(--ink);
+    font-family: var(--sans); font-size: 13px;
+    transition: all 0.15s; border-bottom-width: 1px;
+  }
+  .toc-chip:hover {
+    border-color: var(--accent); background: var(--paper-2);
+    transform: translateX(2px); color: var(--ink);
+  }
+  .toc-chip.tc-special {
+    background: linear-gradient(135deg, rgba(179,90,31,0.10), var(--paper));
+    border-color: var(--copper-soft); border-left: 2px solid var(--copper);
+  }
+  .toc-chip.tc-special .tc-num { color: var(--copper); }
+  .toc-chip .tc-num {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    color: var(--ink-mute); width: 22px; flex-shrink: 0;
+  }
+
+  /* ======= SIDEBAR TOC ======= */
+  .toc-side {
+    position: fixed; top: 90px; left: 24px;
+    width: 200px; max-height: calc(100vh - 120px); overflow-y: auto;
+    font-family: var(--sans); font-size: 11.5px;
+    z-index: 50; padding-right: 8px;
+  }
+  .toc-side::-webkit-scrollbar { width: 4px; }
+  .toc-side::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+  .toc-side .toc-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
+    color: var(--ink-mute); text-transform: uppercase; margin-bottom: 10px;
+  }
+  .toc-side ol { list-style: none; padding: 0; margin: 0; }
+  .toc-side li { padding: 3px 0; line-height: 1.3; }
+  .toc-side li a {
+    color: var(--ink-mute); text-decoration: none; border: 0;
+    display: flex; gap: 8px; align-items: baseline;
+    transition: color 0.15s;
+  }
+  .toc-side li a:hover { color: var(--ink); }
+  .toc-side li.active a { color: var(--accent); font-weight: 600; }
+  .toc-side .toc-num {
+    font-family: var(--mono); font-size: 9.5px; color: var(--ink-mute);
+    flex-shrink: 0; width: 22px; letter-spacing: 0.04em;
+  }
+  .toc-side li.active .toc-num { color: var(--accent); }
+  .toc-side .ts-divider {
+    font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.16em;
+    color: var(--ink-mute); text-transform: uppercase;
+    margin: 8px 0 2px; padding-top: 5px;
+    border-top: 1px dashed var(--rule); opacity: 0.7;
+  }
+  .toc-side .ts-divider:first-child { border-top: 0; padding-top: 0; margin-top: 0; }
+  @media (max-width: 1280px) { .toc-side { display: none; } }
+
+  /* ======= CHAPTERS ======= */
+  .chap { padding: 72px 0; border-bottom: 1px solid var(--rule); }
+  .chap-num {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--ink-mute); margin-bottom: 12px;
+  }
+  .chap-title {
+    font-family: var(--serif); font-size: 42px; line-height: 1.1;
+    margin: 0 0 8px; font-weight: 600; letter-spacing: -0.005em;
+  }
+  body.lang-en .chap-title { font-family: var(--serif-en); font-size: 38px; letter-spacing: -0.015em; }
+  .chap-en {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-mute); margin: 0 0 36px;
+  }
+  .sub {
+    font-family: var(--serif); font-size: 22px; font-weight: 600;
+    margin: 48px 0 16px; color: var(--ink);
+  }
+  body.lang-en .sub { font-family: var(--serif-en); }
+  p { margin: 0 0 18px; }
+  em { font-style: italic; }
+  strong { font-weight: 700; }
+
+  /* ======= CODE BLOCKS ======= */
+  pre.code {
+    font-family: var(--mono); font-size: 12.5px;
+    background: var(--paper-2); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    padding: 16px 18px; margin: 24px 0;
+    overflow-x: auto; line-height: 1.6;
+    color: var(--ink-soft);
+    border-radius: 0 3px 3px 0;
+  }
+  pre.code .cm { color: var(--ink-mute); }
+  pre.code .kw { color: var(--copper); font-weight: 600; }
+  pre.code .ty { color: var(--accent); }
+  pre.code .fn { color: var(--good); }
+  pre.code .str { color: var(--magenta); }
+  pre.code .num { color: var(--copper); }
+  pre.code .at  { color: var(--gpu); font-weight: 600; }
+  pre.code .sel { color: var(--good); font-weight: 600; }
+  pre.code .prop { color: var(--accent); }
+  pre.code .val { color: var(--ink); }
+  pre.code .var { color: var(--magenta); font-weight: 500; }
+  pre.code .pseudo { color: var(--copper); }
+  pre.code .unit { color: var(--gpu); }
+
+  /* ======= NOTES (callouts) ======= */
+  .note {
+    margin: 28px 0; padding: 16px 18px;
+    background: var(--paper); border: 1px solid var(--rule);
+    border-left: 3px solid var(--ink-mute);
+    border-radius: 0 3px 3px 0;
+    font-size: 14.5px; line-height: 1.7; color: var(--ink-soft);
+  }
+  .note.copper { border-left-color: var(--copper); }
+  .note.copper .ntag { color: var(--copper); }
+  .note.good { border-left-color: var(--good); }
+  .note.good .ntag { color: var(--good); }
+  .note.gpu { border-left-color: var(--gpu); }
+  .note.gpu .ntag { color: var(--gpu); }
+  .note.magenta { border-left-color: var(--magenta); }
+  .note.magenta .ntag { color: var(--magenta); }
+  .note .ntag {
+    display: block; font-family: var(--mono);
+    font-size: 10.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-mute);
+    margin-bottom: 8px; font-weight: 700;
+  }
+  .note em { color: var(--ink); }
+  .note strong { color: var(--ink); }
+
+  /* ======= FIGURES / SVG ======= */
+  figure { margin: 32px 0; }
+  .fig-svg-wrap {
+    background: var(--paper-2); border: 1px solid var(--rule-soft);
+    border-radius: 3px; padding: 16px;
+  }
+  .fig-svg-wrap svg {
+    display: block; width: 100%; height: auto; max-width: 100%;
+  }
+  figcaption {
+    margin-top: 12px; padding-left: 14px;
+    font-family: var(--sans); font-size: 12.5px; line-height: 1.65;
+    color: var(--ink-soft); border-left: 2px solid var(--rule);
+  }
+  figcaption .figid {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute); font-weight: 700;
+    margin-right: 10px;
+  }
+  figcaption .figen { display: block; margin-top: 4px; color: var(--ink-mute); font-style: italic; }
+  body.lang-en figcaption .figen { font-style: normal; color: var(--ink-soft); }
+
+  /* ======= LADDER (numbered design rationale rows) ======= */
+  .ladder { margin: 28px 0; }
+  .ld-row {
+    display: grid; grid-template-columns: 36px 1fr;
+    gap: 16px; padding: 14px 0;
+    border-bottom: 1px dotted var(--rule);
+  }
+  .ld-row:last-child { border-bottom: 0; }
+  .ld-num {
+    font-family: var(--mono); font-size: 14px; font-weight: 700;
+    color: var(--copper); text-align: right; padding-top: 2px;
+  }
+  .ld-name {
+    font-family: var(--serif); font-size: 16px; font-weight: 600;
+    color: var(--ink); margin-bottom: 4px;
+  }
+  body.lang-en .ld-name { font-family: var(--serif-en); }
+  .ld-desc {
+    font-family: var(--sans); font-size: 14px; line-height: 1.65;
+    color: var(--ink-soft);
+  }
+
+  /* ======= STAGE BANNER (chapter context) ======= */
+  .stage-banner {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 8px; margin: 0 0 32px;
+    padding: 14px 16px;
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 3px;
+  }
+  .stage-banner.thread-parse  { border-left: 3px solid var(--accent); }
+  .stage-banner.thread-match  { border-left: 3px solid var(--good); }
+  .stage-banner.thread-cascade { border-left: 3px solid var(--copper); }
+  .stage-banner.thread-invalid { border-left: 3px solid var(--magenta); }
+  .stage-banner.thread-anim   { border-left: 3px solid var(--gpu); }
+  .sb-cell .sb-key {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-mute); margin-bottom: 2px;
+  }
+  .sb-cell .sb-val {
+    font-family: var(--mono); font-size: 12px; color: var(--ink);
+  }
+  .sb-cell .sb-val.thread { font-weight: 700; }
+
+  /* ======= TABLES (comparison) ======= */
+  table.cmp {
+    width: 100%; border-collapse: collapse;
+    margin: 24px 0; font-family: var(--sans);
+    font-size: 13px;
+  }
+  table.cmp th, table.cmp td {
+    padding: 9px 12px; text-align: left;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  table.cmp th {
+    background: var(--bg-soft);
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--ink-soft); font-weight: 700;
+  }
+  table.cmp td.mono { font-family: var(--mono); font-size: 12px; }
+  table.cmp td.good { color: var(--good); font-weight: 600; }
+  table.cmp td.num { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ======= PULL QUOTE ======= */
+  blockquote.pull {
+    margin: 40px 0; padding: 20px 28px;
+    border-left: 3px solid var(--copper);
+    background: linear-gradient(135deg, rgba(179,90,31,0.04), transparent 60%);
+    font-family: var(--serif); font-size: 19px; line-height: 1.5;
+    color: var(--ink); font-style: italic;
+    border-radius: 0 3px 3px 0;
+  }
+  body.lang-en blockquote.pull { font-family: var(--serif-en); }
+  blockquote.pull cite {
+    display: block; margin-top: 16px;
+    font-family: var(--mono); font-size: 11px; font-style: normal;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-mute);
+  }
+
+  /* ======= REFS BLOCK ======= */
+  .refs-block {
+    margin: 24px 0 0;
+    padding: 18px 22px;
+    border: 1px solid var(--rule-soft);
+    border-radius: 4px;
+    background: var(--paper-2);
+    font-family: var(--sans); font-size: 12.5px;
+    line-height: 1.65;
+  }
+  .refs-head {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-mute); margin-bottom: 12px;
+    border-bottom: 1px dashed var(--rule-soft);
+    padding-bottom: 8px;
+  }
+  .refs-block dl {
+    display: grid;
+    grid-template-columns: 92px 1fr;
+    gap: 8px 14px; margin: 0;
+  }
+  .refs-block dt {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.10em; text-transform: uppercase;
+    color: var(--ink-mute); padding-top: 3px;
+    text-align: right;
+  }
+  .refs-block dd { margin: 0; color: var(--ink-soft); }
+  .refs-block dd a {
+    color: var(--accent); text-decoration: none;
+    border-bottom: 1px dotted var(--accent-pale);
+    transition: border-color 0.15s;
+  }
+  .refs-block dd a:hover { border-bottom-color: var(--accent); }
+  .refs-block dd .ref-tag {
+    display: inline-block;
+    font-family: var(--mono); font-size: 9px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    padding: 1px 5px; margin-right: 6px;
+    border-radius: 2px; background: var(--paper);
+    border: 1px solid var(--rule-soft); color: var(--ink-mute);
+  }
+  .refs-block dd .ref-tag.rec   { color: var(--good); border-color: var(--good); }
+  .refs-block dd .ref-tag.wd    { color: var(--warn); border-color: var(--warn); }
+  .refs-block dd .ref-tag.src   { color: var(--accent); border-color: var(--accent-soft); }
+  .refs-block dd .ref-tag.blog  { color: var(--gpu); border-color: var(--gpu-soft); }
+  .refs-block dd code {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--accent); background: var(--paper);
+    padding: 0 4px; border-radius: 2px;
+  }
+
+  /* per-chapter mini-refs */
+  .chap-refs {
+    margin: 36px 0 0; padding: 12px 16px;
+    background: var(--paper); border: 1px solid var(--rule-soft);
+    border-left: 2px solid var(--ink-mute); border-radius: 0 3px 3px 0;
+    font-family: var(--sans); font-size: 12px; line-height: 1.55;
+    color: var(--ink-soft);
+  }
+  .chap-refs .cr-head {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--ink-mute); margin-bottom: 6px;
+  }
+  .chap-refs a { color: var(--accent); border-bottom: 1px dotted var(--accent-pale); }
+  .chap-refs a:hover { border-bottom-color: var(--accent); }
+
+  /* ======= CROSS-LINK (to sibling articles) ======= */
+  .cross-link {
+    margin: 32px 0; padding: 14px 18px;
+    background: var(--bg-soft); border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    font-family: var(--sans); font-size: 13px;
+    color: var(--ink-soft);
+  }
+  .cross-link .cl-tag {
+    display: inline-block;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--accent); font-weight: 700;
+    margin-right: 10px;
+  }
+  .cross-link a { font-weight: 600; }
+
+  /* ======= FOOTER ======= */
+  .ursb-footer {
+    margin: 80px 0 40px; padding-top: 40px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--sans); font-size: 13px; color: var(--ink-mute);
+    display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px;
+  }
+  .ursb-footer a { color: var(--ink-soft); border-bottom: 1px solid var(--rule); }
+  .ursb-footer a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* ======= DARK MODE ======= */
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14181f;
+      --bg-soft: #1b212c;
+      --paper: #1d2530;
+      --paper-2: #232c39;
+      --ink: #ece8de;
+      --ink-soft: #c8c2b3;
+      --ink-mute: #8a8e98;
+      --rule: #353c47;
+      --rule-soft: #2a313c;
+      --accent: #6fa9d4;
+      --accent-soft: #4e87b2;
+      --accent-pale: #2b4660;
+      --copper: #e0916b;
+      --copper-soft: #c87a55;
+      --good: #8fb37e;
+      --warn: #d4b06b;
+      --gpu: #b48edb;
+      --gpu-soft: #9572bd;
+      --magenta: #d27ba3;
+      --magenta-soft: #b35a83;
+    }
+    body::before {
+      background-image: radial-gradient(rgba(200,210,230,0.045) 1px, transparent 1px);
+    }
+    code {
+      background: rgba(224,145,107,0.10);
+      color: var(--copper);
+    }
+    figure svg [stroke="#15171c"] { stroke: var(--ink); }
+    figure svg [fill="#15171c"]:not([stroke]) { fill: var(--ink); }
+    figure svg [fill="#fdfbf3"] { fill: var(--paper-2); }
+    figure svg [fill="#faf6ed"] { fill: var(--paper); }
+    figure svg [fill="#f4efe6"] { fill: var(--bg); }
+    figure svg [fill="#ebe5d8"] { fill: var(--bg-soft); }
+    figure svg [stroke="#c7c4ba"] { stroke: var(--rule); }
+    figure svg [stroke="#ddd9cd"] { stroke: var(--rule-soft); }
+    figure svg [fill="#767c87"] { fill: var(--ink-mute); }
+    figure svg [fill="#3c4148"] { fill: var(--ink-soft); }
+    pre.code { background: var(--paper); border-color: var(--rule); }
+    .note { background: var(--paper); }
+  }
+
+  /* ======= RESPONSIVE ======= */
+  @media (max-width: 720px) {
+    .hero { padding: 100px 0 56px; }
+    .hero h1 { font-size: 44px; }
+    body.lang-en .hero h1 { font-size: 40px; }
+    .hero .deck { font-size: 16px; }
+    .chap-title { font-size: 30px; }
+    body.lang-en .chap-title { font-size: 28px; }
+    .stage-banner { grid-template-columns: repeat(2, 1fr); }
+    .toc-chips { grid-template-columns: 1fr; }
+  }
+</style>
+<script async defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script>
+</head>
+<body>
+
+<a href="https://ursb.me" class="ursb-backlink">← ursb.me</a>
+<div class="lang-toggle" role="group" aria-label="Language toggle">
+  <button id="lang-zh" class="active" aria-pressed="true">ZH</button>
+  <span class="sep">·</span>
+  <button id="lang-en" aria-pressed="false">EN</button>
+</div>
+
+<aside class="toc-side" aria-label="Chapter list">
+  <div class="toc-label"><span class="lang-zh-only">章节</span><span class="lang-en-only">Chapters</span></div>
+  <ol>
+    <li class="ts-divider">ACT I · BACKGROUND</li>
+    <li data-section="c1"><a href="#c1"><span class="toc-num">01</span><span class="lang-zh-only">三个公式</span><span class="lang-en-only">Three formulas</span></a></li>
+    <li data-section="c2"><a href="#c2"><span class="toc-num">02</span><span class="lang-zh-only">家谱</span><span class="lang-en-only">Family tree</span></a></li>
+    <li data-section="c3"><a href="#c3"><span class="toc-num">03</span><span class="lang-zh-only">在管线里的位置</span><span class="lang-en-only">Position in the pipeline</span></a></li>
+    <li data-section="c4"><a href="#c4"><span class="toc-num">04</span><span class="lang-zh-only">三层模型</span><span class="lang-en-only">Three-layer model</span></a></li>
+    <li class="ts-divider">ACT II · MAIN-LINE</li>
+    <li data-section="cmain"><a href="#cmain"><span class="toc-num">✦</span><span class="lang-zh-only">The Card</span><span class="lang-en-only">The Card</span></a></li>
+    <li class="ts-divider">ACT III-IX · TBD</li>
+  </ol>
+</aside>
+
+<div class="container">
+
+  <!-- ========== HERO ========== -->
+  <section class="hero">
+    <div class="meta">
+      <span class="lang-zh-only">沉浸式</span><span class="lang-en-only">Immersive</span>
+      <span><span class="lang-zh-only">2026 春</span><span class="lang-en-only">Spring 2026</span></span>
+      <span><span class="lang-zh-only">31 章 · ~10k 行</span><span class="lang-en-only">31 chapters · ~10k lines</span></span>
+      <span>Chromium 130 · Blink</span>
+    </div>
+
+    <h1 class="lang-zh-only">一段 <span class="copper">CSS</span> 的一生 — Chromium <span class="accent">样式引擎</span>全景</h1>
+    <h1 class="lang-en-only">The Life of a <span class="copper">Stylesheet</span> — Inside Chromium's <span class="accent">CSS Engine</span></h1>
+
+    <p class="deck lang-zh-only">一份 4 行的 <code>.css</code> 文件要穿过 <strong>9 道工序</strong>、命中 <strong>3 棵索引树</strong>、参与 <strong>8 步级联</strong>,才能让屏幕上某个像素变成 oklch 蓝。把每一步对应的 Blink 源码行号、CSSOM 字段布局、计算/继承/级联规则、容器查询/<code>@layer</code>/<code>:has()</code> 的实现细节,全部摊开。</p>
+    <p class="deck lang-en-only">A 4-line stylesheet has to traverse <strong>9 stages</strong>, hit <strong>3 index trees</strong>, and participate in an <strong>8-step cascade</strong> before one pixel on screen turns oklch blue. We unfold each step: Blink source-line citations, CSSOM field layouts, computed/inherited/cascaded value rules, and the real implementation of container queries / <code>@layer</code> / <code>:has()</code>.</p>
+
+    <div class="byline">
+      <div><span class="label lang-zh-only">作者</span><span class="label lang-en-only">By</span><span class="value">Airing</span></div>
+      <div><span class="label lang-zh-only">系列</span><span class="label lang-en-only">Series</span><span class="value lang-zh-only">字段笔记 #08</span><span class="value lang-en-only">Field Note #08</span></div>
+      <div><span class="label lang-zh-only">姐妹篇</span><span class="label lang-en-only">Sibling</span><span class="value"><a href="/immersive/chromium-renderer/">Chromium 渲染流水线</a></span></div>
+    </div>
+
+    <div class="hero-notice">
+      <div class="hn-tag lang-zh-only">怎么读</div>
+      <div class="hn-tag lang-en-only">How to read</div>
+      <p class="hn-body lang-zh-only">本文跟 <a href="/immersive/chromium-renderer/">《字节码到像素的一生》</a>、<a href="/immersive/v8-fast-js/">《V8 是怎么把 JS 跑快的》</a> 同一棵 Chromium 源码树。前两篇问"<strong>HTML 怎么变像素</strong>"和"<strong>JS 怎么变快</strong>",这一篇问的是中间最容易被忽略的那一段:<em>样式表怎么从 4 行字符串变成每个 DOM 节点的 ComputedStyle</em>。读到 Ch24 时你会知道,为什么 <code>color-mix(in oklch, ...)</code> 这种 2026 才标准的语法能在 16 ms 内算完。</p>
+      <p class="hn-body lang-en-only">This article shares a source tree with <a href="/immersive/chromium-renderer/">"Bytecode to Pixels"</a> and <a href="/immersive/v8-fast-js/">"How V8 Makes JS Fast"</a>. Those ask <strong>how HTML turns into pixels</strong> and <strong>how JS gets fast</strong>; this one tackles the most overlooked stretch in between — <em>how a stylesheet becomes a ComputedStyle on every DOM node</em>. By Ch24 you'll see why <code>color-mix(in oklch, ...)</code> — a 2026-standard syntax — resolves in under 16 ms.</p>
+    </div>
+
+    <div class="pipeline-bar">
+      <div class="pb-title">
+        <span class="lang-zh-only">9 道工序 · 从 .css 字节到 ComputedStyle</span>
+        <span class="lang-en-only">9 stages · from .css bytes to ComputedStyle</span>
+        <span class="pb-pulse">live</span>
+      </div>
+      <div class="pb-track" id="pbTrack">
+        <div class="pb-cell"></div>
+        <div class="pb-cell"></div>
+        <div class="pb-cell"></div>
+        <div class="pb-cell"></div>
+        <div class="pb-cell cascade"></div>
+        <div class="pb-cell cascade"></div>
+        <div class="pb-cell cascade"></div>
+        <div class="pb-cell invalid"></div>
+        <div class="pb-cell anim"></div>
+      </div>
+      <div class="pb-axis">
+        <span>tokenize</span><span>parse</span><span>CSSOM</span><span>match</span><span>cascade</span><span>resolve var</span><span>compute</span><span>invalidate</span><span>animate</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== TABLE OF CONTENTS ========== -->
+  <section class="toc-v2">
+    <div class="tv-head">
+      <div class="tv-label"><span class="lang-zh-only">完整目录</span><span class="lang-en-only">Full contents</span></div>
+      <div class="tv-meta"><span class="lang-zh-only">31 章 · 9 个 Act</span><span class="lang-en-only">31 chapters · 9 acts</span></div>
+    </div>
+    <div class="tv-sub lang-zh-only">先讲为什么(Ch1-4),引入主线(Ch5),拆解 9 道工序(Ch6-28),最后回到性能与 References(Ch29-31)。</div>
+    <div class="tv-sub lang-en-only">Why first (Ch1-4), main-line specimen (Ch5), 9 pipeline stages unpacked (Ch6-28), then perf + References (Ch29-31).</div>
+
+    <div class="toc-group" data-phase="bg">
+      <div class="toc-group-head">
+        <div class="tg-num">I</div>
+        <div class="tg-name lang-zh-only">背景</div>
+        <div class="tg-name lang-en-only">Background</div>
+        <div class="tg-en">why · history · pipeline · layers</div>
+        <div class="tg-count">4</div>
+      </div>
+      <div class="toc-chips">
+        <a class="toc-chip" href="#c1"><span class="tc-num">01</span><span class="lang-zh-only">三个公式</span><span class="lang-en-only">Three formulas</span></a>
+        <a class="toc-chip" href="#c2"><span class="tc-num">02</span><span class="lang-zh-only">家谱 · 1996–2026</span><span class="lang-en-only">Family tree · 1996-2026</span></a>
+        <a class="toc-chip" href="#c3"><span class="tc-num">03</span><span class="lang-zh-only">在管线里的位置</span><span class="lang-en-only">Where it sits in the pipeline</span></a>
+        <a class="toc-chip" href="#c4"><span class="tc-num">04</span><span class="lang-zh-only">三层模型 · author / UA / 浏览器</span><span class="lang-en-only">Three layers · author / UA / browser</span></a>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="main">
+      <div class="toc-group-head">
+        <div class="tg-num">II</div>
+        <div class="tg-name lang-zh-only">主线 · The Card</div>
+        <div class="tg-name lang-en-only">Main-line · The Card</div>
+        <div class="tg-en">specimen · the 4-line CSS</div>
+        <div class="tg-count">1</div>
+      </div>
+      <div class="toc-chips">
+        <a class="toc-chip tc-special" href="#cmain"><span class="tc-num">✦</span><span class="lang-zh-only">The Card — 4 行 CSS 走完 9 道工序</span><span class="lang-en-only">The Card — 4 lines through 9 stages</span></a>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="parse">
+      <div class="toc-group-head">
+        <div class="tg-num">III</div>
+        <div class="tg-name lang-zh-only">解析</div>
+        <div class="tg-name lang-en-only">Parsing</div>
+        <div class="tg-en">tokenizer · CSSOM · @import · errors</div>
+        <div class="tg-count">5</div>
+      </div>
+      <div class="toc-chips">
+        <a class="toc-chip" href="#c6"><span class="tc-num">06</span><span class="lang-zh-only">tokenizer · CSSTokenizer.cc</span><span class="lang-en-only">Tokenizer · CSSTokenizer.cc</span></a>
+        <a class="toc-chip" href="#c7"><span class="tc-num">07</span><span class="lang-zh-only">CSSOM 的形状</span><span class="lang-en-only">Shape of the CSSOM</span></a>
+        <a class="toc-chip" href="#c8"><span class="tc-num">08</span><span class="lang-zh-only">@import 与加载顺序</span><span class="lang-en-only">@import &amp; load order</span></a>
+        <a class="toc-chip" href="#c9"><span class="tc-num">09</span><span class="lang-zh-only">错误恢复 · CSS 的"宽容"</span><span class="lang-en-only">Error recovery · CSS forgiveness</span></a>
+        <a class="toc-chip" href="#c10"><span class="tc-num">10</span><span class="lang-zh-only">CSSOM ↔ DOM 关系</span><span class="lang-en-only">CSSOM ↔ DOM relation</span></a>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="match">
+      <div class="toc-group-head">
+        <div class="tg-num">IV</div>
+        <div class="tg-name lang-zh-only">选择器匹配</div>
+        <div class="tg-name lang-en-only">Selector matching</div>
+        <div class="tg-en">parser · checker · bloom · :has()</div>
+        <div class="tg-count">4</div>
+      </div>
+      <div class="toc-chips">
+        <a class="toc-chip" href="#c11"><span class="tc-num">11</span><span class="lang-zh-only">选择器 parser</span><span class="lang-en-only">Selector parser</span></a>
+        <a class="toc-chip" href="#c12"><span class="tc-num">12</span><span class="lang-zh-only">SelectorChecker 怎么匹</span><span class="lang-en-only">How SelectorChecker matches</span></a>
+        <a class="toc-chip" href="#c13"><span class="tc-num">13</span><span class="lang-zh-only">Bloom filter / RuleSet 索引</span><span class="lang-en-only">Bloom filter / RuleSet index</span></a>
+        <a class="toc-chip" href="#c14"><span class="tc-num">14</span><span class="lang-zh-only">:has() / :is() 的边界</span><span class="lang-en-only">:has() / :is() edges</span></a>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="cascade">
+      <div class="toc-group-head">
+        <div class="tg-num">V</div>
+        <div class="tg-name lang-zh-only">级联与求值</div>
+        <div class="tg-name lang-en-only">Cascade &amp; value resolution</div>
+        <div class="tg-en">8 steps · specificity · @layer · custom prop · four values</div>
+        <div class="tg-count">5</div>
+      </div>
+      <div class="toc-chips">
+        <a class="toc-chip" href="#c15"><span class="tc-num">15</span><span class="lang-zh-only">Cascade 算法 · 8 步谁赢</span><span class="lang-en-only">Cascade · 8 steps to a winner</span></a>
+        <a class="toc-chip" href="#c16"><span class="tc-num">16</span><span class="lang-zh-only">Specificity 真实计算</span><span class="lang-en-only">Real specificity math</span></a>
+        <a class="toc-chip" href="#c17"><span class="tc-num">17</span><span class="lang-zh-only">@layer 级联层</span><span class="lang-en-only">@layer cascade layers</span></a>
+        <a class="toc-chip" href="#c18"><span class="tc-num">18</span><span class="lang-zh-only">Custom Properties 解析</span><span class="lang-en-only">Custom property resolution</span></a>
+        <a class="toc-chip" href="#c19"><span class="tc-num">19</span><span class="lang-zh-only">四种值 · specified/computed/used/actual</span><span class="lang-en-only">Four values · specified/computed/used/actual</span></a>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="invalid">
+      <div class="toc-group-head">
+        <div class="tg-num">VI</div>
+        <div class="tg-name lang-zh-only">失效与重算</div>
+        <div class="tg-name lang-en-only">Invalidation &amp; recalc</div>
+        <div class="tg-en">InvalidationSet · sibling · StyleRecalc</div>
+        <div class="tg-count">3</div>
+      </div>
+      <div class="toc-chips">
+        <a class="toc-chip" href="#c20"><span class="tc-num">20</span><span class="lang-zh-only">InvalidationSet 的工作原理</span><span class="lang-en-only">InvalidationSet internals</span></a>
+        <a class="toc-chip" href="#c21"><span class="tc-num">21</span><span class="lang-zh-only">sibling / descendant 边界</span><span class="lang-en-only">Sibling / descendant boundaries</span></a>
+        <a class="toc-chip" href="#c22"><span class="tc-num">22</span><span class="lang-zh-only">StyleRecalc 触发条件</span><span class="lang-en-only">StyleRecalc triggers</span></a>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="anim">
+      <div class="toc-group-head">
+        <div class="tg-num">VII</div>
+        <div class="tg-name lang-zh-only">动画</div>
+        <div class="tg-name lang-en-only">Animation</div>
+        <div class="tg-en">transition · keyframes · compositor · scroll-driven</div>
+        <div class="tg-count">3</div>
+      </div>
+      <div class="toc-chips">
+        <a class="toc-chip" href="#c23"><span class="tc-num">23</span><span class="lang-zh-only">transition / animation 数据模型</span><span class="lang-en-only">Transition / animation data model</span></a>
+        <a class="toc-chip" href="#c24"><span class="tc-num">24</span><span class="lang-zh-only">Compositor offload</span><span class="lang-en-only">Compositor offload</span></a>
+        <a class="toc-chip" href="#c25"><span class="tc-num">25</span><span class="lang-zh-only">animation-timeline / scroll-driven</span><span class="lang-en-only">animation-timeline / scroll-driven</span></a>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="modern">
+      <div class="toc-group-head">
+        <div class="tg-num">VIII</div>
+        <div class="tg-name lang-zh-only">现代特性</div>
+        <div class="tg-name lang-en-only">Modern features</div>
+        <div class="tg-en">container queries · @scope · anchor · color-mix</div>
+        <div class="tg-count">3</div>
+      </div>
+      <div class="toc-chips">
+        <a class="toc-chip" href="#c26"><span class="tc-num">26</span><span class="lang-zh-only">Container Queries 内核</span><span class="lang-en-only">Container Queries internals</span></a>
+        <a class="toc-chip" href="#c27"><span class="tc-num">27</span><span class="lang-zh-only">:has() / @scope / nesting 实现</span><span class="lang-en-only">:has() / @scope / nesting</span></a>
+        <a class="toc-chip" href="#c28"><span class="tc-num">28</span><span class="lang-zh-only">anchor / view-transitions / color-mix</span><span class="lang-en-only">anchor / view-transitions / color-mix</span></a>
+      </div>
+    </div>
+
+    <div class="toc-group" data-phase="synth">
+      <div class="toc-group-head">
+        <div class="tg-num">IX</div>
+        <div class="tg-name lang-zh-only">综合</div>
+        <div class="tg-name lang-en-only">Synthesis</div>
+        <div class="tg-en">perf · DevTools · References</div>
+        <div class="tg-count">3</div>
+      </div>
+      <div class="toc-chips">
+        <a class="toc-chip" href="#c29"><span class="tc-num">29</span><span class="lang-zh-only">性能模型 · style update 多少 ms</span><span class="lang-en-only">Perf model · how many ms</span></a>
+        <a class="toc-chip" href="#c30"><span class="tc-num">30</span><span class="lang-zh-only">DevTools 三个面板</span><span class="lang-en-only">DevTools · 3 panels</span></a>
+        <a class="toc-chip" href="#rrefs"><span class="tc-num">✦</span><span class="lang-zh-only">References + 术语表</span><span class="lang-en-only">References + glossary</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 01 — THREE FORMULAS ========== -->
+  <section class="chap" id="c1">
+    <div class="chap-num">CHAPTER&nbsp;01</div>
+    <h2 class="chap-title lang-zh-only">三个公式 — CSS 到底是什么</h2>
+    <h2 class="chap-title lang-en-only">Three formulas — what CSS really is</h2>
+    <p class="chap-en lang-zh-only">把整个 CSS 引擎压缩到三行</p>
+    <p class="chap-en lang-en-only">The whole engine in three lines</p>
+
+    <p class="lang-zh-only">每一篇沉浸式都从三个公式开始。CSS 也不例外。下面三行写完之后,后面 30 章只是<em>把每个箭头展开</em>。</p>
+    <p class="lang-en-only">Every immersive starts with three formulas. CSS is no exception. The next 30 chapters are just <em>each arrow, unpacked</em>.</p>
+
+    <pre class="code"><span class="cm">// FORMULA ① — what a stylesheet IS</span>
+Stylesheet  =  ordered list of (Selector, Declaration<sub>+</sub>) rules
+            +  an outer at-rule envelope (@media, @layer, @container, ...)
+
+<span class="cm">// FORMULA ② — what cascade DOES</span>
+ComputedStyle(element)  =  cascade(
+                              for each property P:
+                                argmax<sub>specificity, order, importance</sub>
+                                  ( declarations of P matching element )
+                            )  +  inheritance  +  initial defaults
+
+<span class="cm">// FORMULA ③ — what the engine OPTIMIZES</span>
+StyleRecalc(node)       =  ∩<sub>r ∈ rules</sub>  (r touches node) → O(matched · log dom)
+                           guarded by InvalidationSet  ← Ch20 makes this O(dirty)</pre>
+
+    <p class="lang-zh-only">① 一个 stylesheet 就是<em>有序的</em>"选择器 + 声明列表"对。<strong>顺序很重要</strong>——这是 cascade 决定胜负的依据之一。<br>
+    ② <code>ComputedStyle</code> 是对每个 CSS 属性独立跑一遍 argmax: 在所有<em>匹配这个元素</em>的声明里,按 specificity → 顺序 → !important 的优先级挑一个最高的;然后从父节点继承没显式声明的属性;最后补 initial value。<br>
+    ③ DOM 改了一点东西(class 变了、子节点加了),引擎要回答"<em>谁要重算</em>"。朴素答案是<em>每个元素都跑一遍 cascade</em>(O(N × rules))。Blink 用 <code>InvalidationSet</code> 把它压到<em>只跑真正脏的节点</em>——这是 Ch20 的主题。</p>
+    <p class="lang-en-only">① A stylesheet is an <em>ordered</em> list of "selector + declarations" pairs. <strong>Order matters</strong> — it's one of cascade's tie-breakers.<br>
+    ② <code>ComputedStyle</code> runs an argmax per CSS property: from all declarations that <em>match this element</em>, pick the highest one by specificity → order → !important; then inherit unset properties from the parent; finally fill in initial values.<br>
+    ③ The DOM changes — a class flips, a node is inserted. The engine must answer "<em>who needs a recalc</em>". The naive answer is <em>every element re-runs cascade</em> (O(N × rules)). Blink shrinks this to <em>only truly dirty nodes</em> using <code>InvalidationSet</code> — the subject of Ch20.</p>
+
+    <h3 class="sub lang-zh-only">CSS 不是"<em>样式表</em>" — 是<em>四种东西</em>合一</h3>
+    <h3 class="sub lang-en-only">CSS isn't a "<em>stylesheet</em>" — it's <em>four things</em> in one</h3>
+
+    <p class="lang-zh-only">读完本文你会发现"CSS"这个词其实指代四件本质不同的事:</p>
+    <p class="lang-en-only">By the end you'll see "CSS" actually denotes four distinct things:</p>
+
+    <table class="cmp">
+      <thead><tr><th>#</th><th>name</th><th class="lang-zh-only">是什么</th><th class="lang-en-only">what</th><th class="lang-zh-only">本文章节</th><th class="lang-en-only">Chapter</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">①</td><td class="mono">CSS &mdash; the syntax</td><td><span class="lang-zh-only">.css 文件里那些字符</span><span class="lang-en-only">the characters in a .css file</span></td><td>Ch6-9</td></tr>
+        <tr><td class="mono">②</td><td class="mono">CSSOM</td><td><span class="lang-zh-only">JS 操作的运行时对象树</span><span class="lang-en-only">the JS-facing runtime object tree</span></td><td>Ch7, Ch10</td></tr>
+        <tr><td class="mono">③</td><td class="mono">Cascade / matching</td><td><span class="lang-zh-only">"哪条规则赢"的算法</span><span class="lang-en-only">the "who wins" algorithm</span></td><td>Ch11-19</td></tr>
+        <tr><td class="mono">④</td><td class="mono">ComputedStyle</td><td><span class="lang-zh-only">每个 DOM 节点上挂的最终结果</span><span class="lang-en-only">the final result hanging off each DOM node</span></td><td>Ch19-22</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">最常见的误解</span>
+      <span class="ntag lang-en-only">The most common misconception</span>
+      <span class="lang-zh-only">很多人以为 CSS 就是"<em>.css 文件</em>"。其实 .css 文件只是<em>四件事中的一件</em>——而且是<em>最不重要</em>的一件。真正的"CSS 引擎"<em>不在</em> .css 文件里——它在 <strong>~150 000 行 Blink 源码</strong>(<code>third_party/blink/renderer/core/css/</code>)里实现 cascade、specificity、inheritance、value resolution、invalidation、animation 等等。.css 文件只是给这个引擎喂的<em>输入</em>。</span>
+      <span class="lang-en-only">"CSS" is often thought to mean "<em>the .css file</em>". The .css file is just <em>one of the four things</em> above — and the <em>least interesting</em> one. The real "CSS engine" lives <em>outside</em> any .css file — in <strong>~150 000 lines of Blink C++</strong> (<code>third_party/blink/renderer/core/css/</code>) implementing cascade, specificity, inheritance, value resolution, invalidation, animation, and so on. The .css file is just the engine's <em>input</em>.</span>
+    </div>
+
+    <div class="chap-refs">
+      <div class="cr-head">CHAPTER REFERENCES</div>
+      <div class="lang-zh-only">
+        <a href="https://www.w3.org/TR/css-cascade-5/">W3C · CSS Cascading 5 (公式 ②)</a> ·
+        <a href="https://drafts.csswg.org/css-syntax-3/">CSS Syntax Module Level 3 (公式 ①)</a> ·
+        <a href="https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/css/">blink/renderer/core/css/ source root</a> ·
+        <a href="https://www.w3.org/TR/css-values-4/">CSS Values 4 (四种值)</a>
+      </div>
+      <div class="lang-en-only">
+        <a href="https://www.w3.org/TR/css-cascade-5/">W3C · CSS Cascading 5 (formula ②)</a> ·
+        <a href="https://drafts.csswg.org/css-syntax-3/">CSS Syntax Module Level 3 (formula ①)</a> ·
+        <a href="https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/css/">blink/renderer/core/css/ source root</a> ·
+        <a href="https://www.w3.org/TR/css-values-4/">CSS Values 4 (four-value model)</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 02 — FAMILY TREE ========== -->
+  <section class="chap" id="c2">
+    <div class="chap-num">CHAPTER&nbsp;02</div>
+    <h2 class="chap-title lang-zh-only">家谱 — CSS 的 30 年</h2>
+    <h2 class="chap-title lang-en-only">A family tree — 30 years of CSS</h2>
+    <p class="chap-en lang-zh-only">1996 CSS1 · 2026 nesting · 中间踩过的坑</p>
+    <p class="chap-en lang-en-only">1996 CSS1 · 2026 nesting · the dead-ends in between</p>
+
+    <p class="lang-zh-only">CSS 是<em>Web 上最古老</em>但<em>最活跃</em>的标准之一。1996 年 Håkon Wium Lie 在 W3C 发布 CSS1,初版只有 50 个属性。今天 Chromium 实现的 CSS 属性 / at-rule / 函数加起来已经超过 <strong>650 个</strong>。下面这张图把 1996-2026 的关键节点拉直,把已死的提案也画进去——你会看到 CSS 跟<em>任何活语言</em>一样,踩过很多坑。</p>
+    <p class="lang-en-only">CSS is one of <em>the oldest</em> Web standards still <em>actively evolving</em>. Håkon Wium Lie shipped CSS1 in 1996 with 50 properties. Today Chromium implements over <strong>650</strong> CSS properties + at-rules + functions. The figure below maps 1996-2026's key landmarks — including the dead branches. Like any living language, CSS has stepped on plenty of rakes.</p>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 460" xmlns="http://www.w3.org/2000/svg">
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.14em" fill="#15171c" font-weight="700">CSS · 1996 → 2026 · KEY LANDMARKS &amp; DEAD BRANCHES</text>
+
+          <!-- timeline axis -->
+          <line x1="60" y1="80" x2="700" y2="80" stroke="#15171c" stroke-width="1.5"/>
+          <g font-family="JetBrains Mono" font-size="9" fill="#767c87">
+            <text x="60" y="68">1996</text>
+            <text x="170" y="68">2003</text>
+            <text x="280" y="68">2011</text>
+            <text x="390" y="68">2017</text>
+            <text x="500" y="68">2022</text>
+            <text x="650" y="68">2026</text>
+          </g>
+          <g stroke="#c7c4ba">
+            <line x1="60" y1="76" x2="60" y2="84"/>
+            <line x1="170" y1="76" x2="170" y2="84"/>
+            <line x1="280" y1="76" x2="280" y2="84"/>
+            <line x1="390" y1="76" x2="390" y2="84"/>
+            <line x1="500" y1="76" x2="500" y2="84"/>
+            <line x1="650" y1="76" x2="650" y2="84"/>
+          </g>
+
+          <!-- Above-line: shipped milestones -->
+          <text x="60" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#1f5c8c">CSS1</text>
+          <text x="60" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#1f5c8c">50 props</text>
+
+          <text x="120" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#1f5c8c">CSS2</text>
+          <text x="120" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#1f5c8c">@media · float</text>
+
+          <text x="195" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#1f5c8c">CSS2.1</text>
+          <text x="195" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#1f5c8c">stable baseline</text>
+
+          <text x="280" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#4a6b3e">CSS3</text>
+          <text x="280" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#4a6b3e">modules · transitions</text>
+
+          <text x="330" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#4a6b3e">Flexbox</text>
+          <text x="330" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#4a6b3e">2012</text>
+
+          <text x="395" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#4a6b3e">Grid</text>
+          <text x="395" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#4a6b3e">2017</text>
+
+          <text x="450" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#b35a1f">Custom Props</text>
+          <text x="450" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#b35a1f">2017</text>
+
+          <text x="510" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#a83a6b">Container Q</text>
+          <text x="510" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a83a6b">2022</text>
+
+          <text x="560" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#a83a6b">@layer</text>
+          <text x="560" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a83a6b">2022</text>
+
+          <text x="610" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#a83a6b">:has()</text>
+          <text x="610" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#a83a6b">2023</text>
+
+          <text x="660" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#6b3aa3">nesting</text>
+          <text x="660" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#6b3aa3">2023</text>
+
+          <text x="700" y="105" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#6b3aa3">anchor</text>
+          <text x="700" y="118" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#6b3aa3">2024</text>
+
+          <!-- vertical pegs to timeline -->
+          <g stroke="#1f5c8c" stroke-width="0.7">
+            <line x1="60" y1="80" x2="60" y2="100"/>
+            <line x1="120" y1="80" x2="120" y2="100"/>
+            <line x1="195" y1="80" x2="195" y2="100"/>
+          </g>
+          <g stroke="#4a6b3e" stroke-width="0.7">
+            <line x1="280" y1="80" x2="280" y2="100"/>
+            <line x1="330" y1="80" x2="330" y2="100"/>
+            <line x1="395" y1="80" x2="395" y2="100"/>
+          </g>
+          <g stroke="#b35a1f" stroke-width="0.7">
+            <line x1="450" y1="80" x2="450" y2="100"/>
+          </g>
+          <g stroke="#a83a6b" stroke-width="0.7">
+            <line x1="510" y1="80" x2="510" y2="100"/>
+            <line x1="560" y1="80" x2="560" y2="100"/>
+            <line x1="610" y1="80" x2="610" y2="100"/>
+          </g>
+          <g stroke="#6b3aa3" stroke-width="0.7">
+            <line x1="660" y1="80" x2="660" y2="100"/>
+            <line x1="700" y1="80" x2="700" y2="100"/>
+          </g>
+
+          <!-- DEAD BRANCHES (below the line) -->
+          <text x="60" y="170" font-family="JetBrains Mono" font-size="10" letter-spacing="0.14em" fill="#b35a1f" font-weight="700">DEAD BRANCHES</text>
+
+          <g>
+            <line x1="240" y1="80" x2="240" y2="200" stroke="#a87a1f" stroke-width="0.8" stroke-dasharray="3 2"/>
+            <text x="240" y="215" text-anchor="middle" font-family="Inter" font-size="10" fill="#a87a1f">XBL</text>
+            <text x="240" y="227" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#a87a1f">Mozilla 2001</text>
+            <text x="240" y="239" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#767c87" font-style="italic">→ replaced by Web Components</text>
+          </g>
+
+          <g>
+            <line x1="320" y1="80" x2="320" y2="260" stroke="#a87a1f" stroke-width="0.8" stroke-dasharray="3 2"/>
+            <text x="320" y="275" text-anchor="middle" font-family="Inter" font-size="10" fill="#a87a1f">CSS Regions</text>
+            <text x="320" y="287" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#a87a1f">2014-2015</text>
+            <text x="320" y="299" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#767c87" font-style="italic">→ shipped in Safari, removed</text>
+          </g>
+
+          <g>
+            <line x1="425" y1="80" x2="425" y2="220" stroke="#a87a1f" stroke-width="0.8" stroke-dasharray="3 2"/>
+            <text x="425" y="235" text-anchor="middle" font-family="Inter" font-size="10" fill="#a87a1f">Houdini paint()</text>
+            <text x="425" y="247" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#a87a1f">2017</text>
+            <text x="425" y="259" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#767c87" font-style="italic">→ Chrome only · stalled</text>
+          </g>
+
+          <g>
+            <line x1="540" y1="80" x2="540" y2="300" stroke="#a87a1f" stroke-width="0.8" stroke-dasharray="3 2"/>
+            <text x="540" y="315" text-anchor="middle" font-family="Inter" font-size="10" fill="#a87a1f">CSS-in-JS</text>
+            <text x="540" y="327" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#a87a1f">2016-2022</text>
+            <text x="540" y="339" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#767c87" font-style="italic">→ peaked, declining; not a spec</text>
+          </g>
+
+          <!-- ENGINE FORKS (very bottom) -->
+          <text x="60" y="380" font-family="JetBrains Mono" font-size="10" letter-spacing="0.14em" fill="#1f5c8c" font-weight="700">ENGINE FORKS (CSS implementations)</text>
+
+          <rect x="60" y="395" width="100" height="36" fill="#c9dceb" stroke="#1f5c8c" rx="2"/>
+          <text x="110" y="411" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#1f5c8c">WebKit/KHTML</text>
+          <text x="110" y="423" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#1f5c8c">1998 (Konqueror)</text>
+
+          <rect x="180" y="395" width="100" height="36" fill="#c9dceb" stroke="#1f5c8c" rx="2"/>
+          <text x="230" y="411" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#1f5c8c">Gecko</text>
+          <text x="230" y="423" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#1f5c8c">1998 (Mozilla)</text>
+
+          <rect x="300" y="395" width="100" height="36" fill="#f0d4bc" stroke="#b35a1f" stroke-width="1.5" rx="2"/>
+          <text x="350" y="411" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#b35a1f">Blink</text>
+          <text x="350" y="423" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#b35a1f">2013 fork ← THIS ARTICLE</text>
+
+          <rect x="420" y="395" width="100" height="36" fill="#c9dceb" stroke="#1f5c8c" rx="2"/>
+          <text x="470" y="411" text-anchor="middle" font-family="Inter" font-size="10" font-weight="700" fill="#1f5c8c">Servo</text>
+          <text x="470" y="423" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#1f5c8c">2012 (Rust)</text>
+
+          <rect x="540" y="395" width="100" height="36" fill="#fdfbf3" stroke="#767c87" stroke-dasharray="3 2" rx="2"/>
+          <text x="590" y="411" text-anchor="middle" font-family="Inter" font-size="10" fill="#767c87">Trident</text>
+          <text x="590" y="423" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#767c87">EOL 2022</text>
+
+          <rect x="660" y="395" width="80" height="36" fill="#fdfbf3" stroke="#767c87" stroke-dasharray="3 2" rx="2"/>
+          <text x="700" y="411" text-anchor="middle" font-family="Inter" font-size="10" fill="#767c87">Presto</text>
+          <text x="700" y="423" text-anchor="middle" font-family="JetBrains Mono" font-size="7.5" fill="#767c87">EOL 2013</text>
+
+          <text x="380" y="448" text-anchor="middle" font-family="Inter" font-size="9" fill="#767c87" font-style="italic">本文以 Blink 为锚 · WebKit / Gecko / Servo 各章会做横向对比</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;02·1</span>
+        <span class="lang-zh-only">CSS 1996-2026 30 年家谱。上方是<em>活的</em> milestone(按颜色分代),下方是<em>死掉</em>的提案(XBL / CSS Regions / Houdini paint / CSS-in-JS),最下是<em>实现引擎</em>。本文以 Blink 为主线,会在各章对照 WebKit / Gecko / Servo 的不同实现。</span>
+        <span class="figen">Fig 02·1 · CSS family tree, 1996-2026. Above the line: <em>shipping</em> milestones (colour-coded by generation). Below: <em>dead branches</em> (XBL / CSS Regions / Houdini paint / CSS-in-JS). At the bottom: <em>implementation engines</em>. We anchor on Blink and contrast WebKit / Gecko / Servo throughout.</span>
+      </figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">六代 CSS · 设计哲学的转向</h3>
+    <h3 class="sub lang-en-only">Six generations · the philosophical pivots</h3>
+
+    <table class="cmp">
+      <thead><tr><th>gen</th><th class="lang-zh-only">代表特性</th><th class="lang-en-only">flagship</th><th class="lang-zh-only">设计哲学</th><th class="lang-en-only">philosophy</th></tr></thead>
+      <tbody>
+        <tr><td>1996 · CSS1</td><td><span class="lang-zh-only">font / color / margin</span><span class="lang-en-only">font / color / margin</span></td><td><span class="lang-zh-only">"<em>给 HTML 加点样式</em>"</span><span class="lang-en-only">"<em>add some style to HTML</em>"</span></td></tr>
+        <tr><td>1998 · CSS2</td><td><span class="lang-zh-only">@media · positioning · float</span><span class="lang-en-only">@media · positioning · float</span></td><td><span class="lang-zh-only">"<em>排版引擎</em>" · 但 float 是 hack 的代价</span><span class="lang-en-only">"<em>typographic engine</em>" · but float is the cost of hacks</span></td></tr>
+        <tr><td>2011 · CSS3 (modular)</td><td><span class="lang-zh-only">transitions · selectors · backgrounds</span><span class="lang-en-only">transitions · selectors · backgrounds</span></td><td><span class="lang-zh-only">"<em>拆成 30 个独立模块,各自演进</em>"——标准化方式的根本变革</span><span class="lang-en-only">"<em>split into 30 independent modules</em>" — a fundamental shift in how the standard evolves</span></td></tr>
+        <tr><td class="good">2012-2017 · Layout 革命</td><td>Flexbox · Grid</td><td><span class="lang-zh-only">"<em>正面回答布局问题</em>",不再靠 float / table hack</span><span class="lang-en-only">"<em>actually solving layout</em>" instead of float / table hacks</span></td></tr>
+        <tr><td>2017-2022 · 可编程 CSS</td><td><span class="lang-zh-only">Custom Props · math · color-mix</span><span class="lang-en-only">Custom Props · math · color-mix</span></td><td><span class="lang-zh-only">"<em>CSS 自己变成动态语言</em>"</span><span class="lang-en-only">"<em>CSS becomes a dynamic language itself</em>"</span></td></tr>
+        <tr><td class="good">2022-2026 · 关系 CSS</td><td>:has · @container · @scope · anchor</td><td><span class="lang-zh-only">"<em>选择器能往上看 / 跨上下文 / 看锚点</em>",一举抹掉一批 JS 用法</span><span class="lang-en-only">"<em>selectors can look up / cross-context / see anchors</em>" — wipes out a category of JS hacks</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="note good">
+      <span class="ntag lang-zh-only">为什么 2022-2026 这一代<em>特别</em>重要</span>
+      <span class="ntag lang-en-only">Why the 2022-2026 generation is <em>especially</em> important</span>
+      <span class="lang-zh-only">在 2022 之前,CSS 一直是"<em>声明式 + 静态选择器</em>"——你只能说"<em>选这个元素,设它的样式</em>",<em>不能反过来看上下文</em>。一旦需要"<em>如果某个 li 里包含 form,则其父 ul 加 padding</em>"这种逻辑,就只能 JS。<strong>2023 :has() 的 ship 是 CSS 30 年里最大的一次能力跃迁</strong>——它让选择器具备<em>子树存在性</em>判断,等价于把一类 JS hack 直接抹掉。@container / @scope / anchor 共同形成"<em>关系 CSS</em>"代,本文 Ch14 + Ch26-28 全面拆解。</span>
+      <span class="lang-en-only">Before 2022, CSS was always "<em>declarative + static selectors</em>" — you could say "<em>select this element, set its style</em>", but <em>couldn't look at context</em>. Logic like "<em>if a li contains a form, pad its parent ul</em>" needed JS. <strong>:has() shipping in 2023 was the single biggest capability leap in CSS's 30 years</strong> — it gives selectors <em>subtree existence</em> queries, wiping out a whole class of JS hacks. Together with @container / @scope / anchor, these form the "<em>relational CSS</em>" generation, fully unpacked in Ch14 + Ch26-28.</span>
+    </div>
+
+    <div class="chap-refs">
+      <div class="cr-head">CHAPTER REFERENCES</div>
+      <div class="lang-zh-only">
+        <a href="https://www.w3.org/Style/LieBos2e/history/Overview.html">Håkon Wium Lie · CSS 起源 (W3C 个人页)</a> ·
+        <a href="https://en.wikipedia.org/wiki/Cascading_Style_Sheets">CSS Wikipedia (历史时间线)</a> ·
+        <a href="https://www.chromium.org/blink/">Blink 项目页 (2013 fork 公告)</a> ·
+        <a href="https://web.dev/baseline">Web Baseline (现代 CSS 支持矩阵)</a>
+      </div>
+      <div class="lang-en-only">
+        <a href="https://www.w3.org/Style/LieBos2e/history/Overview.html">Håkon Wium Lie · origin of CSS (W3C personal page)</a> ·
+        <a href="https://en.wikipedia.org/wiki/Cascading_Style_Sheets">CSS Wikipedia (history timeline)</a> ·
+        <a href="https://www.chromium.org/blink/">Blink project page (2013 fork announcement)</a> ·
+        <a href="https://web.dev/baseline">Web Baseline (modern CSS support matrix)</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 03 — POSITION IN PIPELINE ========== -->
+  <section class="chap" id="c3">
+    <div class="chap-num">CHAPTER&nbsp;03</div>
+    <h2 class="chap-title lang-zh-only">在渲染管线里的位置 — CSS 不是孤岛</h2>
+    <h2 class="chap-title lang-en-only">Position in the pipeline — CSS isn't an island</h2>
+    <p class="chap-en lang-zh-only">从 HTML parser 到 Compositor · CSS 占哪几段</p>
+    <p class="chap-en lang-en-only">from HTML parser to Compositor · CSS owns which segments</p>
+
+    <p class="lang-zh-only">CSS 引擎不是独立服务——它<em>嵌</em>在 Chromium 的整套渲染管线里。下面这张图把<a href="/immersive/chromium-renderer/">姊妹篇《字节码到像素》</a>的 13 段流水线拉出来,标出 CSS 占的<em>哪几格</em>。读完之后你会知道:CSS 不只是 "Style" 那一段,它的<em>触手</em>伸到 Layout、Paint、Compositor。</p>
+    <p class="lang-en-only">The CSS engine isn't a standalone service — it's <em>embedded</em> in Chromium's full rendering pipeline. The figure below pulls in the 13-stage pipeline from <a href="/immersive/chromium-renderer/">its sibling, "Bytecode to Pixels"</a>, and highlights <em>which boxes</em> are CSS. By the end you'll see: CSS isn't only the "Style" box — its <em>tentacles</em> reach into Layout, Paint, Compositor too.</p>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 360" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="pipArr" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#15171c"/></marker>
+          </defs>
+
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.14em" fill="#15171c" font-weight="700">CHROMIUM RENDERING PIPELINE — WHERE CSS LIVES</text>
+
+          <!-- Main pipeline (top row, 13 boxes) -->
+          <g font-family="Inter" font-size="9" font-weight="600">
+            <rect x="20"  y="50" width="60" height="40" fill="#ebe5d8" stroke="#15171c" rx="2"/>
+            <text x="50"  y="68" text-anchor="middle" fill="#15171c">HTML</text>
+            <text x="50"  y="80" text-anchor="middle" fill="#15171c">parse</text>
+
+            <rect x="80"  y="50" width="60" height="40" fill="#ebe5d8" stroke="#15171c" rx="2"/>
+            <text x="110" y="68" text-anchor="middle" fill="#15171c">DOM</text>
+            <text x="110" y="80" text-anchor="middle" fill="#15171c">build</text>
+
+            <rect x="140" y="50" width="60" height="40" fill="#f0d4bc" stroke="#b35a1f" stroke-width="1.5" rx="2"/>
+            <text x="170" y="68" text-anchor="middle" fill="#b35a1f">CSS</text>
+            <text x="170" y="80" text-anchor="middle" fill="#b35a1f">parse</text>
+
+            <rect x="200" y="50" width="60" height="40" fill="#f0d4bc" stroke="#b35a1f" stroke-width="1.5" rx="2"/>
+            <text x="230" y="68" text-anchor="middle" fill="#b35a1f">CSSOM</text>
+            <text x="230" y="80" text-anchor="middle" fill="#b35a1f">build</text>
+
+            <rect x="260" y="50" width="60" height="40" fill="#f0d4bc" stroke="#b35a1f" stroke-width="1.5" rx="2"/>
+            <text x="290" y="68" text-anchor="middle" fill="#b35a1f">match +</text>
+            <text x="290" y="80" text-anchor="middle" fill="#b35a1f">cascade</text>
+
+            <rect x="320" y="50" width="60" height="40" fill="#f0d4bc" stroke="#b35a1f" stroke-width="1.5" rx="2"/>
+            <text x="350" y="68" text-anchor="middle" fill="#b35a1f">Computed</text>
+            <text x="350" y="80" text-anchor="middle" fill="#b35a1f">Style</text>
+
+            <rect x="380" y="50" width="60" height="40" fill="#ebe5d8" stroke="#15171c" rx="2"/>
+            <text x="410" y="68" text-anchor="middle" fill="#15171c">Layout</text>
+            <text x="410" y="80" text-anchor="middle" fill="#15171c">tree</text>
+
+            <rect x="440" y="50" width="60" height="40" fill="#fde3d0" stroke="#b35a1f" stroke-dasharray="3 2" rx="2"/>
+            <text x="470" y="68" text-anchor="middle" fill="#b35a1f">Layout</text>
+            <text x="470" y="80" text-anchor="middle" fill="#b35a1f">(NG)</text>
+
+            <rect x="500" y="50" width="60" height="40" fill="#ebe5d8" stroke="#15171c" rx="2"/>
+            <text x="530" y="68" text-anchor="middle" fill="#15171c">Pre-paint</text>
+
+            <rect x="560" y="50" width="60" height="40" fill="#fde3d0" stroke="#b35a1f" stroke-dasharray="3 2" rx="2"/>
+            <text x="590" y="68" text-anchor="middle" fill="#b35a1f">Paint</text>
+            <text x="590" y="80" text-anchor="middle" fill="#b35a1f">(uses CS)</text>
+
+            <rect x="620" y="50" width="60" height="40" fill="#fde3d0" stroke="#b35a1f" stroke-dasharray="3 2" rx="2"/>
+            <text x="650" y="68" text-anchor="middle" fill="#b35a1f">Composite</text>
+            <text x="650" y="80" text-anchor="middle" fill="#b35a1f">(anim)</text>
+
+            <rect x="680" y="50" width="60" height="40" fill="#ebe5d8" stroke="#15171c" rx="2"/>
+            <text x="710" y="68" text-anchor="middle" fill="#15171c">GPU</text>
+            <text x="710" y="80" text-anchor="middle" fill="#15171c">raster</text>
+          </g>
+
+          <!-- arrows between -->
+          <g stroke="#15171c" stroke-width="0.8">
+            <line x1="80"  y1="70" x2="80"  y2="70" marker-end="url(#pipArr)"/>
+            <line x1="140" y1="70" x2="140" y2="70" marker-end="url(#pipArr)"/>
+            <line x1="200" y1="70" x2="200" y2="70" marker-end="url(#pipArr)"/>
+            <line x1="260" y1="70" x2="260" y2="70" marker-end="url(#pipArr)"/>
+            <line x1="320" y1="70" x2="320" y2="70" marker-end="url(#pipArr)"/>
+            <line x1="380" y1="70" x2="380" y2="70" marker-end="url(#pipArr)"/>
+            <line x1="440" y1="70" x2="440" y2="70" marker-end="url(#pipArr)"/>
+            <line x1="500" y1="70" x2="500" y2="70" marker-end="url(#pipArr)"/>
+            <line x1="560" y1="70" x2="560" y2="70" marker-end="url(#pipArr)"/>
+            <line x1="620" y1="70" x2="620" y2="70" marker-end="url(#pipArr)"/>
+            <line x1="680" y1="70" x2="680" y2="70" marker-end="url(#pipArr)"/>
+          </g>
+
+          <!-- Legend below -->
+          <g font-family="JetBrains Mono" font-size="9" fill="#767c87">
+            <rect x="20" y="120" width="14" height="10" fill="#f0d4bc" stroke="#b35a1f"/>
+            <text x="40" y="129">CSS-OWNED (this article · Ch6-19)</text>
+
+            <rect x="20" y="138" width="14" height="10" fill="#fde3d0" stroke="#b35a1f" stroke-dasharray="3 2"/>
+            <text x="40" y="147">CSS-CONSUMED (used by other stages · Ch24/29)</text>
+
+            <rect x="20" y="156" width="14" height="10" fill="#ebe5d8" stroke="#15171c"/>
+            <text x="40" y="165">NOT-CSS (handled by sibling articles)</text>
+          </g>
+
+          <!-- CSS detail expansion below -->
+          <line x1="170" y1="170" x2="170" y2="200" stroke="#b35a1f" stroke-dasharray="3 2" stroke-width="0.8"/>
+          <line x1="350" y1="170" x2="350" y2="200" stroke="#b35a1f" stroke-dasharray="3 2" stroke-width="0.8"/>
+
+          <rect x="60" y="200" width="640" height="120" fill="#fdfbf3" stroke="#b35a1f" stroke-width="1" rx="3"/>
+          <text x="380" y="220" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" letter-spacing="0.16em" fill="#b35a1f">CSS-OWNED REGION · EXPANDED INTO 9 SUB-STAGES (Ch6-19 of this article)</text>
+
+          <g font-family="JetBrains Mono" font-size="9" font-weight="700" fill="#b35a1f">
+            <text x="100" y="244">① tokenize</text>
+            <text x="100" y="258" font-weight="400" fill="#767c87">CSSTokenizer.cc</text>
+            <text x="100" y="270" font-weight="400" fill="#767c87">Ch06</text>
+
+            <text x="180" y="244">② parse</text>
+            <text x="180" y="258" font-weight="400" fill="#767c87">CSSParser.cc</text>
+            <text x="180" y="270" font-weight="400" fill="#767c87">Ch07</text>
+
+            <text x="260" y="244">③ CSSOM</text>
+            <text x="260" y="258" font-weight="400" fill="#767c87">StyleSheetContents</text>
+            <text x="260" y="270" font-weight="400" fill="#767c87">Ch07, 10</text>
+
+            <text x="340" y="244">④ selector</text>
+            <text x="340" y="258" font-weight="400" fill="#767c87">SelectorChecker</text>
+            <text x="340" y="270" font-weight="400" fill="#767c87">Ch11-14</text>
+
+            <text x="420" y="244">⑤ cascade</text>
+            <text x="420" y="258" font-weight="400" fill="#767c87">StyleResolver</text>
+            <text x="420" y="270" font-weight="400" fill="#767c87">Ch15-17</text>
+
+            <text x="500" y="244">⑥ resolve var</text>
+            <text x="500" y="258" font-weight="400" fill="#767c87">CSSVariableData</text>
+            <text x="500" y="270" font-weight="400" fill="#767c87">Ch18</text>
+
+            <text x="580" y="244">⑦ compute</text>
+            <text x="580" y="258" font-weight="400" fill="#767c87">ComputedStyle</text>
+            <text x="580" y="270" font-weight="400" fill="#767c87">Ch19</text>
+
+            <text x="660" y="244">⑧ invalidate</text>
+            <text x="660" y="258" font-weight="400" fill="#767c87">InvalidationSet</text>
+            <text x="660" y="270" font-weight="400" fill="#767c87">Ch20-22</text>
+          </g>
+
+          <text x="380" y="298" text-anchor="middle" font-family="Inter" font-size="10" fill="#15171c">第 ⑨ 段是<em>动画</em>(Ch23-25),它在帧间反复触发上述 ②-⑧ 中的某些段——不在固定位置,所以画成"<em>跨段循环</em>"</text>
+          <text x="380" y="313" text-anchor="middle" font-family="Inter" font-size="9" fill="#767c87" font-style="italic">Stage ⑨ is <em>animation</em> (Ch23-25), which re-triggers ②-⑧ subsets per frame — drawn as a "<em>cross-stage loop</em>", not a fixed position</text>
+
+          <!-- Cross-stage loop arc -->
+          <path d="M 580 240 Q 650 200 720 220" stroke="#6b3aa3" stroke-width="1.2" fill="none" stroke-dasharray="3 2"/>
+          <text x="720" y="200" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#6b3aa3" font-weight="700">⑨ anim loop</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;03·1</span>
+        <span class="lang-zh-only">Chromium 渲染管线里 CSS 占哪几格。<strong>橙实底</strong>是 CSS 独占的 5 段(parse / CSSOM / match+cascade / ComputedStyle);<strong>橙虚边</strong>是 CSS 被消费的 3 段(Layout NG / Paint / Compositor);<strong>中性</strong>是其他系统主导(HTML parser / Pre-paint / GPU raster)。下方展开是 CSS-owned 部分的 9 个子阶段——本文 Ch6-22 各拆 1 段。第 ⑨ 段动画跨越多段,作为<em>循环</em>叠加。</span>
+        <span class="figen">Fig 03·1 · Where CSS sits in Chromium's pipeline. <strong>Solid orange</strong>: 5 CSS-owned boxes (parse / CSSOM / match+cascade / ComputedStyle). <strong>Dashed orange</strong>: 3 CSS-consumed boxes (Layout NG / Paint / Compositor). <strong>Neutral</strong>: handled elsewhere (HTML parser / Pre-paint / GPU raster). The expansion below details the CSS-owned 9 sub-stages — one chapter each in Ch6-22. Stage ⑨ animation overlays as a cross-stage loop.</span>
+      </figcaption>
+    </figure>
+
+    <div class="cross-link">
+      <span class="cl-tag">CROSS-LINK</span>
+      <span class="lang-zh-only">想看 CSS-owned 之外的 13 段全图(HTML parser / Layout NG / Paint / Compositor / GPU raster),读姊妹篇 <a href="/immersive/chromium-renderer/">字节码到像素的一生 — Chromium 渲染流水线全景</a>。</span>
+      <span class="lang-en-only">For the full 13-stage pipeline beyond CSS-owned (HTML parser / Layout NG / Paint / Compositor / GPU raster), see the sibling: <a href="/immersive/chromium-renderer/">The Life of a Stylesheet — Bytecode to Pixels</a>.</span>
+    </div>
+
+    <div class="chap-refs">
+      <div class="cr-head">CHAPTER REFERENCES</div>
+      <div class="lang-zh-only">
+        <a href="https://docs.google.com/document/d/1aitSOucl_NlCcAALr7Wa7s4yfHjpoDB6vQ_hb1FfYi0/">Chromium 渲染管线设计文档 · 2018</a> ·
+        <a href="https://developer.chrome.com/docs/devtools/performance/reference/">DevTools Performance Reference</a> ·
+        <a href="/immersive/chromium-renderer/">姊妹篇 · 13 段全图</a>
+      </div>
+      <div class="lang-en-only">
+        <a href="https://docs.google.com/document/d/1aitSOucl_NlCcAALr7Wa7s4yfHjpoDB6vQ_hb1FfYi0/">Chromium rendering pipeline design doc · 2018</a> ·
+        <a href="https://developer.chrome.com/docs/devtools/performance/reference/">DevTools Performance Reference</a> ·
+        <a href="/immersive/chromium-renderer/">Sibling article · 13-stage full pipeline</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== CHAPTER 04 — THREE LAYERS ========== -->
+  <section class="chap" id="c4">
+    <div class="chap-num">CHAPTER&nbsp;04</div>
+    <h2 class="chap-title lang-zh-only">三层模型 — author / user / UA</h2>
+    <h2 class="chap-title lang-en-only">Three layers — author / user / UA</h2>
+    <p class="chap-en lang-zh-only">cascade 输入的三个来源 · 谁优先于谁</p>
+    <p class="chap-en lang-en-only">three sources feeding cascade · who beats whom</p>
+
+    <p class="lang-zh-only">浏览器拿到的 CSS <em>不只一份</em>。当 Blink 给一个 DOM 节点算 ComputedStyle 时,<em>同时</em> 在看三套样式表:</p>
+    <p class="lang-en-only">The browser never sees just one stylesheet. When Blink computes ComputedStyle for a DOM node, it's looking at <em>three</em> sets of rules at once:</p>
+
+    <figure>
+      <div class="fig-svg-wrap">
+        <svg viewBox="0 0 760 320" xmlns="http://www.w3.org/2000/svg">
+          <text x="380" y="22" text-anchor="middle" font-family="JetBrains Mono" font-size="10" letter-spacing="0.14em" fill="#15171c" font-weight="700">CSS · 3 SOURCES FEEDING CASCADE</text>
+
+          <!-- 3 source boxes -->
+          <rect x="40" y="60" width="200" height="130" fill="#c9dceb" stroke="#1f5c8c" rx="3"/>
+          <text x="140" y="82" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" letter-spacing="0.16em" fill="#1f5c8c">USER-AGENT</text>
+          <text x="140" y="98" text-anchor="middle" font-family="Inter" font-size="11" fill="#1f5c8c">浏览器内置默认样式</text>
+          <line x1="50" y1="108" x2="230" y2="108" stroke="#1f5c8c" stroke-dasharray="2 2"/>
+          <text x="50" y="124" font-family="JetBrains Mono" font-size="8" fill="#15171c">html5.css</text>
+          <text x="50" y="138" font-family="JetBrains Mono" font-size="8" fill="#15171c">view-source.css</text>
+          <text x="50" y="152" font-family="JetBrains Mono" font-size="8" fill="#15171c">quirks.css</text>
+          <text x="50" y="166" font-family="JetBrains Mono" font-size="8" fill="#15171c">media-controls.css</text>
+          <text x="50" y="180" font-family="JetBrains Mono" font-size="8" fill="#767c87" font-style="italic">~20 KB · ~700 rules</text>
+
+          <rect x="280" y="60" width="200" height="130" fill="#d8e6cd" stroke="#4a6b3e" rx="3"/>
+          <text x="380" y="82" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" letter-spacing="0.16em" fill="#4a6b3e">USER</text>
+          <text x="380" y="98" text-anchor="middle" font-family="Inter" font-size="11" fill="#4a6b3e">用户自定样式</text>
+          <line x1="290" y1="108" x2="470" y2="108" stroke="#4a6b3e" stroke-dasharray="2 2"/>
+          <text x="290" y="124" font-family="JetBrains Mono" font-size="8" fill="#15171c">browser preferences</text>
+          <text x="290" y="138" font-family="JetBrains Mono" font-size="8" fill="#15171c">  (font-size, theme)</text>
+          <text x="290" y="152" font-family="JetBrains Mono" font-size="8" fill="#15171c">Stylus / browser ext</text>
+          <text x="290" y="166" font-family="JetBrains Mono" font-size="8" fill="#15171c">accessibility settings</text>
+          <text x="290" y="180" font-family="JetBrains Mono" font-size="8" fill="#767c87" font-style="italic">实际很少 · 大多人不用</text>
+
+          <rect x="520" y="60" width="200" height="130" fill="#f0d4bc" stroke="#b35a1f" stroke-width="1.5" rx="3"/>
+          <text x="620" y="82" text-anchor="middle" font-family="JetBrains Mono" font-size="10" font-weight="700" letter-spacing="0.16em" fill="#b35a1f">AUTHOR</text>
+          <text x="620" y="98" text-anchor="middle" font-family="Inter" font-size="11" fill="#b35a1f">站点开发者写的 CSS</text>
+          <line x1="530" y1="108" x2="710" y2="108" stroke="#b35a1f" stroke-dasharray="2 2"/>
+          <text x="530" y="124" font-family="JetBrains Mono" font-size="8" fill="#15171c">&lt;link rel=&quot;stylesheet&quot;&gt;</text>
+          <text x="530" y="138" font-family="JetBrains Mono" font-size="8" fill="#15171c">&lt;style&gt; inline blocks</text>
+          <text x="530" y="152" font-family="JetBrains Mono" font-size="8" fill="#15171c">style=&quot;...&quot; attribute</text>
+          <text x="530" y="166" font-family="JetBrains Mono" font-size="8" fill="#15171c">CSSOM via JS</text>
+          <text x="530" y="180" font-family="JetBrains Mono" font-size="8" fill="#767c87" font-style="italic">大部分网站 99% 在这一层</text>
+
+          <!-- Cascade gate -->
+          <line x1="140" y1="200" x2="140" y2="230" stroke="#1f5c8c" stroke-width="1"/>
+          <line x1="380" y1="200" x2="380" y2="230" stroke="#4a6b3e" stroke-width="1"/>
+          <line x1="620" y1="200" x2="620" y2="230" stroke="#b35a1f" stroke-width="1"/>
+
+          <rect x="100" y="230" width="560" height="40" fill="#fdfbf3" stroke="#15171c" stroke-width="1.5" rx="3"/>
+          <text x="380" y="248" text-anchor="middle" font-family="JetBrains Mono" font-size="11" font-weight="700" letter-spacing="0.16em" fill="#15171c">CASCADE · 8 STEPS · STYLE RESOLVER</text>
+          <text x="380" y="262" text-anchor="middle" font-family="JetBrains Mono" font-size="8" fill="#767c87">Ch15 unpacks the 8 tie-breakers · UA &lt; User &lt; Author &lt; (!important reverses)</text>
+
+          <!-- Output -->
+          <line x1="380" y1="270" x2="380" y2="290" stroke="#15171c"/>
+          <text x="380" y="305" text-anchor="middle" font-family="Inter" font-size="11" font-weight="700" fill="#15171c">→ ComputedStyle on the DOM node</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span class="figid">FIG&nbsp;04·1</span>
+        <span class="lang-zh-only">三个来源同时输入 cascade。<strong>UA(蓝)</strong>: 浏览器内置默认 (~20 KB · ~700 条规则,如 <code>h1 { display: block; margin: 0.67em 0 }</code>);<strong>User(绿)</strong>: 用户自定 (浏览器偏好、扩展);<strong>Author(橙)</strong>: 站点开发者写的样式——99% 的真实样式来自这里。cascade 默认按 UA → User → Author 优先,但 <code>!important</code> 会反转这个顺序——这是 Ch15 cascade 章里讲的关键反直觉点。</span>
+        <span class="figen">Fig 04·1 · Three sources feeding cascade simultaneously. <strong>UA (blue)</strong>: browser defaults (~20 KB · ~700 rules like <code>h1 { display: block; margin: 0.67em 0 }</code>). <strong>User (green)</strong>: user-defined (browser prefs, extensions). <strong>Author (orange)</strong>: site-developer styles — 99% of real styling comes from here. Cascade defaults to UA → User → Author priority, but <code>!important</code> reverses this ordering — a key counterintuitive point unpacked in Ch15.</span>
+      </figcaption>
+    </figure>
+
+    <h3 class="sub lang-zh-only">UA 样式 — 你以为是浏览器"<em>自然</em>"的那些</h3>
+    <h3 class="sub lang-en-only">UA stylesheet — the "<em>natural</em>" browser behaviour</h3>
+
+    <p class="lang-zh-only">在 Chromium 里,<em>没有"<em>自然</em>"这种事</em>——一切看起来"<em>天生如此</em>"的样式都<strong>写在某个文件里</strong>。比如:</p>
+    <p class="lang-en-only">In Chromium, <em>there's no "<em>natural</em>"</em> — anything that looks "<em>just how things are</em>" is <strong>written in a file</strong>. For example:</p>
+
+    <pre class="code"><span class="cm">// third_party/blink/renderer/core/html/resources/html.css · 真实片段</span>
+<span class="cm">// 你以为 h1 字大 / 加粗 / 自动加 margin 是"浏览器默认行为"</span>
+<span class="cm">// 不,它就是下面这几行 CSS</span>
+
+<span class="sel">h1</span> {
+  <span class="prop">display</span>: <span class="val">block</span>;
+  <span class="prop">font-size</span>: <span class="val">2em</span>;
+  <span class="prop">margin-block</span>: <span class="val">0.67em</span>;
+  <span class="prop">font-weight</span>: <span class="val">bold</span>;
+  <span class="prop">unicode-bidi</span>: <span class="val">isolate</span>;
+}
+
+<span class="cm">// &lt;button&gt; 看起来是"<em>原生按钮</em>",其实也只是 ~15 行 CSS:</span>
+<span class="sel">button</span> {
+  <span class="prop">appearance</span>: <span class="val">auto</span>;     <span class="cm">// ← 这一句把绘制委托给 host OS theme</span>
+  <span class="prop">padding</span>: <span class="val">1px 6px</span>;
+  <span class="prop">background-color</span>: <span class="val">buttonface</span>;  <span class="cm">// system color keyword · Ch28</span>
+  <span class="prop">color</span>: <span class="val">buttontext</span>;
+  <span class="prop">cursor</span>: <span class="val">default</span>;
+  <span class="prop">box-sizing</span>: <span class="val">border-box</span>;
+  ...
+}</pre>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">"reset CSS" 在跟谁打架</span>
+      <span class="ntag lang-en-only">What "reset CSS" is fighting</span>
+      <span class="lang-zh-only">你写的 <code>* { margin: 0 }</code> / Tailwind preflight / normalize.css,<em>本质都是在覆盖 UA 样式表</em>。UA 样式跑在 author 样式<em>之前</em>,通过 cascade 的"<em>origin tier</em>" 让位 author。所以你能用 <em>0 specificity</em> 的 <code>*</code> 选择器覆盖一个看起来"<em>浏览器天生</em>"的 <code>h1</code> margin——cascade 规则就是这么定的。<strong>但</strong>如果 UA 样式带了 <code>!important</code>(罕见,但 user-agent shadow DOM 里有),那 author 怎么写都没用——除非 author 也用 <code>!important</code>,而且 specificity 更高。</span>
+      <span class="lang-en-only">Your <code>* { margin: 0 }</code> / Tailwind preflight / normalize.css are <em>all overriding the UA stylesheet</em>. UA rules run <em>before</em> author rules; cascade's "<em>origin tier</em>" lets author win. That's why a <em>0-specificity</em> <code>*</code> selector can override a seemingly "<em>built-in</em>" <code>h1</code> margin — the cascade rules say so. <strong>But</strong> if a UA rule carries <code>!important</code> (rare, but present in user-agent shadow DOM), no author rule can override it — unless author also uses <code>!important</code> with higher specificity.</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">User 样式 — 你可能从来没用过的那一层</h3>
+    <h3 class="sub lang-en-only">User stylesheet — the layer you've probably never used</h3>
+
+    <p class="lang-zh-only">User 层在现代浏览器里几乎被遗忘——但它仍然存在,而且<em>在级联里夹在 UA 和 Author 之间</em>。你能怎么写 user 样式?三个途径:</p>
+    <p class="lang-en-only">The user layer is almost forgotten in modern browsers — but it's still there, <em>sandwiched between UA and Author</em> in the cascade. Three ways to write user CSS:</p>
+
+    <div class="ladder">
+      <div class="ld-row">
+        <div class="ld-num">①</div>
+        <div>
+          <div class="ld-name lang-zh-only">浏览器偏好设置</div>
+          <div class="ld-name lang-en-only">Browser preferences</div>
+          <div class="ld-desc lang-zh-only">最小字号、默认字体族、最小行距 — Chrome 把这几个转成<em>合成的</em> user 样式表注入 cascade。设置在 <code>chrome://settings/appearance</code>。无障碍设置同理。</div>
+          <div class="ld-desc lang-en-only">Minimum font size, default font families, minimum line height — Chrome synthesises these into a user stylesheet and injects them into the cascade. Found at <code>chrome://settings/appearance</code>. Accessibility settings work the same way.</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">②</div>
+        <div>
+          <div class="ld-name lang-zh-only">浏览器扩展 (Stylus / Tampermonkey CSS / 暗色模式插件)</div>
+          <div class="ld-name lang-en-only">Browser extensions (Stylus / Tampermonkey CSS / dark-mode extensions)</div>
+          <div class="ld-desc lang-zh-only">扩展通过 <code>chrome.scripting.insertCSS()</code> 注入 — 默认进 <em>author</em> origin,但带 <code>origin: 'USER'</code> 参数可以注入 user 层。Stylus 默认走 USER 层,所以它能"<em>胜过站点的 default</em>" 但"<em>输给站点的 !important</em>"。</div>
+          <div class="ld-desc lang-en-only">Extensions inject via <code>chrome.scripting.insertCSS()</code> — default goes to <em>author</em> origin, but <code>origin: 'USER'</code> parameter routes to the user layer. Stylus uses USER by default, which is why it "<em>beats site defaults</em>" but "<em>loses to site !important</em>".</div>
+        </div>
+      </div>
+      <div class="ld-row">
+        <div class="ld-num">③</div>
+        <div>
+          <div class="ld-name lang-zh-only">用户脚本注入 Custom.css(已废弃)</div>
+          <div class="ld-name lang-en-only">Custom.css user script (deprecated)</div>
+          <div class="ld-desc lang-zh-only">Chrome 33 以前支持用户在 profile 目录放 <code>Custom.css</code> 文件做全局样式覆盖。2014 年废弃,原因: 维护成本 + 让恶意软件得手太容易。现在只有 Firefox 还支持(<code>userChrome.css</code> 但只能改 Firefox UI 不能改网页内容)。</div>
+          <div class="ld-desc lang-en-only">Chrome &lt; 33 supported a <code>Custom.css</code> file in the profile directory for global style overrides. Deprecated in 2014 — maintenance burden plus too-easy malware vector. Only Firefox still has it (<code>userChrome.css</code>, but it can only restyle Firefox UI, not page content).</div>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="sub lang-zh-only">Author 样式 — 99% 的真实场景</h3>
+    <h3 class="sub lang-en-only">Author stylesheet — the 99% case</h3>
+
+    <p class="lang-zh-only">本文 99% 的内容都是关于 Author 样式怎么工作。所以这一章不再细讲它——你写的每一句 CSS,从 Ch6 起会被全部展开。这里只列出 author 样式的四个<em>入口</em>:</p>
+    <p class="lang-en-only">99% of this article is about how Author styles work, so we don't dwell here — every CSS line you write gets unpacked from Ch6 onward. Just listing the four <em>entry points</em>:</p>
+
+    <table class="cmp">
+      <thead><tr><th>#</th><th class="lang-zh-only">入口</th><th class="lang-en-only">entry</th><th class="lang-zh-only">怎么进 CSSOM</th><th class="lang-en-only">how it enters CSSOM</th></tr></thead>
+      <tbody>
+        <tr><td>①</td><td class="mono">&lt;link rel="stylesheet"&gt;</td><td><span class="lang-zh-only">外部 fetch,parser 跑一遍</span><span class="lang-en-only">external fetch, parser runs once</span></td></tr>
+        <tr><td>②</td><td class="mono">&lt;style&gt; inline</td><td><span class="lang-zh-only">HTML parser 同步触发 CSS parser</span><span class="lang-en-only">HTML parser triggers CSS parser inline</span></td></tr>
+        <tr><td>③</td><td class="mono">style="..."</td><td><span class="lang-zh-only">元素自带,以最高 specificity 进 cascade</span><span class="lang-en-only">attached to element, enters cascade with top specificity</span></td></tr>
+        <tr><td>④</td><td class="mono">JS · sheet.insertRule</td><td><span class="lang-zh-only">运行时通过 CSSOM API 增删</span><span class="lang-en-only">runtime mutation via CSSOM API</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="chap-refs">
+      <div class="cr-head">CHAPTER REFERENCES</div>
+      <div class="lang-zh-only">
+        <a href="https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/html/resources/html.css">html.css · UA 样式源文件</a> ·
+        <a href="https://www.w3.org/TR/css-cascade-5/#cascade-origin">CSS Cascade 5 · §4 cascade origins</a> ·
+        <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade">MDN · Cascade</a>
+      </div>
+      <div class="lang-en-only">
+        <a href="https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/html/resources/html.css">html.css · UA stylesheet source</a> ·
+        <a href="https://www.w3.org/TR/css-cascade-5/#cascade-origin">CSS Cascade 5 · §4 cascade origins</a> ·
+        <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/Cascade">MDN · Cascade</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== ACT II / III / ... TO COME ========== -->
+  <section class="chap" style="background: var(--paper); border-left: 3px solid var(--copper); padding-left: 24px;">
+    <div class="chap-num">DRAFTING…</div>
+    <h2 class="chap-title lang-zh-only">Act II — The Card 主线即将到来</h2>
+    <h2 class="chap-title lang-en-only">Act II — The Card main-line incoming</h2>
+    <p class="lang-zh-only">下一批写完的是 Ch5 主线(The Card · 4 行 CSS 全流程)+ Ch6-10 解析 5 章。骨架已就位,排版/dark mode/lang toggle/refs 系统全部跟其他文章对齐。</p>
+    <p class="lang-en-only">Coming next: Ch5 main-line (The Card · 4-line CSS full pipeline) + Ch6-10 parsing (5 chapters). Scaffolding is locked in; typography / dark mode / lang toggle / refs system all aligned with sister articles.</p>
+  </section>
+
+  <footer class="ursb-footer">
+    <div>
+      <span class="lang-zh-only">— Airing · 2026 Field Note 08 / 31 chapters · 起稿中</span>
+      <span class="lang-en-only">— Airing · 2026 Field Note 08 / 31 chapters · in progress</span>
+    </div>
+    <div>
+      <span class="lang-zh-only">参考: </span><span class="lang-en-only">refs: </span>
+      <a href="https://chromium.googlesource.com/chromium/src/+/main/third_party/blink/renderer/core/css/">blink/core/css</a> ·
+      <a href="https://www.w3.org/Style/CSS/">w3.org/Style/CSS</a> ·
+      <a href="/immersive/chromium-renderer/">Chromium pipeline</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+/* ===== language toggle ===== */
+(function() {
+  var body = document.body;
+  var html = document.documentElement;
+  var btnZh = document.getElementById('lang-zh');
+  var btnEn = document.getElementById('lang-en');
+  function set(lang) {
+    if (lang === 'en') {
+      body.classList.add('lang-en');
+      html.setAttribute('lang', 'en');
+      btnEn.classList.add('active'); btnEn.setAttribute('aria-pressed', 'true');
+      btnZh.classList.remove('active'); btnZh.setAttribute('aria-pressed', 'false');
+    } else {
+      body.classList.remove('lang-en');
+      html.setAttribute('lang', 'zh-CN');
+      btnZh.classList.add('active'); btnZh.setAttribute('aria-pressed', 'true');
+      btnEn.classList.remove('active'); btnEn.setAttribute('aria-pressed', 'false');
+    }
+    try { localStorage.setItem('ursb-lang', lang); } catch (e) {}
+  }
+  btnZh.addEventListener('click', function() { set('zh'); });
+  btnEn.addEventListener('click', function() { set('en'); });
+  try {
+    var saved = localStorage.getItem('ursb-lang');
+    if (saved === 'en') set('en');
+  } catch (e) {}
+})();
+
+/* ===== sidebar TOC active section ===== */
+(function() {
+  var sections = Array.prototype.slice.call(document.querySelectorAll('section.chap'));
+  var items = Array.prototype.slice.call(document.querySelectorAll('.toc-side li[data-section]'));
+  if (!('IntersectionObserver' in window) || !sections.length) return;
+  var byId = {};
+  items.forEach(function(li) { byId[li.dataset.section] = li; });
+  var io = new IntersectionObserver(function(entries) {
+    entries.forEach(function(e) {
+      if (e.isIntersecting) {
+        items.forEach(function(li) { li.classList.remove('active'); });
+        var li = byId[e.target.id];
+        if (li) li.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-30% 0px -65% 0px', threshold: 0 });
+  sections.forEach(function(s) { io.observe(s); });
+
+  document.querySelectorAll('a[href^="#"]').forEach(function(a) {
+    a.addEventListener('click', function(e) {
+      var id = a.getAttribute('href').slice(1);
+      var el = document.getElementById(id);
+      if (el) {
+        e.preventDefault();
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        history.pushState(null, '', '#' + id);
+      }
+    });
+  });
+})();
+
+/* ===== pipeline pulse bar ===== */
+(function() {
+  var cells = document.querySelectorAll('#pbTrack .pb-cell');
+  if (!cells.length) return;
+  var i = 0;
+  function tick() {
+    cells.forEach(function(c, idx) { c.classList.toggle('lit', idx <= i); });
+    i++;
+    if (i >= cells.length) {
+      setTimeout(function() {
+        cells.forEach(function(c) { c.classList.remove('lit'); });
+        i = 0; tick();
+      }, 1400);
+      return;
+    }
+    setTimeout(tick, 160);
+  }
+  setTimeout(tick, 600);
+})();
+</script>
+
+</body>
+</html>
