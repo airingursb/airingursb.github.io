@@ -4,10 +4,12 @@
 // sakura tree. Heap Plaza assets get ported in next commits.
 
 import { Canvas } from '@react-three/fiber'
-import { Environment, OrbitControls, ContactShadows, Sky, Stars } from '@react-three/drei'
+import { ContactShadows, Stars } from '@react-three/drei'
 import { Suspense, useEffect } from 'react'
 import Scene from './Scene'
 import ChatOverlay from './ChatOverlay'
+import Tutorial from './Tutorial'
+import MobileJoystick from './MobileJoystick'
 import { useGroveStore, postToParent } from './store'
 import { acceptQuest } from './api'
 
@@ -77,16 +79,10 @@ export default function App() {
       </Suspense>
 
       {/* TODO: replace OrbitControls with proper Player + camera follow */}
-      <OrbitControls
-        enableDamping
-        minDistance={2}
-        maxDistance={20}
-        minPolarAngle={0.2}
-        maxPolarAngle={Math.PI / 2 - 0.1}
-        target={[0, 0.8, 0]}
-      />
     </Canvas>
+    <Tutorial />
     <ChatOverlay />
+    <MobileJoystick />
     </>
   )
 }

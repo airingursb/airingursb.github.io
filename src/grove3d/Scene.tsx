@@ -1,29 +1,62 @@
 // SHU-733 · Scene composition (1 hero sakura + 3 lanterns + stones + ground)
 // Asymmetric layout — three-five-seven principle (Heap Plaza north star)
 
+import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier'
 import Ground from './Ground'
 import PlaceholderSakura from './PlaceholderSakura'
 import StoneLantern from './StoneLantern'
 import SittingStone from './SittingStone'
-import MochiPlaceholder from './MochiPlaceholder'
+import Mochi from './Mochi'
+import Player from './Player'
+import GlowRing from './GlowRing'
+import { useGroveStore } from './store'
 
 export default function Scene() {
+  const stage = useGroveStore((s) => s.stage)
+  const showStoneGlow = stage === 'intro' || stage === 'approach'
+
   return (
-    <>
-      <Ground />
+    <Physics gravity={[0, -9.81, 0]}>
+      {/* Ground with collider (static, infinite plane) */}
+      <RigidBody type="fixed" colliders={false}>
+        <CuboidCollider args={[50, 0.1, 50]} position={[0, -0.1, 0]} />
+        <Ground />
+      </RigidBody>
 
       {/* 1 hero (off-center per asymmetry principle) */}
-      <PlaceholderSakura position={[2.5, 0, -2]} />
+      <RigidBody type="fixed" colliders="cuboid">
+        <PlaceholderSakura position={[2.5, 0, -2]} />
+      </RigidBody>
 
-      {/* 3 lanterns + 1 stone, unevenly spaced */}
-      <StoneLantern position={[-3, 0, -1]} />
-      <StoneLantern position={[5, 0, 2.5]} />
-      <StoneLantern position={[-5.5, 0, 4]} />
+      {/* Stone lanterns — collidable so player can't walk through */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <StoneLantern position={[-3, 0, -1]} />
+      </RigidBody>
+      <RigidBody type="fixed" colliders="cuboid">
+        <StoneLantern position={[5, 0, 2.5]} />
+      </RigidBody>
+      <RigidBody type="fixed" colliders="cuboid">
+        <StoneLantern position={[-5.5, 0, 4]} />
+      </RigidBody>
 
-      <SittingStone position={[1.2, 0, 1.5]} />
+      {/* Sitting stone + glow ring */}
+      <RigidBody type="fixed" colliders="cuboid">
+        <SittingStone position={[1.2, 0, 1.5]} />
+      </RigidBody>
+      {showStoneGlow && <GlowRing position={[1.2, 0.5, 1.5]} radius={1.0} />}
 
-      {/* NPC placeholder */}
-      <MochiPlaceholder position={[3, 0, -1]} />
-    </>
+      {/* Characters */}
+      <PlayerWithMarker />
+      <Mochi />
+    </Physics>
+  )
+}
+
+// Mark player Group so Mochi can find it via scene.traverse
+function PlayerWithMarker() {
+  return (
+    <group userData={{ isPlayer: true }}>
+      <Player spawn={[-2, 1.2, 5]} />
+    </group>
   )
 }
