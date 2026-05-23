@@ -5,6 +5,7 @@
 import { ZONES, type Interaction } from './zones'
 import { type ThreeEvent } from '@react-three/fiber'
 import { useState } from 'react'
+import { emit } from './events'
 
 const HITBOX_HEIGHT = 2.5
 const HITBOX_RADIUS_DEFAULT = 1.4
@@ -13,7 +14,7 @@ export default function ZoneHitboxes() {
   const [hovered, setHovered] = useState<Interaction | null>(null)
 
   function open(kind: Interaction) {
-    window.dispatchEvent(new CustomEvent('world-zone-click', { detail: { kind } }))
+    emit('world-zone-click', { kind })
   }
 
   function setCursor(on: boolean) {

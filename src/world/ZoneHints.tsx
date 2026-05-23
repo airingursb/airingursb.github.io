@@ -6,6 +6,7 @@ import { useRef, useState, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Billboard } from '@react-three/drei'
 import { ZONES } from './zones'
+import { on } from './events'
 
 const HINT_COLOR = '#FFD9A8'
 
@@ -25,15 +26,11 @@ export default function ZoneHints() {
       try { localStorage.setItem(SEEN_KEY, '1') } catch {}
     }, 12000)
     // Also hide once any zone is clicked
-    const onClick = () => {
+    const unsub = on('world-zone-click', () => {
       setShow(false)
       try { localStorage.setItem(SEEN_KEY, '1') } catch {}
-    }
-    window.addEventListener('world-zone-click', onClick)
-    return () => {
-      clearTimeout(id)
-      window.removeEventListener('world-zone-click', onClick)
-    }
+    })
+    return () => { clearTimeout(id); unsub() }
   }, [show])
 
   return (

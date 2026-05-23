@@ -18,6 +18,7 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
+import { on } from './events'
 import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast, SSAO, DepthOfField, Vignette } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { ACESFilmicToneMapping } from 'three'
@@ -68,15 +69,7 @@ const QUALITY = typeof window !== 'undefined' ? detectQuality() : 'medium'
 
 function CameraControls() {
   const ref = useRef<OrbitControlsImpl | null>(null)
-  useEffect(() => {
-    function onReset() {
-      const c = ref.current
-      if (!c) return
-      c.reset()
-    }
-    window.addEventListener('world-reset-camera', onReset)
-    return () => window.removeEventListener('world-reset-camera', onReset)
-  }, [])
+  useEffect(() => on('world-reset-camera', () => ref.current?.reset()), [])
   return (
     <OrbitControls
       ref={ref as any}
@@ -131,15 +124,10 @@ function ThemeAwareLights({ theme }: { theme: Theme }) {
 
 export default function App() {
   const [theme, setTheme] = useState<Theme>('day')
-  useEffect(() => {
-    function onTheme(e: Event) {
-      const next = (e as CustomEvent).detail as Theme
-      setTheme(next)
-      document.body.dataset.worldTheme = next
-    }
-    window.addEventListener('world-theme', onTheme)
-    return () => window.removeEventListener('world-theme', onTheme)
-  }, [])
+  useEffect(() => on('world-theme', (next) => {
+    setTheme(next)
+    document.body.dataset.worldTheme = next
+  }), [])
   return (
     <Canvas
       shadows

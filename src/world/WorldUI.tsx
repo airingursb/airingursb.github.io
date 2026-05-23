@@ -4,7 +4,8 @@
 //   - Reset camera button (dispatches custom event)
 //   - Tiny zone-name display when player hovers near interactable
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { emit } from './events'
 
 export default function WorldUI() {
   const [theme, setTheme] = useState<'day' | 'dusk'>('day')
@@ -21,11 +22,11 @@ export default function WorldUI() {
   function toggleTheme() {
     const next = theme === 'day' ? 'dusk' : 'day'
     setTheme(next)
-    window.dispatchEvent(new CustomEvent('world-theme', { detail: next }))
+    emit('world-theme', next)
   }
 
   function resetCam() {
-    window.dispatchEvent(new CustomEvent('world-reset-camera'))
+    emit('world-reset-camera', undefined)
   }
 
   return (

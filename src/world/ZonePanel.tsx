@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react'
 import type { Interaction } from './zones'
 import ChatBox from './ChatBox'
+import { on } from './events'
 
 interface BlogEntry { title: string; link: string; date: string }
 interface MusicArtist { name: string; plays: number; pct: number }
@@ -28,22 +29,18 @@ export default function ZonePanel({ initialData }: { initialData?: InitialData }
   const [zone, setZone] = useState<Interaction | null>(null)
   const [closing, setClosing] = useState(false)
 
-  // Listen for click events from in-canvas hitboxes
+  // Listen for click events from in-canvas hitboxes (typed event bus)
   useEffect(() => {
-    function handler(e: Event) {
-      const detail = (e as CustomEvent).detail
-      const next = detail.kind as Interaction
+    return on('world-zone-click', ({ kind }) => {
       // If a different zone is already open, animate out first then swap
-      if (zone && zone !== next) {
+      if (zone && zone !== kind) {
         setClosing(true)
-        setTimeout(() => { setZone(next); setClosing(false) }, 180)
+        setTimeout(() => { setZone(kind); setClosing(false) }, 180)
       } else {
         setClosing(false)
-        setZone(next)
+        setZone(kind)
       }
-    }
-    window.addEventListener('world-zone-click', handler)
-    return () => window.removeEventListener('world-zone-click', handler)
+    })
   }, [zone])
 
   // ESC key to close (deps array so it doesn't re-register every render)
