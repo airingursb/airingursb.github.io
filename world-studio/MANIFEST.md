@@ -17,7 +17,7 @@
 - **Size:** 128×128 px
 - **Prompt:** A single seamless isometric stone path tile, 128×128 pixels. Cobblestone arrangement of 3-5 rounded warm grey-beige river stones fitted together with moss in the cracks. Hand-painted soft shading, slight wear on the stones. Diamond-shaped tile area only, transparent elsewhere. Must tile seamlessly with copies of itself.
 
-### A03 — Wood floor tile  `[ ]`
+### A03 — Wood floor tile  `[x]`
 - **File:** `output/tiles/A03-wood.png`
 - **Size:** 128×128 px
 - **Prompt:** A single seamless isometric warm wood plank floor tile, 128×128 pixels. Aged oak planks running diagonally, soft brown grain hints, warm cinnamon palette. Two or three plank seams visible. Diamond-shaped tile only, transparent elsewhere. Must tile seamlessly with copies of itself.
