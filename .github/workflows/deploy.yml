@@ -12,6 +12,13 @@ on:
 permissions:
   contents: write
 
+# Serialize deploys: when a new push lands, cancel any in-flight deploy.
+# Prevents the "Commit updated data" race where 2 concurrent CI runs both
+# try to git-push the feed update commit; the slower one gets rejected.
+concurrency:
+  group: deploy-master
+  cancel-in-progress: true
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -57,12 +64,30 @@ jobs:
         run: npm run build
 
       - name: Commit updated data
+        # Resilient against concurrent CI runs racing to push feed updates.
+        # Pull --rebase + retry handles the "non-fast-forward" rejection cleanly.
+        # Skip the whole step if nothing to commit (no feed change → no commit).
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add src/data/ index.html
-          git diff --staged --quiet || git commit -m "chore: update feed articles"
-          git push
+          if git diff --staged --quiet; then
+            echo "No feed changes to commit, skipping."
+            exit 0
+          fi
+          git commit -m "chore: update feed articles"
+          # Retry push up to 3 times with rebase on conflict (concurrent CI runs)
+          for i in 1 2 3; do
+            if git push; then
+              echo "Push succeeded on attempt $i."
+              exit 0
+            fi
+            echo "Push attempt $i rejected, rebasing and retrying..."
+            git pull --rebase --autostash origin master
+            sleep $((i * 2))
+          done
+          echo "Push failed after 3 attempts. Deploy will proceed anyway (feed update non-critical)."
+          exit 0
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v4
