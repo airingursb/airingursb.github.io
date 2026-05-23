@@ -238,11 +238,33 @@ export default function Cabin() {
         </mesh>
       ))}
 
-      {/* === Window with mullions === */}
-      <group position={[CABIN_W/2 + 0.005, 1.05, -0.5]}>
-        <mesh>
+      {/* === Window — recessed with interior room + warm glow + silhouette === */}
+      <group position={[CABIN_W/2 - 0.08, 1.05, -0.5]}>
+        {/* Recessed interior cavity */}
+        <mesh position={[0, 0, -0.05]}>
+          <boxGeometry args={[0.6, 0.6, 0.16]} />
+          <meshStandardMaterial color="#3A2516" roughness={0.95} />
+        </mesh>
+        {/* Glowing back wall of cavity */}
+        <mesh position={[0, 0, -0.12]}>
+          <planeGeometry args={[0.55, 0.55]} />
+          <meshStandardMaterial color={WINDOW} emissive={WINDOW} emissiveIntensity={1.2} roughness={0.5} />
+        </mesh>
+        {/* Silhouette inside — a kettle on a stove */}
+        <mesh position={[-0.1, -0.1, -0.10]}>
+          <boxGeometry args={[0.12, 0.16, 0.02]} />
+          <meshStandardMaterial color="#1a1410" />
+        </mesh>
+        <mesh position={[0.08, -0.05, -0.10]}>
+          <sphereGeometry args={[0.08, 8, 6]} />
+          <meshStandardMaterial color="#1a1410" />
+        </mesh>
+        {/* Strong interior point light visible through window */}
+        <pointLight position={[0, 0, -0.15]} color="#FFD58F" intensity={1.4} distance={3} decay={2} />
+        {/* Window frame (glass + mullions in front of cavity) */}
+        <mesh position={[0, 0, 0.05]}>
           <planeGeometry args={[0.6, 0.6]} />
-          <meshStandardMaterial color={WINDOW} emissive={WINDOW} emissiveIntensity={0.3} roughness={0.5} />
+          <meshStandardMaterial color={WINDOW} emissive={WINDOW} emissiveIntensity={0.55} transparent opacity={0.4} roughness={0.5} />
         </mesh>
         {[
           [0, 0.32, 0.7, 0.06],
@@ -252,7 +274,7 @@ export default function Cabin() {
           [0, 0, 0.7, 0.04],
           [0, 0, 0.04, 0.7],
         ].map((p, i) => (
-          <mesh key={`wf${i}`} position={[p[0], p[1], 0.02]}>
+          <mesh key={`wf${i}`} position={[p[0], p[1], 0.07]}>
             <boxGeometry args={[p[2], p[3], 0.03]} />
             <meshStandardMaterial color={PLANK} roughness={0.85} />
           </mesh>

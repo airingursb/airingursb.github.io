@@ -56,14 +56,16 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
         <MeshTransmissionMaterial
           color={WATER_TOP}
           thickness={0.4}
-          roughness={0.06}
-          transmission={0.7}
+          roughness={0.04}
+          transmission={0.4}
           chromaticAberration={0.02}
           distortion={0.05}
           distortionScale={0.2}
           ior={1.33}
           temporalDistortion={0}
           backside
+          metalness={0.2}
+          envMapIntensity={1.5}
         />
       </mesh>
 

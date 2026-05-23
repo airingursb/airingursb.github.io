@@ -81,15 +81,26 @@ function FallingLeaves({ particles }: { particles: ParticleSpec[] }) {
 }
 
 function BirdFlock({ count = 7, startX = -50, height = 28, speed = 1.2 }: { count?: number; startX?: number; height?: number; speed?: number }) {
-  // V-formation birds gliding across the sky in a slow loop
+  // V-formation birds gliding across sky on a circular path. Aim toward
+  // travel direction with banking — per Sub-A iter-7 gap #1.
   const groupRef = useRef<THREE.Group>(null)
+  const lastPos = useRef(new THREE.Vector3())
   useFrame((s) => {
-    if (groupRef.current) {
-      const t = (s.clock.elapsedTime * speed) % 100
-      groupRef.current.position.x = startX + t * 1.2
-      groupRef.current.position.z = -25 + Math.sin(t * 0.05) * 8
-      groupRef.current.position.y = height + Math.sin(t * 0.08) * 1.5
+    if (!groupRef.current) return
+    const t = (s.clock.elapsedTime * speed * 0.06) % (Math.PI * 2)
+    const radius = 38
+    const nx = Math.cos(t) * radius
+    const nz = Math.sin(t) * radius
+    const ny = height + Math.sin(t * 3) * 2
+    // Velocity direction for yaw + bank
+    const dx = nx - lastPos.current.x
+    const dz = nz - lastPos.current.z
+    groupRef.current.position.set(nx, ny, nz)
+    if (dx !== 0 || dz !== 0) {
+      groupRef.current.rotation.y = Math.atan2(dx, dz) + Math.PI
+      groupRef.current.rotation.z = Math.sin(t * 4) * 0.08  // gentle bank
     }
+    lastPos.current.set(nx, ny, nz)
   })
   return (
     <group ref={groupRef}>
@@ -110,31 +121,50 @@ function BirdFlock({ count = 7, startX = -50, height = 28, speed = 1.2 }: { coun
 }
 
 function Bird() {
-  const wingsRef = useRef<THREE.Group>(null)
+  // Proper bird: extruded triangle wings that flap on X-axis dihedral
+  // (not the Z spin trick). Tail trails behind with a tiny lag.
+  const leftWing = useRef<THREE.Mesh>(null)
+  const rightWing = useRef<THREE.Mesh>(null)
+  const tail = useRef<THREE.Mesh>(null)
   useFrame((s) => {
-    if (wingsRef.current) {
-      const flap = Math.sin(s.clock.elapsedTime * 6) * 0.6
-      wingsRef.current.rotation.z = flap
-    }
+    const t = s.clock.elapsedTime * 6
+    const flap = Math.sin(t) * 0.5
+    if (leftWing.current)  leftWing.current.rotation.z =  flap
+    if (rightWing.current) rightWing.current.rotation.z = -flap
+    if (tail.current)      tail.current.rotation.x = Math.sin(t - 0.6) * 0.15
   })
   return (
     <group>
-      {/* Body */}
-      <mesh>
-        <sphereGeometry args={[0.18, 6, 5]} />
+      {/* Body — small elongated capsule */}
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <capsuleGeometry args={[0.1, 0.25, 4, 8]} />
+        <meshStandardMaterial color={BIRD} roughness={0.85} flatShading />
+      </mesh>
+      {/* Head */}
+      <mesh position={[0.22, 0.06, 0]}>
+        <sphereGeometry args={[0.09, 8, 6]} />
         <meshStandardMaterial color={BIRD} flatShading />
       </mesh>
-      {/* Wings as a flat V */}
-      <group ref={wingsRef}>
-        <mesh position={[0, 0, 0]} rotation={[0, 0, 0.2]}>
-          <coneGeometry args={[0.15, 0.7, 3]} />
-          <meshStandardMaterial color={BIRD} flatShading />
-        </mesh>
-        <mesh position={[0, 0, 0]} rotation={[Math.PI, 0, 0.2]}>
-          <coneGeometry args={[0.15, 0.7, 3]} />
-          <meshStandardMaterial color={BIRD} flatShading />
-        </mesh>
-      </group>
+      {/* Tiny beak */}
+      <mesh position={[0.32, 0.05, 0]} rotation={[0, 0, -Math.PI / 2]}>
+        <coneGeometry args={[0.025, 0.06, 6]} />
+        <meshStandardMaterial color="#E29A4A" flatShading />
+      </mesh>
+      {/* Left wing — flat triangle paddle */}
+      <mesh ref={leftWing} position={[0, 0.04, -0.05]} rotation={[0, 0, 0]}>
+        <boxGeometry args={[0.5, 0.02, 0.18]} />
+        <meshStandardMaterial color={BIRD} flatShading />
+      </mesh>
+      {/* Right wing */}
+      <mesh ref={rightWing} position={[0, 0.04, 0.05]} rotation={[0, 0, 0]}>
+        <boxGeometry args={[0.5, 0.02, 0.18]} />
+        <meshStandardMaterial color={BIRD} flatShading />
+      </mesh>
+      {/* Tail */}
+      <mesh ref={tail} position={[-0.22, 0.04, 0]}>
+        <boxGeometry args={[0.16, 0.02, 0.12]} />
+        <meshStandardMaterial color={BIRD} flatShading />
+      </mesh>
     </group>
   )
 }

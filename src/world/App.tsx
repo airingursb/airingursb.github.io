@@ -32,6 +32,8 @@ import Scarecrow from './Scarecrow'
 import PathEdges from './PathEdges'
 import SoilHalos from './SoilHalos'
 import Atmospherics from './Atmospherics'
+import Avatar from './Avatar'
+import HotAirBalloon from './HotAirBalloon'
 
 export default function App() {
   return (
@@ -91,6 +93,8 @@ export default function App() {
       <Scarecrow />
       <Critters />
       <Atmospherics />
+      <Avatar />
+      <HotAirBalloon />
       <Lanterns />
       <ContactShadowsLayer />
 
@@ -120,7 +124,7 @@ export default function App() {
           worldProximityThreshold={3}
           worldProximityFalloff={0.5}
         />
-        <Bloom intensity={0.5} luminanceThreshold={0.8} luminanceSmoothing={0.4} mipmapBlur />
+        <Bloom intensity={0.7} luminanceThreshold={0.55} luminanceSmoothing={0.6} mipmapBlur />
         <BrightnessContrast brightness={0.02} contrast={0.08} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
         <SMAA />
