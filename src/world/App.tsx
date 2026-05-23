@@ -122,11 +122,17 @@ function ThemeAwareLights({ theme }: { theme: Theme }) {
   )
 }
 
+const THEME_KEY = 'world-theme-v1'
+
 export default function App() {
-  const [theme, setTheme] = useState<Theme>('day')
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') return 'day'
+    try { return (localStorage.getItem(THEME_KEY) as Theme) || 'day' } catch { return 'day' }
+  })
   useEffect(() => on('world-theme', (next) => {
     setTheme(next)
     document.body.dataset.worldTheme = next
+    try { localStorage.setItem(THEME_KEY, next) } catch {}
   }), [])
   return (
     <Canvas

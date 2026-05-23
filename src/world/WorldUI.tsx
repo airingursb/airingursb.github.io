@@ -7,8 +7,13 @@
 import { useState } from 'react'
 import { emit } from './events'
 
+const THEME_KEY = 'world-theme-v1'
+
 export default function WorldUI() {
-  const [theme, setTheme] = useState<'day' | 'dusk'>('day')
+  const [theme, setTheme] = useState<'day' | 'dusk'>(() => {
+    if (typeof window === 'undefined') return 'day'
+    try { return (localStorage.getItem(THEME_KEY) as 'day' | 'dusk') || 'day' } catch { return 'day' }
+  })
 
   function snap() {
     const canvas = document.querySelector('#world-root canvas') as HTMLCanvasElement | null
