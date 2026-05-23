@@ -13,7 +13,7 @@ export default function Sky() {
           for shadow/sky cohesion. Golden-hour low angle. */}
       <DreiSky
         distance={450000}
-        sunPosition={[22, 5, 8]}
+        sunPosition={[20, 11, 9]}
         mieCoefficient={0.005}
         mieDirectionalG={0.85}
         rayleigh={1.8}

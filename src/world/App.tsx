@@ -37,6 +37,7 @@ import HotAirBalloon from './HotAirBalloon'
 import DistantIslands from './DistantIslands'
 import Campfire from './Campfire'
 import Rainbow from './Rainbow'
+import CloudShadows from './CloudShadows'
 
 export default function App() {
   return (
@@ -51,19 +52,21 @@ export default function App() {
         toneMappingExposure: 1.05,
       }}
     >
-      <fog attach="fog" args={['#D7E9F5', 50, 130]} />
+      {/* Warm afternoon haze — matches sun palette, no overcast blue */}
+      <fog attach="fog" args={['#F4E4C8', 55, 140]} />
 
       <Sky />
       <Void />
 
       {/* === Lighting === */}
-      <hemisphereLight args={['#cfe6ff', '#8a7d5e', 0.4]} />
-      <ambientLight intensity={0.28} color="#fff0d0" />
-      {/* Golden-hour sun — low + saturated warm orange */}
+      {/* Hemisphere: warm sky + earthy ground bounce (no cool blue) */}
+      <hemisphereLight args={['#FFD9A8', '#5A3A28', 0.55]} />
+      <ambientLight intensity={0.35} color="#FFE4C0" />
+      {/* Warm afternoon sun — elev ~28°, golden but not full sunset */}
       <directionalLight
-        position={[22, 5, 8]}
-        intensity={2.6}
-        color="#FFB870"
+        position={[20, 11, 9]}
+        intensity={2.2}
+        color="#FFD09A"
         castShadow
         shadow-mapSize={[3072, 3072]}
         shadow-camera-near={1}
@@ -74,9 +77,10 @@ export default function App() {
         shadow-camera-bottom={-32}
         shadow-bias={-0.0005}
       />
-      <directionalLight position={[-14, 12, -10]} intensity={0.32} color="#b0d5e8" />
-      {/* Rim light — cool cyan from camera-right rear to detach silhouettes */}
-      <directionalLight position={[-20, 8, 20]} intensity={0.45} color="#a8d8e8" />
+      {/* Fill light — soft warm peach instead of cool blue (lighting cohesion) */}
+      <directionalLight position={[-14, 12, -10]} intensity={0.4} color="#FAD6B0" />
+      {/* Rim light — warm peach from camera-right rear */}
+      <directionalLight position={[-20, 8, 20]} intensity={0.35} color="#F4D9A0" />
 
       {/* === The diorama === */}
       <Island />
@@ -102,6 +106,7 @@ export default function App() {
       <DistantIslands />
       <Campfire />
       <Rainbow />
+      <CloudShadows />
       <Lanterns />
       <ContactShadowsLayer />
 
@@ -121,7 +126,8 @@ export default function App() {
       <EffectComposer multisampling={0}>
         {/* DepthOfField — diorama-style miniature feel:
             keeps the cabin focal area sharp while softening distant cliffs */}
-        <DepthOfField focusDistance={0.025} focalLength={0.05} bokehScale={3.5} />
+        {/* Subtle miniature DoF — focal plane on cabin, gentle blur on edges */}
+        <DepthOfField focusDistance={0.04} focalLength={0.08} bokehScale={1.5} />
         {/* SSAO — crevice darkening at every junction */}
         <SSAO
           samples={20}

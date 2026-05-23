@@ -4,10 +4,24 @@
 // between logs, porch furniture (rocking chair + firewood pile +
 // doormat + hanging flower basket), animated chimney smoke.
 
-import { useRef } from 'react'
+import { useRef, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getZone } from './zones'
+
+// Rocking chair wrapper — gently rocks on its runners
+function Rocker({ children }: { children: ReactNode }) {
+  const ref = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    if (!ref.current) return
+    // Slow rocking: ±0.05 rad around X, period ~3s
+    const angle = Math.sin(s.clock.elapsedTime * 1.0) * 0.05
+    ref.current.rotation.x = angle
+    // Compensate Y position so contact stays at runner curvature
+    ref.current.position.y = Math.abs(angle) * 0.08
+  })
+  return <group ref={ref}>{children}</group>
+}
 
 const LOG_LIGHT  = '#9E7A52'
 const LOG_DARK   = '#6E4F31'
@@ -434,7 +448,8 @@ export default function Cabin() {
           </mesh>
         ))}
 
-        {/* === Rocking chair === */}
+        {/* === Rocking chair — actually rocks now === */}
+        <Rocker>
         <group position={[-0.9, 0.35, 0]}>
           {/* Seat */}
           <mesh position={[0, 0.18, 0]} castShadow>
@@ -461,6 +476,7 @@ export default function Cabin() {
             </mesh>
           ))}
         </group>
+        </Rocker>
 
         {/* === Hanging flower basket from awning beam === */}
         <group position={[1.0, 1.3, 0.4]}>
