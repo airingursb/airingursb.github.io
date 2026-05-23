@@ -668,7 +668,7 @@
         '<span class="online-country-list">' + list + '</span>' +
         sceneHtml +
         '<span class="online-country-total">' + escapeHtml(totalTemplate.replace('{n}', String(n))) + '</span>' +
-        '<a class="online-see-more" href="/lounge">See more →</a>' +
+        '<a class="online-see-more" href="/nook/">See more →</a>' +
       '</span>';
   }
 
