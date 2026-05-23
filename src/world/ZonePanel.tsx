@@ -38,14 +38,14 @@ export default function ZonePanel({ initialData }: { initialData?: InitialData }
     return () => window.removeEventListener('world-zone-click', handler)
   }, [])
 
-  // ESC key to close
+  // ESC key to close (deps array so it doesn't re-register every render)
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape' && zone) close()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  })
+  }, [zone])
 
   // Reset cursor on unmount (in case hitbox pointerOut never fires)
   useEffect(() => () => { document.body.style.cursor = 'auto' }, [])

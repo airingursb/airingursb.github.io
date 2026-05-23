@@ -16,6 +16,7 @@
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
+import { Suspense } from 'react'
 import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast, SSAO, DepthOfField, Vignette } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { ACESFilmicToneMapping } from 'three'
@@ -46,8 +47,22 @@ import Campfire from './Campfire'
 import CloudShadows from './CloudShadows'
 import ZoneHitboxes from './ZoneHitboxes'
 import MochiNPC from './MochiNPC'
+import ZoneHints from './ZoneHints'
 // Sub-A iter-10: Rainbow + HotAirBalloon + Scarecrow cut to protect cabin
 // as the visual hero. (Files left on disk for easy re-enable.)
+
+// Adaptive quality detection — gates expensive postprocessing on low-end.
+function detectQuality(): 'high' | 'medium' | 'low' {
+  if (typeof window === 'undefined') return 'medium'
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+  const cpu = navigator.hardwareConcurrency ?? 4
+  const ram = (navigator as any).deviceMemory ?? 4
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+  if (reducedMotion || isMobile || cpu <= 4 || ram <= 4) return 'low'
+  if (cpu < 8) return 'medium'
+  return 'high'
+}
+const QUALITY = typeof window !== 'undefined' ? detectQuality() : 'medium'
 
 export default function App() {
   return (
@@ -92,32 +107,35 @@ export default function App() {
       {/* Rim light — warm peach from camera-right rear */}
       <directionalLight position={[-20, 8, 20]} intensity={0.35} color="#F4D9A0" />
 
-      {/* === The diorama === */}
-      <Island />
-      <ForestPath />
-      <PathEdges />
-      <Water />
-      <Forest />
-      <GroundCover />
-      <SoilHalos />
-      <Cabin />
-      <Weathervane />
-      <Gazebo />
-      <Deck />
-      <HammockSpot />
-      <EaselClearing />
-      <Storytelling />
-      <Domestic />
-      <Critters />
-      <Atmospherics />
-      <Avatar />
-      <MochiNPC />
-      <DistantIslands />
-      <Campfire />
-      <CloudShadows />
-      <Lanterns />
-      <ContactShadowsLayer />
-      <ZoneHitboxes />
+      {/* === The diorama (Suspense-wrapped so async resources show no flash) === */}
+      <Suspense fallback={null}>
+        <Island />
+        <ForestPath />
+        <PathEdges />
+        <Water />
+        <Forest />
+        <GroundCover />
+        <SoilHalos />
+        <Cabin />
+        <Weathervane />
+        <Gazebo />
+        <Deck />
+        <HammockSpot />
+        <EaselClearing />
+        <Storytelling />
+        <Domestic />
+        <Critters />
+        <Atmospherics />
+        <Avatar />
+        <MochiNPC />
+        <DistantIslands />
+        <Campfire />
+        <CloudShadows />
+        <Lanterns />
+        <ContactShadowsLayer />
+        <ZoneHitboxes />
+        <ZoneHints />
+      </Suspense>
 
       {/* === Camera — slow rotation, raised target so cabin roof + gazebo are centered === */}
       <OrbitControls
@@ -132,23 +150,24 @@ export default function App() {
         autoRotateSpeed={0.1}
       />
 
+      {/* Adaptive post-processing — drop expensive passes on low-tier devices */}
       <EffectComposer multisampling={0}>
-        {/* DepthOfField — diorama-style miniature feel:
-            keeps the cabin focal area sharp while softening distant cliffs */}
-        {/* Subtle miniature DoF — focal plane on cabin, gentle blur on edges */}
-        <DepthOfField focusDistance={0.04} focalLength={0.08} bokehScale={1.5} />
-        {/* SSAO — crevice darkening at every junction */}
-        <SSAO
-          samples={20}
-          radius={0.15}
-          intensity={26}
-          luminanceInfluence={0.6}
-          color={0x000000}
-          worldDistanceThreshold={0.5}
-          worldDistanceFalloff={0.3}
-          worldProximityThreshold={3}
-          worldProximityFalloff={0.5}
-        />
+        {QUALITY === 'high' && (
+          <DepthOfField focusDistance={0.04} focalLength={0.08} bokehScale={1.5} />
+        )}
+        {QUALITY !== 'low' && (
+          <SSAO
+            samples={QUALITY === 'high' ? 20 : 12}
+            radius={0.15}
+            intensity={14}
+            luminanceInfluence={0.6}
+            color={0x000000}
+            worldDistanceThreshold={0.5}
+            worldDistanceFalloff={0.3}
+            worldProximityThreshold={3}
+            worldProximityFalloff={0.5}
+          />
+        )}
         <Bloom intensity={0.7} luminanceThreshold={0.55} luminanceSmoothing={0.6} mipmapBlur />
         <BrightnessContrast brightness={0.02} contrast={0.08} />
         <Vignette eskil={false} offset={0.18} darkness={0.35} />
