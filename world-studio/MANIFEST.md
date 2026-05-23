@@ -22,7 +22,7 @@
 - **Size:** 128×128 px
 - **Prompt:** A single seamless isometric warm wood plank floor tile, 128×128 pixels. Aged oak planks running diagonally, soft brown grain hints, warm cinnamon palette. Two or three plank seams visible. Diamond-shaped tile only, transparent elsewhere. Must tile seamlessly with copies of itself.
 
-### A04 — Shallow water tile  `[ ]`
+### A04 — Shallow water tile  `[x]`
 - **File:** `output/tiles/A04-water.png`
 - **Size:** 128×128 px
 - **Prompt:** A single seamless isometric shallow water tile, 128×128 pixels. Misty teal water surface with very gentle painted ripples (concentric soft circles), one or two pale highlight reflections suggesting a sky above. Soft and dreamy, not photoreal. Diamond-shaped tile only, transparent elsewhere. Must tile seamlessly.
