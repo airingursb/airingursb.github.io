@@ -2115,6 +2115,40 @@ StyleRecalc(node)       =  ∩<sub>r ∈ rules</sub>  (r touches node) → O(mat
       <span class="lang-en-only">Every µs number in this article comes from <code>chrome.tracing</code> + DevTools Performance. Drop card.css into a fresh page, run the 4 console measurements, then <em>compare</em> against Ch29's table. <em>Within 5× is normal</em> (different hardware, Chrome versions, other page elements); off by 10× or more, you probably measured wrong or hit one of Ch29's 5 perf traps.</span>
     </div>
 
+    <aside class="trace-card">
+      <header class="tc-head">
+        <span class="tc-mark">SPECIMEN · 2024 FEATURES</span>
+        <span class="tc-name">The Card · color-mix evaluation</span>
+        <span class="tc-act"><span class="tc-act-num">ACT III</span> · hover gives the muted background</span>
+      </header>
+      <ul class="tc-body lang-zh-only">
+        <li>The Card 的 hover state: <code>color-mix(in oklch, var(--brand), white 20%)</code></li>
+        <li>① var(--brand) 解开为 <code>oklch(70% 0.15 250)</code> · 蓝色</li>
+        <li>② 第二参数: 80%(隐式)<em>brand</em> + 20% <em>white</em></li>
+        <li>③ Blink 调用 <code>ColorMix::Mix(brand, white, 0.2, ColorSpace::kOklch)</code>:</li>
+        <li>　• L 通道: 70% × 0.8 + 100% × 0.2 = 76%</li>
+        <li>　• C 通道: 0.15 × 0.8 + 0 × 0.2 = 0.12</li>
+        <li>　• H 通道: 250 × 0.8 + (undefined for white) × 0.2 = 250(保留 brand 色相)</li>
+        <li>④ 结果 <code>oklch(76% 0.12 250)</code> → 转 sRGB → <code>rgb(140, 168, 213)</code> · 比原 brand 浅 20%</li>
+        <li>⑤ 该值在 Ch19 ④ actual 阶段被 snap 到 8-bit 通道</li>
+        <li>整个 color-mix 计算 ~3 µs · 比 sRGB 简单 lerp 慢约 10 倍,但视觉质量好得多(无 muddy purple)</li>
+        <li>如果改用 <code>color-mix(in srgb, ...)</code>: 计算降到 ~0.3 µs,但 hover 颜色会带"<em>污浊</em>"</li>
+      </ul>
+      <ul class="tc-body lang-en-only">
+        <li>The Card's hover state: <code>color-mix(in oklch, var(--brand), white 20%)</code></li>
+        <li>① var(--brand) resolves to <code>oklch(70% 0.15 250)</code> · blue</li>
+        <li>② Second arg: 80% (implicit) <em>brand</em> + 20% <em>white</em></li>
+        <li>③ Blink calls <code>ColorMix::Mix(brand, white, 0.2, ColorSpace::kOklch)</code>:</li>
+        <li>　• L channel: 70% × 0.8 + 100% × 0.2 = 76%</li>
+        <li>　• C channel: 0.15 × 0.8 + 0 × 0.2 = 0.12</li>
+        <li>　• H channel: 250 × 0.8 + (undefined for white) × 0.2 = 250 (brand's hue preserved)</li>
+        <li>④ Result <code>oklch(76% 0.12 250)</code> → sRGB → <code>rgb(140, 168, 213)</code> · 20% lighter than brand</li>
+        <li>⑤ Value gets snapped to 8-bit channels at Ch19 stage ④ actual</li>
+        <li>Whole color-mix ~3 µs · ~10× slower than plain sRGB lerp, but visually much cleaner (no muddy purple)</li>
+        <li>If swapped to <code>color-mix(in srgb, ...)</code>: drops to ~0.3 µs, but hover color comes out "<em>muddy</em>"</li>
+      </ul>
+    </aside>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -3028,6 +3062,32 @@ document.adoptedStyleSheets = [sheet2];           <span class="cm">// shadow-DOM
       </figcaption>
     </figure>
 
+    <aside class="trace-card">
+      <header class="tc-head">
+        <span class="tc-mark">SPECIMEN · ERROR</span>
+        <span class="tc-name">The Card · hypothetical typo</span>
+        <span class="tc-act"><span class="tc-act-num">ACT I</span> · resilience demonstration</span>
+      </header>
+      <ul class="tc-body lang-zh-only">
+        <li>假设 The Card 写错一个字: <code>.card { paddingX: 0.5rem; background: var(--brand); }</code></li>
+        <li>parser 在解析 <code>paddingX</code> 时调 <code>CSSPropertyParser::Parse("paddingX", ...)</code> → 返回 <strong>nullptr</strong>(property name not found)</li>
+        <li><code>ConsumeDeclaration</code> 看到 nullptr → drop 整条 declaration · resync 到下一个 <code>;</code></li>
+        <li><strong>同一规则里的其它 declaration 完好</strong>: <code>background: var(--brand)</code> 正常生效 · 用户看见的 .card 仍有蓝背景,只是<em>少了 padding</em></li>
+        <li>DevTools Console 会显示警告: "Unknown property name 'paddingX'"</li>
+        <li><em>对比</em> JS: 如果你写错一个属性名,整段 JS module 都会 SyntaxError,网页直接挂</li>
+        <li>这就是 W3C "<em>graceful degradation</em>" 的真实落地点</li>
+      </ul>
+      <ul class="tc-body lang-en-only">
+        <li>Suppose The Card has a typo: <code>.card { paddingX: 0.5rem; background: var(--brand); }</code></li>
+        <li>Parser calls <code>CSSPropertyParser::Parse("paddingX", ...)</code> → returns <strong>nullptr</strong> (unknown property)</li>
+        <li><code>ConsumeDeclaration</code> sees nullptr → drops that one declaration · resyncs at next <code>;</code></li>
+        <li><strong>Other declarations in the same rule survive</strong>: <code>background: var(--brand)</code> still applies · user sees a .card with blue background, just <em>without padding</em></li>
+        <li>DevTools Console logs: "Unknown property name 'paddingX'"</li>
+        <li><em>Contrast</em> JS: one mistyped property name = whole module SyntaxError, page dies</li>
+        <li>This is where W3C's "<em>graceful degradation</em>" actually lands</li>
+      </ul>
+    </aside>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -3242,6 +3302,32 @@ document.adoptedStyleSheets = [sheet2];           <span class="cm">// shadow-DOM
   element.<span class="fn">SetComputedStyle</span>(style);
   <span class="kw">return</span> style;
 }</pre>
+
+    <aside class="trace-card">
+      <header class="tc-head">
+        <span class="tc-mark">SPECIMEN · STAGE 4/9</span>
+        <span class="tc-name">The Card</span>
+        <span class="tc-act"><span class="tc-act-num">ACT I→II</span> · parser produces selector lists</span>
+      </header>
+      <ul class="tc-body lang-zh-only">
+        <li>The Card 里 4 个选择器:</li>
+        <li>　• <code>:root</code> → 1 个节点链表 · <em>head = node[0]: pseudo-class :root</em></li>
+        <li>　• <code>.card</code>(@layer base 内)→ 1 个节点 · <em>head = Class "card"</em></li>
+        <li>　• <code>.card:hover</code> → 2 个节点链表 · <em>head = :hover (pseudo-class), tag_history → .card</em></li>
+        <li>　• <code>.card</code>(@container 内)→ 1 个节点 · 跟 [1] 同结构,但独立对象</li>
+        <li>所有节点都<em>不</em>共享 — 每条规则一组独立 CSSSelector 对象</li>
+        <li>specificity 在 parse 阶段就<em>计算并 cache</em> 在 selector 上(<code>CSSSelector::specificity_</code> 字段),避免每次 cascade 都重算</li>
+      </ul>
+      <ul class="tc-body lang-en-only">
+        <li>The Card's 4 selectors become:</li>
+        <li>　• <code>:root</code> → 1-node list · <em>head = node[0]: pseudo-class :root</em></li>
+        <li>　• <code>.card</code> (inside @layer base) → 1 node · <em>head = Class "card"</em></li>
+        <li>　• <code>.card:hover</code> → 2-node list · <em>head = :hover (pseudo-class), tag_history → .card</em></li>
+        <li>　• <code>.card</code> (inside @container) → 1 node · same shape as [1] but independent object</li>
+        <li>Nodes are <em>not</em> shared — each rule has its own CSSSelector objects</li>
+        <li>Specificity is <em>computed and cached</em> at parse time on the selector (<code>CSSSelector::specificity_</code>), avoiding recomputation per cascade</li>
+      </ul>
+    </aside>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -3641,6 +3727,40 @@ document.adoptedStyleSheets = [sheet2];           <span class="cm">// shadow-DOM
   <span class="kw">return</span> candidates;   <span class="cm">// typically 5-20 entries out of 10 000 rules</span>
 }</pre>
 
+    <h3 class="sub lang-zh-only">跨引擎对照 · selector 匹配的三种实现</h3>
+    <h3 class="sub lang-en-only">Cross-engine · three selector-matching implementations</h3>
+
+    <table class="cmp">
+      <thead><tr><th>engine</th><th class="lang-zh-only">match 方向</th><th class="lang-en-only">match direction</th><th class="lang-zh-only">索引数据结构</th><th class="lang-en-only">index structure</th><th class="lang-zh-only">特点</th><th class="lang-en-only">notable</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Blink (Chromium)</td>
+          <td><span class="lang-zh-only">右到左 + bloom 预筛</span><span class="lang-en-only">right-to-left + bloom pre-filter</span></td>
+          <td>RuleSet hashmap × 5 bucket</td>
+          <td><span class="lang-zh-only">本文主角</span><span class="lang-en-only">subject of this article</span></td>
+        </tr>
+        <tr>
+          <td>WebKit (Safari)</td>
+          <td><span class="lang-zh-only">右到左 + JIT compiled matcher</span><span class="lang-en-only">right-to-left + JIT compiled matcher</span></td>
+          <td>RuleSet + selector JIT</td>
+          <td><span class="lang-zh-only">把选择器<em>编译成机器码</em>(类似 V8 对 JS)— ~30% 快于 Blink 在 hot selector 上</span><span class="lang-en-only">compiles selectors to <em>machine code</em> (like V8 does to JS) — ~30% faster than Blink on hot selectors</span></td>
+        </tr>
+        <tr>
+          <td>Gecko (Firefox · Stylo)</td>
+          <td><span class="lang-zh-only">右到左 + bloom + 并行</span><span class="lang-en-only">right-to-left + bloom + parallel</span></td>
+          <td>Stylo SelectorMap (Rust)</td>
+          <td><span class="lang-zh-only">从 Servo 移植 · rayon 并行匹配多元素</span><span class="lang-en-only">ported from Servo · rayon-parallel match across elements</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note good">
+      <span class="ntag lang-zh-only">WebKit selector JIT · 鲜为人知的性能秘密</span>
+      <span class="ntag lang-en-only">WebKit selector JIT · the lesser-known perf secret</span>
+      <span class="lang-zh-only">2014 年 WebKit 给<em>选择器</em>加了 JIT 编译(<code>WebCore/css/SelectorCompiler.cpp</code>)— 跟 V8 把 JS 编成 ARM/x86 机器码一个套路。对每条规则,SelectorChecker 不再走<em>解释器循环</em>,而是<em>直接调用</em>该规则专属的机器码 function。在 hover 状态切换这类<em>高频路径</em>,WebKit ~30% 快于 Blink。Blink 团队 2016 评估过,认为<em>性价比不够</em>(JIT 增加 binary 大小 + cold-start 成本),没移植。</span>
+      <span class="lang-en-only">In 2014 WebKit added JIT compilation for <em>selectors</em> (<code>WebCore/css/SelectorCompiler.cpp</code>) — same trick V8 uses to compile JS to ARM/x86. For each rule, SelectorChecker no longer runs an <em>interpreter loop</em> — it <em>directly calls</em> machine code generated for that specific rule. On <em>high-frequency paths</em> like hover state toggles, WebKit is ~30% faster than Blink. The Blink team evaluated this in 2016 and decided the <em>cost-benefit didn't justify</em> it (JIT adds binary size + cold-start cost). Hasn't been ported.</span>
+    </div>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -3963,6 +4083,53 @@ candidates += rule_set.universal_rules_;
       </figcaption>
     </figure>
 
+    <aside class="trace-card">
+      <header class="tc-head">
+        <span class="tc-mark">SPECIMEN · :has() EXTENSION</span>
+        <span class="tc-name">The Card</span>
+        <span class="tc-act"><span class="tc-act-num">hypothetical</span> · what if we added :has()</span>
+      </header>
+      <ul class="tc-body lang-zh-only">
+        <li>想象 The Card 增加: <code>.container:has(.card:hover) { box-shadow: 0 4px 8px rgba(0,0,0,0.1) }</code></li>
+        <li>意思: <em>当 .card 处于 hover 时,给其<strong>父容器</strong>加阴影</em>(经典 popover-style UI)</li>
+        <li>Blink 此时<em>必须</em>建立<em>反向 InvalidationSet</em>(HasInvalidationSet): "如果<em>子树里</em>有 .card 的 :hover 状态变,要往上找 .container 重算"</li>
+        <li>用户 hover .card → 触发 :hover → InvalSet 走<strong>双向</strong>:</li>
+        <li>　1. 正向: .card 自身重算(变 background 那条规则,原本就有)</li>
+        <li>　2. 反向: 沿父链向上找匹配 :has() outer compound(.container),给它重算 box-shadow</li>
+        <li>额外成本: <em>+50%</em> invalidation 工作(双向 walk),但<em>消除</em>掉一段 JS hover listener · 净赚</li>
+        <li>Blink 在 :has() 上设了硬限制: <strong>不能嵌套 :has()</strong>(<code>:has(:has(x))</code> 非法,parser 直接 reject)</li>
+      </ul>
+      <ul class="tc-body lang-en-only">
+        <li>Imagine adding: <code>.container:has(.card:hover) { box-shadow: 0 4px 8px rgba(0,0,0,0.1) }</code></li>
+        <li>Meaning: <em>when .card hovers, add a shadow to its <strong>parent container</strong></em> (classic popover-style UI)</li>
+        <li>Blink now <em>must</em> build a <em>reverse InvalidationSet</em> (HasInvalidationSet): "if a descendant's :hover changes, walk UP to find .container and recalc"</li>
+        <li>User hovers .card → :hover toggles → InvalSet walks <strong>both directions</strong>:</li>
+        <li>　1. Forward: .card itself recalcs (the existing :hover background rule)</li>
+        <li>　2. Backward: walk up parent chain to find matches for :has()'s outer (.container), recalc its box-shadow</li>
+        <li>Extra cost: <em>+50%</em> invalidation work (bi-directional walk), but <em>eliminates</em> a JS hover listener · net win</li>
+        <li>Blink hard-limits :has(): <strong>no nesting</strong> (<code>:has(:has(x))</code> is illegal, parser rejects)</li>
+      </ul>
+    </aside>
+
+    <h3 class="sub lang-zh-only">跨引擎对照 · cascade 实现的三种风格</h3>
+    <h3 class="sub lang-en-only">Cross-engine comparison · three cascade flavours</h3>
+
+    <table class="cmp">
+      <thead><tr><th>engine</th><th class="lang-zh-only">数据结构</th><th class="lang-en-only">data structure</th><th class="lang-zh-only">特点</th><th class="lang-en-only">notable</th></tr></thead>
+      <tbody>
+        <tr><td class="mono">Blink (Chromium)</td><td class="mono">CascadePriority (64-bit packed)</td><td><span class="lang-zh-only">最快;一次整数比较决出所有 tie-break</span><span class="lang-en-only">fastest; one integer compare decides all tie-breaks</span></td></tr>
+        <tr><td class="mono">WebKit (Safari)</td><td class="mono">PropertyCascade::Builder</td><td><span class="lang-zh-only">分桶 + vector of (priority, property);较 Blink 慢 ~30%</span><span class="lang-en-only">bucketed + vector of (priority, property); ~30% slower than Blink</span></td></tr>
+        <tr><td class="mono">Gecko (Firefox · Stylo)</td><td class="mono">ServoStyleContext (Rust)</td><td><span class="lang-zh-only">从 Servo 移植;<em>并行 cascade</em>:rayon thread pool 上跑多元素</span><span class="lang-en-only">ported from Servo; <em>parallel cascade</em>: rayon thread pool across elements</span></td></tr>
+      </tbody>
+    </table>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">为什么 Blink 不并行 cascade?</span>
+      <span class="ntag lang-en-only">Why doesn't Blink parallelise cascade?</span>
+      <span class="lang-zh-only">Servo 证明并行 cascade 在多核上加速 4-8×。Blink 没移植: ① 主线程 cascade 通常 &lt; 8 ms / frame,不是瓶颈;② 并行需要 immutable 数据结构,但 Blink 的 inheritance 是<em>父子串行</em>(parent ComputedStyle 算完才能算 child);③ 调度开销在 100-1000 元素的典型 SPA 下盖过收益。2024 Blink 团队态度: "等到 single-thread 真的不够再说"。</span>
+      <span class="lang-en-only">Servo proved 4-8× scaling on multi-core. Blink hasn't ported: ① main-thread cascade is usually &lt; 8 ms / frame, not the bottleneck; ② parallelisation requires immutable data structures, but Blink's inheritance is <em>parent → child serial</em> (parent ComputedStyle must complete before child); ③ scheduling overhead outweighs benefit at typical SPA size (100-1000 elements). Blink team 2024 stance: "<em>not until single-thread really fails</em>".</span>
+    </div>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -4125,6 +4292,34 @@ candidates += rule_set.universal_rules_;
       <span class="lang-zh-only">spec 描述 cascade 是"<em>8 步金字塔</em>",实现里 Blink 把所有 tie-breaker 打包成<strong>一个 64-bit 整数</strong> · 一次 <code>&lt;</code> 比较就能决出胜负。这是性能关键: 一个页面跑 cascade 时,每个属性可能要比 5-10 个候选,每次 priority 比较就是一条 CPU 指令。没有这种压缩,cascade 会跑慢一个量级。</span>
       <span class="lang-en-only">The spec describes cascade as an "<em>8-step pyramid</em>"; the implementation packs every tie-breaker into <strong>one 64-bit integer</strong> · a single <code>&lt;</code> decides. This is critical for perf: each property may compare 5-10 candidates per cascade, and each priority compare is one CPU instruction. Without this packing, cascade would run an order of magnitude slower.</span>
     </div>
+
+    <aside class="trace-card cascade">
+      <header class="tc-head">
+        <span class="tc-mark">SPECIMEN · TIE-BREAK</span>
+        <span class="tc-name">The Card · what if two rules tie</span>
+        <span class="tc-act"><span class="tc-act-num">ACT II</span> · cascade step ⑥ falls through</span>
+      </header>
+      <ul class="tc-body lang-zh-only">
+        <li>假设 The Card 多了一条: <code>.card { padding: 2rem }</code>(unlayered,跟 @container 内的 .card 同 origin / layer / specificity)</li>
+        <li>cascade 走完 ①-⑤ 全部打平 — 都 (0, 1, 0) · 都 unlayered · 都 author</li>
+        <li>step ⑥ <strong>order of appearance</strong> 出场: 谁<em>在 stylesheet 里更晚</em>谁赢</li>
+        <li>原 The Card 顺序: [1]:root → [2]@layer → [3].card:hover → [4]@container</li>
+        <li>如果新 <code>.card { padding: 2rem }</code> 加在<em>最后</em>(位置 5)→ <strong>padding = 2rem 赢</strong></li>
+        <li>如果加在 [2] 前 → padding = 1rem(@container 内的)赢 — 因为 @container 仍在它之后</li>
+        <li>这是为什么 "<em>同 specificity 时,后写的赢</em>" 是 cascade 最后一道防线</li>
+        <li><em>注意</em>: position 字段在 Blink 的 CascadePriority 里只有 4 bit · 同一 stylesheet 内 15 条以上同 priority 规则会<em>溢出</em>(实测罕见)</li>
+      </ul>
+      <ul class="tc-body lang-en-only">
+        <li>Suppose The Card adds: <code>.card { padding: 2rem }</code> (unlayered, same origin / layer / specificity as @container's .card)</li>
+        <li>Cascade steps ①-⑤ all tie — both (0, 1, 0) · both unlayered · both author</li>
+        <li>Step ⑥ <strong>order of appearance</strong> enters: whoever is <em>later in stylesheet</em> wins</li>
+        <li>Original Card order: [1]:root → [2]@layer → [3].card:hover → [4]@container</li>
+        <li>If new <code>.card { padding: 2rem }</code> goes <em>last</em> (position 5) → <strong>padding = 2rem wins</strong></li>
+        <li>If it goes before [2] → padding = 1rem (@container's) wins, because @container is still later</li>
+        <li>This is why "<em>later wins on tie</em>" is cascade's final tiebreaker</li>
+        <li><em>Note</em>: Blink's CascadePriority gives position only 4 bits · 15+ rules with same priority in one stylesheet would <em>overflow</em> (rare in practice)</li>
+      </ul>
+    </aside>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -4519,6 +4714,47 @@ candidates += rule_set.universal_rules_;
   <span class="kw">return</span> <span class="kw">true</span>;
 }</pre>
 
+    <h3 class="sub lang-zh-only">@layer 实现 · CascadeLayer + LayerMap</h3>
+    <h3 class="sub lang-en-only">@layer impl · CascadeLayer + LayerMap</h3>
+
+    <pre class="code"><span class="cm">// core/css/cascade_layer.h · simplified</span>
+
+<span class="kw">class</span> <span class="ty">CascadeLayer</span> {
+  <span class="ty">String</span> name_;                            <span class="cm">// "base" / "theme" / "" (anonymous)</span>
+  <span class="kw">uint32_t</span> order_;                          <span class="cm">// resolved order index — lower = earlier = lower priority</span>
+  HeapVector&lt;Member&lt;<span class="ty">CascadeLayer</span>&gt;&gt; sublayers_; <span class="cm">// @layer theme { @layer dark { ... } }</span>
+};
+
+<span class="kw">class</span> <span class="ty">LayerMap</span> {
+  HashMap&lt;<span class="ty">String</span>, Member&lt;<span class="ty">CascadeLayer</span>&gt;&gt; by_name_;
+  HeapVector&lt;Member&lt;<span class="ty">CascadeLayer</span>&gt;&gt; in_order_;     <span class="cm">// determined by declaration order</span>
+  Member&lt;<span class="ty">CascadeLayer</span>&gt; implicit_unlayered_;       <span class="cm">// the "naked" bucket · always highest</span>
+};
+
+<span class="cm">// When parser encounters @layer reset, base, theme; it CREATES (or finds) these layers</span>
+<span class="cm">// in the order they appear. Subsequent @layer reset { ... } blocks reopen the same layer.</span>
+
+<span class="kw">void</span> <span class="ty">LayerMap</span>::<span class="fn">DeclareOrder</span>(<span class="kw">const</span> Vector&lt;<span class="ty">String</span>&gt;&amp; names) {
+  <span class="kw">for</span> (<span class="ty">size_t</span> i = <span class="num">0</span>; i &lt; names.<span class="fn">size</span>(); ++i) {
+    <span class="ty">CascadeLayer</span>* layer = <span class="fn">EnsureLayer</span>(names[i]);
+    layer-&gt;order_ = i;     <span class="cm">// "reset" gets 0, "base" gets 1, "theme" gets 2</span>
+  }
+  <span class="cm">// implicit_unlayered_->order_ = std::numeric_limits&lt;uint32_t&gt;::max()</span>
+  <span class="cm">// (so it always wins layer comparison)</span>
+}
+
+<span class="cm">// Cascade step ④ — comparing two declarations' layers:</span>
+<span class="kw">bool</span> <span class="fn">LayerWins</span>(<span class="kw">const</span> <span class="ty">CascadeLayer</span>* a, <span class="kw">const</span> <span class="ty">CascadeLayer</span>* b) {
+  <span class="kw">return</span> a-&gt;order_ &gt; b-&gt;order_;
+}</pre>
+
+    <div class="note copper">
+      <span class="ntag lang-zh-only">@layer 嵌套的细节</span>
+      <span class="ntag lang-en-only">@layer nesting details</span>
+      <span class="lang-zh-only">你能写 <code>@layer framework { @layer base, components, utilities }</code> — 嵌套 layer。Blink 把它实现为<em>分层 order</em>: parent.order * 1000 + child.order(或类似编码),确保<em>整族</em>的优先级跟其它顶层 layer 不交叉。这就是为什么 "<em>嵌套 layer 永远在<em>同名父 layer 内部</em>排序,不会跨家族干扰</em>"。</span>
+      <span class="lang-en-only">You can write <code>@layer framework { @layer base, components, utilities }</code> — nested layers. Blink implements this as <em>hierarchical order</em>: parent.order * 1000 + child.order (or similar encoding), ensuring <em>the whole family's</em> priorities don't cross other top-level layers. This is why "<em>nested layers always sort <em>within their parent layer family</em>, never across families</em>".</span>
+    </div>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -4795,6 +5031,36 @@ candidates += rule_set.universal_rules_;
         <span class="figen">Fig 19·1 · The same <code>width: 50%</code> passes through <em>four distinct values</em> in the engine. Most-misunderstood: <code>getComputedStyle()</code> is named "computed" but <em>returns used</em> (post-layout px). For true computed, use Houdini's <code>computedStyleMap()</code>. This is the root cause of Ch10's warning that <code>getComputedStyle()</code> <em>synchronously triggers layout</em> — it reads the used value which doesn't exist until layout finishes.</span>
       </figcaption>
     </figure>
+
+    <aside class="trace-card cascade">
+      <header class="tc-head">
+        <span class="tc-mark">SPECIMEN · STAGE 7/9</span>
+        <span class="tc-name">The Card</span>
+        <span class="tc-act"><span class="tc-act-num">ACT II</span> · 4-value journey for background</span>
+      </header>
+      <ul class="tc-body lang-zh-only">
+        <li>The Card 的 <code>background</code> 从 cascade 选出 <code>var(--brand)</code>,走过 4 个值:</li>
+        <li><strong>① specified</strong>: <code>"var(--brand)"</code> · cascade 选中的字面值,仍是字符串</li>
+        <li><strong>② computed</strong>: 取决于<em>是否打开</em> @property 注册</li>
+        <li>　• 普通 var: <code>"var(--brand)"</code>(仍保留字符串)— 因为 untyped custom property 不在 computed time 解</li>
+        <li>　• 注册过的 @property: <code>oklch(70% 0.15 250)</code>(被解为 Color 对象)</li>
+        <li><strong>③ used</strong>: <code>oklch(70% 0.15 250)</code> → 转 sRGB → <code>rgb(106, 144, 199)</code> · 注意 oklch 不是显示器原生,要 gamut-map 到 sRGB</li>
+        <li><strong>④ actual</strong>: <code>rgb(106, 144, 199)</code> · 8-bit per channel(实际值 0-255 整数),HDR display 上可能精度更高</li>
+        <li><code>getComputedStyle(.card).background</code> 返回 <strong>"rgb(106, 144, 199)"</strong>(used)</li>
+        <li><code>el.computedStyleMap().get('background-color')</code> 返回 <strong>CSSColorValue</strong>(computed,可能保留 oklch 信息)</li>
+      </ul>
+      <ul class="tc-body lang-en-only">
+        <li>The Card's <code>background</code> winning <code>var(--brand)</code> traverses 4 values:</li>
+        <li><strong>① specified</strong>: <code>"var(--brand)"</code> · the literal cascade-winning value, still a string</li>
+        <li><strong>② computed</strong>: depends on whether @property is registered</li>
+        <li>　• Plain var: <code>"var(--brand)"</code> (string preserved) — untyped custom properties aren't resolved at computed time</li>
+        <li>　• Registered via @property: <code>oklch(70% 0.15 250)</code> (resolved to Color object)</li>
+        <li><strong>③ used</strong>: <code>oklch(70% 0.15 250)</code> → sRGB → <code>rgb(106, 144, 199)</code> · note OKLCH isn't display-native, gamut-mapped to sRGB</li>
+        <li><strong>④ actual</strong>: <code>rgb(106, 144, 199)</code> · 8 bits per channel (integers 0-255); HDR displays may use higher precision</li>
+        <li><code>getComputedStyle(.card).background</code> returns <strong>"rgb(106, 144, 199)"</strong> (used)</li>
+        <li><code>el.computedStyleMap().get('background-color')</code> returns <strong>CSSColorValue</strong> (computed, may keep oklch info)</li>
+      </ul>
+    </aside>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
@@ -5372,6 +5638,32 @@ candidates += rule_set.universal_rules_;
       </figcaption>
     </figure>
 
+    <aside class="trace-card anim">
+      <header class="tc-head">
+        <span class="tc-mark">SPECIMEN · STAGE 9/9</span>
+        <span class="tc-name">The Card</span>
+        <span class="tc-act"><span class="tc-act-num">ACT III</span> · transition becomes Animation</span>
+      </header>
+      <ul class="tc-body lang-zh-only">
+        <li>The Card 的 <code>transition: 200ms</code> 在 :hover 触发时,Blink 在 <code>CSSAnimations::Update()</code> 里生成:</li>
+        <li>　• <em>1 个 Animation 对象</em>(挂 Document timeline,start_time = now,playback_rate = 1)</li>
+        <li>　• <em>1 个 KeyframeEffect</em>(target = .card · keyframes = [{background: var(--brand)}, {background: color-mix(...)}] · timing = {duration: 200, easing: ease})</li>
+        <li>JS 可以拿到这个 Animation: <code>card.getAnimations()[0]</code> · 跟手写 <code>element.animate()</code> <em>完全相同</em></li>
+        <li>反向时(鼠标离开):Blink 不<em>新建</em> Animation,而是把原 Animation 的 <code>playback_rate</code> 设 -1 → 它反着跑回起点</li>
+        <li>结束时:Animation 对象的 <code>play_state</code> 变 finished,KeyframeEffect 还在缓存里 — 万一同一 transition 短期内又触发,直接复用</li>
+        <li>实测:transition 比 JS <code>element.animate()</code> <em>稍快</em>(~10 µs)— 因为不走 JS binding,直接 C++ → C++</li>
+      </ul>
+      <ul class="tc-body lang-en-only">
+        <li>The Card's <code>transition: 200ms</code> on :hover, Blink generates in <code>CSSAnimations::Update()</code>:</li>
+        <li>　• <em>1 Animation object</em> (on Document timeline, start_time = now, playback_rate = 1)</li>
+        <li>　• <em>1 KeyframeEffect</em> (target = .card · keyframes = [{background: var(--brand)}, {background: color-mix(...)}] · timing = {duration: 200, easing: ease})</li>
+        <li>JS gets this Animation via <code>card.getAnimations()[0]</code> · <em>identical</em> to a hand-written <code>element.animate()</code></li>
+        <li>On reverse (cursor leaves): Blink doesn't <em>create</em> a new Animation; it flips the existing one's <code>playback_rate</code> to -1 → runs backward to start</li>
+        <li>On finish: Animation's <code>play_state</code> becomes "finished"; KeyframeEffect stays cached — if the same transition fires soon, it reuses</li>
+        <li>Measured: transition is <em>slightly faster</em> than JS <code>element.animate()</code> (~10 µs) — avoids the JS binding round-trip, stays C++ to C++</li>
+      </ul>
+    </aside>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -5748,6 +6040,32 @@ window.<span class="fn">addEventListener</span>(<span class="str">'scroll'</span
       </figcaption>
     </figure>
 
+    <aside class="trace-card anim">
+      <header class="tc-head">
+        <span class="tc-mark">SPECIMEN · EXTENSION</span>
+        <span class="tc-name">The Card · adding scroll-driven</span>
+        <span class="tc-act"><span class="tc-act-num">hypothetical</span> · viewport-aware Card</span>
+      </header>
+      <ul class="tc-body lang-zh-only">
+        <li>给 The Card 加上 <code>animation: appear linear; animation-timeline: view(); animation-range: entry 0% cover 50%</code></li>
+        <li>意思: <em>.card 滚入 viewport 时</em>触发动画;<em>滚到 viewport 一半时</em>动画进度到 100%</li>
+        <li>Blink 给该 .card 创建 <code>ViewTimeline</code> 对象 — 时间源是 .card 在 viewport 里的<em>进度比</em>(0 = 刚进入,1 = 完全可见)</li>
+        <li>Animation 跟普通 <code>animation</code> 完全相同,但<em>每帧</em> Blink 不读 wall-clock,而是问 Compositor: ".card 当前 viewport 进度?"</li>
+        <li>Compositor 自带 .card 的 layout 信息(transform / scroll offset) → 直接算出进度,推到 ① main 线程更新 KeyframeEffect 的 currentTime</li>
+        <li>整路径<em>不走</em> JS · 主线程负载几乎零 · 60 fps 在 100 个 .card 同时入屏时仍稳定</li>
+        <li>跟 JS scroll listener 对比: 主线程负载从 ~5 ms/帧 → &lt;0.1 ms/帧</li>
+      </ul>
+      <ul class="tc-body lang-en-only">
+        <li>Adding <code>animation: appear linear; animation-timeline: view(); animation-range: entry 0% cover 50%</code> to The Card</li>
+        <li>Meaning: <em>when .card scrolls into viewport</em>, fire the animation; <em>when scrolled to viewport's middle</em>, animation reaches 100%</li>
+        <li>Blink creates a <code>ViewTimeline</code> for this .card — time source is the <em>progress ratio</em> of .card in viewport (0 = just entering, 1 = fully visible)</li>
+        <li>Animation runs identically to a normal <code>animation</code>, but each frame Blink doesn't read wall-clock — it asks the compositor: "what's .card's current viewport progress?"</li>
+        <li>Compositor already has .card's layout (transform / scroll offset) → computes progress directly, pushes to main thread to update KeyframeEffect's currentTime</li>
+        <li>Whole path <em>bypasses</em> JS · main-thread cost near zero · 60 fps holds with 100 .cards scrolling in simultaneously</li>
+        <li>vs JS scroll listener: main-thread load drops from ~5 ms/frame → &lt;0.1 ms/frame</li>
+      </ul>
+    </aside>
+
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
       <div class="lang-zh-only">
@@ -6039,6 +6357,56 @@ window.<span class="fn">addEventListener</span>(<span class="str">'scroll'</span
         <span class="figen">Fig 27·1 · CSS Nesting is <em>syntactic sugar</em> — the parser in <code>ConsumeQualifiedRule</code> <em>expands</em> nested <code>&amp;</code> references into multiple independent CSSStyleRules. CSSOM sees the <em>flat structure</em>; Cascade (Ch15) runs <em>independently</em> on each rule — it <em>doesn't know</em> the source was nested. That's why nesting doesn't affect specificity / cascade behavior, only authoring ergonomics.</span>
       </figcaption>
     </figure>
+
+    <aside class="trace-card">
+      <header class="tc-head">
+        <span class="tc-mark">SPECIMEN · NESTED VARIANT</span>
+        <span class="tc-name">The Card · written with CSS Nesting</span>
+        <span class="tc-act"><span class="tc-act-num">syntactic sugar</span> · same CSSOM</span>
+      </header>
+      <ul class="tc-body lang-zh-only">
+        <li>The Card 用 CSS Nesting 写法:</li>
+        <li><pre style="margin:6px 0; padding:8px; background:var(--bg-soft); font-size:11px; color:var(--ink); border-radius:3px;">.card {
+  padding: 0.5rem;
+  background: var(--brand);
+
+  &amp;:hover {
+    background: color-mix(in oklch, var(--brand), white 20%);
+    transition: 200ms;
+  }
+
+  @container (min-width: 400px) {
+    padding: 1rem;
+  }
+}</pre></li>
+        <li>parser 在 <code>ConsumeQualifiedRule</code> 看到 <code>&amp; :hover</code> 时,把它<em>展开</em>成独立的 <code>.card:hover</code> CSSStyleRule · 跟原版 The Card <em>CSSOM 结构完全一致</em></li>
+        <li>嵌套的 <code>@container</code> 也展开成独立 CSSContainerRule,内含 <code>.card { padding: 1rem }</code></li>
+        <li>cascade / specificity 行为<em>完全相同</em> — 嵌套只影响<em>书写</em>,不影响<em>语义</em></li>
+        <li>parse 速度: 嵌套版本 ~5 µs(<em>稍慢</em>,因为多了一层 <code>&amp;</code> resolution),CSSOM 总体内存占用相同</li>
+        <li>实战建议: 大型 design system 优先用嵌套(可读性好);单文件极小 CSS(landing page)平铺写法更直观</li>
+      </ul>
+      <ul class="tc-body lang-en-only">
+        <li>The Card written with CSS Nesting:</li>
+        <li><pre style="margin:6px 0; padding:8px; background:var(--bg-soft); font-size:11px; color:var(--ink); border-radius:3px;">.card {
+  padding: 0.5rem;
+  background: var(--brand);
+
+  &amp;:hover {
+    background: color-mix(in oklch, var(--brand), white 20%);
+    transition: 200ms;
+  }
+
+  @container (min-width: 400px) {
+    padding: 1rem;
+  }
+}</pre></li>
+        <li>Parser in <code>ConsumeQualifiedRule</code> sees <code>&amp; :hover</code> and <em>expands</em> it into an independent <code>.card:hover</code> CSSStyleRule · <em>identical CSSOM</em> to the original Card</li>
+        <li>Nested <code>@container</code> expands to a standalone CSSContainerRule containing <code>.card { padding: 1rem }</code></li>
+        <li>cascade / specificity behavior is <em>identical</em> — nesting affects <em>authoring</em> only, not <em>semantics</em></li>
+        <li>Parse speed: nested version ~5 µs (<em>slightly slower</em>, extra <code>&amp;</code> resolution); CSSOM memory footprint identical</li>
+        <li>Practical: large design systems lean into nesting (readability); tiny single-file CSS (landing page) is more direct flat</li>
+      </ul>
+    </aside>
 
     <div class="chap-refs">
       <div class="cr-head">CHAPTER REFERENCES</div>
