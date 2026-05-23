@@ -90,7 +90,7 @@
 - **Size:** 256×256 px
 - **Prompt:** A plush over-stuffed armchair upholstered in soft dusty-rose linen, isometric 45-degree view. An open book lies face-down on the seat (suggesting "just got up"). A folded knit blanket draped over one arm. A small side table next to it holds a steaming cup of tea. Warm and inviting, the kind of chair you sink into for hours. Transparent background, no ground shadow.
 
-### C05 — Campfire ring (CHAT / AI COMPANION)  `[ ]`
+### C05 — Campfire ring (CHAT / AI COMPANION)  `[x]`
 - **File:** `output/buildings/C05-campfire.png`
 - **Size:** 256×256 px
 - **Prompt:** A small stone fire ring with a warm orange campfire burning gently, isometric 45-degree view. 3-4 rounded stones arranged in a circle. Small log pile next to it. One short cozy log bench (a single split log on two stone supports) facing the fire. Soft warm glow radiates from the flame (the glow should be drawn into the sprite itself, not as a separate light). Evening dusk warmth. Transparent background, no ground shadow.
