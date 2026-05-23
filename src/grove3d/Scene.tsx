@@ -3,11 +3,12 @@
 
 import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier'
 import Ground from './Ground'
-import PlaceholderSakura from './PlaceholderSakura'
+import { Sakura } from './Sakura'
 import StoneLantern from './StoneLantern'
 import SittingStone from './SittingStone'
 import Mochi from './Mochi'
 import Player from './Player'
+import PeerAvatar from './PeerAvatar'
 import GlowRing from './GlowRing'
 import { useGroveStore } from './store'
 
@@ -23,9 +24,11 @@ export default function Scene() {
         <Ground />
       </RigidBody>
 
-      {/* 1 hero (off-center per asymmetry principle) */}
-      <RigidBody type="fixed" colliders="cuboid">
-        <PlaceholderSakura position={[2.5, 0, -2]} />
+      {/* 1 hero sakura (Heap Plaza port, alpha-cut petals InstancedMesh) */}
+      <RigidBody type="fixed" colliders={false}>
+        {/* Trunk collider — keep player from walking through */}
+        <CuboidCollider args={[0.25, 1.5, 0.25]} position={[2.5, 1.5, -2]} />
+        <Sakura position={[2.5, 0, -2]} seed={42} size={1.5} hero />
       </RigidBody>
 
       {/* Stone lanterns — collidable so player can't walk through */}
@@ -48,6 +51,9 @@ export default function Scene() {
       {/* Characters */}
       <PlayerWithMarker />
       <Mochi />
+
+      {/* Multiplayer peers (SHU-733/735) */}
+      <Peers />
     </Physics>
   )
 }
@@ -58,5 +64,16 @@ function PlayerWithMarker() {
     <group userData={{ isPlayer: true }}>
       <Player spawn={[-2, 1.2, 5]} />
     </group>
+  )
+}
+
+function Peers() {
+  const peers = useGroveStore((s) => s.peers)
+  return (
+    <>
+      {Object.values(peers).map((p) => (
+        <PeerAvatar key={p.id} {...p} />
+      ))}
+    </>
   )
 }

@@ -1,38 +1,56 @@
-// SHU-733 · Stylized stone lantern with warm emissive flame inside.
-// Simple stack of primitives — gets replaced with proper Heap Plaza
-// StoneLantern in Phase 1, but this is enough to test composition.
+// SHU-733 Phase 11 · Stone lantern — ported from Heap Plaza JapanGarden.
+// Realistic ishidōrō: 3-tier base + tall column + hibukuro (emissive fire
+// box with subtle transmission) + kasa pyramid roof + gold finial.
+// Roughly 5k tris each. Adds a warm point light.
 
 type Props = { position: [number, number, number] }
 
 export default function StoneLantern({ position }: Props) {
   return (
     <group position={position}>
-      {/* base stone */}
-      <mesh position={[0, 0.15, 0]} castShadow receiveShadow>
-        <cylinderGeometry args={[0.35, 0.4, 0.3, 8]} />
-        <meshStandardMaterial color="#5a5a5a" roughness={0.9} />
+      {/* 3-tier base */}
+      <mesh castShadow receiveShadow position={[0, 0.18, 0]}>
+        <cylinderGeometry args={[0.45, 0.55, 0.3, 8]} />
+        <meshPhysicalMaterial color="#9b9486" roughness={0.85} />
       </mesh>
-      {/* pillar */}
-      <mesh position={[0, 0.55, 0]} castShadow>
-        <cylinderGeometry args={[0.08, 0.08, 0.5, 8]} />
-        <meshStandardMaterial color="#4a4a4a" roughness={0.9} />
+      <mesh castShadow receiveShadow position={[0, 0.4, 0]}>
+        <cylinderGeometry args={[0.36, 0.4, 0.16, 8]} />
+        <meshPhysicalMaterial color="#a8a08e" roughness={0.85} />
       </mesh>
-      {/* lamp box (emissive interior) */}
-      <mesh position={[0, 0.95, 0]} castShadow>
-        <boxGeometry args={[0.35, 0.3, 0.35]} />
-        <meshStandardMaterial
-          color="#3d2810"
-          emissive="#ffb060"
-          emissiveIntensity={2.5}
-          roughness={0.8}
+      {/* tall central column */}
+      <mesh castShadow position={[0, 0.88, 0]}>
+        <cylinderGeometry args={[0.08, 0.11, 0.78, 8]} />
+        <meshPhysicalMaterial color="#7a7468" roughness={0.85} />
+      </mesh>
+      {/* mid-disc */}
+      <mesh castShadow position={[0, 1.32, 0]}>
+        <cylinderGeometry args={[0.32, 0.36, 0.1, 8]} />
+        <meshPhysicalMaterial color="#7a7468" roughness={0.85} />
+      </mesh>
+      {/* hibukuro (fire box) */}
+      <mesh castShadow position={[0, 1.58, 0]}>
+        <boxGeometry args={[0.45, 0.42, 0.45]} />
+        <meshPhysicalMaterial
+          color="#fdf6dc"
+          emissive="#fcb84d"
+          emissiveIntensity={2.0}
+          roughness={0.4}
+          transmission={0.25}
+          ior={1.3}
+          thickness={0.1}
         />
       </mesh>
-      <pointLight position={[0, 0.95, 0]} intensity={0.6} distance={3.5} color="#ffb060" />
-      {/* roof */}
-      <mesh position={[0, 1.2, 0]} castShadow>
-        <coneGeometry args={[0.35, 0.2, 4]} />
-        <meshStandardMaterial color="#3a3a3a" roughness={0.9} />
+      {/* roof (kasa) — pyramid */}
+      <mesh castShadow position={[0, 1.94, 0]}>
+        <coneGeometry args={[0.5, 0.32, 8]} />
+        <meshPhysicalMaterial color="#3c352c" roughness={0.85} />
       </mesh>
+      {/* finial */}
+      <mesh castShadow position={[0, 2.18, 0]}>
+        <sphereGeometry args={[0.07, 8, 6]} />
+        <meshPhysicalMaterial color="#fcd34d" metalness={0.95} roughness={0.2} emissive="#fcd34d" emissiveIntensity={0.5} />
+      </mesh>
+      <pointLight position={[0, 1.6, 0]} intensity={0.9} distance={6} color="#fcb84d" />
     </group>
   )
 }

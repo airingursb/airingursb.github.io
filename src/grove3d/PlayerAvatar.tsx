@@ -1,13 +1,14 @@
-// SHU-733 Phase 3 · Species avatar (placeholder + future GLB loader)
+// SHU-733 Phase 3 · Species avatar with GLB auto-load + placeholder fallback.
 //
-// Strategy: try to load `/3d/animals/{species}.glb` via drei useGLTF.
-// If asset missing (asset-sourcing in progress per Phase 3), render a
-// per-species colored capsule + emoji nameplate as graceful fallback.
+// Strategy:
+//   1. Try fetch HEAD `/3d/animals/{species}.glb`
+//   2. If 200 → render <RealGLBAvatar species/> via drei useGLTF
+//   3. If 404 → render <PlaceholderCapsule species/> (colored capsule + emoji)
 //
-// When real GLBs arrive in public/3d/animals/, this component
-// automatically picks them up — no code change needed.
+// As asset sourcing lands files into public/3d/animals/, avatars upgrade
+// automatically — no code change required.
 
-import { useEffect, useRef, type MutableRefObject } from 'react'
+import { Suspense, useEffect, useMemo, useState, type MutableRefObject } from 'react'
 import { Billboard, Text, useGLTF, useAnimations } from '@react-three/drei'
 import * as THREE from 'three'
 import { SkeletonUtils } from 'three-stdlib'
@@ -51,13 +52,76 @@ interface Props {
   animState?: MutableRefObject<'idle' | 'walking' | 'running' | 'jumping'>
 }
 
-export default function PlayerAvatar({ species }: Props) {
-  // Try GLB first, fall back to placeholder if it 404s.
-  // We use a try-catch via fetch HEAD; could be done with Suspense + error
-  // boundary too, but useGLTF logs errors loudly on miss. Quiet path: just
-  // render placeholder by default, swap in GLB once asset_present detected.
-  // For now: always placeholder. Wire real GLB in Phase 3 once assets land.
+// Module-level cache so we don't re-probe the same URL on every avatar mount
+const _assetExistsCache = new Map<string, boolean>()
+
+export default function PlayerAvatar({ species, animState }: Props) {
+  const [hasGLB, setHasGLB] = useState<boolean | null>(() => _assetExistsCache.get(species) ?? null)
+
+  useEffect(() => {
+    if (hasGLB !== null) return
+    const url = `/3d/animals/${species}.glb`
+    fetch(url, { method: 'HEAD' })
+      .then((r) => {
+        const exists = r.ok
+        _assetExistsCache.set(species, exists)
+        setHasGLB(exists)
+      })
+      .catch(() => {
+        _assetExistsCache.set(species, false)
+        setHasGLB(false)
+      })
+  }, [species, hasGLB])
+
+  if (hasGLB === true) {
+    return (
+      <Suspense fallback={<PlaceholderCapsule species={species} />}>
+        <RealGLBAvatar species={species} animState={animState} />
+      </Suspense>
+    )
+  }
   return <PlaceholderCapsule species={species} />
+}
+
+function RealGLBAvatar({ species, animState }: Props) {
+  const url = `/3d/animals/${species}.glb`
+  const { scene, animations } = useGLTF(url)
+  // Clone so multiple instances (peers!) don't share a skeleton
+  const cloned = useMemo(() => {
+    const c = SkeletonUtils.clone(scene)
+    c.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh) {
+        ;(o as THREE.Mesh).castShadow = true
+        ;(o as THREE.Mesh).receiveShadow = true
+      }
+    })
+    return c
+  }, [scene])
+
+  const groupRef = useMemo(() => ({ current: null as THREE.Group | null }), [])
+  const { actions } = useAnimations(animations, groupRef)
+
+  useEffect(() => {
+    if (!animState) {
+      actions['Idle']?.reset().fadeIn(0.3).play()
+      return
+    }
+    // Pick action by current anim state; map to common GLB animation names
+    const want =
+      animState.current === 'walking'  ? 'Walking' :
+      animState.current === 'running'  ? 'Running' :
+      animState.current === 'jumping'  ? 'Jump'    :
+                                         'Idle'
+    const action = actions[want] ?? actions['Idle']
+    action?.reset().fadeIn(0.2).play()
+    return () => { action?.fadeOut(0.2) }
+  }, [actions, animState?.current])
+
+  return (
+    <group ref={(g) => { groupRef.current = g }} position={[0, -0.7, 0]}>
+      <primitive object={cloned} />
+    </group>
+  )
 }
 
 function PlaceholderCapsule({ species }: { species: string }) {
@@ -67,17 +131,14 @@ function PlaceholderCapsule({ species }: { species: string }) {
 
   return (
     <group position={[0, -0.7, 0]}>
-      {/* Body */}
       <mesh position={[0, 0.6, 0]} castShadow>
         <capsuleGeometry args={[0.3, 0.55, 8, 16]} />
         <meshStandardMaterial color={color} roughness={0.85} />
       </mesh>
-      {/* Head */}
       <mesh position={[0, 1.25, 0]} castShadow>
         <sphereGeometry args={[0.27, 16, 12]} />
         <meshStandardMaterial color={color} roughness={0.85} />
       </mesh>
-      {/* Ears (species-specific accent) */}
       <mesh position={[-0.16, 1.42, 0]} castShadow>
         <sphereGeometry args={[0.08, 12, 8]} />
         <meshStandardMaterial color={accent} roughness={0.85} />
@@ -86,29 +147,13 @@ function PlaceholderCapsule({ species }: { species: string }) {
         <sphereGeometry args={[0.08, 12, 8]} />
         <meshStandardMaterial color={accent} roughness={0.85} />
       </mesh>
-      {/* Tail wisp */}
       <mesh position={[0, 0.6, -0.32]} castShadow>
         <sphereGeometry args={[0.12, 10, 8]} />
         <meshStandardMaterial color={accent} roughness={0.85} />
       </mesh>
-      {/* Emoji billboard above head — readable mini-identifier */}
       <Billboard position={[0, 1.95, 0]}>
         <Text fontSize={0.22} anchorY="bottom">{emoji}</Text>
       </Billboard>
     </group>
   )
-}
-
-/**
- * Real-GLB loader for when assets land in /public/3d/animals/.
- * Currently unused — wire into PlayerAvatar once first species GLB is in.
- *
- * Pattern (per Heap Plaza CharacterController):
- *   const { scene, animations } = useGLTF(`/3d/animals/${species}.glb`)
- *   const cloned = useMemo(() => SkeletonUtils.clone(scene), [scene])
- *   const { actions } = useAnimations(animations, ref)
- *   useEffect(() => { actions[animState.current]?.play(); ... }, [animState])
- */
-function _RealGLBAvatar(_: Props) {
-  return null
 }

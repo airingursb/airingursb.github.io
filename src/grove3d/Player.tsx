@@ -12,6 +12,7 @@ import { RigidBody, CapsuleCollider, type RapierRigidBody } from '@react-three/r
 import * as THREE from 'three'
 import PlayerAvatar from './PlayerAvatar'
 import { useGroveStore } from './store'
+import { sendMove } from './ws'
 
 const WALK_SPEED = 4
 const RUN_SPEED  = 7
@@ -97,6 +98,10 @@ export default function Player({ spawn = [-2, 1.2, 4] }: Props) {
     } else if (Math.abs(cur.y) < 0.3) {
       animState.current = 'idle'
     }
+
+    // SHU-733/735 · multiplayer position broadcast (throttled inside sendMove)
+    const _pos = body.current.translation()
+    sendMove(_pos.x, _pos.y, _pos.z, visual.current.rotation.y)
 
     // Camera follow (orbit around player at yaw/pitch)
     const playerPos = body.current.translation()

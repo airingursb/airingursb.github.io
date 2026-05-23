@@ -4,7 +4,8 @@
 // sakura tree. Heap Plaza assets get ported in next commits.
 
 import { Canvas } from '@react-three/fiber'
-import { ContactShadows, Stars } from '@react-three/drei'
+import { ContactShadows, Stars, Environment } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette, SMAA } from '@react-three/postprocessing'
 import { Suspense, useEffect } from 'react'
 import Scene from './Scene'
 import ChatOverlay from './ChatOverlay'
@@ -12,6 +13,7 @@ import Tutorial from './Tutorial'
 import MobileJoystick from './MobileJoystick'
 import { useGroveStore, postToParent } from './store'
 import { acceptQuest } from './api'
+import { connectWorld, disconnectWorld } from './ws'
 
 export default function App() {
   const setSpecies = useGroveStore((s) => s.setSpecies)
@@ -28,15 +30,20 @@ export default function App() {
     acceptQuest('mochi_grove_walk')
     postToParent({ type: 'ready' })
 
-    // Dev affordance: hit `S` to toggle straight into seated stage so we can
-    // exercise the chat overlay without walking yet (Phase 2 brings Player).
+    // SHU-733/735 · Multiplayer co-presence: connect to /api/world/mochi_grove/ws
+    connectWorld('mochi_grove', { species, displayName: name })
+
+    // Dev affordance: Shift+S jumps straight into seated (skip walk)
     const onKey = (e: KeyboardEvent) => {
       if (e.code === 'KeyS' && (e.shiftKey || e.ctrlKey)) {
         setStage('seated')
       }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      disconnectWorld()
+    }
   }, [setSpecies, setDisplayName, setStage])
 
   return (
@@ -67,6 +74,9 @@ export default function App() {
       />
 
       <Suspense fallback={null}>
+        {/* HDR night ambience (drei preset) — costs ~256KB HDRI but huge
+            visual upgrade. material clearcoat / transmission start to read. */}
+        <Environment preset="night" />
         <Stars radius={50} depth={40} count={1500} factor={3} fade speed={0.3} />
         <Scene />
         <ContactShadows
@@ -76,6 +86,12 @@ export default function App() {
           blur={2.5}
           far={6}
         />
+        {/* Post-processing — Bloom on the lantern emissives + soft vignette + SMAA */}
+        <EffectComposer multisampling={0}>
+          <Bloom intensity={0.45} luminanceThreshold={0.6} luminanceSmoothing={0.4} mipmapBlur />
+          <Vignette eskil={false} offset={0.2} darkness={0.55} />
+          <SMAA />
+        </EffectComposer>
       </Suspense>
 
       {/* TODO: replace OrbitControls with proper Player + camera follow */}
