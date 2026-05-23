@@ -16,7 +16,8 @@
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { Suspense } from 'react'
+import { Suspense, useEffect, useRef } from 'react'
+import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast, SSAO, DepthOfField, Vignette } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { ACESFilmicToneMapping } from 'three'
@@ -64,6 +65,48 @@ function detectQuality(): 'high' | 'medium' | 'low' {
   return 'high'
 }
 const QUALITY = typeof window !== 'undefined' ? detectQuality() : 'medium'
+
+function CameraControls() {
+  const ref = useRef<OrbitControlsImpl | null>(null)
+  useEffect(() => {
+    function onReset() {
+      const c = ref.current
+      if (!c) return
+      c.reset()
+    }
+    window.addEventListener('world-reset-camera', onReset)
+    return () => window.removeEventListener('world-reset-camera', onReset)
+  }, [])
+  return (
+    <OrbitControls
+      ref={ref as any}
+      target={[0, 5, 0]}
+      enablePan={false}
+      enableZoom={true}
+      minDistance={22}
+      maxDistance={50}
+      minPolarAngle={Math.PI * 0.12}
+      maxPolarAngle={Math.PI * 0.44}
+      autoRotate
+      autoRotateSpeed={0.1}
+    />
+  )
+}
+
+// Day/dusk theme toggle stub — wires WorldUI button to scene state.
+// (For now just no-op; future: swap directional light color/intensity.)
+function ThemeListener() {
+  useEffect(() => {
+    function onTheme(e: Event) {
+      const next = (e as CustomEvent).detail as 'day' | 'dusk'
+      // Stub — record on body for any consumer to react via CSS variables
+      document.body.dataset.worldTheme = next
+    }
+    window.addEventListener('world-theme', onTheme)
+    return () => window.removeEventListener('world-theme', onTheme)
+  }, [])
+  return null
+}
 
 export default function App() {
   return (
@@ -139,18 +182,9 @@ export default function App() {
         <AmbientFX />
       </Suspense>
 
-      {/* === Camera — slow rotation, raised target so cabin roof + gazebo are centered === */}
-      <OrbitControls
-        target={[0, 5, 0]}
-        enablePan={false}
-        enableZoom={true}
-        minDistance={22}
-        maxDistance={50}
-        minPolarAngle={Math.PI * 0.12}
-        maxPolarAngle={Math.PI * 0.44}
-        autoRotate
-        autoRotateSpeed={0.1}
-      />
+      <CameraControls />
+      {/* Theme switch — listens for 'world-theme' event */}
+      <ThemeListener />
 
       {/* Adaptive post-processing — drop expensive passes on low-tier devices */}
       <EffectComposer multisampling={0}>
