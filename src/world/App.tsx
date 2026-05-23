@@ -16,7 +16,7 @@
 
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useRef, useState } from 'react'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast, SSAO, DepthOfField, Vignette } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
@@ -93,22 +93,53 @@ function CameraControls() {
   )
 }
 
-// Day/dusk theme toggle stub — wires WorldUI button to scene state.
-// (For now just no-op; future: swap directional light color/intensity.)
-function ThemeListener() {
+// Day/dusk theme — listens for 'world-theme' event from WorldUI and
+// swaps directional sun color + ambient warmth. Stage 2: also pulls
+// sky sun position lower for redder horizon, but Sky.tsx is currently
+// module-static so we just adjust the lights here.
+type Theme = 'day' | 'dusk'
+function ThemeAwareLights({ theme }: { theme: Theme }) {
+  const sun = theme === 'day'
+    ? { pos: [20, 11, 9], color: '#FFD09A', intensity: 2.2 }
+    : { pos: [18, 4, 14], color: '#FF9A6A', intensity: 1.6 }
+  const ambient = theme === 'day'
+    ? { color: '#FFE4C0', intensity: 0.35 }
+    : { color: '#E8B888', intensity: 0.28 }
+  return (
+    <>
+      <hemisphereLight args={[theme === 'day' ? '#FFD9A8' : '#E89A6E', theme === 'day' ? '#5A3A28' : '#3A2418', 0.55]} />
+      <ambientLight intensity={ambient.intensity} color={ambient.color} />
+      <directionalLight
+        position={sun.pos as [number, number, number]}
+        intensity={sun.intensity}
+        color={sun.color}
+        castShadow
+        shadow-mapSize={[3072, 3072]}
+        shadow-camera-near={1}
+        shadow-camera-far={100}
+        shadow-camera-left={-32}
+        shadow-camera-right={32}
+        shadow-camera-top={32}
+        shadow-camera-bottom={-32}
+        shadow-bias={-0.0005}
+      />
+      <directionalLight position={[-14, 12, -10]} intensity={0.4} color={theme === 'day' ? '#FAD6B0' : '#D8A088'} />
+      <directionalLight position={[-20, 8, 20]} intensity={0.35} color={theme === 'day' ? '#F4D9A0' : '#D9886B'} />
+    </>
+  )
+}
+
+export default function App() {
+  const [theme, setTheme] = useState<Theme>('day')
   useEffect(() => {
     function onTheme(e: Event) {
-      const next = (e as CustomEvent).detail as 'day' | 'dusk'
-      // Stub — record on body for any consumer to react via CSS variables
+      const next = (e as CustomEvent).detail as Theme
+      setTheme(next)
       document.body.dataset.worldTheme = next
     }
     window.addEventListener('world-theme', onTheme)
     return () => window.removeEventListener('world-theme', onTheme)
   }, [])
-  return null
-}
-
-export default function App() {
   return (
     <Canvas
       shadows
@@ -121,35 +152,13 @@ export default function App() {
         toneMappingExposure: 1.05,
       }}
     >
-      {/* Warm afternoon haze — matches sun palette, no overcast blue */}
-      <fog attach="fog" args={['#F4E4C8', 55, 140]} />
+      {/* Fog tinted to theme */}
+      <fog attach="fog" args={[theme === 'day' ? '#F4E4C8' : '#D89A78', 55, 140]} />
 
       <Sky />
       <Void />
 
-      {/* === Lighting === */}
-      {/* Hemisphere: warm sky + earthy ground bounce (no cool blue) */}
-      <hemisphereLight args={['#FFD9A8', '#5A3A28', 0.55]} />
-      <ambientLight intensity={0.35} color="#FFE4C0" />
-      {/* Warm afternoon sun — elev ~28°, golden but not full sunset */}
-      <directionalLight
-        position={[20, 11, 9]}
-        intensity={2.2}
-        color="#FFD09A"
-        castShadow
-        shadow-mapSize={[3072, 3072]}
-        shadow-camera-near={1}
-        shadow-camera-far={100}
-        shadow-camera-left={-32}
-        shadow-camera-right={32}
-        shadow-camera-top={32}
-        shadow-camera-bottom={-32}
-        shadow-bias={-0.0005}
-      />
-      {/* Fill light — soft warm peach instead of cool blue (lighting cohesion) */}
-      <directionalLight position={[-14, 12, -10]} intensity={0.4} color="#FAD6B0" />
-      {/* Rim light — warm peach from camera-right rear */}
-      <directionalLight position={[-20, 8, 20]} intensity={0.35} color="#F4D9A0" />
+      <ThemeAwareLights theme={theme} />
 
       {/* === The diorama (Suspense-wrapped so async resources show no flash) === */}
       <Suspense fallback={null}>
@@ -183,8 +192,6 @@ export default function App() {
       </Suspense>
 
       <CameraControls />
-      {/* Theme switch — listens for 'world-theme' event */}
-      <ThemeListener />
 
       {/* Adaptive post-processing — drop expensive passes on low-tier devices */}
       <EffectComposer multisampling={0}>
