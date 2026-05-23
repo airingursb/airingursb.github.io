@@ -62,8 +62,17 @@ export default function ZonePanel({ initialData }: { initialData?: InitialData }
 
   if (!zone) return null
 
+  // Click backdrop outside panel to close
+  function onBackdrop(e: React.MouseEvent) {
+    if (e.target === e.currentTarget) close()
+  }
+
   return (
-    <div className={`world-panel${closing ? ' world-panel--closing' : ''}`}>
+    <div className="world-panel-backdrop" onClick={onBackdrop}>
+    <div
+      className={`world-panel${closing ? ' world-panel--closing' : ''}`}
+      onClick={(e) => e.stopPropagation()}
+    >
       <div className="world-panel-head">
         <span className="world-panel-title">{LABELS[zone]}</span>
         <button className="world-panel-close" onClick={close} aria-label="Close">✕</button>
@@ -71,6 +80,7 @@ export default function ZonePanel({ initialData }: { initialData?: InitialData }
       <div className="world-panel-body">
         {renderZoneContent(zone, initialData)}
       </div>
+    </div>
     </div>
   )
 }
