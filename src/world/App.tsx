@@ -207,14 +207,14 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <Campfire />
         <CloudShadows />
         <Lanterns theme={theme} />
-        <DuskFog theme={theme} />
+        {QUALITY !== 'low' && <DuskFog theme={theme} />}
         <Onsen />
         <FoxShrine />
-        <CanopyDapple theme={theme} />
+        {QUALITY !== 'low' && <CanopyDapple theme={theme} />}
         <Footprints />
         <WindChime />
         <PersimmonTree />
-        <SunsetBirds theme={theme} />
+        {QUALITY !== 'low' && <SunsetBirds theme={theme} />}
         <PathMushrooms />
         <ContactShadowsLayer />
         <ZoneHitboxes />
