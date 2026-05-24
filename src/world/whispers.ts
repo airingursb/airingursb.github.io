@@ -45,7 +45,7 @@ export const LINES: WhisperLine[] = [
   { id: 'a16', text: 'Briefly, joy.',                trigger: 'ambient' },
   { id: 'a17', text: '蘑菇也是会做梦的。',            trigger: 'ambient' },
   { id: 'a18', text: 'I dreamt of a city once.',     trigger: 'ambient' },
-  { id: 'a19', text: 'Mochi 在火堆边发呆。',          trigger: 'ambient' },
+  { id: 'a19', text: 'Airing 在火堆边发呆。',         trigger: 'ambient' },
   { id: 'a20', text: 'Everything is on its way.',    trigger: 'ambient' },
   { id: 'a21', text: '瀑布从早到晚不停说话。',        trigger: 'ambient' },
   { id: 'a22', text: 'I am old. I am also new.',     trigger: 'ambient' },

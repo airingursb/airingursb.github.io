@@ -161,10 +161,10 @@
 - **Size:** 320×160 px
 - **Prompt:** Same wooden hanging sign style as E01 (320×160, warm cinnamon plank, two rope-holes at top, hand-lettered). Top line large Chinese "在读" in brush style warm amber. Bottom line smaller English "Reading · Readwise" in casual hand script. A tiny open-book doodle in one corner. Hand-painted softness. Transparent background.
 
-### E05 — Chat / Mochi 招牌  `[x]`
+### E05 — Chat / Airing 招牌  `[ ]` 待重生（rename Mochi → Airing）
 - **File:** `output/banners/E05-chat.png`
 - **Size:** 320×160 px
-- **Prompt:** Same wooden hanging sign style as E01 (320×160, warm cinnamon plank, two rope-holes at top, hand-lettered). Top line large Chinese "聊天" in brush style warm amber. Bottom line smaller English "Chat · Mochi 在木屋" in casual hand script. A tiny bear silhouette doodle in one corner. Hand-painted softness. Transparent background.
+- **Prompt:** Same wooden hanging sign style as E01 (320×160, warm cinnamon plank, two rope-holes at top, hand-lettered). Top line large Chinese "聊天" in brush style warm amber. Bottom line smaller English "Chat · Airing 在木屋" in casual hand script. A tiny panda silhouette doodle in one corner. Hand-painted softness. Transparent background.
 
 ---
 

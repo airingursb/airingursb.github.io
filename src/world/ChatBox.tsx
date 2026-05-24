@@ -1,4 +1,4 @@
-// In-cabin Mochi chat — uses the same /api/ai-companion/chat endpoint
+// In-cabin Airing chat — uses the same /api/ai-companion/chat endpoint
 // at chat.ursb.me that the nook companion UI uses. Streams replies via
 // SSE-style delta events.
 //
@@ -101,18 +101,18 @@ export default function ChatBox() {
       // the path forward, and offer a fallback /nook link.
       if (msg.includes('401') || msg.includes('empty stream')) {
         // 401 = not logged in. Empty stream = rate limit / silent backend.
-        // Both surface as in-character "Mochi paused" instead of raw error.
+        // Both surface as in-character "Airing paused" instead of raw error.
         setMsgs((m) => [
           ...m,
           {
             role: 'assistant',
             text: msg.includes('401')
               ? '（我看着你，没说话——你还没在这个世界登记过名字。要不要先到 nook 那边坐一坐？）'
-              : '（Mochi 沉默了一会儿，火堆噼啪——再问一句试试？）',
+              : '（Airing 沉默了一会儿，火堆噼啪——再问一句试试？）',
           },
         ])
       } else {
-        setError(`Mochi 走神了：${msg}`)
+        setError(`Airing 走神了：${msg}`)
       }
     } finally {
       setPending(false)
@@ -125,7 +125,7 @@ export default function ChatBox() {
       <div className="world-chat-history" ref={histRef}>
         {msgs.map((m, i) => (
           <div key={i} className={`world-chat-msg world-chat-msg-${m.role}`}>
-            {/* Only linkify Mochi messages, not what the user typed back */}
+            {/* Only linkify Airing messages, not what the user typed back */}
             {m.role === 'assistant' && m.text.includes('nook')
               ? m.text.split('nook').flatMap((part, j, arr) =>
                   j === arr.length - 1
@@ -143,8 +143,8 @@ export default function ChatBox() {
           ref={inputRef}
           className="world-chat-input"
           type="text"
-          aria-label="Send a message to Mochi"
-          placeholder="跟 Mochi 说点什么…"
+          aria-label="Send a message to Airing"
+          placeholder="跟 Airing 说点什么…"
           autoComplete="off"
           value={input}
           onChange={(e) => setInput(e.target.value)}

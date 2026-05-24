@@ -18,7 +18,7 @@ interface InitialData {
 }
 
 const LABELS: Record<Interaction, string> = {
-  chat: 'Mochi · 木屋',
+  chat: 'Airing · 木屋',
   blog: 'Blog · 文章',
   comics: 'Comics · 四格漫画',
   music: 'Music · 最近在听',

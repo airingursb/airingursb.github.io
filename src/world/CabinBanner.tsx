@@ -1,5 +1,5 @@
 // Small B&B-style hanging shop sign next to the cabin's front door.
-// Mounts the E05 chat banner (Chat · Mochi 在木屋) on a short wooden
+// Mounts the E05 chat banner (Chat · Airing 在木屋) on a short wooden
 // post + cross-arm, so the cabin reads as the chat work zone.
 
 import { useTexture } from '@react-three/drei'

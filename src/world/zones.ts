@@ -14,7 +14,7 @@ export interface ZoneSpec {
 }
 
 export const ZONES: ZoneSpec[] = [
-  { kind: 'chat',    pos: [-2.0, -1.0], label: 'Chat · 木屋 · 跟 Mochi 聊天' },
+  { kind: 'chat',    pos: [-2.0, -1.0], label: 'Chat · 木屋 · 跟 Airing 聊天' },
   { kind: 'reading', pos: [-4.0, -12.0], label: 'Reading · 树间吊床 · 读书' },
   { kind: 'music',   pos: [13.5, -2.5], label: 'Music · 凉亭 · 最近在听' },
   { kind: 'comics',  pos: [-13.0,  3.0], label: 'Comics · 林间画架 · 四格漫画' },
