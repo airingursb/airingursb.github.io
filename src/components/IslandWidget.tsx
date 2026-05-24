@@ -1,0 +1,1026 @@
+// Inline homepage mini-island — V4 ("kindergarten" → "refined")
+//
+// V3 was rejected as kindergarten. Sub-A critique #1 (4 hrs work order):
+//   1. Sakura was 8 spheres = clown wig → vendor real grove3d Sakura
+//      with weeping Bezier branches + 10K instanced petals (we cap with
+//      density=0.3 for the inline card)
+//   2. Strip flatShading from organic surfaces (trunks/lantern/torii)
+//   3. Cone-stack cedars look like Christmas trees → organicBlob slim
+//      conifers with per-tree seed
+//   4. Box-stack bridge → DELETED (was visual noise)
+//   5. Composition: cut maple + bridge + 1 cedar + add raked gravel
+//      ring for negative space ("ma")
+//   6. Irimoya roof: atan2-correct slabs that meet at ridge + upturned
+//      eave corners (Japanese hip-and-gable)
+//   7. Bloom + Vignette postprocessing (lantern/shoji emissives pop)
+
+import type React from 'react'
+import { Canvas, useFrame } from '@react-three/fiber'
+import { OrbitControls, Sparkles } from '@react-three/drei'
+import { EffectComposer, Bloom, Vignette, ToneMapping, SMAA } from '@react-three/postprocessing'
+import { ToneMappingMode } from 'postprocessing'
+import { ACESFilmicToneMapping, IcosahedronGeometry } from 'three'
+import { useMemo, useRef } from 'react'
+import * as THREE from 'three'
+import { Sakura } from './widget-sakura'
+
+// ── Palette (bright noon Japanese garden) ───────────────────────────
+const SKY            = '#CFE5F5'
+const FOG_TINT       = '#E8E0D0'
+
+const CEDAR_TRUNK    = '#2A1812'
+const CEDAR_DARK     = '#385830'
+const CEDAR_LIGHT    = '#4E6E40'
+
+// V6 (Sub-A #3): warmer Ghibli-correct earth tones + sun-bleached
+// grass highlight. V5 GRASS_LIGHT was dead-center sage with no warmth;
+// SOIL/CLIFF were muddy defaults.
+const GRASS_LIGHT    = '#A8C77A'   // warm sage with yellow tint
+const GRASS_HILIGHT  = '#C7D89A'   // sun-bleached highlight patch
+const GRASS_SHADE    = '#6B8A52'   // violet-cooled shade pocket
+const SOIL           = '#B88560'   // warm cinnamon (was muddy #A07A55)
+const SOIL_DK        = '#8C5E3E'   // cliff color, deeper for gradient
+const CLIFF          = '#8C5E3E'
+const CLIFF_DK       = '#6B4530'   // shadow gradient on cliff face
+
+const GRAVEL_SAND    = '#E6DAC0'   // raked karesansui sand (cream)
+const GRAVEL_LINE    = '#C5B98F'   // darker rake-line tone
+
+const WASHI_WALL     = '#F5E8C8'
+const WASHI_GLOW     = '#FFEFD0'
+const WOOD_POST      = '#3A2516'
+const WOOD_BEAM      = '#5A3A20'
+// Roof was '#3E3845' (nearly black, swallows the bright noon scene).
+// Real kawara is blue-grey with subtle warm highlight.
+const TILE_ROOF_A    = '#5C6470'
+const TILE_ROOF_B    = '#363C48'   // V9: widened from #454C58 (ΔL≈9→20) so per-tile jitter is actually visible
+const TILE_ROOF_MOSS = '#5E7048'   // V10: pushed green channel (was #4A584A — read as shadow not moss)
+const TILE_RIDGE     = '#2E3540'
+
+const STONE_BASE     = '#A89E8E'
+const STONE_HAT      = '#7E7368'
+const LANTERN_GLOW   = '#FFD080'
+
+const VERMILLION     = '#C84A35'
+const TORII_BLACK    = '#1F1812'
+
+// ── Helpers: vendor `organicBlob` from Forest.tsx so canopies have
+//    per-tree silhouette variation (vs identical Christmas-tree cones)
+function organicBlob(radius: number, jitterAmt: number, seed: number): THREE.BufferGeometry {
+  const g = new IcosahedronGeometry(radius, 1)
+  const pos = g.attributes.position
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
+    const n = Math.sin(x * 12.9 + seed) * Math.cos(z * 17.3 + seed * 1.7)
+    pos.setX(i, x + n * jitterAmt * 0.5)
+    pos.setY(i, y + Math.sin(y * 9.1 + seed) * jitterAmt)
+    pos.setZ(i, z + Math.cos(x * 7.7 + seed * 2.3) * jitterAmt * 0.5)
+  }
+  pos.needsUpdate = true
+  g.computeVertexNormals()
+  return g
+}
+
+// ── Cedar (杉) — slim conifer with 4 vertically-stretched organicBlob
+//    canopies. Per-tree seed → no identical trees.
+// Cedar (杉) — proper TALL THIN flame silhouette. V11: gentle wind sway.
+function Cedar({ x, z, scale = 1, seed = 0 }: { x: number; z: number; scale?: number; seed?: number }) {
+  const groupRef = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    if (!groupRef.current) return
+    const t = s.clock.elapsedTime
+    groupRef.current.rotation.z = Math.sin(t * 0.7 + seed * 0.5) * 0.020
+    groupRef.current.rotation.x = Math.cos(t * 0.55 + seed * 0.7) * 0.014
+  })
+
+  const layers = useMemo(() => {
+    const r = (Math.sin(seed * 3.7) + 1) * 0.5
+    return [
+      { y: 0.95, blob: organicBlob(0.34 + r * 0.03, 0.06, seed + 10), color: CEDAR_LIGHT },
+      { y: 1.25, blob: organicBlob(0.30 + r * 0.03, 0.06, seed + 20), color: CEDAR_DARK },
+      { y: 1.55, blob: organicBlob(0.25 + r * 0.03, 0.05, seed + 30), color: CEDAR_LIGHT },
+      { y: 1.82, blob: organicBlob(0.20 + r * 0.02, 0.05, seed + 40), color: CEDAR_DARK },
+      { y: 2.08, blob: organicBlob(0.14 + r * 0.02, 0.04, seed + 50), color: CEDAR_LIGHT },
+      { y: 2.30, blob: organicBlob(0.08 + r * 0.01, 0.03, seed + 60), color: CEDAR_DARK },
+    ]
+  }, [seed])
+
+  return (
+    <group ref={groupRef} position={[x, 0.025, z]} scale={scale} rotation={[0, seed * 0.6, 0]}>
+      {/* Slim trunk — 1.6m tall, smooth 16-seg */}
+      <mesh position={[0, 0.80, 0]} castShadow>
+        <cylinderGeometry args={[0.04, 0.07, 1.6, 16]} />
+        <meshStandardMaterial color={CEDAR_TRUNK} roughness={0.92} />
+      </mesh>
+      {/* Layered organic canopy — narrow flame, vertically stretched 2.2× */}
+      {layers.map((l, i) => (
+        <mesh key={i} position={[0, l.y, 0]} geometry={l.blob} scale={[0.9, 2.2, 0.9]} castShadow>
+          <meshStandardMaterial color={l.color} roughness={0.93} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// ── Minka cabin with IRIMOYA roof (atan2-derived hip-and-gable) ─────
+function MinkaCabin() {
+  const CABIN_W = 1.1
+  const CABIN_D = 0.78
+  const WALL_H = 0.5
+  // ROOF_RISE 0.42 (38% pitch) was too shallow for irimoya. Real ones
+  // are 50-60%. Bumped to 0.58 so the roof reads as a proper tile-roof
+  // silhouette, not a barn shed.
+  const ROOF_RISE = 0.58
+  const X_OVERHANG = 0.22
+  const Z_OVERHANG = 0.20
+  const slabHalfWidth = CABIN_W / 2 + X_OVERHANG
+  const slabLen = Math.hypot(slabHalfWidth, ROOF_RISE)
+  const slabTilt = Math.atan2(ROOF_RISE, slabHalfWidth)
+  const slabDepth = CABIN_D + 2 * Z_OVERHANG
+  const SLAB_THICK = 0.05
+
+  // Gable triangle for irimoya end walls (small upper triangle)
+  const gableShape = useMemo(() => {
+    const s = new THREE.Shape()
+    s.moveTo(-CABIN_W / 2, 0)
+    s.lineTo(CABIN_W / 2, 0)
+    s.lineTo(0, ROOF_RISE)
+    s.closePath()
+    return s
+  }, [])
+
+  return (
+    <group position={[-0.55, 0.05, 0.0]} rotation={[0, 0.32, 0]}>
+      {/* Stone foundation strip */}
+      <mesh position={[0, 0.08, 0]} castShadow receiveShadow>
+        <boxGeometry args={[CABIN_W + 0.1, 0.1, CABIN_D + 0.12]} />
+        <meshStandardMaterial color="#A09680" roughness={0.95} />
+      </mesh>
+      {/* Engawa (raised wood deck on front side) */}
+      <mesh position={[0, 0.05, CABIN_D / 2 + 0.11]} castShadow receiveShadow>
+        <boxGeometry args={[CABIN_W + 0.16, 0.06, 0.22]} />
+        <meshStandardMaterial color="#8B6A48" roughness={0.9} />
+      </mesh>
+      {/* Engawa support posts */}
+      {[-CABIN_W / 2 + 0.04, CABIN_W / 2 - 0.04].map((px, i) => (
+        <mesh key={`epost${i}`} position={[px, 0.025, CABIN_D / 2 + 0.21]} castShadow>
+          <cylinderGeometry args={[0.018, 0.018, 0.05, 8]} />
+          <meshStandardMaterial color={WOOD_BEAM} roughness={0.92} />
+        </mesh>
+      ))}
+
+      {/* Walls — bright cream washi */}
+      <mesh position={[0, 0.08 + WALL_H / 2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[CABIN_W, WALL_H, CABIN_D]} />
+        <meshStandardMaterial color={WASHI_WALL} roughness={0.88} />
+      </mesh>
+      {/* 4 exposed corner posts (smooth round) */}
+      {(
+        [
+          [-CABIN_W / 2 + 0.02, 0.08 + WALL_H / 2, -CABIN_D / 2 + 0.02],
+          [CABIN_W / 2 - 0.02, 0.08 + WALL_H / 2, -CABIN_D / 2 + 0.02],
+          [-CABIN_W / 2 + 0.02, 0.08 + WALL_H / 2, CABIN_D / 2 - 0.02],
+          [CABIN_W / 2 - 0.02, 0.08 + WALL_H / 2, CABIN_D / 2 - 0.02],
+        ] as Array<[number, number, number]>
+      ).map((p, i) => (
+        <mesh key={`pst${i}`} position={p} castShadow>
+          <cylinderGeometry args={[0.028, 0.028, WALL_H + 0.05, 10]} />
+          <meshStandardMaterial color={WOOD_POST} roughness={0.92} />
+        </mesh>
+      ))}
+      {/* Horizontal beam under roof eaves (nageshi) */}
+      <mesh position={[0, 0.08 + WALL_H - 0.02, CABIN_D / 2 + 0.005]} castShadow>
+        <boxGeometry args={[CABIN_W + 0.04, 0.05, 0.04]} />
+        <meshStandardMaterial color={WOOD_BEAM} roughness={0.92} />
+      </mesh>
+
+      {/* Shoji window — bright paper pane on front */}
+      <mesh position={[0, 0.08 + WALL_H * 0.6, CABIN_D / 2 + 0.003]}>
+        <planeGeometry args={[CABIN_W * 0.78, WALL_H * 0.55]} />
+        <meshStandardMaterial
+          color={WASHI_GLOW}
+          emissive={WASHI_GLOW}
+          emissiveIntensity={0.45}
+          roughness={0.5}
+        />
+      </mesh>
+      {/* Shoji grid frame (5 vertical × 3 horizontal) */}
+      {[-0.34, -0.17, 0, 0.17, 0.34].map((vx, i) => (
+        <mesh key={`vbar${i}`} position={[vx * CABIN_W * 0.78, 0.08 + WALL_H * 0.6, CABIN_D / 2 + 0.004]}>
+          <boxGeometry args={[0.014, WALL_H * 0.55, 0.003]} />
+          <meshStandardMaterial color={WOOD_POST} roughness={0.88} />
+        </mesh>
+      ))}
+      {[-0.32, 0, 0.32].map((hy, i) => (
+        <mesh key={`hbar${i}`} position={[0, 0.08 + WALL_H * 0.6 + hy * WALL_H * 0.55 / 2, CABIN_D / 2 + 0.004]}>
+          <boxGeometry args={[CABIN_W * 0.78, 0.014, 0.003]} />
+          <meshStandardMaterial color={WOOD_POST} roughness={0.88} />
+        </mesh>
+      ))}
+
+      {/* === IRIMOYA roof — atan2-correct slabs meet at ridge === */}
+      {(['left', 'right'] as const).map((side) => {
+        const sign = side === 'left' ? -1 : 1
+        return (
+          <group
+            key={side}
+            position={[sign * slabHalfWidth, 0.08 + WALL_H, 0]}
+            rotation={[0, 0, -sign * slabTilt]}
+          >
+            {/* Solid roof slab */}
+            <mesh position={[-sign * slabLen / 2, 0, 0]} castShadow receiveShadow>
+              <boxGeometry args={[slabLen, SLAB_THICK, slabDepth]} />
+              <meshStandardMaterial color={TILE_ROOF_A} roughness={0.78} flatShading />
+            </mesh>
+            {/* 14 horizontal tile courses w/ per-tile jitter + moss tone.
+                V9: widened color range + moss override on ~15% of tiles
+                (real kawara has random moss patches, not perfect rows). */}
+            {Array.from({ length: 14 }).map((_, i) => {
+              const frac = (i + 0.5) / 14
+              const jitter = Math.pow(
+                (Math.sin(i * 7.3 + (sign > 0 ? 1.7 : 0)) + 1) * 0.5,
+                0.6  // push toward extremes
+              )
+              const isMoss = ((i * 5 + (sign > 0 ? 3 : 0)) % 7) === 0  // ~15% mossy
+              const tileColor = isMoss
+                ? new THREE.Color(TILE_ROOF_MOSS)
+                : new THREE.Color(TILE_ROOF_A).lerp(new THREE.Color(TILE_ROOF_B), jitter)
+              return (
+                <mesh
+                  key={`tile${side}${i}`}
+                  position={[-sign * frac * slabLen, SLAB_THICK / 2 + 0.012, 0]}
+                >
+                  <boxGeometry args={[slabLen / 14 * 0.88, 0.020, slabDepth - 0.04]} />
+                  <meshStandardMaterial
+                    color={tileColor}
+                    roughness={0.85}
+                    flatShading
+                    polygonOffset
+                    polygonOffsetFactor={-1}
+                  />
+                </mesh>
+              )
+            })}
+            {/* Upturned eave corners — small thin wedges flicked up at the
+                two front-corner ends. Subtle but signals "Japanese". */}
+            {[-slabDepth / 2 + 0.04, slabDepth / 2 - 0.04].map((zEnd, i) => (
+              <mesh
+                key={`flick${side}${i}`}
+                position={[-sign * slabLen * 0.92, 0.03, zEnd]}
+                rotation={[0, 0, -sign * 0.18]}
+                castShadow
+              >
+                <boxGeometry args={[0.12, 0.025, 0.08]} />
+                <meshStandardMaterial color={TILE_ROOF_A} roughness={0.78} flatShading />
+              </mesh>
+            ))}
+          </group>
+        )
+      })}
+
+      {/* Front + back gable triangles (real shapeGeometry) */}
+      {[CABIN_D / 2 + 0.005, -(CABIN_D / 2 + 0.005)].map((zz, i) => (
+        <mesh
+          key={`gable${i}`}
+          position={[0, 0.08 + WALL_H, zz]}
+          rotation={[0, i === 1 ? Math.PI : 0, 0]}
+        >
+          <shapeGeometry args={[gableShape]} />
+          <meshStandardMaterial color={WOOD_BEAM} side={THREE.DoubleSide} roughness={0.88} />
+        </mesh>
+      ))}
+
+      {/* Ridge cap — beefy box on ridge line */}
+      <mesh position={[0, 0.08 + WALL_H + ROOF_RISE + 0.03, 0]} castShadow>
+        <boxGeometry args={[0.18, 0.10, slabDepth + 0.04]} />
+        <meshStandardMaterial color={TILE_RIDGE} roughness={0.7} />
+      </mesh>
+      {/* 2 onigawara end finials on the ridge — V7: squat outward-canted
+          wedges instead of upright party-hat cones. Real onigawara curl
+          outward along the ridge axis. */}
+      {[(slabDepth - 0.04) / 2, -(slabDepth - 0.04) / 2].map((zz, i) => {
+        const cantSign = i === 0 ? 1 : -1
+        return (
+          <group key={`onig${i}`} position={[0, 0.08 + WALL_H + ROOF_RISE + 0.10, zz]}>
+            <mesh rotation={[cantSign * 0.35, 0, 0]} castShadow>
+              <boxGeometry args={[0.10, 0.10, 0.06]} />
+              <meshStandardMaterial color="#1F2530" roughness={0.7} flatShading />
+            </mesh>
+            <mesh position={[0, 0.07, cantSign * 0.04]} castShadow>
+              <sphereGeometry args={[0.030, 10, 8]} />
+              <meshStandardMaterial color="#1F2530" roughness={0.75} />
+            </mesh>
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+// ── Stone lantern (smooth-shaded, no flat) ──────────────────────────
+function StoneLantern({ x, z }: { x: number; z: number }) {
+  return (
+    <group position={[x, 0.025, z]} scale={0.45}>
+      {/* Hex base */}
+      <mesh position={[0, 0.06, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.20, 0.22, 0.12, 8]} />
+        <meshStandardMaterial color={STONE_BASE} roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.27, 0]} castShadow>
+        <cylinderGeometry args={[0.06, 0.075, 0.30, 10]} />
+        <meshStandardMaterial color={STONE_BASE} roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.45, 0]} castShadow>
+        <cylinderGeometry args={[0.14, 0.16, 0.04, 8]} />
+        <meshStandardMaterial color={STONE_HAT} roughness={0.95} />
+      </mesh>
+      <mesh position={[0, 0.56, 0]} castShadow>
+        <boxGeometry args={[0.22, 0.16, 0.22]} />
+        <meshStandardMaterial color={STONE_BASE} roughness={0.92} />
+      </mesh>
+      {/* 4 glowing window panes */}
+      {([
+        [0, 0.56, 0.111, 0],
+        [0, 0.56, -0.111, Math.PI],
+        [0.111, 0.56, 0, Math.PI / 2],
+        [-0.111, 0.56, 0, -Math.PI / 2],
+      ] as Array<[number, number, number, number]>).map((p, i) => (
+        <mesh key={i} position={[p[0], p[1], p[2]]} rotation={[0, p[3], 0]}>
+          <planeGeometry args={[0.13, 0.11]} />
+          <meshStandardMaterial
+            color={LANTERN_GLOW}
+            emissive={LANTERN_GLOW}
+            emissiveIntensity={0.9}
+            roughness={0.4}
+          />
+        </mesh>
+      ))}
+      {/* Roof (6-sided low pyramid) */}
+      <mesh position={[0, 0.74, 0]} castShadow>
+        <coneGeometry args={[0.27, 0.16, 6]} />
+        <meshStandardMaterial color={STONE_HAT} roughness={0.95} flatShading />
+      </mesh>
+      <mesh position={[0, 0.86, 0]} castShadow>
+        <sphereGeometry args={[0.042, 12, 10]} />
+        <meshStandardMaterial color={STONE_HAT} roughness={0.92} />
+      </mesh>
+    </group>
+  )
+}
+
+// ── Torii (smooth posts, slight kasagi curve via two stacked layers) ─
+function Torii({ x, z, rotY = 0 }: { x: number; z: number; rotY?: number }) {
+  return (
+    <group position={[x, 0.025, z]} rotation={[0, rotY, 0]} scale={0.75}>
+      {[-0.45, 0.45].map((px, i) => (
+        <mesh key={i} position={[px, 0.65, 0]} castShadow>
+          <cylinderGeometry args={[0.06, 0.078, 1.3, 14]} />
+          <meshStandardMaterial color={VERMILLION} roughness={0.7} />
+        </mesh>
+      ))}
+      {/* Nuki (lower beam, between pillars, vermillion) */}
+      <mesh position={[0, 1.04, 0]} castShadow>
+        <boxGeometry args={[0.75, 0.08, 0.10]} />
+        <meshStandardMaterial color={VERMILLION} roughness={0.7} />
+      </mesh>
+      {/* Kasagi (upper beam, black, overhangs) — two-layer to fake curve */}
+      <mesh position={[0, 1.26, 0]} castShadow>
+        <boxGeometry args={[1.18, 0.10, 0.14]} />
+        <meshStandardMaterial color={TORII_BLACK} roughness={0.65} />
+      </mesh>
+      <mesh position={[0, 1.36, 0]} castShadow>
+        <boxGeometry args={[1.12, 0.05, 0.11]} />
+        <meshStandardMaterial color={TORII_BLACK} roughness={0.65} />
+      </mesh>
+      {/* Center support (gakuzuka) */}
+      <mesh position={[0, 1.15, 0]} castShadow>
+        <boxGeometry args={[0.05, 0.13, 0.06]} />
+        <meshStandardMaterial color={VERMILLION} roughness={0.7} />
+      </mesh>
+    </group>
+  )
+}
+
+// ── Raked karesansui gravel ring around the cabin — "ma" / negative
+//    space marker. Concentric flat tori suggest the rake lines.
+function RakedGravel() {
+  return (
+    <group position={[-0.55, 0.052, 0.0]}>
+      {/* Sand disk */}
+      <mesh receiveShadow>
+        <cylinderGeometry args={[0.95, 0.95, 0.005, 48]} />
+        <meshStandardMaterial color={GRAVEL_SAND} roughness={1.0} />
+      </mesh>
+      {/* Concentric rake-line tori (very thin, slightly darker) */}
+      {[0.55, 0.68, 0.81, 0.92].map((r, i) => (
+        <mesh key={i} position={[0, 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[r, 0.005, 4, 64]} />
+          <meshStandardMaterial color={GRAVEL_LINE} roughness={0.95} />
+        </mesh>
+      ))}
+      {/* 1 small mossy stone in the gravel for wabi-sabi */}
+      <mesh position={[0.35, 0.04, 0.45]} castShadow>
+        <dodecahedronGeometry args={[0.10, 0]} />
+        <meshStandardMaterial color="#7E7368" roughness={0.95} flatShading />
+      </mesh>
+      <mesh position={[0.35, 0.10, 0.45]}>
+        <sphereGeometry args={[0.06, 12, 10]} />
+        <meshStandardMaterial color="#6A8A55" roughness={0.95} />
+      </mesh>
+    </group>
+  )
+}
+
+// Tsukubai — Japanese stone water basin with bamboo spout.
+// Real gardens always have water or a stone substitute. Adds wabi-sabi
+// + the dark water disk makes the lantern bloom catch beautifully.
+function Tsukubai({ x, z }: { x: number; z: number }) {
+  return (
+    <group position={[x, 0.025, z]} scale={0.55}>
+      {/* Stone basin block (square, slightly rounded look via box) */}
+      <mesh position={[0, 0.13, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.34, 0.26, 0.34]} />
+        <meshStandardMaterial color={STONE_BASE} roughness={0.95} flatShading />
+      </mesh>
+      {/* Deeper stone trim around top edge */}
+      <mesh position={[0, 0.27, 0]} castShadow>
+        <boxGeometry args={[0.40, 0.04, 0.40]} />
+        <meshStandardMaterial color={STONE_HAT} roughness={0.95} flatShading />
+      </mesh>
+      {/* Basin lip — small torus around the rim makes the cavity read */}
+      <mesh position={[0, 0.27, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.13, 0.012, 8, 22]} />
+        <meshStandardMaterial color={STONE_HAT} roughness={0.95} />
+      </mesh>
+      {/* Recessed water surface — RECESSED below rim now (was at rim) */}
+      <mesh position={[0, 0.255, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[0.118, 24]} />
+        <meshStandardMaterial
+          color="#1E3540"
+          roughness={0.12}
+          metalness={0.65}
+          envMapIntensity={1.4}
+        />
+      </mesh>
+      {/* Bamboo spout — V7: spout end now ABOVE basin pouring DOWN.
+          Group pivot = spout tip at (0, 0.32, 0) directly above basin
+          center. Cylinder body extends up-and-back at 45° via Z-rot. */}
+      <group position={[0, 0.32, 0]} rotation={[0, 0, -Math.PI / 4]}>
+        {/* Bamboo body — local +Y, so after rotation extends up-and-+X */}
+        <mesh position={[0, 0.225, 0]} castShadow>
+          <cylinderGeometry args={[0.025, 0.025, 0.45, 12]} />
+          <meshStandardMaterial color="#A89055" roughness={0.85} />
+        </mesh>
+        {/* 3 bamboo node rings */}
+        {[0.075, 0.225, 0.375].map((dy, i) => (
+          <mesh key={i} position={[0, dy, 0]}>
+            <torusGeometry args={[0.027, 0.005, 6, 14]} />
+            <meshStandardMaterial color="#6E5A2E" roughness={0.85} />
+          </mesh>
+        ))}
+        {/* Spout opening cap (slight overhang at tip) */}
+        <mesh position={[0, -0.005, 0]}>
+          <torusGeometry args={[0.026, 0.004, 6, 14]} />
+          <meshStandardMaterial color="#6E5A2E" roughness={0.85} />
+        </mesh>
+      </group>
+      {/* V10: tapered stream (narrow at spout, wide at impact) + animated
+          ripples. V12: y position corrected so stream EXACTLY spans
+          spout tip → water surface. */}
+      <WaterStream />
+      {/* Small base stones (genkan-ish, around the basin) */}
+      {([
+        [0.30, 0.04, 0.16, 0.07],
+        [-0.28, 0.04, -0.12, 0.06],
+        [-0.16, 0.04, 0.28, 0.05],
+      ] as Array<[number, number, number, number]>).map((p, i) => (
+        <mesh key={i} position={[p[0], p[1], p[2]]} castShadow>
+          <dodecahedronGeometry args={[p[3], 0]} />
+          <meshStandardMaterial color={STONE_HAT} roughness={0.95} flatShading />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// Vertex-displaced + vertex-COLORED ground plane.
+// V11: per-vertex color lerps warmth based on displacement+radial, so
+// the grass reads as continuous breathing terrain not flat painted disk
+// with decal patches on top.
+function makeDisplacedGroundGeo(): THREE.BufferGeometry {
+  const g = new THREE.CircleGeometry(2.05, 64)
+  const pos = g.attributes.position
+  const cBase = new THREE.Color(GRASS_LIGHT)
+  const cHi = new THREE.Color(GRASS_HILIGHT)
+  const cLo = new THREE.Color(GRASS_SHADE)
+  const colors = new Float32Array(pos.count * 3)
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i)
+    const d = Math.hypot(x, y)
+    let displaceZ = 0
+    if (d > 0.01) {
+      const n = Math.sin(x * 4.2) * Math.cos(y * 3.7) + Math.sin((x + y) * 2.8)
+      displaceZ = n * 0.025
+      pos.setZ(i, displaceZ)
+    }
+    // Color = lerp shade→hilight by displacement+noise. Bumps get sun.
+    const noise = (Math.sin(x * 1.7 + y * 2.3) + Math.cos(x * 2.9 - y * 1.5)) * 0.5
+    const t = Math.max(0, Math.min(1, 0.5 + displaceZ * 12 + noise * 0.35))
+    const c = t < 0.5
+      ? new THREE.Color().lerpColors(cLo, cBase, t * 2)
+      : new THREE.Color().lerpColors(cBase, cHi, (t - 0.5) * 2)
+    colors[i * 3] = c.r
+    colors[i * 3 + 1] = c.g
+    colors[i * 3 + 2] = c.b
+  }
+  pos.needsUpdate = true
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  g.computeVertexNormals()
+  return g
+}
+
+// LightShafts — V10: PARALLEL shafts (all same tilt) matching sun
+// azimuth from [4, 5.5, 3]. Sun direction = normalize(4,5.5,3) ≈
+// (0.49, 0.67, 0.37). Shafts descend FROM that direction → tilt
+// uniformly toward -Y. Opacity 0.075 readable over both sky + trees.
+function LightShafts() {
+  // Position 6 shafts so they slice through the canopy + cedars zone
+  const positions: Array<[number, number, number]> = [
+    [1.20, 0.85, -0.50],
+    [0.55, 0.95, 0.20],
+    [-0.25, 0.85, -0.85],
+    [-1.00, 0.75, -0.60],
+    [0.20, 0.65, 0.95],
+    [-0.65, 0.80, 0.65],
+  ]
+  // Sun azimuth: shaft long axis must follow sun→ground angle
+  const SUN_TILT_Z = -0.42  // unified tilt (parallel)
+  const SUN_AZIMUTH_Y = -0.35  // matches azimuth of dir light
+  return (
+    <group>
+      {positions.map((p, i) => (
+        <group key={i} position={p} rotation={[0, SUN_AZIMUTH_Y, 0]}>
+          {/* Billboard-cross — perpendicular planes, both parallel-tilted */}
+          {[0, Math.PI / 2].map((rotY, j) => (
+            <mesh
+              key={j}
+              rotation={[0, rotY, SUN_TILT_Z]}
+              renderOrder={2}
+            >
+              <planeGeometry args={[0.4, 2.4]} />
+              <meshBasicMaterial
+                color="#FFE8C0"
+                transparent
+                opacity={0.075}
+                blending={THREE.AdditiveBlending}
+                depthWrite={false}
+                side={THREE.DoubleSide}
+              />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  )
+}
+
+function Island() {
+  const groundGeo = useMemo(makeDisplacedGroundGeo, [])
+  return (
+    <group>
+      {/* Grass top — vertex-colored displaced plane.
+          V11: removed decal circles in favor of per-vertex color lerp
+          so terrain warmth follows the bump map continuously. */}
+      <mesh
+        geometry={groundGeo}
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[0, 0.05, 0]}
+        receiveShadow
+      >
+        <meshStandardMaterial vertexColors roughness={0.96} />
+      </mesh>
+      {/* Cylinder side rim */}
+      <mesh position={[0, 0, 0]} receiveShadow>
+        <cylinderGeometry args={[2.05, 2.05, 0.10, 64]} />
+        <meshStandardMaterial color={GRASS_LIGHT} roughness={0.96} />
+      </mesh>
+
+      {/* Soil — warmer cinnamon */}
+      <mesh position={[0, -0.18, 0]} castShadow>
+        <cylinderGeometry args={[2.05, 1.7, 0.28, 36]} />
+        <meshStandardMaterial color={SOIL} roughness={0.95} flatShading />
+      </mesh>
+
+      {/* Cliff — 2 layers for gradient (V5 was single brown lump) */}
+      <mesh position={[0, -0.78, 0]} castShadow>
+        <coneGeometry args={[1.65, 0.85, 32]} />
+        <meshStandardMaterial color={CLIFF} roughness={0.95} flatShading />
+      </mesh>
+      <mesh position={[0, -1.15, 0]} castShadow>
+        <coneGeometry args={[1.30, 0.65, 28]} />
+        <meshStandardMaterial color={CLIFF_DK} roughness={0.95} flatShading />
+      </mesh>
+
+      {/* 3 rock outcrops on cliff face */}
+      {([
+        [1.20, -0.55, 0.55, 0.18],
+        [-0.85, -0.45, 1.20, 0.16],
+        [-0.60, -0.75, -1.10, 0.14],
+      ] as Array<[number, number, number, number]>).map((p, i) => (
+        <mesh
+          key={`rock${i}`}
+          position={[p[0], p[1], p[2]]}
+          rotation={[i, i * 0.7, i * 0.3]}
+          castShadow
+        >
+          <dodecahedronGeometry args={[p[3], 0]} />
+          <meshStandardMaterial color="#7A6555" roughness={0.95} flatShading />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// ── Tobi-ishi (stepping stones) — torii → gravel edge.
+// V6 ended INSIDE the gravel ring (overlap). V7: end at the gravel
+// ring's torii-facing edge so stones VISUALLY connect to it.
+function SteppingStones() {
+  // V8: stones go from torii (0.65, 1.55) to TSUKUBAI (0.95, 0.4) —
+  // the canonical tea-ceremony approach. (V7 went to gravel ring edge
+  // which led "to nothing".)
+  const points: Array<[number, number, number]> = [
+    [0.55, 1.32, 0.1],
+    [0.62, 1.08, -0.3],
+    [0.70, 0.88, 0.5],
+    [0.78, 0.70, -0.2],
+    [0.85, 0.55, 0.4],
+  ]
+  return (
+    <group>
+      {points.map((p, i) => (
+        <mesh
+          key={i}
+          position={[p[0], 0.058, p[1]]}
+          rotation={[0, p[2] + i * 0.17, 0]}
+          scale={[1, 0.5, 1.2]}
+          castShadow
+          receiveShadow
+        >
+          <dodecahedronGeometry args={[0.095, 0]} />
+          <meshStandardMaterial color="#9C9085" roughness={0.95} flatShading />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// ── FallenPetals — sakura petals scattered on the ground.
+// V6 were 14mm pink dots (rice grains). V7: elongated teardrop ovals
+// via shapeGeometry (5-lobe sakura petal silhouette).
+function makePetalShape(): THREE.Shape {
+  const s = new THREE.Shape()
+  // Teardrop with DEEPER V-notch at tip (V7 notch was 0.038 — too shallow)
+  s.moveTo(0, 0)
+  s.bezierCurveTo(-0.024, 0.018, -0.030, 0.044, 0, 0.060)
+  s.bezierCurveTo(-0.006, 0.045, -0.003, 0.038, 0, 0.030)
+  s.bezierCurveTo(0.003, 0.038, 0.006, 0.045, 0, 0.060)
+  s.bezierCurveTo(0.030, 0.044, 0.024, 0.018, 0, 0)
+  return s
+}
+
+function FallenPetals() {
+  const petalGeo = useMemo(() => new THREE.ShapeGeometry(makePetalShape(), 8), [])
+  const positions = useMemo(() => {
+    const out: Array<{ x: number; z: number; rot: number; scale: number }> = []
+    // V8: fewer + bigger petals read better at autorotate speed
+    for (let i = 0; i < 38; i++) {
+      const a = Math.random() * Math.PI * 2
+      const r = Math.sqrt(Math.random()) * 0.95
+      out.push({
+        x: Math.cos(a) * r,
+        z: Math.sin(a) * r,
+        rot: Math.random() * Math.PI * 2,
+        scale: 1.0 + Math.random() * 0.8,
+      })
+    }
+    return out
+  }, [])
+  return (
+    <group position={[0.55, 0.058, -0.35]}>
+      {positions.map((p, i) => (
+        <mesh
+          key={i}
+          position={[p.x, 0, p.z]}
+          // V10: petal rotation.x variance — real fallen petals curl
+          rotation={[-Math.PI / 2 + (Math.sin(i * 4.3) * 0.15), 0, p.rot]}
+          scale={p.scale}
+          geometry={petalGeo}
+        >
+          <meshStandardMaterial
+            color={i % 3 === 0 ? '#FFEAF1' : i % 2 ? '#F5C8D6' : '#FFD8E3'}
+            roughness={0.9}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// ── FallingPetals — sakura petals drifting down from canopy.
+// The Ghibli money shot. Each petal: drift down ~0.05/s, sin X drift,
+// tumble rot.z. Respawns at canopy Y when it hits ground.
+function FallingPetals() {
+  const COUNT = 60
+  const ref = useRef<THREE.InstancedMesh>(null)
+  const petalGeo = useMemo(() => new THREE.ShapeGeometry(makePetalShape(), 8), [])
+  const seeds = useMemo(() =>
+    Array.from({ length: COUNT }).map(() => ({
+      x: 0.55 + (Math.random() - 0.5) * 1.4,
+      y: 0.1 + Math.random() * 1.5,
+      z: -0.35 + (Math.random() - 0.5) * 1.4,
+      phaseX: Math.random() * Math.PI * 2,
+      phaseR: Math.random() * Math.PI * 2,
+      speed: 0.7 + Math.random() * 0.6,
+      scale: 0.7 + Math.random() * 0.6,
+      tintIdx: Math.floor(Math.random() * 3),
+    })), [])
+
+  useFrame((s) => {
+    if (!ref.current) return
+    const t = s.clock.elapsedTime
+    const dummy = new THREE.Object3D()
+    const tints = ['#FFEAF1', '#F5C8D6', '#FFD8E3'].map((c) => new THREE.Color(c))
+    seeds.forEach((sd, i) => {
+      // Y drift down, respawn near canopy when reaching ground
+      const ySpan = 1.6 // canopy~1.6 → ground~0
+      const yOffset = (t * 0.07 * sd.speed) % ySpan
+      const y = sd.y - yOffset
+      const wrappedY = y < 0.06 ? y + ySpan : y
+      // Sin X drift + small Z drift
+      const dx = Math.sin(t * 0.4 + sd.phaseX) * 0.05
+      const dz = Math.cos(t * 0.3 + sd.phaseX) * 0.04
+      dummy.position.set(sd.x + dx, wrappedY, sd.z + dz)
+      // Tumble rotation
+      dummy.rotation.set(
+        -Math.PI / 2 + Math.sin(t * 0.8 + sd.phaseR) * 0.5,
+        t * 0.6 + sd.phaseR,
+        Math.cos(t * 0.7 + sd.phaseR) * 0.4,
+      )
+      dummy.scale.setScalar(sd.scale)
+      dummy.updateMatrix()
+      ref.current!.setMatrixAt(i, dummy.matrix)
+      if (ref.current!.instanceColor === null || ref.current!.instanceColor) {
+        ref.current!.setColorAt(i, tints[sd.tintIdx])
+      }
+    })
+    ref.current.instanceMatrix.needsUpdate = true
+    if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true
+  })
+
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[petalGeo, undefined as any, COUNT]}
+      frustumCulled={false}
+    >
+      <meshStandardMaterial
+        color="#FFD8E3"
+        roughness={0.9}
+        side={THREE.DoubleSide}
+        transparent
+        opacity={0.92}
+      />
+    </instancedMesh>
+  )
+}
+
+// ── WindSway — wraps any group + applies gentle X/Z rotation sway.
+function WindSway({ children, amp = 0.018, freq = 0.5, phase = 0 }: {
+  children: React.ReactNode
+  amp?: number
+  freq?: number
+  phase?: number
+}) {
+  const ref = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    if (!ref.current) return
+    const t = s.clock.elapsedTime
+    ref.current.rotation.z = Math.sin(t * freq + phase) * amp
+    ref.current.rotation.x = Math.cos(t * freq * 0.7 + phase * 1.3) * amp * 0.5
+  })
+  return <group ref={ref}>{children}</group>
+}
+
+// ── WaterStream — tapered cylinder + animated 3-ripple expansion.
+//    Scale loop hides cylinder respawn discontinuity.
+function WaterStream() {
+  const ripples = [
+    useRef<THREE.Mesh>(null),
+    useRef<THREE.Mesh>(null),
+    useRef<THREE.Mesh>(null),
+  ]
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    ripples.forEach((r, i) => {
+      const m = r.current
+      if (!m) return
+      const phase = ((t * 0.8 + i * 0.4) % 1.2) / 1.2
+      const scale = 0.5 + phase * 1.0
+      m.scale.set(scale, 1, scale)
+      const mat = m.material as THREE.MeshStandardMaterial
+      mat.opacity = (1 - phase) * 0.7
+    })
+  })
+  return (
+    <>
+      {/* Stream — tapered, narrow at spout. V12: y 0.295→0.288, length
+          0.085→0.065 so stream exactly spans spout tip (y=0.32) →
+          water surface (y=0.255). */}
+      <mesh position={[0, 0.288, 0]}>
+        <cylinderGeometry args={[0.008, 0.014, 0.065, 10]} />
+        <meshStandardMaterial
+          color="#A8C8D8"
+          emissive="#A8C8D8"
+          emissiveIntensity={0.15}
+          transparent
+          opacity={0.85}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* 3 animated ripples — expanding tori */}
+      {ripples.map((r, i) => (
+        <mesh
+          key={i}
+          ref={r}
+          position={[0, 0.256, 0]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <torusGeometry args={[0.08, 0.0035, 4, 32]} />
+          <meshStandardMaterial
+            color="#A8C8D8"
+            roughness={0.35}
+            metalness={0.4}
+            transparent
+            opacity={0.6}
+          />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
+// ── ChimneySmoke — V10: scale-clamp at phase boundaries hides reset.
+function ChimneySmoke() {
+  const puffs = [
+    useRef<THREE.Mesh>(null),
+    useRef<THREE.Mesh>(null),
+    useRef<THREE.Mesh>(null),
+  ]
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    puffs.forEach((r, i) => {
+      const m = r.current
+      if (!m) return
+      const phase = (t * 0.25 + i * 0.9) % 2.7
+      m.position.y = 0.05 + phase * 0.45
+      m.position.x = Math.sin(t * 0.5 + i) * 0.08 + phase * 0.08
+      m.position.z = Math.cos(t * 0.4 + i * 0.7) * 0.05
+      // V10: scale-clamp at phase boundaries hides reset teleport
+      const baseScale = 0.6 + phase * 0.5
+      const fadeIn = Math.min(1, phase * 4)
+      const fadeOut = Math.min(1, (2.7 - phase) * 2)
+      m.scale.setScalar(baseScale * fadeIn * fadeOut)
+      const mat = m.material as THREE.MeshBasicMaterial
+      mat.opacity = Math.max(0, 0.55 - phase * 0.18) * fadeIn * fadeOut
+    })
+  })
+  return (
+    <group position={[-0.50, 0.78, -0.15]}>
+      {puffs.map((r, i) => (
+        <mesh key={i} ref={r}>
+          <sphereGeometry args={[0.08, 12, 10]} />
+          <meshBasicMaterial color="#F5F0E8" transparent opacity={0.55} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+export default function IslandWidget() {
+  return (
+    <Canvas
+      shadows
+      // V5 camera (Sub-A #2 #1): lower + closer + targets the cabin-sakura
+      // axis. Previous [3.4, 1.85, 3.4]→origin caused cabin to disappear
+      // behind sakura on rotation. Now [2.9, 1.5, 3.7]→[-0.1, 0.4, 0.1]
+      // keeps the hero composition framed.
+      camera={{ position: [2.9, 1.5, 3.7], fov: 28 }}
+      dpr={[1, 1.5]}
+      gl={{
+        antialias: true,
+        alpha: true,            // transparent → CSS sky bleeds in
+        toneMapping: ACESFilmicToneMapping,
+        toneMappingExposure: 1.18,
+      }}
+      style={{ width: '100%', height: '100%' }}
+    >
+      {/* No <color> bg — let CSS radial-gradient sky show through */}
+      <fog attach="fog" args={[FOG_TINT, 8, 17]} />
+
+      {/* Lighting — bright noon, Studio Ghibli golden hour balance */}
+      <hemisphereLight args={['#FFF3DC', '#9CBC78', 0.95]} />
+      <ambientLight intensity={0.60} color="#FFF6DC" />
+      <directionalLight
+        position={[4, 5.5, 3]}
+        intensity={2.5}
+        color="#FFE8C0"
+        castShadow
+        shadow-mapSize={[2048, 2048]}
+        shadow-camera-near={0.5}
+        shadow-camera-far={14}
+        shadow-camera-left={-3.5}
+        shadow-camera-right={3.5}
+        shadow-camera-top={3.5}
+        shadow-camera-bottom={-3.5}
+        shadow-bias={-0.0008}
+      />
+      <directionalLight position={[-3, 2.5, -3]} intensity={0.55} color="#C8DCEC" />
+      {/* Violet fill from below — Ghibli signature shadow tint (Sub-A #3 #3) */}
+      <directionalLight position={[-2, -1, 2]} intensity={0.18} color="#B8A0C8" />
+      {/* V10: warm pointLight at cabin shoji → gravitational anchor */}
+      <pointLight position={[-0.55, 0.45, 0.40]} intensity={0.7} distance={1.8} decay={2} color="#FFEFD0" />
+
+      {/* === Scene === */}
+      <Island />
+      <SteppingStones />
+      <FallenPetals />
+      <RakedGravel />
+      <MinkaCabin />
+      <ChimneySmoke />
+
+      {/* Hero sakura — V11: wrapped in WindSway for the canopy breath */}
+      <WindSway amp={0.018} freq={0.5}>
+        <group position={[0.55, 0, -0.35]} scale={0.55}>
+          <Sakura
+            position={[0, 0, 0]}
+            seed={20260524}
+            size={1.0}
+            density={0.65}
+            hero={true}
+            rotY={0.4}
+            tint="#fad9e4"
+          />
+        </group>
+      </WindSway>
+
+      {/* 2 cedars in back (cut 1 for breathing room) */}
+      <Cedar x={-1.15} z={-1.05} scale={1.0} seed={1} />
+      <Cedar x={-0.30} z={-1.45} scale={0.88} seed={2} />
+
+      {/* Lantern + torii */}
+      <StoneLantern x={-0.10} z={0.70} />
+      <Torii x={0.65} z={1.55} rotY={-0.35} />
+
+      {/* Tsukubai stone water basin */}
+      <Tsukubai x={0.95} z={0.4} />
+
+      {/* V12: drei Sparkles for atmospheric haze (replaces flat-plane
+          light shafts that looked like tissue paper from oblique angles).
+          40 small warm motes drifting in the sun-air zone above the
+          scene. */}
+      <Sparkles
+        count={45}
+        size={3}
+        scale={[3.6, 2.2, 3.6]}
+        position={[0, 1.3, 0]}
+        color="#FFE8C0"
+        speed={0.25}
+        opacity={0.65}
+      />
+
+      {/* Falling petals — Ghibli money shot. Drift down from canopy. */}
+      <FallingPetals />
+
+      <OrbitControls
+        target={[0.15, 0.35, 0.10]}     // V9: recenter to include tsukubai axis
+        enablePan={false}
+        enableZoom={false}
+        enableRotate={false}
+        autoRotate
+        autoRotateSpeed={0.55}     // V9: dropped 0.65→0.55 to let detail register
+      />
+
+      {/* Postprocessing — tuned for bright noon (was over-baked in V4).
+          Bloom 0.55→0.35 + threshold 0.78→0.85 so the lantern doesn't go
+          nuclear in shade. Vignette darkness 0.5→0.25 because vignette
+          on a bright noon scene contradicts the lighting. */}
+      <EffectComposer multisampling={0}>
+        <Bloom intensity={0.35} luminanceThreshold={0.85} luminanceSmoothing={0.5} mipmapBlur />
+        <Vignette eskil={false} offset={0.40} darkness={0.25} />
+        <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
+        <SMAA />
+      </EffectComposer>
+    </Canvas>
+  )
+}

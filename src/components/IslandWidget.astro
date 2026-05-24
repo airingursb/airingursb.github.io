@@ -1,0 +1,80 @@
+---
+// Homepage 3D island card — inline in the cards-grid, full-width.
+// R3F mounts lazily on scroll-into-view. Click → /world/.
+import IslandWidget from './IslandWidget'
+---
+
+<div class="card card-island" id="island-3d">
+  <div class="island-card-head">
+    <div class="island-card-title">森林岛 · 3D</div>
+    <a class="island-card-link" href="/world/">進入 →</a>
+  </div>
+  <a href="/world/" class="island-card-canvas" aria-label="進入森林岛 — Airing 的 3D 漫游">
+    <IslandWidget client:visible />
+  </a>
+</div>
+
+<style>
+  .card-island {
+    padding: 14px !important;          /* override .card default 24px so canvas dominates */
+    overflow: hidden;
+  }
+  .island-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin: 2px 4px 10px;
+  }
+  .island-card-title {
+    font-family: "Songti SC", "Noto Serif SC", "Hiragino Mincho ProN", serif;
+    font-size: 14px;
+    letter-spacing: 0.08em;
+    color: var(--c-text);
+    opacity: 0.85;
+  }
+  .island-card-link {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    color: var(--c-text-muted);
+    text-decoration: none;
+    transition: color 200ms ease, transform 200ms ease;
+  }
+  .island-card-link:hover {
+    color: var(--c-text);
+    transform: translateX(2px);
+  }
+  .island-card-canvas {
+    display: block;
+    width: 100%;
+    height: 360px;
+    border-radius: 12px;
+    overflow: hidden;
+    /* Sky-gradient bleed (Sub-A #2 #7) — Canvas alpha:true lets this
+       show through, so the dark page bg doesn't create a hard
+       rectangle around the floating island. Soft glow at the center
+       suggests sunlit air. */
+    background:
+      radial-gradient(circle at 50% 28%, #FFF6DD 0%, #E5F1F6 28%, #BFD8E8 60%, #92B1C8 100%);
+    cursor: pointer;
+    transition: filter 240ms ease, transform 240ms ease;
+  }
+  .island-card-canvas:hover {
+    filter: brightness(1.05) saturate(1.08);
+    transform: translateY(-1px);
+  }
+  .island-card-canvas canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+
+  @media (max-width: 800px) {
+    .island-card-canvas { height: 240px; }
+  }
+  @media (max-width: 480px) {
+    .island-card-canvas { height: 200px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-island { display: none; }
+  }
+</style>
