@@ -222,9 +222,15 @@ import IslandWidget from './IslandWidget'
   }
   .island-pet-hint {
     position: absolute;
-    bottom: -4px;
+    /* V52.8 (Sub-A polish): was bottom:-4px which placed the pill
+       in the theme-switcher's vertical band (24-60px from viewport
+       bottom). Moved to top:-4px translate(-50%, -100%) — pill sits
+       above the pet, away from the theme switcher entirely, and
+       reads more naturally as a label pointing down at the broken
+       widget. */
+    top: -4px;
     left: 50%;
-    transform: translate(-50%, 100%);
+    transform: translate(-50%, -100%);
     padding: 4px 10px;
     background: rgba(28, 22, 18, 0.84);
     color: rgba(252, 244, 226, 0.96);
@@ -256,8 +262,13 @@ import IslandWidget from './IslandWidget'
     }
   }
 
-  /* Reduced motion: kill hover lift + transitions (R3F frameloop also
-     drops to "demand" via PREFERS_REDUCED_MOTION in island-shared.ts). */
+  /* V52.8 (Sub-A polish): comment correctly describes what this rule
+     actually does. Earlier draft claimed "CSS hides astro-island" but
+     this rule does NOT hide R3F — that would lose the scene entirely.
+     R3F's frameloop drops to "demand" via PREFERS_REDUCED_MOTION (in
+     island-shared.ts) so the scene renders ONCE and freezes; this CSS
+     rule kills the wrapper-level hover lift + skeleton breath pulse
+     so nothing else animates around the static frozen scene. */
   @media (prefers-reduced-motion: reduce) {
     .island-pet {
       transition: none;

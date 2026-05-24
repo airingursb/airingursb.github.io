@@ -49,7 +49,7 @@ import {
   getWind, getHearth, getDwellGolden, getHoverBoost,
   lerpHex, organicBlob, makePetalShape,
   // Palette
-  SKY, FOG_TINT,
+  // V52.8: SKY + FOG_TINT no longer used (SkyMood/DistantMountains deleted)
   CEDAR_TRUNK, CEDAR_DARK, CEDAR_LIGHT,
   GRASS_LIGHT, GRASS_HILIGHT, GRASS_SHADE,
   SOIL, SOIL_DK, CLIFF, CLIFF_DK,
@@ -730,30 +730,10 @@ function FallenPetals() {
 }
 
 // ── AnimatedSun — V14: subtle breathing on the main directional light.
-// 90s cycle: intensity ±0.06, color #FFE8C0 → #FFD8A0 → #FFE8C0.
-// Owns the sun light entirely (replaces the static directionalLight).
-// V27: SkyMood — fog warms on dwell.
-// V29: ALSO updates --island-dwell CSS var on the canvas wrapper so the
-// outer CSS sky gradient lerps in lockstep (breaks the last cool-blue
-// border around the warmed in-canvas scene).
-function SkyMood() {
-  const { scene, gl } = useThree()
-  const cFog = useMemo(() => new THREE.Color(FOG_TINT), [])
-  const cGoldenSky = useMemo(() => new THREE.Color('#F0D8B0'), [])
-  const scratch = useMemo(() => new THREE.Color(), [])
-  useFrame((s) => {
-    const dwell = getDwellGolden(s.clock.elapsedTime)
-    if (scene.fog) {
-      scratch.copy(cFog).lerp(cGoldenSky, dwell)
-      ;(scene.fog as THREE.Fog).color.copy(scratch)
-    }
-    // V29: drive the outer CSS sky gradient via the canvas wrapper var
-    const canvasEl = gl.domElement
-    const wrapper = canvasEl.closest('.island-card-canvas') as HTMLElement | null
-    if (wrapper) wrapper.style.setProperty('--island-dwell', String(dwell))
-  })
-  return null
-}
+// V52.8: SkyMood deleted — wrote fog color (no fog in pet) + drove
+// .island-card-canvas CSS var (now .island-pet; no gradient to drive).
+// Both inputs were no-ops by V52. Sun color/intensity dwell shift is
+// preserved in AnimatedSun below.
 
 function AnimatedSun() {
   const lightRef = useRef<THREE.DirectionalLight>(null)
@@ -843,87 +823,15 @@ function BreathingShoji({ position, size }: {
   )
 }
 
-// ── DistantClouds — slow-drifting white puff cluster BELOW the island.
-function DistantClouds() {
-  const groupRef = useRef<THREE.Group>(null)
-  useFrame((s) => {
-    if (!groupRef.current) return
-    const t = s.clock.elapsedTime
-    const wind = getWind(t)
-    // V15: rotation speed scaled by shared wind gust
-    groupRef.current.rotation.y = t * 0.012 * (1 + wind.gust * 0.5)
-  })
-  const puffs: Array<[number, number, number, number]> = [
-    [3.8, -2.6, 1.0, 0.85],
-    [-3.5, -2.8, -1.2, 0.95],
-    [1.0, -3.0, 3.6, 0.7],
-    [-1.5, -2.5, -3.4, 0.75],
-    [3.2, -2.9, -2.6, 0.65],
-    [-2.8, -2.7, 2.8, 0.6],
-  ]
-  return (
-    <group ref={groupRef}>
-      {puffs.map((p, i) => (
-        <group key={i} position={[p[0], p[1], p[2]]} scale={p[3]}>
-          <mesh>
-            <sphereGeometry args={[0.45, 16, 12]} />
-            <meshBasicMaterial color="#FFFFFF" transparent opacity={0.55} />
-          </mesh>
-          <mesh position={[0.30, 0.05, 0.10]}>
-            <sphereGeometry args={[0.32, 14, 10]} />
-            <meshBasicMaterial color="#F8F4EC" transparent opacity={0.50} />
-          </mesh>
-          <mesh position={[-0.25, -0.05, -0.12]}>
-            <sphereGeometry args={[0.28, 14, 10]} />
-            <meshBasicMaterial color="#FFFFFF" transparent opacity={0.50} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  )
-}
+// V52.8: DistantClouds deleted — puffs at y=-2.6..-3.0 sat BELOW the
+// pet frustum (visible y-min ≈ -1.74). The "sky-castle clouds-under-
+// the-island" sell was designed for the inline-card frame; pet camera
+// pulls back too far to include them.
 
-// ── V23: MidCloudWisps — 4 small wispy puffs drifting across the
-// mountain mid-ground z=-6 to -8, completing horizon depth.
-function MidCloudWisps() {
-  const refs = [
-    useRef<THREE.Group>(null),
-    useRef<THREE.Group>(null),
-    useRef<THREE.Group>(null),
-    useRef<THREE.Group>(null),
-  ]
-  const seeds = [
-    { startX: -6, z: -6.5, y: 0.3, speed: 0.12, scale: 0.55 },
-    { startX: -4, z: -7.5, y: 0.0, speed: 0.09, scale: 0.7 },
-    { startX: -7, z: -7.0, y: 0.6, speed: 0.10, scale: 0.5 },
-    { startX: -5, z: -8.5, y: 0.2, speed: 0.07, scale: 0.65 },
-  ]
-  useFrame((s) => {
-    const t = s.clock.elapsedTime
-    refs.forEach((r, i) => {
-      if (!r.current) return
-      const sd = seeds[i]
-      const x = ((sd.startX + t * sd.speed) % 14) - 7
-      r.current.position.set(x, sd.y, sd.z)
-    })
-  })
-  return (
-    <>
-      {refs.map((r, i) => {
-        const sd = seeds[i]
-        return (
-          <group key={i} ref={r} scale={[sd.scale * 1.3, sd.scale * 0.6, sd.scale]}>
-            {/* V38: single sphere per wisp (was 3 overlapping) */}
-            <mesh>
-              <sphereGeometry args={[0.42, 14, 10]} />
-              <meshBasicMaterial color="#F5F0E8" transparent opacity={0.38} depthWrite={false} />
-            </mesh>
-          </group>
-        )
-      })}
-    </>
-  )
-}
+// V52.8: MidCloudWisps deleted — z=-6.5..-8.5 placement was designed
+// to drift behind DistantMountains (also deleted V52.8). Without them
+// the wisps drift in empty far-space, mostly off-screen at pet's
+// square fov.
 
 // ── V23: PathMoss — small green patches between stepping stones.
 // Static, but adds the wabi-sabi "old garden, well-trodden" detail.
@@ -986,318 +894,24 @@ function ParallaxRig() {
   return null
 }
 
-// ── V21: DistantMountains — low-poly silhouettes behind the island
-// for scale reference + atmospheric perspective.
-// V37/V38: jagged asymmetric ridge silhouette + per-vertex y-gradient
-// color so sunlit ridgeline reads brighter than valley pools. Returns
-// {geometry, peakY} so caller can pass into a gradient lerp.
-function makeRidgeGeo(seed: number, width: number, height: number, fogTint: string): THREE.BufferGeometry {
-  const shape = new THREE.Shape()
-  shape.moveTo(-width, 0)
-  const N = 6
-  let peakY = 0
-  for (let i = 0; i < N; i++) {
-    const t = (i + 1) / (N + 1)
-    const x = -width + t * width * 2
-    const noise1 = Math.sin(seed * 7.3 + i * 2.1) * 0.5 + 0.5
-    const noise2 = Math.cos(seed * 11.7 - i * 3.4) * 0.3
-    const profileBias = t < 0.55 ? Math.pow(t / 0.55, 0.7) : Math.pow((1 - t) / 0.45, 1.4)
-    const h = height * profileBias * (0.5 + noise1 * 0.7) + noise2 * 0.1
-    shape.lineTo(x, h)
-    if (h > peakY) peakY = h
-  }
-  shape.lineTo(width, 0)
-  shape.closePath()
-  const geo = new THREE.ShapeGeometry(shape)
-  // V38: per-vertex y-gradient color (sunlit peaks brighter, base toward fog)
-  const pos = geo.attributes.position
-  const colors = new Float32Array(pos.count * 3)
-  const cBright = new THREE.Color('#D8E2EC')   // sunlit ridge highlight
-  const cBase = new THREE.Color(fogTint)
-  for (let i = 0; i < pos.count; i++) {
-    const y = pos.getY(i)
-    const t = Math.min(1, y / Math.max(0.5, peakY))
-    const c = new THREE.Color().lerpColors(cBase, cBright, Math.pow(t, 0.7))
-    colors[i * 3] = c.r
-    colors[i * 3 + 1] = c.g
-    colors[i * 3 + 2] = c.b
-  }
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-  return geo
-}
+// V52.8: DistantMountains + makeRidgeGeo deleted — backstop wall at
+// z=-7..-11 that bled past the island silhouette on a transparent pet
+// canvas. Removed from Canvas in V52. Function bodies cleaned up.
 
-// V22: blend mountain colors toward FOG_TINT (atmospheric perspective)
-// V37: replaced cone-revolved silhouettes with extruded jagged ridges.
-function DistantMountains() {
-  // V25: use top-level pure-channel lerpHex (was shadowing with
-  // alloc-heavy THREE.Color version)
-  const lerpToFog = (hex: string, t: number) => lerpHex(hex, FOG_TINT, t)
+// V52.8: HoverZoneHotspots deleted — pet has no per-zone reactions;
+// ParallaxRig handles the only hover micro-motion (camera tilt).
 
-  // [z, fogMix, opacity, ridges: [centerX, baseY, width, height, seed]]
-  const layers: Array<{
-    z: number
-    fogMix: number
-    opacity: number
-    ridges: Array<[number, number, number, number, number]>
-  }> = [
-    {
-      z: -7.5,
-      fogMix: 0.32,
-      opacity: 0.55,
-      ridges: [
-        [-3.5, 0, 2.4, 1.0, 1.7],
-        [0.5, 0, 2.8, 1.25, 4.3],
-        [4.0, 0, 2.2, 0.9, 7.1],
-      ],
-    },
-    {
-      z: -9,
-      fogMix: 0.55,
-      opacity: 0.40,
-      ridges: [
-        [-3.0, 0.2, 3.0, 1.45, 11.3],
-        [1.5, 0.1, 3.4, 1.55, 13.7],
-        [5.0, 0.3, 2.6, 1.30, 17.1],
-      ],
-    },
-    {
-      z: -11,
-      fogMix: 0.75,
-      opacity: 0.28,
-      ridges: [
-        [-2.5, 0.5, 3.6, 1.85, 23.5],
-        [2.5, 0.4, 3.8, 1.95, 29.1],
-      ],
-    },
-  ]
-  // V38: memo per-layer ridge GEOMETRIES (with vertex colors baked in)
-  // so each layer's value gradient reads correctly under its fog mix.
-  const ridgeGeos = useMemo(
-    () => layers.flatMap((L) =>
-      L.ridges.map((r) => makeRidgeGeo(r[4], r[2], r[3], lerpToFog('#B8C5D0', L.fogMix))),
-    ),
-    [], // stable per mount
-  )
-  useEffect(() => () => ridgeGeos.forEach((g) => g.dispose()), [ridgeGeos])
-  let geoIdx = 0
-  return (
-    <group>
-      {layers.map((L, li) => (
-        <group key={li} position={[0, -1.0, L.z]}>
-          {L.ridges.map((r) => {
-            const geo = ridgeGeos[geoIdx++]
-            return (
-              <mesh key={geoIdx} geometry={geo} position={[r[0], r[1], 0]}>
-                <meshBasicMaterial
-                  vertexColors
-                  transparent
-                  opacity={L.opacity}
-                  depthWrite={false}
-                  side={THREE.DoubleSide}
-                />
-              </mesh>
-            )
-          })}
-        </group>
-      ))}
-    </group>
-  )
-}
+// V52.8: ZoneSparkles deleted — was a child of HoverZoneHotspots which
+// was removed in V52. Without the zone hotspots, hoverZone.current stays
+// null forever and all opacities are 0. Pet has no zone reactions.
 
-// ── V21: HoverZoneHotspots — invisible meshes detect which scene
-// region the cursor is over. Triggers context-aware bursts.
-function HoverZoneHotspots() {
-  return (
-    <>
-      {/* V24 BUGFIX: visible={false} skips raycasting → hover never fires.
-          Use opacity={0} + colorWrite={false} instead so pointer events fire. */}
-      {/* Sakura zone */}
-      <mesh
-        position={[0.55, 0.8, -0.35]}
-        onPointerOver={() => { hoverZone.current = 'sakura'; hoverZone.since = performance.now() / 1000 }}
-        onPointerOut={() => { hoverZone.current = null }}
-      >
-        <sphereGeometry args={[0.7, 8, 8]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
-      </mesh>
-      {/* Tsukubai zone */}
-      <mesh
-        position={[0.95, 0.35, 0.40]}
-        onPointerOver={() => { hoverZone.current = 'tsukubai'; hoverZone.since = performance.now() / 1000 }}
-        onPointerOut={() => { hoverZone.current = null }}
-      >
-        <boxGeometry args={[0.35, 0.5, 0.35]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
-      </mesh>
-      {/* Cabin zone */}
-      <mesh
-        position={[-0.55, 0.45, 0.0]}
-        onPointerOver={() => { hoverZone.current = 'cabin'; hoverZone.since = performance.now() / 1000 }}
-        onPointerOut={() => { hoverZone.current = null }}
-      >
-        <boxGeometry args={[1.2, 0.8, 0.8]} />
-        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
-      </mesh>
+// V52.8: UpperCumulus deleted — sat at y=+3.4 (above pet frustum y-max
+// of +3.20). Removed from Canvas in V52.3 as invisible. Function cleanup.
 
-      {/* Zone-gated reactive sparkle bursts */}
-      <ZoneSparkles />
-    </>
-  )
-}
-
-// V22: zone-specific reactions tied to scene assets (not generic sparkles).
-//   sakura → handled via sakuraBoost in FallingPetals
-//   tsukubai → 4 falling water droplet cylinders
-//   cabin → upward heat shimmer (translucent warm additive plane)
-function ZoneSparkles() {
-  const drops = [
-    useRef<THREE.Mesh>(null),
-    useRef<THREE.Mesh>(null),
-    useRef<THREE.Mesh>(null),
-    useRef<THREE.Mesh>(null),
-  ]
-  const heatRef = useRef<THREE.Mesh>(null)
-  const tsuOpRef = useRef(0)
-  const heatOpRef = useRef(0)
-
-  useFrame((s) => {
-    const t = s.clock.elapsedTime
-    const tsuActive = hoverZone.current === 'tsukubai' ? 1 : 0
-    tsuOpRef.current += (tsuActive - tsuOpRef.current) * 0.18
-    drops.forEach((r, i) => {
-      const m = r.current
-      if (!m) return
-      const phase = (t * 1.8 + i * 0.42) % 1
-      const y = 0.7 - phase * 0.45
-      m.position.set(0.95 + (i - 1.5) * 0.025, y, 0.40 + (i % 2 === 0 ? -0.02 : 0.02))
-      const mat = m.material as THREE.MeshStandardMaterial
-      mat.opacity = tsuOpRef.current * 0.85
-    })
-    const heatActive = hoverZone.current === 'cabin' ? 1 : 0
-    heatOpRef.current += (heatActive - heatOpRef.current) * 0.18
-    if (heatRef.current) {
-      const mat = heatRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = heatOpRef.current * 0.22
-      heatRef.current.position.y = 0.95 + Math.sin(t * 1.5) * 0.04
-    }
-  })
-
-  return (
-    <>
-      {drops.map((r, i) => (
-        <mesh key={i} ref={r} renderOrder={2}>
-          <cylinderGeometry args={[0.005, 0.008, 0.06, 6]} />
-          <meshStandardMaterial
-            color="#A8C8D8"
-            emissive="#A8C8D8"
-            emissiveIntensity={0.3}
-            transparent
-            opacity={0}
-            depthWrite={false}
-          />
-        </mesh>
-      ))}
-      <mesh ref={heatRef} position={[-0.55, 0.95, -0.15]} renderOrder={2}>
-        <planeGeometry args={[0.4, 0.65]} />
-        <meshBasicMaterial
-          color="#FFD080"
-          transparent
-          opacity={0}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-    </>
-  )
-}
-
-// ── UpperCumulus — V14: high cumulus band ABOVE the island, drifting
-// OPPOSITE to lower clouds (parallax). Gives bird something to fly past.
-function UpperCumulus() {
-  const groupRef = useRef<THREE.Group>(null)
-  useFrame((s) => {
-    if (!groupRef.current) return
-    // Opposite direction to DistantClouds for parallax depth
-    groupRef.current.rotation.y = -s.clock.elapsedTime * 0.009
-  })
-  const puffs: Array<[number, number, number, number]> = [
-    [4.5, 3.4, -2.0, 1.0],
-    [-3.8, 3.6, 1.5, 0.9],
-    [0.5, 3.2, 4.0, 0.8],
-    [3.0, 3.8, 2.5, 0.7],
-  ]
-  return (
-    <group ref={groupRef}>
-      {/* V38: same single-sphere simplification as DistantClouds */}
-      {puffs.map((p, i) => (
-        <mesh key={i} position={[p[0], p[1], p[2]]} scale={[p[3] * 1.4, p[3] * 0.6, p[3] * 1.0]}>
-          <sphereGeometry args={[0.6, 16, 12]} />
-          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.20} depthWrite={false} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-// ── BirdFlyby — V14: pair of birds (hero + smaller backgrounder for flock feel).
-function BirdFlyby() {
-  const heroRef = useRef<THREE.Mesh>(null)
-  const bgRef = useRef<THREE.Mesh>(null)
-  const wingShape = useMemo(() => {
-    const s = new THREE.Shape()
-    s.moveTo(-0.06, 0)
-    s.quadraticCurveTo(-0.03, 0.020, 0, 0)
-    s.quadraticCurveTo(0.03, 0.020, 0.06, 0)
-    s.quadraticCurveTo(0.03, -0.005, 0, 0.002)
-    s.quadraticCurveTo(-0.03, -0.005, -0.06, 0)
-    return s
-  }, [])
-  const geo = useMemo(() => new THREE.ShapeGeometry(wingShape, 8), [wingShape])
-  useEffect(() => () => geo.dispose(), [geo])  // V26: dispose hygiene
-  useFrame((s) => {
-    const t = s.clock.elapsedTime
-    const period = 22
-    // V17: bird reacts to shared wind (drifts laterally + banks on gust)
-    const wind = getWind(t)
-    // Hero bird
-    if (heroRef.current) {
-      const phase = t % period
-      if (phase > 12) {
-        heroRef.current.visible = false
-      } else {
-        heroRef.current.visible = true
-        const x = -4 + (phase / 12) * 8
-        const y = 2.4 + Math.sin(phase * 0.6) * 0.18 + wind.dirZ * 0.15
-        heroRef.current.position.set(x, y, -1.2)
-        heroRef.current.rotation.z = -Math.sin(phase * 6) * 0.5 + wind.gust * 0.3
-      }
-    }
-    // BG bird
-    if (bgRef.current) {
-      const phase = (t - 2) % period
-      if (phase < 0 || phase > 14) {
-        bgRef.current.visible = false
-      } else {
-        bgRef.current.visible = true
-        const x = -4.5 + (phase / 14) * 9
-        const y = 2.9 + Math.sin(phase * 0.55) * 0.14 + wind.dirZ * 0.12
-        bgRef.current.position.set(x, y, -1.8)
-        bgRef.current.rotation.z = -Math.sin(phase * 5.5) * 0.5 + wind.gust * 0.25
-      }
-    }
-  })
-  return (
-    <>
-      <mesh ref={heroRef} geometry={geo} renderOrder={3}>
-        <meshBasicMaterial color="#2A2018" side={THREE.DoubleSide} />
-      </mesh>
-      <mesh ref={bgRef} geometry={geo} scale={0.55} renderOrder={3}>
-        <meshBasicMaterial color="#3A2818" side={THREE.DoubleSide} transparent opacity={0.75} />
-      </mesh>
-    </>
-  )
-}
+// V52.8 (Sub-A polish): BirdFlyby deleted — removed from Canvas in V52.2
+// because birds traversed x=±4 but visible half-width at their depth is
+// only ±2.35, so they materialized and vanished mid-air over the
+// silhouette = the "scene-in-window" tell. Function body cleanup.
 
 // ── FallingPetals — sakura petals drifting down from canopy.
 // The Ghibli money shot. Each petal: drift down ~0.05/s, sin X drift,
