@@ -65,6 +65,54 @@
 - [ ] Evaluate (WebGL failed): after 12s without canvas working, fallback DOM is shown with "无法加载 3D 场景" title
 - [ ] DOM (fallback): two CTAs visible — "前往 nook 2D 版本 →" → `/nook/` and "回首页" → `/`
 
+## /world/ V2 scene-polish wave (2026-05-25)
+
+> Per memory `reference-world-scene` V2. Most of these only verify in
+> a real browser via WorldUI buttons + observation; headless can't
+> WebGL-render. Visual-only items marked (V).
+
+- [ ] V — On first load, camera starts close on cabin door and pans
+      out to 3/4 establishing angle over ~4.5s (sine in-out easing)
+- [ ] V — First `pointerdown` on canvas during the intro pan skips
+      it to the final pose (no waiting)
+- [ ] V — After intro completes, OrbitControls is enabled (user can
+      drag-to-orbit)
+- [ ] V — Clicking 🌙 (theme toggle) triggers a 1.5s "breath" dolly
+      ~6% closer to target, then returns to base distance
+- [ ] V — Lanterns ignite at dusk (emissive lerps + per-lantern flicker)
+- [ ] V — At dusk, dark fog cloud planes appear around pond/waterfall
+      area (DuskFog)
+- [ ] V — At dusk, a single firefly drifts from hammock area toward
+      cabin window over ~28s, then back (CabinFirefly scripted path)
+- [ ] V — Cat on cabin doormat periodically (every 18-40s) breaks
+      from curl into stretch/lick/look/sleep, returns
+- [ ] V — Easel canvas shows a procedurally-painted version of the
+      scene (cabin + cedar + sakura + torii silhouettes)
+- [ ] V — On hover during day, butterflies sparkle around the fox shrine
+- [ ] V — Periodic ~3s wind gust event (~every 27s): trees lean
+      harder, clothesline whips, pond ripples chop, lantern halos
+      flicker brighter, smoke leans, leaves drift wider
+- [ ] V — Wisteria arch crossbar spans perpendicular to the path
+      between cabin and fox shrine (walker passes UNDER it)
+- [ ] V — Fox shrine has 3 mini torii leading to fox statue + lit
+      candle with flickering pointLight
+- [ ] V — Onsen has steaming pool + folded yukata + geta pair
+      (side-by-side, ~8cm apart) + karesansui zen garden
+- [ ] V — Mochi NPC default gentle head bob; every 22-30s does a
+      5-second smooth sweep (left → right → up → center)
+- [ ] V — At dusk, V-formation flock of dark bird silhouettes drifts
+      west→east across the sky (looping ~60s)
+- [ ] V — Sakura petals drift on pond surface; brown leaves drift
+      on river curve
+- [ ] V — Path mushrooms (4) scattered at lateral offsets near
+      reading / music / deck / easel branches
+- [ ] V — Footprint trail fades from cabin door outward + back toward
+      hammock branch (alpha gradient)
+- [ ] V — Cabin firewood pile renders correctly via InstancedMesh
+      (no per-log draw calls)
+- [ ] V — On `prefers-reduced-motion`, DuskFog + CanopyDapple +
+      SunsetBirds are skipped (perf gate is QUALITY=low)
+
 ## Archive (`/archive/`)
 
 - [ ] GET `/archive/` 返回页面
