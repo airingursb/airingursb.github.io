@@ -1,201 +1,112 @@
 ---
-// Homepage 3D island card — inline in the cards-grid, full-width.
-// R3F mounts lazily on scroll-into-view. Click → /world/.
+// Floating Forest Island PET — fixed bottom-right of the homepage.
+// V51 redesign: was an inline card in the cards-grid (V32-V50). User
+// asked to move to corner like a desktop pet, but NOT picture-in-picture
+// style — so: no frame, no border, no card shadow, no title bar.
+// Just the island silhouette floating freely on the page.
+//
+// R3F mounts lazily on scroll-into-view (still — first scroll typically
+// happens within a few seconds of page load anyway).
+// Click the whole pet → /world/.
 import IslandWidget from './IslandWidget'
 ---
 
-<div class="card card-island" id="island-3d">
-  <div class="island-card-head">
-    <div class="section-title" data-i18n="sec_island_3d">Forest Island · 3D</div>
-    <a class="island-card-link" href="/world/" data-i18n="island_enter">进入 →</a>
-  </div>
-  <!-- V50 a11y fix: was <a> wrapping <a> (head link) + interactive
-       canvas — invalid HTML + double-link to screen readers. Now a
-       proper role="link" with explicit keyboard nav + focus ring.
-       aria-busy clears once canvas mounts. -->
-  <div role="link" tabindex="0" data-href="/world/" class="island-card-canvas" id="island-3d-canvas-wrap"
-       aria-label="进入森林岛 — Airing 的 3D 漫游" aria-busy="true">
-    <!-- V33: CSS-only loading skeleton. Visible until Canvas mounts;
-         MutationObserver swaps `.island-loaded` to fade it. Kills the
-         "blank card" flash on slow networks / before client:visible.
-         V45: refined silhouettes — irimoya roof + chimney + shoji glow,
-         stone lantern, raked gravel ring, slim layered cedars matching
-         R3F palette so the fallback looks like a poster, not a wireframe. -->
-    <svg class="island-skeleton" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <defs>
-        <!-- Soil rim cliff under the grass disc -->
-        <linearGradient id="cliff-grad" x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stop-color="#B88560" stop-opacity="0.45" />
-          <stop offset="1" stop-color="#6B4530" stop-opacity="0.55" />
-        </linearGradient>
-        <!-- Shoji glow from cabin interior -->
-        <radialGradient id="shoji-glow" cx="0.5" cy="0.5" r="0.5">
-          <stop offset="0" stop-color="#FFEFD0" stop-opacity="0.85" />
-          <stop offset="1" stop-color="#FFEFD0" stop-opacity="0" />
-        </radialGradient>
-      </defs>
-
-      <!-- V46: distant mountains behind cedars — depth + "world beyond" -->
-      <path d="M -10 168 L 60 138 L 110 152 L 175 122 L 240 148 L 310 130 L 380 150 L 460 128 L 540 146 L 610 134 L 610 200 L -10 200 Z"
-            fill="rgba(120, 140, 156, 0.32)" />
-      <path d="M -10 184 L 80 158 L 160 174 L 240 156 L 330 174 L 420 158 L 510 172 L 610 162 L 610 210 L -10 210 Z"
-            fill="rgba(150, 168, 180, 0.22)" />
-
-      <!-- Island base: grass disc + soil cliff rim -->
-      <ellipse cx="300" cy="240" rx="240" ry="14" fill="url(#cliff-grad)" />
-      <ellipse cx="300" cy="222" rx="222" ry="20" fill="rgba(168, 199, 122, 0.62)" />
-      <!-- Raked gravel: moved in FRONT of cabin (was orbiting under it).
-           Tiny center stone breaks negative space. -->
-      <ellipse cx="340" cy="232" rx="58" ry="6" fill="none"
-               stroke="rgba(230, 218, 192, 0.48)" stroke-width="1.4" />
-      <ellipse cx="340" cy="232" rx="44" ry="4.5" fill="none"
-               stroke="rgba(197, 185, 143, 0.42)" stroke-width="1" />
-      <circle cx="340" cy="232" r="2.5" fill="rgba(126, 115, 104, 0.65)" />
-      <!-- Foreground anchor stepping stone, breaks bald center -->
-      <ellipse cx="300" cy="234" rx="14" ry="3.5" fill="rgba(70, 62, 54, 0.55)" />
-
-      <!-- Cedars (back left): layered slim flames, asymmetric apex offsets.
-           V46: apex jittered ±3px (no party-hat look); cedar 3 darkened. -->
-      <g opacity="0.88">
-        <!-- Cedar 1 -->
-        <rect x="111" y="180" width="3" height="22" fill="rgba(42, 24, 18, 0.55)" />
-        <polygon points="104,200 120,200 110,158" fill="rgba(56, 88, 48, 0.62)" />
-        <polygon points="106,184 118,184 114,146" fill="rgba(78, 110, 64, 0.55)" />
-        <!-- Cedar 2 (taller) -->
-        <rect x="142" y="175" width="3" height="25" fill="rgba(42, 24, 18, 0.55)" />
-        <polygon points="134,200 152,200 145,148" fill="rgba(56, 88, 48, 0.62)" />
-        <polygon points="136,178 150,178 141,134" fill="rgba(78, 110, 64, 0.55)" />
-        <!-- Cedar 3 (shorter, front — darker for depth separation) -->
-        <rect x="166" y="190" width="3" height="18" fill="rgba(34, 20, 14, 0.60)" />
-        <polygon points="160,208 175,208 169,168" fill="rgba(48, 76, 42, 0.70)" />
-        <polygon points="162,194 173,194 166,156" fill="rgba(64, 94, 56, 0.60)" />
-      </g>
-
-      <!-- Cabin: washi walls + irimoya-suggested roof + chimney + shoji glow -->
-      <g>
-        <!-- Wall (washi pale) -->
-        <rect x="208" y="170" width="92" height="48" fill="rgba(245, 232, 200, 0.78)" />
-        <!-- Shoji light spill -->
-        <ellipse cx="254" cy="200" rx="32" ry="14" fill="url(#shoji-glow)" />
-        <!-- Window cross (shoji grid hint) -->
-        <line x1="232" y1="186" x2="276" y2="186" stroke="rgba(58, 37, 22, 0.40)" stroke-width="0.8" />
-        <line x1="254" y1="178" x2="254" y2="208" stroke="rgba(58, 37, 22, 0.40)" stroke-width="0.8" />
-        <rect x="232" y="178" width="44" height="30" fill="none" stroke="rgba(58, 37, 22, 0.45)" stroke-width="1" />
-        <!-- Irimoya roof: Ghibli slate-blue (not battleship-grey) -->
-        <polygon points="196,170 312,170 295,150 213,150" fill="rgba(74, 86, 108, 0.92)" />
-        <polygon points="213,150 295,150 285,134 223,134" fill="rgba(110, 124, 148, 0.90)" />
-        <!-- Ridge cap -->
-        <rect x="222" y="132" width="64" height="3" fill="rgba(46, 53, 64, 0.90)" />
-        <!-- Chimney + two curls of smoke (single thin S looked like a hair) -->
-        <rect x="270" y="120" width="6" height="14" fill="rgba(58, 37, 22, 0.70)" />
-        <path d="M273 118 Q 279 112, 272 106 Q 265 100, 272 94"
-              fill="none" stroke="rgba(220, 210, 200, 0.55)" stroke-width="2.5" stroke-linecap="round" />
-        <path d="M278 110 Q 284 104, 278 98 Q 272 92, 278 86"
-              fill="none" stroke="rgba(220, 210, 200, 0.28)" stroke-width="2" stroke-linecap="round" />
-      </g>
-
-      <!-- Stone lantern (right-mid, low) -->
-      <g opacity="0.78">
-        <rect x="358" y="208" width="3" height="14" fill="rgba(126, 115, 104, 0.85)" />
-        <rect x="354" y="200" width="11" height="8" fill="rgba(168, 158, 142, 0.85)" />
-        <polygon points="350,200 369,200 360,193" fill="rgba(126, 115, 104, 0.85)" />
-        <!-- Lantern glow -->
-        <circle cx="359" cy="204" r="3" fill="rgba(255, 208, 128, 0.85)" />
-      </g>
-
-      <!-- Sakura: weeping branches + canopy mass + dark inner -->
-      <g>
-        <!-- Branch trunk + curve (stops inside canopy mass) -->
-        <path d="M410 222 Q 408 200, 405 180 Q 402 168, 400 158"
-              stroke="rgba(58, 37, 22, 0.50)" stroke-width="2" fill="none" stroke-linecap="round" />
-        <path d="M405 178 Q 420 174, 428 166" stroke="rgba(58, 37, 22, 0.45)" stroke-width="1.4" fill="none" stroke-linecap="round" />
-        <path d="M408 188 Q 392 184, 384 180" stroke="rgba(58, 37, 22, 0.40)" stroke-width="1.2" fill="none" stroke-linecap="round" />
-        <!-- Canopy: 3 overlapping ellipses for organic mass -->
-        <ellipse cx="395" cy="158" rx="34" ry="26" fill="rgba(240, 175, 195, 0.55)" />
-        <ellipse cx="418" cy="148" rx="26" ry="22" fill="rgba(255, 200, 215, 0.50)" />
-        <ellipse cx="378" cy="170" rx="22" ry="18" fill="rgba(248, 188, 208, 0.50)" />
-        <!-- Fallen petals on ground (3 dots) -->
-        <circle cx="392" cy="220" r="1.4" fill="rgba(240, 175, 195, 0.70)" />
-        <circle cx="402" cy="222" r="1.1" fill="rgba(255, 200, 215, 0.65)" />
-        <circle cx="383" cy="219" r="1.0" fill="rgba(240, 175, 195, 0.55)" />
-      </g>
-
-      <!-- Torii: proper kasagi overhang + shimaki ridge + nuki + gakuzuka
-           strut + ground shadow. V46 Sub-A nit fix: was flag-on-two-posts. -->
-      <g>
-        <!-- Ground shadow ellipse (anchors it to the plane) -->
-        <ellipse cx="470" cy="224" rx="34" ry="3.5" fill="rgba(40, 30, 25, 0.22)" />
-        <!-- Posts (entasis: slightly thicker at base) -->
-        <polygon points="447,176 452,176 451,222 448,222" fill="rgba(200, 74, 53, 0.85)" />
-        <polygon points="488,176 493,176 492,222 489,222" fill="rgba(200, 74, 53, 0.85)" />
-        <!-- Nuki: lower crossbeam, slightly thicker, with end blocks
-             (blocks straddle the beam baseline symmetrically) -->
-        <rect x="442" y="194" width="56" height="5" fill="rgba(200, 74, 53, 0.85)" />
-        <rect x="439" y="193" width="3" height="7" fill="rgba(31, 24, 18, 0.72)" />
-        <rect x="498" y="193" width="3" height="7" fill="rgba(31, 24, 18, 0.72)" />
-        <!-- Gakuzuka: vertical strut between kasagi and nuki (centerline) -->
-        <rect x="468.5" y="176" width="3" height="20" fill="rgba(200, 74, 53, 0.75)" />
-        <!-- Kasagi: top beam, 14px overhang per side, deeper concave
-             curve (V47 nit fix: tips curve up another 3px → iconic profile) -->
-        <path d="M431 174 Q 470 156, 509 174 L 509 180 L 431 180 Z"
-              fill="rgba(31, 24, 18, 0.90)" />
-        <!-- Shimaki: thin ridge cap on top of kasagi (subtle highlight) -->
-        <path d="M433 172 Q 470 158, 507 172"
-              stroke="rgba(60, 48, 40, 0.65)" stroke-width="1.2" fill="none" stroke-linecap="round" />
-      </g>
-
-      <!-- Sun: warm orb top-center, now with soft halo bloom -->
-      <circle cx="345" cy="85" r="32" fill="rgba(255, 220, 170, 0.18)" />
-      <circle cx="345" cy="85" r="22" fill="rgba(255, 232, 192, 0.50)" />
-      <circle cx="345" cy="85" r="14" fill="rgba(255, 220, 168, 0.60)" />
-
-      <!-- Subtle pulse breath -->
-      <animate attributeName="opacity" values="0.92;0.78;0.92" dur="2.4s" repeatCount="indefinite" />
-    </svg>
-    <IslandWidget client:visible />
-    <!-- V50 a11y: WebGL-failed hint as REAL element (CSS ::after is
-         skipped by most screen readers); visibility toggled by JS
-         when wrap gets .island-webgl-failed -->
-    <span class="island-webgl-hint" aria-live="polite" hidden>WebGL 未启用 — 点击进入完整页面</span>
-  </div>
+<!-- V51 a11y: role=link wrapper (not <a> — interactive canvas inside
+     <a> is invalid HTML). Keyboard activation wired via JS. -->
+<div role="link" tabindex="0" data-href="/world/" class="island-pet" id="island-3d-canvas-wrap"
+     aria-label="进入森林岛 — Airing 的 3D 漫游" aria-busy="true">
+  <!-- WebGL-loading / failed skeleton (tiny pet silhouette) -->
+  <svg class="island-skeleton" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <defs>
+      <linearGradient id="pet-cliff" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#B88560" stop-opacity="0.55" />
+        <stop offset="1" stop-color="#6B4530" stop-opacity="0.65" />
+      </linearGradient>
+      <radialGradient id="pet-shoji" cx="0.5" cy="0.5" r="0.5">
+        <stop offset="0" stop-color="#FFEFD0" stop-opacity="0.9" />
+        <stop offset="1" stop-color="#FFEFD0" stop-opacity="0" />
+      </radialGradient>
+    </defs>
+    <!-- Distant mountain (single, simpler than full skeleton) -->
+    <path d="M 0 100 L 35 78 L 70 92 L 110 68 L 150 88 L 200 76 L 200 130 L 0 130 Z"
+          fill="rgba(135, 155, 170, 0.32)" />
+    <!-- Island base (grass disc + soil cliff) -->
+    <ellipse cx="100" cy="170" rx="92" ry="8" fill="url(#pet-cliff)" />
+    <ellipse cx="100" cy="158" rx="86" ry="14" fill="rgba(168, 199, 122, 0.72)" />
+    <!-- Two cedars (left) -->
+    <g opacity="0.88">
+      <polygon points="32,160 46,160 39,108" fill="rgba(56, 88, 48, 0.72)" />
+      <polygon points="50,162 64,162 57,114" fill="rgba(48, 76, 42, 0.78)" />
+    </g>
+    <!-- Cabin: irimoya roof + shoji glow + chimney smoke -->
+    <g>
+      <rect x="74" y="120" width="48" height="34" fill="rgba(245, 232, 200, 0.88)" />
+      <ellipse cx="98" cy="142" rx="18" ry="9" fill="url(#pet-shoji)" />
+      <line x1="84" y1="132" x2="112" y2="132" stroke="rgba(58, 37, 22, 0.45)" stroke-width="0.7" />
+      <line x1="98" y1="124" x2="98" y2="146" stroke="rgba(58, 37, 22, 0.45)" stroke-width="0.7" />
+      <polygon points="64,120 132,120 124,104 72,104" fill="rgba(74, 86, 108, 0.94)" />
+      <polygon points="72,104 124,104 117,92 79,92" fill="rgba(110, 124, 148, 0.92)" />
+      <rect x="78" y="90" width="40" height="3" fill="rgba(46, 53, 64, 0.92)" />
+      <rect x="108" y="80" width="4" height="10" fill="rgba(58, 37, 22, 0.72)" />
+      <path d="M110 78 Q 114 72, 110 66" stroke="rgba(220, 210, 200, 0.55)" stroke-width="1.8" fill="none" stroke-linecap="round" />
+    </g>
+    <!-- Sakura right -->
+    <g>
+      <path d="M152 158 Q 150 138, 148 124" stroke="rgba(58, 37, 22, 0.50)" stroke-width="1.5" fill="none" stroke-linecap="round" />
+      <ellipse cx="148" cy="120" rx="18" ry="14" fill="rgba(240, 175, 195, 0.62)" />
+      <ellipse cx="160" cy="112" rx="13" ry="11" fill="rgba(255, 200, 215, 0.55)" />
+    </g>
+    <!-- Torii (small, right edge) -->
+    <g>
+      <rect x="172" y="128" width="2.5" height="28" fill="rgba(200, 74, 53, 0.85)" />
+      <rect x="186" y="128" width="2.5" height="28" fill="rgba(200, 74, 53, 0.85)" />
+      <path d="M168 126 Q 180 119, 192 126 L 192 130 L 168 130 Z" fill="rgba(31, 24, 18, 0.92)" />
+      <rect x="170" y="140" width="20" height="2" fill="rgba(200, 74, 53, 0.85)" />
+    </g>
+    <!-- Subtle breath -->
+    <animate attributeName="opacity" values="0.95;0.78;0.95" dur="2.6s" repeatCount="indefinite" />
+  </svg>
+  <IslandWidget client:visible />
+  <!-- V50 a11y: WebGL-failed hint as REAL element (CSS ::after is
+       skipped by most screen readers); visibility toggled by JS. -->
+  <span class="island-pet-hint" aria-live="polite" hidden>需要 WebGL · 点击进入完整页面</span>
 </div>
 
 <script is:inline>
-  // V40: better WebGL fail detection — synchronous capability check
-  // first, then patient (12s) wait for slow networks, then proper
-  // canvas ctx probe (canvas can exist + be CSS-sized yet WebGL still
-  // failed — don't rely on width=0).
+  // V51 floating pet: same WebGL detection logic as the V40-V50 card
+  // version, just applied to the pet wrapper. Keyboard nav, aria-busy
+  // toggle, hint reveal — all preserved.
   (function () {
     const wrap = document.getElementById('island-3d-canvas-wrap')
     if (!wrap) return
 
-    // Synchronous fast-path: no WebGL support at all in this browser
     const HAS_WEBGL = (
       'WebGL2RenderingContext' in window ||
       'WebGLRenderingContext' in window
     )
+    function showHint(visible) {
+      const hint = wrap.querySelector('.island-pet-hint')
+      if (hint) hint.hidden = !visible
+    }
+    function setBusy(busy) {
+      wrap.setAttribute('aria-busy', busy ? 'true' : 'false')
+    }
+
     if (!HAS_WEBGL) {
       wrap.classList.add('island-webgl-failed')
+      showHint(true)
+      setBusy(false)
       return
     }
 
     function isCanvasWorking(canvas) {
       if (!canvas) return false
-      // Try to get the actual rendering context — proves WebGL works
       try {
         const ctx = canvas.getContext('webgl2') || canvas.getContext('webgl')
         return !!ctx && !ctx.isContextLost?.()
       } catch {
         return false
       }
-    }
-
-    function showHint(visible) {
-      const hint = wrap.querySelector('.island-webgl-hint')
-      if (hint) hint.hidden = !visible
-    }
-    function setBusy(busy) {
-      wrap.setAttribute('aria-busy', busy ? 'true' : 'false')
     }
 
     function checkCanvas() {
@@ -214,7 +125,6 @@ import IslandWidget from './IslandWidget'
     })
     obs.observe(wrap, { childList: true, subtree: true })
 
-    // 12s patience (was 8s — too tight on throttled 3G mobile)
     setTimeout(() => {
       const canvas = wrap.querySelector('canvas')
       if (!canvas || !isCanvasWorking(canvas)) {
@@ -228,8 +138,7 @@ import IslandWidget from './IslandWidget'
       }
     }, 12000)
 
-    // V50 a11y: keyboard activation (Enter / Space) since we changed
-    // the <a> wrap to a div[role=link] for valid HTML.
+    // Click + keyboard activation
     wrap.addEventListener('click', () => { location.href = wrap.dataset.href || '/world/' })
     wrap.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
@@ -240,142 +149,125 @@ import IslandWidget from './IslandWidget'
   })()
 </script>
 
-<style>
-  .card-island {
-    /* V32: keep default .card padding 24px to match neighbors (Footprints,
-       Reading, Movies). Inner canvas adapts to that. */
-    overflow: hidden;
-  }
-  .island-card-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: baseline;
-    margin-bottom: 0;  /* .section-title already has 16px margin-bottom */
-  }
-  /* V32: scope the i18n .section-title margin reset so it matches the
-     adjacent cards' baseline */
-  .card-island .section-title {
-    margin-bottom: 12px;
-  }
-  .island-card-link {
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 11px;
-    color: var(--c-text-muted);
-    text-decoration: none;
-    transition: color 200ms ease, transform 200ms ease;
-  }
-  .island-card-link:hover {
-    color: var(--c-text);
-    transform: translateX(2px);
-  }
-  .island-card-canvas {
-    --island-dwell: 0;
-    display: block;
-    width: 100%;
-    height: 300px;   /* V33: tightened 360→300 to match homepage card-grid rhythm */
-    border-radius: 12px;
-    overflow: hidden;
-    position: relative;
-    /* V29: stacked dwell-driven sky gradient. V32: desaturated 10%
-       so the widget doesn't out-shout adjacent cards (Footprints map,
-       Reading/Movies terminal). The full saturation looked great in
-       isolation but broke homepage rhythm. */
-    background:
-      radial-gradient(
-        circle at calc(50% + var(--island-dwell) * 8%) calc(28% + var(--island-dwell) * 14%),
-        color-mix(in oklab, #F4EED4 calc((1 - var(--island-dwell)) * 100%), #F5DAB0) 0%,
-        color-mix(in oklab, #DCE8ED calc((1 - var(--island-dwell)) * 100%), #F4CC9C) 28%,
-        color-mix(in oklab, #B8CFDC calc((1 - var(--island-dwell)) * 100%), #DAA888) 60%,
-        color-mix(in oklab, #8FAAC0 calc((1 - var(--island-dwell)) * 100%), #B57860) 100%
-      );
+<style is:global>
+  /* V51 floating pet — fixed bottom-right, NO frame / NO box-shadow /
+     NO card. The island silhouette floats freely on the page like a
+     desktop pet. User constraint: "不能用画中画的方式" — no PiP
+     framing under any circumstance. */
+  .island-pet {
+    position: fixed;
+    /* V51.1: bottom offset clears the theme-switcher button + easter-
+       hint pill that also live in the bottom-right corner. */
+    bottom: 76px;
+    right: 16px;
+    width: 220px;
+    height: 220px;
+    z-index: 90;            /* above content, below modals (100+) */
     cursor: pointer;
-    transition: filter 240ms ease, transform 240ms ease;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    overflow: visible;
+    pointer-events: auto;
+    transition: transform 240ms ease, filter 240ms ease;
+    /* Drop-shadow on the SCENE silhouette only, not a card around it.
+       filter:drop-shadow follows alpha channel, so it traces the island
+       outline — no box. This is what separates "pet" from "PiP frame". */
+    filter: drop-shadow(0 6px 14px rgba(40, 50, 60, 0.18));
   }
-  .island-card-canvas:hover {
-    filter: brightness(1.05) saturate(1.08);
-    transform: translateY(-1px);
+  .island-pet:hover {
+    transform: translateY(-2px) scale(1.02);
+    filter: drop-shadow(0 10px 20px rgba(40, 50, 60, 0.26))
+            brightness(1.04) saturate(1.06);
   }
-  /* V50 a11y: visible focus ring for keyboard users (we changed
-     <a> → div[role=link] for valid HTML, so the browser default
-     focus styles no longer fire). */
-  .island-card-canvas:focus-visible {
+  .island-pet:focus-visible {
     outline: 2px solid var(--c-accent, #6ABE5C);
-    outline-offset: 3px;
-    box-shadow: 0 0 0 4px rgba(106, 190, 92, 0.18);
+    outline-offset: 4px;
+    border-radius: 8px;
   }
-  .island-card-canvas canvas {
+  .island-pet canvas {
     display: block;
     width: 100% !important;
     height: 100% !important;
+    background: transparent;
   }
 
-  @media (max-width: 800px) {
-    .island-card-canvas { height: 220px; }
-  }
-  @media (max-width: 480px) {
-    .island-card-canvas { height: 180px; }
-  }
-
-  /* V33: skeleton positioned above canvas, fades out on canvas detect */
-  .island-skeleton {
+  /* Skeleton fills the same area, fades out fast when canvas loaded
+     (V51 fix: 0.9s fade left a visible ghost overlap — now 0.35s + a
+     longer-delayed display:none to fully remove from compositing). */
+  .island-pet .island-skeleton {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     z-index: 2;
     pointer-events: none;
-    transition: opacity 0.9s ease;
+    transition: opacity 0.35s ease;
   }
-  .island-card-canvas.island-loaded .island-skeleton {
+  .island-pet.island-loaded .island-skeleton {
     opacity: 0;
+    /* Wait for fade to finish, then remove from layer tree entirely
+       so we never see ghost overlap on slow GPUs. */
+    animation: island-skel-disappear 0.4s ease forwards;
   }
-  /* V39: WebGL failed → keep skeleton fully visible, add subtle hint */
-  .island-card-canvas.island-webgl-failed .island-skeleton {
+  @keyframes island-skel-disappear {
+    to { visibility: hidden; }
+  }
+
+  /* WebGL-failed: keep skeleton visible (it IS the fallback) + show hint */
+  .island-pet.island-webgl-failed .island-skeleton {
     opacity: 1 !important;
     animation: none;
+    visibility: visible;
   }
-  /* V50 a11y: WebGL-failed hint as a real <span> with WCAG-AA-passing
-     contrast — was CSS ::after (SR-invisible) at 2.1:1 on the warm
-     dwell gradient. Now solid dark pill background → ~7:1. */
-  .island-webgl-hint {
+  .island-pet-hint {
     position: absolute;
-    bottom: 12px;
+    bottom: -4px;
     left: 50%;
-    transform: translateX(-50%);
-    padding: 5px 12px;
-    background: rgba(28, 22, 18, 0.78);
+    transform: translate(-50%, 100%);
+    padding: 4px 10px;
+    background: rgba(28, 22, 18, 0.84);
     color: rgba(252, 244, 226, 0.96);
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 11px;
-    border-radius: 12px;
+    font-size: 10px;
+    border-radius: 10px;
     z-index: 3;
     pointer-events: none;
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
+    white-space: nowrap;
   }
-  /* V50 a11y: prefers-reduced-motion now correctly targets the Astro
-     wrapper (<astro-island>) — old selectors (a-island-mount /
-     div[data-react-mount]) never matched what Astro renders. */
-  @media (prefers-reduced-motion: reduce) {
-    .island-card-canvas .island-skeleton {
-      opacity: 1 !important;
-      animation: none;
+
+  /* Tablet: shrink slightly + still clear theme-switcher */
+  @media (max-width: 1024px) and (min-width: 801px) {
+    .island-pet {
+      width: 180px;
+      height: 180px;
+      bottom: 70px;
+      right: 14px;
     }
-    .island-card-canvas > astro-island {
+  }
+
+  /* Mobile: hide entirely — floating pet over scrolling content on
+     touch screens is annoying + steals taps from the actual cards. */
+  @media (max-width: 800px) {
+    .island-pet {
       display: none;
     }
-    .island-card-canvas {
+  }
+
+  /* Reduced motion: kill hover lift + transitions (R3F frameloop also
+     drops to "demand" via PREFERS_REDUCED_MOTION in island-shared.ts). */
+  @media (prefers-reduced-motion: reduce) {
+    .island-pet {
       transition: none;
     }
-    .island-card-canvas:hover {
+    .island-pet:hover {
       transform: none;
-      filter: none;
+      filter: drop-shadow(0 6px 14px rgba(40, 50, 60, 0.18));
     }
-  }
-  /* V50 polish: stop skeleton's opacity pulse cleanly when loaded
-     (was: pulse kept running until snap-to-0). */
-  .island-card-canvas.island-loaded .island-skeleton animate {
-    /* SMIL animation can't be paused via CSS; skeleton opacity
-       transition handles the fade so the pulse becomes invisible. */
+    .island-pet .island-skeleton {
+      animation: none;
+    }
   }
 </style>
