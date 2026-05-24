@@ -16,9 +16,11 @@ const PERSIMMON  = '#E89A4A'
 const PERSIMMON_DK = '#C97B30'
 const PERSIMMON_STEM = '#3A2516'
 
-// Just south-west of cabin (cabin at -2,-1), tucked between cabin and
-// the gravel path leading to the easel.
-const POS: [number, number, number] = [-4.2, 0, 0.4]
+// Sub-A fix: was at [-4.2, 0, 0.4] — directly under hero sakura's
+// drop shadow + canopy collision. Moved east near onsen for orange-
+// on-blue contrast (water + orange persimmons) without crowding
+// any existing tree's silhouette.
+const POS: [number, number, number] = [13.0, 0, 6.5]
 
 function PersimmonFruit({ position }: { position: [number, number, number] }) {
   // Tiny orange ball with darker bottom + 4 sepal leaves on top.

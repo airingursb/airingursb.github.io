@@ -4,7 +4,7 @@
 // between logs, porch furniture (rocking chair + firewood pile +
 // doormat + hanging flower basket), animated chimney smoke.
 
-import { useRef, type ReactNode } from 'react'
+import { useRef, useMemo, useEffect, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getZone } from './zones'
@@ -166,6 +166,69 @@ function ChimneySmoke({ origin }: { origin: [number, number, number] }) {
   )
 }
 
+// V2 wave-3 perf fix: 3×4 firewood pile as 2 InstancedMesh draws
+// (logs + end-grain caps) instead of 24 individual mesh nodes.
+function FirewoodPile() {
+  const logsRef = useRef<THREE.InstancedMesh>(null)
+  const capsRef = useRef<THREE.InstancedMesh>(null)
+  // Build geometries once
+  const logGeo  = useMemo(() => new THREE.CylinderGeometry(0.07, 0.07, 0.32, 8), [])
+  const capGeo  = useMemo(() => new THREE.CylinderGeometry(0.07, 0.07, 0.02, 8), [])
+  const logMatLight = useMemo(() => new THREE.MeshStandardMaterial({ color: LOG_LIGHT, roughness: 0.92 }), [])
+  const logMatDark  = useMemo(() => new THREE.MeshStandardMaterial({ color: LOG_DARK,  roughness: 0.92 }), [])
+  // Two InstancedMesh, one per color (12 logs total split by parity)
+  // Actually simpler: per-instance color via setColorAt. Single mesh.
+  const matLog = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.92 }), [])
+  const matCap = useMemo(() => new THREE.MeshStandardMaterial({ color: LOG_END, flatShading: true }), [])
+
+  useEffect(() => {
+    const lm = logsRef.current
+    const cm = capsRef.current
+    if (!lm || !cm) return
+    const dummy = new THREE.Object3D()
+    const cLight = new THREE.Color(LOG_LIGHT)
+    const cDark  = new THREE.Color(LOG_DARK)
+    let idx = 0
+    for (let row = 0; row < 4; row++) {
+      for (let col = 0; col < 3; col++) {
+        dummy.position.set(0, 0.12 + row * 0.16, -0.25 + col * 0.18)
+        dummy.rotation.set(Math.PI / 2, 0, 0)
+        dummy.scale.set(1, 1, 1)
+        dummy.updateMatrix()
+        lm.setMatrixAt(idx, dummy.matrix)
+        lm.setColorAt(idx, (row + col) % 2 ? cLight : cDark)
+
+        // End-grain cap, offset on x
+        dummy.position.set(0.16, 0.12 + row * 0.16, -0.25 + col * 0.18)
+        dummy.rotation.set(0, 0, Math.PI / 2)
+        dummy.updateMatrix()
+        cm.setMatrixAt(idx, dummy.matrix)
+        idx++
+      }
+    }
+    lm.instanceMatrix.needsUpdate = true
+    if (lm.instanceColor) lm.instanceColor.needsUpdate = true
+    cm.instanceMatrix.needsUpdate = true
+  }, [])
+
+  // Dispose on unmount
+  useEffect(() => () => {
+    logGeo.dispose()
+    capGeo.dispose()
+    matLog.dispose()
+    matCap.dispose()
+    logMatLight.dispose()
+    logMatDark.dispose()
+  }, [logGeo, capGeo, matLog, matCap, logMatLight, logMatDark])
+
+  return (
+    <>
+      <instancedMesh ref={logsRef} args={[logGeo, matLog, 12]} castShadow />
+      <instancedMesh ref={capsRef} args={[capGeo, matCap, 12]} />
+    </>
+  )
+}
+
 export default function Cabin() {
   const z = getZone('chat')
   const [x, zPos] = z.pos
@@ -292,12 +355,22 @@ export default function Cabin() {
         )
       })}
 
-      {/* === Door — painted red as the scene's hero accent === */}
+      {/* === Door — painted red as the scene's hero accent ===
+          Sub-A wave-3 fix: at dusk, multiple warm emissives (window,
+          dormer, lanterns, firefly) compete; door is the only non-
+          emissive warm anchor and visually disappears. Added tiny
+          DOOR_RED emissive 0.15 so the door HOLDS its hero status
+          across both themes without screaming. */}
       <group position={[0, 0.32 + doorH/2, CABIN_D/2]}>
         {[-0.3, -0.1, 0.1, 0.3].map((dx, i) => (
           <mesh key={`dp${i}`} position={[dx, 0, 0.01]} castShadow>
             <boxGeometry args={[0.21, doorH, 0.04]} />
-            <meshStandardMaterial color={DOOR_RED} roughness={0.7} />
+            <meshStandardMaterial
+              color={DOOR_RED}
+              roughness={0.7}
+              emissive={DOOR_RED}
+              emissiveIntensity={0.15}
+            />
           </mesh>
         ))}
         {[-doorH/2 + 0.2, doorH/2 - 0.2].map((dy, i) => (
@@ -565,35 +638,13 @@ export default function Cabin() {
         <ChimneySmoke origin={[0, 0.5 + 7 * 0.32 + 0.3, 0]} />
       </group>
 
-      {/* === Firewood pile against chimney === */}
+      {/* === Firewood pile against chimney ===
+          Sub-A perf fix: was 48 individual meshes (12 logs × 2 colors
+          + 12 end-grain caps × 2 = 48 draws). Now 2 InstancedMesh:
+          one for logs (12), one for end-grain caps (12). 24 draws →
+          2 draws. */}
       <group position={[CABIN_W / 2 + 0.4, 0, -CABIN_D / 4 + 0.05]}>
-        {/* 3×4 stack of small log discs */}
-        {Array.from({ length: 4 }).map((_, row) =>
-          Array.from({ length: 3 }).map((_, col) => (
-            <mesh
-              key={`fw-${row}-${col}`}
-              position={[0, 0.12 + row * 0.16, -0.25 + col * 0.18]}
-              rotation={[Math.PI / 2, 0, 0]}
-              castShadow
-            >
-              <cylinderGeometry args={[0.07, 0.07, 0.32, 8]} />
-              <meshStandardMaterial color={(row + col) % 2 ? LOG_LIGHT : LOG_DARK} roughness={0.92} />
-            </mesh>
-          ))
-        )}
-        {/* End-grain caps on the front-facing logs */}
-        {Array.from({ length: 4 }).map((_, row) =>
-          Array.from({ length: 3 }).map((_, col) => (
-            <mesh
-              key={`fwc-${row}-${col}`}
-              position={[0.16, 0.12 + row * 0.16, -0.25 + col * 0.18]}
-              rotation={[0, 0, Math.PI / 2]}
-            >
-              <cylinderGeometry args={[0.07, 0.07, 0.02, 8]} />
-              <meshStandardMaterial color={LOG_END} flatShading />
-            </mesh>
-          ))
-        )}
+        <FirewoodPile />
       </group>
 
       {/* === Front porch === */}
@@ -727,18 +778,20 @@ export default function Cabin() {
             <cylinderGeometry args={[0.011, 0.014, 0.07, 6]} />
             <meshStandardMaterial color="#5D3D1F" roughness={0.94} flatShading />
           </mesh>
-          {/* Foliage clouds — 2 small flat-shaded green blobs */}
+          {/* Foliage clouds — Sub-A fix: was 3 near-identical greens
+              reading as one blob. Pushed contrast (dark/mid/light)
+              so the 3 cloud-pruned tiers actually read as tiers. */}
           <mesh position={[0.05, 0.24, 0]} castShadow>
             <sphereGeometry args={[0.07, 10, 8]} />
-            <meshStandardMaterial color="#4A6B40" roughness={0.93} flatShading />
+            <meshStandardMaterial color="#5C8A4C" roughness={0.93} flatShading />
           </mesh>
           <mesh position={[-0.05, 0.21, 0.02]} castShadow>
             <sphereGeometry args={[0.06, 10, 8]} />
-            <meshStandardMaterial color="#3F5A35" roughness={0.93} flatShading />
+            <meshStandardMaterial color="#2E4A26" roughness={0.93} flatShading />
           </mesh>
           <mesh position={[0.07, 0.27, -0.03]} castShadow>
             <sphereGeometry args={[0.045, 10, 8]} />
-            <meshStandardMaterial color="#5A7A4C" roughness={0.93} flatShading />
+            <meshStandardMaterial color="#86A668" roughness={0.93} flatShading />
           </mesh>
         </group>
 

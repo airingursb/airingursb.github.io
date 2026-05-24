@@ -184,12 +184,20 @@ export default function Onsen() {
           <planeGeometry args={[1.3, 1.0]} />
           <meshStandardMaterial color="#E8DCC0" roughness={0.98} />
         </mesh>
-        {/* 3 raked concentric rings around a center stone (groove via
-            thin ring meshes on top of the sand) */}
+        {/* 3 raked concentric rings — Sub-A z-fight fix: was y=0.046
+            (1mm above sand at 0.045 → shimmer at dpr=1.5). Raised
+            to y=0.052 + polygonOffset bias toward camera. */}
         {[0.16, 0.26, 0.38].map((r, i) => (
-          <mesh key={`rake${i}`} position={[-0.15, 0.046, 0.08]} rotation={[-Math.PI / 2, 0, 0]}>
+          <mesh key={`rake${i}`} position={[-0.15, 0.052, 0.08]} rotation={[-Math.PI / 2, 0, 0]}>
             <ringGeometry args={[r, r + 0.012, 24]} />
-            <meshStandardMaterial color="#BCAE92" roughness={0.92} side={THREE.DoubleSide} />
+            <meshStandardMaterial
+              color="#BCAE92"
+              roughness={0.92}
+              side={THREE.DoubleSide}
+              polygonOffset
+              polygonOffsetFactor={-1}
+              polygonOffsetUnits={-1}
+            />
           </mesh>
         ))}
         {/* Center stone of the karesansui (tallest, asymmetric) */}
@@ -262,10 +270,12 @@ export default function Onsen() {
           </mesh>
         </group>
 
-        {/* Pair of geta (wooden sandals) — two slabs each with two
-            small teeth on bottom. Slightly turned outward. */}
-        {[-0.20, 0.12].map((gx, i) => (
-          <group key={`geta${i}`} position={[0.30 + gx, 0.08, 0.15 - i * 0.30]} rotation={[0, i === 0 ? 0.18 : -0.20, 0]}>
+        {/* Pair of geta — Sub-A fix: were 32cm apart on X + 30cm on Z
+            ("two stray sandals 45cm apart"). Now ~8cm apart on X
+            with matching z, slight outward toe-angles, reads as one
+            pair kicked off side-by-side. */}
+        {[-0.04, 0.04].map((gx, i) => (
+          <group key={`geta${i}`} position={[0.35 + gx, 0.08, 0.15]} rotation={[0, i === 0 ? 0.18 : -0.20, 0]}>
             {/* Sole plank */}
             <mesh castShadow>
               <boxGeometry args={[0.20, 0.025, 0.10]} />

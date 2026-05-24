@@ -58,11 +58,24 @@ export default function SunsetBirds({ theme }: { theme: Theme }) {
     <group ref={groupRef} position={[0, ALT_Y, ALT_Z]}>
       {FORMATION.map(([fx, fz], i) => (
         <group key={`b${i}`} ref={(el) => { wingRef.current[i] = el }} position={[fx, 0, fz]}>
-          {/* Single thin elongated triangle silhouette per bird */}
-          <mesh rotation={[0, 0, 0]}>
-            <coneGeometry args={[0.20, 0.65, 3]} />
+          {/* Sub-A fix: was 3-segment cone = flat triangle facing one
+              way; bird's-eye camera saw edge-on 1px line. Now 2 crossed
+              wedge planes (X + Z) forming a tiny "+" silhouette that
+              reads from any angle. */}
+          <mesh rotation={[Math.PI / 2, 0, 0]}>
+            <planeGeometry args={[0.65, 0.20]} />
             <meshBasicMaterial
               ref={(m) => { matRefs.current[i] = m }}
+              color="#1A1A1A"
+              transparent
+              opacity={0}
+              side={THREE.DoubleSide}
+              depthWrite={false}
+            />
+          </mesh>
+          <mesh rotation={[Math.PI / 2, 0, Math.PI / 2]}>
+            <planeGeometry args={[0.65, 0.20]} />
+            <meshBasicMaterial
               color="#1A1A1A"
               transparent
               opacity={0}
