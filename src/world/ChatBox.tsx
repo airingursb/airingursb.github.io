@@ -23,8 +23,14 @@ export default function ChatBox() {
   const inputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
+  // V2 polish: smooth scroll to bottom when a new message arrives.
+  // Instant scrollTo was visually jarring — the chat would 'snap'
+  // to bottom whenever Airing streamed a token in. Smooth scroll
+  // feels like the chat is following the new content naturally.
+  // Falls back to instant on prefers-reduced-motion (browsers
+  // automatically respect this for scroll behavior 'smooth').
   useEffect(() => {
-    histRef.current?.scrollTo(0, histRef.current.scrollHeight)
+    histRef.current?.scrollTo({ top: histRef.current.scrollHeight, behavior: 'smooth' })
   }, [msgs, pending])
 
   // Auto-focus input when chat panel opens. preventScroll keeps iOS
