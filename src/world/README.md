@@ -215,8 +215,49 @@ src/world/
 Plus heavy edits to: Lanterns (theme prop + halo + moss), EaselClearing
 (CanvasTexture painting), Critters (cat FSM + duck wakes + koi + fireflies),
 MochiNPC (head FSM), Cabin (RockerTeaCup + geta + bonsai + smoke + window
-balance + rocker axis), Water (LilyPads gust + FloatingPetals + arch
-bridge), HammockSpot (book + glasses), Gazebo (tatami + cushion + bowl +
-roof palette), Domestic (clothesline gust), BlogKiosk (lived-in pass),
-SoilHalos (z-fight fix), Storytelling (signpost spread), DistantIslands
-(drop shadows). Total ~25 components changed across the wave.
+balance + rocker axis + firewood InstancedMesh), Water (LilyPads gust +
+FloatingPetals + RiverLeaves + arch bridge + tube dispose), HammockSpot
+(book + glasses), Gazebo (tatami + cushion + bowl + roof palette),
+Domestic (clothesline gust), BlogKiosk (lived-in pass), SoilHalos
+(z-fight fix), Storytelling (signpost spread), DistantIslands (drop
+shadows), Atmospherics (leaf gust), AmbientFX (streak gust), Campfire
+(flame lean gust), Weathervane (gust whip), displayParts (Parchment
+dispose), App.tsx (cinematic intro pan + theme-toggle breath).
+Total ~26 components changed across the wave.
+
+### The wind/gust system (V2 B4)
+
+`src/world/wind.ts::getGust(t)` returns a 0..1 bell curve that
+spikes for ~3 seconds every 27 seconds, 0 otherwise. Shared across
+15 reactive systems so the periodic "wind rises" moment plays
+synchronized across the entire island:
+
+- WindSway (trees, hammock, sakura, wreath, gazebo chime)
+- Pond ripple amplitude
+- Lily pad tilt
+- Clothesline whip + outward billow
+- Chimney smoke lateral drift + rise rate
+- Sakura petals on pond (drift)
+- River leaves (drift via curve sampling)
+- Wind streaks (speed + opacity)
+- Falling leaves (horizontal drift + spin)
+- Wind chime tanzaku (whip rotation)
+- Fox shrine shide paper streamers
+- Persimmon fruits (swing angle)
+- Weathervane (1.8 rad whip)
+- Campfire flames (~17° lean + 60% brighter light)
+- Fox shrine candle (lean + scale)
+
+### Camera choreography (V2 wave 3 finale)
+
+`App.tsx::CameraControls` now does two cinematic motions instead of
+pure user-orbit:
+
+1. **Intro pan** (4.5s on first mount). Camera starts close on cabin
+   door area [5, 4.5, 8] looking at (-2, 1.5, 0.5), eases out to the
+   establishing 3/4 angle [34, 26, 30] looking at (0, 5, 0). Sine
+   in-out. OrbitControls disabled during pan, snaps enabled at the
+   end. **Skippable**: first pointerdown on canvas jumps to final.
+2. **Theme breath** (1.5s on 🌙/☀️ press). Camera momentarily eases
+   6% closer to target on a sin(πt) bell curve — "leaning in to
+   watch the lights come on" beat. Doesn't fire during intro.
