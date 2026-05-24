@@ -5,6 +5,7 @@
 import * as THREE from 'three'
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { getGust } from './wind'
 
 const POLLEN_GOLD = '#FFE89A'
 const WIND_STREAK = '#FFFFFF'
@@ -60,17 +61,21 @@ function InstancedPollen({ origins, perOrigin = 10 }: { origins: Array<[number, 
 
 function WindStreaks({ center, count = 4 }: { center: [number, number, number]; count?: number }) {
   const refs = useRef<(THREE.Mesh | null)[]>([])
+  // V2 wave 3: wind streaks travel faster + denser visible at peak gust
   useFrame((s) => {
     const t = s.clock.elapsedTime
+    const gust = getGust(t)
+    const speedBoost = 1 + gust * 1.6
+    const opacityBoost = 1 + gust * 2.5
     for (let i = 0; i < count; i++) {
       const m = refs.current[i]
       if (!m) continue
-      const phase = (t * 0.15 + i * 0.25) % 1
+      const phase = (t * 0.15 * speedBoost + i * 0.25) % 1
       m.position.x = center[0] - 8 + phase * 18
       m.position.z = center[2] + Math.sin(i + t * 0.1) * 4
       m.position.y = center[1]
-      const opacity = Math.sin(phase * Math.PI) * 0.18
-      ;(m.material as THREE.MeshBasicMaterial).opacity = opacity
+      const opacity = Math.sin(phase * Math.PI) * 0.18 * opacityBoost
+      ;(m.material as THREE.MeshBasicMaterial).opacity = Math.min(0.6, opacity)
     }
   })
   return (

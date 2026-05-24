@@ -5,6 +5,7 @@
 import * as THREE from 'three'
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { getGust } from './wind'
 
 const MAPLE_LEAF = '#D9622B'
 const CHERRY_PETAL = '#E8D2DC'
@@ -46,20 +47,24 @@ function makeFallingParticles(center: [number, number, number], count: number, c
 
 function FallingLeaves({ particles }: { particles: ParticleSpec[] }) {
   const refs = useRef<(THREE.Mesh | null)[]>([])
+  // V2 wave 3: leaves drift wider on gust (the periodic wind event).
+  // Calm: ±0.18 horizontal drift. Peak gust: ±0.50 — visibly blown.
   useFrame((s) => {
     const t = s.clock.elapsedTime
+    const gust = getGust(t)
+    const driftAmp = 0.18 + gust * 0.32
     particles.forEach((p, i) => {
       const m = refs.current[i]
       if (!m) return
       const phase = (t / p.cycle + i * 0.1) % 1
       const yDrop = phase * 4.5
       m.position.set(
-        p.start[0] + p.drift[0] * phase + Math.sin(t * 1.4 + i) * 0.18,
+        p.start[0] + p.drift[0] * phase + Math.sin(t * 1.4 + i) * driftAmp,
         p.start[1] - yDrop,
-        p.start[2] + p.drift[2] * phase + Math.cos(t * 1.1 + i) * 0.18,
+        p.start[2] + p.drift[2] * phase + Math.cos(t * 1.1 + i) * driftAmp,
       )
-      m.rotation.x = t * p.spin
-      m.rotation.z = t * p.spin * 0.8
+      m.rotation.x = t * p.spin * (1 + gust * 0.8)
+      m.rotation.z = t * p.spin * 0.8 * (1 + gust * 0.8)
       // Fade in/out across cycle
       const opacity = phase < 0.1 ? phase * 10 : phase > 0.85 ? (1 - phase) * 6.67 : 1
       ;(m.material as THREE.MeshStandardMaterial).opacity = Math.min(0.85, opacity * 0.85)
