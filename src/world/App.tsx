@@ -14,7 +14,7 @@
 //   - Avatar: panda billboard at cabin porch (idle breathing)
 //   - Distant: 2 mini islands with windmill
 
-import { Canvas } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
@@ -83,9 +83,54 @@ function detectQuality(): 'high' | 'medium' | 'low' {
 }
 const QUALITY = typeof window !== 'undefined' ? detectQuality() : 'medium'
 
+// V2 wave 3 finale: 4.5-second cinematic intro pan from close-on-cabin
+// to the establishing 3/4 angle. Hands camera to user OrbitControls
+// after the pan. Skippable: any pointerdown on the canvas during the
+// pan jumps straight to the final pose. Sub-A: this is "what pushes
+// the scene from 8.5 to 10 — diorama starts feeling directed."
 function CameraControls() {
   const ref = useRef<OrbitControlsImpl | null>(null)
+  const introRef = useRef({ started: 0, active: true, skipped: false })
+  const { camera, gl } = useThree()
+
   useEffect(() => on('world-reset-camera', () => ref.current?.reset()), [])
+
+  // Skip intro on first user interaction with the canvas
+  useEffect(() => {
+    const skip = () => { introRef.current.skipped = true }
+    const dom = gl.domElement
+    dom.addEventListener('pointerdown', skip, { once: true })
+    return () => dom.removeEventListener('pointerdown', skip)
+  }, [gl])
+
+  useFrame((s) => {
+    const intro = introRef.current
+    if (!intro.active) return
+    if (intro.started === 0) intro.started = s.clock.elapsedTime
+    const elapsed = s.clock.elapsedTime - intro.started
+    let phase = elapsed / 4.5
+    if (intro.skipped) phase = 1
+    if (phase >= 1) {
+      intro.active = false
+      // Snap to final pose and re-enable user input
+      camera.position.set(34, 26, 30)
+      camera.lookAt(0, 5, 0)
+      if (ref.current) ref.current.enabled = true
+      return
+    }
+    // Sine in-out ease for cinematic feel
+    const e = 0.5 - Math.cos(phase * Math.PI) * 0.5
+    // Start tight on cabin door area (cabin chat at -2,-1; door at +z)
+    const sx = 5, sy = 4.5, sz = 8
+    const tx = 34, ty = 26, tz = 30
+    camera.position.set(sx + (tx - sx) * e, sy + (ty - sy) * e, sz + (tz - sz) * e)
+    const lx = -2 + (0 - -2) * e
+    const ly = 1.5 + (5 - 1.5) * e
+    const lz = 0.5 + (0 - 0.5) * e
+    camera.lookAt(lx, ly, lz)
+    if (ref.current) ref.current.enabled = false
+  })
+
   return (
     <OrbitControls
       ref={ref as any}

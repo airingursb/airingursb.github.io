@@ -8,7 +8,7 @@
 //   - Animated wave displacement still present
 
 import * as THREE from 'three'
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
 import { POND_CENTER, POND_RADIUS } from './zones'
@@ -284,6 +284,8 @@ function River() {
     const curve = new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.45)
     return new THREE.TubeGeometry(curve, 90, 0.7, 8, false)
   }, [])
+  // Sub-A leak fix: dispose tube geometries on unmount
+  useEffect(() => () => { tubeMain.dispose(); tubeBed.dispose() }, [tubeMain, tubeBed])
 
   const surfRef = useRef<THREE.Mesh>(null)
   useFrame((s) => {

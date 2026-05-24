@@ -6,7 +6,7 @@
 //   - ParchmentPlane — canvas-texture parchment list plane
 
 import { useTexture } from '@react-three/drei'
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import { DoubleSide } from 'three'
 import { makeCanvasTexture, drawListPanel, type ListRow } from './canvasTexture'
 
@@ -107,6 +107,10 @@ export function ParchmentPlane({
       }),
     [content, texW, texH],
   )
+  // Sub-A leak fix: dispose CanvasTexture when content changes / on
+  // unmount. Without this every feed-data update leaks a texture
+  // (which can churn during dev HMR or stale-while-revalidate fetches).
+  useEffect(() => () => tex.dispose(), [tex])
   return (
     <mesh>
       <planeGeometry args={[width, height]} />

@@ -17,13 +17,14 @@ const WISTERIA_A    = '#B8A0D0'   // pale lavender
 const WISTERIA_B    = '#9A7CB8'   // mid lavender
 const WISTERIA_C    = '#7A5EA0'   // deep lavender
 
-// Sub-A fix: was at (-3.3, 0, -3.8) rotY=-0.5 — BESIDE the path,
-// not over it, and 50° off-axis from the path tangent. Path passes
-// through (-1.4,-4.5) → (-2.4,-7.0); midpoint ≈ (-1.9, -5.75) with
-// tangent direction +0.38 rad. Arch needs to be PERPENDICULAR to
-// tangent: rotY = π/2 + 0.38 ≈ 1.95. Now actually frames the path.
+// Sub-A re-fix: tangent calc was sign-wrong. Real tangent at midpoint
+// (-1.9, -5.75) between PATH_POINTS[2]=(-1.4,-4.5) and PATH_POINTS[3]=
+// (-2.4,-7.0): atan2(-7.0-(-4.5), -2.4-(-1.4)) = atan2(-2.5, -1.0)
+// ≈ -1.95 rad. Perpendicular = -1.95 + π/2 = -0.38 rad. So the
+// arch's crossbar (local X) aligns perpendicular to the path when
+// rotY = -0.38.
 const POS: [number, number, number] = [-1.9, 0, -5.75]
-const ROT_Y = 1.95   // perpendicular to path tangent at this midpoint
+const ROT_Y = -0.38   // crossbar perpendicular to path tangent (true math)
 
 // One hanging cluster of wisteria blossoms — top wider, narrowing
 // downward. 3 ovoids in lavender gradient. Sways more on gust.
