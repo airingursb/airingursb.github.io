@@ -135,20 +135,20 @@ export default function AmbientHUD() {
       <div className="world-ui-extra">
         <button
           onClick={cycleNoise}
-          className={`world-btn world-btn-text${noiseIsOn ? '' : ' world-btn--off'}`}
+          className={`world-btn world-btn-with-sub${noiseIsOn ? '' : ' world-btn--off'}`}
           title={`白噪音：${NOISE_LABEL[noise]}（点击切换）`}
         >
-          <span className="world-btn-text-glyph">BGM</span>
-          <span className="world-btn-text-sub">{NOISE_LABEL[noise]}</span>
+          <img src="/world/sprites/icons/F06-bgm.png" alt="" className="world-btn-icon" />
+          <span className="world-btn-sub-label">{NOISE_LABEL[noise]}</span>
         </button>
         <button
           onClick={togglePomodoro}
-          className={`world-btn world-btn-text${pomo !== 'idle' ? ' world-btn--active' : ''}`}
+          className={`world-btn world-btn-with-sub${pomo !== 'idle' ? ' world-btn--active' : ''}`}
           title={pomo === 'idle' ? '开始 25 分钟番茄钟' : '取消番茄钟'}
         >
-          <span className="world-btn-text-glyph">番茄</span>
+          <img src="/world/sprites/icons/F07-tomato.png" alt="" className="world-btn-icon" />
           {pomo !== 'idle' && (
-            <span className="world-btn-text-sub">{fmtMmSs(pomoRemaining)}</span>
+            <span className="world-btn-sub-label">{fmtMmSs(pomoRemaining)}</span>
           )}
         </button>
       </div>
