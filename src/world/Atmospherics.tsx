@@ -45,43 +45,67 @@ function makeFallingParticles(center: [number, number, number], count: number, c
   return arr
 }
 
+// V2 wave 3 perf (Sub-A P1 from first audit, finally addressed):
+// FallingLeaves was 36+ individual meshes — same anti-pattern that
+// AmbientFX::InstancedPollen had already fixed. Now ONE InstancedMesh
+// with per-instance position + rotation + scale (fade via scale, since
+// per-instance opacity needs custom shader). Per-leaf color via
+// instanceColor attribute.
 function FallingLeaves({ particles }: { particles: ParticleSpec[] }) {
-  const refs = useRef<(THREE.Mesh | null)[]>([])
+  const meshRef = useRef<THREE.InstancedMesh>(null)
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const scratchColor = useMemo(() => new THREE.Color(), [])
+  const geo = useMemo(() => new THREE.PlaneGeometry(1, 1), [])
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#ffffff',
+    transparent: true,
+    opacity: 0.85,
+    side: THREE.DoubleSide,
+    flatShading: true,
+  }), [])
+  // Set per-instance color once
+  useEffect(() => {
+    const m = meshRef.current
+    if (!m) return
+    particles.forEach((p, i) => {
+      scratchColor.set(p.color)
+      m.setColorAt(i, scratchColor)
+    })
+    if (m.instanceColor) m.instanceColor.needsUpdate = true
+  }, [particles, scratchColor])
+  // Dispose on unmount
+  useEffect(() => () => { geo.dispose(); mat.dispose() }, [geo, mat])
   // V2 wave 3: leaves drift wider on gust (the periodic wind event).
-  // Calm: ±0.18 horizontal drift. Peak gust: ±0.50 — visibly blown.
   useFrame((s) => {
+    const m = meshRef.current
+    if (!m) return
     const t = s.clock.elapsedTime
     const gust = getGust(t)
     const driftAmp = 0.18 + gust * 0.32
     particles.forEach((p, i) => {
-      const m = refs.current[i]
-      if (!m) return
       const phase = (t / p.cycle + i * 0.1) % 1
       const yDrop = phase * 4.5
-      m.position.set(
+      dummy.position.set(
         p.start[0] + p.drift[0] * phase + Math.sin(t * 1.4 + i) * driftAmp,
         p.start[1] - yDrop,
         p.start[2] + p.drift[2] * phase + Math.cos(t * 1.1 + i) * driftAmp,
       )
-      m.rotation.x = t * p.spin * (1 + gust * 0.8)
-      m.rotation.z = t * p.spin * 0.8 * (1 + gust * 0.8)
-      // Fade in/out across cycle
-      const opacity = phase < 0.1 ? phase * 10 : phase > 0.85 ? (1 - phase) * 6.67 : 1
-      ;(m.material as THREE.MeshStandardMaterial).opacity = Math.min(0.85, opacity * 0.85)
+      dummy.rotation.set(
+        t * p.spin * (1 + gust * 0.8),
+        0,
+        t * p.spin * 0.8 * (1 + gust * 0.8),
+      )
+      // Fade in/out via scale (per-instance opacity in InstancedMesh
+      // requires custom shader; scale ~0 at edges → invisible)
+      const fadeScale = phase < 0.1 ? phase * 10 : phase > 0.85 ? (1 - phase) * 6.67 : 1
+      dummy.scale.setScalar(Math.max(0, Math.min(1, fadeScale)) * p.size)
+      dummy.updateMatrix()
+      m.setMatrixAt(i, dummy.matrix)
     })
+    m.instanceMatrix.needsUpdate = true
   })
   return (
-    <group>
-      {particles.map((p, i) => (
-        <mesh
-          key={i}
-          ref={(el) => { if (el) refs.current[i] = el }}
-        >
-          <planeGeometry args={[p.size, p.size]} />
-          <meshStandardMaterial color={p.color} transparent opacity={0.8} side={THREE.DoubleSide} flatShading />
-        </mesh>
-      ))}
-    </group>
+    <instancedMesh ref={meshRef} args={[geo, mat, particles.length]} />
   )
 }
 
