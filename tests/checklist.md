@@ -35,6 +35,36 @@
 - [ ] reduce-motion：模拟 `prefers-reduced-motion: reduce`，刷新，永不出现 `fx-rgb` 或 `data-glitch-flashing`
 - [ ] DOM: `<style is:global>` 块包含 `body.fx-rgb` 选择器
 
+## Forest Island 3D Widget (Homepage)
+
+> Component: `src/components/IslandWidget.tsx` (R3F scene) +
+> `src/components/IslandWidget.astro` (wrapper + skeleton + WebGL fallback).
+> Inline card on homepage `cards-grid`. Click → `/world/`.
+
+- [ ] DOM: `#island-3d` card exists in homepage cards-grid
+- [ ] DOM: `[data-i18n=sec_island_3d]` resolves to "森林岛 · 3D" (zh) or "Forest Island · 3D" (en)
+- [ ] DOM: `#island-3d-canvas-wrap` is an `<a href="/world/">` element (whole canvas is clickable)
+- [ ] DOM: `.island-skeleton` SVG renders inside the wrap (loading state)
+- [ ] Evaluate (WebGL OK): within 12s, `wrap.classList.contains('island-loaded')` is true
+- [ ] Evaluate (WebGL OK): `wrap.querySelector('canvas')` returns canvas with non-null `.getContext('webgl2')` or `.getContext('webgl')`
+- [ ] Evaluate (WebGL failed): after 12s without a working canvas, `wrap.classList.contains('island-webgl-failed')` is true
+- [ ] CSS (WebGL failed): `.island-card-canvas.island-webgl-failed::after` shows "WebGL 未启用 — 点击进入完整页面"
+- [ ] Mobile (375px): widget height collapses to 220px and skeleton remains balanced
+- [ ] Reduced motion: skeleton stays visible, R3F mount is hidden via prefers-reduced-motion CSS
+- [ ] Click: `/world/` is the navigation target
+
+## /world/ WebGL Fallback
+
+> Component: `src/world/WorldLoader.astro` — graceful fallback for users
+> whose browsers can't create a WebGL context (resolves "黑屏" bug).
+
+- [ ] GET `/world/` 返回页面
+- [ ] DOM: `#world-loader` exists initially (showing 走进林间…)
+- [ ] Evaluate (WebGL OK): canvas mounts within 12s and loader fades out
+- [ ] Evaluate (WebGL failed): synchronously when `WebGL2RenderingContext` and `WebGLRenderingContext` both undefined, `#world-webgl-fallback` becomes visible (hidden=false) and loader is removed
+- [ ] Evaluate (WebGL failed): after 12s without canvas working, fallback DOM is shown with "无法加载 3D 场景" title
+- [ ] DOM (fallback): two CTAs visible — "前往 nook 2D 版本 →" → `/nook/` and "回首页" → `/`
+
 ## Archive (`/archive/`)
 
 - [ ] GET `/archive/` 返回页面
