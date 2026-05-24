@@ -1543,6 +1543,22 @@ function ChimneySmoke() {
   )
 }
 
+// V52 pet cutout: explicit camera lookAt so the framing centers on
+// the visual mass of the island (cabin midline + cedar mid-canopies)
+// instead of the default (0,0,0) which leaves the scene bottom-heavy
+// with empty sky above the cedars. Without OrbitControls (removed in
+// V52) the camera no longer auto-targets a controls target.
+function CameraSetup() {
+  const camera = useThree((s) => s.camera)
+  useEffect(() => {
+    // Look at midline between disc top (y=0.1) and cedar mid (y~1.5).
+    // y=0.85 centers the visible mass vertically in the square frame.
+    camera.lookAt(0, 0.85, 0)
+    camera.updateProjectionMatrix()
+  }, [camera])
+  return null
+}
+
 // V44 LEAK FIX: WebGL context-loss/restore handlers now live in this
 // child component instead of Canvas onCreated. onCreated has no cleanup
 // hook, so listeners accumulated on the canvas DOM element across
@@ -1608,13 +1624,16 @@ export default function IslandWidget() {
     <div ref={canvasWrapRef} style={{ width: '100%', height: '100%' }}>
     <Canvas
       shadows={!IS_MOBILE}
-      // V52 pet cutout: camera pulled WAY back so the whole island
-      // (cabin + cedar tops + sakura crown + torii) fits inside the
-      // 220×220 pet canvas. Was [2.9, 1.5, 3.7] / fov 28 — those were
-      // tuned for the inline-card 800×381 frame and cropped the island
-      // when shoehorned into the square pet. Pulled to z=7, raised y
-      // for a slight bird's-eye so the disc top is visible.
-      camera={{ position: [3.6, 2.4, 7.0], fov: 26 }}
+      // V52 pet cutout: framing for square 220×220 pet canvas.
+      // Island disc has x-extent ±2.15 (radius 2.05 × non-uniform scale
+      // 1.05). To fit the whole disc width in a square canvas the
+      // visible width at island distance must be ≥ 4.3 units.
+      // Math: visible_width = 2 · D · tan(fov/2). Camera [2.6, 2.0, 7.0]
+      // sits ~7.7 units from origin → fov 32 gives ~4.4 unit visible
+      // width = just-fits with margin. Tilt comes from raised y (2.0)
+      // instead of side-angle so the disc reads slightly bird's-eye
+      // (visible as round blob, not as side-cliff slice).
+      camera={{ position: [2.6, 2.0, 7.0], fov: 32 }}
       dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}
       // V41: pause off-screen. V50 a11y: reduced-motion users get a
       // single static render ("demand" + one initial invalidate from R3F
@@ -1647,6 +1666,9 @@ export default function IslandWidget() {
     >
       {/* V44: wire WebGL ctx-loss/restore handlers (with cleanup) */}
       <ContextLossHandlers />
+      {/* V52: center camera on visual mass (was looking at world origin
+          which sits at the bottom of the island disc) */}
+      <CameraSetup />
       {/* No <color> bg — alpha:true canvas, page bg shows through.
           V52 pet cutout: NO fog. Fog draws sky-colored haze onto distant
           objects, which on a transparent-bg canvas reads as a rectangle
