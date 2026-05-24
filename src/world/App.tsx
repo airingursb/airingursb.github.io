@@ -56,6 +56,7 @@ import ComicsEasel from './ComicsEasel'
 import MusicBandstand from './MusicBandstand'
 import ReadingCabinet from './ReadingCabinet'
 import CabinBanner from './CabinBanner'
+import { Sakura } from './Sakura'
 // Sub-A iter-10: Rainbow + HotAirBalloon + Scarecrow cut to protect cabin
 // as the visual hero. (Files left on disk for easy re-enable.)
 
@@ -261,6 +262,19 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         />
         {/* Chat zone banner — small B&B-style hanging sign next to cabin */}
         <CabinBanner />
+
+        {/* === Hero sakura — large weeping cherry SW of cabin, canopy
+            partially overhangs the porch so petals frame the door.
+            (Cabin at [-2, 0, -1], avatar at [-2, 1.05, 0.5]) */}
+        <Sakura
+          position={[-5.5, 0, 2.0]}
+          seed={20260524}
+          size={1.15}
+          density={1.0}
+          hero={true}
+          rotY={0.6}
+          tint="#fad9e4"
+        />
       </Suspense>
 
       <CameraControls />

@@ -5,6 +5,7 @@ import App from '../world/App'
 import WorldUI from '../world/WorldUI'
 import ZonePanel from '../world/ZonePanel'
 import WhisperOverlay from '../world/WhisperOverlay'
+import AmbientHUD from '../world/AmbientHUD'
 import WorldLoader from '../world/WorldLoader.astro'
 import ErrorBoundary from '../world/ErrorBoundary'
 import articlesData from '../data/articles.json'
@@ -36,6 +37,7 @@ const initialData = {
   <WorldUI client:only="react" />
   <ZonePanel client:only="react" initialData={initialData} />
   <WhisperOverlay client:only="react" />
+  <AmbientHUD client:only="react" />
   <div class="world-help">
     <span class="world-help-keys">drag</span> 旋转 · <span class="world-help-keys">scroll</span> 缩放 · <span class="world-help-keys">click</span> 互动 · <span class="world-help-keys">ESC</span> 关面板
   </div>
@@ -124,6 +126,94 @@ const initialData = {
   .world-btn--off {
     opacity: 0.45;
     filter: grayscale(0.7);
+  }
+  .world-btn--active {
+    background: rgba(255, 217, 168, 0.95);
+    box-shadow: 0 0 0 2px rgba(232, 130, 80, 0.45), 0 3px 10px rgba(20, 14, 22, 0.45);
+  }
+
+  /* === Secondary control column (BGM + Pomodoro) ===
+     Sits just below the main world-ui icon stack. */
+  .world-ui-extra {
+    position: fixed;
+    top: calc(18px + 4 * 46px + 3 * 8px + 14px);
+    right: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 20;
+  }
+  .world-btn-text {
+    flex-direction: column;
+    font-family: "Songti SC", Georgia, serif;
+    color: #5D3B1F;
+    background: rgba(244, 234, 213, 0.92);
+    gap: 1px;
+    line-height: 1;
+  }
+  .world-btn-text-glyph {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .world-btn-text-sub {
+    font-size: 9px;
+    color: #8C6B47;
+    font-family: ui-monospace, monospace;
+    letter-spacing: 0;
+  }
+
+  /* === Bottom-left time HUD === */
+  .world-hud-time {
+    position: fixed;
+    bottom: 16px;
+    left: 16px;
+    z-index: 18;
+    pointer-events: none;
+    user-select: none;
+    color: rgba(244, 234, 213, 0.85);
+    font-family: "Songti SC", Georgia, serif;
+    font-size: 13px;
+    line-height: 1.5;
+    text-shadow: 0 1px 4px rgba(20, 14, 22, 0.75);
+    background: rgba(20, 14, 22, 0.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    padding: 8px 14px;
+    border-radius: 12px;
+    border: 1px solid rgba(244, 234, 213, 0.08);
+  }
+  .world-hud-time-main {
+    color: #FFE4C0;
+  }
+  .world-hud-time-sub {
+    color: rgba(244, 234, 213, 0.55);
+    font-size: 11px;
+    font-family: ui-monospace, monospace;
+  }
+  .world-hud-pomo {
+    margin-top: 4px;
+    padding-top: 4px;
+    border-top: 1px dotted rgba(244, 234, 213, 0.18);
+    font-size: 12px;
+    font-family: ui-monospace, monospace;
+    letter-spacing: 0.04em;
+  }
+  .world-hud-pomo--focus { color: #FFD080; }
+  .world-hud-pomo--break { color: #80D0B0; }
+
+  @media (max-width: 720px) {
+    .world-ui-extra {
+      top: auto;
+      bottom: 90px;
+      right: 8px;
+    }
+    .world-hud-time {
+      font-size: 11px;
+      padding: 6px 10px;
+      bottom: 10px;
+      left: 10px;
+    }
   }
   /* === Whisper overlay (island speaks) === */
   .world-whisper {
