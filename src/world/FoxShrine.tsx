@@ -182,14 +182,20 @@ function OfferingBowl() {
   // lit candle stub beside it. Candle has a flickering point light.
   const flameRef = useRef<THREE.Mesh>(null)
   const lightRef = useRef<THREE.PointLight>(null)
+  // V2 wave 3: candle flame also responds to gust — tiny candle leans
+  // more dramatically than fire-pit since it's smaller/lighter. On
+  // very heavy gust, briefly extinguishes? No — Sub-A would catch that
+  // as broken interaction. Just lean + flicker harder.
   useFrame((s) => {
     const t = s.clock.elapsedTime
+    const gust = getGust(t)
     if (flameRef.current) {
-      const flicker = 1 + Math.sin(t * 9) * 0.08 + Math.sin(t * 17) * 0.04
+      const flicker = 1 + Math.sin(t * 9) * 0.08 + Math.sin(t * 17) * 0.04 + gust * 0.15
       flameRef.current.scale.set(flicker, flicker, flicker)
+      flameRef.current.rotation.z = gust * 0.45   // lean harder than fire pit
     }
     if (lightRef.current) {
-      lightRef.current.intensity = 0.35 + Math.sin(t * 9) * 0.08
+      lightRef.current.intensity = (0.35 + Math.sin(t * 9) * 0.08) * (1 + gust * 0.5)
     }
   })
   return (
