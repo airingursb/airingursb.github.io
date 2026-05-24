@@ -63,10 +63,17 @@ function FallingLeaves({ particles }: { particles: ParticleSpec[] }) {
     side: THREE.DoubleSide,
     flatShading: true,
   }), [])
-  // Set per-instance color once
+  // Set per-instance color once + disable frustum culling.
+  // V2 final polish (Sub-A): leaves animate across wide horizontal
+  // and vertical ranges; the InstancedMesh bounding sphere is
+  // computed once at construction and won't grow with the instance
+  // matrices. Without disabling cull, leaves can pop in/out at the
+  // viewport edge during camera orbits — disable so they stay
+  // continuously visible.
   useEffect(() => {
     const m = meshRef.current
     if (!m) return
+    m.frustumCulled = false
     particles.forEach((p, i) => {
       scratchColor.set(p.color)
       m.setColorAt(i, scratchColor)

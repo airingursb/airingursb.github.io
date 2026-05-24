@@ -140,13 +140,20 @@ function CameraControls() {
     }
     // Theme-toggle breath: 1.5s in-out push forward + return.
     // Apply only when controls are settled (post-intro).
+    //
+    // V2 final polish (Sub-A spotted): OrbitControls damping was
+    // fighting our position writes — it caches its own spherical
+    // and lerps back next tick, causing a micro-jitter. Disable
+    // damping for the 1.5s window, restore after.
     const breath = breathRef.current
     if (breath.active && ref.current) {
       const t = performance.now() / 1000 - breath.started
       const p = t / 1.5
       if (p >= 1) {
         breath.active = false
+        ref.current.enableDamping = true
       } else {
+        ref.current.enableDamping = false
         // Bell curve 0→1→0 over 1.5s
         const bell = Math.sin(p * Math.PI)
         // Pull camera 6% closer toward target along current view direction
@@ -252,7 +259,11 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
   return (
     <Canvas
       shadows
-      dpr={[1, 1.5]}
+      // V2 final polish (Sub-A spotted): retina/iPhone displays were
+      // rendering at 1.5× then upscaling — visibly soft on the cabin
+      // chinking + birch bark detail. On 'high' tier bump to full
+      // DPR=2; SMAA in post handles AA, so this is essentially free.
+      dpr={QUALITY === 'high' ? [1, 2] : [1, 1.5]}
       camera={{ position: [34, 26, 30], fov: 26 }}
       frameloop={pageVisible ? 'always' : 'never'}
       gl={{
