@@ -1190,16 +1190,17 @@ function ContextLossHandlers() {
   return null
 }
 
-// V53: RotatingScene — slow Y-rotation on the whole island (~60 s/turn).
-// Pauses on hover so the user can see the side they're looking at. Lights
-// stay outside this group (world-fixed), so the rotating island gets
-// consistent shading from the sun across all angles.
+// V53: RotatingScene — slow Y-rotation on the whole island.
+// V53.1: rate slowed 60s → 180s/turn per user feedback ("旋转的有点快").
+// Pauses on hover so the user can inspect the side they're looking at.
+// Lights stay outside this group (world-fixed) so shading is consistent
+// across all rotation angles.
 function RotatingScene({ children }: { children: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
-  const RATE = (Math.PI * 2) / 60   // one full turn per 60s
+  const RATE = (Math.PI * 2) / 180   // one full turn per 3 minutes
   useFrame((_, dt) => {
     if (!ref.current) return
-    if (hoverState.active) return    // freeze on hover for interaction
+    if (hoverState.active) return    // freeze on hover
     ref.current.rotation.y += dt * RATE
   })
   return <group ref={ref}>{children}</group>
@@ -1337,7 +1338,12 @@ export default function IslandWidget() {
         {/* Lantern + torii. V36: lantern at scale 0.70 reads at engawa-
             handrail height (real ishidoro is shoulder-tall). */}
         <StoneLantern x={-0.10} z={0.70} />
-        <Torii x={0.65} z={1.55} rotY={-0.35} />
+        {/* V53.1: was z=1.55 — too close to disc front edge (z_extent
+          ±1.60). With rotY=-0.35 (~-20°) the FRONT post rotated
+          off the disc into empty space → user reported "torii floating".
+          Pulled to z=1.05 + softened rotation so both posts stay on
+          grass at every rotation angle of RotatingScene. */}
+      <Torii x={0.45} z={1.05} rotY={-0.25} />
 
         {/* Tsukubai stone water basin */}
         <Tsukubai x={0.95} z={0.4} />
