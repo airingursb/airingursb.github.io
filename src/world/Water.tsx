@@ -12,6 +12,7 @@ import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
 import { POND_CENTER, POND_RADIUS } from './zones'
+import { getGust } from './wind'
 
 const WATER_TOP   = '#A6D3D9'
 const WATER_DEEP  = '#4E7A88'
@@ -99,25 +100,30 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
   )
 }
 
+// Sub-A fix: useRef-in-map is a React rules violation (works only
+// because the literal length is stable). Use a single useRef holding
+// an array, populated via callback refs.
+const LILYPAD_POS: [number, number][] = [
+  [0.5, 0.2], [-0.8, 0.6], [0.2, -1.0], [-1.2, -0.5],
+  [1.4, 0.5], [-0.4, -1.4], [1.2, -0.4],
+]
 function LilyPads() {
-  const pads = [
-    [0.5, 0.2], [-0.8, 0.6], [0.2, -1.0], [-1.2, -0.5],
-    [1.4, 0.5], [-0.4, -1.4], [1.2, -0.4],
-  ] as [number, number][]
-  const refs = pads.map(() => useRef<THREE.Group>(null))
+  const refs = useRef<Array<THREE.Group | null>>([])
   useFrame((s) => {
     const t = s.clock.elapsedTime
-    refs.forEach((r, i) => {
-      const g = r.current
+    const gust = getGust(s.clock.elapsedTime)
+    // V2 wave 3 (Sub-A item 4): lily pads now also tilt with gusts.
+    const gustTilt = gust * 0.18
+    refs.current.forEach((g, i) => {
       if (!g) return
       g.position.y = 0.04 + Math.sin(t * 1.0 + i * 0.7) * 0.018
-      g.rotation.z = Math.sin(t * 0.6 + i * 0.9) * 0.04
+      g.rotation.z = Math.sin(t * 0.6 + i * 0.9) * 0.04 + gustTilt * Math.sin(i * 1.4)
     })
   })
   return (
     <>
-      {pads.map(([lx, lz], i) => (
-        <group key={`lp${i}`} ref={refs[i]} position={[lx, 0.04, lz]}>
+      {LILYPAD_POS.map(([lx, lz], i) => (
+        <group key={`lp${i}`} ref={(el) => { refs.current[i] = el }} position={[lx, 0.04, lz]}>
           <mesh>
             <cylinderGeometry args={[0.3, 0.3, 0.02, 10]} />
             <meshStandardMaterial color={LILYPAD} roughness={0.9} flatShading />

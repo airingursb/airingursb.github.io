@@ -36,6 +36,7 @@ import Onsen from './Onsen'
 import FoxShrine from './FoxShrine'
 import CanopyDapple from './CanopyDapple'
 import Footprints from './Footprints'
+import WindChime from './WindChime'
 import Sky from './Sky'
 import Water from './Water'
 import GroundCover from './GroundCover'
@@ -208,6 +209,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <FoxShrine />
         <CanopyDapple theme={theme} />
         <Footprints />
+        <WindChime />
         <ContactShadowsLayer />
         <ZoneHitboxes />
         <ZoneHints />

@@ -216,6 +216,56 @@ function Duck({ angle, radius, speed, size = 1, seed = 0 }: { angle: number; rad
   )
 }
 
+// V2 wave 3: koi fish silhouette under the pond surface. Slow lazy
+// orbit + slight y-bob; oriented along travel direction. Material is
+// semi-transparent + low metalness so they read as glimpsed-through-
+// water shapes, not literal opaque fish.
+function Koi({ angle, speed, radius, color }: { angle: number; speed: number; radius: number; color: string }) {
+  const ref = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    if (!ref.current) return
+    const t = s.clock.elapsedTime * speed + angle
+    const x = Math.cos(t) * radius + POND_CENTER[0]
+    const z = Math.sin(t) * radius + POND_CENTER[1]
+    ref.current.position.x = x
+    ref.current.position.z = z
+    // Hovers JUST below the pond surface (~y 0.10) with tiny depth wiggle
+    ref.current.position.y = 0.10 + Math.sin(t * 4 + angle) * 0.012
+    ref.current.rotation.y = -t + Math.PI / 2
+    // Tail wiggle
+    const child = ref.current.children[1] as THREE.Mesh | undefined
+    if (child) child.rotation.y = Math.sin(t * 6 + angle) * 0.4
+  })
+  return (
+    <group ref={ref}>
+      {/* Body — elongated capsule */}
+      <mesh rotation={[0, 0, Math.PI / 2]}>
+        <capsuleGeometry args={[0.05, 0.18, 4, 8]} />
+        <meshStandardMaterial
+          color={color}
+          roughness={0.55}
+          metalness={0.15}
+          transparent
+          opacity={0.62}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Tail fan — triangle that wiggles */}
+      <mesh position={[-0.14, 0, 0]} rotation={[0, 0, 0]}>
+        <coneGeometry args={[0.05, 0.10, 4]} />
+        <meshStandardMaterial
+          color={color}
+          roughness={0.55}
+          metalness={0.15}
+          transparent
+          opacity={0.55}
+          depthWrite={false}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 function DeerSilhouette({ position }: { position: [number, number, number] }) {
   const ref = useRef<THREE.Group>(null)
   useFrame((s) => {
@@ -302,6 +352,13 @@ export default function Critters({ theme = 'day' }: { theme?: 'day' | 'dusk' }) 
       <Duck angle={0} radius={POND_RADIUS * 0.5} speed={0.15} size={1.0} seed={0} />
       <Duck angle={Math.PI} radius={POND_RADIUS * 0.4} speed={0.18} size={0.9} seed={1} />
 
+      {/* V2 wave 3: 3 koi fish silhouettes UNDER the pond surface,
+          tracing slow lazy paths. Glimpsed orange/white smudges through
+          the water — adds depth + life under the duck wakes. */}
+      <Koi angle={0.6}            speed={0.10} radius={POND_RADIUS * 0.32} color="#E89A4A" />
+      <Koi angle={Math.PI * 1.1}  speed={0.085} radius={POND_RADIUS * 0.55} color="#F4EAD5" />
+      <Koi angle={Math.PI * 0.55} speed={0.12} radius={POND_RADIUS * 0.42} color="#D4683E" />
+
       {/* Deer grazing at far north tree line */}
       <DeerSilhouette position={[-3.0, 0, -16.0]} />
 
@@ -384,16 +441,17 @@ function CabinFirefly({ theme }: { theme: Theme }) {
   // Start near hammock, drift toward cabin shoji over ~14s, hover, return.
   const startX = -4.0, startZ = -12.0, startY = 1.2
   const targetX = -2.0, targetZ = 0.6, targetY = 1.10
-  useFrame((s) => {
+  useFrame((s, dt) => {
     const t = s.clock.elapsedTime
     const enabled = theme === 'dusk'
-    // Fade target — invisible at day, full at dusk
+    // Sub-A fix: framerate-independent lerp via exp falloff (was using
+    // hard-coded 0.04 step which is faster on high-fps displays).
+    const k = 1 - Math.exp(-dt * 1.8)
     const targetOpacity = enabled ? 1 : 0
     const m = matRef.current
-    if (m) {
-      const dt = s.clock.getDelta ? 0 : 0  // (unused — just structural)
-      m.opacity = m.opacity + (targetOpacity - m.opacity) * 0.04
-    }
+    if (m) m.opacity = m.opacity + (targetOpacity - m.opacity) * k
+    // Early-return after fade-out is complete — saves perf when at day
+    if (!enabled && (m?.opacity ?? 0) < 0.02) return
     if (!enabled) return
     if (!ref.current) return
     // 28s round trip: 0..0.5 drift out, 0.5..0.6 hover, 0.6..1 drift back

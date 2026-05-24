@@ -3,7 +3,7 @@
 // painting of THE SCENE ITSELF — Ghibli meta moment. "The painter is
 // painting the world you're standing in."
 
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 import * as THREE from 'three'
 import { getZone } from './zones'
 
@@ -154,6 +154,7 @@ export default function EaselClearing() {
 
   // Procedural painting — generated once. Disposed on unmount.
   const paintingTex = useMemo(() => makeEaselPainting(), [])
+  useEffect(() => () => paintingTex.dispose(), [paintingTex])
 
   return (
     <group position={[x, 0, zPos]}>
