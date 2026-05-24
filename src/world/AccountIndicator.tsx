@@ -43,7 +43,9 @@ export default function AccountIndicator() {
     return () => { cancelled = true }
   }, [])
 
-  // Click outside closes menu
+  // Click outside or ESC closes menu. V2 a11y: ESC is the keyboard
+  // user's expected dismissal action — matches the same ESC handler
+  // wired up in ZonePanel.
   useEffect(() => {
     if (!menuOpen) return
     function onDoc(e: MouseEvent) {
@@ -51,8 +53,15 @@ export default function AccountIndicator() {
         setMenuOpen(false)
       }
     }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setMenuOpen(false)
+    }
     window.addEventListener('mousedown', onDoc)
-    return () => window.removeEventListener('mousedown', onDoc)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onDoc)
+      window.removeEventListener('keydown', onKey)
+    }
   }, [menuOpen])
 
   async function onLogout() {
