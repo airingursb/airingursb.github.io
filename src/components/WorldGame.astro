@@ -7,6 +7,7 @@ import ZonePanel from '../world/ZonePanel'
 import WhisperOverlay from '../world/WhisperOverlay'
 import AmbientHUD from '../world/AmbientHUD'
 import AccountIndicator from '../world/AccountIndicator'
+import SkipNav from '../world/SkipNav'
 import WorldLoader from '../world/WorldLoader.astro'
 import ErrorBoundary from '../world/ErrorBoundary'
 import articlesData from '../data/articles.json'
@@ -40,6 +41,7 @@ const initialData = {
   <WhisperOverlay client:only="react" />
   <AmbientHUD client:only="react" />
   <AccountIndicator client:only="react" />
+  <SkipNav client:only="react" />
   <div class="world-help" role="note" aria-label="操作提示">
     <span class="world-help-keys" aria-hidden="true">drag</span> 旋转 · <span class="world-help-keys" aria-hidden="true">scroll</span> 缩放 · <span class="world-help-keys" aria-hidden="true">click</span> 互动 · <span class="world-help-keys" aria-hidden="true">ESC</span> 关面板
   </div>
@@ -82,6 +84,73 @@ const initialData = {
       animation: none;
       opacity: 0.8;
     }
+  }
+
+  /* V2 a11y final: visually-hidden keyboard/AT-accessible zone nav.
+     Mirrors the in-canvas Three.js hitboxes so keyboard + screen-reader
+     users can activate any zone (chat/blog/comics/music/reading) without
+     needing to click on the 3D scene. Visible only on focus-within so
+     sighted keyboard users see what they Tab into. */
+  .world-skip-nav {
+    position: fixed;
+    top: 16px;
+    left: 16px;
+    z-index: 15;
+    /* sr-only clip — fully removed from layout + visual but kept in AT tree */
+    width: 1px; height: 1px;
+    margin: -1px; padding: 0;
+    border: 0; overflow: hidden;
+    clip: rect(0 0 0 0); clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .world-skip-nav:focus-within {
+    /* Reveal on Tab focus — sighted keyboard users see the nav */
+    width: auto; height: auto;
+    margin: 0; padding: 12px 16px;
+    overflow: visible;
+    clip: auto; clip-path: none;
+    white-space: normal;
+    background: rgba(20, 14, 22, 0.95);
+    color: #f4ead5;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+    max-width: 300px;
+    font-family: ui-monospace, monospace;
+  }
+  .world-skip-nav-title {
+    margin: 0 0 8px;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(244, 234, 213, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .world-skip-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .world-skip-nav button {
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: 1px solid rgba(244, 234, 213, 0.15);
+    color: #f4ead5;
+    padding: 6px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    transition: background 120ms ease, border-color 120ms ease;
+  }
+  .world-skip-nav button:hover,
+  .world-skip-nav button:focus-visible {
+    background: rgba(244, 234, 213, 0.1);
+    border-color: rgba(244, 234, 213, 0.4);
+    outline: none;
   }
   @media (max-width: 720px) {
     .world-help { font-size: 10px; padding: 4px 10px; }
