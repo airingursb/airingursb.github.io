@@ -2,8 +2,9 @@
 // Polished Mapbox GL JS rendition of the homepage "Footprints" card.
 // Replaces the legacy Leaflet/CARTO raster map with a vector basemap
 // that tracks the site's light/dark theme, localizes labels under
-// the EN locale, and frames the data Pacific-centered so the spread
-// from California → New Zealand → China stays visually tight.
+// the EN locale, and opens centered on the author's current city
+// (falling back to the first city) so visitors land on a meaningful
+// view instead of the [0,0] default that sits over the Atlantic.
 
 import * as React from 'react';
 import mapboxgl from 'mapbox-gl';
@@ -58,8 +59,8 @@ function FootprintsMapboxMap({ cities, theme }: { cities: City[]; theme: ColorTh
   const visitedColor = theme === 'dark' ? VISITED_DARK : VISITED_LIGHT;
   const dotStroke = theme === 'dark' ? 'rgba(16,20,26,0.95)' : 'rgba(255,255,255,0.95)';
 
-  const framed = React.useMemo(() => frameCities(cities), [cities]);
   const current = React.useMemo(() => cities.find(c => c.current), [cities]);
+  const home = current ?? cities[0];
   const stats = React.useMemo(() => computeStats(cities), [cities]);
 
   React.useEffect(() => {
@@ -68,12 +69,8 @@ function FootprintsMapboxMap({ cities, theme }: { cities: City[]; theme: ColorTh
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: styleUrl,
-      bounds: framed.bounds,
-      fitBoundsOptions: {
-        padding: framed.padding,
-        maxZoom: 2.6,
-        animate: false,
-      },
+      center: [home.lng, home.lat],
+      zoom: 2.2,
       attributionControl: { compact: true },
       // Cartographic — no rotation, no 3D tilt.
       dragRotate: false,
@@ -138,9 +135,9 @@ interface Framed {
 }
 
 /**
- * Compute a bounding box around all cities. Mapbox handles the wide span
- * (San Jose → Queenstown ≈ 294° if naively east-bound); the maxZoom cap on
- * fitBoundsOptions stops it from zooming so far out the dots vanish.
+ * Compute a bounding box around all cities. Used by the SVG fallback to
+ * lay out dots in viewport coordinates; the Mapbox path opens centered on
+ * the current city instead, so it doesn't go through here.
  */
 function frameCities(cities: City[]): Framed {
   let minLng = +Infinity, maxLng = -Infinity, minLat = +Infinity, maxLat = -Infinity;
