@@ -3,6 +3,7 @@
 
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { getGust } from './wind'
 import * as THREE from 'three'
 import { getZone } from './zones'
 
@@ -66,11 +67,15 @@ export default function HammockSpot() {
 
   // Hammock sway — both rotation and translation
   const hammockRef = useRef<THREE.Group>(null)
+  // V2 wave 3: hammock sway responds to gust — calm: ±0.06/±0.08
+  // (unchanged). Peak gust: 2.2× → visible whip during wind event.
   useFrame((s) => {
     if (hammockRef.current) {
       const t = s.clock.elapsedTime
-      hammockRef.current.rotation.z = Math.sin(t * 0.6) * 0.06
-      hammockRef.current.position.x = Math.sin(t * 0.4) * 0.08
+      const gust = getGust(t)
+      const boost = 1 + gust * 1.2
+      hammockRef.current.rotation.z = Math.sin(t * 0.6) * 0.06 * boost
+      hammockRef.current.position.x = Math.sin(t * 0.4) * 0.08 * boost
     }
   })
 
