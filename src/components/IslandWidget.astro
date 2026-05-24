@@ -9,7 +9,12 @@ import IslandWidget from './IslandWidget'
     <div class="section-title" data-i18n="sec_island_3d">Forest Island · 3D</div>
     <a class="island-card-link" href="/world/" data-i18n="island_enter">进入 →</a>
   </div>
-  <a href="/world/" class="island-card-canvas" id="island-3d-canvas-wrap" aria-label="进入森林岛 — Airing 的 3D 漫游">
+  <!-- V50 a11y fix: was <a> wrapping <a> (head link) + interactive
+       canvas — invalid HTML + double-link to screen readers. Now a
+       proper role="link" with explicit keyboard nav + focus ring.
+       aria-busy clears once canvas mounts. -->
+  <div role="link" tabindex="0" data-href="/world/" class="island-card-canvas" id="island-3d-canvas-wrap"
+       aria-label="进入森林岛 — Airing 的 3D 漫游" aria-busy="true">
     <!-- V33: CSS-only loading skeleton. Visible until Canvas mounts;
          MutationObserver swaps `.island-loaded` to fade it. Kills the
          "blank card" flash on slow networks / before client:visible.
@@ -148,7 +153,11 @@ import IslandWidget from './IslandWidget'
       <animate attributeName="opacity" values="0.92;0.78;0.92" dur="2.4s" repeatCount="indefinite" />
     </svg>
     <IslandWidget client:visible />
-  </a>
+    <!-- V50 a11y: WebGL-failed hint as REAL element (CSS ::after is
+         skipped by most screen readers); visibility toggled by JS
+         when wrap gets .island-webgl-failed -->
+    <span class="island-webgl-hint" aria-live="polite" hidden>WebGL 未启用 — 点击进入完整页面</span>
+  </div>
 </div>
 
 <script is:inline>
@@ -181,10 +190,19 @@ import IslandWidget from './IslandWidget'
       }
     }
 
+    function showHint(visible) {
+      const hint = wrap.querySelector('.island-webgl-hint')
+      if (hint) hint.hidden = !visible
+    }
+    function setBusy(busy) {
+      wrap.setAttribute('aria-busy', busy ? 'true' : 'false')
+    }
+
     function checkCanvas() {
       const canvas = wrap.querySelector('canvas')
       if (canvas && isCanvasWorking(canvas)) {
         wrap.classList.add('island-loaded')
+        setBusy(false)
         return true
       }
       return false
@@ -202,10 +220,23 @@ import IslandWidget from './IslandWidget'
       if (!canvas || !isCanvasWorking(canvas)) {
         obs.disconnect()
         wrap.classList.add('island-webgl-failed')
+        showHint(true)
+        setBusy(false)
       } else if (!wrap.classList.contains('island-loaded')) {
         wrap.classList.add('island-loaded')
+        setBusy(false)
       }
     }, 12000)
+
+    // V50 a11y: keyboard activation (Enter / Space) since we changed
+    // the <a> wrap to a div[role=link] for valid HTML.
+    wrap.addEventListener('click', () => { location.href = wrap.dataset.href || '/world/' })
+    wrap.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        location.href = wrap.dataset.href || '/world/'
+      }
+    })
   })()
 </script>
 
@@ -264,6 +295,14 @@ import IslandWidget from './IslandWidget'
     filter: brightness(1.05) saturate(1.08);
     transform: translateY(-1px);
   }
+  /* V50 a11y: visible focus ring for keyboard users (we changed
+     <a> → div[role=link] for valid HTML, so the browser default
+     focus styles no longer fire). */
+  .island-card-canvas:focus-visible {
+    outline: 2px solid var(--c-accent, #6ABE5C);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 4px rgba(106, 190, 92, 0.18);
+  }
   .island-card-canvas canvas {
     display: block;
     width: 100% !important;
@@ -295,30 +334,48 @@ import IslandWidget from './IslandWidget'
     opacity: 1 !important;
     animation: none;
   }
-  .island-card-canvas.island-webgl-failed::after {
-    content: 'WebGL 未启用 — 点击进入完整页面';
+  /* V50 a11y: WebGL-failed hint as a real <span> with WCAG-AA-passing
+     contrast — was CSS ::after (SR-invisible) at 2.1:1 on the warm
+     dwell gradient. Now solid dark pill background → ~7:1. */
+  .island-webgl-hint {
     position: absolute;
     bottom: 12px;
-    left: 0;
-    right: 0;
-    text-align: center;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 12px;
+    background: rgba(28, 22, 18, 0.78);
+    color: rgba(252, 244, 226, 0.96);
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-size: 11px;
-    color: rgba(244, 234, 213, 0.82);
-    text-shadow: 0 1px 2px rgba(40, 30, 20, 0.45);
+    border-radius: 12px;
     z-index: 3;
     pointer-events: none;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
   }
-  /* V34: prefers-reduced-motion → show skeleton-only (friendlier than
-     hiding the card entirely). Disable auto-fade so skeleton persists. */
+  /* V50 a11y: prefers-reduced-motion now correctly targets the Astro
+     wrapper (<astro-island>) — old selectors (a-island-mount /
+     div[data-react-mount]) never matched what Astro renders. */
   @media (prefers-reduced-motion: reduce) {
     .island-card-canvas .island-skeleton {
       opacity: 1 !important;
       animation: none;
     }
-    .island-card-canvas > a-island-mount,
-    .island-card-canvas > div[data-react-mount] {
+    .island-card-canvas > astro-island {
       display: none;
     }
+    .island-card-canvas {
+      transition: none;
+    }
+    .island-card-canvas:hover {
+      transform: none;
+      filter: none;
+    }
+  }
+  /* V50 polish: stop skeleton's opacity pulse cleanly when loaded
+     (was: pulse kept running until snap-to-0). */
+  .island-card-canvas.island-loaded .island-skeleton animate {
+    /* SMIL animation can't be paused via CSS; skeleton opacity
+       transition handles the fade so the pulse becomes invisible. */
   }
 </style>

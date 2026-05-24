@@ -48,6 +48,15 @@ export const IS_MOBILE = typeof window !== 'undefined' && (
   (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 800px)').matches)
 )
 
+// V50 a11y: vestibular-disorder users should not see autorotate / wind
+// sway / petal fall / sun breathing / lantern flicker. Read once at
+// module load; users who toggle the OS setting mid-session need a
+// reload (acceptable — this is rare).
+export const PREFERS_REDUCED_MOTION =
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
 // ─────────────────────────────────────────────────────────────────────
 // SHARED HOOKS — pure functions of time, read by many useFrame loops.
 // Centralizing them = "one wind", "one hearth", "one dwell" so the

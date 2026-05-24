@@ -45,7 +45,7 @@ import * as THREE from 'three'
 import { Sakura } from './widget-sakura'
 import {
   hoverState, mouseState, hoverZone,
-  IS_TOUCH, IS_MOBILE,
+  IS_TOUCH, IS_MOBILE, PREFERS_REDUCED_MOTION,
   getWind, getHearth, getDwellGolden, getHoverBoost,
   lerpHex, organicBlob, makePetalShape,
   // Palette
@@ -1610,7 +1610,11 @@ export default function IslandWidget() {
       shadows={!IS_MOBILE}
       camera={{ position: [2.9, 1.5, 3.7], fov: 28 }}
       dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}
-      frameloop={paused ? 'never' : 'always'}   // V41: pause off-screen
+      // V41: pause off-screen. V50 a11y: reduced-motion users get a
+      // single static render ("demand" + one initial invalidate from R3F
+      // mount) so animations never start — defense in depth alongside
+      // the CSS rule that hides the widget for reduced-motion users.
+      frameloop={paused ? 'never' : (PREFERS_REDUCED_MOTION ? 'demand' : 'always')}
       gl={{
         antialias: true,
         alpha: true,
