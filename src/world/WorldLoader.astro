@@ -2,11 +2,11 @@
 // World loading splash — shown while R3F + assets warm up, fades out
 // when scene's first frame paints (we wire to canvas mount event).
 ---
-<div id="world-loader" class="world-loader">
+<div id="world-loader" class="world-loader" role="status" aria-live="polite" aria-label="正在加载 3D 场景">
   <div class="world-loader-card">
-    <div class="world-loader-flower">🌿</div>
+    <div class="world-loader-flower" aria-hidden="true">🌿</div>
     <div class="world-loader-title">走进林间…</div>
-    <div class="world-loader-bar"><div class="world-loader-fill"></div></div>
+    <div class="world-loader-bar" aria-hidden="true"><div class="world-loader-fill"></div></div>
     <div class="world-loader-hint">Airing 的木屋岛 · 拖动旋转 · 点击进入</div>
   </div>
 </div>
@@ -14,7 +14,7 @@
 <!-- V40: WebGL-failed fallback DOM — only shown if canvas never appears
      or context creation fails. Addresses real user-reported blackscreen
      bug from WebGL-blocked browsers. -->
-<div id="world-webgl-fallback" class="world-webgl-fallback" hidden>
+<div id="world-webgl-fallback" class="world-webgl-fallback" role="alert" hidden>
   <div class="world-fallback-card">
     <div class="world-fallback-flower">🪧</div>
     <div class="world-fallback-title">无法加载 3D 场景</div>
@@ -63,7 +63,10 @@
       const wait = Math.max(0, FADE_MIN_MS - dt)
       setTimeout(() => {
         loader.style.opacity = '0'
-        setTimeout(() => loader.remove(), 400)
+        // 50ms buffer past the 400ms CSS transition prevents the
+        // race-window flash on slow CPUs where DOM removal fires
+        // before the opacity animation has fully committed.
+        setTimeout(() => loader.remove(), 450)
       }, wait)
     }
 
@@ -207,5 +210,20 @@
   }
   .world-fallback-btn-ghost:hover {
     background: rgba(244, 234, 213, 0.08);
+  }
+
+  /* Respect users with vestibular sensitivity — kill the loader
+     animations but keep all info readable + clickable. */
+  @media (prefers-reduced-motion: reduce) {
+    .world-loader-flower {
+      animation: none;
+    }
+    .world-loader-fill {
+      animation: none;
+      width: 60%;
+    }
+    .world-loader {
+      transition: opacity 200ms linear;
+    }
   }
 </style>
