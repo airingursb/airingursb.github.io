@@ -33,13 +33,18 @@ function FogPuff({
   useFrame((s, dt) => {
     const m = meshRef.current
     if (!m) return
-    // Slow Y-axis spin
-    m.rotation.z += dt * spin
     // Opacity lerp toward theme target
     const target = theme === 'dusk' ? opacity : 0
     const mat = m.material as THREE.MeshBasicMaterial
     const k = 1 - Math.exp(-dt * 1.2)   // ~1.5s settle
     mat.opacity = mat.opacity + (target - mat.opacity) * k
+    // V2 final polish: skip spin when fog is essentially invisible
+    // (day-theme, faded out). Rotating an alpha-0 mesh is pure
+    // wasted CPU. Each puff bails independently so they each settle
+    // at their own pace before going idle.
+    if (theme === 'day' && mat.opacity < 0.01) return
+    // Slow Y-axis spin
+    m.rotation.z += dt * spin
   })
   return (
     <mesh
