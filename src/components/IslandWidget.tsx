@@ -5,26 +5,23 @@
 // + back to "never" on visibilitychange hidden — costs 0 frames when
 // off-screen or tab-backgrounded.
 //
-// ─── FILE MAP (~1700 LOC, broken up by what it renders) ───
-//   Helpers     :   ~5    organicBlob/makePetalShape are in island-shared
-//   Cedar       :  ~70    slim conifer with WindSway
-//   MinkaCabin  : ~280    irimoya roof + dormer + shoji + chimney
-//   Tsukubai    :  ~80    bamboo spout + water stream + ripples
-//   StoneLantern:  ~50    2-octave flicker + pointLight interior
-//   Torii       :  ~30
-//   SteppingSt. :  ~30    varied geometry + tea-master jog spacing
-//   RakedGravel :  ~25    concentric tori around cabin ("ma")
-//   FallenPetals:  ~30
-//   FallingPetals: ~80    InstancedMesh with petal-water rest snap
-//   DistantMtns :  ~50    extruded jagged + vertex y-gradient
-//   Clouds (3x) : ~100    distant, upper cumulus, mid wisps
-//   BirdFlyby   :  ~60    pair reacting to wind
-//   AnimatedSun :  ~50    90s breathing + dwell golden-hour shift
-//   SkyMood     :  ~40    fog tint + CSS --island-dwell var write
-//   ParallaxRig :  ~25    camera tracks mouse XY
-//   HoverHotspots: ~80    invisible raycast targets (zone-gated)
-//   Island root : ~250    composition + lights + ground
-//   Canvas root :  ~80    EffectComposer, frameloop gating
+// ─── FILE MAP (~1750 LOC; LOC ranges are approximate, verified V48) ───
+//   Cedar       :  L75-119  (45)   slim conifer + WindSway + dispose cleanup
+//   MinkaCabin  :  L121-310 (190)  irimoya roof + dormer + shoji + chimney
+//   StoneLantern:  L312-381 (70)   2-octave flicker + pointLight interior
+//   Torii       :  L383-414 (32)
+//   RakedGravel :  L417-448 (32)   concentric tori around cabin ("ma")
+//   Tsukubai    :  L449-596 (148)  bamboo spout + water stream + ripples
+//   DisplacedCliff: L597-616 (20)  ridged-noise vertex displacement
+//   Island      :  L617-649 (33)   ground disc + scene root
+//   SteppingSt. :  L650-688 (39)   varied geometry + tea-master jog
+//   FallenPetals:  L694-734 (41)
+//   SkyMood     :  L742-760 (19)   fog tint + CSS --island-dwell var write
+//   AnimatedSun :  L761-798 (38)   90s breathing + dwell golden-hour shift
+//   HearthLight :  L800-819 (20)
+//   (then: clouds, mountains, birds, parallax rig, hover hotspots,
+//    falling petals, water surface, sparkles, Canvas root w/ Effect-
+//    Composer + ContextLossHandlers + frameloop gating)
 //
 // ─── COORDINATION (the "one organism" trick) ───
 //   All hooks (getWind, getHearth, getDwellGolden, getHoverBoost) read
