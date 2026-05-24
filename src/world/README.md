@@ -332,3 +332,16 @@ Pattern across all of them: **icon-only buttons need an aria-label**
 Modals need `role=dialog aria-modal aria-labelledby` + focus
 management. Time/streaming content needs `aria-live`. Decorative
 spans/emoji need `aria-hidden`.
+
+**The bigger missing piece**: the 5 zones (chat/blog/comics/music/
+reading) are Three.js hitboxes inside the canvas — they're entirely
+unreachable by keyboard navigation and invisible to screen readers.
+Sighted mouse users could click, no-one else could enter the scene.
+
+Fix: `src/world/SkipNav.tsx`, a visually-hidden landmark nav
+(`role="nav" aria-label`) that lists every zone as a real
+`<button>` firing the same `world-zone-click` event the canvas
+hitbox does. `:focus-within` reveals it as a small top-left card so
+sighted keyboard users see what they've Tabbed into. This is the
+bridge between AT/keyboard users and Three.js content — the most
+impactful single fix of the a11y sweep.

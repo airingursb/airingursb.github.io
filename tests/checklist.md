@@ -165,6 +165,11 @@
 - [ ] ErrorBoundary: Manually crash by editing src/world/Cabin.tsx to
       `throw new Error('test')`. Fallback should immediately announce
       "这片林子有点累了——刷新一下试试".
+- [ ] SkipNav: load /world/ + immediately press Tab. The top-left
+      should reveal a small card titled "区域" with 5 zone buttons.
+      Tab through them. Press Enter on "Chat · 木屋 · 跟 Airing 聊天"
+      — chat panel should open. ESC closes it; focus restores back
+      to the SkipNav button (not document body).
 
 ## Archive (`/archive/`)
 
