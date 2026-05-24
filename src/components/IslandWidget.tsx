@@ -955,19 +955,25 @@ function PathMoss() {
 
 // ── V21: ParallaxRig — diorama-in-window effect. Camera subtly
 // tracks mouse position (lerped) → scene reads as a peep-box, not a video.
+// V52.2 (Sub-A critical fix): base coords MUST match the Canvas-prop
+// camera or this useFrame silently overwrites it within 1 frame +
+// re-call lookAt every frame because OrbitControls was removed in V52
+// (the previous "no manual lookAt needed" comment is now wrong).
+// Parallax amplitude reduced for pet — large camera swings on a small
+// 220×220 widget over-magnify.
 function ParallaxRig() {
   const { camera } = useThree()
-  const baseX = 2.9
-  const baseY = 1.5
-  const baseZ = 3.7
+  const baseX = 2.6     // matches Canvas prop [2.6, 2.0, 7.0]
+  const baseY = 2.0
+  const baseZ = 7.0
   useFrame((_, dt) => {
-    const targetX = baseX + mouseState.x * 0.25
-    const targetY = baseY + mouseState.y * -0.15  // invert Y so up looks down
+    const targetX = baseX + mouseState.x * 0.15   // V21 had 0.25 — too much for pet
+    const targetY = baseY + mouseState.y * -0.10  // V21 had -0.15
     const lerpAmt = Math.min(1, dt * 3)
     camera.position.x += (targetX - camera.position.x) * lerpAmt
     camera.position.y += (targetY - camera.position.y) * lerpAmt
     camera.position.z = baseZ
-    // (OrbitControls handles lookAt at target; no manual lookAt needed)
+    camera.lookAt(0, 0.85, 0)   // V52.2: now owned here (no OrbitControls)
   })
   return null
 }
@@ -1543,21 +1549,9 @@ function ChimneySmoke() {
   )
 }
 
-// V52 pet cutout: explicit camera lookAt so the framing centers on
-// the visual mass of the island (cabin midline + cedar mid-canopies)
-// instead of the default (0,0,0) which leaves the scene bottom-heavy
-// with empty sky above the cedars. Without OrbitControls (removed in
-// V52) the camera no longer auto-targets a controls target.
-function CameraSetup() {
-  const camera = useThree((s) => s.camera)
-  useEffect(() => {
-    // Look at midline between disc top (y=0.1) and cedar mid (y~1.5).
-    // y=0.85 centers the visible mass vertically in the square frame.
-    camera.lookAt(0, 0.85, 0)
-    camera.updateProjectionMatrix()
-  }, [camera])
-  return null
-}
+// V52.2 (Sub-A fix D): CameraSetup deleted. The useEffect ran ONCE on
+// mount, then ParallaxRig's useFrame overwrote camera.position +
+// rotation within 1 frame — dead code. ParallaxRig now owns lookAt.
 
 // V44 LEAK FIX: WebGL context-loss/restore handlers now live in this
 // child component instead of Canvas onCreated. onCreated has no cleanup
@@ -1666,9 +1660,6 @@ export default function IslandWidget() {
     >
       {/* V44: wire WebGL ctx-loss/restore handlers (with cleanup) */}
       <ContextLossHandlers />
-      {/* V52: center camera on visual mass (was looking at world origin
-          which sits at the bottom of the island disc) */}
-      <CameraSetup />
       {/* No <color> bg — alpha:true canvas, page bg shows through.
           V52 pet cutout: NO fog. Fog draws sky-colored haze onto distant
           objects, which on a transparent-bg canvas reads as a rectangle
@@ -1731,11 +1722,16 @@ export default function IslandWidget() {
           light shafts that looked like tissue paper from oblique angles).
           40 small warm motes drifting in the sun-air zone above the
           scene. */}
+      {/* V52.2 (Sub-A fix C): scale tightened from [3.6, 2.2, 3.6] →
+          [2.4, 1.8, 2.4] + position lowered (1.3 → 1.0) so sparkle
+          motes drift WITHIN the island silhouette, not above as a
+          rectangular cloud. The drift volume was visible as a soft
+          rectangle = subtle "scene box" tell. */}
       <Sparkles
         count={45}
         size={3}
-        scale={[3.6, 2.2, 3.6]}
-        position={[0, 1.3, 0]}
+        scale={[2.4, 1.8, 2.4]}
+        position={[0, 1.0, 0]}
         color="#FFE8C0"
         speed={0.25}
         opacity={0.65}
@@ -1749,8 +1745,13 @@ export default function IslandWidget() {
       {/* V14: upper cumulus band drifting opposite — parallax stratification */}
       <UpperCumulus />
 
-      {/* V13: bird flyby — V14: pair (hero + bg for flock feel) */}
-      <BirdFlyby />
+      {/* V13: bird flyby — V14: pair (hero + bg for flock feel).
+          V52.2 (Sub-A fix B): REMOVED for pet. Birds traverse x=-4..4
+          but visible canvas half-width at their depth is only ±2.35 →
+          they materialize mid-air and vanish mid-air = the most
+          visible "scene-in-a-window" tell. At 220×220 the birds are
+          2-3px wide and only telegraph the canvas edge crossing. */}
+      {/* <BirdFlyby /> */}
 
       {/* V23: mid-cloud wisps drifting across mountain mid-ground */}
       <MidCloudWisps />
