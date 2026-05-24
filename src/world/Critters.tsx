@@ -472,6 +472,15 @@ function CabinFirefly({ theme }: { theme: Theme }) {
     const targetOpacity = enabled ? 1 : 0
     const m = matRef.current
     if (m) m.opacity = m.opacity + (targetOpacity - m.opacity) * k
+    // V2 final polish: light intensity must also lerp toward 0 when
+    // fading out — previously the light kept emitting at full
+    // pulse-strength while the mesh faded invisible, casting a
+    // visible warm patch on the porch with no apparent source.
+    const light = lightRef.current
+    if (light) {
+      const targetIntensity = enabled ? 0.35 + Math.sin(t * 4) * 0.15 : 0
+      light.intensity = light.intensity + (targetIntensity - light.intensity) * k
+    }
     // Early-return after fade-out is complete — saves perf when at day
     if (!enabled && (m?.opacity ?? 0) < 0.02) return
     if (!enabled) return
@@ -488,11 +497,7 @@ function CabinFirefly({ theme }: { theme: Theme }) {
     const y = startY + (targetY - startY) * e + Math.sin(t * 0.7) * 0.05
     const z = startZ + (targetZ - startZ) * e + Math.cos(t * 1.1) * 0.15
     ref.current.position.set(x, y, z)
-    if (lightRef.current) {
-      lightRef.current.position.set(x, y, z)
-      // Pulse the firefly light
-      lightRef.current.intensity = 0.35 + Math.sin(t * 4) * 0.15
-    }
+    if (light) light.position.set(x, y, z)
   })
   return (
     <>
