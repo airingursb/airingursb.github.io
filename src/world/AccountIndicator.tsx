@@ -121,14 +121,22 @@ function LoginModal({ onClose }: { onClose: () => void }) {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  // V2 a11y: capture caller's focus on open, restore on close —
+  // matches the ZonePanel focus-restore pattern. Keyboard users
+  // who opened the modal via the account pill land back on it.
+  const lastFocusedRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
+    lastFocusedRef.current = (document.activeElement as HTMLElement) ?? null
     inputRef.current?.focus()
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      lastFocusedRef.current?.focus?.()
+    }
   }, [onClose])
 
   async function sendMagic(e: React.FormEvent) {
