@@ -25,9 +25,33 @@ export default function SunsetBirds({ theme }: { theme: Theme }) {
   const groupRef = useRef<THREE.Group>(null)
   const matRefs = useRef<Array<THREE.MeshBasicMaterial | null>>([])
 
+  // Birds wing-flap timing (each bird slightly offset). Hoisted to
+  // the top of the component (was below the position useFrame) so
+  // the combined useFrame below can read it.
+  const wingRef = useRef<Array<THREE.Group | null>>([])
+
+  // V2 final polish: combine the two useFrame hooks into one + add
+  // early-return when scene is at day-theme and birds have fully
+  // faded out. Was running wing-flap + position calc + opacity lerp
+  // every frame even when the flock was 100% invisible.
   useFrame((s, dt) => {
     if (!groupRef.current) return
     const t = s.clock.elapsedTime
+
+    // Opacity fade based on theme — invisible at day, full at dusk
+    const targetOpacity = theme === 'dusk' ? 0.78 : 0
+    const k = 1 - Math.exp(-dt * 1.0)
+    let maxOpacity = 0
+    for (const m of matRefs.current) {
+      if (!m) continue
+      m.opacity = m.opacity + (targetOpacity - m.opacity) * k
+      if (m.opacity > maxOpacity) maxOpacity = m.opacity
+    }
+    // Early-return: when fully faded out at day, skip wing flap +
+    // position update entirely. Birds aren't visible, no point
+    // computing their motion.
+    if (theme === 'day' && maxOpacity < 0.01) return
+
     // Drift west → east on loop
     const phase = (t % LOOP_DURATION) / LOOP_DURATION
     const x = TRAVEL_X_START + (TRAVEL_X_END - TRAVEL_X_START) * phase
@@ -35,23 +59,11 @@ export default function SunsetBirds({ theme }: { theme: Theme }) {
     // Slight up-down bob to simulate gliding
     groupRef.current.position.y = ALT_Y + Math.sin(t * 0.4) * 0.8
 
-    // Opacity fade based on theme — invisible at day, full at dusk
-    const targetOpacity = theme === 'dusk' ? 0.78 : 0
-    const k = 1 - Math.exp(-dt * 1.0)
-    matRefs.current.forEach((m) => {
-      if (m) m.opacity = m.opacity + (targetOpacity - m.opacity) * k
-    })
-  })
-
-  // Birds wing-flap timing (each bird slightly offset)
-  const wingRef = useRef<Array<THREE.Group | null>>([])
-  useFrame((s) => {
-    const t = s.clock.elapsedTime
-    wingRef.current.forEach((g, i) => {
-      if (!g) return
-      // Subtle wing flap via Z-rotation
-      g.rotation.z = Math.sin(t * 3.5 + i * 0.4) * 0.18
-    })
+    // Wing flap (Z-rotation per bird, slight offset)
+    for (let i = 0; i < wingRef.current.length; i++) {
+      const g = wingRef.current[i]
+      if (g) g.rotation.z = Math.sin(t * 3.5 + i * 0.4) * 0.18
+    }
   })
 
   return (
