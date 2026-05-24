@@ -1694,15 +1694,20 @@ export default function IslandWidget() {
       <MinkaCabin />
       <ChimneySmoke />
 
-      {/* Hero sakura — V11: wrapped in WindSway for the canopy breath */}
+      {/* V11: sakura wrapped in WindSway. V52.5: hero=true (trunk 5.3 +
+          branch reach ~3.0 ≈ y 4.5 world after scale 0.55) was cropping
+          the canopy top — visible y-max is only 3.20 in pet frustum.
+          hero=false → trunk 3.6 + branch reach ~1.5 ≈ y 2.6 world →
+          fits with 0.6 margin. Bumped scale 0.55 → 0.62 to keep visual
+          size since hero=false is leaner. */}
       <WindSway amp={0.018} freq={0.5}>
-        <group position={[0.55, 0, -0.35]} scale={0.55}>
+        <group position={[0.55, 0, -0.35]} scale={0.62}>
           <Sakura
             position={[0, 0, 0]}
             seed={20260524}
             size={1.0}
             density={0.65}
-            hero={true}
+            hero={false}
             rotY={0.4}
             tint="#fad9e4"
           />
