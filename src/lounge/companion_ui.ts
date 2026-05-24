@@ -9,7 +9,7 @@
 // the input + counter persist.
 
 import { playSfx } from './audio'
-import { sendMessage, sendGroupMessage, getUsage } from './companion_api'
+import { sendMessage, sendGroupMessage, sendGuestMessage, getUsage, getGuestUsage } from './companion_api'
 import { isLoggedIn } from './auth'
 import { showToast } from './ui'
 
@@ -159,7 +159,8 @@ function ensure(): HTMLElement {
     let firstDeltaSeen = false
 
     try {
-      await sendMessage(currentNpcId, text, currentHints, (ev) => {
+      const sender = isLoggedIn() ? sendMessage : sendGuestMessage
+      await sender(currentNpcId, text, currentHints, (ev) => {
         if (ev.type === 'delta') {
           if (!firstDeltaSeen) {
             firstDeltaSeen = true
@@ -171,14 +172,15 @@ function ensure(): HTMLElement {
           updateCounter(ev.usage.sent, ev.usage.cap)
         } else if (ev.type === 'error') {
           bubbleEl.classList.remove('nook-companion-thinking')
-          // V3.0-A.10 — route most errors to toast (less intrusive than
-          // inline-in-bubble); leave the bubble as 觉's actual partial reply.
           const npcName = nameEl?.textContent || 'NPC'
           if (ev.code === 'NOT_AUTHENTICATED') {
             bubbleEl.textContent = `（先登录才能跟 ${npcName} 聊天）`
           } else if (ev.code === 'DAILY_CAP_REACHED') {
             bubbleEl.textContent = '今天聊够了，明早再来。'
             showToast(ev.message || '今天 30 条聊够了 · 明早北京时间 0 点重置', 4000)
+          } else if (ev.code === 'GUEST_CAP_REACHED') {
+            bubbleEl.textContent = '免费 5 条聊完了。'
+            showToast(ev.message || '登录后每天能聊 30 条', 5000)
           } else if (!bubbleEl.textContent) {
             bubbleEl.textContent = `（${npcName} 走神了）`
             showToast(`${npcName} 走神了：${ev.message}`, 3000)
@@ -303,20 +305,18 @@ export async function openCompanionChat(args: OpenArgs) {
 
   const root = ensure()
 
-  if (!isLoggedIn()) {
-    const { requireLogin } = await import('./auth_ui')
-    requireLogin('AI companion')
-    return
-  }
+  // SHU-737 — guests get a 5/day cap; logged-in users 30/day. Previously
+  // guests were redirected to login; now they can chat (limited).
+  const loggedIn = isLoggedIn()
 
   // Update header chip + clear stale transcript when switching NPCs
   if (nameEl) nameEl.textContent = npc_name
   if (whereEl) whereEl.textContent = npc_where ? `· ${npc_where}` : ''
   if (npcSwitch && historyEl) historyEl.innerHTML = ''
 
-  // Show 👥 toggle only when there's another AI NPC to talk to in this room
+  // Group chat only in logged-in mode (guest API supports single NPC only).
   if (groupToggleEl) {
-    groupToggleEl.hidden = otherRoomNpcs.length === 0
+    groupToggleEl.hidden = !loggedIn || otherRoomNpcs.length === 0
     groupToggleEl.classList.toggle('on', groupModeOn)
   }
 
@@ -325,7 +325,7 @@ export async function openCompanionChat(args: OpenArgs) {
   document.body.classList.add('has-chat-open')
   playSfx('menu_open')
 
-  const usage = await getUsage()
+  const usage = loggedIn ? await getUsage() : await getGuestUsage()
   if (usage) updateCounter(usage.sent, usage.cap)
 
   setTimeout(() => inputEl?.focus(), 100)

@@ -1,6 +1,6 @@
 # Gallery Studio — Asset Manifest
 
-> 共 **34 个 sprite**。挨个生成，生成完把对应行 `[ ]` 改 `[x]` 并 commit。
+> 共 **56 个 sprite**（A–F 已完成 34，G–J 是 v2 扩充批 22）。挨个生成，生成完把对应行 `[ ]` 改 `[x]` 并 commit。
 > 每个 prompt = `STYLE.md 整段` + 下面 `**Prompt:**` 后面那段。
 
 总览：
@@ -13,6 +13,10 @@
 | D | NPC — 馆员 | 4 | 导览员 4 方向 |
 | E | Tiles — 地板 | 3 | 大理石变体 |
 | F | Decorations — 装饰小品 | 4 | 植物、横幅、铭牌、垃圾桶 |
+| G | Zone Floors — 分区地板 | 4 | 每个 wing 一种特色地砖 |
+| H | Zone Murals — 分区壁画 | 4 | 每个 wing 入口墙面大壁画 |
+| I | Refined Props — 精致小物 | 10 | 真博物馆的细节家具 |
+| J | Nature Touches — 自然元素 | 4 | 蕨类、猫、鸽子、地毯 |
 
 ---
 
@@ -245,3 +249,161 @@
 - **Size:** 32×48 px
 - **Theme:** 别有腔调的金属垃圾桶
 - **Prompt:** A front-facing slim cylindrical museum trash bin in flat Saul Bass style. An ink-black tall trapezoidal silhouette (slightly wider at the top), with a mustard horizontal band at the top rim and another at the bottom base. A single small teal slot in the center (the trash slot). Minimalist, dignified.
+
+---
+
+## G · Zone Floors — 分区地板（4 sprite · 128×128 PNG · 透明背景 · rhombus）
+
+> 每个 wing 一种地砖纹理，强化分区的"主题感"。**rhombus 形（同 E 系列），seamless tileable**。
+> 风格仍是 Saul Bass cream/ink/vermilion/teal/mustard 五色 — 不要写实材质。
+
+### G01 — Networks Floor (北厅)  `[x]`
+- **File:** `output/tiles/G01-floor-networks.png`
+- **Size:** 128×128 px
+- **Theme:** 北厅 Networks — 服务器机房感
+- **Prompt:** A single seamless rhombus floor tile in flat Saul Bass style. Cream-white base with a subtle stylized circuit-board pattern: a thin ink-line hexagonal mesh covering the diamond, with 3-4 small vermilion square "nodes" at hex intersections. NO 3D, NO shading. Must tile seamlessly with copies. Diamond-shape only.
+
+### G02 — Web Internals Floor (东翼)  `[x]`
+- **File:** `output/tiles/G02-floor-internals.png`
+- **Size:** 128×128 px
+- **Theme:** 东翼 Web Internals — 硅谷博物馆 / terrazzo 感
+- **Prompt:** A single seamless rhombus floor tile in flat Saul Bass style. Cream base scattered with irregular flat chips — small vermilion polygons (~3-4), teal triangles (~2-3), mustard rectangles (~2) of varying sizes randomly placed across the diamond like terrazzo aggregate. NO 3D, NO outlines on the chips. Tiles seamlessly.
+
+### G03 — Performance Floor (西翼)  `[x]`
+- **File:** `output/tiles/G03-floor-performance.png`
+- **Size:** 128×128 px
+- **Theme:** 西翼 Performance/Memory — 精密计时 / 怀表机械感
+- **Prompt:** A single seamless rhombus floor tile in flat Saul Bass style. Cream base with a single large stylized ink-black gear silhouette filling ~60% of the tile center (8 trapezoidal teeth, flat geometry, no inner detail). One mustard tiny clock-hand silhouette overlaid on the gear's center. Tiles seamlessly when adjacent (gear edges align across tile borders to suggest a clockwork machinery floor).
+
+### G04 — Comics Floor (南厅)  `[x]`
+- **File:** `output/tiles/G04-floor-comics.png`
+- **Size:** 128×128 px
+- **Theme:** 南厅 Comics pavilion — 书坊 / 漫画分镜感
+- **Prompt:** A single seamless rhombus floor tile in flat Saul Bass style. Cream base divided by a thin ink-black "comic panel border" cross (one horizontal line + one vertical line through the diamond center, both 2-3 px thick). Each of the 4 quadrants has a tiny different colored mark: vermilion dot top, teal square right, mustard triangle bottom, ink slash left. Tiles seamlessly into a continuous "comic page grid" floor.
+
+---
+
+## H · Zone Murals — 分区壁画（4 sprite · 256×128 PNG · 透明背景）
+
+> 每个 wing 入口墙面挂一幅大壁画，强化主题。比 painting (A 系列) 更"远观/装饰"，less metaphor more pattern。
+> 尺寸是横向 2:1（贴在墙上的横幅画）。
+
+### H01 — Networks Mural (卫星 + 群星)  `[x]`
+- **File:** `output/murals/H01-mural-networks.png`
+- **Size:** 256×128 px
+- **Theme:** 北厅 Networks — 卫星弧线 + 数据流 + 星群
+- **Prompt:** A horizontal mural in flat Saul Bass style on cream background. Three teal sweeping arcs across the canvas (suggesting orbital paths or signal waves), each ~256 px wide and slightly offset vertically. At the apex of the middle arc, a single mustard satellite silhouette (a small rectangle with two perpendicular solar-panel wings). Scattered across the cream space, 12 tiny ink dots (stars). Bottom-right, ONE large vermilion dot (the ground-station receiver). Pure flat color, no outlines.
+
+### H02 — Web Internals Mural (DOM tree 几何)  `[x]`
+- **File:** `output/murals/H02-mural-internals.png`
+- **Size:** 256×128 px
+- **Theme:** 东翼 Web Internals — 抽象 DOM 树
+- **Prompt:** A horizontal mural in flat Saul Bass style on cream background. From the top-center, a single ink-black "root node" rectangle. From it, three ink lines descend to a row of 3 vermilion teal-bordered rectangles (mid-tier nodes). From each of those, 2 lines descend to mustard small squares (leaf nodes — total 6 leaves). The tree fills the canvas. No outlines beyond the nodes themselves. The composition is symmetric, dignified.
+
+### H03 — Performance Mural (frame timeline)  `[x]`
+- **File:** `output/murals/H03-mural-performance.png`
+- **Size:** 256×128 px
+- **Theme:** 西翼 Performance — 帧时间线 / 火焰图剖面
+- **Prompt:** A horizontal mural in flat Saul Bass style on cream background. A horizontal flame-graph cross-section: from left to right, layered horizontal bars stacked vertically — bottom layer is a single long teal bar (full canvas width), middle layer has 4 ink-black bars of varying widths covering most of the canvas, top layer has 8 short vermilion bars scattered above the ink ones, with ONE thin tall mustard spike at the right edge (the slow function). NO labels, NO numbers — pure geometric pattern.
+
+### H04 — Comics Mural (panda + speech bubbles)  `[x]`
+- **File:** `output/murals/H04-mural-comics.png`
+- **Size:** 256×128 px
+- **Theme:** 南厅 Comics — 熊猫剪影 + 漫画对话框雨
+- **Prompt:** A horizontal mural in flat Saul Bass style on cream background. A single large ink-black panda silhouette (a chubby round panda body with characteristic ink ears, NO facial features) sitting centered-left at the bottom of the canvas. Above the panda, scattered across the upper canvas, 8 vermilion stylized speech-bubble shapes (rounded rectangles with small triangular tails pointing down toward the panda) of varying sizes. One mustard speech bubble is the largest. NO text inside bubbles.
+
+---
+
+## I · Refined Props — 精致小物（10 sprite · 透明背景）
+
+> 真博物馆里能见到的小家具/导览品，每个都要"一眼就懂"。
+
+### I01 — Guidebook Stand  `[x]`
+- **File:** `output/props/I01-guidebook-stand.png`
+- **Size:** 32×64 px
+- **Theme:** 展厅介绍小立牌 / 导览册支架
+- **Prompt:** A front-facing freestanding guidebook stand in flat Saul Bass style. A thin ink-black vertical pole, atop which a tilted cream rectangular pamphlet display (tilted ~15 degrees). On the pamphlet, three thin vermilion horizontal lines (suggesting text rows). Below the pamphlet, a mustard small rectangle (the cover title bar). At the base of the pole, an ink-black flat circular foot.
+
+### I02 — Acoustic Wall Panel (墙角声学吸音板)  `[x]`
+- **File:** `output/props/I02-acoustic-panel.png`
+- **Size:** 64×96 px
+- **Theme:** 墙角的方形声学吸音板（高雅版），4 个并排
+- **Prompt:** A front-facing wall-mounted acoustic panel in flat Saul Bass style. A vertical cream rectangle with an evenly spaced 4×6 grid of small ink-black dots (the acoustic perforations). At the top of the panel, a thin mustard horizontal accent stripe. Surrounding the panel, a thin teal frame border. Minimalist, geometric.
+
+### I03 — Floor Grate (黄铜出风格栅)  `[x]`
+- **File:** `output/props/I03-floor-grate.png`
+- **Size:** 64×32 px
+- **Theme:** 地面的金属通风格栅
+- **Prompt:** A top-down view of a flat rectangular brass floor grate in flat Saul Bass style. Mustard solid rectangle as the frame, with 6 parallel ink-black thin horizontal slits cutting through the center (the grate vents). Four tiny vermilion screws at the corners. NO 3D, pure flat.
+
+### I04 — Electric Wall Candle (壁烛灯)  `[x]`
+- **File:** `output/props/I04-electric-candle.png`
+- **Size:** 32×64 px
+- **Theme:** 墙角的电子壁烛（装饰感强），4 个角放
+- **Prompt:** A front-facing wall-mounted electric candle sconce in flat Saul Bass style. A vertical cream candle silhouette (a tall narrow rectangle) atop a small mustard semicircular wall mount. At the candle tip, a single small vermilion flat teardrop flame shape (no flicker, pure silhouette). A thin teal vertical line behind the candle suggests the wall bracket stem. Dignified, warm.
+
+### I05 — Museum Map Board (信息台旁的大地图板)  `[x]`
+- **File:** `output/props/I05-museum-map-board.png`
+- **Size:** 96×112 px
+- **Theme:** 进门的大型平面图展示板
+- **Prompt:** A front-facing large standing map display board in flat Saul Bass style. A vertical cream rectangle framed by a thick ink-black border (the display panel), mounted on two short ink legs at the bottom. Inside the panel, a stylized cross-shape floor plan: a vermilion central square (rotunda), with 4 mustard rectangular wings extending up/down/left/right. A small teal "YOU ARE HERE" dot on the bottom wing. NO text labels — pure geometric map symbol.
+
+### I06 — Direction Arrow Sign (黄铜箭头方向牌)  `[x]`
+- **File:** `output/props/I06-info-arrow-sign.png`
+- **Size:** 64×24 px
+- **Theme:** 走廊上挂的指路牌
+- **Prompt:** A front-facing rectangular brass directional sign in flat Saul Bass style. A horizontal mustard rectangle with a thin ink-black border. On the left half, a single thick ink-black right-pointing arrow (a triangle + rectangular shaft). The right half is blank brass (the room name will be programmatically overlaid). Two small ink screw dots in the corners.
+
+### I07 — Drinking Fountain (不锈钢饮水器)  `[x]`
+- **File:** `output/props/I07-water-fountain.png`
+- **Size:** 32×64 px
+- **Theme:** 墙边的金属饮水器
+- **Prompt:** A front-facing wall-mounted drinking fountain in flat Saul Bass style. A vertical cream rectangular silhouette mounted to a teal vertical wall pipe. At the top, a small mustard semicircular basin. Below the basin, a thin ink-black spout. At the front of the basin, a small vermilion press-button. Minimalist sanitary aesthetic.
+
+### I08 — Recycling Bin (垃圾分类桶)  `[x]`
+- **File:** `output/props/I08-recycling-bin.png`
+- **Size:** 32×48 px
+- **Theme:** 配套 F04 trash bin 的回收桶（不同颜色 + 标识）
+- **Prompt:** A front-facing slim cylindrical recycling bin in flat Saul Bass style. A teal tall trapezoidal silhouette (slightly wider at the top), with a mustard horizontal band at the top rim and another at the bottom base. A single small vermilion triangular "recycling" arrow trio in the center (3 ink-black arrows forming a triangle). Matches F04 in proportions but teal not ink.
+
+### I09 — Postcard Rack (旋转明信片架)  `[x]`
+- **File:** `output/props/I09-postcard-rack.png`
+- **Size:** 64×96 px
+- **Theme:** 礼品店感的旋转明信片架
+- **Prompt:** A front-facing vertical postcard rack in flat Saul Bass style. A central ink-black thin vertical post. Off the post, 3 horizontal cream rectangles stacked vertically (the postcard rows), each with 2 small vermilion postcard rectangles tucked in. The top of the post has a mustard small flat cap. The base is a flat ink-black circle. No 3D — pure silhouette.
+
+### I10 — Coat Hook Row (衣帽钩排)  `[x]`
+- **File:** `output/props/I10-coat-hook-row.png`
+- **Size:** 96×32 px
+- **Theme:** 南厅入口的横排衣帽钩
+- **Prompt:** A horizontal wall-mounted coat hook bar in flat Saul Bass style. A cream horizontal flat rectangular bar with 5 small ink-black inverted-U hook silhouettes evenly spaced along it. The bar has a thin mustard accent stripe along its top edge. A vermilion small coat silhouette hangs from the leftmost hook (a tiny triangle shape suggesting a hanging garment). Otherwise just empty hooks. Minimalist horizontal composition.
+
+---
+
+## J · Nature Touches — 自然元素（4 sprite · 透明背景）
+
+> 让美术馆"贴近自然"。植物、小动物、地毯。
+
+### J01 — Large Fern (大蕨类盆栽)  `[x]`
+- **File:** `output/nature/J01-fern-large.png`
+- **Size:** 80×128 px
+- **Theme:** 角落里的大蕨类（比 F01 ficus 更野生）
+- **Prompt:** A front-facing large fern plant in flat Saul Bass style. The pot is a teal trapezoidal silhouette at the bottom with a mustard horizontal rim. From the pot rises a cluster of 5-6 large ink-black fern fronds in a fan shape (each frond is a single tapered silhouette with 6-8 small ink-black "leaflet" notches along each edge — feathered silhouette, NOT detailed leaves). NO veins, no 3D. Plant fills upper 70% of the sprite. Wild, organic, ink-bold.
+
+### J02 — Sleeping Cat on Bench (长椅上的睡猫)  `[x]`
+- **File:** `output/nature/J02-cat-sleeping.png`
+- **Size:** 48×24 px
+- **Theme:** 一只蜷缩睡在长椅上的猫
+- **Prompt:** A side-view sleeping curled cat silhouette in flat Saul Bass style. A single rounded ink-black blob silhouette (the cat curled in a ball), with a small tail curling around the body. Two tiny ear triangles on top. NO facial features. One small vermilion collar dot at the neck. The cat sprite is meant to be placed on top of the existing C02 bench sprite.
+
+### J03 — Perched Pigeon (拱门顶的鸽子)  `[x]`
+- **File:** `output/nature/J03-pigeon-perched.png`
+- **Size:** 32×32 px
+- **Theme:** 站在拱门顶上的鸽子
+- **Prompt:** A side-view perched pigeon silhouette in flat Saul Bass style. A simple ink-black plump bird silhouette (rounded body + small head with tiny beak triangle), facing left. One small mustard leg visible. A small teal accent dot for the eye area (no detail). Sitting on an implied flat ledge. Compact, dignified.
+
+### J04 — Long Floor Runner Rug (长地毯卷)  `[x]`
+- **File:** `output/nature/J04-floor-runner.png`
+- **Size:** 128×32 px
+- **Theme:** 铺在 wing 走廊正中的长形装饰地毯
+- **Prompt:** A top-down view of a horizontal rectangular floor runner rug in flat Saul Bass style. A vermilion long rectangle (the rug base), with a thin mustard border running ~3 px inside the edges (the rug binding). Down the center, a simplified geometric pattern: 4 evenly spaced cream diamonds, each with a small ink-black dot at center. The rug short ends have small mustard fringe-tassel marks (5 tiny vertical lines on each end). Tileable horizontally if needed.

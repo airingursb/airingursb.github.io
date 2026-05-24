@@ -40,6 +40,7 @@ import { setupGalleryArchitecture, teardownGalleryArchitecture } from '../galler
 import { setupGalleryDecorations, teardownGalleryDecorations } from '../gallery_decorations'
 import { setupGalleryFloorInlay, teardownGalleryFloorInlay } from '../gallery_floor_inlay'
 import { setupGalleryDocent, teardownGalleryDocent } from '../gallery_docent'
+import { setupGalleryMochi, teardownGalleryMochi } from '../gallery_mochi'
 import { setupGalleryComics, teardownGalleryComics, getComicsInteractables } from '../gallery_comics'
 import { setupGalleryZones, teardownGalleryZones } from '../gallery_zones'
 import { maybePlayGalleryIntro } from '../gallery_intro'
@@ -243,6 +244,11 @@ export class RoomScene extends Phaser.Scene {
   // tryReadLetterAt still works.
   private letterSprites = new Map<number, Phaser.GameObjects.Container>()
 
+  // ms timestamp when this scene boot started — used by snap-back guard
+  private sceneStartedAt = 0
+  // flips true on first WASD / touch input — used by snap-back guard
+  private userHasMovedInThisScene = false
+
   constructor() {
     super({ key: 'Room' })
   }
@@ -253,6 +259,12 @@ export class RoomScene extends Phaser.Scene {
     this.pendingSpawn = (typeof data?.welcomeX === 'number' && typeof data?.welcomeY === 'number')
       ? { x: data.welcomeX, y: data.welcomeY } : null
     this.welcomeApplied = false
+    // Track when this scene boot started + whether the user has actively
+    // moved yet. Used to suppress server-side last_room snap-back if the
+    // user is already engaged — avoids the "I was walking in home, suddenly
+    // teleported to grove" bug when slow WS welcome arrives mid-stroll.
+    this.sceneStartedAt = Date.now()
+    this.userHasMovedInThisScene = false
     // CRITICAL: Phaser reuses the scene instance across restart(); class
     // field initializers only run in the constructor (once). Without this
     // reset, `transitioning` stays true after the first portal transition
@@ -875,6 +887,13 @@ export class RoomScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryDocent)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryDocent)
 
+    // SHU-737 — Mochi (npc_jue) visits the gallery rotunda. Clickable AI chat.
+    // Guest visitors get 5 msgs/day, logged-in users 30. Same SOUL + memory
+    // as library Mochi — this is just a second presence.
+    setupGalleryMochi(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryMochi)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryMochi)
+
     // Zone entry banners — wayfinding cue when the player crosses into a new wing
     setupGalleryZones(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryZones)
@@ -954,6 +973,10 @@ export class RoomScene extends Phaser.Scene {
 
     this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
       const wx = p.worldX, wy = p.worldY
+
+      // Any click counts as user engagement — don't snap-back-teleport them
+      // after they've started interacting with the room.
+      this.userHasMovedInThisScene = true
 
       // V6.6 — every click gets a small ring ripple for tactile feedback
       clickRipple(this, wx, wy)
@@ -1748,9 +1771,16 @@ export class RoomScene extends Phaser.Scene {
     // for this specific room, honor it.
     const urlHasRoom = typeof window !== 'undefined'
       && new URLSearchParams(window.location.search).has('room')
+    // SHU-737 — suppress snap-back when the user has already engaged with
+    // this scene (clicked, tapped, walked) OR when WS welcome arrived late
+    // (>1500ms after scene boot). Either signal means: they intend to be
+    // where they are; don't surprise-teleport them.
+    const elapsedMs = Date.now() - this.sceneStartedAt
+    const userEngaged = this.userHasMovedInThisScene || elapsedMs > 1500
     const shouldSnapBack =
       !firstWelcomeSnapBackResolved
       && !urlHasRoom
+      && !userEngaged
       && m.last_room
       && m.last_room !== this.currentRoomId
       && isValidRoom(m.last_room)
@@ -4666,6 +4696,9 @@ export class RoomScene extends Phaser.Scene {
     const down  = (this.cursors?.down.isDown  ?? false) || (this.wasd?.S.isDown ?? false) || touchInput.down
     if (!left && !right && !up && !down) return false
 
+    // User has actively started moving — record so the welcome snap-back
+    // guard knows not to teleport them anymore.
+    this.userHasMovedInThisScene = true
     this.myBear.target = null
     if (this.myBear.state === 'sit') {
       this.currentSitInteractable = null

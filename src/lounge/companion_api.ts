@@ -33,6 +33,27 @@ export async function getUsage(): Promise<CompanionUsage | null> {
   }
 }
 
+/** Fetch guest-tier usage (no auth required). Returns sent/cap/remaining. */
+export async function getGuestUsage(): Promise<CompanionUsage | null> {
+  try {
+    const res = await fetch(`${API_BASE}/api/ai-companion/guest-usage`, { credentials: 'include' })
+    if (!res.ok) return null
+    return await res.json() as CompanionUsage
+  } catch {
+    return null
+  }
+}
+
+/** Send a guest-tier message (no auth). 5 msgs/day cap, no memory, no tools. */
+export async function sendGuestMessage(
+  npcId: string,
+  text: string,
+  hints: { time_phase?: string; weather?: string; current_room?: string; language?: string },
+  onEvent: (e: CompanionEvent) => void
+): Promise<void> {
+  return _streamChatRequest('/api/ai-companion/guest-chat', { npc_id: npcId, message: text, ...hints }, onEvent)
+}
+
 /**
  * Send a message + stream the reply. Calls `onEvent` for each SSE chunk.
  * The promise resolves when the stream closes.

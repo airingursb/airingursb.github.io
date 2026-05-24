@@ -84,12 +84,13 @@ function drawFrame(
   layer.add(scene.add.rectangle(cx, cy, fw - 7, fh - 7, COLORS.goldRidge, 0.55))
   layer.add(scene.add.rectangle(cx, cy, fw - 10, fh - 10, COLORS.goldDeep))
 
-  // Painting area — try to use the Codex PNG; fall back to dark matte + emoji
+  // Painting area — try to use the Codex PNG; if missing, render a typographic
+  // placeholder using the label (NOT emoji — the museum aesthetic is broken
+  // by emoji glyphs at this resolution).
   const innerW = fw - 14
   const innerH = fh - 14
   const tex = e.asset ? paintingKey(e.asset) : undefined
   if (tex && scene.textures.exists(tex)) {
-    // Render the Codex painting fitted into the matte square.
     const img = scene.add.image(cx, cy, tex).setOrigin(0.5)
     const tw = img.width || innerW
     const th = img.height || innerH
@@ -97,33 +98,11 @@ function drawFrame(
     img.setScale(fit)
     layer.add(img)
   } else {
-    // Placeholder — dark velvet mat with the emoji centered
-    layer.add(scene.add.rectangle(cx, cy, innerW, innerH, COLORS.matVelvet))
-    if (e.emoji) {
-      const size = Math.floor(Math.min(innerW, innerH) * 0.75)
-      const icon = scene.add.text(cx, cy, e.emoji, {
-        fontSize: `${size}px`,
-        fontFamily: 'ui-monospace, monospace',
-      }).setOrigin(0.5)
-      layer.add(icon)
-    }
+    drawTypographicPlaceholder(scene, layer, cx, cy, innerW, innerH, e.label ?? '')
   }
 
-  // Small brass plaque under the frame (decorative — title shown by interact prompt)
-  const plaqueY = cy + fh / 2 + 5
-  const plaque = scene.add.rectangle(cx, plaqueY, fw * 0.6, 3, COLORS.plaque, 0.9)
-    .setStrokeStyle(1, COLORS.plaqueDark, 0.85)
-  layer.add(plaque)
-
-  // Tiny "✓" check on the plaque for previously visited exhibits — quiet
-  // reward for thorough museum-goers.
-  if (e.url && hasVisited(e.url)) {
-    const tick = scene.add.text(cx + fw * 0.28, plaqueY - 4, '✓', {
-      fontSize: '7px', color: '#1a1a1a',
-      fontFamily: 'ui-monospace, monospace',
-    }).setOrigin(0.5)
-    layer.add(tick)
-  }
+  // Brass museum plaque under the frame — shows the work title.
+  drawMuseumPlaque(scene, layer, cx, cy + fh / 2 + 8, fw, e.label, e.url)
 
   // Picture light fixture above (side-wall frames only)
   if (e.facing === 'left' || e.facing === 'right') {
@@ -165,19 +144,88 @@ function drawCenterpiece(
     img.setScale(fit)
     layer.add(img)
   } else {
-    layer.add(scene.add.rectangle(cx, cy, size - 12, size - 12, COLORS.matVelvet))
-    if (e.emoji) {
-      const sz = Math.floor((size - 12) * 0.7)
-      layer.add(scene.add.text(cx, cy, e.emoji, {
-        fontSize: `${sz}px`,
-        fontFamily: 'ui-monospace, monospace',
-      }).setOrigin(0.5))
-    }
+    drawTypographicPlaceholder(scene, layer, cx, cy, size - 12, size - 12, e.label ?? '')
   }
 
-  // Bigger plaque under the centerpiece
-  layer.add(scene.add.rectangle(cx, pedY + pedH / 2 + 6, size * 0.7, 4, COLORS.plaque, 0.95)
-    .setStrokeStyle(1, COLORS.plaqueDark, 0.9))
+  // Wider brass plaque under the centerpiece with the work title
+  drawMuseumPlaque(scene, layer, cx, pedY + pedH / 2 + 10, size * 0.85, e.label, e.url, true)
+}
+
+// Typographic placeholder for missing Codex art — replaces emoji fallback.
+// Renders the label as a stylized monogram on dark velvet, fitting the
+// Saul Bass / WPA aesthetic instead of clashing with it.
+function drawTypographicPlaceholder(
+  scene: Phaser.Scene,
+  layer: Phaser.GameObjects.Container,
+  cx: number, cy: number,
+  innerW: number, innerH: number,
+  label: string
+) {
+  // Dark velvet mat
+  layer.add(scene.add.rectangle(cx, cy, innerW, innerH, COLORS.matVelvet))
+  // Vermilion accent block — Saul Bass signature color, half-height
+  layer.add(scene.add.rectangle(cx, cy - innerH * 0.18, innerW * 0.7, innerH * 0.12, 0xd44820, 0.85))
+  // Centered monogram in brass
+  if (label) {
+    // Pick a font size that fits — try the whole label first, downscale if too wide
+    const maxChars = Math.max(1, label.length)
+    const targetW = innerW * 0.85
+    const guessSize = Math.min(innerH * 0.42, targetW / maxChars * 1.5)
+    const fontSize = Math.max(8, Math.floor(guessSize))
+    layer.add(scene.add.text(cx, cy + innerH * 0.05, label, {
+      fontSize: `${fontSize}px`,
+      color: '#e6c878',
+      fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", ui-monospace, monospace',
+      resolution: 2,
+      align: 'center',
+    }).setOrigin(0.5))
+  }
+  // Thin gold rule beneath the type
+  layer.add(scene.add.rectangle(cx, cy + innerH * 0.32, innerW * 0.55, 1, COLORS.plaque, 0.85))
+}
+
+// Brass museum plaque mounted beneath each frame. Shows the work label and a
+// ✓ tick when visited. Wider variant for the centerpiece.
+function drawMuseumPlaque(
+  scene: Phaser.Scene,
+  layer: Phaser.GameObjects.Container,
+  cx: number, cy: number,
+  frameW: number,
+  label: string | undefined,
+  url: string | undefined,
+  wide = false
+) {
+  const txt = (label ?? '').trim()
+  // Plaque sizing: wide variant for centerpiece, otherwise sized to the frame
+  const plateW = wide
+    ? Math.max(frameW * 0.7, txt.length * 7 + 18)
+    : Math.max(frameW * 0.7, txt.length * 6 + 12)
+  const plateH = wide ? 12 : 10
+  // Mounting screws (tiny brass dots) at each end
+  layer.add(scene.add.circle(cx - plateW / 2 + 3, cy, 1.2, COLORS.plaqueDark, 0.9))
+  layer.add(scene.add.circle(cx + plateW / 2 - 3, cy, 1.2, COLORS.plaqueDark, 0.9))
+  // Plaque body — brass with dark engraved border
+  layer.add(scene.add.rectangle(cx, cy, plateW, plateH, COLORS.plaque, 1.0)
+    .setStrokeStyle(1, COLORS.plaqueDark, 0.95))
+  // Inner bevel — slightly lighter brass strip
+  layer.add(scene.add.rectangle(cx, cy - 1, plateW - 4, 1, COLORS.goldRidge, 0.7))
+  // Engraved text — dark ink against brass
+  if (txt) {
+    layer.add(scene.add.text(cx, cy, txt, {
+      fontSize: wide ? '8px' : '7px',
+      color: '#1a1a1a',
+      fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", ui-monospace, monospace',
+      resolution: 2,
+    }).setOrigin(0.5))
+  }
+  // ✓ tick on the far right for visited exhibits
+  if (url && hasVisited(url)) {
+    layer.add(scene.add.text(cx + plateW / 2 - 8, cy, '✓', {
+      fontSize: '7px', color: '#0a3a1a',
+      fontFamily: 'ui-monospace, monospace',
+      resolution: 2,
+    }).setOrigin(0.5))
+  }
 }
 
 function drawPictureLight(
