@@ -58,11 +58,12 @@ export default function SunsetBirds({ theme }: { theme: Theme }) {
     <group ref={groupRef} position={[0, ALT_Y, ALT_Z]}>
       {FORMATION.map(([fx, fz], i) => (
         <group key={`b${i}`} ref={(el) => { wingRef.current[i] = el }} position={[fx, 0, fz]}>
-          {/* Sub-A fix: was 3-segment cone = flat triangle facing one
+          {/* Sub-A wave-3: was 3-segment cone = flat triangle facing one
               way; bird's-eye camera saw edge-on 1px line. Now 2 crossed
               wedge planes (X + Z) forming a tiny "+" silhouette that
-              reads from any angle. */}
-          <mesh rotation={[Math.PI / 2, 0, 0]}>
+              reads from any angle. Both planes set depthWrite=false +
+              identical renderOrder so dusk bloom doesn't halo one. */}
+          <mesh rotation={[Math.PI / 2, 0, 0]} renderOrder={3}>
             <planeGeometry args={[0.65, 0.20]} />
             <meshBasicMaterial
               ref={(m) => { matRefs.current[i] = m }}
@@ -73,7 +74,7 @@ export default function SunsetBirds({ theme }: { theme: Theme }) {
               depthWrite={false}
             />
           </mesh>
-          <mesh rotation={[Math.PI / 2, 0, Math.PI / 2]}>
+          <mesh rotation={[Math.PI / 2, 0, Math.PI / 2]} renderOrder={3}>
             <planeGeometry args={[0.65, 0.20]} />
             <meshBasicMaterial
               color="#1A1A1A"

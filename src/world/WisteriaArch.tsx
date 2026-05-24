@@ -17,10 +17,13 @@ const WISTERIA_A    = '#B8A0D0'   // pale lavender
 const WISTERIA_B    = '#9A7CB8'   // mid lavender
 const WISTERIA_C    = '#7A5EA0'   // deep lavender
 
-// Place over the path mid-way between cabin (-2, -1) and fox shrine
-// (-4.6, -6.5). Heading roughly NW.
-const POS: [number, number, number] = [-3.3, 0, -3.8]
-const ROT_Y = -0.5   // aligned along path heading
+// Sub-A fix: was at (-3.3, 0, -3.8) rotY=-0.5 — BESIDE the path,
+// not over it, and 50° off-axis from the path tangent. Path passes
+// through (-1.4,-4.5) → (-2.4,-7.0); midpoint ≈ (-1.9, -5.75) with
+// tangent direction +0.38 rad. Arch needs to be PERPENDICULAR to
+// tangent: rotY = π/2 + 0.38 ≈ 1.95. Now actually frames the path.
+const POS: [number, number, number] = [-1.9, 0, -5.75]
+const ROT_Y = 1.95   // perpendicular to path tangent at this midpoint
 
 // One hanging cluster of wisteria blossoms — top wider, narrowing
 // downward. 3 ovoids in lavender gradient. Sways more on gust.
@@ -59,8 +62,10 @@ function WisteriaCluster({ position, scale = 1, phase }: { position: [number, nu
 }
 
 export default function WisteriaArch() {
-  // 8 hanging clusters spaced along the top beam
-  const clusterPositions: Array<[number, number, number, number]> = [
+  // 8 hanging clusters spaced along the top beam — tuple is
+  // [x, y, z, scale, phase]. Sub-A fix: corrected type so phase isn't
+  // a "lie via never[] cast".
+  const clusterPositions: Array<[number, number, number, number, number]> = [
     [-1.20, 1.95, -0.05, 0.95, 0.2],
     [-0.90, 1.98,  0.10, 1.00, 0.7],
     [-0.55, 2.00, -0.10, 0.92, 1.3],
@@ -69,7 +74,7 @@ export default function WisteriaArch() {
     [ 0.55, 2.00,  0.10, 0.90, 3.4],
     [ 0.90, 1.98, -0.10, 1.02, 4.0],
     [ 1.20, 1.95,  0.05, 0.96, 4.6],
-  ] as never[]
+  ]
 
   return (
     <group position={POS} rotation={[0, ROT_Y, 0]}>
@@ -124,7 +129,7 @@ export default function WisteriaArch() {
           key={`cl${i}`}
           position={[p[0], p[1], p[2]]}
           scale={p[3]}
-          phase={p[4] as number}
+          phase={p[4]}
         />
       ))}
     </group>

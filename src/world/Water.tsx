@@ -224,6 +224,55 @@ const STREAM_POINTS: [number, number][] = [
   [ 7.8,  6.0],
 ]
 
+// V2 wave 3: small leaves drifting along the river surface, flowing
+// downstream (west → east). Parallels the pond sakura petals; gives
+// the river visible motion through its content rather than just its
+// vertex normal animation.
+function RiverLeaves() {
+  const refs = useRef<Array<THREE.Mesh | null>>([])
+  // 6 leaves on the river, each at a different stream-progress phase
+  const COUNT = 6
+  // Build a CatmullRom curve to sample positions along the river path
+  const curve = useMemo(() => {
+    const pts = STREAM_POINTS.map(([x, z]) => new THREE.Vector3(x, 0.10, z))
+    return new THREE.CatmullRomCurve3(pts, false, 'catmullrom', 0.45)
+  }, [])
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    refs.current.forEach((m, i) => {
+      if (!m) return
+      // Each leaf cycles 0..1 along the curve over 22s with phase offset
+      const u = ((t * 0.045 + i / COUNT) % 1)
+      const p = curve.getPoint(u)
+      m.position.copy(p)
+      m.position.y = 0.12 + Math.sin(t * 1.2 + i) * 0.008
+      // Slight tumble + offset by curve tangent for facing direction
+      m.rotation.z = t * 0.4 + i * 1.2
+    })
+  })
+  return (
+    <>
+      {Array.from({ length: COUNT }).map((_, i) => (
+        <mesh
+          key={`rl${i}`}
+          ref={(el) => { refs.current[i] = el }}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <circleGeometry args={[0.05, 5]} />
+          <meshStandardMaterial
+            color={i % 2 ? '#A87A52' : '#D49860'}
+            roughness={0.88}
+            side={THREE.DoubleSide}
+            transparent
+            opacity={0.85}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+    </>
+  )
+}
+
 function River() {
   const tubeMain = useMemo(() => {
     const pts = STREAM_POINTS.map(([x, z]) => new THREE.Vector3(x, 0.08, z))
@@ -445,6 +494,7 @@ export default function Water() {
     <group>
       <WavingPond x={POND_CENTER[0]} z={POND_CENTER[1]} radius={POND_RADIUS} />
       <River />
+      <RiverLeaves />
       <Bridge />
       <AnimatedWaterfall />
     </group>
