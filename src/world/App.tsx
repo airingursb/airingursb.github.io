@@ -52,6 +52,7 @@ import MochiNPC from './MochiNPC'
 import ZoneHints from './ZoneHints'
 import AmbientFX from './AmbientFX'
 import WorkDisplay from './WorkDisplay'
+import CabinBanner from './CabinBanner'
 // Sub-A iter-10: Rainbow + HotAirBalloon + Scarecrow cut to protect cabin
 // as the visual hero. (Files left on disk for easy re-enable.)
 
@@ -204,6 +205,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
           position={[3.5, 10.5]}
           rotation={-2.5}
           spriteUrl="/world/sprites/buildings/C01-bookshelf.png"
+          bannerUrl="/world/sprites/banners/E01-blog.png"
           title="文章"
           subtitle="Blog · ursb.me/blog"
           accent="#C97B5C"
@@ -215,6 +217,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
           position={[-11.0, 4.5]}
           rotation={1.8}
           spriteUrl="/world/sprites/buildings/C02-easel.png"
+          bannerUrl="/world/sprites/banners/E02-comics.png"
           title="四格"
           subtitle="Comics · ursb.me/comics"
           accent="#8B5E3C"
@@ -226,6 +229,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
           position={[11.5, -4.5]}
           rotation={-1.0}
           spriteUrl="/world/sprites/buildings/C03-record-player.png"
+          bannerUrl="/world/sprites/banners/E03-music.png"
           title="在听"
           subtitle="Music · Last.fm"
           accent="#4A8B6E"
@@ -237,12 +241,15 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
           position={[-2.0, -10.0]}
           rotation={0.2}
           spriteUrl="/world/sprites/buildings/C04-armchair.png"
+          bannerUrl="/world/sprites/banners/E04-reading.png"
           title="在读"
           subtitle="Reading · Readwise"
           accent="#A05A8B"
           rows={data.reading.slice(0, 5).map(h => ({ main: h.title, sub: h.author }))}
           emptyMessage="（暂无划线）"
         />
+        {/* Chat zone banner — small B&B-style hanging sign next to cabin */}
+        <CabinBanner />
       </Suspense>
 
       <CameraControls />

@@ -12,11 +12,36 @@ export interface WorkDisplayProps {
   position: [number, number]
   rotation?: number
   spriteUrl: string
+  /** E-series wooden banner hung at the top (e.g. /world/sprites/banners/E01-blog.png). */
+  bannerUrl?: string
   title: string
   subtitle: string
   rows: ListRow[]
   accent?: string
   emptyMessage?: string
+}
+
+// Banner sprite mounted as a transparent plane — split into a subcomponent
+// so we can conditionally render only when bannerUrl is provided (useTexture
+// is a hook and must run unconditionally).
+function HangingBanner({ url, width }: { url: string; width: number }) {
+  const tex = useTexture(url)
+  const h = width / 2
+  return (
+    <mesh>
+      <planeGeometry args={[width, h]} />
+      <meshStandardMaterial
+        map={tex}
+        transparent
+        alphaTest={0.04}
+        emissive="#FFFFFF"
+        emissiveMap={tex}
+        emissiveIntensity={0.22}
+        roughness={0.9}
+        depthWrite={false}
+      />
+    </mesh>
+  )
 }
 
 const WOOD       = '#9E7A52'
@@ -31,6 +56,7 @@ export default function WorkDisplay({
   position,
   rotation = 0,
   spriteUrl,
+  bannerUrl,
   title,
   subtitle,
   rows,
@@ -138,6 +164,39 @@ export default function WorkDisplay({
             <meshStandardMaterial color={WOOD_DARKER} roughness={0.95} />
           </mesh>
         </group>
+
+        {/* === Hanging zone banner (E series) — sits between gable + sprite === */}
+        {bannerUrl && (() => {
+          const BW = W * 0.78
+          const BH = BW / 2
+          const beamY = H / 2 + 0.04
+          const ropeLen = 0.18
+          const bannerY = beamY - ropeLen - BH / 2
+          return (
+            <group position={[0, 0, 0.16]}>
+              {/* Thin cross-beam (under gable, where banner hangs from) */}
+              <mesh position={[0, beamY, 0]} castShadow>
+                <boxGeometry args={[BW + 0.18, 0.04, 0.04]} />
+                <meshStandardMaterial color={WOOD_DARKER} roughness={0.92} />
+              </mesh>
+              {/* 2 visible rope ties from beam down to banner top */}
+              {[-BW / 2 + 0.08, BW / 2 - 0.08].map((rx, i) => (
+                <mesh
+                  key={`bnrope${i}`}
+                  position={[rx, beamY - ropeLen / 2, 0]}
+                  castShadow
+                >
+                  <cylinderGeometry args={[0.018, 0.018, ropeLen, 6]} />
+                  <meshStandardMaterial color="#A48B6E" roughness={0.95} />
+                </mesh>
+              ))}
+              {/* Banner plane */}
+              <group position={[0, bannerY, 0]}>
+                <HangingBanner url={bannerUrl} width={BW} />
+              </group>
+            </group>
+          )
+        })()}
 
         {/* Bottom shelf-bar (small wood ledge under board, supports list visually) */}
         <mesh position={[0, -H / 2 - 0.05, 0.04]} castShadow>
