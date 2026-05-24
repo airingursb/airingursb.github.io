@@ -438,13 +438,38 @@ export default function Cabin() {
             light". Sub-A wave-3 noted this was the upgrade from
             diorama to world. */}
         <CabinWindowGlow />
-        {/* Silhouette inside — a kettle on a stove */}
-        <mesh position={[-0.1, -0.1, -0.10]}>
-          <boxGeometry args={[0.12, 0.16, 0.02]} />
+        {/* Silhouette inside — kettle (sphere) on a stove (box) +
+            small chimney pipe behind. V2 wave 3 refinement: was 2
+            featureless dark blobs; now reads as a recognizable
+            kettle+stove silhouette against the warm window glow. */}
+        {/* Stove body */}
+        <mesh position={[-0.10, -0.10, -0.10]}>
+          <boxGeometry args={[0.14, 0.18, 0.02]} />
           <meshStandardMaterial color="#1a1410" />
         </mesh>
+        {/* Chimney pipe (vertical line up from stove) */}
+        <mesh position={[-0.10, 0.10, -0.10]}>
+          <boxGeometry args={[0.025, 0.16, 0.02]} />
+          <meshStandardMaterial color="#1a1410" />
+        </mesh>
+        {/* Kettle body (sphere) */}
         <mesh position={[0.08, -0.05, -0.10]}>
-          <sphereGeometry args={[0.08, 8, 6]} />
+          <sphereGeometry args={[0.07, 10, 8]} />
+          <meshStandardMaterial color="#1a1410" />
+        </mesh>
+        {/* Kettle spout (cone pointing up-right) */}
+        <mesh position={[0.14, -0.03, -0.10]} rotation={[0, 0, -0.6]}>
+          <coneGeometry args={[0.018, 0.05, 6]} />
+          <meshStandardMaterial color="#1a1410" />
+        </mesh>
+        {/* Kettle lid (small flat disc on top) */}
+        <mesh position={[0.08, 0.02, -0.10]}>
+          <cylinderGeometry args={[0.04, 0.04, 0.012, 8]} />
+          <meshStandardMaterial color="#1a1410" />
+        </mesh>
+        {/* Kettle handle (small upper arc) */}
+        <mesh position={[0.08, 0.06, -0.10]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.035, 0.005, 4, 12, Math.PI]} />
           <meshStandardMaterial color="#1a1410" />
         </mesh>
         {/* Interior point light visible through window. Sub-A: 1.4 →
