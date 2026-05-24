@@ -51,7 +51,10 @@ import ZoneHitboxes from './ZoneHitboxes'
 import MochiNPC from './MochiNPC'
 import ZoneHints from './ZoneHints'
 import AmbientFX from './AmbientFX'
-import WorkDisplay from './WorkDisplay'
+import BlogKiosk from './BlogKiosk'
+import ComicsEasel from './ComicsEasel'
+import MusicBandstand from './MusicBandstand'
+import ReadingCabinet from './ReadingCabinet'
 import CabinBanner from './CabinBanner'
 // Sub-A iter-10: Rainbow + HotAirBalloon + Scarecrow cut to protect cabin
 // as the visual hero. (Files left on disk for easy re-enable.)
@@ -199,54 +202,62 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <ZoneHints />
         <AmbientFX />
 
-        {/* === Portfolio display boards — the work zones' hero objects === */}
-        {/* Blog (south of cabin, near deck) */}
-        <WorkDisplay
+        {/* === Portfolio displays — bespoke structure per zone for visual variety === */}
+        {/* Blog · newspaper kiosk (tall narrow, arch overhang, bench in front) */}
+        <BlogKiosk
           position={[3.5, 10.5]}
           rotation={-2.5}
           spriteUrl="/world/sprites/buildings/C01-bookshelf.png"
           bannerUrl="/world/sprites/banners/E01-blog.png"
-          title="文章"
-          subtitle="Blog · ursb.me/blog"
-          accent="#C97B5C"
-          rows={data.blog.slice(0, 5).map(b => ({ main: b.title, sub: b.date }))}
-          emptyMessage="（数据加载中…）"
+          content={{
+            title: '文章',
+            subtitle: 'Blog · ursb.me/blog',
+            accent: '#C97B5C',
+            emptyMessage: '（数据加载中…）',
+            rows: data.blog.slice(0, 5).map(b => ({ main: b.title, sub: b.date })),
+          }}
         />
-        {/* Comics (west of cabin, near easel) */}
-        <WorkDisplay
+        {/* Comics · A-frame sandwich-board easel (wide short, paint props) */}
+        <ComicsEasel
           position={[-11.0, 4.5]}
           rotation={1.8}
           spriteUrl="/world/sprites/buildings/C02-easel.png"
           bannerUrl="/world/sprites/banners/E02-comics.png"
-          title="四格"
-          subtitle="Comics · ursb.me/comics"
-          accent="#8B5E3C"
-          rows={data.comics.slice(0, 5).map(c => ({ main: c.title_zh, sub: `Issue #${c.issue}` }))}
-          emptyMessage="点击前往 /comics →"
+          content={{
+            title: '四格',
+            subtitle: 'Comics · ursb.me/comics',
+            accent: '#8B5E3C',
+            emptyMessage: '点击前往 /comics →',
+            rows: data.comics.slice(0, 5).map(c => ({ main: c.title_zh, sub: `Issue #${c.issue}` })),
+          }}
         />
-        {/* Music (east of cabin, near gazebo) */}
-        <WorkDisplay
+        {/* Music · mini bandstand (square, 4 posts, copper-patina hex roof, LP records on grass) */}
+        <MusicBandstand
           position={[11.5, -4.5]}
           rotation={-1.0}
           spriteUrl="/world/sprites/buildings/C03-record-player.png"
           bannerUrl="/world/sprites/banners/E03-music.png"
-          title="在听"
-          subtitle="Music · Last.fm"
-          accent="#4A8B6E"
-          rows={data.music.slice(0, 5).map(a => ({ main: a.name, sub: `${a.plays} plays` }))}
-          emptyMessage="（暂无播放记录）"
+          content={{
+            title: '在听',
+            subtitle: 'Music · Last.fm',
+            accent: '#4A8B6E',
+            emptyMessage: '（暂无播放记录）',
+            rows: data.music.slice(0, 5).map(a => ({ main: a.name, sub: `${a.plays} plays` })),
+          }}
         />
-        {/* Reading (north of cabin, near hammock) */}
-        <WorkDisplay
+        {/* Reading · low library cabinet (4 short legs, walnut, books on ground) */}
+        <ReadingCabinet
           position={[-2.0, -10.0]}
           rotation={0.2}
           spriteUrl="/world/sprites/buildings/C04-armchair.png"
           bannerUrl="/world/sprites/banners/E04-reading.png"
-          title="在读"
-          subtitle="Reading · Readwise"
-          accent="#A05A8B"
-          rows={data.reading.slice(0, 5).map(h => ({ main: h.title, sub: h.author }))}
-          emptyMessage="（暂无划线）"
+          content={{
+            title: '在读',
+            subtitle: 'Reading · Readwise',
+            accent: '#A05A8B',
+            emptyMessage: '（暂无划线）',
+            rows: data.reading.slice(0, 5).map(h => ({ main: h.title, sub: h.author })),
+          }}
         />
         {/* Chat zone banner — small B&B-style hanging sign next to cabin */}
         <CabinBanner />
