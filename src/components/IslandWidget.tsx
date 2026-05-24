@@ -963,12 +963,14 @@ function PathMoss() {
 // 220×220 widget over-magnify.
 function ParallaxRig() {
   const { camera } = useThree()
-  const baseX = 2.6     // matches Canvas prop [2.6, 2.0, 7.6]
+  const baseX = 2.6     // matches Canvas prop [2.6, 2.0, 8.5]
   const baseY = 2.0
-  const baseZ = 7.6     // V52.4: 7.0 → 7.6 — gives disc edge ~0.27
-                        // margin/side so parallax (mouseState.x*0.15 =
-                        // ±0.39 lateral camera shift) doesn't clip the
-                        // disc edge into the canvas border at 220px
+  const baseZ = 8.5     // V52.6: 7.6 → 8.5. Sub-A V52.5 caught that at
+                        // 7.6 the FRONT-RIGHT disc corner (closer to
+                        // camera in perspective space) still clipped
+                        // because visible half-width shrinks at closer
+                        // depths. 8.5 gives ~0.4 margin even at the
+                        // front-corner depth.
   useFrame((_, dt) => {
     const targetX = baseX + mouseState.x * 0.15   // V21 had 0.25 — too much for pet
     const targetY = baseY + mouseState.y * -0.10  // V21 had -0.15
@@ -1625,13 +1627,14 @@ export default function IslandWidget() {
       // Island disc has x-extent ±2.15 (radius 2.05 × non-uniform scale
       // 1.05). To fit the whole disc width in a square canvas the
       // visible width at island distance must be ≥ 4.3 units.
-      // Math: visible_width = 2 · D · tan(fov/2). Camera [2.6, 2.0, 7.6]
-      // sits ~8.2 units from origin → fov 32 gives ~4.7 unit visible
-      // width vs disc ±2.15 = ~0.27 margin/side, enough headroom for
-      // parallax (±0.39 lateral shift) without clipping. Tilt comes
-      // from raised y (2.0) so the disc reads as a round blob from
-      // slight bird's-eye, not as a side-cliff slice.
-      camera={{ position: [2.6, 2.0, 7.6], fov: 32 }}
+      // Math: visible_width = 2 · D · tan(fov/2). Camera [2.6, 2.0, 8.5]
+      // sits ~9.0 units from origin → fov 32 gives ~5.2 unit visible
+      // width at the disc center plane. At the disc's FRONT-RIGHT
+      // corner (closer to camera in perspective) the visible half-width
+      // shrinks but still clears the ±2.15 disc edge with ~0.4 unit
+      // margin. Tilt comes from raised y (2.0) so the disc reads as
+      // a round blob from slight bird's-eye, not as a cliff slice.
+      camera={{ position: [2.6, 2.0, 8.5], fov: 32 }}
       dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}
       // V41: pause off-screen. V50 a11y: reduced-motion users get a
       // single static render ("demand" + one initial invalidate from R3F
@@ -1694,14 +1697,13 @@ export default function IslandWidget() {
       <MinkaCabin />
       <ChimneySmoke />
 
-      {/* V11: sakura wrapped in WindSway. V52.5: hero=true (trunk 5.3 +
-          branch reach ~3.0 ≈ y 4.5 world after scale 0.55) was cropping
-          the canopy top — visible y-max is only 3.20 in pet frustum.
-          hero=false → trunk 3.6 + branch reach ~1.5 ≈ y 2.6 world →
-          fits with 0.6 margin. Bumped scale 0.55 → 0.62 to keep visual
-          size since hero=false is leaner. */}
+      {/* V11: WindSway wrapped. V52.5: hero true→false. V52.6: scale
+          0.62→0.56 because Sub-A computed canopy FLUFF peaks at
+          local y ≈ 5.7 (canopyCY 4.3 + canopyRY 1.4), so at scale 0.62
+          world y-max = 3.53 — still 0.33 above the y=3.20 crop line.
+          0.56 → world y-max ≈ 3.19, just under the line. */}
       <WindSway amp={0.018} freq={0.5}>
-        <group position={[0.55, 0, -0.35]} scale={0.62}>
+        <group position={[0.55, 0, -0.35]} scale={0.56}>
           <Sakura
             position={[0, 0, 0]}
             seed={20260524}
