@@ -91,9 +91,18 @@ const QUALITY = typeof window !== 'undefined' ? detectQuality() : 'medium'
 function CameraControls() {
   const ref = useRef<OrbitControlsImpl | null>(null)
   const introRef = useRef({ started: 0, active: true, skipped: false })
+  // Theme-toggle "breath" — subtle dolly that fires when user presses
+  // 🌙/☀️. Camera momentarily leans forward (eases distance from 28→25
+  // unit radius) over 1.5s as if "leaning in to watch lights come on",
+  // then eases back to neutral.
+  const breathRef = useRef({ active: false, started: 0 })
   const { camera, gl } = useThree()
 
   useEffect(() => on('world-reset-camera', () => ref.current?.reset()), [])
+  useEffect(() => on('world-theme', () => {
+    breathRef.current.active = true
+    breathRef.current.started = performance.now() / 1000
+  }), [])
 
   // Skip intro on first user interaction with the canvas
   useEffect(() => {
@@ -105,30 +114,48 @@ function CameraControls() {
 
   useFrame((s) => {
     const intro = introRef.current
-    if (!intro.active) return
-    if (intro.started === 0) intro.started = s.clock.elapsedTime
-    const elapsed = s.clock.elapsedTime - intro.started
-    let phase = elapsed / 4.5
-    if (intro.skipped) phase = 1
-    if (phase >= 1) {
-      intro.active = false
-      // Snap to final pose and re-enable user input
-      camera.position.set(34, 26, 30)
-      camera.lookAt(0, 5, 0)
-      if (ref.current) ref.current.enabled = true
+    if (intro.active) {
+      if (intro.started === 0) intro.started = s.clock.elapsedTime
+      const elapsed = s.clock.elapsedTime - intro.started
+      let phase = elapsed / 4.5
+      if (intro.skipped) phase = 1
+      if (phase >= 1) {
+        intro.active = false
+        camera.position.set(34, 26, 30)
+        camera.lookAt(0, 5, 0)
+        if (ref.current) ref.current.enabled = true
+        return
+      }
+      const e = 0.5 - Math.cos(phase * Math.PI) * 0.5
+      const sx = 5, sy = 4.5, sz = 8
+      const tx = 34, ty = 26, tz = 30
+      camera.position.set(sx + (tx - sx) * e, sy + (ty - sy) * e, sz + (tz - sz) * e)
+      const lx = -2 + (0 - -2) * e
+      const ly = 1.5 + (5 - 1.5) * e
+      const lz = 0.5 + (0 - 0.5) * e
+      camera.lookAt(lx, ly, lz)
+      if (ref.current) ref.current.enabled = false
       return
     }
-    // Sine in-out ease for cinematic feel
-    const e = 0.5 - Math.cos(phase * Math.PI) * 0.5
-    // Start tight on cabin door area (cabin chat at -2,-1; door at +z)
-    const sx = 5, sy = 4.5, sz = 8
-    const tx = 34, ty = 26, tz = 30
-    camera.position.set(sx + (tx - sx) * e, sy + (ty - sy) * e, sz + (tz - sz) * e)
-    const lx = -2 + (0 - -2) * e
-    const ly = 1.5 + (5 - 1.5) * e
-    const lz = 0.5 + (0 - 0.5) * e
-    camera.lookAt(lx, ly, lz)
-    if (ref.current) ref.current.enabled = false
+    // Theme-toggle breath: 1.5s in-out push forward + return.
+    // Apply only when controls are settled (post-intro).
+    const breath = breathRef.current
+    if (breath.active && ref.current) {
+      const t = performance.now() / 1000 - breath.started
+      const p = t / 1.5
+      if (p >= 1) {
+        breath.active = false
+      } else {
+        // Bell curve 0→1→0 over 1.5s
+        const bell = Math.sin(p * Math.PI)
+        // Pull camera 6% closer toward target along current view direction
+        const target = ref.current.target
+        const dir = camera.position.clone().sub(target).normalize()
+        const baseDist = camera.position.distanceTo(target)
+        const newDist = baseDist * (1 - bell * 0.06)
+        camera.position.copy(target).add(dir.multiplyScalar(newDist))
+      }
+    }
   })
 
   return (
