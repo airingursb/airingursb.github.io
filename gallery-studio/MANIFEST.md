@@ -1,6 +1,6 @@
 # Gallery Studio — Asset Manifest
 
-> 共 **65 个 sprite**（A–F 第一批 34，G–J 第二批 22，K–L 第三批"自然感" 9）。挨个生成，生成完把对应行 `[ ]` 改 `[x]` 并 commit。
+> 共 **69 个 sprite**（A–F 第一批 34，G–J 第二批 22，K–L 第三批"自然感" 9，M 第四批"中庭升级" 4）。挨个生成，生成完把对应行 `[ ]` 改 `[x]` 并 commit。
 > 每个 prompt = `STYLE.md 整段` + 下面 `**Prompt:**` 后面那段。
 
 总览：
@@ -19,6 +19,7 @@
 | J | Nature Touches — 自然元素 | 4 | 蕨类、猫、鸽子、地毯 |
 | K | Natural Floors — 自然地砖 | 4 | 草地 / 小溪 / 石板路 / 苔藓 |
 | L | Garden Props — 园林小品 | 5 | 石椅 / 喷泉 / 锦鲤池 / 葡萄架 / 盆景 |
+| M | Rotunda Marble — 中庭大理石 | 4 | 人字拼花 / 中央徽章 / 斜纹 / 角隅花饰 |
 
 ---
 
@@ -476,3 +477,34 @@
 - **Size:** 48×80 px
 - **Theme:** 黑色基座上的小盆景（精致的展品物件）
 - **Prompt:** A front-facing miniature bonsai tree on a pedestal in flat Saul Bass style. At the bottom, an ink-black short rectangular pedestal with a thin mustard top stripe. Atop it sits a mustard shallow trapezoidal pot. From the pot rises a single twisted ink-black trunk silhouette with 2-3 horizontal branch silhouettes. Atop each branch, a small flat teal canopy blob. NO leaves detail, pure silhouette.
+
+---
+
+## M · Premium Rotunda Marble — 中央圆厅大理石升级（4 sprite · 透明背景）
+
+> 中央圆厅当前用 E 系列普通菱形砖撑不住"中庭"的份量。M 系列是**专门给 rotunda 升级**的高级大理石，
+> 真博物馆中庭的那种"人字拼花 + 中央徽章 + 角隅花饰"配置。
+
+### M01 — Herringbone Marble Plank  `[ ]`
+- **File:** `output/tiles/M01-marble-herringbone.png`
+- **Size:** 128×128 px
+- **Theme:** 人字拼花大理石（铺中庭走廊）
+- **Prompt:** A single seamless square (NOT rhombus this time — orthogonal tile) marble floor tile in flat Saul Bass style. Cream base divided into a herringbone parquet pattern: 4 long rectangular "planks" arranged in a herringbone V (two horizontal, two vertical, interlocked), separated by ultra-thin ink lines. Inside each plank, a single thin curved ink vein evoking marble. A tiny mustard square dot at each plank intersection (suggesting brass inlay). Tiles seamlessly into a continuous herringbone floor.
+
+### M02 — Central Medallion  `[ ]`
+- **File:** `output/tiles/M02-marble-medallion.png`
+- **Size:** 256×256 px
+- **Theme:** 中庭**正中央**的大圆形徽章 inlay（铺在 centerpiece 底下当基座）
+- **Prompt:** A large single circular floor medallion in flat Saul Bass style on a transparent background. The outermost ring is a thick mustard band with a stylized Greek-key meander pattern in ink. Inside that, a thin teal ring. The central disc is cream with a 6-fold radial sunburst pattern in ink (6 long triangular wedges meeting at center), with a small vermilion circle at the exact center. The medallion is a single self-contained sprite — NOT tileable — meant to be placed alone in the rotunda's center.
+
+### M03 — Diagonal Veined Marble  `[ ]`
+- **File:** `output/tiles/M03-marble-diagonal.png`
+- **Size:** 128×128 px
+- **Theme:** 比 E02 更显档次的对角斜纹大理石
+- **Prompt:** A single seamless square marble floor tile in flat Saul Bass style. Cream base with a strong diagonal composition: 2 thick teal-tinted bands sweep diagonally from upper-left to lower-right, separated by thinner mustard pin-stripes. Inside the teal bands, irregular thin ink "vein" lines running with the diagonal. NO 3D, pure flat color blocks. Tiles seamlessly along the diagonal axis.
+
+### M04 — Corner Rosette Inlay  `[ ]`
+- **File:** `output/tiles/M04-marble-rosette.png`
+- **Size:** 128×128 px
+- **Theme:** 圆厅 4 个角隅的花饰嵌片（跟 M02 medallion 呼应）
+- **Prompt:** A single (non-tiling) corner inlay sprite in flat Saul Bass style. A quarter-circle in the upper-left of the canvas, containing a stylized 4-petal flower made of vermilion arc petals around a mustard center, framed by a thin ink quarter-arc border. The rest of the canvas is cream/transparent. Designed to sit in the 4 corners of the rotunda with rotated copies (top-right = mirror horizontal, bottom-left = mirror vertical, bottom-right = mirror both).
