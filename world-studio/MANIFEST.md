@@ -128,11 +128,52 @@
 
 ---
 
+## E · Zone Label Banners (5 张 · 320×160 PNG · 透明背景)
+
+> 给 3D /world/ 场景的 5 个 work zone 用的木质小招牌。挂在 display
+> board 顶部 / cabin 门口，让玩家远远一眼就能读出"这是哪个区"。
+>
+> **统一规格：** 320×160 px 长方形小招牌（不是正方形）。手绘 warm-cinnamon
+> 木牌底，**两侧两个圆形挂绳孔**（像景区导览牌那样），牌面上**中文 zone 名 +
+> 小英文 subtitle**。手绘字体，warm-amber/dusty-rose 描边，feel 像 cozy
+> 自制木牌。**保持 STYLE.md 一致风格**。透明背景。
+>
+> **不要：** 不要现代字体、不要 sans-serif、不要金属、不要发光特效（只要"晒过
+> 太阳的木头招牌"质感）。
+
+### E01 — Blog 招牌  `[ ]`
+- **File:** `output/banners/E01-blog.png`
+- **Size:** 320×160 px
+- **Prompt:** A small hand-painted wooden hanging sign, rectangular 2:1 ratio. Warm cinnamon-wood plank with rounded corners, two small rope-hole circles at the top corners (for hanging). The sign reads in two lines, hand-lettered: top line large Chinese characters "博客" (cozy serif brush style, warm amber color), bottom line smaller English "Blog · 文章" in a hand-drawn casual script. Soft wood grain visible. Slight wear marks at corners. Hand-painted softness consistent with STYLE.md. Transparent background, no ground shadow.
+
+### E02 — Comics 招牌  `[ ]`
+- **File:** `output/banners/E02-comics.png`
+- **Size:** 320×160 px
+- **Prompt:** Same wooden hanging sign style as E01 (320×160, warm cinnamon plank, two rope-holes at top corners, hand-lettered). Top line large Chinese "四格" in cozy brush style warm amber. Bottom line smaller English "Comics · 漫画" in casual hand script. A tiny 4-panel comic grid doodle in one corner as decoration. Hand-painted softness. Transparent background.
+
+### E03 — Music 招牌  `[ ]`
+- **File:** `output/banners/E03-music.png`
+- **Size:** 320×160 px
+- **Prompt:** Same wooden hanging sign style as E01 (320×160, warm cinnamon plank, two rope-holes at top, hand-lettered). Top line large Chinese "在听" in brush style warm amber. Bottom line smaller English "Music · Last.fm" in casual hand script. A tiny vinyl record doodle in one corner. Hand-painted softness. Transparent background.
+
+### E04 — Reading 招牌  `[ ]`
+- **File:** `output/banners/E04-reading.png`
+- **Size:** 320×160 px
+- **Prompt:** Same wooden hanging sign style as E01 (320×160, warm cinnamon plank, two rope-holes at top, hand-lettered). Top line large Chinese "在读" in brush style warm amber. Bottom line smaller English "Reading · Readwise" in casual hand script. A tiny open-book doodle in one corner. Hand-painted softness. Transparent background.
+
+### E05 — Chat / Mochi 招牌  `[ ]`
+- **File:** `output/banners/E05-chat.png`
+- **Size:** 320×160 px
+- **Prompt:** Same wooden hanging sign style as E01 (320×160, warm cinnamon plank, two rope-holes at top, hand-lettered). Top line large Chinese "聊天" in brush style warm amber. Bottom line smaller English "Chat · Mochi 在木屋" in casual hand script. A tiny bear silhouette doodle in one corner. Hand-painted softness. Transparent background.
+
+---
+
 ## 进度
 
-- [x] A 系列 (5/5)
-- [x] B 系列 (4/4)
-- [x] C 系列 (5/5)
-- [x] D 系列 (5/5)
+- [x] A 系列 (5/5) — 已废弃（3D 场景不用 2.5D tile）
+- [x] B 系列 (4/4) — 仅 B01 用作 avatar billboard
+- [x] C 系列 (5/5) — **portfolio zone hero 海报，全部使用**
+- [x] D 系列 (5/5) — 已废弃（3D 场景已有程化几何）
+- [ ] E 系列 (0/5) — **3D /world/ 场景 zone 招牌，待生成**
 
-全部完成后通知用户。
+E 系列生成完同步到 `public/world/sprites/banners/`。
