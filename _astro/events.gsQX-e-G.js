@@ -1,0 +1,1 @@
+function o(n,e){window.dispatchEvent(new CustomEvent(n,{detail:e}))}function d(n,e){function t(i){e(i.detail)}return window.addEventListener(n,t),()=>window.removeEventListener(n,t)}export{o as e,d as o};
