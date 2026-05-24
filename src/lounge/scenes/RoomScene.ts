@@ -1052,6 +1052,18 @@ export class RoomScene extends Phaser.Scene {
 
       for (const it of this.interactables) {
         if (wx >= it.x && wx <= it.x + it.w && wy >= it.y && wy <= it.y + it.h) {
+          // SHU-737 — pocket / centerpiece exhibits (which jump into a
+          // fullscreen 3D iframe) must NOT fire from a stray click on the
+          // painting. Require the bear to walk to the anchor and press E
+          // (or click the painting again from up close).
+          if (it.exhibitType === 'pocket' || it.exhibitType === 'centerpiece') {
+            if (!this.myBear) return
+            const dist = Math.hypot(it.anchorX - this.myBear.x, it.anchorY - this.myBear.y)
+            if (dist > 48) {
+              this.myBear.walkTo(it.anchorX, it.anchorY)
+              return
+            }
+          }
           this.activateInteractable(it)
           return
         }
