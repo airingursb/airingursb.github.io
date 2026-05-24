@@ -41,6 +41,7 @@ import PersimmonTree from './PersimmonTree'
 import SunsetBirds from './SunsetBirds'
 import PathMushrooms from './PathMushrooms'
 import WisteriaArch from './WisteriaArch'
+import DistantOwl from './DistantOwl'
 import Sky from './Sky'
 import Water from './Water'
 import GroundCover from './GroundCover'
@@ -290,6 +291,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         {QUALITY !== 'low' && <SunsetBirds theme={theme} />}
         <PathMushrooms />
         <WisteriaArch />
+        <DistantOwl theme={theme} />
         <ContactShadowsLayer />
         <ZoneHitboxes />
         <ZoneHints />
