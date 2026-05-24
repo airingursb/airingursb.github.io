@@ -749,14 +749,16 @@ function Island() {
 // V36: vary size/shape per stone (was 5 identical for-loop clones).
 // Largest stone sits at the torii threshold (real-garden convention).
 function SteppingStones() {
-  // [x, z, rotJitter, radius, scaleX, scaleZ, shape]
-  // shape: 0=dodecahedron, 1=elongated box, 2=flatter sphere
+  // V37: tea-master rhythm — stones JOG left-right so the walker
+  // breaks stride and looks. Was monotonic smooth arc (read as
+  // "spline sampled at fixed t"). Now: x oscillates ±0.08 against
+  // the underlying torii→basin axis.
   const stones: Array<[number, number, number, number, number, number, 0 | 1 | 2]> = [
     [0.55, 1.32, 0.1, 0.14, 1.1, 1.4, 0],   // largest at torii threshold
-    [0.62, 1.08, -0.3, 0.09, 1.0, 1.0, 2],
-    [0.70, 0.88, 0.5, 0.10, 0.9, 1.3, 1],   // kidney-shaped box
-    [0.78, 0.70, -0.2, 0.085, 1.2, 0.9, 0],
-    [0.85, 0.55, 0.4, 0.095, 1.0, 1.1, 2],
+    [0.54, 1.10, -0.3, 0.09, 1.0, 1.0, 2],   // jog LEFT
+    [0.72, 0.92, 0.5, 0.10, 0.9, 1.3, 1],    // jog RIGHT (kidney box)
+    [0.68, 0.74, -0.2, 0.085, 1.2, 0.9, 0],  // small jog left
+    [0.86, 0.58, 0.4, 0.10, 1.0, 1.1, 2],    // big jog right (largest at basin)
   ]
   return (
     <group>
@@ -1023,18 +1025,11 @@ function MidCloudWisps() {
       {refs.map((r, i) => {
         const sd = seeds[i]
         return (
-          <group key={i} ref={r} scale={sd.scale}>
+          <group key={i} ref={r} scale={[sd.scale * 1.3, sd.scale * 0.6, sd.scale]}>
+            {/* V38: single sphere per wisp (was 3 overlapping) */}
             <mesh>
-              <sphereGeometry args={[0.35, 12, 10]} />
-              <meshBasicMaterial color="#F5F0E8" transparent opacity={0.42} depthWrite={false} />
-            </mesh>
-            <mesh position={[0.32, -0.04, 0]}>
-              <sphereGeometry args={[0.25, 10, 8]} />
-              <meshBasicMaterial color="#FAF8F2" transparent opacity={0.38} depthWrite={false} />
-            </mesh>
-            <mesh position={[-0.28, 0.02, 0]}>
-              <sphereGeometry args={[0.22, 10, 8]} />
-              <meshBasicMaterial color="#F5F0E8" transparent opacity={0.40} depthWrite={false} />
+              <sphereGeometry args={[0.42, 14, 10]} />
+              <meshBasicMaterial color="#F5F0E8" transparent opacity={0.38} depthWrite={false} />
             </mesh>
           </group>
         )
@@ -1092,57 +1087,116 @@ function ParallaxRig() {
 
 // ── V21: DistantMountains — low-poly silhouettes behind the island
 // for scale reference + atmospheric perspective.
+// V37/V38: jagged asymmetric ridge silhouette + per-vertex y-gradient
+// color so sunlit ridgeline reads brighter than valley pools. Returns
+// {geometry, peakY} so caller can pass into a gradient lerp.
+function makeRidgeGeo(seed: number, width: number, height: number, fogTint: string): THREE.BufferGeometry {
+  const shape = new THREE.Shape()
+  shape.moveTo(-width, 0)
+  const N = 6
+  let peakY = 0
+  for (let i = 0; i < N; i++) {
+    const t = (i + 1) / (N + 1)
+    const x = -width + t * width * 2
+    const noise1 = Math.sin(seed * 7.3 + i * 2.1) * 0.5 + 0.5
+    const noise2 = Math.cos(seed * 11.7 - i * 3.4) * 0.3
+    const profileBias = t < 0.55 ? Math.pow(t / 0.55, 0.7) : Math.pow((1 - t) / 0.45, 1.4)
+    const h = height * profileBias * (0.5 + noise1 * 0.7) + noise2 * 0.1
+    shape.lineTo(x, h)
+    if (h > peakY) peakY = h
+  }
+  shape.lineTo(width, 0)
+  shape.closePath()
+  const geo = new THREE.ShapeGeometry(shape)
+  // V38: per-vertex y-gradient color (sunlit peaks brighter, base toward fog)
+  const pos = geo.attributes.position
+  const colors = new Float32Array(pos.count * 3)
+  const cBright = new THREE.Color('#D8E2EC')   // sunlit ridge highlight
+  const cBase = new THREE.Color(fogTint)
+  for (let i = 0; i < pos.count; i++) {
+    const y = pos.getY(i)
+    const t = Math.min(1, y / Math.max(0.5, peakY))
+    const c = new THREE.Color().lerpColors(cBase, cBright, Math.pow(t, 0.7))
+    colors[i * 3] = c.r
+    colors[i * 3 + 1] = c.g
+    colors[i * 3 + 2] = c.b
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  return geo
+}
+
 // V22: blend mountain colors toward FOG_TINT (atmospheric perspective)
-// + stagger baseline so peaks don't all sit on one horizontal line.
+// V37: replaced cone-revolved silhouettes with extruded jagged ridges.
 function DistantMountains() {
   // V25: use top-level pure-channel lerpHex (was shadowing with
   // alloc-heavy THREE.Color version)
   const lerpToFog = (hex: string, t: number) => lerpHex(hex, FOG_TINT, t)
 
+  // [z, fogMix, opacity, ridges: [centerX, baseY, width, height, seed]]
   const layers: Array<{
     z: number
     fogMix: number
     opacity: number
-    offsets: Array<[number, number, number, number]>  // x, h, r, baseY-jitter
+    ridges: Array<[number, number, number, number, number]>
   }> = [
     {
       z: -7.5,
       fogMix: 0.32,
       opacity: 0.55,
-      offsets: [[-4.2, 0.95, 1.4, 0.10], [-1.4, 1.20, 1.6, -0.05], [1.5, 0.80, 1.3, 0.15], [3.6, 1.05, 1.5, 0]],
+      ridges: [
+        [-3.5, 0, 2.4, 1.0, 1.7],
+        [0.5, 0, 2.8, 1.25, 4.3],
+        [4.0, 0, 2.2, 0.9, 7.1],
+      ],
     },
     {
       z: -9,
       fogMix: 0.55,
       opacity: 0.40,
-      offsets: [[-5, 1.30, 1.8, -0.10], [-1.8, 1.50, 2.0, 0.20], [2, 1.40, 1.9, -0.05], [5, 1.55, 2.1, 0.10]],
+      ridges: [
+        [-3.0, 0.2, 3.0, 1.45, 11.3],
+        [1.5, 0.1, 3.4, 1.55, 13.7],
+        [5.0, 0.3, 2.6, 1.30, 17.1],
+      ],
     },
     {
       z: -11,
       fogMix: 0.75,
       opacity: 0.28,
-      offsets: [[-3, 1.75, 2.4, 0.15], [1.2, 1.95, 2.6, -0.10], [4, 1.65, 2.2, 0.20]],
+      ridges: [
+        [-2.5, 0.5, 3.6, 1.85, 23.5],
+        [2.5, 0.4, 3.8, 1.95, 29.1],
+      ],
     },
   ]
+  // V38: memo per-layer ridge GEOMETRIES (with vertex colors baked in)
+  // so each layer's value gradient reads correctly under its fog mix.
+  const ridgeGeos = useMemo(
+    () => layers.flatMap((L) =>
+      L.ridges.map((r) => makeRidgeGeo(r[4], r[2], r[3], lerpToFog('#B8C5D0', L.fogMix))),
+    ),
+    [], // stable per mount
+  )
+  useEffect(() => () => ridgeGeos.forEach((g) => g.dispose()), [ridgeGeos])
+  let geoIdx = 0
   return (
     <group>
       {layers.map((L, li) => (
         <group key={li} position={[0, -1.0, L.z]}>
-          {L.offsets.map((o, i) => (
-            <mesh
-              key={i}
-              position={[o[0], o[1] * 0.5 + o[3], 0]}
-              rotation={[0, 0, (li + i) * 0.13]}
-            >
-              <coneGeometry args={[o[2], o[1] * 2, 9]} />
-              <meshBasicMaterial
-                color={lerpToFog('#B8C5D0', L.fogMix)}
-                transparent
-                opacity={L.opacity}
-                depthWrite={false}
-              />
-            </mesh>
-          ))}
+          {L.ridges.map((r) => {
+            const geo = ridgeGeos[geoIdx++]
+            return (
+              <mesh key={geoIdx} geometry={geo} position={[r[0], r[1], 0]}>
+                <meshBasicMaterial
+                  vertexColors
+                  transparent
+                  opacity={L.opacity}
+                  depthWrite={false}
+                  side={THREE.DoubleSide}
+                />
+              </mesh>
+            )
+          })}
         </group>
       ))}
     </group>
@@ -1274,17 +1328,12 @@ function UpperCumulus() {
   ]
   return (
     <group ref={groupRef}>
+      {/* V38: same single-sphere simplification as DistantClouds */}
       {puffs.map((p, i) => (
-        <group key={i} position={[p[0], p[1], p[2]]} scale={p[3]}>
-          <mesh>
-            <sphereGeometry args={[0.5, 14, 10]} />
-            <meshBasicMaterial color="#FFFFFF" transparent opacity={0.25} />
-          </mesh>
-          <mesh position={[0.32, 0.04, 0.10]}>
-            <sphereGeometry args={[0.35, 14, 10]} />
-            <meshBasicMaterial color="#FAF8F2" transparent opacity={0.22} />
-          </mesh>
-        </group>
+        <mesh key={i} position={[p[0], p[1], p[2]]} scale={[p[3] * 1.4, p[3] * 0.6, p[3] * 1.0]}>
+          <sphereGeometry args={[0.6, 16, 12]} />
+          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.20} depthWrite={false} />
+        </mesh>
       ))}
     </group>
   )
