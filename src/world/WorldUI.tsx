@@ -46,17 +46,25 @@ export default function WorldUI() {
 
   return (
     <div className="world-ui">
-      <button onClick={snap} className="world-btn" title="Save photo">📷</button>
-      <button onClick={toggleTheme} className="world-btn" title={theme === 'day' ? 'Switch to dusk' : 'Switch to day'}>
-        {theme === 'day' ? '🌙' : '☀️'}
+      <button onClick={snap} className="world-btn" title="Save photo">
+        <img src="/world/sprites/icons/F01-camera.png" alt="" className="world-btn-icon" />
       </button>
-      <button onClick={resetCam} className="world-btn" title="Reset camera">🎯</button>
+      <button onClick={toggleTheme} className="world-btn" title={theme === 'day' ? 'Switch to dusk' : 'Switch to day'}>
+        <img
+          src={theme === 'day' ? '/world/sprites/icons/F02-moon.png' : '/world/sprites/icons/F03-sun.png'}
+          alt=""
+          className="world-btn-icon"
+        />
+      </button>
+      <button onClick={resetCam} className="world-btn" title="Reset camera">
+        <img src="/world/sprites/icons/F04-compass.png" alt="" className="world-btn-icon" />
+      </button>
       <button
         onClick={toggleWhispers}
         className={`world-btn${whispersOn ? '' : ' world-btn--off'}`}
         title={whispersOn ? '关闭岛的低语' : '让岛说话'}
       >
-        💭
+        <img src="/world/sprites/icons/F05-whisper.png" alt="" className="world-btn-icon" />
       </button>
     </div>
   )
