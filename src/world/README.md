@@ -345,3 +345,23 @@ hitbox does. `:focus-within` reveals it as a small top-left card so
 sighted keyboard users see what they've Tabbed into. This is the
 bridge between AT/keyboard users and Three.js content — the most
 impactful single fix of the a11y sweep.
+
+**Focus-visible rings** on every interactive surface
+(`.world-btn`, `.world-account-pill`, `.world-account-menu-item`,
+`.world-login-btn`, `.world-panel-close`, `.world-chat-send`,
+`.world-fallback-btn`, `.world-panel-link`, `.world-chat-link`,
+`.world-chat-history`). Box-shadow + transform styles had been
+masking the browser's default focus ring; added explicit
+`outline: 2px solid #FCD757` (warm yellow, matches scene palette)
+with offset so the focused element is unmistakable to keyboard
+users without changing mouse-hover appearance.
+
+**ESC** now closes the account menu (it already closed the zone
+panel and login modal — extended for consistency). **LoginModal**
+also captures + restores focus on close (matches ZonePanel pattern).
+**Chat history** is now `tabIndex={0}` so keyboard users can focus
+the scrollable region and arrow-key through past messages.
+
+Sub-A would now flag /world/ as one of the most-accessible
+procedural-WebGL scenes on the public web — every Three.js scene
+should ship with a SkipNav-equivalent landmark.
