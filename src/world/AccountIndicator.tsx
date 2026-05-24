@@ -71,8 +71,11 @@ export default function AccountIndicator() {
             className="world-account-pill world-account-pill--in"
             onClick={() => setMenuOpen((v) => !v)}
             title={`${account.display_name} (${account.email})`}
+            aria-label={`账户菜单：${account.display_name}`}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
           >
-            <span className="world-account-avatar">{initials(account.display_name)}</span>
+            <span className="world-account-avatar" aria-hidden="true">{initials(account.display_name)}</span>
             <span className="world-account-name">{account.display_name}</span>
           </button>
         ) : (
@@ -80,16 +83,18 @@ export default function AccountIndicator() {
             className="world-account-pill world-account-pill--out"
             onClick={() => setModalOpen(true)}
             title="登录账户"
+            aria-label="登录账户"
+            aria-haspopup="dialog"
           >
-            <span className="world-account-avatar">＋</span>
+            <span className="world-account-avatar" aria-hidden="true">＋</span>
             <span className="world-account-name">登录</span>
           </button>
         )}
 
         {menuOpen && account && (
-          <div className="world-account-menu">
-            <a className="world-account-menu-item" href="/nook/">前往 nook</a>
-            <button className="world-account-menu-item" onClick={onLogout}>退出登录</button>
+          <div className="world-account-menu" role="menu">
+            <a className="world-account-menu-item" href="/nook/" role="menuitem">前往 nook</a>
+            <button className="world-account-menu-item" onClick={onLogout} role="menuitem">退出登录</button>
           </div>
         )}
       </div>
@@ -137,10 +142,16 @@ function LoginModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="world-login-backdrop" onClick={(e) => { if (e.target === e.currentTarget) onClose() }}>
-      <div className="world-login-modal" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="world-login-modal"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="world-login-title"
+      >
         <div className="world-login-head">
-          <span className="world-login-title">登录</span>
-          <button className="world-login-close" onClick={onClose} aria-label="Close">✕</button>
+          <span className="world-login-title" id="world-login-title">登录</span>
+          <button className="world-login-close" onClick={onClose} aria-label="关闭登录窗口">✕</button>
         </div>
         <p className="world-login-blurb">登录后你的访问、漫画、聊天记录会跨设备同步。</p>
 
@@ -152,7 +163,7 @@ function LoginModal({ onClose }: { onClose: () => void }) {
         <div className="world-login-divider"><span>或者</span></div>
 
         {sent ? (
-          <p className="world-login-sent">
+          <p className="world-login-sent" role="status">
             ✓ 已发送登录链接到 {email}<br/>
             <small>查收邮件，点击链接即可登录</small>
           </p>
@@ -163,6 +174,7 @@ function LoginModal({ onClose }: { onClose: () => void }) {
               type="email"
               className="world-login-input"
               placeholder="your@email.com"
+              aria-label="邮箱地址"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -170,7 +182,7 @@ function LoginModal({ onClose }: { onClose: () => void }) {
             <button type="submit" className="world-login-btn world-login-btn--magic" disabled={sending}>
               {sending ? '发送中…' : '发送登录链接'}
             </button>
-            {error && <div className="world-login-error">{error}</div>}
+            {error && <div className="world-login-error" role="alert">{error}</div>}
           </form>
         )}
       </div>
