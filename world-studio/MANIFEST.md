@@ -201,6 +201,16 @@
 - **Size:** 128×128 px
 - **Prompt:** A soft hand-painted thought-cloud speech bubble, centered in a 128×128 transparent square. Cream-white puffy cloud shape (rounded bumps, like a children's-book thought bubble), warm cinnamon hand-drawn outline, 3 tiny brown dots inside (ellipsis suggesting unspoken thought), 2 small trailing wisp circles below leading down. Soft watercolor style consistent with STYLE.md. Transparent background, no shadow. Icon fills ~75% of canvas.
 
+### F06 — BGM / Audio  `[ ]`
+- **File:** `output/icons/F06-bgm.png`
+- **Size:** 128×128 px
+- **Prompt:** A small hand-painted pair of vintage over-ear headphones, slight 3/4 view, centered in 128×128 transparent square. Warm cinnamon-leather cushions on the ear cups, brass-trim band over the top, two thin music notes (eighth notes) drifting up from one cup. Same painter as F01-F05 — soft watercolor warm-cinnamon palette. NOT a flat speaker icon — this is a small illustration. Transparent background, no shadow. Icon fills ~70% of canvas.
+
+### F07 — Pomodoro / Tomato 🍅  `[ ]`
+- **File:** `output/icons/F07-tomato.png`
+- **Size:** 128×128 px
+- **Prompt:** A small hand-painted ripe tomato, centered in 128×128 transparent square. Round red body with soft watercolor shading (slightly orange-red on the lit side, deeper crimson on the shaded side), a small green stem and 3-leaf calyx on top. Slight gloss highlight near the top-left. Soft, cozy, slightly stylized — same painter as F01-F06. NOT a flat emoji-tomato — this is a small illustration. Transparent background, no shadow. Icon fills ~70% of canvas.
+
 ---
 
 ## 进度
@@ -210,7 +220,7 @@
 - [x] C 系列 (5/5) — **portfolio zone hero 海报，全部使用**
 - [x] D 系列 (5/5) — 已废弃（3D 场景已有程化几何）
 - [x] E 系列 (5/5) — **3D /world/ 场景 zone 招牌，已生成**
-- [x] F 系列 (5/5) — **/world/ UI 按钮图标，替换 emoji，已生成**
+- [ ] F 系列 (5/7) — F01-F05 已用；**F06 (BGM 耳机) + F07 (番茄) 待生成**替换文字按钮
 
 E 系列生成完同步到 `public/world/sprites/banners/`。
 F 系列生成完同步到 `public/world/sprites/icons/`。
