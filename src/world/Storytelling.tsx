@@ -2,6 +2,9 @@
 // These small touches sell the "someone lives here" feel.
 
 import * as THREE from 'three'
+import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { getGust } from './wind'
 
 const LOG_LIGHT  = '#9E7A52'
 const LOG_DARK   = '#6E4F31'
@@ -158,8 +161,9 @@ function WoodPile({ position }: { position: [number, number, number] }) {
   )
 }
 
+// V2 wave 3: paper lanterns sway on gust + each lantern has its own
+// slight independent phase offset (lighter paper → more reactive).
 function PaperLanternString() {
-  // Hanging between hammock pines
   const positions: [number, number, number, string][] = [
     [-0.8, 1.7, 0, '#E25A4C'],
     [-0.4, 1.6, 0, '#FCD757'],
@@ -167,6 +171,15 @@ function PaperLanternString() {
     [ 0.4, 1.6, 0, '#E25A4C'],
     [ 0.8, 1.7, 0, '#FCD757'],
   ]
+  const refs = useRef<Array<THREE.Group | null>>([])
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    const gust = getGust(t)
+    refs.current.forEach((g, i) => {
+      if (!g) return
+      g.rotation.z = Math.sin(t * 1.0 + i * 0.7) * (0.04 + gust * 0.20)
+    })
+  })
   return (
     <group position={[-4.0, 0, -12.0]}>
       {/* Rope */}
@@ -175,7 +188,7 @@ function PaperLanternString() {
         <meshStandardMaterial color="#A48B6E" roughness={0.9} />
       </mesh>
       {positions.map(([x, y, z, color], i) => (
-        <group key={`pl${i}`} position={[x, y, z]}>
+        <group key={`pl${i}`} ref={(el) => { refs.current[i] = el }} position={[x, y, z]}>
           <mesh castShadow>
             <sphereGeometry args={[0.1, 10, 8]} />
             <meshStandardMaterial color={color} roughness={0.85} emissive={color} emissiveIntensity={0.15} />
