@@ -129,6 +129,7 @@ export default function ChatBox() {
         aria-live="polite"
         aria-atomic="false"
         aria-label="对话记录"
+        tabIndex={0}
       >
         {msgs.map((m, i) => (
           <div key={i} className={`world-chat-msg world-chat-msg-${m.role}`}>
