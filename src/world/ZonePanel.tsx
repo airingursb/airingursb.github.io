@@ -2,7 +2,7 @@
 // Mounted outside the Canvas in WorldGame.astro. Data is loaded
 // build-time via Astro imports and passed as initialData prop.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Interaction } from './zones'
 import ChatBox from './ChatBox'
 import { on } from './events'
@@ -28,6 +28,11 @@ const LABELS: Record<Interaction, string> = {
 export default function ZonePanel({ initialData }: { initialData?: InitialData }) {
   const [zone, setZone] = useState<Interaction | null>(null)
   const [closing, setClosing] = useState(false)
+  // V2 a11y polish: restore focus on close so keyboard users don't
+  // get dumped at the top of the document. Capture the active element
+  // when panel opens, refocus it on unmount.
+  const lastFocusedRef = useRef<HTMLElement | null>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
 
   // Listen for click events from in-canvas hitboxes (typed event bus)
   useEffect(() => {
@@ -60,6 +65,23 @@ export default function ZonePanel({ initialData }: { initialData?: InitialData }
   // Reset cursor on unmount (in case hitbox pointerOut never fires)
   useEffect(() => () => { document.body.style.cursor = 'auto' }, [])
 
+  // V2 a11y polish: capture focus on open, restore on close.
+  // When zone goes from null → set, save the previously focused
+  // element and move focus into the panel. When it goes set → null,
+  // restore focus so keyboard users land back where they were.
+  useEffect(() => {
+    if (zone) {
+      lastFocusedRef.current = (document.activeElement as HTMLElement) ?? null
+      // After mount + animation, focus the panel itself (then internal
+      // tab order takes over). requestAnimationFrame so the panel is
+      // in the DOM and the slide-in has begun.
+      requestAnimationFrame(() => panelRef.current?.focus())
+    } else if (lastFocusedRef.current) {
+      lastFocusedRef.current.focus?.()
+      lastFocusedRef.current = null
+    }
+  }, [zone])
+
   function close() {
     setClosing(true)
     setTimeout(() => { setZone(null); setClosing(false) }, 180)
@@ -75,12 +97,17 @@ export default function ZonePanel({ initialData }: { initialData?: InitialData }
   return (
     <div className="world-panel-backdrop" onClick={onBackdrop}>
     <div
+      ref={panelRef}
       className={`world-panel${closing ? ' world-panel--closing' : ''}`}
       onClick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="world-panel-title"
+      tabIndex={-1}
     >
       <div className="world-panel-head">
-        <span className="world-panel-title">{LABELS[zone]}</span>
-        <button className="world-panel-close" onClick={close} aria-label="Close">✕</button>
+        <span className="world-panel-title" id="world-panel-title">{LABELS[zone]}</span>
+        <button className="world-panel-close" onClick={close} aria-label="关闭面板">✕</button>
       </div>
       <div className="world-panel-body">
         {renderZoneContent(zone, initialData)}
