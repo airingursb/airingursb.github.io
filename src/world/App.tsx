@@ -40,6 +40,7 @@ import WindChime from './WindChime'
 import PersimmonTree from './PersimmonTree'
 import SunsetBirds from './SunsetBirds'
 import PathMushrooms from './PathMushrooms'
+import WisteriaArch from './WisteriaArch'
 import Sky from './Sky'
 import Water from './Water'
 import GroundCover from './GroundCover'
@@ -216,6 +217,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <PersimmonTree />
         {QUALITY !== 'low' && <SunsetBirds theme={theme} />}
         <PathMushrooms />
+        <WisteriaArch />
         <ContactShadowsLayer />
         <ZoneHitboxes />
         <ZoneHints />
