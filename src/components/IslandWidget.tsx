@@ -740,10 +740,6 @@ function FallenPetals() {
 }
 
 // ── AnimatedSun — V14: subtle breathing on the main directional light.
-// V52.8: SkyMood deleted — wrote fog color (no fog in pet) + drove
-// .island-card-canvas CSS var (now .island-pet; no gradient to drive).
-// Both inputs were no-ops by V52. Sun color/intensity dwell shift is
-// preserved in AnimatedSun below.
 
 function AnimatedSun() {
   const lightRef = useRef<THREE.DirectionalLight>(null)
@@ -833,15 +829,7 @@ function BreathingShoji({ position, size }: {
   )
 }
 
-// V52.8: DistantClouds deleted — puffs at y=-2.6..-3.0 sat BELOW the
-// pet frustum (visible y-min ≈ -1.74). The "sky-castle clouds-under-
-// the-island" sell was designed for the inline-card frame; pet camera
-// pulls back too far to include them.
 
-// V52.8: MidCloudWisps deleted — z=-6.5..-8.5 placement was designed
-// to drift behind DistantMountains (also deleted V52.8). Without them
-// the wisps drift in empty far-space, mostly off-screen at pet's
-// square fov.
 
 // ── V23: PathMoss — small green patches between stepping stones.
 // Static, but adds the wabi-sabi "old garden, well-trodden" detail.
@@ -904,24 +892,8 @@ function ParallaxRig() {
   return null
 }
 
-// V52.8: DistantMountains + makeRidgeGeo deleted — backstop wall at
-// z=-7..-11 that bled past the island silhouette on a transparent pet
-// canvas. Removed from Canvas in V52. Function bodies cleaned up.
 
-// V52.8: HoverZoneHotspots deleted — pet has no per-zone reactions;
-// ParallaxRig handles the only hover micro-motion (camera tilt).
 
-// V52.8: ZoneSparkles deleted — was a child of HoverZoneHotspots which
-// was removed in V52. Without the zone hotspots, hoverZone.current stays
-// null forever and all opacities are 0. Pet has no zone reactions.
-
-// V52.8: UpperCumulus deleted — sat at y=+3.4 (above pet frustum y-max
-// of +3.20). Removed from Canvas in V52.3 as invisible. Function cleanup.
-
-// V52.8 (Sub-A polish): BirdFlyby deleted — removed from Canvas in V52.2
-// because birds traversed x=±4 but visible half-width at their depth is
-// only ±2.35, so they materialized and vanished mid-air over the
-// silhouette = the "scene-in-window" tell. Function body cleanup.
 
 // ── FallingPetals — sakura petals drifting down from canopy.
 // The Ghibli money shot. Each petal: drift down ~0.05/s, sin X drift,
@@ -1381,50 +1353,19 @@ export default function IslandWidget() {
       {/* Falling petals — Ghibli money shot. Drift down from canopy. */}
       <FallingPetals />
 
-      {/* V52.2 perf cleanup: DistantClouds + UpperCumulus removed.
-          DistantClouds sat at y=-2.6 (visible y-min ≈ -1.35 with V52
-          camera) — entirely below frustum. UpperCumulus at y=+3.4
-          — entirely above frustum. Both were rendered but invisible
-          → pure waste. Re-add only if pet camera angle changes to
-          include them. */}
-      {/* <DistantClouds /> */}
-      {/* <UpperCumulus /> */}
-
-      {/* V13: bird flyby — V14: pair (hero + bg for flock feel).
-          V52.2 (Sub-A fix B): REMOVED for pet. Birds traverse x=-4..4
-          but visible canvas half-width at their depth is only ±2.35 →
-          they materialize mid-air and vanish mid-air = the most
-          visible "scene-in-a-window" tell. At 220×220 the birds are
-          2-3px wide and only telegraph the canvas edge crossing. */}
-      {/* <BirdFlyby /> */}
-
-      {/* V52.2: MidCloudWisps removed — z=-7 placement put them behind
-          the (now-deleted) DistantMountains; without mountains they
-          drift in empty space far from the island silhouette. */}
-      {/* <MidCloudWisps /> */}
-      {/* V23: moss/lichen between stepping stones (always-on micro-life) */}
+      {/* moss/lichen between stepping stones (always-on micro-life) */}
       <PathMoss />
 
-      {/* V52 pet cutout: OrbitControls removed. Pet doesn't get dragged;
-          the cute hover micro-rotation is enough motion. Also keep
-          autoRotate off — a constantly-spinning pet in the corner
-          competes with reading content. */}
-
-      {/* V21: mouse parallax. V52: still useful for the slight head-turn
-          when user moves cursor toward the pet. */}
+      {/* mouse parallax — slight head-turn when cursor approaches the pet.
+          Owns camera position + lookAt every frame (OrbitControls removed
+          in V52, so this is the only thing keeping the camera on-target). */}
       <ParallaxRig />
-      {/* V52: DistantMountains removed — they sat on the back wall of the
-          scene and on transparent bg they bleed past the island silhouette,
-          recreating the "scene box" feel. The Sub-A V46 mountain layers
-          were for the inline-card framing. */}
-      {/* V52: HoverZoneHotspots removed — no zone reactions for pet
-          (cute hover micro-motion handled by ParallaxRig + hoverState). */}
 
-      {/* Postprocessing — V52 pet cutout: Vignette removed. Vignette
-          darkens canvas corners with a rectangular gradient — on a
-          transparent-bg pet that DRAWS the rectangular canvas edge
-          back into view = PiP frame feel. Bloom kept (only affects
-          emissive lights — shoji, lantern — doesn't bleed to corners). */}
+      {/* Postprocessing: Bloom for emissives (shoji + lantern + smoke
+          glints) + SMAA. NO Vignette — its rectangular corner darken
+          would draw the canvas edge back into view on a transparent
+          pet canvas (= PiP frame feel). Bloom skipped on mobile (most
+          expensive pass per frame). */}
       <EffectComposer multisampling={0}>
         {!IS_MOBILE && (
           <Bloom intensity={0.35} luminanceThreshold={0.85} luminanceSmoothing={0.5} mipmapBlur />
