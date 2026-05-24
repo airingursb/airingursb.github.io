@@ -15,7 +15,7 @@
 //   7. Bloom + Vignette postprocessing (lantern/shoji emissives pop)
 
 import type React from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Sparkles } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, ToneMapping, SMAA } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
@@ -24,15 +24,20 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Sakura } from './widget-sakura'
 
-// ── V20: SHARED HOVER STATE — module-level mutable for cheap
-// cross-component reactive boost without prop drilling or context.
-// onPointerEnter/Leave on Canvas updates these; useFrame reads them
-// for petal-burst gust + shoji flare.
+// ── V20: SHARED HOVER STATE + V21: MOUSE POSITION for parallax.
 const hoverState = {
   active: false,
-  enteredAt: 0,    // seconds since enter
-  // Falls off over 1.5s after leave
+  enteredAt: 0,
   decay: 0,
+}
+const mouseState = {
+  x: 0,    // normalized -1..1
+  y: 0,    // normalized -1..1
+}
+// V21: hover-zone state (sakura / tsukubai / cabin / null)
+const hoverZone: { current: 'sakura' | 'tsukubai' | 'cabin' | null; since: number } = {
+  current: null,
+  since: 0,
 }
 function getHoverBoost(t: number): number {
   if (hoverState.active) {
@@ -909,6 +914,270 @@ function DistantClouds() {
   )
 }
 
+// ── V23: MidCloudWisps — 4 small wispy puffs drifting across the
+// mountain mid-ground z=-6 to -8, completing horizon depth.
+function MidCloudWisps() {
+  const refs = [
+    useRef<THREE.Group>(null),
+    useRef<THREE.Group>(null),
+    useRef<THREE.Group>(null),
+    useRef<THREE.Group>(null),
+  ]
+  const seeds = [
+    { startX: -6, z: -6.5, y: 0.3, speed: 0.12, scale: 0.55 },
+    { startX: -4, z: -7.5, y: 0.0, speed: 0.09, scale: 0.7 },
+    { startX: -7, z: -7.0, y: 0.6, speed: 0.10, scale: 0.5 },
+    { startX: -5, z: -8.5, y: 0.2, speed: 0.07, scale: 0.65 },
+  ]
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    refs.forEach((r, i) => {
+      if (!r.current) return
+      const sd = seeds[i]
+      const x = ((sd.startX + t * sd.speed) % 14) - 7
+      r.current.position.set(x, sd.y, sd.z)
+    })
+  })
+  return (
+    <>
+      {refs.map((r, i) => {
+        const sd = seeds[i]
+        return (
+          <group key={i} ref={r} scale={sd.scale}>
+            <mesh>
+              <sphereGeometry args={[0.35, 12, 10]} />
+              <meshBasicMaterial color="#F5F0E8" transparent opacity={0.42} depthWrite={false} />
+            </mesh>
+            <mesh position={[0.32, -0.04, 0]}>
+              <sphereGeometry args={[0.25, 10, 8]} />
+              <meshBasicMaterial color="#FAF8F2" transparent opacity={0.38} depthWrite={false} />
+            </mesh>
+            <mesh position={[-0.28, 0.02, 0]}>
+              <sphereGeometry args={[0.22, 10, 8]} />
+              <meshBasicMaterial color="#F5F0E8" transparent opacity={0.40} depthWrite={false} />
+            </mesh>
+          </group>
+        )
+      })}
+    </>
+  )
+}
+
+// ── V23: PathMoss — small green patches between stepping stones.
+// Static, but adds the wabi-sabi "old garden, well-trodden" detail.
+function PathMoss() {
+  // Positions between consecutive stones (midpoints + slight offsets)
+  const patches: Array<[number, number, number, number]> = [
+    [0.48, 1.20, 0.08, 0.5],     // between stone 0 and 1
+    [0.35, 1.02, -0.06, 0.4],
+    [0.21, 0.88, 0.05, 0.45],
+    [0.08, 0.76, -0.04, 0.4],
+    [0.00, 0.69, 0.03, 0.35],
+  ]
+  return (
+    <group>
+      {patches.map((p, i) => (
+        <mesh
+          key={i}
+          position={[p[0], 0.058, p[1]]}
+          rotation={[-Math.PI / 2, 0, p[2]]}
+          scale={p[3]}
+        >
+          <circleGeometry args={[0.08, 12]} />
+          <meshStandardMaterial color="#7AA868" roughness={0.95} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+// ── V21: ParallaxRig — diorama-in-window effect. Camera subtly
+// tracks mouse position (lerped) → scene reads as a peep-box, not a video.
+function ParallaxRig() {
+  const { camera } = useThree()
+  const baseX = 2.9
+  const baseY = 1.5
+  const baseZ = 3.7
+  useFrame((_, dt) => {
+    const targetX = baseX + mouseState.x * 0.25
+    const targetY = baseY + mouseState.y * -0.15  // invert Y so up looks down
+    const lerpAmt = Math.min(1, dt * 3)
+    camera.position.x += (targetX - camera.position.x) * lerpAmt
+    camera.position.y += (targetY - camera.position.y) * lerpAmt
+    camera.position.z = baseZ
+    // (OrbitControls handles lookAt at target; no manual lookAt needed)
+  })
+  return null
+}
+
+// ── V21: DistantMountains — low-poly silhouettes behind the island
+// for scale reference + atmospheric perspective.
+// V22: blend mountain colors toward FOG_TINT (atmospheric perspective)
+// + stagger baseline so peaks don't all sit on one horizontal line.
+function DistantMountains() {
+  const fog = useMemo(() => new THREE.Color(FOG_TINT), [])
+  const lerpHex = (hex: string, t: number) =>
+    new THREE.Color(hex).lerp(fog, t).getStyle()
+
+  const layers: Array<{
+    z: number
+    fogMix: number
+    opacity: number
+    offsets: Array<[number, number, number, number]>  // x, h, r, baseY-jitter
+  }> = [
+    {
+      z: -7.5,
+      fogMix: 0.32,
+      opacity: 0.55,
+      offsets: [[-4.2, 0.95, 1.4, 0.10], [-1.4, 1.20, 1.6, -0.05], [1.5, 0.80, 1.3, 0.15], [3.6, 1.05, 1.5, 0]],
+    },
+    {
+      z: -9,
+      fogMix: 0.55,
+      opacity: 0.40,
+      offsets: [[-5, 1.30, 1.8, -0.10], [-1.8, 1.50, 2.0, 0.20], [2, 1.40, 1.9, -0.05], [5, 1.55, 2.1, 0.10]],
+    },
+    {
+      z: -11,
+      fogMix: 0.75,
+      opacity: 0.28,
+      offsets: [[-3, 1.75, 2.4, 0.15], [1.2, 1.95, 2.6, -0.10], [4, 1.65, 2.2, 0.20]],
+    },
+  ]
+  return (
+    <group>
+      {layers.map((L, li) => (
+        <group key={li} position={[0, -1.0, L.z]}>
+          {L.offsets.map((o, i) => (
+            <mesh
+              key={i}
+              position={[o[0], o[1] * 0.5 + o[3], 0]}
+              rotation={[0, 0, (li + i) * 0.13]}
+            >
+              <coneGeometry args={[o[2], o[1] * 2, 9]} />
+              <meshBasicMaterial
+                color={lerpHex('#B8C5D0', L.fogMix)}
+                transparent
+                opacity={L.opacity}
+                depthWrite={false}
+              />
+            </mesh>
+          ))}
+        </group>
+      ))}
+    </group>
+  )
+}
+
+// ── V21: HoverZoneHotspots — invisible meshes detect which scene
+// region the cursor is over. Triggers context-aware bursts.
+function HoverZoneHotspots() {
+  return (
+    <>
+      {/* Sakura zone */}
+      <mesh
+        position={[0.55, 0.8, -0.35]}
+        visible={false}
+        onPointerOver={() => { hoverZone.current = 'sakura'; hoverZone.since = performance.now() / 1000 }}
+        onPointerOut={() => { hoverZone.current = null }}
+      >
+        <sphereGeometry args={[0.7, 8, 8]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+      {/* Tsukubai zone */}
+      <mesh
+        position={[0.95, 0.35, 0.40]}
+        visible={false}
+        onPointerOver={() => { hoverZone.current = 'tsukubai'; hoverZone.since = performance.now() / 1000 }}
+        onPointerOut={() => { hoverZone.current = null }}
+      >
+        <boxGeometry args={[0.35, 0.5, 0.35]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+      {/* Cabin zone */}
+      <mesh
+        position={[-0.55, 0.45, 0.0]}
+        visible={false}
+        onPointerOver={() => { hoverZone.current = 'cabin'; hoverZone.since = performance.now() / 1000 }}
+        onPointerOut={() => { hoverZone.current = null }}
+      >
+        <boxGeometry args={[1.2, 0.8, 0.8]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+
+      {/* Zone-gated reactive sparkle bursts */}
+      <ZoneSparkles />
+    </>
+  )
+}
+
+// V22: zone-specific reactions tied to scene assets (not generic sparkles).
+//   sakura → handled via sakuraBoost in FallingPetals
+//   tsukubai → 4 falling water droplet cylinders
+//   cabin → upward heat shimmer (translucent warm additive plane)
+function ZoneSparkles() {
+  const drops = [
+    useRef<THREE.Mesh>(null),
+    useRef<THREE.Mesh>(null),
+    useRef<THREE.Mesh>(null),
+    useRef<THREE.Mesh>(null),
+  ]
+  const heatRef = useRef<THREE.Mesh>(null)
+  const tsuOpRef = useRef(0)
+  const heatOpRef = useRef(0)
+
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    const tsuActive = hoverZone.current === 'tsukubai' ? 1 : 0
+    tsuOpRef.current += (tsuActive - tsuOpRef.current) * 0.18
+    drops.forEach((r, i) => {
+      const m = r.current
+      if (!m) return
+      const phase = (t * 1.8 + i * 0.42) % 1
+      const y = 0.7 - phase * 0.45
+      m.position.set(0.95 + (i - 1.5) * 0.025, y, 0.40 + (i % 2 === 0 ? -0.02 : 0.02))
+      const mat = m.material as THREE.MeshStandardMaterial
+      mat.opacity = tsuOpRef.current * 0.85
+    })
+    const heatActive = hoverZone.current === 'cabin' ? 1 : 0
+    heatOpRef.current += (heatActive - heatOpRef.current) * 0.18
+    if (heatRef.current) {
+      const mat = heatRef.current.material as THREE.MeshBasicMaterial
+      mat.opacity = heatOpRef.current * 0.22
+      heatRef.current.position.y = 0.95 + Math.sin(t * 1.5) * 0.04
+    }
+  })
+
+  return (
+    <>
+      {drops.map((r, i) => (
+        <mesh key={i} ref={r} renderOrder={2}>
+          <cylinderGeometry args={[0.005, 0.008, 0.06, 6]} />
+          <meshStandardMaterial
+            color="#A8C8D8"
+            emissive="#A8C8D8"
+            emissiveIntensity={0.3}
+            transparent
+            opacity={0}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+      <mesh ref={heatRef} position={[-0.55, 0.95, -0.15]} renderOrder={2}>
+        <planeGeometry args={[0.4, 0.65]} />
+        <meshBasicMaterial
+          color="#FFD080"
+          transparent
+          opacity={0}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+    </>
+  )
+}
+
 // ── UpperCumulus — V14: high cumulus band ABOVE the island, drifting
 // OPPOSITE to lower clouds (parallax). Gives bird something to fly past.
 function UpperCumulus() {
@@ -1025,10 +1294,11 @@ function FallingPetals() {
     const dummy = new THREE.Object3D()
     const tints = ['#FFEAF1', '#F5C8D6', '#FFD8E3'].map((c) => new THREE.Color(c))
     // V15: SHARED wind drives drift direction + gust
-    // V20: hover boost adds to gust
+    // V20: hover boost adds to gust. V22: sakura-zone hover 1.5× boost.
     const wind = getWind(t)
     const hover = getHoverBoost(t)
-    const effectiveGust = wind.gust + hover * 1.5
+    const sakuraBoost = hoverZone.current === 'sakura' ? 1.5 : 1
+    const effectiveGust = wind.gust + hover * 1.5 * sakuraBoost
     const TSUKUBAI_X = 0.95
     const TSUKUBAI_Z = 0.40
     const TSUKUBAI_R = 0.065   // 0.118 * 0.55 scale
@@ -1263,7 +1533,7 @@ export default function IslandWidget() {
         toneMappingExposure: 1.18,
       }}
       style={{ width: '100%', height: '100%' }}
-      // V20: hover poke — burst petals + flare shoji on pointer enter
+      // V20: hover poke. V21: track mouse XY for parallax + zone.
       onPointerEnter={() => {
         hoverState.active = true
         hoverState.enteredAt = performance.now() / 1000
@@ -1271,6 +1541,13 @@ export default function IslandWidget() {
       onPointerLeave={() => {
         hoverState.active = false
         hoverState.decay = performance.now() / 1000
+        mouseState.x = 0
+        mouseState.y = 0
+      }}
+      onPointerMove={(e) => {
+        const rect = (e.currentTarget as HTMLCanvasElement).getBoundingClientRect()
+        mouseState.x = ((e.clientX - rect.left) / rect.width - 0.5) * 2   // -1..1
+        mouseState.y = ((e.clientY - rect.top) / rect.height - 0.5) * 2
       }}
     >
       {/* No <color> bg — let CSS radial-gradient sky show through */}
@@ -1348,14 +1625,24 @@ export default function IslandWidget() {
       {/* V13: bird flyby — V14: pair (hero + bg for flock feel) */}
       <BirdFlyby />
 
+      {/* V23: mid-cloud wisps drifting across mountain mid-ground */}
+      <MidCloudWisps />
+      {/* V23: moss/lichen between stepping stones (always-on micro-life) */}
+      <PathMoss />
+
       <OrbitControls
-        target={[0.15, 0.35, 0.10]}     // V9: recenter to include tsukubai axis
+        target={[0.15, 0.35, 0.10]}
         enablePan={false}
         enableZoom={false}
         enableRotate={false}
         autoRotate
-        autoRotateSpeed={0.55}     // V9: dropped 0.65→0.55 to let detail register
+        autoRotateSpeed={0.55}
       />
+
+      {/* V21: mouse parallax + scene-depth layers */}
+      <ParallaxRig />
+      <DistantMountains />
+      <HoverZoneHotspots />
 
       {/* Postprocessing — tuned for bright noon (was over-baked in V4).
           Bloom 0.55→0.35 + threshold 0.78→0.85 so the lantern doesn't go
