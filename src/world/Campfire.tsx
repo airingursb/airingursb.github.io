@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
+import { getGust } from './wind'
 
 const FLAME_OUTER = '#E29A4A'
 const FLAME_INNER = '#FFCE6A'
@@ -18,24 +19,32 @@ export default function Campfire() {
 
   useFrame((s) => {
     const t = s.clock.elapsedTime
+    const gust = getGust(t)
+    // V2 wave 3: flames lean on gust — bowed by wind, sparkier light
+    const lean = gust * 0.30  // up to ~17° lean at peak
+    const sparkBoost = 1 + gust * 0.6
     if (flameOut.current) {
       const sx = 1 + Math.sin(t * 6) * 0.08
       const sy = 1 + Math.cos(t * 4.5) * 0.12
       flameOut.current.scale.set(sx, sy, sx)
+      flameOut.current.rotation.z = lean
     }
     if (flameMid.current) {
       const sx = 1 + Math.cos(t * 7 + 1) * 0.1
       const sy = 1 + Math.sin(t * 5 + 1) * 0.1
       flameMid.current.scale.set(sx, sy, sx)
+      flameMid.current.rotation.z = lean * 1.1
     }
     if (flameInn.current) {
       const sx = 1 + Math.sin(t * 9 + 2) * 0.12
       const sy = 1 + Math.cos(t * 6 + 2) * 0.14
       flameInn.current.scale.set(sx, sy, sx)
+      flameInn.current.rotation.z = lean * 1.2
     }
-    // Flicker light intensity
+    // Flicker light intensity — also slightly brighter on gust (the
+    // fire breathes when wind kicks up)
     if (lightRef.current) {
-      lightRef.current.intensity = 1.6 + Math.sin(t * 8) * 0.4
+      lightRef.current.intensity = (1.6 + Math.sin(t * 8) * 0.4) * sparkBoost
     }
   })
 
