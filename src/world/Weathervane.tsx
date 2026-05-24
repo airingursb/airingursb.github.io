@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { getZone } from './zones'
+import { getGust } from './wind'
 
 const COPPER       = '#B87341'
 const COPPER_DARK  = '#7A4E2A'
@@ -23,10 +24,18 @@ export default function Weathervane() {
   const [cabinX, cabinZ] = cabin.pos
 
   const arrowRef = useRef<THREE.Group>(null)
+  // V2 wave 3: weathervane responds to gust. Calm: slow drift around
+  // NE. Gust event: quick whip ~1.5 rad over 3s, then slow return.
+  // This is what a weathervane is FOR — a wind sensor — so it should
+  // be the most visibly wind-reactive thing on the roof.
   useFrame((s) => {
-    if (arrowRef.current) {
-      arrowRef.current.rotation.y = Math.sin(s.clock.elapsedTime * 0.15) * 0.6 + Math.PI / 4
-    }
+    if (!arrowRef.current) return
+    const t = s.clock.elapsedTime
+    const gust = getGust(t)
+    // Base drift (calm) + gust-driven sharper swing
+    const driftCalm = Math.sin(t * 0.15) * 0.6
+    const gustKick = gust * 1.8 * Math.sin(t * 4)
+    arrowRef.current.rotation.y = driftCalm + gustKick + Math.PI / 4
   })
 
   return (
