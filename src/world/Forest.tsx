@@ -63,6 +63,29 @@ function organicBlob(radius: number, jitterAmt = 0.18, seed = 0) {
   return g
 }
 
+// V2 wave 3 (Sub-A P1 perf): pre-baked canopy geometry pools, one
+// per (species, slot, variantIdx). Previously each tree instance
+// created fresh BufferGeometry per blob via useMemo([seed]) → 45 trees
+// × ~4 blobs each = ~180 unique GPU buffers. Now each tree picks
+// from a 5-variant pool per (species, slot) via Math.abs(seed) % 5.
+// 5 species × 4 slots × 5 variants = 100 SHARED geometries max,
+// even with 45 trees. Per-tree variety preserved via per-group
+// scale + per-mesh position offset (not via unique geometry).
+const POOL_SIZE = 5
+function buildPool(specs: Array<[number, number]>): THREE.BufferGeometry[][] {
+  return specs.map(([r, j]) =>
+    Array.from({ length: POOL_SIZE }, (_, k) => organicBlob(r, j, k * 17.3 + r * 11.1)),
+  )
+}
+// [g1, g2, g3, g4] (g4 may be unused for species with only 3 canopies)
+const BIRCH_POOL  = buildPool([[1.1, 0.22], [0.65, 0.18], [0.55, 0.18]])
+const OAK_POOL    = buildPool([[1.4, 0.28], [0.9, 0.22], [0.85, 0.22], [0.7, 0.18]])
+const MAPLE_POOL  = buildPool([[1.5, 0.28], [0.95, 0.22], [0.9, 0.22], [0.75, 0.2]])
+const CHERRY_POOL = buildPool([[1.4, 0.25], [0.95, 0.2], [0.85, 0.2], [0.7, 0.18]])
+function pickFromPool(pool: THREE.BufferGeometry[][], slot: number, seed: number) {
+  return pool[slot][Math.floor(Math.abs(seed * 31 + slot * 17)) % POOL_SIZE]
+}
+
 function Pine({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
   return (
     <group scale={scale}>
@@ -87,9 +110,10 @@ function Pine({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
 }
 
 function Birch({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
-  const g1 = useMemo(() => organicBlob(1.1, 0.22, seed), [seed])
-  const g2 = useMemo(() => organicBlob(0.65, 0.18, seed + 1), [seed])
-  const g3 = useMemo(() => organicBlob(0.55, 0.18, seed + 2), [seed])
+  // V2 wave 3 perf: pick from shared pool instead of creating fresh geo per instance
+  const g1 = pickFromPool(BIRCH_POOL, 0, seed)
+  const g2 = pickFromPool(BIRCH_POOL, 1, seed)
+  const g3 = pickFromPool(BIRCH_POOL, 2, seed)
   return (
     <group scale={scale}>
       <mesh position={[0, 1.4, 0]} castShadow receiveShadow>
@@ -116,10 +140,10 @@ function Birch({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
 }
 
 function Oak({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
-  const g1 = useMemo(() => organicBlob(1.4, 0.28, seed), [seed])
-  const g2 = useMemo(() => organicBlob(0.9, 0.22, seed + 1), [seed])
-  const g3 = useMemo(() => organicBlob(0.85, 0.22, seed + 2), [seed])
-  const g4 = useMemo(() => organicBlob(0.7, 0.18, seed + 3), [seed])
+  const g1 = pickFromPool(OAK_POOL, 0, seed)
+  const g2 = pickFromPool(OAK_POOL, 1, seed)
+  const g3 = pickFromPool(OAK_POOL, 2, seed)
+  const g4 = pickFromPool(OAK_POOL, 3, seed)
   return (
     <group scale={scale}>
       <mesh position={[0, 1.1, 0]} castShadow receiveShadow>
@@ -143,10 +167,10 @@ function Oak({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
 }
 
 function Maple({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
-  const g1 = useMemo(() => organicBlob(1.5, 0.28, seed), [seed])
-  const g2 = useMemo(() => organicBlob(0.95, 0.22, seed + 1), [seed])
-  const g3 = useMemo(() => organicBlob(0.9, 0.22, seed + 2), [seed])
-  const g4 = useMemo(() => organicBlob(0.75, 0.2, seed + 3), [seed])
+  const g1 = pickFromPool(MAPLE_POOL, 0, seed)
+  const g2 = pickFromPool(MAPLE_POOL, 1, seed)
+  const g3 = pickFromPool(MAPLE_POOL, 2, seed)
+  const g4 = pickFromPool(MAPLE_POOL, 3, seed)
   return (
     <group scale={scale}>
       <mesh position={[0, 1.1, 0]} castShadow receiveShadow>
@@ -170,10 +194,10 @@ function Maple({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
 }
 
 function Cherry({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
-  const g1 = useMemo(() => organicBlob(1.4, 0.25, seed), [seed])
-  const g2 = useMemo(() => organicBlob(0.95, 0.2, seed + 1), [seed])
-  const g3 = useMemo(() => organicBlob(0.85, 0.2, seed + 2), [seed])
-  const g4 = useMemo(() => organicBlob(0.7, 0.18, seed + 3), [seed])
+  const g1 = pickFromPool(CHERRY_POOL, 0, seed)
+  const g2 = pickFromPool(CHERRY_POOL, 1, seed)
+  const g3 = pickFromPool(CHERRY_POOL, 2, seed)
+  const g4 = pickFromPool(CHERRY_POOL, 3, seed)
   return (
     <group scale={scale}>
       <mesh position={[0, 1.0, 0]} castShadow receiveShadow>
