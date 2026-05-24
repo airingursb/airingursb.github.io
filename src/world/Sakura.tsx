@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { getGust } from './wind';
 
 /**
  * 樱花树 — /world/ hero tree (vendored from grove3d).
@@ -359,12 +360,16 @@ export function Sakura({
   );
 
   // wind sway — root-only rotation, cheap
+  // V2 wave 3: also reacts to gust event for cohesion with the rest
+  // of the scene (trees, hammock, smoke, etc. all blow harder on gust)
   const groupRef = useRef<THREE.Group>(null);
   useFrame(() => {
     if (!groupRef.current) return;
     const t = performance.now() / 1000;
-    groupRef.current.rotation.x = Math.sin(t * 0.4 + seed * 0.01) * 0.012;
-    groupRef.current.rotation.z = Math.cos(t * 0.55 + seed * 0.013) * 0.012;
+    const gust = getGust(t)
+    const boost = 1 + gust * 1.6
+    groupRef.current.rotation.x = Math.sin(t * 0.4 + seed * 0.01) * 0.012 * boost;
+    groupRef.current.rotation.z = Math.cos(t * 0.55 + seed * 0.013) * 0.012 * boost;
   });
 
   return (
