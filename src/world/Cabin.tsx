@@ -197,13 +197,11 @@ function CabinWindowGlow() {
 function FirewoodPile() {
   const logsRef = useRef<THREE.InstancedMesh>(null)
   const capsRef = useRef<THREE.InstancedMesh>(null)
-  // Build geometries once
+  // Build geometries once. 12 logs total, split visually by parity
+  // (alternating LOG_LIGHT / LOG_DARK) via per-instance color on a
+  // single mesh — simpler than two InstancedMesh per shade.
   const logGeo  = useMemo(() => new THREE.CylinderGeometry(0.07, 0.07, 0.32, 8), [])
   const capGeo  = useMemo(() => new THREE.CylinderGeometry(0.07, 0.07, 0.02, 8), [])
-  const logMatLight = useMemo(() => new THREE.MeshStandardMaterial({ color: LOG_LIGHT, roughness: 0.92 }), [])
-  const logMatDark  = useMemo(() => new THREE.MeshStandardMaterial({ color: LOG_DARK,  roughness: 0.92 }), [])
-  // Two InstancedMesh, one per color (12 logs total split by parity)
-  // Actually simpler: per-instance color via setColorAt. Single mesh.
   const matLog = useMemo(() => new THREE.MeshStandardMaterial({ roughness: 0.92 }), [])
   const matCap = useMemo(() => new THREE.MeshStandardMaterial({ color: LOG_END, flatShading: true }), [])
 
@@ -243,9 +241,7 @@ function FirewoodPile() {
     capGeo.dispose()
     matLog.dispose()
     matCap.dispose()
-    logMatLight.dispose()
-    logMatDark.dispose()
-  }, [logGeo, capGeo, matLog, matCap, logMatLight, logMatDark])
+  }, [logGeo, capGeo, matLog, matCap])
 
   return (
     <>
