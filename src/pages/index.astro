@@ -7,6 +7,8 @@ import '../styles/workouts.css';
 import WorkoutCardPreview from '../components/workouts/WorkoutCardPreview.astro';
 import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
 import { fetchComics } from '../lib/comics';
+import { FootprintsMap } from '../components/footprints/FootprintsMap';
+import { cities as footprintCities } from '../data/footprints';
 
 const recentPhotos = (photosData as Array<any>)
   .slice()
@@ -1630,7 +1632,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       <!-- World Map -->
       <div class="card card-map" id="footprints">
         <div class="section-title" data-i18n="sec_footprints">Footprints</div>
-        <div id="worldMap"></div>
+        <FootprintsMap client:visible cities={footprintCities} />
       </div>
 
       <!-- Reading -->
@@ -2694,101 +2696,6 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       }
 
       requestAnimationFrame(animate);
-    })();
-
-    // ── World Map ──
-    (function () {
-      var map = L.map('worldMap', {
-        center: [1.35, 103.82],
-        zoom: 3,
-        minZoom: 2,
-        maxZoom: 12,
-        zoomControl: true,
-        attributionControl: true,
-        // worldCopyJump made divIcons drift at low zoom — turn off and
-        // pair with noWrap on the tile layer so the world stays single.
-        worldCopyJump: false,
-        maxBounds: [[-85, -180], [85, 180]],
-        maxBoundsViscosity: 1.0
-      });
-
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19,
-        noWrap: true
-      }).addTo(map);
-
-      // Container can be 0-height during the homepage's initial layout;
-      // recompute once on the next tick + on every resize.
-      requestAnimationFrame(function () { map.invalidateSize(); });
-      window.addEventListener('resize', function () { map.invalidateSize(); });
-
-      var visitedColor = 'var(--accent)';
-      var currentColor = '#ff6b6b';
-
-      var cities = [
-        // Current
-        { name: 'Singapore', lat: 1.35, lng: 103.82, current: true },
-        // Overseas
-        { name: 'San Jose', lat: 37.34, lng: -121.89 },
-        { name: 'Bintan Island', lat: 1.07, lng: 104.45 },
-        { name: 'Batam Island', lat: 1.05, lng: 104.03 },
-        { name: 'Johor Bahru', lat: 1.49, lng: 103.74 },
-        { name: 'Christchurch', lat: -43.53, lng: 172.64 },
-        { name: 'Queenstown', lat: -45.03, lng: 168.66 },
-        { name: 'Dunedin', lat: -45.87, lng: 170.50 },
-        // China
-        { name: '大理', lat: 25.60, lng: 100.27 },
-        { name: '昆明', lat: 25.04, lng: 102.68 },
-        { name: '南宁', lat: 22.82, lng: 108.32 },
-        { name: '深圳', lat: 22.54, lng: 114.06 },
-        { name: '广州', lat: 23.13, lng: 113.26 },
-        { name: '佛山', lat: 23.02, lng: 113.12 },
-        { name: '惠州', lat: 23.11, lng: 114.42 },
-        { name: '上海', lat: 31.23, lng: 121.47 },
-        { name: '杭州', lat: 30.27, lng: 120.15 },
-        { name: '苏州', lat: 31.30, lng: 120.62 },
-        { name: '南京', lat: 32.06, lng: 118.80 },
-        { name: '北京', lat: 39.90, lng: 116.40 },
-        { name: '重庆', lat: 29.56, lng: 106.55 },
-        { name: '福州', lat: 26.07, lng: 119.30 },
-        { name: '合肥', lat: 31.82, lng: 117.23 },
-        { name: '六安', lat: 31.74, lng: 116.51 },
-        { name: '西宁', lat: 36.62, lng: 101.77 },
-        { name: '敦煌', lat: 40.14, lng: 94.66 },
-        { name: '珠海', lat: 22.27, lng: 113.58 },
-        { name: '中山', lat: 22.52, lng: 113.39 }
-      ];
-
-      cities.forEach(function (city) {
-        if (city.current) {
-          // Pulse marker for current location
-          var pulseIcon = L.divIcon({
-            className: 'pulse-marker',
-            html: '<div class="pulse-ring"></div><div class="pulse-dot"></div>',
-            iconSize: [20, 20],
-            iconAnchor: [10, 10],
-            popupAnchor: [0, -10]
-          });
-          L.marker([city.lat, city.lng], { icon: pulseIcon })
-            .addTo(map)
-            .bindPopup('<b>' + city.name + '</b><br><span style="color: ' + currentColor + ';">📍 Current Location</span>');
-        } else {
-          // Div marker for visited cities (divIcon renders at any viewport position)
-          var dotIcon = L.divIcon({
-            className: 'visited-marker',
-            html: '<div style="width:10px;height:10px;background:' + visitedColor + ';border-radius:50%;opacity:0.8;"></div>',
-            iconSize: [10, 10],
-            iconAnchor: [5, 5],
-            popupAnchor: [0, -5]
-          });
-          L.marker([city.lat, city.lng], { icon: dotIcon })
-            .addTo(map)
-            .bindPopup('<b>' + city.name + '</b>');
-        }
-      });
-
     })();
 
     // ── Pixel Weather ──
