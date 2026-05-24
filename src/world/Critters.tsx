@@ -287,7 +287,7 @@ function Birds({ center, radius = 3, count = 5 }: { center: [number, number, num
   )
 }
 
-export default function Critters() {
+export default function Critters({ theme = 'day' }: { theme?: 'day' | 'dusk' }) {
   return (
     <group>
       {/* White cat curled on cabin doormat. Sub-A fix: was at world
@@ -348,16 +348,79 @@ export default function Critters() {
         opacity={0.7}
       />
 
-      {/* Fireflies near hammock */}
-      <Sparkles
-        count={8}
-        scale={[3, 2, 3]}
-        position={[-4.0, 1.5, -12.0]}
-        size={5}
-        speed={0.3}
-        color="#FFE89A"
-        opacity={0.7}
-      />
+      {/* V2 D3: fireflies intensify at dusk (3× count + brighter +
+          warmer) and one solo firefly drifts toward the cabin window. */}
+      <DuskFireflies theme={theme} />
+      <CabinFirefly theme={theme} />
     </group>
+  )
+}
+
+type Theme = 'day' | 'dusk'
+
+function DuskFireflies({ theme }: { theme: Theme }) {
+  const isDusk = theme === 'dusk'
+  return (
+    <Sparkles
+      count={isDusk ? 24 : 8}
+      scale={[4, 2.4, 4]}
+      position={[-4.0, 1.5, -12.0]}
+      size={isDusk ? 7 : 5}
+      speed={isDusk ? 0.45 : 0.3}
+      color={isDusk ? '#FFD060' : '#FFE89A'}
+      opacity={isDusk ? 0.92 : 0.6}
+    />
+  )
+}
+
+// One solo firefly that traces a slow sine path from the hammock area
+// toward the cabin window (-2, 1.05, 0) — only at dusk. The scripted
+// path against the otherwise-random firefly cloud reads as intentional,
+// like the firefly is curious about the lit cabin.
+function CabinFirefly({ theme }: { theme: Theme }) {
+  const ref = useRef<THREE.Mesh>(null)
+  const lightRef = useRef<THREE.PointLight>(null)
+  const matRef = useRef<THREE.MeshBasicMaterial>(null)
+  // Start near hammock, drift toward cabin shoji over ~14s, hover, return.
+  const startX = -4.0, startZ = -12.0, startY = 1.2
+  const targetX = -2.0, targetZ = 0.6, targetY = 1.10
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    const enabled = theme === 'dusk'
+    // Fade target — invisible at day, full at dusk
+    const targetOpacity = enabled ? 1 : 0
+    const m = matRef.current
+    if (m) {
+      const dt = s.clock.getDelta ? 0 : 0  // (unused — just structural)
+      m.opacity = m.opacity + (targetOpacity - m.opacity) * 0.04
+    }
+    if (!enabled) return
+    if (!ref.current) return
+    // 28s round trip: 0..0.5 drift out, 0.5..0.6 hover, 0.6..1 drift back
+    const phase = (t % 28) / 28
+    let u: number   // 0..1 progress toward cabin
+    if (phase < 0.45)       u = phase / 0.45
+    else if (phase < 0.55)  u = 1
+    else                    u = 1 - (phase - 0.55) / 0.45
+    // Sine in-out ease
+    const e = 0.5 - Math.cos(u * Math.PI) * 0.5
+    const x = startX + (targetX - startX) * e + Math.sin(t * 1.3) * 0.15
+    const y = startY + (targetY - startY) * e + Math.sin(t * 0.7) * 0.05
+    const z = startZ + (targetZ - startZ) * e + Math.cos(t * 1.1) * 0.15
+    ref.current.position.set(x, y, z)
+    if (lightRef.current) {
+      lightRef.current.position.set(x, y, z)
+      // Pulse the firefly light
+      lightRef.current.intensity = 0.35 + Math.sin(t * 4) * 0.15
+    }
+  })
+  return (
+    <>
+      <mesh ref={ref} position={[startX, startY, startZ]}>
+        <sphereGeometry args={[0.04, 8, 6]} />
+        <meshBasicMaterial ref={matRef} color="#FFEE99" transparent opacity={0} depthWrite={false} />
+      </mesh>
+      <pointLight ref={lightRef} color="#FFE890" intensity={0} distance={1.2} decay={2} />
+    </>
   )
 }

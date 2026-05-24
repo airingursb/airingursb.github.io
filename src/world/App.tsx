@@ -32,6 +32,7 @@ import ForestPath from './ForestPath'
 import Forest from './Forest'
 import Lanterns from './Lanterns'
 import DuskFog from './DuskFog'
+import Onsen from './Onsen'
 import Sky from './Sky'
 import Water from './Water'
 import GroundCover from './GroundCover'
@@ -191,7 +192,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <EaselClearing />
         <Storytelling />
         <Domestic />
-        <Critters />
+        <Critters theme={theme} />
         <Atmospherics />
         <Avatar />
         <MochiNPC />
@@ -200,6 +201,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <CloudShadows />
         <Lanterns theme={theme} />
         <DuskFog theme={theme} />
+        <Onsen />
         <ContactShadowsLayer />
         <ZoneHitboxes />
         <ZoneHints />
