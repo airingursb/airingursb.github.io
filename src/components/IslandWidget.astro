@@ -438,19 +438,26 @@ import IslandWidget from './IslandWidget'
       if (!wrap.contains(e.relatedTarget)) panel?.setAttribute('aria-hidden', 'true')
     })
 
-    // Chip handlers — V53.2: pointerdown fires BEFORE click and survives
-    // pointer-leave races; click also wired as fallback. Both call
-    // stopPropagation so they don't trigger the wrap's navigate-to-/world/.
-    enterChip.addEventListener('click', (e) => {
+    // V53.3: Chip handlers. Both click AND pointerdown wired — pointerdown
+    // fires BEFORE click and survives pointer-leave races (when cursor
+    // exits the panel mid-click and the panel goes pointer-events:none,
+    // the click event can get cancelled but pointerdown was already
+    // captured). stopPropagation so wrap's navigate-to-/world/ doesn't
+    // double-fire.
+    function navEnter(e) {
       e.stopPropagation()
       location.href = wrap.dataset.href || '/world/'
-    })
-    cycleChip.addEventListener('click', (e) => {
+    }
+    function navCycle(e) {
       e.stopPropagation()
       e.preventDefault()
       quoteIdx = (quoteIdx + 1) % (detectLang() === 'zh' ? QUOTES_ZH.length : QUOTES_EN.length)
       applyLang()
-    })
+    }
+    enterChip.addEventListener('click', navEnter)
+    enterChip.addEventListener('pointerup', navEnter)   // redundancy
+    cycleChip.addEventListener('click', navCycle)
+    cycleChip.addEventListener('pointerup', navCycle)   // redundancy
     } catch (err) {
       console.error('[island-pet] panel init failed:', err)
     }
@@ -561,17 +568,18 @@ import IslandWidget from './IslandWidget'
     }
   }
 
-  /* V53.2: hover-reveal panel — STACKED VERTICALLY ABOVE the pet
-     (was to the right in V53/V53.1, but that overlapped the homepage
-     cards on the right side). Now bottom: 100% → sits directly above
-     the pet, same width (220px), so total footprint is one column.
-     Pure CSS :hover with 350ms transition-delay reproduces the
-     "dwell" feel. */
+  /* V53.3: hover panel sits FLUSH on top of the pet (no margin gap).
+     The 12px gap in V53.2 created a "dead zone" between pet and panel
+     where :hover fires off → pointer-events flips back to none →
+     clicks miss when cursor traverses up to chips. Flush + transparent
+     hover-bridge ::after below the panel guarantees continuous :hover.
+     pointer-events: auto held for an extra 250ms on hover-out as a
+     belt-and-suspenders measure (instant flip-back could still race
+     a slow click). */
   .island-pet-panel {
     position: absolute;
-    bottom: 100%;        /* ABOVE the pet */
+    bottom: 100%;        /* flush with pet top */
     left: 0;
-    margin-bottom: 12px;
     width: 100%;         /* = 220px (matches pet) */
     padding: 14px 16px;
     background: rgba(20, 16, 14, 0.88);
@@ -583,7 +591,10 @@ import IslandWidget from './IslandWidget'
     box-sizing: border-box;
     opacity: 0;
     transform: translateY(8px);
-    transition: opacity 320ms ease 0ms, transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1) 0ms;
+    /* hover-OUT: fade fast but keep pointer-events for 250ms */
+    transition: opacity 280ms ease 0ms,
+                transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1) 0ms,
+                pointer-events 0ms 250ms;
     pointer-events: none;
     z-index: 4;
   }
@@ -593,7 +604,24 @@ import IslandWidget from './IslandWidget'
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
-    transition: opacity 320ms ease 350ms, transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1) 350ms;
+    /* hover-IN: 300ms dwell delay before fade-in */
+    transition: opacity 320ms ease 300ms,
+                transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1) 300ms,
+                pointer-events 0ms 0ms;
+  }
+  /* V53.3: invisible safety cushion ABOVE the pet (where the old gap
+     used to be). Just in case any layout fluctuation creates a 1-2px
+     dead band — this pseudo-element extends the pet's :hover region
+     upward by 16px so the cursor can never land between pet and panel
+     in a non-hovered state. */
+  .island-pet::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 16px;
+    pointer-events: auto;
   }
   .island-pet-quote {
     margin: 0 0 12px;
