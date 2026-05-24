@@ -5,15 +5,59 @@ import IslandWidget from './IslandWidget'
 ---
 
 <div class="card card-island" id="island-3d">
-  <!-- V32: use .section-title to align with neighbor cards (Reading, Movies, etc.) -->
   <div class="island-card-head">
     <div class="section-title" data-i18n="sec_island_3d">Forest Island · 3D</div>
     <a class="island-card-link" href="/world/">進入 →</a>
   </div>
-  <a href="/world/" class="island-card-canvas" aria-label="進入森林岛 — Airing 的 3D 漫游">
+  <a href="/world/" class="island-card-canvas" id="island-3d-canvas-wrap" aria-label="進入森林岛 — Airing 的 3D 漫游">
+    <!-- V33: CSS-only loading skeleton. Visible until Canvas mounts;
+         MutationObserver swaps `.island-loaded` to fade it. Kills the
+         "blank card" flash on slow networks / before client:visible. -->
+    <svg class="island-skeleton" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+      <!-- Island disk -->
+      <ellipse cx="300" cy="220" rx="220" ry="22" fill="rgba(120, 140, 110, 0.30)" />
+      <!-- Cabin: box + triangle roof -->
+      <rect x="190" y="160" width="115" height="60" fill="rgba(170, 140, 100, 0.40)" />
+      <polygon points="180,165 315,165 247,118" fill="rgba(80, 70, 80, 0.45)" />
+      <!-- Sakura: blob -->
+      <circle cx="395" cy="155" r="48" fill="rgba(240, 175, 195, 0.40)" />
+      <circle cx="420" cy="135" r="32" fill="rgba(255, 200, 215, 0.35)" />
+      <!-- Torii: 2 posts + 2 horizontal beams -->
+      <rect x="430" y="180" width="6" height="50" fill="rgba(170, 60, 50, 0.45)" />
+      <rect x="470" y="180" width="6" height="50" fill="rgba(170, 60, 50, 0.45)" />
+      <rect x="420" y="172" width="68" height="6" fill="rgba(30, 25, 20, 0.55)" />
+      <rect x="426" y="195" width="56" height="4" fill="rgba(170, 60, 50, 0.45)" />
+      <!-- Cedars in back: 3 tall thin triangles -->
+      <polygon points="105,200 120,200 112,140" fill="rgba(60, 80, 60, 0.45)" />
+      <polygon points="135,205 152,205 143,135" fill="rgba(75, 95, 70, 0.45)" />
+      <polygon points="160,210 175,210 167,150" fill="rgba(60, 80, 60, 0.40)" />
+      <!-- Subtle pulse breath -->
+      <animate attributeName="opacity" values="0.92;0.78;0.92" dur="2.4s" repeatCount="indefinite" />
+    </svg>
     <IslandWidget client:visible />
   </a>
 </div>
+
+<script is:inline>
+  // V33: detect canvas mount → fade out skeleton.
+  (function () {
+    const wrap = document.getElementById('island-3d-canvas-wrap')
+    if (!wrap) return
+    if (wrap.querySelector('canvas')) {
+      wrap.classList.add('island-loaded')
+      return
+    }
+    const obs = new MutationObserver(() => {
+      if (wrap.querySelector('canvas')) {
+        wrap.classList.add('island-loaded')
+        obs.disconnect()
+      }
+    })
+    obs.observe(wrap, { childList: true, subtree: true })
+    // Safety: fade out after 8s no matter what
+    setTimeout(() => { wrap.classList.add('island-loaded') }, 8000)
+  })()
+</script>
 
 <style>
   .card-island {
@@ -44,10 +88,10 @@ import IslandWidget from './IslandWidget'
     transform: translateX(2px);
   }
   .island-card-canvas {
-    --island-dwell: 0;  /* V29: 0..1, driven by React useFrame on dwell */
+    --island-dwell: 0;
     display: block;
     width: 100%;
-    height: 360px;
+    height: 300px;   /* V33: tightened 360→300 to match homepage card-grid rhythm */
     border-radius: 12px;
     overflow: hidden;
     position: relative;
@@ -77,12 +121,35 @@ import IslandWidget from './IslandWidget'
   }
 
   @media (max-width: 800px) {
-    .island-card-canvas { height: 240px; }
+    .island-card-canvas { height: 220px; }
   }
   @media (max-width: 480px) {
-    .island-card-canvas { height: 200px; }
+    .island-card-canvas { height: 180px; }
   }
+
+  /* V33: skeleton positioned above canvas, fades out on canvas detect */
+  .island-skeleton {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+    pointer-events: none;
+    transition: opacity 0.9s ease;
+  }
+  .island-card-canvas.island-loaded .island-skeleton {
+    opacity: 0;
+  }
+  /* V34: prefers-reduced-motion → show skeleton-only (friendlier than
+     hiding the card entirely). Disable auto-fade so skeleton persists. */
   @media (prefers-reduced-motion: reduce) {
-    .card-island { display: none; }
+    .island-card-canvas .island-skeleton {
+      opacity: 1 !important;
+      animation: none;
+    }
+    .island-card-canvas > a-island-mount,
+    .island-card-canvas > div[data-react-mount] {
+      display: none;
+    }
   }
 </style>

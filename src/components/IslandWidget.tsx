@@ -412,7 +412,6 @@ function MinkaCabin() {
 // ── Stone lantern (smooth-shaded, no flat) ──────────────────────────
 function StoneLantern({ x, z }: { x: number; z: number }) {
   const flameRef = useRef<THREE.Group>(null)
-  // V13: 2-octave flame flicker. V18: dims 300ms AFTER smoke puffs (draft pull).
   useFrame((s) => {
     if (!flameRef.current) return
     const t = s.clock.elapsedTime
@@ -427,7 +426,7 @@ function StoneLantern({ x, z }: { x: number; z: number }) {
     })
   })
   return (
-    <group position={[x, 0.025, z]} scale={0.45}>
+    <group position={[x, 0.025, z]} scale={0.70}>
       {/* Hex base */}
       <mesh position={[0, 0.06, 0]} castShadow receiveShadow>
         <cylinderGeometry args={[0.20, 0.22, 0.12, 8]} />
@@ -445,13 +444,15 @@ function StoneLantern({ x, z }: { x: number; z: number }) {
         <boxGeometry args={[0.22, 0.16, 0.22]} />
         <meshStandardMaterial color={STONE_BASE} roughness={0.92} />
       </mesh>
-      {/* 4 glowing window panes — wrapped in flameRef for flicker */}
+      {/* V35: glow panes inset 0.005 into stone (was sticker on surface).
+          Plus a small pointLight at chamber center for real flame
+          bounce on the stone hat above. */}
       <group ref={flameRef}>
         {([
-          [0, 0.56, 0.111, 0],
-          [0, 0.56, -0.111, Math.PI],
-          [0.111, 0.56, 0, Math.PI / 2],
-          [-0.111, 0.56, 0, -Math.PI / 2],
+          [0, 0.56, 0.106, 0],
+          [0, 0.56, -0.106, Math.PI],
+          [0.106, 0.56, 0, Math.PI / 2],
+          [-0.106, 0.56, 0, -Math.PI / 2],
         ] as Array<[number, number, number, number]>).map((p, i) => (
           <mesh key={i} position={[p[0], p[1], p[2]]} rotation={[0, p[3], 0]}>
             <planeGeometry args={[0.13, 0.11]} />
@@ -463,6 +464,8 @@ function StoneLantern({ x, z }: { x: number; z: number }) {
             />
           </mesh>
         ))}
+        {/* Tiny inner pointLight — bounces warm glow onto the stone hat */}
+        <pointLight position={[0, 0.56, 0]} intensity={0.35} distance={0.45} decay={2} color={LANTERN_GLOW} />
       </group>
       {/* Roof (6-sided low pyramid) */}
       <mesh position={[0, 0.74, 0]} castShadow>
@@ -644,14 +647,83 @@ function makeDisplacedGroundGeo(): THREE.BufferGeometry {
 // V24: deleted dead LightShafts function (~40 LOC) — replaced by drei
 // Sparkles in V12, never re-mounted.
 
+// V35: DisplacedCliff — single mesh w/ ridged-noise vertex displacement
+// instead of stacked smooth cones. Gives the island jagged overhangs +
+// vertical erosion grooves + exposed-root edge feel.
+function makeDisplacedCliffGeo(): THREE.BufferGeometry {
+  const g = new THREE.CylinderGeometry(2.05, 1.4, 1.45, 48, 8)
+  const pos = g.attributes.position
+  const colors = new Float32Array(pos.count * 3)
+  const cSoil = new THREE.Color(SOIL)
+  const cSoilDk = new THREE.Color(SOIL_DK)
+  const cCliff = new THREE.Color(CLIFF)
+  const cCliffDk = new THREE.Color(CLIFF_DK)
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
+    const rOrig = Math.hypot(x, z)
+    if (rOrig > 0.01) {
+      const angle = Math.atan2(z, x)
+      // Ridged noise — multi-octave for jagged overhangs
+      const n1 = Math.sin(angle * 7.3 + y * 0.8) * 0.5
+      const n2 = Math.cos(angle * 11.7 - y * 1.2) * 0.25
+      const n3 = Math.sin(angle * 19.1 + y * 2.3) * 0.12
+      // Ridged: abs-fold makes peaks instead of waves
+      const ridged = Math.abs(n1 + n2 + n3) * 0.5
+      // Outward bulge — more on cliff face (lower y), less on top (higher y)
+      const yFactor = (1 - (y + 0.725) / 1.45)  // 0 at top, 1 at bottom
+      const radial = 1 + ridged * 0.18 * yFactor + (Math.sin(angle * 23 + y * 4) * 0.04) * yFactor
+      pos.setX(i, x * radial)
+      pos.setZ(i, z * radial)
+    }
+    // Vertex color: lerp soil→cliff by Y (top=soil, bottom=cliff_dk)
+    const yNorm = (y + 0.725) / 1.45  // 0 bottom, 1 top
+    let c: THREE.Color
+    if (yNorm > 0.7) {
+      c = new THREE.Color().lerpColors(cSoil, cSoil, 0) // top: pure soil
+    } else if (yNorm > 0.4) {
+      c = new THREE.Color().lerpColors(cSoilDk, cSoil, (yNorm - 0.4) / 0.3)
+    } else {
+      c = new THREE.Color().lerpColors(cCliffDk, cCliff, yNorm / 0.4)
+    }
+    colors[i * 3] = c.r
+    colors[i * 3 + 1] = c.g
+    colors[i * 3 + 2] = c.b
+  }
+  pos.needsUpdate = true
+  g.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  g.computeVertexNormals()
+  return g
+}
+
+function DisplacedCliff() {
+  const geo = useMemo(makeDisplacedCliffGeo, [])
+  useEffect(() => () => geo.dispose(), [geo])
+  // V36: non-uniform XZ scale + small azimuthal rotation breaks the
+  // button-mushroom axisymmetry. From any orbit angle the silhouette is
+  // now intentional, not a revolved profile.
+  return (
+    <mesh
+      geometry={geo}
+      position={[0, -0.725, 0]}
+      scale={[1.05, 1.0, 0.78]}
+      rotation={[0, 0.35, 0]}
+      castShadow
+      receiveShadow
+    >
+      <meshStandardMaterial vertexColors roughness={0.95} flatShading />
+    </mesh>
+  )
+}
+
 function Island() {
   const groundGeo = useMemo(makeDisplacedGroundGeo, [])
-  useEffect(() => () => groundGeo.dispose(), [groundGeo])  // V26: dispose hygiene
+  useEffect(() => () => groundGeo.dispose(), [groundGeo])
   return (
-    <group>
-      {/* Grass top — vertex-colored displaced plane.
-          V11: removed decal circles in favor of per-vertex color lerp
-          so terrain warmth follows the bump map continuously. */}
+    <group scale={[1.05, 1.0, 0.78]} rotation={[0, 0.35, 0]}>
+      {/* V36: grass disk wrapped in SAME non-uniform scale + rotation as
+          DisplacedCliff so the grass edge matches the cliff edge (was
+          a perfect circle on top of an oblong base — read as "coin on
+          mushroom"). */}
       <mesh
         geometry={groundGeo}
         rotation={[-Math.PI / 2, 0, 0]}
@@ -660,75 +732,53 @@ function Island() {
       >
         <meshStandardMaterial vertexColors roughness={0.96} />
       </mesh>
-      {/* Cylinder side rim */}
       <mesh position={[0, 0, 0]} receiveShadow>
         <cylinderGeometry args={[2.05, 2.05, 0.10, 64]} />
         <meshStandardMaterial color={GRASS_LIGHT} roughness={0.96} />
       </mesh>
 
-      {/* Soil — warmer cinnamon */}
-      <mesh position={[0, -0.18, 0]} castShadow>
-        <cylinderGeometry args={[2.05, 1.7, 0.28, 36]} />
-        <meshStandardMaterial color={SOIL} roughness={0.95} flatShading />
-      </mesh>
-
-      {/* Cliff — 2 layers for gradient (V5 was single brown lump) */}
-      <mesh position={[0, -0.78, 0]} castShadow>
-        <coneGeometry args={[1.65, 0.85, 32]} />
-        <meshStandardMaterial color={CLIFF} roughness={0.95} flatShading />
-      </mesh>
-      <mesh position={[0, -1.15, 0]} castShadow>
-        <coneGeometry args={[1.30, 0.65, 28]} />
-        <meshStandardMaterial color={CLIFF_DK} roughness={0.95} flatShading />
-      </mesh>
-
-      {/* 3 rock outcrops on cliff face */}
-      {([
-        [1.20, -0.55, 0.55, 0.18],
-        [-0.85, -0.45, 1.20, 0.16],
-        [-0.60, -0.75, -1.10, 0.14],
-      ] as Array<[number, number, number, number]>).map((p, i) => (
-        <mesh
-          key={`rock${i}`}
-          position={[p[0], p[1], p[2]]}
-          rotation={[i, i * 0.7, i * 0.3]}
-          castShadow
-        >
-          <dodecahedronGeometry args={[p[3], 0]} />
-          <meshStandardMaterial color="#7A6555" roughness={0.95} flatShading />
-        </mesh>
-      ))}
+      {/* V35: soil + cliff merged into ONE displaced cylinder using
+          ridged noise — was lathe-spun cake silhouette (Sub-A fresh-eye:
+          "looks like a wood-lathe slice, not a Ghibli mountain"). */}
+      <DisplacedCliff />
     </group>
   )
 }
 
-// ── Tobi-ishi (stepping stones) — torii → gravel edge.
-// V6 ended INSIDE the gravel ring (overlap). V7: end at the gravel
-// ring's torii-facing edge so stones VISUALLY connect to it.
+// V8/V36: tobi-ishi stones — torii → tsukubai tea-ceremony axis.
+// V36: vary size/shape per stone (was 5 identical for-loop clones).
+// Largest stone sits at the torii threshold (real-garden convention).
 function SteppingStones() {
-  // V8: stones go from torii (0.65, 1.55) to TSUKUBAI (0.95, 0.4) —
-  // the canonical tea-ceremony approach. (V7 went to gravel ring edge
-  // which led "to nothing".)
-  const points: Array<[number, number, number]> = [
-    [0.55, 1.32, 0.1],
-    [0.62, 1.08, -0.3],
-    [0.70, 0.88, 0.5],
-    [0.78, 0.70, -0.2],
-    [0.85, 0.55, 0.4],
+  // [x, z, rotJitter, radius, scaleX, scaleZ, shape]
+  // shape: 0=dodecahedron, 1=elongated box, 2=flatter sphere
+  const stones: Array<[number, number, number, number, number, number, 0 | 1 | 2]> = [
+    [0.55, 1.32, 0.1, 0.14, 1.1, 1.4, 0],   // largest at torii threshold
+    [0.62, 1.08, -0.3, 0.09, 1.0, 1.0, 2],
+    [0.70, 0.88, 0.5, 0.10, 0.9, 1.3, 1],   // kidney-shaped box
+    [0.78, 0.70, -0.2, 0.085, 1.2, 0.9, 0],
+    [0.85, 0.55, 0.4, 0.095, 1.0, 1.1, 2],
   ]
   return (
     <group>
-      {points.map((p, i) => (
+      {stones.map((s, i) => (
         <mesh
           key={i}
-          position={[p[0], 0.058, p[1]]}
-          rotation={[0, p[2] + i * 0.17, 0]}
-          scale={[1, 0.5, 1.2]}
+          position={[s[0], 0.058, s[1]]}
+          rotation={[0, s[2] + i * 0.17, 0]}
+          scale={[s[4], 0.5, s[5]]}
           castShadow
           receiveShadow
         >
-          <dodecahedronGeometry args={[0.095, 0]} />
-          <meshStandardMaterial color="#9C9085" roughness={0.95} flatShading />
+          {s[6] === 0
+            ? <dodecahedronGeometry args={[s[3], 0]} />
+            : s[6] === 1
+              ? <boxGeometry args={[s[3] * 1.6, s[3] * 0.8, s[3] * 2.1]} />
+              : <sphereGeometry args={[s[3] * 1.1, 8, 6]} />}
+          <meshStandardMaterial
+            color={i % 2 === 0 ? '#9C9085' : '#8A7E72'}
+            roughness={0.95}
+            flatShading
+          />
         </mesh>
       ))}
     </group>
@@ -1632,7 +1682,9 @@ export default function IslandWidget() {
       <Cedar x={-1.15} z={-1.05} scale={1.0} seed={1} />
       <Cedar x={-0.30} z={-1.45} scale={0.88} seed={2} />
 
-      {/* Lantern + torii */}
+      {/* Lantern + torii. V36: lantern was salt-shaker scale (0.45) next
+          to cabin — bumped to 0.70 so its hat reads at engawa-handrail
+          height (real ishidoro is shoulder-tall). */}
       <StoneLantern x={-0.10} z={0.70} />
       <Torii x={0.65} z={1.55} rotY={-0.35} />
 

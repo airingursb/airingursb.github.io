@@ -412,8 +412,11 @@ export function Sakura({
           map={tex || undefined}
           alphaMap={tex || undefined}
           color="#fce3ea"
-          emissive="#fce3ea"
-          emissiveIntensity={0.25}
+          /* V35: petals are RECEIVERS of light, not emitters. Was
+             "LED swarm at night" (Sub-A fresh-eye scan). */
+          emissive="#000000"
+          emissiveIntensity={0}
+          roughness={1.0}
           alphaTest={0.45}
           side={THREE.DoubleSide}
         />
