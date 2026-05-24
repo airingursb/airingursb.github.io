@@ -41,9 +41,7 @@ And a comics pipeline: I set up a workspace that locks in my own character and a
 Sharing turned out nice too:
 
 ![Comic share 1](https://r2.airingdeng.com/blog/wj35/comics-share-1.webp)
-
 ![Comic share 2](https://r2.airingdeng.com/blog/wj35/comics-share-2.webp)
-
 ![Comic share 3](https://r2.airingdeng.com/blog/wj35/comics-share-3.webp)
 
 I also wired up analytics. The site does about 10K PV/month right now:

@@ -43,9 +43,7 @@ cover: "https://r2.airingdeng.com/blog/wj35/multitask-phone.webp"
 分享做的也不错：
 
 ![漫画分享 1](https://r2.airingdeng.com/blog/wj35/comics-share-1.webp)
-
 ![漫画分享 2](https://r2.airingdeng.com/blog/wj35/comics-share-2.webp)
-
 ![漫画分享 3](https://r2.airingdeng.com/blog/wj35/comics-share-3.webp)
 
 还补充了下埋点， 目前一个月大概只有 1 万 PV：
