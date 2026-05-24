@@ -49,17 +49,26 @@ export default function SoilHalos() {
       {halos.map((h, i) => (
         <mesh
           key={`halo${i}`}
-          position={[h.pos[0], 0.612, h.pos[1]]}
+          /* Sub-A fix: was y=0.612 (12mm above grass top at flat spots,
+             floats over terrain bumps). Raised to y=0.66 (still flat on
+             unmodified terrain) + polygonOffset to bias z-test toward
+             camera so it always wins z-fight against grass below. */
+          position={[h.pos[0], 0.66, h.pos[1]]}
           rotation={[-Math.PI / 2, 0, 0]}
           receiveShadow
         >
-          <ringGeometry args={[h.radius * 0.6, h.radius, 24]} />
+          {/* Sub-A fix: ringGeometry read as "magic circle"; circleGeometry
+              fill reads as "soil stain". */}
+          <circleGeometry args={[h.radius, 24]} />
           <meshStandardMaterial
             color={SOIL_RING}
             roughness={0.97}
             transparent
-            opacity={h.opacity ?? 0.4}
+            opacity={(h.opacity ?? 0.4) * 0.7}
             side={THREE.DoubleSide}
+            polygonOffset
+            polygonOffsetFactor={-1}
+            polygonOffsetUnits={-1}
           />
         </mesh>
       ))}

@@ -92,7 +92,40 @@ function Lantern({ theme, seed }: { theme: Theme; seed: number }) {
         decay={2}
         position={[0, 1.58, 0]}
       />
+      {/* V2 wave 3: warm halo cone beneath the lantern — only visible
+          at dusk (theme-aware via DuskHalo component). Reads as the
+          warm light pool the lantern casts down onto the ground. */}
+      <DuskHalo theme={theme} seed={seed} />
     </group>
+  )
+}
+
+function DuskHalo({ theme, seed }: { theme: Theme; seed: number }) {
+  const matRef = useRef<THREE.MeshBasicMaterial>(null)
+  useFrame((s, dt) => {
+    const m = matRef.current
+    if (!m) return
+    const t = s.clock.elapsedTime
+    // Subtle flicker tied to the lantern's own flicker for coherence
+    const flicker = 1 + Math.sin(t * 7 + seed) * 0.10
+    const target = theme === 'dusk' ? 0.30 * flicker : 0
+    const k = 1 - Math.exp(-dt * 1.5)
+    m.opacity = m.opacity + (target - m.opacity) * k
+  })
+  return (
+    <mesh position={[0, 1.0, 0]} rotation={[0, 0, 0]}>
+      {/* Cone pointing DOWN with apex at lantern, base at ground */}
+      <coneGeometry args={[0.45, 1.0, 16, 1, true]} />
+      <meshBasicMaterial
+        ref={matRef}
+        color="#FFD58F"
+        transparent
+        opacity={0}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
   )
 }
 

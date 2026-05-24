@@ -147,15 +147,19 @@ function ChimneySmoke({ origin }: { origin: [number, number, number] }) {
       m.position.z = origin[2] + Math.cos(t * 0.5 + i * 0.7) * 0.10 * driftBoost
       const scale = 0.2 + phase * 0.4
       m.scale.setScalar(scale)
-      ;(m.material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.6 - phase * 0.2)
+      ;(m.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.42 - phase * 0.14)
     })
   })
   return (
     <group>
       {[0, 1, 2, 3].map((i) => (
         <mesh key={i} ref={(el) => { refs.current[i] = el }}>
-          <sphereGeometry args={[0.5, 8, 6]} />
-          <meshStandardMaterial color={SMOKE} transparent opacity={0.5} roughness={1.0} />
+          {/* Sub-A fix: base sphere 0.5 → 0.25 so first puff is wispy
+              not a golf ball; meshBasicMaterial (unlit) so smoke
+              doesn't flat-shade dark on the shadow side; opacity 0.5
+              → 0.35 starting. */}
+          <sphereGeometry args={[0.25, 8, 6]} />
+          <meshBasicMaterial color={SMOKE} transparent opacity={0.35} depthWrite={false} />
         </mesh>
       ))}
     </group>
@@ -328,10 +332,13 @@ export default function Cabin() {
           <boxGeometry args={[0.6, 0.6, 0.16]} />
           <meshStandardMaterial color="#3A2516" roughness={0.95} />
         </mesh>
-        {/* Glowing back wall of cavity */}
+        {/* Glowing back wall of cavity. Sub-A: 4 stacked warm emitters
+            (back wall + front pane + pointLight + spotLight) made window
+            the brightest pixel, competing with the hero red door. Cut
+            back-wall emissive 1.2 → 0.5 to rebalance toward the door. */}
         <mesh position={[0, 0, -0.12]}>
           <planeGeometry args={[0.55, 0.55]} />
-          <meshStandardMaterial color={WINDOW} emissive={WINDOW} emissiveIntensity={1.2} roughness={0.5} />
+          <meshStandardMaterial color={WINDOW} emissive={WINDOW} emissiveIntensity={0.5} roughness={0.5} />
         </mesh>
         {/* Silhouette inside — a kettle on a stove */}
         <mesh position={[-0.1, -0.1, -0.10]}>
@@ -342,8 +349,9 @@ export default function Cabin() {
           <sphereGeometry args={[0.08, 8, 6]} />
           <meshStandardMaterial color="#1a1410" />
         </mesh>
-        {/* Strong interior point light visible through window */}
-        <pointLight position={[0, 0, -0.15]} color="#FFD58F" intensity={1.4} distance={3} decay={2} />
+        {/* Interior point light visible through window. Sub-A: 1.4 →
+            0.7 — keeps the warm glow without making window dominant. */}
+        <pointLight position={[0, 0, -0.15]} color="#FFD58F" intensity={0.7} distance={3} decay={2} />
         {/* Spotlight at window mouth — spills warm glow onto porch */}
         <spotLight
           position={[0, 0, 0.05]}
@@ -673,9 +681,13 @@ export default function Cabin() {
             <boxGeometry args={[0.5, 0.06, 0.04]} />
             <meshStandardMaterial color={ROCKER} roughness={0.88} />
           </mesh>
-          {/* Curved runners (rockers) */}
+          {/* Curved runners (rockers). Sub-A fix: runners now rotated
+              [0, π/2, 0] so the arc faces FORE-AFT (z axis), matching
+              the rocking rotation in Rocker (which rotates X = pitch).
+              Previously runners curved in XY plane while chair rocked
+              on X → chair tipped sideways while runners stayed flat. */}
           {[-0.18, 0.18].map((rx, i) => (
-            <mesh key={`rk${i}`} position={[rx, 0.04, 0]} rotation={[0, 0, 0]} castShadow>
+            <mesh key={`rk${i}`} position={[rx, 0.04, 0]} rotation={[0, Math.PI / 2, 0]} castShadow>
               <torusGeometry args={[0.3, 0.025, 4, 12, Math.PI]} />
               <meshStandardMaterial color={ROCKER} roughness={0.88} />
             </mesh>

@@ -9,8 +9,11 @@ const STONE_DK   = '#6B6358'
 const WOOD       = '#8E6A45'
 const WOOD_DARK  = '#5D452B'
 // Re-skin roof as oxidized copper patina — visually differs from cabin shingle
-const COPPER_PATINA_A = '#4A8B6E'
-const COPPER_PATINA_B = '#3A7558'
+// Sub-A: was teal-green copper-patina ('#4A8B6E') reading as "asset from
+// a different game" next to warm-brown shingled cabin. Desaturated toward
+// weathered wood-shake olive that fits the cabin/cairn/lantern palette.
+const COPPER_PATINA_A = '#6E7A5C'
+const COPPER_PATINA_B = '#5A6650'
 const IVY        = '#5A7A4C'
 const IVY_DARK   = '#4A6B40'
 const CHIME      = '#C8B89A'
@@ -116,7 +119,7 @@ export default function Gazebo() {
           return (
             <mesh key={`roof${i}`} position={[0, y + h / 2, 0]} castShadow>
               <cylinderGeometry args={[r1, r0, h, 6, 1]} />
-              <meshStandardMaterial color={i % 2 ? COPPER_PATINA_B : COPPER_PATINA_A} roughness={0.35} metalness={0.6} flatShading />
+              <meshStandardMaterial color={i % 2 ? COPPER_PATINA_B : COPPER_PATINA_A} roughness={0.85} metalness={0.15} flatShading />
             </mesh>
           )
         })

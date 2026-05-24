@@ -174,6 +174,56 @@ export default function Onsen() {
         decay={2}
       />
 
+      {/* V2 wave 3: karesansui (枯山水) — small raked-gravel zen garden
+          northeast of the pool. Pale sand bed + 3 concentric circle
+          rake patterns + 2 standing "mountain" stones. Tiny wabi-sabi
+          contemplation spot adjacent to the bath. */}
+      <group position={[-1.6, 0, -1.2]}>
+        {/* Sand bed — pale rectangle */}
+        <mesh position={[0, 0.045, 0]} receiveShadow rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[1.3, 1.0]} />
+          <meshStandardMaterial color="#E8DCC0" roughness={0.98} />
+        </mesh>
+        {/* 3 raked concentric rings around a center stone (groove via
+            thin ring meshes on top of the sand) */}
+        {[0.16, 0.26, 0.38].map((r, i) => (
+          <mesh key={`rake${i}`} position={[-0.15, 0.046, 0.08]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[r, r + 0.012, 24]} />
+            <meshStandardMaterial color="#BCAE92" roughness={0.92} side={THREE.DoubleSide} />
+          </mesh>
+        ))}
+        {/* Center stone of the karesansui (tallest, asymmetric) */}
+        <mesh position={[-0.15, 0.12, 0.08]} rotation={[0.1, 0.6, 0.15]} castShadow>
+          <dodecahedronGeometry args={[0.10, 0]} />
+          <meshStandardMaterial color="#6D6660" roughness={0.95} flatShading />
+        </mesh>
+        {/* Two satellite mountain stones offset to upper-right */}
+        <mesh position={[0.35, 0.08, -0.15]} rotation={[0.2, 0.3, 0]} castShadow>
+          <dodecahedronGeometry args={[0.075, 0]} />
+          <meshStandardMaterial color="#7E7770" roughness={0.95} flatShading />
+        </mesh>
+        <mesh position={[0.45, 0.07, 0.10]} rotation={[0.1, 1.0, 0.1]} castShadow>
+          <dodecahedronGeometry args={[0.060, 0]} />
+          <meshStandardMaterial color="#5D5852" roughness={0.95} flatShading />
+        </mesh>
+        {/* Wooden frame border (4 thin planks) */}
+        {[
+          [ 0,    0.045,  0.50, 1.30, 0.012, 0.05],
+          [ 0,    0.045, -0.50, 1.30, 0.012, 0.05],
+          [-0.65, 0.045,  0,    0.05, 0.012, 1.00],
+          [ 0.65, 0.045,  0,    0.05, 0.012, 1.00],
+        ].map((b, i) => (
+          <mesh
+            key={`fr${i}`}
+            position={[b[0] as number, b[1] as number, b[2] as number]}
+            castShadow
+          >
+            <boxGeometry args={[b[3] as number, b[4] as number, b[5] as number]} />
+            <meshStandardMaterial color="#5D452B" roughness={0.92} />
+          </mesh>
+        ))}
+      </group>
+
       {/* V2 wave 3: 脱衣場 (dressing platform) just south of the pool
           with folded yukata + geta sandals + small wooden tray.
           Same "Airing just slipped into the water" beat as the rocker
