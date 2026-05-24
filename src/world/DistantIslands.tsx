@@ -101,6 +101,20 @@ export default function DistantIslands() {
       {/* Pulled back to 4 → 2 for cleaner horizon — keep windmill island + far one */}
       <TinyIsland position={[42, -5, 30]} scale={1.4} tree={false} windmill={true} />
       <TinyIsland position={[-30, -8, 40]} scale={1.2} tree={true} />
+
+      {/* V2 wave 3: soft drop shadows on the cloud-sea below the
+          distant islands. Without these the islands look "untethered"
+          to the world below — the shadow plane anchors them visually
+          to the cloud layer. Plane just above void at y=-15 (cloud
+          sea is at y≈-12), rotated flat. */}
+      <mesh position={[42, -13.5, 30]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[5.6, 20]} />
+        <meshBasicMaterial color="#3A4250" transparent opacity={0.22} depthWrite={false} />
+      </mesh>
+      <mesh position={[-30, -13.5, 40]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[4.8, 20]} />
+        <meshBasicMaterial color="#3A4250" transparent opacity={0.22} depthWrite={false} />
+      </mesh>
     </group>
   )
 }

@@ -34,15 +34,23 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
   // smooth-shaded material. Walking every face per frame was ~1-2ms
   // for zero visible gain. Vertex normals are baked at geometry
   // creation; only position updates per frame now.
+  // V2 wave 3 (Sub-A #4): pond ripple amplitude responds to gust.
+  // Calm: 0.012 + 0.008 (unchanged). Peak gust: ~2.2× → visible chop.
   useFrame((s) => {
     const m = surf.current
     if (!m) return
     const t = s.clock.elapsedTime
+    const gust = getGust(t)
+    const boost = 1 + gust * 1.2
     const pos = m.geometry.attributes.position
     for (let i = 0; i < pos.count; i++) {
       const px = pos.getX(i), pz = pos.getZ(i)
       const d = Math.hypot(px, pz)
-      pos.setY(i, Math.sin(t * 1.2 + d * 1.2) * 0.012 + Math.cos(t * 0.6 + px * 0.8) * 0.008)
+      pos.setY(
+        i,
+        Math.sin(t * 1.2 + d * 1.2) * 0.012 * boost +
+        Math.cos(t * 0.6 + px * 0.8) * 0.008 * boost,
+      )
     }
     pos.needsUpdate = true
   })

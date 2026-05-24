@@ -22,15 +22,44 @@ export default function MochiNPC() {
   const headRef = useRef<THREE.Group>(null)
   const bodyRef = useRef<THREE.Group>(null)
 
+  // V2 wave 3: layered head behavior. Default gentle wobble + every
+  // 22-30s a dramatic "look around" sweep (left, right, up, center)
+  // over 5s. Makes Mochi feel curious/alive rather than mechanical.
+  const lookAtRef = useRef({ next: 22 + Math.random() * 8, started: 0, active: false })
   useFrame((s) => {
     const t = s.clock.elapsedTime
-    if (headRef.current) {
-      // Gentle head wobble (looking around lazily)
-      headRef.current.rotation.y = Math.sin(t * 0.5) * 0.3
-    }
     if (bodyRef.current) {
-      // Breathing
       bodyRef.current.scale.y = 1 + Math.sin(t * 1.2) * 0.02
+    }
+    if (!headRef.current) return
+
+    // Decide whether to start an active "look around" episode
+    const la = lookAtRef.current
+    if (!la.active && t >= la.next) {
+      la.active = true
+      la.started = t
+    }
+
+    if (la.active) {
+      const phase = t - la.started   // 0..5s
+      // 4-beat sweep: left (0-1) → center (1-2) → right (2-3) → up (3-4) → center (4-5)
+      let yaw = 0
+      let pitch = 0
+      if (phase < 1)       yaw = -0.7 * phase
+      else if (phase < 2)  yaw = -0.7 + 0.7 * (phase - 1)
+      else if (phase < 3)  yaw = 0.7 * (phase - 2)
+      else if (phase < 4)  { yaw = 0.7 - 0.7 * (phase - 3); pitch = -0.4 * (phase - 3) }
+      else if (phase < 5)  { pitch = -0.4 + 0.4 * (phase - 4) }
+      headRef.current.rotation.y = yaw
+      headRef.current.rotation.x = pitch
+      if (phase >= 5) {
+        la.active = false
+        la.next = t + 22 + Math.random() * 8
+      }
+    } else {
+      // Default gentle wobble
+      headRef.current.rotation.y = Math.sin(t * 0.5) * 0.3
+      headRef.current.rotation.x = 0
     }
   })
 

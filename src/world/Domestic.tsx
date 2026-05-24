@@ -5,6 +5,7 @@
 import { useRef } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
+import { getGust } from './wind'
 
 const WOOD          = '#8E6A45'
 const WOOD_DARK     = '#5D452B'
@@ -22,12 +23,20 @@ const METAL_RED     = '#8B4848'  // muted red so mailbox isn't a competing hot-s
 const METAL_FLAG    = '#A03030'
 const SEED_BROWN    = '#7A5B3C'
 
-// Single swaying garment for clothesline — sway pivots from pinch point
+// Single swaying garment for clothesline — sway pivots from pinch point.
+// V2 wave 3 (Sub-A wind): light fabric whips MORE on gust than the
+// always-on sway. Uses shared getGust for synchronization with trees.
 function SwayingGarment({ cx, color, w, h, phase }: { cx: number; color: string; w: number; h: number; phase: number }) {
   const ref = useRef<THREE.Group>(null)
   useFrame((s) => {
     if (!ref.current) return
-    ref.current.rotation.z = Math.sin(s.clock.elapsedTime * 1.2 + phase) * 0.08
+    const t = s.clock.elapsedTime
+    const gust = getGust(t)
+    // Calm: ±0.08. Peak gust: ±0.24 (3× whip — fabric is lighter than tree)
+    const amp = 0.08 + gust * 0.16
+    ref.current.rotation.z = Math.sin(t * 1.2 + phase) * amp
+    // Slight outward billow on gust
+    ref.current.rotation.x = gust * 0.12
   })
   return (
     <group ref={ref} position={[cx, 1.42, 0]}>
