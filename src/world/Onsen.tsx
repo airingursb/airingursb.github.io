@@ -173,6 +173,91 @@ export default function Onsen() {
         distance={1.6}
         decay={2}
       />
+
+      {/* V2 wave 3: 脱衣場 (dressing platform) just south of the pool
+          with folded yukata + geta sandals + small wooden tray.
+          Same "Airing just slipped into the water" beat as the rocker
+          tea cup — implies recent inhabitant activity. */}
+      <group position={[0.4, 0, -1.7]} rotation={[0, 0.15, 0]}>
+        {/* Plank platform (脱衣場) */}
+        <mesh position={[0, 0.04, 0]} castShadow receiveShadow>
+          <boxGeometry args={[1.4, 0.08, 0.9]} />
+          <meshStandardMaterial color={WOOD} roughness={0.92} flatShading />
+        </mesh>
+        {/* Plank seam lines (2 grooves running long side) */}
+        <mesh position={[0, 0.082, -0.15]}>
+          <boxGeometry args={[1.36, 0.003, 0.01]} />
+          <meshStandardMaterial color="#5D452B" />
+        </mesh>
+        <mesh position={[0, 0.082, 0.15]}>
+          <boxGeometry args={[1.36, 0.003, 0.01]} />
+          <meshStandardMaterial color="#5D452B" />
+        </mesh>
+
+        {/* Folded yukata — soft indigo with a white obi sash */}
+        <group position={[-0.35, 0.08, 0]}>
+          {/* Yukata fold — flat rectangle stacked */}
+          <mesh castShadow>
+            <boxGeometry args={[0.32, 0.05, 0.38]} />
+            <meshStandardMaterial color="#3E5878" roughness={0.92} />
+          </mesh>
+          <mesh position={[0, 0.045, 0]} castShadow>
+            <boxGeometry args={[0.30, 0.04, 0.36]} />
+            <meshStandardMaterial color="#4A6890" roughness={0.92} />
+          </mesh>
+          {/* White obi sash on top */}
+          <mesh position={[0, 0.075, 0]} castShadow>
+            <boxGeometry args={[0.32, 0.022, 0.08]} />
+            <meshStandardMaterial color="#F4EAD5" roughness={0.85} />
+          </mesh>
+        </group>
+
+        {/* Pair of geta (wooden sandals) — two slabs each with two
+            small teeth on bottom. Slightly turned outward. */}
+        {[-0.20, 0.12].map((gx, i) => (
+          <group key={`geta${i}`} position={[0.30 + gx, 0.08, 0.15 - i * 0.30]} rotation={[0, i === 0 ? 0.18 : -0.20, 0]}>
+            {/* Sole plank */}
+            <mesh castShadow>
+              <boxGeometry args={[0.20, 0.025, 0.10]} />
+              <meshStandardMaterial color="#8E6A45" roughness={0.88} />
+            </mesh>
+            {/* Two teeth underneath */}
+            <mesh position={[-0.06, -0.025, 0]}>
+              <boxGeometry args={[0.025, 0.04, 0.10]} />
+              <meshStandardMaterial color="#5D452B" roughness={0.92} />
+            </mesh>
+            <mesh position={[0.06, -0.025, 0]}>
+              <boxGeometry args={[0.025, 0.04, 0.10]} />
+              <meshStandardMaterial color="#5D452B" roughness={0.92} />
+            </mesh>
+            {/* Cloth strap (thong) — single V across top */}
+            <mesh position={[0, 0.018, 0.025]} rotation={[0.4, 0, 0]}>
+              <cylinderGeometry args={[0.004, 0.004, 0.06, 4]} />
+              <meshStandardMaterial color="#C13E3E" roughness={0.85} />
+            </mesh>
+            <mesh position={[0, 0.018, -0.025]} rotation={[-0.4, 0, 0]}>
+              <cylinderGeometry args={[0.004, 0.004, 0.06, 4]} />
+              <meshStandardMaterial color="#C13E3E" roughness={0.85} />
+            </mesh>
+          </group>
+        ))}
+
+        {/* Small wooden tray with a bar of soap + tiny brush */}
+        <group position={[0.55, 0.08, -0.05]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.22, 0.02, 0.14]} />
+            <meshStandardMaterial color="#A87E55" roughness={0.92} />
+          </mesh>
+          <mesh position={[-0.05, 0.025, 0]} castShadow>
+            <boxGeometry args={[0.06, 0.02, 0.04]} />
+            <meshStandardMaterial color="#F4EAD5" roughness={0.85} />
+          </mesh>
+          <mesh position={[0.04, 0.018, 0]} rotation={[0, 0.3, 0]} castShadow>
+            <cylinderGeometry args={[0.008, 0.008, 0.10, 6]} />
+            <meshStandardMaterial color="#5D452B" roughness={0.88} />
+          </mesh>
+        </group>
+      </group>
     </group>
   )
 }

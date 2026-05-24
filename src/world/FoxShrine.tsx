@@ -11,6 +11,7 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { getGust } from './wind'
 
 const VERMILLION = '#C84A35'
 const TORII_BLK  = '#1F1812'
@@ -49,6 +50,56 @@ function MiniTorii({ x, z, scale = 1 }: { x: number; z: number; scale?: number }
         <boxGeometry args={[0.88, 0.035, 0.08]} />
         <meshStandardMaterial color={TORII_BLK} roughness={0.6} />
       </mesh>
+    </group>
+  )
+}
+
+// V2 wave 3: shimenawa rope strung between the 3 torii (acts as a
+// shrine boundary marker). One thick rope spanning the full length.
+function ShimenawaString() {
+  return (
+    <group>
+      {/* Rope between torii #1 and #2 (z=-2.2 to z=-1.4) */}
+      <mesh position={[0, 0.95, -1.8]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.018, 0.018, 0.8, 5]} />
+        <meshStandardMaterial color="#E8DAB0" roughness={0.95} flatShading />
+      </mesh>
+      {/* Rope between torii #2 and #3 (z=-1.4 to z=-0.6) */}
+      <mesh position={[0, 0.95, -1.0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+        <cylinderGeometry args={[0.018, 0.018, 0.8, 5]} />
+        <meshStandardMaterial color="#E8DAB0" roughness={0.95} flatShading />
+      </mesh>
+    </group>
+  )
+}
+
+// Two shide (paper streamers) hanging from the rope at a given z.
+// Each shide whips slightly with wind + extra on gust.
+function ShideRow({ z }: { z: number }) {
+  const refs = useRef<Array<THREE.Mesh | null>>([])
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    const gust = getGust(t)
+    refs.current.forEach((m, i) => {
+      if (!m) return
+      const phase = i * 1.3
+      m.rotation.z = Math.sin(t * 1.6 + phase) * (0.12 + gust * 0.45)
+      m.rotation.x = Math.cos(t * 1.1 + phase) * 0.05 * (1 + gust * 1.2)
+    })
+  })
+  return (
+    <group position={[0, 0.92, z]}>
+      {[-0.18, 0.18].map((px, i) => (
+        <mesh
+          key={`shide${i}`}
+          ref={(el) => { refs.current[i] = el }}
+          position={[px, -0.10, 0]}
+        >
+          {/* Zigzag-ish shape via plane; rotation gives the whip */}
+          <planeGeometry args={[0.05, 0.20]} />
+          <meshStandardMaterial color="#F4EAD5" roughness={0.85} side={THREE.DoubleSide} />
+        </mesh>
+      ))}
     </group>
   )
 }
@@ -192,6 +243,15 @@ export default function FoxShrine() {
       <MiniTorii x={0} z={-2.2} scale={0.85} />
       <MiniTorii x={0} z={-1.4} scale={0.92} />
       <MiniTorii x={0} z={-0.6} scale={1.00} />
+
+      {/* V2 wave 3: shimenawa rope strung between torii beams +
+          5 zigzag shide (paper streamers) — "active shrine" beat.
+          Each shide is a small white plane that whips with wind. */}
+      <ShimenawaString />
+      {[-2.2, -1.4, -0.6].map((tz, ti) => (
+        // 2 shide per torii, hanging from the rope between adjacent torii
+        ti < 2 ? <ShideRow key={`sh${ti}`} z={tz - 0.4} /> : null
+      ))}
 
       {/* The shrine itself — fox on a small stone pedestal, with
           offering bowl + candle in front. */}

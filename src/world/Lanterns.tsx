@@ -13,9 +13,12 @@ const POST_WARM = '#5D452B'
 const GLOW      = '#FFD58F'
 
 // Per-theme glow intensity targets.
-const DAY_EMISSIVE   = 0.35   // dim, just enough to read as a lantern in sun
+// V2 wave 3 (Sub-A): bumped DAY_EMISSIVE 0.35 → 0.55 so lanterns
+// read as alive even in sun (CanopyDapple zones light up the air
+// around them; static-looking lanterns would feel out-of-place).
+const DAY_EMISSIVE   = 0.55
 const DUSK_EMISSIVE  = 2.0    // bloom-friendly punch at dusk
-const DAY_PT_LIGHT   = 0.15
+const DAY_PT_LIGHT   = 0.22
 const DUSK_PT_LIGHT  = 0.95
 
 type Theme = 'day' | 'dusk'
