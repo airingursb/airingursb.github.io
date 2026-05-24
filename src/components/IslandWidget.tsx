@@ -1740,10 +1740,14 @@ export default function IslandWidget() {
       {/* Falling petals — Ghibli money shot. Drift down from canopy. */}
       <FallingPetals />
 
-      {/* V13: distant cloud puffs BELOW the island (sky-castle sell) */}
-      <DistantClouds />
-      {/* V14: upper cumulus band drifting opposite — parallax stratification */}
-      <UpperCumulus />
+      {/* V52.2 perf cleanup: DistantClouds + UpperCumulus removed.
+          DistantClouds sat at y=-2.6 (visible y-min ≈ -1.35 with V52
+          camera) — entirely below frustum. UpperCumulus at y=+3.4
+          — entirely above frustum. Both were rendered but invisible
+          → pure waste. Re-add only if pet camera angle changes to
+          include them. */}
+      {/* <DistantClouds /> */}
+      {/* <UpperCumulus /> */}
 
       {/* V13: bird flyby — V14: pair (hero + bg for flock feel).
           V52.2 (Sub-A fix B): REMOVED for pet. Birds traverse x=-4..4
@@ -1753,8 +1757,10 @@ export default function IslandWidget() {
           2-3px wide and only telegraph the canvas edge crossing. */}
       {/* <BirdFlyby /> */}
 
-      {/* V23: mid-cloud wisps drifting across mountain mid-ground */}
-      <MidCloudWisps />
+      {/* V52.2: MidCloudWisps removed — z=-7 placement put them behind
+          the (now-deleted) DistantMountains; without mountains they
+          drift in empty space far from the island silhouette. */}
+      {/* <MidCloudWisps /> */}
       {/* V23: moss/lichen between stepping stones (always-on micro-life) */}
       <PathMoss />
 
