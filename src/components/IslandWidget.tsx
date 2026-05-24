@@ -6,7 +6,7 @@
 // off-screen or tab-backgrounded.
 //
 // ─── FILE MAP (~1700 LOC, broken up by what it renders) ───
-//   Helpers     :  ~50    organicBlob lives in island-shared.ts now
+//   Helpers     :   ~5    organicBlob/makePetalShape are in island-shared
 //   Cedar       :  ~70    slim conifer with WindSway
 //   MinkaCabin  : ~280    irimoya roof + dormer + shoji + chimney
 //   Tsukubai    :  ~80    bamboo spout + water stream + ripples
@@ -94,6 +94,11 @@ function Cedar({ x, z, scale = 1, seed = 0 }: { x: number; z: number; scale?: nu
       { y: 2.30, blob: organicBlob(0.08 + r * 0.01, 0.03, seed + 60), color: CEDAR_DARK },
     ]
   }, [seed])
+
+  // V44 LEAK FIX: dispose canopy BufferGeometries on unmount. Without
+  // this, every Cedar instance leaks 6 GPU buffers (strict-mode double-
+  // mount, HMR, or Astro view-transition would compound the leak).
+  useEffect(() => () => { layers.forEach((l) => l.blob.dispose()) }, [layers])
 
   return (
     <group ref={groupRef} position={[x, 0.025, z]} scale={scale} rotation={[0, seed * 0.6, 0]}>
@@ -1541,6 +1546,39 @@ function ChimneySmoke() {
   )
 }
 
+// V44 LEAK FIX: WebGL context-loss/restore handlers now live in this
+// child component instead of Canvas onCreated. onCreated has no cleanup
+// hook, so listeners accumulated on the canvas DOM element across
+// strict-mode double-mount / HMR / Astro view-transition remounts.
+function ContextLossHandlers() {
+  const gl = useThree((s) => s.gl)
+  useEffect(() => {
+    const el = gl.domElement
+    const onLost = (e: Event) => {
+      e.preventDefault()
+      const wrap = document.getElementById('island-3d-canvas-wrap')
+      if (wrap) {
+        wrap.classList.remove('island-loaded')
+        wrap.classList.add('island-webgl-failed')
+      }
+    }
+    const onRestored = () => {
+      const wrap = document.getElementById('island-3d-canvas-wrap')
+      if (wrap) {
+        wrap.classList.remove('island-webgl-failed')
+        wrap.classList.add('island-loaded')
+      }
+    }
+    el.addEventListener('webglcontextlost', onLost, { passive: false } as AddEventListenerOptions)
+    el.addEventListener('webglcontextrestored', onRestored)
+    return () => {
+      el.removeEventListener('webglcontextlost', onLost)
+      el.removeEventListener('webglcontextrestored', onRestored)
+    }
+  }, [gl])
+  return null
+}
+
 export default function IslandWidget() {
   // V41: pause render loop when widget is off-screen or tab is hidden.
   // Saves significant battery + GPU on homepage (~10 other cards
@@ -1576,26 +1614,6 @@ export default function IslandWidget() {
       camera={{ position: [2.9, 1.5, 3.7], fov: 28 }}
       dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}
       frameloop={paused ? 'never' : 'always'}   // V41: pause off-screen
-      onCreated={({ gl }) => {
-        // V41: webglcontextlost → escalate to fallback.
-        // V42: webglcontextrestored → auto-recover (browser-initiated
-        // restore; common after GPU process restart or tab unminimize).
-        gl.domElement.addEventListener('webglcontextlost', (e) => {
-          e.preventDefault()
-          const wrap = document.getElementById('island-3d-canvas-wrap')
-          if (wrap) {
-            wrap.classList.remove('island-loaded')
-            wrap.classList.add('island-webgl-failed')
-          }
-        }, { passive: false })
-        gl.domElement.addEventListener('webglcontextrestored', () => {
-          const wrap = document.getElementById('island-3d-canvas-wrap')
-          if (wrap) {
-            wrap.classList.remove('island-webgl-failed')
-            wrap.classList.add('island-loaded')
-          }
-        })
-      }}
       gl={{
         antialias: true,
         alpha: true,
@@ -1620,6 +1638,8 @@ export default function IslandWidget() {
         mouseState.y = ((e.clientY - rect.top) / rect.height - 0.5) * 2
       }}
     >
+      {/* V44: wire WebGL ctx-loss/restore handlers (with cleanup) */}
+      <ContextLossHandlers />
       {/* No <color> bg — let CSS radial-gradient sky show through */}
       <fog attach="fog" args={[FOG_TINT, 8, 17]} />
       {/* V27: sky+fog mood shift on sustained hover (golden hour) */}

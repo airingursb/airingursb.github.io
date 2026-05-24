@@ -9,7 +9,6 @@
 // no React rendering, no GL calls.
 
 import * as THREE from 'three'
-import { IcosahedronGeometry } from 'three'
 
 // ─────────────────────────────────────────────────────────────────────
 // MODULE-LEVEL MUTABLE STATE — read by useFrame callbacks in many
@@ -45,7 +44,7 @@ export const IS_TOUCH = typeof window !== 'undefined' &&
   window.matchMedia?.('(hover: none)').matches
 
 export const IS_MOBILE = typeof window !== 'undefined' && (
-  /Android|webOS|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  (typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)) ||
   (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 800px)').matches)
 )
 
@@ -78,6 +77,11 @@ export function getHearth(t: number) {
   }
 }
 
+// V44 BUGFIX: `enteredAt/decay` are written from pointer handlers using
+// `performance.now()/1000` (wall clock since nav start). The `t` arg
+// here is `state.clock.elapsedTime` (Three.js Canvas-mount clock).
+// Mixing them gave silently-negative dwell times → golden hour + boost
+// never triggered. Compare against the same wall clock used at write.
 export function getDwellGolden(t: number): number {
   if (IS_TOUCH) {
     const phase = (t % 14) / 14
@@ -85,21 +89,23 @@ export function getDwellGolden(t: number): number {
       ? Math.max(0, (phase - 0.29) / 0.21)
       : Math.max(0, 1 - (phase - 0.50) / 0.21)
   }
+  const now = typeof performance !== 'undefined' ? performance.now() / 1000 : t
   if (hoverState.active) {
-    const dwellSec = t - hoverState.enteredAt
+    const dwellSec = now - hoverState.enteredAt
     if (dwellSec < 3) return 0
     return Math.min(1, (dwellSec - 3) / 1.5)
   }
-  const sinceLeave = t - hoverState.decay
+  const sinceLeave = now - hoverState.decay
   return Math.max(0, 1 - sinceLeave / 4)
 }
 
-export function getHoverBoost(t: number): number {
+export function getHoverBoost(_t: number): number {
+  const now = typeof performance !== 'undefined' ? performance.now() / 1000 : 0
   if (hoverState.active) {
-    const since = t - hoverState.enteredAt
+    const since = now - hoverState.enteredAt
     return Math.min(1, since * 3)
   }
-  const sinceLeave = t - hoverState.decay
+  const sinceLeave = now - hoverState.decay
   return Math.max(0, 1 - sinceLeave * 0.67)
 }
 
@@ -126,7 +132,7 @@ export function lerpHex(a: string, b: string, t: number): string {
 // ─────────────────────────────────────────────────────────────────────
 
 export function organicBlob(radius: number, jitterAmt: number, seed: number): THREE.BufferGeometry {
-  const g = new IcosahedronGeometry(radius, 1)
+  const g = new THREE.IcosahedronGeometry(radius, 1)
   const pos = g.attributes.position
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
