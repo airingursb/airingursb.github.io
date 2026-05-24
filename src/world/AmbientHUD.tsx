@@ -165,17 +165,29 @@ export default function AmbientHUD() {
         </button>
       </div>
 
-      {/* === Bottom-left time HUD === */}
-      <div className="world-hud-time" aria-live="polite" aria-atomic="true">
-        <div className="world-hud-time-main">在岛上 {sessionMin} 分钟</div>
+      {/* === Bottom-left time HUD ===
+          V2 a11y fix: previously the whole HUD was one aria-live
+          region with aria-atomic=true. Since pomoRemaining ticks
+          every second, screen readers were re-announcing the whole
+          block ("在岛上 X 分钟. 累计 Y. 专注中 · 24:58") every
+          second — extremely noisy. Split into pieces:
+          - 在岛上 X 分钟 changes every minute, polite aria-live OK.
+          - 累计 Y is essentially static during a session — no aria-live.
+          - Pomo timer is second-by-second visual feedback — aria-hidden
+            its seconds counter so AT doesn't tick. */}
+      <div className="world-hud-time">
+        <div className="world-hud-time-main" aria-live="polite">在岛上 {sessionMin} 分钟</div>
         {liveTotal > sessionMs + 60_000 && (
           <div className="world-hud-time-sub">
             累计 {fmtHumanMinutes(liveTotal)}
           </div>
         )}
         {pomo !== 'idle' && (
-          <div className={`world-hud-pomo world-hud-pomo--${pomo}`}>
-            {pomo === 'focus' ? '专注中' : '休息中'} · {fmtMmSs(pomoRemaining)}
+          <div
+            className={`world-hud-pomo world-hud-pomo--${pomo}`}
+            aria-label={pomo === 'focus' ? '番茄钟专注中' : '番茄钟休息中'}
+          >
+            <span aria-hidden="true">{pomo === 'focus' ? '专注中' : '休息中'} · {fmtMmSs(pomoRemaining)}</span>
           </div>
         )}
       </div>
