@@ -20,7 +20,7 @@ import { OrbitControls, Sparkles } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, ToneMapping, SMAA } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { ACESFilmicToneMapping, IcosahedronGeometry } from 'three'
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useEffect } from 'react'
 import * as THREE from 'three'
 import { Sakura } from './widget-sakura'
 
@@ -47,6 +47,16 @@ function getHoverBoost(t: number): number {
   // Decay from last active value
   const sinceLeave = t - hoverState.decay
   return Math.max(0, 1 - sinceLeave * 0.67)  // decay over 1.5s
+}
+
+// V24: tiny hex-color channel-lerp helper (avoids THREE.Color alloc).
+function lerpHex(a: string, b: string, t: number): string {
+  const ar = parseInt(a.slice(1, 3), 16), ag = parseInt(a.slice(3, 5), 16), ab = parseInt(a.slice(5, 7), 16)
+  const br = parseInt(b.slice(1, 3), 16), bg = parseInt(b.slice(3, 5), 16), bb = parseInt(b.slice(5, 7), 16)
+  const r = Math.round(ar + (br - ar) * t)
+  const g = Math.round(ag + (bg - ag) * t)
+  const bl = Math.round(ab + (bb - ab) * t)
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bl.toString(16).padStart(2, '0')}`
 }
 
 // ── V15: SHARED WIND — single source driving cedar sway, sakura
@@ -292,14 +302,17 @@ function MinkaCabin() {
                 (real kawara has random moss patches, not perfect rows). */}
             {Array.from({ length: 14 }).map((_, i) => {
               const frac = (i + 0.5) / 14
+              // V24 BUGFIX: per-render Color allocation removed.
+              // Pre-compute string color, let Three.js parse string (cheaper).
               const jitter = Math.pow(
                 (Math.sin(i * 7.3 + (sign > 0 ? 1.7 : 0)) + 1) * 0.5,
-                0.6  // push toward extremes
+                0.6,
               )
-              const isMoss = ((i * 5 + (sign > 0 ? 3 : 0)) % 7) === 0  // ~15% mossy
-              const tileColor = isMoss
-                ? new THREE.Color(TILE_ROOF_MOSS)
-                : new THREE.Color(TILE_ROOF_A).lerp(new THREE.Color(TILE_ROOF_B), jitter)
+              const isMoss = ((i * 5 + (sign > 0 ? 3 : 0)) % 7) === 0
+              // Lerp via channel math (no THREE.Color alloc in render path)
+              const colorStr = isMoss
+                ? TILE_ROOF_MOSS
+                : lerpHex(TILE_ROOF_A, TILE_ROOF_B, jitter)
               return (
                 <mesh
                   key={`tile${side}${i}`}
@@ -307,11 +320,9 @@ function MinkaCabin() {
                 >
                   <boxGeometry args={[slabLen / 14 * 0.88, 0.020, slabDepth - 0.04]} />
                   <meshStandardMaterial
-                    color={tileColor}
+                    color={colorStr}
                     roughness={0.85}
                     flatShading
-                    polygonOffset
-                    polygonOffsetFactor={-1}
                   />
                 </mesh>
               )
@@ -483,9 +494,10 @@ function RakedGravel() {
         <cylinderGeometry args={[0.95, 0.95, 0.005, 48]} />
         <meshStandardMaterial color={GRAVEL_SAND} roughness={1.0} />
       </mesh>
-      {/* Concentric rake-line tori (very thin, slightly darker) */}
+      {/* Concentric rake-line tori — V24 BUGFIX: y 0.004→0.010 (was
+          intersecting sand disk causing z-fighting on mobile) */}
       {[0.55, 0.68, 0.81, 0.92].map((r, i) => (
-        <mesh key={i} position={[0, 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh key={i} position={[0, 0.010, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <torusGeometry args={[r, 0.005, 4, 64]} />
           <meshStandardMaterial color={GRAVEL_LINE} roughness={0.95} />
         </mesh>
@@ -603,53 +615,12 @@ function makeDisplacedGroundGeo(): THREE.BufferGeometry {
   return g
 }
 
-// LightShafts — V10: PARALLEL shafts (all same tilt) matching sun
-// azimuth from [4, 5.5, 3]. Sun direction = normalize(4,5.5,3) ≈
-// (0.49, 0.67, 0.37). Shafts descend FROM that direction → tilt
-// uniformly toward -Y. Opacity 0.075 readable over both sky + trees.
-function LightShafts() {
-  // Position 6 shafts so they slice through the canopy + cedars zone
-  const positions: Array<[number, number, number]> = [
-    [1.20, 0.85, -0.50],
-    [0.55, 0.95, 0.20],
-    [-0.25, 0.85, -0.85],
-    [-1.00, 0.75, -0.60],
-    [0.20, 0.65, 0.95],
-    [-0.65, 0.80, 0.65],
-  ]
-  // Sun azimuth: shaft long axis must follow sun→ground angle
-  const SUN_TILT_Z = -0.42  // unified tilt (parallel)
-  const SUN_AZIMUTH_Y = -0.35  // matches azimuth of dir light
-  return (
-    <group>
-      {positions.map((p, i) => (
-        <group key={i} position={p} rotation={[0, SUN_AZIMUTH_Y, 0]}>
-          {/* Billboard-cross — perpendicular planes, both parallel-tilted */}
-          {[0, Math.PI / 2].map((rotY, j) => (
-            <mesh
-              key={j}
-              rotation={[0, rotY, SUN_TILT_Z]}
-              renderOrder={2}
-            >
-              <planeGeometry args={[0.4, 2.4]} />
-              <meshBasicMaterial
-                color="#FFE8C0"
-                transparent
-                opacity={0.075}
-                blending={THREE.AdditiveBlending}
-                depthWrite={false}
-                side={THREE.DoubleSide}
-              />
-            </mesh>
-          ))}
-        </group>
-      ))}
-    </group>
-  )
-}
+// V24: deleted dead LightShafts function (~40 LOC) — replaced by drei
+// Sparkles in V12, never re-mounted.
 
 function Island() {
   const groundGeo = useMemo(makeDisplacedGroundGeo, [])
+  useEffect(() => () => groundGeo.dispose(), [groundGeo])  // V26: dispose hygiene
   return (
     <group>
       {/* Grass top — vertex-colored displaced plane.
@@ -754,6 +725,8 @@ function makePetalShape(): THREE.Shape {
 
 function FallenPetals() {
   const petalGeo = useMemo(() => new THREE.ShapeGeometry(makePetalShape(), 8), [])
+  // V25: dispose on unmount (was leaking on hot-reload / route change)
+  useEffect(() => () => petalGeo.dispose(), [petalGeo])
   const positions = useMemo(() => {
     const out: Array<{ x: number; z: number; rot: number; scale: number }> = []
     // V8: fewer + bigger petals read better at autorotate speed
@@ -798,12 +771,14 @@ function AnimatedSun() {
   const lightRef = useRef<THREE.DirectionalLight>(null)
   const cWarm = useMemo(() => new THREE.Color('#FFE8C0'), [])
   const cAmber = useMemo(() => new THREE.Color('#FFD8A0'), [])
+  // V25: hoist scratchColor — was allocating new THREE.Color per frame
+  const scratch = useMemo(() => new THREE.Color(), [])
   useFrame((s) => {
     if (!lightRef.current) return
     const t = s.clock.elapsedTime
     const cycle = (Math.sin(t * 0.07) + 1) * 0.5
     lightRef.current.intensity = 2.44 + Math.sin(t * 0.07) * 0.06
-    lightRef.current.color = new THREE.Color().lerpColors(cWarm, cAmber, cycle * 0.6)
+    lightRef.current.color = scratch.copy(cWarm).lerp(cAmber, cycle * 0.6)
   })
   return (
     <directionalLight
@@ -1015,9 +990,9 @@ function ParallaxRig() {
 // V22: blend mountain colors toward FOG_TINT (atmospheric perspective)
 // + stagger baseline so peaks don't all sit on one horizontal line.
 function DistantMountains() {
-  const fog = useMemo(() => new THREE.Color(FOG_TINT), [])
-  const lerpHex = (hex: string, t: number) =>
-    new THREE.Color(hex).lerp(fog, t).getStyle()
+  // V25: use top-level pure-channel lerpHex (was shadowing with
+  // alloc-heavy THREE.Color version)
+  const lerpToFog = (hex: string, t: number) => lerpHex(hex, FOG_TINT, t)
 
   const layers: Array<{
     z: number
@@ -1056,7 +1031,7 @@ function DistantMountains() {
             >
               <coneGeometry args={[o[2], o[1] * 2, 9]} />
               <meshBasicMaterial
-                color={lerpHex('#B8C5D0', L.fogMix)}
+                color={lerpToFog('#B8C5D0', L.fogMix)}
                 transparent
                 opacity={L.opacity}
                 depthWrite={false}
@@ -1074,35 +1049,34 @@ function DistantMountains() {
 function HoverZoneHotspots() {
   return (
     <>
+      {/* V24 BUGFIX: visible={false} skips raycasting → hover never fires.
+          Use opacity={0} + colorWrite={false} instead so pointer events fire. */}
       {/* Sakura zone */}
       <mesh
         position={[0.55, 0.8, -0.35]}
-        visible={false}
         onPointerOver={() => { hoverZone.current = 'sakura'; hoverZone.since = performance.now() / 1000 }}
         onPointerOut={() => { hoverZone.current = null }}
       >
         <sphereGeometry args={[0.7, 8, 8]} />
-        <meshBasicMaterial transparent opacity={0} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
       </mesh>
       {/* Tsukubai zone */}
       <mesh
         position={[0.95, 0.35, 0.40]}
-        visible={false}
         onPointerOver={() => { hoverZone.current = 'tsukubai'; hoverZone.since = performance.now() / 1000 }}
         onPointerOut={() => { hoverZone.current = null }}
       >
         <boxGeometry args={[0.35, 0.5, 0.35]} />
-        <meshBasicMaterial transparent opacity={0} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
       </mesh>
       {/* Cabin zone */}
       <mesh
         position={[-0.55, 0.45, 0.0]}
-        visible={false}
         onPointerOver={() => { hoverZone.current = 'cabin'; hoverZone.since = performance.now() / 1000 }}
         onPointerOut={() => { hoverZone.current = null }}
       >
         <boxGeometry args={[1.2, 0.8, 0.8]} />
-        <meshBasicMaterial transparent opacity={0} />
+        <meshBasicMaterial transparent opacity={0} depthWrite={false} colorWrite={false} />
       </mesh>
 
       {/* Zone-gated reactive sparkle bursts */}
@@ -1225,6 +1199,7 @@ function BirdFlyby() {
     return s
   }, [])
   const geo = useMemo(() => new THREE.ShapeGeometry(wingShape, 8), [wingShape])
+  useEffect(() => () => geo.dispose(), [geo])  // V26: dispose hygiene
   useFrame((s) => {
     const t = s.clock.elapsedTime
     const period = 22
@@ -1276,6 +1251,8 @@ function FallingPetals() {
   const COUNT = 60
   const ref = useRef<THREE.InstancedMesh>(null)
   const petalGeo = useMemo(() => new THREE.ShapeGeometry(makePetalShape(), 8), [])
+  // V24: dispose on unmount
+  useEffect(() => () => petalGeo.dispose(), [petalGeo])
   const seeds = useMemo(() =>
     Array.from({ length: COUNT }).map(() => ({
       x: 0.55 + (Math.random() - 0.5) * 1.4,
@@ -1287,12 +1264,16 @@ function FallingPetals() {
       scale: 0.7 + Math.random() * 0.6,
       tintIdx: Math.floor(Math.random() * 3),
     })), [])
+  // V24: hoist per-frame allocs (was 3600+ Color/Object3D per second)
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const tints = useMemo(() => ['#FFEAF1', '#F5C8D6', '#FFD8E3'].map((c) => new THREE.Color(c)), [])
+  const wetColor = useMemo(() => new THREE.Color('#D8A8C0'), [])
+  const scratchColor = useMemo(() => new THREE.Color(), [])
 
   useFrame((s) => {
     if (!ref.current) return
     const t = s.clock.elapsedTime
-    const dummy = new THREE.Object3D()
-    const tints = ['#FFEAF1', '#F5C8D6', '#FFD8E3'].map((c) => new THREE.Color(c))
+    // V24: dummy/tints/wetColor/scratchColor are hoisted via useMemo
     // V15: SHARED wind drives drift direction + gust
     // V20: hover boost adds to gust. V22: sakura-zone hover 1.5× boost.
     const wind = getWind(t)
@@ -1337,22 +1318,19 @@ function FallingPetals() {
         (t * 0.6 + sd.phaseR) * (1 - restBlend * 0.7),
         Math.cos(t * 0.7 + sd.phaseR) * 0.4 * tumbleAmp + restBlend * sd.phaseR * 0.3,
       )
-      // V19: color darkens slightly when wet (paper-darkening sim)
+      // V19: color darkens when wet (paper-darkening sim).
+      // V24 BUGFIX: was overwritten by base tint below; now we set
+      // EITHER the wet lerp OR the base, not both per frame.
       if (restBlend > 0.5 && i % 3 !== 0) {
-        // Mix toward darker pink
-        const wet = new THREE.Color('#D8A8C0')
-        const base = tints[sd.tintIdx]
-        const mixed = new THREE.Color().lerpColors(base, wet, (restBlend - 0.5) * 2)
-        if (ref.current!.instanceColor === null || ref.current!.instanceColor) {
-          ref.current!.setColorAt(i, mixed)
-        }
+        scratchColor.lerpColors(tints[sd.tintIdx], wetColor, (restBlend - 0.5) * 2)
+        ref.current!.setColorAt(i, scratchColor)
+      } else {
+        ref.current!.setColorAt(i, tints[sd.tintIdx])
       }
       dummy.scale.setScalar(sd.scale)
       dummy.updateMatrix()
       ref.current!.setMatrixAt(i, dummy.matrix)
-      if (ref.current!.instanceColor === null || ref.current!.instanceColor) {
-        ref.current!.setColorAt(i, tints[sd.tintIdx])
-      }
+      // (V24: color set above based on rest state — no duplicate write here)
     })
     ref.current.instanceMatrix.needsUpdate = true
     if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true
@@ -1396,6 +1374,8 @@ function WindSway({ children, amp = 0.018, freq = 0.5, phase = 0 }: {
 // displacement + lowered metalness (was chrome mirror).
 function WaterSurface() {
   const geo = useMemo(() => new THREE.CircleGeometry(0.118, 28), [])
+  // V24: dispose on unmount (geometry leaks on hot-reload / route change)
+  useEffect(() => () => geo.dispose(), [geo])
   const ref = useRef<THREE.Mesh>(null)
   useFrame((s) => {
     if (!ref.current) return
@@ -1407,6 +1387,8 @@ function WaterSurface() {
       pos.setZ(i, Math.sin(t * 1.8 + d * 28) * 0.0015 + Math.cos(t * 1.3 + x * 22) * 0.0010)
     }
     pos.needsUpdate = true
+    // V24 BUGFIX: recompute normals so ripples are visible under lighting
+    ref.current.geometry.computeVertexNormals()
   })
   return (
     <mesh ref={ref} geometry={geo} position={[0, 0.255, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
