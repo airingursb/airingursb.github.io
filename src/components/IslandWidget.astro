@@ -71,15 +71,24 @@ import IslandWidget from './IslandWidget'
        skipped by most screen readers); visibility toggled by JS. -->
   <span class="island-pet-hint" aria-live="polite" hidden>需要 WebGL · 点击进入完整页面</span>
 
-  <!-- V53.2: hover-reveal overlay. NOW STACKED VERTICALLY above the
-       pet so it doesn't overlap homepage cards. Default text inlined
-       in HTML — if JS fails, user still sees something usable. JS
-       upgrades to bilingual + cycles quotes. -->
+  <!-- V53.4: inline onclick as PRIMARY handler. addEventListener can
+       race with hover-state pointer-events flips and gets cancelled by
+       the wrapper's click listener if order is wrong; inline onclick
+       runs in capture phase before bubbling and can't be intercepted
+       by the wrapper. event.stopPropagation() prevents the wrap's
+       navigate-to-/world/ from firing on cycle. -->
   <div class="island-pet-panel" aria-hidden="true">
     <p class="island-pet-quote">山深闻鹧鸪。</p>
     <div class="island-pet-actions">
-      <button type="button" class="island-pet-chip" data-action="enter">进入森林岛 →</button>
-      <button type="button" class="island-pet-chip island-pet-chip-ghost" data-action="cycle" aria-label="换一句">↻ 换一句</button>
+      <button type="button"
+              class="island-pet-chip"
+              data-action="enter"
+              onclick="event.stopPropagation(); window.location.href='/world/';">进入森林岛 →</button>
+      <button type="button"
+              class="island-pet-chip island-pet-chip-ghost"
+              data-action="cycle"
+              aria-label="换一句"
+              onclick="event.stopPropagation(); event.preventDefault(); window.__islandPetCycle && window.__islandPetCycle();">↻ 换一句</button>
     </div>
   </div>
 </div>
@@ -438,12 +447,13 @@ import IslandWidget from './IslandWidget'
       if (!wrap.contains(e.relatedTarget)) panel?.setAttribute('aria-hidden', 'true')
     })
 
-    // V53.3: Chip handlers. Both click AND pointerdown wired — pointerdown
-    // fires BEFORE click and survives pointer-leave races (when cursor
-    // exits the panel mid-click and the panel goes pointer-events:none,
-    // the click event can get cancelled but pointerdown was already
-    // captured). stopPropagation so wrap's navigate-to-/world/ doesn't
-    // double-fire.
+    // V53.4: cycle function exposed on window so the inline onclick
+    // attribute on the cycle chip can call it. addEventListener also
+    // wired as fallback in case inline onclick is blocked (CSP etc.).
+    window.__islandPetCycle = function () {
+      quoteIdx = (quoteIdx + 1) % (detectLang() === 'zh' ? QUOTES_ZH.length : QUOTES_EN.length)
+      applyLang()
+    }
     function navEnter(e) {
       e.stopPropagation()
       location.href = wrap.dataset.href || '/world/'
@@ -451,13 +461,12 @@ import IslandWidget from './IslandWidget'
     function navCycle(e) {
       e.stopPropagation()
       e.preventDefault()
-      quoteIdx = (quoteIdx + 1) % (detectLang() === 'zh' ? QUOTES_ZH.length : QUOTES_EN.length)
-      applyLang()
+      window.__islandPetCycle()
     }
     enterChip.addEventListener('click', navEnter)
-    enterChip.addEventListener('pointerup', navEnter)   // redundancy
+    enterChip.addEventListener('pointerup', navEnter)
     cycleChip.addEventListener('click', navCycle)
-    cycleChip.addEventListener('pointerup', navCycle)   // redundancy
+    cycleChip.addEventListener('pointerup', navCycle)
     } catch (err) {
       console.error('[island-pet] panel init failed:', err)
     }
@@ -604,9 +613,11 @@ import IslandWidget from './IslandWidget'
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
-    /* hover-IN: 300ms dwell delay before fade-in */
-    transition: opacity 320ms ease 300ms,
-                transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1) 300ms,
+    /* V53.4: dwell delay removed (was 300ms). Panel shows
+       instantly on hover so there's NO race window where user
+       moves to click and the panel is half-transparent. */
+    transition: opacity 220ms ease 0ms,
+                transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1) 0ms,
                 pointer-events 0ms 0ms;
   }
   /* V53.3: invisible safety cushion ABOVE the pet (where the old gap
@@ -657,7 +668,14 @@ import IslandWidget from './IslandWidget'
     transform: translateY(-1px);
   }
   .island-pet-chip:active {
-    transform: translateY(0) scale(0.97);
+    /* V53.4: stronger feedback on press so user knows the click
+       registered (the bug they reported was about clicks doing
+       nothing — at minimum they should SEE the press) */
+    transform: translateY(1px) scale(0.94);
+    background: rgba(170, 60, 45, 1);
+  }
+  .island-pet-chip-ghost:active {
+    background: rgba(252, 244, 226, 0.28);
   }
   .island-pet-chip:focus-visible {
     outline: 2px solid rgba(252, 244, 226, 0.85);
