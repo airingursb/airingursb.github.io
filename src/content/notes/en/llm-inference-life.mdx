@@ -1,0 +1,88 @@
+---
+title: "The Life of an LLM Inference — A Prompt's 28 Stops Inside llama.cpp"
+date: "2026-05-24"
+tags: [LLM, Inference Engine, llama.cpp, vLLM, Transformer, KV Cache, MoE, MLA, Quantization, Speculative Decoding, Continuous Batching, Tensor Parallelism, GBNF, Multimodal, Reasoning, Performance]
+public: true
+summary: After you press enter on "hello, llama", those 5 tokens travel 28 stops inside llama.cpp before they come back as an answer — the tokenizer splits bytes into BPE ids, the embedding table fetches 4096-dim vectors, the KV cache decides the memory ceiling of the whole run, attention fuses Q·Kᵀ through FlashAttention's online softmax into a single SRAM kernel, the MoE router lights up only 8 of 256 experts, MLA collapses the entire KV table into latent form, quantisation squeezes a 16 GB model into 5 GB, speculative decoding shaves 60% off decode time, continuous batching keeps the GPU busy between requests, TP/PP/EP splits 405B across 8 cards, GBNF forces output to obey a JSON schema, the vision encoder turns an image into 256 tokens, reasoning models "*think*" 10000 internal tokens, Blackwell fp4 fits 405B into a single node, and finally SSE pushes every character one frame at a time to the user's screen. Every stop maps to a real file and a real function in llama.cpp / vLLM, read line by line.
+immersive:
+  url: /immersive/llm-inference-life/
+  label: Immersive
+---
+
+> This is an immersive long-form essay — best read in its dedicated layout → [Open the full version](/immersive/llm-inference-life/)
+
+The ninth piece in the **Field Note** series. Sister pieces: «[The Life of One JS Line · QuickJS Source-Level Walkthrough](/immersive/quickjs/)» (one engine, full stack) and «[How V8 makes JS fast](/immersive/v8-fast-js/)» (multi-tier JIT). This one swaps in a different language model — LLM inference — but keeps the same method: **one main-line prompt**, traced station by station against real source code.
+
+### Main line: 5 tokens, 28 stops
+
+```
+prompt = "hello, llama"
+       │
+       ▼
+   ┌─────────── Phase 0 · Intro ────────┐
+   │ C01 Three views of "hello"         │
+   │ C02 prefill vs decode              │
+   ├─────────── Phase I · Entry ────────┤
+   │ C03 Tokenizer · BPE                │
+   │ C04 Embedding + intrinsic dim      │
+   │ C05 Batch / request lifecycle      │
+   ├─────────── Phase II · Heart ───────┤
+   │ C06 RMSNorm + RoPE (math)          │
+   │ C07 QKV projection                 │
+   │ C08 KV cache + attention sinks ⭐  │
+   │ C09 Attention + online softmax     │
+   ├─────────── Phase III · Variants ───┤
+   │ C10 GQA / MQA                      │
+   │ C11 MLA (DeepSeek) ⭐              │
+   │ C12 MoE routing ⭐                 │
+   ├─────────── Phase IV · Exit ────────┤
+   │ C13 LM head + vocab-parallel       │
+   │ C14 Sampling (min-p/DRY/mirostat)  │
+   │ C15 EOS + stop matching            │
+   ├─────────── Phase V · Atlas ────────┤
+   │ C16 One full forward stack         │
+   │ C17 vLLM vs llama.cpp + CUDA Graph │
+   ├─────────── Phase VI · Production ──┤
+   │ C18 Quant zoo (GGUF/AWQ/GPTQ/SQ) ⭐│
+   │ C19 Speculative (EAGLE) + prefix ⭐│
+   ├─────────── Phase VII · Scaling ────┤
+   │ C20 Continuous batching ⭐         │
+   │ C21 Chunked prefill                │
+   │ C22 TP / PP / EP multi-GPU ⭐      │
+   ├─────────── Phase VIII · Protocol ──┤
+   │ C23 Streaming + chat template      │
+   │ C24 Constrained decoding ⭐        │
+   ├─────────── Phase IX · Frontier ────┤
+   │ C25 Multimodal (vision encoder) ⭐ │
+   │ C26 Reasoning · o1/R1/test-time ⭐ │
+   │ C27 Hardware · A100/H100/B200      │
+   └─────────── Coda · Toolbox ─────────┘
+     C28 How to trace your own inference
+```
+
+### What this edition digs into
+
+- **Line-by-line real source**: all 28 stops point to a specific file and function in the `llama.cpp` / `vLLM` repos. `llm_tokenizer_bpe::tokenize` · `llama_kv_cache_unified::find_slot` · `ggml_flash_attn_ext` · `llama_sampler_chain_apply` · `block_q4_K` · `PrefixCachingBlockAllocator.allocate_with_prefix` · `Scheduler.schedule` · `RowParallelLinear` · `llama_grammar_apply_impl` · `clip_image_encode` — all read in the essay, line by line.
+- **One main-line prompt**: `"hello, llama"` — the first 12 chapters run on Llama-3-8B, MLA and MoE switch to DeepSeek-V3, TP/PP scales up to Llama-3-405B, and the multimodal chapter turns the prompt into "*what's in this picture*" + a photo of a cat.
+- **The two-phase world of prefill ≠ decode**: an inference run is really two completely different workloads — prefill is matrix × matrix, compute-bound; decode is matrix × vector, bandwidth-bound. The KV cache glues them together. Prefix caching squeezes shared prefixes once more; speculative decoding turns serial decode into parallel prefill; continuous batching mixes them in the same batch; chunked prefill solves the "long prompt starves decode" unfairness; reasoning models multiply decode count by 50, doubling the marginal value of every optimisation above.
+- **The real weight of the KV cache**: Llama-3-8B at 8K context = ~1 GB of KV cache; a 70B service on 8×H100 fits 170 concurrent users — the KV cache idling in memory is exactly why "OpenAI's gross margin is 60%, not 90%". The *Attention Sinks paper* explains why removing the first 4 tokens collapses the model immediately; KV cache compression (H2O / SnapKV / PyramidKV) is each lab's take on selective forgetting.
+- **The math of FlashAttention's online softmax**: maintain a running max and running denominator, paired with the `exp(m_old - m_new)` correction factor — that's the trick that lets FA skip materialising the S matrix. FA v1 → v2 → v3 evolution is deeply coupled with the A100 / H100 hardware generations.
+- **A full complex-number derivation of RoPE**: treat each pair of Q/K dimensions as a point in the complex plane, rotate by mθ, Q·K^T = Re(q·k\*·e^(i(m-n)θ)) — absolute position vanishes, only relative position remains.
+- **The absorption math of MLA**: substitute `K = c_kv · W_uk` into attention, `Q · Kᵀ = (Q · W_ukᵀ) · c_kvᵀ` — `W_ukᵀ` gets fused into `W_q` once at model load, the runtime only computes one matmul, and the KV cache only stores the latent. Derived step by step.
+- **The MoE family tree**: Mixtral 8x7B / DBRX / Phi-MoE / DeepSeek-V2 / DeepSeek-V3 / Llama-4 Maverick / Llama-4 Behemoth side by side. From softmax to sigmoid, from no shared expert to having one, from coarse to fine.
+- **Continuous batching**: vLLM's real superpower, pushing throughput 5-20× because the GPU finally stops *drinking coffee on the clock*. Stacked with CUDA Graphs + Triton kernels for another lift.
+- **The three multi-GPU splits**: TP (split matrices within a layer, all-reduce) · PP (different layers on different cards, bubble problem) · EP (MoE experts distributed, all-to-all). The Llama-3-405B deployment recipe is computed per-card down to gigabytes.
+- **Constrained decoding**: a GBNF grammar engine compiles a JSON schema into an FSM, every token is validated via trie lookup — OpenAI's structured output isn't magic, it's engineering.
+- **Quantisation's real bit-field**: `block_q4_K`'s precise 256-weight → 144-byte layout, Q4_K_M's "M" = mixed (attn.wv / ffn.w2 / LM head use Q6_K), fp8 e4m3 vs e5m2's usage divergence. Trade-offs across GGUF / AWQ / GPTQ / SmoothQuant / HQQ.
+- **Three generations of speculative**: vanilla → Medusa → EAGLE → spec + prefix sharing — hit rate and implementation complexity climb together.
+- **Production engines' actual stacked optimisations**: static batching → +continuous batching (5×) → +PagedAttention (12×) → +chunked prefill (16×) → +prefix caching + speculative (30×). Same model, same hardware: wall time 13.3 s → 3.5 s.
+- **Multimodal · pixels as tokens**: the vision encoder patches the image → CLIP-ViT → projector → fed in as tokens. A single HD image ≈ 1500 text tokens, all of which must prefill. Three fusion routes: late fusion / cross-attention / native multimodal.
+- **Reasoning models · o1/R1 rewrote inference economics**: a thinking phase of 20000 internal tokens, decode count × 50. Very new directions: "*thinking doesn't stream*", "*parallel thinking*", "*thinking compression*".
+- **Hardware generations**: A100 → H100 → H200 → B200, key metrics double every two years. How WGMMA / TMA / fp8 / fp4 reshape the inference path. The implications of a single GB200 NVL72 cabinet with 72 cards.
+- **llama.cpp vs vLLM**: same task, two playbooks. CUDA Graph capture / Triton kernel / cuBLAS — a three-layer kernel stack. What each sacrificed.
+
+After reading you'll hold a very concrete mental model of "what happens in those 200 ms after you press enter": you'll be able to read `llama_decode` logs in llama.cpp, follow the PagedAttention paper from vLLM, explain FlashAttention's online softmax math, work out how many concurrent users a one-node 405B service can carry, and articulate "why is this model slow at inference" in an interview or code review.
+
+> "An LLM looks like it's 'thinking', but what it's really doing is letting 5 tokens climb 32 flights of stairs through a 4096-dimensional hidden space, where each landing has the same KV table laid out on it."
+
+Full read: **[The Life of an LLM Inference — A Prompt's 28 Stops Inside llama.cpp](/immersive/llm-inference-life/)**

@@ -1,0 +1,181 @@
+---
+title: "一次 TLS 握手的一生 —— TLS 1.3 协议全景"
+date: "2026-05-23"
+tags: [TLS, 网络协议, 密码学, ECH, Post-Quantum, X.509]
+public: true
+summary: 客户端打出一个 ClientHello 才 538 字节，里面塞了密钥协商、版本协商、ALPN、SNI、0-RTT 邀请。一来一回之后，HKDF 长出 8 把密钥，证书链被验过、握手被 HMAC 自证完整性、AEAD 接管所有应用字节——这一切要在 1 个 RTT 里干完。TLS 1.3 字节级手册，从 ClientHello 到 ECH 到抗量子 KEM。
+immersive:
+  url: /immersive/tls-handshake/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/tls-handshake/)
+
+这是 Field Note 系列的第七篇。姐妹篇《[一次请求的一生 · HTTP/3 协议全景](/immersive/http3/)》把 TLS 当作 "QUIC 用 CRYPTO 帧带的乘客" 一笔带过。这一次把镜头反过来对准这个乘客本人——TLS 1.3 从 `ClientHello` 第一字节起的全字节解剖、HKDF 怎么用一颗根种子长出 8 把密钥、证书链怎么被验、ECH 怎么用 HPKE 把 SNI 整个封住、Post-Quantum 怎么挤进 `key_share` 槽位。
+
+下面是文章核心的精华版。完整字节级拆解、所有 SVG 时序图和 RFC 引用都在沉浸式版本里。
+
+## 三个公式 — TLS 到底是什么
+
+```
+TLS = AKE + AEAD-Record + Ticket
+    = (ECDHE + cert-sig)  (encrypted bytes)  (next-time PSK)
+```
+
+这三件事在 TLS 里是<em>正交的</em>：换 AKE（X25519 → ML-KEM）不影响 Record；换 AEAD（AES-GCM → ChaCha20）不影响 AKE；删 Ticket 也只是回到 1-RTT，握手本身照常。<em>正交</em>是 TLS 1.3 最大的设计胜利——它让"加抗量子 KEM" 这件事在 2024 年只动了 `key_share` 一个字段。
+
+## TLS 1.3 不是优化版的 1.2，是一次清算
+
+TLS 1.2 的握手设计有<em>四个结构性死结</em>，每一个都需要破坏向后兼容才能修：
+
+1. **2 RTT 起步** — CH 里没 key_share，必须多一轮。1.3 让 CH 直接带 key_share。
+2. **RSA-KEX 没有前向保密** — Snowden 文件之后业界全面警觉。1.3 删了。
+3. **Renegotiation 是 RCE** — CVE-2009-3555。1.3 删了，改用 `KEY_UPDATE`。
+4. **可商议性即攻击面** — FREAK / Logjam / SLOTH 都靠降级。1.3 加 downgrade sentinel。
+
+cipher suite 从 ~340 个组合砍到 **5 个**，全部 AEAD。"<em>可组合性是攻击面</em>" 是 1.3 设计的核心观察。
+
+## 一次握手 ursb.me 的一生 · 10 个阶段
+
+```
+T+0    DNS HTTPS RR · ECHConfig + ALPN
+T+2ms  TCP 三次握手
+T+15ms ClientHello (outer + ECH-wrapped inner) · 538 B
+T+30ms ServerHello + {EE, Cert, CV, Finished}_enc · 1142 B
+T+30ms HKDF tree → 8 keys
+T+45ms Client Finished + GET /_enc (piggy-back)
+T+60ms 200 OK + body_enc
+T+60ms NewSessionTicket × 2
+T+1day 下次访问 0-RTT
+```
+
+握手 + 应用首字节 = **1 RTT** · 回访 = **0 RTT**。
+
+## ClientHello — 538 字节里的全部秘密
+
+它是 TLS 协议<em>唯一一条明文消息</em>。要在 1 KB 之内说清楚：
+
+- `supported_versions` (43) — "我想说 TLS 1.3"
+- `key_share` (51) — "这是我已经为这些曲线生成的公钥"（含 PQ ML-KEM 公钥就 1184 字节）
+- `signature_algorithms` (13) — "这些签名算法我能验"
+- `server_name` (0) — "我要去 ursb.me"（明文 ! → Ch18 之耻 → ECH）
+- `pre_shared_key` (41) — 如果在 resume
+
+`key_share` 占 70% 的 CH 大小，因为 X25519MLKEM768 的 ML-KEM 部分公钥就是 1184 字节。Post-Quantum 把整个 CH 从 ~300 字节膨胀到 ~538 字节——2024 年部署 PQ KEM 时争论得最激烈的开销点。
+
+## HKDF Key Schedule — 一颗根种子长出 8 把密钥
+
+```
+PSK ────────→ early_secret ──→ client_early_traffic_secret  (0-RTT)
+                  │
+                  ↓ Derive-Secret("derived", "")
+DHE ────→ handshake_secret ──→ c/s_handshake_traffic_secret
+                  │
+                  ↓ Derive-Secret("derived", "")
+              master_secret ──→ c/s_application_traffic_secret_0
+                                ↓
+                       resumption_master_secret → next-time PSK
+```
+
+每把密钥都<em>绑了 transcript-hash</em>——改一字节握手内容 = 派生出完全不同的密钥 = 接下来的 AEAD 解密失败 = 中间人篡改无所遁形。这是 TLS 1.3 的密码学心脏。
+
+## CertificateVerify · 一份签名怎么证明私钥
+
+握手对面有两个独立的事实：拿了 cert（公钥可验）+ 完成了 ECDHE。CertVerify 把它们绑在一起——服务器用证书私钥对 `64 spaces ‖ "TLS 1.3, server CertificateVerify" ‖ 0x00 ‖ transcript-hash` 签名。前 64 字节是空格，<em>防跨协议同型攻击</em>。
+
+签名算法 1.3 砍掉了：DSA、SHA-1、PKCS#1 v1.5 in CertVerify（防 ROBOT）。EdDSA + ECDSA-P256 + RSA-PSS 是默认。
+
+## Finished — 用 HMAC 自证整个握手
+
+```
+finished_key = HKDF-Expand-Label(traffic_secret, "finished", "", hash_len)
+Finished     = HMAC(finished_key, Transcript-Hash(整个握手))
+```
+
+双方对方算的 transcript 哪怕差一字节，HMAC 对不上，握手直接失败。降级攻击在这里被卡死。
+
+## 0-RTT 三道防线
+
+0-RTT 的根本缺陷：<em>没有新鲜度</em>。攻击者抓到 UDP 包<em>可以原封不动重放任意多次</em>。`GET /home` 没问题，`POST /transfer/100USD` 重放 = 100 次转账。
+
+三道防线缺一不可：
+
+1. **客户端** — 只在 idempotent 方法（GET、HEAD）启用。
+2. **服务器应用层** — 收到 `Early-Data: 1` header 的请求决定接受还是 425 Too Early。
+3. **TLS 层** — ≤ 10s 时间窗 + PSK ID 进 Redis 去重。
+
+Cloudflare 默认对 GET/HEAD 启用，回访 TTFB 降 ~50 ms。
+
+## 证书链 · SAN 在哪里、根在谁手里
+
+- 现代证书的"真实主体"在 **SAN 扩展**里，<em>CN 字段被忽略</em>（RFC 6125 之后）。Chrome 80+ 拒绝只有 CN 没 SAN 的证书。
+- Let's Encrypt 给所有 cert 定 90 天有效期 → 强制自动化 → "忘记续费"故障率降到 0。2027 起所有 public TLS cert ≤ 47 天。
+- 四份独立的 root store：Mozilla NSS / Apple / Microsoft / **Chrome Root Store**（Chrome 105+ 脱离 OS 维护自己的）。被踢出去很快——2017 年 Symantec 因 misissuance 被同步剔除，影响 30% 互联网证书。
+
+## CT log — 让伪造证书无法不被发现
+
+每张证书带 ≥ 2 个独立 log 的 SCT（Signed Certificate Timestamp）。Log 是 append-only Merkle tree，操作者必须公开。任何人都能审计——<em>"我看到一份 *.google.com 签发但不是 Google 签的，警报！"</em>。这是过去 10 年最大的 PKI 改进。2023 年 GoDaddy 错签 1.2M 个 cert 在 24 小时内被发现，过去能藏 2-3 年。
+
+## SNI 之耻 + ECH
+
+TLS 1.3 几乎做到"<em>除了你的存在性外什么都不泄露</em>"——只有 `ClientHello.server_name` 是明文，把你访问的域名暴露给任何能看 IP 包头的人。国家级防火墙、企业 DPI、ISP 跟踪都靠它。
+
+**ECH** 用 HPKE（Hybrid Public Key Encryption）做双 ClientHello：
+
+- **Outer** SNI 写 `cloudflare-ech.com`（公开 decoy）
+- **Inner** SNI 写 `ursb.me`，整个被 HPKE 加密塞进 outer 的 `encrypted_client_hello` 扩展
+- 公钥从 **DNS HTTPS RR**（RFC 9460）里取
+
+两份 ClientHello 必须看起来等价（大小、扩展顺序、padding 全一致），否则流量分析能区分 ECH 有没有用。draft-22，Cloudflare 默认开。
+
+## Post-Quantum — Shor 还没到，但 harvest now decrypt later 是真的
+
+Shor 算法在量子计算机上能<em>多项式时间</em>破 RSA、ECDH。当前距离 RSA-2048 量子破解还差 1000 倍物理量子比特。但 NIST 2024 年命令 2030 年前完成迁移——情报机构可以现在抓 pcap 等量子机器，10 年保密期数据现在就在风险中。
+
+| Algorithm | Quantum threat | Status |
+|---|---|---|
+| RSA / ECDH / EdDSA | poly-time (Shor) | migrate |
+| AES-256-GCM | 2^128 (Grover) | safe |
+| ML-KEM-768 | 2^196 lattice | safe |
+| ML-DSA-65 | 2^192 lattice | safe |
+
+**X25519MLKEM768** = X25519 + ML-KEM-768 hybrid（FIPS 203 标准化）。安全 = max(X25519, ML-KEM)，任意一个不破整体不破。Cloudflare + Chrome 2024 年默认开启，部署 6 个月：握手 P50 +5 ms，P95 +15 ms，CPU +3%，零安全事件。
+
+证书 PQ 化是<em>下一阶段</em>——ML-DSA-65 签名 3309 字节（vs ECDSA 64 字节），cert 膨胀到 8 KB，chain × 3 = 24 KB 握手。IETF 草案中，ETA 2027-2028。
+
+## 攻击史 = 1.3 的删除清单
+
+TLS 1.3 删的东西全是攻击挖出来的洞：
+
+| Year | Attack | What 1.3 deleted |
+|---|---|---|
+| 1998 | Bleichenbacher | RSA-KEX |
+| 2009 | Renegotiation MITM | renegotiation |
+| 2011 | BEAST | CBC mode |
+| 2012 | CRIME | TLS compression |
+| 2013 | Lucky13 | CBC + HMAC |
+| 2014 | Heartbleed | Heartbeat extension |
+| 2014 | POODLE | SSL 3.0 |
+| 2015 | FREAK + Logjam | EXPORT ciphers |
+| 2016 | SLOTH | SHA-1 transcripts |
+
+"<em>协议简化 → 实现更难错（少一个分支少一个 bug）</em>" 是 1.3 的隐含安全保证。
+
+## 如果你只记 10 件事
+
+1. TLS 1.3 = "<em>砍掉所有不安全选项</em>" 的清算。RSA-KEX / CBC / renegotiation / compression / SHA-1 / SSL 全删。
+2. ClientHello 是<em>唯一明文</em>消息——538 字节里塞了 10+ 个扩展。剩下全 AEAD。
+3. 1-RTT 的魔法 = ClientHello 直接带 key_share，服务器立刻能派生密钥。
+4. HKDF 一颗根种子长出 8 把密钥，每把绑 transcript-hash。
+5. 0-RTT 没有前向保密 · 只能 GET · 三道防线缺一不可。
+6. 证书在 SAN 里不在 CN 里 · Let's Encrypt 90 天 · 2027 后 47 天。
+7. CT log 让伪造证书无法不被发现 · ≥ 2 个独立 log 的 SCT。
+8. SNI 仍是明文 · ECH 用 HPKE 包整个 ClientHello · DNS HTTPS RR 配送公钥。
+9. Post-Quantum 已开始 · X25519MLKEM768 默认 · 证书 PQ 化是下一阶段。
+10. "<em>harvest now, decrypt later</em>" 是真的 · 10 年保密期数据现在就需要 PQ KEM。
+
+> 握手只发生 1 个 RTT。
+>
+> 但 30 年的攻防压在每个字节里。
+
+如果想看 ClientHello 的逐字节 hex dump、HKDF 树的完整 SVG、ECH outer/inner 双 ClientHello 的流量分析等价性、ML-KEM 公钥怎么塞进 key_share、每个攻击 CVE 对应的 1.3 删除条款，请去 [沉浸式完整版](/immersive/tls-handshake/)。

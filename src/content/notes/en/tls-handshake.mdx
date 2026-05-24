@@ -1,0 +1,181 @@
+---
+title: "The Life of a TLS Handshake — TLS 1.3 Protocol in Full"
+date: "2026-05-23"
+tags: [TLS, Network Protocol, Cryptography, ECH, Post-Quantum, X.509]
+public: true
+summary: A client fires off a 538-byte ClientHello stuffed with key agreement, version negotiation, ALPN, SNI, and a 0-RTT invitation. One round-trip later, HKDF grows eight keys out of a single root seed, the certificate chain is verified, the handshake self-attests via HMAC, and AEAD takes over every application byte — all in 1 RTT. A byte-level field manual for TLS 1.3, from ClientHello to ECH to post-quantum KEM.
+immersive:
+  url: /immersive/tls-handshake/
+  label: Immersive
+---
+
+> This is an immersive long-form essay — best read in its dedicated layout → [Open the full version](/immersive/tls-handshake/)
+
+The seventh entry in the **Field Note** series. The sister piece, «[The Life of One Request · HTTP/3 in Full](/immersive/http3/)», treated TLS as "a passenger that QUIC ferries via CRYPTO frames." This time the camera turns around and points at the passenger itself — TLS 1.3, byte-by-byte from the first octet of `ClientHello`, how HKDF grows eight keys from one root seed, how the certificate chain is verified, how ECH uses HPKE to wrap the SNI completely, and how post-quantum KEM squeezes into the `key_share` slot.
+
+What follows is the condensed version of the core. The full byte-level dissection, every SVG timing diagram, and all RFC references live in the immersive edition.
+
+## Three formulas — what TLS actually is
+
+```
+TLS = AKE + AEAD-Record + Ticket
+    = (ECDHE + cert-sig)  (encrypted bytes)  (next-time PSK)
+```
+
+These three pieces are *orthogonal* inside TLS: swapping the AKE (X25519 → ML-KEM) leaves Record untouched, swapping AEAD (AES-GCM → ChaCha20) leaves AKE alone, dropping Ticket only drops you back to 1-RTT — the handshake itself runs as usual. *Orthogonality* is TLS 1.3's biggest design win — it's the reason "add a post-quantum KEM" in 2024 touched exactly one field: `key_share`.
+
+## TLS 1.3 isn't an optimised 1.2 — it's a reckoning
+
+TLS 1.2's handshake had *four structural dead-ends*, each of which required breaking backwards compatibility to fix:
+
+1. **2 RTT minimum** — no key_share in CH, one extra round mandatory. 1.3 lets CH carry key_share directly.
+2. **RSA-KEX has no forward secrecy** — Snowden put the whole industry on alert. 1.3 deleted it.
+3. **Renegotiation is an RCE** — CVE-2009-3555. 1.3 deleted it; `KEY_UPDATE` replaces it.
+4. **Negotiability = attack surface** — FREAK / Logjam / SLOTH all hinged on downgrade. 1.3 adds a downgrade sentinel.
+
+Cipher suites went from ~340 combinations to **5**, all AEAD. "*Composability is attack surface*" is the core observation behind 1.3's design.
+
+## One handshake to ursb.me · 10 stages
+
+```
+T+0    DNS HTTPS RR · ECHConfig + ALPN
+T+2ms  TCP three-way handshake
+T+15ms ClientHello (outer + ECH-wrapped inner) · 538 B
+T+30ms ServerHello + {EE, Cert, CV, Finished}_enc · 1142 B
+T+30ms HKDF tree → 8 keys
+T+45ms Client Finished + GET /_enc (piggy-back)
+T+60ms 200 OK + body_enc
+T+60ms NewSessionTicket × 2
+T+1day Next visit, 0-RTT
+```
+
+Handshake + first application byte = **1 RTT** · return visit = **0 RTT**.
+
+## ClientHello — every secret packed into 538 bytes
+
+It is the *only plaintext message in the protocol*. It has to say everything inside 1 KB:
+
+- `supported_versions` (43) — "I want to speak TLS 1.3"
+- `key_share` (51) — "here are the public keys I've already generated for these curves" (containing a PQ ML-KEM public key alone weighs 1184 bytes)
+- `signature_algorithms` (13) — "these are the signature algorithms I can verify"
+- `server_name` (0) — "I'm visiting ursb.me" (plaintext! → the shame of Ch18 → ECH)
+- `pre_shared_key` (41) — if resuming
+
+`key_share` accounts for 70% of CH size because the X25519MLKEM768 ML-KEM portion alone is 1184 bytes. Post-quantum inflates the CH from ~300 to ~538 bytes — the most contested cost discussion of the 2024 PQ-KEM rollout.
+
+## HKDF Key Schedule — one root seed, eight keys
+
+```
+PSK ────────→ early_secret ──→ client_early_traffic_secret  (0-RTT)
+                  │
+                  ↓ Derive-Secret("derived", "")
+DHE ────→ handshake_secret ──→ c/s_handshake_traffic_secret
+                  │
+                  ↓ Derive-Secret("derived", "")
+              master_secret ──→ c/s_application_traffic_secret_0
+                                ↓
+                       resumption_master_secret → next-time PSK
+```
+
+Every key is *bound to a transcript-hash* — flip one byte of the handshake and you derive entirely different keys, the subsequent AEAD decryption fails, and any MITM tampering has nowhere to hide. This is the cryptographic heart of TLS 1.3.
+
+## CertificateVerify · how a signature proves the private key
+
+The party on the other side has two independent facts: it presented a cert (the public key is verifiable) and it completed ECDHE. CertVerify binds them together — the server signs `64 spaces ‖ "TLS 1.3, server CertificateVerify" ‖ 0x00 ‖ transcript-hash` with its cert private key. The leading 64 spaces *prevent cross-protocol same-format attacks*.
+
+Signature algorithms 1.3 axed: DSA, SHA-1, PKCS#1 v1.5 in CertVerify (anti-ROBOT). EdDSA + ECDSA-P256 + RSA-PSS are the defaults.
+
+## Finished — HMAC self-attests the entire handshake
+
+```
+finished_key = HKDF-Expand-Label(traffic_secret, "finished", "", hash_len)
+Finished     = HMAC(finished_key, Transcript-Hash(entire handshake))
+```
+
+If either side's computed transcript differs by even one byte, the HMAC fails to match and the handshake aborts. Downgrade attacks die here.
+
+## 0-RTT's three lines of defence
+
+The fundamental flaw in 0-RTT: *no freshness*. An attacker who captures the UDP packet *can replay it verbatim any number of times*. `GET /home` is fine; `POST /transfer/100USD` replayed = 100 transfers.
+
+Three defences are all required:
+
+1. **Client** — enable only on idempotent methods (GET, HEAD).
+2. **Server application layer** — requests carrying `Early-Data: 1` decide whether to accept or return 425 Too Early.
+3. **TLS layer** — ≤ 10 s time window + PSK ID dedup in Redis.
+
+Cloudflare enables it by default for GET/HEAD, dropping return-visit TTFB by ~50 ms.
+
+## Certificate chain · where SAN lives, who holds the root
+
+- The "real subject" of a modern certificate lives in the **SAN extension**; the *CN field is ignored* (post-RFC 6125). Chrome 80+ rejects certs with only CN and no SAN.
+- Let's Encrypt caps all certs at 90 days → forces automation → "forgot to renew" failures drop to zero. From 2027, all public TLS certs ≤ 47 days.
+- Four independent root stores: Mozilla NSS / Apple / Microsoft / **Chrome Root Store** (Chrome 105+ stopped relying on the OS and runs its own). Eviction is fast — in 2017 Symantec was synchronously removed for misissuance, affecting 30% of internet certs.
+
+## CT log — forged certs can no longer hide
+
+Every cert ships with ≥ 2 SCTs (Signed Certificate Timestamps) from independent logs. The logs are append-only Merkle trees whose operators must be public. Anyone can audit — *"I see a `*.google.com` cert issued but not signed by Google. Alarm!"* This is the biggest PKI improvement of the past decade. When GoDaddy misissued 1.2M certs in 2023, it was discovered within 24 hours — historically it would have lurked 2-3 years.
+
+## SNI's shame + ECH
+
+TLS 1.3 nearly achieves "*leak nothing but the fact of your existence*" — except that `ClientHello.server_name` is plaintext, exposing the domain you're visiting to anyone watching IP headers. Nation-state firewalls, enterprise DPI, ISP tracking all live off it.
+
+**ECH** uses HPKE (Hybrid Public Key Encryption) to do a double-ClientHello:
+
+- **Outer** SNI writes `cloudflare-ech.com` (a public decoy)
+- **Inner** SNI writes `ursb.me`, the whole thing HPKE-encrypted into the outer's `encrypted_client_hello` extension
+- The public key is fetched from a **DNS HTTPS RR** (RFC 9460)
+
+The two ClientHellos must look equivalent (size, extension order, padding all identical), otherwise traffic analysis can tell whether ECH is in use. Draft-22; Cloudflare has it on by default.
+
+## Post-Quantum — Shor isn't here yet, but harvest-now-decrypt-later is real
+
+Shor's algorithm cracks RSA and ECDH in *polynomial time* on a quantum computer. We're still ~1000× physical qubits short of cracking RSA-2048. But NIST ordered migration by 2030 — intelligence agencies can capture pcaps now and wait for the machines, so data with a 10-year confidentiality window is already at risk.
+
+| Algorithm | Quantum threat | Status |
+|---|---|---|
+| RSA / ECDH / EdDSA | poly-time (Shor) | migrate |
+| AES-256-GCM | 2^128 (Grover) | safe |
+| ML-KEM-768 | 2^196 lattice | safe |
+| ML-DSA-65 | 2^192 lattice | safe |
+
+**X25519MLKEM768** = X25519 + ML-KEM-768 hybrid (standardised as FIPS 203). Security = max(X25519, ML-KEM); if either holds, the whole holds. Cloudflare + Chrome enabled it by default in 2024; six months of deployment: handshake P50 +5 ms, P95 +15 ms, CPU +3%, zero security incidents.
+
+Cert PQ migration is the *next phase* — ML-DSA-65 signatures are 3309 bytes (vs ECDSA's 64), inflating certs to 8 KB and a chain × 3 to 24 KB per handshake. IETF draft stage; ETA 2027-2028.
+
+## Attack history = 1.3's deletion list
+
+Everything TLS 1.3 deleted was a hole someone first dug up:
+
+| Year | Attack | What 1.3 deleted |
+|---|---|---|
+| 1998 | Bleichenbacher | RSA-KEX |
+| 2009 | Renegotiation MITM | renegotiation |
+| 2011 | BEAST | CBC mode |
+| 2012 | CRIME | TLS compression |
+| 2013 | Lucky13 | CBC + HMAC |
+| 2014 | Heartbleed | Heartbeat extension |
+| 2014 | POODLE | SSL 3.0 |
+| 2015 | FREAK + Logjam | EXPORT ciphers |
+| 2016 | SLOTH | SHA-1 transcripts |
+
+"*Protocol simplification → implementations harder to get wrong (one fewer branch = one fewer bug)*" is the implicit security guarantee of 1.3.
+
+## 10 things if you only remember this much
+
+1. TLS 1.3 = "*delete every insecure option*", a reckoning. RSA-KEX / CBC / renegotiation / compression / SHA-1 / SSL all gone.
+2. ClientHello is the *only plaintext* message — 538 bytes pack 10+ extensions. Everything else is AEAD.
+3. The 1-RTT magic = ClientHello carries key_share, the server can derive keys immediately.
+4. HKDF grows 8 keys from one root seed, every key bound to a transcript-hash.
+5. 0-RTT has no forward secrecy · GET only · all three defences are required.
+6. Certificates live in SAN, not CN · Let's Encrypt 90 days · ≤ 47 after 2027.
+7. CT logs make forged certs impossible to hide · ≥ 2 SCTs from independent logs.
+8. SNI is still plaintext · ECH uses HPKE to wrap the entire ClientHello · DNS HTTPS RR delivers the public key.
+9. Post-quantum has begun · X25519MLKEM768 by default · cert PQ migration is the next phase.
+10. "*Harvest now, decrypt later*" is real · 10-year confidentiality data needs PQ KEM today.
+
+> The handshake happens in just 1 RTT.
+>
+> But 30 years of attack-and-defence are pressed into every byte.
+
+For the byte-level hex dump of ClientHello, the full SVG of the HKDF tree, the equivalence analysis of ECH outer/inner ClientHellos under traffic analysis, how ML-KEM public keys fit into `key_share`, and every attack CVE mapped to its 1.3 deletion clause, head to the [immersive full version](/immersive/tls-handshake/).

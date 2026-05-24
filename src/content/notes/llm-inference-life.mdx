@@ -1,0 +1,88 @@
+---
+title: "一次 LLM 推理的一生 —— 一个 prompt 在 llama.cpp 里走过的 28 个站"
+date: "2026-05-24"
+tags: [LLM, 推理引擎, llama.cpp, vLLM, Transformer, KV Cache, MoE, MLA, 量化, Speculative Decoding, Continuous Batching, Tensor Parallelism, GBNF, Multimodal, Reasoning, 性能工程]
+public: true
+summary: 你敲下 "你好,llama" 按回车之后,这 5 个 token 在 llama.cpp 里要走过 28 个站才能换回一个回答——tokenizer 把字节切成 BPE id、embedding 表查到 4096 维向量、KV cache 决定整个推理的内存上限、attention 把 Q·Kᵀ 通过 FlashAttention 的 online softmax 在 SRAM 里融成一个 kernel、MoE 路由器只点亮 256 个专家里的 8 个、MLA 把整张 KV 桌子压成 latent、量化把 16 GB 模型挤进 5 GB、投机解码再把 decode 切掉 60% 的时间、continuous batching 让 GPU 在请求间隙不闲着、TP/PP/EP 三种切法让 405B 在 8 卡上跑起来、GBNF 让输出严格遵守 JSON schema、Vision encoder 把图片变成 256 个 token、reasoning 模型 "<em>思考</em>" 10000 个内部 token、Blackwell fp4 让 405B 装进一节点,最后 SSE 把每个字符一帧一帧推到用户屏幕上。每一站对应 llama.cpp / vLLM 一个真实文件、一个真实函数,逐行读。
+immersive:
+  url: /immersive/llm-inference-life/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/llm-inference-life/)
+
+这是 Field Note 系列的第九篇。姐妹篇是 [《一行 JS 的一生 · QuickJS 源码详解》](/immersive/quickjs/)（讲一个引擎全栈）和 [《V8 是怎么把 JS 跑快的》](/immersive/v8-fast-js/)（讲多层 JIT）。本篇换一种语言模型——LLM 推理——但还是同一个手法：**主线一段 prompt**，对着真源码看它一站站怎么变形。
+
+### 主线：5 个 token，走过 28 个站
+
+```
+prompt = "你好,llama"
+       │
+       ▼
+   ┌─────────── Phase 0 · 引子 ─────────┐
+   │ C01 三眼看 "你好"                  │
+   │ C02 prefill vs decode              │
+   ├─────────── Phase I · 入口 ─────────┤
+   │ C03 Tokenizer · BPE                │
+   │ C04 Embedding + 内在维度           │
+   │ C05 Batch / request lifecycle      │
+   ├─────────── Phase II · 心脏 ────────┤
+   │ C06 RMSNorm + RoPE (math)          │
+   │ C07 QKV projection                 │
+   │ C08 KV cache + attention sinks ⭐  │
+   │ C09 Attention + online softmax     │
+   ├─────────── Phase III · 变体 ───────┤
+   │ C10 GQA / MQA                      │
+   │ C11 MLA (DeepSeek) ⭐              │
+   │ C12 MoE 路由 ⭐                    │
+   ├─────────── Phase IV · 出口 ────────┤
+   │ C13 LM head + vocab-parallel       │
+   │ C14 Sampling (min-p/DRY/mirostat)  │
+   │ C15 EOS + stop matching            │
+   ├─────────── Phase V · 全景 ─────────┤
+   │ C16 一次完整 forward 的 stack       │
+   │ C17 vLLM vs llama.cpp + CUDA Graph │
+   ├─────────── Phase VI · 生产 ────────┤
+   │ C18 量化 zoo (GGUF/AWQ/GPTQ/SQ) ⭐ │
+   │ C19 投机解码 (EAGLE) + 前缀缓存 ⭐ │
+   ├─────────── Phase VII · 规模化 ─────┤
+   │ C20 Continuous batching ⭐         │
+   │ C21 Chunked prefill                │
+   │ C22 TP / PP / EP 多 GPU ⭐         │
+   ├─────────── Phase VIII · 协议 ──────┤
+   │ C23 Streaming + Chat template      │
+   │ C24 Constrained decoding ⭐        │
+   ├─────────── Phase IX · 前沿 ────────┤
+   │ C25 Multimodal (vision encoder) ⭐ │
+   │ C26 Reasoning · o1/R1/test-time ⭐ │
+   │ C27 Hardware · A100/H100/B200      │
+   └─────────── Coda · 工具箱 ──────────┘
+     C28 怎么自己 trace 一次推理
+```
+
+### 这一版深挖了什么
+
+- **逐行真源码**：28 个站全部对应 `llama.cpp` / `vLLM` 仓库里一个具体文件、一个具体函数。`llm_tokenizer_bpe::tokenize` · `llama_kv_cache_unified::find_slot` · `ggml_flash_attn_ext` · `llama_sampler_chain_apply` · `block_q4_K` · `PrefixCachingBlockAllocator.allocate_with_prefix` · `Scheduler.schedule` · `RowParallelLinear` · `llama_grammar_apply_impl` · `clip_image_encode` · 一连串都在文里逐行读过。
+- **一条主线 prompt**：`"你好,llama"`——前 12 章用 Llama-3-8B 跑，到 MLA 和 MoE 那两章换成 DeepSeek-V3，到 TP/PP 那一章上 Llama-3-405B，到 multimodal 那章 prompt 变成 "<em>这张图里有什么</em>" + 一张猫的图片。
+- **prefill ≠ decode 的二相世界**：一次推理其实是两个完全不同的负载——prefill 是矩阵×矩阵，吃算力；decode 是矩阵×向量，吃带宽。KV cache 把它们粘起来；prefix caching 把"共享开头"再省一刀；speculative decoding 把"串行 decode"压成"并行 prefill"；continuous batching 让它们在同一个 batch 里混跑；chunked prefill 解决"长 prompt 拖死 decode"的不公平；reasoning 模型把 decode 数量 × 50,所有这些优化的边际价值翻倍。
+- **KV cache 的真实重量**：Llama-3-8B 在 8K 上下文下 KV cache 约 1 GB；70B 服务在 8×H100 装下 170 个并发用户，KV cache idle 时占内存就是 "OpenAI 毛利 60% 不是 90%" 的原因。<em>Attention sinks 论文</em> 解释为什么去掉开头 4 个 token 模型立刻崩,KV cache 压缩(H2O/SnapKV/PyramidKV)各家在选择性遗忘上的取舍。
+- **FlashAttention 的 online softmax 数学**：维护 running max 和 running denominator，配合那个 `exp(m_old - m_new)` 的修正系数——这是 FA 不物化 S 矩阵的关键。FA v1 → v2 → v3 三代演化跟 A100 / H100 硬件代际深度耦合。
+- **RoPE 的完整复数推导**：把 Q/K 的每对维度看作复平面上的点，旋转 mθ 角度，Q·K^T = Re(q·k\*·e^(i(m-n)θ))——绝对位置自然消失，只剩相对位置。
+- **MLA 的吸收数学**：把 `K = c_kv · W_uk` 代进 attention，`Q · Kᵀ = (Q · W_ukᵀ) · c_kvᵀ`——`W_ukᵀ` 可以在模型加载时一次性融进 `W_q`，运行时只算一次 matmul，KV cache 只存 latent。一步一步推导。
+- **MoE 家族大谱**：Mixtral 8x7B / DBRX / Phi-MoE / DeepSeek-V2 / DeepSeek-V3 / Llama-4 Maverick / Llama-4 Behemoth 同表对比。从 softmax 到 sigmoid，从无共享专家到有,从粗到细。
+- **Continuous batching**：vLLM 真正的杀招,把吞吐量从 1× 涨到 5-20×,因为 GPU 终于不再 "<em>带薪喝咖啡</em>"。配合 CUDA Graph + Triton kernel 又是一截。
+- **多 GPU 三种切法**：TP（同层切矩阵，all-reduce）· PP（不同层放不同卡，气泡问题）· EP（MoE 专家分布，all-to-all）。Llama-3-405B 部署配方算到每张卡 GB 级。
+- **Constrained decoding**：GBNF 语法引擎把 JSON Schema 编译成 FSM，每个 token 都用 trie 索引验证——OpenAI structured output 不是魔法,是工程。
+- **量化的真实位段**：`block_q4_K` 256 weights → 144 bytes 的精细切法，Q4_K_M 的 "M" = mixed (attn.wv / ffn.w2 / LM head 用 Q6_K)，fp8 e4m3 vs e5m2 的用法分歧。GGUF / AWQ / GPTQ / SmoothQuant / HQQ 五种方案的取舍。
+- **Speculative 三代演化**:vanilla → Medusa → EAGLE → spec+prefix sharing,逐代命中率和实现复杂度。
+- **生产引擎的真实优化栈叠加**：static batching → +continuous batching (5×) → +PagedAttention (12×) → +chunked prefill (16×) → +prefix caching + speculative (30×)。同模型同硬件,wall time 13.3s → 3.5s。
+- **Multimodal · pixels as tokens**:vision encoder 把图片切 patch → CLIP-ViT → projector → 当 token 喂进 LLM。一张高清图等价 ~1500 个文字 token,要 prefill。Late fusion / cross-attention / native multimodal 三种融合路线的取舍。
+- **Reasoning models · o1/R1 改写了推理 economics**:thinking 阶段 20000 个内部 token,decode 数量 × 50。"<em>thinking 不流式</em>" "<em>parallel thinking</em>" "<em>thinking compression</em>" 等很新的优化方向。
+- **硬件代际**:A100 → H100 → H200 → B200,每两年关键指标翻倍。WGMMA / TMA / fp8 / fp4 这些硬件特性如何重塑推理路径。GB200 NVL72 单机柜 72 张卡的影响。
+- **llama.cpp vs vLLM**:同一件事,两套写法。CUDA Graph capture / Triton kernel / cuBLAS 三层 kernel 栈。各自牺牲了什么。
+
+读完你会对"按下回车之后那 200 毫秒里到底发生了什么"形成一个非常具体的 mental model，能看懂 llama.cpp 的 `llama_decode` 日志、能读懂 vLLM 的 PagedAttention 论文、能解释 FlashAttention 的 online softmax 数学、能算清楚 405B 服务一节点能承载多少用户、能在面试或 review 里说清楚 "这个模型为什么推理慢"。
+
+> "一个 LLM 看起来在'思考'，但它真正做的事情，是 5 个 token 在 4096 维的隐空间里走 32 层楼梯，每层楼梯上都铺着同一张 KV 桌子。"
+
+完整阅读：**[一次 LLM 推理的一生 — 一个 prompt 在 llama.cpp 里走过的 28 个站](/immersive/llm-inference-life/)**
