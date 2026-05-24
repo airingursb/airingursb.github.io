@@ -22,19 +22,13 @@ const PERSIMMON_STEM = '#3A2516'
 // any existing tree's silhouette.
 const POS: [number, number, number] = [13.0, 0, 6.5]
 
-function PersimmonFruit({ position }: { position: [number, number, number] }) {
-  // Tiny orange ball with darker bottom + 4 sepal leaves on top.
-  const ref = useRef<THREE.Group>(null)
-  useFrame((s) => {
-    if (!ref.current) return
-    const t = s.clock.elapsedTime
-    const gust = getGust(t)
-    // Subtle swing on its stem + harder swing on gust
-    ref.current.rotation.z = Math.sin(t * 1.8 + position[0]) * (0.05 + gust * 0.20)
-    ref.current.rotation.x = Math.cos(t * 1.5 + position[2]) * 0.03 * (1 + gust * 1.5)
-  })
+// Sub-A perf fix: PersimmonFruit had its own useFrame per fruit (8
+// callbacks). Refactored to a single useFrame in the parent that
+// iterates over a refs array — 1 callback iterates 8 instead of
+// 8 separate callbacks.
+function PersimmonFruit({ position, refCb }: { position: [number, number, number]; refCb: (el: THREE.Group | null) => void }) {
   return (
-    <group ref={ref} position={position}>
+    <group ref={refCb} position={position}>
       {/* Tiny stem */}
       <mesh position={[0, 0.08, 0]}>
         <cylinderGeometry args={[0.004, 0.004, 0.06, 4]} />
@@ -77,6 +71,18 @@ export default function PersimmonTree() {
     [ 0.05,  1.80,  0.10],
     [ 0.25,  1.40,  0.40],
   ]
+  // Single useFrame iterating all fruit refs (1 callback vs 8)
+  const fruitRefs = useRef<Array<THREE.Group | null>>([])
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    const gust = getGust(t)
+    fruitRefs.current.forEach((g, i) => {
+      if (!g) return
+      const pos = fruits[i]
+      g.rotation.z = Math.sin(t * 1.8 + pos[0]) * (0.05 + gust * 0.20)
+      g.rotation.x = Math.cos(t * 1.5 + pos[2]) * 0.03 * (1 + gust * 1.5)
+    })
+  })
 
   return (
     <group position={POS}>
@@ -117,7 +123,7 @@ export default function PersimmonTree() {
 
       {/* Persimmon fruits scattered through the canopy */}
       {fruits.map((p, i) => (
-        <PersimmonFruit key={`pm${i}`} position={p} />
+        <PersimmonFruit key={`pm${i}`} position={p} refCb={(el) => { fruitRefs.current[i] = el }} />
       ))}
 
       {/* Two fallen fruits on the ground — wabi-sabi detail */}

@@ -4,15 +4,13 @@
 
 import { PATH_POINTS } from './zones'
 
-// (point-index, lateral offset, scale, cap color)
+// Sub-A density fix: cut 7 → 4 hero clusters. Mushrooms at sub-pixel
+// distance from default camera; better to have fewer punchy ones.
 const MUSHROOMS: Array<{ idx: number; lat: number; scale: number; capColor: string }> = [
-  { idx: 1,  lat:  0.6, scale: 1.0, capColor: '#C13E3E' },
-  { idx: 3,  lat: -0.7, scale: 0.85, capColor: '#E89A4A' },
-  { idx: 7,  lat:  0.5, scale: 0.9, capColor: '#C13E3E' },
-  { idx: 10, lat: -0.8, scale: 1.1, capColor: '#A0301E' },
-  { idx: 14, lat:  0.7, scale: 0.95, capColor: '#E89A4A' },
-  { idx: 17, lat:  0.6, scale: 0.85, capColor: '#C13E3E' },
-  { idx: 21, lat: -0.7, scale: 1.0, capColor: '#C13E3E' },
+  { idx: 3,  lat: -0.7, scale: 1.0,  capColor: '#E89A4A' },   // SW near reading
+  { idx: 10, lat: -0.8, scale: 1.2,  capColor: '#A0301E' },   // east near gazebo
+  { idx: 17, lat:  0.6, scale: 1.0,  capColor: '#C13E3E' },   // north near deck
+  { idx: 21, lat: -0.7, scale: 1.1,  capColor: '#C13E3E' },   // west near easel
 ]
 
 function Mushroom({ x, z, scale, capColor }: { x: number; z: number; scale: number; capColor: string }) {
