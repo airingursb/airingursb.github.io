@@ -3,9 +3,15 @@
 // iter-3 gap #1).
 
 import * as THREE from 'three'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { TREE_POSITIONS, FILLER_POSITIONS } from './zones'
 import WindSway from './WindSway'
+
+// Trees at the island edge contribute little to shadowed scene (they
+// barely shadow anything important), but each one through the shadow
+// pass costs draws. Cut shadows from anything > 14 units from origin
+// AND from all fillers (rocks/bushes/etc — too small to read shadows).
+const PERIMETER_DIST = 14
 
 const PINE_TRUNK    = '#5A4128'
 const PINE_FOL_A    = '#5A7A4C'
@@ -368,34 +374,55 @@ function Daisy({ scale = 1 }: { scale?: number }) {
   )
 }
 
+function renderTree([x, z, scale, species]: [number, number, number, 'pine' | 'birch' | 'oak' | 'maple' | 'cherry'], i: number, keyPrefix: string) {
+  const yStretch = 0.75 + ((i * 31) % 11) * 0.08
+  return (
+    <group key={`${keyPrefix}${i}`} position={[x, 0, z]} scale={[1, yStretch, 1]}>
+      <WindSway amp={0.015 + (i % 3) * 0.005} freq={0.6 + (i % 5) * 0.08} phase={i * 0.4}>
+        {species === 'pine' && <Pine scale={scale} seed={i} />}
+        {species === 'birch' && <Birch scale={scale} seed={i} />}
+        {species === 'oak' && <Oak scale={scale} seed={i} />}
+        {species === 'maple' && <Maple scale={scale} seed={i} />}
+        {species === 'cherry' && <Cherry scale={scale} seed={i} />}
+      </WindSway>
+    </group>
+  )
+}
+
 export default function Forest() {
+  const noShadowRef = useRef<THREE.Group>(null)
+
+  // After mount, walk all descendant meshes inside the perimeter group
+  // and force castShadow=false. Saves ~30-50% of shadow-pass draws.
+  useEffect(() => {
+    noShadowRef.current?.traverse((obj) => {
+      const m = obj as THREE.Mesh
+      if (m.isMesh) m.castShadow = false
+    })
+  }, [])
+
+  const innerTrees = TREE_POSITIONS.filter(([x, z]) => Math.hypot(x, z) <= PERIMETER_DIST)
+  const outerTrees = TREE_POSITIONS.filter(([x, z]) => Math.hypot(x, z) > PERIMETER_DIST)
+
   return (
     <group>
-      {TREE_POSITIONS.map(([x, z, scale, species], i) => {
-        const yStretch = 0.75 + ((i * 31) % 11) * 0.08
-        return (
-          <group key={`t${i}`} position={[x, 0, z]} scale={[1, yStretch, 1]}>
-            {/* Wind sway around base — tree canopy gently rocks */}
-            <WindSway amp={0.015 + (i % 3) * 0.005} freq={0.6 + (i % 5) * 0.08} phase={i * 0.4}>
-              {species === 'pine' && <Pine scale={scale} seed={i} />}
-              {species === 'birch' && <Birch scale={scale} seed={i} />}
-              {species === 'oak' && <Oak scale={scale} seed={i} />}
-              {species === 'maple' && <Maple scale={scale} seed={i} />}
-              {species === 'cherry' && <Cherry scale={scale} seed={i} />}
-            </WindSway>
+      {/* Inner trees — cast shadows (small set, big visual impact) */}
+      {innerTrees.map((t, i) => renderTree(t, i, 'it'))}
+
+      {/* Outer perimeter trees + all fillers — no shadow pass (perf) */}
+      <group ref={noShadowRef}>
+        {outerTrees.map((t, i) => renderTree(t, i, 'ot'))}
+        {FILLER_POSITIONS.map(([x, z, kind, scale], i) => (
+          <group key={`f${i}`} position={[x, 0, z]}>
+            {kind === 'bush' && <Bush scale={scale} seed={i} />}
+            {kind === 'rocks' && <Rocks scale={scale} />}
+            {kind === 'lavender' && <Lavender scale={scale} />}
+            {kind === 'fern' && <Fern scale={scale} />}
+            {kind === 'mushroom' && <Mushroom scale={scale} />}
+            {kind === 'daisy' && <Daisy scale={scale} />}
           </group>
-        )
-      })}
-      {FILLER_POSITIONS.map(([x, z, kind, scale], i) => (
-        <group key={`f${i}`} position={[x, 0, z]}>
-          {kind === 'bush' && <Bush scale={scale} seed={i} />}
-          {kind === 'rocks' && <Rocks scale={scale} />}
-          {kind === 'lavender' && <Lavender scale={scale} />}
-          {kind === 'fern' && <Fern scale={scale} />}
-          {kind === 'mushroom' && <Mushroom scale={scale} />}
-          {kind === 'daisy' && <Daisy scale={scale} />}
-        </group>
-      ))}
+        ))}
+      </group>
     </group>
   )
 }

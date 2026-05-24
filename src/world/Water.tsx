@@ -10,7 +10,7 @@
 import * as THREE from 'three'
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { MeshTransmissionMaterial, Sparkles } from '@react-three/drei'
+import { Sparkles } from '@react-three/drei'
 import { POND_CENTER, POND_RADIUS } from './zones'
 
 const WATER_TOP   = '#A6D3D9'
@@ -51,23 +51,17 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
         <meshStandardMaterial color={WATER_DEEP} roughness={0.6} />
       </mesh>
 
-      {/* Surface — transmission material for real refraction */}
+      {/* Surface — cheap shaded plane instead of MeshTransmissionMaterial
+          (which renders the scene to a texture every frame — 5-10ms cost).
+          Visual loss: no real refraction. Visual gain: keeps 60 FPS budget. */}
       <mesh ref={surf} geometry={geo}>
-        <MeshTransmissionMaterial
+        <meshStandardMaterial
           color={WATER_TOP}
-          thickness={0.4}
-          roughness={0.04}
-          transmission={0.75}
-          chromaticAberration={0.02}
-          distortion={0.05}
-          distortionScale={0.2}
-          ior={1.33}
-          temporalDistortion={0}
-          backside
-          metalness={0}
-          envMapIntensity={0.9}
-          attenuationColor="#3A6470"
-          attenuationDistance={1.2}
+          roughness={0.18}
+          metalness={0.35}
+          transparent
+          opacity={0.78}
+          envMapIntensity={1.1}
         />
       </mesh>
 

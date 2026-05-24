@@ -85,8 +85,8 @@ function CameraControls() {
       maxDistance={50}
       minPolarAngle={Math.PI * 0.12}
       maxPolarAngle={Math.PI * 0.44}
-      autoRotate
-      autoRotateSpeed={0.1}
+      enableDamping
+      dampingFactor={0.06}
     />
   )
 }
@@ -112,13 +112,13 @@ function ThemeAwareLights({ theme }: { theme: Theme }) {
         intensity={sun.intensity}
         color={sun.color}
         castShadow
-        shadow-mapSize={[3072, 3072]}
+        shadow-mapSize={[2048, 2048]}
         shadow-camera-near={1}
-        shadow-camera-far={100}
-        shadow-camera-left={-32}
-        shadow-camera-right={32}
-        shadow-camera-top={32}
-        shadow-camera-bottom={-32}
+        shadow-camera-far={80}
+        shadow-camera-left={-24}
+        shadow-camera-right={24}
+        shadow-camera-top={24}
+        shadow-camera-bottom={-24}
         shadow-bias={-0.0005}
       />
       <directionalLight position={[-14, 12, -10]} intensity={0.4} color={theme === 'day' ? '#FAD6B0' : '#D8A088'} />
@@ -155,7 +155,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
   return (
     <Canvas
       shadows
-      dpr={[1, 2]}
+      dpr={[1, 1.5]}
       camera={{ position: [34, 26, 30], fov: 26 }}
       gl={{
         antialias: true,
@@ -272,9 +272,9 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         )}
         {QUALITY !== 'low' && (
           <SSAO
-            samples={QUALITY === 'high' ? 20 : 12}
+            samples={QUALITY === 'high' ? 12 : 8}
             radius={0.15}
-            intensity={14}
+            intensity={12}
             luminanceInfluence={0.6}
             color={0x000000}
             worldDistanceThreshold={0.5}
