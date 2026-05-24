@@ -126,11 +126,16 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
       // portal being filtered out.
       const reason = seas.portalBlockedReason(s.currentRoomId, { name: 'transit', targetRoom: roomId })
       if (reason) { ui.showToast(reason, 2400); return }
-      if (z && z.cost > 0 && e.getEnergy() < z.cost) {
-        ui.showToast(`⚡ Not enough energy (need ${z.cost})`, 2000)
-        return
+      // Local dev: skip the energy gate so iteration isn't blocked by the cap.
+      const isLocalDev = typeof window !== 'undefined'
+        && /^(localhost|127\.0\.0\.1|0\.0\.0\.0|::1)$/.test(window.location.hostname)
+      if (!isLocalDev) {
+        if (z && z.cost > 0 && e.getEnergy() < z.cost) {
+          ui.showToast(`⚡ Not enough energy (need ${z.cost})`, 2000)
+          return
+        }
+        if (z && z.cost > 0) e.consumeEnergy(z.cost)
       }
-      if (z && z.cost > 0) e.consumeEnergy(z.cost)
       net.sendRoomChange(roomId as any)
       s.scene.restart({ roomId, spawnPoint: 'default' })
     })
