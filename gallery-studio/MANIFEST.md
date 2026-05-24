@@ -418,25 +418,25 @@
 > 让美术馆"贴近自然"——草地、小溪、石板、苔藓。**rhombus 形 seamless tileable**。
 > 跟 E/G 一样可以混着铺，但视觉更柔（不是几何 pattern，是有机纹理感觉）。
 
-### K01 — Grass Patch  `[ ]`
+### K01 — Grass Patch  `[x]`
 - **File:** `output/tiles/K01-grass-patch.png`
 - **Size:** 128×128 px
 - **Theme:** 室内"草坪展区"用的草地砖（飘起来的几根草，不是写实草地）
 - **Prompt:** A single seamless rhombus floor tile in flat Saul Bass style. Cream base with a scattered field of small teal vertical "grass blade" lines (~12-15 tiny upward strokes, 4-8px tall each, irregular spacing). 2-3 of the grass blades are slightly taller, in mustard. NO 3D, NO shading — pure flat color silhouettes evoking a stylized lawn from above. Tiles seamlessly.
 
-### K02 — Stream Flow  `[ ]`
+### K02 — Stream Flow  `[x]`
 - **File:** `output/tiles/K02-stream-flow.png`
 - **Size:** 128×128 px
 - **Theme:** 流水/小溪砖（铺在 K01 之间形成一条蜿蜒小溪）
 - **Prompt:** A single seamless rhombus tile in flat Saul Bass style. Cream base with a single thick teal sinuous horizontal "ribbon" crossing the diamond (suggesting flowing water). Inside the teal ribbon, 3-4 tiny cream "highlight" dashes (water ripples). A single tiny mustard fish-shape silhouette (a long pointed oval with a triangular tail) somewhere along the ribbon. Tiles seamlessly when chained — the teal ribbons should align across tile borders to form a continuous stream.
 
-### K03 — Stone Path  `[ ]`
+### K03 — Stone Path  `[x]`
 - **File:** `output/tiles/K03-stone-path.png`
 - **Size:** 128×128 px
 - **Theme:** 鹅卵石走道砖（连成一条小径）
 - **Prompt:** A single seamless rhombus tile in flat Saul Bass style. Cream base with 5-7 irregular flat ink-black "stone" shapes (rounded polygons, varied sizes 6-14 px) clustered in the center, leaving a soft cream border. Between the stones, thin ink gap lines suggest mortar. NO shading, pure flat silhouettes. Tiles seamlessly into a meandering stone path.
 
-### K04 — Moss & Rock  `[ ]`
+### K04 — Moss & Rock  `[x]`
 - **File:** `output/tiles/K04-moss-rock.png`
 - **Size:** 128×128 px
 - **Theme:** 苔藓+碎石的自然地表（角落用，野生感）
@@ -448,31 +448,31 @@
 
 > 让美术馆有"室内花园"感的几件大物件。
 
-### L01 — Carved Stone Bench  `[ ]`
+### L01 — Carved Stone Bench  `[x]`
 - **File:** `output/nature/L01-stone-bench.png`
 - **Size:** 96×40 px
 - **Theme:** 比 C02 木长椅更"户外"的石长椅（公园那种）
 - **Prompt:** A front-facing carved stone garden bench in flat Saul Bass style. A long horizontal cream silhouette (the stone seat, slightly rougher edge than a wooden bench), supported at each end by an ink-black thick rectangular pedestal leg. A thin mustard horizontal accent stripe along the front face of the seat (a carved decorative line). NO 3D, no shading.
 
-### L02 — Tiered Stone Fountain  `[ ]`
+### L02 — Tiered Stone Fountain  `[x]`
 - **File:** `output/nature/L02-fountain-small.png`
 - **Size:** 80×112 px
 - **Theme:** 中庭可以放一座小喷泉
 - **Prompt:** A front-facing 2-tier stone fountain in flat Saul Bass style. A wide cream circular base bowl at the bottom (an ellipse silhouette), with a vertical ink-black pillar rising from its center, topped by a smaller cream circular upper bowl. From the upper bowl, three thin teal vertical lines fall as flat "water streams" into the lower bowl. A single mustard horizontal stripe accents each bowl's rim. NO 3D, pure silhouette stack.
 
-### L03 — Koi Pond  `[ ]`
+### L03 — Koi Pond  `[x]`
 - **File:** `output/nature/L03-koi-pond.png`
 - **Size:** 96×64 px
 - **Theme:** 中庭/南厅角落里的小池塘
 - **Prompt:** A top-down oval koi pond in flat Saul Bass style. A teal elliptical silhouette (the water) framed by a thin ink-black rocky border. Inside the teal, 2 vermilion stylized koi-fish shapes (elongated ovals with triangular tails) curving in opposite directions, and 1 small mustard lily-pad circle. NO 3D, pure flat color blocks. Subtle inner cream "ripple" arc near each fish.
 
-### L04 — Vine Trellis Arch  `[ ]`
+### L04 — Vine Trellis Arch  `[x]`
 - **File:** `output/nature/L04-vine-arch.png`
 - **Size:** 80×128 px
 - **Theme:** 攀爬植物的小拱门/格架（装饰用，南厅入口可以挂一个）
 - **Prompt:** A front-facing wooden trellis arch in flat Saul Bass style. Two thin ink-black vertical posts connected at the top by an arched ink crossbeam (a half-circle). Climbing the trellis, irregular teal vine silhouettes (4-5 wavy lines with small teal leaf-blob clusters at intervals). Two small vermilion flower dots scattered on the vines. NO shading.
 
-### L05 — Bonsai on Pedestal  `[ ]`
+### L05 — Bonsai on Pedestal  `[x]`
 - **File:** `output/nature/L05-bonsai.png`
 - **Size:** 48×80 px
 - **Theme:** 黑色基座上的小盆景（精致的展品物件）
@@ -485,25 +485,25 @@
 > 中央圆厅当前用 E 系列普通菱形砖撑不住"中庭"的份量。M 系列是**专门给 rotunda 升级**的高级大理石，
 > 真博物馆中庭的那种"人字拼花 + 中央徽章 + 角隅花饰"配置。
 
-### M01 — Herringbone Marble Plank  `[ ]`
+### M01 — Herringbone Marble Plank  `[x]`
 - **File:** `output/tiles/M01-marble-herringbone.png`
 - **Size:** 128×128 px
 - **Theme:** 人字拼花大理石（铺中庭走廊）
 - **Prompt:** A single seamless square (NOT rhombus this time — orthogonal tile) marble floor tile in flat Saul Bass style. Cream base divided into a herringbone parquet pattern: 4 long rectangular "planks" arranged in a herringbone V (two horizontal, two vertical, interlocked), separated by ultra-thin ink lines. Inside each plank, a single thin curved ink vein evoking marble. A tiny mustard square dot at each plank intersection (suggesting brass inlay). Tiles seamlessly into a continuous herringbone floor.
 
-### M02 — Central Medallion  `[ ]`
+### M02 — Central Medallion  `[x]`
 - **File:** `output/tiles/M02-marble-medallion.png`
 - **Size:** 256×256 px
 - **Theme:** 中庭**正中央**的大圆形徽章 inlay（铺在 centerpiece 底下当基座）
 - **Prompt:** A large single circular floor medallion in flat Saul Bass style on a transparent background. The outermost ring is a thick mustard band with a stylized Greek-key meander pattern in ink. Inside that, a thin teal ring. The central disc is cream with a 6-fold radial sunburst pattern in ink (6 long triangular wedges meeting at center), with a small vermilion circle at the exact center. The medallion is a single self-contained sprite — NOT tileable — meant to be placed alone in the rotunda's center.
 
-### M03 — Diagonal Veined Marble  `[ ]`
+### M03 — Diagonal Veined Marble  `[x]`
 - **File:** `output/tiles/M03-marble-diagonal.png`
 - **Size:** 128×128 px
 - **Theme:** 比 E02 更显档次的对角斜纹大理石
 - **Prompt:** A single seamless square marble floor tile in flat Saul Bass style. Cream base with a strong diagonal composition: 2 thick teal-tinted bands sweep diagonally from upper-left to lower-right, separated by thinner mustard pin-stripes. Inside the teal bands, irregular thin ink "vein" lines running with the diagonal. NO 3D, pure flat color blocks. Tiles seamlessly along the diagonal axis.
 
-### M04 — Corner Rosette Inlay  `[ ]`
+### M04 — Corner Rosette Inlay  `[x]`
 - **File:** `output/tiles/M04-marble-rosette.png`
 - **Size:** 128×128 px
 - **Theme:** 圆厅 4 个角隅的花饰嵌片（跟 M02 medallion 呼应）

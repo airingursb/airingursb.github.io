@@ -41,6 +41,7 @@ import { setupGalleryDecorations, teardownGalleryDecorations } from '../gallery_
 import { setupGalleryFloorInlay, teardownGalleryFloorInlay } from '../gallery_floor_inlay'
 import { setupGalleryZoneFloors, teardownGalleryZoneFloors } from '../gallery_zone_floors'
 import { setupGalleryMurals, teardownGalleryMurals } from '../gallery_murals'
+import { setupGalleryGarden, teardownGalleryGarden } from '../gallery_garden'
 import { setupGalleryDocent, teardownGalleryDocent } from '../gallery_docent'
 import { setupGalleryMochi, teardownGalleryMochi } from '../gallery_mochi'
 import { setupGalleryComics, teardownGalleryComics, getComicsInteractables } from '../gallery_comics'
@@ -887,6 +888,11 @@ export class RoomScene extends Phaser.Scene {
     setupGalleryMurals(this, this.currentRoomId)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryMurals)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryMurals)
+
+    // K + L garden — natural floor patches + fountain/koi/bonsai/etc
+    setupGalleryGarden(this, this.currentRoomId)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryGarden)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryGarden)
 
     // F/I/J decoration sprites — ficus, banners, plaques, bins, props, nature.
     setupGalleryDecorations(this, this.currentRoomId)

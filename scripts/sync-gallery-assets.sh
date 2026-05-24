@@ -16,7 +16,7 @@ rsync -av "$SRC/" "$DST/" | grep -v '^$\|^sending\|^total\|^sent ' || true
 
 echo ""
 echo "[sync-gallery] manifest progress:"
-expected=$(grep -cE '^### [A-J][0-9]' "$(dirname "$SRC")/MANIFEST.md" || true)
+expected=$(grep -cE '^### [A-Z][0-9]' "$(dirname "$SRC")/MANIFEST.md" || true)
 got=$(find "$DST" -type f -name "*.png" | wc -l | tr -d ' ')
 echo "  $got / $expected sprites present in public/"
 

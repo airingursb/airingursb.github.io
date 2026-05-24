@@ -4,7 +4,6 @@
 // affordance + a clickable shortcut.
 
 import Phaser from 'phaser'
-import { crispText } from './gallery_text'
 import type { RoomId } from './config'
 
 // Door slot in lobby.tmj: x=144..160, y=0..16 (16×16 carved out of wall_top_l)
@@ -43,17 +42,8 @@ export function setupGalleryPortal(
     .setStrokeStyle(1, 0xa07028, 0.7)
   container.add(plaque)
 
-  // Floating label below — the door itself + the interact prompt are
-  // the primary affordance; this small caption inside the room is just a
-  // gentle reminder of what's through this door.
-  const label = crispText(scene, 0, 22, '作品集', {
-    fontSize: '9px',
-    color: '#f5e6c8',
-    fontFamily: 'ui-monospace, monospace',
-    backgroundColor: 'rgba(20, 14, 8, 0.78)',
-    padding: { left: 4, right: 4, top: 1, bottom: 1 },
-  }).setOrigin(0.5)
-  container.add(label)
+  // No floating "作品集" caption — door visual + standard interact prompt
+  // are enough; the caption read as redundant clutter in lobby.
 
   // Click anywhere on the doorframe → enter
   container.setSize(24, 32)

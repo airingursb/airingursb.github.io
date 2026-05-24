@@ -132,6 +132,31 @@ export const NATURE: GalleryAsset[] = [
   def('nature', 'J04-floor-runner'),
 ]
 
+// ── K · Natural floor tiles (grass / stream / stone path / moss)
+export const NATURE_FLOORS: GalleryAsset[] = [
+  def('tiles', 'K01-grass-patch'),
+  def('tiles', 'K02-stream-flow'),
+  def('tiles', 'K03-stone-path'),
+  def('tiles', 'K04-moss-rock'),
+]
+
+// ── L · Garden props (stone bench / fountain / koi pond / vine arch / bonsai)
+export const GARDEN_PROPS: GalleryAsset[] = [
+  def('nature', 'L01-stone-bench'),
+  def('nature', 'L02-fountain-small'),
+  def('nature', 'L03-koi-pond'),
+  def('nature', 'L04-vine-arch'),
+  def('nature', 'L05-bonsai'),
+]
+
+// ── M · Premium rotunda marble (herringbone / medallion / diagonal / rosette)
+export const PREMIUM_MARBLE: GalleryAsset[] = [
+  def('tiles', 'M01-marble-herringbone'),
+  def('tiles', 'M02-marble-medallion'),
+  def('tiles', 'M03-marble-diagonal'),
+  def('tiles', 'M04-marble-rosette'),
+]
+
 export const ALL_GALLERY_ASSETS: GalleryAsset[] = [
   ...PAINTINGS,
   ...CENTERPIECES,
@@ -143,6 +168,9 @@ export const ALL_GALLERY_ASSETS: GalleryAsset[] = [
   ...MURALS,
   ...PROPS,
   ...NATURE,
+  ...NATURE_FLOORS,
+  ...GARDEN_PROPS,
+  ...PREMIUM_MARBLE,
 ]
 
 /** Preload every gallery asset. Failures are non-fatal — the renderers check
