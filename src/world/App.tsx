@@ -33,6 +33,9 @@ import Forest from './Forest'
 import Lanterns from './Lanterns'
 import DuskFog from './DuskFog'
 import Onsen from './Onsen'
+import FoxShrine from './FoxShrine'
+import CanopyDapple from './CanopyDapple'
+import Footprints from './Footprints'
 import Sky from './Sky'
 import Water from './Water'
 import GroundCover from './GroundCover'
@@ -202,6 +205,9 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <Lanterns theme={theme} />
         <DuskFog theme={theme} />
         <Onsen />
+        <FoxShrine />
+        <CanopyDapple theme={theme} />
+        <Footprints />
         <ContactShadowsLayer />
         <ZoneHitboxes />
         <ZoneHints />
