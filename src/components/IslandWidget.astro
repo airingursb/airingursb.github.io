@@ -12,25 +12,111 @@ import IslandWidget from './IslandWidget'
   <a href="/world/" class="island-card-canvas" id="island-3d-canvas-wrap" aria-label="進入森林岛 — Airing 的 3D 漫游">
     <!-- V33: CSS-only loading skeleton. Visible until Canvas mounts;
          MutationObserver swaps `.island-loaded` to fade it. Kills the
-         "blank card" flash on slow networks / before client:visible. -->
+         "blank card" flash on slow networks / before client:visible.
+         V45: refined silhouettes — irimoya roof + chimney + shoji glow,
+         stone lantern, raked gravel ring, slim layered cedars matching
+         R3F palette so the fallback looks like a poster, not a wireframe. -->
     <svg class="island-skeleton" viewBox="0 0 600 300" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-      <!-- Island disk -->
-      <ellipse cx="300" cy="220" rx="220" ry="22" fill="rgba(120, 140, 110, 0.30)" />
-      <!-- Cabin: box + triangle roof -->
-      <rect x="190" y="160" width="115" height="60" fill="rgba(170, 140, 100, 0.40)" />
-      <polygon points="180,165 315,165 247,118" fill="rgba(80, 70, 80, 0.45)" />
-      <!-- Sakura: blob -->
-      <circle cx="395" cy="155" r="48" fill="rgba(240, 175, 195, 0.40)" />
-      <circle cx="420" cy="135" r="32" fill="rgba(255, 200, 215, 0.35)" />
-      <!-- Torii: 2 posts + 2 horizontal beams -->
-      <rect x="430" y="180" width="6" height="50" fill="rgba(170, 60, 50, 0.45)" />
-      <rect x="470" y="180" width="6" height="50" fill="rgba(170, 60, 50, 0.45)" />
-      <rect x="420" y="172" width="68" height="6" fill="rgba(30, 25, 20, 0.55)" />
-      <rect x="426" y="195" width="56" height="4" fill="rgba(170, 60, 50, 0.45)" />
-      <!-- Cedars in back: 3 tall thin triangles -->
-      <polygon points="105,200 120,200 112,140" fill="rgba(60, 80, 60, 0.45)" />
-      <polygon points="135,205 152,205 143,135" fill="rgba(75, 95, 70, 0.45)" />
-      <polygon points="160,210 175,210 167,150" fill="rgba(60, 80, 60, 0.40)" />
+      <defs>
+        <!-- Soil rim cliff under the grass disc -->
+        <linearGradient id="cliff-grad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stop-color="#B88560" stop-opacity="0.45" />
+          <stop offset="1" stop-color="#6B4530" stop-opacity="0.55" />
+        </linearGradient>
+        <!-- Shoji glow from cabin interior -->
+        <radialGradient id="shoji-glow" cx="0.5" cy="0.5" r="0.5">
+          <stop offset="0" stop-color="#FFEFD0" stop-opacity="0.85" />
+          <stop offset="1" stop-color="#FFEFD0" stop-opacity="0" />
+        </radialGradient>
+      </defs>
+
+      <!-- Island base: grass disc + soil cliff rim -->
+      <ellipse cx="300" cy="240" rx="240" ry="14" fill="url(#cliff-grad)" />
+      <ellipse cx="300" cy="222" rx="222" ry="20" fill="rgba(168, 199, 122, 0.55)" />
+      <!-- Raked gravel ring around cabin (slim torus suggestion) -->
+      <ellipse cx="247" cy="222" rx="92" ry="9" fill="none"
+               stroke="rgba(230, 218, 192, 0.45)" stroke-width="1.4" />
+      <ellipse cx="247" cy="222" rx="78" ry="7" fill="none"
+               stroke="rgba(197, 185, 143, 0.40)" stroke-width="1" />
+
+      <!-- Cedars (back left): layered slim flames, per-tree slight offset -->
+      <g opacity="0.85">
+        <!-- Cedar 1 -->
+        <rect x="111" y="180" width="3" height="22" fill="rgba(42, 24, 18, 0.55)" />
+        <polygon points="104,200 120,200 112,158" fill="rgba(56, 88, 48, 0.55)" />
+        <polygon points="106,184 118,184 112,146" fill="rgba(78, 110, 64, 0.50)" />
+        <!-- Cedar 2 (taller) -->
+        <rect x="142" y="175" width="3" height="25" fill="rgba(42, 24, 18, 0.55)" />
+        <polygon points="134,200 152,200 143,148" fill="rgba(56, 88, 48, 0.55)" />
+        <polygon points="136,178 150,178 143,134" fill="rgba(78, 110, 64, 0.50)" />
+        <!-- Cedar 3 (shorter, front) -->
+        <rect x="166" y="190" width="3" height="18" fill="rgba(42, 24, 18, 0.55)" />
+        <polygon points="160,208 175,208 167,168" fill="rgba(56, 88, 48, 0.55)" />
+        <polygon points="162,194 173,194 167,156" fill="rgba(78, 110, 64, 0.50)" />
+      </g>
+
+      <!-- Cabin: washi walls + irimoya-suggested roof + chimney + shoji glow -->
+      <g>
+        <!-- Wall (washi pale) -->
+        <rect x="208" y="170" width="92" height="48" fill="rgba(245, 232, 200, 0.78)" />
+        <!-- Shoji light spill -->
+        <ellipse cx="254" cy="200" rx="32" ry="14" fill="url(#shoji-glow)" />
+        <!-- Window cross (shoji grid hint) -->
+        <line x1="232" y1="186" x2="276" y2="186" stroke="rgba(58, 37, 22, 0.40)" stroke-width="0.8" />
+        <line x1="254" y1="178" x2="254" y2="208" stroke="rgba(58, 37, 22, 0.40)" stroke-width="0.8" />
+        <rect x="232" y="178" width="44" height="30" fill="none" stroke="rgba(58, 37, 22, 0.45)" stroke-width="1" />
+        <!-- Irimoya roof: lower slab + upper ridge slab -->
+        <polygon points="196,170 312,170 295,150 213,150" fill="rgba(54, 60, 72, 0.85)" />
+        <polygon points="213,150 295,150 285,134 223,134" fill="rgba(92, 100, 112, 0.85)" />
+        <!-- Ridge cap -->
+        <rect x="222" y="132" width="64" height="3" fill="rgba(46, 53, 64, 0.90)" />
+        <!-- Chimney + curl of smoke (shortened so it doesn't compete with sun) -->
+        <rect x="270" y="120" width="6" height="14" fill="rgba(58, 37, 22, 0.70)" />
+        <path d="M273 118 Q 278 112, 272 106 Q 266 100, 272 94"
+              fill="none" stroke="rgba(220, 210, 200, 0.45)" stroke-width="2" stroke-linecap="round" />
+      </g>
+
+      <!-- Stone lantern (right-mid, low) -->
+      <g opacity="0.78">
+        <rect x="358" y="208" width="3" height="14" fill="rgba(126, 115, 104, 0.85)" />
+        <rect x="354" y="200" width="11" height="8" fill="rgba(168, 158, 142, 0.85)" />
+        <polygon points="350,200 369,200 360,193" fill="rgba(126, 115, 104, 0.85)" />
+        <!-- Lantern glow -->
+        <circle cx="359" cy="204" r="3" fill="rgba(255, 208, 128, 0.85)" />
+      </g>
+
+      <!-- Sakura: weeping branches + canopy mass + dark inner -->
+      <g>
+        <!-- Branch trunk + curve (stops inside canopy mass) -->
+        <path d="M410 222 Q 408 200, 405 180 Q 402 168, 400 158"
+              stroke="rgba(58, 37, 22, 0.50)" stroke-width="2" fill="none" stroke-linecap="round" />
+        <path d="M405 178 Q 420 174, 428 166" stroke="rgba(58, 37, 22, 0.45)" stroke-width="1.4" fill="none" stroke-linecap="round" />
+        <path d="M408 188 Q 392 184, 384 180" stroke="rgba(58, 37, 22, 0.40)" stroke-width="1.2" fill="none" stroke-linecap="round" />
+        <!-- Canopy: 3 overlapping ellipses for organic mass -->
+        <ellipse cx="395" cy="158" rx="34" ry="26" fill="rgba(240, 175, 195, 0.55)" />
+        <ellipse cx="418" cy="148" rx="26" ry="22" fill="rgba(255, 200, 215, 0.50)" />
+        <ellipse cx="378" cy="170" rx="22" ry="18" fill="rgba(248, 188, 208, 0.50)" />
+        <!-- Fallen petals on ground (3 dots) -->
+        <circle cx="392" cy="220" r="1.4" fill="rgba(240, 175, 195, 0.70)" />
+        <circle cx="402" cy="222" r="1.1" fill="rgba(255, 200, 215, 0.65)" />
+        <circle cx="383" cy="219" r="1.0" fill="rgba(240, 175, 195, 0.55)" />
+      </g>
+
+      <!-- Torii: vermillion posts + black kasagi with upturned ends -->
+      <g>
+        <rect x="447" y="172" width="5" height="50" fill="rgba(200, 74, 53, 0.78)" />
+        <rect x="488" y="172" width="5" height="50" fill="rgba(200, 74, 53, 0.78)" />
+        <!-- Kasagi: top beam with upturned tips (Japanese characteristic) -->
+        <path d="M437 168 Q 470 156, 503 168 L 503 174 L 437 174 Z"
+              fill="rgba(31, 24, 18, 0.85)" />
+        <!-- Nuki: lower beam -->
+        <rect x="443" y="190" width="54" height="4" fill="rgba(200, 74, 53, 0.78)" />
+      </g>
+
+      <!-- Sun: warm orb top-center, very subtle -->
+      <circle cx="345" cy="85" r="22" fill="rgba(255, 232, 192, 0.45)" />
+      <circle cx="345" cy="85" r="14" fill="rgba(255, 220, 168, 0.55)" />
+
       <!-- Subtle pulse breath -->
       <animate attributeName="opacity" values="0.92;0.78;0.92" dur="2.4s" repeatCount="indefinite" />
     </svg>
