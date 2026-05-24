@@ -376,6 +376,21 @@ export default function Critters({ theme = 'day' }: { theme?: 'day' | 'dusk' }) 
         opacity={0.8}
       />
 
+      {/* V2 wave 3: butterflies around the fox shrine clearing too —
+          rewards the discovery of the tucked-away shrine. Day only;
+          dusk has fireflies instead. */}
+      {theme === 'day' && (
+        <Sparkles
+          count={4}
+          scale={[1.2, 1.0, 1.2]}
+          position={[-4.6, 1.2, -6.5]}
+          size={7}
+          speed={0.28}
+          color="#F4D9A0"
+          opacity={0.78}
+        />
+      )}
+
       {/* Bees buzzing around lavender patches */}
       <Sparkles
         count={4}

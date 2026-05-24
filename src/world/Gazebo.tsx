@@ -194,6 +194,49 @@ export default function Gazebo() {
         })}
       </group>
       </WindSway>
+
+      {/* V2 wave 3: tatami mat + zabuton cushion inside the gazebo
+          (music zone interior). Someone has been sitting here listening.
+          Mat slightly off-center, cushion at one edge. */}
+      <group position={[0.3, 0.38, 0]} rotation={[0, 0.25, 0]}>
+        {/* Tatami mat — woven texture suggested via 2-tone borders */}
+        <mesh castShadow receiveShadow>
+          <boxGeometry args={[1.4, 0.025, 0.95]} />
+          <meshStandardMaterial color="#D8C28A" roughness={0.95} flatShading />
+        </mesh>
+        {/* Dark border strips (the 缘 of tatami) */}
+        <mesh position={[0, 0.014, 0.475]}>
+          <boxGeometry args={[1.4, 0.005, 0.04]} />
+          <meshStandardMaterial color="#3A2818" roughness={0.85} />
+        </mesh>
+        <mesh position={[0, 0.014, -0.475]}>
+          <boxGeometry args={[1.4, 0.005, 0.04]} />
+          <meshStandardMaterial color="#3A2818" roughness={0.85} />
+        </mesh>
+        {/* Zabuton cushion — flat purple-cream square */}
+        <group position={[-0.4, 0.05, 0.05]}>
+          <mesh castShadow>
+            <boxGeometry args={[0.42, 0.07, 0.42]} />
+            <meshStandardMaterial color="#5E5288" roughness={0.92} />
+          </mesh>
+          {/* Cushion tassel/button center */}
+          <mesh position={[0, 0.04, 0]}>
+            <sphereGeometry args={[0.025, 8, 6]} />
+            <meshStandardMaterial color="#F4EAD5" roughness={0.85} />
+          </mesh>
+        </group>
+        {/* Small tea bowl beside cushion (mirrors rocker cup) */}
+        <group position={[0.05, 0.04, 0.1]}>
+          <mesh castShadow>
+            <cylinderGeometry args={[0.055, 0.048, 0.05, 14]} />
+            <meshStandardMaterial color="#3A2818" roughness={0.6} metalness={0.15} />
+          </mesh>
+          <mesh position={[0, 0.025, 0]}>
+            <cylinderGeometry args={[0.048, 0.048, 0.003, 14]} />
+            <meshStandardMaterial color="#6E4A2A" roughness={0.4} />
+          </mesh>
+        </group>
+      </group>
     </group>
   )
 }
