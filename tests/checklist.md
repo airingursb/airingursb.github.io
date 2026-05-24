@@ -133,6 +133,39 @@
 - [ ] FallingLeaves renders as 1 InstancedMesh, not 36 separate
       meshes (Three.js stats `.calls` should drop ~35).
 
+### V2 a11y sweep
+
+- [ ] WorldLoader: Inspect element on `#world-loader` while page loads
+      — should have `role="status"` and `aria-live="polite"`. Fallback
+      `#world-webgl-fallback` should have `role="alert"`.
+- [ ] Toggle macOS System Settings → Accessibility → "Reduce motion" ON.
+      Reload `/world/` — loader flower should NOT pulse, bar should NOT
+      sweep (stays at 60% fill), bottom help hint stays at full opacity
+      (doesn't fade out after 22s).
+- [ ] WorldUI: VoiceOver (Cmd+F5) the 4 right-side icon buttons. Each
+      should announce its Chinese label (保存截图 / 切到黄昏 etc.),
+      not "button". Toggle theme — VoiceOver should announce
+      "pressed" on the now-dusk button.
+- [ ] AmbientHUD: same — VoiceOver the white-noise + pomo buttons.
+      The "在岛上 X 分钟" HUD should be auto-announced when it
+      ticks (aria-live="polite"). Pomo "专注中" should auto-announce.
+- [ ] ZonePanel: Tab into a zone hitbox, press Enter to open the panel.
+      Panel should immediately receive focus (panel itself, then Tab
+      navigates inside). Press ESC — focus restores to the hitbox.
+      VoiceOver should announce "dialog · Blog · 文章" on open.
+- [ ] ChatBox: type a message + send. VoiceOver should announce Airing's
+      reply tokens as they stream (role="log" aria-live="polite"),
+      not the entire prior conversation each time. If an error fires,
+      it should announce immediately (role="alert").
+- [ ] AccountIndicator: Tab to the account pill. VoiceOver should
+      announce "登录账户" (signed-out) or "账户菜单：name" (signed-in)
+      + "expanded" / "collapsed" depending on menu state.
+- [ ] LoginModal: Open the modal. VoiceOver should announce
+      "dialog · 登录". Tab cycles inside the modal.
+- [ ] ErrorBoundary: Manually crash by editing src/world/Cabin.tsx to
+      `throw new Error('test')`. Fallback should immediately announce
+      "这片林子有点累了——刷新一下试试".
+
 ## Archive (`/archive/`)
 
 - [ ] GET `/archive/` 返回页面
