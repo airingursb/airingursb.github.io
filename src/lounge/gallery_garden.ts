@@ -13,24 +13,32 @@ let propLayer: Phaser.GameObjects.Container | null = null
 type TilePlacement = { asset: string; x: number; y: number; scale?: number; alpha?: number }
 type PropPlacement = { asset: string; x: number; y: number; scale?: number; flipX?: boolean; origin?: { x: number; y: number } }
 
-// ── K-series natural floor patches ─────────────────────────────────────────
-// Concentrated in the south pavilion's west corner as a small "garden plot"
-// + scattered touches in the wings.
+// ── K-series natural floor — proper carpeted patches (TileSprite-based) ────
+// South pavilion's west half becomes an "indoor garden": grass carpet
+// + stone path snaking through + moss/rocks around the koi pond. East/west
+// wing corners get a smaller mossy patch each.
+type GardenCarpet = {
+  asset: string
+  x: number; y: number; w: number; h: number
+  alpha?: number
+  tileScale?: number
+}
+const GARDEN_CARPETS: GardenCarpet[] = [
+  // South pavilion garden: grass main plot
+  { asset: 'K01-grass-patch', x: 280, y: 720, w: 240, h: 224, alpha: 0.65, tileScale: 0.45 },
+  // Stone path snaking through the garden — narrow strip
+  { asset: 'K03-stone-path',  x: 520, y: 800, w: 80,  h: 120, alpha: 0.7,  tileScale: 0.4 },
+  // West wing far corner mossy patch
+  { asset: 'K04-moss-rock',   x: 16,  y: 624, w: 80,  h: 80,  alpha: 0.55, tileScale: 0.4 },
+  // East wing far corner mossy patch
+  { asset: 'K04-moss-rock',   x: 1184,y: 624, w: 80,  h: 80,  alpha: 0.55, tileScale: 0.4 },
+]
+// Plus the stream + lily individual tiles as accents (not carpeted)
 const TILE_PLACEMENTS: TilePlacement[] = [
-  // South pavilion garden cluster (west side, away from comics + arch)
-  { asset: 'K01-grass-patch', x: 360, y: 836, scale: 0.5, alpha: 0.78 },
-  { asset: 'K01-grass-patch', x: 420, y: 800, scale: 0.5, alpha: 0.78 },
-  { asset: 'K01-grass-patch', x: 360, y: 896, scale: 0.5, alpha: 0.78 },
-  { asset: 'K02-stream-flow', x: 420, y: 866, scale: 0.5, alpha: 0.85 },
-  { asset: 'K02-stream-flow', x: 480, y: 836, scale: 0.5, alpha: 0.85 },
-  { asset: 'K03-stone-path',  x: 300, y: 836, scale: 0.5, alpha: 0.7 },
-  { asset: 'K03-stone-path',  x: 300, y: 896, scale: 0.5, alpha: 0.7 },
-  { asset: 'K04-moss-rock',   x: 420, y: 920, scale: 0.5, alpha: 0.7 },
-  // East/west wing corners — a small mossy + grass touch at the far end
-  { asset: 'K04-moss-rock',   x: 60,   y: 700, scale: 0.45, alpha: 0.65 },
-  { asset: 'K01-grass-patch', x: 60,   y: 660, scale: 0.45, alpha: 0.7 },
-  { asset: 'K04-moss-rock',   x: 1220, y: 700, scale: 0.45, alpha: 0.65 },
-  { asset: 'K01-grass-patch', x: 1220, y: 660, scale: 0.45, alpha: 0.7 },
+  // K02 stream — explicit single tiles to suggest flowing water
+  { asset: 'K02-stream-flow', x: 380, y: 820, scale: 0.55, alpha: 0.85 },
+  { asset: 'K02-stream-flow', x: 440, y: 870, scale: 0.55, alpha: 0.85 },
+  { asset: 'K02-stream-flow', x: 380, y: 920, scale: 0.55, alpha: 0.85 },
 ]
 
 // ── L-series garden props ──────────────────────────────────────────────────
@@ -52,8 +60,21 @@ const PROP_PLACEMENTS: PropPlacement[] = [
 export function setupGalleryGarden(scene: Phaser.Scene, roomId: RoomId): void {
   teardownGalleryGarden()
   if (roomId !== 'room_gallery') return
-  // Natural tiles sit just above carpet — alpha-blended
-  tileLayer = scene.add.container(0, 0).setDepth(2.68)
+  // Natural tiles sit just above zone floors (2.05) but below carpet (2.5)
+  tileLayer = scene.add.container(0, 0).setDepth(2.15)
+  // Carpeted nature patches (TileSprite-based, fill an area)
+  for (const c of GARDEN_CARPETS) {
+    const meta = getAsset(c.asset)
+    if (!meta || !scene.textures.exists(meta.key)) continue
+    const ts = scene.add.tileSprite(
+      c.x + c.w / 2, c.y + c.h / 2,
+      c.w, c.h,
+      meta.key,
+    ).setAlpha(c.alpha ?? 0.6)
+    if (c.tileScale !== undefined) ts.setTileScale(c.tileScale, c.tileScale)
+    tileLayer.add(ts)
+  }
+  // Single accent tiles on top of carpets
   for (const t of TILE_PLACEMENTS) {
     const meta = getAsset(t.asset)
     if (!meta || !scene.textures.exists(meta.key)) continue

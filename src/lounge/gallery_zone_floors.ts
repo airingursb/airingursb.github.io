@@ -1,8 +1,7 @@
-// SHU-737 — drops the G-series zone-specific floor tiles into each wing.
-// Strategy: scatter ~9-12 tiles per wing as accent inlays (not a full tile
-// carpet — that'd fight the programmatic marble base). Each wing gets its
-// own G-tile so the floor visually signals which wing you're in.
-// Sits at depth 2.65 — above carpet (2.5), below E inlays (2.7).
+// Per-wing characteristic floor — each zone is fully tiled with its own
+// G-series sprite so wandering anywhere in that wing reads "you're in
+// Networks/Internals/Performance/Comics". Uses Phaser.TileSprite which
+// renders the source PNG as a repeating texture across the rect.
 
 import Phaser from 'phaser'
 import type { RoomId } from './config'
@@ -10,71 +9,39 @@ import { getAsset } from './gallery_assets'
 
 let layer: Phaser.GameObjects.Container | null = null
 
-type ZoneSpec = {
+type ZoneFill = {
   asset: string
-  positions: Array<[number, number]>
+  x: number; y: number; w: number; h: number
+  alpha?: number
+  tileScale?: number   // 1 = native; 0.5 = half-size repeat
 }
 
-const ZONES: ZoneSpec[] = [
-  // ── North Hall (Networks) — G01 circuit-board hexagonal
-  {
-    asset: 'G01-floor-networks',
-    positions: [
-      [560, 200], [720, 200],
-      [560, 264], [720, 264],
-      [480, 232], [800, 232],
-      [640, 168],
-    ],
-  },
-  // ── East Wing (Web Internals) — G02 terrazzo
-  {
-    asset: 'G02-floor-internals',
-    positions: [
-      [968, 384], [1088, 384], [1208, 384],
-      [968, 512], [1088, 512], [1208, 512],
-      [968, 608], [1088, 608], [1208, 608],
-      [1148, 448], [1028, 448],
-    ],
-  },
-  // ── West Wing (Performance) — G03 clockwork
-  {
-    asset: 'G03-floor-performance',
-    positions: [
-      [72, 384], [192, 384], [312, 384],
-      [72, 512], [192, 512], [312, 512],
-      [72, 608], [192, 608], [312, 608],
-      [252, 448], [132, 448],
-    ],
-  },
-  // ── South Pavilion (Comics) — G04 comic-panel grid
-  {
-    asset: 'G04-floor-comics',
-    positions: [
-      [432, 776], [848, 776],
-      [432, 856], [848, 856],
-      [432, 928], [848, 928],
-      [496, 816], [784, 816],
-    ],
-  },
+const ZONES: ZoneFill[] = [
+  // North Hall (Networks) — col 32-48, row 0-20 → 512..768, 0..320
+  { asset: 'G01-floor-networks',    x: 528, y: 16,  w: 224, h: 288, alpha: 0.5, tileScale: 0.45 },
+  // East Wing (Internals) — col 56-80, row 20-44 → 896..1280, 320..704
+  { asset: 'G02-floor-internals',   x: 912, y: 336, w: 352, h: 352, alpha: 0.55, tileScale: 0.45 },
+  // West Wing (Performance) — col 0-24, row 20-44 → 0..384, 320..704
+  { asset: 'G03-floor-performance', x: 16,  y: 336, w: 352, h: 352, alpha: 0.38, tileScale: 0.45 },
+  // South Pavilion (Comics) — col 24-56, row 44-60 → 384..896, 704..960
+  { asset: 'G04-floor-comics',      x: 400, y: 720, w: 480, h: 224, alpha: 0.45, tileScale: 0.45 },
 ]
 
 export function setupGalleryZoneFloors(scene: Phaser.Scene, roomId: RoomId): void {
   teardownGalleryZoneFloors()
   if (roomId !== 'room_gallery') return
-  layer = scene.add.container(0, 0).setDepth(2.65)
+  layer = scene.add.container(0, 0).setDepth(2.05)   // just above floor base (2.0), below veining (2.1)
 
-  // G03 (performance / clockwork) is dramatic — drop its alpha further so
-  // it doesn't overwhelm the west wing.
-  for (const zone of ZONES) {
-    const meta = getAsset(zone.asset)
+  for (const z of ZONES) {
+    const meta = getAsset(z.asset)
     if (!meta || !scene.textures.exists(meta.key)) continue
-    const alpha = zone.asset === 'G03-floor-performance' ? 0.42 : 0.55
-    for (const [x, y] of zone.positions) {
-      const tile = scene.add.image(x, y, meta.key)
-        .setScale(0.48)
-        .setAlpha(alpha)
-      layer.add(tile)
-    }
+    const tile = scene.add.tileSprite(
+      z.x + z.w / 2, z.y + z.h / 2,
+      z.w, z.h,
+      meta.key,
+    ).setAlpha(z.alpha ?? 0.5)
+    if (z.tileScale !== undefined) tile.setTileScale(z.tileScale, z.tileScale)
+    layer.add(tile)
   }
 }
 
