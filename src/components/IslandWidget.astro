@@ -70,6 +70,17 @@ import IslandWidget from './IslandWidget'
   <!-- V50 a11y: WebGL-failed hint as REAL element (CSS ::after is
        skipped by most screen readers); visibility toggled by JS. -->
   <span class="island-pet-hint" aria-live="polite" hidden>需要 WebGL · 点击进入完整页面</span>
+
+  <!-- V53: hover-reveal overlay. Fades in ~600ms after hover starts;
+       shows a rotating philosophical line (zh/en lang-aware) plus
+       2 action chips ("enter" → /world/, "cycle" → next quote). -->
+  <div class="island-pet-panel" aria-hidden="true">
+    <p class="island-pet-quote"></p>
+    <div class="island-pet-actions">
+      <button type="button" class="island-pet-chip" data-action="enter"></button>
+      <button type="button" class="island-pet-chip island-pet-chip-ghost" data-action="cycle"></button>
+    </div>
+  </div>
 </div>
 
 <script is:inline>
@@ -139,13 +150,130 @@ import IslandWidget from './IslandWidget'
     }, 12000)
 
     // Click + keyboard activation
-    wrap.addEventListener('click', () => { location.href = wrap.dataset.href || '/world/' })
+    wrap.addEventListener('click', (e) => {
+      // V53: don't navigate when a chip absorbed the click
+      if ((e.target instanceof Element) && e.target.closest('.island-pet-chip')) return
+      location.href = wrap.dataset.href || '/world/'
+    })
     wrap.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
+        // Don't fire pet-level enter if a chip is focused
+        if ((e.target instanceof Element) && e.target.closest('.island-pet-chip')) return
         e.preventDefault()
         location.href = wrap.dataset.href || '/world/'
       }
     })
+
+    // ─── V53: hover overlay (quote + chips, lang-aware) ───
+    const panel = wrap.querySelector('.island-pet-panel')
+    const quoteEl = wrap.querySelector('.island-pet-quote')
+    const enterChip = wrap.querySelector('.island-pet-chip[data-action=enter]')
+    const cycleChip = wrap.querySelector('.island-pet-chip[data-action=cycle]')
+
+    const QUOTES_ZH = [
+      '松风过耳，落英满衣。',
+      '此中有真意，欲辨已忘言。',
+      '云在青天水在瓶。',
+      '一花一世界，一叶一菩提。',
+      '白云深处有人家。',
+      '万物静观皆自得。',
+      '小岛承天地之闲，木屋藏岁月之声。',
+      '不识庐山真面目，只缘身在此山中。',
+    ]
+    const QUOTES_EN = [
+      'Pine wind in your ear; petals on your sleeve.',
+      'Find meaning here — and forget how to say it.',
+      'A small island holds the whole sky.',
+      'The chimney smoke knows things you don’t.',
+      'Sit. Listen. The well still rings.',
+      'One leaf, one universe.',
+      'Drift in. Drift out.',
+      'The cabin is open. Always.',
+    ]
+    const CHIP_LABELS = {
+      zh: { enter: '进入森林岛 →', cycle: '再来一句' },
+      en: { enter: 'Enter the forest →', cycle: 'Another' },
+    }
+
+    function detectLang() {
+      // Priority: site's window.currentLang (set after i18n loads) →
+      // html.lang attribute → localStorage → navigator.
+      if (typeof window.currentLang === 'string') {
+        if (window.currentLang === 'en' || window.currentLang === 'zh') return window.currentLang
+      }
+      const htmlLang = (document.documentElement.lang || '').toLowerCase()
+      if (htmlLang.startsWith('en')) return 'en'
+      if (htmlLang.startsWith('zh')) return 'zh'
+      const ls = (typeof localStorage !== 'undefined' && localStorage.getItem('preferred_lang')) || ''
+      if (ls === 'en' || ls === 'zh') return ls
+      const nav = (navigator.language || 'en').toLowerCase()
+      return nav.startsWith('zh') ? 'zh' : 'en'
+    }
+
+    let quoteIdx = Math.floor(Math.random() * QUOTES_ZH.length)
+    function applyLang() {
+      const lang = detectLang()
+      const pool = lang === 'zh' ? QUOTES_ZH : QUOTES_EN
+      if (quoteEl) quoteEl.textContent = pool[quoteIdx % pool.length]
+      if (enterChip) enterChip.textContent = CHIP_LABELS[lang].enter
+      if (cycleChip) cycleChip.textContent = CHIP_LABELS[lang].cycle
+    }
+    applyLang()
+    // V53: defer one more pass after site's i18n promise resolves
+    // (window.currentLang + html.lang aren't set until then on first load).
+    if (window._i18nReady && typeof window._i18nReady.then === 'function') {
+      window._i18nReady.then(applyLang).then(() => {
+        // and once more after applyTranslations runs (microtask later)
+        setTimeout(applyLang, 50)
+      })
+    }
+    window.addEventListener('langchange', applyLang)
+
+    // Dwell timer: panel fades in ~600ms after hover starts. Bail if
+    // the user leaves before the timer fires.
+    let dwellTimer = null
+    function show() {
+      if (!panel) return
+      panel.classList.add('island-pet-panel--shown')
+      panel.setAttribute('aria-hidden', 'false')
+    }
+    function hide() {
+      if (!panel) return
+      panel.classList.remove('island-pet-panel--shown')
+      panel.setAttribute('aria-hidden', 'true')
+    }
+    function arm() {
+      clearTimeout(dwellTimer)
+      dwellTimer = window.setTimeout(show, 600)
+    }
+    function disarm() {
+      clearTimeout(dwellTimer)
+      dwellTimer = null
+      hide()
+    }
+    wrap.addEventListener('pointerenter', arm)
+    wrap.addEventListener('pointerleave', disarm)
+    wrap.addEventListener('focusin', show)   // keyboard users get it immediately
+    wrap.addEventListener('focusout', (e) => {
+      // Only hide when focus leaves the whole wrapper
+      if (!wrap.contains(e.relatedTarget)) hide()
+    })
+
+    // Chip handlers
+    if (enterChip) {
+      enterChip.addEventListener('click', (e) => {
+        e.stopPropagation()
+        location.href = wrap.dataset.href || '/world/'
+      })
+    }
+    if (cycleChip) {
+      cycleChip.addEventListener('click', (e) => {
+        e.stopPropagation()
+        e.preventDefault()
+        quoteIdx = (quoteIdx + 1) % (detectLang() === 'zh' ? QUOTES_ZH.length : QUOTES_EN.length)
+        applyLang()
+      })
+    }
   })()
 </script>
 
@@ -156,10 +284,11 @@ import IslandWidget from './IslandWidget'
      framing under any circumstance. */
   .island-pet {
     position: fixed;
-    /* V51.1: bottom offset clears the theme-switcher button + easter-
-       hint pill that also live in the bottom-right corner. */
-    bottom: 76px;
-    right: 16px;
+    /* V53: moved to bottom-LEFT (was bottom-right). Right-bottom had
+       theme-switcher + easter-hint sharing the corner; left-bottom is
+       wide-open on this site. */
+    bottom: 20px;
+    left: 20px;
     width: 220px;
     height: 220px;
     z-index: 90;            /* above content, below modals (100+) */
@@ -244,21 +373,102 @@ import IslandWidget from './IslandWidget'
     white-space: nowrap;
   }
 
-  /* Tablet: shrink slightly + still clear theme-switcher */
-  @media (max-width: 1024px) and (min-width: 801px) {
+  /* V53: hide below 1100px (was 800). Floating pet only makes sense
+     on wider desktop layouts where there's genuine empty real estate
+     bottom-left of the content column. Below 1100 the column-grid
+     compresses and the pet starts colliding with cards. */
+  @media (max-width: 1100px) {
     .island-pet {
-      width: 180px;
-      height: 180px;
-      bottom: 70px;
-      right: 14px;
+      display: none;
     }
   }
 
-  /* Mobile: hide entirely — floating pet over scrolling content on
-     touch screens is annoying + steals taps from the actual cards. */
-  @media (max-width: 800px) {
-    .island-pet {
-      display: none;
+  /* V53: hover-reveal panel — sits to the RIGHT of the pet (we're at
+     bottom-left so right has space). Pure CSS fade-in on
+     .island-pet-panel--shown class (JS adds it after 600ms dwell). */
+  .island-pet-panel {
+    position: absolute;
+    left: 100%;
+    bottom: 16px;
+    margin-left: 12px;
+    width: 240px;
+    padding: 14px 16px;
+    background: rgba(20, 16, 14, 0.86);
+    color: rgba(252, 244, 226, 0.96);
+    border-radius: 14px;
+    backdrop-filter: blur(8px) saturate(1.1);
+    -webkit-backdrop-filter: blur(8px) saturate(1.1);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 360ms ease, transform 360ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    pointer-events: none;
+    z-index: 4;
+  }
+  .island-pet-panel--shown {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+  }
+  .island-pet-quote {
+    margin: 0 0 12px;
+    font-family: "Songti SC", "Noto Serif SC", "Times New Roman", serif;
+    font-size: 13px;
+    line-height: 1.55;
+    color: rgba(248, 232, 200, 0.92);
+    letter-spacing: 0.01em;
+  }
+  .island-pet-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .island-pet-chip {
+    appearance: none;
+    border: 0;
+    padding: 6px 12px;
+    border-radius: 10px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    cursor: pointer;
+    background: rgba(200, 74, 53, 0.86);  /* vermillion to match torii */
+    color: rgba(252, 244, 226, 0.96);
+    transition: background 180ms ease, transform 180ms ease;
+  }
+  .island-pet-chip:hover {
+    background: rgba(214, 88, 67, 1);
+    transform: translateY(-1px);
+  }
+  .island-pet-chip:focus-visible {
+    outline: 2px solid rgba(252, 244, 226, 0.8);
+    outline-offset: 2px;
+  }
+  .island-pet-chip-ghost {
+    background: rgba(252, 244, 226, 0.10);
+    color: rgba(248, 232, 200, 0.85);
+  }
+  .island-pet-chip-ghost:hover {
+    background: rgba(252, 244, 226, 0.18);
+  }
+  /* If panel runs off-screen right (narrow viewport, somehow >1100 still),
+     flip to left of pet. CSS-only: media query at the narrowest desktop. */
+  @media (max-width: 1200px) {
+    .island-pet-panel {
+      left: auto;
+      right: 100%;
+      margin-left: 0;
+      margin-right: 12px;
+      transform: translateX(8px);
+    }
+    .island-pet-panel--shown {
+      transform: translateX(0);
+    }
+  }
+  /* Reduced motion: skip the slide-in transform, just fade */
+  @media (prefers-reduced-motion: reduce) {
+    .island-pet-panel {
+      transform: none !important;
+      transition: opacity 200ms ease;
     }
   }
 

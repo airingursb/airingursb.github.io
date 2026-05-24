@@ -1190,6 +1190,21 @@ function ContextLossHandlers() {
   return null
 }
 
+// V53: RotatingScene — slow Y-rotation on the whole island (~60 s/turn).
+// Pauses on hover so the user can see the side they're looking at. Lights
+// stay outside this group (world-fixed), so the rotating island gets
+// consistent shading from the sun across all angles.
+function RotatingScene({ children }: { children: React.ReactNode }) {
+  const ref = useRef<THREE.Group>(null)
+  const RATE = (Math.PI * 2) / 60   // one full turn per 60s
+  useFrame((_, dt) => {
+    if (!ref.current) return
+    if (hoverState.active) return    // freeze on hover for interaction
+    ref.current.rotation.y += dt * RATE
+  })
+  return <group ref={ref}>{children}</group>
+}
+
 export default function IslandWidget() {
   // V41: pause render loop when widget is off-screen or tab is hidden.
   // Saves significant battery + GPU on homepage (~10 other cards
@@ -1287,45 +1302,46 @@ export default function IslandWidget() {
           inner flame stoke to outside world). */}
       <AnimatedHearthLight />
 
-      {/* === Scene === */}
-      <Island />
-      <SteppingStones />
-      <FallenPetals />
-      <RakedGravel />
-      <MinkaCabin />
-      <ChimneySmoke />
+      {/* === Scene === V53: everything anchored to the island lives
+          inside RotatingScene so the whole disc + its inhabitants turn
+          as one unit. Atmospherics (Sparkles, FallingPetals) stay
+          OUTSIDE since they're frame-relative drifts, not island parts. */}
+      <RotatingScene>
+        <Island />
+        <SteppingStones />
+        <FallenPetals />
+        <RakedGravel />
+        <MinkaCabin />
+        <ChimneySmoke />
 
-      {/* V11: WindSway wrapped. V52.5: hero true→false. V52.6: scale
-          0.62→0.56 because Sub-A computed canopy FLUFF peaks at
-          local y ≈ 5.7 (canopyCY 4.3 + canopyRY 1.4), so at scale 0.62
-          world y-max = 3.53 — still 0.33 above the y=3.20 crop line.
-          0.56 → world y-max ≈ 3.19, just under the line. */}
-      <WindSway amp={0.018} freq={0.5}>
-        <group position={[0.55, 0, -0.35]} scale={0.56}>
-          <Sakura
-            position={[0, 0, 0]}
-            seed={20260524}
-            size={1.0}
-            density={0.65}
-            hero={false}
-            rotY={0.4}
-            tint="#fad9e4"
-          />
-        </group>
-      </WindSway>
+        {/* WindSway wrap. V52.6: scale 0.56 caps sakura canopy peak
+            at y=3.19 to clear the y=3.25 frustum top. */}
+        <WindSway amp={0.018} freq={0.5}>
+          <group position={[0.55, 0, -0.35]} scale={0.56}>
+            <Sakura
+              position={[0, 0, 0]}
+              seed={20260524}
+              size={1.0}
+              density={0.65}
+              hero={false}
+              rotY={0.4}
+              tint="#fad9e4"
+            />
+          </group>
+        </WindSway>
 
-      {/* 2 cedars in back (cut 1 for breathing room) */}
-      <Cedar x={-1.15} z={-1.05} scale={1.0} seed={1} />
-      <Cedar x={-0.30} z={-1.45} scale={0.88} seed={2} />
+        {/* 2 cedars in back (cut 1 for breathing room) */}
+        <Cedar x={-1.15} z={-1.05} scale={1.0} seed={1} />
+        <Cedar x={-0.30} z={-1.45} scale={0.88} seed={2} />
 
-      {/* Lantern + torii. V36: lantern was salt-shaker scale (0.45) next
-          to cabin — bumped to 0.70 so its hat reads at engawa-handrail
-          height (real ishidoro is shoulder-tall). */}
-      <StoneLantern x={-0.10} z={0.70} />
-      <Torii x={0.65} z={1.55} rotY={-0.35} />
+        {/* Lantern + torii. V36: lantern at scale 0.70 reads at engawa-
+            handrail height (real ishidoro is shoulder-tall). */}
+        <StoneLantern x={-0.10} z={0.70} />
+        <Torii x={0.65} z={1.55} rotY={-0.35} />
 
-      {/* Tsukubai stone water basin */}
-      <Tsukubai x={0.95} z={0.4} />
+        {/* Tsukubai stone water basin */}
+        <Tsukubai x={0.95} z={0.4} />
+      </RotatingScene>
 
       {/* V12: drei Sparkles for atmospheric haze (replaces flat-plane
           light shafts that looked like tissue paper from oblique angles).
