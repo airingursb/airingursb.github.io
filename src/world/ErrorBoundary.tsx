@@ -22,6 +22,8 @@ export default class ErrorBoundary extends Component<Props, State> {
     if (this.state.err) {
       return (
         <div
+          role="alert"
+          aria-live="assertive"
           style={{
             position: 'fixed',
             inset: 0,
@@ -35,7 +37,7 @@ export default class ErrorBoundary extends Component<Props, State> {
           }}
         >
           <div style={{ maxWidth: 360, textAlign: 'center' }}>
-            <div style={{ fontSize: 48, marginBottom: 16 }}>🌿</div>
+            <div style={{ fontSize: 48, marginBottom: 16 }} aria-hidden="true">🌿</div>
             <p>这片林子有点累了——刷新一下试试。</p>
             <details style={{ marginTop: 16, fontSize: 11, opacity: 0.6, textAlign: 'left' }}>
               <summary>technical details</summary>
