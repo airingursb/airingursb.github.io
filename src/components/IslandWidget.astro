@@ -5,8 +5,9 @@ import IslandWidget from './IslandWidget'
 ---
 
 <div class="card card-island" id="island-3d">
+  <!-- V32: use .section-title to align with neighbor cards (Reading, Movies, etc.) -->
   <div class="island-card-head">
-    <div class="island-card-title">森林岛 · 3D</div>
+    <div class="section-title" data-i18n="sec_island_3d">Forest Island · 3D</div>
     <a class="island-card-link" href="/world/">進入 →</a>
   </div>
   <a href="/world/" class="island-card-canvas" aria-label="進入森林岛 — Airing 的 3D 漫游">
@@ -16,21 +17,20 @@ import IslandWidget from './IslandWidget'
 
 <style>
   .card-island {
-    padding: 14px !important;          /* override .card default 24px so canvas dominates */
+    /* V32: keep default .card padding 24px to match neighbors (Footprints,
+       Reading, Movies). Inner canvas adapts to that. */
     overflow: hidden;
   }
   .island-card-head {
     display: flex;
     justify-content: space-between;
     align-items: baseline;
-    margin: 2px 4px 10px;
+    margin-bottom: 0;  /* .section-title already has 16px margin-bottom */
   }
-  .island-card-title {
-    font-family: "Songti SC", "Noto Serif SC", "Hiragino Mincho ProN", serif;
-    font-size: 14px;
-    letter-spacing: 0.08em;
-    color: var(--c-text);
-    opacity: 0.85;
+  /* V32: scope the i18n .section-title margin reset so it matches the
+     adjacent cards' baseline */
+  .card-island .section-title {
+    margin-bottom: 12px;
   }
   .island-card-link {
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
@@ -51,17 +51,17 @@ import IslandWidget from './IslandWidget'
     border-radius: 12px;
     overflow: hidden;
     position: relative;
-    /* V29: two stacked backgrounds — base cool sky + warm golden,
-       layered via color-mix. As --island-dwell ramps 0→1, sky lerps
-       from bright noon blue → golden-hour amber, agreeing with the
-       in-canvas fog/sun shift. */
+    /* V29: stacked dwell-driven sky gradient. V32: desaturated 10%
+       so the widget doesn't out-shout adjacent cards (Footprints map,
+       Reading/Movies terminal). The full saturation looked great in
+       isolation but broke homepage rhythm. */
     background:
       radial-gradient(
         circle at calc(50% + var(--island-dwell) * 8%) calc(28% + var(--island-dwell) * 14%),
-        color-mix(in oklab, #FFF6DD calc((1 - var(--island-dwell)) * 100%), #FFE6B0) 0%,
-        color-mix(in oklab, #E5F1F6 calc((1 - var(--island-dwell)) * 100%), #FFD498) 28%,
-        color-mix(in oklab, #BFD8E8 calc((1 - var(--island-dwell)) * 100%), #E8B080) 60%,
-        color-mix(in oklab, #92B1C8 calc((1 - var(--island-dwell)) * 100%), #C88060) 100%
+        color-mix(in oklab, #F4EED4 calc((1 - var(--island-dwell)) * 100%), #F5DAB0) 0%,
+        color-mix(in oklab, #DCE8ED calc((1 - var(--island-dwell)) * 100%), #F4CC9C) 28%,
+        color-mix(in oklab, #B8CFDC calc((1 - var(--island-dwell)) * 100%), #DAA888) 60%,
+        color-mix(in oklab, #8FAAC0 calc((1 - var(--island-dwell)) * 100%), #B57860) 100%
       );
     cursor: pointer;
     transition: filter 240ms ease, transform 240ms ease;

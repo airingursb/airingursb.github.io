@@ -31,18 +31,31 @@ const hoverState = {
   decay: 0,
 }
 // V27: sustained-hover dwell triggers golden-hour key shift.
-// 0 = bright noon, 1 = warm amber. Lerps in over 1.5s starting at 3s
-// of sustained hover; decays back to 0 over 4s after pointer leave.
+// V31: on touch-only devices (no hover), auto-cycle to keep the
+// payoff visible. 14s loop: 4s noon → 3s ramp → 4s golden → 3s ramp.
+const IS_TOUCH = typeof window !== 'undefined' && window.matchMedia?.('(hover: none)').matches
 function getDwellGolden(t: number): number {
+  if (IS_TOUCH) {
+    // 14s cycle, smooth triangle 0→1→0
+    const phase = (t % 14) / 14
+    return phase < 0.5
+      ? Math.max(0, (phase - 0.29) / 0.21)
+      : Math.max(0, 1 - (phase - 0.50) / 0.21)
+  }
   if (hoverState.active) {
     const dwellSec = t - hoverState.enteredAt
     if (dwellSec < 3) return 0
     return Math.min(1, (dwellSec - 3) / 1.5)
   }
-  // Decay
   const sinceLeave = t - hoverState.decay
   return Math.max(0, 1 - sinceLeave / 4)
 }
+
+// V31: detect mobile / low-end for perf gating
+const IS_MOBILE = typeof window !== 'undefined' && (
+  /Android|webOS|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+  (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 800px)').matches)
+)
 const mouseState = {
   x: 0,    // normalized -1..1
   y: 0,    // normalized -1..1
@@ -1547,9 +1560,9 @@ function ChimneySmoke() {
 export default function IslandWidget() {
   return (
     <Canvas
-      shadows
+      shadows={!IS_MOBILE}   // V31: skip shadow pass on mobile (~30% faster)
       camera={{ position: [2.9, 1.5, 3.7], fov: 28 }}
-      dpr={[1, 1.5]}
+      dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}   // V31: lower DPR cap on mobile
       gl={{
         antialias: true,
         alpha: true,
@@ -1670,12 +1683,12 @@ export default function IslandWidget() {
       <DistantMountains />
       <HoverZoneHotspots />
 
-      {/* Postprocessing — tuned for bright noon (was over-baked in V4).
-          Bloom 0.55→0.35 + threshold 0.78→0.85 so the lantern doesn't go
-          nuclear in shade. Vignette darkness 0.5→0.25 because vignette
-          on a bright noon scene contradicts the lighting. */}
+      {/* Postprocessing — tuned for bright noon. V31: drop Bloom on
+          mobile (single most expensive pass per frame). */}
       <EffectComposer multisampling={0}>
-        <Bloom intensity={0.35} luminanceThreshold={0.85} luminanceSmoothing={0.5} mipmapBlur />
+        {!IS_MOBILE && (
+          <Bloom intensity={0.35} luminanceThreshold={0.85} luminanceSmoothing={0.5} mipmapBlur />
+        )}
         <Vignette eskil={false} offset={0.40} darkness={0.25} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
         <SMAA />
