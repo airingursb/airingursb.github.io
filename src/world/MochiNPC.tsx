@@ -42,14 +42,25 @@ export default function MochiNPC() {
 
     if (la.active) {
       const phase = t - la.started   // 0..5s
-      // 4-beat sweep: left (0-1) → center (1-2) → right (2-3) → up (3-4) → center (4-5)
+      // Sub-A fix: sine-eased 4-beat sweep instead of piecewise linear.
+      // Beats: left(0-1.25) → center(1.25-2.5) → right(2.5-3.75) →
+      //        up+center(3.75-5). All easings sine in-out so no snap.
       let yaw = 0
       let pitch = 0
-      if (phase < 1)       yaw = -0.7 * phase
-      else if (phase < 2)  yaw = -0.7 + 0.7 * (phase - 1)
-      else if (phase < 3)  yaw = 0.7 * (phase - 2)
-      else if (phase < 4)  { yaw = 0.7 - 0.7 * (phase - 3); pitch = -0.4 * (phase - 3) }
-      else if (phase < 5)  { pitch = -0.4 + 0.4 * (phase - 4) }
+      const sineSeg = (p: number, p0: number, p1: number, from: number, to: number) => {
+        if (p < p0 || p > p1) return null
+        const u = (p - p0) / (p1 - p0)
+        return from + (to - from) * (0.5 - Math.cos(u * Math.PI) * 0.5)
+      }
+      yaw =
+        sineSeg(phase, 0,    1.25, 0,    -0.7) ??
+        sineSeg(phase, 1.25, 2.5,  -0.7,  0)   ??
+        sineSeg(phase, 2.5,  3.75, 0,     0.7) ??
+        sineSeg(phase, 3.75, 5.0,  0.7,   0)   ?? 0
+      // Pitch only rises during the last beat (3.75-4.4) then returns
+      pitch =
+        sineSeg(phase, 3.75, 4.40, 0,    -0.35) ??
+        sineSeg(phase, 4.40, 5.00, -0.35, 0)    ?? 0
       headRef.current.rotation.y = yaw
       headRef.current.rotation.x = pitch
       if (phase >= 5) {

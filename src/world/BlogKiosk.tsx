@@ -197,6 +197,116 @@ export default function BlogKiosk({
           <boxGeometry args={[1.4, 0.04, 0.04]} />
           <meshStandardMaterial color={WOOD_DARK} roughness={0.92} />
         </mesh>
+
+        {/* V2 wave 3 (Sub-A "loneliest zone" fix): lived-in details so
+            BlogKiosk catches up to Onsen / Gazebo / Hammock in
+            inhabitation cues. */}
+
+        {/* Folded newspaper on the right end of the seat */}
+        <group position={[0.55, 0.38, 0.02]} rotation={[0, -0.15, 0.05]}>
+          {/* Newspaper body — slightly cream */}
+          <mesh castShadow>
+            <boxGeometry args={[0.28, 0.012, 0.20]} />
+            <meshStandardMaterial color="#F2EAD8" roughness={0.92} />
+          </mesh>
+          {/* Headline strip — darker line across the top */}
+          <mesh position={[0, 0.008, -0.07]}>
+            <boxGeometry args={[0.22, 0.003, 0.015]} />
+            <meshStandardMaterial color="#3A2818" />
+          </mesh>
+          <mesh position={[0, 0.008, -0.03]}>
+            <boxGeometry args={[0.18, 0.003, 0.008]} />
+            <meshStandardMaterial color="#3A2818" />
+          </mesh>
+          <mesh position={[0, 0.008, 0.01]}>
+            <boxGeometry args={[0.20, 0.003, 0.005]} />
+            <meshStandardMaterial color="#3A2818" />
+          </mesh>
+          {/* Fold crease line down the middle */}
+          <mesh position={[0, 0.0065, 0]}>
+            <boxGeometry args={[0.005, 0.004, 0.20]} />
+            <meshStandardMaterial color="#D6CBB4" />
+          </mesh>
+        </group>
+
+        {/* Coffee mug on the left end of the seat */}
+        <group position={[-0.55, 0.36, 0.04]}>
+          <mesh castShadow>
+            <cylinderGeometry args={[0.05, 0.045, 0.10, 12]} />
+            <meshStandardMaterial color="#5878B8" roughness={0.85} />
+          </mesh>
+          {/* Handle */}
+          <mesh position={[0.058, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <torusGeometry args={[0.022, 0.007, 4, 10, Math.PI]} />
+            <meshStandardMaterial color="#5878B8" roughness={0.85} />
+          </mesh>
+          {/* Dark coffee surface */}
+          <mesh position={[0, 0.051, 0]}>
+            <cylinderGeometry args={[0.046, 0.046, 0.004, 12]} />
+            <meshStandardMaterial color="#3A2516" roughness={0.4} metalness={0.15} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* A-frame chalkboard sign at the base of the kiosk — "今日の記事" */}
+      <group position={[0.9, 0, 0.6]} rotation={[0, -0.4, 0]}>
+        {/* Two A-frame legs */}
+        <mesh position={[-0.05, 0.25, 0]} rotation={[0, 0, -0.18]} castShadow>
+          <boxGeometry args={[0.03, 0.55, 0.18]} />
+          <meshStandardMaterial color={WOOD_DARK} roughness={0.92} />
+        </mesh>
+        <mesh position={[0.05, 0.25, 0]} rotation={[0, 0, 0.18]} castShadow>
+          <boxGeometry args={[0.03, 0.55, 0.18]} />
+          <meshStandardMaterial color={WOOD_DARK} roughness={0.92} />
+        </mesh>
+        {/* Top crossbar joining the two legs */}
+        <mesh position={[0, 0.50, 0]} castShadow>
+          <boxGeometry args={[0.13, 0.02, 0.18]} />
+          <meshStandardMaterial color={WOOD_DARK} roughness={0.92} />
+        </mesh>
+        {/* Chalkboard panel (front face slightly forward) */}
+        <mesh position={[0, 0.35, 0.10]} rotation={[0.18, 0, 0]} castShadow>
+          <planeGeometry args={[0.32, 0.32]} />
+          <meshStandardMaterial color="#2A2520" roughness={0.95} />
+        </mesh>
+        {/* Three white chalk strokes implying "今日の記事" without text */}
+        <mesh position={[0, 0.45, 0.11]} rotation={[0.18, 0, 0]}>
+          <planeGeometry args={[0.18, 0.012]} />
+          <meshStandardMaterial color="#E8E0D2" />
+        </mesh>
+        <mesh position={[0, 0.36, 0.11]} rotation={[0.18, 0, 0]}>
+          <planeGeometry args={[0.22, 0.010]} />
+          <meshStandardMaterial color="#E8E0D2" />
+        </mesh>
+        <mesh position={[0, 0.27, 0.11]} rotation={[0.18, 0, 0]}>
+          <planeGeometry args={[0.15, 0.008]} />
+          <meshStandardMaterial color="#E8E0D2" />
+        </mesh>
+      </group>
+
+      {/* Stack of old newspapers tied with twine at base of kiosk */}
+      <group position={[-0.7, 0, 0.55]} rotation={[0, 0.3, 0]}>
+        {/* Stack of 4 slightly-offset rectangles */}
+        {[0, 0.045, 0.090, 0.135].map((y, i) => (
+          <mesh
+            key={`pap${i}`}
+            position={[i * 0.005, 0.025 + y, i * 0.008]}
+            rotation={[0, i * 0.03, 0]}
+            castShadow
+          >
+            <boxGeometry args={[0.30, 0.025, 0.22]} />
+            <meshStandardMaterial color={i % 2 === 0 ? '#F2EAD8' : '#EDE3CB'} roughness={0.92} />
+          </mesh>
+        ))}
+        {/* Twine wrapped around the stack */}
+        <mesh position={[0.07, 0.10, 0]} rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.13, 0.005, 4, 16]} />
+          <meshStandardMaterial color="#A48B6E" roughness={0.95} />
+        </mesh>
+        <mesh position={[-0.07, 0.10, 0]} rotation={[0, 0, Math.PI / 2]}>
+          <torusGeometry args={[0.115, 0.005, 4, 16]} />
+          <meshStandardMaterial color="#A48B6E" roughness={0.95} />
+        </mesh>
       </group>
     </group>
   )

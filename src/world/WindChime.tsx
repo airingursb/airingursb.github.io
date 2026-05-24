@@ -32,10 +32,12 @@ function Tanzaku() {
     if (!m) return
     const t = s.clock.elapsedTime
     const gust = getGust(t)
-    // Always-on small sway + gust boost
-    const sway = Math.sin(t * 1.4) * (0.12 + gust * 0.40)
+    // Sub-A fix: bumped amp so tanzaku is readable from camera distance.
+    // Calm 0.24 (was 0.12), peak gust 0.80 (was 0.40). Tanzaku is the
+    // most-animated thing in the reading nook now.
+    const sway = Math.sin(t * 1.4) * (0.24 + gust * 0.80)
     m.rotation.z = sway
-    m.rotation.x = Math.cos(t * 0.9) * 0.06 * (1 + gust * 1.5)
+    m.rotation.x = Math.cos(t * 0.9) * 0.10 * (1 + gust * 1.8)
   })
   return (
     <mesh ref={ref} position={[0, -0.18, 0]}>

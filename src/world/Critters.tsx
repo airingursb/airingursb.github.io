@@ -229,8 +229,11 @@ function Koi({ angle, speed, radius, color }: { angle: number; speed: number; ra
     const z = Math.sin(t) * radius + POND_CENTER[1]
     ref.current.position.x = x
     ref.current.position.z = z
-    // Hovers JUST below the pond surface (~y 0.10) with tiny depth wiggle
-    ref.current.position.y = 0.10 + Math.sin(t * 4 + angle) * 0.012
+    // Sub-A fix: was y=0.10 → ~0.08 below pond surface (y=0.18) but
+    // foam-ring at y=0.20 and pond bed at y=-0.04 caused z-fight smudge.
+    // Raised to y=0.14 (just 0.04 below surface) so koi read as fish-
+    // shadow smudges visible through 78%-opacity water.
+    ref.current.position.y = 0.14 + Math.sin(t * 4 + angle) * 0.012
     ref.current.rotation.y = -t + Math.PI / 2
     // Tail wiggle
     const child = ref.current.children[1] as THREE.Mesh | undefined
@@ -246,7 +249,7 @@ function Koi({ angle, speed, radius, color }: { angle: number; speed: number; ra
           roughness={0.55}
           metalness={0.15}
           transparent
-          opacity={0.62}
+          opacity={0.72}
           depthWrite={false}
         />
       </mesh>
