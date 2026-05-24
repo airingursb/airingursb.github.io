@@ -113,9 +113,10 @@ function DuskHalo({ theme, seed }: { theme: Theme; seed: number }) {
     m.opacity = m.opacity + (target - m.opacity) * k
   })
   return (
-    <mesh position={[0, 1.0, 0]} rotation={[0, 0, 0]}>
-      {/* Cone pointing DOWN with apex at lantern, base at ground */}
-      <coneGeometry args={[0.45, 1.0, 16, 1, true]} />
+    <mesh position={[0, 0.79, 0]}>
+      {/* Sub-A fix: cone now spans apex at y=1.58 (lantern body) to
+          base at y=0 (ground). Height 1.58, center y=0.79. */}
+      <coneGeometry args={[0.55, 1.58, 16, 1, true]} />
       <meshBasicMaterial
         ref={matRef}
         color="#FFD58F"

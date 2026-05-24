@@ -698,6 +698,50 @@ export default function Cabin() {
         </group>
         </Rocker>
 
+        {/* V2 wave 3: small bonsai in a ceramic pot on the right side
+            of the porch — balances the rocker on the left visually +
+            adds a careful-keeper detail (bonsai = years of attention). */}
+        <group position={[1.1, 0.34, 0.15]}>
+          {/* Ceramic pot — earthen brown with tan rim */}
+          <mesh castShadow receiveShadow>
+            <cylinderGeometry args={[0.11, 0.09, 0.10, 12]} />
+            <meshStandardMaterial color="#7E5A38" roughness={0.92} />
+          </mesh>
+          {/* Pot rim */}
+          <mesh position={[0, 0.052, 0]}>
+            <torusGeometry args={[0.11, 0.012, 4, 16]} />
+            <meshStandardMaterial color="#A07840" roughness={0.85} />
+          </mesh>
+          {/* Soil top */}
+          <mesh position={[0, 0.052, 0]}>
+            <cylinderGeometry args={[0.10, 0.10, 0.005, 12]} />
+            <meshStandardMaterial color="#3A2516" roughness={0.97} />
+          </mesh>
+          {/* Bonsai trunk — short twisting cylinder */}
+          <mesh position={[0.015, 0.13, 0]} rotation={[0.05, 0, 0.15]} castShadow>
+            <cylinderGeometry args={[0.014, 0.022, 0.14, 6]} />
+            <meshStandardMaterial color="#5D3D1F" roughness={0.94} flatShading />
+          </mesh>
+          {/* Trunk upper bend */}
+          <mesh position={[0.025, 0.20, 0.005]} rotation={[0.10, 0, -0.10]} castShadow>
+            <cylinderGeometry args={[0.011, 0.014, 0.07, 6]} />
+            <meshStandardMaterial color="#5D3D1F" roughness={0.94} flatShading />
+          </mesh>
+          {/* Foliage clouds — 2 small flat-shaded green blobs */}
+          <mesh position={[0.05, 0.24, 0]} castShadow>
+            <sphereGeometry args={[0.07, 10, 8]} />
+            <meshStandardMaterial color="#4A6B40" roughness={0.93} flatShading />
+          </mesh>
+          <mesh position={[-0.05, 0.21, 0.02]} castShadow>
+            <sphereGeometry args={[0.06, 10, 8]} />
+            <meshStandardMaterial color="#3F5A35" roughness={0.93} flatShading />
+          </mesh>
+          <mesh position={[0.07, 0.27, -0.03]} castShadow>
+            <sphereGeometry args={[0.045, 10, 8]} />
+            <meshStandardMaterial color="#5A7A4C" roughness={0.93} flatShading />
+          </mesh>
+        </group>
+
         {/* === Hanging flower basket from awning beam === */}
         <group position={[1.0, 1.3, 0.4]}>
           {/* Hanging chain */}

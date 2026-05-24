@@ -210,11 +210,14 @@ export default function Storytelling() {
       <StoneCairn position={[7.5, 0, 8.5]} />
       <StoneCairn position={[15.0, 0, -1.0]} />
 
-      {/* Signposts at zone junctions — off-path, not on it (Sub-A gap #9) */}
-      <Signpost position={[-2.6, 0, -2.4]} rotation={-Math.PI / 4} label="reading" />
-      <Signpost position={[2.4, 0, -1.8]} rotation={Math.PI / 2} label="music" />
-      <Signpost position={[-2.2, 0, 2.2]} rotation={Math.PI} label="comics" />
-      <Signpost position={[3.8, 0, 3.2]} rotation={Math.PI / 4} label="blog" />
+      {/* Signposts at actual path forks — Sub-A wave-3 bonus fix:
+          previously clustered tight around cabin (±2.4) → read as
+          fence, not wayfinding. Spread to path-junction positions
+          near where the path branches toward each zone. */}
+      <Signpost position={[-1.5, 0, -3.5]} rotation={-Math.PI / 4} label="reading" />
+      <Signpost position={[ 4.5, 0, -0.5]} rotation={Math.PI / 2} label="music" />
+      <Signpost position={[-3.5, 0,  1.8]} rotation={Math.PI} label="comics" />
+      <Signpost position={[ 3.8, 0,  6.5]} rotation={Math.PI / 4} label="blog" />
 
       {/* Woodpile near cabin */}
       <WoodPile position={[-2.5, 0, -1.2]} />
