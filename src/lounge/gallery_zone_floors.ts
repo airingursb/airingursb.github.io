@@ -63,13 +63,16 @@ export function setupGalleryZoneFloors(scene: Phaser.Scene, roomId: RoomId): voi
   if (roomId !== 'room_gallery') return
   layer = scene.add.container(0, 0).setDepth(2.65)
 
+  // G03 (performance / clockwork) is dramatic — drop its alpha further so
+  // it doesn't overwhelm the west wing.
   for (const zone of ZONES) {
     const meta = getAsset(zone.asset)
     if (!meta || !scene.textures.exists(meta.key)) continue
+    const alpha = zone.asset === 'G03-floor-performance' ? 0.42 : 0.55
     for (const [x, y] of zone.positions) {
       const tile = scene.add.image(x, y, meta.key)
-        .setScale(0.5)
-        .setAlpha(0.62)
+        .setScale(0.48)
+        .setAlpha(alpha)
       layer.add(tile)
     }
   }

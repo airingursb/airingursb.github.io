@@ -22,8 +22,8 @@ const PLACEMENTS: MuralPlacement[] = [
   { asset: 'H02-mural-internals',   x: 1232, y: 256,  scale: 0.42 },
   // West wing — far west wall (mirror)
   { asset: 'H03-mural-performance', x: 48,   y: 256,  scale: 0.42 },
-  // South pavilion — above the grove arch
-  { asset: 'H04-mural-comics',      x: 640,  y: 720,  scale: 0.42 },
+  // South pavilion — far south wall (well clear of rotunda counter + arch)
+  { asset: 'H04-mural-comics',      x: 220,  y: 880,  scale: 0.4 },
 ]
 
 export function setupGalleryMurals(scene: Phaser.Scene, roomId: RoomId): void {

@@ -30,7 +30,6 @@ import HammockSpot from './HammockSpot'
 import EaselClearing from './EaselClearing'
 import ForestPath from './ForestPath'
 import Forest from './Forest'
-import InstancedForest from './InstancedForest'
 import Lanterns from './Lanterns'
 import Sky from './Sky'
 import Water from './Water'
@@ -179,7 +178,6 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <ForestPath />
         <PathEdges />
         <Water />
-        <InstancedForest />
         <Forest />
         <GroundCover />
         <SoilHalos />

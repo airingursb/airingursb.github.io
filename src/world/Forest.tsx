@@ -1,14 +1,40 @@
-// Forest — six filler types (bushes/rocks/lavender/fern/mushroom/daisy).
-// Trees now live in InstancedForest.tsx (Phase 2 perf: ~270 draws → ~30).
-// This file keeps the fillers because they're too few + structurally
-// varied to be worth instancing yet.
+// Forest — five tree species + six filler types. Canopies use icosahedron
+// with per-vertex jitter for organic non-spherical silhouettes (Sub-A
+// iter-3 gap #1).
 
 import * as THREE from 'three'
 import { useEffect, useMemo, useRef } from 'react'
-import { FILLER_POSITIONS } from './zones'
+import { TREE_POSITIONS, FILLER_POSITIONS } from './zones'
+import WindSway from './WindSway'
 
-// Moss-green color shared by rocks' top moss
-const MOSS_GREEN    = '#5A7A4C'
+// Trees at the island edge contribute little to shadowed scene (they
+// barely shadow anything important), but each one through the shadow
+// pass costs draws. Cut shadows from anything > 14 units from origin
+// AND from all fillers (rocks/bushes/etc — too small to read shadows).
+const PERIMETER_DIST = 14
+
+const PINE_TRUNK    = '#5A4128'
+const PINE_FOL_A    = '#5A7A4C'
+const PINE_FOL_B    = '#4A6B40'
+const PINE_FOL_C    = '#3A5634'
+
+const BIRCH_TRUNK   = '#E8E0D0'
+const BIRCH_BANDS   = '#2A2018'
+const BIRCH_FOL     = '#8FB372'
+
+const OAK_TRUNK     = '#6D4B2E'
+const OAK_FOL_A     = '#7E9A52'
+const OAK_FOL_B     = '#6A8848'
+
+const MAPLE_TRUNK   = '#6D4B2E'
+const MAPLE_A       = '#D9622B'
+const MAPLE_B       = '#E29A4A'
+const MAPLE_C       = '#C0451E'
+
+const CHERRY_TRUNK  = '#5C3A22'
+const CHERRY_A      = '#E8D2DC'  // muted from #F4C3D8 — stop competing with mailbox red
+const CHERRY_B      = '#E89AB8'
+const CHERRY_C      = '#FFE2EE'
 
 const BUSH_A        = '#5A7A4C'
 const BUSH_B        = '#4A6B40'
@@ -35,6 +61,139 @@ function organicBlob(radius: number, jitterAmt = 0.18, seed = 0) {
   pos.needsUpdate = true
   g.computeVertexNormals()
   return g
+}
+
+function Pine({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
+  return (
+    <group scale={scale}>
+      <mesh position={[0, 1.0, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.18, 0.26, 2.0, 8]} />
+        <meshStandardMaterial color={PINE_TRUNK} roughness={0.95} flatShading />
+      </mesh>
+      {[
+        [2.2, 1.2, 1.1, PINE_FOL_A],
+        [2.6, 1.0, 0.9, PINE_FOL_B],
+        [2.95, 0.85, 0.75, PINE_FOL_A],
+        [3.3, 0.65, 0.6, PINE_FOL_C],
+        [3.65, 0.42, 0.45, PINE_FOL_B],
+      ].map(([y, r, h, color], i) => (
+        <mesh key={i} position={[0, y as number, 0]} rotation={[0, seed * 0.3, 0]} castShadow>
+          <coneGeometry args={[r as number, h as number, 9]} />
+          <meshStandardMaterial color={color as string} roughness={0.94} flatShading />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+function Birch({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
+  const g1 = useMemo(() => organicBlob(1.1, 0.22, seed), [seed])
+  const g2 = useMemo(() => organicBlob(0.65, 0.18, seed + 1), [seed])
+  const g3 = useMemo(() => organicBlob(0.55, 0.18, seed + 2), [seed])
+  return (
+    <group scale={scale}>
+      <mesh position={[0, 1.4, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.14, 0.16, 2.8, 10]} />
+        <meshStandardMaterial color={BIRCH_TRUNK} roughness={0.85} flatShading />
+      </mesh>
+      {[0.4, 1.0, 1.5, 2.1, 2.5].map((y, i) => (
+        <mesh key={`bd${i}`} position={[0, y, 0]} castShadow>
+          <torusGeometry args={[0.16, 0.025, 6, 12]} />
+          <meshStandardMaterial color={BIRCH_BANDS} roughness={0.9} />
+        </mesh>
+      ))}
+      <mesh geometry={g1} position={[0, 3.2, 0]} scale={[1, 0.95, 1]} castShadow>
+        <meshStandardMaterial color={BIRCH_FOL} roughness={0.95} flatShading />
+      </mesh>
+      <mesh geometry={g2} position={[0.3, 3.6, 0.1]} castShadow>
+        <meshStandardMaterial color={BIRCH_FOL} roughness={0.95} flatShading />
+      </mesh>
+      <mesh geometry={g3} position={[-0.4, 3.5, -0.2]} castShadow>
+        <meshStandardMaterial color={BIRCH_FOL} roughness={0.95} flatShading />
+      </mesh>
+    </group>
+  )
+}
+
+function Oak({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
+  const g1 = useMemo(() => organicBlob(1.4, 0.28, seed), [seed])
+  const g2 = useMemo(() => organicBlob(0.9, 0.22, seed + 1), [seed])
+  const g3 = useMemo(() => organicBlob(0.85, 0.22, seed + 2), [seed])
+  const g4 = useMemo(() => organicBlob(0.7, 0.18, seed + 3), [seed])
+  return (
+    <group scale={scale}>
+      <mesh position={[0, 1.1, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.28, 0.42, 2.2, 10]} />
+        <meshStandardMaterial color={OAK_TRUNK} roughness={0.95} flatShading />
+      </mesh>
+      <mesh geometry={g1} position={[0, 3.0, 0]} scale={[1, 0.85, 1]} castShadow>
+        <meshStandardMaterial color={OAK_FOL_A} roughness={0.94} flatShading />
+      </mesh>
+      <mesh geometry={g2} position={[0.7, 3.3, 0.4]} castShadow>
+        <meshStandardMaterial color={OAK_FOL_B} roughness={0.94} flatShading />
+      </mesh>
+      <mesh geometry={g3} position={[-0.8, 3.2, -0.3]} castShadow>
+        <meshStandardMaterial color={OAK_FOL_A} roughness={0.94} flatShading />
+      </mesh>
+      <mesh geometry={g4} position={[0.1, 3.7, -0.5]} castShadow>
+        <meshStandardMaterial color={OAK_FOL_B} roughness={0.94} flatShading />
+      </mesh>
+    </group>
+  )
+}
+
+function Maple({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
+  const g1 = useMemo(() => organicBlob(1.5, 0.28, seed), [seed])
+  const g2 = useMemo(() => organicBlob(0.95, 0.22, seed + 1), [seed])
+  const g3 = useMemo(() => organicBlob(0.9, 0.22, seed + 2), [seed])
+  const g4 = useMemo(() => organicBlob(0.75, 0.2, seed + 3), [seed])
+  return (
+    <group scale={scale}>
+      <mesh position={[0, 1.1, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.26, 0.38, 2.2, 10]} />
+        <meshStandardMaterial color={MAPLE_TRUNK} roughness={0.95} flatShading />
+      </mesh>
+      <mesh geometry={g1} position={[0, 3.0, 0]} scale={[1, 0.9, 1]} castShadow>
+        <meshStandardMaterial color={MAPLE_A} roughness={0.93} flatShading />
+      </mesh>
+      <mesh geometry={g2} position={[0.6, 3.3, 0.5]} castShadow>
+        <meshStandardMaterial color={MAPLE_B} roughness={0.93} flatShading />
+      </mesh>
+      <mesh geometry={g3} position={[-0.7, 3.2, -0.4]} castShadow>
+        <meshStandardMaterial color={MAPLE_C} roughness={0.93} flatShading />
+      </mesh>
+      <mesh geometry={g4} position={[0.2, 3.8, -0.4]} castShadow>
+        <meshStandardMaterial color={MAPLE_A} roughness={0.93} flatShading />
+      </mesh>
+    </group>
+  )
+}
+
+function Cherry({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
+  const g1 = useMemo(() => organicBlob(1.4, 0.25, seed), [seed])
+  const g2 = useMemo(() => organicBlob(0.95, 0.2, seed + 1), [seed])
+  const g3 = useMemo(() => organicBlob(0.85, 0.2, seed + 2), [seed])
+  const g4 = useMemo(() => organicBlob(0.7, 0.18, seed + 3), [seed])
+  return (
+    <group scale={scale}>
+      <mesh position={[0, 1.0, 0]} castShadow receiveShadow>
+        <cylinderGeometry args={[0.22, 0.32, 2.0, 10]} />
+        <meshStandardMaterial color={CHERRY_TRUNK} roughness={0.95} flatShading />
+      </mesh>
+      <mesh geometry={g1} position={[0, 2.8, 0]} scale={[1, 0.85, 1]} castShadow>
+        <meshStandardMaterial color={CHERRY_A} roughness={0.92} flatShading />
+      </mesh>
+      <mesh geometry={g2} position={[0.5, 3.2, 0.4]} castShadow>
+        <meshStandardMaterial color={CHERRY_B} roughness={0.92} flatShading />
+      </mesh>
+      <mesh geometry={g3} position={[-0.5, 3.1, -0.3]} castShadow>
+        <meshStandardMaterial color={CHERRY_C} roughness={0.92} flatShading />
+      </mesh>
+      <mesh geometry={g4} position={[0.1, 3.6, -0.4]} castShadow>
+        <meshStandardMaterial color={CHERRY_A} roughness={0.92} flatShading />
+      </mesh>
+    </group>
+  )
 }
 
 function Bush({ scale = 1, seed = 0 }: { scale?: number; seed?: number }) {
@@ -85,7 +244,7 @@ function Rocks({ scale = 1 }: { scale?: number }) {
       </mesh>
       <mesh position={[0, 0.48, 0]}>
         <sphereGeometry args={[0.22, 8, 6]} />
-        <meshStandardMaterial color={MOSS_GREEN} roughness={0.96} />
+        <meshStandardMaterial color={PINE_FOL_A} roughness={0.96} />
       </mesh>
     </group>
   )
@@ -215,10 +374,26 @@ function Daisy({ scale = 1 }: { scale?: number }) {
   )
 }
 
+function renderTree([x, z, scale, species]: [number, number, number, 'pine' | 'birch' | 'oak' | 'maple' | 'cherry'], i: number, keyPrefix: string) {
+  const yStretch = 0.75 + ((i * 31) % 11) * 0.08
+  return (
+    <group key={`${keyPrefix}${i}`} position={[x, 0, z]} scale={[1, yStretch, 1]}>
+      <WindSway amp={0.015 + (i % 3) * 0.005} freq={0.6 + (i % 5) * 0.08} phase={i * 0.4}>
+        {species === 'pine' && <Pine scale={scale} seed={i} />}
+        {species === 'birch' && <Birch scale={scale} seed={i} />}
+        {species === 'oak' && <Oak scale={scale} seed={i} />}
+        {species === 'maple' && <Maple scale={scale} seed={i} />}
+        {species === 'cherry' && <Cherry scale={scale} seed={i} />}
+      </WindSway>
+    </group>
+  )
+}
+
 export default function Forest() {
-  // All fillers skip shadow pass (too small to read shadows + ~140 draws each
-  // would be expensive). One traverse on mount turns them off.
   const noShadowRef = useRef<THREE.Group>(null)
+
+  // After mount, walk all descendant meshes inside the perimeter group
+  // and force castShadow=false. Saves ~30-50% of shadow-pass draws.
   useEffect(() => {
     noShadowRef.current?.traverse((obj) => {
       const m = obj as THREE.Mesh
@@ -226,18 +401,28 @@ export default function Forest() {
     })
   }, [])
 
+  const innerTrees = TREE_POSITIONS.filter(([x, z]) => Math.hypot(x, z) <= PERIMETER_DIST)
+  const outerTrees = TREE_POSITIONS.filter(([x, z]) => Math.hypot(x, z) > PERIMETER_DIST)
+
   return (
-    <group ref={noShadowRef}>
-      {FILLER_POSITIONS.map(([x, z, kind, scale], i) => (
-        <group key={`f${i}`} position={[x, 0, z]}>
-          {kind === 'bush' && <Bush scale={scale} seed={i} />}
-          {kind === 'rocks' && <Rocks scale={scale} />}
-          {kind === 'lavender' && <Lavender scale={scale} />}
-          {kind === 'fern' && <Fern scale={scale} />}
-          {kind === 'mushroom' && <Mushroom scale={scale} />}
-          {kind === 'daisy' && <Daisy scale={scale} />}
-        </group>
-      ))}
+    <group>
+      {/* Inner trees — cast shadows (small set, big visual impact) */}
+      {innerTrees.map((t, i) => renderTree(t, i, 'it'))}
+
+      {/* Outer perimeter trees + all fillers — no shadow pass (perf) */}
+      <group ref={noShadowRef}>
+        {outerTrees.map((t, i) => renderTree(t, i, 'ot'))}
+        {FILLER_POSITIONS.map(([x, z, kind, scale], i) => (
+          <group key={`f${i}`} position={[x, 0, z]}>
+            {kind === 'bush' && <Bush scale={scale} seed={i} />}
+            {kind === 'rocks' && <Rocks scale={scale} />}
+            {kind === 'lavender' && <Lavender scale={scale} />}
+            {kind === 'fern' && <Fern scale={scale} />}
+            {kind === 'mushroom' && <Mushroom scale={scale} />}
+            {kind === 'daisy' && <Daisy scale={scale} />}
+          </group>
+        ))}
+      </group>
     </group>
   )
 }

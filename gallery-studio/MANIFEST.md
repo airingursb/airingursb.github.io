@@ -1,6 +1,6 @@
 # Gallery Studio — Asset Manifest
 
-> 共 **56 个 sprite**（A–F 已完成 34，G–J 是 v2 扩充批 22）。挨个生成，生成完把对应行 `[ ]` 改 `[x]` 并 commit。
+> 共 **65 个 sprite**（A–F 第一批 34，G–J 第二批 22，K–L 第三批"自然感" 9）。挨个生成，生成完把对应行 `[ ]` 改 `[x]` 并 commit。
 > 每个 prompt = `STYLE.md 整段` + 下面 `**Prompt:**` 后面那段。
 
 总览：
@@ -17,6 +17,8 @@
 | H | Zone Murals — 分区壁画 | 4 | 每个 wing 入口墙面大壁画 |
 | I | Refined Props — 精致小物 | 10 | 真博物馆的细节家具 |
 | J | Nature Touches — 自然元素 | 4 | 蕨类、猫、鸽子、地毯 |
+| K | Natural Floors — 自然地砖 | 4 | 草地 / 小溪 / 石板路 / 苔藓 |
+| L | Garden Props — 园林小品 | 5 | 石椅 / 喷泉 / 锦鲤池 / 葡萄架 / 盆景 |
 
 ---
 
@@ -407,3 +409,70 @@
 - **Size:** 128×32 px
 - **Theme:** 铺在 wing 走廊正中的长形装饰地毯
 - **Prompt:** A top-down view of a horizontal rectangular floor runner rug in flat Saul Bass style. A vermilion long rectangle (the rug base), with a thin mustard border running ~3 px inside the edges (the rug binding). Down the center, a simplified geometric pattern: 4 evenly spaced cream diamonds, each with a small ink-black dot at center. The rug short ends have small mustard fringe-tassel marks (5 tiny vertical lines on each end). Tileable horizontally if needed.
+
+---
+
+## K · Natural Floor Tiles — 自然地砖（4 sprite · 128×128 PNG · 透明背景 · rhombus）
+
+> 让美术馆"贴近自然"——草地、小溪、石板、苔藓。**rhombus 形 seamless tileable**。
+> 跟 E/G 一样可以混着铺，但视觉更柔（不是几何 pattern，是有机纹理感觉）。
+
+### K01 — Grass Patch  `[ ]`
+- **File:** `output/tiles/K01-grass-patch.png`
+- **Size:** 128×128 px
+- **Theme:** 室内"草坪展区"用的草地砖（飘起来的几根草，不是写实草地）
+- **Prompt:** A single seamless rhombus floor tile in flat Saul Bass style. Cream base with a scattered field of small teal vertical "grass blade" lines (~12-15 tiny upward strokes, 4-8px tall each, irregular spacing). 2-3 of the grass blades are slightly taller, in mustard. NO 3D, NO shading — pure flat color silhouettes evoking a stylized lawn from above. Tiles seamlessly.
+
+### K02 — Stream Flow  `[ ]`
+- **File:** `output/tiles/K02-stream-flow.png`
+- **Size:** 128×128 px
+- **Theme:** 流水/小溪砖（铺在 K01 之间形成一条蜿蜒小溪）
+- **Prompt:** A single seamless rhombus tile in flat Saul Bass style. Cream base with a single thick teal sinuous horizontal "ribbon" crossing the diamond (suggesting flowing water). Inside the teal ribbon, 3-4 tiny cream "highlight" dashes (water ripples). A single tiny mustard fish-shape silhouette (a long pointed oval with a triangular tail) somewhere along the ribbon. Tiles seamlessly when chained — the teal ribbons should align across tile borders to form a continuous stream.
+
+### K03 — Stone Path  `[ ]`
+- **File:** `output/tiles/K03-stone-path.png`
+- **Size:** 128×128 px
+- **Theme:** 鹅卵石走道砖（连成一条小径）
+- **Prompt:** A single seamless rhombus tile in flat Saul Bass style. Cream base with 5-7 irregular flat ink-black "stone" shapes (rounded polygons, varied sizes 6-14 px) clustered in the center, leaving a soft cream border. Between the stones, thin ink gap lines suggest mortar. NO shading, pure flat silhouettes. Tiles seamlessly into a meandering stone path.
+
+### K04 — Moss & Rock  `[ ]`
+- **File:** `output/tiles/K04-moss-rock.png`
+- **Size:** 128×128 px
+- **Theme:** 苔藓+碎石的自然地表（角落用，野生感）
+- **Prompt:** A single seamless rhombus tile in flat Saul Bass style. Teal base (the moss), with 3-4 scattered ink-black irregular pebble silhouettes. Among them, 1-2 mustard mushroom-cap shapes (small flat semicircles on tiny ink stems). NO outlines beyond the silhouettes themselves. Tiles seamlessly.
+
+---
+
+## L · Garden Props — 园林小品（5 sprite · 透明背景）
+
+> 让美术馆有"室内花园"感的几件大物件。
+
+### L01 — Carved Stone Bench  `[ ]`
+- **File:** `output/nature/L01-stone-bench.png`
+- **Size:** 96×40 px
+- **Theme:** 比 C02 木长椅更"户外"的石长椅（公园那种）
+- **Prompt:** A front-facing carved stone garden bench in flat Saul Bass style. A long horizontal cream silhouette (the stone seat, slightly rougher edge than a wooden bench), supported at each end by an ink-black thick rectangular pedestal leg. A thin mustard horizontal accent stripe along the front face of the seat (a carved decorative line). NO 3D, no shading.
+
+### L02 — Tiered Stone Fountain  `[ ]`
+- **File:** `output/nature/L02-fountain-small.png`
+- **Size:** 80×112 px
+- **Theme:** 中庭可以放一座小喷泉
+- **Prompt:** A front-facing 2-tier stone fountain in flat Saul Bass style. A wide cream circular base bowl at the bottom (an ellipse silhouette), with a vertical ink-black pillar rising from its center, topped by a smaller cream circular upper bowl. From the upper bowl, three thin teal vertical lines fall as flat "water streams" into the lower bowl. A single mustard horizontal stripe accents each bowl's rim. NO 3D, pure silhouette stack.
+
+### L03 — Koi Pond  `[ ]`
+- **File:** `output/nature/L03-koi-pond.png`
+- **Size:** 96×64 px
+- **Theme:** 中庭/南厅角落里的小池塘
+- **Prompt:** A top-down oval koi pond in flat Saul Bass style. A teal elliptical silhouette (the water) framed by a thin ink-black rocky border. Inside the teal, 2 vermilion stylized koi-fish shapes (elongated ovals with triangular tails) curving in opposite directions, and 1 small mustard lily-pad circle. NO 3D, pure flat color blocks. Subtle inner cream "ripple" arc near each fish.
+
+### L04 — Vine Trellis Arch  `[ ]`
+- **File:** `output/nature/L04-vine-arch.png`
+- **Size:** 80×128 px
+- **Theme:** 攀爬植物的小拱门/格架（装饰用，南厅入口可以挂一个）
+- **Prompt:** A front-facing wooden trellis arch in flat Saul Bass style. Two thin ink-black vertical posts connected at the top by an arched ink crossbeam (a half-circle). Climbing the trellis, irregular teal vine silhouettes (4-5 wavy lines with small teal leaf-blob clusters at intervals). Two small vermilion flower dots scattered on the vines. NO shading.
+
+### L05 — Bonsai on Pedestal  `[ ]`
+- **File:** `output/nature/L05-bonsai.png`
+- **Size:** 48×80 px
+- **Theme:** 黑色基座上的小盆景（精致的展品物件）
+- **Prompt:** A front-facing miniature bonsai tree on a pedestal in flat Saul Bass style. At the bottom, an ink-black short rectangular pedestal with a thin mustard top stripe. Atop it sits a mustard shallow trapezoidal pot. From the pot rises a single twisted ink-black trunk silhouette with 2-3 horizontal branch silhouettes. Atop each branch, a small flat teal canopy blob. NO leaves detail, pure silhouette.
