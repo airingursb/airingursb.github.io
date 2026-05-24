@@ -31,6 +31,7 @@ import EaselClearing from './EaselClearing'
 import ForestPath from './ForestPath'
 import Forest from './Forest'
 import Lanterns from './Lanterns'
+import DuskFog from './DuskFog'
 import Sky from './Sky'
 import Water from './Water'
 import GroundCover from './GroundCover'
@@ -198,6 +199,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <Campfire />
         <CloudShadows />
         <Lanterns theme={theme} />
+        <DuskFog theme={theme} />
         <ContactShadowsLayer />
         <ZoneHitboxes />
         <ZoneHints />

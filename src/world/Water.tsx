@@ -91,17 +91,33 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
         )
       })}
 
-      {/* Lily pads */}
-      {[
-        [0.5, 0.2],
-        [-0.8, 0.6],
-        [0.2, -1.0],
-        [-1.2, -0.5],
-        [1.4, 0.5],
-        [-0.4, -1.4],
-        [1.2, -0.4],
-      ].map(([lx, lz], i) => (
-        <group key={`lp${i}`} position={[lx, 0.04, lz]}>
+      {/* V2 D2: lily pads now bob gently on Y axis (phase-offset per
+          pad) so the water surface reads as "moving" rather than static.
+          Subtle — 0.018 amp / 1.5s period — but adds life to the pond. */}
+      <LilyPads />
+    </group>
+  )
+}
+
+function LilyPads() {
+  const pads = [
+    [0.5, 0.2], [-0.8, 0.6], [0.2, -1.0], [-1.2, -0.5],
+    [1.4, 0.5], [-0.4, -1.4], [1.2, -0.4],
+  ] as [number, number][]
+  const refs = pads.map(() => useRef<THREE.Group>(null))
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    refs.forEach((r, i) => {
+      const g = r.current
+      if (!g) return
+      g.position.y = 0.04 + Math.sin(t * 1.0 + i * 0.7) * 0.018
+      g.rotation.z = Math.sin(t * 0.6 + i * 0.9) * 0.04
+    })
+  })
+  return (
+    <>
+      {pads.map(([lx, lz], i) => (
+        <group key={`lp${i}`} ref={refs[i]} position={[lx, 0.04, lz]}>
           <mesh>
             <cylinderGeometry args={[0.3, 0.3, 0.02, 10]} />
             <meshStandardMaterial color={LILYPAD} roughness={0.9} flatShading />
@@ -114,7 +130,7 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
           )}
         </group>
       ))}
-    </group>
+    </>
   )
 }
 

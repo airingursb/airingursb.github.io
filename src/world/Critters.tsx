@@ -142,13 +142,34 @@ function CatOnMat({ position }: { position: [number, number, number] }) {
 
 function Duck({ angle, radius, speed, size = 1, seed = 0 }: { angle: number; radius: number; speed: number; size?: number; seed?: number }) {
   const ref = useRef<THREE.Group>(null)
+  const wake1Ref = useRef<THREE.Mesh>(null)
+  const wake2Ref = useRef<THREE.Mesh>(null)
   useFrame((s) => {
     if (!ref.current) return
     const t = s.clock.elapsedTime * speed + angle
-    ref.current.position.x = Math.cos(t) * radius + POND_CENTER[0]
-    ref.current.position.z = Math.sin(t) * radius + POND_CENTER[1]
+    const dx = Math.cos(t) * radius + POND_CENTER[0]
+    const dz = Math.sin(t) * radius + POND_CENTER[1]
+    ref.current.position.x = dx
+    ref.current.position.z = dz
     ref.current.position.y = 0.25 + Math.sin(t * 3 + seed) * 0.02
     ref.current.rotation.y = -t + Math.PI / 2  // face direction of travel
+
+    // V2 D2: water-wake rings behind the duck. The rings are CHILDREN
+    // of the duck group, so position is local — they're already behind
+    // the duck because they sit at local -X (parent group is rotated
+    // to face travel direction along +X). Two rings with 1s phase
+    // offset so the wake looks continuous, not pulsing in sync.
+    const baseTime = s.clock.elapsedTime
+    ;[wake1Ref, wake2Ref].forEach((wr, i) => {
+      const m = wr.current
+      if (!m) return
+      const phase = ((baseTime + i * 1.0) * 0.5) % 1   // 0..1 over 2s
+      m.position.set(-0.22 - phase * 0.2, -0.045, 0)
+      const ringScale = 0.5 + phase * 0.8
+      m.scale.set(ringScale, 1, ringScale)
+      const mat = m.material as THREE.MeshBasicMaterial
+      mat.opacity = Math.max(0, 0.38 - phase * 0.38)
+    })
   })
   return (
     <group ref={ref} scale={size}>
@@ -181,6 +202,15 @@ function Duck({ angle, radius, speed, size = 1, seed = 0 }: { angle: number; rad
       <mesh position={[0.18, 0.18, 0.05]}>
         <sphereGeometry args={[0.012, 6, 5]} />
         <meshStandardMaterial color="#1a1a1a" />
+      </mesh>
+      {/* V2 D2: wake rings trailing behind duck on water surface */}
+      <mesh ref={wake1Ref} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.07, 0.10, 16]} />
+        <meshBasicMaterial color="#E8F2F5" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} />
+      </mesh>
+      <mesh ref={wake2Ref} rotation={[-Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[0.07, 0.10, 16]} />
+        <meshBasicMaterial color="#E8F2F5" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
     </group>
   )

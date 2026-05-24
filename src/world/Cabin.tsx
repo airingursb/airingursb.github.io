@@ -23,6 +23,64 @@ function Rocker({ children }: { children: ReactNode }) {
   return <group ref={ref}>{children}</group>
 }
 
+// V2 scene polish A1: tea cup on the rocker seat with rising steam.
+// Implies "Airing just got up to greet you." The cup is parented INSIDE
+// the rocker so it sways with the chair.
+function RockerTeaCup() {
+  const puffRefs = [useRef<THREE.Mesh>(null), useRef<THREE.Mesh>(null), useRef<THREE.Mesh>(null)]
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    puffRefs.forEach((r, i) => {
+      const m = r.current
+      if (!m) return
+      // Each puff: rise from y0=0 to y=0.45, fade out, restart with offset
+      const phase = ((t * 0.45 + i * 0.33) % 1)   // 0..1 over ~2.2s
+      const rise = phase * 0.45
+      m.position.y = rise
+      m.position.x = Math.sin(t * 0.8 + i) * 0.012 * phase  // slight drift
+      const baseScale = 0.018 + phase * 0.012
+      m.scale.setScalar(baseScale)
+      const mat = m.material as THREE.MeshBasicMaterial
+      mat.opacity = Math.max(0, (1 - phase) * 0.55)
+    })
+  })
+  // Cup sits on the back-right corner of seat (where you'd put it down
+  // before getting up). Seat top y = 0.18 + 0.04 = 0.22 in rocker local.
+  return (
+    <group position={[0.15, 0.22, -0.12]}>
+      {/* Cup body (ceramic) */}
+      <mesh castShadow>
+        <cylinderGeometry args={[0.04, 0.035, 0.05, 12]} />
+        <meshStandardMaterial color="#F4EAD5" roughness={0.55} />
+      </mesh>
+      {/* Tea surface */}
+      <mesh position={[0, 0.025, 0]}>
+        <cylinderGeometry args={[0.036, 0.036, 0.004, 12]} />
+        <meshStandardMaterial color="#6E4A2A" roughness={0.35} metalness={0.15} />
+      </mesh>
+      {/* Tiny handle */}
+      <mesh position={[0.045, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.018, 0.005, 4, 8, Math.PI]} />
+        <meshStandardMaterial color="#F4EAD5" roughness={0.55} />
+      </mesh>
+      {/* Saucer */}
+      <mesh position={[0, -0.027, 0]}>
+        <cylinderGeometry args={[0.06, 0.06, 0.006, 14]} />
+        <meshStandardMaterial color="#EFE2C4" roughness={0.6} />
+      </mesh>
+      {/* Steam puffs — small white spheres rising over ~2.2s loop */}
+      <group position={[0, 0.04, 0]}>
+        {puffRefs.map((r, i) => (
+          <mesh key={`p${i}`} ref={r}>
+            <sphereGeometry args={[1, 8, 6]} />
+            <meshBasicMaterial color="#FFFFFF" transparent opacity={0} depthWrite={false} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  )
+}
+
 const LOG_LIGHT  = '#9E7A52'
 const LOG_DARK   = '#6E4F31'
 const LOG_END    = '#5A3D1F'
@@ -583,6 +641,9 @@ export default function Cabin() {
               <meshStandardMaterial color={ROCKER} roughness={0.88} />
             </mesh>
           ))}
+          {/* V2 A1: tea cup with rising steam — inside Rocker so it
+              rocks with the chair. "Airing just got up to greet you." */}
+          <RockerTeaCup />
         </group>
         </Rocker>
 

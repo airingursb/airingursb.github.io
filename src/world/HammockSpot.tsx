@@ -79,7 +79,8 @@ export default function HammockSpot() {
       <Pine scale={1.05} position={[-1.4, 0, 0]} />
       <Pine scale={1.0}  position={[ 1.4, 0, 0]} />
 
-      {/* Hammock (swings) */}
+      {/* Hammock (swings) — V2 A3: book + glasses also live inside this
+          group so they sway with the hammock instead of floating apart. */}
       <group ref={hammockRef}>
       {hammockSegments.map(([hx, hy, hz], i) => (
         <mesh key={`h${i}`} position={[hx, hy, hz]} castShadow>
@@ -93,6 +94,50 @@ export default function HammockSpot() {
           <meshStandardMaterial color={HAMMOCK} roughness={0.85} />
         </mesh>
       ))}
+
+      {/* Open book face-down on hammock — "she just walked away from this" */}
+      <group position={[0.3, 0.72, 0.0]} rotation={[0, 0.3, -0.18]}>
+        <mesh position={[0, 0, 0]} castShadow>
+          <boxGeometry args={[0.22, 0.012, 0.16]} />
+          <meshStandardMaterial color={BOOK_COVER} roughness={0.86} />
+        </mesh>
+        <mesh position={[0, 0.012, 0]}>
+          <boxGeometry args={[0.205, 0.018, 0.148]} />
+          <meshStandardMaterial color={BOOK_PAGE} roughness={0.85} />
+        </mesh>
+        <mesh position={[0, 0.012, -0.075]}>
+          <boxGeometry args={[0.22, 0.02, 0.012]} />
+          <meshStandardMaterial color={BOOK_COVER} roughness={0.86} />
+        </mesh>
+        {/* Bookmark ribbon hanging out of pages */}
+        <mesh position={[0.06, 0.013, 0.045]} rotation={[0, 0.4, 0]}>
+          <planeGeometry args={[0.018, 0.12]} />
+          <meshStandardMaterial color="#C13E3E" roughness={0.7} side={THREE.DoubleSide} />
+        </mesh>
+      </group>
+      {/* Reading glasses — folded beside book */}
+      <group position={[-0.05, 0.7, 0.04]} rotation={[0, 0.4, -0.18]}>
+        <mesh position={[-0.04, 0, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <torusGeometry args={[0.025, 0.004, 6, 16]} />
+          <meshStandardMaterial color="#3A2516" roughness={0.6} metalness={0.4} />
+        </mesh>
+        <mesh position={[0.04, 0, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+          <torusGeometry args={[0.025, 0.004, 6, 16]} />
+          <meshStandardMaterial color="#3A2516" roughness={0.6} metalness={0.4} />
+        </mesh>
+        <mesh position={[0, 0, 0]}>
+          <cylinderGeometry args={[0.003, 0.003, 0.018, 4]} />
+          <meshStandardMaterial color="#3A2516" roughness={0.6} metalness={0.4} />
+        </mesh>
+        <mesh position={[-0.05, 0.005, -0.02]} rotation={[0, 0.6, 0]}>
+          <cylinderGeometry args={[0.002, 0.002, 0.06, 4]} />
+          <meshStandardMaterial color="#3A2516" roughness={0.6} metalness={0.4} />
+        </mesh>
+        <mesh position={[0.05, 0.005, -0.02]} rotation={[0, -0.6, 0]}>
+          <cylinderGeometry args={[0.002, 0.002, 0.06, 4]} />
+          <meshStandardMaterial color="#3A2516" roughness={0.6} metalness={0.4} />
+        </mesh>
+      </group>
       </group>
 
       {/* Rope knots at tree attachments */}
@@ -109,24 +154,6 @@ export default function HammockSpot() {
         </group>
       ))}
 
-      {/* === Open book on hammock === */}
-      <group position={[0.4, 0.7, 0.0]} rotation={[0, 0.3, -0.2]}>
-        {/* Cover */}
-        <mesh position={[0, 0, 0]} castShadow>
-          <boxGeometry args={[0.22, 0.03, 0.16]} />
-          <meshStandardMaterial color={BOOK_COVER} roughness={0.86} />
-        </mesh>
-        {/* Open pages */}
-        <mesh position={[0, 0.02, 0]}>
-          <boxGeometry args={[0.2, 0.005, 0.14]} />
-          <meshStandardMaterial color={BOOK_PAGE} roughness={0.85} />
-        </mesh>
-        {/* Spine fold */}
-        <mesh position={[0, 0.025, 0]}>
-          <boxGeometry args={[0.005, 0.01, 0.14]} />
-          <meshStandardMaterial color={BOOK_COVER} />
-        </mesh>
-      </group>
 
       {/* === Campfire ring nearby === */}
       <group position={[1.5, 0, -1.4]}>
