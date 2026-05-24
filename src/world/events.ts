@@ -10,6 +10,8 @@ interface WorldEventMap {
   'world-zone-click': { kind: Interaction }
   'world-theme': ThemeKind
   'world-reset-camera': undefined
+  'world-whisper-toggle': undefined
+  'world-whisper-fire': { text: string }
 }
 
 type WorldEventName = keyof WorldEventMap

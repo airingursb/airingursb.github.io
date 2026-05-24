@@ -4,6 +4,7 @@
 import App from '../world/App'
 import WorldUI from '../world/WorldUI'
 import ZonePanel from '../world/ZonePanel'
+import WhisperOverlay from '../world/WhisperOverlay'
 import WorldLoader from '../world/WorldLoader.astro'
 import ErrorBoundary from '../world/ErrorBoundary'
 import articlesData from '../data/articles.json'
@@ -34,6 +35,7 @@ const initialData = {
   </ErrorBoundary>
   <WorldUI client:only="react" />
   <ZonePanel client:only="react" initialData={initialData} />
+  <WhisperOverlay client:only="react" />
   <div class="world-help">
     <span class="world-help-keys">drag</span> 旋转 · <span class="world-help-keys">scroll</span> 缩放 · <span class="world-help-keys">click</span> 互动 · <span class="world-help-keys">ESC</span> 关面板
   </div>
@@ -106,6 +108,50 @@ const initialData = {
   .world-btn:hover {
     background: rgba(40, 28, 44, 0.85);
     transform: scale(1.06);
+  }
+  .world-btn--off {
+    opacity: 0.4;
+    filter: grayscale(0.6);
+  }
+  /* === Whisper overlay (island speaks) === */
+  .world-whisper {
+    position: fixed;
+    top: 22%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 244, 220, 0.92);
+    font-family: "Songti SC", "Noto Serif SC", Georgia, serif;
+    font-style: italic;
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-shadow:
+      0 1px 0 rgba(0, 0, 0, 0.6),
+      0 2px 8px rgba(20, 14, 22, 0.65);
+    padding: 14px 28px;
+    border-radius: 999px;
+    background: rgba(20, 14, 22, 0.28);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 244, 220, 0.06);
+    pointer-events: none;
+    user-select: none;
+    z-index: 15;
+    max-width: min(560px, 86vw);
+    opacity: 0;
+    transition: opacity 1.5s ease, transform 1.6s ease;
+  }
+  .world-whisper--in {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+  .world-whisper--out {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% - 6px));
+    transition: opacity 2s ease, transform 2s ease;
+  }
+  @media (max-width: 720px) {
+    .world-whisper { font-size: 17px; padding: 10px 20px; top: 18%; }
   }
   /* Click-outside-to-close transparent backdrop */
   .world-panel-backdrop {

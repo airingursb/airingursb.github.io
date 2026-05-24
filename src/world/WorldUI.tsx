@@ -8,11 +8,16 @@ import { useState } from 'react'
 import { emit } from './events'
 
 const THEME_KEY = 'world-theme-v1'
+const WHISPER_KEY = 'world-whispers-on-v1'
 
 export default function WorldUI() {
   const [theme, setTheme] = useState<'day' | 'dusk'>(() => {
     if (typeof window === 'undefined') return 'day'
     try { return (localStorage.getItem(THEME_KEY) as 'day' | 'dusk') || 'day' } catch { return 'day' }
+  })
+  const [whispersOn, setWhispersOn] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true
+    try { return localStorage.getItem(WHISPER_KEY) !== 'false' } catch { return true }
   })
 
   function snap() {
@@ -34,6 +39,11 @@ export default function WorldUI() {
     emit('world-reset-camera', undefined)
   }
 
+  function toggleWhispers() {
+    emit('world-whisper-toggle', undefined)
+    setWhispersOn(prev => !prev)
+  }
+
   return (
     <div className="world-ui">
       <button onClick={snap} className="world-btn" title="Save photo">📷</button>
@@ -41,6 +51,13 @@ export default function WorldUI() {
         {theme === 'day' ? '🌙' : '☀️'}
       </button>
       <button onClick={resetCam} className="world-btn" title="Reset camera">🎯</button>
+      <button
+        onClick={toggleWhispers}
+        className={`world-btn${whispersOn ? '' : ' world-btn--off'}`}
+        title={whispersOn ? '关闭岛的低语' : '让岛说话'}
+      >
+        💭
+      </button>
     </div>
   )
 }
