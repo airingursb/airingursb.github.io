@@ -39,23 +39,60 @@ import IslandWidget from './IslandWidget'
 </div>
 
 <script is:inline>
-  // V33: detect canvas mount → fade out skeleton.
+  // V40: better WebGL fail detection — synchronous capability check
+  // first, then patient (12s) wait for slow networks, then proper
+  // canvas ctx probe (canvas can exist + be CSS-sized yet WebGL still
+  // failed — don't rely on width=0).
   (function () {
     const wrap = document.getElementById('island-3d-canvas-wrap')
     if (!wrap) return
-    if (wrap.querySelector('canvas')) {
-      wrap.classList.add('island-loaded')
+
+    // Synchronous fast-path: no WebGL support at all in this browser
+    const HAS_WEBGL = (
+      'WebGL2RenderingContext' in window ||
+      'WebGLRenderingContext' in window
+    )
+    if (!HAS_WEBGL) {
+      wrap.classList.add('island-webgl-failed')
       return
     }
-    const obs = new MutationObserver(() => {
-      if (wrap.querySelector('canvas')) {
-        wrap.classList.add('island-loaded')
-        obs.disconnect()
+
+    function isCanvasWorking(canvas) {
+      if (!canvas) return false
+      // Try to get the actual rendering context — proves WebGL works
+      try {
+        const ctx = canvas.getContext('webgl2') || canvas.getContext('webgl')
+        return !!ctx && !ctx.isContextLost?.()
+      } catch {
+        return false
       }
+    }
+
+    function checkCanvas() {
+      const canvas = wrap.querySelector('canvas')
+      if (canvas && isCanvasWorking(canvas)) {
+        wrap.classList.add('island-loaded')
+        return true
+      }
+      return false
+    }
+
+    if (checkCanvas()) return
+    const obs = new MutationObserver(() => {
+      if (checkCanvas()) obs.disconnect()
     })
     obs.observe(wrap, { childList: true, subtree: true })
-    // Safety: fade out after 8s no matter what
-    setTimeout(() => { wrap.classList.add('island-loaded') }, 8000)
+
+    // 12s patience (was 8s — too tight on throttled 3G mobile)
+    setTimeout(() => {
+      const canvas = wrap.querySelector('canvas')
+      if (!canvas || !isCanvasWorking(canvas)) {
+        obs.disconnect()
+        wrap.classList.add('island-webgl-failed')
+      } else if (!wrap.classList.contains('island-loaded')) {
+        wrap.classList.add('island-loaded')
+      }
+    }, 12000)
   })()
 </script>
 
@@ -139,6 +176,24 @@ import IslandWidget from './IslandWidget'
   }
   .island-card-canvas.island-loaded .island-skeleton {
     opacity: 0;
+  }
+  /* V39: WebGL failed → keep skeleton fully visible, add subtle hint */
+  .island-card-canvas.island-webgl-failed .island-skeleton {
+    opacity: 1 !important;
+    animation: none;
+  }
+  .island-card-canvas.island-webgl-failed::after {
+    content: 'WebGL 未启用 — 点击进入完整页面';
+    position: absolute;
+    bottom: 12px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    color: rgba(244, 234, 213, 0.65);
+    z-index: 3;
+    pointer-events: none;
   }
   /* V34: prefers-reduced-motion → show skeleton-only (friendlier than
      hiding the card entirely). Disable auto-fade so skeleton persists. */

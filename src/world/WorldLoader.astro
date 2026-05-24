@@ -11,12 +11,53 @@
   </div>
 </div>
 
+<!-- V40: WebGL-failed fallback DOM — only shown if canvas never appears
+     or context creation fails. Addresses real user-reported blackscreen
+     bug from WebGL-blocked browsers. -->
+<div id="world-webgl-fallback" class="world-webgl-fallback" hidden>
+  <div class="world-fallback-card">
+    <div class="world-fallback-flower">🪧</div>
+    <div class="world-fallback-title">无法加载 3D 场景</div>
+    <p class="world-fallback-body">
+      您的浏览器似乎禁用了 WebGL（硬件加速），或被扩展拦了。<br/>
+      请到 <code>chrome://settings/system</code> 开启「使用硬件加速」，<br/>
+      或换 Chrome / Firefox / Safari 再试。
+    </p>
+    <div class="world-fallback-actions">
+      <a href="/nook/" class="world-fallback-btn">前往 nook 2D 版本 →</a>
+      <a href="/" class="world-fallback-btn world-fallback-btn-ghost">回首页</a>
+    </div>
+  </div>
+</div>
+
 <script is:inline>
-  // Fade-out once the R3F canvas is mounted (first frame painted)
-  const loader = document.getElementById('world-loader')
-  if (loader) {
+  (function () {
+    const loader = document.getElementById('world-loader')
+    const fallback = document.getElementById('world-webgl-fallback')
+    if (!loader) return
+
+    // V40 fast-path: synchronous WebGL capability check
+    const HAS_WEBGL = (
+      'WebGL2RenderingContext' in window ||
+      'WebGLRenderingContext' in window
+    )
+    if (!HAS_WEBGL) {
+      loader.remove()
+      if (fallback) fallback.hidden = false
+      return
+    }
+
     const start = Date.now()
     const FADE_MIN_MS = 600
+
+    function isCanvasWorking(canvas) {
+      if (!canvas) return false
+      try {
+        const ctx = canvas.getContext('webgl2') || canvas.getContext('webgl')
+        return !!ctx && !ctx.isContextLost?.()
+      } catch { return false }
+    }
+
     function fade() {
       const dt = Date.now() - start
       const wait = Math.max(0, FADE_MIN_MS - dt)
@@ -25,19 +66,33 @@
         setTimeout(() => loader.remove(), 400)
       }, wait)
     }
-    // Watch for canvas appearing
+
+    function showFallback() {
+      if (loader.isConnected) loader.remove()
+      if (fallback) fallback.hidden = false
+    }
+
     const obs = new MutationObserver(() => {
       const c = document.querySelector('#world-root canvas')
-      if (c) {
-        // wait until canvas actually has content
+      if (c && isCanvasWorking(c)) {
         requestAnimationFrame(() => requestAnimationFrame(fade))
         obs.disconnect()
       }
     })
     obs.observe(document.body, { childList: true, subtree: true })
-    // Safety: hide after 8s regardless
-    setTimeout(() => { if (loader.isConnected) fade() }, 8000)
-  }
+
+    // V40: extended 12s patience + escalate to fallback if canvas not
+    // working (was: silently fade splash even on failure → user saw black).
+    setTimeout(() => {
+      const c = document.querySelector('#world-root canvas')
+      if (c && isCanvasWorking(c)) {
+        if (loader.isConnected) fade()
+      } else {
+        obs.disconnect()
+        showFallback()
+      }
+    }, 12000)
+  })()
 </script>
 
 <style is:global>
@@ -89,5 +144,68 @@
   .world-loader-hint {
     font-size: 10px;
     color: rgba(92, 61, 36, 0.55);
+  }
+
+  /* V40: WebGL-failed fallback */
+  .world-webgl-fallback {
+    position: fixed; inset: 0;
+    background: linear-gradient(180deg, #2a2438 0%, #14101c 100%);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    color: #f4ead5;
+    font-family: ui-monospace, monospace;
+    padding: 24px;
+  }
+  .world-fallback-card {
+    text-align: center;
+    max-width: 480px;
+  }
+  .world-fallback-flower {
+    font-size: 56px;
+    margin-bottom: 18px;
+  }
+  .world-fallback-title {
+    font-family: "Songti SC", "Noto Serif SC", serif;
+    font-size: 22px;
+    margin-bottom: 16px;
+    color: #FFD9A8;
+  }
+  .world-fallback-body {
+    font-size: 13px;
+    line-height: 1.75;
+    color: rgba(244, 234, 213, 0.7);
+    margin: 0 0 26px;
+  }
+  .world-fallback-body code {
+    background: rgba(244, 234, 213, 0.12);
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #FFE4C0;
+  }
+  .world-fallback-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .world-fallback-btn {
+    padding: 10px 22px;
+    background: #C97B5C;
+    color: #FFF4DC;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 13px;
+    transition: background 200ms ease;
+  }
+  .world-fallback-btn:hover {
+    background: #B86E50;
+  }
+  .world-fallback-btn-ghost {
+    background: transparent;
+    border: 1px solid rgba(244, 234, 213, 0.3);
+    color: rgba(244, 234, 213, 0.85);
+  }
+  .world-fallback-btn-ghost:hover {
+    background: rgba(244, 234, 213, 0.08);
   }
 </style>
