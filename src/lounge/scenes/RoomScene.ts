@@ -1829,7 +1829,15 @@ export class RoomScene extends Phaser.Scene {
     // could otherwise place the bear OUTSIDE a smaller room (e.g. gallery
     // 320×224) on cross-room teleport. We skip the restore in that case so
     // the room's spawn point wins.
-    if (this.myBear && typeof m.last_x === 'number' && typeof m.last_y === 'number') {
+    //
+    // SHU-737 — also skip when URL ?room= was specified OR user has already
+    // engaged. Server's `last_x/y` are from the previous session and may not
+    // match the current room's walkable space — the room's spawn point wins
+    // in both cases.
+    if (this.myBear
+        && typeof m.last_x === 'number' && typeof m.last_y === 'number'
+        && !urlHasRoom
+        && !userEngaged) {
       const lx = m.last_x, ly = m.last_y
       const inBounds = lx >= 0 && lx <= this.mapInfo.widthPx && ly >= 0 && ly <= this.mapInfo.heightPx
       if (inBounds && !this.collidesAt(lx, ly)) {

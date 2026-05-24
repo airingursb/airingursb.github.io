@@ -109,12 +109,20 @@ export function setupGalleryArchitecture(
   // ── Wire the grove arch as an interactive entry to the 3D pocket world.
   // The arch is the LARGE doorway sprite in the south pavilion; clicking it
   // dispatches open-pocket-world (caught by nook.astro to mount the iframe).
+  //
+  // SHU-737 — gate the click on a short post-mount cooldown (700ms). Stops
+  // a stale pointerdown from a prior fade-in / scene transition from
+  // teleporting the user straight into the grove on page load.
   if (onArchClick) {
     const archX = 640, archY = 824
     const hit = scene.add.container(archX, archY).setDepth(2.9)
     const inv = scene.add.rectangle(0, 0, 90, 110, 0x000000, 0.001).setInteractive({ useHandCursor: true })
     hit.add(inv)
-    inv.on('pointerdown', () => onArchClick())
+    const mountedAt = Date.now()
+    inv.on('pointerdown', () => {
+      if (Date.now() - mountedAt < 700) return
+      onArchClick()
+    })
     arcGroveHitArea = hit
   }
 }
