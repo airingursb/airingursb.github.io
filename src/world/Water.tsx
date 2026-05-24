@@ -104,7 +104,58 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
           pad) so the water surface reads as "moving" rather than static.
           Subtle — 0.018 amp / 1.5s period — but adds life to the pond. */}
       <LilyPads />
+
+      {/* V2 wave 3: a few sakura petals floating on the pond surface,
+          slowly drifting. Pink dots on water = quintessential Ghibli. */}
+      <FloatingPetals />
     </group>
+  )
+}
+
+function FloatingPetals() {
+  const refs = useRef<Array<THREE.Mesh | null>>([])
+  const positions: Array<[number, number, number]> = [
+    [ 0.8,  0.05, -0.4],
+    [-0.6,  0.05,  0.8],
+    [ 1.2,  0.05,  0.3],
+    [-1.0,  0.05, -0.3],
+    [ 0.3,  0.05,  1.1],
+    [-0.4,  0.05, -1.2],
+    [ 0.95, 0.05, -1.0],
+  ]
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    const gust = getGust(t)
+    refs.current.forEach((m, i) => {
+      if (!m) return
+      const [x0, _y, z0] = positions[i]
+      const drift = 0.25 + gust * 0.6
+      m.position.x = x0 + Math.sin(t * 0.4 + i) * drift
+      m.position.z = z0 + Math.cos(t * 0.3 + i * 0.7) * drift
+      m.position.y = 0.06 + Math.sin(t * 0.9 + i) * 0.005
+      m.rotation.z = t * 0.15 + i * 0.8
+    })
+  })
+  return (
+    <>
+      {positions.map((_, i) => (
+        <mesh
+          key={`pet${i}`}
+          ref={(el) => { refs.current[i] = el }}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <circleGeometry args={[0.045, 6]} />
+          <meshStandardMaterial
+            color={i % 2 === 0 ? '#F4D9E0' : '#FFC8D7'}
+            roughness={0.75}
+            transparent
+            opacity={0.85}
+            side={THREE.DoubleSide}
+            depthWrite={false}
+          />
+        </mesh>
+      ))}
+    </>
   )
 }
 

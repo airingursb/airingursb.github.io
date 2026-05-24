@@ -8,6 +8,7 @@ import { useRef, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { getZone } from './zones'
+import { getGust } from './wind'
 
 // Rocking chair wrapper — gently rocks on its runners
 function Rocker({ children }: { children: ReactNode }) {
@@ -128,16 +129,22 @@ function StoneBlock({ size }: { size: [number, number, number] }) {
 }
 
 function ChimneySmoke({ origin }: { origin: [number, number, number] }) {
-  const refs = [useRef<THREE.Mesh>(null), useRef<THREE.Mesh>(null), useRef<THREE.Mesh>(null), useRef<THREE.Mesh>(null)]
+  // Sub-A fix: useRef-in-array-literal (works but ESLint-flagged).
+  // Single ref + array via callback.
+  const refs = useRef<Array<THREE.Mesh | null>>([])
   useFrame((s) => {
     const t = s.clock.elapsedTime
-    refs.forEach((r, i) => {
-      const m = r.current
+    // V2 wave 3: smoke also reacts to gusts — drifts harder laterally
+    // and rises slightly faster when wind kicks up.
+    const gust = getGust(t)
+    const driftBoost = 1 + gust * 2.0
+    const riseBoost = 1 + gust * 0.3
+    refs.current.forEach((m, i) => {
       if (!m) return
-      const phase = (t * 0.3 + i * 0.6) % 3
+      const phase = (t * 0.3 * riseBoost + i * 0.6) % 3
       m.position.y = origin[1] + phase * 1.3
-      m.position.x = origin[0] + Math.sin(t * 0.7 + i) * 0.15 + phase * 0.05
-      m.position.z = origin[2] + Math.cos(t * 0.5 + i * 0.7) * 0.1
+      m.position.x = origin[0] + Math.sin(t * 0.7 + i) * 0.15 * driftBoost + phase * 0.05 * driftBoost
+      m.position.z = origin[2] + Math.cos(t * 0.5 + i * 0.7) * 0.10 * driftBoost
       const scale = 0.2 + phase * 0.4
       m.scale.setScalar(scale)
       ;(m.material as THREE.MeshStandardMaterial).opacity = Math.max(0, 0.6 - phase * 0.2)
@@ -145,8 +152,8 @@ function ChimneySmoke({ origin }: { origin: [number, number, number] }) {
   })
   return (
     <group>
-      {refs.map((r, i) => (
-        <mesh key={i} ref={r}>
+      {[0, 1, 2, 3].map((i) => (
+        <mesh key={i} ref={(el) => { refs.current[i] = el }}>
           <sphereGeometry args={[0.5, 8, 6]} />
           <meshStandardMaterial color={SMOKE} transparent opacity={0.5} roughness={1.0} />
         </mesh>
@@ -613,6 +620,38 @@ export default function Cabin() {
             <meshStandardMaterial color={PLANK} roughness={0.9} />
           </mesh>
         ))}
+
+        {/* V2 wave 3: pair of geta sandals beside the door — mirrors
+            the onsen 脱衣場 geta, implying "Airing's home" instead of
+            "Airing's at the spring". */}
+        <group position={[0.6, 0.34, -0.32]}>
+          {[-0.10, 0.10].map((gx, i) => (
+            <group key={`pgeta${i}`} position={[gx, 0, i * 0.05]} rotation={[0, i === 0 ? 0.10 : -0.12, 0]}>
+              <mesh castShadow>
+                <boxGeometry args={[0.18, 0.022, 0.09]} />
+                <meshStandardMaterial color="#8E6A45" roughness={0.88} />
+              </mesh>
+              {/* Two teeth */}
+              <mesh position={[-0.055, -0.022, 0]}>
+                <boxGeometry args={[0.022, 0.035, 0.09]} />
+                <meshStandardMaterial color="#5D452B" roughness={0.92} />
+              </mesh>
+              <mesh position={[0.055, -0.022, 0]}>
+                <boxGeometry args={[0.022, 0.035, 0.09]} />
+                <meshStandardMaterial color="#5D452B" roughness={0.92} />
+              </mesh>
+              {/* V-thong straps */}
+              <mesh position={[0, 0.016, 0.022]} rotation={[0.4, 0, 0]}>
+                <cylinderGeometry args={[0.003, 0.003, 0.055, 4]} />
+                <meshStandardMaterial color="#3A2818" roughness={0.85} />
+              </mesh>
+              <mesh position={[0, 0.016, -0.022]} rotation={[-0.4, 0, 0]}>
+                <cylinderGeometry args={[0.003, 0.003, 0.055, 4]} />
+                <meshStandardMaterial color="#3A2818" roughness={0.85} />
+              </mesh>
+            </group>
+          ))}
+        </group>
 
         {/* === Rocking chair — actually rocks now === */}
         <Rocker>
