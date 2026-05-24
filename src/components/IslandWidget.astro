@@ -71,14 +71,15 @@ import IslandWidget from './IslandWidget'
        skipped by most screen readers); visibility toggled by JS. -->
   <span class="island-pet-hint" aria-live="polite" hidden>需要 WebGL · 点击进入完整页面</span>
 
-  <!-- V53: hover-reveal overlay. Fades in ~600ms after hover starts;
-       shows a rotating philosophical line (zh/en lang-aware) plus
-       2 action chips ("enter" → /world/, "cycle" → next quote). -->
+  <!-- V53.2: hover-reveal overlay. NOW STACKED VERTICALLY above the
+       pet so it doesn't overlap homepage cards. Default text inlined
+       in HTML — if JS fails, user still sees something usable. JS
+       upgrades to bilingual + cycles quotes. -->
   <div class="island-pet-panel" aria-hidden="true">
-    <p class="island-pet-quote"></p>
+    <p class="island-pet-quote">山深闻鹧鸪。</p>
     <div class="island-pet-actions">
-      <button type="button" class="island-pet-chip" data-action="enter"></button>
-      <button type="button" class="island-pet-chip island-pet-chip-ghost" data-action="cycle"></button>
+      <button type="button" class="island-pet-chip" data-action="enter">进入森林岛 →</button>
+      <button type="button" class="island-pet-chip island-pet-chip-ghost" data-action="cycle" aria-label="换一句">↻ 换一句</button>
     </div>
   </div>
 </div>
@@ -165,10 +166,18 @@ import IslandWidget from './IslandWidget'
     })
 
     // ─── V53: hover overlay (quote + chips, lang-aware) ───
+    // V53.2: wrapped in try/catch. If anything throws, the inline
+    // defaults in HTML still show ("山深闻鹧鸪。" + "进入森林岛 →" +
+    // "↻ 换一句") so the UI is usable even without JS upgrade.
+    try {
     const panel = wrap.querySelector('.island-pet-panel')
     const quoteEl = wrap.querySelector('.island-pet-quote')
     const enterChip = wrap.querySelector('.island-pet-chip[data-action=enter]')
     const cycleChip = wrap.querySelector('.island-pet-chip[data-action=cycle]')
+    if (!panel || !quoteEl || !enterChip || !cycleChip) {
+      console.warn('[island-pet] panel/chip elements missing — using HTML defaults')
+      return
+    }
 
     const QUOTES_ZH = [
       '松风过耳，落英满衣。',
@@ -378,8 +387,8 @@ import IslandWidget from './IslandWidget'
       'There is a crack in everything — that is how the light gets in.',
     ]
     const CHIP_LABELS = {
-      zh: { enter: '进入森林岛 →', cycle: '再来一句' },
-      en: { enter: 'Enter the forest →', cycle: 'Another' },
+      zh: { enter: '进入森林岛 →', cycle: '↻ 换一句' },
+      en: { enter: 'Enter the forest →', cycle: '↻ Another' },
     }
 
     function detectLang() {
@@ -429,20 +438,21 @@ import IslandWidget from './IslandWidget'
       if (!wrap.contains(e.relatedTarget)) panel?.setAttribute('aria-hidden', 'true')
     })
 
-    // Chip handlers
-    if (enterChip) {
-      enterChip.addEventListener('click', (e) => {
-        e.stopPropagation()
-        location.href = wrap.dataset.href || '/world/'
-      })
-    }
-    if (cycleChip) {
-      cycleChip.addEventListener('click', (e) => {
-        e.stopPropagation()
-        e.preventDefault()
-        quoteIdx = (quoteIdx + 1) % (detectLang() === 'zh' ? QUOTES_ZH.length : QUOTES_EN.length)
-        applyLang()
-      })
+    // Chip handlers — V53.2: pointerdown fires BEFORE click and survives
+    // pointer-leave races; click also wired as fallback. Both call
+    // stopPropagation so they don't trigger the wrap's navigate-to-/world/.
+    enterChip.addEventListener('click', (e) => {
+      e.stopPropagation()
+      location.href = wrap.dataset.href || '/world/'
+    })
+    cycleChip.addEventListener('click', (e) => {
+      e.stopPropagation()
+      e.preventDefault()
+      quoteIdx = (quoteIdx + 1) % (detectLang() === 'zh' ? QUOTES_ZH.length : QUOTES_EN.length)
+      applyLang()
+    })
+    } catch (err) {
+      console.error('[island-pet] panel init failed:', err)
     }
   })()
 </script>
@@ -551,94 +561,88 @@ import IslandWidget from './IslandWidget'
     }
   }
 
-  /* V53: hover-reveal panel — sits to the RIGHT of the pet (we're at
-     bottom-left so right has space). V53.1: switched from JS dwell
-     timer + classToggle to PURE CSS :hover (bulletproof — JS dwell
-     wasn't firing reliably across browsers per user report). JS only
-     handles quote/cycle/lang now. The 400ms transition-delay
-     reproduces the "dwell" feel without needing a JS timer. */
+  /* V53.2: hover-reveal panel — STACKED VERTICALLY ABOVE the pet
+     (was to the right in V53/V53.1, but that overlapped the homepage
+     cards on the right side). Now bottom: 100% → sits directly above
+     the pet, same width (220px), so total footprint is one column.
+     Pure CSS :hover with 350ms transition-delay reproduces the
+     "dwell" feel. */
   .island-pet-panel {
     position: absolute;
-    left: 100%;
-    bottom: 16px;
-    margin-left: 12px;
-    width: 240px;
+    bottom: 100%;        /* ABOVE the pet */
+    left: 0;
+    margin-bottom: 12px;
+    width: 100%;         /* = 220px (matches pet) */
     padding: 14px 16px;
-    background: rgba(20, 16, 14, 0.86);
+    background: rgba(20, 16, 14, 0.88);
     color: rgba(252, 244, 226, 0.96);
     border-radius: 14px;
-    backdrop-filter: blur(8px) saturate(1.1);
-    -webkit-backdrop-filter: blur(8px) saturate(1.1);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+    backdrop-filter: blur(10px) saturate(1.1);
+    -webkit-backdrop-filter: blur(10px) saturate(1.1);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+    box-sizing: border-box;
     opacity: 0;
-    transform: translateX(-8px);
-    transition: opacity 360ms ease 0ms, transform 360ms cubic-bezier(0.22, 0.61, 0.36, 1) 0ms;
+    transform: translateY(8px);
+    transition: opacity 320ms ease 0ms, transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1) 0ms;
     pointer-events: none;
     z-index: 4;
   }
-  /* V53.1: pure CSS hover-show — 400ms delay on opacity gives the
-     "dwell" feel; instant hide on leave (no delay on out-transition). */
   .island-pet:hover .island-pet-panel,
   .island-pet:focus-within .island-pet-panel,
   .island-pet-panel--shown {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
     pointer-events: auto;
-    transition: opacity 360ms ease 400ms, transform 360ms cubic-bezier(0.22, 0.61, 0.36, 1) 400ms;
+    transition: opacity 320ms ease 350ms, transform 320ms cubic-bezier(0.22, 0.61, 0.36, 1) 350ms;
   }
   .island-pet-quote {
     margin: 0 0 12px;
     font-family: "Songti SC", "Noto Serif SC", "Times New Roman", serif;
     font-size: 13px;
     line-height: 1.55;
-    color: rgba(248, 232, 200, 0.92);
+    color: rgba(248, 232, 200, 0.94);
     letter-spacing: 0.01em;
   }
   .island-pet-actions {
     display: flex;
     gap: 8px;
-    flex-wrap: wrap;
+    align-items: stretch;
   }
   .island-pet-chip {
     appearance: none;
     border: 0;
-    padding: 6px 12px;
+    /* V53.2: bigger padding so users can see they're real buttons */
+    padding: 8px 14px;
     border-radius: 10px;
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 11px;
+    font-size: 12px;
+    line-height: 1.2;
     cursor: pointer;
-    background: rgba(200, 74, 53, 0.86);  /* vermillion to match torii */
-    color: rgba(252, 244, 226, 0.96);
+    background: rgba(200, 74, 53, 0.92);  /* vermillion to match torii */
+    color: rgba(252, 244, 226, 0.98);
     transition: background 180ms ease, transform 180ms ease;
+    flex: 1 1 auto;
+    white-space: nowrap;
   }
   .island-pet-chip:hover {
     background: rgba(214, 88, 67, 1);
     transform: translateY(-1px);
   }
+  .island-pet-chip:active {
+    transform: translateY(0) scale(0.97);
+  }
   .island-pet-chip:focus-visible {
-    outline: 2px solid rgba(252, 244, 226, 0.8);
+    outline: 2px solid rgba(252, 244, 226, 0.85);
     outline-offset: 2px;
   }
   .island-pet-chip-ghost {
     background: rgba(252, 244, 226, 0.10);
-    color: rgba(248, 232, 200, 0.85);
+    color: rgba(248, 232, 200, 0.88);
+    flex: 0 0 auto;     /* fixed width for cycle chip */
+    padding: 8px 12px;
   }
   .island-pet-chip-ghost:hover {
     background: rgba(252, 244, 226, 0.18);
-  }
-  /* If panel runs off-screen right (narrow viewport, somehow >1100 still),
-     flip to left of pet. CSS-only: media query at the narrowest desktop. */
-  @media (max-width: 1200px) {
-    .island-pet-panel {
-      left: auto;
-      right: 100%;
-      margin-left: 0;
-      margin-right: 12px;
-      transform: translateX(8px);
-    }
-    .island-pet-panel--shown {
-      transform: translateX(0);
-    }
   }
   /* Reduced motion: skip the slide-in transform, just fade */
   @media (prefers-reduced-motion: reduce) {
