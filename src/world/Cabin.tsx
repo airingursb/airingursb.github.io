@@ -166,6 +166,32 @@ function ChimneySmoke({ origin }: { origin: [number, number, number] }) {
   )
 }
 
+// V2 wave 3 final: window back-wall glow breathes on a 3.2s sine —
+// reads as a fireplace flickering inside the cabin. The eye picks up
+// the slow ±0.08 emissive variation as "warmth changing" rather than
+// as static prop, even when sun direction is constant.
+function CabinWindowGlow() {
+  const matRef = useRef<THREE.MeshStandardMaterial>(null)
+  useFrame((s) => {
+    const m = matRef.current
+    if (!m) return
+    const t = s.clock.elapsedTime
+    m.emissiveIntensity = 0.5 + Math.sin(t * 1.96) * 0.08 + Math.sin(t * 4.7) * 0.03
+  })
+  return (
+    <mesh position={[0, 0, -0.12]}>
+      <planeGeometry args={[0.55, 0.55]} />
+      <meshStandardMaterial
+        ref={matRef}
+        color={WINDOW}
+        emissive={WINDOW}
+        emissiveIntensity={0.5}
+        roughness={0.5}
+      />
+    </mesh>
+  )
+}
+
 // V2 wave-3 perf fix: 3×4 firewood pile as 2 InstancedMesh draws
 // (logs + end-grain caps) instead of 24 individual mesh nodes.
 function FirewoodPile() {
@@ -405,14 +431,13 @@ export default function Cabin() {
           <boxGeometry args={[0.6, 0.6, 0.16]} />
           <meshStandardMaterial color="#3A2516" roughness={0.95} />
         </mesh>
-        {/* Glowing back wall of cavity. Sub-A: 4 stacked warm emitters
-            (back wall + front pane + pointLight + spotLight) made window
-            the brightest pixel, competing with the hero red door. Cut
-            back-wall emissive 1.2 → 0.5 to rebalance toward the door. */}
-        <mesh position={[0, 0, -0.12]}>
-          <planeGeometry args={[0.55, 0.55]} />
-          <meshStandardMaterial color={WINDOW} emissive={WINDOW} emissiveIntensity={0.5} roughness={0.5} />
-        </mesh>
+        {/* Glowing back wall of cavity. V2 wave 3 final: emissive
+            now BREATHES on a 3.2s cycle (±0.08 around 0.5) — implies
+            a fireplace flickering inside. Same poetic device as the
+            onsen thermal pulse: "invisible physics suggested through
+            light". Sub-A wave-3 noted this was the upgrade from
+            diorama to world. */}
+        <CabinWindowGlow />
         {/* Silhouette inside — a kettle on a stove */}
         <mesh position={[-0.1, -0.1, -0.10]}>
           <boxGeometry args={[0.12, 0.16, 0.02]} />
