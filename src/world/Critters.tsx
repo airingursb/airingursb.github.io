@@ -16,16 +16,85 @@ const DUCK_NECK = '#3F5C42'
 const DEER_BODY = '#8B6F47'
 const DEER_BELLY= '#D4B895'
 
+// V2 (scene polish D1): cat now has a 5-state FSM. Default is curl
+// (breathing). Every 18-40s it picks a random non-curl action — stretch,
+// lick paw, look around, sleep — animates over 2.5-6s with sine-in-out
+// easing (never linear), then returns to curl. This is the single most-
+// noticed living thing on the island; users will wait for the next move.
+type CatState = 'curl' | 'stretch' | 'lick' | 'look' | 'sleep'
+const NON_CURL: ReadonlyArray<CatState> = ['stretch', 'lick', 'look', 'sleep']
+const STATE_DUR: Record<CatState, number> = {
+  curl: 0, stretch: 2.5, lick: 2.5, look: 3.0, sleep: 6.0,
+}
+
 function CatOnMat({ position }: { position: [number, number, number] }) {
-  // Curled-up cat — 3 spheres + 2 cone ears + tail
-  const ref = useRef<THREE.Group>(null)
+  const ref     = useRef<THREE.Group>(null)
+  const headRef = useRef<THREE.Group>(null)
+
+  const stateRef       = useRef<CatState>('curl')
+  const stateStartRef  = useRef(0)
+  const nextActionAt   = useRef(10 + Math.random() * 20)   // first action 10-30s after mount
+
   useFrame((s) => {
-    if (ref.current) {
-      // Subtle breathing
-      const breath = Math.sin(s.clock.elapsedTime * 0.8) * 0.02
-      ref.current.scale.setScalar(1 + breath)
+    if (!ref.current || !headRef.current) return
+    const t = s.clock.elapsedTime
+
+    // Maybe transition into a new action (only from curl).
+    if (stateRef.current === 'curl' && t >= nextActionAt.current) {
+      stateRef.current     = NON_CURL[Math.floor(Math.random() * NON_CURL.length)]
+      stateStartRef.current = t
     }
+
+    const state = stateRef.current
+    const phase = t - stateStartRef.current
+
+    // Defaults (curl + breathing).
+    let scaleX = 1, scaleY = 1
+    let headRotY = 0, headRotX = 0, headPosY = 0
+    let breathAmp = 0.02
+    let breathRate = 0.8
+
+    if (state !== 'curl') {
+      // Sine in-out 0→1→0 over the state's duration
+      const dur = STATE_DUR[state]
+      const u = Math.max(0, Math.min(1, phase / dur))
+      const e = Math.sin(u * Math.PI)   // 0 at edges, 1 at midpoint
+
+      if (state === 'stretch') {
+        scaleY    = 1 + e * 0.18      // arch up
+        scaleX    = 1 - e * 0.05      // narrow slightly
+        headRotX  = e * -0.30         // tilt head up
+      } else if (state === 'lick') {
+        headRotX  = e * 0.50          // head bowed to paw
+        headPosY  = e * -0.04
+      } else if (state === 'look') {
+        // Sweep left, then right, then center
+        const seg = phase
+        if (seg < 1)        headRotY = -seg * 0.55
+        else if (seg < 2)   headRotY = -0.55 + (seg - 1) * 1.10
+        else if (seg < 3)   headRotY =  0.55 - (seg - 2) * 0.55
+      } else if (state === 'sleep') {
+        const sleepE = Math.min(1, phase / 2)   // ease in over 2s
+        scaleY    = 1 - sleepE * 0.10
+        headPosY  = -sleepE * 0.02
+        breathAmp = 0.012 * (1 - sleepE * 0.4)  // slower, smaller
+        breathRate = 0.4
+      }
+
+      // Return to curl when done
+      if (phase >= dur) {
+        stateRef.current   = 'curl'
+        nextActionAt.current = t + 18 + Math.random() * 22
+      }
+    }
+
+    const breath = Math.sin(t * breathRate) * breathAmp
+    ref.current.scale.set(scaleX + breath, scaleY + breath, scaleX + breath)
+    headRef.current.position.y = headPosY
+    headRef.current.rotation.y = headRotY
+    headRef.current.rotation.x = headRotX
   })
+
   return (
     <group ref={ref} position={position} rotation={[0, Math.PI / 4, 0]}>
       {/* Body — curled loaf */}
@@ -38,29 +107,30 @@ function CatOnMat({ position }: { position: [number, number, number] }) {
         <sphereGeometry args={[0.13, 12, 10]} />
         <meshStandardMaterial color={CAT_WHITE} roughness={0.9} flatShading />
       </mesh>
-      {/* Head */}
-      <mesh position={[0.16, 0.18, 0.08]} castShadow>
-        <sphereGeometry args={[0.1, 12, 10]} />
-        <meshStandardMaterial color={CAT_WHITE} roughness={0.9} flatShading />
-      </mesh>
-      {/* Ears */}
-      <mesh position={[0.14, 0.27, 0.05]} rotation={[0, 0, 0.3]} castShadow>
-        <coneGeometry args={[0.035, 0.07, 4]} />
-        <meshStandardMaterial color={CAT_WHITE} flatShading />
-      </mesh>
-      <mesh position={[0.2, 0.27, 0.11]} rotation={[0, 0, 0.3]} castShadow>
-        <coneGeometry args={[0.035, 0.07, 4]} />
-        <meshStandardMaterial color={CAT_WHITE} flatShading />
-      </mesh>
-      {/* Pink ear interiors */}
-      <mesh position={[0.14, 0.27, 0.052]} rotation={[0, 0, 0.3]}>
-        <coneGeometry args={[0.02, 0.05, 4]} />
-        <meshStandardMaterial color={CAT_PINK} flatShading />
-      </mesh>
-      <mesh position={[0.2, 0.27, 0.112]} rotation={[0, 0, 0.3]}>
-        <coneGeometry args={[0.02, 0.05, 4]} />
-        <meshStandardMaterial color={CAT_PINK} flatShading />
-      </mesh>
+      {/* Head + ears grouped so FSM can rotate them independently */}
+      <group ref={headRef} position={[0.16, 0.18, 0.08]}>
+        <mesh castShadow>
+          <sphereGeometry args={[0.1, 12, 10]} />
+          <meshStandardMaterial color={CAT_WHITE} roughness={0.9} flatShading />
+        </mesh>
+        <mesh position={[-0.02, 0.09, -0.03]} rotation={[0, 0, 0.3]} castShadow>
+          <coneGeometry args={[0.035, 0.07, 4]} />
+          <meshStandardMaterial color={CAT_WHITE} flatShading />
+        </mesh>
+        <mesh position={[0.04, 0.09, 0.03]} rotation={[0, 0, 0.3]} castShadow>
+          <coneGeometry args={[0.035, 0.07, 4]} />
+          <meshStandardMaterial color={CAT_WHITE} flatShading />
+        </mesh>
+        {/* Pink ear interiors */}
+        <mesh position={[-0.02, 0.09, -0.028]} rotation={[0, 0, 0.3]}>
+          <coneGeometry args={[0.02, 0.05, 4]} />
+          <meshStandardMaterial color={CAT_PINK} flatShading />
+        </mesh>
+        <mesh position={[0.04, 0.09, 0.032]} rotation={[0, 0, 0.3]}>
+          <coneGeometry args={[0.02, 0.05, 4]} />
+          <meshStandardMaterial color={CAT_PINK} flatShading />
+        </mesh>
+      </group>
       {/* Tail curling around body */}
       <mesh position={[-0.12, 0.13, -0.08]} rotation={[Math.PI / 2, 0, 0]} castShadow>
         <torusGeometry args={[0.1, 0.028, 6, 12, Math.PI]} />

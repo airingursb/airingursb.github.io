@@ -197,28 +197,75 @@ function River() {
   )
 }
 
+// V2 (scene polish C3): arched moss-stone bridge replaces the flat
+// wooden plank one. The old bridge was the weakest geometry on the
+// island — broke the Ghibli arch language (torii / cabin gable /
+// gazebo dome / lantern). An arched bridge harmonizes with the
+// stone-lantern + cairns palette and adds a vertical accent over
+// the river. Built from a 180°-arc TorusGeometry slab + keystones +
+// a few moss patches on the upstream face.
+const STONE      = '#9C928A'
+const STONE_DARK = '#6D6660'
+const MOSS       = '#4E6E40'
+
 function Bridge() {
   return (
     <group position={[0, 0.3, 4.0]}>
-      {[-0.6, -0.2, 0.2, 0.6].map((px, i) => (
-        <mesh key={`pl${i}`} position={[0, 0.06, px]} castShadow receiveShadow>
-          <boxGeometry args={[1.6, 0.08, 0.32]} />
-          <meshStandardMaterial color="#7A5B3C" roughness={0.88} />
-        </mesh>
-      ))}
-      {[-0.75, 0.75].map((rx, i) => (
-        <group key={`rail${i}`}>
-          {[-0.6, 0.6].map((pz, j) => (
-            <mesh key={`p${j}`} position={[rx, 0.4, pz]} castShadow>
-              <cylinderGeometry args={[0.05, 0.05, 0.7, 6]} />
-              <meshStandardMaterial color="#7A5B3C" roughness={0.9} />
-            </mesh>
-          ))}
-          <mesh position={[rx, 0.7, 0]} castShadow>
-            <cylinderGeometry args={[0.045, 0.045, 1.3, 6]} />
-            <meshStandardMaterial color="#7A5B3C" roughness={0.9} />
+      {/* Main arch — half-torus, oriented so deck spans X axis and
+          rise points up. r=0.85 inner radius, tube=0.18 thickness. */}
+      <mesh position={[0, 0.05, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow receiveShadow>
+        <torusGeometry args={[0.85, 0.18, 10, 24, Math.PI]} />
+        <meshStandardMaterial color={STONE} roughness={0.94} flatShading />
+      </mesh>
+      {/* Deck slab on top of the arch — slightly darker for path
+          read. Slight curvature faked via 3 short planks following the
+          torus crown. */}
+      {[-0.55, 0, 0.55].map((px, i) => {
+        const a = i * 0.35   // slight tilt for each plank
+        return (
+          <mesh
+            key={`d${i}`}
+            position={[px, 0.85 - Math.abs(px) * 0.20, 0]}
+            rotation={[0, 0, px * 0.45]}
+            castShadow
+            receiveShadow
+          >
+            <boxGeometry args={[0.55, 0.08, 1.2]} />
+            <meshStandardMaterial color={STONE_DARK} roughness={0.92} flatShading />
           </mesh>
+        )
+      })}
+      {/* Keystones — small wedge accents at the arch crown */}
+      <mesh position={[0, 0.78, 0.62]} rotation={[0, 0, 0]} castShadow>
+        <boxGeometry args={[0.14, 0.18, 0.16]} />
+        <meshStandardMaterial color={STONE_DARK} roughness={0.95} flatShading />
+      </mesh>
+      <mesh position={[0, 0.78, -0.62]} rotation={[0, 0, 0]} castShadow>
+        <boxGeometry args={[0.14, 0.18, 0.16]} />
+        <meshStandardMaterial color={STONE_DARK} roughness={0.95} flatShading />
+      </mesh>
+      {/* Low parapet stones along the deck edges (4 each side) */}
+      {[-0.5, 0.5].map((rx, i) => (
+        <group key={`rail${i}`}>
+          {[-0.45, -0.15, 0.15, 0.45].map((pz, j) => {
+            const dx = Math.abs(rx)
+            const dy = 0.85 - dx * 0.20 + 0.10
+            return (
+              <mesh key={`s${j}`} position={[rx, dy, pz]} castShadow>
+                <boxGeometry args={[0.16, 0.18, 0.22]} />
+                <meshStandardMaterial color={STONE} roughness={0.92} flatShading />
+              </mesh>
+            )
+          })}
         </group>
+      ))}
+      {/* Moss patches on the upstream face — small green tufts where
+          water spray would land. Adds wabi-sabi age. */}
+      {[[-0.55, 0.18, 0.95], [-0.20, 0.32, 0.95], [0.30, 0.22, 0.95], [0.65, 0.15, 0.95]].map(([mx, my, mz], i) => (
+        <mesh key={`m${i}`} position={[mx as number, my as number, mz as number]} castShadow>
+          <sphereGeometry args={[0.07, 6, 5]} />
+          <meshStandardMaterial color={MOSS} roughness={0.95} flatShading />
+        </mesh>
       ))}
     </group>
   )

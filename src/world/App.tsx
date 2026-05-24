@@ -197,7 +197,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <DistantIslands />
         <Campfire />
         <CloudShadows />
-        <Lanterns />
+        <Lanterns theme={theme} />
         <ContactShadowsLayer />
         <ZoneHitboxes />
         <ZoneHints />
