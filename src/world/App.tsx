@@ -83,7 +83,7 @@ function CameraControls() {
       enableZoom={true}
       minDistance={22}
       maxDistance={50}
-      minPolarAngle={Math.PI * 0.12}
+      minPolarAngle={Math.PI * 0.22}
       maxPolarAngle={Math.PI * 0.44}
       enableDamping
       dampingFactor={0.06}

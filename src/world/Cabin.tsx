@@ -31,7 +31,11 @@ const STONE      = '#8E8579'
 const STONE_DK   = '#6B6358'
 const PLANK      = '#7A5B3C'
 const DOOR_RED   = '#A03030'  // hero saturated accent (Sub-A iter-5 gap #5)
-const SHINGLE_PALETTE = ['#5C3A22', '#4A2F1C', '#6E4A2E', '#3A2516', '#8B5E3C']
+// Tightened palette (was 5 wildly-different browns → noise when viewed
+// from above). Now 2 closely-related tones for cohesion + thin row
+// shadows give shingle row direction.
+const SHINGLE_BASE = '#5A3A20'
+const SHINGLE_DARK = '#3A2418'
 const SHINGLE_MOSS = '#7A9268'
 const WINDOW     = '#FFE4A8'
 const IRON       = '#2A2018'
@@ -306,59 +310,128 @@ export default function Cabin() {
         ))}
       </group>
 
-      {/* === Roof — shingles with 5-color palette + mossy overrides === */}
+      {/* === Roof — solid slab + horizontal shingle-row shadow lines + a
+          few large moss patches. Was 40 tiny boxes per slab × 2 slabs
+          (80 mesh draws + jumbled noise from above) → now ~12 meshes per
+          slab, all reading clearly as "wooden shingled roof with rows". */}
       {(['left', 'right'] as const).map((side) => {
         const sign = side === 'left' ? -1 : 1
         const tilt = sign * Math.PI * 0.32
-        const rows = 5
-        const cols = 8
         const slabW = CABIN_W * 0.6
         const slabL = CABIN_D + 0.7
         const slabH = WALL_H + 0.32
+        const N_ROWS = 7  // shingle row hint lines
+
         return (
           <group
             key={side}
             position={[sign * (CABIN_W / 4 + 0.05), slabH + 0.15, 0]}
             rotation={[0, 0, tilt]}
           >
-            <mesh position={[0, 0, 0]} castShadow receiveShadow>
-              <boxGeometry args={[slabW, 0.06, slabL]} />
-              <meshStandardMaterial color={SHINGLE_PALETTE[1]} roughness={0.94} />
+            {/* Solid roof slab */}
+            <mesh castShadow receiveShadow>
+              <boxGeometry args={[slabW, 0.08, slabL]} />
+              <meshStandardMaterial color={SHINGLE_BASE} roughness={0.92} />
             </mesh>
-            {Array.from({ length: rows }).map((_, r) =>
-              Array.from({ length: cols }).map((_, c) => {
-                const rx = -slabW / 2 + 0.08 + (slabW - 0.16) * (r / (rows - 1))
-                const cz = -slabL / 2 + 0.18 + (slabL - 0.36) * (c / (cols - 1))
-                const offset = r % 2 ? (slabL / cols) * 0.5 : 0
-                // 5-color rotation + occasional mossy override
-                const seed = (r * 31 + c * 7) % 17
-                const isMoss = seed === 0 || seed === 7
-                const color = isMoss ? SHINGLE_MOSS : SHINGLE_PALETTE[(r + c * 2) % 5]
-                // Corner shingles curl up slightly
-                const isEave = (c === 0 || c === cols - 1) && r === rows - 1
-                const eaveTilt = isEave ? Math.PI * 0.04 : 0
-                return (
-                  <mesh
-                    key={`s${side}-${r}-${c}`}
-                    position={[rx, 0.04, cz + offset]}
-                    rotation={[eaveTilt, 0, 0]}
-                    castShadow
-                  >
-                    <boxGeometry args={[slabW / rows + 0.02, 0.04, slabL / cols + 0.04]} />
-                    <meshStandardMaterial color={color} roughness={0.92} flatShading />
-                  </mesh>
-                )
-              })
-            )}
+
+            {/* Subtle horizontal row separators — narrow dark strips running
+                along the eave direction (Z axis after tilt). Reads as
+                "rows of overlapping shingles" without the noise. */}
+            {Array.from({ length: N_ROWS - 1 }).map((_, i) => {
+              const x = -slabW / 2 + (slabW / N_ROWS) * (i + 1)
+              return (
+                <mesh key={`rs${side}${i}`} position={[x, 0.045, 0]}>
+                  <boxGeometry args={[0.02, 0.025, slabL - 0.08]} />
+                  <meshStandardMaterial color={SHINGLE_DARK} roughness={0.95} />
+                </mesh>
+              )
+            })}
+
+            {/* 3 mossy patches scattered (was random sprinkle → now intentional
+                weathering on specific spots) */}
+            {[
+              [-0.20, 0.30],
+              [ 0.10, -0.45],
+              [ 0.32, 0.15],
+            ].map((p, i) => (
+              <mesh
+                key={`mp${side}${i}`}
+                position={[p[0] * slabW, 0.05, p[1] * slabL]}
+                castShadow
+              >
+                <boxGeometry args={[0.32, 0.02, 0.42]} />
+                <meshStandardMaterial color={SHINGLE_MOSS} roughness={0.92} flatShading />
+              </mesh>
+            ))}
+
+            {/* Eave drip-edge — thicker plank at the bottom of each slab
+                for "this is a real roof" affordance */}
+            <mesh
+              position={[-slabW / 2 + 0.04, 0.045, 0]}
+              castShadow
+            >
+              <boxGeometry args={[0.1, 0.05, slabL + 0.1]} />
+              <meshStandardMaterial color={SHINGLE_DARK} roughness={0.95} />
+            </mesh>
           </group>
         )
       })}
 
-      {/* Ridge cap */}
-      <mesh position={[0, WALL_H + 0.85, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
-        <cylinderGeometry args={[0.12, 0.12, CABIN_D + 0.5, 8]} />
+      {/* === Beefier ridge cap (was 0.12r → 0.18r square cross-section).
+          Reads as a clear "ridge cap" from any angle, anchors the roof. */}
+      <mesh position={[0, WALL_H + 0.86, 0]} castShadow>
+        <boxGeometry args={[0.22, 0.16, CABIN_D + 0.6]} />
         <meshStandardMaterial color={LOG_DARK} roughness={0.9} />
       </mesh>
+      {/* Two small finial caps at each end of ridge */}
+      {[CABIN_D / 2 + 0.32, -CABIN_D / 2 - 0.32].map((zz, i) => (
+        <mesh key={`fnl${i}`} position={[0, WALL_H + 0.96, zz]} castShadow>
+          <coneGeometry args={[0.12, 0.18, 4]} />
+          <meshStandardMaterial color={STONE_DK} metalness={0.4} roughness={0.55} flatShading />
+        </mesh>
+      ))}
+
+      {/* === Small dormer skylight on front roof slab — gives the roof a
+          focal point and a "lived in" detail */}
+      {(() => {
+        const slabH = WALL_H + 0.32
+        const dormerY = slabH + 0.36
+        const dormerZ = -CABIN_D * 0.18
+        return (
+          <group position={[-CABIN_W / 4 - 0.05, dormerY, dormerZ]} rotation={[0, 0, -Math.PI * 0.32]}>
+            {/* Box body */}
+            <mesh position={[0, 0.18, 0]} castShadow receiveShadow>
+              <boxGeometry args={[0.7, 0.35, 0.55]} />
+              <meshStandardMaterial color={LOG_LIGHT} roughness={0.9} />
+            </mesh>
+            {/* Tiny gabled roof above dormer */}
+            <mesh position={[0, 0.42, 0]} castShadow>
+              <coneGeometry args={[0.42, 0.18, 4]} />
+              <meshStandardMaterial color={SHINGLE_DARK} roughness={0.95} flatShading />
+            </mesh>
+            {/* Window pane */}
+            <mesh position={[0, 0.2, 0.28]}>
+              <planeGeometry args={[0.45, 0.22]} />
+              <meshStandardMaterial
+                color={WINDOW}
+                emissive={WINDOW}
+                emissiveIntensity={0.45}
+                roughness={0.4}
+                metalness={0.2}
+              />
+            </mesh>
+            {/* Window cross-frame */}
+            <mesh position={[0, 0.2, 0.286]}>
+              <boxGeometry args={[0.45, 0.02, 0.005]} />
+              <meshStandardMaterial color={LOG_DARK} roughness={0.9} />
+            </mesh>
+            <mesh position={[0, 0.2, 0.286]}>
+              <boxGeometry args={[0.02, 0.22, 0.005]} />
+              <meshStandardMaterial color={LOG_DARK} roughness={0.9} />
+            </mesh>
+          </group>
+        )
+      })()}
 
       {/* Gable triangles */}
       {[CABIN_D / 2 + 0.02, -CABIN_D / 2 - 0.02].map((zz, i) => (
