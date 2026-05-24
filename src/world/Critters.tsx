@@ -68,11 +68,15 @@ function CatOnMat({ position }: { position: [number, number, number] }) {
         headRotX  = e * 0.50          // head bowed to paw
         headPosY  = e * -0.04
       } else if (state === 'look') {
-        // Sweep left, then right, then center
+        // Sweep left, then right, then center.
+        // V2 polish: same fix MochiNPC got — was piecewise linear
+        // (head jerked at segment boundaries 1.0 and 2.0). Now each
+        // 1s segment is sine in-out, so velocity is 0 at boundaries.
         const seg = phase
-        if (seg < 1)        headRotY = -seg * 0.55
-        else if (seg < 2)   headRotY = -0.55 + (seg - 1) * 1.10
-        else if (seg < 3)   headRotY =  0.55 - (seg - 2) * 0.55
+        const easeInOut = (u: number) => 0.5 - Math.cos(u * Math.PI) * 0.5
+        if (seg < 1)        headRotY = 0    + (-0.55 - 0)    * easeInOut(seg)
+        else if (seg < 2)   headRotY = -0.55 + (0.55 - -0.55) * easeInOut(seg - 1)
+        else if (seg < 3)   headRotY =  0.55 + (0 - 0.55)    * easeInOut(seg - 2)
       } else if (state === 'sleep') {
         const sleepE = Math.min(1, phase / 2)   // ease in over 2s
         scaleY    = 1 - sleepE * 0.10
