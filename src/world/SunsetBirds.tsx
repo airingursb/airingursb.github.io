@@ -23,7 +23,13 @@ const LOOP_DURATION  = 60   // seconds — slow, almost imperceptible
 
 export default function SunsetBirds({ theme }: { theme: Theme }) {
   const groupRef = useRef<THREE.Group>(null)
+  // Two refs per bird — one per plane in the crossed-plane "+" silhouette.
+  // V2 bug (caught by Sub-A delivery audit): matRefs only captured the
+  // FIRST plane's material, so the second stayed at opacity=0 forever.
+  // That defeated the whole point of the wedge — at dusk only the
+  // horizontal plane was visible, edge-on at certain angles.
   const matRefs = useRef<Array<THREE.MeshBasicMaterial | null>>([])
+  const matRefs2 = useRef<Array<THREE.MeshBasicMaterial | null>>([])
 
   // Birds wing-flap timing (each bird slightly offset). Hoisted to
   // the top of the component (was below the position useFrame) so
@@ -38,7 +44,9 @@ export default function SunsetBirds({ theme }: { theme: Theme }) {
     if (!groupRef.current) return
     const t = s.clock.elapsedTime
 
-    // Opacity fade based on theme — invisible at day, full at dusk
+    // Opacity fade based on theme — invisible at day, full at dusk.
+    // Lerp BOTH planes (horizontal + vertical) for each bird so the
+    // crossed-plane "+" silhouette stays balanced from any angle.
     const targetOpacity = theme === 'dusk' ? 0.78 : 0
     const k = 1 - Math.exp(-dt * 1.0)
     let maxOpacity = 0
@@ -46,6 +54,10 @@ export default function SunsetBirds({ theme }: { theme: Theme }) {
       if (!m) continue
       m.opacity = m.opacity + (targetOpacity - m.opacity) * k
       if (m.opacity > maxOpacity) maxOpacity = m.opacity
+    }
+    for (const m of matRefs2.current) {
+      if (!m) continue
+      m.opacity = m.opacity + (targetOpacity - m.opacity) * k
     }
     // Early-return: when fully faded out at day, skip wing flap +
     // position update entirely. Birds aren't visible, no point
@@ -89,6 +101,7 @@ export default function SunsetBirds({ theme }: { theme: Theme }) {
           <mesh rotation={[Math.PI / 2, 0, Math.PI / 2]} renderOrder={3}>
             <planeGeometry args={[0.65, 0.20]} />
             <meshBasicMaterial
+              ref={(m) => { matRefs2.current[i] = m }}
               color="#1A1A1A"
               transparent
               opacity={0}
