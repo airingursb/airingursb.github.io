@@ -3,6 +3,9 @@
 // overhang roof + finial. Small wood reading bench in front + overhead
 // hanging lantern on a curved iron arm.
 
+import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import {
   SpritePlane,
   HangingBannerPlane,
@@ -17,6 +20,50 @@ import {
   STONE_DK,
   ROPE,
 } from './displayParts'
+
+// V2 wave 3: coffee mug on the kiosk bench with rising steam — same
+// "just-put-down" beat as RockerTeaCup. 3 small steam puffs loop.
+function KioskCoffeeMug() {
+  const puffRefs = [useRef<THREE.Mesh>(null), useRef<THREE.Mesh>(null), useRef<THREE.Mesh>(null)]
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    puffRefs.forEach((r, i) => {
+      const m = r.current
+      if (!m) return
+      const phase = ((t * 0.4 + i * 0.33) % 1)
+      m.position.y = phase * 0.45
+      m.position.x = Math.sin(t * 0.7 + i) * 0.015 * phase
+      m.scale.setScalar(0.018 + phase * 0.012)
+      const mat = m.material as THREE.MeshBasicMaterial
+      mat.opacity = Math.max(0, (1 - phase) * 0.50)
+    })
+  })
+  return (
+    <group position={[-0.55, 0.36, 0.04]}>
+      <mesh castShadow>
+        <cylinderGeometry args={[0.05, 0.045, 0.10, 12]} />
+        <meshStandardMaterial color="#5878B8" roughness={0.85} />
+      </mesh>
+      <mesh position={[0.058, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[0.022, 0.007, 4, 10, Math.PI]} />
+        <meshStandardMaterial color="#5878B8" roughness={0.85} />
+      </mesh>
+      <mesh position={[0, 0.051, 0]}>
+        <cylinderGeometry args={[0.046, 0.046, 0.004, 12]} />
+        <meshStandardMaterial color="#3A2516" roughness={0.4} metalness={0.15} />
+      </mesh>
+      {/* Steam puffs */}
+      <group position={[0, 0.06, 0]}>
+        {puffRefs.map((r, i) => (
+          <mesh key={`s${i}`} ref={r}>
+            <sphereGeometry args={[1, 8, 6]} />
+            <meshBasicMaterial color="#FFFFFF" transparent opacity={0} depthWrite={false} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  )
+}
 
 export interface BlogKioskProps {
   position: [number, number]
@@ -229,23 +276,8 @@ export default function BlogKiosk({
           </mesh>
         </group>
 
-        {/* Coffee mug on the left end of the seat */}
-        <group position={[-0.55, 0.36, 0.04]}>
-          <mesh castShadow>
-            <cylinderGeometry args={[0.05, 0.045, 0.10, 12]} />
-            <meshStandardMaterial color="#5878B8" roughness={0.85} />
-          </mesh>
-          {/* Handle */}
-          <mesh position={[0.058, 0, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[0.022, 0.007, 4, 10, Math.PI]} />
-            <meshStandardMaterial color="#5878B8" roughness={0.85} />
-          </mesh>
-          {/* Dark coffee surface */}
-          <mesh position={[0, 0.051, 0]}>
-            <cylinderGeometry args={[0.046, 0.046, 0.004, 12]} />
-            <meshStandardMaterial color="#3A2516" roughness={0.4} metalness={0.15} />
-          </mesh>
-        </group>
+        {/* Coffee mug on the left end of the seat — with steam */}
+        <KioskCoffeeMug />
       </group>
 
       {/* A-frame chalkboard sign at the base of the kiosk — "今日の記事" */}
