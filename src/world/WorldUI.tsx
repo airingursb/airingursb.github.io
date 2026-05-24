@@ -44,25 +44,40 @@ export default function WorldUI() {
     setWhispersOn(prev => !prev)
   }
 
+  // V2 a11y polish: buttons are icon-only — without aria-label, a
+  // screen reader announces just "button". title= tooltips are visual
+  // only. Mirror title text into aria-label so VoiceOver/NVDA actually
+  // names the action. aria-pressed on toggleable buttons (theme,
+  // whispers) so AT can announce their on/off state.
+  const themeLabel = theme === 'day' ? '切到黄昏' : '切到白天'
+  const whisperLabel = whispersOn ? '关闭岛的低语' : '让岛说话'
   return (
-    <div className="world-ui">
-      <button onClick={snap} className="world-btn" title="Save photo">
+    <div className="world-ui" role="toolbar" aria-label="场景控制">
+      <button onClick={snap} className="world-btn" title="保存截图" aria-label="保存截图">
         <img src="/world/sprites/icons/F01-camera.png" alt="" className="world-btn-icon" />
       </button>
-      <button onClick={toggleTheme} className="world-btn" title={theme === 'day' ? 'Switch to dusk' : 'Switch to day'}>
+      <button
+        onClick={toggleTheme}
+        className="world-btn"
+        title={themeLabel}
+        aria-label={themeLabel}
+        aria-pressed={theme === 'dusk'}
+      >
         <img
           src={theme === 'day' ? '/world/sprites/icons/F02-moon.png' : '/world/sprites/icons/F03-sun.png'}
           alt=""
           className="world-btn-icon"
         />
       </button>
-      <button onClick={resetCam} className="world-btn" title="Reset camera">
+      <button onClick={resetCam} className="world-btn" title="重置镜头" aria-label="重置镜头">
         <img src="/world/sprites/icons/F04-compass.png" alt="" className="world-btn-icon" />
       </button>
       <button
         onClick={toggleWhispers}
         className={`world-btn${whispersOn ? '' : ' world-btn--off'}`}
-        title={whispersOn ? '关闭岛的低语' : '让岛说话'}
+        title={whisperLabel}
+        aria-label={whisperLabel}
+        aria-pressed={whispersOn}
       >
         <img src="/world/sprites/icons/F05-whisper.png" alt="" className="world-btn-icon" />
       </button>
