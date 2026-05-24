@@ -286,3 +286,49 @@ Three perf items from Sub-A's first audit, all closed before delivery:
 Combined with the existing `detectQuality()` SSAO/DoF gating, the
 diorama now runs in green on a 2019 MBP at 'high' tier and stays
 silent when the tab is hidden.
+
+### V2 a11y sweep (final hour)
+
+After the perf addendum, an a11y audit caught 8 files of missing
+semantics. All addressed:
+
+- `WorldLoader.astro` — `role="status" aria-live="polite"` on the
+  splash, `role="alert"` on the WebGL-failed fallback, decorative
+  emoji/bar marked `aria-hidden`. `@media (prefers-reduced-motion)`
+  kills the flower-pulse + bar-sweep + shortens fade to 200ms.
+  Loader DOM-remove gets a 50ms buffer past CSS transition end to
+  avoid race-flash on slow CPUs.
+- `WorldUI.tsx` — 4 icon buttons (camera / theme / reset / whispers)
+  got `aria-label` mirroring their Chinese `title=` strings.
+  Theme + whispers buttons got `aria-pressed`. Toolbar wrapped in
+  `role="toolbar" aria-label="场景控制"`.
+- `AmbientHUD.tsx` — same pattern on the bottom-right white-noise +
+  pomodoro buttons. Time HUD `aria-live="polite" aria-atomic="true"`
+  so '在岛上 X 分钟' is politely announced as it updates.
+- `ZonePanel.tsx` — `role="dialog" aria-modal="true" aria-labelledby`
+  pointing to the zone title. **Focus restore**: captures
+  `document.activeElement` on open, refocuses it on close — keyboard
+  users land back on the hitbox/button they came from instead of
+  `<body>`. `tabIndex={-1}` + initial `panel.focus()` so the dialog
+  receives focus once the slide-in animates in.
+- `ChatBox.tsx` — chat-history container `role="log" aria-live="polite"
+  aria-atomic="false"` so AT announces only new tokens as Airing
+  streams a reply, not the whole transcript every update. Pending
+  `…` `aria-hidden`. Errors `role="alert"`. Send button label
+  dynamic on pending state.
+- `AccountIndicator.tsx` — account pill `aria-expanded` + `aria-haspopup`
+  + dynamic `aria-label`; popup menu `role="menu"` + `role="menuitem"`.
+  Login modal `role="dialog" aria-modal aria-labelledby`. Magic-link
+  sent confirmation `role="status"`, errors `role="alert"`.
+- `ErrorBoundary.tsx` — fallback gets `role="alert"
+  aria-live="assertive"` so a scene crash is announced immediately.
+- `WorldGame.astro` shell — bottom help hint `role="note"` + the
+  decorative keyword pills (drag/scroll/click/ESC) `aria-hidden`.
+  Hint stays at full opacity instead of fading on
+  `prefers-reduced-motion`.
+
+Pattern across all of them: **icon-only buttons need an aria-label**
+(title= alone is mouseover-only and not reliably announced).
+Modals need `role=dialog aria-modal aria-labelledby` + focus
+management. Time/streaming content needs `aria-live`. Decorative
+spans/emoji need `aria-hidden`.
