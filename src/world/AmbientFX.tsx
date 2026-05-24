@@ -3,7 +3,7 @@
 // setMatrixAt instead of creating new meshes.
 
 import * as THREE from 'three'
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { getGust } from './wind'
 
@@ -26,8 +26,17 @@ function InstancedPollen({ origins, perOrigin = 10 }: { origins: Array<[number, 
     return arr
   }, [origins, perOrigin])
 
+  // V2 final polish (matches FallingLeaves fix): InstancedMesh
+  // bounding sphere is computed once at construction and won't grow
+  // with animated matrices — pollen at extreme positions can pop
+  // out at viewport edge. Disable cull since the particle set is
+  // small and the cost is negligible.
+  useEffect(() => {
+    if (meshRef.current) meshRef.current.frustumCulled = false
+  }, [])
   useFrame((s) => {
-    if (!meshRef.current) return
+    const mesh = meshRef.current
+    if (!mesh) return
     const t = s.clock.elapsedTime
     for (let i = 0; i < total; i++) {
       const p = params[i]
@@ -40,9 +49,9 @@ function InstancedPollen({ origins, perOrigin = 10 }: { origins: Array<[number, 
       const opacity = Math.sin(phase * Math.PI) * 0.6
       dummy.scale.setScalar(opacity + 0.001)  // shrink to hide instead of opacity (cheaper)
       dummy.updateMatrix()
-      meshRef.current.setMatrixAt(i, dummy.matrix)
+      mesh.setMatrixAt(i, dummy.matrix)
     }
-    meshRef.current.instanceMatrix.needsUpdate = true
+    mesh.instanceMatrix.needsUpdate = true
   })
 
   return (
