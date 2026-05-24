@@ -8,6 +8,7 @@
 // matte — so the gallery is shippable at any state of Codex progress.
 
 import Phaser from 'phaser'
+import { crispText } from './gallery_text'
 import type { RoomId } from './config'
 import { paintingKey, getAsset } from './gallery_assets'
 import { hasVisited } from './gallery_progress'
@@ -172,7 +173,7 @@ function drawTypographicPlaceholder(
     const targetW = innerW * 0.85
     const guessSize = Math.min(innerH * 0.42, targetW / maxChars * 1.5)
     const fontSize = Math.max(8, Math.floor(guessSize))
-    layer.add(scene.add.text(cx, cy + innerH * 0.05, label, {
+    layer.add(crispText(scene, cx, cy + innerH * 0.05, label, {
       fontSize: `${fontSize}px`,
       color: '#e6c878',
       fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", ui-monospace, monospace',
@@ -211,7 +212,7 @@ function drawMuseumPlaque(
   layer.add(scene.add.rectangle(cx, cy - 1, plateW - 4, 1, COLORS.goldRidge, 0.7))
   // Engraved text — dark ink against brass
   if (txt) {
-    layer.add(scene.add.text(cx, cy, txt, {
+    layer.add(crispText(scene, cx, cy, txt, {
       fontSize: wide ? '8px' : '7px',
       color: '#1a1a1a',
       fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", ui-monospace, monospace',
@@ -220,7 +221,7 @@ function drawMuseumPlaque(
   }
   // ✓ tick on the far right for visited exhibits
   if (url && hasVisited(url)) {
-    layer.add(scene.add.text(cx + plateW / 2 - 8, cy, '✓', {
+    layer.add(crispText(scene, cx + plateW / 2 - 8, cy, '✓', {
       fontSize: '7px', color: '#0a3a1a',
       fontFamily: 'ui-monospace, monospace',
       resolution: 2,

@@ -3,6 +3,7 @@
 // at the top of the screen naming the zone. Wayfinding + grand-entry feel.
 
 import Phaser from 'phaser'
+import { crispText } from './gallery_text'
 import type { RoomId } from './config'
 
 type Zone = {
@@ -86,12 +87,12 @@ function showBanner(scene: Phaser.Scene, zone: Zone) {
   // Inner brass hairline
   const hairline = scene.add.rectangle(bx, by, 210, 28, 0x1a1f2a)
     .setStrokeStyle(1, 0xc8a058, 0.35)
-  const label = scene.add.text(bx, by - 6, zone.label, {
+  const label = crispText(scene, bx, by - 6, zone.label, {
     fontSize: '11px', color: '#e6c878',
     fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-monospace, monospace',
     resolution: 2,
   }).setOrigin(0.5)
-  const subtitle = scene.add.text(bx, by + 8, zone.subtitle, {
+  const subtitle = crispText(scene, bx, by + 8, zone.subtitle, {
     fontSize: '8px', color: '#c8a058',
     fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-monospace, monospace',
     resolution: 2,
@@ -126,17 +127,17 @@ function showWelcomeToast(scene: Phaser.Scene) {
   const plate = scene.add.rectangle(0, 0, 360, 56, 0x1a1f2a, 0.95)
     .setStrokeStyle(2, 0xc8a058, 0.9)
   const cjkFont = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-monospace, monospace'
-  const title = scene.add.text(0, -14, '欢迎来到 ursb 美术馆', {
+  const title = crispText(scene, 0, -14, '欢迎来到 ursb 美术馆', {
     fontSize: '13px', color: '#e6c878',
     fontFamily: cjkFont,
     resolution: 2,
   }).setOrigin(0.5)
-  const subtitle = scene.add.text(0, 4, '走到任意一幅作品前，按 E 进入', {
+  const subtitle = crispText(scene, 0, 4, '走到任意一幅作品前，按 E 进入', {
     fontSize: '10px', color: '#c8a058',
     fontFamily: cjkFont,
     resolution: 2,
   }).setOrigin(0.5)
-  const subtitle2 = scene.add.text(0, 16, '中庭是 Mochi 的 3D 园子，四翼按主题分区', {
+  const subtitle2 = crispText(scene, 0, 16, '中庭是 Mochi 的 3D 园子，四翼按主题分区', {
     fontSize: '8px', color: '#a8a098',
     fontFamily: cjkFont,
     resolution: 2,

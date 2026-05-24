@@ -8,6 +8,7 @@
 // than the wall can hold, the most recent ones win.
 
 import Phaser from 'phaser'
+import { crispText } from './gallery_text'
 import type { RoomId } from './config'
 
 type GalleryComic = {
@@ -114,11 +115,11 @@ function drawComicFrame(
   // dark velvet mat + panda emoji + issue number. The frame is still fully
   // clickable — clicking opens the specific /comics/<N> page.
   layer.add(scene.add.rectangle(cx, cy, fw - 14, fh - 14, 0x14202a))
-  layer.add(scene.add.text(cx, cy - 6, '🐼', {
+  layer.add(crispText(scene, cx, cy - 6, '🐼', {
     fontSize: '20px',
     fontFamily: 'ui-monospace, monospace',
   }).setOrigin(0.5))
-  layer.add(scene.add.text(cx, cy + 14, `#${comic.issue}`, {
+  layer.add(crispText(scene, cx, cy + 14, `#${comic.issue}`, {
     fontSize: '8px', color: '#c8a058',
     fontFamily: 'ui-monospace, monospace',
   }).setOrigin(0.5))

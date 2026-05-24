@@ -5,6 +5,7 @@
 // toast when the unlock happens mid-session (not just on next room visit).
 
 import Phaser from 'phaser'
+import { crispText } from './gallery_text'
 import type { RoomId } from './config'
 import { hasVisited, getVisitedCount } from './gallery_progress'
 
@@ -122,7 +123,7 @@ export function setupGalleryAchievements(scene: Phaser.Scene, roomId: RoomId) {
   const total = TOTAL_FIXED_EXHIBITS + knownComics
   const visited = getVisitedCount()
   if (visited > 0) {
-    const counter = scene.add.text(640, 700, `${visited} / ${total} 已观`, {
+    const counter = crispText(scene, 640, 700, `${visited} / ${total} 已观`, {
       fontSize: '8px', color: '#c8a058',
       fontFamily: '"PingFang SC", "Hiragino Sans GB", ui-monospace, monospace',
       backgroundColor: 'rgba(20, 14, 8, 0.7)',
@@ -148,7 +149,7 @@ function drawMedallion(
     .setStrokeStyle(2, 0x6a4818, 1)
   const inner = scene.add.circle(cx, cy, 6, 0xe6c878, 0.95)
   // Deeper-ink star with slight resolution boost for crisper edges
-  const star = scene.add.text(cx, cy, '★', {
+  const star = crispText(scene, cx, cy, '★', {
     fontSize: '12px', color: '#0a0a0a',
     fontFamily: 'ui-monospace, monospace',
     resolution: 2,
@@ -177,16 +178,16 @@ function showAchievementToast(scene: Phaser.Scene, ach: Achievement) {
   const halo = scene.add.circle(-130, 0, 16, 0xffd28a, 0.45)
   const medal = scene.add.circle(-130, 0, 9, 0xc8a058)
     .setStrokeStyle(2, 0x6a4818, 1)
-  const star = scene.add.text(-130, 0, '★', {
+  const star = crispText(scene, -130, 0, '★', {
     fontSize: '11px', color: '#1a1a1a',
     fontFamily: 'ui-monospace, monospace',
   }).setOrigin(0.5)
-  const title = scene.add.text(-100, -8, 'ACHIEVEMENT', {
+  const title = crispText(scene, -100, -8, 'ACHIEVEMENT', {
     fontSize: '8px', color: '#c8a058',
     fontFamily: 'ui-monospace, monospace',
     resolution: 2,
   }).setOrigin(0, 0.5)
-  const label = scene.add.text(-100, 6, ach.label, {
+  const label = crispText(scene, -100, 6, ach.label, {
     fontSize: '11px', color: '#e6c878',
     fontFamily: '"PingFang SC", "Hiragino Sans GB", ui-monospace, monospace',
     resolution: 2,

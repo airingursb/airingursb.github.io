@@ -5,6 +5,7 @@
 // 5 msgs/day, logged-in users 30/day — capped server-side.
 
 import Phaser from 'phaser'
+import { crispText } from './gallery_text'
 import type { RoomId } from './config'
 import { Bear } from './bear'
 
@@ -20,6 +21,7 @@ let eKey: Phaser.Input.Keyboard.Key | null = null
 let eKeyHandler: (() => void) | null = null
 let lastHintAt = 0
 let lastChatAt = 0
+let crispNameLabel: Phaser.GameObjects.Text | null = null
 
 export function setupGalleryMochi(
   scene: Phaser.Scene,
@@ -35,13 +37,20 @@ export function setupGalleryMochi(
   mochiBear = new Bear(scene, MOCHI_X, MOCHI_Y, 'asia', 'bear')
   mochiBear.sprite.setDepth(4.4)
   mochiBear.facing = 'down'
-  mochiBear.setDisplayName(NPC_NAME, { color: '#e6c878', prefix: '✦ ' })
+  // Skip Bear's built-in nameLabel (renders blurry at fontSize 9px under
+  // pixelArt:true). Use a crispText replacement that follows the sprite.
+  mochiBear.setDisplayName(null)
+  crispNameLabel = crispText(scene, MOCHI_X, MOCHI_Y - 52, `✦ ${NPC_NAME}`, {
+    fontSize: '9px', color: '#e6c878',
+    fontFamily: '"PingFang SC", "Hiragino Sans GB", ui-monospace, monospace',
+    stroke: '#000000', strokeThickness: 2,
+  }).setOrigin(0.5, 1).setDepth(6)
 
   // Brass stanchion sign — "Airing · 策展人"
   const post = scene.add.rectangle(MOCHI_X, MOCHI_Y - 36, 1, 14, 0xc8a058, 0.85).setDepth(4.95)
   const plate = scene.add.rectangle(MOCHI_X, MOCHI_Y - 46, 64, 11, 0x1a1f2a)
     .setStrokeStyle(1, 0xc8a058, 0.95).setDepth(5.0)
-  const label = scene.add.text(MOCHI_X, MOCHI_Y - 46, `${NPC_NAME} · 策展人`, {
+  const label = crispText(scene, MOCHI_X, MOCHI_Y - 46, `${NPC_NAME} · 策展人`, {
     fontSize: '8px', color: '#e6c878',
     fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-monospace, monospace',
     resolution: 2,
@@ -111,7 +120,7 @@ async function openMochiChat(scene: Phaser.Scene) {
 }
 
 function showFloatingHint(scene: Phaser.Scene, x: number, y: number, text: string) {
-  const hint = scene.add.text(x, y, text, {
+  const hint = crispText(scene, x, y, text, {
     fontSize: '9px', color: '#e6c878',
     fontFamily: '"PingFang SC", "Hiragino Sans GB", ui-monospace, monospace',
     backgroundColor: 'rgba(20, 14, 8, 0.85)',
@@ -133,6 +142,7 @@ export function teardownGalleryMochi(): void {
   eKeyHandler = null
   for (const obj of signEls) obj.destroy()
   signEls = []
+  if (crispNameLabel) { crispNameLabel.destroy(); crispNameLabel = null }
   if (mochiBear) {
     mochiBear.destroy()
     mochiBear = null

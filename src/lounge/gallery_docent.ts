@@ -5,6 +5,7 @@
 // yet, falls back to a styled placeholder silhouette.
 
 import Phaser from 'phaser'
+import { crispText } from './gallery_text'
 import type { RoomId } from './config'
 import { getAsset } from './gallery_assets'
 import { showBubble } from './ui'
@@ -60,7 +61,7 @@ export function setupGalleryDocent(
   const stanchionPost = scene.add.rectangle(0, -32, 1, 14, 0xc8a058, 0.85)
   const signPlate = scene.add.rectangle(0, -42, 32, 11, 0x1a1a1a)
     .setStrokeStyle(1, 0xc8a058, 0.95)
-  const signText = scene.add.text(0, -42, '馆员', {
+  const signText = crispText(scene, 0, -42, '馆员', {
     fontSize: '9px',
     color: '#e6c878',
     fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", ui-monospace, monospace',

@@ -6,6 +6,7 @@
 // programmatic placeholder keeps the scene shippable.
 
 import Phaser from 'phaser'
+import { crispText } from './gallery_text'
 import type { RoomId } from './config'
 import { getAsset } from './gallery_assets'
 
@@ -92,7 +93,7 @@ export function setupGalleryArchitecture(
         // Brass keystone at top
         layer.add(scene.add.rectangle(p.x, p.y - archH / 2 + 4, 10, 6, 0xc8a058))
         // Small "to grove" label
-        layer.add(scene.add.text(p.x, p.y + archH / 2 + 6, '→ Grove', {
+        layer.add(crispText(scene, p.x, p.y + archH / 2 + 6, '→ Grove', {
           fontSize: '7px', color: '#c8a058',
           fontFamily: 'ui-monospace, monospace',
         }).setOrigin(0.5))
