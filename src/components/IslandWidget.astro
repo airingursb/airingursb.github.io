@@ -44,17 +44,25 @@ import IslandWidget from './IslandWidget'
     transform: translateX(2px);
   }
   .island-card-canvas {
+    --island-dwell: 0;  /* V29: 0..1, driven by React useFrame on dwell */
     display: block;
     width: 100%;
     height: 360px;
     border-radius: 12px;
     overflow: hidden;
-    /* Sky-gradient bleed (Sub-A #2 #7) — Canvas alpha:true lets this
-       show through, so the dark page bg doesn't create a hard
-       rectangle around the floating island. Soft glow at the center
-       suggests sunlit air. */
+    position: relative;
+    /* V29: two stacked backgrounds — base cool sky + warm golden,
+       layered via color-mix. As --island-dwell ramps 0→1, sky lerps
+       from bright noon blue → golden-hour amber, agreeing with the
+       in-canvas fog/sun shift. */
     background:
-      radial-gradient(circle at 50% 28%, #FFF6DD 0%, #E5F1F6 28%, #BFD8E8 60%, #92B1C8 100%);
+      radial-gradient(
+        circle at calc(50% + var(--island-dwell) * 8%) calc(28% + var(--island-dwell) * 14%),
+        color-mix(in oklab, #FFF6DD calc((1 - var(--island-dwell)) * 100%), #FFE6B0) 0%,
+        color-mix(in oklab, #E5F1F6 calc((1 - var(--island-dwell)) * 100%), #FFD498) 28%,
+        color-mix(in oklab, #BFD8E8 calc((1 - var(--island-dwell)) * 100%), #E8B080) 60%,
+        color-mix(in oklab, #92B1C8 calc((1 - var(--island-dwell)) * 100%), #C88060) 100%
+      );
     cursor: pointer;
     transition: filter 240ms ease, transform 240ms ease;
   }

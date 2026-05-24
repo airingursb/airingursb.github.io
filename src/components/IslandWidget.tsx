@@ -30,6 +30,19 @@ const hoverState = {
   enteredAt: 0,
   decay: 0,
 }
+// V27: sustained-hover dwell triggers golden-hour key shift.
+// 0 = bright noon, 1 = warm amber. Lerps in over 1.5s starting at 3s
+// of sustained hover; decays back to 0 over 4s after pointer leave.
+function getDwellGolden(t: number): number {
+  if (hoverState.active) {
+    const dwellSec = t - hoverState.enteredAt
+    if (dwellSec < 3) return 0
+    return Math.min(1, (dwellSec - 3) / 1.5)
+  }
+  // Decay
+  const sinceLeave = t - hoverState.decay
+  return Math.max(0, 1 - sinceLeave / 4)
+}
 const mouseState = {
   x: 0,    // normalized -1..1
   y: 0,    // normalized -1..1
@@ -767,18 +780,47 @@ function FallenPetals() {
 // ── AnimatedSun — V14: subtle breathing on the main directional light.
 // 90s cycle: intensity ±0.06, color #FFE8C0 → #FFD8A0 → #FFE8C0.
 // Owns the sun light entirely (replaces the static directionalLight).
+// V27: SkyMood — fog warms on dwell.
+// V29: ALSO updates --island-dwell CSS var on the canvas wrapper so the
+// outer CSS sky gradient lerps in lockstep (breaks the last cool-blue
+// border around the warmed in-canvas scene).
+function SkyMood() {
+  const { scene, gl } = useThree()
+  const cFog = useMemo(() => new THREE.Color(FOG_TINT), [])
+  const cGoldenSky = useMemo(() => new THREE.Color('#F0D8B0'), [])
+  const scratch = useMemo(() => new THREE.Color(), [])
+  useFrame((s) => {
+    const dwell = getDwellGolden(s.clock.elapsedTime)
+    if (scene.fog) {
+      scratch.copy(cFog).lerp(cGoldenSky, dwell)
+      ;(scene.fog as THREE.Fog).color.copy(scratch)
+    }
+    // V29: drive the outer CSS sky gradient via the canvas wrapper var
+    const canvasEl = gl.domElement
+    const wrapper = canvasEl.closest('.island-card-canvas') as HTMLElement | null
+    if (wrapper) wrapper.style.setProperty('--island-dwell', String(dwell))
+  })
+  return null
+}
+
 function AnimatedSun() {
   const lightRef = useRef<THREE.DirectionalLight>(null)
   const cWarm = useMemo(() => new THREE.Color('#FFE8C0'), [])
   const cAmber = useMemo(() => new THREE.Color('#FFD8A0'), [])
-  // V25: hoist scratchColor — was allocating new THREE.Color per frame
+  const cGolden = useMemo(() => new THREE.Color('#FFB870'), [])
   const scratch = useMemo(() => new THREE.Color(), [])
   useFrame((s) => {
     if (!lightRef.current) return
     const t = s.clock.elapsedTime
     const cycle = (Math.sin(t * 0.07) + 1) * 0.5
-    lightRef.current.intensity = 2.44 + Math.sin(t * 0.07) * 0.06
-    lightRef.current.color = scratch.copy(cWarm).lerp(cAmber, cycle * 0.6)
+    const dwell = getDwellGolden(t)
+    lightRef.current.intensity = 2.44 + Math.sin(t * 0.07) * 0.06 - dwell * 0.20
+    scratch.copy(cWarm).lerp(cAmber, cycle * 0.6).lerp(cGolden, dwell)
+    lightRef.current.color = scratch
+    // V28: sun POSITION lowers on dwell — shadows lengthen with the warmth
+    lightRef.current.position.x = 4 + dwell * 1.5
+    lightRef.current.position.y = 5.5 - dwell * 1.3
+    lightRef.current.position.z = 3 - dwell * 0.4
   })
   return (
     <directionalLight
@@ -1534,6 +1576,8 @@ export default function IslandWidget() {
     >
       {/* No <color> bg — let CSS radial-gradient sky show through */}
       <fog attach="fog" args={[FOG_TINT, 8, 17]} />
+      {/* V27: sky+fog mood shift on sustained hover (golden hour) */}
+      <SkyMood />
 
       {/* Lighting — bright noon, Studio Ghibli golden hour balance */}
       <hemisphereLight args={['#FFF3DC', '#9CBC78', 0.95]} />
