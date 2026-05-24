@@ -39,7 +39,7 @@ export function setupGrovePortal(scene: Phaser.Scene, roomId: RoomId) {
   container.add(flower)
 
   // Floating label above
-  const label = scene.add.text(0, -28, '跟 Mochi 散步', {
+  const label = scene.add.text(0, -28, '跟 Airing 散步', {
     fontSize: '10px',
     color: '#fce8ee',
     fontFamily: 'ui-monospace, monospace',

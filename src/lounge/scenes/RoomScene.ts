@@ -3636,7 +3636,7 @@ export class RoomScene extends Phaser.Scene {
     const lines = [
       'Hey, you found us!',
       "This is nook — make yourself at home. There's a library to the north, beach to the south.",
-      "If you ever want to talk to someone, head into the library — Mochi's usually there. He's a good listener.",
+      "If you ever want to talk to someone, head into the library — Airing's usually there. He's a good listener.",
     ]
 
     let i = 0

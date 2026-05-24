@@ -33,7 +33,7 @@ type OpenArgs = Hints & {
 }
 
 let currentNpcId = 'npc_jue'
-let currentNpcName = 'Mochi'
+let currentNpcName = 'Airing'
 let currentHints: Hints = {}
 let otherRoomNpcs: RoomNpc[] = []  // other AI NPCs in current room
 let groupModeOn = false
@@ -51,7 +51,7 @@ function ensure(): HTMLElement {
   rootEl.innerHTML = `
     <div class="nook-companion-card">
       <div class="nook-companion-header">
-        <span class="nook-companion-name">Mochi</span>
+        <span class="nook-companion-name">Airing</span>
         <span class="nook-companion-where">· library</span>
         <button type="button" class="nook-companion-diary-btn" id="nook-companion-diary-btn" title="ta 最近写的日记">📔</button>
         <button type="button" class="nook-companion-memory-btn" id="nook-companion-memory-btn" title="ta 记住关于你的事 (可删)">🧠</button>

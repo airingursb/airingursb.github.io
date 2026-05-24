@@ -18,7 +18,7 @@ const ZONES: Zone[] = [
   { id: 'north',   label: '北厅 · NORTH HALL',     subtitle: 'Networks & Protocols',     bbox: [512,   0,  768, 320] },
   { id: 'west',    label: '西翼 · WEST WING',      subtitle: 'Performance & Memory',     bbox: [  0, 320,  384, 704] },
   { id: 'east',    label: '东翼 · EAST WING',      subtitle: 'Web Internals',            bbox: [896, 320, 1280, 704] },
-  { id: 'rotunda', label: '中庭 · ROTUNDA',         subtitle: 'Mochi · 中央焦点',          bbox: [384, 320,  896, 704] },
+  { id: 'rotunda', label: '中庭 · ROTUNDA',         subtitle: 'Airing · 中央焦点',          bbox: [384, 320,  896, 704] },
   { id: 'south',   label: '南馆 · SOUTH PAVILION', subtitle: '四格漫画 + 通往庭园',       bbox: [384, 704,  896, 960] },
 ]
 
@@ -137,7 +137,7 @@ function showWelcomeToast(scene: Phaser.Scene) {
     fontFamily: cjkFont,
     resolution: 2,
   }).setOrigin(0.5)
-  const subtitle2 = crispText(scene, 0, 16, '中庭是 Mochi 的 3D 园子，四翼按主题分区', {
+  const subtitle2 = crispText(scene, 0, 16, '中庭是 Airing 的 3D 园子，四翼按主题分区', {
     fontSize: '8px', color: '#a8a098',
     fontFamily: cjkFont,
     resolution: 2,

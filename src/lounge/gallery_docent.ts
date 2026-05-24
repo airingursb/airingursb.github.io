@@ -15,12 +15,12 @@ const DOCENT_Y = 644              // just behind the info desk at (640, 666)
 const DOCENT_ID = 'npc_docent'
 
 const WELCOME_LINES = [
-  '欢迎光临 · 中庭是 Mochi 的小园子，四面是各专题展厅。',
+  '欢迎光临 · 中庭是 Airing 的小园子，四面是各专题展厅。',
   '东翼是 Web Internals — Chromium、React、CSS 那一脉。',
   '西翼是 Performance & Memory — GC、jank、V8 那些。',
   '北厅是 Networks — TLS、HTTP/3。南面是漫画馆。',
   '随便看，按 E 可以走进任何一幅作品。',
-  '后院通往 Mochi 的 3D 小园子 —— 走过去就行。',
+  '后院通往 Airing 的 3D 小园子 —— 走过去就行。',
 ]
 
 const GREET_PROXIMITY = 48      // px range for auto-greeting
