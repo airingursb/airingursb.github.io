@@ -21,7 +21,9 @@ const WOOD        = '#7A5B3C'
 function HotPoolSurface({ radius = 1.0 }: { radius?: number }) {
   // The pool surface: very calm ripples (1/3 amplitude of the cold pond)
   // since hot water is denser and convects more slowly visually. Sky-blue
-  // tint with bright shimmer to read as steaming.
+  // tint with bright shimmer to read as steaming. V2 wave 3: emissive
+  // intensity also pulses (0.06-0.12) on a 4s cycle — implies thermal
+  // convection without breaking still-water reading.
   const ref = useRef<THREE.Mesh>(null)
   useFrame((s) => {
     const m = ref.current
@@ -34,6 +36,9 @@ function HotPoolSurface({ radius = 1.0 }: { radius?: number }) {
       pos.setY(i, Math.sin(t * 0.9 + d * 1.6) * 0.005 + Math.cos(t * 0.5 + px * 0.6) * 0.003)
     }
     pos.needsUpdate = true
+    // Thermal pulse — slow + subtle
+    const mat = m.material as THREE.MeshStandardMaterial
+    mat.emissiveIntensity = 0.09 + Math.sin(t * 0.6) * 0.03
   })
   return (
     <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
@@ -45,7 +50,7 @@ function HotPoolSurface({ radius = 1.0 }: { radius?: number }) {
         transparent
         opacity={0.78}
         emissive={WATER_HOT}
-        emissiveIntensity={0.08}
+        emissiveIntensity={0.09}
       />
     </mesh>
   )
