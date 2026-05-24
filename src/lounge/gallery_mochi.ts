@@ -29,13 +29,13 @@ export function setupGalleryMochi(
   teardownGalleryMochi()
   if (roomId !== 'room_gallery') return
 
-  // Spawn Mochi as a panda — same species as the library presence
-  mochiBear = new Bear(scene, MOCHI_X, MOCHI_Y, 'asia', 'panda')
+  // Airing's gallery presence is always the classic brown bear avatar
+  // (matches the user's own bear identity; locked to species 'bear' so
+  // we don't accidentally race-condition into showing as a panda).
+  mochiBear = new Bear(scene, MOCHI_X, MOCHI_Y, 'asia', 'bear')
   mochiBear.sprite.setDepth(4.4)
   mochiBear.facing = 'down'
   mochiBear.setDisplayName(NPC_NAME, { color: '#e6c878', prefix: '✦ ' })
-  // The Bear class lazy-loads panda atlas via setSpecies if not preloaded
-  void mochiBear.setSpecies('panda')
 
   // Brass stanchion sign — "Airing · 策展人"
   const post = scene.add.rectangle(MOCHI_X, MOCHI_Y - 36, 1, 14, 0xc8a058, 0.85).setDepth(4.95)
