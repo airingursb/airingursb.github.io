@@ -1,0 +1,100 @@
+---
+// Floating mini-island widget for the homepage bottom-left.
+// Whole tile is a link to /world/. R3F mounts lazily on first
+// scroll-into-view (Astro `client:visible`).
+import IslandWidget from './IslandWidget'
+---
+
+<a
+  href="/world/"
+  class="island-widget"
+  aria-label="进入 /world/ — Airing 的森林岛漫游"
+  data-i18n-title="island_widget_enter"
+  title="进入森林岛漫游"
+>
+  <div class="island-widget-canvas">
+    <IslandWidget client:visible />
+  </div>
+  <div class="island-widget-meta">
+    <span class="island-widget-label">森林岛</span>
+    <span class="island-widget-cta">进入 →</span>
+  </div>
+</a>
+
+<style>
+  .island-widget {
+    position: fixed;
+    bottom: 18px;
+    left: 18px;
+    width: 280px;
+    height: 220px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(244, 234, 213, 0.10);
+    background: linear-gradient(180deg, #2a2438 0%, #1a1424 65%, #0e0817 100%);
+    cursor: pointer;
+    z-index: 30;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    transition: transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 240ms ease,
+                border-color 240ms ease;
+    text-decoration: none;
+    display: block;
+  }
+  .island-widget:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 217, 168, 0.35);
+    border-color: rgba(255, 217, 168, 0.3);
+  }
+  .island-widget:hover .island-widget-cta {
+    color: #FFE4C0;
+    transform: translateX(2px);
+  }
+  .island-widget-canvas {
+    position: absolute;
+    inset: 0;
+    pointer-events: none; /* let the <a> swallow clicks (no drag inside) */
+  }
+  .island-widget-canvas canvas {
+    display: block;
+    width: 100% !important;
+    height: 100% !important;
+  }
+  .island-widget-meta {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(180deg, rgba(20, 14, 22, 0) 0%, rgba(20, 14, 22, 0.6) 100%);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 11px;
+    pointer-events: none;
+  }
+  .island-widget-label {
+    color: rgba(244, 234, 213, 0.75);
+    font-family: "Songti SC", "Noto Serif SC", Georgia, serif;
+    font-size: 13px;
+    letter-spacing: 0.04em;
+  }
+  .island-widget-cta {
+    color: rgba(255, 217, 168, 0.7);
+    transition: color 200ms ease, transform 200ms ease;
+  }
+
+  /* Hide on mobile — saves ~200KB lazy bundle for small screens
+     where it'd be too cramped to read anyway. */
+  @media (max-width: 880px) {
+    .island-widget { display: none; }
+  }
+
+  /* prefers-reduced-motion: hide entirely (auto-rotate is jarring for
+     vestibular-sensitive users) */
+  @media (prefers-reduced-motion: reduce) {
+    .island-widget { display: none; }
+  }
+</style>
