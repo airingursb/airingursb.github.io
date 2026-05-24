@@ -118,8 +118,53 @@ Built across 35+ sub-agent-reviewed iterations. Key beats:
 22-26: theme toggle, camera reset, photo snap, mobile media queries
 27-30: typed event bus, ESC/backdrop close, panel toggle, perf gating
 31-35: ErrorBoundary, theme persist, iOS focus fix, loader splash
+36-37: Sub-A perf sweep (Water normals, ZoneHints early-return,
+        GroundCover dispose, Critters cat position, orphan files → _archive/)
 
-Every commit has the iter number for traceability.
+### Scene-polish waves (V2, 2026-05-25)
+Goal: take the scene from "tour-ready" to "wandering-around-for-an-hour"
+through atmospheric + lived-in detail. Multi-hour multi-Sub-A loop.
+
+**Wave 1** — initial top-4 from Sub-A brainstorm
+- B2 Lanterns ignite at dusk (Lanterns.tsx theme prop + flicker + halo)
+- A2 Easel canvas paints THE SCENE (procedural CanvasTexture)
+- D1 Cat 5-state FSM (curl/stretch/lick/look/sleep)
+- C3 Arched stone bridge replacing flat plank (Water.tsx)
+
+**Wave 2** — Sub-A category sweep (lived-in / atmosphere / new area / creatures)
+- B1 DuskFog (new file — pond/waterfall band fog at dusk)
+- A1 RockerTeaCup with rising steam (Cabin.tsx)
+- A3 Book + bookmark + glasses on hammock (HammockSpot.tsx)
+- D2 Duck wakes + lily-pad bobbing (Water.tsx)
+- D3 Dusk fireflies + scripted cabin-bound firefly (Critters.tsx)
+- B4 Periodic wind gusts (new src/world/wind.ts getGust)
+- C1 Onsen hot spring (new Onsen.tsx — pool + steam + buckets + 脱衣場)
+- C2 Inari fox shrine (new FoxShrine.tsx — 3 torii + statue + candle)
+- B3 CanopyDapple (warm motes, softer than literal godrays)
+- A4 Footprint trail with soft alpha mask
+
+**Wave 3** — Sub-A audit fixes + further polish
+- WindChime (new — furin bell + tanzaku, hangs near hammock pines)
+- Koi fish in pond (Critters.tsx — 3 semi-transparent fish)
+- Onsen visitor accessories (yukata + geta + soap tray + karesansui)
+- FoxShrine shimenawa rope + shide paper streamers
+- Day-lantern emissive boost + dusk halo cones
+- MochiNPC 5-beat sine-eased head-sweep FSM
+- DistantIslands drop shadows on cloud sea
+- Clothesline gust whip + Pond ripple gust boost + Lily gust tilt
+- Gazebo tatami + zabuton + tea bowl
+- BlogKiosk lived-in pass (newspaper + mug + chalkboard + paper stack)
+- PersimmonTree (new — leaning trunk + 8 hanging fruits + fallen 2)
+- Cabin geta + bonsai + chimney smoke gust + fixed rocker axis
+- Sakura petals floating on pond
+- SunsetBirds V-formation flock at dusk (quality-gated)
+- PathMushrooms scattered along PATH_POINTS
+- Karesansui (枯山水) zen garden adjacent to onsen
+
+All gated on `getGust` (B4 shared) or `theme` prop where appropriate.
+DuskFog, CanopyDapple, SunsetBirds skipped on QUALITY=low.
+
+Every commit has the wave/iter tag in git log.
 
 ## Production-readiness checklist
 
@@ -145,3 +190,33 @@ npx astro preview       # Serve dist/ on :4321; world at /world/
 
 GLBs are intentionally absent — every visible object is built from
 primitives at runtime.
+
+## V2 scene-polish wave new files (2026-05-25)
+
+```
+src/world/
+├── wind.ts                   ← Shared getGust(t) — 27s periodic gust
+│                              spike, read by WindSway + Water + Smoke
+│                              + Clothesline + Sakura petals + FoxShrine
+│                              shide + WindChime tanzaku + LilyPads
+├── DuskFog.tsx               ← 6 rotating ground-fog planes; dusk only
+├── Onsen.tsx                 ← Pool + stones + buckets + yukata +
+│                              geta + soap tray + karesansui + steam
+├── FoxShrine.tsx             ← 3 mini torii + shimenawa rope + shide
+│                              + stone fox statue + offering candle
+├── CanopyDapple.tsx          ← 3 warm-mote Sparkles zones (day only)
+├── Footprints.tsx            ← Soft-alpha CanvasTexture footprint trail
+├── WindChime.tsx             ← Furin glass bell + tanzaku paper strip
+├── PersimmonTree.tsx         ← Small leaning tree with hanging fruits
+├── SunsetBirds.tsx           ← V-formation flock at altitude (dusk only)
+└── PathMushrooms.tsx         ← 7 mushrooms scattered along PATH_POINTS
+```
+
+Plus heavy edits to: Lanterns (theme prop + halo + moss), EaselClearing
+(CanvasTexture painting), Critters (cat FSM + duck wakes + koi + fireflies),
+MochiNPC (head FSM), Cabin (RockerTeaCup + geta + bonsai + smoke + window
+balance + rocker axis), Water (LilyPads gust + FloatingPetals + arch
+bridge), HammockSpot (book + glasses), Gazebo (tatami + cushion + bowl +
+roof palette), Domestic (clothesline gust), BlogKiosk (lived-in pass),
+SoilHalos (z-fight fix), Storytelling (signpost spread), DistantIslands
+(drop shadows). Total ~25 components changed across the wave.
