@@ -5,29 +5,39 @@
 // + back to "never" on visibilitychange hidden — costs 0 frames when
 // off-screen or tab-backgrounded.
 //
-// ─── FILE MAP (~1750 LOC; LOC ranges are approximate, verified V48) ───
-//   Cedar       :  L75-119  (45)   slim conifer + WindSway + dispose cleanup
-//   MinkaCabin  :  L121-310 (190)  irimoya roof + dormer + shoji + chimney
-//   StoneLantern:  L312-381 (70)   2-octave flicker + pointLight interior
-//   Torii       :  L383-414 (32)
-//   RakedGravel :  L417-448 (32)   concentric tori around cabin ("ma")
-//   Tsukubai    :  L449-596 (148)  bamboo spout + water stream + ripples
-//   DisplacedCliff: L597-616 (20)  ridged-noise vertex displacement
-//   Island      :  L617-649 (33)   ground disc + scene root
-//   SteppingSt. :  L650-688 (39)   varied geometry + tea-master jog
-//   FallenPetals:  L694-734 (41)
-//   SkyMood     :  L742-760 (19)   fog tint + CSS --island-dwell var write
-//   AnimatedSun :  L761-798 (38)   90s breathing + dwell golden-hour shift
-//   HearthLight :  L800-819 (20)
-//   (then: clouds, mountains, birds, parallax rig, hover hotspots,
-//    falling petals, water surface, sparkles, Canvas root w/ Effect-
-//    Composer + ContextLossHandlers + frameloop gating)
+// ─── FILE MAP (~1430 LOC; V52.8 — atmospherics cleanup) ───
+//   Cedar         : slim conifer + WindSway + canopy geo dispose
+//   MinkaCabin    : irimoya roof + dormer + shoji + chimney
+//   StoneLantern  : 2-octave flicker + interior pointLight
+//   Torii         : vermillion posts + kasagi
+//   RakedGravel   : concentric tori around cabin ("ma")
+//   Tsukubai      : bamboo spout + water stream + ripples
+//   DisplacedCliff: ridged-noise vertex displacement (island base)
+//   Island        : ground disc + scene root
+//   SteppingStones: varied geometry + tea-master jog
+//   FallenPetals  : sakura petals scattered on ground
+//   AnimatedSun   : directional light, 90s breathing + dwell golden-hour
+//   HearthLight   : pointLight inside cabin, pulses with hearth phase
+//   PathMoss      : green patches between stepping stones
+//   ChimneySmoke  : 3 puffs rising on hearth-cycle phase
+//   ParallaxRig   : V52 owns camera position + lookAt every frame
+//   FallingPetals : InstancedMesh drift-down from canopy
+//   WaterSurface  : tsukubai water plane with ripples
+//   WaterStream   : bamboo spout to basin trickle
+//   Canvas root   : EffectComposer (Bloom + SMAA), frameloop gating,
+//                   ContextLossHandlers (V44 leak fix)
+//
+// ─── DELETED V52 (pet redesign — were for inline-card framing) ───
+//   SkyMood, DistantClouds, MidCloudWisps, DistantMountains,
+//   HoverZoneHotspots, ZoneSparkles, UpperCumulus, BirdFlyby (~340 LOC).
+//   See breadcrumb comments at each former site for the why.
 //
 // ─── COORDINATION (the "one organism" trick) ───
 //   All hooks (getWind, getHearth, getDwellGolden, getHoverBoost) read
-//   shared module state from ./island-shared. Read by 22 child useFrame
-//   loops so the scene feels coherent: smoke→shoji→lantern lag, golden
-//   hour cascade (sun color + position + fog + CSS sky gradient).
+//   shared module state from ./island-shared. Read by ~12 child useFrame
+//   loops (was 20 before V52.8 cleanup) so the scene feels coherent:
+//   smoke → shoji → lantern lag, golden hour cascade across sun colour
+//   + position + (in card) CSS sky gradient.
 //
 // ─── HISTORY ───
 //   V3 was rejected as "kindergarten" → V4-V42 ~40 Sub-A iterations →
