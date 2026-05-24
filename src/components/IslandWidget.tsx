@@ -37,7 +37,7 @@
 import type React from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
-import { EffectComposer, Bloom, Vignette, ToneMapping, SMAA } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, ToneMapping, SMAA } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { ACESFilmicToneMapping } from 'three'
 import { useMemo, useRef, useEffect, useState } from 'react'
@@ -963,14 +963,17 @@ function PathMoss() {
 // 220×220 widget over-magnify.
 function ParallaxRig() {
   const { camera } = useThree()
-  const baseX = 2.6     // matches Canvas prop [2.6, 2.0, 8.5]
+  const baseX = 2.6     // matches Canvas prop [2.6, 2.0, 9.5]
   const baseY = 2.0
-  const baseZ = 8.5     // V52.6: 7.6 → 8.5. Sub-A V52.5 caught that at
-                        // 7.6 the FRONT-RIGHT disc corner (closer to
-                        // camera in perspective space) still clipped
-                        // because visible half-width shrinks at closer
-                        // depths. 8.5 gives ~0.4 margin even at the
-                        // front-corner depth.
+  const baseZ = 9.5     // V52.7: 8.5 → 9.5. Sub-A V52.6 verify used
+                        // 16:9 aspect by mistake — pet canvas is SQUARE
+                        // 1:1, so visible half-width = half-height (no
+                        // horizontal extra). At baseZ=8.5 the disc
+                        // front-corner (z=+1.6, depth 6.9) had half-
+                        // width only 1.98 vs disc x=2.15 → 0.17 clip.
+                        // baseZ=9.5: depth to front-corner ≈ 7.9 →
+                        // half-width 2.27 → 0.12 margin even at the
+                        // closest point.
   useFrame((_, dt) => {
     const targetX = baseX + mouseState.x * 0.15   // V21 had 0.25 — too much for pet
     const targetY = baseY + mouseState.y * -0.10  // V21 had -0.15
@@ -1627,14 +1630,13 @@ export default function IslandWidget() {
       // Island disc has x-extent ±2.15 (radius 2.05 × non-uniform scale
       // 1.05). To fit the whole disc width in a square canvas the
       // visible width at island distance must be ≥ 4.3 units.
-      // Math: visible_width = 2 · D · tan(fov/2). Camera [2.6, 2.0, 8.5]
-      // sits ~9.0 units from origin → fov 32 gives ~5.2 unit visible
-      // width at the disc center plane. At the disc's FRONT-RIGHT
-      // corner (closer to camera in perspective) the visible half-width
-      // shrinks but still clears the ±2.15 disc edge with ~0.4 unit
-      // margin. Tilt comes from raised y (2.0) so the disc reads as
-      // a round blob from slight bird's-eye, not as a cliff slice.
-      camera={{ position: [2.6, 2.0, 8.5], fov: 32 }}
+      // V52.7: camera [2.6, 2.0, 9.5] fov 32 for SQUARE 1:1 canvas.
+      // Visible half-width = half-height = (depth) · tan(16°). At the
+      // disc center plane (depth ≈ 9.0): half-width 2.57; at front-
+      // corner (depth ≈ 7.9): half-width 2.27 — both clear the disc
+      // x-extent ±2.15 with margin. Tilt from raised y (2.0) gives
+      // a slight bird's-eye so the disc reads as a round blob.
+      camera={{ position: [2.6, 2.0, 9.5], fov: 32 }}
       dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}
       // V41: pause off-screen. V50 a11y: reduced-motion users get a
       // single static render ("demand" + one initial invalidate from R3F
