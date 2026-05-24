@@ -36,7 +36,7 @@
 
 import type React from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, Sparkles } from '@react-three/drei'
+import { Sparkles } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, ToneMapping, SMAA } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { ACESFilmicToneMapping } from 'three'
@@ -1608,7 +1608,13 @@ export default function IslandWidget() {
     <div ref={canvasWrapRef} style={{ width: '100%', height: '100%' }}>
     <Canvas
       shadows={!IS_MOBILE}
-      camera={{ position: [2.9, 1.5, 3.7], fov: 28 }}
+      // V52 pet cutout: camera pulled WAY back so the whole island
+      // (cabin + cedar tops + sakura crown + torii) fits inside the
+      // 220×220 pet canvas. Was [2.9, 1.5, 3.7] / fov 28 — those were
+      // tuned for the inline-card 800×381 frame and cropped the island
+      // when shoehorned into the square pet. Pulled to z=7, raised y
+      // for a slight bird's-eye so the disc top is visible.
+      camera={{ position: [3.6, 2.4, 7.0], fov: 26 }}
       dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}
       // V41: pause off-screen. V50 a11y: reduced-motion users get a
       // single static render ("demand" + one initial invalidate from R3F
@@ -1641,10 +1647,14 @@ export default function IslandWidget() {
     >
       {/* V44: wire WebGL ctx-loss/restore handlers (with cleanup) */}
       <ContextLossHandlers />
-      {/* No <color> bg — let CSS radial-gradient sky show through */}
-      <fog attach="fog" args={[FOG_TINT, 8, 17]} />
-      {/* V27: sky+fog mood shift on sustained hover (golden hour) */}
-      <SkyMood />
+      {/* No <color> bg — alpha:true canvas, page bg shows through.
+          V52 pet cutout: NO fog. Fog draws sky-colored haze onto distant
+          objects, which on a transparent-bg canvas reads as a rectangle
+          of color (= visible canvas edge = PiP feel). The whole island
+          should be in sharp focus instead. Removed entirely. */}
+      {/* V27: sky+fog mood shift on sustained hover (golden hour).
+          V52: removed for pet — no fog to tint, no .island-card-canvas
+          wrapper to drive (we're now in .island-pet). Static lighting. */}
 
       {/* Lighting — bright noon, Studio Ghibli golden hour balance */}
       <hemisphereLight args={['#FFF3DC', '#9CBC78', 0.95]} />
@@ -1725,27 +1735,30 @@ export default function IslandWidget() {
       {/* V23: moss/lichen between stepping stones (always-on micro-life) */}
       <PathMoss />
 
-      <OrbitControls
-        target={[0.15, 0.35, 0.10]}
-        enablePan={false}
-        enableZoom={false}
-        enableRotate={false}
-        autoRotate
-        autoRotateSpeed={0.55}
-      />
+      {/* V52 pet cutout: OrbitControls removed. Pet doesn't get dragged;
+          the cute hover micro-rotation is enough motion. Also keep
+          autoRotate off — a constantly-spinning pet in the corner
+          competes with reading content. */}
 
-      {/* V21: mouse parallax + scene-depth layers */}
+      {/* V21: mouse parallax. V52: still useful for the slight head-turn
+          when user moves cursor toward the pet. */}
       <ParallaxRig />
-      <DistantMountains />
-      <HoverZoneHotspots />
+      {/* V52: DistantMountains removed — they sat on the back wall of the
+          scene and on transparent bg they bleed past the island silhouette,
+          recreating the "scene box" feel. The Sub-A V46 mountain layers
+          were for the inline-card framing. */}
+      {/* V52: HoverZoneHotspots removed — no zone reactions for pet
+          (cute hover micro-motion handled by ParallaxRig + hoverState). */}
 
-      {/* Postprocessing — tuned for bright noon. V31: drop Bloom on
-          mobile (single most expensive pass per frame). */}
+      {/* Postprocessing — V52 pet cutout: Vignette removed. Vignette
+          darkens canvas corners with a rectangular gradient — on a
+          transparent-bg pet that DRAWS the rectangular canvas edge
+          back into view = PiP frame feel. Bloom kept (only affects
+          emissive lights — shoji, lantern — doesn't bleed to corners). */}
       <EffectComposer multisampling={0}>
         {!IS_MOBILE && (
           <Bloom intensity={0.35} luminanceThreshold={0.85} luminanceSmoothing={0.5} mipmapBlur />
         )}
-        <Vignette eskil={false} offset={0.40} darkness={0.25} />
         <ToneMapping mode={ToneMappingMode.ACES_FILMIC} />
         <SMAA />
       </EffectComposer>
