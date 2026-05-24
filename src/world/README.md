@@ -229,7 +229,7 @@ Total ~26 components changed across the wave.
 
 `src/world/wind.ts::getGust(t)` returns a 0..1 bell curve that
 spikes for ~3 seconds every 27 seconds, 0 otherwise. Shared across
-15 reactive systems so the periodic "wind rises" moment plays
+**19 reactive systems** so the periodic "wind rises" moment plays
 synchronized across the entire island:
 
 - WindSway (trees, hammock, sakura, wreath, gazebo chime)
@@ -247,6 +247,10 @@ synchronized across the entire island:
 - Weathervane (1.8 rad whip)
 - Campfire flames (~17° lean + 60% brighter light)
 - Fox shrine candle (lean + scale)
+- Cloud shadows (drift speed boost)
+- Hero sakura roots (sway depth)
+- Hammock cradle (lateral swing)
+- Paper lantern string (along-rope sway)
 
 ### Camera choreography (V2 wave 3 finale)
 
@@ -261,3 +265,24 @@ pure user-orbit:
 2. **Theme breath** (1.5s on 🌙/☀️ press). Camera momentarily eases
    6% closer to target on a sin(πt) bell curve — "leaning in to
    watch the lights come on" beat. Doesn't fire during intro.
+
+### V2 perf addendum (Sub-A P1 sweep)
+
+Three perf items from Sub-A's first audit, all closed before delivery:
+
+1. **Frameloop visibilitychange gating** (`App.tsx`). Canvas now uses
+   `frameloop={pageVisible ? 'always' : 'never'}` — when the tab is
+   backgrounded, all ~25 useFrame loops pause to zero CPU/GPU cost
+   until the user comes back. Biggest battery win on laptops/mobile.
+2. **Forest canopy geometry pool** (`Forest.tsx`). Pre-built 5-variant
+   pools per (species, canopy slot) → 60 cached geometries, picked
+   deterministically by tree seed via `pickFromPool()`. Was 180+
+   per-tree IcosahedronGeometry GPU uploads (one per tree × 3 slots).
+3. **FallingLeaves InstancedMesh** (`Atmospherics.tsx`). 36 individual
+   leaf meshes → 1 InstancedMesh with per-instance matrix + color.
+   Fade-in/out via scale-to-zero (per-instance opacity in InstancedMesh
+   needs custom shader, which isn't worth the complexity at leaf scale).
+
+Combined with the existing `detectQuality()` SSAO/DoF gating, the
+diorama now runs in green on a 2019 MBP at 'high' tier and stays
+silent when the tab is hidden.
