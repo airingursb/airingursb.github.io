@@ -187,7 +187,7 @@ Recently retired my HHKB series after over a decade of use, and picked up a ZSA 
 
 My desk's a mess right now, so I'll go with a stock photo this issue — looks roughly like this:
 
-![ZSA Voyager split keyboard](https://r2.airingdeng.com/blog/wj35/zsa-voyager.webp)
+![ZSA split keyboard](https://r2.airingdeng.com/blog/wj35/zsa-voyager.webp)
 
 **🎮 Roco Kingdom**
 
