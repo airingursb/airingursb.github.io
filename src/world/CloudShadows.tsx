@@ -6,14 +6,20 @@
 import * as THREE from 'three'
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { getGust } from './wind'
 
 const SHADOW_COLOR = '#1A1410'
 
+// V2 wave 3: cloud shadows drift faster on gust (overhead clouds
+// "speed up" when wind picks up). Coherent with the rest of the
+// 15-system gust reactive stack.
 function ShadowPatch({ phase, radius, drift }: { phase: number; radius: number; drift: number }) {
   const ref = useRef<THREE.Mesh>(null)
   useFrame((s) => {
     if (!ref.current) return
-    const t = s.clock.elapsedTime * drift + phase
+    const gust = getGust(s.clock.elapsedTime)
+    const driftBoost = 1 + gust * 1.2
+    const t = s.clock.elapsedTime * drift * driftBoost + phase
     ref.current.position.x = Math.cos(t * 0.1) * 18 + Math.sin(t * 0.05) * 6
     ref.current.position.z = Math.sin(t * 0.1) * 18 + Math.cos(t * 0.05) * 6
   })
