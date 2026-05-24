@@ -112,6 +112,26 @@
       (no per-log draw calls)
 - [ ] V — On `prefers-reduced-motion`, DuskFog + CanopyDapple +
       SunsetBirds are skipped (perf gate is QUALITY=low)
+- [ ] V — Hot spring pool emissiveIntensity oscillates 0.06-0.12 on
+      a 4s cycle (thermal pulse — the only "invisible physics" beat)
+- [ ] V — Cabin window glow breathes on ~3.2s sine (back-wall
+      emissive 0.5±0.08, reads as fireplace flicker)
+- [ ] V — Distant owl: at dusk only, two yellow eye-dots in a far
+      tree blink every ~6s; invisible during day
+- [ ] V — Wind chime tanzaku swings harder during gust event
+      (verifies WindChime → getGust coupling)
+
+### V2 perf sweep (Sub-A P1)
+
+- [ ] Switch to another browser tab for ≥10s; return to /world/ tab.
+      Scene resumes instantly without lag spike. (Canvas frameloop
+      pauses on visibilitychange — verify via DevTools Performance:
+      no JS activity from R3F while tab hidden.)
+- [ ] Forest: ~60 unique IcosahedronGeometry uploads, not 180+
+      (BIRCH_POOL/OAK_POOL/MAPLE_POOL/CHERRY_POOL × POOL_SIZE=5;
+      Three.js stats panel `.geometries` should drop accordingly).
+- [ ] FallingLeaves renders as 1 InstancedMesh, not 36 separate
+      meshes (Three.js stats `.calls` should drop ~35).
 
 ## Archive (`/archive/`)
 
