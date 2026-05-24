@@ -40,8 +40,8 @@ const initialData = {
   <WhisperOverlay client:only="react" />
   <AmbientHUD client:only="react" />
   <AccountIndicator client:only="react" />
-  <div class="world-help">
-    <span class="world-help-keys">drag</span> 旋转 · <span class="world-help-keys">scroll</span> 缩放 · <span class="world-help-keys">click</span> 互动 · <span class="world-help-keys">ESC</span> 关面板
+  <div class="world-help" role="note" aria-label="操作提示">
+    <span class="world-help-keys" aria-hidden="true">drag</span> 旋转 · <span class="world-help-keys" aria-hidden="true">scroll</span> 缩放 · <span class="world-help-keys" aria-hidden="true">click</span> 互动 · <span class="world-help-keys" aria-hidden="true">ESC</span> 关面板
   </div>
 </div>
 
@@ -72,6 +72,16 @@ const initialData = {
   @keyframes world-help-fade {
     from { opacity: 0.8; }
     to   { opacity: 0; }
+  }
+  /* Respect reduced-motion: keep the hint at full opacity instead of
+     fading it (animations of any kind can disorient sensitive users;
+     the hint also benefits keyboard/AT users who can't 'see' it
+     fade and need it to stay readable). */
+  @media (prefers-reduced-motion: reduce) {
+    .world-help {
+      animation: none;
+      opacity: 0.8;
+    }
   }
   @media (max-width: 720px) {
     .world-help { font-size: 10px; padding: 4px 10px; }
