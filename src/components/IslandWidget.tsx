@@ -20,7 +20,7 @@ import { OrbitControls, Sparkles } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, ToneMapping, SMAA } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { ACESFilmicToneMapping, IcosahedronGeometry } from 'three'
-import { useMemo, useRef, useEffect } from 'react'
+import { useMemo, useRef, useEffect, useState } from 'react'
 import * as THREE from 'three'
 import { Sakura } from './widget-sakura'
 
@@ -1657,11 +1657,53 @@ function ChimneySmoke() {
 }
 
 export default function IslandWidget() {
+  // V41: pause render loop when widget is off-screen or tab is hidden.
+  // Saves significant battery + GPU on homepage (~10 other cards
+  // visible above the fold) without affecting visible-state quality.
+  const [paused, setPaused] = useState(false)
+  const canvasWrapRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    let visible = true
+    let tabVisible = !document.hidden
+    function update() {
+      setPaused(!(visible && tabVisible))
+    }
+    const io = new IntersectionObserver((entries) => {
+      visible = entries.some(e => e.isIntersecting)
+      update()
+    }, { threshold: 0.05 })
+    if (canvasWrapRef.current) io.observe(canvasWrapRef.current)
+    function onVisChange() {
+      tabVisible = !document.hidden
+      update()
+    }
+    document.addEventListener('visibilitychange', onVisChange)
+    return () => {
+      io.disconnect()
+      document.removeEventListener('visibilitychange', onVisChange)
+    }
+  }, [])
   return (
+    <div ref={canvasWrapRef} style={{ width: '100%', height: '100%' }}>
     <Canvas
-      shadows={!IS_MOBILE}   // V31: skip shadow pass on mobile (~30% faster)
+      shadows={!IS_MOBILE}
       camera={{ position: [2.9, 1.5, 3.7], fov: 28 }}
-      dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}   // V31: lower DPR cap on mobile
+      dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}
+      frameloop={paused ? 'never' : 'always'}   // V41: pause off-screen
+      onCreated={({ gl }) => {
+        // V41: webglcontextlost → escalate to fallback (mobile Safari
+        // reclaims contexts when >2 active canvases; silent black-out
+        // otherwise).
+        gl.domElement.addEventListener('webglcontextlost', (e) => {
+          e.preventDefault()
+          const wrap = document.getElementById('island-3d-canvas-wrap')
+          if (wrap) {
+            wrap.classList.remove('island-loaded')
+            wrap.classList.add('island-webgl-failed')
+          }
+        }, { passive: false })
+      }}
       gl={{
         antialias: true,
         alpha: true,
@@ -1795,5 +1837,6 @@ export default function IslandWidget() {
         <SMAA />
       </EffectComposer>
     </Canvas>
+    </div>
   )
 }
