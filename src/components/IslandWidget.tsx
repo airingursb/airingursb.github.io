@@ -19,165 +19,36 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Sparkles } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette, ToneMapping, SMAA } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
-import { ACESFilmicToneMapping, IcosahedronGeometry } from 'three'
+import { ACESFilmicToneMapping } from 'three'
 import { useMemo, useRef, useEffect, useState } from 'react'
 import * as THREE from 'three'
 import { Sakura } from './widget-sakura'
+import {
+  hoverState, mouseState, hoverZone,
+  IS_TOUCH, IS_MOBILE,
+  getWind, getHearth, getDwellGolden, getHoverBoost,
+  lerpHex, organicBlob, makePetalShape,
+  // Palette
+  SKY, FOG_TINT,
+  CEDAR_TRUNK, CEDAR_DARK, CEDAR_LIGHT,
+  GRASS_LIGHT, GRASS_HILIGHT, GRASS_SHADE,
+  SOIL, SOIL_DK, CLIFF, CLIFF_DK,
+  GRAVEL_SAND, GRAVEL_LINE,
+  WASHI_WALL, WASHI_GLOW, WOOD_POST, WOOD_BEAM,
+  TILE_ROOF_A, TILE_ROOF_B, TILE_ROOF_MOSS, TILE_RIDGE,
+  STONE_BASE, STONE_HAT, LANTERN_GLOW,
+  VERMILLION, TORII_BLACK,
+} from './island-shared'
 
-// ── V20: SHARED HOVER STATE + V21: MOUSE POSITION for parallax.
-const hoverState = {
-  active: false,
-  enteredAt: 0,
-  decay: 0,
-}
-// V27: sustained-hover dwell triggers golden-hour key shift.
-// V31: on touch-only devices (no hover), auto-cycle to keep the
-// payoff visible. 14s loop: 4s noon → 3s ramp → 4s golden → 3s ramp.
-const IS_TOUCH = typeof window !== 'undefined' && window.matchMedia?.('(hover: none)').matches
-function getDwellGolden(t: number): number {
-  if (IS_TOUCH) {
-    // 14s cycle, smooth triangle 0→1→0
-    const phase = (t % 14) / 14
-    return phase < 0.5
-      ? Math.max(0, (phase - 0.29) / 0.21)
-      : Math.max(0, 1 - (phase - 0.50) / 0.21)
-  }
-  if (hoverState.active) {
-    const dwellSec = t - hoverState.enteredAt
-    if (dwellSec < 3) return 0
-    return Math.min(1, (dwellSec - 3) / 1.5)
-  }
-  const sinceLeave = t - hoverState.decay
-  return Math.max(0, 1 - sinceLeave / 4)
-}
+// ── Palette + shared hooks (hoverState, getWind, getHearth, etc.)
+//    are imported from ./island-shared. See that file's top comment for
+//    why module-mutable shared state vs. React Context.
 
-// V31: detect mobile / low-end for perf gating
-const IS_MOBILE = typeof window !== 'undefined' && (
-  /Android|webOS|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
-  (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 800px)').matches)
-)
-const mouseState = {
-  x: 0,    // normalized -1..1
-  y: 0,    // normalized -1..1
-}
-// V21: hover-zone state (sakura / tsukubai / cabin / null)
-const hoverZone: { current: 'sakura' | 'tsukubai' | 'cabin' | null; since: number } = {
-  current: null,
-  since: 0,
-}
-function getHoverBoost(t: number): number {
-  if (hoverState.active) {
-    const since = t - hoverState.enteredAt
-    return Math.min(1, since * 3)  // ease in over 0.33s
-  }
-  // Decay from last active value
-  const sinceLeave = t - hoverState.decay
-  return Math.max(0, 1 - sinceLeave * 0.67)  // decay over 1.5s
-}
-
-// V24: tiny hex-color channel-lerp helper (avoids THREE.Color alloc).
-function lerpHex(a: string, b: string, t: number): string {
-  const ar = parseInt(a.slice(1, 3), 16), ag = parseInt(a.slice(3, 5), 16), ab = parseInt(a.slice(5, 7), 16)
-  const br = parseInt(b.slice(1, 3), 16), bg = parseInt(b.slice(3, 5), 16), bb = parseInt(b.slice(5, 7), 16)
-  const r = Math.round(ar + (br - ar) * t)
-  const g = Math.round(ag + (bg - ag) * t)
-  const bl = Math.round(ab + (bb - ab) * t)
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${bl.toString(16).padStart(2, '0')}`
-}
-
-// ── V15: SHARED WIND — single source driving cedar sway, sakura
-// WindSway, falling petals, chimney smoke, and cloud rotation. Ghibli
-// wind is ONE wind. dir.x and dir.z form a unit-ish vector; gust spikes
-// every ~24s pushing everything the SAME direction.
-function getWind(t: number) {
-  const gust = Math.max(0, Math.sin(t * 0.13) - 0.7) * 3.3
-  // Slow direction drift over ~150s
-  const dirAngle = Math.sin(t * 0.04) * 0.4
-  return {
-    dirX: Math.cos(dirAngle),
-    dirZ: Math.sin(dirAngle),
-    gust,
-    swayPhase: t * 0.5,
-  }
-}
-
-// ── V15: SHARED HEARTH — single source driving smoke puff rate, shoji
-// breath brighten, lantern flame dim. Real hearth: smoke puff → 100ms
-// later shoji brightens (light flares from stoked flame) → lantern
-// dims slightly (draft). Ties cabin into one organism.
-function getHearth(t: number) {
-  const phase = (t * 0.25 % 1)
-  const stoke = Math.max(0, 1 - Math.abs(phase - 0.2) * 4)
-  return {
-    phase,
-    stoke,
-    // V16: cranked deltas so coupling is VISIBLE not coded-only
-    shojiBrighten: stoke * 0.20,   // was 0.06 — bright flare from stoked flame
-    lanternDim:    stoke * 0.28,   // was 0.10 — visible draft-dim
-    smokeBoost:    stoke * 1.6,    // V16: smoke puff bursts harder at stoke
-  }
-}
-
-// ── Palette (bright noon Japanese garden) ───────────────────────────
-const SKY            = '#CFE5F5'
-const FOG_TINT       = '#E8E0D0'
-
-const CEDAR_TRUNK    = '#2A1812'
-const CEDAR_DARK     = '#385830'
-const CEDAR_LIGHT    = '#4E6E40'
-
-// V6 (Sub-A #3): warmer Ghibli-correct earth tones + sun-bleached
-// grass highlight. V5 GRASS_LIGHT was dead-center sage with no warmth;
-// SOIL/CLIFF were muddy defaults.
-const GRASS_LIGHT    = '#A8C77A'   // warm sage with yellow tint
-const GRASS_HILIGHT  = '#C7D89A'   // sun-bleached highlight patch
-const GRASS_SHADE    = '#6B8A52'   // violet-cooled shade pocket
-const SOIL           = '#B88560'   // warm cinnamon (was muddy #A07A55)
-const SOIL_DK        = '#8C5E3E'   // cliff color, deeper for gradient
-const CLIFF          = '#8C5E3E'
-const CLIFF_DK       = '#6B4530'   // shadow gradient on cliff face
-
-const GRAVEL_SAND    = '#E6DAC0'   // raked karesansui sand (cream)
-const GRAVEL_LINE    = '#C5B98F'   // darker rake-line tone
-
-const WASHI_WALL     = '#F5E8C8'
-const WASHI_GLOW     = '#FFEFD0'
-const WOOD_POST      = '#3A2516'
-const WOOD_BEAM      = '#5A3A20'
-// Roof was '#3E3845' (nearly black, swallows the bright noon scene).
-// Real kawara is blue-grey with subtle warm highlight.
-const TILE_ROOF_A    = '#5C6470'
-const TILE_ROOF_B    = '#363C48'   // V9: widened from #454C58 (ΔL≈9→20) so per-tile jitter is actually visible
-const TILE_ROOF_MOSS = '#5E7048'   // V10: pushed green channel (was #4A584A — read as shadow not moss)
-const TILE_RIDGE     = '#2E3540'
-
-const STONE_BASE     = '#A89E8E'
-const STONE_HAT      = '#7E7368'
-const LANTERN_GLOW   = '#FFD080'
-
-const VERMILLION     = '#C84A35'
-const TORII_BLACK    = '#1F1812'
-
-// ── Helpers: vendor `organicBlob` from Forest.tsx so canopies have
-//    per-tree silhouette variation (vs identical Christmas-tree cones)
-function organicBlob(radius: number, jitterAmt: number, seed: number): THREE.BufferGeometry {
-  const g = new IcosahedronGeometry(radius, 1)
-  const pos = g.attributes.position
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i)
-    const n = Math.sin(x * 12.9 + seed) * Math.cos(z * 17.3 + seed * 1.7)
-    pos.setX(i, x + n * jitterAmt * 0.5)
-    pos.setY(i, y + Math.sin(y * 9.1 + seed) * jitterAmt)
-    pos.setZ(i, z + Math.cos(x * 7.7 + seed * 2.3) * jitterAmt * 0.5)
-  }
-  pos.needsUpdate = true
-  g.computeVertexNormals()
-  return g
-}
+// (organicBlob moved to island-shared.ts)
 
 // ── Cedar (杉) — slim conifer with 4 vertically-stretched organicBlob
 //    canopies. Per-tree seed → no identical trees.
-// Cedar (杉) — proper TALL THIN flame silhouette. V11: gentle wind sway.
+// V11: gentle wind sway.
 function Cedar({ x, z, scale = 1, seed = 0 }: { x: number; z: number; scale?: number; seed?: number }) {
   const groupRef = useRef<THREE.Group>(null)
   useFrame((s) => {
@@ -790,16 +661,7 @@ function SteppingStones() {
 // ── FallenPetals — sakura petals scattered on the ground.
 // V6 were 14mm pink dots (rice grains). V7: elongated teardrop ovals
 // via shapeGeometry (5-lobe sakura petal silhouette).
-function makePetalShape(): THREE.Shape {
-  const s = new THREE.Shape()
-  // Teardrop with DEEPER V-notch at tip (V7 notch was 0.038 — too shallow)
-  s.moveTo(0, 0)
-  s.bezierCurveTo(-0.024, 0.018, -0.030, 0.044, 0, 0.060)
-  s.bezierCurveTo(-0.006, 0.045, -0.003, 0.038, 0, 0.030)
-  s.bezierCurveTo(0.003, 0.038, 0.006, 0.045, 0, 0.060)
-  s.bezierCurveTo(0.030, 0.044, 0.024, 0.018, 0, 0)
-  return s
-}
+// (makePetalShape moved to island-shared.ts)
 
 function FallenPetals() {
   const petalGeo = useMemo(() => new THREE.ShapeGeometry(makePetalShape(), 8), [])
@@ -1692,9 +1554,9 @@ export default function IslandWidget() {
       dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}
       frameloop={paused ? 'never' : 'always'}   // V41: pause off-screen
       onCreated={({ gl }) => {
-        // V41: webglcontextlost → escalate to fallback (mobile Safari
-        // reclaims contexts when >2 active canvases; silent black-out
-        // otherwise).
+        // V41: webglcontextlost → escalate to fallback.
+        // V42: webglcontextrestored → auto-recover (browser-initiated
+        // restore; common after GPU process restart or tab unminimize).
         gl.domElement.addEventListener('webglcontextlost', (e) => {
           e.preventDefault()
           const wrap = document.getElementById('island-3d-canvas-wrap')
@@ -1703,6 +1565,13 @@ export default function IslandWidget() {
             wrap.classList.add('island-webgl-failed')
           }
         }, { passive: false })
+        gl.domElement.addEventListener('webglcontextrestored', () => {
+          const wrap = document.getElementById('island-3d-canvas-wrap')
+          if (wrap) {
+            wrap.classList.remove('island-webgl-failed')
+            wrap.classList.add('island-loaded')
+          }
+        })
       }}
       gl={{
         antialias: true,
