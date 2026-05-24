@@ -1,18 +1,41 @@
-// Inline homepage mini-island — V4 ("kindergarten" → "refined")
+// Inline homepage mini-island — R3F scene that previews /world/.
 //
-// V3 was rejected as kindergarten. Sub-A critique #1 (4 hrs work order):
-//   1. Sakura was 8 spheres = clown wig → vendor real grove3d Sakura
-//      with weeping Bezier branches + 10K instanced petals (we cap with
-//      density=0.3 for the inline card)
-//   2. Strip flatShading from organic surfaces (trunks/lantern/torii)
-//   3. Cone-stack cedars look like Christmas trees → organicBlob slim
-//      conifers with per-tree seed
-//   4. Box-stack bridge → DELETED (was visual noise)
-//   5. Composition: cut maple + bridge + 1 cedar + add raked gravel
-//      ring for negative space ("ma")
-//   6. Irimoya roof: atan2-correct slabs that meet at ridge + upturned
-//      eave corners (Japanese hip-and-gable)
-//   7. Bloom + Vignette postprocessing (lantern/shoji emissives pop)
+// Mounts via Astro client:visible (only when scrolled into view).
+// frameloop="never" toggles to "always" on IntersectionObserver visible
+// + back to "never" on visibilitychange hidden — costs 0 frames when
+// off-screen or tab-backgrounded.
+//
+// ─── FILE MAP (~1700 LOC, broken up by what it renders) ───
+//   Helpers     :  ~50    organicBlob lives in island-shared.ts now
+//   Cedar       :  ~70    slim conifer with WindSway
+//   MinkaCabin  : ~280    irimoya roof + dormer + shoji + chimney
+//   Tsukubai    :  ~80    bamboo spout + water stream + ripples
+//   StoneLantern:  ~50    2-octave flicker + pointLight interior
+//   Torii       :  ~30
+//   SteppingSt. :  ~30    varied geometry + tea-master jog spacing
+//   RakedGravel :  ~25    concentric tori around cabin ("ma")
+//   FallenPetals:  ~30
+//   FallingPetals: ~80    InstancedMesh with petal-water rest snap
+//   DistantMtns :  ~50    extruded jagged + vertex y-gradient
+//   Clouds (3x) : ~100    distant, upper cumulus, mid wisps
+//   BirdFlyby   :  ~60    pair reacting to wind
+//   AnimatedSun :  ~50    90s breathing + dwell golden-hour shift
+//   SkyMood     :  ~40    fog tint + CSS --island-dwell var write
+//   ParallaxRig :  ~25    camera tracks mouse XY
+//   HoverHotspots: ~80    invisible raycast targets (zone-gated)
+//   Island root : ~250    composition + lights + ground
+//   Canvas root :  ~80    EffectComposer, frameloop gating
+//
+// ─── COORDINATION (the "one organism" trick) ───
+//   All hooks (getWind, getHearth, getDwellGolden, getHoverBoost) read
+//   shared module state from ./island-shared. Read by 22 child useFrame
+//   loops so the scene feels coherent: smoke→shoji→lantern lag, golden
+//   hour cascade (sun color + position + fog + CSS sky gradient).
+//
+// ─── HISTORY ───
+//   V3 was rejected as "kindergarten" → V4-V42 ~40 Sub-A iterations →
+//   CTO review 9.4/10. V43 extracted island-shared.ts. V44 i18n + this
+//   doc block. Full iteration notes in git log.
 
 import type React from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
