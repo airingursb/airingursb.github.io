@@ -6,6 +6,7 @@ import WorldUI from '../world/WorldUI'
 import ZonePanel from '../world/ZonePanel'
 import WhisperOverlay from '../world/WhisperOverlay'
 import AmbientHUD from '../world/AmbientHUD'
+import AccountIndicator from '../world/AccountIndicator'
 import WorldLoader from '../world/WorldLoader.astro'
 import ErrorBoundary from '../world/ErrorBoundary'
 import articlesData from '../data/articles.json'
@@ -38,6 +39,7 @@ const initialData = {
   <ZonePanel client:only="react" initialData={initialData} />
   <WhisperOverlay client:only="react" />
   <AmbientHUD client:only="react" />
+  <AccountIndicator client:only="react" />
   <div class="world-help">
     <span class="world-help-keys">drag</span> 旋转 · <span class="world-help-keys">scroll</span> 缩放 · <span class="world-help-keys">click</span> 互动 · <span class="world-help-keys">ESC</span> 关面板
   </div>
@@ -88,7 +90,7 @@ const initialData = {
   }
   .world-ui {
     position: fixed;
-    top: 18px;
+    top: 66px;            /* room for account pill at top:18 above */
     right: 18px;
     display: flex;
     flex-direction: column;
@@ -136,7 +138,7 @@ const initialData = {
      Sits just below the main world-ui icon stack. */
   .world-ui-extra {
     position: fixed;
-    top: calc(18px + 4 * 46px + 3 * 8px + 14px);
+    top: calc(66px + 4 * 46px + 3 * 8px + 14px);
     right: 18px;
     display: flex;
     flex-direction: column;
@@ -203,6 +205,9 @@ const initialData = {
   .world-hud-pomo--break { color: #80D0B0; }
 
   @media (max-width: 720px) {
+    .world-ui {
+      top: max(60px, env(safe-area-inset-top, 60px));
+    }
     .world-ui-extra {
       top: auto;
       bottom: 90px;
@@ -214,6 +219,240 @@ const initialData = {
       bottom: 10px;
       left: 10px;
     }
+    .world-account {
+      top: 12px;
+      left: 12px;
+      right: auto;
+    }
+  }
+
+  /* === Account indicator pill (top-right) + login modal === */
+  .world-account {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 22;
+    font-family: "Songti SC", Georgia, serif;
+  }
+  .world-account-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 14px 0 4px;
+    border-radius: 999px;
+    border: 1px solid rgba(244, 234, 213, 0.22);
+    background: rgba(244, 234, 213, 0.92);
+    color: #5D3B1F;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+    backdrop-filter: blur(6px);
+    box-shadow: 0 2px 6px rgba(20, 14, 22, 0.3);
+  }
+  .world-account-pill:hover {
+    background: rgba(255, 244, 220, 1);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(20, 14, 22, 0.45);
+  }
+  .world-account-avatar {
+    display: inline-flex;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #C97B5C, #8B5E3C);
+    color: #FFF4DC;
+    font-size: 14px;
+    font-weight: 700;
+  }
+  .world-account-pill--out .world-account-avatar {
+    background: linear-gradient(135deg, #6B6358, #4A2D1A);
+    color: #FFE4C0;
+  }
+  .world-account-name {
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .world-account-menu {
+    position: absolute;
+    top: 46px;
+    right: 0;
+    min-width: 150px;
+    background: rgba(20, 14, 22, 0.92);
+    border: 1px solid rgba(244, 234, 213, 0.18);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(8px);
+    z-index: 23;
+  }
+  .world-account-menu-item {
+    display: block;
+    width: 100%;
+    padding: 10px 16px;
+    background: transparent;
+    border: none;
+    color: #f4ead5;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+  .world-account-menu-item:hover {
+    background: rgba(244, 234, 213, 0.12);
+  }
+
+  /* === Login modal === */
+  .world-login-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(8, 4, 12, 0.55);
+    backdrop-filter: blur(4px);
+    z-index: 40;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: world-login-bg-in 200ms ease-out;
+  }
+  @keyframes world-login-bg-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  .world-login-modal {
+    width: min(380px, 92vw);
+    background: rgba(244, 234, 213, 0.98);
+    color: #3A2516;
+    border-radius: 16px;
+    padding: 22px 26px 24px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(140, 107, 71, 0.25);
+    font-family: "Songti SC", Georgia, serif;
+    animation: world-login-modal-in 220ms ease-out;
+  }
+  @keyframes world-login-modal-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .world-login-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+  }
+  .world-login-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #5D3B1F;
+  }
+  .world-login-close {
+    background: transparent;
+    border: none;
+    color: #8C6B47;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+  }
+  .world-login-blurb {
+    margin: 0 0 16px;
+    color: #8C6B47;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .world-login-oauth {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .world-login-btn {
+    width: 100%;
+    padding: 10px 16px;
+    background: #5D3B1F;
+    color: #FFE4C0;
+    border: 1px solid #3A2516;
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 120ms ease;
+  }
+  .world-login-btn:hover {
+    background: #4A2D1A;
+  }
+  .world-login-btn--magic {
+    background: #C97B5C;
+    border-color: #8B5E3C;
+  }
+  .world-login-btn--magic:hover {
+    background: #B86E50;
+  }
+  .world-login-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .world-login-divider {
+    text-align: center;
+    color: #8C6B47;
+    font-size: 11px;
+    margin: 4px 0 14px;
+    position: relative;
+  }
+  .world-login-divider::before,
+  .world-login-divider::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 38%;
+    height: 1px;
+    background: rgba(140, 107, 71, 0.3);
+  }
+  .world-login-divider::before { left: 0; }
+  .world-login-divider::after { right: 0; }
+  .world-login-divider span {
+    background: rgba(244, 234, 213, 0.98);
+    padding: 0 12px;
+    position: relative;
+  }
+  .world-login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .world-login-input {
+    padding: 10px 14px;
+    border: 1px solid rgba(140, 107, 71, 0.4);
+    border-radius: 10px;
+    font-family: inherit;
+    font-size: 14px;
+    background: #FFF8E8;
+    color: #3A2516;
+    outline: none;
+  }
+  .world-login-input:focus {
+    border-color: #C97B5C;
+    box-shadow: 0 0 0 3px rgba(201, 123, 92, 0.15);
+  }
+  .world-login-error {
+    color: #C13E3E;
+    font-size: 12px;
+    margin-top: 4px;
+  }
+  .world-login-sent {
+    color: #4A8B6E;
+    font-size: 14px;
+    text-align: center;
+    line-height: 1.6;
+  }
+  .world-login-sent small {
+    color: #8C6B47;
+    font-size: 12px;
   }
   /* === Whisper overlay (island speaks) === */
   .world-whisper {
