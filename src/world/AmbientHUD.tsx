@@ -128,33 +128,45 @@ export default function AmbientHUD() {
   const liveTotal = storedTotalMs + sessionMs
   const noiseIsOn = noise !== 'off'
 
+  // V2 a11y polish (matches WorldUI sweep): icon buttons need
+  // aria-label since the title= attribute alone isn't reliably
+  // announced. Pomodoro button gets aria-pressed for the running
+  // state. Time HUD gets aria-live='polite' so screen readers
+  // know it updates (without nagging — sessionMin only changes
+  // every minute, pomo ticks every second but is gated to running).
+  const noiseLabel = `白噪音：${NOISE_LABEL[noise]}（点击切换）`
+  const pomoLabel = pomo === 'idle' ? '开始 25 分钟番茄钟' : '取消番茄钟'
   return (
     <>
       {/* === 2 extra control buttons — separate column below the main
           world-ui icon stack (camera/moon/compass/whisper). === */}
-      <div className="world-ui-extra">
+      <div className="world-ui-extra" role="toolbar" aria-label="环境控制">
         <button
           onClick={cycleNoise}
           className={`world-btn world-btn-with-sub${noiseIsOn ? '' : ' world-btn--off'}`}
-          title={`白噪音：${NOISE_LABEL[noise]}（点击切换）`}
+          title={noiseLabel}
+          aria-label={noiseLabel}
+          aria-pressed={noiseIsOn}
         >
           <img src="/world/sprites/icons/F06-bgm.png" alt="" className="world-btn-icon" />
-          <span className="world-btn-sub-label">{NOISE_LABEL[noise]}</span>
+          <span className="world-btn-sub-label" aria-hidden="true">{NOISE_LABEL[noise]}</span>
         </button>
         <button
           onClick={togglePomodoro}
           className={`world-btn world-btn-with-sub${pomo !== 'idle' ? ' world-btn--active' : ''}`}
-          title={pomo === 'idle' ? '开始 25 分钟番茄钟' : '取消番茄钟'}
+          title={pomoLabel}
+          aria-label={pomoLabel}
+          aria-pressed={pomo !== 'idle'}
         >
           <img src="/world/sprites/icons/F07-tomato.png" alt="" className="world-btn-icon" />
           {pomo !== 'idle' && (
-            <span className="world-btn-sub-label">{fmtMmSs(pomoRemaining)}</span>
+            <span className="world-btn-sub-label" aria-hidden="true">{fmtMmSs(pomoRemaining)}</span>
           )}
         </button>
       </div>
 
       {/* === Bottom-left time HUD === */}
-      <div className="world-hud-time">
+      <div className="world-hud-time" aria-live="polite" aria-atomic="true">
         <div className="world-hud-time-main">在岛上 {sessionMin} 分钟</div>
         {liveTotal > sessionMs + 60_000 && (
           <div className="world-hud-time-sub">
