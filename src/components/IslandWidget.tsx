@@ -24,6 +24,59 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Sakura } from './widget-sakura'
 
+// ── V20: SHARED HOVER STATE — module-level mutable for cheap
+// cross-component reactive boost without prop drilling or context.
+// onPointerEnter/Leave on Canvas updates these; useFrame reads them
+// for petal-burst gust + shoji flare.
+const hoverState = {
+  active: false,
+  enteredAt: 0,    // seconds since enter
+  // Falls off over 1.5s after leave
+  decay: 0,
+}
+function getHoverBoost(t: number): number {
+  if (hoverState.active) {
+    const since = t - hoverState.enteredAt
+    return Math.min(1, since * 3)  // ease in over 0.33s
+  }
+  // Decay from last active value
+  const sinceLeave = t - hoverState.decay
+  return Math.max(0, 1 - sinceLeave * 0.67)  // decay over 1.5s
+}
+
+// ── V15: SHARED WIND — single source driving cedar sway, sakura
+// WindSway, falling petals, chimney smoke, and cloud rotation. Ghibli
+// wind is ONE wind. dir.x and dir.z form a unit-ish vector; gust spikes
+// every ~24s pushing everything the SAME direction.
+function getWind(t: number) {
+  const gust = Math.max(0, Math.sin(t * 0.13) - 0.7) * 3.3
+  // Slow direction drift over ~150s
+  const dirAngle = Math.sin(t * 0.04) * 0.4
+  return {
+    dirX: Math.cos(dirAngle),
+    dirZ: Math.sin(dirAngle),
+    gust,
+    swayPhase: t * 0.5,
+  }
+}
+
+// ── V15: SHARED HEARTH — single source driving smoke puff rate, shoji
+// breath brighten, lantern flame dim. Real hearth: smoke puff → 100ms
+// later shoji brightens (light flares from stoked flame) → lantern
+// dims slightly (draft). Ties cabin into one organism.
+function getHearth(t: number) {
+  const phase = (t * 0.25 % 1)
+  const stoke = Math.max(0, 1 - Math.abs(phase - 0.2) * 4)
+  return {
+    phase,
+    stoke,
+    // V16: cranked deltas so coupling is VISIBLE not coded-only
+    shojiBrighten: stoke * 0.20,   // was 0.06 — bright flare from stoked flame
+    lanternDim:    stoke * 0.28,   // was 0.10 — visible draft-dim
+    smokeBoost:    stoke * 1.6,    // V16: smoke puff bursts harder at stoke
+  }
+}
+
 // ── Palette (bright noon Japanese garden) ───────────────────────────
 const SKY            = '#CFE5F5'
 const FOG_TINT       = '#E8E0D0'
@@ -89,8 +142,10 @@ function Cedar({ x, z, scale = 1, seed = 0 }: { x: number; z: number; scale?: nu
   useFrame((s) => {
     if (!groupRef.current) return
     const t = s.clock.elapsedTime
-    groupRef.current.rotation.z = Math.sin(t * 0.7 + seed * 0.5) * 0.020
-    groupRef.current.rotation.x = Math.cos(t * 0.55 + seed * 0.7) * 0.014
+    // V16: cedars (high mass) lag wind by 0.4s vs petals reacting on t=0
+    const wind = getWind(t - 0.4)
+    groupRef.current.rotation.z = (Math.sin(t * 0.7 + seed * 0.5) * 0.020) + wind.dirX * (0.012 + wind.gust * 0.025)
+    groupRef.current.rotation.x = (Math.cos(t * 0.55 + seed * 0.7) * 0.014) + wind.dirZ * (0.008 + wind.gust * 0.020)
   })
 
   const layers = useMemo(() => {
@@ -194,16 +249,11 @@ function MinkaCabin() {
         <meshStandardMaterial color={WOOD_BEAM} roughness={0.92} />
       </mesh>
 
-      {/* Shoji window — bright paper pane on front */}
-      <mesh position={[0, 0.08 + WALL_H * 0.6, CABIN_D / 2 + 0.003]}>
-        <planeGeometry args={[CABIN_W * 0.78, WALL_H * 0.55]} />
-        <meshStandardMaterial
-          color={WASHI_GLOW}
-          emissive={WASHI_GLOW}
-          emissiveIntensity={0.45}
-          roughness={0.5}
-        />
-      </mesh>
+      {/* Shoji window — V13: breath animation via useFrame component */}
+      <BreathingShoji
+        position={[0, 0.08 + WALL_H * 0.6, CABIN_D / 2 + 0.003]}
+        size={[CABIN_W * 0.78, WALL_H * 0.55]}
+      />
       {/* Shoji grid frame (5 vertical × 3 horizontal) */}
       {[-0.34, -0.17, 0, 0.17, 0.34].map((vx, i) => (
         <mesh key={`vbar${i}`} position={[vx * CABIN_W * 0.78, 0.08 + WALL_H * 0.6, CABIN_D / 2 + 0.004]}>
@@ -319,6 +369,21 @@ function MinkaCabin() {
 
 // ── Stone lantern (smooth-shaded, no flat) ──────────────────────────
 function StoneLantern({ x, z }: { x: number; z: number }) {
+  const flameRef = useRef<THREE.Group>(null)
+  // V13: 2-octave flame flicker. V18: dims 300ms AFTER smoke puffs (draft pull).
+  useFrame((s) => {
+    if (!flameRef.current) return
+    const t = s.clock.elapsedTime
+    const hearth = getHearth(t - 0.30)
+    const intensity = 0.85 + Math.sin(t * 4.3) * 0.08 + Math.sin(t * 11.7) * 0.04 - hearth.lanternDim
+    flameRef.current.traverse((obj) => {
+      const m = obj as THREE.Mesh
+      if (m.isMesh && m.material) {
+        const mat = m.material as THREE.MeshStandardMaterial
+        if (mat.emissive) mat.emissiveIntensity = intensity
+      }
+    })
+  })
   return (
     <group position={[x, 0.025, z]} scale={0.45}>
       {/* Hex base */}
@@ -338,23 +403,25 @@ function StoneLantern({ x, z }: { x: number; z: number }) {
         <boxGeometry args={[0.22, 0.16, 0.22]} />
         <meshStandardMaterial color={STONE_BASE} roughness={0.92} />
       </mesh>
-      {/* 4 glowing window panes */}
-      {([
-        [0, 0.56, 0.111, 0],
-        [0, 0.56, -0.111, Math.PI],
-        [0.111, 0.56, 0, Math.PI / 2],
-        [-0.111, 0.56, 0, -Math.PI / 2],
-      ] as Array<[number, number, number, number]>).map((p, i) => (
-        <mesh key={i} position={[p[0], p[1], p[2]]} rotation={[0, p[3], 0]}>
-          <planeGeometry args={[0.13, 0.11]} />
-          <meshStandardMaterial
-            color={LANTERN_GLOW}
-            emissive={LANTERN_GLOW}
-            emissiveIntensity={0.9}
-            roughness={0.4}
-          />
-        </mesh>
-      ))}
+      {/* 4 glowing window panes — wrapped in flameRef for flicker */}
+      <group ref={flameRef}>
+        {([
+          [0, 0.56, 0.111, 0],
+          [0, 0.56, -0.111, Math.PI],
+          [0.111, 0.56, 0, Math.PI / 2],
+          [-0.111, 0.56, 0, -Math.PI / 2],
+        ] as Array<[number, number, number, number]>).map((p, i) => (
+          <mesh key={i} position={[p[0], p[1], p[2]]} rotation={[0, p[3], 0]}>
+            <planeGeometry args={[0.13, 0.11]} />
+            <meshStandardMaterial
+              color={LANTERN_GLOW}
+              emissive={LANTERN_GLOW}
+              emissiveIntensity={0.9}
+              roughness={0.4}
+            />
+          </mesh>
+        ))}
+      </group>
       {/* Roof (6-sided low pyramid) */}
       <mesh position={[0, 0.74, 0]} castShadow>
         <coneGeometry args={[0.27, 0.16, 6]} />
@@ -452,16 +519,8 @@ function Tsukubai({ x, z }: { x: number; z: number }) {
         <torusGeometry args={[0.13, 0.012, 8, 22]} />
         <meshStandardMaterial color={STONE_HAT} roughness={0.95} />
       </mesh>
-      {/* Recessed water surface — RECESSED below rim now (was at rim) */}
-      <mesh position={[0, 0.255, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-        <circleGeometry args={[0.118, 24]} />
-        <meshStandardMaterial
-          color="#1E3540"
-          roughness={0.12}
-          metalness={0.65}
-          envMapIntensity={1.4}
-        />
-      </mesh>
+      {/* Recessed water surface — V14: animated micro-ripple via WaterSurface */}
+      <WaterSurface />
       {/* Bamboo spout — V7: spout end now ABOVE basin pouring DOWN.
           Group pivot = spout tip at (0, 0.32, 0) directly above basin
           center. Cylinder body extends up-and-back at 45° via Z-rot. */}
@@ -727,6 +786,220 @@ function FallenPetals() {
   )
 }
 
+// ── AnimatedSun — V14: subtle breathing on the main directional light.
+// 90s cycle: intensity ±0.06, color #FFE8C0 → #FFD8A0 → #FFE8C0.
+// Owns the sun light entirely (replaces the static directionalLight).
+function AnimatedSun() {
+  const lightRef = useRef<THREE.DirectionalLight>(null)
+  const cWarm = useMemo(() => new THREE.Color('#FFE8C0'), [])
+  const cAmber = useMemo(() => new THREE.Color('#FFD8A0'), [])
+  useFrame((s) => {
+    if (!lightRef.current) return
+    const t = s.clock.elapsedTime
+    const cycle = (Math.sin(t * 0.07) + 1) * 0.5
+    lightRef.current.intensity = 2.44 + Math.sin(t * 0.07) * 0.06
+    lightRef.current.color = new THREE.Color().lerpColors(cWarm, cAmber, cycle * 0.6)
+  })
+  return (
+    <directionalLight
+      ref={lightRef}
+      position={[4, 5.5, 3]}
+      intensity={2.5}
+      color="#FFE8C0"
+      castShadow
+      shadow-mapSize={[2048, 2048]}
+      shadow-camera-near={0.5}
+      shadow-camera-far={14}
+      shadow-camera-left={-3.5}
+      shadow-camera-right={3.5}
+      shadow-camera-top={3.5}
+      shadow-camera-bottom={-3.5}
+      shadow-bias={-0.0008}
+    />
+  )
+}
+
+// ── AnimatedHearthLight — V17: pointLight at cabin shoji pulses with hearth.
+function AnimatedHearthLight() {
+  const ref = useRef<THREE.PointLight>(null)
+  useFrame((s) => {
+    if (!ref.current) return
+    // V18: cast light follows shoji (also lag 150ms vs smoke)
+    const hearth = getHearth(s.clock.elapsedTime - 0.15)
+    ref.current.intensity = 0.7 + hearth.shojiBrighten * 0.8
+  })
+  return (
+    <pointLight
+      ref={ref}
+      position={[-0.55, 0.45, 0.40]}
+      intensity={0.7}
+      distance={1.8}
+      decay={2}
+      color="#FFEFD0"
+    />
+  )
+}
+
+// ── BreathingShoji — paper window with subtle emissive lerp.
+// V13: cabin reads as inhabited, not LED-lit.
+function BreathingShoji({ position, size }: {
+  position: [number, number, number]
+  size: [number, number]
+}) {
+  const ref = useRef<THREE.MeshStandardMaterial>(null)
+  useFrame((s) => {
+    if (!ref.current) return
+    const t = s.clock.elapsedTime
+    const hearth = getHearth(t - 0.15)
+    // V20: hover flare adds extra brighten
+    const hover = getHoverBoost(t)
+    ref.current.emissiveIntensity = 0.42 + Math.sin(t * 0.6) * 0.05 + hearth.shojiBrighten + hover * 0.18
+  })
+  return (
+    <mesh position={position}>
+      <planeGeometry args={size} />
+      <meshStandardMaterial
+        ref={ref}
+        color={WASHI_GLOW}
+        emissive={WASHI_GLOW}
+        emissiveIntensity={0.45}
+        roughness={0.5}
+      />
+    </mesh>
+  )
+}
+
+// ── DistantClouds — slow-drifting white puff cluster BELOW the island.
+function DistantClouds() {
+  const groupRef = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    if (!groupRef.current) return
+    const t = s.clock.elapsedTime
+    const wind = getWind(t)
+    // V15: rotation speed scaled by shared wind gust
+    groupRef.current.rotation.y = t * 0.012 * (1 + wind.gust * 0.5)
+  })
+  const puffs: Array<[number, number, number, number]> = [
+    [3.8, -2.6, 1.0, 0.85],
+    [-3.5, -2.8, -1.2, 0.95],
+    [1.0, -3.0, 3.6, 0.7],
+    [-1.5, -2.5, -3.4, 0.75],
+    [3.2, -2.9, -2.6, 0.65],
+    [-2.8, -2.7, 2.8, 0.6],
+  ]
+  return (
+    <group ref={groupRef}>
+      {puffs.map((p, i) => (
+        <group key={i} position={[p[0], p[1], p[2]]} scale={p[3]}>
+          <mesh>
+            <sphereGeometry args={[0.45, 16, 12]} />
+            <meshBasicMaterial color="#FFFFFF" transparent opacity={0.55} />
+          </mesh>
+          <mesh position={[0.30, 0.05, 0.10]}>
+            <sphereGeometry args={[0.32, 14, 10]} />
+            <meshBasicMaterial color="#F8F4EC" transparent opacity={0.50} />
+          </mesh>
+          <mesh position={[-0.25, -0.05, -0.12]}>
+            <sphereGeometry args={[0.28, 14, 10]} />
+            <meshBasicMaterial color="#FFFFFF" transparent opacity={0.50} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+// ── UpperCumulus — V14: high cumulus band ABOVE the island, drifting
+// OPPOSITE to lower clouds (parallax). Gives bird something to fly past.
+function UpperCumulus() {
+  const groupRef = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    if (!groupRef.current) return
+    // Opposite direction to DistantClouds for parallax depth
+    groupRef.current.rotation.y = -s.clock.elapsedTime * 0.009
+  })
+  const puffs: Array<[number, number, number, number]> = [
+    [4.5, 3.4, -2.0, 1.0],
+    [-3.8, 3.6, 1.5, 0.9],
+    [0.5, 3.2, 4.0, 0.8],
+    [3.0, 3.8, 2.5, 0.7],
+  ]
+  return (
+    <group ref={groupRef}>
+      {puffs.map((p, i) => (
+        <group key={i} position={[p[0], p[1], p[2]]} scale={p[3]}>
+          <mesh>
+            <sphereGeometry args={[0.5, 14, 10]} />
+            <meshBasicMaterial color="#FFFFFF" transparent opacity={0.25} />
+          </mesh>
+          <mesh position={[0.32, 0.04, 0.10]}>
+            <sphereGeometry args={[0.35, 14, 10]} />
+            <meshBasicMaterial color="#FAF8F2" transparent opacity={0.22} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
+// ── BirdFlyby — V14: pair of birds (hero + smaller backgrounder for flock feel).
+function BirdFlyby() {
+  const heroRef = useRef<THREE.Mesh>(null)
+  const bgRef = useRef<THREE.Mesh>(null)
+  const wingShape = useMemo(() => {
+    const s = new THREE.Shape()
+    s.moveTo(-0.06, 0)
+    s.quadraticCurveTo(-0.03, 0.020, 0, 0)
+    s.quadraticCurveTo(0.03, 0.020, 0.06, 0)
+    s.quadraticCurveTo(0.03, -0.005, 0, 0.002)
+    s.quadraticCurveTo(-0.03, -0.005, -0.06, 0)
+    return s
+  }, [])
+  const geo = useMemo(() => new THREE.ShapeGeometry(wingShape, 8), [wingShape])
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    const period = 22
+    // V17: bird reacts to shared wind (drifts laterally + banks on gust)
+    const wind = getWind(t)
+    // Hero bird
+    if (heroRef.current) {
+      const phase = t % period
+      if (phase > 12) {
+        heroRef.current.visible = false
+      } else {
+        heroRef.current.visible = true
+        const x = -4 + (phase / 12) * 8
+        const y = 2.4 + Math.sin(phase * 0.6) * 0.18 + wind.dirZ * 0.15
+        heroRef.current.position.set(x, y, -1.2)
+        heroRef.current.rotation.z = -Math.sin(phase * 6) * 0.5 + wind.gust * 0.3
+      }
+    }
+    // BG bird
+    if (bgRef.current) {
+      const phase = (t - 2) % period
+      if (phase < 0 || phase > 14) {
+        bgRef.current.visible = false
+      } else {
+        bgRef.current.visible = true
+        const x = -4.5 + (phase / 14) * 9
+        const y = 2.9 + Math.sin(phase * 0.55) * 0.14 + wind.dirZ * 0.12
+        bgRef.current.position.set(x, y, -1.8)
+        bgRef.current.rotation.z = -Math.sin(phase * 5.5) * 0.5 + wind.gust * 0.25
+      }
+    }
+  })
+  return (
+    <>
+      <mesh ref={heroRef} geometry={geo} renderOrder={3}>
+        <meshBasicMaterial color="#2A2018" side={THREE.DoubleSide} />
+      </mesh>
+      <mesh ref={bgRef} geometry={geo} scale={0.55} renderOrder={3}>
+        <meshBasicMaterial color="#3A2818" side={THREE.DoubleSide} transparent opacity={0.75} />
+      </mesh>
+    </>
+  )
+}
+
 // ── FallingPetals — sakura petals drifting down from canopy.
 // The Ghibli money shot. Each petal: drift down ~0.05/s, sin X drift,
 // tumble rot.z. Respawns at canopy Y when it hits ground.
@@ -751,22 +1024,59 @@ function FallingPetals() {
     const t = s.clock.elapsedTime
     const dummy = new THREE.Object3D()
     const tints = ['#FFEAF1', '#F5C8D6', '#FFD8E3'].map((c) => new THREE.Color(c))
+    // V15: SHARED wind drives drift direction + gust
+    // V20: hover boost adds to gust
+    const wind = getWind(t)
+    const hover = getHoverBoost(t)
+    const effectiveGust = wind.gust + hover * 1.5
+    const TSUKUBAI_X = 0.95
+    const TSUKUBAI_Z = 0.40
+    const TSUKUBAI_R = 0.065   // 0.118 * 0.55 scale
     seeds.forEach((sd, i) => {
-      // Y drift down, respawn near canopy when reaching ground
-      const ySpan = 1.6 // canopy~1.6 → ground~0
-      const yOffset = (t * 0.07 * sd.speed) % ySpan
+      const ySpan = 1.6
+      const yOffset = (t * 0.07 * sd.speed * (1 + effectiveGust * 0.4)) % ySpan
       const y = sd.y - yOffset
       const wrappedY = y < 0.06 ? y + ySpan : y
-      // Sin X drift + small Z drift
-      const dx = Math.sin(t * 0.4 + sd.phaseX) * 0.05
-      const dz = Math.cos(t * 0.3 + sd.phaseX) * 0.04
-      dummy.position.set(sd.x + dx, wrappedY, sd.z + dz)
-      // Tumble rotation
+      // Wind direction biases dx/dz + (gust + hover) amplifies
+      const dx = (Math.sin(t * 0.4 + sd.phaseX) * 0.05 + wind.dirX * 0.025) * (1 + effectiveGust)
+      const dz = (Math.cos(t * 0.3 + sd.phaseX) * 0.04 + wind.dirZ * 0.020) * (1 + effectiveGust)
+      const px = sd.x + dx
+      const pz = sd.z + dz
+      // V18: petal-water landing — lerp Y + freeze tumble at rest.
+      const dxBasin = px - TSUKUBAI_X
+      const dzBasin = pz - TSUKUBAI_Z
+      const distBasin = Math.hypot(dxBasin, dzBasin)
+      let resting = false
+      if (distBasin < TSUKUBAI_R && wrappedY < 0.40) {
+        const targetY = 0.257
+        const lerpT = Math.min(1, (0.40 - wrappedY) * 4)
+        const lerpedY = wrappedY + (targetY - wrappedY) * lerpT
+        const px2 = wrappedY < 0.28 ? TSUKUBAI_X + dxBasin * 0.6 : px
+        const pz2 = wrappedY < 0.28 ? TSUKUBAI_Z + dzBasin * 0.6 : pz
+        dummy.position.set(px2, lerpedY, pz2)
+        resting = wrappedY < 0.27
+      } else {
+        dummy.position.set(px, wrappedY, pz)
+      }
+      // V19: smooth tumble damping — blend over wrappedY 0.32→0.27
+      // so petal eases to rest over ~0.7s instead of hard snap.
+      const restBlend = Math.max(0, Math.min(1, (0.32 - wrappedY) / 0.05))
+      const tumbleAmp = 1 - restBlend
       dummy.rotation.set(
-        -Math.PI / 2 + Math.sin(t * 0.8 + sd.phaseR) * 0.5,
-        t * 0.6 + sd.phaseR,
-        Math.cos(t * 0.7 + sd.phaseR) * 0.4,
+        -Math.PI / 2 + Math.sin(t * 0.8 + sd.phaseR) * 0.5 * tumbleAmp,
+        (t * 0.6 + sd.phaseR) * (1 - restBlend * 0.7),
+        Math.cos(t * 0.7 + sd.phaseR) * 0.4 * tumbleAmp + restBlend * sd.phaseR * 0.3,
       )
+      // V19: color darkens slightly when wet (paper-darkening sim)
+      if (restBlend > 0.5 && i % 3 !== 0) {
+        // Mix toward darker pink
+        const wet = new THREE.Color('#D8A8C0')
+        const base = tints[sd.tintIdx]
+        const mixed = new THREE.Color().lerpColors(base, wet, (restBlend - 0.5) * 2)
+        if (ref.current!.instanceColor === null || ref.current!.instanceColor) {
+          ref.current!.setColorAt(i, mixed)
+        }
+      }
       dummy.scale.setScalar(sd.scale)
       dummy.updateMatrix()
       ref.current!.setMatrixAt(i, dummy.matrix)
@@ -812,6 +1122,34 @@ function WindSway({ children, amp = 0.018, freq = 0.5, phase = 0 }: {
   return <group ref={ref}>{children}</group>
 }
 
+// ── WaterSurface — basin water with animated micro-ripple vertex
+// displacement + lowered metalness (was chrome mirror).
+function WaterSurface() {
+  const geo = useMemo(() => new THREE.CircleGeometry(0.118, 28), [])
+  const ref = useRef<THREE.Mesh>(null)
+  useFrame((s) => {
+    if (!ref.current) return
+    const t = s.clock.elapsedTime
+    const pos = ref.current.geometry.attributes.position
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), y = pos.getY(i)
+      const d = Math.hypot(x, y)
+      pos.setZ(i, Math.sin(t * 1.8 + d * 28) * 0.0015 + Math.cos(t * 1.3 + x * 22) * 0.0010)
+    }
+    pos.needsUpdate = true
+  })
+  return (
+    <mesh ref={ref} geometry={geo} position={[0, 0.255, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <meshStandardMaterial
+        color="#2A4C58"
+        roughness={0.25}
+        metalness={0.40}
+        envMapIntensity={1.1}
+      />
+    </mesh>
+  )
+}
+
 // ── WaterStream — tapered cylinder + animated 3-ripple expansion.
 //    Scale loop hides cylinder respawn discontinuity.
 function WaterStream() {
@@ -825,7 +1163,8 @@ function WaterStream() {
     ripples.forEach((r, i) => {
       const m = r.current
       if (!m) return
-      const phase = ((t * 0.8 + i * 0.4) % 1.2) / 1.2
+      // V13: desync stagger (was 0.4/1.2 = perfectly synced triplets)
+      const phase = ((t * 0.8 + i * 0.45) % 1.35) / 1.35
       const scale = 0.5 + phase * 1.0
       m.scale.set(scale, 1, scale)
       const mat = m.material as THREE.MeshStandardMaterial
@@ -879,15 +1218,19 @@ function ChimneySmoke() {
   ]
   useFrame((s) => {
     const t = s.clock.elapsedTime
+    // V16: smoke (rising / dispersed) lags wind by 0.8s
+    const wind = getWind(t - 0.8)
+    const hearth = getHearth(t)
     puffs.forEach((r, i) => {
       const m = r.current
       if (!m) return
       const phase = (t * 0.25 + i * 0.9) % 2.7
       m.position.y = 0.05 + phase * 0.45
-      m.position.x = Math.sin(t * 0.5 + i) * 0.08 + phase * 0.08
-      m.position.z = Math.cos(t * 0.4 + i * 0.7) * 0.05
+      m.position.x = Math.sin(t * 0.5 + i) * 0.08 + phase * (0.08 + wind.dirX * 0.06)
+      m.position.z = Math.cos(t * 0.4 + i * 0.7) * 0.05 + phase * wind.dirZ * 0.05
       // V10: scale-clamp at phase boundaries hides reset teleport
-      const baseScale = 0.6 + phase * 0.5
+      // V16: stoke boost — bigger puff burst at hearth peak
+      const baseScale = (0.6 + phase * 0.5) * (1 + hearth.smokeBoost * (i === 0 ? 0.6 : 0.3))
       const fadeIn = Math.min(1, phase * 4)
       const fadeOut = Math.min(1, (2.7 - phase) * 2)
       m.scale.setScalar(baseScale * fadeIn * fadeOut)
@@ -911,19 +1254,24 @@ export default function IslandWidget() {
   return (
     <Canvas
       shadows
-      // V5 camera (Sub-A #2 #1): lower + closer + targets the cabin-sakura
-      // axis. Previous [3.4, 1.85, 3.4]→origin caused cabin to disappear
-      // behind sakura on rotation. Now [2.9, 1.5, 3.7]→[-0.1, 0.4, 0.1]
-      // keeps the hero composition framed.
       camera={{ position: [2.9, 1.5, 3.7], fov: 28 }}
       dpr={[1, 1.5]}
       gl={{
         antialias: true,
-        alpha: true,            // transparent → CSS sky bleeds in
+        alpha: true,
         toneMapping: ACESFilmicToneMapping,
         toneMappingExposure: 1.18,
       }}
       style={{ width: '100%', height: '100%' }}
+      // V20: hover poke — burst petals + flare shoji on pointer enter
+      onPointerEnter={() => {
+        hoverState.active = true
+        hoverState.enteredAt = performance.now() / 1000
+      }}
+      onPointerLeave={() => {
+        hoverState.active = false
+        hoverState.decay = performance.now() / 1000
+      }}
     >
       {/* No <color> bg — let CSS radial-gradient sky show through */}
       <fog attach="fog" args={[FOG_TINT, 8, 17]} />
@@ -931,25 +1279,15 @@ export default function IslandWidget() {
       {/* Lighting — bright noon, Studio Ghibli golden hour balance */}
       <hemisphereLight args={['#FFF3DC', '#9CBC78', 0.95]} />
       <ambientLight intensity={0.60} color="#FFF6DC" />
-      <directionalLight
-        position={[4, 5.5, 3]}
-        intensity={2.5}
-        color="#FFE8C0"
-        castShadow
-        shadow-mapSize={[2048, 2048]}
-        shadow-camera-near={0.5}
-        shadow-camera-far={14}
-        shadow-camera-left={-3.5}
-        shadow-camera-right={3.5}
-        shadow-camera-top={3.5}
-        shadow-camera-bottom={-3.5}
-        shadow-bias={-0.0008}
-      />
+      {/* V14: animated breathing sun (90s cycle, ±0.06 intensity, warm→amber) */}
+      <AnimatedSun />
       <directionalLight position={[-3, 2.5, -3]} intensity={0.55} color="#C8DCEC" />
       {/* Violet fill from below — Ghibli signature shadow tint (Sub-A #3 #3) */}
       <directionalLight position={[-2, -1, 2]} intensity={0.18} color="#B8A0C8" />
-      {/* V10: warm pointLight at cabin shoji → gravitational anchor */}
-      <pointLight position={[-0.55, 0.45, 0.40]} intensity={0.7} distance={1.8} decay={2} color="#FFEFD0" />
+      {/* V10: warm pointLight at cabin shoji → gravitational anchor.
+          V17: pulse in lockstep with hearth (cast light reveals
+          inner flame stoke to outside world). */}
+      <AnimatedHearthLight />
 
       {/* === Scene === */}
       <Island />
@@ -1001,6 +1339,14 @@ export default function IslandWidget() {
 
       {/* Falling petals — Ghibli money shot. Drift down from canopy. */}
       <FallingPetals />
+
+      {/* V13: distant cloud puffs BELOW the island (sky-castle sell) */}
+      <DistantClouds />
+      {/* V14: upper cumulus band drifting opposite — parallax stratification */}
+      <UpperCumulus />
+
+      {/* V13: bird flyby — V14: pair (hero + bg for flock feel) */}
+      <BirdFlyby />
 
       <OrbitControls
         target={[0.15, 0.35, 0.10]}     // V9: recenter to include tsukubai axis
