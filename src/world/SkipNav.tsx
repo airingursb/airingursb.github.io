@@ -14,7 +14,11 @@ import { emit } from './events'
 export default function SkipNav() {
   return (
     <nav className="world-skip-nav" aria-label="木屋岛区域导航">
-      <h2 className="world-skip-nav-title">区域</h2>
+      {/* Visual-only label. Was <h2> originally but /world/ has no
+          <h1>, so an h2 polluted the heading hierarchy (AT users
+          would land on h2 with no parent). The <nav>'s aria-label
+          already provides the screen-reader context. */}
+      <div className="world-skip-nav-title" aria-hidden="true">区域</div>
       <ul>
         {ZONES.map((z) => (
           <li key={z.kind}>
