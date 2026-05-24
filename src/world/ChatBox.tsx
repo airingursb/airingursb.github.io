@@ -122,7 +122,14 @@ export default function ChatBox() {
 
   return (
     <div className="world-chat">
-      <div className="world-chat-history" ref={histRef}>
+      <div
+        className="world-chat-history"
+        ref={histRef}
+        role="log"
+        aria-live="polite"
+        aria-atomic="false"
+        aria-label="对话记录"
+      >
         {msgs.map((m, i) => (
           <div key={i} className={`world-chat-msg world-chat-msg-${m.role}`}>
             {/* Only linkify Airing messages, not what the user typed back */}
@@ -135,15 +142,17 @@ export default function ChatBox() {
               : m.text}
           </div>
         ))}
-        {pending && <div className="world-chat-msg world-chat-msg-assistant world-chat-pending">…</div>}
-        {error && <div className="world-chat-error">{error}</div>}
+        {pending && (
+          <div className="world-chat-msg world-chat-msg-assistant world-chat-pending" aria-hidden="true">…</div>
+        )}
+        {error && <div className="world-chat-error" role="alert">{error}</div>}
       </div>
       <form onSubmit={send} className="world-chat-form">
         <input
           ref={inputRef}
           className="world-chat-input"
           type="text"
-          aria-label="Send a message to Airing"
+          aria-label="给 Airing 写一句话"
           placeholder="跟 Airing 说点什么…"
           autoComplete="off"
           value={input}
@@ -154,7 +163,7 @@ export default function ChatBox() {
           type="submit"
           className="world-chat-send"
           disabled={pending}
-          aria-label="Send message"
+          aria-label={pending ? '正在发送…' : '发送'}
         >→</button>
       </form>
     </div>
