@@ -58,6 +58,21 @@ function Lantern({ theme, seed }: { theme: Theme; seed: number }) {
         <cylinderGeometry args={[0.08, 0.1, 1.4, 6]} />
         <meshStandardMaterial color={POST_WARM} roughness={0.92} flatShading />
       </mesh>
+      {/* V2 wave 3: moss patches on post (every 3rd lantern has more
+          dramatic moss — implies age + lived-in upkeep variance).
+          seed is i*1.7 from parent so floor it for modulo check. */}
+      {Math.floor(seed / 1.7) % 3 === 0 && (
+        <>
+          <mesh position={[0.08, 0.4, 0]} castShadow>
+            <sphereGeometry args={[0.05, 6, 5]} />
+            <meshStandardMaterial color="#5A7A4C" roughness={0.95} flatShading />
+          </mesh>
+          <mesh position={[-0.05, 0.25, 0.06]} castShadow>
+            <sphereGeometry args={[0.035, 6, 5]} />
+            <meshStandardMaterial color="#4A6B40" roughness={0.95} flatShading />
+          </mesh>
+        </>
+      )}
       {/* Top bracket */}
       <mesh position={[0, 1.42, 0]} castShadow>
         <boxGeometry args={[0.18, 0.06, 0.18]} />

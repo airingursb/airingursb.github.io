@@ -38,6 +38,8 @@ import CanopyDapple from './CanopyDapple'
 import Footprints from './Footprints'
 import WindChime from './WindChime'
 import PersimmonTree from './PersimmonTree'
+import SunsetBirds from './SunsetBirds'
+import PathMushrooms from './PathMushrooms'
 import Sky from './Sky'
 import Water from './Water'
 import GroundCover from './GroundCover'
@@ -212,6 +214,8 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <Footprints />
         <WindChime />
         <PersimmonTree />
+        <SunsetBirds theme={theme} />
+        <PathMushrooms />
         <ContactShadowsLayer />
         <ZoneHitboxes />
         <ZoneHints />
