@@ -31,6 +31,7 @@ export function spawnRoomDecals(
     room_library:  { primary: 0x8a5a2a, accent: 0xc8a060 },  // warm wood + brass
     room_kitchen:  { primary: 0xe8e8e0, accent: 0xb8c0c8 },  // white tile + grout
     room_workshop: { primary: 0x4a4a4a, accent: 0x6a6a6a },  // dark slate
+    room_gallery:  { primary: 0x1a1f2a, accent: 0xc8a058 },  // dark stone + brass — museum trim
   }
   const ws = WAINSCOT[roomId]
   if (ws) {
@@ -63,13 +64,17 @@ export function spawnRoomDecals(
     room_kitchen:  0xe8f0c8,   // cool cream — clean, food-prep feel
     room_workshop: 0xa0b0c0,   // cool slate — tool/metal feel
     room_rooftop:  0xffb890,   // pink-orange — open sky / sunset
+    room_gallery:  0x2a3040,   // cool dark slate — museum hall solemnity
   }
   const tintColor = FLOOR_TINTS[roomId]
   if (tintColor !== undefined) {
+    // Gallery wants a much stronger override to escape the warm-wood floor
+    // and read as polished dark stone. Other rooms keep the subtle wash.
+    const alpha = roomId === 'room_gallery' ? 0.55 : 0.10
     const tint = scene.add.rectangle(
       mapWidthPx / 2, mapHeightPx / 2,
       mapWidthPx, mapHeightPx,
-      tintColor, 0.10
+      tintColor, alpha
     ).setDepth(1).setBlendMode(Phaser.BlendModes.MULTIPLY)
     objects.push(tint)
   }
@@ -249,6 +254,214 @@ export function spawnRoomDecals(
         alpha: { start: 0.35, end: 0 }
       }).setDepth(50)
       objects.push(smoke)
+    }
+  }
+
+  if (roomId === 'room_gallery') {
+    // ─── Gallery (80×60 tile cruciform museum). The underlying tilemap is
+    // indoor_2f_v0 (warm brick + wood) which fights the museum aesthetic, so
+    // we PAINT OVER it per-zone: opaque travertine marble floor, opaque slate
+    // wall faces, brass crown molding, deep burgundy carpets along major
+    // axes, warm spotlight pools in front of every painting position.
+    //
+    // Depth layering (above floor tilemap = 0):
+    //   2.0 — opaque marble floor cover per zone (kills warm wood)
+    //   2.1 — marble veining lines
+    //   2.2 — opaque wall faces (kills brick)
+    //   2.3 — brass crown molding + skirting boards
+    //   2.5 — carpet runners
+    //   2.6 — carpet trim
+    //   2.7 — pedestal-style center markers (rotunda)
+    //   2.8 — floor spotlight pools
+    //   50  — dust motes particles
+
+    const FLOOR_BASE = 0x9e9aa4   // warm grey-violet marble — sells "marble + runner" rather than "sticker on lino" by reducing the gap with the aubergine carpet
+    const FLOOR_VEIN = 0x6e6a78   // darker vein, harmonized with new floor
+    const WALL_FACE  = 0x6a6478   // muted slate
+    const WALL_DARK  = 0x3a3848   // pilaster shadow
+    const MOLDING    = 0xc8a058   // brass crown
+    const CARPET     = 0x1a1420   // near-black aubergine — solemn velvet
+    const CARPET_HI  = 0x2a1f2e   // subtle highlight stripe
+    const CARPET_TRIM = 0xd4a058  // gold trim
+    const TILE_PX = 16
+
+    // Zone bboxes — kept in sync with scripts/generate-gallery-tmj.py ZONES.
+    type Zone = { name: string; x: number; y: number; w: number; h: number }
+    const tilesToPx = (c: number, r: number, cw: number, rh: number): Zone => ({
+      name: '', x: c * TILE_PX, y: r * TILE_PX, w: cw * TILE_PX, h: rh * TILE_PX,
+    })
+    const NORTH   = { ...tilesToPx(32,  0, 16, 20), name: 'north'   }
+    const ROTUNDA = { ...tilesToPx(24, 20, 32, 24), name: 'rotunda' }
+    const EAST    = { ...tilesToPx(56, 20, 24, 24), name: 'east'    }
+    const WEST    = { ...tilesToPx( 0, 20, 24, 24), name: 'west'    }
+    const SOUTH   = { ...tilesToPx(24, 44, 32, 16), name: 'south'   }
+    const ZONES: Zone[] = [NORTH, ROTUNDA, EAST, WEST, SOUTH]
+
+    // ── Opaque marble floor cover, per zone (overlays the warm-wood tilemap)
+    for (const z of ZONES) {
+      objects.push(scene.add.rectangle(z.x + z.w / 2, z.y + z.h / 2, z.w, z.h, FLOOR_BASE, 1.0).setDepth(2.0))
+    }
+
+    // ── Marble veining: scatter subtle diagonal lines per zone
+    const veinSeed = (zoneIdx: number) => zoneIdx * 1009 + 7  // deterministic
+    for (let i = 0; i < ZONES.length; i++) {
+      const z = ZONES[i]
+      let s = veinSeed(i)
+      const rand = () => { s = (s * 1103515245 + 12345) & 0x7fffffff; return (s % 1000) / 1000 }
+      const veinCount = Math.max(3, Math.floor((z.w * z.h) / 30000))
+      for (let v = 0; v < veinCount; v++) {
+        const vx = z.x + rand() * z.w
+        const vy = z.y + rand() * z.h
+        const vw = 40 + rand() * 80
+        const vang = -25 + rand() * 50
+        objects.push(scene.add.rectangle(vx, vy, vw, 1, FLOOR_VEIN, 0.30)
+          .setOrigin(0, 0.5).setAngle(vang).setDepth(2.1))
+      }
+    }
+
+    // ── Opaque wall faces along zone perimeters (covers brick tilemap)
+    // Helper: paint a wall band on top of every wall segment.
+    const wallBand = (x: number, y: number, w: number, h: number) => {
+      objects.push(scene.add.rectangle(x + w / 2, y + h / 2, w, h, WALL_FACE, 1.0).setDepth(2.2))
+    }
+    // Outer building perimeter walls (matching generate-gallery-tmj.py)
+    // North Hall
+    wallBand(NORTH.x,                    NORTH.y,                    NORTH.w, TILE_PX)              // top
+    wallBand(NORTH.x,                    NORTH.y,                    TILE_PX, NORTH.h)              // left
+    wallBand(NORTH.x + NORTH.w - TILE_PX, NORTH.y,                   TILE_PX, NORTH.h)              // right
+    // West Wing
+    wallBand(WEST.x,                     WEST.y,                     WEST.w, TILE_PX)               // top
+    wallBand(WEST.x,                     WEST.y,                     TILE_PX, WEST.h)               // left
+    wallBand(WEST.x,                     WEST.y + WEST.h - TILE_PX,  WEST.w, TILE_PX)               // bottom
+    // East Wing
+    wallBand(EAST.x,                     EAST.y,                     EAST.w, TILE_PX)               // top
+    wallBand(EAST.x + EAST.w - TILE_PX,  EAST.y,                     TILE_PX, EAST.h)               // right
+    wallBand(EAST.x,                     EAST.y + EAST.h - TILE_PX,  EAST.w, TILE_PX)               // bottom
+    // South Pavilion (bottom split for lobby portal)
+    wallBand(SOUTH.x,                    SOUTH.y,                    TILE_PX, SOUTH.h)              // left
+    wallBand(SOUTH.x + SOUTH.w - TILE_PX, SOUTH.y,                   TILE_PX, SOUTH.h)              // right
+    const lobbyGapX0 = 608, lobbyGapX1 = 672                                                        // matches tmj
+    wallBand(SOUTH.x,            SOUTH.y + SOUTH.h - TILE_PX, lobbyGapX0 - SOUTH.x,            TILE_PX)
+    wallBand(lobbyGapX1,         SOUTH.y + SOUTH.h - TILE_PX, SOUTH.x + SOUTH.w - lobbyGapX1, TILE_PX)
+    // Rotunda inner walls (with doorways)
+    const NDX0 = 608, NDX1 = 672       // north/south doorway x range
+    const SDY0 = 480, SDY1 = 544       // side doorway y range
+    // Rotunda north wall
+    wallBand(ROTUNDA.x,                  ROTUNDA.y,                  NDX0 - ROTUNDA.x,                  TILE_PX)
+    wallBand(NDX1,                       ROTUNDA.y,                  ROTUNDA.x + ROTUNDA.w - NDX1,     TILE_PX)
+    // Rotunda south wall
+    wallBand(ROTUNDA.x,                  ROTUNDA.y + ROTUNDA.h - TILE_PX, NDX0 - ROTUNDA.x,              TILE_PX)
+    wallBand(NDX1,                       ROTUNDA.y + ROTUNDA.h - TILE_PX, ROTUNDA.x + ROTUNDA.w - NDX1, TILE_PX)
+    // Rotunda west wall
+    wallBand(ROTUNDA.x,                  ROTUNDA.y,                  TILE_PX, SDY0 - ROTUNDA.y)
+    wallBand(ROTUNDA.x,                  SDY1,                       TILE_PX, ROTUNDA.y + ROTUNDA.h - SDY1)
+    // Rotunda east wall
+    wallBand(ROTUNDA.x + ROTUNDA.w - TILE_PX, ROTUNDA.y,             TILE_PX, SDY0 - ROTUNDA.y)
+    wallBand(ROTUNDA.x + ROTUNDA.w - TILE_PX, SDY1,                  TILE_PX, ROTUNDA.y + ROTUNDA.h - SDY1)
+
+    // ── Brass crown molding along inner edge of each wall
+    const moldingBand = (x: number, y: number, w: number, h: number, horizontal: boolean) => {
+      if (horizontal) {
+        // 1px brass line along the wall's interior edge
+        objects.push(scene.add.rectangle(x + w / 2, y + h, w, 1, MOLDING, 0.85).setDepth(2.3))
+      } else {
+        objects.push(scene.add.rectangle(x + w, y + h / 2, 1, h, MOLDING, 0.85).setDepth(2.3))
+      }
+    }
+    // Just on the most-visible interior edges of each zone (top + side walls)
+    for (const z of ZONES) {
+      // Top wall interior edge
+      moldingBand(z.x, z.y, z.w, TILE_PX, true)
+    }
+
+    // ── Carpet runners: narrower so marble dominates and carpet guides
+    const carpetVx = 640
+    const carpetVw = 48
+    // Vertical carpet: from north hall through rotunda through south pavilion
+    objects.push(scene.add.rectangle(carpetVx, (NORTH.y + SOUTH.y + SOUTH.h) / 2,
+      carpetVw, SOUTH.y + SOUTH.h - NORTH.y, CARPET, 1.0).setDepth(2.5))
+    objects.push(scene.add.rectangle(carpetVx, (NORTH.y + SOUTH.y + SOUTH.h) / 2,
+      carpetVw - 16, SOUTH.y + SOUTH.h - NORTH.y, CARPET_HI, 0.45).setDepth(2.55))
+    objects.push(scene.add.rectangle(carpetVx - carpetVw / 2 + 1.5, (NORTH.y + SOUTH.y + SOUTH.h) / 2,
+      1.5, SOUTH.y + SOUTH.h - NORTH.y, CARPET_TRIM, 0.85).setDepth(2.6))
+    objects.push(scene.add.rectangle(carpetVx + carpetVw / 2 - 1.5, (NORTH.y + SOUTH.y + SOUTH.h) / 2,
+      1.5, SOUTH.y + SOUTH.h - NORTH.y, CARPET_TRIM, 0.85).setDepth(2.6))
+    // Horizontal carpet: through transepts
+    const carpetHy = 512                  // center row of transept
+    const carpetHh = 36
+    const transeptLeftX = WEST.x
+    const transeptRightX = EAST.x + EAST.w
+    objects.push(scene.add.rectangle((transeptLeftX + transeptRightX) / 2, carpetHy,
+      transeptRightX - transeptLeftX, carpetHh, CARPET, 1.0).setDepth(2.5))
+    objects.push(scene.add.rectangle((transeptLeftX + transeptRightX) / 2, carpetHy,
+      transeptRightX - transeptLeftX, carpetHh - 14, CARPET_HI, 0.45).setDepth(2.55))
+    objects.push(scene.add.rectangle((transeptLeftX + transeptRightX) / 2, carpetHy - carpetHh / 2 + 1.5,
+      transeptRightX - transeptLeftX, 1.5, CARPET_TRIM, 0.85).setDepth(2.6))
+    objects.push(scene.add.rectangle((transeptLeftX + transeptRightX) / 2, carpetHy + carpetHh / 2 - 1.5,
+      transeptRightX - transeptLeftX, 1.5, CARPET_TRIM, 0.85).setDepth(2.6))
+
+    // ── Floor spotlight pools in front of every painting position
+    // (matches the EXHIBITS array in generate-gallery-tmj.py)
+    const exhibitAnchors: Array<[number, number, boolean]> = [
+      // North Hall
+      [560, 144, false], [688, 144, false],
+      // West Wing
+      [88, 416, false], [296, 416, false],
+      [88, 512, false], [296, 512, false],
+      [88, 608, false], [296, 608, false],
+      // East Wing
+      [984, 416, false], [1192, 416, false],
+      [984, 512, false], [1192, 512, false],
+      [984, 608, false], [1192, 608, false],
+      // Rotunda centerpiece (bigger)
+      [640, 560, true],
+    ]
+    for (const [px, py, big] of exhibitAnchors) {
+      if (big) {
+        // Centerpiece halo — split into two parts so we don't smear the
+        // aubergine carpet directly under the painting.
+        // Wider outer rings sit at LOW alpha (so they barely show on carpet),
+        // a tighter inner core gives the actual highlight.
+        const cy = py + 8
+        objects.push(scene.add.ellipse(px, cy, 200, 56, 0xfff0c8, 0.10).setDepth(2.8))
+        objects.push(scene.add.ellipse(px, cy, 130, 38, 0xfff5d8, 0.20).setDepth(2.83))
+        objects.push(scene.add.ellipse(px, cy,  74, 22, 0xfffaef, 0.55).setDepth(2.86))
+      } else {
+        // Wall paintings — bumped from invisible (0.22/0.36) to actually visible
+        objects.push(scene.add.ellipse(px, py - 12, 78, 26, 0xfff0c8, 0.38).setDepth(2.8))
+        objects.push(scene.add.ellipse(px, py - 12, 78 * 0.55, 26 * 0.55, 0xfff8e0, 0.55).setDepth(2.85))
+      }
+    }
+
+    // ── Ambient dust motes throughout the building
+    if (!reducedMotion) {
+      ensurePixelTexture(scene)
+      // One emitter per zone — concentrated where players are
+      for (const z of ZONES) {
+        const motes = scene.add.particles(0, 0, PIXEL_TEX_KEY, {
+          x: { min: z.x + 16, max: z.x + z.w - 16 },
+          y: { min: z.y + 16, max: z.y + z.h - 16 },
+          lifespan: 5500, quantity: 1, frequency: 1400,
+          speedX: { min: -2, max: 2 }, speedY: { min: -1.5, max: 1.5 },
+          scale: { start: 1, end: 1 },
+          tint: 0xfff3c0,
+          alpha: { start: 0.45, end: 0 }
+        }).setDepth(50)
+        objects.push(motes)
+      }
+      // Sakura petals drifting through the rotunda — echoes the centerpiece motif
+      const petals = scene.add.particles(0, 0, PIXEL_TEX_KEY, {
+        x: { min: ROTUNDA.x + 60, max: ROTUNDA.x + ROTUNDA.w - 60 },
+        y: { min: ROTUNDA.y + 40, max: ROTUNDA.y + ROTUNDA.h - 80 },
+        lifespan: 8000, quantity: 1, frequency: 3200,
+        speedX: { min: -8, max: 8 },
+        speedY: { min: 6, max: 14 },
+        scale: { start: 1.5, end: 1 },
+        tint: [0xff9eb4, 0xffb5c8, 0xff7e9e],
+        alpha: { start: 0.6, end: 0 },
+        rotate: { min: 0, max: 360 },
+      }).setDepth(51)
+      objects.push(petals)
     }
   }
 

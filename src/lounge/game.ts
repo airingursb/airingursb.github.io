@@ -1,6 +1,6 @@
 import Phaser from 'phaser'
 import { RoomScene } from './scenes/RoomScene'
-import { ROOM_WIDTH, ROOM_HEIGHT, DEFAULT_ROOM } from './config'
+import { ROOM_WIDTH, ROOM_HEIGHT, DEFAULT_ROOM, isValidRoom, type RoomId } from './config'
 import { installProgressSync, pullProgress } from './progress_sync'
 import { togglePetPanel as _ensurePetUiInit } from './pet_ui'
 import { togglePanel as _ensureAchUiInit } from './achievements_ui'
@@ -12,6 +12,16 @@ import { toggle as _ensureMinigameUiInit } from './minigames_ui'
 import { toggle as _ensureBoardUiInit } from './board_ui'
 import { setPartyOnEnter } from './party_ui'
 import { setTransitOnTeleport, ZONES as _TRANSIT_ZONES } from './transit_ui'
+
+function parseRoomFromURL(): RoomId | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = new URLSearchParams(window.location.search).get('room')
+    if (!raw) return null
+    const candidate = raw.startsWith('room_') ? raw : `room_${raw}`
+    return isValidRoom(candidate) ? (candidate as RoomId) : null
+  } catch { return null }
+}
 
 export function bootGame(parent: HTMLElement): Phaser.Game {
   // Era 6/7 P0 — install progress sync before any game code reads localStorage,
@@ -32,7 +42,10 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
     },
     scene: [RoomScene]
   })
-  game.scene.start('Room', { roomId: DEFAULT_ROOM, spawnPoint: 'default' })
+  // Accept `?room=room_gallery` (full id) or `?room=gallery` (short alias)
+  // for direct-link entry. Falls back to DEFAULT_ROOM if missing/unknown.
+  const initialRoom = parseRoomFromURL() ?? DEFAULT_ROOM
+  game.scene.start('Room', { roomId: initialRoom, spawnPoint: 'default' })
   // V10.8d — expose a small test bridge so smoke scripts can drive the V10
   // achievement + mailbox + heart APIs without dynamic-importing TS sources.
   Promise.all([

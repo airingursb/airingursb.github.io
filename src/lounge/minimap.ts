@@ -17,6 +17,7 @@ export const MAP_ROOMS: MapRoom[] = [
   { id: 'room_grove',    label: 'Grove',    x: 16,  y: 12, w: 13, h: 6 },
   { id: 'room_library',  label: 'Library',  x: 64,  y: 12, w: 16, h: 6 },
   { id: 'room_workshop', label: 'Workshop', x: 110, y: 12, w: 16, h: 6 },
+  { id: 'room_gallery',  label: 'Gallery',  x: 88,  y: 26, w: 20, h: 7 },
   { id: 'room_rooftop',  label: 'Rooftop',  x: 64,  y: 26, w: 16, h: 5 },
   { id: 'room_balcony',  label: 'Balcony',  x: 16,  y: 38, w: 13, h: 6 },
   { id: 'room_lobby',    label: 'Lobby',    x: 64,  y: 38, w: 20, h: 9 },
@@ -42,6 +43,7 @@ export const MAP_EDGES: MapEdge[] = [
   { a: 'room_lobby',    b: 'room_home'     },
   { a: 'room_lobby',    b: 'room_kitchen'  },
   { a: 'room_lobby',    b: 'room_rooftop'  },
+  { a: 'room_lobby',    b: 'room_gallery'  },
   { a: 'room_balcony',  b: 'room_beach'    },
   { a: 'room_balcony',  b: 'room_grove'    }
 ]

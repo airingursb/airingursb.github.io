@@ -36,6 +36,54 @@ import LoungeGame from '../components/LoungeGame.astro'
         document.body.appendChild(iframe)
       })
 
+      // 作品集 exhibits — mount an arbitrary URL as a full-screen iframe
+      // overlay with a close affordance. Same lifecycle as pocket-world.
+      window.addEventListener('open-exhibit', function (e) {
+        if (iframe) return
+        const url = e.detail && e.detail.url
+        const label = (e.detail && e.detail.label) || ''
+        if (!url) return
+        iframe = document.createElement('iframe')
+        iframe.src = url
+        iframe.id = 'grove-portal-iframe'
+        Object.assign(iframe.style, {
+          position: 'fixed', inset: '0',
+          width: '100vw', height: '100vh',
+          border: '0', zIndex: '10000',
+          background: '#1a120b',
+        })
+        document.body.appendChild(iframe)
+
+        // Floating close button — exhibits are arbitrary URLs, can't rely on
+        // them having their own close handler.
+        const close = document.createElement('button')
+        close.id = 'exhibit-close-btn'
+        close.textContent = (label ? '← ' + label + ' · 回 nook' : '← 回 nook')
+        Object.assign(close.style, {
+          position: 'fixed', top: '14px', left: '14px', zIndex: '10001',
+          padding: '8px 16px', borderRadius: '999px',
+          background: 'rgba(40, 26, 14, 0.92)', color: '#fff1d6',
+          border: '1px solid rgba(255, 210, 138, 0.35)',
+          font: '13px ui-monospace, SFMono-Regular, Menlo, monospace',
+          cursor: 'pointer', backdropFilter: 'blur(6px)',
+        })
+        close.addEventListener('click', closeExhibit)
+        document.body.appendChild(close)
+
+        document.addEventListener('keydown', exhibitKeydown, true)
+      })
+
+      function exhibitKeydown(e) {
+        if (e.key === 'Escape') { e.stopPropagation(); closeExhibit() }
+      }
+
+      function closeExhibit() {
+        document.removeEventListener('keydown', exhibitKeydown, true)
+        if (iframe) { iframe.remove(); iframe = null }
+        const btn = document.getElementById('exhibit-close-btn')
+        if (btn) btn.remove()
+      }
+
       window.addEventListener('message', function (e) {
         if (e.origin !== window.location.origin) return
         const data = e.data || {}

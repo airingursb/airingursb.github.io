@@ -5,7 +5,7 @@ import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble }
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
 import { getCurrentPhase } from '../atmosphere'
 import { renderMinimap, showDoorLabel, hideDoorLabel, setDoorLabelClickHandler, MAP_ROOMS } from '../minimap'
-import { REGIONS, WALK_SPEED, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, isOutdoorRoom, type Region, type RoomId, type Species } from '../config'
+import { REGIONS, WALK_SPEED, ROOM_WIDTH, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, isOutdoorRoom, type Region, type RoomId, type Species } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
 import { onUIEvent, showMenuAt, showBubble, hasActiveBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard, setOnSpeciesToggle, updateSpeciesButtonLabel, showProfileCard } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
@@ -34,6 +34,20 @@ import { maybeNoticeCookAlong, leaveCookAlongIfNeeded, setCookBannerHandler, sta
 import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJamBurstTier } from '../group_jam'
 import { tickNpcEvents, leaveNpcEventIfNeeded, setEventBannerHandler, currentEventStatus } from '../npc_events'
 import { setupGrovePortal, teardownGrovePortal } from '../grove_portal'
+import { setupGalleryPortal, teardownGalleryPortal } from '../gallery_portal'
+import { setupGalleryExhibits, teardownGalleryExhibits } from '../gallery_exhibits'
+import { setupGalleryArchitecture, teardownGalleryArchitecture } from '../gallery_architecture'
+import { setupGalleryDecorations, teardownGalleryDecorations } from '../gallery_decorations'
+import { setupGalleryFloorInlay, teardownGalleryFloorInlay } from '../gallery_floor_inlay'
+import { setupGalleryDocent, teardownGalleryDocent } from '../gallery_docent'
+import { setupGalleryComics, teardownGalleryComics, getComicsInteractables } from '../gallery_comics'
+import { setupGalleryZones, teardownGalleryZones } from '../gallery_zones'
+import { maybePlayGalleryIntro } from '../gallery_intro'
+import { setupGalleryVisitors, teardownGalleryVisitors } from '../gallery_visitors'
+import { setupGalleryAchievements, teardownGalleryAchievements } from '../gallery_achievements'
+import { setupGalleryAtmosphere, teardownGalleryAtmosphere } from '../gallery_atmosphere'
+import { markVisited as markExhibitVisited } from '../gallery_progress'
+import { preloadGalleryAssets } from '../gallery_assets'
 import { tickRandomEvents, getActiveEvent, attendEvent, type ActiveEvent } from '../random_events'
 import { TransitNpcController } from '../transit_npcs'
 import { spawnAmbientPets, tickAmbientPetProximity, reactPetsToPlayerEmote } from '../ambient_pets'
@@ -126,7 +140,7 @@ function ensurePixelTexture(scene: Phaser.Scene) {
 type Direction = 'up' | 'down' | 'left' | 'right'
 
 type Portal = { x: number; y: number; w: number; h: number; targetRoom: RoomId; targetSpawn: string }
-type Interactable = { x: number; y: number; w: number; h: number; kind: string; anchorX: number; anchorY: number; facing: Direction; name: string; padIndex?: number; gameId?: string; material?: string; bathBuff?: boolean }
+type Interactable = { x: number; y: number; w: number; h: number; kind: string; anchorX: number; anchorY: number; facing: Direction; name: string; padIndex?: number; gameId?: string; material?: string; bathBuff?: boolean; exhibitType?: string; exhibitUrl?: string; exhibitLabel?: string; exhibitTitle?: string; exhibitEmoji?: string; exhibitAsset?: string }
 
 export class RoomScene extends Phaser.Scene {
   private currentRoomId: RoomId = DEFAULT_ROOM
@@ -282,6 +296,13 @@ export class RoomScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('room_bath',          '/lounge/assets/rooms/bath.tmj')
     this.load.tilemapTiledJSON('room_arcade',        '/lounge/assets/rooms/arcade.tmj')
     this.load.tilemapTiledJSON('room_greenhouse',    '/lounge/assets/rooms/greenhouse.tmj')
+    this.load.tilemapTiledJSON('room_gallery',       '/lounge/assets/rooms/gallery.tmj')
+    // Gallery sprites — paintings + architecture + NPC + decorations. Loaded
+    // only when entering room_gallery to avoid wasting bandwidth on every
+    // room. Missing assets are tolerated (renderers fall back to placeholders).
+    if (this.currentRoomId === 'room_gallery') {
+      preloadGalleryAssets(this)
+    }
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
     this.load.image('indoor_lobby_v1', '/lounge/assets/tilesets/indoor_lobby_v1/tiles.png')
     this.load.image('outdoor_beach_v0', '/lounge/assets/tilesets/outdoor_beach_v0/tiles.png')
@@ -546,6 +567,21 @@ export class RoomScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGrovePortal)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGrovePortal)
 
+    // 作品集 portal — lobby only, teleports to room_gallery
+    setupGalleryPortal(this, this.currentRoomId, () => {
+      this.enterPortal({
+        x: 0, y: 0, w: 0, h: 0,
+        targetRoom: 'room_gallery' as RoomId,
+        targetSpawn: 'from_lobby'
+      })
+    })
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryPortal)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryPortal)
+
+    // 作品集 exhibits + architecture are wired later (line ~817), after
+    // this.interactables is populated. Their teardown handlers are
+    // registered there too.
+
     // V14.7 — friday fireworks visual: when in Rooftop during the active
     // window, spawn periodic firework particle bursts in the sky area.
     this.fireworksTimer?.remove(false); this.fireworksTimer = undefined
@@ -610,7 +646,8 @@ export class RoomScene extends Phaser.Scene {
         room_lobby: 'Lobby', room_dj_floor: 'DJ Floor', room_balcony: 'Balcony',
         room_library: 'Library', room_beach: 'Beach', room_grove: 'Grove',
         room_kitchen: 'Kitchen', room_workshop: 'Workshop', room_rooftop: 'Rooftop',
-        room_bath: 'Bath House', room_arcade: 'Arcade', room_greenhouse: 'Greenhouse'
+        room_bath: 'Bath House', room_arcade: 'Arcade', room_greenhouse: 'Greenhouse',
+        room_gallery: 'Gallery'
       }
       const lbl = isHomeRoom(this.currentRoomId)
         ? 'Home'
@@ -773,12 +810,128 @@ export class RoomScene extends Phaser.Scene {
         gameId: typeof get('game_id') === 'string' ? get('game_id') as string : undefined,
         material: typeof get('material') === 'string' ? get('material') as string : undefined,
         // V13.1 — bath_buff flag on the tub_sit interactable
-        bathBuff: get('bath_buff') === true
+        bathBuff: get('bath_buff') === true,
+        // Gallery exhibits — opens an iframe overlay to exhibit_url
+        exhibitType: typeof get('exhibit_type') === 'string' ? get('exhibit_type') as string : undefined,
+        exhibitUrl: typeof get('exhibit_url') === 'string' ? get('exhibit_url') as string : undefined,
+        exhibitLabel: typeof get('exhibit_label') === 'string' ? get('exhibit_label') as string : undefined,
+        exhibitTitle: typeof get('exhibit_title') === 'string' ? get('exhibit_title') as string : undefined,
+        exhibitEmoji: typeof get('exhibit_emoji') === 'string' ? get('exhibit_emoji') as string : undefined,
+        exhibitAsset: typeof get('exhibit_asset') === 'string' ? get('exhibit_asset') as string : undefined
       }
     })
 
     // V4.3 — render jam pads as colored rectangles
     this.renderJamPads()
+
+    // 作品集 exhibits — render the wall frames in room_gallery (must run
+    // AFTER this.interactables is populated above).
+    setupGalleryExhibits(
+      this,
+      this.currentRoomId,
+      this.interactables
+        .filter(it => it.kind === 'exhibit')
+        .map(it => ({
+          x: it.x, y: it.y, w: it.w, h: it.h,
+          emoji: it.exhibitEmoji,
+          label: it.exhibitLabel,
+          title: it.exhibitTitle,
+          asset: (it as { exhibitAsset?: string }).exhibitAsset,
+          url: it.exhibitUrl,
+          facing: it.facing as 'up' | 'down' | 'left' | 'right',
+          exhibitType: it.exhibitType,
+        }))
+    )
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryExhibits)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryExhibits)
+
+    // Gallery architecture — columns, statues, info desk, benches, arches.
+    // Arch in south pavilion is a clickable shortcut to the Mochi Grove
+    // pocket world (also enterable via the centerpiece exhibit interactable).
+    setupGalleryArchitecture(this, this.currentRoomId, () => {
+      try {
+        window.dispatchEvent(new CustomEvent('open-pocket-world', { detail: { slug: 'mochi-grove' } }))
+      } catch (err) {
+        console.warn('[gallery] arch click dispatch failed:', err)
+      }
+    })
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryArchitecture)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryArchitecture)
+
+    // Marble floor inlays (E03 ring + E01/E02 axis accents) — sits above
+    // carpet but below architecture sprites for layered depth.
+    setupGalleryFloorInlay(this, this.currentRoomId)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryFloorInlay)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryFloorInlay)
+
+    // F-series decoration sprites — ficus, banners, plaques, trash bins.
+    setupGalleryDecorations(this, this.currentRoomId)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryDecorations)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryDecorations)
+
+    // Museum docent NPC at the rotunda info desk — also auto-greets when
+    // the player walks within proximity.
+    setupGalleryDocent(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryDocent)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryDocent)
+
+    // Zone entry banners — wayfinding cue when the player crosses into a new wing
+    setupGalleryZones(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryZones)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryZones)
+
+    // Grand-entry camera pan to the centerpiece on first arrival this session
+    maybePlayGalleryIntro(this, this.currentRoomId, this.myBear?.sprite)
+
+    // Procedural visitors wandering the museum (silhouettes — fills the
+    // hall while Codex's NPC sprites are pending).
+    setupGalleryVisitors(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryVisitors)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryVisitors)
+
+    // Brass medallions in the rotunda for completed exhibit sets
+    setupGalleryAchievements(this, this.currentRoomId)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryAchievements)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryAchievements)
+
+    // Day/night atmosphere — overlay dims gallery at night for theatre feel
+    setupGalleryAtmosphere(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryAtmosphere)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryAtmosphere)
+
+    // South pavilion comics wall — fetched from /api/gallery-comics.json.
+    // Frames are added to this.interactables on the next tick so the existing
+    // E-key proximity loop + interact prompt also work, not just clicks.
+    setupGalleryComics(this, this.currentRoomId)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryComics)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryComics)
+    if (this.currentRoomId === 'room_gallery') {
+      // Comics list is fetched async; poll briefly for the interactables to
+      // appear, then merge into the proximity loop.
+      const mergeIn = (attempt = 0) => {
+        const dyn = getComicsInteractables()
+        if (dyn.length > 0) {
+          for (const d of dyn) {
+            this.interactables.push({
+              name: `comic_${d.comic.issue}`,
+              x: d.x, y: d.y, w: d.w, h: d.h,
+              kind: 'exhibit',
+              anchorX: d.anchorX, anchorY: d.anchorY,
+              facing: 'down',
+              exhibitType: 'comics',
+              exhibitUrl: `/comics/${d.comic.issue}`,
+              exhibitLabel: `#${d.comic.issue}`,
+              exhibitTitle: `第 ${d.comic.issue} 期 · ${d.comic.title_zh}`,
+            })
+          }
+          return
+        }
+        if (attempt < 20) {
+          this.time.delayedCall(250, () => mergeIn(attempt + 1))
+        }
+      }
+      this.time.delayedCall(300, () => mergeIn())
+    }
 
     if (this.input.keyboard) {
       this.cursors = this.input.keyboard.createCursorKeys()
@@ -1464,7 +1617,18 @@ export class RoomScene extends Phaser.Scene {
     if (!prefersReducedMotion()) {
       this.cameras.main.fadeIn(220, 248, 240, 220)
     }
-    this.cameras.main.setBounds(0, 0, map.widthInPixels, map.heightInPixels)
+    // Camera bounds: for rooms narrower than the canvas (e.g. the gallery
+    // corridor at 224×352 against a 480×320 canvas), shift the bound origin
+    // left so the room renders centered horizontally instead of pinned to
+    // x=0 with dead space on the right. Rooms ≥ canvas width keep the
+    // original 0-origin bounds.
+    {
+      const mw = map.widthInPixels, mh = map.heightInPixels
+      const cw = ROOM_WIDTH
+      const boundX = mw < cw ? -(cw - mw) / 2 : 0
+      const boundW = Math.max(mw, cw)
+      this.cameras.main.setBounds(boundX, 0, boundW, mh)
+    }
     // myBear isn't created yet at this point — wire follow once it exists, below.
 
     // V7.4 — quest progress on room visit
@@ -1580,8 +1744,13 @@ export class RoomScene extends Phaser.Scene {
     // applyWelcome's snap-back decision (whether taken or skipped).
     // Subsequent applyWelcome calls — which fire when scene.restart
     // re-runs from welcomeCache — never re-trigger snap-back.
+    // Explicit `?room=` query param overrides server snap-back — user asked
+    // for this specific room, honor it.
+    const urlHasRoom = typeof window !== 'undefined'
+      && new URLSearchParams(window.location.search).has('room')
     const shouldSnapBack =
       !firstWelcomeSnapBackResolved
+      && !urlHasRoom
       && m.last_room
       && m.last_room !== this.currentRoomId
       && isValidRoom(m.last_room)
@@ -1607,10 +1776,15 @@ export class RoomScene extends Phaser.Scene {
       return
     }
 
-    // Same room: apply spawn override if provided (and not already applied via pendingSpawn)
+    // Same room: apply spawn override if provided (and not already applied via pendingSpawn).
+    // Bounds-check: a cached welcome from a larger room (e.g. lobby 480×320)
+    // could otherwise place the bear OUTSIDE a smaller room (e.g. gallery
+    // 320×224) on cross-room teleport. We skip the restore in that case so
+    // the room's spawn point wins.
     if (this.myBear && typeof m.last_x === 'number' && typeof m.last_y === 'number') {
       const lx = m.last_x, ly = m.last_y
-      if (!this.collidesAt(lx, ly)) {
+      const inBounds = lx >= 0 && lx <= this.mapInfo.widthPx && ly >= 0 && ly <= this.mapInfo.heightPx
+      if (inBounds && !this.collidesAt(lx, ly)) {
         this.myBear.sprite.x = lx
         this.myBear.sprite.y = ly
       }
@@ -4343,6 +4517,33 @@ export class RoomScene extends Phaser.Scene {
       void import('../minigames_ui').then(m => m.openGame(it.gameId!))
       return
     }
+    // Gallery exhibit: dispatch a custom event for nook.astro to mount an
+    // iframe overlay. `exhibit_type === 'pocket'` reuses the pocket-world
+    // iframe pattern (slug-based); everything else passes a raw URL.
+    if (it.kind === 'exhibit' && it.exhibitUrl) {
+      try {
+        // Mark visited synchronously so the plaque ✓ persists even if the
+        // user immediately closes the iframe. (Async import dropped the
+        // mark in builds where gallery_progress was bundled in a separate
+        // chunk that hadn't loaded yet.)
+        markExhibitVisited(it.exhibitUrl)
+        // Both 'pocket' and 'centerpiece' use the pocket-world slug pattern
+        // (the centerpiece is a hero exhibit that's actually a portal to a 3D
+        // scene — its 'url' field carries the slug, not a real URL).
+        if (it.exhibitType === 'pocket' || it.exhibitType === 'centerpiece') {
+          window.dispatchEvent(new CustomEvent('open-pocket-world', {
+            detail: { slug: it.exhibitUrl }
+          }))
+        } else {
+          window.dispatchEvent(new CustomEvent('open-exhibit', {
+            detail: { url: it.exhibitUrl, label: it.exhibitLabel ?? '' }
+          }))
+        }
+      } catch (err) {
+        console.warn('[exhibit] dispatch failed:', err)
+      }
+      return
+    }
     // V13.3 → V13.8-review C2 fix: daily cap per spot. Without it the
     // player could hold E and farm rare materials indefinitely.
     if (it.kind === 'gather_spot' && it.material) {
@@ -4669,7 +4870,14 @@ export class RoomScene extends Phaser.Scene {
     }
     if (nearest !== this.nearbyInteractable) {
       this.nearbyInteractable = nearest
-      if (nearest) showInteractPrompt(nearest.kind)
+      if (nearest) {
+        // For exhibits, prefer the full title so the player sees what they're
+        // about to open rather than a generic "exhibit" label.
+        const verb = (nearest.kind === 'exhibit' && (nearest.exhibitTitle || nearest.exhibitLabel))
+          ? (nearest.exhibitTitle ?? nearest.exhibitLabel!)
+          : nearest.kind
+        showInteractPrompt(verb)
+      }
       else hideInteractPrompt()
     }
     if (this.nearbyInteractable) {

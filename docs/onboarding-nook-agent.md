@@ -33,6 +33,14 @@
 
 ## 2 · 立刻吸收的项目状态
 
+- **作品集美术馆**（2026-05-24 build）—— `room_gallery` 是一个 80×60 tile (1280×960 px) 的十字形美术馆。
+  - `gallery-studio/` 是 Codex 出图工作区（mirror comics-studio），34 个 Saul Bass / WPA 风 sprite
+  - `scripts/generate-gallery-tmj.py` 生成 `public/lounge/assets/rooms/gallery.tmj`
+  - `scripts/sync-gallery-assets.sh` 把 `gallery-studio/output/` 同步到 `public/lounge/assets/gallery/`
+  - 渲染模块：`gallery_exhibits.ts` / `gallery_architecture.ts` / `gallery_docent.ts` / `gallery_comics.ts` / `gallery_portal.ts`
+  - 美术馆深度 palette + 立柱/雕像/红地毯/聚光灯 在 `room_decals.ts` 的 `if (roomId === 'room_gallery')` 块
+  - 漫画动态加载: `/api/gallery-comics.json` 是构建时静态 endpoint（fetches 远程图片受 r2.airingdeng.com CORS 限制）
+  - 入口: lobby 顶墙的 `to_gallery` portal（在 lobby.tmj），spawn 在南厅 (640, 928)
 - **本期 Linear tracker**: SHU-537（mandated 2026-05-23）—— 所有 nook 工作必须挂在这个 issue 树下作为 sub-issue。读 Linear 把 SHU-537 树先过一遍
 - **AI Companion**: V3.0-B-MEM-V4，4 个 NPC，prompt 4 层（SOUL + IDENTITY + USER + MEMORY + WORLD），memory 走 bge-m3 1024-dim embedding，pgvector RPC search
 - **账号系统**: V3.0-A，Supabase Auth，accounts 表带 companion_user_profile JSONB

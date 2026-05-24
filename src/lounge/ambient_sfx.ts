@@ -156,6 +156,9 @@ const ROOM_SFX: Record<string, RoomSoundConfig> = {
                                                                                                             intervalMs: [60_000, 120_000] },
   // Indoor crafting / kitchen rooms intentionally omitted — their BGM is
   // already busy enough; adding more layer would clutter.
+  // Gallery uses page-flutter + bell to evoke the hushed museum atmosphere;
+  // less frequent than the library since galleries are quieter spaces.
+  room_gallery:  { sounds: [pageFlutter, bellChime],                                                        intervalMs: [50_000, 110_000] },
 }
 
 export type AmbientSfxDispose = () => void
