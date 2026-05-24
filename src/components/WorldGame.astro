@@ -9,18 +9,28 @@ import ErrorBoundary from '../world/ErrorBoundary'
 import articlesData from '../data/articles.json'
 import musicData from '../data/music.json'
 import highlightsData from '../data/highlights.json'
+import { fetchComics } from '../lib/comics'
+
+// Build-time comics fetch (best-effort; returns [] if Supabase env missing)
+const comicsRaw = await fetchComics().catch(() => [])
+const comics = comicsRaw.slice(0, 10).map(c => ({
+  issue: c.issue_number,
+  title_zh: c.title?.zh ?? `第 ${c.issue_number} 期`,
+  title_en: c.title?.en ?? `Issue ${c.issue_number}`,
+}))
 
 const initialData = {
   blog: (articlesData as any[]).slice(0, 12),
   music: ((musicData as any).periods?.find((p: any) => p.key === '1month')?.artists
     ?? (musicData as any).periods?.[0]?.artists ?? []).slice(0, 12),
   reading: ((highlightsData as any).highlights ?? []).slice(0, 10),
+  comics,
 }
 ---
 <div id="world-root">
   <WorldLoader />
   <ErrorBoundary client:only="react">
-    <App client:only="react" />
+    <App client:only="react" initialData={initialData} />
   </ErrorBoundary>
   <WorldUI client:only="react" />
   <ZonePanel client:only="react" initialData={initialData} />

@@ -51,6 +51,7 @@ import ZoneHitboxes from './ZoneHitboxes'
 import MochiNPC from './MochiNPC'
 import ZoneHints from './ZoneHints'
 import AmbientFX from './AmbientFX'
+import WorkDisplay from './WorkDisplay'
 // Sub-A iter-10: Rainbow + HotAirBalloon + Scarecrow cut to protect cabin
 // as the visual hero. (Files left on disk for easy re-enable.)
 
@@ -124,7 +125,20 @@ function ThemeAwareLights({ theme }: { theme: Theme }) {
 
 const THEME_KEY = 'world-theme-v1'
 
-export default function App() {
+interface BlogEntry { title: string; link: string; date: string }
+interface MusicArtist { name: string; plays: number; pct: number }
+interface HighlightEntry { id: number; title: string; author: string; text?: string; url?: string }
+interface ComicsEntry { issue: number; title_zh: string; title_en?: string }
+
+export interface AppInitialData {
+  blog: BlogEntry[]
+  music: MusicArtist[]
+  reading: HighlightEntry[]
+  comics: ComicsEntry[]
+}
+
+export default function App({ initialData }: { initialData?: AppInitialData } = {}) {
+  const data = initialData ?? { blog: [], music: [], reading: [], comics: [] }
   const [theme, setTheme] = useState<Theme>(() => {
     if (typeof window === 'undefined') return 'day'
     try { return (localStorage.getItem(THEME_KEY) as Theme) || 'day' } catch { return 'day' }
@@ -183,6 +197,52 @@ export default function App() {
         <ZoneHitboxes />
         <ZoneHints />
         <AmbientFX />
+
+        {/* === Portfolio display boards — the work zones' hero objects === */}
+        {/* Blog (south of cabin, near deck) */}
+        <WorkDisplay
+          position={[3.5, 10.5]}
+          rotation={-2.5}
+          spriteUrl="/world/sprites/buildings/C01-bookshelf.png"
+          title="文章"
+          subtitle="Blog · ursb.me/blog"
+          accent="#C97B5C"
+          rows={data.blog.slice(0, 5).map(b => ({ main: b.title, sub: b.date }))}
+          emptyMessage="（数据加载中…）"
+        />
+        {/* Comics (west of cabin, near easel) */}
+        <WorkDisplay
+          position={[-11.0, 4.5]}
+          rotation={1.8}
+          spriteUrl="/world/sprites/buildings/C02-easel.png"
+          title="四格"
+          subtitle="Comics · ursb.me/comics"
+          accent="#8B5E3C"
+          rows={data.comics.slice(0, 5).map(c => ({ main: c.title_zh, sub: `Issue #${c.issue}` }))}
+          emptyMessage="点击前往 /comics →"
+        />
+        {/* Music (east of cabin, near gazebo) */}
+        <WorkDisplay
+          position={[11.5, -4.5]}
+          rotation={-1.0}
+          spriteUrl="/world/sprites/buildings/C03-record-player.png"
+          title="在听"
+          subtitle="Music · Last.fm"
+          accent="#4A8B6E"
+          rows={data.music.slice(0, 5).map(a => ({ main: a.name, sub: `${a.plays} plays` }))}
+          emptyMessage="（暂无播放记录）"
+        />
+        {/* Reading (north of cabin, near hammock) */}
+        <WorkDisplay
+          position={[-2.0, -10.0]}
+          rotation={0.2}
+          spriteUrl="/world/sprites/buildings/C04-armchair.png"
+          title="在读"
+          subtitle="Reading · Readwise"
+          accent="#A05A8B"
+          rows={data.reading.slice(0, 5).map(h => ({ main: h.title, sub: h.author }))}
+          emptyMessage="（暂无划线）"
+        />
       </Suspense>
 
       <CameraControls />
