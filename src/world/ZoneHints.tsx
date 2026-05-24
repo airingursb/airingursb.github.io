@@ -45,7 +45,11 @@ export default function ZoneHints() {
 function PulsingHint({ pos, visible }: { pos: [number, number, number]; visible: boolean }) {
   const meshRef = useRef<THREE.Mesh>(null)
   const ringRef = useRef<THREE.Mesh>(null)
+  // Sub-A perf fix: early-return when not visible. Previously the
+  // useFrame walked sin/cos + matrix writes forever after hints
+  // were dismissed. 5 hints × 60fps = wasted Math operations.
   useFrame((s) => {
+    if (!visible) return
     const t = s.clock.elapsedTime
     if (meshRef.current) {
       const bob = Math.sin(t * 2) * 0.15
@@ -55,7 +59,7 @@ function PulsingHint({ pos, visible }: { pos: [number, number, number]; visible:
       const scale = 1 + Math.sin(t * 2.5) * 0.18
       ringRef.current.scale.setScalar(scale)
       const mat = ringRef.current.material as THREE.MeshBasicMaterial
-      mat.opacity = (0.6 - Math.abs(Math.sin(t * 2.5)) * 0.3) * (visible ? 1 : 0)
+      mat.opacity = 0.6 - Math.abs(Math.sin(t * 2.5)) * 0.3
     }
   })
   if (!visible) return null

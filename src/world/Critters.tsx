@@ -190,8 +190,13 @@ function Birds({ center, radius = 3, count = 5 }: { center: [number, number, num
 export default function Critters() {
   return (
     <group>
-      {/* White cat curled on cabin doormat */}
-      <CatOnMat position={[0.3, 0.35, 2.1]} />
+      {/* White cat curled on cabin doormat. Sub-A fix: was at world
+          [0.3, 0.35, 2.1] which is ~3.7 units away from the actual
+          doormat. Cabin chat zone is at (-2.0, -1.0); porch extends
+          to local z = CABIN_D/2 + 0.6 = 2.1, so doormat is at world
+          (-2.0, 0.34, +1.1). Cat now slightly offset so it doesn't
+          block the door silhouette. */}
+      <CatOnMat position={[-1.45, 0.35, 1.1]} />
 
       {/* 2 ducks drifting in pond — circular paths */}
       <Duck angle={0} radius={POND_RADIUS * 0.5} speed={0.15} size={1.0} seed={0} />

@@ -6,7 +6,7 @@
 // "meadow".
 
 import * as THREE from 'three'
-import { useMemo } from 'react'
+import { useMemo, useEffect } from 'react'
 
 const GRASS_A = '#8FB97A'
 const GRASS_B = '#7AA565'
@@ -108,6 +108,15 @@ function GrassBlades() {
     meshBRef.instanceMatrix.needsUpdate = true
     meshCRef.instanceMatrix.needsUpdate = true
   }, [tufts, refA, meshARef, meshBRef, meshCRef])
+
+  // Sub-A leak fix: dispose InstancedMesh geometry + material on
+  // unmount (HMR, route nav). Previously leaked GPU buffers + material.
+  useEffect(() => () => {
+    ;[meshARef, meshBRef, meshCRef].forEach((m) => {
+      m.geometry.dispose()
+      ;(m.material as THREE.Material).dispose()
+    })
+  }, [meshARef, meshBRef, meshCRef])
 
   return (
     <group>

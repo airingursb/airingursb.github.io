@@ -28,6 +28,11 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
     return g
   }, [radius])
 
+  // Sub-A perf fix: drop per-frame computeVertexNormals(). Ripple
+  // amplitude is 0.012 — sub-perceptible normal change for the
+  // smooth-shaded material. Walking every face per frame was ~1-2ms
+  // for zero visible gain. Vertex normals are baked at geometry
+  // creation; only position updates per frame now.
   useFrame((s) => {
     const m = surf.current
     if (!m) return
@@ -36,11 +41,9 @@ function WavingPond({ x, z, radius }: { x: number; z: number; radius: number }) 
     for (let i = 0; i < pos.count; i++) {
       const px = pos.getX(i), pz = pos.getZ(i)
       const d = Math.hypot(px, pz)
-      // Calm pond — small ripples only
       pos.setY(i, Math.sin(t * 1.2 + d * 1.2) * 0.012 + Math.cos(t * 0.6 + px * 0.8) * 0.008)
     }
     pos.needsUpdate = true
-    m.geometry.computeVertexNormals()
   })
 
   return (
@@ -271,16 +274,19 @@ function AnimatedWaterfall() {
       {/* Splash base — animated radial ring at bottom */}
       <SplashRing y={-5.5} />
       <SplashRing y={-5.3} delay={1} />
-      {/* Mist clouds at base */}
-      <mesh position={[0, -5.5, 0]}>
+      {/* Mist clouds at base. Sub-A fix: y was -5.5/-5.7 → mist
+          floated in the void cloud-sea well below the island, reading
+          as orphan ghosts. Pulled up to y=-2 so they sit at the
+          waterfall's lower lip, integrated with the splash rings. */}
+      <mesh position={[0, -2.0, 0]}>
         <sphereGeometry args={[1.4, 14, 10]} />
         <meshStandardMaterial color="#E0F0F5" roughness={0.4} transparent opacity={0.35} />
       </mesh>
-      <mesh position={[0.5, -5.7, 0.4]}>
+      <mesh position={[0.5, -2.2, 0.4]}>
         <sphereGeometry args={[1.0, 12, 10]} />
         <meshStandardMaterial color="#E0F0F5" roughness={0.4} transparent opacity={0.28} />
       </mesh>
-      <mesh position={[-0.6, -5.5, -0.3]}>
+      <mesh position={[-0.6, -2.0, -0.3]}>
         <sphereGeometry args={[0.9, 12, 10]} />
         <meshStandardMaterial color="#E0F0F5" roughness={0.4} transparent opacity={0.32} />
       </mesh>
