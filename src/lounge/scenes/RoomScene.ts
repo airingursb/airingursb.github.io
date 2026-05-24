@@ -39,6 +39,8 @@ import { setupGalleryExhibits, teardownGalleryExhibits } from '../gallery_exhibi
 import { setupGalleryArchitecture, teardownGalleryArchitecture } from '../gallery_architecture'
 import { setupGalleryDecorations, teardownGalleryDecorations } from '../gallery_decorations'
 import { setupGalleryFloorInlay, teardownGalleryFloorInlay } from '../gallery_floor_inlay'
+import { setupGalleryZoneFloors, teardownGalleryZoneFloors } from '../gallery_zone_floors'
+import { setupGalleryMurals, teardownGalleryMurals } from '../gallery_murals'
 import { setupGalleryDocent, teardownGalleryDocent } from '../gallery_docent'
 import { setupGalleryMochi, teardownGalleryMochi } from '../gallery_mochi'
 import { setupGalleryComics, teardownGalleryComics, getComicsInteractables } from '../gallery_comics'
@@ -876,7 +878,17 @@ export class RoomScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryFloorInlay)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryFloorInlay)
 
-    // F-series decoration sprites — ficus, banners, plaques, trash bins.
+    // G-series zone-specific floor tiles — each wing's characteristic pattern
+    setupGalleryZoneFloors(this, this.currentRoomId)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryZoneFloors)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryZoneFloors)
+
+    // H-series wing murals — one large banner per wing
+    setupGalleryMurals(this, this.currentRoomId)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryMurals)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryMurals)
+
+    // F/I/J decoration sprites — ficus, banners, plaques, bins, props, nature.
     setupGalleryDecorations(this, this.currentRoomId)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryDecorations)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryDecorations)

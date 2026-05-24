@@ -13,6 +13,9 @@ export type GalleryAssetCategory =
   | 'npc'
   | 'tiles'
   | 'decorations'
+  | 'murals'
+  | 'props'
+  | 'nature'
 
 export type GalleryAsset = {
   key: string                       // Phaser texture key, e.g. 'gallery_painting_A01_chromium_renderer'
@@ -76,7 +79,7 @@ export const NPC_ASSETS: GalleryAsset[] = [
   def('npc', 'D04-docent-right'),
 ]
 
-// ── E · Tiles (marble floor variants)
+// ── E · Tiles (marble floor variants — used as accent inlay)
 export const TILES: GalleryAsset[] = [
   def('tiles', 'E01-marble-pale'),
   def('tiles', 'E02-marble-veined'),
@@ -91,6 +94,44 @@ export const DECORATIONS: GalleryAsset[] = [
   def('decorations', 'F04-trash-bin'),
 ]
 
+// ── G · Zone floors — per-wing characteristic floor tiles
+export const ZONE_FLOORS: GalleryAsset[] = [
+  def('tiles', 'G01-floor-networks'),
+  def('tiles', 'G02-floor-internals'),
+  def('tiles', 'G03-floor-performance'),
+  def('tiles', 'G04-floor-comics'),
+]
+
+// ── H · Zone murals — wall art for each wing's entry
+export const MURALS: GalleryAsset[] = [
+  def('murals', 'H01-mural-networks'),
+  def('murals', 'H02-mural-internals'),
+  def('murals', 'H03-mural-performance'),
+  def('murals', 'H04-mural-comics'),
+]
+
+// ── I · Refined small props
+export const PROPS: GalleryAsset[] = [
+  def('props', 'I01-guidebook-stand'),
+  def('props', 'I02-acoustic-panel'),
+  def('props', 'I03-floor-grate'),
+  def('props', 'I04-electric-candle'),
+  def('props', 'I05-museum-map-board'),
+  def('props', 'I06-info-arrow-sign'),
+  def('props', 'I07-water-fountain'),
+  def('props', 'I08-recycling-bin'),
+  def('props', 'I09-postcard-rack'),
+  def('props', 'I10-coat-hook-row'),
+]
+
+// ── J · Nature touches (plants, animals, rug)
+export const NATURE: GalleryAsset[] = [
+  def('nature', 'J01-fern-large'),
+  def('nature', 'J02-cat-sleeping'),
+  def('nature', 'J03-pigeon-perched'),
+  def('nature', 'J04-floor-runner'),
+]
+
 export const ALL_GALLERY_ASSETS: GalleryAsset[] = [
   ...PAINTINGS,
   ...CENTERPIECES,
@@ -98,6 +139,10 @@ export const ALL_GALLERY_ASSETS: GalleryAsset[] = [
   ...NPC_ASSETS,
   ...TILES,
   ...DECORATIONS,
+  ...ZONE_FLOORS,
+  ...MURALS,
+  ...PROPS,
+  ...NATURE,
 ]
 
 /** Preload every gallery asset. Failures are non-fatal — the renderers check

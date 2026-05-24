@@ -1,7 +1,8 @@
-// SHU-737 — drops Mochi (npc_jue) into the gallery rotunda as a clickable
-// AI-chat NPC. Same SOUL + memory as her library presence (clicking opens
-// the standard companion chat overlay), but visually a gallery visitor.
-// Guests can chat 5 msgs/day, logged-in users 30/day — capped server-side.
+// SHU-737 — drops the gallery curator into the rotunda as a clickable
+// AI-chat NPC. Display name is "Airing" (the blog author / curator), but
+// the chat is routed to `npc_jue` (Mochi's SOUL) under the hood —
+// shipping a fully separate persona is a follow-up. Guest visitors get
+// 5 msgs/day, logged-in users 30/day — capped server-side.
 
 import Phaser from 'phaser'
 import type { RoomId } from './config'
@@ -10,7 +11,7 @@ import { Bear } from './bear'
 const MOCHI_X = 760
 const MOCHI_Y = 600       // east of centerpiece, in the rotunda
 const NPC_ID = 'npc_jue'
-const NPC_NAME = 'Mochi'
+const NPC_NAME = 'Airing'
 
 let mochiBear: Bear | null = null
 let signEls: Phaser.GameObjects.GameObject[] = []
@@ -36,11 +37,11 @@ export function setupGalleryMochi(
   // The Bear class lazy-loads panda atlas via setSpecies if not preloaded
   void mochiBear.setSpecies('panda')
 
-  // Brass stanchion sign — "Mochi · 巡馆"
+  // Brass stanchion sign — "Airing · 策展人"
   const post = scene.add.rectangle(MOCHI_X, MOCHI_Y - 36, 1, 14, 0xc8a058, 0.85).setDepth(4.95)
-  const plate = scene.add.rectangle(MOCHI_X, MOCHI_Y - 46, 56, 11, 0x1a1f2a)
+  const plate = scene.add.rectangle(MOCHI_X, MOCHI_Y - 46, 64, 11, 0x1a1f2a)
     .setStrokeStyle(1, 0xc8a058, 0.95).setDepth(5.0)
-  const label = scene.add.text(MOCHI_X, MOCHI_Y - 46, 'Mochi · 巡馆', {
+  const label = scene.add.text(MOCHI_X, MOCHI_Y - 46, `${NPC_NAME} · 策展人`, {
     fontSize: '8px', color: '#e6c878',
     fontFamily: '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-monospace, monospace',
     resolution: 2,
@@ -67,7 +68,7 @@ export function setupGalleryMochi(
         if (now - lastHintAt < 30_000) return
         if (now - lastChatAt < 8_000) return
         lastHintAt = now
-        showFloatingHint(scene, MOCHI_X, MOCHI_Y - 60, '点 Mochi 聊聊 ✦')
+        showFloatingHint(scene, MOCHI_X, MOCHI_Y - 60, `点 ${NPC_NAME} 聊聊 ✦`)
       },
     })
   }
@@ -99,7 +100,7 @@ async function openMochiChat(scene: Phaser.Scene) {
     void openCompanionChat({
       npc_id: NPC_ID,
       npc_name: NPC_NAME,
-      npc_where: '美术馆',
+      npc_where: '美术馆 · 策展人',
       time_phase: phaseMap[phase] ?? '白天',
       current_room: '美术馆',
       language: navigator.language?.startsWith('zh') ? '中文' : '英文',

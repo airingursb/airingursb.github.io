@@ -11,18 +11,18 @@ if [ ! -d "$SRC" ]; then
   exit 1
 fi
 
-mkdir -p "$DST"/{paintings,centerpieces,architecture,npc,tiles,decorations}
+mkdir -p "$DST"/{paintings,centerpieces,architecture,npc,tiles,decorations,murals,props,nature}
 rsync -av "$SRC/" "$DST/" | grep -v '^$\|^sending\|^total\|^sent ' || true
 
 echo ""
 echo "[sync-gallery] manifest progress:"
-expected=$(grep -c '^### [A-F][0-9]' "$(dirname "$SRC")/MANIFEST.md" || true)
+expected=$(grep -cE '^### [A-J][0-9]' "$(dirname "$SRC")/MANIFEST.md" || true)
 got=$(find "$DST" -type f -name "*.png" | wc -l | tr -d ' ')
 echo "  $got / $expected sprites present in public/"
 
 echo ""
-echo "[sync-gallery] missing per category:"
-for sub in paintings centerpieces architecture npc tiles decorations; do
+echo "[sync-gallery] count per category:"
+for sub in paintings centerpieces architecture npc tiles decorations murals props nature; do
   n=$(find "$DST/$sub" -type f -name "*.png" 2>/dev/null | wc -l | tr -d ' ')
   echo "  $sub: $n"
 done
