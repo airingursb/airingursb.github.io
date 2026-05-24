@@ -190,7 +190,10 @@ export default function WhisperOverlay() {
   return (
     <div
       className={`world-whisper${visible ? ' world-whisper--in' : ' world-whisper--out'}`}
+      role="status"
       aria-live="polite"
+      aria-atomic="true"
+      aria-label="岛的低语"
     >
       {text}
     </div>
