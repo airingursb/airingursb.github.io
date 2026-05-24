@@ -161,7 +161,7 @@
 - **Size:** 320×160 px
 - **Prompt:** Same wooden hanging sign style as E01 (320×160, warm cinnamon plank, two rope-holes at top, hand-lettered). Top line large Chinese "在读" in brush style warm amber. Bottom line smaller English "Reading · Readwise" in casual hand script. A tiny open-book doodle in one corner. Hand-painted softness. Transparent background.
 
-### E05 — Chat / Airing 招牌  `[ ]` 待重生（rename Mochi → Airing）
+### E05 — Chat / Airing 招牌  `[x]`
 - **File:** `output/banners/E05-chat.png`
 - **Size:** 320×160 px
 - **Prompt:** Same wooden hanging sign style as E01 (320×160, warm cinnamon plank, two rope-holes at top, hand-lettered). Top line large Chinese "聊天" in brush style warm amber. Bottom line smaller English "Chat · Airing 在木屋" in casual hand script. A tiny panda silhouette doodle in one corner. Hand-painted softness. Transparent background.
@@ -176,27 +176,27 @@
 > **不要：** 现代扁平 icon、SVG-flat、纯黑线稿、emoji 风、霓虹色。
 > **要：** 暖琥珀/肉桂木/cream 色调，柔和阴影，看着像小画家画在木牌上的小插画。
 
-### F01 — Camera 📷  `[ ]`
+### F01 — Camera 📷  `[x]`
 - **File:** `output/icons/F01-camera.png`
 - **Size:** 128×128 px
 - **Prompt:** A small hand-painted vintage rangefinder camera, three-quarter view, centered in a 128×128 transparent square. Warm cinnamon-leather body with a small brass winder dial on top, a prominent round lens with subtle blue-grey glass reflection, a tiny viewfinder window. Soft hand-painted shading consistent with STYLE.md (warm amber/cinnamon/cream palette). NOT a flat icon — this looks like a small illustration. Transparent background, no shadow ground. Icon area fills ~70% of canvas.
 
-### F02 — Moon 🌙  `[ ]`
+### F02 — Moon 🌙  `[x]`
 - **File:** `output/icons/F02-moon.png`
 - **Size:** 128×128 px
 - **Prompt:** A soft hand-painted crescent moon centered in a 128×128 transparent square. Cream-pale-yellow color with warm amber glow around its edge, slightly textured like watercolor. 2-3 tiny pale-gold stars dotted around. NOT a flat icon — soft, dreamy, like a children's-book moon. Warm palette consistent with STYLE.md. Transparent background, no shadow. Icon fills ~70% of canvas.
 
-### F03 — Sun ☀️  `[ ]`
+### F03 — Sun ☀️  `[x]`
 - **File:** `output/icons/F03-sun.png`
 - **Size:** 128×128 px
 - **Prompt:** A soft hand-painted round sun with 8 short stubby rays, centered in a 128×128 transparent square. Warm amber-gold body with slightly darker amber rays, a hint of cream highlight on top-left. Slightly stylized like a hand-drawn folk-art sun. Same painter as F02 — they're the day/dusk toggle pair, must feel like a set. Transparent background, no shadow. Icon fills ~70% of canvas.
 
-### F04 — Compass / Reset 🎯  `[ ]`
+### F04 — Compass / Reset 🎯  `[x]`
 - **File:** `output/icons/F04-compass.png`
 - **Size:** 128×128 px
 - **Prompt:** A small hand-painted brass-and-wood compass rose, top-down view, centered in a 128×128 transparent square. Warm cinnamon wooden base ring with subtle grain, a brass 4-point compass needle (N-S-E-W) in the middle pointing slightly to one side, brass pivot in the very center. Soft hand-painted shading, warm metal highlights. Conveys "return to center / re-orient". Transparent background, no shadow. Icon fills ~75% of canvas.
 
-### F05 — Whisper / Speech 💭  `[ ]`
+### F05 — Whisper / Speech 💭  `[x]`
 - **File:** `output/icons/F05-whisper.png`
 - **Size:** 128×128 px
 - **Prompt:** A soft hand-painted thought-cloud speech bubble, centered in a 128×128 transparent square. Cream-white puffy cloud shape (rounded bumps, like a children's-book thought bubble), warm cinnamon hand-drawn outline, 3 tiny brown dots inside (ellipsis suggesting unspoken thought), 2 small trailing wisp circles below leading down. Soft watercolor style consistent with STYLE.md. Transparent background, no shadow. Icon fills ~75% of canvas.
@@ -209,8 +209,8 @@
 - [x] B 系列 (4/4) — 仅 B01 用作 avatar billboard
 - [x] C 系列 (5/5) — **portfolio zone hero 海报，全部使用**
 - [x] D 系列 (5/5) — 已废弃（3D 场景已有程化几何）
-- [x] E 系列 (5/5) — **3D /world/ 场景 zone 招牌，已生成**（E05 待重生：Mochi → Airing）
-- [ ] F 系列 (0/5) — **/world/ UI 按钮图标，替换 emoji，待生成**
+- [x] E 系列 (5/5) — **3D /world/ 场景 zone 招牌，已生成**
+- [x] F 系列 (5/5) — **/world/ UI 按钮图标，替换 emoji，已生成**
 
 E 系列生成完同步到 `public/world/sprites/banners/`。
 F 系列生成完同步到 `public/world/sprites/icons/`。
