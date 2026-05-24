@@ -236,11 +236,25 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
     document.body.dataset.worldTheme = next
     try { localStorage.setItem(THEME_KEY, next) } catch {}
   }), [])
+  // V2 wave 3 perf (Sub-A P1 from first audit, finally addressed):
+  // pause the render loop when the tab is backgrounded. ~25+ useFrame
+  // loops would otherwise burn CPU + battery for an invisible scene.
+  // 'always' when tab visible, 'never' when hidden.
+  const [pageVisible, setPageVisible] = useState<boolean>(
+    () => typeof document === 'undefined' ? true : !document.hidden,
+  )
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+    function onVis() { setPageVisible(!document.hidden) }
+    document.addEventListener('visibilitychange', onVis)
+    return () => document.removeEventListener('visibilitychange', onVis)
+  }, [])
   return (
     <Canvas
       shadows
       dpr={[1, 1.5]}
       camera={{ position: [34, 26, 30], fov: 26 }}
+      frameloop={pageVisible ? 'always' : 'never'}
       gl={{
         antialias: true,
         alpha: false,
