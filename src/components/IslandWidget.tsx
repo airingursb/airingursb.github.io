@@ -963,9 +963,12 @@ function PathMoss() {
 // 220×220 widget over-magnify.
 function ParallaxRig() {
   const { camera } = useThree()
-  const baseX = 2.6     // matches Canvas prop [2.6, 2.0, 7.0]
+  const baseX = 2.6     // matches Canvas prop [2.6, 2.0, 7.6]
   const baseY = 2.0
-  const baseZ = 7.0
+  const baseZ = 7.6     // V52.4: 7.0 → 7.6 — gives disc edge ~0.27
+                        // margin/side so parallax (mouseState.x*0.15 =
+                        // ±0.39 lateral camera shift) doesn't clip the
+                        // disc edge into the canvas border at 220px
   useFrame((_, dt) => {
     const targetX = baseX + mouseState.x * 0.15   // V21 had 0.25 — too much for pet
     const targetY = baseY + mouseState.y * -0.10  // V21 had -0.15
@@ -1622,12 +1625,13 @@ export default function IslandWidget() {
       // Island disc has x-extent ±2.15 (radius 2.05 × non-uniform scale
       // 1.05). To fit the whole disc width in a square canvas the
       // visible width at island distance must be ≥ 4.3 units.
-      // Math: visible_width = 2 · D · tan(fov/2). Camera [2.6, 2.0, 7.0]
-      // sits ~7.7 units from origin → fov 32 gives ~4.4 unit visible
-      // width = just-fits with margin. Tilt comes from raised y (2.0)
-      // instead of side-angle so the disc reads slightly bird's-eye
-      // (visible as round blob, not as side-cliff slice).
-      camera={{ position: [2.6, 2.0, 7.0], fov: 32 }}
+      // Math: visible_width = 2 · D · tan(fov/2). Camera [2.6, 2.0, 7.6]
+      // sits ~8.2 units from origin → fov 32 gives ~4.7 unit visible
+      // width vs disc ±2.15 = ~0.27 margin/side, enough headroom for
+      // parallax (±0.39 lateral shift) without clipping. Tilt comes
+      // from raised y (2.0) so the disc reads as a round blob from
+      // slight bird's-eye, not as a side-cliff slice.
+      camera={{ position: [2.6, 2.0, 7.6], fov: 32 }}
       dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}
       // V41: pause off-screen. V50 a11y: reduced-motion users get a
       // single static render ("demand" + one initial invalidate from R3F
@@ -1727,11 +1731,15 @@ export default function IslandWidget() {
           motes drift WITHIN the island silhouette, not above as a
           rectangular cloud. The drift volume was visible as a soft
           rectangle = subtle "scene box" tell. */}
+      {/* V52.4: y 1.0 → 1.3 — lift sparkle volume so floor (y - half
+          extent = 1.3 - 0.9 = 0.4) sits ABOVE the stepping stones,
+          not on them. Otherwise the haze reads as ground dust = soft
+          rectangular tell on the disc. */}
       <Sparkles
         count={45}
         size={3}
         scale={[2.4, 1.8, 2.4]}
-        position={[0, 1.0, 0]}
+        position={[0, 1.3, 0]}
         color="#FFE8C0"
         speed={0.25}
         opacity={0.65}
