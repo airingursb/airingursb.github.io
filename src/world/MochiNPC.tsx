@@ -68,9 +68,14 @@ export default function MochiNPC() {
         la.next = t + 22 + Math.random() * 8
       }
     } else {
-      // Default gentle wobble
-      headRef.current.rotation.y = Math.sin(t * 0.5) * 0.3
-      headRef.current.rotation.x = 0
+      // Default gentle wobble — dual-frequency yaw + tiny pitch breath
+      // so the head doesn't feel metronomic. Primary yaw is the slow
+      // sweep; secondary +sin(t*1.7)*0.04 adds a small higher-frequency
+      // micro-jitter that reads as "looking-thinking". Pitch oscillates
+      // ±0.04 on a 2.7s cycle (subtle up/down "considering" lift).
+      headRef.current.rotation.y =
+        Math.sin(t * 0.5) * 0.3 + Math.sin(t * 1.7 + 1.3) * 0.04
+      headRef.current.rotation.x = Math.sin(t * 0.37) * 0.04
     }
   })
 
