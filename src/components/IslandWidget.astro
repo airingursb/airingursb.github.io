@@ -69,6 +69,10 @@ import IslandWidget from './IslandWidget'
          rare WebGL-failed path. -->
   </svg>
   <IslandWidget client:visible />
+  <!-- FX overlay: covers the canvas, particles spawn here on click.
+       pointer-events:none so it never blocks the panel/chips below.
+       z-index above canvas (z:0) but below panel (z:4). -->
+  <div class="island-pet-fx" aria-hidden="true"></div>
   <!-- V50 a11y: WebGL-failed hint as REAL element (CSS ::after is
        skipped by most screen readers); visibility toggled by JS. -->
   <span class="island-pet-hint" aria-live="polite" hidden>需要 WebGL · 点击进入完整页面</span>
@@ -172,25 +176,76 @@ import IslandWidget from './IslandWidget'
       }
     }, 12000)
 
-    // Click + keyboard activation.
-    // Touch UX: on devices without hover, the CSS :hover panel reveal
-    // never fires. Treat the FIRST tap as "reveal panel" (add
-    // .is-revealed class — mirrors :hover in CSS); SECOND tap on the
-    // pet (after panel is already revealed) navigates. Chips work
-    // normally. Outside-tap collapses the revealed state.
+    // Click handler: clicking the pet does NOT navigate (too easy to
+    // mis-trigger). It plays a random visual effect overlay (snow,
+    // petal burst, sparkle, mist, ripple). Only the "Step in" chip
+    // navigates to /world/. Touch UX: on devices without hover, the
+    // first tap reveals the panel; subsequent taps fire fx.
     const isTouch = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches
+    const fxLayer = wrap.querySelector('.island-pet-fx')
+    const FX_TYPES = ['snow', 'petals', 'fireflies', 'mist', 'ripple']
+    let lastFxType = null
+    function playFx(e) {
+      if (!fxLayer) return
+      // Pick a random fx type, avoiding immediate repeat for variety
+      let type
+      do { type = FX_TYPES[Math.floor(Math.random() * FX_TYPES.length)] }
+      while (type === lastFxType && FX_TYPES.length > 1)
+      lastFxType = type
+      // Click origin in fx-local coords (for ripple + sparkle radial)
+      const rect = fxLayer.getBoundingClientRect()
+      const cx = e ? Math.max(0, Math.min(rect.width,  e.clientX - rect.left)) : rect.width / 2
+      const cy = e ? Math.max(0, Math.min(rect.height, e.clientY - rect.top))  : rect.height / 2
+      const burst = document.createElement('div')
+      burst.className = 'island-fx-burst island-fx-' + type
+      burst.style.setProperty('--cx', cx + 'px')
+      burst.style.setProperty('--cy', cy + 'px')
+      // Spawn N particles per burst — counts + size ranges per type.
+      // mist/ripple are SINGLE-particle effects where CSS owns the
+      // size (--s:120px / --s:0); other types get per-particle random
+      // sizing via JS inline --s (which overrides CSS defaults).
+      const counts = { snow: 32, petals: 22, fireflies: 18, mist: 1, ripple: 1 }
+      const sizeRanges = {
+        snow:      [6, 14],    // visible flakes
+        petals:    [10, 18],   // visible petals
+        fireflies: [7, 12],    // glowing dots
+      }
+      const count = counts[type] || 14
+      const sizeRange = sizeRanges[type] // undefined for mist/ripple
+      for (let i = 0; i < count; i++) {
+        const p = document.createElement('span')
+        p.className = 'island-fx-p'
+        // Per-particle random x/y offset for outward burst trajectories
+        const dx = (Math.random() - 0.5) * 220
+        const dy = (Math.random() - 0.5) * 220
+        const delay = Math.random() * 280
+        p.style.setProperty('--dx', dx + 'px')
+        p.style.setProperty('--dy', dy + 'px')
+        p.style.setProperty('--d', delay + 'ms')
+        if (sizeRange) {
+          const size = sizeRange[0] + Math.random() * (sizeRange[1] - sizeRange[0])
+          p.style.setProperty('--s', size + 'px')
+        }
+        p.style.setProperty('--seed', String(Math.random()))
+        burst.appendChild(p)
+      }
+      fxLayer.appendChild(burst)
+      // Auto-remove after the longest animation finishes (~2s + max delay)
+      setTimeout(() => burst.remove(), 2400)
+    }
     wrap.addEventListener('click', (e) => {
-      // V53: don't navigate when a chip absorbed the click
+      // Chip click: let it do its own thing (Step in navigates, cycle cycles)
       if ((e.target instanceof Element) && e.target.closest('.island-pet-chip')) return
+      // Touch: first tap reveals panel (no fx)
       if (isTouch && !wrap.classList.contains('is-revealed')) {
         wrap.classList.add('is-revealed')
-        // Sync inert so chips become tappable
         const p = wrap.querySelector('.island-pet-panel')
         if (p) p.inert = false
         e.preventDefault()
         return
       }
-      location.href = wrap.dataset.href || '/world/'
+      // Otherwise: play random fx
+      playFx(e)
     })
     if (isTouch) {
       document.addEventListener('click', (e) => {
@@ -203,10 +258,10 @@ import IslandWidget from './IslandWidget'
     }
     wrap.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
-        // Don't fire pet-level enter if a chip is focused
+        // Don't fire pet-level fx if a chip is focused
         if ((e.target instanceof Element) && e.target.closest('.island-pet-chip')) return
         e.preventDefault()
-        location.href = wrap.dataset.href || '/world/'
+        playFx(null)
       }
     })
 
@@ -418,8 +473,8 @@ import IslandWidget from './IslandWidget'
     // — anything > ~9 chars truncates. 'Enter the forest' was 16 chars
     // and got clipped to 'Enter the f' on first deploy. Tighten.
     const CHIP_LABELS = {
-      zh: { enter: '进入森林岛', cycle: '换一句' },
-      en: { enter: 'Step in', cycle: 'Next' },
+      zh: { enter: '进入森林岛', cycle: '换一句', cycleIcon: '另' },
+      en: { enter: 'Step in',    cycle: 'Next',  cycleIcon: '↻' },
     }
 
     // Expose quote pools on window so the inline cycle handler can
@@ -574,8 +629,13 @@ import IslandWidget from './IslandWidget'
       // and .island-pet-cycle-icon spans for their micro-animations.
       const enterLabel = enterChip?.querySelector('.island-pet-chip-label')
       const cycleLabel = cycleChip?.querySelector('.island-pet-chip-label')
+      const cycleIcon  = cycleChip?.querySelector('.island-pet-cycle-icon')
       if (enterLabel) enterLabel.textContent = CHIP_LABELS[lang].enter
       if (cycleLabel) cycleLabel.textContent = CHIP_LABELS[lang].cycle
+      // Lang-aware icon: ZH "另" (serif), EN "↻" (geometric). The
+      // press-down animation works on both — no rotation now so the
+      // CJK-vs-geometric divide doesn't matter.
+      if (cycleIcon) cycleIcon.textContent = CHIP_LABELS[lang].cycleIcon
     }
     applyLang()
     // V53: defer one more pass after site's i18n promise resolves
@@ -702,6 +762,112 @@ import IslandWidget from './IslandWidget'
     opacity: 1 !important;
     animation: none;
     visibility: visible;
+  }
+
+  /* ── Click-fx overlay ──────────────────────────────────────────
+     Sits on top of the canvas but below the panel/chips. JS spawns
+     burst <div>s in here on pet click; each burst contains N <span>
+     particles that animate via CSS keyframes. Bursts auto-remove
+     after ~2.4s. */
+  .island-pet-fx {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 2;
+    border-radius: inherit;
+  }
+  .island-fx-burst {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .island-fx-p {
+    position: absolute;
+    display: block;
+    width: var(--s, 4px);
+    height: var(--s, 4px);
+    left: var(--cx, 50%);
+    top: var(--cy, 50%);
+    border-radius: 50%;
+    will-change: transform, opacity;
+  }
+
+  /* Snow — white flakes drift from top of pet down past the scene.
+     dx is lateral wobble (set per-particle in JS). */
+  .island-fx-snow .island-fx-p {
+    background: radial-gradient(circle, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.6) 50%, transparent 75%);
+    box-shadow: 0 0 4px rgba(255,255,255,0.4);
+    top: -10px;
+    left: calc(50% + var(--dx, 0px));
+    animation: fx-snow 2000ms cubic-bezier(0.4, 0.1, 0.6, 1) var(--d, 0ms) both;
+  }
+  @keyframes fx-snow {
+    0%   { opacity: 0; transform: translate3d(0, 0, 0); }
+    10%  { opacity: 1; }
+    100% { opacity: 0; transform: translate3d(calc(var(--dx, 0px) * 0.3), 240px, 0); }
+  }
+
+  /* Petals — pink cherry petals burst outward from click point. */
+  .island-fx-petals .island-fx-p {
+    background: radial-gradient(ellipse 70% 100% at 50% 30%, #F6C8D8 0%, #E89DB6 70%, #C77E96 100%);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    box-shadow: 0 1px 2px rgba(200, 100, 130, 0.25);
+    animation: fx-petals 1800ms cubic-bezier(0.2, 0.7, 0.3, 1) var(--d, 0ms) both;
+  }
+  @keyframes fx-petals {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4) rotate(0deg); }
+    15%  { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(60deg); }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy) + 80px)) scale(0.85) rotate(360deg); }
+  }
+
+  /* Fireflies — small warm-yellow glowing dots float outward + up. */
+  .island-fx-fireflies .island-fx-p {
+    background: radial-gradient(circle, #FFE8A0 0%, #FFB860 50%, transparent 80%);
+    box-shadow: 0 0 8px rgba(255, 184, 96, 0.7),
+                0 0 16px rgba(255, 184, 96, 0.3);
+    animation: fx-fireflies 1900ms ease-out var(--d, 0ms) both;
+  }
+  @keyframes fx-fireflies {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.4); }
+    20%  { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+    100% { opacity: 0; transform: translate(calc(-50% + var(--dx) * 0.6), calc(-50% + var(--dy) * 0.6 - 40px)) scale(0.6); }
+  }
+
+  /* Mist — single large soft white circle expands + fades. */
+  .island-fx-mist .island-fx-p {
+    --s: 120px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.15) 40%, transparent 70%);
+    animation: fx-mist 1600ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+  @keyframes fx-mist {
+    0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.3); filter: blur(2px); }
+    25%  { opacity: 0.9; filter: blur(0); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(2.6); filter: blur(8px); }
+  }
+
+  /* Ripple — single expanding circle outline, like a stone hitting water. */
+  .island-fx-ripple .island-fx-p {
+    --s: 0px;
+    background: transparent;
+    border: 2px solid rgba(255, 232, 200, 0.65);
+    box-shadow: 0 0 14px rgba(255, 215, 160, 0.45);
+    animation: fx-ripple 1100ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+  @keyframes fx-ripple {
+    0%   { opacity: 0;   width: 0;     height: 0;     transform: translate(-50%, -50%); border-width: 3px; }
+    10%  { opacity: 0.9; }
+    100% { opacity: 0;   width: 200px; height: 200px; transform: translate(-50%, -50%); border-width: 1px; }
+  }
+
+  /* Honor prefers-reduced-motion — skip the fx animations entirely,
+     just brief flash + fade (the click is still acknowledged but no
+     vestibular-disorder trigger). */
+  @media (prefers-reduced-motion: reduce) {
+    .island-fx-p {
+      animation: none !important;
+      opacity: 0;
+    }
   }
   .island-pet-hint {
     position: absolute;
