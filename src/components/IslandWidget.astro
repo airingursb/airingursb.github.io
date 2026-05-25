@@ -232,7 +232,6 @@ import IslandWidget from './IslandWidget'
       '松风过耳，落英满衣。',
       '此中有真意，欲辨已忘言。',
       '云在青天水在瓶。',
-      '一花一世界，一叶一菩提。',
       '白云深处有人家。',
       '万物静观皆自得。',
       '小岛承天地之闲，木屋藏岁月之声。',
@@ -266,23 +265,15 @@ import IslandWidget from './IslandWidget'
       '一蓑烟雨任平生。',
       '也无风雨也无晴。',
       '海上明月共潮生。',
-      '大风起兮云飞扬。',
       '山高月小，水落石出。',
       '林尽水源便得一山。',
-      '风萧萧兮易水寒。',
       '雁字回时，月满西楼。',
       '念去去，千里烟波。',
-      '醉里挑灯看剑。',
-      '大江东去。',
-      '江山如画。',
       '一江春水向东流。',
       '庭院深深深几许。',
       '寒夜客来茶当酒。',
       '山是眉峰聚。',
       '道法自然。',
-      '上善若水。',
-      '大道至简。',
-      '见素抱朴。',
       '知者不言，言者不知。',
       '涉江采芙蓉。',
       '人闲桂花落。',
@@ -303,7 +294,6 @@ import IslandWidget from './IslandWidget'
       '沾衣欲湿杏花雨。',
       '吹面不寒杨柳风。',
       '春风又绿江南岸。',
-      '落霞与孤鹜齐飞，秋水共长天一色。',
       '落木千山天远大。',
       '澄江一道月分明。',
       '万壑树参天，千山响杜鹃。',
@@ -315,10 +305,8 @@ import IslandWidget from './IslandWidget'
       '旧时茅店社林边，路转溪桥忽见。',
       '千山鸟飞绝，万径人踪灭。',
       '孤舟蓑笠翁，独钓寒江雪。',
-      '此心安处，便是吾乡。',
       '采菊东篱下，悠然见南山。',
       '岁月忽已晚。',
-      '人生天地之间，若白驹之过隙。',
       '逝者如斯夫。',
       '海内存知己，天涯若比邻。',
       '人生若只如初见。',
@@ -327,21 +315,18 @@ import IslandWidget from './IslandWidget'
       '世事一场大梦，人生几度新凉。',
       '坐到三更尽，归仍万里赊。',
       '今宵剩把银釭照，犹恐相逢是梦中。',
-      '一蓑烟雨，半生归来。',
       '心闲是清福。',
     ]
     const QUOTES_EN = [
       'Pine wind in your ear; petals on your sleeve.',
       'Find meaning here — and forget how to say it.',
       'A small island holds the whole sky.',
-      "The chimney smoke knows things you don't.",
       'Sit. Listen. The well still rings.',
       'One leaf, one universe.',
       'Drift in. Drift out.',
       'The cabin is open. Always.',
       'Some doors stay open even when no one is home.',
       'The lantern keeps its own time.',
-      'Wind through pine; that is the lesson.',
       'The bridge is short. The view is long.',
       'Trees grow slow. Then everywhere.',
       'Even the smallest pond holds the moon.',
@@ -355,7 +340,6 @@ import IslandWidget from './IslandWidget'
       'The path will not move; you must.',
       'The stones remember where the river was.',
       'A petal in the pond is also the pond.',
-      'Cabin: warm. World: large.',
       'The bamboo knows the wind by name.',
       'Some silence is louder than rain.',
       "The lantern is full of yesterday's flame.",
@@ -408,7 +392,6 @@ import IslandWidget from './IslandWidget'
       'Even shadows have favorite corners.',
       'The well is honest about its emptiness.',
       'Cabin firewood remembers being a tree.',
-      'The mountain forgot it was a verb.',
       'Petals are the cherry tree saying yes.',
       'The path goes on whether you do or not.',
       'A small house with a low door asks for humility.',
@@ -430,7 +413,6 @@ import IslandWidget from './IslandWidget'
       'There is slow news in the pine needles.',
       'Sit with the lantern until the lantern sits with you.',
       'The cabin is small. The night is large.',
-      'There is a crack in everything — that is how the light gets in.',
     ]
     // Chip labels — JUST the text part (arrow/icon are in separate
     // <span>s inside the button HTML, so applyLang() updates only
@@ -441,7 +423,7 @@ import IslandWidget from './IslandWidget'
     // and got clipped to 'Enter the f' on first deploy. Tighten.
     const CHIP_LABELS = {
       zh: { enter: '进入森林岛', cycle: '换一句' },
-      en: { enter: 'Enter', cycle: 'Next' },
+      en: { enter: 'Step in', cycle: 'Next' },
     }
 
     // Expose quote pools on window so the inline cycle handler can
@@ -562,9 +544,18 @@ import IslandWidget from './IslandWidget'
     // language would let applyLang read a stale module-local quoteIdx
     // and jump the quote backward.
     window.__islandQuoteIdx = Math.floor(Math.random() * minPoolLen)
+    // Track previous language so we can detect actual switches and
+    // pick a fresh random idx — without this, switching from ZH idx 67
+    // to EN reuses idx 67, which is a semantically unrelated quote in
+    // the other pool (tonal jump). Reset = no jarring carry-over.
+    let lastLang = null
     function applyLang() {
       const lang = detectLang()
       const pool = lang === 'zh' ? QUOTES_ZH : QUOTES_EN
+      if (lastLang !== null && lastLang !== lang) {
+        window.__islandQuoteIdx = Math.floor(Math.random() * pool.length)
+      }
+      lastLang = lang
       const idx = (window.__islandQuoteIdx ?? 0) % pool.length
       if (quoteEl) {
         // Per-char stagger via shared helper. Falls back to plain
