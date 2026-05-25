@@ -1358,18 +1358,19 @@ function ContextLossHandlers() {
         wrap.classList.add('island-webgl-failed')
       }
     }
-    const onRestored = () => {
-      const wrap = document.getElementById('island-3d-canvas-wrap')
-      if (wrap) {
-        wrap.classList.remove('island-webgl-failed')
-        wrap.classList.add('island-loaded')
-      }
-    }
+    // No onRestored handler: R3F doesn't auto-recreate the
+    // WebGLRenderer or re-upload geometries/materials after a
+    // 'webglcontextrestored' event — even though the context is
+    // technically alive, all useMemo'd buffers are orphaned and the
+    // canvas would render blank. Optimistically flipping back to
+    // 'island-loaded' would HIDE the skeleton + hint and show the
+    // user an empty 220×220 transparent square with no recovery
+    // affordance. Honest UX: stay in failed state until refresh
+    // (the existing wrapper click handler still navigates to /world/
+    // as the recovery path).
     el.addEventListener('webglcontextlost', onLost, { passive: false } as AddEventListenerOptions)
-    el.addEventListener('webglcontextrestored', onRestored)
     return () => {
       el.removeEventListener('webglcontextlost', onLost)
-      el.removeEventListener('webglcontextrestored', onRestored)
     }
   }, [gl])
   return null
