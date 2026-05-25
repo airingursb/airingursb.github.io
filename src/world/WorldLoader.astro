@@ -156,7 +156,15 @@
     color: rgba(92, 61, 36, 0.55);
   }
 
-  /* V40: WebGL-failed fallback */
+  /* V40: WebGL-failed fallback.
+     CRITICAL: must respect [hidden]! The default [hidden] { display: none }
+     is a user-agent rule with the same specificity (0,1,0) as our
+     .world-webgl-fallback class selector. With ties, AUTHOR styles win
+     — so without an explicit [hidden] override here, our display:flex
+     overrides the browser default and the fallback was visible even
+     when hidden=true was set in JS. (This was the real "无法加载 3D 场景"
+     bug — fallback covered every loading scene.) */
+  .world-webgl-fallback[hidden] { display: none !important; }
   .world-webgl-fallback {
     position: fixed; inset: 0;
     background: linear-gradient(180deg, #2a2438 0%, #14101c 100%);
