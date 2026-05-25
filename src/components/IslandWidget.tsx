@@ -1585,7 +1585,13 @@ function ChimneySmoke() {
       m.position.z = Math.cos(t * 0.4 + i * 0.7) * 0.05 + phase * wind.dirZ * 0.05
       // V10: scale-clamp at phase boundaries hides reset teleport
       // V16: stoke boost — bigger puff burst at hearth peak
-      const baseScale = (0.6 + phase * 0.5) * (1 + hearth.smokeBoost * (i === 0 ? 0.6 : 0.3))
+      // V53 (Sub-A 8): bump stoke boost amplitude so the hearth pulse
+      // VISIBLY causes smoke surge — pre-V53 stoke just dimly nudged
+      // (0.6/0.3) and most viewers couldn't see the causal link
+      // (hearth stoke → smoke surge). Bumped to 1.2/0.6 — puff 0 leads
+      // with a clearly bigger burst when the fire is stoked, puffs 1+2
+      // ride the resulting surge. Causality now reads.
+      const baseScale = (0.6 + phase * 0.5) * (1 + hearth.smokeBoost * (i === 0 ? 1.2 : 0.6))
       const fadeIn = Math.min(1, phase * 4)
       const fadeOut = Math.min(1, (2.7 - phase) * 2)
       m.scale.setScalar(baseScale * fadeIn * fadeOut)
