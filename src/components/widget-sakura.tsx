@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { getWind } from './island-shared';
@@ -361,6 +361,17 @@ export function Sakura({
     )),
     [tree],
   );
+
+  // Dispose ALL tube geometries on unmount. Sakura at hero scale
+  // generates ~148 BufferGeometries (1 trunk + 7 main + 28 sec +
+  // 112 twig); without this dispose each remount leaks the full set
+  // (strict-mode double mount, HMR, Astro view-transition).
+  useEffect(() => () => {
+    trunkGeo.dispose()
+    mainGeos.forEach((g) => g.dispose())
+    secGeos.forEach((g) => g.dispose())
+    twigGeos.forEach((g) => g.dispose())
+  }, [trunkGeo, mainGeos, secGeos, twigGeos])
 
   // Trunk sway COUPLED to the shared getWind() field. Trunk lags
   // petals by 0.5s (high mass) — when the gust kicks petals + furin
