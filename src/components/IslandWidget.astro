@@ -912,7 +912,13 @@ import IslandWidget from './IslandWidget'
       0 0 calc(var(--s) * 1.2) rgba(255, 255, 255, 0.55),
       0 0 calc(var(--s) * 2.4) rgba(255, 250, 240, 0.18);
     opacity: 0;
-    animation: fx-snow-drift var(--fall) linear var(--d) forwards;
+    /* Two animations running independently — fall is steady, sway
+       has a different period. Decoupling kills the metronomic feel
+       where every flake hit the same beat. Sway duration = fall ×
+       random 0.31-0.47 → per-flake aperiodic motion. */
+    animation:
+      fx-snow-fall var(--fall) linear var(--d) forwards,
+      fx-snow-sway calc(var(--fall) * 0.37) ease-in-out var(--d) infinite alternate;
   }
   /* Parallax strata: far flakes blurred + dim (depth illusion),
      near flakes crisp + slightly larger. */
@@ -922,14 +928,21 @@ import IslandWidget from './IslandWidget'
   .island-fx-snow-near {
     filter: blur(0.2px);
   }
-  @keyframes fx-snow-drift {
-    0%   { opacity: 0;          transform: translate3d(0, 0, 0)                                                       rotate(var(--rot)); }
+  /* Fall keyframe: pure vertical drop + opacity envelope. Sway is
+     handled by the parallel fx-snow-sway animation below, which
+     translates horizontally on its own clock. The two compose. */
+  @keyframes fx-snow-fall {
+    0%   { opacity: 0;          transform: translate3d(0, 0, 0)    rotate(var(--rot)); }
     6%   { opacity: var(--op); }
-    25%  {                       transform: translate3d(calc(var(--wobble)  * 1   * var(--wobble-dir)),  70px, 0)     rotate(calc(var(--rot) + 90deg)); }
-    50%  {                       transform: translate3d(calc(var(--wobble)  * -1  * var(--wobble-dir)), 140px, 0)     rotate(calc(var(--rot) + 180deg)); }
-    75%  {                       transform: translate3d(calc(var(--wobble)  * 0.6 * var(--wobble-dir)), 200px, 0)     rotate(calc(var(--rot) + 270deg)); }
     92%  { opacity: var(--op); }
-    100% { opacity: 0;           transform: translate3d(calc(var(--wobble)  * -0.3 * var(--wobble-dir)), 250px, 0)    rotate(calc(var(--rot) + 360deg)); }
+    100% { opacity: 0;          transform: translate3d(0, 250px, 0) rotate(calc(var(--rot) + 360deg)); }
+  }
+  /* Horizontal sway uses the modern `translate` property — it
+     composes with `transform` (which holds the fall translation),
+     so the two animations don't fight for the same property. */
+  @keyframes fx-snow-sway {
+    0%   { translate: calc(var(--wobble) * -1 * var(--wobble-dir)) 0; }
+    100% { translate: calc(var(--wobble) *  1 * var(--wobble-dir)) 0; }
   }
 
   /* ── 吹风 ── Horizontal streaks cross the scene from one side
@@ -993,7 +1006,9 @@ import IslandWidget from './IslandWidget'
     filter: hue-rotate(var(--hue));
     opacity: 0;
     transform-style: preserve-3d;
-    animation: fx-sakura-fall var(--fall) linear var(--d) forwards;
+    /* Cubic-bezier with mild gravitational accel — starts gently
+       then accelerates slightly. Pure linear felt mechanical. */
+    animation: fx-sakura-fall var(--fall) cubic-bezier(0.35, 0.05, 0.55, 1) var(--d) forwards;
   }
   @keyframes fx-sakura-fall {
     0%   { opacity: 0;    transform: translate3d(0, 0, 0)                                                rotateZ(0deg)                                  rotateY(0deg); }
