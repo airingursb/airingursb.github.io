@@ -28,6 +28,12 @@ function mulberry32(seed: number) {
 
 /* ─────────────────────────────────────────────────────────────────────
  * Petal texture (canvas, shared across all sakura)
+ *
+ * INTENTIONALLY module-persistent (never disposed). All Sakura instances
+ * share the same texture — single GPU upload across hero + accent trees
+ * + strict-mode double-mount. If you ever change this to per-tree or
+ * mutate `needsUpdate=true` on every call, strict-mode will silently
+ * trigger a canvas redraw twice. Keep the singleton invariant.
  * ─────────────────────────────────────────────────────────────────────*/
 let sharedPetalTex: THREE.CanvasTexture | null = null;
 function getPetalTexture(): THREE.CanvasTexture {
