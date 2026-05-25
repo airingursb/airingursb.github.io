@@ -312,12 +312,26 @@ export function Sakura({
         if (e <= 1) { ok = true; break; }
       }
       if (!ok) continue;
-      // tint variation
-      const r_ = baseTint.r * (0.88 + rnd() * 0.18);
-      const g_ = baseTint.g * (0.85 + rnd() * 0.2);
-      const b_ = baseTint.b * (0.9 + rnd() * 0.15);
+      // V53 sakura silhouette (Sub-A 10): pre-V53 canopy was a solid
+      // ellipsoid (uniform fluff distribution) — read as 'pink blob'
+      // at pet scale, not unmistakably 'weeping sakura'. Real sakura
+      // has a flat-to-concave bottom + droopy fringe — the *rim*
+      // petals hang lower than the *core* petals. Drop rim petals
+      // proportionally to their horizontal distance from canopy center,
+      // up to ~0.9u of dip. Instant umbrella profile.
+      const rimDip = (Math.sqrt(x * x + z * z) / canopyRX) * 0.9
+      // V53 sakura tint (Sub-A 10): pre-V53 was monochrome cool-pink
+      // noise (multiply baseTint by ±10%). Real sakura canopies have
+      // warm cream-white highlights (sun-hit petals, half-open buds)
+      // breaking up the pink mass. 18% of fluff petals become cream
+      // highlights → chromatic depth, simulates sunlit side without
+      // touching the lighting setup.
+      const warm = rnd() < 0.18
+      const r_ = warm ? 1.0 : baseTint.r * (0.88 + rnd() * 0.18)
+      const g_ = warm ? 0.95 + rnd() * 0.05 : baseTint.g * (0.85 + rnd() * 0.2)
+      const b_ = warm ? 0.88 + rnd() * 0.05 : baseTint.b * (0.9 + rnd() * 0.15)
       petals.push({
-        pos: [x, canopyCY + y, z],
+        pos: [x, canopyCY + y - rimDip, z],
         scale: 0.22 + rnd() * 0.18, // slightly bigger than tip petals to fill
         rot: [rnd() * Math.PI * 2, rnd() * Math.PI * 2, rnd() * Math.PI * 2],
         tint: new THREE.Color(Math.min(1, r_), Math.min(1, g_), Math.min(1, b_)),
