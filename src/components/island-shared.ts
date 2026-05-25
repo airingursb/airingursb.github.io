@@ -205,8 +205,8 @@ export function makePetalShape(): THREE.Shape {
 // muddy defaults vs. intentional Ghibli-correct choices).
 // ─────────────────────────────────────────────────────────────────────
 
-export const SKY            = '#CFE5F5'
-export const FOG_TINT       = '#E8E0D0'
+// V53.5: SKY + FOG_TINT removed (V52 pet-cutout decision — no fog,
+// no sky background; alpha:true canvas shows page bg through).
 
 export const CEDAR_TRUNK    = '#2A1812'
 // Cedar greens cool-shifted +6° toward teal + desat ~4%. Classic
