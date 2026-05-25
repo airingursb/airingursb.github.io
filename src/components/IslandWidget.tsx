@@ -311,6 +311,91 @@ function MinkaCabin() {
           </group>
         )
       })}
+
+      {/* === V53 furin (江戸風鈴) — hanging under the front-right eave ===
+          Glass bell + clapper + tanzaku paper strip. The whole chime
+          sways from its hanging point when wind gusts. Reads as "this
+          house is lived in" at a glance even from across the pet canvas.
+          Position is in cabin-local coords so it inherits the cabin's
+          0.32 rad rotation automatically. */}
+      <FurinChime localX={CABIN_W / 2 - 0.05} eaveY={0.08 + WALL_H + ROOF_RISE * 0.08} localZ={CABIN_D / 2 + Z_OVERHANG * 0.45} />
+    </group>
+  )
+}
+
+// ── V53 Furin (Edo wind chime) — hangs from the cabin eave on a tiny
+//    cord, sways on wind.gust. The tanzaku (paper strip) trails below
+//    the bell and flares more aggressively than the bell itself
+//    (it's lighter — physics intuition through animation amp).
+function FurinChime({ localX, eaveY, localZ }: { localX: number; eaveY: number; localZ: number }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const tanzakuRef = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    const wind = getWind(t)
+    const hover = getHoverBoost(t)
+    const drive = wind.gust + hover * 0.8
+    if (groupRef.current) {
+      // Bell rocks ±0.10 calm, ±0.32 peak gust. Cross-axis offset
+      // gives a believable hanging-string motion (not a 1-axis swing).
+      groupRef.current.rotation.z = Math.sin(t * 1.6) * 0.10 + wind.dirX * 0.20 + drive * 0.32
+      groupRef.current.rotation.x = Math.cos(t * 1.3) * 0.06 + wind.dirZ * 0.15 + drive * 0.18
+    }
+    if (tanzakuRef.current) {
+      // Tanzaku has more inertia → swings wider and lags slightly.
+      tanzakuRef.current.rotation.z = Math.sin(t * 1.5 - 0.3) * 0.22 + drive * 0.55
+      tanzakuRef.current.rotation.x = Math.cos(t * 1.2 - 0.3) * 0.14 + drive * 0.30
+    }
+  })
+  return (
+    <group position={[localX, eaveY, localZ]}>
+      {/* Cord from eave to bell (pivot at top) */}
+      <group ref={groupRef}>
+        <mesh position={[0, -0.045, 0]}>
+          <cylinderGeometry args={[0.0018, 0.0018, 0.09, 4]} />
+          <meshStandardMaterial color="#4a3a2a" roughness={0.95} />
+        </mesh>
+        {/* Glass bell — open hemisphere, sky-blue tint, subtle emissive
+            so it catches the bloom pass like a tiny lit globe at dusk-ish moments. */}
+        <mesh position={[0, -0.105, 0]} rotation={[Math.PI, 0, 0]} castShadow>
+          <sphereGeometry args={[0.028, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
+          <meshStandardMaterial
+            color="#BFE3F0"
+            emissive="#7FC9DC"
+            emissiveIntensity={0.18}
+            roughness={0.25}
+            metalness={0.05}
+            transparent
+            opacity={0.78}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        {/* Bell rim — thin torus to make the open-bottom read */}
+        <mesh position={[0, -0.122, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[0.026, 0.0028, 6, 16]} />
+          <meshStandardMaterial color="#A9D8E6" roughness={0.4} />
+        </mesh>
+        {/* Tiny inner clapper (zetsu) — small dark sphere hanging
+            inside the bell. Reads as "this thing makes noise". */}
+        <mesh position={[0, -0.110, 0]}>
+          <sphereGeometry args={[0.006, 6, 5]} />
+          <meshStandardMaterial color="#2A2A30" roughness={0.6} />
+        </mesh>
+        {/* Tanzaku — paper strip hanging from clapper. Its own group
+            so it can sway with extra amp/lag. */}
+        <group ref={tanzakuRef} position={[0, -0.115, 0]}>
+          <mesh position={[0, -0.055, 0.001]} castShadow>
+            <planeGeometry args={[0.013, 0.085]} />
+            <meshStandardMaterial color="#E85A6B" roughness={0.9} side={THREE.DoubleSide} />
+          </mesh>
+          {/* Subtle white sub-band at bottom of tanzaku (real furin
+              tanzaku usually have a thin printed border). */}
+          <mesh position={[0, -0.092, 0.0012]}>
+            <planeGeometry args={[0.013, 0.012]} />
+            <meshStandardMaterial color="#F9F0F2" roughness={0.85} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      </group>
     </group>
   )
 }
