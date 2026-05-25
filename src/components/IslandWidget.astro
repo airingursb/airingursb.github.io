@@ -357,27 +357,16 @@ import IslandWidget from './IslandWidget'
       while (fxLayer.children.length >= 4) {
         fxLayer.removeChild(fxLayer.firstChild)
       }
-      // Brief pet acknowledgment — the wrapper "settles" slightly on
-      // click via a one-shot class. Subtle, just enough to register
-      // that the click was received before the fx unfolds.
+      // Pet acknowledgment — the wrapper itself "settles" on click.
+      // This is the ONLY tactile feedback. Earlier draft added a
+      // splash overlay (ivory flash at click point) but that was a
+      // Material-style UI primitive — the exact thing the rest of
+      // the system (ripple, moonglow) explicitly rejects. The
+      // press-down is diegetic (the pet object responds); the splash
+      // was an overlay. Five world-effects, no UI-effects.
       wrap.classList.remove('island-pet-tapped')
       void wrap.offsetWidth   // force reflow so class toggle re-fires
       wrap.classList.add('island-pet-tapped')
-      // Tactile splash at click point — a single tiny ivory flash
-      // (160ms) that gives immediate visual feedback BEFORE any
-      // main fx particles appear. Stops the click feeling like a
-      // one-way event during the fx warm-up.
-      if (e && e.clientX != null) {
-        const splashRect = fxLayer.getBoundingClientRect()
-        const sx = e.clientX - splashRect.left
-        const sy = e.clientY - splashRect.top
-        const splash = document.createElement('span')
-        splash.className = 'island-fx-splash'
-        splash.style.left = sx + 'px'
-        splash.style.top = sy + 'px'
-        fxLayer.appendChild(splash)
-        setTimeout(() => splash.remove(), 320)
-      }
       let type
       if (clickCount++ === 0) {
         type = 'sakura'
@@ -886,16 +875,18 @@ import IslandWidget from './IslandWidget'
     filter: drop-shadow(0 10px 20px rgba(40, 50, 60, 0.26))
             brightness(1.04) saturate(1.06);
   }
-  /* Pet "settles" briefly on click — a quick 1px press then return.
-     Subtle acknowledgment that the click registered before the fx
-     starts. Auto-cleared after animation via CSS animation-fill. */
+  /* Pet "settles" on click — crisp 80ms press-down then 240ms
+     ease-out return. Asymmetric timing (fast press, slow release)
+     gives the wrapper itself a tactile weight. This is the ONLY
+     click feedback — no overlay splash, no UI ripple. Diegetic
+     only: the pet object responds, not a UI element on top of it. */
   .island-pet-tapped {
-    animation: island-pet-press 280ms cubic-bezier(0.34, 1.56, 0.64, 1);
+    animation: island-pet-press 320ms cubic-bezier(0.34, 1.36, 0.64, 1);
   }
   @keyframes island-pet-press {
-    0%   { transform: translateY(-2px); }
-    40%  { transform: translateY(1px); }
-    100% { transform: translateY(-2px); }
+    0%   { transform: translateY(-2px) scale(1); }
+    25%  { transform: translateY(1px)  scale(0.985); }
+    100% { transform: translateY(-2px) scale(1); }
   }
   .island-pet:focus-visible {
     outline: 2px solid var(--c-accent, #6ABE5C);
@@ -965,32 +956,9 @@ import IslandWidget from './IslandWidget'
   /* Z-order: hero effects (petals + lantern bloom) above atmospheric
      (snow/wind). If user rapid-clicks and bursts overlap, sakura and
      moonglow read as foreground subject; the rest as background
-     atmosphere. Splash sits on top of everything — it's the click ack. */
+     atmosphere. */
   .island-fx-burst.island-fx-sakura   { z-index: 2; }
   .island-fx-burst.island-fx-moonglow { z-index: 3; }
-  /* Tactile splash — single ivory flash at click point. Gives
-     immediate feedback (160ms) before the fx particles start. */
-  .island-fx-splash {
-    position: absolute;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: radial-gradient(circle,
-                  rgba(255, 240, 210, 0.7) 0%,
-                  rgba(255, 220, 170, 0.35) 50%,
-                  transparent 80%);
-    box-shadow: 0 0 14px rgba(255, 220, 170, 0.4);
-    transform: translate(-50%, -50%) scale(0.4);
-    opacity: 0;
-    pointer-events: none;
-    z-index: 4;
-    animation: fx-splash 280ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-  }
-  @keyframes fx-splash {
-    0%   { opacity: 0;    transform: translate(-50%, -50%) scale(0.4); }
-    30%  { opacity: 0.95; transform: translate(-50%, -50%) scale(1.4); }
-    100% { opacity: 0;    transform: translate(-50%, -50%) scale(2.2); }
-  }
   .island-fx-p {
     position: absolute;
     display: block;
