@@ -282,7 +282,7 @@ const LIGHT_PHASE: Record<TimePhase, LightParams> = {
   dawn:  { sunPos: [10, 3, 18], sunColor: '#FFAE82', sunIntensity: 1.4, ambientColor: '#E8C0A0', ambientIntensity: 0.30, hemiSky: '#F4B89A', hemiGround: '#4A2E1E', fillColor1: '#F6BC95', fillColor2: '#EAA084' },
   day:   { sunPos: [20, 11, 9], sunColor: '#FFD09A', sunIntensity: 2.2, ambientColor: '#FFE4C0', ambientIntensity: 0.35, hemiSky: '#FFD9A8', hemiGround: '#5A3A28', fillColor1: '#FAD6B0', fillColor2: '#F4D9A0' },
   dusk:  { sunPos: [18, 4, 14], sunColor: '#FF9A6A', sunIntensity: 1.6, ambientColor: '#E8B888', ambientIntensity: 0.28, hemiSky: '#E89A6E', hemiGround: '#3A2418', fillColor1: '#D8A088', fillColor2: '#D9886B' },
-  night: { sunPos: [4, 8, 12],  sunColor: '#9AAFD0', sunIntensity: 0.35, ambientColor: '#3E4870', ambientIntensity: 0.18, hemiSky: '#5A6080', hemiGround: '#1A1828', fillColor1: '#5A6088', fillColor2: '#454C72' },
+  night: { sunPos: [4, 8, 12],  sunColor: '#9AAFD0', sunIntensity: 0.45, ambientColor: '#3E4870', ambientIntensity: 0.26, hemiSky: '#5A6080', hemiGround: '#1A1828', fillColor1: '#5A6088', fillColor2: '#454C72' },
 }
 function lerpLight(phase: TimePhase, blend: number): LightParams {
   const order: TimePhase[] = ['dawn', 'day', 'dusk', 'night']

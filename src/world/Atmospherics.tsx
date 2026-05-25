@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { getGust } from './wind'
+import { useTimeOfDay } from './time-of-day'
 
 const MAPLE_LEAF = '#D9622B'
 const CHERRY_PETAL = '#E8D2DC'
@@ -239,19 +240,24 @@ function DustMotes() {
 }
 
 export default function Atmospherics() {
+  // F-sync: birds only fly when daylight; counts reduce at night.
+  const tod = useTimeOfDay()
+  const birdsActive = tod.phase === 'day' || (tod.phase === 'dawn' && tod.blend > 0.4)
+  const isNight = tod.phase === 'night'
   // Cherry petals falling at the south cherry tree position [6.0, 19.0]
-  const petals = useMemo(() => makeFallingParticles([6.0, 4.0, 19.0], 14, CHERRY_PETAL, [0.07, 0.12]), [])
-  // Maple leaves falling at the NW maple position [-14.0, -13.0]
-  const leaves = useMemo(() => makeFallingParticles([-14.0, 4.0, -13.0], 12, MAPLE_LEAF, [0.09, 0.14]), [])
-  // Another maple position [13.0, -10.0]
-  const leaves2 = useMemo(() => makeFallingParticles([13.0, 4.0, -10.0], 10, MAPLE_LEAF, [0.08, 0.12]), [])
+  const petalCount = isNight ? 4 : 14   // 30% at night — barely visible against dark sky
+  const leafCount = isNight ? 4 : 12
+  const leafCount2 = isNight ? 3 : 10
+  const petals = useMemo(() => makeFallingParticles([6.0, 4.0, 19.0], petalCount, CHERRY_PETAL, [0.07, 0.12]), [petalCount])
+  const leaves = useMemo(() => makeFallingParticles([-14.0, 4.0, -13.0], leafCount, MAPLE_LEAF, [0.09, 0.14]), [leafCount])
+  const leaves2 = useMemo(() => makeFallingParticles([13.0, 4.0, -10.0], leafCount2, MAPLE_LEAF, [0.08, 0.12]), [leafCount2])
 
   return (
     <group>
       <FallingLeaves particles={petals} />
       <FallingLeaves particles={leaves} />
       <FallingLeaves particles={leaves2} />
-      <BirdFlock count={7} startX={-50} height={28} speed={0.5} />
+      {birdsActive && <BirdFlock count={7} startX={-50} height={28} speed={0.5} />}
       <DustMotes />
     </group>
   )

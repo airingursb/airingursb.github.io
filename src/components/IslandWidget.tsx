@@ -496,20 +496,32 @@ function EngawaCat({ localX, engawaY, localZ }: { localX: number; engawaY: numbe
 // ── Stone lantern (smooth-shaded, no flat) ──────────────────────────
 function StoneLantern({ x, z }: { x: number; z: number }) {
   const flameRef = useRef<THREE.Group>(null)
+  // F-sync: lantern intensity multiplier by real time. Brighter at
+  // night (~1.8×), normal at noon (~1.0×). Lanterns are for darkness.
+  const biasRef = useRef(1)
+  useEffect(() => {
+    const update = () => {
+      const b = getTimeBias()
+      // bias.intensity ranges 0.18 (midnight) to 2.15 (noon).
+      // Map 2.15 → 1.0 (noon multiplier), 0.18 → 1.85 (midnight).
+      biasRef.current = 1.85 - (b.intensity / 2.15) * 0.85
+    }
+    update()
+    const id = setInterval(update, 60000)
+    return () => clearInterval(id)
+  }, [])
   useFrame((s) => {
     if (!flameRef.current) return
     const t = s.clock.elapsedTime
     const hearth = getHearth(t - 0.30)
-    // Flame leans into the same gust driving the petals + smoke +
-    // furin — without this couple, the 4.3Hz sin reads as 'rigid
-    // periodic oscillator' against the wind-coordinated rest of scene.
     const wind = getWind(t - 0.30)
-    const intensity =
+    const baseIntensity =
       0.85 +
       Math.sin(t * 4.3) * 0.08 +
       Math.sin(t * 11.7) * 0.04 +
       wind.gust * 0.06 -
       hearth.lanternDim
+    const intensity = baseIntensity * biasRef.current
     flameRef.current.traverse((obj) => {
       const m = obj as THREE.Mesh
       if (m.isMesh && m.material) {
@@ -1197,12 +1209,25 @@ function BreathingShoji({ position, size }: {
   const baseColor = useMemo(() => new THREE.Color(WASHI_GLOW), [])
   const emberColor = useMemo(() => new THREE.Color(SHOJI_EMBER), [])
   const scratch = useMemo(() => new THREE.Color(), [])
+  // F-sync: shoji glow brighter at night, dimmer at noon. Inside-out
+  // perception — paper window glows MORE against dark sky.
+  const biasRef = useRef(1)
+  useEffect(() => {
+    const update = () => {
+      const b = getTimeBias()
+      // Map intensity 2.15 (noon) → 0.55× shoji, 0.18 (midnight) → 1.4×
+      biasRef.current = 1.4 - (b.intensity / 2.15) * 0.85
+    }
+    update()
+    const id = setInterval(update, 60000)
+    return () => clearInterval(id)
+  }, [])
   useFrame((s) => {
     if (!ref.current) return
     const t = s.clock.elapsedTime
     const hearth = getHearth(t - 0.15)
     const hover = getHoverBoost(t)
-    ref.current.emissiveIntensity = 0.62 + Math.sin(t * 0.6) * 0.05 + hearth.shojiBrighten + hover * 0.18
+    ref.current.emissiveIntensity = (0.62 + Math.sin(t * 0.6) * 0.05 + hearth.shojiBrighten + hover * 0.18) * biasRef.current
     // Warm tint shift on hearth peak — fire's hue bleeds through paper
     scratch.copy(baseColor).lerp(emberColor, Math.max(0, Math.min(0.6, hearth.shojiBrighten * 1.2)))
     ref.current.emissive.copy(scratch)
