@@ -533,7 +533,10 @@ function StoneLantern({ x, z }: { x: number; z: number }) {
       </mesh>
       <mesh position={[0, 0.45, 0]} castShadow>
         <cylinderGeometry args={[0.14, 0.16, 0.04, 8]} />
-        <meshStandardMaterial color={STONE_HAT} roughness={0.95} />
+        {/* V53 mat (Sub-A): hat-cap pieces get micro metalness so the
+            sun gives a faint highlight ridge — separates 'rain-polished
+            cap' from 'weathered base' that stays matte. */}
+        <meshStandardMaterial color={STONE_HAT} roughness={0.78} metalness={0.05} />
       </mesh>
       <mesh position={[0, 0.56, 0]} castShadow>
         <boxGeometry args={[0.22, 0.16, 0.22]} />
@@ -562,14 +565,14 @@ function StoneLantern({ x, z }: { x: number; z: number }) {
         {/* Tiny inner pointLight — bounces warm glow onto the stone hat */}
         <pointLight position={[0, 0.56, 0]} intensity={0.35} distance={0.45} decay={2} color={LANTERN_GLOW} />
       </group>
-      {/* Roof (6-sided low pyramid) */}
+      {/* Roof (6-sided low pyramid) — V53 mat: cap gets micro metalness */}
       <mesh position={[0, 0.74, 0]} castShadow>
         <coneGeometry args={[0.27, 0.16, 6]} />
-        <meshStandardMaterial color={STONE_HAT} roughness={0.95} flatShading />
+        <meshStandardMaterial color={STONE_HAT} roughness={0.78} metalness={0.05} flatShading />
       </mesh>
       <mesh position={[0, 0.86, 0]} castShadow>
         <sphereGeometry args={[0.042, 12, 10]} />
-        <meshStandardMaterial color={STONE_HAT} roughness={0.92} />
+        <meshStandardMaterial color={STONE_HAT} roughness={0.78} metalness={0.05} />
       </mesh>
     </group>
   )
@@ -792,15 +795,15 @@ function Tsukubai({ x, z }: { x: number; z: number }) {
         <boxGeometry args={[0.34, 0.26, 0.34]} />
         <meshStandardMaterial color={STONE_BASE} roughness={0.95} flatShading />
       </mesh>
-      {/* Deeper stone trim around top edge */}
+      {/* Deeper stone trim around top edge — V53 mat: cap finish */}
       <mesh position={[0, 0.27, 0]} castShadow>
         <boxGeometry args={[0.40, 0.04, 0.40]} />
-        <meshStandardMaterial color={STONE_HAT} roughness={0.95} flatShading />
+        <meshStandardMaterial color={STONE_HAT} roughness={0.78} metalness={0.05} flatShading />
       </mesh>
       {/* Basin lip — small torus around the rim makes the cavity read */}
       <mesh position={[0, 0.27, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <torusGeometry args={[0.13, 0.012, 8, 22]} />
-        <meshStandardMaterial color={STONE_HAT} roughness={0.95} />
+        <meshStandardMaterial color={STONE_HAT} roughness={0.78} metalness={0.05} />
       </mesh>
       {/* Recessed water surface — V14: animated micro-ripple via WaterSurface */}
       <WaterSurface />
@@ -1177,7 +1180,13 @@ function BreathingShoji({ position, size }: {
     const hearth = getHearth(t - 0.15)
     // V20: hover flare adds extra brighten
     const hover = getHoverBoost(t)
-    ref.current.emissiveIntensity = 0.42 + Math.sin(t * 0.6) * 0.05 + hearth.shojiBrighten + hover * 0.18
+    // V53 materials (Sub-A 5/5 impact): bump base 0.42→0.62 so the
+    // shoji's steady-state crosses the Bloom luminanceThreshold (0.85)
+    // gently. Pre-V53 only peaked into bloom on hover — the cabin's
+    // 'gravitational anchor' glow was invisible to the post pass for
+    // 95% of the time. Now the cabin genuinely radiates as the hero
+    // warm-light anchor at all times.
+    ref.current.emissiveIntensity = 0.62 + Math.sin(t * 0.6) * 0.05 + hearth.shojiBrighten + hover * 0.18
     // V53: warm tint shift on hearth peak — fire's hue bleeds through paper
     scratch.copy(baseColor).lerp(emberColor, Math.max(0, Math.min(0.6, hearth.shojiBrighten * 1.2)))
     ref.current.emissive.copy(scratch)
@@ -1454,11 +1463,24 @@ function WaterSurface() {
   })
   return (
     <mesh ref={ref} geometry={geo} position={[0, 0.255, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <meshStandardMaterial
-        color="#2A4C58"
-        roughness={0.25}
-        metalness={0.40}
-        envMapIntensity={1.1}
+      {/* V53 mat (Sub-A): basin water swapped from meshStandard
+          (color/metalness 0.4/rough 0.25 — read as 'infinity pool
+          chrome') to meshPhysical with clearcoat + transmission.
+          Shallow stone-basin water is a lacquer-thin top layer,
+          not a metal sheen. ior 1.33 matches real water. Same
+          family of treatment as the furin glass bell — consistency
+          = harmony. Killing metalness also fixes a subtle bluish-
+          chrome glint that was competing with sakura pinks under
+          tone mapping. */}
+      <meshPhysicalMaterial
+        color="#3A5A66"
+        roughness={0.18}
+        metalness={0.0}
+        clearcoat={1.0}
+        clearcoatRoughness={0.15}
+        transmission={0.35}
+        thickness={0.08}
+        ior={1.33}
       />
     </mesh>
   )
