@@ -819,7 +819,18 @@ function makeDisplacedGroundGeo(): THREE.BufferGeometry {
 // reviewer's exact phrase) — ridged noise gives jagged overhangs +
 // vertical erosion grooves + exposed-root edge feel.
 function makeDisplacedCliffGeo(): THREE.BufferGeometry {
-  const g = new THREE.CylinderGeometry(2.05, 1.4, 1.45, 48, 8)
+  // Pre-V53.5 was a 2.05 → 1.4 cylinder (29% taper) — looked like a
+  // 'tan flowerpot' under the grass. Real floating-island silhouette:
+  // dramatic teardrop taper (top → narrow rocky point), pronounced
+  // erosion grooves, downward stalactite features at the bottom.
+  // Bumped: bottom radius 1.4 → 0.55 (73% taper), height 1.45 → 1.85
+  // (deeper drop), ridged amp 0.18 → 0.34 (more visible grooves),
+  // bottom stretch factor adds vertical stalactite-like elongation
+  // at the apex.
+  const TOP_R = 2.05
+  const BOT_R = 0.55
+  const HEIGHT = 1.85
+  const g = new THREE.CylinderGeometry(TOP_R, BOT_R, HEIGHT, 56, 12)
   const pos = g.attributes.position
   const colors = new Float32Array(pos.count * 3)
   const cSoil = new THREE.Color(SOIL)
@@ -835,23 +846,35 @@ function makeDisplacedCliffGeo(): THREE.BufferGeometry {
       const n1 = Math.sin(angle * 7.3 + y * 0.8) * 0.5
       const n2 = Math.cos(angle * 11.7 - y * 1.2) * 0.25
       const n3 = Math.sin(angle * 19.1 + y * 2.3) * 0.12
-      // Ridged: abs-fold makes peaks instead of waves
-      const ridged = Math.abs(n1 + n2 + n3) * 0.5
-      // Outward bulge — more on cliff face (lower y), less on top (higher y)
-      const yFactor = (1 - (y + 0.725) / 1.45)  // 0 at top, 1 at bottom
-      const radial = 1 + ridged * 0.18 * yFactor + (Math.sin(angle * 23 + y * 4) * 0.04) * yFactor
+      const n4 = Math.sin(angle * 29 + y * 3.1) * 0.06   // micro detail
+      const ridged = Math.abs(n1 + n2 + n3 + n4) * 0.5
+      // yFactor: 0 at top, 1 at bottom — erosion concentrates at the
+      // dry-cliff face (lower portion), top stays soil-smooth
+      const yFactor = (1 - (y + HEIGHT / 2) / HEIGHT)
+      // Boost the radial expansion AT the cliff face (yFactor > 0.3)
+      // so the silhouette gets jagged outcrops, not just bumps
+      const ridgedBoost = yFactor > 0.3 ? ridged * 0.42 : ridged * 0.18
+      const radial = 1 + ridgedBoost * yFactor + (Math.sin(angle * 23 + y * 4) * 0.05) * yFactor
       pos.setX(i, x * radial)
       pos.setZ(i, z * radial)
+      // Stalactite stretch — the lowest ring of vertices gets pulled
+      // DOWN slightly along angle-driven phase, giving a few hanging
+      // 'fang' rocks at the apex. Subtle, no per-vertex if-tree.
+      if (y < -HEIGHT / 2 + 0.1) {
+        const stalactite = Math.max(0, Math.sin(angle * 5 + 1.7)) * 0.18
+                         + Math.max(0, Math.sin(angle * 8 + 3.2)) * 0.10
+        pos.setY(i, y - stalactite)
+      }
     }
     // Vertex color: lerp soil→cliff by Y (top=soil, bottom=cliff_dk)
-    const yNorm = (y + 0.725) / 1.45  // 0 bottom, 1 top
+    const yNorm = (y + HEIGHT / 2) / HEIGHT  // 0 bottom, 1 top
     let c: THREE.Color
-    if (yNorm > 0.7) {
-      c = new THREE.Color().lerpColors(cSoil, cSoil, 0) // top: pure soil
-    } else if (yNorm > 0.4) {
-      c = new THREE.Color().lerpColors(cSoilDk, cSoil, (yNorm - 0.4) / 0.3)
+    if (yNorm > 0.78) {
+      c = cSoil.clone()
+    } else if (yNorm > 0.45) {
+      c = new THREE.Color().lerpColors(cSoilDk, cSoil, (yNorm - 0.45) / 0.33)
     } else {
-      c = new THREE.Color().lerpColors(cCliffDk, cCliff, yNorm / 0.4)
+      c = new THREE.Color().lerpColors(cCliffDk, cCliff, yNorm / 0.45)
     }
     colors[i * 3] = c.r
     colors[i * 3 + 1] = c.g
@@ -872,7 +895,10 @@ function DisplacedCliff() {
   return (
     <mesh
       geometry={geo}
-      position={[0, -0.725, 0]}
+      // Position so the cylinder's TOP plane (y=+HEIGHT/2 local) sits
+      // at world y=0 (where the grass disc lives). New HEIGHT=1.85 →
+      // top at y=0 means mesh center at y=-0.925 (was -0.725 at H=1.45).
+      position={[0, -0.925, 0]}
       scale={[1.05, 1.0, 0.78]}
       rotation={[0, 0.35, 0]}
       castShadow
