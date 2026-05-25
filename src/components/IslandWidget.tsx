@@ -1314,7 +1314,7 @@ function FallingPetals() {
   return (
     <instancedMesh
       ref={ref}
-      args={[petalGeo, undefined as any, COUNT]}
+      args={[petalGeo, undefined as unknown as THREE.Material, COUNT]}
       frustumCulled={false}
     >
       <meshStandardMaterial

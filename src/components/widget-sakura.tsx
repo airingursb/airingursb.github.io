@@ -168,7 +168,7 @@ export function Sakura({
   position, seed = 1234, size = 1, density = 1, rotY = 0, hero = false, tint = '#fad9e4',
 }: SakuraProps) {
   const tex = useMemo(() => (typeof document !== 'undefined' ? getPetalTexture() : null), []);
-  const baseTint = useMemo(() => new THREE.Color(tint as any), [tint]);
+  const baseTint = useMemo(() => new THREE.Color(tint), [tint]);
 
   // Build entire tree from seed
   const tree = useMemo(() => {
