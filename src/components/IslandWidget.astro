@@ -412,9 +412,12 @@ import IslandWidget from './IslandWidget'
     // <span>s inside the button HTML, so applyLang() updates only
     // the .island-pet-chip-label span, preserving the icon spans
     // for their hover/spin micro-interactions).
+    // EN must be SHORT to fit 220px panel after the cycle chip + gap
+    // — anything > ~9 chars truncates. 'Enter the forest' was 16 chars
+    // and got clipped to 'Enter the f' on first deploy. Tighten.
     const CHIP_LABELS = {
       zh: { enter: '进入森林岛', cycle: '换一句' },
-      en: { enter: 'Enter the forest', cycle: 'Another' },
+      en: { enter: 'Enter', cycle: 'Next' },
     }
 
     // Expose quote pools on window so the inline cycle handler can
@@ -718,10 +721,12 @@ import IslandWidget from './IslandWidget'
     flex: 1 1 auto;
     white-space: nowrap;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
-    /* Allow arrow micro-animation (the → glyph is an inline span,
-       see the JSX wrapping below). */
-    overflow: hidden;
     position: relative;
+    /* Single-line ellipsis fallback for any future label that's too
+       long — won't trigger at current EN 'Enter' / ZH '进入森林岛'. */
+    text-overflow: ellipsis;
+    overflow: hidden;
+    min-width: 0;
   }
   .island-pet-chip:hover {
     background: rgba(220, 100, 68, 1);
