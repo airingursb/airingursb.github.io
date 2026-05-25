@@ -209,8 +209,14 @@ export const SKY            = '#CFE5F5'
 export const FOG_TINT       = '#E8E0D0'
 
 export const CEDAR_TRUNK    = '#2A1812'
-export const CEDAR_DARK     = '#385830'
-export const CEDAR_LIGHT    = '#4E6E40'
+// Cedar greens cool-shifted +6° toward teal + desat ~4%. Classic
+// plein-air aerial-perspective trick: distant foliage loses chroma
+// toward sky-tint before it loses value. The 2 cedars sit at the
+// back of the disc (z=-1.05/-1.45) — without this shift they read
+// as mid-plane mass competing with the cabin warm tones; the cool
+// tint pushes them into 'back row' where they belong.
+export const CEDAR_DARK     = '#3D5A3E'
+export const CEDAR_LIGHT    = '#566E54'
 
 // Ghibli earth tones — warmer than naive sage/mud defaults.
 // Grass tuned to bridge to the V53.5 weathered teardrop cliff.
