@@ -293,6 +293,11 @@ import IslandWidget from './IslandWidget'
           p.style.setProperty('--rz',     rand(120, 280) * (Math.random() < 0.5 ? 1 : -1) + 'deg')
           p.style.setProperty('--ry',     rand(420, 720) + 'deg')   // two-flip-ish
           p.style.setProperty('--hue',    rand(-10, 12) + 'deg')
+          // Brightness varies slightly per petal — some catch more
+          // light than others (3D effect). Combined with hue-rotate
+          // this gives ~6 distinct visual variants from a single
+          // base color.
+          p.style.setProperty('--bright', rand(0.92, 1.08).toFixed(2))
           burst.appendChild(p)
         }
       },
@@ -1073,7 +1078,9 @@ import IslandWidget from './IslandWidget'
     background: radial-gradient(ellipse 70% 100% at 50% 30%, #F8D6E2 0%, #EFB1C6 60%, #C77E96 100%);
     border-radius: 50% 50% 50% 50% / 65% 65% 35% 35%;
     box-shadow: 0 1px 2px rgba(180, 90, 120, 0.18);
-    filter: hue-rotate(var(--hue));
+    /* Per-petal hue-rotate + brightness yields ~6 visual variants
+       from the single base palette — naturalistic instead of cloned. */
+    filter: hue-rotate(var(--hue)) brightness(var(--bright, 1));
     opacity: 0;
     transform-style: preserve-3d;
     /* Cubic-bezier with mild gravitational accel — starts gently
