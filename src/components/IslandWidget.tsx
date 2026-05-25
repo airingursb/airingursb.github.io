@@ -1033,7 +1033,9 @@ function AnimatedSun() {
       intensity={2.5}
       color="#FFE8C0"
       castShadow
-      shadow-mapSize={[2048, 2048]}
+      // 1024² is plenty at a 220×220 canvas — 2048² halved the
+      // shadow-pass cost for zero visible difference.
+      shadow-mapSize={[1024, 1024]}
       shadow-camera-near={0.5}
       shadow-camera-far={14}
       shadow-camera-left={-3.5}
@@ -1223,14 +1225,22 @@ function FallingPetals() {
         t * 0.6 + sd.phaseR,
         Math.cos(t * 0.7 + sd.phaseR) * 0.4,
       )
-      ref.current!.setColorAt(i, tints[sd.tintIdx])
       dummy.scale.setScalar(sd.scale)
       dummy.updateMatrix()
       ref.current!.setMatrixAt(i, dummy.matrix)
     })
     ref.current.instanceMatrix.needsUpdate = true
-    if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true
   })
+
+  // Per-instance tints are STATIC (each seed's tintIdx is set once) —
+  // write them in a one-shot effect, not in the per-frame loop. Was
+  // causing a 60×3-float instanceColor GPU re-upload every frame.
+  useEffect(() => {
+    const m = ref.current
+    if (!m) return
+    seeds.forEach((sd, i) => m.setColorAt(i, tints[sd.tintIdx]))
+    if (m.instanceColor) m.instanceColor.needsUpdate = true
+  }, [seeds, tints])
 
   return (
     <instancedMesh
@@ -1532,7 +1542,11 @@ export default function IslandWidget() {
           off the disc into empty space → user reported "torii floating".
           Pulled to z=1.05 + softened rotation so both posts stay on
           grass at every rotation angle of RotatingScene. */}
-      <Torii x={0.45} z={1.05} rotY={-0.25} />
+      {/* rotY -0.25 → -0.42 (~10° more CW): the torii's opening now
+          faces the cabin/lantern axis, framing the path through the
+          stepping stones toward the shoji glow instead of competing
+          with the sakura on the same upper-right diagonal. */}
+      <Torii x={0.45} z={1.05} rotY={-0.42} />
 
         {/* V53.2 (Sub-A reverse pass): Tsukubai removed.
             Karesansui IS dry water — having literal water + symbolic
