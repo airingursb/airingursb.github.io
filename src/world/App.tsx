@@ -19,6 +19,7 @@ import { OrbitControls } from '@react-three/drei'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { on } from './events'
+import { useTimeOfDay, setManualOverride } from './time-of-day'
 import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast, SSAO, DepthOfField, Vignette } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
 import { ACESFilmicToneMapping } from 'three'
@@ -218,6 +219,8 @@ function ThemeAwareLights({ theme }: { theme: Theme }) {
   )
 }
 
+// Legacy localStorage key — kept for migration. New code uses
+// time-of-day.ts which has its own STORAGE_KEY.
 const THEME_KEY = 'world-theme-v1'
 
 interface BlogEntry { title: string; link: string; date: string }
@@ -234,15 +237,29 @@ export interface AppInitialData {
 
 export default function App({ initialData }: { initialData?: AppInitialData } = {}) {
   const data = initialData ?? { blog: [], music: [], reading: [], comics: [] }
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === 'undefined') return 'day'
-    try { return (localStorage.getItem(THEME_KEY) as Theme) || 'day' } catch { return 'day' }
-  })
+  // Theme is now DERIVED from time-of-day (real local time, with manual
+  // override via setManualOverride()). The legacy 'world-theme' event +
+  // localStorage are still honored for back-compat with WorldUI's toggle.
+  const tod = useTimeOfDay()
+  const theme: Theme = tod.theme
   useEffect(() => on('world-theme', (next) => {
-    setTheme(next)
+    // User flipped the toggle — write to the new override system AND
+    // legacy key (for migration). time-of-day.ts handles propagation.
+    setManualOverride(next)
     document.body.dataset.worldTheme = next
     try { localStorage.setItem(THEME_KEY, next) } catch {}
   }), [])
+  // Migrate legacy localStorage on first mount: if old THEME_KEY exists
+  // but new STORAGE_KEY doesn't, transfer the value.
+  useEffect(() => {
+    try {
+      const legacy = localStorage.getItem(THEME_KEY)
+      const current = localStorage.getItem('world-time-override')
+      if (legacy && !current && (legacy === 'day' || legacy === 'dusk')) {
+        setManualOverride(legacy as Theme)
+      }
+    } catch {}
+  }, [])
   // V2 wave 3 perf (Sub-A P1 from first audit, finally addressed):
   // pause the render loop when the tab is backgrounded. ~25+ useFrame
   // loops would otherwise burn CPU + battery for an invisible scene.
