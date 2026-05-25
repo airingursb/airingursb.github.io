@@ -1782,13 +1782,20 @@ export default function IslandWidget() {
             preserve frustum-top clearance. Also x 0.55 → 0.40 to
             redistribute mass leftward (right side was overloaded
             with sakura + torii + tsukubai). */}
+        {/* V53 first-impression fix (Sub-A 11): density 0.65→1.0
+            bumps fluff petals 455 → 700 (+54%) so the sakura's
+            silhouette mass beats the dark cliff as primary shape
+            at 220×220 first-glance. Keep hero=false to preserve
+            frustum-top clearance (hero=true would also bump
+            canopyRY 1.4→2.0 + canopyCY +0.4 → canopy top y≈3.75
+            vs frustum 3.25; that path requires scale reduction). */}
         <WindSway amp={0.018} freq={0.5}>
           <group position={[0.40, 0, 0.15]} scale={0.56}>
             <Sakura
               position={[0, 0, 0]}
               seed={20260524}
               size={1.0}
-              density={0.65}
+              density={1.0}
               hero={false}
               rotY={0.4}
               tint="#fad9e4"
