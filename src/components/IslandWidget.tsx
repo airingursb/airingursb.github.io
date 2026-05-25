@@ -473,6 +473,26 @@ function StoneLantern({ x, z }: { x: number; z: number }) {
 
 // ── Torii (smooth posts, slight kasagi curve via two stacked layers) ─
 function Torii({ x, z, rotY = 0 }: { x: number; z: number; rotY?: number }) {
+  // V53 shimenawa — sagging rice-straw rope strung between the two
+  // posts at the nuki level, with three zigzag white shide paper
+  // streamers. The white shide on vermillion torii is the highest-
+  // contrast "READ AS SHRINE" cultural signal that survives at
+  // pet-canvas scale. Geometry pre-built once, no per-frame work.
+  const shimenawaGeo = useMemo(() => {
+    // Catenary sag between x=-0.42 and x=0.42 at y=0.94 → 0.84 (mid).
+    const pts: THREE.Vector3[] = []
+    const N = 22
+    for (let i = 0; i <= N; i++) {
+      const t = i / N
+      const x = -0.42 + t * 0.84
+      // Catenary: cosh-shape sag, normalized so endpoints meet 0.94.
+      const sag = 0.10 * (1 - 4 * (t - 0.5) * (t - 0.5))
+      pts.push(new THREE.Vector3(x, 0.94 - sag, 0))
+    }
+    const curve = new THREE.CatmullRomCurve3(pts)
+    return new THREE.TubeGeometry(curve, 22, 0.024, 6, false)
+  }, [])
+  useEffect(() => () => shimenawaGeo.dispose(), [shimenawaGeo])
   return (
     <group position={[x, 0.025, z]} rotation={[0, rotY, 0]} scale={0.75}>
       {[-0.45, 0.45].map((px, i) => (
@@ -486,6 +506,29 @@ function Torii({ x, z, rotY = 0 }: { x: number; z: number; rotY?: number }) {
         <boxGeometry args={[0.75, 0.08, 0.10]} />
         <meshStandardMaterial color={VERMILLION} roughness={0.7} />
       </mesh>
+      {/* V53 shimenawa — rice-straw rope sagging below the nuki */}
+      <mesh geometry={shimenawaGeo} castShadow>
+        <meshStandardMaterial color="#E8DEBC" roughness={0.95} flatShading />
+      </mesh>
+      {/* 3 shide (paper zigzag streamers) hanging from the shimenawa */}
+      {[-0.26, 0, 0.26].map((sx, i) => (
+        <group key={`shide${i}`} position={[sx, 0.84 + 0.10 * (1 - 4 * (sx / 0.84) * (sx / 0.84)) - 0.10, 0.01]}>
+          {/* Top fold */}
+          <mesh position={[0, -0.04, 0]}>
+            <planeGeometry args={[0.045, 0.08]} />
+            <meshStandardMaterial color="#FBF7EE" roughness={0.85} side={THREE.DoubleSide} />
+          </mesh>
+          {/* Stepped lower folds (zigzag silhouette via 2 offset planes) */}
+          <mesh position={[-0.018, -0.115, 0.002]} rotation={[0, 0, -0.05]}>
+            <planeGeometry args={[0.045, 0.06]} />
+            <meshStandardMaterial color="#FBF7EE" roughness={0.85} side={THREE.DoubleSide} />
+          </mesh>
+          <mesh position={[0.018, -0.175, 0.004]} rotation={[0, 0, 0.05]}>
+            <planeGeometry args={[0.045, 0.06]} />
+            <meshStandardMaterial color="#FBF7EE" roughness={0.85} side={THREE.DoubleSide} />
+          </mesh>
+        </group>
+      ))}
       {/* Kasagi (upper beam, black, overhangs) — two-layer to fake curve */}
       <mesh position={[0, 1.26, 0]} castShadow>
         <boxGeometry args={[1.18, 0.10, 0.14]} />
