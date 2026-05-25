@@ -78,7 +78,12 @@ import IslandWidget from './IslandWidget'
        runs inline. If the main IIFE fails entirely, chips still work.
        Tiny "v53.5" version marker in the corner so we can rule out
        browser cache (if you see "v53.5" you have the latest build). -->
-  <div class="island-pet-panel" aria-hidden="true">
+  <!-- Use the modern `inert` attribute (browser-native) instead of
+       aria-hidden="true" — aria-hidden on a subtree containing focusable
+       buttons is an axe-core 'aria-hidden-focus' violation. `inert`
+       correctly removes both AT exposure AND keyboard tab order, then
+       reverses cleanly on hover/focus via the JS listeners below. -->
+  <div class="island-pet-panel" inert>
     <p class="island-pet-quote" data-idx="0">松风过耳，落英满衣。</p>
     <div class="island-pet-actions">
       <button type="button"
@@ -472,13 +477,15 @@ import IslandWidget from './IslandWidget'
     // .island-pet-panel) with a 400ms transition-delay reproducing
     // the dwell feel. JS dwell timer was removed because user reported
     // the panel wasn't appearing reliably; CSS :hover is bulletproof.
-    // aria-hidden is also driven by the same hover state via the
-    // mouseenter/leave listeners below (for SR accessibility).
-    wrap.addEventListener('mouseenter', () => panel?.setAttribute('aria-hidden', 'false'))
-    wrap.addEventListener('mouseleave', () => panel?.setAttribute('aria-hidden', 'true'))
-    wrap.addEventListener('focusin',    () => panel?.setAttribute('aria-hidden', 'false'))
+    // Use the `inert` property (instead of aria-hidden) so the chips
+    // become both keyboard-reachable AND AT-exposed on hover/focus
+    // without triggering the aria-hidden-focus axe rule.
+    function setInert(yes) { if (panel) panel.inert = yes }
+    wrap.addEventListener('mouseenter', () => setInert(false))
+    wrap.addEventListener('mouseleave', () => setInert(true))
+    wrap.addEventListener('focusin',    () => setInert(false))
     wrap.addEventListener('focusout', (e) => {
-      if (!wrap.contains(e.relatedTarget)) panel?.setAttribute('aria-hidden', 'true')
+      if (!wrap.contains(e.relatedTarget)) setInert(true)
     })
 
     // V53.5: chip handlers are ENTIRELY inline (HTML onclick attributes
