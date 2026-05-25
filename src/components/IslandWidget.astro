@@ -327,6 +327,12 @@ import IslandWidget from './IslandWidget'
     const totalMs = { snow: 5600, wind: 3900, sakura: 7400, moonglow: 3400, mist: 4800 }
     function playFx(e) {
       if (!fxLayer) return
+      // Cap concurrent bursts at 4 — rapid-click could otherwise
+      // accumulate 8+ overlapping bursts (50+ particles each on
+      // lower-tier devices), causing jank. Remove oldest if exceeded.
+      while (fxLayer.children.length >= 4) {
+        fxLayer.removeChild(fxLayer.firstChild)
+      }
       let type
       if (clickCount++ === 0) {
         type = 'sakura'
@@ -899,6 +905,12 @@ import IslandWidget from './IslandWidget'
     inset: 0;
     pointer-events: none;
   }
+  /* Z-order: hero effects (petals + lantern bloom) above atmospheric
+     (snow/wind/mist). If user rapid-clicks and bursts overlap, sakura
+     and moonglow read as foreground subject; the rest as background
+     atmosphere. */
+  .island-fx-burst.island-fx-sakura   { z-index: 2; }
+  .island-fx-burst.island-fx-moonglow { z-index: 3; }
   .island-fx-p {
     position: absolute;
     display: block;
@@ -983,11 +995,14 @@ import IslandWidget from './IslandWidget'
   }
   .island-fx-wind-ltr .island-fx-p {
     left: 0;
-    animation: fx-wind-ltr var(--cross) cubic-bezier(0.32, 0.6, 0.5, 1) var(--d) forwards;
+    /* "Whoosh" curve — fast entry, trailing decay. A gust enters
+       quickly and dissipates. Earlier ease-out had streaks crawling
+       at the start, accelerating mid-flight — wrong physics. */
+    animation: fx-wind-ltr var(--cross) cubic-bezier(0.2, 0.8, 0.4, 1) var(--d) forwards;
   }
   .island-fx-wind-rtl .island-fx-p {
     right: 0;
-    animation: fx-wind-rtl var(--cross) cubic-bezier(0.32, 0.6, 0.5, 1) var(--d) forwards;
+    animation: fx-wind-rtl var(--cross) cubic-bezier(0.2, 0.8, 0.4, 1) var(--d) forwards;
   }
   /* Arc paths: the streak rises slightly then falls (or vice versa)
      during its journey, giving a 3-point bezier curve feel. --arc
@@ -1049,10 +1064,13 @@ import IslandWidget from './IslandWidget'
     height: 120px;
     transform: translate(-50%, -50%) scale(0.9);
     border-radius: 50%;
+    /* Aligned with the 3D scene's LANTERN_GLOW (#FFB860 in island-
+       shared.ts) — the bloom IS lantern light, should share its
+       exact warm-amber, not a paler off-shade. */
     background: radial-gradient(circle,
-                  rgba(255, 222, 170, 0.55) 0%,
-                  rgba(255, 200, 140, 0.32) 30%,
-                  rgba(255, 184, 96, 0.12) 60%,
+                  rgba(255, 184, 96, 0.55) 0%,
+                  rgba(255, 168, 80, 0.32) 30%,
+                  rgba(255, 150, 60, 0.12) 60%,
                   transparent 85%);
     filter: blur(4px);
     opacity: 0;
@@ -1070,10 +1088,10 @@ import IslandWidget from './IslandWidget'
     width: var(--es);
     height: var(--es);
     border-radius: 50%;
-    background: rgba(255, 220, 160, 0.9);
+    background: rgba(255, 184, 96, 0.92);
     box-shadow:
-      0 0 6px rgba(255, 200, 140, 0.7),
-      0 0 14px rgba(255, 180, 100, 0.3);
+      0 0 6px rgba(255, 168, 80, 0.75),
+      0 0 14px rgba(255, 150, 60, 0.35);
     opacity: 0;
     animation: fx-ember 2400ms cubic-bezier(0.4, 0, 0.6, 1) var(--d) forwards;
   }
@@ -1107,7 +1125,10 @@ import IslandWidget from './IslandWidget'
     mix-blend-mode: screen;
     opacity: 0;
     transform: translateY(20px);
-    animation: fx-mist-rise var(--rise) ease-out var(--d) forwards;
+    /* Ease-in-out — fog ACCUMULATES gently then dissipates. Pure
+       ease-out makes wisps start fast which feels like a puff, not
+       fog settling. */
+    animation: fx-mist-rise var(--rise) cubic-bezier(0.4, 0, 0.6, 1) var(--d) forwards;
   }
   @keyframes fx-mist-rise {
     0%   { opacity: 0;            transform: translate3d(0,             20px, 0) scale(0.85); }
