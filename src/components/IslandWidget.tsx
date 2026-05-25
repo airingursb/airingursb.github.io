@@ -718,7 +718,39 @@ function KaresansuiPetals() {
 
 // ── Raked karesansui gravel ring around the cabin — "ma" / negative
 //    space marker. Concentric flat tori suggest the rake lines.
+// V53 elegance (Sub-A): pre-V53 used 4 perfect torusGeometry rings,
+// reading as 'compass-drawn' not 'raked yesterday'. Real karesansui
+// has rake lines that BULGE outward around obstacles (the mossy stone
+// here) — the gardener sweeps a wider arc to avoid it. Now each ring
+// is a TubeGeometry over a CatmullRom curve with per-angle radius
+// perturbed by (a) a slow sin to add micro-irregularity, and (b) a
+// gaussian bulge centered on the angle to the mossy stone.
+const MOSS_STONE_LOCAL: [number, number] = [0.35, 0.45]   // matches mesh below
+function buildRakeRing(r: number, ringIdx: number): THREE.BufferGeometry {
+  // Mossy stone angle from gravel center (local origin)
+  const mossAngle = Math.atan2(MOSS_STONE_LOCAL[1], MOSS_STONE_LOCAL[0])
+  const pts: THREE.Vector3[] = []
+  const N = 96
+  for (let i = 0; i <= N; i++) {
+    const theta = (i / N) * Math.PI * 2
+    // Micro-irregularity sin (different phase per ring)
+    const micro = Math.sin(theta * 3 + ringIdx * 1.7) * 0.012
+    // Gaussian bulge around mossy stone (peaks +0.04 at mossAngle,
+    // sigma ~0.4 rad). Wrap-aware angular distance.
+    let da = theta - mossAngle
+    if (da > Math.PI) da -= Math.PI * 2
+    else if (da < -Math.PI) da += Math.PI * 2
+    const bulge = Math.exp(-(da * da) / (2 * 0.4 * 0.4)) * 0.04
+    const rr = r + micro + bulge
+    pts.push(new THREE.Vector3(Math.cos(theta) * rr, 0, Math.sin(theta) * rr))
+  }
+  const curve = new THREE.CatmullRomCurve3(pts, true)
+  return new THREE.TubeGeometry(curve, N, 0.005, 4, true)
+}
 function RakedGravel() {
+  // Pre-build all 4 rings once
+  const ringGeos = useMemo(() => [0.55, 0.68, 0.81, 0.92].map((r, i) => buildRakeRing(r, i)), [])
+  useEffect(() => () => ringGeos.forEach((g) => g.dispose()), [ringGeos])
   return (
     <group position={[-0.55, 0.052, 0.0]}>
       {/* Sand disk */}
@@ -726,11 +758,11 @@ function RakedGravel() {
         <cylinderGeometry args={[0.95, 0.95, 0.005, 48]} />
         <meshStandardMaterial color={GRAVEL_SAND} roughness={1.0} />
       </mesh>
-      {/* Concentric rake-line tori — V24 BUGFIX: y 0.004→0.010 (was
-          intersecting sand disk causing z-fighting on mobile) */}
-      {[0.55, 0.68, 0.81, 0.92].map((r, i) => (
-        <mesh key={i} position={[0, 0.010, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-          <torusGeometry args={[r, 0.005, 4, 64]} />
+      {/* V53 rake lines — slightly irregular curves bulging around the
+          mossy stone (the gardener swept around it). Pre-built tube
+          geos, zero runtime cost. */}
+      {ringGeos.map((g, i) => (
+        <mesh key={i} position={[0, 0.010, 0]} geometry={g}>
           <meshStandardMaterial color={GRAVEL_LINE} roughness={0.95} />
         </mesh>
       ))}
@@ -1169,6 +1201,12 @@ function BreathingShoji({ position, size }: {
 // ── V23: PathMoss — small green patches between stepping stones.
 // Static, but adds the wabi-sabi "old garden, well-trodden" detail.
 function PathMoss() {
+  // V53 elegance (Sub-A): pre-V53 was 5 identical green circles in
+  // perfect color+roughness — read as 'emoji stickers dropped on
+  // path' against the variance-rich surroundings. Now: 3-tone palette
+  // varies per patch, slight per-patch tilt (catches sun
+  // differently), and each patch is a 2-blob lobe (a main disc + a
+  // smaller offset partner) so silhouette is organic not coin-like.
   // Positions between consecutive stones (midpoints + slight offsets)
   const patches: Array<[number, number, number, number]> = [
     [0.48, 1.20, 0.08, 0.5],     // between stone 0 and 1
@@ -1177,18 +1215,29 @@ function PathMoss() {
     [0.08, 0.76, -0.04, 0.4],
     [0.00, 0.69, 0.03, 0.35],
   ]
+  const mossPalette = ['#7AA868', '#6B9658', '#8AB87A']
   return (
     <group>
       {patches.map((p, i) => (
-        <mesh
-          key={i}
-          position={[p[0], 0.058, p[1]]}
-          rotation={[-Math.PI / 2, 0, p[2]]}
-          scale={p[3]}
-        >
-          <circleGeometry args={[0.08, 12]} />
-          <meshStandardMaterial color="#7AA868" roughness={0.95} />
-        </mesh>
+        <group key={i} position={[p[0], 0.058, p[1]]}>
+          {/* Main disc — slight tilt catches the sun direction */}
+          <mesh
+            rotation={[-Math.PI / 2 + Math.sin(i * 2.3) * 0.08, 0, p[2]]}
+            scale={p[3]}
+          >
+            <circleGeometry args={[0.08, 12]} />
+            <meshStandardMaterial color={mossPalette[i % 3]} roughness={0.95} />
+          </mesh>
+          {/* Smaller lobe — offset partner makes silhouette organic */}
+          <mesh
+            position={[Math.sin(i * 5.1) * 0.04, 0.001, Math.cos(i * 5.1) * 0.04]}
+            rotation={[-Math.PI / 2 + Math.cos(i * 1.9) * 0.06, 0, p[2] + 0.5]}
+            scale={p[3] * 0.7}
+          >
+            <circleGeometry args={[0.04, 10]} />
+            <meshStandardMaterial color={mossPalette[(i + 1) % 3]} roughness={0.95} />
+          </mesh>
+        </group>
       ))}
     </group>
   )
@@ -1385,10 +1434,19 @@ function WaterSurface() {
     if (!ref.current) return
     const t = s.clock.elapsedTime
     const pos = ref.current.geometry.attributes.position
+    // V53 elegance (Sub-A): pre-V53 was a symmetric standing wave
+    // (sin(t*1.8 + d*28)) — every ring inflated/deflated in unison
+    // around center, reading as 'water breathing' not 'water'. Real
+    // basin water has travelling wavelets from the impact point that
+    // decay toward the rim. Negative d*42 makes rings travel OUTWARD,
+    // exp(-d*6) damps at the rim, second term breaks radial symmetry.
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i), y = pos.getY(i)
       const d = Math.hypot(x, y)
-      pos.setZ(i, Math.sin(t * 1.8 + d * 28) * 0.0015 + Math.cos(t * 1.3 + x * 22) * 0.0010)
+      pos.setZ(i,
+        Math.sin(t * 2.4 - d * 42) * 0.0018 * Math.exp(-d * 6)
+        + Math.sin(t * 1.1 + x * 18 - y * 14) * 0.0008,
+      )
     }
     pos.needsUpdate = true
     // V24 BUGFIX: recompute normals so ripples are visible under lighting
