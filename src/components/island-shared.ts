@@ -64,7 +64,23 @@ export const PREFERS_REDUCED_MOTION =
 // ─────────────────────────────────────────────────────────────────────
 
 export function getWind(t: number) {
-  const gust = Math.max(0, Math.sin(t * 0.13) - 0.7) * 3.3
+  // V53 Sub-A 14 signature event: pre-V53 had only one continuous
+  // gust envelope (sin t*0.13, peaks ~48s, max gust 0.99). Sub-A naïve-
+  // visitor critique: "everything is continuous ambient, no payoff for
+  // the 8th second" — needed a rare *event* moment to give viewers a
+  // 'I saw something' reward.
+  //
+  // Now: base gust (regular, every ~48s, peak 0.99) PLUS a rare
+  // 'signature' gust on a longer ~78s period that briefly spikes higher
+  // (peak ~1.8). When the signature event hits, EVERYTHING wind-coupled
+  // surges together: sakura canopy shakes harder + 30 petals release +
+  // furin swings wide + smoke surges + lantern flame leans + fallen
+  // petals all flutter their edges + cat ear may twitch. Coordinated
+  // moment, no new code — the existing shared-state architecture
+  // amplifies it across 8+ elements automatically.
+  const baseGust = Math.max(0, Math.sin(t * 0.13) - 0.7) * 3.3
+  const sigGust = Math.max(0, Math.sin(t * 0.081 + 1.5) - 0.82) * 5.5
+  const gust = baseGust + sigGust
   const dirAngle = Math.sin(t * 0.04) * 0.4
   return {
     dirX: Math.cos(dirAngle),
