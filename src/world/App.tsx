@@ -22,7 +22,9 @@ import { on } from './events'
 import { useTimeOfDay, setManualOverride, type TimePhase } from './time-of-day'
 import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast, SSAO, DepthOfField, Vignette } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
-import { ACESFilmicToneMapping, Color as ThreeColor } from 'three'
+import { ACESFilmicToneMapping, Color as ThreeColor, Vector3 } from 'three'
+// THREE namespace re-export for the demo orbit math (Vector3 is what we use).
+const THREE = { Vector3 } as { Vector3: typeof Vector3 }
 import Island from './Island'
 import Cabin from './Cabin'
 import Gazebo from './Gazebo'
@@ -120,6 +122,18 @@ function CameraControls() {
   // unit radius) over 1.5s as if "leaning in to watch lights come on",
   // then eases back to neutral.
   const breathRef = useRef({ active: false, started: 0 })
+  // J-deeper: mobile demo orbit. On first touch visit, AFTER intro
+  // completes, do a 1s slow azimuthal orbit so the user sees that
+  // the camera can move. sessionStorage gate (same key as the old
+  // text hint) so it fires once. Bumps user-discovery dramatically
+  // vs the old text-only hint.
+  const demoRef = useRef({
+    active: false,
+    started: 0,
+    pending: typeof window !== 'undefined'
+      && matchMedia('(hover: none)').matches
+      && sessionStorage.getItem('world-mobile-hint-seen-v1') !== '1',
+  })
   const { camera, gl } = useThree()
 
   useEffect(() => on('world-reset-camera', () => ref.current?.reset()), [])
@@ -158,6 +172,13 @@ function CameraControls() {
         camera.position.set(34, 26, 30)
         camera.lookAt(0, 5, 0)
         if (ref.current) ref.current.enabled = true
+        // J-deeper: trigger mobile demo orbit immediately after intro
+        if (demoRef.current.pending) {
+          demoRef.current.active = true
+          demoRef.current.started = s.clock.elapsedTime
+          demoRef.current.pending = false
+          try { sessionStorage.setItem('world-mobile-hint-seen-v1', '1') } catch {}
+        }
         return
       }
       const e = 0.5 - Math.cos(phase * Math.PI) * 0.5
@@ -195,6 +216,44 @@ function CameraControls() {
       const lz = lzs + (0 - lzs) * e
       camera.lookAt(lx, ly, lz)
       if (ref.current) ref.current.enabled = false
+      return
+    }
+    // J-deeper: mobile demo orbit. 1s slow azimuthal sweep showing
+    // the camera can move. Hands control back to OrbitControls cleanly.
+    const demo = demoRef.current
+    if (demo.active) {
+      const elapsed = s.clock.elapsedTime - demo.started
+      if (elapsed >= 1.2) {
+        demo.active = false
+        // Snap back to default position so OrbitControls' damping
+        // doesn't fight a partial-rotation state
+        camera.position.set(34, 26, 30)
+        camera.lookAt(0, 5, 0)
+        if (ref.current) {
+          ref.current.enabled = true
+          ref.current.update()
+        }
+      } else {
+        // Disable controls while demoing
+        if (ref.current) ref.current.enabled = false
+        // Rotate around world center, ~25° azimuth sweep over 1.2s
+        // Camera radius = distance(34,26,30 → 0,5,0) ≈ 50.5
+        const target = new THREE.Vector3(0, 5, 0)
+        const baseRadius = 50.5
+        const baseAzimuth = Math.atan2(34, 30)  // current angle in XZ
+        const phaseU = elapsed / 1.2
+        // Smooth ease-in-out — ramp angle 0 → 0.45 rad → back to ~0.1
+        const eased = phaseU < 0.6
+          ? (0.5 - Math.cos(phaseU / 0.6 * Math.PI) * 0.5) * 0.45
+          : 0.45 - (0.5 - Math.cos((phaseU - 0.6) / 0.4 * Math.PI) * 0.5) * 0.35
+        const az = baseAzimuth + eased
+        const polar = Math.asin(26 / baseRadius)  // current polar
+        const x = baseRadius * Math.cos(polar) * Math.sin(az)
+        const y = baseRadius * Math.sin(polar)
+        const z = baseRadius * Math.cos(polar) * Math.cos(az)
+        camera.position.set(x, y, z)
+        camera.lookAt(target)
+      }
       return
     }
     // Theme-toggle breath: 1.5s in-out push forward + return.

@@ -60,8 +60,19 @@ export default function AmbientHUD() {
     if (typeof window === 'undefined') return 'off'
     try {
       const saved = localStorage.getItem(NOISE_KEY) as NoiseColor | null
-      return saved && NOISE_CYCLE.includes(saved) ? saved : 'off'
-    } catch { return 'off' }
+      if (saved && NOISE_CYCLE.includes(saved)) return saved
+    } catch {}
+    // F + I coupling: no saved preference → pick time-appropriate default.
+    // dawn → forest (birds waking), day → off (don't impose audio),
+    // dusk → wind (gusty evening), night → water (still water mood).
+    // User override (cycle button) still wins and is persisted.
+    try {
+      const mins = new Date().getHours() * 60 + new Date().getMinutes()
+      if (mins >= 300 && mins < 450) return 'forest'
+      if (mins >= 1020 && mins < 1170) return 'wind'
+      if (mins >= 1170 || mins < 300) return 'water'
+    } catch {}
+    return 'off'
   })
 
   const [pomo, setPomo] = useState<PomodoroPhase>('idle')

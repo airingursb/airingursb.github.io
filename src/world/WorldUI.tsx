@@ -18,61 +18,10 @@ export default function WorldUI() {
     if (typeof window === 'undefined') return 'day'
     try { return (localStorage.getItem(THEME_KEY) as 'day' | 'dusk') || 'day' } catch { return 'day' }
   })
-  // J: show "拖动看看 / drag to look around" hint on mobile-first-visit.
-  // Auto-dismisses on first user interaction OR after 5s of being visible.
-  // sessionStorage marked SEEN on first touch (or hint completion) so
-  // we don't pester. Dismiss listener only registers AFTER hint shows
-  // — otherwise WebGL init taps prematurely dismissed it.
-  const [mobileHint, setMobileHint] = useState(false)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const isTouch = matchMedia('(hover: none)').matches
-    if (!isTouch) return
-    try {
-      if (sessionStorage.getItem(MOBILE_HINT_SEEN_KEY) === '1') return
-    } catch {}
-
-    let dismissed = false
-    function markSeen() {
-      try { sessionStorage.setItem(MOBILE_HINT_SEEN_KEY, '1') } catch {}
-    }
-    function dismissOnTouch() {
-      if (dismissed) return
-      dismissed = true
-      setMobileHint(false)
-      markSeen()
-      window.removeEventListener('pointerdown', dismissOnTouch)
-    }
-    // Mark seen on first touch unconditionally — even if the hint
-    // never shows (user scrolled away faster than 6.5s).
-    const earlyTouch = () => {
-      markSeen()
-      window.removeEventListener('pointerdown', earlyTouch)
-    }
-    window.addEventListener('pointerdown', earlyTouch, { passive: true, once: true })
-
-    const showTimer = setTimeout(() => {
-      if (dismissed) return
-      setMobileHint(true)
-      window.removeEventListener('pointerdown', earlyTouch)
-      // Register the dismiss listener ONLY after the hint is visible.
-      window.addEventListener('pointerdown', dismissOnTouch, { passive: true })
-    }, 6500)
-    const hideTimer = setTimeout(() => {
-      if (dismissed) return
-      dismissed = true
-      setMobileHint(false)
-      markSeen()
-      window.removeEventListener('pointerdown', dismissOnTouch)
-    }, 11500)
-
-    return () => {
-      clearTimeout(showTimer)
-      clearTimeout(hideTimer)
-      window.removeEventListener('pointerdown', earlyTouch)
-      window.removeEventListener('pointerdown', dismissOnTouch)
-    }
-  }, [])
+  // J: text hint removed in favor of the auto-orbit demo in CameraControls
+  // (J-deeper). The camera physically demonstrates interactivity instead
+  // of a text instruction. sessionStorage flag shared so seen-state stays.
+  const [mobileHint] = useState(false)   // unused, kept for prop compat
   const [whispersOn, setWhispersOn] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true
     try { return localStorage.getItem(WHISPER_KEY) !== 'false' } catch { return true }
