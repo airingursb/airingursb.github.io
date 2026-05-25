@@ -1439,14 +1439,31 @@ export default function IslandWidget() {
       update()
     }, { threshold: 0.05 })
     if (canvasWrapRef.current) io.observe(canvasWrapRef.current)
+    // If user hovered the pet then alt-tabbed away / OS sleep /
+    // closed laptop without crossing the canvas edge, pointerleave
+    // never fires → hoverState.active stays true forever →
+    // RotatingScene freezes mid-rotation + hover-boost stays at peak.
+    // Reset on visibilitychange/blur as belt-and-suspenders so a
+    // 24h tab session can't strand the scene in hover-locked state.
+    function clearStickyHover() {
+      if (!hoverState.active) return
+      hoverState.active = false
+      hoverState.decay = performance.now() / 1000
+      mouseState.x = 0
+      mouseState.y = 0
+      hoverZone.current = null
+    }
     function onVisChange() {
       tabVisible = !document.hidden
+      if (document.hidden) clearStickyHover()
       update()
     }
     document.addEventListener('visibilitychange', onVisChange)
+    window.addEventListener('blur', clearStickyHover)
     return () => {
       io.disconnect()
       document.removeEventListener('visibilitychange', onVisChange)
+      window.removeEventListener('blur', clearStickyHover)
     }
   }, [])
   return (
