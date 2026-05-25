@@ -80,7 +80,13 @@ export function getWind(t: number) {
   // amplifies it across 8+ elements automatically.
   const baseGust = Math.max(0, Math.sin(t * 0.13) - 0.7) * 3.3
   const sigGust = Math.max(0, Math.sin(t * 0.081 + 1.5) - 0.82) * 5.5
-  const gust = baseGust + sigGust
+  // V53.3: first-viewing guarantee — a fresh visitor watching the
+  // pet for their first 30s might miss the signature event if RNG
+  // seeds badly. Inject a guaranteed gust burst at t≈8-12s (visible
+  // after intro pose settles) so first-time viewers see the
+  // 'whole-island reacts' moment within their attention window.
+  const firstGust = (t > 8 && t < 12) ? Math.sin((t - 8) / 4 * Math.PI) * 1.4 : 0
+  const gust = baseGust + sigGust + firstGust
   const dirAngle = Math.sin(t * 0.04) * 0.4
   return {
     dirX: Math.cos(dirAngle),
