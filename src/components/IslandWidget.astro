@@ -396,6 +396,38 @@ import IslandWidget from './IslandWidget'
     // Total burst durations (longest particle's full lifetime) per type
     // — used to schedule the burst auto-remove. Safe margin: +500ms.
     const totalMs = { snow: 5600, wind: 3900, sakura: 7400, moonglow: 3400, ripple: 2600 }
+    // Easter egg URL params:
+    //   ?fx=snow|wind|sakura|moonglow|ripple → auto-fire that fx 1.5s after load
+    //   ?fx=storm → fire all 5 staggered (the 7-click easter egg)
+    // Lets users share atmospheric demos via link without needing to click.
+    try {
+      const url = new URLSearchParams(location.search)
+      const fxParam = url.get('fx')
+      if (fxParam) {
+        setTimeout(() => {
+          if (fxParam === 'storm') {
+            // Fire all 5 types staggered
+            FX_TYPES.forEach((t, i) => {
+              setTimeout(() => {
+                const rect = fxLayer.getBoundingClientRect()
+                const burst = document.createElement('div')
+                burst.className = 'island-fx-burst island-fx-' + t
+                spawners[t](burst, rect, rect.width * (0.3 + Math.random() * 0.4), rect.height * (0.3 + Math.random() * 0.4))
+                fxLayer.appendChild(burst)
+                setTimeout(() => burst.remove(), totalMs[t] || 4000)
+              }, i * 250)
+            })
+          } else if (FX_TYPES.indexOf(fxParam) !== -1) {
+            const rect = fxLayer.getBoundingClientRect()
+            const burst = document.createElement('div')
+            burst.className = 'island-fx-burst island-fx-' + fxParam
+            spawners[fxParam](burst, rect, rect.width / 2, rect.height / 2)
+            fxLayer.appendChild(burst)
+            setTimeout(() => burst.remove(), totalMs[fxParam] || 4000)
+          }
+        }, 1500)
+      }
+    } catch (_) {}
     function playFx(e) {
       if (!fxLayer) return
       // Cap concurrent bursts at 4 — rapid-click could otherwise
