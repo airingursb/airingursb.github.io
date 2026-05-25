@@ -109,8 +109,10 @@ export function setNoise(color: NoiseColor): void {
     // Wind = TWO bands of brown noise — low rumble (300Hz bandpass) +
     // high leaf-rustle (2500Hz highpass). Single-band 380Hz alone read
     // as HVAC; the dual-band has the character of real wind through
-    // branches. LFO modulates both filter frequencies in unison for
-    // unified gust cadence.
+    // branches. LFO frequency = 1/WIND_GUST_PERIOD (≈0.037Hz, 27s cycle)
+    // so audio gusts crest in sync with the visual wind sway from
+    // wind.ts/getGust — solving the visual/audio desync flagged by
+    // earlier Sub-A audits. Single shared clock for everything wind.
     filter = c.createBiquadFilter()
     filter.type = 'bandpass'
     filter.frequency.value = 300
@@ -123,7 +125,9 @@ export function setNoise(color: NoiseColor): void {
     rustleGain.gain.value = 0.5   // sibilant top is quieter than rumble
     lfo = c.createOscillator()
     lfo.type = 'sine'
-    lfo.frequency.value = 0.16    // 6s period — slow natural gust
+    // Match visual wind cycle (27s period in wind.ts) so audio + visual
+    // gusts crest together. 1/27 ≈ 0.037 Hz.
+    lfo.frequency.value = 1 / 27
     lfoGain = c.createGain()
     lfoGain.gain.value = 220
     lfo.connect(lfoGain)

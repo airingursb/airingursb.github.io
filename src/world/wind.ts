@@ -8,9 +8,9 @@
 // Returns 0..1 — the current gust intensity multiplier on top of the
 // baseline wind. Most of the time returns 0 (calm); spikes to 1 for
 // ~3 seconds every 27 seconds.
+export const WIND_GUST_PERIOD = 27
 export function getGust(t: number): number {
-  const PERIOD = 27
-  const phase = (t % PERIOD) / PERIOD
+  const phase = (t % WIND_GUST_PERIOD) / WIND_GUST_PERIOD
   const SPIKE_START = 0.82
   const SPIKE_END   = 0.93
   if (phase < SPIKE_START || phase > SPIKE_END) return 0
@@ -18,4 +18,12 @@ export function getGust(t: number): number {
   // Bell curve so the gust ramps up + holds slightly + ramps down
   // rather than being a sharp spike.
   return Math.sin(u * Math.PI)
+}
+
+// Continuous baseline-wind phase (0..1) — used by AmbientAudio's wind
+// soundscape so the visual sway + audio gust LFO share a single clock.
+// Computed as fractional position within the 27s gust cycle so visuals
+// and audio crest together. Returns 0..1.
+export function getWindBasePhase(t: number): number {
+  return (t % WIND_GUST_PERIOD) / WIND_GUST_PERIOD
 }
