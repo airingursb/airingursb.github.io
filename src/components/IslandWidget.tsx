@@ -876,6 +876,18 @@ function makeDisplacedCliffGeo(): THREE.BufferGeometry {
     } else {
       c = new THREE.Color().lerpColors(cCliffDk, cCliff, yNorm / 0.45)
     }
+    // Vertical erosion drip streaks — narrow angular bands darken
+    // top-to-bottom (mimics rain+mineral run-off on real rock).
+    // ^6/^8 sin powers → ~5-7 thin streaks around the cliff; yFactor
+    // weights strongest at bottom. multiplyScalar darkens without
+    // hue shift, so they stay in the soil/cliff family.
+    if (yNorm < 0.78 && rOrig > 0.01) {
+      const angle = Math.atan2(z, x)
+      const streak = Math.pow(Math.max(0, Math.sin(angle * 9.3 + 0.7)), 6)
+                   + Math.pow(Math.max(0, Math.sin(angle * 14.1 + 2.1)), 8)
+      const streakStrength = streak * (1 - (y + HEIGHT / 2) / HEIGHT) * 0.35
+      c.multiplyScalar(1 - streakStrength)
+    }
     colors[i * 3] = c.r
     colors[i * 3 + 1] = c.g
     colors[i * 3 + 2] = c.b
