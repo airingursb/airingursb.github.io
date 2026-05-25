@@ -511,7 +511,20 @@ function StoneLantern({ x, z }: { x: number; z: number }) {
     if (!flameRef.current) return
     const t = s.clock.elapsedTime
     const hearth = getHearth(t - 0.30)
-    const intensity = 0.85 + Math.sin(t * 4.3) * 0.08 + Math.sin(t * 11.7) * 0.04 - hearth.lanternDim
+    // V53 elegance round 6 (Sub-A final): lantern flame WAS the last
+    // honest periodic oscillator (pure 4.3+11.7 Hz sin) in a scene where
+    // every other rhythm now couples to getWind. The 4.3Hz beat is the
+    // one giveaway if the viewer's eye lingers on the bloom halo. Adding
+    // wind.gust * 0.06 makes the flame lean into the gust like a real
+    // candle behind shoji — same wind that's blowing the petals also
+    // disturbs the flame.
+    const wind = getWind(t - 0.30)
+    const intensity =
+      0.85 +
+      Math.sin(t * 4.3) * 0.08 +
+      Math.sin(t * 11.7) * 0.04 +
+      wind.gust * 0.06 -
+      hearth.lanternDim
     flameRef.current.traverse((obj) => {
       const m = obj as THREE.Mesh
       if (m.isMesh && m.material) {
