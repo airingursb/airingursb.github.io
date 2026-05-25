@@ -603,25 +603,23 @@ import IslandWidget from './IslandWidget'
     box-sizing: border-box;
     opacity: 0;
     transform: translateY(8px);
-    /* hover-OUT: fade fast but keep pointer-events for 250ms */
-    transition: opacity 280ms ease 0ms,
-                transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1) 0ms,
-                pointer-events 0ms 250ms;
+    /* pointer-events is discrete (not animatable) — flips instantly
+       on rule change, no transition entry needed. */
+    transition: opacity 280ms ease,
+                transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
     pointer-events: none;
     z-index: 4;
   }
   .island-pet:hover .island-pet-panel,
-  .island-pet:focus-within .island-pet-panel,
-  .island-pet-panel--shown {
+  .island-pet:focus-within .island-pet-panel {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
-    /* V53.4: dwell delay removed (was 300ms). Panel shows
-       instantly on hover so there's NO race window where user
-       moves to click and the panel is half-transparent. */
-    transition: opacity 220ms ease 0ms,
-                transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1) 0ms,
-                pointer-events 0ms 0ms;
+    /* Panel shows instantly on hover (no dwell delay) so there's
+       no race window where the user moves to click and the panel
+       is still half-transparent. */
+    transition: opacity 220ms ease,
+                transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
   /* V53.3: invisible safety cushion ABOVE the pet (where the old gap
      used to be). Just in case any layout fluctuation creates a 1-2px
@@ -718,6 +716,27 @@ import IslandWidget from './IslandWidget'
     }
     .island-pet .island-skeleton {
       animation: none;
+    }
+  }
+
+  /* Print: the floating 220×220 R3F pet would render on every page
+     and waste ink. Hide entirely. */
+  @media print {
+    .island-pet { display: none !important; }
+  }
+
+  /* Windows High Contrast / forced-colors mode: translucent panel +
+     subtle drop-shadow get overridden to system colors and become
+     invisible. Fall back to system Canvas/CanvasText + visible
+     borders so the panel + chips remain legible. */
+  @media (forced-colors: active) {
+    .island-pet-panel {
+      background: Canvas;
+      color: CanvasText;
+      border: 1px solid CanvasText;
+    }
+    .island-pet-chip {
+      border: 1px solid ButtonText;
     }
   }
 </style>
