@@ -643,7 +643,11 @@ import IslandWidget from './IslandWidget'
     filter: drop-shadow(0 6px 14px rgba(40, 50, 60, 0.18));
   }
   .island-pet:hover {
-    transform: translateY(-2px) scale(1.02);
+    /* Killed scale(1.02) — was competing with the panel's
+       transform animation (translateY 10→0 + scale 0.985→1) for
+       visual attention. Just the -2px lift is enough to register
+       hover without making the whole frame feel busy. */
+    transform: translateY(-2px);
     filter: drop-shadow(0 10px 20px rgba(40, 50, 60, 0.26))
             brightness(1.04) saturate(1.06);
   }
@@ -792,8 +796,12 @@ import IslandWidget from './IslandWidget'
     font-family: "Songti SC", "Noto Serif SC", serif;
     font-size: 10px;
     font-weight: 700;
-    color: rgba(252, 240, 224, 0.94);
-    background: rgba(208, 86, 54, 0.82);
+    color: rgba(252, 240, 224, 0.96);
+    /* More saturated + opaque than the chip's shu-iro so the 14×14
+       seal reads as a distinct "ink stamp" instead of a mini-echo
+       of the larger chip. Chips: rgba(208,86,54,0.92). Seal: pushed
+       toward deeper crimson. */
+    background: rgba(220, 70, 40, 0.95);
     /* 1px not 2px — at 14×14 a 2px radius reads as "rounded square"
        and fights the panel's soft 14px corners. Historical stone-
        carved seals are essentially square; 1px keeps that physics. */
@@ -806,18 +814,20 @@ import IslandWidget from './IslandWidget'
                 inset 0 0 0 0.5px rgba(252, 240, 224, 0.25);
     letter-spacing: 0;
   }
-  /* Seal "stamps" onto the panel ~340ms after the panel reveals —
-     the brief delay + overshoot scale mimics a calligraphy seal
-     being pressed and lifting back. Default opacity:0 above. */
+  /* Seal "stamps" as the LAST beat of the reveal wave — after the
+     panel finishes unrolling (~480ms) AND after the first bunch of
+     chars have bloomed in. 980ms delay lands it just as the eye
+     reaches the end of a 2-line quote. The overshoot scale + ease
+     mimics a calligraphy seal being pressed and lifting back. */
   @keyframes seal-stamp {
     0%   { opacity: 0;    transform: rotate(-5deg) scale(1.45); }
-    55%  { opacity: 0.78; transform: rotate(-5deg) scale(0.92); }
-    100% { opacity: 0.72; transform: rotate(-5deg) scale(1); }
+    55%  { opacity: 0.86; transform: rotate(-5deg) scale(0.92); }
+    100% { opacity: 0.78; transform: rotate(-5deg) scale(1); }
   }
   .island-pet:hover .island-pet-seal,
   .island-pet:focus-within .island-pet-seal,
   .island-pet.is-revealed .island-pet-seal {
-    animation: seal-stamp 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 460ms both;
+    animation: seal-stamp 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 980ms both;
   }
   /* V53.3: invisible safety cushion ABOVE the pet (where the old gap
      used to be). Just in case any layout fluctuation creates a 1-2px
@@ -904,7 +914,13 @@ import IslandWidget from './IslandWidget'
     transform: translateY(6px);
     filter: blur(2px);
     animation: qc-bloom 520ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-    animation-delay: calc(var(--i, 0) * 20ms);
+    /* Wave timing: chars cascade AFTER panel finishes unrolling.
+       Panel hover-in: clip-path 360ms + 120ms entry delay = lands
+       at 480ms from :hover. Add ~300ms base to bloom delay so
+       chars start at 480ms (after panel settled), last char at
+       480 + 15*20 + 520 = 1300ms. Reads as a clean wave instead
+       of chars blooming into a still-clipping container. */
+    animation-delay: calc(300ms + var(--i, 0) * 20ms);
     /* Pause until the panel actually reveals — otherwise the bloom
        plays on page load while panel is hidden and user never sees
        the theater. Unpaused below on :hover / :focus-within. */
@@ -943,10 +959,37 @@ import IslandWidget from './IslandWidget'
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
     position: relative;
     /* Single-line ellipsis fallback for any future label that's too
-       long — won't trigger at current EN 'Enter' / ZH '进入森林岛'. */
+       long — won't trigger at current EN 'Step in' / ZH '进入森林岛'. */
     text-overflow: ellipsis;
     overflow: hidden;
     min-width: 0;
+    /* Chip "arrives" after the panel finishes unrolling — opacity-
+       only fade staggered between the two chips. Originally tried
+       adding a slide-up translateY but that conflicted with the
+       chip:hover lift (different transition durations on the same
+       property — most-specific selector wins, making hover lift slow).
+       Opacity fade alone reads as the wave we wanted; chip:hover
+       transform stays snappy. */
+    opacity: 0;
+  }
+  /* Wave: chips arrive AFTER panel finishes unrolling (~480ms).
+     Enter chip leads at 380ms, cycle chip 80ms later. Reads as
+     "placed" by an invisible hand. */
+  .island-pet:hover .island-pet-chip[data-action="enter"],
+  .island-pet:focus-within .island-pet-chip[data-action="enter"],
+  .island-pet.is-revealed .island-pet-chip[data-action="enter"] {
+    opacity: 1;
+    transition: opacity 320ms ease 380ms,
+                background 180ms ease, transform 180ms ease,
+                box-shadow 220ms ease;
+  }
+  .island-pet:hover .island-pet-chip[data-action="cycle"],
+  .island-pet:focus-within .island-pet-chip[data-action="cycle"],
+  .island-pet.is-revealed .island-pet-chip[data-action="cycle"] {
+    opacity: 1;
+    transition: opacity 320ms ease 460ms,
+                background 180ms ease, transform 180ms ease,
+                box-shadow 220ms ease;
   }
   .island-pet-chip:hover {
     background: rgba(220, 100, 68, 1);
@@ -1032,6 +1075,12 @@ import IslandWidget from './IslandWidget'
       transform: none;
       filter: none;
       animation: none;
+    }
+    /* Chip arrive is purely decorative — show chips immediately. */
+    .island-pet-chip {
+      opacity: 1;
+      transition: background 180ms ease, transform 180ms ease,
+                  box-shadow 220ms ease;
     }
     .island-pet-chip[data-action="enter"] .island-pet-arrow {
       transition: none;
