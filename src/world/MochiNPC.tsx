@@ -57,20 +57,36 @@ export default function MochiNPC() {
     if (!headRef.current) return
 
     // G zone-look: highest priority — overrides default + scheduled
-    // look-arounds. Eases toward targetYaw, holds, eases back.
+    // look-arounds. Eases TO target, then holds with subtle micro-
+    // wobble (not dead-still — 3s frozen reads as 'broken'). Body
+    // partially rotates so the bear doesn't stare 90° through his
+    // own shoulder. Eases BACK to neutral over last 1.2s.
     const zl = zoneLookRef.current
     if (zl && t < zl.until) {
+      const total = 5
+      const elapsed = total - (zl.until - t)
       const remaining = zl.until - t
-      // 0 at start (lerp 1 = target), 1 at end (lerp 0 = back to neutral)
+      const easeIn = Math.min(1, elapsed / 0.7)
       const fadeBack = remaining < 1.2 ? (1 - remaining / 1.2) : 0
-      const easeIn = Math.min(1, (5 - remaining) / 0.8)
       const blend = Math.max(0, easeIn - fadeBack)
+      // Micro-wobble during hold (20% of default amplitude) so Mochi
+      // breathes/looks-around-the-target instead of freezing
+      const microYaw = Math.sin(t * 0.6) * 0.06 + Math.sin(t * 1.7 + 0.4) * 0.02
+      const microPitch = Math.sin(t * 0.37) * 0.04
       headRef.current.rotation.y = zl.targetYaw * blend +
+        microYaw * (0.4 + 0.6 * (1 - blend)) +
         Math.sin(t * 0.5) * 0.3 * (1 - blend)
-      headRef.current.rotation.x = Math.sin(t * 0.37) * 0.04
+      headRef.current.rotation.x = microPitch
+      // Body follows ~30% of the head turn so shoulder doesn't twist
+      if (bodyRef.current) {
+        bodyRef.current.rotation.y = zl.targetYaw * blend * 0.3
+      }
       return
     }
-    if (zl && t >= zl.until) zoneLookRef.current = null
+    if (zl && t >= zl.until) {
+      zoneLookRef.current = null
+      if (bodyRef.current) bodyRef.current.rotation.y = 0
+    }
 
     // Decide whether to start an active "look around" episode
     const la = lookAtRef.current

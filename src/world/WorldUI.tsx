@@ -19,7 +19,10 @@ export default function WorldUI() {
     try { return (localStorage.getItem(THEME_KEY) as 'day' | 'dusk') || 'day' } catch { return 'day' }
   })
   // J: show "拖动看看 / drag to look around" hint on mobile-first-visit.
-  // Auto-dismisses on first user interaction OR after 5s.
+  // Auto-dismisses on first user interaction OR after 5s of being visible.
+  // sessionStorage marked SEEN on first touch (or hint completion) so
+  // we don't pester. Dismiss listener only registers AFTER hint shows
+  // — otherwise WebGL init taps prematurely dismissed it.
   const [mobileHint, setMobileHint] = useState(false)
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -28,23 +31,45 @@ export default function WorldUI() {
     try {
       if (sessionStorage.getItem(MOBILE_HINT_SEEN_KEY) === '1') return
     } catch {}
-    // Show after intro animation completes (~6s post-mount, allow extra buffer)
-    const showTimer = setTimeout(() => setMobileHint(true), 6500)
-    // Auto-dismiss after 5s of being visible
-    const hideTimer = setTimeout(() => {
-      setMobileHint(false)
+
+    let dismissed = false
+    function markSeen() {
       try { sessionStorage.setItem(MOBILE_HINT_SEEN_KEY, '1') } catch {}
-    }, 11500)
-    // OR dismiss on any pointer activity in the canvas
+    }
     function dismissOnTouch() {
+      if (dismissed) return
+      dismissed = true
       setMobileHint(false)
-      try { sessionStorage.setItem(MOBILE_HINT_SEEN_KEY, '1') } catch {}
+      markSeen()
       window.removeEventListener('pointerdown', dismissOnTouch)
     }
-    window.addEventListener('pointerdown', dismissOnTouch, { passive: true })
+    // Mark seen on first touch unconditionally — even if the hint
+    // never shows (user scrolled away faster than 6.5s).
+    const earlyTouch = () => {
+      markSeen()
+      window.removeEventListener('pointerdown', earlyTouch)
+    }
+    window.addEventListener('pointerdown', earlyTouch, { passive: true, once: true })
+
+    const showTimer = setTimeout(() => {
+      if (dismissed) return
+      setMobileHint(true)
+      window.removeEventListener('pointerdown', earlyTouch)
+      // Register the dismiss listener ONLY after the hint is visible.
+      window.addEventListener('pointerdown', dismissOnTouch, { passive: true })
+    }, 6500)
+    const hideTimer = setTimeout(() => {
+      if (dismissed) return
+      dismissed = true
+      setMobileHint(false)
+      markSeen()
+      window.removeEventListener('pointerdown', dismissOnTouch)
+    }, 11500)
+
     return () => {
       clearTimeout(showTimer)
       clearTimeout(hideTimer)
+      window.removeEventListener('pointerdown', earlyTouch)
       window.removeEventListener('pointerdown', dismissOnTouch)
     }
   }, [])

@@ -1488,20 +1488,20 @@ function ParallaxBreath({ children }: { children: React.ReactNode }) {
   useFrame((_, dt) => {
     if (!ref.current) return
     t.current += dt
-    // Target tilt from mouseState (only when hovered, else relax to 0)
-    const targetX = hoverState.active ? mouseState.y *  0.045 : 0
-    const targetZ = hoverState.active ? mouseState.x * -0.045 : 0
-    // Critical damping: factor ~0.10 per frame at 60fps → ~12 frames
-    // to reach 70% of target. Snappier than 0.05, smoother than 0.20.
+    // Target tilt from mouseState. Sub-A: 0.045 rad was invisible at
+    // the 220px canvas → bumped to 0.095 for a clearly noticeable lean
+    // without being cartoony. Critical damping smoothing prevents snap.
+    const targetX = hoverState.active ? mouseState.y *  0.095 : 0
+    const targetZ = hoverState.active ? mouseState.x * -0.095 : 0
     smX.current += (targetX - smX.current) * Math.min(1, dt * 6)
     smZ.current += (targetZ - smZ.current) * Math.min(1, dt * 6)
     ref.current.rotation.x = smX.current
     ref.current.rotation.z = smZ.current
-    // Idle breathing — only when NOT hovered (hover already provides
-    // engagement). 8s period, ±0.04 Y translate. Half-amplitude when
-    // hovered so it's not zero (still feels alive but doesn't fight).
+    // Idle breathing — 8s period, ±0.08 Y translate (was 0.04 — too
+    // subtle to register at camera distance). Half when hovered so
+    // mouse tilt is the primary motion but the island still feels alive.
     const phase = (t.current / 8) * Math.PI * 2
-    const breathAmp = hoverState.active ? 0.012 : 0.04
+    const breathAmp = hoverState.active ? 0.025 : 0.08
     ref.current.position.y = Math.sin(phase) * breathAmp
   })
   return <group ref={ref}>{children}</group>

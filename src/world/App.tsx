@@ -113,6 +113,7 @@ function CameraControls() {
     skipped: false,
     fromPet,
     duration: fromPet ? 6 : 4.5,   // longer swoop for from-pet
+    audioFired: false,
   })
   // Theme-toggle "breath" — subtle dolly that fires when user presses
   // 🌙/☀️. Camera momentarily leans forward (eases distance from 28→25
@@ -140,6 +141,16 @@ function CameraControls() {
     if (intro.active) {
       if (intro.started === 0) intro.started = s.clock.elapsedTime
       const elapsed = s.clock.elapsedTime - intro.started
+      // From-pet only: soft low-freq chime at swoop start as audio cue.
+      // playChime requires AudioContext which requires a user gesture —
+      // the click on the Step in chip counts; but if browser blocks, no-op.
+      if (intro.fromPet && !intro.audioFired && elapsed > 0.2) {
+        intro.audioFired = true
+        try {
+          // Dynamic import to keep audio module out of critical path
+          import('./AmbientAudio').then(m => m.playChime(220, 2.4))
+        } catch {}
+      }
       let phase = elapsed / intro.duration
       if (intro.skipped) phase = 1
       if (phase >= 1) {
@@ -152,12 +163,27 @@ function CameraControls() {
       const e = 0.5 - Math.cos(phase * Math.PI) * 0.5
       // From-pet: start MUCH higher + more centered, like the pet
       // diorama camera looking down. Sweep to default establishing
-      // angle. Default: close-on-cabin start (original cinematic).
+      // angle via QUADRATIC BEZIER with a midpoint that arcs the
+      // path rather than straight-lerping through space — feels like
+      // a real cinematic swoop (decelerating vertical while horizontal
+      // accelerates).
       const sx = intro.fromPet ? 0  : 5
       const sy = intro.fromPet ? 75 : 4.5
       const sz = intro.fromPet ? 12 : 8
       const tx = 34, ty = 26, tz = 30
-      camera.position.set(sx + (tx - sx) * e, sy + (ty - sy) * e, sz + (tz - sz) * e)
+      // Bezier mid-point: from-pet arcs through high-east position
+      // so the camera DESCENDS while CIRCLING — not a straight diag.
+      // Default intro uses straight lerp (no mid).
+      if (intro.fromPet) {
+        const mx = 28, my = 52, mz = 18   // high + east
+        const u = e
+        const ux = (1-u)*(1-u)*sx + 2*(1-u)*u*mx + u*u*tx
+        const uy = (1-u)*(1-u)*sy + 2*(1-u)*u*my + u*u*ty
+        const uz = (1-u)*(1-u)*sz + 2*(1-u)*u*mz + u*u*tz
+        camera.position.set(ux, uy, uz)
+      } else {
+        camera.position.set(sx + (tx - sx) * e, sy + (ty - sy) * e, sz + (tz - sz) * e)
+      }
       // From-pet: lookAt center-of-island throughout (camera gets
       // closer to default 5,0 only at end). Default: pan from close
       // cabin → establishing center.

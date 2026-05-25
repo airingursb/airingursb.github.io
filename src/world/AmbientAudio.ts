@@ -81,7 +81,7 @@ function teardown(): void {
   if (filter) { try { filter.disconnect() } catch {} filter = null }
   if (lfo)    { try { lfo.stop() } catch {} try { lfo.disconnect() } catch {} lfo = null }
   if (lfoGain){ try { lfoGain.disconnect() } catch {} lfoGain = null }
-  if (birdTimer !== null) { window.clearInterval(birdTimer); birdTimer = null }
+  if (birdTimer !== null) { window.clearTimeout(birdTimer); birdTimer = null }
 }
 
 export function setNoise(color: NoiseColor): void {
@@ -106,21 +106,39 @@ export function setNoise(color: NoiseColor): void {
 
   // Insert filter chain for procedural soundscapes
   if (color === 'wind') {
-    // Wind = brown noise → bandpass (lowish, broad) + LFO on filter freq
+    // Wind = TWO bands of brown noise — low rumble (300Hz bandpass) +
+    // high leaf-rustle (2500Hz highpass). Single-band 380Hz alone read
+    // as HVAC; the dual-band has the character of real wind through
+    // branches. LFO modulates both filter frequencies in unison for
+    // unified gust cadence.
     filter = c.createBiquadFilter()
     filter.type = 'bandpass'
-    filter.frequency.value = 380
-    filter.Q.value = 0.7
+    filter.frequency.value = 300
+    filter.Q.value = 0.6
+    const filter2 = c.createBiquadFilter()
+    filter2.type = 'highpass'
+    filter2.frequency.value = 2500
+    filter2.Q.value = 0.4
+    const rustleGain = c.createGain()
+    rustleGain.gain.value = 0.5   // sibilant top is quieter than rumble
     lfo = c.createOscillator()
     lfo.type = 'sine'
-    lfo.frequency.value = 0.18    // 5.5s period — natural wind gust cadence
+    lfo.frequency.value = 0.16    // 6s period — slow natural gust
     lfoGain = c.createGain()
-    lfoGain.gain.value = 180      // ±180 Hz modulation around 380 center
+    lfoGain.gain.value = 220
     lfo.connect(lfoGain)
     lfoGain.connect(filter.frequency)
+    // Also modulate the rustle highpass freq for organic top-end variation
+    const lfoGain2 = c.createGain()
+    lfoGain2.gain.value = 400
+    lfo.connect(lfoGain2)
+    lfoGain2.connect(filter2.frequency)
     lfo.start()
     source.connect(filter)
+    source.connect(filter2)
     filter.connect(gain)
+    filter2.connect(rustleGain)
+    rustleGain.connect(gain)
   } else if (color === 'water') {
     // Water = pink noise → narrow bandpass around 1200 (trickle range)
     filter = c.createBiquadFilter()
@@ -145,13 +163,25 @@ export function setNoise(color: NoiseColor): void {
     filter.Q.value = 0.5
     source.connect(filter)
     filter.connect(gain)
-    // Bird chirp scheduler — random 4-12s intervals
-    birdTimer = window.setInterval(() => {
+    // Bird chirp scheduler — self-rescheduling setTimeout for TRULY
+    // random 4-12s intervals. setInterval(6000) was fixed-cadence
+    // (read like a metronome). Reschedule clears teardown automatically.
+    function scheduleBird() {
       if (currentColor !== 'forest') return
-      playBirdChirp()
-    }, 6000) as unknown as number
-    // Fire one early
-    setTimeout(() => { if (currentColor === 'forest') playBirdChirp() }, 1200)
+      const next = 4000 + Math.random() * 8000  // 4-12s
+      birdTimer = window.setTimeout(() => {
+        if (currentColor !== 'forest') return
+        playBirdChirp()
+        scheduleBird()
+      }, next) as unknown as number
+    }
+    // First chirp early so user knows the soundscape changed
+    birdTimer = window.setTimeout(() => {
+      if (currentColor === 'forest') {
+        playBirdChirp()
+        scheduleBird()
+      }
+    }, 1200) as unknown as number
   } else {
     source.connect(gain)
   }

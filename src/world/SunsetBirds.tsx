@@ -5,8 +5,18 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useTimeOfDay, type TimePhase } from './time-of-day'
 
 type Theme = 'day' | 'dusk'
+
+// F: per-phase bird visibility. Dawn = sparse departure (low), day = 0,
+// dusk = full V-formation, night = 0 (birds gone home).
+const PHASE_BIRD_OPACITY: Record<TimePhase, number> = {
+  dawn: 0.35,
+  day: 0,
+  dusk: 0.78,
+  night: 0,
+}
 
 // 7 birds in classic V formation (1 lead + 3 on each wing)
 const FORMATION: Array<[number, number]> = [
@@ -21,7 +31,9 @@ const TRAVEL_X_START = -60
 const TRAVEL_X_END   =  60
 const LOOP_DURATION  = 60   // seconds — slow, almost imperceptible
 
-export default function SunsetBirds({ theme }: { theme: Theme }) {
+export default function SunsetBirds({ theme: _theme }: { theme?: Theme } = {}) {
+  // theme prop ignored — phase from time-of-day drives visibility.
+  const tod = useTimeOfDay()
   const groupRef = useRef<THREE.Group>(null)
   // Two refs per bird — one per plane in the crossed-plane "+" silhouette.
   // V2 bug (caught by Sub-A delivery audit): matRefs only captured the
@@ -44,10 +56,13 @@ export default function SunsetBirds({ theme }: { theme: Theme }) {
     if (!groupRef.current) return
     const t = s.clock.elapsedTime
 
-    // Opacity fade based on theme — invisible at day, full at dusk.
-    // Lerp BOTH planes (horizontal + vertical) for each bird so the
-    // crossed-plane "+" silhouette stays balanced from any angle.
-    const targetOpacity = theme === 'dusk' ? 0.78 : 0
+    // F: opacity from 4-phase time. dawn 0.35 / day 0 / dusk 0.78 / night 0.
+    // Lerp between current and next phase's value via blend.
+    const order: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
+    const idx = order.indexOf(tod.phase)
+    const a = PHASE_BIRD_OPACITY[tod.phase]
+    const b = PHASE_BIRD_OPACITY[order[(idx + 1) % order.length]]
+    const targetOpacity = a + (b - a) * tod.blend
     const k = 1 - Math.exp(-dt * 1.0)
     let maxOpacity = 0
     for (const m of matRefs.current) {

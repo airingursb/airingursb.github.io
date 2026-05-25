@@ -63,17 +63,19 @@ function TinyIsland({ position, scale = 1, tree = true, windmill = false, glowIn
             <coneGeometry args={[0.3, 0.4, 8]} />
             <meshStandardMaterial color="#5C3A22" roughness={0.92} />
           </mesh>
-          {/* Tiny window — lit at dusk/night via emissive intensity.
-              Faces the camera so the glow is visible from main scene. */}
+          {/* Tiny window — lit at dusk/night. Uses meshStandardMaterial
+              with emissive so the EffectComposer Bloom catches it. Pure
+              meshBasicMaterial + toneMapped:false bypassed bloom entirely. */}
           {glowIntensity > 0 && (
             <mesh position={[0, 0.5, 0.33]} renderOrder={2}>
-              <planeGeometry args={[0.18, 0.22]} />
-              <meshBasicMaterial
+              <planeGeometry args={[0.22, 0.26]} />
+              <meshStandardMaterial
                 color={WINDOW_GLOW}
+                emissive={WINDOW_GLOW}
+                emissiveIntensity={glowIntensity * 2.2}
                 transparent
                 opacity={glowIntensity * 0.95}
                 depthWrite={false}
-                toneMapped={false}
               />
             </mesh>
           )}
@@ -82,28 +84,31 @@ function TinyIsland({ position, scale = 1, tree = true, windmill = false, glowIn
         </group>
       )}
       {/* Lantern next to pine tree (small island) — lit at dusk/night.
-          Suggests a watcher / hermit. */}
+          Suggests a watcher / hermit. emissive material so bloom
+          catches it; previous meshBasicMaterial bypassed bloom. */}
       {tree && glowIntensity > 0 && (
-        <group position={[-0.6, 0.25, 0.4]}>
-          <mesh position={[0, 0.18, 0]}>
-            <sphereGeometry args={[0.14, 8, 6]} />
-            <meshBasicMaterial
+        <group position={[-0.6, 0.55, 0.4]}>
+          <mesh>
+            <sphereGeometry args={[0.18, 10, 8]} />
+            <meshStandardMaterial
               color={WINDOW_GLOW}
+              emissive={WINDOW_GLOW}
+              emissiveIntensity={glowIntensity * 2.6}
               transparent
-              opacity={glowIntensity * 0.85}
+              opacity={glowIntensity * 0.9}
               depthWrite={false}
-              toneMapped={false}
             />
           </mesh>
-          {/* Halo glow disc — soft outer aura */}
-          <mesh position={[0, 0.18, 0]} renderOrder={3}>
-            <sphereGeometry args={[0.32, 10, 8]} />
-            <meshBasicMaterial
+          {/* Soft outer halo (still bloom-touched but bigger sphere) */}
+          <mesh renderOrder={3}>
+            <sphereGeometry args={[0.42, 10, 8]} />
+            <meshStandardMaterial
               color={WINDOW_GLOW}
+              emissive={WINDOW_GLOW}
+              emissiveIntensity={glowIntensity * 0.8}
               transparent
               opacity={glowIntensity * 0.22}
               depthWrite={false}
-              toneMapped={false}
             />
           </mesh>
         </group>

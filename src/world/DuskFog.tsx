@@ -6,8 +6,19 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useTimeOfDay, type TimePhase } from './time-of-day'
 
 type Theme = 'day' | 'dusk'
+
+// F: per-phase fog strength multiplier. Dawn = morning haze, day = clear,
+// dusk = full settling, night = lighter (less than dusk — air settles
+// later in the evening).
+const FOG_STRENGTH: Record<TimePhase, number> = {
+  dawn: 0.45,
+  day: 0,
+  dusk: 1,
+  night: 0.7,
+}
 
 const FOG_TINT = '#E6DCE4'   // pale lavender-cream, dusk-appropriate
 
@@ -27,23 +38,20 @@ const PUFFS: Array<{ x: number; z: number; y: number; r: number; rot: number; sp
 ]
 
 function FogPuff({
-  x, z, y, r, rot, spin, opacity, theme,
-}: typeof PUFFS[number] & { theme: Theme }) {
+  x, z, y, r, rot, spin, opacity, fogStrength,
+}: typeof PUFFS[number] & { fogStrength: number }) {
   const meshRef = useRef<THREE.Mesh>(null)
   useFrame((s, dt) => {
     const m = meshRef.current
     if (!m) return
-    // Opacity lerp toward theme target
-    const target = theme === 'dusk' ? opacity : 0
+    // F: opacity scaled by fogStrength (0..1) from time-of-day phase.
+    // dawn 0.4 / day 0 / dusk 1 / night 0.7 — fog returns at night
+    // since cold ground + warm air → real mist.
+    const target = opacity * fogStrength
     const mat = m.material as THREE.MeshBasicMaterial
-    const k = 1 - Math.exp(-dt * 1.2)   // ~1.5s settle
+    const k = 1 - Math.exp(-dt * 1.2)
     mat.opacity = mat.opacity + (target - mat.opacity) * k
-    // V2 final polish: skip spin when fog is essentially invisible
-    // (day-theme, faded out). Rotating an alpha-0 mesh is pure
-    // wasted CPU. Each puff bails independently so they each settle
-    // at their own pace before going idle.
-    if (theme === 'day' && mat.opacity < 0.01) return
-    // Slow Y-axis spin
+    if (mat.opacity < 0.01) return
     m.rotation.z += dt * spin
   })
   return (
@@ -66,11 +74,19 @@ function FogPuff({
   )
 }
 
-export default function DuskFog({ theme }: { theme: Theme }) {
+export default function DuskFog({ theme: _theme }: { theme?: Theme } = {}) {
+  // theme prop kept for back-compat but ignored — useTimeOfDay drives it.
+  const tod = useTimeOfDay()
+  // Lerp between this phase's strength and the next phase's based on blend.
+  const order: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
+  const idx = order.indexOf(tod.phase)
+  const a = FOG_STRENGTH[tod.phase]
+  const b = FOG_STRENGTH[order[(idx + 1) % order.length]]
+  const fogStrength = a + (b - a) * tod.blend
   return (
     <group>
       {PUFFS.map((p, i) => (
-        <FogPuff key={i} {...p} theme={theme} />
+        <FogPuff key={i} {...p} fogStrength={fogStrength} />
       ))}
     </group>
   )

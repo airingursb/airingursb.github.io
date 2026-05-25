@@ -191,17 +191,38 @@ import IslandWidget from './IslandWidget'
     const FX_TYPES = ['snow', 'wind', 'sakura', 'moonglow', 'ripple']
     let lastFxType = null
     // Time-of-day weighting — random ≠ uniform. Different effects suit
-    // different hours. Reads local time; returns weight table.
-    // - night (20-5):  moonglow + snow dominant (warm light, cold air)
-    // - dawn  (5-8):   wind + ripple + gentle sakura (morning awakening)
-    // - day   (8-17):  sakura + wind + ripple balanced (active warmth)
-    // - dusk  (17-20): moonglow + sakura (golden hour warmth)
+    // different hours. Same 4-phase boundaries as /world/'s time-of-day
+    // module (dawn 5-7:30, day 7:30-17, dusk 17-19:30, night otherwise).
+    // Also: season modifier — May (current pet visit) suppresses snow
+    // toward 0 since it'd feel out of place mid-spring.
+    function currentPhase() {
+      const mins = new Date().getHours() * 60 + new Date().getMinutes()
+      if (mins >= 300 && mins < 450)   return 'dawn'   // 5:00 - 7:30
+      if (mins >= 450 && mins < 1020)  return 'day'    // 7:30 - 17:00
+      if (mins >= 1020 && mins < 1170) return 'dusk'   // 17:00 - 19:30
+      return 'night'
+    }
     function fxWeightsForNow() {
-      const h = new Date().getHours()
-      if (h >= 20 || h < 5) return { snow: 4, wind: 2, sakura: 1, moonglow: 5, ripple: 2 }
-      if (h < 8)            return { snow: 1, wind: 4, sakura: 3, moonglow: 2, ripple: 4 }
-      if (h >= 17)          return { snow: 1, wind: 2, sakura: 4, moonglow: 5, ripple: 3 }
-      return                       { snow: 2, wind: 4, sakura: 5, moonglow: 2, ripple: 4 }
+      const phase = currentPhase()
+      const month = new Date().getMonth()   // 0-indexed: 0=Jan
+      // Snow is summer-suppressed (Apr-Sep / months 3-8 → /4 weight)
+      const isSummer = month >= 3 && month <= 8
+      const snowMod = isSummer ? 0.25 : 1
+      // Sakura peaks in March-May; reduced in winter
+      const isSpring = month >= 2 && month <= 4
+      const sakuraBoost = isSpring ? 1.3 : 1
+      const base =
+        phase === 'night' ? { snow: 4, wind: 2, sakura: 1, moonglow: 5, ripple: 2 } :
+        phase === 'dawn'  ? { snow: 1, wind: 4, sakura: 3, moonglow: 2, ripple: 4 } :
+        phase === 'dusk'  ? { snow: 1, wind: 2, sakura: 4, moonglow: 5, ripple: 3 } :
+                            { snow: 2, wind: 4, sakura: 5, moonglow: 2, ripple: 4 }   // day
+      return {
+        snow: base.snow * snowMod,
+        wind: base.wind,
+        sakura: base.sakura * sakuraBoost,
+        moonglow: base.moonglow,
+        ripple: base.ripple,
+      }
     }
     function pickWeightedType(exclude) {
       const w = fxWeightsForNow()
@@ -442,19 +463,26 @@ import IslandWidget from './IslandWidget'
         }, i * 200)
       })
     }
+    let longPressFired = false
+    function clearLongPress() {
+      longPressFired = false
+    }
     wrap.addEventListener('pointerdown', () => {
       pressTimer = Date.now()
-      // Long-press detection — show author flash after 800ms hold
+      longPressFired = false
+      // Long-press detection — trigger at exactly 800ms regardless of
+      // how long after that the user holds. Earlier 800-1200ms window
+      // missed holds past 1.2s (silently did nothing).
       setTimeout(() => {
-        if (Date.now() - pressTimer >= 800 && Date.now() - pressTimer < 1200) {
-          // Tag the quote panel with a "long-press triggered" class —
-          // CSS can optionally show an author overlay. Keep it subtle:
-          // most quotes are anonymous classics, so just dim+highlight.
+        if (Date.now() - pressTimer >= 800 && !longPressFired) {
+          longPressFired = true
           wrap.classList.add('island-pet-longpress')
           setTimeout(() => wrap.classList.remove('island-pet-longpress'), 1400)
         }
       }, 800)
     })
+    wrap.addEventListener('pointerup', clearLongPress)
+    wrap.addEventListener('pointerleave', clearLongPress)
     wrap.addEventListener('click', (e) => {
       // Chip click: let it do its own thing (Step in navigates, cycle cycles)
       if ((e.target instanceof Element) && e.target.closest('.island-pet-chip')) return
@@ -949,9 +977,30 @@ import IslandWidget from './IslandWidget'
         }
       }
       // Easter egg: hover sustained >8s → trigger a moonglow reward.
-      // Start timer; mouseleave clears it. Centered moonglow.
+      // Two-stage telegraph: at 6s a single tiny ember spawns near
+      // the lantern position as a "warming up" hint, then at 8s the
+      // full moonglow burst fires. Cleared on mouseleave.
       hoverStartTime = Date.now()
       clearTimeout(hoverRewardTimer)
+      // Telegraph spawn — 1 ember at 6s
+      const telegraphTimer = setTimeout(() => {
+        if (Date.now() - hoverStartTime < 5900) return  // user left + re-entered
+        const rect = fxLayer.getBoundingClientRect()
+        const burst = document.createElement('div')
+        burst.className = 'island-fx-burst island-fx-moonglow'
+        // Build a stripped-down telegraph: just 1 ember at cabin position
+        const ember = document.createElement('span')
+        ember.className = 'island-fx-p island-fx-bloom-ember'
+        ember.style.setProperty('--dx', '0px')
+        ember.style.setProperty('--dy', '-30px')
+        ember.style.setProperty('--d', '0ms')
+        ember.style.setProperty('--es', '4px')
+        burst.style.setProperty('--cx', (rect.width * 0.55) + 'px')
+        burst.style.setProperty('--cy', (rect.height * 0.75) + 'px')
+        burst.appendChild(ember)
+        fxLayer.appendChild(burst)
+        setTimeout(() => burst.remove(), 2500)
+      }, 6000)
       hoverRewardTimer = setTimeout(() => {
         if (Date.now() - hoverStartTime >= 7800) {
           const rect = fxLayer.getBoundingClientRect()
@@ -961,11 +1010,15 @@ import IslandWidget from './IslandWidget'
           fxLayer.appendChild(burst)
           setTimeout(() => burst.remove(), totalMs.moonglow || 4000)
         }
+        clearTimeout(telegraphTimer)
       }, 8000)
+      // Stash telegraph timer for cleanup on mouseleave
+      wrap.__telegraphTimer = telegraphTimer
     })
     wrap.addEventListener('mouseleave', () => {
       setInert(true)
       clearTimeout(hoverRewardTimer)
+      if (wrap.__telegraphTimer) clearTimeout(wrap.__telegraphTimer)
     })
     wrap.addEventListener('focusin',    () => setInert(false))
     wrap.addEventListener('focusout', (e) => {
