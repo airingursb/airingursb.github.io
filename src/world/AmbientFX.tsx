@@ -6,6 +6,7 @@ import * as THREE from 'three'
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { getGust } from './wind'
+import { useTimeOfDay } from './time-of-day'
 
 const POLLEN_GOLD = '#FFE89A'
 const WIND_STREAK = '#FFFFFF'
@@ -103,6 +104,11 @@ function WindStreaks({ center, count = 4 }: { center: [number, number, number]; 
 }
 
 export default function AmbientFX() {
+  // F-sync: pollen is warm-sun bound — fade out at dusk/night. Wind
+  // streaks are gentler — keep day/dusk, dim by 60% at night.
+  const tod = useTimeOfDay()
+  const pollenActive = tod.phase === 'day' || (tod.phase === 'dawn' && tod.blend > 0.5)
+  const streaksActive = tod.phase !== 'night' || tod.blend < 0.4
   const pollenOrigins: Array<[number, number, number]> = [
     [-4.0, 0.8, 3.0],
     [5.0, 0.8, -4.0],
@@ -110,8 +116,8 @@ export default function AmbientFX() {
   ]
   return (
     <group>
-      <InstancedPollen origins={pollenOrigins} perOrigin={10} />
-      <WindStreaks center={[0, 1.2, 0]} count={4} />
+      {pollenActive && <InstancedPollen origins={pollenOrigins} perOrigin={10} />}
+      {streaksActive && <WindStreaks center={[0, 1.2, 0]} count={4} />}
     </group>
   )
 }
