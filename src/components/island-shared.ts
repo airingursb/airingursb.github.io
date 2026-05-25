@@ -103,9 +103,12 @@ export function getHearth(t: number) {
   return _hearthScratch
 }
 
-// Hover dwell + boost both use `performance.now()/1000` (wall clock)
-// to match the pointer-handler write sites. Using `t` here (Canvas
-// clock) silently gives negative dwell times.
+// Hover dwell + boost: the DESKTOP branches use `performance.now()/1000`
+// (wall clock) to match the pointer-handler write sites — comparing
+// against `t` (Canvas clock) silently gives negative dwell times.
+// The IS_TOUCH branches deliberately use `t` since they synthesize a
+// periodic cycle (no hover state to compare against), so any
+// monotonic time works.
 export function getDwellGolden(t: number): number {
   if (IS_TOUCH) {
     const phase = (t % 14) / 14
