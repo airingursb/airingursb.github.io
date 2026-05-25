@@ -267,7 +267,7 @@ import IslandWidget from './IslandWidget'
           burst.appendChild(p)
         }
       },
-      // 落樱 — 10 petals (was 18 — restraint is the aesthetic).
+      // 落樱 — 10 petals normally, 14 on first click (showstopper).
       // Petals flutter, they don't spin: capped Z rotation + Y-axis
       // flip that momentarily turns the petal edge-on (lower opacity
       // at 35%/70%). Per-petal phase decouples motion from neighbors.
@@ -276,10 +276,17 @@ import IslandWidget from './IslandWidget'
       sakura(burst, rect, cx, cy) {
         const minX = Math.max(10, cx - 60)
         const maxX = Math.min(rect.width - 10, cx + 60)
-        for (let i = 0; i < 10; i++) {
+        // First sakura ever in this session gets +4 petals + wider
+        // spread for the showstopper. Hits exactly once.
+        const isHero = clickCount === 1   // 0 incremented to 1 before spawner called
+        const count = isHero ? 14 : 10
+        const spreadX = isHero ? 80 : 60
+        const minSX = Math.max(10, cx - spreadX)
+        const maxSX = Math.min(rect.width - 10, cx + spreadX)
+        for (let i = 0; i < count; i++) {
           const p = document.createElement('span')
           p.className = 'island-fx-p'
-          p.style.setProperty('--x',      rand(minX, maxX) + 'px')
+          p.style.setProperty('--x',      rand(minSX, maxSX) + 'px')
           p.style.setProperty('--rock',   rand(20, 42) + 'px')
           p.style.setProperty('--rock-dir', Math.random() < 0.5 ? '1' : '-1')
           p.style.setProperty('--fall',   rand(4200, 6200) + 'ms')
