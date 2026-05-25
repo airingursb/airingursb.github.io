@@ -1736,11 +1736,25 @@ export default function IslandWidget() {
         hoverState.decay = performance.now() / 1000
         mouseState.x = 0
         mouseState.y = 0
+        hoverZone.current = null
       }}
       onPointerMove={(e) => {
         const rect = (e.currentTarget as HTMLCanvasElement).getBoundingClientRect()
         mouseState.x = ((e.clientX - rect.left) / rect.width - 0.5) * 2   // -1..1
         mouseState.y = ((e.clientY - rect.top) / rect.height - 0.5) * 2
+        // V53 interactivity (Sub-A 7th pass): hoverZone WAS DEAD CODE.
+        // Read in FallingPetals (sakura-zone gust 1.5×) but never
+        // assigned anywhere. Now map normalized mouseState into zones
+        // matching post-V53 layout: sakura is upper-right (after the
+        // x 0.55→0.40, z -0.35→0.15 reframe), tsukubai is lower-right,
+        // cabin is left third. Hovering the sakura area now actually
+        // triggers the petal gust boost — discoverable because the
+        // user already moved cursor there for a reason.
+        const mx = mouseState.x, my = mouseState.y
+        hoverZone.current =
+          (mx > 0.15 && my < 0.20) ? 'sakura' :
+          (mx > 0.20 && my > 0.35) ? 'tsukubai' :
+          (mx < -0.15) ? 'cabin' : null
       }}
     >
       {/* V44: wire WebGL ctx-loss/restore handlers (with cleanup) */}

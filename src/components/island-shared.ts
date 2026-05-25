@@ -114,8 +114,14 @@ export function getHoverBoost(_t: number): number {
     const since = now - hoverState.enteredAt
     return Math.min(1, since * 3)
   }
+  // V53 interactivity (Sub-A): pre-V53 decay was 0.67/s → 1.5s back
+  // to rest. For a 220px pet users brush past constantly that left
+  // the scene 'stuck excited' after the cursor was gone, making
+  // subsequent hovers feel un-fresh. Tighter asymmetric decay
+  // (~0.83s) so the scene returns to baseline before the user's eye
+  // does — preserves the 'wake up on approach' gesture for next pass.
   const sinceLeave = now - hoverState.decay
-  return Math.max(0, 1 - sinceLeave * 0.67)
+  return Math.max(0, 1 - sinceLeave * 1.2)
 }
 
 // ─────────────────────────────────────────────────────────────────────
