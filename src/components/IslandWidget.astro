@@ -356,6 +356,21 @@ import IslandWidget from './IslandWidget'
       wrap.classList.remove('island-pet-tapped')
       void wrap.offsetWidth   // force reflow so class toggle re-fires
       wrap.classList.add('island-pet-tapped')
+      // Tactile splash at click point — a single tiny ivory flash
+      // (160ms) that gives immediate visual feedback BEFORE any
+      // main fx particles appear. Stops the click feeling like a
+      // one-way event during the fx warm-up.
+      if (e && e.clientX != null) {
+        const splashRect = fxLayer.getBoundingClientRect()
+        const sx = e.clientX - splashRect.left
+        const sy = e.clientY - splashRect.top
+        const splash = document.createElement('span')
+        splash.className = 'island-fx-splash'
+        splash.style.left = sx + 'px'
+        splash.style.top = sy + 'px'
+        fxLayer.appendChild(splash)
+        setTimeout(() => splash.remove(), 320)
+      }
       let type
       if (clickCount++ === 0) {
         type = 'sakura'
@@ -941,11 +956,34 @@ import IslandWidget from './IslandWidget'
     pointer-events: none;
   }
   /* Z-order: hero effects (petals + lantern bloom) above atmospheric
-     (snow/wind/mist). If user rapid-clicks and bursts overlap, sakura
-     and moonglow read as foreground subject; the rest as background
-     atmosphere. */
+     (snow/wind). If user rapid-clicks and bursts overlap, sakura and
+     moonglow read as foreground subject; the rest as background
+     atmosphere. Splash sits on top of everything — it's the click ack. */
   .island-fx-burst.island-fx-sakura   { z-index: 2; }
   .island-fx-burst.island-fx-moonglow { z-index: 3; }
+  /* Tactile splash — single ivory flash at click point. Gives
+     immediate feedback (160ms) before the fx particles start. */
+  .island-fx-splash {
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+                  rgba(255, 240, 210, 0.7) 0%,
+                  rgba(255, 220, 170, 0.35) 50%,
+                  transparent 80%);
+    box-shadow: 0 0 14px rgba(255, 220, 170, 0.4);
+    transform: translate(-50%, -50%) scale(0.4);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 4;
+    animation: fx-splash 280ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+  @keyframes fx-splash {
+    0%   { opacity: 0;    transform: translate(-50%, -50%) scale(0.4); }
+    30%  { opacity: 0.95; transform: translate(-50%, -50%) scale(1.4); }
+    100% { opacity: 0;    transform: translate(-50%, -50%) scale(2.2); }
+  }
   .island-fx-p {
     position: absolute;
     display: block;
