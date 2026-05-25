@@ -74,10 +74,9 @@ export default function SunsetBirds({ theme: _theme }: { theme?: Theme } = {}) {
       if (!m) continue
       m.opacity = m.opacity + (targetOpacity - m.opacity) * k
     }
-    // Early-return: when fully faded out at day, skip wing flap +
-    // position update entirely. Birds aren't visible, no point
-    // computing their motion.
-    if (theme === 'day' && maxOpacity < 0.01) return
+    // Early-return: when fully faded out (day or night), skip wing flap
+    // + position update. Birds aren't visible, no point computing motion.
+    if (targetOpacity < 0.01 && maxOpacity < 0.01) return
 
     // Drift west → east on loop
     const phase = (t % LOOP_DURATION) / LOOP_DURATION

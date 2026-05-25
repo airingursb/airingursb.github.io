@@ -191,8 +191,10 @@ export function setNoise(color: NoiseColor): void {
   gain.gain.linearRampToValueAtTime(VOL[color], c.currentTime + 0.6)
 }
 
-// Procedural bird chirp — 2-3 quick sine bursts at slightly varying
-// pitches. Cheap (~3 oscillators per chirp, ~250ms each).
+// Procedural bird chirp — pure sine + ramp = electronic beep. Real
+// birds have FM (pitch glide) + a noise burst on the attack. Each note:
+// short filtered-noise burst (15ms) → sine with frequency glide. Now
+// reads as chirp, not beep.
 function playBirdChirp(): void {
   if (!ctx) return
   const c = ctx
@@ -200,11 +202,33 @@ function playBirdChirp(): void {
   const notes = 2 + Math.floor(Math.random() * 2)
   const baseFreq = 1800 + Math.random() * 1200
   for (let i = 0; i < notes; i++) {
+    const start = now + i * 0.11
+    const noteFreq = baseFreq * (0.9 + Math.random() * 0.4)
+    // 15ms noise-burst "consonant" attack — band-passed at osc freq.
+    // Buffer is per-chirp (~660 samples) so dynamic alloc cost is tiny.
+    const burstBuf = c.createBuffer(1, Math.floor(c.sampleRate * 0.018), c.sampleRate)
+    const bd = burstBuf.getChannelData(0)
+    for (let s = 0; s < bd.length; s++) bd[s] = Math.random() * 2 - 1
+    const burst = c.createBufferSource()
+    burst.buffer = burstBuf
+    const burstFilter = c.createBiquadFilter()
+    burstFilter.type = 'bandpass'
+    burstFilter.frequency.value = noteFreq
+    burstFilter.Q.value = 4
+    const burstGain = c.createGain()
+    burstGain.gain.setValueAtTime(0.04, start)
+    burstGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.012)
+    burst.connect(burstFilter)
+    burstFilter.connect(burstGain)
+    burstGain.connect(c.destination)
+    burst.start(start)
+    // Sine tone with FM glide — pitch rises ~15% over 80ms
     const osc = c.createOscillator()
     osc.type = 'sine'
-    osc.frequency.value = baseFreq * (0.9 + Math.random() * 0.4)
+    osc.frequency.setValueAtTime(noteFreq, start)
+    osc.frequency.linearRampToValueAtTime(noteFreq * 1.15, start + 0.08)
+    osc.frequency.exponentialRampToValueAtTime(noteFreq * 0.95, start + 0.18)
     const g = c.createGain()
-    const start = now + i * 0.11
     g.gain.setValueAtTime(0, start)
     g.gain.linearRampToValueAtTime(0.06, start + 0.02)
     g.gain.exponentialRampToValueAtTime(0.0001, start + 0.18)

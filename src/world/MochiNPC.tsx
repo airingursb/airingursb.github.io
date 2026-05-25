@@ -42,11 +42,11 @@ export default function MochiNPC() {
     // Mochi's world pos. Yaw needed to face (zx, zz) from (-0.6, 1.6).
     const dx = zx - (-0.6)
     const dz = zz - 1.6
-    // Three.js Y-rotation: 0 faces +Z, positive yaw turns counter-clockwise (toward -X).
-    // atan2(-dx, -dz) gives the yaw that makes -Z (head's "forward") point at the target.
-    // Actually since mochi's body forward is +Z (south), we need:
-    //   yaw = atan2(-dx, dz)
-    const targetYaw = Math.atan2(-dx, dz)
+    // Three.js Y-rotation convention: at yaw=0, snout faces +Z. Positive
+    // yaw is counter-clockwise viewed from +Y. To point snout AT a world
+    // vector (dx, dz): yaw = atan2(dx, dz). Earlier negation made him
+    // turn the wrong way (faced -dx for east targets).
+    const targetYaw = Math.atan2(dx, dz)
     zoneLookRef.current = { until: performance.now() / 1000 + 5, targetYaw }
   }), [])
   useFrame((s) => {
@@ -69,10 +69,11 @@ export default function MochiNPC() {
       const easeIn = Math.min(1, elapsed / 0.7)
       const fadeBack = remaining < 1.2 ? (1 - remaining / 1.2) : 0
       const blend = Math.max(0, easeIn - fadeBack)
-      // Micro-wobble during hold (20% of default amplitude) so Mochi
-      // breathes/looks-around-the-target instead of freezing
-      const microYaw = Math.sin(t * 0.6) * 0.06 + Math.sin(t * 1.7 + 0.4) * 0.02
-      const microPitch = Math.sin(t * 0.37) * 0.04
+      // Micro-wobble during hold (~40% of default amplitude — default
+      // is 0.3+0.04=0.34 peak yaw, this is ~0.14 peak). Mochi breathes
+      // around the target instead of freezing.
+      const microYaw = Math.sin(t * 0.6) * 0.12 + Math.sin(t * 1.7 + 0.4) * 0.04
+      const microPitch = Math.sin(t * 0.37) * 0.06
       headRef.current.rotation.y = zl.targetYaw * blend +
         microYaw * (0.4 + 0.6 * (1 - blend)) +
         Math.sin(t * 0.5) * 0.3 * (1 - blend)

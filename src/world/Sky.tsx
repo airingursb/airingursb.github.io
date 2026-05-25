@@ -30,6 +30,10 @@ const PHASE_PARAMS: Record<TimePhase, {
 const PHASE_ORDER: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
 
 // Linear interpolation between adjacent phase params.
+// Special-case: sunPos.y crossing zero (dusk→night, night→dawn) creates
+// a green-flash artifact in the Hosek-Wilkie sky shader because
+// horizon-tinting flips sign abruptly. Hold sun above y=0.5 during
+// crossing-blends, snapping to night y only when blend ≥ 0.85.
 function lerpParams(phase: TimePhase, blend: number) {
   const idx = PHASE_ORDER.indexOf(phase)
   const next = PHASE_ORDER[(idx + 1) % PHASE_ORDER.length]
@@ -38,8 +42,23 @@ function lerpParams(phase: TimePhase, blend: number) {
   const lerp = (av: number, bv: number) => av + (bv - av) * blend
   const lerpColor = (ac: string, bc: string) =>
     '#' + new THREE.Color(ac).lerp(new THREE.Color(bc), blend).getHexString()
+  // Sun-Y crossing protection: cubic-ease that holds high before diving
+  const aYAbove = a.sunPos[1] > 0
+  const bYBelow = b.sunPos[1] < 0
+  const crossing = aYAbove && bYBelow   // dusk → night
+  const reverseCrossing = a.sunPos[1] < 0 && b.sunPos[1] > 0  // night → dawn
+  let sunY: number
+  if (crossing) {
+    // Hold at a.sunPos.y until blend 0.85, then dive to b.sunPos.y
+    sunY = blend < 0.85 ? a.sunPos[1] : a.sunPos[1] + (b.sunPos[1] - a.sunPos[1]) * ((blend - 0.85) / 0.15)
+  } else if (reverseCrossing) {
+    // Stay low until blend 0.15, then rise
+    sunY = blend < 0.15 ? a.sunPos[1] : a.sunPos[1] + (b.sunPos[1] - a.sunPos[1]) * ((blend - 0.15) / 0.85)
+  } else {
+    sunY = lerp(a.sunPos[1], b.sunPos[1])
+  }
   return {
-    sunPos: [lerp(a.sunPos[0], b.sunPos[0]), lerp(a.sunPos[1], b.sunPos[1]), lerp(a.sunPos[2], b.sunPos[2])] as [number, number, number],
+    sunPos: [lerp(a.sunPos[0], b.sunPos[0]), sunY, lerp(a.sunPos[2], b.sunPos[2])] as [number, number, number],
     mieCoefficient: lerp(a.mieCoefficient, b.mieCoefficient),
     mieDirectionalG: lerp(a.mieDirectionalG, b.mieDirectionalG),
     rayleigh: lerp(a.rayleigh, b.rayleigh),
@@ -66,8 +85,10 @@ export default function Sky({ theme }: { theme?: 'day' | 'dusk' } = {}) {
         turbidity={p.turbidity}
       />
 
-      {/* Puffy clouds — drifting masses, phase-tinted */}
-      <Clouds material={THREE.MeshBasicMaterial} limit={400}>
+      {/* Puffy clouds — drifting masses, phase-tinted. Lambert (not
+          Basic) so the directional sun intensity actually affects them —
+          clouds dim at night instead of glowing brighter than the dark sky. */}
+      <Clouds material={THREE.MeshLambertMaterial} limit={400}>
         <Cloud seed={1} segments={32} position={[-30, 18, -20]} bounds={[10, 4, 6]} volume={6} color={p.cloudColor} opacity={0.85} fade={20} />
         <Cloud seed={2} segments={28} position={[ 28, 22, -18]} bounds={[ 8, 3, 5]} volume={5} color={p.cloudColor} opacity={0.80} fade={20} />
         <Cloud seed={3} segments={26} position={[  0, 24,  28]} bounds={[ 9, 3, 5]} volume={5} color={p.cloudColor} opacity={0.78} fade={22} />

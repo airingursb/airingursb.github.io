@@ -19,10 +19,10 @@ import { OrbitControls } from '@react-three/drei'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { on } from './events'
-import { useTimeOfDay, setManualOverride } from './time-of-day'
+import { useTimeOfDay, setManualOverride, type TimePhase } from './time-of-day'
 import { EffectComposer, Bloom, SMAA, ToneMapping, BrightnessContrast, SSAO, DepthOfField, Vignette } from '@react-three/postprocessing'
 import { ToneMappingMode } from 'postprocessing'
-import { ACESFilmicToneMapping } from 'three'
+import { ACESFilmicToneMapping, Color as ThreeColor } from 'three'
 import Island from './Island'
 import Cabin from './Cabin'
 import Gazebo from './Gazebo'
@@ -148,7 +148,7 @@ function CameraControls() {
         intro.audioFired = true
         try {
           // Dynamic import to keep audio module out of critical path
-          import('./AmbientAudio').then(m => m.playChime(220, 2.4))
+          import('./AmbientAudio').then(m => m.playChime(220, 2.4)).catch(() => {})
         } catch {}
       }
       let phase = elapsed / intro.duration
@@ -246,21 +246,75 @@ function CameraControls() {
 // sky sun position lower for redder horizon, but Sky.tsx is currently
 // module-static so we just adjust the lights here.
 type Theme = 'day' | 'dusk'
-function ThemeAwareLights({ theme }: { theme: Theme }) {
-  const sun = theme === 'day'
-    ? { pos: [20, 11, 9], color: '#FFD09A', intensity: 2.2 }
-    : { pos: [18, 4, 14], color: '#FF9A6A', intensity: 1.6 }
-  const ambient = theme === 'day'
-    ? { color: '#FFE4C0', intensity: 0.35 }
-    : { color: '#E8B888', intensity: 0.28 }
+// F-deep: 4-phase scene fog. Was 2-state (#F4E4C8 day / #D89A78 dusk),
+// meaning night inherited dusk's sunset-amber. Now lerps cleanly.
+const FOG_COLORS: Record<TimePhase, string> = {
+  dawn:  '#EAC4B4',
+  day:   '#F4E4C8',
+  dusk:  '#D89A78',
+  night: '#2A2A40',
+}
+function PhaseFog() {
+  const tod = useTimeOfDay()
+  const order: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
+  const idx = order.indexOf(tod.phase)
+  const a = FOG_COLORS[tod.phase]
+  const b = FOG_COLORS[order[(idx + 1) % order.length]]
+  const c = '#' + new ThreeColor(a).lerp(new ThreeColor(b), tod.blend).getHexString()
+  return <fog attach="fog" args={[c, 55, 140]} />
+}
+
+// F-deep: lights now 4-phase aware via useTimeOfDay. Night was
+// inheriting dusk's #FF9A6A 1.6-intensity directional light, making
+// 2am scenes read as eternal sunset. Per-phase table with smooth blend.
+interface LightParams {
+  sunPos: [number, number, number]
+  sunColor: string
+  sunIntensity: number
+  ambientColor: string
+  ambientIntensity: number
+  hemiSky: string
+  hemiGround: string
+  fillColor1: string
+  fillColor2: string
+}
+const LIGHT_PHASE: Record<TimePhase, LightParams> = {
+  dawn:  { sunPos: [10, 3, 18], sunColor: '#FFAE82', sunIntensity: 1.4, ambientColor: '#E8C0A0', ambientIntensity: 0.30, hemiSky: '#F4B89A', hemiGround: '#4A2E1E', fillColor1: '#F6BC95', fillColor2: '#EAA084' },
+  day:   { sunPos: [20, 11, 9], sunColor: '#FFD09A', sunIntensity: 2.2, ambientColor: '#FFE4C0', ambientIntensity: 0.35, hemiSky: '#FFD9A8', hemiGround: '#5A3A28', fillColor1: '#FAD6B0', fillColor2: '#F4D9A0' },
+  dusk:  { sunPos: [18, 4, 14], sunColor: '#FF9A6A', sunIntensity: 1.6, ambientColor: '#E8B888', ambientIntensity: 0.28, hemiSky: '#E89A6E', hemiGround: '#3A2418', fillColor1: '#D8A088', fillColor2: '#D9886B' },
+  night: { sunPos: [4, 8, 12],  sunColor: '#9AAFD0', sunIntensity: 0.35, ambientColor: '#3E4870', ambientIntensity: 0.18, hemiSky: '#5A6080', hemiGround: '#1A1828', fillColor1: '#5A6088', fillColor2: '#454C72' },
+}
+function lerpLight(phase: TimePhase, blend: number): LightParams {
+  const order: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
+  const idx = order.indexOf(phase)
+  const a = LIGHT_PHASE[phase]
+  const b = LIGHT_PHASE[order[(idx + 1) % order.length]]
+  const ln = (av: number, bv: number) => av + (bv - av) * blend
+  const lc = (ac: string, bc: string) =>
+    '#' + new ThreeColor(ac).lerp(new ThreeColor(bc), blend).getHexString()
+  return {
+    sunPos: [ln(a.sunPos[0], b.sunPos[0]), ln(a.sunPos[1], b.sunPos[1]), ln(a.sunPos[2], b.sunPos[2])],
+    sunColor: lc(a.sunColor, b.sunColor),
+    sunIntensity: ln(a.sunIntensity, b.sunIntensity),
+    ambientColor: lc(a.ambientColor, b.ambientColor),
+    ambientIntensity: ln(a.ambientIntensity, b.ambientIntensity),
+    hemiSky: lc(a.hemiSky, b.hemiSky),
+    hemiGround: lc(a.hemiGround, b.hemiGround),
+    fillColor1: lc(a.fillColor1, b.fillColor1),
+    fillColor2: lc(a.fillColor2, b.fillColor2),
+  }
+}
+function ThemeAwareLights({ theme: _theme }: { theme?: Theme } = {}) {
+  const tod = useTimeOfDay()
+  const p = lerpLight(tod.phase, tod.blend)
   return (
     <>
-      <hemisphereLight args={[theme === 'day' ? '#FFD9A8' : '#E89A6E', theme === 'day' ? '#5A3A28' : '#3A2418', 0.55]} />
-      <ambientLight intensity={ambient.intensity} color={ambient.color} />
+      <hemisphereLight args={[p.hemiSky, p.hemiGround, 0.55]} />
+      <ambientLight intensity={p.ambientIntensity} color={p.ambientColor} />
       <directionalLight
-        position={sun.pos as [number, number, number]}
-        intensity={sun.intensity}
-        color={sun.color}
+        position={p.sunPos}
+        intensity={p.sunIntensity}
+        color={p.sunColor}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-near={1}
@@ -271,8 +325,8 @@ function ThemeAwareLights({ theme }: { theme: Theme }) {
         shadow-camera-bottom={-24}
         shadow-bias={-0.0005}
       />
-      <directionalLight position={[-14, 12, -10]} intensity={0.4} color={theme === 'day' ? '#FAD6B0' : '#D8A088'} />
-      <directionalLight position={[-20, 8, 20]} intensity={0.35} color={theme === 'day' ? '#F4D9A0' : '#D9886B'} />
+      <directionalLight position={[-14, 12, -10]} intensity={0.4} color={p.fillColor1} />
+      <directionalLight position={[-20, 8, 20]} intensity={0.35} color={p.fillColor2} />
     </>
   )
 }
@@ -352,7 +406,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
       }}
     >
       {/* Fog tinted to theme */}
-      <fog attach="fog" args={[theme === 'day' ? '#F4E4C8' : '#D89A78', 55, 140]} />
+      <PhaseFog />
 
       <Sky theme={theme} />
       <Void />
