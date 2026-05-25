@@ -1447,14 +1447,10 @@ const jsonLd = {
             '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/></svg>' +
             '<span>' + (c.likes || 0) + '</span>' +
           '</button>' +
-          renderReactions(c) +
           '<button class="bc-reply-btn" data-id="' + c.id + '">Reply</button>' +
         '</div>' +
         '<div class="bc-replies-container"></div>' +
       '</div>';
-
-    // V3.0-X · Overnight C1 — wire reaction chips + add-reaction popover
-    wireReactionUI(div, c);
 
     // Like button — optimistic update
     div.querySelector('.bc-like-btn').addEventListener('click', function() {
@@ -1499,72 +1495,6 @@ const jsonLd = {
     }
 
     return div;
-  }
-
-  // V3.0-X · Overnight C1 — emoji reactions render + wire
-  var REACTION_PALETTE = ['❤️', '😂', '🤔', '👀', '🔥', '🙏', '👏'];
-  function renderReactions(c) {
-    var counts = c.reactions || {};
-    var keys = Object.keys(counts);
-    var chips = keys.map(function(emoji) {
-      var n = counts[emoji];
-      return '<button class="bc-react-chip" data-id="' + c.id + '" data-emoji="' + esc(emoji) + '">' + emoji + ' <span>' + n + '</span></button>';
-    }).join('');
-    var addBtn = '<button class="bc-react-add-btn" data-id="' + c.id + '" title="Add reaction">+ 😊</button>';
-    return '<span class="bc-reactions">' + chips + addBtn + '</span>';
-  }
-  function wireReactionUI(div, c) {
-    var chips = div.querySelectorAll('.bc-react-chip');
-    chips.forEach(function(chip) {
-      chip.addEventListener('click', function(e) {
-        e.stopPropagation();
-        sendReact(c.id, chip.getAttribute('data-emoji'), c, div);
-      });
-    });
-    var addBtn = div.querySelector('.bc-react-add-btn');
-    if (addBtn) {
-      addBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        // Inline popover with the palette
-        var existing = div.querySelector('.bc-react-palette');
-        if (existing) { existing.remove(); return; }
-        var pop = document.createElement('div');
-        pop.className = 'bc-react-palette';
-        REACTION_PALETTE.forEach(function(em) {
-          var b = document.createElement('button');
-          b.textContent = em;
-          b.addEventListener('click', function(ev) {
-            ev.stopPropagation();
-            sendReact(c.id, em, c, div);
-            pop.remove();
-          });
-          pop.appendChild(b);
-        });
-        addBtn.parentNode.appendChild(pop);
-        // Close on outside click
-        setTimeout(function() {
-          document.addEventListener('click', function close() {
-            try { pop.remove() } catch {}
-            document.removeEventListener('click', close);
-          }, { once: true });
-        }, 0);
-      });
-    }
-  }
-  function sendReact(commentId, emoji, comment, div) {
-    apiPost('/api/comments/' + commentId + '/react', { emoji: emoji }).then(function(res) {
-      if (!res || !res.reactions) return;
-      comment.reactions = res.reactions;
-      // Re-render the reaction row in place
-      var oldRow = div.querySelector('.bc-reactions');
-      if (oldRow) {
-        var tmp = document.createElement('div');
-        tmp.innerHTML = renderReactions(comment);
-        var newRow = tmp.firstChild;
-        oldRow.replaceWith(newRow);
-        wireReactionUI(div, comment);
-      }
-    }).catch(function() {});
   }
 
   // Submit bottom comment
@@ -2544,31 +2474,6 @@ const jsonLd = {
     /* Mobile: comment popover adjustments */
     .comment-input-popover { width: calc(100vw - 40px); max-width: 360px; }
     .cip-identity { flex-direction: column; gap: 6px; }
-
-    /* V3.0-X · Overnight C1 — reaction chips */
-    .bc-reactions { display: inline-flex; gap: 4px; align-items: center; flex-wrap: wrap; margin-left: 6px; position: relative; }
-    .bc-react-chip, .bc-react-add-btn {
-      background: rgba(120,140,200,.1); border: 1px solid rgba(120,140,200,.25);
-      color: var(--c-text, #e6edf3); border-radius: 14px;
-      padding: 1px 8px; font-size: 12px; cursor: pointer;
-      font-family: inherit;
-    }
-    .bc-react-chip:hover, .bc-react-add-btn:hover { background: rgba(120,140,200,.2); }
-    .bc-react-add-btn { font-size: 10px; opacity: 0.5; }
-    .bc-react-add-btn:hover { opacity: 1; }
-    .bc-react-palette {
-      position: absolute; bottom: 22px; left: 0;
-      background: rgba(40,44,55,0.96); border: 1px solid rgba(120,140,200,.4);
-      border-radius: 10px; padding: 4px;
-      display: flex; gap: 2px;
-      z-index: 50;
-      box-shadow: 0 4px 12px rgba(0,0,0,.3);
-    }
-    .bc-react-palette button {
-      background: transparent; border: none; cursor: pointer;
-      font-size: 16px; padding: 4px 6px; border-radius: 6px;
-    }
-    .bc-react-palette button:hover { background: rgba(120,140,200,.25); }
 
     /* Article like & bottom comments mobile */
     .article-like-section { padding: 40px 20px 0 !important; gap: 16px; }
