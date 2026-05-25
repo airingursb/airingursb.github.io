@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { getWind } from './island-shared';
 
 /**
  * 樱花树 v2 · 真曲枝 + 千片花瓣
@@ -353,13 +354,22 @@ export function Sakura({
     [tree],
   );
 
-  // wind sway — root-only rotation, cheap
+  // V53 elegance pass (Sub-A): root sway WAS pure sin/cos off
+  // performance.now() — completely decoupled from the shared
+  // getWind() field. The parent <WindSway> already gusts WITH the
+  // field, but this inner motion did its own private waltz at a
+  // different frequency. When the gust kicks petals + furin + smoke
+  // into a coherent surge, the trunk should bow WITH them.
+  // Use clock.elapsedTime (matches getWind's t) instead of performance.now.
   const groupRef = useRef<THREE.Group>(null);
-  useFrame(() => {
+  useFrame((s) => {
     if (!groupRef.current) return;
-    const t = performance.now() / 1000;
-    groupRef.current.rotation.x = Math.sin(t * 0.4 + seed * 0.01) * 0.012;
-    groupRef.current.rotation.z = Math.cos(t * 0.55 + seed * 0.013) * 0.012;
+    const t = s.clock.elapsedTime;
+    const wind = getWind(t - 0.5);   // trunk lags petals by 0.5s (high mass)
+    groupRef.current.rotation.x =
+      wind.dirZ * 0.018 + Math.sin(t * 0.4 + seed * 0.01) * 0.005 + wind.gust * 0.020;
+    groupRef.current.rotation.z =
+      wind.dirX * 0.022 + Math.cos(t * 0.55 + seed * 0.013) * 0.005 + wind.gust * 0.024;
   });
 
   return (

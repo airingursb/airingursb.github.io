@@ -1016,8 +1016,31 @@ function FallenPetals() {
     }
     return out
   }, [])
+  // V53 elegance pass (Sub-A): 38 fallen petals are STONE DEAD — when
+  // a gust kicks the furin/smoke/sakura into surge, the eye expects
+  // SOMETHING in the ground petals to flutter (real petals lift an
+  // edge on wind). Nudge rotation.x on a sparse subset of indexed
+  // petals when wind.gust passes 0.35 threshold — slow ramp, sparse
+  // selection, never all petals = lifelike not "wave goes through".
+  const grpRef = useRef<THREE.Group>(null)
+  const lightPetals = useMemo(() => [3, 11, 17, 24, 31], [])  // indexed light petals
+  useFrame((s) => {
+    const grp = grpRef.current
+    if (!grp) return
+    const t = s.clock.elapsedTime
+    const wind = getWind(t)
+    if (wind.gust < 0.05) return    // calm — do nothing (perf + stillness)
+    lightPetals.forEach((idx, k) => {
+      const m = grp.children[idx] as THREE.Mesh | undefined
+      if (!m) return
+      const baseTilt = -Math.PI / 2 + Math.sin(idx * 4.3) * 0.15
+      // Lift edge by up to 0.5 rad on peak gust, per-petal phase offset
+      const lift = wind.gust * 0.6 * Math.sin(t * 3.2 + k * 1.7)
+      m.rotation.x = baseTilt + lift
+    })
+  })
   return (
-    <group position={[0.55, 0.058, -0.35]}>
+    <group ref={grpRef} position={[0.55, 0.058, -0.35]}>
       {positions.map((p, i) => (
         <mesh
           key={i}
@@ -1101,11 +1124,21 @@ function AnimatedHearthLight() {
 
 // ── BreathingShoji — paper window with subtle emissive lerp.
 // V13: cabin reads as inhabited, not LED-lit.
+// V53 elegance pass (Sub-A): pre-V53 only intensity pulsed — color
+// stayed at cool WASHI_GLOW. Real paper lit by hearth fire warms
+// toward orange at fire peak and cools back as embers settle. Now
+// emissive COLOR lerps toward an ember-orange tint on hearth.shojiBrighten,
+// so the hearth pulse reads as "fire breathing inside the cabin"
+// not just "lamp brightness adjusting".
+const SHOJI_EMBER = '#FFB070'
 function BreathingShoji({ position, size }: {
   position: [number, number, number]
   size: [number, number]
 }) {
   const ref = useRef<THREE.MeshStandardMaterial>(null)
+  const baseColor = useMemo(() => new THREE.Color(WASHI_GLOW), [])
+  const emberColor = useMemo(() => new THREE.Color(SHOJI_EMBER), [])
+  const scratch = useMemo(() => new THREE.Color(), [])
   useFrame((s) => {
     if (!ref.current) return
     const t = s.clock.elapsedTime
@@ -1113,6 +1146,9 @@ function BreathingShoji({ position, size }: {
     // V20: hover flare adds extra brighten
     const hover = getHoverBoost(t)
     ref.current.emissiveIntensity = 0.42 + Math.sin(t * 0.6) * 0.05 + hearth.shojiBrighten + hover * 0.18
+    // V53: warm tint shift on hearth peak — fire's hue bleeds through paper
+    scratch.copy(baseColor).lerp(emberColor, Math.max(0, Math.min(0.6, hearth.shojiBrighten * 1.2)))
+    ref.current.emissive.copy(scratch)
   })
   return (
     <mesh position={position}>
