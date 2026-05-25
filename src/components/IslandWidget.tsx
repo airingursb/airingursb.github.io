@@ -788,6 +788,7 @@ function makeDisplacedGroundGeo(): THREE.BufferGeometry {
   const cBase = new THREE.Color(GRASS_LIGHT)
   const cHi = new THREE.Color(GRASS_HILIGHT)
   const cLo = new THREE.Color(GRASS_SHADE)
+  const cSoilDk = new THREE.Color(SOIL_DK)
   const colors = new Float32Array(pos.count * 3)
   for (let i = 0; i < pos.count; i++) {
     const x = pos.getX(i), y = pos.getY(i)
@@ -804,6 +805,22 @@ function makeDisplacedGroundGeo(): THREE.BufferGeometry {
     const c = t < 0.5
       ? new THREE.Color().lerpColors(cLo, cBase, t * 2)
       : new THREE.Color().lerpColors(cBase, cHi, (t - 0.5) * 2)
+    // Rim soil-bleed: over the outer ~15% of the radius (d > 1.74),
+    // blend grass → SOIL_DK so the seam reads as 'grass thinning to
+    // exposed soil' instead of a hard color discontinuity at the
+    // cliff edge. Angular noise breaks the ring into uneven patches
+    // (some spots bare brown, others still grassy) — looks like real
+    // wear, not a painted band. Uses existing palette color → stays
+    // in family with the cliff top.
+    if (d > 1.74) {
+      const angle = Math.atan2(y, x)
+      const rimNoise = Math.sin(angle * 6.7) * 0.5 + Math.cos(angle * 11.3 + 1.4) * 0.35
+      // edge falloff: 0 at d=1.74, 1 at d=2.05; gated by noise so the
+      // bare-soil patches are uneven (range ~0.25–0.85 at the rim)
+      const edge = Math.min(1, (d - 1.74) / 0.31)
+      const soilMix = Math.max(0, Math.min(0.85, edge * (0.55 + rimNoise * 0.35)))
+      c.lerp(cSoilDk, soilMix)
+    }
     colors[i * 3] = c.r
     colors[i * 3 + 1] = c.g
     colors[i * 3 + 2] = c.b
