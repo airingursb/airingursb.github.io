@@ -636,7 +636,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
     position: relative;
     overflow: hidden;
   }
-  .pi-stats-overlay {
+  :global(.pi-stats-overlay) {
     position: absolute; inset: 0;
     display: flex; align-items: flex-end; justify-content: center;
     gap: 14px; padding: 0 12px 8px;
@@ -645,13 +645,13 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
     opacity: 0;
     transition: opacity 0.2s;
   }
-  .pi-stats-overlay .pi-stat-icon {
+  :global(.pi-stats-overlay .pi-stat-icon) {
     stroke: rgba(255,255,255,0.9); opacity: 0.85;
   }
-  .pi-stats-overlay .pi-stat-like.liked .pi-heart-icon {
+  :global(.pi-stats-overlay .pi-stat-like.liked .pi-heart-icon) {
     fill: #ef4444; stroke: #ef4444; opacity: 1;
   }
-  .hero-card-sm:hover .pi-stats-overlay { opacity: 1; }
+  .hero-card-sm:hover :global(.pi-stats-overlay) { opacity: 1; }
   .hc-body {
     padding: 12px 14px 14px;
     display: flex; flex-direction: column;
@@ -860,36 +860,46 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
   }
 
   /* ── Post stats (Design A: row below meta, show on hover) ── */
-  .pi-stats {
+  /* pi-stats must be :global() — when build-time data has likes=0 or
+     comments=0, the JS fetch later creates fresh stat spans via
+     upsertStat. Those new spans don't carry the data-astro-cid-*
+     attribute Astro's scoped selectors require, so a non-global
+     `.pi-stat` rule won't match them → span falls back to display:inline,
+     SVG renders at its 24×24 viewBox default, the number text wraps to
+     a new line. Globalizing keeps the layout consistent regardless of
+     whether the span was authored at build time or hydrated at runtime. */
+  :global(.pi-stats) {
     display: flex; align-items: center; gap: 14px;
     margin-top: 6px;
     font-size: 12px; color: var(--c-text-muted);
     opacity: 0;
     transition: opacity 0.2s;
   }
-  .pi-stat {
+  :global(.pi-stat) {
     display: inline-flex; align-items: center; gap: 3px;
+    white-space: nowrap;
   }
-  .pi-stat-icon {
+  :global(.pi-stat-icon) {
     width: 13px; height: 13px; stroke-width: 1.8;
     opacity: 0.6;
+    flex-shrink: 0;
   }
   /* Liked heart state */
-  .pi-stat-like.liked .pi-heart-icon {
+  :global(.pi-stat-like.liked .pi-heart-icon) {
     fill: #ef4444;
     stroke: #ef4444;
     opacity: 1;
   }
   /* Show stats on hover — list items */
-  .post-item:hover .pi-stats { opacity: 1; }
+  .post-item:hover :global(.pi-stats) { opacity: 1; }
   /* Show stats on hover — hero cards (large card only, small cards use .pi-stats-overlay) */
-  .hero-card-lg:hover .pi-stats { opacity: 1; }
+  .hero-card-lg:hover :global(.pi-stats) { opacity: 1; }
   /* Show stats on hover — popular cards */
-  .popular-card:hover .pi-stats { opacity: 1; }
+  .popular-card:hover :global(.pi-stats) { opacity: 1; }
   /* Large hero card stats: white text */
-  .pi-stats-lg { color: rgba(255,255,255,0.85); }
-  .pi-stats-lg .pi-stat-icon { stroke: rgba(255,255,255,0.85); opacity: 0.8; }
-  .pi-stats-lg .pi-stat-like.liked .pi-heart-icon { fill: #ef4444; stroke: #ef4444; opacity: 1; }
+  :global(.pi-stats-lg) { color: rgba(255,255,255,0.85); }
+  :global(.pi-stats-lg .pi-stat-icon) { stroke: rgba(255,255,255,0.85); opacity: 0.8; }
+  :global(.pi-stats-lg .pi-stat-like.liked .pi-heart-icon) { fill: #ef4444; stroke: #ef4444; opacity: 1; }
 
   .pi-thumb {
     width: 120px; height: 80px; flex-shrink: 0;
