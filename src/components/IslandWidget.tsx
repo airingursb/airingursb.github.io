@@ -504,6 +504,71 @@ function Torii({ x, z, rotY = 0 }: { x: number; z: number; rotY?: number }) {
   )
 }
 
+// ── V53 KaresansuiPetals — petals blown into the rake lines.
+//    Real Japanese gardens during sakura season have petals collected
+//    along the rake ridges — wind catches in the grooves. Adds visible
+//    warm-pink dots against the cool gravel sand and tells a tiny
+//    story: "the wind blew petals in yesterday, the gardener will
+//    sweep them this afternoon." InstancedMesh for ~22 petals — much
+//    cheaper than per-mesh given they're all the same geo+material.
+function KaresansuiPetals() {
+  const COUNT = 22
+  const ref = useRef<THREE.InstancedMesh>(null)
+  const petalGeo = useMemo(() => new THREE.ShapeGeometry(makePetalShape(), 6), [])
+  const mat = useMemo(() => new THREE.MeshStandardMaterial({
+    color: '#FFD8E3', roughness: 0.92, side: THREE.DoubleSide,
+  }), [])
+  useEffect(() => () => { petalGeo.dispose(); mat.dispose() }, [petalGeo, mat])
+  // Pre-compute static positions on first render. Most cluster near the
+  // lantern base (downwind from the cherry tree); a few trace along the
+  // outer rake ring; one or two near the mossy stone.
+  useEffect(() => {
+    const m = ref.current
+    if (!m) return
+    const dummy = new THREE.Object3D()
+    const tints = ['#FFEAF1', '#F5C8D6', '#FFD8E3']
+    const scratch = new THREE.Color()
+    // Cluster: lantern base (lantern @ -0.10, 0.70 in world coords;
+    // karesansui group is at -0.55 so local offset = 0.45, 0.70).
+    // Plus a few along the outer rake ring (radius ~0.88) and a couple
+    // randomly. 0.054 is just above the gravel surface (sand @ 0.005,
+    // group y = 0.052, so local y = ~0.012 to clear z-fight).
+    const seeds: Array<[number, number, number]> = [
+      // 12 in a soft cluster around lantern base (within radius ~0.20)
+      [0.45, 0.70, 0], [0.49, 0.74, 0.8], [0.41, 0.66, 1.6], [0.46, 0.62, 2.3],
+      [0.53, 0.71, 3.1], [0.38, 0.73, 4.0], [0.42, 0.78, 4.7], [0.50, 0.66, 5.4],
+      [0.55, 0.74, 0.4], [0.36, 0.69, 1.2], [0.48, 0.81, 2.0], [0.40, 0.62, 2.9],
+      // 6 along the outer rake ring (~0.82 radius from group origin)
+      [0.62, 0.55, 1.1], [0.30, 0.78, 0.4], [-0.20, 0.81, 2.2], [-0.55, 0.50, 0.7],
+      [-0.78, 0.10, 3.3], [-0.40, -0.62, 5.0],
+      // 4 near the mossy stone (mossy stone at local 0.35, 0.45)
+      [0.30, 0.51, 1.9], [0.38, 0.40, 0.5], [0.43, 0.47, 3.7], [0.27, 0.43, 4.4],
+    ]
+    seeds.forEach((s, i) => {
+      const [lx, lz, rot] = s
+      dummy.position.set(lx, 0.012, lz)
+      // Curl variance — real fallen petals don't all lie perfectly flat
+      dummy.rotation.set(
+        -Math.PI / 2 + Math.sin(i * 4.7) * 0.18,
+        0,
+        rot,
+      )
+      // V53.1: scale bump 0.7-1.5 → 1.0-1.8 so petals read on the
+      // 250×250 pet canvas. At lower scale they were dust-grain dots
+      // visually invisible past the bloom pass.
+      dummy.scale.setScalar(1.0 + (Math.sin(i * 11.3) + 1) * 0.4)
+      dummy.updateMatrix()
+      m.setMatrixAt(i, dummy.matrix)
+      scratch.set(tints[i % 3])
+      m.setColorAt(i, scratch)
+    })
+    m.instanceMatrix.needsUpdate = true
+    if (m.instanceColor) m.instanceColor.needsUpdate = true
+    m.frustumCulled = false
+  }, [])
+  return <instancedMesh ref={ref} args={[petalGeo, mat, COUNT]} />
+}
+
 // ── Raked karesansui gravel ring around the cabin — "ma" / negative
 //    space marker. Concentric flat tori suggest the rake lines.
 function RakedGravel() {
@@ -531,6 +596,8 @@ function RakedGravel() {
         <sphereGeometry args={[0.06, 12, 10]} />
         <meshStandardMaterial color="#6A8A55" roughness={0.95} />
       </mesh>
+      {/* V53: fallen petals blown into the rake ridges */}
+      <KaresansuiPetals />
     </group>
   )
 }
