@@ -1471,6 +1471,42 @@ function RotatingScene({ children }: { children: React.ReactNode }) {
   return <group ref={ref}>{children}</group>
 }
 
+// ParallaxBreath — outer wrapper that adds:
+//   1. Mouse-following tilt: ±0.045 rad on X (pitch) + Z (roll) based
+//      on mouseState. Subtle "the island leans toward your cursor."
+//   2. Idle breathing: when NOT hovered, slow 8s-period sine Y-translate
+//      ±0.04 — the island appears to rise + settle gently.
+// Both effects are CRITICALLY DAMPED so they ease in/out instead of
+// snapping when hover state changes. Position composed with the
+// existing camera framing — does NOT replace it.
+function ParallaxBreath({ children }: { children: React.ReactNode }) {
+  const ref = useRef<THREE.Group>(null)
+  // Smoothed values approach target each frame (low-pass filter feel)
+  const smX = useRef(0)
+  const smZ = useRef(0)
+  const t = useRef(0)
+  useFrame((_, dt) => {
+    if (!ref.current) return
+    t.current += dt
+    // Target tilt from mouseState (only when hovered, else relax to 0)
+    const targetX = hoverState.active ? mouseState.y *  0.045 : 0
+    const targetZ = hoverState.active ? mouseState.x * -0.045 : 0
+    // Critical damping: factor ~0.10 per frame at 60fps → ~12 frames
+    // to reach 70% of target. Snappier than 0.05, smoother than 0.20.
+    smX.current += (targetX - smX.current) * Math.min(1, dt * 6)
+    smZ.current += (targetZ - smZ.current) * Math.min(1, dt * 6)
+    ref.current.rotation.x = smX.current
+    ref.current.rotation.z = smZ.current
+    // Idle breathing — only when NOT hovered (hover already provides
+    // engagement). 8s period, ±0.04 Y translate. Half-amplitude when
+    // hovered so it's not zero (still feels alive but doesn't fight).
+    const phase = (t.current / 8) * Math.PI * 2
+    const breathAmp = hoverState.active ? 0.012 : 0.04
+    ref.current.position.y = Math.sin(phase) * breathAmp
+  })
+  return <group ref={ref}>{children}</group>
+}
+
 export default function IslandWidget() {
   // Pause render loop when widget is off-screen OR tab is hidden —
   // saves real battery on the homepage which has ~10 other cards
@@ -1595,7 +1631,10 @@ export default function IslandWidget() {
       {/* === Scene === V53: everything anchored to the island lives
           inside RotatingScene so the whole disc + its inhabitants turn
           as one unit. Atmospherics (Sparkles, FallingPetals) stay
-          OUTSIDE since they're frame-relative drifts, not island parts. */}
+          OUTSIDE since they're frame-relative drifts, not island parts.
+          V54: ParallaxBreath wraps RotatingScene — adds mouse-following
+          tilt (hover) + 8s idle breathing Y-translate. */}
+      <ParallaxBreath>
       <RotatingScene>
         <Island />
         <SteppingStones />
@@ -1666,6 +1705,7 @@ export default function IslandWidget() {
             possible re-enable. */}
         {/* <Tsukubai x={0.95} z={0.4} /> */}
       </RotatingScene>
+      </ParallaxBreath>
 
       {/* V12: drei Sparkles for atmospheric haze (replaces flat-plane
           light shafts that looked like tissue paper from oblique angles).
