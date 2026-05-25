@@ -1076,28 +1076,65 @@ function FallenPetals() {
   )
 }
 
+// F-sync: pet sun is now BIASED by real time of day. Pet and /world/
+// stay coherent — same hour, both bright at noon, both dim at 2am.
+// Keeps the 90s breathing cycle + golden-hour dwell on TOP of the bias.
+// Returns intensity multiplier + color shift + Y bias for current time.
+function getTimeBias() {
+  if (typeof window === 'undefined') return { intensity: 1, color: '#FFE8C0', sunY: 5.5 }
+  const mins = new Date().getHours() * 60 + new Date().getMinutes()
+  // 4 phase anchors: dawn 5:00, noon 12:00, dusk 18:00, midnight 0:00
+  // Lerp between adjacent anchors.
+  const anchors = [
+    { mins: 0,    intensity: 0.18, color: '#5A6088', sunY: -1.5 },   // midnight
+    { mins: 300,  intensity: 0.85, color: '#FFAE82', sunY: 2.5 },    // dawn 5:00
+    { mins: 720,  intensity: 2.15, color: '#FFE8C0', sunY: 5.5 },    // noon 12:00
+    { mins: 1080, intensity: 1.45, color: '#FF9A6A', sunY: 3.0 },    // dusk 18:00
+    { mins: 1440, intensity: 0.18, color: '#5A6088', sunY: -1.5 },   // midnight (wraps)
+  ]
+  let i = 0
+  while (i < anchors.length - 1 && mins >= anchors[i + 1].mins) i++
+  const a = anchors[i]
+  const b = anchors[i + 1] || anchors[anchors.length - 1]
+  const blend = (mins - a.mins) / (b.mins - a.mins || 1)
+  const easeBlend = 0.5 - Math.cos(blend * Math.PI) * 0.5
+  const intensity = a.intensity + (b.intensity - a.intensity) * easeBlend
+  const sunY = a.sunY + (b.sunY - a.sunY) * easeBlend
+  // Color lerp via THREE.Color
+  const c = new THREE.Color(a.color).lerp(new THREE.Color(b.color), easeBlend)
+  return { intensity, color: '#' + c.getHexString(), sunY }
+}
+
 // AnimatedSun — directional key light. 90s breathing cycle warms
 // from cream → amber, with a 'golden hour dwell' that lowers the sun
-// position so shadows lengthen with the warmth. Intensity is tuned
-// for the 'lit refuge' (sabishisa) mood — interior warm lights
-// (hearth/lantern/shoji) carry the warmth, sun is the cool counter.
+// position so shadows lengthen with the warmth. NOW BIASED by real
+// time of day (F-sync) so pet matches /world/'s ambient mood.
 function AnimatedSun() {
   const lightRef = useRef<THREE.DirectionalLight>(null)
-  const cWarm = useMemo(() => new THREE.Color('#FFE8C0'), [])
   const cAmber = useMemo(() => new THREE.Color('#FFD8A0'), [])
   const cGolden = useMemo(() => new THREE.Color('#FFB870'), [])
   const scratch = useMemo(() => new THREE.Color(), [])
+  const biasColor = useMemo(() => new THREE.Color(), [])
+  // Re-read time bias every 60s (sufficient for ambient)
+  const biasRef = useRef(getTimeBias())
+  useEffect(() => {
+    const id = setInterval(() => { biasRef.current = getTimeBias() }, 60000)
+    return () => clearInterval(id)
+  }, [])
   useFrame((s) => {
     if (!lightRef.current) return
     const t = s.clock.elapsedTime
     const cycle = (Math.sin(t * 0.07) + 1) * 0.5
     const dwell = getDwellGolden(t)
-    lightRef.current.intensity = 2.15 + Math.sin(t * 0.07) * 0.06 - dwell * 0.20
-    scratch.copy(cWarm).lerp(cAmber, cycle * 0.6).lerp(cGolden, dwell)
+    const bias = biasRef.current
+    // Bias intensity by time of day. Breathing + dwell layer ON TOP.
+    lightRef.current.intensity = bias.intensity * (1 + Math.sin(t * 0.07) * 0.04) - dwell * 0.15
+    biasColor.set(bias.color)
+    scratch.copy(biasColor).lerp(cAmber, cycle * 0.3).lerp(cGolden, dwell)
     lightRef.current.color = scratch
-    // Sun POSITION lowers on dwell — shadows lengthen with the warmth
+    // Sun POSITION: y biased by time, dwell still lowers it further.
     lightRef.current.position.x = 4 + dwell * 1.5
-    lightRef.current.position.y = 5.5 - dwell * 1.3
+    lightRef.current.position.y = bias.sunY - dwell * 1.3
     lightRef.current.position.z = 3 - dwell * 0.4
   })
   return (
