@@ -433,11 +433,23 @@ import IslandWidget from './IslandWidget'
       return nav.startsWith('zh') ? 'zh' : 'en'
     }
 
-    let quoteIdx = Math.floor(Math.random() * QUOTES_ZH.length)
+    // Clamp random range to the SHORTER pool so an EN viewer who
+    // happens to draw idx=101 doesn't wrap-modulo silently to 0
+    // (biasing the EN first-quote distribution toward index 0).
+    const minPoolLen = Math.min(QUOTES_ZH.length, QUOTES_EN.length)
+    let quoteIdx = Math.floor(Math.random() * minPoolLen)
     function applyLang() {
       const lang = detectLang()
       const pool = lang === 'zh' ? QUOTES_ZH : QUOTES_EN
-      if (quoteEl) quoteEl.textContent = pool[quoteIdx % pool.length]
+      const idx = quoteIdx % pool.length
+      if (quoteEl) {
+        quoteEl.textContent = pool[idx]
+        // Sync data-idx so the inline cycle handler's next click
+        // advances from THIS visible quote (idx+1), not from the
+        // HTML-default data-idx="0". Without this sync the first
+        // cycle click would visibly jump from pool[idx] to pool[1].
+        quoteEl.setAttribute('data-idx', String(idx))
+      }
       if (enterChip) enterChip.textContent = CHIP_LABELS[lang].enter
       if (cycleChip) cycleChip.textContent = CHIP_LABELS[lang].cycle
     }
