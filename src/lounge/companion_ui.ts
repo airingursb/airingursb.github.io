@@ -12,6 +12,7 @@ import { playSfx } from './audio'
 import { sendMessage, sendGroupMessage, sendGuestMessage, getUsage, getGuestUsage } from './companion_api'
 import { isLoggedIn } from './auth'
 import { showToast } from './ui'
+import { trackEvent } from './umami'
 
 let rootEl: HTMLElement | null = null
 let historyEl: HTMLElement | null = null
@@ -159,7 +160,9 @@ function ensure(): HTMLElement {
     let firstDeltaSeen = false
 
     try {
-      const sender = isLoggedIn() ? sendMessage : sendGuestMessage
+      const loggedIn = isLoggedIn()
+      trackEvent('nook-npc-chat-sent', { npc_id: currentNpcId, tier: loggedIn ? 'auth' : 'guest', len: text.length })
+      const sender = loggedIn ? sendMessage : sendGuestMessage
       await sender(currentNpcId, text, currentHints, (ev) => {
         if (ev.type === 'delta') {
           if (!firstDeltaSeen) {
@@ -325,6 +328,7 @@ export async function openCompanionChat(args: OpenArgs) {
   document.body.classList.add('has-chat-open')
   playSfx('menu_open')
 
+  trackEvent('nook-npc-chat-open', { npc_id, tier: loggedIn ? 'auth' : 'guest', room: currentHints.current_room ?? '' })
   const usage = loggedIn ? await getUsage() : await getGuestUsage()
   if (usage) updateCounter(usage.sent, usage.cap)
 

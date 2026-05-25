@@ -6,6 +6,7 @@
 
 import { useState } from 'react'
 import { emit } from './events'
+import { trackWorld } from './umami'
 
 const THEME_KEY = 'world-theme-v1'
 const WHISPER_KEY = 'world-whispers-on-v1'
@@ -27,21 +28,25 @@ export default function WorldUI() {
     a.download = `airing-world-${Date.now()}.png`
     a.href = canvas.toDataURL('image/png')
     a.click()
+    trackWorld('world-photo-snap')
   }
 
   function toggleTheme() {
     const next = theme === 'day' ? 'dusk' : 'day'
     setTheme(next)
     emit('world-theme', next)
+    trackWorld('world-theme-toggle', { to: next })
   }
 
   function resetCam() {
     emit('world-reset-camera', undefined)
+    trackWorld('world-camera-reset')
   }
 
   function toggleWhispers() {
     emit('world-whisper-toggle', undefined)
     setWhispersOn(prev => !prev)
+    trackWorld('world-whisper-toggle', { to: whispersOn ? 'off' : 'on' })
   }
 
   // V2 a11y polish: buttons are icon-only — without aria-label, a

@@ -4595,6 +4595,9 @@ export class RoomScene extends Phaser.Scene {
         // mark in builds where gallery_progress was bundled in a separate
         // chunk that hadn't loaded yet.)
         markExhibitVisited(it.exhibitUrl)
+        void import('../umami').then(({ trackEvent }) => trackEvent('nook-exhibit-open', {
+          slug: it.exhibitUrl, label: it.exhibitLabel ?? '', type: it.exhibitType ?? '',
+        }))
         // Both 'pocket' and 'centerpiece' use the pocket-world slug pattern
         // (the centerpiece is a hero exhibit that's actually a portal to a 3D
         // scene — its 'url' field carries the slug, not a real URL).
@@ -4905,6 +4908,11 @@ export class RoomScene extends Phaser.Scene {
     this.transitioning = true
     const targetRoom = p.targetRoom
     const targetSpawn = p.targetSpawn
+    // Analytics: every door-portal transition (transit/event/snap-back paths
+    // bypass enterPortal — see those sites for their own track calls).
+    void import('../umami').then(({ trackEvent }) => trackEvent('nook-room-change', {
+      from: this.currentRoomId, to: targetRoom, via: 'door',
+    }))
     const fade = !prefersReducedMotion()
     const doRestart = () => {
       stopRoomAudio()

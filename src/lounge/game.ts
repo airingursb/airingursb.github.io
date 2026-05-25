@@ -136,6 +136,9 @@ export function bootGame(parent: HTMLElement): Phaser.Game {
         }
         if (z && z.cost > 0) e.consumeEnergy(z.cost)
       }
+      void import('./umami').then(({ trackEvent }) => trackEvent('nook-room-change', {
+        from: s.currentRoomId, to: roomId, via: 'transit', cost: z?.cost ?? 0,
+      }))
       net.sendRoomChange(roomId as any)
       s.scene.restart({ roomId, spawnPoint: 'default' })
     })

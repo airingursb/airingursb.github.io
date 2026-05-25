@@ -7,6 +7,7 @@
 // dev cross-origin 401).
 
 import { useEffect, useRef, useState } from 'react'
+import { trackWorld } from './umami'
 
 interface Msg { role: 'user' | 'assistant'; text: string; hasNook?: boolean }
 
@@ -53,6 +54,7 @@ export default function ChatBox() {
     setMsgs((m) => [...m, { role: 'user', text }])
     setPending(true)
     setError(null)
+    trackWorld('world-chat-sent', { len: text.length })
     const ctrl = new AbortController()
     abortRef.current = ctrl
     try {

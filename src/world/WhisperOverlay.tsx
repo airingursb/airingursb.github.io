@@ -7,6 +7,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { on } from './events'
 import { pickWhisper, hasVisitedBefore, markVisited, type WhisperTrigger, type ZoneId } from './whispers'
+import { trackWorld } from './umami'
 
 const ON_KEY = 'world-whispers-on-v1'
 const HOLD_MS = 8000
@@ -43,6 +44,7 @@ export default function WhisperOverlay() {
     clearTimers()
     setText(line)
     setVisible(true)
+    trackWorld('world-whisper-shown', { len: line.length })
     hideTimerRef.current = window.setTimeout(() => {
       setVisible(false)
       clearTimerRef.current = window.setTimeout(() => setText(null), FADE_OUT_MS + 200)
