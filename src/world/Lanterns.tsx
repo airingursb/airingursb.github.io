@@ -100,7 +100,7 @@ function Lantern({ seed }: { seed: number }) {
           ref={glowMatRef}
           color={GLOW}
           emissive={GLOW}
-          emissiveIntensity={DAY_EMISSIVE}
+          emissiveIntensity={PHASE_EMISSIVE.day}
         />
       </mesh>
       {/* Roof on top of lantern */}
@@ -112,28 +112,36 @@ function Lantern({ seed }: { seed: number }) {
       <pointLight
         ref={lightRef}
         color="#FFD58F"
-        intensity={DAY_PT_LIGHT}
+        intensity={PHASE_PT_LIGHT.day}
         distance={3.0}
         decay={2}
         position={[0, 1.58, 0]}
       />
-      {/* V2 wave 3: warm halo cone beneath the lantern — only visible
-          at dusk (theme-aware via DuskHalo component). Reads as the
-          warm light pool the lantern casts down onto the ground. */}
-      <DuskHalo theme={theme} seed={seed} />
+      {/* V2 wave 3: warm halo cone beneath the lantern — visible at
+          dusk + night via DuskHalo. Reads as the warm light pool the
+          lantern casts down onto the ground. */}
+      <DuskHalo seed={seed} />
     </group>
   )
 }
 
-function DuskHalo({ theme, seed }: { theme: Theme; seed: number }) {
+function DuskHalo({ seed }: { seed: number }) {
   const matRef = useRef<THREE.MeshBasicMaterial>(null)
+  // F-deep: pulls halo target from PHASE_EMISSIVE so dawn/dusk/night
+  // get correctly graduated halos. Was 2-state (only dusk).
+  const tod = useTimeOfDay()
+  const orderH: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
+  const haloByPhase: Record<TimePhase, number> = { dawn: 0.12, day: 0, dusk: 0.30, night: 0.42 }
+  const idxH = orderH.indexOf(tod.phase)
+  const haloA = haloByPhase[tod.phase]
+  const haloB = haloByPhase[orderH[(idxH + 1) % orderH.length]]
+  const haloTarget = haloA + (haloB - haloA) * tod.blend
   useFrame((s, dt) => {
     const m = matRef.current
     if (!m) return
     const t = s.clock.elapsedTime
-    // Subtle flicker tied to the lantern's own flicker for coherence
     const flicker = 1 + Math.sin(t * 7 + seed) * 0.10
-    const target = theme === 'dusk' ? 0.30 * flicker : 0
+    const target = haloTarget * flicker
     const k = 1 - Math.exp(-dt * 1.5)
     m.opacity = m.opacity + (target - m.opacity) * k
   })

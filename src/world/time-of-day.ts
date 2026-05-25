@@ -93,9 +93,10 @@ export function getCurrentState(): {
   theme: Theme
   source: 'url' | 'manual' | 'real'
 } {
-  // 1. URL override (debug)
+  // 1. URL override (debug). blend=0 so components don't lerp toward
+  // the NEXT phase (which would dilute "?time=night" toward dawn).
   const url = readURLOverride()
-  if (url) return { phase: url, blend: 0.5, theme: themeFromPhase(url), source: 'url' }
+  if (url) return { phase: url, blend: 0, theme: themeFromPhase(url), source: 'url' }
   // 2. User's manual switch (localStorage). Pin to middle of phase.
   const manual = readManualOverride()
   if (manual) {

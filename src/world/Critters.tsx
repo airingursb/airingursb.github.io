@@ -497,12 +497,14 @@ function CabinFirefly({ phase }: { phase: Phase }) {
     if (!enabled && (m?.opacity ?? 0) < 0.02) return
     if (!enabled) return
     if (!ref.current) return
-    // 28s round trip: 0..0.5 drift out, 0.5..0.6 hover, 0.6..1 drift back
-    const phase = (t % 28) / 28
+    // 28s round trip: 0..0.5 drift out, 0.5..0.6 hover, 0.6..1 drift back.
+    // FIX: was named `phase`, shadowing the outer `phase` prop → TDZ
+    // crash when phase prop was accessed earlier in the same useFrame.
+    const cycle = (t % 28) / 28
     let u: number   // 0..1 progress toward cabin
-    if (phase < 0.45)       u = phase / 0.45
-    else if (phase < 0.55)  u = 1
-    else                    u = 1 - (phase - 0.55) / 0.45
+    if (cycle < 0.45)       u = cycle / 0.45
+    else if (cycle < 0.55)  u = 1
+    else                    u = 1 - (cycle - 0.55) / 0.45
     // Sine in-out ease
     const e = 0.5 - Math.cos(u * Math.PI) * 0.5
     const x = startX + (targetX - startX) * e + Math.sin(t * 1.3) * 0.15

@@ -1088,28 +1088,41 @@ function FallenPetals() {
   )
 }
 
-// F-sync: pet sun is now BIASED by real time of day. Pet and /world/
-// stay coherent — same hour, both bright at noon, both dim at 2am.
-// Reads from the shared time-of-day module (used by /world/ too) so
-// URL ?time= override + manual override apply to BOTH systems.
-import { getCurrentState as getTimeState } from '../world/time-of-day'
-
-// Per-phase anchor values for the pet sun. Lerped by blend within
-// the current phase to the next phase. Phase boundaries match
-// time-of-day.ts (dawn 5-7:30, day 7:30-17, dusk 17-19:30, night).
+// F-sync: pet sun is BIASED by real time of day. Pet + /world/ both
+// honor real time. Inline phase boundaries matching the world's
+// time-of-day.ts module — same dawn/day/dusk/night cutoffs but no
+// cross-directory import (mid-file import was causing TDZ during
+// Vite bundling, which black-screened the world).
 const PET_SUN_ANCHORS = {
   dawn:  { intensity: 0.85, color: '#FFAE82', sunY: 2.5 },
   day:   { intensity: 2.15, color: '#FFE8C0', sunY: 5.5 },
   dusk:  { intensity: 1.45, color: '#FF9A6A', sunY: 3.0 },
   night: { intensity: 0.18, color: '#5A6088', sunY: -1.5 },
 } as const
-const PHASE_ORDER: Array<keyof typeof PET_SUN_ANCHORS> = ['dawn', 'day', 'dusk', 'night']
+const PHASE_ORDER_KEY: Array<keyof typeof PET_SUN_ANCHORS> = ['dawn', 'day', 'dusk', 'night']
+type PetPhase = keyof typeof PET_SUN_ANCHORS
+function petCurrentPhase(): { phase: PetPhase; blend: number } {
+  try {
+    const p = new URLSearchParams(location.search).get('time')
+    if (p === 'dawn' || p === 'day' || p === 'dusk' || p === 'night')
+      return { phase: p as PetPhase, blend: 0 }  // 0 = pure phase, no lerp toward next
+  } catch {}
+  const mins = new Date().getHours() * 60 + new Date().getMinutes()
+  if (mins >= 300 && mins < 450)   return { phase: 'dawn', blend: (mins - 300) / 150 }
+  if (mins >= 450 && mins < 1020)  return { phase: 'day',  blend: (mins - 450) / 570 }
+  if (mins >= 1020 && mins < 1170) return { phase: 'dusk', blend: (mins - 1020) / 150 }
+  const nightStart = 1170
+  const blend = mins >= nightStart
+    ? (mins - nightStart) / (1440 - nightStart + 300)
+    : (1440 - nightStart + mins) / (1440 - nightStart + 300)
+  return { phase: 'night', blend }
+}
 function getTimeBias() {
   if (typeof window === 'undefined') return { intensity: 1, color: '#FFE8C0', sunY: 5.5 }
-  const state = getTimeState()
+  const state = petCurrentPhase()
   const a = PET_SUN_ANCHORS[state.phase]
-  const idx = PHASE_ORDER.indexOf(state.phase)
-  const b = PET_SUN_ANCHORS[PHASE_ORDER[(idx + 1) % PHASE_ORDER.length]]
+  const idx = PHASE_ORDER_KEY.indexOf(state.phase)
+  const b = PET_SUN_ANCHORS[PHASE_ORDER_KEY[(idx + 1) % PHASE_ORDER_KEY.length]]
   const eased = 0.5 - Math.cos(state.blend * Math.PI) * 0.5
   const c = new THREE.Color(a.color).lerp(new THREE.Color(b.color), eased)
   return {
