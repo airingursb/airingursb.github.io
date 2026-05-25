@@ -183,11 +183,20 @@ import IslandWidget from './IslandWidget'
     // first tap reveals the panel; subsequent taps fire fx.
     const isTouch = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches
     const fxLayer = wrap.querySelector('.island-pet-fx')
-    const FX_TYPES = ['snow', 'wind', 'sakura', 'moonglow', 'mist']
+    // 4 elemental effects: 雪(winter) 花(spring) 风(air) 光(fire-light)
+    // + 水(water). The set was 5 with mist, but mist overlapped wind
+    // visually (both diffuse, pale, horizontal-ish) and added nothing
+    // the wind didn't. Replaced with ripple — water/stillness was
+    // the missing Japanese element.
+    const FX_TYPES = ['snow', 'wind', 'sakura', 'moonglow', 'ripple']
     let lastFxType = null
-    // First click always shows sakura — never let a first-time visitor
-    // miss the showstopper. Subsequent clicks are random per FX_TYPES.
-    let clickCount = 0
+    // First click of the session always shows sakura — never let a
+    // first-time visitor miss the showstopper. Persist in
+    // sessionStorage so reopening homepage doesn't re-show it on
+    // every visit; same session = same "first" already-seen.
+    const FX_SEEN_KEY = '__islandFxSeen'
+    let clickCount = (typeof sessionStorage !== 'undefined' &&
+                      sessionStorage.getItem(FX_SEEN_KEY)) ? 1 : 0
     const rand = (lo, hi) => lo + Math.random() * (hi - lo)
     // Type-specific spawners — each owns its own particle count, layout,
     // and CSS-var setup. Effects spawn where they naturally originate:
@@ -309,28 +318,25 @@ import IslandWidget from './IslandWidget'
           burst.appendChild(e)
         }
       },
-      // 烟雾 — 14 wisps (was 5 — too anemic). Wider opacity range
-       // 0.08-0.28, longer rise 5-7s, staggered to 2500ms so it feels
-       // like fog SETTLING IN, not a puff. mix-blend-mode: screen on
-       // the CSS rule for soft compositing.
-      mist(burst, rect) {
-        for (let i = 0; i < 14; i++) {
+      // 水波 — Concentric rings expanding from click point like a stone
+      // hitting still water. 2 rings stagger 280ms apart. Cool blue
+      // tint reads as water surface, not Material click ripple.
+      ripple(burst, rect, cx, cy) {
+        burst.style.setProperty('--cx', cx + 'px')
+        burst.style.setProperty('--cy', cy + 'px')
+        for (let i = 0; i < 2; i++) {
           const p = document.createElement('span')
           p.className = 'island-fx-p'
-          p.style.setProperty('--x',     rand(-20, rect.width - 40) + 'px')
-          p.style.setProperty('--w',     rand(50, 130) + 'px')
-          p.style.setProperty('--h',     rand(20, 44) + 'px')
-          p.style.setProperty('--drift', rand(-40, 40) + 'px')
-          p.style.setProperty('--rise',  rand(3800, 5000) + 'ms')
-          p.style.setProperty('--d',     rand(0, 2500) + 'ms')
-          p.style.setProperty('--op',    rand(0.08, 0.28).toFixed(2))
+          p.style.setProperty('--d', (i * 280) + 'ms')
+          // Each ring slightly smaller — implies second ring is "reply"
+          p.style.setProperty('--ring-max', (140 - i * 30) + 'px')
           burst.appendChild(p)
         }
       },
     }
     // Total burst durations (longest particle's full lifetime) per type
     // — used to schedule the burst auto-remove. Safe margin: +500ms.
-    const totalMs = { snow: 5600, wind: 3900, sakura: 7400, moonglow: 3400, mist: 4800 }
+    const totalMs = { snow: 5600, wind: 3900, sakura: 7400, moonglow: 3400, ripple: 2600 }
     function playFx(e) {
       if (!fxLayer) return
       // Cap concurrent bursts at 4 — rapid-click could otherwise
@@ -348,6 +354,7 @@ import IslandWidget from './IslandWidget'
       let type
       if (clickCount++ === 0) {
         type = 'sakura'
+        try { sessionStorage.setItem(FX_SEEN_KEY, '1') } catch (_) { /* private mode */ }
       } else {
         do { type = FX_TYPES[Math.floor(Math.random() * FX_TYPES.length)] }
         while (type === lastFxType && FX_TYPES.length > 1)
@@ -954,13 +961,14 @@ import IslandWidget from './IslandWidget'
     width: var(--s);
     height: var(--s);
     border-radius: 50%;
-    /* Cream tint (not pure white) — pure #FFF next to vermillion torii
-       vibrates harshly. Slightly warm whites read as natural snow,
-       not LED. */
-    background: rgba(252, 248, 240, 0.92);
+    /* Cream center + amber-tinted glow — picks up the scene's warm
+       cabin light so flakes don't float in their own cold color
+       space. Apple-review note: every overlay should converse with
+       the ambient palette, not float on top of it. */
+    background: rgba(254, 248, 236, 0.92);
     box-shadow:
-      0 0 calc(var(--s) * 1.2) rgba(252, 248, 240, 0.55),
-      0 0 calc(var(--s) * 2.4) rgba(248, 240, 224, 0.18);
+      0 0 calc(var(--s) * 1.4) rgba(252, 232, 196, 0.5),
+      0 0 calc(var(--s) * 2.6) rgba(248, 220, 170, 0.18);
     opacity: 0;
     /* Two animations running independently — fall is steady, sway
        has a different period. Decoupling kills the metronomic feel
@@ -1013,11 +1021,12 @@ import IslandWidget from './IslandWidget'
     width: var(--len);
     height: var(--w);
     border-radius: 100px;
-    /* Paler/greyer than cream — wind reads as air-displacement,
-       not glowing dust. Slight cool tint differentiates from snow. */
+    /* Subtle warm-grey — wind picks up dust from the cabin/cedar
+       area, reads as warm air not cold. Harmonizes with scene's
+       amber palette instead of floating in its own grey space. */
     background: radial-gradient(ellipse 80% 60% at 50% 50%,
-                  rgba(232, 230, 224, var(--op)) 0%,
-                  rgba(232, 230, 224, calc(var(--op) * 0.5)) 50%,
+                  rgba(238, 228, 210, var(--op)) 0%,
+                  rgba(238, 228, 210, calc(var(--op) * 0.5)) 50%,
                   transparent 90%);
     opacity: 0;
     filter: blur(2.5px);
@@ -1137,41 +1146,31 @@ import IslandWidget from './IslandWidget'
     100% { opacity: 0;     transform: translate(calc(-50% + var(--dx)),       calc(-50% + var(--dy)),       0) scale(0.6); }
   }
 
-  /* ── 烟雾 ── Wisps rise from the bottom of the fx layer + drift
-     laterally. Elongated soft white blobs with low max opacity +
-     blur. Reads like steam from the cabin chimney filtering up
-     through the scene. */
-  .island-fx-mist .island-fx-p {
-    bottom: 0;
-    left: var(--x);
-    width: var(--w);
-    height: var(--h);
+  /* ── 水波 ── Concentric ring(s) expanding from click point. Cool
+     pale-blue tint with low opacity reads as water surface ripple,
+     not Material click feedback. Second ring is a delayed smaller
+     "reply" — Japanese water responds quietly. */
+  .island-fx-ripple .island-fx-p {
+    top: var(--cy);
+    left: var(--cx);
+    width: 0;
+    height: 0;
+    transform: translate(-50%, -50%);
     border-radius: 50%;
-    /* Cool blue-grey (not warm white) — reads as morning fog off
-       the water, not chimney steam. Cedar/cabin scene is warm, so
-       cold mist creates atmospheric contrast. */
-    background: radial-gradient(ellipse 100% 70% at 50% 50%,
-                  rgba(210, 220, 235, var(--op)) 0%,
-                  rgba(190, 205, 225, calc(var(--op) * 0.6)) 45%,
-                  transparent 78%);
-    filter: blur(5px);
-    /* screen blend mode lifts the highlights of the scene below
-       without overwhelming it — fog should make the scene MORE,
-       not less, visible. */
-    mix-blend-mode: screen;
+    /* Thin warm-ivory ring with cool inner shadow — implies water
+       surface catching the lantern light. Avoiding cold-blue
+       entirely so the ripple harmonizes with cedar/cabin warmth. */
+    border: 1.5px solid rgba(252, 240, 218, 0.55);
+    box-shadow:
+      0 0 8px rgba(252, 232, 196, 0.35),
+      inset 0 0 6px rgba(180, 198, 210, 0.18);
     opacity: 0;
-    transform: translateY(20px);
-    /* Ease-in-out — fog ACCUMULATES gently then dissipates. Pure
-       ease-out makes wisps start fast which feels like a puff, not
-       fog settling. */
-    animation: fx-mist-rise var(--rise) cubic-bezier(0.4, 0, 0.6, 1) var(--d) forwards;
+    animation: fx-ripple var(--cross, 2200ms) cubic-bezier(0.22, 0.45, 0.36, 1) var(--d) forwards;
   }
-  @keyframes fx-mist-rise {
-    0%   { opacity: 0;            transform: translate3d(0,             20px, 0)  scale(0.85) rotate(0deg); }
-    20%  { opacity: var(--op); }
-    50%  {                         transform: translate3d(calc(var(--drift) * 0.6), -90px, 0)  scale(1.05) rotate(3deg); }
-    85%  { opacity: var(--op); }
-    100% { opacity: 0;            transform: translate3d(var(--drift), -180px, 0)  scale(1.3)  rotate(-2deg); }
+  @keyframes fx-ripple {
+    0%   { opacity: 0;   width: 0;                height: 0;                transform: translate(-50%, -50%); border-width: 2.5px; }
+    20%  { opacity: 0.9; }
+    100% { opacity: 0;   width: var(--ring-max); height: var(--ring-max);  transform: translate(-50%, -50%); border-width: 0.5px; }
   }
 
   /* Honor prefers-reduced-motion — skip the fx animations entirely.
