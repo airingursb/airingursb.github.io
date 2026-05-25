@@ -616,7 +616,7 @@ function Torii({ x, z, rotY = 0 }: { x: number; z: number; rotY?: number }) {
       </mesh>
       {/* 3 shide (paper zigzag streamers) hanging from the shimenawa */}
       {[-0.26, 0, 0.26].map((sx, i) => (
-        <group key={`shide${i}`} position={[sx, 0.84 + 0.10 * (1 - 4 * (sx / 0.84) * (sx / 0.84)) - 0.10, 0.01]}>
+        <group key={`shide${i}`} position={[sx, 0.94 - 0.10 * (1 - 4 * (sx / 0.84) * (sx / 0.84)) - 0.02, 0.01]}>
           {/* Top fold */}
           <mesh position={[0, -0.04, 0]}>
             <planeGeometry args={[0.045, 0.08]} />
