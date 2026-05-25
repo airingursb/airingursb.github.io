@@ -260,5 +260,10 @@ export const STONE_HAT      = '#7E7368'
 // pointLight bloom.
 export const LANTERN_GLOW   = '#FFB860'
 
-export const VERMILLION     = '#C84A35'
+// V53.5: shifted toward shu-iro/persimmon (#C84A35 → #D05636).
+// Pre-V53.5 vermillion sat at hue 9° leaning crimson. After
+// sakura+shoji+lantern all pulled into the amber-warm family,
+// the torii was the lone cool-red — broke the family. Hue 9°→13°,
+// sat -2%, V +3% joins it to the amber warm-lane.
+export const VERMILLION     = '#D05636'
 export const TORII_BLACK    = '#1F1812'
