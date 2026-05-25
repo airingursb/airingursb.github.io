@@ -190,6 +190,32 @@ import IslandWidget from './IslandWidget'
     // the missing Japanese element.
     const FX_TYPES = ['snow', 'wind', 'sakura', 'moonglow', 'ripple']
     let lastFxType = null
+    // Time-of-day weighting — random ≠ uniform. Different effects suit
+    // different hours. Reads local time; returns weight table.
+    // - night (20-5):  moonglow + snow dominant (warm light, cold air)
+    // - dawn  (5-8):   wind + ripple + gentle sakura (morning awakening)
+    // - day   (8-17):  sakura + wind + ripple balanced (active warmth)
+    // - dusk  (17-20): moonglow + sakura (golden hour warmth)
+    function fxWeightsForNow() {
+      const h = new Date().getHours()
+      if (h >= 20 || h < 5) return { snow: 4, wind: 2, sakura: 1, moonglow: 5, ripple: 2 }
+      if (h < 8)            return { snow: 1, wind: 4, sakura: 3, moonglow: 2, ripple: 4 }
+      if (h >= 17)          return { snow: 1, wind: 2, sakura: 4, moonglow: 5, ripple: 3 }
+      return                       { snow: 2, wind: 4, sakura: 5, moonglow: 2, ripple: 4 }
+    }
+    function pickWeightedType(exclude) {
+      const w = fxWeightsForNow()
+      let total = 0
+      const entries = []
+      for (const t of FX_TYPES) {
+        if (t === exclude) continue
+        total += w[t]
+        entries.push([t, total])
+      }
+      const roll = Math.random() * total
+      for (const [t, c] of entries) if (roll < c) return t
+      return entries[entries.length - 1][0]
+    }
     // First click of the session always shows sakura — never let a
     // first-time visitor miss the showstopper. Persist in
     // sessionStorage so reopening homepage doesn't re-show it on
@@ -377,8 +403,10 @@ import IslandWidget from './IslandWidget'
         type = 'sakura'
         try { sessionStorage.setItem(FX_SEEN_KEY, '1') } catch (_) { /* private mode */ }
       } else {
-        do { type = FX_TYPES[Math.floor(Math.random() * FX_TYPES.length)] }
-        while (type === lastFxType && FX_TYPES.length > 1)
+        // Time-of-day weighted pick — replaces uniform random. Night
+        // tends to moonglow/snow, dawn to wind/ripple, day to sakura,
+        // dusk to moonglow/sakura. Excludes the just-shown type.
+        type = pickWeightedType(lastFxType)
       }
       lastFxType = type
       const rect = fxLayer.getBoundingClientRect()
