@@ -84,7 +84,7 @@ import IslandWidget from './IslandWidget'
        correctly removes both AT exposure AND keyboard tab order, then
        reverses cleanly on hover/focus via the JS listeners below. -->
   <div class="island-pet-panel" inert>
-    <p class="island-pet-quote" data-idx="0">松风过耳，落英满衣。</p>
+    <p class="island-pet-quote" data-idx="0" aria-live="polite" aria-atomic="true">松风过耳，落英满衣。</p>
     <span class="island-pet-seal" aria-hidden="true">閒</span>
     <div class="island-pet-actions">
       <button type="button"
@@ -495,14 +495,22 @@ import IslandWidget from './IslandWidget'
           tokens.push({ type: 'word', text: w })
         }
       }
-      var frag = document.createDocumentFragment()
+      // Build TWO trees in parallel:
+      // - visual: per-char .qc spans inside .qw word atoms, aria-hidden
+      //   so screen readers don't announce each char/word as a fragment
+      // - sr: a .sr-only sibling carrying the plain text. Parent <p>
+      //   has aria-live="polite" + aria-atomic — AT announces ONLY the
+      //   sr-only content as one cohesive update on cycle.
+      var visual = document.createElement('span')
+      visual.className = 'island-pet-quote-visual'
+      visual.setAttribute('aria-hidden', 'true')
       var charIdx = 0
       for (var t = 0; t < tokens.length; t++) {
         var tok = tokens[t]
         if (tok.type === 'space') {
-          frag.appendChild(document.createTextNode(tok.text))
+          visual.appendChild(document.createTextNode(tok.text))
         } else if (tok.type === 'br') {
-          frag.appendChild(document.createElement('br'))
+          visual.appendChild(document.createElement('br'))
         } else {
           var word = document.createElement('span')
           word.className = 'qw'
@@ -518,11 +526,15 @@ import IslandWidget from './IslandWidget'
             word.appendChild(span)
             charIdx++
           }
-          frag.appendChild(word)
+          visual.appendChild(word)
         }
       }
+      var srOnly = document.createElement('span')
+      srOnly.className = 'sr-only'
+      srOnly.textContent = text
       el.textContent = ''
-      el.appendChild(frag)
+      el.appendChild(visual)
+      el.appendChild(srOnly)
     }
 
     function detectLang() {
@@ -860,6 +872,29 @@ import IslandWidget from './IslandWidget'
   .island-pet-quote .qw {
     display: inline-block;
     white-space: nowrap;
+    /* Safety net for hypothetical 30+ char unbreakable EN word — the
+       parent .island-pet-quote already has overflow-wrap: anywhere
+       but it can't reach inside .qw without an inner opt-in. */
+    overflow-wrap: anywhere;
+  }
+  /* Visually-hidden screen-reader sibling — carries the plain quote
+     text for aria-live announcements. Visual .qw/.qc tree is aria-
+     hidden so AT doesn't read each char as a fragment. */
+  .island-pet-quote .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+    /* Prevent copy-paste duplication — without this, selecting the
+       visible quote text would also pick up the sr-only sibling
+       and produce "松风过耳。松风过耳。" in the clipboard. */
+    user-select: none;
+    -webkit-user-select: none;
   }
   .island-pet-quote .qc {
     display: inline-block;
@@ -1054,6 +1089,11 @@ import IslandWidget from './IslandWidget'
     }
     .island-pet-chip {
       border: 1px solid ButtonText;
+    }
+    /* Seal's rgba red becomes invisible against system Canvas. It's
+       purely decorative + aria-hidden, so just hide it in high contrast. */
+    .island-pet-seal {
+      display: none;
     }
   }
 </style>
