@@ -89,7 +89,7 @@ import IslandWidget from './IslandWidget'
               class="island-pet-chip island-pet-chip-ghost"
               data-action="cycle"
               aria-label="换一句"
-              onclick="event.stopPropagation(); event.preventDefault(); var q=this.closest('.island-pet-panel').querySelector('.island-pet-quote'); try { var pool=(window.__islandQuotes||{}); var lang=(document.documentElement.lang||'').toLowerCase().indexOf('en')===0?'en':'zh'; var arr=pool[lang]; if(!arr||!arr.length) return false; var i=(parseInt(q.getAttribute('data-idx')||'0')+1)%arr.length; q.setAttribute('data-idx', i); q.textContent=arr[i]; } catch(e){ console.error('[island-pet] cycle error', e); } return false;">↻ 换一句</button>
+              onclick="event.stopPropagation(); event.preventDefault(); var q=this.closest('.island-pet-panel').querySelector('.island-pet-quote'); try { var pool=(window.__islandQuotes||{}); var lang=(document.documentElement.lang||'').toLowerCase().indexOf('en')===0?'en':'zh'; var arr=pool[lang]; if(!arr||!arr.length) return false; var i=(parseInt(q.getAttribute('data-idx')||'0')+1)%arr.length; q.setAttribute('data-idx', i); q.textContent=arr[i]; window.__islandQuoteIdx=i; } catch(e){ console.error('[island-pet] cycle error', e); } return false;">↻ 换一句</button>
     </div>
   </div>
 </div>
@@ -437,17 +437,21 @@ import IslandWidget from './IslandWidget'
     // happens to draw idx=101 doesn't wrap-modulo silently to 0
     // (biasing the EN first-quote distribution toward index 0).
     const minPoolLen = Math.min(QUOTES_ZH.length, QUOTES_EN.length)
-    let quoteIdx = Math.floor(Math.random() * minPoolLen)
+    // Single source of truth for the current quote index: stored on
+    // window so the inline cycle handler can read+write the SAME
+    // value applyLang reads. Without this, cycling 3× then switching
+    // language would let applyLang read a stale module-local quoteIdx
+    // and jump the quote backward.
+    window.__islandQuoteIdx = Math.floor(Math.random() * minPoolLen)
     function applyLang() {
       const lang = detectLang()
       const pool = lang === 'zh' ? QUOTES_ZH : QUOTES_EN
-      const idx = quoteIdx % pool.length
+      const idx = (window.__islandQuoteIdx ?? 0) % pool.length
       if (quoteEl) {
         quoteEl.textContent = pool[idx]
         // Sync data-idx so the inline cycle handler's next click
         // advances from THIS visible quote (idx+1), not from the
-        // HTML-default data-idx="0". Without this sync the first
-        // cycle click would visibly jump from pool[idx] to pool[1].
+        // HTML-default data-idx="0".
         quoteEl.setAttribute('data-idx', String(idx))
       }
       if (enterChip) enterChip.textContent = CHIP_LABELS[lang].enter
