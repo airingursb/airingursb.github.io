@@ -95,7 +95,7 @@ import IslandWidget from './IslandWidget'
               class="island-pet-chip island-pet-chip-ghost"
               data-action="cycle"
               aria-label="换一句"
-              onclick="event.stopPropagation(); event.preventDefault(); var q=this.closest('.island-pet-panel').querySelector('.island-pet-quote'); try { var icon=this.querySelector('.island-pet-cycle-icon'); if(icon&&icon.classList.contains('is-spinning')) return false; var pool=(window.__islandQuotes||{}); var lang=(document.documentElement.lang||'').toLowerCase().indexOf('en')===0?'en':'zh'; var arr=pool[lang]; if(!arr||!arr.length) return false; var i=(parseInt(q.getAttribute('data-idx')||'0')+1)%arr.length; q.setAttribute('data-idx', i); if(typeof window.__setIslandQuote==='function'){ window.__setIslandQuote(q, arr[i]); } else { q.textContent=arr[i]; } window.__islandQuoteIdx=i; if(icon){ icon.classList.add('is-spinning'); setTimeout(function(){ icon.classList.remove('is-spinning'); }, 620); } } catch(e){ console.error('[island-pet] cycle error', e); } return false;"><span class="island-pet-cycle-icon" aria-hidden="true">↻</span> <span class="island-pet-chip-label">换一句</span></button>
+              onclick="event.stopPropagation(); event.preventDefault(); var q=this.closest('.island-pet-panel').querySelector('.island-pet-quote'); try { var icon=this.querySelector('.island-pet-cycle-icon'); if(icon&&icon.classList.contains('is-pressing')) return false; var pool=(window.__islandQuotes||{}); var lang=(document.documentElement.lang||'').toLowerCase().indexOf('en')===0?'en':'zh'; var arr=pool[lang]; if(!arr||!arr.length) return false; var i=(parseInt(q.getAttribute('data-idx')||'0')+1)%arr.length; q.setAttribute('data-idx', i); if(typeof window.__setIslandQuote==='function'){ window.__setIslandQuote(q, arr[i]); } else { q.textContent=arr[i]; } window.__islandQuoteIdx=i; if(icon){ icon.classList.add('is-pressing'); setTimeout(function(){ icon.classList.remove('is-pressing'); }, 320); } } catch(e){ console.error('[island-pet] cycle error', e); } return false;"><span class="island-pet-cycle-icon" aria-hidden="true">另</span> <span class="island-pet-chip-label">换一句</span></button>
     </div>
   </div>
 </div>
@@ -176,12 +176,35 @@ import IslandWidget from './IslandWidget'
       }
     }, 12000)
 
-    // Click + keyboard activation
+    // Click + keyboard activation.
+    // Touch UX: on devices without hover, the CSS :hover panel reveal
+    // never fires. Treat the FIRST tap as "reveal panel" (add
+    // .is-revealed class — mirrors :hover in CSS); SECOND tap on the
+    // pet (after panel is already revealed) navigates. Chips work
+    // normally. Outside-tap collapses the revealed state.
+    const isTouch = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches
     wrap.addEventListener('click', (e) => {
       // V53: don't navigate when a chip absorbed the click
       if ((e.target instanceof Element) && e.target.closest('.island-pet-chip')) return
+      if (isTouch && !wrap.classList.contains('is-revealed')) {
+        wrap.classList.add('is-revealed')
+        // Sync inert so chips become tappable
+        const p = wrap.querySelector('.island-pet-panel')
+        if (p) p.inert = false
+        e.preventDefault()
+        return
+      }
       location.href = wrap.dataset.href || '/world/'
     })
+    if (isTouch) {
+      document.addEventListener('click', (e) => {
+        if (!wrap.classList.contains('is-revealed')) return
+        if (e.target instanceof Element && wrap.contains(e.target)) return
+        wrap.classList.remove('is-revealed')
+        const p = wrap.querySelector('.island-pet-panel')
+        if (p) p.inert = true
+      })
+    }
     wrap.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' || e.key === ' ') {
         // Don't fire pet-level enter if a chip is focused
@@ -487,8 +510,9 @@ import IslandWidget from './IslandWidget'
           for (var k = 0; k < chars.length; k++) {
             var span = document.createElement('span')
             span.className = 'qc'
-            // Cap --i at 24 so 60-char couplet bloom stays under 700ms
-            var seq = charIdx < 24 ? charIdx : 24
+            // Cap --i at 16 so the LAST char finishes at 16*20+520=840ms
+            // — any higher and the panel feels "still loading".
+            var seq = charIdx < 16 ? charIdx : 16
             span.style.setProperty('--i', String(seq))
             span.textContent = chars[k]
             word.appendChild(span)
@@ -729,15 +753,18 @@ import IslandWidget from './IslandWidget'
     z-index: 4;
   }
   .island-pet:hover .island-pet-panel,
-  .island-pet:focus-within .island-pet-panel {
+  .island-pet:focus-within .island-pet-panel,
+  .island-pet.is-revealed .island-pet-panel {
     opacity: 1;
     transform: translateY(0) scale(1);
     clip-path: inset(0 0 0 0 round 14px);
     pointer-events: auto;
-    /* Entry is faster + springier than exit. Asymmetric on purpose. */
-    transition: opacity 260ms cubic-bezier(0.22, 0.61, 0.36, 1),
-                transform 320ms cubic-bezier(0.16, 0.84, 0.32, 1.06),
-                clip-path 360ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    /* Entry is faster + springier than exit, with a 120ms dwell delay
+       so quick mouse-throughs don't flash the panel. Calligraphy /
+       contemplative aesthetic — the panel takes a breath before opening. */
+    transition: opacity 260ms cubic-bezier(0.22, 0.61, 0.36, 1) 120ms,
+                transform 320ms cubic-bezier(0.16, 0.84, 0.32, 1.06) 120ms,
+                clip-path 360ms cubic-bezier(0.22, 0.61, 0.36, 1) 120ms;
   }
   /* Decorative vermillion 閒 seal — bottom-right of the panel.
      Visually links the panel to the chip's shu-iro red without
@@ -758,12 +785,25 @@ import IslandWidget from './IslandWidget'
     background: rgba(208, 86, 54, 0.82);
     border-radius: 2px;
     transform: rotate(-5deg);
-    opacity: 0.72;
+    opacity: 0;
     pointer-events: none;
     user-select: none;
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.22),
                 inset 0 0 0 0.5px rgba(252, 240, 224, 0.25);
     letter-spacing: 0;
+  }
+  /* Seal "stamps" onto the panel ~340ms after the panel reveals —
+     the brief delay + overshoot scale mimics a calligraphy seal
+     being pressed and lifting back. Default opacity:0 above. */
+  @keyframes seal-stamp {
+    0%   { opacity: 0;    transform: rotate(-5deg) scale(1.45); }
+    55%  { opacity: 0.78; transform: rotate(-5deg) scale(0.92); }
+    100% { opacity: 0.72; transform: rotate(-5deg) scale(1); }
+  }
+  .island-pet:hover .island-pet-seal,
+  .island-pet:focus-within .island-pet-seal,
+  .island-pet.is-revealed .island-pet-seal {
+    animation: seal-stamp 320ms cubic-bezier(0.34, 1.56, 0.64, 1) 460ms both;
   }
   /* V53.3: invisible safety cushion ABOVE the pet (where the old gap
      used to be). Just in case any layout fluctuation creates a 1-2px
@@ -798,11 +838,18 @@ import IslandWidget from './IslandWidget'
        hint of ink-on-paper weight without losing legibility. */
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
     /* keep-all: don't break between CJK chars within a "word".
-       overflow-wrap default (normal): don't break EN words at
-       arbitrary points — wrap at spaces only. The earlier
-       break-word value was causing mid-word EN breaks. */
+       overflow-wrap: anywhere — safety net for hypothetical 30+
+       char unbreakable EN word (URL, technical term) that would
+       otherwise overflow the 220px panel. "anywhere" (not "break-
+       word") lets the wrap opportunity count toward min-content
+       sizing, preventing parent overflow. Combined with keep-all,
+       normal CJK + EN wrap unchanged. */
     word-break: keep-all;
-    overflow-wrap: normal;
+    overflow-wrap: anywhere;
+    /* Soft-clip runaway quotes at ~3 lines so a hypothetical
+       50+ char quote can't push the chips off-screen. */
+    max-height: calc(14px * 1.7 * 3);
+    overflow: hidden;
   }
   /* Word-grouped per-character ink-bloom.
      .qw = word atom (one EN word, or one CJK char). inline-block +
@@ -820,14 +867,15 @@ import IslandWidget from './IslandWidget'
     transform: translateY(6px);
     filter: blur(2px);
     animation: qc-bloom 520ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
-    animation-delay: calc(var(--i, 0) * 28ms);
+    animation-delay: calc(var(--i, 0) * 20ms);
     /* Pause until the panel actually reveals — otherwise the bloom
        plays on page load while panel is hidden and user never sees
        the theater. Unpaused below on :hover / :focus-within. */
     animation-play-state: paused;
   }
   .island-pet:hover .island-pet-quote .qc,
-  .island-pet:focus-within .island-pet-quote .qc {
+  .island-pet:focus-within .island-pet-quote .qc,
+  .island-pet.is-revealed .island-pet-quote .qc {
     animation-play-state: running;
   }
   @keyframes qc-bloom {
@@ -885,21 +933,29 @@ import IslandWidget from './IslandWidget'
     transform: translateX(5px);
     transition: transform 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
   }
-  /* Cycle-chip ↻ glyph: rotates 360° on click (animation set by JS
-     via the .is-spinning class so it can restart on repeated clicks). */
+  /* Cycle-chip 「另」 serif glyph (replaces geometric ↻). Inherits
+     Songti from the quote — visually consistent with the panel's
+     calligraphy aesthetic. On hover: subtle 1px lift. On click:
+     brief opacity blink + 2px y-translate "press-down" animation
+     (set by JS via .is-pressing). No rotation — CJK glyphs look
+     broken when spun. */
   .island-pet-chip[data-action="cycle"] .island-pet-cycle-icon {
     display: inline-block;
-    transition: transform 180ms ease;
+    font-family: "Songti SC", "Noto Serif SC", "Times New Roman", serif;
+    font-size: 13px;
+    /* Cycle chip is monospace by default (chip CSS); icon stays serif */
+    transition: transform 200ms ease, opacity 200ms ease;
   }
   .island-pet-chip[data-action="cycle"]:hover .island-pet-cycle-icon {
-    transform: rotate(-30deg);
+    transform: translateY(-1px);
   }
-  .island-pet-chip[data-action="cycle"] .island-pet-cycle-icon.is-spinning {
-    animation: cycle-spin 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  .island-pet-chip[data-action="cycle"] .island-pet-cycle-icon.is-pressing {
+    animation: cycle-press 320ms cubic-bezier(0.4, 0, 0.2, 1);
   }
-  @keyframes cycle-spin {
-    from { transform: rotate(0deg); }
-    to   { transform: rotate(360deg); }
+  @keyframes cycle-press {
+    0%   { transform: translateY(-1px); opacity: 1; }
+    35%  { transform: translateY(2px);  opacity: 0.4; }
+    100% { transform: translateY(-1px); opacity: 1; }
   }
   .island-pet-chip-ghost:active {
     background: rgba(252, 244, 226, 0.28);
@@ -943,7 +999,11 @@ import IslandWidget from './IslandWidget'
     .island-pet-chip[data-action="enter"] .island-pet-arrow {
       transition: none;
     }
-    .island-pet-chip[data-action="cycle"] .island-pet-cycle-icon.is-spinning {
+    .island-pet-chip[data-action="cycle"] .island-pet-cycle-icon.is-pressing {
+      animation: none;
+    }
+    .island-pet-seal {
+      opacity: 0.72;
       animation: none;
     }
   }
