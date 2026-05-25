@@ -5,32 +5,38 @@
 // + back to "never" on visibilitychange hidden — costs 0 frames when
 // off-screen or tab-backgrounded.
 //
-// ─── FILE MAP (~1430 LOC; V52.8 — atmospherics cleanup) ───
-//   Cedar         : slim conifer + WindSway + canopy geo dispose
-//   MinkaCabin    : irimoya roof + dormer + shoji + chimney
-//   StoneLantern  : 2-octave flicker + interior pointLight
-//   Torii         : vermillion posts + kasagi
-//   RakedGravel   : concentric tori around cabin ("ma")
-//   Tsukubai      : bamboo spout + water stream + ripples
-//   DisplacedCliff: ridged-noise vertex displacement (island base)
-//   Island        : ground disc + scene root
-//   SteppingStones: varied geometry + tea-master jog
-//   FallenPetals  : sakura petals scattered on ground
-//   AnimatedSun   : directional light, 90s breathing + dwell golden-hour
-//   HearthLight   : pointLight inside cabin, pulses with hearth phase
-//   PathMoss      : green patches between stepping stones
-//   ChimneySmoke  : 3 puffs rising on hearth-cycle phase
-//   ParallaxRig   : V52 owns camera position + lookAt every frame
-//   FallingPetals : InstancedMesh drift-down from canopy
-//   WaterSurface  : tsukubai water plane with ripples
-//   WaterStream   : bamboo spout to basin trickle
-//   Canvas root   : EffectComposer (Bloom + SMAA), frameloop gating,
-//                   ContextLossHandlers (V44 leak fix)
+// ─── FILE MAP (~1480 LOC after V53 polish + Tsukubai removal) ───
+//   Cedar             : slim conifer + per-tree internal wind + canopy dispose
+//   MinkaCabin        : irimoya roof + shoji + chimney
+//                       (+ FurinChime hung from front-right eave)
+//                       (+ EngawaCat curled loaf on front-left engawa)
+//   StoneLantern      : 2-octave flicker + wind.gust coupling + inner pointLight
+//   Torii             : vermillion posts + kasagi + shimenawa rope + 3 shide
+//   RakedGravel       : irregular bulging rake-line tubes (bulge around mossy stone)
+//                       + KaresansuiPetals (22 fallen on rings)
+//   DisplacedCliff    : ridged-noise vertex displacement (island base)
+//   Island            : ground disc + scene root
+//   SteppingStones    : varied geometry + tea-master jog
+//   FallenPetals      : sakura petals scattered on ground + flutter on gust
+//   AnimatedSun       : directional light, 90s breathing + golden-hour dwell
+//   HearthLight       : pointLight inside cabin, pulses with hearth phase
+//   PathMoss          : 3-tone 2-lobe green patches between stepping stones
+//   ChimneySmoke      : 3 puffs, jittered phase + hearth-stoke surge
+//   ParallaxRig       : V52 owns camera position + lookAt every frame
+//   FallingPetals     : InstancedMesh drift-down from canopy
+//   BreathingShoji    : emissive lerp + ember-warm tint shift on hearth peak
+//   RotatingScene     : 3-min turn easing 4× slower at sakura-forward dwell
+//   Canvas root       : EffectComposer (Bloom + SMAA), frameloop gating,
+//                       ContextLossHandlers (V44 leak fix)
 //
 // ─── DELETED V52 (pet redesign — were for inline-card framing) ───
 //   SkyMood, DistantClouds, MidCloudWisps, DistantMountains,
 //   HoverZoneHotspots, ZoneSparkles, UpperCumulus, BirdFlyby (~340 LOC).
-//   See breadcrumb comments at each former site for the why.
+//
+// ─── DELETED V53 (大道至简) ───
+//   Tsukubai, WaterSurface, WaterStream — karesansui IS dry water;
+//   keeping literal+symbolic water was the un-Japanese mistake (~140 LOC).
+//   See commit 33f58c204 for full component code if needed.
 //
 // ─── COORDINATION (the "one organism" trick) ───
 //   All hooks (getWind, getHearth, getDwellGolden, getHoverBoost) read
@@ -797,69 +803,10 @@ function RakedGravel() {
   )
 }
 
-// Tsukubai — Japanese stone water basin with bamboo spout.
-// Real gardens always have water or a stone substitute. Adds wabi-sabi
-// + the dark water disk makes the lantern bloom catch beautifully.
-function Tsukubai({ x, z }: { x: number; z: number }) {
-  return (
-    <group position={[x, 0.025, z]} scale={0.55}>
-      {/* Stone basin block (square, slightly rounded look via box) */}
-      <mesh position={[0, 0.13, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.34, 0.26, 0.34]} />
-        <meshStandardMaterial color={STONE_BASE} roughness={0.95} flatShading />
-      </mesh>
-      {/* Deeper stone trim around top edge — V53 mat: cap finish */}
-      <mesh position={[0, 0.27, 0]} castShadow>
-        <boxGeometry args={[0.40, 0.04, 0.40]} />
-        <meshStandardMaterial color={STONE_HAT} roughness={0.78} metalness={0.05} flatShading />
-      </mesh>
-      {/* Basin lip — small torus around the rim makes the cavity read */}
-      <mesh position={[0, 0.27, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[0.13, 0.012, 8, 22]} />
-        <meshStandardMaterial color={STONE_HAT} roughness={0.78} metalness={0.05} />
-      </mesh>
-      {/* Recessed water surface — V14: animated micro-ripple via WaterSurface */}
-      <WaterSurface />
-      {/* Bamboo spout — V7: spout end now ABOVE basin pouring DOWN.
-          Group pivot = spout tip at (0, 0.32, 0) directly above basin
-          center. Cylinder body extends up-and-back at 45° via Z-rot. */}
-      <group position={[0, 0.32, 0]} rotation={[0, 0, -Math.PI / 4]}>
-        {/* Bamboo body — local +Y, so after rotation extends up-and-+X */}
-        <mesh position={[0, 0.225, 0]} castShadow>
-          <cylinderGeometry args={[0.025, 0.025, 0.45, 12]} />
-          <meshStandardMaterial color="#A89055" roughness={0.85} />
-        </mesh>
-        {/* 3 bamboo node rings */}
-        {[0.075, 0.225, 0.375].map((dy, i) => (
-          <mesh key={i} position={[0, dy, 0]}>
-            <torusGeometry args={[0.027, 0.005, 6, 14]} />
-            <meshStandardMaterial color="#6E5A2E" roughness={0.85} />
-          </mesh>
-        ))}
-        {/* Spout opening cap (slight overhang at tip) */}
-        <mesh position={[0, -0.005, 0]}>
-          <torusGeometry args={[0.026, 0.004, 6, 14]} />
-          <meshStandardMaterial color="#6E5A2E" roughness={0.85} />
-        </mesh>
-      </group>
-      {/* V10: tapered stream (narrow at spout, wide at impact) + animated
-          ripples. V12: y position corrected so stream EXACTLY spans
-          spout tip → water surface. */}
-      <WaterStream />
-      {/* Small base stones (genkan-ish, around the basin) */}
-      {([
-        [0.30, 0.04, 0.16, 0.07],
-        [-0.28, 0.04, -0.12, 0.06],
-        [-0.16, 0.04, 0.28, 0.05],
-      ] as Array<[number, number, number, number]>).map((p, i) => (
-        <mesh key={i} position={[p[0], p[1], p[2]]} castShadow>
-          <dodecahedronGeometry args={[p[3], 0]} />
-          <meshStandardMaterial color={STONE_HAT} roughness={0.95} flatShading />
-        </mesh>
-      ))}
-    </group>
-  )
-}
+// V53.2 (Sub-A 13 Y2): Tsukubai/WaterSurface/WaterStream functions
+// deleted. Karesansui IS dry water (the V53.2 removal commit explains
+// why). Code recoverable via git — see commit 33f58c204 for full
+// component implementations.
 
 // Vertex-displaced + vertex-COLORED ground plane.
 // V11: per-vertex color lerps warmth based on displacement+radial, so
@@ -1418,118 +1365,8 @@ function WindSway({ children, amp = 0.018, freq = 0.5, phase = 0 }: {
   return <group ref={ref}>{children}</group>
 }
 
-// ── WaterSurface — basin water with animated micro-ripple vertex
-// displacement + lowered metalness (was chrome mirror).
-function WaterSurface() {
-  const geo = useMemo(() => new THREE.CircleGeometry(0.118, 28), [])
-  // V24: dispose on unmount (geometry leaks on hot-reload / route change)
-  useEffect(() => () => geo.dispose(), [geo])
-  const ref = useRef<THREE.Mesh>(null)
-  useFrame((s) => {
-    if (!ref.current) return
-    const t = s.clock.elapsedTime
-    const pos = ref.current.geometry.attributes.position
-    // V53 elegance (Sub-A): pre-V53 was a symmetric standing wave
-    // (sin(t*1.8 + d*28)) — every ring inflated/deflated in unison
-    // around center, reading as 'water breathing' not 'water'. Real
-    // basin water has travelling wavelets from the impact point that
-    // decay toward the rim. Negative d*42 makes rings travel OUTWARD,
-    // exp(-d*6) damps at the rim, second term breaks radial symmetry.
-    for (let i = 0; i < pos.count; i++) {
-      const x = pos.getX(i), y = pos.getY(i)
-      const d = Math.hypot(x, y)
-      pos.setZ(i,
-        Math.sin(t * 2.4 - d * 42) * 0.0018 * Math.exp(-d * 6)
-        + Math.sin(t * 1.1 + x * 18 - y * 14) * 0.0008,
-      )
-    }
-    pos.needsUpdate = true
-    // V24 BUGFIX: recompute normals so ripples are visible under lighting
-    ref.current.geometry.computeVertexNormals()
-  })
-  return (
-    <mesh ref={ref} geometry={geo} position={[0, 0.255, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      {/* V53 mat (Sub-A): basin water swapped from meshStandard
-          (color/metalness 0.4/rough 0.25 — read as 'infinity pool
-          chrome') to meshPhysical with clearcoat + transmission.
-          Shallow stone-basin water is a lacquer-thin top layer,
-          not a metal sheen. ior 1.33 matches real water. Same
-          family of treatment as the furin glass bell — consistency
-          = harmony. Killing metalness also fixes a subtle bluish-
-          chrome glint that was competing with sakura pinks under
-          tone mapping. */}
-      <meshPhysicalMaterial
-        color="#3A5A66"
-        roughness={0.18}
-        metalness={0.0}
-        clearcoat={1.0}
-        clearcoatRoughness={0.15}
-        transmission={0.35}
-        thickness={0.08}
-        ior={1.33}
-      />
-    </mesh>
-  )
-}
-
-// ── WaterStream — tapered cylinder + animated 3-ripple expansion.
-//    Scale loop hides cylinder respawn discontinuity.
-function WaterStream() {
-  const ripples = [
-    useRef<THREE.Mesh>(null),
-    useRef<THREE.Mesh>(null),
-    useRef<THREE.Mesh>(null),
-  ]
-  useFrame((s) => {
-    const t = s.clock.elapsedTime
-    ripples.forEach((r, i) => {
-      const m = r.current
-      if (!m) return
-      // V13: desync stagger (was 0.4/1.2 = perfectly synced triplets)
-      const phase = ((t * 0.8 + i * 0.45) % 1.35) / 1.35
-      const scale = 0.5 + phase * 1.0
-      m.scale.set(scale, 1, scale)
-      const mat = m.material as THREE.MeshStandardMaterial
-      mat.opacity = (1 - phase) * 0.7
-    })
-  })
-  return (
-    <>
-      {/* Stream — tapered, narrow at spout. V12: y 0.295→0.288, length
-          0.085→0.065 so stream exactly spans spout tip (y=0.32) →
-          water surface (y=0.255). */}
-      <mesh position={[0, 0.288, 0]}>
-        <cylinderGeometry args={[0.008, 0.014, 0.065, 10]} />
-        <meshStandardMaterial
-          color="#A8C8D8"
-          emissive="#A8C8D8"
-          emissiveIntensity={0.15}
-          transparent
-          opacity={0.85}
-          depthWrite={false}
-        />
-      </mesh>
-      {/* 3 animated ripples — expanding tori */}
-      {ripples.map((r, i) => (
-        <mesh
-          key={i}
-          ref={r}
-          position={[0, 0.256, 0]}
-          rotation={[-Math.PI / 2, 0, 0]}
-        >
-          <torusGeometry args={[0.08, 0.0035, 4, 32]} />
-          <meshStandardMaterial
-            color="#A8C8D8"
-            roughness={0.35}
-            metalness={0.4}
-            transparent
-            opacity={0.6}
-          />
-        </mesh>
-      ))}
-    </>
-  )
-}
+// V53.2 (Sub-A 13 Y2): WaterSurface + WaterStream deleted with the
+// Tsukubai parent. Code recoverable via git — see commit 33f58c204.
 
 // ── ChimneySmoke — V10: scale-clamp at phase boundaries hides reset.
 function ChimneySmoke() {
@@ -1735,10 +1572,12 @@ export default function IslandWidget() {
         // cabin is left third. Hovering the sakura area now actually
         // triggers the petal gust boost — discoverable because the
         // user already moved cursor there for a reason.
+        // V53.2 (Sub-A 13 fix): dropped tsukubai zone (component removed)
+        // + widened sakura's y range so cursor in lower-right falls
+        // through to the 'cabin' branch instead of dying in a dead zone.
         const mx = mouseState.x, my = mouseState.y
         hoverZone.current =
-          (mx > 0.15 && my < 0.20) ? 'sakura' :
-          (mx > 0.20 && my > 0.35) ? 'tsukubai' :
+          (mx > 0.15 && my < 0.35) ? 'sakura' :
           (mx < -0.15) ? 'cabin' : null
       }}
     >
