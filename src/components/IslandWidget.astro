@@ -185,6 +185,9 @@ import IslandWidget from './IslandWidget'
     const fxLayer = wrap.querySelector('.island-pet-fx')
     const FX_TYPES = ['snow', 'wind', 'sakura', 'moonglow', 'mist']
     let lastFxType = null
+    // First click always shows sakura — never let a first-time visitor
+    // miss the showstopper. Subsequent clicks are random per FX_TYPES.
+    let clickCount = 0
     const rand = (lo, hi) => lo + Math.random() * (hi - lo)
     // Type-specific spawners — each owns its own particle count, layout,
     // and CSS-var setup. Effects spawn where they naturally originate:
@@ -211,11 +214,12 @@ import IslandWidget from './IslandWidget'
           p.style.setProperty('--x', rand(-10, rect.width + 10) + 'px')
           p.style.setProperty('--wobble', rand(14, 32) + 'px')
           p.style.setProperty('--wobble-dir', Math.random() < 0.5 ? '1' : '-1')
-          // Stratum-specific size/speed
+          // Stratum-specific size/speed. Snow tail (last 1.5s) felt
+          // like the burst forgot to end — trimmed fall ceilings.
           let s, fall, op
-          if (i < 11)      { s = rand(2, 3.2);  fall = rand(5200, 7000); op = rand(0.30, 0.55) }
-          else if (i < 22) { s = rand(3.5, 6);  fall = rand(3800, 5200); op = rand(0.60, 0.85) }
-          else             { s = rand(6.5, 10); fall = rand(3000, 4200); op = rand(0.78, 0.95) }
+          if (i < 11)      { s = rand(2, 3.2);  fall = rand(4200, 5400); op = rand(0.30, 0.55) }
+          else if (i < 22) { s = rand(3.5, 6);  fall = rand(3400, 4400); op = rand(0.60, 0.85) }
+          else             { s = rand(6.5, 10); fall = rand(2800, 3800); op = rand(0.78, 0.95) }
           p.style.setProperty('--s', s + 'px')
           p.style.setProperty('--fall', fall + 'ms')
           p.style.setProperty('--op', op.toFixed(2))
@@ -255,11 +259,15 @@ import IslandWidget from './IslandWidget'
       // Petals flutter, they don't spin: capped Z rotation + Y-axis
       // flip that momentarily turns the petal edge-on (lower opacity
       // at 35%/70%). Per-petal phase decouples motion from neighbors.
-      sakura(burst, rect) {
+      // Click-bias: spawn within ±60px of click point — petals fall
+      // NEAR where you tapped, like you brushed the branch.
+      sakura(burst, rect, cx, cy) {
+        const minX = Math.max(10, cx - 60)
+        const maxX = Math.min(rect.width - 10, cx + 60)
         for (let i = 0; i < 10; i++) {
           const p = document.createElement('span')
           p.className = 'island-fx-p'
-          p.style.setProperty('--x',      rand(10, rect.width - 10) + 'px')
+          p.style.setProperty('--x',      rand(minX, maxX) + 'px')
           p.style.setProperty('--rock',   rand(20, 42) + 'px')
           p.style.setProperty('--rock-dir', Math.random() < 0.5 ? '1' : '-1')
           p.style.setProperty('--fall',   rand(4200, 6200) + 'ms')
@@ -307,7 +315,7 @@ import IslandWidget from './IslandWidget'
           p.style.setProperty('--w',     rand(50, 130) + 'px')
           p.style.setProperty('--h',     rand(20, 44) + 'px')
           p.style.setProperty('--drift', rand(-40, 40) + 'px')
-          p.style.setProperty('--rise',  rand(5000, 7000) + 'ms')
+          p.style.setProperty('--rise',  rand(3800, 5000) + 'ms')
           p.style.setProperty('--d',     rand(0, 2500) + 'ms')
           p.style.setProperty('--op',    rand(0.08, 0.28).toFixed(2))
           burst.appendChild(p)
@@ -316,12 +324,16 @@ import IslandWidget from './IslandWidget'
     }
     // Total burst durations (longest particle's full lifetime) per type
     // — used to schedule the burst auto-remove. Safe margin: +500ms.
-    const totalMs = { snow: 7900, wind: 3900, sakura: 7400, moonglow: 2600, mist: 5800 }
+    const totalMs = { snow: 5600, wind: 3900, sakura: 7400, moonglow: 3400, mist: 4800 }
     function playFx(e) {
       if (!fxLayer) return
       let type
-      do { type = FX_TYPES[Math.floor(Math.random() * FX_TYPES.length)] }
-      while (type === lastFxType && FX_TYPES.length > 1)
+      if (clickCount++ === 0) {
+        type = 'sakura'
+      } else {
+        do { type = FX_TYPES[Math.floor(Math.random() * FX_TYPES.length)] }
+        while (type === lastFxType && FX_TYPES.length > 1)
+      }
       lastFxType = type
       const rect = fxLayer.getBoundingClientRect()
       const cx = e ? Math.max(0, Math.min(rect.width,  e.clientX - rect.left)) : rect.width / 2
@@ -907,10 +919,13 @@ import IslandWidget from './IslandWidget'
     width: var(--s);
     height: var(--s);
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.92);
+    /* Cream tint (not pure white) — pure #FFF next to vermillion torii
+       vibrates harshly. Slightly warm whites read as natural snow,
+       not LED. */
+    background: rgba(252, 248, 240, 0.92);
     box-shadow:
-      0 0 calc(var(--s) * 1.2) rgba(255, 255, 255, 0.55),
-      0 0 calc(var(--s) * 2.4) rgba(255, 250, 240, 0.18);
+      0 0 calc(var(--s) * 1.2) rgba(252, 248, 240, 0.55),
+      0 0 calc(var(--s) * 2.4) rgba(248, 240, 224, 0.18);
     opacity: 0;
     /* Two animations running independently — fall is steady, sway
        has a different period. Decoupling kills the metronomic feel
@@ -957,9 +972,11 @@ import IslandWidget from './IslandWidget'
     width: var(--len);
     height: var(--w);
     border-radius: 100px;
+    /* Paler/greyer than cream — wind reads as air-displacement,
+       not glowing dust. Slight cool tint differentiates from snow. */
     background: radial-gradient(ellipse 80% 60% at 50% 50%,
-                  rgba(255, 250, 240, var(--op)) 0%,
-                  rgba(255, 250, 240, calc(var(--op) * 0.5)) 50%,
+                  rgba(232, 230, 224, var(--op)) 0%,
+                  rgba(232, 230, 224, calc(var(--op) * 0.5)) 50%,
                   transparent 90%);
     opacity: 0;
     filter: blur(2.5px);
@@ -1039,7 +1056,8 @@ import IslandWidget from './IslandWidget'
                   transparent 85%);
     filter: blur(4px);
     opacity: 0;
-    animation: fx-bloom 2200ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    /* 3200ms (was 2200) — lantern should LINGER, not flash. */
+    animation: fx-bloom 3200ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
   }
   @keyframes fx-bloom {
     0%   { opacity: 0;   transform: translate(-50%, -50%) scale(0.85); }
@@ -1057,7 +1075,7 @@ import IslandWidget from './IslandWidget'
       0 0 6px rgba(255, 200, 140, 0.7),
       0 0 14px rgba(255, 180, 100, 0.3);
     opacity: 0;
-    animation: fx-ember 1900ms cubic-bezier(0.4, 0, 0.6, 1) var(--d) forwards;
+    animation: fx-ember 2400ms cubic-bezier(0.4, 0, 0.6, 1) var(--d) forwards;
   }
   @keyframes fx-ember {
     0%   { opacity: 0;   transform: translate(-50%, -50%) scale(0.4); }
@@ -1075,9 +1093,12 @@ import IslandWidget from './IslandWidget'
     width: var(--w);
     height: var(--h);
     border-radius: 50%;
+    /* Cool blue-grey (not warm white) — reads as morning fog off
+       the water, not chimney steam. Cedar/cabin scene is warm, so
+       cold mist creates atmospheric contrast. */
     background: radial-gradient(ellipse 100% 70% at 50% 50%,
-                  rgba(255, 255, 255, var(--op)) 0%,
-                  rgba(245, 245, 250, calc(var(--op) * 0.6)) 45%,
+                  rgba(210, 220, 235, var(--op)) 0%,
+                  rgba(190, 205, 225, calc(var(--op) * 0.6)) 45%,
                   transparent 78%);
     filter: blur(5px);
     /* screen blend mode lifts the highlights of the scene below
