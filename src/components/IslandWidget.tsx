@@ -319,6 +319,14 @@ function MinkaCabin() {
           Position is in cabin-local coords so it inherits the cabin's
           0.32 rad rotation automatically. */}
       <FurinChime localX={CABIN_W / 2 - 0.05} eaveY={0.08 + WALL_H + ROOF_RISE * 0.08} localZ={CABIN_D / 2 + Z_OVERHANG * 0.45} />
+
+      {/* === V53 lazy cat curled on the engawa ===
+          Sub-A: "strongest 'miniature world is INHABITED' signal
+          possible at this scale". Dark loaf-shape against the warm
+          engawa wood = unmistakable mammal. Subtle breath + 4-5s tail
+          twitch animation. Local position on left side of engawa so
+          it doesn't block the shoji glow. */}
+      <EngawaCat localX={-CABIN_W / 2 + 0.18} engawaY={0.08} localZ={CABIN_D / 2 + 0.15} />
     </group>
   )
 }
@@ -395,6 +403,80 @@ function FurinChime({ localX, eaveY, localZ }: { localX: number; eaveY: number; 
             <meshStandardMaterial color="#F9F0F2" roughness={0.85} side={THREE.DoubleSide} />
           </mesh>
         </group>
+      </group>
+    </group>
+  )
+}
+
+// ── V53 EngawaCat — sleeping loaf cat on cabin porch.
+//    Single most-impactful "INHABITED" tell at pet scale per Sub-A.
+//    Loaf shape (squashed body + head), curled tail, faint breath,
+//    slow tail flick every ~5s. Charcoal #28232B for high contrast
+//    against the warm-wood engawa.
+function EngawaCat({ localX, engawaY, localZ }: { localX: number; engawaY: number; localZ: number }) {
+  const bodyRef = useRef<THREE.Group>(null)
+  const tailRef = useRef<THREE.Group>(null)
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    if (bodyRef.current) {
+      // Slow breath — scale.y ±2%
+      bodyRef.current.scale.y = 1 + Math.sin(t * 0.9) * 0.02
+    }
+    if (tailRef.current) {
+      // Idle micro-twitch + ~5s deliberate flick (sleeping-cat tail)
+      const flick = Math.sin(t * 1.2) * 0.04
+      const tickPhase = (t % 5) / 5
+      // Sharp 0.4s flick at the end of the 5s window
+      const tick = tickPhase > 0.92 ? Math.sin((tickPhase - 0.92) * Math.PI / 0.08) * 0.22 : 0
+      tailRef.current.rotation.y = flick + tick
+    }
+  })
+  return (
+    <group position={[localX, engawaY, localZ]} rotation={[0, -0.4, 0]} scale={1.5}>
+      <group ref={bodyRef}>
+        {/* Body — squashed loaf (egg/sphere with low Y scale) */}
+        <mesh position={[0, 0.038, 0]} castShadow>
+          <sphereGeometry args={[0.058, 14, 10]} />
+          <meshStandardMaterial color="#28232B" roughness={0.92} />
+        </mesh>
+        {/* Belly — a hair lighter so the body has a subtle silhouette */}
+        <mesh position={[0, 0.022, 0.018]} castShadow>
+          <sphereGeometry args={[0.045, 12, 8]} />
+          <meshStandardMaterial color="#3A3438" roughness={0.92} />
+        </mesh>
+        {/* Head — tucked forward, slightly to the side as if asleep */}
+        <mesh position={[0.052, 0.052, -0.005]} castShadow>
+          <sphereGeometry args={[0.034, 12, 10]} />
+          <meshStandardMaterial color="#28232B" roughness={0.92} />
+        </mesh>
+        {/* Two tiny ears (triangle cones) */}
+        <mesh position={[0.062, 0.082, -0.020]} rotation={[0, 0, 0.25]} castShadow>
+          <coneGeometry args={[0.012, 0.022, 4]} />
+          <meshStandardMaterial color="#28232B" roughness={0.92} flatShading />
+        </mesh>
+        <mesh position={[0.062, 0.082, 0.010]} rotation={[0, 0, 0.25]} castShadow>
+          <coneGeometry args={[0.012, 0.022, 4]} />
+          <meshStandardMaterial color="#28232B" roughness={0.92} flatShading />
+        </mesh>
+        {/* Snout — tiny lighter triangle, hint of face */}
+        <mesh position={[0.085, 0.044, 0.0]} castShadow>
+          <sphereGeometry args={[0.018, 8, 6]} />
+          <meshStandardMaterial color="#3A3438" roughness={0.92} />
+        </mesh>
+      </group>
+      {/* Tail — curled around the body, animated independently so the
+          flick reads as separate motion from the breath. Pivot at body
+          rear (-X side of cat). */}
+      <group ref={tailRef} position={[-0.04, 0.04, 0.02]}>
+        <mesh position={[-0.038, 0.012, 0.012]} rotation={[0.4, 0.6, -0.1]} castShadow>
+          <cylinderGeometry args={[0.008, 0.012, 0.090, 6]} />
+          <meshStandardMaterial color="#28232B" roughness={0.92} />
+        </mesh>
+        {/* Tail tip — small bulb */}
+        <mesh position={[-0.072, 0.025, 0.024]} castShadow>
+          <sphereGeometry args={[0.010, 8, 6]} />
+          <meshStandardMaterial color="#28232B" roughness={0.92} />
+        </mesh>
       </group>
     </group>
   )
