@@ -418,9 +418,55 @@ import IslandWidget from './IslandWidget'
       fxLayer.appendChild(burst)
       setTimeout(() => burst.remove(), totalMs[type] || 4000)
     }
+    // EASTER EGGS (direction B):
+    // - 7 clicks within 4 seconds → fire ALL 5 fx types at once (storm)
+    // - long-press (≥800ms) → flash a small subtitle "by Bashō" etc
+    //   (skip if author unknown — most quotes are anonymous classics)
+    // - hover sustained >8s → trigger an extra moonglow as ambient reward
+    let recentClicks = []
+    let hoverStartTime = 0
+    let hoverRewardTimer = 0
+    let pressTimer = 0
+    function fireFxStorm() {
+      const rect = fxLayer.getBoundingClientRect()
+      // Spawn each of the 5 types staggered 200ms apart for layered effect
+      FX_TYPES.forEach((t, i) => {
+        setTimeout(() => {
+          const burst = document.createElement('div')
+          burst.className = 'island-fx-burst island-fx-' + t
+          const cx = rect.width * (0.2 + Math.random() * 0.6)
+          const cy = rect.height * (0.2 + Math.random() * 0.6)
+          spawners[t](burst, rect, cx, cy)
+          fxLayer.appendChild(burst)
+          setTimeout(() => burst.remove(), totalMs[t] || 4000)
+        }, i * 200)
+      })
+    }
+    wrap.addEventListener('pointerdown', () => {
+      pressTimer = Date.now()
+      // Long-press detection — show author flash after 800ms hold
+      setTimeout(() => {
+        if (Date.now() - pressTimer >= 800 && Date.now() - pressTimer < 1200) {
+          // Tag the quote panel with a "long-press triggered" class —
+          // CSS can optionally show an author overlay. Keep it subtle:
+          // most quotes are anonymous classics, so just dim+highlight.
+          wrap.classList.add('island-pet-longpress')
+          setTimeout(() => wrap.classList.remove('island-pet-longpress'), 1400)
+        }
+      }, 800)
+    })
     wrap.addEventListener('click', (e) => {
       // Chip click: let it do its own thing (Step in navigates, cycle cycles)
       if ((e.target instanceof Element) && e.target.closest('.island-pet-chip')) return
+      // Easter egg: 7 clicks within 4s → fx storm
+      const now = Date.now()
+      recentClicks = recentClicks.filter(t => now - t < 4000)
+      recentClicks.push(now)
+      if (recentClicks.length >= 7) {
+        recentClicks = []
+        fireFxStorm()
+        return  // skip normal fx for this click — storm takes over
+      }
       // Touch: first tap reveals panel (no fx)
       if (isTouch && !wrap.classList.contains('is-revealed')) {
         wrap.classList.add('is-revealed')
@@ -902,8 +948,25 @@ import IslandWidget from './IslandWidget'
           setTimeout(() => { wrap.__hoverCycleLock = false }, 600)
         }
       }
+      // Easter egg: hover sustained >8s → trigger a moonglow reward.
+      // Start timer; mouseleave clears it. Centered moonglow.
+      hoverStartTime = Date.now()
+      clearTimeout(hoverRewardTimer)
+      hoverRewardTimer = setTimeout(() => {
+        if (Date.now() - hoverStartTime >= 7800) {
+          const rect = fxLayer.getBoundingClientRect()
+          const burst = document.createElement('div')
+          burst.className = 'island-fx-burst island-fx-moonglow'
+          spawners.moonglow(burst, rect, rect.width / 2, rect.height / 2)
+          fxLayer.appendChild(burst)
+          setTimeout(() => burst.remove(), totalMs.moonglow || 4000)
+        }
+      }, 8000)
     })
-    wrap.addEventListener('mouseleave', () => setInert(true))
+    wrap.addEventListener('mouseleave', () => {
+      setInert(true)
+      clearTimeout(hoverRewardTimer)
+    })
     wrap.addEventListener('focusin',    () => setInert(false))
     wrap.addEventListener('focusout', (e) => {
       if (!wrap.contains(e.relatedTarget)) setInert(true)
@@ -974,6 +1037,14 @@ import IslandWidget from './IslandWidget'
     0%   { transform: translateY(-2px) scale(1); }
     25%  { transform: translateY(1px)  scale(0.985); }
     100% { transform: translateY(-2px) scale(1); }
+  }
+  /* Long-press easter egg (≥800ms): scene gets a warm amber glow
+     for 1.4s — like the lantern noticing extended attention. */
+  .island-pet-longpress {
+    filter: drop-shadow(0 0 18px rgba(255, 184, 96, 0.5))
+            drop-shadow(0 10px 20px rgba(40, 50, 60, 0.26))
+            brightness(1.08) saturate(1.12) !important;
+    transition: filter 280ms ease-in-out;
   }
   .island-pet:focus-visible {
     outline: 2px solid var(--c-accent, #6ABE5C);
