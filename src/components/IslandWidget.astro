@@ -85,6 +85,7 @@ import IslandWidget from './IslandWidget'
        reverses cleanly on hover/focus via the JS listeners below. -->
   <div class="island-pet-panel" inert>
     <p class="island-pet-quote" data-idx="0">松风过耳，落英满衣。</p>
+    <span class="island-pet-seal" aria-hidden="true">閒</span>
     <div class="island-pet-actions">
       <button type="button"
               class="island-pet-chip"
@@ -94,7 +95,7 @@ import IslandWidget from './IslandWidget'
               class="island-pet-chip island-pet-chip-ghost"
               data-action="cycle"
               aria-label="换一句"
-              onclick="event.stopPropagation(); event.preventDefault(); var q=this.closest('.island-pet-panel').querySelector('.island-pet-quote'); try { var pool=(window.__islandQuotes||{}); var lang=(document.documentElement.lang||'').toLowerCase().indexOf('en')===0?'en':'zh'; var arr=pool[lang]; if(!arr||!arr.length) return false; var i=(parseInt(q.getAttribute('data-idx')||'0')+1)%arr.length; q.setAttribute('data-idx', i); q.textContent=arr[i]; window.__islandQuoteIdx=i; var icon=this.querySelector('.island-pet-cycle-icon'); if(icon){ icon.classList.remove('is-spinning'); void icon.offsetWidth; icon.classList.add('is-spinning'); } q.classList.remove('is-cycling'); void q.offsetWidth; q.classList.add('is-cycling'); } catch(e){ console.error('[island-pet] cycle error', e); } return false;"><span class="island-pet-cycle-icon" aria-hidden="true">↻</span> <span class="island-pet-chip-label">换一句</span></button>
+              onclick="event.stopPropagation(); event.preventDefault(); var q=this.closest('.island-pet-panel').querySelector('.island-pet-quote'); try { var icon=this.querySelector('.island-pet-cycle-icon'); if(icon&&icon.classList.contains('is-spinning')) return false; var pool=(window.__islandQuotes||{}); var lang=(document.documentElement.lang||'').toLowerCase().indexOf('en')===0?'en':'zh'; var arr=pool[lang]; if(!arr||!arr.length) return false; var i=(parseInt(q.getAttribute('data-idx')||'0')+1)%arr.length; q.setAttribute('data-idx', i); if(typeof window.__setIslandQuote==='function'){ window.__setIslandQuote(q, arr[i]); } else { q.textContent=arr[i]; } window.__islandQuoteIdx=i; if(icon){ icon.classList.add('is-spinning'); setTimeout(function(){ icon.classList.remove('is-spinning'); }, 620); } } catch(e){ console.error('[island-pet] cycle error', e); } return false;"><span class="island-pet-cycle-icon" aria-hidden="true">↻</span> <span class="island-pet-chip-label">换一句</span></button>
     </div>
   </div>
 </div>
@@ -427,6 +428,79 @@ import IslandWidget from './IslandWidget'
     // (off-by-one risk + drift across visits).
     window.__islandQuotes = { zh: QUOTES_ZH, en: QUOTES_EN }
 
+    // Splits text into word-grouped per-character spans:
+    //   "Hi 你" → <span.qw><span.qc>H</span><span.qc>i</span></span>
+    //             " "
+    //             <span.qw><span.qc>你</span></span>
+    // .qw is inline-block + white-space:nowrap → atomic, won't break.
+    // Whitespace between .qw's is a real text node → legal wrap point.
+    // Without this grouping, per-char .qc spans broke EN words mid-
+    // character (e.g. "everyth|ing"). Each .qc gets a staggered
+    // animation-delay via --i. CJK chars are treated as single-char
+    // words so each one is its own atomic unit (Chinese has no inter-
+    // word whitespace; CSS line-break handles inter-char wrap).
+    window.__setIslandQuote = function(el, text) {
+      if (!el || typeof text !== 'string') return
+      // CJK + fullwidth punctuation range — each is its own "word"
+      var cjk = /[　-〿一-鿿＀-￯]/
+      // Classical Chinese couplets are parallel two-clause structures
+      // joined by 「，」 — visually they read best with a break after
+      // the comma. Detect this pattern (quote contains BOTH ， and 。)
+      // and emit a <br> token after each ， to preserve the parallelism.
+      var hasCoupletBreak = /，/.test(text) && /。/.test(text)
+      var tokens = []
+      var i = 0
+      while (i < text.length) {
+        var ch = text[i]
+        if (/\s/.test(ch)) {
+          tokens.push({ type: 'space', text: ch })
+          i++
+        } else if (cjk.test(ch)) {
+          tokens.push({ type: 'word', text: ch })
+          // After a couplet comma, force a line break
+          if (hasCoupletBreak && ch === '，' && i < text.length - 1) {
+            tokens.push({ type: 'br' })
+          }
+          i++
+        } else {
+          // Latin/digit word — accumulate until whitespace or CJK
+          var w = ''
+          while (i < text.length && !/\s/.test(text[i]) && !cjk.test(text[i])) {
+            w += text[i]
+            i++
+          }
+          tokens.push({ type: 'word', text: w })
+        }
+      }
+      var frag = document.createDocumentFragment()
+      var charIdx = 0
+      for (var t = 0; t < tokens.length; t++) {
+        var tok = tokens[t]
+        if (tok.type === 'space') {
+          frag.appendChild(document.createTextNode(tok.text))
+        } else if (tok.type === 'br') {
+          frag.appendChild(document.createElement('br'))
+        } else {
+          var word = document.createElement('span')
+          word.className = 'qw'
+          var chars = Array.from(tok.text)
+          for (var k = 0; k < chars.length; k++) {
+            var span = document.createElement('span')
+            span.className = 'qc'
+            // Cap --i at 24 so 60-char couplet bloom stays under 700ms
+            var seq = charIdx < 24 ? charIdx : 24
+            span.style.setProperty('--i', String(seq))
+            span.textContent = chars[k]
+            word.appendChild(span)
+            charIdx++
+          }
+          frag.appendChild(word)
+        }
+      }
+      el.textContent = ''
+      el.appendChild(frag)
+    }
+
     function detectLang() {
       // Priority: site's window.currentLang (set after i18n loads) →
       // html.lang attribute → localStorage → navigator.
@@ -457,7 +531,14 @@ import IslandWidget from './IslandWidget'
       const pool = lang === 'zh' ? QUOTES_ZH : QUOTES_EN
       const idx = (window.__islandQuoteIdx ?? 0) % pool.length
       if (quoteEl) {
-        quoteEl.textContent = pool[idx]
+        // Per-char stagger via shared helper. Falls back to plain
+        // textContent if helper somehow missing (defensive — the
+        // helper is defined a few lines above in the same IIFE).
+        if (typeof window.__setIslandQuote === 'function') {
+          window.__setIslandQuote(quoteEl, pool[idx])
+        } else {
+          quoteEl.textContent = pool[idx]
+        }
         // Sync data-idx so the inline cycle handler's next click
         // advances from THIS visible quote (idx+1), not from the
         // HTML-default data-idx="0".
@@ -633,24 +714,56 @@ import IslandWidget from './IslandWidget'
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
     box-sizing: border-box;
     opacity: 0;
-    transform: translateY(8px);
-    /* pointer-events is discrete (not animatable) — flips instantly
-       on rule change, no transition entry needed. */
-    transition: opacity 280ms ease,
-                transform 280ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    transform: translateY(10px) scale(0.985);
+    transform-origin: bottom center;
+    /* Ink-unfurl reveal: clip-path collapses the panel against its
+       bottom edge so it appears to "unroll upward" like a scroll. */
+    clip-path: inset(100% 0 0 0 round 14px);
+    /* Slower fade-OUT (380ms ease-in) feels intentional — the panel
+       doesn't snap away when the cursor leaves. The :hover rule below
+       overrides with a fast cubic-bezier entry curve. */
+    transition: opacity 380ms ease-in,
+                transform 360ms cubic-bezier(0.4, 0.0, 0.2, 1),
+                clip-path 360ms cubic-bezier(0.4, 0.0, 0.2, 1);
     pointer-events: none;
     z-index: 4;
   }
   .island-pet:hover .island-pet-panel,
   .island-pet:focus-within .island-pet-panel {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
+    clip-path: inset(0 0 0 0 round 14px);
     pointer-events: auto;
-    /* Panel shows instantly on hover (no dwell delay) so there's
-       no race window where the user moves to click and the panel
-       is still half-transparent. */
-    transition: opacity 220ms ease,
-                transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    /* Entry is faster + springier than exit. Asymmetric on purpose. */
+    transition: opacity 260ms cubic-bezier(0.22, 0.61, 0.36, 1),
+                transform 320ms cubic-bezier(0.16, 0.84, 0.32, 1.06),
+                clip-path 360ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  /* Decorative vermillion 閒 seal — bottom-right of the panel.
+     Visually links the panel to the chip's shu-iro red without
+     adding a noisy element. Slight rotation echoes a hand-stamped
+     calligraphy seal. Suppressed for screen readers (aria-hidden). */
+  .island-pet-seal {
+    position: absolute;
+    right: 12px;
+    top: 10px;
+    width: 14px;
+    height: 14px;
+    line-height: 14px;
+    text-align: center;
+    font-family: "Songti SC", "Noto Serif SC", serif;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(252, 240, 224, 0.94);
+    background: rgba(208, 86, 54, 0.82);
+    border-radius: 2px;
+    transform: rotate(-5deg);
+    opacity: 0.72;
+    pointer-events: none;
+    user-select: none;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.22),
+                inset 0 0 0 0.5px rgba(252, 240, 224, 0.25);
+    letter-spacing: 0;
   }
   /* V53.3: invisible safety cushion ABOVE the pet (where the old gap
      used to be). Just in case any layout fluctuation creates a 1-2px
@@ -667,38 +780,60 @@ import IslandWidget from './IslandWidget'
     pointer-events: auto;
   }
   .island-pet-quote {
+    /* Right padding (22px) gives the 14px seal in the top-right
+       corner a no-overlap gutter so the first line wraps before
+       reaching it, instead of mid-word ("cu/pful" was the bug). */
     margin: 0 0 14px;
+    padding-right: 22px;
     font-family: "Songti SC", "Noto Serif SC", "Times New Roman", serif;
     font-size: 14px;
     line-height: 1.7;
     color: rgba(248, 232, 200, 0.94);
     letter-spacing: 0.04em;
+    /* Reserve two lines of vertical space so cycling between a
+       short quote (4 chars) and a long couplet doesn't bounce
+       the chip row underneath. */
+    min-height: calc(14px * 1.7 * 2);
     /* Subtle text-shadow on dark panel gives the serif strokes a
        hint of ink-on-paper weight without losing legibility. */
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-    /* Per-character fade-in animation. Triggered by re-applying
-       the class via JS on cycle (and on first reveal). The
-       --duration var allows clamping for long quotes. */
-    animation: quote-bloom 480ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    /* keep-all: don't break between CJK chars within a "word".
+       overflow-wrap default (normal): don't break EN words at
+       arbitrary points — wrap at spaces only. The earlier
+       break-word value was causing mid-word EN breaks. */
+    word-break: keep-all;
+    overflow-wrap: normal;
   }
-  @keyframes quote-bloom {
-    from {
-      opacity: 0;
-      transform: translateY(4px);
-      letter-spacing: 0.20em;
-      filter: blur(2px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-      letter-spacing: 0.04em;
-      filter: blur(0);
-    }
+  /* Word-grouped per-character ink-bloom.
+     .qw = word atom (one EN word, or one CJK char). inline-block +
+     nowrap so the chars inside never break across lines. Wrap points
+     are the real whitespace text nodes BETWEEN .qw's.
+     .qc = single char inside a word. Staggered animation delay via
+     --i index assigned in JS. Looks like brushstrokes landing. */
+  .island-pet-quote .qw {
+    display: inline-block;
+    white-space: nowrap;
   }
-  /* When user re-clicks the cycle button, re-trigger animation by
-     adding a class via JS — see the cycle handler. */
-  .island-pet-quote.is-cycling {
-    animation: quote-bloom 480ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  .island-pet-quote .qc {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(2px);
+    animation: qc-bloom 520ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+    animation-delay: calc(var(--i, 0) * 28ms);
+    /* Pause until the panel actually reveals — otherwise the bloom
+       plays on page load while panel is hidden and user never sees
+       the theater. Unpaused below on :hover / :focus-within. */
+    animation-play-state: paused;
+  }
+  .island-pet:hover .island-pet-quote .qc,
+  .island-pet:focus-within .island-pet-quote .qc {
+    animation-play-state: running;
+  }
+  @keyframes qc-bloom {
+    0%   { opacity: 0; transform: translateY(6px); filter: blur(2px); }
+    60%  { opacity: 1; filter: blur(0); }
+    100% { opacity: 1; transform: translateY(0); filter: blur(0); }
   }
   .island-pet-actions {
     display: flex;
@@ -738,14 +873,17 @@ import IslandWidget from './IslandWidget'
     background: rgba(180, 68, 48, 1);
     box-shadow: 0 0 0 rgba(0, 0, 0, 0);
   }
-  /* Enter-chip arrow: nudges right on hover (3px translate).
-     Mirror animation works because the arrow is in its own <span>. */
+  /* Enter-chip arrow: nudges right on hover. Asymmetric easing —
+     fast "wanting to go" forward (160ms ease-out), slower return
+     (320ms ease-in-back) — mimics a spring that's been pulled. */
   .island-pet-chip[data-action="enter"] .island-pet-arrow {
     display: inline-block;
-    transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+    transform: translateX(0);
+    transition: transform 320ms cubic-bezier(0.55, 0.1, 0.4, 1);
   }
   .island-pet-chip[data-action="enter"]:hover .island-pet-arrow {
-    transform: translateX(4px);
+    transform: translateX(5px);
+    transition: transform 160ms cubic-bezier(0.2, 0.7, 0.3, 1);
   }
   /* Cycle-chip ↻ glyph: rotates 360° on click (animation set by JS
      via the .is-spinning class so it can restart on repeated clicks). */
@@ -766,9 +904,20 @@ import IslandWidget from './IslandWidget'
   .island-pet-chip-ghost:active {
     background: rgba(252, 244, 226, 0.28);
   }
-  .island-pet-chip:focus-visible {
+  /* Per-chip focus differentiation so Tab order is visually parseable.
+     Enter chip = vermillion glow ring (matches its own fill);
+     ghost chip = ivory ring. Without this both chips shared identical
+     2px ivory outline and keyboard users couldn't tell which is focused. */
+  .island-pet-chip[data-action="enter"]:focus-visible {
+    outline: 2px solid rgba(252, 232, 210, 0.95);
+    outline-offset: 2px;
+    box-shadow: 0 4px 14px rgba(208, 86, 54, 0.46),
+                0 0 0 4px rgba(208, 86, 54, 0.18);
+  }
+  .island-pet-chip-ghost:focus-visible {
     outline: 2px solid rgba(252, 244, 226, 0.85);
     outline-offset: 2px;
+    box-shadow: 0 0 0 4px rgba(252, 244, 226, 0.12);
   }
   .island-pet-chip-ghost {
     background: rgba(252, 244, 226, 0.10);
@@ -785,8 +934,10 @@ import IslandWidget from './IslandWidget'
      but preserve the underlying fade so users still see when state
      changes (per WCAG vestibular guidance). */
   @media (prefers-reduced-motion: reduce) {
-    .island-pet-quote,
-    .island-pet-quote.is-cycling {
+    .island-pet-quote .qc {
+      opacity: 1;
+      transform: none;
+      filter: none;
       animation: none;
     }
     .island-pet-chip[data-action="enter"] .island-pet-arrow {
@@ -796,10 +947,11 @@ import IslandWidget from './IslandWidget'
       animation: none;
     }
   }
-  /* Reduced motion: skip the slide-in transform, just fade */
+  /* Reduced motion: skip the slide/unfurl, just fade */
   @media (prefers-reduced-motion: reduce) {
     .island-pet-panel {
       transform: none !important;
+      clip-path: none !important;
       transition: opacity 200ms ease;
     }
   }
