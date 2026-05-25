@@ -1636,11 +1636,23 @@ function ContextLossHandlers() {
 // across all rotation angles.
 function RotatingScene({ children }: { children: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
-  const RATE = (Math.PI * 2) / 180   // one full turn per 3 minutes
+  const RATE = (Math.PI * 2) / 180   // one full turn per 3 minutes (baseline)
+  // V53 composition (Sub-A impact 4/5): pre-V53 was a constant
+  // dt*RATE — money pose (sakura facing camera, y=0) existed for 0
+  // frames, and the user-as-passerby has no "is it moving?" feedback.
+  // Now ease the rotation: slow 4× when sakura faces camera (y≈0
+  // mod 2π), normal speed at y=π (back of disc). Total period
+  // stretches ~1.6× (still under 5min), but the hero pose holds
+  // for ~15-20s per cycle. Bonus: the speed CHANGE catches the
+  // eye, killing the 'is it even moving?' question at first glance.
   useFrame((_, dt) => {
     if (!ref.current) return
     if (hoverState.active) return    // freeze on hover
-    ref.current.rotation.y += dt * RATE
+    const y = ref.current.rotation.y
+    // ease(y): 0.25 at y=0 (sakura facing), 1.0 at y=π (sakura behind)
+    // (1 - cos(y))/2 ranges 0..1 with min at y=0
+    const ease = 0.25 + 0.75 * ((1 - Math.cos(y)) / 2)
+    ref.current.rotation.y = (y + dt * RATE * ease) % (Math.PI * 2)
   })
   return <group ref={ref}>{children}</group>
 }
@@ -1755,9 +1767,17 @@ export default function IslandWidget() {
         <ChimneySmoke />
 
         {/* WindSway wrap. V52.6: scale 0.56 caps sakura canopy peak
-            at y=3.19 to clear the y=3.25 frustum top. */}
+            at y=3.19 to clear the y=3.25 frustum top.
+            V53 reframe (Sub-A impact 5/5): pre-V53 sakura at z=-0.35
+            sat BEHIND the torii in camera depth — vermillion gate
+            stole the first glance and pink hero was upstaged. Move
+            forward to z=0.15 so trunk + canopy crown the right third
+            INSTEAD of peeking over the gate. Keep scale 0.56 to
+            preserve frustum-top clearance. Also x 0.55 → 0.40 to
+            redistribute mass leftward (right side was overloaded
+            with sakura + torii + tsukubai). */}
         <WindSway amp={0.018} freq={0.5}>
-          <group position={[0.55, 0, -0.35]} scale={0.56}>
+          <group position={[0.40, 0, 0.15]} scale={0.56}>
             <Sakura
               position={[0, 0, 0]}
               seed={20260524}
