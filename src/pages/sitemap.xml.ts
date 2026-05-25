@@ -68,6 +68,12 @@ ${lastmodXml}    <changefreq>${opts.changefreq}</changefreq>
   // Home (single lang for now)
   urls.push(singleUrl(homePage.url, { changefreq: homePage.changefreq, priority: homePage.priority }));
 
+  // /world/ — the R3F island scene. The homepage IslandWidget pet
+  // navigates here on click, but via JS-only (role=link with
+  // data-href, not a real <a>), so Googlebot can't discover this
+  // route from the homepage crawl. List it explicitly.
+  urls.push(singleUrl('/world/', { changefreq: 'monthly', priority: '0.6' }));
+
   // Static bilingual pages
   for (const p of bilingualStaticPages) {
     urls.push(bilingualUrl(p.zh, p.en, { changefreq: p.changefreq, priority: p.priority }));
