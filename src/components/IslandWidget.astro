@@ -195,95 +195,121 @@ import IslandWidget from './IslandWidget'
       // 飘雪 — 48 flakes across full top width, staggered delays for
       // continuous-flow feel (not burst). Each flake drifts with sin-
       // wave horizontal wobble (handled by multi-step keyframe).
+      // 飘雪 — 28 flakes in 3 PARALLAX STRATA for depth-of-field
+      // (Ghibli vs PowerPoint): 40% far (small, blurred, slow, dim),
+      // 40% mid (current), 20% near (large, slight blur, fast). Per-
+      // flake fall + wobble cadences don't sync — aperiodic feel.
       snow(burst, rect) {
-        for (let i = 0; i < 42; i++) {
+        const stratum = (i) => {
+          if (i < 11) return 'far'    // ~40%
+          if (i < 22) return 'mid'    // ~40%
+          return 'near'               // ~20%
+        }
+        for (let i = 0; i < 28; i++) {
           const p = document.createElement('span')
-          p.className = 'island-fx-p'
-          p.style.setProperty('--x', rand(0, rect.width) + 'px')
-          p.style.setProperty('--wobble', rand(14, 30) + 'px')
+          p.className = 'island-fx-p island-fx-snow-' + stratum(i)
+          p.style.setProperty('--x', rand(-10, rect.width + 10) + 'px')
+          p.style.setProperty('--wobble', rand(14, 32) + 'px')
           p.style.setProperty('--wobble-dir', Math.random() < 0.5 ? '1' : '-1')
-          p.style.setProperty('--fall', rand(3400, 5400) + 'ms')
-          p.style.setProperty('--d', rand(0, 2200) + 'ms')
-          // 3.5-8px — visible on dark background. Mix of small distant
-          // flakes + larger foreground for depth.
-          p.style.setProperty('--s', rand(3.5, 8) + 'px')
-          p.style.setProperty('--op', rand(0.55, 0.95).toFixed(2))
+          // Stratum-specific size/speed
+          let s, fall, op
+          if (i < 11)      { s = rand(2, 3.2);  fall = rand(5200, 7000); op = rand(0.30, 0.55) }
+          else if (i < 22) { s = rand(3.5, 6);  fall = rand(3800, 5200); op = rand(0.60, 0.85) }
+          else             { s = rand(6.5, 10); fall = rand(3000, 4200); op = rand(0.78, 0.95) }
+          p.style.setProperty('--s', s + 'px')
+          p.style.setProperty('--fall', fall + 'ms')
+          p.style.setProperty('--op', op.toFixed(2))
+          p.style.setProperty('--d', rand(0, 2400) + 'ms')
           p.style.setProperty('--rot', rand(-180, 180) + 'deg')
           burst.appendChild(p)
         }
       },
-      // 吹风 — 28 horizontal streaks crossing pet from one edge to other.
-      // Each is a thin pill with horizontal-gradient fade. Direction
-      // randomized per burst (LtoR or RtoL) for variety. Vertical jitter
-      // creates parallax depth. Journey distance computed in PIXELS so
-      // it actually crosses the pet (percent translate of a 75px streak
-      // would barely move it).
+      // 吹风 — 16 ink-wash smears (was 22 pill-shapes — pills read
+      // as anime speed lines). Each curves through an arc via separate
+      // Y-translate so it doesn't feel like a straight ruler. Heavily
+      // blurred, low opacity (0.22-0.36) — air has no edges.
       wind(burst, rect) {
-        const dir = Math.random() < 0.5 ? 1 : -1   // 1 = LtoR
+        const dir = Math.random() < 0.5 ? 1 : -1
         burst.classList.add(dir === 1 ? 'island-fx-wind-ltr' : 'island-fx-wind-rtl')
-        for (let i = 0; i < 22; i++) {
+        for (let i = 0; i < 16; i++) {
           const p = document.createElement('span')
           p.className = 'island-fx-p'
-          const len = rand(70, 140)
+          const len = rand(70, 150)
           const journey = (rect.width + len + 80)
-          p.style.setProperty('--y',   rand(15, rect.height - 30) + 'px')
-          p.style.setProperty('--len', len + 'px')
-          // 2.5-4.5px tall — visible against scene but still "wind streak"
-          // not "rod". Earlier 0.8-1.8 was invisible at typical viewing.
-          p.style.setProperty('--w',   rand(2.5, 4.5) + 'px')
-          p.style.setProperty('--vdrift', rand(-16, 16) + 'px')
+          p.style.setProperty('--y',     rand(15, rect.height - 30) + 'px')
+          p.style.setProperty('--len',   len + 'px')
+          // Down to 1.5-2.5px — the blur will soften this into wash.
+          p.style.setProperty('--w',     rand(1.5, 2.6) + 'px')
+          // Arc curve: vertical offset at mid-flight (positive or neg)
+          p.style.setProperty('--arc',   rand(-22, 22) + 'px')
+          p.style.setProperty('--vdrift', rand(-12, 12) + 'px')
           p.style.setProperty('--journey', journey + 'px')
-          p.style.setProperty('--cross', rand(1500, 2300) + 'ms')
-          p.style.setProperty('--d',   rand(0, 1100) + 'ms')
-          p.style.setProperty('--op',  rand(0.45, 0.85).toFixed(2))
+          p.style.setProperty('--cross', rand(1800, 2700) + 'ms')
+          p.style.setProperty('--d',     rand(0, 1300) + 'ms')
+          // Low opacity — sumi-e ink-wash, not headlight.
+          p.style.setProperty('--op',    rand(0.22, 0.4).toFixed(2))
           burst.appendChild(p)
         }
       },
-      // 落樱 — 18 petals drifting down from top. Each has its own
-      // continuous rotation phase + horizontal rocking via multi-step
-      // keyframe. Pink palette with subtle variations.
+      // 落樱 — 10 petals (was 18 — restraint is the aesthetic).
+      // Petals flutter, they don't spin: capped Z rotation + Y-axis
+      // flip that momentarily turns the petal edge-on (lower opacity
+      // at 35%/70%). Per-petal phase decouples motion from neighbors.
       sakura(burst, rect) {
-        for (let i = 0; i < 18; i++) {
+        for (let i = 0; i < 10; i++) {
           const p = document.createElement('span')
           p.className = 'island-fx-p'
-          p.style.setProperty('--x',     rand(10, rect.width - 10) + 'px')
-          p.style.setProperty('--rock',  rand(18, 36) + 'px')
+          p.style.setProperty('--x',      rand(10, rect.width - 10) + 'px')
+          p.style.setProperty('--rock',   rand(20, 42) + 'px')
           p.style.setProperty('--rock-dir', Math.random() < 0.5 ? '1' : '-1')
-          p.style.setProperty('--fall',  rand(3800, 5400) + 'ms')
-          p.style.setProperty('--d',     rand(0, 1600) + 'ms')
-          p.style.setProperty('--s',     rand(7, 12) + 'px')
-          p.style.setProperty('--rot-end', rand(720, 1080) * (Math.random() < 0.5 ? 1 : -1) + 'deg')
-          p.style.setProperty('--hue',   rand(-8, 8) + 'deg')
+          p.style.setProperty('--fall',   rand(4200, 6200) + 'ms')
+          p.style.setProperty('--d',      rand(0, 1800) + 'ms')
+          p.style.setProperty('--s',      rand(8, 13) + 'px')
+          // Modest Z rotation cap (120-280°) — petals flutter, not spin.
+          // Two Y-flip cycles via separate keyframe.
+          p.style.setProperty('--rz',     rand(120, 280) * (Math.random() < 0.5 ? 1 : -1) + 'deg')
+          p.style.setProperty('--ry',     rand(420, 720) + 'deg')   // two-flip-ish
+          p.style.setProperty('--hue',    rand(-10, 12) + 'deg')
           burst.appendChild(p)
         }
       },
-      // 月华 — 3 layered halos expanding from click point at staggered
-      // delays. Each ring fades in then out as it grows. Warm-ivory
-      // moonbeam tint matches the lantern's amber, not generic white.
+      // 月华 — Single steady warm bloom (lantern-light, not Material
+       // ripple) + 6 floating kotodama embers rising up from click. The
+       // expanding-ring metaphor reads as a Google button; lanterns
+       // glow in place, they don't propagate.
       moonglow(burst, rect, cx, cy) {
         burst.style.setProperty('--cx', cx + 'px')
         burst.style.setProperty('--cy', cy + 'px')
-        for (let i = 0; i < 3; i++) {
-          const p = document.createElement('span')
-          p.className = 'island-fx-p'
-          p.style.setProperty('--d', (i * 220) + 'ms')
-          p.style.setProperty('--ring-max', (140 + i * 50) + 'px')
-          burst.appendChild(p)
+        // Main bloom (one)
+        const bloom = document.createElement('span')
+        bloom.className = 'island-fx-p island-fx-bloom-core'
+        burst.appendChild(bloom)
+        // 6 ember dots drift up + slightly outward
+        for (let i = 0; i < 6; i++) {
+          const e = document.createElement('span')
+          e.className = 'island-fx-p island-fx-bloom-ember'
+          e.style.setProperty('--dx', rand(-30, 30) + 'px')
+          e.style.setProperty('--dy', rand(-80, -40) + 'px')
+          e.style.setProperty('--d',  rand(100, 800) + 'ms')
+          e.style.setProperty('--es', rand(2, 4) + 'px')  // ember size
+          burst.appendChild(e)
         }
       },
-      // 烟雾 — 5 wisps rise from bottom + drift laterally. Each is an
-      // elongated soft-white blob with slow upward translation.
+      // 烟雾 — 14 wisps (was 5 — too anemic). Wider opacity range
+       // 0.08-0.28, longer rise 5-7s, staggered to 2500ms so it feels
+       // like fog SETTLING IN, not a puff. mix-blend-mode: screen on
+       // the CSS rule for soft compositing.
       mist(burst, rect) {
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 14; i++) {
           const p = document.createElement('span')
           p.className = 'island-fx-p'
-          p.style.setProperty('--x',     rand(20, rect.width - 80) + 'px')
-          p.style.setProperty('--w',     rand(60, 110) + 'px')
-          p.style.setProperty('--h',     rand(22, 38) + 'px')
-          p.style.setProperty('--drift', rand(-30, 30) + 'px')
-          p.style.setProperty('--rise',  rand(3200, 4400) + 'ms')
-          p.style.setProperty('--d',     rand(0, 1000) + 'ms')
-          p.style.setProperty('--op',    rand(0.18, 0.32).toFixed(2))
+          p.style.setProperty('--x',     rand(-20, rect.width - 40) + 'px')
+          p.style.setProperty('--w',     rand(50, 130) + 'px')
+          p.style.setProperty('--h',     rand(20, 44) + 'px')
+          p.style.setProperty('--drift', rand(-40, 40) + 'px')
+          p.style.setProperty('--rise',  rand(5000, 7000) + 'ms')
+          p.style.setProperty('--d',     rand(0, 2500) + 'ms')
+          p.style.setProperty('--op',    rand(0.08, 0.28).toFixed(2))
           burst.appendChild(p)
         }
       },
@@ -881,15 +907,20 @@ import IslandWidget from './IslandWidget'
     width: var(--s);
     height: var(--s);
     border-radius: 50%;
-    /* Solid white center + soft glow halo for visibility against the
-       3D scene's mixed dark/sakura tones. Pure white reads cleaner
-       than a fading radial gradient at small sizes. */
     background: rgba(255, 255, 255, 0.92);
     box-shadow:
       0 0 calc(var(--s) * 1.2) rgba(255, 255, 255, 0.55),
       0 0 calc(var(--s) * 2.4) rgba(255, 250, 240, 0.18);
     opacity: 0;
     animation: fx-snow-drift var(--fall) linear var(--d) forwards;
+  }
+  /* Parallax strata: far flakes blurred + dim (depth illusion),
+     near flakes crisp + slightly larger. */
+  .island-fx-snow-far {
+    filter: blur(1.2px);
+  }
+  .island-fx-snow-near {
+    filter: blur(0.2px);
   }
   @keyframes fx-snow-drift {
     0%   { opacity: 0;          transform: translate3d(0, 0, 0)                                                       rotate(var(--rot)); }
@@ -905,58 +936,52 @@ import IslandWidget from './IslandWidget'
      to the other. Pill-shaped with a horizontal gradient so the
      leading edge fades. Each streak has subtle vertical drift +
      opacity envelope for an organic gust feel. */
+  /* Wind streaks: ink-wash smear (not pill) using radial-gradient
+     ellipse for soft edges all around. Heavy blur eliminates the
+     "edge" feel of a line. Air has no edges; sumi-e has no rulers. */
   .island-fx-wind .island-fx-p {
     top: var(--y);
     width: var(--len);
     height: var(--w);
     border-radius: 100px;
-    background: linear-gradient(to right,
-                  transparent 0%,
-                  rgba(255, 250, 230, calc(var(--op) * 0.35)) 20%,
-                  rgba(255, 250, 230, var(--op)) 55%,
-                  rgba(255, 250, 230, calc(var(--op) * 0.7)) 80%,
-                  transparent 100%);
-    box-shadow: 0 0 6px rgba(255, 250, 230, calc(var(--op) * 0.35));
+    background: radial-gradient(ellipse 80% 60% at 50% 50%,
+                  rgba(255, 250, 240, var(--op)) 0%,
+                  rgba(255, 250, 240, calc(var(--op) * 0.5)) 50%,
+                  transparent 90%);
     opacity: 0;
-    filter: blur(0.6px);
+    filter: blur(2.5px);
   }
   .island-fx-wind-ltr .island-fx-p {
     left: 0;
-    transform: translateX(calc(var(--len) * -1 - 20px));
-    animation: fx-wind-ltr var(--cross) cubic-bezier(0.22, 0.45, 0.4, 1) var(--d) forwards;
+    animation: fx-wind-ltr var(--cross) cubic-bezier(0.32, 0.6, 0.5, 1) var(--d) forwards;
   }
   .island-fx-wind-rtl .island-fx-p {
     right: 0;
-    transform: translateX(calc(var(--len) * 1 + 20px));
-    background: linear-gradient(to left,
-                  transparent 0%,
-                  rgba(255, 252, 240, calc(var(--op) * 0.4)) 30%,
-                  rgba(255, 252, 240, var(--op)) 70%,
-                  transparent 100%);
-    animation: fx-wind-rtl var(--cross) cubic-bezier(0.22, 0.45, 0.4, 1) var(--d) forwards;
+    animation: fx-wind-rtl var(--cross) cubic-bezier(0.32, 0.6, 0.5, 1) var(--d) forwards;
   }
-  /* Wind keyframes use PIXEL translation via --journey (computed per
-     particle in JS) so streaks actually traverse the full pet width.
-     Percent-based translate of a 75px streak would only move it 75px
-     — not enough to cross 220px. */
+  /* Arc paths: the streak rises slightly then falls (or vice versa)
+     during its journey, giving a 3-point bezier curve feel. --arc
+     is the mid-flight vertical offset (positive or negative). */
   @keyframes fx-wind-ltr {
     0%   { opacity: 0; transform: translate3d(calc(var(--len) * -1 - 20px), 0, 0); }
-    18%  { opacity: 1; }
-    50%  {              transform: translate3d(calc(var(--journey) * 0.5), calc(var(--vdrift) * 0.5), 0); }
-    82%  { opacity: 1; }
+    20%  { opacity: 1; }
+    50%  {              transform: translate3d(calc(var(--journey) * 0.5), var(--arc), 0); }
+    80%  { opacity: 1; }
     100% { opacity: 0; transform: translate3d(var(--journey), var(--vdrift), 0); }
   }
   @keyframes fx-wind-rtl {
     0%   { opacity: 0; transform: translate3d(calc(var(--len) * 1 + 20px), 0, 0); }
-    18%  { opacity: 1; }
-    50%  {              transform: translate3d(calc(var(--journey) * -0.5), calc(var(--vdrift) * 0.5), 0); }
-    82%  { opacity: 1; }
+    20%  { opacity: 1; }
+    50%  {              transform: translate3d(calc(var(--journey) * -0.5), var(--arc), 0); }
+    80%  { opacity: 1; }
     100% { opacity: 0; transform: translate3d(calc(var(--journey) * -1), var(--vdrift), 0); }
   }
 
-  /* ── 落樱 ── Cherry petals drift down with continuous rotation +
-     horizontal rocking. Slower than snow (heavier mass). Pink palette
-     with subtle hue-rotate variations per particle for naturalism. */
+  /* ── 落樱 ── Cherry petals FLUTTER (don't spin). The rotateY axis
+     turns the petal edge-on at mid-flight — opacity drops near 35%
+     and 70% to convey "the petal turned away from us." Z rotation
+     stays modest (120-280°) so it reads as drift, not fidget-spin.
+     The gap (間) where it nearly disappears IS the elegance. */
   .island-fx-sakura .island-fx-p {
     top: -10px;
     left: var(--x);
@@ -967,40 +992,62 @@ import IslandWidget from './IslandWidget'
     box-shadow: 0 1px 2px rgba(180, 90, 120, 0.18);
     filter: hue-rotate(var(--hue));
     opacity: 0;
+    transform-style: preserve-3d;
     animation: fx-sakura-fall var(--fall) linear var(--d) forwards;
   }
   @keyframes fx-sakura-fall {
-    0%   { opacity: 0;     transform: translate3d(0, 0, 0)                                                rotate(0deg); }
-    8%   { opacity: 0.92; }
-    25%  {                  transform: translate3d(calc(var(--rock) *  1   * var(--rock-dir)),  60px, 0)  rotate(calc(var(--rot-end) * 0.25)); }
-    50%  {                  transform: translate3d(calc(var(--rock) * -1   * var(--rock-dir)), 130px, 0)  rotate(calc(var(--rot-end) * 0.5)); }
-    75%  {                  transform: translate3d(calc(var(--rock) *  0.7 * var(--rock-dir)), 195px, 0)  rotate(calc(var(--rot-end) * 0.75)); }
-    92%  { opacity: 0.92; }
-    100% { opacity: 0;     transform: translate3d(calc(var(--rock) * -0.4 * var(--rock-dir)), 250px, 0)  rotate(var(--rot-end)); }
+    0%   { opacity: 0;    transform: translate3d(0, 0, 0)                                                rotateZ(0deg)                                  rotateY(0deg); }
+    8%   { opacity: 0.95; }
+    25%  {                 transform: translate3d(calc(var(--rock) *  1   * var(--rock-dir)),  60px, 0)  rotateZ(calc(var(--rz) * 0.3))                  rotateY(calc(var(--ry) * 0.22)); }
+    35%  { opacity: 0.45;  }  /* edge-on: nearly disappears */
+    50%  { opacity: 0.92; transform: translate3d(calc(var(--rock) * -1   * var(--rock-dir)), 130px, 0)  rotateZ(calc(var(--rz) * 0.55))                 rotateY(calc(var(--ry) * 0.5)); }
+    70%  { opacity: 0.4;  }  /* second edge-on */
+    75%  {                 transform: translate3d(calc(var(--rock) *  0.7 * var(--rock-dir)), 195px, 0)  rotateZ(calc(var(--rz) * 0.8))                  rotateY(calc(var(--ry) * 0.78)); }
+    92%  { opacity: 0.85; }
+    100% { opacity: 0;    transform: translate3d(calc(var(--rock) * -0.4 * var(--rock-dir)), 250px, 0)  rotateZ(var(--rz))                              rotateY(var(--ry)); }
   }
 
-  /* ── 月华 ── 3 concentric soft halos expand from click point with
-     staggered delays. Warm-ivory/amber tint (matches the lantern's
-     palette), not generic white — feels native to the night-cabin
-     aesthetic. Each ring fades in as it grows, then fades out. */
-  .island-fx-moonglow .island-fx-p {
+  /* ── 月华 ── Steady warm bloom (lantern-glow) + floating kotodama
+     embers rising. NO expansion — lanterns don't ripple. The bloom
+     brightens then fades in place; embers drift up like sparks. */
+  .island-fx-moonglow .island-fx-bloom-core {
     top: var(--cy);
     left: var(--cx);
-    width: 0;
-    height: 0;
+    width: 120px;
+    height: 120px;
+    transform: translate(-50%, -50%) scale(0.9);
     border-radius: 50%;
     background: radial-gradient(circle,
-                  transparent 0%, transparent 35%,
-                  rgba(255, 220, 170, 0.35) 45%,
-                  rgba(255, 200, 140, 0.25) 60%,
-                  transparent 75%);
+                  rgba(255, 222, 170, 0.55) 0%,
+                  rgba(255, 200, 140, 0.32) 30%,
+                  rgba(255, 184, 96, 0.12) 60%,
+                  transparent 85%);
+    filter: blur(4px);
     opacity: 0;
-    animation: fx-moonglow 2200ms cubic-bezier(0.22, 0.61, 0.36, 1) var(--d) forwards;
+    animation: fx-bloom 2200ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
   }
-  @keyframes fx-moonglow {
-    0%   { opacity: 0;    width: 0;                height: 0;                transform: translate(-50%, -50%); }
-    20%  { opacity: 1; }
-    100% { opacity: 0;    width: var(--ring-max); height: var(--ring-max);  transform: translate(-50%, -50%); }
+  @keyframes fx-bloom {
+    0%   { opacity: 0;   transform: translate(-50%, -50%) scale(0.85); }
+    35%  { opacity: 1;   transform: translate(-50%, -50%) scale(1.05); }
+    100% { opacity: 0;   transform: translate(-50%, -50%) scale(1); }
+  }
+  .island-fx-moonglow .island-fx-bloom-ember {
+    top: var(--cy);
+    left: var(--cx);
+    width: var(--es);
+    height: var(--es);
+    border-radius: 50%;
+    background: rgba(255, 220, 160, 0.9);
+    box-shadow:
+      0 0 6px rgba(255, 200, 140, 0.7),
+      0 0 14px rgba(255, 180, 100, 0.3);
+    opacity: 0;
+    animation: fx-ember 1900ms cubic-bezier(0.4, 0, 0.6, 1) var(--d) forwards;
+  }
+  @keyframes fx-ember {
+    0%   { opacity: 0;   transform: translate(-50%, -50%) scale(0.4); }
+    20%  { opacity: 0.95; transform: translate(calc(-50% + var(--dx) * 0.3), calc(-50% + var(--dy) * 0.3), 0) scale(1); }
+    100% { opacity: 0;   transform: translate(calc(-50% + var(--dx)),       calc(-50% + var(--dy)),       0) scale(0.6); }
   }
 
   /* ── 烟雾 ── Wisps rise from the bottom of the fx layer + drift
@@ -1017,7 +1064,11 @@ import IslandWidget from './IslandWidget'
                   rgba(255, 255, 255, var(--op)) 0%,
                   rgba(245, 245, 250, calc(var(--op) * 0.6)) 45%,
                   transparent 78%);
-    filter: blur(4px);
+    filter: blur(5px);
+    /* screen blend mode lifts the highlights of the scene below
+       without overwhelming it — fog should make the scene MORE,
+       not less, visible. */
+    mix-blend-mode: screen;
     opacity: 0;
     transform: translateY(20px);
     animation: fx-mist-rise var(--rise) ease-out var(--d) forwards;
