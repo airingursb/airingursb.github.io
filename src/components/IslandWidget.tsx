@@ -1069,7 +1069,16 @@ function AnimatedSun() {
     const t = s.clock.elapsedTime
     const cycle = (Math.sin(t * 0.07) + 1) * 0.5
     const dwell = getDwellGolden(t)
-    lightRef.current.intensity = 2.44 + Math.sin(t * 0.07) * 0.06 - dwell * 0.20
+    // V53.4 (Sub-A 16 emotion tune): pre-V53 sun intensity 2.44 +
+    // ambient 0.60 + hemi 0.95 = 'tourist daytime Kyoto'. For an SE
+    // engineer's homepage (dark-mode default, quiet night context) the
+    // target emotion is sabishisa (詫しさ — beautiful loneliness):
+    // 'a small lit room late at night, refuge against encroaching
+    // night'. Conservative dim (-12% sun, paired with hemi -10% and
+    // ambient -13% at site) lets hearth + lantern + shoji do more
+    // relative work — same scene, the warm interior glow now reads
+    // as 'lit refuge' instead of 'daytime postcard'.
+    lightRef.current.intensity = 2.15 + Math.sin(t * 0.07) * 0.06 - dwell * 0.20
     scratch.copy(cWarm).lerp(cAmber, cycle * 0.6).lerp(cGolden, dwell)
     lightRef.current.color = scratch
     // V28: sun POSITION lowers on dwell — shadows lengthen with the warmth
@@ -1593,8 +1602,12 @@ export default function IslandWidget() {
           wrapper to drive (we're now in .island-pet). Static lighting. */}
 
       {/* Lighting — bright noon, Studio Ghibli golden hour balance */}
-      <hemisphereLight args={['#FFF3DC', '#9CBC78', 0.95]} />
-      <ambientLight intensity={0.60} color="#FFF6DC" />
+      {/* V53.4 (Sub-A 16 mood tune): hemi 0.95 → 0.78 + ambient 0.60
+          → 0.50 — paired with sun -12%, the warm interior light
+          sources (hearth/lantern/shoji) take more relative weight.
+          'Lit refuge against night' read, not 'daytime postcard'. */}
+      <hemisphereLight args={['#FFF3DC', '#9CBC78', 0.78]} />
+      <ambientLight intensity={0.50} color="#FFF6DC" />
       {/* V14: animated breathing sun (90s cycle, ±0.06 intensity, warm→amber) */}
       <AnimatedSun />
       <directionalLight position={[-3, 2.5, -3]} intensity={0.55} color="#C8DCEC" />
