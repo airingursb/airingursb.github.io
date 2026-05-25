@@ -1090,31 +1090,33 @@ function FallenPetals() {
 
 // F-sync: pet sun is now BIASED by real time of day. Pet and /world/
 // stay coherent — same hour, both bright at noon, both dim at 2am.
-// Keeps the 90s breathing cycle + golden-hour dwell on TOP of the bias.
-// Returns intensity multiplier + color shift + Y bias for current time.
+// Reads from the shared time-of-day module (used by /world/ too) so
+// URL ?time= override + manual override apply to BOTH systems.
+import { getCurrentState as getTimeState } from '../world/time-of-day'
+
+// Per-phase anchor values for the pet sun. Lerped by blend within
+// the current phase to the next phase. Phase boundaries match
+// time-of-day.ts (dawn 5-7:30, day 7:30-17, dusk 17-19:30, night).
+const PET_SUN_ANCHORS = {
+  dawn:  { intensity: 0.85, color: '#FFAE82', sunY: 2.5 },
+  day:   { intensity: 2.15, color: '#FFE8C0', sunY: 5.5 },
+  dusk:  { intensity: 1.45, color: '#FF9A6A', sunY: 3.0 },
+  night: { intensity: 0.18, color: '#5A6088', sunY: -1.5 },
+} as const
+const PHASE_ORDER: Array<keyof typeof PET_SUN_ANCHORS> = ['dawn', 'day', 'dusk', 'night']
 function getTimeBias() {
   if (typeof window === 'undefined') return { intensity: 1, color: '#FFE8C0', sunY: 5.5 }
-  const mins = new Date().getHours() * 60 + new Date().getMinutes()
-  // 4 phase anchors: dawn 5:00, noon 12:00, dusk 18:00, midnight 0:00
-  // Lerp between adjacent anchors.
-  const anchors = [
-    { mins: 0,    intensity: 0.18, color: '#5A6088', sunY: -1.5 },   // midnight
-    { mins: 300,  intensity: 0.85, color: '#FFAE82', sunY: 2.5 },    // dawn 5:00
-    { mins: 720,  intensity: 2.15, color: '#FFE8C0', sunY: 5.5 },    // noon 12:00
-    { mins: 1080, intensity: 1.45, color: '#FF9A6A', sunY: 3.0 },    // dusk 18:00
-    { mins: 1440, intensity: 0.18, color: '#5A6088', sunY: -1.5 },   // midnight (wraps)
-  ]
-  let i = 0
-  while (i < anchors.length - 1 && mins >= anchors[i + 1].mins) i++
-  const a = anchors[i]
-  const b = anchors[i + 1] || anchors[anchors.length - 1]
-  const blend = (mins - a.mins) / (b.mins - a.mins || 1)
-  const easeBlend = 0.5 - Math.cos(blend * Math.PI) * 0.5
-  const intensity = a.intensity + (b.intensity - a.intensity) * easeBlend
-  const sunY = a.sunY + (b.sunY - a.sunY) * easeBlend
-  // Color lerp via THREE.Color
-  const c = new THREE.Color(a.color).lerp(new THREE.Color(b.color), easeBlend)
-  return { intensity, color: '#' + c.getHexString(), sunY }
+  const state = getTimeState()
+  const a = PET_SUN_ANCHORS[state.phase]
+  const idx = PHASE_ORDER.indexOf(state.phase)
+  const b = PET_SUN_ANCHORS[PHASE_ORDER[(idx + 1) % PHASE_ORDER.length]]
+  const eased = 0.5 - Math.cos(state.blend * Math.PI) * 0.5
+  const c = new THREE.Color(a.color).lerp(new THREE.Color(b.color), eased)
+  return {
+    intensity: a.intensity + (b.intensity - a.intensity) * eased,
+    color: '#' + c.getHexString(),
+    sunY: a.sunY + (b.sunY - a.sunY) * eased,
+  }
 }
 
 // AnimatedSun — directional key light. 90s breathing cycle warms
