@@ -757,10 +757,15 @@ import IslandWidget from './IslandWidget'
     clip-path: inset(100% 0 0 0 round 14px);
     /* Slower fade-OUT (380ms ease-in) feels intentional — the panel
        doesn't snap away when the cursor leaves. The :hover rule below
-       overrides with a fast cubic-bezier entry curve. */
+       overrides with a fast cubic-bezier entry curve.
+       pointer-events flip-back DELAYED 250ms so if the cursor crosses
+       the bottom edge of the pet too quickly while moving to a chip,
+       the chip stays clickable through the exit animation. Discrete
+       prop, but transition-delay still applies. */
     transition: opacity 380ms ease-in,
                 transform 360ms cubic-bezier(0.4, 0.0, 0.2, 1),
-                clip-path 360ms cubic-bezier(0.4, 0.0, 0.2, 1);
+                clip-path 360ms cubic-bezier(0.4, 0.0, 0.2, 1),
+                pointer-events 0s linear 250ms;
     pointer-events: none;
     z-index: 4;
   }
@@ -773,10 +778,13 @@ import IslandWidget from './IslandWidget'
     pointer-events: auto;
     /* Entry is faster + springier than exit, with a 120ms dwell delay
        so quick mouse-throughs don't flash the panel. Calligraphy /
-       contemplative aesthetic — the panel takes a breath before opening. */
+       contemplative aesthetic — the panel takes a breath before opening.
+       pointer-events flips ON immediately (no delay) — chips become
+       clickable as soon as the panel starts opening. */
     transition: opacity 260ms cubic-bezier(0.22, 0.61, 0.36, 1) 120ms,
                 transform 320ms cubic-bezier(0.16, 0.84, 0.32, 1.06) 120ms,
-                clip-path 360ms cubic-bezier(0.22, 0.61, 0.36, 1) 120ms;
+                clip-path 360ms cubic-bezier(0.22, 0.61, 0.36, 1) 120ms,
+                pointer-events 0s linear 0s;
   }
   /* Decorative vermillion 閒 seal — bottom-right of the panel.
      Visually links the panel to the chip's shu-iro red without
@@ -795,7 +803,10 @@ import IslandWidget from './IslandWidget'
     font-weight: 700;
     color: rgba(252, 240, 224, 0.94);
     background: rgba(208, 86, 54, 0.82);
-    border-radius: 2px;
+    /* 1px not 2px — at 14×14 a 2px radius reads as "rounded square"
+       and fights the panel's soft 14px corners. Historical stone-
+       carved seals are essentially square; 1px keeps that physics. */
+    border-radius: 1px;
     transform: rotate(-5deg);
     opacity: 0;
     pointer-events: none;
