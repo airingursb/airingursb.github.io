@@ -3,11 +3,15 @@
 // AudioContext is lazy-initialized on first user gesture (browsers
 // require this to allow audio).
 
-export type NoiseColor = 'off' | 'brown' | 'pink' | 'white'
+export type NoiseColor = 'off' | 'brown' | 'pink' | 'white' | 'wind' | 'water' | 'forest'
 
 let ctx: AudioContext | null = null
 let source: AudioBufferSourceNode | null = null
 let gain: GainNode | null = null
+let filter: BiquadFilterNode | null = null
+let lfo: OscillatorNode | null = null
+let lfoGain: GainNode | null = null
+let birdTimer: number | null = null
 let currentColor: NoiseColor = 'off'
 
 function getCtx(): AudioContext {
@@ -57,42 +61,128 @@ const VOL: Record<Exclude<NoiseColor, 'off'>, number> = {
   brown: 0.22,
   pink: 0.18,
   white: 0.12,
+  wind: 0.28,    // filtered brown + LFO — feels louder so add gain
+  water: 0.20,   // filtered pink, narrower band
+  forest: 0.16,  // pink + bird chirps overlay
+}
+
+// Underlying noise color for the procedural soundscapes
+const SOUNDSCAPE_BASE: Record<'wind' | 'water' | 'forest', 'brown' | 'pink' | 'white'> = {
+  wind: 'brown',
+  water: 'pink',
+  forest: 'pink',
+}
+
+// Cleanly tear down all active audio nodes — used before switching to
+// a new soundscape or turning off. Birds need their setInterval cleared.
+function teardown(): void {
+  if (source) { try { source.stop() } catch {} try { source.disconnect() } catch {} source = null }
+  if (gain)   { try { gain.disconnect() } catch {} gain = null }
+  if (filter) { try { filter.disconnect() } catch {} filter = null }
+  if (lfo)    { try { lfo.stop() } catch {} try { lfo.disconnect() } catch {} lfo = null }
+  if (lfoGain){ try { lfoGain.disconnect() } catch {} lfoGain = null }
+  if (birdTimer !== null) { window.clearInterval(birdTimer); birdTimer = null }
 }
 
 export function setNoise(color: NoiseColor): void {
   if (typeof window === 'undefined') return
   currentColor = color
-
-  // Stop any current source
-  if (source) {
-    try { source.stop() } catch {}
-    try { source.disconnect() } catch {}
-    source = null
-  }
-  if (gain) {
-    try { gain.disconnect() } catch {}
-    gain = null
-  }
-
+  teardown()
   if (color === 'off') return
 
   const c = getCtx()
-  // Must be resumed within a user gesture handler the first time
-  if (c.state === 'suspended') {
-    c.resume().catch(() => {})
-  }
+  if (c.state === 'suspended') c.resume().catch(() => {})
 
-  const buffer = makeNoiseBuffer(c, color)
+  // Determine the underlying noise color for procedural soundscapes
+  const baseColor = (color === 'wind' || color === 'water' || color === 'forest')
+    ? SOUNDSCAPE_BASE[color]
+    : color
+  const buffer = makeNoiseBuffer(c, baseColor)
   source = c.createBufferSource()
   source.buffer = buffer
   source.loop = true
   gain = c.createGain()
   gain.gain.value = 0
-  source.connect(gain)
+
+  // Insert filter chain for procedural soundscapes
+  if (color === 'wind') {
+    // Wind = brown noise → bandpass (lowish, broad) + LFO on filter freq
+    filter = c.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.value = 380
+    filter.Q.value = 0.7
+    lfo = c.createOscillator()
+    lfo.type = 'sine'
+    lfo.frequency.value = 0.18    // 5.5s period — natural wind gust cadence
+    lfoGain = c.createGain()
+    lfoGain.gain.value = 180      // ±180 Hz modulation around 380 center
+    lfo.connect(lfoGain)
+    lfoGain.connect(filter.frequency)
+    lfo.start()
+    source.connect(filter)
+    filter.connect(gain)
+  } else if (color === 'water') {
+    // Water = pink noise → narrow bandpass around 1200 (trickle range)
+    filter = c.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.value = 1200
+    filter.Q.value = 1.4
+    lfo = c.createOscillator()
+    lfo.type = 'sine'
+    lfo.frequency.value = 0.6     // faster ripple cadence
+    lfoGain = c.createGain()
+    lfoGain.gain.value = 280
+    lfo.connect(lfoGain)
+    lfoGain.connect(filter.frequency)
+    lfo.start()
+    source.connect(filter)
+    filter.connect(gain)
+  } else if (color === 'forest') {
+    // Forest = pink → lowpass (muffled distance) + sparse bird chirps
+    filter = c.createBiquadFilter()
+    filter.type = 'lowpass'
+    filter.frequency.value = 1800
+    filter.Q.value = 0.5
+    source.connect(filter)
+    filter.connect(gain)
+    // Bird chirp scheduler — random 4-12s intervals
+    birdTimer = window.setInterval(() => {
+      if (currentColor !== 'forest') return
+      playBirdChirp()
+    }, 6000) as unknown as number
+    // Fire one early
+    setTimeout(() => { if (currentColor === 'forest') playBirdChirp() }, 1200)
+  } else {
+    source.connect(gain)
+  }
+
   gain.connect(c.destination)
   source.start()
-  // Gentle fade-in
   gain.gain.linearRampToValueAtTime(VOL[color], c.currentTime + 0.6)
+}
+
+// Procedural bird chirp — 2-3 quick sine bursts at slightly varying
+// pitches. Cheap (~3 oscillators per chirp, ~250ms each).
+function playBirdChirp(): void {
+  if (!ctx) return
+  const c = ctx
+  const now = c.currentTime
+  const notes = 2 + Math.floor(Math.random() * 2)
+  const baseFreq = 1800 + Math.random() * 1200
+  for (let i = 0; i < notes; i++) {
+    const osc = c.createOscillator()
+    osc.type = 'sine'
+    osc.frequency.value = baseFreq * (0.9 + Math.random() * 0.4)
+    const g = c.createGain()
+    const start = now + i * 0.11
+    g.gain.setValueAtTime(0, start)
+    g.gain.linearRampToValueAtTime(0.06, start + 0.02)
+    g.gain.exponentialRampToValueAtTime(0.0001, start + 0.18)
+    osc.connect(g)
+    g.connect(c.destination)
+    osc.start(start)
+    osc.stop(start + 0.2)
+  }
 }
 
 export function getCurrentNoise(): NoiseColor {

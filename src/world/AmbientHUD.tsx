@@ -12,12 +12,19 @@
 import { useEffect, useRef, useState } from 'react'
 import { setNoise, playChime, type NoiseColor } from './AmbientAudio'
 
-const NOISE_CYCLE: NoiseColor[] = ['off', 'brown', 'pink', 'white']
+// Cycle order: off → noises (棕粉白) → soundscapes (风水林).
+// Soundscapes are procedurally filtered noise: 风 = brown + bandpass +
+// LFO gust, 水 = pink + narrow bandpass + LFO ripple, 林 = pink lowpass
+// + sparse procedural bird chirps.
+const NOISE_CYCLE: NoiseColor[] = ['off', 'brown', 'pink', 'white', 'wind', 'water', 'forest']
 const NOISE_LABEL: Record<NoiseColor, string> = {
   off: '关',
   brown: '棕噪',
   pink: '粉噪',
   white: '白噪',
+  wind: '风声',
+  water: '水声',
+  forest: '林声',
 }
 
 type PomodoroPhase = 'idle' | 'focus' | 'break'
