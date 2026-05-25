@@ -83,10 +83,19 @@ export function getWind(t: number) {
   const baseGust = Math.max(0, Math.sin(t * 0.13) - 0.7) * 3.3
   const sigGust = Math.max(0, Math.sin(t * 0.081 + 1.5) - 0.82) * 5.5
   const firstGust = (t > 8 && t < 12) ? Math.sin((t - 8) / 4 * Math.PI) * 1.4 : 0
+  // Peripheral-vision attention-reclaim: a tiny ~15s pulse at ~10%
+  // of base amplitude. The pet sits bottom-left, peripheral to where
+  // the user's eyes start (main content). M-cell pathway needs
+  // temporal contrast events to recapture attention. Without this,
+  // dead-air between ~24s baseGust spikes leaves the pet 'invisible'
+  // to peripheral notice — the user acknowledges its silhouette once,
+  // then never looks again. 0.88 threshold + 0.9 multiplier keeps
+  // this strictly below sigGust so the BIG gust still feels singular.
+  const microGust = Math.max(0, Math.sin(t * 0.42) - 0.88) * 0.9
   const dirAngle = Math.sin(t * 0.04) * 0.4
   _windScratch.dirX = Math.cos(dirAngle)
   _windScratch.dirZ = Math.sin(dirAngle)
-  _windScratch.gust = baseGust + sigGust + firstGust
+  _windScratch.gust = baseGust + sigGust + firstGust + microGust
   _windScratch.swayPhase = t * 0.5
   return _windScratch
 }
