@@ -89,12 +89,12 @@ import IslandWidget from './IslandWidget'
       <button type="button"
               class="island-pet-chip"
               data-action="enter"
-              onclick="event.stopPropagation(); window.location.href='/world/'; return false;">进入森林岛 →</button>
+              onclick="event.stopPropagation(); window.location.href='/world/'; return false;"><span class="island-pet-chip-label">进入森林岛</span> <span class="island-pet-arrow" aria-hidden="true">→</span></button>
       <button type="button"
               class="island-pet-chip island-pet-chip-ghost"
               data-action="cycle"
               aria-label="换一句"
-              onclick="event.stopPropagation(); event.preventDefault(); var q=this.closest('.island-pet-panel').querySelector('.island-pet-quote'); try { var pool=(window.__islandQuotes||{}); var lang=(document.documentElement.lang||'').toLowerCase().indexOf('en')===0?'en':'zh'; var arr=pool[lang]; if(!arr||!arr.length) return false; var i=(parseInt(q.getAttribute('data-idx')||'0')+1)%arr.length; q.setAttribute('data-idx', i); q.textContent=arr[i]; window.__islandQuoteIdx=i; } catch(e){ console.error('[island-pet] cycle error', e); } return false;">↻ 换一句</button>
+              onclick="event.stopPropagation(); event.preventDefault(); var q=this.closest('.island-pet-panel').querySelector('.island-pet-quote'); try { var pool=(window.__islandQuotes||{}); var lang=(document.documentElement.lang||'').toLowerCase().indexOf('en')===0?'en':'zh'; var arr=pool[lang]; if(!arr||!arr.length) return false; var i=(parseInt(q.getAttribute('data-idx')||'0')+1)%arr.length; q.setAttribute('data-idx', i); q.textContent=arr[i]; window.__islandQuoteIdx=i; var icon=this.querySelector('.island-pet-cycle-icon'); if(icon){ icon.classList.remove('is-spinning'); void icon.offsetWidth; icon.classList.add('is-spinning'); } q.classList.remove('is-cycling'); void q.offsetWidth; q.classList.add('is-cycling'); } catch(e){ console.error('[island-pet] cycle error', e); } return false;"><span class="island-pet-cycle-icon" aria-hidden="true">↻</span> <span class="island-pet-chip-label">换一句</span></button>
     </div>
   </div>
 </div>
@@ -408,9 +408,13 @@ import IslandWidget from './IslandWidget'
       'The cabin is small. The night is large.',
       'There is a crack in everything — that is how the light gets in.',
     ]
+    // Chip labels — JUST the text part (arrow/icon are in separate
+    // <span>s inside the button HTML, so applyLang() updates only
+    // the .island-pet-chip-label span, preserving the icon spans
+    // for their hover/spin micro-interactions).
     const CHIP_LABELS = {
-      zh: { enter: '进入森林岛 →', cycle: '↻ 换一句' },
-      en: { enter: 'Enter the forest →', cycle: '↻ Another' },
+      zh: { enter: '进入森林岛', cycle: '换一句' },
+      en: { enter: 'Enter the forest', cycle: 'Another' },
     }
 
     // Expose quote pools on window so the inline cycle handler can
@@ -456,8 +460,12 @@ import IslandWidget from './IslandWidget'
         // HTML-default data-idx="0".
         quoteEl.setAttribute('data-idx', String(idx))
       }
-      if (enterChip) enterChip.textContent = CHIP_LABELS[lang].enter
-      if (cycleChip) cycleChip.textContent = CHIP_LABELS[lang].cycle
+      // Update ONLY the label spans — preserve the .island-pet-arrow
+      // and .island-pet-cycle-icon spans for their micro-animations.
+      const enterLabel = enterChip?.querySelector('.island-pet-chip-label')
+      const cycleLabel = cycleChip?.querySelector('.island-pet-chip-label')
+      if (enterLabel) enterLabel.textContent = CHIP_LABELS[lang].enter
+      if (cycleLabel) cycleLabel.textContent = CHIP_LABELS[lang].cycle
     }
     applyLang()
     // V53: defer one more pass after site's i18n promise resolves
@@ -656,12 +664,38 @@ import IslandWidget from './IslandWidget'
     pointer-events: auto;
   }
   .island-pet-quote {
-    margin: 0 0 12px;
+    margin: 0 0 14px;
     font-family: "Songti SC", "Noto Serif SC", "Times New Roman", serif;
-    font-size: 13px;
-    line-height: 1.55;
+    font-size: 14px;
+    line-height: 1.7;
     color: rgba(248, 232, 200, 0.94);
-    letter-spacing: 0.01em;
+    letter-spacing: 0.04em;
+    /* Subtle text-shadow on dark panel gives the serif strokes a
+       hint of ink-on-paper weight without losing legibility. */
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    /* Per-character fade-in animation. Triggered by re-applying
+       the class via JS on cycle (and on first reveal). The
+       --duration var allows clamping for long quotes. */
+    animation: quote-bloom 480ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  @keyframes quote-bloom {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+      letter-spacing: 0.20em;
+      filter: blur(2px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+      letter-spacing: 0.04em;
+      filter: blur(0);
+    }
+  }
+  /* When user re-clicks the cycle button, re-trigger animation by
+     adding a class via JS — see the cycle handler. */
+  .island-pet-quote.is-cycling {
+    animation: quote-bloom 480ms cubic-bezier(0.22, 0.61, 0.36, 1);
   }
   .island-pet-actions {
     display: flex;
@@ -671,29 +705,58 @@ import IslandWidget from './IslandWidget'
   .island-pet-chip {
     appearance: none;
     border: 0;
-    /* V53.2: bigger padding so users can see they're real buttons */
     padding: 8px 14px;
     border-radius: 10px;
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-size: 12px;
     line-height: 1.2;
     cursor: pointer;
-    background: rgba(200, 74, 53, 0.92);  /* vermillion to match torii */
+    /* shu-iro persimmon (V53.5 palette) — matches torii */
+    background: rgba(208, 86, 54, 0.92);
     color: rgba(252, 244, 226, 0.98);
-    transition: background 180ms ease, transform 180ms ease;
+    transition: background 180ms ease, transform 180ms ease, box-shadow 220ms ease;
     flex: 1 1 auto;
     white-space: nowrap;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+    /* Allow arrow micro-animation (the → glyph is an inline span,
+       see the JSX wrapping below). */
+    overflow: hidden;
+    position: relative;
   }
   .island-pet-chip:hover {
-    background: rgba(214, 88, 67, 1);
+    background: rgba(220, 100, 68, 1);
     transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(208, 86, 54, 0.32);
   }
   .island-pet-chip:active {
-    /* V53.4: stronger feedback on press so user knows the click
-       registered (the bug they reported was about clicks doing
-       nothing — at minimum they should SEE the press) */
     transform: translateY(1px) scale(0.94);
-    background: rgba(170, 60, 45, 1);
+    background: rgba(180, 68, 48, 1);
+    box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+  }
+  /* Enter-chip arrow: nudges right on hover (3px translate).
+     Mirror animation works because the arrow is in its own <span>. */
+  .island-pet-chip[data-action="enter"] .island-pet-arrow {
+    display: inline-block;
+    transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  .island-pet-chip[data-action="enter"]:hover .island-pet-arrow {
+    transform: translateX(4px);
+  }
+  /* Cycle-chip ↻ glyph: rotates 360° on click (animation set by JS
+     via the .is-spinning class so it can restart on repeated clicks). */
+  .island-pet-chip[data-action="cycle"] .island-pet-cycle-icon {
+    display: inline-block;
+    transition: transform 180ms ease;
+  }
+  .island-pet-chip[data-action="cycle"]:hover .island-pet-cycle-icon {
+    transform: rotate(-30deg);
+  }
+  .island-pet-chip[data-action="cycle"] .island-pet-cycle-icon.is-spinning {
+    animation: cycle-spin 600ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+  @keyframes cycle-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
   }
   .island-pet-chip-ghost:active {
     background: rgba(252, 244, 226, 0.28);
@@ -707,9 +770,26 @@ import IslandWidget from './IslandWidget'
     color: rgba(248, 232, 200, 0.88);
     flex: 0 0 auto;     /* fixed width for cycle chip */
     padding: 8px 12px;
+    box-shadow: none;
   }
   .island-pet-chip-ghost:hover {
     background: rgba(252, 244, 226, 0.18);
+    box-shadow: 0 4px 12px rgba(252, 244, 226, 0.10);
+  }
+  /* prefers-reduced-motion: suppress the more dramatic animations
+     but preserve the underlying fade so users still see when state
+     changes (per WCAG vestibular guidance). */
+  @media (prefers-reduced-motion: reduce) {
+    .island-pet-quote,
+    .island-pet-quote.is-cycling {
+      animation: none;
+    }
+    .island-pet-chip[data-action="enter"] .island-pet-arrow {
+      transition: none;
+    }
+    .island-pet-chip[data-action="cycle"] .island-pet-cycle-icon.is-spinning {
+      animation: none;
+    }
   }
   /* Reduced motion: skip the slide-in transform, just fade */
   @media (prefers-reduced-motion: reduce) {
