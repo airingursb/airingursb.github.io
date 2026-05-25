@@ -4,18 +4,50 @@
 //   - Reset camera button (dispatches custom event)
 //   - Tiny zone-name display when player hovers near interactable
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { emit } from './events'
 import { trackWorld } from './umami'
 
 const THEME_KEY = 'world-theme-v1'
 const WHISPER_KEY = 'world-whispers-on-v1'
+// J (direction): mobile hint persistence. Shown once per session.
+const MOBILE_HINT_SEEN_KEY = 'world-mobile-hint-seen-v1'
 
 export default function WorldUI() {
   const [theme, setTheme] = useState<'day' | 'dusk'>(() => {
     if (typeof window === 'undefined') return 'day'
     try { return (localStorage.getItem(THEME_KEY) as 'day' | 'dusk') || 'day' } catch { return 'day' }
   })
+  // J: show "拖动看看 / drag to look around" hint on mobile-first-visit.
+  // Auto-dismisses on first user interaction OR after 5s.
+  const [mobileHint, setMobileHint] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const isTouch = matchMedia('(hover: none)').matches
+    if (!isTouch) return
+    try {
+      if (sessionStorage.getItem(MOBILE_HINT_SEEN_KEY) === '1') return
+    } catch {}
+    // Show after intro animation completes (~6s post-mount, allow extra buffer)
+    const showTimer = setTimeout(() => setMobileHint(true), 6500)
+    // Auto-dismiss after 5s of being visible
+    const hideTimer = setTimeout(() => {
+      setMobileHint(false)
+      try { sessionStorage.setItem(MOBILE_HINT_SEEN_KEY, '1') } catch {}
+    }, 11500)
+    // OR dismiss on any pointer activity in the canvas
+    function dismissOnTouch() {
+      setMobileHint(false)
+      try { sessionStorage.setItem(MOBILE_HINT_SEEN_KEY, '1') } catch {}
+      window.removeEventListener('pointerdown', dismissOnTouch)
+    }
+    window.addEventListener('pointerdown', dismissOnTouch, { passive: true })
+    return () => {
+      clearTimeout(showTimer)
+      clearTimeout(hideTimer)
+      window.removeEventListener('pointerdown', dismissOnTouch)
+    }
+  }, [])
   const [whispersOn, setWhispersOn] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true
     try { return localStorage.getItem(WHISPER_KEY) !== 'false' } catch { return true }
@@ -57,6 +89,13 @@ export default function WorldUI() {
   const themeLabel = theme === 'day' ? '切到黄昏' : '切到白天'
   const whisperLabel = whispersOn ? '关闭岛的低语' : '让岛说话'
   return (
+    <>
+    {mobileHint && (
+      <div className="world-mobile-hint" role="status" aria-live="polite">
+        <span className="world-mobile-hint-icon" aria-hidden="true">✦</span>
+        <span>拖动看看 · drag to explore</span>
+      </div>
+    )}
     <div className="world-ui" role="toolbar" aria-label="场景控制">
       <button onClick={snap} className="world-btn" title="保存截图" aria-label="保存截图">
         <img src="/world/sprites/icons/F01-camera.png" alt="" className="world-btn-icon" />
@@ -87,5 +126,6 @@ export default function WorldUI() {
         <img src="/world/sprites/icons/F05-whisper.png" alt="" className="world-btn-icon" />
       </button>
     </div>
+    </>
   )
 }
