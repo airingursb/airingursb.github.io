@@ -35,23 +35,40 @@
 - [ ] reduce-motion：模拟 `prefers-reduced-motion: reduce`，刷新，永不出现 `fx-rgb` 或 `data-glitch-flashing`
 - [ ] DOM: `<style is:global>` 块包含 `body.fx-rgb` 选择器
 
-## Forest Island 3D Widget (Homepage)
+## Forest Island Pet (Homepage bottom-left)
 
-> Component: `src/components/IslandWidget.tsx` (R3F scene) +
-> `src/components/IslandWidget.astro` (wrapper + skeleton + WebGL fallback).
-> Inline card on homepage `cards-grid`. Click → `/world/`.
+> Component: `src/components/IslandWidget.tsx` (R3F scene, ~1600 LOC) +
+> `src/components/widget-sakura.tsx` (sakura geometry) +
+> `src/components/island-shared.ts` (shared wind/hearth/dwell + palette) +
+> `src/components/IslandWidget.astro` (wrapper + skeleton + chip panel).
+> V51+: floating body-level pet (NOT inline card). 220×220 fixed
+> bottom-left. Wrapper has role="link" + tabindex=0 + JS click handler
+> navigating to `/world/`. Hidden on mobile (<800px).
 
-- [ ] DOM: `#island-3d` card exists in homepage cards-grid
-- [ ] DOM: `[data-i18n=sec_island_3d]` resolves to "森林岛 · 3D" (zh) or "Forest Island · 3D" (en)
-- [ ] DOM: `#island-3d-canvas-wrap` is an `<a href="/world/">` element (whole canvas is clickable)
+- [ ] DOM: `#island-3d-canvas-wrap` exists at bottom-left of homepage
+      (position: fixed; bottom: 20px; left: 20px; ~220×220)
+- [ ] DOM: wrapper has `role="link"` + `tabindex="0"` + `aria-label`
 - [ ] DOM: `.island-skeleton` SVG renders inside the wrap (loading state)
+- [ ] DOM: `.island-pet-panel` exists with `inert` attribute initially
+- [ ] Hover: panel reveals (opacity 1, pointer-events auto), inert removed
+- [ ] Tab key: panel reveals on focusin, chip buttons (enter + cycle)
+      become focusable in tab order
 - [ ] Evaluate (WebGL OK): within 12s, `wrap.classList.contains('island-loaded')` is true
-- [ ] Evaluate (WebGL OK): `wrap.querySelector('canvas')` returns canvas with non-null `.getContext('webgl2')` or `.getContext('webgl')`
-- [ ] Evaluate (WebGL failed): after 12s without a working canvas, `wrap.classList.contains('island-webgl-failed')` is true
-- [ ] CSS (WebGL failed): `.island-card-canvas.island-webgl-failed::after` shows "WebGL 未启用 — 点击进入完整页面"
-- [ ] Mobile (375px): widget height collapses to 220px and skeleton remains balanced
-- [ ] Reduced motion: skeleton stays visible, R3F mount is hidden via prefers-reduced-motion CSS
-- [ ] Click: `/world/` is the navigation target
+- [ ] Evaluate (WebGL OK): `wrap.querySelector('canvas')` returns canvas
+      with non-null `.getContext('webgl2')` or `.getContext('webgl')`
+- [ ] Evaluate (WebGL failed): after 12s, `wrap.classList.contains('island-webgl-failed')` is true
+- [ ] Cycle chip: clicking advances quote — `window.__islandQuoteIdx`
+      increments + DOM `data-idx` increments AND both stay in sync
+- [ ] Mobile (<800px): widget entirely hidden via CSS
+- [ ] Reduced motion: R3F `frameloop="demand"` (single static render),
+      skeleton pulse + hover lift CSS-suppressed
+- [ ] Print: pet hidden via `@media print { display:none }`
+- [ ] Forced-colors mode: panel uses Canvas/CanvasText with visible border
+- [ ] Click anywhere on wrapper: navigates to `/world/`
+- [ ] Wait ~10s: signature gust event visibly surges all wind-coupled
+      elements (sakura sway, petals drift, smoke, furin, lantern flame)
+      together once on each ~78s cycle, plus a guaranteed first-view
+      burst at t=8-12s
 
 ## /world/ WebGL Fallback
 
