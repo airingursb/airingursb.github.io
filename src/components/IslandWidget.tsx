@@ -1543,7 +1543,12 @@ export default function IslandWidget() {
       <AnimatedSun />
       <directionalLight position={[-3, 2.5, -3]} intensity={0.55} color="#C8DCEC" />
       {/* Violet fill from below — Ghibli signature shadow tint (Sub-A #3 #3) */}
-      <directionalLight position={[-2, -1, 2]} intensity={0.18} color="#B8A0C8" />
+      {/* Violet under-fill — Ghibli shadow-tint. Re-aimed to rake
+          more directly UP the new V53.5 cliff fang-rocks (which
+          hang straight down) instead of sidelong, and intensity
+          bumped 0.18→0.26 since the new dramatic taper has less
+          surface area to receive the tint. */}
+      <directionalLight position={[-1, -1.5, 1]} intensity={0.26} color="#B8A0C8" />
       {/* V10: warm pointLight at cabin shoji → gravitational anchor.
           V17: pulse in lockstep with hearth (cast light reveals
           inner flame stoke to outside world). */}
