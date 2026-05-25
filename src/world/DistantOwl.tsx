@@ -8,21 +8,27 @@
 import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { useTimeOfDay } from './time-of-day'
 
 type Theme = 'day' | 'dusk'
 
 // Far back near the deer/north tree line — distant + creepy/curious
 const POS: [number, number, number] = [-9, 7.8, -17]
 
-export default function DistantOwl({ theme }: { theme?: Theme }) {
+export default function DistantOwl({ theme: _theme }: { theme?: Theme } = {}) {
   const leftRef = useRef<THREE.MeshBasicMaterial>(null)
   const rightRef = useRef<THREE.MeshBasicMaterial>(null)
+  const tod = useTimeOfDay()
+  // F-deep: owls are nocturnal. Active at dusk AND night, brighter at
+  // night (more presence when fully dark). Dusk lerps in via blend.
+  const baseTarget =
+    tod.phase === 'night' ? 1.0 :
+    tod.phase === 'dusk'  ? 0.6 + 0.25 * tod.blend :
+    tod.phase === 'dawn'  ? 0.85 * (1 - tod.blend) :
+    0
 
   useFrame((s, dt) => {
     const t = s.clock.elapsedTime
-    const enabled = theme === 'dusk'
-    // Base opacity target — fade in/out with theme
-    const baseTarget = enabled ? 0.85 : 0
     // Blink: brief lid-close every ~6 seconds, 0.18s closed
     const cyclePhase = t % 6
     const blinking = cyclePhase < 0.18

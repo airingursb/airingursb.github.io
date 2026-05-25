@@ -7,7 +7,7 @@
 // noon-blue → dusk-amber → night-indigo) instead of 2-state day/dusk.
 // Lerps across phase blend so transitions are smooth, not stepped.
 
-import { Sky as DreiSky, Cloud, Clouds } from '@react-three/drei'
+import { Sky as DreiSky, Cloud, Clouds, Stars } from '@react-three/drei'
 import * as THREE from 'three'
 import { useTimeOfDay, type TimePhase } from './time-of-day'
 
@@ -99,6 +99,13 @@ export default function Sky({ theme }: { theme?: 'day' | 'dusk' } = {}) {
         <Cloud seed={13} segments={20} position={[  4, 50,  22]} bounds={[20, 1, 4]} volume={3} color={p.cirrusColor} opacity={0.32} fade={28} />
         <Cloud seed={14} segments={20} position={[-22, 52, -24]} bounds={[22, 1, 5]} volume={3} color={p.cirrusColor} opacity={0.28} fade={28} />
       </Clouds>
+
+      {/* F-deep: stars only show at dusk-late and night. Without them
+          the night sky was flat indigo. Render gated by phase to avoid
+          a 3000-particle Stars cost during day. */}
+      {(tod.phase === 'night' || (tod.phase === 'dusk' && tod.blend > 0.6)) && (
+        <Stars radius={300} depth={50} count={3000} factor={4} fade speed={0.5} />
+      )}
     </>
   )
 }

@@ -7,6 +7,7 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Sparkles } from '@react-three/drei'
 import { POND_CENTER, POND_RADIUS } from './zones'
+import { useTimeOfDay as useTimeOfDayLocal } from './time-of-day'
 
 const CAT_WHITE = '#F4ECDC'
 const CAT_PINK  = '#E2A8B0'
@@ -344,7 +345,11 @@ function Birds({ center, radius = 3, count = 5 }: { center: [number, number, num
   )
 }
 
-export default function Critters({ theme = 'day' }: { theme?: 'day' | 'dusk' }) {
+export default function Critters({ theme: _theme = 'day' }: { theme?: 'day' | 'dusk' } = {}) {
+  // F-deep: phase from useTimeOfDay drives all critter behavior.
+  // theme prop kept for back-compat but ignored.
+  const phaseTod = useTimeOfDayLocal()
+  const phase = phaseTod.phase
   return (
     <group>
       {/* White cat curled on cabin doormat. Sub-A fix: was at world
@@ -384,9 +389,11 @@ export default function Critters({ theme = 'day' }: { theme?: 'day' | 'dusk' }) 
       />
 
       {/* V2 wave 3: butterflies around the fox shrine clearing too —
-          rewards the discovery of the tucked-away shrine. Day only;
-          dusk has fireflies instead. */}
-      {theme === 'day' && (
+          rewards the discovery of the tucked-away shrine. Day only —
+          butterflies are warm-sun creatures, not dawn/dusk/night.
+          F-deep: gate on phase rather than legacy theme so dawn no
+          longer inherits day's butterflies. */}
+      {phase === 'day' && (
         <Sparkles
           count={4}
           scale={[1.2, 1.0, 1.2]}
@@ -427,27 +434,31 @@ export default function Critters({ theme = 'day' }: { theme?: 'day' | 'dusk' }) 
         opacity={0.7}
       />
 
-      {/* V2 D3: fireflies intensify at dusk (3× count + brighter +
-          warmer) and one solo firefly drifts toward the cabin window. */}
-      <DuskFireflies theme={theme} />
-      <CabinFirefly theme={theme} />
+      {/* V2 D3: fireflies intensify at dusk + EVEN MORE at night
+          (3× day, 4.5× at night). Solo cabin firefly only at dusk/night. */}
+      <DuskFireflies phase={phase} />
+      <CabinFirefly phase={phase} />
     </group>
   )
 }
 
 type Theme = 'day' | 'dusk'
+type Phase = 'dawn' | 'day' | 'dusk' | 'night'
 
-function DuskFireflies({ theme }: { theme: Theme }) {
-  const isDusk = theme === 'dusk'
+function DuskFireflies({ phase }: { phase: Phase }) {
+  // F-deep: 4-phase counts. Night = 36 (warm chaos), dusk = 24, day/dawn = 0.
+  // Earlier `8 at day` was light pollution.
+  if (phase === 'day' || phase === 'dawn') return null
+  const isNight = phase === 'night'
   return (
     <Sparkles
-      count={isDusk ? 24 : 8}
+      count={isNight ? 36 : 24}
       scale={[4, 2.4, 4]}
       position={[-4.0, 1.5, -12.0]}
-      size={isDusk ? 7 : 5}
-      speed={isDusk ? 0.45 : 0.3}
-      color={isDusk ? '#FFD060' : '#FFE89A'}
-      opacity={isDusk ? 0.92 : 0.6}
+      size={isNight ? 8 : 7}
+      speed={isNight ? 0.55 : 0.45}
+      color={isNight ? '#FFC840' : '#FFD060'}
+      opacity={isNight ? 1.0 : 0.92}
     />
   )
 }
@@ -456,7 +467,7 @@ function DuskFireflies({ theme }: { theme: Theme }) {
 // toward the cabin window (-2, 1.05, 0) — only at dusk. The scripted
 // path against the otherwise-random firefly cloud reads as intentional,
 // like the firefly is curious about the lit cabin.
-function CabinFirefly({ theme }: { theme: Theme }) {
+function CabinFirefly({ phase }: { phase: Phase }) {
   const ref = useRef<THREE.Mesh>(null)
   const lightRef = useRef<THREE.PointLight>(null)
   const matRef = useRef<THREE.MeshBasicMaterial>(null)
@@ -465,7 +476,8 @@ function CabinFirefly({ theme }: { theme: Theme }) {
   const targetX = -2.0, targetZ = 0.6, targetY = 1.10
   useFrame((s, dt) => {
     const t = s.clock.elapsedTime
-    const enabled = theme === 'dusk'
+    // F-deep: cabin firefly active at dusk AND night
+    const enabled = phase === 'dusk' || phase === 'night'
     // Sub-A fix: framerate-independent lerp via exp falloff (was using
     // hard-coded 0.04 step which is faster on high-fps displays).
     const k = 1 - Math.exp(-dt * 1.8)

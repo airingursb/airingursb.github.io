@@ -7,37 +7,47 @@ import { useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { LANTERN_POSITIONS } from './zones'
+import { useTimeOfDay, type TimePhase } from './time-of-day'
 
 const POST_DARK = '#3A2818'
 const POST_WARM = '#5D452B'
 const GLOW      = '#FFD58F'
 
-// Per-theme glow intensity targets.
-// V2 wave 3 (Sub-A): bumped DAY_EMISSIVE 0.35 → 0.55 so lanterns
-// read as alive even in sun (CanopyDapple zones light up the air
-// around them; static-looking lanterns would feel out-of-place).
-const DAY_EMISSIVE   = 0.55
-const DUSK_EMISSIVE  = 2.0    // bloom-friendly punch at dusk
-const DAY_PT_LIGHT   = 0.22
-const DUSK_PT_LIGHT  = 0.95
+// F-deep: 4-phase emissive table. Night > dusk because contrast
+// against dark sky is higher (lanterns become the only warm focal
+// point). Dawn slightly above day because they were burning all night.
+const PHASE_EMISSIVE: Record<TimePhase, number> = {
+  dawn:  0.95,
+  day:   0.55,
+  dusk:  2.0,
+  night: 2.6,
+}
+const PHASE_PT_LIGHT: Record<TimePhase, number> = {
+  dawn:  0.45,
+  day:   0.22,
+  dusk:  0.95,
+  night: 1.20,
+}
 
 type Theme = 'day' | 'dusk'
 
-function Lantern({ theme, seed }: { theme: Theme; seed: number }) {
+function Lantern({ seed }: { seed: number }) {
   const glowMatRef = useRef<THREE.MeshStandardMaterial>(null)
   const lightRef   = useRef<THREE.PointLight>(null)
+  const tod = useTimeOfDay()
+  // Lerp between current and next phase by blend
+  const order: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
+  const idx = order.indexOf(tod.phase)
+  const ne = order[(idx + 1) % order.length]
+  const targetEmissive = PHASE_EMISSIVE[tod.phase] + (PHASE_EMISSIVE[ne] - PHASE_EMISSIVE[tod.phase]) * tod.blend
+  const targetLight    = PHASE_PT_LIGHT[tod.phase] + (PHASE_PT_LIGHT[ne] - PHASE_PT_LIGHT[tod.phase]) * tod.blend
+  // Flicker enabled when emissive is high (dusk/night/dawn glow)
+  const flickerActive = targetEmissive > 0.85
 
-  // Smooth value lerp toward the theme target, plus a small 2-octave
-  // flicker once we're in dusk (flame-like, not too jittery).
   useFrame((s, dt) => {
-    const targetEmissive = theme === 'dusk' ? DUSK_EMISSIVE : DAY_EMISSIVE
-    const targetLight    = theme === 'dusk' ? DUSK_PT_LIGHT : DAY_PT_LIGHT
-    // exponential approach (~0.6s to settle at dt=1/60)
     const k = 1 - Math.exp(-dt * 1.8)
-
-    // Flicker only when at dusk + already mostly lit
     const t = s.clock.elapsedTime
-    const flicker = theme === 'dusk'
+    const flicker = flickerActive
       ? 1 + Math.sin(t * 7 + seed) * 0.06 + Math.sin(t * 13 + seed * 1.7) * 0.03
       : 1
 
@@ -145,12 +155,14 @@ function DuskHalo({ theme, seed }: { theme: Theme; seed: number }) {
   )
 }
 
-export default function Lanterns({ theme }: { theme: Theme }) {
+export default function Lanterns({ theme: _theme }: { theme?: Theme } = {}) {
+  // theme prop kept for back-compat but ignored — Lantern reads phase
+  // directly from useTimeOfDay().
   return (
     <group>
       {LANTERN_POSITIONS.map(([x, z], i) => (
         <group key={`l${i}`} position={[x, 0, z]}>
-          <Lantern theme={theme} seed={i * 1.7} />
+          <Lantern seed={i * 1.7} />
         </group>
       ))}
     </group>

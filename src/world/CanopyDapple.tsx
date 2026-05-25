@@ -9,6 +9,7 @@
 // igniting, and dappled-sun motes don't read at low sun angles).
 
 import { Sparkles } from '@react-three/drei'
+import { useTimeOfDay } from './time-of-day'
 
 type Theme = 'day' | 'dusk'
 
@@ -22,9 +23,16 @@ const ZONES: Array<{ pos: [number, number, number]; scale: [number, number, numb
   { pos: [-4.6, 2.2, -6.5], scale: [2.4, 1.6, 2.4] },
 ]
 
-export default function CanopyDapple({ theme }: { theme: Theme }) {
-  // Hide at dusk — different lighting language (lantern warmth).
-  if (theme === 'dusk') return null
+export default function CanopyDapple({ theme: _theme }: { theme?: Theme } = {}) {
+  // F-deep: dapples are a DAY-ONLY phenomenon. Render nothing at dawn
+  // (low sun, no overhead canopy gaps), dusk (lantern warmth takes
+  // over), or night. Opacity fades in over first 0.15 of day-blend
+  // and out over last 0.15 for smooth boundaries.
+  const tod = useTimeOfDay()
+  if (tod.phase !== 'day') return null
+  let opacity = 0.55
+  if (tod.blend < 0.15)      opacity = 0.55 * (tod.blend / 0.15)
+  else if (tod.blend > 0.85) opacity = 0.55 * (1 - (tod.blend - 0.85) / 0.15)
   return (
     <group>
       {ZONES.map((z, i) => (
@@ -36,7 +44,7 @@ export default function CanopyDapple({ theme }: { theme: Theme }) {
           size={8}
           speed={0.22}
           color="#FFEFC8"
-          opacity={0.55}
+          opacity={opacity}
         />
       ))}
     </group>
