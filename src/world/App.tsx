@@ -86,6 +86,8 @@ function detectQuality(): 'high' | 'medium' | 'low' {
   return 'high'
 }
 const QUALITY = typeof window !== 'undefined' ? detectQuality() : 'medium'
+// Expose for components that want to gate features by tier (e.g. Sky stars).
+if (typeof window !== 'undefined') (window as unknown as { __WORLD_QUALITY?: string }).__WORLD_QUALITY = QUALITY
 
 // V2 wave 3 finale: 4.5-second cinematic intro pan from close-on-cabin
 // to the establishing 3/4 angle. Hands camera to user OrbitControls
@@ -311,7 +313,12 @@ const FOG_COLORS: Record<TimePhase, string> = {
   dawn:  '#EAC4B4',
   day:   '#F4E4C8',
   dusk:  '#D89A78',
-  night: '#2A2A40',
+  // R3-r7 fix: was '#2A2A40' (bright indigo). Lerping dusk amber →
+  // night indigo passes through chocolate-brown midpoint (≈#897770)
+  // for the ~12min real-world transition window — looked like
+  // polluted haze. Less brutal indigo lets the midpoint land at
+  // a warm-gray "twilight" that reads atmospherically right.
+  night: '#3F3F58',
 }
 function PhaseFog() {
   const tod = useTimeOfDay()

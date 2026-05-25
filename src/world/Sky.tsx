@@ -102,9 +102,18 @@ export default function Sky({ theme }: { theme?: 'day' | 'dusk' } = {}) {
 
       {/* F-deep: stars only show at dusk-late and night. Without them
           the night sky was flat indigo. Render gated by phase to avoid
-          a 3000-particle Stars cost during day. */}
+          a 3000-particle Stars cost during day. R7: count gated by
+          QUALITY tier (exposed on window by App.tsx) — 1200 on low-end
+          devices, 3000 elsewhere. Stars uses per-vertex shimmer shader. */}
       {(tod.phase === 'night' || (tod.phase === 'dusk' && tod.blend > 0.6)) && (
-        <Stars radius={300} depth={50} count={3000} factor={4} fade speed={0.5} />
+        <Stars
+          radius={300}
+          depth={50}
+          count={typeof window !== 'undefined' && (window as unknown as { __WORLD_QUALITY?: string }).__WORLD_QUALITY === 'low' ? 1200 : 3000}
+          factor={4}
+          fade
+          speed={0.5}
+        />
       )}
     </>
   )
