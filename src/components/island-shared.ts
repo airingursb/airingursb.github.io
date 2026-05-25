@@ -252,7 +252,13 @@ export const TILE_RIDGE     = '#2E3540'
 
 export const STONE_BASE     = '#A89E8E'
 export const STONE_HAT      = '#7E7368'
-export const LANTERN_GLOW   = '#FFD080'
+// Bumped warmer #FFD080 → #FFB860 after V53.5 shoji bumped to
+// #FFE2A8. Lantern used to be the scene's hottest hue but the
+// warmer washi ate the warmth lane — pushing flame to amber-orange
+// (hue 32°, sat +12%, V −8%) re-opens the temperature gap so the
+// lantern still reads as the hottest pinpoint + justifies the inner
+// pointLight bloom.
+export const LANTERN_GLOW   = '#FFB860'
 
 export const VERMILLION     = '#C84A35'
 export const TORII_BLACK    = '#1F1812'
