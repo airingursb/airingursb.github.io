@@ -213,9 +213,13 @@ export const CEDAR_DARK     = '#385830'
 export const CEDAR_LIGHT    = '#4E6E40'
 
 // Ghibli earth tones — warmer than naive sage/mud defaults.
-export const GRASS_LIGHT    = '#A8C77A'
-export const GRASS_HILIGHT  = '#C7D89A'
-export const GRASS_SHADE    = '#6B8A52'
+// Grass tuned to bridge to the V53.5 weathered teardrop cliff.
+// Pre-V53.5 #A8C77A read as 'neon Easter-egg' against the now-
+// cooler darker rock — desaturated -6% + value -5% (#9BB870)
+// kills the cartoonish seam without losing the lush-top reading.
+export const GRASS_LIGHT    = '#9BB870'
+export const GRASS_HILIGHT  = '#BACC8E'
+export const GRASS_SHADE    = '#5F7E48'
 export const SOIL           = '#B88560'
 export const SOIL_DK        = '#8C5E3E'
 export const CLIFF          = '#8C5E3E'
