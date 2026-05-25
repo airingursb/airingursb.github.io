@@ -86,7 +86,7 @@ import IslandWidget from './IslandWidget'
   <div class="island-pet-panel" inert>
     <p class="island-pet-quote" data-idx="0" aria-live="off" aria-atomic="true">松风过耳，落英满衣。</p>
     <span class="island-pet-seal" aria-hidden="true">居</span>
-    <div class="island-pet-actions">
+    <div class="island-pet-actions" role="group" aria-label="森林岛操作">
       <button type="button"
               class="island-pet-chip"
               data-action="enter"
@@ -101,14 +101,10 @@ import IslandWidget from './IslandWidget'
 </div>
 
 <script is:inline>
-  // Quote pools — module-scope so they're available even if the IIFE
-  // below early-returns (e.g., when canvas mounts before this runs,
-  // or WebGL is unavailable). The inline cycle-button onclick reads
-  // them via window.__islandQuotes; applyLang() inside the IIFE also
-  // reads from these same arrays. Single source of truth.
-  // (QUOTES_ZH + QUOTES_EN definitions follow, then the IIFE.)
-  // Defined here as `const` then assigned to window so both the inline
-  // chip handler and the IIFE see the same array references.
+  // Quote pools live INSIDE the IIFE below, exposed on window
+  // (window.__islandQuotes) for the inline cycle handler to read.
+  // applyLang() inside the IIFE reads the same arrays — single
+  // source of truth.
   (function () {
     const wrap = document.getElementById('island-3d-canvas-wrap')
     if (!wrap) return
@@ -570,6 +566,9 @@ import IslandWidget from './IslandWidget'
         // advances from THIS visible quote (idx+1), not from the
         // HTML-default data-idx="0".
         quoteEl.setAttribute('data-idx', String(idx))
+        // Set lang attr so VoiceOver/NVDA pronounce ZH/EN with the
+        // correct voice instead of the page-wide <html lang> default.
+        quoteEl.setAttribute('lang', lang)
       }
       // Update ONLY the label spans — preserve the .island-pet-arrow
       // and .island-pet-cycle-icon spans for their micro-animations.
@@ -1045,7 +1044,10 @@ import IslandWidget from './IslandWidget'
   .island-pet-chip[data-action="cycle"] .island-pet-cycle-icon {
     display: inline-block;
     font-family: "Songti SC", "Noto Serif SC", "Times New Roman", serif;
-    font-size: 13px;
+    /* 12px not 13px — serif's optical x-height runs ~1.5px taller
+       than the 12px mono chip label, so at 13px the icon dominated.
+       Matched to label size for cleaner cross-script balance. */
+    font-size: 12px;
     /* Cycle chip is monospace by default (chip CSS); icon stays serif */
     transition: transform 200ms ease, opacity 200ms ease;
   }
