@@ -1324,8 +1324,7 @@ function FallingPetals() {
   // V24: hoist per-frame allocs (was 3600+ Color/Object3D per second)
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const tints = useMemo(() => ['#FFEAF1', '#F5C8D6', '#FFD8E3'].map((c) => new THREE.Color(c)), [])
-  const wetColor = useMemo(() => new THREE.Color('#D8A8C0'), [])
-  const scratchColor = useMemo(() => new THREE.Color(), [])
+  // V53.2: wetColor + scratchColor removed (no water surface to wet on)
 
   useFrame((s) => {
     if (!ref.current) return
@@ -1337,9 +1336,10 @@ function FallingPetals() {
     const hover = getHoverBoost(t)
     const sakuraBoost = hoverZone.current === 'sakura' ? 1.5 : 1
     const effectiveGust = wind.gust + hover * 1.5 * sakuraBoost
-    const TSUKUBAI_X = 0.95
-    const TSUKUBAI_Z = 0.40
-    const TSUKUBAI_R = 0.065   // 0.118 * 0.55 scale
+    // V53.2: Tsukubai removed (karesansui IS dry water). Petal-water-
+    // landing logic deleted — petals now simply drift and respawn on
+    // their continuous Y loop. The wet-color lerp also dropped since
+    // there's no water to wet on.
     seeds.forEach((sd, i) => {
       const ySpan = 1.6
       const yOffset = (t * 0.07 * sd.speed * (1 + effectiveGust * 0.4)) % ySpan
@@ -1350,44 +1350,17 @@ function FallingPetals() {
       const dz = (Math.cos(t * 0.3 + sd.phaseX) * 0.04 + wind.dirZ * 0.020) * (1 + effectiveGust)
       const px = sd.x + dx
       const pz = sd.z + dz
-      // V18: petal-water landing — lerp Y + freeze tumble at rest.
-      const dxBasin = px - TSUKUBAI_X
-      const dzBasin = pz - TSUKUBAI_Z
-      const distBasin = Math.hypot(dxBasin, dzBasin)
-      let resting = false
-      if (distBasin < TSUKUBAI_R && wrappedY < 0.40) {
-        const targetY = 0.257
-        const lerpT = Math.min(1, (0.40 - wrappedY) * 4)
-        const lerpedY = wrappedY + (targetY - wrappedY) * lerpT
-        const px2 = wrappedY < 0.28 ? TSUKUBAI_X + dxBasin * 0.6 : px
-        const pz2 = wrappedY < 0.28 ? TSUKUBAI_Z + dzBasin * 0.6 : pz
-        dummy.position.set(px2, lerpedY, pz2)
-        resting = wrappedY < 0.27
-      } else {
-        dummy.position.set(px, wrappedY, pz)
-      }
-      // V19: smooth tumble damping — blend over wrappedY 0.32→0.27
-      // so petal eases to rest over ~0.7s instead of hard snap.
-      const restBlend = Math.max(0, Math.min(1, (0.32 - wrappedY) / 0.05))
-      const tumbleAmp = 1 - restBlend
+      dummy.position.set(px, wrappedY, pz)
+      // V19: tumble — full amplitude always now that no rest state exists
       dummy.rotation.set(
-        -Math.PI / 2 + Math.sin(t * 0.8 + sd.phaseR) * 0.5 * tumbleAmp,
-        (t * 0.6 + sd.phaseR) * (1 - restBlend * 0.7),
-        Math.cos(t * 0.7 + sd.phaseR) * 0.4 * tumbleAmp + restBlend * sd.phaseR * 0.3,
+        -Math.PI / 2 + Math.sin(t * 0.8 + sd.phaseR) * 0.5,
+        t * 0.6 + sd.phaseR,
+        Math.cos(t * 0.7 + sd.phaseR) * 0.4,
       )
-      // V19: color darkens when wet (paper-darkening sim).
-      // V24 BUGFIX: was overwritten by base tint below; now we set
-      // EITHER the wet lerp OR the base, not both per frame.
-      if (restBlend > 0.5 && i % 3 !== 0) {
-        scratchColor.lerpColors(tints[sd.tintIdx], wetColor, (restBlend - 0.5) * 2)
-        ref.current!.setColorAt(i, scratchColor)
-      } else {
-        ref.current!.setColorAt(i, tints[sd.tintIdx])
-      }
+      ref.current!.setColorAt(i, tints[sd.tintIdx])
       dummy.scale.setScalar(sd.scale)
       dummy.updateMatrix()
       ref.current!.setMatrixAt(i, dummy.matrix)
-      // (V24: color set above based on rest state — no duplicate write here)
     })
     ref.current.instanceMatrix.needsUpdate = true
     if (ref.current.instanceColor) ref.current.instanceColor.needsUpdate = true
@@ -1837,8 +1810,15 @@ export default function IslandWidget() {
           grass at every rotation angle of RotatingScene. */}
       <Torii x={0.45} z={1.05} rotY={-0.25} />
 
-        {/* Tsukubai stone water basin */}
-        <Tsukubai x={0.95} z={0.4} />
+        {/* V53.2 (Sub-A reverse pass): Tsukubai removed.
+            Karesansui IS dry water — having literal water + symbolic
+            water was the un-Japanese mistake. At 220×220 the basin
+            was a sub-pixel detail (bamboo spout ~3px, basin lip torus
+            invisible) competing with sakura+lantern for the bloom
+            budget. Path now ends in contemplative negative space —
+            more 'ma', more 大道至简. Component code kept on disk for
+            possible re-enable. */}
+        {/* <Tsukubai x={0.95} z={0.4} /> */}
       </RotatingScene>
 
       {/* V12: drei Sparkles for atmospheric haze (replaces flat-plane
