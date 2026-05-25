@@ -235,7 +235,11 @@ export const GRAVEL_SAND    = '#E6DAC0'
 export const GRAVEL_LINE    = '#C5B98F'
 
 export const WASHI_WALL     = '#F5E8C8'
-export const WASHI_GLOW     = '#FFEFD0'
+// Bumped warmer (#FFEFD0 → #FFE2A8) after V53.5 base+grass+cedar
+// cooled — at 91% lightness cream the shoji was reading near-white
+// against the new desaturated surroundings, losing its 'sole warm
+// refuge' character. Now reads as lit washi paper, not glare.
+export const WASHI_GLOW     = '#FFE2A8'
 export const WOOD_POST      = '#3A2516'
 export const WOOD_BEAM      = '#5A3A20'
 

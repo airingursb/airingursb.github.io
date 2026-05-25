@@ -1125,7 +1125,11 @@ function AnimatedHearthLight() {
       intensity={0.7}
       distance={1.8}
       decay={2}
-      color="#FFEFD0"
+      // Bounce light is the FIRE itself, before it diffuses through
+      // paper — slightly warmer than the WASHI_GLOW it lights up.
+      // Tuned against V53.5 cooler-overall palette so the hearth
+      // bounce reads as 'fire under paper', not 'lamp behind shade'.
+      color="#FFD9A0"
     />
   )
 }
