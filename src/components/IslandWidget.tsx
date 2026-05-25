@@ -875,23 +875,36 @@ function makeDisplacedCliffGeo(): THREE.BufferGeometry {
       pos.setX(i, x * radial)
       pos.setZ(i, z * radial)
       // Stalactite stretch — the lowest ring of vertices gets pulled
-      // DOWN slightly along angle-driven phase, giving a few hanging
-      // 'fang' rocks at the apex. Subtle, no per-vertex if-tree.
-      if (y < -HEIGHT / 2 + 0.1) {
-        const stalactite = Math.max(0, Math.sin(angle * 5 + 1.7)) * 0.18
-                         + Math.max(0, Math.sin(angle * 8 + 3.2)) * 0.10
+      // DOWN substantially along angle-driven phase, giving 4-6 hanging
+      // 'fang' rocks. User feedback: bottom looked "smooth/poo-like"
+      // because the original 0.18+0.10 fangs were too subtle. Bumped
+      // to 0.36+0.22+0.12 (3-octave) for true rocky underside drama.
+      // Also extended fang zone from bottom 0.1 to bottom 0.25 so the
+      // sculpting catches more vertices and reads as natural erosion.
+      if (y < -HEIGHT / 2 + 0.25) {
+        const fangFalloff = Math.min(1, (-HEIGHT / 2 + 0.25 - y) * 4)
+        const stalactite = (Math.max(0, Math.sin(angle * 5 + 1.7)) * 0.36
+                         +  Math.max(0, Math.sin(angle * 8 + 3.2)) * 0.22
+                         +  Math.max(0, Math.sin(angle * 12.5 + 0.4)) * 0.12) * fangFalloff
         pos.setY(i, y - stalactite)
       }
     }
-    // Vertex color: lerp soil→cliff by Y (top=soil, bottom=cliff_dk)
+    // Vertex color: lerp soil→cliff by Y (top=soil, bottom=cliff_dk).
+    // BUMP the bottom darkness — was lerping to cliff_dk at yNorm 0,
+    // but the bottom 20% should go DEEPER than cliff_dk for cave-
+    // shadow drama. Real rocky undersides have near-black recesses.
     const yNorm = (y + HEIGHT / 2) / HEIGHT  // 0 bottom, 1 top
     let c: THREE.Color
     if (yNorm > 0.78) {
       c = cSoil.clone()
     } else if (yNorm > 0.45) {
       c = new THREE.Color().lerpColors(cSoilDk, cSoil, (yNorm - 0.45) / 0.33)
+    } else if (yNorm > 0.18) {
+      c = new THREE.Color().lerpColors(cCliffDk, cCliff, (yNorm - 0.18) / 0.27)
     } else {
-      c = new THREE.Color().lerpColors(cCliffDk, cCliff, yNorm / 0.45)
+      // Bottom 18% — push toward near-black shadow recess.
+      const shadowMix = 1 - yNorm / 0.18  // 0 at yNorm 0.18, 1 at bottom
+      c = cCliffDk.clone().multiplyScalar(1 - shadowMix * 0.55)
     }
     // Vertical erosion drip streaks — narrow angular bands darken
     // top-to-bottom (mimics rain+mineral run-off on real rock).

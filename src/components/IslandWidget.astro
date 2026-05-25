@@ -367,6 +367,11 @@ import IslandWidget from './IslandWidget'
       wrap.classList.remove('island-pet-tapped')
       void wrap.offsetWidth   // force reflow so class toggle re-fires
       wrap.classList.add('island-pet-tapped')
+      // Cycle to a fresh quote on every pet click — user gets new
+      // text alongside the visual fx. Exposed by the inner try block.
+      if (typeof window.__cycleIslandQuote === 'function') {
+        window.__cycleIslandQuote()
+      }
       let type
       if (clickCount++ === 0) {
         type = 'sakura'
@@ -752,6 +757,30 @@ import IslandWidget from './IslandWidget'
     // to EN reuses idx 67, which is a semantically unrelated quote in
     // the other pool (tonal jump). Reset = no jarring carry-over.
     let lastLang = null
+    // Advance to next quote in the current pool. Called from hover-in
+    // and pet-click handlers so the quote freshens on user attention.
+    // Picks a RANDOM next quote (avoiding immediate repeat) instead of
+    // sequential — sequential felt mechanical after a few cycles.
+    window.__cycleIslandQuote = function() {
+      const lang = (window.currentLang === 'en' || window.currentLang === 'zh')
+        ? window.currentLang
+        : ((document.documentElement.lang || '').toLowerCase().startsWith('en') ? 'en' : 'zh')
+      const pool = lang === 'zh' ? QUOTES_ZH : QUOTES_EN
+      if (!pool || pool.length < 2) return
+      const cur = window.__islandQuoteIdx ?? 0
+      let next
+      do { next = Math.floor(Math.random() * pool.length) } while (next === cur)
+      window.__islandQuoteIdx = next
+      if (quoteEl) {
+        if (typeof window.__setIslandQuote === 'function') {
+          window.__setIslandQuote(quoteEl, pool[next])
+        } else {
+          quoteEl.textContent = pool[next]
+        }
+        quoteEl.setAttribute('data-idx', String(next))
+        quoteEl.setAttribute('lang', lang)
+      }
+    }
     function applyLang() {
       const lang = detectLang()
       const pool = lang === 'zh' ? QUOTES_ZH : QUOTES_EN
@@ -790,14 +819,32 @@ import IslandWidget from './IslandWidget'
       if (cycleIcon) cycleIcon.textContent = CHIP_LABELS[lang].cycleIcon
     }
     applyLang()
-    // V53: defer one more pass after site's i18n promise resolves
-    // (window.currentLang + html.lang aren't set until then on first load).
-    if (window._i18nReady && typeof window._i18nReady.then === 'function') {
-      window._i18nReady.then(applyLang).then(() => {
-        // and once more after applyTranslations runs (microtask later)
+    // BUG FIX: IslandWidget's inline script may run BEFORE the i18n
+    // script (script-order race in Astro). At that moment _i18nReady
+    // is undefined and the `.then` callback is never registered, so
+    // EN viewers ended up frozen on a ZH quote (initial html.lang is
+    // "zh-CN" until i18n applyTranslations runs). Poll until either
+    // _i18nReady or window.currentLang shows up, then re-apply.
+    let langPollTries = 0
+    function pollI18nThenApply() {
+      if (window.currentLang === 'en' || window.currentLang === 'zh') {
+        applyLang()
+        // Re-apply once more after a tick — applyTranslations() runs
+        // asynchronously and may flip html.lang AFTER our first call.
         setTimeout(applyLang, 50)
-      })
+        return
+      }
+      if (window._i18nReady && typeof window._i18nReady.then === 'function') {
+        window._i18nReady.then(() => {
+          applyLang()
+          setTimeout(applyLang, 50)
+        })
+        return
+      }
+      // Neither flag is set yet — keep polling (cap at 4s).
+      if (langPollTries++ < 80) setTimeout(pollI18nThenApply, 50)
     }
+    pollI18nThenApply()
     window.addEventListener('langchange', applyLang)
     // Flip aria-live from "off" to "polite" AFTER the initial render +
     // i18n settles. Otherwise screen readers announce the random first-
@@ -815,7 +862,19 @@ import IslandWidget from './IslandWidget'
     // become both keyboard-reachable AND AT-exposed on hover/focus
     // without triggering the aria-hidden-focus axe rule.
     function setInert(yes) { if (panel) panel.inert = yes }
-    wrap.addEventListener('mouseenter', () => setInert(false))
+    wrap.addEventListener('mouseenter', () => {
+      setInert(false)
+      // Cycle to a fresh quote on each hover-in — user expects
+      // novelty when re-engaging. Throttle slightly so rapid
+      // mouseout/in doesn't flicker through 5 quotes in a second.
+      if (typeof window.__cycleIslandQuote === 'function') {
+        if (!wrap.__hoverCycleLock) {
+          wrap.__hoverCycleLock = true
+          window.__cycleIslandQuote()
+          setTimeout(() => { wrap.__hoverCycleLock = false }, 600)
+        }
+      }
+    })
     wrap.addEventListener('mouseleave', () => setInert(true))
     wrap.addEventListener('focusin',    () => setInert(false))
     wrap.addEventListener('focusout', (e) => {

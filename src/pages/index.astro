@@ -191,7 +191,14 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
     window._i18nReady = loadTranslations();
 
     function applyTranslations() {
-      var currentLang = (document.documentElement.lang || 'zh').toLowerCase().startsWith('en') ? 'en' : 'zh';
+      // BUG FIX: was re-deriving currentLang from document.documentElement.lang
+      // which is "zh-CN" on initial Astro render, so EN viewers saw the
+      // ZH-formatted date (「2026 年 5 月 25 日」) even when buttons + chat
+      // were correctly EN. Use the OUTER currentLang (set from localStorage
+      // at IIFE startup) — same source of truth that drives t(key).
+      var localLang = (window.currentLang === 'en' || window.currentLang === 'zh')
+        ? window.currentLang
+        : (document.documentElement.lang || 'zh').toLowerCase().startsWith('en') ? 'en' : 'zh';
       document.querySelectorAll('[data-i18n]').forEach(function(el) {
         var key = el.getAttribute('data-i18n');
         var val = t(key);
@@ -199,7 +206,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         // both languages via data-date-zh / data-date-en so we can swap on
         // lang change without rebuilding.
         if (val.indexOf('{date}') !== -1) {
-          var d = el.getAttribute('data-date-' + currentLang) || el.getAttribute('data-date-zh') || '';
+          var d = el.getAttribute('data-date-' + localLang) || el.getAttribute('data-date-zh') || '';
           val = val.replace('{date}', d);
         }
         if (key === 'letter_paid_desc' || key === 'chat_limit') {
