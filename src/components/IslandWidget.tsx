@@ -663,7 +663,7 @@ function KaresansuiPetals() {
   const ref = useRef<THREE.InstancedMesh>(null)
   const petalGeo = useMemo(() => new THREE.ShapeGeometry(makePetalShape(), 6), [])
   const mat = useMemo(() => new THREE.MeshStandardMaterial({
-    color: '#FFD8E3', roughness: 0.92, side: THREE.DoubleSide,
+    color: '#F8C8DA', roughness: 0.92, side: THREE.DoubleSide,
   }), [])
   useEffect(() => () => { petalGeo.dispose(); mat.dispose() }, [petalGeo, mat])
   // Pre-compute static positions on first render. Most cluster near the
@@ -673,7 +673,7 @@ function KaresansuiPetals() {
     const m = ref.current
     if (!m) return
     const dummy = new THREE.Object3D()
-    const tints = ['#FFEAF1', '#F5C8D6', '#FFD8E3']
+    const tints = ['#F8D6E0', '#EFB8CC', '#F8C8DA']
     const scratch = new THREE.Color()
     // Cluster: lantern base (lantern @ -0.10, 0.70 in world coords;
     // karesansui group is at -0.55 so local offset = 0.45, 0.70).
@@ -1053,7 +1053,7 @@ function FallenPetals() {
           geometry={petalGeo}
         >
           <meshStandardMaterial
-            color={i % 3 === 0 ? '#FFEAF1' : i % 2 ? '#F5C8D6' : '#FFD8E3'}
+            color={i % 3 === 0 ? '#F8D6E0' : i % 2 ? '#EFB8CC' : '#F8C8DA'}
             roughness={0.9}
             side={THREE.DoubleSide}
           />
@@ -1265,7 +1265,11 @@ function FallingPetals() {
   // Hoisted per-frame allocs — bare object literals here would create
   // 3600+ THREE.Color and Object3D per second.
   const dummy = useMemo(() => new THREE.Object3D(), [])
-  const tints = useMemo(() => ['#FFEAF1', '#F5C8D6', '#FFD8E3'].map((c) => new THREE.Color(c)), [])
+  // V53.5 sat-up to match the canopy bloom (#F6C8D8). Previously
+  // #FFEAF1 / #F5C8D6 / #FFD8E3 averaged ~16% sat; after canopy
+  // tint jumped 13%→28% the falling petals read 'bleached' next
+  // to the tree they came from. Now ~26% sat avg — same family.
+  const tints = useMemo(() => ['#F8D6E0', '#EFB8CC', '#F8C8DA'].map((c) => new THREE.Color(c)), [])
 
   useFrame((s) => {
     if (!ref.current) return
@@ -1314,7 +1318,7 @@ function FallingPetals() {
       frustumCulled={false}
     >
       <meshStandardMaterial
-        color="#FFD8E3"
+        color="#F8C8DA"
         roughness={0.9}
         side={THREE.DoubleSide}
         transparent
