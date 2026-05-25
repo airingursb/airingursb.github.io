@@ -947,13 +947,19 @@ import IslandWidget from './IslandWidget'
       fx-snow-fall var(--fall) linear var(--d) forwards,
       fx-snow-sway calc(var(--fall) * 0.37) ease-in-out var(--d) infinite alternate;
   }
-  /* Parallax strata: far flakes blurred + dim (depth illusion),
-     near flakes crisp + slightly larger. */
+  /* Parallax strata: far flakes blurred + dim + behind, near flakes
+     crisp + slightly larger + in front. z-index reinforces the
+     depth illusion the blur establishes. */
   .island-fx-snow-far {
     filter: blur(1.2px);
+    z-index: 0;
+  }
+  .island-fx-snow-mid {
+    z-index: 1;
   }
   .island-fx-snow-near {
     filter: blur(0.2px);
+    z-index: 2;
   }
   /* Fall keyframe: pure vertical drop + opacity envelope. Sway is
      handled by the parallel fx-snow-sway animation below, which
@@ -1131,11 +1137,11 @@ import IslandWidget from './IslandWidget'
     animation: fx-mist-rise var(--rise) cubic-bezier(0.4, 0, 0.6, 1) var(--d) forwards;
   }
   @keyframes fx-mist-rise {
-    0%   { opacity: 0;            transform: translate3d(0,             20px, 0) scale(0.85); }
+    0%   { opacity: 0;            transform: translate3d(0,             20px, 0)  scale(0.85) rotate(0deg); }
     20%  { opacity: var(--op); }
-    50%  {                         transform: translate3d(calc(var(--drift) * 0.6), -90px, 0) scale(1.05); }
+    50%  {                         transform: translate3d(calc(var(--drift) * 0.6), -90px, 0)  scale(1.05) rotate(3deg); }
     85%  { opacity: var(--op); }
-    100% { opacity: 0;            transform: translate3d(var(--drift), -180px, 0) scale(1.3); }
+    100% { opacity: 0;            transform: translate3d(var(--drift), -180px, 0)  scale(1.3)  rotate(-2deg); }
   }
 
   /* Honor prefers-reduced-motion — skip the fx animations entirely.
