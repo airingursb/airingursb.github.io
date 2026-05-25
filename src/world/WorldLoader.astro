@@ -86,14 +86,21 @@
 
     // V40: extended 12s patience + escalate to fallback if canvas not
     // working (was: silently fade splash even on failure → user saw black).
+    //
+    // V2-final fix (2026-05-25): only show fallback if the splash
+    // loader is still up. If it already faded, the canvas already
+    // worked at least once — a transient context loss at the 12s
+    // mark (e.g., Chrome flushed GPU memory briefly) must NOT pop
+    // the fallback over an already-working scene.
     setTimeout(() => {
       const c = document.querySelector('#world-root canvas')
       if (c && isCanvasWorking(c)) {
         if (loader.isConnected) fade()
-      } else {
+      } else if (loader.isConnected) {
         obs.disconnect()
         showFallback()
       }
+      // else: loader already faded → canvas worked → leave scene alone
     }, 12000)
   })()
 </script>
