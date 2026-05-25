@@ -73,30 +73,34 @@ export const PREFERS_REDUCED_MOTION =
 //   firstGust — one-time burst at t=8-12s so a fresh visitor sees
 //               the signature event within their first attention
 //               window (rather than maybe missing it for 30+s)
+// Scratch singletons — getWind/getHearth are called from ~10 + 4
+// useFrame loops respectively (~840 object allocs/sec at 60fps if
+// they returned fresh literals). All callers read the fields
+// IMMEDIATELY before the next getWind/getHearth call, so a shared
+// mutable singleton per-function is safe + GC-free.
+const _windScratch = { dirX: 1, dirZ: 0, gust: 0, swayPhase: 0 }
 export function getWind(t: number) {
   const baseGust = Math.max(0, Math.sin(t * 0.13) - 0.7) * 3.3
   const sigGust = Math.max(0, Math.sin(t * 0.081 + 1.5) - 0.82) * 5.5
   const firstGust = (t > 8 && t < 12) ? Math.sin((t - 8) / 4 * Math.PI) * 1.4 : 0
-  const gust = baseGust + sigGust + firstGust
   const dirAngle = Math.sin(t * 0.04) * 0.4
-  return {
-    dirX: Math.cos(dirAngle),
-    dirZ: Math.sin(dirAngle),
-    gust,
-    swayPhase: t * 0.5,
-  }
+  _windScratch.dirX = Math.cos(dirAngle)
+  _windScratch.dirZ = Math.sin(dirAngle)
+  _windScratch.gust = baseGust + sigGust + firstGust
+  _windScratch.swayPhase = t * 0.5
+  return _windScratch
 }
 
+const _hearthScratch = { phase: 0, stoke: 0, shojiBrighten: 0, lanternDim: 0, smokeBoost: 0 }
 export function getHearth(t: number) {
   const phase = (t * 0.25 % 1)
   const stoke = Math.max(0, 1 - Math.abs(phase - 0.2) * 4)
-  return {
-    phase,
-    stoke,
-    shojiBrighten: stoke * 0.20,
-    lanternDim: stoke * 0.28,
-    smokeBoost: stoke * 1.6,
-  }
+  _hearthScratch.phase = phase
+  _hearthScratch.stoke = stoke
+  _hearthScratch.shojiBrighten = stoke * 0.20
+  _hearthScratch.lanternDim = stoke * 0.28
+  _hearthScratch.smokeBoost = stoke * 1.6
+  return _hearthScratch
 }
 
 // Hover dwell + boost both use `performance.now()/1000` (wall clock)
