@@ -1,10 +1,16 @@
 // Mochi NPC — small brown bear standing next to the cabin door.
 // Procedural geometry (no sprite) so he reads as a distinct 3D inhabitant
 // vs the panda billboard avatar.
+//
+// G (direction): zone-aware — when the user clicks any zone, Mochi
+// briefly turns to look toward that zone for ~5s, then resumes default
+// wobble. Reads as 'Mochi noticed you went there'.
 
 import * as THREE from 'three'
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { on } from './events'
+import { getZone, type Interaction } from './zones'
 
 const BEAR_BODY    = '#7A4E2A'
 const BEAR_BELLY   = '#A87A52'
@@ -26,12 +32,45 @@ export default function MochiNPC() {
   // 22-30s a dramatic "look around" sweep (left, right, up, center)
   // over 5s. Makes Mochi feel curious/alive rather than mechanical.
   const lookAtRef = useRef({ next: 22 + Math.random() * 8, started: 0, active: false })
+  // G: zone-aware look — when a zone is clicked, store target yaw to
+  // face it. Lasts 5s then clears. mochi's world pos is [-0.6, 0.65, 1.6].
+  const zoneLookRef = useRef<{ until: number; targetYaw: number } | null>(null)
+  useEffect(() => on('world-zone-click', ({ kind }: { kind: Interaction }) => {
+    const zone = getZone(kind)
+    if (!zone) return
+    const [zx, zz] = zone.pos
+    // Mochi's world pos. Yaw needed to face (zx, zz) from (-0.6, 1.6).
+    const dx = zx - (-0.6)
+    const dz = zz - 1.6
+    // Three.js Y-rotation: 0 faces +Z, positive yaw turns counter-clockwise (toward -X).
+    // atan2(-dx, -dz) gives the yaw that makes -Z (head's "forward") point at the target.
+    // Actually since mochi's body forward is +Z (south), we need:
+    //   yaw = atan2(-dx, dz)
+    const targetYaw = Math.atan2(-dx, dz)
+    zoneLookRef.current = { until: performance.now() / 1000 + 5, targetYaw }
+  }), [])
   useFrame((s) => {
     const t = s.clock.elapsedTime
     if (bodyRef.current) {
       bodyRef.current.scale.y = 1 + Math.sin(t * 1.2) * 0.02
     }
     if (!headRef.current) return
+
+    // G zone-look: highest priority — overrides default + scheduled
+    // look-arounds. Eases toward targetYaw, holds, eases back.
+    const zl = zoneLookRef.current
+    if (zl && t < zl.until) {
+      const remaining = zl.until - t
+      // 0 at start (lerp 1 = target), 1 at end (lerp 0 = back to neutral)
+      const fadeBack = remaining < 1.2 ? (1 - remaining / 1.2) : 0
+      const easeIn = Math.min(1, (5 - remaining) / 0.8)
+      const blend = Math.max(0, easeIn - fadeBack)
+      headRef.current.rotation.y = zl.targetYaw * blend +
+        Math.sin(t * 0.5) * 0.3 * (1 - blend)
+      headRef.current.rotation.x = Math.sin(t * 0.37) * 0.04
+      return
+    }
+    if (zl && t >= zl.until) zoneLookRef.current = null
 
     // Decide whether to start an active "look around" episode
     const la = lookAtRef.current
