@@ -416,19 +416,40 @@ function FurinChime({ localX, eaveY, localZ }: { localX: number; eaveY: number; 
 function EngawaCat({ localX, engawaY, localZ }: { localX: number; engawaY: number; localZ: number }) {
   const bodyRef = useRef<THREE.Group>(null)
   const tailRef = useRef<THREE.Group>(null)
+  const earRef = useRef<THREE.Mesh>(null)
   useFrame((s) => {
     const t = s.clock.elapsedTime
     if (bodyRef.current) {
-      // Slow breath — scale.y ±2%
-      bodyRef.current.scale.y = 1 + Math.sin(t * 0.9) * 0.02
+      // V53.1 elegance pass (Sub-A): paired anticipation+exhale every
+      // ~12s — long slow inhale (scale up) followed by sharp exhale
+      // (scale settle). Replaces uniform sin breath which read as a
+      // mechanical pulse. The slow base sin remains as background.
+      const baseBreath = Math.sin(t * 0.9) * 0.018
+      const deepCycle = (t % 12) / 12
+      // 0.4 → 0.6 of cycle: deep inhale rise. 0.6 → 0.7: exhale fall.
+      let deep = 0
+      if (deepCycle > 0.40 && deepCycle < 0.60) deep = Math.sin((deepCycle - 0.40) / 0.20 * Math.PI / 2) * 0.025
+      else if (deepCycle >= 0.60 && deepCycle < 0.70) deep = (1 - (deepCycle - 0.60) / 0.10) * 0.025
+      bodyRef.current.scale.y = 1 + baseBreath + deep
     }
     if (tailRef.current) {
-      // Idle micro-twitch + ~5s deliberate flick (sleeping-cat tail)
-      const flick = Math.sin(t * 1.2) * 0.04
-      const tickPhase = (t % 5) / 5
-      // Sharp 0.4s flick at the end of the 5s window
-      const tick = tickPhase > 0.92 ? Math.sin((tickPhase - 0.92) * Math.PI / 0.08) * 0.22 : 0
-      tailRef.current.rotation.y = flick + tick
+      // V53.1 elegance pass (Sub-A): a sleeping cat's tail is mostly
+      // DEAD still — pre-V53.1 was constant sin micro-twitch that
+      // read as 'rigged puppet'. Now: nothing 95% of the time, with
+      // an irregular sharp flick every ~5-10s (slow noise drifts the
+      // period so it never feels metronomic).
+      const period = 7 + Math.sin(t * 0.13) * 2.5    // 4.5–9.5s, drifting
+      const p = (t % period) / period
+      const flick = p > 0.93 ? Math.sin((p - 0.93) / 0.07 * Math.PI) * 0.28 : 0
+      tailRef.current.rotation.y = flick
+    }
+    if (earRef.current) {
+      // Rare ear twitch — paired to tail flick events (both signal
+      // light disturbance during shallow sleep). Squashes ear briefly.
+      const period = 7 + Math.sin(t * 0.13) * 2.5
+      const p = (t % period) / period
+      const twitch = p > 0.95 ? Math.sin((p - 0.95) / 0.05 * Math.PI) * 0.18 : 0
+      earRef.current.scale.y = 1 - twitch
     }
   })
   return (
@@ -449,8 +470,9 @@ function EngawaCat({ localX, engawaY, localZ }: { localX: number; engawaY: numbe
           <sphereGeometry args={[0.034, 12, 10]} />
           <meshStandardMaterial color="#28232B" roughness={0.92} />
         </mesh>
-        {/* Two tiny ears (triangle cones) */}
-        <mesh position={[0.062, 0.082, -0.020]} rotation={[0, 0, 0.25]} castShadow>
+        {/* Two tiny ears (triangle cones). Outer ear is earRef so it
+            can twitch on the rare flick events (paired to tail flick). */}
+        <mesh ref={earRef} position={[0.062, 0.082, -0.020]} rotation={[0, 0, 0.25]} castShadow>
           <coneGeometry args={[0.012, 0.022, 4]} />
           <meshStandardMaterial color="#28232B" roughness={0.92} flatShading />
         </mesh>
@@ -1282,6 +1304,13 @@ function FallingPetals() {
 }
 
 // ── WindSway — wraps any group + applies gentle X/Z rotation sway.
+// V53 elegance pass (Sub-A critique): pre-V53 was pure sin(t*freq)
+// metronome — after ~12s your eye locked onto the loop. Worse, cedars
+// + sakura all breathed in lockstep so wind didn't read as a *field*
+// passing through. Now couples to the shared getWind() signal so
+// foliage breathes WITH the gust that's already driving petals + smoke
+// + furin, with per-tree lag (phase doubles as lag seconds). The sin
+// term shrinks to a 40% sub-rhythm so the gust dominates the silhouette.
 function WindSway({ children, amp = 0.018, freq = 0.5, phase = 0 }: {
   children: React.ReactNode
   amp?: number
@@ -1292,8 +1321,19 @@ function WindSway({ children, amp = 0.018, freq = 0.5, phase = 0 }: {
   useFrame((s) => {
     if (!ref.current) return
     const t = s.clock.elapsedTime
-    ref.current.rotation.z = Math.sin(t * freq + phase) * amp
-    ref.current.rotation.x = Math.cos(t * freq * 0.7 + phase * 1.3) * amp * 0.5
+    // phase: 0 (sakura, no lag) → up to 2s (small cedars in back)
+    const wind = getWind(t - phase * 0.6)
+    // Per-instance amplitude variation — taller/looser trees gust more
+    const ampVar = 0.6 + phase * 0.2
+    // Direction bias from wind field + light sub-rhythm + gust kick
+    ref.current.rotation.z =
+      wind.dirX * amp * 1.2 +
+      Math.sin(t * freq + phase) * amp * 0.40 +
+      wind.gust * amp * 1.8 * ampVar
+    ref.current.rotation.x =
+      wind.dirZ * amp * 0.7 +
+      Math.cos(t * freq * 0.7 + phase * 1.3) * amp * 0.25 +
+      wind.gust * amp * 0.9 * ampVar
   })
   return <group ref={ref}>{children}</group>
 }
@@ -1404,7 +1444,13 @@ function ChimneySmoke() {
     puffs.forEach((r, i) => {
       const m = r.current
       if (!m) return
-      const phase = (t * 0.25 + i * 0.9) % 2.7
+      // V53 elegance pass (Sub-A): real chimney smoke is CLUMPY — two
+      // puffs close together, then a long pause. Pre-V53 had each
+      // puff offset by exactly +0.9s → conveyor-belt cadence visible.
+      // Now: slow-noise jitter on the per-puff phase offset (±0.4s
+      // wobble) so puffs irregularly bunch and stretch.
+      const jitter = Math.sin(t * 0.11 + i * 2.3) * 0.4
+      const phase = (t * 0.25 + i * 0.9 + jitter) % 2.7
       m.position.y = 0.05 + phase * 0.45
       m.position.x = Math.sin(t * 0.5 + i) * 0.08 + phase * (0.08 + wind.dirX * 0.06)
       m.position.z = Math.cos(t * 0.4 + i * 0.7) * 0.05 + phase * wind.dirZ * 0.05
