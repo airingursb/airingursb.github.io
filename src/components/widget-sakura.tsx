@@ -312,20 +312,14 @@ export function Sakura({
         if (e <= 1) { ok = true; break; }
       }
       if (!ok) continue;
-      // V53 sakura silhouette (Sub-A 10): pre-V53 canopy was a solid
-      // ellipsoid (uniform fluff distribution) — read as 'pink blob'
-      // at pet scale, not unmistakably 'weeping sakura'. Real sakura
-      // has a flat-to-concave bottom + droopy fringe — the *rim*
-      // petals hang lower than the *core* petals. Drop rim petals
-      // proportionally to their horizontal distance from canopy center,
-      // up to ~0.9u of dip. Instant umbrella profile.
+      // Weeping-umbrella profile: rim petals hang lower than core
+      // petals, dropping proportional to horizontal distance from
+      // canopy center (up to ~0.9u dip). Without this, the canopy
+      // reads as 'pink blob' at pet scale, not 'sakura'.
       const rimDip = (Math.sqrt(x * x + z * z) / canopyRX) * 0.9
-      // V53 sakura tint (Sub-A 10): pre-V53 was monochrome cool-pink
-      // noise (multiply baseTint by ±10%). Real sakura canopies have
-      // warm cream-white highlights (sun-hit petals, half-open buds)
-      // breaking up the pink mass. 18% of fluff petals become cream
-      // highlights → chromatic depth, simulates sunlit side without
-      // touching the lighting setup.
+      // 18% of fluff petals become warm cream-white highlights —
+      // sun-hit petals + half-open buds break up the pink mass with
+      // chromatic depth (without touching the lighting setup).
       const warm = rnd() < 0.18
       const r_ = warm ? 1.0 : baseTint.r * (0.88 + rnd() * 0.18)
       const g_ = warm ? 0.95 + rnd() * 0.05 : baseTint.g * (0.85 + rnd() * 0.2)
@@ -368,13 +362,11 @@ export function Sakura({
     [tree],
   );
 
-  // V53 elegance pass (Sub-A): root sway WAS pure sin/cos off
-  // performance.now() — completely decoupled from the shared
-  // getWind() field. The parent <WindSway> already gusts WITH the
-  // field, but this inner motion did its own private waltz at a
-  // different frequency. When the gust kicks petals + furin + smoke
-  // into a coherent surge, the trunk should bow WITH them.
-  // Use clock.elapsedTime (matches getWind's t) instead of performance.now.
+  // Trunk sway COUPLED to the shared getWind() field. Trunk lags
+  // petals by 0.5s (high mass) — when the gust kicks petals + furin
+  // + smoke into a coherent surge, the trunk bows WITH them, half
+  // a second behind. Without this couple, the trunk did its own
+  // private waltz at a different frequency.
   const groupRef = useRef<THREE.Group>(null);
   useFrame((s) => {
     if (!groupRef.current) return;

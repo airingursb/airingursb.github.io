@@ -5,14 +5,14 @@
 // + back to "never" on visibilitychange hidden — costs 0 frames when
 // off-screen or tab-backgrounded.
 //
-// ─── FILE MAP (~1480 LOC after V53 polish + Tsukubai removal) ───
-//   Cedar             : slim conifer + per-tree internal wind + canopy dispose
+// ─── FILE MAP ───
+//   Cedar             : slim conifer + per-tree internal wind
 //   MinkaCabin        : irimoya roof + shoji + chimney
-//                       (+ FurinChime hung from front-right eave)
+//                       (+ FurinChime under front-right eave)
 //                       (+ EngawaCat curled loaf on front-left engawa)
 //   StoneLantern      : 2-octave flicker + wind.gust coupling + inner pointLight
 //   Torii             : vermillion posts + kasagi + shimenawa rope + 3 shide
-//   RakedGravel       : irregular bulging rake-line tubes (bulge around mossy stone)
+//   RakedGravel       : irregular rake-line tubes (bulge around mossy stone)
 //                       + KaresansuiPetals (22 fallen on rings)
 //   DisplacedCliff    : ridged-noise vertex displacement (island base)
 //   Island            : ground disc + scene root
@@ -20,35 +20,19 @@
 //   FallenPetals      : sakura petals scattered on ground + flutter on gust
 //   AnimatedSun       : directional light, 90s breathing + golden-hour dwell
 //   HearthLight       : pointLight inside cabin, pulses with hearth phase
-//   PathMoss          : 3-tone 2-lobe green patches between stepping stones
+//   PathMoss          : 3-tone 2-lobe patches between stepping stones
 //   ChimneySmoke      : 3 puffs, jittered phase + hearth-stoke surge
-//   ParallaxRig       : V52 owns camera position + lookAt every frame
+//   ParallaxRig       : owns camera position + lookAt every frame
 //   FallingPetals     : InstancedMesh drift-down from canopy
 //   BreathingShoji    : emissive lerp + ember-warm tint shift on hearth peak
-//   RotatingScene     : 3-min turn easing 4× slower at sakura-forward dwell
-//   Canvas root       : EffectComposer (Bloom + SMAA), frameloop gating,
-//                       ContextLossHandlers (V44 leak fix)
-//
-// ─── DELETED V52 (pet redesign — were for inline-card framing) ───
-//   SkyMood, DistantClouds, MidCloudWisps, DistantMountains,
-//   HoverZoneHotspots, ZoneSparkles, UpperCumulus, BirdFlyby (~340 LOC).
-//
-// ─── DELETED V53 (大道至简) ───
-//   Tsukubai, WaterSurface, WaterStream — karesansui IS dry water;
-//   keeping literal+symbolic water was the un-Japanese mistake (~140 LOC).
-//   See commit 33f58c204 for full component code if needed.
+//   RotatingScene     : 3-min turn, eased 4× slower at sakura-forward dwell
+//   Canvas root       : EffectComposer (Bloom + SMAA), frameloop gating
 //
 // ─── COORDINATION (the "one organism" trick) ───
 //   All hooks (getWind, getHearth, getDwellGolden, getHoverBoost) read
-//   shared module state from ./island-shared. Read by ~12 child useFrame
-//   loops (was 20 before V52.8 cleanup) so the scene feels coherent:
-//   smoke → shoji → lantern lag, golden hour cascade across sun colour
-//   + position + (in card) CSS sky gradient.
-//
-// ─── HISTORY ───
-//   V3 was rejected as "kindergarten" → V4-V42 ~40 Sub-A iterations →
-//   CTO review 9.4/10. V43 extracted island-shared.ts. V44 i18n + this
-//   doc block. Full iteration notes in git log.
+//   shared module state from ./island-shared. Read by ~14 child useFrame
+//   loops so the scene feels coherent: a single gust drives sakura
+//   sway + petals + smoke + furin + lantern flame + cat ear simultaneously.
 
 import type React from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
@@ -65,7 +49,6 @@ import {
   getWind, getHearth, getDwellGolden, getHoverBoost,
   lerpHex, organicBlob, makePetalShape,
   // Palette
-  // V52.8: SKY + FOG_TINT no longer used (SkyMood/DistantMountains deleted)
   CEDAR_TRUNK, CEDAR_DARK, CEDAR_LIGHT,
   GRASS_LIGHT, GRASS_HILIGHT, GRASS_SHADE,
   SOIL, SOIL_DK, CLIFF, CLIFF_DK,
@@ -84,13 +67,12 @@ import {
 
 // ── Cedar (杉) — slim conifer with 4 vertically-stretched organicBlob
 //    canopies. Per-tree seed → no identical trees.
-// V11: gentle wind sway.
 function Cedar({ x, z, scale = 1, seed = 0 }: { x: number; z: number; scale?: number; seed?: number }) {
   const groupRef = useRef<THREE.Group>(null)
   useFrame((s) => {
     if (!groupRef.current) return
     const t = s.clock.elapsedTime
-    // V16: cedars (high mass) lag wind by 0.4s vs petals reacting on t=0
+    // High-mass cedars lag wind by 0.4s vs petals (which react on t=0)
     const wind = getWind(t - 0.4)
     groupRef.current.rotation.z = (Math.sin(t * 0.7 + seed * 0.5) * 0.020) + wind.dirX * (0.012 + wind.gust * 0.025)
     groupRef.current.rotation.x = (Math.cos(t * 0.55 + seed * 0.7) * 0.014) + wind.dirZ * (0.008 + wind.gust * 0.020)
@@ -108,9 +90,8 @@ function Cedar({ x, z, scale = 1, seed = 0 }: { x: number; z: number; scale?: nu
     ]
   }, [seed])
 
-  // V44 LEAK FIX: dispose canopy BufferGeometries on unmount. Without
-  // this, every Cedar instance leaks 6 GPU buffers (strict-mode double-
-  // mount, HMR, or Astro view-transition would compound the leak).
+  // Dispose canopy buffers — 6 per Cedar would leak under strict-mode
+  // double-mount, HMR, or Astro view-transition.
   useEffect(() => () => { layers.forEach((l) => l.blob.dispose()) }, [layers])
 
   return (
@@ -236,18 +217,17 @@ function MinkaCabin() {
               <meshStandardMaterial color={TILE_ROOF_A} roughness={0.78} flatShading />
             </mesh>
             {/* 14 horizontal tile courses w/ per-tile jitter + moss tone.
-                V9: widened color range + moss override on ~15% of tiles
-                (real kawara has random moss patches, not perfect rows). */}
+                Real kawara tile has random moss patches, not perfect rows
+                — ~15% of tiles use the moss override. */}
             {Array.from({ length: 14 }).map((_, i) => {
               const frac = (i + 0.5) / 14
-              // V24 BUGFIX: per-render Color allocation removed.
-              // Pre-compute string color, let Three.js parse string (cheaper).
+              // Pre-compute color string (lerpHex avoids per-render
+              // THREE.Color allocation in the hot render path)
               const jitter = Math.pow(
                 (Math.sin(i * 7.3 + (sign > 0 ? 1.7 : 0)) + 1) * 0.5,
                 0.6,
               )
               const isMoss = ((i * 5 + (sign > 0 ? 3 : 0)) % 7) === 0
-              // Lerp via channel math (no THREE.Color alloc in render path)
               const colorStr = isMoss
                 ? TILE_ROOF_MOSS
                 : lerpHex(TILE_ROOF_A, TILE_ROOF_B, jitter)
@@ -299,9 +279,9 @@ function MinkaCabin() {
         <boxGeometry args={[0.18, 0.10, slabDepth + 0.04]} />
         <meshStandardMaterial color={TILE_RIDGE} roughness={0.7} />
       </mesh>
-      {/* 2 onigawara end finials on the ridge — V7: squat outward-canted
-          wedges instead of upright party-hat cones. Real onigawara curl
-          outward along the ridge axis. */}
+      {/* 2 onigawara end finials — squat outward-canted wedges.
+          Real onigawara curl outward along the ridge axis (not
+          upright party-hat cones). */}
       {[(slabDepth - 0.04) / 2, -(slabDepth - 0.04) / 2].map((zz, i) => {
         const cantSign = i === 0 ? 1 : -1
         return (
@@ -426,24 +406,21 @@ function EngawaCat({ localX, engawaY, localZ }: { localX: number; engawaY: numbe
   useFrame((s) => {
     const t = s.clock.elapsedTime
     if (bodyRef.current) {
-      // V53.1 elegance pass (Sub-A): paired anticipation+exhale every
-      // ~12s — long slow inhale (scale up) followed by sharp exhale
-      // (scale settle). Replaces uniform sin breath which read as a
-      // mechanical pulse. The slow base sin remains as background.
+      // Anticipation + exhale every ~12s on top of a slow base sin —
+      // uniform sin alone read as 'mechanical pulse', the deep cycle
+      // makes the breath feel like a sleeping creature.
       const baseBreath = Math.sin(t * 0.9) * 0.018
       const deepCycle = (t % 12) / 12
-      // 0.4 → 0.6 of cycle: deep inhale rise. 0.6 → 0.7: exhale fall.
+      // 0.4-0.6: inhale rise. 0.6-0.7: exhale fall.
       let deep = 0
       if (deepCycle > 0.40 && deepCycle < 0.60) deep = Math.sin((deepCycle - 0.40) / 0.20 * Math.PI / 2) * 0.025
       else if (deepCycle >= 0.60 && deepCycle < 0.70) deep = (1 - (deepCycle - 0.60) / 0.10) * 0.025
       bodyRef.current.scale.y = 1 + baseBreath + deep
     }
     if (tailRef.current) {
-      // V53.1 elegance pass (Sub-A): a sleeping cat's tail is mostly
-      // DEAD still — pre-V53.1 was constant sin micro-twitch that
-      // read as 'rigged puppet'. Now: nothing 95% of the time, with
-      // an irregular sharp flick every ~5-10s (slow noise drifts the
-      // period so it never feels metronomic).
+      // Sleeping cat's tail is mostly DEAD still — irregular sharp
+      // flick every ~5-10s (slow noise drifts the period so it never
+      // feels metronomic). Constant micro-twitch reads as 'rigged'.
       const period = 7 + Math.sin(t * 0.13) * 2.5    // 4.5–9.5s, drifting
       const p = (t % period) / period
       const flick = p > 0.93 ? Math.sin((p - 0.93) / 0.07 * Math.PI) * 0.28 : 0
@@ -517,13 +494,9 @@ function StoneLantern({ x, z }: { x: number; z: number }) {
     if (!flameRef.current) return
     const t = s.clock.elapsedTime
     const hearth = getHearth(t - 0.30)
-    // V53 elegance round 6 (Sub-A final): lantern flame WAS the last
-    // honest periodic oscillator (pure 4.3+11.7 Hz sin) in a scene where
-    // every other rhythm now couples to getWind. The 4.3Hz beat is the
-    // one giveaway if the viewer's eye lingers on the bloom halo. Adding
-    // wind.gust * 0.06 makes the flame lean into the gust like a real
-    // candle behind shoji — same wind that's blowing the petals also
-    // disturbs the flame.
+    // Flame leans into the same gust driving the petals + smoke +
+    // furin — without this couple, the 4.3Hz sin reads as 'rigid
+    // periodic oscillator' against the wind-coordinated rest of scene.
     const wind = getWind(t - 0.30)
     const intensity =
       0.85 +
@@ -599,11 +572,10 @@ function StoneLantern({ x, z }: { x: number; z: number }) {
 
 // ── Torii (smooth posts, slight kasagi curve via two stacked layers) ─
 function Torii({ x, z, rotY = 0 }: { x: number; z: number; rotY?: number }) {
-  // V53 shimenawa — sagging rice-straw rope strung between the two
-  // posts at the nuki level, with three zigzag white shide paper
-  // streamers. The white shide on vermillion torii is the highest-
-  // contrast "READ AS SHRINE" cultural signal that survives at
-  // pet-canvas scale. Geometry pre-built once, no per-frame work.
+  // Shimenawa — sagging rice-straw rope strung between the two posts
+  // at the nuki level, with three zigzag white shide paper streamers.
+  // White shide on vermillion torii is the highest-contrast 'this is
+  // a Shinto shrine' cultural signal that survives at pet-canvas scale.
   const shimenawaGeo = useMemo(() => {
     // Catenary sag between x=-0.42 and x=0.42 at y=0.94 → 0.84 (mid).
     const pts: THREE.Vector3[] = []
@@ -722,9 +694,8 @@ function KaresansuiPetals() {
         0,
         rot,
       )
-      // V53.1: scale bump 0.7-1.5 → 1.0-1.8 so petals read on the
-      // 250×250 pet canvas. At lower scale they were dust-grain dots
-      // visually invisible past the bloom pass.
+      // 1.0-1.8 scale — at the pet canvas's 220px any smaller and
+      // petals read as dust-grain dots invisible past the bloom pass.
       dummy.scale.setScalar(1.0 + (Math.sin(i * 11.3) + 1) * 0.4)
       dummy.updateMatrix()
       m.setMatrixAt(i, dummy.matrix)
@@ -738,15 +709,13 @@ function KaresansuiPetals() {
   return <instancedMesh ref={ref} args={[petalGeo, mat, COUNT]} />
 }
 
-// ── Raked karesansui gravel ring around the cabin — "ma" / negative
-//    space marker. Concentric flat tori suggest the rake lines.
-// V53 elegance (Sub-A): pre-V53 used 4 perfect torusGeometry rings,
-// reading as 'compass-drawn' not 'raked yesterday'. Real karesansui
-// has rake lines that BULGE outward around obstacles (the mossy stone
-// here) — the gardener sweeps a wider arc to avoid it. Now each ring
-// is a TubeGeometry over a CatmullRom curve with per-angle radius
-// perturbed by (a) a slow sin to add micro-irregularity, and (b) a
-// gaussian bulge centered on the angle to the mossy stone.
+// ── Raked karesansui gravel — 'ma' (negative space) marker around
+//    the cabin. Rake lines BULGE outward around the mossy stone (the
+//    gardener sweeps a wider arc to avoid it) — flat tori would read
+//    'compass-drawn' not 'raked yesterday'. Each ring: TubeGeometry
+//    over a CatmullRom curve with per-angle radius perturbed by a
+//    slow sin (micro-irregularity) plus a gaussian bulge centered on
+//    the stone angle.
 const MOSS_STONE_LOCAL: [number, number] = [0.35, 0.45]   // matches mesh below
 function buildRakeRing(r: number, ringIdx: number): THREE.BufferGeometry {
   // Mossy stone angle from gravel center (local origin)
@@ -803,14 +772,9 @@ function RakedGravel() {
   )
 }
 
-// V53.2 (Sub-A 13 Y2): Tsukubai/WaterSurface/WaterStream functions
-// deleted. Karesansui IS dry water (the V53.2 removal commit explains
-// why). Code recoverable via git — see commit 33f58c204 for full
-// component implementations.
-
 // Vertex-displaced + vertex-COLORED ground plane.
-// V11: per-vertex color lerps warmth based on displacement+radial, so
-// the grass reads as continuous breathing terrain not flat painted disk
+// Per-vertex color lerps warmth based on displacement+radial so the
+// grass reads as continuous breathing terrain, not a flat painted disk
 // with decal patches on top.
 function makeDisplacedGroundGeo(): THREE.BufferGeometry {
   const g = new THREE.CircleGeometry(2.05, 64)
@@ -844,11 +808,9 @@ function makeDisplacedGroundGeo(): THREE.BufferGeometry {
   return g
 }
 
-// V24: deleted dead LightShafts function (~40 LOC) — replaced by drei
-// Sparkles in V12, never re-mounted.
-
-// V35: DisplacedCliff — single mesh w/ ridged-noise vertex displacement
-// instead of stacked smooth cones. Gives the island jagged overhangs +
+// DisplacedCliff — single mesh w/ ridged-noise vertex displacement.
+// Stacked smooth cones would read 'lathe-spun cake' (a fresh-eye
+// reviewer's exact phrase) — ridged noise gives jagged overhangs +
 // vertical erosion grooves + exposed-root edge feel.
 function makeDisplacedCliffGeo(): THREE.BufferGeometry {
   const g = new THREE.CylinderGeometry(2.05, 1.4, 1.45, 48, 8)
@@ -898,9 +860,9 @@ function makeDisplacedCliffGeo(): THREE.BufferGeometry {
 function DisplacedCliff() {
   const geo = useMemo(makeDisplacedCliffGeo, [])
   useEffect(() => () => geo.dispose(), [geo])
-  // V36: non-uniform XZ scale + small azimuthal rotation breaks the
-  // button-mushroom axisymmetry. From any orbit angle the silhouette is
-  // now intentional, not a revolved profile.
+  // Non-uniform XZ scale + small azimuthal rotation breaks the
+  // 'button mushroom' axisymmetry — from any rotation angle the
+  // silhouette reads intentional, not lathe-revolved.
   return (
     <mesh
       geometry={geo}
@@ -920,10 +882,8 @@ function Island() {
   useEffect(() => () => groundGeo.dispose(), [groundGeo])
   return (
     <group scale={[1.05, 1.0, 0.78]} rotation={[0, 0.35, 0]}>
-      {/* V36: grass disk wrapped in SAME non-uniform scale + rotation as
-          DisplacedCliff so the grass edge matches the cliff edge (was
-          a perfect circle on top of an oblong base — read as "coin on
-          mushroom"). */}
+      {/* Grass disk wrapped in SAME non-uniform scale + rotation as
+          DisplacedCliff so the grass edge matches the cliff edge. */}
       <mesh
         geometry={groundGeo}
         rotation={[-Math.PI / 2, 0, 0]}
@@ -936,23 +896,16 @@ function Island() {
         <cylinderGeometry args={[2.05, 2.05, 0.10, 64]} />
         <meshStandardMaterial color={GRASS_LIGHT} roughness={0.96} />
       </mesh>
-
-      {/* V35: soil + cliff merged into ONE displaced cylinder using
-          ridged noise — was lathe-spun cake silhouette (Sub-A fresh-eye:
-          "looks like a wood-lathe slice, not a Ghibli mountain"). */}
       <DisplacedCliff />
     </group>
   )
 }
 
-// V8/V36: tobi-ishi stones — torii → tsukubai tea-ceremony axis.
-// V36: vary size/shape per stone (was 5 identical for-loop clones).
-// Largest stone sits at the torii threshold (real-garden convention).
+// Tobi-ishi (stepping stones) along the path. Tea-master rhythm:
+// stones JOG ±0.08 against the torii→cabin axis so the imagined
+// walker breaks stride and looks. Largest stone sits at the torii
+// threshold (real-garden convention).
 function SteppingStones() {
-  // V37: tea-master rhythm — stones JOG left-right so the walker
-  // breaks stride and looks. Was monotonic smooth arc (read as
-  // "spline sampled at fixed t"). Now: x oscillates ±0.08 against
-  // the underlying torii→basin axis.
   const stones: Array<[number, number, number, number, number, number, 0 | 1 | 2]> = [
     [0.55, 1.32, 0.1, 0.14, 1.1, 1.4, 0],   // largest at torii threshold
     [0.54, 1.10, -0.3, 0.09, 1.0, 1.0, 2],   // jog LEFT
@@ -987,18 +940,14 @@ function SteppingStones() {
   )
 }
 
-// ── FallenPetals — sakura petals scattered on the ground.
-// V6 were 14mm pink dots (rice grains). V7: elongated teardrop ovals
-// via shapeGeometry (5-lobe sakura petal silhouette).
-// (makePetalShape moved to island-shared.ts)
-
+// FallenPetals — sakura petals scattered on the ground.
+// Each petal uses an elongated teardrop oval (5-lobe sakura silhouette).
 function FallenPetals() {
   const petalGeo = useMemo(() => new THREE.ShapeGeometry(makePetalShape(), 8), [])
-  // V25: dispose on unmount (was leaking on hot-reload / route change)
   useEffect(() => () => petalGeo.dispose(), [petalGeo])
   const positions = useMemo(() => {
     const out: Array<{ x: number; z: number; rot: number; scale: number }> = []
-    // V8: fewer + bigger petals read better at autorotate speed
+    // 38 petals — fewer + bigger reads better at the auto-rotate speed
     for (let i = 0; i < 38; i++) {
       const a = Math.random() * Math.PI * 2
       const r = Math.sqrt(Math.random()) * 0.95
@@ -1011,14 +960,11 @@ function FallenPetals() {
     }
     return out
   }, [])
-  // V53 elegance pass (Sub-A): 38 fallen petals are STONE DEAD — when
-  // a gust kicks the furin/smoke/sakura into surge, the eye expects
-  // SOMETHING in the ground petals to flutter (real petals lift an
-  // edge on wind). Nudge rotation.x on a sparse subset of indexed
-  // petals when wind.gust passes 0.35 threshold — slow ramp, sparse
-  // selection, never all petals = lifelike not "wave goes through".
+  // Sparse flutter on gust: nudge rotation.x on 5 indexed petals when
+  // wind.gust > 0.05 — sparse selection so it reads as 'lifelike rustle',
+  // never as 'wave passing through'.
   const grpRef = useRef<THREE.Group>(null)
-  const lightPetals = useMemo(() => [3, 11, 17, 24, 31], [])  // indexed light petals
+  const lightPetals = useMemo(() => [3, 11, 17, 24, 31], [])
   useFrame((s) => {
     const grp = grpRef.current
     if (!grp) return
@@ -1040,7 +986,7 @@ function FallenPetals() {
         <mesh
           key={i}
           position={[p.x, 0, p.z]}
-          // V10: petal rotation.x variance — real fallen petals curl
+          // Real fallen petals curl — rotation.x variance per index
           rotation={[-Math.PI / 2 + (Math.sin(i * 4.3) * 0.15), 0, p.rot]}
           scale={p.scale}
           geometry={petalGeo}
@@ -1056,8 +1002,11 @@ function FallenPetals() {
   )
 }
 
-// ── AnimatedSun — V14: subtle breathing on the main directional light.
-
+// AnimatedSun — directional key light. 90s breathing cycle warms
+// from cream → amber, with a 'golden hour dwell' that lowers the sun
+// position so shadows lengthen with the warmth. Intensity is tuned
+// for the 'lit refuge' (sabishisa) mood — interior warm lights
+// (hearth/lantern/shoji) carry the warmth, sun is the cool counter.
 function AnimatedSun() {
   const lightRef = useRef<THREE.DirectionalLight>(null)
   const cWarm = useMemo(() => new THREE.Color('#FFE8C0'), [])
@@ -1069,19 +1018,10 @@ function AnimatedSun() {
     const t = s.clock.elapsedTime
     const cycle = (Math.sin(t * 0.07) + 1) * 0.5
     const dwell = getDwellGolden(t)
-    // V53.4 (Sub-A 16 emotion tune): pre-V53 sun intensity 2.44 +
-    // ambient 0.60 + hemi 0.95 = 'tourist daytime Kyoto'. For an SE
-    // engineer's homepage (dark-mode default, quiet night context) the
-    // target emotion is sabishisa (詫しさ — beautiful loneliness):
-    // 'a small lit room late at night, refuge against encroaching
-    // night'. Conservative dim (-12% sun, paired with hemi -10% and
-    // ambient -13% at site) lets hearth + lantern + shoji do more
-    // relative work — same scene, the warm interior glow now reads
-    // as 'lit refuge' instead of 'daytime postcard'.
     lightRef.current.intensity = 2.15 + Math.sin(t * 0.07) * 0.06 - dwell * 0.20
     scratch.copy(cWarm).lerp(cAmber, cycle * 0.6).lerp(cGolden, dwell)
     lightRef.current.color = scratch
-    // V28: sun POSITION lowers on dwell — shadows lengthen with the warmth
+    // Sun POSITION lowers on dwell — shadows lengthen with the warmth
     lightRef.current.position.x = 4 + dwell * 1.5
     lightRef.current.position.y = 5.5 - dwell * 1.3
     lightRef.current.position.z = 3 - dwell * 0.4
@@ -1105,12 +1045,13 @@ function AnimatedSun() {
   )
 }
 
-// ── AnimatedHearthLight — V17: pointLight at cabin shoji pulses with hearth.
+// AnimatedHearthLight — pointLight at the cabin shoji that pulses
+// with the hearth cycle. 0.15s lag behind the shoji emissive (which
+// itself lags smoke) so the light bounce reads as 'cast follows source'.
 function AnimatedHearthLight() {
   const ref = useRef<THREE.PointLight>(null)
   useFrame((s) => {
     if (!ref.current) return
-    // V18: cast light follows shoji (also lag 150ms vs smoke)
     const hearth = getHearth(s.clock.elapsedTime - 0.15)
     ref.current.intensity = 0.7 + hearth.shojiBrighten * 0.8
   })
@@ -1126,14 +1067,10 @@ function AnimatedHearthLight() {
   )
 }
 
-// ── BreathingShoji — paper window with subtle emissive lerp.
-// V13: cabin reads as inhabited, not LED-lit.
-// V53 elegance pass (Sub-A): pre-V53 only intensity pulsed — color
-// stayed at cool WASHI_GLOW. Real paper lit by hearth fire warms
-// toward orange at fire peak and cools back as embers settle. Now
-// emissive COLOR lerps toward an ember-orange tint on hearth.shojiBrighten,
-// so the hearth pulse reads as "fire breathing inside the cabin"
-// not just "lamp brightness adjusting".
+// BreathingShoji — paper window. Cabin reads as inhabited (not
+// LED-lit) via emissive intensity lerp + warm tint shift on hearth
+// peak. Base intensity 0.62 crosses the Bloom threshold (0.85)
+// gently so the cabin radiates as a constant warm-light anchor.
 const SHOJI_EMBER = '#FFB070'
 function BreathingShoji({ position, size }: {
   position: [number, number, number]
@@ -1147,16 +1084,9 @@ function BreathingShoji({ position, size }: {
     if (!ref.current) return
     const t = s.clock.elapsedTime
     const hearth = getHearth(t - 0.15)
-    // V20: hover flare adds extra brighten
     const hover = getHoverBoost(t)
-    // V53 materials (Sub-A 5/5 impact): bump base 0.42→0.62 so the
-    // shoji's steady-state crosses the Bloom luminanceThreshold (0.85)
-    // gently. Pre-V53 only peaked into bloom on hover — the cabin's
-    // 'gravitational anchor' glow was invisible to the post pass for
-    // 95% of the time. Now the cabin genuinely radiates as the hero
-    // warm-light anchor at all times.
     ref.current.emissiveIntensity = 0.62 + Math.sin(t * 0.6) * 0.05 + hearth.shojiBrighten + hover * 0.18
-    // V53: warm tint shift on hearth peak — fire's hue bleeds through paper
+    // Warm tint shift on hearth peak — fire's hue bleeds through paper
     scratch.copy(baseColor).lerp(emberColor, Math.max(0, Math.min(0.6, hearth.shojiBrighten * 1.2)))
     ref.current.emissive.copy(scratch)
   })
@@ -1176,15 +1106,12 @@ function BreathingShoji({ position, size }: {
 
 
 
-// ── V23: PathMoss — small green patches between stepping stones.
-// Static, but adds the wabi-sabi "old garden, well-trodden" detail.
+// PathMoss — small green patches between stepping stones; wabi-sabi
+// 'well-trodden garden' detail. Each patch is a 2-blob lobe (main
+// disc + smaller offset partner) with palette+tilt variance — flat
+// uniform circles read as 'emoji stickers' against the variance-rich
+// surroundings.
 function PathMoss() {
-  // V53 elegance (Sub-A): pre-V53 was 5 identical green circles in
-  // perfect color+roughness — read as 'emoji stickers dropped on
-  // path' against the variance-rich surroundings. Now: 3-tone palette
-  // varies per patch, slight per-patch tilt (catches sun
-  // differently), and each patch is a 2-blob lobe (a main disc + a
-  // smaller offset partner) so silhouette is organic not coin-like.
   // Positions between consecutive stones (midpoints + slight offsets)
   const patches: Array<[number, number, number, number]> = [
     [0.48, 1.20, 0.08, 0.5],     // between stone 0 and 1
@@ -1221,35 +1148,26 @@ function PathMoss() {
   )
 }
 
-// ── V21: ParallaxRig — diorama-in-window effect. Camera subtly
-// tracks mouse position (lerped) → scene reads as a peep-box, not a video.
-// V52.2 (Sub-A critical fix): base coords MUST match the Canvas-prop
-// camera or this useFrame silently overwrites it within 1 frame +
-// re-call lookAt every frame because OrbitControls was removed in V52
-// (the previous "no manual lookAt needed" comment is now wrong).
-// Parallax amplitude reduced for pet — large camera swings on a small
-// 220×220 widget over-magnify.
+// ParallaxRig — diorama-in-window effect. Camera subtly tracks mouse
+// position (lerped) so the scene reads as a peep-box, not a video.
+// Owns camera position + lookAt every frame; base coords MUST match
+// the Canvas-prop camera. baseZ 9.5 chosen for SQUARE 1:1 220×220
+// pet canvas: at z=9.5 the disc front-corner has half-width 2.27 vs
+// disc x-extent 2.15 — 0.12 unit margin at closest point.
 function ParallaxRig() {
   const { camera } = useThree()
   const baseX = 2.6     // matches Canvas prop [2.6, 2.0, 9.5]
   const baseY = 2.0
-  const baseZ = 9.5     // V52.7: 8.5 → 9.5. Sub-A V52.6 verify used
-                        // 16:9 aspect by mistake — pet canvas is SQUARE
-                        // 1:1, so visible half-width = half-height (no
-                        // horizontal extra). At baseZ=8.5 the disc
-                        // front-corner (z=+1.6, depth 6.9) had half-
-                        // width only 1.98 vs disc x=2.15 → 0.17 clip.
-                        // baseZ=9.5: depth to front-corner ≈ 7.9 →
-                        // half-width 2.27 → 0.12 margin even at the
-                        // closest point.
+  const baseZ = 9.5
   useFrame((_, dt) => {
-    const targetX = baseX + mouseState.x * 0.15   // V21 had 0.25 — too much for pet
-    const targetY = baseY + mouseState.y * -0.10  // V21 had -0.15
+    // ±0.15 / ±0.10 — subtle parallax for a small pet (more feels arcade-y)
+    const targetX = baseX + mouseState.x * 0.15
+    const targetY = baseY + mouseState.y * -0.10
     const lerpAmt = Math.min(1, dt * 3)
     camera.position.x += (targetX - camera.position.x) * lerpAmt
     camera.position.y += (targetY - camera.position.y) * lerpAmt
     camera.position.z = baseZ
-    camera.lookAt(0, 0.85, 0)   // V52.2: now owned here (no OrbitControls)
+    camera.lookAt(0, 0.85, 0)
   })
   return null
 }
@@ -1257,14 +1175,14 @@ function ParallaxRig() {
 
 
 
-// ── FallingPetals — sakura petals drifting down from canopy.
-// The Ghibli money shot. Each petal: drift down ~0.05/s, sin X drift,
-// tumble rot.z. Respawns at canopy Y when it hits ground.
+// FallingPetals — sakura petals drifting down from the canopy.
+// Each petal drifts on shared wind (gust + direction) and tumbles.
+// Sakura-zone hover boosts gust 1.5×, hover anywhere adds 1.5× more
+// to effective gust — gives "the island reacts to your cursor".
 function FallingPetals() {
   const COUNT = 60
   const ref = useRef<THREE.InstancedMesh>(null)
   const petalGeo = useMemo(() => new THREE.ShapeGeometry(makePetalShape(), 8), [])
-  // V24: dispose on unmount
   useEffect(() => () => petalGeo.dispose(), [petalGeo])
   const seeds = useMemo(() =>
     Array.from({ length: COUNT }).map(() => ({
@@ -1277,25 +1195,18 @@ function FallingPetals() {
       scale: 0.7 + Math.random() * 0.6,
       tintIdx: Math.floor(Math.random() * 3),
     })), [])
-  // V24: hoist per-frame allocs (was 3600+ Color/Object3D per second)
+  // Hoisted per-frame allocs — bare object literals here would create
+  // 3600+ THREE.Color and Object3D per second.
   const dummy = useMemo(() => new THREE.Object3D(), [])
   const tints = useMemo(() => ['#FFEAF1', '#F5C8D6', '#FFD8E3'].map((c) => new THREE.Color(c)), [])
-  // V53.2: wetColor + scratchColor removed (no water surface to wet on)
 
   useFrame((s) => {
     if (!ref.current) return
     const t = s.clock.elapsedTime
-    // V24: dummy/tints/wetColor/scratchColor are hoisted via useMemo
-    // V15: SHARED wind drives drift direction + gust
-    // V20: hover boost adds to gust. V22: sakura-zone hover 1.5× boost.
     const wind = getWind(t)
     const hover = getHoverBoost(t)
     const sakuraBoost = hoverZone.current === 'sakura' ? 1.5 : 1
     const effectiveGust = wind.gust + hover * 1.5 * sakuraBoost
-    // V53.2: Tsukubai removed (karesansui IS dry water). Petal-water-
-    // landing logic deleted — petals now simply drift and respawn on
-    // their continuous Y loop. The wet-color lerp also dropped since
-    // there's no water to wet on.
     seeds.forEach((sd, i) => {
       const ySpan = 1.6
       const yOffset = (t * 0.07 * sd.speed * (1 + effectiveGust * 0.4)) % ySpan
@@ -1307,7 +1218,6 @@ function FallingPetals() {
       const px = sd.x + dx
       const pz = sd.z + dz
       dummy.position.set(px, wrappedY, pz)
-      // V19: tumble — full amplitude always now that no rest state exists
       dummy.rotation.set(
         -Math.PI / 2 + Math.sin(t * 0.8 + sd.phaseR) * 0.5,
         t * 0.6 + sd.phaseR,
@@ -1339,14 +1249,11 @@ function FallingPetals() {
   )
 }
 
-// ── WindSway — wraps any group + applies gentle X/Z rotation sway.
-// V53 elegance pass (Sub-A critique): pre-V53 was pure sin(t*freq)
-// metronome — after ~12s your eye locked onto the loop. Worse, cedars
-// + sakura all breathed in lockstep so wind didn't read as a *field*
-// passing through. Now couples to the shared getWind() signal so
-// foliage breathes WITH the gust that's already driving petals + smoke
-// + furin, with per-tree lag (phase doubles as lag seconds). The sin
-// term shrinks to a 40% sub-rhythm so the gust dominates the silhouette.
+// WindSway — wraps any group + applies gentle X/Z rotation sway
+// COUPLED to the shared getWind() field. Phase doubles as per-tree
+// lag (in seconds) so taller/looser things gust more, and the sin
+// sub-rhythm is only 40% of the gust amplitude — wind reads as a
+// coherent field passing through, not 22 independent loops.
 function WindSway({ children, amp = 0.018, freq = 0.5, phase = 0 }: {
   children: React.ReactNode
   amp?: number
@@ -1374,10 +1281,11 @@ function WindSway({ children, amp = 0.018, freq = 0.5, phase = 0 }: {
   return <group ref={ref}>{children}</group>
 }
 
-// V53.2 (Sub-A 13 Y2): WaterSurface + WaterStream deleted with the
-// Tsukubai parent. Code recoverable via git — see commit 33f58c204.
-
-// ── ChimneySmoke — V10: scale-clamp at phase boundaries hides reset.
+// ChimneySmoke — 3 puffs rising from the cabin chimney. Real chimney
+// smoke is CLUMPY (two puffs close, then a long pause) — slow-noise
+// jitter on per-puff phase ±0.4s avoids the 'conveyor belt' cadence.
+// Hearth.smokeBoost lifts puff 0 (leader) by 1.2× and puffs 1+2 by
+// 0.6× — viewer SEES the hearth stoke cause a smoke surge.
 function ChimneySmoke() {
   const puffs = [
     useRef<THREE.Mesh>(null),
@@ -1386,30 +1294,18 @@ function ChimneySmoke() {
   ]
   useFrame((s) => {
     const t = s.clock.elapsedTime
-    // V16: smoke (rising / dispersed) lags wind by 0.8s
+    // Smoke (high mass / dispersed) lags wind by 0.8s
     const wind = getWind(t - 0.8)
     const hearth = getHearth(t)
     puffs.forEach((r, i) => {
       const m = r.current
       if (!m) return
-      // V53 elegance pass (Sub-A): real chimney smoke is CLUMPY — two
-      // puffs close together, then a long pause. Pre-V53 had each
-      // puff offset by exactly +0.9s → conveyor-belt cadence visible.
-      // Now: slow-noise jitter on the per-puff phase offset (±0.4s
-      // wobble) so puffs irregularly bunch and stretch.
       const jitter = Math.sin(t * 0.11 + i * 2.3) * 0.4
       const phase = (t * 0.25 + i * 0.9 + jitter) % 2.7
       m.position.y = 0.05 + phase * 0.45
       m.position.x = Math.sin(t * 0.5 + i) * 0.08 + phase * (0.08 + wind.dirX * 0.06)
       m.position.z = Math.cos(t * 0.4 + i * 0.7) * 0.05 + phase * wind.dirZ * 0.05
-      // V10: scale-clamp at phase boundaries hides reset teleport
-      // V16: stoke boost — bigger puff burst at hearth peak
-      // V53 (Sub-A 8): bump stoke boost amplitude so the hearth pulse
-      // VISIBLY causes smoke surge — pre-V53 stoke just dimly nudged
-      // (0.6/0.3) and most viewers couldn't see the causal link
-      // (hearth stoke → smoke surge). Bumped to 1.2/0.6 — puff 0 leads
-      // with a clearly bigger burst when the fire is stoked, puffs 1+2
-      // ride the resulting surge. Causality now reads.
+      // Fade-in/out at phase boundaries hides the reset teleport
       const baseScale = (0.6 + phase * 0.5) * (1 + hearth.smokeBoost * (i === 0 ? 1.2 : 0.6))
       const fadeIn = Math.min(1, phase * 4)
       const fadeOut = Math.min(1, (2.7 - phase) * 2)
@@ -1430,14 +1326,10 @@ function ChimneySmoke() {
   )
 }
 
-// V52.2 (Sub-A fix D): CameraSetup deleted. The useEffect ran ONCE on
-// mount, then ParallaxRig's useFrame overwrote camera.position +
-// rotation within 1 frame — dead code. ParallaxRig now owns lookAt.
-
-// V44 LEAK FIX: WebGL context-loss/restore handlers now live in this
-// child component instead of Canvas onCreated. onCreated has no cleanup
-// hook, so listeners accumulated on the canvas DOM element across
-// strict-mode double-mount / HMR / Astro view-transition remounts.
+// WebGL context-loss/restore handlers — must live in a child component
+// (not Canvas onCreated, which has no cleanup hook) so listeners
+// don't accumulate on the canvas across strict-mode / HMR / Astro
+// view-transition remounts.
 function ContextLossHandlers() {
   const gl = useThree((s) => s.gl)
   useEffect(() => {
@@ -1467,28 +1359,19 @@ function ContextLossHandlers() {
   return null
 }
 
-// V53: RotatingScene — slow Y-rotation on the whole island.
-// V53.1: rate slowed 60s → 180s/turn per user feedback ("旋转的有点快").
-// Pauses on hover so the user can inspect the side they're looking at.
-// Lights stay outside this group (world-fixed) so shading is consistent
-// across all rotation angles.
+// RotatingScene — slow Y-rotation on the whole island (3-min baseline).
+// Eases 4× slower when sakura faces camera (y≈0) so the hero pose
+// holds ~15-20s per cycle — without the ease, the money pose existed
+// for 0 frames. Pauses on hover. Lights stay outside this group
+// (world-fixed) so shading is consistent across all rotation angles.
 function RotatingScene({ children }: { children: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
   const RATE = (Math.PI * 2) / 180   // one full turn per 3 minutes (baseline)
-  // V53 composition (Sub-A impact 4/5): pre-V53 was a constant
-  // dt*RATE — money pose (sakura facing camera, y=0) existed for 0
-  // frames, and the user-as-passerby has no "is it moving?" feedback.
-  // Now ease the rotation: slow 4× when sakura faces camera (y≈0
-  // mod 2π), normal speed at y=π (back of disc). Total period
-  // stretches ~1.6× (still under 5min), but the hero pose holds
-  // for ~15-20s per cycle. Bonus: the speed CHANGE catches the
-  // eye, killing the 'is it even moving?' question at first glance.
   useFrame((_, dt) => {
     if (!ref.current) return
     if (hoverState.active) return    // freeze on hover
     const y = ref.current.rotation.y
-    // ease(y): 0.25 at y=0 (sakura facing), 1.0 at y=π (sakura behind)
-    // (1 - cos(y))/2 ranges 0..1 with min at y=0
+    // (1 - cos(y))/2 ranges 0..1 with min at y=0 (sakura facing)
     const ease = 0.25 + 0.75 * ((1 - Math.cos(y)) / 2)
     ref.current.rotation.y = (y + dt * RATE * ease) % (Math.PI * 2)
   })
@@ -1496,9 +1379,9 @@ function RotatingScene({ children }: { children: React.ReactNode }) {
 }
 
 export default function IslandWidget() {
-  // V41: pause render loop when widget is off-screen or tab is hidden.
-  // Saves significant battery + GPU on homepage (~10 other cards
-  // visible above the fold) without affecting visible-state quality.
+  // Pause render loop when widget is off-screen OR tab is hidden —
+  // saves real battery on the homepage which has ~10 other cards
+  // visible above the fold, without affecting visible-state quality.
   const [paused, setPaused] = useState(false)
   const canvasWrapRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -1527,37 +1410,26 @@ export default function IslandWidget() {
     <div ref={canvasWrapRef} style={{ width: '100%', height: '100%' }}>
     <Canvas
       shadows={!IS_MOBILE}
-      // V52 pet cutout: framing for square 220×220 pet canvas.
-      // Island disc has x-extent ±2.15 (radius 2.05 × non-uniform scale
-      // 1.05). To fit the whole disc width in a square canvas the
-      // visible width at island distance must be ≥ 4.3 units.
-      // V52.7: camera [2.6, 2.0, 9.5] fov 32 for SQUARE 1:1 canvas.
-      // Visible half-width = half-height = (depth) · tan(16°). At the
-      // disc center plane (depth ≈ 9.0): half-width 2.57; at front-
-      // corner (depth ≈ 7.9): half-width 2.27 — both clear the disc
-      // x-extent ±2.15 with margin. Tilt from raised y (2.0) gives
-      // a slight bird's-eye so the disc reads as a round blob.
+      // Camera tuned for the SQUARE 1:1 220×220 pet canvas. At depth
+      // 9.5 the visible half-width = half-height = 9.5·tan(16°) ≈ 2.57
+      // — clears the disc x-extent ±2.15 with margin even at the
+      // closer front-corner (depth ≈ 7.9, half ≈ 2.27).
       camera={{ position: [2.6, 2.0, 9.5], fov: 32 }}
       dpr={IS_MOBILE ? [1, 1.2] : [1, 1.5]}
-      // V41: pause off-screen. V50 a11y: reduced-motion users get a
-      // single static render ("demand" + one initial invalidate from R3F
-      // mount) so animations never start — defense in depth alongside
-      // the CSS rule that hides the widget for reduced-motion users.
+      // Off-screen / hidden-tab → 'never' (battery saver).
+      // Reduced-motion → 'demand' (single static render via R3F's
+      // initial invalidate — animations never start).
       frameloop={paused ? 'never' : (PREFERS_REDUCED_MOTION ? 'demand' : 'always')}
       gl={{
         antialias: true,
         alpha: true,
         toneMapping: ACESFilmicToneMapping,
-        // V53 (Sub-A 12): exposure 1.18 → 1.12 — after density+bloom
-        // bumps the sakura crown was bleeding into Bloom's mouth
-        // (highlights post-tonemap landing at 0.88-0.92 vs threshold
-        // 0.85), reading as soft pink cloud not petals. 1.12 keeps
-        // midtone warmth while pulling crown + golden-hour amber back
-        // out of bloom's grab range; shoji stays as deliberate bloom.
+        // 1.12 keeps midtone warmth while pulling the sakura crown +
+        // golden-hour amber back out of Bloom's threshold (0.85) —
+        // higher and the crown reads as 'soft pink cloud' not petals.
         toneMappingExposure: 1.12,
       }}
       style={{ width: '100%', height: '100%' }}
-      // V20: hover poke. V21: track mouse XY for parallax + zone.
       onPointerEnter={() => {
         hoverState.active = true
         hoverState.enteredAt = performance.now() / 1000
@@ -1573,33 +1445,20 @@ export default function IslandWidget() {
         const rect = (e.currentTarget as HTMLCanvasElement).getBoundingClientRect()
         mouseState.x = ((e.clientX - rect.left) / rect.width - 0.5) * 2   // -1..1
         mouseState.y = ((e.clientY - rect.top) / rect.height - 0.5) * 2
-        // V53 interactivity (Sub-A 7th pass): hoverZone WAS DEAD CODE.
-        // Read in FallingPetals (sakura-zone gust 1.5×) but never
-        // assigned anywhere. Now map normalized mouseState into zones
-        // matching post-V53 layout: sakura is upper-right (after the
-        // x 0.55→0.40, z -0.35→0.15 reframe), tsukubai is lower-right,
-        // cabin is left third. Hovering the sakura area now actually
-        // triggers the petal gust boost — discoverable because the
-        // user already moved cursor there for a reason.
-        // V53.2 (Sub-A 13 fix): dropped tsukubai zone (component removed)
-        // + widened sakura's y range so cursor in lower-right falls
-        // through to the 'cabin' branch instead of dying in a dead zone.
+        // Map normalized cursor to a hover zone (read by FallingPetals
+        // for sakura-area 1.5× gust boost). Hovering the sakura area
+        // is discoverable — the user already moved their cursor there.
         const mx = mouseState.x, my = mouseState.y
         hoverZone.current =
           (mx > 0.15 && my < 0.35) ? 'sakura' :
           (mx < -0.15) ? 'cabin' : null
       }}
     >
-      {/* V44: wire WebGL ctx-loss/restore handlers (with cleanup) */}
       <ContextLossHandlers />
-      {/* No <color> bg — alpha:true canvas, page bg shows through.
-          V52 pet cutout: NO fog. Fog draws sky-colored haze onto distant
-          objects, which on a transparent-bg canvas reads as a rectangle
-          of color (= visible canvas edge = PiP feel). The whole island
-          should be in sharp focus instead. Removed entirely. */}
-      {/* V27: sky+fog mood shift on sustained hover (golden hour).
-          V52: removed for pet — no fog to tint, no .island-card-canvas
-          wrapper to drive (we're now in .island-pet). Static lighting. */}
+      {/* No <color> bg + no fog — alpha:true canvas, page bg shows
+          through. Fog would draw sky-colored haze onto distant objects
+          which on a transparent-bg canvas reads as a rectangle of
+          color (visible canvas edge = PiP frame feel). */}
 
       {/* Lighting — bright noon, Studio Ghibli golden hour balance */}
       {/* V53.4 (Sub-A 16 mood tune): hemi 0.95 → 0.78 + ambient 0.60

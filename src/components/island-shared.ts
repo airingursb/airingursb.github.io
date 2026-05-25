@@ -48,10 +48,10 @@ export const IS_MOBILE = typeof window !== 'undefined' && (
   (typeof window.matchMedia === 'function' && window.matchMedia('(max-width: 800px)').matches)
 )
 
-// V50 a11y: vestibular-disorder users should not see autorotate / wind
-// sway / petal fall / sun breathing / lantern flicker. Read once at
-// module load; users who toggle the OS setting mid-session need a
-// reload (acceptable — this is rare).
+// Vestibular-disorder users (prefers-reduced-motion) should not see
+// autorotate / wind sway / petal fall / sun breath / lantern flicker.
+// Read once at module load — toggling the OS setting mid-session
+// requires reload (acceptable, this is rare).
 export const PREFERS_REDUCED_MOTION =
   typeof window !== 'undefined' &&
   typeof window.matchMedia === 'function' &&
@@ -63,28 +63,19 @@ export const PREFERS_REDUCED_MOTION =
 // scene behaves like one organism not 22 separately animated objects.
 // ─────────────────────────────────────────────────────────────────────
 
+// THREE-ENVELOPE GUST so the scene has both ambient breathing AND
+// occasional 'event' drama:
+//   baseGust  — regular ~48s period, peak ~0.99 (continuous wind)
+//   sigGust   — rare ~78s period, peak ~0.99 (the 'whole-island
+//               reacts' signature moment — sakura shakes + petals
+//               release + furin swings + smoke surges + lantern
+//               flame leans + fallen petals flutter, all together)
+//   firstGust — one-time burst at t=8-12s so a fresh visitor sees
+//               the signature event within their first attention
+//               window (rather than maybe missing it for 30+s)
 export function getWind(t: number) {
-  // V53 Sub-A 14 signature event: pre-V53 had only one continuous
-  // gust envelope (sin t*0.13, peaks ~48s, max gust 0.99). Sub-A naïve-
-  // visitor critique: "everything is continuous ambient, no payoff for
-  // the 8th second" — needed a rare *event* moment to give viewers a
-  // 'I saw something' reward.
-  //
-  // Now: base gust (regular, every ~48s, peak 0.99) PLUS a rare
-  // 'signature' gust on a longer ~78s period that briefly spikes higher
-  // (peak ~1.8). When the signature event hits, EVERYTHING wind-coupled
-  // surges together: sakura canopy shakes harder + 30 petals release +
-  // furin swings wide + smoke surges + lantern flame leans + fallen
-  // petals all flutter their edges + cat ear may twitch. Coordinated
-  // moment, no new code — the existing shared-state architecture
-  // amplifies it across 8+ elements automatically.
   const baseGust = Math.max(0, Math.sin(t * 0.13) - 0.7) * 3.3
   const sigGust = Math.max(0, Math.sin(t * 0.081 + 1.5) - 0.82) * 5.5
-  // V53.3: first-viewing guarantee — a fresh visitor watching the
-  // pet for their first 30s might miss the signature event if RNG
-  // seeds badly. Inject a guaranteed gust burst at t≈8-12s (visible
-  // after intro pose settles) so first-time viewers see the
-  // 'whole-island reacts' moment within their attention window.
   const firstGust = (t > 8 && t < 12) ? Math.sin((t - 8) / 4 * Math.PI) * 1.4 : 0
   const gust = baseGust + sigGust + firstGust
   const dirAngle = Math.sin(t * 0.04) * 0.4
@@ -108,11 +99,9 @@ export function getHearth(t: number) {
   }
 }
 
-// V44 BUGFIX: `enteredAt/decay` are written from pointer handlers using
-// `performance.now()/1000` (wall clock since nav start). The `t` arg
-// here is `state.clock.elapsedTime` (Three.js Canvas-mount clock).
-// Mixing them gave silently-negative dwell times → golden hour + boost
-// never triggered. Compare against the same wall clock used at write.
+// Hover dwell + boost both use `performance.now()/1000` (wall clock)
+// to match the pointer-handler write sites. Using `t` here (Canvas
+// clock) silently gives negative dwell times.
 export function getDwellGolden(t: number): number {
   if (IS_TOUCH) {
     const phase = (t % 14) / 14
@@ -136,12 +125,10 @@ export function getHoverBoost(_t: number): number {
     const since = now - hoverState.enteredAt
     return Math.min(1, since * 3)
   }
-  // V53 interactivity (Sub-A): pre-V53 decay was 0.67/s → 1.5s back
-  // to rest. For a 220px pet users brush past constantly that left
-  // the scene 'stuck excited' after the cursor was gone, making
-  // subsequent hovers feel un-fresh. Tighter asymmetric decay
-  // (~0.83s) so the scene returns to baseline before the user's eye
-  // does — preserves the 'wake up on approach' gesture for next pass.
+  // Asymmetric decay (1.2/s = ~0.83s back to rest) — faster than the
+  // ramp-up so the scene returns to baseline before the user's eye
+  // does. The pet is 220px and users brush past it constantly; a
+  // slow decay leaves it 'stuck excited' on subsequent hovers.
   const sinceLeave = now - hoverState.decay
   return Math.max(0, 1 - sinceLeave * 1.2)
 }
@@ -206,8 +193,7 @@ export const CEDAR_TRUNK    = '#2A1812'
 export const CEDAR_DARK     = '#385830'
 export const CEDAR_LIGHT    = '#4E6E40'
 
-// V6: warmer Ghibli-correct earth tones + sun-bleached grass highlight.
-// V5 was dead-center sage with no warmth; SOIL/CLIFF were muddy defaults.
+// Ghibli earth tones — warmer than naive sage/mud defaults.
 export const GRASS_LIGHT    = '#A8C77A'
 export const GRASS_HILIGHT  = '#C7D89A'
 export const GRASS_SHADE    = '#6B8A52'
@@ -224,11 +210,11 @@ export const WASHI_GLOW     = '#FFEFD0'
 export const WOOD_POST      = '#3A2516'
 export const WOOD_BEAM      = '#5A3A20'
 
-// Roof was '#3E3845' (nearly black, swallowed the bright noon scene).
-// Real kawara is blue-grey with subtle warm highlight.
+// Real kawara is blue-grey with subtle warm highlight. ΔL between
+// ROOF_A and ROOF_B is wide so the tile jitter reads visibly.
 export const TILE_ROOF_A    = '#5C6470'
-export const TILE_ROOF_B    = '#363C48'    // V9: widened ΔL for visible jitter
-export const TILE_ROOF_MOSS = '#5E7048'    // V10: green-shifted (was shadowy)
+export const TILE_ROOF_B    = '#363C48'
+export const TILE_ROOF_MOSS = '#5E7048'
 export const TILE_RIDGE     = '#2E3540'
 
 export const STONE_BASE     = '#A89E8E'
