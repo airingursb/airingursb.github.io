@@ -84,7 +84,7 @@ import IslandWidget from './IslandWidget'
        correctly removes both AT exposure AND keyboard tab order, then
        reverses cleanly on hover/focus via the JS listeners below. -->
   <div class="island-pet-panel" inert>
-    <p class="island-pet-quote" data-idx="0" aria-live="polite" aria-atomic="true">松风过耳，落英满衣。</p>
+    <p class="island-pet-quote" data-idx="0" aria-live="off" aria-atomic="true">松风过耳，落英满衣。</p>
     <span class="island-pet-seal" aria-hidden="true">閒</span>
     <div class="island-pet-actions">
       <button type="button"
@@ -588,6 +588,13 @@ import IslandWidget from './IslandWidget'
       })
     }
     window.addEventListener('langchange', applyLang)
+    // Flip aria-live from "off" to "polite" AFTER the initial render +
+    // i18n settles. Otherwise screen readers announce the random first-
+    // load quote as if it were a live update. Now only true CYCLE
+    // events trigger announcements.
+    setTimeout(() => {
+      if (quoteEl) quoteEl.setAttribute('aria-live', 'polite')
+    }, 200)
 
     // V53.1: panel show/hide is now PURE CSS (.island-pet:hover →
     // .island-pet-panel) with a 400ms transition-delay reproducing
@@ -1140,6 +1147,13 @@ import IslandWidget from './IslandWidget'
     }
     .island-pet-chip {
       border: 1px solid ButtonText;
+      /* CRITICAL: chip base has opacity:0 (chip-arrive default state).
+         The :hover/.is-revealed rules set opacity:1, but if forced-
+         colors users don't trigger those (or the panel reveals via
+         some other path), chips would be invisible but tab-focusable
+         — keyboard users hitting invisible buttons. Force opacity:1
+         in high-contrast mode regardless. */
+      opacity: 1;
     }
     /* Seal's rgba red becomes invisible against system Canvas. It's
        purely decorative + aria-hidden, so just hide it in high contrast. */
