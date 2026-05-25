@@ -92,7 +92,28 @@ const QUALITY = typeof window !== 'undefined' ? detectQuality() : 'medium'
 // the scene from 8.5 to 10 — diorama starts feeling directed."
 function CameraControls() {
   const ref = useRef<OrbitControlsImpl | null>(null)
-  const introRef = useRef({ started: 0, active: true, skipped: false })
+  // H (direction): if user arrived from the homepage pet (Step in chip),
+  // start the intro from a HIGH SKY OVERLOOK and swoop down to the
+  // default angle — feels like the small pet diorama unfolded into
+  // the full world. Detect via sessionStorage flag set by pet onclick.
+  const fromPet = (() => {
+    if (typeof window === 'undefined') return false
+    try {
+      const v = sessionStorage.getItem('island-from-pet')
+      if (v === '1') {
+        sessionStorage.removeItem('island-from-pet')  // one-shot
+        return true
+      }
+    } catch {}
+    return false
+  })()
+  const introRef = useRef({
+    started: 0,
+    active: true,
+    skipped: false,
+    fromPet,
+    duration: fromPet ? 6 : 4.5,   // longer swoop for from-pet
+  })
   // Theme-toggle "breath" — subtle dolly that fires when user presses
   // 🌙/☀️. Camera momentarily leans forward (eases distance from 28→25
   // unit radius) over 1.5s as if "leaning in to watch lights come on",
@@ -119,7 +140,7 @@ function CameraControls() {
     if (intro.active) {
       if (intro.started === 0) intro.started = s.clock.elapsedTime
       const elapsed = s.clock.elapsedTime - intro.started
-      let phase = elapsed / 4.5
+      let phase = elapsed / intro.duration
       if (intro.skipped) phase = 1
       if (phase >= 1) {
         intro.active = false
@@ -129,12 +150,23 @@ function CameraControls() {
         return
       }
       const e = 0.5 - Math.cos(phase * Math.PI) * 0.5
-      const sx = 5, sy = 4.5, sz = 8
+      // From-pet: start MUCH higher + more centered, like the pet
+      // diorama camera looking down. Sweep to default establishing
+      // angle. Default: close-on-cabin start (original cinematic).
+      const sx = intro.fromPet ? 0  : 5
+      const sy = intro.fromPet ? 75 : 4.5
+      const sz = intro.fromPet ? 12 : 8
       const tx = 34, ty = 26, tz = 30
       camera.position.set(sx + (tx - sx) * e, sy + (ty - sy) * e, sz + (tz - sz) * e)
-      const lx = -2 + (0 - -2) * e
-      const ly = 1.5 + (5 - 1.5) * e
-      const lz = 0.5 + (0 - 0.5) * e
+      // From-pet: lookAt center-of-island throughout (camera gets
+      // closer to default 5,0 only at end). Default: pan from close
+      // cabin → establishing center.
+      const lxs = intro.fromPet ? 0  : -2
+      const lys = intro.fromPet ? 0  : 1.5
+      const lzs = intro.fromPet ? 0  : 0.5
+      const lx = lxs + (0 - lxs) * e
+      const ly = lys + (5 - lys) * e
+      const lz = lzs + (0 - lzs) * e
       camera.lookAt(lx, ly, lz)
       if (ref.current) ref.current.enabled = false
       return
