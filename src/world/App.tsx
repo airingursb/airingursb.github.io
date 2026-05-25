@@ -259,11 +259,14 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
   return (
     <Canvas
       shadows
-      // V2 final polish (Sub-A spotted): retina/iPhone displays were
-      // rendering at 1.5× then upscaling — visibly soft on the cabin
-      // chinking + birch bark detail. On 'high' tier bump to full
-      // DPR=2; SMAA in post handles AA, so this is essentially free.
-      dpr={QUALITY === 'high' ? [1, 2] : [1, 1.5]}
+      // V2 polish revert: DPR=2 on high-tier was visibly crisper on
+      // cabin chinking but caused real frame drops on retina because
+      // every shader pass (SSAO ×12 samples, shadow map, postchain)
+      // pays 4× the pixel cost. Pixel work scales with DPR²; SSAO
+      // alone is fullscreen per sample. Stay at 1.5 — SMAA in post
+      // handles AA, and the diorama is camera-distant enough that
+      // 1.5 reads sharp.
+      dpr={[1, 1.5]}
       camera={{ position: [34, 26, 30], fov: 26 }}
       frameloop={pageVisible ? 'always' : 'never'}
       gl={{
