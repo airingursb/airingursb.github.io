@@ -85,7 +85,7 @@ import IslandWidget from './IslandWidget'
        reverses cleanly on hover/focus via the JS listeners below. -->
   <div class="island-pet-panel" inert>
     <p class="island-pet-quote" data-idx="0" aria-live="off" aria-atomic="true">松风过耳，落英满衣。</p>
-    <span class="island-pet-seal" aria-hidden="true">閒</span>
+    <span class="island-pet-seal" aria-hidden="true">居</span>
     <div class="island-pet-actions">
       <button type="button"
               class="island-pet-chip"
@@ -648,6 +648,12 @@ import IslandWidget from './IslandWidget'
        filter:drop-shadow follows alpha channel, so it traces the island
        outline — no box. This is what separates "pet" from "PiP frame". */
     filter: drop-shadow(0 6px 14px rgba(40, 50, 60, 0.18));
+    /* Pet lift transitions immediately (it's the user's hover ack),
+       but the brightness/saturate boost is delayed 120ms to match
+       the panel's entry delay — otherwise the scene gets "louder"
+       at the exact moment the quote is trying to bloom into view. */
+    transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+                filter 280ms ease-out 120ms;
   }
   .island-pet:hover {
     /* Killed scale(1.02) — was competing with the panel's
@@ -744,19 +750,28 @@ import IslandWidget from './IslandWidget'
     left: 0;
     width: 100%;         /* = 220px (matches pet) */
     padding: 14px 16px;
-    background: rgba(20, 16, 14, 0.88);
+    /* Slightly warmer near-black — sits between the panel and the
+       pet's cedar/soil dominant tones instead of a neutral void. */
+    background: rgba(26, 20, 16, 0.88);
     color: rgba(252, 244, 226, 0.96);
-    border-radius: 14px;
+    /* Square BOTTOM corners so the panel reads as a continuation of
+       the pet (one stacked shape) instead of a popup card with a
+       14px notch on either side where it meets the pet's top edge. */
+    border-radius: 14px 14px 0 0;
     backdrop-filter: blur(10px) saturate(1.1);
     -webkit-backdrop-filter: blur(10px) saturate(1.1);
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+    /* Shadow color now matches the pet's drop-shadow blue-grey
+       (rgba(40,50,60)) so panel + pet read as lit by the same source. */
+    box-shadow: 0 10px 28px rgba(40, 50, 60, 0.32);
     box-sizing: border-box;
     opacity: 0;
     transform: translateY(10px) scale(0.985);
     transform-origin: bottom center;
     /* Ink-unfurl reveal: clip-path collapses the panel against its
-       bottom edge so it appears to "unroll upward" like a scroll. */
-    clip-path: inset(100% 0 0 0 round 14px);
+       bottom edge so it appears to "unroll upward" like a scroll.
+       Round corners ONLY on top (matches border-radius) so the
+       bottom edge stays flush against the pet. */
+    clip-path: inset(100% 0 0 0 round 14px 14px 0 0);
     /* Slower fade-OUT (380ms ease-in) feels intentional — the panel
        doesn't snap away when the cursor leaves. The :hover rule below
        overrides with a fast cubic-bezier entry curve.
@@ -776,7 +791,7 @@ import IslandWidget from './IslandWidget'
   .island-pet.is-revealed .island-pet-panel {
     opacity: 1;
     transform: translateY(0) scale(1);
-    clip-path: inset(0 0 0 0 round 14px);
+    clip-path: inset(0 0 0 0 round 14px 14px 0 0);
     pointer-events: auto;
     /* Entry is faster + springier than exit, with a 120ms dwell delay
        so quick mouse-throughs don't flash the panel. Calligraphy /
@@ -804,11 +819,12 @@ import IslandWidget from './IslandWidget'
     font-size: 10px;
     font-weight: 700;
     color: rgba(252, 240, 224, 0.96);
-    /* More saturated + opaque than the chip's shu-iro so the 14×14
-       seal reads as a distinct "ink stamp" instead of a mini-echo
-       of the larger chip. Chips: rgba(208,86,54,0.92). Seal: pushed
-       toward deeper crimson. */
-    background: rgba(220, 70, 40, 0.95);
+    /* Unified shu-iro — seal, chip, and the torii in the 3D scene
+       all share rgba(208, 86, 54). Earlier crimson push (220,70,40)
+       was a SECOND red competing with the chip's red. The seal is
+       distinguished by being SQUARE + ROTATED + tiny — color
+       differentiation isn't needed. */
+    background: rgba(208, 86, 54, 0.95);
     /* 1px not 2px — at 14×14 a 2px radius reads as "rounded square"
        and fights the panel's soft 14px corners. Historical stone-
        carved seals are essentially square; 1px keeps that physics. */
