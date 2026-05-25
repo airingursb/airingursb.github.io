@@ -1702,7 +1702,13 @@ export default function IslandWidget() {
         antialias: true,
         alpha: true,
         toneMapping: ACESFilmicToneMapping,
-        toneMappingExposure: 1.18,
+        // V53 (Sub-A 12): exposure 1.18 → 1.12 — after density+bloom
+        // bumps the sakura crown was bleeding into Bloom's mouth
+        // (highlights post-tonemap landing at 0.88-0.92 vs threshold
+        // 0.85), reading as soft pink cloud not petals. 1.12 keeps
+        // midtone warmth while pulling crown + golden-hour amber back
+        // out of bloom's grab range; shoji stays as deliberate bloom.
+        toneMappingExposure: 1.12,
       }}
       style={{ width: '100%', height: '100%' }}
       // V20: hover poke. V21: track mouse XY for parallax + zone.
