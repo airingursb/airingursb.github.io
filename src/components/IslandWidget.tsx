@@ -139,6 +139,12 @@ function MinkaCabin() {
   }, [])
 
   return (
+    // COUPLED TO: KaresansuiPetals positions (around line 670) derive
+    // their per-petal coords assuming this cabin origin (-0.55, 0.05, 0)
+    // and the lantern origin (-0.10, 0.70). Moving either by more than
+    // ~0.05u will visibly drift the fallen-petal clusters off the rake
+    // lines they're supposed to ride. If you reposition the cabin, also
+    // re-derive the seed array in KaresansuiPetals.
     <group position={[-0.55, 0.05, 0.0]} rotation={[0, 0.32, 0]}>
       {/* Stone foundation strip */}
       <mesh position={[0, 0.08, 0]} castShadow receiveShadow>
@@ -1534,14 +1540,16 @@ export default function IslandWidget() {
         <Cedar x={-1.15} z={-1.05} scale={1.0} seed={1} />
         <Cedar x={-0.30} z={-1.45} scale={0.88} seed={2} />
 
-        {/* Lantern + torii. V36: lantern at scale 0.70 reads at engawa-
-            handrail height (real ishidoro is shoulder-tall). */}
+        {/* Lantern (scale 0.70 reads at engawa-handrail height — real
+            ishidoro is shoulder-tall).
+            COUPLED TO: KaresansuiPetals petal coords assume this
+            lantern at (-0.10, 0.70). Moving > ~0.05u drifts the
+            cluster of fallen petals around its base off-center. */}
         <StoneLantern x={-0.10} z={0.70} />
-        {/* V53.1: was z=1.55 — too close to disc front edge (z_extent
-          ±1.60). With rotY=-0.35 (~-20°) the FRONT post rotated
-          off the disc into empty space → user reported "torii floating".
-          Pulled to z=1.05 + softened rotation so both posts stay on
-          grass at every rotation angle of RotatingScene. */}
+        {/* Torii: pulled to z=1.05 + rotY -0.42 so both posts stay
+            on disc (z_extent ±1.6) and the gate's opening funnels
+            toward the cabin/lantern axis instead of competing with
+            sakura on the same diagonal. */}
       {/* rotY -0.25 → -0.42 (~10° more CW): the torii's opening now
           faces the cabin/lantern axis, framing the path through the
           stepping stones toward the shoji glow instead of competing

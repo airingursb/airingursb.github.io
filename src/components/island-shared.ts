@@ -119,7 +119,19 @@ export function getDwellGolden(t: number): number {
   return Math.max(0, 1 - sinceLeave / 4)
 }
 
-export function getHoverBoost(_t: number): number {
+export function getHoverBoost(t: number): number {
+  // Mirror getDwellGolden's IS_TOUCH branch: on touch devices,
+  // pointer events never fire on the canvas (taps navigate via the
+  // role=link wrap), so without a synthetic loop the furin / petals
+  // / shoji never get the hover-boost theater they're tuned around.
+  // Synthetic 11s phase loop puts touch users on a steady cadence
+  // of soft pulses — same animation budget desktop hover delivers.
+  if (IS_TOUCH) {
+    const phase = (t % 11) / 11
+    return phase < 0.45
+      ? Math.max(0, (phase - 0.25) / 0.20)
+      : Math.max(0, 1 - (phase - 0.45) / 0.30)
+  }
   const now = typeof performance !== 'undefined' ? performance.now() / 1000 : 0
   if (hoverState.active) {
     const since = now - hoverState.enteredAt
