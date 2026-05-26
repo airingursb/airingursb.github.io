@@ -412,10 +412,12 @@ export interface AppInitialData {
   music: MusicArtist[]
   reading: HighlightEntry[]
   comics: ComicsEntry[]
+  // C2: optional now-playing track (most recent from Last.fm scrobble)
+  nowPlaying?: { name: string; artist: string; isLive: boolean } | null
 }
 
 export default function App({ initialData }: { initialData?: AppInitialData } = {}) {
-  const data = initialData ?? { blog: [], music: [], reading: [], comics: [] }
+  const data = initialData ?? { blog: [], music: [], reading: [], comics: [], nowPlaying: null }
   // Theme is now DERIVED from time-of-day (real local time, with manual
   // override via setManualOverride()). The legacy 'world-theme' event +
   // localStorage are still honored for back-compat with WorldUI's toggle.
@@ -578,7 +580,12 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
           bannerUrl="/world/sprites/banners/E03-music.png"
           content={{
             title: '在听',
-            subtitle: 'Music · Last.fm',
+            // C2: show now-playing track in the subtitle when available.
+            // 'isLive' (Last.fm reports currently scrobbling) gets a 🔴
+            // marker; otherwise shows last-played as historical signal.
+            subtitle: data.nowPlaying
+              ? `${data.nowPlaying.isLive ? '🔴 ' : ''}${data.nowPlaying.name} · ${data.nowPlaying.artist}`
+              : 'Music · Last.fm',
             accent: '#4A8B6E',
             emptyMessage: '（暂无播放记录）',
             rows: data.music.slice(0, 5).map(a => ({ main: a.name, sub: `${a.plays} plays` })),

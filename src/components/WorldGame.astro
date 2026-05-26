@@ -12,6 +12,7 @@ import WorldLoader from '../world/WorldLoader.astro'
 import ErrorBoundary from '../world/ErrorBoundary'
 import articlesData from '../data/articles.json'
 import musicData from '../data/music.json'
+import nowplayingData from '../data/nowplaying.json'
 import highlightsData from '../data/highlights.json'
 import { fetchComics } from '../lib/comics'
 
@@ -23,12 +24,22 @@ const comics = comicsRaw.slice(0, 10).map(c => ({
   title_en: c.title?.en ?? `Issue ${c.issue_number}`,
 }))
 
+// C2: most recent now-playing track (may not be currently playing)
+const nowPlayingRecent = (nowplayingData as any[])[0]
+  ? {
+      name: (nowplayingData as any[])[0].name,
+      artist: (nowplayingData as any[])[0].artist,
+      isLive: (nowplayingData as any[])[0].nowplaying === true,
+    }
+  : null
+
 const initialData = {
   blog: (articlesData as any[]).slice(0, 12),
   music: ((musicData as any).periods?.find((p: any) => p.key === '1month')?.artists
     ?? (musicData as any).periods?.[0]?.artists ?? []).slice(0, 12),
   reading: ((highlightsData as any).highlights ?? []).slice(0, 10),
   comics,
+  nowPlaying: nowPlayingRecent,
 }
 ---
 <div id="world-root">
