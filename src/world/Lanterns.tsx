@@ -3,11 +3,29 @@
 // moment in /world/; making the lanterns "ignite" sells the time-of-day
 // switch as a real event rather than just a sky color change.
 
-import { useRef } from 'react'
+import { useRef, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { LANTERN_POSITIONS } from './zones'
 import { useTimeOfDay, type TimePhase } from './time-of-day'
+
+// Perf: shared registry. Each Lantern + DuskHalo registers its refs
+// into this on mount, and ONE useFrame in the Lanterns parent iterates
+// all of them per frame instead of 22 separate hook callbacks.
+interface LanternEntry {
+  glow: THREE.MeshStandardMaterial | null
+  light: THREE.PointLight | null
+  halo: THREE.MeshBasicMaterial | null
+  seed: number
+}
+const lanternRegistry: LanternEntry[] = []
+function registerLantern(entry: LanternEntry) {
+  lanternRegistry.push(entry)
+  return () => {
+    const i = lanternRegistry.indexOf(entry)
+    if (i >= 0) lanternRegistry.splice(i, 1)
+  }
+}
 
 const POST_DARK = '#3A2818'
 const POST_WARM = '#5D452B'
@@ -31,35 +49,21 @@ const PHASE_PT_LIGHT: Record<TimePhase, number> = {
 
 type Theme = 'day' | 'dusk'
 
-function Lantern({ seed }: { seed: number }) {
+function Lantern({ seed, registerInto }: { seed: number; registerInto: (e: LanternEntry) => void }) {
   const glowMatRef = useRef<THREE.MeshStandardMaterial>(null)
   const lightRef   = useRef<THREE.PointLight>(null)
-  const tod = useTimeOfDay()
-  // Lerp between current and next phase by blend
-  const order: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
-  const idx = order.indexOf(tod.phase)
-  const ne = order[(idx + 1) % order.length]
-  const targetEmissive = PHASE_EMISSIVE[tod.phase] + (PHASE_EMISSIVE[ne] - PHASE_EMISSIVE[tod.phase]) * tod.blend
-  const targetLight    = PHASE_PT_LIGHT[tod.phase] + (PHASE_PT_LIGHT[ne] - PHASE_PT_LIGHT[tod.phase]) * tod.blend
-  // Flicker enabled when emissive is high (dusk/night/dawn glow)
-  const flickerActive = targetEmissive > 0.85
-
-  useFrame((s, dt) => {
-    const k = 1 - Math.exp(-dt * 1.8)
-    const t = s.clock.elapsedTime
-    const flicker = flickerActive
-      ? 1 + Math.sin(t * 7 + seed) * 0.06 + Math.sin(t * 13 + seed * 1.7) * 0.03
-      : 1
-
-    if (glowMatRef.current) {
-      const cur = glowMatRef.current.emissiveIntensity
-      glowMatRef.current.emissiveIntensity = cur + (targetEmissive * flicker - cur) * k
+  const haloMatRef = useRef<THREE.MeshBasicMaterial>(null)
+  // Register refs into shared registry on mount. Parent's single
+  // useFrame handles ALL animations — no per-Lantern useFrame.
+  useEffect(() => {
+    const entry: LanternEntry = {
+      glow: glowMatRef.current,
+      light: lightRef.current,
+      halo: haloMatRef.current,
+      seed,
     }
-    if (lightRef.current) {
-      const cur = lightRef.current.intensity
-      lightRef.current.intensity = cur + (targetLight * flicker - cur) * k
-    }
-  })
+    return registerInto(entry)
+  }, [seed, registerInto])
 
   return (
     <group>
@@ -117,60 +121,88 @@ function Lantern({ seed }: { seed: number }) {
         decay={2}
         position={[0, 1.58, 0]}
       />
-      {/* V2 wave 3: warm halo cone beneath the lantern — visible at
-          dusk + night via DuskHalo. Reads as the warm light pool the
-          lantern casts down onto the ground. */}
-      <DuskHalo seed={seed} />
+      {/* Halo cone — material registered into shared registry too,
+          parent useFrame animates opacity. */}
+      <mesh position={[0, 0.79, 0]}>
+        <coneGeometry args={[0.55, 1.58, 16, 1, true]} />
+        <meshBasicMaterial
+          ref={haloMatRef}
+          color="#FFD58F"
+          transparent
+          opacity={0}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
     </group>
   )
 }
 
-function DuskHalo({ seed }: { seed: number }) {
-  const matRef = useRef<THREE.MeshBasicMaterial>(null)
-  // F-deep: pulls halo target from PHASE_EMISSIVE so dawn/dusk/night
-  // get correctly graduated halos. Was 2-state (only dusk).
+const HALO_BY_PHASE: Record<TimePhase, number> = { dawn: 0.12, day: 0, dusk: 0.30, night: 0.42 }
+const PHASE_ORDER: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
+
+// Single useFrame for ALL lanterns + halos. Replaces 22 separate
+// per-component hooks. Computes phase targets ONCE per frame.
+function LanternsAnimator() {
   const tod = useTimeOfDay()
-  const orderH: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
-  const haloByPhase: Record<TimePhase, number> = { dawn: 0.12, day: 0, dusk: 0.30, night: 0.42 }
-  const idxH = orderH.indexOf(tod.phase)
-  const haloA = haloByPhase[tod.phase]
-  const haloB = haloByPhase[orderH[(idxH + 1) % orderH.length]]
+  const idx = PHASE_ORDER.indexOf(tod.phase)
+  const ne = PHASE_ORDER[(idx + 1) % PHASE_ORDER.length]
+  const targetEmissive = PHASE_EMISSIVE[tod.phase] + (PHASE_EMISSIVE[ne] - PHASE_EMISSIVE[tod.phase]) * tod.blend
+  const targetLight    = PHASE_PT_LIGHT[tod.phase] + (PHASE_PT_LIGHT[ne] - PHASE_PT_LIGHT[tod.phase]) * tod.blend
+  const haloA = HALO_BY_PHASE[tod.phase]
+  const haloB = HALO_BY_PHASE[ne]
   const haloTarget = haloA + (haloB - haloA) * tod.blend
+  const flickerActive = targetEmissive > 0.85
   useFrame((s, dt) => {
-    const m = matRef.current
-    if (!m) return
+    // Perf: skip entirely when steady-state day (no flicker, halo near 0,
+    // and all glows have settled close to day's 0.55 emissive).
+    if (!flickerActive && haloTarget < 0.05) {
+      // Snap a few times to settle, then sleep
+      for (const e of lanternRegistry) {
+        if (e.glow && Math.abs(e.glow.emissiveIntensity - targetEmissive) > 0.01) {
+          e.glow.emissiveIntensity = e.glow.emissiveIntensity + (targetEmissive - e.glow.emissiveIntensity) * 0.1
+        }
+        if (e.light && Math.abs(e.light.intensity - targetLight) > 0.01) {
+          e.light.intensity = e.light.intensity + (targetLight - e.light.intensity) * 0.1
+        }
+        if (e.halo && e.halo.opacity > 0.005) {
+          e.halo.opacity = e.halo.opacity * 0.9
+        }
+      }
+      return
+    }
     const t = s.clock.elapsedTime
-    const flicker = 1 + Math.sin(t * 7 + seed) * 0.10
-    const target = haloTarget * flicker
-    const k = 1 - Math.exp(-dt * 1.5)
-    m.opacity = m.opacity + (target - m.opacity) * k
+    const k = 1 - Math.exp(-dt * 1.8)
+    const k2 = 1 - Math.exp(-dt * 1.5)
+    for (const e of lanternRegistry) {
+      const flicker = flickerActive
+        ? 1 + Math.sin(t * 7 + e.seed) * 0.06 + Math.sin(t * 13 + e.seed * 1.7) * 0.03
+        : 1
+      const haloFlicker = 1 + Math.sin(t * 7 + e.seed) * 0.10
+      if (e.glow) {
+        e.glow.emissiveIntensity = e.glow.emissiveIntensity + (targetEmissive * flicker - e.glow.emissiveIntensity) * k
+      }
+      if (e.light) {
+        e.light.intensity = e.light.intensity + (targetLight * flicker - e.light.intensity) * k
+      }
+      if (e.halo) {
+        const ht = haloTarget * haloFlicker
+        e.halo.opacity = e.halo.opacity + (ht - e.halo.opacity) * k2
+      }
+    }
   })
-  return (
-    <mesh position={[0, 0.79, 0]}>
-      {/* Sub-A fix: cone now spans apex at y=1.58 (lantern body) to
-          base at y=0 (ground). Height 1.58, center y=0.79. */}
-      <coneGeometry args={[0.55, 1.58, 16, 1, true]} />
-      <meshBasicMaterial
-        ref={matRef}
-        color="#FFD58F"
-        transparent
-        opacity={0}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-        blending={THREE.AdditiveBlending}
-      />
-    </mesh>
-  )
+  return null
 }
 
 export default function Lanterns({ theme: _theme }: { theme?: Theme } = {}) {
-  // theme prop kept for back-compat but ignored — Lantern reads phase
-  // directly from useTimeOfDay().
+  // theme prop kept for back-compat but ignored — phase comes from useTimeOfDay.
   return (
     <group>
+      <LanternsAnimator />
       {LANTERN_POSITIONS.map(([x, z], i) => (
         <group key={`l${i}`} position={[x, 0, z]}>
-          <Lantern seed={i * 1.7} />
+          <Lantern seed={i * 1.7} registerInto={registerLantern} />
         </group>
       ))}
     </group>

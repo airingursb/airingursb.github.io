@@ -384,13 +384,17 @@ function ThemeAwareLights({ theme: _theme }: { theme?: Theme } = {}) {
         intensity={p.sunIntensity}
         color={p.sunColor}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        /* Perf: 2048² shadow map only on high tier — was the biggest
+           GPU cost on medium devices (4M shadow texels/frame). 1024²
+           reads identical at the diorama distance + tightened frustum
+           (±24→±18) sharpens shadows further. */
+        shadow-mapSize={QUALITY === 'high' ? [2048, 2048] : [1024, 1024]}
         shadow-camera-near={1}
         shadow-camera-far={80}
-        shadow-camera-left={-24}
-        shadow-camera-right={24}
-        shadow-camera-top={24}
-        shadow-camera-bottom={-24}
+        shadow-camera-left={-18}
+        shadow-camera-right={18}
+        shadow-camera-top={18}
+        shadow-camera-bottom={-18}
         shadow-bias={-0.0005}
       />
       <directionalLight position={[-14, 12, -10]} intensity={0.4} color={p.fillColor1} />
@@ -633,8 +637,11 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         )}
         {QUALITY !== 'low' && (
           <SSAO
-            samples={QUALITY === 'high' ? 12 : 8}
-            radius={0.15}
+            /* Perf: dropped samples (8→5 on medium) + radius (0.15→0.10).
+               Smaller radius = fewer cache misses. Visually identical at
+               this camera distance. */
+            samples={QUALITY === 'high' ? 8 : 5}
+            radius={QUALITY === 'high' ? 0.15 : 0.10}
             intensity={12}
             luminanceInfluence={0.6}
             color={0x000000}

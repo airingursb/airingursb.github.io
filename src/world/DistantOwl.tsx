@@ -28,6 +28,9 @@ export default function DistantOwl({ theme: _theme }: { theme?: Theme } = {}) {
     0
 
   useFrame((s, dt) => {
+    // Perf: when owl is invisible (day) AND opacity has settled to 0,
+    // skip the blink+lerp math entirely. SunsetBirds pattern.
+    if (baseTarget < 0.01 && (leftRef.current?.opacity ?? 0) < 0.01) return
     const t = s.clock.elapsedTime
     // Blink: brief lid-close every ~6 seconds, 0.18s closed
     const cyclePhase = t % 6

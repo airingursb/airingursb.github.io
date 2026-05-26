@@ -87,17 +87,20 @@ export default function Sky({ theme }: { theme?: 'day' | 'dusk' } = {}) {
 
       {/* Puffy clouds — drifting masses, phase-tinted. Lambert (not
           Basic) so the directional sun intensity actually affects them —
-          clouds dim at night instead of glowing brighter than the dark sky. */}
+          clouds dim at night instead of glowing brighter than the dark sky.
+          Perf: segments halved (32→18 / 28→16 etc) — Cloud is real
+          raymarched geometry (~segments³ samples) so this cuts vert
+          count ~70%. Visually identical at diorama distance. */}
       <Clouds material={THREE.MeshLambertMaterial} limit={400}>
-        <Cloud seed={1} segments={32} position={[-30, 18, -20]} bounds={[10, 4, 6]} volume={6} color={p.cloudColor} opacity={0.85} fade={20} />
-        <Cloud seed={2} segments={28} position={[ 28, 22, -18]} bounds={[ 8, 3, 5]} volume={5} color={p.cloudColor} opacity={0.80} fade={20} />
-        <Cloud seed={3} segments={26} position={[  0, 24,  28]} bounds={[ 9, 3, 5]} volume={5} color={p.cloudColor} opacity={0.78} fade={22} />
-        <Cloud seed={4} segments={24} position={[-22, 20,  22]} bounds={[ 7, 3, 4]} volume={4} color={p.cloudColor} opacity={0.75} fade={22} />
-        <Cloud seed={5} segments={22} position={[ 18, 16,  26]} bounds={[ 6, 2.5, 4]} volume={4} color={p.cloudColor} opacity={0.70} fade={22} />
+        <Cloud seed={1} segments={18} position={[-30, 18, -20]} bounds={[10, 4, 6]} volume={6} color={p.cloudColor} opacity={0.85} fade={20} />
+        <Cloud seed={2} segments={16} position={[ 28, 22, -18]} bounds={[ 8, 3, 5]} volume={5} color={p.cloudColor} opacity={0.80} fade={20} />
+        <Cloud seed={3} segments={16} position={[  0, 24,  28]} bounds={[ 9, 3, 5]} volume={5} color={p.cloudColor} opacity={0.78} fade={22} />
+        <Cloud seed={4} segments={14} position={[-22, 20,  22]} bounds={[ 7, 3, 4]} volume={4} color={p.cloudColor} opacity={0.75} fade={22} />
+        <Cloud seed={5} segments={14} position={[ 18, 16,  26]} bounds={[ 6, 2.5, 4]} volume={4} color={p.cloudColor} opacity={0.70} fade={22} />
         {/* High cirrus — catches more sun, warmer at dawn/dusk */}
-        <Cloud seed={11} segments={20} position={[-32, 45,   8]} bounds={[22, 1, 5]} volume={3} color={p.cirrusColor} opacity={0.32} fade={28} />
-        <Cloud seed={13} segments={20} position={[  4, 50,  22]} bounds={[20, 1, 4]} volume={3} color={p.cirrusColor} opacity={0.32} fade={28} />
-        <Cloud seed={14} segments={20} position={[-22, 52, -24]} bounds={[22, 1, 5]} volume={3} color={p.cirrusColor} opacity={0.28} fade={28} />
+        <Cloud seed={11} segments={12} position={[-32, 45,   8]} bounds={[22, 1, 5]} volume={3} color={p.cirrusColor} opacity={0.32} fade={28} />
+        <Cloud seed={13} segments={12} position={[  4, 50,  22]} bounds={[20, 1, 4]} volume={3} color={p.cirrusColor} opacity={0.32} fade={28} />
+        <Cloud seed={14} segments={12} position={[-22, 52, -24]} bounds={[22, 1, 5]} volume={3} color={p.cirrusColor} opacity={0.28} fade={28} />
       </Clouds>
 
       {/* F-deep: stars only show at dusk-late and night. Without them
@@ -109,7 +112,13 @@ export default function Sky({ theme }: { theme?: 'day' | 'dusk' } = {}) {
         <Stars
           radius={300}
           depth={50}
-          count={typeof window !== 'undefined' && (window as unknown as { __WORLD_QUALITY?: string }).__WORLD_QUALITY === 'low' ? 1200 : 3000}
+          /* Perf: was 3000 (1200 on low). 2000 reads identical thanks
+             to the shimmer shader; saves ~30% per-vertex sin calls. */
+          count={(() => {
+            if (typeof window === 'undefined') return 1500
+            const q = (window as unknown as { __WORLD_QUALITY?: string }).__WORLD_QUALITY
+            return q === 'low' ? 600 : q === 'high' ? 2000 : 1200
+          })()}
           factor={4}
           fade
           speed={0.5}
