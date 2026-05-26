@@ -428,6 +428,40 @@ import IslandWidget from './IslandWidget'
         }, 1500)
       }
     } catch (_) {}
+
+    // E1: real-weather-driven ambient fx. When the homepage weather
+    // fetch lands, schedule a low-frequency atmospheric pulse on the
+    // pet matching real Singapore weather:
+    //   rainy → ripple (water surface)
+    //   thunder → moonglow (electric flash feel)
+    //   cloudy → wind (gusty grey)
+    //   sunny → sakura (occasional petal fall)
+    // Fires every 90-150s while page is open. ZERO if user already
+    // hovered (don't compete with user attention).
+    const WEATHER_FX_MAP = { rainy: 'ripple', thunder: 'moonglow', cloudy: 'wind', sunny: 'sakura' }
+    let weatherFxTimer = 0
+    function scheduleWeatherFx() {
+      clearTimeout(weatherFxTimer)
+      const next = 90000 + Math.random() * 60000   // 90-150s
+      weatherFxTimer = setTimeout(() => {
+        // Skip if user is currently hovering — don't compete
+        const isHovering = wrap.matches(':hover') || wrap.classList.contains('is-revealed')
+        if (!isHovering) {
+          const fxType = WEATHER_FX_MAP[window.__petWeather] || 'sakura'
+          const rect = fxLayer.getBoundingClientRect()
+          const burst = document.createElement('div')
+          burst.className = 'island-fx-burst island-fx-' + fxType
+          spawners[fxType](burst, rect, rect.width / 2, rect.height / 2)
+          fxLayer.appendChild(burst)
+          setTimeout(() => burst.remove(), totalMs[fxType] || 4000)
+        }
+        scheduleWeatherFx()
+      }, next)
+    }
+    // Kick off after first weather data lands, OR 5s if no event fires
+    window.addEventListener('pet-weather', scheduleWeatherFx, { once: true })
+    setTimeout(() => { if (!weatherFxTimer) scheduleWeatherFx() }, 5000)
+
     function playFx(e) {
       if (!fxLayer) return
       // Cap concurrent bursts at 4 — rapid-click could otherwise

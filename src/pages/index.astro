@@ -2800,6 +2800,11 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           tempEl.textContent = Math.round(cw.temperature) + '°C';
           descEl.textContent = info.desc;
           badge.classList.add('loaded');
+          // E1: expose weather to pet IslandWidget so it can sync fx
+          // to real Singapore weather (rainy → ripple, thunder → moonglow
+          // burst, cloudy → wind, sunny → sakura).
+          window.__petWeather = info.type;
+          window.dispatchEvent(new CustomEvent('pet-weather', { detail: info.type }));
         })
         .catch(function () {
           // Silently fail - don't show weather badge
