@@ -1,10 +1,15 @@
 // Invisible click hitboxes over each work-zone in the scene.
 // Fires a 'world-zone-click' event with the zone kind so the HTML
 // panel (outside the canvas) can open the right view.
+//
+// B1 (direction): hover shows a small floating label over the zone
+// with the kind + Chinese subtitle. Uses drei Html so labels stay
+// camera-facing + properly z-sorted.
 
 import { ZONES, type Interaction } from './zones'
 import { type ThreeEvent } from '@react-three/fiber'
 import { useState } from 'react'
+import { Html } from '@react-three/drei'
 import { emit } from './events'
 import { trackWorld } from './umami'
 
@@ -48,6 +53,20 @@ export default function ZoneHitboxes() {
                 <ringGeometry args={[r * 0.85, r * 0.95, 32]} />
                 <meshBasicMaterial color="#FFE4A8" transparent opacity={0.6} />
               </mesh>
+            )}
+            {/* Hover label — drei Html keeps it camera-facing + properly
+                z-sorted. center+transform so the floating tooltip sits
+                above the zone. pointer-events:none so it doesn't block
+                the hitbox underneath. */}
+            {isHover && (
+              <Html
+                position={[0, 2.4, 0]}
+                center
+                distanceFactor={10}
+                style={{ pointerEvents: 'none' }}
+              >
+                <div className="zone-hover-label">{z.label}</div>
+              </Html>
             )}
           </group>
         )
