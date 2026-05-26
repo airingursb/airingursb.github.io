@@ -104,12 +104,12 @@ export default function BlogKiosk({
           picks it up. */}
       {fresh && (
         <mesh position={[0, BOARD_Y, 0]} renderOrder={1}>
-          <sphereGeometry args={[1.4, 16, 12]} />
+          <sphereGeometry args={[0.85, 16, 12]} />
           <meshBasicMaterial
             ref={auraRef}
             color="#FFD08A"
             transparent
-            opacity={0.30}
+            opacity={0.18}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
           />

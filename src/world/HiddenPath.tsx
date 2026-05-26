@@ -80,7 +80,7 @@ export default function HiddenPath() {
           <meshStandardMaterial
             color="#FFD58F"
             emissive="#FFD58F"
-            emissiveIntensity={baseGlow * 1.6}
+            emissiveIntensity={baseGlow * 0.9}
             roughness={0.7}
           />
         </mesh>
