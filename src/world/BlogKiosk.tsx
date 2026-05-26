@@ -71,6 +71,9 @@ export interface BlogKioskProps {
   spriteUrl: string
   bannerUrl: string
   content: DisplayContent
+  // C1 (direction): if true (post within last 7 days), kiosk gets a
+  // warm pulsing aura — "Airing is writing." Real-data heartbeat.
+  fresh?: boolean
 }
 
 export default function BlogKiosk({
@@ -79,14 +82,39 @@ export default function BlogKiosk({
   spriteUrl,
   bannerUrl,
   content,
+  fresh = false,
 }: BlogKioskProps) {
   const W = 1.55           // narrower than default
   const H = 2.9            // taller than default
   const POST_H = 1.0
   const BOARD_Y = 0.3 + POST_H + H / 2
+  const auraRef = useRef<THREE.MeshBasicMaterial>(null)
+  useFrame((s) => {
+    if (!fresh || !auraRef.current) return
+    const t = s.clock.elapsedTime
+    // 4s breathe — opacity 0.15 → 0.45 sine
+    auraRef.current.opacity = 0.30 + Math.sin(t * 1.6) * 0.15
+  })
 
   return (
     <group position={[position[0], 0, position[1]]} rotation={[0, rotation, 0]}>
+      {/* C1: 'fresh post' aura — soft warm sphere pulsing around the
+          kiosk top when a blog post landed in last 7 days. Reads as
+          "Airing has been writing." emissive-friendly mat so Bloom
+          picks it up. */}
+      {fresh && (
+        <mesh position={[0, BOARD_Y, 0]} renderOrder={1}>
+          <sphereGeometry args={[1.4, 16, 12]} />
+          <meshBasicMaterial
+            ref={auraRef}
+            color="#FFD08A"
+            transparent
+            opacity={0.30}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      )}
       {/* === Stone foundation (square, like a Victorian curb) === */}
       <mesh position={[0, 0.1, 0]} castShadow receiveShadow>
         <boxGeometry args={[0.85, 0.2, 0.85]} />

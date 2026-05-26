@@ -538,6 +538,16 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
           rotation={-2.5}
           spriteUrl="/world/sprites/buildings/C01-bookshelf.png"
           bannerUrl="/world/sprites/banners/E01-blog.png"
+          fresh={(() => {
+            // C1: pulse if most recent blog post is within last 7 days.
+            // dates are YYYY.MM.DD strings.
+            const latest = data.blog[0]?.date
+            if (!latest) return false
+            const [y, m, d] = latest.split('.').map(Number)
+            if (!y || !m || !d) return false
+            const ts = new Date(y, m - 1, d).getTime()
+            return Date.now() - ts < 7 * 86400 * 1000
+          })()}
           content={{
             title: '文章',
             subtitle: 'Blog · ursb.me/blog',
