@@ -1534,6 +1534,75 @@ function ContextLossHandlers() {
 // holds ~15-20s per cycle — without the ease, the money pose existed
 // for 0 frames. Pauses on hover. Lights stay outside this group
 // (world-fixed) so shading is consistent across all rotation angles.
+// E4: a tiny bird that occasionally flies across the pet scene.
+// Every 45-90s: enters from one side, traces a slow sine path
+// across the island ~3.5 units above ground, exits the other side.
+// Pure geometry — two flat triangles + a body sphere.
+function WanderingBird() {
+  const groupRef = useRef<THREE.Group>(null)
+  const wingLRef = useRef<THREE.Mesh>(null)
+  const wingRRef = useRef<THREE.Mesh>(null)
+  const flightRef = useRef<{ active: boolean; started: number; next: number; dir: 1 | -1 }>({
+    active: false,
+    started: 0,
+    next: 30 + Math.random() * 60,   // first flight at 30-90s
+    dir: 1,
+  })
+  useFrame((s) => {
+    if (!groupRef.current) return
+    const t = s.clock.elapsedTime
+    const f = flightRef.current
+    if (!f.active && t >= f.next) {
+      f.active = true
+      f.started = t
+      f.dir = Math.random() < 0.5 ? 1 : -1
+    }
+    if (!f.active) {
+      // Hide off-stage
+      groupRef.current.position.x = 100
+      return
+    }
+    const FLIGHT_DURATION = 8
+    const elapsed = t - f.started
+    const progress = elapsed / FLIGHT_DURATION
+    if (progress >= 1) {
+      f.active = false
+      f.next = t + 45 + Math.random() * 45
+      return
+    }
+    // Path: enter at x=-3 → x=+3 (or reversed), wave-shaped y ~3.5 ±0.3
+    const x = (-3 + progress * 6) * f.dir
+    const y = 3.5 + Math.sin(progress * Math.PI * 2) * 0.3
+    const z = -0.8 + Math.cos(progress * Math.PI) * 1.2
+    groupRef.current.position.set(x, y, z)
+    // Face direction of motion
+    groupRef.current.rotation.y = f.dir === 1 ? -Math.PI / 2 : Math.PI / 2
+    // Wing flap — 12Hz sine
+    const flap = Math.sin(t * 12) * 0.6
+    if (wingLRef.current) wingLRef.current.rotation.z = -flap
+    if (wingRRef.current) wingRRef.current.rotation.z = flap
+  })
+  return (
+    <group ref={groupRef} scale={0.08}>
+      {/* Body — tiny dark sphere */}
+      <mesh>
+        <sphereGeometry args={[1, 6, 5]} />
+        <meshStandardMaterial color="#3A2A1E" roughness={0.9} flatShading />
+      </mesh>
+      {/* Left wing */}
+      <mesh ref={wingLRef} position={[-1, 0, 0]} rotation={[0, 0, 0]}>
+        <coneGeometry args={[0.4, 1.4, 3]} />
+        <meshStandardMaterial color="#2A1E14" flatShading />
+      </mesh>
+      {/* Right wing */}
+      <mesh ref={wingRRef} position={[1, 0, 0]} rotation={[0, 0, 0]}>
+        <coneGeometry args={[0.4, 1.4, 3]} />
+        <meshStandardMaterial color="#2A1E14" flatShading />
+      </mesh>
+    </group>
+  )
+}
+
 function RotatingScene({ children }: { children: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
   const RATE = (Math.PI * 2) / 180   // one full turn per 3 minutes (baseline)
@@ -1719,6 +1788,7 @@ export default function IslandWidget() {
         <RakedGravel />
         <MinkaCabin />
         <ChimneySmoke />
+        <WanderingBird />
 
         {/* WindSway wrap. V52.6: scale 0.56 caps sakura canopy peak
             at y=3.19 to clear the y=3.25 frustum top.
