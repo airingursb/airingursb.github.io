@@ -98,18 +98,31 @@ export default function ZonePanel({ initialData }: { initialData?: InitialData }
     <div className="world-panel-backdrop" onClick={onBackdrop}>
     <div
       ref={panelRef}
-      className={`world-panel${closing ? ' world-panel--closing' : ''}`}
+      className={`world-panel world-panel--${zone}${closing ? ' world-panel--closing' : ''}`}
       onClick={(e) => e.stopPropagation()}
       role="dialog"
       aria-modal="true"
       aria-labelledby="world-panel-title"
       tabIndex={-1}
     >
+      {/* B2: cabin-interior visual treatment for chat zone. Hearth glow
+          in bottom-left corner of the panel + faint paper texture. */}
+      {zone === 'chat' && (
+        <div className="world-panel-cabin-bg" aria-hidden="true">
+          <div className="cabin-hearth-glow" />
+          <div className="cabin-shoji-grid" />
+        </div>
+      )}
       <div className="world-panel-head">
         <span className="world-panel-title" id="world-panel-title">{LABELS[zone]}</span>
         <button className="world-panel-close" onClick={close} aria-label="关闭面板">✕</button>
       </div>
       <div className="world-panel-body">
+        {zone === 'chat' && (
+          <p className="world-panel-cabin-tagline">
+            进了 Airing 的木屋。火炉旁问点什么吧。
+          </p>
+        )}
         {renderZoneContent(zone, initialData)}
       </div>
     </div>
