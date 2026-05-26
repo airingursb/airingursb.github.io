@@ -36,6 +36,7 @@ import Forest from './Forest'
 import Lanterns from './Lanterns'
 import DuskFog from './DuskFog'
 import Onsen from './Onsen'
+import PondFish from './PondFish'
 import FoxShrine from './FoxShrine'
 import CanopyDapple from './CanopyDapple'
 import Footprints from './Footprints'
@@ -480,6 +481,11 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
       <ThemeAwareLights theme={theme} />
 
       {/* === The diorama (Suspense-wrapped so async resources show no flash) === */}
+      {/* D2 (phased): CORE scene loads first (Island/Forest/Cabin/zones/
+          avatars) so the user sees the recognizable diorama ASAP. Inner
+          Suspense holds decorations (mushrooms, fox shrine, wisteria,
+          fog, birds, distant owl) until first paint settles — they
+          stream in over the next ~500ms without blocking core layout. */}
       <Suspense fallback={null}>
         <Island />
         <ForestPath />
@@ -494,31 +500,36 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         <Deck />
         <HammockSpot />
         <EaselClearing />
-        <Storytelling />
-        <Domestic />
-        <Critters theme={theme} />
-        <Atmospherics />
         <Avatar />
         <MochiNPC />
         <DistantIslands />
-        <Campfire />
-        <CloudShadows />
         <Lanterns theme={theme} />
-        {QUALITY !== 'low' && <DuskFog theme={theme} />}
         <Onsen />
-        <FoxShrine />
-        {QUALITY !== 'low' && <CanopyDapple theme={theme} />}
-        <Footprints />
-        <WindChime />
-        <PersimmonTree />
-        {QUALITY !== 'low' && <SunsetBirds theme={theme} />}
-        <PathMushrooms />
-        <WisteriaArch />
-        <DistantOwl theme={theme} />
-        <ContactShadowsLayer />
-        <ZoneHitboxes />
-        <ZoneHints />
-        <AmbientFX />
+
+        <Suspense fallback={null}>
+          {/* SECONDARY: decorations + atmosphere — load after core */}
+          <Storytelling />
+          <Domestic />
+          <Critters theme={theme} />
+          <Atmospherics />
+          <Campfire />
+          <CloudShadows />
+          {QUALITY !== 'low' && <DuskFog theme={theme} />}
+          <FoxShrine />
+          {QUALITY !== 'low' && <CanopyDapple theme={theme} />}
+          <Footprints />
+          <WindChime />
+          <PersimmonTree />
+          {QUALITY !== 'low' && <SunsetBirds theme={theme} />}
+          <PathMushrooms />
+          <WisteriaArch />
+          <DistantOwl theme={theme} />
+          <ContactShadowsLayer />
+          <ZoneHitboxes />
+          <ZoneHints />
+          <AmbientFX />
+          <PondFish />
+        </Suspense>
 
         {/* === Portfolio displays — bespoke structure per zone for visual variety === */}
         {/* Blog · newspaper kiosk (tall narrow, arch overhang, bench in front) */}
