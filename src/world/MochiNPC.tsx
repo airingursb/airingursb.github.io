@@ -24,9 +24,25 @@ export default function MochiNPC() {
   // Slightly forward so he's a visible companion to the avatar.
   // y=0.65 chosen to clear porch step without colliding with awning at any
   // orbit polar angle.
-  const pos: [number, number, number] = [-0.6, 0.65, 1.6]
+  const homePos: [number, number, number] = [-0.6, 0.65, 1.6]
   const headRef = useRef<THREE.Group>(null)
   const bodyRef = useRef<THREE.Group>(null)
+  const rootRef = useRef<THREE.Group>(null)
+  // A2 (direction): Mochi occasionally walks. Every 90-150s he chooses
+  // a target (cabin porch area / hammock direction / 'curious peek')
+  // and walks there over 12s, hovers 8s, then returns. He's usually
+  // home; the rare walk reads as 'thinking, maybe peeking out'.
+  const wanderRef = useRef<{
+    state: 'home' | 'out' | 'hover' | 'back'
+    target: [number, number, number]
+    started: number
+    nextWander: number
+  }>({
+    state: 'home',
+    target: homePos,
+    started: 0,
+    nextWander: 90 + Math.random() * 60,   // first wander at 90-150s
+  })
 
   // V2 wave 3: layered head behavior. Default gentle wobble + every
   // 22-30s a dramatic "look around" sweep (left, right, up, center)
@@ -89,6 +105,50 @@ export default function MochiNPC() {
       if (bodyRef.current) bodyRef.current.rotation.y = 0
     }
 
+    // A2 wander state machine
+    const w = wanderRef.current
+    if (rootRef.current) {
+      if (w.state === 'home' && t >= w.nextWander) {
+        // Pick a random nearby target — small radius so he stays near cabin
+        const candidates: Array<[number, number, number]> = [
+          [-1.4, 0.65, 2.6],   // toward path
+          [ 0.4, 0.65, 1.8],   // east of porch
+          [-1.2, 0.65, 0.8],   // toward door
+        ]
+        w.target = candidates[Math.floor(Math.random() * candidates.length)]
+        w.state = 'out'
+        w.started = t
+      }
+      const segmentDuration = w.state === 'out' || w.state === 'back' ? 12 : 8
+      const elapsed = t - w.started
+      const progress = Math.min(1, elapsed / segmentDuration)
+      const eased = 0.5 - Math.cos(progress * Math.PI) * 0.5   // ease-in-out
+      if (w.state === 'out') {
+        const x = homePos[0] + (w.target[0] - homePos[0]) * eased
+        const z = homePos[2] + (w.target[2] - homePos[2]) * eased
+        rootRef.current.position.x = x
+        rootRef.current.position.z = z
+        // Bob slightly while walking
+        rootRef.current.position.y = homePos[1] + Math.abs(Math.sin(t * 5)) * 0.04 * (progress < 1 ? 1 : 0)
+        if (progress >= 1) { w.state = 'hover'; w.started = t }
+      } else if (w.state === 'hover') {
+        rootRef.current.position.x = w.target[0]
+        rootRef.current.position.z = w.target[2]
+        rootRef.current.position.y = homePos[1]
+        if (progress >= 1) { w.state = 'back'; w.started = t }
+      } else if (w.state === 'back') {
+        const x = w.target[0] + (homePos[0] - w.target[0]) * eased
+        const z = w.target[2] + (homePos[2] - w.target[2]) * eased
+        rootRef.current.position.x = x
+        rootRef.current.position.z = z
+        rootRef.current.position.y = homePos[1] + Math.abs(Math.sin(t * 5)) * 0.04 * (progress < 1 ? 1 : 0)
+        if (progress >= 1) {
+          w.state = 'home'
+          w.nextWander = t + 90 + Math.random() * 60
+        }
+      }
+    }
+
     // Decide whether to start an active "look around" episode
     const la = lookAtRef.current
     if (!la.active && t >= la.next) {
@@ -136,7 +196,7 @@ export default function MochiNPC() {
   })
 
   return (
-    <group position={pos}>
+    <group ref={rootRef} position={homePos}>
       {/* Contact shadow */}
       <mesh position={[0, -0.58, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[0.4, 16]} />
