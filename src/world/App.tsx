@@ -37,6 +37,7 @@ import Lanterns from './Lanterns'
 import DuskFog from './DuskFog'
 import Onsen from './Onsen'
 import PondFish from './PondFish'
+import HiddenPath from './HiddenPath'
 import FoxShrine from './FoxShrine'
 import CanopyDapple from './CanopyDapple'
 import Footprints from './Footprints'
@@ -531,6 +532,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
           <ZoneHints />
           <AmbientFX />
           <PondFish />
+          <HiddenPath />
         </Suspense>
 
         {/* === Portfolio displays — bespoke structure per zone for visual variety === */}
