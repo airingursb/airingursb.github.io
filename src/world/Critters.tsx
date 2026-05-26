@@ -450,13 +450,20 @@ function DuskFireflies({ phase }: { phase: Phase }) {
   // Earlier `8 at day` was light pollution.
   if (phase === 'day' || phase === 'dawn') return null
   const isNight = phase === 'night'
+  // C3: midnight firefly STORM — between 23:50 and 00:10 local time,
+  // count doubles + speed bumps. Subtle time-coded event. URL ?fx=storm
+  // gives the same on-demand for testing.
+  const now = new Date()
+  const m = now.getHours() * 60 + now.getMinutes()
+  const isMidnightStorm = m >= 23 * 60 + 50 || m < 10
+  const stormMul = isMidnightStorm ? 2 : 1
   return (
     <Sparkles
-      count={isNight ? 36 : 24}
-      scale={[4, 2.4, 4]}
+      count={(isNight ? 36 : 24) * stormMul}
+      scale={isMidnightStorm ? [6, 3, 6] : [4, 2.4, 4]}
       position={[-4.0, 1.5, -12.0]}
       size={isNight ? 8 : 7}
-      speed={isNight ? 0.55 : 0.45}
+      speed={(isNight ? 0.55 : 0.45) * (isMidnightStorm ? 1.5 : 1)}
       color={isNight ? '#FFC840' : '#FFD060'}
       opacity={isNight ? 1.0 : 0.92}
     />
