@@ -50,6 +50,12 @@ function registerTap(seed: number, now: number) {
     combo.flareUntil = now + 1.6
     combo.fireworksTrigger = now
     combo.taps = []
+    // Two staggered firework pops 180ms apart to match the two visual
+    // bursts spawned by ComboFireworks.
+    import('./AmbientAudio').then(m => {
+      m.playFireworkPop()
+      setTimeout(() => m.playFireworkPop(), 180)
+    }).catch(() => {})
   }
 }
 

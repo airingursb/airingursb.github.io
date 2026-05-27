@@ -27,6 +27,11 @@ function weatherCodeToKind(code: number): WeatherKind {
 
 function readCached(): WeatherKind {
   if (typeof window === 'undefined') return null
+  // URL override for testing — beats both cache + open-meteo
+  try {
+    const p = new URLSearchParams(window.location.search).get('weather')
+    if (p === 'sunny' || p === 'cloudy' || p === 'rainy' || p === 'thunder') return p
+  } catch {}
   try {
     const v = localStorage.getItem(STORAGE_KEY)
     if (v === 'sunny' || v === 'cloudy' || v === 'rainy' || v === 'thunder') return v
@@ -34,9 +39,21 @@ function readCached(): WeatherKind {
   return null
 }
 
+function hasUrlOverride(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const p = new URLSearchParams(window.location.search).get('weather')
+    return p === 'sunny' || p === 'cloudy' || p === 'rainy' || p === 'thunder'
+  } catch {
+    return false
+  }
+}
+
 function useWeather(): WeatherKind {
   const [weather, setWeather] = useState<WeatherKind>(readCached)
   useEffect(() => {
+    // URL override locks in to that weather — no fetching, no listeners
+    if (hasUrlOverride()) return
     // Fetch fresh value (regardless of cache — but we use cache immediately).
     async function fetchNow() {
       try {

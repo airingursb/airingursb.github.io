@@ -193,6 +193,11 @@ export default function PondInteraction() {
           // Push to shared scatter registry (consumed by PondFish)
           pondImpacts.push({ at: now, x: hitX, z: hitZ })
           setActive((arr) => [...arr, { id: ++idRef.current, at: now, x: hitX, z: hitZ }])
+          // Splash sound — fires ~400ms after click to sync with the
+          // arc-stone hitting water (stone flight time is 500ms).
+          import('./AmbientAudio').then(m => {
+            setTimeout(() => m.playSplash(), 420)
+          }).catch(() => {})
         }}
         onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
         onPointerOut={(e) => { e.stopPropagation(); document.body.style.cursor = '' }}

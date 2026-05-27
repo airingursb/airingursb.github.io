@@ -248,6 +248,80 @@ export function getCurrentNoise(): NoiseColor {
 }
 
 /** Soft sine chime — used by Pomodoro phase change. */
+// C3 — small brass-bell ding for cabin bell. Two close-frequency sines
+// detuned slightly + fast attack, slower decay. Sounds "metallic round"
+// vs the pure-sine playChime.
+export function playBellRing(): void {
+  if (typeof window === 'undefined') return
+  const c = getCtx()
+  if (c.state === 'suspended') c.resume().catch(() => {})
+  const now = c.currentTime
+  const baseFreqs = [880, 1320]   // fundamental + perfect 5th overtone
+  baseFreqs.forEach((f, i) => {
+    const osc = c.createOscillator()
+    osc.type = i === 0 ? 'triangle' : 'sine'
+    osc.frequency.value = f
+    const g = c.createGain()
+    g.gain.setValueAtTime(0, now)
+    g.gain.linearRampToValueAtTime(i === 0 ? 0.22 : 0.10, now + 0.012)
+    g.gain.exponentialRampToValueAtTime(0.001, now + 1.6)
+    osc.connect(g)
+    g.connect(c.destination)
+    osc.start(now)
+    osc.stop(now + 1.8)
+  })
+}
+
+// C4 — distant firework pop. Burst of filtered noise + low thump.
+// Shorter and bassier than the bell to feel like "a long way off".
+export function playFireworkPop(): void {
+  if (typeof window === 'undefined') return
+  const c = getCtx()
+  if (c.state === 'suspended') c.resume().catch(() => {})
+  const now = c.currentTime
+  // Noise burst — white noise through highpass for "crackle"
+  const noise = c.createBufferSource()
+  noise.buffer = makeNoiseBuffer(c, 'white', 0.5)
+  const hp = c.createBiquadFilter()
+  hp.type = 'highpass'
+  hp.frequency.value = 1800
+  const ng = c.createGain()
+  ng.gain.setValueAtTime(0.16, now)
+  ng.gain.exponentialRampToValueAtTime(0.001, now + 0.45)
+  noise.connect(hp); hp.connect(ng); ng.connect(c.destination)
+  noise.start(now); noise.stop(now + 0.5)
+  // Low thump — short sine
+  const thump = c.createOscillator()
+  thump.type = 'sine'
+  thump.frequency.setValueAtTime(110, now)
+  thump.frequency.exponentialRampToValueAtTime(45, now + 0.18)
+  const tg = c.createGain()
+  tg.gain.setValueAtTime(0.18, now)
+  tg.gain.exponentialRampToValueAtTime(0.001, now + 0.22)
+  thump.connect(tg); tg.connect(c.destination)
+  thump.start(now); thump.stop(now + 0.25)
+}
+
+// C1 — water splash. Lowpassed pink noise with fast envelope —
+// reads as "rock hit pond surface".
+export function playSplash(): void {
+  if (typeof window === 'undefined') return
+  const c = getCtx()
+  if (c.state === 'suspended') c.resume().catch(() => {})
+  const now = c.currentTime
+  const noise = c.createBufferSource()
+  noise.buffer = makeNoiseBuffer(c, 'pink', 0.6)
+  const lp = c.createBiquadFilter()
+  lp.type = 'lowpass'
+  lp.frequency.setValueAtTime(3000, now)
+  lp.frequency.exponentialRampToValueAtTime(800, now + 0.4)
+  const g = c.createGain()
+  g.gain.setValueAtTime(0.18, now)
+  g.gain.exponentialRampToValueAtTime(0.001, now + 0.55)
+  noise.connect(lp); lp.connect(g); g.connect(c.destination)
+  noise.start(now); noise.stop(now + 0.6)
+}
+
 export function playChime(freq = 660, durationSec = 1.4): void {
   if (typeof window === 'undefined') return
   const c = getCtx()

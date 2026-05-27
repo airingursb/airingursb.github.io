@@ -41,6 +41,9 @@ export default function CabinBell() {
         e.stopPropagation()
         ringStartedRef.current = performance.now() / 1000
         emit('cabin-bell-ring', undefined)
+        // Procedural bell ding via Web Audio. Dynamic import keeps the
+        // audio module out of the critical render path.
+        import('./AmbientAudio').then(m => m.playBellRing()).catch(() => {})
       }}
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer' }}
       onPointerOut={(e) => { e.stopPropagation(); setHovered(false); document.body.style.cursor = '' }}
