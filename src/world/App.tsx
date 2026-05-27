@@ -37,7 +37,12 @@ import Lanterns from './Lanterns'
 import DuskFog from './DuskFog'
 import Onsen from './Onsen'
 import PondFish from './PondFish'
+import PondInteraction from './PondInteraction'
 import HiddenPath from './HiddenPath'
+import GuestbookStone from './GuestbookStone'
+import Telescope from './Telescope'
+import CabinBell from './CabinBell'
+import WeatherFX from './WeatherFX'
 import FoxShrine from './FoxShrine'
 import CanopyDapple from './CanopyDapple'
 import Footprints from './Footprints'
@@ -73,6 +78,7 @@ import MusicBandstand from './MusicBandstand'
 import ReadingCabinet from './ReadingCabinet'
 import CabinBanner from './CabinBanner'
 import { Sakura } from './Sakura'
+import SeasonalDecor from './SeasonalDecor'
 // Sub-A iter-10: Rainbow + HotAirBalloon + Scarecrow cut to protect cabin
 // as the visual hero. (Files left on disk for easy re-enable.)
 
@@ -126,6 +132,15 @@ function CameraControls() {
   // unit radius) over 1.5s as if "leaning in to watch lights come on",
   // then eases back to neutral.
   const breathRef = useRef({ active: false, started: 0 })
+  // C2 — telescope mode. Camera lerps to lookout POV looking at the
+  // distant horizon (DistantIslands direction). Toggle on/off via event.
+  const telescopeRef = useRef({
+    active: false,
+    started: 0,
+    savedPos: new Vector3(),
+    savedTarget: new Vector3(),
+    duration: 1.2,
+  })
   // J-deeper: mobile demo orbit. On first touch visit, AFTER intro
   // completes, do a 1s slow azimuthal orbit so the user sees that
   // the camera can move. sessionStorage gate (same key as the old
@@ -145,6 +160,35 @@ function CameraControls() {
     breathRef.current.active = true
     breathRef.current.started = performance.now() / 1000
   }), [])
+  // Telescope toggle — entering captures current camera state; exiting
+  // lerps it back.
+  useEffect(() => on('world-telescope-toggle', () => {
+    const tel = telescopeRef.current
+    if (!tel.active) {
+      // Capture current
+      tel.savedPos.copy(camera.position)
+      if (ref.current) tel.savedTarget.copy(ref.current.target)
+      tel.active = true
+      tel.started = performance.now() / 1000
+    } else {
+      // Exit — re-anchor "started" as exit start; we'll lerp back over duration
+      tel.active = false
+      tel.started = performance.now() / 1000
+    }
+    document.body.dataset.worldTelescope = tel.active ? 'on' : 'off'
+  }), [camera])
+  // Esc to exit telescope
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape' && telescopeRef.current.active) {
+        telescopeRef.current.active = false
+        telescopeRef.current.started = performance.now() / 1000
+        document.body.dataset.worldTelescope = 'off'
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Skip intro on first user interaction with the canvas
   useEffect(() => {
@@ -259,6 +303,58 @@ function CameraControls() {
         camera.lookAt(target)
       }
       return
+    }
+    // C2 — telescope mode. Lerp camera to/from lookout eyepiece POV.
+    // Eyepiece POV: positioned slightly back of the telescope at eye
+    // height (~1.6m), looking toward the distant horizon (DistantIslands
+    // are at +X far / -Z far). Look-at point ~(80, 6, -60) gives the
+    // "long view" feel.
+    const tel = telescopeRef.current
+    if (tel.started > 0) {
+      const tElapsed = performance.now() / 1000 - tel.started
+      const phase = Math.min(1, tElapsed / tel.duration)
+      const eased = 0.5 - Math.cos(phase * Math.PI) * 0.5
+      const scopePos = [-10.0, 1.6, -7.6] as const          // behind telescope at eye height
+      const scopeLook = [80, 6, -60] as const               // distant horizon
+      if (ref.current) ref.current.enabled = false
+      if (tel.active) {
+        // Lerp toward telescope POV
+        camera.position.set(
+          tel.savedPos.x + (scopePos[0] - tel.savedPos.x) * eased,
+          tel.savedPos.y + (scopePos[1] - tel.savedPos.y) * eased,
+          tel.savedPos.z + (scopePos[2] - tel.savedPos.z) * eased,
+        )
+        const tx = tel.savedTarget.x + (scopeLook[0] - tel.savedTarget.x) * eased
+        const ty = tel.savedTarget.y + (scopeLook[1] - tel.savedTarget.y) * eased
+        const tz = tel.savedTarget.z + (scopeLook[2] - tel.savedTarget.z) * eased
+        camera.lookAt(tx, ty, tz)
+        if (phase >= 1) {
+          // settled — leave camera there but stop re-anchoring next frame
+          tel.started = 0
+        }
+        return
+      } else {
+        // Lerp back toward saved state
+        camera.position.set(
+          scopePos[0] + (tel.savedPos.x - scopePos[0]) * eased,
+          scopePos[1] + (tel.savedPos.y - scopePos[1]) * eased,
+          scopePos[2] + (tel.savedPos.z - scopePos[2]) * eased,
+        )
+        const tx = scopeLook[0] + (tel.savedTarget.x - scopeLook[0]) * eased
+        const ty = scopeLook[1] + (tel.savedTarget.y - scopeLook[1]) * eased
+        const tz = scopeLook[2] + (tel.savedTarget.z - scopeLook[2]) * eased
+        camera.lookAt(tx, ty, tz)
+        if (phase >= 1) {
+          tel.started = 0
+          if (ref.current) {
+            // Snap target back so OrbitControls owns it cleanly going forward
+            ref.current.target.set(tel.savedTarget.x, tel.savedTarget.y, tel.savedTarget.z)
+            ref.current.enabled = true
+            ref.current.update()
+          }
+        }
+        return
+      }
     }
     // Theme-toggle breath: 1.5s in-out push forward + return.
     // Apply only when controls are settled (post-intro).
@@ -536,7 +632,12 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
           <ZoneHints />
           <AmbientFX />
           <PondFish />
+          <PondInteraction />
           <HiddenPath />
+          <GuestbookStone />
+          <Telescope />
+          <CabinBell />
+          <WeatherFX />
         </Suspense>
 
         {/* === Portfolio displays — bespoke structure per zone for visual variety === */}
@@ -556,6 +657,8 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
             const ts = new Date(y, m - 1, d).getTime()
             return Date.now() - ts < 7 * 86400 * 1000
           })()}
+          // A2: scroll on top of kiosk shows latest post title on hover.
+          latestPost={data.blog[0] ? { title: data.blog[0].title, date: data.blog[0].date } : null}
           content={{
             title: '文章',
             subtitle: 'Blog · ursb.me/blog',
@@ -584,6 +687,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
           rotation={-1.0}
           spriteUrl="/world/sprites/buildings/C03-record-player.png"
           bannerUrl="/world/sprites/banners/E03-music.png"
+          nowPlaying={data.nowPlaying}
           content={{
             title: '在听',
             // C2: show now-playing track in the subtitle when available.
@@ -613,6 +717,11 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
         />
         {/* Chat zone banner — small B&B-style hanging sign next to cabin */}
         <CabinBanner />
+
+        {/* D: seasonal layer — couplets (春节), extra moon + 月饼 (中秋),
+            snowfall (winter), confetti (birthday URL flag). Returns null
+            during default season → zero cost. */}
+        <SeasonalDecor />
 
         {/* === Hero sakura — large weeping cherry SW of cabin, canopy
             partially overhangs the porch so petals frame the door.

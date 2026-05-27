@@ -33,7 +33,7 @@ export default function MochiNPC() {
   // and walks there over 12s, hovers 8s, then returns. He's usually
   // home; the rare walk reads as 'thinking, maybe peeking out'.
   const wanderRef = useRef<{
-    state: 'home' | 'out' | 'hover' | 'back'
+    state: 'home' | 'out' | 'hover' | 'back' | 'door-out' | 'door-wave' | 'door-back'
     target: [number, number, number]
     started: number
     nextWander: number
@@ -43,6 +43,13 @@ export default function MochiNPC() {
     started: 0,
     nextWander: 90 + Math.random() * 60,   // first wander at 90-150s
   })
+  // C3 — bell rung. Flag for next useFrame tick to pick up — can't set
+  // `w.started` directly here because the wander state machine uses
+  // s.clock.elapsedTime which is a different epoch from performance.now().
+  const bellPendingRef = useRef(false)
+  useEffect(() => on('cabin-bell-ring', () => {
+    bellPendingRef.current = true
+  }), [])
 
   // V2 wave 3: layered head behavior. Default gentle wobble + every
   // 22-30s a dramatic "look around" sweep (left, right, up, center)
@@ -108,6 +115,14 @@ export default function MochiNPC() {
     // A2 wander state machine
     const w = wanderRef.current
     if (rootRef.current) {
+      // C3 — consume pending bell ring. Bell takes precedence: clears any
+      // current wander segment + sends Mochi to the door.
+      if (bellPendingRef.current && w.state !== 'door-out' && w.state !== 'door-wave' && w.state !== 'door-back') {
+        bellPendingRef.current = false
+        w.state = 'door-out'
+        w.target = [-1.5, 0.65, 1.05]
+        w.started = t
+      }
       if (w.state === 'home' && t >= w.nextWander) {
         // Pick a random nearby target — small radius so he stays near cabin
         const candidates: Array<[number, number, number]> = [
@@ -119,11 +134,43 @@ export default function MochiNPC() {
         w.state = 'out'
         w.started = t
       }
-      const segmentDuration = w.state === 'out' || w.state === 'back' ? 12 : 8
+      const segmentDuration =
+        w.state === 'door-out' || w.state === 'door-back' ? 3.5 :   // brisk: bell urgency
+        w.state === 'door-wave' ? 2.2 :
+        w.state === 'out' || w.state === 'back' ? 12 : 8
       const elapsed = t - w.started
       const progress = Math.min(1, elapsed / segmentDuration)
       const eased = 0.5 - Math.cos(progress * Math.PI) * 0.5   // ease-in-out
-      if (w.state === 'out') {
+      if (w.state === 'door-out') {
+        const x = homePos[0] + (w.target[0] - homePos[0]) * eased
+        const z = homePos[2] + (w.target[2] - homePos[2]) * eased
+        rootRef.current.position.x = x
+        rootRef.current.position.z = z
+        rootRef.current.position.y = homePos[1] + Math.abs(Math.sin(t * 7)) * 0.06 * (progress < 1 ? 1 : 0)
+        // Face door (cabin north +X)
+        rootRef.current.rotation.y = Math.atan2(w.target[0] - homePos[0], w.target[2] - homePos[2]) * (1 - eased * 0.5)
+        if (progress >= 1) { w.state = 'door-wave'; w.started = t }
+      } else if (w.state === 'door-wave') {
+        rootRef.current.position.x = w.target[0]
+        rootRef.current.position.z = w.target[2]
+        // Wave gesture — exaggerated bob + facing camera (~atan2 to camera, but
+        // we don't have camera here; approximate facing south-east toward main view)
+        rootRef.current.position.y = homePos[1] + Math.abs(Math.sin(t * 6)) * 0.08
+        rootRef.current.rotation.y = 0.4 + Math.sin(t * 4) * 0.25
+        if (progress >= 1) { w.state = 'door-back'; w.started = t }
+      } else if (w.state === 'door-back') {
+        const x = w.target[0] + (homePos[0] - w.target[0]) * eased
+        const z = w.target[2] + (homePos[2] - w.target[2]) * eased
+        rootRef.current.position.x = x
+        rootRef.current.position.z = z
+        rootRef.current.position.y = homePos[1] + Math.abs(Math.sin(t * 6)) * 0.04 * (progress < 1 ? 1 : 0)
+        rootRef.current.rotation.y = Math.atan2(homePos[0] - w.target[0], homePos[2] - w.target[2]) * (1 - eased * 0.8)
+        if (progress >= 1) {
+          w.state = 'home'
+          w.nextWander = t + 90 + Math.random() * 60
+          rootRef.current.rotation.y = 0
+        }
+      } else if (w.state === 'out') {
         const x = homePos[0] + (w.target[0] - homePos[0]) * eased
         const z = homePos[2] + (w.target[2] - homePos[2]) * eased
         rootRef.current.position.x = x

@@ -3,8 +3,9 @@
 // overhang roof + finial. Small wood reading bench in front + overhead
 // hanging lantern on a curved iron arm.
 
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import {
   SpritePlane,
@@ -74,6 +75,97 @@ export interface BlogKioskProps {
   // C1 (direction): if true (post within last 7 days), kiosk gets a
   // warm pulsing aura — "Airing is writing." Real-data heartbeat.
   fresh?: boolean
+  // A2: latest post for the "fresh issue" scroll on top of the kiosk
+  // dome. Hover on the scroll → drei Html tooltip with title + date.
+  latestPost?: { title: string; date: string } | null
+}
+
+// A2 hanging scroll — small rolled parchment dangling from a ribbon
+// under the kiosk's dome. Slight breeze sway, gentle bob. On hover,
+// drei <Html> floats the post title above it as a tooltip.
+function LatestPostScroll({ post, fresh }: { post: { title: string; date: string }; fresh: boolean }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const [hovered, setHovered] = useState(false)
+  useFrame((s) => {
+    if (!groupRef.current) return
+    const t = s.clock.elapsedTime
+    // Hanging sway — slow pendulum + tiny rotation around y for paper twist
+    groupRef.current.rotation.z = Math.sin(t * 0.9) * 0.05
+    groupRef.current.rotation.y = Math.sin(t * 0.6 + 1.2) * 0.10
+  })
+  // Bigger hitbox than visual for forgiving hover (the scroll itself is small)
+  return (
+    <group
+      onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer' }}
+      onPointerOut={(e) => { e.stopPropagation(); setHovered(false); document.body.style.cursor = '' }}
+    >
+      {/* Ribbon — vertical strap holding scroll to ceiling above */}
+      <mesh position={[0, 0.16, 0]}>
+        <boxGeometry args={[0.04, 0.32, 0.01]} />
+        <meshStandardMaterial color="#C97B5C" roughness={0.85} />
+      </mesh>
+      <group ref={groupRef}>
+        {/* Rolled scroll body — horizontal cylinder, parchment cream */}
+        <mesh castShadow rotation={[0, 0, Math.PI / 2]}>
+          <cylinderGeometry args={[0.07, 0.07, 0.40, 12]} />
+          <meshStandardMaterial color="#F2EAD8" roughness={0.92} />
+        </mesh>
+        {/* Two darker end caps to suggest rolled paper edges */}
+        {[-0.20, 0.20].map((ex, i) => (
+          <mesh key={`cap${i}`} position={[ex, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.072, 0.072, 0.005, 12]} />
+            <meshStandardMaterial color="#D6CBB4" roughness={0.95} />
+          </mesh>
+        ))}
+        {/* Unrolled flap dangling down with abstract ink-line "preview" —
+            reads as "this scroll has writing on it" without text. */}
+        <mesh position={[0, -0.10, 0.001]} castShadow>
+          <planeGeometry args={[0.34, 0.22]} />
+          <meshStandardMaterial color="#FAF3DF" roughness={0.93} side={THREE.DoubleSide} />
+        </mesh>
+        {/* 3 dark ink strokes implying headline + body */}
+        <mesh position={[-0.04, -0.04, 0.0015]}>
+          <planeGeometry args={[0.20, 0.012]} />
+          <meshStandardMaterial color="#3A2818" />
+        </mesh>
+        <mesh position={[-0.04, -0.08, 0.0015]}>
+          <planeGeometry args={[0.24, 0.006]} />
+          <meshStandardMaterial color="#5A4830" />
+        </mesh>
+        <mesh position={[-0.04, -0.12, 0.0015]}>
+          <planeGeometry args={[0.18, 0.006]} />
+          <meshStandardMaterial color="#5A4830" />
+        </mesh>
+        {/* Brass wax seal at the bottom center — extra weight + 'this is
+            from Airing' signal. Glows softly when post is fresh. */}
+        <mesh position={[0.10, -0.18, 0.002]} castShadow>
+          <cylinderGeometry args={[0.022, 0.022, 0.006, 12]} />
+          <meshStandardMaterial
+            color={fresh ? '#FFC57A' : '#A07840'}
+            emissive={fresh ? '#FFC57A' : '#000000'}
+            emissiveIntensity={fresh ? 0.4 : 0}
+            metalness={0.55}
+            roughness={0.4}
+          />
+        </mesh>
+      </group>
+      {/* Hover tooltip — title + date floats above the scroll. distanceFactor
+          tuned to be readable but not overwhelming at default camera. */}
+      {hovered && (
+        <Html
+          position={[0, 0.55, 0]}
+          center
+          distanceFactor={10}
+          style={{ pointerEvents: 'none' }}
+        >
+          <div className="zone-hover-label" style={{ maxWidth: 240, textAlign: 'center', lineHeight: 1.4 }}>
+            <div style={{ fontSize: '0.78em', opacity: 0.7, marginBottom: 2 }}>{post.date}</div>
+            <div>{post.title}</div>
+          </div>
+        </Html>
+      )}
+    </group>
+  )
 }
 
 export default function BlogKiosk({
@@ -83,6 +175,7 @@ export default function BlogKiosk({
   bannerUrl,
   content,
   fresh = false,
+  latestPost = null,
 }: BlogKioskProps) {
   const W = 1.55           // narrower than default
   const H = 2.9            // taller than default
@@ -178,6 +271,15 @@ export default function BlogKiosk({
             <meshStandardMaterial color="#A07840" metalness={0.6} roughness={0.4} />
           </mesh>
         ))}
+
+        {/* === A2: latest-post scroll dangling from underside of eaves,
+                offset to the right so it doesn't overlap the banner. Hover
+                shows title + date as drei Html. */}
+        {latestPost && (
+          <group position={[W * 0.55, H / 2 - 0.05, 0.32]}>
+            <LatestPostScroll post={latestPost} fresh={fresh} />
+          </group>
+        )}
 
         {/* === WIDE FLAT OVERHANG ROOF (instead of gable) === */}
         <group position={[0, H / 2 + 0.1, 0]}>

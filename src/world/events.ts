@@ -12,6 +12,10 @@ interface WorldEventMap {
   'world-reset-camera': undefined
   'world-whisper-toggle': undefined
   'world-whisper-fire': { text: string }
+  // C2 — telescope dolly toggle
+  'world-telescope-toggle': undefined
+  // C3 — cabin bell rung → Mochi responds (waves at door)
+  'cabin-bell-ring': undefined
 }
 
 type WorldEventName = keyof WorldEventMap

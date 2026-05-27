@@ -4,7 +4,15 @@
 // vertical signboard at center. Parchment list hangs from one side.
 // Banner hangs from one of the roof corners. LP records scattered on grass
 // nearby.
+//
+// A1 (V53.7): spinning vinyl turntable on the floor inside the bandstand.
+// When nowPlaying.isLive → 33⅓ rpm; when nowPlaying is just recent (not
+// live) → slow drift (drained record, last spin). When nothing at all →
+// stationary. Tonearm angles in for live, parked for off.
 
+import { useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
+import * as THREE from 'three'
 import {
   SpritePlane,
   HangingBannerPlane,
@@ -26,12 +34,120 @@ export interface MusicBandstandProps {
   spriteUrl: string
   bannerUrl: string
   content: DisplayContent
+  // A1: now-playing state. isLive=true → vinyl spins at 33⅓ rpm + tonearm
+  // engaged + label glows warm. isLive=false but trackName set → slow
+  // drift (record still on platter, last spun a few mins ago). Null → off.
+  nowPlaying?: { name: string; artist: string; isLive: boolean } | null
 }
 
 const COPPER_DK = '#3A7558'
 const LP_BLACK = '#1F1611'
 const LP_LABEL_A = '#C97B5C'
 const LP_LABEL_B = '#5878B8'
+const LP_LABEL_LIVE = '#FFC57A'   // warm amber for currently-playing record
+
+// A1 spinning vinyl + tonearm. Drives platter rotation off isLive.
+// 33⅓ rpm ≈ 0.555 rev/s ≈ 3.49 rad/s. Off-state: slow drift so the
+// platter doesn't read frozen (real cabinet records still rotate from
+// belt momentum for ~30s after stop).
+function VinylPlayer({ now }: { now: MusicBandstandProps['nowPlaying'] }) {
+  const platterRef = useRef<THREE.Group>(null)
+  const tonearmRef = useRef<THREE.Group>(null)
+  const labelMatRef = useRef<THREE.MeshStandardMaterial>(null)
+  const isLive = !!now?.isLive
+  const hasRecord = !!now   // covers either live OR just-played
+  useFrame((s, dt) => {
+    if (platterRef.current) {
+      // 33⅓ rpm when live, slow 6 rpm drift when off (still has a record),
+      // 0 when no track ever logged.
+      const omega = isLive ? 3.49 : hasRecord ? 0.628 : 0
+      platterRef.current.rotation.y += omega * dt
+    }
+    if (tonearmRef.current) {
+      // Tonearm engaged: cuts in ~25° toward center. Disengaged: parked
+      // at rest (~0°). Lerp smoothly between states.
+      const targetYaw = isLive ? -0.42 : 0
+      const k = 1 - Math.exp(-dt * 1.5)
+      tonearmRef.current.rotation.y += (targetYaw - tonearmRef.current.rotation.y) * k
+    }
+    if (labelMatRef.current && isLive) {
+      // Subtle pulse on label when live — picks up Bloom for a small glow.
+      const t = s.clock.elapsedTime
+      labelMatRef.current.emissiveIntensity = 0.4 + Math.sin(t * 2.1) * 0.15
+    } else if (labelMatRef.current) {
+      labelMatRef.current.emissiveIntensity = 0
+    }
+  })
+  const labelColor = isLive ? LP_LABEL_LIVE : (hasRecord ? LP_LABEL_A : LP_LABEL_B)
+  return (
+    <group>
+      {/* Turntable plinth (small wooden box base) */}
+      <mesh position={[0, 0.04, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.7, 0.08, 0.7]} />
+        <meshStandardMaterial color={WOOD_DARKER} roughness={0.85} />
+      </mesh>
+      {/* Recessed platter well — slightly darker inner */}
+      <mesh position={[0, 0.082, 0]}>
+        <cylinderGeometry args={[0.31, 0.31, 0.005, 24]} />
+        <meshStandardMaterial color="#1A130F" roughness={0.55} />
+      </mesh>
+      {/* Spinning platter group — only this rotates */}
+      <group ref={platterRef} position={[0, 0.09, 0]}>
+        {/* Vinyl */}
+        <mesh castShadow>
+          <cylinderGeometry args={[0.30, 0.30, 0.008, 32]} />
+          <meshStandardMaterial color={LP_BLACK} roughness={0.4} />
+        </mesh>
+        {/* Center label */}
+        <mesh position={[0, 0.005, 0]}>
+          <cylinderGeometry args={[0.10, 0.10, 0.002, 16]} />
+          <meshStandardMaterial
+            ref={labelMatRef}
+            color={labelColor}
+            emissive={labelColor}
+            emissiveIntensity={0}
+            roughness={0.5}
+          />
+        </mesh>
+        {/* Center spindle hole + post */}
+        <mesh position={[0, 0.014, 0]}>
+          <cylinderGeometry args={[0.008, 0.008, 0.020, 8]} />
+          <meshStandardMaterial color="#A07840" metalness={0.7} roughness={0.3} />
+        </mesh>
+        {/* Spiral groove suggestion — 3 concentric thin rings */}
+        {[0.18, 0.22, 0.26].map((r, i) => (
+          <mesh key={`gr${i}`} position={[0, 0.0045, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[r - 0.001, r + 0.001, 32]} />
+            <meshBasicMaterial color="#3A2E26" side={THREE.DoubleSide} />
+          </mesh>
+        ))}
+      </group>
+      {/* Tonearm pivot — back-right corner of plinth */}
+      <group ref={tonearmRef} position={[0.28, 0.12, -0.28]}>
+        {/* Pivot post */}
+        <mesh castShadow>
+          <cylinderGeometry args={[0.025, 0.03, 0.08, 8]} />
+          <meshStandardMaterial color="#3A2A20" metalness={0.5} roughness={0.4} />
+        </mesh>
+        {/* Counterweight back-stub */}
+        <mesh position={[0.06, 0.03, 0.04]} castShadow>
+          <cylinderGeometry args={[0.03, 0.03, 0.06, 8]} />
+          <meshStandardMaterial color="#1E1A18" metalness={0.6} roughness={0.35} />
+        </mesh>
+        {/* Arm itself — long thin cylinder pointing toward platter */}
+        <mesh position={[-0.18, 0.03, 0.14]} rotation={[0, 0.66, 0]} castShadow>
+          <cylinderGeometry args={[0.008, 0.008, 0.40, 6]} />
+          <meshStandardMaterial color="#2E2622" metalness={0.7} roughness={0.35} />
+        </mesh>
+        {/* Headshell + stylus end */}
+        <mesh position={[-0.33, 0.03, 0.27]} castShadow>
+          <boxGeometry args={[0.05, 0.025, 0.035]} />
+          <meshStandardMaterial color="#3A2A20" metalness={0.5} roughness={0.5} />
+        </mesh>
+      </group>
+    </group>
+  )
+}
 
 export default function MusicBandstand({
   position,
@@ -39,6 +155,7 @@ export default function MusicBandstand({
   spriteUrl,
   bannerUrl,
   content,
+  nowPlaying,
 }: MusicBandstandProps) {
   const SIDE = 1.7        // square footprint
   const FLOOR_H = 0.15
@@ -65,6 +182,15 @@ export default function MusicBandstand({
           <meshStandardMaterial color={WOOD_DARK} />
         </mesh>
       ))}
+
+      {/* === A1: spinning vinyl turntable on the floor, front-center.
+              Sits between the central signboard and the front edge so
+              it reads as "the record-player on the sign is actually
+              playing this one". Live → 33⅓ rpm + warm glowing label;
+              recently-played → slow drift; never-played → still. */}
+      <group position={[0, 0.16 + FLOOR_H, SIDE / 3.2]}>
+        <VinylPlayer now={nowPlaying ?? null} />
+      </group>
 
       {/* === 4 corner posts === */}
       {(

@@ -1107,6 +1107,14 @@ function petCurrentPhase(): { phase: PetPhase; blend: number } {
     if (p === 'dawn' || p === 'day' || p === 'dusk' || p === 'night')
       return { phase: p as PetPhase, blend: 0 }  // 0 = pure phase, no lerp toward next
   } catch {}
+  // B3: honor /world/'s manual day/dusk override (set when user clicks
+  // the 🌙/☀️ toggle on the world page). Pet then matches whatever
+  // mood the user picked for the world — single time-of-day across
+  // both surfaces.
+  try {
+    const m = localStorage.getItem('world-time-override')
+    if (m === 'day' || m === 'dusk') return { phase: m, blend: 0.5 }
+  } catch {}
   const mins = new Date().getHours() * 60 + new Date().getMinutes()
   if (mins >= 300 && mins < 450)   return { phase: 'dawn', blend: (mins - 300) / 150 }
   if (mins >= 450 && mins < 1020)  return { phase: 'day',  blend: (mins - 450) / 570 }
@@ -1529,6 +1537,91 @@ function ContextLossHandlers() {
   return null
 }
 
+// B4 — MiniMochi standing at the torii base. Idle wobble; every
+// 22-32s lifts his right arm for a brief wave (2s), then back to idle.
+// Mirrors /world/'s Mochi NPC so the pet feels like the same place
+// the world hosts. Pure procedural: brown body + head + ears + tiny
+// arm cylinders.
+function MiniMochi({ x, z }: { x: number; z: number }) {
+  const groupRef = useRef<THREE.Group>(null)
+  const armRef = useRef<THREE.Mesh>(null)
+  const stateRef = useRef({ next: 8 + Math.random() * 14, active: false, started: 0 })
+  useFrame((s) => {
+    const t = s.clock.elapsedTime
+    const st = stateRef.current
+    if (!st.active && t >= st.next) {
+      st.active = true
+      st.started = t
+    }
+    // Idle Y bob
+    if (groupRef.current) {
+      groupRef.current.position.y = 0.025 + Math.sin(t * 1.2) * 0.005
+    }
+    if (armRef.current) {
+      if (st.active) {
+        const phase = t - st.started
+        if (phase < 2.0) {
+          // Raise to ~110° (up + slightly out), wiggle 4Hz, then drop
+          const raise = phase < 0.3 ? phase / 0.3 : phase > 1.7 ? 1 - (phase - 1.7) / 0.3 : 1
+          const wiggle = phase > 0.3 && phase < 1.7 ? Math.sin(phase * 8) * 0.18 : 0
+          armRef.current.rotation.z = -(raise * 1.9 + wiggle)
+        } else {
+          armRef.current.rotation.z = 0
+          st.active = false
+          st.next = t + 22 + Math.random() * 10
+        }
+      } else {
+        armRef.current.rotation.z = 0
+      }
+    }
+  })
+  return (
+    <group ref={groupRef} position={[x, 0.025, z]} scale={0.20}>
+      {/* Body — short squat brown bear loaf */}
+      <mesh position={[0, 0.42, 0]} castShadow>
+        <sphereGeometry args={[0.32, 12, 10]} />
+        <meshStandardMaterial color="#7A4E2A" roughness={0.92} />
+      </mesh>
+      {/* Head — sphere with snout/ears */}
+      <mesh position={[0, 0.85, 0]} castShadow>
+        <sphereGeometry args={[0.22, 12, 10]} />
+        <meshStandardMaterial color="#7A4E2A" roughness={0.92} />
+      </mesh>
+      {/* Snout */}
+      <mesh position={[0, 0.82, 0.18]} castShadow>
+        <sphereGeometry args={[0.10, 8, 6]} />
+        <meshStandardMaterial color="#A87A52" roughness={0.92} />
+      </mesh>
+      {/* Ears */}
+      {[-0.15, 0.15].map((ex, i) => (
+        <mesh key={`ear${i}`} position={[ex, 1.04, -0.04]} castShadow>
+          <sphereGeometry args={[0.06, 6, 5]} />
+          <meshStandardMaterial color="#7A4E2A" roughness={0.92} />
+        </mesh>
+      ))}
+      {/* Eyes — tiny dark dots */}
+      {[-0.08, 0.08].map((ex, i) => (
+        <mesh key={`eye${i}`} position={[ex, 0.88, 0.21]}>
+          <sphereGeometry args={[0.025, 6, 5]} />
+          <meshBasicMaterial color="#1a0e08" />
+        </mesh>
+      ))}
+      {/* Right arm — pivot at shoulder, the part that lifts for wave.
+          Z-rotation rotates the cylinder up (we rendered it as if
+          arm pointed -Y, so positive Z rotation lifts it). */}
+      <mesh ref={armRef} position={[0.30, 0.50, 0]} castShadow>
+        <cylinderGeometry args={[0.05, 0.05, 0.30, 6]} />
+        <meshStandardMaterial color="#7A4E2A" roughness={0.92} />
+      </mesh>
+      {/* Left arm — stationary */}
+      <mesh position={[-0.30, 0.42, 0]} castShadow rotation={[0, 0, 0]}>
+        <cylinderGeometry args={[0.05, 0.05, 0.30, 6]} />
+        <meshStandardMaterial color="#7A4E2A" roughness={0.92} />
+      </mesh>
+    </group>
+  )
+}
+
 // RotatingScene — slow Y-rotation on the whole island (3-min baseline).
 // Eases 4× slower when sakura faces camera (y≈0) so the hero pose
 // holds ~15-20s per cycle — without the ease, the money pose existed
@@ -1789,6 +1882,8 @@ export default function IslandWidget() {
         <MinkaCabin />
         <ChimneySmoke />
         <WanderingBird />
+        {/* B4: MiniMochi at torii base — waves at camera every ~25s */}
+        <MiniMochi x={0.30} z={0.95} />
 
         {/* WindSway wrap. V52.6: scale 0.56 caps sakura canopy peak
             at y=3.19 to clear the y=3.25 frustum top.

@@ -10,6 +10,7 @@ import * as THREE from 'three'
 import { useRef, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { POND_CENTER } from './zones'
+import { getKoiScatter } from './PondInteraction'
 
 const KOI_PALETTE: Array<{ body: string; spot: string }> = [
   { body: '#F4ECE0', spot: '#D4593E' },   // classic koi: pale cream + red spots
@@ -58,12 +59,15 @@ function Fish({ radius, period, phase, yBase, size, paletteIdx, dir }: FishProps
     if (!groupRef.current) return
     const t = s.clock.elapsedTime
     const angle = phase * Math.PI * 2 + (t / period) * Math.PI * 2 * dir
-    const x = POND_CENTER[0] + Math.cos(angle) * radius
-    const z = POND_CENTER[1] + Math.sin(angle) * radius
+    const baseX = POND_CENTER[0] + Math.cos(angle) * radius
+    const baseZ = POND_CENTER[1] + Math.sin(angle) * radius
     // Occasional surface splash — brief Y rise every ~14s, randomized per-fish
     const splashCycle = (t % (14 + phase * 6)) / (14 + phase * 6)
     const splash = splashCycle < 0.04 ? Math.sin(splashCycle / 0.04 * Math.PI) * 0.18 : 0
-    groupRef.current.position.set(x, yBase + splash, z)
+    // C1: pond impacts push koi outward briefly
+    const now = performance.now() / 1000
+    const [scatterDx, scatterDz] = getKoiScatter(now, baseX, baseZ)
+    groupRef.current.position.set(baseX + scatterDx, yBase + splash, baseZ + scatterDz)
     // Face direction of motion (tangent to circle) — rotation.y around Y axis
     // Tangent: derivative of (cos a, _, sin a) w.r.t. angle = (-sin a, _, cos a) × dir
     const tangentAngle = Math.atan2(-Math.sin(angle) * dir, Math.cos(angle) * dir)

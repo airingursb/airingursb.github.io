@@ -3,7 +3,7 @@
 // moment in /world/; making the lanterns "ignite" sells the time-of-day
 // switch as a real event rather than just a sky color change.
 
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState, useMemo } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { LANTERN_POSITIONS } from './zones'
@@ -17,6 +17,7 @@ interface LanternEntry {
   light: THREE.PointLight | null
   halo: THREE.MeshBasicMaterial | null
   seed: number
+  pos: [number, number]   // C4: world position so combo fireworks can spawn near sequence center
 }
 const lanternRegistry: LanternEntry[] = []
 function registerLantern(entry: LanternEntry) {
@@ -24,6 +25,31 @@ function registerLantern(entry: LanternEntry) {
   return () => {
     const i = lanternRegistry.indexOf(entry)
     if (i >= 0) lanternRegistry.splice(i, 1)
+  }
+}
+
+// C4 lantern-tap combo. Click 5 lanterns within 4s of each other →
+// all flare bright + small fireworks burst over the island. Module-
+// level state so any Lantern can register its tap and check progress.
+interface ComboState {
+  taps: Array<{ at: number; seed: number }>
+  flareUntil: number              // shared flare deadline (0 = no flare)
+  fireworksTrigger: number        // timestamp of the latest fireworks trigger (0 = none)
+}
+const combo: ComboState = { taps: [], flareUntil: 0, fireworksTrigger: 0 }
+const COMBO_WINDOW = 4   // seconds — drop taps older than this
+const COMBO_GOAL = 5
+function registerTap(seed: number, now: number) {
+  // Drop expired taps
+  combo.taps = combo.taps.filter((t) => now - t.at < COMBO_WINDOW)
+  // Don't double-count same lantern in a single window — clears spam from
+  // mashing the same lantern. Different lanterns required for combo.
+  if (combo.taps.some((t) => t.seed === seed)) return
+  combo.taps.push({ at: now, seed })
+  if (combo.taps.length >= COMBO_GOAL) {
+    combo.flareUntil = now + 1.6
+    combo.fireworksTrigger = now
+    combo.taps = []
   }
 }
 
@@ -49,7 +75,7 @@ const PHASE_PT_LIGHT: Record<TimePhase, number> = {
 
 type Theme = 'day' | 'dusk'
 
-function Lantern({ seed, registerInto }: { seed: number; registerInto: (e: LanternEntry) => void }) {
+function Lantern({ seed, pos, registerInto }: { seed: number; pos: [number, number]; registerInto: (e: LanternEntry) => void }) {
   const glowMatRef = useRef<THREE.MeshStandardMaterial>(null)
   const lightRef   = useRef<THREE.PointLight>(null)
   const haloMatRef = useRef<THREE.MeshBasicMaterial>(null)
@@ -61,12 +87,20 @@ function Lantern({ seed, registerInto }: { seed: number; registerInto: (e: Lante
       light: lightRef.current,
       halo: haloMatRef.current,
       seed,
+      pos,
     }
     return registerInto(entry)
-  }, [seed, registerInto])
+  }, [seed, registerInto, pos])
 
   return (
-    <group>
+    <group
+      onClick={(e) => {
+        e.stopPropagation()
+        registerTap(seed, performance.now() / 1000)
+      }}
+      onPointerOver={(e) => { e.stopPropagation(); document.body.style.cursor = 'pointer' }}
+      onPointerOut={(e) => { e.stopPropagation(); document.body.style.cursor = '' }}
+    >
       {/* Wooden post */}
       <mesh position={[0, 0.7, 0]} castShadow>
         <cylinderGeometry args={[0.08, 0.1, 1.4, 6]} />
@@ -155,9 +189,13 @@ function LanternsAnimator() {
   const haloTarget = haloA + (haloB - haloA) * tod.blend
   const flickerActive = targetEmissive > 0.85
   useFrame((s, dt) => {
+    const now = performance.now() / 1000
+    const flareActive = combo.flareUntil > now
+    // C4: flare boost when combo just fired — emissive 4×, light 3×.
+    const flareBoost = flareActive ? Math.pow((combo.flareUntil - now) / 1.6, 0.7) : 0
     // Perf: skip entirely when steady-state day (no flicker, halo near 0,
     // and all glows have settled close to day's 0.55 emissive).
-    if (!flickerActive && haloTarget < 0.05) {
+    if (!flickerActive && haloTarget < 0.05 && !flareActive) {
       // Snap a few times to settle, then sleep
       for (const e of lanternRegistry) {
         if (e.glow && Math.abs(e.glow.emissiveIntensity - targetEmissive) > 0.01) {
@@ -180,14 +218,16 @@ function LanternsAnimator() {
         ? 1 + Math.sin(t * 7 + e.seed) * 0.06 + Math.sin(t * 13 + e.seed * 1.7) * 0.03
         : 1
       const haloFlicker = 1 + Math.sin(t * 7 + e.seed) * 0.10
+      const flareMul = 1 + flareBoost * 3   // emissive up to 4× during flare peak
+      const lightMul = 1 + flareBoost * 2   // pointLight up to 3× during flare peak
       if (e.glow) {
-        e.glow.emissiveIntensity = e.glow.emissiveIntensity + (targetEmissive * flicker - e.glow.emissiveIntensity) * k
+        e.glow.emissiveIntensity = e.glow.emissiveIntensity + (targetEmissive * flicker * flareMul - e.glow.emissiveIntensity) * k
       }
       if (e.light) {
-        e.light.intensity = e.light.intensity + (targetLight * flicker - e.light.intensity) * k
+        e.light.intensity = e.light.intensity + (targetLight * flicker * lightMul - e.light.intensity) * k
       }
       if (e.halo) {
-        const ht = haloTarget * haloFlicker
+        const ht = haloTarget * haloFlicker + flareBoost * 0.6
         e.halo.opacity = e.halo.opacity + (ht - e.halo.opacity) * k2
       }
     }
@@ -195,14 +235,113 @@ function LanternsAnimator() {
   return null
 }
 
+// C4 Fireworks — small ephemeral burst when combo fires. 18 particles
+// shoot up from island center, peak, then fall with shrinking opacity.
+function ComboFireworks() {
+  // Last-known trigger time we've reacted to (so we only spawn on changes)
+  const lastTriggerRef = useRef(0)
+  const [activeBursts, setActiveBursts] = useState<Array<{ id: number; startedAt: number; origin: [number, number, number] }>>([])
+  useFrame(() => {
+    const trigger = combo.fireworksTrigger
+    if (trigger > 0 && trigger > lastTriggerRef.current) {
+      lastTriggerRef.current = trigger
+      // Spawn 2 bursts: one near the most-recent tap, one near scene center.
+      // (Both visible if camera is wide; either alone is satisfying.)
+      const origin1: [number, number, number] = [0, 8, 0]   // sky over island center
+      const origin2: [number, number, number] = [
+        (Math.random() - 0.5) * 8, 7.5, (Math.random() - 0.5) * 8,
+      ]
+      const now = performance.now() / 1000
+      setActiveBursts((arr) => [
+        ...arr,
+        { id: trigger, startedAt: now, origin: origin1 },
+        { id: trigger + 0.001, startedAt: now + 0.18, origin: origin2 },
+      ])
+    }
+    // GC finished bursts (>2.5s)
+    const now = performance.now() / 1000
+    setActiveBursts((arr) => arr.filter((b) => now - b.startedAt < 2.5))
+  })
+  return (
+    <>
+      {activeBursts.map((b) => (
+        <FireworkBurst key={b.id} startedAt={b.startedAt} origin={b.origin} />
+      ))}
+    </>
+  )
+}
+
+function FireworkBurst({ startedAt, origin }: { startedAt: number; origin: [number, number, number] }) {
+  const COUNT = 18
+  // Pre-compute particle directions on mount — Fibonacci sphere variant
+  const dirs = useMemo(() => {
+    const arr: Array<[number, number, number]> = []
+    for (let i = 0; i < COUNT; i++) {
+      const phi = Math.acos(1 - 2 * (i + 0.5) / COUNT)
+      const theta = Math.PI * (1 + Math.sqrt(5)) * i
+      const x = Math.sin(phi) * Math.cos(theta)
+      const y = Math.cos(phi) * 0.6 + 0.4   // bias upward
+      const z = Math.sin(phi) * Math.sin(theta)
+      arr.push([x, y, z])
+    }
+    return arr
+  }, [])
+  const refs = useMemo(
+    () => Array.from({ length: COUNT }, () => ({ current: null as THREE.Mesh | null })),
+    [],
+  )
+  // Color palette — alternating warm + cool sparks (gold/red/blue)
+  const colors = useMemo(() => ['#FFD08A', '#FF8060', '#80B8FF', '#FFB04A', '#FFE0A0'], [])
+  useFrame(() => {
+    const now = performance.now() / 1000
+    const t = now - startedAt
+    if (t < 0) return
+    // Ballistic: rise then fall under gravity, fade out
+    const lifespan = 2.0
+    const p = Math.min(1, t / lifespan)
+    const SPEED = 4.5
+    const G = 6.0
+    refs.forEach((r, i) => {
+      const m = r.current
+      if (!m) return
+      const [dx, dy, dz] = dirs[i]
+      const dist = SPEED * t
+      m.position.x = dx * dist
+      m.position.y = dy * dist - 0.5 * G * t * t
+      m.position.z = dz * dist
+      const mat = m.material as THREE.MeshBasicMaterial
+      mat.opacity = (1 - p) * (1 - p)   // ease-out fade
+      const sc = 0.05 + (1 - p) * 0.08
+      m.scale.setScalar(sc)
+    })
+  })
+  return (
+    <group position={origin}>
+      {dirs.map((_, i) => (
+        <mesh key={i} ref={(el) => { refs[i].current = el }}>
+          <sphereGeometry args={[1, 6, 5]} />
+          <meshBasicMaterial
+            color={colors[i % colors.length]}
+            transparent
+            opacity={0.9}
+            depthWrite={false}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 export default function Lanterns({ theme: _theme }: { theme?: Theme } = {}) {
   // theme prop kept for back-compat but ignored — phase comes from useTimeOfDay.
   return (
     <group>
       <LanternsAnimator />
+      <ComboFireworks />
       {LANTERN_POSITIONS.map(([x, z], i) => (
         <group key={`l${i}`} position={[x, 0, z]}>
-          <Lantern seed={i * 1.7} registerInto={registerLantern} />
+          <Lantern seed={i * 1.7} pos={[x, z]} registerInto={registerLantern} />
         </group>
       ))}
     </group>
