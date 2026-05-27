@@ -186,9 +186,11 @@ function CarvePanel({ onSubmit, onClose }: PanelProps) {
   )
 }
 
-// World position — small clearing south of the hidden-path lookout.
-// (HiddenPath ends around southeast quadrant per its source.)
-const STONE_POS: [number, number, number] = [-14.5, 0, -7.5]
+// World position — small clearing near the hidden-path lookout.
+// Lookout sits at (-10, 0, -8). Stone placed 2u north + 2u east so
+// it shares the lookout clearing without overlapping the bench.
+// Was at (-14.5, -7.5) but that was past the cliff edge.
+const STONE_POS: [number, number, number] = [-7.8, 0, -9.5]
 
 export default function GuestbookStone() {
   const [names, setNames] = useState<string[]>(readCarved)

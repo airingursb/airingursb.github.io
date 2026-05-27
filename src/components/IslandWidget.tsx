@@ -1576,7 +1576,7 @@ function MiniMochi({ x, z }: { x: number; z: number }) {
     }
   })
   return (
-    <group ref={groupRef} position={[x, 0.025, z]} scale={0.20}>
+    <group ref={groupRef} position={[x, 0.025, z]} scale={0.32}>
       {/* Body — short squat brown bear loaf */}
       <mesh position={[0, 0.42, 0]} castShadow>
         <sphereGeometry args={[0.32, 12, 10]} />

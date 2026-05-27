@@ -191,8 +191,6 @@ function LanternsAnimator() {
   useFrame((s, dt) => {
     const now = performance.now() / 1000
     const flareActive = combo.flareUntil > now
-    // C4: flare boost when combo just fired — emissive 4×, light 3×.
-    const flareBoost = flareActive ? Math.pow((combo.flareUntil - now) / 1.6, 0.7) : 0
     // Perf: skip entirely when steady-state day (no flicker, halo near 0,
     // and all glows have settled close to day's 0.55 emissive).
     if (!flickerActive && haloTarget < 0.05 && !flareActive) {
@@ -213,13 +211,29 @@ function LanternsAnimator() {
     const t = s.clock.elapsedTime
     const k = 1 - Math.exp(-dt * 1.8)
     const k2 = 1 - Math.exp(-dt * 1.5)
-    for (const e of lanternRegistry) {
+    // C4 polish: chain-reaction stagger. Sort lanterns by seed (= order
+    // of placement around island), then offset each lantern's flare
+    // ignition by its index × 80ms so the flare RIPPLES outward through
+    // the lantern chain like a fuse igniting, instead of all going on at once.
+    const flareDuration = 1.6
+    const staggerStep = 0.08
+    for (let i = 0; i < lanternRegistry.length; i++) {
+      const e = lanternRegistry[i]
       const flicker = flickerActive
         ? 1 + Math.sin(t * 7 + e.seed) * 0.06 + Math.sin(t * 13 + e.seed * 1.7) * 0.03
         : 1
       const haloFlicker = 1 + Math.sin(t * 7 + e.seed) * 0.10
-      const flareMul = 1 + flareBoost * 3   // emissive up to 4× during flare peak
-      const lightMul = 1 + flareBoost * 2   // pointLight up to 3× during flare peak
+      // Per-lantern stagger: this lantern's flare starts later by i*step
+      let myFlareBoost = 0
+      if (flareActive) {
+        const myStart = (combo.flareUntil - flareDuration) + i * staggerStep
+        const myAge = now - myStart
+        if (myAge > 0 && myAge < flareDuration) {
+          myFlareBoost = Math.pow(1 - myAge / flareDuration, 0.7)
+        }
+      }
+      const flareMul = 1 + myFlareBoost * 3.5
+      const lightMul = 1 + myFlareBoost * 2.5
       if (e.glow) {
         e.glow.emissiveIntensity = e.glow.emissiveIntensity + (targetEmissive * flicker * flareMul - e.glow.emissiveIntensity) * k
       }
@@ -227,7 +241,7 @@ function LanternsAnimator() {
         e.light.intensity = e.light.intensity + (targetLight * flicker * lightMul - e.light.intensity) * k
       }
       if (e.halo) {
-        const ht = haloTarget * haloFlicker + flareBoost * 0.6
+        const ht = haloTarget * haloFlicker + myFlareBoost * 0.7
         e.halo.opacity = e.halo.opacity + (ht - e.halo.opacity) * k2
       }
     }
@@ -272,7 +286,7 @@ function ComboFireworks() {
 }
 
 function FireworkBurst({ startedAt, origin }: { startedAt: number; origin: [number, number, number] }) {
-  const COUNT = 18
+  const COUNT = 32
   // Pre-compute particle directions on mount — Fibonacci sphere variant
   const dirs = useMemo(() => {
     const arr: Array<[number, number, number]> = []
@@ -310,8 +324,11 @@ function FireworkBurst({ startedAt, origin }: { startedAt: number; origin: [numb
       m.position.y = dy * dist - 0.5 * G * t * t
       m.position.z = dz * dist
       const mat = m.material as THREE.MeshBasicMaterial
-      mat.opacity = (1 - p) * (1 - p)   // ease-out fade
-      const sc = 0.05 + (1 - p) * 0.08
+      // Two-phase fade: initial flash bright, then ease-out trail.
+      // Punchier than the old single (1-p)² curve.
+      mat.opacity = p < 0.15 ? 0.95 : (1 - p) * (1 - p) * 0.95
+      // Sparks: bigger early then shrink to trail dots
+      const sc = 0.06 + (1 - p) * 0.10
       m.scale.setScalar(sc)
     })
   })

@@ -37,6 +37,20 @@ function LunarNewYearCouplets() {
               <meshStandardMaterial color="#E8B860" emissive="#A88030" emissiveIntensity={0.25} roughness={0.5} />
             </mesh>
           ))}
+          {/* Brass nail at top — pin-up detail */}
+          <mesh position={[0, 0.82, 0.013]}>
+            <cylinderGeometry args={[0.018, 0.018, 0.012, 8]} />
+            <meshStandardMaterial color="#FFD080" metalness={0.7} roughness={0.3} />
+          </mesh>
+          {/* Hanging gold tassel at the bottom — short cord + tassel bulb */}
+          <mesh position={[0, -0.88, 0.012]}>
+            <cylinderGeometry args={[0.005, 0.005, 0.08, 4]} />
+            <meshStandardMaterial color="#FFD080" metalness={0.5} roughness={0.5} />
+          </mesh>
+          <mesh position={[0, -0.96, 0.012]}>
+            <coneGeometry args={[0.04, 0.10, 6]} />
+            <meshStandardMaterial color="#FFD080" metalness={0.5} roughness={0.5} flatShading />
+          </mesh>
         </group>
       ))}
       {/* Horizontal banner above the door — 福 */}
@@ -159,11 +173,45 @@ function MidAutumnMoon() {
     const k = 0.96 + Math.sin(t * 0.3) * 0.04
     mat.color.setRGB(1.0 * k, 0.92 * k, 0.78 * k)
   })
+  // Position moved more left + bigger so it dominates the sky at default
+  // orbit angle. Craters as tiny dark spheres bolted onto the front face
+  // give it the "rabbit on the moon" silhouette suggestion at distance.
+  // fog={false} on EVERY material so the indigo night fog doesn't dim
+  // the moon — without this, distance-from-camera (~65u) put it deep
+  // in the fog gradient (fog far is 140u).
   return (
-    <mesh ref={moonRef} position={[14, 26, -20]} renderOrder={2}>
-      <sphereGeometry args={[2.2, 24, 18]} />
-      <meshBasicMaterial color="#FFE9C8" transparent opacity={0.92} depthWrite={false} />
-    </mesh>
+    // Position derived from camera frustum math at default orbit
+    // (camera [34,26,30] → lookAt [0,5,0], vFOV 26°, wide aspect).
+    // Solved for frame-position upper-center-ish (rightFrac 0.15,
+    // upFrac 0.8) at distance 35u so the moon reads as a sky-dominating
+    // 中秋 statement at ~22% screen width.
+    <group position={[14, 20, 8]} renderOrder={2}>
+      <mesh ref={moonRef}>
+        <sphereGeometry args={[1.85, 32, 24]} />
+        <meshBasicMaterial color="#FFE9C8" transparent opacity={0.95} depthWrite={false} fog={false} />
+      </mesh>
+      {/* 5 small darker discs on the camera-facing hemisphere as
+          crater suggestions. Positions hand-tuned to vaguely echo the
+          兔子 silhouette without modeling it explicitly. */}
+      {[
+        [0.32, 0.43, 1.58, 0.23],
+        [-0.27, 0.11, 1.62, 0.16],
+        [0.44, -0.27, 1.60, 0.18],
+        [-0.49, -0.38, 1.56, 0.15],
+        [0.0, 0.76, 1.50, 0.12],
+      ].map(([cx, cy, cz, cr], i) => (
+        <mesh key={`crater${i}`} position={[cx, cy, cz]} rotation={[0, 0, 0]}>
+          <sphereGeometry args={[cr, 10, 8]} />
+          <meshBasicMaterial color="#E8C896" transparent opacity={0.62} depthWrite={false} fog={false} />
+        </mesh>
+      ))}
+      {/* Outer soft halo — extra disc with higher transparency so the
+          moon has the watercolor diffusion real night-sky moons get. */}
+      <mesh>
+        <sphereGeometry args={[2.6, 24, 18]} />
+        <meshBasicMaterial color="#FFF0D8" transparent opacity={0.15} depthWrite={false} fog={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+    </group>
   )
 }
 

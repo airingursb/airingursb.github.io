@@ -120,7 +120,9 @@ export default function MochiNPC() {
       if (bellPendingRef.current && w.state !== 'door-out' && w.state !== 'door-wave' && w.state !== 'door-back') {
         bellPendingRef.current = false
         w.state = 'door-out'
-        w.target = [-1.5, 0.65, 1.05]
+        // C3: stand directly below the bell at world (-1.0, 2.0, 0.62)
+        // on the porch facing the front door.
+        w.target = [-1.05, 0.65, 1.15]
         w.started = t
       }
       if (w.state === 'home' && t >= w.nextWander) {

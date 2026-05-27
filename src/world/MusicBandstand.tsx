@@ -54,6 +54,7 @@ function VinylPlayer({ now }: { now: MusicBandstandProps['nowPlaying'] }) {
   const platterRef = useRef<THREE.Group>(null)
   const tonearmRef = useRef<THREE.Group>(null)
   const labelMatRef = useRef<THREE.MeshStandardMaterial>(null)
+  const stylusMatRef = useRef<THREE.MeshStandardMaterial>(null)
   const isLive = !!now?.isLive
   const hasRecord = !!now   // covers either live OR just-played
   useFrame((s, dt) => {
@@ -76,6 +77,16 @@ function VinylPlayer({ now }: { now: MusicBandstandProps['nowPlaying'] }) {
       labelMatRef.current.emissiveIntensity = 0.4 + Math.sin(t * 2.1) * 0.15
     } else if (labelMatRef.current) {
       labelMatRef.current.emissiveIntensity = 0
+    }
+    // Stylus head: faster pulse than the label when live — signals
+    // "this needle is in the groove right now". Off when not live.
+    if (stylusMatRef.current) {
+      if (isLive) {
+        const t = s.clock.elapsedTime
+        stylusMatRef.current.emissiveIntensity = 0.5 + Math.sin(t * 4.3) * 0.25
+      } else {
+        stylusMatRef.current.emissiveIntensity = 0
+      }
     }
   })
   const labelColor = isLive ? LP_LABEL_LIVE : (hasRecord ? LP_LABEL_A : LP_LABEL_B)
@@ -139,10 +150,19 @@ function VinylPlayer({ now }: { now: MusicBandstandProps['nowPlaying'] }) {
           <cylinderGeometry args={[0.008, 0.008, 0.40, 6]} />
           <meshStandardMaterial color="#2E2622" metalness={0.7} roughness={0.35} />
         </mesh>
-        {/* Headshell + stylus end */}
+        {/* Headshell + stylus end. Material has live-pulse emissive
+            (driven from useFrame above) so on isLive=true the stylus
+            head glows like a tiny warm LED. */}
         <mesh position={[-0.33, 0.03, 0.27]} castShadow>
           <boxGeometry args={[0.05, 0.025, 0.035]} />
-          <meshStandardMaterial color="#3A2A20" metalness={0.5} roughness={0.5} />
+          <meshStandardMaterial
+            ref={stylusMatRef}
+            color="#3A2A20"
+            emissive="#FFD58F"
+            emissiveIntensity={0}
+            metalness={0.5}
+            roughness={0.5}
+          />
         </mesh>
       </group>
     </group>

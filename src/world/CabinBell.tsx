@@ -11,8 +11,10 @@ import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { emit } from './events'
 
-// Cabin origin + offset to east of front door
-const POS: [number, number, number] = [-0.65, 2.1, 0.85]
+// World position — east of cabin front door. Cabin chat zone at (-2,-1),
+// CABIN_W=3.6 CABIN_D=3.0, door at world (-2, _, 0.5) — bell hangs from
+// the east-side eaves overhang, just outside the front wall.
+const POS: [number, number, number] = [-1.0, 2.0, 0.62]
 
 export default function CabinBell() {
   const bellRef = useRef<THREE.Group>(null)

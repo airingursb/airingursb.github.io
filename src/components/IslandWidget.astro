@@ -1155,23 +1155,18 @@ import IslandWidget from './IslandWidget'
     filter: drop-shadow(0 10px 20px rgba(40, 50, 60, 0.26))
             brightness(1.04) saturate(1.06);
   }
-  /* B1 — fly-in transition. When user clicks "进入森林岛", the islet
-     expands from its 220×220 corner to fill the viewport over 700ms,
-     then the click handler navigates to /world/. The world's
-     CameraControls (it reads sessionStorage 'island-from-pet') then
-     plays the matching high-altitude swoop intro, so the two animations
-     feel like ONE continuous "pull into the world" gesture. */
+  /* B1 — fly-in transition. When user clicks "进入森林岛", the pet stays
+     at its 220×220 footprint and SCALES from its bottom-left corner so
+     it grows up + right to cover the viewport, then the JS handler
+     navigates to /world/. The world's CameraControls picks up sessionStorage
+     'island-from-pet' and plays the matching high-altitude swoop intro,
+     so the two animations feel like ONE continuous "pull into the world"
+     gesture. Scale target uses CSS max(100vw/220, 100vh/220) so the math
+     is viewport-correct on every screen — earlier scale(0.22) draft was
+     viewport-dependent and rendered wrong on non-1000px widths. */
   .island-pet.island-pet-flying {
     z-index: 9999;
-    /* Animate from 220×220 at left:20/bottom:20 → fullscreen. We
-       set fixed inset:0 + width:100vw/height:100vh + a scale-from
-       starting transform, then animate to scale 1. */
-    inset: 0;
-    width: 100vw !important;
-    height: 100vh !important;
-    bottom: auto;
-    left: auto;
-    transform-origin: bottom left;
+    transform-origin: 0% 100%;
     animation: island-pet-flyin 700ms cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
     pointer-events: none;
   }
@@ -1181,22 +1176,19 @@ import IslandWidget from './IslandWidget'
   .island-pet.island-pet-flying .island-skeleton {
     /* Hide UI overlay during the fly-in — only the canvas matters now */
     opacity: 0;
-    transition: opacity 200ms ease;
+    transition: opacity 180ms ease;
   }
   @keyframes island-pet-flyin {
     0% {
-      /* Render at original size, anchored at the corner where the click began */
-      transform: scale(0.22) translate(-50px, 50px);
-      opacity: 1;
-    }
-    40% {
-      /* Lift + brighten as we pull in */
-      filter: drop-shadow(0 30px 60px rgba(40, 50, 60, 0.42))
-              brightness(1.06) saturate(1.08);
+      transform: scale(1);
+      filter: drop-shadow(0 6px 14px rgba(40, 50, 60, 0.18));
     }
     100% {
-      transform: scale(1) translate(0, 0);
-      opacity: 1;
+      /* max() picks the larger of width/height scale ratios so the pet
+         always FULLY covers the viewport at the end of the animation. */
+      transform: scale(max(calc(100vw / 220), calc(100vh / 220)));
+      filter: drop-shadow(0 30px 60px rgba(40, 50, 60, 0.42))
+              brightness(1.08) saturate(1.10);
     }
   }
   /* Pet "settles" on click — crisp 80ms press-down then 240ms

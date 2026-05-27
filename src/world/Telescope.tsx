@@ -56,38 +56,40 @@ export default function Telescope() {
         <meshStandardMaterial color="#604838" metalness={0.5} roughness={0.5} />
       </mesh>
       {/* The scope itself — long brass tube, tilted upward.
-          Group ref enables subtle idle wobble. */}
-      <group ref={scopeRef} position={[0, 0.76, 0]}>
+          Group ref enables subtle idle wobble. Scale 1.5× over first
+          pass so the scope reads from default orbit distance (~50u). */}
+      <group ref={scopeRef} position={[0, 0.78, 0]} scale={1.45}>
         {/* Main barrel — brass cylinder */}
         <mesh position={[0.18, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.05, 0.05, 0.6, 16]} />
+          <cylinderGeometry args={[0.07, 0.07, 0.6, 16]} />
           <meshStandardMaterial color="#C99850" metalness={0.7} roughness={0.35} />
         </mesh>
         {/* Objective end (front, larger flared) */}
         <mesh position={[0.48, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.07, 0.05, 0.08, 16]} />
+          <cylinderGeometry args={[0.095, 0.07, 0.08, 16]} />
           <meshStandardMaterial color="#A07840" metalness={0.75} roughness={0.30} />
         </mesh>
-        {/* Objective lens (dark front disc) */}
+        {/* Objective lens (dark front disc with faint emissive 'glint'
+            so the scope reads as a glassy lens, not a black hole) */}
         <mesh position={[0.52, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-          <cylinderGeometry args={[0.065, 0.065, 0.005, 16]} />
-          <meshStandardMaterial color="#1A1612" metalness={0.4} roughness={0.4} />
+          <cylinderGeometry args={[0.09, 0.09, 0.005, 16]} />
+          <meshStandardMaterial color="#1A1612" emissive="#3a4458" emissiveIntensity={0.25} metalness={0.4} roughness={0.4} />
         </mesh>
         {/* Eyepiece (back, smaller) */}
         <mesh position={[-0.14, 0, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
-          <cylinderGeometry args={[0.035, 0.035, 0.08, 12]} />
+          <cylinderGeometry args={[0.05, 0.05, 0.08, 12]} />
           <meshStandardMaterial color="#604838" metalness={0.5} roughness={0.4} />
         </mesh>
         {/* Focusing knob — small dark cylinder atop barrel */}
-        <mesh position={[0.05, 0.06, 0]} castShadow>
-          <cylinderGeometry args={[0.022, 0.022, 0.025, 8]} />
+        <mesh position={[0.05, 0.09, 0]} castShadow>
+          <cylinderGeometry args={[0.030, 0.030, 0.030, 8]} />
           <meshStandardMaterial color="#3A2A20" metalness={0.5} roughness={0.5} />
         </mesh>
         {/* Optional emissive ring around objective when hovered for
             discoverability — makes it pop in dusk/night */}
         {hovered && (
           <mesh position={[0.49, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <torusGeometry args={[0.078, 0.005, 6, 18]} />
+            <torusGeometry args={[0.10, 0.008, 6, 20]} />
             <meshBasicMaterial color="#FFD08A" />
           </mesh>
         )}

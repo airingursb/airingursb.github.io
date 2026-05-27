@@ -272,11 +272,12 @@ export default function BlogKiosk({
           </mesh>
         ))}
 
-        {/* === A2: latest-post scroll dangling from underside of eaves,
-                offset to the right so it doesn't overlap the banner. Hover
-                shows title + date as drei Html. */}
+        {/* === A2: latest-post scroll dangling from underside of eaves.
+                Y offset puts the ribbon TOP just under the eaves slab
+                instead of clipping through it. Offset to the right so
+                it doesn't overlap the banner. Hover shows title + date. */}
         {latestPost && (
-          <group position={[W * 0.55, H / 2 - 0.05, 0.32]}>
+          <group position={[W * 0.55, H / 2 - 0.40, 0.32]}>
             <LatestPostScroll post={latestPost} fresh={fresh} />
           </group>
         )}
