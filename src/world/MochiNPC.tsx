@@ -72,7 +72,7 @@ export default function MochiNPC() {
     const targetYaw = Math.atan2(dx, dz)
     zoneLookRef.current = { until: performance.now() / 1000 + 5, targetYaw }
   }), [])
-  useFrame((s) => {
+  useFrame((s, dt) => {
     const t = s.clock.elapsedTime
     if (bodyRef.current) {
       bodyRef.current.scale.y = 1 + Math.sin(t * 1.2) * 0.02
@@ -149,16 +149,22 @@ export default function MochiNPC() {
         rootRef.current.position.x = x
         rootRef.current.position.z = z
         rootRef.current.position.y = homePos[1] + Math.abs(Math.sin(t * 7)) * 0.06 * (progress < 1 ? 1 : 0)
-        // Face door (cabin north +X)
-        rootRef.current.rotation.y = Math.atan2(w.target[0] - homePos[0], w.target[2] - homePos[2]) * (1 - eased * 0.5)
+        // Face direction of travel — atan2(dx, dz) of walk vector.
+        const yawTarget = Math.atan2(w.target[0] - homePos[0], w.target[2] - homePos[2])
+        // Smooth lerp toward target yaw rather than direct write so the
+        // hand-off from any previous state's rotation is graceful.
+        const k = 1 - Math.exp(-dt * 4)
+        rootRef.current.rotation.y += (yawTarget - rootRef.current.rotation.y) * k
         if (progress >= 1) { w.state = 'door-wave'; w.started = t }
       } else if (w.state === 'door-wave') {
         rootRef.current.position.x = w.target[0]
         rootRef.current.position.z = w.target[2]
-        // Wave gesture — exaggerated bob + facing camera (~atan2 to camera, but
-        // we don't have camera here; approximate facing south-east toward main view)
+        // Wave gesture — exaggerated bob + small yaw oscillation around
+        // a target that faces camera-ish (+0.4 rad south-east).
         rootRef.current.position.y = homePos[1] + Math.abs(Math.sin(t * 6)) * 0.08
-        rootRef.current.rotation.y = 0.4 + Math.sin(t * 4) * 0.25
+        const yawTarget = 0.4 + Math.sin(t * 4) * 0.25
+        const k = 1 - Math.exp(-dt * 6)
+        rootRef.current.rotation.y += (yawTarget - rootRef.current.rotation.y) * k
         if (progress >= 1) { w.state = 'door-back'; w.started = t }
       } else if (w.state === 'door-back') {
         const x = w.target[0] + (homePos[0] - w.target[0]) * eased
@@ -166,7 +172,10 @@ export default function MochiNPC() {
         rootRef.current.position.x = x
         rootRef.current.position.z = z
         rootRef.current.position.y = homePos[1] + Math.abs(Math.sin(t * 6)) * 0.04 * (progress < 1 ? 1 : 0)
-        rootRef.current.rotation.y = Math.atan2(homePos[0] - w.target[0], homePos[2] - w.target[2]) * (1 - eased * 0.8)
+        // Lerp yaw toward "facing home" then 0 at the end (eased)
+        const yawTarget = Math.atan2(homePos[0] - w.target[0], homePos[2] - w.target[2]) * (1 - eased)
+        const k = 1 - Math.exp(-dt * 4)
+        rootRef.current.rotation.y += (yawTarget - rootRef.current.rotation.y) * k
         if (progress >= 1) {
           w.state = 'home'
           w.nextWander = t + 90 + Math.random() * 60
