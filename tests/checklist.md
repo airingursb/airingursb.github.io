@@ -188,6 +188,45 @@
       — chat panel should open. ESC closes it; focus restores back
       to the SkipNav button (not document body).
 
+## Bonsai Pet (`/blog` + `/en/blog` author sidebar)
+
+> Architecture: literal byte-for-byte mirror of the webml-community/
+> bonsai-image-webgpu HF Space bundle, embedded via `<iframe>`. The
+> bonsai bundle (`/bonsai-mirror/assets/index-Bf-HmMxp.js`, 891 KB)
+> is unchanged from upstream; only `index.html` carries a small CSS
+> override at the top to hide the surrounding image-generation UI +
+> a script that blocks OrbitControls wheel-zoom and forwards wheel
+> deltas to the parent window so blog scrolling still works.
+>
+> Component: `src/components/BonsaiWidget.astro` (iframe wrapper +
+> SVG loading skeleton). 280×360 inline below the subscribe card.
+> Hidden on <1200px and prefers-reduced-motion.
+
+- [ ] GET `/blog` 返回页面
+- [ ] DOM: `#bonsai-pet` exists in `.sidebar-sticky` (inline below
+      `.subscribe-card`, width=100%, height=360px)
+- [ ] DOM: `<iframe class="bonsai-iframe" src="/bonsai-mirror/index.html">`
+      mounts within 1s and reports `width > 0` on its inner canvas
+- [ ] DOM: `.bonsai-skel` SVG silhouette renders before iframe loads
+      and fades out (`opacity: 0`) once `.bonsai-loaded` class lands
+- [ ] DOM: GET `/bonsai-mirror/index.html` and `/bonsai-mirror/assets/index-Bf-HmMxp.js`
+      both return 200
+- [ ] CSS: `.bonsai-pet` has `pointer-events: none` (wrapper doesn't
+      block clicks); `.bonsai-iframe` has `pointer-events: auto`
+- [ ] Evaluate: iframe console emits `Built 8 instanced meshes from
+      8 categories` (the bundle's own boot log) within 5s — confirms
+      the upstream code is running unmodified
+- [ ] Interaction: wheel-scroll while cursor is over the widget
+      scrolls the blog page (not the bonsai camera) — bundle's
+      OrbitControls is blocked at capture phase
+- [ ] Screenshot: bonsai visibly cycles dark → autumn → winter →
+      sakura over ~23 seconds (4 s dwell + 1.8 s fade per variant,
+      4 variants, same as upstream)
+- [ ] Visual: falling-leaf particles + warm dust motes both present
+- [ ] Mobile (`<1200px` viewport): widget is `display:none`
+- [ ] Reduced-motion: widget is `display:none`
+- [ ] EN page (`/en/blog`): same widget mounted, same behavior
+
 ## Archive (`/archive/`)
 
 - [ ] GET `/archive/` 返回页面

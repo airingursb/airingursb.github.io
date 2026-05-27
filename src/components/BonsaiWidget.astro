@@ -1,0 +1,137 @@
+---
+// BonsaiWidget — embeds the verbatim HF Space bundle (mirrored locally
+// under /bonsai-mirror/) via iframe. This is the LITERAL 100% port —
+// same minified Three.js code, same scene assembly, same animation loop,
+// same auto-cycle, same hover deflection — no possible deviation.
+//
+// The mirror's index.html has a UI-strip CSS override at the top so only
+// the bonsai canvas is visible; the surrounding image-generation prompt
+// UI / model menu / gate is hidden. A small inline script also blocks
+// OrbitControls' wheel-zoom and forwards the wheel delta to the parent
+// window so the blog page still scrolls when the cursor is over the
+// widget.
+//
+// React port has been removed (was deviation-prone). Mirror is the
+// canonical implementation.
+---
+
+<!-- Preload the 891KB bundle as `script` so the browser starts the
+     fetch before the iframe element is parsed — shaves ~300ms off the
+     critical render path on cold loads. fetchpriority=low keeps it from
+     competing with above-the-fold blog content. -->
+<link
+  slot="head"
+  rel="preload"
+  as="script"
+  href="/bonsai-mirror/assets/index-Bf-HmMxp.js"
+  fetchpriority="low"
+  crossorigin
+/>
+
+<div class="bonsai-pet" id="bonsai-pet" aria-hidden="true">
+  <!-- SVG silhouette while the 891KB bundle downloads + Three.js boots.
+       Fades out once the iframe canvas paints its first frame. -->
+  <svg class="bonsai-skel" viewBox="0 0 200 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
+    <defs>
+      <linearGradient id="bonsai-trunk-grad-v2" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0" stop-color="#5c4530" stop-opacity="0.45" />
+        <stop offset="1" stop-color="#2e2218" stop-opacity="0.5" />
+      </linearGradient>
+      <radialGradient id="bonsai-leaf-grad-v2" cx="0.5" cy="0.4" r="0.6">
+        <stop offset="0" stop-color="#456f3a" stop-opacity="0.55" />
+        <stop offset="1" stop-color="#244222" stop-opacity="0.45" />
+      </radialGradient>
+    </defs>
+    <ellipse cx="100" cy="190" rx="74" ry="10" fill="rgba(58,50,44,0.40)" />
+    <path d="M96 188 L98 152 L102 132 L96 108 L106 84 L100 64"
+          stroke="url(#bonsai-trunk-grad-v2)" stroke-width="8" stroke-linecap="round" fill="none" />
+    <path d="M100 132 L70 112 L52 110" stroke="url(#bonsai-trunk-grad-v2)" stroke-width="5" stroke-linecap="round" fill="none" />
+    <path d="M104 96 L138 80 L150 76" stroke="url(#bonsai-trunk-grad-v2)" stroke-width="5" stroke-linecap="round" fill="none" />
+    <ellipse cx="56" cy="106" rx="22" ry="14" fill="url(#bonsai-leaf-grad-v2)" />
+    <ellipse cx="148" cy="74" rx="22" ry="14" fill="url(#bonsai-leaf-grad-v2)" />
+    <ellipse cx="100" cy="56" rx="32" ry="20" fill="url(#bonsai-leaf-grad-v2)" />
+  </svg>
+  <iframe
+    class="bonsai-iframe"
+    src="/bonsai-mirror/index.html"
+    title="Bonsai voxel scene"
+    referrerpolicy="no-referrer"
+    aria-hidden="true"
+    tabindex="-1"
+    onload="this.parentElement.classList.add('bonsai-loaded')"
+    onerror="this.parentElement.classList.add('bonsai-failed')"
+  ></iframe>
+</div>
+
+<script is:inline>
+  // Safety net: if the iframe never paints (network failure, blocked
+  // by ad blocker, missing asset), gracefully hide the widget after
+  // 15s so the sidebar collapse doesn't show a permanent skeleton.
+  (function () {
+    const wrap = document.getElementById('bonsai-pet')
+    if (!wrap) return
+    setTimeout(() => {
+      if (!wrap.classList.contains('bonsai-loaded')) {
+        wrap.classList.add('bonsai-failed')
+      }
+    }, 15000)
+  })()
+</script>
+
+<style>
+  .bonsai-pet {
+    /* Sits below the subscribe card in the author sidebar.
+       Transparent iframe inheriting the blog theme. A faint warm wash
+       (rgba ~4% alpha) hints at the lantern-lit atmosphere of the HF
+       original without being a dark backdrop the user objected to. */
+    position: relative;
+    width: 100%;
+    height: 360px;
+    margin-top: 16px;
+    background: radial-gradient(circle at 50% 45%,
+      rgba(255, 220, 170, 0.05) 0%,
+      rgba(255, 220, 170, 0.02) 40%,
+      transparent 75%);
+    pointer-events: none;
+    transition: opacity 600ms ease;
+  }
+  .bonsai-skel {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0.55;
+    /* Match the HF original's `body { transition: opacity 0.35s }`
+       fade-in cadence so the widget reveals at the same pace the
+       upstream Space does when it lands. */
+    transition: opacity 350ms ease;
+    pointer-events: none;
+  }
+  .bonsai-pet.bonsai-loaded .bonsai-skel { opacity: 0; }
+  .bonsai-iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: transparent;
+    opacity: 0;
+    transition: opacity 350ms ease;
+    /* Re-enable pointer events so the bundle's hover-deflection picks up
+       cursor moves inside the canvas. Wheel events are captured by the
+       inline override in the iframe and forwarded to window.parent. */
+    pointer-events: auto;
+  }
+  .bonsai-pet.bonsai-loaded .bonsai-iframe { opacity: 1; }
+  /* Graceful degradation: if iframe fails (network, blocked, missing
+     asset), hide the widget entirely rather than leaving a permanent
+     skeleton placeholder. */
+  .bonsai-pet.bonsai-failed { display: none; }
+
+  /* Match the homepage IslandWidget desktop-only convention. */
+  @media (max-width: 1199px) {
+    .bonsai-pet { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bonsai-pet { display: none; }
+  }
+</style>
