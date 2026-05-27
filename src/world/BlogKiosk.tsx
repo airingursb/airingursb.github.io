@@ -185,8 +185,10 @@ export default function BlogKiosk({
   useFrame((s) => {
     if (!fresh || !auraRef.current) return
     const t = s.clock.elapsedTime
-    // 4s breathe — opacity 0.15 → 0.45 sine
-    auraRef.current.opacity = 0.30 + Math.sin(t * 1.6) * 0.15
+    // Polish 2: dimmed range 0.08 → 0.22 (was 0.15 → 0.45). With Bloom
+    // the previous range bloomed into a giant white ball at night that
+    // dominated the lower-left of the default frame.
+    auraRef.current.opacity = 0.15 + Math.sin(t * 1.6) * 0.07
   })
 
   return (
@@ -197,12 +199,14 @@ export default function BlogKiosk({
           picks it up. */}
       {fresh && (
         <mesh position={[0, BOARD_Y, 0]} renderOrder={1}>
-          <sphereGeometry args={[0.85, 16, 12]} />
+          {/* Polish 2: radius 0.85 → 0.55 — sphere fits over the kiosk
+              top instead of engulfing the surrounding tree canopies. */}
+          <sphereGeometry args={[0.55, 16, 12]} />
           <meshBasicMaterial
             ref={auraRef}
             color="#FFD08A"
             transparent
-            opacity={0.18}
+            opacity={0.12}
             depthWrite={false}
             blending={THREE.AdditiveBlending}
           />
