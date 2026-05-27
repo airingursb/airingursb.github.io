@@ -391,10 +391,16 @@ function CameraControls() {
       target={[0, 5, 0]}
       enablePan={false}
       enableZoom={true}
-      minDistance={22}
-      maxDistance={50}
-      minPolarAngle={Math.PI * 0.22}
-      maxPolarAngle={Math.PI * 0.44}
+      /* Range expanded: initial cam distance was ~50 (= old maxDistance)
+         so zoom-out had ZERO room. User couldn't zoom out with trackpad.
+         Now: 18 (close-up) to 90 (far overview). */
+      minDistance={18}
+      maxDistance={90}
+      zoomSpeed={1.2}
+      /* Polar range widened so user can look slightly more down or
+         slightly more horizon — gives access to better waterfall angles */
+      minPolarAngle={Math.PI * 0.18}
+      maxPolarAngle={Math.PI * 0.48}
       enableDamping
       dampingFactor={0.06}
     />

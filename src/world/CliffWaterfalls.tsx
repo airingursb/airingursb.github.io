@@ -49,18 +49,23 @@ interface FallConfig {
   mistCount: number
 }
 
-// 4 falls clustered on the far-north cliff rim. WIDE curtains so the
-// "sheet of water" feel reads clearly. Trapezoid taper: top width is
-// the source spread, bottom is wider as the water disperses (NOT
-// narrower — water spreads as it falls due to gravity acceleration
-// causing droplet spread).
+// 4 falls on the FAR-NORTH cliff rim. CRITICAL change vs v5a:
+// positions moved from radius 22 (OUTSIDE the cliff = "floating in
+// air") to radius 18-19 (ON the visible grass rim). The source
+// stones now sit on visible island top; the trapezoid plane hangs
+// OVER the cliff edge into the void via local Z offset.
+//
+// Cliff body: top band radius 18-20.5 at y=-2.4. By placing at
+// radius 19, sources are clearly on grass. Planes use local Z offset
+// (-0.4) to push the curtain outward past radius 19.4, just past the
+// rim edge — appears physically attached to the visible cliff lip.
 const FALLS: FallConfig[] = [
-  // HERO — wide curtain, 3 overlapping planes for depth
-  { pos: [-8, -22], rotY: -0.3, height: 16, topWidth: 1.8, bottomWidth: 2.6, layers: 3, mistCount: 40 },
-  // 3 satellites — narrower
-  { pos: [-15, -19], rotY: -1.1, height: 11, topWidth: 0.9, bottomWidth: 1.3, layers: 2, mistCount: 18 },
-  { pos: [-3, -22],  rotY: 0.1,  height: 12, topWidth: 1.1, bottomWidth: 1.5, layers: 2, mistCount: 22 },
-  { pos: [4, -22],   rotY: 0.4,  height: 10, topWidth: 0.7, bottomWidth: 1.0, layers: 2, mistCount: 14 },
+  // HERO — wide curtain, 3 layers
+  { pos: [-7, -18], rotY: -0.4, height: 14, topWidth: 1.8, bottomWidth: 2.4, layers: 3, mistCount: 40 },
+  // 3 satellites
+  { pos: [-13, -16], rotY: -1.0, height: 10, topWidth: 0.9, bottomWidth: 1.3, layers: 2, mistCount: 18 },
+  { pos: [-2, -18.5], rotY: 0.05, height: 11, topWidth: 1.1, bottomWidth: 1.5, layers: 2, mistCount: 22 },
+  { pos: [3, -18],   rotY: 0.3,  height: 9, topWidth: 0.7, bottomWidth: 1.0, layers: 2, mistCount: 14 },
 ]
 
 // Water curtain texture — vertical streaks with alpha falloff at
@@ -271,14 +276,16 @@ function CliffFall({ config, style }: { config: FallConfig; style: SeasonStyle }
         <dodecahedronGeometry args={[Math.max(0.08, config.topWidth * 0.06), 0]} />
         <meshStandardMaterial color="#1A140E" roughness={0.95} flatShading />
       </mesh>
-      {/* Water curtains — multiple overlapping trapezoid planes at
-          slight rotations + Z offsets for layered depth. Each layer
-          scrolls UV at different speed. */}
+      {/* Water curtains — overlapping trapezoid planes at slight
+          rotations. Local Z offset (-0.4) pushes the curtain OUTWARD
+          past the cliff rim so it appears physically hanging from the
+          cliff edge (not floating in mid-air, which was v5a's bug).
+          Slight per-layer Z stagger gives parallax depth. */}
       {layerGeos.map((geo, i) => (
         <mesh
           key={i}
           geometry={geo}
-          position={[0, 0, -i * 0.05 - 0.02]}
+          position={[0, -0.05, -0.4 - i * 0.08]}
           rotation={[0, (i - (config.layers - 1) / 2) * 0.10, 0]}
         >
           <meshBasicMaterial
