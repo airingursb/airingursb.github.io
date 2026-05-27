@@ -1631,6 +1631,219 @@ function MiniMochi({ x, z }: { x: number; z: number }) {
 // Every 45-90s: enters from one side, traces a slow sine path
 // across the island ~3.5 units above ground, exits the other side.
 // Pure geometry — two flat triangles + a body sphere.
+// Pet-scale cliff waterfall — single small trickle off the south-east
+// edge of the island. The /world/ version (CliffWaterfalls.tsx) has 5
+// waterfalls; here at 220px we get away with one. Same "Ghibli infinite
+// drop into cloud sea" idea, scaled to fit the pet's tiny canvas.
+//
+// Tapered cylinder + 6 mist particles + base glow. Disabled during
+// frozen winter season (mirrors the /world/ frozen behavior).
+// Pet cliff waterfall v4 — particle stream like /world/ CliffWaterfalls v4.
+// Replaces v3 tubes which still looked like rigid lines at pet scale.
+// 30-50 tiny falling droplets give actual water look + small splash
+// particles at base.
+function PetWaterfall() {
+  const dropletRef = useRef<THREE.InstancedMesh>(null)
+  const splashRef = useRef<THREE.InstancedMesh>(null)
+  const dropletMatRef = useRef<THREE.MeshBasicMaterial>(null)
+  const splashMatRef = useRef<THREE.MeshBasicMaterial>(null)
+  const glowMatRef = useRef<THREE.MeshBasicMaterial>(null)
+
+  // Seasonal flag — winter freezes
+  const frozen = useMemo(() => {
+    if (typeof window === 'undefined') return false
+    try {
+      const url = new URLSearchParams(location.search).get('season')
+      if (url === 'winter') return true
+      if (url) return false
+      const now = new Date()
+      const m = now.getMonth()
+      const d = now.getDate()
+      return (m === 11 && d >= 21) || m === 0 || (m === 1 && d <= 14)
+    } catch {
+      return false
+    }
+  }, [])
+
+  // Particle stream config — pet-scaled (island radius 2u, camera ~10u).
+  // Size 0.035 → ~1 px at canvas distance — needs to be larger.
+  const FALL_WIDTH = 0.06
+  const FALL_HEIGHT = 0.7
+  const FALL_OUTWARD = 0.02
+  const DROPLET_COUNT = 80
+  const DROPLET_SIZE = 0.035   // ~3px droplets, clearly visible
+  const SPLASH_COUNT = 16
+  const GRAVITY = 0.30
+
+  const droplets = useMemo(() => Array.from({ length: DROPLET_COUNT }, () => {
+    const ageFrac = Math.random()
+    return {
+      x: (Math.random() - 0.5) * FALL_WIDTH,
+      y: -ageFrac * FALL_HEIGHT,
+      z: (Math.random() - 0.5) * 0.02,
+      vx: (Math.random() - 0.5) * 0.03,
+      vy: -ageFrac * 0.15 - 0.05,
+      vz: -FALL_OUTWARD + (Math.random() - 0.5) * 0.02,
+      life: ageFrac * 2,
+    }
+  }), [])
+  const splashes = useMemo(() => Array.from({ length: SPLASH_COUNT }, () => {
+    const angle = Math.random() * Math.PI * 2
+    const speed = 0.08 + Math.random() * 0.12
+    return {
+      x: 0, y: -FALL_HEIGHT + 0.05, z: 0,
+      vx: Math.cos(angle) * speed,
+      vy: 0.10 + Math.random() * 0.10,
+      vz: Math.sin(angle) * speed * 0.5,
+      life: Math.random() * 0.8,
+    }
+  }), [])
+
+  const dummy = useMemo(() => new THREE.Object3D(), [])
+
+  useFrame((s, dt) => {
+    const t = s.clock.elapsedTime
+    // Droplet stream
+    if (dropletRef.current) {
+      for (let i = 0; i < DROPLET_COUNT; i++) {
+        const p = droplets[i]
+        if (!frozen) {
+          p.vy -= GRAVITY * dt
+          p.x += p.vx * dt
+          p.y += p.vy * dt
+          p.z += p.vz * dt
+          p.life += dt
+          if (p.y < -FALL_HEIGHT - 0.1 || p.life > 3) {
+            p.x = (Math.random() - 0.5) * FALL_WIDTH
+            p.y = -0.02 + (Math.random() - 0.5) * 0.03
+            p.z = (Math.random() - 0.5) * 0.02
+            p.vx = (Math.random() - 0.5) * 0.025
+            p.vy = -0.04 - Math.random() * 0.05
+            p.vz = -FALL_OUTWARD * (0.5 + Math.random() * 0.5)
+            p.life = 0
+          }
+        }
+        dummy.position.set(p.x, p.y, p.z)
+        const sizeFrac = 1 - Math.min(0.5, p.life / 3 * 0.5)
+        dummy.scale.setScalar(DROPLET_SIZE * sizeFrac)
+        dummy.updateMatrix()
+        dropletRef.current.setMatrixAt(i, dummy.matrix)
+      }
+      dropletRef.current.instanceMatrix.needsUpdate = true
+    }
+    // Splash particles
+    if (splashRef.current && !frozen) {
+      for (let i = 0; i < SPLASH_COUNT; i++) {
+        const s = splashes[i]
+        s.vy -= GRAVITY * dt * 0.6
+        s.x += s.vx * dt
+        s.y += s.vy * dt
+        s.z += s.vz * dt
+        s.life += dt
+        if (s.life > 0.8 || s.y < -FALL_HEIGHT - 0.05) {
+          const angle = Math.random() * Math.PI * 2
+          const speed = 0.06 + Math.random() * 0.10
+          s.x = (Math.random() - 0.5) * 0.02
+          s.y = -FALL_HEIGHT + 0.05
+          s.z = (Math.random() - 0.5) * 0.015
+          s.vx = Math.cos(angle) * speed
+          s.vy = 0.08 + Math.random() * 0.08
+          s.vz = Math.sin(angle) * speed * 0.5
+          s.life = 0
+        }
+        dummy.position.set(s.x, s.y, s.z)
+        const ageFrac = Math.min(1, s.life / 0.8)
+        dummy.scale.setScalar(DROPLET_SIZE * 0.7 * (1 - ageFrac * 0.5))
+        dummy.updateMatrix()
+        splashRef.current.setMatrixAt(i, dummy.matrix)
+      }
+      splashRef.current.instanceMatrix.needsUpdate = true
+    }
+    if (glowMatRef.current) {
+      glowMatRef.current.opacity = frozen ? 0.06 : 0.20 + Math.sin(t * 1.3) * 0.05
+    }
+    if (dropletMatRef.current) dropletMatRef.current.color.set(frozen ? '#F0F6FA' : '#FFFFFF')
+    if (splashMatRef.current) splashMatRef.current.color.set(frozen ? '#F0F6FA' : '#FFFFFF')
+  })
+
+  // Source: south-east cliff edge of pet island (rim radius 2.05).
+  return (
+    <group position={[1.65, 0, 0.8]} rotation={[0, -0.5, 0]}>
+      {/* 2 tiny dark wet rocks */}
+      <mesh position={[0, 0.012, -0.02]} castShadow>
+        <dodecahedronGeometry args={[0.022, 0]} />
+        <meshStandardMaterial color="#1F1812" roughness={0.95} flatShading />
+      </mesh>
+      <mesh position={[-0.025, 0.010, 0.015]} castShadow>
+        <dodecahedronGeometry args={[0.016, 0]} />
+        <meshStandardMaterial color="#2A2018" roughness={0.95} flatShading />
+      </mesh>
+      {/* Soft volumetric core column */}
+      {!frozen && (
+        <mesh position={[0, -FALL_HEIGHT / 2, -FALL_OUTWARD * 0.5]}>
+          <cylinderGeometry args={[FALL_WIDTH * 0.35, FALL_WIDTH * 0.55, FALL_HEIGHT, 6, 1, true]} />
+          <meshBasicMaterial
+            color="#FFFFFF"
+            transparent
+            opacity={0.16}
+            depthWrite={false}
+            side={THREE.DoubleSide}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      )}
+      {/* Droplet stream */}
+      <instancedMesh
+        ref={dropletRef}
+        args={[undefined as any, undefined as any, DROPLET_COUNT]}
+        frustumCulled={false}
+      >
+        <sphereGeometry args={[1, 5, 4]} />
+        <meshBasicMaterial
+          ref={dropletMatRef}
+          color={frozen ? '#F0F6FA' : '#FFFFFF'}
+          transparent
+          opacity={frozen ? 0.88 : 0.80}
+          depthWrite={false}
+          blending={frozen ? THREE.NormalBlending : THREE.AdditiveBlending}
+        />
+      </instancedMesh>
+      {/* Splash particles at base */}
+      {!frozen && (
+        <group position={[0, 0, -FALL_OUTWARD * 0.3]}>
+          <instancedMesh
+            ref={splashRef}
+            args={[undefined as any, undefined as any, SPLASH_COUNT]}
+            frustumCulled={false}
+          >
+            <sphereGeometry args={[1, 4, 3]} />
+            <meshBasicMaterial
+              ref={splashMatRef}
+              color="#FFFFFF"
+              transparent
+              opacity={0.70}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </instancedMesh>
+        </group>
+      )}
+      {/* Tiny base glow */}
+      <mesh position={[0, -FALL_HEIGHT - 0.08, -FALL_OUTWARD * 0.3]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={3}>
+        <circleGeometry args={[FALL_WIDTH * 2.5, 16]} />
+        <meshBasicMaterial
+          ref={glowMatRef}
+          color={frozen ? '#D8E4EC' : '#FFFFFF'}
+          transparent
+          opacity={0.20}
+          depthWrite={false}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+    </group>
+  )
+}
+
 function WanderingBird() {
   const groupRef = useRef<THREE.Group>(null)
   const wingLRef = useRef<THREE.Mesh>(null)
@@ -1698,13 +1911,19 @@ function WanderingBird() {
 
 function RotatingScene({ children }: { children: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
-  const RATE = (Math.PI * 2) / 180   // one full turn per 3 minutes (baseline)
+  // One full turn per 60s baseline (was 180s — too slow to perceive as
+  // rotation; user saw a static scene). At baseline rate, viewer sees
+  // ~6°/sec which is clearly moving but still relaxed. Sakura-facing
+  // ease still slows the hero pose 4× for that "money shot" dwell.
+  const RATE = (Math.PI * 2) / 60
   useFrame((_, dt) => {
     if (!ref.current) return
     if (hoverState.active) return    // freeze on hover
     const y = ref.current.rotation.y
-    // (1 - cos(y))/2 ranges 0..1 with min at y=0 (sakura facing)
-    const ease = 0.25 + 0.75 * ((1 - Math.cos(y)) / 2)
+    // (1 - cos(y))/2 ranges 0..1 with min at y=0 (sakura facing).
+    // Ease 0.30 (slow at sakura) → 1.0 (full rate on back side) so
+    // the hero pose holds longer per cycle.
+    const ease = 0.30 + 0.70 * ((1 - Math.cos(y)) / 2)
     ref.current.rotation.y = (y + dt * RATE * ease) % (Math.PI * 2)
   })
   return <group ref={ref}>{children}</group>
@@ -1884,6 +2103,11 @@ export default function IslandWidget() {
         <WanderingBird />
         {/* B4: MiniMochi at torii base — waves at camera every ~25s */}
         <MiniMochi x={0.30} z={0.95} />
+        {/* Cliff waterfall — south-east edge. Inherits scene rotation
+            so it goes around with the parallax. Visible most of the
+            cycle and disappears briefly when the island rotates so the
+            fall faces away. */}
+        <PetWaterfall />
 
         {/* WindSway wrap. V52.6: scale 0.56 caps sakura canopy peak
             at y=3.19 to clear the y=3.25 frustum top.

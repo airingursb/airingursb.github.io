@@ -43,6 +43,7 @@ import GuestbookStone from './GuestbookStone'
 import Telescope from './Telescope'
 import CabinBell from './CabinBell'
 import WeatherFX from './WeatherFX'
+import CliffWaterfalls from './CliffWaterfalls'
 import FoxShrine from './FoxShrine'
 import CanopyDapple from './CanopyDapple'
 import Footprints from './Footprints'
@@ -638,6 +639,7 @@ export default function App({ initialData }: { initialData?: AppInitialData } = 
           <Telescope />
           <CabinBell />
           <WeatherFX />
+          <CliffWaterfalls />
         </Suspense>
 
         {/* === Portfolio displays — bespoke structure per zone for visual variety === */}
