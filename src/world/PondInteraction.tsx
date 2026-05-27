@@ -174,10 +174,17 @@ export default function PondInteraction() {
   const [active, setActive] = useState<ActiveImpact[]>([])
   // Stone-tossed counter for unique ids
   const idRef = useRef(0)
-  // GC old impacts every frame (>2.5s)
+  // GC old impacts. Perf fix: only setState when the filtered list
+  // actually changed length — naive `setActive(arr.filter(...))` ran
+  // every frame and triggered React re-renders even when nothing
+  // expired, defeating the purpose of the state machine.
   useFrame(() => {
+    if (active.length === 0) return
     const now = performance.now() / 1000
-    setActive((arr) => arr.filter((a) => now - a.at < 2.5))
+    const fresh = active.filter((a) => now - a.at < 2.5)
+    if (fresh.length !== active.length) {
+      setActive(fresh)
+    }
   })
   return (
     <group>

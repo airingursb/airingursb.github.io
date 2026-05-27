@@ -278,9 +278,15 @@ function ComboFireworks() {
         { id: trigger + 0.001, startedAt: now + 0.18, origin: origin2 },
       ])
     }
-    // GC finished bursts (>2.5s)
-    const now = performance.now() / 1000
-    setActiveBursts((arr) => arr.filter((b) => now - b.startedAt < 2.5))
+    // GC finished bursts (>2.5s). Same perf fix as PondInteraction —
+    // only setState when length actually changes.
+    const now2 = performance.now() / 1000
+    if (activeBursts.length > 0) {
+      const fresh = activeBursts.filter((b) => now2 - b.startedAt < 2.5)
+      if (fresh.length !== activeBursts.length) {
+        setActiveBursts(fresh)
+      }
+    }
   })
   return (
     <>
