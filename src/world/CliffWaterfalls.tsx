@@ -1,20 +1,28 @@
-// Cliff waterfalls v5 — water CURTAIN (trapezoid plane + UV scroll).
+// Cliff waterfalls v6 — ditch geometric curtain, use ORGANIC NOISE.
 //
-// Lessons from v1-v4:
-//   v1 cylinder: looked like solid column "snot"
-//   v2 cylinder + tall spire: looked like ruined building + column
-//   v3 TubeGeometry arc: looked like rigid frozen curves
-//   v4 particle stream: looked like scattered sparkles, NOT a sheet
+// History of failed approaches (all read as "block / column / brick"):
+//   v1 cylinder           → solid column "snot"
+//   v2 cylinder + spire   → "building"
+//   v3 TubeGeometry arc   → rigid frozen curve
+//   v4 particle stream    → "scattered sparkles, not a sheet"
+//   v5 trapezoid layers   → "brick pillars" (user's feedback)
 //
-// v5: Real waterfalls at distance read as a CURTAIN (continuous sheet
-// with vertical streaks). The right primitive is a TAPERED PLANE
-// (trapezoid: wider at top, narrower at bottom) with an alpha-mapped
-// canvas texture that scrolls downward. Multiple overlapping planes
-// at slight angles give depth. Particles relegated to mist accents
-// at the base only.
+// Root cause analysis for v5 failure:
+//   1. STRAIGHT vertical streak texture read as brick wall lines
+//   2. Hard rectangular plane edges (alpha falloff not soft enough)
+//   3. Multiple overlapping layers compounded brightness → additive
+//      blowing out to solid white
+//   4. 4 IDENTICAL falls clustered = uniform = artificial
 //
-// Day mode: Normal blending + saturated blue-cyan against bright sky.
-// Night/dusk: Additive blending + pure white for glow.
+// v6 approach (Ghibli wispy waterfall):
+//   1. ORGANIC BEZIER SHAPE — irregular vertical tear-drop with
+//      wavering side edges (not rectangle)
+//   2. CLOUDY NOISE TEXTURE — perlin-like blobs, NO vertical streaks
+//      that read as "stripes"
+//   3. EXTREME alpha falloff at all edges → no plane silhouette
+//   4. SINGLE plane per fall (no compounding additive blow-out)
+//   5. ONLY 1 HERO + 1 SMALL satellite (visual focus vs scattered)
+//   6. Low opacity 0.4 + fine sparkle particles for shimmer
 
 import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
@@ -32,118 +40,119 @@ interface SeasonStyle {
 }
 
 const SEASON_STYLE: Record<Season, SeasonStyle> = {
-  default:   { color: '#FFFFFF', glowColor: '#D0E8F4', frozen: false, opacity: 0.85, blending: 'additive' },
-  lny:       { color: '#FFD8B0', glowColor: '#FFB888', frozen: false, opacity: 0.85, blending: 'additive' },
-  midautumn: { color: '#F4F8FF', glowColor: '#E8EFF8', frozen: false, opacity: 0.85, blending: 'additive' },
-  winter:    { color: '#F8FBFF', glowColor: '#D8E4EC', frozen: true,  opacity: 0.95, blending: 'normal' },
-  birthday:  { color: '#FFD0E4', glowColor: '#FFA8C8', frozen: false, opacity: 0.85, blending: 'additive' },
+  default:   { color: '#FFFFFF', glowColor: '#D0E8F4', frozen: false, opacity: 0.50, blending: 'additive' },
+  lny:       { color: '#FFD8B0', glowColor: '#FFB888', frozen: false, opacity: 0.55, blending: 'additive' },
+  midautumn: { color: '#F4F8FF', glowColor: '#E8EFF8', frozen: false, opacity: 0.55, blending: 'additive' },
+  winter:    { color: '#F8FBFF', glowColor: '#D8E4EC', frozen: true,  opacity: 0.85, blending: 'normal' },
+  birthday:  { color: '#FFD0E4', glowColor: '#FFA8C8', frozen: false, opacity: 0.50, blending: 'additive' },
 }
 
 interface FallConfig {
   pos: [number, number]
   rotY: number
-  height: number       // total vertical fall distance
-  topWidth: number     // width at source (top)
-  bottomWidth: number  // width at dispersal (bottom) — taper
-  layers: number       // overlapping plane count (2-4 for depth)
+  height: number
+  topWidth: number
+  bottomWidth: number   // wider than top — water spreads
+  seed: number          // unique noise seed per fall
+  sparkleCount: number
   mistCount: number
 }
 
-// 4 falls on the FAR-NORTH cliff rim. CRITICAL change vs v5a:
-// positions moved from radius 22 (OUTSIDE the cliff = "floating in
-// air") to radius 18-19 (ON the visible grass rim). The source
-// stones now sit on visible island top; the trapezoid plane hangs
-// OVER the cliff edge into the void via local Z offset.
-//
-// Cliff body: top band radius 18-20.5 at y=-2.4. By placing at
-// radius 19, sources are clearly on grass. Planes use local Z offset
-// (-0.4) to push the curtain outward past radius 19.4, just past the
-// rim edge — appears physically attached to the visible cliff lip.
+// JUST 2 falls — 1 hero + 1 small satellite. Less is more for the
+// "wispy ethereal" feel. Positioned on the visible grass rim so the
+// source rocks anchor on the cliff edge.
 const FALLS: FallConfig[] = [
-  // HERO — wide curtain, 3 layers
-  { pos: [-7, -18], rotY: -0.4, height: 14, topWidth: 1.8, bottomWidth: 2.4, layers: 3, mistCount: 40 },
-  // 3 satellites
-  { pos: [-13, -16], rotY: -1.0, height: 10, topWidth: 0.9, bottomWidth: 1.3, layers: 2, mistCount: 18 },
-  { pos: [-2, -18.5], rotY: 0.05, height: 11, topWidth: 1.1, bottomWidth: 1.5, layers: 2, mistCount: 22 },
-  { pos: [3, -18],   rotY: 0.3,  height: 9, topWidth: 0.7, bottomWidth: 1.0, layers: 2, mistCount: 14 },
+  // HERO — slightly off-center, the main visual
+  { pos: [-7, -18], rotY: -0.4, height: 13, topWidth: 1.6, bottomWidth: 2.4, seed: 1337, sparkleCount: 50, mistCount: 36 },
+  // Small satellite further west — quieter detail
+  { pos: [-14, -15], rotY: -1.0, height: 9, topWidth: 0.7, bottomWidth: 1.1, seed: 4242, sparkleCount: 20, mistCount: 18 },
 ]
 
-// Water curtain texture — vertical streaks with alpha falloff at
-// top + bottom + sides. Scrolls downward via material.map.offset.y
-// for "flow" feel. Pure white; material color tints it.
-function makeCurtainTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas')
-  canvas.width = 64
-  canvas.height = 256
-  const ctx = canvas.getContext('2d')!
-  // Clear
-  ctx.clearRect(0, 0, 64, 256)
-  // Vertical brightness gradient — fade at top + bottom for soft edges
-  // (helps the curtain "dissolve" into source/mist instead of hard cut)
-  const grd = ctx.createLinearGradient(0, 0, 0, 256)
-  grd.addColorStop(0,    'rgba(255, 255, 255, 0.50)')
-  grd.addColorStop(0.15, 'rgba(255, 255, 255, 0.85)')
-  grd.addColorStop(0.85, 'rgba(255, 255, 255, 0.85)')
-  grd.addColorStop(1,    'rgba(255, 255, 255, 0.40)')
-  ctx.fillStyle = grd
-  ctx.fillRect(0, 0, 64, 256)
-  // Vertical streaks — varying width + brightness for organic flow
-  for (let i = 0; i < 18; i++) {
-    const x = (i / 18) * 64 + (Math.random() - 0.5) * 2
-    const w = 0.6 + Math.random() * 1.8
-    const a = 0.35 + Math.random() * 0.50
-    ctx.fillStyle = `rgba(255, 255, 255, ${a.toFixed(2)})`
-    ctx.fillRect(x, 0, w, 256)
-  }
-  // 200 sparkle dots for shimmer
-  for (let i = 0; i < 200; i++) {
-    const x = Math.random() * 64
-    const y = Math.random() * 256
-    const r = 0.3 + Math.random() * 1.2
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)'
-    ctx.beginPath()
-    ctx.arc(x, y, r, 0, Math.PI * 2)
-    ctx.fill()
-  }
-  // Soft side-edge falloff via radial gradient overlay (darkens edges)
-  ctx.globalCompositeOperation = 'destination-in'
-  const sideGrd = ctx.createLinearGradient(0, 0, 64, 0)
-  sideGrd.addColorStop(0,    'rgba(0, 0, 0, 0.4)')
-  sideGrd.addColorStop(0.2,  'rgba(0, 0, 0, 1.0)')
-  sideGrd.addColorStop(0.8,  'rgba(0, 0, 0, 1.0)')
-  sideGrd.addColorStop(1,    'rgba(0, 0, 0, 0.4)')
-  ctx.fillStyle = sideGrd
-  ctx.fillRect(0, 0, 64, 256)
-  ctx.globalCompositeOperation = 'source-over'
+// Smooth pseudo-noise — used to perturb canvas pixels organically.
+// Not real Perlin (would need a library) but gives cloud-like soft
+// gradients via overlapping sinusoidal waves with random phases.
+function noiseAt(x: number, y: number, seed: number): number {
+  const s = seed
+  return (
+    Math.sin(x * 0.04 + s * 0.7) * 0.5 +
+    Math.sin(y * 0.03 + s * 1.3) * 0.5 +
+    Math.sin((x + y) * 0.06 + s * 2.1) * 0.3 +
+    Math.sin((x - y) * 0.05 + s * 3.5) * 0.3
+  )
+}
 
+// Generate a single per-fall canvas texture: cloud-noise base with
+// extreme edge alpha falloff. No streak lines — pure organic blob.
+function makeWaterTexture(seed: number, w = 128, h = 384): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')!
+  const imgData = ctx.createImageData(w, h)
+  const data = imgData.data
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const i = (y * w + x) * 4
+      // Cloud noise: combine 3 octaves
+      const n1 = noiseAt(x, y, seed) * 0.5 + 0.5
+      const n2 = noiseAt(x * 2, y * 2, seed * 1.7) * 0.5 + 0.5
+      const n3 = noiseAt(x * 4, y * 4, seed * 2.3) * 0.5 + 0.5
+      const noiseVal = (n1 * 0.6 + n2 * 0.3 + n3 * 0.1)
+      // Side edge alpha: parabolic peak at center, fades to 0 at sides
+      const xFrac = x / w
+      const sideAlpha = 1 - Math.pow(Math.abs(xFrac - 0.5) * 2, 1.5)
+      // Top + bottom alpha: fades at extremes for soft start/end
+      const yFrac = y / h
+      const topFade = Math.min(1, yFrac * 5)     // first 20% fades in
+      const botFade = Math.min(1, (1 - yFrac) * 2.5)  // last 40% fades out
+      const vertAlpha = topFade * botFade
+      // Combine: noise modulates brightness, edges modulate alpha
+      const brightness = 0.65 + noiseVal * 0.35   // 0.65 - 1.0
+      const alpha = sideAlpha * vertAlpha * (0.55 + noiseVal * 0.30)
+      data[i]     = 255 * brightness   // R
+      data[i + 1] = 255 * brightness   // G
+      data[i + 2] = 255 * brightness   // B
+      data[i + 3] = 255 * alpha
+    }
+  }
+  ctx.putImageData(imgData, 0, 0)
   const tex = new THREE.CanvasTexture(canvas)
   tex.wrapS = THREE.ClampToEdgeWrapping
   tex.wrapT = THREE.RepeatWrapping
-  tex.repeat.set(1, 2)
+  tex.repeat.set(1, 1.5)
   tex.needsUpdate = true
-  tex.premultiplyAlpha = false
   return tex
 }
 
-let sharedTexture: THREE.CanvasTexture | null = null
-function getCurtainTexture(): THREE.CanvasTexture {
-  if (typeof window === 'undefined') {
-    return new THREE.CanvasTexture(document.createElement('canvas'))
-  }
-  if (!sharedTexture) sharedTexture = makeCurtainTexture()
-  return sharedTexture
-}
-
-// Build trapezoid geometry — wider at top tapering (or widening) to
-// bottom. Generated as a Shape so UV maps are auto-computed.
-function buildCurtainGeo(topWidth: number, bottomWidth: number, height: number): THREE.ShapeGeometry {
+// Build an ORGANIC tear-drop shape via Shape with quadratic bezier
+// curves. Wavering sides instead of straight rectangle edges.
+function buildOrganicShape(topWidth: number, bottomWidth: number, height: number, seed: number): THREE.ShapeGeometry {
   const shape = new THREE.Shape()
+  // Start top-left
   shape.moveTo(-topWidth / 2, 0)
-  shape.lineTo( topWidth / 2, 0)
-  shape.lineTo( bottomWidth / 2, -height)
-  shape.lineTo(-bottomWidth / 2, -height)
-  shape.lineTo(-topWidth / 2, 0)
-  return new THREE.ShapeGeometry(shape)
+  // Top edge: slight curve
+  shape.quadraticCurveTo(0, 0.1, topWidth / 2, 0)
+  // Right side: 3 bezier segments with seed-driven jitter
+  const j1 = Math.sin(seed) * 0.15
+  const j2 = Math.sin(seed * 1.7) * 0.12
+  const j3 = Math.sin(seed * 2.3) * 0.18
+  shape.bezierCurveTo(
+    topWidth / 2 + j1, -height * 0.25,
+    bottomWidth / 2 + j2, -height * 0.65,
+    bottomWidth / 2, -height,
+  )
+  // Bottom edge: curved (water dispersed)
+  shape.quadraticCurveTo(0, -height - 0.15, -bottomWidth / 2, -height)
+  // Left side: mirror with different jitter
+  const j4 = Math.sin(seed * 1.3) * 0.18
+  const j5 = Math.sin(seed * 2.7) * 0.12
+  const j6 = Math.sin(seed * 0.9) * 0.15
+  shape.bezierCurveTo(
+    -bottomWidth / 2 - j4, -height * 0.65,
+    -topWidth / 2 - j5, -height * 0.25,
+    -topWidth / 2 + j6, 0,
+  )
+  return new THREE.ShapeGeometry(shape, 12)
 }
 
 interface MistData {
@@ -153,49 +162,58 @@ interface MistData {
   sizeMul: number
 }
 
+interface SparkleData {
+  x: number; y: number; z: number
+  vy: number
+  life: number
+  maxLife: number
+  baseX: number       // anchor x within the curtain band
+}
+
 function CliffFall({ config, style }: { config: FallConfig; style: SeasonStyle }) {
-  const groupRef = useRef<THREE.Group>(null)
-  const layerMatsRef = useRef<THREE.MeshBasicMaterial[]>([])
+  const matRef = useRef<THREE.MeshBasicMaterial>(null)
+  const sparkleRef = useRef<THREE.InstancedMesh>(null)
+  const sparkleMatRef = useRef<THREE.MeshBasicMaterial>(null)
   const mistRef = useRef<THREE.InstancedMesh>(null)
   const mistMatRef = useRef<THREE.MeshBasicMaterial>(null)
   const glowMatRef = useRef<THREE.MeshBasicMaterial>(null)
 
-  // Per-layer texture clone — independent UV scroll rate gives "layered
-  // depth" effect (each layer scrolls at slightly different speed)
-  const layerTexes = useMemo(() => {
-    const base = getCurtainTexture()
-    return Array.from({ length: config.layers }, () => {
-      const t = base.clone()
-      t.needsUpdate = true
-      t.offset.y = Math.random()
-      return t
-    })
-  }, [config.layers])
-  useEffect(() => () => layerTexes.forEach(t => t.dispose()), [layerTexes])
+  // Texture: unique per fall via seed (no two identical falls)
+  const tex = useMemo(() => makeWaterTexture(config.seed), [config.seed])
+  useEffect(() => () => tex.dispose(), [tex])
 
-  // Per-layer geometry — slight width variance per layer for depth
-  const layerGeos = useMemo(() => {
-    return Array.from({ length: config.layers }, (_, i) => {
-      const variance = 0.85 + (i / config.layers) * 0.3   // 0.85-1.15
-      return buildCurtainGeo(
-        config.topWidth * variance,
-        config.bottomWidth * variance,
-        config.height,
-      )
-    })
-  }, [config.layers, config.topWidth, config.bottomWidth, config.height])
-  useEffect(() => () => layerGeos.forEach(g => g.dispose()), [layerGeos])
+  // Geometry: organic tear-drop with bezier curves
+  const geo = useMemo(
+    () => buildOrganicShape(config.topWidth, config.bottomWidth, config.height, config.seed),
+    [config.topWidth, config.bottomWidth, config.height, config.seed],
+  )
+  useEffect(() => () => geo.dispose(), [geo])
 
-  // Mist particle data — fine dispersion at base
+  // Sparkle particles — tiny bright dots that fall down ALONG the
+  // curtain, simulating individual droplet highlights catching light.
+  const sparkles = useMemo<SparkleData[]>(() => Array.from({ length: config.sparkleCount }, () => {
+    const lifeMax = 1.5 + Math.random() * 1.5
+    return {
+      x: 0,                                              // set per frame
+      y: -Math.random() * config.height,
+      z: 0,
+      vy: -2.0 - Math.random() * 2.5,                   // fast fall
+      life: Math.random() * lifeMax,
+      maxLife: lifeMax,
+      baseX: (Math.random() - 0.5) * config.topWidth,   // x position within band
+    }
+  }), [config.sparkleCount, config.height, config.topWidth])
+
+  // Mist particles — small dispersing droplets at the BASE only
   const mistData = useMemo<MistData[]>(() => Array.from({ length: config.mistCount }, () => ({
     x: (Math.random() - 0.5) * config.bottomWidth,
-    y: -config.height + (Math.random() - 0.5) * 0.5,
-    z: (Math.random() - 0.5) * 0.3,
-    vx: (Math.random() - 0.5) * 0.4,
-    vy: -0.15 - Math.random() * 0.30,
+    y: -config.height + (Math.random() - 0.5) * 0.4,
+    z: (Math.random() - 0.5) * 0.4,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: -0.10 - Math.random() * 0.25,
     vz: (Math.random() - 0.5) * 0.3,
     life: Math.random() * 2.5,
-    sizeMul: 0.8 + Math.random() * 0.8,
+    sizeMul: 0.7 + Math.random() * 0.8,
   })), [config.mistCount, config.bottomWidth, config.height])
 
   const dummy = useMemo(() => new THREE.Object3D(), [])
@@ -203,29 +221,56 @@ function CliffFall({ config, style }: { config: FallConfig; style: SeasonStyle }
   useFrame((s, dt) => {
     const t = s.clock.elapsedTime
 
-    // Scroll each layer's texture at slightly different speed for depth
+    // Subtle UV scroll on the noise texture for flow hint
     if (!style.frozen) {
-      for (let i = 0; i < layerTexes.length; i++) {
-        layerTexes[i].offset.y -= dt * (2.2 + i * 0.3)
-      }
+      tex.offset.y -= dt * 0.6   // slower scroll — noise reads gentler
     }
 
-    // Update layer materials on season change
-    for (const mat of layerMatsRef.current) {
-      if (mat) {
-        mat.color.set(style.color)
-      }
-    }
-
+    // Recolor materials
+    if (matRef.current) matRef.current.color.set(style.color)
+    if (sparkleMatRef.current) sparkleMatRef.current.color.set(style.color)
+    if (mistMatRef.current) mistMatRef.current.color.set(style.color)
     if (glowMatRef.current) {
+      glowMatRef.current.color.set(style.glowColor)
       glowMatRef.current.opacity = style.frozen
         ? 0.10
-        : 0.22 + Math.sin(t * 1.3) * 0.05
-      glowMatRef.current.color.set(style.glowColor)
+        : 0.20 + Math.sin(t * 1.3) * 0.05
     }
-    if (mistMatRef.current) mistMatRef.current.color.set(style.color)
 
-    // Mist particles
+    // Sparkle droplets — animate falling + recycle. Width jitters
+    // along baseX so it reads as droplets bouncing left/right within
+    // the flow band.
+    if (sparkleRef.current) {
+      for (let i = 0; i < config.sparkleCount; i++) {
+        const p = sparkles[i]
+        if (!style.frozen) {
+          p.life += dt
+          p.y += p.vy * dt
+          if (p.life > p.maxLife || p.y < -config.height) {
+            p.life = 0
+            p.y = -Math.random() * 0.5
+            p.vy = -2.0 - Math.random() * 2.5
+            p.baseX = (Math.random() - 0.5) * config.topWidth
+          }
+        }
+        // Width follows the curtain taper (top→bottom): linear interp
+        const yFrac = -p.y / config.height
+        const widthHere = config.topWidth + (config.bottomWidth - config.topWidth) * yFrac
+        // Lateral jitter relative to baseX (small)
+        const lat = Math.sin(t * 7 + i * 1.7) * 0.08
+        const x = p.baseX * (widthHere / config.topWidth) + lat
+        const z = -0.45 + Math.cos(t * 5 + i * 2.3) * 0.04
+        dummy.position.set(x, p.y, z)
+        const ageFade = Math.min(1, p.life * 4) * Math.max(0, 1 - p.life / p.maxLife * 0.3)
+        const sc = (0.020 + Math.random() * 0.005) * ageFade
+        dummy.scale.setScalar(sc * 5)   // unit sphere geo radius 1 → scale to ~0.10
+        dummy.updateMatrix()
+        sparkleRef.current.setMatrixAt(i, dummy.matrix)
+      }
+      sparkleRef.current.instanceMatrix.needsUpdate = true
+    }
+
+    // Mist at base
     if (mistRef.current) {
       const wind = style.frozen ? 0 : getGust(t)
       for (let i = 0; i < config.mistCount; i++) {
@@ -236,18 +281,18 @@ function CliffFall({ config, style }: { config: FallConfig; style: SeasonStyle }
           p.y += p.vy * dt
           p.z += p.vz * dt
           if (p.life > 2.5 || p.y < -config.height - 3) {
-            p.x = (Math.random() - 0.5) * config.bottomWidth * 0.8
+            p.x = (Math.random() - 0.5) * config.bottomWidth * 0.9
             p.y = -config.height + (Math.random() - 0.5) * 0.3
-            p.z = (Math.random() - 0.5) * 0.4
+            p.z = (Math.random() - 0.5) * 0.5
             p.vx = (Math.random() - 0.5) * 0.5
-            p.vy = -0.10 - Math.random() * 0.30
-            p.vz = (Math.random() - 0.5) * 0.4
+            p.vy = -0.08 - Math.random() * 0.25
+            p.vz = (Math.random() - 0.5) * 0.5
             p.life = 0
-            p.sizeMul = 0.8 + Math.random() * 0.8
+            p.sizeMul = 0.7 + Math.random() * 0.8
           }
         }
         const ageFrac = style.frozen ? 0.5 : Math.min(1, p.life / 2.5)
-        const sc = config.bottomWidth * 0.10 * p.sizeMul * (0.6 + ageFrac * 0.8)
+        const sc = config.bottomWidth * 0.13 * p.sizeMul * (0.6 + ageFrac * 0.8)
         dummy.position.set(p.x, p.y, p.z)
         dummy.scale.setScalar(sc)
         dummy.updateMatrix()
@@ -258,50 +303,54 @@ function CliffFall({ config, style }: { config: FallConfig; style: SeasonStyle }
   })
 
   return (
-    <group
-      ref={groupRef}
-      position={[config.pos[0], 0, config.pos[1]]}
-      rotation={[0, config.rotY, 0]}
-    >
-      {/* Source — 2 small dark wet rocks */}
+    <group position={[config.pos[0], 0, config.pos[1]]} rotation={[0, config.rotY, 0]}>
+      {/* Source — small dark wet rocks anchored on cliff rim */}
       <mesh position={[0, 0.05, 0]} castShadow>
-        <dodecahedronGeometry args={[Math.max(0.15, config.topWidth * 0.10), 0]} />
+        <dodecahedronGeometry args={[Math.max(0.16, config.topWidth * 0.10), 0]} />
         <meshStandardMaterial color="#1F1812" roughness={0.95} flatShading />
       </mesh>
-      <mesh position={[-config.topWidth * 0.20, 0.04, 0.08]} castShadow>
+      <mesh position={[-config.topWidth * 0.22, 0.04, 0.08]} castShadow>
         <dodecahedronGeometry args={[Math.max(0.10, config.topWidth * 0.07), 0]} />
         <meshStandardMaterial color="#2A2018" roughness={0.95} flatShading />
       </mesh>
-      <mesh position={[config.topWidth * 0.18, 0.05, 0.05]} castShadow>
-        <dodecahedronGeometry args={[Math.max(0.08, config.topWidth * 0.06), 0]} />
+      <mesh position={[config.topWidth * 0.20, 0.05, 0.05]} castShadow>
+        <dodecahedronGeometry args={[Math.max(0.09, config.topWidth * 0.06), 0]} />
         <meshStandardMaterial color="#1A140E" roughness={0.95} flatShading />
       </mesh>
-      {/* Water curtains — overlapping trapezoid planes at slight
-          rotations. Local Z offset (-0.4) pushes the curtain OUTWARD
-          past the cliff rim so it appears physically hanging from the
-          cliff edge (not floating in mid-air, which was v5a's bug).
-          Slight per-layer Z stagger gives parallax depth. */}
-      {layerGeos.map((geo, i) => (
-        <mesh
-          key={i}
-          geometry={geo}
-          position={[0, -0.05, -0.4 - i * 0.08]}
-          rotation={[0, (i - (config.layers - 1) / 2) * 0.10, 0]}
-        >
-          <meshBasicMaterial
-            ref={(el) => { if (el) layerMatsRef.current[i] = el }}
-            color={style.color}
-            map={layerTexes[i]}
-            transparent
-            opacity={style.opacity * (i === 0 ? 1.0 : 0.65)}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-            alphaTest={0.01}
-            blending={style.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending}
-          />
-        </mesh>
-      ))}
-      {/* Mist particles at base for "dissolves into clouds" feel */}
+      {/* Organic curtain — single plane with bezier shape + cloud
+          noise texture. Edges fade smoothly (no rectangular silhouette).
+          Z offset -0.4 so it hangs OUTWARD past the cliff rim. */}
+      <mesh geometry={geo} position={[0, -0.05, -0.4]}>
+        <meshBasicMaterial
+          ref={matRef}
+          color={style.color}
+          map={tex}
+          transparent
+          opacity={style.opacity}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          alphaTest={0.01}
+          blending={style.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending}
+        />
+      </mesh>
+      {/* Sparkle droplet highlights — small bright dots streaming down
+          along the curtain. Gives water "shimmer" without solid bars. */}
+      <instancedMesh
+        ref={sparkleRef}
+        args={[undefined as any, undefined as any, config.sparkleCount]}
+        frustumCulled={false}
+      >
+        <sphereGeometry args={[1, 5, 4]} />
+        <meshBasicMaterial
+          ref={sparkleMatRef}
+          color={style.color}
+          transparent
+          opacity={0.75}
+          depthWrite={false}
+          blending={style.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending}
+        />
+      </instancedMesh>
+      {/* Mist particles at base — dispersing dots */}
       <instancedMesh
         ref={mistRef}
         args={[undefined as any, undefined as any, config.mistCount]}
@@ -312,23 +361,23 @@ function CliffFall({ config, style }: { config: FallConfig; style: SeasonStyle }
           ref={mistMatRef}
           color={style.color}
           transparent
-          opacity={0.55}
+          opacity={0.40}
           depthWrite={false}
           blending={style.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending}
         />
       </instancedMesh>
       {/* Base glow disc */}
       <mesh
-        position={[0, -config.height - 0.3, 0]}
+        position={[0, -config.height - 0.3, -0.2]}
         rotation={[-Math.PI / 2, 0, 0]}
         renderOrder={3}
       >
-        <circleGeometry args={[config.bottomWidth * 1.2, 18]} />
+        <circleGeometry args={[config.bottomWidth * 1.4, 18]} />
         <meshBasicMaterial
           ref={glowMatRef}
           color={style.glowColor}
           transparent
-          opacity={0.22}
+          opacity={0.20}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />
@@ -341,13 +390,13 @@ export default function CliffWaterfalls() {
   const season = useSeason()
   const tod = useTimeOfDay()
   let style = SEASON_STYLE[season]
-  // Day-mode: additive white invisible against bright sky → switch to
-  // NORMAL alpha blending + saturated blue-cyan for visibility
+  // Day mode: NormalBlending + saturated blue, additive white blows
+  // out invisible against bright sky
   if (tod.phase === 'day' && !style.frozen) {
     style = {
       ...style,
-      color: '#6FA8D0',       // saturated blue — readable on pale sky
-      opacity: 0.78,
+      color: '#6FA8D0',
+      opacity: 0.65,
       blending: 'normal',
     }
   }
