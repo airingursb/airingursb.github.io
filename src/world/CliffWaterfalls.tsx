@@ -38,42 +38,85 @@ interface SeasonStyle {
   blending: 'additive' | 'normal'
 }
 
+// waterColor bumped from #3A6878 (too dark to spot on grass) to
+// #5A98B8 (bright cyan-blue, contrasts vs green grass at night)
+// waterColor bumped from #5A98B8 → #88C0DC: noticeably brighter
+// sky-blue, clearly stands out against dark night grass
 const SEASON_STYLE: Record<Season, SeasonStyle> = {
-  default:   { waterColor: '#3A6878', fallColor: '#FFFFFF', glowColor: '#D0E8F4', frozen: false, fallOpacity: 0.70, blending: 'additive' },
-  lny:       { waterColor: '#785038', fallColor: '#FFD8B0', glowColor: '#FFB888', frozen: false, fallOpacity: 0.72, blending: 'additive' },
-  midautumn: { waterColor: '#3A5878', fallColor: '#F4F8FF', glowColor: '#E8EFF8', frozen: false, fallOpacity: 0.72, blending: 'additive' },
-  winter:    { waterColor: '#A8C0D0', fallColor: '#F8FBFF', glowColor: '#D8E4EC', frozen: true,  fallOpacity: 0.88, blending: 'normal' },
-  birthday:  { waterColor: '#785868', fallColor: '#FFD0E4', glowColor: '#FFA8C8', frozen: false, fallOpacity: 0.70, blending: 'additive' },
+  default:   { waterColor: '#88C0DC', fallColor: '#FFFFFF', glowColor: '#D0E8F4', frozen: false, fallOpacity: 0.70, blending: 'additive' },
+  lny:       { waterColor: '#C8907A', fallColor: '#FFD8B0', glowColor: '#FFB888', frozen: false, fallOpacity: 0.72, blending: 'additive' },
+  midautumn: { waterColor: '#A0BCDC', fallColor: '#F4F8FF', glowColor: '#E8EFF8', frozen: false, fallOpacity: 0.72, blending: 'additive' },
+  winter:    { waterColor: '#D0E0E8', fallColor: '#F8FBFF', glowColor: '#D8E4EC', frozen: true,  fallOpacity: 0.88, blending: 'normal' },
+  birthday:  { waterColor: '#D88FAA', fallColor: '#FFD0E4', glowColor: '#FFA8C8', frozen: false, fallOpacity: 0.70, blending: 'additive' },
 }
 
-// Single hero waterfall positioning. All sub-elements coordinate around
-// these anchor points so the system reads as one continuous flow.
+// Single hero waterfall positioning.
 //
-// Layout (looking down from above):
+// Layout (looking down from above, +Z toward camera):
 //
-//      island grass
-//       ↓
-//   ┌─────────────────────┐
-//   │                     │
-//   │   ●  pond center    │   ← POND_CENTER (-7, -16)
-//   │   │                 │      pond radius ~1.4
-//   │   │ stream          │
-//   │   ▼                 │
-//   ├───●─ cliff lip      │   ← CLIFF_LIP (-7, -18)
-//   │                     │
-//   ▼                     │      WATERFALL hangs below cliff
+//     +x →
+//   ──────────────────────
+//   │  island grass      │
+//   │                    │
+//   │   ●  pond center   │   ← POND_CENTER (-3, +13)
+//   │   │                │      pond radius 2.0 (bigger — was 1.4
+//   │   │  stream  ↓     │       which was invisible)
+//   │   ▼                │
+//   ├───●─ cliff lip ───┤   ← CLIFF_LIP (-3, +18)  south rim
+//   │                    │
+//   ▼ (+Z outward)       │      Waterfall hangs into cloud sea
 //   (void / cloud sea)
 //
-const POND_CENTER: [number, number] = [-7, -16]
-const POND_RADIUS = 1.4
-const CLIFF_LIP: [number, number] = [-7, -18]
-const FALL_HEIGHT = 13
-const FALL_WIDTH = 1.5
+// CRITICAL v8m: moved to NORTH-CENTRAL rim.
+//
+// Camera (34, 26, 30) → origin sightline projection analysis:
+//   • SOUTH rim (z=+20): cliff at bottom of frame, waterfall falls
+//     off-screen (NDC y=-1.37)
+//   • WEST rim (x=-18.5): waterfall is on FAR SIDE of island from
+//     camera; sightline dips below grass surface before reaching the
+//     falling water → grass occludes everything below cliff
+//   • NORTH rim (z=-20): cliff at RIGHT side of frame (because camera
+//     is at +X +Z, north-rim X=-1, Z=-20 projects to +0.48 NDC right,
+//     -0.12 NDC just below center). Falling water from y=1.3 → y=-3.7
+//     fully visible in mid-right of frame.
+//
+// NORTH rim tree gap analysis (TREE_POSITIONS):
+//   (-4, -18) and (2, -18.5) bracket angle 4.66; rim r≈19.8 there.
+//   Placing CLIFF_LIP at (-1, -19.8) gives ~3.4u clearance both sides.
+//
+// Layout (top-down view, camera at +X +Y +Z looking at origin):
+//
+//   north (-Z, far from camera)   ← CLIFF
+//                  │              ↓
+//                  ●  pond        ● waterfall hangs here
+//                  │
+//   west ─────────┼──────────  east
+//                  │
+//                  │
+//             south (+Z, near camera)
+//
+const POND_CENTER: [number, number] = [-1, -10]   // [x, z]
+const POND_RADIUS = 3.2
+const CLIFF_LIP: [number, number] = [-1, -19.8]   // north rim (rim r≈19.8 at angle 4.66)
+const FALL_HEIGHT = 7
+const FALL_WIDTH = 3.0
+const WATER_Y = 1.40        // surface elevation, clear of terrain bumps
+const BED_Y = 1.34          // dark slate under water
+const CLIFF_LIP_Y = 1.30    // foam cap top
+
+// Outward unit direction = from island origin out to cliff lip
+const _outLen = Math.hypot(CLIFF_LIP[0], CLIFF_LIP[1]) || 1
+const OUT_X = CLIFF_LIP[0] / _outLen
+const OUT_Z = CLIFF_LIP[1] / _outLen
+// Y rotation so a unit-Z forward becomes the OUT direction
+const OUT_ANGLE_Y = Math.atan2(OUT_X, OUT_Z)
 
 // ─── POND (water source on island top) ─────────────────────────────
 function MountainPond({ style }: { style: SeasonStyle }) {
   const surfaceRef = useRef<THREE.Mesh>(null)
-  const surfaceMatRef = useRef<THREE.MeshStandardMaterial>(null)
+  // MeshBasicMaterial (not Standard) so pond keeps its bright color
+  // at night — standard material would be near-black under low ambient.
+  const surfaceMatRef = useRef<THREE.MeshBasicMaterial>(null)
   const highlightMatRef = useRef<THREE.MeshBasicMaterial>(null)
 
   // Animated water surface — slight Y-displacement for wave feel
@@ -101,51 +144,50 @@ function MountainPond({ style }: { style: SeasonStyle }) {
   useFrame((s) => {
     const t = s.clock.elapsedTime
     if (surfaceRef.current && !style.frozen) {
-      // Subtle wave — Y-translate the whole surface up/down slightly,
-      // gives "water rippling" without per-vertex shader work
-      surfaceRef.current.position.y = 0.022 + Math.sin(t * 1.4) * 0.006
+      surfaceRef.current.position.y = WATER_Y + Math.sin(t * 1.4) * 0.008
     }
     if (highlightMatRef.current && !style.frozen) {
-      // Specular shimmer — opacity breathes
-      highlightMatRef.current.opacity = 0.18 + Math.sin(t * 0.9) * 0.06
+      // Specular shimmer — opacity breathes (reduced so cyan water
+      // dominates and the pond doesn't read as a white blob)
+      highlightMatRef.current.opacity = 0.10 + Math.sin(t * 0.9) * 0.04
     }
     if (surfaceMatRef.current) surfaceMatRef.current.color.set(style.waterColor)
   })
 
+  // Y values (BED_Y/WATER_Y) clear of terrain bumps which reach ~1.0
+  // — pond reads as a small lake sitting on top of the meadow.
   return (
     <group position={[POND_CENTER[0], 0, POND_CENTER[1]]}>
-      {/* Pond bed — dark slate beneath the water surface (slightly
-          below grass level so the water sits IN a depression) */}
-      <mesh position={[0, -0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      {/* Pond bed — dark slate */}
+      <mesh position={[0, BED_Y, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[POND_RADIUS * 0.95, 24]} />
         <meshStandardMaterial color="#0E1418" roughness={0.95} />
       </mesh>
-      {/* Water surface — main reflective body */}
+      {/* Water surface — main body. Opacity 0.78 lets the dark bed
+          tint through, deepening the color (otherwise the pond reads
+          as a flat bright cyan blob instead of as actual water). */}
       <mesh
         ref={surfaceRef}
         geometry={baseGeo}
         rotation={[-Math.PI / 2, 0, 0]}
-        position={[0, 0.022, 0]}
+        position={[0, WATER_Y, 0]}
         receiveShadow
       >
-        <meshStandardMaterial
+        <meshBasicMaterial
           ref={surfaceMatRef}
           color={style.waterColor}
-          roughness={0.35}
-          metalness={0.45}
           transparent
-          opacity={0.92}
+          opacity={0.78}
         />
       </mesh>
-      {/* Specular highlight disc — small bright spot suggesting
-          sun/moon reflection. Slightly offset from center. */}
-      <mesh position={[POND_RADIUS * 0.25, 0.025, -POND_RADIUS * 0.20]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
-        <circleGeometry args={[POND_RADIUS * 0.30, 18]} />
+      {/* Specular highlight — small subtle shimmer offset from center */}
+      <mesh position={[POND_RADIUS * 0.30, WATER_Y + 0.02, -POND_RADIUS * 0.25]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={2}>
+        <circleGeometry args={[POND_RADIUS * 0.28, 18]} />
         <meshBasicMaterial
           ref={highlightMatRef}
           color="#FFFFFF"
           transparent
-          opacity={0.20}
+          opacity={0.15}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />
@@ -164,7 +206,7 @@ function MountainPond({ style }: { style: SeasonStyle }) {
           key={`pst${i}`}
           position={[
             Math.cos(s.ang) * POND_RADIUS * s.r,
-            s.sz * 0.4,
+            BED_Y + s.sz * 0.5,    // sit on top of bed
             Math.sin(s.ang) * POND_RADIUS * s.r,
           ]}
           rotation={[0, s.ang * 0.7, 0]}
@@ -180,7 +222,8 @@ function MountainPond({ style }: { style: SeasonStyle }) {
 
 // ─── SPILLWAY STREAM (water flows from pond to cliff edge) ──────────
 function Stream({ style }: { style: SeasonStyle }) {
-  const streamMatRef = useRef<THREE.MeshStandardMaterial>(null)
+  // MeshBasicMaterial for bright self-lit water at night
+  const streamMatRef = useRef<THREE.MeshBasicMaterial>(null)
   const flowMatRef = useRef<THREE.MeshBasicMaterial>(null)
   const flowTexRef = useRef<THREE.CanvasTexture | null>(null)
 
@@ -217,69 +260,75 @@ function Stream({ style }: { style: SeasonStyle }) {
     if (flowMatRef.current) flowMatRef.current.color.set(style.fallColor)
   })
 
-  // Stream runs from pond edge to cliff edge along -Z direction
-  // (pond at z=-16, cliff at z=-18 → stream length 2u)
-  const streamStartZ = POND_CENTER[1] - POND_RADIUS * 0.85   // -16 - 1.19 = -17.19
-  const streamEndZ = CLIFF_LIP[1]                            // -18
-  const streamLength = Math.abs(streamEndZ - streamStartZ)   // ~0.81
-  const streamMidZ = (streamStartZ + streamEndZ) / 2         // ~-17.6
-  const streamWidth = 0.40
+  // Stream runs from POND edge → CLIFF lip along arbitrary direction.
+  // We compute everything in LOCAL coords (forward = +Z) then rotate
+  // the whole group by OUT_ANGLE_Y so it aligns to actual cliff dir.
+  const pondToCliffDist = Math.hypot(
+    CLIFF_LIP[0] - POND_CENTER[0],
+    CLIFF_LIP[1] - POND_CENTER[1],
+  )
+  const localStartZ = POND_RADIUS * 0.85
+  const localEndZ = pondToCliffDist
+  const streamLength = localEndZ - localStartZ
+  const localMidZ = (localStartZ + localEndZ) / 2
+  const streamWidth = 0.50
 
   return (
-    <group>
+    <group position={[POND_CENTER[0], 0, POND_CENTER[1]]} rotation={[0, OUT_ANGLE_Y, 0]}>
       {/* Stream base — slightly recessed channel */}
       <mesh
-        position={[POND_CENTER[0], 0.005, streamMidZ]}
+        position={[0, BED_Y, localMidZ]}
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
       >
         <planeGeometry args={[streamWidth + 0.15, streamLength]} />
         <meshStandardMaterial color="#1A1410" roughness={0.95} />
       </mesh>
-      {/* Stream water surface */}
+      {/* Stream water surface — matches pond opacity for visual unity */}
       <mesh
-        position={[POND_CENTER[0], 0.018, streamMidZ]}
+        position={[0, WATER_Y, localMidZ]}
         rotation={[-Math.PI / 2, 0, 0]}
         receiveShadow
       >
         <planeGeometry args={[streamWidth, streamLength]} />
-        <meshStandardMaterial
+        <meshBasicMaterial
           ref={streamMatRef}
           color={style.waterColor}
-          roughness={0.30}
-          metalness={0.45}
           transparent
-          opacity={0.92}
+          opacity={0.78}
         />
       </mesh>
-      {/* Flow streaks overlay — UV-scrolling white stripes that
-          visually indicate downstream movement */}
+      {/* Flow streaks overlay — UV-scrolling stripes. Opacity tuned
+          low (0.12) so the streaks subtly indicate motion without
+          becoming a white laser that hides the cyan water below */}
       <mesh
-        position={[POND_CENTER[0], 0.020, streamMidZ]}
+        position={[0, WATER_Y + 0.01, localMidZ]}
         rotation={[-Math.PI / 2, 0, 0]}
         renderOrder={2}
       >
-        <planeGeometry args={[streamWidth * 0.85, streamLength]} />
+        <planeGeometry args={[streamWidth * 0.75, streamLength]} />
         <meshBasicMaterial
           ref={flowMatRef}
           color={style.fallColor}
           map={flowTex ?? undefined}
           transparent
-          opacity={style.frozen ? 0.30 : 0.40}
+          opacity={style.frozen ? 0.10 : 0.14}
           depthWrite={false}
           blending={THREE.AdditiveBlending}
         />
       </mesh>
-      {/* Edge stones along the stream banks — small dark dodecahedrons */}
+      {/* Edge stones along stream banks (local coords) */}
       {[
-        { x: -streamWidth/2 - 0.10, z: streamStartZ + 0.10, sz: 0.13 },
-        { x:  streamWidth/2 + 0.10, z: streamStartZ + 0.30, sz: 0.11 },
-        { x: -streamWidth/2 - 0.12, z: streamMidZ + 0.05,    sz: 0.10 },
-        { x:  streamWidth/2 + 0.12, z: streamMidZ - 0.15,    sz: 0.12 },
+        { x: -streamWidth/2 - 0.10, z: localStartZ + 0.10, sz: 0.14 },
+        { x:  streamWidth/2 + 0.10, z: localStartZ + 0.35, sz: 0.12 },
+        { x: -streamWidth/2 - 0.12, z: localMidZ + 0.20,   sz: 0.11 },
+        { x:  streamWidth/2 + 0.12, z: localMidZ - 0.30,   sz: 0.13 },
+        { x: -streamWidth/2 - 0.10, z: localEndZ - 0.25,   sz: 0.10 },
+        { x:  streamWidth/2 + 0.10, z: localEndZ - 0.10,   sz: 0.12 },
       ].map((s, i) => (
         <mesh
           key={`sst${i}`}
-          position={[POND_CENTER[0] + s.x, s.sz * 0.4, s.z]}
+          position={[s.x, BED_Y + s.sz * 0.5, s.z]}
           rotation={[0, i * 0.7, 0]}
           castShadow
         >
@@ -302,27 +351,33 @@ function CliffLipFoam({ style }: { style: SeasonStyle }) {
       : 0.50 + Math.sin(t * 2.5) * 0.10
     matRef.current.color.set(style.fallColor)
   })
+  // Group is rotated by OUT_ANGLE_Y so local +Z is the outward
+  // direction (away from island center). Lip stones use local X
+  // (perpendicular to flow) to frame the spillway.
   return (
-    <group position={[CLIFF_LIP[0], 0.04, CLIFF_LIP[1]]}>
-      {/* Foam cap — small flattened white sphere right at the cliff lip */}
-      <mesh position={[0, 0.02, 0.05]}>
-        <sphereGeometry args={[0.30, 12, 8]} />
+    <group
+      position={[CLIFF_LIP[0], CLIFF_LIP_Y, CLIFF_LIP[1]]}
+      rotation={[0, OUT_ANGLE_Y, 0]}
+    >
+      {/* Foam cap at cliff lip, nudged slightly outward (+Z local) */}
+      <mesh position={[0, 0.05, 0.05]}>
+        <sphereGeometry args={[0.55, 14, 10]} />
         <meshBasicMaterial
           ref={matRef}
           color={style.fallColor}
           transparent
-          opacity={0.55}
+          opacity={0.65}
           depthWrite={false}
           blending={style.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending}
         />
       </mesh>
       {/* Lip stones — 2 small darker stones framing the spillway */}
-      <mesh position={[-0.30, 0.10, 0.05]} castShadow>
-        <dodecahedronGeometry args={[0.16, 0]} />
+      <mesh position={[-0.48, 0.10, 0.05]} castShadow>
+        <dodecahedronGeometry args={[0.22, 0]} />
         <meshStandardMaterial color="#2A2018" roughness={0.96} flatShading />
       </mesh>
-      <mesh position={[0.30, 0.08, 0.04]} castShadow>
-        <dodecahedronGeometry args={[0.14, 0]} />
+      <mesh position={[0.48, 0.08, 0.04]} castShadow>
+        <dodecahedronGeometry args={[0.20, 0]} />
         <meshStandardMaterial color="#1F1812" roughness={0.96} flatShading />
       </mesh>
     </group>
@@ -346,33 +401,37 @@ function makeFallTexture(seed = 1337, w = 192, h = 640): THREE.CanvasTexture {
     return rng / 233280
   }
 
-  // Layer 1: soft wisp body via stacked radial gradients
-  for (let yPos = 0; yPos < h; yPos += 28) {
+  // Layer 1: solid sheet of water body — denser/brighter than v7 wisp.
+  // A real curtain has substantial alpha in the middle; only the
+  // edges are wispy. Reads as a thick water sheet, not a smoke puff.
+  for (let yPos = 0; yPos < h; yPos += 20) {
     const yFrac = yPos / h
-    const radius = w * (0.18 + 0.20 * Math.sin(yFrac * Math.PI * 0.9))
+    const radius = w * (0.32 + 0.18 * Math.sin(yFrac * Math.PI * 1.1))
     const cx = w / 2 + (rand() - 0.5) * w * 0.04
     const grd = ctx.createRadialGradient(cx, yPos, 0, cx, yPos, radius)
-    const baseAlpha = 0.30 * (1 - Math.pow(yFrac - 0.45, 2) * 0.6)
+    const baseAlpha = 0.55 * (1 - Math.pow(yFrac - 0.40, 2) * 0.5)
     grd.addColorStop(0,   `rgba(255, 255, 255, ${Math.max(0, baseAlpha).toFixed(3)})`)
-    grd.addColorStop(0.6, `rgba(255, 255, 255, ${Math.max(0, baseAlpha * 0.4).toFixed(3)})`)
+    grd.addColorStop(0.5, `rgba(255, 255, 255, ${Math.max(0, baseAlpha * 0.65).toFixed(3)})`)
     grd.addColorStop(1,   'rgba(255, 255, 255, 0)')
     ctx.fillStyle = grd
     ctx.fillRect(0, 0, w, h)
   }
 
-  // Layer 2: 5-7 subtle vertical brush strokes (flowing strands)
-  const strokeCount = 5 + Math.floor(rand() * 3)
+  // Layer 2: 8-10 vertical brush strokes — flowing water strands. More
+  // strokes + higher alpha gives the "many parallel streams" feel of
+  // a real waterfall, vs the v7 sparse wispy strands.
+  const strokeCount = 8 + Math.floor(rand() * 3)
   for (let i = 0; i < strokeCount; i++) {
-    const cx = w * (0.30 + rand() * 0.40)
-    const halfW = 4 + rand() * 12
-    const a = 0.18 + rand() * 0.22
+    const cx = w * (0.18 + rand() * 0.64)
+    const halfW = 3 + rand() * 8
+    const a = 0.28 + rand() * 0.28
     const grd = ctx.createLinearGradient(cx - halfW, 0, cx + halfW, 0)
     grd.addColorStop(0,   'rgba(255, 255, 255, 0)')
     grd.addColorStop(0.5, `rgba(255, 255, 255, ${a.toFixed(3)})`)
     grd.addColorStop(1,   'rgba(255, 255, 255, 0)')
     ctx.fillStyle = grd
-    const top = h * (0.05 + rand() * 0.08)
-    const bot = h * (0.85 + rand() * 0.10)
+    const top = h * (0.03 + rand() * 0.06)
+    const bot = h * (0.88 + rand() * 0.08)
     ctx.fillRect(cx - halfW, top, halfW * 2, bot - top)
   }
 
@@ -483,14 +542,24 @@ function FallingCurtain({ style }: { style: SeasonStyle }) {
     }
   })
 
+  // Sprite billboards face camera. CRITICAL: must push OUTWARD past
+  // the visible cliff face — top stone band has outer radius 20.5 at
+  // y=-1.4 so the falling water at distance < 20.5 from origin gets
+  // OCCLUDED by the stone cylinder. CLIFF_LIP is at distance 18.5
+  // (the grass rim), so we push the curtain +2.5 outward → distance
+  // 21, safely outside the stone band's outer extent.
   return (
-    <group position={[CLIFF_LIP[0], 0, CLIFF_LIP[1]]}>
-      {/* Sprite billboard — always faces camera, scale matches dims.
-          Centered at position so we offset DOWN by half-height to put
-          TOP at cliff lip (y=0). Z offset -0.3 pushes it OUTWARD past
-          the cliff into open air. */}
+    <group
+      position={[
+        CLIFF_LIP[0] + OUT_X * 2.5,
+        CLIFF_LIP_Y,
+        CLIFF_LIP[1] + OUT_Z * 2.5,
+      ]}
+    >
+      {/* Sprite billboard — always faces camera. Centered on its position,
+          so Y offset -FALL_HEIGHT/2 puts TOP at cliff lip (y=CLIFF_LIP_Y). */}
       <sprite
-        position={[0, -FALL_HEIGHT / 2, -0.3]}
+        position={[0, -FALL_HEIGHT / 2, 0]}
         scale={[FALL_WIDTH, FALL_HEIGHT, 1]}
       >
         <spriteMaterial
@@ -503,7 +572,7 @@ function FallingCurtain({ style }: { style: SeasonStyle }) {
           blending={style.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending}
         />
       </sprite>
-      {/* Mist at base — fine particles dispersing into cloud sea */}
+      {/* Mist at base */}
       <instancedMesh
         ref={mistRef}
         args={[undefined as any, undefined as any, MIST_COUNT]}
@@ -514,14 +583,14 @@ function FallingCurtain({ style }: { style: SeasonStyle }) {
           ref={mistMatRef}
           color={style.fallColor}
           transparent
-          opacity={0.42}
+          opacity={0.45}
           depthWrite={false}
           blending={style.blending === 'normal' ? THREE.NormalBlending : THREE.AdditiveBlending}
         />
       </instancedMesh>
       {/* Base glow disc */}
       <mesh
-        position={[0, -FALL_HEIGHT - 0.3, -0.1]}
+        position={[0, -FALL_HEIGHT - 0.3, 0]}
         rotation={[-Math.PI / 2, 0, 0]}
         renderOrder={3}
       >
