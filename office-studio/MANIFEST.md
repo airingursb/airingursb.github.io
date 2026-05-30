@@ -105,7 +105,7 @@
 
 ## E · Pantry & Infra · 茶水/机房(4)
 
-### E01 — Coffee station(咖啡机 + 杯)  `[ ]`
+### E01 — Coffee station(咖啡机 + 杯)  `[x]`
 - **File:** `output/furniture/E01-coffee.png` · 32×24 · 透明背景
 - **Prompt:** A small pantry coffee corner, 3/4 top-down: a stainless-look (matte light-grey #d8d6d0, no gloss) espresso machine on a white counter, with 2-3 little terracotta-brown #8a6a44 cups beside it. A warm cozy accent in the clean office. Soft shadow. (Echoes the Marvis coffee station.)
 
