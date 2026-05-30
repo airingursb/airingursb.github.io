@@ -45,7 +45,7 @@ import { setupGalleryZoneFloors, teardownGalleryZoneFloors } from '../gallery_zo
 import { setupGalleryMurals, teardownGalleryMurals } from '../gallery_murals'
 import { setupGalleryGarden, teardownGalleryGarden } from '../gallery_garden'
 import { setupGalleryDocent, teardownGalleryDocent } from '../gallery_docent'
-import { setupGalleryMochi, teardownGalleryMochi } from '../gallery_mochi'
+import { setupGalleryAiring, teardownGalleryAiring } from '../gallery_airing'
 import { setupGalleryExitCTA, teardownGalleryExitCTA } from '../gallery_exit_cta'
 import { setupGalleryComics, teardownGalleryComics, getComicsInteractables } from '../gallery_comics'
 import { setupGalleryZones, teardownGalleryZones } from '../gallery_zones'
@@ -934,12 +934,13 @@ export class RoomScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryDocent)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryDocent)
 
-    // SHU-737 — Mochi (npc_jue) visits the gallery rotunda. Clickable AI chat.
-    // Guest visitors get 5 msgs/day, logged-in users 30. Same SOUL + memory
-    // as library Mochi — this is just a second presence.
-    setupGalleryMochi(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null)
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryMochi)
-    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryMochi)
+    // SHU-737 — Airing (the curator) sits in the gallery rotunda as a
+    // clickable AI-chat NPC. Routes to npc_jue (whose SOUL was rewritten
+    // to be Airing — see services/blog-api/lib/npc-souls.js). Guest
+    // visitors get 2 msgs/day (SHU-738), logged-in users 30.
+    setupGalleryAiring(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryAiring)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryAiring)
 
     // SHU-741 — exit CTA after ≥5 visits (max once per day). Fires lazily
     // 2s after scene boot to let visit-tracking catch up.
