@@ -35,6 +35,7 @@ import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJa
 import { tickNpcEvents, leaveNpcEventIfNeeded, setEventBannerHandler, currentEventStatus } from '../npc_events'
 import { setupGrovePortal, teardownGrovePortal } from '../grove_portal'
 import { setupGalleryPortal, teardownGalleryPortal } from '../gallery_portal'
+import { checkPortalCollision, checkDoorProximity as checkDoorProximityImpl, enterPortal as enterPortalImpl, getNearbyDoorPortal, resetPortalState, type Portal } from './scene_portals'
 import { setupLoungeOnboarding, dismissOnboardingIfActive } from '../lounge_onboarding'
 import '../lobby_friends_panel'    // side-effect: registers window event listeners
 import { setupGalleryExhibits, teardownGalleryExhibits } from '../gallery_exhibits'
@@ -145,8 +146,6 @@ function ensurePixelTexture(scene: Phaser.Scene) {
 }
 
 type Direction = 'up' | 'down' | 'left' | 'right'
-
-type Portal = { x: number; y: number; w: number; h: number; targetRoom: RoomId; targetSpawn: string }
 type Interactable = { x: number; y: number; w: number; h: number; kind: string; anchorX: number; anchorY: number; facing: Direction; name: string; padIndex?: number; gameId?: string; material?: string; bathBuff?: boolean; exhibitType?: string; exhibitUrl?: string; exhibitLabel?: string; exhibitTitle?: string; exhibitEmoji?: string; exhibitAsset?: string }
 
 export class RoomScene extends Phaser.Scene {
@@ -366,6 +365,9 @@ export class RoomScene extends Phaser.Scene {
   }
 
   create() {
+    // Clear portal module's per-scene state so the previous room's
+    // "nearbyDoorPortal" doesn't leak into this restart.
+    resetPortalState()
     // V10.4 — log every room entry for the discovery-tier achievements
     recordAchievement({ type: 'visit_room', roomId: this.currentRoomId })
     // V12.7 — party rooms (room_party_<6chars>) reuse the lobby tilemap so
@@ -4610,10 +4612,11 @@ export class RoomScene extends Phaser.Scene {
       sendAct('sit', undefined, this.currentRoomId)
       this.applyAct(undefined, 'sit')
       this.currentSitInteractable = null
-    } else if (this.nearbyDoorPortal) {
+    } else {
       // Door portal: pressing E / Enter near a door teleports through it,
       // matching the visible "↵ click" hint on the floating door label.
-      this.enterPortal(this.nearbyDoorPortal)
+      const nearby = getNearbyDoorPortal()
+      if (nearby) this.enterPortal(nearby)
     }
   }
 
@@ -4880,42 +4883,11 @@ export class RoomScene extends Phaser.Scene {
     target.applyEmote(verb, def.durationMs, prefersReducedMotion())
   }
 
-  // V6.0 — door proximity (floating "→ Library" label near portals)
-  private nearbyDoorPortal: Portal | null = null
-
-  private checkDoorProximity() {
-    if (!this.myBear) return
-    const PROX = 48
-    let nearest: Portal | null = null
-    let bestD = Infinity
-    for (const p of this.portals) {
-      const cx = p.x + p.w / 2
-      const cy = p.y + p.h / 2
-      const d = Math.hypot(cx - this.myBear.x, cy - this.myBear.y)
-      if (d < PROX && d < bestD) { nearest = p; bestD = d }
-    }
-    if (nearest !== this.nearbyDoorPortal) {
-      this.nearbyDoorPortal = nearest
-      if (!nearest) hideDoorLabel()
-    }
-    if (this.nearbyDoorPortal && this.myBear) {
-      const screen = this.bearScreenPos(this.myBear)
-      const target = this.nearbyDoorPortal.targetRoom
-      let roomLabel = MAP_ROOMS.find(r => r.id === target)?.label
-      if (!roomLabel) {
-        if (isHomeRoom(target) || target === ('room_home_self' as RoomId)) roomLabel = 'Home'
-        else roomLabel = String(target)
-      }
-      // V9-fix: label now lives at the bear's screen position; minimap.ts
-      // flips it below the bear if screenY < 80 (avoids top-UI overlap).
-      showDoorLabel(`→ ${roomLabel}`, screen.x, screen.y - 12)
-      // Each frame re-bind the click handler to fire enterPortal on the
-      // currently-nearby portal (so walking past one portal to another
-      // updates the click target).
-      const portal = this.nearbyDoorPortal
-      setDoorLabelClickHandler(() => this.enterPortal(portal))
-    }
-  }
+  // Delegates to scenes/scene_portals.ts — kept as private methods so
+  // existing call sites (this.checkDoorProximity()) and the update-loop
+  // dispatch don't have to change. The impl module owns nearbyDoorPortal
+  // state internally.
+  private checkDoorProximity() { checkDoorProximityImpl(this as unknown as Parameters<typeof checkDoorProximityImpl>[0]) }
 
   /** V6.0 — refresh minimap. Computes which rooms currently have NPCs. */
   private refreshMinimap() {
@@ -4940,53 +4912,9 @@ export class RoomScene extends Phaser.Scene {
     renderMinimap(this.currentRoomId, npcRooms)
   }
 
-  private checkPortals() {
-    if (this.transitioning || !this.myBear) return
-    for (const p of this.portals) {
-      if (this.myBear.x >= p.x && this.myBear.x <= p.x + p.w &&
-          this.myBear.y >= p.y && this.myBear.y <= p.y + p.h) {
-        this.enterPortal(p)
-        return
-      }
-    }
-  }
+  private checkPortals() { checkPortalCollision(this as unknown as Parameters<typeof checkPortalCollision>[0]) }
 
-  // V9-fix: shared portal-transition. Called by checkPortals (player walked
-  // INTO the rect) and by the door label click handler (player clicks the
-  // floating "→ Lobby" hint without walking in).
-  private enterPortal(p: Portal) {
-    if (this.transitioning) return
-    this.transitioning = true
-    const targetRoom = p.targetRoom
-    const targetSpawn = p.targetSpawn
-    // Analytics: every door-portal transition (transit/event/snap-back paths
-    // bypass enterPortal — see those sites for their own track calls).
-    void import('../umami').then(({ trackEvent }) => trackEvent('nook-room-change', {
-      from: this.currentRoomId, to: targetRoom, via: 'door',
-    }))
-    const fade = !prefersReducedMotion()
-    const doRestart = () => {
-      stopRoomAudio()
-      stopBoothTrack()
-      hideNowPlaying()
-      hideBoothPicker()
-      if (this.atmosphereTimer) { this.atmosphereTimer.remove(false); this.atmosphereTimer = undefined }
-      if (this.npcRefreshTimer) { this.npcRefreshTimer.remove(false); this.npcRefreshTimer = undefined }
-      if (this.npcSmalltalkTimer) { this.npcSmalltalkTimer.remove(false); this.npcSmalltalkTimer = undefined }
-      this.seasonalEmitter?.destroy(); this.seasonalEmitter = undefined
-      this.holidayEmitter?.destroy(); this.holidayEmitter = undefined
-      this.seasonOverlay?.destroy(); this.seasonOverlay = undefined
-      hideDoorLabel()
-      sendRoomChange(targetRoom)
-      this.scene.restart({ roomId: targetRoom, spawnPoint: targetSpawn })
-    }
-    if (fade) {
-      this.cameras.main.fadeOut(220, 248, 240, 220)
-      this.cameras.main.once('camerafadeoutcomplete', doRestart)
-    } else {
-      doRestart()
-    }
-  }
+  private enterPortal(p: Portal) { enterPortalImpl(this as unknown as Parameters<typeof enterPortalImpl>[0], p) }
 
   private checkInteractableProximity() {
     if (!this.myBear) return
