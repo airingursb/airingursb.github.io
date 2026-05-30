@@ -32,6 +32,6 @@ Note: This service does not cover commercial consulting or data consulting, and 
 
 You can book and pay directly at [https://cal.com/airing/50-min-meeting-paid](https://cal.com/airing/50-min-meeting-paid).
 
-**Price: $200 USD** (originally $400 USD — limited-time launch discount). Full refunds are available.
+**Price: $200 USD** (originally $600 USD — limited-time 70% off). Full refunds are available.
 
 For any questions, feel free to email airing@ursb.me at any time. Looking forward to connecting.

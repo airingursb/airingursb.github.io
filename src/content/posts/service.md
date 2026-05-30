@@ -32,6 +32,6 @@ description: ""
 
 您可点击 [https://cal.com/airing/50-min-meeting-paid](https://cal.com/airing/50-min-meeting-paid) ，在页面内直接进行付费预约。
 
-**价格：200 USD**（原价 400 USD，目前启动期限时折扣），提供全程退款服务。
+**价格：200 USD**（原价 600 USD，限时 3 折），提供全程退款服务。
 
 如有任何问题可随时邮箱联系 airing@ursb.me，期待与您建立联系。
