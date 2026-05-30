@@ -129,7 +129,7 @@
 - **File:** `output/furniture/F01-couch.png` · 48×24 · 透明背景
 - **Prompt:** A low 2-seat lounge sofa, 3/4 top-down, soft light-grey #d8d6d0 upholstery (matte) with two small accent cushions (one mustard #d8b048, one muted blue #3a7fd0). Clean Scandinavian. Soft shadow down-left.
 
-### F02 — Rug(地毯)  `[ ]`
+### F02 — Rug(地毯)  `[x]`
 - **File:** `output/tiles/F02-rug.png` · 48×32 · 透明背景
 - **Prompt:** A soft rectangular area rug, 3/4 top-down/flat, off-white #f2f0ec with a simple thin muted-blue #3a7fd0 border line and a faint geometric motif. Lays under the lounge. Very subtle, no harsh contrast.
 
