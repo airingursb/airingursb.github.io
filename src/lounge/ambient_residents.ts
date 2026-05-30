@@ -108,10 +108,11 @@ function spawnResident(scene: Phaser.Scene): Resident {
   // No name label — that's the cue distinguishing residents from real peers.
   scene.tweens.add({ targets: bear.sprite, alpha: RESIDENT_ALPHA, duration: 1200, ease: 'Sine.easeIn' })
 
-  // Country flag overhead via the game's own mood-emoji slot, so it sits in the
-  // same place + style as every other floating character label (not ad-hoc).
+  // Country flag in the name-label slot (closest-to-head label position) — sits
+  // exactly where every character's name sits, so it's consistent and tight to
+  // the body. Residents have no name, so the flag IS their only overhead label.
   const cc = pickCountry()
-  if (cc) bear.setMood(countryToFlag(cc))
+  if (cc) bear.setDisplayName(countryToFlag(cc))
 
   return { bear }
 }
