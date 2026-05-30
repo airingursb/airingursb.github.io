@@ -133,7 +133,7 @@
 - **File:** `output/tiles/F02-rug.png` · 48×32 · 透明背景
 - **Prompt:** A soft rectangular area rug, 3/4 top-down/flat, off-white #f2f0ec with a simple thin muted-blue #3a7fd0 border line and a faint geometric motif. Lays under the lounge. Very subtle, no harsh contrast.
 
-### F03 — Side table + lamp(边几 + 落地灯)  `[ ]`
+### F03 — Side table + lamp(边几 + 落地灯)  `[x]`
 - **File:** `output/furniture/F03-side-table.png` · 16×24 · 透明背景
 - **Prompt:** A small white #fafafa round side table with a slim minimalist floor lamp beside it (thin graphite #3a3a42 stem, warm soft #d8b048 light from the shade). 3/4 top-down. Cozy lounge accent. Soft shadow.
 
