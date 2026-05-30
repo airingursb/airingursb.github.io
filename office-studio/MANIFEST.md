@@ -113,7 +113,7 @@
 - **File:** `output/furniture/E02-counter.png` · 48×16 · 透明背景
 - **Prompt:** A long low white #fafafa pantry counter, 3/4 top-down, with light-grey cabinet fronts, a small water dispenser and a tiny potted succulent on top. Clean. Soft shadow.
 
-### E03 — Server rack(机柜,机房角)  `[ ]`
+### E03 — Server rack(机柜,机房角)  `[x]`
 - **File:** `output/furniture/E03-server-rack.png` · 24×32 · 透明背景
 - **Prompt:** A slim dark charcoal #2a2a30 server rack cabinet, 3/4 top-down, with a column of tiny status LEDs glowing soft cyan #6cc8e8 and green #5a8f4a (no text), a couple of thin cables hinted at the base. The "infra / running code" corner. Soft shadow.
 
