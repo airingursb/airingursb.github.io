@@ -370,6 +370,8 @@ export class RoomScene extends Phaser.Scene {
     resetPortalState()
     // V10.4 — log every room entry for the discovery-tier achievements
     recordAchievement({ type: 'visit_room', roomId: this.currentRoomId })
+    // V25 — passive-presence timeline (lobby returning-pill, room visit counts)
+    void import('../visit_log').then((m) => m.logRoomVisit(this.currentRoomId))
     // V12.7 — party rooms (room_party_<6chars>) reuse the lobby tilemap so
     // we don't need to bake a dedicated map. Server-side PARTY_FLOOR
     // already mirrors lobby's bounds.
@@ -601,6 +603,9 @@ export class RoomScene extends Phaser.Scene {
     // First-visit nudge — only fires once per browser (localStorage flag).
     // Self-cleans on scene shutdown via internal listener.
     setupLoungeOnboarding(this, this.currentRoomId)
+    // V25 — returning pill ("上次去了 Library · 23 分钟前"). Skips first
+    // boot (no prior visit) and bouncy <90s round-trips. Self-cleans.
+    void import('../lobby_returning_pill').then((m) => m.setupLobbyReturningPill(this, this.currentRoomId))
 
     // SHU-740 Lobby friends panel — listen for visit-home requests + ensure
     // the panel is hidden + dismissal reset whenever we leave lobby.
@@ -4647,6 +4652,8 @@ export class RoomScene extends Phaser.Scene {
         // mark in builds where gallery_progress was bundled in a separate
         // chunk that hadn't loaded yet.)
         markExhibitVisited(it.exhibitUrl)
+        // V25 — also append to the visit timeline (count, recency)
+        void import('../visit_log').then((m) => m.logExhibitVisit(it.exhibitUrl!))
         void import('../umami').then(({ trackEvent }) => trackEvent('nook-exhibit-open', {
           slug: it.exhibitUrl, label: it.exhibitLabel ?? '', type: it.exhibitType ?? '',
         }))

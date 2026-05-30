@@ -12,6 +12,7 @@ import { crispText } from './gallery_text'
 import type { RoomId } from './config'
 import { paintingKey, getAsset } from './gallery_assets'
 import { hasVisited } from './gallery_progress'
+import { getExhibitVisitCount } from './visit_log'
 
 type ExhibitMeta = {
   x: number
@@ -219,13 +220,22 @@ function drawMuseumPlaque(
       resolution: 2,
     }).setOrigin(0.5))
   }
-  // ✓ tick on the far right for visited exhibits
+  // ✓ tick on the far right for visited exhibits (and a tiny visit-count
+  // multiplier for exhibits seen 2+ times — a quiet "you've been back" cue).
   if (url && hasVisited(url)) {
     layer.add(crispText(scene, cx + plateW / 2 - 8, cy, '✓', {
       fontSize: '7px', color: '#0a3a1a',
       fontFamily: 'ui-monospace, monospace',
       resolution: 2,
     }).setOrigin(0.5))
+    const visits = getExhibitVisitCount(url)
+    if (visits >= 2) {
+      layer.add(crispText(scene, cx + plateW / 2 - 14, cy, `×${visits}`, {
+        fontSize: '6px', color: '#3a2a08',
+        fontFamily: 'ui-monospace, monospace',
+        resolution: 2,
+      }).setOrigin(1, 0.5))
+    }
   }
 }
 
