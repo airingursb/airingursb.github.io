@@ -70,3 +70,7 @@
 每阶段截图存 `docs/images/office-P{n}-*.png`,并在本文件“截图留档”追加链接 + 一句状态。
 
 - (P1) `docs/images/office-P1.png` — `/nook?room=office` 进入成功:A01 地板平铺、A04 顶墙窗、A02 协作区地砖、角色可走动、相机跟随。验收 A1✓ A3✓ A2(部分,缺侧/底墙视觉)。
+- (P2) `docs/images/office-P2.png` — 家具全摆好:12 工位网格 + Boss L 桌 + 白板/圆桌 + 茶水/机房 + 沙发/跑步机 + 绿植。验收 B1–B6✓。
+- (P4) `docs/images/office-P4.png` — 真 SSE 驱动:4 个 agent 不同物种(熊/兔/蛙/鸟)按 state 落到工位/机房/茶水,头顶活动 emoji,★You 坐 Boss。验收 C1–C6✓(真服务路径)。
+
+**当前进度:P1/P2/P4 完成(地基+陈设+Agent 接入核心打通)。剩 P3(灯光/侧墙/lobby↔office 门)、P5(标签防重叠/气泡/社交走位/reduced-motion/demo 态核验/验收 D 项)。未达交付门槛,继续打磨。**
