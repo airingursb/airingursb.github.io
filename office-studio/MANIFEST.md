@@ -45,7 +45,7 @@
 
 ## B · Workstations(6)
 
-### B01 — Desk(工位桌,俯视)  `[ ]`
+### B01 — Desk(工位桌,俯视)  `[x]`
 - **File:** `output/furniture/B01-desk.png` · 48×32 · 透明背景
 - **Prompt:** A clean white #fafafa rectangular office desk seen from a slight 3/4 top-down angle: bright top surface with a thin light-grey #d8d6d0 front edge and 4 simple thin legs hinted. Empty top (monitor/keyboard are separate sprites placed on it). Soft shadow down-left. Minimal, modern.
 
