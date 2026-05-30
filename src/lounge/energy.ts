@@ -51,13 +51,19 @@ function utcDay(d: Date = new Date()): string {
 
 function readRaw(): { value: number; date: string } {
   try {
-    const v = Number(localStorage.getItem(STORAGE_KEY_VALUE))
-    const d = localStorage.getItem(STORAGE_KEY_DATE) ?? ''
+    const raw = localStorage.getItem(STORAGE_KEY_VALUE)
     const cap = getEnergyMax()
-    if (!isFinite(v)) return { value: cap, date: utcDay() }
-    return { value: Math.max(0, Math.min(cap, v)), date: d || utcDay() }
+    // Empty storage = brand-new user; return cap + empty date so getEnergy()
+    // triggers the new-day path and seeds storage to today. Previously
+    // `Number(null)` returned 0 (not NaN), so fresh users got 0 energy
+    // until the next UTC rollover.
+    if (raw == null) return { value: cap, date: '' }
+    const v = Number(raw)
+    const d = localStorage.getItem(STORAGE_KEY_DATE) ?? ''
+    if (!isFinite(v)) return { value: cap, date: '' }
+    return { value: Math.max(0, Math.min(cap, v)), date: d || '' }
   } catch {
-    return { value: getEnergyMax(), date: utcDay() }
+    return { value: getEnergyMax(), date: '' }
   }
 }
 

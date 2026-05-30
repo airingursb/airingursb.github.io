@@ -1,6 +1,7 @@
 import type { Region, RoomId, Species } from './config'
 import type { Direction } from './bear'
 import { getGameNow } from './gametime'
+import { pickBracket } from './npcs_schedule'
 
 export type NpcState = 'idle' | 'sit' | 'dance' | 'sleep'
 
@@ -69,28 +70,11 @@ export async function loadNpcManifest(): Promise<NpcManifest> {
   }
 }
 
-function parseHHMM(s: string): number {
-  // Returns minutes since midnight. Returns NaN on invalid.
-  const m = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(s)
-  if (!m) return NaN
-  return parseInt(m[1], 10) * 60 + parseInt(m[2], 10)
-}
-
-/** Return the first matching bracket for now's minutes-of-day, or null. */
+/** Return the first matching bracket for now's minutes-of-day, or null.
+ *  Delegates to the Phaser-free pure helper so production + Node tests
+ *  exercise the same code path. */
 export function getActiveBracket(def: NpcDef, now: Date = getGameNow()): ScheduleBracket | null {
-  const minutes = now.getHours() * 60 + now.getMinutes()
-  for (const b of def.schedule) {
-    const from = parseHHMM(b.from)
-    const to = parseHHMM(b.to)
-    if (Number.isNaN(from) || Number.isNaN(to)) continue
-    // Half-open [from, to). If to === 23:59 (1439), treat as inclusive of 23:59.
-    if (to === 1439) {
-      if (minutes >= from && minutes <= to) return b
-    } else {
-      if (minutes >= from && minutes < to) return b
-    }
-  }
-  return null
+  return pickBracket(def.schedule, now) as ScheduleBracket | null
 }
 
 // V7.0 — Dialog context derived from runtime state.

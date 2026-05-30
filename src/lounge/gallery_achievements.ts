@@ -22,53 +22,11 @@ function saveAnnounced(set: Set<string>): void {
   try { localStorage.setItem(ANNOUNCED_KEY, JSON.stringify([...set])) } catch {}
 }
 
-type Achievement = {
-  id: string
-  label: string
-  requiresAll: string[]      // exhibit URLs that must all be visited
-}
-
-const ACHIEVEMENTS: Achievement[] = [
-  {
-    id: 'web_internals',
-    label: 'Web Internals 全通',
-    requiresAll: [
-      '/immersive/chromium-renderer/', '/immersive/css-engine/',
-      '/immersive/react-internals/', '/immersive/webgpu/',
-      '/immersive/webassembly/', '/immersive/image-formats/',
-    ],
-  },
-  {
-    id: 'performance',
-    label: 'Performance 全通',
-    requiresAll: [
-      '/immersive/gc/', '/immersive/helio/', '/immersive/jank-stutter/',
-      '/immersive/llm-inference-life/', '/immersive/quickjs/', '/immersive/v8-fast-js/',
-    ],
-  },
-  {
-    id: 'networks',
-    label: 'Networks 全通',
-    requiresAll: ['/immersive/http3/', '/immersive/tls-handshake/'],
-  },
-  {
-    id: 'curator',
-    label: 'Curator · 看过全部 14 篇 immersive',
-    requiresAll: [
-      '/immersive/chromium-renderer/', '/immersive/css-engine/',
-      '/immersive/react-internals/', '/immersive/webgpu/',
-      '/immersive/webassembly/', '/immersive/image-formats/',
-      '/immersive/gc/', '/immersive/helio/', '/immersive/jank-stutter/',
-      '/immersive/llm-inference-life/', '/immersive/quickjs/', '/immersive/v8-fast-js/',
-      '/immersive/http3/', '/immersive/tls-handshake/',
-    ],
-  },
-  {
-    id: 'easter_egg',
-    label: '策展人发现 · 找到馆主签名',
-    requiresAll: ['/'],   // about-airing easter egg behind centerpiece links to "/"
-  },
-]
+// Achievement catalog + unlock predicate moved to a Phaser-free pure module
+// so Node tests can exercise the logic. Renderer below still uses ACHIEVEMENTS.
+import { ACHIEVEMENTS, type Achievement } from './gallery_achievements_logic'
+export { ACHIEVEMENTS, computeUnlockedAchievements } from './gallery_achievements_logic'
+export type { Achievement } from './gallery_achievements_logic'
 
 // Medallion plinths sit at the BASE of each marble column (not on the
 // shaft) so they read as trophies on display, not as decorations stuck to

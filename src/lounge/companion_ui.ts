@@ -182,8 +182,15 @@ function ensure(): HTMLElement {
             bubbleEl.textContent = '今天聊够了，明早再来。'
             showToast(ev.message || '今天 30 条聊够了 · 明早北京时间 0 点重置', 4000)
           } else if (ev.code === 'GUEST_CAP_REACHED') {
-            bubbleEl.textContent = '免费 5 条聊完了。'
-            showToast(ev.message || '登录后每天能聊 30 条', 5000)
+            // SHU-738 — soft wall, not a hard stop. Inline 登录 CTA in the
+            // bubble + slightly longer-lived toast.
+            bubbleEl.innerHTML = `（访客每天聊 2 条免费。登录后可继续 · 每天 30 条 ） <button class="nook-companion-inline-login">登录</button>`
+            const btn = bubbleEl.querySelector('.nook-companion-inline-login') as HTMLButtonElement | null
+            btn?.addEventListener('click', async () => {
+              const { requireLogin } = await import('./auth_ui')
+              requireLogin('Continue chatting')
+            })
+            showToast(ev.message || '登录后每天能聊 30 条 · 1 click magic link', 6000)
           } else if (!bubbleEl.textContent) {
             bubbleEl.textContent = `（${npcName} 走神了）`
             showToast(`${npcName} 走神了：${ev.message}`, 3000)
@@ -332,7 +339,55 @@ export async function openCompanionChat(args: OpenArgs) {
   const usage = loggedIn ? await getUsage() : await getGuestUsage()
   if (usage) updateCounter(usage.sent, usage.cap)
 
+  // SHU-739 — returning-user greeting. If this is a logged-in user and the
+  // history view is empty (first open this session, or just-switched NPC),
+  // surface a remembered fact so the chat doesn't open silent. Quiet fail.
+  if (loggedIn && historyEl && historyEl.childElementCount === 0) {
+    void renderReturningGreeting(npc_id, npc_name)
+  }
+
   setTimeout(() => inputEl?.focus(), 100)
+}
+
+// Cached so repeated chat opens within a session don't re-fetch facts
+const greetingCache = new Map<string, string | null>()   // npc_id → greeting text (or null = no greeting)
+
+async function renderReturningGreeting(npcId: string, npcName: string): Promise<void> {
+  try {
+    let greeting = greetingCache.get(npcId)
+    if (greeting === undefined) {
+      greeting = await pickGreeting(npcId)
+      greetingCache.set(npcId, greeting)
+    }
+    if (!greeting) return
+    // Render as a quiet system-toned bubble (not 'assistant' to avoid being
+    // mistaken for the model's first message).
+    const li = document.createElement('li')
+    li.className = 'nook-companion-bubble nook-companion-assistant nook-companion-returning'
+    li.textContent = `${npcName} 还记得：${greeting}`
+    historyEl?.appendChild(li)
+    scrollToBottom()
+    trackEvent('nook-npc-returning-greeted', { npc_id: npcId })
+  } catch {
+    // analytics never throws into UI; just silently skip the greeting
+  }
+}
+
+async function pickGreeting(npcId: string): Promise<string | null> {
+  try {
+    const res = await fetch(`https://chat.ursb.me/api/ai-companion/facts/${npcId}`, { credentials: 'include' })
+    if (!res.ok) return null
+    const body = await res.json() as { facts?: Array<{ value: string; importance?: number }> }
+    const facts = body.facts ?? []
+    if (facts.length === 0) return null
+    // Prefer importance >= 5 for a more memorable hook; fall back to any.
+    const meaty = facts.filter((f) => (f.importance ?? 0) >= 5)
+    const pool = meaty.length > 0 ? meaty : facts
+    const pick = pool[Math.floor(Math.random() * pool.length)]
+    return pick?.value ?? null
+  } catch {
+    return null
+  }
 }
 
 async function openMemoryModal() {

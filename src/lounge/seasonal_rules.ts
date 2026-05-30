@@ -9,25 +9,15 @@
 // Easy to extend per-season later.
 
 import { getCurrentSeason } from './seasons'
+import { portalBlockedReasonBySeason, type PortalDescriptor } from './seasonal_rules_logic'
 
-export type PortalDescriptor = { name: string; targetRoom: string }
+export type { PortalDescriptor } from './seasonal_rules_logic'
 
 /** Returns null if the portal is currently passable. Otherwise returns a
- *  reason string (a short toast suitable for "you can't go here"). */
+ *  reason string. Thin wrapper that grabs the live season; the matrix logic
+ *  lives in seasonal_rules_logic.ts (Phaser-free, unit-testable). */
 export function portalBlockedReason(srcRoom: string, p: PortalDescriptor): string | null {
-  const season = getCurrentSeason()
-  const sid = season?.id ?? ''
-  if (sid === 'winter') {
-    // V13.6: shore is snowed over in winter. Apply globally for transit
-    // (srcRoom === 'transit') and specifically for balcony→beach for
-    // portal walks. From other rooms the player would have to detour
-    // anyway; only block transit + balcony.
-    if (p.targetRoom === 'room_beach' &&
-        (srcRoom === 'room_balcony' || srcRoom === 'transit')) {
-      return '❄️ The shore path is snowed over — wait for spring'
-    }
-  }
-  return null
+  return portalBlockedReasonBySeason(srcRoom, p, getCurrentSeason()?.id ?? '')
 }
 
 /** True if the portal should be REMOVED from the map (player can't even

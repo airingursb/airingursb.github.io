@@ -35,6 +35,8 @@ import { maybeJoinJamCombo, leaveJamComboIfNeeded, setJamBannerHandler, noticeJa
 import { tickNpcEvents, leaveNpcEventIfNeeded, setEventBannerHandler, currentEventStatus } from '../npc_events'
 import { setupGrovePortal, teardownGrovePortal } from '../grove_portal'
 import { setupGalleryPortal, teardownGalleryPortal } from '../gallery_portal'
+import { setupLoungeOnboarding, dismissOnboardingIfActive } from '../lounge_onboarding'
+import '../lobby_friends_panel'    // side-effect: registers window event listeners
 import { setupGalleryExhibits, teardownGalleryExhibits } from '../gallery_exhibits'
 import { setupGalleryArchitecture, teardownGalleryArchitecture } from '../gallery_architecture'
 import { setupGalleryDecorations, teardownGalleryDecorations } from '../gallery_decorations'
@@ -44,6 +46,7 @@ import { setupGalleryMurals, teardownGalleryMurals } from '../gallery_murals'
 import { setupGalleryGarden, teardownGalleryGarden } from '../gallery_garden'
 import { setupGalleryDocent, teardownGalleryDocent } from '../gallery_docent'
 import { setupGalleryMochi, teardownGalleryMochi } from '../gallery_mochi'
+import { setupGalleryExitCTA, teardownGalleryExitCTA } from '../gallery_exit_cta'
 import { setupGalleryComics, teardownGalleryComics, getComicsInteractables } from '../gallery_comics'
 import { setupGalleryZones, teardownGalleryZones } from '../gallery_zones'
 import { maybePlayGalleryIntro } from '../gallery_intro'
@@ -593,6 +596,32 @@ export class RoomScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryPortal)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryPortal)
 
+    // First-visit nudge — only fires once per browser (localStorage flag).
+    // Self-cleans on scene shutdown via internal listener.
+    setupLoungeOnboarding(this, this.currentRoomId)
+
+    // SHU-740 Lobby friends panel — listen for visit-home requests + ensure
+    // the panel is hidden + dismissal reset whenever we leave lobby.
+    const onVisitHome = (e: Event) => {
+      const detail = (e as CustomEvent<{ vid: string }>).detail
+      const vid = detail?.vid
+      if (!vid || typeof vid !== 'string') return
+      if (!this.friendships.has(vid)) {
+        showToast("You're not friends with that visitor anymore.", 2400)
+        return
+      }
+      const targetRoom = `room_home_${vid.slice(0, 8)}` as RoomId
+      sendRoomChange(targetRoom)
+      this.scene.restart({ roomId: targetRoom, spawnPoint: 'default' })
+    }
+    window.addEventListener('lobby-visit-home', onVisitHome)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      window.removeEventListener('lobby-visit-home', onVisitHome)
+      window.dispatchEvent(new Event('lobby-friends-hide'))
+      // Re-arm so next lobby entry can re-prompt
+      window.dispatchEvent(new Event('lobby-friends-reset'))
+    })
+
     // 作品集 exhibits + architecture are wired later (line ~817), after
     // this.interactables is populated. Their teardown handlers are
     // registered there too.
@@ -912,6 +941,12 @@ export class RoomScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryMochi)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryMochi)
 
+    // SHU-741 — exit CTA after ≥5 visits (max once per day). Fires lazily
+    // 2s after scene boot to let visit-tracking catch up.
+    setupGalleryExitCTA(this, this.currentRoomId)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryExitCTA)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryExitCTA)
+
     // Zone entry banners — wayfinding cue when the player crosses into a new wing
     setupGalleryZones(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryZones)
@@ -993,8 +1028,10 @@ export class RoomScene extends Phaser.Scene {
       const wx = p.worldX, wy = p.worldY
 
       // Any click counts as user engagement — don't snap-back-teleport them
-      // after they've started interacting with the room.
+      // after they've started interacting with the room. Also dismiss the
+      // first-visit nudge if it's still up (respect the user's attention).
       this.userHasMovedInThisScene = true
+      dismissOnboardingIfActive()
 
       // V6.6 — every click gets a small ring ripple for tactile feedback
       clickRipple(this, wx, wy)
@@ -1878,6 +1915,17 @@ export class RoomScene extends Phaser.Scene {
     this.friendships.clear()
     if (Array.isArray(m.friendships)) {
       for (const f of m.friendships) this.friendships.set(f.friend_id, f)
+    }
+    // SHU-740 — once friendships are loaded, surface the visit-friends
+    // panel in lobby. Empty friends list still shows the panel with an
+    // educational hint ("stay in a room to meet others").
+    if (this.currentRoomId === 'room_lobby') {
+      const friends = Array.from(this.friendships.entries()).map(([vid, f]) => ({
+        vid,
+        name: f.display_name ?? 'Anon',
+        level: f.level ?? 0,
+      }))
+      window.dispatchEvent(new CustomEvent('lobby-friends-show', { detail: { friends } }))
     }
     // V8.6 — seed NPC mail (welcome, festival invites, completed quests, friendship milestones)
     try {
@@ -4738,8 +4786,10 @@ export class RoomScene extends Phaser.Scene {
     if (!left && !right && !up && !down) return false
 
     // User has actively started moving — record so the welcome snap-back
-    // guard knows not to teleport them anymore.
+    // guard knows not to teleport them anymore, and dismiss the lobby
+    // first-visit nudge if it's still up.
     this.userHasMovedInThisScene = true
+    dismissOnboardingIfActive()
     this.myBear.target = null
     if (this.myBear.state === 'sit') {
       this.currentSitInteractable = null
