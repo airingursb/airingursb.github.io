@@ -89,7 +89,7 @@
 
 ## D · Collaboration · 协作区(3)
 
-### D01 — Whiteboard(白板,靠墙)  `[ ]`
+### D01 — Whiteboard(白板,靠墙)  `[x]`
 - **File:** `output/furniture/D01-whiteboard.png` · 48×24 · 透明背景
 - **Prompt:** A wall-mounted whiteboard, 3/4 top-down/front, white #fafafa surface in a thin light-grey #d8d6d0 frame, with a few faint abstract scribbles / boxes-and-arrows in light blue #3a7fd0 and a couple of small sticky notes (yellow #e8c020, no text). A marker on the tray.
 
