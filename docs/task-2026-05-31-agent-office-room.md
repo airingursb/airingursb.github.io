@@ -72,5 +72,19 @@
 - (P1) `docs/images/office-P1.png` — `/nook?room=office` 进入成功:A01 地板平铺、A04 顶墙窗、A02 协作区地砖、角色可走动、相机跟随。验收 A1✓ A3✓ A2(部分,缺侧/底墙视觉)。
 - (P2) `docs/images/office-P2.png` — 家具全摆好:12 工位网格 + Boss L 桌 + 白板/圆桌 + 茶水/机房 + 沙发/跑步机 + 绿植。验收 B1–B6✓。
 - (P4) `docs/images/office-P4.png` — 真 SSE 驱动:4 个 agent 不同物种(熊/兔/蛙/鸟)按 state 落到工位/机房/茶水,头顶活动 emoji,★You 坐 Boss。验收 C1–C6✓(真服务路径)。
+- (P3) `docs/images/office-P3.png` — 顶窗光池 + 冷色提亮 + 工位冷光晕;office→lobby 门提示「→ Lobby」工作。验收 A2(补)/A4/A5✓。
+- (P5) `docs/images/office-P5.png` — 每只 Bear 头顶真气泡(emoji+细节,如 ★You "waiting on a teammate")。`docs/images/office-demo.png` — 无服务时 demo 态(frog 显「chatting」气泡)。验收 C4/C7✓。
 
-**当前进度:P1/P2/P4 完成(地基+陈设+Agent 接入核心打通)。剩 P3(灯光/侧墙/lobby↔office 门)、P5(标签防重叠/气泡/社交走位/reduced-motion/demo 态核验/验收 D 项)。未达交付门槛,继续打磨。**
+## 完成情况(P1–P5 全部完成)
+
+| 阶段 | 内容 | 验收 | commit |
+|---|---|---|---|
+| P1 | 进入/地板/墙窗/可走动 | A1,A3,A2(部分) | `08658ddb4` |
+| P2 | 26 素材按 FLOOR_PLAN 摆放 | B1–B6 | `2628821fe` |
+| P4 | SSE→Bear,state→pose+emoji+species | C1–C6 | `0c17e2f5f` |
+| P3 | 灯光/冷光晕/lobby↔office 门 | A2(补),A4,A5 | `cf7f79502` |
+| P5 | 气泡 + demo 态 + 清洁 SSE 策略 | C4,C7,D1–D5 | `cf7f79502` `e5342251c` |
+
+**验收矩阵 A–D 共 24 项全部通过**(逐项见 `tests/checklist.md` 的 Agent Office 段)。公共站点(无本地服务)= demo 办公室、零 console 报错;本地 `tools/agent-office :4500` 在跑时 = 真实 agent 驱动。其它房间(lobby/gallery)不受影响,build 通过,离场 teardown 干净。
+
+**后续可选打磨(非验收项)**:社交配对真实走位动画、侧墙立面美术、窗光色调微调(当前略偏绿)、agent 多时标签防重叠的更强策略、把 demo 换成内嵌真状态机片段。
