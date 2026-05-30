@@ -373,10 +373,16 @@ export class Bear {
 
   // V6.5 — change species (e.g. user toggles bear ↔ cat).
   setSpecies(species: Species) {
-    if (species === this.species) return
-    this.species = species
     const texKey = `${species}_${this.region}`
-    this.sprite.setTexture(this.scene.textures.exists(texKey) ? texKey : `bear_${this.region}`)
+    const wantKey = this.scene.textures.exists(texKey) ? texKey : `bear_${this.region}`
+    // Re-apply even when species is unchanged if the current texture is stale.
+    // (NPCs/peers are constructed with their real species but fall back to the
+    // bear texture when the atlas isn't loaded yet; once it lands, species is
+    // already === target, so an early `species === this.species` return would
+    // leave them stuck as a bear. Compare the actual texture key instead.)
+    if (species === this.species && this.sprite.texture.key === wantKey) return
+    this.species = species
+    this.sprite.setTexture(wantKey)
     if (this.state === 'walk') this.playWalk()
     else if (this.state === 'wave') this.playWave()
     else if (this.state === 'sit') this.playSit()
