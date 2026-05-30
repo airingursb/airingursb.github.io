@@ -29,7 +29,7 @@
 - **File:** `output/tiles/A02-floor-accent.png` · 16×16 · 可平铺
 - **Prompt:** A seamless 16×16 floor tile, a slightly warmer light tone #ece8df with a faint thin grid line (like large light tiles), to mark a zone (e.g. meeting area). Same brightness family as A01, just a hint of structure. Tiles seamlessly.
 
-### A03 — Office wall(墙面)  `[ ]`
+### A03 — Office wall(墙面)  `[x]`
 - **File:** `output/tiles/A03-wall.png` · 16×16 · 可平铺(横向)
 - **Prompt:** A seamless 16×16 office wall tile: soft off-white #f2f0ec upper section with a thin light-grey #d8d6d0 baseboard along the bottom 3px. Clean painted drywall. Minimal. Tiles horizontally.
 
