@@ -52,6 +52,7 @@ import { setupGalleryComics, teardownGalleryComics, getComicsInteractables } fro
 import { setupGalleryZones, teardownGalleryZones } from '../gallery_zones'
 import { maybePlayGalleryIntro } from '../gallery_intro'
 import { setupGalleryVisitors, teardownGalleryVisitors } from '../gallery_visitors'
+import { setupAmbientGhosts, teardownAmbientGhosts } from '../ambient_ghosts'
 import { setupGalleryAchievements, teardownGalleryAchievements } from '../gallery_achievements'
 import { setupGalleryAtmosphere, teardownGalleryAtmosphere } from '../gallery_atmosphere'
 import { markVisited as markExhibitVisited } from '../gallery_progress'
@@ -965,6 +966,13 @@ export class RoomScene extends Phaser.Scene {
     setupGalleryVisitors(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryVisitors)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryVisitors)
+
+    // Ambient "ghost" silhouettes in the lobby — blog readers who are online
+    // but not inside the nook. Non-interactive, faint (alpha 0.3), wander the
+    // lobby floor. Count = clamp(onlineSite - realPeers, 0, 8).
+    setupAmbientGhosts(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null, () => this.peers.size)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownAmbientGhosts)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownAmbientGhosts)
 
     // Brass medallions in the rotunda for completed exhibit sets
     setupGalleryAchievements(this, this.currentRoomId)

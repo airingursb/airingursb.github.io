@@ -1500,3 +1500,11 @@
 - [ ] Clicking × hides card and sets `localStorage['nook-briefing-seen']` to `data.day`
 - [ ] Refreshing same day → card does not reappear (localStorage gate)
 - [ ] On mobile (≤600px): card sits above 70px (clear touch strip)
+
+## Nook Living World — lobby ambient ghosts
+
+- [ ] Lobby shows faint translucent silhouettes ≈ online count (`/api/online/count` site), capped at 8
+- [ ] Ghosts are clearly fainter than real NPC/Bear sprites (alpha ~0.3), read as "presence not players"
+- [ ] Ghosts wander the floor region only (not on walls/furniture/NPCs), non-interactive (no click/hover)
+- [ ] Count reconciles on ~45s poll — ghosts fade in/out as online count changes
+- [ ] Only in `room_lobby`; other rooms unaffected; no console errors from the fetch
