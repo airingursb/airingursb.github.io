@@ -141,7 +141,7 @@
 
 ## G · Decor · 装饰道具(2)
 
-### G01 — Plant · tall(高绿植,落地盆栽)  `[ ]`
+### G01 — Plant · tall(高绿植,落地盆栽)  `[x]`
 - **File:** `output/furniture/G01-plant-tall.png` · 16×32 · 透明背景
 - **Prompt:** A tall potted office plant (monstera / fiddle-leaf vibe), 3/4 top-down, lush green #5a8f4a leaves in 2-3 shades, in a simple white #fafafa or terracotta #8a6a44 pot. The main warm/living accent in the clean office. Soft shadow down-left.
 
