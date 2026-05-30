@@ -23,29 +23,36 @@ export default function Void() {
   const idx = order.indexOf(tod.phase)
   const a = OCEAN_COLORS[tod.phase]
   const b = OCEAN_COLORS[order[(idx + 1) % order.length]]
-  // Same hold-then-lerp as PhaseFog so the plane doesn't drift through
-  // pink at 3am.
   const heldBlend = tod.blend < 0.75 ? 0 : (tod.blend - 0.75) / 0.25
   const oceanColor = useMemo(
     () => '#' + new THREE.Color(a).lerp(new THREE.Color(b), heldBlend).getHexString(),
     [a, b, heldBlend],
   )
+  // Hide the giant ocean plane during night/late-dusk. With MeshStandardMaterial
+  // it gets re-lit by hemiSky → appears noticeably brighter than the NightSkydome
+  // above it, producing a sharp "horizon seam" across the lower frame. NightSkydome
+  // (a full inverted sphere) already covers the lower hemisphere with the right
+  // dark color, so the plane is redundant at night.
+  const hidePlane = tod.phase === 'night' || (tod.phase === 'dusk' && tod.blend > 0.7)
   return (
     <group>
-      {/* Vast distant ocean plane far below — color follows phase so it
-          fades into fog at the horizon instead of poking through. */}
-      <mesh position={[0, -22, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[600, 600, 1, 1]} />
-        <meshStandardMaterial
-          color={oceanColor}
-          roughness={0.3}
-          metalness={0.2}
-          transparent
-          opacity={0.85}
-        />
-      </mesh>
+      {/* Ocean plane — visible during the day, hidden at night to avoid
+          the horizon-seam against the dark sky. */}
+      {!hidePlane && (
+        <mesh position={[0, -22, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[600, 600, 1, 1]} />
+          <meshBasicMaterial
+            color={oceanColor}
+            transparent
+            opacity={0.85}
+          />
+        </mesh>
+      )}
 
-      {/* Layered cloud sea — close + far layers, varied bounds, broader Y range */}
+      {/* Layered cloud sea — close + far layers, varied bounds, broader Y range.
+          Same night-gate as the plane: bright white #ffffff puffs against the
+          dark NightSkydome would re-create the horizon-seam problem. */}
+      {!hidePlane && (
       <Clouds material={THREE.MeshBasicMaterial} limit={800}>
         {/* Near layer y=-18 to -22 */}
         <Cloud seed={101} segments={32} position={[-10, -18,   8]} bounds={[10, 3, 8]} volume={6} color="#ffffff" opacity={0.7} fade={22} />
@@ -63,8 +70,10 @@ export default function Void() {
         <Cloud seed={204} segments={28} position={[ 30, -38,  16]} bounds={[10, 3, 8]} volume={6} color="#B8C8DC" opacity={0.7} fade={28} />
         <Cloud seed={205} segments={28} position={[  6, -36,  30]} bounds={[14, 3, 12]} volume={8} color="#B8C8DC" opacity={0.65} fade={28} />
       </Clouds>
+      )}
 
       {/* Far horizon wrapped with extra cloud belt — no hard ring */}
+      {!hidePlane && (
       <Clouds material={THREE.MeshBasicMaterial} limit={400}>
         <Cloud seed={301} segments={24} position={[ 60, -8,   0]} bounds={[8, 4, 12]} volume={5} color="#D7E9F5" opacity={0.5} fade={36} />
         <Cloud seed={302} segments={24} position={[-60, -8,   0]} bounds={[8, 4, 12]} volume={5} color="#D7E9F5" opacity={0.5} fade={36} />
@@ -75,6 +84,7 @@ export default function Void() {
         <Cloud seed={307} segments={22} position={[ 42, -6, -42]} bounds={[10, 4, 8]} volume={5} color="#E0EBF5" opacity={0.42} fade={32} />
         <Cloud seed={308} segments={22} position={[-42, -6, -42]} bounds={[10, 4, 8]} volume={5} color="#E0EBF5" opacity={0.42} fade={32} />
       </Clouds>
+      )}
     </group>
   )
 }
