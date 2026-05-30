@@ -65,7 +65,7 @@
 - **File:** `output/furniture/B05-chair-up.png` · 16×16 · 透明背景
 - **Prompt:** Same ergonomic chair as B04 but facing away (up) — we see the mesh back from behind, graphite #3a3a42 with the accent stripe. For a desk where the character sits facing their monitor.
 
-### B06 — Desk props(键盘+鼠标+杯+便签,桌面小物组)  `[ ]`
+### B06 — Desk props(键盘+鼠标+杯+便签,桌面小物组)  `[x]`
 - **File:** `output/furniture/B06-desk-props.png` · 32×16 · 透明背景
 - **Prompt:** A small 32×16 cluster of desk-top items, 3/4 top-down, to scatter on desks: a slim light-grey keyboard, a tiny mouse, a coffee mug with a mustard #d8b048 rim, and one yellow #e8c020 sticky note. Soft, tiny. No text.
 
