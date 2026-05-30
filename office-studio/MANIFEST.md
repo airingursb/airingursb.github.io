@@ -33,7 +33,7 @@
 - **File:** `output/tiles/A03-wall.png` · 16×16 · 可平铺(横向)
 - **Prompt:** A seamless 16×16 office wall tile: soft off-white #f2f0ec upper section with a thin light-grey #d8d6d0 baseboard along the bottom 3px. Clean painted drywall. Minimal. Tiles horizontally.
 
-### A04 — Window wall(落地窗墙段)  `[ ]`
+### A04 — Window wall(落地窗墙段)  `[x]`
 - **File:** `output/tiles/A04-window.png` · 16×32(墙高两格) · 透明背景外缘
 - **Prompt:** A 16×32 floor-to-near-ceiling office window segment: a thin charcoal #2a2a30 frame around a pale sky-blue #cfe4ee glass pane with one soft diagonal light streak. Bright daylight feel. Wall #f2f0ec around the frame. Should sit in the top wall, repeatable side by side.
 
