@@ -8,8 +8,70 @@
 // Lerps across phase blend so transitions are smooth, not stepped.
 
 import { Sky as DreiSky, Cloud, Clouds, Stars } from '@react-three/drei'
+import { useMemo } from 'react'
 import * as THREE from 'three'
 import { useTimeOfDay, type TimePhase } from './time-of-day'
+
+// drei <Sky> is a Hosek-Wilkie atmospheric-scattering shader that ONLY
+// produces believable results when the sun is above the horizon. When
+// we forced sunPos.y negative + low rayleigh + high turbidity to fake
+// night, the shader gave us a literal half-dark / half-bright sphere
+// (upper hemisphere had no Rayleigh scatter → black; lower hemisphere
+// got Mie forward-scatter from the just-below-horizon sun → white).
+// Night uses this dedicated gradient skydome instead.
+const NIGHT_SKY_VERT = /* glsl */ `
+  varying vec3 vPos;
+  void main() {
+    vPos = position;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+const NIGHT_SKY_FRAG = /* glsl */ `
+  precision highp float;
+  uniform vec3 uTop;
+  uniform vec3 uMid;
+  uniform vec3 uHorizon;
+  varying vec3 vPos;
+  void main() {
+    // Normalize so we can do vertical gradient via Y direction.
+    float y = normalize(vPos).y;            // -1 (down) → 1 (up)
+    // Three-stop gradient: horizon → mid → top
+    float t = clamp(y, -0.05, 1.0);
+    vec3 col;
+    if (t < 0.25) {
+      col = mix(uHorizon, uMid, smoothstep(-0.05, 0.25, t));
+    } else {
+      col = mix(uMid, uTop, smoothstep(0.25, 0.9, t));
+    }
+    gl_FragColor = vec4(col, 1.0);
+  }
+`
+
+function NightSkydome({ blend }: { blend: number }) {
+  // Tones slightly warm toward late-dusk (blend>0.5 in dusk→night transition
+  // unused here — this component only renders for tod.phase==='night' or
+  // late dusk, so it gets a steady "deep night" look. blend tied to dusk→night
+  // is handled by parent gate.
+  void blend
+  const geo = useMemo(() => new THREE.SphereGeometry(400, 24, 16), [])
+  const uniforms = useMemo(() => ({
+    uTop:     { value: new THREE.Color('#0A1024') },   // deep navy, near-black
+    uMid:     { value: new THREE.Color('#1A2348') },   // indigo
+    uHorizon: { value: new THREE.Color('#2A3160') },   // warmer dark blue at horizon
+  }), [])
+  return (
+    <mesh geometry={geo} renderOrder={-1000}>
+      <shaderMaterial
+        uniforms={uniforms}
+        vertexShader={NIGHT_SKY_VERT}
+        fragmentShader={NIGHT_SKY_FRAG}
+        side={THREE.BackSide}
+        depthWrite={false}
+        depthTest={false}
+      />
+    </mesh>
+  )
+}
 
 // Per-phase sky parameters. Lerped between phases via blend.
 const PHASE_PARAMS: Record<TimePhase, {
@@ -74,16 +136,25 @@ export default function Sky({ theme }: { theme?: 'day' | 'dusk' } = {}) {
   // reads URL/localStorage/real-time internally.
   const tod = useTimeOfDay()
   const p = lerpParams(tod.phase, tod.blend)
+  // Use night skydome when sun is below horizon (= night, OR late dusk past
+  // blend 0.7 when dusk→night sun-crossing kicks in). Anywhere the sun is
+  // visible we keep drei Sky, since it gives the proper sun-aware atmospheric
+  // gradient for dawn/day/early-dusk.
+  const useNightDome = tod.phase === 'night' || (tod.phase === 'dusk' && tod.blend > 0.7)
   return (
     <>
-      <DreiSky
-        distance={450000}
-        sunPosition={p.sunPos}
-        mieCoefficient={p.mieCoefficient}
-        mieDirectionalG={p.mieDirectionalG}
-        rayleigh={p.rayleigh}
-        turbidity={p.turbidity}
-      />
+      {useNightDome ? (
+        <NightSkydome blend={tod.blend} />
+      ) : (
+        <DreiSky
+          distance={450000}
+          sunPosition={p.sunPos}
+          mieCoefficient={p.mieCoefficient}
+          mieDirectionalG={p.mieDirectionalG}
+          rayleigh={p.rayleigh}
+          turbidity={p.turbidity}
+        />
+      )}
 
       {/* Puffy clouds — drifting masses, phase-tinted. Lambert (not
           Basic) so the directional sun intensity actually affects them —
