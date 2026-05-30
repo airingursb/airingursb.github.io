@@ -61,7 +61,7 @@
 - **File:** `output/furniture/B04-chair-down.png` · 16×16 · 透明背景
 - **Prompt:** A 16×16 modern ergonomic office chair seen 3/4 top-down, facing toward the viewer (down): graphite #3a3a42 seat + mesh back with a single thin accent-color stripe on the backrest, five-star base hinted. Soft shadow.
 
-### B05 — Office chair · back(办公椅·朝上,背对)  `[ ]`
+### B05 — Office chair · back(办公椅·朝上,背对)  `[x]`
 - **File:** `output/furniture/B05-chair-up.png` · 16×16 · 透明背景
 - **Prompt:** Same ergonomic chair as B04 but facing away (up) — we see the mesh back from behind, graphite #3a3a42 with the accent stripe. For a desk where the character sits facing their monitor.
 
