@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Agent Office</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.4 -apple-system, system-ui, sans-serif; background: #15161a; color: #e6e3dc; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid #2a2b30; }
+  header b { font-size: 14px; letter-spacing: .3px; }
+  header .dot { width: 8px; height: 8px; border-radius: 50%; background: #d44820; transition: background .3s; }
+  header .dot.on { background: #5a8f4a; }
+  header .muted { color: #8a8a90; }
+  main { display: grid; place-items: center; padding: 16px; }
+  canvas { background: #1b1c21; border-radius: 12px; box-shadow: 0 8px 40px rgba(0,0,0,.4); }
+  footer { text-align: center; color: #6a6a70; padding: 8px; font-size: 11px; }
+  code { background: #25262c; padding: 1px 5px; border-radius: 4px; color: #d8b048; }
+</style>
+</head>
+<body>
+<header>
+  <span class="dot" id="conn"></span>
+  <b>Agent Office</b>
+  <span class="muted" id="status">connecting…</span>
+  <span class="muted" style="margin-left:auto" id="count">0 agents</span>
+</header>
+<main><canvas id="c" width="800" height="520"></canvas></main>
+<footer>placeholder renderer · swaps to nook bear.ts + office.tmj once art lands · events from Claude Code hooks → <code>:4500</code></footer>
+
+<script type="module">
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+
+// --- zones (mirrors office-studio/FLOOR_PLAN.md layout) ---
+const ZONES = {
+  pantry:     { x: 110, y: 80,  label: '☕ Pantry',     color: '#8a6a44' },
+  infra:      { x: 690, y: 80,  label: '🖥 Infra',       color: '#3a3a42' },
+  desk:       { x: 320, y: 230, label: '🖥 Workstations', color: '#6cc8e8' }, // multi-slot
+  boss:       { x: 660, y: 240, label: '★ Boss',         color: '#d8b048' },
+  whiteboard: { x: 160, y: 410, label: '▢ Whiteboard',   color: '#3a7fd0' },
+  lounge:     { x: 660, y: 420, label: '🛋 Lounge',       color: '#7c5cd0' },
+};
+// desk slots so multiple workers spread out
+const DESK_SLOTS = [];
+for (let r = 0; r < 3; r++) for (let col = 0; col < 4; col++) DESK_SLOTS.push({ x: 235 + col * 70, y: 175 + r * 55 });
+
+const STATE_COLOR = {
+  typing: '#5a8f4a', reading: '#3a7fd0', running: '#d8732a', searching: '#7c5cd0',
+  thinking: '#d8b048', talking: '#6cc8e8', working: '#7a9a6a', idle: '#6a6a70', leaving: '#4a4a52',
+};
+const STATE_GLYPH = {
+  typing: '⌨', reading: '📖', running: '⚙', searching: '🔎',
+  thinking: '💭', talking: '💬', working: '•', idle: '·', leaving: '→',
+};
+
+// --- view model: smoothed agent sprites keyed by id ---
+const sprites = new Map(); // id -> {x,y,tx,ty,...,slot}
+let deskSlotByAgent = new Map();
+
+function targetFor(agent) {
+  if (agent.zone === 'desk') {
+    let slot = deskSlotByAgent.get(agent.id);
+    if (slot == null) {
+      const used = new Set(deskSlotByAgent.values());
+      slot = DESK_SLOTS.findIndex((_, i) => !used.has(i));
+      if (slot < 0) slot = (deskSlotByAgent.size) % DESK_SLOTS.length;
+      deskSlotByAgent.set(agent.id, slot);
+    }
+    return DESK_SLOTS[slot];
+  }
+  deskSlotByAgent.delete(agent.id);
+  const z = ZONES[agent.zone] || ZONES.boss;
+  // jitter so several agents in one zone don't fully overlap
+  const seed = [...agent.id].reduce((a, c) => a + c.charCodeAt(0), 0);
+  return { x: z.x + ((seed % 5) - 2) * 14, y: z.y + 24 + ((seed >> 2) % 5 - 2) * 10 };
+}
+
+function applySnapshot(snap) {
+  const seen = new Set();
+  for (const a of snap.agents) {
+    seen.add(a.id);
+    let s = sprites.get(a.id);
+    const t = targetFor(a);
+    if (!s) { s = { x: t.x, y: -20, tx: t.x, ty: t.y }; sprites.set(a.id, s); }
+    s.tx = t.x; s.ty = t.y;
+    Object.assign(s, { kind: a.kind, label: a.label, state: a.state, detail: a.detail, tool: a.tool });
+  }
+  for (const id of [...sprites.keys()]) if (!seen.has(id)) { sprites.get(id)._gone = true; }
+  document.getElementById('count').textContent = `${snap.agents.length} agent${snap.agents.length === 1 ? '' : 's'}`;
+}
+
+// --- render loop ---
+let pulse = 0;
+function draw() {
+  pulse += 0.05;
+  ctx.clearRect(0, 0, W, H);
+
+  // floor
+  ctx.fillStyle = '#20222a'; ctx.fillRect(8, 8, W - 16, H - 16);
+
+  // zones
+  for (const [key, z] of Object.entries(ZONES)) {
+    ctx.globalAlpha = 0.16; ctx.fillStyle = z.color;
+    if (key === 'desk') ctx.fillRect(190, 150, 240, 165);
+    else ctx.beginPath(), ctx.arc(z.x, z.y + 20, 56, 0, Math.PI * 2), ctx.fill();
+    ctx.globalAlpha = 1; ctx.fillStyle = '#9a9aa2'; ctx.font = '11px system-ui';
+    ctx.textAlign = 'center'; ctx.fillText(z.label, z.x, z.y - 30);
+  }
+  // desk grid hints
+  ctx.globalAlpha = 0.25; ctx.strokeStyle = '#6cc8e8';
+  for (const d of DESK_SLOTS) ctx.strokeRect(d.x - 16, d.y - 10, 32, 20);
+  ctx.globalAlpha = 1;
+
+  // agents
+  for (const [id, s] of [...sprites.entries()]) {
+    s.x += (s.tx - s.x) * 0.12; s.y += (s.ty - s.y) * 0.12;
+    if (s._gone) { s._fade = (s._fade ?? 1) - 0.04; if (s._fade <= 0) { sprites.delete(id); continue; } }
+    const alpha = s._fade ?? 1;
+    const col = STATE_COLOR[s.state] || '#7a9a6a';
+    const r = s.kind === 'main' ? 16 : 12;
+
+    ctx.globalAlpha = alpha * 0.3;
+    ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(s.x, s.y + r * 0.7, r * 0.8, r * 0.35, 0, 0, 7); ctx.fill();
+
+    ctx.globalAlpha = alpha;
+    // body
+    const beat = (s.state !== 'idle' && s.state !== 'leaving') ? 1 + Math.sin(pulse + s.x) * 0.06 : 1;
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(s.x, s.y, r * beat, 0, Math.PI * 2); ctx.fill();
+    if (s.kind === 'main') { ctx.strokeStyle = '#d8b048'; ctx.lineWidth = 2.5; ctx.stroke(); }
+    // state glyph
+    ctx.fillStyle = '#fff'; ctx.font = `${r}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(STATE_GLYPH[s.state] || '•', s.x, s.y + 1);
+    ctx.textBaseline = 'alphabetic';
+
+    // name
+    ctx.fillStyle = s.kind === 'main' ? '#d8b048' : '#cfcdc6'; ctx.font = '11px system-ui';
+    ctx.fillText(s.label, s.x, s.y + r + 14);
+    // bubble (detail)
+    if (s.detail && alpha > 0.5) {
+      const txt = s.detail; ctx.font = '10px system-ui';
+      const w = ctx.measureText(txt).width + 14;
+      ctx.globalAlpha = alpha * 0.92; ctx.fillStyle = '#2c2e36';
+      roundRect(s.x - w / 2, s.y - r - 26, w, 18, 6); ctx.fill();
+      ctx.fillStyle = '#e6e3dc'; ctx.fillText(txt, s.x, s.y - r - 13);
+    }
+    ctx.globalAlpha = 1;
+  }
+  requestAnimationFrame(draw);
+}
+function roundRect(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+requestAnimationFrame(draw);
+
+// --- SSE connection ---
+const conn = document.getElementById('conn'), status = document.getElementById('status');
+function connect() {
+  const es = new EventSource('/events');
+  es.onopen = () => { conn.classList.add('on'); status.textContent = 'live · waiting for Claude Code activity'; };
+  es.onmessage = (e) => { try { applySnapshot(JSON.parse(e.data)); } catch {} };
+  es.onerror = () => { conn.classList.remove('on'); status.textContent = 'reconnecting…'; es.close(); setTimeout(connect, 1500); };
+}
+connect();
+</script>
+</body>
+</html>

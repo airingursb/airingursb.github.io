@@ -1,0 +1,23 @@
+{
+  "//": "Agent Office hooks. Merge this 'hooks' block into ~/.claude/settings.json (or run `npm run install-hooks`). Sends Claude Code lifecycle events to the local office server on :4500.",
+  "hooks": {
+    "SessionStart": [
+      { "hooks": [{ "type": "command", "command": "curl -s -m 2 -X POST localhost:4500/event -H 'X-Kind: session_start' --data-binary @- >/dev/null 2>&1 || true" }] }
+    ],
+    "UserPromptSubmit": [
+      { "hooks": [{ "type": "command", "command": "curl -s -m 2 -X POST localhost:4500/event -H 'X-Kind: prompt' --data-binary @- >/dev/null 2>&1 || true" }] }
+    ],
+    "PreToolUse": [
+      { "matcher": "Task", "hooks": [{ "type": "command", "command": "curl -s -m 2 -X POST localhost:4500/event -H 'X-Kind: subagent_spawn' --data-binary @- >/dev/null 2>&1 || true" }] }
+    ],
+    "PostToolUse": [
+      { "hooks": [{ "type": "command", "command": "curl -s -m 2 -X POST localhost:4500/event -H 'X-Kind: tool' --data-binary @- >/dev/null 2>&1 || true" }] }
+    ],
+    "SubagentStop": [
+      { "hooks": [{ "type": "command", "command": "curl -s -m 2 -X POST localhost:4500/event -H 'X-Kind: subagent_stop' --data-binary @- >/dev/null 2>&1 || true" }] }
+    ],
+    "Stop": [
+      { "hooks": [{ "type": "command", "command": "curl -s -m 2 -X POST localhost:4500/event -H 'X-Kind: stop' --data-binary @- >/dev/null 2>&1 || true" }] }
+    ]
+  }
+}
