@@ -52,7 +52,8 @@ import { setupGalleryComics, teardownGalleryComics, getComicsInteractables } fro
 import { setupGalleryZones, teardownGalleryZones } from '../gallery_zones'
 import { maybePlayGalleryIntro } from '../gallery_intro'
 import { setupGalleryVisitors, teardownGalleryVisitors } from '../gallery_visitors'
-import { setupAmbientGhosts, teardownAmbientGhosts } from '../ambient_ghosts'
+import { setupAmbientResidents, teardownAmbientResidents } from '../ambient_residents'
+import { startOnlinePolling, stopOnlinePolling, getOnlineSite } from '../online_presence'
 import { setupGalleryAchievements, teardownGalleryAchievements } from '../gallery_achievements'
 import { setupGalleryAtmosphere, teardownGalleryAtmosphere } from '../gallery_atmosphere'
 import { markVisited as markExhibitVisited } from '../gallery_progress'
@@ -601,6 +602,13 @@ export class RoomScene extends Phaser.Scene {
     // First-visit nudge — only fires once per browser (localStorage flag).
     // Self-cleans on scene shutdown via internal listener.
     setupLoungeOnboarding(this, this.currentRoomId)
+
+    // Start shared online-count polling (idempotent — only one interval runs
+    // regardless of room). Feeds ambient residents + transit NPC cadence.
+    startOnlinePolling()
+    this.events.once('shutdown', stopOnlinePolling)
+    this.events.once('destroy',  stopOnlinePolling)
+
     // V25 — returning pill ("上次去了 Library · 23 分钟前"). Skips first
     // boot (no prior visit) and bouncy <90s round-trips. Self-cleans.
     void import('../lobby_returning_pill').then((m) => m.setupLobbyReturningPill(this, this.currentRoomId))
@@ -967,12 +975,12 @@ export class RoomScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryVisitors)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryVisitors)
 
-    // Ambient "ghost" silhouettes in the lobby — blog readers who are online
-    // but not inside the nook. Non-interactive, faint (alpha 0.3), wander the
-    // lobby floor. Count = clamp(onlineSite - realPeers, 0, 8).
-    setupAmbientGhosts(this, this.currentRoomId, () => this.myBear ? { x: this.myBear.x, y: this.myBear.y } : null, () => this.peers.size)
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownAmbientGhosts)
-    this.events.once(Phaser.Scenes.Events.DESTROY, teardownAmbientGhosts)
+    // Ambient animal residents in the lobby — real Bear avatars (random species)
+    // representing blog readers who are online but not inside the nook.
+    // Non-interactive, alpha 0.85, no name labels. Count = clamp(onlineSite - realPeers, 0, 5).
+    setupAmbientResidents(this, this.currentRoomId, () => this.peers.size)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownAmbientResidents)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownAmbientResidents)
 
     // Brass medallions in the rotunda for completed exhibit sets
     setupGalleryAchievements(this, this.currentRoomId)
@@ -3516,7 +3524,7 @@ export class RoomScene extends Phaser.Scene {
     // skipped in personal homes + private party rooms.
     const TRANSIT_ROOMS = new Set(['room_lobby', 'room_dj_floor', 'room_library', 'room_grove', 'room_beach', 'room_balcony'])
     if (TRANSIT_ROOMS.has(this.currentRoomId)) {
-      this.transitNpcs = new TransitNpcController(this, this.mapInfo.widthPx, this.mapInfo.heightPx, this.currentRoomId)
+      this.transitNpcs = new TransitNpcController(this, this.mapInfo.widthPx, this.mapInfo.heightPx, this.currentRoomId, getOnlineSite)
       this.transitNpcs.start()
       this.events.once('shutdown', () => { this.transitNpcs?.destroy(); this.transitNpcs = undefined })
       this.events.once('destroy',  () => { this.transitNpcs?.destroy(); this.transitNpcs = undefined })

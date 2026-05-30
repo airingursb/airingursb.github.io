@@ -13,6 +13,8 @@ import type Phaser from 'phaser'
 import { Bear, type Direction } from './bear'
 import { ccToRegion, SPECIES, type Species, prefersReducedMotion } from './config'
 import { footprintKindFor, type FootprintKind } from './footprints'
+import { transitDelayRange } from './transit_delay_logic'
+export { transitDelayRange } from './transit_delay_logic'
 
 const MIN_COOLDOWN_MS = 90_000
 const MAX_COOLDOWN_MS = 180_000
@@ -43,13 +45,15 @@ export class TransitNpcController {
   private footprintKind: FootprintKind
   /** All footprint sprites this controller has dropped, capped + auto-pruned. */
   private footprints: Phaser.GameObjects.Container[] = []
+  private onlineCount?: () => number
 
-  constructor(scene: Phaser.Scene, mapWidthPx: number, mapHeightPx: number, roomId: string) {
+  constructor(scene: Phaser.Scene, mapWidthPx: number, mapHeightPx: number, roomId: string, onlineCount?: () => number) {
     this.scene = scene
     this.mapWidthPx = mapWidthPx
     this.mapHeightPx = mapHeightPx
     this.speciesPool = [...SPECIES]
     this.footprintKind = footprintKindFor(roomId)
+    this.onlineCount = onlineCount
   }
 
   start() {
@@ -165,7 +169,14 @@ export class TransitNpcController {
   }
 
   private scheduleNext(delayMs?: number) {
-    const delay = delayMs ?? (MIN_COOLDOWN_MS + Math.random() * (MAX_COOLDOWN_MS - MIN_COOLDOWN_MS))
+    let delay: number
+    if (delayMs !== undefined) {
+      delay = delayMs
+    } else {
+      const online = Math.max(0, Math.min(12, this.onlineCount?.() ?? 0))
+      const [minD, maxD] = transitDelayRange(online)
+      delay = minD + Math.random() * (maxD - minD)
+    }
     this.timer = this.scene.time.delayedCall(delay, () => {
       this.timer = undefined
       this.spawn()

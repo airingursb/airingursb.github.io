@@ -1,9 +1,9 @@
-// Pure logic for ambient ghosts — extracted so it's importable in Node tests
+// Pure logic for ambient residents — extracted so it's importable in Node tests
 // without dragging the Phaser-coupled renderer along.
-// `ambient_ghosts.ts` re-exports ghostTargetCount from here.
+// `ambient_residents.ts` re-exports residentTargetCount from here.
 
-/** Clamp ghost count: max(0, min(max, onlineSite - realPeers)).  NaN/negative → 0. */
-export function ghostTargetCount(
+/** Clamp resident count: max(0, min(max, onlineSite - realPeers)).  NaN/negative → 0. */
+export function residentTargetCount(
   onlineSite: number,
   realPeers: number,
   max: number,

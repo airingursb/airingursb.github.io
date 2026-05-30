@@ -1501,10 +1501,12 @@
 - [ ] Refreshing same day → card does not reappear (localStorage gate)
 - [ ] On mobile (≤600px): card sits above 70px (clear touch strip)
 
-## Nook Living World — lobby ambient ghosts
+## Nook Living World — lobby ambient residents (replaces ghosts)
 
-- [ ] Lobby shows faint translucent silhouettes ≈ online count (`/api/online/count` site), capped at 8
-- [ ] Ghosts are clearly fainter than real NPC/Bear sprites (alpha ~0.3), read as "presence not players"
-- [ ] Ghosts wander the floor region only (not on walls/furniture/NPCs), non-interactive (no click/hover)
-- [ ] Count reconciles on ~45s poll — ghosts fade in/out as online count changes
+- [ ] Lobby shows real animal avatar figures (bear/rabbit/cat/fox/etc body shapes — NOT humanoid silhouettes) ≈ online count (`/api/online/count` site), capped at 5
+- [ ] Residents are slightly faded (alpha ~0.85, like transit NPCs), clearly read as "presence not interactive players"
+- [ ] Residents have NO name labels (label-less is the visual cue distinguishing them from real interactive peers)
+- [ ] Residents wander the floor region only (not on walls/furniture), non-interactive (no click/hover response)
+- [ ] Count reconciles on ~45s poll — residents fade in/out as online count changes
 - [ ] Only in `room_lobby`; other rooms unaffected; no console errors from the fetch
+- [ ] Transit NPC crossing frequency scales with online count: busier (online ≈ 12) → crossings ~20-40s apart; quiet (online ≈ 0) → crossings ~90-180s apart
