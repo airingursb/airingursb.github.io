@@ -5,7 +5,7 @@ import { loadPebbles, getPebblesInRoom, findPebble, getAllPebbles, type Pebble }
 import { loadSeasons, getCurrentSeason, getCurrentHoliday, hexToInt } from '../seasons'
 import { getCurrentPhase } from '../atmosphere'
 import { renderMinimap, showDoorLabel, hideDoorLabel, setDoorLabelClickHandler, MAP_ROOMS } from '../minimap'
-import { REGIONS, WALK_SPEED, ROOM_WIDTH, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, isOutdoorRoom, type Region, type RoomId, type Species } from '../config'
+import { REGIONS, SPECIES, WALK_SPEED, ROOM_WIDTH, ccToRegion, ccToFlag, ccToCountryName, prefersReducedMotion, isValidRoom, DEFAULT_ROOM, isHomeRoom, homeRoomFor as homeRoomForVisitor, getMySpecies, isOutdoorRoom, type Region, type RoomId, type Species } from '../config'
 import { preloadAudio, bindAudio, preloadRoomAudio, playRoomBgm, playRoomAmbient, stopRoomAudio } from '../audio'
 import { onUIEvent, showMenuAt, showBubble, hasActiveBubble, updateBubblePos, showInteractPrompt, hideInteractPrompt, updateInteractPromptPos, showNameModal, setInfoPanelDataProvider, showReplacedOverlay, showBoothPicker, hideBoothPicker, showNowPlaying, hideNowPlaying, setInventoryDataProvider, refreshInventoryPanel, showPeerMenu, showGiftModal, showToast, setMessagesProvider, refreshMessagesBadge, renderThreadView, getCurrentThreadFriendId, showLetterModal, showLetterRead, setupWishboard, renderWishboard, setOnSpeciesToggle, updateSpeciesButtonLabel, showProfileCard } from '../ui'
 import { getBoothTracks, preloadBoothTracks, playBoothTrack, stopBoothTrack, getCurrentTrackName, type BoothTrack } from '../booth'
@@ -60,6 +60,7 @@ import { markVisited as markExhibitVisited } from '../gallery_progress'
 import { preloadGalleryAssets } from '../gallery_assets'
 import { preloadOfficeAssets } from '../office_assets'
 import { setupOfficeDecor, teardownOfficeDecor } from '../office_decor'
+import { setupOfficeAgents, teardownOfficeAgents } from '../office_agents'
 import { tickRandomEvents, getActiveEvent, attendEvent, type ActiveEvent } from '../random_events'
 import { TransitNpcController } from '../transit_npcs'
 import { spawnAmbientPets, tickAmbientPetProximity, reactPetsToPlayerEmote } from '../ambient_pets'
@@ -327,6 +328,11 @@ export class RoomScene extends Phaser.Scene {
     }
     if (this.currentRoomId === 'room_office') {
       preloadOfficeAssets(this)
+      // agent bears use region 'asia'; preload every species so they show their
+      // real species identity (code-reviewer=fox, etc.) instead of the bear fallback.
+      for (const sp of SPECIES) {
+        this.load.atlas(`${sp}_asia`, `/lounge/assets/sprites/${sp}/asia/sprite.png`, `/lounge/assets/sprites/${sp}/asia/sprite.json`)
+      }
     }
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
     this.load.image('indoor_lobby_v1', '/lounge/assets/tilesets/indoor_lobby_v1/tiles.png')
@@ -1000,12 +1006,16 @@ export class RoomScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryAtmosphere)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryAtmosphere)
 
-    // Agent Office — furniture (placed below bears; SSE-driven agents land in P4)
+    // Agent Office — furniture + live agents (Bears driven by the local
+    // agent-office SSE; demo fallback when no server is connected).
     if (this.currentRoomId === 'room_office') {
       setupOfficeDecor(this)
+      setupOfficeAgents(this)
     }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownOfficeDecor)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownOfficeDecor)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownOfficeAgents)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownOfficeAgents)
 
     // South pavilion comics wall — fetched from /api/gallery-comics.json.
     // Frames are added to this.interactables on the next tick so the existing
