@@ -1,17 +1,43 @@
 // Void treatment — cloud sea below the floating island so the camera
 // doesn't look into bare sky-fog when it pans down. Per Sub-A gap #1.
 
+import { useMemo } from 'react'
 import { Cloud, Clouds } from '@react-three/drei'
 import * as THREE from 'three'
+import { useTimeOfDay, type TimePhase } from './time-of-day'
+
+// Phase-aware ocean color. Was hardcoded #8FB4D9 (pale blue) — at night
+// + pinkish fog that made a bright pink lower-hemisphere band visible in
+// the camera, breaking the night sky continuity. Match each phase's mood
+// so the plane fades cleanly into the fog horizon instead of standing out.
+const OCEAN_COLORS: Record<TimePhase, string> = {
+  dawn:  '#A8B6CC',   // pale cool-blue with hint of dawn
+  day:   '#8FB4D9',   // original — pale daytime blue
+  dusk:  '#7A88A8',   // muted purple-blue
+  night: '#1E2540',   // deep navy, matches NightSkydome horizon
+}
 
 export default function Void() {
+  const tod = useTimeOfDay()
+  const order: TimePhase[] = ['dawn', 'day', 'dusk', 'night']
+  const idx = order.indexOf(tod.phase)
+  const a = OCEAN_COLORS[tod.phase]
+  const b = OCEAN_COLORS[order[(idx + 1) % order.length]]
+  // Same hold-then-lerp as PhaseFog so the plane doesn't drift through
+  // pink at 3am.
+  const heldBlend = tod.blend < 0.75 ? 0 : (tod.blend - 0.75) / 0.25
+  const oceanColor = useMemo(
+    () => '#' + new THREE.Color(a).lerp(new THREE.Color(b), heldBlend).getHexString(),
+    [a, b, heldBlend],
+  )
   return (
     <group>
-      {/* Vast distant ocean plane far below — pale blue, lightly reflective */}
+      {/* Vast distant ocean plane far below — color follows phase so it
+          fades into fog at the horizon instead of poking through. */}
       <mesh position={[0, -22, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[600, 600, 1, 1]} />
         <meshStandardMaterial
-          color="#8FB4D9"
+          color={oceanColor}
           roughness={0.3}
           metalness={0.2}
           transparent

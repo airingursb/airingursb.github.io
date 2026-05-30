@@ -438,7 +438,13 @@ function PhaseFog() {
   const idx = order.indexOf(tod.phase)
   const a = FOG_COLORS[tod.phase]
   const b = FOG_COLORS[order[(idx + 1) % order.length]]
-  const c = '#' + new ThreeColor(a).lerp(new ThreeColor(b), tod.blend).getHexString()
+  // Hold each phase's color for the first 75% of its duration, lerp only
+  // in the last 25%. Was: continuous lerp across the whole phase, which
+  // made night fog drift through indigo→mauve→pink during the 9.5h night
+  // (since next-phase is dawn #EAC4B4). At 2-3am local that pink fog
+  // painted the Void plane → bright pink horizon band under the NightSkydome.
+  const heldBlend = tod.blend < 0.75 ? 0 : (tod.blend - 0.75) / 0.25
+  const c = '#' + new ThreeColor(a).lerp(new ThreeColor(b), heldBlend).getHexString()
   return <fog attach="fog" args={[c, 55, 140]} />
 }
 
