@@ -28,31 +28,40 @@ npm start                  # 启动本地服务 → http://localhost:4500
 
 卸载 hooks:`npm run install-hooks -- --remove`(或 `node install-hooks.mjs --remove`)。
 
-## 状态 → 区域/动画映射
+## 状态目录(`lib/states.js`,~247 个状态)
 
-| Claude Code 工具 | 状态 | 区域 | 气泡 |
+每个状态 = `{ id, cat, verb, emoji, zone, anim, fiction }`。**全部状态都在 `lib/states.js`**,加/改一行即可。
+
+| 类别 cat | 数量 | 真/假 | 例子 |
 |---|---|---|---|
-| Edit / Write / MultiEdit | typing | 工位 | editing <file> |
-| Read / Grep / Glob | reading | 工位 | reading <file> |
-| Bash | running | 机房 | <command desc> |
-| WebSearch / WebFetch | searching | 工位 | searching "<q>" |
-| TodoWrite | thinking | 工位 | planning |
-| Agent / Task(派生) | talking | 白板 | delegating <agent_type>: <prompt> |
-| Notification(permission_prompt) | blocked | 原地 | waiting for your approval |
-| 空闲 >45s | idle | Boss/茶水 | idle |
-| SubagentStop | leaving | 休息区 | done ✓ / failed ✗ / cancelled |
-| 子 Agent 闲置 >8s | chatting | 茶水/白板 | ~ chatting ☕（**加戏，fiction:true**） |
+| code | 30 | 真 | edit_test 🧪 写测试 · edit_style 🎨 改 CSS · edit_fix 🐛 修 bug |
+| read | 24 | 真 | grep_todo 📌 找 TODO · read_diff 🔍 看 diff · read_image 🖼️ 看图 |
+| run | 40 | 真 | run_commit ✅ · run_deploy 🚢 部署 · run_db 🗄️ 查库 · run_test 🧪 |
+| web | 8 | 真 | web_search 🔎 · web_github 🐙 |
+| think | 12 | 真 | think_plan 🗺️ · think_stuck 🤔 卡住 |
+| delegate | 8 | 真 | del_spawn 🤝 派活 · del_review 🧐 验收 |
+| mcp | 10 | 真 | mcp_db 🗄️ Supabase · mcp_browser 🌐 · mcp_design 🎨 |
+| life | 15 | 真 | life_done 🎉 · life_failed 💥 · life_break ☕ |
+| blocked | 4 | 真 | blocked_perm ✋ 等你授权 |
+| **idle** | **50** | **加戏** | idle_coffee ☕ 接咖啡 · idle_nap 😴 · idle_window 🪟 望窗 · idle_plant 🪴 浇花 |
+| **social** | **26** | **加戏** | soc_debate ⚔️ · soc_highfive 🙌 · soc_tabs 😅 吵 tab vs 空格 |
+| **react** | **20** | **加戏** | react_eureka 💡 · react_facepalm 🤦 · react_party 🥳 |
 
-(映射表在 `lib/state.js` 的 `TOOL_MAP`,改这一处即可。)
+**解析**:`resolveTool(toolName, input)` 按 **文件扩展名 / Bash 关键词 / MCP server 名** 把一次工具调用映射到细状态(如 `Edit foo.test.ts → edit_test`、`Bash "git commit" → run_commit`、`Edit app.css → edit_style`)。`anim` 字段把状态桥接到 bear.ts 的 5 个动画(idle/walk/wave/sit/dance);`cat` 决定颜色;`emoji` 是气泡里的活动图标。
 
-**真实 vs 加戏**:气泡带 `~` 且变灰斜体的 = **虚构**(`fiction:true`)。真实 Claude Code 里子 Agent 之间**不通信**(星形拓扑),所以「子 Agent 社交」纯属为画面热闹而编;一旦该子 Agent 来了真实 hook 事件,fiction 立刻清除、回归真实状态。
+**形象**:每个 agent 有确定性 `species`(11 物种,匹配 bear.ts)——子 Agent **按 agent_type 取**(同一种角色永远同一张脸),无 type 时按 agent_id;主 Agent = 用户 avatar。
+
+**真实 vs 加戏**:`cat` 为 idle/social/react 的 = `fiction:true`,气泡灰化斜体加 `~`。真实 Claude Code 里子 Agent 之间**不通信**(星形拓扑),所以社交编排纯属为画面热闹而编;一旦该 agent 来了真实 hook 事件,fiction 立刻清除、回归真实状态。
+
+**加戏编排**:idle 角色每 12s 换一个 ambient 活动(浇花/接咖啡/望窗…);两个 idle 子 Agent 凑一起会走完「走向茶水间 → 你一句我一句轮替 → 散场回工位 → 冷却 30s」整套(`_socialize`)。
 
 ## 结构
 
 | 文件 | 作用 |
 |---|---|
-| `lib/state.js` | **纯状态机**:agent 树 + 工具→状态/区域映射(I/O-free,可测) |
-| `lib/state.test.js` | 单测(`npm test`,8 个用例) |
+| `lib/states.js` | **状态目录**:~247 个状态 + `resolveTool` 解析(文件/Bash/MCP 启发式) |
+| `lib/state.js` | **纯状态机**:agent 树 + agent_id 归因 + 加戏编排(I/O-free,可测) |
+| `lib/state.test.js` | 单测(`npm test`,14 个用例,含目录完整性校验) |
 | `server.js` | 本地服务:`POST /event` 入,`GET /events` SSE 出,静态托管 |
 | `hooks.example.json` | Claude Code hooks 配置片段 |
 | `install-hooks.mjs` | 幂等合并/移除 hooks 到 `~/.claude/settings.json` |

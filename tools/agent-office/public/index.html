@@ -47,15 +47,16 @@ const ZONES = {
 const DESK_SLOTS = [];
 for (let r = 0; r < 3; r++) for (let col = 0; col < 4; col++) DESK_SLOTS.push({ x: 235 + col * 70, y: 175 + r * 55 });
 
-const STATE_COLOR = {
-  typing: '#5a8f4a', reading: '#3a7fd0', running: '#d8732a', searching: '#7c5cd0',
-  thinking: '#d8b048', talking: '#6cc8e8', working: '#7a9a6a', idle: '#6a6a70', leaving: '#4a4a52',
-  blocked: '#d44820', chatting: '#9a7a5a',
+// color by category (mirrors lib/states.js CATS)
+const CAT_COLOR = {
+  code: '#5a8f4a', read: '#3a7fd0', run: '#d8732a', web: '#7c5cd0', think: '#d8b048',
+  delegate: '#6cc8e8', mcp: '#4aa9a0', life: '#8a8a90', blocked: '#d44820',
+  idle: '#6a6a70', social: '#9a7a5a', react: '#d8b048',
 };
-const STATE_GLYPH = {
-  typing: '⌨', reading: '📖', running: '⚙', searching: '🔎',
-  thinking: '💭', talking: '💬', working: '•', idle: '·', leaving: '→',
-  blocked: '✋', chatting: '☕',
+// the character's face = its species (ports to bear.ts sprites later)
+const SPECIES_EMOJI = {
+  bear: '🐻', cat: '🐱', fox: '🦊', capybara: '🦫', bird: '🐦', bunny: '🐰',
+  puppy: '🐶', panda: '🐼', hamster: '🐹', penguin: '🐧', frog: '🐸',
 };
 
 // --- view model: smoothed agent sprites keyed by id ---
@@ -88,7 +89,8 @@ function applySnapshot(snap) {
     const t = targetFor(a);
     if (!s) { s = { x: t.x, y: -20, tx: t.x, ty: t.y }; sprites.set(a.id, s); }
     s.tx = t.x; s.ty = t.y;
-    Object.assign(s, { kind: a.kind, label: a.label, state: a.state, detail: a.detail, tool: a.tool, fiction: a.fiction });
+    Object.assign(s, { kind: a.kind, label: a.label, state: a.state, cat: a.cat, emoji: a.emoji,
+      species: a.species, detail: a.detail, fiction: a.fiction });
   }
   for (const id of [...sprites.keys()]) if (!seen.has(id)) { sprites.get(id)._gone = true; }
   document.getElementById('count').textContent = `${snap.agents.length} agent${snap.agents.length === 1 ? '' : 's'}`;
@@ -121,28 +123,30 @@ function draw() {
     s.x += (s.tx - s.x) * 0.12; s.y += (s.ty - s.y) * 0.12;
     if (s._gone) { s._fade = (s._fade ?? 1) - 0.04; if (s._fade <= 0) { sprites.delete(id); continue; } }
     const alpha = s._fade ?? 1;
-    const col = STATE_COLOR[s.state] || '#7a9a6a';
-    const r = s.kind === 'main' ? 16 : 12;
+    const col = CAT_COLOR[s.cat] || '#7a9a6a';
+    const r = s.kind === 'main' ? 17 : 13;
 
     ctx.globalAlpha = alpha * 0.3;
     ctx.fillStyle = '#000'; ctx.beginPath(); ctx.ellipse(s.x, s.y + r * 0.7, r * 0.8, r * 0.35, 0, 0, 7); ctx.fill();
 
     ctx.globalAlpha = alpha;
-    // body
-    const beat = (s.state !== 'idle' && s.state !== 'leaving') ? 1 + Math.sin(pulse + s.x) * 0.06 : 1;
+    // body = a category-colored disc (a "name tag" ring), face = species emoji
+    const active = !(s.cat === 'idle' || s.cat === 'life');
+    const beat = active ? 1 + Math.sin(pulse + s.x) * 0.06 : 1;
     ctx.fillStyle = col; ctx.beginPath(); ctx.arc(s.x, s.y, r * beat, 0, Math.PI * 2); ctx.fill();
-    if (s.kind === 'main') { ctx.strokeStyle = '#d8b048'; ctx.lineWidth = 2.5; ctx.stroke(); }
-    // state glyph
-    ctx.fillStyle = '#fff'; ctx.font = `${r}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(STATE_GLYPH[s.state] || '•', s.x, s.y + 1);
+    ctx.strokeStyle = s.kind === 'main' ? '#d8b048' : 'rgba(255,255,255,.35)';
+    ctx.lineWidth = s.kind === 'main' ? 2.5 : 1.5; ctx.stroke();
+    // species face
+    ctx.font = `${r + 4}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(SPECIES_EMOJI[s.species] || '🐻', s.x, s.y + 1);
     ctx.textBaseline = 'alphabetic';
 
     // name
     ctx.fillStyle = s.kind === 'main' ? '#d8b048' : '#cfcdc6'; ctx.font = '11px system-ui';
     ctx.fillText(s.label, s.x, s.y + r + 14);
-    // bubble (detail) — fiction (加戏) bubbles are dimmed + italic so charm reads as charm
+    // bubble: activity emoji + detail. fiction (加戏) bubbles dimmed + italic.
     if (s.detail && alpha > 0.5) {
-      const txt = s.fiction ? `~ ${s.detail}` : s.detail;
+      const txt = `${s.emoji || ''} ${s.fiction ? '~ ' : ''}${s.detail}`.trim();
       ctx.font = s.fiction ? 'italic 10px system-ui' : '10px system-ui';
       const w = ctx.measureText(txt).width + 14;
       ctx.globalAlpha = alpha * (s.fiction ? 0.5 : 0.92); ctx.fillStyle = '#2c2e36';
