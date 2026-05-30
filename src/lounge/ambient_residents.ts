@@ -8,7 +8,7 @@
 import type Phaser from 'phaser'
 import { Bear } from './bear'
 import { ccToRegion, SPECIES, type Species, type RoomId } from './config'
-import { startOnlinePolling, getOnlineSite } from './online_presence'
+import { startOnlinePolling, getOnlineSite, onOnlineChange } from './online_presence'
 export { residentTargetCount } from './ambient_residents_logic'
 import { residentTargetCount } from './ambient_residents_logic'
 
@@ -40,6 +40,7 @@ type Resident = {
 let residents: Resident[] = []
 let updateEvent: Phaser.Time.TimerEvent | null = null
 let pollTimer: ReturnType<typeof setInterval> | null = null
+let unsubOnline: (() => void) | null = null
 let sceneRef: Phaser.Scene | null = null
 let getPeerCountFn: (() => number) | null = null
 
@@ -59,7 +60,12 @@ export function setupAmbientResidents(
   // Start the shared online poll (idempotent — only starts once)
   startOnlinePolling()
 
-  // Kick off first reconcile immediately
+  // Reconcile as soon as the online count arrives (the first poll is async, so
+  // the immediate reconcile below sees 0 on a cold load — this fires when the
+  // real count lands ~<1s later, so residents don't wait the full poll cadence).
+  unsubOnline = onOnlineChange(() => { if (sceneRef) reconcileResidents(sceneRef) })
+
+  // Kick off first reconcile immediately (uses cached count if already warm)
   reconcileResidents(scene)
 
   // Periodic re-reconcile in sync with the online-count poll cadence
@@ -78,6 +84,7 @@ export function setupAmbientResidents(
 export function teardownAmbientResidents() {
   if (updateEvent) { updateEvent.remove(false); updateEvent = null }
   if (pollTimer !== null) { clearInterval(pollTimer); pollTimer = null }
+  if (unsubOnline) { unsubOnline(); unsubOnline = null }
   for (const r of residents) {
     try { r.bear.destroy() } catch {}
   }
