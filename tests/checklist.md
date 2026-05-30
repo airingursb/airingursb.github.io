@@ -1510,3 +1510,17 @@
 - [ ] Count reconciles on ~45s poll — residents fade in/out as online count changes
 - [ ] Only in `room_lobby`; other rooms unaffected; no console errors from the fetch
 - [ ] Transit NPC crossing frequency scales with online count: busier (online ≈ 12) → crossings ~20-40s apart; quiet (online ≈ 0) → crossings ~90-180s apart
+
+## Agent Office (room_office) — /nook?room=office
+
+- [ ] `/nook?room=office`（或 `?room=room_office`）直接进入办公室房间；URL 参数生效
+- [ ] 地板用 A01 像素地砖平铺无缝；顶墙有 A04 窗；A02 协作区地砖；角色可走动+撞墙+相机跟随
+- [ ] lobby 里有一扇干净现代玻璃门，点击进 office；office 底部门走入/点击回 lobby（"→ Lobby" 提示）
+- [ ] 家具按 FLOOR_PLAN：12 工位（桌+显示器+椅）、Boss L 桌+老板椅+双屏、白板+圆桌+会议椅、咖啡+水吧、机柜、沙发+边几+跑步机、绿植；左下软阴影、深度在熊之下
+- [ ] 顶窗投下冷色光池 + 工位冷光晕 + 缓慢尘埃；reduced-motion 下尘埃消失、不卡顿
+- [ ] 本地 agent 服务（tools/agent-office :4500）在跑时：★You 主 Agent 坐 Boss，subAgent 按 state 落工位/机房/茶水/休息区
+- [ ] 每只 Bear 头顶气泡显示「在干嘛」（emoji + 细节，如 "🗄️ querying Supabase"）；fiction（社交/idle）气泡灰化
+- [ ] 同 agent_type 的 sub 物种稳定（同一张脸）；主 Agent = 用户 avatar；species 正确渲染（frog/bird 等非 bear 回退）
+- [ ] subAgent spawn → 入场占工位；SubagentStop → 离场（done/failed/cancelled 有别），无残留
+- [ ] 连不上本地服务 → 3.5s 后 demo 态（主+2 sub 循环），无报错、无白屏
+- [ ] 离开 office 房间正确 teardown（家具/agent/气泡/SSE 全销毁，无泄漏）；其它房间（lobby/gallery）不受影响
