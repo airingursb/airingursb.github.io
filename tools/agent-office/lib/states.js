@@ -344,6 +344,14 @@ const ids = (cat) => Object.values(STATES).filter(s => s.cat === cat).map(s => s
 export const AMBIENT = ids('idle');
 export const SOCIAL = ids('social');
 export const REACT = ids('react');
+// reaction pools keyed to a real outcome (subagent exit / patterns). Together these
+// cover all 20 react states so every one is reachable from a real event.
+export const REACT_HAPPY = ['react_celebrate', 'react_proud', 'react_relief', 'react_thumbsup', 'react_party', 'react_fistpump', 'react_cheer', 'react_wow', 'react_mindblown'];
+export const REACT_SAD = ['react_facepalm', 'react_oof', 'react_melt', 'react_frustrated', 'react_sigh', 'react_sweat'];
+export const REACT_MEH = ['react_shrug', 'react_meh'];
+export const REACT_EUREKA = 'react_eureka';
+export const REACT_ZEN = 'react_zen';
+export const REACT_CONFUSED = 'react_confused';
 
 function hashStr(s) {
   let h = 2166136261;
@@ -357,9 +365,31 @@ const lc = (s) => String(s || '').toLowerCase();
 const ext = (p) => { const m = lc(p).match(/\.([a-z0-9]+)$/); return m ? m[1] : ''; };
 const base = (p) => lc(p).split('/').pop() || '';
 
-/** Edit/Write target file → a fine code/edit state. */
-function editStateForFile(fp) {
-  const b = base(fp), e = ext(fp), p = lc(fp);
+const squashWs = (s) => String(s).replace(/\s+/g, '');
+function isMostlyComments(content) {
+  const lines = String(content).split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length < 2) return false;
+  const c = lines.filter(l => /^(\/\/|#|\*|\/\*|<!--|--|;)/.test(l)).length;
+  return c / lines.length > 0.6;
+}
+
+/** Edit/Write/MultiEdit/NotebookEdit → a fine code state, using path + content + ctx. */
+function editState(tool, inp, ctx) {
+  const fp = inp.file_path || '', b = base(fp), e = ext(fp), p = lc(fp);
+  const content = inp.new_string ?? inp.content ?? (inp.edits ? inp.edits.map(x => x.new_string || '').join('\n') : '');
+  const old = inp.old_string ?? '';
+  // structural signals first
+  if (tool === 'NotebookEdit' || e === 'ipynb') return 'edit_notebook';
+  if (inp.new_string === '' && old) return 'edit_delete';
+  if (String(content).includes('<<<<<<<') || /^=======$/m.test(String(content))) return 'edit_resolve';
+  if (old && content && squashWs(old) === squashWs(content)) return 'edit_format';
+  if (tool === 'MultiEdit' || inp.replace_all) return 'edit_refactor';
+  if (ctx.lastFailed) return 'edit_fix';
+  if (tool === 'Write' && ctx.seenFiles && fp && !ctx.seenFiles.has(fp)) return 'edit_newfile';
+  if (content && String(content).length > 4000) return 'edit_bigfile';
+  // path / type
+  if (/(^|\/)(i18n|locales?|lang|translations?)(\/|$)/.test(p)) return 'edit_i18n';
+  if (/migrat/.test(p)) return 'edit_migration';
   if (/\.(test|spec)\./.test(b)) return 'edit_test';
   if (b === 'readme.md') return 'edit_readme';
   if (e === 'md' || e === 'mdx') return 'edit_docs';
@@ -373,20 +403,29 @@ function editStateForFile(fp) {
   if (b === '.env' || b.startsWith('.env')) return 'edit_env';
   if (b === 'dockerfile') return 'edit_docker';
   if (b === '.gitignore') return 'edit_gitignore';
-  if (e === 'ipynb') return 'edit_notebook';
   if (e === 'prisma' || e === 'proto' || e === 'graphql') return 'edit_schema';
+  if (['toml', 'ini', 'conf', 'cfg', 'properties', 'editorconfig'].includes(e) || b === '.editorconfig') return 'edit_config';
+  if (content && isMostlyComments(content)) return 'edit_comment';
   return 'edit_code';
 }
-function readStateForFile(fp) {
-  const b = base(fp), e = ext(fp);
+function readState(inp, ctx) {
+  const fp = inp.file_path || '', b = base(fp), e = ext(fp), p = lc(fp);
+  if (ctx.role && /review|audit/.test(lc(ctx.role))) return 'read_review';
+  if (ctx.lastFailed || /error|crash|stacktrace|traceback/.test(b)) return 'read_error';
+  if (Number(inp.limit) > 0 && Number(inp.limit) <= 60) return 'read_skim';
+  if (Number(inp.offset) > 0) return 'read_bigfile';
+  if (e === 'diff' || e === 'patch') return 'read_diff';
+  if (/(changelog|history)/i.test(b)) return 'read_history';
+  if (/(^|\/)(spec|specs|design)(\/|$)|\.spec\./.test(p)) return 'read_spec';
   if (/\.(test|spec)\./.test(b)) return 'read_test';
   if (b === 'readme.md') return 'read_readme';
   if (e === 'md' || e === 'mdx') return 'read_docs';
   if (e === 'log') return 'read_logs';
-  if (e === 'json' || e === 'csv' || e === 'yml' || e === 'yaml') return 'read_data';
+  if (['toml', 'ini', 'conf', 'cfg', 'properties'].includes(e)) return 'read_config';
+  if (['json', 'csv', 'tsv', 'yml', 'yaml'].includes(e)) return 'read_data';
   if (e === 'sql') return 'read_sql';
   if (b.endsWith('.d.ts')) return 'read_types';
-  if (e === 'png' || e === 'jpg' || e === 'jpeg' || e === 'gif' || e === 'svg' || e === 'webp') return 'read_image';
+  if (['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp'].includes(e)) return 'read_image';
   if (e === 'pdf') return 'read_pdf';
   if (e === 'ipynb') return 'read_notebook';
   if (b === '.env' || b.startsWith('.env')) return 'read_env';
@@ -395,6 +434,7 @@ function readStateForFile(fp) {
 
 // keyword → run state. First match wins; ordered most-specific first.
 const BASH_RULES = [
+  [/\b(git\s+mv|^mv|\smv)\s/, 'edit_rename'],
   [/\b(npm|pnpm|yarn|jest|vitest|pytest|go test|cargo test)\b.*\btest\b|\btest\b/, 'run_test'],
   [/\b(npm|pnpm|yarn)\s+(run\s+)?build\b|\bvite build\b|\bwebpack\b|\btsc -b\b/, 'run_build'],
   [/\b(npm|pnpm|yarn)\s+(install|add|i)\b|\bpip install\b|\bbundle install\b/, 'run_install'],
@@ -427,8 +467,8 @@ const BASH_RULES = [
   [/\bgrep\b|\brg\b/, 'run_grep'],
   [/\bfind\b|\bfd\b/, 'run_find'],
   [/\bmake\b/, 'run_make'],
+  [/\bpip\b|python -m pip/, 'run_pip'],
   [/\bnpm\b|\bpnpm\b|\byarn\b/, 'run_npm'],
-  [/\bpip\b|python -m/, 'run_pip'],
   [/\bnode\b|\bpython3?\b|\bdeno\b|\bbun\b/, 'run_script'],
   [/server|serve|preview|--port|listen/, 'run_server'],
   [/bench/, 'run_bench'],
@@ -445,36 +485,54 @@ function mcpState(toolName) {
   if (n.includes('supabase')) return 'mcp_db';
   if (n.includes('playwright') || n.includes('browser')) return 'mcp_browser';
   if (n.includes('exa') || n.includes('search')) return 'mcp_search';
-  if (n.includes('pencil') || n.includes('figma') || n.includes('excalidraw')) return 'mcp_design';
+  if (n.includes('figma')) return 'mcp_figma';
+  if (n.includes('pencil') || n.includes('excalidraw')) return 'mcp_design';
   if (n.includes('linear')) return 'mcp_linear';
   if (n.includes('calendar')) return 'mcp_calendar';
   if (n.includes('flomo') || n.includes('tana') || n.includes('note') || n.includes('heptabase')) return 'mcp_notes';
-  return 'mcp_generic';
+  if (n.includes('memory') || n.includes('recall')) return 'mcp_notes';
+  return 'mcp_generic';   // an mcp server we don't specially flavor
 }
 
-/** Map a Claude Code tool call → a fine state id. */
-export function resolveTool(toolName, input) {
+function webState(input) {
+  const u = lc(input?.url);
+  if (/\.(png|jpg|jpeg|gif|svg|webp)(\?|$)/.test(u)) return 'web_image';
+  if (u.includes('github.com')) return 'web_github';
+  if (u.includes('stackoverflow')) return 'web_so';
+  if (/\/api|api\./.test(u)) return 'web_api';
+  if (u.includes('docs') || u.includes('developer.')) return 'web_docs';
+  if (/blog|news|medium|article|substack/.test(u)) return 'web_read';
+  return 'web_fetch';
+}
+
+/**
+ * Map a Claude Code tool call → a fine state id.
+ * @param ctx optional inference context: { role, lastFailed, seenFiles }
+ */
+export function resolveTool(toolName, input, ctx = {}) {
   const t = toolName || '';
+  const inp = input || {};
   if (t.startsWith('mcp__')) return mcpState(t);
   switch (t) {
-    case 'Edit': case 'Write': case 'MultiEdit':
-      return input?.file_path ? editStateForFile(input.file_path) : 'edit_code';
-    case 'NotebookEdit': return 'edit_notebook';
-    case 'Read': return input?.file_path ? readStateForFile(input.file_path) : 'read_code';
-    case 'Grep': return /todo|fixme|hack/i.test(input?.pattern || '') ? 'grep_todo' : 'grep_search';
-    case 'Glob': return 'glob_find';
-    case 'Bash': case 'BashOutput': return bashState(input);
-    case 'WebSearch': return 'web_search';
-    case 'WebFetch': {
-      const u = lc(input?.url);
-      if (u.includes('github.com')) return 'web_github';
-      if (u.includes('stackoverflow')) return 'web_so';
-      if (u.includes('/api') || u.includes('api.')) return 'web_api';
-      if (u.includes('docs')) return 'web_docs';
-      return 'web_fetch';
+    case 'Edit': case 'Write': case 'MultiEdit': case 'NotebookEdit':
+      return editState(t, inp, ctx);
+    case 'Read': return readState(inp, ctx);
+    case 'Grep': {
+      const p = inp.pattern || '';
+      if (/todo|fixme|hack|xxx/i.test(p)) return 'grep_todo';
+      if (/\b(function|class|def|interface|type|const|fn|func|struct|enum)\b/i.test(p) || /\w\(/.test(p)) return 'grep_def';
+      return 'grep_search';
     }
-    case 'TodoWrite': return 'think_todo';
+    case 'Glob': return 'glob_find';
+    case 'Bash': return bashState(inp);
+    case 'BashOutput': return 'run_watch';
+    case 'WebSearch': return /image|photo|screenshot|picture|logo|icon/.test(lc(inp.query)) ? 'web_image' : 'web_search';
+    case 'WebFetch': return webState(inp);
+    case 'TodoWrite': return 'think_todo';        // refined by todo-count in state.js
     case 'Task': case 'Agent': return 'del_spawn';
-    default: return 'edit_code' in STATES && /^[A-Z]/.test(t) ? 'mcp_generic' : 'run_generic';
+    case 'AskUserQuestion': return 'blocked_choice';
+    case 'EnterPlanMode': return 'think_design';
+    case 'ExitPlanMode': return 'think_decide';
+    default: return /^[A-Z]/.test(t) ? 'mcp_tool' : 'run_generic';
   }
 }
