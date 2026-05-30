@@ -29,6 +29,14 @@ const POLL_INTERVAL_MS = 45_000   // re-reconcile with online count every 45 s
 const RESIDENT_ALPHA = 0.5        // translucent — clearly "presence", not a real player
 const FACINGS: Direction[] = ['down', 'left', 'right']
 
+// Cute animal/pet-style names for residents (e.g. "Bearbox").
+const NAME_POOL = [
+  'Bearbox', 'Mochi', 'Pebble', 'Tofu', 'Bramble', 'Hazel', 'Bento', 'Waffle',
+  'Biscuit', 'Clover', 'Maple', 'Tater', 'Nimbus', 'Cricket', 'Dumpling',
+  'Sprout', 'Cocoa', 'Acorn', 'Noodle', 'Pudding', 'Foxglove', 'Bunbun',
+  'Pawpaw', 'Marble',
+]
+
 // ─── Module-level state ───────────────────────────────────────────────────────
 
 type Resident = { bear: Bear }
@@ -108,11 +116,13 @@ function spawnResident(scene: Phaser.Scene): Resident {
   // No name label — that's the cue distinguishing residents from real peers.
   scene.tweens.add({ targets: bear.sprite, alpha: RESIDENT_ALPHA, duration: 1200, ease: 'Sine.easeIn' })
 
-  // Country flag in the name-label slot (closest-to-head label position) — sits
-  // exactly where every character's name sits, so it's consistent and tight to
-  // the body. Residents have no name, so the flag IS their only overhead label.
+  // Animal name + country-flag prefix in the name-label slot — sits exactly
+  // where every character's name sits (tight to the head), e.g. "🇸🇬 Bearbox".
   const cc = pickCountry()
-  if (cc) bear.setDisplayName(countryToFlag(cc))
+  const flag = cc ? countryToFlag(cc) : ''
+  bear.setDisplayName(NAME_POOL[Math.floor(Math.random() * NAME_POOL.length)], {
+    prefix: flag ? `${flag} ` : '',
+  })
 
   return { bear }
 }

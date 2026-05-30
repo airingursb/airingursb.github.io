@@ -135,7 +135,7 @@ export class Bear {
     this.sprite = scene.add.sprite(x, y, finalKey, 'idle_down')
     this.sprite.setOrigin(0.5, 1)
     this.baseY = y
-    this.nameLabel = scene.add.text(x, y - 42, '', {
+    this.nameLabel = scene.add.text(x, y - 36, '', {
       fontFamily: 'ui-monospace, monospace',
       fontSize: '9px',
       color: '#ffffff',
@@ -143,7 +143,7 @@ export class Bear {
       strokeThickness: 2,
       resolution: 2
     }).setOrigin(0.5, 1).setDepth(6)
-    this.heartLabel = scene.add.text(x, y - 52, '', {
+    this.heartLabel = scene.add.text(x, y - 46, '', {
       fontFamily: 'ui-monospace, monospace',
       fontSize: '10px',
       color: '#ffb0c0',
@@ -151,7 +151,7 @@ export class Bear {
     }).setOrigin(0.5, 1).setDepth(6)
     // V17.1 — mood emoji floats just above the heart, sits hidden until
     // setMood() is called with a non-empty glyph
-    this.moodLabel = scene.add.text(x, y - 62, '', {
+    this.moodLabel = scene.add.text(x, y - 56, '', {
       fontFamily: 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif',
       fontSize: '14px',
       resolution: 2
@@ -276,15 +276,15 @@ export class Bear {
     }
     if (this.nameLabel) {
       this.nameLabel.x = this.sprite.x
-      this.nameLabel.y = this.sprite.y - 42
+      this.nameLabel.y = this.sprite.y - 36
     }
     if (this.heartLabel) {
       this.heartLabel.x = this.sprite.x
-      this.heartLabel.y = this.sprite.y - 52
+      this.heartLabel.y = this.sprite.y - 46
     }
     if (this.moodLabel) {
       this.moodLabel.x = this.sprite.x
-      this.moodLabel.y = this.sprite.y - 62
+      this.moodLabel.y = this.sprite.y - 56
     }
     // V18.0 — keep cosmetic containers anchored to the bear; rebuild if
     // facing changed so directional cosmetics (cap brim, glasses) update.
