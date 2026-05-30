@@ -1,7 +1,7 @@
 // Ambient animal "residents" in the lobby — represent people who are online
 // on the blog but not inside the nook. Real Bear avatars that stand idle on the
-// lobby floor, translucent, with no name labels, and a country flag overhead
-// showing where that online visitor is from.
+// lobby floor, translucent, with no name label, and a country flag floating
+// overhead (the game's own mood-emoji slot) showing where the visitor is from.
 //
 // Replaces the old "ghost silhouettes" system (ambient_ghosts.ts).
 // Residents are STATIC (they don't wander) — ambient presence, zero jank.
@@ -27,16 +27,11 @@ const LOBBY_POINTS: Array<[number, number]> = [
 
 const POLL_INTERVAL_MS = 45_000   // re-reconcile with online count every 45 s
 const RESIDENT_ALPHA = 0.5        // translucent — clearly "presence", not a real player
-const FLAG_ALPHA = 0.9
-const HEAD_OFFSET_Y = 17          // flag sits this far above the bear's feet anchor
 const FACINGS: Direction[] = ['down', 'left', 'right']
 
 // ─── Module-level state ───────────────────────────────────────────────────────
 
-type Resident = {
-  bear: Bear
-  flag: Phaser.GameObjects.Text | null
-}
+type Resident = { bear: Bear }
 
 let residents: Resident[] = []
 let pollTimer: ReturnType<typeof setInterval> | null = null
@@ -75,7 +70,7 @@ export function setupAmbientResidents(
 export function teardownAmbientResidents() {
   if (pollTimer !== null) { clearInterval(pollTimer); pollTimer = null }
   if (unsubOnline) { unsubOnline(); unsubOnline = null }
-  for (const r of residents) destroyResident(r)
+  for (const r of residents) { try { r.bear.destroy() } catch {} }
   residents = []
   sceneRef = null
   getPeerCountFn = null
@@ -95,12 +90,10 @@ function reconcileResidents(scene: Phaser.Scene) {
   } else if (target < current) {
     const excess = residents.splice(target)
     for (const r of excess) {
-      // Fade out, then destroy the bear + flag
       scene.tweens.add({
         targets: r.bear.sprite, alpha: 0, duration: 1000, ease: 'Sine.easeOut',
-        onComplete: () => destroyResident(r),
+        onComplete: () => { try { r.bear.destroy() } catch {} },
       })
-      if (r.flag) scene.tweens.add({ targets: r.flag, alpha: 0, duration: 1000, ease: 'Sine.easeOut' })
     }
   }
 }
@@ -115,22 +108,12 @@ function spawnResident(scene: Phaser.Scene): Resident {
   // No name label — that's the cue distinguishing residents from real peers.
   scene.tweens.add({ targets: bear.sprite, alpha: RESIDENT_ALPHA, duration: 1200, ease: 'Sine.easeIn' })
 
-  // Country flag overhead (where this online visitor is from)
-  let flag: Phaser.GameObjects.Text | null = null
+  // Country flag overhead via the game's own mood-emoji slot, so it sits in the
+  // same place + style as every other floating character label (not ad-hoc).
   const cc = pickCountry()
-  if (cc) {
-    flag = scene.add.text(sx, sy - HEAD_OFFSET_Y, countryToFlag(cc), {
-      fontSize: '13px', fontFamily: 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif',
-    }).setOrigin(0.5, 1).setDepth(7).setAlpha(0)
-    scene.tweens.add({ targets: flag, alpha: FLAG_ALPHA, duration: 1200, ease: 'Sine.easeIn' })
-  }
+  if (cc) bear.setMood(countryToFlag(cc))
 
-  return { bear, flag }
-}
-
-function destroyResident(r: Resident) {
-  try { r.bear.destroy() } catch {}
-  try { r.flag?.destroy() } catch {}
+  return { bear }
 }
 
 /** Pick a country weighted by the live online distribution, e.g. {CN:7, SG:1}. '' if unknown. */
