@@ -49,7 +49,7 @@
 - **File:** `output/furniture/B01-desk.png` · 48×32 · 透明背景
 - **Prompt:** A clean white #fafafa rectangular office desk seen from a slight 3/4 top-down angle: bright top surface with a thin light-grey #d8d6d0 front edge and 4 simple thin legs hinted. Empty top (monitor/keyboard are separate sprites placed on it). Soft shadow down-left. Minimal, modern.
 
-### B02 — Monitor · active(显示器·开机冷光)  `[ ]`
+### B02 — Monitor · active(显示器·开机冷光)  `[x]`
 - **File:** `output/furniture/B02-monitor-on.png` · 16×16 · 透明背景
 - **Prompt:** A 16×16 slim desktop monitor on a small stand, 3/4 top-down, dark charcoal #2a2a30 bezel, the screen glowing a soft cyan #6cc8e8 with 2-3 faint abstract horizontal light blocks (NO readable text). Looks "on / working". Tiny shadow.
 
