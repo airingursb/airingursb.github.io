@@ -93,7 +93,7 @@
 - **File:** `output/furniture/D01-whiteboard.png` · 48×24 · 透明背景
 - **Prompt:** A wall-mounted whiteboard, 3/4 top-down/front, white #fafafa surface in a thin light-grey #d8d6d0 frame, with a few faint abstract scribbles / boxes-and-arrows in light blue #3a7fd0 and a couple of small sticky notes (yellow #e8c020, no text). A marker on the tray.
 
-### D02 — Round meeting table(圆桌)  `[ ]`
+### D02 — Round meeting table(圆桌)  `[x]`
 - **File:** `output/furniture/D02-round-table.png` · 32×32 · 透明背景
 - **Prompt:** A small round meeting table, 3/4 top-down, white #fafafa top with a thin light-grey edge and a slim central leg. Maybe a tiny plant or coffee cup in the center. Soft shadow down-left.
 
