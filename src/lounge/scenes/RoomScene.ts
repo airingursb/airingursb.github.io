@@ -58,6 +58,8 @@ import { setupGalleryAchievements, teardownGalleryAchievements } from '../galler
 import { setupGalleryAtmosphere, teardownGalleryAtmosphere } from '../gallery_atmosphere'
 import { markVisited as markExhibitVisited } from '../gallery_progress'
 import { preloadGalleryAssets } from '../gallery_assets'
+import { preloadOfficeAssets } from '../office_assets'
+import { setupOfficeDecor, teardownOfficeDecor } from '../office_decor'
 import { tickRandomEvents, getActiveEvent, attendEvent, type ActiveEvent } from '../random_events'
 import { TransitNpcController } from '../transit_npcs'
 import { spawnAmbientPets, tickAmbientPetProximity, reactPetsToPlayerEmote } from '../ambient_pets'
@@ -322,6 +324,9 @@ export class RoomScene extends Phaser.Scene {
     // room. Missing assets are tolerated (renderers fall back to placeholders).
     if (this.currentRoomId === 'room_gallery') {
       preloadGalleryAssets(this)
+    }
+    if (this.currentRoomId === 'room_office') {
+      preloadOfficeAssets(this)
     }
     this.load.image('indoor_lobby_v0', '/lounge/assets/tilesets/indoor_lobby_v0/tiles.png')
     this.load.image('indoor_lobby_v1', '/lounge/assets/tilesets/indoor_lobby_v1/tiles.png')
@@ -994,6 +999,13 @@ export class RoomScene extends Phaser.Scene {
     setupGalleryAtmosphere(this, this.currentRoomId, this.mapInfo.widthPx, this.mapInfo.heightPx)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryAtmosphere)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryAtmosphere)
+
+    // Agent Office — furniture (placed below bears; SSE-driven agents land in P4)
+    if (this.currentRoomId === 'room_office') {
+      setupOfficeDecor(this)
+    }
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownOfficeDecor)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownOfficeDecor)
 
     // South pavilion comics wall — fetched from /api/gallery-comics.json.
     // Frames are added to this.interactables on the next tick so the existing
