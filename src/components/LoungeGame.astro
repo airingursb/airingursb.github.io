@@ -793,6 +793,14 @@
       </div>
     </div>
   </div>
+  <!-- Nook Living World — daily briefing card (bottom-right, once per day) -->
+  <div id="nook-briefing-card" hidden>
+    <div class="briefing-inner">
+      <span class="briefing-title">☀️ 昨晚的村子</span>
+      <p id="nook-briefing-body"></p>
+      <button id="nook-briefing-close" aria-label="关闭">×</button>
+    </div>
+  </div>
   <a href="/" class="lounge-back" title="Back to homepage">←</a>
 </div>
 
@@ -4821,6 +4829,79 @@
     .qp-card { padding: 14px 14px; }
     .qp-quest { padding: 8px 10px; }
   }
+
+  /* Nook Living World — daily briefing card */
+  #nook-briefing-card {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 120;
+    max-width: 300px;
+    width: calc(100vw - 40px);
+    pointer-events: auto;
+  }
+  #nook-briefing-card[hidden] { display: none; }
+  .briefing-inner {
+    position: relative;
+    background: rgba(20, 20, 30, 0.94);
+    border: 1px solid rgba(255, 209, 102, 0.4);
+    border-radius: 12px;
+    padding: 14px 36px 14px 14px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    font-family: ui-monospace, monospace;
+    color: #e6edf3;
+  }
+  .briefing-title {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffd166;
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
+  #nook-briefing-body {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.55;
+    color: #c9d1d9;
+    white-space: pre-wrap;
+  }
+  #nook-briefing-close {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 4px;
+    font-family: inherit;
+    transition: color 0.15s;
+  }
+  #nook-briefing-close:hover { color: #fff; }
+  @media (prefers-color-scheme: light) {
+    .briefing-inner {
+      background: rgba(255, 253, 245, 0.97);
+      border-color: rgba(200, 160, 60, 0.45);
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.18);
+      color: #24292f;
+    }
+    .briefing-title { color: #b07d10; }
+    #nook-briefing-body { color: #444c56; }
+    #nook-briefing-close { color: rgba(0, 0, 0, 0.4); }
+    #nook-briefing-close:hover { color: #000; }
+  }
+  @media (max-width: 600px) {
+    #nook-briefing-card {
+      bottom: 70px; /* clear mobile touch strip */
+      right: 12px;
+      left: 12px;
+      width: auto;
+      max-width: none;
+    }
+  }
 </style>
 
 <script>
@@ -5090,4 +5171,25 @@
   } else {
     start()
   }
+</script>
+
+<script>
+  // Nook Living World — fetch latest briefing and show once per day.
+  (async () => {
+    try {
+      const res = await fetch('https://chat.ursb.me/api/nook-world/briefing/latest', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data || !data.body) return;
+      const card = document.getElementById('nook-briefing-card');
+      const seen = localStorage.getItem('nook-briefing-seen');
+      if (seen === data.day) return;
+      document.getElementById('nook-briefing-body').textContent = data.body;
+      card.hidden = false;
+      document.getElementById('nook-briefing-close').onclick = () => {
+        card.hidden = true;
+        if (data.day) localStorage.setItem('nook-briefing-seen', data.day);
+      };
+    } catch {}
+  })();
 </script>

@@ -1491,3 +1491,12 @@
 ### V10.8d — Smoke test runner
 - [ ] `node scripts/lounge/_dev-shot-v10-smoke.mjs` exits 0 with all 4 cases ✅
 - [ ] Tests cover: heart-4 gate, marriage flow, V10.7 new achievements, friend-notif toggle
+
+## Nook Living World — briefing card
+
+- [ ] nook briefing card — shows latest world briefing once/day, × dismisses, reappears next day
+- [ ] GET briefing/latest returns `{body:null}` → card stays hidden (no console errors)
+- [ ] GET briefing/latest returns valid body → card appears at bottom-right with ☀️ title + body text
+- [ ] Clicking × hides card and sets `localStorage['nook-briefing-seen']` to `data.day`
+- [ ] Refreshing same day → card does not reappear (localStorage gate)
+- [ ] On mobile (≤600px): card sits above 70px (clear touch strip)
