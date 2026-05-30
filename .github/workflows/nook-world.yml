@@ -1,0 +1,38 @@
+name: Nook Living World
+
+on:
+  schedule:
+    - cron: '0 16 * * *'   # 00:00 BJT — nightly world tick
+    - cron: '3 1 * * *'    # 09:03 BJT — morning briefing + Telegram
+  workflow_dispatch:
+
+jobs:
+  tick:
+    if: github.event.schedule == '0 16 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: World self-loop tick
+        run: |
+          curl -fsS -X POST -H "X-Nook-Secret: ${SECRET}" \
+            https://chat.ursb.me/api/nook-world/tick
+        env:
+          SECRET: ${{ secrets.NOOK_SHARED_SECRET }}
+
+  briefing:
+    if: github.event.schedule == '3 1 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Generate briefing + send Telegram
+        run: |
+          RESP=$(curl -fsS -X POST -H "X-Nook-Secret: ${SECRET}" https://chat.ursb.me/api/nook-world/briefing)
+          echo "briefing: $RESP"
+          HAD=$(echo "$RESP" | python3 -c "import sys,json;print(json.load(sys.stdin).get('hadEvents'))")
+          if [ "$HAD" = "True" ]; then
+            BODY=$(echo "$RESP" | python3 -c "import sys,json;d=json.load(sys.stdin);print('☀️ 昨晚的村子\n\n'+d['body'])")
+            curl -fsS -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+              -d chat_id="${TG_CHAT}" --data-urlencode text="$BODY"
+          fi
+        env:
+          SECRET: ${{ secrets.NOOK_SHARED_SECRET }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
