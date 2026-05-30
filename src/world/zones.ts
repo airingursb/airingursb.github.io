@@ -28,8 +28,11 @@ export function getZone(kind: Interaction) {
 /** Winding path connecting all 5 zones — much longer now to traverse the bigger island. */
 export const PATH_POINTS: [number, number][] = [
   [-4.0, -11.5], // reading
-  [-3.2, -9.5],
-  [-2.4, -7.0],
+  // Detour west around mountain pond at (-1, -9, r=3.2). Old waypoints
+  // (-3.2, -9.5) and (-2.4, -7) ran THROUGH the pond, rendering as
+  // stone stepping inside the water.
+  [-4.5, -8.5],
+  [-3.8, -5.8],
   [-1.4, -4.5],
   [-0.4, -2.0],
   [ 0.0,  0.0],  // cabin door
@@ -80,6 +83,11 @@ export const TERRAIN_BUMPS: Array<[number, number, number, number]> = [
   [ 8.0,  6.0,  3.0, -0.25],  // pond dip
   [-7.0, -6.0,  3.5,  0.4],   // gentle NW rise
   [10.0, -8.0,  3.0,  0.3],   // gentle NE rise
+  // v16 waterfall HILL — pond sits at top, stream slopes down to basin.
+  // These bumps create the actual TERRAIN elevation so water doesn't float.
+  [-1.0,  -9.0, 4.8,  0.90],  // pond hilltop (center +0.90 → grass=1.65)
+  [-1.0, -14.0, 4.0,  0.45],  // mid-stream support (center +0.45 → grass=1.20)
+  [-1.0, -18.5, 3.0,  0.10],  // tiny basin support (center +0.10 → grass=0.85)
 ]
 
 /** Lanterns scattered along paths — slightly dimmer in daytime but still cozy. */
@@ -123,7 +131,7 @@ export const TREE_POSITIONS: Array<[number, number, number, 'pine' | 'birch' | '
   [-19.0,  2.0, 1.2, 'pine'],
   // Interior accents — clusters near zones for density
   [-7.0, -10.5, 0.9, 'oak'],
-  [-2.5, -7.5,  0.9, 'birch'],
+  [-4.5, -5.0,  0.9, 'birch'],   // moved from (-2.5, -7.5) — was growing inside pond
   [ 3.0, -8.0,  1.0, 'pine'],
   [ 6.5, -5.0,  0.85, 'oak'],
   [11.0, -6.0,  0.9, 'pine'],
@@ -151,8 +159,8 @@ export const TREE_POSITIONS: Array<[number, number, number, 'pine' | 'birch' | '
 /** Bush / rock / lavender / fern / mushroom filler — ~35 items */
 export const FILLER_POSITIONS: Array<[number, number, 'bush' | 'rocks' | 'lavender' | 'fern' | 'mushroom' | 'daisy', number]> = [
   // path-side fillers
-  [-3.0, -10.0, 'lavender', 0.8],
-  [-1.5, -7.0, 'bush',     0.85],
+  [-5.5, -8.5, 'lavender', 0.8],   // moved from (-3, -10) — was inside pond
+  [-1.5, -5.5, 'bush',     0.85],   // moved north — too close to new pond rim
   [-0.8, -3.5, 'mushroom', 0.9],
   [ 1.5,  0.0, 'rocks',    0.85],
   [ 3.0,  2.0, 'fern',     0.9],
