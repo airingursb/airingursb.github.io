@@ -97,7 +97,7 @@
 - **File:** `output/furniture/D02-round-table.png` · 32×32 · 透明背景
 - **Prompt:** A small round meeting table, 3/4 top-down, white #fafafa top with a thin light-grey edge and a slim central leg. Maybe a tiny plant or coffee cup in the center. Soft shadow down-left.
 
-### D03 — Meeting chair(简约会议椅)  `[ ]`
+### D03 — Meeting chair(简约会议椅)  `[x]`
 - **File:** `output/furniture/D03-meeting-chair.png` · 16×16 · 透明背景
 - **Prompt:** A simple light-grey #d8d6d0 4-leg meeting chair, 3/4 top-down, minimal Scandinavian look, one soft accent on the seat. Smaller/simpler than the office chair. Soft shadow.
 
