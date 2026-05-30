@@ -2,7 +2,7 @@
 // + Greco-Roman statues in the rotunda, info desk near the entrance, benches
 // in the wings, rope barriers around exhibits, a display case in the north
 // hall, and the grand arch doorway in the south pavilion that opens onto
-// Mochi's 3D grove. Codex PNGs are preferred; if any are missing, a
+// Airing's 3D grove. Codex PNGs are preferred; if any are missing, a
 // programmatic placeholder keeps the scene shippable.
 
 import Phaser from 'phaser'

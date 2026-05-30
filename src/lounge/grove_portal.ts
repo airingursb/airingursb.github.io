@@ -64,6 +64,9 @@ export function setupGrovePortal(scene: Phaser.Scene, roomId: RoomId) {
   container.setInteractive({ useHandCursor: true })
   container.on('pointerdown', () => {
     try {
+      // 'mochi-grove' is a LEGACY URL/persistence slug. The NPC was
+      // renamed to Airing but URL paths + DB world_3d records still use
+      // the old slug to preserve bookmarks / memory continuity.
       window.dispatchEvent(new CustomEvent('open-pocket-world', {
         detail: { slug: 'mochi-grove' },
       }))

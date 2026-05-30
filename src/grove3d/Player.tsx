@@ -121,13 +121,13 @@ export default function Player({ spawn = [-2, 1.2, 4] }: Props) {
     )
     camera.lookAt(playerPos.x, playerPos.y + 0.8, playerPos.z)
 
-    // Stage advance: if user walks within 6m of Mochi, advance approach→beside
-    // (Mochi position is hardcoded [3, 0, -1] for now; Phase 4 reads from Mochi component)
+    // Stage advance: if user walks within 6m of Airing, advance approach→beside
+    // (Airing position is hardcoded [3, 0, -1] for now; Phase 4 reads from Airing component)
     if (stage === 'intro' || stage === 'approach') {
-      const dxToMochi = playerPos.x - 3
-      const dzToMochi = playerPos.z - (-1)
-      const distToMochi = Math.sqrt(dxToMochi * dxToMochi + dzToMochi * dzToMochi)
-      if (distToMochi < 6 && stage === 'intro') setStage('approach')
+      const dxToAiring = playerPos.x - 3
+      const dzToAiring = playerPos.z - (-1)
+      const distToAiring = Math.sqrt(dxToAiring * dxToAiring + dzToAiring * dzToAiring)
+      if (distToAiring < 6 && stage === 'intro') setStage('approach')
 
       // Sitting stone is at [1.2, 0, 1.5]; sit when within 1.2m
       const dxToStone = playerPos.x - 1.2
@@ -153,7 +153,7 @@ export default function Player({ spawn = [-2, 1.2, 4] }: Props) {
       <CapsuleCollider args={[0.35, 0.35]} />
       {/* Capsule center settles at y=0.7 (radius+halfHeight). Mesh feet are
           at mesh-space y=0, so drop the visual by 0.7 to plant the feet on
-          the ground. Matches Mochi NPC's -0.6 offset (its body is at y=0.6). */}
+          the ground. Matches Airing NPC's -0.6 offset (its body is at y=0.6). */}
       <group ref={visual} position={[0, -0.7, 0]}>
         <PlayerAvatar species={species} animState={animState} />
       </group>

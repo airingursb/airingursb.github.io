@@ -1,4 +1,4 @@
-// SHU-733 · Flat-top stone for the user + Mochi to sit on.
+// SHU-733 · Flat-top stone for the user + Airing to sit on.
 // Will have pulsing glow ring on top once Glow primitive is ported.
 
 type Props = { position: [number, number, number] }

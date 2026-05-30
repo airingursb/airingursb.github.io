@@ -3,9 +3,9 @@
 import { create } from 'zustand'
 
 export type Stage =
-  | 'intro'        // tutorial step ① — "你跟着 Mochi 走进林子"
-  | 'approach'    // ② walk toward Mochi (auto-advance when within 8m)
-  | 'beside'      // ③ walk to sitting stone with Mochi
+  | 'intro'        // tutorial step ① — "你跟着 Airing 走进林子"
+  | 'approach'    // ② walk toward Airing (auto-advance when within 8m)
+  | 'beside'      // ③ walk to sitting stone with Airing
   | 'seated'      // ④ sit + chat
   | 'leaving'     // ⑤ stand up + walk to exit
   | 'done'        // exit posted, parent should unmount iframe
@@ -22,7 +22,7 @@ interface State {
   displayName: string
   setDisplayName: (n: string) => void
 
-  // Dialogue history with Mochi (in-3D chat)
+  // Dialogue history with Airing (in-3D chat)
   messages: Array<{ role: 'user' | 'assistant'; content: string; ts: number }>
   appendMessage: (m: { role: 'user' | 'assistant'; content: string }) => void
 

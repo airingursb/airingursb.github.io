@@ -1,7 +1,7 @@
 // SHU-733 · Bridge to existing /api/ai-companion/chat with 3D context hint.
 //
 // We don't reinvent the chat backend — same companion-service.js, same
-// memory + facts + episodes. Just inject world_3d so Mochi knows he's
+// memory + facts + episodes. Just inject world_3d so Airing knows he's
 // sitting in a moonlit grove next to the user.
 
 const API_BASE = 'https://chat.ursb.me'

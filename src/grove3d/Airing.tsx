@@ -1,4 +1,4 @@
-// SHU-733/736 Phase 4 · Mochi NPC with simple path AI
+// SHU-733/736 Phase 4 · Airing NPC with simple path AI
 //
 // State machine:
 //   - waits at spawn (head tracks player)
@@ -24,7 +24,7 @@ const WALK_SPEED = 1.5
 const SITTING_STONE = new THREE.Vector3(1.2, 0, 1.5)
 const SPAWN = new THREE.Vector3(3, 0, -1)
 
-export default function Mochi() {
+export default function Airing() {
   const body = useRef<RapierRigidBody>(null)
   const visual = useRef<THREE.Group>(null)
   const playerPosCache = useRef(new THREE.Vector3(0, 0, 0))
@@ -106,7 +106,7 @@ export default function Mochi() {
         <GLBAvatar species="bear" modelKey="mochi" animState={animState} />
         <Billboard position={[0, 2.1, 0]}>
           <Text fontSize={0.2} color="#f4ead5" outlineWidth={0.014} outlineColor="#2a1810" anchorY="bottom">
-            Mochi
+            Airing
           </Text>
         </Billboard>
       </group>

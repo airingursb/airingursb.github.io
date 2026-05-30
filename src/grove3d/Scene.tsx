@@ -6,7 +6,7 @@ import Ground from './Ground'
 import { Sakura } from './Sakura'
 import StoneLantern from './StoneLantern'
 import SittingStone from './SittingStone'
-import Mochi from './Mochi'
+import Airing from './Airing'
 import Player from './Player'
 import PeerAvatar from './PeerAvatar'
 import GlowRing from './GlowRing'
@@ -50,7 +50,7 @@ export default function Scene() {
 
       {/* Characters */}
       <PlayerWithMarker />
-      <Mochi />
+      <Airing />
 
       {/* Multiplayer peers (SHU-733/735) */}
       <Peers />
@@ -58,7 +58,7 @@ export default function Scene() {
   )
 }
 
-// Mark player Group so Mochi can find it via scene.traverse
+// Mark player Group so Airing can find it via scene.traverse
 function PlayerWithMarker() {
   return (
     <group userData={{ isPlayer: true }}>

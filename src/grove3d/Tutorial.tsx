@@ -5,11 +5,11 @@ import { useGroveStore, type Stage } from './store'
 
 const STEPS: Record<Stage, { title: string; body: string } | null> = {
   intro: {
-    title: '你跟着 Mochi 走进了林子',
+    title: '你跟着 Airing 走进了林子',
     body: '用 WASD 走 · 鼠标转视角 · 点击屏幕进入第一人称 · 走近看看他',
   },
   approach: {
-    title: 'Mochi 在等你',
+    title: 'Airing 在等你',
     body: '走过去 · 旁边那块石头是给你们俩坐的',
   },
   beside: {

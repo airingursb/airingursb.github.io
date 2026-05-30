@@ -36,7 +36,7 @@ export default function ChatOverlay() {
       const reply = await sendChat(text, { world3d: 'mochi_grove' })
       append({ role: 'assistant', content: reply || '...' })
     } catch (err) {
-      append({ role: 'assistant', content: '(Mochi 一时没说话)' })
+      append({ role: 'assistant', content: '(Airing 一时没说话)' })
     } finally {
       setPending(false)
     }
@@ -50,10 +50,10 @@ export default function ChatOverlay() {
   }
 
   return (
-    <div className="grove-chat" role="region" aria-label="跟 Mochi 聊天">
+    <div className="grove-chat" role="region" aria-label="跟 Airing 聊天">
       <ul ref={histRef} className="grove-chat-history">
         {messages.length === 0 && (
-          <li className="grove-chat-empty">坐下来了。月光下，你可以跟 Mochi 说点什么。</li>
+          <li className="grove-chat-empty">坐下来了。月光下，你可以跟 Airing 说点什么。</li>
         )}
         {messages.map((m, i) => (
           <li key={i} className={`grove-chat-msg grove-chat-${m.role}`}>

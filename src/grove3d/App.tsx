@@ -1,4 +1,4 @@
-// SHU-733 Phase 1 · R3F scaffold for Mochi's Grove
+// SHU-733 Phase 1 · R3F scaffold for Airing's Grove
 //
 // Bare-bones canvas: night sky + moonlight + ground + 1 placeholder
 // sakura tree. Heap Plaza assets get ported in next commits.

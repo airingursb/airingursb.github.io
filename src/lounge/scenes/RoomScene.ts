@@ -579,7 +579,7 @@ export class RoomScene extends Phaser.Scene {
     }
     tickNpcEvents(this.currentRoomId)
 
-    // SHU-733 Phase 8 · in-game sparkle entry to 3D Mochi Grove pocket world.
+    // SHU-733 Phase 8 · in-game sparkle entry to 3D Airing Grove pocket world.
     // No-op for any room other than 'room_grove'.
     setupGrovePortal(this, this.currentRoomId)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGrovePortal)
@@ -890,7 +890,7 @@ export class RoomScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryExhibits)
 
     // Gallery architecture — columns, statues, info desk, benches, arches.
-    // Arch in south pavilion is a clickable shortcut to the Mochi Grove
+    // Arch in south pavilion is a clickable shortcut to the Airing Grove
     // pocket world (also enterable via the centerpiece exhibit interactable).
     setupGalleryArchitecture(this, this.currentRoomId, () => {
       try {
@@ -3540,7 +3540,7 @@ export class RoomScene extends Phaser.Scene {
     this.events.once('shutdown', () => festivalDispose?.())
     this.events.once('destroy',  () => festivalDispose?.())
     // V3.0-X · Overnight A2 — quest-driven interactable objects (e.g.
-    // Mochi's 《雪国》 in workshop). Same dispose pattern as festival.
+    // Airing's 《雪国》 in workshop). Same dispose pattern as festival.
     let questObjDispose: (() => void) | null = null
     void import('../quest_room_objects').then(({ spawnQuestRoomObjects }) =>
       spawnQuestRoomObjects(this, this.currentRoomId)

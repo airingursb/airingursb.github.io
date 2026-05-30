@@ -1,11 +1,11 @@
-// SHU-733 · Mochi placeholder — brown capsule + name billboard.
+// SHU-733 · Airing placeholder — brown capsule + name billboard.
 // Gets replaced with stylized bear GLB in Phase 4 (with path AI).
 
 import { Billboard, Text } from '@react-three/drei'
 
 type Props = { position: [number, number, number] }
 
-export default function MochiPlaceholder({ position }: Props) {
+export default function AiringPlaceholder({ position }: Props) {
   return (
     <group position={position}>
       {/* Body capsule */}
@@ -37,7 +37,7 @@ export default function MochiPlaceholder({ position }: Props) {
           outlineColor="#2a1810"
           anchorY="bottom"
         >
-          Mochi
+          Airing
         </Text>
       </Billboard>
     </group>

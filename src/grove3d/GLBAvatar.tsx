@@ -25,14 +25,14 @@ import * as THREE from 'three'
 import { clone as cloneWithSkeleton } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import ProceduralAnimal from './ProceduralAnimal'
 
-/** SHU-736 debug mode — force every avatar (player + Mochi NPC) to use the
+/** SHU-736 debug mode — force every avatar (player + Airing NPC) to use the
  *  bear GLB while we lock down the visual style. Set to null once each
  *  species has its own GLB shipped in public/grove3d/models/. */
 const DEBUG_FORCE_MODEL: string | null = 'bear'
 
 interface Props {
   species: string
-  /** Override the GLB filename when it differs from species (e.g. NPC Mochi
+  /** Override the GLB filename when it differs from species (e.g. NPC Airing
    *  uses 'mochi.glb' but its procedural fallback is the bear species). */
   modelKey?: string
   animState?: MutableRefObject<AnimState>
