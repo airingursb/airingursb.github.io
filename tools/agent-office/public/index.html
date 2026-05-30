@@ -50,10 +50,12 @@ for (let r = 0; r < 3; r++) for (let col = 0; col < 4; col++) DESK_SLOTS.push({ 
 const STATE_COLOR = {
   typing: '#5a8f4a', reading: '#3a7fd0', running: '#d8732a', searching: '#7c5cd0',
   thinking: '#d8b048', talking: '#6cc8e8', working: '#7a9a6a', idle: '#6a6a70', leaving: '#4a4a52',
+  blocked: '#d44820', chatting: '#9a7a5a',
 };
 const STATE_GLYPH = {
   typing: '⌨', reading: '📖', running: '⚙', searching: '🔎',
   thinking: '💭', talking: '💬', working: '•', idle: '·', leaving: '→',
+  blocked: '✋', chatting: '☕',
 };
 
 // --- view model: smoothed agent sprites keyed by id ---
@@ -86,7 +88,7 @@ function applySnapshot(snap) {
     const t = targetFor(a);
     if (!s) { s = { x: t.x, y: -20, tx: t.x, ty: t.y }; sprites.set(a.id, s); }
     s.tx = t.x; s.ty = t.y;
-    Object.assign(s, { kind: a.kind, label: a.label, state: a.state, detail: a.detail, tool: a.tool });
+    Object.assign(s, { kind: a.kind, label: a.label, state: a.state, detail: a.detail, tool: a.tool, fiction: a.fiction });
   }
   for (const id of [...sprites.keys()]) if (!seen.has(id)) { sprites.get(id)._gone = true; }
   document.getElementById('count').textContent = `${snap.agents.length} agent${snap.agents.length === 1 ? '' : 's'}`;
@@ -138,13 +140,14 @@ function draw() {
     // name
     ctx.fillStyle = s.kind === 'main' ? '#d8b048' : '#cfcdc6'; ctx.font = '11px system-ui';
     ctx.fillText(s.label, s.x, s.y + r + 14);
-    // bubble (detail)
+    // bubble (detail) — fiction (加戏) bubbles are dimmed + italic so charm reads as charm
     if (s.detail && alpha > 0.5) {
-      const txt = s.detail; ctx.font = '10px system-ui';
+      const txt = s.fiction ? `~ ${s.detail}` : s.detail;
+      ctx.font = s.fiction ? 'italic 10px system-ui' : '10px system-ui';
       const w = ctx.measureText(txt).width + 14;
-      ctx.globalAlpha = alpha * 0.92; ctx.fillStyle = '#2c2e36';
+      ctx.globalAlpha = alpha * (s.fiction ? 0.5 : 0.92); ctx.fillStyle = '#2c2e36';
       roundRect(s.x - w / 2, s.y - r - 26, w, 18, 6); ctx.fill();
-      ctx.fillStyle = '#e6e3dc'; ctx.fillText(txt, s.x, s.y - r - 13);
+      ctx.fillStyle = s.fiction ? '#9a9890' : '#e6e3dc'; ctx.fillText(txt, s.x, s.y - r - 13);
     }
     ctx.globalAlpha = 1;
   }

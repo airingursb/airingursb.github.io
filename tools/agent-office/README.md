@@ -37,11 +37,15 @@ npm start                  # 启动本地服务 → http://localhost:4500
 | Bash | running | 机房 | <command desc> |
 | WebSearch / WebFetch | searching | 工位 | searching "<q>" |
 | TodoWrite | thinking | 工位 | planning |
-| Task(派生) | talking | 白板 | delegating: <desc> |
+| Agent / Task(派生) | talking | 白板 | delegating <agent_type>: <prompt> |
+| Notification(permission_prompt) | blocked | 原地 | waiting for your approval |
 | 空闲 >45s | idle | Boss/茶水 | idle |
-| SubagentStop | leaving | 休息区 | wrapping up |
+| SubagentStop | leaving | 休息区 | done ✓ / failed ✗ / cancelled |
+| 子 Agent 闲置 >8s | chatting | 茶水/白板 | ~ chatting ☕（**加戏，fiction:true**） |
 
 (映射表在 `lib/state.js` 的 `TOOL_MAP`,改这一处即可。)
+
+**真实 vs 加戏**:气泡带 `~` 且变灰斜体的 = **虚构**(`fiction:true`)。真实 Claude Code 里子 Agent 之间**不通信**(星形拓扑),所以「子 Agent 社交」纯属为画面热闹而编;一旦该子 Agent 来了真实 hook 事件,fiction 立刻清除、回归真实状态。
 
 ## 结构
 
@@ -64,8 +68,16 @@ npm start                  # 启动本地服务 → http://localhost:4500
 
 **协议保持不变**:换渲染层时 `server.js` / `lib/state.js` / hooks 都不用动,新前端照样连 `GET /events` 的 SSE 即可。
 
-## 已知边界(v1 = 粗粒度,符合设计)
+## 已查证的 Claude Code 语义(v1.1 据此修正)
 
-- hooks 是**主会话视角**:subAgent 内部每一步动作 hooks 给不全 → v1 里 sub 入场后是"working",到 SubagentStop 离场。**v1.1** 再 tail 子 agent transcript 补细粒度动作。
-- `SubagentStop` 不告诉我们是哪个 sub 结束 → 取最早入场那个离场(粗略,体感无碍)。
-- 多个 subAgent 并发时按入场顺序占 12 个工位槽。
+- 派生工具是 **`Agent`**(v2.1.63 起从 `Task` 改名,旧名兼容);其 `tool_input` 是 **`prompt`**(自由文本)+ 可选 `agent_type`——**没有** `description` 字段。
+- 子 Agent 内部的工具事件**会**触发 PostToolUse,且 payload 带 **`agent_id` + `agent_type`**(主 Agent 事件则没有)→ 可**精确归因**到具体子 Agent,不用猜。
+- `SubagentStop` 带 `agent_id` + `exit_reason`(completed/failed/cancelled)→ 精确知道哪个子 Agent 结束、成败。
+- 拓扑是**星形**:子 Agent 之间不通信、也不能再派生子 Agent(`Agent` 工具对子 Agent 不可用)。
+
+## 仍是边界(诚实标注)
+
+- **子 Agent 的最终产出文本不在任何 hook 里** → 要拿结果得 tail `transcript_path`(子 Agent 的 jsonl)。这是 v1.1 没做、留给 v1.2 的。
+- **agent_id 是否真的进 settings.json shell-hook payload**:文档说 SDK hooks 一定有,shell hooks「部分事件有」。代码做了**双保险**——有 `agent_id` 就精确归因,没有就退回「最早入场者离场」的旧行为。**需在你机器上真跑一次多子 Agent 会话来确认**(看 office 里子 Agent 是否各自独立、不串台)。
+- spawn 瞬间还没有真实 agent_id → 先放一个 provisional 角色,等该子 Agent 第一个事件到了再绑定真身(避免重复角色)。
+- 并发子 Agent 按入场顺序占 12 个工位槽。
