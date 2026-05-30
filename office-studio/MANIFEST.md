@@ -37,7 +37,7 @@
 - **File:** `output/tiles/A04-window.png` · 16×32(墙高两格) · 透明背景外缘
 - **Prompt:** A 16×32 floor-to-near-ceiling office window segment: a thin charcoal #2a2a30 frame around a pale sky-blue #cfe4ee glass pane with one soft diagonal light streak. Bright daylight feel. Wall #f2f0ec around the frame. Should sit in the top wall, repeatable side by side.
 
-### A05 — Glass partition(工位隔断,半透)  `[ ]`
+### A05 — Glass partition(工位隔断,半透)  `[x]`
 - **File:** `output/tiles/A05-partition.png` · 16×16 · 透明背景
 - **Prompt:** A 16×16 low frosted-glass desk partition panel seen 3/4 top-down: a thin light-grey #d8d6d0 frame with a translucent pale panel #eef0ee. Short (desk-divider height). Soft shadow down-left.
 
