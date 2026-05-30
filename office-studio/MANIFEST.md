@@ -25,7 +25,7 @@
 - **File:** `output/tiles/A01-floor.png` · 16×16 · 不透明、可平铺
 - **Prompt:** A seamless 16×16 office floor tile: light warm-grey #e6e3dc with a very subtle lighter #f2f0ec speckle, like clean matte vinyl/concrete office flooring. Almost flat, just 1-2 shades of soft pixel noise. Must tile seamlessly on all 4 edges. Clean and bright.
 
-### A02 — Office floor accent(分区地砖 / 地毯下衬)  `[ ]`
+### A02 — Office floor accent(分区地砖 / 地毯下衬)  `[x]`
 - **File:** `output/tiles/A02-floor-accent.png` · 16×16 · 可平铺
 - **Prompt:** A seamless 16×16 floor tile, a slightly warmer light tone #ece8df with a faint thin grid line (like large light tiles), to mark a zone (e.g. meeting area). Same brightness family as A01, just a hint of structure. Tiles seamlessly.
 
