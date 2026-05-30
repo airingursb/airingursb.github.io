@@ -125,7 +125,7 @@
 
 ## F · Lounge · 休息区(3)
 
-### F01 — Couch(沙发)  `[ ]`
+### F01 — Couch(沙发)  `[x]`
 - **File:** `output/furniture/F01-couch.png` · 48×24 · 透明背景
 - **Prompt:** A low 2-seat lounge sofa, 3/4 top-down, soft light-grey #d8d6d0 upholstery (matte) with two small accent cushions (one mustard #d8b048, one muted blue #3a7fd0). Clean Scandinavian. Soft shadow down-left.
 
