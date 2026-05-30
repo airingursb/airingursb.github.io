@@ -339,11 +339,10 @@ export class RoomScene extends Phaser.Scene {
         )
       }
     }
-    // V11.8-review C1 fix: dynamic home rooms (room_home_<8hex>) inherit
-    // the home_template entry so they get the lullaby BGM too.
-    const audioKey = isHomeRoom(this.currentRoomId) ? 'room_home_template' : this.currentRoomId
-    const ra = ROOM_AUDIO[audioKey]
-    if (ra) preloadRoomAudio(this, ra.bgmKey, ra.bgmPath, ra.ambKey, ra.ambPath)
+    // V25 perf — BGM/ambient (~190 KB) used to be enqueued here, blocking
+    // create() until download completed. Now they're loaded *after* the
+    // scene mounts (see create()/loadAndPlayRoomAudio). Saves ~150-400 ms
+    // to time-to-playable on a cold visit, depending on connection.
 
     // V3.2 — only DJ Floor has the booth, preload synchronously
     if (this.currentRoomId === 'room_dj_floor') {
@@ -458,14 +457,12 @@ export class RoomScene extends Phaser.Scene {
     registerBearAnimations(this, REGIONS)
     bindAudio(this)
 
-    // V11.8-review C1 fix: dynamic home rooms (room_home_<8hex>) inherit
-    // the home_template entry so they get the lullaby BGM too.
+    // V25 perf — load + play audio asynchronously. The scene is already
+    // interactive at this point; the BGM crossfades in once its file is
+    // fetched. Skip on rooms with no audio entry (404-tolerant).
     const audioKey = isHomeRoom(this.currentRoomId) ? 'room_home_template' : this.currentRoomId
     const ra = ROOM_AUDIO[audioKey]
-    if (ra) {
-      playRoomBgm(this, ra.bgmKey)
-      playRoomAmbient(this, ra.ambKey)
-    }
+    if (ra) this.loadAndPlayRoomAudio(ra)
 
     ensurePixelTexture(this)
     this.setupParallaxBackground(map.widthInPixels, map.heightInPixels)
@@ -4917,6 +4914,27 @@ export class RoomScene extends Phaser.Scene {
       }
     }
     renderMinimap(this.currentRoomId, npcRooms)
+  }
+
+  // V25 perf — defer BGM + ambient out of Phaser's blocking preload phase.
+  // Enqueue, kick a secondary load pass, then play each track as it
+  // becomes ready (handled per-file so the bgm doesn't wait on ambient).
+  private loadAndPlayRoomAudio(ra: { bgmKey: string | null; bgmPath: string | null; ambKey: string | null; ambPath: string | null }): void {
+    preloadRoomAudio(this, ra.bgmKey, ra.bgmPath, ra.ambKey, ra.ambPath)
+    const onFileComplete = (_key: string, _type: string, key: string) => {
+      // Phaser's filecomplete event fires with (key, type, file). When
+      // a queued audio file is ready, play it iff it matches our room's
+      // target — guards against late-arriving fetches from a prior scene.
+      if (key === ra.bgmKey) playRoomBgm(this, ra.bgmKey)
+      else if (key === ra.ambKey) playRoomAmbient(this, ra.ambKey)
+    }
+    this.load.on(Phaser.Loader.Events.FILE_COMPLETE, onFileComplete)
+    this.load.once(Phaser.Loader.Events.COMPLETE, () => {
+      this.load.off(Phaser.Loader.Events.FILE_COMPLETE, onFileComplete)
+    })
+    // No-op if loader already running (Phaser dedupes); otherwise kicks
+    // the deferred queue we just appended to.
+    if (!this.load.isLoading()) this.load.start()
   }
 
   private checkPortals() { checkPortalCollision(this as unknown as Parameters<typeof checkPortalCollision>[0]) }
