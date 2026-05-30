@@ -316,6 +316,7 @@ export class RoomScene extends Phaser.Scene {
     this.load.tilemapTiledJSON('room_arcade',        '/lounge/assets/rooms/arcade.tmj')
     this.load.tilemapTiledJSON('room_greenhouse',    '/lounge/assets/rooms/greenhouse.tmj')
     this.load.tilemapTiledJSON('room_gallery',       '/lounge/assets/rooms/gallery.tmj')
+    this.load.tilemapTiledJSON('room_office',        '/lounge/assets/rooms/office.tmj')
     // Gallery sprites — paintings + architecture + NPC + decorations. Loaded
     // only when entering room_gallery to avoid wasting bandwidth on every
     // room. Missing assets are tolerated (renderers fall back to placeholders).
@@ -327,6 +328,7 @@ export class RoomScene extends Phaser.Scene {
     this.load.image('outdoor_beach_v0', '/lounge/assets/tilesets/outdoor_beach_v0/tiles.png')
     this.load.image('outdoor_grove_v1', '/lounge/assets/tilesets/outdoor_grove_v1/tiles.png')
     this.load.image('indoor_2f_v0',     '/lounge/assets/tilesets/indoor_2f_v0/tiles.png')
+    this.load.image('office_v1',         '/lounge/assets/tilesets/office_v1/tiles.png')
     // E5-P1a + N1 — preload only bear (universal fallback) + the local
     // player's chosen species. Other species lazy-load when a peer with
     // that species joins (see ensureSpeciesLoaded).
@@ -386,6 +388,7 @@ export class RoomScene extends Phaser.Scene {
     // Tilemap may reference any of these tilesets. Phaser uses whichever name matches
     // the map's tileset entry; others return null and are ignored.
     const tileset = (
+      map.addTilesetImage('office_v1',        'office_v1') ??
       map.addTilesetImage('indoor_2f_v0',     'indoor_2f_v0') ??
       map.addTilesetImage('indoor_lobby_v1', 'indoor_lobby_v1') ??
       map.addTilesetImage('outdoor_grove_v1', 'outdoor_grove_v1') ??
