@@ -1,12 +1,21 @@
 // Figma-style live multiplayer cursors for the homepage.
 //
-// Visual: a chunky rounded pointer in the visitor's theme color + a small
+// Visual: a small chunky rounded pointer in the visitor's theme color + a
 // label pill "🇸🇬 #3,412" (region flag · visitor number).
 //
+// Motion — physics-based, to feel ALIVE rather than a stiff slide
+// (researched from Karl Koch's "10 Principles for Fluid UI", CursorBuddy's
+// damped-spring follower, and recast's idle-sway/squash cursor effects):
+//   • Damped spring follow (overshoot + settle) instead of linear lerp — the
+//     spring carries velocity, so a fast flick overshoots and springs back.
+//   • Velocity-driven tilt — leans into travel direction, eases upright at rest.
+//   • Squash & stretch — stretches along motion, relaxes when it stops.
+//   • Idle sway — a tiny breathing wobble at rest (tapers with speed) so the
+//     cursor is never frozen.
+//
 // Architecture (see src/lib/cursor-presence.ts for the why):
-//   • Presence  → who's online + identity metadata (color/animal/cc/num).
-//     Also GATES broadcasting: we never send cursor messages when alone —
-//     the single biggest Realtime-quota saver.
+//   • Presence  → who's online + identity metadata (color/cc/num). Also GATES
+//     broadcasting: we never send cursor messages when alone (quota saver).
 //   • Broadcast → ephemeral {nx, ry} cursor positions, rAF-throttled, only
 //     while moving + visible + 2+ people present.
 //
@@ -20,6 +29,12 @@ import {
 } from '../lib/cursor-presence'
 
 const ROOM = 'cursors:home'
+const POP_MS = 280
+
+// Spring tuning — m = 1, ω_n = √STIFFNESS ≈ 28.6 rad/s, ζ = DAMPING/(2ω_n)
+// ≈ 0.66 → a small, tasteful overshoot (lively, not rubbery).
+const STIFFNESS = 820
+const DAMPING = 38
 
 type Meta = { color: string; cc: string | null; num: number | null }
 
@@ -27,16 +42,21 @@ type Peer = Meta & {
   id: string
   nx: number // normalized x within the content column [0..1]
   ry: number // y offset from the column's document-top, in px
-  curX: number // current rendered viewport X (lerped)
-  curY: number
-  seen: number // performance.now() of last position update — for idle fade
-  el?: HTMLDivElement | null
+  curX: number; curY: number // current rendered viewport pos (spring)
+  vx: number; vy: number // spring velocity (px/s) — drives tilt + stretch
+  placed: boolean // snap into place on first frame, then spring
+  ang: number // current tilt angle (deg), smoothed
+  phase: number // per-peer idle-sway phase offset
+  spawn: number // performance.now() at creation — drives the pop
+  seen: number // last position update — drives idle fade
+  el?: HTMLDivElement | null // outer: translate + opacity
+  glyph?: HTMLDivElement | null // inner: sway + rotate + squash
 }
 
 function ChunkyPointer({ color }: { color: string }) {
-  // Fat, bezier-rounded pointer — bubbly + cute while keeping a clear tip.
+  // Fat, bezier-rounded pointer — bubbly but with a clear tip. Sized down ~25%.
   return (
-    <svg width="30" height="32" viewBox="0 0 30 32" fill="none" style={{ display: 'block', filter: 'drop-shadow(0 2px 3px rgba(0,0,0,.3))' }}>
+    <svg width="22" height="23" viewBox="0 0 30 32" fill="none" style={{ display: 'block', filter: 'drop-shadow(0 2px 3px rgba(0,0,0,.3))' }}>
       <path
         d="M6 3 C5 2.4 3.6 3 3.7 4.3 L6 25 C6.2 26.6 8.2 27.2 9.2 25.9 L13 21 L20 21 C21.6 21 22.3 19 21 18 L7.5 4 Z"
         fill={color} stroke="#fff" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round"
@@ -50,6 +70,17 @@ function labelText(m: Meta): string {
   return m.num != null ? `${flag} #${m.num.toLocaleString('en-US')}` : flag
 }
 
+// easeOutBack — gives the spawn a little overshoot ("pop").
+function popScale(elapsed: number): number {
+  if (elapsed >= POP_MS) return 1
+  const p = elapsed / POP_MS
+  const c1 = 1.70158, c3 = c1 + 1
+  const e = 1 + c3 * Math.pow(p - 1, 3) + c1 * Math.pow(p - 1, 2)
+  return 0.45 + 0.55 * e
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
+
 export default function LiveCursors() {
   // Only the *set* of peer ids lives in React state; per-frame motion is
   // written straight to DOM transforms via refs to avoid re-render churn.
@@ -61,13 +92,9 @@ export default function LiveCursors() {
     if (window.matchMedia?.('(pointer: coarse)').matches) return // no hover cursor on touch
 
     const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
-    const lerp = reduceMotion ? 1 : 0.22
 
     const id = getIdentitySeed()
-    const meta: Meta = {
-      color: colorFor(id),
-      cc: readCountry(), num: readVisitorNumber(),
-    }
+    const meta: Meta = { color: colorFor(id), cc: readCountry(), num: readVisitorNumber() }
     const container = () => document.querySelector('.container') as HTMLElement | null
 
     const supabase = getSupabase()
@@ -90,16 +117,19 @@ export default function LiveCursors() {
         const m = state[pid]?.[0] || {}
         const ex = peers.current.get(pid)
         if (ex) {
-          // refresh metadata (it can arrive late via re-track)
           ex.color = m.color || ex.color
           ex.cc = m.cc ?? ex.cc
           ex.num = m.num ?? ex.num
         } else {
+          // Spawn at a random spot in the first screen (not top-center).
           peers.current.set(pid, {
             id: pid,
-            color: m.color || '#888',
-            cc: m.cc ?? null, num: m.num ?? null,
-            nx: 0.5, ry: 0, curX: -200, curY: -200, seen: performance.now(),
+            color: m.color || '#888', cc: m.cc ?? null, num: m.num ?? null,
+            nx: 0.12 + Math.random() * 0.76,
+            ry: 60 + Math.random() * Math.max(120, window.innerHeight - 160),
+            curX: 0, curY: 0, vx: 0, vy: 0, placed: false, ang: 0,
+            phase: Math.random() * Math.PI * 2,
+            spawn: performance.now(), seen: performance.now(),
           })
         }
       }
@@ -150,21 +180,51 @@ export default function LiveCursors() {
     window.addEventListener('pointermove', onMove, { passive: true })
     document.addEventListener('visibilitychange', onVis)
 
-    // ---- render loop: lerp toward target, position in viewport space ----
+    // ---- render loop: damped-spring follow + tilt + squash + idle sway ----
     let raf = 0
+    let lastNow = performance.now()
     const tick = () => {
+      const now = performance.now()
+      const dt = clamp((now - lastNow) / 1000, 0.001, 0.033) // clamp for stability
+      lastNow = now
       const c = container()
       if (c && peers.current.size) {
         const rect = c.getBoundingClientRect()
-        const now = performance.now()
         for (const p of peers.current.values()) {
           const tx = rect.left + p.nx * rect.width
           const ty = rect.top + p.ry
-          p.curX += (tx - p.curX) * lerp
-          p.curY += (ty - p.curY) * lerp
+          if (!p.placed) { p.curX = tx; p.curY = ty; p.vx = 0; p.vy = 0; p.placed = true }
+
+          if (reduceMotion) {
+            p.curX = tx; p.curY = ty; p.vx = 0; p.vy = 0
+          } else {
+            // semi-implicit Euler integration of a damped spring
+            p.vx += (STIFFNESS * (tx - p.curX) - DAMPING * p.vx) * dt
+            p.vy += (STIFFNESS * (ty - p.curY) - DAMPING * p.vy) * dt
+            p.curX += p.vx * dt
+            p.curY += p.vy * dt
+          }
+
+          const speed = Math.hypot(p.vx, p.vy)
+          // tilt toward horizontal travel (spring velocity), ease for smoothness
+          const targetAng = reduceMotion ? 0 : clamp(p.vx * 0.022, -26, 26)
+          p.ang += (targetAng - p.ang) * 0.25
+          // squash & stretch — stretch lengthwise with speed, thin across
+          const stretch = reduceMotion ? 0 : clamp(speed * 0.00018, 0, 0.2)
+          const pop = reduceMotion ? 1 : popScale(now - p.spawn)
+          const sX = (1 - stretch * 0.55) * pop
+          const sY = (1 + stretch) * pop
+          // idle sway — tiny breathing wobble at rest, gone once moving
+          const taper = reduceMotion ? 0 : clamp(1 - speed / 280, 0, 1)
+          const swx = taper * 1.8 * Math.sin(now / 430 + p.phase)
+          const swy = taper * 1.8 * Math.sin(now / 570 + p.phase * 1.7)
+
           if (p.el) {
             p.el.style.opacity = now - p.seen > 8000 ? '0' : '1'
-            p.el.style.transform = `translate3d(${p.curX}px, ${p.curY}px, 0)`
+            p.el.style.transform = `translate3d(${p.curX - 4}px, ${p.curY - 3}px, 0)`
+          }
+          if (p.glyph) {
+            p.glyph.style.transform = `translate(${swx}px, ${swy}px) rotate(${p.ang}deg) scale(${sX}, ${sY})`
           }
         }
       }
@@ -185,7 +245,6 @@ export default function LiveCursors() {
 
   return (
     <div aria-hidden style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 9000, overflow: 'hidden' }}>
-      <style>{`@keyframes lc-pop{0%{transform:scale(.4);opacity:0}60%{transform:scale(1.12)}100%{transform:scale(1);opacity:1}}`}</style>
       {ids.map((pid) => {
         const p = peers.current.get(pid)
         if (!p) return null
@@ -193,22 +252,25 @@ export default function LiveCursors() {
           <div
             key={pid}
             ref={(el) => { const pp = peers.current.get(pid); if (pp) pp.el = el }}
-            style={{ position: 'absolute', top: 0, left: 0, willChange: 'transform', transition: 'opacity .4s ease', transform: 'translate3d(-200px,-200px,0)' }}
+            style={{ position: 'absolute', top: 0, left: 0, willChange: 'transform, opacity', transition: 'opacity .4s ease', transform: 'translate3d(-400px,-400px,0)' }}
           >
-            <div style={{ animation: 'lc-pop .26s cubic-bezier(.34,1.56,.64,1) both', transformOrigin: '5px 4px' }}>
+            <div
+              ref={(el) => { const pp = peers.current.get(pid); if (pp) pp.glyph = el }}
+              style={{ transformOrigin: '4px 3px', willChange: 'transform' }}
+            >
               <ChunkyPointer color={p.color} />
-              <span
-                style={{
-                  position: 'absolute', left: 22, top: 24, whiteSpace: 'nowrap',
-                  font: '600 11px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif',
-                  color: '#fff', background: p.color, padding: '3px 8px',
-                  borderRadius: 11, boxShadow: '0 2px 6px rgba(0,0,0,.22)',
-                  letterSpacing: '.01em',
-                }}
-              >
-                {labelText(p)}
-              </span>
             </div>
+            <span
+              style={{
+                position: 'absolute', left: 15, top: 16, whiteSpace: 'nowrap',
+                font: '600 10.5px/1.4 ui-sans-serif, system-ui, -apple-system, sans-serif',
+                color: '#fff', background: p.color, padding: '2px 7px',
+                borderRadius: 10, boxShadow: '0 2px 6px rgba(0,0,0,.22)',
+                letterSpacing: '.01em',
+              }}
+            >
+              {labelText(p)}
+            </span>
           </div>
         )
       })}
