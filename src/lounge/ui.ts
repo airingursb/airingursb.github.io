@@ -263,8 +263,28 @@ export function initUI() {
   initEnergyBar()
   // V3.0-A — initialise account state, then show claim modal if a fresh
   // login just happened (cookie set by blog-api callback).
-  void import('./auth').then(m => m.initAuth().then(() => {
-    void import('./auth_ui').then(ui => ui.maybeShowClaim())
+  void import('./auth').then(m => m.initAuth().then(async () => {
+    const [{ maybeShowClaim }, { readClaimResultCookie }] = await Promise.all([
+      import('./auth_ui'),
+      import('./auth'),
+    ])
+    const hasClaimPending = !!readClaimResultCookie()
+    maybeShowClaim()
+    // SHU-742 — if a guest was mid-chat when they hit the soft-wall and
+    // just logged in, put them back in the same conversation. Skip when a
+    // claim modal is already up; that flow ends in location.reload(), so
+    // we re-enter this path on the next boot and restore then.
+    if (hasClaimPending) return
+    const [{ isLoggedIn }, { loadStickyChat, clearStickyChat }] = await Promise.all([
+      import('./auth'),
+      import('./sticky_chat'),
+    ])
+    if (!isLoggedIn()) return
+    const snap = loadStickyChat()
+    if (!snap) return
+    clearStickyChat()
+    const { restoreCompanionChat } = await import('./companion_ui')
+    void restoreCompanionChat(snap)
   }))
 }
 

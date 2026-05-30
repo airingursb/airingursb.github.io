@@ -13,6 +13,7 @@ import { sendMessage, sendGroupMessage, sendGuestMessage, getUsage, getGuestUsag
 import { isLoggedIn } from './auth'
 import { showToast } from './ui'
 import { trackEvent } from './umami'
+import { saveStickyChat, type StickyChatBubble } from './sticky_chat'
 
 let rootEl: HTMLElement | null = null
 let historyEl: HTMLElement | null = null
@@ -187,6 +188,16 @@ function ensure(): HTMLElement {
             bubbleEl.innerHTML = `（访客每天聊 2 条免费。登录后可继续 · 每天 30 条 ） <button class="nook-companion-inline-login">登录</button>`
             const btn = bubbleEl.querySelector('.nook-companion-inline-login') as HTMLButtonElement | null
             btn?.addEventListener('click', async () => {
+              // Persist current chat so a post-magic-link reload can put
+              // the user back in the same conversation — see sticky_chat.ts.
+              saveStickyChat({
+                npc_id: currentNpcId,
+                npc_name: currentNpcName,
+                npc_where: whereEl?.textContent?.replace(/^·\s*/, '') || undefined,
+                hints: { ...currentHints },
+                bubbles: snapshotBubbles(),
+              })
+              trackEvent('nook-npc-chat-sticky-saved', { npc_id: currentNpcId })
               const { requireLogin } = await import('./auth_ui')
               requireLogin('Continue chatting')
             })
@@ -221,6 +232,46 @@ function ensure(): HTMLElement {
   })
 
   return rootEl
+}
+
+/** Walk the live transcript DOM and emit a serialisable snapshot. Used by
+ *  the sticky-chat soft-wall save path. */
+function snapshotBubbles(): StickyChatBubble[] {
+  if (!historyEl) return []
+  const out: StickyChatBubble[] = []
+  for (const child of Array.from(historyEl.children)) {
+    if (!(child instanceof HTMLElement)) continue
+    const role: 'user' | 'assistant' = child.classList.contains('nook-companion-user') ? 'user' : 'assistant'
+    const speaker = child.querySelector('.nook-companion-speaker')?.textContent ?? undefined
+    const body = child.querySelector('.nook-companion-bubble-body')?.textContent ?? child.textContent ?? ''
+    const text = body.trim()
+    if (!text) continue
+    out.push(speaker ? { role, text, speaker } : { role, text })
+  }
+  return out
+}
+
+/** Re-open chat with a saved NPC and replay the prior transcript inline. */
+export async function restoreCompanionChat(args: { npc_id: string; npc_name: string; npc_where?: string; hints?: Hints; bubbles: StickyChatBubble[] }): Promise<void> {
+  await openCompanionChat({
+    npc_id: args.npc_id,
+    npc_name: args.npc_name,
+    npc_where: args.npc_where,
+    ...(args.hints ?? {}),
+  })
+  // openCompanionChat clears historyEl on npc switch — re-add restored bubbles
+  if (historyEl) historyEl.innerHTML = ''
+  for (const b of args.bubbles) {
+    appendBubble(b.role, b.text, b.speaker)
+  }
+  // Soft signal — let the user know we picked up where they left off
+  const restoreNote = document.createElement('li')
+  restoreNote.className = 'nook-companion-bubble nook-companion-system'
+  restoreNote.style.cssText = 'text-align:center;font-size:11px;opacity:.6;list-style:none;padding:4px 0;'
+  restoreNote.textContent = '— 登录成功，继续聊 —'
+  historyEl?.appendChild(restoreNote)
+  scrollToBottom()
+  trackEvent('nook-npc-chat-sticky-restored', { npc_id: args.npc_id, bubbles: args.bubbles.length })
 }
 
 function appendBubble(role: 'user' | 'assistant', text: string, speakerName?: string): HTMLElement {
