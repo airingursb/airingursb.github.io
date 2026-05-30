@@ -1,14 +1,15 @@
 // Ambient animal "residents" in the lobby — represent people who are online
-// on the blog but not inside the nook. Real Bear avatars that idle/wander
-// the lobby floor, slightly faded, with no name labels.
+// on the blog but not inside the nook. Real Bear avatars that stand idle on the
+// lobby floor, translucent, with no name labels, and a country flag overhead
+// showing where that online visitor is from.
 //
 // Replaces the old "ghost silhouettes" system (ambient_ghosts.ts).
-// Pattern mirrors transit_npcs.ts for Bear creation/movement.
+// Residents are STATIC (they don't wander) — ambient presence, zero jank.
 
 import type Phaser from 'phaser'
-import { Bear } from './bear'
+import { Bear, type Direction } from './bear'
 import { ccToRegion, SPECIES, type Species, type RoomId } from './config'
-import { startOnlinePolling, getOnlineSite, onOnlineChange } from './online_presence'
+import { startOnlinePolling, getOnlineSite, getOnlineCountries, onOnlineChange } from './online_presence'
 export { residentTargetCount } from './ambient_residents_logic'
 import { residentTargetCount } from './ambient_residents_logic'
 
@@ -16,29 +17,28 @@ import { residentTargetCount } from './ambient_residents_logic'
 
 const MAX_RESIDENTS = 5
 
-// Lobby is 480×320 px. Safe floor region avoids top ~100 px (entrance / NPCs)
-// and the very edges. ~12 hand-picked stand-points within the open floor.
-// (Carried over from ambient_ghosts.ts — verified to sit on the lobby floor.)
+// Lobby is 480×320 px. Safe floor stand-points in the open floor (avoid the top
+// ~100 px entrance/NPCs and the edges). Verified to sit on the floor.
 const LOBBY_POINTS: Array<[number, number]> = [
   [100, 196], [160, 220], [220, 196], [280, 220],
   [340, 196], [380, 220], [300, 248], [160, 248],
   [240, 268], [200, 180], [320, 268], [260, 240],
 ]
 
-const POLL_INTERVAL_MS = 45_000   // reconcile with online count every 45 s
-const FADE_IN_ALPHA = 0.85        // matches transit NPC alpha
+const POLL_INTERVAL_MS = 45_000   // re-reconcile with online count every 45 s
+const RESIDENT_ALPHA = 0.5        // translucent — clearly "presence", not a real player
+const FLAG_ALPHA = 0.9
+const HEAD_OFFSET_Y = 17          // flag sits this far above the bear's feet anchor
+const FACINGS: Direction[] = ['down', 'left', 'right']
 
 // ─── Module-level state ───────────────────────────────────────────────────────
 
 type Resident = {
   bear: Bear
-  targetX: number
-  targetY: number
-  pauseUntil: number    // ms (scene.time.now)
+  flag: Phaser.GameObjects.Text | null
 }
 
 let residents: Resident[] = []
-let updateEvent: Phaser.Time.TimerEvent | null = null
 let pollTimer: ReturnType<typeof setInterval> | null = null
 let unsubOnline: (() => void) | null = null
 let sceneRef: Phaser.Scene | null = null
@@ -57,42 +57,29 @@ export function setupAmbientResidents(
   sceneRef = scene
   getPeerCountFn = getPeerCount
 
-  // Start the shared online poll (idempotent — only starts once)
   startOnlinePolling()
 
-  // Reconcile as soon as the online count arrives (the first poll is async, so
-  // the immediate reconcile below sees 0 on a cold load — this fires when the
-  // real count lands ~<1s later, so residents don't wait the full poll cadence).
+  // Reconcile the moment the online count first lands (~<1s) so residents don't
+  // wait the full 45s poll cadence on a cold load.
   unsubOnline = onOnlineChange(() => { if (sceneRef) reconcileResidents(sceneRef) })
 
-  // Kick off first reconcile immediately (uses cached count if already warm)
+  // Immediate reconcile (uses cached count if the poll is already warm)
   reconcileResidents(scene)
 
-  // Periodic re-reconcile in sync with the online-count poll cadence
+  // Backstop re-reconcile (also catches peer-count changes, which don't notify)
   pollTimer = setInterval(() => {
     if (sceneRef) reconcileResidents(sceneRef)
   }, POLL_INTERVAL_MS)
-
-  // 4-Hz movement update loop — same cadence as transit/gallery_visitors
-  updateEvent = scene.time.addEvent({
-    delay: 250,
-    loop: true,
-    callback: () => tickResidents(scene),
-  })
 }
 
 export function teardownAmbientResidents() {
-  if (updateEvent) { updateEvent.remove(false); updateEvent = null }
   if (pollTimer !== null) { clearInterval(pollTimer); pollTimer = null }
   if (unsubOnline) { unsubOnline(); unsubOnline = null }
-  for (const r of residents) {
-    try { r.bear.destroy() } catch {}
-  }
+  for (const r of residents) destroyResident(r)
   residents = []
   sceneRef = null
   getPeerCountFn = null
-  // Note: do NOT call stopOnlinePolling() here — transit_npcs also uses it.
-  // RoomScene owns that lifecycle via its shutdown/destroy events.
+  // Do NOT stopOnlinePolling() here — transit_npcs shares it; RoomScene owns it.
 }
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -101,98 +88,74 @@ function reconcileResidents(scene: Phaser.Scene) {
   const onlineSite = getOnlineSite()
   const realPeers = getPeerCountFn ? getPeerCountFn() : 0
   const target = residentTargetCount(onlineSite, realPeers, MAX_RESIDENTS)
-
   const current = residents.length
 
   if (target > current) {
-    // Spawn new residents, fade in
-    for (let i = current; i < target; i++) {
-      const [sx, sy] = LOBBY_POINTS[Math.floor(Math.random() * LOBBY_POINTS.length)]
-      const species = pickSpecies(scene)
-      const region = ccToRegion(null)
-      const bear = new Bear(scene, sx, sy, region, species)
-      bear.sprite.setDepth(3)
-      bear.sprite.setAlpha(0)
-      // No name label — distinguishes residents from interactive peers
-      // (do NOT call bear.setDisplayName)
-
-      // Fade sprite in to 0.85 (same as transit NPCs)
-      scene.tweens.add({
-        targets: bear.sprite,
-        alpha: FADE_IN_ALPHA,
-        duration: 1200,
-        ease: 'Sine.easeIn',
-      })
-
-      const [tx, ty] = pickLobbyTarget(sx, sy)
-      const r: Resident = {
-        bear,
-        targetX: tx,
-        targetY: ty,
-        pauseUntil: scene.time.now + Math.random() * 3000,
-      }
-      residents.push(r)
-    }
+    for (let i = current; i < target; i++) residents.push(spawnResident(scene))
   } else if (target < current) {
-    // Fade out + destroy excess residents (LIFO — remove from end)
     const excess = residents.splice(target)
     for (const r of excess) {
+      // Fade out, then destroy the bear + flag
       scene.tweens.add({
-        targets: r.bear.sprite,
-        alpha: 0,
-        duration: 1000,
-        ease: 'Sine.easeOut',
-        onComplete: () => { try { r.bear.destroy() } catch {} },
+        targets: r.bear.sprite, alpha: 0, duration: 1000, ease: 'Sine.easeOut',
+        onComplete: () => destroyResident(r),
       })
+      if (r.flag) scene.tweens.add({ targets: r.flag, alpha: 0, duration: 1000, ease: 'Sine.easeOut' })
     }
   }
 }
 
-function tickResidents(scene: Phaser.Scene) {
-  const now = scene.time.now
-  const dtMs = 250  // fixed tick interval
+function spawnResident(scene: Phaser.Scene): Resident {
+  const [sx, sy] = LOBBY_POINTS[Math.floor(Math.random() * LOBBY_POINTS.length)]
+  const bear = new Bear(scene, sx, sy, ccToRegion(null), pickSpecies(scene))
+  bear.facing = FACINGS[Math.floor(Math.random() * FACINGS.length)]
+  bear.update(0, true)            // lock an idle pose for the facing — then never ticked (static)
+  bear.sprite.setDepth(3)
+  bear.sprite.setAlpha(0)
+  // No name label — that's the cue distinguishing residents from real peers.
+  scene.tweens.add({ targets: bear.sprite, alpha: RESIDENT_ALPHA, duration: 1200, ease: 'Sine.easeIn' })
 
-  for (const r of residents) {
-    // Drive the Bear's built-in walk logic
-    r.bear.update(dtMs, true)
-
-    if (now < r.pauseUntil) continue
-
-    const cx = r.bear.x
-    const cy = r.bear.y
-    const dx = r.targetX - cx
-    const dy = r.targetY - cy
-    const dist = Math.hypot(dx, dy)
-
-    if (dist <= 4) {
-      // Arrived — pause 3-6 s then wander to a new target
-      r.pauseUntil = now + 3000 + Math.random() * 3000
-      ;[r.targetX, r.targetY] = pickLobbyTarget(r.bear.x, r.bear.y)
-      // walkTo will update facing + animation on next tick; clear target for now
-      r.bear.walkTo(r.targetX, r.targetY)
-    } else if (!r.bear.target) {
-      // Kick off walking toward the current target if Bear has no active target
-      r.bear.walkTo(r.targetX, r.targetY)
-    }
+  // Country flag overhead (where this online visitor is from)
+  let flag: Phaser.GameObjects.Text | null = null
+  const cc = pickCountry()
+  if (cc) {
+    flag = scene.add.text(sx, sy - HEAD_OFFSET_Y, countryToFlag(cc), {
+      fontSize: '13px', fontFamily: 'system-ui, "Apple Color Emoji", "Segoe UI Emoji", sans-serif',
+    }).setOrigin(0.5, 1).setDepth(7).setAlpha(0)
+    scene.tweens.add({ targets: flag, alpha: FLAG_ALPHA, duration: 1200, ease: 'Sine.easeIn' })
   }
+
+  return { bear, flag }
 }
 
-/** Pick next lobby floor point not too close to the current position. */
-function pickLobbyTarget(currentX: number, currentY: number): [number, number] {
-  const candidates = LOBBY_POINTS
-    .filter(([x, y]) => Math.hypot(x - currentX, y - currentY) > 20)
-    .sort(() => Math.random() - 0.5)
-    .slice(0, 4)
-  if (candidates.length === 0) return [currentX, currentY]
-  return candidates[Math.floor(Math.random() * candidates.length)] as [number, number]
+function destroyResident(r: Resident) {
+  try { r.bear.destroy() } catch {}
+  try { r.flag?.destroy() } catch {}
 }
 
-/** Pick a random species that has a loaded texture (mirrors transit_npcs.ts pick()). */
+/** Pick a country weighted by the live online distribution, e.g. {CN:7, SG:1}. '' if unknown. */
+function pickCountry(): string {
+  const countries = getOnlineCountries()
+  const flat: string[] = []
+  for (const [cc, n] of Object.entries(countries)) {
+    for (let i = 0; i < n; i++) flat.push(cc)
+  }
+  if (flat.length === 0) return ''
+  return flat[Math.floor(Math.random() * flat.length)]
+}
+
+/** ISO country code → flag emoji (regional indicators). 'CN' → 🇨🇳. */
+function countryToFlag(cc: string): string {
+  const c = cc.toUpperCase()
+  if (!/^[A-Z]{2}$/.test(c)) return ''
+  const A = 0x1f1e6
+  return String.fromCodePoint(A + c.charCodeAt(0) - 65, A + c.charCodeAt(1) - 65)
+}
+
+/** Pick a random species that has a loaded texture (mirrors transit_npcs.ts). */
 function pickSpecies(scene: Phaser.Scene): Species {
   const region = ccToRegion(null)
-  const cached = SPECIES.filter(sp =>
-    sp === 'bear' || scene.textures.exists(`${sp}_${region}`)
-  )
+  const cached = SPECIES.filter(sp => sp === 'bear' || scene.textures.exists(`${sp}_${region}`))
   const pool = cached.length > 0 ? cached : [...SPECIES]
   return pool[Math.floor(Math.random() * pool.length)]
 }

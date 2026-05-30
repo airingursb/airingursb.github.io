@@ -2,6 +2,7 @@
 // A single module-level poll so both subsystems read one cached value.
 
 let site = 0
+let countries: Record<string, number> = {}
 let timer: ReturnType<typeof setInterval> | null = null
 const listeners = new Set<() => void>()
 
@@ -15,7 +16,8 @@ async function poll() {
   try {
     const res = await fetch('https://chat.ursb.me/api/online/count')
     if (res.ok) {
-      const d = await res.json() as { site?: number }
+      const d = await res.json() as { site?: number; countries?: Record<string, number> }
+      if (d.countries && typeof d.countries === 'object') countries = d.countries
       if (typeof d.site === 'number' && d.site !== site) {
         site = d.site
         for (const cb of listeners) { try { cb() } catch {} }
@@ -35,3 +37,6 @@ export function stopOnlinePolling() {
 }
 
 export function getOnlineSite(): number { return site }
+
+/** Country-code → online-count map from the last poll, e.g. { CN: 7, SG: 1 }. */
+export function getOnlineCountries(): Record<string, number> { return countries }
