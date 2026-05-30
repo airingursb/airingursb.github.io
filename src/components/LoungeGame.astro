@@ -4763,6 +4763,32 @@
     body.is-touch.is-narrow.has-chat-open #lounge-touch-overlay {
       display: none;
     }
+    /* V25 mobile sweep — also hide the D-pad whenever ANY of the standard
+       full-screen overlays is open (login, gated prompt, claim modal,
+       onboarding tour, identity panel, popovers). Avoids the case where
+       the d-pad arrows physically overlap the magic-link form / settings
+       buttons on a 375px viewport. Uses :has() — iOS Safari 15.4+. */
+    body.is-touch.is-narrow:has(#nook-auth-overlay:not([hidden])) #lounge-touch-overlay,
+    body.is-touch.is-narrow:has(#nook-gated-prompt:not([hidden])) #lounge-touch-overlay,
+    body.is-touch.is-narrow:has(#nook-claim-modal:not([hidden])) #lounge-touch-overlay,
+    body.is-touch.is-narrow:has(#lounge-onboarding:not([hidden])) #lounge-touch-overlay,
+    body.is-touch.is-narrow:has(.ui-grp-popover:not([hidden])) #lounge-touch-overlay,
+    body.is-touch.is-narrow:has(.nook-modal-overlay:not([hidden])) #lounge-touch-overlay {
+      display: none;
+    }
+    /* Login overlay — title "Welcome" was getting clipped on 375px because
+       the card had a fixed min-width. Allow it to shrink + wrap. */
+    #nook-auth-overlay .auth-card {
+      width: min(94vw, 360px);
+      max-width: 94vw;
+      padding: 18px 16px;
+    }
+    #nook-auth-overlay .auth-card h2,
+    #nook-auth-overlay .auth-card h3 {
+      font-size: 16px;
+      line-height: 1.25;
+      word-break: normal;
+    }
 
     /* Modal cards (memory + diary) — give them more screen real estate */
     .nook-memory-card,
