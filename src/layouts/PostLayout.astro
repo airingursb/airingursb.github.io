@@ -43,6 +43,28 @@ const shortDate = lang === 'en'
   ? date.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
   : date.toLocaleDateString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit' });
 
+// Coda date — literary closing stamp at end of every article.
+// EN: "May 23, 2026". ZH: 中文大写日期 "二〇二六年五月二十三日".
+function toChineseDate(d: Date): string {
+  const digits = ['〇', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
+  const year = d.getFullYear().toString().split('').map(c => digits[+c]).join('');
+  const m = d.getMonth() + 1;
+  const month = m === 10 ? '十' : m < 10 ? digits[m] : '十' + digits[m - 10];
+  const dn = d.getDate();
+  let day: string;
+  if (dn === 10) day = '十';
+  else if (dn === 20) day = '二十';
+  else if (dn === 30) day = '三十';
+  else if (dn < 10) day = digits[dn];
+  else if (dn < 20) day = '十' + digits[dn - 10];
+  else if (dn < 30) day = '二十' + digits[dn - 20];
+  else day = '三十' + digits[dn - 30];
+  return `${year}年${month}月${day}日`;
+}
+const codaDate = lang === 'en'
+  ? date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+  : toChineseDate(date);
+
 const prefix = lang === 'en' ? '/en' : '';
 const hasEnVersion = !!hreflang?.en;
 const canonicalUrl = new URL(`${prefix}/posts/${Astro.params.slug}/`, Astro.site).href;
@@ -201,6 +223,10 @@ const jsonLd = {
 
       <article class="post-content" id="postContent" data-pagefind-body>
         <slot />
+        <div class="article-coda" aria-hidden="true">
+          <div class="coda-date">{codaDate}</div>
+          <div class="coda-mark">✦</div>
+        </div>
       </article>
 
       <!-- Right column: relative container for absolute-positioned cards -->
@@ -1915,7 +1941,55 @@ const jsonLd = {
   }
   .post-content :global(ul), .post-content :global(ol) { margin-bottom: 24px; padding-left: 24px; }
   .post-content :global(li) { margin-bottom: 8px; }
-  .post-content :global(hr) { border: none; height: 1px; background: var(--c-border); margin: 48px 0; }
+  /* Horizontal rule (markdown `---`) renders as a centered asterism (⁂) —
+     a literary "beat" between paragraph groups, less harsh than a hairline. */
+  .post-content :global(hr) {
+    border: none;
+    background: none;
+    position: relative;
+    height: 36px;
+    margin: 36px 0;
+  }
+  .post-content :global(hr)::before {
+    content: '⁂';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent);
+    font-size: 16px;
+    letter-spacing: 0.6em;
+    user-select: none;
+    line-height: 1;
+  }
+
+  /* Article coda — auto-appended at the end of every post.
+     Provides a calm closing flourish: italic date + ✦ endmark. */
+  .article-coda {
+    margin-top: 72px;
+    padding-top: 32px;
+    text-align: center;
+  }
+  .coda-date {
+    font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
+    font-style: italic;
+    font-size: 14px;
+    color: var(--c-text-muted);
+    letter-spacing: 0.08em;
+    margin-bottom: 18px;
+  }
+  .coda-date::before, .coda-date::after {
+    content: '——';
+    margin: 0 12px;
+    color: var(--c-border);
+  }
+  .coda-mark {
+    color: var(--accent);
+    font-size: 18px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-style: italic;
+  }
   .post-content :global(table) { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; }
   .post-content :global(th), .post-content :global(td) { border: 1px solid var(--c-border); padding: 8px 14px; text-align: left; }
   .post-content :global(th) {
