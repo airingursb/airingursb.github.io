@@ -53,7 +53,7 @@
 - **File:** `output/furniture/B02-monitor-on.png` · 16×16 · 透明背景
 - **Prompt:** A 16×16 slim desktop monitor on a small stand, 3/4 top-down, dark charcoal #2a2a30 bezel, the screen glowing a soft cyan #6cc8e8 with 2-3 faint abstract horizontal light blocks (NO readable text). Looks "on / working". Tiny shadow.
 
-### B03 — Monitor · off(显示器·关机)  `[ ]`
+### B03 — Monitor · off(显示器·关机)  `[x]`
 - **File:** `output/furniture/B03-monitor-off.png` · 16×16 · 透明背景
 - **Prompt:** Same 16×16 monitor as B02 but screen is dark #1a1a1f matte (off / idle), no glow. Charcoal #2a2a30 bezel. For empty/idle desks.
 
