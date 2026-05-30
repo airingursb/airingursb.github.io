@@ -113,26 +113,34 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
   }
   scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate)
 
-  // ── connect to the local agent-office SSE ──
-  const url = (() => {
-    try {
-      const q = new URLSearchParams(window.location.search).get('agentsrc')
-      return q || (window as any).__OFFICE_AGENT_URL || 'http://localhost:4500/events'
-    } catch { return 'http://localhost:4500/events' }
-  })()
+  // ── pick a source ──
+  // Explicit override (?agentsrc= / window.__OFFICE_AGENT_URL) wins. Otherwise we
+  // only auto-connect on localhost (dev). On the public site there's no local
+  // server, so we go straight to the demo — no connection-refused console spam.
+  let explicit: string | null = null
+  let isLocal = false
   try {
-    es = new EventSource(url)
-    es.onmessage = (e) => { try { reconcile(JSON.parse(e.data)) } catch {} }
-    es.onerror = () => { /* keep trying; demo kicks in if no data */ }
-  } catch { es = null }
+    explicit = new URLSearchParams(window.location.search).get('agentsrc') || (window as any).__OFFICE_AGENT_URL || null
+    isLocal = /^(localhost$|127\.|0\.0\.0\.0)/.test(window.location.hostname)
+  } catch {}
+  const src = explicit || (isLocal ? 'http://localhost:4500/events' : null)
 
-  // demo fallback if nothing arrives within the grace period
-  const demoTimer = scene.time.delayedCall(3500, () => { if (!gotData) startDemo(reconcile) })
+  let demoTimer: Phaser.Time.TimerEvent | null = null
+  if (src) {
+    try {
+      es = new EventSource(src)
+      es.onmessage = (e) => { try { reconcile(JSON.parse(e.data)) } catch {} }
+      // close on first failure (no retry spam) and fall back to the demo
+      es.onerror = () => { if (!gotData) { try { es?.close() } catch {} ; es = null; startDemo(reconcile) } }
+    } catch { startDemo(reconcile) }
+  } else {
+    demoTimer = scene.time.delayedCall(250, () => startDemo(reconcile))
+  }
 
   cleanup = () => {
     try { es?.close() } catch {}
     scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
-    demoTimer.remove(false)
+    demoTimer?.remove(false)
     stopDemo?.()
     for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy() }
     bears.clear()
