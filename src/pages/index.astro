@@ -11,6 +11,17 @@ import { FootprintsMap } from '../components/footprints/FootprintsMap';
 import { cities as footprintCities } from '../data/footprints';
 import IslandWidget from '../components/IslandWidget.astro';
 import LiveCursors from '../components/LiveCursors.tsx';
+import { getCollection } from 'astro:content';
+
+// slug → {zh,en} title map for the site-wide guestbook feed. Comments store a
+// bare slug (PostLayout strips the /en/ prefix), so zh + en of a post share one
+// key; we keep both titles and pick by language at render time.
+const guestbookPostTitles: Record<string, { zh?: string; en?: string }> = {};
+for (const p of await getCollection('posts', ({ data }) => !data.draft)) {
+  const isEn = p.id.startsWith('en/');
+  const slug = isEn ? p.id.slice(3) : p.id;
+  (guestbookPostTitles[slug] ??= {})[isEn ? 'en' : 'zh'] = p.data.title;
+}
 
 const recentPhotos = (photosData as Array<any>)
   .slice()
@@ -1912,6 +1923,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         <div class="guestbook-messages" id="guestbookMessages">
           <div class="gb-empty" data-i18n="gb_empty">Be the first to leave a message :)</div>
         </div>
+        <button type="button" class="gb-load-more" id="gbLoadMore" style="display:none"></button>
         <hr class="gb-divider">
         <form class="gb-form" id="guestbookForm">
           <div class="gb-name-row">
@@ -1932,6 +1944,10 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           <span data-i18n="gb_pending">AI reviewing your message, it will be visible after approval</span>
         </div>
       </div>
+
+      <script is:inline define:vars={{ guestbookPostTitles }}>
+        window.__GB_TITLES__ = guestbookPostTitles;
+      </script>
 
       <!-- Subscribe -->
       <div class="card card-subscribe" id="subscribe">
@@ -2877,33 +2893,88 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         return div.innerHTML;
       }
 
-      function renderMessages(comments) {
-        // Filter only root comments (no replies) for the homepage mini view
-        var roots = comments.filter(function(c) { return !c.parent_id; });
-        if (!roots || roots.length === 0) {
-          messagesEl.innerHTML = '<div class="gb-empty">' + t('gb_empty') + '</div>';
-          return;
+      // Site-wide feed state (aggregates every post's comments, newest first)
+      var loadMoreBtn = document.getElementById('gbLoadMore');
+      var feedItems = [];
+      var feedCursor = null;
+      var feedLoading = false;
+
+      // "· from «Post Title»" link — slug→title resolved from the build-time
+      // map injected as window.__GB_TITLES__; language follows window.currentLang.
+      function sourceHtml(slug) {
+        var lang = (window.currentLang === 'en') ? 'en' : 'zh';
+        if (slug === 'guestbook') {
+          return (lang === 'en' ? 'on ' : '来自 ') +
+            '<a class="gb-src" href="#guestbook">' + (lang === 'en' ? 'Guestbook' : '留言板') + '</a>';
         }
-        messagesEl.innerHTML = roots.map(function (m) {
-          return '<div class="gb-msg">' +
-            '<div class="gb-meta">' +
-              '<span class="gb-name">&gt; ' + escapeHtml(m.nickname || t('gb_anonymous')) + '</span>' +
-              '<span class="gb-time">' + timeAgo(m.created_at) + '</span>' +
-            '</div>' +
-            '<div class="gb-text">' + escapeHtml(m.content) + '</div>' +
-          '</div>';
-        }).join('');
-        messagesEl.scrollTop = messagesEl.scrollHeight;
+        var titles = (window.__GB_TITLES__ || {})[slug];
+        var title = titles ? (titles[lang] || titles.zh || titles.en) : null;
+        var url = (lang === 'en' ? '/en/posts/' : '/posts/') + encodeURIComponent(slug);
+        var text = title ? ('«' + title + '»') : slug;
+        return (lang === 'en' ? 'on ' : '来自 ') +
+          '<a class="gb-src" href="' + url + '">' + escapeHtml(text) + '</a>';
       }
 
-      function loadMessages() {
-        fetch(CHAT_API + '/api/comments?post_slug=' + encodeURIComponent(SLUG), {
-          headers: { 'Origin': location.origin }
-        })
-        .then(function (r) { return r.json(); })
-        .then(function (data) { renderMessages(data.comments || []); })
-        .catch(function () { messagesEl.innerHTML = '<div class="gb-empty">' + t('gb_load_fail') + '</div>'; });
+      function renderItem(m) {
+        var lang = (window.currentLang === 'en') ? 'en' : 'zh';
+        var replies = '';
+        if (m.replies > 0) {
+          replies = ' · ' + m.replies + (lang === 'en' ? (m.replies > 1 ? ' replies' : ' reply') : ' 条回复');
+        }
+        return '<div class="gb-msg">' +
+          '<div class="gb-meta">' +
+            '<span class="gb-name">&gt; ' + escapeHtml(m.nickname || t('gb_anonymous')) + '</span>' +
+            '<span class="gb-time">' + timeAgo(m.created_at) + '</span>' +
+          '</div>' +
+          '<div class="gb-text">' + escapeHtml(m.content) + '</div>' +
+          '<div class="gb-from">' + sourceHtml(m.post_slug) + replies + '</div>' +
+        '</div>';
       }
+
+      function renderFeed() {
+        if (!feedItems.length) {
+          messagesEl.innerHTML = '<div class="gb-empty">' + t('gb_empty') + '</div>';
+          loadMoreBtn.style.display = 'none';
+          return;
+        }
+        messagesEl.innerHTML = feedItems.map(renderItem).join('');
+        if (feedCursor) {
+          loadMoreBtn.style.display = '';
+          loadMoreBtn.disabled = false;
+          loadMoreBtn.textContent = (window.currentLang === 'en') ? 'Load more' : '加载更多';
+        } else {
+          loadMoreBtn.style.display = 'none';
+        }
+      }
+
+      // First batch is large (covers most history; server-cached so it's free
+      // on repeat pageviews). "Load more" pulls older comments in 50s.
+      var FIRST_LIMIT = 100, MORE_LIMIT = 50;
+      function loadFeed(reset) {
+        if (feedLoading) return;
+        feedLoading = true;
+        if (reset) { feedItems = []; feedCursor = null; }
+        if (!reset && loadMoreBtn) { loadMoreBtn.disabled = true; loadMoreBtn.textContent = '...'; }
+        var url = CHAT_API + '/api/comments/recent?limit=' + (reset ? FIRST_LIMIT : MORE_LIMIT);
+        if (!reset && feedCursor) url += '&cursor=' + encodeURIComponent(feedCursor);
+        fetch(url, { headers: { 'Origin': location.origin } })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var items = data.comments || [];
+            feedItems = reset ? items : feedItems.concat(items);
+            feedCursor = data.nextCursor || null;
+            renderFeed();
+          })
+          .catch(function () {
+            if (reset) messagesEl.innerHTML = '<div class="gb-empty">' + t('gb_load_fail') + '</div>';
+          })
+          .finally(function () { feedLoading = false; });
+      }
+
+      // alias kept for the submit handler + initial load
+      function loadMessages() { loadFeed(true); }
+
+      if (loadMoreBtn) loadMoreBtn.addEventListener('click', function () { loadFeed(false); });
 
       form.addEventListener('submit', function (e) {
         e.preventDefault();
@@ -2953,8 +3024,10 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
 
       loadMessages();
 
+      // Re-render in place on language switch (relocalize titles/time, keep
+      // already-loaded pages) instead of refetching.
       window.addEventListener('langchange', function() {
-        loadMessages();
+        if (feedItems.length) renderFeed(); else loadMessages();
       });
     })();
 
