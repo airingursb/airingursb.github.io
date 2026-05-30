@@ -156,6 +156,13 @@ function CameraControls() {
   })
   const { camera, gl } = useThree()
 
+  // Debug hook for verify scripts — only when ?debug=1 in URL
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('debug') === '1') {
+      ;(window as any).__worldDebug = { camera, controls: ref, gl }
+    }
+  }, [camera, gl])
+
   useEffect(() => on('world-reset-camera', () => ref.current?.reset()), [])
   useEffect(() => on('world-theme', () => {
     breathRef.current.active = true

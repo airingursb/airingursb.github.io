@@ -145,7 +145,7 @@ export const TREE_POSITIONS: Array<[number, number, number, 'pine' | 'birch' | '
   [-3.0,  6.0, 0.85, 'birch'],
   [10.5,  10.0, 0.9, 'pine'],
   [-12.0, -10.0, 1.0, 'birch'],
-  [13.0, -10.0, 0.95, 'maple'],
+  [4.0, -12.0, 0.95, 'maple'],   // moved from (13, -10) — was blocking SE waterfall stream corridor
 ]
 
 /** Bush / rock / lavender / fern / mushroom filler — ~35 items */

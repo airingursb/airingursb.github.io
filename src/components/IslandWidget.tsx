@@ -1631,23 +1631,130 @@ function MiniMochi({ x, z }: { x: number; z: number }) {
 // Every 45-90s: enters from one side, traces a slow sine path
 // across the island ~3.5 units above ground, exits the other side.
 // Pure geometry — two flat triangles + a body sphere.
-// Pet-scale cliff waterfall — single small trickle off the south-east
-// edge of the island. The /world/ version (CliffWaterfalls.tsx) has 5
-// waterfalls; here at 220px we get away with one. Same "Ghibli infinite
-// drop into cloud sea" idea, scaled to fit the pet's tiny canvas.
+// ─── BotW waterfall shader helpers (v18 — ported from /world/ v17) ──
+// Same recipe as src/world/CliffWaterfalls.tsx: cloud noise + displacement
+// guide + banded quantization + 4-stop HDR palette + bottom alpha-dissolve.
+// Inlined here so the pet widget is self-contained.
+function makePetCloudNoise(seed: number, w = 64, h = 256): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')!
+  const img = ctx.createImageData(w, h)
+  let rng = seed
+  const rnd = () => { rng = (rng * 1103515245 + 12345) & 0x7fffffff; return rng / 0x7fffffff }
+  const phases = [rnd() * 6.28, rnd() * 6.28, rnd() * 6.28, rnd() * 6.28]
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const u = x / w
+      const v = y / h
+      let n = 0
+      n += Math.sin(u * 6.28 * 2.1 + phases[0]) * Math.cos(v * 6.28 * 0.8 + phases[1]) * 0.5
+      n += Math.sin(u * 6.28 * 4.3 + phases[2]) * Math.cos(v * 6.28 * 1.7 + phases[3]) * 0.28
+      n += Math.sin(u * 6.28 * 8.7 - phases[1]) * Math.cos(v * 6.28 * 3.1 - phases[0]) * 0.16
+      const g = Math.max(0, Math.min(255, Math.round((n * 0.5 + 0.5) * 255)))
+      const i = (y * w + x) * 4
+      img.data[i] = g; img.data[i + 1] = g; img.data[i + 2] = g; img.data[i + 3] = 255
+    }
+  }
+  ctx.putImageData(img, 0, 0)
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.wrapS = THREE.RepeatWrapping
+  tex.wrapT = THREE.RepeatWrapping
+  tex.minFilter = THREE.LinearFilter
+  tex.magFilter = THREE.LinearFilter
+  return tex
+}
+
+function makePetDisplGuide(seed: number, w = 64, h = 128): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas')
+  canvas.width = w
+  canvas.height = h
+  const ctx = canvas.getContext('2d')!
+  const img = ctx.createImageData(w, h)
+  let rng = seed
+  const rnd = () => { rng = (rng * 1103515245 + 12345) & 0x7fffffff; return rng / 0x7fffffff }
+  const px = rnd() * 6.28, py = rnd() * 6.28
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const u = x / w
+      const v = y / h
+      const r = Math.sin(u * 6.28 * 1.3 + px) * Math.cos(v * 6.28 * 0.6 + py) * 0.5
+              + Math.sin(u * 6.28 * 3.1 - py) * Math.cos(v * 6.28 * 1.5 + px) * 0.2
+      const g = Math.cos(u * 6.28 * 1.7 + px) * Math.sin(v * 6.28 * 0.9 - py) * 0.5
+              + Math.cos(u * 6.28 * 4.0 + py) * Math.sin(v * 6.28 * 2.1 + px) * 0.2
+      const rByte = Math.max(0, Math.min(255, Math.round((r * 0.5 + 0.5) * 255)))
+      const gByte = Math.max(0, Math.min(255, Math.round((g * 0.5 + 0.5) * 255)))
+      const i = (y * w + x) * 4
+      img.data[i] = rByte; img.data[i + 1] = gByte; img.data[i + 2] = 128; img.data[i + 3] = 255
+    }
+  }
+  ctx.putImageData(img, 0, 0)
+  const tex = new THREE.CanvasTexture(canvas)
+  tex.wrapS = THREE.RepeatWrapping
+  tex.wrapT = THREE.RepeatWrapping
+  tex.minFilter = THREE.LinearFilter
+  tex.magFilter = THREE.LinearFilter
+  return tex
+}
+
+const PET_BOTW_VERT = /* glsl */ `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  }
+`
+const PET_BOTW_FRAG = /* glsl */ `
+  precision highp float;
+  uniform sampler2D uNoise;
+  uniform sampler2D uDispl;
+  uniform float uTime;
+  uniform vec2  uNoiseTile;
+  uniform vec2  uDisplTile;
+  uniform float uScrollSpeed;
+  uniform float uDisplAmount;
+  uniform float uBands;
+  uniform vec3  uColorTopLight;
+  uniform vec3  uColorTopDark;
+  uniform vec3  uColorBottomLight;
+  uniform vec3  uColorBottomDark;
+  uniform vec3  uFoamColor;
+  uniform float uFoamThreshold;
+  uniform float uAlpha;
+  varying vec2 vUv;
+  void main() {
+    vec2 nUv = vUv * uNoiseTile;
+    vec2 dUv = vUv * uDisplTile;
+    nUv.y += uTime * uScrollSpeed;
+    dUv.y += uTime * uScrollSpeed * 0.7;
+    vec2 displ = (texture2D(uDispl, dUv).rg * 2.0 - 1.0) * uDisplAmount;
+    float noise = texture2D(uNoise, nUv + displ).r;
+    noise = floor(noise * uBands + 0.5) / uBands;
+    vec3 darkCol  = mix(uColorBottomDark,  uColorTopDark,  vUv.y);
+    vec3 lightCol = mix(uColorBottomLight, uColorTopLight, vUv.y);
+    vec3 col = mix(darkCol, lightCol, noise);
+    float foamMask = 1.0 - step(uFoamThreshold, vUv.y + displ.y * 4.0);
+    col = mix(col, uFoamColor, foamMask);
+    float sideMask = smoothstep(0.0, 0.10, vUv.x) * smoothstep(1.0, 0.90, vUv.x);
+    float vertMask = smoothstep(0.0, 0.06, vUv.y) * smoothstep(0.0, 0.18, 1.0 - vUv.y);
+    float bottomFade = smoothstep(0.0, 0.30, vUv.y);
+    float a = uAlpha * sideMask * vertMask * bottomFade;
+    gl_FragColor = vec4(col, a);
+  }
+`
+
+// Pet-scale cliff waterfall — v18 BotW shader-faithful port from /world/ v17.
+// Single small trickle off the south-east edge. Replaces v4 particle-stream
+// (80 droplets + 16 splash + base glow) with a real 3D tapered+bowed plane
+// driven by the same banded-noise quantization shader as the world scene.
 //
-// Tapered cylinder + 6 mist particles + base glow. Disabled during
-// frozen winter season (mirrors the /world/ frozen behavior).
-// Pet cliff waterfall v4 — particle stream like /world/ CliffWaterfalls v4.
-// Replaces v3 tubes which still looked like rigid lines at pet scale.
-// 30-50 tiny falling droplets give actual water look + small splash
-// particles at base.
+// NO base glow disc (looked like landing pad).
+// NO splash particle cloud (looked like teleporter beam).
+// Just water cascading off the cliff and dissolving into nothing — physically
+// correct since the island is floating in cloud sea.
 function PetWaterfall() {
-  const dropletRef = useRef<THREE.InstancedMesh>(null)
-  const splashRef = useRef<THREE.InstancedMesh>(null)
-  const dropletMatRef = useRef<THREE.MeshBasicMaterial>(null)
-  const splashMatRef = useRef<THREE.MeshBasicMaterial>(null)
-  const glowMatRef = useRef<THREE.MeshBasicMaterial>(null)
+  const matRef = useRef<THREE.ShaderMaterial>(null)
 
   // Seasonal flag — winter freezes
   const frozen = useMemo(() => {
@@ -1665,179 +1772,102 @@ function PetWaterfall() {
     }
   }, [])
 
-  // Particle stream config — pet-scaled (island radius 2u, camera ~10u).
-  // Size 0.035 → ~1 px at canvas distance — needs to be larger.
-  const FALL_WIDTH = 0.06
-  const FALL_HEIGHT = 0.7
-  const FALL_OUTWARD = 0.02
-  const DROPLET_COUNT = 80
-  const DROPLET_SIZE = 0.035   // ~3px droplets, clearly visible
-  const SPLASH_COUNT = 16
-  const GRAVITY = 0.30
+  // Pet-scale waterfall — 5% of /world/ scale. Pet island radius ~2u
+  // vs world ~22u; pet camera at distance ~10u vs world ~50u.
+  const FALL_WIDTH  = 0.12   // ≈ 1.5 in /world/ × 0.08 scale
+  const FALL_HEIGHT = 0.70   // ≈ 14 in /world/ × 0.05 scale
 
-  const droplets = useMemo(() => Array.from({ length: DROPLET_COUNT }, () => {
-    const ageFrac = Math.random()
-    return {
-      x: (Math.random() - 0.5) * FALL_WIDTH,
-      y: -ageFrac * FALL_HEIGHT,
-      z: (Math.random() - 0.5) * 0.02,
-      vx: (Math.random() - 0.5) * 0.03,
-      vy: -ageFrac * 0.15 - 0.05,
-      vz: -FALL_OUTWARD + (Math.random() - 0.5) * 0.02,
-      life: ageFrac * 2,
-    }
-  }), [])
-  const splashes = useMemo(() => Array.from({ length: SPLASH_COUNT }, () => {
-    const angle = Math.random() * Math.PI * 2
-    const speed = 0.08 + Math.random() * 0.12
-    return {
-      x: 0, y: -FALL_HEIGHT + 0.05, z: 0,
-      vx: Math.cos(angle) * speed,
-      vy: 0.10 + Math.random() * 0.10,
-      vz: Math.sin(angle) * speed * 0.5,
-      life: Math.random() * 0.8,
-    }
-  }), [])
+  // Tapered + bowed plane geometry (top wider, bottom narrower; outward
+  // bow at bottom so water arcs away from cliff face like real falls)
+  const geo = useMemo(() => {
+    const g = new THREE.BufferGeometry()
+    const wTop = FALL_WIDTH / 2
+    const wMid = (FALL_WIDTH * 0.85) / 2
+    const wBot = (FALL_WIDTH * 0.72) / 2
+    const h0 = 0
+    const h1 = -FALL_HEIGHT * 0.5
+    const h2 = -FALL_HEIGHT
+    const z0 = 0.0
+    const z1 = 0.04
+    const z2 = 0.12
+    const positions = new Float32Array([
+      -wTop, h0, z0,   wTop, h0, z0,
+      -wMid, h1, z1,   wMid, h1, z1,
+      -wBot, h2, z2,   wBot, h2, z2,
+    ])
+    const uvs = new Float32Array([
+      0, 1,   1, 1,
+      0, 0.5, 1, 0.5,
+      0, 0,   1, 0,
+    ])
+    const indices = new Uint16Array([
+      0, 2, 1,   1, 2, 3,
+      2, 4, 3,   3, 4, 5,
+    ])
+    g.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    g.setAttribute('uv', new THREE.BufferAttribute(uvs, 2))
+    g.setIndex(new THREE.BufferAttribute(indices, 1))
+    g.computeVertexNormals()
+    return g
+  }, [])
 
-  const dummy = useMemo(() => new THREE.Object3D(), [])
+  const noiseTex = useMemo(() => makePetCloudNoise(1337), [])
+  const displTex = useMemo(() => makePetDisplGuide(2424), [])
+  useEffect(() => () => { geo.dispose(); noiseTex.dispose(); displTex.dispose() }, [geo, noiseTex, displTex])
 
-  useFrame((s, dt) => {
-    const t = s.clock.elapsedTime
-    // Droplet stream
-    if (dropletRef.current) {
-      for (let i = 0; i < DROPLET_COUNT; i++) {
-        const p = droplets[i]
-        if (!frozen) {
-          p.vy -= GRAVITY * dt
-          p.x += p.vx * dt
-          p.y += p.vy * dt
-          p.z += p.vz * dt
-          p.life += dt
-          if (p.y < -FALL_HEIGHT - 0.1 || p.life > 3) {
-            p.x = (Math.random() - 0.5) * FALL_WIDTH
-            p.y = -0.02 + (Math.random() - 0.5) * 0.03
-            p.z = (Math.random() - 0.5) * 0.02
-            p.vx = (Math.random() - 0.5) * 0.025
-            p.vy = -0.04 - Math.random() * 0.05
-            p.vz = -FALL_OUTWARD * (0.5 + Math.random() * 0.5)
-            p.life = 0
-          }
-        }
-        dummy.position.set(p.x, p.y, p.z)
-        const sizeFrac = 1 - Math.min(0.5, p.life / 3 * 0.5)
-        dummy.scale.setScalar(DROPLET_SIZE * sizeFrac)
-        dummy.updateMatrix()
-        dropletRef.current.setMatrixAt(i, dummy.matrix)
-      }
-      dropletRef.current.instanceMatrix.needsUpdate = true
-    }
-    // Splash particles
-    if (splashRef.current && !frozen) {
-      for (let i = 0; i < SPLASH_COUNT; i++) {
-        const s = splashes[i]
-        s.vy -= GRAVITY * dt * 0.6
-        s.x += s.vx * dt
-        s.y += s.vy * dt
-        s.z += s.vz * dt
-        s.life += dt
-        if (s.life > 0.8 || s.y < -FALL_HEIGHT - 0.05) {
-          const angle = Math.random() * Math.PI * 2
-          const speed = 0.06 + Math.random() * 0.10
-          s.x = (Math.random() - 0.5) * 0.02
-          s.y = -FALL_HEIGHT + 0.05
-          s.z = (Math.random() - 0.5) * 0.015
-          s.vx = Math.cos(angle) * speed
-          s.vy = 0.08 + Math.random() * 0.08
-          s.vz = Math.sin(angle) * speed * 0.5
-          s.life = 0
-        }
-        dummy.position.set(s.x, s.y, s.z)
-        const ageFrac = Math.min(1, s.life / 0.8)
-        dummy.scale.setScalar(DROPLET_SIZE * 0.7 * (1 - ageFrac * 0.5))
-        dummy.updateMatrix()
-        splashRef.current.setMatrixAt(i, dummy.matrix)
-      }
-      splashRef.current.instanceMatrix.needsUpdate = true
-    }
-    if (glowMatRef.current) {
-      glowMatRef.current.opacity = frozen ? 0.06 : 0.20 + Math.sin(t * 1.3) * 0.05
-    }
-    if (dropletMatRef.current) dropletMatRef.current.color.set(frozen ? '#F0F6FA' : '#FFFFFF')
-    if (splashMatRef.current) splashMatRef.current.color.set(frozen ? '#F0F6FA' : '#FFFFFF')
+  // Color palette — winter slightly desaturated
+  const palette = frozen
+    ? { top: '#EEF4F8', topDark: '#A8C0CC', botLight: '#D8E4EC', botDark: '#7A95A2', foam: '#FFFFFF' }
+    : { top: '#F4FAFD', topDark: '#7AB4D6', botLight: '#CCE5F0', botDark: '#3A7CA4', foam: '#FFFFFF' }
+
+  const uniforms = useMemo(() => ({
+    uNoise:            { value: noiseTex },
+    uDispl:            { value: displTex },
+    uTime:             { value: 0 },
+    uNoiseTile:        { value: new THREE.Vector2(1.2, 4.0) },
+    uDisplTile:        { value: new THREE.Vector2(1.6, 2.0) },
+    uScrollSpeed:      { value: 0.62 },
+    uDisplAmount:      { value: 0.055 },
+    uBands:            { value: 5.0 },
+    uColorTopLight:    { value: new THREE.Color(palette.top) },
+    uColorTopDark:     { value: new THREE.Color(palette.topDark) },
+    uColorBottomLight: { value: new THREE.Color(palette.botLight) },
+    uColorBottomDark:  { value: new THREE.Color(palette.botDark) },
+    uFoamColor:        { value: new THREE.Color(palette.foam) },
+    uFoamThreshold:    { value: 0.20 },
+    uAlpha:            { value: frozen ? 0.95 : 0.92 },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }), [noiseTex, displTex, frozen])
+
+  useFrame((s) => {
+    const m = matRef.current
+    if (!m) return
+    if (!frozen) m.uniforms.uTime.value = s.clock.elapsedTime
   })
 
   // Source: south-east cliff edge of pet island (rim radius 2.05).
   return (
     <group position={[1.65, 0, 0.8]} rotation={[0, -0.5, 0]}>
-      {/* 2 tiny dark wet rocks */}
-      <mesh position={[0, 0.012, -0.02]} castShadow>
-        <dodecahedronGeometry args={[0.022, 0]} />
+      {/* 2 tiny dark wet rocks framing the spillway */}
+      <mesh position={[0, 0.012, 0.005]} castShadow>
+        <dodecahedronGeometry args={[0.024, 0]} />
         <meshStandardMaterial color="#1F1812" roughness={0.95} flatShading />
       </mesh>
-      <mesh position={[-0.025, 0.010, 0.015]} castShadow>
-        <dodecahedronGeometry args={[0.016, 0]} />
+      <mesh position={[-0.028, 0.010, 0.020]} castShadow>
+        <dodecahedronGeometry args={[0.018, 0]} />
         <meshStandardMaterial color="#2A2018" roughness={0.95} flatShading />
       </mesh>
-      {/* Soft volumetric core column */}
-      {!frozen && (
-        <mesh position={[0, -FALL_HEIGHT / 2, -FALL_OUTWARD * 0.5]}>
-          <cylinderGeometry args={[FALL_WIDTH * 0.35, FALL_WIDTH * 0.55, FALL_HEIGHT, 6, 1, true]} />
-          <meshBasicMaterial
-            color="#FFFFFF"
-            transparent
-            opacity={0.16}
-            depthWrite={false}
-            side={THREE.DoubleSide}
-            blending={THREE.AdditiveBlending}
-          />
-        </mesh>
-      )}
-      {/* Droplet stream */}
-      <instancedMesh
-        ref={dropletRef}
-        args={[undefined as any, undefined as any, DROPLET_COUNT]}
-        frustumCulled={false}
-      >
-        <sphereGeometry args={[1, 5, 4]} />
-        <meshBasicMaterial
-          ref={dropletMatRef}
-          color={frozen ? '#F0F6FA' : '#FFFFFF'}
+      {/* Main BotW shader waterfall — tapered + bowed plane.
+          No base glow, no splash cloud. Water dissolves into nothing. */}
+      <mesh geometry={geo} renderOrder={2}>
+        <shaderMaterial
+          ref={matRef}
+          uniforms={uniforms}
+          vertexShader={PET_BOTW_VERT}
+          fragmentShader={PET_BOTW_FRAG}
           transparent
-          opacity={frozen ? 0.88 : 0.80}
           depthWrite={false}
-          blending={frozen ? THREE.NormalBlending : THREE.AdditiveBlending}
-        />
-      </instancedMesh>
-      {/* Splash particles at base */}
-      {!frozen && (
-        <group position={[0, 0, -FALL_OUTWARD * 0.3]}>
-          <instancedMesh
-            ref={splashRef}
-            args={[undefined as any, undefined as any, SPLASH_COUNT]}
-            frustumCulled={false}
-          >
-            <sphereGeometry args={[1, 4, 3]} />
-            <meshBasicMaterial
-              ref={splashMatRef}
-              color="#FFFFFF"
-              transparent
-              opacity={0.70}
-              depthWrite={false}
-              blending={THREE.AdditiveBlending}
-            />
-          </instancedMesh>
-        </group>
-      )}
-      {/* Tiny base glow */}
-      <mesh position={[0, -FALL_HEIGHT - 0.08, -FALL_OUTWARD * 0.3]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={3}>
-        <circleGeometry args={[FALL_WIDTH * 2.5, 16]} />
-        <meshBasicMaterial
-          ref={glowMatRef}
-          color={frozen ? '#D8E4EC' : '#FFFFFF'}
-          transparent
-          opacity={0.20}
-          depthWrite={false}
-          blending={THREE.AdditiveBlending}
+          side={THREE.DoubleSide}
         />
       </mesh>
     </group>
