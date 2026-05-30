@@ -117,7 +117,7 @@
 - **File:** `output/furniture/E03-server-rack.png` · 24×32 · 透明背景
 - **Prompt:** A slim dark charcoal #2a2a30 server rack cabinet, 3/4 top-down, with a column of tiny status LEDs glowing soft cyan #6cc8e8 and green #5a8f4a (no text), a couple of thin cables hinted at the base. The "infra / running code" corner. Soft shadow.
 
-### E04 — Treadmill(跑步机,彩蛋)  `[ ]`
+### E04 — Treadmill(跑步机,彩蛋)  `[x]`
 - **File:** `output/furniture/E04-treadmill.png` · 24×40 · 透明背景
 - **Prompt:** A modern white #fafafa walking-pad / treadmill, 3/4 top-down, light-grey running belt, slim minimalist console with a tiny dark screen. A charming office-amenity prop (echoes the Marvis treadmill). Soft shadow.
 
