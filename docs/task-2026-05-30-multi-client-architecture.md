@@ -125,6 +125,8 @@ interface HostBridge {
 ## 6. 门闸与顺序
 
 - **Gate 1 · Tauri × Phaser spike(动客户端的第一道闸)**:把现在的 nook Phaser 场景塞进 Tauri 的 webview,在目标系统(至少 mac;若要 Win/Linux 各跑)上看渲染顺不顺。**顺 → 锁 Tauri;不顺 → 重新评估 Electron。** 半天的活,决定整个选型是否成立。
+  - **✅ 已做(2026-05-30,macOS)= PASS。** 最小 Tauri 2.11 app,窗口直接加载线上 `https://ursb.me/nook`。结果:47s 编译、原生窗口启动、WKWebView **完整渲染 Phaser/WebGL 瓦片场景 + 小人 + 灯光辉光 + HUD + DOM 蒙层**,功能确认无问题。**mac 选型坐实。** Win/Linux(WebView2 / WebKitGTK)待支持时各跑一次同样的 spike。
+  - 复刻方式:`npm create tauri-app@latest <name> -- --template vanilla -m npm -y` → 改 `src-tauri/tauri.conf.json` 的 window `url` 指向 nook、`security.csp:null` → `npm i && npm run tauri dev`。
 - **不在 Demo 验完前重构前端。** 现在只记耦合点(§7),不抽 bundle。
 - **客户端 v0 = IDE 插件**(信号源),先于完整桌面 app。
 - **完整 Tauri 客户端** = Demo 留存验住后:抽 bundle(§2)+ 填 HostBridge 缝(§3)+ Tauri 壳(webview 本地 bundle + invoke 命令:keychain/presence/agent)。**届时"复用"= 抽一次 bundle + 填几个 host 缝,不是重写。**
