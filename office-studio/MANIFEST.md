@@ -77,7 +77,7 @@
 - **File:** `output/furniture/C01-boss-desk.png` · 64×48 · 透明背景
 - **Prompt:** A larger L-shaped executive desk, white #fafafa with a subtle warm-wood #8a6a44 top accent strip along one edge, 3/4 top-down. Roomier than a normal desk, an L corner. Empty top. Soft shadow down-left. Still clean/minimal, just bigger and a touch nicer.
 
-### C02 — Executive chair(老板椅)  `[ ]`
+### C02 — Executive chair(老板椅)  `[x]`
 - **File:** `output/furniture/C02-boss-chair.png` · 20×24 · 透明背景
 - **Prompt:** A high-back executive office chair, 3/4 top-down, graphite #3a3a42 leather-look (matte, no gloss) with a chrome-hint base, taller back than the normal chair. The "lead / boss" seat. Soft shadow.
 
