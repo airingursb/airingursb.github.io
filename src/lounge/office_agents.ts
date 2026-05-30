@@ -30,7 +30,21 @@ const DESK_SEATS = (() => {
   return s
 })()
 
-type Tracked = { bear: Bear; tx: number; ty: number; anim: string; slot: number | null }
+type Tracked = { bear: Bear; bubble: Phaser.GameObjects.Container & { setLabel?: (s: string, fiction: boolean) => void }; tx: number; ty: number; anim: string; slot: number | null }
+
+// a compact "what am I doing" speech bubble (emoji + detail); fiction reads dimmed
+function makeBubble(scene: Phaser.Scene): Phaser.GameObjects.Container & { setLabel?: (s: string, f: boolean) => void } {
+  const bg = scene.add.rectangle(0, 0, 18, 12, 0x2c2e36, 0.92).setOrigin(0.5, 1).setStrokeStyle(1, 0x000000, 0.35)
+  const txt = scene.add.text(0, -2, '', { fontFamily: 'monospace', fontSize: '8px', color: '#e6e3dc' }).setOrigin(0.5, 1)
+  const c = scene.add.container(0, 0, [bg, txt]).setDepth(7) as Phaser.GameObjects.Container & { setLabel?: (s: string, f: boolean) => void }
+  c.setLabel = (s: string, fiction: boolean) => {
+    txt.setText(s || ''); txt.setColor(fiction ? '#9a9890' : '#e6e3dc')
+    bg.setSize(Math.max(16, txt.width + 8), txt.height + 5)
+    bg.setFillStyle(0x2c2e36, fiction ? 0.6 : 0.92)
+    c.setVisible(!!s)
+  }
+  return c
+}
 
 function speciesOf(a: AgentSnap): Species {
   const s = a.species as Species
@@ -70,16 +84,16 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
       const tgt = target(a)
       if (!t) {
         const b = new Bear(scene, tgt.x, tgt.y, REGION, speciesOf(a))
-        t = { bear: b, tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null }
+        t = { bear: b, bubble: makeBubble(scene), tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null }
         bears.set(a.id, t)
       }
       t.tx = tgt.x; t.ty = tgt.y; t.anim = a.anim || 'idle'
       t.bear.setDisplayName(a.label, { prefix: a.kind === 'main' ? '★ ' : '', color: a.kind === 'main' ? '#d8b048' : undefined })
-      t.bear.setMood(a.emoji || null)
+      t.bubble.setLabel?.(`${a.emoji || ''} ${a.detail || ''}`.trim(), !!a.fiction)
       t.bear.walkTo(tgt.x, tgt.y)
     }
     for (const [id, t] of [...bears.entries()]) {
-      if (!seen.has(id)) { t.bear.destroy(); bears.delete(id); slots.delete(id) }
+      if (!seen.has(id)) { t.bear.destroy(); t.bubble.destroy(); bears.delete(id); slots.delete(id) }
     }
   }
 
@@ -87,7 +101,9 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
   const onUpdate = (_t: number, dt: number) => {
     for (const t of bears.values()) {
       t.bear.update(dt)
-      const dx = (t.bear as any).sprite.x - t.tx, dy = (t.bear as any).sprite.y - t.ty
+      const sp = (t.bear as any).sprite
+      t.bubble.setPosition(sp.x, sp.y - 30)   // float above the name label
+      const dx = sp.x - t.tx, dy = sp.y - t.ty
       if (dx * dx + dy * dy < 16) {           // arrived → apply static pose
         if (t.anim === 'sit') t.bear.playSit()
         else if (t.anim === 'wave' || t.anim === 'dance') t.bear.playWave()
@@ -118,7 +134,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
     scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
     demoTimer.remove(false)
     stopDemo?.()
-    for (const t of bears.values()) t.bear.destroy()
+    for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy() }
     bears.clear()
   }
 }

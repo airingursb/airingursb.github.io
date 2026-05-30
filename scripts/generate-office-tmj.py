@@ -89,7 +89,12 @@ def build_tmj(ntiles):
         rect('wall_right', WPX - TILE, 0, TILE, HPX),
     ]
     spawns = [point('default', door_cx, HPX - TILE * 3), point('from_lobby', door_cx, HPX - TILE * 3)]
-    portals = [rect('to_lobby', door_cx - 24, HPX - TILE, 48, TILE)]
+    to_lobby = rect('to_lobby', door_cx - 24, HPX - TILE, 48, TILE)
+    to_lobby['properties'] = [
+        {'name': 'target_room', 'type': 'string', 'value': 'room_lobby'},
+        {'name': 'target_spawn', 'type': 'string', 'value': 'default'},
+    ]
+    portals = [to_lobby]
     tmj = {
         'compressionlevel': -1, 'infinite': False, 'orientation': 'orthogonal',
         'renderorder': 'right-down', 'tiledversion': '1.10', 'type': 'map', 'version': '1.10',

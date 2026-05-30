@@ -61,6 +61,7 @@ import { preloadGalleryAssets } from '../gallery_assets'
 import { preloadOfficeAssets } from '../office_assets'
 import { setupOfficeDecor, teardownOfficeDecor } from '../office_decor'
 import { setupOfficeAgents, teardownOfficeAgents } from '../office_agents'
+import { setupOfficePortal, teardownOfficePortal } from '../office_portal'
 import { tickRandomEvents, getActiveEvent, attendEvent, type ActiveEvent } from '../random_events'
 import { TransitNpcController } from '../transit_npcs'
 import { spawnAmbientPets, tickAmbientPetProximity, reactPetsToPlayerEmote } from '../ambient_pets'
@@ -612,6 +613,13 @@ export class RoomScene extends Phaser.Scene {
     })
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownGalleryPortal)
     this.events.once(Phaser.Scenes.Events.DESTROY, teardownGalleryPortal)
+
+    // Agent Office portal — lobby only, click → room_office
+    setupOfficePortal(this, this.currentRoomId, () => {
+      this.enterPortal({ x: 0, y: 0, w: 0, h: 0, targetRoom: 'room_office' as RoomId, targetSpawn: 'from_lobby' })
+    })
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, teardownOfficePortal)
+    this.events.once(Phaser.Scenes.Events.DESTROY, teardownOfficePortal)
 
     // First-visit nudge — only fires once per browser (localStorage flag).
     // Self-cleans on scene shutdown via internal listener.

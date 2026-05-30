@@ -32,6 +32,7 @@ export function spawnRoomDecals(
     room_kitchen:  { primary: 0xe8e8e0, accent: 0xb8c0c8 },  // white tile + grout
     room_workshop: { primary: 0x4a4a4a, accent: 0x6a6a6a },  // dark slate
     room_gallery:  { primary: 0x1a1f2a, accent: 0xc8a058 },  // dark stone + brass — museum trim
+    room_office:   { primary: 0xd8d6d0, accent: 0x6cc8e8 },  // light grey + cyan monitor-glow trim
   }
   const ws = WAINSCOT[roomId]
   if (ws) {
@@ -462,6 +463,35 @@ export function spawnRoomDecals(
         rotate: { min: 0, max: 360 },
       }).setDepth(51)
       objects.push(petals)
+    }
+  }
+
+  // ── Agent Office — cool daylight: window light pools + soft monitor glow ──
+  if (roomId === 'room_office') {
+    // bright trapezoidal light pools cast from the top windows (cols 4,10,16,…)
+    for (let c = 4; c < mapWidthPx / 16 - 4; c += 6) {
+      const x = (c + 0.5) * 16
+      const pool = scene.add.polygon(0, 0, [x - 10, 32, x + 10, 32, x + 26, 150, x - 26, 150], 0xcfe4ee, 0.10)
+        .setOrigin(0, 0).setDepth(1.3)
+      objects.push(pool)
+    }
+    // overall cool tint to lift the flat grey floor toward "bright airy office"
+    const tint = scene.add.rectangle(0, 0, mapWidthPx, mapHeightPx, 0xeaf2f6, 0.05).setOrigin(0, 0).setDepth(1.2)
+    objects.push(tint)
+    // faint cyan glow pools under the workstation monitors (3 rows × 4 cols)
+    for (const ry of [156, 218, 280]) for (const cx of [112, 196, 280, 364]) {
+      const glow = scene.add.ellipse(cx, ry - 16, 30, 16, 0x6cc8e8, 0.07).setDepth(1.9)
+      objects.push(glow)
+    }
+    // slow dust motes drifting in the daylight (skipped under reduced-motion)
+    if (!reducedMotion) {
+      ensurePixelTexture(scene)
+      const motes = scene.add.particles(0, 0, 'rd_pixel', {
+        x: { min: 0, max: mapWidthPx }, y: { min: 40, max: mapHeightPx - 40 },
+        lifespan: 9000, speedY: { min: -5, max: -1 }, speedX: { min: -2, max: 2 },
+        scale: { min: 0.6, max: 1.4 }, alpha: { start: 0.18, end: 0 }, frequency: 700, tint: 0xffffff,
+      }).setDepth(1.6)
+      objects.push(motes)
     }
   }
 
