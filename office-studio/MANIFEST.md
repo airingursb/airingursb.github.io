@@ -145,6 +145,6 @@
 - **File:** `output/furniture/G01-plant-tall.png` · 16×32 · 透明背景
 - **Prompt:** A tall potted office plant (monstera / fiddle-leaf vibe), 3/4 top-down, lush green #5a8f4a leaves in 2-3 shades, in a simple white #fafafa or terracotta #8a6a44 pot. The main warm/living accent in the clean office. Soft shadow down-left.
 
-### G02 — Plant · small(桌面/角落小绿植)  `[ ]`
+### G02 — Plant · small(桌面/角落小绿植)  `[x]`
 - **File:** `output/furniture/G02-plant-small.png` · 16×16 · 透明背景
 - **Prompt:** A small desktop succulent or pothos in a tiny white pot, 3/4 top-down, green #5a8f4a, to scatter on desks/counters. Soft tiny shadow.
