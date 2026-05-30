@@ -81,7 +81,7 @@
 - **File:** `output/furniture/C02-boss-chair.png` · 20×24 · 透明背景
 - **Prompt:** A high-back executive office chair, 3/4 top-down, graphite #3a3a42 leather-look (matte, no gloss) with a chrome-hint base, taller back than the normal chair. The "lead / boss" seat. Soft shadow.
 
-### C03 — Dual monitor(双屏)  `[ ]`
+### C03 — Dual monitor(双屏)  `[x]`
 - **File:** `output/furniture/C03-dual-monitor.png` · 32×16 · 透明背景
 - **Prompt:** Two slim monitors side by side on one stand, 3/4 top-down, charcoal #2a2a30 bezels, both screens glowing soft cyan #6cc8e8 with faint abstract blocks (no text). The boss workstation display.
 
