@@ -21,7 +21,7 @@
 
 ## A · Floor & Walls(5 · 16×16 · 无缝平铺)
 
-### A01 — Office floor(主地砖)  `[ ]`
+### A01 — Office floor(主地砖)  `[x]`
 - **File:** `output/tiles/A01-floor.png` · 16×16 · 不透明、可平铺
 - **Prompt:** A seamless 16×16 office floor tile: light warm-grey #e6e3dc with a very subtle lighter #f2f0ec speckle, like clean matte vinyl/concrete office flooring. Almost flat, just 1-2 shades of soft pixel noise. Must tile seamlessly on all 4 edges. Clean and bright.
 
