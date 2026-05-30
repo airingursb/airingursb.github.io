@@ -73,7 +73,7 @@
 
 ## C · Boss · 主 Agent 工位(3)
 
-### C01 — Executive L-desk(L 形大桌)  `[ ]`
+### C01 — Executive L-desk(L 形大桌)  `[x]`
 - **File:** `output/furniture/C01-boss-desk.png` · 64×48 · 透明背景
 - **Prompt:** A larger L-shaped executive desk, white #fafafa with a subtle warm-wood #8a6a44 top accent strip along one edge, 3/4 top-down. Roomier than a normal desk, an L corner. Empty top. Soft shadow down-left. Still clean/minimal, just bigger and a touch nicer.
 
