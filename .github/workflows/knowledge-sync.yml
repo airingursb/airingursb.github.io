@@ -1,0 +1,68 @@
+name: Knowledge Sync
+
+# Re-embed the blog-api RAG knowledge base whenever a weekly/annual post changes.
+# The canonical content lives in THIS repo (src/content/posts); a self-contained
+# script (scripts/sync-knowledge.mjs) rebuilds + re-embeds into Supabase
+# knowledge_chunks — no blog-server submodule checkout needed. A second,
+# best-effort step refreshes the blog-api container's "knowledge cutoff" date.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'src/content/posts/**'
+  workflow_dispatch:
+
+concurrency:
+  group: knowledge-sync
+  cancel-in-progress: true
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4   # no submodules — content + script are both here
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Core: rebuild from src/content/posts + embed + upsert to Supabase.
+      # This alone makes the AI know new content (RAG reads Supabase live).
+      - name: Rebuild + re-embed knowledge
+        env:
+          BLOG_SUPABASE_URL: ${{ secrets.BLOG_SUPABASE_URL }}
+          BLOG_SUPABASE_SERVICE_KEY: ${{ secrets.BLOG_SUPABASE_SERVICE_KEY }}
+          SILICONFLOW_API_KEY: ${{ secrets.SILICONFLOW_API_KEY }}
+        run: node scripts/sync-knowledge.mjs --out build/knowledge
+
+      # Best-effort: ship the regenerated knowledge-core.md (carries the
+      # KNOWLEDGE_LATEST_DATE marker) to the server and rebuild blog-api so the
+      # prompt's stated cutoff date is fresh. Non-blocking — the re-embed above
+      # is what actually matters; a deploy hiccup must not fail the run.
+      - name: Refresh blog-api knowledge date marker
+        continue-on-error: true
+        env:
+          DEPLOY_KEY: ${{ secrets.ALIYUN_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H 39.105.102.252 >> ~/.ssh/known_hosts 2>/dev/null
+          SSH="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no"
+          scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            build/knowledge/knowledge-core.md \
+            root@39.105.102.252:/opt/blog-api/knowledge-core.md
+          $SSH root@39.105.102.252 \
+            'cd /opt/blog-api && docker tag blog-api:latest blog-api:backup 2>/dev/null || true; bash docker-run.sh'
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 5 http://39.105.102.252:8904/health >/dev/null 2>&1; then ok=1; echo "blog-api healthy"; break; fi
+            sleep 3
+          done
+          rm -f ~/.ssh/deploy_key
+          [ "$ok" = 1 ] || { echo "::warning::blog-api health check did not pass; date marker may be stale (RAG still works)"; exit 1; }
