@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<title>Agent Office Pet</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; cursor: grab; }
+  body:active { cursor: grabbing; }
+  #wrap { position: relative; width: 96px; height: 96px; }
+  canvas { display: block; }
+  /* speech bubble */
+  #bubble {
+    position: absolute; left: 50%; top: -2px;
+    transform: translateX(-50%) translateY(-100%);
+    background: #2c2e36; color: #e6e3dc; font: 10px/1.3 -apple-system, system-ui, monospace;
+    padding: 3px 7px; border-radius: 7px; white-space: nowrap; opacity: 0;
+    transition: opacity .25s; pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  }
+  #bubble.show { opacity: 1; }
+  #bubble::after { content: ''; position: absolute; left: 50%; bottom: -4px; transform: translateX(-50%);
+    border: 4px solid transparent; border-top-color: #2c2e36; }
+</style>
+</head>
+<body>
+<div id="wrap" data-tauri-drag-region>
+  <div id="bubble"></div>
+  <canvas id="c" width="96" height="96" data-tauri-drag-region></canvas>
+</div>
+<script type="module">
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const bubble = document.getElementById('bubble');
+const W = 96, H = 96;
+
+// state fed by the office (when running in the desktop app); sensible defaults in a browser
+let agents = 0, working = 0, failed = false, blocked = false;
+let t = 0, blink = 0, wave = 0, pokeT = 0;
+
+function showBubble(msg, ms = 1800) {
+  bubble.textContent = msg; bubble.classList.add('show');
+  clearTimeout(showBubble._t); showBubble._t = setTimeout(() => bubble.classList.remove('show'), ms);
+}
+
+function draw() {
+  t += 0.05; ctx.clearRect(0, 0, W, H);
+  const cx = W / 2, bob = Math.sin(t) * 2;            // idle breathing
+  const cy = 56 + bob;
+
+  // status ring under the bear: green pulse when working, red when failed/blocked, grey idle
+  const ringColor = failed ? '#d44820' : blocked ? '#d8b048' : working > 0 ? '#5a8f4a' : '#6a6a70';
+  const pulse = (working > 0 || failed || blocked) ? 1 + Math.sin(t * 2) * 0.12 : 1;
+  ctx.globalAlpha = 0.25; ctx.fillStyle = ringColor;
+  ctx.beginPath(); ctx.ellipse(cx, 80, 26 * pulse, 9 * pulse, 0, 0, 7); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // shadow
+  ctx.globalAlpha = 0.3; ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(cx, 78, 18, 6, 0, 0, 7); ctx.fill(); ctx.globalAlpha = 1;
+
+  const brown = '#8a6a44', dark = '#6f5436';
+  // ears
+  for (const dx of [-15, 15]) { ctx.fillStyle = brown; ctx.beginPath(); ctx.arc(cx + dx, cy - 18, 8, 0, 7); ctx.fill(); ctx.fillStyle = dark; ctx.beginPath(); ctx.arc(cx + dx, cy - 18, 4, 0, 7); ctx.fill(); }
+  // body
+  ctx.fillStyle = brown; ctx.beginPath(); ctx.ellipse(cx, cy + 14, 16, 14, 0, 0, 7); ctx.fill();
+  // head
+  ctx.fillStyle = brown; ctx.beginPath(); ctx.arc(cx, cy, 22, 0, 7); ctx.fill();
+  // muzzle
+  ctx.fillStyle = '#e8dcc8'; ctx.beginPath(); ctx.ellipse(cx, cy + 6, 10, 8, 0, 0, 7); ctx.fill();
+  // eyes (blink)
+  blink = (Math.floor(t * 8) % 40 === 0) ? 1 : Math.max(0, blink - 0.2);
+  ctx.fillStyle = '#2a2118';
+  const eo = blink > 0.5 ? 0.5 : 3;
+  ctx.beginPath(); ctx.ellipse(cx - 8, cy - 3, 2.5, eo, 0, 0, 7); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(cx + 8, cy - 3, 2.5, eo, 0, 0, 7); ctx.fill();
+  // nose + mouth
+  ctx.fillStyle = '#2a2118'; ctx.beginPath(); ctx.ellipse(cx, cy + 3, 2.5, 1.8, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = '#2a2118'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(cx, cy + 5); ctx.quadraticCurveTo(cx - 3, cy + 9, cx - 6, cy + 7); ctx.moveTo(cx, cy + 5); ctx.quadraticCurveTo(cx + 3, cy + 9, cx + 6, cy + 7); ctx.stroke();
+
+  // waving paw on poke / activity
+  if (wave > 0) {
+    wave -= 0.04;
+    const a = Math.sin(t * 6) * 0.5;
+    ctx.fillStyle = brown; ctx.save(); ctx.translate(cx + 18, cy + 10); ctx.rotate(-0.6 + a);
+    ctx.beginPath(); ctx.ellipse(0, -6, 5, 8, 0, 0, 7); ctx.fill(); ctx.restore();
+  }
+
+  // agent-count badge (top-right) when there are agents
+  if (agents > 0) {
+    ctx.fillStyle = working > 0 ? '#5a8f4a' : '#6a6a70';
+    ctx.beginPath(); ctx.arc(74, 26, 10, 0, 7); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(agents), 74, 27);
+  }
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+// ── interactions ──
+let downAt = 0, downX = 0, downY = 0;
+addEventListener('mousedown', (e) => { downAt = Date.now(); downX = e.screenX; downY = e.screenY; });
+addEventListener('mouseup', (e) => {
+  const moved = Math.hypot(e.screenX - downX, e.screenY - downY);
+  if (moved < 4 && Date.now() - downAt < 350) { wave = 1; showBubble('双击进办公室'); }   // a poke
+});
+addEventListener('dblclick', () => { invoke('toggle_office'); showBubble('开门～'); });
+
+// ── wire to the office (desktop only) ──
+const tauri = window.__TAURI__;
+function invoke(cmd) { tauri?.core?.invoke?.(cmd).catch(() => {}); }
+if (tauri?.event?.listen) {
+  invoke('start_office_bridge');
+  let lastFailed = false;
+  tauri.event.listen('office-state', (e) => {
+    try {
+      const snap = typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload;
+      const as = snap.agents || [];
+      agents = as.length;
+      working = as.filter(a => !['idle', 'life', 'social'].includes(a.cat) && a.cat !== 'blocked').length;
+      failed = as.some(a => a.state === 'life_failed');
+      blocked = as.some(a => a.cat === 'blocked');
+      if (failed && !lastFailed) { wave = 1; showBubble('有 agent 崩了 ✗', 3000); }
+      lastFailed = failed;
+    } catch {}
+  });
+}
+</script>
+</body>
+</html>

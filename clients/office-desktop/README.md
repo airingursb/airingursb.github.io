@@ -17,6 +17,7 @@ office* — plus desktop-only UX the web can never do.
 | P1 | **Native notifications** on subAgent fail ✗ / blocked ✋ | `react_to_snapshot` → `notify` |
 | P1 | **Always-on-top mini-window** + global shortcut `Cmd/Ctrl+Shift+O` | `toggle_always_on_top` |
 | P1 | **Per-agent metrics** (tools/tokens/result) from transcripts | server `OFFICE_TAIL_TRANSCRIPTS=1` (auto-set) → office renders `⚙38 · 3.2M` |
+| ✨ | **Desktop pet = the entrance** — a small bear sits in the corner (transparent, frameless, always-on-top, draggable); reflects live state (agent-count badge, green ring when working, red alert + bubble on fail); **double-click → opens the office** | `frontend/pet.html` (canvas bear, verified rendering) + `toggle_office` command; pet window shows on launch, office hidden until summoned |
 
 ## Architecture
 

@@ -30,11 +30,33 @@ use tauri_plugin_notification::NotificationExt;
 
 const SSE_ADDR: &str = "127.0.0.1:4500";
 
-/// Frontend calls this once; we stream localhost SSE → `office-state` events,
-/// fire native notifications on fail/blocked, and keep the tray title live.
+static BRIDGE_STARTED: Mutex<bool> = Mutex::new(false);
+
+/// Frontend calls this; we stream localhost SSE → `office-state` events (broadcast
+/// to all windows), notify on fail/blocked, and keep the tray title live. Idempotent
+/// — pet + office windows both call it but only one bridge thread runs.
 #[tauri::command]
 fn start_office_bridge(app: AppHandle) {
+    if let Ok(mut started) = BRIDGE_STARTED.lock() {
+        if *started {
+            return;
+        }
+        *started = true;
+    }
     std::thread::spawn(move || stream_office(app));
+}
+
+/// The pet's entrance action: show/hide the office window.
+#[tauri::command]
+fn toggle_office(app: AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        if w.is_visible().unwrap_or(false) {
+            let _ = w.hide();
+        } else {
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+    }
 }
 
 /// Toggle the mini always-on-top mode (small office in the corner while you code).
@@ -135,7 +157,7 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![start_office_bridge, toggle_always_on_top])
+        .invoke_handler(tauri::generate_handler![start_office_bridge, toggle_office, toggle_always_on_top])
         .setup(|app| {
             spawn_office_server();
 
@@ -148,12 +170,7 @@ fn main() {
                 .title("🐻")
                 .menu(&menu)
                 .on_menu_event(|app, e| match e.id().as_ref() {
-                    "show" => {
-                        if let Some(w) = app.get_webview_window("main") {
-                            let _ = w.show();
-                            let _ = w.set_focus();
-                        }
-                    }
+                    "show" => toggle_office(app.clone()),
                     "top" => {
                         toggle_always_on_top(app.clone());
                     }
