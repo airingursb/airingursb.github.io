@@ -113,6 +113,28 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
   }
   scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate)
 
+  // ── desktop client (Tauri) ──
+  // The Rust backend streams the local agent-office SSE natively and re-emits it
+  // as an 'office-state' event — bypassing the browser block that stops a public
+  // https page from reaching http://localhost (see docs finding A). When running
+  // inside the desktop app we consume that instead of EventSource.
+  const tauri = (window as any).__TAURI__
+  if (tauri?.event?.listen) {
+    let unlisten: (() => void) | null = null
+    tauri.core?.invoke?.('start_office_bridge').catch(() => {})
+    tauri.event.listen('office-state', (e: any) => {
+      try { reconcile(typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload) } catch {}
+    }).then((u: any) => { unlisten = u })
+    cleanup = () => {
+      try { unlisten?.() } catch {}
+      scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
+      stopDemo?.()
+      for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy() }
+      bears.clear()
+    }
+    return
+  }
+
   // ── pick a source ──
   // Explicit override (?agentsrc= / window.__OFFICE_AGENT_URL) wins. Otherwise we
   // only auto-connect on localhost (dev). On the public site there's no local
