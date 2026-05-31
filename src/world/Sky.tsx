@@ -29,35 +29,31 @@ const NIGHT_SKY_VERT = /* glsl */ `
 const NIGHT_SKY_FRAG = /* glsl */ `
   precision highp float;
   uniform vec3 uTop;
-  uniform vec3 uMid;
   uniform vec3 uHorizon;
   varying vec3 vPos;
   void main() {
     // Normalize so we can do vertical gradient via Y direction.
     float y = normalize(vPos).y;            // -1 (down) → 1 (up)
-    // Three-stop gradient: horizon → mid → top
-    float t = clamp(y, -0.05, 1.0);
-    vec3 col;
-    if (t < 0.25) {
-      col = mix(uHorizon, uMid, smoothstep(-0.05, 0.25, t));
-    } else {
-      col = mix(uMid, uTop, smoothstep(0.25, 0.9, t));
-    }
+    // Single smoothstep horizon → top — guarantees continuous derivative.
+    // Two-piecewise version (horizon→mid→top split at t=0.25) had a slope
+    // discontinuity that read as a visible horizon BAND. Single mix is flat
+    // monotonic; no banding artifact possible.
+    float k = smoothstep(-0.10, 0.85, y);
+    vec3 col = mix(uHorizon, uTop, k);
     gl_FragColor = vec4(col, 1.0);
   }
 `
 
 function NightSkydome({ blend }: { blend: number }) {
-  // Tones slightly warm toward late-dusk (blend>0.5 in dusk→night transition
-  // unused here — this component only renders for tod.phase==='night' or
-  // late dusk, so it gets a steady "deep night" look. blend tied to dusk→night
-  // is handled by parent gate.
   void blend
   const geo = useMemo(() => new THREE.SphereGeometry(400, 24, 16), [])
+  // Horizon barely lighter than zenith (subtle subliminal effect of a real
+  // night sky horizon getting a touch of city/moon glow). Previous values
+  // (#2A3160 vs #0A1024) had R-channel 4× brighter at horizon → looked
+  // like a luminous band, not a sky.
   const uniforms = useMemo(() => ({
-    uTop:     { value: new THREE.Color('#0A1024') },   // deep navy, near-black
-    uMid:     { value: new THREE.Color('#1A2348') },   // indigo
-    uHorizon: { value: new THREE.Color('#2A3160') },   // warmer dark blue at horizon
+    uTop:     { value: new THREE.Color('#0A1228') },   // deep navy
+    uHorizon: { value: new THREE.Color('#141A38') },   // barely lighter — subtle hint
   }), [])
   return (
     <mesh geometry={geo} renderOrder={-1000}>
