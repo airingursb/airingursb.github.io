@@ -6,11 +6,11 @@
 <style>
   html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; cursor: grab; }
   body:active { cursor: grabbing; }
-  #wrap { position: relative; width: 96px; height: 120px; }
+  #wrap { position: relative; width: 120px; height: 150px; }
   canvas { display: block; image-rendering: pixelated; }
-  /* speech bubble */
+  /* speech bubble — anchored just above the bear's head, kept inside the window */
   #bubble {
-    position: absolute; left: 50%; top: 4px;
+    position: absolute; left: 50%; top: 36px;
     transform: translateX(-50%) translateY(-100%);
     background: #2c2e36; color: #e6e3dc; font: 10px/1.3 -apple-system, system-ui, monospace;
     padding: 3px 7px; border-radius: 7px; white-space: nowrap; opacity: 0;
@@ -24,12 +24,12 @@
 <body>
 <div id="wrap">
   <div id="bubble"></div>
-  <canvas id="c" width="96" height="120"></canvas>
+  <canvas id="c" width="120" height="150"></canvas>
 </div>
 <script type="module">
 const cv = document.getElementById('c'), ctx = cv.getContext('2d');
 const bubble = document.getElementById('bubble');
-const W = 96, H = 120;
+const W = 120, H = 150;
 ctx.imageSmoothingEnabled = false;   // crisp pixel-art scaling
 
 // the REAL nook bear sprite (bear/asia atlas, 32×48 frames). Same art as the
@@ -55,7 +55,7 @@ function blit(sx, dx, dy) { ctx.drawImage(SHEET, sx, 0, FW, FH, dx, dy, FW * S, 
 function draw() {
   t += 0.05; ctx.clearRect(0, 0, W, H);
   const cx = W / 2, bob = Math.sin(t) * 2;     // idle breathing
-  const footY = 104;                            // sprite bottom sits here
+  const footY = 130;                            // sprite bottom sits here
 
   // status ring under the bear: green pulse working, red failed, amber blocked, grey idle
   const ringColor = failed ? '#d44820' : blocked ? '#d8b048' : working > 0 ? '#5a8f4a' : '#6a6a70';
@@ -74,12 +74,12 @@ function draw() {
 
   if (sheetReady) blit(sx, cx - (FW * S) / 2, footY - FH * S + bob);
 
-  // agent-count badge (top-right) when there are agents
+  // agent-count badge (upper-right of the bear) when there are agents
   if (agents > 0) {
     ctx.fillStyle = working > 0 ? '#5a8f4a' : '#6a6a70';
-    ctx.beginPath(); ctx.arc(76, 22, 10, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.arc(94, 42, 10, 0, 7); ctx.fill();
     ctx.fillStyle = '#fff'; ctx.font = 'bold 11px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(String(agents), 76, 23);
+    ctx.fillText(String(agents), 94, 43);
   }
   requestAnimationFrame(draw);
 }
