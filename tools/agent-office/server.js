@@ -32,6 +32,14 @@ function broadcast(snap) {
   }
 }
 
+// v1.1 — fine-grained subAgent actions straight from Claude Code transcripts.
+// Opt-in (reads ~/.claude): OFFICE_TAIL_TRANSCRIPTS=1
+if (process.env.OFFICE_TAIL_TRANSCRIPTS === '1') {
+  const { TranscriptTailer } = await import('./lib/transcript-tail.js');
+  new TranscriptTailer((ev) => broadcast(office.ingest(ev.kind, ev.payload))).start();
+  process.stdout.write('[office] transcript tail ON — subAgent fine-grained actions from ~/.claude\n');
+}
+
 // periodic tick: idle-drift + remove departed subs
 setInterval(() => {
   const snap = office.tick();
@@ -67,6 +75,12 @@ const server = http.createServer(async (req, res) => {
   // CORS (so an Astro page on :4321 could also connect later)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'X-Kind, Content-Type');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  // Private Network Access: a public https page (ursb.me) reaching this local
+  // server is a "public → private" request. http://localhost is exempt from
+  // mixed-content blocking, but Chrome's PNA still needs this header on the
+  // preflight, else the connection is blocked.
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
   if (req.method === 'OPTIONS') { res.writeHead(204).end(); return; }
 
   // --- event ingest (from Claude Code hooks) ---
