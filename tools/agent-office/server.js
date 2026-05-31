@@ -97,6 +97,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // --- health (used by the desktop client's bootstrap) ---
+  if (req.method === 'GET' && url === '/health') {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ ok: true, agents: office.snapshot().agents.length }));
+    return;
+  }
+
   // --- snapshot (poll / initial state) ---
   if (req.method === 'GET' && url === '/state') {
     res.writeHead(200, { 'content-type': 'application/json' });

@@ -24,3 +24,18 @@ shell hooks 对 subAgent 内部工具事件覆盖不确定(agent_id 是否进 se
 ## C. Tauri 桌面端 spike
 
 承载 A 结论里「桌面端独有优势」:原生连本地(绕开浏览器拦截)、读 transcript、自动装 hooks、托盘常驻、原生通知、置顶小窗。spike 目标:最小 Tauri 壳加载 office 场景 + 原生 HTTP/SSE 连本地服务跑通。
+
+## P0 / P1 进展（2026-05-31）
+
+桌面端从 spike 推进到「完整可编译的 Tauri v2 应用 + 两个可运行证明」：
+
+- **P0 原生连 localhost**：`clients/office-desktop/sse-probe`（std-only，`cargo run` 实测流到本地 office 状态 ✅）。
+- **P0 零配置启服务**：`clients/office-desktop/spawn-check`（`cargo run` 实测拉起 agent-office 服务 + `/health`+`/state` 可达 ✅）。给服务加了 `/health` 路由。
+- **P0 完整 app**：`src-tauri/main.rs` —— 启动即 spawn 服务（带 transcript tail）+ SSE 桥 emit `office-state` + 系统托盘(显示/置顶/退出)+ 关窗收起到托盘 + 托盘标题显示实时 agent 数。`cargo check` 通过 ✅（整套 Tauri v2 API + 插件 + capabilities + conf 编译干净）。
+- **P1 原生通知**：subAgent 失败 ✗ / 卡权限 ✋ 首次出现即系统通知。
+- **P1 置顶小窗**：`toggle_always_on_top` + 全局快捷键 `Cmd/Ctrl+Shift+O`。
+- **P1 per-agent 指标**（桌面独有，已 web 验证渲染）：transcript tail 解析每 agent 的 token(含 cache)/工具数分布/模型/时长/最终产出 → office 里 Bear 下方显示 `⚙38 · 3.2M`。
+
+**关键架构修正**:stable Tauri v2 不再支持把 Tauri API 注入远程页(`dangerousRemoteDomainIpcAccess` 已移除)。所以生产路径确定为 **把 office 前端打包进 app**（`withGlobalTauri:true` + 本地 `frontendDist`）—— 离线、更快、无远程 IPC 风险。当前 conf 仍指远程 URL 作为 spike 占位。
+
+**GUI 仍需真跑**(`cargo tauri dev`,要 tauri-cli + 此环境看不了原生窗口);但最难的两块(原生 SSE、零配置启服务)已独立证明可运行,整 app `cargo check` 通过。下一步:打包本地前端 → 真跑窗口 → 验证 `office-state` 事件到达。

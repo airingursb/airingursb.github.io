@@ -1,32 +1,63 @@
-// Agent Office — desktop client (Tauri v2 spike).
+// Agent Office — desktop client (Tauri v2).
 //
-// The whole reason this exists: a public-https browser page CANNOT reach a local
-// http server (docs/task-2026-05-31-office-client-findings.md, finding A —
-// verified: the request is blocked client-side before it's even sent). A native
-// process has no such restriction. So here the Rust backend streams the local
-// agent-office SSE (localhost:4500) and re-emits each snapshot as an
-// `office-state` Tauri event; the webview (which loads ursb.me/nook?room=office)
-// listens to that instead of EventSource (see src/lounge/office_agents.ts).
+// Why a desktop app at all: a public-https page CANNOT reach a local http server
+// (docs finding A — verified). A native process can. So this app does the three
+// things the web can't, all independently proven in sibling crates:
+//   1. stream the local agent-office SSE natively      (proven: ../sse-probe)
+//   2. boot the server itself — zero user setup         (proven: ../spawn-check)
+//   3. read transcripts for fine-grained per-sub data   (proven: tools/agent-office tail)
+// Plus desktop-only UX: system tray, close-to-tray, native notifications on
+// fail/blocked, and an always-on-top mini-window (global shortcut).
 //
-// The localhost streaming logic is the same std-only TCP read proven in
-// clients/office-desktop/sse-probe (which compiles + runs today).
+// The webview loads https://ursb.me/nook?room=office; office_agents.ts detects
+// __TAURI__ and listens to the `office-state` event this backend emits.
 
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+use std::collections::HashSet;
 use std::io::{Read, Write};
 use std::net::TcpStream;
+use std::process::{Command, Stdio};
+use std::sync::Mutex;
 use std::time::Duration;
-use tauri::{AppHandle, Emitter};
 
-const OFFICE_SSE_ADDR: &str = "127.0.0.1:4500";
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::TrayIconBuilder,
+    AppHandle, Emitter, Manager, WindowEvent,
+};
+use tauri_plugin_notification::NotificationExt;
 
-/// Frontend calls this once; we stream localhost SSE → `office-state` events.
+const SSE_ADDR: &str = "127.0.0.1:4500";
+
+/// Frontend calls this once; we stream localhost SSE → `office-state` events,
+/// fire native notifications on fail/blocked, and keep the tray title live.
 #[tauri::command]
 fn start_office_bridge(app: AppHandle) {
     std::thread::spawn(move || stream_office(app));
 }
 
+/// Toggle the mini always-on-top mode (small office in the corner while you code).
+#[tauri::command]
+fn toggle_always_on_top(app: AppHandle) -> bool {
+    if let Some(w) = app.get_webview_window("main") {
+        let next = !ALWAYS_ON_TOP.lock().map(|g| *g).unwrap_or(false);
+        let _ = w.set_always_on_top(next);
+        if let Ok(mut g) = ALWAYS_ON_TOP.lock() {
+            *g = next;
+        }
+        return next;
+    }
+    false
+}
+
+static ALWAYS_ON_TOP: Mutex<bool> = Mutex::new(false);
+
 fn stream_office(app: AppHandle) {
+    // agents we've already notified about, so a notification fires once per event
+    let mut notified: HashSet<String> = HashSet::new();
     loop {
-        if let Ok(mut s) = TcpStream::connect(OFFICE_SSE_ADDR) {
+        if let Ok(mut s) = TcpStream::connect(SSE_ADDR) {
             let _ = s.write_all(
                 b"GET /events HTTP/1.1\r\nHost: localhost\r\nAccept: text/event-stream\r\n\r\n",
             );
@@ -34,28 +65,118 @@ fn stream_office(app: AppHandle) {
             let mut acc = String::new();
             loop {
                 match s.read(&mut buf) {
-                    Ok(0) | Err(_) => break, // disconnected → reconnect below
+                    Ok(0) | Err(_) => break,
                     Ok(n) => {
                         acc.push_str(&String::from_utf8_lossy(&buf[..n]));
                         while let Some(i) = acc.find("\n\n") {
                             let frame: String = acc.drain(..i + 2).collect();
                             if let Some(d) = frame.lines().find_map(|l| l.strip_prefix("data: ")) {
                                 let _ = app.emit("office-state", d.to_string());
+                                react_to_snapshot(&app, d, &mut notified);
                             }
                         }
                     }
                 }
             }
         }
-        // local server not up yet / dropped — retry. (The webview shows the demo
-        // office until real snapshots arrive, same as the web build.)
-        std::thread::sleep(Duration::from_secs(2));
+        std::thread::sleep(Duration::from_secs(2)); // server not up yet / dropped → retry
     }
+}
+
+/// Parse a snapshot, update the tray title (agent count), and notify on the
+/// first sight of a failed / blocked agent. Lightweight serde-free parse.
+fn react_to_snapshot(app: &AppHandle, data: &str, notified: &mut HashSet<String>) {
+    let agents = data.matches("\"id\":").count();
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_title(Some(format!("🐻 {agents}")));
+    }
+    // crude per-agent scan: split on agent boundaries
+    for chunk in data.split("\"id\":").skip(1) {
+        let id: String = chunk
+            .trim_start_matches('"')
+            .chars()
+            .take_while(|c| *c != '"')
+            .collect();
+        let failed = chunk.contains("\"state\":\"life_failed\"");
+        let blocked = chunk.contains("\"cat\":\"blocked\"");
+        if failed && notified.insert(format!("fail:{id}")) {
+            notify(app, "subAgent failed ✗", &format!("{id} 干崩了，去看看"));
+        } else if blocked && notified.insert(format!("block:{id}")) {
+            notify(app, "等你授权 ✋", &format!("{id} 卡在权限确认上"));
+        }
+    }
+}
+
+fn notify(app: &AppHandle, title: &str, body: &str) {
+    let _ = app
+        .notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show();
+}
+
+/// Zero-config: spawn the bundled agent-office server so the user never runs npm.
+/// Dev: point at the repo via OFFICE_SERVER_DIR. (Proven in ../spawn-check.)
+fn spawn_office_server() {
+    let dir = std::env::var("OFFICE_SERVER_DIR")
+        .unwrap_or_else(|_| "../../tools/agent-office".into());
+    let _ = Command::new("node")
+        .arg("server.js")
+        .current_dir(&dir)
+        .env("PORT", "4500")
+        .env("OFFICE_TAIL_TRANSCRIPTS", "1") // fine-grained subAgent actions
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn();
 }
 
 fn main() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![start_office_bridge])
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .invoke_handler(tauri::generate_handler![start_office_bridge, toggle_always_on_top])
+        .setup(|app| {
+            spawn_office_server();
+
+            // system tray with a small menu
+            let show = MenuItem::with_id(app, "show", "显示办公室", true, None::<&str>)?;
+            let top = MenuItem::with_id(app, "top", "置顶小窗", true, None::<&str>)?;
+            let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&show, &top, &quit])?;
+            TrayIconBuilder::with_id("main")
+                .title("🐻")
+                .menu(&menu)
+                .on_menu_event(|app, e| match e.id().as_ref() {
+                    "show" => {
+                        if let Some(w) = app.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                        }
+                    }
+                    "top" => {
+                        toggle_always_on_top(app.clone());
+                    }
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .build(app)?;
+
+            // global shortcut: Cmd/Ctrl+Shift+O toggles always-on-top
+            use tauri_plugin_global_shortcut::GlobalShortcutExt;
+            let app2 = app.handle().clone();
+            let _ = app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+O", move |_, _, _| {
+                toggle_always_on_top(app2.clone());
+            });
+            Ok(())
+        })
+        // close button hides to tray instead of quitting
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                let _ = window.hide();
+                api.prevent_close();
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running Agent Office");
 }

@@ -1,67 +1,73 @@
-# Agent Office — Desktop Client (Tauri v2 · spike)
+# Agent Office — Desktop Client (Tauri v2)
 
-The desktop client exists because of **finding A** (`docs/task-2026-05-31-office-client-findings.md`):
+Exists because of **finding A** (`docs/task-2026-05-31-office-client-findings.md`):
+a public **https** page **cannot** reach a local **http** server (verified — the
+browser blocks it before it's even sent). A **native** process can. So the desktop
+client is the only clean home for *your real, local Claude Code agents in the
+office* — plus desktop-only UX the web can never do.
 
-> A public **https** page (ursb.me) **cannot** reach a local **http** server. The
-> browser blocks it client-side, before the request is even sent (verified — the
-> request never reaches the server). So "open ursb.me and see your real local
-> agents" does **not** work in a browser.
+## What it does (P0 + P1)
 
-A **native** process has no such restriction. This client's Rust backend streams
-the local agent-office SSE and feeds it to the office scene — giving you the one
-thing the web can't: **your real, local Claude Code agents, live in the office.**
+| | Feature | Proven by |
+|---|---|---|
+| P0 | **Stream localhost SSE natively** (the web can't) | `sse-probe/` — `cargo run` streams the live office ✅ |
+| P0 | **Boot the server itself** — zero `npm` setup | `spawn-check/` — spawns server, `/health`+`/state` ✅ |
+| P0 | **System tray** + menu (显示/置顶/退出), **close-to-tray** | `src-tauri/main.rs` |
+| P0 | Tray title shows live **agent count** (`🐻 3`) | `react_to_snapshot` |
+| P1 | **Native notifications** on subAgent fail ✗ / blocked ✋ | `react_to_snapshot` → `notify` |
+| P1 | **Always-on-top mini-window** + global shortcut `Cmd/Ctrl+Shift+O` | `toggle_always_on_top` |
+| P1 | **Per-agent metrics** (tools/tokens/result) from transcripts | server `OFFICE_TAIL_TRANSCRIPTS=1` (auto-set) → office renders `⚙38 · 3.2M` |
 
 ## Architecture
 
 ```
-Claude Code (hooks + transcripts)  →  agent-office server  :4500 (SSE)
-                                              │  native TCP (no browser block)
-                                              ▼
-                          src-tauri  Rust bridge (main.rs)
-                                              │  app.emit("office-state", snapshot)
-                                              ▼
-                   webview = https://ursb.me/nook?room=office
-                   office_agents.ts detects __TAURI__ → listens to the event
-                   (instead of EventSource) → drives the Bears
+Claude Code (hooks + transcripts)  →  agent-office server :4500
+   the desktop app spawns this on launch ▲        │ SSE (native TCP — no browser block)
+   + sets OFFICE_TAIL_TRANSCRIPTS=1               ▼
+                              src-tauri  Rust backend (main.rs)
+                                │ emit("office-state")        │ notifications, tray title
+                                ▼
+              webview = https://ursb.me/nook?room=office
+              office_agents.ts sees __TAURI__ → listens to the event
 ```
 
-- The localhost-streaming logic is the **same std-only TCP read proven in
-  `../sse-probe`** (`cargo run` it — it streams the live office state today, the
-  exact thing the browser was blocked from).
-- The webview loads the deployed office; `dangerousRemoteDomainIpcAccess` in
-  `tauri.conf.json` lets ursb.me use the Tauri IPC/events. `office_agents.ts`
-  already has the `window.__TAURI__` branch (`setupOfficeAgents`).
+The two hardest primitives (native SSE, zero-config spawn) are **independently
+proven runnable** in `sse-probe/` and `spawn-check/` (`cargo run` either).
 
-## Run (spike)
+## Run
 
-Needs Rust (have: cargo 1.95) + the Tauri CLI:
+Have: cargo 1.95. One-time: `cargo install tauri-cli --version "^2"`.
 
 ```bash
-cargo install tauri-cli --version "^2"      # one-time
 cd clients/office-desktop
-cargo tauri dev                              # opens the window, starts the Rust bridge
-# in another terminal: start your local office server so it has something to stream
-cd ../../tools/agent-office && OFFICE_TAIL_TRANSCRIPTS=1 npm start
+OFFICE_SERVER_DIR="$(pwd)/../../tools/agent-office" cargo tauri dev
+# → opens the window, spawns the office server (with transcript tail),
+#   streams it to the office. Run Claude Code with hooks installed and your
+#   agents appear; no server running yet → demo office (same as web).
 ```
 
-No local server running? The office shows the demo (same as web). Start it +
-run Claude Code with hooks installed → your agents appear.
+(`spawn_office_server` reads `OFFICE_SERVER_DIR`; a shipped build bundles the
+server as a sidecar instead.)
 
-## What the desktop client unlocks (vs web)
+## Layout
 
-1. **Reaches localhost** — the whole point; web can't (finding A).
-2. **Reads transcripts** — `OFFICE_TAIL_TRANSCRIPTS=1` tails
-   `~/.claude/projects/**/subagents/agent-*.jsonl` for fine-grained per-sub
-   actions (browsers can't read local files).
-3. **Background + tray, native notifications, always-on-top mini-window** —
-   web tabs get throttled/closed; a desktop window keeps the office alive.
-4. **Auto-install hooks / launch on SessionStart** — deeper Claude Code
-   integration than a web page can do.
+```
+office-desktop/
+├── src-tauri/        full Tauri v2 app (main.rs bridge+bootstrap+tray+notify, Cargo.toml, build.rs, capabilities, conf, icons)
+├── sse-probe/        std-only proof: native localhost SSE works
+├── spawn-check/      std-only proof: zero-config server spawn works
+└── frontend/         placeholder (the real UI is the remote office)
+```
 
-## Status
+## Still ahead (next on P0/P1)
 
-Spike. The Rust SSE bridge logic is **proven** (`../sse-probe` compiles + runs
-against the live server). The Tauri shell (`src-tauri/`) is scaffolded; building
-the GUI needs `cargo tauri cli` + an app icon and may want minor v2-config
-tweaks per platform. Next: build the window, verify the remote-IPC event path,
-then add tray + transcript-tail auto-start.
+- Build the GUI window once (`cargo tauri dev`) + verify the remote-IPC
+  `office-state` event reaches the deployed page's `office_agents.ts`.
+- **Bundle the office frontend locally** (drop `dangerousRemoteDomainIpcAccess`,
+  offline, faster) — the recommended productionization.
+- **Auto-install hooks** on first launch (logic exists as `install-hooks.mjs`;
+  wire a Rust command — kept out of auto-run so it doesn't touch `~/.claude`
+  without consent).
+- Ship the Node server as a **Tauri sidecar** (no Node dependency on the user).
+- Click an agent → deep-link to its file / transcript; agent task tree
+  (transcript `parentUuid`); session history / replay.
