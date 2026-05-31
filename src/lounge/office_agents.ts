@@ -126,32 +126,19 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
   }
   scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate)
 
-  // ── desktop client (Tauri) ──
-  // The Rust backend streams the local agent-office SSE natively and re-emits it
-  // as an 'office-state' event — bypassing the browser block that stops a public
-  // https page from reaching http://localhost (see docs finding A). When running
-  // inside the desktop app we consume that instead of EventSource.
-  const tauri = (window as any).__TAURI__
-  if (tauri?.event?.listen) {
-    let unlisten: (() => void) | null = null
-    tauri.core?.invoke?.('start_office_bridge').catch(() => {})
-    tauri.event.listen('office-state', (e: any) => {
-      try { reconcile(typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload) } catch {}
-    }).then((u: any) => { unlisten = u })
-    cleanup = () => {
-      try { unlisten?.() } catch {}
-      scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
-      stopDemo?.()
-      for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy() }
-      bears.clear()
-    }
-    return
+  const teardownBears = () => {
+    scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
+    stopDemo?.()
+    for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy() }
+    bears.clear()
   }
 
   // ── pick a source ──
-  // Explicit override (?agentsrc= / window.__OFFICE_AGENT_URL) wins. Otherwise we
-  // only auto-connect on localhost (dev). On the public site there's no local
-  // server, so we go straight to the demo — no connection-refused console spam.
+  // PREFER a direct SSE connection whenever there's a local server (explicit
+  // ?agentsrc= or a localhost page). Only fall back to the Tauri bridge when the
+  // page is a bundled frontend with NO localhost server. (A Tauri webview that
+  // loads a localhost URL still gets __TAURI__ injected, but an external page
+  // can't invoke commands — so taking the bridge branch there silently fails.)
   let explicit: string | null = null
   let isLocal = false
   try {
@@ -160,26 +147,31 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
   } catch {}
   const src = explicit || (isLocal ? 'http://localhost:4500/events' : null)
 
-  let demoTimer: Phaser.Time.TimerEvent | null = null
   if (src) {
     try {
       es = new EventSource(src)
       es.onmessage = (e) => { try { reconcile(JSON.parse(e.data)) } catch {} }
-      // close on first failure (no retry spam) and fall back to the demo
       es.onerror = () => { if (!gotData) { try { es?.close() } catch {} ; es = null; startDemo(reconcile) } }
     } catch { startDemo(reconcile) }
-  } else {
-    demoTimer = scene.time.delayedCall(250, () => startDemo(reconcile))
+    cleanup = () => { try { es?.close() } catch {} ; teardownBears() }
+    return
   }
 
-  cleanup = () => {
-    try { es?.close() } catch {}
-    scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
-    demoTimer?.remove(false)
-    stopDemo?.()
-    for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy() }
-    bears.clear()
+  // ── bundled-frontend desktop fallback: the Rust bridge re-emits the SSE ──
+  const tauri = (window as any).__TAURI__
+  if (tauri?.event?.listen) {
+    let unlisten: (() => void) | null = null
+    tauri.core?.invoke?.('start_office_bridge').catch(() => {})
+    tauri.event.listen('office-state', (e: any) => {
+      try { reconcile(typeof e.payload === 'string' ? JSON.parse(e.payload) : e.payload) } catch {}
+    }).then((u: any) => { unlisten = u })
+    cleanup = () => { try { unlisten?.() } catch {} ; teardownBears() }
+    return
   }
+
+  // ── public web: no local server, no bridge → demo ──
+  const demoTimer = scene.time.delayedCall(250, () => startDemo(reconcile))
+  cleanup = () => { demoTimer?.remove(false); teardownBears() }
 }
 
 let cleanup: (() => void) | null = null

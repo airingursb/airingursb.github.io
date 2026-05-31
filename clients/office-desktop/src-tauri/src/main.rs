@@ -9,8 +9,13 @@
 // Plus desktop-only UX: system tray, close-to-tray, native notifications on
 // fail/blocked, and an always-on-top mini-window (global shortcut).
 //
-// The webview loads https://ursb.me/nook?room=office; office_agents.ts detects
-// __TAURI__ and listens to the `office-state` event this backend emits.
+// The office window loads http://localhost:4500/nook?room=office — the agent-office
+// server serves the built nook site, so the page and the SSE stream are SAME-ORIGIN.
+// office_agents.ts then connects EventSource directly (a Tauri webview on a localhost
+// URL still gets __TAURI__ injected, but an EXTERNAL-url window can't invoke commands,
+// so the direct-SSE path is the one that actually works here). The Rust bridge below
+// is the secondary consumer: it streams the same SSE for the tray title + native
+// fail/blocked notifications, independent of whatever the webview is doing.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -24,8 +29,22 @@ use std::time::Duration;
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Emitter, Manager, WindowEvent,
+    AppHandle, Emitter, Manager, WebviewUrl, WebviewWindowBuilder, WindowEvent,
 };
+
+// The office window loads the LOCAL nook build (localhost:4321) so its hostname is
+// "localhost" → office_agents.ts connects to localhost:4500 SSE → the pretty office
+// renders the REAL agents. This init script (runs before the page) pre-seeds nook's
+// onboarding localStorage so the species-picker / name / tour don't block the view.
+const OFFICE_URL: &str = "http://localhost:4500/nook?room=office";
+const SKIP_ONBOARDING: &str = r#"
+try {
+  localStorage.setItem('lounge_species_v1','bear');
+  localStorage.setItem('lounge_display_name','Airing');
+  localStorage.setItem('lounge_name_prompted','1');
+  localStorage.setItem('lounge_onboarding_done_v1','1');
+} catch (e) {}
+"#;
 use tauri_plugin_notification::NotificationExt;
 
 const SSE_ADDR: &str = "127.0.0.1:4500";
@@ -160,6 +179,19 @@ fn main() {
         .invoke_handler(tauri::generate_handler![start_office_bridge, toggle_office, toggle_always_on_top])
         .setup(|app| {
             spawn_office_server();
+
+            // the office window: local nook build + onboarding pre-seeded, hidden
+            // until the pet summons it (double-click → toggle_office → show). WKWebView
+            // defers loading a hidden window's page until first show, so office_agents
+            // connects SSE on the first summon. (Created here, not in conf, so we can
+            // set the initialization_script.)
+            WebviewWindowBuilder::new(app, "main", WebviewUrl::External(OFFICE_URL.parse().unwrap()))
+                .title("Agent Office")
+                .inner_size(960.0, 680.0)
+                .min_inner_size(640.0, 480.0)
+                .visible(false)
+                .initialization_script(SKIP_ONBOARDING)
+                .build()?;
 
             // system tray with a small menu
             let show = MenuItem::with_id(app, "show", "显示办公室", true, None::<&str>)?;

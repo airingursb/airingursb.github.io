@@ -46,18 +46,34 @@ setInterval(() => {
   broadcast(snap);
 }, 2000).unref?.();
 
-const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json' };
+const MIME = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.json': 'application/json', '.svg': 'image/svg+xml', '.woff2': 'font/woff2', '.woff': 'font/woff', '.webmanifest': 'application/manifest+json', '.ico': 'image/x-icon', '.webp': 'image/webp', '.jpg': 'image/jpeg', '.ogg': 'audio/ogg', '.mp3': 'audio/mpeg' };
 
-function serveStatic(req, res) {
-  let rel = decodeURIComponent((req.url || '/').split('?')[0]);
-  if (rel === '/') rel = '/index.html';
-  const filePath = path.join(PUBLIC_DIR, path.normalize(rel));
-  if (!filePath.startsWith(PUBLIC_DIR)) { res.writeHead(403).end(); return; }
+// Also serve the built nook site (dist/) so the office window can load the REAL
+// nook office from THIS origin — page + SSE same-origin (no cross-origin localhost,
+// which the desktop WKWebView blocks). e.g. localhost:4500/nook?room=office.
+const NOOK_DIST = process.env.OFFICE_NOOK_DIST || path.resolve(__dirname, '..', '..', 'dist');
+
+function sendFile(res, filePath) {
   fs.readFile(filePath, (err, data) => {
     if (err) { res.writeHead(404).end('not found'); return; }
     res.writeHead(200, { 'content-type': MIME[path.extname(filePath)] || 'application/octet-stream' });
     res.end(data);
   });
+}
+
+function serveStatic(req, res) {
+  let rel = decodeURIComponent((req.url || '/').split('?')[0]);
+  if (rel === '/') rel = '/index.html';
+  // 1) the placeholder office page under ./public
+  const pub = path.join(PUBLIC_DIR, path.normalize(rel));
+  if (pub.startsWith(PUBLIC_DIR) && fs.existsSync(pub) && fs.statSync(pub).isFile()) { sendFile(res, pub); return; }
+  // 2) fall through to the built nook site (dist/) — /nook → dist/nook/index.html
+  let distPath = path.join(NOOK_DIST, path.normalize(rel));
+  if (distPath.startsWith(NOOK_DIST)) {
+    try { if (fs.statSync(distPath).isDirectory()) distPath = path.join(distPath, 'index.html'); } catch {}
+    if (fs.existsSync(distPath)) { sendFile(res, distPath); return; }
+  }
+  res.writeHead(404).end('not found');
 }
 
 function readBody(req) {
