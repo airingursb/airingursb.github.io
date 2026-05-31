@@ -214,6 +214,17 @@ export class Office {
       case 'subagent_start':
         if (aid) this._apply(this._bindOrCreateSub(aid, atype), 'life_startup');
         break;
+      case 'metrics': {   // desktop-only: per-agent tokens/tools/result from transcript tail
+        if (!aid) break;
+        const a = this._bindOrCreateSub(aid, atype);
+        a.metrics = {
+          tools: payload.tools ?? 0, byTool: payload.byTool ?? {},
+          inTokens: payload.inTokens ?? 0, outTokens: payload.outTokens ?? 0,
+          model: payload.model ?? null, result: payload.result ?? null,
+          durationMs: payload.durationMs ?? 0,
+        };
+        break;
+      }
       case 'tool': {
         const name = payload.tool_name;
         if (aid) {
@@ -339,7 +350,8 @@ export class Office {
         id: a.id, kind: a.kind, parentId: a.parentId, label: a.label, agentType: a.agentType ?? null,
         species: a.species, accent: a.accent, state: a.stateId, cat: a.cat, emoji: a.emoji,
         anim: a.anim, zone: a.zone, detail: a.detail, fiction: !!a.fiction, speaking: !!a.speaking,
-        socialPhase: a.socialPhase ?? null, partner: a.partner ?? null, exitReason: a.exitReason ?? null, since: a.since,
+        socialPhase: a.socialPhase ?? null, partner: a.partner ?? null, exitReason: a.exitReason ?? null,
+        metrics: a.metrics ?? null, since: a.since,
       })),
     };
   }

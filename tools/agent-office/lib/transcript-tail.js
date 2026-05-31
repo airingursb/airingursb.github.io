@@ -28,18 +28,33 @@ export function agentIdFromPath(p) {
 
 /** Parse one transcript line → 0+ normalized tool events. Pure / testable. */
 export function parseLine(line, agentId) {
+  const e = parseEntry(line);
+  if (!e) return [];
+  return e.tools.map((t) => ({ kind: 'tool', payload: { agent_id: agentId, tool_name: t.name, tool_input: t.input } }));
+}
+
+/**
+ * Parse one assistant transcript entry into the rich info the desktop can show
+ * (which a browser can't get): tool calls, token usage (incl. cache), the model,
+ * a timestamp, and the entry's text (the last text entry = the subAgent's result).
+ * Returns null for non-assistant / unparseable lines.
+ */
+export function parseEntry(line) {
   let o;
-  try { o = JSON.parse(line); } catch { return []; }
-  if (o.type !== 'assistant') return [];
-  const content = o.message?.content;
-  if (!Array.isArray(content)) return [];
-  const out = [];
-  for (const c of content) {
-    if (c && c.type === 'tool_use' && c.name) {
-      out.push({ kind: 'tool', payload: { agent_id: agentId, tool_name: c.name, tool_input: c.input || {} } });
-    }
-  }
-  return out;
+  try { o = JSON.parse(line); } catch { return null; }
+  if (o.type !== 'assistant') return null;
+  const content = Array.isArray(o.message?.content) ? o.message.content : [];
+  const tools = content.filter((c) => c && c.type === 'tool_use' && c.name).map((c) => ({ name: c.name, input: c.input || {} }));
+  const text = content.filter((c) => c && c.type === 'text' && c.text).map((c) => c.text).join('\n').trim();
+  const u = o.message?.usage || null;
+  return {
+    tools,
+    text: text || null,
+    inTokens: u ? (u.input_tokens || 0) + (u.cache_read_input_tokens || 0) + (u.cache_creation_input_tokens || 0) : 0,
+    outTokens: u ? (u.output_tokens || 0) : 0,
+    model: o.message?.model || null,
+    ts: o.timestamp ? Date.parse(o.timestamp) : null,
+  };
 }
 
 export class TranscriptTailer {
@@ -48,6 +63,7 @@ export class TranscriptTailer {
     this.dir = dir;
     this.pollMs = pollMs;
     this.offsets = new Map();   // file -> byte offset already consumed
+    this.acc = new Map();       // agentId -> running metrics accumulator
     this.timer = null;
   }
 
@@ -85,9 +101,28 @@ export class TranscriptTailer {
     } catch { return; }
     this.offsets.set(file, size);
     const agentId = agentIdFromPath(file);
+    if (!agentId) return;
+    let m = this.acc.get(agentId);
+    if (!m) { m = { tools: 0, byTool: {}, inTokens: 0, outTokens: 0, model: null, result: null, firstTs: null, lastTs: null }; this.acc.set(agentId, m); }
+    let changed = false;
     for (const line of buf.toString('utf8').split('\n')) {
       if (!line.trim()) continue;
-      for (const ev of parseLine(line, agentId)) this.onEvent(ev);
+      const e = parseEntry(line);
+      if (!e) continue;
+      for (const t of e.tools) {
+        this.onEvent({ kind: 'tool', payload: { agent_id: agentId, tool_name: t.name, tool_input: t.input } });
+        m.tools++; m.byTool[t.name] = (m.byTool[t.name] || 0) + 1; changed = true;
+      }
+      if (e.inTokens || e.outTokens) { m.inTokens += e.inTokens; m.outTokens += e.outTokens; changed = true; }
+      if (e.model && !m.model) { m.model = e.model; changed = true; }
+      if (e.text) { m.result = e.text; changed = true; }   // last text wins = the result
+      if (e.ts) { m.firstTs = m.firstTs ? Math.min(m.firstTs, e.ts) : e.ts; m.lastTs = Math.max(m.lastTs || 0, e.ts); changed = true; }
+    }
+    if (changed) {
+      this.onEvent({ kind: 'metrics', payload: {
+        agent_id: agentId, tools: m.tools, byTool: { ...m.byTool }, inTokens: m.inTokens, outTokens: m.outTokens,
+        model: m.model, result: m.result, durationMs: m.firstTs && m.lastTs ? m.lastTs - m.firstTs : 0,
+      } });
     }
   }
 

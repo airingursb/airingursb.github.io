@@ -10,10 +10,11 @@ import Phaser from 'phaser'
 import { Bear } from './bear'
 import { SPECIES, type Species, type Region } from './config'
 
+type AgentMetrics = { tools: number; byTool?: Record<string, number>; inTokens: number; outTokens: number; model?: string | null; result?: string | null; durationMs?: number }
 type AgentSnap = {
   id: string; kind: 'main' | 'sub'; label: string; species?: string;
   state: string; cat: string; emoji?: string; anim?: string; zone: string;
-  detail?: string; fiction?: boolean
+  detail?: string; fiction?: boolean; metrics?: AgentMetrics | null
 }
 
 const REGION: Region = 'asia'   // office agents aren't geo-located; pick a stocked atlas
@@ -30,7 +31,14 @@ const DESK_SEATS = (() => {
   return s
 })()
 
-type Tracked = { bear: Bear; bubble: Phaser.GameObjects.Container & { setLabel?: (s: string, fiction: boolean) => void }; tx: number; ty: number; anim: string; slot: number | null }
+type Tracked = { bear: Bear; bubble: Phaser.GameObjects.Container & { setLabel?: (s: string, fiction: boolean) => void }; metrics: Phaser.GameObjects.Text; tx: number; ty: number; anim: string; slot: number | null }
+
+// compact token count: 3_190_760 → "3.2M", 45_000 → "45k"
+function fmtTok(n: number): string {
+  if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M'
+  if (n >= 1e3) return Math.round(n / 1e3) + 'k'
+  return String(n)
+}
 
 // a compact "what am I doing" speech bubble (emoji + detail); fiction reads dimmed
 function makeBubble(scene: Phaser.Scene): Phaser.GameObjects.Container & { setLabel?: (s: string, f: boolean) => void } {
@@ -84,16 +92,20 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
       const tgt = target(a)
       if (!t) {
         const b = new Bear(scene, tgt.x, tgt.y, REGION, speciesOf(a))
-        t = { bear: b, bubble: makeBubble(scene), tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null }
+        const metrics = scene.add.text(tgt.x, tgt.y, '', { fontFamily: 'monospace', fontSize: '7px', color: '#8ab0c8' }).setOrigin(0.5, 0).setDepth(7)
+        t = { bear: b, bubble: makeBubble(scene), metrics, tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null }
         bears.set(a.id, t)
       }
       t.tx = tgt.x; t.ty = tgt.y; t.anim = a.anim || 'idle'
       t.bear.setDisplayName(a.label, { prefix: a.kind === 'main' ? '★ ' : '', color: a.kind === 'main' ? '#d8b048' : undefined })
       t.bubble.setLabel?.(`${a.emoji || ''} ${a.detail || ''}`.trim(), !!a.fiction)
+      // desktop-only: per-agent metrics from transcript tail (⚙tools · tokens)
+      const m = a.metrics
+      t.metrics.setText(m ? `⚙${m.tools} · ${fmtTok((m.inTokens || 0) + (m.outTokens || 0))}` : '').setVisible(!!m)
       t.bear.walkTo(tgt.x, tgt.y)
     }
     for (const [id, t] of [...bears.entries()]) {
-      if (!seen.has(id)) { t.bear.destroy(); t.bubble.destroy(); bears.delete(id); slots.delete(id) }
+      if (!seen.has(id)) { t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy(); bears.delete(id); slots.delete(id) }
     }
   }
 
@@ -103,6 +115,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
       t.bear.update(dt)
       const sp = (t.bear as any).sprite
       t.bubble.setPosition(sp.x, sp.y - 30)   // float above the name label
+      t.metrics.setPosition(sp.x, sp.y + 16)  // below the name label
       const dx = sp.x - t.tx, dy = sp.y - t.ty
       if (dx * dx + dy * dy < 16) {           // arrived → apply static pose
         if (t.anim === 'sit') t.bear.playSit()
@@ -129,7 +142,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
       try { unlisten?.() } catch {}
       scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
       stopDemo?.()
-      for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy() }
+      for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy() }
       bears.clear()
     }
     return
@@ -164,7 +177,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
     scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
     demoTimer?.remove(false)
     stopDemo?.()
-    for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy() }
+    for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy() }
     bears.clear()
   }
 }
