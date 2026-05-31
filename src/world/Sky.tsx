@@ -28,32 +28,27 @@ const NIGHT_SKY_VERT = /* glsl */ `
 `
 const NIGHT_SKY_FRAG = /* glsl */ `
   precision highp float;
-  uniform vec3 uTop;
-  uniform vec3 uHorizon;
-  varying vec3 vPos;
+  uniform vec3 uColor;
   void main() {
-    // Normalize so we can do vertical gradient via Y direction.
-    float y = normalize(vPos).y;            // -1 (down) → 1 (up)
-    // Single smoothstep horizon → top — guarantees continuous derivative.
-    // Two-piecewise version (horizon→mid→top split at t=0.25) had a slope
-    // discontinuity that read as a visible horizon BAND. Single mix is flat
-    // monotonic; no banding artifact possible.
-    float k = smoothstep(-0.10, 0.85, y);
-    vec3 col = mix(uHorizon, uTop, k);
-    gl_FragColor = vec4(col, 1.0);
+    // Uniform color — no gradient at all. The horizon "band" was never
+    // the skydome shading; it was distant geometry getting fogged to a
+    // DIFFERENT color than the sky. Solve: skydome and fog use the
+    // SAME color (NIGHT_COLOR, see export below). Distant trees then
+    // fade into the sky cleanly, no visible boundary possible.
+    gl_FragColor = vec4(uColor, 1.0);
   }
 `
+
+// Single source of truth for night atmosphere color — used by both
+// NightSkydome (background) AND PhaseFog (distant-geometry tint).
+// They MUST match exactly or a horizon band reappears.
+export const NIGHT_COLOR = '#121A30'
 
 function NightSkydome({ blend }: { blend: number }) {
   void blend
   const geo = useMemo(() => new THREE.SphereGeometry(400, 24, 16), [])
-  // Horizon barely lighter than zenith (subtle subliminal effect of a real
-  // night sky horizon getting a touch of city/moon glow). Previous values
-  // (#2A3160 vs #0A1024) had R-channel 4× brighter at horizon → looked
-  // like a luminous band, not a sky.
   const uniforms = useMemo(() => ({
-    uTop:     { value: new THREE.Color('#0A1228') },   // deep navy
-    uHorizon: { value: new THREE.Color('#141A38') },   // barely lighter — subtle hint
+    uColor: { value: new THREE.Color(NIGHT_COLOR) },
   }), [])
   return (
     <mesh geometry={geo} renderOrder={-1000}>

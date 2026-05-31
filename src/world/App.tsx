@@ -53,7 +53,7 @@ import SunsetBirds from './SunsetBirds'
 import PathMushrooms from './PathMushrooms'
 import WisteriaArch from './WisteriaArch'
 import DistantOwl from './DistantOwl'
-import Sky from './Sky'
+import Sky, { NIGHT_COLOR } from './Sky'
 import Water from './Water'
 import GroundCover from './GroundCover'
 import Storytelling from './Storytelling'
@@ -425,12 +425,11 @@ const FOG_COLORS: Record<TimePhase, string> = {
   dawn:  '#EAC4B4',
   day:   '#F4E4C8',
   dusk:  '#D89A78',
-  // R3-r7 fix: was '#2A2A40' (bright indigo). Lerping dusk amber →
-  // night indigo passes through chocolate-brown midpoint (≈#897770)
-  // for the ~12min real-world transition window — looked like
-  // polluted haze. Less brutal indigo lets the midpoint land at
-  // a warm-gray "twilight" that reads atmospherically right.
-  night: '#3F3F58',
+  // MUST match Sky.tsx's NIGHT_COLOR exactly. Distant geometry fades
+  // toward this color via THREE.Fog; if it doesn't match the skydome
+  // color, distant trees become brighter than the sky behind them and
+  // form a visible horizon BAND (the bug we chased through 5 fixes).
+  night: NIGHT_COLOR,
 }
 function PhaseFog() {
   const tod = useTimeOfDay()
