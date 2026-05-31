@@ -95,11 +95,25 @@ function draw() {
 requestAnimationFrame(draw);
 
 // ── interactions ──
-let downAt = 0, downX = 0, downY = 0;
-addEventListener('mousedown', (e) => { downAt = Date.now(); downX = e.screenX; downY = e.screenY; });
-addEventListener('mouseup', (e) => {
-  const moved = Math.hypot(e.screenX - downX, e.screenY - downY);
-  if (moved < 4 && Date.now() - downAt < 350) { wave = 1; showBubble('双击进办公室'); }   // a poke
+// data-tauri-drag-region was unreliable, so drag explicitly: once the pointer
+// moves past a threshold we hand off to the OS via startDragging(); a clean
+// click (no move) pokes the bear; double-click opens the office.
+let down = false, dragging = false, downAt = 0, downX = 0, downY = 0;
+function currentWindow() {
+  const t = window.__TAURI__;
+  return t?.window?.getCurrentWindow?.() || t?.webviewWindow?.getCurrentWebviewWindow?.() || null;
+}
+addEventListener('mousedown', (e) => { down = true; dragging = false; downAt = Date.now(); downX = e.screenX; downY = e.screenY; });
+addEventListener('mousemove', (e) => {
+  if (!down || dragging) return;
+  if (Math.hypot(e.screenX - downX, e.screenY - downY) > 4) {
+    dragging = true;
+    try { currentWindow()?.startDragging?.(); } catch {}
+  }
+});
+addEventListener('mouseup', () => {
+  if (down && !dragging && Date.now() - downAt < 350) { wave = 1; showBubble('双击进办公室'); }   // a poke
+  down = false;
 });
 addEventListener('dblclick', () => { invoke('toggle_office'); showBubble('开门～'); });
 

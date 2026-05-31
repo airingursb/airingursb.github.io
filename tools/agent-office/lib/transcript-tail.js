@@ -19,6 +19,7 @@ import path from 'node:path';
 import os from 'node:os';
 
 export const PROJECTS_DIR = path.join(os.homedir(), '.claude', 'projects');
+const MAIN_ACTIVE_MS = 120_000;   // a session written within this is "the active main agent"
 
 /** agent_id from `.../agent-<id>.jsonl` (the id is in the filename). */
 export function agentIdFromPath(p) {
@@ -67,26 +68,42 @@ export class TranscriptTailer {
     this.timer = null;
   }
 
-  /** All subagent transcript files currently on disk. */
-  subagentFiles() {
-    const out = [];
+  /**
+   * Discover transcripts: every subAgent file + the single most-recently-modified
+   * top-level session transcript (= the active MAIN agent — no hooks needed).
+   *   <proj>/<session>.jsonl              → main session transcripts
+   *   <proj>/<session>/subagents/agent-*  → subagents
+   */
+  transcriptFiles() {
+    const subs = [];
+    let main = null, mainMtime = -1;
     let projects = [];
-    try { projects = fs.readdirSync(this.dir); } catch { return out; }
+    try { projects = fs.readdirSync(this.dir); } catch { return { subs, main }; }
     for (const proj of projects) {
-      let sessions = [];
-      try { sessions = fs.readdirSync(path.join(this.dir, proj)); } catch { continue; }
-      for (const sess of sessions) {
-        const sub = path.join(this.dir, proj, sess, 'subagents');
-        let files = [];
-        try { files = fs.readdirSync(sub); } catch { continue; }
-        for (const f of files) if (/^agent-.+\.jsonl$/.test(f)) out.push(path.join(sub, f));
+      const pdir = path.join(this.dir, proj);
+      let entries = [];
+      try { entries = fs.readdirSync(pdir); } catch { continue; }
+      for (const entry of entries) {
+        const full = path.join(pdir, entry);
+        if (/\.jsonl$/.test(entry)) {
+          let mt; try { mt = fs.statSync(full).mtimeMs; } catch { continue; }
+          if (mt > mainMtime) { mainMtime = mt; main = full; }   // active main = newest, recency-gated below
+        } else {
+          const sub = path.join(full, 'subagents');
+          let files = [];
+          try { files = fs.readdirSync(sub); } catch { continue; }
+          for (const f of files) if (/^agent-.+\.jsonl$/.test(f)) subs.push(path.join(sub, f));
+        }
       }
     }
-    return out;
+    // only follow a session that's actively being written (you, right now);
+    // re-evaluated each poll, so the office tracks whatever you're working on.
+    if (main && Date.now() - mainMtime > MAIN_ACTIVE_MS) main = null;
+    return { subs, main };
   }
 
-  /** Read appended bytes from a file since last offset → emit events. */
-  drainFile(file) {
+  /** Read appended bytes since last offset → emit events. agentId null = MAIN. */
+  drainFile(file, agentId) {
     let size;
     try { size = fs.statSync(file).size; } catch { return; }
     const prev = this.offsets.get(file);
@@ -100,17 +117,18 @@ export class TranscriptTailer {
       fs.closeSync(fd);
     } catch { return; }
     this.offsets.set(file, size);
-    const agentId = agentIdFromPath(file);
-    if (!agentId) return;
-    let m = this.acc.get(agentId);
-    if (!m) { m = { tools: 0, byTool: {}, inTokens: 0, outTokens: 0, model: null, result: null, firstTs: null, lastTs: null }; this.acc.set(agentId, m); }
+    const accKey = agentId || 'main';
+    let m = this.acc.get(accKey);
+    if (!m) { m = { tools: 0, byTool: {}, inTokens: 0, outTokens: 0, model: null, result: null, firstTs: null, lastTs: null }; this.acc.set(accKey, m); }
     let changed = false;
     for (const line of buf.toString('utf8').split('\n')) {
       if (!line.trim()) continue;
       const e = parseEntry(line);
       if (!e) continue;
       for (const t of e.tools) {
-        this.onEvent({ kind: 'tool', payload: { agent_id: agentId, tool_name: t.name, tool_input: t.input } });
+        // main agent → no agent_id in payload (the office treats that as "You")
+        const payload = agentId ? { agent_id: agentId, tool_name: t.name, tool_input: t.input } : { tool_name: t.name, tool_input: t.input };
+        this.onEvent({ kind: 'tool', payload });
         m.tools++; m.byTool[t.name] = (m.byTool[t.name] || 0) + 1; changed = true;
       }
       if (e.inTokens || e.outTokens) { m.inTokens += e.inTokens; m.outTokens += e.outTokens; changed = true; }
@@ -118,7 +136,7 @@ export class TranscriptTailer {
       if (e.text) { m.result = e.text; changed = true; }   // last text wins = the result
       if (e.ts) { m.firstTs = m.firstTs ? Math.min(m.firstTs, e.ts) : e.ts; m.lastTs = Math.max(m.lastTs || 0, e.ts); changed = true; }
     }
-    if (changed) {
+    if (changed && agentId) {   // metrics events only for subAgents (need an agent_id)
       this.onEvent({ kind: 'metrics', payload: {
         agent_id: agentId, tools: m.tools, byTool: { ...m.byTool }, inTokens: m.inTokens, outTokens: m.outTokens,
         model: m.model, result: m.result, durationMs: m.firstTs && m.lastTs ? m.lastTs - m.firstTs : 0,
@@ -126,7 +144,11 @@ export class TranscriptTailer {
     }
   }
 
-  poll() { for (const f of this.subagentFiles()) this.drainFile(f); }
+  poll() {
+    const { subs, main } = this.transcriptFiles();
+    for (const f of subs) this.drainFile(f, agentIdFromPath(f));
+    if (main) this.drainFile(main, null);   // active session = the main "You" agent
+  }
 
   start() {
     if (this.timer) return this;
