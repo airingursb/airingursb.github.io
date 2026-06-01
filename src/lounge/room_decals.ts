@@ -493,6 +493,32 @@ export function spawnRoomDecals(
       }).setDepth(1.6)
       objects.push(motes)
     }
+
+    // time-of-day mood — the office mirrors the user's actual clock: cool dawn,
+    // neutral noon, golden dusk, dim lamp-lit night. (Static at load; the summoned
+    // window isn't open for hours, so no live ticking needed.)
+    const forcedHr = (() => { try { const h = new URLSearchParams(location.search).get('hour'); return h != null ? Number(h) : null } catch { return null } })()
+    const hr = forcedHr ?? new Date().getHours()
+    const tod =
+      hr < 6  ? { c: 0x1a2448, a: 0.30 } :   // night
+      hr < 8  ? { c: 0x3a4a7a, a: 0.20 } :   // pre-dawn blue
+      hr < 11 ? { c: 0xbfe0ff, a: 0.07 } :   // cool morning
+      hr < 16 ? { c: 0xffffff, a: 0.00 } :   // neutral noon
+      hr < 19 ? { c: 0xffae5c, a: 0.16 } :   // golden hour
+      hr < 21 ? { c: 0x5a3f7a, a: 0.20 } :   // dusk violet
+                { c: 0x1a2448, a: 0.30 }      // night
+    if (tod.a > 0) {
+      objects.push(scene.add.rectangle(0, 0, mapWidthPx, mapHeightPx, tod.c, tod.a).setOrigin(0, 0).setDepth(2.6))
+    }
+    // after dark, warm desk-lamp pools so the room reads as lit from within
+    if (hr >= 19 || hr < 6) {
+      for (const ry of [156, 218, 280]) for (const cx of [112, 196, 280, 364]) {
+        objects.push(scene.add.ellipse(cx, ry - 14, 44, 26, 0xffd28a, 0.18).setDepth(2.7))
+      }
+      // boss desk + pantry get their own warm pools too
+      objects.push(scene.add.ellipse(542, 200, 56, 32, 0xffd28a, 0.18).setDepth(2.7))
+      objects.push(scene.add.ellipse(150, 96, 40, 24, 0xffe0a0, 0.16).setDepth(2.7))
+    }
   }
 
   return dispose

@@ -3,6 +3,11 @@
 // the snapshot as a Bear: main agent = your avatar at the boss desk, subAgents at
 // workstations, each posed by its state's `anim` and captioned by its activity emoji.
 //
+// Liveliness layer (Phase 1, inspired by pixtuoid):
+//   • per-agent GLOW tinted by tool-state category — read the whole room by color
+//   • event JUICE — spawn poof, done confetti + wave, fail red-flash + shake
+//   • desk PERSONALIZATION that accrues with tool-use (cup → plant → photo → 🔥)
+//
 // No local server? After a short grace period we run a small DEMO so the room is
 // never empty. Override the source with ?agentsrc=<url> or window.__OFFICE_AGENT_URL.
 
@@ -31,13 +36,73 @@ const DESK_SEATS = (() => {
   return s
 })()
 
-type Tracked = { bear: Bear; bubble: Phaser.GameObjects.Container & { setLabel?: (s: string, fiction: boolean) => void }; metrics: Phaser.GameObjects.Text; tx: number; ty: number; anim: string; slot: number | null }
+// tool-state category → glow colour. Read the room's activity at a glance: each
+// desk's aura tells you what that agent is doing without reading its bubble.
+const CAT_COLOR: Record<string, number> = {
+  code: 0x5a8fff, edit: 0x5a8fff, write: 0x5a8fff,         // blue — writing code
+  read: 0x6cc8e8, search: 0x6cc8e8, grep: 0x6cc8e8,        // cyan — reading
+  run: 0xff9a3c, test: 0xff9a3c, bash: 0xff9a3c, deploy: 0xff9a3c, // orange — running
+  mcp: 0xb070ff,                                            // purple — MCP / tools
+  delegate: 0xffd24a,                                       // gold — delegating
+  social: 0x7ad0a0,                                         // soft green — chatting
+  life: 0x5fd06a, done: 0x5fd06a,                           // green — finished ✓
+  blocked: 0xff4d3c,                                        // red — needs you
+  idle: 0x7a7a86,                                           // dim grey — idle
+}
+const glowColor = (cat: string, state: string): number => {
+  if (/fail/.test(state)) return 0xff4d3c
+  return CAT_COLOR[cat] || 0x8ab0c8
+}
+const isActive = (cat: string) => !['idle', 'life', 'social', 'blocked'].includes(cat)
+
+type Décor = { emoji: string; at: number; dx: number; dy: number }
+// desk décor unlocked by cumulative tool-use — the longer an agent works, the
+// more "lived-in" its workstation gets (pixtuoid: plant@30min, photo@1h).
+const DECOR_LADDER: Décor[] = [
+  { emoji: '☕', at: 3, dx: 13, dy: -4 },
+  { emoji: '🪴', at: 12, dx: -14, dy: -3 },
+  { emoji: '🖼️', at: 28, dx: 15, dy: -14 },
+  { emoji: '🔥', at: 60, dx: -15, dy: -14 },
+]
+
+type Tracked = {
+  bear: Bear
+  bubble: Phaser.GameObjects.Container & { setLabel?: (s: string, fiction: boolean) => void }
+  metrics: Phaser.GameObjects.Text
+  glow: Phaser.GameObjects.Image
+  decor: Phaser.GameObjects.Text[]
+  tx: number; ty: number; anim: string; slot: number | null
+  cat: string; state: string                 // last seen, for transition detection
+}
 
 // compact token count: 3_190_760 → "3.2M", 45_000 → "45k"
 function fmtTok(n: number): string {
   if (n >= 1e6) return (n / 1e6).toFixed(1).replace(/\.0$/, '') + 'M'
   if (n >= 1e3) return Math.round(n / 1e3) + 'k'
   return String(n)
+}
+
+// ── shared textures for glow + particle juice (generated once) ──
+function ensureGlowTex(scene: Phaser.Scene) {
+  if (scene.textures.exists('office_glow')) return
+  const d = 64, r = d / 2
+  const cv = scene.textures.createCanvas('office_glow', d, d)
+  if (!cv) return
+  const ctx = cv.getContext()
+  const g = ctx.createRadialGradient(r, r, 0, r, r, r)
+  g.addColorStop(0, 'rgba(255,255,255,0.7)')
+  g.addColorStop(0.4, 'rgba(255,255,255,0.32)')
+  g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, d, d)
+  cv.refresh()
+}
+function ensureSparkTex(scene: Phaser.Scene) {
+  if (scene.textures.exists('office_spark')) return
+  const g = scene.add.graphics()
+  g.fillStyle(0xffffff, 1).fillRect(0, 0, 3, 3)
+  g.generateTexture('office_spark', 3, 3)
+  g.destroy()
 }
 
 // a compact "what am I doing" speech bubble (emoji + detail); fiction reads dimmed
@@ -61,10 +126,29 @@ function speciesOf(a: AgentSnap): Species {
 
 export function setupOfficeAgents(scene: Phaser.Scene): void {
   teardownOfficeAgents()
+  ensureGlowTex(scene)
+  ensureSparkTex(scene)
   const bears = new Map<string, Tracked>()
   const slots = new Map<string, number>()   // agentId → desk seat index
   let es: EventSource | null = null
   let gotData = false
+
+  // ── particle juice: a one-shot burst that cleans itself up ──
+  function burst(x: number, y: number, opts: { tint: number | number[]; n: number; speed: number; life: number; up?: boolean }) {
+    const p = scene.add.particles(x, y, 'office_spark', {
+      speed: { min: opts.speed * 0.3, max: opts.speed },
+      angle: opts.up ? { min: 250, max: 290 } : { min: 0, max: 360 },
+      lifespan: opts.life, scale: { start: 1.6, end: 0 },
+      gravityY: opts.up ? 60 : 0, tint: opts.tint, emitting: false,
+    }).setDepth(8)
+    p.explode(opts.n, x, y)
+    scene.time.delayedCall(opts.life + 120, () => p.destroy())
+  }
+  function flash(t: Tracked, color: number) {
+    const sp = (t.bear as any).sprite
+    const f = scene.add.rectangle(sp.x, sp.y - 10, 30, 36, color, 0.5).setDepth(9)
+    scene.tweens.add({ targets: f, alpha: 0, duration: 360, onComplete: () => f.destroy() })
+  }
 
   function seatFor(id: string): { x: number; y: number } {
     let i = slots.get(id)
@@ -93,29 +177,78 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
       if (!t) {
         const b = new Bear(scene, tgt.x, tgt.y, REGION, speciesOf(a))
         const metrics = scene.add.text(tgt.x, tgt.y, '', { fontFamily: 'monospace', fontSize: '7px', color: '#8ab0c8' }).setOrigin(0.5, 0).setDepth(7)
-        t = { bear: b, bubble: makeBubble(scene), metrics, tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null }
+        const glow = scene.add.image(tgt.x, tgt.y, 'office_glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(4).setAlpha(0)
+        t = { bear: b, bubble: makeBubble(scene), metrics, glow, decor: [], tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null, cat: a.cat, state: a.state }
         bears.set(a.id, t)
+        // spawn juice: a soft dust poof + a quick glow bloom
+        burst(tgt.x, tgt.y - 8, { tint: [0xcfe4ee, 0xffffff], n: 10, speed: 50, life: 600 })
+        scene.tweens.add({ targets: glow, alpha: 0.5, duration: 280, yoyo: true })
       }
+
+      // ── transition juice (compare last-seen → new) ──
+      if (t.state !== a.state || t.cat !== a.cat) {
+        if (/fail/.test(a.state) && !/fail/.test(t.state)) {
+          flash(t, 0xff4d3c); scene.cameras.main.shake(140, 0.0035)
+        } else if (/done/.test(a.state) && !/done/.test(t.state)) {
+          burst(t.tx, t.ty - 18, { tint: [0x5fd06a, 0xffd24a, 0x6cc8e8, 0xff7ab0], n: 16, speed: 90, life: 900, up: true })
+          t.bear.playWave()
+        } else if (a.cat === 'blocked' && t.cat !== 'blocked') {
+          flash(t, 0xff4d3c)
+        }
+      }
+      t.cat = a.cat; t.state = a.state
+
       t.tx = tgt.x; t.ty = tgt.y; t.anim = a.anim || 'idle'
       t.bear.setDisplayName(a.label, { prefix: a.kind === 'main' ? '★ ' : '', color: a.kind === 'main' ? '#d8b048' : undefined })
       t.bubble.setLabel?.(`${a.emoji || ''} ${a.detail || ''}`.trim(), !!a.fiction)
-      // desktop-only: per-agent metrics from transcript tail (⚙tools · tokens)
+
+      // glow colour + intensity by state category
+      t.glow.setTint(glowColor(a.cat, a.state))
+      t.glow.setData('targetAlpha', isActive(a.cat) ? 0.34 : a.cat === 'blocked' ? 0.42 : 0.16)
+
+      // desk personalization from tool-use (desktop metrics only)
       const m = a.metrics
+      const tools = m?.tools || 0
       t.metrics.setText(m ? `⚙${m.tools} · ${fmtTok((m.inTokens || 0) + (m.outTokens || 0))}` : '').setVisible(!!m)
+      for (const d of DECOR_LADDER) {
+        if (tools >= d.at && !t.decor.some((o) => o.getData('emoji') === d.emoji)) {
+          const o = scene.add.text(tgt.x + d.dx, tgt.y + d.dy, d.emoji, { fontSize: '11px' }).setOrigin(0.5).setDepth(5).setScale(0)
+          o.setData('emoji', d.emoji)
+          scene.tweens.add({ targets: o, scale: 1, duration: 320, ease: 'Back.easeOut' })
+          t.decor.push(o)
+        }
+      }
+
       t.bear.walkTo(tgt.x, tgt.y)
     }
     for (const [id, t] of [...bears.entries()]) {
-      if (!seen.has(id)) { t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy(); bears.delete(id); slots.delete(id) }
+      if (!seen.has(id)) {
+        // exit juice: a small farewell wave + fade-out poof
+        burst(t.tx, t.ty - 8, { tint: [0x9a9890, 0xffffff], n: 8, speed: 36, life: 500 })
+        destroyTracked(t); bears.delete(id); slots.delete(id)
+      }
     }
   }
 
-  // per-frame: drive movement + pose-on-arrival
+  function destroyTracked(t: Tracked) {
+    t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy(); t.glow.destroy()
+    for (const o of t.decor) o.destroy()
+  }
+
+  // per-frame: drive movement + pose-on-arrival + glow/decor follow + pulse
+  let pulse = 0
   const onUpdate = (_t: number, dt: number) => {
+    pulse += dt * 0.004
     for (const t of bears.values()) {
       t.bear.update(dt)
       const sp = (t.bear as any).sprite
-      t.bubble.setPosition(sp.x, sp.y - 30)   // float above the name label
-      t.metrics.setPosition(sp.x, sp.y + 16)  // below the name label
+      t.bubble.setPosition(sp.x, sp.y - 30)
+      t.metrics.setPosition(sp.x, sp.y + 16)
+      // glow breathes under the feet; eased toward its target alpha
+      const want = (t.glow.getData('targetAlpha') as number) ?? 0.22
+      const breathe = 1 + Math.sin(pulse * 2) * 0.12
+      t.glow.setPosition(sp.x, sp.y + 6).setScale(0.42 * breathe)
+      t.glow.setAlpha(t.glow.alpha + (want * breathe - t.glow.alpha) * 0.08)
       const dx = sp.x - t.tx, dy = sp.y - t.ty
       if (dx * dx + dy * dy < 16) {           // arrived → apply static pose
         if (t.anim === 'sit') t.bear.playSit()
@@ -129,7 +262,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
   const teardownBears = () => {
     scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
     stopDemo?.()
-    for (const t of bears.values()) { t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy() }
+    for (const t of bears.values()) destroyTracked(t)
     bears.clear()
   }
 
@@ -180,18 +313,19 @@ export function teardownOfficeAgents(): void { cleanup?.(); cleanup = null }
 
 // ── DEMO: a tiny canned scene so the office breathes without a local server ──
 function startDemo(reconcile: (s: { agents: AgentSnap[] }) => void) {
-  const A = (id: string, kind: 'main' | 'sub', label: string, species: string, cat: string, state: string, emoji: string, anim: string, zone: string, detail: string): AgentSnap =>
-    ({ id, kind, label, species, cat, state, emoji, anim, zone, detail, fiction: false })
+  const A = (id: string, kind: 'main' | 'sub', label: string, species: string, cat: string, state: string, emoji: string, anim: string, zone: string, detail: string, metrics?: AgentMetrics): AgentSnap =>
+    ({ id, kind, label, species, cat, state, emoji, anim, zone, detail, fiction: false, metrics })
+  const M = (tools: number, tok: number): AgentMetrics => ({ tools, inTokens: tok, outTokens: Math.round(tok * 0.1) })
   const frames: AgentSnap[][] = [
-    [A('main', 'main', 'You', 'bear', 'code', 'edit_code', '⌨️', 'sit', 'boss', 'writing code'),
-     A('rev', 'sub', 'code-reviewer', 'fox', 'read', 'read_diff', '🔍', 'sit', 'desk', 'reviewing the diff'),
-     A('db', 'sub', 'db-auditor', 'frog', 'mcp', 'mcp_db', '🗄️', 'sit', 'desk', 'querying Supabase')],
-    [A('main', 'main', 'You', 'bear', 'delegate', 'del_spawn', '🤝', 'wave', 'whiteboard', 'delegating'),
-     A('rev', 'sub', 'code-reviewer', 'fox', 'run', 'run_test', '🧪', 'sit', 'infra', 'running tests'),
-     A('db', 'sub', 'db-auditor', 'frog', 'idle', 'idle_coffee', '☕', 'idle', 'pantry', 'getting coffee')],
-    [A('main', 'main', 'You', 'bear', 'run', 'run_deploy', '🚢', 'sit', 'infra', 'deploying'),
-     A('rev', 'sub', 'code-reviewer', 'fox', 'life', 'life_done', '🎉', 'wave', 'lounge', 'done ✓'),
-     A('db', 'sub', 'db-auditor', 'frog', 'social', 'soc_coffee', '💬', 'wave', 'pantry', 'chatting')],
+    [A('main', 'main', 'You', 'bear', 'code', 'edit_code', '⌨️', 'sit', 'boss', 'writing code', M(31, 3_190_000)),
+     A('rev', 'sub', 'code-reviewer', 'fox', 'read', 'read_diff', '🔍', 'sit', 'desk', 'reviewing the diff', M(6, 210_000)),
+     A('db', 'sub', 'db-auditor', 'frog', 'mcp', 'mcp_db', '🗄️', 'sit', 'desk', 'querying Supabase', M(14, 520_000))],
+    [A('main', 'main', 'You', 'bear', 'delegate', 'del_spawn', '🤝', 'wave', 'whiteboard', 'delegating', M(33, 3_300_000)),
+     A('rev', 'sub', 'code-reviewer', 'fox', 'run', 'run_test', '🧪', 'sit', 'infra', 'running tests', M(13, 360_000)),
+     A('db', 'sub', 'db-auditor', 'frog', 'idle', 'idle_coffee', '☕', 'idle', 'pantry', 'getting coffee', M(15, 540_000))],
+    [A('main', 'main', 'You', 'bear', 'run', 'run_deploy', '🚢', 'sit', 'infra', 'deploying', M(35, 3_400_000)),
+     A('rev', 'sub', 'code-reviewer', 'fox', 'life', 'life_done', '🎉', 'wave', 'lounge', 'done ✓', M(30, 410_000)),
+     A('db', 'sub', 'db-auditor', 'frog', 'social', 'soc_coffee', '💬', 'wave', 'pantry', 'chatting', M(15, 540_000))],
   ]
   let i = 0
   reconcile({ agents: frames[0] })
