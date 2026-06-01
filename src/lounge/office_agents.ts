@@ -14,6 +14,7 @@
 import Phaser from 'phaser'
 import { Bear } from './bear'
 import { SPECIES, type Species, type Region } from './config'
+import { sfxDone, sfxFail, sfxPour, sfxHeart, sfxSpawn, sfxClack, resumeOfficeAudio } from './office_audio'
 
 type AgentMetrics = { tools: number; byTool?: Record<string, number>; inTokens: number; outTokens: number; model?: string | null; result?: string | null; durationMs?: number }
 type AgentSnap = {
@@ -201,7 +202,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
       if (arrived) { trip.phase = 'linger'; trip.until = now + (trip.kind === 'coffee' ? 1600 : 1800 + (t.home.x % 1800)) }
     } else if (trip.phase === 'linger') {
       if (now >= trip.until) {
-        if (trip.kind === 'coffee') trip.cup = scene.add.text(sp.x, sp.y - 14, '☕', { fontSize: '11px' }).setOrigin(0.5).setDepth(8)
+        if (trip.kind === 'coffee') { trip.cup = scene.add.text(sp.x, sp.y - 14, '☕', { fontSize: '11px' }).setOrigin(0.5).setDepth(8); sfxPour() }
         trip.phase = 'back'; trip.dest = { x: t.home.x, y: t.home.y }
         t.tx = t.home.x; t.ty = t.home.y; t.bear.walkTo(t.home.x, t.home.y)
       }
@@ -236,7 +237,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
         const h = scene.add.text(sp.x + (i - 2) * 6, sp.y - 8, '❤️', { fontSize: '11px' }).setOrigin(0.5).setDepth(9)
         scene.tweens.add({ targets: h, y: sp.y - 34 - i * 4, alpha: 0, duration: 900 + i * 90, ease: 'Sine.easeOut', onComplete: () => h.destroy() })
       }
-      pet?.bear.playWave?.()
+      pet?.bear.playWave?.(); sfxHeart()
     })
   }
   function drivePet(now: number, dt: number) {
@@ -311,18 +312,19 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
         const glow = scene.add.image(tgt.x, tgt.y, 'office_glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(4).setAlpha(0)
         t = { bear: b, bubble: makeBubble(scene), metrics, glow, decor: [], tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null, cat: a.cat, state: a.state, home: { x: tgt.x, y: tgt.y }, idle: freeCat(a.cat), trip: null, nextTripAt: scene.time.now + 4000 + Math.abs((tgt.x * 31) % 6000) }
         bears.set(a.id, t)
-        // spawn juice: a soft dust poof + a quick glow bloom
+        // spawn juice: a soft dust poof + a quick glow bloom + arrival chime
         burst(tgt.x, tgt.y - 8, { tint: [0xcfe4ee, 0xffffff], n: 10, speed: 50, life: 600 })
         scene.tweens.add({ targets: glow, alpha: 0.5, duration: 280, yoyo: true })
+        sfxSpawn()
       }
 
       // ── transition juice (compare last-seen → new) ──
       if (t.state !== a.state || t.cat !== a.cat) {
         if (/fail/.test(a.state) && !/fail/.test(t.state)) {
-          flash(t, 0xff4d3c); scene.cameras.main.shake(140, 0.0035)
+          flash(t, 0xff4d3c); scene.cameras.main.shake(140, 0.0035); sfxFail()
         } else if (/done/.test(a.state) && !/done/.test(t.state)) {
           burst(t.tx, t.ty - 18, { tint: [0x5fd06a, 0xffd24a, 0x6cc8e8, 0xff7ab0], n: 16, speed: 90, life: 900, up: true })
-          t.bear.playWave()
+          t.bear.playWave(); sfxDone()
         } else if (a.cat === 'blocked' && t.cat !== 'blocked') {
           flash(t, 0xff4d3c)
         }
@@ -374,6 +376,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
 
   // per-frame: drive movement + pose-on-arrival + glow/decor follow + pulse
   let pulse = 0
+  let nextClackAt = 0
   const onUpdate = (_t: number, dt: number) => {
     pulse += dt * 0.004
     for (const t of bears.values()) {
@@ -400,8 +403,15 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
     }
     drivePet(scene.time.now, dt)
     chitchat(scene.time.now)
+    // faint keyboard clacks while agents code — busier room → more clatter
+    const coders = [...bears.values()].filter((t) => /code|edit|write/.test(t.cat)).length
+    if (coders > 0 && scene.time.now >= nextClackAt) {
+      sfxClack()
+      nextClackAt = scene.time.now + 80 + Math.floor((220 + (scene.time.now % 160)) / Math.min(coders, 4))
+    }
   }
   scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate)
+  scene.input.once('pointerdown', resumeOfficeAudio)   // unlock WebAudio on first click
 
   const teardownBears = () => {
     scene.events.off(Phaser.Scenes.Events.UPDATE, onUpdate)
