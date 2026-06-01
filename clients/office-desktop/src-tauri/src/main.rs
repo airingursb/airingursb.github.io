@@ -46,6 +46,7 @@ try {
 } catch (e) {}
 "#;
 use tauri_plugin_notification::NotificationExt;
+use tauri_plugin_updater::UpdaterExt;
 
 const SSE_ADDR: &str = "127.0.0.1:4500";
 
@@ -149,6 +150,49 @@ fn react_to_snapshot(app: &AppHandle, data: &str, notified: &mut HashSet<String>
     }
 }
 
+/// Check the configured endpoint (GitHub Releases `latest.json`) for a newer signed
+/// build, download + verify + install it in place, then relaunch. `interactive` = the
+/// user asked via the tray, so report "already latest" / errors too; on the silent
+/// launch check we stay quiet unless there's actually a new version. Updates only
+/// apply to bundled/installed builds — in `cargo tauri dev` this just no-ops/errors.
+fn check_for_updates(app: &AppHandle, interactive: bool) {
+    let app = app.clone();
+    tauri::async_runtime::spawn(async move {
+        let updater = match app.updater() {
+            Ok(u) => u,
+            Err(e) => {
+                if interactive {
+                    notify(&app, "无法检查更新", &e.to_string());
+                }
+                return;
+            }
+        };
+        match updater.check().await {
+            Ok(Some(update)) => {
+                let v = update.version.clone();
+                notify(&app, "发现新版本 🎉", &format!("正在下载 v{v}…"));
+                match update.download_and_install(|_, _| {}, || {}).await {
+                    Ok(_) => {
+                        notify(&app, "更新完成", &format!("已安装 v{v}，正在重启…"));
+                        app.restart();
+                    }
+                    Err(e) => notify(&app, "更新失败", &e.to_string()),
+                }
+            }
+            Ok(None) => {
+                if interactive {
+                    notify(&app, "已是最新版本", "Den 当前已是最新 🐻");
+                }
+            }
+            Err(e) => {
+                if interactive {
+                    notify(&app, "检查更新失败", &e.to_string());
+                }
+            }
+        }
+    });
+}
+
 fn notify(app: &AppHandle, title: &str, body: &str) {
     let _ = app
         .notification()
@@ -177,6 +221,8 @@ fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .invoke_handler(tauri::generate_handler![start_office_bridge, toggle_office, toggle_always_on_top])
         .setup(|app| {
             spawn_office_server();
@@ -197,8 +243,9 @@ fn main() {
             // system tray with a small menu
             let show = MenuItem::with_id(app, "show", "显示办公室", true, None::<&str>)?;
             let top = MenuItem::with_id(app, "top", "置顶小窗", true, None::<&str>)?;
+            let update = MenuItem::with_id(app, "update", "检查更新…", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show, &top, &quit])?;
+            let menu = Menu::with_items(app, &[&show, &top, &update, &quit])?;
             // white bear template icon for the menu bar (macOS auto-tints for light/dark)
             let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?;
             TrayIconBuilder::with_id("main")
@@ -210,6 +257,7 @@ fn main() {
                     "top" => {
                         toggle_always_on_top(app.clone());
                     }
+                    "update" => check_for_updates(app, true),
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -221,6 +269,9 @@ fn main() {
             let _ = app.global_shortcut().on_shortcut("CmdOrCtrl+Shift+O", move |_, _, _| {
                 toggle_always_on_top(app2.clone());
             });
+
+            // silent update check on launch (no-op in dev / when already latest)
+            check_for_updates(app.handle(), false);
             Ok(())
         })
         // close button hides to tray instead of quitting

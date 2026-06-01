@@ -50,6 +50,45 @@ OFFICE_SERVER_DIR="$(pwd)/../../tools/agent-office" cargo tauri dev
 (`spawn_office_server` reads `OFFICE_SERVER_DIR`; a shipped build bundles the
 server as a sidecar instead.)
 
+## Auto-update
+
+Wired via **`tauri-plugin-updater`** (+ `tauri-plugin-process` for relaunch). On
+launch Den silently checks GitHub Releases for a newer **signed** build; the tray
+menu **检查更新…** triggers the same check interactively. If a newer version is
+found it downloads, verifies the minisign signature against the pubkey baked into
+`tauri.conf.json`, swaps the `.app` in place, and relaunches.
+
+- **Endpoint** (`plugins.updater.endpoints`): `releases/latest/download/latest.json`
+  on this repo. Swap to a self-hosted URL (e.g. `https://ursb.me/den/latest.json`)
+  by editing that one line.
+- **Signing keys**: `src-tauri/.tauri-keys/den.key{,.pub}` (gitignored). Public key
+  is in `tauri.conf.json`; the private key signs each release.
+- Updates only apply to **bundled/installed** builds — `cargo tauri dev` and the
+  raw `target/debug/Den` binary no-op the check.
+
+### Cutting a release (pushes an update to every installed Den)
+
+One-time, add the private key as a repo secret:
+
+```bash
+gh secret set TAURI_SIGNING_PRIVATE_KEY < src-tauri/.tauri-keys/den.key
+gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --body ""   # key has no password
+```
+
+Then per release: bump `version` in `tauri.conf.json`, commit, and push a matching
+tag — `.github/workflows/den-release.yml` builds a signed universal macOS app,
+publishes the GitHub Release, and uploads `latest.json` (which the endpoint serves):
+
+```bash
+# after bumping tauri.conf.json version to 0.1.1
+git tag den-v0.1.1 && git push origin den-v0.1.1
+```
+
+> **macOS Gatekeeper caveat**: the minisign signature is the updater's integrity
+> check, *not* Apple notarization. Without an Apple Developer ID cert + notarize
+> step, a freshly-downloaded update is quarantined and may need a one-time
+> right-click → Open. Add codesigning/notarization to the workflow to remove that.
+
 ## Layout
 
 ```

@@ -1,0 +1,56 @@
+name: Den Desktop Release
+
+# Builds, signs, and publishes the Den (office-desktop) Tauri app, generating the
+# updater `latest.json` manifest that the app's tauri-plugin-updater polls. The
+# updater endpoint in tauri.conf.json points at this repo's "latest release", so
+# cutting a release here = pushing an auto-update to every installed Den.
+#
+# Trigger: push a tag like `den-v0.1.1` (must match the version in tauri.conf.json),
+# or run manually via the Actions tab.
+#
+# Required repo secret:
+#   TAURI_SIGNING_PRIVATE_KEY           contents of src-tauri/.tauri-keys/den.key
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  empty string (key was generated without a password)
+
+on:
+  push:
+    tags: ['den-v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, e.g. den-v0.1.1 (bump tauri.conf.json version to match)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust toolchain (universal macOS targets)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: clients/office-desktop/src-tauri
+
+      - name: Build, sign, publish + emit latest.json
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: clients/office-desktop
+          tagName: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          releaseName: Den ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          releaseDraft: false
+          prerelease: false
+          # One universal binary covers both Apple Silicon and Intel; tauri-action
+          # writes both darwin-aarch64 / darwin-x86_64 entries into latest.json.
+          args: --target universal-apple-darwin
