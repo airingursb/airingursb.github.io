@@ -166,6 +166,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
   const slots = new Map<string, number>()   // agentId → desk seat index
   let es: EventSource | null = null
   let gotData = false
+  let coderCount = 0                          // # agents coding (cached for the clack scheduler)
 
   // ── particle juice: a one-shot burst that cleans itself up ──
   function burst(x: number, y: number, opts: { tint: number | number[]; n: number; speed: number; life: number; up?: boolean }) {
@@ -371,6 +372,9 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
         destroyTracked(t); bears.delete(id); slots.delete(id)
       }
     }
+    // cache the coder count here (changes only on a snapshot) for the per-frame clack scheduler
+    coderCount = 0
+    for (const t of bears.values()) if (/code|edit|write/.test(t.cat)) coderCount++
   }
 
   function destroyTracked(t: Tracked) {
@@ -418,11 +422,10 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
     }
     drivePet(scene.time.now, dt)
     chitchat(scene.time.now)
-    // faint keyboard clacks while agents code — busier room → more clatter
-    const coders = [...bears.values()].filter((t) => /code|edit|write/.test(t.cat)).length
-    if (coders > 0 && scene.time.now >= nextClackAt) {
+    // faint keyboard clacks while agents code — busier room → more clatter (count cached in reconcile)
+    if (coderCount > 0 && scene.time.now >= nextClackAt) {
       sfxClack()
-      nextClackAt = scene.time.now + 80 + Math.floor((220 + (scene.time.now % 160)) / Math.min(coders, 4))
+      nextClackAt = scene.time.now + 80 + Math.floor((220 + (scene.time.now % 160)) / Math.min(coderCount, 4))
     }
   }
   scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate)
@@ -433,7 +436,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
     stopDemo?.()
     for (const t of bears.values()) destroyTracked(t)
     bears.clear()
-    pet?.bear.destroy(); pet = null
+    if (pet) { try { (pet.bear as any).sprite.disableInteractive() } catch {} ; pet.bear.destroy(); pet = null }
   }
 
   // ── pick a source ──
