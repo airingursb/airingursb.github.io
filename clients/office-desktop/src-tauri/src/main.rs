@@ -129,7 +129,8 @@ fn stream_office(app: AppHandle) {
 fn react_to_snapshot(app: &AppHandle, data: &str, notified: &mut HashSet<String>) {
     let agents = data.matches("\"id\":").count();
     if let Some(tray) = app.tray_by_id("main") {
-        let _ = tray.set_title(Some(format!("🐻 {agents}")));
+        // the white bear template image is the icon; the title carries just the count
+        let _ = tray.set_title(Some(if agents > 0 { format!(" {agents}") } else { String::new() }));
     }
     // crude per-agent scan: split on agent boundaries
     for chunk in data.split("\"id\":").skip(1) {
@@ -198,8 +199,11 @@ fn main() {
             let top = MenuItem::with_id(app, "top", "置顶小窗", true, None::<&str>)?;
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&show, &top, &quit])?;
+            // white bear template icon for the menu bar (macOS auto-tints for light/dark)
+            let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?;
             TrayIconBuilder::with_id("main")
-                .title("🐻")
+                .icon(tray_icon)
+                .icon_as_template(true)
                 .menu(&menu)
                 .on_menu_event(|app, e| match e.id().as_ref() {
                     "show" => toggle_office(app.clone()),
