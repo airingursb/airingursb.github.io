@@ -23,6 +23,7 @@ use std::collections::HashSet;
 use std::io::{Read, Write};
 use std::net::TcpStream;
 use std::process::{Command, Stdio};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -49,6 +50,12 @@ use tauri_plugin_notification::NotificationExt;
 use tauri_plugin_updater::UpdaterExt;
 
 const SSE_ADDR: &str = "127.0.0.1:4500";
+
+// Poll for updates every 4h (plus once on launch). Once a new version is downloaded
+// and installed-to-disk, UPDATE_PENDING latches true so we stop re-downloading it on
+// every tick — the swap is already on disk, it just needs a restart to take effect.
+const UPDATE_POLL_SECS: u64 = 4 * 60 * 60;
+static UPDATE_PENDING: AtomicBool = AtomicBool::new(false);
 
 static BRIDGE_STARTED: Mutex<bool> = Mutex::new(false);
 
@@ -151,11 +158,20 @@ fn react_to_snapshot(app: &AppHandle, data: &str, notified: &mut HashSet<String>
 }
 
 /// Check the configured endpoint (GitHub Releases `latest.json`) for a newer signed
-/// build, download + verify + install it in place, then relaunch. `interactive` = the
-/// user asked via the tray, so report "already latest" / errors too; on the silent
-/// launch check we stay quiet unless there's actually a new version. Updates only
-/// apply to bundled/installed builds — in `cargo tauri dev` this just no-ops/errors.
+/// build; if found, download + verify + install it to disk in the background — but do
+/// NOT auto-restart. We notify "ready, applies on next restart" and light up the tray
+/// "重启 Den" item instead, so an update never interrupts what you're doing. Runs once
+/// on launch and every UPDATE_POLL_SECS. `interactive` = the user asked via the tray,
+/// so also report "already latest" / errors. Bundled builds only — `cargo tauri dev`
+/// and the raw debug binary just no-op/error.
 fn check_for_updates(app: &AppHandle, interactive: bool) {
+    if UPDATE_PENDING.load(Ordering::Relaxed) {
+        // already downloaded a newer build this session; just waiting on a restart
+        if interactive {
+            notify(app, "更新已就绪 ✨", "新版已下载，重启 Den 即生效（托盘 →「重启 Den」）");
+        }
+        return;
+    }
     let app = app.clone();
     tauri::async_runtime::spawn(async move {
         let updater = match app.updater() {
@@ -170,11 +186,16 @@ fn check_for_updates(app: &AppHandle, interactive: bool) {
         match updater.check().await {
             Ok(Some(update)) => {
                 let v = update.version.clone();
-                notify(&app, "发现新版本 🎉", &format!("正在下载 v{v}…"));
+                notify(&app, "发现新版本 🎉", &format!("正在后台下载 v{v}…"));
                 match update.download_and_install(|_, _| {}, || {}).await {
                     Ok(_) => {
-                        notify(&app, "更新完成", &format!("已安装 v{v}，正在重启…"));
-                        app.restart();
+                        UPDATE_PENDING.store(true, Ordering::Relaxed);
+                        refresh_restart_label(&app);
+                        notify(
+                            &app,
+                            "更新已就绪 ✨",
+                            &format!("v{v} 已安装，重启 Den 即生效（托盘 →「重启 Den」）"),
+                        );
                     }
                     Err(e) => notify(&app, "更新失败", &e.to_string()),
                 }
@@ -191,6 +212,31 @@ fn check_for_updates(app: &AppHandle, interactive: bool) {
             }
         }
     });
+}
+
+/// Background poller: re-check every UPDATE_POLL_SECS so a long-lived tray app still
+/// picks up releases without a restart-to-check.
+fn start_update_poller(app: &AppHandle) {
+    let app = app.clone();
+    std::thread::spawn(move || loop {
+        std::thread::sleep(Duration::from_secs(UPDATE_POLL_SECS));
+        check_for_updates(&app, false);
+    });
+}
+
+/// When an update is pending, retitle the tray "重启 Den" item so it reads as the
+/// action that applies it. Stored as a global so the async check can reach it.
+static RESTART_ITEM: Mutex<Option<MenuItem<tauri::Wry>>> = Mutex::new(None);
+fn refresh_restart_label(_app: &AppHandle) {
+    if let Ok(guard) = RESTART_ITEM.lock() {
+        if let Some(item) = guard.as_ref() {
+            let _ = item.set_text(if UPDATE_PENDING.load(Ordering::Relaxed) {
+                "重启以应用更新 ✨"
+            } else {
+                "重启 Den"
+            });
+        }
+    }
 }
 
 fn notify(app: &AppHandle, title: &str, body: &str) {
@@ -244,8 +290,13 @@ fn main() {
             let show = MenuItem::with_id(app, "show", "显示办公室", true, None::<&str>)?;
             let top = MenuItem::with_id(app, "top", "置顶小窗", true, None::<&str>)?;
             let update = MenuItem::with_id(app, "update", "检查更新…", true, None::<&str>)?;
+            let restart = MenuItem::with_id(app, "restart", "重启 Den", true, None::<&str>)?;
+            // stash it so a pending update can retitle it to "重启以应用更新 ✨"
+            if let Ok(mut g) = RESTART_ITEM.lock() {
+                *g = Some(restart.clone());
+            }
             let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show, &top, &update, &quit])?;
+            let menu = Menu::with_items(app, &[&show, &top, &update, &restart, &quit])?;
             // white bear template icon for the menu bar (macOS auto-tints for light/dark)
             let tray_icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?;
             TrayIconBuilder::with_id("main")
@@ -258,6 +309,9 @@ fn main() {
                         toggle_always_on_top(app.clone());
                     }
                     "update" => check_for_updates(app, true),
+                    "restart" => {
+                        app.restart();
+                    }
                     "quit" => app.exit(0),
                     _ => {}
                 })
@@ -270,8 +324,10 @@ fn main() {
                 toggle_always_on_top(app2.clone());
             });
 
-            // silent update check on launch (no-op in dev / when already latest)
+            // update: silent check on launch + every 4h (downloads in the background,
+            // applies on next restart — never interrupts). No-op in dev / when latest.
             check_for_updates(app.handle(), false);
+            start_update_poller(app.handle());
             Ok(())
         })
         // close button hides to tray instead of quitting
