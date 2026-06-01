@@ -259,6 +259,28 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
   }
   spawnPet()
 
+  // ── idle chitchat: when ≥2 agents are free, they trade dev-humour quips ──
+  let nextChitchatAt = 0
+  let quipIdx = 0
+  function popQuip(t: Tracked) {
+    const sp = (t.bear as any).sprite
+    const q = scene.add.text(sp.x, sp.y - 32, pickQuip(quipIdx++), {
+      fontFamily: 'monospace', fontSize: '8px', color: '#e6e3dc', backgroundColor: '#2c2e36', padding: { x: 4, y: 2 },
+    }).setOrigin(0.5, 1).setDepth(8)
+    scene.tweens.add({ targets: q, y: sp.y - 44, alpha: 0, duration: 2200, ease: 'Sine.easeIn', delay: 700, onComplete: () => q.destroy() })
+  }
+  function chitchat(now: number) {
+    if (now < nextChitchatAt) return
+    const free = [...bears.values()].filter((t) => t.idle)
+    if (free.length < 2) { nextChitchatAt = now + 3000; return }
+    const a = free[Math.floor(now / 900) % free.length]
+    popQuip(a)
+    const asp = (a.bear as any).sprite
+    const b = free.find((t) => t !== a && Phaser.Math.Distance.Squared((t.bear as any).sprite.x, (t.bear as any).sprite.y, asp.x, asp.y) < 160 * 160)
+    if (b) scene.time.delayedCall(1300, () => { if ([...bears.values()].includes(b)) popQuip(b) })   // a nearby coworker replies
+    nextChitchatAt = now + 5000 + Math.abs((Math.floor(now / 11) * 17) % 5000)
+  }
+
   function seatFor(id: string): { x: number; y: number } {
     let i = slots.get(id)
     if (i == null) {
@@ -377,6 +399,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
       }
     }
     drivePet(scene.time.now, dt)
+    chitchat(scene.time.now)
   }
   scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate)
 
