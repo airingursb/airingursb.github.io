@@ -105,6 +105,8 @@ type Tracked = {
   idle: boolean                              // free to wander (cat idle/social)
   trip: Trip | null                          // active ambient trip, owns movement
   nextTripAt: number                         // scene.time.now to start the next trip
+  ind: Phaser.GameObjects.Text               // overhead micro-state glyph (···/?/z)
+  idleSince: number                          // when cat became 'idle' (for sleepy z's)
 }
 
 // compact token count: 3_190_760 → "3.2M", 45_000 → "45k"
@@ -310,7 +312,8 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
         const b = new Bear(scene, tgt.x, tgt.y, REGION, speciesOf(a))
         const metrics = scene.add.text(tgt.x, tgt.y, '', { fontFamily: 'monospace', fontSize: '7px', color: '#8ab0c8' }).setOrigin(0.5, 0).setDepth(7)
         const glow = scene.add.image(tgt.x, tgt.y, 'office_glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(4).setAlpha(0)
-        t = { bear: b, bubble: makeBubble(scene), metrics, glow, decor: [], tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null, cat: a.cat, state: a.state, home: { x: tgt.x, y: tgt.y }, idle: freeCat(a.cat), trip: null, nextTripAt: scene.time.now + 4000 + Math.abs((tgt.x * 31) % 6000) }
+        const ind = scene.add.text(tgt.x, tgt.y - 18, '', { fontFamily: 'monospace', fontSize: '10px', color: '#e6f0f6' }).setOrigin(0.5, 1).setStroke('#11161b', 2.5).setDepth(7)
+        t = { bear: b, bubble: makeBubble(scene), metrics, glow, decor: [], tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null, cat: a.cat, state: a.state, home: { x: tgt.x, y: tgt.y }, idle: freeCat(a.cat) && a.kind === 'sub', trip: null, nextTripAt: scene.time.now + 4000 + Math.abs((tgt.x * 31) % 6000), ind, idleSince: a.cat === 'idle' ? scene.time.now : 0 }
         bears.set(a.id, t)
         // spawn juice: a soft dust poof + a quick glow bloom + arrival chime
         burst(tgt.x, tgt.y - 8, { tint: [0xcfe4ee, 0xffffff], n: 10, speed: 50, life: 600 })
@@ -333,6 +336,8 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
       const nowIdle = freeCat(a.cat) && a.kind === 'sub'   // the boss stays at the boss desk; only subs wander
       if (nowIdle && !wasIdle) t.nextTripAt = scene.time.now + 2500 + Math.abs((tgt.x * 17) % 4000)
       if (!nowIdle && t.trip) endTrip(t)          // became active mid-trip → drop the stroll
+      if (a.cat === 'idle' && t.cat !== 'idle') t.idleSince = scene.time.now
+      else if (a.cat !== 'idle') t.idleSince = 0
       t.cat = a.cat; t.state = a.state; t.home = tgt; t.idle = nowIdle
       t.anim = a.anim || 'idle'
       t.bear.setDisplayName(a.label, { prefix: a.kind === 'main' ? '★ ' : '', color: a.kind === 'main' ? '#d8b048' : undefined })
@@ -369,7 +374,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
   }
 
   function destroyTracked(t: Tracked) {
-    t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy(); t.glow.destroy()
+    t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy(); t.glow.destroy(); t.ind.destroy()
     if (t.trip?.cup) t.trip.cup.destroy()
     for (const o of t.decor) o.destroy()
   }
@@ -389,6 +394,16 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
       const breathe = 1 + Math.sin(pulse * 2) * 0.12
       t.glow.setPosition(sp.x, sp.y + 6).setScale(0.42 * breathe)
       t.glow.setAlpha(t.glow.alpha + (want * breathe - t.glow.alpha) * 0.08)
+      // overhead micro-state indicator: ··· busy / ? blocked (blink) / z sleepy (drift)
+      const tn = scene.time.now
+      if (t.cat === 'blocked') {
+        t.ind.setVisible(true).setColor('#ff6a58').setPosition(sp.x + 12, sp.y - 18).setText('?').setAlpha(Math.floor(tn / 420) % 2 ? 1 : 0.2)
+      } else if (isActive(t.cat)) {
+        t.ind.setVisible(true).setColor('#cfe4ee').setAlpha(0.9).setPosition(sp.x + 12, sp.y - 18).setText('·'.repeat(1 + Math.floor(tn / 320) % 3))
+      } else if (t.cat === 'idle' && t.idleSince && tn - t.idleSince > 6000 && !t.trip) {
+        const f = Math.floor(tn / 500) % 3
+        t.ind.setVisible(true).setColor('#9ab6c8').setText('z').setAlpha(0.85 - f * 0.25).setPosition(sp.x + 12, sp.y - 18 - f * 4)
+      } else t.ind.setVisible(false)
       const dx = sp.x - t.tx, dy = sp.y - t.ty
       if (dx * dx + dy * dy < 16) {           // arrived → apply static pose
         if (t.anim === 'sit') t.bear.playSit()
