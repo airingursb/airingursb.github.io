@@ -1,4 +1,4 @@
-// Agent Office — desktop client (Tauri v2).
+// Den — desktop companion (Tauri v2).
 //
 // Why a desktop app at all: a public-https page CANNOT reach a local http server
 // (docs finding A — verified). A native process can. So this app does the three
@@ -186,7 +186,7 @@ fn main() {
             // connects SSE on the first summon. (Created here, not in conf, so we can
             // set the initialization_script.)
             WebviewWindowBuilder::new(app, "main", WebviewUrl::External(OFFICE_URL.parse().unwrap()))
-                .title("Agent Office")
+                .title("Den")
                 .inner_size(960.0, 680.0)
                 .min_inner_size(640.0, 480.0)
                 .visible(false)
@@ -227,5 +227,5 @@ fn main() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("error while running Agent Office");
+        .expect("error while running Den");
 }
