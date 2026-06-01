@@ -221,6 +221,44 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
     }
   }
 
+  // ── office pet: a cat that roams, naps beside the most-idle agent, ❤️ on click ──
+  let pet: { bear: Bear; tx: number; ty: number; until: number } | null = null
+  const PET_SPOTS = [...WANDER_SPOTS, { x: 320, y: 200 }, { x: 420, y: 340 }, { x: 230, y: 358 }, { x: 470, y: 150 }]
+  function spawnPet() {
+    const start = { x: 320, y: 358 }
+    const b = new Bear(scene, start.x, start.y, REGION, 'cat')
+    b.setDisplayName(null)
+    pet = { bear: b, tx: start.x, ty: start.y, until: scene.time.now + 2500 }
+    const sp = (b as any).sprite
+    sp.setInteractive({ useHandCursor: true })
+    sp.on('pointerdown', () => {
+      for (let i = 0; i < 5; i++) {
+        const h = scene.add.text(sp.x + (i - 2) * 6, sp.y - 8, '❤️', { fontSize: '11px' }).setOrigin(0.5).setDepth(9)
+        scene.tweens.add({ targets: h, y: sp.y - 34 - i * 4, alpha: 0, duration: 900 + i * 90, ease: 'Sine.easeOut', onComplete: () => h.destroy() })
+      }
+      pet?.bear.playWave?.()
+    })
+  }
+  function drivePet(now: number, dt: number) {
+    if (!pet) return
+    pet.bear.update(dt)
+    const sp = (pet.bear as any).sprite
+    const arrived = Phaser.Math.Distance.Squared(sp.x, sp.y, pet.tx, pet.ty) < 40
+    if (arrived && now >= pet.until) {
+      const idlers = [...bears.values()].filter((t) => t.idle && !t.trip)
+      let dest: { x: number; y: number }
+      if (idlers.length && (Math.floor(now / 1000) % 5) < 2) {       // ~40%: nap beside an idle coworker
+        const a = idlers[Math.floor(now / 800) % idlers.length]
+        dest = { x: a.home.x - 18, y: a.home.y + 6 }
+      } else {
+        dest = PET_SPOTS[Math.floor(now / 600) % PET_SPOTS.length]
+      }
+      pet.tx = dest.x; pet.ty = dest.y; pet.bear.walkTo(dest.x, dest.y)
+      pet.until = now + 3500 + Math.abs((Math.floor(now / 7) * 13) % 5000)
+    }
+  }
+  spawnPet()
+
   function seatFor(id: string): { x: number; y: number } {
     let i = slots.get(id)
     if (i == null) {
@@ -338,6 +376,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
         else if (t.trip) driveTrip(t, scene.time.now)
       }
     }
+    drivePet(scene.time.now, dt)
   }
   scene.events.on(Phaser.Scenes.Events.UPDATE, onUpdate)
 
@@ -346,6 +385,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
     stopDemo?.()
     for (const t of bears.values()) destroyTracked(t)
     bears.clear()
+    pet?.bear.destroy(); pet = null
   }
 
   // ── pick a source ──
