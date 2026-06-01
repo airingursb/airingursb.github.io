@@ -330,7 +330,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
         }
       }
       const wasIdle = t.idle
-      const nowIdle = freeCat(a.cat)
+      const nowIdle = freeCat(a.cat) && a.kind === 'sub'   // the boss stays at the boss desk; only subs wander
       if (nowIdle && !wasIdle) t.nextTripAt = scene.time.now + 2500 + Math.abs((tgt.x * 17) % 4000)
       if (!nowIdle && t.trip) endTrip(t)          // became active mid-trip → drop the stroll
       t.cat = a.cat; t.state = a.state; t.home = tgt; t.idle = nowIdle
