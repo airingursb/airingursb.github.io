@@ -65,6 +65,33 @@ const DECOR_LADDER: Décor[] = [
   { emoji: '🔥', at: 60, dx: -15, dy: -14 },
 ]
 
+// ── Phase 2: ambient life — idle agents take goal-directed trips ──
+// named destinations on the 640×416 office map (in front of the real furniture)
+const WAYPOINTS = {
+  coffee: { x: 156, y: 108 },
+  cooler: { x: 104, y: 114 },
+  sofa: { x: 548, y: 368 },
+  meeting: { x: 132, y: 332 },
+  treadmill: { x: 604, y: 322 },
+  plantL: { x: 62, y: 372 },
+  plantR: { x: 588, y: 372 },
+}
+const WANDER_SPOTS = [WAYPOINTS.sofa, WAYPOINTS.cooler, WAYPOINTS.meeting, WAYPOINTS.treadmill, WAYPOINTS.plantL, WAYPOINTS.plantR]
+// dev-humour one-liners for pantry chitchat / idle thought bubbles
+const QUIPS = ['这正则有毒…', '又是缓存的锅', '再跑一次就好', '谁动了我的 lint', '编译中… ☕', 'LGTM 🚀', '这 bug 会自愈吗？', '先 commit 再说', '摸鱼五分钟', 'tests 全绿 ✅', '需求又变了', '这段我不敢删']
+const pickQuip = (i: number) => QUIPS[(i * 7 + 3) % QUIPS.length]   // deterministic-ish, varies per call index
+// only truly-idle agents wander off; working/blocked agents stay put at their desk
+const freeCat = (cat: string) => cat === 'idle' || cat === 'social'
+
+// a goal-directed trip an idle agent takes (coffee run / stroll), driven per-frame
+type Trip = {
+  kind: 'coffee' | 'wander'
+  phase: 'go' | 'linger' | 'back'
+  dest: { x: number; y: number }
+  until: number                                   // scene.time.now deadline for `linger`
+  cup?: Phaser.GameObjects.Text                   // coffee carried home
+}
+
 type Tracked = {
   bear: Bear
   bubble: Phaser.GameObjects.Container & { setLabel?: (s: string, fiction: boolean) => void }
@@ -73,6 +100,10 @@ type Tracked = {
   decor: Phaser.GameObjects.Text[]
   tx: number; ty: number; anim: string; slot: number | null
   cat: string; state: string                 // last seen, for transition detection
+  home: { x: number; y: number }             // the agent's desk seat (return point)
+  idle: boolean                              // free to wander (cat idle/social)
+  trip: Trip | null                          // active ambient trip, owns movement
+  nextTripAt: number                         // scene.time.now to start the next trip
 }
 
 // compact token count: 3_190_760 → "3.2M", 45_000 → "45k"
@@ -150,6 +181,46 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
     scene.tweens.add({ targets: f, alpha: 0, duration: 360, onComplete: () => f.destroy() })
   }
 
+  // ── ambient trips: idle agents get up and do something, then come back ──
+  function startTrip(t: Tracked) {
+    const now = scene.time.now
+    const coffee = (Math.floor(now / 1000 + t.home.x) % 5) < 2   // ~40% coffee runs
+    const dest = coffee ? WAYPOINTS.coffee : WANDER_SPOTS[Math.floor(now / 700 + t.home.y) % WANDER_SPOTS.length]
+    t.trip = { kind: coffee ? 'coffee' : 'wander', phase: 'go', dest, until: 0 }
+    t.tx = dest.x; t.ty = dest.y
+    t.bear.walkTo(dest.x, dest.y)
+  }
+  function endTrip(t: Tracked) {
+    if (t.trip?.cup) t.trip.cup.destroy()
+    t.trip = null
+  }
+  function driveTrip(t: Tracked, now: number) {
+    const trip = t.trip!; const sp = (t.bear as any).sprite
+    const arrived = Phaser.Math.Distance.Squared(sp.x, sp.y, trip.dest.x, trip.dest.y) < 40
+    if (trip.phase === 'go') {
+      if (arrived) { trip.phase = 'linger'; trip.until = now + (trip.kind === 'coffee' ? 1600 : 1800 + (t.home.x % 1800)) }
+    } else if (trip.phase === 'linger') {
+      if (now >= trip.until) {
+        if (trip.kind === 'coffee') trip.cup = scene.add.text(sp.x, sp.y - 14, '☕', { fontSize: '11px' }).setOrigin(0.5).setDepth(8)
+        trip.phase = 'back'; trip.dest = { x: t.home.x, y: t.home.y }
+        t.tx = t.home.x; t.ty = t.home.y; t.bear.walkTo(t.home.x, t.home.y)
+      }
+    } else {                                            // returning home
+      if (trip.cup) trip.cup.setPosition(sp.x + 6, sp.y - 2)
+      if (arrived) {
+        if (trip.cup) {                                 // settle the coffee on the desk (once)
+          if (!t.decor.some((o) => o.getData('emoji') === '☕')) {
+            trip.cup.setPosition(t.home.x + 13, t.home.y - 4).setData('emoji', '☕')
+            t.decor.push(trip.cup)
+          } else trip.cup.destroy()
+          trip.cup = undefined
+        }
+        t.trip = null
+        t.nextTripAt = now + 9000 + Math.abs((t.home.y * 53) % 8000)
+      }
+    }
+  }
+
   function seatFor(id: string): { x: number; y: number } {
     let i = slots.get(id)
     if (i == null) {
@@ -178,7 +249,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
         const b = new Bear(scene, tgt.x, tgt.y, REGION, speciesOf(a))
         const metrics = scene.add.text(tgt.x, tgt.y, '', { fontFamily: 'monospace', fontSize: '7px', color: '#8ab0c8' }).setOrigin(0.5, 0).setDepth(7)
         const glow = scene.add.image(tgt.x, tgt.y, 'office_glow').setBlendMode(Phaser.BlendModes.ADD).setDepth(4).setAlpha(0)
-        t = { bear: b, bubble: makeBubble(scene), metrics, glow, decor: [], tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null, cat: a.cat, state: a.state }
+        t = { bear: b, bubble: makeBubble(scene), metrics, glow, decor: [], tx: tgt.x, ty: tgt.y, anim: a.anim || 'idle', slot: null, cat: a.cat, state: a.state, home: { x: tgt.x, y: tgt.y }, idle: freeCat(a.cat), trip: null, nextTripAt: scene.time.now + 4000 + Math.abs((tgt.x * 31) % 6000) }
         bears.set(a.id, t)
         // spawn juice: a soft dust poof + a quick glow bloom
         burst(tgt.x, tgt.y - 8, { tint: [0xcfe4ee, 0xffffff], n: 10, speed: 50, life: 600 })
@@ -196,9 +267,12 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
           flash(t, 0xff4d3c)
         }
       }
-      t.cat = a.cat; t.state = a.state
-
-      t.tx = tgt.x; t.ty = tgt.y; t.anim = a.anim || 'idle'
+      const wasIdle = t.idle
+      const nowIdle = freeCat(a.cat)
+      if (nowIdle && !wasIdle) t.nextTripAt = scene.time.now + 2500 + Math.abs((tgt.x * 17) % 4000)
+      if (!nowIdle && t.trip) endTrip(t)          // became active mid-trip → drop the stroll
+      t.cat = a.cat; t.state = a.state; t.home = tgt; t.idle = nowIdle
+      t.anim = a.anim || 'idle'
       t.bear.setDisplayName(a.label, { prefix: a.kind === 'main' ? '★ ' : '', color: a.kind === 'main' ? '#d8b048' : undefined })
       t.bubble.setLabel?.(`${a.emoji || ''} ${a.detail || ''}`.trim(), !!a.fiction)
 
@@ -219,7 +293,9 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
         }
       }
 
-      t.bear.walkTo(tgt.x, tgt.y)
+      // movement ownership: the ambient trip system drives idle agents on their
+      // coffee runs / strolls; everyone else follows the server's zone placement.
+      if (!t.trip) { t.tx = tgt.x; t.ty = tgt.y; t.bear.walkTo(tgt.x, tgt.y) }
     }
     for (const [id, t] of [...bears.entries()]) {
       if (!seen.has(id)) {
@@ -232,6 +308,7 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
 
   function destroyTracked(t: Tracked) {
     t.bear.destroy(); t.bubble.destroy(); t.metrics.destroy(); t.glow.destroy()
+    if (t.trip?.cup) t.trip.cup.destroy()
     for (const o of t.decor) o.destroy()
   }
 
@@ -254,6 +331,11 @@ export function setupOfficeAgents(scene: Phaser.Scene): void {
         if (t.anim === 'sit') t.bear.playSit()
         else if (t.anim === 'wave' || t.anim === 'dance') t.bear.playWave()
         else if (t.anim === 'idle') t.bear.playIdle()
+      }
+      // ambient life: idle agents take coffee runs / strolls, then return
+      if (t.idle) {
+        if (!t.trip && scene.time.now >= t.nextTripAt) startTrip(t)
+        else if (t.trip) driveTrip(t, scene.time.now)
       }
     }
   }
@@ -316,16 +398,19 @@ function startDemo(reconcile: (s: { agents: AgentSnap[] }) => void) {
   const A = (id: string, kind: 'main' | 'sub', label: string, species: string, cat: string, state: string, emoji: string, anim: string, zone: string, detail: string, metrics?: AgentMetrics): AgentSnap =>
     ({ id, kind, label, species, cat, state, emoji, anim, zone, detail, fiction: false, metrics })
   const M = (tools: number, tok: number): AgentMetrics => ({ tools, inTokens: tok, outTokens: Math.round(tok * 0.1) })
+  // a perpetually-idle intern keeps the room alive — it wanders / coffee-runs the
+  // whole time (its cat stays 'idle' across every frame).
+  const intern = A('intern', 'sub', 'intern', 'hamster', 'idle', 'idle_relax', '🫧', 'idle', 'lounge', 'puttering about', M(2, 40_000))
   const frames: AgentSnap[][] = [
     [A('main', 'main', 'You', 'bear', 'code', 'edit_code', '⌨️', 'sit', 'boss', 'writing code', M(31, 3_190_000)),
      A('rev', 'sub', 'code-reviewer', 'fox', 'read', 'read_diff', '🔍', 'sit', 'desk', 'reviewing the diff', M(6, 210_000)),
-     A('db', 'sub', 'db-auditor', 'frog', 'mcp', 'mcp_db', '🗄️', 'sit', 'desk', 'querying Supabase', M(14, 520_000))],
+     A('db', 'sub', 'db-auditor', 'frog', 'mcp', 'mcp_db', '🗄️', 'sit', 'desk', 'querying Supabase', M(14, 520_000)), intern],
     [A('main', 'main', 'You', 'bear', 'delegate', 'del_spawn', '🤝', 'wave', 'whiteboard', 'delegating', M(33, 3_300_000)),
      A('rev', 'sub', 'code-reviewer', 'fox', 'run', 'run_test', '🧪', 'sit', 'infra', 'running tests', M(13, 360_000)),
-     A('db', 'sub', 'db-auditor', 'frog', 'idle', 'idle_coffee', '☕', 'idle', 'pantry', 'getting coffee', M(15, 540_000))],
+     A('db', 'sub', 'db-auditor', 'frog', 'idle', 'idle_coffee', '☕', 'idle', 'pantry', 'getting coffee', M(15, 540_000)), intern],
     [A('main', 'main', 'You', 'bear', 'run', 'run_deploy', '🚢', 'sit', 'infra', 'deploying', M(35, 3_400_000)),
      A('rev', 'sub', 'code-reviewer', 'fox', 'life', 'life_done', '🎉', 'wave', 'lounge', 'done ✓', M(30, 410_000)),
-     A('db', 'sub', 'db-auditor', 'frog', 'social', 'soc_coffee', '💬', 'wave', 'pantry', 'chatting', M(15, 540_000))],
+     A('db', 'sub', 'db-auditor', 'frog', 'social', 'soc_coffee', '💬', 'wave', 'pantry', 'chatting', M(15, 540_000)), intern],
   ]
   let i = 0
   reconcile({ agents: frames[0] })
