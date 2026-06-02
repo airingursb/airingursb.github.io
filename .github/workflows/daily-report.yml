@@ -18,7 +18,11 @@ jobs:
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          HOMEPAGE_SB_KEY: ${{ secrets.HOMEPAGE_SB_KEY }}
+          # Must be the service_role key: the report UPSERTs into daily_metrics
+          # and reads it back for sparklines/deltas. The anon key returns 401 on
+          # write + empty on read (RLS), which silently froze daily_metrics and
+          # left "访客 (UV)" stuck at 0. Same Supabase project as the blog.
+          HOMEPAGE_SB_KEY: ${{ secrets.BLOG_SUPABASE_SERVICE_KEY }}
           BLOG_SB_URL: ${{ secrets.BLOG_SB_URL }}
           BLOG_SB_KEY: ${{ secrets.BLOG_SB_KEY }}
           CHAT_SB_URL: ${{ secrets.CHAT_SB_URL }}
