@@ -75,7 +75,7 @@
   </script><link rel="stylesheet" href="/_astro/BaseLayout.ieEC_ylX.css">
 <style>.lang-switch[data-astro-cid-r2b4e7hz]{font-size:.85em;letter-spacing:.02em;white-space:nowrap}.lang-active[data-astro-cid-r2b4e7hz]{font-weight:700;color:var(--c-text, #1a1a1a)}.lang-sep[data-astro-cid-r2b4e7hz]{margin:0 .3em;color:var(--c-muted, #999)}.lang-link[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);text-decoration:none;transition:color .15s}.lang-link[data-astro-cid-r2b4e7hz]:hover{color:var(--c-text, #1a1a1a)}.lang-disabled[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);opacity:.4;cursor:not-allowed}
 </style>
-<link rel="stylesheet" href="/_astro/PostLayout.CD5WYbhT.css"></head> <body>   <noscript><link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"></noscript>  <div class="post-page" data-lang="zh" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>2019年4月7日</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-hide-mobile" data-astro-cid-gjtny2mx>Blog</a> <a href="/moments" data-astro-cid-gjtny2mx>Moment</a> <a href="/notes" data-astro-cid-gjtny2mx>Notes</a> <a href="/photos" data-astro-cid-gjtny2mx>Photos</a> <a href="/friends" data-astro-cid-gjtny2mx>Friends</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> <div class="mast-lang-line" data-astro-cid-gjtny2mx> <span class="lang-switch" data-astro-cid-r2b4e7hz> <strong class="lang-active" data-astro-cid-r2b4e7hz>中</strong> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <a href="/en/posts/xss" class="lang-link" data-lang-switch="en" data-astro-cid-r2b4e7hz>EN</a> </span>  <script>
+<link rel="stylesheet" href="/_astro/PostLayout.CtlAGBWe.css"></head> <body>   <noscript><link slot="head" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap"></noscript>  <div class="post-page" data-lang="zh" data-astro-cid-gjtny2mx> <!-- Masthead --> <header class="masthead" data-astro-cid-gjtny2mx> <div class="mast-inner" data-astro-cid-gjtny2mx> <div class="mast-top-rule" data-astro-cid-gjtny2mx></div> <div class="mast-bar" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-brand" data-astro-cid-gjtny2mx>Airing's Blog</a> <span class="mast-date" data-astro-cid-gjtny2mx>2019年4月7日</span> <div class="mast-links" data-astro-cid-gjtny2mx> <a href="/blog" class="mast-hide-mobile" data-astro-cid-gjtny2mx>Blog</a> <a href="/moments" data-astro-cid-gjtny2mx>Moment</a> <a href="/notes" data-astro-cid-gjtny2mx>Notes</a> <a href="/photos" data-astro-cid-gjtny2mx>Photos</a> <a href="/friends" data-astro-cid-gjtny2mx>Friends</a> </div> </div> <div class="mast-bottom-rule" data-astro-cid-gjtny2mx></div> <div class="mast-lang-line" data-astro-cid-gjtny2mx> <span class="lang-switch" data-astro-cid-r2b4e7hz> <strong class="lang-active" data-astro-cid-r2b4e7hz>中</strong> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <a href="/en/posts/xss" class="lang-link" data-lang-switch="en" data-astro-cid-r2b4e7hz>EN</a> </span>  <script>
   // Persist language preference on click
   document.querySelectorAll('[data-lang-switch]').forEach(function(el) {
     el.addEventListener('click', function() {
@@ -1371,6 +1371,21 @@
     });
   }
 
+  // Re-render comments when crossing the mobile/desktop breakpoint so the
+  // nesting cap (1 vs 4 levels) follows the viewport.
+  var bcLastMaxDepth = bcMaxDepth();
+  var bcResizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(bcResizeTimer);
+    bcResizeTimer = setTimeout(function() {
+      var d = bcMaxDepth();
+      if (d !== bcLastMaxDepth && bottomComments.length) {
+        bcLastMaxDepth = d;
+        renderBottomComments();
+      }
+    }, 200);
+  });
+
   function renderBottomComments() {
     bcThread.innerHTML = '';
     var count = bottomComments.length;
@@ -1392,10 +1407,35 @@
       else roots.push(c);
     });
 
-    roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+    // Cap visual nesting: desktop indents up to 4 levels, mobile to 1.
+    // Replies deeper than the cap are flattened as siblings at the capped level
+    // (they already carry an "@name" prefix, so the thread stays legible).
+    var maxDepth = bcMaxDepth();
+    roots.forEach(function(c) { appendThread(c, bcThread, 0, maxDepth); });
   }
 
-  function buildCommentEl(c, isReply) {
+  function bcMaxDepth() {
+    return window.matchMedia('(max-width: 640px)').matches ? 1 : 4;
+  }
+
+  // Append a comment and its descendants, capping the nesting depth.
+  function appendThread(c, container, depth, maxDepth) {
+    var div = buildCommentEl(c, depth);
+    container.appendChild(div);
+    // Within the cap, children nest into this comment's own container;
+    // at/beyond the cap they flatten into the same container as this comment.
+    var childContainer = depth < maxDepth
+      ? div.querySelector('.bc-replies-container')
+      : container;
+    var childDepth = Math.min(depth + 1, maxDepth);
+    if (c._replies && c._replies.length) {
+      c._replies.forEach(function(r) { appendThread(r, childContainer, childDepth, maxDepth); });
+    }
+  }
+
+  // Builds a single comment element (no recursion — see appendThread).
+  function buildCommentEl(c, depth) {
+    var isReply = depth > 0;
     var div = document.createElement('div');
     div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
 
@@ -1458,14 +1498,6 @@
       bcTextarea.focus();
       bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
-
-    // Render replies
-    var repliesContainer = div.querySelector('.bc-replies-container');
-    if (c._replies && c._replies.length) {
-      c._replies.forEach(function(r) {
-        repliesContainer.appendChild(buildCommentEl(r, true));
-      });
-    }
 
     return div;
   }
