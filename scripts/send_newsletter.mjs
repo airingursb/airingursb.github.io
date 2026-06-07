@@ -33,6 +33,7 @@ function parseArgs(argv) {
 const args = parseArgs(process.argv);
 const slug = args.slug;
 const dryRun = !!args['dry-run'];
+const retryFailed = !!args['retry-failed'];
 const testEmail = args['test-email'] || null;
 const apiUrl = args['api-url'] || process.env.BLOG_API_URL || 'https://ursb.me';
 const adminToken = args.token || process.env.ADMIN_TOKEN;
@@ -111,6 +112,26 @@ const post = {
   date: fm.date || '',
 };
 
+// Optional sidecar: a hand/AI-authored summary + highlight pull-quotes that
+// replace the crude character-truncated excerpt in the email.
+//   src/content/posts/<slug>.newsletter.json → { summary, highlights: [], en?: { summary, highlights } }
+try {
+  const sidecar = JSON.parse(readFileSync(resolve(postsDir, `${slug}.newsletter.json`), 'utf8'));
+  if (sidecar.summary) post.summary = sidecar.summary;
+  if (Array.isArray(sidecar.highlights)) post.highlights = sidecar.highlights;
+  if (sidecar.en) post.en = { ...(post.en || {}), ...sidecar.en };
+  console.error(`   Sidecar: summary + ${(post.highlights || []).length} highlights`);
+} catch {
+  /* no sidecar — email falls back to the raw excerpt */
+}
+
+// Dump the exact request body (e.g. to bake into a server-side scheduled
+// retry) and exit, without calling the API.
+if (args['print-body']) {
+  process.stdout.write(JSON.stringify(post));
+  process.exit(0);
+}
+
 // ── Call the API ────────────────────────────────────────────────────────────
 
 console.log(`\n📰 Newsletter: "${post.title}"`);
@@ -119,6 +140,7 @@ console.log(`   Cover:   ${post.cover || '(none)'}`);
 console.log(`   Tags:    ${post.tags.join(', ') || '(none)'}`);
 console.log(`   Excerpt: ${post.excerpt.slice(0, 80)}...`);
 console.log(`   Dry run: ${dryRun}`);
+if (retryFailed) console.log(`   Mode:    RETRY FAILED (only previously-failed recipients)`);
 if (testEmail) console.log(`   Test to: ${testEmail}`);
 console.log();
 
@@ -126,7 +148,8 @@ const params = new URLSearchParams();
 if (dryRun) params.set('dry_run', '1');
 if (testEmail) params.set('test_email', testEmail);
 const qs = params.toString();
-const endpoint = `${apiUrl}/api/admin/newsletter/send${qs ? '?' + qs : ''}`;
+const action = retryFailed ? 'retry' : 'send';
+const endpoint = `${apiUrl}/api/admin/newsletter/${action}${qs ? '?' + qs : ''}`;
 
 try {
   const resp = await fetch(endpoint, {
@@ -146,7 +169,13 @@ try {
   }
 
   if (data.dryRun) {
-    console.log(`✅ Dry run complete — would send to ${data.sent} subscribers.`);
+    const n = retryFailed ? data.wouldSend : data.sent;
+    console.log(`✅ Dry run complete — would send to ${n} subscribers.` +
+      (retryFailed ? ` (${data.failedLogged} failures logged)` : ''));
+  } else if (retryFailed) {
+    console.log(`✅ Retry sent to ${data.sent} previously-failed subscribers.` +
+      (data.remaining ? ` ⚠️ ${data.remaining} still pending.` : ''));
+    if (data.message) console.log(`   ${data.message}`);
   } else {
     console.log(`✅ Newsletter sent to ${data.sent} subscribers.`);
   }
