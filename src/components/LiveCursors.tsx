@@ -16,8 +16,10 @@
 // Architecture (see src/lib/cursor-presence.ts for the why):
 //   • Presence  → who's online + identity metadata (color/cc/num). Also GATES
 //     broadcasting: we never send cursor messages when alone (quota saver).
-//   • Broadcast → ephemeral {nx, ry} cursor positions, rAF-throttled, only
-//     while moving + visible + 2+ people present.
+//   • Broadcast → ephemeral {nx, ry} cursor positions: rAF-throttled while
+//     moving, PLUS a low-freq heartbeat so a present-but-idle peer stays
+//     visible at their real spot (instead of fading / sitting at the random
+//     spawn placeholder). Only sent when visible + 2+ people present.
 //
 // Coordinates anchor to the centered `.container` column (max-width 520px) so
 // they map across desktop widths despite responsive reflow. Disabled on touch.
@@ -30,6 +32,11 @@ import {
 
 const ROOM = 'cursors:home'
 const POP_MS = 280
+// Heartbeat re-broadcasts our position even while idle. Kept well under
+// IDLE_FADE_MS so a present peer never crosses the fade threshold and idle
+// peers resolve to their real position rather than the random spawn spot.
+const HEARTBEAT_MS = 3000
+const IDLE_FADE_MS = 8000
 
 // Spring tuning — m = 1, ω_n = √STIFFNESS ≈ 28.6 rad/s, ζ = DAMPING/(2ω_n)
 // ≈ 0.66 → a small, tasteful overshoot (lively, not rubbery).
@@ -108,6 +115,7 @@ export default function LiveCursors() {
     const refreshPeers = () => {
       const state = channel.presenceState() as Record<string, Array<Partial<Meta>>>
       const online = Object.keys(state)
+      const wasBroadcasting = broadcasting
       broadcasting = online.length >= 2 // ← cost gate: silent when alone
       for (const pid of [...peers.current.keys()]) {
         if (pid === id || !online.includes(pid)) peers.current.delete(pid)
@@ -134,6 +142,9 @@ export default function LiveCursors() {
         }
       }
       setIds([...peers.current.keys()])
+      // Just crossed into "not alone" → announce our real position right away
+      // so peers see us where we actually are, not the random spawn spot.
+      if (!wasBroadcasting && broadcasting) sendNow()
     }
 
     channel.on('presence', { event: 'sync' }, refreshPeers)
@@ -159,18 +170,23 @@ export default function LiveCursors() {
     }
     window.addEventListener('visitor-country-ready', onCountry as EventListener)
 
-    // ---- send my cursor (rAF-throttled, only when moving + live) ----
-    let lastNx = 0, lastRy = 0, pending = false
-    const flushSend = () => {
-      pending = false
-      if (!broadcasting || hidden) return
+    // ---- send my cursor ----
+    // Live updates are rAF-throttled on pointermove; a low-freq heartbeat keeps
+    // a present-but-idle visitor alive (resolves their real spot + dodges the
+    // idle fade). hasPos guards against broadcasting the (0,0) placeholder
+    // before the pointer has ever moved.
+    let lastNx = 0, lastRy = 0, pending = false, hasPos = false
+    const sendNow = () => {
+      if (!broadcasting || hidden || !hasPos) return
       channel.send({ type: 'broadcast', event: 'cursor', payload: { id, nx: lastNx, ry: lastRy } })
     }
+    const flushSend = () => { pending = false; sendNow() }
     const onMove = (e: PointerEvent) => {
       const c = container(); if (!c) return
       const rect = c.getBoundingClientRect()
       lastNx = (e.clientX - rect.left) / rect.width
       lastRy = e.clientY - rect.top // == cursorDocY - columnDocTop (scroll cancels)
+      hasPos = true
       if (!pending && broadcasting && !hidden) {
         pending = true
         requestAnimationFrame(flushSend)
@@ -179,6 +195,7 @@ export default function LiveCursors() {
     const onVis = () => { hidden = document.hidden }
     window.addEventListener('pointermove', onMove, { passive: true })
     document.addEventListener('visibilitychange', onVis)
+    const heartbeat = window.setInterval(sendNow, HEARTBEAT_MS)
 
     // ---- render loop: damped-spring follow + tilt + squash + idle sway ----
     let raf = 0
@@ -220,7 +237,7 @@ export default function LiveCursors() {
           const swy = taper * 1.8 * Math.sin(now / 570 + p.phase * 1.7)
 
           if (p.el) {
-            p.el.style.opacity = now - p.seen > 8000 ? '0' : '1'
+            p.el.style.opacity = now - p.seen > IDLE_FADE_MS ? '0' : '1'
             p.el.style.transform = `translate3d(${p.curX - 4}px, ${p.curY - 3}px, 0)`
           }
           if (p.glyph) {
@@ -237,6 +254,7 @@ export default function LiveCursors() {
       document.removeEventListener('visibilitychange', onVis)
       window.removeEventListener('visitor-country-ready', onCountry as EventListener)
       window.clearInterval(poll)
+      window.clearInterval(heartbeat)
       cancelAnimationFrame(raf)
       channel.unsubscribe()
       supabase.removeChannel(channel)
