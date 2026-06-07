@@ -6404,6 +6404,16 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
         <div class="io-val">Render Tree<span class="small lang-zh-only">每节点附 ComputedStyle</span><span class="small lang-en-only">+ ComputedStyle per node</span></div>
       </div>
     </div>
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO H · LIVE · DOM × CSSOM → Render Tree</span><span class="lang-en-only">DEMO H · LIVE · DOM × CSSOM → Render Tree</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">两棵树合成一棵的现场</span><span class="lang-en-only">Two trees, one merge</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">点 DOM 树的任意节点，看 CSSOM 里哪几条规则被命中（黄色高亮）。下面是合成出来的 Render Tree——<em>它从来不等于 DOM Tree</em>。勾选 <code>display: none</code> 看节点怎么从 Render Tree 里消失（但仍在 DOM 里）。</span><span class="lang-en-only">Click any DOM node and watch which CSSOM rules match (yellow highlight). Below is the Render Tree they produce — <em>it never equals the DOM Tree</em>. Toggle <code>display: none</code> to watch a node vanish from the Render Tree (while staying in DOM).</span></p>
+      <div class="dc-stage">
+        <demo-rendertree></demo-rendertree>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">这就是 Style 阶段的核心数据流：<strong>DOM tree + CSSOM → Render Tree</strong>。<em>head</em> 和它的孩子（<em>title</em>、<em>script</em>）没视觉，全部丢弃；<code>display: none</code> 的节点不进 Render Tree、不参与 Layout、不参与 Paint——所以这是隐藏元素的最低成本方式。但注意：<code>visibility: hidden</code> 的节点<em>仍在 Render Tree 里</em>占位置，只是不绘制，因此和 <code>display:none</code> 性能差异巨大。</span><span class="lang-en-only">This is the core data flow of the Style stage: <strong>DOM tree + CSSOM → Render Tree</strong>. <em>&lt;head&gt;</em> and its children (<em>&lt;title&gt;</em>, <em>&lt;script&gt;</em>) have no visual — all dropped; nodes with <code>display: none</code> never enter the Render Tree, skip Layout, skip Paint — making this the cheapest "hide". But beware: <code>visibility: hidden</code> nodes <em>stay in the Render Tree</em> taking space; they're just not painted — a huge perf gap from <code>display: none</code>.</span></p>
+    </div>
+
   </section>
 
   <!-- ========== CHAPTER 08 — LAYOUT ========== -->
@@ -6887,6 +6897,16 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
         <demo-fsl></demo-fsl>
       </div>
       <p class="dc-note"><span class="lang-zh-only">这个 demo 没有作弊——两段代码做的是同样的工作量，差别只在<strong>读和写交错 vs 批量化</strong>。开 DevTools Performance 面板录一次能看到那一排紫色 Layout 条。你写的每一段 ResizeObserver 回调、每一段 <code>el.style.x = …; el.offsetX</code> 都在重蹈这里的覆辙。</span><span class="lang-en-only">This demo isn't cheating — both code paths do the exact same work. The only difference is <strong>interleaved read+write vs batched</strong>. Open DevTools Performance and you'll see that wall of purple Layout bars. Every ResizeObserver callback you wrote, every <code>el.style.x = …; el.offsetX</code> — they all replay this same bug.</span></p>
+    </div>
+
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO I · LIVE · CSS Triggers 速查</span><span class="lang-en-only">DEMO I · LIVE · CSS Triggers cheat-sheet</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">每个 CSS 属性到底跑了哪几道工序？</span><span class="lang-en-only">Which pipeline stages does each CSS property trigger?</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">点击任一属性看它的代价。<em>红色 = Layout、橙色 = Paint、绿色 = Composite</em>。用上方过滤器只看"动画安全集"（绿色）— 这就是写 60fps 动画的属性白名单。</span><span class="lang-en-only">Click any property to see its cost. <em>Red = Layout, orange = Paint, green = Composite</em>. Use the filters above to see the "animation-safe set" (green-only) — that's your whitelist for 60fps animations.</span></p>
+      <div class="dc-stage">
+        <demo-triggers></demo-triggers>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">分享时记住三组对照：(1) <code>left/top</code> 跑全套 vs <code>transform</code> 只 Composite — 这就是 Demo A 的根因；(2) <code>border</code> 触发 Layout、<code>border-radius</code> 不 — 前者是几何变化，后者只是 paint 时的 clip；(3) <code>box-shadow</code> 不触发 Layout，但每帧重画整个阴影 — 比你想的更贵。这张表回头你可以单独贴墙上当 cheat-sheet。</span><span class="lang-en-only">Three contrasts to remember during the talk: (1) <code>left/top</code> runs the full pipeline vs <code>transform</code> Composite-only — that's the root of Demo A; (2) <code>border</code> triggers Layout but <code>border-radius</code> doesn't — the former changes geometry, the latter is just a clip at paint time; (3) <code>box-shadow</code> skips Layout but redraws the whole shadow per frame — pricier than you'd guess. Tear this off as your CSS-perf cheat-sheet.</span></p>
     </div>
 
   </section>
@@ -8255,6 +8275,16 @@ GraphicsLayer · <span class="mt-tag">root</span>
         <demo-tx-vs-left></demo-tx-vs-left>
       </div>
       <p class="dc-note"><span class="lang-zh-only">点 <strong>显示 Layer 边框</strong>——只有右边那块外面会出现蓝色虚线，代表它已经升格成独立的 <code>cc::PictureLayerImpl</code>，光栅化结果存在 GPU 纹理里，Compositor 每帧只是"换个位置贴一下"。左边那块每帧都要走完 Layout → Paint → Raster 全套——main thread 在死跑 React 时，<em>左边会卡，右边不会</em>。打开 DevTools Performance 录一段就能看到差距。</span><span class="lang-en-only">Click <strong>Show Layer borders</strong> — only the right box gets a blue dashed border, meaning it has been promoted to a standalone <code>cc::PictureLayerImpl</code> whose raster result lives in a GPU texture. Compositor each frame just "places the texture at a new spot". The left box has to run Layout → Paint → Raster every frame — when main is burning on React, <em>the left one janks, the right one doesn't</em>. Record a Performance trace in DevTools to see the gap.</span></p>
+    </div>
+
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO J · LIVE · Layer Promotion 实验台</span><span class="lang-en-only">DEMO J · LIVE · Layer Promotion playground</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">到底什么 CSS 会创建独立 Layer？</span><span class="lang-en-only">Which CSS actually creates an independent Layer?</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">勾选不同的属性看下面这块元素<em>会不会升 Layer</em>。蓝色虚线 = 独立 <code>cc::PictureLayerImpl</code>。右侧"Compositor 的理由"会列出实际起作用的因素。</span><span class="lang-en-only">Toggle different properties to see whether the element <em>gets promoted</em>. Blue dashed border = standalone <code>cc::PictureLayerImpl</code>. The "Compositor reasons" list on the right enumerates what's actually driving the decision.</span></p>
+      <div class="dc-stage">
+        <demo-layer-promo></demo-layer-promo>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">几个分享时值得点出的反直觉点：(1) <em>2D <code>translateX</code> 一般不升 Layer</em>——现代 Chrome 是"按需"promote 的，单一个 translateX 不一定真创建图层（你想强制升要么用 <code>will-change</code> 要么 <code>translateZ(0)</code>）；(2) <code>opacity</code> 静态值<em>不升 Layer</em>，但配上动画就升；(3) <code>filter: blur</code> 不光升 Layer，还创建独立 RenderPass——blur 半径越大越贵。这就是为什么 <code>backdrop-filter: blur</code> 在低端机上是性能杀手。</span><span class="lang-en-only">A few counterintuitive points worth calling out in the talk: (1) <em>a lone 2D <code>translateX</code> often does NOT promote</em> — modern Chrome lazy-promotes; to force promotion use <code>will-change</code> or <code>translateZ(0)</code>; (2) static <code>opacity</code> <em>does not promote</em>, but animated opacity does; (3) <code>filter: blur</code> not only promotes — it creates its own RenderPass, and bigger blur radius = bigger bill. That's why <code>backdrop-filter: blur</code> is a perf killer on low-end devices.</span></p>
     </div>
 
   </section>
@@ -11847,7 +11877,7 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
   function currentLang() { return document.body.classList.contains('lang-en') ? 'en' : 'zh'; }
   function syncDemoLang() {
     var l = currentLang();
-    document.querySelectorAll('demo-tx-vs-left, demo-fsl, demo-tile, demo-freeze, demo-prop-trees, demo-layer-explode, demo-cv-auto').forEach(function (el) {
+    document.querySelectorAll('demo-tx-vs-left, demo-fsl, demo-tile, demo-freeze, demo-prop-trees, demo-layer-explode, demo-cv-auto, demo-rendertree, demo-triggers, demo-layer-promo').forEach(function (el) {
       el.setAttribute('data-lang', l);
     });
   }
@@ -12712,6 +12742,494 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
     }
   }
   customElements.define('demo-cv-auto', DemoCvAuto);
+})();
+
+// ---------- Demo H: DOM + CSSOM → Render Tree projection ----------
+(function () {
+  class DemoRenderTree extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .top { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:12px; }
+          .panel { background:#faf6ed; border:1px solid #c7c4ba; border-radius:3px; padding:14px 16px; }
+          .ph { font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:#767c87; font-weight:700; margin-bottom:10px; }
+          /* DOM tree */
+          .dom-node { padding:4px 0 4px 18px; position:relative; cursor:pointer; transition:background .15s ease; border-radius:3px; }
+          .dom-node:hover { background:rgba(31,92,140,0.06); }
+          .dom-node.selected { background:rgba(31,92,140,0.16); }
+          .dom-node.dropped { opacity:.35; text-decoration:line-through; cursor:not-allowed; }
+          .dom-tag { color:#1f5c8c; font-weight:700; }
+          .dom-content { color:#767c87; font-style:italic; margin-left:4px; }
+          .dom-attr { color:#b35a1f; }
+          .dom-node::before { content:'›'; position:absolute; left:6px; color:#c7c4ba; }
+          .dom-children { padding-left:14px; border-left:1px dashed #c7c4ba; margin-left:6px; }
+          /* CSSOM */
+          .css-rule { padding:8px 10px; background:#fdfbf3; border:1px solid #ddd9cd; border-radius:2px; margin-bottom:4px; font-size:11px; line-height:1.5; transition:all .25s ease; }
+          .css-rule.matched { background:rgba(255,235,80,0.40); border-color:#a87a1f; box-shadow:0 0 0 1px #a87a1f; }
+          .css-sel { color:#d1855a; font-weight:700; }
+          .css-prop { color:#1f5c8c; }
+          .css-val { color:#3c4148; }
+          .css-rule .com { color:#767c87; font-style:italic; }
+          /* Render Tree */
+          .rt-row { display:flex; align-items:flex-start; gap:14px; }
+          .rt-tree { flex:1.4; min-width:0; }
+          .rt-explain { flex:1; min-width:0; background:rgba(74,107,62,0.08); border:1px solid #ddd9cd; border-left:3px solid #4a6b3e; border-radius:3px; padding:12px 14px; font-size:11px; color:#3c4148; line-height:1.55; }
+          .rt-explain em { font-style:normal; font-weight:700; color:#15171c; }
+          .rt-node { padding:6px 12px; background:rgba(74,107,62,0.10); border:1px solid #ddd9cd; border-radius:3px; margin-bottom:4px; font-size:11px; }
+          .rt-node .tag { color:#4a6b3e; font-weight:700; }
+          .rt-node .style { color:#767c87; font-size:10px; margin-top:2px; }
+          .toggle { display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:10px; color:#767c87; }
+          .toggle input { accent-color:#1f5c8c; }
+          .legend { font-size:10px; color:#767c87; margin-top:8px; line-height:1.6; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="top">
+          <div class="panel">
+            <div class="ph">① DOM TREE</div>
+            <div class="toggle"><input type="checkbox" id="tg-hidden"><label for="tg-hidden"><span class="lang-zh-only">给 <code>.hidden</code> 加 <code>display: none</code></span><span class="lang-en-only">add <code>display: none</code> to <code>.hidden</code></span></label></div>
+            <div id="dom-root"></div>
+          </div>
+          <div class="panel">
+            <div class="ph">② CSSOM · RULEMAPS</div>
+            <div id="cssom"></div>
+            <div class="legend"><span class="lang-zh-only">点左边 DOM 节点 — 黄色高亮就是匹配上的规则</span><span class="lang-en-only">click a DOM node on the left — yellow rules are the ones that matched</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="ph">③ RENDER TREE · DOM × CSSOM 的合成产物</div>
+          <div class="rt-row">
+            <div class="rt-tree" id="rt-tree"></div>
+            <div class="rt-explain" id="rt-explain"><span class="lang-zh-only"><em>Render Tree ≠ DOM Tree。</em><br><br>• <code>&lt;head&gt;</code> 和它的孩子都没有视觉，全部丢弃<br>• <code>&lt;script&gt;</code> 在 Render Tree 里不存在<br>• <code>display: none</code> 让节点从 Render Tree 移除（但仍在 DOM）<br>• 每个进了 Render Tree 的节点都挂着自己的 ComputedStyle</span><span class="lang-en-only"><em>Render Tree ≠ DOM Tree.</em><br><br>• <code>&lt;head&gt;</code> and its children have no visual representation — dropped<br>• <code>&lt;script&gt;</code> never enters the Render Tree<br>• <code>display: none</code> removes a node from the Render Tree (but it stays in DOM)<br>• Every Render Tree node carries its own ComputedStyle</span></div>
+          </div>
+        </div>
+      `;
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+
+      // Fixed DOM model
+      var DOM = [
+        { tag:'html', children:[
+          { tag:'head', visual:false, children:[
+            { tag:'title', visual:false, text:'Airing · note' },
+            { tag:'script', visual:false, attr:'src="app.js"' }
+          ]},
+          { tag:'body', selector:'body', children:[
+            { tag:'article', selector:'article', children:[
+              { tag:'img', selector:'img', attr:'src="avatar.png"' },
+              { tag:'h2', selector:'h2', text:'Airing' },
+              { tag:'p', selector:'p', text:'Software Engineer' },
+              { tag:'button', selector:'button', text:'Follow' }
+            ]},
+            { tag:'div', selector:'.hidden', attr:'class="hidden"', text:'(debug info)', isHidden:true }
+          ]}
+        ]}
+      ];
+
+      // CSS rules
+      var CSS = [
+        { sel:'body', props:[['margin','0'],['font','16px serif']] },
+        { sel:'article', props:[['display','flex'],['padding','24px'],['background','#faf6ed'],['border-radius','12px']] },
+        { sel:'img', props:[['width','48px'],['border-radius','50%']] },
+        { sel:'h2', props:[['font-size','24px'],['color','#15171c']] },
+        { sel:'p', props:[['color','#767c87']] },
+        { sel:'button', props:[['background','#1f5c8c'],['color','white'],['padding','8px 14px']] },
+        { sel:'.hidden', props:[['display','none']], conditional:true }
+      ];
+
+      // Render the DOM tree
+      function renderDom(nodes, hiddenOn) {
+        var html = '';
+        nodes.forEach(function (n, i) {
+          var path = i;
+          html += renderDomNode(n, '' + path, hiddenOn);
+        });
+        return html;
+      }
+      function renderDomNode(n, path, hiddenOn) {
+        var classes = ['dom-node'];
+        // Drop logic
+        if (n.visual === false) classes.push('dropped');
+        if (n.isHidden && hiddenOn) classes.push('dropped');
+        var selAttr = n.selector ? ' data-sel="' + n.selector + '"' : '';
+        var html = '<div class="' + classes.join(' ') + '" data-path="' + path + '"' + selAttr + '>';
+        html += '<span class="dom-tag">&lt;' + n.tag + (n.attr ? ' <span class="dom-attr">' + n.attr + '</span>' : '') + '&gt;</span>';
+        if (n.text) html += '<span class="dom-content">"' + n.text + '"</span>';
+        if (n.children && n.children.length) {
+          html += '<div class="dom-children">';
+          n.children.forEach(function (c, i) { html += renderDomNode(c, path + '.' + i, hiddenOn); });
+          html += '</div>';
+        }
+        html += '</div>';
+        return html;
+      }
+      function renderCss() {
+        return CSS.map(function (r, i) {
+          var conditional = r.conditional;
+          return '<div class="css-rule' + (conditional ? ' conditional' : '') + '" data-sel="' + r.sel + '">' +
+            '<span class="css-sel">' + r.sel + '</span> {<br>' +
+            r.props.map(function (p) { return '&nbsp;&nbsp;<span class="css-prop">' + p[0] + '</span>: <span class="css-val">' + p[1] + '</span>;'; }).join('<br>') +
+            '<br>}' +
+            (conditional ? ' <span class="com">/* toggle ☑ to activate */</span>' : '') +
+            '</div>';
+        }).join('');
+      }
+      function collectRender(nodes, hiddenOn) {
+        var out = [];
+        nodes.forEach(function (n) {
+          if (n.visual === false) return;
+          if (n.isHidden && hiddenOn) return;
+          if (n.selector) out.push({ tag: n.tag, sel: n.selector, text: n.text });
+          if (n.children) out = out.concat(collectRender(n.children, hiddenOn));
+        });
+        return out;
+      }
+      function renderRT(hiddenOn) {
+        var nodes = collectRender(DOM, hiddenOn);
+        var lang = isEN();
+        return nodes.map(function (n) {
+          var rule = CSS.find(function (r) { return r.sel === n.sel; });
+          var styleStr = rule ? rule.props.map(function (p) { return p[0] + ':' + p[1]; }).join('; ') : '';
+          return '<div class="rt-node"><span class="tag">&lt;' + n.tag + '&gt;</span>' + (n.text ? ' "' + n.text + '"' : '') + '<div class="style">' + styleStr + '</div></div>';
+        }).join('') || '<div class="rt-node" style="background:rgba(192,57,43,0.1);border-color:#c0392b"><span class="tag" style="color:#c0392b">' + (lang ? 'empty render tree — all visual nodes removed' : '渲染树为空 — 所有可视节点都被移除') + '</span></div>';
+      }
+      function rebuild() {
+        var hiddenOn = shadow.getElementById('tg-hidden').checked;
+        shadow.getElementById('dom-root').innerHTML = renderDom(DOM, hiddenOn);
+        shadow.getElementById('cssom').innerHTML = renderCss();
+        shadow.getElementById('rt-tree').innerHTML = renderRT(hiddenOn);
+        // Re-attach click handlers
+        shadow.querySelectorAll('.dom-node[data-sel]').forEach(function (el) {
+          el.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (el.classList.contains('dropped')) return;
+            // Clear previous selection
+            shadow.querySelectorAll('.dom-node.selected').forEach(function (x) { x.classList.remove('selected'); });
+            shadow.querySelectorAll('.css-rule.matched').forEach(function (x) { x.classList.remove('matched'); });
+            el.classList.add('selected');
+            // Match: simple tag/class
+            var sel = el.getAttribute('data-sel');
+            var matched = CSS.filter(function (r) { return r.sel === sel || r.sel === 'body' && sel !== 'body' || r.sel === 'article' && (sel === 'img' || sel === 'h2' || sel === 'p' || sel === 'button'); });
+            shadow.querySelectorAll('.css-rule').forEach(function (rule) {
+              if (matched.some(function (m) { return m.sel === rule.getAttribute('data-sel'); })) {
+                rule.classList.add('matched');
+              }
+            });
+          });
+        });
+      }
+      shadow.getElementById('tg-hidden').addEventListener('change', rebuild);
+      rebuild();
+    }
+  }
+  customElements.define('demo-rendertree', DemoRenderTree);
+})();
+
+// ---------- Demo I: CSS Triggers interactive table ----------
+(function () {
+  class DemoTriggers extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .legend { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:12px; font-size:11px; }
+          .legend .item { display:flex; align-items:center; gap:6px; padding:6px 10px; background:#faf6ed; border:1px solid #c7c4ba; border-radius:2px; }
+          .dot { display:inline-block; width:14px; height:14px; border-radius:3px; flex-shrink:0; }
+          .dot.layout { background:#c0392b; }
+          .dot.paint { background:#a87a1f; }
+          .dot.composite { background:#4a6b3e; }
+          .filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+          .filter-btn { font-family:inherit; font-size:10px; padding:6px 12px; border:1px solid #1f5c8c; background:#faf6ed; color:#1f5c8c; cursor:pointer; border-radius:2px; letter-spacing:.05em; text-transform:uppercase; font-weight:600; }
+          .filter-btn.active { background:#1f5c8c; color:#faf6ed; }
+          .category { margin-bottom:18px; }
+          .cat-name { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:#767c87; font-weight:700; margin-bottom:8px; padding-bottom:4px; border-bottom:1px dashed #c7c4ba; }
+          .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:6px; }
+          .prop {
+            background:#fdfbf3; border:1px solid #ddd9cd; border-radius:2px;
+            padding:9px 11px; display:flex; justify-content:space-between; align-items:center;
+            cursor:pointer; transition:all .2s ease; font-size:11px;
+          }
+          .prop:hover { background:#f4efe6; border-color:#1f5c8c; }
+          .prop.selected { background:rgba(31,92,140,0.12); border-color:#1f5c8c; box-shadow:0 0 0 1px #1f5c8c; }
+          .prop.dimmed { opacity:.25; }
+          .prop-name { font-weight:700; color:#15171c; flex:1; min-width:0; }
+          .prop-dots { display:flex; gap:3px; }
+          .prop-dots .dot { width:9px; height:9px; }
+          .prop-dots .dot.off { background:transparent; border:1px solid #ddd9cd; }
+          .detail {
+            background:#fdfbf3; border:1px solid #ddd9cd; border-left:3px solid #1f5c8c;
+            border-radius:2px; padding:14px 16px; margin-top:14px;
+            font-size:12px; line-height:1.6; color:#3c4148;
+          }
+          .detail .pname { font-size:14px; font-weight:700; color:#15171c; margin-bottom:6px; }
+          .detail .pchain { display:flex; gap:8px; margin:8px 0 10px; font-size:10px; letter-spacing:.06em; text-transform:uppercase; }
+          .detail .pchain .stage { padding:3px 8px; border-radius:2px; color:#fff; font-weight:700; }
+          .detail .pchain .stage.layout { background:#c0392b; }
+          .detail .pchain .stage.paint { background:#a87a1f; }
+          .detail .pchain .stage.composite { background:#4a6b3e; }
+          .detail .pchain .arrow { color:#767c87; align-self:center; }
+          .detail em { color:#15171c; font-weight:700; font-style:normal; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="legend">
+          <div class="item"><span class="dot layout"></span><span>L<span class="lang-zh-only">：触发 Layout</span><span class="lang-en-only">: triggers Layout</span></span></div>
+          <div class="item"><span class="dot paint"></span><span>P<span class="lang-zh-only">：触发 Paint</span><span class="lang-en-only">: triggers Paint</span></span></div>
+          <div class="item"><span class="dot composite"></span><span>C<span class="lang-zh-only">：触发 Composite</span><span class="lang-en-only">: triggers Composite</span></span></div>
+        </div>
+        <div class="filters">
+          <button class="filter-btn active" data-filter="all"><span class="lang-zh-only">全部</span><span class="lang-en-only">all</span></button>
+          <button class="filter-btn" data-filter="layout"><span class="lang-zh-only">触发 Layout 的</span><span class="lang-en-only">triggers Layout</span></button>
+          <button class="filter-btn" data-filter="paint"><span class="lang-zh-only">只触发 Paint+</span><span class="lang-en-only">Paint+ only</span></button>
+          <button class="filter-btn" data-filter="composite"><span class="lang-zh-only">只 Composite (推荐用于动画)</span><span class="lang-en-only">Composite-only (use for animation)</span></button>
+        </div>
+        <div id="categories"></div>
+        <div class="detail" id="detail">
+          <div class="pname"><span class="lang-zh-only">点击上方任一属性看它的流水线代价</span><span class="lang-en-only">click any property to see its pipeline cost</span></div>
+          <p><span class="lang-zh-only">这张表是给你"<em>挑哪个 CSS 属性做动画</em>"的决策依据。颜色越多说明流水线代价越大，绿色只 Composite 的就是动画首选。</span><span class="lang-en-only">This table is the decision aid for "<em>which CSS property should I animate</em>". More colors = heavier pipeline cost; the green-only ones are your animation safe set.</span></p>
+        </div>
+      `;
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      var CATS = [
+        { zh:'位置 & 尺寸', en:'Position & Size', props:[
+          { n:'top',    L:1, P:1, C:1, zhWhy:'改变位置 → 整树几何重排', enWhy:'changes position → full-tree reflow' },
+          { n:'left',   L:1, P:1, C:1, zhWhy:'同上，慢；用 transform: translate 替代', enWhy:'same as above; use transform: translate instead' },
+          { n:'width',  L:1, P:1, C:1, zhWhy:'尺寸变化 → reflow', enWhy:'size change → reflow' },
+          { n:'height', L:1, P:1, C:1, zhWhy:'尺寸变化 → reflow', enWhy:'size change → reflow' },
+          { n:'margin', L:1, P:1, C:1, zhWhy:'reflow + 兄弟节点也跟着挪', enWhy:'reflow + sibling nodes shift too' },
+          { n:'padding',L:1, P:1, C:1, zhWhy:'reflow + 内容位置改变', enWhy:'reflow + content position changes' },
+          { n:'display',L:1, P:1, C:1, zhWhy:'<code>none</code> 进出 Render Tree 重组', enWhy:'<code>none</code> in/out of the Render Tree' },
+          { n:'font-size',L:1,P:1,C:1, zhWhy:'文本尺寸变化触发文本测量', enWhy:'text size change triggers text metrics recomputation' }
+        ]},
+        { zh:'颜色 & 装饰', en:'Color & Decoration', props:[
+          { n:'color',      L:0,P:1,C:1, zhWhy:'仅文本绘制变化', enWhy:'only text drawing changes' },
+          { n:'background', L:0,P:1,C:1, zhWhy:'背景重绘，不影响几何', enWhy:'background repaint, geometry untouched' },
+          { n:'border',     L:1,P:1,C:1, zhWhy:'<em>注意</em>：边框宽度变化触发 Layout', enWhy:'<em>watch out</em>: border width changes trigger Layout' },
+          { n:'box-shadow', L:0,P:1,C:1, zhWhy:'每帧重画整个阴影 — 很贵', enWhy:'redraws the whole shadow per frame — expensive' },
+          { n:'border-radius',L:0,P:1,C:1,zhWhy:'圆角是绘制时的 clip — 不触发 Layout', enWhy:'rounded corner is a clip at paint time — no Layout' },
+          { n:'outline',    L:0,P:1,C:1, zhWhy:'outline 不占布局空间', enWhy:'outline takes no layout space' }
+        ]},
+        { zh:'GPU 友好 · 动画首选', en:'GPU-friendly · use these for animation', props:[
+          { n:'transform',  L:0,P:0,C:1, zhWhy:'<em>跳过 Layout 和 Paint</em>，仅 Compositor 改一下位置', enWhy:'<em>skips Layout and Paint</em> — Compositor just moves it' },
+          { n:'opacity',    L:0,P:0,C:1, zhWhy:'有动画时升格独立 Layer，只走 Composite', enWhy:'when animated, promotes to its own Layer; Composite only' },
+          { n:'filter',     L:0,P:1,C:1, zhWhy:'<code>blur</code> 触发额外 RenderPass，但不触发 Layout', enWhy:'<code>blur</code> triggers an extra RenderPass, but no Layout' },
+          { n:'will-change',L:0,P:0,C:1, zhWhy:'提前升 Layer — <em>滥用会 Layer Explosion</em>', enWhy:'pre-promotes a Layer — <em>overuse causes Layer Explosion</em>' }
+        ]}
+      ];
+      var SEL = null;
+      var FILTER = 'all';
+      function render() {
+        var html = '';
+        CATS.forEach(function (cat) {
+          html += '<div class="category"><div class="cat-name">' + (isEN() ? cat.en : cat.zh) + '</div><div class="grid">';
+          cat.props.forEach(function (p) {
+            var match = true;
+            if (FILTER === 'layout') match = !!p.L;
+            else if (FILTER === 'paint') match = !p.L && (p.P || p.C);
+            else if (FILTER === 'composite') match = !p.L && !p.P && p.C;
+            html += '<div class="prop' + (SEL === p.n ? ' selected' : '') + (match ? '' : ' dimmed') + '" data-name="' + p.n + '">' +
+              '<span class="prop-name">' + p.n + '</span>' +
+              '<span class="prop-dots">' +
+                '<span class="dot layout' + (p.L ? '' : ' off') + '"></span>' +
+                '<span class="dot paint' + (p.P ? '' : ' off') + '"></span>' +
+                '<span class="dot composite' + (p.C ? '' : ' off') + '"></span>' +
+              '</span></div>';
+          });
+          html += '</div></div>';
+        });
+        shadow.getElementById('categories').innerHTML = html;
+        shadow.querySelectorAll('.prop').forEach(function (el) {
+          el.addEventListener('click', function () { SEL = el.getAttribute('data-name'); render(); showDetail(); });
+        });
+      }
+      function showDetail() {
+        var found = null;
+        CATS.forEach(function (c) { c.props.forEach(function (p) { if (p.n === SEL) found = p; }); });
+        if (!found) return;
+        var chain = '';
+        if (found.L) chain += '<span class="stage layout">Layout</span><span class="arrow">→</span>';
+        if (found.P) chain += '<span class="stage paint">Paint</span><span class="arrow">→</span>';
+        chain += '<span class="stage composite">Composite</span>';
+        var why = isEN() ? found.enWhy : found.zhWhy;
+        var label = isEN() ? 'WHY' : '为什么';
+        shadow.getElementById('detail').innerHTML =
+          '<div class="pname">' + found.n + '</div>' +
+          '<div class="pchain">' + chain + '</div>' +
+          '<p><strong>' + label + '：</strong>' + why + '</p>';
+      }
+      shadow.querySelectorAll('.filter-btn').forEach(function (el) {
+        el.addEventListener('click', function () {
+          FILTER = el.getAttribute('data-filter');
+          shadow.querySelectorAll('.filter-btn').forEach(function (x) { x.classList.remove('active'); });
+          el.classList.add('active');
+          render();
+        });
+      });
+      render();
+    }
+  }
+  customElements.define('demo-triggers', DemoTriggers);
+})();
+
+// ---------- Demo J: Layer Promotion playground ----------
+(function () {
+  class DemoLayerPromo extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .grid { display:grid; grid-template-columns:1fr 1.1fr; gap:14px; }
+          .stage-panel { background:#15171c; border-radius:3px; padding:32px; display:flex; align-items:center; justify-content:center; position:relative; min-height:280px; }
+          .target {
+            position:relative;
+            width:120px; height:80px; background:#d1855a; border-radius:6px;
+            display:flex; align-items:center; justify-content:center;
+            color:#15171c; font-weight:700; font-size:13px;
+            transition:all .35s cubic-bezier(.4,0,.2,1);
+          }
+          .target.has-layer::before {
+            content:''; position:absolute; inset:-6px;
+            border:2px dashed #4a85b3; border-radius:8px;
+            animation:pulse 1.5s ease-in-out infinite;
+          }
+          @keyframes pulse { 0%,100% { opacity:.6; } 50% { opacity:1; } }
+          .target.tx-2d { transform:translateX(20px); }
+          .target.tx-3d { transform:translateZ(0) translateX(20px); }
+          .target.will { will-change:transform; }
+          .target.opa { opacity:.99; }
+          .target.fil { filter:blur(0.01px); }
+          .target.fix { position:relative; }
+          .target.anim { animation:bobble 2s ease-in-out infinite alternate; }
+          @keyframes bobble { from { transform:translateX(-8px); } to { transform:translateX(8px); } }
+          .controls { background:#faf6ed; border:1px solid #c7c4ba; border-radius:3px; padding:14px; }
+          .control-row { display:flex; align-items:center; gap:10px; padding:8px 6px; border-bottom:1px solid rgba(199,196,186,.4); font-size:11px; }
+          .control-row:last-of-type { border-bottom:none; }
+          .control-row input[type=checkbox] { accent-color:#1f5c8c; flex-shrink:0; }
+          .control-row label { cursor:pointer; user-select:none; flex:1; min-width:0; line-height:1.4; }
+          .control-row code { font-size:10px; background:rgba(31,92,140,0.1); padding:1px 5px; border-radius:2px; color:#1f5c8c; }
+          .status { background:rgba(74,107,62,0.08); border:1px solid #ddd9cd; border-left:3px solid #4a6b3e; border-radius:2px; padding:12px 14px; margin-top:12px; font-size:11px; line-height:1.55; }
+          .status.no { background:rgba(127,140,141,0.08); border-left-color:#7f8c8d; }
+          .status .verdict { font-size:14px; font-weight:700; margin-bottom:6px; }
+          .status.yes .verdict { color:#4a6b3e; }
+          .status.no .verdict { color:#7f8c8d; }
+          .reasons { margin:6px 0 0; padding-left:18px; }
+          .reasons li { margin:3px 0; font-size:10.5px; color:#3c4148; }
+          .reasons li em { color:#15171c; font-weight:700; font-style:normal; }
+          .cost { display:flex; gap:14px; margin-top:10px; font-size:10px; color:#767c87; }
+          .cost div { display:flex; flex-direction:column; gap:2px; }
+          .cost strong { color:#15171c; font-size:14px; font-family:inherit; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="grid">
+          <div class="stage-panel"><div class="target" id="target">div</div></div>
+          <div>
+            <div class="controls">
+              <div class="control-row"><input type="checkbox" id="opt-tx2d"><label for="opt-tx2d"><code>transform: translateX(20px)</code> · <span class="lang-zh-only">2D 变换（一般不升 Layer）</span><span class="lang-en-only">2D transform (usually no promotion)</span></label></div>
+              <div class="control-row"><input type="checkbox" id="opt-tx3d"><label for="opt-tx3d"><code>transform: translateZ(0)</code> · <span class="lang-zh-only">3D 变换（<em>强制升 Layer</em>）</span><span class="lang-en-only">3D transform (<em>forces a Layer</em>)</span></label></div>
+              <div class="control-row"><input type="checkbox" id="opt-will"><label for="opt-will"><code>will-change: transform</code> · <span class="lang-zh-only">Chrome 提前升 Layer</span><span class="lang-en-only">Chrome pre-promotes a Layer</span></label></div>
+              <div class="control-row"><input type="checkbox" id="opt-opa"><label for="opt-opa"><code>opacity: 0.99</code> + animation · <span class="lang-zh-only">动画中的 opacity 升 Layer</span><span class="lang-en-only">animated opacity promotes a Layer</span></label></div>
+              <div class="control-row"><input type="checkbox" id="opt-fil"><label for="opt-fil"><code>filter: blur(...)</code> · <span class="lang-zh-only">滤镜创建独立 RenderPass</span><span class="lang-en-only">filter creates a separate RenderPass</span></label></div>
+              <div class="control-row"><input type="checkbox" id="opt-fix"><label for="opt-fix"><code>position: fixed</code> · <span class="lang-zh-only">fixed 元素经常升 Layer</span><span class="lang-en-only">fixed elements often get a Layer</span></label></div>
+              <div class="control-row"><input type="checkbox" id="opt-anim"><label for="opt-anim"><code>animation: bobble</code> · <span class="lang-zh-only">running CSS transform 动画</span><span class="lang-en-only">running CSS transform animation</span></label></div>
+            </div>
+            <div class="status" id="status">
+              <div class="verdict" id="verdict"></div>
+              <div id="why"></div>
+              <div class="cost"><div><span class="lang-zh-only">Layer 数</span><span class="lang-en-only">Layers</span><strong id="lcost">0</strong></div><div>VRAM<strong id="vcost">0 KB</strong></div><div><span class="lang-zh-only">合成代价</span><span class="lang-en-only">Composite cost</span><strong id="ccost">low</strong></div></div>
+            </div>
+          </div>
+        </div>
+      `;
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      var target = shadow.getElementById('target');
+      var status = shadow.getElementById('status');
+      var verdict = shadow.getElementById('verdict');
+      var why = shadow.getElementById('why');
+      var reasonsZh = {
+        'tx2d':'<code>transform 2D</code>：Chrome 现代版本会延迟升 Layer，单纯一个 translateX 不一定真创建图层',
+        'tx3d':'<em>3D transform 强制 Layer</em>：translateZ / translate3d / rotate3d 会让 Chrome 立刻为元素创建 cc::PictureLayerImpl',
+        'will':'<em>will-change 立即升 Layer</em>：告诉 Pre-paint 这个元素马上要动，提前 promotion + 分配 GPU 纹理',
+        'opa':'<em>动画中的 opacity</em>：Chrome 检测到 opacity 在动 → 升 Layer 让 Compositor 独立合成',
+        'fil':'<em>filter</em> 创建独立 RenderPass：blur / drop-shadow 都需要 offscreen 渲染',
+        'fix':'<em>position: fixed</em> 经常升 Layer：滚动时 Compositor 需要独立处理它',
+        'anim':'<em>running CSS animation</em>：动画运行期间元素是独立 Layer'
+      };
+      var reasonsEn = {
+        'tx2d':'<code>transform 2D</code>: modern Chrome lazy-promotes; a single translateX may not actually create a layer',
+        'tx3d':'<em>3D transform forces a Layer</em>: translateZ / translate3d / rotate3d immediately create a cc::PictureLayerImpl',
+        'will':'<em>will-change pre-promotes</em>: tells Pre-paint this element is about to move; promotion + GPU texture allocated up front',
+        'opa':'<em>animated opacity</em>: Chrome detects opacity in motion → promotes a Layer for independent Compositor handling',
+        'fil':'<em>filter</em> creates a separate RenderPass: blur / drop-shadow need offscreen rendering',
+        'fix':'<em>position: fixed</em> often gets a Layer: Compositor needs to handle it independently during scroll',
+        'anim':'<em>running CSS animation</em>: while animating, the element is on its own Layer'
+      };
+      var classes = { tx2d:'tx-2d', tx3d:'tx-3d', will:'will', opa:'opa', fil:'fil', fix:'fix', anim:'anim' };
+      function update() {
+        var on = {};
+        ['tx2d','tx3d','will','opa','fil','fix','anim'].forEach(function (k) {
+          var el = shadow.getElementById('opt-' + k);
+          on[k] = el.checked;
+          target.classList.toggle(classes[k], on[k]);
+        });
+        // Promotion logic — same heuristics Chrome publicly documents
+        var promoting = [];
+        if (on.tx3d) promoting.push('tx3d');
+        if (on.will) promoting.push('will');
+        if (on.opa && on.anim) promoting.push('opa');
+        if (on.fil) promoting.push('fil');
+        if (on.fix) promoting.push('fix');
+        if (on.anim && !on.opa) promoting.push('anim');
+        // 2D transform is "maybe" — skip default promotion
+        var hasLayer = promoting.length > 0;
+        target.classList.toggle('has-layer', hasLayer);
+        if (hasLayer) {
+          status.classList.add('yes'); status.classList.remove('no');
+          verdict.textContent = isEN() ? '✓ This element IS on its own Layer' : '✓ 这个元素拥有独立 Layer';
+        } else if (on.tx2d) {
+          status.classList.remove('yes'); status.classList.add('no');
+          verdict.textContent = isEN() ? '~ Likely NOT promoted (2D transform alone is not enough)' : '~ 可能没升 Layer（单 2D transform 不一定够）';
+        } else {
+          status.classList.remove('yes'); status.classList.add('no');
+          verdict.textContent = isEN() ? '✕ No Layer promotion' : '✕ 没有 Layer 升格';
+        }
+        var reasons = isEN() ? reasonsEn : reasonsZh;
+        var label = isEN() ? 'Compositor reasons:' : 'Compositor 的理由：';
+        if (promoting.length) {
+          why.innerHTML = '<strong>' + label + '</strong><ul class="reasons">' + promoting.map(function (k) { return '<li>' + reasons[k] + '</li>'; }).join('') + '</ul>';
+        } else if (on.tx2d) {
+          why.innerHTML = isEN()
+            ? '<p style="margin:0;font-size:10.5px;color:#3c4148">Tip: add <code>will-change: transform</code> or use <code>translateZ(0)</code> to force a Layer.</p>'
+            : '<p style="margin:0;font-size:10.5px;color:#3c4148">提示：加 <code>will-change: transform</code> 或改成 <code>translateZ(0)</code> 强制升 Layer。</p>';
+        } else {
+          why.innerHTML = isEN()
+            ? '<p style="margin:0;font-size:10.5px;color:#3c4148">Toggle a property to see what Compositor decides.</p>'
+            : '<p style="margin:0;font-size:10.5px;color:#3c4148">勾一个属性试试，看 Compositor 的判断。</p>';
+        }
+        // Cost stats
+        var lc = hasLayer ? 1 : 0;
+        shadow.getElementById('lcost').textContent = lc;
+        shadow.getElementById('vcost').textContent = lc * 64 + ' KB';
+        var costText;
+        if (!hasLayer) costText = isEN() ? 'low' : '低';
+        else if (on.fil) costText = isEN() ? 'high · blur RenderPass' : '高 · blur RenderPass';
+        else if (on.opa) costText = isEN() ? 'medium' : '中';
+        else costText = isEN() ? 'low · transform-only' : '低 · transform-only';
+        shadow.getElementById('ccost').textContent = costText;
+      }
+      ['tx2d','tx3d','will','opa','fil','fix','anim'].forEach(function (k) {
+        shadow.getElementById('opt-' + k).addEventListener('change', update);
+      });
+      update();
+    }
+  }
+  customElements.define('demo-layer-promo', DemoLayerPromo);
 })();
 </script>
 
