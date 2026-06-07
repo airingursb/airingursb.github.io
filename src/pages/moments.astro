@@ -715,7 +715,18 @@ for (const c of allComics) {
     font-size: 13px; color: var(--c-text); line-height: 1.6;
     margin-top: 4px; word-break: break-word;
   }
-  .comment-children { padding-left: 42px; }
+  /* Threaded replies: indent per (capped) depth via --cd; step shrinks on mobile.
+     Capping at MAX_INDENT_DEPTH keeps deep threads from running off-screen. */
+  .comment-item { margin-left: calc(var(--cd, 0) * 30px); }
+  .comment-reply {
+    border-left: 2px solid rgba(var(--c-overlay-rgb), 0.07);
+    padding-left: 12px;
+  }
+  @media (max-width: 640px) {
+    /* Mobile: only ever one level of indentation, no matter how deep the thread. */
+    .comment-item { margin-left: calc(min(var(--cd, 0), 1) * 16px); }
+    .comment-reply { padding-left: 8px; }
+  }
 
   /* Comment form */
   .comment-form { display: flex; flex-direction: column; gap: 8px; }
@@ -1112,14 +1123,19 @@ for (const c of allComics) {
       children[c.parentId].push(c);
     });
 
-    function renderComment(c) {
+    // Cap indentation depth so deeply nested replies stay readable on mobile.
+    // Each comment carries its own (capped) indent via the --cd custom property
+    // instead of nesting wrappers, so indentation no longer compounds with depth.
+    const MAX_INDENT_DEPTH = 4;
+    function renderComment(c, depth) {
       const avatarSrc = c.email
         ? `https://www.gravatar.com/avatar/${c.emailMd5 || ''}?d=robohash&s=48`
         : GRAVATAR;
+      const cd = Math.min(depth, MAX_INDENT_DEPTH);
       const childHtml = (children[c.id] || [])
-        .map(ch => `<div class="comment-children">${renderComment(ch)}</div>`).join('');
+        .map(ch => renderComment(ch, depth + 1)).join('');
       return `
-        <div class="comment-item">
+        <div class="comment-item${cd ? ' comment-reply' : ''}" style="--cd:${cd}">
           <img class="comment-avatar" src="${esc(avatarSrc)}" alt="" loading="lazy">
           <div class="comment-body">
             <span class="comment-nick">${esc(c.nickname || c.name || '匿名')}</span>
@@ -1131,7 +1147,7 @@ for (const c of allComics) {
       `;
     }
 
-    return roots.map(renderComment).join('');
+    return roots.map(c => renderComment(c, 0)).join('');
   }
 
   // ── API calls ──

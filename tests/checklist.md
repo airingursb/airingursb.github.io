@@ -285,6 +285,7 @@
 - [ ] GET `/moments/` returns page
 - [ ] DOM: `.moment-item` exists (timeline items)
 - [ ] DOM: Nav tabs include "Moments" link
+- [ ] Nested comment replies: indentation **capped** (no cumulative blowup). Reply items carry `--cd` (0–4) and `.comment-reply`. Desktop: margin-left = `--cd × 30px`, capped at depth 4. Mobile (≤640px): only **one** level of indent (`min(--cd,1) × 16px`) however deep the thread goes. Deep threads stay readable on a 375px-wide screen.
 
 ## Admin (`/admin/`)
 
