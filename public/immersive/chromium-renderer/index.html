@@ -6500,6 +6500,16 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
       <p class="dc-note"><span class="lang-zh-only">这就是 Style 阶段的核心数据流：<strong>DOM tree + CSSOM → Render Tree</strong>。<em>head</em> 和它的孩子（<em>title</em>、<em>script</em>）没视觉，全部丢弃；<code>display: none</code> 的节点不进 Render Tree、不参与 Layout、不参与 Paint——所以这是隐藏元素的最低成本方式。但注意：<code>visibility: hidden</code> 的节点<em>仍在 Render Tree 里</em>占位置，只是不绘制，因此和 <code>display:none</code> 性能差异巨大。</span><span class="lang-en-only">This is the core data flow of the Style stage: <strong>DOM tree + CSSOM → Render Tree</strong>. <em>&lt;head&gt;</em> and its children (<em>&lt;title&gt;</em>, <em>&lt;script&gt;</em>) have no visual — all dropped; nodes with <code>display: none</code> never enter the Render Tree, skip Layout, skip Paint — making this the cheapest "hide". But beware: <code>visibility: hidden</code> nodes <em>stay in the Render Tree</em> taking space; they're just not painted — a huge perf gap from <code>display: none</code>.</span></p>
     </div>
 
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO M · LIVE · 选择器匹配 A/B</span><span class="lang-en-only">DEMO M · LIVE · selector matching A/B</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">"选择器越具体越快" 的反证</span><span class="lang-en-only">The counter-evidence to "more specific selectors are faster"</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">下面两边都有 800 个 <code>.target</code>。A 用 <em>6 级 descendant 选择器</em>（<code>.x1 .x2 .x3 .x4 .x5 .target</code>），B 用 <em>扁平 class</em>（<code>.target-flat</code>）。点 ▸ 触发同一个主题切换，看实测时间差——descendant 走的是 right-to-left 路径，每个 .target 都要回溯 5 级。</span><span class="lang-en-only">Both sides have 800 <code>.target</code> elements. A uses a <em>6-level descendant selector</em> (<code>.x1 .x2 .x3 .x4 .x5 .target</code>); B uses a <em>flat class</em> (<code>.target-flat</code>). Click ▸ to flip the same theme on both and watch the measurement gap — descendant matching walks right-to-left, climbing 5 ancestors per <code>.target</code>.</span></p>
+      <div class="dc-stage">
+        <demo-selectorperf></demo-selectorperf>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">这是 BEM / Tailwind / CSS-in-JS hash class 真正的存在理由。所有它们做的事——<em>把规则压成"一个 class 决定一切"</em>——不是审美洁癖，是<strong>让 RuleMap 的 <code>class_rules_</code> 桶在 O(1) 里完成匹配</strong>，把上面 A 的 5 级回溯整个砍掉。差距随 DOM 深度和数量放大——深 component tree + 全局 CSS-in-CSS 是典型反模式。</span><span class="lang-en-only">This is the real reason BEM / Tailwind / CSS-in-JS hash classes exist. What they do — <em>compress every rule into "one class decides everything"</em> — isn't aesthetic preference; it's <strong>letting RuleMap's <code>class_rules_</code> bucket match in O(1)</strong>, cutting out the 5-level walk from A above. The gap scales with DOM depth and element count — deep component trees + global CSS-in-CSS is the classic anti-pattern.</span></p>
+    </div>
+
   </section>
 
   <!-- ========== CHAPTER 08 — LAYOUT ========== -->
@@ -10813,6 +10823,16 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
       what you saw was one frame.
       <cite>Field Note · 02</cite>
     </blockquote>
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO O · LIVE · rAF vs setTimeout 帧时序</span><span class="lang-en-only">DEMO O · LIVE · rAF vs setTimeout frame timing</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">"setTimeout(fn, 16) 就当 rAF 用"的代价</span><span class="lang-en-only">The real cost of "I'll just use setTimeout(fn, 16) as a rAF"</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">跑 3 秒，分别用 <code>setTimeout(fn, 16)</code> 和 <code>requestAnimationFrame</code> 当动画驱动，记录每次回调之间的真实间隔。看 std-dev、平均漂移、和下面那两条波形——<em>setTimeout 永远跟 vsync 错位、且 std 比 rAF 大几倍</em>。</span><span class="lang-en-only">Runs both <code>setTimeout(fn, 16)</code> and <code>requestAnimationFrame</code> for 3 seconds as animation drivers, recording the actual interval between callbacks. Watch std-dev, average drift, and the two waveforms below — <em>setTimeout always drifts away from vsync, with std-dev several times worse than rAF</em>.</span></p>
+      <div class="dc-stage">
+        <demo-raf></demo-raf>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">几个值得点出来的反直觉点：(1) <code>setTimeout(fn, 16)</code> 的 16 ms 是<em>最小延迟</em>，不是"准点 16 ms"——浏览器调度有 1-5 ms clamp + 主线程闲忙抖动，所以平均经常是 17-22 ms；(2) <code>requestAnimationFrame</code> <em>跟 vsync 信号绑死</em>，60Hz 屏稳定 16.7 ms，120Hz 稳定 8.3 ms——它就是"<em>下一次 vsync 来之前调我</em>"的承诺；(3) 在 120Hz 屏上跑这个 demo——setTimeout 还是 16-22 ms 一拍，rAF 直接降到 8.3 ms 一拍，这就是为什么硬编码 16 ms 假设在高刷屏上立刻翻车。</span><span class="lang-en-only">Counterintuitive points worth calling out: (1) <code>setTimeout(fn, 16)</code> treats 16 ms as a <em>minimum delay</em>, not "precisely 16 ms" — browser scheduling has 1-5 ms clamping plus main-thread jitter, so the average lands at 17-22 ms; (2) <code>requestAnimationFrame</code> <em>is bound to the vsync signal</em>, stable at 16.7 ms on 60 Hz, 8.3 ms on 120 Hz — it's literally the promise "<em>call me before the next vsync</em>"; (3) run this on a 120 Hz screen and setTimeout still ticks every 16-22 ms while rAF drops to 8.3 ms — that's why hard-coding 16 ms snaps the moment you hit a high-refresh display.</span></p>
+    </div>
+
   </section>
 
   <!-- ========== CHAPTER 19 — FRAME TIMELINE ========== -->
@@ -12054,7 +12074,7 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
   function currentLang() { return document.body.classList.contains('lang-en') ? 'en' : 'zh'; }
   function syncDemoLang() {
     var l = currentLang();
-    document.querySelectorAll('demo-tx-vs-left, demo-fsl, demo-tile, demo-freeze, demo-prop-trees, demo-layer-explode, demo-cv-auto, demo-rendertree, demo-triggers, demo-layer-promo, demo-parser, demo-flexalgo').forEach(function (el) {
+    document.querySelectorAll('demo-tx-vs-left, demo-fsl, demo-tile, demo-freeze, demo-prop-trees, demo-layer-explode, demo-cv-auto, demo-rendertree, demo-triggers, demo-layer-promo, demo-parser, demo-flexalgo, demo-selectorperf, demo-raf').forEach(function (el) {
       el.setAttribute('data-lang', l);
     });
   }
@@ -13937,6 +13957,330 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
     }
   }
   customElements.define('demo-flexalgo', DemoFlexAlgo);
+})();
+
+// ---------- Demo M: Selector matching A/B (deep descendant vs flat class) ----------
+(function () {
+  class DemoSelectorPerf extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .results { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+          .r { background:#fdfbf3; border:1px solid #ddd9cd; border-radius:2px; padding:12px 14px; }
+          .r.a { border-left:3px solid #b35a1f; }
+          .r.b { border-left:3px solid #4a6b3e; }
+          .rh { font-size:9px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; margin-bottom:4px; }
+          .rh.a { color:#b35a1f; } .rh.b { color:#4a6b3e; }
+          .rv { font-size:22px; font-weight:700; line-height:1; }
+          .rv .u { font-size:10px; color:#767c87; font-weight:400; margin-left:3px; }
+          .rd { font-size:10px; color:#767c87; margin-top:4px; line-height:1.4; }
+          .stage { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+          .col { background:#faf6ed; border:1px solid #c7c4ba; border-radius:3px; padding:10px; max-height:180px; overflow:hidden; position:relative; }
+          .col::after { content:''; position:absolute; bottom:0; left:0; right:0; height:40px; background:linear-gradient(180deg, transparent, #faf6ed); pointer-events:none; }
+          .col h4 { margin:0 0 8px; font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:#767c87; font-weight:700; }
+          .col .sel { font-size:9px; color:#1f5c8c; margin-bottom:6px; font-family:inherit; }
+          .col .item { font-size:10px; padding:2px 5px; background:#fff; border:1px solid #ddd9cd; border-radius:2px; margin-bottom:2px; color:#3c4148; }
+          .ctrl { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+          button { font-family:inherit; font-size:11px; padding:8px 14px; border:1px solid #1f5c8c; background:#faf6ed; color:#1f5c8c; cursor:pointer; border-radius:2px; letter-spacing:.06em; text-transform:uppercase; font-weight:600; }
+          button.primary { background:#1f5c8c; color:#faf6ed; }
+          .summary { text-align:center; font-size:13px; color:#15171c; font-weight:700; margin-top:14px; padding:10px; background:rgba(74,107,62,0.08); border-radius:3px; opacity:0; transition:opacity .3s; }
+          .summary.show { opacity:1; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="results">
+          <div class="r a"><div class="rh a"><span class="lang-zh-only">A · 深嵌套 descendant 选择器</span><span class="lang-en-only">A · deep descendant selector</span></div><div class="rv" id="ta">—<span class="u">ms</span></div><div class="rd"><code>.x1 .x2 .x3 .x4 .x5 .target</code> <span class="lang-zh-only">· 6 级链</span><span class="lang-en-only">· 6 levels</span></div></div>
+          <div class="r b"><div class="rh b"><span class="lang-zh-only">B · 扁平 class 选择器</span><span class="lang-en-only">B · flat class selector</span></div><div class="rv" id="tb">—<span class="u">ms</span></div><div class="rd"><code>.target-flat</code> <span class="lang-zh-only">· 单 class</span><span class="lang-en-only">· single class</span></div></div>
+        </div>
+        <div class="stage">
+          <div class="col" id="colA"><h4><span class="lang-zh-only">A · 6 级嵌套树 (×800)</span><span class="lang-en-only">A · 6-level nested tree (×800)</span></h4><div class="sel">div.x1 &gt; div.x2 &gt; … &gt; div.target</div></div>
+          <div class="col" id="colB"><h4><span class="lang-zh-only">B · 扁平树 (×800)</span><span class="lang-en-only">B · flat tree (×800)</span></h4><div class="sel">div.target-flat</div></div>
+        </div>
+        <div class="ctrl">
+          <button id="run" class="primary"><span class="lang-zh-only">▸ 触发 recalc style 并测时</span><span class="lang-en-only">▸ Trigger recalc style & measure</span></button>
+          <button id="reset"><span class="lang-zh-only">清空</span><span class="lang-en-only">reset</span></button>
+        </div>
+        <div class="summary" id="sum"></div>
+      `;
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      var N = 800;
+      // Per-instance unique IDs for stylesheet rules
+      var uid = 'sp' + Math.floor(Math.random() * 100000);
+      // Build DOM trees ONCE
+      function buildA() {
+        var colA = shadow.getElementById('colA');
+        for (var i = 0; i < N; i++) {
+          var x1 = document.createElement('div'); x1.className = 'x1';
+          var x2 = document.createElement('div'); x2.className = 'x2'; x1.appendChild(x2);
+          var x3 = document.createElement('div'); x3.className = 'x3'; x2.appendChild(x3);
+          var x4 = document.createElement('div'); x4.className = 'x4'; x3.appendChild(x4);
+          var x5 = document.createElement('div'); x5.className = 'x5'; x4.appendChild(x5);
+          var t = document.createElement('div'); t.className = 'item target'; t.textContent = 'A#' + (i+1);
+          x5.appendChild(t);
+          colA.appendChild(x1);
+        }
+      }
+      function buildB() {
+        var colB = shadow.getElementById('colB');
+        for (var i = 0; i < N; i++) {
+          var t = document.createElement('div');
+          t.className = 'item target-flat';
+          t.textContent = 'B#' + (i+1);
+          colB.appendChild(t);
+        }
+      }
+      buildA(); buildB();
+      // Inject style rules
+      // Add a host class toggle that triggers a property change. Use selectors that DON'T trivially short-circuit:
+      // descendant requires walking up 5 levels per .target
+      var sheet = document.createElement('style');
+      sheet.textContent =
+        ':host(.theme-' + uid + ') .x1 .x2 .x3 .x4 .x5 .target { color: #4a6b3e; }\n' +
+        ':host(.theme-' + uid + ') .target-flat { color: #4a6b3e; }';
+      shadow.appendChild(sheet);
+      var ta = null, tb = null;
+      function force() {
+        // force a layout / style flush
+        return shadow.querySelector('.col').offsetHeight;
+      }
+      function timeRecalc(toggleClass) {
+        host.classList.remove(toggleClass);
+        force();
+        var t0 = performance.now();
+        host.classList.add(toggleClass);
+        // Reading offsetWidth forces style + layout to flush
+        force();
+        var t1 = performance.now();
+        return t1 - t0;
+      }
+      shadow.getElementById('run').addEventListener('click', function () {
+        // Run B first (simpler) then A so caches are similar.
+        // Warm up.
+        for (var w = 0; w < 3; w++) timeRecalc('theme-' + uid);
+        host.classList.remove('theme-' + uid);
+        force();
+        // Measure B (flat) by temporarily disabling A's rule. Simplest: measure both 5 times each, take median.
+        function repeat(fn, n) {
+          var ms = [];
+          for (var i = 0; i < n; i++) {
+            host.classList.remove('theme-' + uid);
+            force();
+            ms.push(fn());
+          }
+          ms.sort(function (a, b) { return a - b; });
+          return ms[Math.floor(ms.length / 2)];  // median
+        }
+        // Both A and B sheets toggle together by the same class; isolate by hiding A's column or by separate measurement.
+        // Simplest: measure two scenarios:
+        //   scenario A: keep DOM A only (display:none on B); toggle theme
+        //   scenario B: keep DOM B only (display:none on A); toggle theme
+        var colA = shadow.getElementById('colA'), colB = shadow.getElementById('colB');
+        // Scenario A
+        colA.style.display = ''; colB.style.display = 'none';
+        force();
+        var msA = repeat(function () { return timeRecalc('theme-' + uid); }, 5);
+        // Scenario B
+        colA.style.display = 'none'; colB.style.display = '';
+        force();
+        var msB = repeat(function () { return timeRecalc('theme-' + uid); }, 5);
+        // Restore
+        colA.style.display = ''; colB.style.display = '';
+        host.classList.remove('theme-' + uid);
+        ta = msA; tb = msB;
+        shadow.getElementById('ta').innerHTML = msA.toFixed(2) + '<span class="u">ms</span>';
+        shadow.getElementById('tb').innerHTML = msB.toFixed(2) + '<span class="u">ms</span>';
+        var ratio = msA / msB;
+        var diff = (msA - msB).toFixed(2);
+        var sum = shadow.getElementById('sum');
+        sum.textContent = isEN()
+          ? 'A is ' + ratio.toFixed(1) + '× slower — descendant selector walks 5 levels per .target node (right-to-left)'
+          : 'A 比 B 慢 ' + ratio.toFixed(1) + ' 倍 — descendant 选择器对每个 .target 要从右往左走 5 级';
+        sum.classList.add('show');
+      });
+      shadow.getElementById('reset').addEventListener('click', function () {
+        shadow.getElementById('ta').innerHTML = '—<span class="u">ms</span>';
+        shadow.getElementById('tb').innerHTML = '—<span class="u">ms</span>';
+        shadow.getElementById('sum').classList.remove('show');
+      });
+    }
+  }
+  customElements.define('demo-selectorperf', DemoSelectorPerf);
+})();
+
+// ---------- Demo O: rAF vs setTimeout timing A/B ----------
+(function () {
+  class DemoRaf extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .results { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+          .r { background:#fdfbf3; border:1px solid #ddd9cd; border-radius:2px; padding:12px 14px; }
+          .r.a { border-left:3px solid #b35a1f; }
+          .r.b { border-left:3px solid #4a6b3e; }
+          .rh { font-size:9px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; margin-bottom:4px; }
+          .rh.a { color:#b35a1f; } .rh.b { color:#4a6b3e; }
+          .stat-row { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6px; margin-top:6px; }
+          .st { background:#fff; border:1px solid #ddd9cd; border-radius:2px; padding:5px 8px; text-align:center; }
+          .st-k { font-size:8px; color:#767c87; letter-spacing:.05em; text-transform:uppercase; font-weight:700; }
+          .st-v { font-size:14px; font-weight:700; color:#15171c; font-family:inherit; line-height:1.15; }
+          .st-v .u { font-size:8px; color:#767c87; font-weight:400; margin-left:2px; }
+          .chart { background:#15171c; border-radius:3px; padding:14px 18px 18px; margin-bottom:14px; min-height:120px; position:relative; }
+          .chart-label { font-size:9px; color:#767c87; letter-spacing:.08em; text-transform:uppercase; font-weight:700; margin-bottom:8px; }
+          .chart-grid { position:relative; height:80px; }
+          .chart-baseline { position:absolute; left:0; right:0; top:50%; height:1px; background:#4a6b3e; opacity:0.5; }
+          .chart-baseline::after { content:'16.7ms'; position:absolute; right:0; top:-13px; font-size:8px; color:#4a6b3e; font-weight:700; }
+          .chart-bar { position:absolute; bottom:50%; width:3px; background:#b35a1f; opacity:0.7; transition:height .1s ease; }
+          .chart-bar.under { background:#4a6b3e; bottom:auto; top:50%; }
+          .chart.b .chart-bar { background:#4a6b3e; }
+          .chart.b .chart-bar.under { background:#b35a1f; }
+          .ctrl { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; align-items:center; }
+          button { font-family:inherit; font-size:11px; padding:8px 14px; border:1px solid #1f5c8c; background:#faf6ed; color:#1f5c8c; cursor:pointer; border-radius:2px; letter-spacing:.06em; text-transform:uppercase; font-weight:600; }
+          button.primary { background:#1f5c8c; color:#faf6ed; }
+          button:disabled { opacity:.4; cursor:wait; }
+          .running { font-size:10px; color:#767c87; }
+          .summary { text-align:center; font-size:13px; color:#15171c; font-weight:700; margin-top:14px; padding:10px; background:rgba(74,107,62,0.08); border-radius:3px; opacity:0; transition:opacity .3s; }
+          .summary.show { opacity:1; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="results">
+          <div class="r a">
+            <div class="rh a"><span class="lang-zh-only">A · setTimeout(fn, 16)</span><span class="lang-en-only">A · setTimeout(fn, 16)</span></div>
+            <div class="stat-row">
+              <div class="st"><div class="st-k">avg</div><div class="st-v" id="avgA">—<span class="u">ms</span></div></div>
+              <div class="st"><div class="st-k">std</div><div class="st-v" id="stdA">—<span class="u">ms</span></div></div>
+              <div class="st"><div class="st-k">drift</div><div class="st-v" id="drA">—<span class="u">ms</span></div></div>
+            </div>
+          </div>
+          <div class="r b">
+            <div class="rh b"><span class="lang-zh-only">B · requestAnimationFrame</span><span class="lang-en-only">B · requestAnimationFrame</span></div>
+            <div class="stat-row">
+              <div class="st"><div class="st-k">avg</div><div class="st-v" id="avgB">—<span class="u">ms</span></div></div>
+              <div class="st"><div class="st-k">std</div><div class="st-v" id="stdB">—<span class="u">ms</span></div></div>
+              <div class="st"><div class="st-k">drift</div><div class="st-v" id="drB">—<span class="u">ms</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="chart" id="chartA">
+          <div class="chart-label"><span class="lang-zh-only">A · 帧间隔 (相对 16.7ms 基线)</span><span class="lang-en-only">A · frame intervals (relative to 16.7ms baseline)</span></div>
+          <div class="chart-grid" id="gridA"><div class="chart-baseline"></div></div>
+        </div>
+        <div class="chart b" id="chartB">
+          <div class="chart-label"><span class="lang-zh-only">B · 帧间隔 (vsync 对齐应该贴 16.7ms 基线)</span><span class="lang-en-only">B · frame intervals (vsync-aligned should hug the 16.7ms baseline)</span></div>
+          <div class="chart-grid" id="gridB"><div class="chart-baseline"></div></div>
+        </div>
+        <div class="ctrl">
+          <button id="run" class="primary"><span class="lang-zh-only">▸ 跑 3 秒 · 测帧间隔</span><span class="lang-en-only">▸ Run 3 seconds · measure intervals</span></button>
+          <span class="running" id="status"></span>
+        </div>
+        <div class="summary" id="sum"></div>
+      `;
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      var runBtn = shadow.getElementById('run');
+      var BASE = 16.67;  // 60 Hz baseline ms
+
+      function renderBars(grid, deltas) {
+        grid.innerHTML = '<div class="chart-baseline"></div>';
+        var maxDelta = 18;  // ±18ms range
+        var n = deltas.length;
+        var w = (grid.clientWidth || 800) - 10;
+        var step = w / n;
+        deltas.forEach(function (d, i) {
+          var bar = document.createElement('div');
+          bar.className = 'chart-bar';
+          var clamped = Math.max(-maxDelta, Math.min(maxDelta, d));
+          var h = Math.abs(clamped) / maxDelta * 40;  // up to 40px each side
+          bar.style.left = (i * step + 4) + 'px';
+          if (clamped < 0) {
+            bar.classList.add('under');
+            bar.style.height = h + 'px';
+          } else {
+            bar.style.height = h + 'px';
+          }
+          grid.appendChild(bar);
+        });
+      }
+      function stats(arr) {
+        if (!arr.length) return {avg:0, std:0, drift:0};
+        var sum = arr.reduce(function (a, b) { return a + b; }, 0);
+        var avg = sum / arr.length;
+        var v = arr.reduce(function (a, b) { return a + (b - avg) * (b - avg); }, 0) / arr.length;
+        var std = Math.sqrt(v);
+        return { avg: avg, std: std, drift: avg - BASE };
+      }
+
+      runBtn.addEventListener('click', function () {
+        runBtn.disabled = true;
+        shadow.getElementById('status').textContent = isEN() ? 'running…' : '运行中…';
+        shadow.getElementById('sum').classList.remove('show');
+
+        var DURATION = 3000;
+        var samplesA = [];
+        var samplesB = [];
+
+        function runA() {
+          return new Promise(function (resolve) {
+            var last = performance.now();
+            var start = last;
+            function tick() {
+              var now = performance.now();
+              var d = now - last;
+              if (samplesA.length > 0 || d > 4) samplesA.push(d);
+              last = now;
+              if (now - start < DURATION) setTimeout(tick, 16);
+              else resolve();
+            }
+            setTimeout(tick, 16);
+          });
+        }
+        function runB() {
+          return new Promise(function (resolve) {
+            var last = performance.now();
+            var start = last;
+            function tick(now) {
+              var d = now - last;
+              if (samplesB.length > 0 || d > 4) samplesB.push(d);
+              last = now;
+              if (now - start < DURATION) requestAnimationFrame(tick);
+              else resolve();
+            }
+            requestAnimationFrame(tick);
+          });
+        }
+        // Run sequentially so each has clean main thread
+        runA().then(function () {
+          shadow.getElementById('status').textContent = isEN() ? 'phase B (rAF) running…' : 'phase B (rAF) 运行中…';
+          return runB();
+        }).then(function () {
+          var sA = stats(samplesA);
+          var sB = stats(samplesB);
+          shadow.getElementById('avgA').innerHTML = sA.avg.toFixed(1) + '<span class="u">ms</span>';
+          shadow.getElementById('stdA').innerHTML = sA.std.toFixed(2) + '<span class="u">ms</span>';
+          shadow.getElementById('drA').innerHTML = (sA.drift > 0 ? '+' : '') + sA.drift.toFixed(2) + '<span class="u">ms</span>';
+          shadow.getElementById('avgB').innerHTML = sB.avg.toFixed(1) + '<span class="u">ms</span>';
+          shadow.getElementById('stdB').innerHTML = sB.std.toFixed(2) + '<span class="u">ms</span>';
+          shadow.getElementById('drB').innerHTML = (sB.drift > 0 ? '+' : '') + sB.drift.toFixed(2) + '<span class="u">ms</span>';
+          renderBars(shadow.getElementById('gridA'), samplesA.map(function (d) { return d - BASE; }));
+          renderBars(shadow.getElementById('gridB'), samplesB.map(function (d) { return d - BASE; }));
+          var sum = shadow.getElementById('sum');
+          var stdRatio = sA.std / (sB.std || 0.01);
+          sum.textContent = isEN()
+            ? 'setTimeout drifts ' + (sA.drift > 0 ? '+' : '') + sA.drift.toFixed(1) + ' ms/frame · rAF std-dev is ' + stdRatio.toFixed(1) + '× tighter — that\'s why rAF is the only safe choice for animation'
+            : 'setTimeout 每帧漂移 ' + (sA.drift > 0 ? '+' : '') + sA.drift.toFixed(1) + ' ms · rAF 抖动是 setTimeout 的 1/' + stdRatio.toFixed(1) + ' —— 动画只能用 rAF 的理由';
+          sum.classList.add('show');
+          shadow.getElementById('status').textContent = '';
+          runBtn.disabled = false;
+        });
+      });
+    }
+  }
+  customElements.define('demo-raf', DemoRaf);
 })();
 </script>
 
