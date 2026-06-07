@@ -1232,9 +1232,12 @@
   }
   .stack-bin {
     display: flex; flex-direction: column-reverse; gap: 4px;
-    min-height: 180px;
+    /* fixed height — prevents page jitter as stack pushes/pops on infinite loop */
+    height: 280px;
+    overflow: hidden;
     padding: 12px; border: 1px dashed var(--rule);
     background: var(--bg-soft); border-radius: 3px;
+    box-sizing: border-box;
   }
   .stack-bin .stk {
     background: var(--paper-2); border: 1px solid var(--rule);
@@ -1254,7 +1257,10 @@
     border: 1px dashed var(--rule);
     border-radius: 3px;
     padding: 12px;
-    min-height: 180px;
+    /* fixed height — prevents page jitter as tree grows from 0 to 12 lines and resets */
+    height: 280px;
+    overflow: hidden;
+    box-sizing: border-box;
   }
   .tree-out .nt { color: var(--accent); font-weight: 700; }
   @media (max-width: 720px) {
@@ -5965,6 +5971,16 @@
         <div class="io-val">DOM Tree<span class="small lang-zh-only">blink::TreeScope</span><span class="small lang-en-only">blink::TreeScope</span></div>
       </div>
     </div>
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO K · LIVE · 解析流水线全程</span><span class="lang-en-only">DEMO K · LIVE · The full parsing pipeline</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">字节 → token → 栈 → DOM 树 · 一步一步看</span><span class="lang-en-only">Bytes → tokens → stack → DOM tree, step by step</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">下面是一个迷你 HTML 解析器。点 <em>下一步</em> 一次走一个 token，看光标在源码上前进、token 列表长出来、栈 push/pop、DOM 树一节点一节点拼起来。或者点 <em>自动播放</em> 看完整流程。</span><span class="lang-en-only">Below is a miniature HTML parser. Click <em>step</em> to advance one token at a time and watch the cursor crawl through the source, the token list grow, the stack push/pop, and the DOM tree assemble one node at a time. Or hit <em>play</em> to run it end-to-end.</span></p>
+      <div class="dc-stage">
+        <demo-parser></demo-parser>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">这个 demo 把 5 个子环节都映射到了可见状态：(1) <em>Loading</em> · bytes 流入 — 由源码上方的标签代表；(2) <em>Conversion</em> · bytes → characters — 我们直接当 ASCII 跳过；(3) <em>Tokenizing</em> · characters → tokens — 看光标走过 + 左侧 token 列表；(4) <em>Lexing</em> · tokens → Element 实例 — 隐含在 StartTag 的 push 动作里；(5) <em>DOM construction</em> · 用栈搭树 — 中间的 stack + 右边的 tree。<em>每一道工序都对应 Blink 源码里的一个具体函数</em>：<code>HTMLDocumentParser::Append</code> → <code>HTMLTokenizer::NextToken</code> → <code>HTMLConstructionSite::CreateElement</code> → <code>HTMLConstructionSite::AttachAtIncludingNonDistributedNodes</code>。</span><span class="lang-en-only">This demo maps all 5 sub-stages to visible state: (1) <em>Loading</em> · bytes flow in — represented by the source tag above; (2) <em>Conversion</em> · bytes → characters — skipped (assume ASCII); (3) <em>Tokenizing</em> · characters → tokens — see the cursor crawl + the token list on the left; (4) <em>Lexing</em> · tokens → Element instances — implicit in each StartTag push; (5) <em>DOM construction</em> · stack-based tree building — the middle stack + right-side tree. <em>Every stage maps to a real Blink function</em>: <code>HTMLDocumentParser::Append</code> → <code>HTMLTokenizer::NextToken</code> → <code>HTMLConstructionSite::CreateElement</code> → <code>HTMLConstructionSite::AttachAtIncludingNonDistributedNodes</code>.</span></p>
+    </div>
+
   </section>
 
   <!-- ========== CHAPTER 07 — STYLE ========== -->
@@ -11877,7 +11893,7 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
   function currentLang() { return document.body.classList.contains('lang-en') ? 'en' : 'zh'; }
   function syncDemoLang() {
     var l = currentLang();
-    document.querySelectorAll('demo-tx-vs-left, demo-fsl, demo-tile, demo-freeze, demo-prop-trees, demo-layer-explode, demo-cv-auto, demo-rendertree, demo-triggers, demo-layer-promo').forEach(function (el) {
+    document.querySelectorAll('demo-tx-vs-left, demo-fsl, demo-tile, demo-freeze, demo-prop-trees, demo-layer-explode, demo-cv-auto, demo-rendertree, demo-triggers, demo-layer-promo, demo-parser').forEach(function (el) {
       el.setAttribute('data-lang', l);
     });
   }
@@ -13230,6 +13246,294 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
     }
   }
   customElements.define('demo-layer-promo', DemoLayerPromo);
+})();
+
+// ---------- Demo K: HTML parser pipeline visualizer ----------
+(function () {
+  class DemoParser extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      // Source HTML — kept tiny for clarity
+      var SRC = '<article>\n  <h2>Airing</h2>\n  <p>Engineer</p>\n  <button>Follow</button>\n</article>';
+      // Tokenize (skip pure whitespace, simple HTML)
+      var tokens = [];
+      var pos = 0;
+      while (pos < SRC.length) {
+        var c = SRC[pos];
+        if (c === '<') {
+          var end = SRC.indexOf('>', pos);
+          var inner = SRC.slice(pos + 1, end);
+          if (inner[0] === '/') {
+            tokens.push({type:'EndTag', name: inner.slice(1).trim(), start: pos, end: end + 1});
+          } else {
+            var sp = inner.indexOf(' ');
+            var name = sp === -1 ? inner : inner.slice(0, sp);
+            tokens.push({type:'StartTag', name: name, start: pos, end: end + 1});
+          }
+          pos = end + 1;
+        } else {
+          var nextLt = SRC.indexOf('<', pos);
+          var text = SRC.slice(pos, nextLt === -1 ? SRC.length : nextLt);
+          if (text.trim()) {
+            tokens.push({type:'Character', text: text.trim(), start: pos, end: nextLt === -1 ? SRC.length : nextLt});
+          }
+          pos = nextLt === -1 ? SRC.length : nextLt;
+        }
+      }
+
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .src-line { background:#15171c; color:#faf6ed; padding:12px 16px; border-radius:3px; margin-bottom:12px; }
+          .src-tag { font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:#767c87; font-weight:700; margin-bottom:6px; }
+          .src-code { white-space:pre; font-size:12px; line-height:1.6; overflow-x:auto; }
+          .src-code .consumed { color:#5a6066; }
+          .src-code .cursor { background:rgba(255,235,80,0.45); border-radius:2px; color:#faf6ed; padding:1px 0; }
+          .src-code .lt, .src-code .gt { color:#d1855a; }
+          .src-code .tag { color:#9572bd; font-weight:700; }
+          .src-code .txt { color:#c9dceb; }
+          .grid { display:grid; grid-template-columns:1.1fr 0.65fr 1fr; gap:10px; margin-bottom:12px; min-height:280px; }
+          .col { background:#faf6ed; border:1px solid #c7c4ba; border-radius:3px; padding:12px; box-sizing:border-box; height:280px; overflow-y:auto; }
+          .col h4 { margin:0 0 10px; font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:#767c87; font-weight:700; padding-bottom:4px; border-bottom:1px dashed #ddd9cd; position:sticky; top:-12px; background:#faf6ed; z-index:2; }
+          /* Tokens */
+          .tk { padding:5px 8px; background:#fdfbf3; border:1px solid #ddd9cd; border-radius:2px; margin-bottom:3px; font-size:10px; transition:all .3s ease; }
+          .tk.current { background:rgba(255,235,80,0.45); border-color:#a87a1f; transform:translateX(3px); box-shadow:0 0 0 1px #a87a1f; }
+          .tk.done { opacity:.55; }
+          .tk-num { color:#767c87; margin-right:5px; font-size:9px; }
+          .tk-type.s { color:#4a6b3e; font-weight:700; }
+          .tk-type.e { color:#c0392b; font-weight:700; }
+          .tk-type.c { color:#1f5c8c; font-weight:700; }
+          .tk-detail { color:#3c4148; margin-left:4px; }
+          /* Stack */
+          .stack-vis { display:flex; flex-direction:column-reverse; gap:3px; min-height:200px; }
+          .sf { background:#fdfbf3; border:1px solid #ddd9cd; border-radius:2px; padding:6px 8px; font-size:10px; text-align:center; animation:slideUp .3s cubic-bezier(.4,0,.2,1); position:relative; }
+          .sf.top { background:rgba(31,92,140,0.20); border-color:#1f5c8c; font-weight:700; box-shadow:0 0 0 1px #1f5c8c; }
+          .sf .arrow { position:absolute; left:-12px; top:50%; transform:translateY(-50%); color:#1f5c8c; font-size:11px; opacity:0; transition:opacity .25s; }
+          .sf.top .arrow { opacity:1; }
+          @keyframes slideUp { from { transform:translateY(15px); opacity:0; } to { transform:translateY(0); opacity:1; } }
+          .stack-empty { color:#767c87; font-size:10px; text-align:center; padding:60px 0; font-style:italic; }
+          /* Tree */
+          .tree-vis { font-size:11px; line-height:1.5; }
+          .nd { padding:3px 0; padding-left:14px; position:relative; animation:fadein .35s ease; }
+          .nd::before { content:'›'; position:absolute; left:2px; color:#c7c4ba; }
+          .nd.text::before { content:'·'; color:#767c87; }
+          .nd .tag { color:#4a6b3e; font-weight:700; }
+          .nd .text-content { color:#767c87; font-style:italic; }
+          .nd-kids { padding-left:12px; border-left:1px dashed #c7c4ba; margin-left:5px; }
+          @keyframes fadein { from { opacity:0; transform:translateX(-4px); } to { opacity:1; transform:translateX(0); } }
+          .tree-empty { color:#767c87; font-size:10px; text-align:center; padding:60px 0; font-style:italic; }
+          /* Controls */
+          .ctrl { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+          button { font-family:inherit; font-size:11px; padding:7px 14px; border:1px solid #1f5c8c; background:#faf6ed; color:#1f5c8c; cursor:pointer; border-radius:2px; letter-spacing:.06em; text-transform:uppercase; font-weight:600; }
+          button.primary { background:#1f5c8c; color:#faf6ed; }
+          button:disabled { opacity:.35; cursor:not-allowed; }
+          .speed { display:flex; align-items:center; gap:6px; font-size:10px; color:#767c87; }
+          .speed input { width:80px; accent-color:#1f5c8c; }
+          .prog { margin-left:auto; font-size:10px; color:#767c87; letter-spacing:.05em; }
+          .narrate { background:#fdfbf3; border:1px solid #ddd9cd; border-left:3px solid #1f5c8c; border-radius:2px; padding:10px 14px; margin-top:12px; font-size:12px; color:#3c4148; line-height:1.55; min-height:30px; }
+          .narrate em { font-style:normal; font-weight:700; color:#15171c; }
+          .narrate code { background:rgba(31,92,140,0.10); padding:1px 5px; border-radius:2px; color:#1f5c8c; font-size:11px; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="src-line">
+          <div class="src-tag"><span class="lang-zh-only">输入 · SOURCE HTML（光标 = 当前正在 consume）</span><span class="lang-en-only">SOURCE HTML (cursor = currently consumed)</span></div>
+          <div class="src-code" id="src"></div>
+        </div>
+        <div class="grid">
+          <div class="col"><h4><span class="lang-zh-only">① TOKENS · 词法产物</span><span class="lang-en-only">① TOKENS</span></h4><div id="tk"></div></div>
+          <div class="col"><h4><span class="lang-zh-only">② STACK · 构造站</span><span class="lang-en-only">② OPEN STACK</span></h4><div class="stack-vis" id="sk"><div class="stack-empty"><span class="lang-zh-only">empty</span><span class="lang-en-only">empty</span></div></div></div>
+          <div class="col"><h4><span class="lang-zh-only">③ DOM TREE · 产物</span><span class="lang-en-only">③ DOM TREE</span></h4><div class="tree-vis" id="tr"><div class="tree-empty"><span class="lang-zh-only">还没构造</span><span class="lang-en-only">tree is empty</span></div></div></div>
+        </div>
+        <div class="ctrl">
+          <button id="step" class="primary"><span class="lang-zh-only">下一步 ›</span><span class="lang-en-only">step ›</span></button>
+          <button id="play"><span class="lang-zh-only">▸ 自动播放</span><span class="lang-en-only">▸ play</span></button>
+          <button id="reset"><span class="lang-zh-only">⊘ 重置</span><span class="lang-en-only">⊘ reset</span></button>
+          <div class="speed"><span><span class="lang-zh-only">速度</span><span class="lang-en-only">speed</span></span><input type="range" id="sp" min="250" max="1400" value="750" step="50"></div>
+          <div class="prog"><span class="lang-zh-only">第 </span><span id="pg">0</span>/${tokens.length}</div>
+        </div>
+        <div class="narrate" id="narr"></div>
+      `;
+
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      var idx = 0;
+      var stackArr = [];
+      var tree = [];  // root-level array of DOM nodes
+      var playing = false;
+      var timer = null;
+
+      // Pre-encode source code with token-position markup
+      function renderSrc() {
+        // Build with consumed (everything before tokens[idx-1].end), cursor (current token), upcoming (rest)
+        var consumedEnd = idx === 0 ? 0 : tokens[idx - 1].end;
+        var cursorRange = idx < tokens.length ? [tokens[idx].start, tokens[idx].end] : [SRC.length, SRC.length];
+        var parts = [
+          { range: [0, consumedEnd], cls: 'consumed' },
+          { range: [consumedEnd, cursorRange[0]], cls: '' },
+          { range: cursorRange, cls: 'cursor' },
+          { range: [cursorRange[1], SRC.length], cls: '' }
+        ];
+        var html = '';
+        parts.forEach(function (p) {
+          var slice = SRC.slice(p.range[0], p.range[1]);
+          if (!slice) return;
+          var esc = slice.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          html += '<span class="' + p.cls + '">' + esc + '</span>';
+        });
+        shadow.getElementById('src').innerHTML = html;
+      }
+
+      function renderTokens() {
+        var html = tokens.map(function (t, i) {
+          var cls = i < idx ? 'done' : i === idx ? 'current' : '';
+          var label = t.type === 'StartTag' ? 'StartTag' : t.type === 'EndTag' ? 'EndTag' : 'Character';
+          var tcls = t.type === 'StartTag' ? 's' : t.type === 'EndTag' ? 'e' : 'c';
+          var detail = t.type === 'Character'
+            ? '"' + t.text.slice(0, 22) + '"'
+            : '&lt;' + (t.type === 'EndTag' ? '/' : '') + t.name + '&gt;';
+          return '<div class="tk ' + cls + '"><span class="tk-num">' + String(i + 1).padStart(2, '0') + '</span><span class="tk-type ' + tcls + '">' + label + '</span><span class="tk-detail">' + detail + '</span></div>';
+        }).join('');
+        shadow.getElementById('tk').innerHTML = html;
+        // Scroll current into view
+        var cur = shadow.querySelector('.tk.current');
+        if (cur) cur.scrollIntoView({block:'nearest', behavior:'smooth'});
+      }
+
+      function renderStack() {
+        var el = shadow.getElementById('sk');
+        if (stackArr.length === 0) {
+          el.innerHTML = '<div class="stack-empty"><span class="lang-zh-only">空栈</span><span class="lang-en-only">empty</span></div>';
+        } else {
+          el.innerHTML = stackArr.map(function (s, i) {
+            var top = i === stackArr.length - 1;
+            return '<div class="sf' + (top ? ' top' : '') + '">' + (top ? '<span class="arrow">›</span>' : '') + '&lt;' + s.tag + '&gt;</div>';
+          }).join('');
+        }
+      }
+
+      function renderTree() {
+        function rec(nodes) {
+          if (!nodes.length) return '';
+          return nodes.map(function (n) {
+            if (n.tag === '#text') {
+              return '<div class="nd text"><span class="text-content">"' + n.text.slice(0, 22) + '"</span></div>';
+            }
+            var kids = n.children && n.children.length ? '<div class="nd-kids">' + rec(n.children) + '</div>' : '';
+            return '<div class="nd"><span class="tag">&lt;' + n.tag + '&gt;</span>' + kids + '</div>';
+          }).join('');
+        }
+        var html = rec(tree);
+        var el = shadow.getElementById('tr');
+        el.innerHTML = html || '<div class="tree-empty"><span class="lang-zh-only">还没构造</span><span class="lang-en-only">tree is empty</span></div>';
+      }
+
+      function narrate() {
+        var n = shadow.getElementById('narr');
+        if (idx === 0) {
+          n.innerHTML = isEN()
+            ? '<span class="lang-en-only">Click <em>step</em> or <em>play</em> to advance the tokenizer one token at a time. Watch the cursor on the source above, the token list grow on the left, the stack push/pop in the middle, and the DOM tree assemble on the right.</span>'
+            : '<span class="lang-zh-only">点 <em>下一步</em> 或 <em>自动播放</em>，tokenizer 一次吐一个 token。看着上面光标走过源码、左边 token 列表长出来、中间栈 push/pop、右边 DOM 树拼起来。</span>';
+          return;
+        }
+        if (idx > tokens.length) {
+          n.innerHTML = isEN()
+            ? '<span class="lang-en-only"><em>Done.</em> All tokens consumed, stack drained, DOM tree built. This is exactly what <code>HTMLDocumentParser</code> does in Blink — minus a few thousand lines of edge cases.</span>'
+            : '<span class="lang-zh-only"><em>构造完成。</em>所有 token 消费完，栈空了，DOM 树搭好了。这就是 Blink 的 <code>HTMLDocumentParser</code> 干的事 — 减去几千行边界 case。</span>';
+          return;
+        }
+        var t = tokens[idx - 1];
+        var msgs = {
+          StartTag: {
+            zh: '<em>StartTag</em>：emit token + 实例化 Element <code>&lt;' + t.name + '&gt;</code> + 压栈，并挂到上一个栈顶的孩子里。栈 push 时长 +1。',
+            en: '<em>StartTag</em>: emit token + instantiate Element <code>&lt;' + t.name + '&gt;</code> + push it; also attach to the previous stack-top as a child. Stack grows by 1.'
+          },
+          EndTag: {
+            zh: '<em>EndTag</em>：栈顶 <code>&lt;' + t.name + '&gt;</code> 出栈。子树构造完毕。栈 pop 时长 −1。',
+            en: '<em>EndTag</em>: pop <code>&lt;' + t.name + '&gt;</code> off the stack. Its subtree is now complete. Stack shrinks by 1.'
+          },
+          Character: {
+            zh: '<em>Character</em>：emit 文本 token <code>"' + t.text.slice(0, 18) + '"</code> + 实例化 Text node + 挂到栈顶 <code>&lt;' + (stackArr.length ? stackArr[stackArr.length - 1].tag : '?') + '&gt;</code> 的 children 里。<em>栈不动</em>。',
+            en: '<em>Character</em>: emit text token <code>"' + t.text.slice(0, 18) + '"</code> + instantiate a Text node + attach as a child of stack-top <code>&lt;' + (stackArr.length ? stackArr[stackArr.length - 1].tag : '?') + '&gt;</code>. <em>Stack unchanged</em>.'
+          }
+        };
+        n.innerHTML = (isEN() ? '<span class="lang-en-only">' : '<span class="lang-zh-only">') + msgs[t.type][isEN() ? 'en' : 'zh'] + '</span>';
+      }
+
+      function applyToken(i) {
+        var t = tokens[i];
+        if (t.type === 'StartTag') {
+          var node = { tag: t.name, children: [] };
+          if (stackArr.length === 0) tree.push(node);
+          else stackArr[stackArr.length - 1].children.push(node);
+          stackArr.push(node);
+        } else if (t.type === 'EndTag') {
+          stackArr.pop();
+        } else {  // Character
+          var parent = stackArr[stackArr.length - 1];
+          if (parent) parent.children.push({ tag: '#text', text: t.text });
+        }
+      }
+
+      function step() {
+        if (idx >= tokens.length) {
+          idx++;  // post-finish state
+          narrate();
+          shadow.getElementById('step').disabled = true;
+          return;
+        }
+        applyToken(idx);
+        idx++;
+        shadow.getElementById('pg').textContent = idx;
+        renderSrc(); renderTokens(); renderStack(); renderTree();
+        narrate();
+      }
+
+      function reset() {
+        if (timer) { clearTimeout(timer); timer = null; }
+        playing = false;
+        idx = 0; stackArr = []; tree = [];
+        shadow.getElementById('pg').textContent = '0';
+        shadow.getElementById('step').disabled = false;
+        var pb = shadow.getElementById('play');
+        pb.innerHTML = '<span class="lang-zh-only">▸ 自动播放</span><span class="lang-en-only">▸ play</span>';
+        renderSrc(); renderTokens(); renderStack(); renderTree(); narrate();
+      }
+
+      function play() {
+        if (playing) {
+          playing = false;
+          if (timer) { clearTimeout(timer); timer = null; }
+          var pb = shadow.getElementById('play');
+          pb.innerHTML = '<span class="lang-zh-only">▸ 自动播放</span><span class="lang-en-only">▸ play</span>';
+          return;
+        }
+        if (idx >= tokens.length) reset();
+        playing = true;
+        var pb = shadow.getElementById('play');
+        pb.innerHTML = '<span class="lang-zh-only">◼ 暂停</span><span class="lang-en-only">◼ pause</span>';
+        function tickPlay() {
+          if (!playing) return;
+          if (idx >= tokens.length) {
+            playing = false;
+            shadow.getElementById('play').innerHTML = '<span class="lang-zh-only">▸ 再播一次</span><span class="lang-en-only">▸ play again</span>';
+            return;
+          }
+          step();
+          timer = setTimeout(tickPlay, +shadow.getElementById('sp').value);
+        }
+        tickPlay();
+      }
+
+      shadow.getElementById('step').addEventListener('click', step);
+      shadow.getElementById('play').addEventListener('click', play);
+      shadow.getElementById('reset').addEventListener('click', reset);
+
+      // Initial render
+      renderSrc(); renderTokens(); narrate();
+    }
+  }
+  customElements.define('demo-parser', DemoParser);
 })();
 </script>
 
