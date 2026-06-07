@@ -292,6 +292,10 @@
 - [ ] GET `/admin/` returns page
 - [ ] DOM: Token input or comment list exists
 
+## Post Detail — Bottom Comments (`/posts/weekly-34/`, `/posts/weekly-35/`)
+
+- [ ] Nested replies (`.bc-replies-container`) cap nesting **structurally** (appendThread): desktop ≤4 indent levels, mobile (≤640px) exactly 1. Replies past the cap flatten as siblings at the capped level (they keep their `@name` prefix). Verified: mobile shows 2 distinct text-X positions, desktop up to 5; text stays readable (min width >200px). Empty `.bc-replies-container` collapse (no stray border line). Re-renders on crossing the 640px breakpoint.
+
 ## Post Detail — Image Gallery (`/posts/weekly-30/`)
 
 - [ ] DOM: `.img-gallery` exists (consecutive images grouped into gallery)

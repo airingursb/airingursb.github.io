@@ -1424,6 +1424,21 @@ const jsonLd = {
     });
   }
 
+  // Re-render comments when crossing the mobile/desktop breakpoint so the
+  // nesting cap (1 vs 4 levels) follows the viewport.
+  var bcLastMaxDepth = bcMaxDepth();
+  var bcResizeTimer;
+  window.addEventListener('resize', function() {
+    clearTimeout(bcResizeTimer);
+    bcResizeTimer = setTimeout(function() {
+      var d = bcMaxDepth();
+      if (d !== bcLastMaxDepth && bottomComments.length) {
+        bcLastMaxDepth = d;
+        renderBottomComments();
+      }
+    }, 200);
+  });
+
   function renderBottomComments() {
     bcThread.innerHTML = '';
     var count = bottomComments.length;
@@ -1445,10 +1460,35 @@ const jsonLd = {
       else roots.push(c);
     });
 
-    roots.forEach(function(c) { bcThread.appendChild(buildCommentEl(c, false)); });
+    // Cap visual nesting: desktop indents up to 4 levels, mobile to 1.
+    // Replies deeper than the cap are flattened as siblings at the capped level
+    // (they already carry an "@name" prefix, so the thread stays legible).
+    var maxDepth = bcMaxDepth();
+    roots.forEach(function(c) { appendThread(c, bcThread, 0, maxDepth); });
   }
 
-  function buildCommentEl(c, isReply) {
+  function bcMaxDepth() {
+    return window.matchMedia('(max-width: 640px)').matches ? 1 : 4;
+  }
+
+  // Append a comment and its descendants, capping the nesting depth.
+  function appendThread(c, container, depth, maxDepth) {
+    var div = buildCommentEl(c, depth);
+    container.appendChild(div);
+    // Within the cap, children nest into this comment's own container;
+    // at/beyond the cap they flatten into the same container as this comment.
+    var childContainer = depth < maxDepth
+      ? div.querySelector('.bc-replies-container')
+      : container;
+    var childDepth = Math.min(depth + 1, maxDepth);
+    if (c._replies && c._replies.length) {
+      c._replies.forEach(function(r) { appendThread(r, childContainer, childDepth, maxDepth); });
+    }
+  }
+
+  // Builds a single comment element (no recursion — see appendThread).
+  function buildCommentEl(c, depth) {
+    var isReply = depth > 0;
     var div = document.createElement('div');
     div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
 
@@ -1511,14 +1551,6 @@ const jsonLd = {
       bcTextarea.focus();
       bcTextarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
     });
-
-    // Render replies
-    var repliesContainer = div.querySelector('.bc-replies-container');
-    if (c._replies && c._replies.length) {
-      c._replies.forEach(function(r) {
-        repliesContainer.appendChild(buildCommentEl(r, true));
-      });
-    }
 
     return div;
   }
@@ -2434,9 +2466,18 @@ const jsonLd = {
   .bottom-comments :global(.bc-reply-btn:hover) {
     color: var(--c-text-muted);
   }
+  /* One indent step per nested level. Nesting depth is capped structurally in
+     JS (appendThread): 4 levels on desktop, 1 on mobile — so this never compounds
+     past the cap. Empty containers (leaf comments / flattened replies) collapse. */
   .bottom-comments :global(.bc-replies-container) {
     border-left: 2px solid var(--c-border);
     margin-left: 4px; padding-left: 20px;
+  }
+  .bottom-comments :global(.bc-replies-container:empty) { display: none; }
+  @media (max-width: 640px) {
+    .bottom-comments :global(.bc-replies-container) {
+      margin-left: 0; padding-left: 12px;
+    }
   }
 
   /* Compose form */
