@@ -3007,10 +3007,58 @@
     text-align: center;
     text-decoration: none;
     color: var(--ink-soft);
-    transition: all 0.16s ease;
+    transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
   }
   .card-summary-strip .css-cell:hover { border-color: var(--accent); background: var(--paper-2); }
   .card-summary-strip .css-cell.viz { border-color: var(--gpu-soft); }
+  .card-summary-strip .css-cell.lighting {
+    background: rgba(31, 92, 140, 0.20);
+    border-color: var(--accent);
+    transform: scale(1.08);
+    box-shadow: 0 6px 18px rgba(31,92,140,0.30);
+    z-index: 3;
+  }
+  .card-summary-strip .css-cell.lit {
+    background: rgba(74, 107, 62, 0.18);
+    border-color: var(--good);
+  }
+  .card-summary-strip .css-controls {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .card-summary-strip .css-play {
+    font-family: var(--mono); font-size: 11px;
+    padding: 9px 18px;
+    border: none; border-radius: 2px; cursor: pointer;
+    background: var(--accent); color: var(--paper);
+    font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+    transition: background 0.15s ease;
+  }
+  .card-summary-strip .css-play:hover { background: var(--accent-soft); }
+  .card-summary-strip .css-play:disabled { background: var(--ink-mute); cursor: wait; }
+  .card-summary-strip .css-progress {
+    flex: 1 1 220px; height: 4px;
+    background: var(--rule-soft);
+    border-radius: 2px; overflow: hidden;
+    min-width: 120px;
+  }
+  .card-summary-strip .css-progress-fill {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--accent), var(--copper));
+    transition: width 0.12s linear;
+  }
+  .card-summary-strip .css-caption {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--ink-soft);
+    letter-spacing: 0.04em;
+    min-height: 22px;
+    line-height: 1.5;
+    margin-top: -4px;
+  }
+  .card-summary-strip .css-caption em { font-style: normal; font-weight: 700; color: var(--accent); }
+  .card-summary-strip .css-caption strong { font-weight: 700; color: var(--copper); }
   .card-summary-strip .css-num {
     font-family: var(--mono); font-size: 8px;
     color: var(--ink-mute);
@@ -7204,6 +7252,26 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
         <div class="io-val">Property Trees ×4<span class="small lang-zh-only">Transform · Clip · Effect · Scroll</span><span class="small lang-en-only">Transform · Clip · Effect · Scroll</span></div>
       </div>
     </div>
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO E · LIVE · 4 棵 property tree 长起来</span><span class="lang-en-only">DEMO E · LIVE · the 4 property trees grow</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">每一行 CSS 都在动哪棵树？</span><span class="lang-en-only">Which tree does each line of CSS grow?</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">点 <em>下一步</em> 或 <em>自动播放</em>，看 Transform / Clip / Effect / Scroll 四棵树跟着 CSS 一行行往里长节点。这就是 CAP (Composite After Paint) 把"什么变了"和"谁要重画"解耦的方式。</span><span class="lang-en-only">Click <em>next</em> or <em>auto-play</em> to watch the four trees — Transform / Clip / Effect / Scroll — grow nodes as CSS rules are added one by one. This is how CAP (Composite After Paint) decouples "what changed" from "who needs to repaint".</span></p>
+      <div class="dc-stage">
+        <demo-prop-trees></demo-prop-trees>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">注意第 3 步——<code>will-change: transform</code> 在 Transform tree 多出一个 <code>.follow</code> 节点。**这就是 Layer 升格的起点**。第 4 步 <code>box-shadow</code> 让 Effect tree 长出 shadow 节点——下一帧任何 .follow 的位置变化，<em>只需要重画这个 Effect 节点子树</em>，不需要碰主图层。这就是为什么 transform / opacity 动画能在 Compositor 独立跑。</span><span class="lang-en-only">Notice step 3 — <code>will-change: transform</code> grows a <code>.follow</code> node in the Transform tree. <strong>This is where Layer promotion begins</strong>. Step 4's <code>box-shadow</code> grows a shadow node in the Effect tree — when <code>.follow</code> moves on the next frame, <em>only that Effect subtree needs to repaint</em>, the main layer is untouched. That's why transform / opacity animations run independently on Compositor.</span></p>
+    </div>
+
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO F · LIVE · Layer Explosion 滑块</span><span class="lang-en-only">DEMO F · LIVE · Layer Explosion slider</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">看见 will-change 的真实代价</span><span class="lang-en-only">See what will-change actually costs</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">拖动滑块加更多 <code>will-change: transform</code> 元素。看 Layer 数、估算的 GPU 内存、和实际 FPS 怎么变。<em>更多 layer ≠ 更流畅</em>——这是分享里 Layer Explosion 的实物证据。</span><span class="lang-en-only">Drag the slider to add more <code>will-change: transform</code> elements. Watch Layer count, estimated GPU memory, and actual FPS change. <em>More layers ≠ smoother</em> — this is the exhibit for Layer Explosion.</span></p>
+      <div class="dc-stage">
+        <demo-layer-explode></demo-layer-explode>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">注意 ~150 层时 FPS 开始掉、~300 层时崩。<strong>VRAM 估算每层按 64×64 RGBA = 16 KB 算下限</strong>——真实的 Layer 经常远大于这个。所以 Chrome 团队的建议是 hover 进来加、离开删——而不是预先撒一堆 <code>will-change</code> 等着不知道哪个会触发动画。</span><span class="lang-en-only">FPS starts dropping around ~150 layers, collapses around ~300. <strong>The VRAM estimate uses 64×64 RGBA = 16 KB as a lower bound per layer</strong> — real layers are often much bigger. That's why Chrome's guidance is add-on-hover, remove-on-leave — not sprinkle <code>will-change</code> everywhere and hope.</span></p>
+    </div>
+
   </section>
 
   <!-- ========== CHAPTER 10 — PAINT ========== -->
@@ -7840,6 +7908,16 @@ property_trees_ ─────────────────────�
         <div class="io-val">LayerImpl Tree<span class="small lang-zh-only">挂在 Compositor thread 上</span><span class="small lang-en-only">on the Compositor thread</span></div>
       </div>
     </div>
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO D · LIVE · 冻结 main thread</span><span class="lang-en-only">DEMO D · LIVE · Freeze the main thread</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">看见 INP 和 Compositor 独立的瞬间</span><span class="lang-en-only">Watch INP and Compositor independence happen</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">点红色按钮冻结 main thread 800 ms。<em>左边的计数器停了</em>，但<em>右边的 spinner 仍在转</em>。冻结期间点右边的按钮，会显示真实的点击延迟——这就是 INP。</span><span class="lang-en-only">Click the red button to freeze main thread for 800 ms. <em>The left counter stops</em>, but <em>the right spinner keeps spinning</em>. Click the right button during the freeze and the real click delay shows up — that is INP.</span></p>
+      <div class="dc-stage">
+        <demo-freeze></demo-freeze>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">这个 demo 用 <code>while (perf.now() - t &lt; 800) {}</code> 真的把 main 烧死 800 ms。<strong>你写的每一段长 JS、每一个未拆的 Long Task、每一次同步 fetch</strong>都在做这件事。Compositor 上的 CSS 动画继续——这就是为什么 transform 比 left 流畅。但用户点击响应卡死——这就是为什么 INP 是 main thread 的健康度指标。</span><span class="lang-en-only">This demo uses <code>while (perf.now() - t &lt; 800) {}</code> to actually burn main for 800 ms. <strong>Every long JS, every un-split Long Task, every synchronous fetch you wrote</strong> does the same thing. CSS animations on Compositor keep running — that's why transform feels smoother than left. But user clicks stall — that's why INP is the health metric for main thread.</span></p>
+    </div>
+
   </section>
 
   <!-- ========== CHAPTER 12 — COMPOSITING ========== -->
@@ -8531,6 +8609,16 @@ GraphicsLayer · <span class="mt-tag">root</span>
         <demo-tile></demo-tile>
       </div>
       <p class="dc-note"><span class="lang-zh-only">注意——<strong>视口外的 tile 永远不会变 active</strong>。它们要么在等（pending），要么在被 Skia 光栅化（rastering）。如果滚太快，pending tile 跟不上你，就会看到 <em>checkerboarding</em>。这就是为什么 <code>content-visibility: auto</code> 这么有效——它告诉 TileManager"这一坨视口外的内容，连 pending 队列都不用排"，直接砍掉 70% 的 Raster 工作量。</span><span class="lang-en-only">Note — <strong>tiles outside the viewport never turn active</strong>. They're either waiting (pending) or being rasterized by Skia (rastering). If you scroll too fast and pending tiles can't catch up, you'll see <em>checkerboarding</em>. That's exactly why <code>content-visibility: auto</code> is so effective — it tells TileManager "this off-screen chunk doesn't even need to enter the pending queue", cutting up to 70% of Raster work.</span></p>
+    </div>
+
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO G · LIVE · content-visibility: auto</span><span class="lang-en-only">DEMO G · LIVE · content-visibility: auto</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">一行 CSS 砍 70% TTI 的真相</span><span class="lang-en-only">The truth behind "one CSS line cuts 70% TTI"</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">下面两列各渲染 800 个 item。左边普通渲染，右边在 item 上加了 <code>content-visibility: auto</code>——视口外的内容直接跳过 Layout/Paint/Raster。点 ▸ 按钮看实测时间差。</span><span class="lang-en-only">Both columns render 800 items. Left is a normal render; right adds <code>content-visibility: auto</code> on each item — off-viewport content skips Layout/Paint/Raster. Click ▸ to measure the gap.</span></p>
+      <div class="dc-stage">
+        <demo-cv-auto></demo-cv-auto>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">差距随屏幕尺寸 / 内容复杂度浮动，桌面端通常 <strong>3-10×</strong>，长列表 + 富 DOM 经常 20× 起步。配合 <code>contain-intrinsic-size</code> 让浏览器预估高度，可以避免滚动跳。**这一条是 2024-2025 前端性能最被低估的武器**——你今晚回去给你最长的列表加一行试试。</span><span class="lang-en-only">The gap varies with screen size / content complexity — typically <strong>3-10×</strong> on desktop; long lists + rich DOM often start at 20×. Pair with <code>contain-intrinsic-size</code> for the browser to estimate height and avoid scroll jumps. <strong>This is the most underrated frontend perf weapon of 2024-2025</strong> — go add one line to your longest list tonight.</span></p>
     </div>
 
   </section>
@@ -10720,6 +10808,11 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
     <div class="card-summary-strip">
       <h3><span class="lang-zh-only">名片的 14 站 · 一字排开</span><span class="lang-en-only">The card's 14 stations · at a glance</span></h3>
       <p class="css-sub"><span class="lang-zh-only">从字节流到 SwapBuffers — 一张图回看完整旅程</span><span class="lang-en-only">From bytestream to SwapBuffers — the full journey, recapped</span></p>
+      <div class="css-controls">
+        <button class="css-play" id="css-play-btn"><span class="lang-zh-only">▸ 播放 · 16.7ms 一帧</span><span class="lang-en-only">▸ Play · one 16.7 ms frame</span></button>
+        <div class="css-progress"><div class="css-progress-fill" id="css-progress-fill"></div></div>
+      </div>
+      <div class="css-caption" id="css-caption"><span class="lang-zh-only">点 ▸ 播放，跟着名片走完一帧的 14 道工序</span><span class="lang-en-only">click ▸ Play to follow one frame through 14 stages</span></div>
       <div class="css-grid">
         <a href="#c0"  class="css-cell"><span class="css-num">00 · NETWORK</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-00"/></svg><span class="css-name">Loading</span></a>
         <a href="#c6"  class="css-cell"><span class="css-num">01 · BLINK</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-01"/></svg><span class="css-name">Parsing</span></a>
@@ -11754,7 +11847,7 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
   function currentLang() { return document.body.classList.contains('lang-en') ? 'en' : 'zh'; }
   function syncDemoLang() {
     var l = currentLang();
-    document.querySelectorAll('demo-tx-vs-left, demo-fsl, demo-tile').forEach(function (el) {
+    document.querySelectorAll('demo-tx-vs-left, demo-fsl, demo-tile, demo-freeze, demo-prop-trees, demo-layer-explode, demo-cv-auto').forEach(function (el) {
       el.setAttribute('data-lang', l);
     });
   }
@@ -11797,6 +11890,76 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
   window.addEventListener('scroll', spy, {passive:true});
   window.addEventListener('load', spy);
   spy();
+
+  // ---------- Pipeline movie ("play one 16.7 ms frame") ----------
+  (function () {
+    var strip = document.querySelector('.card-summary-strip');
+    if (!strip) return;
+    var playBtn = strip.querySelector('#css-play-btn');
+    var fill = strip.querySelector('#css-progress-fill');
+    var caption = strip.querySelector('#css-caption');
+    var cells = Array.prototype.slice.call(strip.querySelectorAll('.css-cell'));
+    if (!playBtn || !fill || !caption || cells.length !== 14) return;
+
+    // Realistic-ish proportions: Style/Layout/Raster carry the bulk; Commit/Activate are blips
+    var stages = [
+      { ms: 600,  zh: '<em>00 · Loading</em> · bytes 通过 Mojo IPC 流到 Renderer', en: '<em>00 · Loading</em> · bytes stream into Renderer via Mojo IPC' },
+      { ms: 700,  zh: '<em>01 · Parsing</em> · 11 tokens 扭转成 6 节点 DOM', en: '<em>01 · Parsing</em> · 11 tokens become a 6-node DOM' },
+      { ms: 950,  zh: '<em>02 · Style</em> · CSSOM 从右往左匹配，分到 3 张 RuleMap', en: '<em>02 · Style</em> · CSSOM matches right-to-left across 3 RuleMaps' },
+      { ms: 1200, zh: '<em>03 · Layout</em> · LayoutNG 双遍：算 min/max、再分剩余空间', en: '<em>03 · Layout</em> · LayoutNG two passes: min/max, then distribute' },
+      { ms: 500,  zh: '<em>04 · Pre-paint</em> · Transform/Clip/Effect/Scroll 4 棵树长起来', en: '<em>04 · Pre-paint</em> · 4 trees (Transform/Clip/Effect/Scroll) grow' },
+      { ms: 850,  zh: '<em>05 · Paint</em> · 12 条 DisplayItem 写进绘画清单 — <strong>但还没像素</strong>', en: '<em>05 · Paint</em> · 12 DisplayItems written — <strong>still zero pixels</strong>' },
+      { ms: 300,  zh: '<em>06 · Commit</em> · LayerTreeHost → LayerTreeImpl 跨线程原子交接', en: '<em>06 · Commit</em> · LayerTreeHost → LayerTreeImpl, atomic cross-thread hand-off' },
+      { ms: 450,  zh: '<em>07 · Compositing</em> · .follow 升格独立 cc::PictureLayer', en: '<em>07 · Compositing</em> · .follow promoted to its own cc::PictureLayer' },
+      { ms: 400,  zh: '<em>08 · Tiling</em> · 主卡切成 2 块瓷砖排进 raster 队列', en: '<em>08 · Tiling</em> · card sliced into 2 tiles, queued for raster' },
+      { ms: 1000, zh: '<em>09 · Raster</em> · Skia 把命令翻成 GL texture · ImageDecodeCache 命中', en: '<em>09 · Raster</em> · Skia translates commands to GL textures · ImageDecodeCache hit' },
+      { ms: 260,  zh: '<em>10 · Activate</em> · Pending Tree 整体 swap 进 Active', en: '<em>10 · Activate</em> · Pending Tree swaps wholesale into Active' },
+      { ms: 480,  zh: '<em>11 · Draw</em> · 主层 2 个 TileDrawQuad + 阴影独立 RenderPass', en: '<em>11 · Draw</em> · 2 TileDrawQuads + shadow RenderPass written into CompositorFrame' },
+      { ms: 520,  zh: '<em>12 · Aggregate</em> · viz 把多个进程的 frame 拼成一份 surface', en: '<em>12 · Aggregate</em> · viz stitches frames from multiple processes into one surface' },
+      { ms: 800,  zh: '<em>13 · Display</em> · SwapBuffers · <strong>名片真的发出第一束光</strong>', en: '<em>13 · Display</em> · SwapBuffers · <strong>the card finally emits its first photon</strong>' }
+    ];
+    var total = stages.reduce(function (s, x) { return s + x.ms; }, 0);
+    var playing = false;
+    var langEn = function () { return document.body.classList.contains('lang-en'); };
+
+    function play() {
+      if (playing) return;
+      playing = true;
+      playBtn.disabled = true;
+      cells.forEach(function (c) { c.classList.remove('lit', 'lighting'); });
+      fill.style.width = '0%';
+      var elapsed = 0, i = 0;
+      function step() {
+        if (i >= stages.length) {
+          caption.innerHTML = langEn()
+            ? '<strong>frame complete</strong> · 14 stages, 16.7 ms · the card is on screen'
+            : '<strong>一帧完成</strong> · 14 道工序、16.7 ms · 名片真的上屏了';
+          fill.style.width = '100%';
+          playBtn.disabled = false;
+          playBtn.innerHTML = langEn()
+            ? '▸ Play again'
+            : '▸ 再播一次';
+          playing = false;
+          return;
+        }
+        var s = stages[i];
+        var cell = cells[i];
+        cell.classList.remove('lit');
+        cell.classList.add('lighting');
+        caption.innerHTML = langEn() ? s.en : s.zh;
+        setTimeout(function () {
+          cell.classList.remove('lighting');
+          cell.classList.add('lit');
+          elapsed += s.ms;
+          fill.style.width = ((elapsed / total) * 100).toFixed(1) + '%';
+          i++;
+          step();
+        }, s.ms);
+      }
+      step();
+    }
+    playBtn.addEventListener('click', play);
+  })();
 })();
 
 // ---------- Demo A: transform vs left ----------
@@ -12080,6 +12243,475 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
     }
   }
   customElements.define('demo-tile', DemoTile);
+})();
+
+// ---------- Demo: Main thread freeze (shows Compositor independence) ----------
+(function () {
+  class DemoFreeze extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .layout { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+          .panel { background:#faf6ed; border:1px solid #c7c4ba; border-radius:3px; padding:16px 18px; }
+          .ph { font-size:9px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; margin-bottom:12px; }
+          .ph.main { color:#b35a1f; } .ph.comp { color:#4a6b3e; }
+          .counter { font-family:var(--mono); font-size:30px; font-weight:700; color:#b35a1f; line-height:1; }
+          .counter .u { font-size:11px; color:#767c87; font-weight:400; margin-left:4px; }
+          .info { font-size:11px; color:#767c87; line-height:1.55; margin-top:8px; }
+          .info em { font-style:normal; font-weight:700; color:#15171c; }
+          .info strong { color:#b35a1f; }
+          .info.comp strong { color:#4a6b3e; }
+          .spin-area { display:flex; align-items:center; gap:14px; }
+          .spinner { width:46px; height:46px; border:3px solid #4a6b3e; border-top-color:transparent; border-radius:50%; animation:spin 1.1s linear infinite; will-change:transform; flex:0 0 46px; }
+          @keyframes spin { 100% { transform:rotate(360deg); } }
+          .ctrl { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+          .freeze-btn { flex:1 1 240px; font-family:inherit; font-size:13px; padding:14px 18px; border:none; background:#c0392b; color:#fff; cursor:pointer; border-radius:3px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; transition:background .15s ease; }
+          .freeze-btn:hover { background:#e74c3c; }
+          .freeze-btn:disabled { opacity:.7; cursor:wait; background:#7f8c8d; }
+          .click-btn { flex:0 0 auto; font-family:inherit; font-size:11px; padding:14px 18px; border:1px solid #1f5c8c; background:#faf6ed; color:#1f5c8c; cursor:pointer; border-radius:3px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; }
+          .click-btn:hover { background:#c9dceb; }
+          .result { display:flex; align-items:center; gap:14px; margin-top:14px; padding:12px 16px; background:rgba(192,57,43,.06); border-radius:3px; border-left:3px solid #c0392b; opacity:0; transition:opacity .3s; }
+          .result.show { opacity:1; }
+          .result.ok { background:rgba(74,107,62,.08); border-left-color:#4a6b3e; }
+          .res-num { font-family:var(--mono); font-size:20px; font-weight:700; color:#c0392b; line-height:1; }
+          .res-num .u { font-size:10px; color:#767c87; font-weight:400; margin-left:3px; }
+          .result.ok .res-num { color:#4a6b3e; }
+          .res-msg { font-size:11px; color:#3c4148; flex:1; line-height:1.5; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="layout">
+          <div class="panel">
+            <div class="ph main"><span class="lang-zh-only">MAIN THREAD · JS 驱动</span><span class="lang-en-only">MAIN THREAD · JS-driven</span></div>
+            <div class="counter"><span id="cnt">0</span><span class="u">ms</span></div>
+            <div class="info"><span class="lang-zh-only"><em>setInterval</em> 每 50ms 更新一次。<br>main 被冻住时 — <strong>数字会卡住</strong>。</span><span class="lang-en-only">A <em>setInterval</em> ticks every 50 ms.<br>When main is frozen — <strong>this number freezes</strong>.</span></div>
+          </div>
+          <div class="panel">
+            <div class="ph comp"><span class="lang-zh-only">COMPOSITOR THREAD · CSS 动画</span><span class="lang-en-only">COMPOSITOR THREAD · CSS animation</span></div>
+            <div class="spin-area">
+              <div class="spinner"></div>
+              <div class="info comp"><span class="lang-zh-only"><em>transform: rotate</em> 跑在 Compositor 上。<br>main 被冻住时 — <strong>这个圈仍然转</strong>。</span><span class="lang-en-only">A <em>transform: rotate</em> runs on Compositor.<br>When main is frozen — <strong>this ring keeps spinning</strong>.</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="ctrl">
+          <button id="freeze" class="freeze-btn"><span class="lang-zh-only">🔥 冻结 main thread 800 ms</span><span class="lang-en-only">🔥 Freeze main thread 800 ms</span></button>
+          <button id="click" class="click-btn"><span class="lang-zh-only">点击我 · 测延迟</span><span class="lang-en-only">click me · test delay</span></button>
+        </div>
+        <div class="result" id="result">
+          <div>
+            <div class="res-num"><span id="rv">—</span><span class="u">ms</span></div>
+          </div>
+          <div class="res-msg" id="rmsg"></div>
+        </div>
+      `;
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      function tx(zh, en) { return isEN() ? en : zh; }
+      // setInterval-driven counter — pauses while main is frozen
+      var counter = 0;
+      setInterval(function () { counter += 50; shadow.getElementById('cnt').textContent = counter.toLocaleString(); }, 50);
+      // Click delay test
+      var downT = null;
+      var clickBtn = shadow.getElementById('click');
+      clickBtn.addEventListener('mousedown', function () { downT = performance.now(); });
+      clickBtn.addEventListener('touchstart', function () { downT = performance.now(); }, {passive:true});
+      clickBtn.addEventListener('click', function () {
+        if (downT == null) return;
+        var delay = performance.now() - downT;
+        downT = null;
+        shadow.getElementById('rv').textContent = delay.toFixed(0);
+        var msg;
+        var res = shadow.getElementById('result');
+        if (delay < 80) {
+          msg = tx('正常响应 · main 没被卡', 'normal response · main is free');
+          res.classList.add('ok');
+        } else {
+          msg = tx('卡了 ' + delay.toFixed(0) + ' ms — 这就是 INP，用户感受到的"不跟手"', 'delayed ' + delay.toFixed(0) + ' ms — this is INP, the "lag" users feel');
+          res.classList.remove('ok');
+        }
+        shadow.getElementById('rmsg').textContent = msg;
+        res.classList.add('show');
+      });
+      // Freeze button
+      var freezeBtn = shadow.getElementById('freeze');
+      freezeBtn.addEventListener('click', function () {
+        freezeBtn.disabled = true;
+        var label0 = freezeBtn.querySelector('.lang-zh-only').textContent;
+        freezeBtn.querySelector('.lang-zh-only').textContent = '冻结中 · 试着点右边按钮';
+        freezeBtn.querySelector('.lang-en-only').textContent = 'freezing · try clicking the right button';
+        // Yield to let UI paint the state, then burn main
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            var t0 = performance.now();
+            while (performance.now() - t0 < 800) { /* busy-loop blocks main */ }
+            freezeBtn.disabled = false;
+            freezeBtn.querySelector('.lang-zh-only').textContent = '🔥 冻结 main thread 800 ms';
+            freezeBtn.querySelector('.lang-en-only').textContent = '🔥 Freeze main thread 800 ms';
+          });
+        });
+      });
+    }
+  }
+  customElements.define('demo-freeze', DemoFreeze);
+})();
+
+// ---------- Demo: 4 Property Trees grow ----------
+(function () {
+  class DemoPropTrees extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .code { background:#15171c; color:#faf6ed; padding:14px 18px; border-radius:3px; font-family:inherit; font-size:13px; min-height:24px; margin-bottom:14px; line-height:1.6; }
+          .code .com { color:#767c87; } .code .sel { color:#d1855a; } .code .prop { color:#c9dceb; } .code .val { color:#b094d9; }
+          .grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+          .tree { background:#faf6ed; border:1px solid #c7c4ba; border-radius:3px; padding:12px; }
+          .tn { font-size:9px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; margin-bottom:4px; }
+          .tree.tx .tn { color:#1f5c8c; } .tree.cl .tn { color:#b35a1f; } .tree.ef .tn { color:#6b3aa3; } .tree.sc .tn { color:#4a6b3e; }
+          .tree-svg { width:100%; height:140px; display:block; }
+          .node { transform-box:fill-box; transform-origin:center; }
+          .node.fresh { animation:pop .7s cubic-bezier(.34,1.56,.64,1); }
+          @keyframes pop { 0% { transform:scale(0); opacity:0; } 60% { transform:scale(1.3); opacity:1; } 100% { transform:scale(1); } }
+          .node circle { stroke-width:1.5; }
+          .tree.tx .node circle { fill:#1f5c8c; stroke:#1f5c8c; }
+          .tree.cl .node circle { fill:#b35a1f; stroke:#b35a1f; }
+          .tree.ef .node circle { fill:#6b3aa3; stroke:#6b3aa3; }
+          .tree.sc .node circle { fill:#4a6b3e; stroke:#4a6b3e; }
+          .node text { fill:#15171c; font-family:inherit; font-size:9px; }
+          .edge { stroke-width:1.2; stroke-dasharray:3 2; fill:none; opacity:.55; }
+          .tree.tx .edge { stroke:#1f5c8c; } .tree.cl .edge { stroke:#b35a1f; }
+          .tree.ef .edge { stroke:#6b3aa3; } .tree.sc .edge { stroke:#4a6b3e; }
+          .ctrl { display:flex; gap:10px; margin-top:14px; align-items:center; flex-wrap:wrap; }
+          button { font-family:inherit; font-size:11px; padding:7px 14px; border:1px solid #1f5c8c; background:#faf6ed; color:#1f5c8c; cursor:pointer; border-radius:2px; letter-spacing:.06em; text-transform:uppercase; font-weight:600; }
+          button.primary { background:#1f5c8c; color:#faf6ed; }
+          button:disabled { opacity:.4; cursor:not-allowed; }
+          .step-info { margin-left:auto; font-size:10px; color:#767c87; letter-spacing:.05em; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="code" id="codeBox"></div>
+        <div class="grid">
+          <div class="tree tx"><div class="tn">Transform tree</div><svg class="tree-svg" viewBox="0 0 200 140" id="tree-tx"></svg></div>
+          <div class="tree cl"><div class="tn">Clip tree</div><svg class="tree-svg" viewBox="0 0 200 140" id="tree-cl"></svg></div>
+          <div class="tree ef"><div class="tn">Effect tree</div><svg class="tree-svg" viewBox="0 0 200 140" id="tree-ef"></svg></div>
+          <div class="tree sc"><div class="tn">Scroll tree</div><svg class="tree-svg" viewBox="0 0 200 140" id="tree-sc"></svg></div>
+        </div>
+        <div class="ctrl">
+          <button id="prev"><span class="lang-zh-only">← 上一步</span><span class="lang-en-only">← prev</span></button>
+          <button id="next" class="primary"><span class="lang-zh-only">下一步 →</span><span class="lang-en-only">next →</span></button>
+          <button id="play"><span class="lang-zh-only">▸ 自动播放</span><span class="lang-en-only">▸ auto-play</span></button>
+          <span class="step-info"><span class="lang-zh-only">第 </span><span id="si">0</span>/<span id="st">5</span></span>
+        </div>
+      `;
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      var STEPS = [
+        { codeZh:'<span class="com">/* 起点 · 只有 root 节点 */</span>', codeEn:'<span class="com">/* baseline · only root nodes */</span>',
+          state:{ tx:[{id:'r',label:'root'}], cl:[{id:'r',label:'root'}], ef:[{id:'r',label:'root'}], sc:[{id:'r',label:'page'}] } },
+        { codeZh:'<span class="sel">.card</span> { <span class="prop">transform</span>: <span class="val">translateY(2px)</span>; }',
+          codeEn:'<span class="sel">.card</span> { <span class="prop">transform</span>: <span class="val">translateY(2px)</span>; }',
+          state:{ tx:[{id:'r',label:'root'},{id:'card',label:'.card',parent:'r'}], cl:[{id:'r',label:'root'}], ef:[{id:'r',label:'root'}], sc:[{id:'r',label:'page'}] } },
+        { codeZh:'<span class="sel">.card</span> { <span class="prop">overflow</span>: <span class="val">hidden</span>; <span class="prop">border-radius</span>: <span class="val">4px</span>; }',
+          codeEn:'<span class="sel">.card</span> { <span class="prop">overflow</span>: <span class="val">hidden</span>; <span class="prop">border-radius</span>: <span class="val">4px</span>; }',
+          state:{ tx:[{id:'r',label:'root'},{id:'card',label:'.card',parent:'r'}], cl:[{id:'r',label:'root'},{id:'card',label:'.card',parent:'r'}], ef:[{id:'r',label:'root'}], sc:[{id:'r',label:'page'}] } },
+        { codeZh:'<span class="sel">.follow</span> { <span class="prop">will-change</span>: <span class="val">transform</span>; }',
+          codeEn:'<span class="sel">.follow</span> { <span class="prop">will-change</span>: <span class="val">transform</span>; }',
+          state:{ tx:[{id:'r',label:'root'},{id:'card',label:'.card',parent:'r'},{id:'f',label:'.follow',parent:'card'}], cl:[{id:'r',label:'root'},{id:'card',label:'.card',parent:'r'}], ef:[{id:'r',label:'root'}], sc:[{id:'r',label:'page'}] } },
+        { codeZh:'<span class="sel">.follow</span> { <span class="prop">box-shadow</span>: <span class="val">0 4px 12px rgba(0,0,0,.2)</span>; }',
+          codeEn:'<span class="sel">.follow</span> { <span class="prop">box-shadow</span>: <span class="val">0 4px 12px rgba(0,0,0,.2)</span>; }',
+          state:{ tx:[{id:'r',label:'root'},{id:'card',label:'.card',parent:'r'},{id:'f',label:'.follow',parent:'card'}], cl:[{id:'r',label:'root'},{id:'card',label:'.card',parent:'r'}], ef:[{id:'r',label:'root'},{id:'sh',label:'shadow',parent:'r'},{id:'f',label:'.follow',parent:'sh'}], sc:[{id:'r',label:'page'}] } },
+        { codeZh:'<span class="sel">.card</span> { <span class="prop">overflow-y</span>: <span class="val">scroll</span>; max-height: <span class="val">300px</span>; }',
+          codeEn:'<span class="sel">.card</span> { <span class="prop">overflow-y</span>: <span class="val">scroll</span>; max-height: <span class="val">300px</span>; }',
+          state:{ tx:[{id:'r',label:'root'},{id:'card',label:'.card',parent:'r'},{id:'f',label:'.follow',parent:'card'}], cl:[{id:'r',label:'root'},{id:'card',label:'.card',parent:'r'}], ef:[{id:'r',label:'root'},{id:'sh',label:'shadow',parent:'r'},{id:'f',label:'.follow',parent:'sh'}], sc:[{id:'r',label:'page'},{id:'card',label:'.card',parent:'r'}] } }
+      ];
+      var TOTAL = STEPS.length - 1;
+      shadow.getElementById('st').textContent = TOTAL;
+      function depth(n, nodes) { var d = 0; var cur = n.parent; while (cur) { var p = nodes.find(function (x) { return x.id === cur; }); if (!p) break; cur = p.parent; d++; } return d; }
+      function renderTree(svgId, nodes, prevIds) {
+        var svg = shadow.getElementById(svgId);
+        svg.innerHTML = '';
+        var pos = {};
+        nodes.forEach(function (n) { pos[n.id] = { x: 100, y: 22 + depth(n, nodes) * 36 }; });
+        var NS = 'http://www.w3.org/2000/svg';
+        nodes.forEach(function (n) {
+          if (!n.parent) return;
+          var p = pos[n.parent]; var c = pos[n.id];
+          var line = document.createElementNS(NS, 'line');
+          line.setAttribute('x1', p.x); line.setAttribute('y1', p.y + 6);
+          line.setAttribute('x2', c.x); line.setAttribute('y2', c.y - 6);
+          line.setAttribute('class', 'edge');
+          svg.appendChild(line);
+        });
+        nodes.forEach(function (n) {
+          var p = pos[n.id];
+          var g = document.createElementNS(NS, 'g');
+          var isNew = prevIds && prevIds.indexOf(n.id) === -1;
+          g.setAttribute('class', 'node' + (isNew ? ' fresh' : ''));
+          g.setAttribute('transform', 'translate(' + p.x + ',' + p.y + ')');
+          var c = document.createElementNS(NS, 'circle');
+          c.setAttribute('r', 6);
+          g.appendChild(c);
+          var t = document.createElementNS(NS, 'text');
+          t.setAttribute('x', 12); t.setAttribute('y', 3);
+          t.textContent = n.label;
+          g.appendChild(t);
+          svg.appendChild(g);
+        });
+      }
+      var idx = 0, prev = null;
+      function render() {
+        var step = STEPS[idx];
+        shadow.getElementById('codeBox').innerHTML = '<span class="lang-zh-only">' + step.codeZh + '</span><span class="lang-en-only">' + step.codeEn + '</span>';
+        ['tx','cl','ef','sc'].forEach(function (k) {
+          var prevIds = prev ? prev[k].map(function (n) { return n.id; }) : null;
+          renderTree('tree-' + k, step.state[k], prevIds);
+        });
+        prev = step.state;
+        shadow.getElementById('si').textContent = idx;
+        shadow.getElementById('prev').disabled = idx === 0;
+        shadow.getElementById('next').disabled = idx === TOTAL;
+      }
+      render();
+      shadow.getElementById('prev').addEventListener('click', function () { if (idx > 0) { idx--; prev = null; render(); } });
+      shadow.getElementById('next').addEventListener('click', function () { if (idx < TOTAL) { idx++; render(); } });
+      var playing = false;
+      shadow.getElementById('play').addEventListener('click', function () {
+        if (playing) return;
+        playing = true;
+        idx = 0; prev = null; render();
+        function tick() { if (idx >= TOTAL) { playing = false; return; } idx++; render(); setTimeout(tick, 1800); }
+        setTimeout(tick, 1200);
+      });
+    }
+  }
+  customElements.define('demo-prop-trees', DemoPropTrees);
+})();
+
+// ---------- Demo: Layer Explosion slider ----------
+(function () {
+  class DemoLayerExplode extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .grid { display:grid; grid-template-columns:1.6fr 1fr; gap:14px; }
+          .stage { background:#15171c; border:1px solid #c7c4ba; border-radius:3px; height:240px; position:relative; overflow:hidden; }
+          .stage .dot { position:absolute; width:14px; height:14px; border-radius:50%; background:#d1855a; will-change:transform; animation:float 3s ease-in-out infinite alternate; }
+          @keyframes float { 0% { transform:translate(0,0); } 100% { transform:translate(8px,8px); } }
+          .panel { background:#faf6ed; border:1px solid #c7c4ba; border-radius:3px; padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
+          .slider-row { display:flex; align-items:center; gap:10px; }
+          .slider-row label { font-size:10px; color:#767c87; letter-spacing:.06em; text-transform:uppercase; font-weight:700; flex:0 0 auto; }
+          input[type=range] { flex:1; accent-color:#1f5c8c; }
+          .nval { font-family:inherit; font-size:18px; font-weight:700; color:#1f5c8c; min-width:46px; text-align:right; }
+          .metrics { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+          .m { background:#fdfbf3; border:1px solid #ddd9cd; border-radius:2px; padding:8px 10px; }
+          .m.warn { border-color:#b35a1f; background:rgba(179,90,31,0.08); }
+          .m.bad { border-color:#c0392b; background:rgba(192,57,43,0.10); }
+          .mk { font-size:8px; letter-spacing:.06em; text-transform:uppercase; color:#767c87; font-weight:700; }
+          .mv { font-size:16px; font-weight:700; color:#15171c; font-family:inherit; line-height:1.2; }
+          .mv .u { font-size:10px; color:#767c87; font-weight:400; margin-left:3px; }
+          .m.warn .mv { color:#b35a1f; } .m.bad .mv { color:#c0392b; }
+          .hint { font-size:10px; color:#767c87; line-height:1.5; }
+          .hint em { color:#15171c; font-weight:700; font-style:normal; }
+          .tog { display:flex; gap:8px; align-items:center; font-size:10px; }
+          .tog input { accent-color:#1f5c8c; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="grid">
+          <div class="stage" id="stage"></div>
+          <div class="panel">
+            <div class="slider-row">
+              <label><span class="lang-zh-only">数量</span><span class="lang-en-only">count</span></label>
+              <input type="range" id="slider" min="10" max="500" value="40" step="10">
+              <div class="nval" id="nval">40</div>
+            </div>
+            <div class="tog">
+              <input type="checkbox" id="willChange" checked>
+              <label for="willChange"><span class="lang-zh-only">每个加 <code>will-change: transform</code></span><span class="lang-en-only">add <code>will-change: transform</code> to each</span></label>
+            </div>
+            <div class="metrics">
+              <div class="m" id="m-layer"><div class="mk"><span class="lang-zh-only">LAYER 估算</span><span class="lang-en-only">LAYERS</span></div><div class="mv" id="vl">—</div></div>
+              <div class="m" id="m-vram"><div class="mk">VRAM</div><div class="mv" id="vv">—</div></div>
+              <div class="m" id="m-fps"><div class="mk">FPS</div><div class="mv" id="vf">—</div></div>
+              <div class="m" id="m-frame"><div class="mk"><span class="lang-zh-only">帧耗时</span><span class="lang-en-only">FRAME</span></div><div class="mv" id="vt">—</div></div>
+            </div>
+            <div class="hint" id="hint"><span class="lang-zh-only">起手 40 层很轻松。<em>拖到 200+ 再看 FPS</em>。</span><span class="lang-en-only">40 layers is breezy. <em>Drag to 200+ to feel the cost</em>.</span></div>
+          </div>
+        </div>
+      `;
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      var stage = shadow.getElementById('stage');
+      var slider = shadow.getElementById('slider');
+      var nval = shadow.getElementById('nval');
+      var wc = shadow.getElementById('willChange');
+      var vl = shadow.getElementById('vl'), vv = shadow.getElementById('vv');
+      var vf = shadow.getElementById('vf'), vt = shadow.getElementById('vt');
+      var mFps = shadow.getElementById('m-fps'), mFrame = shadow.getElementById('m-frame'), mLayer = shadow.getElementById('m-layer'), mVram = shadow.getElementById('m-vram');
+      var hint = shadow.getElementById('hint');
+      function rebuild() {
+        var n = +slider.value;
+        nval.textContent = n;
+        stage.innerHTML = '';
+        var addWC = wc.checked;
+        var W = stage.clientWidth || 320, H = stage.clientHeight || 240;
+        for (var i = 0; i < n; i++) {
+          var d = document.createElement('div');
+          d.className = 'dot';
+          d.style.left = (Math.random() * (W - 14)) + 'px';
+          d.style.top = (Math.random() * (H - 14)) + 'px';
+          d.style.animationDelay = (-Math.random() * 3) + 's';
+          d.style.animationDuration = (2.5 + Math.random() * 1.5) + 's';
+          if (!addWC) d.style.willChange = 'auto';
+          stage.appendChild(d);
+        }
+        // Estimated layers: same as n when will-change on, or 0 (plus 1 root) otherwise
+        var layers = addWC ? n + 1 : 1;
+        // Cheap VRAM heuristic: each layer >= 64×64 RGBA = 16 KB
+        var vram = layers * 16;  // KB
+        vl.textContent = layers.toLocaleString();
+        if (vram < 1024) { vv.innerHTML = vram + '<span class="u">KB</span>'; }
+        else { vv.innerHTML = (vram / 1024).toFixed(1) + '<span class="u">MB</span>'; }
+        // Warn states
+        mLayer.className = 'm' + (layers > 200 ? ' bad' : layers > 80 ? ' warn' : '');
+        mVram.className = 'm' + (vram > 4096 ? ' bad' : vram > 1024 ? ' warn' : '');
+      }
+      slider.addEventListener('input', rebuild);
+      wc.addEventListener('change', rebuild);
+      rebuild();
+      // Live FPS sampler
+      var frames = 0, last = performance.now(), framesum = 0;
+      function tick() {
+        var now = performance.now();
+        frames++;
+        framesum += (now - last);
+        last = now;
+        if (frames >= 30) {
+          var fps = 1000 / (framesum / frames);
+          vf.textContent = fps.toFixed(0);
+          vt.innerHTML = (framesum / frames).toFixed(1) + '<span class="u">ms</span>';
+          mFps.className = 'm' + (fps < 30 ? ' bad' : fps < 50 ? ' warn' : '');
+          mFrame.className = 'm' + (framesum / frames > 32 ? ' bad' : framesum / frames > 18 ? ' warn' : '');
+          if (fps < 50) {
+            hint.innerHTML = isEN()
+              ? '<span class="lang-en-only">FPS dropping. Each <code>will-change</code> = an extra layer + GPU texture. Layer Explosion in real time.</span>'
+              : '<span class="lang-zh-only">FPS 在掉了。每个 <code>will-change</code> = 多一个 layer + GPU 纹理。这就是 Layer Explosion。</span>';
+          } else if (fps > 55) {
+            hint.innerHTML = isEN()
+              ? '<span class="lang-en-only">Smooth. Drag the slider higher to see the cliff.</span>'
+              : '<span class="lang-zh-only">很顺滑。继续拖到更高，看着悬崖出现。</span>';
+          }
+          frames = 0; framesum = 0;
+        }
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+  }
+  customElements.define('demo-layer-explode', DemoLayerExplode);
+})();
+
+// ---------- Demo: content-visibility: auto A/B ----------
+(function () {
+  class DemoCvAuto extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .results { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px; }
+          .r { background:#fdfbf3; border:1px solid #ddd9cd; border-radius:2px; padding:12px 14px; }
+          .r.a { border-left:3px solid #b35a1f; }
+          .r.b { border-left:3px solid #4a6b3e; }
+          .rh { font-size:9px; letter-spacing:.08em; text-transform:uppercase; font-weight:700; margin-bottom:4px; }
+          .rh.a { color:#b35a1f; } .rh.b { color:#4a6b3e; }
+          .rv { font-size:22px; font-weight:700; line-height:1; }
+          .rv .u { font-size:10px; color:#767c87; font-weight:400; margin-left:3px; }
+          .rd { font-size:10px; color:#767c87; margin-top:4px; }
+          .grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+          .col { background:#faf6ed; border:1px solid #c7c4ba; border-radius:3px; padding:8px; max-height:300px; overflow:auto; }
+          .col h4 { margin:0 0 6px; font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:#767c87; font-weight:700; padding:0 4px; }
+          .col.b .item { content-visibility:auto; contain-intrinsic-size:0 80px; }
+          .item { background:#fff; border:1px solid #ddd9cd; border-radius:3px; padding:10px 12px; margin-bottom:4px; }
+          .item h5 { margin:0 0 4px; font-size:11px; font-weight:700; color:#15171c; }
+          .item p { margin:0; font-size:10px; color:#767c87; line-height:1.5; }
+          .ctrl { display:flex; gap:10px; margin-top:14px; flex-wrap:wrap; }
+          button { font-family:inherit; font-size:11px; padding:8px 14px; border:1px solid #1f5c8c; background:#faf6ed; color:#1f5c8c; cursor:pointer; border-radius:2px; letter-spacing:.06em; text-transform:uppercase; font-weight:600; }
+          button.primary { background:#1f5c8c; color:#faf6ed; }
+          .summary { font-size:13px; color:#15171c; font-weight:700; text-align:center; margin-top:14px; padding:10px; background:rgba(74,107,62,0.08); border-radius:3px; opacity:0; transition:opacity .3s; }
+          .summary.show { opacity:1; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="results">
+          <div class="r a"><div class="rh a"><span class="lang-zh-only">A · 原生 800 个 item</span><span class="lang-en-only">A · plain 800 items</span></div><div class="rv" id="ta">—<span class="u">ms</span></div><div class="rd"><span class="lang-zh-only">所有 item 都被 Layout/Paint/Raster</span><span class="lang-en-only">all 800 hit Layout/Paint/Raster</span></div></div>
+          <div class="r b"><div class="rh b"><span class="lang-zh-only">B · 加 <code>content-visibility: auto</code></span><span class="lang-en-only">B · with <code>content-visibility: auto</code></span></div><div class="rv" id="tb">—<span class="u">ms</span></div><div class="rd"><span class="lang-zh-only">视口外的 item 全部跳过流水线</span><span class="lang-en-only">off-viewport items skip the pipeline</span></div></div>
+        </div>
+        <div class="grid">
+          <div class="col a" id="colA"><h4><span class="lang-zh-only">A · 一般渲染</span><span class="lang-en-only">A · normal render</span></h4></div>
+          <div class="col b" id="colB"><h4><span class="lang-zh-only">B · content-visibility: auto</span><span class="lang-en-only">B · content-visibility: auto</span></h4></div>
+        </div>
+        <div class="ctrl">
+          <button id="run" class="primary"><span class="lang-zh-only">▸ 渲染 800 项并测时</span><span class="lang-en-only">▸ Render 800 items & measure</span></button>
+          <button id="reset"><span class="lang-zh-only">清空</span><span class="lang-en-only">reset</span></button>
+        </div>
+        <div class="summary" id="sum"></div>
+      `;
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      function buildItems(col, count) {
+        for (var i = 0; i < count; i++) {
+          var d = document.createElement('div');
+          d.className = 'item';
+          d.innerHTML = '<h5>Article #' + (i + 1) + '</h5><p>' + new Array(8).fill('lorem ipsum dolor sit amet consectetur').join(' ') + '</p>';
+          col.appendChild(d);
+        }
+      }
+      var ta = null, tb = null;
+      function run() {
+        var colA = shadow.getElementById('colA');
+        var colB = shadow.getElementById('colB');
+        // Clear past content (keep header)
+        Array.prototype.slice.call(colA.querySelectorAll('.item')).forEach(function (x) { x.remove(); });
+        Array.prototype.slice.call(colB.querySelectorAll('.item')).forEach(function (x) { x.remove(); });
+        shadow.getElementById('sum').classList.remove('show');
+        // Force layout reset
+        colA.offsetHeight; colB.offsetHeight;
+        // A: plain
+        var t0 = performance.now();
+        buildItems(colA, 800);
+        colA.offsetHeight;  // force layout
+        ta = performance.now() - t0;
+        // B: with content-visibility: auto (CSS already on .col.b .item)
+        var t1 = performance.now();
+        buildItems(colB, 800);
+        colB.offsetHeight;
+        tb = performance.now() - t1;
+        shadow.getElementById('ta').innerHTML = ta.toFixed(1) + '<span class="u">ms</span>';
+        shadow.getElementById('tb').innerHTML = tb.toFixed(1) + '<span class="u">ms</span>';
+        var ratio = ta / tb;
+        var sum = shadow.getElementById('sum');
+        sum.textContent = isEN()
+          ? 'A is ' + ratio.toFixed(1) + '× slower — content-visibility: auto saved ' + (ta - tb).toFixed(0) + ' ms initial render'
+          : 'A 比 B 慢 ' + ratio.toFixed(1) + ' 倍 — content-visibility: auto 省下 ' + (ta - tb).toFixed(0) + ' ms 初始渲染';
+        sum.classList.add('show');
+      }
+      shadow.getElementById('run').addEventListener('click', run);
+      shadow.getElementById('reset').addEventListener('click', function () {
+        Array.prototype.slice.call(shadow.querySelectorAll('.col .item')).forEach(function (x) { x.remove(); });
+        shadow.getElementById('ta').innerHTML = '—<span class="u">ms</span>';
+        shadow.getElementById('tb').innerHTML = '—<span class="u">ms</span>';
+        shadow.getElementById('sum').classList.remove('show');
+      });
+    }
+  }
+  customElements.define('demo-cv-auto', DemoCvAuto);
 })();
 </script>
 
