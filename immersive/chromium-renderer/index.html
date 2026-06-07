@@ -2784,6 +2784,294 @@
     margin-top: 4px;
   }
 
+  /* ============================================================
+     NAMECARD STATIONS — 14 stations + filmstrip + hero + summary
+     ============================================================ */
+  .ns-svg, .ns-svg * { fill: none; stroke: currentColor; stroke-width: 1.4; vector-effect: non-scaling-stroke; }
+  .ns-svg text { stroke: none; fill: currentColor; font-family: var(--mono); font-size: 9px; }
+  .ns-svg .label { font-size: 7px; letter-spacing: 0.06em; }
+  .ns-svg .accent { color: var(--accent); }
+  .ns-svg .copper { color: var(--copper); }
+  .ns-svg .gpu    { color: var(--gpu); }
+  .ns-svg .ink    { color: var(--ink-soft); }
+  .ns-svg .fill-accent { fill: var(--accent); stroke: none; }
+  .ns-svg .fill-copper { fill: var(--copper); stroke: none; }
+  .ns-svg .fill-ink    { fill: var(--ink); stroke: none; }
+
+  /* ----- top filmstrip · fixed (sticky breaks under body{overflow-x:hidden}) ----- */
+  .card-filmstrip {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 80;
+    background: rgba(244, 239, 230, 0.94);
+    backdrop-filter: blur(10px) saturate(1.1);
+    -webkit-backdrop-filter: blur(10px) saturate(1.1);
+    border-bottom: 1px solid var(--rule);
+    padding: 10px 32px 8px;
+    transform: translateY(-110%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    opacity: 0;
+  }
+  .card-filmstrip.is-visible {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .card-filmstrip .cf-inner {
+    max-width: 1100px; margin: 0 auto;
+  }
+  .card-filmstrip .cf-header {
+    display: flex; justify-content: space-between; align-items: baseline;
+    margin-bottom: 6px;
+    font-family: var(--mono); font-size: 9px;
+    color: var(--ink-mute);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .card-filmstrip .cf-header em { color: var(--accent); font-style: normal; font-weight: 600; }
+  .card-filmstrip .cf-track {
+    display: flex; gap: 6px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: 4px;
+    scrollbar-width: thin;
+  }
+  .card-filmstrip .cf-track::-webkit-scrollbar { height: 4px; }
+  .card-filmstrip .cf-track::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+  .card-filmstrip .cf-cell {
+    flex: 0 0 74px;
+    scroll-snap-align: start;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 4px 3px 4px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    transition: all 0.18s ease;
+    text-align: center;
+    display: block;
+  }
+  .card-filmstrip .cf-cell:hover {
+    border-color: var(--accent);
+    background: var(--paper-2);
+    transform: translateY(-1px);
+  }
+  .card-filmstrip .cf-cell.active {
+    border-color: var(--accent);
+    background: var(--accent-pale);
+    box-shadow: 0 2px 0 var(--accent);
+  }
+  .card-filmstrip .cf-num {
+    font-family: var(--mono); font-size: 8px;
+    color: var(--ink-mute);
+    letter-spacing: 0.06em;
+    display: block;
+  }
+  .card-filmstrip .cf-cell.active .cf-num { color: var(--accent); font-weight: 700; }
+  .card-filmstrip .cf-mini {
+    display: block;
+    width: 64px; height: 34px;
+    margin: 2px auto;
+  }
+  .card-filmstrip .cf-name {
+    font-family: var(--sans); font-size: 9px;
+    color: var(--ink-soft);
+    line-height: 1.15;
+    display: block;
+  }
+
+  /* ----- per-stage why-care hook ("为什么要关心这一步") ----- */
+  .stage-why-care {
+    background: linear-gradient(180deg, #fdfbf3, #faf6ed);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--accent);
+    border-radius: 4px;
+    padding: 18px 22px 16px;
+    margin: 18px 0 22px;
+  }
+  .stage-why-care .swc-label {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--accent);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .stage-why-care p {
+    font-family: var(--serif); font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.65;
+    margin: 6px 0;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .stage-why-care .swc-pill {
+    flex: 0 0 56px;
+    font-family: var(--mono); font-size: 8px;
+    text-align: center;
+    padding: 3px 4px; border-radius: 2px;
+    letter-spacing: 0.05em; text-transform: uppercase;
+    background: var(--ink-mute); color: var(--paper);
+    font-weight: 700;
+  }
+  .stage-why-care .swc-pill.rev { background: var(--accent); }
+  .stage-why-care .swc-pill.act { background: var(--copper); }
+  .stage-why-care em { color: var(--ink); font-style: normal; font-weight: 600; }
+  .stage-why-care code {
+    font-family: var(--mono); font-size: 12px;
+    background: rgba(31,92,140,0.08);
+    padding: 0 4px; border-radius: 2px;
+    color: var(--accent);
+  }
+  @media (max-width: 600px) {
+    .stage-why-care p { flex-direction: column; gap: 4px; }
+    .stage-why-care .swc-pill { flex: 0 0 auto; align-self: flex-start; }
+  }
+
+  /* ----- per-stage hero card ("主线·The Card 在这一步") ----- */
+  .card-hero {
+    background: linear-gradient(180deg, var(--paper-2) 0%, var(--paper) 100%);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--copper);
+    border-radius: 4px;
+    padding: 18px 22px;
+    margin: 22px 0 26px;
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 24px;
+    align-items: center;
+  }
+  .card-hero .ch-tag {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--copper);
+    letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .card-hero .ch-title {
+    font-family: var(--serif); font-size: 17px;
+    color: var(--ink);
+    margin-bottom: 8px;
+    font-weight: 600;
+    line-height: 1.35;
+  }
+  .card-hero .ch-text {
+    font-family: var(--serif); font-size: 14px;
+    color: var(--ink-soft);
+    line-height: 1.6;
+  }
+  .card-hero .ch-text code {
+    font-family: var(--mono); font-size: 12px;
+    background: rgba(31,92,140,0.08);
+    padding: 0 4px; border-radius: 2px;
+    color: var(--accent);
+  }
+  .card-hero .ch-text em { color: var(--ink); font-style: normal; font-weight: 600; }
+  .card-hero svg.ns-svg {
+    width: 100%; height: 150px;
+    background: var(--paper);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    padding: 6px;
+    box-sizing: border-box;
+  }
+  @media (max-width: 760px) {
+    .card-hero { grid-template-columns: 1fr; }
+    .card-hero svg.ns-svg { height: 130px; }
+  }
+
+  /* ----- end-of-pipeline summary strip ----- */
+  .card-summary-strip {
+    background: var(--paper-2);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 22px;
+    margin: 32px 0;
+  }
+  .card-summary-strip h3 {
+    font-family: var(--serif); font-size: 19px;
+    color: var(--ink);
+    margin: 0 0 6px;
+    font-weight: 600;
+  }
+  .card-summary-strip .css-sub {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-mute);
+    margin-bottom: 18px;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .card-summary-strip .css-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+  }
+  .card-summary-strip .css-cell {
+    background: var(--paper);
+    border: 1px solid var(--rule-soft);
+    border-radius: 3px;
+    padding: 8px 5px 5px;
+    text-align: center;
+    text-decoration: none;
+    color: var(--ink-soft);
+    transition: all 0.16s ease;
+  }
+  .card-summary-strip .css-cell:hover { border-color: var(--accent); background: var(--paper-2); }
+  .card-summary-strip .css-cell.viz { border-color: var(--gpu-soft); }
+  .card-summary-strip .css-num {
+    font-family: var(--mono); font-size: 8px;
+    color: var(--ink-mute);
+    letter-spacing: 0.06em;
+    display: block;
+  }
+  .card-summary-strip .css-cell svg.ns-svg {
+    width: 100%; height: 52px;
+    margin: 4px 0 4px;
+  }
+  .card-summary-strip .css-name {
+    font-family: var(--sans); font-size: 10px;
+    color: var(--ink-soft);
+    font-weight: 600;
+    display: block;
+    line-height: 1.2;
+  }
+  @media (max-width: 900px) {
+    .card-summary-strip .css-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 500px) {
+    .card-summary-strip .css-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  /* ============================================================
+     INLINE DEMO CARDS (shadow-DOM custom elements)
+     ============================================================ */
+  .demo-card {
+    background: linear-gradient(180deg, #faf6ed, #f4efe6);
+    border: 1px solid var(--rule);
+    border-top: 3px solid var(--gpu);
+    border-radius: 4px;
+    padding: 22px 24px 24px;
+    margin: 28px 0;
+  }
+  .demo-card .dc-tag {
+    font-family: var(--mono); font-size: 9px;
+    color: var(--gpu);
+    letter-spacing: 0.12em; text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .demo-card .dc-title {
+    font-family: var(--serif); font-size: 19px;
+    color: var(--ink); font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .demo-card .dc-sub {
+    font-family: var(--serif); font-size: 14px;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+    line-height: 1.55;
+  }
+  .demo-card .dc-stage { margin-top: 14px; }
+  .demo-card .dc-note {
+    font-family: var(--mono); font-size: 10px;
+    color: var(--ink-mute);
+    margin-top: 10px;
+    line-height: 1.45;
+  }
+  .demo-card .dc-note strong { color: var(--copper); }
+
 </style>
 <!-- Umami analytics (shared with ursb.me) -->
 <script async defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script>
@@ -2875,6 +3163,346 @@
 </div>
 
 <div class="container">
+
+  <!-- ========== NAMECARD STATION SVG SYMBOL DEFS ========== -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <defs>
+      <!-- 00 · Loading: bytes streaming + preload scanner head-start -->
+      <symbol id="ns-00" viewBox="0 0 200 140" class="ns-svg">
+        <g class="ink">
+          <rect x="6" y="22" width="50" height="96" rx="2" stroke-dasharray="3 2"/>
+          <text x="31" y="38" text-anchor="middle" class="label">BROWSER</text>
+          <text x="31" y="50" text-anchor="middle" class="label">NETWORK</text>
+          <rect x="144" y="22" width="50" height="96" rx="2" stroke-dasharray="3 2"/>
+          <text x="169" y="38" text-anchor="middle" class="label">RENDER</text>
+          <text x="169" y="50" text-anchor="middle" class="label">PARSER</text>
+        </g>
+        <g class="accent">
+          <text x="64" y="70">0xFF</text><text x="86" y="70">0xD8</text>
+          <text x="108" y="70">0xFF</text><text x="130" y="70">0xE0</text>
+          <path d="M58 64 L142 64" stroke-dasharray="4 3"/>
+        </g>
+        <g class="copper">
+          <path d="M58 88 Q100 102 142 88" stroke-dasharray="2 2"/>
+          <text x="100" y="120" text-anchor="middle" class="label">PRELOAD SCANNER · airing.png</text>
+        </g>
+      </symbol>
+
+      <!-- 01 · Parsing: 6-node DOM tree -->
+      <symbol id="ns-01" viewBox="0 0 200 140" class="ns-svg">
+        <g class="ink">
+          <rect x="80" y="10" width="40" height="16" rx="2"/>
+          <text x="100" y="22" text-anchor="middle">article</text>
+          <rect x="36" y="46" width="32" height="16" rx="2"/>
+          <text x="52" y="58" text-anchor="middle">img</text>
+          <rect x="132" y="46" width="32" height="16" rx="2"/>
+          <text x="148" y="58" text-anchor="middle">div</text>
+          <line x1="92" y1="26" x2="52" y2="46"/>
+          <line x1="108" y1="26" x2="148" y2="46"/>
+          <rect x="96" y="84" width="28" height="16" rx="2"/>
+          <text x="110" y="96" text-anchor="middle">h2</text>
+          <rect x="128" y="84" width="22" height="16" rx="2"/>
+          <text x="139" y="96" text-anchor="middle">p</text>
+          <rect x="154" y="84" width="32" height="16" rx="2"/>
+          <text x="170" y="96" text-anchor="middle">btn</text>
+          <line x1="140" y1="62" x2="110" y2="84"/>
+          <line x1="148" y1="62" x2="139" y2="84"/>
+          <line x1="156" y1="62" x2="170" y2="84"/>
+        </g>
+        <text x="100" y="124" text-anchor="middle" class="copper label">DOM · 6 NODES · STACK MAX 4</text>
+      </symbol>
+
+      <!-- 02 · Style: DOM + ComputedStyle chips -->
+      <symbol id="ns-02" viewBox="0 0 200 140" class="ns-svg">
+        <g class="ink">
+          <rect x="10" y="20" width="32" height="14" rx="2"/>
+          <text x="26" y="30" text-anchor="middle">art</text>
+          <rect x="10" y="48" width="32" height="14" rx="2"/>
+          <text x="26" y="58" text-anchor="middle">h2</text>
+          <rect x="10" y="76" width="32" height="14" rx="2"/>
+          <text x="26" y="86" text-anchor="middle">p</text>
+          <line x1="26" y1="34" x2="26" y2="48"/>
+          <line x1="26" y1="62" x2="26" y2="76"/>
+        </g>
+        <g class="accent">
+          <rect x="60" y="14" width="128" height="26" rx="2"/>
+          <text x="66" y="24" class="label">COMPUTED · article</text>
+          <text x="66" y="35">display:flex bg:#faf padding:24</text>
+          <rect x="60" y="46" width="128" height="26" rx="2"/>
+          <text x="66" y="56" class="label">COMPUTED · h2</text>
+          <text x="66" y="67">font:Inter 18px 700 #15</text>
+          <rect x="60" y="78" width="128" height="26" rx="2"/>
+          <text x="66" y="88" class="label">COMPUTED · p</text>
+          <text x="66" y="99">font:serif 13px #76</text>
+          <path d="M42 27 L60 27" stroke-dasharray="2 2"/>
+          <path d="M42 55 L60 59" stroke-dasharray="2 2"/>
+          <path d="M42 83 L60 91" stroke-dasharray="2 2"/>
+        </g>
+        <text x="100" y="124" text-anchor="middle" class="copper label">RULEMAP × 3 · COMPUTEDSTYLE × 6</text>
+      </symbol>
+
+      <!-- 03 · Layout: card geometry with (x,y,w,h) -->
+      <symbol id="ns-03" viewBox="0 0 200 140" class="ns-svg">
+        <g class="accent">
+          <rect x="36" y="34" width="128" height="56" rx="3"/>
+          <circle cx="56" cy="62" r="13"/>
+          <rect x="78" y="48" width="44" height="6" rx="1" class="fill-accent"/>
+          <rect x="78" y="60" width="60" height="4" rx="1" class="fill-accent" opacity="0.5"/>
+          <rect x="138" y="56" width="22" height="14" rx="2"/>
+        </g>
+        <g class="ink">
+          <path d="M36 100 L164 100" stroke-dasharray="2 2"/>
+          <text x="100" y="112" text-anchor="middle">340 px</text>
+          <path d="M174 34 L174 90" stroke-dasharray="2 2"/>
+          <text x="182" y="65" text-anchor="middle">88</text>
+          <circle cx="36" cy="34" r="2" class="fill-ink"/>
+          <text x="30" y="28" text-anchor="end">(40,40)</text>
+        </g>
+        <text x="100" y="128" text-anchor="middle" class="copper label">LAYOUTNGFLEXIBLEBOX · 2 PASSES</text>
+      </symbol>
+
+      <!-- 04 · Pre-paint: 4 property trees -->
+      <symbol id="ns-04" viewBox="0 0 200 140" class="ns-svg">
+        <g class="accent">
+          <rect x="10" y="12" width="82" height="50" rx="3"/>
+          <text x="16" y="24" class="label">TRANSFORM</text>
+          <circle cx="50" cy="38" r="2.5" class="fill-accent"/>
+          <line x1="50" y1="40.5" x2="40" y2="52"/>
+          <line x1="50" y1="40.5" x2="60" y2="52"/>
+          <circle cx="40" cy="52" r="2" class="fill-accent"/>
+          <circle cx="60" cy="52" r="2" class="fill-accent"/>
+          <text x="64" y="56" class="label">.follow</text>
+        </g>
+        <g class="copper">
+          <rect x="108" y="12" width="82" height="50" rx="3"/>
+          <text x="114" y="24" class="label">CLIP</text>
+          <circle cx="149" cy="38" r="2.5" class="fill-copper"/>
+          <line x1="149" y1="40.5" x2="149" y2="52"/>
+          <circle cx="149" cy="52" r="2" class="fill-copper"/>
+        </g>
+        <g class="gpu">
+          <rect x="10" y="74" width="82" height="50" rx="3"/>
+          <text x="16" y="86" class="label">EFFECT</text>
+          <circle cx="50" cy="100" r="2.5"/>
+          <line x1="50" y1="102.5" x2="38" y2="114"/>
+          <line x1="50" y1="102.5" x2="62" y2="114"/>
+          <text x="30" y="120" class="label">shadow</text>
+          <text x="60" y="120" class="label">grad</text>
+        </g>
+        <g class="ink">
+          <rect x="108" y="74" width="82" height="50" rx="3"/>
+          <text x="114" y="86" class="label">SCROLL</text>
+          <circle cx="149" cy="100" r="2.5" class="fill-ink"/>
+        </g>
+      </symbol>
+
+      <!-- 05 · Paint: DisplayItemList enumeration -->
+      <symbol id="ns-05" viewBox="0 0 200 140" class="ns-svg">
+        <g class="accent">
+          <rect x="20" y="10" width="160" height="124" rx="3"/>
+          <text x="100" y="22" text-anchor="middle" class="copper label">DISPLAYITEMLIST · 12 ITEMS</text>
+        </g>
+        <g class="ink">
+          <text x="30" y="38">01 Save</text>
+          <text x="30" y="50">02 ClipRRect(avatar)</text>
+          <text x="30" y="62">03 DrawRect bg #faf</text>
+          <text x="30" y="74">04 DrawImage avatar</text>
+          <text x="30" y="86">05 DrawText "Airing"</text>
+          <text x="30" y="98">06 DrawText bio</text>
+          <text x="30" y="110">07 DrawRRect btn</text>
+          <text x="30" y="122">08 Restore</text>
+        </g>
+      </symbol>
+
+      <!-- 06 · Commit: cross-thread push -->
+      <symbol id="ns-06" viewBox="0 0 200 140" class="ns-svg">
+        <g class="accent">
+          <rect x="8" y="22" width="68" height="98" rx="3"/>
+          <text x="42" y="36" text-anchor="middle" class="label">MAIN THREAD</text>
+          <rect x="18" y="50" width="48" height="34" rx="2"/>
+          <text x="42" y="65" text-anchor="middle">cc::Layer</text>
+          <text x="42" y="77" text-anchor="middle">host tree</text>
+          <text x="42" y="110" text-anchor="middle" class="label">LAYERTREEHOST</text>
+        </g>
+        <g class="copper">
+          <rect x="124" y="22" width="68" height="98" rx="3"/>
+          <text x="158" y="36" text-anchor="middle" class="label">COMPOSITOR</text>
+          <rect x="134" y="50" width="48" height="34" rx="2"/>
+          <text x="158" y="65" text-anchor="middle">LayerImpl</text>
+          <text x="158" y="77" text-anchor="middle">tree</text>
+          <text x="158" y="110" text-anchor="middle" class="label">LAYERTREEIMPL</text>
+        </g>
+        <g class="gpu">
+          <path d="M80 66 L118 66"/>
+          <path d="M114 62 L118 66 L114 70"/>
+          <text x="100" y="58" text-anchor="middle" class="label">PUSHPROPS</text>
+        </g>
+      </symbol>
+
+      <!-- 07 · Compositing: main + promoted .follow -->
+      <symbol id="ns-07" viewBox="0 0 200 140" class="ns-svg">
+        <g class="accent">
+          <rect x="14" y="34" width="120" height="62" rx="3" stroke-dasharray="3 2"/>
+          <text x="74" y="26" text-anchor="middle" class="label">MAIN LAYER · cc::PictureLayerImpl</text>
+          <circle cx="40" cy="64" r="13" opacity="0.5"/>
+          <rect x="60" y="52" width="44" height="6" rx="1" class="fill-accent" opacity="0.4"/>
+          <rect x="60" y="64" width="60" height="4" rx="1" class="fill-accent" opacity="0.3"/>
+        </g>
+        <g class="copper">
+          <rect x="146" y="46" width="46" height="22" rx="3"/>
+          <text x="169" y="60" text-anchor="middle">.follow</text>
+          <text x="169" y="82" text-anchor="middle" class="label">PROMOTED</text>
+          <text x="169" y="94" text-anchor="middle" class="label">will-change</text>
+        </g>
+        <text x="100" y="124" text-anchor="middle" class="copper label">2 × cc::PictureLayerImpl</text>
+      </symbol>
+
+      <!-- 08 · Tiling: card sliced into 2 tiles -->
+      <symbol id="ns-08" viewBox="0 0 200 140" class="ns-svg">
+        <g class="accent">
+          <rect x="36" y="28" width="128" height="64" rx="2"/>
+        </g>
+        <g class="copper">
+          <path d="M100 28 L100 92" stroke-dasharray="2 2"/>
+          <text x="68" y="44" text-anchor="middle" class="label">TILE A</text>
+          <text x="68" y="56" text-anchor="middle">256×128</text>
+          <text x="132" y="44" text-anchor="middle" class="label">TILE B · edge</text>
+          <text x="132" y="56" text-anchor="middle">128×128</text>
+        </g>
+        <circle cx="56" cy="72" r="10" class="accent" opacity="0.5"/>
+        <text x="100" y="116" text-anchor="middle" class="copper label">2 TILES · TILEMANAGER QUEUES</text>
+      </symbol>
+
+      <!-- 09 · Raster: pixel hatch → GL texture -->
+      <symbol id="ns-09" viewBox="0 0 200 140" class="ns-svg">
+        <defs>
+          <pattern id="ns09-px" x="0" y="0" width="4" height="4" patternUnits="userSpaceOnUse">
+            <rect width="4" height="4" fill="#c9dceb"/>
+            <rect x="0" y="0" width="2" height="2" fill="#1f5c8c" opacity="0.45"/>
+            <rect x="2" y="2" width="2" height="2" fill="#b35a1f" opacity="0.45"/>
+          </pattern>
+        </defs>
+        <rect x="20" y="32" width="76" height="60" fill="url(#ns09-px)" stroke="#1f5c8c"/>
+        <rect x="104" y="32" width="76" height="60" fill="url(#ns09-px)" stroke="#1f5c8c"/>
+        <text x="58" y="24" text-anchor="middle" class="accent label">GL TEXTURE A</text>
+        <text x="142" y="24" text-anchor="middle" class="accent label">GL TEXTURE B</text>
+        <text x="100" y="110" text-anchor="middle" class="copper label">SKIA · GPU RASTER</text>
+        <text x="100" y="124" text-anchor="middle" class="ink label">ImageDecodeCache · avatar reused</text>
+      </symbol>
+
+      <!-- 10 · Activate: Active / Pending / Recycle -->
+      <symbol id="ns-10" viewBox="0 0 200 140" class="ns-svg">
+        <g class="accent">
+          <rect x="8" y="22" width="56" height="76" rx="3"/>
+          <text x="36" y="34" text-anchor="middle" class="label">ACTIVE</text>
+          <rect x="18" y="44" width="36" height="44" rx="2"/>
+          <text x="36" y="58" text-anchor="middle">showing</text>
+          <text x="36" y="70" text-anchor="middle">now</text>
+        </g>
+        <g class="copper">
+          <rect x="72" y="22" width="56" height="76" rx="3" stroke-dasharray="3 2"/>
+          <text x="100" y="34" text-anchor="middle" class="label">PENDING</text>
+          <rect x="82" y="44" width="36" height="44" rx="2" stroke-dasharray="2 2"/>
+          <text x="100" y="58" text-anchor="middle">rastering</text>
+          <text x="100" y="70" text-anchor="middle">tiles…</text>
+        </g>
+        <g class="ink">
+          <rect x="136" y="22" width="56" height="76" rx="3"/>
+          <text x="164" y="34" text-anchor="middle" class="label">RECYCLE</text>
+          <rect x="146" y="44" width="36" height="44" rx="2"/>
+          <text x="164" y="58" text-anchor="middle">empty</text>
+          <text x="164" y="70" text-anchor="middle">pool</text>
+        </g>
+        <text x="100" y="118" text-anchor="middle" class="copper label">SWAP · PENDING → ACTIVE</text>
+      </symbol>
+
+      <!-- 11 · Draw: CompositorFrame "script" -->
+      <symbol id="ns-11" viewBox="0 0 200 140" class="ns-svg">
+        <g class="accent">
+          <rect x="16" y="14" width="168" height="112" rx="3"/>
+          <text x="100" y="26" text-anchor="middle" class="copper label">COMPOSITORFRAME · script</text>
+        </g>
+        <g class="ink">
+          <text x="30" y="44">▸ RenderPass · root</text>
+          <text x="42" y="58">TileDrawQuad · main A</text>
+          <text x="42" y="70">TileDrawQuad · main B</text>
+          <text x="42" y="82">TileDrawQuad · .follow</text>
+          <text x="30" y="98">▸ RenderPass · shadow</text>
+          <text x="42" y="112">RenderPassDrawQuad ↩</text>
+        </g>
+      </symbol>
+
+      <!-- 12 · Aggregate: viz combining frames -->
+      <symbol id="ns-12" viewBox="0 0 200 140" class="ns-svg">
+        <g class="accent">
+          <rect x="8" y="14" width="46" height="30" rx="2"/>
+          <text x="31" y="32" text-anchor="middle" class="label">FRAME · ours</text>
+        </g>
+        <g class="copper">
+          <rect x="8" y="54" width="46" height="30" rx="2" stroke-dasharray="2 2"/>
+          <text x="31" y="72" text-anchor="middle" class="label">FRAME · OOPIF</text>
+        </g>
+        <g class="ink">
+          <rect x="8" y="94" width="46" height="30" rx="2" stroke-dasharray="2 2"/>
+          <text x="31" y="112" text-anchor="middle" class="label">FRAME · UI</text>
+        </g>
+        <g class="gpu">
+          <path d="M54 30 Q90 30 110 70"/>
+          <path d="M54 70 L110 70"/>
+          <path d="M54 110 Q90 110 110 70"/>
+          <rect x="114" y="44" width="78" height="52" rx="3"/>
+          <text x="153" y="58" text-anchor="middle" class="label">VIZ · AGGREGATE</text>
+          <text x="153" y="74" text-anchor="middle">surface</text>
+          <text x="153" y="86" text-anchor="middle">composite</text>
+        </g>
+      </symbol>
+
+      <!-- 13 · Display: rendered card on monitor -->
+      <symbol id="ns-13" viewBox="0 0 200 140" class="ns-svg">
+        <g class="ink">
+          <rect x="14" y="14" width="172" height="98" rx="4"/>
+          <path d="M14 104 L186 104"/>
+          <rect x="80" y="114" width="40" height="6" rx="1"/>
+          <rect x="60" y="122" width="80" height="6" rx="2"/>
+        </g>
+        <g transform="translate(42 30)">
+          <rect x="0" y="0" width="116" height="60" rx="4" fill="#faf6ed" stroke="#1f5c8c"/>
+          <circle cx="20" cy="30" r="11" fill="#d1855a" stroke="#b35a1f"/>
+          <text x="36" y="26" font-family="Inter, sans-serif" font-size="9" fill="#15171c" font-weight="700" stroke="none">Airing</text>
+          <rect x="36" y="32" width="58" height="3" rx="1" fill="#3c4148" stroke="none"/>
+          <rect x="36" y="38" width="34" height="3" rx="1" fill="#b35a1f" stroke="none"/>
+          <rect x="94" y="24" width="18" height="10" rx="2" fill="#1f5c8c" stroke="none"/>
+        </g>
+        <text x="100" y="100" text-anchor="middle" class="copper label">SWAPBUFFERS · 120 FPS</text>
+      </symbol>
+    </defs>
+  </svg>
+
+  <!-- ========== TOP FILMSTRIP — 14 stations of the namecard (fixed, JS-toggled) ========== -->
+  <nav class="card-filmstrip" id="card-filmstrip" aria-label="The card's 14 stations">
+   <div class="cf-inner">
+    <div class="cf-header">
+      <span><span class="lang-zh-only">主线 · 名片的 14 站</span><span class="lang-en-only">Main-line · The Card's 14 stations</span></span>
+      <span><em id="cf-current">START</em>&nbsp;/&nbsp;14</span>
+    </div>
+    <div class="cf-track" id="cf-track">
+      <a href="#c0"  class="cf-cell" data-stage="00"><span class="cf-num">00</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-00"/></svg><span class="cf-name">Loading</span></a>
+      <a href="#c6"  class="cf-cell" data-stage="01"><span class="cf-num">01</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-01"/></svg><span class="cf-name">Parsing</span></a>
+      <a href="#c7"  class="cf-cell" data-stage="02"><span class="cf-num">02</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-02"/></svg><span class="cf-name">Style</span></a>
+      <a href="#c8"  class="cf-cell" data-stage="03"><span class="cf-num">03</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-03"/></svg><span class="cf-name">Layout</span></a>
+      <a href="#c9"  class="cf-cell" data-stage="04"><span class="cf-num">04</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-04"/></svg><span class="cf-name">Pre-paint</span></a>
+      <a href="#c10" class="cf-cell" data-stage="05"><span class="cf-num">05</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-05"/></svg><span class="cf-name">Paint</span></a>
+      <a href="#c11" class="cf-cell" data-stage="06"><span class="cf-num">06</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-06"/></svg><span class="cf-name">Commit</span></a>
+      <a href="#c12" class="cf-cell" data-stage="07"><span class="cf-num">07</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-07"/></svg><span class="cf-name">Compositing</span></a>
+      <a href="#c13" class="cf-cell" data-stage="08"><span class="cf-num">08</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-08"/></svg><span class="cf-name">Tiling</span></a>
+      <a href="#c14" class="cf-cell" data-stage="09"><span class="cf-num">09</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-09"/></svg><span class="cf-name">Raster</span></a>
+      <a href="#c15" class="cf-cell" data-stage="10"><span class="cf-num">10</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-10"/></svg><span class="cf-name">Activate</span></a>
+      <a href="#c16" class="cf-cell" data-stage="11"><span class="cf-num">11</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-11"/></svg><span class="cf-name">Draw</span></a>
+      <a href="#c17" class="cf-cell" data-stage="12"><span class="cf-num">12</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-12"/></svg><span class="cf-name">Aggregate</span></a>
+      <a href="#c18" class="cf-cell" data-stage="13"><span class="cf-num">13</span><svg class="cf-mini ns-svg" viewBox="0 0 200 140"><use href="#ns-13"/></svg><span class="cf-name">Display</span></a>
+    </div>
+   </div>
+  </nav>
 
   <!-- ========== HERO ========== -->
   <header class="hero">
@@ -4586,6 +5214,38 @@
     <p class="chap-en lang-zh-only">网络线程 + Mojo IPC + 抢跑机制</p>
     <p class="chap-en lang-en-only">network thread, mojo IPC, the preload scanner head-start</p>
 
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>页面加载是串行四步：下载完 HTML → 解析 → 拉资源 → 渲染。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span>HTML 是<em>边下边解析</em>的。更狠的是——HTMLDocumentParser 在 tokenize 阶段 <em>fork 出一个 Preload Scanner</em>，独立线程前向扫整份 HTML，把后面的 <code>&lt;link rel=preload&gt;</code> <code>&lt;script src&gt;</code> 全部并行下载——main parser 还卡在 <code>&lt;head&gt;</code>，资源已经在飞。</span></p>
+      <p><span class="swc-pill act">优化</span><span>critical 资源的 <code>&lt;link rel=preload&gt;</code> 必须放 <code>&lt;head&gt;</code> 最早位置——不是为了"早执行"，是因为 Preload Scanner 前向扫描。Server-side Streaming（React 18 <code>renderToPipeableStream</code>）的本质是"让 first byte 早 200ms 出来"——对 LCP 帮助远大于"总下载时长砍 200ms"。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>Page loading is four serial steps — download HTML → parse → fetch resources → render.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span>HTML is parsed <em>as it streams in</em>. Worse — HTMLDocumentParser <em>forks a Preload Scanner</em> during tokenize; that independent thread sweeps the whole document ahead of the main parser and starts downloading every <code>&lt;link rel=preload&gt;</code>, <code>&lt;script src&gt;</code>, <code>&lt;img src&gt;</code> in parallel. While main parser is still in <code>&lt;head&gt;</code>, the resources are already in flight.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>Critical resources' <code>&lt;link rel=preload&gt;</code> <em>must</em> sit at the very top of <code>&lt;head&gt;</code> — not "to execute earlier" but because the Preload Scanner sweeps forward. Server-side streaming (React 18 <code>renderToPipeableStream</code>) is about getting the first byte out 200 ms earlier — that helps LCP far more than shaving 200 ms off total download.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-00"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">字节流上路 + 抢跑</h3>
+        <p class="ch-text">HTML 字节流通过 Mojo IPC 从 <code>NetworkService</code> 流到 <code>blink::DocumentLoader</code>。同一时刻，<code>HTMLPreloadScanner</code> 抢在主 Parser 之前发现 <code>airing.png</code>，<em>头像的请求已经在路上</em>——名片还没成"卡"，但它的化妆品已经下到一半。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-00"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">Bytes on the wire + the head-start</h3>
+        <p class="ch-text">HTML bytes stream through Mojo IPC from <code>NetworkService</code> into <code>blink::DocumentLoader</code>. At the same moment, <code>HTMLPreloadScanner</code> spots <code>airing.png</code> ahead of the main Parser — <em>the avatar request is already on the wire</em>. The card isn't a "card" yet, but its makeup is half-downloaded.</p>
+      </div>
+    </div>
+
     <div class="stage-banner thread-main" style="background: rgba(31,92,140,0.06);">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">network_service</div></div>
       <div class="sb-cell"><div class="sb-key">Process</div><div class="sb-val">Browser</div></div>
@@ -4833,6 +5493,38 @@
     <h2 class="chap-title lang-en-only">Parsing — bytes to a DOM tree</h2>
     <p class="chap-en lang-zh-only">字节如何长成一棵树</p>
     <p class="chap-en lang-en-only">bytes → characters → tokens → DOM</p>
+
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span><code>&lt;script&gt;</code> 阻塞渲染。defer 推迟到 DOMContentLoaded、async 异步。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span><code>&lt;script&gt;</code> 不阻塞<em>渲染</em>，是阻塞 <em>parsing</em>——因为脚本可能 <code>document.write</code> 改 DOM 结构，HTMLParser 必须 stop。<em>但 Preload Scanner 不停</em>，继续前向扫，把后面所有资源 URL 提前下载。所以 defer / async / blocking 的真正差异<em>不在"什么时候下载"，而在"什么时候执行"</em>。</span></p>
+      <p><span class="swc-pill act">优化</span><span>意味着<em>位置 &gt; 关键字</em>。<code>&lt;script defer src=…&gt;</code> 写在 <code>&lt;head&gt;</code> 顶部，比写在 <code>&lt;/body&gt;</code> 前性能更好——因为 Preload Scanner 越早看到，资源越早下。这跟教科书"脚本放底部"完全反过来。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span><code>&lt;script&gt;</code> blocks rendering. <code>defer</code> waits for DOMContentLoaded, <code>async</code> runs asynchronously.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span><code>&lt;script&gt;</code> doesn't block <em>rendering</em> — it blocks <em>parsing</em>, because the script may <code>document.write</code> and change DOM topology, so HTMLParser must stop. <em>But the Preload Scanner doesn't stop</em> — it keeps sweeping forward, pre-downloading every resource URL past the script. So <code>defer</code> / <code>async</code> / blocking really differ in <em>when they execute</em>, not <em>when they download</em>.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>That means <em>position &gt; keyword</em>. <code>&lt;script defer src=…&gt;</code> at the top of <code>&lt;head&gt;</code> outperforms one right before <code>&lt;/body&gt;</code> — the Preload Scanner sees it sooner, downloads start sooner. Opposite of the old "scripts at the bottom" gospel.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-01"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">DOM 树长出来了 · 6 个节点</h3>
+        <p class="ch-text">11 个 token 经历 <em>4 层最深的栈深度</em>，扭转成一棵 6 节点的 DOM 树：<code>article → img + div → h2 + p + button</code>。这就是名片的骨架——还没颜色、没尺寸，但树形已经定型。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-01"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">DOM tree is up · 6 nodes</h3>
+        <p class="ch-text">11 tokens, a max stack depth of 4, become a 6-node DOM tree: <code>article → img + div → h2 + p + button</code>. This is the card's skeleton — no color, no size, but the topology is fixed.</p>
+      </div>
+    </div>
 
     <div class="stage-banner thread-main">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">blink</div></div>
@@ -5234,6 +5926,38 @@
     <h2 class="chap-title lang-en-only">Style — CSS is read right-to-left</h2>
     <p class="chap-en lang-zh-only">CSSOM 与反向匹配</p>
     <p class="chap-en lang-en-only">CSSOM and right-to-left selectors</p>
+
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>选择器越具体越快，因为更精确。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span>浏览器<em>从右往左</em>匹配。<code>.container .item .title</code> 不是从 <code>.container</code> 找下去，而是<em>先把 DOM 里所有 .title 拉出来</em>，再回溯检查祖先。<em>最右那个 key selector 决定候选集大小</em>——前面的选择器越多反而越慢。<code>.title *</code> 是最差的选择器，因为 key 是 <code>*</code>，先把整棵 DOM 拉出来再过滤。</span></p>
+      <p><span class="swc-pill act">优化</span><span>BEM / Tailwind / CSS-in-JS hash class 不是代码风格，是<em>把所有规则压成"一个 class 决定一切"</em>，让 RuleMap 的 <code>class_rules_</code> 桶 O(1) 命中。分桶就是这个性能要求的实体——看 <code>blink/renderer/core/css/rule_set.h</code>。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>More specific selectors are faster (they're more precise).</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span>The browser matches <em>right-to-left</em>. <code>.container .item .title</code> doesn't start at <code>.container</code> — it <em>first pulls every <code>.title</code> out of the DOM</em>, then walks each one back up to check ancestors. The <em>rightmost key selector decides the candidate-set size</em> — more selectors on the left actually make it <em>slower</em>. <code>.title *</code> is the worst — key is <code>*</code>, so the entire DOM is yanked out before filtering.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>BEM / Tailwind / CSS-in-JS hash classes aren't a coding style — they <em>compress every rule into "one class decides everything"</em>, letting RuleMap's <code>class_rules_</code> bucket hit in O(1). The bucketing is the embodied form of that perf constraint — see <code>blink/renderer/core/css/rule_set.h</code>.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-02"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">每个节点都穿好衣服</h3>
+        <p class="ch-text">5 条 CSS 规则被分到 3 张 RuleMap（class / id / tag）。每个 DOM 节点挂上一份 <code>ComputedStyle</code>——颜色、字体、间距、display 模式全部计算完毕。骨架穿好了衣服，但还没站起来。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-02"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">Every node gets dressed</h3>
+        <p class="ch-text">5 CSS rules get split across 3 RuleMaps (class / id / tag). Every DOM node now carries a <code>ComputedStyle</code> — colors, fonts, spacing, display modes all resolved. The skeleton is dressed but hasn't stood up yet.</p>
+      </div>
+    </div>
 
     <div class="stage-banner thread-main">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">blink</div></div>
@@ -5641,6 +6365,38 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
     <h2 class="chap-title lang-en-only">Layout — where geometry settles</h2>
     <p class="chap-en lang-zh-only">几何归位</p>
     <p class="chap-en lang-en-only">where geometry settles</p>
+
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>GPU 加速让动画快，所以用 <code>transform</code>、<code>will-change</code>。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span>GPU 加速是<em>结果</em>不是<em>原因</em>。真正的原因是 <code>transform</code> 整个<em>跳过 Layout 阶段</em>——而 Layout 是<em>同步、不可缓存、不可并行</em>的。<code>left:</code> 触发 Layout（全树 reflow） + Paint + Composite；<code>transform:</code> 直接跳到 Composite。差距经常是 100×。</span></p>
+      <p><span class="swc-pill act">优化</span><span>这场分享我最希望你记住的一点——<em>读 layout 属性也触发 Layout</em>。<code>offsetTop</code> / <code>getBoundingClientRect</code> / <code>getComputedStyle</code> 这些"看起来无害的读"，触发<em>强制同步布局</em>。最常见的性能 bug 是 <code>for { write; read; write; read; }</code>。改成 read-all-then-write-all，能把 200ms 的 Long Task 压到 5ms 以下。下面 <em>Demo B</em> 我们现场跑一遍。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>GPU acceleration makes animations fast, so use <code>transform</code> and <code>will-change</code>.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span>GPU acceleration is the <em>consequence</em>, not the cause. The real reason is that <code>transform</code> <em>skips Layout entirely</em> — and Layout is <em>synchronous, uncacheable, unparallelizable</em>. <code>left:</code> triggers Layout (whole-tree reflow) + Paint + Composite; <code>transform:</code> jumps to Composite. The gap is often 100×.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>The single most important thing I want you to remember — <em>reading layout properties also triggers Layout</em>. <code>offsetTop</code> / <code>getBoundingClientRect</code> / <code>getComputedStyle</code> look harmless but trigger <em>Forced Synchronous Layout</em>. The most common perf bug is <code>for { write; read; write; read; }</code>. Refactor to read-all-then-write-all and a 200 ms Long Task often shrinks below 5 ms. <em>Demo B</em> below runs it live.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-03"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">几何属性落地</h3>
+        <p class="ch-text"><code>LayoutNGFlexibleBox</code> 跑完<em>两遍</em>：第一遍量主轴 min/max、第二遍分剩余空间。名片定位在 <code>(40, 40)</code>、尺寸 <em>340 × 88</em>。头像、姓名、关注按钮各自的 <code>(x, y, w, h)</code> 全部到位——卡终于站住了。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-03"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">Geometry settles in</h3>
+        <p class="ch-text"><code>LayoutNGFlexibleBox</code> runs <em>two passes</em>: first measures main-axis min/max, second distributes remaining space. The card lands at <code>(40, 40)</code>, size <em>340 × 88</em>. Avatar, name, follow-button each receive their <code>(x, y, w, h)</code> — the card finally stands up.</p>
+      </div>
+    </div>
 
     <div class="stage-banner thread-main">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">blink</div></div>
@@ -6075,6 +6831,16 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
         <div class="io-val">Layout Tree<span class="small lang-zh-only">含 LayoutRect + Fragment 树</span><span class="small lang-en-only">+ LayoutRect + Fragment tree</span></div>
       </div>
     </div>
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO B · LIVE · 强制同步布局</span><span class="lang-en-only">DEMO B · LIVE · Forced Sync Layout</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">真的能看见的 Forced Sync Layout</span><span class="lang-en-only">Forced Sync Layout you can actually see</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">下面是一段 5000 次的 <code>write → read</code> 循环。先点 <em>BAD</em>——每次写都触发一次 layout；再点 <em>GOOD</em>——所有写完成后一次性读。<em>速度差距是真的</em>。</span><span class="lang-en-only">Below is a 5,000-iteration <code>write → read</code> loop. Click <em>BAD</em> first — every write triggers a layout. Then click <em>GOOD</em> — all writes first, then read in one batch. <em>The gap is real</em>.</span></p>
+      <div class="dc-stage">
+        <demo-fsl></demo-fsl>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">这个 demo 没有作弊——两段代码做的是同样的工作量，差别只在<strong>读和写交错 vs 批量化</strong>。开 DevTools Performance 面板录一次能看到那一排紫色 Layout 条。你写的每一段 ResizeObserver 回调、每一段 <code>el.style.x = …; el.offsetX</code> 都在重蹈这里的覆辙。</span><span class="lang-en-only">This demo isn't cheating — both code paths do the exact same work. The only difference is <strong>interleaved read+write vs batched</strong>. Open DevTools Performance and you'll see that wall of purple Layout bars. Every ResizeObserver callback you wrote, every <code>el.style.x = …; el.offsetX</code> — they all replay this same bug.</span></p>
+    </div>
+
   </section>
 
   <!-- ========== CHAPTER 09 — PRE-PAINT ========== -->
@@ -6084,6 +6850,38 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
     <h2 class="chap-title lang-en-only">Pre-paint — birth of the four property trees</h2>
     <p class="chap-en lang-zh-only">局部更新的"语法"</p>
     <p class="chap-en lang-en-only">isolation contracts for transform · clip · effect · scroll</p>
+
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span><code>will-change</code> 让动画更流畅，多加几个没坏处。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span><code>will-change: transform</code> 不是"加速"——它是<em>指示 Pre-paint 提前为这个元素切出独立 cc::PictureLayer + 独立 GPU 纹理</em>。每加一个 <code>will-change</code>，多一份 VRAM + 多一次 Compositor 合成开销。全局 <code>will-change</code> 的页面<em>比不加的页面慢</em>——Compositor 一帧管 1000 个 layer，反而崩溃。</span></p>
+      <p><span class="swc-pill act">优化</span><span>Chrome 团队官方建议——<em>鼠标 hover 进来时加，离开就删</em>。打开 <code>chrome://layers</code> 实时看你的页面有多少 layer。Layer Explosion 是真的——我见过为了"丝滑 hover"把首屏内存从 80MB 拉到 600MB 的代码。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span><code>will-change</code> makes animations smoother — a few extra don't hurt.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span><code>will-change: transform</code> isn't "acceleration" — it tells Pre-paint to <em>carve a dedicated <code>cc::PictureLayer</code> + standalone GPU texture for this element ahead of time</em>. Every <code>will-change</code> costs one slice of VRAM + one extra Compositor composition. Pages with global <code>will-change</code> are <em>slower</em> than pages without — Compositor has to manage 1,000 layers per frame and collapses.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>Chrome team's official guidance — <em>add on mouseenter, remove on mouseleave</em>. Open <code>chrome://layers</code> to watch your page's live layer count. Layer Explosion is real — I've seen first-screen memory go from 80 MB to 600 MB just to make one hover "smooth".</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-04"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">4 棵属性树长起来</h3>
+        <p class="ch-text"><em>Transform / Clip / Effect / Scroll</em> 四棵树并行长出来。<code>.follow</code> 因为 <code>will-change: transform</code> 在 Transform tree 单独出节点；Effect tree 多 2 个节点（按钮的 shadow + 头像的 gradient）。每棵树都是<em>"该元素如果变了，谁需要重画"</em> 的契约表。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-04"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">Four property trees grow</h3>
+        <p class="ch-text"><em>Transform / Clip / Effect / Scroll</em> — four trees grow in parallel. <code>.follow</code> gets its own node in the Transform tree thanks to <code>will-change: transform</code>; Effect tree gains 2 nodes (button shadow + avatar gradient). Each tree is a <em>contract</em> — "if this element changes, who else needs to repaint?"</p>
+      </div>
+    </div>
 
     <div class="stage-banner thread-main">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">blink</div></div>
@@ -6416,6 +7214,38 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
     <p class="chap-en lang-zh-only">按 CSS 绘画顺序写指令</p>
     <p class="chap-en lang-en-only">layout objects → display item list, in CSS painting order</p>
 
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>Paint 画像素，所以重绘很贵。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span><em>Paint 不画像素</em>。Paint 产出 DisplayItemList——"绘画清单"，record-only 的命令序列。真正画像素的是 Raster。这个分工的意义是——<em>清单可以差异化更新</em>：PaintController 维护 cache，只有变化的元素重新生成 DisplayItem，其余直接复用。所以"改一个 .button 的 background-color 让整页 repaint"的恐慌<em>几乎都是错的</em>。</span></p>
+      <p><span class="swc-pill act">优化</span><span>DevTools Rendering → 打开 <em>Paint Flashing</em>，绿色高亮被 invalidate 的区域——你会发现你的 repaint 比想象中小得多。但有几个属性确实让整页失效：改 root scrollbar、改 <code>position: fixed</code> 元素的 <code>z-index</code>。Paint Flashing 一打开你就分得清。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>Paint draws pixels, so repainting is expensive.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span><em>Paint doesn't draw pixels</em>. Paint produces a <code>DisplayItemList</code> — a record-only sequence of drawing commands. Actual pixel work is Raster's job. The point — <em>the list can be diff-updated</em>. PaintController maintains a cache; only changed elements regenerate their DisplayItems, the rest reuse. So the panic about "changing one <code>.button</code>'s background-color repaints the whole page" is <em>almost always wrong</em>.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>DevTools Rendering → enable <em>Paint Flashing</em>. Invalidated regions are highlighted in green — your repaint is smaller than you think. A few properties really do invalidate the whole page: root scrollbar, <code>z-index</code> on a <code>position: fixed</code> element. Paint Flashing tells them apart at a glance.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-05"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">绘画清单 · 12 条命令</h3>
+        <p class="ch-text">DisplayItemList 约 <em>12 项</em>：<code>Save / ClipRRect(头像) / DrawRect bg / DrawImage(avatar) / DrawText("Airing") / DrawText(bio) / DrawRRect(按钮) / Restore</code>。一份纯命令的"乐谱"，但<em>还没奏出一个像素</em>。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-05"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">The drawing script · 12 commands</h3>
+        <p class="ch-text">A ~12-entry DisplayItemList: <code>Save / ClipRRect(avatar) / DrawRect bg / DrawImage(avatar) / DrawText("Airing") / DrawText(bio) / DrawRRect(button) / Restore</code>. A pure command "score" — and <em>not one pixel has been played yet</em>.</p>
+      </div>
+    </div>
+
     <div class="stage-banner thread-main">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">blink → cc</div></div>
       <div class="sb-cell"><div class="sb-key">Process</div><div class="sb-val">Render</div></div>
@@ -6712,6 +7542,38 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
     <p class="chap-en lang-zh-only">主线程到合成线程的原子过桥</p>
     <p class="chap-en lang-en-only">main thread → compositor thread, atomically</p>
 
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>页面卡 = main thread 慢。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span><em>有两种完全不同的卡</em>。一种是"compositor 卡"（真掉帧、滚动撕裂），一种是"main 卡"（点击响应慢）。Compositor 有独立 LayerTreeImpl，<em>即使 main 死跑 React，旧 layer tree 仍能继续合成、滚动、跑 CSS 动画</em>——卡的是"main 没空 commit 新内容"，用户感受到的是"互动响应慢"，不是"动画卡"。</span></p>
+      <p><span class="swc-pill act">优化</span><span>这就是为什么 <em>INP 和 LCP 是两个独立指标</em>。INP 高但 fps 不掉 = main 重 → 拆 Long Task / <code>scheduler.postTask</code>；LCP 烂但 INP 好 = render-blocking → 拆 CSS / preload。<em>先用 Performance Insights 区分是哪种</em>，再决定优化方向——搞错了优化半天没效果。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>Page jank = main thread is slow.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span>There are <em>two completely different kinds of jank</em>. One is "compositor jank" (real dropped frames, scroll tearing); the other is "main jank" (click feels unresponsive). Compositor has its own LayerTreeImpl — <em>even while main is burning on React, the old layer tree keeps compositing, scrolling, and animating CSS just fine</em>. What's stuck is "main has no time to commit new content" — the user feels "interaction is slow", not "animation jitters".</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>That's exactly why <em>INP and LCP are independent metrics</em>. High INP, no frame drops = main is heavy → split Long Tasks / <code>scheduler.postTask</code>; bad LCP, good INP = render-blocking → split CSS / preload. <em>Identify which one first</em> in Performance Insights, then pick a direction — pick wrong and you optimize for nothing.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-06"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">跨过线程的边界</h3>
+        <p class="ch-text">名片此刻同时在两边——<code>LayerTreeHost</code>（Main）和 <code>LayerTreeImpl</code>（Compositor）。<code>PushPropertiesTo</code> 把 <em>2 棵 cc::Layer</em>（主图层 + <code>.follow</code> 独立图层）原子地推过去。<em>main 之后就可以放手了</em>——卡片的命运交给 Compositor 接管。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-06"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">Crossing the thread boundary</h3>
+        <p class="ch-text">The card now lives on <em>both</em> sides — <code>LayerTreeHost</code> (Main) and <code>LayerTreeImpl</code> (Compositor). <code>PushPropertiesTo</code> atomically pushes <em>2 cc::Layers</em> (main + <code>.follow</code> standalone) across. <em>Main can let go now</em> — the card's fate belongs to Compositor.</p>
+      </div>
+    </div>
+
     <div class="stage-banner thread-cc">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">cc</div></div>
       <div class="sb-cell"><div class="sb-key">Process</div><div class="sb-val">Render</div></div>
@@ -6987,6 +7849,38 @@ property_trees_ ─────────────────────�
     <h2 class="chap-title lang-en-only">Compositing — slicing the page into independent layers</h2>
     <p class="chap-en lang-zh-only">"动一处只重画一处" 的物理基础</p>
     <p class="chap-en lang-en-only">why "mutate one, repaint one" is possible</p>
+
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span><code>{ passive: true }</code> 是个微优化，可加可不加。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span>它是<em>移动端滚动卡顿 80% 的根因</em>。Compositor 默认不阻塞滚动——前提是没人 <code>preventDefault</code>。但浏览器无法预测，所以遇到 wheel/touch listener，<em>必须等 main 跑完整个 listener</em> 才知道。一段加了 <code>addEventListener('touchmove', h)</code>（默认 passive 是 false）的第三方库，就足以让整页滚动 jank。</span></p>
+      <p><span class="swc-pill act">优化</span><span>全局 grep 所有 <code>wheel</code> / <code>touchmove</code> / <code>touchstart</code>，第三参数补 <code>{ passive: true }</code>。Chrome 51+ 已经默认 <code>touchstart</code>/<code>wheel</code> passive 了，但 <em><code>touchmove</code> 不是</em>，老代码经常显式传 <code>false</code>。一行改下去，移动端 INP 经常砍一半。下面 <em>Demo A</em> 我们看 transform 跟 Compositor 分工的另一面。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span><code>{ passive: true }</code> is a micro-optimization, optional.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span>It's <em>the root cause of ~80% of mobile scroll jank</em>. Compositor doesn't block scrolling by default — <em>as long as nobody calls <code>preventDefault</code></em>. But the browser can't predict, so seeing a wheel/touch listener, it <em>has to wait for main to finish the listener</em> to know. One <code>addEventListener('touchmove', h)</code> (default passive false) inside a third-party library is enough to jank the entire page.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>Grep every <code>wheel</code> / <code>touchmove</code> / <code>touchstart</code> and add <code>{ passive: true }</code> as third arg. Chrome 51+ defaults <code>touchstart</code>/<code>wheel</code> to passive — but <em><code>touchmove</code> is not</em>, and legacy code passes <code>false</code> explicitly. One line; mobile INP often halves. <em>Demo A</em> below shows the other side of the Compositor split.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-07"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">layer 分裂</h3>
+        <p class="ch-text"><code>.follow</code> 因为 <code>will-change: transform</code>，在 Compositing 被<em>升格成独立 GraphicsLayer</em>——拥有自己的 <code>cc::PictureLayerImpl</code>。从这一步起，按钮的 hover 动画<em>不再打扰</em>主名片——main 跑 React 跑得再爆，按钮该动还是动。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-07"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">Layer splits off</h3>
+        <p class="ch-text">Because of <code>will-change: transform</code>, <code>.follow</code> gets <em>promoted to a standalone GraphicsLayer</em> at Compositing — owning its own <code>cc::PictureLayerImpl</code>. From here on, the button's hover animation <em>no longer disturbs the main card</em> — main can be drowning in React; the button still moves.</p>
+      </div>
+    </div>
 
     <div class="stage-banner thread-cc">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">cc</div></div>
@@ -7275,6 +8169,16 @@ GraphicsLayer · <span class="mt-tag">root</span>
         <div class="io-val">GraphicsLayer Tree<span class="small lang-zh-only">分组好的独立图层</span><span class="small lang-en-only">grouped independent layers</span></div>
       </div>
     </div>
+    <div class="demo-card">
+      <div class="dc-tag">DEMO A · LIVE · transform vs left</div>
+      <h3 class="dc-title"><span class="lang-zh-only">同样的滑动，两种命运</span><span class="lang-en-only">Same slide, two fates</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">两个橙色方块都在做"从左滑到右"的动画。但左边用 <code>left:</code>，右边用 <code>transform:</code>——一帧的 Chromium 流水线<em>压根不一样</em>。</span><span class="lang-en-only">Both orange boxes do the same "slide from left to right". But the left one uses <code>left:</code>, the right one uses <code>transform:</code> — the Chromium pipeline for these two is <em>completely different</em>.</span></p>
+      <div class="dc-stage">
+        <demo-tx-vs-left></demo-tx-vs-left>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">点 <strong>显示 Layer 边框</strong>——只有右边那块外面会出现蓝色虚线，代表它已经升格成独立的 <code>cc::PictureLayerImpl</code>，光栅化结果存在 GPU 纹理里，Compositor 每帧只是"换个位置贴一下"。左边那块每帧都要走完 Layout → Paint → Raster 全套——main thread 在死跑 React 时，<em>左边会卡，右边不会</em>。打开 DevTools Performance 录一段就能看到差距。</span><span class="lang-en-only">Click <strong>Show Layer borders</strong> — only the right box gets a blue dashed border, meaning it has been promoted to a standalone <code>cc::PictureLayerImpl</code> whose raster result lives in a GPU texture. Compositor each frame just "places the texture at a new spot". The left box has to run Layout → Paint → Raster every frame — when main is burning on React, <em>the left one janks, the right one doesn't</em>. Record a Performance trace in DevTools to see the gap.</span></p>
+    </div>
+
   </section>
 
   <!-- ========== CHAPTER 13 — TILING ========== -->
@@ -7284,6 +8188,38 @@ GraphicsLayer · <span class="mt-tag">root</span>
     <h2 class="chap-title lang-en-only">Tiling — slicing layers into mosaic</h2>
     <p class="chap-en lang-zh-only">从图层到任务，按优先级派发</p>
     <p class="chap-en lang-en-only">picture layer → tile tasks, with priority</p>
+
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>页面越长越大，渲染越慢。无限滚动很贵。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span><em>页面长不直接慢</em>。浏览器把每个 Layer 切成 256×256 瓷砖，<em>只光栅化视口附近的瓷砖</em>。10000px 高的页面，实际光栅化可能只有 6 块。真正贵的是<em>"Layer 数量"</em> + <em>"视口外的复杂内容"</em>——静态长页面 ≪ 有 500 个 <code>will-change</code> 的短页面。</span></p>
+      <p><span class="swc-pill act">优化</span><span><code>content-visibility: auto</code>——Chrome 85+ 引入的<em>核武器</em>。告诉浏览器"这个区域不在视口时，跳过 Layout/Style/Paint/Raster 全部流水线"。对长列表效果惊人，<em>一行 CSS 让 TTI 砍 70%</em>。配 <code>contain-intrinsic-size</code> 防止滚动跳。下面 <em>Demo C</em> 我们看瓷砖的优先级是怎么排的。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>Bigger pages render slower — infinite scroll is expensive.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span><em>Long pages aren't inherently slow</em>. The browser slices each Layer into 256×256 tiles and <em>only rasterizes tiles near the viewport</em>. A 10,000 px page might only raster 6 tiles in practice. What's actually expensive is <em>layer count</em> + <em>complex off-viewport content</em> — a static long page ≪ a short page with 500 <code>will-change</code> elements.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span><code>content-visibility: auto</code> — the <em>nuclear option</em> added in Chrome 85+. Tells the browser "while this region is off-screen, skip the entire Layout/Style/Paint/Raster pipeline". The effect on long lists is striking — <em>one line of CSS cuts TTI by 70%</em>. Pair with <code>contain-intrinsic-size</code> to prevent scroll jumps. <em>Demo C</em> below shows how tiles get prioritized.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-08"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">名片被切成瓷砖</h3>
+        <p class="ch-text">主名片 <em>340 × 88</em> → 一块 <em>256 × 128</em> 主 tile（左半）+ 一块 <em>128 × 128</em> edge tile（右半）。<code>TileManager</code> 按距视口的距离排优先级——名片在视口里，两块都 <em>NOW</em> 优先级，立刻进入 Raster 队列。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-08"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">The card is cut into tiles</h3>
+        <p class="ch-text">The main card <em>340 × 88</em> splits into one <em>256 × 128</em> main tile (left half) + one <em>128 × 128</em> edge tile (right half). <code>TileManager</code> prioritizes tiles by distance from the viewport — the card is <em>in</em> the viewport, so both get <em>NOW</em> priority and enter the Raster queue immediately.</p>
+      </div>
+    </div>
 
     <div class="stage-banner thread-cc">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">cc</div></div>
@@ -7587,6 +8523,16 @@ GraphicsLayer · <span class="mt-tag">root</span>
         <div class="io-val">cc::TileTask[]<span class="small lang-zh-only">已按优先级排序，丢入 TaskGraph</span><span class="small lang-en-only">prioritised, posted into the TaskGraph</span></div>
       </div>
     </div>
+    <div class="demo-card">
+      <div class="dc-tag"><span class="lang-zh-only">DEMO C · LIVE · Tiling 可视化</span><span class="lang-en-only">DEMO C · LIVE · Tiling visualization</span></div>
+      <h3 class="dc-title"><span class="lang-zh-only">看见 TileManager 在排队</span><span class="lang-en-only">Watch TileManager queue up</span></h3>
+      <p class="dc-sub"><span class="lang-zh-only">下面是一个 60 块 tile 的虚拟"长页面"。滚动视口（或者点自动滚动），看每块 tile 在 <em>pending → rastering → active</em> 三种状态之间切换——这正是 <code>chrome://flags</code> 里 "Tile borders" 工具显示给你看的东西。</span><span class="lang-en-only">Below is a virtual "long page" of 60 tiles. Scroll the viewport (or click auto-scroll) and watch each tile move through <em>pending → rastering → active</em> — exactly what the "Tile borders" tool in <code>chrome://flags</code> shows you.</span></p>
+      <div class="dc-stage">
+        <demo-tile></demo-tile>
+      </div>
+      <p class="dc-note"><span class="lang-zh-only">注意——<strong>视口外的 tile 永远不会变 active</strong>。它们要么在等（pending），要么在被 Skia 光栅化（rastering）。如果滚太快，pending tile 跟不上你，就会看到 <em>checkerboarding</em>。这就是为什么 <code>content-visibility: auto</code> 这么有效——它告诉 TileManager"这一坨视口外的内容，连 pending 队列都不用排"，直接砍掉 70% 的 Raster 工作量。</span><span class="lang-en-only">Note — <strong>tiles outside the viewport never turn active</strong>. They're either waiting (pending) or being rasterized by Skia (rastering). If you scroll too fast and pending tiles can't catch up, you'll see <em>checkerboarding</em>. That's exactly why <code>content-visibility: auto</code> is so effective — it tells TileManager "this off-screen chunk doesn't even need to enter the pending queue", cutting up to 70% of Raster work.</span></p>
+    </div>
+
   </section>
 
   <!-- ========== CHAPTER 14 — RASTER ========== -->
@@ -7596,6 +8542,38 @@ GraphicsLayer · <span class="mt-tag">root</span>
     <h2 class="chap-title lang-en-only">Raster — translating the display list into pixels</h2>
     <p class="chap-en lang-zh-only">绘画清单的真实落地</p>
     <p class="chap-en lang-en-only">DisplayItemList playback into bitmaps / textures</p>
+
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>GPU Raster 比 CPU 快，所以越多元素走 GPU 越好。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span><em>让一个元素进入独立 Layer 后，该 Layer 上所有内容必须从头光栅化</em>。<code>will-change: transform</code> 升级 Layer 的同时，把里面的复杂 SVG / 文本 / box-shadow 全部交给 Raster 重画。Layer 越多，<em>Raster 总工作量越大</em>。GPU 不是免费的，它有显存上传开销。</span></p>
+      <p><span class="swc-pill act">优化</span><span>理解 Layer 真实代价 = "这一层所有像素重新生成 + 上传 GPU 纹理"。hover 用 <code>transform/opacity</code> 比 <code>box-shadow</code> 快得多（后者每帧重画整个阴影）；文字滚动避免 <code>will-change</code>（text 重新光栅化非常贵，连带子像素 AA）；高频动画的 Layer 内<em>应该尽可能简单</em>。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>GPU Raster is faster than CPU, so route more elements through GPU.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span><em>Once an element enters its own Layer, every pixel inside that Layer must be rasterized from scratch</em>. <code>will-change: transform</code> promotes the Layer <em>and</em> hands all the complex SVG / text / box-shadow inside to Raster to redraw. More Layers → <em>more total Raster work</em>. GPU isn't free; it has texture-upload overhead.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>Internalize that a Layer's true cost = "regenerate every pixel in this layer + upload to GPU texture". So — hover with <code>transform/opacity</code> beats <code>box-shadow</code> (the latter redraws the whole shadow per frame); avoid <code>will-change</code> on scrolling text (text rasterization is <em>very</em> expensive, including subpixel AA); a high-frequency animation Layer should be <em>as simple inside as possible</em>.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-09"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">变成显存里的位图</h3>
+        <p class="ch-text">每块 tile <em>playback DisplayItemList</em>——Skia 把命令翻译成 GL/Vulkan 指令，瓷砖变成<em>显存里的 GL Texture</em>。头像 <code>airing.png</code> 走 <code>ImageDecodeCache</code>——它在 Loading 阶段就抢跑下载完了，这里直接 hit cache，不重新解码。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-09"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">Becomes a bitmap in VRAM</h3>
+        <p class="ch-text">Each tile <em>plays back its slice of the DisplayItemList</em> — Skia translates commands into GL/Vulkan instructions; tiles become <em>GL Textures in VRAM</em>. The avatar <code>airing.png</code> flows through <code>ImageDecodeCache</code> — it finished downloading way back at Loading thanks to the Preload Scanner, so here it just hits cache, no re-decoding.</p>
+      </div>
+    </div>
 
     <div class="stage-banner thread-cc">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">cc</div></div>
@@ -8121,6 +9099,38 @@ GraphicsLayer · <span class="mt-tag">root</span>
     <p class="chap-en lang-zh-only">你没看到的那一层缓冲</p>
     <p class="chap-en lang-en-only">pending → active → recycle, the buffering you didn't see</p>
 
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>Chrome 滚动从不白屏，理所应当。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span>不理所应当——这是 <em>Active / Pending / Recycle 三棵 LayerImpl</em> 的设计：新一帧没准备好之前，Active 继续展示旧内容。<em>所以本质上 Compositor 是三缓冲，不是双缓冲</em>。但滚太快、Pending 跟不上（瓷砖光栅化 &gt; 滚动速度），你会看到<em>棋盘格背景</em>——这不是 bug，是 Chrome 在告诉你"画不过来了，先给你看个底"。DevTools 里叫 <em>checkerboarding</em>。</span></p>
+      <p><span class="swc-pill act">优化</span><span>出现 checkerboarding = 视口外有昂贵元素阻塞 Raster 队列。解法 (1) <code>content-visibility: auto</code>；(2) 降 Layer 数量让 Raster 队列变短。<em>调试一定要打开 4× CPU throttle</em>——checkerboarding 在 throttle 下才会暴露。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>Chrome scrolling never goes blank, that's just how it is.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span>It isn't — that's the design of <em>Active / Pending / Recycle, three LayerImpls</em>: while a new frame isn't ready, Active keeps showing the old content. <em>Compositor is essentially triple-buffered, not double-buffered</em>. But if you scroll too fast and Pending can't keep up (tile raster > scroll speed), you'll see <em>checkerboard background</em> — that's not a bug, that's Chrome telling you "I can't paint that fast — here's the placeholder". DevTools calls it <em>checkerboarding</em>.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>Checkerboarding = expensive off-viewport elements clogging the Raster queue. Fix (1) <code>content-visibility: auto</code>; (2) reduce Layer count to shorten the Raster queue. <em>Always debug with 4× CPU throttle</em> — checkerboarding only surfaces under throttle.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-10"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">PENDING → ACTIVE</h3>
+        <p class="ch-text">两块 tile 全部 ready，Pending Tree 整体 swap 进 Active Tree。<em>原 Active 退役到 Recycle Pool</em>，留作复用。从这一刻起，<em>新版名片正式登上"会被合成"的舞台</em>——但还没真上屏。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-10"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">PENDING → ACTIVE</h3>
+        <p class="ch-text">Both tiles are ready; the Pending Tree atomically <em>swaps into Active</em>. The old Active retires to the Recycle Pool for reuse. From this moment, the new card officially takes the <em>will-be-composited</em> stage — but it isn't on the screen yet.</p>
+      </div>
+    </div>
+
     <div class="stage-banner thread-cc">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">cc</div></div>
       <div class="sb-cell"><div class="sb-key">Process</div><div class="sb-val">Render</div></div>
@@ -8429,6 +9439,38 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
     <h2 class="chap-title lang-en-only">Draw — not painting pixels, writing the script</h2>
     <p class="chap-en lang-zh-only">把 LayerImpl 翻译成 CompositorFrame</p>
     <p class="chap-en lang-en-only">turning LayerImpl into a CompositorFrame</p>
+
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>Draw 就是画。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span><em>Draw 仍然不画像素</em>。Draw 产出 CompositorFrame——"剧本"，里面是 DrawQuad 列表，描述"在哪个位置放哪张纹理"。真正画像素在 viz 进程最后两步。<em>"清单 → 剧本 → 像素"</em> 这三层抽象是 Chromium 流水线最优雅的设计。</span></p>
+      <p><span class="swc-pill act">优化</span><span>对应用层直接优化点不多，但理解这层分工后，你就能解释为什么 <code>&lt;iframe&gt;</code> / PiP video / <code>&lt;webview&gt;</code> 几乎零开销叠在你页面上——它们各自产 CompositorFrame，在 Aggregate 拼起来共享同一个上屏路径。<em>一帧的合成成本不随 iframe 数量线性增长</em>——跟很多人以为的"iframe 越多越慢"完全相反。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>Draw means draw.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span><em>Draw still doesn't draw pixels</em>. Draw produces a CompositorFrame — a <em>script</em> whose contents are a list of DrawQuads describing "place this texture at this position". Real pixels happen in the last two viz-process steps. <em>"list → script → pixels"</em> — that three-layer abstraction is the most elegant design in Chromium's pipeline.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>Application-level direct optimization is limited, but understanding this split explains why <code>&lt;iframe&gt;</code> / PiP video / <code>&lt;webview&gt;</code> overlay your page nearly free — each produces its own CompositorFrame, all stitched at Aggregate sharing the same upload path. <em>Per-frame composition cost does not grow linearly with iframe count</em> — opposite of the "more iframes, slower" folklore.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-11"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">写好剧本，准备过场</h3>
+        <p class="ch-text">主层吐 <em>2 个 TileDrawQuad</em>（两块 tile）；<code>.follow</code> 1 个 TileDrawQuad；按钮 shadow 触发<em>独立 RenderPass</em>（要做模糊离屏渲染），由 RenderPassDrawQuad 引用回来。整份 CompositorFrame 通过 IPC 提交给 viz 进程——名片<em>已经是一份完整的剧本</em>，等着导演喊"开机"。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-11"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">Script finished, lights up next</h3>
+        <p class="ch-text">Main layer emits <em>2 TileDrawQuads</em> (one per tile); <code>.follow</code> emits 1 TileDrawQuad; the button shadow triggers a <em>separate RenderPass</em> (needs offscreen blur), referenced via RenderPassDrawQuad. The whole CompositorFrame ships to the viz process via IPC — the card is <em>a complete script</em>, waiting for the director to call "rolling".</p>
+      </div>
+    </div>
 
     <div class="stage-banner thread-cc">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">cc</div></div>
@@ -8814,6 +9856,38 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
     <p class="chap-en lang-zh-only">把跨进程的 Surface 拍平</p>
     <p class="chap-en lang-en-only">flattening surface trees across processes</p>
 
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>iframe 嵌入第三方组件性能很差。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span>Site Isolation 之后<em>反过来了</em>——跨站 iframe (OOP-iframe) 的合成开销很小：每个 iframe 独立 Render Process 产 CompositorFrame，viz 在 Aggregate 拼 quad list，代价主要在 IPC，<em>不在合成</em>。<em>同域 iframe 反而经常更慢</em>——共享 main thread，JS 互相阻塞。</span></p>
+      <p><span class="swc-pill act">优化</span><span>嵌入第三方 widget（评论组件、客服窗口、嵌入式地图），<em>强制跨站 iframe &gt; 同站 iframe &gt; 直接 inline</em>。配 <code>loading="lazy"</code> 延迟激活，未来用 <code>&lt;fencedframe&gt;</code>。"iframe 慢"是个过时的恐慌——2018 年 Spectre 之后 Site Isolation 落地，规则已经反过来，但大部分前端的心智模型还停在 2015 年。</span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>Embedding third-party widgets via iframe is slow.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span>After Site Isolation, <em>the opposite is true now</em> — cross-origin iframes (OOP-iframes) have very low composition overhead: each iframe's own Render Process produces a CompositorFrame; viz stitches the quad list at Aggregate — cost is mostly IPC, <em>not composition</em>. <em>Same-origin iframes are often slower</em> — they share main thread, JS blocks each other.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>When embedding a third-party widget (comments, customer chat, embedded map), <em>force cross-origin iframe &gt; same-origin iframe &gt; inline</em>. Pair with <code>loading="lazy"</code> and look ahead to <code>&lt;fencedframe&gt;</code>. "iframes are slow" is outdated panic — Site Isolation flipped the rule in 2018, but most front-end mental models are still stuck in 2015.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-12"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">和其他帧拼成一个画面</h3>
+        <p class="ch-text">viz 进程在 Aggregate 阶段把<em>我们的 CompositorFrame</em>、<em>OOPIF 的 CompositorFrame</em>、<em>Browser UI 的 CompositorFrame</em> 全部拼成一份 surface。如果名片被嵌入第三方页面（变体），父用 <code>SurfaceDrawQuad</code> 引用我们的 frame——<em>名片此刻成了别人页面里的一部分</em>，但合成成本几乎不变。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-12"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">Composed with other frames into one image</h3>
+        <p class="ch-text">viz stitches <em>our</em> CompositorFrame, the <em>OOPIF</em> CompositorFrame, and the <em>Browser UI</em> CompositorFrame into a single surface at the Aggregate stage. In the embed variant, the parent references our frame via <code>SurfaceDrawQuad</code> — the card is now <em>part of someone else's page</em>, but the composition cost is virtually unchanged.</p>
+      </div>
+    </div>
+
     <div class="stage-banner thread-viz">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">viz</div></div>
       <div class="sb-cell"><div class="sb-key">Process</div><div class="sb-val">GPU<span class="small lang-zh-only">（hosts viz）</span><span class="small lang-en-only">(hosts viz)</span></div></div>
@@ -9113,6 +10187,38 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
     <h2 class="chap-title lang-en-only">Display — pixels finally reach the screen</h2>
     <p class="chap-en lang-zh-only">字节走完最后一步</p>
     <p class="chap-en lang-en-only">DrawQuads → GL/Skia → vsync → photons</p>
+
+    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+      <p><span class="swc-pill">直觉</span><span>60fps = 16.7ms，这是你的性能预算。</span></p>
+      <p><span class="swc-pill rev">反直觉</span><span><em>60Hz 已经是过去式</em>。iPhone 13 Pro 起 / iPad Pro / 一线 Android 旗舰 / 大部分游戏笔记本屏都是 120Hz。Chrome 在高刷屏上自动尝试 120fps 渲染——意味着你之前以为"够流畅"的代码，<em>在 120Hz 屏上每帧预算砍半到 8.3ms</em>，60Hz 看不出的卡顿在 120Hz 上立刻暴露。VRR（可变刷新率）让"vsync 间隔"也变成动态的。</span></p>
+      <p><span class="swc-pill act">优化</span><span>(1) 不要硬编码 16.7ms；(2) 监控用 <em>INP / 长动画帧 LoAF</em> 替代 fps；(3) 测试机至少一台 ProMotion；(4) Chrome 113+ 的 <code>requestVideoFrameCallback</code> 适配 VRR；(5) 别用 <code>setTimeout(fn, 16)</code> 当 rAF——VRR 下完全错位。<em>高刷屏会是 2025–2026 前端性能基准的隐藏 reset 点。</em></span></p>
+    </aside>
+
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+      <p><span class="swc-pill">DEFAULT</span><span>60 fps = 16.7 ms — that's your performance budget.</span></p>
+      <p><span class="swc-pill rev">TRUTH</span><span><em>60 Hz is yesterday</em>. iPhone 13 Pro and up, iPad Pro, mainstream Android flagships, and most gaming laptops use 120 Hz displays. Chrome auto-attempts 120 fps rendering on high-refresh screens — code you thought "smooth enough" <em>gets its per-frame budget halved to 8.3 ms on a 120 Hz screen</em>, and jank invisible at 60 Hz suddenly shows. VRR (variable refresh rate) makes "vsync interval" itself dynamic.</span></p>
+      <p><span class="swc-pill act">ACTION</span><span>(1) Stop hard-coding 16.7 ms; (2) Monitor with <em>INP / Long Animation Frames (LoAF)</em> instead of fps; (3) At least one test device must be ProMotion; (4) Chrome 113+ has <code>requestVideoFrameCallback</code> for VRR; (5) Don't use <code>setTimeout(fn, 16)</code> as a rAF — VRR misaligns it completely. <em>High-refresh screens will be the hidden reset point of 2025-2026 frontend perf baselines</em>.</span></p>
+    </aside>
+
+    <div class="card-hero lang-zh-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-13"/></svg>
+      <div>
+        <div class="ch-tag">主线 · The Card 在这一步</div>
+        <h3 class="ch-title">SwapBuffers · 名片真的发光了</h3>
+        <p class="ch-text">SkiaRenderer 把 DrawQuad 翻成 GL/Vulkan/Metal 指令，SwapBuffers 上屏——<em>头像里的某个像素，物理意义上发出第一束光</em>。120Hz 屏上每 8.3ms 一次。<em>hover 时</em>：<code>transform</code> 走 Compositor 不打扰 Main，但 <code>background</code> 把 Main 拉回——真实代码很少 100% Compositor-pure 动画。</p>
+      </div>
+    </div>
+
+    <div class="card-hero lang-en-only">
+      <svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-13"/></svg>
+      <div>
+        <div class="ch-tag">Main-line · The Card after this stage</div>
+        <h3 class="ch-title">SwapBuffers · the card actually emits light</h3>
+        <p class="ch-text">SkiaRenderer translates DrawQuads into GL/Vulkan/Metal commands; SwapBuffers hits the screen — <em>a pixel inside the avatar physically emits its first photon</em>. On a 120 Hz display, every 8.3 ms. <em>On hover</em>: <code>transform</code> stays on Compositor and never disturbs Main, but <code>background</code> drags Main back in — real code rarely produces 100% Compositor-pure animations.</p>
+      </div>
+    </div>
 
     <div class="stage-banner thread-viz">
       <div class="sb-cell"><div class="sb-key">Module</div><div class="sb-val">viz</div></div>
@@ -9611,6 +10717,27 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
         <tr><td class="num">3</td><td><strong>GPU 排队</strong></td><td><span class="lang-zh-only">动画起步那一刹那"<em>卡一下</em>",之后顺畅(GPU 上了纹理)</span><span class="lang-en-only">animation "<em>hitches</em>" at the very first frame, smooth afterward (GPU loaded textures)</span></td></tr>
       </tbody>
     </table>
+    <div class="card-summary-strip">
+      <h3><span class="lang-zh-only">名片的 14 站 · 一字排开</span><span class="lang-en-only">The card's 14 stations · at a glance</span></h3>
+      <p class="css-sub"><span class="lang-zh-only">从字节流到 SwapBuffers — 一张图回看完整旅程</span><span class="lang-en-only">From bytestream to SwapBuffers — the full journey, recapped</span></p>
+      <div class="css-grid">
+        <a href="#c0"  class="css-cell"><span class="css-num">00 · NETWORK</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-00"/></svg><span class="css-name">Loading</span></a>
+        <a href="#c6"  class="css-cell"><span class="css-num">01 · BLINK</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-01"/></svg><span class="css-name">Parsing</span></a>
+        <a href="#c7"  class="css-cell"><span class="css-num">02 · BLINK</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-02"/></svg><span class="css-name">Style</span></a>
+        <a href="#c8"  class="css-cell"><span class="css-num">03 · BLINK</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-03"/></svg><span class="css-name">Layout</span></a>
+        <a href="#c9"  class="css-cell"><span class="css-num">04 · BLINK</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-04"/></svg><span class="css-name">Pre-paint</span></a>
+        <a href="#c10" class="css-cell"><span class="css-num">05 · BLINK</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-05"/></svg><span class="css-name">Paint</span></a>
+        <a href="#c11" class="css-cell"><span class="css-num">06 · CC</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-06"/></svg><span class="css-name">Commit</span></a>
+        <a href="#c12" class="css-cell"><span class="css-num">07 · CC</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-07"/></svg><span class="css-name">Compositing</span></a>
+        <a href="#c13" class="css-cell"><span class="css-num">08 · CC</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-08"/></svg><span class="css-name">Tiling</span></a>
+        <a href="#c14" class="css-cell"><span class="css-num">09 · CC</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-09"/></svg><span class="css-name">Raster</span></a>
+        <a href="#c15" class="css-cell"><span class="css-num">10 · CC</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-10"/></svg><span class="css-name">Activate</span></a>
+        <a href="#c16" class="css-cell"><span class="css-num">11 · CC</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-11"/></svg><span class="css-name">Draw</span></a>
+        <a href="#c17" class="css-cell viz"><span class="css-num">12 · VIZ</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-12"/></svg><span class="css-name">Aggregate</span></a>
+        <a href="#c18" class="css-cell viz"><span class="css-num">13 · VIZ</span><svg class="ns-svg" viewBox="0 0 200 140"><use href="#ns-13"/></svg><span class="css-name">Display</span></a>
+      </div>
+    </div>
+
   </section>
 
   <!-- ========== CHAPTER 20 — INPUT REVERSE PIPELINE ========== -->
@@ -10619,5 +11746,342 @@ t = 8ms   <span class="mt-cmt">vsync · ActivateSyncTree() 切换指针</span>
 })();
 </script>
 <script src="/assets/online-presence.js" defer></script>
+
+<!-- ========== FILMSTRIP SCROLL-SPY + 3 INLINE DEMO ELEMENTS ========== -->
+<script>
+(function () {
+  // ---------- Bilingual host attribute syncer (drives demo shadow CSS) ----------
+  function currentLang() { return document.body.classList.contains('lang-en') ? 'en' : 'zh'; }
+  function syncDemoLang() {
+    var l = currentLang();
+    document.querySelectorAll('demo-tx-vs-left, demo-fsl, demo-tile').forEach(function (el) {
+      el.setAttribute('data-lang', l);
+    });
+  }
+  new MutationObserver(syncDemoLang).observe(document.body, {attributes: true, attributeFilter: ['class']});
+  // Initial + retries (custom elements connect asynchronously)
+  syncDemoLang();
+  setTimeout(syncDemoLang, 100);
+  setTimeout(syncDemoLang, 500);
+  setTimeout(syncDemoLang, 1500);
+
+  // ---------- Filmstrip scroll-spy ----------
+  var filmstrip = document.getElementById('card-filmstrip');
+  var stripCells = document.querySelectorAll('#cf-track .cf-cell');
+  var current = document.getElementById('cf-current');
+  var stageNames = ['LOADING','PARSING','STYLE','LAYOUT','PRE-PAINT','PAINT','COMMIT','COMPOSITING','TILING','RASTER','ACTIVATE','DRAW','AGGREGATE','DISPLAY'];
+  var stageIds = ['c0','c6','c7','c8','c9','c10','c11','c12','c13','c14','c15','c16','c17','c18'];
+  var stageEls = stageIds.map(function (id) { return document.getElementById(id); }).filter(Boolean);
+  // show filmstrip after user scrolls past the hero (~300px)
+  var SHOW_AT = 320;
+  function spy() {
+    var y = window.scrollY + 140;
+    // toggle filmstrip visibility
+    if (filmstrip) filmstrip.classList.toggle('is-visible', window.scrollY > SHOW_AT);
+    var idx = -1;
+    for (var i = 0; i < stageEls.length; i++) {
+      if (stageEls[i] && stageEls[i].offsetTop <= y) idx = i;
+    }
+    stripCells.forEach(function (c, i) { c.classList.toggle('active', i === idx); });
+    if (current) current.textContent = idx >= 0 ? (String(idx).padStart(2,'0') + ' · ' + stageNames[idx]) : 'START';
+    if (idx >= 0) {
+      var cell = stripCells[idx];
+      if (cell) {
+        var track = document.getElementById('cf-track');
+        var cLeft = cell.offsetLeft, cRight = cLeft + cell.offsetWidth;
+        if (cRight > track.scrollLeft + track.clientWidth) track.scrollLeft = cRight - track.clientWidth + 8;
+        else if (cLeft < track.scrollLeft) track.scrollLeft = cLeft - 8;
+      }
+    }
+  }
+  window.addEventListener('scroll', spy, {passive:true});
+  window.addEventListener('load', spy);
+  spy();
+})();
+
+// ---------- Demo A: transform vs left ----------
+(function () {
+  class DemoTxLeft extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .panels { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+          .panel { background:#f4efe6; border:1px solid #c7c4ba; border-radius:3px; padding:14px; }
+          .panel.bad { border-left:3px solid #b35a1f; }
+          .panel.good { border-left:3px solid #4a6b3e; }
+          .ph { font-size:10px; letter-spacing:.08em; text-transform:uppercase; color:#767c87; margin-bottom:8px; }
+          .ph.bad { color:#b35a1f; } .ph.good { color:#4a6b3e; }
+          .stage { position:relative; height:72px; background:#faf6ed; border:1px dashed #ddd9cd; overflow:hidden; border-radius:2px; }
+          .box { position:absolute; top:14px; width:44px; height:44px; background:#b35a1f; border-radius:4px; }
+          .box.lo { animation:moveLeft 1.8s ease-in-out infinite alternate; left:8px; }
+          .box.tx { left:8px; animation:moveTx 1.8s ease-in-out infinite alternate; will-change:transform; }
+          .ring { position:absolute; top:8px; left:2px; right:2px; height:62px; border:1.5px dashed transparent; border-radius:3px; pointer-events:none; transition:border-color .2s ease; }
+          :host(.show-layers) .ring.tx { border-color:#1f5c8c; }
+          @keyframes moveLeft { 0% { left:8px; } 100% { left:calc(100% - 52px); } }
+          @keyframes moveTx { 0% { transform:translateX(0); } 100% { transform:translateX(calc(50vw - 100px)); } }
+          .num { font-size:11px; color:#767c87; margin-top:6px; }
+          .num em { font-style:normal; font-weight:700; color:#b35a1f; }
+          .num.good em { color:#4a6b3e; }
+          .ctrl { display:flex; gap:10px; margin-top:12px; align-items:center; flex-wrap:wrap; }
+          button { font-family:inherit; font-size:11px; padding:6px 12px; border:1px solid #1f5c8c; background:#faf6ed; color:#1f5c8c; cursor:pointer; border-radius:2px; letter-spacing:.06em; text-transform:uppercase; font-weight:600; }
+          button.on { background:#1f5c8c; color:#faf6ed; }
+          .hint { font-size:10px; color:#767c87; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="panels">
+          <div class="panel bad">
+            <div class="ph bad"><span class="lang-zh-only">left: N px · 整树 Layout</span><span class="lang-en-only">left: N px · whole-tree Layout</span></div>
+            <div class="stage"><div class="box lo"></div><div class="ring lo"></div></div>
+            <div class="num"><span class="lang-zh-only">每帧：<em>Layout + Paint + Composite</em> · ~16 ms 预算占满</span><span class="lang-en-only">Per frame: <em>Layout + Paint + Composite</em> · 16 ms budget burned</span></div>
+          </div>
+          <div class="panel good">
+            <div class="ph good"><span class="lang-zh-only">transform: translateX · 只 Composite</span><span class="lang-en-only">transform: translateX · Composite only</span></div>
+            <div class="stage"><div class="box tx"></div><div class="ring tx"></div></div>
+            <div class="num good"><span class="lang-zh-only">每帧：仅 <em>Composite</em> · main thread 完全不被打扰</span><span class="lang-en-only">Per frame: <em>Composite</em> only · main thread fully undisturbed</span></div>
+          </div>
+        </div>
+        <div class="ctrl">
+          <button id="show"><span class="lang-zh-only">显示 Layer 边框</span><span class="lang-en-only">Show Layer borders</span></button>
+          <span class="hint"><span class="lang-zh-only">蓝色虚线 = 独立 cc::PictureLayerImpl，光栅化结果直接住在 GPU 纹理里</span><span class="lang-en-only">Blue dashes = standalone cc::PictureLayerImpl, raster result lives in a GPU texture</span></span>
+        </div>
+      `;
+      var btn = shadow.getElementById('show');
+      var host = this;
+      btn.addEventListener('click', function () {
+        host.classList.toggle('show-layers');
+        btn.classList.toggle('on');
+      });
+    }
+  }
+  customElements.define('demo-tx-vs-left', DemoTxLeft);
+})();
+
+// ---------- Demo B: Forced Synchronous Layout ----------
+(function () {
+  class DemoFsl extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .ta { background:#faf6ed; border:1px solid #c7c4ba; border-radius:3px; padding:12px; line-height:0; }
+          .ta .b { display:inline-block; width:12px; height:12px; background:#1f5c8c; margin:1px; vertical-align:top; }
+          .ctrl { display:flex; gap:12px; margin:14px 0; flex-wrap:wrap; }
+          button { font-family:inherit; font-size:12px; padding:9px 16px; border:none; cursor:pointer; border-radius:2px; letter-spacing:.06em; text-transform:uppercase; font-weight:700; }
+          button.bad { background:#b35a1f; color:#faf6ed; }
+          button.good { background:#4a6b3e; color:#faf6ed; }
+          button:disabled { opacity:.5; cursor:wait; }
+          .results { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+          .res { background:#fdfbf3; border:1px solid #ddd9cd; padding:14px; border-radius:2px; }
+          .res.bad { border-left:3px solid #b35a1f; }
+          .res.good { border-left:3px solid #4a6b3e; }
+          .rh { font-size:9px; letter-spacing:.08em; text-transform:uppercase; color:#767c87; margin-bottom:6px; }
+          .rh.bad { color:#b35a1f; } .rh.good { color:#4a6b3e; }
+          .rt { font-size:28px; font-weight:700; color:#15171c; line-height:1; }
+          .rt .u { font-size:11px; color:#767c87; margin-left:4px; font-weight:400; }
+          .rd { font-size:10px; color:#767c87; margin-top:6px; line-height:1.5; }
+          .ratio { text-align:center; font-size:14px; color:#b35a1f; font-weight:700; margin-top:14px; padding:10px; background:rgba(179,90,31,0.08); border-radius:3px; }
+          .ratio.hidden { display:none; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="ta" id="ta"></div>
+        <div class="ctrl">
+          <button id="bad" class="bad"><span class="lang-zh-only">▸ 运行 BAD · read+write 交错</span><span class="lang-en-only">▸ Run BAD · interleaved</span></button>
+          <button id="good" class="good"><span class="lang-zh-only">▸ 运行 GOOD · 写完一次性读</span><span class="lang-en-only">▸ Run GOOD · batched</span></button>
+        </div>
+        <div class="results">
+          <div class="res bad"><div class="rh bad">BAD · Forced Sync Layout</div><div class="rt" id="rb">—</div><div class="rd" id="db"><span class="lang-zh-only">点击运行</span><span class="lang-en-only">click to run</span></div></div>
+          <div class="res good"><div class="rh good">GOOD · Batched</div><div class="rt" id="rg">—</div><div class="rd" id="dg"><span class="lang-zh-only">点击运行</span><span class="lang-en-only">click to run</span></div></div>
+        </div>
+        <div class="ratio hidden" id="ratio"></div>
+      `;
+      var ta = shadow.getElementById('ta');
+      for (var i = 0; i < 240; i++) {
+        var d = document.createElement('div');
+        d.className = 'b';
+        ta.appendChild(d);
+      }
+      var boxes = ta.querySelectorAll('.b');
+      var N = 5000;
+      var badT = null, goodT = null;
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      function tx(zh, en) { return isEN() ? en : zh; }
+      function update() {
+        if (badT != null && goodT != null) {
+          var r = (badT / goodT).toFixed(1);
+          var el = shadow.getElementById('ratio');
+          el.textContent = tx('BAD 比 GOOD 慢 ' + r + '× — 同样的工作量', 'BAD is ' + r + '× slower than GOOD — same workload');
+          el.classList.remove('hidden');
+        }
+      }
+      shadow.getElementById('bad').addEventListener('click', function () {
+        var btn = this; btn.disabled = true;
+        shadow.getElementById('db').textContent = tx('运行中…', 'running…');
+        requestAnimationFrame(function () {
+          var t0 = performance.now();
+          for (var i = 0; i < N; i++) {
+            var b = boxes[i % boxes.length];
+            b.style.width = (12 + (i & 7)) + 'px';
+            var _ = b.offsetWidth; // FORCE LAYOUT
+          }
+          var t = performance.now() - t0;
+          shadow.getElementById('rb').innerHTML = t.toFixed(1) + '<span class="u">ms</span>';
+          shadow.getElementById('db').textContent = tx(N + ' 次 (write → read)，每次都强制 layout', N + '× (write → read), each forces a layout');
+          badT = t; update();
+          btn.disabled = false;
+        });
+      });
+      shadow.getElementById('good').addEventListener('click', function () {
+        var btn = this; btn.disabled = true;
+        shadow.getElementById('dg').textContent = tx('运行中…', 'running…');
+        requestAnimationFrame(function () {
+          var t0 = performance.now();
+          for (var i = 0; i < N; i++) {
+            boxes[i % boxes.length].style.width = (12 + (i & 7)) + 'px';
+          }
+          var acc = 0;
+          for (var j = 0; j < N; j++) {
+            acc += boxes[j % boxes.length].offsetWidth;
+          }
+          var t = performance.now() - t0;
+          shadow.getElementById('rg').innerHTML = t.toFixed(1) + '<span class="u">ms</span>';
+          shadow.getElementById('dg').textContent = tx('全部写 + 一次性读，只 1 次 layout', 'all writes + one read, just 1 layout');
+          goodT = t; update();
+          btn.disabled = false;
+        });
+      });
+    }
+  }
+  customElements.define('demo-fsl', DemoFsl);
+})();
+
+// ---------- Demo C: Tiling visualization ----------
+(function () {
+  class DemoTile extends HTMLElement {
+    connectedCallback() {
+      var shadow = this.attachShadow({mode:'open'});
+      shadow.innerHTML = `
+        <style>
+          :host { display:block; font-family:'JetBrains Mono',monospace; }
+          .wrap { display:grid; grid-template-columns:230px 1fr; gap:18px; }
+          .vp-frame { position:relative; }
+          .vp-label { position:absolute; top:6px; left:10px; font-size:9px; color:#1f5c8c; font-weight:700; letter-spacing:.08em; text-transform:uppercase; z-index:10; background:rgba(31,92,140,0.12); padding:3px 7px; border-radius:2px; pointer-events:none; }
+          .vp { width:200px; height:320px; background:#faf6ed; border:2px solid #1f5c8c; border-radius:3px; overflow:auto; position:relative; }
+          .doc { width:200px; }
+          .tile-row { display:flex; padding:1px; gap:2px; }
+          .tile { width:96px; height:60px; border-radius:2px; background:#f4efe6; border:1px solid #ddd9cd; transition:all .35s ease; font-size:8px; color:rgba(0,0,0,0.0); display:flex; align-items:center; justify-content:center; font-family:'JetBrains Mono',monospace; font-weight:700; letter-spacing:0.05em; }
+          .tile.pending { background:rgba(179,90,31,0.45); border-color:#b35a1f; color:rgba(80,40,15,0.95); }
+          .tile.rastering { background:rgba(168,122,31,0.70); border-color:#a87a1f; color:rgba(60,40,10,0.95); }
+          .tile.active { background:rgba(74,107,62,0.60); border-color:#4a6b3e; color:rgba(20,40,15,0.98); }
+          .panel { background:#faf6ed; border:1px solid #c7c4ba; border-radius:3px; padding:14px; }
+          .legend { font-size:11px; line-height:1.85; color:#3c4148; }
+          .legend .dot { display:inline-block; width:11px; height:11px; border-radius:2px; margin-right:7px; vertical-align:-1px; border:1px solid; }
+          .legend .dp { background:rgba(179,90,31,0.34); border-color:#b35a1f; }
+          .legend .dr { background:rgba(168,122,31,0.55); border-color:#a87a1f; }
+          .legend .da { background:rgba(74,107,62,0.42); border-color:#4a6b3e; }
+          .stats { font-size:10px; margin-top:12px; color:#767c87; line-height:1.7; border-top:1px solid #ddd9cd; padding-top:10px; }
+          .stats em { color:#1f5c8c; font-style:normal; font-weight:700; }
+          .ctrl { margin-top:12px; }
+          button { font-family:inherit; font-size:11px; padding:7px 13px; border:1px solid #1f5c8c; background:#faf6ed; color:#1f5c8c; cursor:pointer; border-radius:2px; letter-spacing:.06em; text-transform:uppercase; font-weight:600; }
+          button.on { background:#1f5c8c; color:#faf6ed; }
+          :host([data-lang="en"]) .lang-zh-only { display:none; }
+          :host(:not([data-lang="en"])) .lang-en-only { display:none; }
+        </style>
+        <div class="wrap">
+          <div class="vp-frame">
+            <div class="vp-label">VIEWPORT 200×320</div>
+            <div class="vp" id="vp"><div class="doc" id="doc"></div></div>
+          </div>
+          <div class="panel">
+            <div class="legend">
+              <div><span class="dot dp"></span><span class="lang-zh-only">PENDING · 排队等 raster</span><span class="lang-en-only">PENDING · waiting in raster queue</span></div>
+              <div><span class="dot dr"></span><span class="lang-zh-only">RASTERING · Skia 正在画</span><span class="lang-en-only">RASTERING · Skia is drawing</span></div>
+              <div><span class="dot da"></span><span class="lang-zh-only">ACTIVE · 已合成上屏</span><span class="lang-en-only">ACTIVE · composited on screen</span></div>
+            </div>
+            <div class="stats">
+              ACTIVE: <em id="sa">0</em> · RASTER: <em id="sr">0</em> · PENDING: <em id="sp">0</em><br>
+              <span class="lang-zh-only">视口外 ≥ 3 行的 tile 不进队列</span><span class="lang-en-only">Tiles ≥ 3 rows off-screen never queue</span><br>
+              <span class="lang-zh-only">滚太快 → <em>checkerboarding</em></span><span class="lang-en-only">Scroll too fast → <em>checkerboarding</em></span>
+            </div>
+            <div class="ctrl">
+              <button id="auto"><span class="lang-zh-only">▸ 自动滚动</span><span class="lang-en-only">▸ Auto-scroll</span></button>
+            </div>
+          </div>
+        </div>
+      `;
+      var doc = shadow.getElementById('doc');
+      var vp = shadow.getElementById('vp');
+      var ROWS = 30, COLS = 2, TILE_H = 64, VP_H = 320;
+      var tiles = [];
+      for (var r = 0; r < ROWS; r++) {
+        var row = document.createElement('div');
+        row.className = 'tile-row';
+        for (var c = 0; c < COLS; c++) {
+          var t = document.createElement('div');
+          t.className = 'tile';
+          t.textContent = (r * COLS + c).toString(16).padStart(2, '0');
+          row.appendChild(t);
+          tiles.push({el: t, row: r, state: 'idle'});
+        }
+        doc.appendChild(row);
+      }
+      function update() {
+        var top = vp.scrollTop;
+        var topRow = Math.floor(top / TILE_H);
+        var botRow = Math.floor((top + VP_H) / TILE_H);
+        for (var i = 0; i < tiles.length; i++) {
+          var t = tiles[i];
+          var dist = (t.row < topRow) ? topRow - t.row : (t.row > botRow) ? t.row - botRow : 0;
+          var target;
+          if (dist === 0) target = 'active';
+          else if (dist <= 1) target = 'rastering';
+          else if (dist <= 2) target = 'pending';
+          else target = 'idle';
+          if (t.state !== target) {
+            t.state = target;
+            t.el.className = 'tile' + (target === 'idle' ? '' : ' ' + target);
+          }
+        }
+        var counts = {active:0, rastering:0, pending:0};
+        for (var j = 0; j < tiles.length; j++) {
+          if (counts[tiles[j].state] != null) counts[tiles[j].state]++;
+        }
+        shadow.getElementById('sa').textContent = counts.active;
+        shadow.getElementById('sr').textContent = counts.rastering;
+        shadow.getElementById('sp').textContent = counts.pending;
+      }
+      vp.addEventListener('scroll', update, {passive:true});
+      update();
+      var auto = false, dir = 1;
+      var btn = shadow.getElementById('auto');
+      var host = this;
+      function isEN() { return host.getAttribute('data-lang') === 'en'; }
+      btn.addEventListener('click', function () {
+        auto = !auto;
+        btn.classList.toggle('on', auto);
+        var en = isEN();
+        btn.textContent = auto ? (en ? '◼ Stop' : '◼ 停止滚动') : (en ? '▸ Auto-scroll' : '▸ 自动滚动');
+        function tick() {
+          if (!auto) return;
+          var max = ROWS * TILE_H - VP_H;
+          var next = vp.scrollTop + dir * 1.8;
+          if (next >= max) { next = max; dir = -1; }
+          if (next <= 0) { next = 0; dir = 1; }
+          vp.scrollTop = next;
+          requestAnimationFrame(tick);
+        }
+        if (auto) requestAnimationFrame(tick);
+      });
+    }
+  }
+  customElements.define('demo-tile', DemoTile);
+})();
+</script>
+
 </body>
 </html>
