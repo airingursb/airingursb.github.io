@@ -2352,6 +2352,52 @@
     color: var(--copper); font-style: normal; font-weight: 600;
   }
 
+  /* ---------- Annotated UI diagram (.card-annot) ---------- */
+  .card-annot {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 16px 14px 12px;
+    margin: 14px 0;
+    overflow-x: auto;
+  }
+  .card-annot-svg {
+    width: 100%;
+    max-width: 940px;
+    height: auto;
+    display: block;
+    margin: 0 auto;
+    min-width: 720px;
+  }
+  .card-annot .ca-cap {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink-mute);
+    margin-top: 10px;
+    text-align: center;
+    line-height: 1.5;
+    padding: 0 8px;
+  }
+  .card-annot .ca-cap em {
+    font-style: normal;
+    color: var(--copper);
+    font-weight: 600;
+  }
+  .card-annot-svg .ca-leader {
+    stroke-width: 1.1;
+    stroke-dasharray: 4 3;
+    opacity: 0.85;
+    fill: none;
+  }
+  .card-annot-svg .ca-box {
+    fill: var(--paper-2);
+  }
+  .card-annot-svg text {
+    font-family: var(--mono);
+    dominant-baseline: middle;
+  }
+  .card-annot-svg .ca-name { font-weight: 700; }
+
   /* ---------- Run-on item lists ("注意 N 件事: ① X; ② Y; ③ Z") ---------- */
   .ml-listed { display: block; }
   .ml-listed > .ml-prefix {
@@ -6544,6 +6590,87 @@ color                : <span class="mt-text">rgb(21,23,28)</span>          <span
       <h6 class="lang-en-only">LayoutNGFlexibleBox's two passes, 8 LayoutObjects in place</h6>
       <p class="ml-body lang-zh-only">名片是个 <code>display: flex</code> 容器,所以根的 <code>article</code> 用的不是 <code>LayoutNGBlockFlow</code>,而是 <code>LayoutNGFlexibleBox</code>。Flex 算法<em>跑两遍</em>:第一遍量主轴(横向)——头像 56 + gap 14 + button 53 = 123,剩下 217 给 .info;第二遍量交叉轴(纵向)——按 align-items: center 把三个项目居中。最终 LayoutTree 长这样:</p>
       <p class="ml-body lang-en-only">The card is a <code>display: flex</code> container, so the root <code>article</code> uses <code>LayoutNGFlexibleBox</code>, not <code>LayoutNGBlockFlow</code>. The flex algorithm runs <em>twice</em>: first the main axis (horizontal) — avatar 56 + gap 14 + button 53 = 123, leaving 217 for .info; then the cross axis (vertical) — center via align-items. The final LayoutTree:</p>
+
+      <figure class="card-annot">
+        <svg class="card-annot-svg" viewBox="0 0 940 340" role="img" aria-label="LayoutObject annotation diagram">
+          <!-- ===== Visual card (1:1 scale, positioned at canvas centre) ===== -->
+          <g class="ca-card">
+            <rect x="290" y="125" width="340" height="88" rx="8" fill="#fefaef" stroke="#1f5c8c" stroke-width="2.5"/>
+            <circle cx="318" cy="169" r="28" fill="#d1855a" stroke="#b35a1f" stroke-width="1.5"/>
+            <text x="360" y="159" font-family="Inter, -apple-system, sans-serif" font-weight="700" font-size="14" fill="#15171c">Airing</text>
+            <text x="360" y="178" font-family="Source Han Serif SC, serif" font-size="11" fill="#3c4148">字节码到像素的旅人</text>
+            <text x="360" y="197" font-family="JetBrains Mono, monospace" font-size="10" fill="#1f5c8c">ursb.me</text>
+            <rect x="557" y="153" width="53" height="32" rx="4" fill="#1f5c8c"/>
+            <text x="583" y="171" font-family="Inter, -apple-system, sans-serif" font-weight="600" font-size="11" fill="#fff" text-anchor="middle">关注</text>
+          </g>
+
+          <!-- ===== Callout 1: LayoutNGFlexibleBox (container) ===== -->
+          <g class="ca-callout">
+            <path class="ca-leader" d="M 290 125 Q 240 90 195 70" stroke="#1f5c8c"/>
+            <rect class="ca-box" x="10" y="38" width="186" height="60" rx="3" stroke="#1f5c8c"/>
+            <text x="18" y="56" class="ca-name" font-size="11" fill="#1f5c8c">LayoutNGFlexibleBox</text>
+            <text x="18" y="73" font-size="9.5" fill="#3c4148">article.card · display:flex</text>
+            <text x="18" y="89" font-size="9.5" fill="#b35a1f">[0,0 · 340 × 88]</text>
+          </g>
+
+          <!-- ===== Callout 2: LayoutImage (avatar) ===== -->
+          <g class="ca-callout">
+            <path class="ca-leader" d="M 290 169 Q 230 180 195 195" stroke="#b35a1f"/>
+            <rect class="ca-box" x="10" y="170" width="186" height="60" rx="3" stroke="#b35a1f"/>
+            <text x="18" y="188" class="ca-name" font-size="11" fill="#b35a1f">LayoutImage</text>
+            <text x="18" y="205" font-size="9.5" fill="#3c4148">img.avatar · LayoutReplaced</text>
+            <text x="18" y="221" font-size="9.5" fill="#b35a1f">[20,16 · 56 × 56]</text>
+          </g>
+
+          <!-- ===== Callout 3: LayoutNGBlockFlow x2 (h2 + p) ===== -->
+          <g class="ca-callout">
+            <path class="ca-leader" d="M 430 168 Q 460 100 470 70" stroke="#4a6b3e"/>
+            <rect class="ca-box" x="354" y="38" width="232" height="60" rx="3" stroke="#4a6b3e"/>
+            <text x="362" y="56" class="ca-name" font-size="11" fill="#4a6b3e">LayoutNGBlockFlow × 2</text>
+            <text x="362" y="73" font-size="9.5" fill="#3c4148">h2.name + p.bio (in div.info)</text>
+            <text x="362" y="89" font-size="9.5" fill="#b35a1f">[90,16 217×22] + [90,40 217×17]</text>
+          </g>
+
+          <!-- ===== Callout 4: LayoutNGBlockFlow (button) ===== -->
+          <g class="ca-callout">
+            <path class="ca-leader" d="M 610 169 Q 700 130 745 90" stroke="#1f5c8c"/>
+            <rect class="ca-box" x="744" y="38" width="186" height="60" rx="3" stroke="#1f5c8c"/>
+            <text x="752" y="56" class="ca-name" font-size="11" fill="#1f5c8c">LayoutNGBlockFlow</text>
+            <text x="752" y="73" font-size="9.5" fill="#3c4148">button.follow · UA padding</text>
+            <text x="752" y="89" font-size="9.5" fill="#b35a1f">[267,28 · 53 × 32]</text>
+          </g>
+
+          <!-- ===== Callout 5: LayoutInline (a.url) ===== -->
+          <g class="ca-callout">
+            <path class="ca-leader" d="M 395 198 Q 600 220 745 235" stroke="#6b3aa3"/>
+            <rect class="ca-box" x="744" y="208" width="186" height="60" rx="3" stroke="#6b3aa3"/>
+            <text x="752" y="226" class="ca-name" font-size="11" fill="#6b3aa3">LayoutInline</text>
+            <text x="752" y="243" font-size="9.5" fill="#3c4148">a.url · phrasing · line-box</text>
+            <text x="752" y="259" font-size="9.5" fill="#b35a1f">[90,59 · 56 × 16]</text>
+          </g>
+
+          <!-- ===== 2-pass note (bottom) ===== -->
+          <g class="ca-passes">
+            <line x1="290" y1="213" x2="630" y2="213" stroke="#c7c4ba" stroke-dasharray="2 2"/>
+            <g class="lang-zh-only">
+              <text x="290" y="248" font-size="10.5" fill="#3c4148"><tspan font-weight="700" fill="#b35a1f">主轴 (pass 1):</tspan>  avatar 56 + gap 14 + button 53 = 123, 剩 217 给 .info</text>
+              <text x="290" y="268" font-size="10.5" fill="#3c4148"><tspan font-weight="700" fill="#b35a1f">交叉轴 (pass 2):</tspan>  align-items: center → 三项目居中到 88 高度内</text>
+              <text x="290" y="292" font-size="10" fill="#1f5c8c" font-weight="700">Flex 容器特有的 2-pass 成本</text>
+              <text x="476" y="292" font-size="10" fill="#3c4148"> · 普通 block 流只跑 1 次</text>
+            </g>
+            <g class="lang-en-only">
+              <text x="290" y="248" font-size="10.5" fill="#3c4148"><tspan font-weight="700" fill="#b35a1f">Main axis (pass 1):</tspan>  avatar 56 + gap 14 + button 53 = 123; remaining 217 → .info</text>
+              <text x="290" y="268" font-size="10.5" fill="#3c4148"><tspan font-weight="700" fill="#b35a1f">Cross axis (pass 2):</tspan>  align-items: center → three items centered in 88 px height</text>
+              <text x="290" y="292" font-size="10" fill="#1f5c8c" font-weight="700">2-pass cost is unique to flex containers</text>
+              <text x="568" y="292" font-size="10" fill="#3c4148"> · plain block flow runs only once</text>
+            </g>
+          </g>
+        </svg>
+        <figcaption class="ca-cap">
+          <span class="lang-zh-only">↑ Layout 之后，每个 LayoutObject 都拿到了 <em>(x, y, w, h)</em>。下一步 Pre-paint 会基于这些位置切出 4 棵 property tree。</span>
+          <span class="lang-en-only">↑ After Layout, every LayoutObject has its <em>(x, y, w, h)</em>. Next, Pre-paint slices the 4 property trees out of these positions.</span>
+        </figcaption>
+      </figure>
 
       <pre class="ml-tree" aria-hidden="true"><span class="mt-cmt">// Layout Tree · The Card 之后</span>
 
