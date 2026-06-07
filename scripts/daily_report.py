@@ -122,22 +122,40 @@ def day_filter(date_str: str, field: str = 'created_at') -> list[str]:
 def collect_metrics() -> tuple[dict, list, dict]:
     metrics: dict[str, int] = {}
 
-    # Homepage cumulative visitor counter.
+    # Homepage visitors — sourced from Umami (the on-page web analytics).
     #
-    # `daily_uv` semantics: delta in cumulative count since the last run (~24h
-    # ago). We read the most recent prior snapshot from daily_metrics BEFORE
-    # upserting today's value — so the previous run's snapshot is still there.
-    home = sb_get(HOMEPAGE_SB_URL, HOMEPAGE_SB_KEY, 'visitors', {'select': 'count'})
-    home_total = sum(int(r.get('count', 0)) for r in (home or []))
-    metrics['home_total_uv'] = home_total
-    prev = sb_get(HOMEPAGE_SB_URL, HOMEPAGE_SB_KEY, 'daily_metrics', {
-        'select': 'value',
-        'metric_name': 'eq.home_total_uv',
-        'date': f'lt.{YESTERDAY}',
-        'order': 'date.desc',
-        'limit': '1',
-    })
-    metrics['home_uv'] = max(0, home_total - int(float(prev[0]['value']))) if prev else 0
+    # The legacy `visitors` table was a single-row counter (count/daily_count
+    # columns) bumped by an old Supabase RPC. That path was retired when the
+    # counter moved to blog-api's in-memory batcher (lib/visitor-counter.js),
+    # so the row froze — `daily_date` stuck at 2026-05-17, `count` near-static —
+    # and `sum(count)` deltas collapsed to 0/1 even on 几十~100+ visitor days.
+    # Umami holds the real daily + all-time figures, so read straight from it.
+    yest = datetime.fromisoformat(YESTERDAY).replace(tzinfo=timezone.utc)
+    day_start_ms = int(yest.timestamp() * 1000)
+    day_end_ms = int((yest + timedelta(days=1)).timestamp() * 1000) - 1
+    day_stats = fetch_umami_stats(day_start_ms, day_end_ms)
+    all_stats = fetch_umami_stats(0, int(datetime.now(timezone.utc).timestamp() * 1000))
+
+    # Legacy cumulative — kept only as a monotonic floor so "累计访客" never
+    # visibly regresses if Umami's retention window starts later than the site.
+    legacy = sb_get(HOMEPAGE_SB_URL, HOMEPAGE_SB_KEY, 'visitors', {'select': 'count'})
+    legacy_total = sum(int(r.get('count', 0)) for r in (legacy or []))
+
+    if day_stats is not None:
+        metrics['home_uv'] = day_stats['visitors']
+        metrics['home_total_uv'] = max(legacy_total, (all_stats or {}).get('visitors', 0))
+    else:
+        # Umami unavailable — fall back to the legacy cumulative-delta logic so
+        # the report still renders (will under-report until Umami recovers).
+        metrics['home_total_uv'] = legacy_total
+        prev = sb_get(HOMEPAGE_SB_URL, HOMEPAGE_SB_KEY, 'daily_metrics', {
+            'select': 'value',
+            'metric_name': 'eq.home_total_uv',
+            'date': f'lt.{YESTERDAY}',
+            'order': 'date.desc',
+            'limit': '1',
+        })
+        metrics['home_uv'] = max(0, legacy_total - int(float(prev[0]['value']))) if prev else 0
 
     # Blog
     rng_view = day_filter(YESTERDAY, 'viewed_at')
@@ -254,6 +272,37 @@ def render_metric_line(name: str, value: int, label: str) -> str:
 
 
 # ── External integrations ────────────────────────────────────────────────────
+
+def fetch_umami_stats(start_ms: int, end_ms: int) -> dict | None:
+    """Return {'visitors': int, 'pageviews': int} for [start_ms, end_ms], or None.
+
+    Uses the same Umami v2 endpoint family + Bearer auth as fetch_referrers
+    (confirmed working in CI). Returns None when Umami is unconfigured or the
+    request fails, so callers can fall back gracefully.
+    """
+    if not (UMAMI_API_URL and UMAMI_API_KEY and UMAMI_WEBSITE_ID):
+        return None
+    url = (f'{UMAMI_API_URL}/api/websites/{UMAMI_WEBSITE_ID}/stats'
+           f'?startAt={start_ms}&endAt={end_ms}')
+    try:
+        req = urllib.request.Request(url, headers={'Authorization': f'Bearer {UMAMI_API_KEY}'})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read())
+    except Exception as e:
+        print(f'umami stats failed: {e}', file=sys.stderr)
+        return None
+
+    def field(name: str) -> int:
+        v = data.get(name)
+        if isinstance(v, dict):   # Umami v2 shape: {"value": N, "prev": M}
+            v = v.get('value', 0)
+        try:
+            return int(v or 0)
+        except (TypeError, ValueError):
+            return 0
+
+    return {'visitors': field('visitors'), 'pageviews': field('pageviews')}
+
 
 def fetch_referrers() -> list[tuple[str, int]] | None:
     if not (UMAMI_API_URL and UMAMI_API_KEY and UMAMI_WEBSITE_ID):
