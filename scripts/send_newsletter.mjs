@@ -35,6 +35,7 @@ const slug = args.slug;
 const dryRun = !!args['dry-run'];
 const retryFailed = !!args['retry-failed'];
 const testEmail = args['test-email'] || null;
+const limit = args.limit ? parseInt(args.limit, 10) : null;
 const apiUrl = args['api-url'] || process.env.BLOG_API_URL || 'https://ursb.me';
 const adminToken = args.token || process.env.ADMIN_TOKEN;
 
@@ -142,11 +143,13 @@ console.log(`   Excerpt: ${post.excerpt.slice(0, 80)}...`);
 console.log(`   Dry run: ${dryRun}`);
 if (retryFailed) console.log(`   Mode:    RETRY FAILED (only previously-failed recipients)`);
 if (testEmail) console.log(`   Test to: ${testEmail}`);
+if (limit) console.log(`   Limit:   ${limit} (batched mode — dedup record NOT set)`);
 console.log();
 
 const params = new URLSearchParams();
 if (dryRun) params.set('dry_run', '1');
 if (testEmail) params.set('test_email', testEmail);
+if (limit) params.set('limit', String(limit));
 const qs = params.toString();
 const action = retryFailed ? 'retry' : 'send';
 const endpoint = `${apiUrl}/api/admin/newsletter/${action}${qs ? '?' + qs : ''}`;
@@ -176,6 +179,13 @@ try {
     console.log(`✅ Retry sent to ${data.sent} previously-failed subscribers.` +
       (data.remaining ? ` ⚠️ ${data.remaining} still pending.` : ''));
     if (data.message) console.log(`   ${data.message}`);
+  } else if (limit) {
+    const total = data.totalActive ?? '?';
+    const already = data.alreadySent ?? 0;
+    const remaining = (data.totalActive ?? 0) - already - data.sent;
+    console.log(`✅ Batch sent: ${data.sent} this run, ${already + data.sent} cumulative of ${total}.`);
+    if (remaining > 0) console.log(`   ${remaining} subscribers remaining — run again tomorrow.`);
+    else console.log(`   All sent. Run once more WITHOUT --limit to finalize the dedup record.`);
   } else {
     console.log(`✅ Newsletter sent to ${data.sent} subscribers.`);
   }
