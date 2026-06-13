@@ -267,7 +267,7 @@ To close, I want to return to those Luddites who smashed machines in the night.
 
 Their real tragedy was not that they targeted the wrong thing — the machine truly did roll over their livelihoods, and their anger deserves the respect of those of us reading them two hundred years later. The real tragedy was that, standing in that moment, the only option they could *see* was to smash. They could see what they were **losing**. They could not see what they could **become**. This is not their fault. In that age, no one could.
 
-But we are different from them. This is the harsh privilege specific to our generation: the change happens on the order of years, fast enough that a single person can witness the end-state inside their own career, and fast enough that no one is left any room to "wait and see." We are the first generation of ordinary people who can participate in the revolution **with a sense of the endgame in hand.**
+But we are different from them. This is the harsh privilege specific to our generation: the change happens on the order of years, fast enough that a single person can witness the end-state inside their own career, and fast enough that no one is left any room to wait and see. We are the first generation of ordinary people who can participate in the revolution **with a sense of the endgame in hand.**
 
 So — where do we go?
 
