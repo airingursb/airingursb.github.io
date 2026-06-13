@@ -253,7 +253,7 @@ Reclaim your sense of value from "being needed by AI." This is the most quiet, a
 
 Back to the three letters, back to the question at the start.
 
-This year, friends who know me well call me radical: I hand designs to AI, code to AI, review drafts to AI; next I'm preparing to hand over testing too. But few understand: efficiency was never the goal. If AI's entire purpose were to let one person do four people's work, piled with ever more workload — then what? That would just be turning yourself into a cheaper Jenny, saving the balance sheet two more years before you got replaced. **A human can never out-compete a machine on efficiency.** That road has four words written at the end of it: *inevitably replaced*.
+This year, friends who know me well call me radical: I hand designs to AI, code to AI, review drafts to AI; next I'm preparing to hand over testing too. But few understand: efficiency was never the goal. If AI's entire purpose were to let one person do four people's work, piled with ever more workload — then what? That would just be turning yourself into a cheaper Jenny, saving the balance sheet two more years before you got replaced. **A human can never out-compete a machine on efficiency.** That road has two words written at the end of it: *inevitably replaced*.
 
 The real purpose of being radical is one thing only: **before the macro trend arrives, keep finding new ground to stand on.** All the time AI saves you must flow into growth and exploration — not into more requirements. This is a discipline I set for myself, and a sentence I repeat in every reply: if the dividends of efficiency get eaten entirely by workload, then this revolution is meaningless to the individual.
 
@@ -289,7 +289,7 @@ We are not individuals carried by the trend.
 
 The wind rises in the reeds. **We should be the trend itself.**
 
-Forward. Don't look back.
+Run forward. Don't look back.
 
 ---
 
