@@ -66,7 +66,7 @@ Notice what these two have in common: neither of them is production. They are ga
 
 Ninety years ago in *Modern Times*, Chaplin stood at the conveyor belt tightening bolts, fell behind the belt's pace, and got pulled into the gears. That image became iconic because it captured the industrial-era human condition exactly: machines set the rhythm, humans chase the machines. Ninety years later, the belt is moving in a new direction — now the machine produces and the human inspects. AI's production speed is effectively unlimited; the cost of starting a new task is approaching zero. But the cost of verifying its output hasn't dropped a cent, because verification requires a human in the loop. So for the first time in human history, **the production bottleneck has shifted, wholesale, from the machine to the human.**
 
-This shift brings a quiet, lethal corollary. You can run 6 or 7 sessions concurrently, dancing across different worktrees, optimizing your context-switching like a maniac. But on this new assembly line, you'll find that there is only one way to push your throughput further —
+This shift brings a quiet, lethal corollary: you can run 6 or 7 sessions concurrently, dancing across different worktrees, frantically switching context, multitasking with elegance. But on this new assembly line, you'll find that there is only one way to push your throughput further —
 
 **lower your own standards.**
 
