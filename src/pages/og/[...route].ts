@@ -5,7 +5,9 @@ import { Resvg } from '@resvg/resvg-js';
 import fs from 'node:fs';
 
 const posts = await getCollection('posts', ({ data }) => !data.draft);
+const postsEn = await getCollection('postsEn', ({ data }) => !data.draft);
 const notes = await getCollection('notes', ({ data }) => data.public && !data.draft);
+const notesEn = await getCollection('notesEn', ({ data }) => data.public && !data.draft);
 
 // Load fonts from local files
 const notoSansSCBold = fs.readFileSync('src/assets/fonts/NotoSansSC-Bold.ttf');
@@ -17,8 +19,8 @@ const avatarData = await fetch('https://avatars.githubusercontent.com/u/10513408
   .then((res) => res.arrayBuffer());
 const avatarBase64 = `data:image/jpeg;base64,${Buffer.from(avatarData).toString('base64')}`;
 
-function extractExcerpt(id: string): string {
-  const raw = fs.readFileSync(`src/content/posts/${id}.md`, 'utf-8');
+function extractExcerpt(path: string): string {
+  const raw = fs.readFileSync(path, 'utf-8');
   const body = raw.replace(/^---[\s\S]*?---/, '').trim();
   const lines = body
     .split('\n')
@@ -32,7 +34,20 @@ export const getStaticPaths: GetStaticPaths = async () => {
     params: { route: `${post.id}.png` },
     props: {
       title: post.data.title,
-      description: post.data.description || extractExcerpt(post.id),
+      description: post.data.description || extractExcerpt(`src/content/posts/${post.id}.md`),
+      tags: post.data.tags,
+      date: post.data.date,
+    },
+  }));
+
+  // English posts share their slug (id) with the Chinese originals but live in
+  // a separate collection. Generate dedicated English OG images under og/en/<slug>.png
+  // so shared English articles get an English card instead of the Chinese one.
+  const postEnRoutes = postsEn.map((post) => ({
+    params: { route: `en/${post.id}.png` },
+    props: {
+      title: post.data.title,
+      description: post.data.description || extractExcerpt(`src/content/posts/en/${post.id}.md`),
       tags: post.data.tags,
       date: post.data.date,
     },
@@ -48,7 +63,17 @@ export const getStaticPaths: GetStaticPaths = async () => {
     },
   }));
 
-  return [...postRoutes, ...noteRoutes];
+  const noteEnRoutes = notesEn.map((note) => ({
+    params: { route: `en/notes/${note.id}.png` },
+    props: {
+      title: note.data.title,
+      description: note.data.summary || '',
+      tags: note.data.tags,
+      date: new Date(note.data.date),
+    },
+  }));
+
+  return [...postRoutes, ...postEnRoutes, ...noteRoutes, ...noteEnRoutes];
 };
 
 export const GET: APIRoute = async ({ props }) => {
