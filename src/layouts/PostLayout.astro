@@ -321,6 +321,11 @@ const jsonLd = {
           <span class="al-count" id="articleLikeCount">0</span>
           <span class="al-label">likes</span>
         </button>
+        <div class="al-regions" id="alRegions" style="display:none" tabindex="0">
+          <span class="al-regions-flags" id="alRegionsFlags"></span>
+          <span class="al-regions-label" id="alRegionsLabel"></span>
+          <div class="al-regions-pop" id="alRegionsPop" role="status"></div>
+        </div>
         <span class="online-indicator article-online" data-online="page" data-online-template='<span class="online-dot"></span><span class="online-count">{n}</span> 人在读' data-online-min="1" style="display:none"></span>
       </div>
       <div class="al-rule"></div>
@@ -1359,6 +1364,7 @@ const jsonLd = {
         if (lkEl) lkEl.textContent = res.count.toLocaleString();
         if (lkBlock) lkBlock.style.display = '';
       }
+      renderLikeRegions(res.regions, res.regionCount, res.located);
       // Sync localStorage with server state
       try {
         var stored = JSON.parse(localStorage.getItem('post_likes') || '[]');
@@ -1367,6 +1373,53 @@ const jsonLd = {
         localStorage.setItem('post_likes', JSON.stringify(Array.from(set)));
       } catch(e) {}
     });
+  }
+
+  // Region distribution under the like button. The displayed like count mixes in
+  // synthetic baselines and pre-2026-03 migration placeholders that can never be
+  // geo-located, so the distribution only ever covers the *locatable* likes — and
+  // we only show it when that sample is substantial enough to be representative
+  // (>=8 located likes across >=3 regions). The popover footer states the basis.
+  var AL_MIN_LOCATED = 8;
+  var AL_MIN_REGIONS = 3;
+  var alRegions = document.getElementById('alRegions');
+  var alRegionsFlags = document.getElementById('alRegionsFlags');
+  var alRegionsLabel = document.getElementById('alRegionsLabel');
+  var alRegionsPop = document.getElementById('alRegionsPop');
+
+  function ccFlagImg(cc, label) {
+    var up = String(cc || '').toUpperCase();
+    if (!/^[A-Z]{2}$/.test(up)) return '';
+    return '<img class="c-flag" src="/flags/' + up.toLowerCase() + '.svg" alt="' + esc(up) +
+      '" title="' + esc(label || up) + '" loading="lazy" onerror="this.style.display=\'none\'" />';
+  }
+  function ccName(cc) {
+    var up = String(cc || '').toUpperCase();
+    if (_regionNames) { try { return _regionNames.of(up) || up; } catch (e) {} }
+    return up;
+  }
+
+  function renderLikeRegions(regions, regionCount, located) {
+    if (!alRegions || !regions) return;
+    located = located || regions.reduce(function (s, r) { return s + r.count; }, 0);
+    if (regionCount < AL_MIN_REGIONS || located < AL_MIN_LOCATED) return;
+    // Up to 5 flags inline; the rest live in the hover popover.
+    alRegionsFlags.innerHTML = regions.slice(0, 5).map(function (r) {
+      return ccFlagImg(r.cc, ccName(r.cc) + ' · ' + r.count);
+    }).join('');
+    alRegionsLabel.textContent = '来自 ' + regionCount + ' 个地区';
+    alRegionsPop.innerHTML =
+      '<span class="al-rp-title">点赞地区分布</span>' +
+      regions.map(function (r) {
+        var pct = Math.round(r.count / located * 100);
+        return '<span class="al-rp-row">' +
+          '<span class="al-rp-name">' + ccFlagImg(r.cc, ccName(r.cc)) + esc(ccName(r.cc)) + '</span>' +
+          '<span class="al-rp-bar"><span class="al-rp-fill" style="width:' + pct + '%"></span></span>' +
+          '<span class="al-rp-count">' + r.count + '</span>' +
+        '</span>';
+      }).join('') +
+      '<span class="al-rp-foot">基于 ' + located + ' 个可定位的赞</span>';
+    alRegions.style.display = '';
   }
 
   articleLikeBtn.addEventListener('click', function() {
@@ -2333,6 +2386,81 @@ const jsonLd = {
   }
   .al-label {
     font-size: 13px; font-weight: 500;
+  }
+
+  /* ===== Like region distribution ===== */
+  .al-regions {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 12px;
+    color: var(--c-text-dim);
+    cursor: default;
+    outline: none;
+  }
+  .al-regions-flags {
+    display: inline-flex;
+    align-items: center;
+  }
+  /* tuck the per-flag left margin so the row reads as one cluster */
+  .al-regions-flags :global(img.c-flag) { margin-left: 0; margin-right: 3px; }
+  .al-regions-label { white-space: nowrap; }
+  .al-regions-pop {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    z-index: 30;
+    min-width: 210px;
+    padding: 12px 14px;
+    background: var(--c-bg, #fff);
+    border: 1px solid var(--c-border);
+    border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.16);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.16s ease, transform 0.16s ease;
+    text-align: left;
+  }
+  .al-regions:hover .al-regions-pop,
+  .al-regions:focus .al-regions-pop,
+  .al-regions:focus-within .al-regions-pop {
+    opacity: 1;
+    visibility: visible;
+    transform: translateX(-50%) translateY(0);
+  }
+  .al-regions-pop::after {
+    content: ''; position: absolute; top: 100%; left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent; border-top-color: var(--c-border);
+  }
+  .al-regions-pop :global(.al-rp-title) {
+    display: block; font-size: 11px; font-weight: 600; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--c-text-dim); margin-bottom: 9px;
+  }
+  .al-regions-pop :global(.al-rp-row) {
+    display: grid; grid-template-columns: 1fr 56px auto; align-items: center;
+    gap: 9px; padding: 3px 0; font-size: 12px; color: var(--c-text);
+  }
+  .al-regions-pop :global(.al-rp-name) {
+    display: inline-flex; align-items: center; gap: 6px;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  }
+  .al-regions-pop :global(.al-rp-bar) {
+    height: 5px; border-radius: 3px; background: rgba(var(--c-overlay-rgb),0.08);
+    overflow: hidden;
+  }
+  .al-regions-pop :global(.al-rp-fill) {
+    display: block; height: 100%; border-radius: 3px; background: var(--accent, #ef4444);
+  }
+  .al-regions-pop :global(.al-rp-count) {
+    font-variant-numeric: tabular-nums; color: var(--c-text-dim); min-width: 16px; text-align: right;
+  }
+  .al-regions-pop :global(.al-rp-foot) {
+    display: block; margin-top: 9px; padding-top: 8px;
+    border-top: 1px solid var(--c-border);
+    font-size: 11px; color: var(--c-text-dim);
   }
 
   /* ===== Newsletter CTA ===== */
