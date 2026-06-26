@@ -144,6 +144,16 @@
     return String.fromCodePoint.apply(String, codePoints);
   }
 
+  // Self-hosted rectangular SVG flag (flag-icons, /flags/<cc>.svg) — consistent
+  // across platforms (emoji flags don't render on Windows). '' when no valid code.
+  function getFlagImg(countryCode, locale) {
+    if (!isCountryCode(countryCode)) return '';
+    var cc = String(countryCode).toUpperCase();
+    return '<img class="online-country-flag" src="/flags/' + cc.toLowerCase() +
+      '.svg" alt="" title="' + escapeHtml(getCountryName(cc, locale)) +
+      '" loading="lazy" onerror="this.style.display=\'none\'" />';
+  }
+
   function getCountryName(countryCode, locale) {
     var cc = String(countryCode || '').toUpperCase();
     try {
@@ -653,7 +663,7 @@
       var cc = String(entry[0]).toUpperCase();
       var count = Number(entry[1]) || 0;
       return '<div class="online-country-row">' +
-        '<span class="online-country-name"><span class="online-country-flag">' + getFlagEmoji(cc) + '</span>' +
+        '<span class="online-country-name">' + getFlagImg(cc, locale) +
         escapeHtml(getCountryName(cc, locale)) + '</span>' +
         '<span class="online-country-count">' + count + '</span>' +
       '</div>';
@@ -757,10 +767,12 @@
         el.setAttribute('aria-haspopup', 'dialog');
         el.setAttribute('aria-expanded', wasOpen ? 'true' : 'false');
         el.classList.toggle('online-popover-open', wasOpen);
+        // Native title is text-only (can't embed the SVG flag) — emoji flags
+        // render as tofu on Windows, so use the country name alone here.
         el.title = rows
           .map(function (entry) {
             var cc = String(entry[0]).toUpperCase();
-            return getFlagEmoji(cc) + ' ' + getCountryName(cc, el.getAttribute('data-online-locale')) + ': ' + entry[1];
+            return getCountryName(cc, el.getAttribute('data-online-locale')) + ': ' + entry[1];
           })
           .join('\n');
       } else {

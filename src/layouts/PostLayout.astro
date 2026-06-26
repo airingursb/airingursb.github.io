@@ -991,7 +991,7 @@ const jsonLd = {
             '<div class="cm-reply">' +
               '<div class="cm-reply-header">' +
                 '<img class="cm-reply-avatar" src="' + commentAvatarUrl(r) + '" />' +
-                '<span class="cm-reply-name">' + esc(r.nickname) + '</span>' +
+                '<span class="cm-reply-name">' + esc(r.nickname) + countryFlag(r) + '</span>' +
                 '<span class="cm-reply-time">' + rTimeStr + '</span>' +
               '</div>' +
               '<div class="cm-reply-body">' + esc(r.comment) + '</div>' +
@@ -1003,7 +1003,7 @@ const jsonLd = {
       card.innerHTML =
         '<div class="cm-card-author">' +
           '<img src="' + commentAvatarUrl(c) + '" class="cm-card-avatar" />' +
-          '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
+          '<span class="cm-card-name">' + esc(c.nickname) + countryFlag(c) + '</span>' +
         '</div>' +
         '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
         '<div class="cm-card-body">' + esc(c.comment) + '</div>' +
@@ -1123,7 +1123,7 @@ const jsonLd = {
     activeMobileCommentId = comment.id;
     msQuote.textContent = '\u201c' + trunc(comment.selected_text, 80) + '\u201d';
     msBody.textContent = comment.comment;
-    msAuthor.textContent = comment.nickname;
+    msAuthor.innerHTML = esc(comment.nickname) + countryFlag(comment);
     var time = new Date(comment.created_at);
     msTime.textContent = time.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' })
       + ' ' + time.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
@@ -1141,7 +1141,7 @@ const jsonLd = {
         div.innerHTML =
           '<div class="ms-reply-header">' +
             '<img src="' + commentAvatarUrl(r) + '" class="ms-reply-avatar" />' +
-            '<span class="ms-reply-name">' + esc(r.nickname) + '</span>' +
+            '<span class="ms-reply-name">' + esc(r.nickname) + countryFlag(r) + '</span>' +
             '<span class="ms-reply-time">' + rTimeStr + '</span>' +
           '</div>' +
           '<div class="ms-reply-body">' + esc(r.comment) + '</div>';
@@ -1497,8 +1497,8 @@ const jsonLd = {
 
     var avatarSize = isReply ? 32 : 40;
     var nameHtml = c.website
-      ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
-      : '<span class="bc-name">' + esc(c.nickname) + '</span>';
+      ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>' + countryFlag(c)
+      : '<span class="bc-name">' + esc(c.nickname) + '</span>' + countryFlag(c);
     div.innerHTML =
       '<div class="bc-avatar-wrap"><img src="' + commentAvatarUrl(c) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
       '<div class="bc-body">' +
@@ -1643,6 +1643,20 @@ const jsonLd = {
   // --- Helpers ---
   function trunc(s, n) { return s.length > n ? s.slice(0, n) + '\u2026' : s; }
   function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  // Region flag for a commenter. Returns a self-hosted square SVG <img>
+  // (flag-icons, /flags/<cc>.svg) with a localized region tooltip, or '' when
+  // there's no resolvable ISO 3166-1 alpha-2 code. Leading space included.
+  var _regionNames = null;
+  try { _regionNames = new Intl.DisplayNames(['zh-CN'], { type: 'region' }); } catch (e) {}
+  function countryFlag(c) {
+    var up = (c && c.country ? String(c.country) : '').toUpperCase();
+    if (!/^[A-Z]{2}$/.test(up)) return '';
+    var region = up;
+    if (_regionNames) { try { region = _regionNames.of(up) || up; } catch (e) {} }
+    var label = (c.city ? c.city + ' \u00b7 ' : '') + region;
+    return ' <img class="c-flag" src="/flags/' + up.toLowerCase() + '.svg" alt="' + esc(region) +
+      '" title="' + esc(label) + '" loading="lazy" onerror="this.style.display=\'none\'" />';
+  }
   function linkify(s) { return s.replace(/(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'); }
 })();
 </script>
@@ -2605,6 +2619,22 @@ const jsonLd = {
 </style>
 
 <style is:global>
+  /* Commenter region flag — self-hosted rectangular 4:3 SVG injected after
+     nicknames across all comment surfaces (flag-icons, /flags/<cc>.svg). */
+  img.c-flag {
+    display: inline-block;
+    height: 0.82em;
+    width: auto;
+    margin-left: 5px;
+    border-radius: 2px;
+    vertical-align: -0.04em;
+    /* hairline ring so all-light flags (e.g. JP) stay visible on white */
+    box-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12);
+    cursor: default;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
   body:has(.post-page) {
     display: block;
     padding: 0;
