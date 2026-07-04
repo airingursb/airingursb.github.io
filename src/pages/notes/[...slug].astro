@@ -4,6 +4,7 @@ import { getCollection, render } from 'astro:content';
 import { getBacklinks } from '../../lib/backlinks';
 import LangSwitch from '../../components/LangSwitch.astro';
 import { tSite } from '../../lib/i18n';
+import { getGitLastModified } from '../../lib/seo';
 
 export async function getStaticPaths() {
   const notes = await getCollection('notes', ({ data }) => data.public && !data.draft);
@@ -47,8 +48,27 @@ const hreflang = hasEn ? {
   zh: new URL(`/notes/${note.id}/`, Astro.site).href,
   en: new URL(`/en/notes/${note.id}/`, Astro.site).href,
 } : undefined;
+
+const noteUrl = new URL(`/notes/${note.id}/`, Astro.site).href;
+const dateModified = getGitLastModified(`src/content/notes/${note.id}.mdx`);
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": note.data.title,
+  "description": note.data.summary,
+  "datePublished": new Date(note.data.date).toISOString(),
+  "dateModified": (dateModified ?? new Date(note.data.date)).toISOString(),
+  "author": { "@type": "Person", "name": "Airing", "url": "https://ursb.me" },
+  "publisher": { "@type": "Person", "name": "Airing", "url": "https://ursb.me" },
+  "url": noteUrl,
+  "mainEntityOfPage": { "@type": "WebPage", "@id": noteUrl },
+  "inLanguage": "zh-CN",
+  "image": `${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`,
+  ...(note.data.tags.length > 0 ? { "keywords": note.data.tags.join(", ") } : {}),
+};
 ---
-<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article" hreflang={hreflang}>
+<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} description={note.data.summary} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article" hreflang={hreflang}>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <div class="note-detail-page">
     <header class="masthead">
       <div class="mast-inner">
@@ -428,6 +448,7 @@ const hreflang = hasEn ? {
       var mark = document.createElement('mark');
       mark.className = 'comment-highlight';
       mark.dataset.commentId = id;
+      mark.id = 'inline-' + id; // deep-link target for the guestbook feed
       try { range.surroundContents(mark); }
       catch(e) {
         var fragment = range.extractContents();
@@ -481,6 +502,21 @@ const hreflang = hasEn ? {
         if (!c.selected_text) return;
         var range = findRangeByText(postContent, c.selected_text);
         if (range) wrapRange(range, c.id);
+      });
+    }
+
+    // Deep-link support: /notes/foo#inline-<id> (from the homepage guestbook feed)
+    // scrolls to and flashes that highlight once it has been painted.
+    function scrollToHashHighlight() {
+      if (!postContent) return;
+      var m = /^#inline-(\d+)$/.exec(location.hash || '');
+      if (!m) return;
+      var mark = postContent.querySelector('mark[data-comment-id="' + m[1] + '"]');
+      if (!mark) return;
+      requestAnimationFrame(function() {
+        mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        mark.classList.add('highlight-flash');
+        setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1200);
       });
     }
 
@@ -1111,6 +1147,7 @@ const hreflang = hasEn ? {
       inlineComments = res.comments || [];
       restoreHighlights();
       renderInlineComments();
+      scrollToHashHighlight();
     });
 
     loadArticleLikes();

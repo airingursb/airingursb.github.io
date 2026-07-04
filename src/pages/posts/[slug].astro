@@ -2,6 +2,7 @@
 import { getCollection, render } from 'astro:content';
 import PostLayout from '../../layouts/PostLayout.astro';
 import { buildTranslationMap } from '../../lib/i18n';
+import { makeExcerpt, getGitLastModified } from '../../lib/seo';
 import fs from 'node:fs';
 
 export async function getStaticPaths() {
@@ -58,13 +59,16 @@ const hreflang = hasEn ? {
   zh: new URL(`/posts/${post.id}/`, Astro.site).href,
   en: new URL(`/en/posts/${post.id}/`, Astro.site).href,
 } : undefined;
+const description = post.data.description || makeExcerpt(contentOnly);
+const dateModified = getGitLastModified(`src/content/posts/${post.id}.md`);
 ---
 
 <PostLayout
   title={post.data.title}
   date={post.data.date}
+  dateModified={dateModified}
   tags={post.data.tags}
-  description={post.data.description}
+  description={description}
   cover={post.data.cover}
   prevPost={prevPost}
   nextPost={nextPost}

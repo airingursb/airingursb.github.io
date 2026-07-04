@@ -8,16 +8,23 @@ interface Props {
   ogType?: string;
   hreflang?: { zh?: string; en?: string };
   lang?: 'zh' | 'en';
+  /** Leaflet is only loaded on pages that render maps (index, workouts, photos). */
+  leaflet?: boolean;
 }
 
 const {
   title,
-  description = "Airing's Homepage - Software Engineer @ Singapore",
+  description: rawDescription,
   ogImage,
   ogType = 'website',
   hreflang,
   lang = 'zh',
+  leaflet = false,
 } = Astro.props;
+
+// Empty-string descriptions (e.g. unfilled frontmatter) must also fall back,
+// not just undefined — otherwise pages ship blank meta descriptions.
+const description = rawDescription || "Airing's Homepage - Software Engineer @ Singapore";
 ---
 
 <!DOCTYPE html>
@@ -30,9 +37,13 @@ const {
   <meta name="keywords" content="airing, homepage, blog">
   <meta name="robots" content="index, follow">
   <meta name="author" content="Airing">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)">
   <meta property="og:title" content={title}>
   <meta property="og:description" content={description}>
   <meta property="og:type" content={ogType}>
+  <meta property="og:site_name" content="Airing's Blog">
+  <meta property="og:locale" content={lang === 'en' ? 'en_US' : 'zh_CN'}>
   <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site).href}>
   <meta property="og:url" content={new URL(Astro.url.pathname, Astro.site).href}>
   <meta name="twitter:card" content={ogImage ? "summary_large_image" : "summary"}>
@@ -45,10 +56,14 @@ const {
   <link rel="icon" href="https://airing.ursb.me/image/favicon.ico">
   <link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/blog/feed.xml">
   <link rel="alternate" type="application/rss+xml" title="Airing's Blog (English)" href="/en/blog/feed.xml">
-  {hreflang?.zh && <link rel="alternate" hreflang="zh" href={hreflang.zh} />}
-  {hreflang?.en && <link rel="alternate" hreflang="en" href={hreflang.en} />}
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="alternate" type="application/rss+xml" title="Airing's Notes" href="/notes/feed.xml">
+  <link rel="alternate" type="application/rss+xml" title="Airing's Notes (English)" href="/en/notes/feed.xml">
+  <link rel="sitemap" href="/sitemap.xml">
+  {hreflang?.zh && <link rel="alternate" hreflang="zh-CN" href={new URL(hreflang.zh, Astro.site).href} />}
+  {hreflang?.en && <link rel="alternate" hreflang="en" href={new URL(hreflang.en, Astro.site).href} />}
+  {hreflang?.zh && <link rel="alternate" hreflang="x-default" href={new URL(hreflang.zh, Astro.site).href} />}
+  {leaflet && <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />}
+  {leaflet && <script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>}
   <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script>
   <script is:inline>
     window.dataLayer = window.dataLayer || [];

@@ -3,6 +3,7 @@ import { getCollection } from 'astro:content';
 import type { APIContext } from 'astro';
 import sanitizeHtml from 'sanitize-html';
 import MarkdownIt from 'markdown-it';
+import { makeExcerpt } from '../../lib/seo';
 
 const md = new MarkdownIt();
 
@@ -11,7 +12,7 @@ export async function GET(context: APIContext) {
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
   const trackingBase = 'https://ursb.me/api/rss-track';
-  const FULL_TEXT_COUNT = 10;
+  const FULL_TEXT_COUNT = 50;
 
   return rss({
     title: "Airing 的博客",
@@ -19,7 +20,7 @@ export async function GET(context: APIContext) {
     site: context.site!,
     stylesheet: '/feed.xsl',
     items: posts.map((post, i) => {
-      const desc = post.data.description ?? '';
+      const desc = post.data.description || makeExcerpt(post.body ?? '');
       const pixel = `<img src="${trackingBase}?post=${encodeURIComponent(post.id)}" width="1" height="1" alt="" />`;
 
       let content: string;

@@ -24,6 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history — post dateModified (JSON-LD freshness) comes from git log.
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -111,3 +114,17 @@ jobs:
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             dist/ root@39.105.102.252:/var/www/ursb.me/
           rm -f ~/.ssh/deploy_key
+
+      - name: Ping IndexNow (Bing / AI search index)
+        # Submits all sitemap URLs so Bing-backed engines (incl. ChatGPT search,
+        # Copilot) pick up new/updated pages immediately. Failures are non-fatal.
+        continue-on-error: true
+        run: |
+          KEY=61393505e5fecda4e15503676ef607f0
+          urls=$(grep -o '<loc>[^<]*</loc>' dist/sitemap.xml | sed 's/<[^>]*>//g' | head -2000 | jq -R . | jq -s -c .)
+          count=$(echo "$urls" | jq 'length')
+          echo "Submitting $count URLs to IndexNow"
+          curl -s -X POST "https://api.indexnow.org/indexnow" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            -d "{\"host\":\"ursb.me\",\"key\":\"$KEY\",\"keyLocation\":\"https://ursb.me/$KEY.txt\",\"urlList\":$urls}" \
+            -w "\nHTTP %{http_code}\n"

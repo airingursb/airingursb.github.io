@@ -31,6 +31,7 @@ const enNoteSlugs = loadEnNoteSlugs();
 export default defineConfig({
   site: 'https://ursb.me',
   output: 'static',
+  trailingSlash: 'always',
   integrations: [mdx(), react()],
   markdown: {
     remarkPlugins: [remarkEmbed, [remarkWikilinks, { enNoteSlugs }]],

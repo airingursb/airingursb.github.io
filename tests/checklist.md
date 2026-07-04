@@ -20,6 +20,22 @@
 - [ ] DOM: `<meta property="og:url">` 存在
 - [ ] DOM: `<meta name="twitter:card">` 存在
 
+## SEO / GEO (2026-07-04)
+
+> 全站 SEO 强化：description 兜底、JSON-LD、hreflang、llms.txt、404、Leaflet 按需加载、字体自托管。
+
+- [ ] DOM: 任一博文页 `<meta name="description">` content 非空（frontmatter 或 excerpt 兜底）
+- [ ] DOM: 博文页 `og:description` / `twitter:description` 非空，`og:site_name` / `og:locale` / `article:published_time` / `article:tag` 存在
+- [ ] DOM: 博文页 JSON-LD `BlogPosting` 含非空 `description`，`dateModified` 来自 git（晚于或等于 `datePublished`）
+- [ ] DOM: 首页 JSON-LD `@graph` 含 `Person` + `WebSite`
+- [ ] DOM: notes 详情页有 `Article` JSON-LD 且 `<meta name="description">` 为 summary
+- [ ] DOM: 有英文版的页面 hreflang 为 `zh-CN` / `en` / `x-default` 三条，href 为绝对 URL
+- [ ] GET `/llms.txt` 返回 200，含全部博文列表
+- [ ] GET 不存在的路径渲染自定义 404 页（含首页/博客链接，meta robots noindex）
+- [ ] Evaluate: 博文页无 `unpkg.com/leaflet` 资源；`/workouts/`、`/photos/world/`、首页有且地图正常渲染
+- [ ] Evaluate: 博文页无 `fonts.googleapis.com` 请求，Noto Serif SC 从 `/_astro/*.woff2` 加载
+- [ ] GET `/blog/feed.xml` 前 50 条 item 有全文 `content:encoded`，所有 item description 非空
+
 ## Guestbook feed source links (Homepage `#guestbook`)
 
 > 站点级留言 feed 的「来自 …」链接。评论 `post_slug` 为博文时是裸 slug，为笔记时是 `note/<slug>`。

@@ -4,6 +4,7 @@ import { getCollection, render } from 'astro:content';
 import { getBacklinks } from '../../../lib/backlinks';
 import LangSwitch from '../../../components/LangSwitch.astro';
 import { tSite } from '../../../lib/i18n';
+import { getGitLastModified } from '../../../lib/seo';
 
 export async function getStaticPaths() {
   const notes = await getCollection('notesEn', ({ data }) => data.public && !data.draft);
@@ -46,8 +47,27 @@ const hreflang = hasZh ? {
   zh: new URL(`/notes/${note.id}/`, Astro.site).href,
   en: new URL(`/en/notes/${note.id}/`, Astro.site).href,
 } : undefined;
+
+const noteUrl = new URL(`/en/notes/${note.id}/`, Astro.site).href;
+const dateModified = getGitLastModified(`src/content/notes/en/${note.id}.mdx`);
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "Article",
+  "headline": note.data.title,
+  "description": note.data.summary,
+  "datePublished": new Date(note.data.date).toISOString(),
+  "dateModified": (dateModified ?? new Date(note.data.date)).toISOString(),
+  "author": { "@type": "Person", "name": "Airing", "url": "https://ursb.me" },
+  "publisher": { "@type": "Person", "name": "Airing", "url": "https://ursb.me" },
+  "url": noteUrl,
+  "mainEntityOfPage": { "@type": "WebPage", "@id": noteUrl },
+  "inLanguage": "en",
+  "image": `${Astro.site || 'https://ursb.me/'}og/en/notes/${note.id}.png`,
+  ...(note.data.tags.length > 0 ? { "keywords": note.data.tags.join(", ") } : {}),
+};
 ---
-<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} ogImage={`${Astro.site || 'https://ursb.me/'}og/en/notes/${note.id}.png`} ogType="article" lang="en" hreflang={hreflang}>
+<BaseLayout title={`${note.data.title} | ${s.siteTitle}`} description={note.data.summary} ogImage={`${Astro.site || 'https://ursb.me/'}og/en/notes/${note.id}.png`} ogType="article" lang="en" hreflang={hreflang}>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <div class="note-detail-page">
     <header class="masthead">
       <div class="mast-inner">

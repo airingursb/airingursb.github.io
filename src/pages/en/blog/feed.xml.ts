@@ -4,6 +4,7 @@ import type { APIContext } from 'astro';
 import sanitizeHtml from 'sanitize-html';
 import MarkdownIt from 'markdown-it';
 import { enPostSlug } from '../../../lib/i18n';
+import { makeExcerpt } from '../../../lib/seo';
 
 const md = new MarkdownIt();
 
@@ -12,7 +13,7 @@ export async function GET(context: APIContext) {
     .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
 
   const trackingBase = 'https://ursb.me/api/rss-track';
-  const FULL_TEXT_COUNT = 10;
+  const FULL_TEXT_COUNT = 50;
 
   return rss({
     title: "Airing's Blog (English)",
@@ -21,7 +22,7 @@ export async function GET(context: APIContext) {
     stylesheet: '/feed.xsl',
     items: posts.map((post, i) => {
       const slug = enPostSlug(post.id);
-      const desc = post.data.description ?? '';
+      const desc = post.data.description || makeExcerpt(post.body ?? '');
       const pixel = `<img src="${trackingBase}?post=${encodeURIComponent(slug)}" width="1" height="1" alt="" />`;
 
       let content: string;
