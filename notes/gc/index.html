@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="zh"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>一段内存的多重死亡 —— 11 个 GC 家族的家谱 | 思考的痕迹</title><meta name="description" content="Airing's Homepage - Software Engineer @ Singapore"><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta property="og:title" content="一段内存的多重死亡 —— 11 个 GC 家族的家谱 | 思考的痕迹"><meta property="og:description" content="Airing's Homepage - Software Engineer @ Singapore"><meta property="og:type" content="article"><link rel="canonical" href="https://ursb.me/notes/gc/"><meta property="og:url" content="https://ursb.me/notes/gc/"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="一段内存的多重死亡 —— 11 个 GC 家族的家谱 | 思考的痕迹"><meta name="twitter:description" content="Airing's Homepage - Software Engineer @ Singapore"><meta name="twitter:image" content="https://ursb.me/og/notes/gc.png"><meta property="og:image" content="https://ursb.me/og/notes/gc.png"><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/blog/feed.xml"><link rel="alternate" type="application/rss+xml" title="Airing's Blog (English)" href="/en/blog/feed.xml"><link rel="alternate" hreflang="zh" href="https://ursb.me/notes/gc/"><link rel="alternate" hreflang="en" href="https://ursb.me/en/notes/gc/"><link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"><script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
+<!DOCTYPE html><html lang="zh"> <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>一段内存的多重死亡 —— 11 个 GC 家族的家谱 | 思考的痕迹</title><meta name="description" content="同一行 list = null，在 CPython 里立刻释放、在 V8 里等下次 minor GC、在 ZGC 里 sub-ms 并发完成、在 Erlang 里整个进程死了才整体 free、在 Rust 里编译期就被 drop 了。20+ 个运行时跨语言 GC 比较——按算法家族分章，每章一个真实主线代码。"><meta name="keywords" content="airing, homepage, blog"><meta name="robots" content="index, follow"><meta name="author" content="Airing"><meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"><meta name="theme-color" content="#0d1117" media="(prefers-color-scheme: dark)"><meta property="og:title" content="一段内存的多重死亡 —— 11 个 GC 家族的家谱 | 思考的痕迹"><meta property="og:description" content="同一行 list = null，在 CPython 里立刻释放、在 V8 里等下次 minor GC、在 ZGC 里 sub-ms 并发完成、在 Erlang 里整个进程死了才整体 free、在 Rust 里编译期就被 drop 了。20+ 个运行时跨语言 GC 比较——按算法家族分章，每章一个真实主线代码。"><meta property="og:type" content="article"><meta property="og:site_name" content="Airing's Blog"><meta property="og:locale" content="zh_CN"><link rel="canonical" href="https://ursb.me/notes/gc/"><meta property="og:url" content="https://ursb.me/notes/gc/"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="一段内存的多重死亡 —— 11 个 GC 家族的家谱 | 思考的痕迹"><meta name="twitter:description" content="同一行 list = null，在 CPython 里立刻释放、在 V8 里等下次 minor GC、在 ZGC 里 sub-ms 并发完成、在 Erlang 里整个进程死了才整体 free、在 Rust 里编译期就被 drop 了。20+ 个运行时跨语言 GC 比较——按算法家族分章，每章一个真实主线代码。"><meta name="twitter:image" content="https://ursb.me/og/notes/gc.png"><meta property="og:image" content="https://ursb.me/og/notes/gc.png"><link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="icon" href="https://airing.ursb.me/image/favicon.ico"><link rel="alternate" type="application/rss+xml" title="Airing's Blog" href="/blog/feed.xml"><link rel="alternate" type="application/rss+xml" title="Airing's Blog (English)" href="/en/blog/feed.xml"><link rel="alternate" type="application/rss+xml" title="Airing's Notes" href="/notes/feed.xml"><link rel="alternate" type="application/rss+xml" title="Airing's Notes (English)" href="/en/notes/feed.xml"><link rel="sitemap" href="/sitemap.xml"><link rel="alternate" hreflang="zh-CN" href="https://ursb.me/notes/gc/"><link rel="alternate" hreflang="en" href="https://ursb.me/en/notes/gc/"><link rel="alternate" hreflang="x-default" href="https://ursb.me/notes/gc/"><script async src="https://www.googletagmanager.com/gtag/js?id=G-W604S49M4X"></script><script>
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
@@ -55,7 +55,7 @@
       hideEventTypeDetails: false,
       layout: "month_view"
     });
-  </script><script>
+  </script><script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"一段内存的多重死亡 —— 11 个 GC 家族的家谱","description":"同一行 list = null，在 CPython 里立刻释放、在 V8 里等下次 minor GC、在 ZGC 里 sub-ms 并发完成、在 Erlang 里整个进程死了才整体 free、在 Rust 里编译期就被 drop 了。20+ 个运行时跨语言 GC 比较——按算法家族分章，每章一个真实主线代码。","datePublished":"2026-05-17T00:00:00.000Z","dateModified":"2026-05-17T07:29:46.000Z","author":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"publisher":{"@type":"Person","name":"Airing","url":"https://ursb.me"},"url":"https://ursb.me/notes/gc/","mainEntityOfPage":{"@type":"WebPage","@id":"https://ursb.me/notes/gc/"},"inLanguage":"zh-CN","image":"https://ursb.me/og/notes/gc.png","keywords":"GC, 运行时, 内存, 编程语言, 性能工程"}</script><script>
     // Apply saved mode before render to prevent flash
     (function() {
       var userSet = localStorage.getItem('blog-mode-set');
@@ -72,10 +72,10 @@
         document.documentElement.setAttribute('data-mode', isBlog ? 'light' : 'dark');
       }
     })();
-  </script><link rel="stylesheet" href="/_astro/BaseLayout.CKZaRUGO.css">
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.CeU5UBqD.css">
 <style>.lang-switch[data-astro-cid-r2b4e7hz]{font-size:.85em;letter-spacing:.02em;white-space:nowrap}.lang-active[data-astro-cid-r2b4e7hz]{font-weight:700;color:var(--c-text, #1a1a1a)}.lang-sep[data-astro-cid-r2b4e7hz]{margin:0 .3em;color:var(--c-muted, #999)}.lang-link[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);text-decoration:none;transition:color .15s}.lang-link[data-astro-cid-r2b4e7hz]:hover{color:var(--c-text, #1a1a1a)}.lang-disabled[data-astro-cid-r2b4e7hz]{color:var(--c-muted, #999);opacity:.4;cursor:not-allowed}
 </style>
-<link rel="stylesheet" href="/_astro/_..CHnmr7Nk.css"></head> <body>  <div class="note-detail-page" data-astro-cid-5eggoaxc> <header class="masthead" data-astro-cid-5eggoaxc> <div class="mast-inner" data-astro-cid-5eggoaxc> <div class="mast-top-rule" data-astro-cid-5eggoaxc></div> <div class="mast-bar" data-astro-cid-5eggoaxc> <a href="/blog" class="mast-brand" data-astro-cid-5eggoaxc>Airing's Blog</a> <div class="mast-links" data-astro-cid-5eggoaxc> <a href="/blog" class="mast-hide-mobile" data-astro-cid-5eggoaxc>Blog</a> <a href="/moments" data-astro-cid-5eggoaxc>Moment</a> <a href="/notes" data-astro-cid-5eggoaxc>Notes</a> <a href="/photos" data-astro-cid-5eggoaxc>Photos</a> <a href="/friends" data-astro-cid-5eggoaxc>Friends</a> </div> </div> <div class="mast-lang-line" data-astro-cid-5eggoaxc> <span class="lang-switch" data-astro-cid-r2b4e7hz> <strong class="lang-active" data-astro-cid-r2b4e7hz>中</strong> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <a href="/en/notes/gc" class="lang-link" data-lang-switch="en" data-astro-cid-r2b4e7hz>EN</a> </span>  <script>
+<link rel="stylesheet" href="/_astro/_..CHnmr7Nk.css"></head> <body>   <div class="note-detail-page" data-astro-cid-5eggoaxc> <header class="masthead" data-astro-cid-5eggoaxc> <div class="mast-inner" data-astro-cid-5eggoaxc> <div class="mast-top-rule" data-astro-cid-5eggoaxc></div> <div class="mast-bar" data-astro-cid-5eggoaxc> <a href="/blog" class="mast-brand" data-astro-cid-5eggoaxc>Airing's Blog</a> <div class="mast-links" data-astro-cid-5eggoaxc> <a href="/blog" class="mast-hide-mobile" data-astro-cid-5eggoaxc>Blog</a> <a href="/moments" data-astro-cid-5eggoaxc>Moment</a> <a href="/notes" data-astro-cid-5eggoaxc>Notes</a> <a href="/photos" data-astro-cid-5eggoaxc>Photos</a> <a href="/friends" data-astro-cid-5eggoaxc>Friends</a> </div> </div> <div class="mast-lang-line" data-astro-cid-5eggoaxc> <span class="lang-switch" data-astro-cid-r2b4e7hz> <strong class="lang-active" data-astro-cid-r2b4e7hz>中</strong> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <a href="/en/notes/gc" class="lang-link" data-lang-switch="en" data-astro-cid-r2b4e7hz>EN</a> </span>  <script>
   // Persist language preference on click
   document.querySelectorAll('[data-lang-switch]').forEach(function(el) {
     el.addEventListener('click', function() {
@@ -292,6 +292,7 @@
       var mark = document.createElement('mark');
       mark.className = 'comment-highlight';
       mark.dataset.commentId = id;
+      mark.id = 'inline-' + id; // deep-link target for the guestbook feed
       try { range.surroundContents(mark); }
       catch(e) {
         var fragment = range.extractContents();
@@ -345,6 +346,21 @@
         if (!c.selected_text) return;
         var range = findRangeByText(postContent, c.selected_text);
         if (range) wrapRange(range, c.id);
+      });
+    }
+
+    // Deep-link support: /notes/foo#inline-<id> (from the homepage guestbook feed)
+    // scrolls to and flashes that highlight once it has been painted.
+    function scrollToHashHighlight() {
+      if (!postContent) return;
+      var m = /^#inline-(\d+)$/.exec(location.hash || '');
+      if (!m) return;
+      var mark = postContent.querySelector('mark[data-comment-id="' + m[1] + '"]');
+      if (!mark) return;
+      requestAnimationFrame(function() {
+        mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        mark.classList.add('highlight-flash');
+        setTimeout(function() { mark.classList.remove('highlight-flash'); }, 1200);
       });
     }
 
@@ -975,6 +991,7 @@
       inlineComments = res.comments || [];
       restoreHighlights();
       renderInlineComments();
+      scrollToHashHighlight();
     });
 
     loadArticleLikes();
