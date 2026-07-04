@@ -2,7 +2,7 @@
 title: "On the Value of Existence and the Experience of Life"
 date: 2021-07-11
 tags: ["essays"]
-description: ""
+description: "Explores the existentialist question of life's meaning and the collapse of assigned value, offering practices for living fully, from ordinariness to connection."
 cover: "https://airing.ursb.me/image/blog/20210711-05.jpeg"
 ---
 

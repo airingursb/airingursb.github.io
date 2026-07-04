@@ -2,7 +2,7 @@
 title: "Weekly #27: A New Way of Living"
 date: 2024-10-30
 tags: ["weekly"]
-description: ""
+description: "Reflects on leaving Shenzhen for Dali to build the AI mental-wellness startup MoFlow with a six-person team, and on tools for remote collaboration."
 cover: "https://i.typlog.com/airing/8269801518_539572.jpg?x-oss-process=style/l"
 ---
 

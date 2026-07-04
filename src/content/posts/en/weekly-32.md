@@ -2,7 +2,7 @@
 title: "Weekly #32: A Sun Yat-sen University Alumni Interview"
 date: 2025-08-16
 tags: ["weekly"]
-description: ""
+description: "Shares an alumni interview with Sun Yat-sen University's Philosophy Department on why the author chose philosophy, and how it shaped his tech career."
 cover: "https://i.typlog.com/airing/8244677714_260533.jpg?x-oss-process=style/l"
 ---
 

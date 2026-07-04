@@ -2,7 +2,7 @@
 title: "Farewell, My College Years"
 date: 2017-04-16
 tags: ["annually"]
-description: ""
+description: "A farewell to four years at Guangzhou University: from gaming and tech to philosophy after a health scare, ending in admission to a philosophy graduate program."
 ---
 
 Since starting my graduate school entrance exam prep last September, I've rarely updated this blog — I got used to keeping my thoughts to myself. But standing at the edge of graduation, there are things I need to say out loud, as an offering to the four years now slipping behind me.

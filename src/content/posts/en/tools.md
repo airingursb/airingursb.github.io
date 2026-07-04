@@ -2,7 +2,7 @@
 title: "Personal Toolkit and Gear Recommendations"
 date: 2024-03-29
 tags: ["tech"]
-description: ""
+description: "A rundown of the author's personal tech stack, from MacBook, iPhone, and HHKB keyboard hardware picks to the Raycast, HeptaBase, Readwise, Todoist, and Fantastical software he actually relies on daily."
 cover: "https://i.typlog.com/airing/8288290040_537382.jpg?x-oss-process=style/l"
 ---
 

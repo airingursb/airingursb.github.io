@@ -2,7 +2,7 @@
 title: "Weekly #25: Love Concrete People"
 date: 2024-03-17
 tags: ["weekly"]
-description: ""
+description: "A written version of an internal TED talk arguing that engineering quality assurance should treat user feedback as coming from real people, not just metrics."
 ---
 
 This issue is a record of and reflection on life from January to March 2024.

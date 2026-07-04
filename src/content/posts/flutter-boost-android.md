@@ -2,7 +2,7 @@
 title: "Flutter Boost 混合开发实践与源码解析"
 date: 2020-03-07
 tags: ["tech"]
-description: ""
+description: "介绍闲鱼团队开源的 Flutter Boost 混合开发框架，解析其基于共享引擎实现的容器通信机制、页面生命周期管理与路由栈方案的源码原理。"
 ---
 
 ## 1. 简介

@@ -2,7 +2,7 @@
 title: "WWDC19 游记"
 date: 2019-06-13
 tags: ["annually"]
-description: ""
+description: "记录作为 Scholar 亲赴美国参加 WWDC19 的旅行见闻，涵盖航班波折、圣何塞与硅谷见闻、结识编程启蒙老师与网红博主的经历，以及对成长、梦想与人生意义的感悟。"
 ---
 
 # WWDC19 游记

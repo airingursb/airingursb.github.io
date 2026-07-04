@@ -2,7 +2,7 @@
 title: "2023: Escaping the Drift"
 date: 2024-01-14
 tags: ["annually"]
-description: ""
+description: "A 2023 year in review: near-resignation amid burnout, then a transfer into Cocos and iOS/Android work with a promotion, a new relationship, and a blog migration."
 cover: "https://airing.ursb.me/image/blog/2023/WechatIMG76.jpg"
 ---
 

@@ -2,7 +2,7 @@
 title: "Chromium 渲染流水线——字节码到像素的一生"
 date: 2022-10-16
 tags: ["tech"]
-description: ""
+description: "剖析 Chromium 浏览器架构与进程模型，梳理 Blink、V8 等渲染与脚本引擎的演化脉络，并逐层拆解 Render Process 中主线程、合成线程等模块在渲染流水线中的具体职责。"
 featured: false
 cover: "https://airing.ursb.me/images/blog/chromium/20221016112818.png"
 ---

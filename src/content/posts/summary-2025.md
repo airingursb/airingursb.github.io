@@ -2,7 +2,7 @@
 title: "2025，全新旅途"
 date: 2026-02-15
 tags: ["annually"]
-description: ""
+description: "记录2025年移居新加坡后的生活与工作变化：MoFlow进入维护模式、加入TikTok业务并首次带团队、经历肾结石重症就医，以及Tana、NotebookLM、Claude Code、OpenClaw等AI工具构建的学习与自动化体系。"
 cover: "https://airing.ursb.me/image/blog/wj30/IMG_7379.jpeg"
 ---
 

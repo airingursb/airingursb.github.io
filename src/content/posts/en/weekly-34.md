@@ -2,7 +2,7 @@
 title: "Weekly #34: The Joy of Making Things"
 date: 2026-04-05
 tags: ["weekly"]
-description: ""
+description: "Documents a month of building with Claude Code: a blog rebuilt in a weekend, a finance app shipped in two hours, and how AI amplifies the joy of creating."
 cover: "https://airing.ursb.me/image/blog/wj34/2026-04-05.jpg"
 ---
 

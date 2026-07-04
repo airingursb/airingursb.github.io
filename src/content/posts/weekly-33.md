@@ -2,7 +2,7 @@
 title: "月刊（第33期）：推理阶梯"
 date: 2025-11-15
 tags: ["weekly"]
-description: ""
+description: "介绍「推理阶梯」概念，剖析人类感知信息、赋予意义、形成信念直至采取行动的七个步骤及其局限，主张放低价值预设以更包容地体验世界，并附本期旅行与书影音记录。"
 cover: "https://airing.ursb.me/image/blog/wj33/B0000514HEIC1760766420-1.jpg"
 ---
 

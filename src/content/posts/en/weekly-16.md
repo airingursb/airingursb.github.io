@@ -2,7 +2,7 @@
 title: "Weekly #16: My Personal Information Feed"
 date: 2022-12-03
 tags: ["weekly"]
-description: ""
+description: "Weekly #16 diagrams a personal information-feed pipeline: Inoreader subscriptions with keyword alerts, Reeder reading shortcuts, and Readwise highlights syncing into Logseq and Obsidian."
 cover: "https://airing.ursb.me/image/blog/%E4%BF%A1%E6%81%AF%E6%B5%81%E5%88%86%E4%BA%AB@2x.png"
 ---
 

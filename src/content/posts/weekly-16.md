@@ -2,7 +2,7 @@
 title: "月刊（第16期）：个人信息流分享"
 date: 2022-12-03
 tags: ["weekly"]
-description: ""
+description: "第16期月刊图解作者的个人信息流管理方案，从Inoreader订阅、关键词监控自动推送，到Reeder快捷键阅读、Readwise划线标注同步至Logseq和Obsidian笔记的完整流程。"
 cover: "https://airing.ursb.me/image/blog/%E4%BF%A1%E6%81%AF%E6%B5%81%E5%88%86%E4%BA%AB@2x.png"
 ---
 

@@ -2,7 +2,7 @@
 title: "月刊（第24期）：十年编程之路"
 date: 2023-11-09
 tags: ["weekly"]
-description: ""
+description: "回顾自二〇一四年起十年编程历程,从VB、Java Swing到Web前端、iOS、Flutter与游戏渲染的技术变迁,总结以热爱为核心、项目驱动学习并注重沉淀的经验。"
 cover: "https://airing.ursb.me/images/blog/20231213215330%402x%20%281%29.png"
 ---
 

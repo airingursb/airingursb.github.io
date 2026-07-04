@@ -2,7 +2,7 @@
 title: "Analysis of 60,000 Douban Movies"
 date: 2017-01-16
 tags: ["tech"]
-description: ""
+description: "An analysis of over 60,000 scraped Douban Movie entries, comparing rating distributions between Chinese films and those from other countries, examining claims of a rating credibility crisis."
 ---
 
 ## Preface

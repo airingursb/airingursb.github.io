@@ -2,7 +2,7 @@
 title: "Flutter Exception Handling: Canary Rollout and Graceful Degradation"
 date: 2021-02-18
 tags: ["tech"]
-description: ""
+description: "A rundown of Flutter exception types and capture methods, followed by a canary rollout and graceful degradation scheme designed to improve production stability for Flutter apps."
 ---
 
 ## 1. Flutter Exception Overview

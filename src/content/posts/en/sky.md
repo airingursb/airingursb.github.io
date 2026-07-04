@@ -2,7 +2,7 @@
 title: "The 'Zen' of Sky: Children of the Light"
 date: 2020-10-08
 tags: ["essays"]
-description: ""
+description: "An essay reading the game Sky: Children of the Light through aesthetics, psychology, hermeneutics, and existentialism, examining its art, gameplay, and social design."
 ---
 
 ## Introduction

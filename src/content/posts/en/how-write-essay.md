@@ -2,7 +2,7 @@
 title: "My Approach to Reading Papers and Writing Essays"
 date: 2019-02-07
 tags: ["essays"]
-description: ""
+description: "Personal reflections on reading academic literature and writing essays, breaking the process into five phases — collection, reading, study, construction, and writing — for readers to reference."
 ---
 
 This post records a few of my thoughts on reading academic literature. I want to be upfront: obsessing over "methods" — whether for literature reading or essay writing — is counterproductive. What matters most is putting in the work to actually read and think. Also, this approach may not suit everyone; each person should develop their own rhythm. I hope this gives you a few useful ideas for building a process that works for you.

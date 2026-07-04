@@ -2,7 +2,7 @@
 title: "月刊（第29期）：新生活"
 date: 2025-04-18
 tags: ["weekly"]
-description: ""
+description: "记录从TME离职后六个月Gap期的完整规划与选择：一边推进MoFlow创业方向，一边求职拿到TikTok与Bilibili两份offer，最终告别深圳、赴新加坡入职TikTok，开启异国新生活。"
 cover: "https://i.typlog.com/airing/8255042074_972041.png?x-oss-process=style/l"
 ---
 

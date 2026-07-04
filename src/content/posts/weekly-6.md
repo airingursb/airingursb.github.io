@@ -2,7 +2,7 @@
 title: "周刊（第6期）：沟通艺术中的知觉检核"
 date: 2022-06-11
 tags: ["weekly"]
-description: ""
+description: "探讨《沟通的艺术》中的知觉检核概念，分析知觉差异如何在沟通中制造噪声与情绪干扰，并推荐输入法切换工具 Input Source Pro、生词插件 Relingo 及 Snipaste、Shottr、CleanShot X 等截图软件。"
 ---
 
 ## 沟通艺术中的知觉检核

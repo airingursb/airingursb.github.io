@@ -2,7 +2,7 @@
 title: "Weekly #35: Vibe Coding Weekends with Professor Claude"
 date: 2026-05-23
 tags: ["weekly"]
-description: ""
+description: "Recaps six weekends of vibe coding: new blog modules, a comics pipeline, the MoneyWise finance app, fourteen immersive tech essays, and a self-made language, Penelope."
 cover: "https://r2.airingdeng.com/blog/wj35/multitask-phone.webp"
 ---
 

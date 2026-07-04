@@ -2,7 +2,7 @@
 title: "月刊（第27期）：旅居"
 date: 2024-10-30
 tags: ["weekly"]
-description: ""
+description: "记录作者告别深圳、旅居大理创业的经历：组建六人团队研发AI心理产品MoFlow，并复盘用Slack、Loom、Linear搭建远程协作流程，附本期生活点滴与书影音。"
 cover: "https://i.typlog.com/airing/8269801518_539572.jpg?x-oss-process=style/l"
 ---
 

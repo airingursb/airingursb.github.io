@@ -2,7 +2,7 @@
 title: "Weekly #9: From High Efficiency to High Drain — Observations and Reflections"
 date: 2022-07-03
 tags: ["weekly"]
-description: ""
+description: "On how chasing efficiency in the mobile-internet era turns into exhaustion and self-denial, arguing for slowing down, plus picks on a social-trends report and the Muse 2.0 app."
 ---
 
 ## From High Efficiency to High Drain — Observations and Reflections

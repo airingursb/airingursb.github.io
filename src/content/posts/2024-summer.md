@@ -2,7 +2,7 @@
 title: "再见了，盛夏"
 date: 2024-08-31
 tags: ["annually"]
-description: ""
+description: "记录作者从大厂裸辞的心路历程，结合自身在腾讯音乐五年的职业经历，借鹅笼、幸福与勇气三个意象，探讨工作的目的、世俗成功的规训与生命意义的追寻。"
 cover: "https://airing.ursb.me/images/blog/2024/life.jpg"
 ---
 

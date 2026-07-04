@@ -2,7 +2,7 @@
 title: "如何有效沟通——从《齐物论》立场问题切入"
 date: 2021-03-09
 tags: ["essays"]
-description: ""
+description: "从《齐物论》中的立场问题切入，借助推理阶梯模型分析沟通中态度与判断的形成机制，探讨达成有效沟通与共识的方法。"
 ---
 
 本文从李巍老师的论文[《立场问题与齐物主旨——被忽视的庄子“因是”说》](https://kns.cnki.net/kcms/detail/detail.aspx?filename=HDZS201504013&dbcode=CJFQ&dbname=CJFD2015&v=uzM7%mmd2BYGLC7ApQnaJt3SgLAy6BRpgmzE2lNQkqMrI39NIyrYl38ty2GR3Qfs7bTQo) 切入，展开立场问题，分析沟通中涉及到的态度与判断，借助推理阶梯模型，寻求有效沟通达成共识的方法。

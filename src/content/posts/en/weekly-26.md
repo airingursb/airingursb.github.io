@@ -2,7 +2,7 @@
 title: "Weekly #26: The Journey"
 date: 2024-05-07
 tags: ["weekly"]
-description: ""
+description: "A travel diary of a nine-day New Zealand road trip in April 2024, from Christchurch to Wanaka and Queenstown, with alpaca farms, the Milky Way, and paragliding."
 cover: "https://airing.ursb.me/image/blog/wj26/queenstown.jpg"
 ---
 

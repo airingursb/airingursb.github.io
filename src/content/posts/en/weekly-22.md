@@ -2,7 +2,7 @@
 title: "Weekly #22: The Joy of the Present"
 date: 2023-08-13
 tags: ["weekly"]
-description: ""
+description: "Reflects on finding joy amid pressure by cherishing the present, alongside a rough stretch of illness, a switch to iOS development, and moving house."
 ---
 
 This issue is a record of and reflection on life from May to August 2023.

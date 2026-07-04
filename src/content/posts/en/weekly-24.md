@@ -2,7 +2,7 @@
 title: "Weekly #24: Ten Years of Programming"
 date: 2023-11-09
 tags: ["weekly"]
-description: ""
+description: "Traces a decade of programming from 2014 to 2023, from VB and Java Swing through web frontend, iOS, and Flutter, and distills lessons on love-driven learning."
 cover: "https://airing.ursb.me/images/blog/20231213215330%402x%20%281%29.png"
 ---
 

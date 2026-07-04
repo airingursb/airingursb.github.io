@@ -2,7 +2,7 @@
 title: "周刊（第3期）：花束般的恋爱"
 date: 2022-05-21
 tags: ["weekly"]
-description: ""
+description: "借电影《花束般的恋爱》，写给刚结束的一段20.5天恋情的告别信，探讨爱情的本质、为何需要爱情、维系亲密关系的纽带，以及失去爱情后该如何自处。"
 cover: "https://airing.ursb.me/image/blog/20220522012103.png"
 ---
 

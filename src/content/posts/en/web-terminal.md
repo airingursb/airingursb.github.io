@@ -2,7 +2,7 @@
 title: "Web-Based Terminal Blog System"
 date: 2018-08-30
 tags: ["tech"]
-description: ""
+description: "Walks through building a web-based terminal-emulator blog, covering the Mac Terminal-styled UI, keydown-driven rendering logic, and commands like help, clear, and ls backed by a Node.js API."
 ---
 
 A while back I built a fun terminal emulator page: [http://ursb.me/terminal/](http://ursb.me/terminal/) (desktop only — no mobile layout). It works as a personal blog system and doubles as a learning tool for Linux terminal commands. Sharing it here!

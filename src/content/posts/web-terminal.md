@@ -2,7 +2,7 @@
 title: "Web 模拟终端博客系统"
 date: 2018-08-30
 tags: ["tech"]
-description: ""
+description: "介绍一个模拟Mac终端界面的Web博客系统，讲解如何用HTML、CSS与JavaScript实现命令输入与渲染逻辑，以及help、clear、ls等命令背后的前端交互与后端接口设计思路。"
 ---
 
 前段时间做了一个非常有意思的模拟终端的展示页：[http://ursb.me/terminal/](http://ursb.me/terminal/)（没有做移动端适配，请在PC端访问），这个页面非常有意思，它可以作为个人博客系统或者给 Linux 初学者学习终端命令，现分享给大家~

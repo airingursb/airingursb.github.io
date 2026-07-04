@@ -2,7 +2,7 @@
 title: "React Hooks Source Deep Dive (3): useState"
 date: 2019-11-09
 tags: ["tech"]
-description: ""
+description: "Third in a React Hooks source-code series, focused on useState: its usage and rules, building a minimal implementation before dissecting the React source."
 ---
 
 > - React source version: v16.11.0

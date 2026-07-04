@@ -2,7 +2,7 @@
 title: "The Life of a Game Component: From Load to Screen"
 date: 2025-05-17
 tags: ["tech"]
-description: ""
+description: "An analysis of how mini-game containers cooperate with game engines, tracing a game component's full lifecycle from script loading and rendering context through to final on-screen display."
 featured: false
 cover: "https://airing.ursb.me/images/blog/game-engine/image%2072.png"
 ---

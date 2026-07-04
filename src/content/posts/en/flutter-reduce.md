@@ -2,7 +2,7 @@
 title: "Flutter Build Artifact Analysis and Size Reduction"
 date: 2021-05-01
 tags: ["tech"]
-description: ""
+description: "A two-part look at Flutter build artifact composition and size-reduction techniques, covering the principles, methods, and implementation details for slimming down iOS and Android Flutter apps."
 cover: "https://airing.ursb.me/image/blog/media/16185655225058/16185655375361.jpg"
 ---
 

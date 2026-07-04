@@ -2,7 +2,7 @@
 title: "2018: Settling Into First Principles"
 date: 2019-02-03
 tags: ["annually"]
-description: ""
+description: "A 2018 year in review: an internship turned job offer at QQ Music, a philosophy thesis, building the indie app Twin Diary, and a breakup."
 ---
 
 I hadn't planned to write a year-in-review post, but I've hit a wall on my thesis and my mind has gone blank. Maybe writing about something else will unstick it.

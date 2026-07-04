@@ -2,7 +2,7 @@
 title: "前端安全 | XSS 的攻击手段与防范"
 date: 2019-04-07
 tags: ["tech"]
-description: ""
+description: "系统讲解反射型、存储型、DOM 型与 JSONP 型四类 XSS 跨站脚本攻击手段的原理与代码示例，并总结输入输出转义、CSP 安全头、HttpOnly Cookie 等前端安全防御方案。"
 ---
 
 ## 1. XSS 的攻击手段

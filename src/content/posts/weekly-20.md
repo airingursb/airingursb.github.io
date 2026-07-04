@@ -2,7 +2,7 @@
 title: "月刊（第20期）：重启人生"
 date: 2023-04-02
 tags: ["weekly"]
-description: ""
+description: "记录二〇二三年三月生活,重点评述日剧《重启人生》的细腻真实与温暖内核,兼谈《最后生还者》《黑暗荣耀》等剧集观感,以及打羽毛球、骑车通勤等日常琐事。"
 cover: "https://airing.ursb.me/images/blog/20230402165118.png"
 ---
 

@@ -2,7 +2,7 @@
 title: "周刊（第4期）：个人博客演变史"
 date: 2022-05-27
 tags: ["weekly"]
-description: ""
+description: "回顾个人博客十余年历程：从 Wordpress、Hexo、Typecho 到用 Hugo 搭建独立周刊站的四次技术迁移，并推荐讲解浏览器原理的系列文章、CSS Triggers、悬疑小说《恶意》及番剧《间谍过家家》。"
 ---
 
 ## 个人博客演变史

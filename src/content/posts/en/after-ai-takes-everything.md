@@ -2,7 +2,7 @@
 title: "After AI Takes Everything"
 date: 2026-06-12
 tags: ["essays"]
-description: ""
+description: "Prompted by letters from three engineers, the author asks what remains for humans as AI takes over execution, naming judgment, taste, and derivation as irreplaceable, and warns against the erosion of subjecthood."
 cover: "https://r2.airingdeng.com/blog/aae/cover.webp"
 ---
 

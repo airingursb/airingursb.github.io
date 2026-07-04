@@ -2,7 +2,7 @@
 title: "月刊（第35期）：我和 Claude 老师 Vibe Coding 的周末"
 date: 2026-05-23
 tags: ["weekly"]
-description: ""
+description: "记录六个周末疯狂Vibe Coding的成果：博客新增运动与摄影模块及漫画流水线、记账App MoneyWise多端上架、写出14篇沉浸式技术长文、自制编程语言Penelope，以及正在打造的活的像素世界与3D禅意游戏。"
 cover: "https://r2.airingdeng.com/blog/wj35/multitask-phone.webp"
 ---
 

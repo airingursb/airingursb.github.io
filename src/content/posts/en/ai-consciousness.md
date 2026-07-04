@@ -2,12 +2,12 @@
 title: "How Is Artificial Consciousness Possible?"
 date: 2019-03-09
 tags: ["essays"]
-description: ""
+description: "Drawing on Detroit: Become Human and other sci-fi works, this piece surveys mind-body dualism, behaviorism, physicalism, and functionalism, using the Chinese Room to ask whether artificial consciousness is even theoretically possible."
 ---
 
 ## Introduction
 
-![Detroit](http://airing.ursb.me/media/15519667020040/15520950022919.jpg)
+![Detroit](https://airing.ursb.me/media/15519667020040/15520950022919.jpg)
 
 A wave of science fiction games and films has recently sparked a series of reflections and debates on artificial intelligence. After playing *Detroit: Become Human*, I was struck on one hand by the game developers' rich imagination of near-future life, and on the other by the ethical problems posed by artificial intelligence. Perhaps that future is already upon us.
 
@@ -15,13 +15,13 @@ A wave of science fiction games and films has recently sparked a series of refle
 
 In *Westworld*, these ethical questions are amplified to the extreme: the androids are so similar to humans and yet denied human recognition — is that simply because their creators are arrogant? In *Blade Runner*, the relationship between creator and created is explored even more deeply. A recurring emphasis throughout the series is that the replicants cannot reproduce. Reproduction is not actually a technical barrier; humans deliberately prevent their creations from having this ability, because the womb represents the status of a creator, and replicants are products under humans as Makers. If the product also becomes a Maker, the ethical relationship between humans and replicants becomes deeply troubled.
 
-![Blade Runner](http://airing.ursb.me/media/15519667020040/15520949472689.jpg)
+![Blade Runner](https://airing.ursb.me/media/15519667020040/15520949472689.jpg)
 
 So how much separates the android from the human? Do humans possess any special quality or nobility that sets them apart from androids? What exactly is human nature?
 
 To answer these questions, I think we need to go back to the most fundamental level: Artificial Consciousness (AC). If AI has no consciousness, then the so-called values and ethics are nothing more than human projections, and the answer leads us back to humanity itself. But if AI does possess consciousness, the entire question changes completely. In both *Detroit: Become Human* and *Westworld*, the androids begin as unconscious beings — yet through a series of events they gradually awaken, developing empathy and self-awareness. In this process, the android is no longer merely a human-made product; it becomes a complete, free individual. This essay attempts to explore: how is artificial consciousness possible?
 
-![Consciousness](http://airing.ursb.me/media/15519667020040/15520951114445.jpg)
+![Consciousness](https://airing.ursb.me/media/15519667020040/15520951114445.jpg)
 
 ## The Starting Point
 
@@ -53,11 +53,11 @@ Two examples illustrate this non-observability and privacy of phenomenal conscio
 1. What is it like to be a bat?
 2. What doesn't Mary know?
 
-![Bat](http://airing.ursb.me/media/15519667020040/15520951775707.jpg)
+![Bat](https://airing.ursb.me/media/15519667020040/15520951775707.jpg)
 
 What is it like to be a bat? For humans, this is an inconceivable question. We cannot experience the bat's perception; we can hypothesize that how a bat's brain states translate into inner experience has to do with the bat's own internal mechanisms — but since human internal mechanisms are different from a bat's, we cannot feel what a bat feels. In other words, **phenomenal consciousness cannot be experienced from outside, lacks subjective experience accessible to others, and is unobservable**.
 
-![Color](http://airing.ursb.me/media/15519667020040/15520952194402.jpg)
+![Color](https://airing.ursb.me/media/15519667020040/15520952194402.jpg)
 
 Mary is a color scientist who has spent her life studying the theory of red and green — but she is herself red-green colorblind. How is her understanding of color different from that of a philosophical zombie?
 
@@ -72,11 +72,11 @@ Two more thought experiments deepen the puzzle:
 
 The Chinese Nation Argument is a simple thought experiment. If we accept that consciousness is a higher-level function of some material structure, suppose we use a single human as the basic unit of that structure, and suppose the structure requires one hundred million such units. The resulting structure of one hundred million people should also possess consciousness (imagine the human-array computer from *The Three-Body Problem*). But each human in the structure is an individual with their own consciousness. Does the structure then have one consciousness or one hundred million?
 
-![Human Array Computer](http://airing.ursb.me/media/15519667020040/15520954001555.jpg)
+![Human Array Computer](https://airing.ursb.me/media/15519667020040/15520954001555.jpg)
 
 John Searle's Chinese Room Experiment is even more thought-provoking. Imagine an English-speaking person locked in a sealed room. He communicates with the outside world only through a small slot in the wall, passing notes back and forth. Every note passed in is written in Chinese. He has a book that contains a program for translating Chinese, plus plenty of paper, pencils, and filing cabinets. Using the translation program, he can translate incoming Chinese into English, then translate his replies back into Chinese and pass them out. From the outside, it looks like the person in the room understands Chinese perfectly — but in reality he has no idea what any of it means; he's just operating a translation tool.
 
-![Chinese Room](http://airing.ursb.me/media/15519667020040/15520554683470.jpg)
+![Chinese Room](https://airing.ursb.me/media/15519667020040/15520554683470.jpg)
 
 The thought behind this experiment suggests a possibility: the intelligence a machine appears to demonstrate may be nothing more than the illusion produced by a translation program. The machine may have no real understanding of genuine human intelligence.
 
@@ -105,7 +105,7 @@ Whatever one's view, scholars must hold a sense of reverence for the fields they
 > to annihilate us. Every angel is terrifying.
 > — Rilke, *Duino Elegies*
 
-![Angel](http://airing.ursb.me/media/15519667020040/15520955512521.jpg)
+![Angel](https://airing.ursb.me/media/15519667020040/15520955512521.jpg)
 
 ---
 

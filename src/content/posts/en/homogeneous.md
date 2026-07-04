@@ -2,7 +2,7 @@
 title: "How to Communicate Effectively — Through the Lens of Zhuangzi's Qiwulun"
 date: 2021-03-09
 tags: ["essays"]
-description: ""
+description: "Starting from the problem of standpoints in Zhuangzi's Qiwulun, this essay uses the Ladder of Inference to analyze how attitudes and judgments form in communication, seeking effective consensus."
 ---
 
 This essay takes its starting point from Professor Li Wei's paper [*The Problem of Standpoints and the Central Message of Qiwulun — Zhuangzi's Overlooked Doctrine of "Yinshi"*](https://kns.cnki.net/kcms/detail/detail.aspx?filename=HDZS201504013&dbcode=CJFQ&dbname=CJFD2015&v=uzM7%mmd2BYGLC7ApQnaJt3SgLAy6BRpgmzE2lNQkqMrI39NIyrYl38ty2GR3Qfs7bTQo), exploring the problem of standpoints, examining the attitudes and judgments involved in communication, and — with the help of the Ladder of Inference model — searching for methods of effective communication that can lead to genuine shared understanding.

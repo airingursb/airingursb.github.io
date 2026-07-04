@@ -2,7 +2,7 @@
 title: "Frontend Security | XSS Attack Techniques and Prevention"
 date: 2019-04-07
 tags: ["tech"]
-description: ""
+description: "A technical rundown of reflected, stored, DOM-based, and JSONP XSS attacks with examples, plus defenses covering input/output escaping, CSP headers, and HttpOnly cookies."
 ---
 
 ## 1. XSS Attack Techniques

@@ -2,7 +2,7 @@
 title: "Flutter 核心原理与混合开发模式"
 date: 2020-06-30
 tags: ["tech"]
-description: ""
+description: "从 Flutter 的绘制原理与整体架构出发，对比三种主流跨端方案的实现思路，并系统梳理四种 Flutter 混合开发模式的原理与工程化探索经验。"
 ---
 
 在 「Fan 直播」的 Flutter 混合开发实践中，我们总结了一些 Flutter 混合开发的经验特此分享。本文将从 Flutter 原理出发，详细介绍 Flutter 的绘制原理，借由此来对比三种跨端方案；之后再进入第三篇章 Flutter 混合开发模式的讲解，主要是四种不同的 Flutter 混合模式的原理分析；最后简单分享一下混合工程的工程化探索。

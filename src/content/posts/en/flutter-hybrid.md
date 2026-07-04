@@ -2,7 +2,7 @@
 title: "Exploring Flutter Hybrid Development Framework Patterns"
 date: 2020-04-18
 tags: ["tech"]
-description: ""
+description: "An analysis of the core capabilities a Flutter hybrid framework needs, such as navigation stack and lifecycle management, examined through Flutter Boost, Thrio, and QFlutter architectures."
 ---
 
 Google's official Flutter hybrid development support is quite minimal — it only lets you open a single Flutter View, without route parameter passing, unified lifecycle management, or navigation stack control that real production work requires. Third-party hybrid frameworks like Flutter Boost, Thrio, and QFlutter fill this gap. This post explores the purpose, architecture, and source code of these frameworks.

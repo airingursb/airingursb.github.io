@@ -2,7 +2,7 @@
 title: "Weekly #30: Written on My 30th Birthday"
 date: 2025-06-29
 tags: ["weekly"]
-description: ""
+description: "Written on the author's 30th birthday, reflecting on a decade of study, career changes, and moving abroad, and on resisting calcifying into repetition of the past."
 cover: "https://i.typlog.com/airing/8248959215_895375.jpg?x-oss-process=style/l"
 ---
 

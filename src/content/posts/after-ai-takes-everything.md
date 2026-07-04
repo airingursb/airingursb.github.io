@@ -2,7 +2,7 @@
 title: "当 AI 拿走一切之后"
 date: 2026-06-12
 tags: ["essays"]
-description: ""
+description: "从三位读者的困惑出发，探讨 AI 逐步取代执行环节后人类还剩下什么，提出判断力、品味与推演三种难以被替代的能力，并反思认知外包对个体主体性的侵蚀。"
 cover: "https://r2.airingdeng.com/blog/aae/cover.webp"
 ---
 

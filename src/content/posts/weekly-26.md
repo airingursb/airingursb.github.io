@@ -2,7 +2,7 @@
 title: "月刊（第26期）：旅途"
 date: 2024-05-07
 tags: ["weekly"]
-description: ""
+description: "记录二〇二四年四月新西兰九天自驾游历程,途经基督城、瓦纳卡、皇后镇等地,体验羊驼牧场、银河夜空与滑翔伞,并记述当月晋升T11的工作进展。"
 cover: "https://airing.ursb.me/image/blog/wj26/queenstown.jpg"
 ---
 

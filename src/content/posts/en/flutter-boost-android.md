@@ -2,7 +2,7 @@
 title: "Flutter Boost Hybrid Development: Practice and Source Code Walkthrough"
 date: 2020-03-07
 tags: ["tech"]
-description: ""
+description: "An overview of Flutter Boost, Xianyu's open-source Flutter hybrid framework, walking through its shared-engine architecture, page lifecycle management, and container communication source code."
 ---
 
 ## 1. Introduction

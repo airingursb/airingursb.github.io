@@ -2,7 +2,7 @@
 title: "月刊（第28期）：AI 没有体验世界的能力"
 date: 2025-01-01
 tags: ["weekly"]
-description: ""
+description: "围绕MoFlow上线App Store这一契机，探讨AI与人类的本质区别——AI没有体验世界的能力，剖析语言的局限、情感模拟的陷阱，以及AI陪伴产品应有的边界。"
 cover: "https://i.typlog.com/airing/8264279749_315481.jpg?x-oss-process=style/l"
 ---
 

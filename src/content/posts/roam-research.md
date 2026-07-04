@@ -2,7 +2,7 @@
 title: "Roam Research 最佳实践——知识管理与任务管理"
 date: 2021-04-03
 tags: ["tech"]
-description: ""
+description: "分享作者使用 Roam Research 一年后摸索出的知识管理与任务管理方法，介绍 Page 与 Block 的双向链接机制、标签体系与阅读笔记技巧，以及每日任务复盘与长期计划管理实践。"
 ---
 
 自去年 8 月以来，Roam Research 是我唯一使用的笔记软件，使用 Roam Research 之后自己摸索出一套较为舒适的知识管理与任务管理模式，并使用 Roam Research 产出了几篇文章，以及管理自己日常工作的内容。我发现使用这套方法之后，无论任务管理还是知识研究，它们都开始变得极其高效且逐渐有趣了起来。

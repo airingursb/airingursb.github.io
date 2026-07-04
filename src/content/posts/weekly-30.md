@@ -2,7 +2,7 @@
 title: "月刊（第30期）：写在 30 岁这天"
 date: 2025-06-29
 tags: ["weekly"]
-description: ""
+description: "写在三十岁生日这天，回顾二十岁以来求学、创业、离职、旅居异国的经历，反思成长与自我重复之间的张力，期许自己保持开放与勇气继续前行。"
 cover: "https://i.typlog.com/airing/8248959215_895375.jpg?x-oss-process=style/l"
 ---
 

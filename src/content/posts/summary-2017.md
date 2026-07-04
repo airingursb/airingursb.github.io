@@ -2,7 +2,7 @@
 title: "再见了，我的大学"
 date: 2017-04-16
 tags: ["annually"]
-description: ""
+description: "回顾在广州大学的四年：从沉迷游戏到转向技术开发，经历血气胸重病与考研波折，从计算机转考哲学，最终考入中山大学哲学系，告别校园与相遇的人们。"
 ---
 
 <!-- <div id="player-0416" class="aplayer">

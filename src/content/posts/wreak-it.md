@@ -2,7 +2,7 @@
 title: "「没有你，也很好。」"
 date: 2018-12-12
 tags: ["essays"]
-description: ""
+description: "借观影《无敌破坏王 2》抒写对友情与成长的感悟，讲述拉尔夫与云妮从相互依赖到学会放手的故事，感叹真正的友谊无需时刻相伴，也能给予彼此持久的力量。"
 ---
 
 ![](https://airing.ursb.me/media/15446121913000/Snipaste_2018-12-12_19-05-17.png)

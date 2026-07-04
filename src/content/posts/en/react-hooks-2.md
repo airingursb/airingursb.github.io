@@ -2,7 +2,7 @@
 title: "React Hooks Source Deep Dive (2): Component Logic Reuse and Extension"
 date: 2019-09-11
 tags: ["tech"]
-description: ""
+description: "Second in a React Hooks source-code series, comparing five ways to reuse component logic: Mixins, class inheritance, higher-order components, and render props."
 ---
 
 > React source version: v16.9.0
@@ -20,7 +20,7 @@ Let's walk through each one.
 
 ## 1. Mixins
 
-![Mixins](http://airing.ursb.me/image/blog/15675688804829/0AA936A7-1AB6-4B23-BD7A-D26B27C98DF4.png)
+![Mixins](https://airing.ursb.me/image/blog/15675688804829/0AA936A7-1AB6-4B23-BD7A-D26B27C98DF4.png)
 
 Mixins work by copying properties from one object onto another — essentially object merging. They were introduced primarily to solve code reuse problems.
 
@@ -61,7 +61,7 @@ A higher-order component is the same idea: a function that takes a component as 
 
 > Further reading: Decorator proposal [proposal-decorators | GitHub](https://github.com/tc39/proposal-decorators)
 
-![](http://airing.ursb.me/image/blog/15675688804829/15682018265752.jpg)
+![](https://airing.ursb.me/image/blog/15675688804829/15682018265752.jpg)
 
 There are two flavors of HOCs:
 
@@ -93,7 +93,7 @@ It works, but it's invasive. Proxy-based HOCs are simpler and cleaner. Here's an
 
 [![Edit HOC](https://codesandbox.io/static/img/play-codesandbox.svg)](https://codesandbox.io/s/hoc-0c2hi?fontsize=14)
 
-![](http://airing.ursb.me/image/blog/15675688804829/15681160373048.jpg)
+![](https://airing.ursb.me/image/blog/15675688804829/15681160373048.jpg)
 
 Suppose we have two components, `Profile` and `Home`, both wrapped in a `Container` with the same styles and a title. We want both to reuse the Container's layout. Here's the HOC approach:
 
@@ -198,7 +198,7 @@ const enhance = connect(mapStateToProps, mapDispatchToProps);
 const ConnectedComment = enhance(Component);
 ```
 
-![Redux connect](http://airing.ursb.me/image/blog/15675688804829/15681177303582.jpg)
+![Redux connect](https://airing.ursb.me/image/blog/15675688804829/15681177303582.jpg)
 
 Ant Design's Form also uses HOCs:
 
@@ -234,7 +234,7 @@ function visible(WrappedComponent) {
 
 Here's a comparison of Mixins vs HOCs (source: [From Mixin to HOC to Hook | Juejin](https://juejin.im/post/5cad39b3f265da03502b1c0a#heading-27)):
 
-![](http://airing.ursb.me/image/blog/15675688804829/15682047185109.jpg)
+![](https://airing.ursb.me/image/blog/15675688804829/15682047185109.jpg)
 
 ## 4. Render Props
 

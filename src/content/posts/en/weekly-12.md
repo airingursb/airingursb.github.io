@@ -2,7 +2,7 @@
 title: "Weekly #12: The Three Great Romances of Frontend"
 date: 2022-07-24
 tags: ["weekly"]
-description: ""
+description: "Weekly #12 covers frontend's so-called three great romances (rich text editors, in-browser spreadsheets, CRDTs) and path dependency in everyday life, from QWERTY keyboards to train seat numbering."
 ---
 
 ## Case Sensitivity in Frontend Development

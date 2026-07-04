@@ -2,7 +2,7 @@
 title: "Farewell, Summer"
 date: 2024-08-31
 tags: ["annually"]
-description: ""
+description: "The author reflects on quitting Tencent Music after five years, exploring the purpose of work, the trap of worldly success, and the search for meaning through the goose cage, happiness, and courage."
 cover: "https://airing.ursb.me/images/blog/2024/life.jpg"
 ---
 

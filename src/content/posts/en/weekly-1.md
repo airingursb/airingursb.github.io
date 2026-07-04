@@ -2,7 +2,7 @@
 title: "Weekly #1: The Beginning — Why I'm Starting a Newsletter"
 date: 2022-05-07
 tags: ["weekly"]
-description: ""
+description: "The debut issue of a weekly newsletter, explaining the shift from long, heavy blog essays to lighter, more frequent writing, with reflections on impermanence and Nintendo's game design philosophy."
 ---
 
 ## Why I'm Starting a Newsletter

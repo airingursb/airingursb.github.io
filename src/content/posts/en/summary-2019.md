@@ -2,7 +2,7 @@
 title: "2019: Moving Through, Stopping Often"
 date: 2020-01-09
 tags: ["annually"]
-description: ""
+description: "A 2019 year in review: finishing a thesis, joining QQ Music full-time, stalling on Twin Diary 3.0, a WWDC trip, and a year of games, shows, books, and cats."
 ---
 
 Lunar New Year's Eve is almost here. A quick look back at my 2019.

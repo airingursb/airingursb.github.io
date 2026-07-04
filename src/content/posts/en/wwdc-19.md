@@ -2,7 +2,7 @@
 title: "WWDC19 Travel Journal"
 date: 2019-06-13
 tags: ["annually"]
-description: ""
+description: "A travel journal of attending WWDC19 in San Jose as a Scholar: flight mishaps, meeting a mentor and a YouTuber, touring Apple Park and Stanford, and reflections on growth and life's meaning."
 ---
 
 # WWDC19 Travel Journal

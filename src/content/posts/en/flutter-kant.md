@@ -2,7 +2,7 @@
 title: "Flutter Core Principles and Hybrid Development Modes"
 date: 2020-06-30
 tags: ["tech"]
-description: ""
+description: "Starting from Flutter's rendering principles, this post compares three cross-platform approaches and systematically explains four Flutter hybrid development modes with engineering practices."
 ---
 
 In building the Flutter hybrid integration for "Fan Live," we accumulated a fair amount of hard-won experience — worth sharing properly. This post starts from Flutter's core principles and rendering pipeline, uses that to compare three cross-platform approaches, then dives into an analysis of four different Flutter hybrid development modes, and closes with some thoughts on engineering tooling for hybrid projects.

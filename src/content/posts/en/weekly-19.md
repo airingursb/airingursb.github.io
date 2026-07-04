@@ -2,7 +2,7 @@
 title: "Weekly #19: The Meaning of Keeping a Journal"
 date: 2023-03-03
 tags: ["weekly"]
-description: ""
+description: "Reflects on six years of journaling as a tool for self-awareness, a way to find meaning in daily life, and a record of small beautiful moments."
 ---
 
 ## The Meaning of Keeping a Journal

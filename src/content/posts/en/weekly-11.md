@@ -2,7 +2,7 @@
 title: "Weekly #11: How Divination Works"
 date: 2022-07-17
 tags: ["weekly"]
-description: ""
+description: "Weekly #11 breaks down the mechanics of I Ching yarrow-stalk divination step by step, plus picks for the file-linking app Hook and the Emojimix web toy, alongside the week's viewing log."
 ---
 
 ## How Does Divination Work?

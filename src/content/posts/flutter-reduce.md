@@ -2,7 +2,7 @@
 title: "Flutter 产物分析与减包方案"
 date: 2021-05-01
 tags: ["tech"]
-description: ""
+description: "围绕产物构成分析与减包方案两个主题，分别讲解 iOS 与 Android 两端 Flutter 应用瘦身的原理、哪些内容可以精简，以及被精简部分的还原方法。"
 cover: "https://airing.ursb.me/image/blog/media/16185655225058/16185655375361.jpg"
 ---
 

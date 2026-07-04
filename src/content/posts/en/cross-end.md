@@ -2,7 +2,7 @@
 title: "Inside Big Tech's In-House Cross-Platform Frameworks"
 date: 2023-02-25
 tags: ["tech"]
-description: ""
+description: "A deep dive into four directions behind big tech's in-house cross-platform frameworks, unpacking how Kun, WebF, and Weex 2.0 choose script engines and implement CSS, with trade-offs compared."
 cover: "https://airing.ursb.me/images/blog/20230225231814.png"
 ---
 

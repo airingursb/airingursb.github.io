@@ -2,7 +2,7 @@
 title: "React Hooks 源码解析（4）：useEffect"
 date: 2019-12-03
 tags: ["tech"]
-description: ""
+description: "React Hooks 源码解析系列第四篇，剖析 useEffect 为何能取代生命周期方法处理副作用，讲解其用法与依赖数组机制，并结合 mountEffect、updateEffect 源码说明具体实现细节。"
 ---
 
 > - React 源码版本: v16.11.0

@@ -2,7 +2,7 @@
 title: "Weekly #5: A Day in My Life at TME"
 date: 2022-06-04
 tags: ["weekly"]
-description: ""
+description: "A day in the life working at TME, plus picks on programming design decisions, 1Password 8's Electron rewrite, and a new weekly log of reading and coding time."
 ---
 
 ## A Day in My Life at TME

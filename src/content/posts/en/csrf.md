@@ -2,7 +2,7 @@
 title: "Frontend Security | CSRF Attack Techniques and Defenses"
 date: 2019-04-08
 tags: ["tech"]
-description: ""
+description: "A guide to CSRF: how GET, POST, and link-based attacks work, and how same-origin checks, SameSite cookies, and synchronizer tokens compare as defenses."
 ---
 
 ## Types of CSRF Attacks

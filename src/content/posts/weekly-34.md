@@ -2,7 +2,7 @@
 title: "月刊（第34期）：创造的快乐"
 date: 2026-04-05
 tags: ["weekly"]
-description: ""
+description: "记录用Claude Code在一个月内快速创造多个项目的过程：两天重建博客、两小时做出记账App、翻新个人主页，并反思AI时代创造的乐趣如何被放大而非削弱。"
 cover: "https://airing.ursb.me/image/blog/wj34/2026-04-05.jpg"
 ---
 

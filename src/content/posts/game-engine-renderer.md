@@ -2,7 +2,7 @@
 title: "游戏组件的一生: 从加载到上屏"
 date: 2025-05-17
 tags: ["tech"]
-description: ""
+description: "解析小游戏容器与各类游戏引擎的协作机制，从脚本加载、渲染上下文到画面上屏，梳理游戏组件从加载到呈现的完整生命周期。"
 featured: false
 cover: "https://airing.ursb.me/images/blog/game-engine/image%2072.png"
 ---

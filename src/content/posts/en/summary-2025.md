@@ -2,7 +2,7 @@
 title: "2025: A Brand New Journey"
 date: 2026-02-15
 tags: ["annually"]
-description: ""
+description: "A 2025 year in review: moving to Singapore, MoFlow entering maintenance mode, a new TikTok job with first-time people management, a serious kidney stone ordeal, and an AI-powered workflow built on Tana, NotebookLM, Claude Code, and OpenClaw."
 cover: "https://airing.ursb.me/image/blog/wj30/IMG_7379.jpeg"
 ---
 

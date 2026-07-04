@@ -2,7 +2,7 @@
 title: "2021，自渡向前"
 date: 2022-01-30
 tags: ["annually"]
-description: ""
+description: "2021年终总结：完成Flutter Kant开发并集成进QQ音乐，快速晋升T9答辩第一却陷入目标迷茫，反思多线程处理与焦虑情绪，记录多次技术分享与生活点滴。"
 cover: "https://airing.ursb.me/media/16434480158905/151643536520_.pic.jpg"
 ---
 

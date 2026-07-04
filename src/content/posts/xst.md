@@ -2,7 +2,7 @@
 title: "前端安全 | XST 的攻击原理与防御"
 date: 2019-04-09
 tags: ["tech"]
-description: ""
+description: "解析 XST 跨站追踪攻击的原理：通过 TRACE / TRACK 请求获取网站中 httpOnly Cookie 等敏感请求头信息，并介绍禁用 Trace 方法与浏览器层面拦截等前端防御手段。"
 ---
 
 ## XST 的攻击手段

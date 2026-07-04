@@ -2,7 +2,7 @@
 title: "Roam Research Best Practices — Knowledge Management and Task Management"
 date: 2021-04-03
 tags: ["tech"]
-description: ""
+description: "Shares a knowledge and task management workflow built around Roam Research, covering its Page/Block linking, tagging system, and daily task review habits."
 ---
 
 Since last August, Roam Research has been the only note-taking software I use. Through using it I've developed a workflow for knowledge management and task management that feels genuinely comfortable, and I've used it to produce several articles as well as to manage my day-to-day work. I find that with this approach, both task management and knowledge research have become extremely efficient — and gradually, genuinely interesting.

@@ -2,7 +2,7 @@
 title: "React Hooks Source Deep Dive (1): Class Components, Function Components, and Pure Components"
 date: 2019-09-03
 tags: ["tech"]
-description: ""
+description: "First in a React Hooks source-code series, comparing class, function, and pure components, and tracing how PureComponent controls re-rendering in React."
 ---
 
 > React source version: v16.9.0

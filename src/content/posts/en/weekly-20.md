@@ -2,7 +2,7 @@
 title: "Weekly #20: Restart"
 date: 2023-04-02
 tags: ["weekly"]
-description: ""
+description: "A March 2023 monthly log centered on the Japanese drama Restart, praising its emotional honesty and warmth, alongside notes on badminton and cycling to work."
 cover: "https://airing.ursb.me/images/blog/20230402165118.png"
 ---
 

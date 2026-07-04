@@ -2,7 +2,7 @@
 title: "Weekly #8: Three-Act Structure and the Hero's Journey"
 date: 2022-06-26
 tags: ["weekly"]
-description: ""
+description: "Breaks down the three-act structure and the Hero's Journey using World War Z, Kung Fu Panda, and The Invisible Guest, plus picks on note apps Obsidian, LogSeq, and Hepta."
 ---
 
 ## Three-Act Structure and the Hero's Journey

@@ -2,7 +2,7 @@
 title: "Weekly #6: Perception Checking in the Art of Communication"
 date: 2022-06-11
 tags: ["weekly"]
-description: ""
+description: "How perception checking from Looking Out, Looking In reduces noise from perceptual gaps in communication, plus picks: an input switcher, a vocab plugin, and screenshot tools."
 ---
 
 ## Perception Checking in the Art of Communication

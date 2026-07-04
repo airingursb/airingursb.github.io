@@ -2,7 +2,7 @@
 title: "Flutter 异常处理方案——灰度与降级"
 date: 2021-02-18
 tags: ["tech"]
-description: ""
+description: "梳理 Dart 异常、Framework 异常与 Engine 异常等 Flutter 异常的分类与捕获方式，介绍针对不同异常场景设计的灰度发布与降级容灾方案，用以提升线上应用的稳定性。"
 ---
 
 ## 1. Flutter 异常概述

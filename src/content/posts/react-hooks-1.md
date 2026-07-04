@@ -2,7 +2,7 @@
 title: "React Hooks 源码解析（1）：类组件、函数组件、纯组件"
 date: 2019-09-03
 tags: ["tech"]
-description: ""
+description: "React Hooks 源码解析系列第一篇，对比类组件、函数组件与纯组件在使用方式与性能表现上的差异，从 React 源码解读 Component、PureComponent 及其更新判定机制的实现原理。"
 ---
 
 > React 源码版本: v16.9.0

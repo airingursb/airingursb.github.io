@@ -2,7 +2,7 @@
 title: "Weekly #17: Go Where Your Heart Leads"
 date: 2022-12-25
 tags: ["weekly"]
-description: ""
+description: "Weekly #17 follows a Bilibili creator drifting across China by bicycle, weaving in Liu Cixin's The Mountain and Xu Xiake's travels to reflect on wanderlust and living life on your own terms."
 ---
 
 ## Go Where Your Heart Leads

@@ -2,7 +2,7 @@
 title: "Weekly #28: AI Has No Capacity for Experience"
 date: 2025-01-01
 tags: ["weekly"]
-description: ""
+description: "Marking MoFlow's App Store launch, explores why AI lacks the capacity for lived experience, the limits of language, and the pitfalls of simulated emotional companionship."
 cover: "https://i.typlog.com/airing/8264279749_315481.jpg?x-oss-process=style/l"
 ---
 

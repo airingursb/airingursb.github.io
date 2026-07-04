@@ -2,7 +2,7 @@
 title: "引擎剖析：JS 中的字符串转数值"
 date: 2022-05-03
 tags: ["tech"]
-description: ""
+description: "梳理 JavaScript 中字符串转数值的九种写法及其运行结果与性能差异，并从 V8、JavaScriptCore、QuickJS 等主流引擎源码层面，剖析 parseInt、parseFloat 等方法背后的底层实现原理。"
 ---
 
 JS 中，字符串转数值的方式有以下 9 种：

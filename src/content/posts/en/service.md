@@ -2,7 +2,7 @@
 title: "Airing's Consultation Service"
 date: 2024-05-13
 tags: ["tech"]
-description: ""
+description: "Airing launches two consultation options: free letters for listening and advice, plus a paid 50-minute call covering career, tech, and writing questions."
 ---
 
 I'm offering two forms of consultation. If you'd like to get in touch, pick whichever works best for you.

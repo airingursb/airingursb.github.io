@@ -2,7 +2,7 @@
 title: "Weekly #10: Games I Love (Vol. 1)"
 date: 2022-07-10
 tags: ["weekly"]
-description: ""
+description: "Weekly #10 rounds up favorite games: Undertale, To the Moon, Don't Starve, Darkest Dungeon, The Stanley Parable, Breath of the Wild, and Hollow Knight, each with the author's personal take."
 ---
 
 Two months in, and I've managed to hit every single issue without missing one — ten issues on the dot. Give yourself a hand~
@@ -17,7 +17,7 @@ I've put together a table of everything I've recommended in the newsletter so fa
 No particular ranking order.
 
 ### 1. Undertale
-![](http://airing.ursb.me/media/15447541862261/15447573419246.jpg)> You refused to hurt anyone.
+![](https://airing.ursb.me/media/15447541862261/15447573419246.jpg)> You refused to hurt anyone.
 > Even when you had to run away,
 > you kept smiling.
 
@@ -38,7 +38,7 @@ This is a perfect score game, no question.
 *PS: Some of the battles are hard, which might frustrate players with less dexterous hands — but I still don't recommend looking up guides on your first run. The Switch version is a bit pricey and has no Chinese, so I'd suggest the Steam version instead.*
 
 ### 2. To the Moon
-![](http://airing.ursb.me/media/15447541862261/15447584173797.jpg)> And if you ever forget, or you get lost...
+![](https://airing.ursb.me/media/15447541862261/15447584173797.jpg)> And if you ever forget, or you get lost...
 > we'll always meet again on the moon.
 
 - Platform: Steam / iOS / Android
@@ -61,7 +61,7 @@ But nothing goes entirely according to plan. The doctors discover that Johnny's 
 *PS: The collectibles section isn't great design — if you genuinely can't find something, it's okay to check a guide. Don't let the collection mechanics interrupt the flow of the story.*
 
 ### 3. Don't Starve (Together)
-![](http://airing.ursb.me/media/15447541862261/15447588484452.jpg)
+![](https://airing.ursb.me/media/15447541862261/15447588484452.jpg)
 - Platform: Steam / WeGame / iOS
 - Playtime: ∞
 - Genre: RPG, co-op, survival
@@ -75,7 +75,7 @@ The game is great fun with high replayability — especially the multiplayer ver
 *PS: New players should probably check a guide first — otherwise you'll discover a lot of creative ways to die, which isn't the best introduction to the game.*
 
 ### 4. Darkest Dungeon
-![](http://airing.ursb.me/media/15447541862261/15447592653514.jpg)
+![](https://airing.ursb.me/media/15447541862261/15447592653514.jpg)
 - Platform: Steam / Nintendo Switch / iOS
 - Genre: RPG, survival, strategy, turn-based, Lovecraftian, Roguelike
 - Playtime: ∞
@@ -91,7 +91,7 @@ What makes this game distinctive is that it deliberately doesn't center your att
 *PS: The late-game experience gets a little rough around the edges; the iOS version apparently has a lot of bugs according to reviews. The Switch version costs significantly more than Steam, but this type of game really is more fun on a handheld.*
 
 ### 5. Lost Castle
-![](http://airing.ursb.me/media/15447541862261/15447596747350.jpg)
+![](https://airing.ursb.me/media/15447541862261/15447596747350.jpg)
 - Platform: Steam
 - Genre: Action-adventure, side-scrolling, Roguelike, RPG
 - Playtime: 1–2 hours (single run)
@@ -101,7 +101,7 @@ What makes this game distinctive is that it deliberately doesn't center your att
 This one is also best played with friends. My buddies and I used to run it regularly. Since a single run only takes about an hour, you never get sucked in for too long. Weirdly, despite being a dungeon crawler, the art style feels kind of cute. Apparently this game was made by a college dorm room of students from South China University of Technology — genuinely impressive.
 
 ### 6. The Stanley Parable
-![](http://airing.ursb.me/media/15447541862261/15447598661804.jpg)> By making a choice, you choose freedom.
+![](https://airing.ursb.me/media/15447541862261/15447598661804.jpg)> By making a choice, you choose freedom.
 
 - Platform: Steam
 - Genre: First-person, story-driven, multiple endings, adventure
@@ -121,7 +121,7 @@ The game has no victory ending — much like life, which always seems to be tryi
 Beyond all of this, there's much more worth thinking about — I won't spoil it. I hope anyone interested will sit quietly with this unusual "game."
 
 ### 7. The Legend of Zelda: Breath of the Wild
-![](http://airing.ursb.me/media/15447541862261/15453169453547.jpg-yasuo.jpg)> Freedom is to humanity as Nintendo is to games.
+![](https://airing.ursb.me/media/15447541862261/15453169453547.jpg-yasuo.jpg)> Freedom is to humanity as Nintendo is to games.
 
 - Platform: Nintendo Switch
 - Genre: Open world, action-adventure
@@ -137,7 +137,7 @@ I have to rave about this one. It is without question the best game on the Switc
 Freedom, spontaneity, and exploration are the absolute core of what *Breath of the Wild* is. In this game, you'll rarely find something you want to do that you simply can't.
 
 ### 8. Hollow Knight
-![](http://airing.ursb.me/media/15447541862261/v2-64560284aca2854743af5dd5cb634376_hd.jpg-yasuo.jpg)> Hollow Knight is the best! (with Zelda reigning above all)
+![](https://airing.ursb.me/media/15447541862261/v2-64560284aca2854743af5dd5cb634376_hd.jpg-yasuo.jpg)> Hollow Knight is the best! (with Zelda reigning above all)
 
 - Platform: Nintendo Switch / Steam
 - Genre: Animated art style, Metroidvania, action game

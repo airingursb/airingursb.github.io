@@ -2,7 +2,7 @@
 title: "Weekly #29: A New Life"
 date: 2025-04-18
 tags: ["weekly"]
-description: ""
+description: "Covers a six-month gap after leaving TME: building MoFlow while job-hunting, landing offers from TikTok and Bilibili, and starting a new life and job in Singapore."
 cover: "https://i.typlog.com/airing/8255042074_972041.png?x-oss-process=style/l"
 ---
 

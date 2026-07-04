@@ -2,7 +2,7 @@
 title: "2020: Chasing Sparks"
 date: 2021-02-06
 tags: ["annually"]
-description: ""
+description: "A 2020 year in review: moving from Green Diamond to livestreaming, a year immersed in Flutter, notes on work habits, and a long essay on the game Sky."
 ---
 
 ## Work

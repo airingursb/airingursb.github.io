@@ -2,7 +2,7 @@
 title: "2021: Finding My Own Way Forward"
 date: 2022-01-30
 tags: ["annually"]
-description: ""
+description: "A 2021 year in review: shipping Flutter Kant into QQ Music, a fast promotion followed by a loss of direction, and reflections on multitasking and anxiety."
 cover: "https://airing.ursb.me/media/16434480158905/151643536520_.pic.jpg"
 ---
 

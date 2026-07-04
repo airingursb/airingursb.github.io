@@ -2,7 +2,7 @@
 title: "Weekly #2: Reclaiming Lost Curiosity"
 date: 2022-05-14
 tags: ["weekly"]
-description: ""
+description: "Explores why curiosity fades with age and technology, using Leonardo da Vinci as an example to outline ways to rebuild it through observation and reflection."
 ---
 
 ## Reclaiming Lost Curiosity

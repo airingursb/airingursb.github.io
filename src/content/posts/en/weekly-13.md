@@ -2,7 +2,7 @@
 title: "Weekly #13: The Mysticism Lever and the Isekai Groups"
 date: 2022-07-31
 tags: ["weekly"]
-description: ""
+description: "Weekly #13 looks at young people's growing embrace of online divination and the mysticism lever, plus Douban's isekai groups, framing both as coping tools for the pressure of alienated labor."
 ---
 
 ## The Mysticism Lever and the Isekai Groups

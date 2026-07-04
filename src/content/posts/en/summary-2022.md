@@ -2,7 +2,7 @@
 title: "2022: Peace and Joy"
 date: 2023-01-02
 tags: ["annually"]
-description: ""
+description: "A 2022 year in review: a promotion, a deep dive into Chromium and JS engines, better emotional control, a brief romance, and thoughts on Messi and Faker's title runs."
 cover: "https://airing.ursb.me/images/blog/2022-007.jpeg"
 ---
 

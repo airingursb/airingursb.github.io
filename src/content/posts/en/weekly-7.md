@@ -2,7 +2,7 @@
 title: "Weekly #7: Models for Impromptu Speaking"
 date: 2022-06-19
 tags: ["weekly"]
-description: ""
+description: "Five speaking and communication frameworks: Yes And, the Pyramid Principle, FFC compliments, FFA reporting, and nonviolent communication, plus picks on an anime and a JS tutorial site."
 ---
 
 ## Models for Impromptu Speaking

@@ -2,7 +2,7 @@
 title: "The Chromium Rendering Pipeline — From Bytes to Pixels"
 date: 2022-10-16
 tags: ["tech"]
-description: ""
+description: "A breakdown of Chromium's browser architecture and process model, tracing how Blink and V8 evolved, and detailing what the main and compositor threads do inside the Render Process."
 featured: false
 cover: "https://airing.ursb.me/images/blog/chromium/20221016112818.png"
 ---

@@ -2,7 +2,7 @@
 title: "Weekly #21: Short Video in the Age of Speed"
 date: 2023-05-03
 tags: ["weekly"]
-description: ""
+description: "Examines how playback speed, three-minute recaps, and viral songs erode attention, extending to cultural frenzies like Zibo barbecue and the loss of depth."
 ---
 
 This is a record and reflection on my life in April 2023.

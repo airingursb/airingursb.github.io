@@ -2,7 +2,7 @@
 title: "前端安全 | HPP 的攻击举例与防范"
 date: 2019-04-10
 tags: ["tech"]
-description: ""
+description: "介绍 HTTP 参数污染（HPP）攻击的原理与常见的注入型漏洞利用手法，结合 HackerOne 社交分享按钮的真实漏洞案例，讲解相应的检测与防范措施。"
 ---
 
 ## HPP 的攻击原理

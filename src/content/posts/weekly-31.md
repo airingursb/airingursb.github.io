@@ -2,7 +2,7 @@
 title: "月刊（第31期）：基于 Claude 的阅读流"
 date: 2025-07-05
 tags: ["weekly"]
-description: ""
+description: "分享用Claude和MCP搭建的个人阅读流：工作日碎片阅读用Reader记笔记，周末用Claude结合Readwise笔记做深度整理并沉淀进Project的RAG，反思AI时代阅读与思考的意义。"
 cover: "https://i.typlog.com/airing/8248277124_159252.png?x-oss-process=style/l"
 ---
 

@@ -2,7 +2,7 @@
 title: "Weekly #31: A Claude-Powered Reading Flow"
 date: 2025-07-05
 tags: ["weekly"]
-description: ""
+description: "Shares a reading workflow built on Claude and MCP: weekday reading in Reader, weekend synthesis with Claude and Readwise notes, and thoughts on reading in the AI era."
 cover: "https://i.typlog.com/airing/8248277124_159252.png?x-oss-process=style/l"
 ---
 

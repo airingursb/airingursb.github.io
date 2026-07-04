@@ -2,7 +2,7 @@
 title: "\"I'm Fine Without You.\""
 date: 2018-12-12
 tags: ["essays"]
-description: ""
+description: "A personal essay on Ralph Breaks the Internet, reflecting on friendship and growing up through Ralph and Vanellope learning to let go, and how real friendship endures without constant closeness."
 ---
 
 ![](https://airing.ursb.me/media/15446121913000/Snipaste_2018-12-12_19-05-17.png)

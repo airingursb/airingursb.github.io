@@ -2,7 +2,7 @@
 title: "前端开发中的大小写敏感问题"
 date: 2022-07-24
 tags: ["tech"]
-description: ""
+description: "梳理前端开发中大小写敏感的常见场景，包括 HTTP Header、URL、Cookie 与 CSS 属性等，并深入 Chromium 与 Blink 源码，验证请求头与响应头字段名大小写转换的具体实现细节。"
 ---
 
 大小写敏感（case sensitivity）是软件开发领域的议题，指同一个“词”拼写的大小写字母的不同可能会导致不同效果的场景。

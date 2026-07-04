@@ -2,7 +2,7 @@
 title: "2023，逃离仿徨"
 date: 2024-01-14
 tags: ["annually"]
-description: ""
+description: "2023年终总结：工作陷入迷茫一度提出离职，转组后接触Cocos引擎与iOS/Android全栈开发并晋升，同时脱单、博客迁移新平台，记录旅行、观影与阅读清单。"
 cover: "https://airing.ursb.me/image/blog/2023/WechatIMG76.jpg"
 ---
 

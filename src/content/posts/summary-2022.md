@@ -2,7 +2,7 @@
 title: "2022，平安喜乐"
 date: 2023-01-02
 tags: ["annually"]
-description: ""
+description: "2022年终总结：晋升T10并深耕Chromium与JS引擎写作系列文章，情绪管理明显改善，经历一段短暂恋情、乔迁购车，记录梅西、Faker、小智等圆梦故事与书影音清单。"
 cover: "https://airing.ursb.me/images/blog/2022-007.jpeg"
 ---
 

@@ -2,7 +2,7 @@
 title: "Case Sensitivity in Frontend Development"
 date: 2022-07-24
 tags: ["tech"]
-description: ""
+description: "This post catalogs case-sensitive scenarios in frontend development: HTTP headers, URLs, cookies, CSS, and traces Chromium and Blink source code to find where header names get lowercased."
 ---
 
 Case sensitivity in software development refers to situations where the same "word" behaves differently depending on whether its letters are uppercase or lowercase.

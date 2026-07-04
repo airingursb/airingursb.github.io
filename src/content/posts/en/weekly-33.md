@@ -2,7 +2,7 @@
 title: "Weekly #33: The Ladder of Inference"
 date: 2025-11-15
 tags: ["weekly"]
-description: ""
+description: "Introduces the Ladder of Inference, the seven steps from raw sensory data to belief and action and their limits, arguing for lowering fixed judgments."
 cover: "https://airing.ursb.me/image/blog/wj33/B0000514HEIC1760766420-1.jpg"
 ---
 

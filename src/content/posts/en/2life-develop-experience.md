@@ -2,7 +2,7 @@
 title: "Development Experience Sharing: 2life Diary"
 date: 2019-05-11
 tags: ["tech"]
-description: ""
+description: "The founder of 2life Diary shares the team's product workflow: initiation, design, development, and maintenance, plus tooling choices and issue-tracking practices."
 ---
 
 Hello, I'm Airing — Founder & Developer of 2life Diary. Our WeChat Mini Program won first place at the 2018 C4 WeChat Mini Program Application Development Competition, and the iOS version won first place at the 2018 C4 Mobile Application Innovation Competition. Registered users have now crossed 10,000 and we're still actively building~

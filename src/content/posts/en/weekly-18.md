@@ -2,7 +2,7 @@
 title: "Weekly #18: Escaping Social Media"
 date: 2023-02-03
 tags: ["weekly"]
-description: ""
+description: "Reflects on escaping social media: how it weakens expression, fragments attention, and erodes identity, and shares habits like RSS reading and letter writing."
 ---
 
 ## Escaping Social Media

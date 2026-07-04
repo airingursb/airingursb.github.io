@@ -2,7 +2,7 @@
 title: "周刊（第7期）：即兴发言模型"
 date: 2022-06-19
 tags: ["weekly"]
-description: ""
+description: "梳理五种即兴发言与沟通模型——Yes And 原则、金字塔法则、FFC 赞美法、FFA 汇报法与非暴力沟通的四要素技巧，并推荐动漫《夏日重现》与前端学习网站 The Modern JavaScript Tutorial。"
 ---
 
 ## 即兴发言模型

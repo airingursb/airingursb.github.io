@@ -2,7 +2,7 @@
 title: "Flutter 混合开发框架模式探索"
 date: 2020-04-18
 tags: ["tech"]
-description: ""
+description: "分析 Flutter 混合开发框架应具备的路由栈管理、生命周期通知等核心能力，并结合 Flutter Boost、Thrio、QFlutter 等方案探讨其架构设计。"
 ---
 
 由于 Google 官方提供的 Flutter 混合式开发方案过于简单，仅支持打开一个 Flutter View 的能力，而不支持路由间传参、统一的生命周期、路由栈管理等业务开发中必要的能力，因此我们需要借助第三方混合开发框架（如 Flutter Boost、Thrio、QFlutter 等）的整合能力才能将 Flutter 混合开发模式投入与生产环境。本文中，我们来研究一下这类混合开发框架的职能、架构与源码。

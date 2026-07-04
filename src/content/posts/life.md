@@ -2,7 +2,7 @@
 title: "谈谈存在的价值与人生体验"
 date: 2021-07-11
 tags: ["essays"]
-description: ""
+description: "从存在主义视角探讨人生意义与价值幻灭的命题，主张人生本无意义、需靠自我锚定赋予意义，并给出体验人生的六条实践建议，包括甘于平凡、拉长视野、多元包容与寻求联结。"
 cover: "https://airing.ursb.me/image/blog/20210711-05.jpeg"
 ---
 

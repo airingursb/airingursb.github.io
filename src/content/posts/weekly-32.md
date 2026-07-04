@@ -2,7 +2,7 @@
 title: "月刊（第32期）：中大校友会的采访"
 date: 2025-08-16
 tags: ["weekly"]
-description: ""
+description: "记录接受中山大学哲学系校友寻访的采访内容，回顾选择哲学与中国哲学专业的契机，探讨哲学训练如何塑造技术思维、职业选择与抗压能力，并推荐三本书。"
 cover: "https://i.typlog.com/airing/8244677714_260533.jpg?x-oss-process=style/l"
 ---
 

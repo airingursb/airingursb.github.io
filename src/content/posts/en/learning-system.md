@@ -2,7 +2,7 @@
 title: "Research on an Intelligent Push System for Online Learning Resources"
 date: 2017-06-02
 tags: ["tech"]
-description: ""
+description: "Examines building an intelligent push system for online learning, covering data storage, learner modeling, and a recommendation algorithm blending classic methods."
 ---
 
 Abstract: This paper discusses how to construct a complete intelligent learning system in an online learning space from five dimensions. In addition to an overall architectural design, it provides systematic scientific analysis and code implementation for data storage, learner modeling, and knowledge modeling. In the final push algorithm analysis, the above modules are consolidated, deriving algorithms including Dijkstra, UserCF, ItemCF, and CAS. After implementing each algorithm and evaluating performance with Top-N, the system is re-optimized to produce a high-performance, highly applicable push algorithm. The adaptive intelligent learning system built around this algorithm constitutes a complex educational ecosystem with characteristics of intelligent flexibility, balance and harmony, and sustainable development. Only such an algorithm can be considered a genuine learning community.

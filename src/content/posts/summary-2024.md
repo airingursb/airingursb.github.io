@@ -2,7 +2,7 @@
 title: "2024，告别盛夏"
 date: 2025-02-01
 tags: ["annually"]
-description: ""
+description: "2024年终总结：辞去五年的TME工作投身创业，推出AI心理产品MoFlow并历经App Store审核受阻的波折，反思对失控的焦虑，记录读者来信与他人善意带来的力量。"
 cover: "https://i.typlog.com/airing/8261594421_771976.jpg?x-oss-process=style/l"
 ---
 

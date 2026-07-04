@@ -2,7 +2,7 @@
 title: "Frontend Security | HPP Attack Examples and Prevention"
 date: 2019-04-10
 tags: ["tech"]
-description: ""
+description: "An explanation of HTTP Parameter Pollution (HPP) attacks, illustrated with a real HackerOne social-share-button vulnerability, covering common attack techniques and corresponding defenses."
 ---
 
 ## How HPP Attacks Work

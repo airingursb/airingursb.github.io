@@ -2,7 +2,7 @@
 title: "周刊（第5期）：我在 TME 工作的一天"
 date: 2022-06-04
 tags: ["weekly"]
-description: ""
+description: "记录在腾讯音乐（TME）一天的工作时间安排，并推荐剖析程序设计决策的博客系列文章、体验 1Password 8 的 Electron 新版观感，新增记录每周书影音与编程时长的板块。"
 ---
 
 ## 我在 TME 工作的一天

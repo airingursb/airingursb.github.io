@@ -2,7 +2,7 @@
 title: "大厂自研跨端框架技术揭秘"
 date: 2023-02-25
 tags: ["tech"]
-description: ""
+description: "梳理大厂自研跨端框架的四种技术方向，深入揭秘 Kun、WebF、Weex 2.0 等自绘引擎方案在脚本引擎选型与 CSS 渲染实现上的具体技术路径与优劣对比。"
 cover: "https://airing.ursb.me/images/blog/20230225231814.png"
 ---
 

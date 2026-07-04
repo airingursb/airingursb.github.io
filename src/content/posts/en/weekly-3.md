@@ -2,7 +2,7 @@
 title: "Weekly #3: A Bouquet of Love"
 date: 2022-05-21
 tags: ["weekly"]
-description: ""
+description: "A farewell letter on a brief 20.5-day romance, framed by the film A Bouquet of Love, on what love is, why we need it, and how to move on after losing it."
 cover: "https://airing.ursb.me/image/blog/20220522012103.png"
 ---
 

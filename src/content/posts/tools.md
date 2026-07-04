@@ -2,7 +2,7 @@
 title: "个人工具箱与好物分享"
 date: 2024-03-29
 tags: ["tech"]
-description: ""
+description: "分享作者的个人数码工具箱：从MacBook、iPhone、HHKB键盘等硬件选择，到Raycast、HeptaBase、Readwise、Todoist、Fantastical等软件与效率工具的实际使用体验和取舍理由，兼顾编程与日常阅读场景。"
 cover: "https://i.typlog.com/airing/8288290040_537382.jpg?x-oss-process=style/l"
 ---
 

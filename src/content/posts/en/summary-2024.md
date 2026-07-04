@@ -2,7 +2,7 @@
 title: "2024: Farewell, Midsummer"
 date: 2025-02-01
 tags: ["annually"]
-description: ""
+description: "A 2024 year in review: leaving a five-year job at TME to build the AI wellness app MoFlow, an App Store review holdup, and reflecting on the fear of losing control."
 cover: "https://i.typlog.com/airing/8261594421_771976.jpg?x-oss-process=style/l"
 ---
 

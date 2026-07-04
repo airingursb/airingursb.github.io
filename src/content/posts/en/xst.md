@@ -2,7 +2,7 @@
 title: "Frontend Security | XST Attack Principles and Prevention"
 date: 2019-04-09
 tags: ["tech"]
-description: ""
+description: "Explains how Cross-Site Tracing (XST) abuses TRACE/TRACK requests to expose httpOnly cookies and other sensitive headers, plus defenses like disabling TRACE and browser restrictions."
 ---
 
 ## How XST Works

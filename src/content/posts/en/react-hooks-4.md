@@ -2,7 +2,7 @@
 title: "React Hooks Source Deep Dive (4): useEffect"
 date: 2019-12-03
 tags: ["tech"]
-description: ""
+description: "Fourth in a React Hooks source-code series, explaining why useEffect replaces lifecycle methods, its dependency array, and how it's implemented in React."
 ---
 
 > - React source version: v16.11.0

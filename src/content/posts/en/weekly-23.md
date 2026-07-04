@@ -2,7 +2,7 @@
 title: "Weekly #23: Time Management When You're Doing Too Much"
 date: 2023-10-06
 tags: ["weekly"]
-description: ""
+description: "Shares a calendar-plus-reminders system for separating fixed events from flexible tasks, arguing focus and fewer context switches beat any productivity app."
 ---
 
 This issue is a record of and reflection on life in September 2023.

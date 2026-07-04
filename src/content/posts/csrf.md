@@ -2,7 +2,7 @@
 title: "前端安全 | CSRF 的攻击手段与防范"
 date: 2019-04-08
 tags: ["tech"]
-description: ""
+description: "系统讲解 CSRF 跨站请求伪造的攻击原理与 GET、POST、链接三种攻击类型，并对比同源检测、SameSite Cookie 与 Token 校验等前后端防御方案的适用场景与局限。"
 ---
 
 ## CSRF 的攻击类型

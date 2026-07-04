@@ -2,7 +2,7 @@
 title: "AI 心理疗愈应用的探索与实现"
 date: 2024-11-29
 tags: ["tech"]
-description: ""
+description: "记录 AI 心理疗愈应用 MoFlow 的设计理念，将表达性写作拆解为表达、宣泄、理解、允许、探索五个阶段，结合情绪追踪、书写报告与认知行为疗法分析实现自我疗愈。"
 cover: "https://i.typlog.com/airing/8267118669_370302.png?x-oss-process=style/l"
 ---
 

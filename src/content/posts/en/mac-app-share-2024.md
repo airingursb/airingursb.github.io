@@ -2,7 +2,7 @@
 title: "Mac Niche App Recommendations and Workflow Sharing (2024)"
 date: 2024-11-04
 tags: ["tech"]
-description: ""
+description: "Shares niche Mac apps and workflows built over years of work, covering note-taking tools, task management, developer tools, and AI search and chat products."
 ---
 
 This post covers the best Mac apps I've discovered over my years working in software — many of which I still use daily. They've helped me enormously along the way, and some combinations have turned my work itself into something genuinely enjoyable. I hope sharing them is useful.

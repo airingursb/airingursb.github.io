@@ -2,7 +2,7 @@
 title: "Analysis of Bilibili's 20 Million Users"
 date: 2016-02-23
 tags: ["tech"]
-description: ""
+description: "The author scraped and analyzed all 20 million registered Bilibili users, profiling gender, age, region, and signup trends, finding a near-even gender split dominated by post-90s students."
 ---
 
 ## Preface

@@ -2,7 +2,7 @@
 title: "Engine Internals: String-to-Number Conversion in JavaScript"
 date: 2022-05-03
 tags: ["tech"]
-description: ""
+description: "Compares nine ways to convert strings to numbers in JavaScript, benchmarks them, and traces how parseInt and parseFloat are implemented inside the V8 engine."
 ---
 
 JavaScript offers nine ways to convert a string to a number:

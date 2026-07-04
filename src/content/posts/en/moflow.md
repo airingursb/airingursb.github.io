@@ -2,7 +2,7 @@
 title: "Exploring and Building an AI Mental Wellness App"
 date: 2024-11-29
 tags: ["tech"]
-description: ""
+description: "Chronicles the design behind MoFlow, an AI wellness app that breaks expressive writing into five stages, paired with mood tracking and CBT-based analysis."
 cover: "https://i.typlog.com/airing/8267118669_370302.png?x-oss-process=style/l"
 ---
 

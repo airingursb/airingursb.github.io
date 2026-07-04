@@ -2,7 +2,7 @@
 title: "React Hooks 源码解析（3）：useState"
 date: 2019-11-09
 tags: ["tech"]
-description: ""
+description: "React Hooks 源码解析系列第三篇，聚焦 useState 的用法、设计动机与调用规则，从零动手实现一个简化版 useState，再深入 React 源码逐行解读其真实运行原理与内部机制。"
 ---
 
 > - React 源码版本: v16.11.0
