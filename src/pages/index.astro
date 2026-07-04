@@ -23,6 +23,14 @@ for (const p of await getCollection('posts', ({ data }) => !data.draft)) {
   (guestbookPostTitles[slug] ??= {})[isEn ? 'en' : 'zh'] = p.data.title;
 }
 
+// Note comments store post_slug as `note/<slug>` (see notes/[...slug].astro),
+// so we key the same way. zh + en share one key (en note id is `en/<slug>`).
+for (const n of await getCollection('notes', ({ data }) => !data.draft)) {
+  const isEn = n.id.startsWith('en/');
+  const slug = isEn ? n.id.slice(3) : n.id;
+  (guestbookPostTitles['note/' + slug] ??= {})[isEn ? 'en' : 'zh'] = n.data.title;
+}
+
 const recentPhotos = (photosData as Array<any>)
   .slice()
   .sort((a, b) => new Date(b.takenAt).getTime() - new Date(a.takenAt).getTime())
@@ -2901,7 +2909,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
 
       // "· from «Post Title»" link — slug→title resolved from the build-time
       // map injected as window.__GB_TITLES__; language follows window.currentLang.
-      function sourceHtml(slug) {
+      function sourceHtml(slug, anchor) {
         var lang = (window.currentLang === 'en') ? 'en' : 'zh';
         if (slug === 'guestbook') {
           return (lang === 'en' ? 'on ' : '来自 ') +
@@ -2909,8 +2917,16 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         }
         var titles = (window.__GB_TITLES__ || {})[slug];
         var title = titles ? (titles[lang] || titles.zh || titles.en) : null;
-        var url = (lang === 'en' ? '/en/posts/' : '/posts/') + encodeURIComponent(slug);
-        var text = title ? ('«' + title + '»') : slug;
+        // Notes store their slug as `note/<slug>` and live under /notes/, not
+        // /posts/ — route them correctly and drop the prefix from the fallback text.
+        var isNote = slug.indexOf('note/') === 0;
+        var bareSlug = isNote ? slug.slice(5) : slug;
+        var base = isNote
+          ? (lang === 'en' ? '/en/notes/' : '/notes/')
+          : (lang === 'en' ? '/en/posts/' : '/posts/');
+        var url = base + encodeURIComponent(bareSlug);
+        if (anchor) url += '#' + anchor; // inline comments deep-link to the highlight
+        var text = title ? ('«' + title + '»') : (isNote ? bareSlug : slug);
         return (lang === 'en' ? 'on ' : '来自 ') +
           '<a class="gb-src" href="' + url + '">' + escapeHtml(text) + '</a>';
       }
@@ -2921,13 +2937,24 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         if (m.replies > 0) {
           replies = ' · ' + m.replies + (lang === 'en' ? (m.replies > 1 ? ' replies' : ' reply') : ' 条回复');
         }
+        // Inline "划线" comments: deep-link to the highlight and show the passage
+        // the reader replied to (else "同意"-style comments read as non-sequiturs).
+        var isInline = m.type === 'inline';
+        var anchor = isInline ? ('inline-' + m.id) : null;
+        var badge = isInline
+          ? ' · <span class="gb-badge">' + (lang === 'en' ? 'highlight' : '划线') + '</span>'
+          : '';
+        var quote = (isInline && m.selected_text)
+          ? '<div class="gb-quote">' + escapeHtml(m.selected_text) + '</div>'
+          : '';
         return '<div class="gb-msg">' +
           '<div class="gb-meta">' +
             '<span class="gb-name">&gt; ' + escapeHtml(m.nickname || t('gb_anonymous')) + '</span>' +
             '<span class="gb-time">' + timeAgo(m.created_at) + '</span>' +
           '</div>' +
+          quote +
           '<div class="gb-text">' + escapeHtml(m.content) + '</div>' +
-          '<div class="gb-from">' + sourceHtml(m.post_slug) + replies + '</div>' +
+          '<div class="gb-from">' + sourceHtml(m.post_slug, anchor) + badge + replies + '</div>' +
         '</div>';
       }
 

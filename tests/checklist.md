@@ -20,6 +20,15 @@
 - [ ] DOM: `<meta property="og:url">` 存在
 - [ ] DOM: `<meta name="twitter:card">` 存在
 
+## Guestbook feed source links (Homepage `#guestbook`)
+
+> 站点级留言 feed 的「来自 …」链接。评论 `post_slug` 为博文时是裸 slug，为笔记时是 `note/<slug>`。
+
+- [ ] 博文来源：`.gb-from .gb-src` 中博文评论 href 为 `/posts/<slug>` 或 `/en/posts/<slug>`，文本为 «标题»
+- [ ] 笔记来源：`note/<slug>` 评论 href 为 `/notes/<slug>` 或 `/en/notes/<slug>`（**不是** `/posts/`），点击不 404
+- [ ] 笔记标题：笔记评论文本显示 «笔记标题» 而非裸 `note/<slug>`（`window.__GB_TITLES__` 含 `note/` 键）
+- [ ] 留言板自身来源：`post_slug === 'guestbook'` 的评论显示「留言板 / Guestbook」，href 为 `#guestbook`
+
 ## Cyber Glitch (Homepage)
 
 > Spec: `docs/superpowers/specs/2026-05-06-cyber-glitch-effects-design.md`
