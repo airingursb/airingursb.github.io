@@ -36,6 +36,20 @@
 - [ ] Evaluate: 博文页无 `fonts.googleapis.com` 请求，Noto Serif SC 从 `/_astro/*.woff2` 加载
 - [ ] GET `/blog/feed.xml` 前 50 条 item 有全文 `content:encoded`，所有 item description 非空
 
+## Post description UI declutter (2026-07-04) (`/blog`, `/en/blog`, `/posts/*`)
+
+> description 从常驻布局移出：列表卡片改 hover 浮层，详情页导语降调移到封面下。meta/og/JSON-LD 不受影响。
+
+- [ ] `/blog`（桌面）：列表卡片、hero 小卡、featured 大卡默认都不显示 description（卡片干净）
+- [ ] `/blog`（桌面）：hover 列表行 → 底部淡入 description 浮层（斜体衬线导语），不 hover 的行保持不变、无高度跳动
+- [ ] `/blog`（桌面）：hover hero 小卡 → 卡片 body 区淡入 description 浮层；图片上的阅读量 stats 仍正常
+- [ ] `/blog`（桌面）：hover featured 大卡 → description 从标题下滑出（封面上白字），meta/stats 不移位
+- [ ] `/blog` 明暗两种模式浮层文字都清晰可读（浅色模式深字浅底 / 深色模式浅字深底）
+- [ ] 移动端（无 hover）：所有卡片始终不显示 description，无残留浮层
+- [ ] `/en/blog`：同上，description 显示英文
+- [ ] `/posts/{有封面}`（如 `after-ai-takes-everything`）：导语在封面图下方，斜体衬线、次级灰、左侧细竖线，字号克制不抢眼；标题下方无导语
+- [ ] `/posts/{无封面}`（如 `homogeneous`）：导语保留在标题下方（headline 区），同样降调样式
+
 ## Guestbook feed source links (Homepage `#guestbook`)
 
 > 站点级留言 feed 的「来自 …」链接。评论 `post_slug` 为博文时是裸 slug，为笔记时是 `note/<slug>`。

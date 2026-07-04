@@ -659,6 +659,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
     padding: 12px 14px 14px;
     display: flex; flex-direction: column;
     flex-shrink: 0;
+    position: relative; /* anchor hover deck overlay */
   }
   .hc-title {
     font-size: 15px; font-weight: 700; color: var(--c-text);
@@ -667,11 +668,22 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden;
   }
+  /* Small-card description: hover-only overlay over the body (desktop). */
   .hc-excerpt {
-    font-size: 12px; color: var(--c-text-dim); line-height: 1.4;
-    margin: 0 0 auto;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    position: absolute; left: 0; right: 0; bottom: 0;
+    margin: 0; padding: 26px 14px 13px;
+    font-size: 12px; line-height: 1.55; color: var(--c-text-muted);
+    font-family: var(--font-serif); font-style: italic;
+    background: linear-gradient(to top, var(--c-bg) 60%, rgba(var(--c-bg-rgb),0) 100%);
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
     overflow: hidden;
+    border-radius: 0 0 4px 4px;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    .hero-card-sm:hover .hc-excerpt { opacity: 1; transform: none; }
   }
   .hc-meta {
     font-size: 11px; color: var(--c-text-dim); margin-top: 8px;
@@ -709,12 +721,20 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
     font-family: var(--font-serif);
     text-shadow: 0 1px 3px rgba(0,0,0,0.3);
   }
+  /* Featured-card description: collapsed by default, slides open on hover. */
   .hc-excerpt-lg {
-    font-size: 15px; color: rgba(255,255,255,0.8);
-    line-height: 1.55; margin: 0 0 12px;
+    font-size: 15px; color: rgba(255,255,255,0.82);
+    line-height: 1.55; margin: 0;
     font-family: var(--font-serif);
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
     overflow: hidden;
+    max-height: 0; opacity: 0; transform: translateY(6px);
+    transition: max-height 0.28s ease, opacity 0.28s ease, transform 0.28s ease, margin 0.28s ease;
+  }
+  @media (hover: hover) {
+    .hero-card-lg:hover .hc-excerpt-lg {
+      max-height: 4em; opacity: 1; transform: none; margin: 0 0 12px;
+    }
   }
   .hc-meta-lg {
     font-size: 13px; color: rgba(255,255,255,0.65);
@@ -842,7 +862,7 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
   }
   .post-item:hover { opacity: 0.85; }
   .post-item:hover .pi-title { color: var(--accent, #4ade80); }
-  .pi-body { flex: 1; min-width: 0; }
+  .pi-body { flex: 1; min-width: 0; position: relative; }
   .pi-title {
     font-size: 19px; font-weight: 700; color: var(--c-text);
     line-height: 1.35; margin: 0 0 6px;
@@ -850,12 +870,21 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
     letter-spacing: 0.01em;
     transition: color 0.2s;
   }
+  /* List description: hover-only overlay, anchored to the bottom of the body. */
   .pi-desc {
-    font-size: 15px; color: var(--c-text-dim); line-height: 1.6;
-    margin: 0 0 8px;
-    font-family: var(--font-serif);
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+    position: absolute; left: 0; right: 0; bottom: 0;
+    margin: 0; padding: 30px 0 2px;
+    font-size: 14px; line-height: 1.6; color: var(--c-text-muted);
+    font-family: var(--font-serif); font-style: italic;
+    background: linear-gradient(to top, var(--c-bg) 62%, rgba(var(--c-bg-rgb),0) 100%);
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
     overflow: hidden;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    pointer-events: none;
+  }
+  @media (hover: hover) {
+    .post-item:hover .pi-desc { opacity: 1; transform: none; }
   }
   .pi-meta {
     font-size: 13px; color: var(--c-text-muted);
