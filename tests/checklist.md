@@ -41,7 +41,9 @@
 > description 从常驻布局移出：列表卡片改 hover 浮层，详情页导语降调移到封面下。meta/og/JSON-LD 不受影响。
 
 - [ ] `/blog`（桌面）：列表卡片、hero 小卡、featured 大卡默认都不显示 description（卡片干净）
-- [ ] `/blog`（桌面）：hover 列表行 → 底部淡入 description 浮层（斜体衬线导语），不 hover 的行保持不变、无高度跳动
+- [ ] `/blog`（桌面）：hover 列表行 → 底部淡入 description 浮层（斜体衬线导语，2 行截断），不 hover 的行保持不变、无高度跳动
+- [ ] `/blog`（桌面）：hover 列表行时 → 阅读/点赞/评论 stats 与导语**同时出现**：导语占左侧主体、stats 收到行尾右侧，两者不重叠；date·author meta 行淡出让位
+- [ ] `/blog`（窄桌面 ~900px，有 hover）：hover 列表行 → 只出导语（占满行宽），stats 隐藏、不与导语挤压
 - [ ] `/blog`（桌面）：hover hero 小卡 → 卡片 body 区淡入 description 浮层；图片上的阅读量 stats 仍正常
 - [ ] `/blog`（桌面）：hover featured 大卡 → description 从标题下滑出（封面上白字），meta/stats 不移位
 - [ ] `/blog` 明暗两种模式浮层文字都清晰可读（浅色模式深字浅底 / 深色模式浅字深底）
