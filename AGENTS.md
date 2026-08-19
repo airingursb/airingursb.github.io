@@ -1,6 +1,6 @@
 # Blog Homepage - AGENTS.md
 
-> This file is gitignored. Do NOT commit it.
+> Project overview + Cursor Cloud dev-environment notes for agents.
 
 ## Project Overview
 
@@ -135,3 +135,53 @@ Pagefind、Cal.com 等第三方库动态注入的 DOM 不带 Astro 的 `data-ast
 - `scripts/` - 数据收集脚本
 - `services/` - Docker 微服务 (gitignored)
 - `.github/workflows/` - CI/CD
+
+## Cursor Cloud specific instructions
+
+Dev scope is the root **Astro static site** (个人主页/blog). Dependencies are refreshed
+automatically on VM startup via the update script (`npm ci`), so no manual install is needed.
+
+- **Dev server**: `npx astro dev --host 0.0.0.0 --port 4321`. Serves homepage + blog +
+  content-collection posts/notes. No secrets required for the site to boot.
+- **Build**: `npm run build` (= `astro build && pagefind --site dist`). Works without any
+  API keys; missing `PUBLIC_MAPBOX_TOKEN` / `BLOG_SUPABASE_*` only degrade specific widgets,
+  they do NOT break the build. Output → `dist/`.
+- **Tests**: `npm test` (node --test, 139 tests). Fast, no env needed.
+- **Type-check / lint**: `npx astro check`. GOTCHA: it OOMs under the default Node heap;
+  run it as `NODE_OPTIONS="--max-old-space-size=12288" npx astro check`. It currently
+  reports ~73 pre-existing type errors — these are baseline, not caused by your changes.
+  CI (`deploy.yml`) does not run `astro check`; it only runs `npm run build`.
+- `trailingSlash: 'always'` — in `astro dev`, links without a trailing slash 404 with a
+  "did you mean …/" hint. Always use the trailing slash (e.g. `/posts/<slug>/`). Prod redirects.
+- Sub-projects (`comics-studio/`, `cli/` Go, `clients/`, `tools/`) are auxiliary tooling with
+  their own dependencies and are NOT installed by the update script — install on demand if you
+  work on them.
+
+### Backend (blog-api) — full-stack dev
+
+`services/` is a git submodule of the private repo `airingursb/blog-server` (SSH URL, so
+`git submodule update` won't work here). The update script clones it via the authenticated
+`gh` CLI, runs `npm ci` inside `services/blog-api`, and writes a local `services/blog-api/.env`
+with a generated `HMAC_SECRET` (that `.env` is gitignored and regenerated per fresh VM).
+
+- **Run backend**: `cd services/blog-api && npm run dev` (= `node --watch server.js`),
+  listens on `http://localhost:3000`. Only `HMAC_SECRET` is required to boot; everything else
+  degrades gracefully (Supabase/LLM/email/analytics are disabled with a log line when their
+  keys are absent). Health check: `curl localhost:3000/health`.
+- **Backend tests**: `cd services/blog-api && npm test` (node --test).
+- **CORS**: strict allowlist from `ALLOWED_ORIGINS` (the generated `.env` already whitelists
+  `localhost:4321-4323` + `8111`). Requests from other origins get `403`. Public `/api/lounge/*`
+  read endpoints bypass the allowlist.
+- **Frontend → backend wiring**: the frontend hardcodes `https://chat.ursb.me` as the API base
+  (e.g. `src/pages/index.astro`, `src/pages/moments.astro`, `src/world/*`). There is NO env-var
+  override, so to make the browser hit the *local* backend you must temporarily edit those
+  `https://chat.ursb.me` literals to `http://localhost:3000` (do not commit). The backend serves
+  the exact endpoints the frontend calls (verified: `POST /api/chat/init` returns a signed token).
+- **Full functionality needs secrets** (set via Cursor Secrets → injected as env, picked up by
+  `lib/config.js`): `KIMI_API_KEY` (public chat), `VOLCENGINE_API_KEY` (nook world brain),
+  `BLOG_SUPABASE_URL` + `BLOG_SUPABASE_SERVICE_KEY` (comments/subscribers/views/moments),
+  plus optional `RESEND_API_KEY`, `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, Telegram/R2 keys.
+  Without them the server still boots and non-DB/LLM endpoints (auth tokens, health, lounge
+  runtime) work.
+- `docker-compose.yml` also defines an `openclaw-gateway` (image `ghcr.io/openclaw/openclaw`)
+  the companion AI uses; not needed to run blog-api standalone for most dev.
