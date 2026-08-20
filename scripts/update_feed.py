@@ -695,12 +695,15 @@ def main():
         print(f'Readwise: error - {e}', file=sys.stderr)
 
     # GitHub
+    # The homepage (src/pages/index.astro) imports src/data/github.json directly
+    # and emits window.__GITHUB_DATA__ at build time, so there is no inline block
+    # to sync into index.astro. We still refresh the legacy root index.html block
+    # and always rewrite github.json below (via write_json), which is what the
+    # page and /api/status.json read.
     try:
         gh_data = fetch_github_data()
         gh_html = generate_github_script(gh_data)
         content = replace_section(content, '<!-- GITHUB_DATA_START -->', '<!-- GITHUB_DATA_END -->', gh_html)
-        astro_script = gh_html.replace('<script>', '<script is:inline>')
-        sync_to_astro('<!-- GITHUB_DATA_START -->', '<!-- GITHUB_DATA_END -->', astro_script, 'GitHub')
         print(f'GitHub: @{gh_data["login"]} - {gh_data["followers"]} followers, {gh_data["repos"]} repos')
         changed = True
     except Exception as e:
