@@ -1004,6 +1004,55 @@ const jsonLd = {
     return total;
   }
 
+  // The same post's other-language URL (zh <-> en), used to resolve anchors for
+  // legacy cross-language highlights that predate the anchor_id column.
+  function otherLangPostPath() {
+    return (PAGE_LANG === 'zh' ? '/en/posts/' : '/posts/') + POST_SLUG + '/';
+  }
+
+  // Fetch + parse the other-language rendered blocks once: [{aid, text}, ...].
+  // data-aid is language-independent, so a block found here maps 1:1 to the
+  // same-aid block in this page.
+  var _otherLangBlocks = null;
+  function getOtherLangBlocks() {
+    if (_otherLangBlocks) return _otherLangBlocks;
+    _otherLangBlocks = fetch(otherLangPostPath(), { credentials: 'omit' })
+      .then(function(r) { return r.ok ? r.text() : ''; })
+      .then(function(html) {
+        if (!html) return [];
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var root = doc.getElementById('postContent') || doc.body;
+        if (!root) return [];
+        var out = [];
+        root.querySelectorAll('[data-aid]').forEach(function(el) {
+          out.push({ aid: el.getAttribute('data-aid'), text: el.textContent });
+        });
+        return out;
+      })
+      .catch(function() { return []; });
+    return _otherLangBlocks;
+  }
+
+  // For cross-language highlights without an anchor_id (created before the
+  // feature), locate the quoted passage in the OTHER language's blocks and adopt
+  // that block's data-aid, so they anchor to the matching block on this page and
+  // read inline with same-language notes instead of being orphaned.
+  function resolveCrossLangAnchors() {
+    var needy = inlineComments.filter(function(c) {
+      return c.selected_text && !c.anchor_id && commentLang(c) !== PAGE_LANG
+        && !findRangeByText(postContent, c.selected_text);
+    });
+    if (!needy.length) return Promise.resolve();
+    return getOtherLangBlocks().then(function(blocks) {
+      if (!blocks.length) return;
+      needy.forEach(function(c) {
+        for (var i = 0; i < blocks.length; i++) {
+          if (blocks[i].text.indexOf(c.selected_text) !== -1) { c.anchor_id = blocks[i].aid; break; }
+        }
+      });
+    });
+  }
+
   function restoreHighlights() {
     inlineComments.forEach(function(c) {
       if (!c.selected_text) return;
@@ -1086,11 +1135,6 @@ const jsonLd = {
       p.card.style.top = top + 'px';
       nextAvailable = top + p.height + GAP;
     });
-    var grp = commentCards.querySelector(':scope > .cm-otherlang');
-    if (grp) {
-      grp.style.top = nextAvailable + 'px';
-      nextAvailable += grp.offsetHeight + GAP;
-    }
     commentCards.style.minHeight = nextAvailable + 'px';
   }
 
@@ -1258,41 +1302,13 @@ const jsonLd = {
     commentCards.innerHTML = '';
     crEmpty.style.display = inlineComments.length ? 'none' : '';
 
-    // Anchored comments get a positioned card next to their passage; the rest
-    // (highlights made on the other language version whose block we can't place,
-    // or legacy rows whose quote no longer matches) fold into a collapsed group
-    // so they stay readable without floating against unrelated sentences.
-    var unlocated = [];
+    // Every highlight renders as a positioned card — same-language ones next to
+    // their exact <mark>, cross-language ones next to the matching block marker.
+    // layoutCards() interleaves them by vertical position, so zh and en notes
+    // sit together against the passage they belong to.
     inlineComments.forEach(function(c) {
-      if (anchorElFor(c.id)) commentCards.appendChild(buildInlineCard(c));
-      else unlocated.push(c);
+      commentCards.appendChild(buildInlineCard(c));
     });
-
-    if (unlocated.length) {
-      var allOtherLang = unlocated.every(function(c) { return commentLang(c) !== PAGE_LANG; });
-      var label = allOtherLang
-        ? (PAGE_LANG === 'zh' ? '\u82f1\u6587\u7248\u7684\u5212\u7ebf\u8bc4\u8bba' : 'Highlights on the Chinese version')
-        : (PAGE_LANG === 'zh' ? '\u672a\u5b9a\u4f4d\u7684\u5212\u7ebf\u8bc4\u8bba' : 'Unplaced highlights');
-      var grp = document.createElement('div');
-      grp.className = 'cm-otherlang';
-      var head = document.createElement('button');
-      head.className = 'cm-otherlang-head';
-      head.type = 'button';
-      head.innerHTML = '<span class="cm-otherlang-chevron">\u25b8</span><span>' + label + ' (' + unlocated.length + ')</span>';
-      var body = document.createElement('div');
-      body.className = 'cm-otherlang-body';
-      body.style.display = 'none';
-      unlocated.forEach(function(c) { body.appendChild(buildInlineCard(c)); });
-      head.addEventListener('click', function() {
-        var open = body.style.display !== 'none';
-        body.style.display = open ? 'none' : '';
-        head.classList.toggle('open', !open);
-        layoutCards();
-      });
-      grp.appendChild(head);
-      grp.appendChild(body);
-      commentCards.appendChild(grp);
-    }
 
     requestAnimationFrame(function() { requestAnimationFrame(layoutCards); });
   }
@@ -1881,9 +1897,13 @@ const jsonLd = {
 
   apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(POST_SLUG)).then(function(res) {
     inlineComments = res.comments || [];
-    restoreHighlights();
-    renderInlineComments();
-    scrollToHashHighlight();
+    // Resolve anchors for legacy cross-language highlights (async, best-effort),
+    // then paint + lay out. Never let a failed lookup block rendering.
+    resolveCrossLangAnchors().catch(function() {}).then(function() {
+      restoreHighlights();
+      renderInlineComments();
+      scrollToHashHighlight();
+    });
   });
 
   // Newsletter subscribe
@@ -2464,29 +2484,6 @@ const jsonLd = {
     background: rgba(var(--accent-rgb), 0.12);
     vertical-align: 1px;
   }
-  /* Collapsed group for other-language / unplaced highlights. */
-  .comment-rail :global(.cm-otherlang) {
-    position: absolute;
-    left: 0; right: 0;
-  }
-  .comment-rail :global(.cm-otherlang-head) {
-    display: flex; align-items: center; gap: 6px;
-    width: 100%;
-    padding: 8px 10px;
-    background: none;
-    border: 1px dashed var(--c-border);
-    border-radius: 6px;
-    color: var(--c-text-dim);
-    font-size: 11px;
-    cursor: pointer;
-    text-align: left;
-  }
-  .comment-rail :global(.cm-otherlang-head:hover) { color: var(--c-text); border-color: var(--accent); }
-  .comment-rail :global(.cm-otherlang-chevron) { transition: transform 0.15s; display: inline-block; }
-  .comment-rail :global(.cm-otherlang-head.open .cm-otherlang-chevron) { transform: rotate(90deg); }
-  .comment-rail :global(.cm-otherlang-body) { margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
-  /* Inside the group, cards flow normally rather than being absolutely placed. */
-  .comment-rail :global(.cm-otherlang-body .cm-card) { position: static; animation: none; }
   .comment-rail :global(.cm-card-body) {
     color: var(--c-text); line-height: 1.5; margin-bottom: 8px; word-break: break-word;
     white-space: pre-wrap;
