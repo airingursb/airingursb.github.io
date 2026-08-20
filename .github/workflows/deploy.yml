@@ -73,7 +73,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add src/data/ index.html
+          # NOTE: src/pages/index.astro must be committed too. update_feed.py's
+          # sync_to_astro() rewrites the inline <!-- *_DATA_START --> blocks
+          # (e.g. window.__GITHUB_DATA__) in index.astro, and the live homepage
+          # is built from index.astro — NOT from the root index.html template.
+          # Omitting it froze those inline modules (e.g. the GitHub card) at the
+          # last hand-commit while src/data/*.json kept updating.
+          git add src/data/ index.html src/pages/index.astro
           if git diff --staged --quiet; then
             echo "No feed changes to commit, skipping."
             exit 0
