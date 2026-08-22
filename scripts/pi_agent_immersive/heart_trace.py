@@ -21,17 +21,20 @@ _KW = re.compile(
 
 
 def _hl(code: str) -> str:
-    """Lightweight TS syntax highlight for trace blocks."""
+    """Lightweight TS syntax highlight; protects // comments from later passes."""
+    comments: list[str] = []
+
+    def _stash_comment(m: re.Match[str]) -> str:
+        comments.append(m.group(1))
+        return f"\x00C{len(comments) - 1}\x00"
+
     s = html.escape(code)
-    s = re.sub(r"(//.*)$", r'<span class="src-comment">\1</span>', s)
+    s = re.sub(r"(//.*)$", _stash_comment, s)
     s = re.sub(r"(`[^`]+`)", r'<span class="src-str">\1</span>', s)
     s = re.sub(r"('[^']*'|\"[^\"]*\")", r'<span class="src-str">\1</span>', s)
     s = _KW.sub(r'<span class="src-kw">\1</span>', s)
-    s = re.sub(
-        r"\b([A-Z][a-zA-Z0-9]*)\b",
-        lambda m: f'<span class="src-cls">{m.group(1)}</span>' if m.group(1) not in ("AgentMessage",) else m.group(0),
-        s,
-    )
+    for i, c in enumerate(comments):
+        s = s.replace(f"\x00C{i}\x00", f'<span class="src-comment">{html.escape(c)}</span>')
     return s
 
 
