@@ -5,6 +5,7 @@ from meta import CHAPTERS
 from textbook_map import PRODUCTION_MAP, TEXTBOOK_CHECKPOINTS
 
 from _html_helpers import aside_label, cmp, note, p, src
+from heart_trace import heart_trace_block
 
 
 def textbook_crossref_table(cp_ids: list[str]) -> str:
@@ -98,5 +99,11 @@ CHAPTER_EXTRAS: dict[str, str] = {
 
 
 def expand_chapter(cid: str, base: str) -> str:
+    parts = [base]
+    ht = heart_trace_block(cid)
+    if ht:
+        parts.append(ht)
     extra = CHAPTER_EXTRAS.get(cid, "")
-    return base + ("\n\n" + extra if extra else "")
+    if extra:
+        parts.append(extra)
+    return "\n\n".join(parts)

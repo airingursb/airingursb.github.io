@@ -1142,6 +1142,30 @@
   }
   body.has-filmstrip { padding-top: 52px; }
   body.has-filmstrip .ursb-backlink { top: 58px; }
+  .trace-walk {
+    margin: 36px 0; padding: 22px 24px 8px;
+    border: 2px solid var(--accent); border-radius: 4px;
+    background: linear-gradient(135deg, rgba(31,92,140,0.03) 0%, var(--paper) 50%);
+  }
+  .trace-walk .tw-head {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; margin-bottom: 18px; line-height: 1.6;
+  }
+  .trace-walk .tw-tag {
+    display: block; color: var(--accent); font-weight: 700;
+    margin-bottom: 6px; letter-spacing: 0.18em;
+  }
+  .trace-walk .src-stack { margin: 16px 0 20px; }
+  .trace-walk .src-ln {
+    display: inline-block; width: 44px; text-align: right;
+    color: var(--ink-mute); user-select: none; margin-right: 8px;
+  }
+  .trace-walk .src-hl { font-family: var(--mono); font-size: 12px; }
+  .trace-steps { margin: 24px 0; }
+  .trace-steps .ts-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--copper); margin-bottom: 10px;
+  }
 
 </style>
 <script async defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script>
@@ -4245,6 +4269,265 @@
       <span class="lang-en-only">📘 <strong>pi-textbook checkpoint 03</strong>: Message IR (<code>types.ts</code>) · production: <code>packages/agent/src/types.ts · packages/coding-agent/src/core/messages.ts</code></span>
     </div>
 
+    <div class="trace-walk">
+      <div class="tw-head">
+        <span class="tw-tag">SOURCE TRACE · C09</span>
+        <span class="lang-zh-only">主线 prompt「读取 README.md，用一句话告诉我这个项目做什么」在消息 IR 层的变形</span>
+        <span class="lang-en-only">Through-line prompt message IR transformation</span>
+      </div>
+
+    <div class="lang-zh-only"><p>本章 trace 只盯住一件事：<strong>同一条用户输入在 agent-core 内永远是 AgentMessage</strong>，直到 <code>streamAssistantResponse</code> 调用 <code>convertToLlm</code> 才投影成 pi-ai 的 <code>Message[]</code>。主线 prompt 的 user 消息、read 的 toolResult、最终 assistant 回答——三者形状不同，但 JSONL 里存的全是 AgentMessage 变体。</p></div>
+    <div class="lang-en-only"><p>This trace tracks one thing: <strong>the same user input stays AgentMessage inside agent-core</strong> until <code>streamAssistantResponse</code> calls <code>convertToLlm</code> to project into pi-ai <code>Message[]</code>. User message, read toolResult, final assistant — different shapes, all AgentMessage variants in JSONL.</p></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/types.ts</span>
+        <span class="src-tag">types</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 149</span> <span class="src-hl"><span class="src-kw">export</span> <span class="src-kw">interface</span> <span class="src-cls">AgentLoopConfig</span> extends <span class="src-cls">SimpleStreamOptions</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 150</span> <span class="src-hl">	model: <span class="src-cls">Model</span>&lt;any&gt;;</span></span>
+      <span class="src-line">      <span class="src-ln"> 151</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 152</span> <span class="src-hl">	/**</span></span>
+      <span class="src-line">      <span class="src-ln"> 153</span> <span class="src-hl">	 * <span class="src-cls">Converts</span> AgentMessage[] to <span class="src-cls">LLM</span>-compatible <span class="src-cls">Message</span>[] before each <span class="src-cls">LLM</span> call.</span></span>
+      <span class="src-line">      <span class="src-ln"> 154</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 155</span> <span class="src-hl">	 * <span class="src-cls">Each</span> AgentMessage must be converted to a <span class="src-cls">UserMessage</span>, <span class="src-cls">AssistantMessage</span>, or <span class="src-cls">ToolResultMessage</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 156</span> <span class="src-hl">	 * that the <span class="src-cls">LLM</span> can understand. <span class="src-cls">AgentMessages</span> that cannot be converted (e.g., <span class="src-cls">UI</span>-only notifications,</span></span>
+      <span class="src-line">      <span class="src-ln"> 157</span> <span class="src-hl">	 * status messages) should be filtered out.</span></span>
+      <span class="src-line">      <span class="src-ln"> 158</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 159</span> <span class="src-hl">	 * <span class="src-cls">Contract</span>: must not <span class="src-kw">throw</span> or reject. <span class="src-cls">Return</span> a safe fallback value instead.</span></span>
+      <span class="src-line">      <span class="src-ln"> 160</span> <span class="src-hl">	 * <span class="src-cls">Throwing</span> interrupts the low-level agent loop without producing a normal event sequence.</span></span>
+      <span class="src-line">      <span class="src-ln"> 161</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 162</span> <span class="src-hl">	 * @example</span></span>
+      <span class="src-line">      <span class="src-ln"> 163</span> <span class="src-hl">	 * ```typescript</span></span>
+      <span class="src-line">      <span class="src-ln"> 164</span> <span class="src-hl">	 * convertToLlm: (messages) =&gt; messages.flatMap(m =&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 165</span> <span class="src-hl">	 *   <span class="src-kw">if</span> (m.role === &quot;custom&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 166</span> <span class="src-hl">	 *     <span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Convert</span> custom message to user message</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 167</span> <span class="src-hl">	 *     <span class="src-kw">return</span> [{ role: &quot;user&quot;, content: m.content, timestamp: m.timestamp }];</span></span>
+      <span class="src-line">      <span class="src-ln"> 168</span> <span class="src-hl">	 *   }</span></span>
+      <span class="src-line">      <span class="src-ln"> 169</span> <span class="src-hl">	 *   <span class="src-kw">if</span> (m.role === &quot;notification&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 170</span> <span class="src-hl">	 *     <span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Filter</span> out <span class="src-cls">UI</span>-only messages</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 171</span> <span class="src-hl">	 *     <span class="src-kw">return</span> [];</span></span>
+      <span class="src-line">      <span class="src-ln"> 172</span> <span class="src-hl">	 *   }</span></span>
+      <span class="src-line">      <span class="src-ln"> 173</span> <span class="src-hl">	 *   <span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Pass</span> through standard <span class="src-cls">LLM</span> messages</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 174</span> <span class="src-hl">	 *   <span class="src-kw">return</span> [m];</span></span>
+      <span class="src-line">      <span class="src-ln"> 175</span> <span class="src-hl">	 * })</span></span>
+      <span class="src-line">      <span class="src-ln"> 176</span> <span class="src-hl">	 * ```</span></span>
+      <span class="src-line">      <span class="src-ln"> 177</span> <span class="src-hl">	 */</span></span>
+      <span class="src-line">      <span class="src-ln"> 178</span> <span class="src-hl">	convertToLlm: (messages: AgentMessage[]) =&gt; <span class="src-cls">Message</span>[] | <span class="src-cls">Promise</span>&lt;<span class="src-cls">Message</span>[]&gt;;</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">convertToLlm：AgentMessage[] → Message[]，每次 LLM 调用前执行</span><span class="lang-en-only">convertToLlm: AgentMessage[] → Message[] before each LLM call</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 179</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 180</span> <span class="src-hl">	/**</span></span>
+      <span class="src-line">      <span class="src-ln"> 181</span> <span class="src-hl">	 * <span class="src-cls">Optional</span> transform applied to the context before <span class=<span class="src-str">"src-str"</span>>`convertToLlm`</span>.</span></span>
+      <span class="src-line">      <span class="src-ln"> 182</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 183</span> <span class="src-hl">	 * <span class="src-cls">Use</span> this <span class="src-kw">for</span> operations that work at the AgentMessage level:</span></span>
+      <span class="src-line">      <span class="src-ln"> 184</span> <span class="src-hl">	 * - <span class="src-cls">Context</span> window management (pruning old messages)</span></span>
+      <span class="src-line">      <span class="src-ln"> 185</span> <span class="src-hl">	 * - <span class="src-cls">Injecting</span> context <span class="src-kw">from</span> external sources</span></span>
+      <span class="src-line">      <span class="src-ln"> 186</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 187</span> <span class="src-hl">	 * <span class="src-cls">Contract</span>: must not <span class="src-kw">throw</span> or reject. <span class="src-cls">Return</span> the original messages or another</span></span>
+      <span class="src-line">      <span class="src-ln"> 188</span> <span class="src-hl">	 * safe fallback value instead.</span></span>
+      <span class="src-line">      <span class="src-ln"> 189</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 190</span> <span class="src-hl">	 * @example</span></span>
+      <span class="src-line">      <span class="src-ln"> 191</span> <span class="src-hl">	 * ```typescript</span></span>
+      <span class="src-line">      <span class="src-ln"> 192</span> <span class="src-hl">	 * transformContext: <span class="src-kw">async</span> (messages) =&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 193</span> <span class="src-hl">	 *   <span class="src-kw">if</span> (estimateTokens(messages) &gt; MAX_TOKENS) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 194</span> <span class="src-hl">	 *     <span class="src-kw">return</span> pruneOldMessages(messages);</span></span>
+      <span class="src-line">      <span class="src-ln"> 195</span> <span class="src-hl">	 *   }</span></span>
+      <span class="src-line">      <span class="src-ln"> 196</span> <span class="src-hl">	 *   <span class="src-kw">return</span> messages;</span></span>
+      <span class="src-line">      <span class="src-ln"> 197</span> <span class="src-hl">	 * }</span></span>
+      <span class="src-line">      <span class="src-ln"> 198</span> <span class="src-hl">	 * ```</span></span>
+      <span class="src-line">      <span class="src-ln"> 199</span> <span class="src-hl">	 */</span></span>
+      <span class="src-line">      <span class="src-ln"> 200</span> <span class="src-hl">	transformContext?: (messages: AgentMessage[], signal?: <span class="src-cls">AbortSignal</span>) =&gt; <span class="src-cls">Promise</span>&lt;AgentMessage[]&gt;;</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">transformContext：在 convert 之前做 compaction / 剪枝</span><span class="lang-en-only">transformContext: compaction/prune before convert</span></span></span>
+    </div>
+
+    <div class="lang-zh-only"><p><code>AgentLoopConfig</code> 的 JSDoc 把契约写得很硬：<code>convertToLlm</code> <strong>must not throw</strong>——抛错会打断低层循环且不会产生正常 event 序列。这就是为什么 compaction 和 custom message 过滤都在 Message 层做投影，而不是在 agent-loop 里 try/catch 糊过去。</p></div>
+    <div class="lang-en-only"><p><code>AgentLoopConfig</code> JSDoc is strict: <code>convertToLlm</code> <strong>must not throw</strong> — throws break the low-level loop without a normal event sequence. Compaction and custom message filtering project at Message layer, not try/catch in agent-loop.</p></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/coding-agent/src/core/messages.ts</span>
+        <span class="src-tag">convert</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 140</span> <span class="src-hl">/**</span></span>
+      <span class="src-line">      <span class="src-ln"> 141</span> <span class="src-hl"> * <span class="src-cls">Transform</span> <span class="src-cls">AgentMessages</span> (including custom types) to <span class="src-cls">LLM</span>-compatible <span class="src-cls">Messages</span>.</span></span>
+      <span class="src-line">      <span class="src-ln"> 142</span> <span class="src-hl"> *</span></span>
+      <span class="src-line">      <span class="src-ln"> 143</span> <span class="src-hl"> * <span class="src-cls">This</span> is used by:</span></span>
+      <span class="src-line">      <span class="src-ln"> 144</span> <span class="src-hl"> * - <span class="src-cls">Agent</span>&#x27;s transormToLlm option (<span class="src-kw">for</span> prompt calls and queued messages)</span></span>
+      <span class="src-line">      <span class="src-ln"> 145</span> <span class="src-hl"> * - <span class="src-cls">Compaction</span>&#x27;s generateSummary (<span class="src-kw">for</span> summarization)</span></span>
+      <span class="src-line">      <span class="src-ln"> 146</span> <span class="src-hl"> * - <span class="src-cls">Custom</span> extensions and tools</span></span>
+      <span class="src-line">      <span class="src-ln"> 147</span> <span class="src-hl"> */</span></span>
+      <span class="src-line">      <span class="src-ln"> 148</span> <span class="src-hl"><span class="src-kw">export</span> <span class="src-kw">function</span> convertToLlm(messages: AgentMessage[]): <span class="src-cls">Message</span>[] {</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">coding-agent 的生产 convertToLlm 实现</span><span class="lang-en-only">production convertToLlm in coding-agent</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 149</span> <span class="src-hl">	<span class="src-kw">return</span> messages</span></span>
+      <span class="src-line">      <span class="src-ln"> 150</span> <span class="src-hl">		.map((m): <span class="src-cls">Message</span> | <span class="src-kw">undefined</span> =&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 151</span> <span class="src-hl">			<span class="src-kw">switch</span> (m.role) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 152</span> <span class="src-hl">				<span class="src-kw">case</span> &quot;bashExecution&quot;:</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">switch(m.role)：custom / bashExecution / branchSummary 在此折叠</span><span class="lang-en-only">switch(m.role): custom/bash/branch fold here</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 153</span> <span class="src-hl">					<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Skip</span> messages excluded <span class="src-kw">from</span> context (!! prefix)</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 154</span> <span class="src-hl">					<span class="src-kw">if</span> (m.excludeFromContext) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 155</span> <span class="src-hl">						<span class="src-kw">return</span> <span class="src-kw">undefined</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 156</span> <span class="src-hl">					}</span></span>
+      <span class="src-line">      <span class="src-ln"> 157</span> <span class="src-hl">					<span class="src-kw">return</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 158</span> <span class="src-hl">						role: &quot;user&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 159</span> <span class="src-hl">						content: [{ <span class="src-kw">type</span>: &quot;text&quot;, text: bashExecutionToText(m) }],</span></span>
+      <span class="src-line">      <span class="src-ln"> 160</span> <span class="src-hl">						timestamp: m.timestamp,</span></span>
+      <span class="src-line">      <span class="src-ln"> 161</span> <span class="src-hl">					};</span></span>
+      <span class="src-line">      <span class="src-ln"> 162</span> <span class="src-hl">				<span class="src-kw">case</span> &quot;custom&quot;: {</span></span>
+      <span class="src-line">      <span class="src-ln"> 163</span> <span class="src-hl">					<span class="src-kw">const</span> content = <span class="src-kw">typeof</span> m.content === &quot;string&quot; ? [{ <span class="src-kw">type</span>: &quot;text&quot; as <span class="src-kw">const</span>, text: m.content }] : m.content;</span></span>
+      <span class="src-line">      <span class="src-ln"> 164</span> <span class="src-hl">					<span class="src-kw">return</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 165</span> <span class="src-hl">						role: &quot;user&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 166</span> <span class="src-hl">						content,</span></span>
+      <span class="src-line">      <span class="src-ln"> 167</span> <span class="src-hl">						timestamp: m.timestamp,</span></span>
+      <span class="src-line">      <span class="src-ln"> 168</span> <span class="src-hl">					};</span></span>
+      <span class="src-line">      <span class="src-ln"> 169</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 170</span> <span class="src-hl">				<span class="src-kw">case</span> &quot;branchSummary&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 171</span> <span class="src-hl">					<span class="src-kw">return</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 172</span> <span class="src-hl">						role: &quot;user&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 173</span> <span class="src-hl">						content: [{ <span class="src-kw">type</span>: &quot;text&quot; as <span class="src-kw">const</span>, text: BRANCH_SUMMARY_PREFIX + m.summary + BRANCH_SUMMARY_SUFFIX }],</span></span>
+      <span class="src-line">      <span class="src-ln"> 174</span> <span class="src-hl">						timestamp: m.timestamp,</span></span>
+      <span class="src-line">      <span class="src-ln"> 175</span> <span class="src-hl">					};</span></span>
+      <span class="src-line">      <span class="src-ln"> 176</span> <span class="src-hl">				<span class="src-kw">case</span> &quot;compactionSummary&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 177</span> <span class="src-hl">					<span class="src-kw">return</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 178</span> <span class="src-hl">						role: &quot;user&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 179</span> <span class="src-hl">						content: [</span></span>
+      <span class="src-line">      <span class="src-ln"> 180</span> <span class="src-hl">							{ <span class="src-kw">type</span>: &quot;text&quot; as <span class="src-kw">const</span>, text: COMPACTION_SUMMARY_PREFIX + m.summary + COMPACTION_SUMMARY_SUFFIX },</span></span>
+      <span class="src-line">      <span class="src-ln"> 181</span> <span class="src-hl">						],</span></span>
+      <span class="src-line">      <span class="src-ln"> 182</span> <span class="src-hl">						timestamp: m.timestamp,</span></span>
+      <span class="src-line">      <span class="src-ln"> 183</span> <span class="src-hl">					};</span></span>
+      <span class="src-line">      <span class="src-ln"> 184</span> <span class="src-hl">				<span class="src-kw">case</span> &quot;user&quot;:</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">user/assistant/toolResult 原样透传——主线三角色</span><span class="lang-en-only">user/assistant/toolResult pass through — through-line trio</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 185</span> <span class="src-hl">				<span class="src-kw">case</span> &quot;assistant&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 186</span> <span class="src-hl">				<span class="src-kw">case</span> &quot;toolResult&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 187</span> <span class="src-hl">					<span class="src-kw">return</span> m;</span></span>
+      <span class="src-line">      <span class="src-ln"> 188</span> <span class="src-hl">				default:</span></span>
+      <span class="src-line">      <span class="src-ln"> 189</span> <span class="src-hl">					<span class=<span class="src-str">"src-comment"</span>>// biome-ignore lint/correctness/noSwitchDeclarations: fine</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 190</span> <span class="src-hl">					<span class="src-kw">const</span> _exhaustiveCheck: never = m;</span></span>
+      <span class="src-line">      <span class="src-ln"> 191</span> <span class="src-hl">					<span class="src-kw">return</span> <span class="src-kw">undefined</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 192</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 193</span> <span class="src-hl">		})</span></span>
+      <span class="src-line">      <span class="src-ln"> 194</span> <span class="src-hl">		.filter((m) =&gt; m !== <span class="src-kw">undefined</span>);</span></span>
+      <span class="src-line">      <span class="src-ln"> 195</span> <span class="src-hl">}</span></span>
+    </div>
+
+    <div class="trace-steps"><div class="ts-label"><span class="lang-zh-only">主线 prompt 消息投影时间线</span><span class="lang-en-only">Through-line message projection timeline</span></div>    <table class="cmp">
+      <thead><tr><th>#</th><th>location</th><th>主线时刻 / through-line moment</th></tr></thead>
+      <tbody>
+      <tr><td>1</td><td><code>AgentSession.prompt()</code></td><td>user AgentMessage: «读取 README.md，用一句话告…»</td></tr>
+      <tr><td>2</td><td><code>context.messages[]</code></td><td>canonical transcript 追加 user</td></tr>
+      <tr><td>3</td><td><code>transformContext?</code></td><td>compaction 可能在此剪枝旧消息</td></tr>
+      <tr><td>4</td><td><code>convertToLlm()</code></td><td>→ [{role:user, content:…}] 送 pi-ai</td></tr>
+      <tr><td>5</td><td>turn-1 assistant</td><td>toolUse(read) 仍在 AgentMessage 形状</td></tr>
+      <tr><td>6</td><td>toolResult</td><td>read README 内容 · role=toolResult</td></tr>
+      <tr><td>7</td><td>turn-2 convert</td><td>user+assistant+toolResult → Message[]</td></tr>
+      <tr><td>8</td><td>turn-2 assistant</td><td>stopReason=stop · 最终回答</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
+        <span class="src-tag">stream</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 281</span> <span class="src-hl"><span class="src-kw">async</span> <span class="src-kw">function</span> streamAssistantResponse(</span></span>
+      <span class="src-line">      <span class="src-ln"> 282</span> <span class="src-hl">	context: <span class="src-cls">AgentContext</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 283</span> <span class="src-hl">	config: <span class="src-cls">AgentLoopConfig</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 284</span> <span class="src-hl">	signal: <span class="src-cls">AbortSignal</span> | <span class="src-kw">undefined</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 285</span> <span class="src-hl">	emit: <span class="src-cls">AgentEventSink</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 286</span> <span class="src-hl">	streamFunction: <span class="src-cls">StreamFn</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 287</span> <span class="src-hl">): <span class="src-cls">Promise</span>&lt;<span class="src-cls">AssistantMessage</span>&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 288</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Apply</span> context transform <span class="src-kw">if</span> configured (AgentMessage[] → AgentMessage[])</span></span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">transformContext 边界：仍是 AgentMessage[]</span><span class="lang-en-only">transformContext boundary: still AgentMessage[]</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 289</span> <span class="src-hl">	<span class="src-kw">let</span> messages = context.messages;</span></span>
+      <span class="src-line">      <span class="src-ln"> 290</span> <span class="src-hl">	<span class="src-kw">if</span> (config.transformContext) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 291</span> <span class="src-hl">		messages = <span class="src-kw">await</span> config.transformContext(messages, signal);</span></span>
+      <span class="src-line">      <span class="src-ln"> 292</span> <span class="src-hl">	}</span></span>
+      <span class="src-line">      <span class="src-ln"> 293</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 294</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Convert</span> to <span class="src-cls">LLM</span>-compatible messages (AgentMessage[] → <span class="src-cls">Message</span>[])</span></span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">★ 唯一 convert 调用点</span><span class="lang-en-only">★ sole convert call site</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 295</span> <span class="src-hl">	<span class="src-kw">const</span> llmMessages = <span class="src-kw">await</span> config.convertToLlm(messages);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">llmMessages 进入 streamFunction</span><span class="lang-en-only">llmMessages enters streamFunction</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 296</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 297</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Build</span> <span class="src-cls">LLM</span> context</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 298</span> <span class="src-hl">	<span class="src-kw">const</span> llmContext: <span class="src-cls">Context</span> = {</span></span>
+      <span class="src-line">      <span class="src-ln"> 299</span> <span class="src-hl">		systemPrompt: context.systemPrompt,</span></span>
+      <span class="src-line">      <span class="src-ln"> 300</span> <span class="src-hl">		messages: llmMessages,</span></span>
+      <span class="src-line">      <span class="src-ln"> 301</span> <span class="src-hl">		tools: context.tools,</span></span>
+      <span class="src-line">      <span class="src-ln"> 302</span> <span class="src-hl">	};</span></span>
+      <span class="src-line">      <span class="src-ln"> 303</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 304</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Resolve</span> <span class="src-cls">API</span> key (important <span class="src-kw">for</span> expiring tokens)</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 305</span> <span class="src-hl">	<span class="src-kw">const</span> resolvedApiKey =</span></span>
+      <span class="src-line">      <span class="src-ln"> 306</span> <span class="src-hl">		(config.getApiKey ? <span class="src-kw">await</span> config.getApiKey(config.model.provider) : <span class="src-kw">undefined</span>) || config.apiKey;</span></span>
+      <span class="src-line">      <span class="src-ln"> 307</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 308</span> <span class="src-hl">	<span class="src-kw">const</span> response = <span class="src-kw">await</span> streamFunction(config.model, llmContext, {</span></span>
+      <span class="src-line">      <span class="src-ln"> 309</span> <span class="src-hl">		...config,</span></span>
+      <span class="src-line">      <span class="src-ln"> 310</span> <span class="src-hl">		apiKey: resolvedApiKey,</span></span>
+      <span class="src-line">      <span class="src-ln"> 311</span> <span class="src-hl">		signal,</span></span>
+      <span class="src-line">      <span class="src-ln"> 312</span> <span class="src-hl">	});</span></span>
+    </div>
+
+    <div class="lang-zh-only"><p>注意 <code>streamAssistantResponse</code> 注释原文：「This is where AgentMessage[] gets transformed to Message[] for the LLM.」——读 pi-mono 时搜索这句话，比搜索 <code>convertToLlm</code> 更快定位心脏。主线 prompt 第一次 convert 发生在 turn-1 model stream 前；第二次在 turn-2（tool result 已入 context）前。</p></div>
+    <div class="lang-en-only"><p>Note <code>streamAssistantResponse</code> comment: «This is where AgentMessage[] gets transformed to Message[] for the LLM.» Search this phrase in pi-mono to locate the heart faster than <code>convertToLlm</code>. First convert before turn-1; second before turn-2 after tool result enters context.</p></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/types.ts</span>
+        <span class="src-tag">agentmsg</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 318</span> <span class="src-hl">}</span></span>
+      <span class="src-line">      <span class="src-ln"> 319</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 320</span> <span class="src-hl">/**</span></span>
+      <span class="src-line">      <span class="src-ln"> 321</span> <span class="src-hl"> * AgentMessage: <span class="src-cls">Union</span> of <span class="src-cls">LLM</span> messages + custom messages.</span></span>
+      <span class="src-line">      <span class="src-ln"> 322</span> <span class="src-hl"> * <span class="src-cls">This</span> abstraction allows apps to add custom message types <span class="src-kw">while</span> maintaining</span></span>
+      <span class="src-line">      <span class="src-ln"> 323</span> <span class="src-hl"> * <span class="src-kw">type</span> safety and compatibility with the base <span class="src-cls">LLM</span> messages.</span></span>
+      <span class="src-line">      <span class="src-ln"> 324</span> <span class="src-hl"> */</span></span>
+      <span class="src-line">      <span class="src-ln"> 325</span> <span class="src-hl"><span class="src-kw">export</span> <span class="src-kw">type</span> AgentMessage = <span class="src-cls">Message</span> | <span class="src-cls">CustomAgentMessages</span>[keyof <span class="src-cls">CustomAgentMessages</span>];</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">AgentMessage = Message | CustomAgentMessages 合并</span><span class="lang-en-only">AgentMessage = Message | CustomAgentMessages merge</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 326</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 327</span> <span class="src-hl">/**</span></span>
+      <span class="src-line">      <span class="src-ln"> 328</span> <span class="src-hl"> * <span class="src-cls">Public</span> agent state.</span></span>
+      <span class="src-line">      <span class="src-ln"> 329</span> <span class="src-hl"> *</span></span>
+      <span class="src-line">      <span class="src-ln"> 330</span> <span class="src-hl"> * <span class=<span class="src-str">"src-str"</span>>`tools`</span> and <span class=<span class="src-str">"src-str"</span>>`messages`</span> use accessor properties so implementations can copy</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/types.ts</span>
+        <span class="src-tag">events-type</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 421</span> <span class="src-hl">/**</span></span>
+      <span class="src-line">      <span class="src-ln"> 422</span> <span class="src-hl"> * <span class="src-cls">Events</span> emitted by the <span class="src-cls">Agent</span> <span class="src-kw">for</span> <span class="src-cls">UI</span> updates.</span></span>
+      <span class="src-line">      <span class="src-ln"> 423</span> <span class="src-hl"> *</span></span>
+      <span class="src-line">      <span class="src-ln"> 424</span> <span class="src-hl"> * <span class=<span class="src-str">"src-str"</span>>`agent_end`</span> is the last event emitted <span class="src-kw">for</span> a run, but awaited <span class=<span class="src-str">"src-str"</span>>`<span class="src-cls">Agent</span>.subscribe()`</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 425</span> <span class="src-hl"> * listeners <span class="src-kw">for</span> that event are still part of run settlement. <span class="src-cls">The</span> agent becomes</span></span>
+      <span class="src-line">      <span class="src-ln"> 426</span> <span class="src-hl"> * idle only after those listeners finish.</span></span>
+      <span class="src-line">      <span class="src-ln"> 427</span> <span class="src-hl"> */</span></span>
+      <span class="src-line">      <span class="src-ln"> 428</span> <span class="src-hl"><span class="src-kw">export</span> <span class="src-kw">type</span> <span class="src-cls">AgentEvent</span> =</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">AgentEvent：message_* 事件携带 AgentMessage 快照</span><span class="lang-en-only">AgentEvent: message_* carries AgentMessage snapshot</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 429</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Agent</span> lifecycle</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 430</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;agent_start&quot; }</span></span>
+      <span class="src-line">      <span class="src-ln"> 431</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;agent_end&quot;; messages: AgentMessage[] }</span></span>
+      <span class="src-line">      <span class="src-ln"> 432</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Turn</span> lifecycle - a turn is one assistant response + any tool calls/results</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 433</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;turn_start&quot; }</span></span>
+      <span class="src-line">      <span class="src-ln"> 434</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;turn_end&quot;; message: AgentMessage; toolResults: <span class="src-cls">ToolResultMessage</span>[] }</span></span>
+      <span class="src-line">      <span class="src-ln"> 435</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Message</span> lifecycle - emitted <span class="src-kw">for</span> user, assistant, and toolResult messages</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 436</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;message_start&quot;; message: AgentMessage }</span></span>
+      <span class="src-line">      <span class="src-ln"> 437</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Only</span> emitted <span class="src-kw">for</span> assistant messages during streaming</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 438</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;message_update&quot;; message: AgentMessage; assistantMessageEvent: <span class="src-cls">AssistantMessageEvent</span> }</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">message_update 仅 assistant 流式阶段</span><span class="lang-en-only">message_update only during assistant streaming</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 439</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;message_end&quot;; message: AgentMessage }</span></span>
+      <span class="src-line">      <span class="src-ln"> 440</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Tool</span> execution lifecycle</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 441</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;tool_execution_start&quot;; toolCallId: string; toolName: string; args: any }</span></span>
+      <span class="src-line">      <span class="src-ln"> 442</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;tool_execution_update&quot;; toolCallId: string; toolName: string; args: any; partialResult: any }</span></span>
+      <span class="src-line">      <span class="src-ln"> 443</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;tool_execution_end&quot;; toolCallId: string; toolName: string; result: any; isError: boolean };</span></span>
+    </div>
+
+    <div class="note copper">
+      <span class="lang-zh-only">练习：在 pi-textbook checkpoint 03 给 transcript 加一条 <code>role:custom</code> 消息，观察 convertToLlm 是否过滤、JSONL 是否仍完整保存。</span>
+      <span class="lang-en-only">Exercise: in textbook cp03 add a <code>role:custom</code> message; observe convertToLlm filter vs JSONL full save.</span>
+    </div>
+
+    </div>
+
     <div class="depth-zone" data-chapter="C09"><div class="depth-zone-label"><span class="dz-tag">DEPTH</span> <span class="lang-zh-only">深度细读 · C09.4+</span><span class="lang-en-only">Deep dive · C09.4+</span></div>
 
     <h4 class="sub2 depth-sec"><span class="sec-num">C09.4</span> <span class="lang-zh-only">主线 prompt 如何穿过此模块</span><span class="lang-en-only">through-line crossing</span></h4>
@@ -4530,6 +4813,260 @@
       <cite>Field Note · 10</cite>
     </blockquote>
 
+    <div class="trace-walk">
+      <div class="tw-head">
+        <span class="tw-tag">SOURCE TRACE · C10</span>
+        <span class="lang-zh-only">runLoop 双环：主线 prompt 两圈 model stream 完整源码 trace</span>
+        <span class="lang-en-only">runLoop twin loops: full source trace for two model streams</span>
+      </div>
+
+    <div class="lang-zh-only"><p><code>runLoop</code>（<code>agent-loop.ts:155</code>）是 Pi 与 Claude Code 最大架构差异所在：不是「一次 completion」，而是<strong>外环 follow-up × 内环 tool batch</strong>。主线 prompt 固定走两圈内环迭代（turn-1 toolUse + turn-2 stop），外环通常只转一圈。</p></div>
+    <div class="lang-en-only"><p><code>runLoop</code> (<code>agent-loop.ts:155</code>) is Pi's biggest architectural difference from Claude Code: not one completion but <strong>outer follow-up × inner tool batch</strong>. Through-line prompt runs two inner iterations (turn-1 toolUse + turn-2 stop); outer loop usually one revolution.</p></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
+        <span class="src-tag">runloop</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 155</span> <span class="src-hl"><span class="src-kw">async</span> <span class="src-kw">function</span> runLoop(</span></span>
+      <span class="src-line">      <span class="src-ln"> 156</span> <span class="src-hl">	initialContext: <span class="src-cls">AgentContext</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 157</span> <span class="src-hl">	newMessages: AgentMessage[],</span></span>
+      <span class="src-line">      <span class="src-ln"> 158</span> <span class="src-hl">	initialConfig: <span class="src-cls">AgentLoopConfig</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 159</span> <span class="src-hl">	signal: <span class="src-cls">AbortSignal</span> | <span class="src-kw">undefined</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 160</span> <span class="src-hl">	emit: <span class="src-cls">AgentEventSink</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 161</span> <span class="src-hl">	streamFunction: <span class="src-cls">StreamFn</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 162</span> <span class="src-hl">): <span class="src-cls">Promise</span>&lt;void&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 163</span> <span class="src-hl">	<span class="src-kw">let</span> currentContext = initialContext;</span></span>
+      <span class="src-line">      <span class="src-ln"> 164</span> <span class="src-hl">	<span class="src-kw">let</span> config = initialConfig;</span></span>
+      <span class="src-line">      <span class="src-ln"> 165</span> <span class="src-hl">	<span class="src-kw">let</span> firstTurn = <span class="src-kw">true</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 166</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Check</span> <span class="src-kw">for</span> steering messages at start (user may have typed <span class="src-kw">while</span> waiting)</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 167</span> <span class="src-hl">	<span class="src-kw">let</span> pendingMessages: AgentMessage[] = (<span class="src-kw">await</span> config.getSteeringMessages?.()) || [];</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">启动时先 drain steering 队列</span><span class="lang-en-only">drain steering queue at start</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 168</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 169</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Outer</span> loop: continues when queued follow-up messages arrive after agent would stop</span></span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">外环：follow-up 到达时 agent 本可停止却继续</span><span class="lang-en-only">outer: continue when follow-up arrives</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 170</span> <span class="src-hl">	<span class="src-kw">while</span> (<span class="src-kw">true</span>) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 171</span> <span class="src-hl">		<span class="src-kw">let</span> hasMoreToolCalls = <span class="src-kw">true</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 172</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 173</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Inner</span> loop: process tool calls and steering messages</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 174</span> <span class="src-hl">		<span class="src-kw">while</span> (hasMoreToolCalls || pendingMessages.length &gt; 0) {</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">内环条件：还有 tool 或 pending steering</span><span class="lang-en-only">inner: more tools or pending steering</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 175</span> <span class="src-hl">			<span class="src-kw">if</span> (!firstTurn) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 176</span> <span class="src-hl">				<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;turn_start&quot; });</span></span>
+      <span class="src-line">      <span class="src-ln"> 177</span> <span class="src-hl">			} <span class="src-kw">else</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 178</span> <span class="src-hl">				firstTurn = <span class="src-kw">false</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 179</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 180</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 181</span> <span class="src-hl">			<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Process</span> pending messages (inject before next assistant response)</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 182</span> <span class="src-hl">			<span class="src-kw">if</span> (pendingMessages.length &gt; 0) {</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">steering 注入：message_start/end 无 streaming</span><span class="lang-en-only">steering inject: message_start/end, no streaming</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 183</span> <span class="src-hl">				<span class="src-kw">for</span> (<span class="src-kw">const</span> message of pendingMessages) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 184</span> <span class="src-hl">					<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;message_start&quot;, message });</span></span>
+      <span class="src-line">      <span class="src-ln"> 185</span> <span class="src-hl">					<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;message_end&quot;, message });</span></span>
+      <span class="src-line">      <span class="src-ln"> 186</span> <span class="src-hl">					currentContext.messages.push(message);</span></span>
+      <span class="src-line">      <span class="src-ln"> 187</span> <span class="src-hl">					newMessages.push(message);</span></span>
+      <span class="src-line">      <span class="src-ln"> 188</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 189</span> <span class="src-hl">				pendingMessages = [];</span></span>
+      <span class="src-line">      <span class="src-ln"> 190</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 191</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 192</span> <span class="src-hl">			<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Stream</span> assistant response</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 193</span> <span class="src-hl">			<span class="src-kw">const</span> message = <span class="src-kw">await</span> streamAssistantResponse(currentContext, config, signal, emit, streamFunction);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">★ streamAssistantResponse：每圈内环一次 model</span><span class="lang-en-only">★ streamAssistantResponse: one model per inner round</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 194</span> <span class="src-hl">			newMessages.push(message);</span></span>
+      <span class="src-line">      <span class="src-ln"> 195</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 196</span> <span class="src-hl">			<span class="src-kw">if</span> (message.stopReason === &quot;error&quot; || message.stopReason === &quot;aborted&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 197</span> <span class="src-hl">				<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;turn_end&quot;, message, toolResults: [] });</span></span>
+      <span class="src-line">      <span class="src-ln"> 198</span> <span class="src-hl">				<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;agent_end&quot;, messages: newMessages });</span></span>
+      <span class="src-line">      <span class="src-ln"> 199</span> <span class="src-hl">				<span class="src-kw">return</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 200</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 201</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 202</span> <span class="src-hl">			<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Check</span> <span class="src-kw">for</span> tool calls</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 203</span> <span class="src-hl">			<span class="src-kw">const</span> toolCalls = message.content.filter((c) =&gt; c.<span class="src-kw">type</span> === &quot;toolCall&quot;);</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">从 assistant content 提取 toolCall</span><span class="lang-en-only">extract toolCall from assistant content</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 204</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 205</span> <span class="src-hl">			<span class="src-kw">const</span> toolResults: <span class="src-cls">ToolResultMessage</span>[] = [];</span></span>
+      <span class="src-line">      <span class="src-ln"> 206</span> <span class="src-hl">			hasMoreToolCalls = <span class="src-kw">false</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 207</span> <span class="src-hl">			<span class="src-kw">if</span> (toolCalls.length &gt; 0) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 208</span> <span class="src-hl">				<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">A</span> &quot;length&quot; stop means the output was cut off by the token limit, so</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 209</span> <span class="src-hl">				<span class=<span class="src-str">"src-comment"</span>>// every tool call in the message may carry truncated arguments. <span class="src-cls">Fail</span></span></span></span>
+      <span class="src-line">      <span class="src-ln"> 210</span> <span class="src-hl">				<span class=<span class="src-str">"src-comment"</span>>// them all instead of executing potentially borked calls.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 211</span> <span class="src-hl">				<span class="src-kw">const</span> executedToolBatch =</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">stopReason=length → 批量 fail tool，不执行</span><span class="lang-en-only">stopReason=length → fail all tools, don't execute</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 212</span> <span class="src-hl">					message.stopReason === &quot;length&quot;</span></span>
+      <span class="src-line">      <span class="src-ln"> 213</span> <span class="src-hl">						? <span class="src-kw">await</span> failToolCallsFromTruncatedMessage(toolCalls, emit)</span></span>
+      <span class="src-line">      <span class="src-ln"> 214</span> <span class="src-hl">						: <span class="src-kw">await</span> executeToolCalls(currentContext, message, config, signal, emit);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">★ executeToolCalls：read README 在此</span><span class="lang-en-only">★ executeToolCalls: read README here</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 215</span> <span class="src-hl">				toolResults.push(...executedToolBatch.messages);</span></span>
+      <span class="src-line">      <span class="src-ln"> 216</span> <span class="src-hl">				hasMoreToolCalls = !executedToolBatch.terminate;</span></span>
+      <span class="src-line">      <span class="src-ln"> 217</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 218</span> <span class="src-hl">				<span class="src-kw">for</span> (<span class="src-kw">const</span> result of toolResults) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 219</span> <span class="src-hl">					currentContext.messages.push(result);</span></span>
+      <span class="src-line">      <span class="src-ln"> 220</span> <span class="src-hl">					newMessages.push(result);</span></span>
+      <span class="src-line">      <span class="src-ln"> 221</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 222</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 223</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 224</span> <span class="src-hl">			<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;turn_end&quot;, message, toolResults });</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">turn_end：TUI 可在此刷新 tool 卡片</span><span class="lang-en-only">turn_end: TUI refreshes tool cards</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 225</span> <span class="src-hl"></span></span>
+    </div>
+
+    <div class="trace-steps"><div class="ts-label"><span class="lang-zh-only">主线 prompt · runLoop 状态机</span><span class="lang-en-only">Through-line prompt · runLoop state machine</span></div>    <table class="cmp">
+      <thead><tr><th>#</th><th>location</th><th>主线时刻 / through-line moment</th></tr></thead>
+      <tbody>
+      <tr><td>T0</td><td>outer iter=1, inner iter=1</td><td>pending=[] · stream turn-1</td></tr>
+      <tr><td>T1</td><td>inner iter=1 end</td><td>stopReason=toolUse · toolCalls=[read]</td></tr>
+      <tr><td>T2</td><td>executeToolCalls</td><td>tool_execution_* · README content</td></tr>
+      <tr><td>T3</td><td>inner iter=2</td><td>context+=toolResult · stream turn-2</td></tr>
+      <tr><td>T4</td><td>inner iter=2 end</td><td>stopReason=stop · 最终回答</td></tr>
+      <tr><td>T5</td><td>inner exit</td><td>hasMoreToolCalls=false · pending=[]</td></tr>
+      <tr><td>T6</td><td>outer check follow-up</td><td>无 follow-up → break</td></tr>
+      <tr><td>T7</td><td>agent_end</td><td>return newMessages[]</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
+        <span class="src-tag">stream-emit</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 314</span> <span class="src-hl">	<span class="src-kw">let</span> partialMessage: <span class="src-cls">AssistantMessage</span> | <span class="src-kw">null</span> = <span class="src-kw">null</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 315</span> <span class="src-hl">	<span class="src-kw">let</span> addedPartial = <span class="src-kw">false</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 316</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 317</span> <span class="src-hl">	<span class="src-kw">for</span> <span class="src-kw">await</span> (<span class="src-kw">const</span> event of response) {</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">消费 pi-ai EventStream</span><span class="lang-en-only">consume pi-ai EventStream</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 318</span> <span class="src-hl">		<span class="src-kw">switch</span> (event.<span class="src-kw">type</span>) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 319</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;start&quot;:</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">start → message_start(partial)</span><span class="lang-en-only">start → message_start(partial)</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 320</span> <span class="src-hl">				partialMessage = event.partial;</span></span>
+      <span class="src-line">      <span class="src-ln"> 321</span> <span class="src-hl">				context.messages.push(partialMessage);</span></span>
+      <span class="src-line">      <span class="src-ln"> 322</span> <span class="src-hl">				addedPartial = <span class="src-kw">true</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 323</span> <span class="src-hl">				<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;message_start&quot;, message: { ...partialMessage } });</span></span>
+      <span class="src-line">      <span class="src-ln"> 324</span> <span class="src-hl">				<span class="src-kw">break</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 325</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 326</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;text_start&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 327</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;text_delta&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 328</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;text_end&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 329</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;thinking_start&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 330</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;thinking_delta&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 331</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;thinking_end&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 332</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;toolcall_start&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 333</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;toolcall_delta&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 334</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;toolcall_end&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 335</span> <span class="src-hl">				<span class="src-kw">if</span> (partialMessage) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 336</span> <span class="src-hl">					partialMessage = event.partial;</span></span>
+      <span class="src-line">      <span class="src-ln"> 337</span> <span class="src-hl">					context.messages[context.messages.length - 1] = partialMessage;</span></span>
+      <span class="src-line">      <span class="src-ln"> 338</span> <span class="src-hl">					<span class="src-kw">await</span> emit({</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">★ message_update：每个 text/toolcall delta</span><span class="lang-en-only">★ message_update: each text/toolcall delta</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 339</span> <span class="src-hl">						<span class="src-kw">type</span>: &quot;message_update&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 340</span> <span class="src-hl">						assistantMessageEvent: event,</span></span>
+      <span class="src-line">      <span class="src-ln"> 341</span> <span class="src-hl">						message: { ...partialMessage },</span></span>
+      <span class="src-line">      <span class="src-ln"> 342</span> <span class="src-hl">					});</span></span>
+      <span class="src-line">      <span class="src-ln"> 343</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 344</span> <span class="src-hl">				<span class="src-kw">break</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 345</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 346</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;done&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 347</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;error&quot;: {</span></span>
+      <span class="src-line">      <span class="src-ln"> 348</span> <span class="src-hl">				<span class="src-kw">const</span> finalMessage = <span class="src-kw">await</span> response.result();</span></span>
+      <span class="src-line">      <span class="src-ln"> 349</span> <span class="src-hl">				<span class="src-kw">if</span> (addedPartial) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 350</span> <span class="src-hl">					context.messages[context.messages.length - 1] = finalMessage;</span></span>
+      <span class="src-line">      <span class="src-ln"> 351</span> <span class="src-hl">				} <span class="src-kw">else</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 352</span> <span class="src-hl">					context.messages.push(finalMessage);</span></span>
+      <span class="src-line">      <span class="src-ln"> 353</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 354</span> <span class="src-hl">				<span class="src-kw">if</span> (!addedPartial) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 355</span> <span class="src-hl">					<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;message_start&quot;, message: { ...finalMessage } });</span></span>
+      <span class="src-line">      <span class="src-ln"> 356</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 357</span> <span class="src-hl">				<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;message_end&quot;, message: finalMessage });</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">done → message_end(final)</span><span class="lang-en-only">done → message_end(final)</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 358</span> <span class="src-hl">				<span class="src-kw">return</span> finalMessage;</span></span>
+      <span class="src-line">      <span class="src-ln"> 359</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 360</span> <span class="src-hl">		}</span></span>
+    </div>
+
+    <div class="lang-zh-only"><p>内环第二次迭代时，<code>currentContext.messages</code> 已含：user prompt、turn-1 assistant(toolUse)、toolResult(README)。<code>convertToLlm</code> 把 toolResult 折叠成 provider 特定 tool_result 块——Anthropic 与 OpenAI 形状不同，但 agent-loop 不感知，这是 pi-ai adapter 的职责（C14）。</p></div>
+    <div class="lang-en-only"><p>Second inner iteration: <code>currentContext.messages</code> has user, turn-1 assistant(toolUse), toolResult(README). <code>convertToLlm</code> folds toolResult to provider-specific blocks — agent-loop doesn't care, pi-ai adapter's job (C14).</p></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
+        <span class="src-tag">outer-exit</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 247</span> <span class="src-hl">			<span class="src-kw">if</span> (</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">shouldStopAfterTurn：扩展可强制提前 agent_end</span><span class="lang-en-only">shouldStopAfterTurn: extensions can force early agent_end</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 248</span> <span class="src-hl">				<span class="src-kw">await</span> config.shouldStopAfterTurn?.({</span></span>
+      <span class="src-line">      <span class="src-ln"> 249</span> <span class="src-hl">					message,</span></span>
+      <span class="src-line">      <span class="src-ln"> 250</span> <span class="src-hl">					toolResults,</span></span>
+      <span class="src-line">      <span class="src-ln"> 251</span> <span class="src-hl">					context: currentContext,</span></span>
+      <span class="src-line">      <span class="src-ln"> 252</span> <span class="src-hl">					newMessages,</span></span>
+      <span class="src-line">      <span class="src-ln"> 253</span> <span class="src-hl">				})</span></span>
+      <span class="src-line">      <span class="src-ln"> 254</span> <span class="src-hl">			) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 255</span> <span class="src-hl">				<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;agent_end&quot;, messages: newMessages });</span></span>
+      <span class="src-line">      <span class="src-ln"> 256</span> <span class="src-hl">				<span class="src-kw">return</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 257</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 258</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 259</span> <span class="src-hl">			pendingMessages = (<span class="src-kw">await</span> config.getSteeringMessages?.()) || [];</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">内环结束后再次 poll steering</span><span class="lang-en-only">poll steering again after inner loop</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 260</span> <span class="src-hl">		}</span></span>
+      <span class="src-line">      <span class="src-ln"> 261</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 262</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Agent</span> would stop here. <span class="src-cls">Check</span> <span class="src-kw">for</span> follow-up messages.</span></span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">外环 follow-up 检查点</span><span class="lang-en-only">outer follow-up checkpoint</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 263</span> <span class="src-hl">		<span class="src-kw">const</span> followUpMessages = (<span class="src-kw">await</span> config.getFollowUpMessages?.()) || [];</span></span>
+      <span class="src-line">      <span class="src-ln"> 264</span> <span class="src-hl">		<span class="src-kw">if</span> (followUpMessages.length &gt; 0) {</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">有 follow-up → pendingMessages → continue 外环</span><span class="lang-en-only">follow-up → pendingMessages → continue outer</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 265</span> <span class="src-hl">			<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Set</span> as pending so inner loop processes them</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 266</span> <span class="src-hl">			pendingMessages = followUpMessages;</span></span>
+      <span class="src-line">      <span class="src-ln"> 267</span> <span class="src-hl">			<span class="src-kw">continue</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 268</span> <span class="src-hl">		}</span></span>
+      <span class="src-line">      <span class="src-ln"> 269</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 270</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">No</span> more messages, exit</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 271</span> <span class="src-hl">		<span class="src-kw">break</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 272</span> <span class="src-hl">	}</span></span>
+      <span class="src-line">      <span class="src-ln"> 273</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 274</span> <span class="src-hl">	<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;agent_end&quot;, messages: newMessages });</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">无消息 → agent_end</span><span class="lang-en-only">no messages → agent_end</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 275</span> <span class="src-hl">}</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
+        <span class="src-tag">length-fail</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 381</span> <span class="src-hl"><span class="src-kw">async</span> <span class="src-kw">function</span> failToolCallsFromTruncatedMessage(</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">length 截断时拒绝执行所有 tool call</span><span class="lang-en-only">length truncation rejects all tool calls</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 382</span> <span class="src-hl">	toolCalls: <span class="src-cls">AgentToolCall</span>[],</span></span>
+      <span class="src-line">      <span class="src-ln"> 383</span> <span class="src-hl">	emit: <span class="src-cls">AgentEventSink</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 384</span> <span class="src-hl">): <span class="src-cls">Promise</span>&lt;<span class="src-cls">ExecutedToolCallBatch</span>&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 385</span> <span class="src-hl">	<span class="src-kw">const</span> messages: <span class="src-cls">ToolResultMessage</span>[] = [];</span></span>
+      <span class="src-line">      <span class="src-ln"> 386</span> <span class="src-hl">	<span class="src-kw">for</span> (<span class="src-kw">const</span> toolCall of toolCalls) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 387</span> <span class="src-hl">		<span class="src-kw">await</span> emit({</span></span>
+      <span class="src-line">      <span class="src-ln"> 388</span> <span class="src-hl">			<span class="src-kw">type</span>: &quot;tool_execution_start&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 389</span> <span class="src-hl">			toolCallId: toolCall.id,</span></span>
+      <span class="src-line">      <span class="src-ln"> 390</span> <span class="src-hl">			toolName: toolCall.name,</span></span>
+      <span class="src-line">      <span class="src-ln"> 391</span> <span class="src-hl">			args: toolCall.arguments,</span></span>
+      <span class="src-line">      <span class="src-ln"> 392</span> <span class="src-hl">		});</span></span>
+      <span class="src-line">      <span class="src-ln"> 393</span> <span class="src-hl">		<span class="src-kw">const</span> finalized: <span class="src-cls">FinalizedToolCallOutcome</span> = {</span></span>
+      <span class="src-line">      <span class="src-ln"> 394</span> <span class="src-hl">			toolCall,</span></span>
+      <span class="src-line">      <span class="src-ln"> 395</span> <span class="src-hl">			result: createErrorToolResult(</span></span>
+      <span class="src-line">      <span class="src-ln"> 396</span> <span class="src-hl">				<span class=<span class="src-str">"src-str"</span>>`<span class="src-cls">Tool</span> call &quot;${toolCall.name}&quot; was not executed: the response hit the output token limit, so its arguments may be truncated. <span class="src-cls">Re</span>-issue the tool call with complete arguments.`</span>,</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">错误 tool result 文案：要求模型重新发起完整参数</span><span class="lang-en-only">error tool result: ask model to re-issue full args</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 397</span> <span class="src-hl">			),</span></span>
+      <span class="src-line">      <span class="src-ln"> 398</span> <span class="src-hl">			isError: <span class="src-kw">true</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 399</span> <span class="src-hl">		};</span></span>
+      <span class="src-line">      <span class="src-ln"> 400</span> <span class="src-hl">		<span class="src-kw">await</span> emitToolExecutionEnd(finalized, emit);</span></span>
+      <span class="src-line">      <span class="src-ln"> 401</span> <span class="src-hl">		<span class="src-kw">const</span> toolResultMessage = createToolResultMessage(finalized);</span></span>
+      <span class="src-line">      <span class="src-ln"> 402</span> <span class="src-hl">		<span class="src-kw">await</span> emitToolResultMessage(toolResultMessage, emit);</span></span>
+      <span class="src-line">      <span class="src-ln"> 403</span> <span class="src-hl">		messages.push(toolResultMessage);</span></span>
+      <span class="src-line">      <span class="src-ln"> 404</span> <span class="src-hl">	}</span></span>
+      <span class="src-line">      <span class="src-ln"> 405</span> <span class="src-hl">	<span class="src-kw">return</span> { messages, terminate: <span class="src-kw">false</span> };</span></span>
+    </div>
+
+    <div class="note copper">
+      <span class="lang-zh-only">对照 pi-textbook cp07 <code>agent-loop.test.ts</code>：搜索 <code>two turn</code> 或 <code>toolUse</code>，测试里的 event 序列应与 --verbose stderr 同构。</span>
+      <span class="lang-en-only">Cross-read textbook cp07 <code>agent-loop.test.ts</code>: search <code>two turn</code> or <code>toolUse</code>; test event sequence should match --verbose stderr.</span>
+    </div>
+
+    </div>
+
     <div class="src-stack">
       <div class="src-h">
         <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
@@ -4770,6 +5307,173 @@
     <div class="note copper">
       <span class="lang-zh-only">📘 <strong>pi-textbook checkpoint 09</strong>：Stateful Agent（<code>stateful-agent</code>）· 生产映射：<code>packages/agent/src/agent.ts</code></span>
       <span class="lang-en-only">📘 <strong>pi-textbook checkpoint 09</strong>: Stateful Agent (<code>stateful-agent</code>) · production: <code>packages/agent/src/agent.ts</code></span>
+    </div>
+
+    <div class="trace-walk">
+      <div class="tw-head">
+        <span class="tw-tag">SOURCE TRACE · C11</span>
+        <span class="lang-zh-only">Steering / Follow-up 双队列源码 trace</span>
+        <span class="lang-en-only">Steering / Follow-up dual-queue source trace</span>
+      </div>
+
+    <div class="lang-zh-only"><p>Steering 与 Follow-up 不是 UI 花活——它们在类型系统里是 <code>AgentLoopConfig</code> 的两个可选钩子：<code>getSteeringMessages</code> 与 <code>getFollowUpMessages</code>。AgentSession 维护 <code>_steeringMessages</code> / <code>_followUpMessages</code> 字符串队列，在 config 工厂里桥接到 agent-loop。</p></div>
+    <div class="lang-en-only"><p>Steering and follow-up aren't UI gimmicks — they're optional hooks on <code>AgentLoopConfig</code>: <code>getSteeringMessages</code> and <code>getFollowUpMessages</code>. AgentSession maintains string queues bridged to agent-loop via config factory.</p></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/types.ts</span>
+        <span class="src-tag">config-hooks</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 230</span> <span class="src-hl">		context: <span class="src-cls">PrepareNextTurnContext</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 231</span> <span class="src-hl">	) =&gt; <span class="src-cls">AgentLoopTurnUpdate</span> | <span class="src-kw">undefined</span> | <span class="src-cls">Promise</span>&lt;<span class="src-cls">AgentLoopTurnUpdate</span> | <span class="src-kw">undefined</span>&gt;;</span></span>
+      <span class="src-line">      <span class="src-ln"> 232</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 233</span> <span class="src-hl">	/**</span></span>
+      <span class="src-line">      <span class="src-ln"> 234</span> <span class="src-hl">	 * <span class="src-cls">Returns</span> steering messages to inject into the conversation mid-run.</span></span>
+      <span class="src-line">      <span class="src-ln"> 235</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 236</span> <span class="src-hl">	 * <span class="src-cls">Called</span> after the current assistant turn finishes executing its tool calls, unless <span class=<span class="src-str">"src-str"</span>>`shouldStopAfterTurn`</span> exits first.</span></span>
+      <span class="src-line">      <span class="src-ln"> 237</span> <span class="src-hl">	 * <span class="src-cls">If</span> messages are returned, they are added to the context before the next <span class="src-cls">LLM</span> call.</span></span>
+      <span class="src-line">      <span class="src-ln"> 238</span> <span class="src-hl">	 * <span class="src-cls">Tool</span> calls <span class="src-kw">from</span> the current assistant message are not skipped.</span></span>
+      <span class="src-line">      <span class="src-ln"> 239</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 240</span> <span class="src-hl">	 * <span class="src-cls">Use</span> this <span class="src-kw">for</span> &quot;steering&quot; the agent <span class="src-kw">while</span> it&#x27;s working.</span></span>
+      <span class="src-line">      <span class="src-ln"> 241</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 242</span> <span class="src-hl">	 * <span class="src-cls">Contract</span>: must not <span class="src-kw">throw</span> or reject. <span class="src-cls">Return</span> [] when no steering messages are available.</span></span>
+      <span class="src-line">      <span class="src-ln"> 243</span> <span class="src-hl">	 */</span></span>
+      <span class="src-line">      <span class="src-ln"> 244</span> <span class="src-hl">	getSteeringMessages?: () =&gt; <span class="src-cls">Promise</span>&lt;AgentMessage[]&gt;;</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">getSteeringMessages：内环每轮前 poll</span><span class="lang-en-only">getSteeringMessages: poll before each inner round</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 245</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 246</span> <span class="src-hl">	/**</span></span>
+      <span class="src-line">      <span class="src-ln"> 247</span> <span class="src-hl">	 * <span class="src-cls">Returns</span> follow-up messages to process after the agent would otherwise stop.</span></span>
+      <span class="src-line">      <span class="src-ln"> 248</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 249</span> <span class="src-hl">	 * <span class="src-cls">Called</span> when the agent has no more tool calls and no steering messages.</span></span>
+      <span class="src-line">      <span class="src-ln"> 250</span> <span class="src-hl">	 * <span class="src-cls">If</span> messages are returned, they&#x27;re added to the context and the agent</span></span>
+      <span class="src-line">      <span class="src-ln"> 251</span> <span class="src-hl">	 * continues with another turn.</span></span>
+      <span class="src-line">      <span class="src-ln"> 252</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 253</span> <span class="src-hl">	 * <span class="src-cls">Use</span> this <span class="src-kw">for</span> follow-up messages that should wait until the agent finishes.</span></span>
+      <span class="src-line">      <span class="src-ln"> 254</span> <span class="src-hl">	 *</span></span>
+      <span class="src-line">      <span class="src-ln"> 255</span> <span class="src-hl">	 * <span class="src-cls">Contract</span>: must not <span class="src-kw">throw</span> or reject. <span class="src-cls">Return</span> [] when no follow-up messages are available.</span></span>
+      <span class="src-line">      <span class="src-ln"> 256</span> <span class="src-hl">	 */</span></span>
+      <span class="src-line">      <span class="src-ln"> 257</span> <span class="src-hl">	getFollowUpMessages?: () =&gt; <span class="src-cls">Promise</span>&lt;AgentMessage[]&gt;;</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">getFollowUpMessages：外环 would-stop 时 poll</span><span class="lang-en-only">getFollowUpMessages: poll at outer would-stop</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 258</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 259</span> <span class="src-hl">	/**</span></span>
+      <span class="src-line">      <span class="src-ln"> 260</span> <span class="src-hl">	 * <span class="src-cls">Tool</span> execution mode.</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
+        <span class="src-tag">inject</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 166</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Check</span> <span class="src-kw">for</span> steering messages at start (user may have typed <span class="src-kw">while</span> waiting)</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 167</span> <span class="src-hl">	<span class="src-kw">let</span> pendingMessages: AgentMessage[] = (<span class="src-kw">await</span> config.getSteeringMessages?.()) || [];</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">循环开头：await getSteeringMessages</span><span class="lang-en-only">loop start: await getSteeringMessages</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 168</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 169</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Outer</span> loop: continues when queued follow-up messages arrive after agent would stop</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 170</span> <span class="src-hl">	<span class="src-kw">while</span> (<span class="src-kw">true</span>) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 171</span> <span class="src-hl">		<span class="src-kw">let</span> hasMoreToolCalls = <span class="src-kw">true</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 172</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 173</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Inner</span> loop: process tool calls and steering messages</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 174</span> <span class="src-hl">		<span class="src-kw">while</span> (hasMoreToolCalls || pendingMessages.length &gt; 0) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 175</span> <span class="src-hl">			<span class="src-kw">if</span> (!firstTurn) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 176</span> <span class="src-hl">				<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;turn_start&quot; });</span></span>
+      <span class="src-line">      <span class="src-ln"> 177</span> <span class="src-hl">			} <span class="src-kw">else</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 178</span> <span class="src-hl">				firstTurn = <span class="src-kw">false</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 179</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 180</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 181</span> <span class="src-hl">			<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Process</span> pending messages (inject before next assistant response)</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 182</span> <span class="src-hl">			<span class="src-kw">if</span> (pendingMessages.length &gt; 0) {</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">pending 非空：逐条 push 到 context，无 LLM</span><span class="lang-en-only">pending non-empty: push to context, no LLM</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 183</span> <span class="src-hl">				<span class="src-kw">for</span> (<span class="src-kw">const</span> message of pendingMessages) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 184</span> <span class="src-hl">					<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;message_start&quot;, message });</span></span>
+      <span class="src-line">      <span class="src-ln"> 185</span> <span class="src-hl">					<span class="src-kw">await</span> emit({ <span class="src-kw">type</span>: &quot;message_end&quot;, message });</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">message_end 后立即进入 streamAssistantResponse</span><span class="lang-en-only">message_end then streamAssistantResponse</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 186</span> <span class="src-hl">					currentContext.messages.push(message);</span></span>
+      <span class="src-line">      <span class="src-ln"> 187</span> <span class="src-hl">					newMessages.push(message);</span></span>
+      <span class="src-line">      <span class="src-ln"> 188</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 189</span> <span class="src-hl">				pendingMessages = [];</span></span>
+      <span class="src-line">      <span class="src-ln"> 190</span> <span class="src-hl">			}</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
+        <span class="src-tag">followup</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 258</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 259</span> <span class="src-hl">			pendingMessages = (<span class="src-kw">await</span> config.getSteeringMessages?.()) || [];</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">内环结束后再 poll steering</span><span class="lang-en-only">poll steering after inner loop</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 260</span> <span class="src-hl">		}</span></span>
+      <span class="src-line">      <span class="src-ln"> 261</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 262</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Agent</span> would stop here. <span class="src-cls">Check</span> <span class="src-kw">for</span> follow-up messages.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 263</span> <span class="src-hl">		<span class="src-kw">const</span> followUpMessages = (<span class="src-kw">await</span> config.getFollowUpMessages?.()) || [];</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">★ follow-up：外环唯一重启条件</span><span class="lang-en-only">★ follow-up: sole outer restart condition</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 264</span> <span class="src-hl">		<span class="src-kw">if</span> (followUpMessages.length &gt; 0) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 265</span> <span class="src-hl">			<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Set</span> as pending so inner loop processes them</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 266</span> <span class="src-hl">			pendingMessages = followUpMessages;</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">follow-up 变成 pending，continue 外环</span><span class="lang-en-only">follow-up becomes pending, continue outer</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 267</span> <span class="src-hl">			<span class="src-kw">continue</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 268</span> <span class="src-hl">		}</span></span>
+    </div>
+
+    <div class="trace-steps"><div class="ts-label"><span class="lang-zh-only">Case：read 中途 steering「先 ls」</span><span class="lang-en-only">Case: steer «ls first» mid-read</span></div>    <table class="cmp">
+      <thead><tr><th>#</th><th>location</th><th>主线时刻 / through-line moment</th></tr></thead>
+      <tbody>
+      <tr><td>1</td><td>turn-1 toolUse(read)</td><td>模型已决定读 README</td></tr>
+      <tr><td>2</td><td>executeTool 前</td><td>getSteeringMessages 返回 user「先 ls」</td></tr>
+      <tr><td>3</td><td>pending 注入</td><td>context += steer user · 无 model</td></tr>
+      <tr><td>4</td><td>stream turn-1b</td><td>模型可能改调 bash/ls</td></tr>
+      <tr><td>5</td><td>队列 UI</td><td>AgentSession splice steering 队列</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/coding-agent/src/core/agent-session.ts</span>
+        <span class="src-tag">session-queue</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 620</span> <span class="src-hl">	/** <span class="src-cls">Internal</span> handler <span class="src-kw">for</span> agent events - shared by subscribe and reconnect */</span></span>
+      <span class="src-line">      <span class="src-ln"> 621</span> <span class="src-hl">	private _handleAgentEvent = <span class="src-kw">async</span> (event: <span class="src-cls">AgentEvent</span>): <span class="src-cls">Promise</span>&lt;void&gt; =&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 622</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">When</span> a user message starts, check <span class="src-kw">if</span> it&#x27;s <span class="src-kw">from</span> either queue and remove it <span class="src-cls">BEFORE</span> emitting</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 623</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">This</span> ensures the <span class="src-cls">UI</span> sees the updated queue state</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 624</span> <span class="src-hl">		<span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;message_start&quot; &amp;&amp; event.message.role === &quot;user&quot;) {</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">message_start(user) 时从队列移除</span><span class="lang-en-only">on message_start(user) remove from queue</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 625</span> <span class="src-hl">			this._overflowRecoveryAttempted = <span class="src-kw">false</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 626</span> <span class="src-hl">			<span class="src-kw">const</span> messageText = contentText(event.message.content, &quot;&quot;);</span></span>
+      <span class="src-line">      <span class="src-ln"> 627</span> <span class="src-hl">			<span class="src-kw">if</span> (messageText) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 628</span> <span class="src-hl">				<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Check</span> steering queue first</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 629</span> <span class="src-hl">				<span class="src-kw">const</span> steeringIndex = this._steeringMessages.indexOf(messageText);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">先匹配 steering 队列</span><span class="lang-en-only">match steering queue first</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 630</span> <span class="src-hl">				<span class="src-kw">if</span> (steeringIndex !== -1) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 631</span> <span class="src-hl">					this._steeringMessages.splice(steeringIndex, 1);</span></span>
+      <span class="src-line">      <span class="src-ln"> 632</span> <span class="src-hl">					this._emitQueueUpdate();</span></span>
+      <span class="src-line">      <span class="src-ln"> 633</span> <span class="src-hl">				} <span class="src-kw">else</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 634</span> <span class="src-hl">					<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Check</span> follow-up queue</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 635</span> <span class="src-hl">					<span class="src-kw">const</span> followUpIndex = this._followUpMessages.indexOf(messageText);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">再匹配 follow-up 队列</span><span class="lang-en-only">then follow-up queue</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 636</span> <span class="src-hl">					<span class="src-kw">if</span> (followUpIndex !== -1) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 637</span> <span class="src-hl">						this._followUpMessages.splice(followUpIndex, 1);</span></span>
+      <span class="src-line">      <span class="src-ln"> 638</span> <span class="src-hl">						this._emitQueueUpdate();</span></span>
+      <span class="src-line">      <span class="src-ln"> 639</span> <span class="src-hl">					}</span></span>
+      <span class="src-line">      <span class="src-ln"> 640</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 641</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 642</span> <span class="src-hl">		}</span></span>
+      <span class="src-line">      <span class="src-ln"> 643</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 644</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Emit</span> to extensions first</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 645</span> <span class="src-hl">		<span class="src-kw">await</span> this._emitExtensionEvent(event);</span></span>
+      <span class="src-line">      <span class="src-ln"> 646</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 647</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Notify</span> all listeners</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 648</span> <span class="src-hl">		this._emit(event.<span class="src-kw">type</span> === &quot;agent_end&quot; ? { ...event, willRetry: this._willRetryAfterAgentEnd(event) } : event);</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">_emit 给 TUI 监听器</span><span class="lang-en-only">_emit to TUI listeners</span></span></span>
+    </div>
+
+    <div class="lang-zh-only"><p>关键时序：<code>_handleAgentEvent</code> 在 <code>message_start(user)</code> 时<strong>先于 emit</strong> 修改队列状态——保证 TUI 看到 steering 消息时侧边栏队列已更新。这是「事件驱动 UI」与「轮询队列」的接缝，也是 fork Pi 时最容易漏掉的细节。</p></div>
+    <div class="lang-en-only"><p>Key timing: <code>_handleAgentEvent</code> mutates queue <strong>before emit</strong> on <code>message_start(user)</code> — TUI sees updated sidebar when steering message appears. Seam between event-driven UI and queue polling; easy to miss when forking Pi.</p></div>
+
+    <div class="note copper">
+      <span class="lang-zh-only">实验：interactive 模式下模型 toolUse(read) 后立刻输入 steering，观察 inner loop 是否多一轮 model stream。</span>
+      <span class="lang-en-only">Experiment: after toolUse(read) in interactive mode, steer immediately; observe extra inner model round.</span>
+    </div>
+
     </div>
 
     <div class="depth-zone" data-chapter="C11"><div class="depth-zone-label"><span class="dz-tag">DEPTH</span> <span class="lang-zh-only">深度细读 · C11.4+</span><span class="lang-en-only">Deep dive · C11.4+</span></div>
@@ -5030,6 +5734,241 @@
       <span class="lang-en-only">📘 <strong>pi-textbook checkpoint 08</strong>: Coding Tools (<code>coding-tools</code>) · production: <code>packages/coding-agent/src/core/tools/index.ts</code></span>
     </div>
 
+    <div class="trace-walk">
+      <div class="tw-head">
+        <span class="tw-tag">SOURCE TRACE · C12</span>
+        <span class="lang-zh-only">read README 工具管线 · 从 toolUse 到 toolResult</span>
+        <span class="lang-en-only">read README tool pipeline · toolUse to toolResult</span>
+      </div>
+
+    <div class="lang-zh-only"><p>主线 prompt 的第一次 tool call 几乎总是 <code>read({"path":"README.md"})</code>。<code>executeToolCalls</code> 根据 <code>toolExecution</code> 配置和 per-tool <code>executionMode</code> 选择并行或串行；read 默认并行安全。</p></div>
+    <div class="lang-en-only"><p>Through-line's first tool call is usually <code>read({"path":"README.md"})</code>. <code>executeToolCalls</code> picks parallel vs sequential from <code>toolExecution</code> config and per-tool <code>executionMode</code>; read is parallel-safe by default.</p></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
+        <span class="src-tag">dispatch</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 411</span> <span class="src-hl"><span class="src-kw">async</span> <span class="src-kw">function</span> executeToolCalls(</span></span>
+      <span class="src-line">      <span class="src-ln"> 412</span> <span class="src-hl">	currentContext: <span class="src-cls">AgentContext</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 413</span> <span class="src-hl">	assistantMessage: <span class="src-cls">AssistantMessage</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 414</span> <span class="src-hl">	config: <span class="src-cls">AgentLoopConfig</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 415</span> <span class="src-hl">	signal: <span class="src-cls">AbortSignal</span> | <span class="src-kw">undefined</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 416</span> <span class="src-hl">	emit: <span class="src-cls">AgentEventSink</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 417</span> <span class="src-hl">): <span class="src-cls">Promise</span>&lt;<span class="src-cls">ExecutedToolCallBatch</span>&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 418</span> <span class="src-hl">	<span class="src-kw">const</span> toolCalls = assistantMessage.content.filter((c) =&gt; c.<span class="src-kw">type</span> === &quot;toolCall&quot;);</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">从 assistant content filter toolCall</span><span class="lang-en-only">filter toolCall from assistant content</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 419</span> <span class="src-hl">	<span class="src-kw">const</span> hasSequentialToolCall = toolCalls.some(</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">任一 tool executionMode=sequential → 串行</span><span class="lang-en-only">any tool sequential → sequential path</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 420</span> <span class="src-hl">		(tc) =&gt; currentContext.tools?.find((t) =&gt; t.name === tc.name)?.executionMode === &quot;sequential&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 421</span> <span class="src-hl">	);</span></span>
+      <span class="src-line">      <span class="src-ln"> 422</span> <span class="src-hl">	<span class="src-kw">if</span> (config.toolExecution === &quot;sequential&quot; || hasSequentialToolCall) {</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">config.toolExecution 全局覆盖</span><span class="lang-en-only">config.toolExecution global override</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 423</span> <span class="src-hl">		<span class="src-kw">return</span> executeToolCallsSequential(currentContext, assistantMessage, toolCalls, config, signal, emit);</span></span>
+      <span class="src-line">      <span class="src-ln"> 424</span> <span class="src-hl">	}</span></span>
+      <span class="src-line">      <span class="src-ln"> 425</span> <span class="src-hl">	<span class="src-kw">return</span> executeToolCallsParallel(currentContext, assistantMessage, toolCalls, config, signal, emit);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">read 单 call 时 parallel/sequential 等价</span><span class="lang-en-only">single read: parallel≈sequential</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 426</span> <span class="src-hl">}</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
+        <span class="src-tag">sequential</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 433</span> <span class="src-hl"><span class="src-kw">async</span> <span class="src-kw">function</span> executeToolCallsSequential(</span></span>
+      <span class="src-line">      <span class="src-ln"> 434</span> <span class="src-hl">	currentContext: <span class="src-cls">AgentContext</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 435</span> <span class="src-hl">	assistantMessage: <span class="src-cls">AssistantMessage</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 436</span> <span class="src-hl">	toolCalls: <span class="src-cls">AgentToolCall</span>[],</span></span>
+      <span class="src-line">      <span class="src-ln"> 437</span> <span class="src-hl">	config: <span class="src-cls">AgentLoopConfig</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 438</span> <span class="src-hl">	signal: <span class="src-cls">AbortSignal</span> | <span class="src-kw">undefined</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 439</span> <span class="src-hl">	emit: <span class="src-cls">AgentEventSink</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 440</span> <span class="src-hl">): <span class="src-cls">Promise</span>&lt;<span class="src-cls">ExecutedToolCallBatch</span>&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 441</span> <span class="src-hl">	<span class="src-kw">const</span> finalizedCalls: <span class="src-cls">FinalizedToolCallOutcome</span>[] = [];</span></span>
+      <span class="src-line">      <span class="src-ln"> 442</span> <span class="src-hl">	<span class="src-kw">const</span> messages: <span class="src-cls">ToolResultMessage</span>[] = [];</span></span>
+      <span class="src-line">      <span class="src-ln"> 443</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 444</span> <span class="src-hl">	<span class="src-kw">for</span> (<span class="src-kw">const</span> toolCall of toolCalls) {</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">逐 toolCall：tool_execution_start</span><span class="lang-en-only">per toolCall: tool_execution_start</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 445</span> <span class="src-hl">		<span class="src-kw">await</span> emit({</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-ln"> 446</span> <span class="src-hl">			<span class="src-kw">type</span>: &quot;tool_execution_start&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 447</span> <span class="src-hl">			toolCallId: toolCall.id,</span></span>
+      <span class="src-line">      <span class="src-ln"> 448</span> <span class="src-hl">			toolName: toolCall.name,</span></span>
+      <span class="src-line">      <span class="src-ln"> 449</span> <span class="src-hl">			args: toolCall.arguments,</span></span>
+      <span class="src-line">      <span class="src-ln"> 450</span> <span class="src-hl">		});</span></span>
+      <span class="src-line">      <span class="src-ln"> 451</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 452</span> <span class="src-hl">		<span class="src-kw">const</span> preparation = <span class="src-kw">await</span> prepareToolCall(currentContext, assistantMessage, toolCall, config, signal);</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">prepareToolCall：参数校验 + 扩展 hook</span><span class="lang-en-only">prepareToolCall: validate + extension hook</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 453</span> <span class="src-hl">		<span class="src-kw">let</span> finalized: <span class="src-cls">FinalizedToolCallOutcome</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 454</span> <span class="src-hl">		<span class="src-kw">if</span> (preparation.kind === &quot;immediate&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 455</span> <span class="src-hl">			finalized = {</span></span>
+      <span class="src-line">      <span class="src-ln"> 456</span> <span class="src-hl">				toolCall,</span></span>
+      <span class="src-line">      <span class="src-ln"> 457</span> <span class="src-hl">				result: preparation.result,</span></span>
+      <span class="src-line">      <span class="src-ln"> 458</span> <span class="src-hl">				isError: preparation.isError,</span></span>
+      <span class="src-line">      <span class="src-ln"> 459</span> <span class="src-hl">			};</span></span>
+      <span class="src-line">      <span class="src-ln"> 460</span> <span class="src-hl">		} <span class="src-kw">else</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 461</span> <span class="src-hl">			<span class="src-kw">const</span> executed = <span class="src-kw">await</span> executePreparedToolCall(preparation, signal, emit);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">executePreparedToolCall：真正执行 read</span><span class="lang-en-only">executePreparedToolCall: actually run read</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 462</span> <span class="src-hl">			finalized = <span class="src-kw">await</span> finalizeExecutedToolCall(</span></span>
+      <span class="src-line">      <span class="src-ln"> 463</span> <span class="src-hl">				currentContext,</span></span>
+      <span class="src-line">      <span class="src-ln"> 464</span> <span class="src-hl">				assistantMessage,</span></span>
+      <span class="src-line">      <span class="src-ln"> 465</span> <span class="src-hl">				preparation,</span></span>
+      <span class="src-line">      <span class="src-ln"> 466</span> <span class="src-hl">				executed,</span></span>
+      <span class="src-line">      <span class="src-ln"> 467</span> <span class="src-hl">				config,</span></span>
+      <span class="src-line">      <span class="src-ln"> 468</span> <span class="src-hl">				signal,</span></span>
+      <span class="src-line">      <span class="src-ln"> 469</span> <span class="src-hl">			);</span></span>
+      <span class="src-line">      <span class="src-ln"> 470</span> <span class="src-hl">		}</span></span>
+      <span class="src-line">      <span class="src-ln"> 471</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 472</span> <span class="src-hl">		<span class="src-kw">await</span> emitToolExecutionEnd(finalized, emit);</span></span>
+      <span class="src-line">      <span class="src-ln"> 473</span> <span class="src-hl">		<span class="src-kw">const</span> toolResultMessage = createToolResultMessage(finalized);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">createToolResultMessage → message_start/end</span><span class="lang-en-only">createToolResultMessage → message_start/end</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 474</span> <span class="src-hl">		<span class="src-kw">await</span> emitToolResultMessage(toolResultMessage, emit);</span></span>
+      <span class="src-line">      <span class="src-ln"> 475</span> <span class="src-hl">		finalizedCalls.push(finalized);</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/coding-agent/src/core/tools/read.ts</span>
+        <span class="src-tag">read-exec</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 209</span> <span class="src-hl"><span class="src-kw">export</span> <span class="src-kw">function</span> createReadToolDefinition(</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">createReadToolDefinition：schema + execute</span><span class="lang-en-only">createReadToolDefinition: schema + execute</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 210</span> <span class="src-hl">	cwd: string,</span></span>
+      <span class="src-line">      <span class="src-ln"> 211</span> <span class="src-hl">	options?: <span class="src-cls">ReadToolOptions</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 212</span> <span class="src-hl">): <span class="src-cls">ToolDefinition</span>&lt;<span class="src-kw">typeof</span> readSchema, <span class="src-cls">ReadToolDetails</span> | <span class="src-kw">undefined</span>&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 213</span> <span class="src-hl">	<span class="src-kw">const</span> autoResizeImages = options?.autoResizeImages ?? <span class="src-kw">true</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 214</span> <span class="src-hl">	<span class="src-kw">const</span> ops = options?.operations ?? defaultReadOperations;</span></span>
+      <span class="src-line">      <span class="src-ln"> 215</span> <span class="src-hl">	<span class="src-kw">return</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 216</span> <span class="src-hl">		name: &quot;read&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 217</span> <span class="src-hl">		label: &quot;read&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 218</span> <span class="src-hl">		description: <span class=<span class="src-str">"src-str"</span>>`<span class="src-cls">Read</span> the contents of a file. <span class="src-cls">Supports</span> text files and images (jpg, png, gif, webp, bmp). <span class="src-cls">Images</span> are sent as attachments. <span class="src-cls">For</span> text files, output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}<span class="src-cls">KB</span> (whichever is hit first). <span class="src-cls">Use</span> offset/limit <span class="src-kw">for</span> large files. <span class="src-cls">When</span> you need the full file, <span class="src-kw">continue</span> with offset until complete.`</span>,</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">DEFAULT_MAX_LINES / MAX_BYTES 截断说明在 description</span><span class="lang-en-only">truncation limits in description</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 219</span> <span class="src-hl">		promptSnippet: readToolSystemPromptContribution.snippet,</span></span>
+      <span class="src-line">      <span class="src-ln"> 220</span> <span class="src-hl">		promptGuidelines: [...readToolSystemPromptContribution.guidelines],</span></span>
+      <span class="src-line">      <span class="src-ln"> 221</span> <span class="src-hl">		parameters: readSchema,</span></span>
+      <span class="src-line">      <span class="src-ln"> 222</span> <span class="src-hl">		constrainedSampling: getExperimentalToolSampling(),</span></span>
+      <span class="src-line">      <span class="src-ln"> 223</span> <span class="src-hl">		<span class="src-kw">async</span> execute(</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">execute 入口：Promise + AbortSignal</span><span class="lang-en-only">execute entry: Promise + AbortSignal</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 224</span> <span class="src-hl">			_toolCallId,</span></span>
+      <span class="src-line">      <span class="src-ln"> 225</span> <span class="src-hl">			{ path, offset, limit }: { path: string; offset?: number; limit?: number },</span></span>
+      <span class="src-line">      <span class="src-ln"> 226</span> <span class="src-hl">			signal?: <span class="src-cls">AbortSignal</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 227</span> <span class="src-hl">			_onUpdate?,</span></span>
+      <span class="src-line">      <span class="src-ln"> 228</span> <span class="src-hl">			ctx?,</span></span>
+      <span class="src-line">      <span class="src-ln"> 229</span> <span class="src-hl">		) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 230</span> <span class="src-hl">			<span class="src-kw">return</span> <span class="src-kw">new</span> <span class="src-cls">Promise</span>&lt;{ content: (<span class="src-cls">TextContent</span> | <span class="src-cls">ImageContent</span>)[]; details: <span class="src-cls">ReadToolDetails</span> | <span class="src-kw">undefined</span> }&gt;(</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/coding-agent/src/core/tools/read.ts</span>
+        <span class="src-tag">read-body</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 243</span> <span class="src-hl">					(<span class="src-kw">async</span> () =&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 244</span> <span class="src-hl">						try {</span></span>
+      <span class="src-line">      <span class="src-ln"> 245</span> <span class="src-hl">							<span class="src-kw">const</span> absolutePath = <span class="src-kw">await</span> resolveReadPathAsync(path, cwd);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">resolveReadPathAsync：cwd 相对 → 绝对</span><span class="lang-en-only">resolveReadPathAsync: cwd-relative → absolute</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 246</span> <span class="src-hl">							<span class="src-kw">if</span> (aborted) <span class="src-kw">return</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 247</span> <span class="src-hl">							<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Check</span> <span class="src-kw">if</span> file exists and is readable.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 248</span> <span class="src-hl">							<span class="src-kw">await</span> ops.access(absolutePath);</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">fs access 检查可读</span><span class="lang-en-only">fs access readability check</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 249</span> <span class="src-hl">							<span class="src-kw">if</span> (aborted) <span class="src-kw">return</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 250</span> <span class="src-hl">							<span class="src-kw">const</span> mimeType = ops.detectImageMimeType ? <span class="src-kw">await</span> ops.detectImageMimeType(absolutePath) : <span class="src-kw">undefined</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 251</span> <span class="src-hl">							<span class="src-kw">let</span> content: (<span class="src-cls">TextContent</span> | <span class="src-cls">ImageContent</span>)[];</span></span>
+      <span class="src-line">      <span class="src-ln"> 252</span> <span class="src-hl">							<span class="src-kw">let</span> details: <span class="src-cls">ReadToolDetails</span> | <span class="src-kw">undefined</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 253</span> <span class="src-hl">							<span class="src-kw">const</span> nonVisionImageNote = getNonVisionImageNote(ctx?.model);</span></span>
+      <span class="src-line">      <span class="src-ln"> 254</span> <span class="src-hl">							<span class="src-kw">if</span> (mimeType) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 255</span> <span class="src-hl">								<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Read</span> image as binary.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 256</span> <span class="src-hl">								<span class="src-kw">const</span> buffer = <span class="src-kw">await</span> ops.readFile(absolutePath);</span></span>
+      <span class="src-line">      <span class="src-ln"> 257</span> <span class="src-hl">								<span class="src-kw">const</span> processed = <span class="src-kw">await</span> processImage(buffer, mimeType, { autoResizeImages });</span></span>
+      <span class="src-line">      <span class="src-ln"> 258</span> <span class="src-hl">								<span class="src-kw">if</span> (!processed.ok) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 259</span> <span class="src-hl">									<span class="src-kw">let</span> textNote = <span class=<span class="src-str">"src-str"</span>>`<span class="src-cls">Read</span> image file [${mimeType}]\n${processed.message}`</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 260</span> <span class="src-hl">									<span class="src-kw">if</span> (nonVisionImageNote) textNote += <span class=<span class="src-str">"src-str"</span>>`\n${nonVisionImageNote}`</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 261</span> <span class="src-hl">									content = [{ <span class="src-kw">type</span>: &quot;text&quot;, text: textNote }];</span></span>
+      <span class="src-line">      <span class="src-ln"> 262</span> <span class="src-hl">								} <span class="src-kw">else</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 263</span> <span class="src-hl">									<span class="src-kw">let</span> textNote = <span class=<span class="src-str">"src-str"</span>>`<span class="src-cls">Read</span> image file [${processed.mimeType}]`</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 264</span> <span class="src-hl">									<span class="src-kw">if</span> (processed.hints.length &gt; 0) textNote += <span class=<span class="src-str">"src-str"</span>>`\n${processed.hints.join(&quot;\n&quot;)}`</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 265</span> <span class="src-hl">									<span class="src-kw">if</span> (nonVisionImageNote) textNote += <span class=<span class="src-str">"src-str"</span>>`\n${nonVisionImageNote}`</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 266</span> <span class="src-hl">									content = [</span></span>
+      <span class="src-line">      <span class="src-ln"> 267</span> <span class="src-hl">										{ <span class="src-kw">type</span>: &quot;text&quot;, text: textNote },</span></span>
+      <span class="src-line">      <span class="src-ln"> 268</span> <span class="src-hl">										{ <span class="src-kw">type</span>: &quot;image&quot;, data: processed.data, mimeType: processed.mimeType },</span></span>
+      <span class="src-line">      <span class="src-ln"> 269</span> <span class="src-hl">									];</span></span>
+      <span class="src-line">      <span class="src-ln"> 270</span> <span class="src-hl">								}</span></span>
+      <span class="src-line">      <span class="src-ln"> 271</span> <span class="src-hl">							} <span class="src-kw">else</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 272</span> <span class="src-hl">								<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Read</span> text content.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 273</span> <span class="src-hl">								<span class="src-kw">const</span> buffer = <span class="src-kw">await</span> ops.readFile(absolutePath);</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">文本分支：buffer.toString utf-8</span><span class="lang-en-only">text branch: buffer.toString utf-8</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 274</span> <span class="src-hl">								<span class="src-kw">const</span> textContent = buffer.toString(&quot;utf-8&quot;);</span></span>
+      <span class="src-line">      <span class="src-ln"> 275</span> <span class="src-hl">								<span class="src-kw">const</span> allLines = textContent.split(&quot;\n&quot;);</span></span>
+      <span class="src-line">      <span class="src-ln"> 276</span> <span class="src-hl">								<span class="src-kw">const</span> totalFileLines = allLines.length;</span></span>
+      <span class="src-line">      <span class="src-ln"> 277</span> <span class="src-hl">								<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Apply</span> offset <span class="src-kw">if</span> specified. <span class="src-cls">Convert</span> <span class="src-kw">from</span> 1-indexed input to 0-indexed array access.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 278</span> <span class="src-hl">								<span class="src-kw">const</span> startLine = offset ? <span class="src-cls">Math</span>.max(0, offset - 1) : 0;</span></span>
+      <span class="src-line">      <span class="src-ln"> 279</span> <span class="src-hl">								<span class="src-kw">const</span> startLineDisplay = startLine + 1;</span></span>
+      <span class="src-line">      <span class="src-ln"> 280</span> <span class="src-hl">								<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Check</span> <span class="src-kw">if</span> offset is out of bounds.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 281</span> <span class="src-hl">								<span class="src-kw">if</span> (startLine &gt;= allLines.length) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 282</span> <span class="src-hl">									<span class="src-kw">throw</span> <span class="src-kw">new</span> <span class="src-cls">Error</span>(<span class=<span class="src-str">"src-str"</span>>`<span class="src-cls">Offset</span> ${offset} is beyond end of file (${allLines.length} lines total)`</span>);</span></span>
+      <span class="src-line">      <span class="src-ln"> 283</span> <span class="src-hl">								}</span></span>
+      <span class="src-line">      <span class="src-ln"> 284</span> <span class="src-hl">								<span class="src-kw">let</span> selectedContent: string;</span></span>
+      <span class="src-line">      <span class="src-ln"> 285</span> <span class="src-hl">								<span class="src-kw">let</span> userLimitedLines: number | <span class="src-kw">undefined</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 286</span> <span class="src-hl">								<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">If</span> limit is specified by the user, honor it first. <span class="src-cls">Otherwise</span> truncateHead decides.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 287</span> <span class="src-hl">								<span class="src-kw">if</span> (limit !== <span class="src-kw">undefined</span>) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 288</span> <span class="src-hl">									<span class="src-kw">const</span> endLine = <span class="src-cls">Math</span>.min(startLine + limit, allLines.length);</span></span>
+      <span class="src-line">      <span class="src-ln"> 289</span> <span class="src-hl">									selectedContent = allLines.slice(startLine, endLine).join(&quot;\n&quot;);</span></span>
+      <span class="src-line">      <span class="src-ln"> 290</span> <span class="src-hl">									userLimitedLines = endLine - startLine;</span></span>
+      <span class="src-line">      <span class="src-ln"> 291</span> <span class="src-hl">								} <span class="src-kw">else</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 292</span> <span class="src-hl">									selectedContent = allLines.slice(startLine).join(&quot;\n&quot;);</span></span>
+      <span class="src-line">      <span class="src-ln"> 293</span> <span class="src-hl">								}</span></span>
+      <span class="src-line">      <span class="src-ln"> 294</span> <span class="src-hl">								<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Apply</span> truncation, respecting both line and byte limits.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 295</span> <span class="src-hl">								<span class="src-kw">const</span> truncation = truncateHead(selectedContent);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">★ truncateHead：超长按行/字节截断</span><span class="lang-en-only">★ truncateHead: line/byte truncation</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 296</span> <span class="src-hl">								<span class="src-kw">let</span> outputText: string;</span></span>
+      <span class="src-line">      <span class="src-ln"> 297</span> <span class="src-hl">								<span class="src-kw">if</span> (truncation.firstLineExceedsLimit) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 298</span> <span class="src-hl">									<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">First</span> line alone exceeds the byte limit. <span class="src-cls">Point</span> the model at a bash fallback.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 299</span> <span class="src-hl">									<span class="src-kw">const</span> firstLineSize = formatSize(<span class="src-cls">Buffer</span>.byteLength(allLines[startLine], &quot;utf-8&quot;));</span></span>
+      <span class="src-line">      <span class="src-ln"> 300</span> <span class="src-hl">									outputText = <span class=<span class="src-str">"src-str"</span>>`[<span class="src-cls">Line</span> ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. <span class="src-cls">Use</span> bash: sed -n &#x27;${startLineDisplay}p&#x27; ${path} | head -c ${DEFAULT_MAX_BYTES}]`</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 301</span> <span class="src-hl">									details = { truncation };</span></span>
+      <span class="src-line">      <span class="src-ln"> 302</span> <span class="src-hl">								} <span class="src-kw">else</span> <span class="src-kw">if</span> (truncation.truncated) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 303</span> <span class="src-hl">									<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Truncation</span> occurred. <span class="src-cls">Build</span> an actionable continuation notice.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 304</span> <span class="src-hl">									<span class="src-kw">const</span> endLineDisplay = startLineDisplay + truncation.outputLines - 1;</span></span>
+      <span class="src-line">      <span class="src-ln"> 305</span> <span class="src-hl">									<span class="src-kw">const</span> nextOffset = endLineDisplay + 1;</span></span>
+      <span class="src-line">      <span class="src-ln"> 306</span> <span class="src-hl">									outputText = truncation.content;</span></span>
+      <span class="src-line">      <span class="src-ln"> 307</span> <span class="src-hl">									<span class="src-kw">if</span> (truncation.truncatedBy === &quot;lines&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 308</span> <span class="src-hl">										outputText += <span class=<span class="src-str">"src-str"</span>>`\n\n[<span class="src-cls">Showing</span> lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines}. <span class="src-cls">Use</span> offset=${nextOffset} to <span class="src-kw">continue</span>.]`</span>;</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">截断提示：offset=N 继续读</span><span class="lang-en-only">truncation hint: offset=N to continue</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 309</span> <span class="src-hl">									} <span class="src-kw">else</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 310</span> <span class="src-hl">										outputText += <span class=<span class="src-str">"src-str"</span>>`\n\n[<span class="src-cls">Showing</span> lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). <span class="src-cls">Use</span> offset=${nextOffset} to <span class="src-kw">continue</span>.]`</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 311</span> <span class="src-hl">									}</span></span>
+      <span class="src-line">      <span class="src-ln"> 312</span> <span class="src-hl">									details = { truncation };</span></span>
+      <span class="src-line">      <span class="src-ln"> 313</span> <span class="src-hl">								} <span class="src-kw">else</span> <span class="src-kw">if</span> (userLimitedLines !== <span class="src-kw">undefined</span> &amp;&amp; startLine + userLimitedLines &lt; allLines.length) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 314</span> <span class="src-hl">									<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">User</span>-specified limit stopped early, but the file still has more content.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 315</span> <span class="src-hl">									<span class="src-kw">const</span> remaining = allLines.length - (startLine + userLimitedLines);</span></span>
+      <span class="src-line">      <span class="src-ln"> 316</span> <span class="src-hl">									<span class="src-kw">const</span> nextOffset = startLine + userLimitedLines + 1;</span></span>
+      <span class="src-line">      <span class="src-ln"> 317</span> <span class="src-hl">									outputText = <span class=<span class="src-str">"src-str"</span>>`${truncation.content}\n\n[${remaining} more lines in file. <span class="src-cls">Use</span> offset=${nextOffset} to <span class="src-kw">continue</span>.]`</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 318</span> <span class="src-hl">								} <span class="src-kw">else</span> {</span></span>
+      <span class="src-line">      <span class="src-ln"> 319</span> <span class="src-hl">									<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">No</span> truncation and no remaining user-limited content.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 320</span> <span class="src-hl">									outputText = truncation.content;</span></span>
+      <span class="src-line">      <span class="src-ln"> 321</span> <span class="src-hl">								}</span></span>
+      <span class="src-line">      <span class="src-ln"> 322</span> <span class="src-hl">								content = [{ <span class="src-kw">type</span>: &quot;text&quot;, text: outputText }];</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">返回 TextContent[] 给 agent-loop</span><span class="lang-en-only">return TextContent[] to agent-loop</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 323</span> <span class="src-hl">							}</span></span>
+    </div>
+
+    <div class="trace-steps"><div class="ts-label"><span class="lang-zh-only">read(README.md) 逐步</span><span class="lang-en-only">read(README.md) step by step</span></div>    <table class="cmp">
+      <thead><tr><th>#</th><th>location</th><th>主线时刻 / through-line moment</th></tr></thead>
+      <tbody>
+      <tr><td>1</td><td>validateToolArguments</td><td>{"path":"README.md"}</td></tr>
+      <tr><td>2</td><td>resolveReadPathAsync</td><td>cwd/README.md → absolute</td></tr>
+      <tr><td>3</td><td>fsReadFile</td><td>UTF-8 buffer</td></tr>
+      <tr><td>4</td><td>truncateHead</td><td>≤2000 lines / 256KB</td></tr>
+      <tr><td>5</td><td>tool_execution_end</td><td>isError=false</td></tr>
+      <tr><td>6</td><td>AgentMessage</td><td>role=toolResult · toolCallId=call_1</td></tr>
+      <tr><td>7</td><td>inner loop iter 2</td><td>context.messages += result</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="lang-zh-only"><p>若 README 超大，<code>truncateHead</code> 会在 tool result 末尾附加 <code>[Showing lines … Use offset=N to continue.]</code>——模型在 turn-2 可能只读到文件头部。主线 prompt「一句话概括」通常不需要全文；这是 Pi 故意用截断换上下文窗口的设计取舍。</p></div>
+    <div class="lang-en-only"><p>If README is huge, <code>truncateHead</code> appends continuation hints — turn-2 model may only see the head. Through-line «one sentence summary» rarely needs full file; truncation trades context window for completeness.</p></div>
+
+    </div>
+
     <div class="depth-zone" data-chapter="C12"><div class="depth-zone-label"><span class="dz-tag">DEPTH</span> <span class="lang-zh-only">深度细读 · C12.4+</span><span class="lang-en-only">Deep dive · C12.4+</span></div>
 
     <h4 class="sub2 depth-sec"><span class="sec-num">C12.4</span> <span class="lang-zh-only">主线 prompt 如何穿过此模块</span><span class="lang-en-only">through-line crossing</span></h4>
@@ -5261,6 +6200,262 @@
     <div class="note copper">
       <span class="lang-zh-only">📘 <strong>pi-textbook checkpoint 02</strong>：EventStream（<code>event-stream.ts</code>）· 生产映射：<code>packages/ai/src/utils/event-stream.ts</code></span>
       <span class="lang-en-only">📘 <strong>pi-textbook checkpoint 02</strong>: EventStream (<code>event-stream.ts</code>) · production: <code>packages/ai/src/utils/event-stream.ts</code></span>
+    </div>
+
+    <div class="trace-walk">
+      <div class="tw-head">
+        <span class="tw-tag">SOURCE TRACE · C13</span>
+        <span class="lang-zh-only">AgentEvent 总线：主线一轮完整事件序列</span>
+        <span class="lang-en-only">AgentEvent bus: full event sequence for one through-line turn</span>
+      </div>
+
+    <div class="lang-zh-only"><p><code>AgentEvent</code> 是 agent-core 与 coding-agent/TUI 的<strong>唯一契约</strong>。agent-loop 只 call <code>emit(event)</code>；AgentSession 订阅后 fan-out 到 JSONL、TUI、ExtensionRunner。主线 prompt 一轮大约产生 25–40 个事件（含 message_update delta）。</p></div>
+    <div class="lang-en-only"><p><code>AgentEvent</code> is the <strong>sole contract</strong> between agent-core and coding-agent/TUI. agent-loop only <code>emit(event)</code>; AgentSession fans out to JSONL, TUI, ExtensionRunner. One through-line turn emits ~25–40 events (including message_update deltas).</p></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/types.ts</span>
+        <span class="src-tag">event-union</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 421</span> <span class="src-hl">/**</span></span>
+      <span class="src-line">      <span class="src-ln"> 422</span> <span class="src-hl"> * <span class="src-cls">Events</span> emitted by the <span class="src-cls">Agent</span> <span class="src-kw">for</span> <span class="src-cls">UI</span> updates.</span></span>
+      <span class="src-line">      <span class="src-ln"> 423</span> <span class="src-hl"> *</span></span>
+      <span class="src-line">      <span class="src-ln"> 424</span> <span class="src-hl"> * <span class=<span class="src-str">"src-str"</span>>`agent_end`</span> is the last event emitted <span class="src-kw">for</span> a run, but awaited <span class=<span class="src-str">"src-str"</span>>`<span class="src-cls">Agent</span>.subscribe()`</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 425</span> <span class="src-hl"> * listeners <span class="src-kw">for</span> that event are still part of run settlement. <span class="src-cls">The</span> agent becomes</span></span>
+      <span class="src-line">      <span class="src-ln"> 426</span> <span class="src-hl"> * idle only after those listeners finish.</span></span>
+      <span class="src-line">      <span class="src-ln"> 427</span> <span class="src-hl"> */</span></span>
+      <span class="src-line">      <span class="src-ln"> 428</span> <span class="src-hl"><span class="src-kw">export</span> <span class="src-kw">type</span> <span class="src-cls">AgentEvent</span> =</span></span>
+      <span class="src-line">      <span class="src-ln"> 429</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Agent</span> lifecycle</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 430</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;agent_start&quot; }</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">agent_start / agent_end 包裹整次 runLoop</span><span class="lang-en-only">agent_start/agent_end wrap runLoop</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 431</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;agent_end&quot;; messages: AgentMessage[] }</span></span>
+      <span class="src-line">      <span class="src-ln"> 432</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Turn</span> lifecycle - a turn is one assistant response + any tool calls/results</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 433</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;turn_start&quot; }</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">turn_start / turn_end 包裹每圈 model+tools</span><span class="lang-en-only">turn_start/turn_end wrap each model+tools round</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 434</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;turn_end&quot;; message: AgentMessage; toolResults: <span class="src-cls">ToolResultMessage</span>[] }</span></span>
+      <span class="src-line">      <span class="src-ln"> 435</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Message</span> lifecycle - emitted <span class="src-kw">for</span> user, assistant, and toolResult messages</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 436</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;message_start&quot;; message: AgentMessage }</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">message_start/end：user/assistant/toolResult 共用</span><span class="lang-en-only">message_start/end: shared by user/assistant/toolResult</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 437</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Only</span> emitted <span class="src-kw">for</span> assistant messages during streaming</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 438</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;message_update&quot;; message: AgentMessage; assistantMessageEvent: <span class="src-cls">AssistantMessageEvent</span> }</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">★ message_update：仅 assistant 流式</span><span class="lang-en-only">★ message_update: assistant streaming only</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 439</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;message_end&quot;; message: AgentMessage }</span></span>
+      <span class="src-line">      <span class="src-ln"> 440</span> <span class="src-hl">	<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Tool</span> execution lifecycle</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 441</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;tool_execution_start&quot;; toolCallId: string; toolName: string; args: any }</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">tool_execution_*：read 生命周期</span><span class="lang-en-only">tool_execution_*: read lifecycle</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 442</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;tool_execution_update&quot;; toolCallId: string; toolName: string; args: any; partialResult: any }</span></span>
+      <span class="src-line">      <span class="src-ln"> 443</span> <span class="src-hl">	| { <span class="src-kw">type</span>: &quot;tool_execution_end&quot;; toolCallId: string; toolName: string; result: any; isError: boolean };</span></span>
+    </div>
+
+    <div class="trace-steps"><div class="ts-label"><span class="lang-zh-only">主线 prompt 事件序列（简化）</span><span class="lang-en-only">Through-line event sequence (simplified)</span></div>    <table class="cmp">
+      <thead><tr><th>#</th><th>location</th><th>主线时刻 / through-line moment</th></tr></thead>
+      <tbody>
+      <tr><td>1</td><td>agent_start</td><td>runLoop 进入</td></tr>
+      <tr><td>2</td><td>turn_start</td><td>turn-1 开始</td></tr>
+      <tr><td>3</td><td>message_start</td><td>user prompt</td></tr>
+      <tr><td>4</td><td>message_end</td><td>user 定稿 → JSONL append</td></tr>
+      <tr><td>5</td><td>message_start</td><td>assistant partial</td></tr>
+      <tr><td>6</td><td>message_update×N</td><td>toolcall_delta 组装 read(args)</td></tr>
+      <tr><td>7</td><td>message_end</td><td>stopReason=toolUse</td></tr>
+      <tr><td>8</td><td>tool_execution_start</td><td>read · call_1</td></tr>
+      <tr><td>9</td><td>tool_execution_end</td><td>README 内容</td></tr>
+      <tr><td>10</td><td>message_start/end</td><td>toolResult 消息</td></tr>
+      <tr><td>11</td><td>turn_end</td><td>turn-1 完成</td></tr>
+      <tr><td>12</td><td>turn_start</td><td>turn-2</td></tr>
+      <tr><td>13</td><td>message_update×M</td><td>text_delta 最终回答</td></tr>
+      <tr><td>14</td><td>message_end</td><td>stopReason=stop</td></tr>
+      <tr><td>15</td><td>turn_end</td><td>turn-2 完成</td></tr>
+      <tr><td>16</td><td>agent_end</td><td>newMessages 返回</td></tr>
+      </tbody>
+    </table></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/agent/src/agent-loop.ts</span>
+        <span class="src-tag">emit-loop</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 326</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;text_start&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 327</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;text_delta&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 328</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;text_end&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 329</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;thinking_start&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 330</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;thinking_delta&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 331</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;thinking_end&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 332</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;toolcall_start&quot;:</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">toolcall_delta → message_update</span><span class="lang-en-only">toolcall_delta → message_update</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 333</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;toolcall_delta&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 334</span> <span class="src-hl">			<span class="src-kw">case</span> &quot;toolcall_end&quot;:</span></span>
+      <span class="src-line">      <span class="src-ln"> 335</span> <span class="src-hl">				<span class="src-kw">if</span> (partialMessage) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 336</span> <span class="src-hl">					partialMessage = event.partial;</span></span>
+      <span class="src-line">      <span class="src-ln"> 337</span> <span class="src-hl">					context.messages[context.messages.length - 1] = partialMessage;</span></span>
+      <span class="src-line">      <span class="src-ln"> 338</span> <span class="src-hl">					<span class="src-kw">await</span> emit({</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">emit 携带 assistantMessageEvent 原样</span><span class="lang-en-only">emit carries assistantMessageEvent as-is</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 339</span> <span class="src-hl">						<span class="src-kw">type</span>: &quot;message_update&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 340</span> <span class="src-hl">						assistantMessageEvent: event,</span></span>
+      <span class="src-line">      <span class="src-ln"> 341</span> <span class="src-hl">						message: { ...partialMessage },</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">TUI 靠 message 快照差分渲染</span><span class="lang-en-only">TUI diffs from message snapshot</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 342</span> <span class="src-hl">					});</span></span>
+      <span class="src-line">      <span class="src-ln"> 343</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 344</span> <span class="src-hl">				<span class="src-kw">break</span>;</span></span>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/coding-agent/src/core/agent-session.ts</span>
+        <span class="src-tag">session-persist</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 644</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Emit</span> to extensions first</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 645</span> <span class="src-hl">		<span class="src-kw">await</span> this._emitExtensionEvent(event);</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">扩展先收到事件（可改写 message_end）</span><span class="lang-en-only">extensions receive first (can rewrite message_end)</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 646</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 647</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Notify</span> all listeners</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 648</span> <span class="src-hl">		this._emit(event.<span class="src-kw">type</span> === &quot;agent_end&quot; ? { ...event, willRetry: this._willRetryAfterAgentEnd(event) } : event);</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">fan-out 到 session 监听器</span><span class="lang-en-only">fan-out to session listeners</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 649</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 650</span> <span class="src-hl">		<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Handle</span> session persistence</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 651</span> <span class="src-hl">		<span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;message_end&quot;) {</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">★ message_end → SessionManager.appendMessage</span><span class="lang-en-only">★ message_end → SessionManager.appendMessage</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 652</span> <span class="src-hl">			<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Check</span> <span class="src-kw">if</span> this is a custom message <span class="src-kw">from</span> extensions</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 653</span> <span class="src-hl">			<span class="src-kw">if</span> (event.message.role === &quot;custom&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 654</span> <span class="src-hl">				<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Persist</span> as <span class="src-cls">CustomMessageEntry</span></span></span></span>
+      <span class="src-line">      <span class="src-ln"> 655</span> <span class="src-hl">				this.sessionManager.appendCustomMessageEntry(</span></span>
+      <span class="src-line">      <span class="src-ln"> 656</span> <span class="src-hl">					event.message.customType,</span></span>
+      <span class="src-line">      <span class="src-ln"> 657</span> <span class="src-hl">					event.message.content,</span></span>
+      <span class="src-line">      <span class="src-ln"> 658</span> <span class="src-hl">					event.message.display,</span></span>
+      <span class="src-line">      <span class="src-ln"> 659</span> <span class="src-hl">					event.message.details,</span></span>
+      <span class="src-line">      <span class="src-ln"> 660</span> <span class="src-hl">				);</span></span>
+      <span class="src-line">      <span class="src-ln"> 661</span> <span class="src-hl">			} <span class="src-kw">else</span> <span class="src-kw">if</span> (</span></span>
+      <span class="src-line">      <span class="src-ln"> 662</span> <span class="src-hl">				event.message.role === &quot;user&quot; ||</span></span>
+      <span class="src-line">      <span class="src-ln"> 663</span> <span class="src-hl">				event.message.role === &quot;assistant&quot; ||</span></span>
+      <span class="src-line">      <span class="src-ln"> 664</span> <span class="src-hl">				event.message.role === &quot;toolResult&quot;</span></span>
+      <span class="src-line">      <span class="src-ln"> 665</span> <span class="src-hl">			) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 666</span> <span class="src-hl">				<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Regular</span> <span class="src-cls">LLM</span> message - persist as <span class="src-cls">SessionMessageEntry</span></span></span></span>
+      <span class="src-line">      <span class="src-ln"> 667</span> <span class="src-hl">				this.sessionManager.appendMessage(event.message);</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">user/assistant/toolResult 写 JSONL</span><span class="lang-en-only">user/assistant/toolResult to JSONL</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 668</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 669</span> <span class="src-hl">			<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Other</span> message types (bashExecution, compactionSummary, branchSummary) are persisted elsewhere</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 670</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 671</span> <span class="src-hl">			<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Track</span> assistant message <span class="src-kw">for</span> auto-compaction (checked on agent_end)</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 672</span> <span class="src-hl">			<span class="src-kw">if</span> (event.message.role === &quot;assistant&quot;) {</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">assistant message_end 触发 compaction 检查标记</span><span class="lang-en-only">assistant message_end sets compaction check flag</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 673</span> <span class="src-hl">				this._lastAssistantMessage = event.message;</span></span>
+      <span class="src-line">      <span class="src-ln"> 674</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 675</span> <span class="src-hl">				<span class="src-kw">const</span> assistantMsg = event.message as <span class="src-cls">AssistantMessage</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 676</span> <span class="src-hl">				<span class="src-kw">if</span> (assistantMsg.stopReason !== &quot;error&quot; &amp;&amp; assistantMsg.stopReason !== &quot;length&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 677</span> <span class="src-hl">					this._overflowRecoveryAttempted = <span class="src-kw">false</span>;</span></span>
+      <span class="src-line">      <span class="src-ln"> 678</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 679</span> <span class="src-hl"></span></span>
+      <span class="src-line">      <span class="src-ln"> 680</span> <span class="src-hl">				<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Reset</span> retry counter immediately on successful assistant response</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 681</span> <span class="src-hl">				<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">This</span> prevents accumulation across multiple <span class="src-cls">LLM</span> calls within a turn</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 682</span> <span class="src-hl">				<span class="src-kw">if</span> (assistantMsg.stopReason !== &quot;error&quot; &amp;&amp; this._retryAttempt &gt; 0) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 683</span> <span class="src-hl">					this._emit({</span></span>
+      <span class="src-line">      <span class="src-ln"> 684</span> <span class="src-hl">						<span class="src-kw">type</span>: &quot;auto_retry_end&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 685</span> <span class="src-hl">						success: <span class="src-kw">true</span>,</span></span>
+      <span class="src-line">      <span class="src-ln"> 686</span> <span class="src-hl">						attempt: this._retryAttempt,</span></span>
+      <span class="src-line">      <span class="src-ln"> 687</span> <span class="src-hl">					});</span></span>
+      <span class="src-line">      <span class="src-ln"> 688</span> <span class="src-hl">					this._retryAttempt = 0;</span></span>
+      <span class="src-line">      <span class="src-ln"> 689</span> <span class="src-hl">				}</span></span>
+      <span class="src-line">      <span class="src-ln"> 690</span> <span class="src-hl">			}</span></span>
+    </div>
+
+    <div class="lang-zh-only"><p>「message_update 驱动 TUI，message_end 驱动 JSONL」——不是两条管道，而是<strong>同一 emit 的两个订阅者消费不同阶段</strong>。TUI 在 update 时重绘；SessionManager 只在 end 时落盘，避免每个 delta 写一行 JSONL。</p></div>
+    <div class="lang-en-only"><p>«message_update drives TUI, message_end drives JSONL» — not two pipes but <strong>two subscribers to same emit at different stages</strong>. TUI redraws on update; SessionManager persists only on end, avoiding per-delta JSONL lines.</p></div>
+
+    <div class="src-stack">
+      <div class="src-h">
+        <span>SOURCE &nbsp;·&nbsp; packages/coding-agent/src/core/agent-session.ts</span>
+        <span class="src-tag">extension-fanout</span>
+      </div>
+      <span class="src-line">      <span class="src-ln"> 738</span> <span class="src-hl">	private <span class="src-kw">async</span> _emitExtensionEvent(event: <span class="src-cls">AgentEvent</span>): <span class="src-cls">Promise</span>&lt;void&gt; {</span></span>
+      <span class="src-line">      <span class="src-ln"> 739</span> <span class="src-hl">		<span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;agent_start&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 740</span> <span class="src-hl">			this._turnIndex = 0;</span></span>
+      <span class="src-line">      <span class="src-ln"> 741</span> <span class="src-hl">			<span class="src-kw">await</span> this._extensionRunner.emit({ <span class="src-kw">type</span>: &quot;agent_start&quot; });</span></span>
+      <span class="src-line">      <span class="src-ln"> 742</span> <span class="src-hl">		} <span class="src-kw">else</span> <span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;agent_end&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 743</span> <span class="src-hl">			<span class="src-kw">await</span> this._extensionRunner.emit({ <span class="src-kw">type</span>: &quot;agent_end&quot;, messages: event.messages });</span></span>
+      <span class="src-line">      <span class="src-ln"> 744</span> <span class="src-hl">		} <span class="src-kw">else</span> <span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;turn_start&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 745</span> <span class="src-hl">			<span class="src-kw">const</span> extensionEvent: <span class="src-cls">TurnStartEvent</span> = {</span></span>
+      <span class="src-line">      <span class="src-ln"> 746</span> <span class="src-hl">				<span class="src-kw">type</span>: &quot;turn_start&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 747</span> <span class="src-hl">				turnIndex: this._turnIndex,</span></span>
+      <span class="src-line">      <span class="src-ln"> 748</span> <span class="src-hl">				timestamp: <span class="src-cls">Date</span>.now(),</span></span>
+      <span class="src-line">      <span class="src-ln"> 749</span> <span class="src-hl">			};</span></span>
+      <span class="src-line">      <span class="src-ln"> 750</span> <span class="src-hl">			<span class="src-kw">await</span> this._extensionRunner.emit(extensionEvent);</span></span>
+      <span class="src-line">      <span class="src-ln"> 751</span> <span class="src-hl">		} <span class="src-kw">else</span> <span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;turn_end&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 752</span> <span class="src-hl">			<span class="src-kw">const</span> extensionEvent: <span class="src-cls">TurnEndEvent</span> = {</span></span>
+      <span class="src-line">      <span class="src-ln"> 753</span> <span class="src-hl">				<span class="src-kw">type</span>: &quot;turn_end&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 754</span> <span class="src-hl">				turnIndex: this._turnIndex,</span></span>
+      <span class="src-line">      <span class="src-ln"> 755</span> <span class="src-hl">				message: event.message,</span></span>
+      <span class="src-line">      <span class="src-ln"> 756</span> <span class="src-hl">				toolResults: event.toolResults,</span></span>
+      <span class="src-line">      <span class="src-ln"> 757</span> <span class="src-hl">			};</span></span>
+      <span class="src-line">      <span class="src-ln"> 758</span> <span class="src-hl">			<span class="src-kw">await</span> this._extensionRunner.emit(extensionEvent);</span></span>
+      <span class="src-line">      <span class="src-ln"> 759</span> <span class="src-hl">			this._turnIndex++;</span></span>
+      <span class="src-line">      <span class="src-ln"> 760</span> <span class="src-hl">		} <span class="src-kw">else</span> <span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;message_start&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 761</span> <span class="src-hl">			<span class="src-kw">const</span> extensionEvent: <span class="src-cls">MessageStartEvent</span> = {</span></span>
+      <span class="src-line">      <span class="src-ln"> 762</span> <span class="src-hl">				<span class="src-kw">type</span>: &quot;message_start&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 763</span> <span class="src-hl">				message: event.message,</span></span>
+      <span class="src-line">      <span class="src-ln"> 764</span> <span class="src-hl">			};</span></span>
+      <span class="src-line">      <span class="src-ln"> 765</span> <span class="src-hl">			<span class="src-kw">await</span> this._extensionRunner.emit(extensionEvent);</span></span>
+      <span class="src-line">      <span class="src-ln"> 766</span> <span class="src-hl">		} <span class="src-kw">else</span> <span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;message_update&quot;) {</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">message_update → ExtensionRunner</span><span class="lang-en-only">message_update → ExtensionRunner</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 767</span> <span class="src-hl">			<span class="src-kw">const</span> extensionEvent: <span class="src-cls">MessageUpdateEvent</span> = {</span></span>
+      <span class="src-line">      <span class="src-ln"> 768</span> <span class="src-hl">				<span class="src-kw">type</span>: &quot;message_update&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 769</span> <span class="src-hl">				message: event.message,</span></span>
+      <span class="src-line">      <span class="src-ln"> 770</span> <span class="src-hl">				assistantMessageEvent: event.assistantMessageEvent,</span></span>
+      <span class="src-line">      <span class="src-ln"> 771</span> <span class="src-hl">			};</span></span>
+      <span class="src-line">      <span class="src-ln"> 772</span> <span class="src-hl">			<span class="src-kw">await</span> this._extensionRunner.emit(extensionEvent);</span></span>
+      <span class="src-line">      <span class="src-ln"> 773</span> <span class="src-hl">		} <span class="src-kw">else</span> <span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;message_end&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 774</span> <span class="src-hl">			<span class="src-kw">const</span> extensionEvent: <span class="src-cls">MessageEndEvent</span> = {</span> <span class="src-tag">◀ trace</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">message_end → emitMessageEnd 可替换消息</span><span class="lang-en-only">message_end → emitMessageEnd can replace message</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 775</span> <span class="src-hl">				<span class="src-kw">type</span>: &quot;message_end&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 776</span> <span class="src-hl">				message: event.message,</span></span>
+      <span class="src-line">      <span class="src-ln"> 777</span> <span class="src-hl">			};</span></span>
+      <span class="src-line">      <span class="src-ln"> 778</span> <span class="src-hl">			<span class="src-kw">const</span> replacement = <span class="src-kw">await</span> this._extensionRunner.emitMessageEnd(extensionEvent);</span></span>
+      <span class="src-line">      <span class="src-ln"> 779</span> <span class="src-hl">			<span class="src-kw">if</span> (replacement) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 780</span> <span class="src-hl">				<span class=<span class="src-str">"src-comment"</span>>// <span class="src-cls">Untyped</span> extension handlers can <span class="src-kw">return</span> messages with <span class="src-kw">null</span>/missing content;</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 781</span> <span class="src-hl">				<span class=<span class="src-str">"src-comment"</span>>// normalize so it never enters agent state or session history.</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 782</span> <span class="src-hl">				<span class="src-kw">const</span> normalized =</span></span>
+      <span class="src-line">      <span class="src-ln"> 783</span> <span class="src-hl">					(replacement.role === &quot;user&quot; ||</span></span>
+      <span class="src-line">      <span class="src-ln"> 784</span> <span class="src-hl">						replacement.role === &quot;assistant&quot; ||</span></span>
+      <span class="src-line">      <span class="src-ln"> 785</span> <span class="src-hl">						replacement.role === &quot;toolResult&quot; ||</span></span>
+      <span class="src-line">      <span class="src-ln"> 786</span> <span class="src-hl">						replacement.role === &quot;custom&quot;) &amp;&amp;</span></span>
+      <span class="src-line">      <span class="src-ln"> 787</span> <span class="src-hl">					replacement.content == <span class="src-kw">null</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 788</span> <span class="src-hl">						? ({ ...replacement, content: [] } as AgentMessage)</span></span>
+      <span class="src-line">      <span class="src-ln"> 789</span> <span class="src-hl">						: replacement;</span></span>
+      <span class="src-line">      <span class="src-ln"> 790</span> <span class="src-hl">				this._replaceMessageInPlace(event.message, normalized);</span></span>
+      <span class="src-line">      <span class="src-ln"> 791</span> <span class="src-hl">			}</span></span>
+      <span class="src-line">      <span class="src-ln"> 792</span> <span class="src-hl">		} <span class="src-kw">else</span> <span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;tool_execution_start&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 793</span> <span class="src-hl">			<span class="src-kw">const</span> extensionEvent: <span class="src-cls">ToolExecutionStartEvent</span> = {</span></span>
+      <span class="src-line">      <span class="src-comment">     ↳ <span class="lang-zh-only">tool_execution_start 扩展可见</span><span class="lang-en-only">tool_execution_start visible to extensions</span></span></span>
+      <span class="src-line">      <span class="src-ln"> 794</span> <span class="src-hl">				<span class="src-kw">type</span>: &quot;tool_execution_start&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 795</span> <span class="src-hl">				toolCallId: event.toolCallId,</span></span>
+      <span class="src-line">      <span class="src-ln"> 796</span> <span class="src-hl">				toolName: event.toolName,</span></span>
+      <span class="src-line">      <span class="src-ln"> 797</span> <span class="src-hl">				args: event.args,</span></span>
+      <span class="src-line">      <span class="src-ln"> 798</span> <span class="src-hl">			};</span></span>
+      <span class="src-line">      <span class="src-ln"> 799</span> <span class="src-hl">			<span class="src-kw">await</span> this._extensionRunner.emit(extensionEvent);</span></span>
+      <span class="src-line">      <span class="src-ln"> 800</span> <span class="src-hl">		} <span class="src-kw">else</span> <span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;tool_execution_update&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 801</span> <span class="src-hl">			<span class="src-kw">const</span> extensionEvent: <span class="src-cls">ToolExecutionUpdateEvent</span> = {</span></span>
+      <span class="src-line">      <span class="src-ln"> 802</span> <span class="src-hl">				<span class="src-kw">type</span>: &quot;tool_execution_update&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 803</span> <span class="src-hl">				toolCallId: event.toolCallId,</span></span>
+      <span class="src-line">      <span class="src-ln"> 804</span> <span class="src-hl">				toolName: event.toolName,</span></span>
+      <span class="src-line">      <span class="src-ln"> 805</span> <span class="src-hl">				args: event.args,</span></span>
+      <span class="src-line">      <span class="src-ln"> 806</span> <span class="src-hl">				partialResult: event.partialResult,</span></span>
+      <span class="src-line">      <span class="src-ln"> 807</span> <span class="src-hl">			};</span></span>
+      <span class="src-line">      <span class="src-ln"> 808</span> <span class="src-hl">			<span class="src-kw">await</span> this._extensionRunner.emit(extensionEvent);</span></span>
+      <span class="src-line">      <span class="src-ln"> 809</span> <span class="src-hl">		} <span class="src-kw">else</span> <span class="src-kw">if</span> (event.<span class="src-kw">type</span> === &quot;tool_execution_end&quot;) {</span></span>
+      <span class="src-line">      <span class="src-ln"> 810</span> <span class="src-hl">			<span class="src-kw">const</span> extensionEvent: <span class="src-cls">ToolExecutionEndEvent</span> = {</span></span>
+      <span class="src-line">      <span class="src-ln"> 811</span> <span class="src-hl">				<span class="src-kw">type</span>: &quot;tool_execution_end&quot;,</span></span>
+      <span class="src-line">      <span class="src-ln"> 812</span> <span class="src-hl">				toolCallId: event.toolCallId,</span></span>
+      <span class="src-line">      <span class="src-ln"> 813</span> <span class="src-hl">				toolName: event.toolName,</span></span>
+      <span class="src-line">      <span class="src-ln"> 814</span> <span class="src-hl">				result: event.result,</span></span>
+      <span class="src-line">      <span class="src-ln"> 815</span> <span class="src-hl">				isError: event.isError,</span></span>
+      <span class="src-line">      <span class="src-ln"> 816</span> <span class="src-hl">			};</span></span>
+      <span class="src-line">      <span class="src-ln"> 817</span> <span class="src-hl">			<span class="src-kw">await</span> this._extensionRunner.emit(extensionEvent);</span></span>
+      <span class="src-line">      <span class="src-ln"> 818</span> <span class="src-hl">		}</span></span>
+    </div>
+
+    <div class="note copper">
+      <span class="lang-zh-only">用 <code>pi --verbose 2&gt;events.log</code> 跑主线 prompt，<code>grep message_update events.log | wc -l</code> 应与 TUI 刷新次数同量级。</span>
+      <span class="lang-en-only">Run <code>pi --verbose 2&gt;events.log</code> on through-line; <code>grep message_update events.log | wc -l</code> should match TUI refresh magnitude.</span>
+    </div>
+
     </div>
 
     <div class="depth-zone" data-chapter="C13"><div class="depth-zone-label"><span class="dz-tag">DEPTH</span> <span class="lang-zh-only">深度细读 · C13.4+</span><span class="lang-en-only">Deep dive · C13.4+</span></div>

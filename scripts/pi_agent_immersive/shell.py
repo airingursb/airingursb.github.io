@@ -383,6 +383,30 @@ EXTRA_CSS = """
   }
   body.has-filmstrip { padding-top: 52px; }
   body.has-filmstrip .ursb-backlink { top: 58px; }
+  .trace-walk {
+    margin: 36px 0; padding: 22px 24px 8px;
+    border: 2px solid var(--accent); border-radius: 4px;
+    background: linear-gradient(135deg, rgba(31,92,140,0.03) 0%, var(--paper) 50%);
+  }
+  .trace-walk .tw-head {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase; margin-bottom: 18px; line-height: 1.6;
+  }
+  .trace-walk .tw-tag {
+    display: block; color: var(--accent); font-weight: 700;
+    margin-bottom: 6px; letter-spacing: 0.18em;
+  }
+  .trace-walk .src-stack { margin: 16px 0 20px; }
+  .trace-walk .src-ln {
+    display: inline-block; width: 44px; text-align: right;
+    color: var(--ink-mute); user-select: none; margin-right: 8px;
+  }
+  .trace-walk .src-hl { font-family: var(--mono); font-size: 12px; }
+  .trace-steps { margin: 24px 0; }
+  .trace-steps .ts-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--copper); margin-bottom: 10px;
+  }
 """
 
 
