@@ -69,7 +69,7 @@ def viz_seven_milestones() -> str:
         nodes += f'''
   <circle cx="{x}" cy="120" r="22" fill="{c}" opacity="0.15" stroke="{c}" stroke-width="2"/>
   <text x="{x}" y="116" text-anchor="middle" class="svg-tiny" fill="{c}" font-weight="700">{num}</text>
-  <text x="{x}" y="130" text-anchor="middle" class="svg-micro">{typ[:8]}</text>
+  <text x="{x}" y="130" text-anchor="middle" class="svg-micro">{typ.replace("_", " ")[:12]}</text>
   <text x="{x}" y="158" text-anchor="middle" class="svg-mute">{owner}</text>'''
     inner = f"""
   <line x1="70" y1="120" x2="650" y2="120" stroke="#c7c4ba" stroke-width="2"/>
