@@ -101,6 +101,61 @@ EXTRA_CSS = """
   .pi-svg .svg-box.paper { fill: #f3efe6; stroke: #c7c4ba; }
   .pi-svg .svg-box.muted { fill: #ebe5d8; stroke: #c7c4ba; }
   .pi-svg .svg-arrow { stroke: #1f5c8c; stroke-width: 1.5; marker-end: url(#pi-arr); }
+  .pi-fig.panorama svg { min-width: 100%; }
+  .station-track {
+    margin: 20px 0 28px;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--paper);
+    overflow: hidden;
+  }
+  .station-track .st-rail {
+    display: grid;
+    grid-template-columns: repeat(11, minmax(72px, 1fr));
+    gap: 0;
+    overflow-x: auto;
+    padding: 0;
+    scrollbar-width: thin;
+  }
+  @media (max-width: 900px) {
+    .station-track .st-rail { grid-template-columns: repeat(11, 88px); }
+  }
+  .station-track .st-cell {
+    border-right: 1px solid var(--rule-soft);
+    border-bottom: 1px solid var(--rule-soft);
+    padding: 12px 8px 10px;
+    text-align: center;
+    background: linear-gradient(180deg, var(--paper) 0%, color-mix(in srgb, var(--st-color) 6%, var(--paper)) 100%);
+    min-height: 88px;
+  }
+  .station-track .st-cell:nth-child(n+12) { border-bottom: none; }
+  .station-track .st-num {
+    font-family: var(--mono); font-size: 18px; font-weight: 700;
+    color: var(--st-color); line-height: 1;
+  }
+  .station-track .st-name {
+    font-family: var(--sans); font-size: 11px; font-weight: 600;
+    color: var(--ink); margin-top: 6px; line-height: 1.25;
+  }
+  .station-track .st-phase {
+    font-family: var(--mono); font-size: 8px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--ink-mute); margin-top: 4px;
+  }
+  .event-flow {
+    border: 1px solid var(--rule); border-radius: 4px;
+    background: var(--paper-2); padding: 4px 0;
+  }
+  .event-flow .ef-row {
+    display: grid; grid-template-columns: 140px 1fr; gap: 16px;
+    padding: 10px 18px; border-bottom: 1px dashed var(--rule-soft);
+    align-items: baseline;
+  }
+  .event-flow .ef-row:last-child { border-bottom: none; }
+  .event-flow .ef-type {
+    font-family: var(--mono); font-size: 11px; font-weight: 600;
+    color: var(--accent); background: var(--accent-pale, #e8f0f8);
+    padding: 3px 8px; border-radius: 3px; display: inline-block;
+  }
   .toc-group[data-phase="heart"] { border-left-color: var(--accent); background: linear-gradient(135deg, rgba(31,92,140,0.04) 0%, var(--paper) 60%); }
   .toc-group[data-phase="llm"] { border-left-color: var(--gpu); background: linear-gradient(135deg, rgba(107,58,163,0.05) 0%, var(--paper) 60%); }
   .toc-group[data-phase="tui"] { border-left-color: var(--asm); background: linear-gradient(135deg, rgba(45,106,79,0.04) 0%, var(--paper) 60%); }
@@ -121,9 +176,6 @@ EXTRA_CSS = """
   }
   .session-tree .st-node { padding: 4px 0 4px 20px; border-left: 2px solid var(--rule); margin-left: 8px; }
   .session-tree .st-leaf { color: var(--accent); font-weight: 700; }
-  .event-flow { font-family: var(--mono); font-size: 11px; }
-  .event-flow .ef-row { display: grid; grid-template-columns: 100px 1fr; gap: 12px; padding: 6px 0; border-bottom: 1px dashed var(--rule-soft); }
-  .event-flow .ef-type { color: var(--accent); font-weight: 600; }
   .milestone-table td.owner-user { color: var(--copper); }
   .milestone-table td.owner-model { color: var(--accent); }
   .milestone-table td.owner-loop { color: var(--gpu); }

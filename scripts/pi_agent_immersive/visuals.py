@@ -86,6 +86,122 @@ def viz_seven_milestones() -> str:
     )
 
 
+STATIONS_22: list[tuple[str, str, str, str]] = [
+    ("01", "CLI 解析", "cli.ts argv", "intake"),
+    ("02", "main 启动", "main.ts boot", "intake"),
+    ("03", "Session", "session factory", "intake"),
+    ("04", "AGENTS.md", "context stack", "intake"),
+    ("05", "prompt 入队", "prompt queued", "heart"),
+    ("06", "agent_start", "agent_start", "heart"),
+    ("07", "turn_start", "turn_start", "heart"),
+    ("08", "convertToLlm", "→ Message[]", "llm"),
+    ("09", "streamSimple", "pi-ai stream", "llm"),
+    ("10", "text_delta", "token stream", "llm"),
+    ("11", "toolcall_δ", "tool assembly", "llm"),
+    ("12", "toolUse", "read request", "heart"),
+    ("13", "executeTool", "tool dispatch", "heart"),
+    ("14", "read README", "filesystem I/O", "tool"),
+    ("15", "tool_result", "tool result", "tool"),
+    ("16", "stream #2", "turn 2 model", "llm"),
+    ("17", "assistant stop", "final answer", "llm"),
+    ("18", "message_end", "message_end", "heart"),
+    ("19", "JSONL append", "JSONL write", "persist"),
+    ("20", "TUI diff", "diff render", "terminal"),
+    ("21", "extensions", "extension hooks", "terminal"),
+    ("22", "compaction", "context check", "persist"),
+]
+
+PHASE_COLORS = {
+    "intake": "#767c87",
+    "heart": "#1f5c8c",
+    "llm": "#6b3aa3",
+    "tool": "#2d6a4f",
+    "terminal": "#3873a3",
+    "persist": "#b35a1f",
+}
+
+
+def station_track() -> str:
+    cells = []
+    for num, zh, en, phase in STATIONS_22:
+        color = PHASE_COLORS[phase]
+        cells.append(
+            f"""      <div class="st-cell" data-phase="{phase}" style="--st-color:{color}">
+        <div class="st-num">{num}</div>
+        <div class="st-name"><span class="lang-zh-only">{zh}</span><span class="lang-en-only">{en}</span></div>
+        <div class="st-phase">{phase}</div>
+      </div>"""
+        )
+    return f"""    <div class="station-track" role="list" aria-label="22 stations">
+      <div class="st-rail">
+{chr(10).join(cells)}
+      </div>
+    </div>"""
+
+
+def viz_22_stations_panorama() -> str:
+    """Full 22-station snake timeline SVG — the main C02 panorama."""
+    # Row 1: 01-11, Row 2: 12-22
+    row1 = STATIONS_22[:11]
+    row2 = STATIONS_22[11:]
+    nodes = ""
+    paths = ""
+    x0, y1, y2 = 48, 95, 195
+    dx = 88
+    prev = None
+    for i, (num, zh, _en, phase) in enumerate(row1):
+        x = x0 + i * dx
+        c = PHASE_COLORS[phase]
+        label = zh[:10] if len(zh) > 10 else zh
+        nodes += f'''
+  <rect x="{x-28}" y="{y1-28}" width="56" height="56" rx="4" fill="{c}" opacity="0.12" stroke="{c}" stroke-width="1.5"/>
+  <text x="{x}" y="{y1-8}" text-anchor="middle" class="svg-tiny" fill="{c}" font-weight="700">{num}</text>
+  <text x="{x}" y="{y1+10}" text-anchor="middle" class="svg-micro">{label}</text>'''
+        if prev:
+            paths += f'<line x1="{prev[0]+28}" y1="{y1}" x2="{x-28}" y2="{y1}" stroke="#c7c4ba" stroke-width="1.5"/>'
+        prev = (x, y1)
+    # connector 11 → 12
+    x11 = x0 + 10 * dx
+    x12 = x0
+    mid_y = (y1 + y2) // 2
+    paths += (
+        f'<path d="M{x11+28} {y1} L{x11+52} {y1} L{x11+52} {mid_y} '
+        f'L{x12-52} {mid_y} L{x12-52} {y2-28} L{x12-28} {y2-28}" '
+        f'fill="none" stroke="#c7c4ba" stroke-width="1.5"/>'
+    )
+    prev = None
+    for i, (num, zh, _en, phase) in enumerate(row2):
+        x = x0 + i * dx
+        c = PHASE_COLORS[phase]
+        label = zh[:10] if len(zh) > 10 else zh
+        nodes += f'''
+  <rect x="{x-28}" y="{y2-28}" width="56" height="56" rx="4" fill="{c}" opacity="0.12" stroke="{c}" stroke-width="1.5"/>
+  <text x="{x}" y="{y2-8}" text-anchor="middle" class="svg-tiny" fill="{c}" font-weight="700">{num}</text>
+  <text x="{x}" y="{y2+10}" text-anchor="middle" class="svg-micro">{label}</text>'''
+        if prev:
+            paths += f'<line x1="{prev[0]+28}" y1="{y2}" x2="{x-28}" y2="{y2}" stroke="#c7c4ba" stroke-width="1.5"/>'
+        prev = (x, y2)
+    # phase legend
+    legend = ""
+    lx = 48
+    for phase, color in PHASE_COLORS.items():
+        legend += f'<rect x="{lx}" y="248" width="10" height="10" fill="{color}" opacity="0.5"/>'
+        legend += f'<text x="{lx+14}" y="257" class="svg-micro">{phase}</text>'
+        lx += 72
+    inner = f"""
+  <text x="48" y="32" class="svg-label">22 stations · snake timeline · one user message</text>
+  <text x="48" y="52" class="svg-mute">Enter → … → JSONL on disk</text>
+  {paths}
+  {nodes}
+  {legend}
+"""
+    return fig(
+        "22 站全景：从 CLI 解析到 compaction 检查的完整蛇形时间线，颜色按 Phase 编码。",
+        "22-station panorama: snake timeline from CLI parse to compaction check, color-coded by phase.",
+        f'<div class="pi-fig panorama">{svg_wrap(inner, "0 0 1000 270")}</div>',
+    )
+
+
 def viz_stations_flow() -> str:
     """Compact 22-station flow grouped by phase."""
     groups = [

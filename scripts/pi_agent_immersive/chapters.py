@@ -18,6 +18,7 @@ from _html_helpers import (
 )
 from textbook_map import PRODUCTION_MAP, SEVEN_MILESTONES, TEXTBOOK_CHECKPOINTS
 from visuals import (
+    station_track,
     viz_compaction,
     viz_event_swimlane,
     viz_extension_hooks,
@@ -27,6 +28,7 @@ from visuals import (
     viz_runloop_twin,
     viz_seven_milestones,
     viz_session_tree,
+    viz_22_stations_panorama,
     viz_stations_flow,
     viz_textbook_map,
     viz_tui_diff,
@@ -164,31 +166,6 @@ def chapter_c1() -> str:
 
 
 def chapter_c2() -> str:
-    stations = [
-        ("01", "CLI 解析 argv", "cli.ts parses argv"),
-        ("02", "main 启动", "main.ts boot"),
-        ("03", "createAgentSession", "session factory"),
-        ("04", "ResourceLoader AGENTS.md", "context stack"),
-        ("05", "user message 入队", "prompt queued"),
-        ("06", "agent_start 事件", "agent_start event"),
-        ("07", "turn_start", "turn_start"),
-        ("08", "convertToLlm", "AgentMessage → Message[]"),
-        ("09", "streamSimple", "pi-ai stream"),
-        ("10", "text_delta", "token streaming"),
-        ("11", "toolcall_delta", "tool call assembly"),
-        ("12", "assistant stopReason=toolUse", "read tool requested"),
-        ("13", "executeTool parallel/seq", "tool dispatch"),
-        ("14", "read README.md", "filesystem I/O"),
-        ("15", "tool_result 消息", "tool result message"),
-        ("16", "第二次 streamSimple", "turn 2 model call"),
-        ("17", "最终 assistant stop", "final answer"),
-        ("18", "message_end 事件", "message_end"),
-        ("19", "SessionManager.append", "JSONL write"),
-        ("20", "TUI message_update", "diff render"),
-        ("21", "ExtensionRunner hooks", "extension events"),
-        ("22", "compaction 检查", "context check"),
-    ]
-    ladder_rows = [(num, z, e) for num, z, e in stations]
     parts = [
         p(
             f"按下回车之后，<code>{PROMPT_ZH}</code> 不是直接发给 LLM——它要先变成 <code>AgentMessage</code>，穿过 <code>AgentSession.prompt()</code>，触发 <code>agentLoop()</code>，在 <code>runLoop</code> 的双环里转两圈 model stream，中间插一次 <code>read</code> 工具，最后才在 TUI 里滚动、在 JSONL 里落盘。",
@@ -199,9 +176,9 @@ def chapter_c2() -> str:
         f'    <table class="cmp milestone-table"><thead><tr><th>#</th><th>type</th><th>owner</th><th>detail</th></tr></thead><tbody>{"".join(f"<tr><td>{s}</td><td>{t}</td><td class=\"owner-{o}\">{o}</td><td>{d}</td></tr>" for s,t,o,d in [(a,b,c,d) for a,b,c,d in [("01","user_message","user",PROMPT_ZH[:20]+"…"),("02","model_start","model","turn=1"),("03","assistant_message","model","stopReason=toolUse · call_1"),("04","tool_start","loop","read(call_1)"),("05","tool_result","tool","README fixture"),("06","model_start","model","turn=2"),("07","assistant_message","model","stopReason=stop")]])}</tbody></table>',
         viz_seven_milestones(),
         h3("22 站全景（前 22 站）", "22-station panorama (first 22)"),
+        viz_22_stations_panorama(),
+        station_track(),
         viz_stations_flow(),
-        h4("逐站清单", "Station-by-station list"),
-        ladder(ladder_rows),
         event_table([
             ("agent_start", "循环开始 · 订阅者收到首事件", "Loop begins · subscribers receive first event"),
             ("turn_start", "新 turn · 可能含 steering 注入", "New turn · may include steering injection"),
