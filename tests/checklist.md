@@ -306,7 +306,7 @@
 - [ ] DOM: `#blog-pet` 存在且桌面端可见（宽度 > 800px）
 - [ ] DOM: `#blogPetCanvas` 存在
 - [ ] Evaluate: 模拟 `pointermove`（右/上/左/下四个方向）后 canvas 仍可见，无 JS 报错
-- [ ] Screenshot: 左下角水墨熊猫截图，确认透明背景与八向转头动画
+- [ ] Screenshot: 右下角水墨熊猫截图，确认透明背景与八向转头动画
 
 ## Post Detail — Series (`/posts/weekly-20/`)
 
