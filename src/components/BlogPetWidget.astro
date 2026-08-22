@@ -1,7 +1,7 @@
 ---
 /**
- * BlogPetWidget — SHU-818 oil-motion omni look.
- * 8-direction sprite atlases, pointer-driven center→direction scrub.
+ * BlogPetWidget — SHU-818 oil-motion circular look.
+ * Single 360° sprite atlas, pointer angle maps to frame via setDirection.
  */
 ---
 
@@ -113,24 +113,12 @@
 </style>
 
 <script>
-  import type { AtlasManifest, DirectionAtlasClip } from "../lib/blog-pet-animator";
+  import type { AtlasManifest } from "../lib/blog-pet-animator";
   import {
+    createAtlasRenderer,
     createFrameAnimator,
-    createOmniAtlasRenderer,
   } from "../lib/blog-pet-animator";
-  import type { BlogPetDirectionId } from "../lib/blog-pet-pointer";
-  import {
-    computePointerLook,
-    defaultLookMaxDistance,
-  } from "../lib/blog-pet-pointer";
-
-  type OmniManifest = {
-    version: number;
-    type: "blog-pet-omni";
-    frameCount: number;
-    fps: number;
-    directions: BlogPetDirectionId[];
-  };
+  import { computePointerVector } from "../lib/blog-pet-pointer";
 
   const STORAGE_KEY = "blog-pet-dismissed";
   const BASE = "/oil-motion/blog-pet/";
@@ -144,99 +132,98 @@
   } else if (localStorage.getItem(STORAGE_KEY) === "1") {
     root.remove();
   } else {
+    let cleanup = () => {};
+    dismiss.addEventListener("click", () => {
+      localStorage.setItem(STORAGE_KEY, "1");
+      cleanup();
+      root.remove();
+    });
+
     const reduced =
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const desktop = window.matchMedia("(min-width: 801px)").matches;
 
-    const loadClip = async (directionId: BlogPetDirectionId): Promise<DirectionAtlasClip> => {
-      const dir = `${BASE}look-${directionId}/`;
-      const res = await fetch(`${dir}motion.json`);
-      if (!res.ok) throw new Error(`manifest:${directionId}`);
-      const manifest = (await res.json()) as AtlasManifest;
+    const boot = async () => {
+      if (!desktop) return;
+      root.hidden = false;
+
+      if (reduced) {
+        root.classList.add("is-fallback");
+        return;
+      }
+
+      let atlas: AtlasManifest;
+      try {
+        const atlasRes = await fetch(`${BASE}motion.json`);
+        if (!atlasRes.ok) throw new Error("manifest");
+        atlas = await atlasRes.json();
+        if (
+          atlas.parameterSpace !== "circular" ||
+          !atlas.circular ||
+          atlas.frameCount < 2
+        ) {
+          throw new Error("invalid circular atlas");
+        }
+      } catch {
+        root.classList.add("is-fallback");
+        return;
+      }
 
       const image = new Image();
       image.decoding = "async";
-      image.src = `${dir}${manifest.asset}`;
+      image.src = `${BASE}${atlas.asset}`;
 
-      await new Promise<void>((resolve, reject) => {
-        image.onload = () => resolve();
-        image.onerror = () => reject(new Error(`atlas:${directionId}`));
-      });
-
-      return { id: directionId, manifest, image };
-    };
-
-    const boot = async () => {
-      root.hidden = false;
-
-      if (reduced) return;
-
-      let omni: OmniManifest;
       try {
-        const res = await fetch(`${BASE}manifest.json`);
-        if (!res.ok) throw new Error("omni-manifest");
-        omni = await res.json();
+        await image.decode();
       } catch {
         root.classList.add("is-fallback");
         return;
       }
 
-      let clips: DirectionAtlasClip[];
-      try {
-        clips = await Promise.all(omni.directions.map((id) => loadClip(id)));
-      } catch {
-        root.classList.add("is-fallback");
-        return;
-      }
+      const startAngle =
+        atlas.startAngleRadians ?? -Math.PI * 0.75;
+      const initialFrame = atlas.initialFrame ?? 0;
 
-      if (root.classList.contains("is-fallback")) return;
-
-      let directionId: BlogPetDirectionId = "right";
-
-      const renderer = createOmniAtlasRenderer({ canvas, clips });
+      const renderer = createAtlasRenderer({ canvas, image, manifest: atlas });
       const animator = createFrameAnimator({
-        frameCount: omni.frameCount,
-        initialFrame: 0,
-        smoothTime: 0.32,
-        maxSpeed: 48,
+        frameCount: atlas.frameCount,
+        initialFrame,
+        circular: true,
         reducedMotion: false,
         render(frame) {
-          renderer.render(directionId, frame);
+          renderer.render(frame);
         },
       });
 
       const onMove = (e: PointerEvent) => {
-        const look = computePointerLook({
-          petRect: root.getBoundingClientRect(),
+        const rect = canvas.getBoundingClientRect();
+        const vector = computePointerVector({
           clientX: e.clientX,
           clientY: e.clientY,
-          maxDistance: defaultLookMaxDistance(),
+          originX: rect.left + rect.width / 2,
+          originY: rect.top + rect.height / 2,
+          deadZone: Math.min(rect.width, rect.height) * 0.08,
         });
-        const prevDirection = directionId;
-        directionId = look.directionId;
-        animator.setProgress(look.progress);
-        if (prevDirection !== directionId) {
-          animator.invalidate();
-        }
+        if (vector.inDeadZone) return;
+        animator.setDirection(vector.dx, vector.dy, startAngle);
       };
 
       const onResize = () => {
         renderer.resize();
-        renderer.render(directionId, Math.round(animator.getCurrentFrame()));
+        renderer.render(Math.round(animator.getCurrentFrame()));
       };
 
       window.addEventListener("pointermove", onMove, { passive: true });
       window.addEventListener("resize", onResize, { passive: true });
 
-      dismiss.addEventListener("click", () => {
-        localStorage.setItem(STORAGE_KEY, "1");
+      cleanup = () => {
         animator.destroy();
         renderer.destroy();
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("resize", onResize);
-        root.remove();
-      });
+      };
 
-      renderer.render(directionId, 0);
+      renderer.render(initialFrame);
     };
 
     void boot();

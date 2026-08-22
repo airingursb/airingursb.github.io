@@ -301,12 +301,12 @@
 - [ ] DOM: 点赞按钮 `#articleLikeBtn` 存在
 - [ ] DOM: Sidebar contains text matching "min" (reading time)
 
-## Post Detail — Blog Pet (SHU-818 omni) (`/posts/{any-slug}/`)
+## Post Detail — Blog Pet (SHU-818 circular) (`/posts/{any-slug}/`)
 
-- [ ] DOM: `#blog-pet` 存在且桌面端可见（宽度 > 800px）
+- [ ] DOM: `#blog-pet` 存在且桌面端可见（宽度 > 800px），位于右下角
 - [ ] DOM: `#blogPetCanvas` 存在
-- [ ] Evaluate: 模拟 `pointermove`（右/上/左/下四个方向）后 canvas 仍可见，无 JS 报错
-- [ ] Screenshot: 右下角水墨熊猫截图，确认透明背景与八向转头动画
+- [ ] Evaluate: 模拟 `pointermove` 绕圈移动后 canvas 仍可见，无 JS 报错，转头连续无扇区跳变
+- [ ] Screenshot: 右下角水墨熊猫截图，确认透明背景与 360° 转头动画
 
 ## Post Detail — Series (`/posts/weekly-20/`)
 
