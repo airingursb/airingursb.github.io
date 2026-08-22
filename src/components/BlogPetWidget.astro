@@ -1,0 +1,158 @@
+---
+/**
+ * BlogPetWidget — SHU-818 oil-motion pilot runtime.
+ * Article-page ink-wash panda: pointer-driven look atlas (left|front|right).
+ * Does NOT navigate anywhere (unlike IslandWidget).
+ */
+---
+
+<aside
+  id="blog-pet"
+  class="blog-pet"
+  hidden
+  aria-label="博客水墨熊猫桌宠"
+>
+  <button
+    type="button"
+    class="blog-pet-dismiss"
+    id="blogPetDismiss"
+    aria-label="隐藏桌宠"
+    title="隐藏"
+  >×</button>
+  <div
+    class="blog-pet-sprite"
+    id="blogPetSprite"
+    role="img"
+    aria-label="水墨熊猫"
+  ></div>
+</aside>
+
+<style>
+  .blog-pet {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 80;
+    width: 144px;
+    height: 144px;
+    pointer-events: auto;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.18));
+  }
+  .blog-pet[hidden] {
+    display: none !important;
+  }
+  .blog-pet-sprite {
+    width: 100%;
+    height: 100%;
+    background-repeat: no-repeat;
+    background-image: url("/oil-motion/blog-pet/look-atlas.webp");
+    background-size: 300% 100%;
+    background-position: 50% 0%;
+    image-rendering: auto;
+  }
+  .blog-pet-dismiss {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba(127, 127, 127, 0.35);
+    background: rgba(255, 255, 255, 0.72);
+    color: #666;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 2;
+  }
+  .blog-pet:hover .blog-pet-dismiss,
+  .blog-pet:focus-within .blog-pet-dismiss {
+    opacity: 1;
+  }
+  @media (max-width: 800px) {
+    .blog-pet {
+      display: none !important;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .blog-pet-sprite {
+      background-image: url("/oil-motion/blog-pet/K0-idle-front.png");
+      background-size: 100% 100%;
+      background-position: 0 0;
+    }
+  }
+  @media print {
+    .blog-pet {
+      display: none !important;
+    }
+  }
+</style>
+
+<script>
+  import {
+    createFrameAnimator,
+    applyAtlasFrame,
+  } from "../lib/blog-pet-animator";
+
+  const STORAGE_KEY = "blog-pet-dismissed";
+  const FRAME_COUNT = 3;
+
+  const root = document.getElementById("blog-pet");
+  const sprite = document.getElementById("blogPetSprite");
+  const dismiss = document.getElementById("blogPetDismiss");
+  if (!root || !sprite || !dismiss) {
+    // no-op
+  } else if (localStorage.getItem(STORAGE_KEY) === "1") {
+    root.remove();
+  } else {
+    root.hidden = false;
+
+    const reduced =
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const animator = createFrameAnimator({
+      frameCount: FRAME_COUNT,
+      initialFrame: 1,
+      reducedMotion: reduced,
+      smoothTime: 0.14,
+      render(frame) {
+        if (reduced) return;
+        applyAtlasFrame(sprite, frame, FRAME_COUNT);
+      },
+    });
+
+    const onMove = (e: PointerEvent) => {
+      if (reduced) return;
+      const rect = root.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const dx = e.clientX - cx;
+      const dy = e.clientY - cy;
+      const len = Math.hypot(dx, dy) || 1;
+      animator.setDirection(dx / len, dy / len);
+    };
+
+    window.addEventListener("pointermove", onMove, { passive: true });
+
+    dismiss.addEventListener("click", () => {
+      localStorage.setItem(STORAGE_KEY, "1");
+      animator.destroy();
+      window.removeEventListener("pointermove", onMove);
+      root.remove();
+    });
+
+    // Fallback if webp atlas fails: static K0
+    const probe = new Image();
+    probe.onerror = () => {
+      sprite.style.backgroundImage =
+        'url("/oil-motion/blog-pet/K0-idle-front.png")';
+      sprite.style.backgroundSize = "100% 100%";
+      sprite.style.backgroundPosition = "0 0";
+      animator.destroy();
+      window.removeEventListener("pointermove", onMove);
+    };
+    probe.src = "/oil-motion/blog-pet/look-atlas.webp";
+  }
+</script>

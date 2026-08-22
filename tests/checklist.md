@@ -268,6 +268,23 @@
 - [ ] Reduced-motion: widget is `display:none`
 - [ ] EN page (`/en/blog`): same widget mounted, same behavior
 
+## Blog Pet Animation — oil-motion Pilot (SHU-818)
+
+> Spec: `oil-motion/blog-pet/PRODUCT.md`  
+> Contracts: `oil-motion/blog-pet/source/`  
+> Runtime: `src/components/BlogPetWidget.astro` on `PostLayout`  
+> Assets: `public/oil-motion/blog-pet/`
+
+- [ ] DOM: article page (`/posts/*`) has `#blog-pet` fixed bottom-left (~144×144)
+- [ ] DOM: `#blogPetSprite` uses `/oil-motion/blog-pet/look-atlas.webp` (3-frame atlas)
+- [ ] Interaction: pointer left/right of pet changes sprite frame with damping
+- [ ] Dismiss: `#blogPetDismiss` removes pet and sets `localStorage['blog-pet-dismissed']=1`; refresh stays hidden
+- [ ] `prefers-reduced-motion: reduce`: static `/oil-motion/blog-pet/K0-idle-front.png`
+- [ ] Mobile (`≤800px`): `.blog-pet` is `display:none`
+- [ ] Print: pet hidden; theme switcher (bottom-right) remains usable
+- [ ] Evaluate: `GET /oil-motion/blog-pet/look-atlas.webp` and `pilot-K0-to-K1.mp4` return 200
+- [ ] Unit: `node --experimental-strip-types --test tests/blog-pet-animator.test.mjs` passes
+
 ## Archive (`/archive/`)
 
 - [ ] GET `/archive/` 返回页面
