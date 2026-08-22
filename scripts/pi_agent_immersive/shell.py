@@ -141,6 +141,57 @@ EXTRA_CSS = """
     font-family: var(--mono); font-size: 8px; letter-spacing: 0.1em;
     text-transform: uppercase; color: var(--ink-mute); margin-top: 4px;
   }
+  .stage-why-care {
+    background: linear-gradient(180deg, #fdfbf3, #faf6ed);
+    border: 1px solid var(--rule); border-top: 3px solid var(--accent);
+    border-radius: 4px; padding: 18px 22px 16px; margin: 18px 0 22px;
+  }
+  .stage-why-care .swc-label {
+    font-family: var(--mono); font-size: 9px; color: var(--accent);
+    letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 10px;
+  }
+  .stage-why-care p {
+    font-family: var(--serif); font-size: 14px; color: var(--ink-soft);
+    line-height: 1.65; margin: 6px 0; display: flex; align-items: baseline; gap: 10px;
+  }
+  body.lang-en .stage-why-care p { font-family: var(--serif-en); }
+  .stage-why-care .swc-pill {
+    flex: 0 0 auto; font-family: var(--mono); font-size: 8px; font-weight: 700;
+    letter-spacing: 0.1em; text-transform: uppercase; color: #fff;
+    background: var(--ink-mute); padding: 2px 7px; border-radius: 2px;
+  }
+  .stage-why-care .swc-pill.rev { background: var(--accent); }
+  .stage-why-care .swc-pill.act { background: var(--copper); }
+  .stage-why-care em { color: var(--ink); font-style: normal; font-weight: 600; }
+  .stage-banner {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 0;
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; overflow: hidden; margin: 28px 0 36px;
+  }
+  .stage-banner .sb-cell {
+    padding: 14px 18px; border-right: 1px solid var(--rule-soft);
+  }
+  .stage-banner .sb-cell:last-child { border-right: none; }
+  .stage-banner .sb-key {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ink-mute); margin-bottom: 4px;
+  }
+  .stage-banner .sb-val {
+    font-family: var(--sans); font-size: 13.5px; font-weight: 600; color: var(--ink);
+  }
+  .trace-box {
+    margin: 24px 0; padding: 16px 20px;
+    background: var(--paper-2); border: 1px dashed var(--accent);
+    border-radius: 4px;
+  }
+  .trace-box .tb-tag {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.16em;
+    color: var(--accent); font-weight: 700; margin-bottom: 8px;
+  }
+  @media (max-width: 760px) {
+    .stage-banner { grid-template-columns: 1fr 1fr; }
+    .stage-why-care p { flex-direction: column; gap: 4px; }
+  }
   .event-flow {
     border: 1px solid var(--rule); border-radius: 4px;
     background: var(--paper-2); padding: 4px 0;

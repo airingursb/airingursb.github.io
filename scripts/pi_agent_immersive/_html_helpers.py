@@ -131,3 +131,54 @@ def fig(zh: str, en: str, inner: str = '<div class="fig-placeholder">diagram</di
         <span class="lang-en-only">{en}</span>
       </figcaption>
     </figure>"""
+
+
+def why_care(pills: list[tuple[str, str, str, str]]) -> str:
+    """Chromium-style 'why this stage matters' block. pill: (kind, zh, en, cls)."""
+    rows_zh = rows_en = ""
+    for kind, zh, en, cls in pills:
+        rows_zh += f'      <p><span class="swc-pill {cls}">{kind}</span><span>{zh}</span></p>\n'
+        rows_en += f'      <p><span class="swc-pill {cls}">{kind}</span><span>{en}</span></p>\n'
+    return f"""    <aside class="stage-why-care lang-zh-only">
+      <div class="swc-label">为什么这一段对你来说很重要</div>
+{rows_zh}    </aside>
+    <aside class="stage-why-care lang-en-only">
+      <div class="swc-label">Why this stage matters to you</div>
+{rows_en}    </aside>"""
+
+
+def stage_banner(cells: list[tuple[str, str, str, str]]) -> str:
+    """Four-column stage metadata banner."""
+    items = []
+    for kz, ke, vz, ve in cells:
+        items.append(
+            f"""      <div class="sb-cell">
+        <div class="sb-key"><span class="lang-zh-only">{kz}</span><span class="lang-en-only">{ke}</span></div>
+        <div class="sb-val"><span class="lang-zh-only">{vz}</span><span class="lang-en-only">{ve}</span></div>
+      </div>"""
+        )
+    return "    <div class=\"stage-banner\">\n" + "\n".join(items) + "\n    </div>"
+
+
+def faq_block(items: list[tuple[str, str, str, str]]) -> str:
+    parts = [h3("常见问题", "FAQ")]
+    for qz, qe, az, ae in items:
+        parts.append(
+            f"""    <details class="extended"><summary><span class="ext-tag">Q</span><span class="lang-zh-only">{qz}</span><span class="lang-en-only">{qe}</span></summary><div style="padding:12px 16px 16px"><div class="lang-zh-only"><p>{az}</p></div><div class="lang-en-only"><p>{ae}</p></div></div></details>"""
+        )
+    return "\n\n".join(parts)
+
+
+def trace_box(station: str, zh: str, en: str) -> str:
+    return f"""    <div class="trace-box">
+      <div class="tb-tag">TRACE · station {station}</div>
+      <div class="lang-zh-only"><p>{zh}</p></div>
+      <div class="lang-en-only"><p>{en}</p></div>
+    </div>"""
+
+
+def section_block(title_zh: str, title_en: str, paragraphs: list[tuple[str, str]]) -> str:
+    parts = [h3(title_zh, title_en)]
+    for zh, en in paragraphs:
+        parts.append(p(zh, en))
+    return join(*parts)
