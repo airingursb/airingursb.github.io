@@ -5,25 +5,23 @@ import {
   computePointerVector,
 } from "../src/lib/blog-pet-pointer.ts";
 
-test("computePointerVector uses viewport center origin", () => {
-  const w = 1920;
-  const h = 1080;
-  const originX = w * 0.5;
-  const originY = h * 0.45;
+test("computePointerVector uses the panda center as origin", () => {
+  const originX = 1800;
+  const originY = 960;
 
   const center = computePointerVector({
     clientX: originX,
     clientY: originY,
-    viewportWidth: w,
-    viewportHeight: h,
+    originX,
+    originY,
   });
   assert.equal(center.inDeadZone, true);
 
   const right = computePointerVector({
-    clientX: w - 10,
+    clientX: originX + 60,
     clientY: originY,
-    viewportWidth: w,
-    viewportHeight: h,
+    originX,
+    originY,
     deadZone: 0,
   });
   assert.ok(right.dx > 0);
@@ -31,17 +29,17 @@ test("computePointerVector uses viewport center origin", () => {
 
   const down = computePointerVector({
     clientX: originX,
-    clientY: h - 10,
-    viewportWidth: w,
-    viewportHeight: h,
+    clientY: originY + 60,
+    originX,
+    originY,
     deadZone: 0,
   });
   assert.ok(down.dy > 0);
 });
 
 test("circularStartAngle maps pointer-down to downFrame", () => {
-  const frameCount = 124;
-  const downFrame = 65;
+  const frameCount = 54;
+  const downFrame = 34;
   const start = circularStartAngle(frameCount, downFrame);
   const angle = Math.PI / 2;
   const turn = Math.PI * 2;

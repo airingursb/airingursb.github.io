@@ -120,16 +120,6 @@
   } from "../lib/blog-pet-animator";
   import { computePointerVector } from "../lib/blog-pet-pointer";
 
-  type CircularManifest = {
-    version: number;
-    type: "blog-pet-circular";
-    frameCount: number;
-    fps: number;
-    circular: boolean;
-    initialFrame?: number;
-    startAngleRadians?: number;
-  };
-
   const STORAGE_KEY = "blog-pet-dismissed";
   const BASE = "/oil-motion/blog-pet/";
 
@@ -142,24 +132,38 @@
   } else if (localStorage.getItem(STORAGE_KEY) === "1") {
     root.remove();
   } else {
+    let cleanup = () => {};
+    dismiss.addEventListener("click", () => {
+      localStorage.setItem(STORAGE_KEY, "1");
+      cleanup();
+      root.remove();
+    });
+
     const reduced =
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const desktop = window.matchMedia("(min-width: 801px)").matches;
 
     const boot = async () => {
+      if (!desktop) return;
       root.hidden = false;
 
-      if (reduced) return;
+      if (reduced) {
+        root.classList.add("is-fallback");
+        return;
+      }
 
-      let site: CircularManifest;
       let atlas: AtlasManifest;
       try {
-        const [siteRes, atlasRes] = await Promise.all([
-          fetch(`${BASE}manifest.json`),
-          fetch(`${BASE}motion.json`),
-        ]);
-        if (!siteRes.ok || !atlasRes.ok) throw new Error("manifest");
-        site = await siteRes.json();
+        const atlasRes = await fetch(`${BASE}motion.json`);
+        if (!atlasRes.ok) throw new Error("manifest");
         atlas = await atlasRes.json();
+        if (
+          atlas.parameterSpace !== "circular" ||
+          !atlas.circular ||
+          atlas.frameCount < 2
+        ) {
+          throw new Error("invalid circular atlas");
+        }
       } catch {
         root.classList.add("is-fallback");
         return;
@@ -170,28 +174,21 @@
       image.src = `${BASE}${atlas.asset}`;
 
       try {
-        await new Promise<void>((resolve, reject) => {
-          image.onload = () => resolve();
-          image.onerror = () => reject(new Error("atlas"));
-        });
+        await image.decode();
       } catch {
         root.classList.add("is-fallback");
         return;
       }
 
       const startAngle =
-        atlas.startAngleRadians ??
-        site.startAngleRadians ??
-        -Math.PI * 0.75;
-      const initialFrame = atlas.initialFrame ?? site.initialFrame ?? 0;
+        atlas.startAngleRadians ?? -Math.PI * 0.75;
+      const initialFrame = atlas.initialFrame ?? 0;
 
       const renderer = createAtlasRenderer({ canvas, image, manifest: atlas });
       const animator = createFrameAnimator({
-        frameCount: site.frameCount,
+        frameCount: atlas.frameCount,
         initialFrame,
         circular: true,
-        smoothTime: 0.32,
-        maxSpeed: 48,
         reducedMotion: false,
         render(frame) {
           renderer.render(frame);
@@ -199,16 +196,15 @@
       });
 
       const onMove = (e: PointerEvent) => {
+        const rect = canvas.getBoundingClientRect();
         const vector = computePointerVector({
           clientX: e.clientX,
           clientY: e.clientY,
-          viewportWidth: window.innerWidth,
-          viewportHeight: window.innerHeight,
+          originX: rect.left + rect.width / 2,
+          originY: rect.top + rect.height / 2,
+          deadZone: Math.min(rect.width, rect.height) * 0.08,
         });
-        if (vector.inDeadZone) {
-          animator.setTarget(initialFrame);
-          return;
-        }
+        if (vector.inDeadZone) return;
         animator.setDirection(vector.dx, vector.dy, startAngle);
       };
 
@@ -220,14 +216,12 @@
       window.addEventListener("pointermove", onMove, { passive: true });
       window.addEventListener("resize", onResize, { passive: true });
 
-      dismiss.addEventListener("click", () => {
-        localStorage.setItem(STORAGE_KEY, "1");
+      cleanup = () => {
         animator.destroy();
         renderer.destroy();
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("resize", onResize);
-        root.remove();
-      });
+      };
 
       renderer.render(initialFrame);
     };

@@ -1,10 +1,10 @@
-/** Circular pointer look: viewport-centered direction vector. */
+/** Circular pointer look: subject-centered direction vector. */
 
 export type PointerVectorInput = {
   clientX: number;
   clientY: number;
-  viewportWidth: number;
-  viewportHeight: number;
+  originX: number;
+  originY: number;
   deadZone?: number;
 };
 
@@ -15,19 +15,14 @@ export type PointerVector = {
 };
 
 /**
- * Angle from viewport center toward the cursor.
- * Pet sits in a corner — pet-local vectors cannot reach right/down on screen;
- * screen-center origin matches oil-motion circular pointer look.
+ * Angle from the panda's visual center toward the cursor.
+ * The caller re-reads the subject rectangle so layout changes cannot stale it.
  */
 export function computePointerVector(input: PointerVectorInput): PointerVector {
-  const originX = input.viewportWidth * 0.5;
-  const originY = input.viewportHeight * 0.45;
-  const dx = input.clientX - originX;
-  const dy = input.clientY - originY;
+  const dx = input.clientX - input.originX;
+  const dy = input.clientY - input.originY;
   const dist = Math.hypot(dx, dy);
-  const deadZone =
-    input.deadZone ??
-    Math.min(input.viewportWidth, input.viewportHeight) * 0.06;
+  const deadZone = input.deadZone ?? 12;
 
   return {
     dx,

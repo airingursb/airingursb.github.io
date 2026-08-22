@@ -16,6 +16,7 @@ export type AtlasManifest = {
   circular?: boolean;
   initialFrame?: number;
   startAngleRadians?: number;
+  fallback?: string;
 };
 
 export type FrameAnimator = {
@@ -56,14 +57,16 @@ function smoothDamp(
   const omega = 2 / st;
   const x = omega * dt;
   const exp = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+  const originalTarget = target;
   let change = current - target;
   const maxChange = maxSpeed * st;
   change = clamp(change, -maxChange, maxChange);
+  const limitedTarget = current - change;
   const temp = (velocity + omega * change) * dt;
-  const newVel = (velocity - omega * change) * exp;
-  let output = current - change + (change + temp) * exp;
-  if ((target - current > 0) === (output > target)) {
-    output = target;
+  const newVel = (velocity - omega * temp) * exp;
+  let output = limitedTarget + (change + temp) * exp;
+  if ((originalTarget - current > 0) === (output > originalTarget)) {
+    output = originalTarget;
     return [output, 0];
   }
   return [output, newVel];
@@ -71,9 +74,12 @@ function smoothDamp(
 
 export function atlasFrameIndex(
   frame: number,
-  manifest: Pick<AtlasManifest, "frameCount" | "columns">,
+  manifest: Pick<AtlasManifest, "frameCount" | "columns" | "circular">,
 ) {
-  const index = clamp(Math.round(frame), 0, manifest.frameCount - 1);
+  const rounded = Math.round(frame);
+  const index = manifest.circular
+    ? wrap(rounded, manifest.frameCount)
+    : clamp(rounded, 0, manifest.frameCount - 1);
   return {
     index,
     column: index % manifest.columns,
@@ -104,8 +110,8 @@ export function createFrameAnimator(options: {
 }): FrameAnimator {
   const frameCount = Math.max(1, Math.floor(options.frameCount));
   const circular = options.circular ?? false;
-  const smoothTime = options.smoothTime ?? 0.1;
-  const maxSpeed = options.maxSpeed ?? frameCount * 4;
+  const smoothTime = options.smoothTime ?? 0.11;
+  const maxSpeed = options.maxSpeed ?? frameCount * 2;
   const reducedMotion = options.reducedMotion ?? false;
 
   const normalizeFrame = (frame: number) =>
@@ -121,7 +127,8 @@ export function createFrameAnimator(options: {
   let forcePaint = true;
 
   const paint = () => {
-    const frame = Math.round(normalizeFrame(position));
+    const rounded = Math.round(normalizeFrame(position));
+    const frame = circular ? wrap(rounded, frameCount) : rounded;
     if (forcePaint || frame !== lastFrame) {
       options.render(frame);
       lastFrame = frame;
