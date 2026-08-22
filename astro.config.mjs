@@ -1,5 +1,6 @@
 import { defineConfig } from 'astro/config';
 import { remarkEmbed } from './src/plugins/remark-embed.mjs';
+import { rehypeAnchorIds } from './src/plugins/rehype-anchor-ids.mjs';
 import mdx from '@astrojs/mdx';
 import react from '@astrojs/react';
 import remarkWikilinks from './src/lib/remark-wikilinks.ts';
@@ -35,6 +36,7 @@ export default defineConfig({
   integrations: [mdx(), react()],
   markdown: {
     remarkPlugins: [remarkEmbed, [remarkWikilinks, { enNoteSlugs }]],
+    rehypePlugins: [rehypeAnchorIds],
     shikiConfig: {
       theme: 'github-dark',
     },
