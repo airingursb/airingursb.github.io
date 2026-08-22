@@ -1,0 +1,244 @@
+---
+/**
+ * BlogPetWidget — SHU-818 oil-motion omni look.
+ * 8-direction sprite atlases, pointer-driven center→direction scrub.
+ */
+---
+
+<aside
+  id="blog-pet"
+  class="blog-pet"
+  hidden
+  aria-label="博客水墨熊猫桌宠"
+>
+  <button
+    type="button"
+    class="blog-pet-dismiss"
+    id="blogPetDismiss"
+    aria-label="隐藏桌宠"
+    title="隐藏"
+  >×</button>
+  <canvas
+    id="blogPetCanvas"
+    class="blog-pet-canvas"
+    width="288"
+    height="288"
+    aria-hidden="true"
+  ></canvas>
+  <img
+    class="blog-pet-fallback"
+    src="/oil-motion/blog-pet/poster.png"
+    alt=""
+    width="144"
+    height="144"
+    loading="eager"
+    decoding="async"
+  />
+</aside>
+
+<style>
+  .blog-pet {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 80;
+    width: 144px;
+    height: 144px;
+    pointer-events: none;
+    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.18));
+  }
+  .blog-pet[hidden] {
+    display: none !important;
+  }
+  .blog-pet-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+  .blog-pet-fallback {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    pointer-events: none;
+    display: none;
+  }
+  .blog-pet.is-fallback .blog-pet-canvas {
+    display: none;
+  }
+  .blog-pet.is-fallback .blog-pet-fallback {
+    display: block;
+  }
+  .blog-pet-dismiss {
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    border: 1px solid rgba(127, 127, 127, 0.35);
+    background: rgba(255, 255, 255, 0.72);
+    color: #666;
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s;
+    z-index: 2;
+    pointer-events: auto;
+  }
+  .blog-pet:hover .blog-pet-dismiss,
+  .blog-pet:focus-within .blog-pet-dismiss {
+    opacity: 1;
+  }
+  @media (max-width: 800px) {
+    .blog-pet {
+      display: none !important;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .blog-pet-canvas {
+      display: none;
+    }
+    .blog-pet-fallback {
+      display: block;
+    }
+  }
+  @media print {
+    .blog-pet {
+      display: none !important;
+    }
+  }
+</style>
+
+<script>
+  import type { AtlasManifest, DirectionAtlasClip } from "../lib/blog-pet-animator";
+  import {
+    createFrameAnimator,
+    createOmniAtlasRenderer,
+  } from "../lib/blog-pet-animator";
+  import type { BlogPetDirectionId } from "../lib/blog-pet-pointer";
+  import {
+    computePointerLook,
+    defaultLookMaxDistance,
+  } from "../lib/blog-pet-pointer";
+
+  type OmniManifest = {
+    version: number;
+    type: "blog-pet-omni";
+    frameCount: number;
+    fps: number;
+    directions: BlogPetDirectionId[];
+  };
+
+  const STORAGE_KEY = "blog-pet-dismissed";
+  const BASE = "/oil-motion/blog-pet/";
+
+  const root = document.getElementById("blog-pet");
+  const canvas = document.getElementById("blogPetCanvas") as HTMLCanvasElement | null;
+  const dismiss = document.getElementById("blogPetDismiss");
+
+  if (!root || !canvas || !dismiss) {
+    // no-op
+  } else if (localStorage.getItem(STORAGE_KEY) === "1") {
+    root.remove();
+  } else {
+    const reduced =
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const loadClip = async (directionId: BlogPetDirectionId): Promise<DirectionAtlasClip> => {
+      const dir = `${BASE}look-${directionId}/`;
+      const res = await fetch(`${dir}motion.json`);
+      if (!res.ok) throw new Error(`manifest:${directionId}`);
+      const manifest = (await res.json()) as AtlasManifest;
+
+      const image = new Image();
+      image.decoding = "async";
+      image.src = `${dir}${manifest.asset}`;
+
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error(`atlas:${directionId}`));
+      });
+
+      return { id: directionId, manifest, image };
+    };
+
+    const boot = async () => {
+      root.hidden = false;
+
+      if (reduced) return;
+
+      let omni: OmniManifest;
+      try {
+        const res = await fetch(`${BASE}manifest.json`);
+        if (!res.ok) throw new Error("omni-manifest");
+        omni = await res.json();
+      } catch {
+        root.classList.add("is-fallback");
+        return;
+      }
+
+      let clips: DirectionAtlasClip[];
+      try {
+        clips = await Promise.all(omni.directions.map((id) => loadClip(id)));
+      } catch {
+        root.classList.add("is-fallback");
+        return;
+      }
+
+      if (root.classList.contains("is-fallback")) return;
+
+      let directionId: BlogPetDirectionId = "right";
+
+      const renderer = createOmniAtlasRenderer({ canvas, clips });
+      const animator = createFrameAnimator({
+        frameCount: omni.frameCount,
+        initialFrame: 0,
+        smoothTime: 0.32,
+        maxSpeed: 48,
+        reducedMotion: false,
+        render(frame) {
+          renderer.render(directionId, frame);
+        },
+      });
+
+      const onMove = (e: PointerEvent) => {
+        const look = computePointerLook({
+          petRect: root.getBoundingClientRect(),
+          clientX: e.clientX,
+          clientY: e.clientY,
+          maxDistance: defaultLookMaxDistance(),
+        });
+        const prevDirection = directionId;
+        directionId = look.directionId;
+        animator.setProgress(look.progress);
+        if (prevDirection !== directionId) {
+          animator.invalidate();
+        }
+      };
+
+      const onResize = () => {
+        renderer.resize();
+        renderer.render(directionId, Math.round(animator.getCurrentFrame()));
+      };
+
+      window.addEventListener("pointermove", onMove, { passive: true });
+      window.addEventListener("resize", onResize, { passive: true });
+
+      dismiss.addEventListener("click", () => {
+        localStorage.setItem(STORAGE_KEY, "1");
+        animator.destroy();
+        renderer.destroy();
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("resize", onResize);
+        root.remove();
+      });
+
+      renderer.render(directionId, 0);
+    };
+
+    void boot();
+  }
+</script>
