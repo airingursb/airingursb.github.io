@@ -80,11 +80,12 @@ export function computePointerLook(input: PointerLookInput): PointerLookState {
   const angle = Math.atan2(dy, dx);
   const directionId = pickDirection(angle);
   const normalized = clamp(dist / Math.max(1, maxDistance), 0, 1);
-  const progress = Math.sqrt(normalized);
+  // Quadratic easing: needs more pointer travel before full turn.
+  const progress = normalized * normalized;
 
   return { directionId, progress };
 }
 
 export function defaultLookMaxDistance() {
-  return Math.min(window.innerWidth, window.innerHeight) * 0.42;
+  return Math.min(window.innerWidth, window.innerHeight) * 0.55;
 }

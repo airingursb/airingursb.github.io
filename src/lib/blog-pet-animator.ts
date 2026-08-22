@@ -18,6 +18,8 @@ export type FrameAnimator = {
   setTarget: (frame: number) => void;
   setProgress: (progress: number) => void;
   getCurrentFrame: () => number;
+  /** Force a paint even when the rounded frame index is unchanged (e.g. direction swap). */
+  invalidate: () => void;
   destroy: () => void;
 };
 
@@ -82,11 +84,14 @@ export function createFrameAnimator(options: {
   let raf = 0;
   let destroyed = false;
 
+  let forcePaint = true;
+
   const paint = () => {
     const frame = Math.round(clamp(position, 0, frameCount - 1));
-    if (frame !== lastFrame) {
+    if (forcePaint || frame !== lastFrame) {
       options.render(frame);
       lastFrame = frame;
+      forcePaint = false;
     }
   };
 
@@ -136,6 +141,13 @@ export function createFrameAnimator(options: {
     },
     getCurrentFrame() {
       return clamp(position, 0, frameCount - 1);
+    },
+    invalidate() {
+      forcePaint = true;
+      paint();
+      if (!reducedMotion && (Math.abs(target - position) > 0.002 || Math.abs(velocity) > 0.002)) {
+        schedule();
+      }
     },
     destroy() {
       destroyed = true;

@@ -196,8 +196,8 @@
       const animator = createFrameAnimator({
         frameCount: omni.frameCount,
         initialFrame: 0,
-        smoothTime: 0.16,
-        maxSpeed: 90,
+        smoothTime: 0.32,
+        maxSpeed: 48,
         reducedMotion: false,
         render(frame) {
           renderer.render(directionId, frame);
@@ -211,8 +211,12 @@
           clientY: e.clientY,
           maxDistance: defaultLookMaxDistance(),
         });
+        const prevDirection = directionId;
         directionId = look.directionId;
         animator.setProgress(look.progress);
+        if (prevDirection !== directionId) {
+          animator.invalidate();
+        }
       };
 
       const onResize = () => {

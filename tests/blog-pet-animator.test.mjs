@@ -52,3 +52,22 @@ test("setProgress maps pointer progress to frame targets", () => {
   anim.destroy();
   assert.ok(frames.length >= 1);
 });
+
+test("invalidate repaints when frame index is unchanged", () => {
+  const frames = [];
+  const anim = createFrameAnimator({
+    frameCount: 124,
+    initialFrame: 40,
+    reducedMotion: true,
+    render(frame) {
+      frames.push(frame);
+    },
+  });
+
+  anim.setProgress(40 / 123);
+  const countAfterSet = frames.length;
+  anim.invalidate();
+  assert.ok(frames.length > countAfterSet);
+
+  anim.destroy();
+});

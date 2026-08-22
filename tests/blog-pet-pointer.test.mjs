@@ -53,21 +53,29 @@ test("computePointerLook returns rest pose inside dead zone", () => {
   assert.equal(look.progress, 0);
 });
 
-test("computePointerLook maps distance to sqrt progress", () => {
+test("computePointerLook maps distance with quadratic progress", () => {
   const anchorX = petRect.left + petRect.width * 0.55;
   const anchorY = petRect.top + petRect.height * 0.38;
   const maxDistance = 400;
 
-  const look = computePointerLook({
+  const full = computePointerLook({
     petRect,
     clientX: anchorX + maxDistance,
     clientY: anchorY,
     maxDistance,
     deadZone: 0,
   });
+  assert.equal(full.directionId, "right");
+  assert.ok(Math.abs(full.progress - 1) < 0.001);
 
-  assert.equal(look.directionId, "right");
-  assert.ok(Math.abs(look.progress - 1) < 0.001);
+  const half = computePointerLook({
+    petRect,
+    clientX: anchorX + maxDistance * 0.5,
+    clientY: anchorY,
+    maxDistance,
+    deadZone: 0,
+  });
+  assert.ok(Math.abs(half.progress - 0.25) < 0.001);
 });
 
 test("computePointerLook picks upward direction", () => {
