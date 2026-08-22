@@ -1,7 +1,7 @@
 ---
 /**
- * BlogPetWidget — SHU-818 oil-motion pilot.
- * 124-frame sprite atlas, pointer-driven center→right scrub.
+ * BlogPetWidget — SHU-818 oil-motion omni look.
+ * 8-direction sprite atlases, pointer-driven center→direction scrub.
  */
 ---
 
@@ -113,11 +113,24 @@
 </style>
 
 <script>
-  import type { AtlasManifest } from "../lib/blog-pet-animator";
+  import type { AtlasManifest, DirectionAtlasClip } from "../lib/blog-pet-animator";
   import {
-    createAtlasRenderer,
     createFrameAnimator,
+    createOmniAtlasRenderer,
   } from "../lib/blog-pet-animator";
+  import type { BlogPetDirectionId } from "../lib/blog-pet-pointer";
+  import {
+    computePointerLook,
+    defaultLookMaxDistance,
+  } from "../lib/blog-pet-pointer";
+
+  type OmniManifest = {
+    version: number;
+    type: "blog-pet-omni";
+    frameCount: number;
+    fps: number;
+    directions: BlogPetDirectionId[];
+  };
 
   const STORAGE_KEY = "blog-pet-dismissed";
   const BASE = "/oil-motion/blog-pet/";
@@ -134,61 +147,77 @@
     const reduced =
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    const loadClip = async (directionId: BlogPetDirectionId): Promise<DirectionAtlasClip> => {
+      const dir = `${BASE}look-${directionId}/`;
+      const res = await fetch(`${dir}motion.json`);
+      if (!res.ok) throw new Error(`manifest:${directionId}`);
+      const manifest = (await res.json()) as AtlasManifest;
+
+      const image = new Image();
+      image.decoding = "async";
+      image.src = `${dir}${manifest.asset}`;
+
+      await new Promise<void>((resolve, reject) => {
+        image.onload = () => resolve();
+        image.onerror = () => reject(new Error(`atlas:${directionId}`));
+      });
+
+      return { id: directionId, manifest, image };
+    };
+
     const boot = async () => {
       root.hidden = false;
 
       if (reduced) return;
 
-      let manifest: AtlasManifest;
+      let omni: OmniManifest;
       try {
-        const res = await fetch(`${BASE}motion.json`);
-        if (!res.ok) throw new Error("manifest");
-        manifest = await res.json();
+        const res = await fetch(`${BASE}manifest.json`);
+        if (!res.ok) throw new Error("omni-manifest");
+        omni = await res.json();
       } catch {
         root.classList.add("is-fallback");
         return;
       }
 
-      const image = new Image();
-      image.decoding = "async";
-      image.src = `${BASE}${manifest.asset}`;
-
-      await new Promise<void>((resolve, reject) => {
-        image.onload = () => resolve();
-        image.onerror = () => reject(new Error("atlas"));
-      }).catch(() => {
+      let clips: DirectionAtlasClip[];
+      try {
+        clips = await Promise.all(omni.directions.map((id) => loadClip(id)));
+      } catch {
         root.classList.add("is-fallback");
-      });
+        return;
+      }
 
       if (root.classList.contains("is-fallback")) return;
 
-      const renderer = createAtlasRenderer({ canvas, image, manifest });
+      let directionId: BlogPetDirectionId = "right";
+
+      const renderer = createOmniAtlasRenderer({ canvas, clips });
       const animator = createFrameAnimator({
-        frameCount: manifest.frameCount,
+        frameCount: omni.frameCount,
         initialFrame: 0,
         smoothTime: 0.16,
         maxSpeed: 90,
         reducedMotion: false,
         render(frame) {
-          renderer.render(frame);
+          renderer.render(directionId, frame);
         },
       });
 
-      const mapPointerToProgress = (clientX: number) => {
-        // Pilot clip: center (0) → right (1). Left of center stays at rest.
-        const center = window.innerWidth * 0.5;
-        const right = window.innerWidth;
-        if (clientX <= center) return 0;
-        return Math.min(1, (clientX - center) / Math.max(1, right - center));
-      };
-
       const onMove = (e: PointerEvent) => {
-        animator.setProgress(mapPointerToProgress(e.clientX));
+        const look = computePointerLook({
+          petRect: root.getBoundingClientRect(),
+          clientX: e.clientX,
+          clientY: e.clientY,
+          maxDistance: defaultLookMaxDistance(),
+        });
+        directionId = look.directionId;
+        animator.setProgress(look.progress);
       };
 
       const onResize = () => {
         renderer.resize();
-        renderer.render(Math.round(animator.getCurrentFrame()));
+        renderer.render(directionId, Math.round(animator.getCurrentFrame()));
       };
 
       window.addEventListener("pointermove", onMove, { passive: true });
@@ -203,7 +232,7 @@
         root.remove();
       });
 
-      renderer.render(0);
+      renderer.render(directionId, 0);
     };
 
     void boot();

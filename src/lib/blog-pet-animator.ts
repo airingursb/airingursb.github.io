@@ -188,3 +188,59 @@ export function createAtlasRenderer(options: {
     },
   };
 }
+
+export type DirectionAtlasClip = {
+  id: string;
+  manifest: AtlasManifest;
+  image: HTMLImageElement;
+};
+
+export function createOmniAtlasRenderer(options: {
+  canvas: HTMLCanvasElement;
+  clips: DirectionAtlasClip[];
+}) {
+  const ctx = options.canvas.getContext("2d");
+  if (!ctx) throw new Error("Canvas 2D unavailable");
+
+  const clipMap = new Map(options.clips.map((c) => [c.id, c]));
+  let activeId = options.clips[0]?.id ?? "right";
+
+  const resize = () => {
+    const css = options.canvas.clientWidth || 144;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    options.canvas.width = Math.round(css * dpr);
+    options.canvas.height = Math.round(css * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  };
+
+  const render = (directionId: string, frame: number) => {
+    const clip = clipMap.get(directionId) ?? clipMap.get(activeId);
+    if (!clip) return;
+    activeId = clip.id;
+
+    const { column, row } = atlasFrameIndex(frame, clip.manifest);
+    const css = options.canvas.clientWidth || 144;
+    ctx.clearRect(0, 0, css, css);
+    ctx.drawImage(
+      clip.image,
+      column * clip.manifest.cellWidth,
+      row * clip.manifest.cellHeight,
+      clip.manifest.cellWidth,
+      clip.manifest.cellHeight,
+      0,
+      0,
+      css,
+      css,
+    );
+  };
+
+  resize();
+
+  return {
+    render,
+    resize,
+    destroy() {
+      ctx.clearRect(0, 0, options.canvas.width, options.canvas.height);
+    },
+  };
+}
