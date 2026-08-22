@@ -1,0 +1,74 @@
+---
+title: "一条用户消息在 Pi Agent 里的一生 —— 从回车到 JSONL 的 26 站"
+date: "2026-08-22"
+tags: [Pi, Agent, Harness, TypeScript, CLI, 源码阅读]
+public: true
+summary: 你在终端敲下「读取 README.md，用一句话告诉我这个项目做什么」之后，这串文字要穿过 26 道工序、跨 6 个 npm 包、在 3 层消息模型里变形，最后才变成屏幕上滚动的 token 和磁盘上的一行 JSONL。对照 earendil-works/pi 生产源码与 hahhforest/pi-textbook 的 15 个 checkpoint，把每一步的类层级、事件流、owner 分工、可视化全摊开。
+immersive:
+  url: /immersive/pi-agent/
+  label: 沉浸式
+---
+
+> 这是一篇沉浸式长文，建议在专属页面阅读 → [进入完整版](/immersive/pi-agent/)
+
+这是 Field Note 系列的第十篇。姐妹篇是 [《一次 LLM 推理的一生》](/immersive/llm-inference-life/)（一个 prompt 走完 llama.cpp 28 站）和 [《字节码到像素的一生》](/immersive/chromium-renderer/)（Chromium 渲染管线）。本篇换一种「操作系统」——**coding agent harness**——但还是同一个手法：**主线一句 prompt**，对照真源码看它一站站怎么变形。
+
+### 主线：读取 README.md，用一句话告诉我这个项目做什么
+
+```
+用户回车
+  │
+  ▼
+┌─────────── 引子 ───────────┐
+│ C01 Harness 不是 Product   │
+│ C02 22 站全景 + 七里程碑    │
+├─────────── 背景 ───────────┤
+│ C03 pi-mono 家谱           │
+│ C04 六层蛋糕               │
+│ C05 故意不做的功能          │
+├─────────── 入口 ───────────┤
+│ C06 CLI 启动链             │
+│ C07 AgentSession 编排 ⭐   │
+│ C08 AGENTS.md 上下文栈     │
+├─────────── 心脏 ───────────┤
+│ C09 两层消息模型 ⭐        │
+│ C10 runLoop 双环 ⭐        │
+│ C11 Steering / Follow-up   │
+│ C12 Tool 执行管线          │
+│ C13 事件总线               │
+├─────────── LLM ────────────┤
+│ C14 pi-ai 提供商抽象       │
+│ C15 流式 EventStream       │
+│ C16 认证与模型目录         │
+├─────────── 终端 ───────────┤
+│ C17 差分渲染 TUI ⭐        │
+│ C18 Interactive Mode       │
+├─────────── 扩展 ───────────┤
+│ C19 Extension API          │
+│ C20 ExtensionRunner        │
+│ C21 Pi Packages            │
+├─────────── 持久化 ─────────┤
+│ C22 JSONL 会话树 ⭐        │
+│ C23 Compaction             │
+├─────────── 全景 ───────────┤
+│ C24 vs Claude Code/Cursor  │
+│ C25 RPC 与 pi-server       │
+└─────────── Coda ───────────┘
+  C26 怎么自己 trace 一轮
+```
+
+### 这一版深挖了什么
+
+- **逐行真源码**：26 章全部对应 `earendil-works/pi` 仓库里具体文件——`agent-loop.ts` · `agent-session.ts` · `session-manager.ts` · `event-stream.ts` · `resource-loader.ts` · ExtensionRunner · TUI diff render。
+- **一条主线 prompt**：与 pi-textbook 序章相同——「读取 README.md，用一句话告诉我这个项目做什么」。七里程碑表格贯穿 C02。
+- **两层消息模型**：`AgentMessage`（transcript 真相源）vs `Message[]`（LLM API 投影）vs TUI 渲染——checkpoint 03 的生产映射。
+- **runLoop 双环**：外环 follow-up · 内环 tool batch + steering——对照 checkpoint 07 Agent Loop。
+- **JSONL 会话树**：`parentId` · `leafId` · `fork`——checkpoint 10 Session Tree 图解在 C22。
+- **Compaction**：历史不动、上下文重建——checkpoint 11 在 C23。
+- **对比 Claude Code / Cursor**：密封产品 vs 可组合 harness 的设计取舍表在 C24。
+
+读完你会对「终端里敲一行字之后 Pi 内部发生了什么」形成非常具体的 mental model，能看懂 `--verbose` 事件日志、能读懂 JSONL 会话文件、能解释 steering 和 follow-up 的区别、能在面试里说清楚「为什么 Pi 故意不做 MCP」。
+
+> "一条用户消息看起来只是终端里的一行字——它真正做的事情，是在六个 npm 包里穿过 26 道工序，在 JSONL 会话树上留下一个可 fork 的节点，然后被 TUI 用 CSI 2026 差分渲染成你看到的 token 流。"
+
+完整阅读：**[一条用户消息在 Pi Agent 里的一生 — 26 站源码全景](/immersive/pi-agent/)**
