@@ -1,6 +1,6 @@
 /**
- * oil-motion pilot runtime helpers for BlogPetWidget.
- * Frame damping + sprite-atlas canvas rendering (124-frame scrub).
+ * oil-motion runtime helpers for BlogPetWidget.
+ * Circular frame damping + sprite-atlas canvas rendering.
  */
 
 export type AtlasManifest = {
@@ -12,19 +12,37 @@ export type AtlasManifest = {
   cellHeight: number;
   atlasWidth: number;
   atlasHeight: number;
+  parameterSpace?: "circular" | "linear";
+  circular?: boolean;
+  initialFrame?: number;
+  startAngleRadians?: number;
 };
 
 export type FrameAnimator = {
   setTarget: (frame: number) => void;
   setProgress: (progress: number) => void;
+  setDirection: (x: number, y: number, startAngle?: number) => void;
   getCurrentFrame: () => number;
-  /** Force a paint even when the rounded frame index is unchanged (e.g. direction swap). */
   invalidate: () => void;
   destroy: () => void;
 };
 
 const clamp = (v: number, min: number, max: number) =>
   Math.min(max, Math.max(min, v));
+
+const wrap = (value: number, length: number) =>
+  ((value % length) + length) % length;
+
+const shortestCircularDelta = (
+  from: number,
+  to: number,
+  frameCount: number,
+) => {
+  let delta = wrap(to, frameCount) - wrap(from, frameCount);
+  if (delta > frameCount / 2) delta -= frameCount;
+  if (delta < -frameCount / 2) delta += frameCount;
+  return delta;
+};
 
 function smoothDamp(
   current: number,
@@ -63,31 +81,47 @@ export function atlasFrameIndex(
   };
 }
 
+export function angleToCircularFrame(
+  x: number,
+  y: number,
+  frameCount: number,
+  startAngle = -Math.PI * 0.75,
+) {
+  const angle = Math.atan2(y, x);
+  const turn = Math.PI * 2;
+  const normalized = ((angle - startAngle + turn) % turn) / turn;
+  return normalized * frameCount;
+}
+
 export function createFrameAnimator(options: {
   frameCount: number;
   initialFrame?: number;
+  circular?: boolean;
   smoothTime?: number;
   maxSpeed?: number;
   reducedMotion?: boolean;
   render: (frame: number) => void;
 }): FrameAnimator {
   const frameCount = Math.max(1, Math.floor(options.frameCount));
+  const circular = options.circular ?? false;
   const smoothTime = options.smoothTime ?? 0.1;
   const maxSpeed = options.maxSpeed ?? frameCount * 4;
   const reducedMotion = options.reducedMotion ?? false;
 
-  let position = clamp(options.initialFrame ?? 0, 0, frameCount - 1);
+  const normalizeFrame = (frame: number) =>
+    circular ? wrap(frame, frameCount) : clamp(frame, 0, frameCount - 1);
+
+  let position = normalizeFrame(options.initialFrame ?? 0);
   let target = position;
   let velocity = 0;
   let lastFrame = -1;
   let lastTime = 0;
   let raf = 0;
   let destroyed = false;
-
   let forcePaint = true;
 
   const paint = () => {
-    const frame = Math.round(clamp(position, 0, frameCount - 1));
+    const frame = Math.round(normalizeFrame(position));
     if (forcePaint || frame !== lastFrame) {
       options.render(frame);
       lastFrame = frame;
@@ -127,7 +161,10 @@ export function createFrameAnimator(options: {
 
   return {
     setTarget(frame: number) {
-      target = clamp(frame, 0, frameCount - 1);
+      const normalized = normalizeFrame(frame);
+      target = circular
+        ? position + shortestCircularDelta(position, normalized, frameCount)
+        : normalized;
       if (reducedMotion) {
         position = target;
         velocity = 0;
@@ -136,16 +173,22 @@ export function createFrameAnimator(options: {
       }
       schedule();
     },
+    setDirection(x: number, y: number, startAngle = -Math.PI * 0.75) {
+      this.setTarget(angleToCircularFrame(x, y, frameCount, startAngle));
+    },
     setProgress(progress: number) {
       this.setTarget(clamp(progress, 0, 1) * (frameCount - 1));
     },
     getCurrentFrame() {
-      return clamp(position, 0, frameCount - 1);
+      return normalizeFrame(position);
     },
     invalidate() {
       forcePaint = true;
       paint();
-      if (!reducedMotion && (Math.abs(target - position) > 0.002 || Math.abs(velocity) > 0.002)) {
+      if (
+        !reducedMotion &&
+        (Math.abs(target - position) > 0.002 || Math.abs(velocity) > 0.002)
+      ) {
         schedule();
       }
     },
@@ -183,62 +226,6 @@ export function createAtlasRenderer(options: {
       row * options.manifest.cellHeight,
       options.manifest.cellWidth,
       options.manifest.cellHeight,
-      0,
-      0,
-      css,
-      css,
-    );
-  };
-
-  resize();
-
-  return {
-    render,
-    resize,
-    destroy() {
-      ctx.clearRect(0, 0, options.canvas.width, options.canvas.height);
-    },
-  };
-}
-
-export type DirectionAtlasClip = {
-  id: string;
-  manifest: AtlasManifest;
-  image: HTMLImageElement;
-};
-
-export function createOmniAtlasRenderer(options: {
-  canvas: HTMLCanvasElement;
-  clips: DirectionAtlasClip[];
-}) {
-  const ctx = options.canvas.getContext("2d");
-  if (!ctx) throw new Error("Canvas 2D unavailable");
-
-  const clipMap = new Map(options.clips.map((c) => [c.id, c]));
-  let activeId = options.clips[0]?.id ?? "right";
-
-  const resize = () => {
-    const css = options.canvas.clientWidth || 144;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    options.canvas.width = Math.round(css * dpr);
-    options.canvas.height = Math.round(css * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  };
-
-  const render = (directionId: string, frame: number) => {
-    const clip = clipMap.get(directionId) ?? clipMap.get(activeId);
-    if (!clip) return;
-    activeId = clip.id;
-
-    const { column, row } = atlasFrameIndex(frame, clip.manifest);
-    const css = options.canvas.clientWidth || 144;
-    ctx.clearRect(0, 0, css, css);
-    ctx.drawImage(
-      clip.image,
-      column * clip.manifest.cellWidth,
-      row * clip.manifest.cellHeight,
-      clip.manifest.cellWidth,
-      clip.manifest.cellHeight,
       0,
       0,
       css,
