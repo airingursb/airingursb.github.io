@@ -11,12 +11,44 @@ def p(zh: str, en: str) -> str:
     <div class="lang-en-only"><p>{en}</p></div>"""
 
 
-def h3(zh: str, en: str) -> str:
-    return f'    <h3 class="sub"><span class="lang-zh-only">{zh}</span><span class="lang-en-only">{en}</span></h3>'
+def h3(zh: str, en: str, sec: str | None = None) -> str:
+    num = f'<span class="sec-num">{sec}</span> ' if sec else ""
+    return (
+        f'    <h3 class="sub">{num}'
+        f'<span class="lang-zh-only">{zh}</span><span class="lang-en-only">{en}</span></h3>'
+    )
 
 
-def h4(zh: str, en: str) -> str:
-    return f'    <h4 class="sub2"><span class="lang-zh-only">{zh}</span><span class="lang-en-only">{en}</span></h4>'
+def h4(zh: str, en: str, sec: str | None = None) -> str:
+    num = f'<span class="sec-num">{sec}</span> ' if sec else ""
+    return (
+        f'    <h4 class="sub2 depth-sec">{num}'
+        f'<span class="lang-zh-only">{zh}</span><span class="lang-en-only">{en}</span></h4>'
+    )
+
+
+def aside_label(tag_zh: str, tag_en: str, title_zh: str, title_en: str) -> str:
+    return (
+        f'    <div class="depth-aside-head">'
+        f'<span class="da-tag"><span class="lang-zh-only">{tag_zh}</span>'
+        f'<span class="lang-en-only">{tag_en}</span></span> '
+        f'<span class="da-title lang-zh-only">{title_zh}</span>'
+        f'<span class="da-title lang-en-only">{title_en}</span></div>'
+    )
+
+
+def depth_zone_open(chap_num: str) -> str:
+    return (
+        f'    <div class="depth-zone" data-chapter="C{chap_num}">'
+        f'<div class="depth-zone-label">'
+        f'<span class="dz-tag">DEPTH</span> '
+        f'<span class="lang-zh-only">深度细读 · C{chap_num}.4+</span>'
+        f'<span class="lang-en-only">Deep dive · C{chap_num}.4+</span></div>'
+    )
+
+
+def depth_zone_close() -> str:
+    return "    </div>"
 
 
 def src(tag: str, path: str, lines: list[str]) -> str:
@@ -161,7 +193,7 @@ def stage_banner(cells: list[tuple[str, str, str, str]]) -> str:
 
 
 def faq_block(items: list[tuple[str, str, str, str]]) -> str:
-    parts = [h3("常见问题", "FAQ")]
+    parts = [aside_label("附录", "Appendix", "常见问题", "FAQ")]
     for qz, qe, az, ae in items:
         parts.append(
             f"""    <details class="extended"><summary><span class="ext-tag">Q</span><span class="lang-zh-only">{qz}</span><span class="lang-en-only">{qe}</span></summary><div style="padding:12px 16px 16px"><div class="lang-zh-only"><p>{az}</p></div><div class="lang-en-only"><p>{ae}</p></div></div></details>"""
@@ -177,8 +209,14 @@ def trace_box(station: str, zh: str, en: str) -> str:
     </div>"""
 
 
-def section_block(title_zh: str, title_en: str, paragraphs: list[tuple[str, str]]) -> str:
-    parts = [h3(title_zh, title_en)]
+def section_block(
+    title_zh: str,
+    title_en: str,
+    paragraphs: list[tuple[str, str]],
+    *,
+    sec: str | None = None,
+) -> str:
+    parts = [h4(title_zh, title_en, sec)]
     for zh, en in paragraphs:
         parts.append(p(zh, en))
     return join(*parts)

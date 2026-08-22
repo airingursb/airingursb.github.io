@@ -4,7 +4,7 @@ from __future__ import annotations
 from meta import CHAPTERS
 from textbook_map import PRODUCTION_MAP, TEXTBOOK_CHECKPOINTS
 
-from _html_helpers import cmp, h3, note, p, src
+from _html_helpers import aside_label, cmp, note, p, src
 
 
 def textbook_crossref_table(cp_ids: list[str]) -> str:
@@ -17,7 +17,7 @@ def textbook_crossref_table(cp_ids: list[str]) -> str:
     if not rows:
         return ""
     return (
-        h3("pi-textbook 交叉引用", "pi-textbook cross-reference")
+        aside_label("交叉引用", "Cross-ref", "pi-textbook checkpoint", "pi-textbook checkpoint")
         + cmp(["CP", "主题", "教学 artifact", "生产映射"], rows)
     )
 
@@ -25,7 +25,7 @@ def textbook_crossref_table(cp_ids: list[str]) -> str:
 def case_study(title_zh: str, title_en: str, body_zh: str, body_en: str) -> str:
     return f"""    <div class="case-study">
       <div class="cs-tag">CASE STUDY</div>
-      <h4 class="sub2"><span class="lang-zh-only">{title_zh}</span><span class="lang-en-only">{title_en}</span></h4>
+      <div class="cs-title"><span class="lang-zh-only">{title_zh}</span><span class="lang-en-only">{title_en}</span></div>
       <div class="lang-zh-only"><p>{body_zh}</p></div>
       <div class="lang-en-only"><p>{body_en}</p></div>
     </div>"""

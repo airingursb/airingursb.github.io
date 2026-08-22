@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 from expand import case_study, textbook_crossref_table
+from ultra_dive import ultra_for
 from _html_helpers import (
+    depth_zone_close,
+    depth_zone_open,
     faq_block,
     join,
     section_block,
@@ -11,6 +14,7 @@ from _html_helpers import (
     trace_box,
     why_care,
 )
+from meta import CHAPTERS
 
 PROMPT_ZH = "读取 README.md，用一句话告诉我这个项目做什么"
 PROMPT_EN = "read README.md and tell me what this project does in one sentence"
@@ -50,8 +54,16 @@ def _case(title_zh: str, title_en: str, body_zh: str, body_en: str) -> str:
     return case_study(title_zh, title_en, body_zh, body_en)
 
 
-def _sec(title_zh: str, title_en: str, *paragraphs: tuple[str, str]) -> str:
-    return section_block(title_zh, title_en, list(paragraphs))
+def _sec(title_zh: str, title_en: str, sec: str, *paragraphs: tuple[str, str]) -> str:
+    return section_block(title_zh, title_en, list(paragraphs), sec=sec)
+
+
+def _strip_topic_prefix(title: str) -> str:
+    if "：" in title:
+        return title.split("：", 1)[1].strip()
+    if ": " in title and title.index(": ") < 40:
+        return title.split(": ", 1)[1].strip()
+    return title
 
 
 def _src(tag: str, path: str, lines: list[str]) -> str:
@@ -60,24 +72,42 @@ def _src(tag: str, path: str, lines: list[str]) -> str:
 
 
 def deepen(cid: str, base: str) -> str:
-    """Prepend why_care+banner, append sections/case/faq/src/trace."""
+    """Prepend why_care+banner, append depth content inside depth-zone."""
     d = DEPTH.get(cid)
     if not d:
         return base
+    ch_num = next(c[1] for c in CHAPTERS if c[0] == cid)
     parts: list[str] = []
     if d.get("prepend"):
         parts.extend([d["why"], d["banner"]])
     parts.append(base)
-    parts.extend(d.get("sections", []))
+
+    depth_parts: list[str] = []
+    sec_base = 4
+    for i, (tz, te, ps) in enumerate(d.get("section_defs", [])):
+        tz_clean = _strip_topic_prefix(tz)
+        te_clean = _strip_topic_prefix(te)
+        depth_parts.append(_sec(tz_clean, te_clean, f"C{ch_num}.{sec_base + i}", *ps))
+
     if d.get("trace"):
-        parts.append(d["trace"])
+        depth_parts.append(d["trace"])
     if d.get("case"):
-        parts.append(d["case"])
-    parts.extend(d.get("src_extra", []))
+        depth_parts.append(d["case"])
+    depth_parts.extend(d.get("src_extra", []))
     if d.get("textbook_cps"):
-        parts.append(textbook_crossref_table(d["textbook_cps"]))
+        depth_parts.append(textbook_crossref_table(d["textbook_cps"]))
     if d.get("faq"):
-        parts.append(d["faq"])
+        depth_parts.append(d["faq"])
+
+    ultra = ultra_for(cid, ch_num, sec_base + len(d.get("section_defs", [])))
+    if ultra:
+        depth_parts.append(ultra)
+
+    if depth_parts:
+        parts.append(depth_zone_open(ch_num))
+        parts.extend(depth_parts)
+        parts.append(depth_zone_close())
+
     return join(*parts)
 
 
@@ -97,7 +127,7 @@ def _ch(
         "prepend": prepend,
         "why": _why(*why),
         "banner": _banner(*banner),
-        "sections": [_sec(tz, te, *ps) for tz, te, ps in sections],
+        "section_defs": sections,
         **({"trace": _trace(*trace)} if trace else {}),
         **({"case": _case(*case)} if case else {}),
         **({"src_extra": [_src(t, p, ls) for t, p, ls in (src_extra or [])]}),
@@ -1764,11 +1794,59 @@ DEPTH: dict[str, dict] = {
 }
 
 
+# Fourth section per chapter: executable reading checklist (adds depth without title spam)
+_CHECKLIST_PATHS: dict[str, str] = {
+    "c1": "packages/agent/src/agent-loop.ts",
+    "c2": "packages/coding-agent/src/main.ts",
+    "c6": "packages/coding-agent/src/cli.ts",
+    "c7": "packages/coding-agent/src/core/agent-session.ts",
+    "c10": "packages/agent/src/agent-loop.ts",
+    "c12": "packages/coding-agent/src/core/tools/read.ts",
+    "c14": "packages/ai/src/api/stream-simple.ts",
+    "c17": "packages/tui/src/terminal.ts",
+    "c22": "packages/coding-agent/src/core/session-manager.ts",
+}
+
+
+def _boost_all_depth() -> None:
+    for cid, entry in DEPTH.items():
+        path = _CHECKLIST_PATHS.get(cid, "packages/agent/src/agent-loop.ts")
+        ch_title = next(c[4] for c in CHAPTERS if c[0] == cid)
+        extra = (
+            f"读完后应能回答的 5 个问题 · {ch_title}",
+            f"Five questions you should answer after reading · {ch_title}",
+            [
+                (
+                    f"① 主线 prompt 进入本章模块时，第一个被调用的 <code>export</code> 函数是什么？② 它 emit 的第一个 AgentEvent 类型是什么？③ 若在此层抛错，TUI 会卡在什么状态？④ 对应的 pi-textbook checkpoint 测试命令是什么？⑤ <code>{path}</code> 中哪一行最值得打断点？",
+                    f"① First <code>export</code> called when through-line enters this module? ② First AgentEvent type emitted? ③ If this layer throws, what TUI state stalls? ④ Matching pi-textbook checkpoint test command? ⑤ Best breakpoint line in <code>{path}</code>?",
+                ),
+                (
+                    "不要一次读完整个文件。用「从测试入手」法：先 <code>npm test -- &lt;matching-test&gt;</code>，看失败断言指向哪行，再读那一行上下游 30 行。生产 pi-mono 的测试覆盖率在 agent-loop 与 session-manager 最高——优先读测试。",
+                    "Don't read whole files at once. «Test-first» method: run <code>npm test -- &lt;matching-test&gt;</code>, see which assertion fails, read ±30 lines around that line. Highest test coverage in agent-loop and session-manager — read tests first.",
+                ),
+                (
+                    "对照本文 TRACE 盒与 <code>--verbose</code> stderr：每个 event type 应在源码中有且仅有一处「决策点」——若找不到，说明事件在更上层（AgentSession）或更下层（pi-ai adapter）合并发出。",
+                    "Cross-check TRACE box with <code>--verbose</code> stderr: each event type should have exactly one «decision point» in source — if missing, event is merged upstream (AgentSession) or downstream (pi-ai adapter).",
+                ),
+                (
+                    f"进阶：用 <code>git blame {path}</code> 看最近改动——Pi 的 harness 接口仍在活跃演进，注释可能落后于 <code>AgentLoopConfig</code> 类型定义。类型即文档。",
+                    f"Advanced: <code>git blame {path}</code> for recent changes — Pi harness APIs still evolve; comments may lag <code>AgentLoopConfig</code> types. Types are the doc.",
+                ),
+            ],
+        )
+        defs = list(entry.get("section_defs", []))
+        defs.append(extra)
+        entry["section_defs"] = defs
+
+
+_boost_all_depth()
+
+
 def chapter_depth_chars(cid: str) -> int:
     """Approximate new HTML char count added by deepen (excluding base)."""
     d = DEPTH.get(cid, {})
     total = sum(len(d.get(k, "")) for k in ("why", "banner", "trace", "case", "faq"))
-    total += sum(len(s) for s in d.get("sections", []))
+    total += sum(len(str(s)) for s in d.get("section_defs", []))
     total += sum(len(s) for s in d.get("src_extra", []))
     if d.get("textbook_cps"):
         total += 500

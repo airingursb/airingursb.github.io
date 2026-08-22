@@ -20,6 +20,8 @@ from meta import (
 )
 from textbook_map import TEXTBOOK_CHECKPOINTS
 
+from compass import chapter_compass
+
 TEMPLATE = Path(__file__).resolve().parents[2] / "public/immersive/llm-inference-life/index.html"
 
 # Pipeline cell color by chapter phase
@@ -244,6 +246,143 @@ EXTRA_CSS = """
     font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.18em;
     text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 8px;
   }
+  .case-study .cs-title {
+    font-family: var(--serif); font-size: 15px; font-weight: 700;
+    margin-bottom: 8px; color: var(--ink);
+  }
+  body.lang-en .case-study .cs-title { font-family: var(--serif-en); }
+  .sec-num {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em;
+    color: var(--accent); font-weight: 700; margin-right: 6px;
+  }
+  .chap-compass {
+    margin: 0 0 28px; padding: 14px 18px;
+    background: var(--paper-2); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent); border-radius: 0 4px 4px 0;
+  }
+  .chap-compass .cc-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+  .chap-compass .cc-row + .cc-row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--rule-soft); }
+  .chap-compass .cc-phase, .chap-compass .cc-chap, .chap-compass .cc-station {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+  }
+  .chap-compass .cc-chap { color: var(--accent); font-weight: 700; }
+  .chap-compass .cc-sep { color: var(--ink-mute); }
+  .chap-compass .cc-forest-label {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--ink-mute); margin-right: 8px;
+  }
+  .chap-compass .cc-forest-text { font-size: 13px; color: var(--ink-soft); }
+  .chap-compass .cc-links { justify-content: space-between; width: 100%; }
+  .chap-compass .cc-nav {
+    font-size: 12px; color: var(--ink-soft); text-decoration: none;
+    display: inline-flex; align-items: center; gap: 4px; max-width: 42%;
+  }
+  .chap-compass .cc-nav:hover { color: var(--accent); }
+  .chap-compass .cc-nav-num { font-family: var(--mono); font-weight: 700; }
+  .chap-compass .cc-back-map {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--copper); text-decoration: none;
+  }
+  .chap-compass .cc-back-map:hover { text-decoration: underline; }
+  .depth-zone {
+    margin: 32px 0 0; padding: 20px 0 0;
+    border-top: 2px solid var(--rule);
+  }
+  .depth-zone-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--ink-mute); margin-bottom: 20px;
+  }
+  .depth-zone-label .dz-tag {
+    color: var(--copper); font-weight: 700; margin-right: 8px;
+  }
+  .depth-zone h4.depth-sec {
+    font-size: 15px; margin-top: 24px;
+  }
+  .depth-aside-head {
+    margin: 28px 0 12px; padding: 10px 14px;
+    background: var(--paper-2); border: 1px solid var(--rule); border-radius: 4px;
+  }
+  .depth-aside-head .da-tag {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--copper); font-weight: 700;
+  }
+  .depth-aside-head .da-title { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .forest-overview {
+    margin: 48px 0 56px; padding: 32px 0 40px;
+    border-top: 2px solid var(--ink); border-bottom: 1px solid var(--rule);
+  }
+  .forest-overview .fo-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--ink-mute); margin-bottom: 12px;
+  }
+  .forest-overview .fo-title {
+    font-family: var(--serif); font-size: 28px; font-weight: 700;
+    margin-bottom: 16px; line-height: 1.2;
+  }
+  body.lang-en .forest-overview .fo-title { font-family: var(--serif-en); }
+  .forest-paths { margin: 28px 0; }
+  .forest-paths .fp-head {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+    text-transform: uppercase; color: var(--ink-mute); margin-bottom: 14px;
+  }
+  .forest-paths .fp-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  }
+  @media (max-width: 800px) {
+    .forest-paths .fp-grid { grid-template-columns: 1fr; }
+  }
+  .forest-paths .fp-card {
+    display: block; padding: 16px 18px;
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; text-decoration: none; color: inherit;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .forest-paths .fp-card:hover {
+    border-color: var(--accent); box-shadow: 0 2px 8px rgba(31,92,140,0.08);
+  }
+  .forest-paths .fp-card.fp-highlight { border-left: 3px solid var(--accent); }
+  .forest-paths .fp-tag {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--copper); margin-bottom: 6px;
+  }
+  .forest-paths .fp-title { font-size: 14px; font-weight: 700; margin-bottom: 6px; }
+  .forest-paths .fp-desc { font-size: 12px; color: var(--ink-mute); line-height: 1.5; }
+  .forest-overview .fo-legend {
+    margin-top: 24px; padding: 14px 16px;
+    background: var(--paper-2); border-radius: 4px;
+    font-size: 12.5px; color: var(--ink-soft); line-height: 1.6;
+  }
+  .card-filmstrip {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 150;
+    background: rgba(253,251,243,0.96); border-bottom: 1px solid var(--rule);
+    backdrop-filter: blur(8px); transform: translateY(-100%);
+    transition: transform 0.25s ease; pointer-events: none;
+  }
+  .card-filmstrip.is-visible { transform: translateY(0); pointer-events: auto; }
+  .card-filmstrip .cf-inner { max-width: var(--max-w, 720px); margin: 0 auto; padding: 6px 16px 8px; }
+  .card-filmstrip .cf-header {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-mute); margin-bottom: 4px;
+  }
+  .card-filmstrip .cf-header em { color: var(--accent); font-style: normal; font-weight: 700; }
+  .card-filmstrip .cf-track {
+    display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px;
+    scrollbar-width: thin;
+  }
+  .card-filmstrip .cf-cell {
+    flex: 0 0 auto; min-width: 36px; padding: 4px 6px;
+    text-align: center; text-decoration: none; color: var(--ink-mute);
+    border: 1px solid transparent; border-radius: 3px;
+    font-family: var(--mono); font-size: 10px; transition: all 0.12s;
+  }
+  .card-filmstrip .cf-cell:hover { border-color: var(--rule); color: var(--ink); }
+  .card-filmstrip .cf-cell.active {
+    border-color: var(--accent); background: var(--accent-pale, #e8f0f8);
+    color: var(--accent); font-weight: 700;
+  }
+  body.has-filmstrip { padding-top: 52px; }
+  body.has-filmstrip .ursb-backlink { top: 58px; }
 """
 
 
@@ -490,6 +629,28 @@ def toc_v2() -> str:
   </nav>"""
 
 
+def filmstrip_nav() -> str:
+    cells = []
+    for ch in CHAPTERS:
+        cid, num = ch[0], ch[1]
+        cells.append(
+            f'      <a href="#{cid}" class="cf-cell" data-chap="{num}">'
+            f'<span class="cf-num">{num}</span></a>'
+        )
+    cells_html = "\n".join(cells)
+    return f"""<nav class="card-filmstrip" id="card-filmstrip" aria-label="26 chapters">
+  <div class="cf-inner">
+    <div class="cf-header">
+      <span><span class="lang-zh-only">主线 · 26 章</span><span class="lang-en-only">Through-line · 26 chapters</span></span>
+      <span><em id="cf-current">C01</em>&nbsp;/&nbsp;26</span>
+    </div>
+    <div class="cf-track" id="cf-track">
+{cells_html}
+    </div>
+  </div>
+</nav>"""
+
+
 def chapter_section(cid: str, body: str) -> str:
     ch = next(c for c in CHAPTERS if c[0] == cid)
     phase = ch[2].upper()
@@ -505,6 +666,7 @@ def chapter_section(cid: str, body: str) -> str:
     <h2 class="chap-title lang-en-only">{ch[5]}</h2>
     <p class="chap-en lang-zh-only">{ch[6]}</p>
     <p class="chap-en lang-en-only">{ch[7]}</p>
+{chapter_compass(cid)}
 {body}
   </section>"""
 
@@ -617,6 +779,36 @@ def scripts() -> str:
   window.addEventListener('scroll', update, { passive: true });
   window.addEventListener('resize', update);
   update();
+})();
+
+(function() {
+  var filmstrip = document.getElementById('card-filmstrip');
+  var cfTrack = document.getElementById('cf-track');
+  var cfCurrent = document.getElementById('cf-current');
+  if (!filmstrip || !cfTrack) return;
+  document.body.classList.add('has-filmstrip');
+  var cells = Array.prototype.slice.call(cfTrack.querySelectorAll('.cf-cell'));
+  var sections = cells.map(function(c) {
+    return { cell: c, el: document.querySelector(c.getAttribute('href')) };
+  }).filter(function(o) { return o.el; });
+
+  function updateFilmstrip() {
+    var offset = window.innerHeight * 0.25;
+    var activeIdx = 0;
+    for (var i = 0; i < sections.length; i++) {
+      if (sections[i].el.getBoundingClientRect().top - offset < 0) activeIdx = i;
+    }
+    var active = sections[activeIdx];
+    cells.forEach(function(c) { c.classList.remove('active'); });
+    if (active) {
+      active.cell.classList.add('active');
+      if (cfCurrent) cfCurrent.textContent = 'C' + (active.cell.dataset.chap || '');
+      active.cell.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+    filmstrip.classList.toggle('is-visible', window.scrollY > 400);
+  }
+  window.addEventListener('scroll', updateFilmstrip, { passive: true });
+  updateFilmstrip();
 })();
 </script>
 """
