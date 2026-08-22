@@ -81,19 +81,18 @@ test("setDirection maps pointer vector to circular frame target", () => {
     render() {},
   });
 
-  anim.setDirection(1, 0, -Math.PI * 0.75);
-  assert.ok(Math.abs(anim.getCurrentFrame() - 46.5) < 0.5);
+  const start = -1.7191988122519744;
+  anim.setDirection(1, 0, start);
+  assert.ok(Math.abs(anim.getCurrentFrame() - 34) < 1);
+
+  anim.setDirection(0, 1, start);
+  assert.ok(Math.abs(anim.getCurrentFrame() - 65) < 1);
 
   anim.destroy();
 });
 
 test("angleToCircularFrame wraps full circle", () => {
-  const start = -Math.PI * 0.75;
-  const atStart = angleToCircularFrame(
-    Math.cos(start),
-    Math.sin(start),
-    124,
-    start,
-  );
-  assert.ok(Math.abs(atStart) < 0.01);
+  const start = -1.7191988122519744;
+  const atDown = angleToCircularFrame(0, 1, 124, start);
+  assert.ok(Math.abs(atDown - 65) < 0.5);
 });

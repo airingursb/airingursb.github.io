@@ -1,9 +1,10 @@
-/** Circular pointer look: anchor-relative vector for setDirection(). */
+/** Circular pointer look: viewport-centered direction vector. */
 
 export type PointerVectorInput = {
-  petRect: DOMRect;
   clientX: number;
   clientY: number;
+  viewportWidth: number;
+  viewportHeight: number;
   deadZone?: number;
 };
 
@@ -13,18 +14,29 @@ export type PointerVector = {
   inDeadZone: boolean;
 };
 
-/** Anchor near panda head; vector points toward the cursor. */
+/**
+ * Angle from viewport center toward the cursor.
+ * Pet sits in a corner — pet-local vectors cannot reach right/down on screen;
+ * screen-center origin matches oil-motion circular pointer look.
+ */
 export function computePointerVector(input: PointerVectorInput): PointerVector {
-  const deadZone = input.deadZone ?? 36;
-  const anchorX = input.petRect.left + input.petRect.width * 0.55;
-  const anchorY = input.petRect.top + input.petRect.height * 0.38;
-  const dx = input.clientX - anchorX;
-  const dy = input.clientY - anchorY;
+  const originX = input.viewportWidth * 0.5;
+  const originY = input.viewportHeight * 0.45;
+  const dx = input.clientX - originX;
+  const dy = input.clientY - originY;
   const dist = Math.hypot(dx, dy);
+  const deadZone =
+    input.deadZone ??
+    Math.min(input.viewportWidth, input.viewportHeight) * 0.06;
 
   return {
     dx,
     dy,
     inDeadZone: dist < deadZone,
   };
+}
+
+/** Calibrate start angle so frame `downFrame` sits at pointer-down (π/2). */
+export function circularStartAngle(frameCount: number, downFrame: number) {
+  return Math.PI / 2 - (downFrame / frameCount) * Math.PI * 2;
 }
