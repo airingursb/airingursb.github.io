@@ -59,13 +59,29 @@ def formula(tz: str, te: str, lines: list[str], oz: str, oe: str) -> str:
     </div>"""
 
 
-def ladder(items: list[tuple[str, str]]) -> str:
+def ladder(items: list[tuple]) -> str:
+    """Build a priority ladder. Each item is (zh, en) or (num, zh, en) or (num, zh, en, desc_zh, desc_en)."""
     steps = []
-    for i, (z, e) in enumerate(items, 1):
+    for i, item in enumerate(items, 1):
+        if len(item) == 2:
+            num, z, e, dz, de = f"{i:02d}", item[0], item[1], "", ""
+        elif len(item) == 3:
+            num, z, e, dz, de = item[0], item[1], item[2], "", ""
+        else:
+            num, z, e, dz, de = item[0], item[1], item[2], item[3], item[4]
+        desc = ""
+        if dz or de:
+            desc = (
+                f'        <div class="ld-desc"><span class="lang-zh-only">{dz}</span>'
+                f'<span class="lang-en-only">{de}</span></div>'
+            )
         steps.append(
-            f"""      <div class="ladder-step">
-        <div class="ladder-num">{i:02d}</div>
-        <div class="ladder-body"><span class="lang-zh-only">{z}</span><span class="lang-en-only">{e}</span></div>
+            f"""      <div class="ld-row">
+        <div class="ld-num">{num}</div>
+        <div>
+          <div class="ld-name"><span class="lang-zh-only">{z}</span><span class="lang-en-only">{e}</span></div>
+{desc}
+        </div>
       </div>"""
         )
     return "    <div class=\"ladder\">\n" + "\n".join(steps) + "\n    </div>"

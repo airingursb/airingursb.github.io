@@ -17,6 +17,20 @@ from _html_helpers import (
     src,
 )
 from textbook_map import PRODUCTION_MAP, SEVEN_MILESTONES, TEXTBOOK_CHECKPOINTS
+from visuals import (
+    viz_compaction,
+    viz_event_swimlane,
+    viz_extension_hooks,
+    viz_harness_spectrum,
+    viz_message_layers,
+    viz_monorepo_layers,
+    viz_runloop_twin,
+    viz_seven_milestones,
+    viz_session_tree,
+    viz_stations_flow,
+    viz_textbook_map,
+    viz_tui_diff,
+)
 
 PROMPT_ZH = "读取 README.md，用一句话告诉我这个项目做什么"
 PROMPT_EN = "read README.md and tell me what this project does in one sentence"
@@ -145,7 +159,7 @@ def chapter_c1() -> str:
         note("Claude Code 和 Cursor 解决<strong>普通开发者</strong>的问题；Pi 解决<strong>想理解 agent 内部机制</strong>的人的问题。", "Claude Code and Cursor serve average developers; Pi serves people who want to understand agent internals.", copper=True),
         pull("产品卖的是答案。<br>Harness 卖的是<strong>能问出下一个问题</strong>的显微镜。", "Products sell answers.<br>Harnesses sell the microscope to ask the <strong>next question</strong>."),
         textbook_ref("00"),
-        fig("Harness vs Product 光谱：密封体验在左，可组合层在右，Pi 落在右侧但保持终端原生。", "Harness vs product spectrum: sealed UX left, composable layers right; Pi stays terminal-native."),
+        viz_harness_spectrum(),
     )
 
 
@@ -174,7 +188,7 @@ def chapter_c2() -> str:
         ("21", "ExtensionRunner hooks", "extension events"),
         ("22", "compaction 检查", "context check"),
     ]
-    ladder_rows = [(z, e) for _, z, e in stations]
+    ladder_rows = [(num, z, e) for num, z, e in stations]
     parts = [
         p(
             f"按下回车之后，<code>{PROMPT_ZH}</code> 不是直接发给 LLM——它要先变成 <code>AgentMessage</code>，穿过 <code>AgentSession.prompt()</code>，触发 <code>agentLoop()</code>，在 <code>runLoop</code> 的双环里转两圈 model stream，中间插一次 <code>read</code> 工具，最后才在 TUI 里滚动、在 JSONL 里落盘。",
@@ -183,7 +197,10 @@ def chapter_c2() -> str:
         h3("七个里程碑 · pi-textbook 序章", "Seven milestones · pi-textbook prologue"),
         p("pi-textbook 用离线 <code>ScriptedModel</code> 固定了主线 prompt 的七步 trace。生产代码 <code>agent-loop.ts</code> 产生语义等价但事件更细的事件流。", "pi-textbook fixes a seven-step trace for the through-line prompt with offline <code>ScriptedModel</code>. Production <code>agent-loop.ts</code> emits semantically equivalent but finer-grained events."),
         f'    <table class="cmp milestone-table"><thead><tr><th>#</th><th>type</th><th>owner</th><th>detail</th></tr></thead><tbody>{"".join(f"<tr><td>{s}</td><td>{t}</td><td class=\"owner-{o}\">{o}</td><td>{d}</td></tr>" for s,t,o,d in [(a,b,c,d) for a,b,c,d in [("01","user_message","user",PROMPT_ZH[:20]+"…"),("02","model_start","model","turn=1"),("03","assistant_message","model","stopReason=toolUse · call_1"),("04","tool_start","loop","read(call_1)"),("05","tool_result","tool","README fixture"),("06","model_start","model","turn=2"),("07","assistant_message","model","stopReason=stop")]])}</tbody></table>',
+        viz_seven_milestones(),
         h3("22 站全景（前 22 站）", "22-station panorama (first 22)"),
+        viz_stations_flow(),
+        h4("逐站清单", "Station-by-station list"),
         ladder(ladder_rows),
         event_table([
             ("agent_start", "循环开始 · 订阅者收到首事件", "Loop begins · subscribers receive first event"),
@@ -196,6 +213,7 @@ def chapter_c2() -> str:
             ("turn_end", "本 turn 结束 · 检查 follow-up 队列", "Turn ends · check follow-up queue"),
             ("agent_end", "循环退出 · 返回 newMessages[]", "Loop exits · returns newMessages[]"),
         ]),
+        viz_event_swimlane(),
         sp([
             ("owner=user", "owner=user", "只有用户消息", "user messages only"),
             ("owner=model", "owner=model", "model_start + assistant_message", "model_start + assistant_message"),
@@ -243,7 +261,8 @@ def chapter_c3() -> str:
         cmp(["Checkpoint", "教学焦点", "生产文件"], [[r[0], r[2], PRODUCTION_MAP.get(r[0], "—")] for r in TEXTBOOK_CHECKPOINTS[:8]]),
         keynums([("2015", "libGDX", "libGDX era", "Mario 的游戏引擎背景影响 TUI 性能偏执", "Mario's game-engine background shapes TUI perf obsession"), ("40+", "providers", "providers", "pi-ai 支持的模型提供商数量", "model providers supported by pi-ai"), ("v3", "session", "session version", "JSONL CURRENT_SESSION_VERSION", "JSONL CURRENT_SESSION_VERSION")]),
         note("读 pi-mono 时建议开两个窗口：生产仓库 + pi-textbook 对应 checkpoint 的 workshop 测试。", "When reading pi-mono, keep two windows: production repo + pi-textbook workshop test for the matching checkpoint."),
-        fig("pi-mono 六包依赖图：coding-agent 在顶层组装，agent-core 是心脏，pi-ai 是 LLM 边界。", "pi-mono six-package dependency graph: coding-agent composes at top, agent-core is the heart, pi-ai is the LLM boundary."),
+        viz_monorepo_layers(),
+        viz_textbook_map(),
     )
 
 
@@ -260,6 +279,7 @@ def chapter_c4() -> str:
     return join(
         p(f"主线 prompt <code>{PROMPT_ZH}</code> 从 L6 进入，在 L5 循环，L4 调模型，L3 渲染，L2/L1 只在 RPC 模式参与。", f"Through-line prompt enters at L6, loops in L5, calls model at L4, renders at L3; L2/L1 only in RPC mode."),
         h3("六层蛋糕", "Six-layer cake"),
+        viz_monorepo_layers(),
         ladder_html,
         formula("依赖方向", "DEPENDENCY", ['<span class="term">coding-agent</span> → agent-core → pi-ai', '<span class="term-cu">pi-tui</span> ← coding-agent (UI only)'], "上层组装下层，不反向依赖", "Upper layers compose lower; no reverse deps"),
         src("agent", "packages/agent/package.json", ['<span class="src-str">"name"</span>: <span class="src-str">"@earendil-works/pi-agent-core"</span>,', '<span class="src-str">"exports"</span>: { <span class="src-str">"."</span>: <span class="src-str">"./src/index.ts"</span> }']),
@@ -402,6 +422,7 @@ def chapter_c9() -> str:
             '<span class="term-cu">convertToLlm()</span> → Message[]',
             '<span class="term">renderMessage()</span> → TUI cells',
         ], "主线 prompt 在三层各出现一次", "Through-line prompt appears once per layer"),
+        viz_message_layers(),
         textbook_ref("03"),
     )
 
@@ -419,6 +440,7 @@ def chapter_c10() -> str:
             "}",
         ]),
         h3("主线 prompt 的两圈 model stream", "Two model streams for through-line prompt"),
+        viz_runloop_twin(),
         ladder([
             ("Turn 1", "user → assistant(toolUse: read)"),
             ("Tool batch", "executeTool(read) → toolResult"),
@@ -504,6 +526,7 @@ def chapter_c13() -> str:
         ]),
         h3("主线一轮的事件顺序", "Event order for one through-line turn"),
         p("简化版：agent_start → turn_start → message_start(user) → message_end(user) → message_update×N → message_end(assistant) → tool_execution_* → message_update×M → message_end(assistant) → turn_end → agent_end。", "Simplified: agent_start → turn_start → message_start(user) → … → agent_end."),
+        viz_event_swimlane(),
         textbook_ref("01"),
         textbook_ref("02"),
     )
@@ -573,6 +596,7 @@ def chapter_c17() -> str:
         ]),
         h3("message_update → 像素", "message_update → pixels"),
         p("AgentSession 把 message_update 交给 interactive mode → TUI 组件树 → Markdown 增量解析 → 终端 write。", "AgentSession hands message_update to interactive mode → TUI component tree → incremental Markdown → terminal write."),
+        viz_tui_diff(),
     )
 
 
@@ -604,6 +628,7 @@ def chapter_c19() -> str:
             ["before_compact", "压缩前", "保留 artifact 索引"],
             ["tool_execution_end", "工具后", "自动 lint"],
         ]),
+        viz_extension_hooks(),
         textbook_ref("12"),
     )
 
@@ -637,7 +662,7 @@ def chapter_c21() -> str:
 def chapter_c22() -> str:
     return join(
         p("每个会话是 JSONL 文件：<code>parentId</code> 链构成树，<code>leafId</code> 指向当前叶节点，<code>fork</code> 创建 <code>parentSession</code> 子会话。", "Each session is a JSONL file: <code>parentId</code> chain forms tree, <code>leafId</code> points to current leaf, <code>fork</code> creates child with <code>parentSession</code>."),
-        session_tree_diagram(),
+        viz_session_tree(),
         src("sm", "packages/coding-agent/src/core/session-manager.ts", [
             '<span class="src-kw">export const</span> <span class="src-arg">CURRENT_SESSION_VERSION</span> = <span class="src-num">3</span>;',
             '<span class="src-kw">export interface</span> <span class="src-cls">SessionMessageEntry</span> {',
@@ -674,6 +699,7 @@ def chapter_c23() -> str:
         ]),
         h3(".harness 与 compaction 分工", "Harness vs compaction roles"),
         p("agent-loop 不管 token 数；AgentSession 在 turn_end 检查 shouldCompact；扩展可在 before_compact 注入结构化摘要。", "agent-loop ignores token count; AgentSession checks shouldCompact at turn_end; extensions inject structured summary in before_compact."),
+        viz_compaction(),
         textbook_ref("11"),
     )
 

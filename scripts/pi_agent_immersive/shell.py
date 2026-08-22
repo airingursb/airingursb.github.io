@@ -37,6 +37,70 @@ PIPELINE_COLORS = {
 }
 
 EXTRA_CSS = """
+  .formula {
+    background: var(--ink); color: var(--bg);
+    padding: 32px; margin: 32px 0;
+    font-family: var(--mono); font-size: 14px; line-height: 1.9;
+    border-radius: 4px; position: relative;
+  }
+  .formula .ftitle {
+    font-family: var(--sans); font-size: 11px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    margin-bottom: 16px; color: var(--rule);
+  }
+  .formula .cond { display: block; margin: 4px 0; }
+  .formula .cond::before { content: "▸"; color: var(--accent-soft); margin-right: 12px; }
+  .formula .out {
+    margin-top: 16px; padding-top: 16px;
+    border-top: 1px solid #2c2f36; color: var(--accent-soft);
+  }
+  .formula .term { color: #fcd34d; font-weight: 700; }
+  .formula .term-cu { color: #d1855a; font-weight: 700; }
+  .ladder {
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 4px; padding: 22px 24px; margin: 8px 0 24px;
+  }
+  .ladder .ld-row {
+    display: grid; grid-template-columns: 36px 1fr;
+    align-items: center; gap: 14px;
+    padding: 10px 0; border-bottom: 1px dashed var(--rule);
+  }
+  .ladder .ld-row:last-child { border-bottom: none; }
+  .ladder .ld-num {
+    font-family: var(--mono); font-size: 22px; color: var(--accent);
+    font-weight: 700; line-height: 1;
+  }
+  .ladder .ld-row:nth-child(2) .ld-num { color: #3873a3; }
+  .ladder .ld-row:nth-child(3) .ld-num { color: #6285a8; }
+  .ladder .ld-row:nth-child(4) .ld-num { color: #8090a8; }
+  .ladder .ld-name {
+    font-family: var(--serif); font-size: 15px; font-weight: 700; color: var(--ink);
+  }
+  body.lang-en .ladder .ld-name { font-family: var(--serif-en); }
+  .ladder .ld-desc {
+    font-family: var(--sans); font-size: 12px; color: var(--ink-mute);
+    margin-top: 2px;
+  }
+  .pi-fig { width: 100%; overflow-x: auto; }
+  .pi-fig.wide svg { min-width: 720px; }
+  .pi-svg { width: 100%; height: auto; display: block; }
+  .pi-svg .svg-label {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em;
+    text-transform: uppercase; fill: var(--ink-mute);
+  }
+  .pi-svg .svg-body { font-family: var(--sans); font-size: 12px; fill: var(--ink); }
+  .pi-svg .svg-mute { font-family: var(--sans); font-size: 10.5px; fill: #767c87; }
+  .pi-svg .svg-micro { font-family: var(--mono); font-size: 9px; fill: var(--ink-soft); }
+  .pi-svg .svg-tiny { font-family: var(--mono); font-size: 10px; fill: var(--ink); }
+  .pi-svg .svg-mono { font-family: var(--mono); font-size: 11px; fill: var(--ink-soft); }
+  .pi-svg .svg-box { fill: #faf6ed; stroke: #c7c4ba; stroke-width: 1.5; }
+  .pi-svg .svg-box.accent { fill: #e8f0f8; stroke: #1f5c8c; }
+  .pi-svg .svg-box.copper { fill: #f5ebe0; stroke: #b35a1f; }
+  .pi-svg .svg-box.gpu { fill: #efe8f5; stroke: #6b3aa3; }
+  .pi-svg .svg-box.asm { fill: #e8f2ec; stroke: #2d6a4f; }
+  .pi-svg .svg-box.paper { fill: #f3efe6; stroke: #c7c4ba; }
+  .pi-svg .svg-box.muted { fill: #ebe5d8; stroke: #c7c4ba; }
+  .pi-svg .svg-arrow { stroke: #1f5c8c; stroke-width: 1.5; marker-end: url(#pi-arr); }
   .toc-group[data-phase="heart"] { border-left-color: var(--accent); background: linear-gradient(135deg, rgba(31,92,140,0.04) 0%, var(--paper) 60%); }
   .toc-group[data-phase="llm"] { border-left-color: var(--gpu); background: linear-gradient(135deg, rgba(107,58,163,0.05) 0%, var(--paper) 60%); }
   .toc-group[data-phase="tui"] { border-left-color: var(--asm); background: linear-gradient(135deg, rgba(45,106,79,0.04) 0%, var(--paper) 60%); }
@@ -64,6 +128,10 @@ EXTRA_CSS = """
   .milestone-table td.owner-model { color: var(--accent); }
   .milestone-table td.owner-loop { color: var(--gpu); }
   .milestone-table td.owner-tool { color: var(--asm); }
+  .milestone-table .owner-user { color: var(--copper); }
+  .milestone-table .owner-model { color: var(--accent); }
+  .milestone-table .owner-loop { color: var(--gpu); }
+  .milestone-table .owner-tool { color: var(--asm); }
   .case-study {
     margin: 22px 0; padding: 18px 20px;
     background: var(--paper-2); border: 1px solid var(--rule);
