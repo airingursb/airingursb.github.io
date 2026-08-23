@@ -1,4 +1,4 @@
-"""Long-form pi-mono source traces for Heart chapters C09–C13."""
+"""Long-form pi-mono source traces for Heart chapters C09–C16."""
 from __future__ import annotations
 
 import html
@@ -297,6 +297,81 @@ def _trace_c10() -> str:
             },
             highlight_lines={381},
         ),
+        p(
+            "C10 心脏止于 <code>streamFunction</code> 调用点——再往下就是 C14 的 pi-ai 层。下面这条桥接 trace 把<strong>同一次 turn-1 model stream</strong>从 agent-loop 追到 Anthropic SSE，是理解「双环」与「provider 抽象」接缝的关键。",
+            "C10 heart ends at <code>streamFunction</code> — below that is C14 pi-ai. This bridge trace follows <strong>the same turn-1 model stream</strong> from agent-loop to Anthropic SSE; the seam between twin loops and provider abstraction.",
+        ),
+        _step_table(
+            "C10 → C14 跨层调用链（主线 turn-1）",
+            "C10 → C14 cross-layer call chain (through-line turn-1)",
+            [
+                ["1", "agent-loop.ts:308", "streamFunction(model, llmContext, options)"],
+                ["2", "agent.ts:222", "Agent.streamFunction ← sdk streamFn"],
+                ["3", "sdk.ts:322", "modelRuntime.streamSimple(model, context, …)"],
+                ["4", "model-runtime.ts:638", "prepareRequest → provider.streamSimple"],
+                ["5", "models.ts:693", "applyAuth → apiKey/headers/baseUrl"],
+                ["6", "compat.ts:275", "streamSimple → builtinProvider / resolveApiProvider"],
+                ["7", "anthropic-messages.ts:584", "SSE → stream.push(start|toolcall_delta|done)"],
+                ["8", "agent-loop.ts:317", "for await event → message_update → emit"],
+            ],
+        ),
+        _annotated_trace(
+            "bridge-call",
+            "packages/agent/src/agent-loop.ts",
+            297,
+            312,
+            {
+                298: ("llmContext：systemPrompt + messages + tools", "llmContext: systemPrompt + messages + tools"),
+                305: ("getApiKey：OAuth token 可能在此刷新", "getApiKey: OAuth token may refresh here"),
+                308: ("★ 跨层边界：agent-core 不再感知 provider", "★ cross-layer boundary: agent-core unaware of provider"),
+            },
+            highlight_lines={308},
+        ),
+        _annotated_trace(
+            "default-stream",
+            "packages/coding-agent/src/core/sdk.ts",
+            33,
+            36,
+            {
+                36: ("模块加载时注入默认 streamFn=streamSimple", "module load injects default streamFn=streamSimple"),
+            },
+            highlight_lines={36},
+        ),
+        _annotated_trace(
+            "stream-fn",
+            "packages/agent/src/stream-fn.ts",
+            5,
+            19,
+            {
+                11: ("setDefaultStreamFn：agent-core 与 pi-ai 解耦点", "setDefaultStreamFn: agent-core / pi-ai decoupling"),
+                17: ("未配置时抛错——extensions 必须显式传 streamFn", "throws if unset — extensions must pass streamFn"),
+            },
+            highlight_lines={11},
+        ),
+        _annotated_trace(
+            "sdk-streamfn",
+            "packages/coding-agent/src/core/sdk.ts",
+            304,
+            340,
+            {
+                312: ("Agent 构造时覆盖默认 streamFn", "Agent ctor overrides default streamFn"),
+                322: ("★ modelRuntime.streamSimple：重试/timeout/header 在此", "★ modelRuntime.streamSimple: retry/timeout/headers here"),
+                328: ("transformHeaders：扩展 before_provider_headers", "transformHeaders: extension before_provider_headers"),
+            },
+            highlight_lines={322},
+        ),
+        _annotated_trace(
+            "runtime-simple",
+            "packages/coding-agent/src/core/model-runtime.ts",
+            573,
+            640,
+            {
+                583: ("prepareRequest：getAuth + merge headers", "prepareRequest: getAuth + merge headers"),
+                636: ("ModelRuntime.streamSimple 入口", "ModelRuntime.streamSimple entry"),
+                639: ("委托 provider.streamSimple", "delegate to provider.streamSimple"),
+            },
+            highlight_lines={636, 639},
+        ),
         note(
             "对照 pi-textbook cp07 <code>agent-loop.test.ts</code>：搜索 <code>two turn</code> 或 <code>toolUse</code>，测试里的 event 序列应与 --verbose stderr 同构。",
             "Cross-read textbook cp07 <code>agent-loop.test.ts</code>: search <code>two turn</code> or <code>toolUse</code>; test event sequence should match --verbose stderr.",
@@ -582,6 +657,401 @@ def _trace_c13() -> str:
     return join(*parts)
 
 
+# ── C14: pi-ai provider abstraction ──────────────────────────────────
+
+def _trace_c14() -> str:
+    parts = [
+        _trace_header(
+            "14",
+            "pi-ai 提供商抽象：streamSimple 如何接到 agent-loop",
+            "pi-ai provider abstraction: how streamSimple connects to agent-loop",
+        ),
+        p(
+            "pi-ai（<code>packages/ai</code>）是 Pi 的 LLM 适配层。<code>streamSimple</code> 是 agent-core 与 40+ provider 之间的<strong>唯一窄接口</strong>：输入 <code>Model + Context + options</code>，输出 <code>AssistantMessageEventStream</code>。主线 prompt turn-1 的 <code>toolcall_delta</code> 组装 <code>read({\"path\":\"README.md\"})</code> 就发生在此层。",
+            "pi-ai (<code>packages/ai</code>) is Pi's LLM adapter layer. <code>streamSimple</code> is the <strong>sole narrow interface</strong> between agent-core and 40+ providers: <code>Model + Context + options</code> in, <code>AssistantMessageEventStream</code> out. Through-line turn-1 <code>toolcall_delta</code> assembling <code>read({\"path\":\"README.md\"})</code> happens here.",
+        ),
+        _annotated_trace(
+            "stream-simple",
+            "packages/ai/src/compat.ts",
+            275,
+            289,
+            {
+                275: ("compat 层 streamSimple 入口", "compat layer streamSimple entry"),
+                280: ("builtin provider 优先（anthropic/openai/…）", "builtin provider first (anthropic/openai/…)"),
+                287: ("自定义 provider 走 resolveApiProvider", "custom providers via resolveApiProvider"),
+            },
+            highlight_lines={275, 287},
+        ),
+        _annotated_trace(
+            "provider-if",
+            "packages/ai/src/models.ts",
+            97,
+            140,
+            {
+                111: ("Provider.auth：每个 provider 必有认证语义", "Provider.auth: every provider has auth semantics"),
+                119: ("getModels()：静态目录或 refresh 后动态列表", "getModels(): static catalog or post-refresh dynamic list"),
+            },
+            highlight_lines={111, 119},
+        ),
+        _annotated_trace(
+            "apply-auth",
+            "packages/ai/src/models.ts",
+            636,
+            665,
+            {
+                643: ("requireProvider：model.provider → Provider 实例", "requireProvider: model.provider → Provider instance"),
+                644: ("getAuth：credential / env / OAuth 解析", "getAuth: credential / env / OAuth resolution"),
+                655: ("apiKey = options.apiKey ?? auth.apiKey", "apiKey = options.apiKey ?? auth.apiKey"),
+                659: ("baseUrl overlay：代理/自定义 endpoint", "baseUrl overlay: proxy/custom endpoint"),
+            },
+            highlight_lines={644, 655},
+        ),
+        _annotated_trace(
+            "models-stream",
+            "packages/ai/src/models.ts",
+            690,
+            704,
+            {
+                690: ("Models.streamSimple：lazyStream + applyAuth", "Models.streamSimple: lazyStream + applyAuth"),
+                694: ("provider.streamSimple 真正发 HTTP", "provider.streamSimple actually sends HTTP"),
+            },
+            highlight_lines={690, 694},
+        ),
+        _step_table(
+            "主线 turn-1 · streamSimple 数据流",
+            "Through-line turn-1 · streamSimple data flow",
+            [
+                ["in", "Context.messages", "user + system + tools schema"],
+                ["auth", "applyAuth", "ANTHROPIC_API_KEY / OAuth bearer"],
+                ["http", "anthropic-messages", "POST /v1/messages stream:true"],
+                ["out", "EventStream", "start → toolcall_delta×N → done(toolUse)"],
+                ["up", "agent-loop:317", "message_update → TUI tool 卡片"],
+            ],
+        ),
+        _annotated_trace(
+            "create-provider",
+            "packages/ai/src/models.ts",
+            739,
+            792,
+            {
+                746: ("auth 必填——即使 ambient/keyless provider", "auth required — even ambient/keyless providers"),
+                757: ("api 字段：单实现或按 model.api 分派", "api field: single impl or dispatch by model.api"),
+                762: ("createProvider：内置与 models.json 自定义共用", "createProvider: built-in and models.json custom share this"),
+                779: ("apiFor(model)：按 model.api 选 stream 实现", "apiFor(model): pick stream impl by model.api"),
+            },
+            highlight_lines={762, 779},
+        ),
+        _annotated_trace(
+            "anthropic-prov",
+            "packages/ai/src/providers/anthropic.ts",
+            9,
+            58,
+            {
+                18: ("resolve：credential → env ANTHROPIC_* 回退", "resolve: credential → env ANTHROPIC_* fallback"),
+                44: ("anthropicProvider() 工厂", "anthropicProvider() factory"),
+                57: ("api: anthropicMessagesApi()", "api: anthropicMessagesApi()"),
+            },
+            highlight_lines={44, 57},
+        ),
+        p(
+            "<code>createProvider</code> 把 auth、models、api 三块粘成不可再分的 Provider 对象。<code>Models</code> 类持有 provider map，<code>ModelRuntime</code>（coding-agent）在其上叠加 credential store、extension provider、availability snapshot——但<strong>HTTP/SSE 协议细节永远不下沉到 agent-loop</strong>。",
+            "<code>createProvider</code> glues auth, models, api into one Provider. <code>Models</code> holds the provider map; <code>ModelRuntime</code> adds credential store, extension providers, availability — but <strong>HTTP/SSE protocol never sinks into agent-loop</strong>.",
+        ),
+        _annotated_trace(
+            "provider-dispatch",
+            "packages/ai/src/models.ts",
+            794,
+            830,
+            {
+                794: ("Provider 对象：stream/streamSimple 分派", "Provider object: stream/streamSimple dispatch"),
+                801: ("refreshModels：动态 provider 拉取模型列表", "refreshModels: dynamic provider fetches model list"),
+            },
+            highlight_lines={794},
+        ),
+        note(
+            "练习：在 pi-textbook 用 <code>registerFauxProvider</code> 替换 streamSimple，观察 agent-loop 是否仍收到相同形状的 toolcall_delta。",
+            "Exercise: in pi-textbook replace streamSimple with <code>registerFauxProvider</code>; observe agent-loop still gets same-shaped toolcall_delta.",
+            copper=True,
+        ),
+        _trace_close(),
+    ]
+    return join(*parts)
+
+
+# ── C15: EventStream protocol ──────────────────────────────────────
+
+def _trace_c15() -> str:
+    parts = [
+        _trace_header(
+            "15",
+            "流式 EventStream：text_delta / toolcall_delta 协议全 trace",
+            "Streaming EventStream: full text_delta / toolcall_delta protocol trace",
+        ),
+        p(
+            "pi-ai 与 agent-core 之间的流式契约是 <code>AssistantMessageEvent</code> 联合类型 + <code>AssistantMessageEventStream</code> 队列。<code>agent-loop</code> 的 <code>for await (event of response)</code> 消费的正是这个协议——<strong>不是</strong> provider 原始 SSE。主线 turn-1 的 read toolUse 由一串 <code>toolcall_start → toolcall_delta×N → toolcall_end</code> 组装。",
+            "The streaming contract between pi-ai and agent-core is <code>AssistantMessageEvent</code> union + <code>AssistantMessageEventStream</code> queue. <code>agent-loop</code>'s <code>for await (event of response)</code> consumes this protocol — <strong>not</strong> raw provider SSE. Through-line turn-1 read toolUse is assembled from <code>toolcall_start → toolcall_delta×N → toolcall_end</code>.",
+        ),
+        _annotated_trace(
+            "event-protocol",
+            "packages/ai/src/types.ts",
+            527,
+            551,
+            {
+                535: ("AssistantMessageEvent 联合类型定义", "AssistantMessageEvent union definition"),
+                536: ("start：携带 partial AssistantMessage", "start: carries partial AssistantMessage"),
+                538: ("text_delta：turn-2 最终回答的增量", "text_delta: turn-2 final answer increments"),
+                544: ("★ toolcall_delta：turn-1 read args 增量 JSON", "★ toolcall_delta: turn-1 read args incremental JSON"),
+                547: ("done：stopReason=stop|toolUse|length|deferred", "done: stopReason=stop|toolUse|length|deferred"),
+                551: ("error：aborted|error + errorMessage", "error: aborted|error + errorMessage"),
+            },
+            highlight_lines={544, 547},
+        ),
+        _annotated_trace(
+            "event-stream",
+            "packages/ai/src/utils/event-stream.ts",
+            1,
+            67,
+            {
+                4: ("EventStream 泛型：AsyncIterable + result()", "EventStream generic: AsyncIterable + result()"),
+                21: ("push：完成事件 resolve finalResult", "push: complete event resolves finalResult"),
+                29: ("等待消费者或入队", "wait for consumer or enqueue"),
+                38: ("end()：强制结束迭代器", "end(): force iterator completion"),
+                50: ("async iterator：背压友好", "async iterator: backpressure-friendly"),
+                64: ("result()：await 最终 AssistantMessage", "result(): await final AssistantMessage"),
+            },
+            highlight_lines={21, 64},
+        ),
+        _annotated_trace(
+            "assistant-stream",
+            "packages/ai/src/utils/event-stream.ts",
+            69,
+            88,
+            {
+                69: ("AssistantMessageEventStream 子类", "AssistantMessageEventStream subclass"),
+                72: ("isComplete：done 或 error", "isComplete: done or error"),
+                74: ("extractResult：done→message, error→error", "extractResult: done→message, error→error"),
+                86: ("工厂：extensions 可构造假流", "factory: extensions can build fake streams"),
+            },
+            highlight_lines={69, 72},
+        ),
+        _step_table(
+            "主线 turn-1 · toolcall_delta 时间线",
+            "Through-line turn-1 · toolcall_delta timeline",
+            [
+                ["1", "toolcall_start", "content block tool_use 开始"],
+                ["2", "toolcall_delta", "{\"path\""],
+                ["3", "toolcall_delta", ":\"README.md\"}"],
+                ["4", "toolcall_delta", "} 片段…"],
+                ["5", "toolcall_end", "arguments 解析完成 · id=toolu_…"],
+                ["6", "done", "stopReason=toolUse"],
+                ["7", "agent-loop", "message_update×N → executeToolCalls"],
+            ],
+        ),
+        _annotated_trace(
+            "sse-start",
+            "packages/ai/src/api/anthropic-messages.ts",
+            575,
+            652,
+            {
+                576: ("client.messages.create stream:true", "client.messages.create stream:true"),
+                584: ("stream.push start", "stream.push start"),
+                611: ("content_block_start：text/thinking/tool_use", "content_block_start: text/thinking/tool_use"),
+                639: ("tool_use block → toolcall_start", "tool_use block → toolcall_start"),
+                651: ("★ toolcall_start push", "★ toolcall_start push"),
+            },
+            highlight_lines={584, 651},
+        ),
+        _annotated_trace(
+            "sse-delta",
+            "packages/ai/src/api/anthropic-messages.ts",
+            653,
+            729,
+            {
+                678: ("input_json_delta → toolcall_delta", "input_json_delta → toolcall_delta"),
+                682: ("partialJson 累加 + parseStreamingJson", "partialJson accumulate + parseStreamingJson"),
+                684: ("★ 每个 JSON 片段 push toolcall_delta", "★ each JSON fragment pushes toolcall_delta"),
+                718: ("content_block_stop → toolcall_end", "content_block_stop → toolcall_end"),
+                723: ("delete partialJson，只保留 arguments", "delete partialJson, keep arguments only"),
+            },
+            highlight_lines={684, 723},
+        ),
+        _annotated_trace(
+            "sse-done",
+            "packages/ai/src/api/anthropic-messages.ts",
+            731,
+            797,
+            {
+                732: ("message_delta：stop_reason → stopReason", "message_delta: stop_reason → stopReason"),
+                782: ("stream.push done", "stream.push done"),
+                792: ("catch → error event + end", "catch → error event + end"),
+            },
+            highlight_lines={782},
+        ),
+        _annotated_trace(
+            "agent-consume",
+            "packages/agent/src/agent-loop.ts",
+            314,
+            360,
+            {
+                317: ("for await response：消费 pi-ai EventStream", "for await response: consume pi-ai EventStream"),
+                319: ("start → message_start", "start → message_start"),
+                332: ("toolcall_delta → message_update", "toolcall_delta → message_update"),
+                357: ("done → message_end(final)", "done → message_end(final)"),
+            },
+            highlight_lines={332, 357},
+        ),
+        p(
+            "设计要点：<code>partial</code> 字段在每个 event 里携带<strong>当前累积状态</strong>的 AssistantMessage 快照——TUI 不需要自己拼 delta；agent-loop 把 event 原样 emit 给 AgentSession，由订阅者决定是差分渲染还是等 message_end 落盘。",
+            "Design note: <code>partial</code> in each event carries a <strong>cumulative</strong> AssistantMessage snapshot — TUI need not assemble deltas; agent-loop emits events as-is to AgentSession; subscribers diff-render or persist on message_end.",
+        ),
+        note(
+            "用 <code>--verbose</code> 跑主线 prompt，stderr 里 <code>toolcall_delta</code> 行数应与 Anthropic SSE <code>input_json_delta</code> 包数同量级。",
+            "Run through-line with <code>--verbose</code>; stderr <code>toolcall_delta</code> count should match Anthropic SSE <code>input_json_delta</code> packets.",
+            copper=True,
+        ),
+        _trace_close(),
+    ]
+    return join(*parts)
+
+
+# ── C16: auth & model catalog ────────────────────────────────────────
+
+def _trace_c16() -> str:
+    parts = [
+        _trace_header(
+            "16",
+            "认证与模型目录：从 models.generated 到 findInitialModel",
+            "Auth and model catalog: models.generated to findInitialModel",
+        ),
+        p(
+            "Pi 启动时必须先回答两个问题：<strong>用哪个 model？</strong> 和 <strong>凭据从哪来？</strong> <code>models.generated.ts</code> 聚合 40+ provider 的静态目录；<code>ModelRuntime</code> 叠加 credential store 与 availability；<code>findInitialModel</code> 按 CLI → scoped → settings → first-available 优先级选型。没有 key 时 <code>auth-guidance.ts</code> 给出 /login 指引。",
+            "Pi boot must answer: <strong>which model?</strong> and <strong>where credentials come from?</strong> <code>models.generated.ts</code> aggregates 40+ provider static catalogs; <code>ModelRuntime</code> adds credential store and availability; <code>findInitialModel</code> picks CLI → scoped → settings → first-available. No key → <code>auth-guidance.ts</code> points to /login.",
+        ),
+        _annotated_trace(
+            "models-gen",
+            "packages/ai/src/models.generated.ts",
+            1,
+            45,
+            {
+                1: ("自动生成：npm run generate-models", "auto-generated: npm run generate-models"),
+                4: ("每 provider 一个 *.models.ts", "one *.models.ts per provider"),
+                44: ("MODELS 聚合对象类型", "MODELS aggregate object type"),
+            },
+            highlight_lines={1, 44},
+        ),
+        _annotated_trace(
+            "models-map",
+            "packages/ai/src/models.generated.ts",
+            84,
+            124,
+            {
+                87: ("anthropic: ANTHROPIC_MODELS", "anthropic: ANTHROPIC_MODELS"),
+                106: ("openai / openai-codex", "openai / openai-codex"),
+                111: ("openrouter / moonshotai / …", "openrouter / moonshotai / …"),
+            },
+            highlight_lines={87},
+        ),
+        _annotated_trace(
+            "anthropic-models",
+            "packages/ai/src/providers/anthropic.models.ts",
+            1,
+            8,
+            {
+                4: ("从 anthropic.json flatten", "flatten from anthropic.json"),
+                7: ("ANTHROPIC_MODELS 目录常量", "ANTHROPIC_MODELS catalog constant"),
+            },
+            highlight_lines={7},
+        ),
+        _annotated_trace(
+            "auth-resolve",
+            "packages/ai/src/providers/anthropic.ts",
+            18,
+            40,
+            {
+                20: ("stored credential 优先", "stored credential first"),
+                24: ("ANTHROPIC_AUTH_TOKEN env", "ANTHROPIC_AUTH_TOKEN env"),
+                33: ("OAuth token / API key env 回退链", "OAuth token / API key env fallback chain"),
+            },
+            highlight_lines={20, 33},
+        ),
+        _annotated_trace(
+            "auth-guidance",
+            "packages/coding-agent/src/core/auth-guidance.ts",
+            6,
+            25,
+            {
+                7: ("getProviderLoginHelp：/login + docs 链接", "getProviderLoginHelp: /login + docs links"),
+                14: ("formatNoModelsAvailableMessage", "formatNoModelsAvailableMessage"),
+                22: ("formatNoApiKeyFoundMessage(provider)", "formatNoApiKeyFoundMessage(provider)"),
+            },
+            highlight_lines={14, 22},
+        ),
+        _step_table(
+            "findInitialModel 优先级",
+            "findInitialModel priority",
+            [
+                ["1", "CLI --provider/--model", "最高优先级"],
+                ["2", "scopedModels[0]", "非 resume 时"],
+                ["3", "settings default", "hasConfiguredAuth"],
+                ["4", "defaultModelPerProvider", "anthropic/claude-sonnet-…"],
+                ["5", "availableModels[0]", "任意有 key 的模型"],
+                ["fail", "formatNoModelsAvailableMessage", "/login 指引"],
+            ],
+        ),
+        _annotated_trace(
+            "find-model",
+            "packages/coding-agent/src/core/model-resolver.ts",
+            621,
+            708,
+            {
+                647: ("CLI args 优先", "CLI args first"),
+                664: ("scoped models 第二", "scoped models second"),
+                675: ("settings default + hasConfiguredAuth", "settings default + hasConfiguredAuth"),
+                690: ("getAvailableSnapshot 过滤无 key provider", "getAvailableSnapshot filters unconfigured providers"),
+                694: ("defaultModelPerProvider 偏好", "defaultModelPerProvider preference"),
+                703: ("兜底：第一个 available", "fallback: first available"),
+                707: ("无模型 → undefined", "no model → undefined"),
+            },
+            highlight_lines={690, 703},
+        ),
+        _annotated_trace(
+            "sdk-boot",
+            "packages/coding-agent/src/core/sdk.ts",
+            208,
+            225,
+            {
+                210: ("findInitialModel 调用点", "findInitialModel call site"),
+                220: ("无 model → formatNoModelsAvailableMessage", "no model → formatNoModelsAvailableMessage"),
+                223: ("fallback 文案拼接 provider/id", "fallback message appends provider/id"),
+            },
+            highlight_lines={220},
+        ),
+        _annotated_trace(
+            "runtime-auth",
+            "packages/coding-agent/src/core/model-runtime.ts",
+            561,
+            588,
+            {
+                561: ("getProviderAuthStatus：runtime/stored/env", "getProviderAuthStatus: runtime/stored/env"),
+                583: ("prepareRequest getAuth", "prepareRequest getAuth"),
+                588: ("无 resolution → Provider is not configured", "no resolution → Provider is not configured"),
+            },
+            highlight_lines={561, 588},
+        ),
+        p(
+            "主线 prompt 能跑通的前提：<code>findInitialModel</code> 返回的 model 在 <code>getAvailableSnapshot()</code> 里，且 <code>streamSimple</code> 时 <code>applyAuth</code> 能解析出 apiKey。OAuth provider（如 Anthropic Claude Pro）走 credential store + refresh；纯 API key 走 env 或 <code>/login</code> 写入的 auth.json。",
+            "Through-line prompt requires: <code>findInitialModel</code> model is in <code>getAvailableSnapshot()</code>, and <code>applyAuth</code> resolves apiKey at <code>streamSimple</code>. OAuth providers use credential store + refresh; API key uses env or auth.json from <code>/login</code>.",
+        ),
+        note(
+            "实验：删掉 <code>~/.pi/agent/auth.json</code> 中 anthropic 条目再启动 pi，应看到 formatNoModelsAvailableMessage 或 formatNoApiKeyFoundMessage。",
+            "Experiment: remove anthropic from <code>~/.pi/agent/auth.json</code> and start pi; expect formatNoModelsAvailableMessage or formatNoApiKeyFoundMessage.",
+            copper=True,
+        ),
+        _trace_close(),
+    ]
+    return join(*parts)
+
+
 # ── public API ───────────────────────────────────────────────────────
 
 _HEART = {
@@ -590,6 +1060,9 @@ _HEART = {
     "c11": _trace_c11,
     "c12": _trace_c12,
     "c13": _trace_c13,
+    "c14": _trace_c14,
+    "c15": _trace_c15,
+    "c16": _trace_c16,
 }
 
 
