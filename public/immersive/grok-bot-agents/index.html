@@ -1,0 +1,1835 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google" content="notranslate">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico">
+<link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico">
+<link rel="icon" href="https://airing.ursb.me/image/favicon.ico">
+<meta name="description" content="你按下回车之后，一条用户消息如何在 Grok Bot 0.18 里穿过四层进程、spawn 子 Agent、持久化 blob 状态、并在多 Agent 协作中回到屏幕——tokenizer / embedding / KV cache / attention / MoE / MLA / sampling。每一站对应一个真实函数,逐行读。">
+<meta name="author" content="Airing">
+<meta property="og:title" content="一次 LLM 推理的一生 — 一个 prompt 走完 llama.cpp 里 25 站">
+<meta property="og:description" content="tokenizer → embedding → KV cache → attention → MoE/MLA → logit → sampling · 真源码逐行。">
+<meta property="og:image" content="https://ursb.me/og/grok-bot-agents.png">
+<meta property="og:url" content="https://ursb.me/immersive/grok-bot-agents/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="ursb.me · Airing">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="一次 LLM 推理的一生">
+<meta name="twitter:description" content="tokenizer → embedding → KV cache → attention → MoE/MLA → logit → sampling · 真源码逐行。">
+<meta name="twitter:image" content="https://ursb.me/og/grok-bot-agents.png">
+<meta name="twitter:creator" content="@airingursb">
+<title>一条消息的一生 — Grok Bot Agent 系统与多 Agent 协作全景</title>
+<style>
+  :root {
+    --bg: #f4efe6;
+    --bg-soft: #ebe5d8;
+    --paper: #faf6ed;
+    --paper-2: #fdfbf3;
+    --ink: #15171c;
+    --ink-soft: #3c4148;
+    --ink-mute: #767c87;
+    --rule: #c7c4ba;
+    --rule-soft: #ddd9cd;
+    --accent: #1f5c8c;          /* cobalt — compute / matrix */
+    --accent-soft: #4a85b3;
+    --accent-pale: #c9dceb;
+    --copper: #b35a1f;          /* warm — tokenizer / prompt */
+    --copper-soft: #d1855a;
+    --copper-pale: #ecd3bf;
+    --good: #4a6b3e;
+    --warn: #a87a1f;
+    --asm: #2d6a4f;             /* green — KV cache / memory */
+    --asm-soft: #6b8f7a;
+    --asm-pale: #cfe2d7;
+    --gpu: #6b3aa3;             /* purple — attention / parallel */
+    --gpu-soft: #9572bd;
+    --gpu-pale: #d8c8e6;
+    --heat: #c3573a;            /* orange — hot kernels / sampling */
+    --heat-soft: #d99c87;
+    --heat-pale: #f3d6c8;
+    --serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", Georgia, "Times New Roman", serif;
+    --serif-en: "Source Serif Pro", "Source Serif 4", Georgia, "Times New Roman", "Source Han Serif SC", serif;
+    --sans: "Inter", -apple-system, "PingFang SC", "Helvetica Neue", system-ui, sans-serif;
+    --mono: "JetBrains Mono", "SF Mono", Menlo, ui-monospace, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; overflow-x: hidden; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 16px;
+    line-height: 1.85;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  body.lang-en { font-family: var(--serif-en); }
+
+  body::before {
+    content: "";
+    position: fixed; inset: 0;
+    background-image: radial-gradient(rgba(40,60,90,0.05) 1px, transparent 1px);
+    background-size: 3px 3px;
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .container {
+    max-width: 820px; margin: 0 auto;
+    padding: 0 32px;
+    position: relative; z-index: 2;
+  }
+
+  /* lang + back */
+  .lang-toggle {
+    position: fixed; top: 28px; right: 32px; z-index: 100;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
+    background: var(--paper); border: 1px solid var(--rule);
+    padding: 6px 12px; border-radius: 99px;
+    display: flex; align-items: center; gap: 10px;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  }
+  .lang-toggle button {
+    background: transparent; border: 0; padding: 2px 6px;
+    font: inherit; color: var(--ink-mute); cursor: pointer;
+    letter-spacing: inherit; border-radius: 99px; transition: color .15s;
+  }
+  .lang-toggle button:hover { color: var(--ink); }
+  .lang-toggle button.active { color: var(--ink); font-weight: 600; }
+  .lang-toggle .sep { color: var(--rule); user-select: none; }
+  body:not(.lang-en) .lang-en-only { display: none !important; }
+  body.lang-en .lang-zh-only { display: none !important; }
+
+  /* ====================== Side TOC (added 2026-06) ====================== */
+  .toc-side {
+    position: fixed; top: 84px; left: 22px;
+    z-index: 100; width: 200px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 10.5px; line-height: 1.4;
+    scrollbar-width: thin; scrollbar-color: var(--rule) transparent;
+    padding-right: 4px;
+  }
+  .toc-side::-webkit-scrollbar { width: 3px; }
+  .toc-side::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 2px; }
+  .toc-side ol { list-style: none; margin: 0; padding: 0; }
+  .toc-side a { color: var(--ink-soft); text-decoration: none; }
+  .toc-side > .toc-label {
+    font-size: 9.5px; letter-spacing: 0.2em; color: var(--ink-mute);
+    text-transform: uppercase; margin-bottom: 8px; font-weight: 600;
+  }
+  .toc-side li { margin-bottom: 0; }
+  .toc-side li > a {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 2px 0; opacity: 0.55; transition: opacity 0.18s, color 0.18s;
+    border: none;
+    line-height: 1.35;
+  }
+  .toc-side li > a:hover { opacity: 0.9; color: var(--accent); }
+  .toc-side li.active > a { opacity: 1; color: var(--accent); font-weight: 600; }
+  .toc-side .toc-num {
+    flex-shrink: 0; width: 18px; color: var(--accent);
+    font-variant-numeric: tabular-nums; font-size: 9.5px;
+    font-weight: 700; letter-spacing: 0.04em;
+  }
+  @media (max-width: 1320px) { .toc-side { display: none; } }
+  .toc-side .ts-divider {
+    font-family: var(--mono); font-size: 8.5px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-mute);
+    margin: 8px 0 2px;
+    padding-top: 5px;
+    border-top: 1px dashed var(--rule);
+    opacity: 0.7;
+    line-height: 1.2;
+  }
+  .toc-side .ts-divider:first-child {
+    margin-top: 0;
+    border-top: 0;
+    padding-top: 0;
+  }
+
+
+
+  .ursb-backlink {
+    position: fixed; top: 28px; left: 32px; z-index: 100;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--paper); border: 1px solid var(--rule);
+    padding: 6px 14px 6px 12px; border-radius: 99px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.04em;
+    color: var(--ink-soft); text-decoration: none;
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    transition: all .18s ease;
+  }
+  .ursb-backlink:hover { color: var(--accent); border-color: var(--accent-soft); transform: translateX(-1px); }
+
+  /* hero */
+  .hero { padding: 120px 0 80px; border-bottom: 1px solid var(--rule); position: relative; }
+  .hero .meta {
+    font-family: var(--sans); font-size: 12px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute); margin-bottom: 32px;
+  }
+  .hero .meta span + span::before { content: "·"; margin: 0 12px; color: var(--rule); }
+  .hero h1 {
+    font-family: var(--serif); font-size: 64px; line-height: 1.1;
+    margin: 0 0 24px; font-weight: 600; letter-spacing: -0.01em;
+  }
+  body.lang-en .hero h1 { font-family: var(--serif-en); font-size: 60px; line-height: 1.05; letter-spacing: -0.02em; }
+  .hero h1 .accent { color: var(--accent); }
+  .hero h1 .copper { color: var(--copper); }
+  .hero h1 .gpu { color: var(--gpu); }
+  .hero h1 .heat { color: var(--heat); }
+  .hero h1 .asm { color: var(--asm); }
+  .hero .subtitle {
+    font-family: var(--mono); font-size: 14px; line-height: 1.6;
+    color: var(--ink-soft); margin: -8px 0 28px;
+    letter-spacing: 0.02em;
+  }
+  .hero .subtitle .arr { color: var(--ink-mute); margin: 0 8px; }
+  .hero .deck {
+    font-family: var(--sans); font-size: 19px; line-height: 1.55;
+    color: var(--ink-soft); max-width: 620px;
+    margin: 0 0 48px; font-weight: 300;
+  }
+  .byline {
+    font-family: var(--sans); font-size: 13px; color: var(--ink-mute);
+    display: flex; gap: 32px; flex-wrap: wrap;
+  }
+  .byline .label { color: var(--ink-mute); }
+  .byline .value { color: var(--ink); margin-left: 6px; }
+  .byline a.value {
+    text-decoration: none; border-bottom: 1px solid var(--rule);
+    transition: color .18s, border-color .18s;
+  }
+  .byline a.value:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .hero-notice {
+    margin: 36px 0 0; padding: 18px 22px;
+    background: var(--paper);
+    border: 1px solid var(--rule); border-left: 3px solid var(--copper);
+    border-radius: 0 4px 4px 0; max-width: 640px;
+  }
+  .hero-notice .hn-tag {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--copper); font-weight: 700; margin-bottom: 8px;
+  }
+  .hero-notice .hn-body {
+    margin: 0; font-family: var(--sans);
+    font-size: 13.5px; line-height: 1.7; color: var(--ink-soft);
+  }
+  .hero-notice .hn-body strong { color: var(--ink); font-weight: 600; }
+  .hero-notice .hn-body em { color: var(--copper); font-style: normal; font-weight: 600; }
+
+  /* tldr 4-step */
+  .tldr {
+    margin: 36px 0 0; padding: 22px 24px;
+    background: var(--paper-2);
+    border: 1px solid var(--rule); border-left: 3px solid var(--accent);
+    border-radius: 0 4px 4px 0; max-width: 640px;
+  }
+  .tldr-tag {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin-bottom: 14px;
+  }
+  .tldr-steps {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 10px; margin: 0 0 14px;
+  }
+  .tldr-step {
+    background: var(--paper);
+    border: 1px solid var(--rule-soft);
+    border-top: 2px solid var(--accent);
+    border-radius: 3px; padding: 10px 12px;
+  }
+  .tldr-step:nth-child(2) { border-top-color: var(--copper); }
+  .tldr-step:nth-child(3) { border-top-color: var(--asm); }
+  .tldr-step:nth-child(4) { border-top-color: var(--heat); }
+  .tldr-step-n {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; color: var(--ink-mute); margin-bottom: 4px;
+  }
+  .tldr-step-name {
+    font-family: var(--sans); font-size: 13px; font-weight: 700;
+    color: var(--ink); line-height: 1.3;
+  }
+  .tldr-step-hint {
+    font-family: var(--mono); font-size: 9.5px;
+    color: var(--ink-mute); margin-top: 4px; line-height: 1.4;
+  }
+  .tldr-skip {
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px dashed var(--rule);
+    font-family: var(--sans); font-size: 12px;
+    color: var(--ink-mute); line-height: 1.55;
+  }
+  .tldr-skip a {
+    color: var(--accent); border-bottom: 1px solid currentColor;
+    font-weight: 600;
+  }
+  .tldr-skip a:hover { color: var(--ink); }
+  @media (max-width: 720px) { .tldr-steps { grid-template-columns: 1fr 1fr; } }
+
+  /* pipeline bar — 18 stations */
+  .perf-bar {
+    margin: 56px 0 0; background: var(--paper);
+    border: 1px solid var(--rule); border-radius: 4px;
+    padding: 22px 24px; position: relative;
+  }
+  .perf-bar .pb-title {
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em;
+    color: var(--ink-mute); text-transform: uppercase; margin-bottom: 16px;
+    display: flex; justify-content: space-between;
+  }
+  .perf-bar .pb-title .pb-pulse { color: var(--heat); }
+  .perf-bar .pb-track {
+    display: grid; grid-template-columns: repeat(28, 1fr); gap: 3px;
+    height: 36px;
+  }
+  .perf-bar .pb-cell {
+    background: var(--bg-soft); border-radius: 2px;
+    cursor: pointer; transition: transform .15s;
+    position: relative; overflow: hidden;
+  }
+  .perf-bar .pb-cell:hover { transform: translateY(-2px); }
+  .perf-bar .pb-cell.p0 { background: var(--ink-mute); opacity: .55; }
+  .perf-bar .pb-cell.p1 { background: var(--copper); }
+  .perf-bar .pb-cell.p2 { background: var(--accent); }
+  .perf-bar .pb-cell.p3 { background: var(--gpu); }
+  .perf-bar .pb-cell.p4 { background: var(--heat); }
+  .perf-bar .pb-cell.p5 { background: var(--asm); }
+  .perf-bar .pb-cell.p6 { background: var(--asm-soft); }
+  .perf-bar .pb-cell.p7 { background: var(--gpu-soft); }
+  .perf-bar .pb-cell.p8 { background: var(--copper-soft); }
+  .perf-bar .pb-cell.pc { background: var(--ink-mute); opacity: .7; }
+  .perf-bar .pb-cell::after {
+    content: attr(data-n); position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 8px; font-weight: 700;
+    color: rgba(255,255,255,.85);
+  }
+  @media (max-width: 720px) {
+    .perf-bar .pb-cell::after { font-size: 0; }
+  }
+  .perf-bar .pb-axis {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 9px; color: var(--ink-mute);
+    margin-top: 12px; letter-spacing: 0.06em;
+  }
+
+  /* TOC */
+  .toc-v2 { padding: 56px 0; border-bottom: 1px solid var(--rule); }
+  .toc-v2 .tv-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .toc-v2 .tv-label {
+    font-family: var(--sans); font-size: 11px;
+    letter-spacing: 0.22em; text-transform: uppercase; color: var(--ink-mute);
+  }
+  .toc-v2 .tv-meta {
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--ink-mute); letter-spacing: 0.08em;
+  }
+  .toc-v2 .tv-meta .tv-now { color: var(--accent); font-weight: 700; }
+  .toc-v2 .tv-sub {
+    font-family: var(--sans); font-size: 13px;
+    color: var(--ink-mute); margin: 2px 0 26px; font-style: italic;
+  }
+
+  .toc-group {
+    margin-bottom: 18px;
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--ink-mute);
+    border-radius: 0 4px 4px 0;
+    background: var(--paper);
+    padding: 14px 18px 16px;
+  }
+  .toc-group[data-phase="bg"]   { border-left-color: var(--ink-mute); }
+  .toc-group[data-phase="in"]   { border-left-color: var(--copper); background: linear-gradient(135deg, rgba(179,90,31,0.04) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="att"]  { border-left-color: var(--accent); background: linear-gradient(135deg, rgba(31,92,140,0.04) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="var"]  { border-left-color: var(--gpu); background: linear-gradient(135deg, rgba(107,58,163,0.05) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="out"]  { border-left-color: var(--heat); background: linear-gradient(135deg, rgba(195,87,58,0.05) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="big"]  { border-left-color: var(--asm); background: linear-gradient(135deg, rgba(45,106,79,0.04) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="prod"] { border-left-color: var(--heat); background: linear-gradient(135deg, rgba(195,87,58,0.05) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="scale"]{ border-left-color: var(--asm); background: linear-gradient(135deg, rgba(45,106,79,0.05) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="mile"] { border-left-color: var(--gpu); background: linear-gradient(135deg, rgba(107,58,163,0.04) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="front"] { border-left-color: var(--copper); background: linear-gradient(135deg, rgba(179,90,31,0.06) 0%, var(--paper) 60%); }
+  .toc-group[data-phase="coda"] { border-left-color: var(--ink-mute); }
+
+  .toc-group-head {
+    display: flex; align-items: baseline; gap: 14px;
+    margin-bottom: 12px;
+    border-bottom: 1px dotted var(--rule);
+    padding-bottom: 10px;
+  }
+  .toc-group-head .tg-num {
+    font-family: var(--mono); font-size: 12px; font-weight: 700;
+    letter-spacing: 0.16em; color: var(--ink-mute); width: 32px;
+  }
+  .toc-group-head .tg-name {
+    font-family: var(--serif); font-size: 16px; font-weight: 700;
+    color: var(--ink); flex: 1;
+  }
+  body.lang-en .toc-group-head .tg-name { font-family: var(--serif-en); }
+  .toc-group-head .tg-en {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-mute);
+  }
+  .toc-group-head .tg-count {
+    font-family: var(--mono); font-size: 10px; color: var(--ink-mute);
+    background: var(--bg-soft); padding: 2px 8px; border-radius: 999px;
+  }
+
+  .toc-chips {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 5px;
+  }
+  .toc-chip {
+    display: flex; align-items: baseline; gap: 8px;
+    padding: 7px 10px; border-radius: 3px;
+    background: var(--paper-2); border: 1px solid var(--rule-soft);
+    text-decoration: none; color: var(--ink); transition: all .15s;
+  }
+  .toc-chip:hover { background: var(--bg-soft); border-color: var(--ink-mute); transform: translateX(2px); }
+  .toc-chip .tc-num {
+    font-family: var(--mono); font-size: 10px; font-weight: 700;
+    color: var(--ink-mute); min-width: 22px;
+  }
+  .toc-chip .tc-name {
+    flex: 1; font-family: var(--sans); font-size: 12.5px; font-weight: 600;
+    color: var(--ink); line-height: 1.3;
+  }
+  .toc-chip .tc-name .tc-en {
+    display: block; font-family: var(--mono); font-size: 9px;
+    color: var(--ink-mute); font-weight: 400; margin-top: 2px;
+    letter-spacing: 0.04em;
+  }
+  .toc-chip.tc-special { background: linear-gradient(135deg, rgba(31,92,140,0.06), var(--paper-2)); border-color: var(--accent-soft); }
+
+  /* chapters */
+  .chap { padding: 72px 0 56px; border-bottom: 1px solid var(--rule); }
+  .chap-num {
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--ink-mute); margin-bottom: 10px;
+  }
+  .chap-title {
+    font-family: var(--serif); font-size: 36px; font-weight: 600;
+    margin: 0 0 8px; line-height: 1.18; letter-spacing: -0.005em;
+  }
+  body.lang-en .chap-title { font-family: var(--serif-en); font-size: 34px; }
+  .chap-en {
+    font-family: var(--mono); font-size: 12px;
+    color: var(--ink-mute); letter-spacing: 0.04em; margin: 0 0 28px;
+  }
+
+  .chap p {
+    margin: 0 0 16px;
+    font-size: 16px; line-height: 1.9;
+    color: var(--ink-soft);
+  }
+  .chap p strong { color: var(--ink); font-weight: 700; }
+  .chap p em { font-style: italic; color: var(--ink); }
+  .chap p code, .chap li code, .chap td code, .chap th code {
+    font-family: var(--mono); font-size: 0.88em;
+    background: var(--bg-soft); padding: 1px 5px;
+    border-radius: 3px; color: var(--copper);
+  }
+  .chap .em { color: var(--accent); font-weight: 600; }
+  .chap .em-copper { color: var(--copper); font-weight: 600; }
+  .chap .em-gpu { color: var(--gpu); font-weight: 600; }
+  .chap .em-heat { color: var(--heat); font-weight: 600; }
+  .chap .em-asm { color: var(--asm); font-weight: 600; }
+
+  .chap ul, .chap ol {
+    margin: 0 0 18px; padding-left: 24px;
+    color: var(--ink-soft);
+  }
+  .chap li { margin-bottom: 6px; line-height: 1.85; }
+  .chap li strong { color: var(--ink); }
+
+  .sub {
+    font-family: var(--serif); font-size: 22px; font-weight: 700;
+    margin: 38px 0 14px; color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  body.lang-en .sub { font-family: var(--serif-en); }
+
+  /* source-code blocks (the "逐行源码" style) */
+  .src-stack {
+    background: var(--ink); color: #d8d8d8;
+    border-radius: 4px; padding: 18px 20px; margin: 18px 0;
+    font-family: var(--mono); font-size: 11.5px; line-height: 1.85;
+    overflow-x: auto;
+  }
+  .src-stack .src-h {
+    display: flex; justify-content: space-between;
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: #888d96; margin-bottom: 12px;
+    padding-bottom: 10px; border-bottom: 1px dashed #2a2d33;
+  }
+  .src-stack .src-h .src-tag { color: #fcd34d; }
+  .src-stack .src-h .src-path { color: #5fc18a; text-transform: none; letter-spacing: 0; font-size: 10.5px; }
+  .src-stack .src-line { display: block; }
+  .src-stack .src-comment { color: #5a6172; font-style: italic; }
+  .src-stack .src-kw { color: #b48cd6; }
+  .src-stack .src-fn { color: #fcd34d; }
+  .src-stack .src-cls { color: var(--accent-soft); }
+  .src-stack .src-arg { color: #5fc18a; }
+  .src-stack .src-str { color: #5fc18a; }
+  .src-stack .src-num { color: #d1855a; }
+  .src-stack .src-op { color: #b48cd6; }
+  .src-stack .src-type { color: #6ec3d1; }
+  .src-stack .src-hl { background: rgba(252,211,77,0.10); display: inline-block; padding: 0 2px; border-radius: 2px; }
+  .src-stack .src-ln { color: #4a4d52; display: inline-block; width: 32px; user-select: none; }
+
+  /* note boxes */
+  .note {
+    margin: 22px 0; padding: 14px 18px;
+    background: var(--paper);
+    border: 1px solid var(--rule); border-left: 3px solid var(--ink-mute);
+    border-radius: 0 4px 4px 0;
+    font-family: var(--sans); font-size: 13.5px; line-height: 1.7;
+    color: var(--ink-soft);
+  }
+  .note .ntag {
+    display: inline-block;
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute); font-weight: 700;
+    margin-right: 10px;
+  }
+  .note strong { color: var(--ink); }
+  .note.asm { border-left-color: var(--asm); }
+  .note.asm .ntag { color: var(--asm); }
+  .note.gpu { border-left-color: var(--gpu); }
+  .note.gpu .ntag { color: var(--gpu); }
+  .note.heat { border-left-color: var(--heat); }
+  .note.heat .ntag { color: var(--heat); }
+  .note.copper { border-left-color: var(--copper); }
+  .note.copper .ntag { color: var(--copper); }
+  .note.accent { border-left-color: var(--accent); }
+  .note.accent .ntag { color: var(--accent); }
+
+  /* figure */
+  figure {
+    margin: 26px 0;
+    border: 1px solid var(--rule);
+    background: var(--paper);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .figbox { padding: 20px; }
+  figcaption {
+    border-top: 1px dashed var(--rule);
+    padding: 10px 18px;
+    font-family: var(--sans); font-size: 12px;
+    color: var(--ink-mute); line-height: 1.6;
+    background: var(--paper-2);
+  }
+  figcaption .figid {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent); font-weight: 700; margin-right: 10px;
+  }
+
+  /* tables */
+  table.cmp {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 22px 0;
+    font-family: var(--sans); font-size: 13px;
+  }
+  table.cmp th, table.cmp td {
+    padding: 10px 12px; text-align: left;
+    border-bottom: 1px solid var(--rule-soft);
+    vertical-align: top;
+  }
+  table.cmp thead th {
+    background: var(--bg-soft);
+    font-family: var(--mono); font-size: 10.5px;
+    letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--ink-mute); font-weight: 700;
+    border-bottom: 1px solid var(--rule);
+  }
+  table.cmp td.good { color: var(--good); font-weight: 600; }
+  table.cmp td.bad { color: var(--heat); font-weight: 600; }
+  table.cmp td.heat { background: var(--heat-pale); color: var(--heat); font-weight: 600; }
+  table.cmp td code { font-family: var(--mono); font-size: 11px; background: var(--bg-soft); padding: 1px 5px; border-radius: 3px; color: var(--copper); }
+  table.cmp td.num { font-family: var(--mono); }
+
+  /* details (extended) */
+  details.extended {
+    margin: 22px 0;
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    background: var(--paper-2);
+  }
+  details.extended summary {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-family: var(--sans); font-size: 13.5px;
+    color: var(--ink); font-weight: 600;
+    list-style: none;
+    display: flex; align-items: center; gap: 12px;
+  }
+  details.extended summary::-webkit-details-marker { display: none; }
+  details.extended summary::before {
+    content: "▸"; color: var(--ink-mute);
+    transition: transform .2s;
+    font-size: 10px;
+  }
+  details.extended[open] summary::before { transform: rotate(90deg); }
+  details.extended summary .ext-tag {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--ink-mute); background: var(--bg-soft);
+    padding: 2px 8px; border-radius: 999px; font-weight: 700;
+  }
+  details.extended .ext-body { padding: 0 18px 16px; }
+  details.extended .ext-body p { font-size: 14.5px; }
+
+  /* tokenizer-vis */
+  .tok-vis { font-family: var(--mono); font-size: 13px; }
+  .tok-vis .tv-input-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px; background: var(--paper-2);
+    border: 1px solid var(--rule-soft); border-radius: 3px;
+    margin-bottom: 14px;
+  }
+  .tok-vis .tv-input {
+    flex: 1; padding: 6px 10px;
+    font: inherit; border: 1px solid var(--rule);
+    border-radius: 3px; background: var(--paper); color: var(--ink);
+  }
+  .tok-vis .tv-tokens {
+    display: flex; flex-wrap: wrap; gap: 3px;
+    padding: 16px; background: var(--paper); border-radius: 3px;
+    min-height: 40px;
+  }
+  .tok-vis .tv-token {
+    display: inline-flex; flex-direction: column; align-items: center;
+    padding: 6px 10px; border-radius: 3px;
+    background: var(--copper-pale);
+    border: 1px solid var(--copper-soft);
+    color: var(--ink);
+  }
+  .tok-vis .tv-token .tv-tok-str { font-size: 12px; font-weight: 700; color: var(--copper); }
+  .tok-vis .tv-token .tv-tok-id { font-size: 9.5px; color: var(--ink-mute); margin-top: 2px; }
+
+  /* kv-vis */
+  .kv-vis {
+    font-family: var(--mono);
+    background: var(--paper-2); border: 1px solid var(--rule-soft);
+    padding: 16px; border-radius: 3px;
+  }
+  .kv-grid {
+    display: grid;
+    grid-template-columns: repeat(16, 1fr);
+    gap: 2px;
+    margin: 12px 0;
+  }
+  .kv-cell {
+    aspect-ratio: 1;
+    background: var(--bg-soft);
+    border-radius: 1px;
+  }
+  .kv-cell.used { background: var(--asm); }
+  .kv-cell.cur { background: var(--heat); animation: pulse 1.4s infinite; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.55; }
+  }
+  .kv-axis {
+    display: flex; justify-content: space-between;
+    font-size: 9px; color: var(--ink-mute);
+    letter-spacing: 0.06em;
+    margin-top: 6px;
+  }
+  .kv-legend {
+    display: flex; gap: 16px; margin-top: 10px;
+    font-size: 11px; color: var(--ink-soft);
+  }
+  .kv-legend .kl { display: inline-flex; align-items: center; gap: 6px; }
+  .kv-legend .kl .ksw { width: 10px; height: 10px; border-radius: 2px; background: var(--asm); }
+  .kv-legend .kl.free .ksw { background: var(--bg-soft); border: 1px solid var(--rule); }
+  .kv-legend .kl.cur .ksw { background: var(--heat); }
+
+  /* moe-vis */
+  .moe-vis {
+    font-family: var(--mono);
+    background: var(--paper-2); border: 1px solid var(--rule-soft);
+    padding: 18px; border-radius: 3px;
+  }
+  .moe-experts {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 6px;
+    margin: 12px 0;
+  }
+  .moe-expert {
+    aspect-ratio: 1;
+    background: var(--bg-soft);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
+    color: var(--ink-mute);
+    transition: all .25s;
+  }
+  .moe-expert.active {
+    background: var(--gpu); border-color: var(--gpu); color: #fff;
+    transform: scale(1.08);
+    box-shadow: 0 4px 12px rgba(107,58,163,0.3);
+  }
+  .moe-expert .me-w {
+    display: block; font-size: 8px; font-weight: 400;
+    color: var(--ink-mute); margin-top: 2px;
+  }
+  .moe-expert.active .me-w { color: rgba(255,255,255,0.85); }
+  .moe-router {
+    text-align: center; padding: 8px 12px;
+    background: var(--paper); border: 1px solid var(--rule);
+    border-radius: 3px; font-size: 11px;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+  }
+
+  /* sampling-vis */
+  .smp-vis {
+    font-family: var(--mono);
+    background: var(--paper-2); border: 1px solid var(--rule-soft);
+    padding: 16px; border-radius: 3px;
+  }
+  .smp-bars { display: flex; flex-direction: column; gap: 4px; }
+  .smp-row { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
+  .smp-row .smp-tok { width: 90px; color: var(--copper); font-weight: 700; }
+  .smp-row .smp-bar {
+    height: 14px; background: var(--accent);
+    border-radius: 2px; flex: 0 0 auto;
+    min-width: 4px;
+    transition: width .3s, background .3s;
+  }
+  .smp-row.cut .smp-bar { background: var(--rule); opacity: 0.5; }
+  .smp-row.pick .smp-bar { background: var(--heat); }
+  .smp-row .smp-p { color: var(--ink-mute); font-size: 10px; }
+  .smp-ctrls {
+    display: flex; gap: 14px; flex-wrap: wrap;
+    padding: 10px 12px; background: var(--paper);
+    border: 1px solid var(--rule); border-radius: 3px;
+    margin-bottom: 14px;
+    font-size: 11px;
+  }
+  .smp-ctrls label { display: inline-flex; align-items: center; gap: 6px; color: var(--ink-soft); }
+  .smp-ctrls input[type="range"] { width: 90px; }
+  .smp-ctrls .smp-val { color: var(--accent); font-weight: 700; min-width: 32px; }
+
+  /* hot-bench bar */
+  .hot-bar {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--heat);
+    border-radius: 0 4px 4px 0;
+    padding: 14px 18px; margin: 22px 0;
+  }
+  .hot-bar .hb-tag {
+    font-family: var(--mono); font-size: 9.5px;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--heat); font-weight: 700;
+    margin-bottom: 8px;
+  }
+  .hot-bar table { width: 100%; font-family: var(--mono); font-size: 12px; }
+  .hot-bar td { padding: 3px 8px 3px 0; color: var(--ink-soft); }
+  .hot-bar td:first-child { color: var(--ink); font-weight: 600; min-width: 140px; }
+  .hot-bar td.num { color: var(--accent); font-weight: 700; }
+  .hot-bar td.bad { color: var(--heat); font-weight: 700; }
+
+  /* footer */
+  .footer {
+    padding: 60px 0 100px;
+    font-family: var(--sans); font-size: 13px;
+    color: var(--ink-mute); line-height: 1.7;
+  }
+  .footer .ft-rule {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 20px;
+  }
+  .footer .ft-rule::before, .footer .ft-rule::after {
+    content: ""; flex: 1; height: 1px; background: var(--rule);
+  }
+  .footer .ft-rule .ft-mark {
+    font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.22em; color: var(--ink-mute);
+  }
+  .footer p { margin: 0 0 10px; }
+  .footer a { color: var(--accent); text-decoration: none; border-bottom: 1px solid var(--rule); }
+  .footer a:hover { color: var(--ink); }
+  .footer .ft-links {
+    display: flex; gap: 18px; flex-wrap: wrap;
+    margin-top: 16px;
+    font-family: var(--mono); font-size: 11.5px;
+  }
+
+  @media (max-width: 720px) {
+    .container { padding: 0 20px; }
+    .hero { padding: 90px 0 60px; }
+    .hero h1 { font-size: 44px; }
+    body.lang-en .hero h1 { font-size: 42px; }
+    .hero .subtitle { font-size: 12px; }
+    .chap-title { font-size: 28px; }
+    body.lang-en .chap-title { font-size: 26px; }
+    .perf-bar .pb-track { grid-template-columns: repeat(9, 1fr); grid-auto-rows: 28px; height: auto; }
+    .kv-grid { grid-template-columns: repeat(8, 1fr); }
+    .moe-experts { grid-template-columns: repeat(4, 1fr); }
+    .lang-toggle, .ursb-backlink { top: 16px; }
+    .ursb-backlink { left: 16px; padding: 5px 12px 5px 10px; font-size: 11px; }
+    .lang-toggle { right: 16px; font-size: 11px; }
+  }
+</style>
+<script async defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script>
+<style>
+.ursb-interactive { background: var(--bg-soft); border-top: 1px solid var(--rule); padding: 24px 24px 80px; position: relative; z-index: 2; }
+.ursb-interactive .ursb-fbody { max-width: 720px; margin: 0 auto; }
+.ui-divider { text-align: center; margin: 28px 0 28px; position: relative; }
+.ui-divider::before { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--rule); }
+.ui-divider-mark { position: relative; background: var(--bg-soft); padding: 0 18px; color: var(--accent); font-size: 14px; letter-spacing: 0.2em; }
+.ui-stats-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 36px 0 56px; flex-wrap: wrap; }
+.ui-like, .ui-share, .ui-views {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 18px; border-radius: 999px;
+  background: transparent; border: 1px solid var(--rule);
+  font-family: var(--sans); font-size: 12.5px; font-weight: 500; color: var(--ink-mute); line-height: 1;
+  transition: all 0.18s ease;
+}
+.ui-like, .ui-share { cursor: pointer; }
+.ui-like:hover, .ui-share:hover { border-color: var(--accent-soft); color: var(--accent); background: rgba(31,92,140,0.04); }
+.ui-like:disabled, .ui-share:disabled, .ui-comment-form button:disabled { opacity: 0.55; cursor: wait; }
+.ui-like.liked { border-color: var(--accent); background: rgba(31,92,140,0.08); color: var(--accent); }
+.ui-like.liked svg { fill: var(--accent); stroke: var(--accent); }
+.ui-like.liked .ui-count { color: var(--accent); }
+.ui-views { cursor: default; color: var(--ink-mute); }
+.ui-views:hover { background: transparent; border-color: var(--rule); color: var(--ink-mute); }
+.ui-online {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 18px; border-radius: 999px;
+  background: rgba(34,197,94,0.06); border: 1px solid rgba(34,197,94,0.28);
+  font-family: var(--sans); font-size: 12.5px; font-weight: 500; color: #15803d; line-height: 1;
+  cursor: default; opacity: 0; transition: opacity 0.4s;
+}
+.ui-online.loaded { opacity: 1; }
+.ui-online .ui-count { color: #15803d; }
+.ui-online-dot {
+  display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+  background: #22c55e; box-shadow: 0 0 0 0 rgba(34,197,94,0.55);
+  animation: ui-online-pulse 2s ease-in-out infinite;
+}
+@keyframes ui-online-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.55); }
+  70%  { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+  100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+}
+.ui-count { font-family: var(--serif); font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; font-size: 13.5px; }
+.ui-count-small { font-family: var(--mono); font-size: 12px; color: var(--ink-mute); font-weight: 400; margin-left: 8px; }
+.ui-section-title { font-family: var(--serif); font-size: 20px; font-weight: 700; color: var(--ink); margin: 36px 0 14px; }
+.ui-comment-form { background: var(--paper); border: 1px solid var(--rule); border-radius: 6px; padding: 20px; margin-bottom: 32px; }
+.ui-form-row { display: grid; grid-template-columns: 1fr 1.5fr; gap: 10px; margin-bottom: 10px; }
+.ui-form-row input, .ui-comment-form textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 4px;
+  font-size: 14px; font-family: var(--sans); color: var(--ink);
+  box-sizing: border-box; background: #fefcf6;
+}
+.ui-comment-form textarea { resize: vertical; min-height: 84px; line-height: 1.55; }
+.ui-form-row input:focus, .ui-comment-form textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(31,92,140,0.10); }
+.ui-form-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; gap: 12px; }
+.ui-form-status { font-size: 12px; color: var(--ink-mute); flex: 1; }
+.ui-form-status.error { color: var(--copper); }
+.ui-form-status.success { color: var(--good); font-weight: 600; }
+.ui-comment-form button[type="submit"] {
+  background: var(--ink); color: var(--paper); border: none; padding: 10px 22px; border-radius: 999px;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; font-family: var(--sans);
+}
+.ui-comment-form button[type="submit"]:hover { background: var(--accent); }
+.ui-comment-loading, .ui-comment-empty { text-align: center; color: var(--ink-mute); padding: 36px 0; font-family: var(--serif); font-style: italic; font-size: 14px; }
+.ui-comment { padding: 18px 0; border-bottom: 1px solid var(--rule); }
+.ui-comment:last-child { border-bottom: none; }
+.ui-comment-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; font-size: 13px; }
+.ui-comment-name { font-weight: 700; color: var(--ink); }
+.ui-comment-date { color: var(--ink-mute); font-family: var(--serif); font-size: 12px; }
+.ui-comment-body { color: var(--ink-soft); line-height: 1.65; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; }
+@media (max-width: 768px) {
+  .ui-form-row { grid-template-columns: 1fr; }
+  .ui-stats-row { gap: 8px; }
+  .ui-like, .ui-share { padding: 8px 14px; font-size: 12px; }
+}
+  body:not(.lang-en) .ursb-fbody [lang="en"] { display: none !important; }
+  body.lang-en .ursb-fbody [lang="zh"] { display: none !important; }
+</style>
+
+</head>
+<body>
+
+<a class="ursb-backlink" href="https://ursb.me/">← ursb.me</a>
+<div class="lang-toggle" role="navigation" aria-label="language">
+  <button id="lang-zh" class="active" aria-pressed="true">中</button>
+  <span class="sep">/</span>
+  <button id="lang-en" aria-pressed="false">EN<
+<nav class="toc-side" aria-label="Table of contents">
+  <div class="toc-label lang-zh-only">目录</div>
+  <div class="toc-label lang-en-only">Contents</div>
+  <ol>
+    <li class="ts-divider"><span class="lang-zh-only">I · 骨骼</span><span class="lang-en-only">I · Skeleton</span></li>
+    <li data-section="c1"><a href="#c1"><span class="toc-num">01</span><span class="lang-zh-only">两个公式</span><span class="lang-en-only">Two formulas</span></a></li>
+    <li data-section="c2"><a href="#c2"><span class="toc-num">02</span><span class="lang-zh-only">四层进程</span><span class="lang-en-only">Four layers</span></a></li>
+    <li data-section="c3"><a href="#c3"><span class="toc-num">03</span><span class="lang-zh-only">Agent 数据模型</span><span class="lang-en-only">Agent data model</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">II · 单 Agent 回合</span><span class="lang-en-only">II · Single-agent turn</span></li>
+    <li data-section="c4"><a href="#c4"><span class="toc-num">04</span><span class="lang-zh-only">Turn 执行链</span><span class="lang-en-only">Turn execution</span></a></li>
+    <li data-section="c5"><a href="#c5"><span class="toc-num">05</span><span class="lang-zh-only">AnysphereAgent</span><span class="lang-en-only">AnysphereAgent</span></a></li>
+    <li data-section="c6"><a href="#c6"><span class="toc-num">06</span><span class="lang-zh-only">工具与 MCP</span><span class="lang-en-only">Tools & MCP</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">III · 多 Agent</span><span class="lang-en-only">III · Multi-agent</span></li>
+    <li data-section="c7"><a href="#c7"><span class="toc-num">07</span><span class="lang-zh-only">Task 子 Agent</span><span class="lang-en-only">Task subagents</span></a></li>
+    <li data-section="c8"><a href="#c8"><span class="toc-num">08</span><span class="lang-zh-only">子 Agent 类型谱</span><span class="lang-en-only">Subagent catalog</span></a></li>
+    <li data-section="c9"><a href="#c9"><span class="toc-num">09</span><span class="lang-zh-only">Multitask Executor</span><span class="lang-en-only">Multitask executor</span></a></li>
+    <li data-section="c10"><a href="#c10"><span class="toc-num">10</span><span class="lang-zh-only">后台与唤醒</span><span class="lang-en-only">Background & wake</span></a></li>
+    <li data-section="c11"><a href="#c11"><span class="toc-num">11</span><span class="lang-zh-only">Cloud Agent</span><span class="lang-en-only">Cloud agents</span></a></li>
+    <li data-section="c12"><a href="#c12"><span class="toc-num">12</span><span class="lang-zh-only">Group Room</span><span class="lang-en-only">Group rooms</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">IV · 记忆与同步</span><span class="lang-en-only">IV · Memory & sync</span></li>
+    <li data-section="c13"><a href="#c13"><span class="toc-num">13</span><span class="lang-zh-only">Summarization</span><span class="lang-en-only">Summarization</span></a></li>
+    <li data-section="c14"><a href="#c14"><span class="toc-num">14</span><span class="lang-zh-only">Agent Store Sync</span><span class="lang-en-only">Store sync</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">V · 全景</span><span class="lang-en-only">V · Panorama</span></li>
+    <li data-section="c15"><a href="#c15"><span class="toc-num">15</span><span class="lang-zh-only">Inference Router</span><span class="lang-en-only">Inference router</span></a></li>
+    <li data-section="c16"><a href="#c16"><span class="toc-num">16</span><span class="lang-zh-only">一条消息的 16 站</span><span class="lang-en-only">16 stations</span></a></li>
+  </ol>
+</nav>
+i>
+  </ol>
+</nav>
+
+
+<div class="container">
+
+  <header class="hero">
+    <div class="meta">
+      <span>FIELD&nbsp;NOTE&nbsp;/&nbsp;15</span>
+      <span class="lang-zh-only">Agent 系统工程</span>
+      <span class="lang-en-only">Agent Systems</span>
+      <span>2026</span>
+    </div>
+    <h1 class="lang-zh-only">一条<span class="copper">消息</span>的<span class="accent">一生</span> —<br>Grok Bot <span class="gpu">Agent</span> 全景。</h1>
+    <h1 class="lang-en-only">The <span class="copper">life</span> of one <span class="accent">message</span> —<br>Grok Bot <span class="gpu">agents</span> unpacked.</h1>
+    <p class="subtitle lang-zh-only">renderer <span class="arr">→</span> coordinator <span class="arr">→</span> host <span class="arr">→</span> box-exec <span class="arr">→</span> Task subagent <span class="arr">→</span> blob checkpoint</p>
+    <p class="subtitle lang-en-only">renderer <span class="arr">→</span> coordinator <span class="arr">→</span> host <span class="arr">→</span> box-exec <span class="arr">→</span> Task subagent <span class="arr">→</span> blob checkpoint</p>
+    <p class="deck lang-zh-only">基于 <a href="https://github.com/b-nnett/grok-bot-0.18-reconstructed" style="color:var(--accent);border-bottom:1px solid var(--rule)">grok-bot-0.18-reconstructed</a> 源码，拆解 Grok Bot（Sand）桌面 Agent 的进程边界、状态机、子 Agent 协作与记忆压缩——16 章，每章对应真实 TypeScript / Protobuf 路径。</p>
+    <p class="deck lang-en-only">From the <a href="https://github.com/b-nnett/grok-bot-0.18-reconstructed" style="color:var(--accent);border-bottom:1px solid var(--rule)">grok-bot-0.18-reconstructed</a> sources: process boundaries, state machines, subagent collaboration, and memory compaction in Grok Bot (Sand) — 16 chapters, each tied to real TypeScript / Protobuf paths.</p>
+    <div class="byline">
+      <span><span class="label">AUTHOR</span><a class="value" href="https://ursb.me" target="_blank" rel="noopener">Airing</a></span>
+      <span><span class="label">SOURCE</span><span class="value">Grok Bot 0.18 · reconstructed</span></span>
+      <span><span class="label">FORMAT</span><span class="value">Long Read</span></span>
+    </div>
+
+    <aside class="hero-notice">
+      <div class="hn-tag"><span class="lang-zh-only">阅读前提</span><span class="lang-en-only">Before you read</span></div>
+      <p class="hn-body lang-zh-only">这不是「怎么用 Grok Bot」的使用手册。仓库是社区对 <strong>0.18.0 macOS 发行版</strong>的逆向重建（非官方 monorepo），但 <code>source/</code> 下的 TypeScript 足够读懂 Agent 架构。本文聚焦 <em>Agent 运行时</em>与 <em>多 Agent 协作</em>，UI 仍沿用 shipped renderer，大脑在 <code>host/</code> + <code>packages/agent*</code>。</p>
+      <p class="hn-body lang-en-only">This is not a "how to use Grok Bot" manual. The repo is a community reconstruction of the <strong>0.18.0 macOS release</strong> (not the official monorepo), but <code>source/</code> TypeScript is enough to read the agent architecture. Focus: <em>agent runtime</em> and <em>multi-agent collaboration</em>. UI stays on the shipped renderer; the brain lives in <code>host/</code> + <code>packages/agent*</code>.</p>
+    </aside>
+
+    <aside class="tldr">
+      <div class="tldr-tag"><span class="lang-zh-only">主线 · 4 句话</span><span class="lang-en-only">Through-line · 4 sentences</span></div>
+      <div class="tldr-steps">
+        <div class="tldr-step"><div class="tldr-step-n">01</div><div class="tldr-step-name lang-zh-only">四层壳</div><div class="tldr-step-name lang-en-only">Four shells</div><div class="tldr-step-hint">main · coordinator · host · box-exec</div></div>
+        <div class="tldr-step"><div class="tldr-step-n">02</div><div class="tldr-step-name lang-zh-only">Blob 状态</div><div class="tldr-step-name lang-en-only">Blob state</div><div class="tldr-step-hint">ConversationStateStructure</div></div>
+        <div class="tldr-step"><div class="tldr-step-n">03</div><div class="tldr-step-name lang-zh-only">Task 分叉</div><div class="tldr-step-name lang-en-only">Task fork</div><div class="tldr-step-hint">subagent tree + lineage</div></div>
+        <div class="tldr-step"><div class="tldr-step-n">04</div><div class="tldr-step-name lang-zh-only">压缩记忆</div><div class="tldr-step-name lang-en-only">Compact memory</div><div class="tldr-step-hint">SummarizationOrchestrator</div></div>
+      </div>
+    </aside>
+
+    <div class="perf-bar">
+      <div class="pb-title"><span class="lang-zh-only">一条用户消息 · 16 个站</span><span class="lang-en-only">One user message · 16 stations</span><span class="pb-pulse">▸ trace</span></div>
+      <div class="pb-track" id="pbTrack" style="grid-template-columns:repeat(16,1fr)">
+        <div class="pb-cell p1" data-n="1" title="sendPrompt"></div>
+        <div class="pb-cell p1" data-n="2" title="coordinator"></div>
+        <div class="pb-cell p2" data-n="3" title="gateway SSE"></div>
+        <div class="pb-cell p2" data-n="4" title="turn-execution"></div>
+        <div class="pb-cell p2" data-n="5" title="SandAgentRunner"></div>
+        <div class="pb-cell p3" data-n="6" title="restore state"></div>
+        <div class="pb-cell p3" data-n="7" title="summarize?"></div>
+        <div class="pb-cell p3" data-n="8" title="prompt assembly"></div>
+        <div class="pb-cell p4" data-n="9" title="tool loop"></div>
+        <div class="pb-cell p4" data-n="10" title="box-exec"></div>
+        <div class="pb-cell p5" data-n="11" title="Task spawn"></div>
+        <div class="pb-cell p5" data-n="12" title="subagent run"></div>
+        <div class="pb-cell p6" data-n="13" title="interaction delta"></div>
+        <div class="pb-cell p6" data-n="14" title="checkpoint"></div>
+        <div class="pb-cell p7" data-n="15" title="transcript SSE"></div>
+        <div class="pb-cell pc" data-n="16" title="renderer"></div>
+      </div>
+      <div class="pb-axis"><span>user</span><span></span><span>host</span><span></span><span>subagent</span><span></span><span>UI</span></div>
+    </div>
+  </header>
+
+  <nav class="toc-v2" aria-label="Contents">
+    <div class="tv-head">
+      <div class="tv-label lang-zh-only">CONTENTS · 目录</div>
+      <div class="tv-label lang-en-only">CONTENTS</div>
+      <div class="tv-meta"><span class="tv-now">16</span> <span class="lang-zh-only">章</span><span class="lang-en-only">chapters</span></div>
+    </div>
+    <div class="toc-group" data-phase="bg">
+      <div class="toc-group-head"><div class="tg-num">I</div><div class="tg-name lang-zh-only">骨骼 · 数据</div><div class="tg-name lang-en-only">Skeleton · data</div><div class="tg-count">3</div></div>
+      <div class="toc-chips">
+        <a href="#c1" class="toc-chip"><span class="tc-num">01</span><div class="tc-name"><span class="lang-zh-only">两个公式</span><span class="tc-en">two formulas</span></div></a>
+        <a href="#c2" class="toc-chip"><span class="tc-num">02</span><div class="tc-name"><span class="lang-zh-only">四层进程</span><span class="tc-en">four layers</span></div></a>
+        <a href="#c3" class="toc-chip tc-special"><span class="tc-num">03</span><div class="tc-name"><span class="lang-zh-only">Agent 数据模型</span><span class="tc-en">agent data model</span></div></a>
+      </div>
+    </div>
+    <div class="toc-group" data-phase="att">
+      <div class="toc-group-head"><div class="tg-num">II</div><div class="tg-name lang-zh-only">单 Agent 回合</div><div class="tg-name lang-en-only">Single-agent turn</div><div class="tg-count">3</div></div>
+      <div class="toc-chips">
+        <a href="#c4" class="toc-chip"><span class="tc-num">04</span><div class="tc-name"><span class="lang-zh-only">Turn 执行链</span></div></a>
+        <a href="#c5" class="toc-chip tc-special"><span class="tc-num">05</span><div class="tc-name"><span class="lang-zh-only">AnysphereAgent</span></div></a>
+        <a href="#c6" class="toc-chip"><span class="tc-num">06</span><div class="tc-name"><span class="lang-zh-only">工具与 MCP</span></div></a>
+      </div>
+    </div>
+    <div class="toc-group" data-phase="var">
+      <div class="toc-group-head"><div class="tg-num">III</div><div class="tg-name lang-zh-only">多 Agent 协作</div><div class="tg-name lang-en-only">Multi-agent</div><div class="tg-count">6</div></div>
+      <div class="toc-chips">
+        <a href="#c7" class="toc-chip tc-special"><span class="tc-num">07</span><div class="tc-name"><span class="lang-zh-only">Task 子 Agent</span></div></a>
+        <a href="#c8" class="toc-chip"><span class="tc-num">08</span><div class="tc-name"><span class="lang-zh-only">子 Agent 类型谱</span></div></a>
+        <a href="#c9" class="toc-chip tc-special"><span class="tc-num">09</span><div class="tc-name"><span class="lang-zh-only">Multitask Executor</span></div></a>
+        <a href="#c10" class="toc-chip"><span class="tc-num">10</span><div class="tc-name"><span class="lang-zh-only">后台与唤醒</span></div></a>
+        <a href="#c11" class="toc-chip"><span class="tc-num">11</span><div class="tc-name"><span class="lang-zh-only">Cloud Agent</span></div></a>
+        <a href="#c12" class="toc-chip"><span class="tc-num">12</span><div class="tc-name"><span class="lang-zh-only">Group Room</span></div></a>
+      </div>
+    </div>
+    <div class="toc-group" data-phase="out">
+      <div class="toc-group-head"><div class="tg-num">IV–V</div><div class="tg-name lang-zh-only">记忆 · 路由 · 全景</div><div class="tg-count">4</div></div>
+      <div class="toc-chips">
+        <a href="#c13" class="toc-chip"><span class="tc-num">13</span><div class="tc-name"><span class="lang-zh-only">Summarization</span></div></a>
+        <a href="#c14" class="toc-chip"><span class="tc-num">14</span><div class="tc-name"><span class="lang-zh-only">Agent Store Sync</span></div></a>
+        <a href="#c15" class="toc-chip"><span class="tc-num">15</span><div class="tc-name"><span class="lang-zh-only">Inference Router</span></div></a>
+        <a href="#c16" class="toc-chip tc-special"><span class="tc-num">16</span><div class="tc-name"><span class="lang-zh-only">16 站全链路</span></div></a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- CHAPTER 01 -->
+  <section class="chap" id="c1">
+    <div class="chap-num">CHAPTER&nbsp;01</div>
+    <h2 class="chap-title lang-zh-only">两个公式 — Agent 系统到底是什么</h2>
+    <h2 class="chap-title lang-en-only">Two formulas — what is an agent system, really?</h2>
+    <p class="chap-en lang-zh-only">两个公式，一具骨骼</p>
+    <p class="chap-en lang-en-only">two formulas, one anatomy</p>
+
+    <div class="lang-zh-only">
+      <p>用户在 Grok Bot 里看到的是「一个会写代码、会搜网页、会开终端的聊天窗口」。但把 Electron 外壳掀开，你看到的不是「一个大模型」，而是<strong>一组可替换的进程 + 一套内容寻址的状态机 + 一棵树状的子 Agent 协作图</strong>。</p>
+      <p>在读任何具体文件之前，先记住两个公式——它们是后面 15 章的骨骼。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>In Grok Bot the user sees one chat window that codes, browses, and runs shells. Peel the Electron shell and you don't find "one big model" — you find <strong>replaceable processes + a content-addressed state machine + a tree of collaborating subagents</strong>.</p>
+      <p>Before any file path, fix two formulas in your head — the skeleton for the next 15 chapters.</p>
+    </div>
+
+    <figure>
+      <div class="figbox">
+        <table class="cmp">
+          <thead><tr><th></th><th><span class="lang-zh-only">公式</span><span class="lang-en-only">Formula</span></th><th><span class="lang-zh-only">含义</span><span class="lang-en-only">Meaning</span></th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="num">1</td>
+              <td><code>Agent Runtime = Host + BoxExec + BlobKV + Inference</code></td>
+              <td class="lang-zh-only">大脑在 <code>host/</code>（<code>AnysphereAgent</code>），手脚在 <code>box-exec-daemon</code>，记忆在 <code>agent-kv</code>，思考走 Cursor backend 或 inference router</td>
+              <td class="lang-en-only">Brain in <code>host/</code> (<code>AnysphereAgent</code>), hands in <code>box-exec-daemon</code>, memory in <code>agent-kv</code>, thinking via Cursor backend or inference router</td>
+            </tr>
+            <tr>
+              <td class="num">2</td>
+              <td><code>Multi-Agent = Parent Turn + Task(subagent_type) + Persisted Subtree</code></td>
+              <td class="lang-zh-only">父 Agent 用 <code>Task</code> 工具分叉；子状态挂在父 <code>ConversationStateStructure.subagentStates</code>；完成时 <code>BackgroundSubagentAction</code> 唤醒父 Agent</td>
+              <td class="lang-en-only">Parent forks via <code>Task</code> tool; child state hangs off parent <code>ConversationStateStructure.subagentStates</code>; completion uses <code>BackgroundSubagentAction</code> to wake parent</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption><span class="figid">FIG. 01</span><span class="lang-zh-only">Grok Bot 的 Agent 不是「一个 prompt 循环」，而是<strong>带持久化 DAG 的分布式运行时</strong>。</span><span class="lang-en-only lang-en-only">Grok Bot's agent is not "one prompt loop" but a <strong>persistent DAG runtime</strong>.</span></figcaption>
+    </figure>
+
+    <div class="note copper">
+      <span class="ntag">Field Note</span>
+      <span class="lang-zh-only">仓库 <code>b-nnett/grok-bot-0.18-reconstructed</code> 是社区对 0.18.0 发行版的可读重建，模块名可能与 Anysphere 内部 monorepo 不同，但边界（coordinator / host / agent-kv）与 shipped 行为一致。</span>
+      <span class="lang-en-only">Repo <code>b-nnett/grok-bot-0.18-reconstructed</code> is a readable rebuild of 0.18.0; names may differ from Anysphere's monorepo, but boundaries match shipped behavior.</span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 02 -->
+  <section class="chap" id="c2">
+    <div class="chap-num">CHAPTER&nbsp;02</div>
+    <h2 class="chap-title lang-zh-only">四层进程 — 从 Renderer 到 Box</h2>
+    <h2 class="chap-title lang-en-only">Four layers — renderer to box</h2>
+    <p class="chap-en">renderer → coordinator → host → box-exec-daemon</p>
+
+    <div class="lang-zh-only">
+      <p>README 里的架构图只有五行。展开来看，每一层都有明确的<strong>不信任边界</strong>：</p>
+      <ol>
+        <li><strong>Renderer + preload</strong>（<code>electron-preload/</code>）：UI 只能通过 <code>COORDINATOR_METHOD_TABLE</code> 调用 <code>sendPrompt</code>、<code>getSubagents</code> 等 RPC，不能直接碰 host。</li>
+        <li><strong>electron-main</strong>：拥有窗口、密钥、MCP 桌面运行时；spawn <code>node-agent-coordinator</code> 子进程；通过 carrier 把 bootstrap 凭证交给 coordinator。</li>
+        <li><strong>node-agent-coordinator</strong>：SSE 网关客户端 + inference router + MCP OAuth 转发。非 Cursor provider 时，<em>不</em>走远程 host 的 <code>AnysphereAgent</code>，而是在本地模拟 transcript 事件形状。</li>
+        <li><strong>host (sand-host)</strong>：扩展图（turn-execution、inference、transcript…）+ <code>SandAgentRunner</code> + <code>AnysphereAgent</code>。真正执行 tool loop 的地方。</li>
+        <li><strong>box-exec-daemon</strong>：ConnectRPC <code>ExecService</code> / <code>ControlService</code>，在沙箱 VM 里跑 shell、读文件、加载 MCP server。</li>
+      </ol>
+    </div>
+    <div class="lang-en-only">
+      <p>The README diagram is five lines. Each layer is a <strong>trust boundary</strong>:</p>
+      <ol>
+        <li><strong>Renderer + preload</strong>: UI only calls coordinator RPCs like <code>sendPrompt</code>, never talks to host directly.</li>
+        <li><strong>electron-main</strong>: owns windows, secrets, MCP desktop runtime; spawns coordinator child.</li>
+        <li><strong>node-agent-coordinator</strong>: gateway SSE + inference router; non-Cursor providers fake transcript events locally.</li>
+        <li><strong>host</strong>: extension graph + <code>SandAgentRunner</code> + <code>AnysphereAgent</code> — the real tool loop.</li>
+        <li><strong>box-exec-daemon</strong>: sandboxed shell/file/MCP via ConnectRPC.</li>
+      </ol>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/node-agent-coordinator/main.ts · composeCoordinator()</span><span class="src-tag">hub</span></div>
+<span class="src-line"><span class="src-comment">// 1. carrier bootstrap · 2. control port → electron-main</span></span>
+<span class="src-line"><span class="src-comment">// 3. CoordinatorGatewayClient (SSE + HTTP)</span></span>
+<span class="src-line"><span class="src-comment">// 4. renderer port server · 5. local-exec supervisor</span></span>
+<span class="src-line"><span class="src-comment">// 6. inference router · 7. MCP OAuth + client-side-tool-v2 relay</span></span>
+    </div>
+
+    <h3 class="sub lang-zh-only">设计取舍：Coordinator 是传输适配器，不是第二大脑</h3>
+    <h3 class="sub lang-en-only">Tradeoff: coordinator is transport, not a second brain</h3>
+    <p class="lang-zh-only">Renderer 永远不直连 host。多一跳延迟，换来：统一鉴权、防火墙友好、以及把 Claude/Codex/OpenRouter 路由在桌面侧完成而不改 UI。</p>
+    <p class="lang-en-only">Renderer never talks to host directly. Extra hop buys unified auth, firewalling, and desktop-side routing for alternate providers without UI changes.</p>
+  </section>
+
+  <!-- CHAPTER 03 -->
+  <section class="chap" id="c3">
+    <div class="chap-num">CHAPTER&nbsp;03</div>
+    <h2 class="chap-title lang-zh-only">Agent 数据模型 — Metadata、Protobuf 与 Blob</h2>
+    <h2 class="chap-title lang-en-only">Agent data model — metadata, protobuf, blobs</h2>
+    <p class="chap-en">AgentMetadata · ConversationStateStructure · content-addressed KV</p>
+
+    <div class="lang-zh-only">
+      <p>「一个 Agent」在代码里是<strong>两层结构</strong>：</p>
+      <ul>
+        <li><strong>AgentMetadata</strong>（<code>packages/agent-kv/agent-store.ts</code>）：<code>agentId</code>、<code>name</code>、<code>mode</code>（default/plan/debug/search）、<code>latestRootBlobId</code>、可选 <code>subagentInfo</code>（若此 Agent 本身是子 Agent）。</li>
+        <li><strong>ConversationStateStructure</strong>（<code>proto/agent/v1/agent_pb.ts</code>）：真正的对话状态——<code>turns[]</code>、<code>todos[]</code>、<code>summary</code>、<code>subagentStates{}</code>、<code>subagentStateRefs{}</code>、<code>fileStatesV2</code>、<code>tokenDetails</code> 等。</li>
+      </ul>
+      <p>Checkpoint 时，整棵状态树序列化成 protobuf blob，按<strong>内容哈希</strong>存入 BlobStore；<code>latestRootBlobId</code> 指向最新根。这是 Git 式不可变历史——resume、分支、同步都建立在 blob 图上。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>One agent is <strong>two layers</strong>:</p>
+      <ul>
+        <li><strong>AgentMetadata</strong>: id, name, mode, <code>latestRootBlobId</code>, optional <code>subagentInfo</code> if this agent is a child.</li>
+        <li><strong>ConversationStateStructure</strong>: turns, todos, summary, subagent maps, file states, token details.</li>
+      </ul>
+      <p>Checkpoints serialize to content-addressed protobuf blobs — Git-like immutable history for resume and sync.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/packages/agent-kv/agent-store.ts</span><span class="src-tag">types</span></div>
+<span class="src-line"><span class="src-kw">export interface</span> <span class="src-type">AgentSubagentInfo</span> {</span>
+<span class="src-line">  <span class="src-arg">parentAgentId</span>: <span class="src-type">string</span>;</span>
+<span class="src-line">  <span class="src-arg">rootParentAgentId</span>: <span class="src-type">string</span>;</span>
+<span class="src-line">  <span class="src-arg">toolCallId</span>: <span class="src-type">string</span>;</span>
+<span class="src-line">  <span class="src-arg">typeName</span>: <span class="src-type">string</span>;</span>
+<span class="src-line">}</span>
+    </div>
+
+    <h3 class="sub lang-zh-only">子 Agent 状态：inline vs ref</h3>
+    <h3 class="sub lang-en-only">Subagent state: inline vs ref</h3>
+    <p class="lang-zh-only"><code>subagentStates{}</code> 存小状态；大的进 <code>subagentStateRefs{}</code>（blob id）。恢复时 <code>resolveSubagentPersistedStates()</code> 并发拉取（最多 8 路），缺 blob 且无 inline 则 <code>BlobNotFoundError</code>。</p>
+    <p class="lang-en-only">Small states stay in <code>subagentStates{}</code>; large ones use <code>subagentStateRefs{}</code>. <code>resolveSubagentPersistedStates()</code> loads up to 8 concurrent blob fetches.</p>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/packages/agent-kv/subagent-states.ts</span><span class="src-tag">resolve</span></div>
+<span class="src-line"><span class="src-kw">const</span> SUBAGENT_STATE_BLOB_FETCH_CONCURRENCY = <span class="src-num">8</span>;</span>
+<span class="src-line"><span class="src-comment">// merge inline + blob refs → Record&lt;subagentId, SubagentPersistedState&gt;</span></span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 04 -->
+  <section class="chap" id="c4">
+    <div class="chap-num">CHAPTER&nbsp;04</div>
+    <h2 class="chap-title lang-zh-only">Turn 执行链 — 从 sendPrompt 到 settle</h2>
+    <h2 class="chap-title lang-en-only">Turn execution — sendPrompt to settle</h2>
+    <p class="chap-en">TurnExecutionRegistry · SandAgentRunner · createTurnSettle</p>
+
+    <div class="lang-zh-only">
+      <p>一次用户消息不是「调一次 completion API」。在 host 里是一条<strong>受控流水线</strong>：</p>
+      <ol>
+        <li>Gateway <code>sendPrompt</code> → transcript send-pipeline 追加用户条目</li>
+        <li><code>turn-execution.createRunner(session, hooks)</code> — 必须通过已 bind 的 <code>TurnExecutionRegistry</code>（双 bind 直接抛错，防止两个 runner 抢同一 session）</li>
+        <li><code>SandAgentRunner.run()</code> → <code>createTurnAgentRunContext()</code>（推理 session、summarization session、shell-watch）</li>
+        <li><code>AnysphereAgent.runStream()</code> — 最多 ~1000 步 tool loop</li>
+        <li><code>createTurnSettle().onTurnCompleted()</code> — checkpoint + transcript 两阶段提交 + post-turn memory</li>
+      </ol>
+    </div>
+    <div class="lang-en-only">
+      <p>A user message is a <strong>controlled pipeline</strong> in host: send-pipeline → turn-execution registry (fail-closed double-bind) → SandAgentRunner → AnysphereAgent (~1000 tool steps) → turn settle checkpoint.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/host/extensions/turn-execution/turn-execution-service.ts</span><span class="src-tag">guard</span></div>
+<span class="src-line"><span class="src-kw">export const</span> DOUBLE_BIND_MESSAGE = <span class="src-str">"Sand turn execution is already bound..."</span>;</span>
+<span class="src-line"><span class="src-fn">bindExecutor</span>(executor) {</span>
+<span class="src-line">  <span class="src-kw">if</span> (<span class="src-hl">this.executor !== undefined</span>) <span class="src-kw">throw new</span> Error(DOUBLE_BIND_MESSAGE);</span>
+<span class="src-line">}</span>
+    </div>
+
+    <div class="note accent">
+      <span class="ntag">Why</span>
+      <span class="lang-zh-only">Gateway 可能在 composition root 就绪前就 kickstart；单 bind 保证「一个 agent session 只有一个 runner」，失败要 loud，不要 silent race。</span>
+      <span class="lang-en-only">Gateway may kickstart before composition is ready; single-bind ensures one runner per session — fail loud, not silent race.</span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 05 -->
+  <section class="chap" id="c5">
+    <div class="chap-num">CHAPTER&nbsp;05</div>
+    <h2 class="chap-title lang-zh-only">AnysphereAgent — 动作分发与 Tool Loop</h2>
+    <h2 class="chap-title lang-en-only">AnysphereAgent — action dispatch & tool loop</h2>
+    <p class="chap-en">packages/agent/index.ts · actionHandlers · SummarizationOrchestrator</p>
+
+    <div class="lang-zh-only">
+      <p><code>AnysphereAgent</code> 是包内的 Agent 根。构造函数注册一组 <strong>ActionHandler</strong>，<code>runStream</code> 按 <code>action.action.case</code> 分发：</p>
+      <ul>
+        <li><code>userMessageAction</code> — 主路径：可能先 compact，再组 prompt，再 tool loop</li>
+        <li><code>resumeAction</code> / <code>summarizeAction</code> / <code>cancelAction</code></li>
+        <li><code>backgroundSubagentAction</code> — 子 Agent 完成时合成消息唤醒父 Agent</li>
+        <li><code>backgroundTaskCompletionAction</code>、<code>executePlanAction</code>、<code>goalContinuationAction</code> …</li>
+      </ul>
+      <p>Tool 执行走 <code>RedactedPromptToolExecutor</code>（隐私 redaction 贯穿）。<code>SummarizationOrchestrator</code> 在 user/resume/background 路径共享，决定何时 self-summary vs LLM summary。</p>
+    </div>
+    <div class="lang-en-only">
+      <p><code>AnysphereAgent</code> registers action handlers; <code>runStream</code> dispatches by <code>action.case</code>. Tool loop via redacted executor; shared <code>SummarizationOrchestrator</code> for compaction triggers.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/packages/agent/index.ts</span><span class="src-tag">handlers</span></div>
+<span class="src-line"><span class="src-kw">const</span> MAX_AGENT_STEPS = <span class="src-num">1_000</span>;</span>
+<span class="src-line">this.actionHandlers.set(<span class="src-str">"userMessageAction"</span>, user);</span>
+<span class="src-line">this.actionHandlers.set(<span class="src-str">"backgroundSubagentAction"</span>, <span class="src-kw">new</span> BackgroundSubagentActionHandler());</span>
+<span class="src-line"><span class="src-comment">// restore: ConversationStateHandle.fromConversationStateStructure(...)</span></span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 06 -->
+  <section class="chap" id="c6">
+    <div class="chap-num">CHAPTER&nbsp;06</div>
+    <h2 class="chap-title lang-zh-only">工具与 MCP — ResourceAccessor 模型</h2>
+    <h2 class="chap-title lang-en-only">Tools & MCP — ResourceAccessor model</h2>
+    <p class="chap-en">host-runner-composition · box-exec-daemon · routed-mcp-bridge</p>
+
+    <div class="lang-zh-only">
+      <p>工具不直接 <code>exec()</code> 操作系统。它们通过 <code>ResourceAccessor</code> 申请<strong>远程执行器</strong>：</p>
+      <ul>
+        <li><code>shellStreamExecutorResource</code> → box-exec ConnectRPC 流式 shell</li>
+        <li><code>mcpExecutorResource</code> → 工作区 MCP 工具调用</li>
+        <li><code>subagentExecutorResource</code> → spawn 子 Agent</li>
+        <li><code>requestContextExecutorResource</code> → 组装 workspace 上下文</li>
+      </ul>
+      <p>每轮 <code>turn-toolset.ts</code> 组装工具面：read/write/edit、shell、web、MCP meta、<code>CloudAgent</code>、子 Agent 管理工具。Group room 成员有裁剪版 toolset + guardrail prompt。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Tools acquire remote executors via <code>ResourceAccessor</code> — shell stream, MCP, subagent spawn, request context. Per-turn toolset assembled in <code>turn-toolset.ts</code>; group members get restricted surfaces.</p>
+    </div>
+
+    <p class="lang-zh-only">Inference router 走 Claude/Codex 时，<code>routed-mcp-bridge.ts</code> 在 coordinator 侧建临时 MCP 桥，把 <code>listRoutedMcpTools</code> / <code>executeRoutedMcpTool</code> RPC 回 host——<em>不</em>在 coordinator 里再跑一遍 MCP server 进程。</p>
+    <p class="lang-en-only">For routed providers, <code>routed-mcp-bridge.ts</code> proxies MCP back to host instead of duplicating server processes in coordinator.</p>
+  </section>
+
+  <!-- CHAPTER 07 -->
+  <section class="chap" id="c7">
+    <div class="chap-num">CHAPTER&nbsp;07</div>
+    <h2 class="chap-title lang-zh-only">Task 工具 — 子 Agent 的「唯一官方分叉口」</h2>
+    <h2 class="chap-title lang-en-only">Task tool — the official fork for subagents</h2>
+    <p class="chap-en">packages/agent/tools/task.ts · task-subagent-preparation.ts</p>
+
+    <div class="lang-zh-only">
+      <p>多 Agent 协作的<strong>第一性接口</strong>是 <code>Task</code> 工具（不是随便再起一个 chat session）。流程：</p>
+      <ol>
+        <li><code>prepareTaskSubagent()</code> / <code>resolveTaskSubagentConfig()</code> 解析 <code>subagent_type</code>、model、environment（LOCAL vs CLOUD）</li>
+        <li>为子 Agent 构造独立 <code>AnysphereAgent</code>（可覆盖 systemPrompt、tools、modelId）</li>
+        <li><strong>Foreground</strong>：子 Agent 的 <code>InteractionUpdate</code> 经 <code>TaskToolCallDelta</code> 流式推到父气泡</li>
+        <li><strong>Background</strong>：注册到 <code>subagent-runtime</code>，完成时 <code>BackgroundSubagentActionHandler</code> 注入父对话</li>
+      </ol>
+      <p>Lineage：<code>computeSubagentRequestId(toolCallId)</code> → <code>subagent:{toolCallId}</code>，HTTP 头带 <code>x-parent-request-id</code> / <code>x-parent-agent-tool-call-id</code> 供遥测与计费归因。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Multi-agent collaboration's primary API is the <code>Task</code> tool: prepare config → isolated AnysphereAgent → foreground streaming deltas or background completion actions. Lineage via <code>subagent:{toolCallId}</code> request ids.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/host/runner/subagent-runtime.ts</span><span class="src-tag">lineage</span></div>
+<span class="src-line"><span class="src-kw">export function</span> <span class="src-fn">computeSubagentRequestId</span>(toolCallId: <span class="src-type">string</span>): <span class="src-type">string</span> {</span>
+<span class="src-line">  <span class="src-kw">return</span> toolCallId.length &gt; <span class="src-num">0</span> ? <span class="src-str">`subagent:${toolCallId}`</span> : <span class="src-str">"subagent"</span>;</span>
+<span class="src-line">}</span>
+    </div>
+
+    <div class="note gpu">
+      <span class="ntag">Steering</span>
+      <span class="lang-zh-only"><code>MessageSubagent</code> 向<strong>已在跑</strong>的后台子 Agent 追加指令，而不是 duplicate spawn。Multitask 模式里这是「一个 stream 一个 executor」的关键纪律。</span>
+      <span class="lang-en-only"><code>MessageSubagent</code> steers running background subagents instead of spawning duplicates — core discipline in multitask mode.</span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 08 -->
+  <section class="chap" id="c8">
+    <div class="chap-num">CHAPTER&nbsp;08</div>
+    <h2 class="chap-title lang-zh-only">子 Agent 类型谱 — 十二种专职工人</h2>
+    <h2 class="chap-title lang-en-only">Subagent catalog — twelve specialists</h2>
+    <p class="chap-en">proto/agent/v1/subagents_pb.ts · SubagentType oneof</p>
+
+    <figure>
+      <div class="figbox">
+        <table class="cmp">
+          <thead><tr><th><span class="lang-zh-only">类型</span><span class="lang-en-only">Type</span></th><th><span class="lang-zh-only">典型用途</span><span class="lang-en-only">Role</span></th></tr></thead>
+          <tbody>
+            <tr><td><code>explore</code></td><td class="lang-zh-only">代码库探索、语义搜索</td><td class="lang-en-only">Codebase exploration</td></tr>
+            <tr><td><code>bash</code> / <code>shell</code></td><td class="lang-zh-only">终端密集任务</td><td class="lang-en-only">Shell-heavy work</td></tr>
+            <tr><td><code>browserUse</code></td><td class="lang-zh-only">Box 内浏览器 CDP 自动化</td><td class="lang-en-only">In-box browser automation</td></tr>
+            <tr><td><code>computerUse</code></td><td class="lang-zh-only">GUI / 窗口级操作</td><td class="lang-en-only">GUI / window control</td></tr>
+            <tr><td><code>debug</code></td><td class="lang-zh-only">调试专用子循环</td><td class="lang-en-only">Debug-focused loop</td></tr>
+            <tr><td><code>mediaReview</code> / <code>watchVideo</code></td><td class="lang-zh-only">多模态审阅</td><td class="lang-en-only">Multimodal review</td></tr>
+            <tr><td><code>cursorGuide</code></td><td class="lang-zh-only">产品文档型问答</td><td class="lang-en-only">Product guide Q&A</td></tr>
+            <tr><td><code>custom</code></td><td class="lang-zh-only">用户/插件定义（含 <code>executor</code>）</td><td class="lang-en-only">User/plugin-defined (incl. executor)</td></tr>
+            <tr><td><code>vmSetupHelper</code></td><td class="lang-zh-only">环境/bootstrap 辅助</td><td class="lang-en-only">VM setup helper</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption><span class="figid">FIG. 08</span><span class="lang-zh-only">Protobuf <code>SubagentType</code> 是 discriminated union；每种类型可绑不同 model override、tool 面、是否允许 cloud。</span></figcaption>
+    </figure>
+
+    <p class="lang-zh-only"><code>environment_param_for_subagent</code> 等 feature gate 控制 LOCAL/CLOUD 解析顺序：显式 machine → environment → 恢复的状态 → 默认 cloud 字段。</p>
+    <p class="lang-en-only">Feature gates control LOCAL/CLOUD resolution: explicit machine → environment → restored state → cloud default.</p>
+  </section>
+
+  <!-- CHAPTER 09 -->
+  <section class="chap" id="c9">
+    <div class="chap-num">CHAPTER&nbsp;09</div>
+    <h2 class="chap-title lang-zh-only">Multitask — 父 Agent 当调度员，Executor 当苦力</h2>
+    <h2 class="chap-title lang-en-only">Multitask — parent dispatches, executor sweats</h2>
+    <p class="chap-en">host/sand-multitask.ts · Statsig gate · TodoWrite as coordination memory</p>
+
+    <div class="lang-zh-only">
+      <p>这是 Grok Bot 里<strong>最像「多 Agent 编排」</strong>的产品化模式（实验 gate：<code>multitask</code>）。核心思想写在 <code>SAND_MULTITASK_PROMPT_SECTION</code> 里，值得整段背诵：</p>
+      <ul>
+        <li>父 Agent 回合必须<strong>短</strong>——秒级回复用户；重活全部 <code>Task(subagent_type: "executor")</code></li>
+        <li>独立任务各起一个 executor，<strong>并行</strong>；同一 stream 的 follow-up 用 <code>MessageSubagent</code> steer，禁止 duplicate</li>
+        <li>Executor 启动<strong>空白</strong>——dispatch prompt 必须自包含目标、上下文、成功标准</li>
+        <li><code>TodoWrite</code> 是跨并行 stream 的<strong>外部记忆</strong>：pending / in_progress / completed 与 wake 时 reconcile</li>
+        <li>对用户<strong>不可见</strong>「dispatching / delegating」等词——产品人格是「一个人同时干很多事」</li>
+      </ul>
+    </div>
+    <div class="lang-en-only">
+      <p>The <strong>multitask</strong> experiment makes the parent a dispatcher: short turns, heavy work via <code>executor</code> subagents, parallel independent streams, <code>TodoWrite</code> as coordination memory, invisible orchestration vocabulary to the user.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/host/sand-multitask.ts</span><span class="src-tag">prompt</span></div>
+<span class="src-line"><span class="src-str">"You are the dispatcher, never the workhorse."</span></span>
+<span class="src-line"><span class="src-str">"Never do heavy work inline."</span></span>
+<span class="src-line"><span class="src-str">"TodoWrite is your task queue and your multitasking memory."</span></span>
+    </div>
+
+    <div class="note copper">
+      <span class="ntag">Tradeoff</span>
+      <span class="lang-zh-only">并行度靠<strong> prompt 纪律 + Todo 状态</strong>，不是硬调度器。好处：灵活、可 A/B；风险：模型偶发 inline 重活或忘记 reconcile todos。</span>
+      <span class="lang-en-only">Parallelism is <strong>prompt discipline + todos</strong>, not a hard scheduler — flexible but model-dependent.</span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 10 -->
+  <section class="chap" id="c10">
+    <div class="chap-num">CHAPTER&nbsp;10</div>
+    <h2 class="chap-title lang-zh-only">后台子 Agent — 注册表、完成与唤醒</h2>
+    <h2 class="chap-title lang-en-only">Background subagents — registry, completion, wake</h2>
+    <p class="chap-en">subagent-runtime.ts · onPendingWakeArmed · SUBAGENT_REVIVAL_EVENT</p>
+
+    <div class="lang-zh-only">
+      <p><code>createSubagentRuntime(host)</code> 维护三张表：</p>
+      <ul>
+        <li><code>subagentSessions</code> — 可 <code>run</code> / <code>interrupt</code> 的会话</li>
+        <li><code>backgroundSubagentRuns</code> — 进行中的 Promise</li>
+        <li><code>subagentRegistry</code> — UI/async-tasks 面板用的元数据（status: running/done/error/aborted）</li>
+      </ul>
+      <p>完成时构造 <code>BackgroundSubagentCompletion</code>，触发 <code>onPendingWakeArmed</code>：父 Agent 被标记 pending wake，下一轮合成 user-visible 结果。Computer-use 子 Agent 还有 <code>freeWindow</code>、usage telemetry、audit action counts。</p>
+    </div>
+    <div class="lang-en-only">
+      <p><code>subagent-runtime</code> tracks sessions, background promises, and registry metadata. Completion arms parent pending wake; computer-use paths add window freeing and telemetry.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 11 -->
+  <section class="chap" id="c11">
+    <div class="chap-num">CHAPTER&nbsp;11</div>
+    <h2 class="chap-title lang-zh-only">Cloud Agent — 本地父 Agent 的云上保姆</h2>
+    <h2 class="chap-title lang-en-only">Cloud agents — babysitting from the desktop parent</h2>
+    <p class="chap-en">host/cloud-agents/cloud-agent-tool.ts · Background Composer bcId</p>
+
+    <div class="lang-zh-only">
+      <p>除了 <code>Task(environment: CLOUD)</code>，还有一等公民 <code>CloudAgent</code> 工具：<code>launch</code> / <code>watch</code> / <code>reply</code> / <code>dump</code> / <code>cancel</code> …</p>
+      <ul>
+        <li><strong>Launch</strong>：目标可以是 cloud VM、self-hosted pool、private worker</li>
+        <li><strong>Watch</strong>：注册完成回调，安静唤醒父 Agent（<code>quietOrigin</code> 追踪）</li>
+        <li><strong>Dump</strong>：把云 Agent JSONL transcript 拉到 box 供父 Agent 阅读</li>
+        <li><strong>FetchCloudAgentData</strong>：结构化拉取云状态</li>
+      </ul>
+      <p>本地子 Agent 状态在 blob KV；云 Agent 状态在服务端，桌面侧通过 stream hydration 对齐 transcript。</p>
+    </div>
+    <div class="lang-en-only">
+      <p><code>CloudAgent</code> tool launches/watches/replies to Background Composer agents; local subagent state in blob KV, cloud state hydrated from server streams.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 12 -->
+  <section class="chap" id="c12">
+    <div class="chap-num">CHAPTER&nbsp;12</div>
+    <h2 class="chap-title lang-zh-only">Group Room — 跨用户的共享 Agent 房间</h2>
+    <h2 class="chap-title lang-en-only">Group rooms — shared agents across users</h2>
+    <p class="chap-en">host/groups/xuser.ts · createGroupMemberRunner</p>
+
+    <div class="lang-zh-only">
+      <p>多 Agent 协作的另一种形态不是父子树，而是<strong>横向房间</strong>：</p>
+      <ul>
+        <li><code>createGroup</code> / <code>setGroupMembers</code> RPC 建房间</li>
+        <li><code>createGroupMemberRunner</code> 为每个成员 Agent 生成受限 runner</li>
+        <li>Remote member turn：600s 超时、24 条消息窗口、8K 字符上限</li>
+        <li><code>buildSharedRoomGuardrailPrompt()</code>：外国 host 时强调「你发的内容离开用户机器」；box 工具禁用，仅 <code>SendMessage</code> 文本出房间</li>
+      </ul>
+    </div>
+    <div class="lang-en-only">
+      <p>Horizontal collaboration via group rooms: restricted runners, tight turn limits, guardrails that only plain SendMessage leaves the machine.</p>
+    </div>
+
+    <div class="src-stack">
+      <div class="src-h"><span class="src-path">source/host/groups/xuser.ts</span><span class="src-tag">limits</span></div>
+<span class="src-line"><span class="src-kw">export const</span> REMOTE_MEMBER_TURN_TIMEOUT_MS = <span class="src-num">600_000</span>;</span>
+<span class="src-line"><span class="src-kw">export const</span> REMOTE_TURN_MESSAGE_LIMIT = <span class="src-num">24</span>;</span>
+<span class="src-line"><span class="src-kw">export const</span> REMOTE_TURN_TEXT_MAX_LENGTH = <span class="src-num">8_000</span>;</span>
+    </div>
+  </section>
+
+  <!-- CHAPTER 13 -->
+  <section class="chap" id="c13">
+    <div class="chap-num">CHAPTER&nbsp;13</div>
+    <h2 class="chap-title lang-zh-only">Summarization — 长对话的三层压缩</h2>
+    <h2 class="chap-title lang-en-only">Summarization — three tiers of compaction</h2>
+    <p class="chap-en">pipeline.ts · summarization-handler.ts · summarization-orchestrator.ts</p>
+
+    <div class="lang-zh-only">
+      <p>多 Agent 协作会让 transcript 爆炸式增长。压缩管线：</p>
+      <ol>
+        <li><strong>partition</strong> — 头部分要 summarize，尾部 <code>preservedTailMessages</code> 必须保留（且尾部形状 invariant：以 user 开头、中间不再出现 user）</li>
+        <li><strong>generateSummary</strong> — 默认 <code>gemini-2.5-flash</code>，失败则 deterministic fallback</li>
+        <li><strong>assemble</strong> — <code>[summary message] + preservedTail</code>；durable blocks 保留 skill/todo/plan</li>
+      </ol>
+      <p><code>SummarizationOrchestrator</code> 还在 token 阈值前做 cheap <strong>self-summary</strong>，并支持 background summarization（空闲时异步 compact）。<code>summaryArchives[]</code> 保留历史压缩版本。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Partition → LLM/deterministic summary → assemble with preserved tail. Orchestrator adds self-summary and background modes; archives keep compaction history.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 14 -->
+  <section class="chap" id="c14">
+    <div class="chap-num">CHAPTER&nbsp;14</div>
+    <h2 class="chap-title lang-zh-only">Agent Store Sync — 本地 Index 与云端 BCS</h2>
+    <h2 class="chap-title lang-en-only">Agent store sync — local index & cloud BCS</h2>
+    <p class="chap-en">agent-store-sync/ · SyncRoundScheduler · path-first</p>
+
+    <div class="lang-zh-only">
+      <p>Agent 的文件（skills、workflows、附件）通过 <strong>Background Composer Service</strong> 与云端同步：</p>
+      <ul>
+        <li><code>MintAgentStoreToken</code> → 短期 token</li>
+        <li><code>PresignAgentStoreReads/Writes</code> → 直传对象存储</li>
+        <li><code>LocalAgentStoreIndex</code>（SQLite）记录 sha、etag、tombstone</li>
+        <li><code>SyncRoundScheduler</code>：<strong>path sync 插队</strong>并 abort 进行中的 full sync——用户改 SKILL.md 要先于昂贵全量对账</li>
+      </ul>
+    </div>
+    <div class="lang-en-only">
+      <p>BCS transport with presigned URLs; SQLite local index; path sync preempts full sync for responsive skill edits.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 15 -->
+  <section class="chap" id="c15">
+    <div class="chap-num">CHAPTER&nbsp;15</div>
+    <h2 class="chap-title lang-zh-only">Inference Router — 同一 UI，四条推理后端</h2>
+    <h2 class="chap-title lang-en-only">Inference router — one UI, four backends</h2>
+    <p class="chap-en">node-agent-coordinator/inference-router.ts</p>
+
+    <div class="lang-zh-only">
+      <p>Settings → Router 可选 Cursor / Claude Code / Codex / OpenRouter。当 provider ≠ cursor 时，coordinator <strong>拦截 sendPrompt</strong>：</p>
+      <ol>
+        <li>追加用户消息到本地 <code>inference-router-transcript.json</code></li>
+        <li>向 renderer 发 transcript SSE（形状与官方一致）</li>
+        <li><code>runRoutedProviderText()</code> + MCP bridge 跑 tool loop</li>
+        <li>流式 assistant delta，落盘，清除 activity</li>
+      </ol>
+      <p>这意味着多 Agent 的<strong>完整语义</strong>（子 Agent、blob checkpoint）主要在 Cursor 路径；路由路径是「UI 兼容层」，边缘行为可能分叉。</p>
+    </div>
+    <div class="lang-en-only">
+      <p>Non-Cursor providers intercept sendPrompt, persist local transcript, fake SSE shape, run routed tool loop — UI-compatible layer, not full host semantics.</p>
+    </div>
+  </section>
+
+  <!-- CHAPTER 16 -->
+  <section class="chap" id="c16">
+    <div class="chap-num">CHAPTER&nbsp;16 · CODA</div>
+    <h2 class="chap-title lang-zh-only">一条消息的 16 站 — 全链路复盘</h2>
+    <h2 class="chap-title lang-en-only">Sixteen stations — full trace</h2>
+    <p class="chap-en">putting it all together</p>
+
+    <figure>
+      <div class="figbox">
+        <table class="cmp">
+          <thead><tr><th>#</th><th><span class="lang-zh-only">站</span><span class="lang-en-only">Station</span></th><th><span class="lang-zh-only">关键文件</span><span class="lang-en-only">Key file</span></th></tr></thead>
+          <tbody>
+            <tr><td class="num">1</td><td>sendPrompt RPC</td><td><code>shared/rpc/coordinator.ts</code></td></tr>
+            <tr><td class="num">2</td><td>coordinator dispatch</td><td><code>node-agent-coordinator/main.ts</code></td></tr>
+            <tr><td class="num">3</td><td>gateway SSE</td><td><code>gateway/gateway-client.ts</code></td></tr>
+            <tr><td class="num">4</td><td>turn-execution bind</td><td><code>extensions/turn-execution/</code></td></tr>
+            <tr><td class="num">5</td><td>SandAgentRunner</td><td><code>runner/sand-agent-runner.ts</code></td></tr>
+            <tr><td class="num">6</td><td>restore blob state</td><td><code>packages/agent/state.ts</code></td></tr>
+            <tr><td class="num">7</td><td>summarize?</td><td><code>summarization-orchestrator.ts</code></td></tr>
+            <tr><td class="num">8</td><td>prompt + skills</td><td><code>workflows/workflow-store.ts</code></td></tr>
+            <tr><td class="num">9</td><td>tool loop</td><td><code>packages/agent/index.ts</code></td></tr>
+            <tr><td class="num">10</td><td>shell/MCP exec</td><td><code>box-exec-daemon/server.ts</code></td></tr>
+            <tr><td class="num">11</td><td>Task spawn</td><td><code>packages/agent/tools/task.ts</code></td></tr>
+            <tr><td class="num">12</td><td>subagent run</td><td><code>runner/subagent-runtime.ts</code></td></tr>
+            <tr><td class="num">13</td><td>interaction delta</td><td><code>TaskToolCallDelta</code></td></tr>
+            <tr><td class="num">14</td><td>checkpoint</td><td><code>agent-kv/agent-store.ts</code></td></tr>
+            <tr><td class="num">15</td><td>transcript SSE</td><td><code>gateway-event-families.ts</code></td></tr>
+            <tr><td class="num">16</td><td>renderer reconcile</td><td>shipped UI</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figcaption><span class="figid">FIG. 16</span><span class="lang-zh-only">从用户按下回车到子 Agent 结果回到气泡——<strong>16 站，4 个进程，1 棵可持久化的 Agent 树</strong>。</span></figcaption>
+    </figure>
+
+    <div class="lang-zh-only">
+      <h3 class="sub">你还可以继续挖</h3>
+      <ul>
+        <li><code>ConversationStateHandle.computeNewStructure()</code> — blob 图重建（仓库标注 partial recovery）</li>
+        <li><code>communicateUpdate</code> 子 Agent 流 — 多步对外沟通</li>
+        <li><code>experiment-config.gen.ts</code> — 上百个 feature gate 背后的产品实验史</li>
+        <li><code>hooks/</code> — Claude Code 兼容的 preCompact / ExecuteHook</li>
+      </ul>
+      <p>如果你只关心「怎么设计自己的多 Agent 系统」，带走这三条：<strong>内容寻址状态</strong>、<strong>Task 作为唯一分叉原语</strong>、<strong>父回合短 + 后台 executor 长</strong>。Grok Bot 用工程把这三条写进了 TypeScript。</p>
+    </div>
+    <div class="lang-en-only">
+      <h3 class="sub">Dig deeper</h3>
+      <ul>
+        <li><code>computeNewStructure()</code> blob graph rebuild</li>
+        <li><code>communicateUpdate</code> subagent flows</li>
+        <li><code>experiment-config.gen.ts</code> feature gate archaeology</li>
+      </ul>
+      <p>Three design lessons: <strong>content-addressed state</strong>, <strong>Task as the only fork primitive</strong>, <strong>short parent turns + long background executors</strong>.</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="ft-rule"><span class="ft-mark">END · FIELD NOTE 15</span></div>
+    <p class="lang-zh-only">基于 <a href="https://github.com/b-nnett/grok-bot-0.18-reconstructed">grok-bot-0.18-reconstructed</a> 源码阅读。非 Anysphere 官方文档；模块边界来自社区重建，行为以 pinned 0.18.0 为准。</p>
+    <p class="lang-en-only">Based on reading <a href="https://github.com/b-nnett/grok-bot-0.18-reconstructed">grok-bot-0.18-reconstructed</a>. Unofficial; boundaries from community rebuild of pinned 0.18.0.</p>
+    <div class="ft-links">
+      <a href="https://ursb.me/immersive/chromium-renderer/">Chromium 渲染流水线</a>
+      <a href="https://ursb.me/immersive/llm-inference-life/">LLM 推理的一生</a>
+      <a href="https://github.com/b-nnett/grok-bot-0.18-reconstructed">Source repo</a>
+    </div>
+  </footer>
+
+</div>
+
+<section class="ursb-interactive">
+  <div class="ursb-fbody">
+    <div class="ui-divider"><span class="ui-divider-mark">✦ ✦ ✦</span></div>
+
+    <div class="ui-stats-row">
+      <button class="ui-like" id="uiLikeBtn" type="button" disabled>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+        </svg>
+        <span class="ui-count" id="uiLikeCount">—</span>
+        <span><span lang="zh">点赞</span><span lang="en">Likes</span></span>
+      </button>
+      <div class="ui-views" title="Page views">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+        </svg>
+        <span class="ui-count" id="uiViewCount">—</span>
+        <span><span lang="zh">阅读</span><span lang="en">Reads</span></span>
+      </div>
+      <button class="ui-share" id="uiShareBtn" type="button">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
+        </svg>
+        <span class="ui-share-text"><span lang="zh">分享</span><span lang="en">Share</span></span>
+      </button>
+      <div class="ui-online" data-online="page" data-online-template='<span class="ui-online-dot"></span><span class="ui-count">{n}</span><span><span lang="zh">在读</span><span lang="en">reading</span></span>' data-online-min="1" style="display:none"></div>
+    </div>
+
+    <h3 class="ui-section-title">
+      <span lang="zh">留下评论</span><span lang="en">Leave a comment</span>
+    </h3>
+    <form class="ui-comment-form" id="uiCommentForm" autocomplete="off">
+      <div class="ui-form-row">
+        <input type="text" name="nickname" id="uiNickname" required maxlength="40">
+        <input type="email" name="email" id="uiEmail" maxlength="120">
+      </div>
+      <textarea name="content" id="uiContent" required maxlength="2000" rows="4"></textarea>
+      <div class="ui-form-foot">
+        <span class="ui-form-status" id="uiFormStatus"></span>
+        <button type="submit" id="uiSubmitBtn">
+          <span lang="zh">发布评论</span><span lang="en">Post comment</span>
+        </button>
+      </div>
+    </form>
+
+    <h3 class="ui-section-title">
+      <span lang="zh">评论</span><span lang="en">Comments</span>
+      <span id="uiCommentCount" class="ui-count-small">—</span>
+    </h3>
+    <div class="ui-comment-list" id="uiCommentList">
+      <div class="ui-comment-loading">
+        <span lang="zh">加载中…</span><span lang="en">Loading…</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ursb.me INTERACTIVE FOOTER — likes / views / comments
+   Talks to https://chat.ursb.me, slug = "note/chromium-renderer" */
+(function() {
+  var API_BASE = 'https://chat.ursb.me';
+  var POST_SLUG = 'note/grok-bot-agents';
+  var ENC = encodeURIComponent(POST_SLUG);
+
+  var likeBtn = document.getElementById('uiLikeBtn');
+  var likeCount = document.getElementById('uiLikeCount');
+  var viewCount = document.getElementById('uiViewCount');
+  var shareBtn = document.getElementById('uiShareBtn');
+  var commentForm = document.getElementById('uiCommentForm');
+  var commentList = document.getElementById('uiCommentList');
+  var commentCount = document.getElementById('uiCommentCount');
+  var formStatus = document.getElementById('uiFormStatus');
+  var submitBtn = document.getElementById('uiSubmitBtn');
+  var nicknameInput = document.getElementById('uiNickname');
+  var emailInput = document.getElementById('uiEmail');
+  var contentInput = document.getElementById('uiContent');
+  if (!likeBtn) return;
+
+  var I18N = {
+    zh: { nicknamePh: '昵称*', emailPh: '邮箱（可选，仅用于回复通知）', contentPh: '说点什么…',
+          posting: '提交中…', posted: '✓ 已发布', postFailed: '✗ 发布失败：',
+          shareCopied: '✓ 已复制链接', loading: '加载中…', empty: '还没有评论，来抢沙发吧。',
+          loadFailed: '评论加载失败', justNow: '刚刚', mAgo: ' 分钟前', hAgo: ' 小时前', dAgo: ' 天前' },
+    en: { nicknamePh: 'Nickname*', emailPh: 'Email (optional, for reply notifications)', contentPh: 'Say something…',
+          posting: 'Posting…', posted: '✓ Posted', postFailed: '✗ Failed: ',
+          shareCopied: '✓ Link copied', loading: 'Loading…', empty: 'Be the first to comment.',
+          loadFailed: 'Failed to load comments', justNow: 'just now', mAgo: 'm ago', hAgo: 'h ago', dAgo: 'd ago' }
+  };
+  function t() {
+    var lang = (document.documentElement.lang || '').toLowerCase();
+    return I18N[lang.indexOf('en') === 0 ? 'en' : 'zh'];
+  }
+  function applyI18n() {
+    var s = t();
+    if (nicknameInput) nicknameInput.placeholder = s.nicknamePh;
+    if (emailInput) emailInput.placeholder = s.emailPh;
+    if (contentInput) contentInput.placeholder = s.contentPh;
+  }
+  applyI18n();
+  new MutationObserver(applyI18n).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+
+  fetch(API_BASE + '/api/posts/' + ENC + '/view', { method: 'POST' }).catch(function(){});
+
+  fetch(API_BASE + '/api/posts/' + ENC + '/views')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      var pv = (d && (d.pv != null ? d.pv : d.views)) || 0;
+      viewCount.textContent = pv.toLocaleString();
+    })
+    .catch(function() { viewCount.textContent = '—'; });
+
+  fetch(API_BASE + '/api/posts/' + ENC + '/likes')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      likeCount.textContent = ((d && d.count) || 0).toLocaleString();
+      if (d && d.liked) likeBtn.classList.add('liked');
+    })
+    .catch(function() { likeCount.textContent = '—'; })
+    .finally(function() { likeBtn.disabled = false; });
+
+  likeBtn.addEventListener('click', function() {
+    likeBtn.disabled = true;
+    fetch(API_BASE + '/api/posts/' + ENC + '/like', { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        likeCount.textContent = ((d && d.count) || 0).toLocaleString();
+        likeBtn.classList.toggle('liked', !!(d && d.liked));
+        if (typeof umami !== 'undefined') umami.track('post-like', { post: POST_SLUG });
+      })
+      .catch(function() {})
+      .finally(function() { likeBtn.disabled = false; });
+  });
+
+  shareBtn.addEventListener('click', function() {
+    var url = window.location.href;
+    var title = document.title;
+    if (navigator.share) { navigator.share({ title: title, url: url }).catch(function(){}); return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(function() {
+        var label = shareBtn.querySelector('.ui-share-text');
+        var orig = label.innerHTML;
+        label.textContent = t().shareCopied;
+        setTimeout(function() { label.innerHTML = orig; }, 1800);
+      }).catch(function() { window.prompt('Copy URL:', url); });
+    } else { window.prompt('Copy URL:', url); }
+  });
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function(c) {
+      return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c];
+    });
+  }
+  function fmtDate(s) {
+    if (!s) return '';
+    var d = new Date(s);
+    var diff = (new Date() - d) / 1000;
+    var i18n = t();
+    if (diff < 60) return i18n.justNow;
+    if (diff < 3600) return Math.floor(diff/60) + i18n.mAgo;
+    if (diff < 86400) return Math.floor(diff/3600) + i18n.hAgo;
+    if (diff < 7*86400) return Math.floor(diff/86400) + i18n.dAgo;
+    return d.toLocaleDateString();
+  }
+  function renderComments(comments) {
+    var i18n = t();
+    if (!comments || !comments.length) {
+      commentList.innerHTML = '<div class="ui-comment-empty">' + i18n.empty + '</div>';
+      commentCount.textContent = '(0)';
+      return;
+    }
+    commentCount.textContent = '(' + comments.length + ')';
+    commentList.innerHTML = comments.map(function(c) {
+      return '<div class="ui-comment">' +
+        '<div class="ui-comment-head">' +
+          '<span class="ui-comment-name">' + escapeHtml(c.nickname || 'Anonymous') + '</span>' +
+          '<span class="ui-comment-date">' + escapeHtml(fmtDate(c.created_at || c.createdAt)) + '</span>' +
+        '</div>' +
+        '<div class="ui-comment-body">' + escapeHtml(c.content || '') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+  function loadComments() {
+    fetch(API_BASE + '/api/comments?post_slug=' + encodeURIComponent(POST_SLUG))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        var list = Array.isArray(d) ? d : (d && d.comments) || [];
+        renderComments(list);
+      })
+      .catch(function() {
+        commentList.innerHTML = '<div class="ui-comment-empty">' + t().loadFailed + '</div>';
+      });
+  }
+  loadComments();
+
+  commentForm.addEventListener('submit', function(e) {
+    e.preventDefault();
+    var i18n = t();
+    var payload = {
+      post_slug: POST_SLUG,
+      nickname: (nicknameInput.value || '').trim(),
+      email: (emailInput.value || '').trim() || null,
+      content: (contentInput.value || '').trim(),
+      parent_id: null
+    };
+    if (!payload.nickname || !payload.content) return;
+    submitBtn.disabled = true;
+    formStatus.className = 'ui-form-status';
+    formStatus.textContent = i18n.posting;
+    fetch(API_BASE + '/api/comments', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(function(r) { return r.json().then(function(j) { return { ok: r.ok, body: j }; }); })
+      .then(function(res) {
+        if (!res.ok) throw new Error((res.body && (res.body.error || res.body.message)) || 'Failed');
+        formStatus.className = 'ui-form-status success';
+        formStatus.textContent = i18n.posted;
+        commentForm.reset();
+        loadComments();
+        if (typeof umami !== 'undefined') umami.track('post-comment', { post: POST_SLUG });
+        setTimeout(function() { formStatus.textContent = ''; formStatus.className = 'ui-form-status'; }, 3000);
+      })
+      .catch(function(err) {
+        formStatus.className = 'ui-form-status error';
+        formStatus.textContent = i18n.postFailed + (err.message || '');
+      })
+      .finally(function() { submitBtn.disabled = false; });
+  });
+})();
+</script>
+
+<!-- Online presence (per-page) -->
+<script>
+(function () {
+  var DOT = '<span class="ui-online-dot"></span>';
+  var N = '<span class="ui-count">{n}</span>';
+  function dual(zh, en) { return '<span lang="zh">' + zh + '</span><span lang="en">' + en + '</span>'; }
+  window.__ONLINE_CONFIG__ = {
+    pageId: 'note/grok-bot-agents',
+    tiers: [
+      { max: 1,   html: '✦ ' + dual('你是此刻唯一在读的人', 'You are the only one reading right now') },
+      { max: 9,   html: DOT + dual('此刻有 ' + N + ' 人在读', N + ' people reading right now') },
+      { max: 19,  html: DOT + dual(N + ' 人正在读这篇', N + ' reading this piece') },
+      { max: 29,  html: DOT + dual('茶座坐满了,' + N + ' 人', 'A full house, ' + N + ' reading') },
+      { max: 99,  html: '🔥 ' + dual(N + ' 人聚在这,人声渐沸', N + ' gathered here, buzzing') },
+      { max: Infinity, html: '🔥 ' + dual(N + ' 人围读!这篇火了', N + ' readers, this is on fire') }
+    ]
+  };
+})();
+</script>
+<script src="/assets/online-presence.js" defer></script>
+
+
+<script>
+/* ====== TOC scroll-spy (added 2026-06) ====== */
+(function () {
+  var sideItems = Array.prototype.map.call(
+    document.querySelectorAll('.toc-side li[data-section]'),
+    function (li) { return { node: li, el: document.getElementById(li.dataset.section) }; }
+  ).filter(function (o) { return o.el; });
+  if (!sideItems.length) return;
+  function update() {
+    var offset = window.innerHeight * 0.32;
+    var activeIdx = 0;
+    for (var i = 0; i < sideItems.length; i++) {
+      if (sideItems[i].el.getBoundingClientRect().top - offset < 0) activeIdx = i;
+    }
+    var activeId = sideItems[activeIdx].el.id;
+    sideItems.forEach(function (o) {
+      o.node.classList.toggle('active', o.el.id === activeId);
+    });
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update);
+  update();
+})();
+</script>
+
+</body>
+</html>
