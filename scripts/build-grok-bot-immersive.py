@@ -7,35 +7,7 @@ ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE = ROOT / "public/immersive/llm-inference-life/index.html"
 OUT = ROOT / "public/immersive/grok-bot-agents/index.html"
 
-# Reuse CSS/JS shell from template (head through body open, footer scripts)
-template = TEMPLATE.read_text(encoding="utf-8")
-
-# Split at container start and footer
-start_marker = '<div class="container">'
-footer_marker = '<section class="ursb-interactive">'
-start_idx = template.index(start_marker)
-footer_idx = template.index(footer_marker)
-
-head = template[:start_idx]
-footer = template[footer_idx:]
-
-# Patch meta in head
-head = head.replace(
-    "一次 LLM 推理的一生 — 一个 prompt 在 llama.cpp 里走过的 28 个站",
-    "一条消息的一生 — Grok Bot Agent 系统与多 Agent 协作全景",
-)
-head = head.replace(
-    'content="你敲下 prompt 按回车之后这 5 个 token 在 llama.cpp 里要走过 28 个站',
-    'content="你按下回车之后，一条用户消息如何在 Grok Bot 0.18 里穿过四层进程、spawn 子 Agent、持久化 blob 状态、并在多 Agent 协作中回到屏幕',
-)
-head = head.replace("llm-inference-life", "grok-bot-agents")
-head = head.replace("LLM 推理工程", "Agent 系统工程")
-head = head.replace("LLM Inference", "Agent Systems")
-head = head.replace("og/llm-inference-life.png", "og/grok-bot-agents.png")
-
-# Side TOC
-side_toc = '''
-<nav class="toc-side" aria-label="Table of contents">
+side_toc = """<nav class="toc-side" aria-label="Table of contents">
   <div class="toc-label lang-zh-only">目录</div>
   <div class="toc-label lang-en-only">Contents</div>
   <ol>
@@ -62,17 +34,49 @@ side_toc = '''
     <li data-section="c16"><a href="#c16"><span class="toc-num">16</span><span class="lang-zh-only">一条消息的 16 站</span><span class="lang-en-only">16 stations</span></a></li>
   </ol>
 </nav>
-'''
+"""
 
-toc_start = template.index('<nav class="toc-side"')
-toc_end = template.index('</nav>', toc_start) + len('</nav>')
+template = TEMPLATE.read_text(encoding="utf-8")
+
+start_marker = '<div class="container">'
+footer_marker = '<section class="ursb-interactive">'
+start_idx = template.index(start_marker)
+footer_idx = template.index(footer_marker)
+
+head = template[:start_idx]
+head = head.replace(
+    "一次 LLM 推理的一生 — 一个 prompt 在 llama.cpp 里走过的 28 个站",
+    "一条消息的一生 — Grok Bot Agent 系统与多 Agent 协作全景",
+)
+head = head.replace(
+    'content="你敲下 prompt 按回车之后这 5 个 token 在 llama.cpp 里要走过 28 个站——tokenizer / embedding / KV cache / attention / MoE / MLA / sampling。每一站对应一个真实函数,逐行读。"',
+    'content="你按下回车之后，一条用户消息如何在 Grok Bot 0.18 里穿过四层进程、spawn 子 Agent、持久化 blob 状态、并在多 Agent 协作中回到屏幕——16 章，每章对应真实 TypeScript / Protobuf 路径。"',
+)
+head = head.replace("llm-inference-life", "grok-bot-agents")
+head = head.replace("LLM 推理工程", "Agent 系统工程")
+head = head.replace("LLM Inference", "Agent Systems")
+head = head.replace("og/llm-inference-life.png", "og/grok-bot-agents.png")
+head = head.replace(
+    'content="一次 LLM 推理的一生 — 一个 prompt 走完 llama.cpp 里 25 站"',
+    'content="一条消息的一生 — Grok Bot Agent 系统与多 Agent 协作全景"',
+)
+head = head.replace(
+    'content="一次 LLM 推理的一生"',
+    'content="一条消息的一生 — Grok Bot Agent 系统与多 Agent 协作全景"',
+)
+head = head.replace(
+    "tokenizer → embedding → KV cache → attention → MoE/MLA → logit → sampling · 真源码逐行。",
+    "renderer → coordinator → host → box-exec → Task subagent → blob checkpoint · 真源码逐行。",
+)
+
+toc_start = head.index('<nav class="toc-side"')
+toc_end = head.index('</nav>', toc_start) + len('</nav>')
 head = head[:toc_start] + side_toc + head[toc_end:]
 
-# Patch footer POST_SLUG
+footer = template[footer_idx:]
 footer = footer.replace("note/llm-inference-life", "note/grok-bot-agents")
 
-BODY = r'''
-<div class="container">
+BODY = r'''<div class="container">
 
   <header class="hero">
     <div class="meta">
@@ -179,7 +183,6 @@ BODY = r'''
 
 '''
 
-# Chapter content - will be appended from separate string file for maintainability
 CHAPTERS = Path(__file__).with_name("grok-bot-immersive-chapters.html")
 if not CHAPTERS.exists():
     raise SystemExit(f"Missing {CHAPTERS}")
