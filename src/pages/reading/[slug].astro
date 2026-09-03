@@ -23,6 +23,8 @@ interface Props {
 
 const { item, newer, older } = Astro.props;
 const description = item.summary || `${item.author ? `${item.author} · ` : ''}${item.source} 阅读记录`;
+const summaryLines = (item.summary || '').split('\n').map((line) => line.trim()).filter(Boolean);
+const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^[-*]\s+/.test(line));
 ---
 
 <BaseLayout
@@ -89,7 +91,13 @@ const description = item.summary || `${item.author ? `${item.author} · ` : ''}$
           {item.summary && (
             <section>
               <h2>要点速览</h2>
-              <p class="reading-summary">{item.summary}</p>
+              {summaryIsList ? (
+                <ul class="reading-summary-list">
+                  {summaryLines.map((line) => <li>{line.replace(/^[-*]\s+/, '')}</li>)}
+                </ul>
+              ) : (
+                <p class="reading-summary">{item.summary}</p>
+              )}
             </section>
           )}
           <section>
