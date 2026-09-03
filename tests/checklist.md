@@ -330,7 +330,7 @@
 
 ## Reads (`/reads/`)
 
-> Third feed line. Snapshot `src/data/reads.json` from Notion 信息采集箱.
+> Third feed line. Snapshot `src/data/reads.json` from public R2 `https://r2.airingdeng.com/reads.json` (采集 writes; blog only curls).
 > Publish gate: 公开 + 外发摘要. Empty list must still render the locked layout.
 
 - [ ] GET `/reads/` 返回页面，title 含「阅读」或 "Reads"

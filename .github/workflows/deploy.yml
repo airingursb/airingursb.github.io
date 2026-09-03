@@ -59,12 +59,10 @@ jobs:
           COS_DOMAIN: ${{ secrets.COS_DOMAIN }}
         run: python3 scripts/sync_moments.py
 
-      - name: Sync reads from Notion
-        # Optional: empty fixture is committed so missing token does not fail CI.
+      - name: Sync reads snapshot from R2
+        # Public JSON at r2.airingdeng.com/reads.json. No token.
+        # Failure / empty → script writes [] so the build still succeeds.
         continue-on-error: true
-        env:
-          NOTION_TOKEN: ${{ secrets.NOTION_TOKEN }}
-          NOTION_READS_DATABASE_ID: ${{ secrets.NOTION_READS_DATABASE_ID }}
         run: npm run sync:reads
 
       - name: Build Astro site

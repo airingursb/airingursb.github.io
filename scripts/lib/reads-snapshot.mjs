@@ -1,13 +1,22 @@
 // scripts/lib/reads-snapshot.mjs
-// Pure snapshot helpers for /reads/ — Notion 信息采集箱 → src/data/reads.json
-// Never include inbox body or the 「## 原文」 section.
+// Normalize the public R2 snapshot (https://r2.airingdeng.com/reads.json).
+// Publish gate lives in 采集 — this repo only copies public fields.
 
-export const DROP_TAG = '待读';
+export const READS_SNAPSHOT_URL = 'https://r2.airingdeng.com/reads.json';
 
-/**
- * @param {string} title
- * @param {string} id
- */
+const PUBLIC_FIELDS = [
+  'id',
+  'slug',
+  'title',
+  'summary',
+  'sourceUrl',
+  'cover',
+  'source',
+  'author',
+  'publishedAt',
+  'tags',
+];
+
 export function slugifyTitle(title, id = '') {
   const base = String(title || '')
     .toLowerCase()
@@ -20,94 +29,36 @@ export function slugifyTitle(title, id = '') {
   return base || compactId || 'read';
 }
 
-/**
- * Reuse previous slugs by Notion page id so feed permalinks stay stable.
- * @param {Array<{ id: string, title: string, slug?: string }>} items
- * @param {Map<string, { slug: string }>} previousById
- */
-export function assignSlugs(items, previousById = new Map()) {
-  const used = new Set();
-  return items.map((item) => {
-    const prev = previousById.get(item.id);
-    if (prev?.slug && !used.has(prev.slug)) {
-      used.add(prev.slug);
-      return { ...item, slug: prev.slug };
-    }
-    let slug = slugifyTitle(item.title, item.id);
-    if (used.has(slug)) {
-      const suffix = String(item.id || '').replace(/-/g, '').slice(-8);
-      slug = `${slugifyTitle(item.title, item.id)}-${suffix || 'dup'}`;
-    }
-    used.add(slug);
-    return { ...item, slug };
-  });
+function asString(value) {
+  return value == null ? '' : String(value);
 }
 
-export function isCheckboxYes(value) {
-  return value === true || value === '__YES__';
-}
-
-/** Publish gate: 公开 is true AND 外发摘要 is non-empty. */
-export function isPublishable({ published, summary }) {
-  return isCheckboxYes(published) && String(summary || '').trim().length > 0;
-}
-
-export function dropInboxTags(tags) {
-  return (Array.isArray(tags) ? tags : []).filter((t) => t && t !== DROP_TAG);
-}
-
-function richText(prop) {
-  if (!prop) return '';
-  const arr = prop.title || prop.rich_text || [];
-  return arr.map((t) => t.plain_text || '').join('').trim();
-}
-
-export function coverUrl(page) {
-  const cover = page?.cover;
-  if (!cover) return '';
-  if (cover.type === 'external') return cover.external?.url || '';
-  if (cover.type === 'file') return cover.file?.url || '';
-  return '';
-}
-
-/**
- * Map a Notion page object to a public snapshot item.
- * Does not read page body / children / 「## 原文」.
- */
-export function pageToRead(page) {
-  const p = page?.properties || {};
+function normalizeItem(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const id = asString(raw.id).trim();
+  const title = asString(raw.title).trim();
+  const slug = asString(raw.slug).trim() || slugifyTitle(title, id);
+  if (!id && !slug) return null;
   return {
-    id: page.id,
-    title: richText(p['名称']),
-    summary: richText(p['外发摘要']),
-    sourceUrl: p['原始链接']?.url || '',
-    cover: coverUrl(page),
-    source: p['来源']?.select?.name || '',
-    author: richText(p['作者/来源']),
-    publishedAt: p['收藏时间']?.date?.start || '',
-    tags: dropInboxTags((p['标签']?.multi_select || []).map((t) => t.name)),
+    id,
+    slug,
+    title,
+    summary: asString(raw.summary),
+    sourceUrl: asString(raw.sourceUrl),
+    cover: asString(raw.cover),
+    source: asString(raw.source),
+    author: asString(raw.author),
+    publishedAt: asString(raw.publishedAt),
+    tags: Array.isArray(raw.tags) ? raw.tags.map(asString).filter(Boolean) : [],
   };
 }
 
-export function pagePassesPublishGate(page) {
-  const p = page?.properties || {};
-  return isPublishable({
-    published: p['公开']?.checkbox,
-    summary: richText(p['外发摘要']),
-  });
-}
-
-/**
- * @param {object[]} pages Notion page objects
- * @param {Array<{ id: string, slug: string }>} previous
- */
-export function snapshotFromPages(pages, previous = []) {
-  const previousById = new Map((previous || []).map((item) => [item.id, item]));
-  const items = (pages || [])
-    .filter(pagePassesPublishGate)
-    .map(pageToRead)
-    .sort((a, b) => String(b.publishedAt).localeCompare(String(a.publishedAt)));
-  return assignSlugs(items, previousById);
+/** Invalid / empty payloads become []. Extra keys (body, 原文, …) are dropped. */
+export function normalizeReadsSnapshot(raw) {
+  if (raw == null) return [];
+  const list = Array.isArray(raw) ? raw : Array.isArray(raw.items) ? raw.items : null;
+  if (!list || list.length === 0) return [];
+  return list.map(normalizeItem).filter(Boolean);
 }
 
 export function enclosureType(url) {
@@ -120,3 +71,5 @@ export function enclosureType(url) {
 }
 
 export const RSS_TRACK_BASE = 'https://chat.ursb.me/api/rss-track';
+
+export { PUBLIC_FIELDS };

@@ -1,94 +1,66 @@
 #!/usr/bin/env node
 /**
- * Sync Notion 信息采集箱 → src/data/reads.json
+ * Pull the public reads snapshot from R2 → src/data/reads.json
  *
- * Publish gate: 公开 is true AND 外发摘要 is non-empty.
- * Snapshot only public fields — never inbox body / 「## 原文」.
+ * Source of truth: https://r2.airingdeng.com/reads.json (written by 采集).
+ * This repo never talks to Notion and must not hold a Notion token.
  *
  * Usage:
- *   NOTION_TOKEN=... npm run sync:reads
+ *   npm run sync:reads
  *
- * Without a token, leaves the committed fixture (empty list) in place
- * so CI can build.
+ * Curl failure or empty/invalid payload → write [] so CI still builds.
  */
 
-import 'dotenv/config';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { snapshotFromPages } from './lib/reads-snapshot.mjs';
+import { READS_SNAPSHOT_URL, normalizeReadsSnapshot } from './lib/reads-snapshot.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 const OUT = path.join(ROOT, 'src/data/reads.json');
 
-// 信息采集箱 — not a secret; token is.
-const DEFAULT_DATABASE_ID = '51c91ced1c114508ab735519bc4ca6b4';
-const NOTION_VERSION = '2022-06-28';
-
-async function readPrevious() {
-  try {
-    const raw = JSON.parse(await fs.readFile(OUT, 'utf8'));
-    return Array.isArray(raw) ? raw : [];
-  } catch {
-    return [];
+async function fetchSnapshot(url) {
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'ursb-reads-sync/1.0' },
+    signal: AbortSignal.timeout(20_000),
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
   }
+  return res.json();
 }
 
-async function queryNotion(token, databaseId) {
-  const pages = [];
-  let startCursor;
-  do {
-    const res = await fetch(`https://api.notion.com/v1/databases/${databaseId}/query`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Notion-Version': NOTION_VERSION,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        page_size: 100,
-        start_cursor: startCursor,
-        filter: {
-          and: [
-            { property: '公开', checkbox: { equals: true } },
-            { property: '外发摘要', rich_text: { is_not_empty: true } },
-          ],
-        },
-        sorts: [{ property: '收藏时间', direction: 'descending' }],
-      }),
-    });
-    if (!res.ok) {
-      const text = await res.text();
-      throw new Error(`Notion query ${res.status}: ${text.slice(0, 400)}`);
-    }
-    const data = await res.json();
-    pages.push(...(data.results || []));
-    startCursor = data.has_more ? data.next_cursor : undefined;
-  } while (startCursor);
-  return pages;
+async function writeEmpty(reason) {
+  await fs.writeFile(OUT, '[]\n');
+  console.warn(`[reads] ${reason}; wrote []`);
 }
 
 async function main() {
-  const token = process.env.NOTION_TOKEN || process.env.NOTION_API_KEY || '';
-  const databaseId = process.env.NOTION_READS_DATABASE_ID || DEFAULT_DATABASE_ID;
-  const previous = await readPrevious();
-
-  if (!token) {
-    if (!previous.length) {
-      await fs.writeFile(OUT, '[]\n');
-    }
-    console.warn('[reads] NOTION_TOKEN missing; keeping existing snapshot');
+  const url = process.env.READS_SNAPSHOT_URL || READS_SNAPSHOT_URL;
+  let raw;
+  try {
+    raw = await fetchSnapshot(url);
+  } catch (err) {
+    await writeEmpty(`fetch failed (${err.message || err})`);
     return;
   }
 
-  const pages = await queryNotion(token, databaseId);
-  const items = snapshotFromPages(pages, previous);
+  const items = normalizeReadsSnapshot(raw);
+  if (items.length === 0) {
+    await writeEmpty('snapshot empty or invalid');
+    return;
+  }
+
   await fs.writeFile(OUT, `${JSON.stringify(items, null, 2)}\n`);
-  console.log(`[reads] wrote ${items.length} item(s) → ${path.relative(ROOT, OUT)}`);
+  console.log(`[reads] wrote ${items.length} item(s) from ${url} → ${path.relative(ROOT, OUT)}`);
 }
 
-main().catch((err) => {
-  console.error('[reads]', err.message || err);
-  process.exit(1);
+main().catch(async (err) => {
+  try {
+    await writeEmpty(err.message || String(err));
+  } catch (writeErr) {
+    console.error('[reads]', writeErr);
+    process.exit(1);
+  }
 });
