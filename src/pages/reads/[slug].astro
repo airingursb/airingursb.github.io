@@ -1,0 +1,85 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { tSite } from '../../lib/i18n';
+import { loadReads } from '../../lib/reads';
+import '../../styles/reads.css';
+
+export function getStaticPaths() {
+  return loadReads().map((item) => ({
+    params: { slug: item.slug },
+    props: { item },
+  }));
+}
+
+const { item } = Astro.props;
+const s = tSite('zh').reads;
+const published = item.publishedAt
+  ? new Date(item.publishedAt).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' })
+  : '';
+const metaBits = [item.source, item.author, published].filter(Boolean);
+---
+
+<BaseLayout
+  title={`${item.title} | ${s.siteTitle}`}
+  description={item.summary}
+  ogImage={item.cover || undefined}
+  ogType="article"
+>
+  <div class="read-detail-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/blog/" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/blog/" class="mast-hide-mobile">Blog</a>
+            <a href="/moments/">Moment</a>
+            <a href="/notes/">Notes</a>
+            <a href="/reads/" class="mast-active">Reads</a>
+            <a href="/photos/">Photos</a>
+            <a href="/friends/">Friends</a>
+          </div>
+        </div>
+        <div class="mast-lang-line"></div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <main class="read-detail-main">
+      <a href="/reads/" class="rd-back">{s.backToList}</a>
+      {item.cover && (
+        <div class="rd-cover">
+          <img src={item.cover} alt="" />
+        </div>
+      )}
+      <h1 class="rd-title">{item.title}</h1>
+      {metaBits.length > 0 && (
+        <p class="rd-meta">{metaBits.join(' · ')}</p>
+      )}
+      {item.summary && (
+        <p class="rd-summary">{item.summary}</p>
+      )}
+      {item.sourceUrl && (
+        <a class="rd-original" href={item.sourceUrl} target="_blank" rel="noopener noreferrer">
+          {s.readOriginal} ↗
+        </a>
+      )}
+      {item.tags.length > 0 && (
+        <div class="rd-tags">
+          {item.tags.map((tag) => <span class="rd-tag">{tag}</span>)}
+        </div>
+      )}
+    </main>
+
+    <footer class="blog-footer">
+      <div class="footer-inner">
+        <span>&copy; 2026 Airing</span>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/reads/">Reads</a>
+          <a href="/reads/feed.xml">RSS</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+</BaseLayout>

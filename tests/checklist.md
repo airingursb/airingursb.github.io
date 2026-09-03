@@ -328,6 +328,24 @@
 - [ ] GET `/sitemap-index.xml` 返回 XML
 - [ ] GET `/feed.xml` 返回 XML，包含 `<rss` 或 `<feed`
 
+## Reads (`/reads/`)
+
+> Third feed line. Snapshot `src/data/reads.json` from Notion 信息采集箱.
+> Publish gate: 公开 + 外发摘要. Empty list must still render the locked layout.
+
+- [ ] GET `/reads/` 返回页面，title 含「阅读」或 "Reads"
+- [ ] DOM: `.source-sidebar` 存在（左侧来源筛选），含 `data-source="all"`
+- [ ] DOM: `.month-group` + `.month-header` + `.reads-grid` 存在（空列表也保留）
+- [ ] CSS: `.reads-grid` 为三列 `grid-template-columns: repeat(3, 1fr)`（桌面）
+- [ ] CSS: `.month-header` 为 `position: sticky`
+- [ ] CSS: `.rc-title` / `.rc-summary` 为单行截断（`white-space: nowrap` + ellipsis）
+- [ ] DOM: 无右侧 timeline（没有 `.timeline` / `.reads-timeline`）
+- [ ] DOM: `.reads-empty` 在 `reads.json = []` 时可见
+- [ ] GET `/reads/feed.xml` 返回 XML，含 `<?xml-stylesheet` → `/feed.xsl`
+- [ ] Evaluate: feed 含 `<rss`，item.link 为 `/reads/{slug}/`（不是原始 URL）
+- [ ] Evaluate: feed tracking pixel 指向 `https://chat.ursb.me/api/rss-track`（不是 `ursb.me/api/rss-track`）
+- [ ] GET `/reads/{slug}/`：大封面 + 外发摘要 + 「阅读原文」外链；不转载原文
+
 ## Moments (`/moments/`)
 
 - [ ] GET `/moments/` returns page
