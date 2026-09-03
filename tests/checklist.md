@@ -1577,3 +1577,23 @@
 - [ ] subAgent spawn → 入场占工位；SubagentStop → 离场（done/failed/cancelled 有别），无残留
 - [ ] 连不上本地服务 → 3.5s 后 demo 态（主+2 sub 循环），无报错、无白屏
 - [ ] 离开 office 房间正确 teardown（家具/agent/气泡/SSE 全销毁，无泄漏）；其它房间（lobby/gallery）不受影响
+
+## Reading Stream (`/reading/`)
+
+- [ ] GET `/reading/` 200，页面标题、description、canonical 和 Reading RSS alternate 正确
+- [ ] 桌面宽度下真实 R2 封面为三列；中屏两列；手机单列且无横向溢出
+- [ ] Source 与 Archive 筛选可组合，条目计数和空状态同步更新
+- [ ] 卡片封面/标题进入站内 `/reading/<slug>/`，`原文 ↗` 使用新窗口打开外部来源
+- [ ] 详情页展示完整 3:2 海报、来源/作者/时间；摘要和主题为空时不渲染空区块
+- [ ] 详情页原图 lightbox 支持点击打开、背景/关闭按钮/Escape 关闭
+- [ ] 复制链接按钮写入当前站内 permalink，并提供“已复制”反馈
+- [ ] 相邻阅读导航顺序正确；sitemap 包含列表和所有公开详情 URL
+- [ ] 每周邮件表单成功、重复订阅和错误状态均有可读反馈
+- [ ] 暗色与亮色主题下封面、文字、边框和按钮均清晰可读
+
+## Homepage — Reading Stream
+
+- [ ] 阅读流模块位于频道与四格之间，沿用全宽横向滑动卡片布局
+- [ ] 桌面约展示 3 张 3:2 海报，移动端约展示 1.4 张且可横向滑动
+- [ ] 最新条目显示 NEW；来源、日期、作者和标题来自 `reading_items`
+- [ ] `查看全部`、`实时 RSS`、`订阅每周邮件`链接目标正确

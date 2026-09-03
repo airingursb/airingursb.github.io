@@ -8,6 +8,7 @@ import '../styles/workouts.css';
 import WorkoutCardPreview from '../components/workouts/WorkoutCardPreview.astro';
 import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
 import { fetchComics } from '../lib/comics';
+import { fetchReadingItems } from '../lib/reading';
 import { FootprintsMap } from '../components/footprints/FootprintsMap';
 import { cities as footprintCities } from '../data/footprints';
 import IslandWidget from '../components/IslandWidget.astro';
@@ -39,6 +40,7 @@ const recentPhotos = (photosData as Array<any>)
 
 const allComics = await fetchComics();
 const latestComic = allComics[0];
+const recentReading = await fetchReadingItems(8);
 const formatComicDate = (s: string, locale: 'zh' | 'en') =>
   new Date(s).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -1250,6 +1252,49 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
             </a>
         <!-- TELEGRAM_END -->
       </div>
+
+      <!-- Reading Stream -->
+      {recentReading.length > 0 && (
+        <div class="card card-reading-stream" id="reading-stream-card">
+          <div class="section-title-row">
+            <span class="section-title" data-i18n="sec_reading_stream">阅读流</span>
+            <div class="reading-strip-actions">
+              <a class="reading-strip-rss" href="https://chat.ursb.me/api/reading/feed.xml" data-umami-event="home-reading-rss">RSS</a>
+              <a class="photos-strip-more" href="/reading/" data-i18n="rdg_view_all">查看全部 →</a>
+            </div>
+          </div>
+          <div class="reading-home-strip" role="list">
+            {recentReading.map((item, index) => (
+              <a class="reading-home-item" role="listitem" href={`/reading/${item.slug}/`}>
+                <div class="reading-home-thumb">
+                  <img
+                    src={item.cover_url}
+                    alt={item.title}
+                    loading="lazy"
+                    decoding="async"
+                    width="1536"
+                    height="1024"
+                  />
+                  {index === 0 && <span class="reading-home-new">NEW</span>}
+                </div>
+                <div class="reading-home-meta">
+                  <span>{item.source}</span>
+                  <span>{new Date(item.saved_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' })}</span>
+                  {item.author && <span>{item.author}</span>}
+                </div>
+                <div class="reading-home-title">{item.title}</div>
+              </a>
+            ))}
+          </div>
+          <div class="reading-home-follow">
+            <span><b>$</b> follow reading --weekly</span>
+            <div>
+              <a href="https://chat.ursb.me/api/reading/feed.xml">实时 RSS</a>
+              <a class="primary" href="/reading/#weekly">订阅每周邮件 →</a>
+            </div>
+          </div>
+        </div>
+      )}
 
       <!-- Comics (四格) -->
       {allComics.length > 0 && (

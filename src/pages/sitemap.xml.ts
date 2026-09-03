@@ -2,6 +2,7 @@ import type { APIContext } from 'astro';
 import { getCollection } from 'astro:content';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fetchReadingItems } from '../lib/reading';
 
 export async function GET(context: APIContext) {
   const site = context.site!.origin;
@@ -15,6 +16,7 @@ export async function GET(context: APIContext) {
   const notesEn = (await getCollection('notesEn', ({ data }) => data.public && !data.draft));
   const enNoteIds = new Set(notesEn.map(n => n.id));
   const zhNoteIds = new Set(notes.map(n => n.id));
+  const readingItems = await fetchReadingItems();
 
   const tagsSet = new Set<string>();
   posts.forEach(post => post.data.tags.forEach(tag => tagsSet.add(tag)));
@@ -73,6 +75,7 @@ ${lastmodXml}    <changefreq>${opts.changefreq}</changefreq>
   // data-href, not a real <a>), so Googlebot can't discover this
   // route from the homepage crawl. List it explicitly.
   urls.push(singleUrl('/world/', { changefreq: 'monthly', priority: '0.6' }));
+  urls.push(singleUrl('/reading/', { changefreq: 'daily', priority: '0.8' }));
 
   // Static bilingual pages
   for (const p of bilingualStaticPages) {
@@ -109,6 +112,14 @@ ${lastmodXml}    <changefreq>${opts.changefreq}</changefreq>
       const lastmod = new Date(note.data.date).toISOString().split('T')[0];
       urls.push(singleUrl(`/en/notes/${note.id}/`, { lastmod, changefreq: 'monthly', priority: '0.7' }));
     }
+  }
+
+  for (const item of readingItems) {
+    urls.push(singleUrl(`/reading/${item.slug}/`, {
+      lastmod: new Date(item.updated_at).toISOString().split('T')[0],
+      changefreq: 'monthly',
+      priority: '0.6',
+    }));
   }
 
   // Immersive long-form articles — flagship content under /immersive/{slug}/.

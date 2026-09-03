@@ -1,0 +1,188 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ReadingCard from '../../components/reading/ReadingCard.astro';
+import { fetchReadingItems, readingMonth } from '../../lib/reading';
+import '../../styles/reading.css';
+
+const items = await fetchReadingItems();
+const sourceCounts = new Map<string, number>();
+const monthCounts = new Map<string, number>();
+for (const item of items) {
+  sourceCounts.set(item.source, (sourceCounts.get(item.source) ?? 0) + 1);
+  const month = readingMonth(item.saved_at);
+  monthCounts.set(month, (monthCounts.get(month) ?? 0) + 1);
+}
+const sources = [...sourceCounts.entries()].sort((a, b) => b[1] - a[1]);
+const months = [...monthCounts.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+const latest = items[0]?.updated_at || items[0]?.saved_at;
+const latestLabel = latest
+  ? new Date(latest).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' })
+  : '—';
+---
+
+<BaseLayout
+  title="Reading Stream / 阅读流 · Airing's Blog"
+  description="我每天读过，并愿意留下的东西。通过网页、RSS 或每周邮件订阅 Airing 的阅读流。"
+  lang="zh"
+>
+  <div class="reading-page">
+    <header class="reading-shell">
+      <div class="reading-mast-top"></div>
+      <div class="reading-mast-bar">
+        <a class="reading-brand" href="/blog/">Airing's Blog</a>
+        <nav class="reading-nav" aria-label="博客导航">
+          <a href="/blog/">Blog</a>
+          <a href="/moments/">Moment</a>
+          <a href="/notes/">Notes</a>
+          <a class="active" href="/reading/" aria-current="page">Reading</a>
+          <a href="/photos/">Photos</a>
+          <a href="/friends/">Friends</a>
+        </nav>
+      </div>
+      <div class="reading-subbar">
+        <span>ursb.me / reading</span>
+        <span>只展示手动公开内容</span>
+      </div>
+    </header>
+
+    <main class="reading-shell">
+      <section class="reading-hero">
+        <div>
+          <div class="reading-eyebrow">Curated daily</div>
+          <h1 class="reading-title">Reading Stream <span>/ 阅读流</span></h1>
+          <p class="reading-desc">我每天读过，并愿意留下的东西。来自 X、GitHub、Newsletter 与网页的私人精选。</p>
+        </div>
+        <div class="reading-hero-actions">
+          <div class="reading-updated"><span data-visible-count>{items.length}</span> items<br />updated {latestLabel}</div>
+          <a class="reading-rss" href="https://chat.ursb.me/api/reading/feed.xml" data-umami-event="reading-rss-click">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.18" cy="17.82" r="2.18"/><path d="M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56zm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z"/></svg>
+            订阅 RSS
+          </a>
+        </div>
+      </section>
+
+      <div class="reading-content">
+        <aside class="reading-sidebar" aria-label="阅读流筛选">
+          <section class="reading-side-section" data-filter-group="source">
+            <div class="reading-side-title">Source</div>
+            <button class="reading-filter active" type="button" data-filter="all">
+              <span>全部</span><span class="reading-filter-count">{items.length}</span>
+            </button>
+            {sources.map(([source, count]) => (
+              <button class="reading-filter" type="button" data-filter={source}>
+                <span>{source}</span><span class="reading-filter-count">{count}</span>
+              </button>
+            ))}
+          </section>
+
+          <section class="reading-side-section" data-filter-group="month">
+            <div class="reading-side-title">Archive</div>
+            <button class="reading-filter active" type="button" data-filter="all">
+              <span>全部月份</span>
+            </button>
+            {months.map(([month, count]) => (
+              <button class="reading-filter" type="button" data-filter={month}>
+                <span>{month}</span><span class="reading-filter-count">{count}</span>
+              </button>
+            ))}
+          </section>
+
+          <section class="reading-side-section weekly" id="weekly">
+            <div class="reading-side-title">Weekly letter</div>
+            <p class="reading-weekly-copy">每周一封，把过去一周值得重看的内容串起来。</p>
+            <form class="reading-weekly-form" data-reading-subscribe>
+              <input name="email" type="email" autocomplete="email" placeholder="you@example.com" aria-label="邮箱" required />
+              <button type="submit">订阅每周邮件 →</button>
+              <p class="reading-form-message" aria-live="polite"></p>
+            </form>
+          </section>
+        </aside>
+
+        <section>
+          <div class="reading-stream-head">
+            <span class="reading-stream-label">Latest reads</span>
+            <span class="reading-stream-range">按收藏时间倒序</span>
+          </div>
+
+          {items.length > 0 ? (
+            <>
+              <div class="reading-grid" data-reading-grid>
+                {items.map((item, index) => <ReadingCard item={item} eager={index < 3} />)}
+              </div>
+              <p class="reading-empty" data-reading-empty hidden>没有符合当前筛选的内容。</p>
+            </>
+          ) : (
+            <p class="reading-empty">还没有公开的阅读记录。</p>
+          )}
+
+          <section class="reading-side-section weekly reading-weekly-mobile" id="weekly-mobile">
+            <div class="reading-side-title">Weekly letter</div>
+            <p class="reading-weekly-copy">每周一封，把过去一周值得重看的内容串起来。</p>
+            <form class="reading-weekly-form" data-reading-subscribe>
+              <input name="email" type="email" autocomplete="email" placeholder="you@example.com" aria-label="邮箱" required />
+              <button type="submit">订阅每周邮件 →</button>
+              <p class="reading-form-message" aria-live="polite"></p>
+            </form>
+          </section>
+        </section>
+      </div>
+    </main>
+
+    <footer class="reading-shell reading-footer">© 2026 Airing · Reading Stream</footer>
+  </div>
+
+  <script>
+    const filters = { source: 'all', month: 'all' };
+    const cards = Array.from(document.querySelectorAll('[data-reading-card]'));
+    const count = document.querySelector('[data-visible-count]');
+    const empty = document.querySelector('[data-reading-empty]');
+
+    function applyFilters() {
+      let visible = 0;
+      cards.forEach((card) => {
+        const matchesSource = filters.source === 'all' || card.getAttribute('data-source') === filters.source;
+        const matchesMonth = filters.month === 'all' || card.getAttribute('data-month') === filters.month;
+        card.toggleAttribute('hidden', !(matchesSource && matchesMonth));
+        if (matchesSource && matchesMonth) visible += 1;
+      });
+      if (count) count.textContent = String(visible);
+      if (empty) empty.toggleAttribute('hidden', visible !== 0);
+    }
+
+    document.querySelectorAll('[data-filter-group]').forEach((group) => {
+      group.addEventListener('click', (event) => {
+        if (!(event.target instanceof Element)) return;
+        const button = event.target.closest('[data-filter]');
+        if (!button) return;
+        const type = group.getAttribute('data-filter-group');
+        if (type !== 'source' && type !== 'month') return;
+        filters[type] = button.getAttribute('data-filter') || 'all';
+        group.querySelectorAll('[data-filter]').forEach((item) => item.classList.toggle('active', item === button));
+        applyFilters();
+      });
+    });
+
+    document.querySelectorAll('[data-reading-subscribe]').forEach((form) => {
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (!(form instanceof HTMLFormElement)) return;
+        const message = form.querySelector('.reading-form-message');
+        const email = new FormData(form).get('email');
+        if (message) message.textContent = '正在订阅…';
+        try {
+          const response = await fetch('https://chat.ursb.me/api/reading/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, lang: 'zh' }),
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.message || '订阅失败');
+          if (message) message.textContent = result.alreadySubscribed ? '这个邮箱已经订阅。' : '订阅成功，下周一见。';
+          form.reset();
+        } catch (error) {
+          if (message) message.textContent = error instanceof Error ? error.message : '订阅失败，请稍后再试。';
+        }
+      });
+    });
+  </script>
+</BaseLayout>

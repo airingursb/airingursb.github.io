@@ -1,0 +1,43 @@
+---
+import type { ReadingItem } from '../../lib/reading';
+import { readingDate, readingMonth } from '../../lib/reading';
+
+interface Props {
+  item: ReadingItem;
+  eager?: boolean;
+}
+
+const { item, eager = false } = Astro.props;
+---
+
+<article
+  class="reading-card"
+  data-reading-card
+  data-source={item.source}
+  data-month={readingMonth(item.saved_at)}
+>
+  <a class="reading-card-cover" href={`/reading/${item.slug}/`} aria-label={item.title}>
+    <img
+      src={item.cover_url}
+      alt={item.title}
+      width="1536"
+      height="1024"
+      loading={eager ? 'eager' : 'lazy'}
+      fetchpriority={eager ? 'high' : 'auto'}
+      decoding="async"
+    />
+  </a>
+  <h2 class="reading-card-title">
+    <a href={`/reading/${item.slug}/`}>{item.title}</a>
+  </h2>
+  <div class="reading-card-meta">
+    <span class="reading-source">{item.source}</span>
+    <time datetime={item.saved_at}>{readingDate(item.saved_at)}</time>
+    {item.author && <span class="reading-author">{item.author}</span>}
+    {item.original_url && (
+      <a class="reading-original" href={item.original_url} target="_blank" rel="noopener noreferrer">
+        原文 ↗
+      </a>
+    )}
+  </div>
+</article>
