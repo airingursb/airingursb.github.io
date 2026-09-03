@@ -105,3 +105,26 @@ test('RSS tracking pixel host is chat.ursb.me', () => {
   assert.equal(enclosureType('https://r2.example/cover.png'), 'image/png');
   assert.equal(enclosureType('https://r2.example/cover.jpg?x=1'), 'image/jpeg');
 });
+
+import { readToRssFields } from '../src/lib/reads.ts';
+
+test('RSS item uses permalink, enclosure, and chat.ursb.me pixel', () => {
+  const fields = readToRssFields({
+    id: 'abc',
+    slug: 'llm-wiki',
+    title: 'LLM Wiki',
+    summary: 'A public summary.',
+    sourceUrl: 'https://github.com/nashsu/llm_wiki',
+    cover: 'https://r2.airingdeng.com/notion/llm-wiki-cover.png',
+    source: 'GitHub',
+    author: 'nashsu',
+    publishedAt: '2026-09-02T12:31:00.000Z',
+    tags: ['GitHub'],
+  });
+  assert.equal(fields.link, '/reads/llm-wiki/');
+  assert.equal(fields.link.includes('github.com'), false);
+  assert.equal(fields.enclosure.url, 'https://r2.airingdeng.com/notion/llm-wiki-cover.png');
+  assert.equal(fields.enclosure.type, 'image/png');
+  assert.match(fields.content, /https:\/\/chat\.ursb\.me\/api\/rss-track\?post=llm-wiki/);
+  assert.equal(fields.content.includes('https://ursb.me/api/rss-track'), false);
+});

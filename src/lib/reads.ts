@@ -65,6 +65,21 @@ export function groupReadsByMonth(items: ReadItem[]): ReadMonthGroup[] {
 
 export const RSS_TRACK_BASE = 'https://chat.ursb.me/api/rss-track';
 
+export function readToRssFields(item: ReadItem) {
+  const pixel = `<img src="${RSS_TRACK_BASE}?post=${encodeURIComponent(item.slug)}" width="1" height="1" alt="" />`;
+  return {
+    title: item.title,
+    pubDate: item.publishedAt ? new Date(item.publishedAt) : new Date(0),
+    description: item.summary || '',
+    content: `${item.summary || ''}${pixel}`,
+    link: `/reads/${item.slug}/`,
+    categories: item.tags,
+    enclosure: item.cover
+      ? { url: item.cover, type: enclosureType(item.cover), length: 0 }
+      : undefined,
+  };
+}
+
 export function enclosureType(url: string): string {
   const path = String(url || '').split('?')[0].toLowerCase();
   if (path.endsWith('.jpg') || path.endsWith('.jpeg')) return 'image/jpeg';

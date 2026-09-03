@@ -1,7 +1,7 @@
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
 import { tSite } from '../../lib/i18n';
-import { loadReads, enclosureType, RSS_TRACK_BASE } from '../../lib/reads';
+import { loadReads, readToRssFields } from '../../lib/reads';
 
 export async function GET(context: APIContext) {
   const s = tSite('zh').reads;
@@ -13,23 +13,15 @@ export async function GET(context: APIContext) {
     site: context.site!,
     stylesheet: '/feed.xsl',
     items: reads.map((item) => {
-      const pixel = `<img src="${RSS_TRACK_BASE}?post=${encodeURIComponent(item.slug)}" width="1" height="1" alt="" />`;
+      const fields = readToRssFields(item);
       return {
-        title: item.title,
-        pubDate: item.publishedAt ? new Date(item.publishedAt) : new Date(0),
-        description: item.summary || '',
-        content: `${item.summary || ''}${pixel}`,
-        link: `/reads/${item.slug}/`,
-        categories: item.tags,
-        ...(item.cover
-          ? {
-              enclosure: {
-                url: item.cover,
-                type: enclosureType(item.cover),
-                length: 0,
-              },
-            }
-          : {}),
+        title: fields.title,
+        pubDate: fields.pubDate,
+        description: fields.description,
+        content: fields.content,
+        link: fields.link,
+        categories: fields.categories,
+        ...(fields.enclosure ? { enclosure: fields.enclosure } : {}),
       };
     }),
     customData: `<language>${s.feedLang}</language>`,
