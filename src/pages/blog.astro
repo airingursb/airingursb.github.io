@@ -327,21 +327,11 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
               </div>
             </div>
             <div class="subscribe-card">
-              <p class="subscribe-desc">Subscribe to get new posts by email</p>
-              <form class="subscribe-form" id="subscribe-form">
-                <input
-                  type="email"
-                  name="email"
-                  placeholder="Your email address"
-                  required
-                  class="subscribe-input"
-                />
-                <button type="submit" class="subscribe-btn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                  Subscribe
-                </button>
-              </form>
-              <p class="subscribe-msg" id="subscribe-msg"></p>
+              <p class="subscribe-desc">选择邮件或 RSS，只关注你想看的内容</p>
+              <button type="button" class="subscribe-btn" data-subscribe-open data-subscribe-context="blog">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                订阅
+              </button>
             </div>
             <BonsaiWidget />
           </div>
@@ -380,38 +370,6 @@ rankedPosts.forEach((p, i) => rankIndex.set(p.id, i));
 </BaseLayout>
 
 <script>
-  const form = document.getElementById('subscribe-form') as HTMLFormElement;
-  const msg = document.getElementById('subscribe-msg') as HTMLParagraphElement;
-  form?.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = new FormData(form).get('email') as string;
-    if (!email) return;
-    msg.textContent = 'Subscribing...';
-    msg.style.color = 'var(--c-text-muted)';
-    try {
-      const res = await fetch('https://chat.ursb.me/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, lang: 'zh' }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data.alreadySubscribed) {
-        msg.textContent = 'This email is already subscribed.';
-        msg.style.color = 'var(--c-text-muted)';
-      } else if (res.ok) {
-        msg.textContent = 'Subscribed! Thank you.';
-        msg.style.color = 'var(--accent, #4ade80)';
-        form.reset();
-      } else {
-        msg.textContent = 'Something went wrong. Try again.';
-        msg.style.color = '#f87171';
-      }
-    } catch {
-      msg.textContent = 'Network error. Try again.';
-      msg.style.color = '#f87171';
-    }
-  });
-
   // WeChat tooltip
   const wechatBtn = document.getElementById('wechatBtn');
   const wechatTooltip = document.getElementById('wechatTooltip');

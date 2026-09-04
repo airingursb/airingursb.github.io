@@ -54,10 +54,9 @@ const latestLabel = latest
         </div>
         <div class="reading-hero-actions">
           <div class="reading-updated"><span data-visible-count>{items.length}</span> items<br />updated {latestLabel}</div>
-          <a class="reading-rss" href="https://chat.ursb.me/api/reading/feed.xml" data-umami-event="reading-rss-click">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6.18" cy="17.82" r="2.18"/><path d="M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56zm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z"/></svg>
-            订阅 RSS
-          </a>
+          <button class="reading-rss" type="button" data-subscribe-open data-subscribe-context="reading">
+            订阅
+          </button>
         </div>
       </section>
 
@@ -90,11 +89,9 @@ const latestLabel = latest
           <section class="reading-side-section weekly" id="weekly">
             <div class="reading-side-title">Weekly letter</div>
             <p class="reading-weekly-copy">每周一封，把过去一周值得重看的内容串起来。</p>
-            <form class="reading-weekly-form" data-reading-subscribe>
-              <input name="email" type="email" autocomplete="email" placeholder="you@example.com" aria-label="邮箱" required />
-              <button type="submit">订阅每周邮件 →</button>
-              <p class="reading-form-message" aria-live="polite"></p>
-            </form>
+            <button class="reading-weekly-open" type="button" data-subscribe-open data-subscribe-context="reading">
+              管理订阅 →
+            </button>
           </section>
         </aside>
 
@@ -118,11 +115,9 @@ const latestLabel = latest
           <section class="reading-side-section weekly reading-weekly-mobile" id="weekly-mobile">
             <div class="reading-side-title">Weekly letter</div>
             <p class="reading-weekly-copy">每周一封，把过去一周值得重看的内容串起来。</p>
-            <form class="reading-weekly-form" data-reading-subscribe>
-              <input name="email" type="email" autocomplete="email" placeholder="you@example.com" aria-label="邮箱" required />
-              <button type="submit">订阅每周邮件 →</button>
-              <p class="reading-form-message" aria-live="polite"></p>
-            </form>
+            <button class="reading-weekly-open" type="button" data-subscribe-open data-subscribe-context="reading">
+              管理订阅 →
+            </button>
           </section>
         </section>
       </div>
@@ -162,27 +157,5 @@ const latestLabel = latest
       });
     });
 
-    document.querySelectorAll('[data-reading-subscribe]').forEach((form) => {
-      form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-        if (!(form instanceof HTMLFormElement)) return;
-        const message = form.querySelector('.reading-form-message');
-        const email = new FormData(form).get('email');
-        if (message) message.textContent = '正在订阅…';
-        try {
-          const response = await fetch('https://chat.ursb.me/api/reading/subscribe', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, lang: 'zh' }),
-          });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.message || '订阅失败');
-          if (message) message.textContent = result.alreadySubscribed ? '这个邮箱已经订阅。' : '订阅成功，下周一见。';
-          form.reset();
-        } catch (error) {
-          if (message) message.textContent = error instanceof Error ? error.message : '订阅失败，请稍后再试。';
-        }
-      });
-    });
   </script>
 </BaseLayout>
