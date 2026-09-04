@@ -1,0 +1,498 @@
+<dialog class="subscription-dialog" id="subscriptionDialog" aria-labelledby="subscriptionDialogTitle">
+  <div class="subscription-dialog-card">
+    <header class="subscription-dialog-header">
+      <div>
+        <div class="subscription-dialog-kicker">Follow what matters</div>
+        <h2 id="subscriptionDialogTitle" data-sub-copy="title">订阅 Airing</h2>
+        <p data-sub-copy="subtitle">选择接收方式，再决定你真正想看的内容。</p>
+      </div>
+      <button class="subscription-dialog-close" type="button" data-sub-close aria-label="关闭">×</button>
+    </header>
+
+    <div class="subscription-tabs" role="tablist">
+      <button class="subscription-tab active" type="button" role="tab" aria-selected="true" data-sub-tab="newsletter">
+        Newsletter <span data-sub-copy="emailLabel">邮件</span>
+      </button>
+      <button class="subscription-tab" type="button" role="tab" aria-selected="false" data-sub-tab="rss">
+        RSS <span data-sub-copy="realtimeLabel">实时</span>
+      </button>
+    </div>
+
+    <section class="subscription-pane" data-sub-pane="newsletter">
+      <div class="subscription-section-label">
+        <span data-sub-copy="emailTopics">我想通过邮件收到</span>
+        <span data-sub-copy="multiSelect">可多选</span>
+      </div>
+      <form data-sub-newsletter-form>
+        <div class="subscription-preferences">
+          <label class="subscription-preference">
+            <input type="checkbox" name="subscriptions" value="blog" />
+            <span>
+              <strong data-sub-copy="blogTitle">博客文章</strong>
+              <small data-sub-copy="blogEmailDesc">有新文章时发送摘要与阅读入口</small>
+            </span>
+            <em data-sub-copy="newPostCadence">新文章</em>
+          </label>
+          <label class="subscription-preference">
+            <input type="checkbox" name="subscriptions" value="reading" />
+            <span>
+              <strong data-sub-copy="readingTitle">阅读流精选</strong>
+              <small data-sub-copy="readingEmailDesc">一封邮件串起过去一周值得重看的内容</small>
+            </span>
+            <em data-sub-copy="weeklyCadence">每周一</em>
+          </label>
+        </div>
+        <div class="subscription-email-row">
+          <input type="email" name="email" autocomplete="email" placeholder="you@example.com" aria-label="邮箱" required />
+          <button type="submit" data-sub-copy="confirm">确认订阅 →</button>
+        </div>
+        <p class="subscription-message" data-sub-message aria-live="polite"></p>
+        <p class="subscription-fineprint" data-sub-copy="fineprint">不会重复订阅；可随时在任意邮件底部调整偏好或退订。</p>
+      </form>
+    </section>
+
+    <section class="subscription-pane" data-sub-pane="rss" hidden>
+      <p class="subscription-rss-note" data-sub-copy="rssNote">RSS 不需要邮箱。选择内容后，可以复制 Feed，或一次导出为 OPML。</p>
+      <div class="subscription-section-label">
+        <span data-sub-copy="rssTopics">我想在阅读器中关注</span>
+        <span data-sub-copy="multiSelect">可多选</span>
+      </div>
+      <div class="subscription-preferences">
+        <label class="subscription-preference">
+          <input type="checkbox" value="https://ursb.me/blog/feed.xml" data-rss-feed data-rss-kind="blog" />
+          <span><strong data-sub-copy="blogTitle">博客文章</strong><small data-sub-copy="blogRssDesc">长文与正式文章</small><code>ursb.me/blog/feed.xml</code></span>
+          <em>RSS</em>
+        </label>
+        <label class="subscription-preference">
+          <input type="checkbox" value="https://chat.ursb.me/api/reading/feed.xml" data-rss-feed data-rss-kind="reading" />
+          <span><strong data-sub-copy="readingRssTitle">阅读流</strong><small data-sub-copy="readingRssDesc">公开阅读卡片与摘要</small><code>chat.ursb.me/api/reading/feed.xml</code></span>
+          <em>RSS</em>
+        </label>
+        <label class="subscription-preference">
+          <input type="checkbox" value="https://ursb.me/notes/feed.xml" data-rss-feed data-rss-kind="notes" />
+          <span><strong data-sub-copy="notesTitle">沉浸式笔记</strong><small data-sub-copy="notesDesc">长篇交互笔记与深度思考</small><code>ursb.me/notes/feed.xml</code></span>
+          <em>RSS</em>
+        </label>
+      </div>
+      <div class="subscription-rss-actions">
+        <button type="button" data-sub-copy-feeds data-sub-copy="copyFeeds">复制所选 Feed</button>
+        <button class="accent" type="button" data-sub-export-opml data-sub-copy="exportOpml">导出 OPML →</button>
+      </div>
+      <p class="subscription-message" data-rss-message aria-live="polite"></p>
+    </section>
+
+    <footer class="subscription-dialog-footer">
+      <span data-sub-copy="privacy">你的邮箱只用于发送所选内容</span>
+      <span data-sub-copy="unsubscribeHint">随时可退订</span>
+    </footer>
+  </div>
+</dialog>
+
+<script>
+  const dialog = document.getElementById('subscriptionDialog');
+  const translations = {
+    zh: {
+      title: '订阅 Airing', subtitle: '选择接收方式，再决定你真正想看的内容。',
+      emailLabel: '邮件', realtimeLabel: '实时', emailTopics: '我想通过邮件收到',
+      multiSelect: '可多选', blogTitle: '博客文章', blogEmailDesc: '有新文章时发送摘要与阅读入口',
+      newPostCadence: '新文章', readingTitle: '阅读流精选',
+      readingEmailDesc: '一封邮件串起过去一周值得重看的内容', weeklyCadence: '每周一',
+      confirm: '确认订阅 →', fineprint: '不会重复订阅；可随时在任意邮件底部调整偏好或退订。',
+      rssNote: 'RSS 不需要邮箱。选择内容后，可以复制 Feed，或一次导出为 OPML。',
+      rssTopics: '我想在阅读器中关注', blogRssDesc: '长文与正式文章',
+      readingRssTitle: '阅读流', readingRssDesc: '公开阅读卡片与摘要',
+      notesTitle: '沉浸式笔记', notesDesc: '长篇交互笔记与深度思考',
+      copyFeeds: '复制所选 Feed', exportOpml: '导出 OPML →',
+      privacy: '你的邮箱只用于发送所选内容', unsubscribeHint: '随时可退订',
+    },
+    en: {
+      title: 'Subscribe to Airing', subtitle: 'Choose a delivery method, then pick what matters to you.',
+      emailLabel: 'email', realtimeLabel: 'live', emailTopics: 'Send me by email',
+      multiSelect: 'select any', blogTitle: 'Blog posts', blogEmailDesc: 'A summary and link whenever a new post is published',
+      newPostCadence: 'new post', readingTitle: 'Reading highlights',
+      readingEmailDesc: 'One weekly letter connecting the most useful reads', weeklyCadence: 'Mondays',
+      confirm: 'Subscribe →', fineprint: 'No duplicate subscriptions. Change your choices or unsubscribe from any email.',
+      rssNote: 'RSS needs no email. Copy selected feeds or export them together as OPML.',
+      rssTopics: 'Follow in my reader', blogRssDesc: 'Long-form and published essays',
+      readingRssTitle: 'Reading Stream', readingRssDesc: 'Public reading cards and summaries',
+      notesTitle: 'Immersive Notes', notesDesc: 'Interactive long-form notes and deep dives',
+      copyFeeds: 'Copy selected feeds', exportOpml: 'Export OPML →',
+      privacy: 'Your email is used only for selected content', unsubscribeHint: 'Unsubscribe anytime',
+    },
+  };
+
+  function setTab(name) {
+    dialog?.querySelectorAll('[data-sub-tab]').forEach((tab) => {
+      const active = tab.getAttribute('data-sub-tab') === name;
+      tab.classList.toggle('active', active);
+      tab.setAttribute('aria-selected', String(active));
+    });
+    dialog?.querySelectorAll('[data-sub-pane]').forEach((pane) => {
+      pane.toggleAttribute('hidden', pane.getAttribute('data-sub-pane') !== name);
+    });
+  }
+
+  function setDefaults(context) {
+    const blog = dialog?.querySelector('input[name="subscriptions"][value="blog"]');
+    const reading = dialog?.querySelector('input[name="subscriptions"][value="reading"]');
+    const feeds = dialog?.querySelectorAll('[data-rss-feed]');
+    if (blog instanceof HTMLInputElement) blog.checked = context === 'blog';
+    if (reading instanceof HTMLInputElement) reading.checked = context !== 'blog';
+    feeds?.forEach((feed) => {
+      if (!(feed instanceof HTMLInputElement)) return;
+      feed.checked = context === 'blog'
+        ? feed.value.includes('/blog/')
+        : feed.value.includes('/reading/');
+    });
+  }
+
+  const lang = document.documentElement.lang.toLowerCase().startsWith('en') ? 'en' : 'zh';
+  const copy = translations[lang] as Record<string, string>;
+  dialog?.querySelectorAll('[data-sub-copy]').forEach((element) => {
+    const key = element.getAttribute('data-sub-copy');
+    if (key && copy[key]) element.textContent = copy[key];
+  });
+  const localizedFeeds: Record<string, string> = lang === 'en'
+    ? {
+        blog: 'https://ursb.me/en/blog/feed.xml',
+        reading: 'https://chat.ursb.me/api/reading/feed.xml?lang=en',
+        notes: 'https://ursb.me/en/notes/feed.xml',
+      }
+    : {
+        blog: 'https://ursb.me/blog/feed.xml',
+        reading: 'https://chat.ursb.me/api/reading/feed.xml',
+        notes: 'https://ursb.me/notes/feed.xml',
+      };
+  dialog?.querySelectorAll('[data-rss-kind]').forEach((element) => {
+    if (!(element instanceof HTMLInputElement)) return;
+    const kind = element.getAttribute('data-rss-kind');
+    if (!kind || !localizedFeeds[kind]) return;
+    element.value = localizedFeeds[kind];
+    const code = element.closest('label')?.querySelector('code');
+    if (code) code.textContent = localizedFeeds[kind].replace(/^https:\/\//, '');
+  });
+
+  document.addEventListener('click', (event) => {
+    if (!(event.target instanceof Element)) return;
+    const trigger = event.target.closest('[data-subscribe-open]');
+    if (!trigger || !(dialog instanceof HTMLDialogElement)) return;
+    setDefaults(trigger.getAttribute('data-subscribe-context') || 'reading');
+    setTab(trigger.getAttribute('data-subscribe-tab') || 'newsletter');
+    dialog.showModal();
+    document.body.style.overflow = 'hidden';
+    window.setTimeout(() => dialog.querySelector('input:checked')?.focus(), 0);
+  });
+
+  dialog?.querySelectorAll('[data-sub-tab]').forEach((tab) => {
+    tab.addEventListener('click', () => setTab(tab.getAttribute('data-sub-tab') || 'newsletter'));
+  });
+  dialog?.querySelector('[data-sub-close]')?.addEventListener('click', () => {
+    if (dialog instanceof HTMLDialogElement) dialog.close();
+  });
+  dialog?.addEventListener('click', (event) => {
+    if (event.target === dialog && dialog instanceof HTMLDialogElement) dialog.close();
+  });
+  dialog?.addEventListener('close', () => { document.body.style.overflow = ''; });
+
+  const newsletterForm = dialog?.querySelector('[data-sub-newsletter-form]');
+  newsletterForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    if (!(newsletterForm instanceof HTMLFormElement)) return;
+    const message = newsletterForm.querySelector('[data-sub-message]');
+    const data = new FormData(newsletterForm);
+    const email = String(data.get('email') || '');
+    const subscriptions = data.getAll('subscriptions').map(String);
+    if (subscriptions.length === 0) {
+      if (message) message.textContent = lang === 'en' ? 'Select at least one email.' : '请至少选择一种邮件内容。';
+      return;
+    }
+    if (message) message.textContent = lang === 'en' ? 'Subscribing…' : '正在订阅…';
+    try {
+      const response = await fetch('https://chat.ursb.me/api/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, subscriptions, lang }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.message || 'Subscription failed');
+      if (message) {
+        message.textContent = result.alreadySubscribed
+          ? (lang === 'en' ? 'Already subscribed to these choices.' : '这些内容已经订阅。')
+          : (lang === 'en' ? 'Subscribed. See you in your inbox.' : '订阅成功，我们邮件里见。');
+      }
+    } catch (error) {
+      if (message) message.textContent = error instanceof Error ? error.message : 'Subscription failed';
+    }
+  });
+
+  function selectedFeeds() {
+    return Array.from(dialog?.querySelectorAll('[data-rss-feed]:checked') || [])
+      .filter((feed) => feed instanceof HTMLInputElement)
+      .map((feed) => ({ title: feed.closest('label')?.querySelector('strong')?.textContent || 'Feed', url: feed.value }));
+  }
+
+  dialog?.querySelector('[data-sub-copy-feeds]')?.addEventListener('click', async () => {
+    const feeds = selectedFeeds();
+    const message = dialog.querySelector('[data-rss-message]');
+    if (feeds.length === 0) {
+      if (message) message.textContent = lang === 'en' ? 'Select at least one feed.' : '请至少选择一个 Feed。';
+      return;
+    }
+    await navigator.clipboard.writeText(feeds.map((feed) => feed.url).join('\n'));
+    if (message) message.textContent = lang === 'en' ? 'Feed URLs copied.' : '订阅地址已复制。';
+  });
+
+  dialog?.querySelector('[data-sub-export-opml]')?.addEventListener('click', () => {
+    const feeds = selectedFeeds();
+    const message = dialog.querySelector('[data-rss-message]');
+    if (feeds.length === 0) {
+      if (message) message.textContent = lang === 'en' ? 'Select at least one feed.' : '请至少选择一个 Feed。';
+      return;
+    }
+    const escapeXml = (value) => value.replaceAll('&', '&amp;').replaceAll('"', '&quot;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    const outlines = feeds.map((feed) => `<outline text="${escapeXml(feed.title)}" title="${escapeXml(feed.title)}" type="rss" xmlUrl="${escapeXml(feed.url)}"/>`).join('');
+    const opml = `<?xml version="1.0" encoding="UTF-8"?><opml version="2.0"><head><title>Airing subscriptions</title></head><body>${outlines}</body></opml>`;
+    const href = URL.createObjectURL(new Blob([opml], { type: 'text/x-opml' }));
+    const anchor = document.createElement('a');
+    anchor.href = href;
+    anchor.download = 'airing-subscriptions.opml';
+    anchor.click();
+    URL.revokeObjectURL(href);
+    if (message) message.textContent = lang === 'en' ? 'OPML exported.' : 'OPML 已导出。';
+  });
+</script>
+
+<style is:global>
+  .subscription-dialog {
+    width: min(580px, calc(100vw - 32px));
+    max-width: none;
+    max-height: calc(100vh - 32px);
+    margin: auto;
+    padding: 0;
+    overflow: auto;
+    border: 1px solid var(--c-border);
+    border-radius: 8px;
+    background: var(--c-bg);
+    color: var(--c-text);
+    box-shadow: 0 26px 90px rgba(0, 0, 0, .45);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  }
+  .subscription-dialog::backdrop {
+    background: rgba(4, 7, 11, .76);
+    backdrop-filter: blur(5px);
+  }
+  [data-mode="light"] .subscription-dialog::backdrop {
+    background: rgba(31, 35, 40, .34);
+  }
+  .subscription-dialog-card { width: 100%; }
+  .subscription-dialog-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 24px 26px 20px;
+  }
+  .subscription-dialog-kicker {
+    margin-bottom: 8px;
+    color: var(--accent);
+    font: 700 9px/1 var(--font-mono, monospace);
+    letter-spacing: .13em;
+    text-transform: uppercase;
+  }
+  .subscription-dialog-header h2 {
+    margin: 0;
+    color: var(--c-text);
+    font-size: 24px;
+    letter-spacing: -.025em;
+  }
+  .subscription-dialog-header p {
+    margin: 7px 0 0;
+    color: var(--c-text-muted);
+    font-size: 12px;
+    line-height: 1.6;
+  }
+  .subscription-dialog-close {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--c-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--c-text-muted);
+    cursor: pointer;
+    font-size: 18px;
+  }
+  .subscription-tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin: 0 26px;
+    padding: 4px;
+    border: 1px solid var(--c-border);
+    border-radius: 5px;
+    background: var(--c-bg-alt);
+  }
+  .subscription-tab {
+    min-height: 38px;
+    border: 0;
+    border-radius: 3px;
+    background: transparent;
+    color: var(--c-text-muted);
+    cursor: pointer;
+    font: 700 11px/1 var(--font-mono, monospace);
+  }
+  .subscription-tab.active {
+    background: var(--c-bg);
+    color: var(--c-text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .15);
+  }
+  .subscription-tab span {
+    margin-left: 7px;
+    color: var(--c-text-dim);
+    font-size: 9px;
+    font-weight: 400;
+  }
+  .subscription-pane { padding: 22px 26px 24px; }
+  .subscription-pane[hidden] { display: none; }
+  .subscription-section-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    color: var(--c-text-dim);
+    font: 700 9px/1 var(--font-mono, monospace);
+    letter-spacing: .11em;
+    text-transform: uppercase;
+  }
+  .subscription-preferences {
+    overflow: hidden;
+    border: 1px solid var(--c-border);
+    border-radius: 5px;
+  }
+  .subscription-preference {
+    min-height: 64px;
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    padding: 11px 13px;
+    cursor: pointer;
+  }
+  .subscription-preference + .subscription-preference { border-top: 1px solid var(--c-border); }
+  .subscription-preference input {
+    width: 16px;
+    height: 16px;
+    margin: 0;
+    accent-color: var(--accent);
+  }
+  .subscription-preference strong {
+    display: block;
+    color: var(--c-text);
+    font-size: 13px;
+  }
+  .subscription-preference small {
+    display: block;
+    margin-top: 4px;
+    color: var(--c-text-dim);
+    font-size: 10px;
+    line-height: 1.4;
+  }
+  .subscription-preference code {
+    display: block;
+    margin-top: 4px;
+    color: var(--c-text-dim);
+    font: 9px/1 var(--font-mono, monospace);
+  }
+  .subscription-preference em {
+    padding: 4px 7px;
+    border: 1px solid var(--c-border);
+    border-radius: 3px;
+    color: var(--c-text-muted);
+    font: normal 9px/1 var(--font-mono, monospace);
+    white-space: nowrap;
+  }
+  .subscription-email-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .subscription-email-row input {
+    min-width: 0;
+    height: 42px;
+    padding: 0 12px;
+    border: 1px solid var(--c-border);
+    border-radius: 4px;
+    outline: none;
+    background: var(--c-bg-alt);
+    color: var(--c-text);
+    font: 11px/1 var(--font-mono, monospace);
+  }
+  .subscription-email-row input:focus { border-color: var(--accent); }
+  .subscription-email-row button {
+    min-height: 42px;
+    padding: 0 16px;
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    background: var(--accent);
+    color: var(--c-bg);
+    cursor: pointer;
+    font: 800 10px/1 var(--font-mono, monospace);
+  }
+  .subscription-message {
+    min-height: 14px;
+    margin: 9px 0 0;
+    color: var(--accent);
+    font: 9px/1.5 var(--font-mono, monospace);
+  }
+  .subscription-fineprint {
+    margin: 4px 0 0;
+    color: var(--c-text-dim);
+    font: 9px/1.55 var(--font-mono, monospace);
+  }
+  .subscription-rss-note {
+    margin: 0 0 14px;
+    padding: 11px 13px;
+    border-left: 2px solid var(--accent);
+    background: rgba(var(--accent-rgb), .06);
+    color: var(--c-text-muted);
+    font-size: 11px;
+    line-height: 1.55;
+  }
+  .subscription-rss-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 16px;
+  }
+  .subscription-rss-actions button {
+    min-height: 42px;
+    border: 1px solid var(--c-border);
+    border-radius: 4px;
+    background: transparent;
+    color: var(--c-text-muted);
+    cursor: pointer;
+    font: 700 10px/1 var(--font-mono, monospace);
+  }
+  .subscription-rss-actions button.accent {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .subscription-dialog-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 26px;
+    border-top: 1px solid var(--c-border);
+    color: var(--c-text-dim);
+    font: 9px/1.4 var(--font-mono, monospace);
+  }
+  .subscription-dialog-footer a {
+    color: var(--c-text-muted);
+    text-decoration: none;
+  }
+  @media (max-width: 640px) {
+    .subscription-dialog-header { padding: 20px 20px 17px; }
+    .subscription-tabs { margin: 0 20px; }
+    .subscription-pane { padding: 18px 20px 20px; }
+    .subscription-email-row,
+    .subscription-rss-actions { grid-template-columns: 1fr; }
+    .subscription-dialog-footer { padding: 13px 20px; }
+  }
+</style>

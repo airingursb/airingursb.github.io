@@ -1,0 +1,39 @@
+name: Weekly Reading Digest
+
+on:
+  schedule:
+    # Monday 08:30 Asia/Shanghai
+    - cron: '30 0 * * 1'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Validate recipients and content without sending
+        type: boolean
+        default: true
+      test_email:
+        description: Optional single test recipient
+        type: string
+        required: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send previous week's Reading Digest
+        env:
+          ADMIN_TOKEN: ${{ secrets.BLOG_API_ADMIN_TOKEN }}
+          DRY_RUN: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run || false }}
+          TEST_EMAIL: ${{ github.event_name == 'workflow_dispatch' && inputs.test_email || '' }}
+        run: |
+          query=""
+          if [ "$DRY_RUN" = "true" ]; then
+            query="?dry_run=1"
+          elif [ -n "$TEST_EMAIL" ]; then
+            encoded_email="$(python3 -c 'import os, urllib.parse; print(urllib.parse.quote(os.environ["TEST_EMAIL"]))')"
+            query="?test_email=$encoded_email"
+          fi
+          curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-all-errors \
+            -X POST \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            "https://chat.ursb.me/api/admin/reading/digest/send$query"

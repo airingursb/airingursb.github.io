@@ -1577,3 +1577,39 @@
 - [ ] subAgent spawn → 入场占工位；SubagentStop → 离场（done/failed/cancelled 有别），无残留
 - [ ] 连不上本地服务 → 3.5s 后 demo 态（主+2 sub 循环），无报错、无白屏
 - [ ] 离开 office 房间正确 teardown（家具/agent/气泡/SSE 全销毁，无泄漏）；其它房间（lobby/gallery）不受影响
+
+## Reading Stream (`/reading/`)
+
+- [ ] GET `/reading/` 200，页面标题、description、canonical 和 Reading RSS alternate 正确
+- [ ] 桌面宽度下真实 R2 封面为三列；中屏两列；手机单列且无横向溢出
+- [ ] Source 与 Archive 筛选可组合，条目计数和空状态同步更新
+- [ ] 卡片封面/标题进入站内 `/reading/<slug>/`，`原文 ↗` 使用新窗口打开外部来源
+- [ ] 详情页展示完整 3:2 海报、来源/作者/时间；摘要和主题为空时不渲染空区块
+- [ ] 详情页原图 lightbox 支持点击打开、背景/关闭按钮/Escape 关闭
+- [ ] 复制链接按钮写入当前站内 permalink，并提供“已复制”反馈
+- [ ] 相邻阅读导航顺序正确；sitemap 包含列表和所有公开详情 URL
+- [ ] 每周邮件表单成功、重复订阅和错误状态均有可读反馈
+- [ ] 暗色与亮色主题下封面、文字、边框和按钮均清晰可读
+- [ ] `/en/reading/` 使用 `Title EN`、`Summary EN`、`Cover EN`；单字段缺失时独立回退中文
+- [ ] 中英文详情页互设 `hreflang`，LangSwitch 保持相同 slug，sitemap 同时包含两种 URL
+- [ ] 英文 RSS 使用英文标题/摘要/封面与 `/en/reading/<slug>/` permalink
+- [ ] 英文周报订阅使用英文模板和英文 Feed 地址
+
+## Homepage — Reading Stream
+
+- [ ] 阅读流模块位于频道与四格之间，沿用全宽横向滑动卡片布局
+- [ ] 桌面约展示 3 张 3:2 海报，移动端约展示 1.4 张且可横向滑动
+- [ ] 最新条目显示 NEW；来源、日期、作者和标题来自 `reading_items`
+- [ ] `查看全部`、`实时 RSS`、`订阅每周邮件`链接目标正确
+
+## Shared Subscription Dialog
+
+- [ ] `/reading/` 右上角按钮文案为“订阅”，打开统一弹窗且默认勾选“阅读流精选”
+- [ ] `/blog/` 侧栏订阅按钮打开同一弹窗，默认勾选“博客文章”
+- [ ] Newsletter tab 可复选博客文章与阅读流精选，未选择内容时阻止提交并显示提示
+- [ ] Newsletter 提交携带统一邮箱身份及 `subscriptions: ['blog'|'reading']`
+- [ ] RSS tab 提供博客文章、阅读流、沉浸式笔记三个 Feed
+- [ ] “复制所选 Feed”只复制勾选地址；“导出 OPML”生成可导入文件
+- [ ] 弹窗支持关闭按钮、背景点击、Escape，并在关闭后恢复页面滚动
+- [ ] 中英文页面文案正确；暗色与亮色模式均清晰
+- [ ] 390px 手机视口中弹窗不溢出，内容可滚动且操作按钮易于点击

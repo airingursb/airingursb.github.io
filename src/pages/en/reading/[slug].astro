@@ -1,0 +1,186 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import LangSwitch from '../../../components/LangSwitch.astro';
+import {
+  fetchReadingItems,
+  localizeReadingItem,
+  readingDate,
+  readingSourceLabel,
+  readingTypeLabel,
+  type ReadingItem,
+} from '../../../lib/reading';
+import '../../../styles/reading.css';
+
+export async function getStaticPaths() {
+  const items = await fetchReadingItems();
+  return items.map((item, index) => ({
+    params: { slug: item.slug },
+    props: {
+      item,
+      newer: items[index - 1] ?? null,
+      older: items[index + 1] ?? null,
+    },
+  }));
+}
+
+interface Props {
+  item: ReadingItem;
+  newer: ReadingItem | null;
+  older: ReadingItem | null;
+}
+
+const props = Astro.props;
+const item = localizeReadingItem(props.item, 'en');
+const newer = props.newer ? localizeReadingItem(props.newer, 'en') : null;
+const older = props.older ? localizeReadingItem(props.older, 'en') : null;
+const description = item.summary || `${item.author ? `${item.author} · ` : ''}${item.source} reading note`;
+const summaryLines = (item.summary || '').split('\n').map((line) => line.trim()).filter(Boolean);
+const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^[-*]\s+/.test(line));
+---
+
+<BaseLayout
+  title={`${item.title} · Reading Stream`}
+  description={description}
+  ogImage={item.cover_url}
+  ogType="article"
+  lang="en"
+  hreflang={{ zh: `/reading/${item.slug}/`, en: `/en/reading/${item.slug}/` }}
+>
+  <div class="reading-page">
+    <header class="reading-shell">
+      <div class="reading-mast-top"></div>
+      <div class="reading-mast-bar">
+        <a class="reading-brand" href="/en/blog/">Airing's Blog</a>
+        <nav class="reading-nav" aria-label="Blog navigation">
+          <a href="/en/blog/">Blog</a>
+          <a href="/en/moments/">Moment</a>
+          <a href="/en/notes/">Notes</a>
+          <a class="active" href="/en/reading/" aria-current="page">Reading</a>
+          <a href="/photos/">Photos</a>
+          <a href="/en/friends/">Friends</a>
+        </nav>
+      </div>
+      <div class="reading-subbar">
+        <a href="/en/reading/" style="color:var(--c-text-muted);text-decoration:none">← Back to Reading Stream</a>
+        <LangSwitch lang="en" currentPath={`/en/reading/${item.slug}/`} />
+      </div>
+    </header>
+
+    <main class="reading-shell">
+      <header class="reading-detail-head">
+        <div>
+          <div class="reading-eyebrow">Reading note · {item.source}</div>
+          <h1>{item.title}</h1>
+          <div class="reading-detail-byline">
+            {item.author && <span>{item.author}</span>}
+            <span class="reading-source">{readingSourceLabel(item.source, 'en')}</span>
+            <span>Saved {readingDate(item.saved_at, 'en-US')}</span>
+          </div>
+        </div>
+        <div class="reading-detail-actions">
+          <button class="reading-action" type="button" data-copy-link>Copy link</button>
+          {item.original_url && (
+            <a class="reading-action primary" href={item.original_url} target="_blank" rel="noopener noreferrer">
+              Read source ↗
+            </a>
+          )}
+        </div>
+      </header>
+
+      <article class="reading-detail-grid">
+        <div>
+          <button class="reading-poster" type="button" data-open-lightbox aria-label="View full image">
+            <img src={item.cover_url} alt={item.title} width="1536" height="1024" />
+            <span class="reading-zoom-label">⌕ View full image</span>
+          </button>
+          <div class="reading-caption">
+            <span>Agent-generated reading card · 1536 × 1024</span>
+            <span>Hosted on R2</span>
+          </div>
+        </div>
+
+        <aside class="reading-detail-side">
+          {item.summary && (
+            <section>
+              <h2>Key takeaways</h2>
+              {summaryIsList ? (
+                <ul class="reading-summary-list">
+                  {summaryLines.map((line) => <li>{line.replace(/^[-*]\s+/, '')}</li>)}
+                </ul>
+              ) : (
+                <p class="reading-summary">{item.summary}</p>
+              )}
+            </section>
+          )}
+          <section>
+            <h2>Details</h2>
+            <dl class="reading-facts">
+              {item.author && <div><dt>Author</dt><dd>{item.author}</dd></div>}
+              <div><dt>Source</dt><dd>{readingSourceLabel(item.source, 'en')}{item.item_type ? ` · ${readingTypeLabel(item.item_type, 'en')}` : ''}</dd></div>
+              {item.original_published_at && <div><dt>Published</dt><dd>{readingDate(item.original_published_at, 'en-US')}</dd></div>}
+              <div><dt>Saved</dt><dd>{readingDate(item.saved_at, 'en-US')}</dd></div>
+            </dl>
+          </section>
+          {(item.topics.length > 0 || item.original_url) && (
+            <section>
+              {item.topics.length > 0 && (
+                <>
+                  <h2>Topics</h2>
+                  <div class="reading-topics">
+                    {item.topics.map((topic) => <span class="reading-topic">{topic}</span>)}
+                  </div>
+                </>
+              )}
+              {item.original_url && (
+                <a class="reading-action primary" style="width:100%;margin-top:18px" href={item.original_url} target="_blank" rel="noopener noreferrer">
+                  Open original ↗
+                </a>
+              )}
+            </section>
+          )}
+        </aside>
+      </article>
+
+      {(newer || older) && (
+        <nav class="reading-prev-next" aria-label="Adjacent reading notes">
+          {newer ? (
+            <a class="reading-related" href={`/en/reading/${newer.slug}/`}>
+              <img src={newer.cover_url} alt="" loading="lazy" width="140" height="93" />
+              <span><small>← Newer</small><strong>{newer.title}</strong></span>
+            </a>
+          ) : <span />}
+          {older && (
+            <a class="reading-related" href={`/en/reading/${older.slug}/`}>
+              <img src={older.cover_url} alt="" loading="lazy" width="140" height="93" />
+              <span><small>Older →</small><strong>{older.title}</strong></span>
+            </a>
+          )}
+        </nav>
+      )}
+    </main>
+  </div>
+
+  <div class="reading-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Full reading card">
+    <button class="reading-lightbox-close" type="button" data-close-lightbox aria-label="Close">×</button>
+    <img src={item.cover_url} alt={item.title} />
+  </div>
+
+  <script>
+    const lightbox = document.querySelector('[data-lightbox]');
+    const closeLightbox = () => lightbox?.classList.remove('open');
+    document.querySelector('[data-open-lightbox]')?.addEventListener('click', () => lightbox?.classList.add('open'));
+    document.querySelector('[data-close-lightbox]')?.addEventListener('click', closeLightbox);
+    lightbox?.addEventListener('click', (event) => {
+      if (event.target === lightbox) closeLightbox();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeLightbox();
+    });
+    const copyButton = document.querySelector('[data-copy-link]');
+    copyButton?.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(window.location.href);
+      copyButton.textContent = 'Copied';
+      window.setTimeout(() => { copyButton.textContent = 'Copy link'; }, 1600);
+    });
+  </script>
+</BaseLayout>

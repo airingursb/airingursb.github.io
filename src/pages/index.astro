@@ -8,6 +8,7 @@ import '../styles/workouts.css';
 import WorkoutCardPreview from '../components/workouts/WorkoutCardPreview.astro';
 import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
 import { fetchComics } from '../lib/comics';
+import { fetchReadingItems } from '../lib/reading';
 import { FootprintsMap } from '../components/footprints/FootprintsMap';
 import { cities as footprintCities } from '../data/footprints';
 import IslandWidget from '../components/IslandWidget.astro';
@@ -39,6 +40,7 @@ const recentPhotos = (photosData as Array<any>)
 
 const allComics = await fetchComics();
 const latestComic = allComics[0];
+const recentReading = await fetchReadingItems(8);
 const formatComicDate = (s: string, locale: 'zh' | 'en') =>
   new Date(s).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -305,6 +307,22 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         });
         comicsCard.querySelectorAll('.comics-strip-title-en').forEach(function(el) {
           el.style.display = currentLang === 'en' ? '' : 'none';
+        });
+      }
+
+      var readingCard = document.getElementById('reading-stream-card');
+      if (readingCard) {
+        readingCard.querySelectorAll('.reading-home-title-zh').forEach(function(el) {
+          el.style.display = currentLang === 'zh' ? '' : 'none';
+        });
+        readingCard.querySelectorAll('.reading-home-title-en').forEach(function(el) {
+          el.style.display = currentLang === 'en' ? '' : 'none';
+        });
+        readingCard.querySelectorAll('.reading-home-thumb img').forEach(function(img) {
+          var src = img.getAttribute(currentLang === 'en' ? 'data-src-en' : 'data-src-zh');
+          var alt = img.getAttribute(currentLang === 'en' ? 'data-alt-en' : 'data-alt-zh');
+          if (src) img.setAttribute('src', src);
+          if (alt) img.setAttribute('alt', alt);
         });
       }
     }
@@ -1250,6 +1268,60 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
             </a>
         <!-- TELEGRAM_END -->
       </div>
+
+      <!-- Reading Stream -->
+      {recentReading.length > 0 && (
+        <div class="card card-reading-stream" id="reading-stream-card">
+          <div class="section-title-row">
+            <span class="section-title" data-i18n="sec_reading_stream">阅读流</span>
+            <div class="reading-strip-actions">
+              <button class="reading-strip-rss" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-tab="rss">RSS</button>
+              <a class="photos-strip-more" href="/reading/" data-i18n="rdg_view_all">查看全部 →</a>
+            </div>
+          </div>
+          <div class="reading-home-strip" role="list">
+            {recentReading.map((item, index) => (
+              <a
+                class="reading-home-item"
+                role="listitem"
+                href={`/reading/${item.slug}/`}
+                data-href-zh={`/reading/${item.slug}/`}
+                data-href-en={`/en/reading/${item.slug}/`}
+              >
+                <div class="reading-home-thumb">
+                  <img
+                    src={item.cover_url}
+                    alt={item.title}
+                    data-src-zh={item.cover_url}
+                    data-src-en={item.cover_url_en || item.cover_url}
+                    data-alt-zh={item.title}
+                    data-alt-en={item.title_en || item.title}
+                    loading="lazy"
+                    decoding="async"
+                    width="1536"
+                    height="1024"
+                  />
+                  {index === 0 && <span class="reading-home-new">NEW</span>}
+                </div>
+                <div class="reading-home-meta">
+                  <span>{item.source}</span>
+                  <span>{new Date(item.saved_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' })}</span>
+                  {item.author && <span>{item.author}</span>}
+                </div>
+                <div class="reading-home-title reading-home-title-zh">{item.title}</div>
+                <div class="reading-home-title reading-home-title-en">{item.title_en || item.title}</div>
+              </a>
+            ))}
+          </div>
+          <div class="reading-home-follow">
+            <span><b>$</b> follow reading --weekly</span>
+            <div>
+              <button type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-tab="rss">实时 RSS</button>
+              <button class="primary" type="button" data-subscribe-open data-subscribe-context="reading">订阅每周邮件 →</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <!-- Comics (四格) -->
       {allComics.length > 0 && (

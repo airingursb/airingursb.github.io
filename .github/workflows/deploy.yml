@@ -44,6 +44,17 @@ jobs:
           RAINDROP_TOKEN: ${{ secrets.RAINDROP_TOKEN }}
         run: python3 scripts/update_feed.py
 
+      - name: Reconcile public Reading Stream
+        continue-on-error: true
+        env:
+          ADMIN_TOKEN: ${{ secrets.BLOG_API_ADMIN_TOKEN }}
+        run: |
+          curl --fail-with-body --silent --show-error \
+            --retry 2 --retry-all-errors \
+            -X POST \
+            -H "Authorization: Bearer $ADMIN_TOKEN" \
+            https://chat.ursb.me/api/admin/reading/reconcile
+
       - name: Sync moments from Telegram
         # Non-critical analytics-style sync. Supabase IO budget can exhaust
         # (esp. on long runs), and that must NOT block the static site deploy.

@@ -1,0 +1,185 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import LangSwitch from '../../components/LangSwitch.astro';
+import { fetchReadingItems, readingDate, type ReadingItem } from '../../lib/reading';
+import '../../styles/reading.css';
+
+export async function getStaticPaths() {
+  const items = await fetchReadingItems();
+  return items.map((item, index) => ({
+    params: { slug: item.slug },
+    props: {
+      item,
+      newer: items[index - 1] ?? null,
+      older: items[index + 1] ?? null,
+    },
+  }));
+}
+
+interface Props {
+  item: ReadingItem;
+  newer: ReadingItem | null;
+  older: ReadingItem | null;
+}
+
+const { item, newer, older } = Astro.props;
+const description = item.summary || `${item.author ? `${item.author} · ` : ''}${item.source} 阅读记录`;
+const summaryLines = (item.summary || '').split('\n').map((line) => line.trim()).filter(Boolean);
+const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^[-*]\s+/.test(line));
+---
+
+<BaseLayout
+  title={`${item.title} · Reading Stream`}
+  description={description}
+  ogImage={item.cover_url}
+  ogType="article"
+  lang="zh"
+  hreflang={{ zh: `/reading/${item.slug}/`, en: `/en/reading/${item.slug}/` }}
+>
+  <div class="reading-page">
+    <header class="reading-shell">
+      <div class="reading-mast-top"></div>
+      <div class="reading-mast-bar">
+        <a class="reading-brand" href="/blog/">Airing's Blog</a>
+        <nav class="reading-nav" aria-label="博客导航">
+          <a href="/blog/">Blog</a>
+          <a href="/moments/">Moment</a>
+          <a href="/notes/">Notes</a>
+          <a class="active" href="/reading/" aria-current="page">Reading</a>
+          <a href="/photos/">Photos</a>
+          <a href="/friends/">Friends</a>
+        </nav>
+      </div>
+      <div class="reading-subbar">
+        <a href="/reading/" style="color:var(--c-text-muted);text-decoration:none">← 返回阅读流</a>
+        <LangSwitch lang="zh" currentPath={`/reading/${item.slug}/`} />
+      </div>
+    </header>
+
+    <main class="reading-shell">
+      <header class="reading-detail-head">
+        <div>
+          <div class="reading-eyebrow">Reading note · {item.source}</div>
+          <h1>{item.title}</h1>
+          <div class="reading-detail-byline">
+            {item.author && <span>{item.author}</span>}
+            <span class="reading-source">{item.source}</span>
+            <span>收藏于 {readingDate(item.saved_at)}</span>
+          </div>
+        </div>
+        <div class="reading-detail-actions">
+          <button class="reading-action" type="button" data-copy-link>复制链接</button>
+          {item.original_url && (
+            <a class="reading-action primary" href={item.original_url} target="_blank" rel="noopener noreferrer">
+              阅读原文 ↗
+            </a>
+          )}
+        </div>
+      </header>
+
+      <article class="reading-detail-grid">
+        <div>
+          <button class="reading-poster" type="button" data-open-lightbox aria-label="查看原图">
+            <img src={item.cover_url} alt={item.title} width="1536" height="1024" />
+            <span class="reading-zoom-label">⌕ 点击查看原图</span>
+          </button>
+          <div class="reading-caption">
+            <span>Agent 生成阅读卡片 · 1536 × 1024</span>
+            <span>图片托管于 R2</span>
+          </div>
+        </div>
+
+        <aside class="reading-detail-side">
+          {item.summary && (
+            <section>
+              <h2>要点速览</h2>
+              {summaryIsList ? (
+                <ul class="reading-summary-list">
+                  {summaryLines.map((line) => <li>{line.replace(/^[-*]\s+/, '')}</li>)}
+                </ul>
+              ) : (
+                <p class="reading-summary">{item.summary}</p>
+              )}
+            </section>
+          )}
+          <section>
+            <h2>信息</h2>
+            <dl class="reading-facts">
+              {item.author && <div><dt>作者</dt><dd>{item.author}</dd></div>}
+              <div><dt>来源</dt><dd>{item.source}{item.item_type ? ` · ${item.item_type}` : ''}</dd></div>
+              {item.original_published_at && <div><dt>原文时间</dt><dd>{readingDate(item.original_published_at)}</dd></div>}
+              <div><dt>收藏时间</dt><dd>{readingDate(item.saved_at)}</dd></div>
+            </dl>
+          </section>
+          {(item.topics.length > 0 || item.original_url) && (
+            <section>
+              {item.topics.length > 0 && (
+                <>
+                  <h2>主题</h2>
+                  <div class="reading-topics">
+                    {item.topics.map((topic) => <span class="reading-topic">{topic}</span>)}
+                  </div>
+                </>
+              )}
+              {item.original_url && (
+                <a class="reading-action primary" style="width:100%;margin-top:18px" href={item.original_url} target="_blank" rel="noopener noreferrer">
+                  前往原文 ↗
+                </a>
+              )}
+            </section>
+          )}
+        </aside>
+      </article>
+
+      {(newer || older) && (
+        <nav class="reading-prev-next" aria-label="相邻阅读记录">
+          {newer ? (
+            <a class="reading-related" href={`/reading/${newer.slug}/`}>
+              <img src={newer.cover_url} alt="" loading="lazy" width="140" height="93" />
+              <span><small>← 更新一条</small><strong>{newer.title}</strong></span>
+            </a>
+          ) : <span />}
+          {older && (
+            <a class="reading-related" href={`/reading/${older.slug}/`}>
+              <img src={older.cover_url} alt="" loading="lazy" width="140" height="93" />
+              <span><small>更早一条 →</small><strong>{older.title}</strong></span>
+            </a>
+          )}
+        </nav>
+      )}
+    </main>
+  </div>
+
+  <div class="reading-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="阅读卡片原图">
+    <button class="reading-lightbox-close" type="button" data-close-lightbox aria-label="关闭">×</button>
+    <img src={item.cover_url} alt={item.title} />
+  </div>
+
+  <script is:inline>
+    if (localStorage.getItem('preferred_lang') === 'en') {
+      window.location.replace('/en' + window.location.pathname);
+    }
+  </script>
+
+  <script>
+    const lightbox = document.querySelector('[data-lightbox]');
+    const openButton = document.querySelector('[data-open-lightbox]');
+    const closeButton = document.querySelector('[data-close-lightbox]');
+    const closeLightbox = () => lightbox?.classList.remove('open');
+    openButton?.addEventListener('click', () => lightbox?.classList.add('open'));
+    closeButton?.addEventListener('click', closeLightbox);
+    lightbox?.addEventListener('click', (event) => {
+      if (event.target === lightbox) closeLightbox();
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') closeLightbox();
+    });
+
+    const copyButton = document.querySelector('[data-copy-link]');
+    copyButton?.addEventListener('click', async () => {
+      await navigator.clipboard.writeText(window.location.href);
+      copyButton.textContent = '已复制';
+      window.setTimeout(() => { copyButton.textContent = '复制链接'; }, 1600);
+    });
+  </script>
+</BaseLayout>
