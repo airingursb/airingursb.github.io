@@ -146,36 +146,53 @@
     });
   }
 
-  const lang = document.documentElement.lang.toLowerCase().startsWith('en') ? 'en' : 'zh';
-  const copy = translations[lang] as Record<string, string>;
-  dialog?.querySelectorAll('[data-sub-copy]').forEach((element) => {
-    const key = element.getAttribute('data-sub-copy');
-    if (key && copy[key]) element.textContent = copy[key];
-  });
-  const localizedFeeds: Record<string, string> = lang === 'en'
-    ? {
-        blog: 'https://ursb.me/en/blog/feed.xml',
-        reading: 'https://chat.ursb.me/api/reading/feed.xml?lang=en',
-        notes: 'https://ursb.me/en/notes/feed.xml',
-      }
-    : {
-        blog: 'https://ursb.me/blog/feed.xml',
-        reading: 'https://chat.ursb.me/api/reading/feed.xml',
-        notes: 'https://ursb.me/notes/feed.xml',
-      };
-  dialog?.querySelectorAll('[data-rss-kind]').forEach((element) => {
-    if (!(element instanceof HTMLInputElement)) return;
-    const kind = element.getAttribute('data-rss-kind');
-    if (!kind || !localizedFeeds[kind]) return;
-    element.value = localizedFeeds[kind];
-    const code = element.closest('label')?.querySelector('code');
-    if (code) code.textContent = localizedFeeds[kind].replace(/^https:\/\//, '');
+  function resolveLang() {
+    if (window.currentLang === 'en' || window.currentLang === 'zh') return window.currentLang;
+    return document.documentElement.lang.toLowerCase().startsWith('en') ? 'en' : 'zh';
+  }
+
+  let lang = resolveLang();
+
+  function applyLanguage(nextLang = resolveLang()) {
+    lang = nextLang;
+    const copy = translations[lang] as Record<string, string>;
+    dialog?.querySelectorAll('[data-sub-copy]').forEach((element) => {
+      const key = element.getAttribute('data-sub-copy');
+      if (key && copy[key]) element.textContent = copy[key];
+    });
+    const localizedFeeds: Record<string, string> = lang === 'en'
+      ? {
+          blog: 'https://ursb.me/en/blog/feed.xml',
+          reading: 'https://chat.ursb.me/api/reading/feed.xml?lang=en',
+          notes: 'https://ursb.me/en/notes/feed.xml',
+        }
+      : {
+          blog: 'https://ursb.me/blog/feed.xml',
+          reading: 'https://chat.ursb.me/api/reading/feed.xml',
+          notes: 'https://ursb.me/notes/feed.xml',
+        };
+    dialog?.querySelectorAll('[data-rss-kind]').forEach((element) => {
+      if (!(element instanceof HTMLInputElement)) return;
+      const kind = element.getAttribute('data-rss-kind');
+      if (!kind || !localizedFeeds[kind]) return;
+      element.value = localizedFeeds[kind];
+      const code = element.closest('label')?.querySelector('code');
+      if (code) code.textContent = localizedFeeds[kind].replace(/^https:\/\//, '');
+    });
+  }
+
+  applyLanguage();
+  window.addEventListener('langchange', (event) => {
+    applyLanguage(event instanceof CustomEvent && (event.detail?.lang === 'en' || event.detail?.lang === 'zh')
+      ? event.detail.lang
+      : resolveLang());
   });
 
   document.addEventListener('click', (event) => {
     if (!(event.target instanceof Element)) return;
     const trigger = event.target.closest('[data-subscribe-open]');
     if (!trigger || !(dialog instanceof HTMLDialogElement)) return;
+    applyLanguage();
     setDefaults(trigger.getAttribute('data-subscribe-context') || 'reading');
     setTab(trigger.getAttribute('data-subscribe-tab') || 'newsletter');
     dialog.showModal();
