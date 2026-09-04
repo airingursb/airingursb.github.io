@@ -1590,6 +1590,10 @@
 - [ ] 相邻阅读导航顺序正确；sitemap 包含列表和所有公开详情 URL
 - [ ] 每周邮件表单成功、重复订阅和错误状态均有可读反馈
 - [ ] 暗色与亮色主题下封面、文字、边框和按钮均清晰可读
+- [ ] `/en/reading/` 使用 `Title EN`、`Summary EN`、`Cover EN`；单字段缺失时独立回退中文
+- [ ] 中英文详情页互设 `hreflang`，LangSwitch 保持相同 slug，sitemap 同时包含两种 URL
+- [ ] 英文 RSS 使用英文标题/摘要/封面与 `/en/reading/<slug>/` permalink
+- [ ] 英文周报订阅使用英文模板和英文 Feed 地址
 
 ## Homepage — Reading Stream
 

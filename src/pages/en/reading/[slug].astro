@@ -1,8 +1,15 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import LangSwitch from '../../components/LangSwitch.astro';
-import { fetchReadingItems, readingDate, type ReadingItem } from '../../lib/reading';
-import '../../styles/reading.css';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import LangSwitch from '../../../components/LangSwitch.astro';
+import {
+  fetchReadingItems,
+  localizeReadingItem,
+  readingDate,
+  readingSourceLabel,
+  readingTypeLabel,
+  type ReadingItem,
+} from '../../../lib/reading';
+import '../../../styles/reading.css';
 
 export async function getStaticPaths() {
   const items = await fetchReadingItems();
@@ -22,8 +29,11 @@ interface Props {
   older: ReadingItem | null;
 }
 
-const { item, newer, older } = Astro.props;
-const description = item.summary || `${item.author ? `${item.author} · ` : ''}${item.source} 阅读记录`;
+const props = Astro.props;
+const item = localizeReadingItem(props.item, 'en');
+const newer = props.newer ? localizeReadingItem(props.newer, 'en') : null;
+const older = props.older ? localizeReadingItem(props.older, 'en') : null;
+const description = item.summary || `${item.author ? `${item.author} · ` : ''}${item.source} reading note`;
 const summaryLines = (item.summary || '').split('\n').map((line) => line.trim()).filter(Boolean);
 const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^[-*]\s+/.test(line));
 ---
@@ -33,26 +43,26 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
   description={description}
   ogImage={item.cover_url}
   ogType="article"
-  lang="zh"
+  lang="en"
   hreflang={{ zh: `/reading/${item.slug}/`, en: `/en/reading/${item.slug}/` }}
 >
   <div class="reading-page">
     <header class="reading-shell">
       <div class="reading-mast-top"></div>
       <div class="reading-mast-bar">
-        <a class="reading-brand" href="/blog/">Airing's Blog</a>
-        <nav class="reading-nav" aria-label="博客导航">
-          <a href="/blog/">Blog</a>
-          <a href="/moments/">Moment</a>
-          <a href="/notes/">Notes</a>
-          <a class="active" href="/reading/" aria-current="page">Reading</a>
+        <a class="reading-brand" href="/en/blog/">Airing's Blog</a>
+        <nav class="reading-nav" aria-label="Blog navigation">
+          <a href="/en/blog/">Blog</a>
+          <a href="/en/moments/">Moment</a>
+          <a href="/en/notes/">Notes</a>
+          <a class="active" href="/en/reading/" aria-current="page">Reading</a>
           <a href="/photos/">Photos</a>
-          <a href="/friends/">Friends</a>
+          <a href="/en/friends/">Friends</a>
         </nav>
       </div>
       <div class="reading-subbar">
-        <a href="/reading/" style="color:var(--c-text-muted);text-decoration:none">← 返回阅读流</a>
-        <LangSwitch lang="zh" currentPath={`/reading/${item.slug}`} />
+        <a href="/en/reading/" style="color:var(--c-text-muted);text-decoration:none">← Back to Reading Stream</a>
+        <LangSwitch lang="en" currentPath={`/en/reading/${item.slug}`} />
       </div>
     </header>
 
@@ -63,15 +73,15 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
           <h1>{item.title}</h1>
           <div class="reading-detail-byline">
             {item.author && <span>{item.author}</span>}
-            <span class="reading-source">{item.source}</span>
-            <span>收藏于 {readingDate(item.saved_at)}</span>
+            <span class="reading-source">{readingSourceLabel(item.source, 'en')}</span>
+            <span>Saved {readingDate(item.saved_at, 'en-US')}</span>
           </div>
         </div>
         <div class="reading-detail-actions">
-          <button class="reading-action" type="button" data-copy-link>复制链接</button>
+          <button class="reading-action" type="button" data-copy-link>Copy link</button>
           {item.original_url && (
             <a class="reading-action primary" href={item.original_url} target="_blank" rel="noopener noreferrer">
-              阅读原文 ↗
+              Read source ↗
             </a>
           )}
         </div>
@@ -79,20 +89,20 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
 
       <article class="reading-detail-grid">
         <div>
-          <button class="reading-poster" type="button" data-open-lightbox aria-label="查看原图">
+          <button class="reading-poster" type="button" data-open-lightbox aria-label="View full image">
             <img src={item.cover_url} alt={item.title} width="1536" height="1024" />
-            <span class="reading-zoom-label">⌕ 点击查看原图</span>
+            <span class="reading-zoom-label">⌕ View full image</span>
           </button>
           <div class="reading-caption">
-            <span>Agent 生成阅读卡片 · 1536 × 1024</span>
-            <span>图片托管于 R2</span>
+            <span>Agent-generated reading card · 1536 × 1024</span>
+            <span>Hosted on R2</span>
           </div>
         </div>
 
         <aside class="reading-detail-side">
           {item.summary && (
             <section>
-              <h2>要点速览</h2>
+              <h2>Key takeaways</h2>
               {summaryIsList ? (
                 <ul class="reading-summary-list">
                   {summaryLines.map((line) => <li>{line.replace(/^[-*]\s+/, '')}</li>)}
@@ -103,19 +113,19 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
             </section>
           )}
           <section>
-            <h2>信息</h2>
+            <h2>Details</h2>
             <dl class="reading-facts">
-              {item.author && <div><dt>作者</dt><dd>{item.author}</dd></div>}
-              <div><dt>来源</dt><dd>{item.source}{item.item_type ? ` · ${item.item_type}` : ''}</dd></div>
-              {item.original_published_at && <div><dt>原文时间</dt><dd>{readingDate(item.original_published_at)}</dd></div>}
-              <div><dt>收藏时间</dt><dd>{readingDate(item.saved_at)}</dd></div>
+              {item.author && <div><dt>Author</dt><dd>{item.author}</dd></div>}
+              <div><dt>Source</dt><dd>{readingSourceLabel(item.source, 'en')}{item.item_type ? ` · ${readingTypeLabel(item.item_type, 'en')}` : ''}</dd></div>
+              {item.original_published_at && <div><dt>Published</dt><dd>{readingDate(item.original_published_at, 'en-US')}</dd></div>}
+              <div><dt>Saved</dt><dd>{readingDate(item.saved_at, 'en-US')}</dd></div>
             </dl>
           </section>
           {(item.topics.length > 0 || item.original_url) && (
             <section>
               {item.topics.length > 0 && (
                 <>
-                  <h2>主题</h2>
+                  <h2>Topics</h2>
                   <div class="reading-topics">
                     {item.topics.map((topic) => <span class="reading-topic">{topic}</span>)}
                   </div>
@@ -123,7 +133,7 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
               )}
               {item.original_url && (
                 <a class="reading-action primary" style="width:100%;margin-top:18px" href={item.original_url} target="_blank" rel="noopener noreferrer">
-                  前往原文 ↗
+                  Open original ↗
                 </a>
               )}
             </section>
@@ -132,17 +142,17 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
       </article>
 
       {(newer || older) && (
-        <nav class="reading-prev-next" aria-label="相邻阅读记录">
+        <nav class="reading-prev-next" aria-label="Adjacent reading notes">
           {newer ? (
-            <a class="reading-related" href={`/reading/${newer.slug}/`}>
+            <a class="reading-related" href={`/en/reading/${newer.slug}/`}>
               <img src={newer.cover_url} alt="" loading="lazy" width="140" height="93" />
-              <span><small>← 更新一条</small><strong>{newer.title}</strong></span>
+              <span><small>← Newer</small><strong>{newer.title}</strong></span>
             </a>
           ) : <span />}
           {older && (
-            <a class="reading-related" href={`/reading/${older.slug}/`}>
+            <a class="reading-related" href={`/en/reading/${older.slug}/`}>
               <img src={older.cover_url} alt="" loading="lazy" width="140" height="93" />
-              <span><small>更早一条 →</small><strong>{older.title}</strong></span>
+              <span><small>Older →</small><strong>{older.title}</strong></span>
             </a>
           )}
         </nav>
@@ -150,36 +160,27 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
     </main>
   </div>
 
-  <div class="reading-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="阅读卡片原图">
-    <button class="reading-lightbox-close" type="button" data-close-lightbox aria-label="关闭">×</button>
+  <div class="reading-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Full reading card">
+    <button class="reading-lightbox-close" type="button" data-close-lightbox aria-label="Close">×</button>
     <img src={item.cover_url} alt={item.title} />
   </div>
 
-  <script is:inline>
-    if (localStorage.getItem('preferred_lang') === 'en') {
-      window.location.replace('/en' + window.location.pathname);
-    }
-  </script>
-
   <script>
     const lightbox = document.querySelector('[data-lightbox]');
-    const openButton = document.querySelector('[data-open-lightbox]');
-    const closeButton = document.querySelector('[data-close-lightbox]');
     const closeLightbox = () => lightbox?.classList.remove('open');
-    openButton?.addEventListener('click', () => lightbox?.classList.add('open'));
-    closeButton?.addEventListener('click', closeLightbox);
+    document.querySelector('[data-open-lightbox]')?.addEventListener('click', () => lightbox?.classList.add('open'));
+    document.querySelector('[data-close-lightbox]')?.addEventListener('click', closeLightbox);
     lightbox?.addEventListener('click', (event) => {
       if (event.target === lightbox) closeLightbox();
     });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') closeLightbox();
     });
-
     const copyButton = document.querySelector('[data-copy-link]');
     copyButton?.addEventListener('click', async () => {
       await navigator.clipboard.writeText(window.location.href);
-      copyButton.textContent = '已复制';
-      window.setTimeout(() => { copyButton.textContent = '复制链接'; }, 1600);
+      copyButton.textContent = 'Copied';
+      window.setTimeout(() => { copyButton.textContent = 'Copy link'; }, 1600);
     });
   </script>
 </BaseLayout>

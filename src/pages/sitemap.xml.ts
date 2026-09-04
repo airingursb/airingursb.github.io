@@ -29,6 +29,7 @@ export async function GET(context: APIContext) {
     { zh: '/friends', en: '/en/friends', changefreq: 'monthly', priority: '0.5' },
     { zh: '/search', en: '/en/search', changefreq: 'weekly', priority: '0.5' },
     { zh: '/notes', en: '/en/notes', changefreq: 'weekly', priority: '0.8' },
+    { zh: '/reading', en: '/en/reading', changefreq: 'daily', priority: '0.8' },
   ];
 
   // Home (no /en mirror yet)
@@ -75,7 +76,6 @@ ${lastmodXml}    <changefreq>${opts.changefreq}</changefreq>
   // data-href, not a real <a>), so Googlebot can't discover this
   // route from the homepage crawl. List it explicitly.
   urls.push(singleUrl('/world/', { changefreq: 'monthly', priority: '0.6' }));
-  urls.push(singleUrl('/reading/', { changefreq: 'daily', priority: '0.8' }));
 
   // Static bilingual pages
   for (const p of bilingualStaticPages) {
@@ -115,7 +115,7 @@ ${lastmodXml}    <changefreq>${opts.changefreq}</changefreq>
   }
 
   for (const item of readingItems) {
-    urls.push(singleUrl(`/reading/${item.slug}/`, {
+    urls.push(bilingualUrl(`/reading/${item.slug}/`, `/en/reading/${item.slug}/`, {
       lastmod: new Date(item.updated_at).toISOString().split('T')[0],
       changefreq: 'monthly',
       priority: '0.6',

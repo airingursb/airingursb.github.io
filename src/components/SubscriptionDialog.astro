@@ -59,17 +59,17 @@
       </div>
       <div class="subscription-preferences">
         <label class="subscription-preference">
-          <input type="checkbox" value="https://ursb.me/blog/feed.xml" data-rss-feed />
+          <input type="checkbox" value="https://ursb.me/blog/feed.xml" data-rss-feed data-rss-kind="blog" />
           <span><strong data-sub-copy="blogTitle">博客文章</strong><small data-sub-copy="blogRssDesc">长文与正式文章</small><code>ursb.me/blog/feed.xml</code></span>
           <em>RSS</em>
         </label>
         <label class="subscription-preference">
-          <input type="checkbox" value="https://chat.ursb.me/api/reading/feed.xml" data-rss-feed />
+          <input type="checkbox" value="https://chat.ursb.me/api/reading/feed.xml" data-rss-feed data-rss-kind="reading" />
           <span><strong data-sub-copy="readingRssTitle">阅读流</strong><small data-sub-copy="readingRssDesc">公开阅读卡片与摘要</small><code>chat.ursb.me/api/reading/feed.xml</code></span>
           <em>RSS</em>
         </label>
         <label class="subscription-preference">
-          <input type="checkbox" value="https://ursb.me/notes/feed.xml" data-rss-feed />
+          <input type="checkbox" value="https://ursb.me/notes/feed.xml" data-rss-feed data-rss-kind="notes" />
           <span><strong data-sub-copy="notesTitle">沉浸式笔记</strong><small data-sub-copy="notesDesc">长篇交互笔记与深度思考</small><code>ursb.me/notes/feed.xml</code></span>
           <em>RSS</em>
         </label>
@@ -147,9 +147,29 @@
   }
 
   const lang = document.documentElement.lang.toLowerCase().startsWith('en') ? 'en' : 'zh';
+  const copy = translations[lang] as Record<string, string>;
   dialog?.querySelectorAll('[data-sub-copy]').forEach((element) => {
     const key = element.getAttribute('data-sub-copy');
-    if (key && translations[lang][key]) element.textContent = translations[lang][key];
+    if (key && copy[key]) element.textContent = copy[key];
+  });
+  const localizedFeeds: Record<string, string> = lang === 'en'
+    ? {
+        blog: 'https://ursb.me/en/blog/feed.xml',
+        reading: 'https://chat.ursb.me/api/reading/feed.xml?lang=en',
+        notes: 'https://ursb.me/en/notes/feed.xml',
+      }
+    : {
+        blog: 'https://ursb.me/blog/feed.xml',
+        reading: 'https://chat.ursb.me/api/reading/feed.xml',
+        notes: 'https://ursb.me/notes/feed.xml',
+      };
+  dialog?.querySelectorAll('[data-rss-kind]').forEach((element) => {
+    if (!(element instanceof HTMLInputElement)) return;
+    const kind = element.getAttribute('data-rss-kind');
+    if (!kind || !localizedFeeds[kind]) return;
+    element.value = localizedFeeds[kind];
+    const code = element.closest('label')?.querySelector('code');
+    if (code) code.textContent = localizedFeeds[kind].replace(/^https:\/\//, '');
   });
 
   document.addEventListener('click', (event) => {

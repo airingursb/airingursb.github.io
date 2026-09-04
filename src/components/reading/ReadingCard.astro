@@ -1,13 +1,16 @@
 ---
 import type { ReadingItem } from '../../lib/reading';
-import { readingDate, readingMonth } from '../../lib/reading';
+import { localizeReadingItem, readingDate, readingMonth, readingSourceLabel } from '../../lib/reading';
 
 interface Props {
   item: ReadingItem;
   eager?: boolean;
+  lang?: 'zh' | 'en';
 }
 
-const { item, eager = false } = Astro.props;
+const { item: rawItem, eager = false, lang = 'zh' } = Astro.props;
+const item = localizeReadingItem(rawItem, lang);
+const detailHref = `${lang === 'en' ? '/en' : ''}/reading/${item.slug}/`;
 ---
 
 <article
@@ -16,7 +19,7 @@ const { item, eager = false } = Astro.props;
   data-source={item.source}
   data-month={readingMonth(item.saved_at)}
 >
-  <a class="reading-card-cover" href={`/reading/${item.slug}/`} aria-label={item.title}>
+  <a class="reading-card-cover" href={detailHref} aria-label={item.title}>
     <img
       src={item.cover_url}
       alt={item.title}
@@ -28,15 +31,15 @@ const { item, eager = false } = Astro.props;
     />
   </a>
   <h2 class="reading-card-title">
-    <a href={`/reading/${item.slug}/`}>{item.title}</a>
+    <a href={detailHref}>{item.title}</a>
   </h2>
   <div class="reading-card-meta">
-    <span class="reading-source">{item.source}</span>
-    <time datetime={item.saved_at}>{readingDate(item.saved_at)}</time>
+    <span class="reading-source">{readingSourceLabel(item.source, lang)}</span>
+    <time datetime={item.saved_at}>{readingDate(item.saved_at, lang === 'en' ? 'en-US' : 'zh-CN')}</time>
     {item.author && <span class="reading-author">{item.author}</span>}
     {item.original_url && (
       <a class="reading-original" href={item.original_url} target="_blank" rel="noopener noreferrer">
-        原文 ↗
+        {lang === 'en' ? 'Source ↗' : '原文 ↗'}
       </a>
     )}
   </div>

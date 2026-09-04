@@ -2,12 +2,15 @@ export interface ReadingItem {
   id: string;
   slug: string;
   title: string;
+  title_en: string | null;
   author: string | null;
   source: string;
   item_type: string | null;
   original_url: string | null;
   cover_url: string;
+  cover_url_en: string | null;
   summary: string | null;
+  summary_en: string | null;
   topics: string[];
   saved_at: string;
   original_published_at: string | null;
@@ -20,12 +23,15 @@ const SELECT = [
   'id',
   'slug',
   'title',
+  'title_en',
   'author',
   'source',
   'item_type',
   'original_url',
   'cover_url',
+  'cover_url_en',
   'summary',
+  'summary_en',
   'topics',
   'saved_at',
   'original_published_at',
@@ -81,4 +87,42 @@ export function readingMonth(value: string) {
   const year = parts.find((part) => part.type === 'year')?.value;
   const month = parts.find((part) => part.type === 'month')?.value;
   return `${year}-${month}`;
+}
+
+export function localizeReadingItem(item: ReadingItem, lang: 'zh' | 'en'): ReadingItem {
+  if (lang === 'zh') return item;
+  return {
+    ...item,
+    title: item.title_en || item.title,
+    summary: item.summary_en || item.summary,
+    cover_url: item.cover_url_en || item.cover_url,
+  };
+}
+
+const SOURCE_EN: Record<string, string> = {
+  微信公众号: 'WeChat',
+  小红书: 'Xiaohongshu',
+  飞书: 'Feishu',
+};
+
+const TYPE_EN: Record<string, string> = {
+  文本: 'Text',
+  链接: 'Link',
+  图片: 'Image',
+  视频: 'Video',
+  语音: 'Audio',
+  文件: 'File',
+  混合: 'Mixed',
+  'X 帖子': 'X post',
+  'GitHub 仓库': 'GitHub repository',
+  网页: 'Web page',
+};
+
+export function readingSourceLabel(source: string, lang: 'zh' | 'en') {
+  return lang === 'en' ? SOURCE_EN[source] || source : source;
+}
+
+export function readingTypeLabel(type: string | null, lang: 'zh' | 'en') {
+  if (!type) return '';
+  return lang === 'en' ? TYPE_EN[type] || type : type;
 }

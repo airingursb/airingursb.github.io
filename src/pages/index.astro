@@ -309,6 +309,22 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           el.style.display = currentLang === 'en' ? '' : 'none';
         });
       }
+
+      var readingCard = document.getElementById('reading-stream-card');
+      if (readingCard) {
+        readingCard.querySelectorAll('.reading-home-title-zh').forEach(function(el) {
+          el.style.display = currentLang === 'zh' ? '' : 'none';
+        });
+        readingCard.querySelectorAll('.reading-home-title-en').forEach(function(el) {
+          el.style.display = currentLang === 'en' ? '' : 'none';
+        });
+        readingCard.querySelectorAll('.reading-home-thumb img').forEach(function(img) {
+          var src = img.getAttribute(currentLang === 'en' ? 'data-src-en' : 'data-src-zh');
+          var alt = img.getAttribute(currentLang === 'en' ? 'data-alt-en' : 'data-alt-zh');
+          if (src) img.setAttribute('src', src);
+          if (alt) img.setAttribute('alt', alt);
+        });
+      }
     }
 
     window.switchLang = function(lang) {
@@ -1265,11 +1281,21 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           </div>
           <div class="reading-home-strip" role="list">
             {recentReading.map((item, index) => (
-              <a class="reading-home-item" role="listitem" href={`/reading/${item.slug}/`}>
+              <a
+                class="reading-home-item"
+                role="listitem"
+                href={`/reading/${item.slug}/`}
+                data-href-zh={`/reading/${item.slug}/`}
+                data-href-en={`/en/reading/${item.slug}/`}
+              >
                 <div class="reading-home-thumb">
                   <img
                     src={item.cover_url}
                     alt={item.title}
+                    data-src-zh={item.cover_url}
+                    data-src-en={item.cover_url_en || item.cover_url}
+                    data-alt-zh={item.title}
+                    data-alt-en={item.title_en || item.title}
                     loading="lazy"
                     decoding="async"
                     width="1536"
@@ -1282,7 +1308,8 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
                   <span>{new Date(item.saved_at).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' })}</span>
                   {item.author && <span>{item.author}</span>}
                 </div>
-                <div class="reading-home-title">{item.title}</div>
+                <div class="reading-home-title reading-home-title-zh">{item.title}</div>
+                <div class="reading-home-title reading-home-title-en">{item.title_en || item.title}</div>
               </a>
             ))}
           </div>

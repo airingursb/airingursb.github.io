@@ -1,9 +1,9 @@
 ---
-import BaseLayout from '../../layouts/BaseLayout.astro';
-import ReadingCard from '../../components/reading/ReadingCard.astro';
-import LangSwitch from '../../components/LangSwitch.astro';
-import { fetchReadingItems, readingMonth } from '../../lib/reading';
-import '../../styles/reading.css';
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import LangSwitch from '../../../components/LangSwitch.astro';
+import ReadingCard from '../../../components/reading/ReadingCard.astro';
+import { fetchReadingItems, readingMonth, readingSourceLabel } from '../../../lib/reading';
+import '../../../styles/reading.css';
 
 const items = await fetchReadingItems();
 const sourceCounts = new Map<string, number>();
@@ -17,33 +17,33 @@ const sources = [...sourceCounts.entries()].sort((a, b) => b[1] - a[1]);
 const months = [...monthCounts.entries()].sort((a, b) => b[0].localeCompare(a[0]));
 const latest = items[0]?.updated_at || items[0]?.saved_at;
 const latestLabel = latest
-  ? new Date(latest).toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' })
+  ? new Date(latest).toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', timeZone: 'Asia/Shanghai' })
   : '—';
 ---
 
 <BaseLayout
-  title="Reading Stream / 阅读流 · Airing's Blog"
-  description="我每天读过，并愿意留下的东西。通过网页、RSS 或每周邮件订阅 Airing 的阅读流。"
-  lang="zh"
+  title="Reading Stream · Airing's Blog"
+  description="Things I read and chose to keep. Follow Airing's Reading Stream on the web, by RSS, or in a weekly email."
+  lang="en"
   hreflang={{ zh: '/reading/', en: '/en/reading/' }}
 >
   <div class="reading-page">
     <header class="reading-shell">
       <div class="reading-mast-top"></div>
       <div class="reading-mast-bar">
-        <a class="reading-brand" href="/blog/">Airing's Blog</a>
-        <nav class="reading-nav" aria-label="博客导航">
-          <a href="/blog/">Blog</a>
-          <a href="/moments/">Moment</a>
-          <a href="/notes/">Notes</a>
-          <a class="active" href="/reading/" aria-current="page">Reading</a>
+        <a class="reading-brand" href="/en/blog/">Airing's Blog</a>
+        <nav class="reading-nav" aria-label="Blog navigation">
+          <a href="/en/blog/">Blog</a>
+          <a href="/en/moments/">Moment</a>
+          <a href="/en/notes/">Notes</a>
+          <a class="active" href="/en/reading/" aria-current="page">Reading</a>
           <a href="/photos/">Photos</a>
-          <a href="/friends/">Friends</a>
+          <a href="/en/friends/">Friends</a>
         </nav>
       </div>
       <div class="reading-subbar">
         <span>ursb.me / reading</span>
-        <LangSwitch lang="zh" currentPath="/reading" />
+        <LangSwitch lang="en" currentPath="/en/reading" />
       </div>
     </header>
 
@@ -51,27 +51,27 @@ const latestLabel = latest
       <section class="reading-hero">
         <div>
           <div class="reading-eyebrow">Curated daily</div>
-          <h1 class="reading-title">Reading Stream <span>/ 阅读流</span></h1>
-          <p class="reading-desc">我每天读过，并愿意留下的东西。来自 X、GitHub、Newsletter 与网页的私人精选。</p>
+          <h1 class="reading-title">Reading Stream</h1>
+          <p class="reading-desc">Things I read and chose to keep, collected from X, GitHub, newsletters, and the open web.</p>
         </div>
         <div class="reading-hero-actions">
           <div class="reading-updated"><span data-visible-count>{items.length}</span> items<br />updated {latestLabel}</div>
           <button class="reading-rss" type="button" data-subscribe-open data-subscribe-context="reading">
-            订阅
+            Subscribe
           </button>
         </div>
       </section>
 
       <div class="reading-content">
-        <aside class="reading-sidebar" aria-label="阅读流筛选">
+        <aside class="reading-sidebar" aria-label="Reading Stream filters">
           <section class="reading-side-section" data-filter-group="source">
             <div class="reading-side-title">Source</div>
             <button class="reading-filter active" type="button" data-filter="all">
-              <span>全部</span><span class="reading-filter-count">{items.length}</span>
+              <span>All</span><span class="reading-filter-count">{items.length}</span>
             </button>
             {sources.map(([source, count]) => (
               <button class="reading-filter" type="button" data-filter={source}>
-                <span>{source}</span><span class="reading-filter-count">{count}</span>
+                <span>{readingSourceLabel(source, 'en')}</span><span class="reading-filter-count">{count}</span>
               </button>
             ))}
           </section>
@@ -79,7 +79,7 @@ const latestLabel = latest
           <section class="reading-side-section" data-filter-group="month">
             <div class="reading-side-title">Archive</div>
             <button class="reading-filter active" type="button" data-filter="all">
-              <span>全部月份</span>
+              <span>All months</span>
             </button>
             {months.map(([month, count]) => (
               <button class="reading-filter" type="button" data-filter={month}>
@@ -90,9 +90,9 @@ const latestLabel = latest
 
           <section class="reading-side-section weekly" id="weekly">
             <div class="reading-side-title">Weekly letter</div>
-            <p class="reading-weekly-copy">每周一封，把过去一周值得重看的内容串起来。</p>
+            <p class="reading-weekly-copy">One email connecting the reads worth revisiting from the past week.</p>
             <button class="reading-weekly-open" type="button" data-subscribe-open data-subscribe-context="reading">
-              管理订阅 →
+              Manage subscriptions →
             </button>
           </section>
         </aside>
@@ -100,25 +100,25 @@ const latestLabel = latest
         <section>
           <div class="reading-stream-head">
             <span class="reading-stream-label">Latest reads</span>
-            <span class="reading-stream-range">按收藏时间倒序</span>
+            <span class="reading-stream-range">Newest saved first</span>
           </div>
 
           {items.length > 0 ? (
             <>
               <div class="reading-grid" data-reading-grid>
-                {items.map((item, index) => <ReadingCard item={item} eager={index < 3} />)}
+                {items.map((item, index) => <ReadingCard item={item} lang="en" eager={index < 3} />)}
               </div>
-              <p class="reading-empty" data-reading-empty hidden>没有符合当前筛选的内容。</p>
+              <p class="reading-empty" data-reading-empty hidden>No items match these filters.</p>
             </>
           ) : (
-            <p class="reading-empty">还没有公开的阅读记录。</p>
+            <p class="reading-empty">No public reading notes yet.</p>
           )}
 
           <section class="reading-side-section weekly reading-weekly-mobile" id="weekly-mobile">
             <div class="reading-side-title">Weekly letter</div>
-            <p class="reading-weekly-copy">每周一封，把过去一周值得重看的内容串起来。</p>
+            <p class="reading-weekly-copy">One email connecting the reads worth revisiting from the past week.</p>
             <button class="reading-weekly-open" type="button" data-subscribe-open data-subscribe-context="reading">
-              管理订阅 →
+              Manage subscriptions →
             </button>
           </section>
         </section>
@@ -127,12 +127,6 @@ const latestLabel = latest
 
     <footer class="reading-shell reading-footer">© 2026 Airing · Reading Stream</footer>
   </div>
-
-  <script is:inline>
-    if (localStorage.getItem('preferred_lang') === 'en') {
-      window.location.replace('/en/reading/');
-    }
-  </script>
 
   <script>
     const filters = { source: 'all', month: 'all' };
@@ -164,6 +158,5 @@ const latestLabel = latest
         applyFilters();
       });
     });
-
   </script>
 </BaseLayout>
