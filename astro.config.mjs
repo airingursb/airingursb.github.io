@@ -33,6 +33,9 @@ export default defineConfig({
   site: 'https://ursb.me',
   output: 'static',
   trailingSlash: 'always',
+  image: {
+    domains: ['r2.airingdeng.com'],
+  },
   integrations: [mdx(), react()],
   markdown: {
     remarkPlugins: [remarkEmbed, [remarkWikilinks, { enNoteSlugs }]],

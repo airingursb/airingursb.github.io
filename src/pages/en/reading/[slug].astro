@@ -1,6 +1,8 @@
 ---
+import { Image } from 'astro:assets';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import LangSwitch from '../../../components/LangSwitch.astro';
+import ReadingShareModal from '../../../components/reading/ReadingShareModal.astro';
 import {
   fetchReadingItems,
   localizeReadingItem,
@@ -10,6 +12,7 @@ import {
   type ReadingItem,
 } from '../../../lib/reading';
 import '../../../styles/reading.css';
+import '../../../styles/photos.css';
 
 export async function getStaticPaths() {
   const items = await fetchReadingItems();
@@ -36,6 +39,7 @@ const older = props.older ? localizeReadingItem(props.older, 'en') : null;
 const description = item.summary || `${item.author ? `${item.author} · ` : ''}${item.source} reading note`;
 const summaryLines = (item.summary || '').split('\n').map((line) => line.trim()).filter(Boolean);
 const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^[-*]\s+/.test(line));
+const shareUrl = new URL(`/en/reading/${item.slug}/`, Astro.site ?? 'https://ursb.me').href;
 ---
 
 <BaseLayout
@@ -78,7 +82,7 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
           </div>
         </div>
         <div class="reading-detail-actions">
-          <button class="reading-action" type="button" data-copy-link>Copy link</button>
+          <ReadingShareModal coverUrl={item.cover_url} lang="en" shareTitle={item.title} shareUrl={shareUrl} />
           {item.original_url && (
             <a class="reading-action primary" href={item.original_url} target="_blank" rel="noopener noreferrer">
               Read source ↗
@@ -90,12 +94,21 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
       <article class="reading-detail-grid">
         <div>
           <button class="reading-poster" type="button" data-open-lightbox aria-label="View full image">
-            <img src={item.cover_url} alt={item.title} width="1536" height="1024" />
+            <Image
+              src={item.cover_url}
+              alt={item.title}
+              width={1440}
+              height={960}
+              widths={[720, 1440]}
+              sizes="(max-width: 720px) 100vw, (max-width: 1080px) calc(100vw - 64px), 883px"
+              format="webp"
+              quality={75}
+              priority
+            />
             <span class="reading-zoom-label">⌕ View full image</span>
           </button>
           <div class="reading-caption">
             <span>Agent-generated reading card · 1536 × 1024</span>
-            <span>Hosted on R2</span>
           </div>
         </div>
 
@@ -145,13 +158,13 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
         <nav class="reading-prev-next" aria-label="Adjacent reading notes">
           {newer ? (
             <a class="reading-related" href={`/en/reading/${newer.slug}/`}>
-              <img src={newer.cover_url} alt="" loading="lazy" width="140" height="93" />
+              <Image src={newer.cover_url} alt="" loading="lazy" width={360} height={240} format="webp" quality={75} />
               <span><small>← Newer</small><strong>{newer.title}</strong></span>
             </a>
           ) : <span />}
           {older && (
             <a class="reading-related" href={`/en/reading/${older.slug}/`}>
-              <img src={older.cover_url} alt="" loading="lazy" width="140" height="93" />
+              <Image src={older.cover_url} alt="" loading="lazy" width={360} height={240} format="webp" quality={75} />
               <span><small>Older →</small><strong>{older.title}</strong></span>
             </a>
           )}
@@ -162,25 +175,25 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
 
   <div class="reading-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Full reading card">
     <button class="reading-lightbox-close" type="button" data-close-lightbox aria-label="Close">×</button>
-    <img src={item.cover_url} alt={item.title} />
+    <img data-original-src={item.cover_url} alt={item.title} />
   </div>
 
   <script>
     const lightbox = document.querySelector('[data-lightbox]');
+    const lightboxImage = lightbox?.querySelector('img[data-original-src]');
     const closeLightbox = () => lightbox?.classList.remove('open');
-    document.querySelector('[data-open-lightbox]')?.addEventListener('click', () => lightbox?.classList.add('open'));
+    document.querySelector('[data-open-lightbox]')?.addEventListener('click', () => {
+      if (lightboxImage instanceof HTMLImageElement && !lightboxImage.src) {
+        lightboxImage.src = lightboxImage.dataset.originalSrc || '';
+      }
+      lightbox?.classList.add('open');
+    });
     document.querySelector('[data-close-lightbox]')?.addEventListener('click', closeLightbox);
     lightbox?.addEventListener('click', (event) => {
       if (event.target === lightbox) closeLightbox();
     });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape') closeLightbox();
-    });
-    const copyButton = document.querySelector('[data-copy-link]');
-    copyButton?.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(window.location.href);
-      copyButton.textContent = 'Copied';
-      window.setTimeout(() => { copyButton.textContent = 'Copy link'; }, 1600);
     });
   </script>
 </BaseLayout>

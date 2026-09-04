@@ -1,7 +1,10 @@
 ---
+import { Image } from 'astro:assets';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import LangSwitch from '../../components/LangSwitch.astro';
+import ReadingShareModal from '../../components/reading/ReadingShareModal.astro';
 import { fetchReadingItems, readingDate, type ReadingItem } from '../../lib/reading';
+import '../../styles/photos.css';
 import '../../styles/reading.css';
 
 export async function getStaticPaths() {
@@ -26,6 +29,7 @@ const { item, newer, older } = Astro.props;
 const description = item.summary || `${item.author ? `${item.author} · ` : ''}${item.source} 阅读记录`;
 const summaryLines = (item.summary || '').split('\n').map((line) => line.trim()).filter(Boolean);
 const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^[-*]\s+/.test(line));
+const shareUrl = new URL(`/reading/${item.slug}/`, Astro.site ?? 'https://ursb.me').href;
 ---
 
 <BaseLayout
@@ -68,7 +72,7 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
           </div>
         </div>
         <div class="reading-detail-actions">
-          <button class="reading-action" type="button" data-copy-link>复制链接</button>
+          <ReadingShareModal coverUrl={item.cover_url} lang="zh" shareTitle={item.title} shareUrl={shareUrl} />
           {item.original_url && (
             <a class="reading-action primary" href={item.original_url} target="_blank" rel="noopener noreferrer">
               阅读原文 ↗
@@ -80,12 +84,21 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
       <article class="reading-detail-grid">
         <div>
           <button class="reading-poster" type="button" data-open-lightbox aria-label="查看原图">
-            <img src={item.cover_url} alt={item.title} width="1536" height="1024" />
+            <Image
+              src={item.cover_url}
+              alt={item.title}
+              width={1440}
+              height={960}
+              widths={[720, 1440]}
+              sizes="(max-width: 720px) 100vw, (max-width: 1080px) calc(100vw - 64px), 883px"
+              format="webp"
+              quality={75}
+              priority
+            />
             <span class="reading-zoom-label">⌕ 点击查看原图</span>
           </button>
           <div class="reading-caption">
             <span>Agent 生成阅读卡片 · 1536 × 1024</span>
-            <span>图片托管于 R2</span>
           </div>
         </div>
 
@@ -135,13 +148,13 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
         <nav class="reading-prev-next" aria-label="相邻阅读记录">
           {newer ? (
             <a class="reading-related" href={`/reading/${newer.slug}/`}>
-              <img src={newer.cover_url} alt="" loading="lazy" width="140" height="93" />
+              <Image src={newer.cover_url} alt="" loading="lazy" width={360} height={240} format="webp" quality={75} />
               <span><small>← 更新一条</small><strong>{newer.title}</strong></span>
             </a>
           ) : <span />}
           {older && (
             <a class="reading-related" href={`/reading/${older.slug}/`}>
-              <img src={older.cover_url} alt="" loading="lazy" width="140" height="93" />
+              <Image src={older.cover_url} alt="" loading="lazy" width={360} height={240} format="webp" quality={75} />
               <span><small>更早一条 →</small><strong>{older.title}</strong></span>
             </a>
           )}
@@ -152,7 +165,7 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
 
   <div class="reading-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="阅读卡片原图">
     <button class="reading-lightbox-close" type="button" data-close-lightbox aria-label="关闭">×</button>
-    <img src={item.cover_url} alt={item.title} />
+    <img data-original-src={item.cover_url} alt={item.title} />
   </div>
 
   <script is:inline>
@@ -165,8 +178,14 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
     const lightbox = document.querySelector('[data-lightbox]');
     const openButton = document.querySelector('[data-open-lightbox]');
     const closeButton = document.querySelector('[data-close-lightbox]');
+    const lightboxImage = lightbox?.querySelector('img[data-original-src]');
     const closeLightbox = () => lightbox?.classList.remove('open');
-    openButton?.addEventListener('click', () => lightbox?.classList.add('open'));
+    openButton?.addEventListener('click', () => {
+      if (lightboxImage instanceof HTMLImageElement && !lightboxImage.src) {
+        lightboxImage.src = lightboxImage.dataset.originalSrc || '';
+      }
+      lightbox?.classList.add('open');
+    });
     closeButton?.addEventListener('click', closeLightbox);
     lightbox?.addEventListener('click', (event) => {
       if (event.target === lightbox) closeLightbox();
@@ -175,11 +194,5 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
       if (event.key === 'Escape') closeLightbox();
     });
 
-    const copyButton = document.querySelector('[data-copy-link]');
-    copyButton?.addEventListener('click', async () => {
-      await navigator.clipboard.writeText(window.location.href);
-      copyButton.textContent = '已复制';
-      window.setTimeout(() => { copyButton.textContent = '复制链接'; }, 1600);
-    });
   </script>
 </BaseLayout>

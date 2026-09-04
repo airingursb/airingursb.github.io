@@ -1,6 +1,7 @@
 ---
 import fs from 'node:fs';
 import path from 'node:path';
+import { getImage } from 'astro:assets';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import photosData from '../data/photos.json';
 import githubData from '../data/github.json';
@@ -41,6 +42,13 @@ const recentPhotos = (photosData as Array<any>)
 const allComics = await fetchComics();
 const latestComic = allComics[0];
 const recentReading = await fetchReadingItems(8);
+const recentReadingCards = await Promise.all(recentReading.map(async (item) => {
+  const [coverZh, coverEn] = await Promise.all([
+    getImage({ src: item.cover_url, width: 720, height: 480, format: 'webp', quality: 75 }),
+    getImage({ src: item.cover_url_en || item.cover_url, width: 720, height: 480, format: 'webp', quality: 75 }),
+  ]);
+  return { item, coverZh: coverZh.src, coverEn: coverEn.src };
+}));
 const formatComicDate = (s: string, locale: 'zh' | 'en') =>
   new Date(s).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
@@ -1280,7 +1288,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
             </div>
           </div>
           <div class="reading-home-strip" role="list">
-            {recentReading.map((item, index) => (
+            {recentReadingCards.map(({ item, coverZh, coverEn }, index) => (
               <a
                 class="reading-home-item"
                 role="listitem"
@@ -1290,16 +1298,16 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
               >
                 <div class="reading-home-thumb">
                   <img
-                    src={item.cover_url}
+                    src={coverZh}
                     alt={item.title}
-                    data-src-zh={item.cover_url}
-                    data-src-en={item.cover_url_en || item.cover_url}
+                    data-src-zh={coverZh}
+                    data-src-en={coverEn}
                     data-alt-zh={item.title}
                     data-alt-en={item.title_en || item.title}
                     loading="lazy"
                     decoding="async"
-                    width="1536"
-                    height="1024"
+                    width="720"
+                    height="480"
                   />
                   {index === 0 && <span class="reading-home-new">NEW</span>}
                 </div>

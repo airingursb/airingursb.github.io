@@ -1,0 +1,188 @@
+---
+import { Image } from 'astro:assets';
+
+interface Props {
+  coverUrl: string;
+  lang: 'zh' | 'en';
+  shareTitle: string;
+  shareUrl: string;
+}
+
+const { coverUrl, lang, shareTitle, shareUrl } = Astro.props;
+const labels = lang === 'en'
+  ? {
+      share: 'Share',
+      close: 'Close share dialog',
+      copy: 'Copy link',
+      copied: 'Copied!',
+      threads: 'Share to Threads',
+      x: 'Share to X',
+      more: 'More share options',
+    }
+  : {
+      share: '分享',
+      close: '关闭分享弹窗',
+      copy: '复制链接',
+      copied: '已复制',
+      threads: '分享到 Threads',
+      x: '分享到 X',
+      more: '更多分享选项',
+    };
+const threadsHref = `https://www.threads.net/intent/post?text=${encodeURIComponent(`${shareTitle} ${shareUrl}`)}`;
+const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`;
+---
+
+<button type="button" class="reading-action" id="readingShareBtn" aria-label={labels.share}>
+  {labels.share}
+</button>
+
+<div class="share-modal reading-share-modal" id="readingShareModal" hidden>
+  <button type="button" class="share-backdrop" id="readingShareBackdrop" aria-label={labels.close}></button>
+  <div class="share-card" role="dialog" aria-modal="true" aria-label={labels.share}>
+    <button type="button" class="share-close" id="readingShareClose" aria-label={labels.close}>×</button>
+
+    <div class="share-image">
+      <Image
+        src={coverUrl}
+        alt={shareTitle}
+        width={720}
+        height={480}
+        format="webp"
+        quality={75}
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
+
+    <div class="share-row">
+      <input type="text" readonly value={shareUrl} class="share-url" id="readingShareUrl" aria-label={labels.copy} />
+      <div class="share-actions-row">
+        <button type="button" class="share-act" id="readingShareCopy" aria-label={labels.copy} title={labels.copy}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="8" y="8" width="12" height="12" rx="2" />
+            <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+          </svg>
+        </button>
+        <a href={threadsHref} class="share-act" target="_blank" rel="noopener noreferrer" aria-label={labels.threads} title={labels.threads}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M17.21 11.16c-.09-.04-.18-.08-.27-.12-.16-2.97-1.78-4.67-4.51-4.69h-.04c-1.63 0-2.99.7-3.83 1.96l1.5 1.03c.62-.94 1.6-1.14 2.33-1.14h.03c.91.01 1.6.27 2.04.78.32.37.54.88.65 1.52-.83-.14-1.73-.18-2.69-.13-2.71.16-4.46 1.74-4.34 3.94.06 1.12.62 2.08 1.57 2.71.81.53 1.85.79 2.93.73 1.43-.08 2.55-.62 3.34-1.62.6-.76.97-1.74 1.14-2.97.7.42 1.21.97 1.5 1.63.49 1.13.52 2.97-.98 4.47-1.31 1.31-2.89 1.88-5.27 1.9-2.64-.02-4.64-.87-5.93-2.52-1.21-1.55-1.84-3.79-1.86-6.65.02-2.86.65-5.1 1.86-6.65 1.29-1.65 3.29-2.5 5.93-2.52 2.66.02 4.7.87 6.06 2.54.67.81 1.17 1.84 1.51 3.04l1.79-.48c-.41-1.47-1.05-2.74-1.91-3.79C16.99 1.95 14.5.86 11.45.84h-.01C8.39.86 5.93 1.96 4.21 4.1 2.69 6 1.91 8.65 1.89 11.99v.02c.02 3.34.79 5.99 2.32 7.89 1.71 2.14 4.18 3.24 7.23 3.26h.01c2.71-.02 4.62-.73 6.2-2.31 2.07-2.06 2-4.65 1.32-6.24-.49-1.16-1.43-2.1-2.71-2.71zm-4.6 3.91c-1.2.07-2.45-.47-2.51-1.6-.04-.83.59-1.76 2.58-1.87.23-.01.45-.02.67-.02.72 0 1.39.07 2 .2-.23 2.84-1.56 3.22-2.74 3.29z" />
+          </svg>
+        </a>
+        <a href={xHref} class="share-act" target="_blank" rel="noopener noreferrer" aria-label={labels.x} title={labels.x}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+        </a>
+        <button type="button" class="share-act" id="readingShareNative" aria-label={labels.more} title={labels.more}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 19V5M5 12l7-7 7 7" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script is:inline define:vars={{ copiedLabel: labels.copied, shareTitle, shareUrl }}>
+  (function () {
+    var modal = document.getElementById('readingShareModal');
+    var openBtn = document.getElementById('readingShareBtn');
+    var closeBtn = document.getElementById('readingShareClose');
+    var backdrop = document.getElementById('readingShareBackdrop');
+    var copyBtn = document.getElementById('readingShareCopy');
+    var nativeBtn = document.getElementById('readingShareNative');
+    var urlInput = document.getElementById('readingShareUrl');
+
+    function openModal() {
+      if (!modal) return;
+      if (typeof umami !== 'undefined') umami.track('reading-share', { url: shareUrl });
+      modal.hidden = false;
+      document.body.style.overflow = 'hidden';
+      setTimeout(function () { closeBtn && closeBtn.focus(); }, 0);
+    }
+
+    function closeModal() {
+      if (!modal) return;
+      modal.hidden = true;
+      document.body.style.overflow = '';
+      openBtn && openBtn.focus();
+    }
+
+    openBtn && openBtn.addEventListener('click', openModal);
+    closeBtn && closeBtn.addEventListener('click', closeModal);
+    backdrop && backdrop.addEventListener('click', closeModal);
+    document.addEventListener('keydown', function (event) {
+      if (!modal || modal.hidden) return;
+      if (event.key === 'Escape') {
+        closeModal();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      var focusable = Array.from(modal.querySelectorAll('.share-card button, .share-card a[href], .share-card input'));
+      if (focusable.length === 0) return;
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    });
+
+    copyBtn && copyBtn.addEventListener('click', async function () {
+      try {
+        await navigator.clipboard.writeText(shareUrl);
+      } catch (_error) {
+        urlInput && urlInput.select();
+        try { document.execCommand('copy'); } catch (_) {}
+      }
+      copyBtn.classList.add('copied');
+      var originalLabel = copyBtn.getAttribute('aria-label');
+      copyBtn.setAttribute('aria-label', copiedLabel);
+      setTimeout(function () {
+        copyBtn.classList.remove('copied');
+        copyBtn.setAttribute('aria-label', originalLabel);
+      }, 1800);
+    });
+
+    urlInput && urlInput.addEventListener('click', function () { urlInput.select(); });
+
+    nativeBtn && nativeBtn.addEventListener('click', async function () {
+      var data = { title: shareTitle, url: shareUrl };
+      if (navigator.share) {
+        try { await navigator.share(data); return; }
+        catch (error) { if (error && error.name === 'AbortError') return; }
+      }
+      copyBtn && copyBtn.click();
+    });
+  })();
+</script>
+
+<style is:global>
+  .reading-share-modal .share-card,
+  .reading-share-modal .share-image,
+  .reading-share-modal .share-row {
+    background: #0b0b0b;
+    color: #f4f4f4;
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+
+  .reading-share-modal .share-url,
+  .reading-share-modal .share-act {
+    background: rgba(255, 255, 255, 0.06);
+    color: #f4f4f4;
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  .reading-share-modal .share-act:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.28);
+  }
+
+  .reading-share-modal .share-close {
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+  }
+</style>

@@ -1581,19 +1581,21 @@
 ## Reading Stream (`/reading/`)
 
 - [ ] GET `/reading/` 200，页面标题、description、canonical 和 Reading RSS alternate 正确
-- [ ] 桌面宽度下真实 R2 封面为三列；中屏两列；手机单列且无横向溢出
+- [ ] 桌面宽度下封面为三列；中屏两列；手机单列且无横向溢出；列表图片请求构建期 WebP 派生图而非 R2 原图
 - [ ] Source 与 Archive 筛选可组合，条目计数和空状态同步更新
 - [ ] 卡片封面/标题进入站内 `/reading/<slug>/`，`原文 ↗` 使用新窗口打开外部来源
 - [ ] 详情页展示完整 3:2 海报、来源/作者/时间；摘要和主题为空时不渲染空区块
-- [ ] 详情页原图 lightbox 支持点击打开、背景/关闭按钮/Escape 关闭
-- [ ] 复制链接按钮写入当前站内 permalink，并提供“已复制”反馈
+- [ ] 详情页首屏与分享弹窗使用压缩图；原始 R2 图片只在点击“查看原图”后请求，lightbox 支持背景/关闭按钮/Escape 关闭
+- [ ] 详情页分享按钮打开与运动页一致的封面弹窗，提供站内 permalink、复制、Threads、X 和系统分享
+- [ ] 分享弹窗支持关闭按钮、背景点击和 Escape，关闭后恢复页面滚动与按钮焦点；中英文文案正确
 - [ ] 相邻阅读导航顺序正确；sitemap 包含列表和所有公开详情 URL
 - [ ] 每周邮件表单成功、重复订阅和错误状态均有可读反馈
-- [ ] 暗色与亮色主题下封面、文字、边框和按钮均清晰可读
+- [ ] 暗色与亮色主题下封面、文字、边框和按钮均清晰可读，“查看原图”浮层标签保持高对比度
 - [ ] `/en/reading/` 使用 `Title EN`、`Summary EN`、`Cover EN`；单字段缺失时独立回退中文
 - [ ] 中英文详情页互设 `hreflang`，LangSwitch 保持相同 slug，sitemap 同时包含两种 URL
 - [ ] 英文 RSS 使用英文标题/摘要/封面与 `/en/reading/<slug>/` permalink
 - [ ] 英文周报订阅使用英文模板和英文 Feed 地址
+- [ ] Reading 周报按订阅者默认语言发送；邮件顶部可一键切换中英文，切换后同时影响月刊与 Reading 后续邮件
 
 ## Homepage — Reading Stream
 
@@ -1608,7 +1610,7 @@
 - [ ] `/blog/` 侧栏订阅按钮打开同一弹窗，默认勾选“博客文章”
 - [ ] Newsletter tab 可复选博客文章与阅读流精选，未选择内容时阻止提交并显示提示
 - [ ] Newsletter 提交携带统一邮箱身份及 `subscriptions: ['blog'|'reading']`
-- [ ] RSS tab 提供博客文章、阅读流、沉浸式笔记三个 Feed
+- [ ] RSS tab 提供博客文章、阅读流、沉浸式笔记三个 Feed；阅读流使用静态地址 `/reading/feed.xml`（英文 `/en/reading/feed.xml`），不暴露 API 域名
 - [ ] “复制所选 Feed”只复制勾选地址；“导出 OPML”生成可导入文件
 - [ ] 弹窗支持关闭按钮、背景点击、Escape，并在关闭后恢复页面滚动
 - [ ] 中英文页面文案正确；暗色与亮色模式均清晰
