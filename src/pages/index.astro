@@ -220,9 +220,6 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
     }
 
     var currentLang = detectLang();
-    // #region agent log
-    console.info(JSON.stringify({ hypothesisId: 'A,C', location: 'index.astro:i18n-init', message: 'Homepage i18n initialized', data: { currentLang: currentLang, htmlLang: document.documentElement.lang, savedLang: localStorage.getItem(LANG_KEY) }, timestamp: Date.now() }));
-    // #endregion
 
     window.t = function(key) {
       var dict = translations[currentLang] || translations.en;
@@ -328,18 +325,12 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           if (alt) img.setAttribute('alt', alt);
         });
       }
-      // #region agent log
-      console.info(JSON.stringify({ hypothesisId: 'A,B', location: 'index.astro:applyTranslations-exit', message: 'Homepage translations applied', data: { currentLang: currentLang, htmlLang: document.documentElement.lang, readingActions: Array.from(document.querySelectorAll('.reading-home-follow button')).map(function(el) { return { text: el.textContent.trim(), i18nKey: el.getAttribute('data-i18n') }; }) }, timestamp: Date.now() }));
-      // #endregion
     }
 
     window.switchLang = function(lang) {
       currentLang = lang;
       window.currentLang = lang;
       localStorage.setItem(LANG_KEY, lang);
-      // #region agent log
-      console.info(JSON.stringify({ hypothesisId: 'A,D', location: 'index.astro:switchLang-before-apply', message: 'Homepage language switch requested', data: { requestedLang: lang, htmlLang: document.documentElement.lang }, timestamp: Date.now() }));
-      // #endregion
       applyTranslations();
       if (typeof umami !== 'undefined') {
         umami.track('lang-switch', { lang: lang });
