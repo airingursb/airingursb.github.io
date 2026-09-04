@@ -1,0 +1,172 @@
+---
+/**
+ * Reads list — 3-col small cards, left source filter, sticky month headers.
+ * No right-side timeline.
+ */
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { tSite } from '../../lib/i18n';
+import { loadReads, groupReadsByMonth, sourceCounts } from '../../lib/reads';
+import '../../styles/reads.css';
+
+const reads = loadReads();
+const groups = groupReadsByMonth(reads);
+const sources = sourceCounts(reads);
+const s = tSite('zh').reads;
+const isEmpty = reads.length === 0;
+---
+
+<BaseLayout title={`${s.siteTitle} | Airing`} description={s.siteDesc}>
+  <div class="reads-page">
+    <header class="masthead">
+      <div class="mast-inner">
+        <div class="mast-top-rule"></div>
+        <div class="mast-bar">
+          <a href="/blog/" class="mast-brand">Airing's Blog</a>
+          <div class="mast-links">
+            <a href="/blog/" class="mast-hide-mobile">Blog</a>
+            <a href="/moments/">Moment</a>
+            <a href="/notes/">Notes</a>
+            <a href="/reads/" class="mast-active">Reads</a>
+            <a href="/photos/">Photos</a>
+            <a href="/friends/">Friends</a>
+          </div>
+        </div>
+        <div class="mast-lang-line"></div>
+        <div class="mast-bottom-rule"></div>
+      </div>
+    </header>
+
+    <header class="page-header">
+      <div class="header-inner">
+        <h1 class="page-title">{s.siteTitle}</h1>
+        <p class="page-desc">{s.siteDesc}</p>
+      </div>
+    </header>
+
+    <main class="reads-main">
+      <div class="reads-two-col">
+        <aside class="source-sidebar" id="source-sidebar">
+          <div class="sidebar-sticky">
+            <div class="reads-sidebar-stats">
+              <span><span class="reads-stats-count">{reads.length}</span> {s.countSuffix}</span>
+              <a href="/reads/feed.xml" class="reads-rss-link" id="readsRssLink">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><circle cx="6.18" cy="17.82" r="2.18"/><path d="M4 4.44v2.83c7.03 0 12.73 5.7 12.73 12.73h2.83c0-8.59-6.97-15.56-15.56-15.56zm0 5.66v2.83c3.9 0 7.07 3.17 7.07 7.07h2.83c0-5.47-4.43-9.9-9.9-9.9z"/></svg>
+                RSS
+              </a>
+            </div>
+            <div class="sidebar-sources">
+              <button class="sidebar-source active" type="button" data-source="all">
+                <span class="st-name">{s.allSource}</span>
+                <span class="st-count">{reads.length}</span>
+              </button>
+              {sources.map(([source, count]) => (
+                <button class="sidebar-source" type="button" data-source={source}>
+                  <span class="st-name">{source}</span>
+                  <span class="st-count">{count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        <div class="reads-list-col">
+          <div class="reads-mobile-sources">
+            <button class="reads-source-pill active" type="button" data-source="all">{s.allSource}</button>
+            {sources.map(([source]) => (
+              <button class="reads-source-pill" type="button" data-source={source}>{source}</button>
+            ))}
+          </div>
+
+          <div class="reads-months" id="reads-months">
+            {groups.map((group) => (
+              <section class="month-group" data-month={group.key}>
+                <h2 class="month-header">{group.label}</h2>
+                <div class="reads-grid">
+                  {group.items.map((item) => (
+                    <a
+                      href={`/reads/${item.slug}/`}
+                      class="read-card"
+                      data-source={item.source || '其他'}
+                    >
+                      <div class="rc-cover">
+                        {item.cover ? (
+                          <img src={item.cover} alt="" loading="lazy" decoding="async" />
+                        ) : (
+                          <div class="rc-cover-fallback" aria-hidden="true"></div>
+                        )}
+                      </div>
+                      <h3 class="rc-title">{item.title}</h3>
+                      <p class="rc-summary">{item.summary}</p>
+                    </a>
+                  ))}
+                </div>
+              </section>
+            ))}
+
+            {isEmpty && (
+              <section class="month-group" data-month="empty" aria-hidden="true">
+                <h2 class="month-header">{s.emptyMonth}</h2>
+                <div class="reads-grid"></div>
+              </section>
+            )}
+          </div>
+
+          <div class="reads-empty" id="reads-empty" style={isEmpty ? '' : 'display:none'}>
+            <p>{s.emptyState}</p>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="blog-footer">
+      <div class="footer-inner">
+        <span>&copy; 2026 Airing</span>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/notes/">Notes</a>
+          <a href="/reads/feed.xml">RSS</a>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script is:inline>
+  (function() {
+    var current = 'all';
+    var cards = Array.from(document.querySelectorAll('.read-card'));
+    var groups = Array.from(document.querySelectorAll('.month-group'));
+    var empty = document.getElementById('reads-empty');
+
+    function apply() {
+      var visible = 0;
+      cards.forEach(function(card) {
+        var match = current === 'all' || card.getAttribute('data-source') === current;
+        card.style.display = match ? '' : 'none';
+        if (match) visible += 1;
+      });
+      groups.forEach(function(group) {
+        var any = Array.from(group.querySelectorAll('.read-card')).some(function(c) {
+          return c.style.display !== 'none';
+        });
+        var isScaffold = group.getAttribute('data-month') === 'empty';
+        group.style.display = (any || isScaffold) ? '' : 'none';
+      });
+      if (empty) empty.style.display = visible === 0 ? '' : 'none';
+    }
+
+    function setSource(source) {
+      current = source;
+      document.querySelectorAll('.sidebar-source, .reads-source-pill').forEach(function(btn) {
+        btn.classList.toggle('active', btn.getAttribute('data-source') === source);
+      });
+      apply();
+    }
+
+    document.querySelectorAll('.sidebar-source, .reads-source-pill').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        setSource(btn.getAttribute('data-source') || 'all');
+      });
+    });
+  })();
+  </script>
+</BaseLayout>

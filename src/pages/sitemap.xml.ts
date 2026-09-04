@@ -2,6 +2,7 @@ import type { APIContext } from 'astro';
 import { getCollection } from 'astro:content';
 import fs from 'node:fs';
 import path from 'node:path';
+import { loadReads } from '../lib/reads';
 
 export async function GET(context: APIContext) {
   const site = context.site!.origin;
@@ -73,6 +74,19 @@ ${lastmodXml}    <changefreq>${opts.changefreq}</changefreq>
   // data-href, not a real <a>), so Googlebot can't discover this
   // route from the homepage crawl. List it explicitly.
   urls.push(singleUrl('/world/', { changefreq: 'monthly', priority: '0.6' }));
+  urls.push(singleUrl('/reads/', { changefreq: 'weekly', priority: '0.7' }));
+
+  const reads = loadReads();
+  for (const item of reads) {
+    const lastmod = item.publishedAt
+      ? new Date(item.publishedAt).toISOString().split('T')[0]
+      : undefined;
+    urls.push(singleUrl(`/reads/${item.slug}/`, {
+      lastmod,
+      changefreq: 'monthly',
+      priority: '0.6',
+    }));
+  }
 
   // Static bilingual pages
   for (const p of bilingualStaticPages) {

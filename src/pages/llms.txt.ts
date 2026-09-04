@@ -46,6 +46,7 @@ ${notes.map(noteLine).join('\n')}
 - [Blog index](${site}/blog/): all posts by date
 - [Archive](${site}/archive/): posts grouped by year
 - [Moments](${site}/moments/): short-form updates
+- [Reads](${site}/reads/): public reading notes (RSS: ${site}/reads/feed.xml)
 - [Sitemap](${site}/sitemap.xml)
 `;
 
