@@ -56,7 +56,7 @@ const latestLabel = latest
         </div>
         <div class="reading-hero-actions">
           <div class="reading-updated"><span data-visible-count>{items.length}</span> items<br />updated {latestLabel}</div>
-          <button class="reading-rss" type="button" data-subscribe-open data-subscribe-context="reading">
+          <button class="reading-rss" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="reading-hero">
             Subscribe
           </button>
         </div>
@@ -91,7 +91,7 @@ const latestLabel = latest
           <section class="reading-side-section weekly" id="weekly">
             <div class="reading-side-title">Weekly letter</div>
             <p class="reading-weekly-copy">One email connecting the reads worth revisiting from the past week.</p>
-            <button class="reading-weekly-open" type="button" data-subscribe-open data-subscribe-context="reading">
+            <button class="reading-weekly-open" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="reading-sidebar">
               Manage subscriptions →
             </button>
           </section>
@@ -106,7 +106,7 @@ const latestLabel = latest
           {items.length > 0 ? (
             <>
               <div class="reading-grid" data-reading-grid>
-                {items.map((item, index) => <ReadingCard item={item} lang="en" eager={index < 3} />)}
+                {items.map((item, index) => <ReadingCard item={item} lang="en" eager={index < 3} position={index + 1} />)}
               </div>
               <p class="reading-empty" data-reading-empty hidden>No items match these filters.</p>
             </>
@@ -117,7 +117,7 @@ const latestLabel = latest
           <section class="reading-side-section weekly reading-weekly-mobile" id="weekly-mobile">
             <div class="reading-side-title">Weekly letter</div>
             <p class="reading-weekly-copy">One email connecting the reads worth revisiting from the past week.</p>
-            <button class="reading-weekly-open" type="button" data-subscribe-open data-subscribe-context="reading">
+            <button class="reading-weekly-open" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="reading-mobile-footer">
               Manage subscriptions →
             </button>
           </section>
@@ -129,6 +129,8 @@ const latestLabel = latest
   </div>
 
   <script>
+    import { trackEvent } from '../../../lounge/umami';
+
     const filters = { source: 'all', month: 'all' };
     const cards = Array.from(document.querySelectorAll('[data-reading-card]'));
     const count = document.querySelector('[data-visible-count]');
@@ -144,6 +146,7 @@ const latestLabel = latest
       });
       if (count) count.textContent = String(visible);
       if (empty) empty.toggleAttribute('hidden', visible !== 0);
+      return visible;
     }
 
     document.querySelectorAll('[data-filter-group]').forEach((group) => {
@@ -155,7 +158,13 @@ const latestLabel = latest
         if (type !== 'source' && type !== 'month') return;
         filters[type] = button.getAttribute('data-filter') || 'all';
         group.querySelectorAll('[data-filter]').forEach((item) => item.classList.toggle('active', item === button));
-        applyFilters();
+        const visible = applyFilters();
+        trackEvent('reading-filter', {
+          kind: type,
+          value: filters[type],
+          visible_count: visible,
+          lang: 'en',
+        });
       });
     });
   </script>

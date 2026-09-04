@@ -89,7 +89,10 @@
 </dialog>
 
 <script>
+  import { trackEvent } from '../lounge/umami';
+
   const dialog = document.getElementById('subscriptionDialog');
+  let activeSurface = 'global';
   const translations = {
     zh: {
       title: '订阅 Airing', subtitle: '选择接收方式，再决定你真正想看的内容。',
@@ -176,8 +179,14 @@
     if (!(event.target instanceof Element)) return;
     const trigger = event.target.closest('[data-subscribe-open]');
     if (!trigger || !(dialog instanceof HTMLDialogElement)) return;
-    setDefaults(trigger.getAttribute('data-subscribe-context') || 'reading');
-    setTab(trigger.getAttribute('data-subscribe-tab') || 'newsletter');
+    const context = trigger.getAttribute('data-subscribe-context') || 'reading';
+    const tab = trigger.getAttribute('data-subscribe-tab') || 'newsletter';
+    activeSurface = trigger.getAttribute('data-subscribe-surface') || window.location.pathname;
+    setDefaults(context);
+    setTab(tab);
+    if (context === 'reading') {
+      trackEvent('reading-subscribe-open', { surface: activeSurface, tab, lang });
+    }
     dialog.showModal();
     document.body.style.overflow = 'hidden';
     window.setTimeout(() => dialog.querySelector('input:checked')?.focus(), 0);
@@ -220,8 +229,24 @@
           ? (lang === 'en' ? 'Already subscribed to these choices.' : '这些内容已经订阅。')
           : (lang === 'en' ? 'Subscribed. See you in your inbox.' : '订阅成功，我们邮件里见。');
       }
+      if (subscriptions.includes('reading')) {
+        trackEvent('reading-subscribe', {
+          result: result.alreadySubscribed ? 'duplicate' : 'success',
+          subscriptions: subscriptions.join(','),
+          lang,
+          surface: activeSurface,
+        });
+      }
     } catch (error) {
       if (message) message.textContent = error instanceof Error ? error.message : 'Subscription failed';
+      if (subscriptions.includes('reading')) {
+        trackEvent('reading-subscribe', {
+          result: 'error',
+          subscriptions: subscriptions.join(','),
+          lang,
+          surface: activeSurface,
+        });
+      }
     }
   });
 
@@ -240,6 +265,9 @@
     }
     await navigator.clipboard.writeText(feeds.map((feed) => feed.url).join('\n'));
     if (message) message.textContent = lang === 'en' ? 'Feed URLs copied.' : '订阅地址已复制。';
+    if (feeds.some((feed) => feed.url.includes('/reading/'))) {
+      trackEvent('reading-rss-copy', { lang, surface: activeSurface });
+    }
   });
 
   dialog?.querySelector('[data-sub-export-opml]')?.addEventListener('click', () => {
@@ -259,6 +287,9 @@
     anchor.click();
     URL.revokeObjectURL(href);
     if (message) message.textContent = lang === 'en' ? 'OPML exported.' : 'OPML 已导出。';
+    if (feeds.some((feed) => feed.url.includes('/reading/'))) {
+      trackEvent('reading-opml-export', { lang, surface: activeSurface });
+    }
   });
 </script>
 

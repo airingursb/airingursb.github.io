@@ -8,6 +8,8 @@ interface Props {
 }
 
 const { lang, currentPath, hasEnVersion = true } = Astro.props;
+const isReading = currentPath.includes('/reading/');
+const readingSurface = currentPath.split('/').filter(Boolean).length > (lang === 'en' ? 2 : 1) ? 'detail' : 'list';
 
 // Build the alternate language URL
 let zhHref: string;
@@ -28,13 +30,29 @@ if (lang === 'en') {
   {lang === 'zh' ? (
     <strong class="lang-active">中</strong>
   ) : (
-    <a href={zhHref} class="lang-link" data-lang-switch="zh">中</a>
+    <a
+      href={zhHref}
+      class="lang-link"
+      data-lang-switch="zh"
+      data-umami-event={isReading ? 'reading-lang-switch' : undefined}
+      data-umami-event-from="en"
+      data-umami-event-to="zh"
+      data-umami-event-surface={readingSurface}
+    >中</a>
   )}
   <span class="lang-sep">·</span>
   {lang === 'en' ? (
     <strong class="lang-active">EN</strong>
   ) : hasEnVersion ? (
-    <a href={enHref} class="lang-link" data-lang-switch="en">EN</a>
+    <a
+      href={enHref}
+      class="lang-link"
+      data-lang-switch="en"
+      data-umami-event={isReading ? 'reading-lang-switch' : undefined}
+      data-umami-event-from="zh"
+      data-umami-event-to="en"
+      data-umami-event-surface={readingSurface}
+    >EN</a>
   ) : (
     <span class="lang-disabled">EN</span>
   )}

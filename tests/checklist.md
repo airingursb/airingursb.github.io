@@ -1596,6 +1596,8 @@
 - [ ] 英文 RSS 使用英文标题/摘要/封面与 `/en/reading/<slug>/` permalink
 - [ ] 英文周报订阅使用英文模板和英文 Feed 地址
 - [ ] Reading 周报按订阅者默认语言发送；邮件顶部可一键切换中英文，切换后同时影响月刊与 Reading 后续邮件
+- [ ] 卡片进入、来源跳转、组合筛选、查看原图、分享渠道和语言切换分别产生 Reading Umami 事件，且不携带邮箱
+- [ ] Notion `公开=true` 的记录可同步；缺少页面封面但存在可信 `Cover EN` 时使用英文封面回退
 
 ## Homepage — Reading Stream
 
@@ -1612,6 +1614,8 @@
 - [ ] Newsletter 提交携带统一邮箱身份及 `subscriptions: ['blog'|'reading']`
 - [ ] RSS tab 提供博客文章、阅读流、沉浸式笔记三个 Feed；阅读流使用静态地址 `/reading/feed.xml`（英文 `/en/reading/feed.xml`），不暴露 API 域名
 - [ ] “复制所选 Feed”只复制勾选地址；“导出 OPML”生成可导入文件
+- [ ] Reading 订阅弹窗打开、成功/重复/失败、复制 Reading Feed 和导出含 Reading 的 OPML 分别产生 Umami 事件
+- [ ] Reading-only 新订阅和已有订阅者新增 Reading 均写入 Telegram 通知队列；完全重复订阅不重复通知
 - [ ] 弹窗支持关闭按钮、背景点击、Escape，并在关闭后恢复页面滚动
 - [ ] 中英文页面文案正确；暗色与亮色模式均清晰
 - [ ] 390px 手机视口中弹窗不溢出，内容可滚动且操作按钮易于点击
