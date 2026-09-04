@@ -148,6 +148,9 @@
 
   const lang = document.documentElement.lang.toLowerCase().startsWith('en') ? 'en' : 'zh';
   const copy = translations[lang] as Record<string, string>;
+  // #region agent log
+  console.info(JSON.stringify({ hypothesisId: 'C', location: 'SubscriptionDialog.astro:init', message: 'Subscription dialog language captured', data: { capturedLang: lang, htmlLang: document.documentElement.lang, homepageLang: window.currentLang }, timestamp: Date.now() }));
+  // #endregion
   dialog?.querySelectorAll('[data-sub-copy]').forEach((element) => {
     const key = element.getAttribute('data-sub-copy');
     if (key && copy[key]) element.textContent = copy[key];
@@ -176,6 +179,9 @@
     if (!(event.target instanceof Element)) return;
     const trigger = event.target.closest('[data-subscribe-open]');
     if (!trigger || !(dialog instanceof HTMLDialogElement)) return;
+    // #region agent log
+    console.info(JSON.stringify({ hypothesisId: 'C,D', location: 'SubscriptionDialog.astro:open', message: 'Subscription dialog opened', data: { capturedLang: lang, htmlLang: document.documentElement.lang, homepageLang: window.currentLang, title: dialog.querySelector('[data-sub-copy="title"]')?.textContent }, timestamp: Date.now() }));
+    // #endregion
     setDefaults(trigger.getAttribute('data-subscribe-context') || 'reading');
     setTab(trigger.getAttribute('data-subscribe-tab') || 'newsletter');
     dialog.showModal();
