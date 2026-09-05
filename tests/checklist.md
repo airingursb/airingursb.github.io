@@ -1598,6 +1598,7 @@
 - [ ] Reading 周报按订阅者默认语言发送；邮件顶部可一键切换中英文，切换后同时影响月刊与 Reading 后续邮件
 - [ ] 卡片进入、来源跳转、组合筛选、查看原图、分享渠道和语言切换分别产生 Reading Umami 事件，且不携带邮箱
 - [ ] Notion `公开=true` 的记录可同步；缺少页面封面但存在可信 `Cover EN` 时使用英文封面回退
+- [ ] 每次 Notion Reading 同步成功或失败都立即写入 Telegram 主通知队列，并包含同步统计或失败原因
 
 ## Homepage — Reading Stream
 
