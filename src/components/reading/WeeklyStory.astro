@@ -1,0 +1,87 @@
+---
+import { Image } from 'astro:assets';
+import type { ReadingItem } from '../../lib/reading';
+import { localizeReadingItem, readingSourceLabel } from '../../lib/reading';
+import type { LocalizedEditorialText, ReadingWeeklyLanguage } from '../../data/reading-weekly';
+import { editorialText } from '../../data/reading-weekly';
+
+interface Props {
+  item: ReadingItem;
+  note: LocalizedEditorialText;
+  lang: ReadingWeeklyLanguage;
+  variant?: 'lead' | 'row';
+  number?: string;
+}
+
+const { item: rawItem, note, lang, variant = 'row', number } = Astro.props;
+const item = localizeReadingItem(rawItem, lang);
+const title = item.title.startsWith('@') && item.title.includes(' · ')
+  ? item.title.slice(item.title.indexOf(' · ') + 3)
+  : item.title;
+const detailHref = `${lang === 'en' ? '/en' : ''}/reading/${item.slug}/`;
+const isLead = variant === 'lead';
+---
+
+<article class:list={['weekly-story', `weekly-story--${variant}`]}>
+  <a
+    class="weekly-story-cover"
+    href={detailHref}
+    aria-label={item.title}
+    data-umami-event="reading-weekly-story-open"
+    data-umami-event-slug={item.slug}
+    data-umami-event-surface={variant}
+    data-umami-event-lang={lang}
+  >
+    <Image
+      src={item.cover_url}
+      alt={item.title}
+      width={isLead ? 960 : 480}
+      height={isLead ? 640 : 320}
+      widths={isLead ? [480, 960] : [240, 480]}
+      sizes={isLead ? '(max-width: 720px) calc(100vw - 40px), 560px' : '(max-width: 720px) 96px, 160px'}
+      format="webp"
+      quality={75}
+      loading={isLead ? 'eager' : 'lazy'}
+      fetchpriority={isLead ? 'high' : 'auto'}
+      decoding="async"
+    />
+  </a>
+  <div class="weekly-story-body">
+    <div class="weekly-story-meta">
+      {number && <span class="weekly-story-number">{number}</span>}
+      <span>{readingSourceLabel(item.source, lang)}</span>
+      {item.author && !item.title.includes(item.author) && <span>{item.author}</span>}
+    </div>
+    <h3 class="weekly-story-title">
+      <a
+        href={detailHref}
+        data-umami-event="reading-weekly-story-open"
+        data-umami-event-slug={item.slug}
+        data-umami-event-surface={`${variant}-title`}
+        data-umami-event-lang={lang}
+      >{title}</a>
+    </h3>
+    <p class="weekly-story-note">{editorialText(note, lang)}</p>
+    <div class="weekly-story-links">
+      <a
+        href={detailHref}
+        data-umami-event="reading-weekly-story-open"
+        data-umami-event-slug={item.slug}
+        data-umami-event-surface={`${variant}-cta`}
+        data-umami-event-lang={lang}
+      >{lang === 'en' ? 'Read the card' : '查看读卡'} <span aria-hidden="true">→</span></a>
+      {item.original_url && (
+        <a
+          href={item.original_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-umami-event="reading-source-open"
+          data-umami-event-slug={item.slug}
+          data-umami-event-source={item.source}
+          data-umami-event-surface="weekly"
+          data-umami-event-lang={lang}
+        >{lang === 'en' ? 'Source' : '原文'} <span aria-hidden="true">↗</span></a>
+      )}
+    </div>
+  </div>
+</article>

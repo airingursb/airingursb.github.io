@@ -1,0 +1,51 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { fetchReadingItems } from '../../lib/reading';
+import type { ReadingWeeklyLanguage } from '../../data/reading-weekly';
+import { readingWeeklyIssues } from '../../data/reading-weekly';
+import ReadingMasthead from './ReadingMasthead.astro';
+import WeeklyEditionLink from './WeeklyEditionLink.astro';
+import '../../styles/reading.css';
+import '../../styles/reading-weekly.css';
+import '../../styles/reading-weekly-archive.css';
+
+interface Props { lang: ReadingWeeklyLanguage; }
+const { lang } = Astro.props;
+const items = await fetchReadingItems();
+const itemsBySlug = new Map(items.map((item) => [item.slug, item]));
+const prefix = lang === 'en' ? '/en' : '';
+const en = lang === 'en';
+---
+<BaseLayout title={en ? 'Reading Weekly · Airing’s Blog' : '阅读周刊 · Airing’s Blog'}
+  description={en ? 'A personal selection of ideas worth spending time with.' : '每周精选，串起值得花时间读的想法。'}
+  lang={lang} hreflang={{ zh: '/reading/weekly/', en: '/en/reading/weekly/' }}>
+  <div class="reading-page weekly-page">
+    <ReadingMasthead lang={lang} currentPath={`${prefix}/reading/weekly/`} breadcrumb="ursb.me / reading / weekly" />
+    <main class="reading-shell">
+      <header class="weekly-archive-hero">
+        <div>
+          <p class="weekly-kicker">A letter from my reading desk</p>
+          <h1>{en ? 'Reading Weekly' : '阅读周刊'}<span aria-hidden="true">.</span></h1>
+          <p>{en ? 'A few good reads. One thread to follow.' : '几篇好文章，一条值得追下去的线索。'}</p>
+        </div>
+        <a class="weekly-text-link" href={`${prefix}/reading/`}>{en ? 'Explore the daily stream' : '逛逛每日阅读流'} <span aria-hidden="true">↗</span></a>
+      </header>
+      <section class="weekly-archive-list" aria-labelledby="latest-edition">
+        <div class="weekly-section-heading">
+          <h2 id="latest-edition">{en ? 'On the desk' : '本期在读'}</h2>
+          <span>2026 · {en ? `${readingWeeklyIssues.length} edition` : `共 ${readingWeeklyIssues.length} 期`}</span>
+        </div>
+        {readingWeeklyIssues.map((issue) => <WeeklyEditionLink issue={issue} lead={itemsBySlug.get(issue.lead.slug)} lang={lang} />)}
+      </section>
+      <aside class="weekly-subscribe">
+        <div>
+          <p class="weekly-kicker">{en ? 'Keep in touch' : '下一期，邮箱见'}</p>
+          <h2>{en ? 'Make room for a good read.' : '给阅读留一点时间。'}</h2>
+          <p>{en ? 'Get the reading weekly in your inbox. Unsubscribe whenever you like.' : '通过邮件收到阅读周刊，随时可以退订。'}</p>
+        </div>
+        <button class="weekly-action weekly-action--accent" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="reading-weekly-archive">{en ? 'Subscribe to the weekly' : '订阅阅读周刊'} <span aria-hidden="true">→</span></button>
+      </aside>
+    </main>
+    <footer class="reading-shell reading-footer">© 2026 Airing · Reading Weekly</footer>
+  </div>
+</BaseLayout>

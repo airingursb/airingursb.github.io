@@ -1,0 +1,85 @@
+---
+import { Image } from 'astro:assets';
+import type { ReadingItem } from '../../lib/reading';
+import { localizeReadingItem } from '../../lib/reading';
+import type { ReadingWeeklyIssue, ReadingWeeklyLanguage } from '../../data/reading-weekly';
+import { editorialText, weeklyDateRange } from '../../data/reading-weekly';
+
+interface Props {
+  issue: ReadingWeeklyIssue;
+  lead?: ReadingItem;
+  lang: ReadingWeeklyLanguage;
+}
+
+const { issue, lead: rawLead, lang } = Astro.props;
+const lead = rawLead ? localizeReadingItem(rawLead, lang) : undefined;
+const href = `${lang === 'en' ? '/en' : ''}/reading/weekly/${issue.slug}/`;
+const status = issue.status === 'draft'
+  ? (lang === 'en' ? 'Editorial preview' : '编辑预览')
+  : (lang === 'en' ? 'Published' : '已刊发');
+---
+
+<article class="weekly-edition">
+  <a
+    class="weekly-edition-cover"
+    href={href}
+    aria-label={editorialText(issue.title, lang)}
+    data-umami-event="reading-weekly-edition-open"
+    data-umami-event-edition={issue.edition}
+    data-umami-event-lang={lang}
+  >
+    {lead ? (
+      <Image
+        src={lead.cover_url}
+        alt={lead.title}
+        width={960}
+        height={640}
+        widths={[480, 960]}
+        sizes="(max-width: 720px) calc(100vw - 40px), 480px"
+        format="webp"
+        quality={75}
+        loading="eager"
+        fetchpriority="high"
+        decoding="async"
+      />
+    ) : (
+      <span class="weekly-edition-cover-fallback">Reading Weekly / {issue.edition}</span>
+    )}
+  </a>
+  <div class="weekly-edition-body">
+    <div class="weekly-edition-meta">
+      <span>No. {issue.edition}</span>
+      <span>{weeklyDateRange(issue, lang)}</span>
+      <span class:list={['weekly-edition-status', { 'weekly-edition-status--draft': issue.status === 'draft' }]}>{status}</span>
+    </div>
+    <h2>
+      <a
+        href={href}
+        data-umami-event="reading-weekly-edition-open"
+        data-umami-event-edition={issue.edition}
+        data-umami-event-lang={lang}
+        data-umami-event-surface="title"
+      >{editorialText(issue.title, lang)}</a>
+    </h2>
+    <p>{editorialText(issue.deck, lang)}</p>
+    <a
+      class="weekly-edition-enter"
+      href={href}
+      data-umami-event="reading-weekly-edition-open"
+      data-umami-event-edition={issue.edition}
+      data-umami-event-lang={lang}
+      data-umami-event-surface="cta"
+    >
+      {lang === 'en' ? 'Open this edition' : '打开本期'} <span aria-hidden="true">→</span>
+    </a>
+  </div>
+  <nav class="weekly-edition-topics" aria-label={lang === 'en' ? 'In this edition' : '本期目录'}>
+    {issue.sections.map((section, index) => (
+      <a href={`${href}#topic-${index + 1}`} data-umami-event="reading-weekly-edition-open" data-umami-event-edition={issue.edition} data-umami-event-lang={lang} data-umami-event-surface="topic">
+        <span>{editorialText(section.label, lang)}</span>
+        <strong>{editorialText(section.title, lang)}</strong>
+        <span class="weekly-topic-arrow" aria-hidden="true">↗</span>
+      </a>
+    ))}
+  </nav>
+</article>

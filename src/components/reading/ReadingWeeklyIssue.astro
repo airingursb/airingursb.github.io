@@ -1,0 +1,181 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { fetchReadingItems, localizeReadingItem, readingSourceLabel } from '../../lib/reading';
+import type { ReadingWeeklyIssue, ReadingWeeklyLanguage } from '../../data/reading-weekly';
+import { editorialText, weeklyDateRange } from '../../data/reading-weekly';
+import ReadingMasthead from './ReadingMasthead.astro';
+import WeeklyStory from './WeeklyStory.astro';
+import '../../styles/reading.css';
+import '../../styles/reading-weekly.css';
+import '../../styles/reading-weekly-issue.css';
+
+interface Props {
+  issue: ReadingWeeklyIssue;
+  lang: ReadingWeeklyLanguage;
+}
+
+const { issue, lang } = Astro.props;
+const items = await fetchReadingItems();
+const itemsBySlug = new Map(items.map((item) => [item.slug, item]));
+const lead = itemsBySlug.get(issue.lead.slug);
+const localizedLead = lead ? localizeReadingItem(lead, lang) : undefined;
+const prefix = lang === 'en' ? '/en' : '';
+const currentPath = `${prefix}/reading/weekly/${issue.slug}/`;
+let storyNumber = 2;
+const resolvedSections = issue.sections.map((section) => ({
+  section,
+  stories: section.stories.flatMap((editorial) => {
+    const item = itemsBySlug.get(editorial.slug);
+    if (!item) return [];
+    const number = String(storyNumber).padStart(2, '0');
+    storyNumber += 1;
+    return [{ editorial, item, number }];
+  }),
+}));
+const storyCount = (lead ? 1 : 0) + resolvedSections.reduce((count, entry) => count + entry.stories.length, 0);
+const isDraft = issue.status === 'draft';
+const chineseHeadingSegmenter = new Intl.Segmenter('zh', { granularity: 'word' });
+const closingPunctuation = /^[，。！？；：、）》】」』]/;
+const chineseHeadingPhrases = (text: string): string[] => (
+  Array.from(chineseHeadingSegmenter.segment(text), ({ segment }) => segment)
+    .reduce<string[]>((phrases, segment) => {
+      if (closingPunctuation.test(segment) && phrases.length > 0) {
+        phrases[phrases.length - 1] += segment;
+      } else {
+        phrases.push(segment);
+      }
+      return phrases;
+    }, [])
+);
+const copy = lang === 'en'
+  ? {
+      pageTitle: `${editorialText(issue.title, lang)} · Reading Weekly`,
+      preview: 'Editorial preview · layout and copy are not published',
+      issue: 'Reading Weekly',
+      stories: `${storyCount} selected reads`,
+      editorNote: 'Editor’s note',
+      by: 'Edited by Airing',
+      lead: 'Lead story',
+      archive: 'All editions',
+      stream: 'Daily stream',
+      subscribe: 'Subscribe to the weekly email',
+      closing: 'Until the next good read.',
+      closingCopy: 'There is more on the daily reading desk. Come back whenever you have a little time.',
+    }
+  : {
+      pageTitle: `${editorialText(issue.title, lang)} · 阅读周刊`,
+      preview: '编辑预览 · 版式与文案均未正式刊发',
+      issue: '阅读周刊',
+      stories: `${storyCount} 篇精选`,
+      editorNote: '编者手记',
+      by: 'Airing 编',
+      lead: '本期头条',
+      archive: '全部周刊',
+      stream: '每日阅读流',
+      subscribe: '订阅每周邮件',
+      closing: '这一期，先读到这里。',
+      closingCopy: '新的线索还在每日阅读流里继续。下次有空，我们接着读。',
+    };
+---
+
+<BaseLayout
+  title={copy.pageTitle}
+  description={editorialText(issue.deck, lang)}
+  ogImage={localizedLead?.cover_url}
+  lang={lang}
+  hreflang={{
+    zh: `/reading/weekly/${issue.slug}/`,
+    en: `/en/reading/weekly/${issue.slug}/`,
+  }}
+>
+  <div class="reading-page weekly-page">
+    <ReadingMasthead lang={lang} currentPath={currentPath} breadcrumb={`ursb.me / reading / weekly / ${issue.weekKey}`} />
+
+    <main class="reading-shell">
+      <div class="weekly-issue-back">
+        <a class="weekly-text-link" href={`${prefix}/reading/weekly/`}>← {copy.archive}</a>
+        {isDraft && <span class="weekly-preview-note">{lang === 'en' ? 'Editorial preview' : '编辑预览'}</span>}
+      </div>
+
+      <header class="weekly-issue-hero">
+        <div class="weekly-issue-meta">
+          <span>{copy.issue} / No. {issue.edition}</span>
+          <span>{weeklyDateRange(issue, lang)}</span>
+          <span>{copy.stories}</span>
+        </div>
+        <h1
+          class:list={['weekly-title-lines', { 'weekly-title-lines--zh': lang === 'zh' }]}
+          aria-label={editorialText(issue.title, lang)}
+        >
+          {issue.titleLines[lang].map((line) => <span>{line}</span>)}
+        </h1>
+        <p class="weekly-issue-deck">{editorialText(issue.deck, lang)}</p>
+        <nav class="weekly-contents" aria-label={lang === 'en' ? 'In this edition' : '本期目录'}>
+          {resolvedSections.map(({ section, stories }, index) => stories.length > 0 && <a href={`#topic-${index + 1}`}>{editorialText(section.label, lang)} <span aria-hidden="true">↓</span></a>)}
+        </nav>
+      </header>
+
+      <section class="weekly-editor-note" aria-labelledby="editor-note-title">
+        <div>
+          <p class="weekly-kicker">From the editor</p>
+          <h2 id="editor-note-title">{copy.editorNote}</h2>
+          <span>{copy.by}</span>
+        </div>
+        <p>{editorialText(issue.editorNote, lang)}</p>
+      </section>
+
+      {lead && (
+        <section class="weekly-lead" aria-labelledby="weekly-lead-title">
+          <div class="weekly-section-heading">
+            <h2 id="weekly-lead-title">{copy.lead}</h2>
+            <span>01 / {readingSourceLabel(lead.source, lang)}</span>
+          </div>
+          <WeeklyStory item={lead} note={issue.lead.note} lang={lang} variant="lead" />
+        </section>
+      )}
+
+      <div class="weekly-sections">
+        {resolvedSections.map(({ section, stories }, index) => stories.length > 0 && (
+          <section class="weekly-issue-section" id={`topic-${index + 1}`}>
+            <header>
+              <p class="weekly-kicker">{editorialText(section.label, lang)}</p>
+              <h2>
+                {lang === 'zh'
+                  ? chineseHeadingPhrases(editorialText(section.title, lang)).map((phrase) => (
+                      <span class="weekly-heading-phrase">{phrase}</span>
+                    ))
+                  : editorialText(section.title, lang)}
+              </h2>
+              <p>{editorialText(section.introduction, lang)}</p>
+            </header>
+            <div class="weekly-story-list">
+              {stories.map(({ editorial, item, number }) => (
+                <WeeklyStory item={item} note={editorial.note} lang={lang} number={number} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+
+      <footer class="weekly-issue-end">
+        <div>
+          <p class="weekly-kicker">Reading weekly / End</p>
+          <h2>
+            {lang === 'zh'
+              ? chineseHeadingPhrases(copy.closing).map((phrase) => (
+                  <span class="weekly-heading-phrase">{phrase}</span>
+                ))
+              : copy.closing}
+          </h2>
+          <p>{copy.closingCopy}</p>
+        </div>
+        <div class="weekly-actions">
+          <a class="weekly-action" href={`${prefix}/reading/`}>{copy.stream}</a>
+          <button class="weekly-action weekly-action--accent" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="reading-weekly-issue">{copy.subscribe}</button>
+        </div>
+      </footer>
+    </main>
+
+    <footer class="reading-shell reading-footer">© 2026 Airing · Reading Weekly No. {issue.edition}</footer>
+  </div>
+</BaseLayout>
