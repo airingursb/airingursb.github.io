@@ -1,0 +1,45 @@
+---
+import '../../diorama/studio.css';
+const characters = [['duo', '一起坐坐'], ['panda', '熊猫'], ['moflow', 'Moflow']];
+const views = [['front', '正面'], ['side', '侧面'], ['back', '背面']];
+---
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>熊猫与 Moflow · 角色工作室</title>
+  <meta name="description" content="熊猫与 Moflow 的独立 3D 模型。转一转，看看两位小小的朋友。" />
+  <meta name="robots" content="noindex" /><link rel="icon" href="/favicon.ico" />
+</head>
+<body>
+  <a class="skip" href="#studio-controls">跳到模型操作</a>
+  <header><a href="/diorama/">← 日常箱庭</a><span>CHARACTER STUDY / 001</span><span>熊猫 & Moflow</span></header>
+  <main>
+    <div class="intro"><div><p class="eyebrow">两位主角，初次见面</p><h1>两位小小的朋友。</h1></div><p class="subtitle">一只憨憨的熊猫，<br />和一个把心抱在怀里的小家伙。</p></div>
+    <section aria-label="角色三维展示">
+      <div class="select-row" role="group" aria-label="选择角色">{characters.map(([id,label])=><button data-character={id} aria-pressed={id==='duo'}>{label}</button>)}</div>
+      <div id="character-stage"><p id="studio-status" role="status">正在请两位朋友出来……</p></div>
+      <div id="studio-controls" class="toolbar">
+        <div role="group" aria-label="观察角度">{views.map(([id,label])=><button data-view={id} disabled>{label}</button>)}</div>
+        <span class="divider"></span>
+        <div role="group" aria-label="缩放模型"><button data-zoom="-1" aria-label="拉远一点" disabled>−</button><button data-zoom="1" aria-label="靠近一点" disabled>＋</button><button id="studio-reset" disabled>复位</button></div>
+      </div>
+      <p class="hint">拖动旋转 · 滚轮或双指缩放<span>方向键旋转 · 加减键缩放 · 0 复位</span></p>
+    </section>
+    <div class="notes"><p id="character-note">宽宽的脸、短短的爪，靠在一起就很好。</p><div><a href="/diorama/models/panda-v3.glb" download>下载熊猫 <small>GLB ↓</small></a><a href="/diorama/models/moflow-v2.glb" download>下载 Moflow <small>GLB ↓</small></a></div></div>
+  </main>
+  <footer><span>MADE OF DAYS WE WANT TO KEEP.</span><span>角色模型 · 第三版</span></footer>
+  <script>
+    import { mountStudio } from '../../diorama/studio';
+    const host = document.querySelector<HTMLElement>('#character-stage');
+    if (host) {
+      try { mountStudio(host); }
+      catch (error) {
+        if (!(error instanceof Error)) throw error;
+        const status = document.querySelector<HTMLElement>('#studio-status');
+        if (status) status.textContent = '当前浏览器无法显示三维模型，可以下载下方的模型文件。';
+      }
+    }
+  </script>
+</body>
+</html>

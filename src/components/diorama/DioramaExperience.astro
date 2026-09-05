@@ -1,0 +1,72 @@
+---
+import Icon from './Icon.astro';
+import DioramaLayout from '../../layouts/DioramaLayout.astro';
+import { dioramas } from '../../data/dioramas';
+import { stories, type SceneKind } from '../../diorama/stories';
+interface Props { kind: SceneKind; }
+const { kind } = Astro.props;
+const story = stories[kind];
+const scene = dioramas.find(scene => scene.slug === story.slug)!;
+const memories = story.memories;
+const first = memories[0];
+const comicUrl = `/comics/${scene.comicIssue}/`;
+---
+<DioramaLayout title={scene.title} description={scene.memory} number={scene.number} comicIssue={scene.comicIssue}>
+  <main id="main-content">
+    <section class:list={["world-layout", { "night-world": kind === "busan" }]} aria-labelledby="scene-title">
+      <div class="narrative">
+        <div class="eyebrow"><span class="fine-rule"></span> A DAY, HELD STILL</div>
+        <h1 id="scene-title">{story.headline[0]}<br />{story.headline[1]}</h1>
+        <p class="deck">{story.deck[0]}<br />{story.deck[1]}</p>
+        <div class="scene-meta"><span class="meta-number">{String(scene.comicIssue).padStart(3, "0")}</span><div><h2>{scene.title}</h2><p><time datetime={scene.date}>{scene.date.replaceAll("-", ".")}</time><span>·</span> {scene.place}</p></div></div>
+        <div class="memory-note" aria-live="polite" id="memory-note">
+          <div class="note-label"><span class="small-dot"></span><span data-memory-label>{first.label}</span></div>
+          <h3 data-memory-title>{first.title}</h3>
+          <p data-memory-body>{first.body}</p>
+        </div>
+        <a href="#memory" class="story-link">读读这一天的故事 <span>↗</span></a>
+      </div>
+      <div class="scene-side">
+        <div class="scene-caption"><span>SCENE {scene.number}</span><span>{story.caption}</span></div>
+        <div class="weather-tag"><Icon name={kind === "busan" ? "wave" : "rain"} /><span data-weather-label>{story.liveLabel}</span></div>
+        <div class="world" data-world data-scene={kind}>
+          <p class="loading" data-status>正在把这一天，慢慢拼起来…</p>
+          {memories.map((memory,i)=><button class="hotspot" data-hotspot data-memory={i} aria-label={`记忆 ${String(i+1).padStart(2,"0")}：${memory.shortTitle}`} aria-pressed={i===0} aria-controls="memory-note">{String(i+1).padStart(2,"0")}<span>{memory.shortTitle}</span></button>)}
+        </div>
+        <div class="scene-bottom">
+          <div class="control-dock" role="group" aria-label="箱庭控制">
+            <button class="control" data-action="pause" aria-label="定格这一刻" aria-pressed="false" title="定格 / 继续"><Icon name="pause" /></button>
+            <span class="dock-rule"></span>
+            <button class="control" data-action="out" aria-label="拉远一点" title="拉远一点"><Icon name="minus" /></button>
+            <button class="control" data-action="in" aria-label="靠近一点" title="靠近一点"><Icon name="plus" /></button>
+            <button class="control" data-action="reset" aria-label="恢复初始视角" title="恢复视角"><Icon name="reset" /></button>
+            <span class="dock-rule"></span>
+            <button class="control sound-control" data-action="sound" aria-label={`听听${story.sound}`} aria-pressed="false" title={`合成${story.sound}`}><Icon name="sound" /><span>{story.sound}</span></button>
+          </div>
+          <p class="gesture-hint">拖动转一转 <span>·</span> 缩放靠近一点 <span>·</span> 点编号，拾起记忆</p>
+        </div>
+      </div>
+    </section>
+    <section class="keepsake-bar" aria-label="这一天的三个记忆">
+      <div class="shelf-label"><span class="eyebrow">LITTLE THINGS</span><p>这一天，留下了什么</p></div>
+      <div class="memory-tabs">
+        {memories.map((memory,i)=><button data-memory={i} aria-pressed={i===0} aria-controls="memory-note"><span class="tab-number">{String(i+1).padStart(2,"0")}</span><span><strong>{memory.shortTitle}</strong><small>{memory.subtitle}</small></span><Icon name="chevron" /></button>)}
+      </div>
+      <div class="collection-stamp">一段日常<small>一件收藏</small></div>
+    </section>
+    <section id="memory" class="source-section">
+      <details>
+        <summary><span><Icon name="book" /> 从四格里，走进这一天</span><span class="source-issue">原作 No. {scene.comicIssue} <Icon name="plus" /></span></summary>
+        <div class="source-content">
+          <div><span class="eyebrow">THE STORY BEHIND</span><h2>{scene.title}</h2><blockquote>{story.source}</blockquote><a href={comicUrl}>阅读原四格 ↗</a><p class="interpretation">{story.interpretation}</p></div>
+          <a href={comicUrl} class="comic-image"><img src={story.sourceImage} width="1254" height="1254" alt={story.sourceAlt} loading="lazy" /></a>
+        </div>
+      </details>
+    </section>
+  </main>
+  <script>import '../../diorama/client';</script>
+</DioramaLayout>
+<style>
+  .night-world { --dw-atmosphere:#aac2cd; }
+  .night-world :global(.scene-side:before) { background:radial-gradient(ellipse,#8faebd66 0%,transparent 69%); }
+</style>

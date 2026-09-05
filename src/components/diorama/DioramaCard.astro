@@ -1,0 +1,46 @@
+---
+import { dioramaUrl, type Diorama } from '../../data/dioramas';
+interface Props { scene: Diorama; featured?: boolean; eager?: boolean; }
+const { scene, featured = false, eager = false } = Astro.props;
+---
+<article class:list={['keepsake-card', { featured }]}>
+  <a class="keepsake-open" href={dioramaUrl(scene)} aria-label={`走进箱庭：${scene.title}`}>
+    <div class="keepsake-cover">
+      <img src={scene.cover} alt={scene.coverAlt} width="796" height="448" loading={eager ? 'eager' : 'lazy'} decoding="async" />
+      <span class="keepsake-number">收藏 / {scene.number}</span>
+      <span class="keepsake-format">可交互 3D</span>
+    </div>
+    <div class="keepsake-story">
+      <p class="keepsake-date"><time datetime={scene.date}>{scene.date.replaceAll('-', '.')}</time><span>{scene.place}</span></p>
+      <h3>{scene.title}</h3>
+      <p class="keepsake-description">{scene.description}</p>
+      <span class="keepsake-enter">走进这一天 <span aria-hidden="true">↗</span></span>
+    </div>
+  </a>
+  <div class="keepsake-foot"><span>{scene.tags.join(' · ')}</span><a href={`/comics/${scene.comicIssue}/`}>原四格 No. {scene.comicIssue} <span aria-hidden="true">↗</span></a></div>
+</article>
+<style>
+  .keepsake-card { --kc-ink:var(--dw-ink,var(--c-text,#343e39)); --kc-muted:var(--dw-muted,var(--c-text-muted,#69736b)); --kc-line:var(--dw-line,var(--c-border,#d9ddd2)); --kc-accent:var(--dw-accent,var(--accent,#536951)); color:var(--kc-ink); min-width:0; }
+  .keepsake-open { display:block; color:inherit; text-decoration:none; }
+  .keepsake-cover { position:relative; overflow:hidden; background:#f1efe8; border-radius:4px; }
+  .keepsake-cover img { display:block; width:100%; height:auto; aspect-ratio:796/448; object-fit:cover; }
+  .keepsake-number,.keepsake-format { position:absolute; top:16px; font:10px/1.4 var(--dw-mono,monospace); letter-spacing:.08em; color:#343e39; background:#fbfaf5e8; padding:6px 8px; border-radius:3px; }
+  .keepsake-number { left:16px; } .keepsake-format { right:16px; }
+  .keepsake-story { padding:24px 0; }
+  .keepsake-date { display:flex; flex-wrap:wrap; gap:8px 16px; margin:0 0 16px; font:11px/1.6 var(--dw-sans,system-ui); color:var(--kc-muted); }
+  h3 { font:400 24px/1.4 var(--dw-serif,'Songti SC',Georgia,serif); margin:0 0 12px; text-wrap:balance; }
+  .keepsake-description { color:var(--kc-muted); font:14px/1.9 var(--dw-sans,system-ui); margin:0; max-width:32em; text-wrap:pretty; }
+  .keepsake-enter { display:inline-flex; align-items:center; justify-content:space-between; gap:32px; min-height:44px; margin-top:16px; font-size:13px; border-bottom:1px solid var(--kc-line); transition:color .16s,border-color .16s; }
+  .keepsake-open:hover .keepsake-enter { color:var(--kc-accent); border-color:currentColor; }
+  .keepsake-foot { border-top:1px solid var(--kc-line); display:flex; align-items:center; justify-content:space-between; gap:12px; font-size:11px; color:var(--kc-muted); }
+  .keepsake-foot a { display:inline-flex; align-items:center; gap:8px; min-height:44px; color:inherit; text-decoration:none; }
+  .keepsake-foot a:hover { text-decoration:underline; }
+  a:focus-visible { outline:2px solid var(--kc-accent); outline-offset:5px; border-radius:3px; }
+  .featured .keepsake-open { display:grid; grid-template-columns:minmax(0,1.55fr) minmax(0,1fr); align-items:center; gap:40px; }
+  .featured .keepsake-story { padding:24px 0; }
+  .featured h3 { font-size:32px; }
+  .featured .keepsake-foot { margin-top:24px; }
+  @media(max-width:760px) { .featured .keepsake-open { grid-template-columns:1fr; gap:0; } .featured .keepsake-foot { margin-top:0; } .featured h3 { font-size:28px; } }
+  @media(max-width:420px) { .keepsake-number,.keepsake-format { top:8px; font-size:9px; } .keepsake-number { left:8px; } .keepsake-format { right:8px; } .keepsake-foot { font-size:10px; gap:8px; } }
+  @media(prefers-reduced-motion:reduce) { .keepsake-enter { transition:none; } }
+</style>

@@ -1,0 +1,51 @@
+---
+import DioramaLayout from '../layouts/DioramaLayout.astro';
+import DioramaCard from '../components/diorama/DioramaCard.astro';
+import { dioramas } from '../data/dioramas';
+---
+<DioramaLayout title="收藏日常的小世界" description="把生活里的小事，收藏成可以走进去的 3D 箱庭。Airing 与 Moflow 的日常收藏。">
+  <main id="main-content" class="collection-page">
+    <section class="collection-intro" aria-labelledby="collection-title">
+      <div>
+        <p class="eyebrow"><span class="fine-rule"></span> A SMALL MUSEUM OF OUR DAYS</p>
+        <h1 id="collection-title"><span>把日子，</span><span>收藏成小世界。</span></h1>
+      </div>
+      <div class="collection-preface"><p>有些日子，值得留得更久一点。</p><p>从四格里的一个瞬间出发，<br />把一起走过的地方、一起等过的雨，<br />慢慢装进一个小小的世界。</p><a href="#collection-shelf">去收藏架看看 <span aria-hidden="true">↓</span></a></div>
+    </section>
+    <section id="collection-shelf" aria-labelledby="shelf-title">
+      <div class="collection-divider"><h2 id="shelf-title">收藏架 <span>{String(dioramas.length).padStart(2, '0')}</span></h2><span>按故事时间 · 由近到远</span></div>
+      {dioramas.length > 0 && <div class:list={["collection-grid", { single: dioramas.length === 1 }]}>{dioramas.map((scene,i) => <DioramaCard scene={scene} featured={dioramas.length === 1} eager={i < 2} />)}</div>}
+      {dioramas.length === 0 && <p class="collection-empty">收藏架还空着。等一个想留下来的日子。</p>}
+    </section>
+    <aside class="collection-afterword">
+      <span class="eyebrow">TO BE CONTINUED</span>
+      <div><h2>日子还在继续，收藏也是。</h2><p>不是每一天都有大事发生。<br />一场雨、一次散步、一起吃的一顿饭，都可以是下一件收藏。</p></div>
+      <a href="/comics/">翻翻我们的四格 <span aria-hidden="true">↗</span></a>
+    </aside>
+  </main>
+</DioramaLayout>
+<style>
+  .collection-page { max-width:1296px; margin:auto; padding:0 var(--dw-12); }
+  .collection-intro { display:grid; grid-template-columns:1.35fr 1fr; gap:var(--dw-16); align-items:center; padding:var(--dw-16) 0; }
+  .collection-intro h1 { font-size:clamp(40px,4.5vw,60px); margin:var(--dw-6) 0 0; }
+  .collection-intro h1 span { display:block; }
+  .collection-preface { padding-left:var(--dw-8); border-left:1px solid var(--dw-line); color:var(--dw-muted); font-size:14px; line-height:1.9; }
+  .collection-preface p { margin:0 0 var(--dw-4); }
+  .collection-preface p:first-child { color:var(--dw-ink); }
+  .collection-preface a { display:inline-flex; gap:var(--dw-8); align-items:center; min-height:44px; color:var(--dw-accent); font-size:12px; }
+  .collection-divider { display:flex; align-items:center; justify-content:space-between; gap:var(--dw-4); padding:var(--dw-5) 0; margin-bottom:var(--dw-6); border-top:1px solid var(--dw-line); }
+  .collection-divider h2 { font-size:14px; font-weight:500; margin:0; }
+  .collection-divider h2 span { margin-left:var(--dw-3); color:var(--dw-muted); font:11px var(--dw-mono); }
+  .collection-divider>span { font-size:11px; color:var(--dw-muted); }
+  .collection-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--dw-12) var(--dw-8); margin-top:0; }
+  .collection-grid.single { grid-template-columns:1fr; }
+  .collection-empty { padding:var(--dw-16) 0; color:var(--dw-muted); }
+  .collection-afterword { display:grid; grid-template-columns:1fr 2fr auto; align-items:start; gap:var(--dw-8); margin-top:var(--dw-16); border-top:1px solid var(--dw-line); padding:var(--dw-10) 0 var(--dw-16); }
+  .collection-afterword h2 { font:400 23px/1.5 var(--dw-serif); margin:0 0 var(--dw-3); text-wrap:balance; }
+  .collection-afterword p { font-size:13px; line-height:1.9; color:var(--dw-muted); margin:0; text-wrap:pretty; }
+  .collection-afterword a { display:inline-flex; align-items:center; gap:var(--dw-5); min-height:44px; font-size:12px; border-bottom:1px solid var(--dw-line); }
+  .collection-afterword a:hover,.collection-preface a:hover { text-decoration:underline; }
+  @media(max-width:900px) { .collection-page { padding:0 var(--dw-8); } .collection-intro { gap:var(--dw-8); } .collection-afterword { grid-template-columns:1fr auto; } .collection-afterword>.eyebrow { grid-column:1/-1; } }
+  @media(max-width:760px) { .collection-intro { grid-template-columns:1fr; gap:var(--dw-8); padding:var(--dw-10) 0; } .collection-intro h1 { font-size:44px; } .collection-preface { padding-left:0; border:0; } .collection-preface p { max-width:28em; } .collection-grid { grid-template-columns:1fr; } .collection-afterword { grid-template-columns:1fr; margin-top:var(--dw-10); padding-bottom:var(--dw-10); gap:var(--dw-5); } .collection-afterword a { justify-self:start; } }
+  @media(max-width:540px) { .collection-page { padding:0 var(--dw-6); } .collection-intro h1 { font-size:38px; } .collection-intro .eyebrow { font-size:9px; letter-spacing:.11em; } .collection-afterword h2 { font-size:22px; } .collection-afterword br { display:none; } }
+</style>
