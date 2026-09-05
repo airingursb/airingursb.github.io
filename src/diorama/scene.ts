@@ -9,7 +9,8 @@ import { place } from './primitives';
 import { createWeather } from './weather';
 import { loadPlushCompanions } from './plush-companions';
 
-export function createDiorama(host: HTMLElement, kind: SceneKind = 'marina') {
+export function createDiorama(host: HTMLElement, kind: SceneKind = 'marina', presentation: 'detail' | 'preview' = 'detail') {
+  const preview = presentation === 'preview';
   const night = kind === 'busan';
   const scene=new Scene(), root=new Group(); scene.add(root);
   const m=createMaterials();
@@ -23,14 +24,16 @@ export function createDiorama(host: HTMLElement, kind: SceneKind = 'marina') {
   const home=new Vector3(10,night?9.6:8.2,night?14:12);
   camera.position.copy(home);
   const renderer=new WebGLRenderer({antialias:true,alpha:true,powerPreference:'low-power'});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio,1.7));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio,preview?1.3:1.7));
   renderer.shadowMap.autoUpdate=false; renderer.shadowMap.needsUpdate=true;
   renderer.shadowMap.enabled=true; renderer.shadowMap.type=PCFShadowMap;
   renderer.outputColorSpace=SRGBColorSpace; renderer.toneMapping=ACESFilmicToneMapping; renderer.toneMappingExposure=1.05;
-  const canvas=renderer.domElement; canvas.tabIndex=0;
+  const canvas=renderer.domElement; canvas.tabIndex=preview?-1:0;
   canvas.setAttribute('aria-label',`${night?'釜山生日夜海':'雨里的滨海湾'}三维箱庭。方向键旋转，加减键缩放，数字零恢复视角。`);
   canvas.setAttribute('role','img'); host.prepend(canvas);
+  if(preview) canvas.setAttribute('aria-hidden','true');
   const controls=new OrbitControls(camera,canvas);
+  controls.enabled=!preview;
   controls.target.set(0,.65,0); controls.enablePan=false;
   controls.minPolarAngle=.4; controls.maxPolarAngle=1.35;
   controls.minAzimuthAngle=-1.35; controls.maxAzimuthAngle=1.5;
@@ -38,7 +41,7 @@ export function createDiorama(host: HTMLElement, kind: SceneKind = 'marina') {
   controls.enableDamping=true; controls.dampingFactor=.07; controls.rotateSpeed=.6;
   scene.add(new AmbientLight(night?'#a9c9dd':'#e1e8df',night?.4:.8),new HemisphereLight(night?'#a7cce5':'#eff4ed',night?'#796c58':'#b0a894',night?.75:1.3));
   const sun=new DirectionalLight(night?'#bedbed':'#dce6ed',night?.75:1.8); sun.position.set(-3,9,6); sun.castShadow=true;
-  sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-7; sun.shadow.camera.right=7;
+  sun.shadow.mapSize.set(preview?1024:2048,preview?1024:2048); sun.shadow.camera.left=-7; sun.shadow.camera.right=7;
   sun.shadow.camera.top=7; sun.shadow.camera.bottom=-7; sun.shadow.normalBias=.04; sun.shadow.bias=-.00015;
   sun.shadow.radius=4; scene.add(sun);
   const fill=new DirectionalLight(night?'#ffd6a1':'#b9d5da',night?.85:1); fill.position.set(4,5,-4); scene.add(fill);
@@ -46,7 +49,7 @@ export function createDiorama(host: HTMLElement, kind: SceneKind = 'marina') {
   floor.rotation.x=-Math.PI/2; floor.position.y=-.43; floor.receiveShadow=true; scene.add(floor);
   const weather=night?null:createWeather(root,m);
   const motionQuery=window.matchMedia('(prefers-reduced-motion: reduce)');
-  let paused=motionQuery.matches, disposed=false, time=0, previous=performance.now(), dirty=true;
+  let paused=preview||motionQuery.matches, disposed=false, time=0, previous=performance.now(), dirty=true;
   const companions=loadPlushCompanions(busan?.companionRoot??root,()=>{dirty=true;renderer.shadowMap.needsUpdate=true;});
   controls.enableDamping=!motionQuery.matches;
   function updateMotion() {

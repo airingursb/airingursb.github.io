@@ -1,0 +1,40 @@
+---
+import { dioramas, dioramaUrl } from '../../data/dioramas';
+import { stories } from '../../diorama/stories';
+interface Props { lang?: 'zh' | 'en'; }
+const { lang = 'zh' } = Astro.props;
+const kind = 'busan';
+const scene = dioramas.find(entry => entry.slug === stories[kind].slug);
+const english = lang === 'en';
+---
+{scene && <a class="diorama-preview" href={dioramaUrl(scene)} data-diorama-preview data-kind={kind}
+  aria-label={`${english ? 'Step into ' : '走进箱庭：'}${scene.title}`}>
+  <span class="preview-eyebrow">{english ? 'LATEST KEEPSAKE' : '最近收藏'} <span aria-hidden="true">·</span> {scene.number}</span>
+  <span class="preview-stage" data-preview-stage aria-hidden="true">
+    <img class="preview-poster" src={scene.cover} alt="" width="800" height="450" loading="lazy" />
+  </span>
+  <span class="preview-caption"><strong>{scene.title}</strong><span aria-hidden="true">↗</span></span>
+  <span class="preview-note" data-preview-note data-idle={english ? 'Step inside this little world' : '走进这个小世界'}
+    data-loading={english ? 'Opening a little world…' : '小世界正在醒来…'}
+    data-fallback={english ? 'View the keepsake' : '查看这件收藏'}>{english ? 'Step inside this little world' : '走进这个小世界'}</span>
+</a>}
+<script>
+  import { mountDioramaPreview } from '../../diorama/preview';
+  document.querySelectorAll<HTMLAnchorElement>('[data-diorama-preview]').forEach(mountDioramaPreview);
+</script>
+<style>
+  .diorama-preview { display:block; margin-top:24px; padding-top:20px; border-top:1px solid var(--c-border); color:var(--c-text); text-decoration:none; }
+  .preview-eyebrow { display:flex; align-items:center; gap:8px; font:11px/1.5 var(--font-mono,monospace); color:var(--c-text-muted); letter-spacing:.06em; }
+  .preview-stage { display:block; position:relative; width:100%; aspect-ratio:1.3; pointer-events:none; }
+  .preview-stage :global(canvas) { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; }
+  .preview-poster { position:absolute; width:100%; height:auto; top:50%; transform:translateY(-50%); border-radius:6px; }
+  .is-ready .preview-poster { display:none; }
+  .preview-caption { display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  .preview-caption strong { font:500 16px/1.7 'Songti SC','Noto Serif SC',Georgia,serif; }
+  .preview-caption > span { font:16px/1.7 system-ui,sans-serif; color:var(--c-text-muted); }
+  .preview-note { display:block; margin-top:4px; font:12px/1.7 system-ui,sans-serif; color:var(--c-text-muted); }
+  .diorama-preview:hover .preview-caption strong { text-decoration:underline; text-underline-offset:4px; }
+  .diorama-preview:focus-visible { outline:2px solid var(--c-text-muted); outline-offset:6px; border-radius:4px; }
+  @media(max-width:1199px) { .diorama-preview { display:none; } }
+  @media print { .diorama-preview { display:none; } }
+</style>
