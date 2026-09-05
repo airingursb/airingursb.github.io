@@ -1,6 +1,6 @@
 # Airing's Blog Design System
 
-This contract currently covers the editorial surfaces under `/reading/`. Other long-lived sections retain their existing local systems until they are deliberately extracted.
+This contract covers the editorial surfaces under `/reading/` and the shared site header. Other long-lived sections retain their local content systems.
 
 ## 1. Atmosphere & Identity
 
@@ -73,18 +73,20 @@ All intentional spacing uses a 4px base.
 - Reading content caps at 1200px, centered, with 48px desktop and 20px mobile gutters.
 - Archive pages prioritize the latest edition with its theme, cover and three topic links. Workflow explanations live in documentation, not the reader-facing page.
 - Issue pages use a readable main column and topic introductions; an in-page contents row lets readers jump to a topic. Supporting stories use small thumbnails on mobile, while the lead keeps its full illustration.
-- Page gutters remain symmetric. On weekly pages the theme switch occupies reserved masthead space rather than floating over editorial content.
+- Page gutters remain symmetric. Weekly pages use the same shared masthead and site-level theme switch as other sections.
 - Breakpoints follow the existing Reading surfaces: mobile at 720px, tablet at 1020px, wide layout above 1020px.
 
 ## 5. Components
 
-### Reading masthead
+### Shared site header (`SiteHeader.astro`)
 
-- **Structure:** top rule, brand/navigation row, breadcrumb/language row.
+- **Structure:** 4px top rule, brand/navigation row, metadata/language row and 1px bottom rule. Every published blog-style page uses this component; page-specific metadata is slotted, never a copied navigation list.
+- **Tokens:** 1200px shell, 48px desktop / 20px mobile gutters, 24px top margin, 14px bar padding, 16px navigation gap. Brand and navigation use the site sans stack at 11px / 1.5; brand weight 600 and tracking .12em, links weight 400 and tracking .06em. This preserves the existing Moments masthead rather than Reading's separate mono brand and active underline.
+- **Navigation:** Blog, Moment, Notes, Reading, Photos, Friends; locale-aware paths with trailing slashes. Photos is a shared English-only route. Comics keeps its contextual Archive/Comics links. Nested routes highlight their parent section.
 - **States:** current section, hover, keyboard focus.
-- **Accessibility:** landmark navigation, `aria-current`, visible focus.
+- **Accessibility:** landmark navigation, `aria-current`, visible focus, 44px mobile menu and link targets, Escape closes the menu and restores focus. The no-JavaScript fallback exposes the navigation.
 - **Motion:** color changes only, 150ms.
-- **Layout:** centered shell; non-current links collapse on mobile.
+- **Layout:** centered shell; at 768px and below a menu exposes all links, including Reading. Page-specific mottos hide below 1100px to avoid overlapping navigation. Weekly pages use the same header and normal site theme-toggle placement.
 
 ### Edition link
 
