@@ -1,4 +1,4 @@
-import{e as z,a as E,u as F,_ as R,v as S}from"./index.DNxVQVGd.js";import{r}from"./index.CZnHPpcR.js";import{ac as w,C as u,f as O,V,a7 as k,s as I}from"./three.module.B1qRGO2q.js";class T extends I{constructor(){super({uniforms:{time:{value:0},pixelRatio:{value:1}},vertexShader:`
+import{e as z,a as E,u as F,_ as R,v as S}from"./index.DmY1FJ_o.js";import{r}from"./index.CZnHPpcR.js";import{ac as w,C as u,f as O,V,a7 as k,s as I}from"./three.module.C5Kr5qPo.js";class T extends I{constructor(){super({uniforms:{time:{value:0},pixelRatio:{value:1}},vertexShader:`
         uniform float pixelRatio;
         uniform float time;
         attribute float size;  
