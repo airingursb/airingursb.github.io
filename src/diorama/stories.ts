@@ -1,4 +1,4 @@
-export type SceneKind = 'marina' | 'busan';
+export type SceneKind = 'marina' | 'busan' | 'ridge' | 'sauna';
 export interface MemoryNote { title: string; body: string; label: string; shortTitle: string; subtitle: string; }
 interface Story {
   slug: string;
@@ -8,7 +8,7 @@ interface Story {
   liveLabel: string;
   pausedLabel: string;
   resumeLabel: string;
-  sound: string;
+  sound: string | null;
   source: string;
   sourceImage: string;
   sourceAlt: string;
@@ -44,4 +44,90 @@ export const stories: Record<SceneKind, Story> = {
       {title:'生日被鲜味填满',body:'吃了很多海鲜，晚上又逛了热闹的夜市。灯光和烟火气，慢慢把这一天收好。',label:'夜市 · 生日的烟火气',shortTitle:'暖灯下',subtitle:'海鲜与生日的烟火气'},
     ],
   },
+  ridge: {
+  "slug": "southern-ridges-sky",
+  "headline": [
+    "把天空，",
+    "留给自己。"
+  ],
+  "deck": [
+    "走进树荫深处，",
+    "躺下来，才发现天空一直都在。"
+  ],
+  "caption": "南部山脊 · 桥上仰望的午后",
+  "liveLabel": "鸟儿从头顶飞过",
+  "pausedLabel": "天空，停在这一刻",
+  "resumeLabel": "继续看鸟",
+  "sound": null,
+  "source": "2026/8/15，和同事去南部山脊徒步，桥上平躺，看蓝天和几只鸟，觉得很自由。",
+  "sourceImage": "/diorama/comic-17.webp",
+  "sourceAlt": "原四格：和同事在南部山脊徒步、遇见松鼠、熊猫躺在木桥上和 Moflow 一起看天，几只鸟掠过蓝天。",
+  "interpretation": "箱庭取自第三、四格「桥上平躺，抬头看天」，并保留第二格的松鼠。桥、植物和姿态为微缩演绎，不对应某一座桥的测绘模型。",
+  "memories": [
+    {
+      "title": "躺下来，天空就变大了",
+      "body": "走到桥上，干脆平躺下来。Moflow 依偎在肚子上，一起看着头顶那一片蓝。",
+      "label": "木桥 · 抬头看天",
+      "shortTitle": "躺在桥上",
+      "subtitle": "把一会儿留给天空"
+    },
+    {
+      "title": "树枝上，还有一位邻居",
+      "body": "徒步时看见一只松鼠。它停在树枝上，我们也跟着停了一小会儿。",
+      "label": "林间 · 偶遇松鼠",
+      "shortTitle": "树上的邻居",
+      "subtitle": "走慢一点才看见"
+    },
+    {
+      "title": "蓝天和鸟，好自由",
+      "body": "几只鸟从树冠上方飞过。这一刻什么也不用赶，只是看着，就觉得很自由。",
+      "label": "天空 · 几只飞鸟",
+      "shortTitle": "飞过的自由",
+      "subtitle": "没有目的地的一刻"
+    }
+  ]
+},
+  sauna: {
+  "slug": "hidden-sauna",
+  "headline": [
+    "回家路上，",
+    "有小宝藏。"
+  ],
+  "deck": [
+    "一扇门，一盏暖灯，",
+    "把普通的一天，慢慢蒸得柔软。"
+  ],
+  "caption": "小区 · 意外发现的桑拿房",
+  "liveLabel": "热气慢慢升起",
+  "pausedLabel": "暖意，留在这一刻",
+  "resumeLabel": "继续放松",
+  "sound": null,
+  "source": "2026/6/1，今天下午在星巴克工作了一下午；之后傍晚去阿拉伯街吃了土耳其烤肉饭；回来之后在小区里蒸了桑拿，是意外发现的桑拿房，像一个藏在日常生活里的大宝藏。",
+  "sourceImage": "/diorama/comic-8.webp",
+  "sourceAlt": "原四格：在星巴克工作、傍晚逛阿拉伯街、吃土耳其烤肉饭，回到小区发现暖灯下的桑拿房，熊猫坐在里面，Moflow 在门口。",
+  "interpretation": "箱庭取自第四格「回来发现小区里有桑拿房」。采用敞开的木屋剖面，石炉、毛巾和庭院细节为微缩演绎。",
+  "memories": [
+    {
+      "title": "坐下来，今天就慢一点",
+      "body": "回到小区，意外发现这里还有桑拿房。坐在暖木长凳上，终于可以好好放松一下。",
+      "label": "长凳 · 暖木包围的片刻",
+      "shortTitle": "暖木长凳",
+      "subtitle": "把一天慢慢放下来"
+    },
+    {
+      "title": "热气，把疲惫带走一点",
+      "body": "木桶、石炉，还有缓缓升起的热气。下午的工作、傍晚的散步，都在暖意里安静下来。",
+      "label": "石炉 · 升起的热气",
+      "shortTitle": "慢慢暖起来",
+      "subtitle": "留一点时间给身体"
+    },
+    {
+      "title": "宝藏，有时就在回家路上",
+      "body": "Moflow 在门口等着，植物旁亮着一盏小灯。原来不用走得很远，也能遇到让人开心的新发现。",
+      "label": "门口 · 意外的小发现",
+      "shortTitle": "门外的小灯",
+      "subtitle": "离生活很近的宝藏"
+    }
+  ]
+},
 };

@@ -17,17 +17,28 @@ function release(root: Group) {
   textures.forEach(value => value.dispose());
 }
 
-export function loadPlushCompanions(parent: Group, invalidate: () => void) {
+export interface CompanionSeat {
+  readonly file: 'panda-v3' | 'moflow-v2' | 'panda-ridge-game' | 'moflow-ridge-game' | 'panda-sauna-game' | 'moflow-sauna-game';
+  readonly x: number;
+  readonly z: number;
+  readonly angle: number;
+  readonly floor?: number;
+  readonly tilt?: number;
+  readonly scale?: number;
+  readonly centerDepth?: boolean;
+}
+const defaultSeats: readonly CompanionSeat[] = [
+  {file: 'panda-v3', x: -1.60, z: .05, angle: .14},
+  {file: 'moflow-v2', x: -.48, z: .04, angle: .10},
+];
+
+export function loadPlushCompanions(parent: Group, invalidate: () => void, seats: readonly CompanionSeat[] = defaultSeats) {
   const root = new Group();
-  root.name = 'Panda V3 and Moflow V2 · sitting together';
+  root.name = 'Panda and Moflow · story companions';
   root.visible = false;
   parent.add(root);
   const loader = new GLTFLoader().setMeshoptDecoder(MeshoptDecoder);
   let disposed = false;
-  const seats = [
-    {file: 'panda-v3', x: -1.60, z: .05, angle: .14},
-    {file: 'moflow-v2', x: -.48, z: .04, angle: .10},
-  ] as const;
   function dispose() { disposed = true; root.removeFromParent(); release(root); root.clear(); }
   const ready = Promise.all(seats.map(async seat => {
     const gltf = await loader.loadAsync(`/diorama/models/${seat.file}.glb`);
@@ -47,11 +58,12 @@ export function loadPlushCompanions(parent: Group, invalidate: () => void) {
         };
       }
     });
-    model.scale.setScalar(.53);
+    model.scale.setScalar(seat.scale ?? .53);
+    model.rotation.x = seat.tilt ?? 0;
     model.rotation.y = seat.angle;
     model.updateMatrixWorld(true);
     const bounds = new Box3().setFromObject(model);
-    model.position.set(seat.x - (bounds.min.x + bounds.max.x) / 2, .649 - bounds.min.y, seat.z);
+    model.position.set(seat.x - (bounds.min.x + bounds.max.x) / 2, (seat.floor ?? .649) - bounds.min.y, seat.z - (seat.centerDepth ? (bounds.min.z + bounds.max.z) / 2 : 0));
     root.add(model);
     invalidate();
   })).then(() => {

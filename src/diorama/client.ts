@@ -9,7 +9,8 @@ import { stories } from './stories';
 
 const host=document.querySelector<HTMLElement>('[data-world]');
 if(host) {
-  const kind=host.dataset.scene==='busan'?'busan':'marina';
+  const sceneKind=host.dataset.scene;
+  const kind=sceneKind==='busan'||sceneKind==='ridge'||sceneKind==='sauna'?sceneKind:'marina';
   const story=stories[kind];
   const status=document.querySelector<HTMLElement>('[data-status]');
   try {
@@ -22,7 +23,7 @@ if(host) {
     host.dataset.ready='true';
     const pause=document.querySelector<HTMLButtonElement>('[data-action="pause"]');
     const sound=document.querySelector<HTMLButtonElement>('[data-action="sound"]');
-    const audio=kind==='busan'?createSeaAudio():createRainAudio();
+    const audio=kind==='busan'?createSeaAudio():kind==='marina'?createRainAudio():null;
     const media=window.matchMedia('(prefers-reduced-motion: reduce)');
     let soundOn=false;
     const syncPause=()=>{
@@ -38,6 +39,7 @@ if(host) {
         case 'out': world.zoom(-.15); break;
         case 'pause': world.setPaused(!world.isPaused()); syncPause(); break;
         case 'sound':
+          if(!audio) break;
           try {
             await audio.setPlaying(!soundOn); soundOn=!soundOn;
             if(sound) { sound.setAttribute('aria-pressed',String(soundOn)); sound.setAttribute('aria-label',soundOn?`关闭${story.sound}`:`听听${story.sound}`); }
@@ -62,7 +64,7 @@ if(host) {
     media.addEventListener('change',updateMotion);
     window.addEventListener('pagehide',event=>{
       if(event.persisted || !active) return;
-      active=false;world.dispose();audio.dispose();media.removeEventListener('change',updateMotion);
+      active=false;world.dispose();audio?.dispose();media.removeEventListener('change',updateMotion);
     });
   } catch(error) {
     if(!(error instanceof Error)) throw error;

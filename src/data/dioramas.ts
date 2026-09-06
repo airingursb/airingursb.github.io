@@ -39,6 +39,40 @@ export const dioramas: readonly Diorama[] = [
     comicIssue: 15,
     tags: ['夜海', '红灯塔', '生日的烟火气'],
   },
-];
+  {
+  "number": "003",
+  "slug": "southern-ridges-sky",
+  "title": "把天空留给自己",
+  "date": "2026-08-15",
+  "place": "新加坡 · 南部山脊",
+  "description": "走进树荫，在桥上躺下来。Moflow 趴在身上，几只鸟从蓝天飞过，什么也不用赶。",
+  "memory": "木桥、树影和飞鸟。躺下来，才发现天空一直都在。",
+  "cover": "/diorama/covers/southern-ridges-sky.webp",
+  "coverAlt": "森林木桥箱庭：熊猫仰躺在桥上，Moflow 趴在身上，树枝上有松鼠，鸟儿飞过树冠。",
+  "comicIssue": 17,
+  "tags": [
+    "林间木桥",
+    "松鼠",
+    "仰望蓝天"
+  ]
+},
+  {
+  "number": "004",
+  "slug": "hidden-sauna",
+  "title": "回家路上的小宝藏",
+  "date": "2026-06-01",
+  "place": "新加坡 · 小区",
+  "description": "工作、散步、烤肉饭之后，意外发现小区里的桑拿房。暖木、热气和门外的小灯，把一天慢慢收好。",
+  "memory": "原来宝藏，有时就藏在回家的路上。",
+  "cover": "/diorama/covers/hidden-sauna.webp",
+  "coverAlt": "桑拿房剖面箱庭：熊猫坐在暖木长凳上，石炉升起热气，Moflow 坐在植物和小灯旁的门口。",
+  "comicIssue": 8,
+  "tags": [
+    "暖木小屋",
+    "慢慢放松",
+    "意外发现"
+  ]
+},
+].sort((a,b) => b.date.localeCompare(a.date));
 
 export const dioramaUrl = (scene: Diorama) => `/diorama/${scene.slug}/`;
