@@ -15,6 +15,8 @@
 
 ## Homepage (`/`)
 
+- [ ] Screenshot/CSS: `/blog/` 和 `/en/blog/` 在 320 / 375 / 393 / 768 / 1280px 下，在线人数加载后文章数、在读标签、语言切换完整显示；空间不足时右侧整组换行，无文字拆分或横向溢出。
+
 - [ ] GET `/` 返回页面，title 包含 "Airing"
 - [ ] DOM: `<link rel="canonical">` 存在，href 为 `https://ursb.me/`
 - [ ] DOM: `<meta property="og:url">` 存在
