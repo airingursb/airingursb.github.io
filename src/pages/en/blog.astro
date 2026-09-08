@@ -103,7 +103,10 @@ function postLink(postId: string) {
     <!-- Masthead -->
     <SiteHeader lang="en" motto={strings.motto}>
       <Fragment slot="meta"><div class="mast-date-line">
-          <span class="mast-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          <time class="mast-date" datetime={new Date().toISOString()}>
+            <span class="mast-date-full">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+            <span class="mast-date-short">{new Date().toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+          </time>
           <span class="mast-right">
             <a href="/en/archive" class="mast-post-count">{strings.posts_count(posts.length)}</a>
             <span class="online-indicator mast-online" data-online="site" data-online-template='<span class="online-sep">·</span><span class="online-dot"></span><span class="online-count">{n}</span> reading' data-online-min="1" data-online-countries="popover" data-online-region-min="2" data-online-region-label="regions" data-online-popover-title="Readers by region" data-online-total-template="{n} readers online" data-online-locale="en" style="display:none"></span>
@@ -521,6 +524,7 @@ function postLink(postId: string) {
     flex-shrink: 0; white-space: nowrap; margin-left: auto;
   }
   .mast-date {
+    white-space: nowrap;
     font-size: 11px; color: var(--c-text-dim);
     letter-spacing: 0.06em; text-transform: uppercase;
   }
@@ -540,6 +544,14 @@ function postLink(postId: string) {
     transition: color 0.15s;
   }
   a.mast-post-count:hover { color: var(--c-text); }
+  .mast-date-short { display: none; }
+  @media (max-width: 768px) {
+    .mast-date-full { display: none; }
+    .mast-date-short { display: inline; }
+    .mast-date-line, .mast-right { gap: 8px; }
+    .mast-date-line :is(.mast-date, .mast-post-count, .mast-online) { letter-spacing: 0.02em; }
+    .mast-online :global(.online-sep) { display: none; }
+  }
 
   /* ── Hero Grid ─────────────────────────────────────── */
   .hero-section {

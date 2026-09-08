@@ -15,7 +15,7 @@
 
 ## Homepage (`/`)
 
-- [ ] Screenshot/CSS: `/blog/` 和 `/en/blog/` 在 320 / 375 / 393 / 768 / 1280px 下，在线人数加载后文章数、在读标签、语言切换完整显示；空间不足时右侧整组换行，无文字拆分或横向溢出。
+- [ ] Screenshot/CSS: `/blog/` 和 `/en/blog/` 手机端仅缩写星期（如 TUE），保留完整月份、日、年；375 / 393 / 768px 下日期与文章数、在读人数、语言切换同一行完整显示；320px 空间不足可整组换行；1280px 保留完整星期，无文字拆分或横向溢出。
 
 - [ ] GET `/` 返回页面，title 包含 "Airing"
 - [ ] DOM: `<link rel="canonical">` 存在，href 为 `https://ursb.me/`
