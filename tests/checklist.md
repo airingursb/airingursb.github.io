@@ -383,6 +383,7 @@
 - [ ] DOM: `#modeToggle` 存在（明暗切换）
 - [ ] DOM: `#themeToggle` 存在（主题色切换）
 - [ ] 点击 `#modeToggle`，`<html>` 的 `data-mode` 属性变化
+- [ ] Scroll: 离开首屏后 `#themeSwitcher` 渐隐，回到首屏渐显（与首页 `#langToggle` 同步）
 
 ## Post Detail — Code Blocks (`/posts/js-string-to-number/`, `/posts/case-sensitivity/`)
 
