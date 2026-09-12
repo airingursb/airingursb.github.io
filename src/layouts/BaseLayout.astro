@@ -199,6 +199,33 @@ const description = rawDescription || "Airing's Homepage - Software Engineer @ S
         }
       });
       updateModeIcon();
+
+      // Fade lang toggle + dark-mode icon when leaving the first screen
+      var chromeEls = [];
+      var langToggle = document.getElementById('langToggle');
+      if (langToggle) chromeEls.push(langToggle);
+      if (switcher) chromeEls.push(switcher);
+      if (chromeEls.length) {
+        var away = false;
+        var hideAt = 0.4;  // hide after scrolling ~40% of viewport
+        var showAt = 0.25; // re-show only when back near top of first screen
+        function updateChromeFade() {
+          var vh = window.innerHeight || 800;
+          var y = window.scrollY || window.pageYOffset || 0;
+          var next = away
+            ? (y > vh * showAt)
+            : (y > vh * hideAt);
+          if (next === away) return;
+          away = next;
+          for (var i = 0; i < chromeEls.length; i++) {
+            chromeEls[i].classList.toggle('is-away', away);
+            chromeEls[i].setAttribute('aria-hidden', away ? 'true' : 'false');
+          }
+        }
+        window.addEventListener('scroll', updateChromeFade, { passive: true });
+        window.addEventListener('resize', updateChromeFade);
+        updateChromeFade();
+      }
     })();
   </script>
 
