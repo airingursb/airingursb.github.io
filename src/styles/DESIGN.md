@@ -9,3 +9,7 @@ Tokens: --strip-scrollbar-size 6px; --strip-scrollbar-thumb rgba(var(--c-overlay
 
 ## Verification scope
 Homepage reading, comics, diorama, photos and workouts, in dark/light modes at phone and desktop widths. Scroll to later items, confirm native interaction and absence of page overflow. Keep browser's forced-color accessibility behavior. Screenshot supplied is a defect report, not a pixel target.
+
+## Homepage language toggle
+
+Preserve the fixed top-right EN/CN control and existing language persistence. Use the homepage mono font at 12px, neutral `--c-bg-alt` surface, `--c-border` outline and `--c-text-muted` labels. No shadow or backdrop blur. The selected segment uses `--c-text`, weight 600 and an 8% `--accent-rgb` tint; hover uses a 4% overlay. Outer radius 8px, inner radius 4px, inset/gap 4px; each segment is at least 36px square with 8px horizontal padding, increasing to 44px for coarse pointers. Retain the 16px viewport inset, respecting safe-area insets. Focus uses a 2px inset accent outline, visible within the segment. Keep existing 200ms color transitions; reduced motion disables them. Verify both languages, theme changes, persistence, hover and keyboard focus at 375/768/1280px. This is a local control refinement; other homepage design and existing accessibility/performance debt remain outside its scope.
