@@ -16,7 +16,9 @@
 ## Homepage (`/`)
 
 - [ ] Screenshot/CSS: 375 / 768 / 1280px 下右上角 EN/CN 切换器随明暗模式切换，使用细边框、柔和选中底色，无固定深色背景或重阴影；不遮挡小熊，不产生横向溢出。
-- [ ] Click/Keyboard: EN/CN 双向切换且刷新后保留；Tab 焦点清晰，Enter/Space 可操作；触屏按钮至少 44×44px，减少动态效果偏好下无过渡。
+- [ ] Screenshot/CSS: EN/CN 切换器高度偏矮（按钮约 22–28px 高，触屏约 32px），不过于显眼。
+- [ ] Click/Keyboard: EN/CN 双向切换且刷新后保留；Tab 焦点清晰，Enter/Space 可操作；减少动态效果偏好下无过渡。
+- [ ] Scroll: 离开首屏（约滚动超过 40% 视口高度）后，`#langToggle` 与 `#themeSwitcher`（暗色模式 icon）渐隐；滚回首屏（约 25% 视口内）再渐显；渐隐期间 `pointer-events: none`。
 
 - [ ] Screenshot/CSS: `/blog/` 和 `/en/blog/` 手机端仅缩写星期（如 TUE），保留完整月份、日、年；375 / 393 / 768px 下日期与文章数、在读人数、语言切换同一行完整显示；320px 空间不足可整组换行；1280px 保留完整星期，无文字拆分或横向溢出。
 
@@ -381,6 +383,7 @@
 - [ ] DOM: `#modeToggle` 存在（明暗切换）
 - [ ] DOM: `#themeToggle` 存在（主题色切换）
 - [ ] 点击 `#modeToggle`，`<html>` 的 `data-mode` 属性变化
+- [ ] Scroll: 离开首屏后 `#themeSwitcher` 渐隐，回到首屏渐显（与首页 `#langToggle` 同步）
 
 ## Post Detail — Code Blocks (`/posts/js-string-to-number/`, `/posts/case-sensitivity/`)
 
