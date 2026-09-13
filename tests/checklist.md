@@ -1782,6 +1782,8 @@
 
 ### Singapore bear life
 
+- [ ] At375/768/1280px, light/dark and reduced motion, the lamp base rests on the desk; switching the lamp and clicking the mug remain separate interactions. Drinking and returning the cup do not move the lamp or reveal a gap under its base.
+
 - [ ] On first load, Singapore 07–11 holds coffee, 11–14 works, 14–18 reads, 18–23 reads quietly, 23–07 sleeps; visitor timezone does not change this schedule.
 - [ ] A fresh rainy/thunder observation from the existing weather badge shows rain inside the window and selects indoor reading by day; night retains sleep. After 45 minutes or on malformed/missing data, it returns to the time routine. No timestamp-less localStorage weather drives the bear.
 - [ ] At 19–07 the lamp lights automatically in either site theme; one click/Enter/Space toggles only the scene lamp. Offscreen/background/reduced-motion pause rain and authored motion.
