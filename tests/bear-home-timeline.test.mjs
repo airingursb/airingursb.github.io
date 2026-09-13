@@ -157,3 +157,16 @@ test('typing finishes its current gesture before changing activities', () => {
   until(bear, () => bear.clip === 'reading');
   assert.equal(bear.phase, 'enter');
 });
+
+for (const activity of ['coffee', 'rain']) {
+  test(activity + ' completes its prop exit before a camera reaction and resumes', () => {
+    const bear = new BearTimeline(clips);
+    bear.request(activity);
+    until(bear, () => bear.clip === activity && bear.phase === 'hold');
+    bear.request('camera');
+    assert.equal(bear.phase, 'exit');
+    until(bear, () => bear.clip === 'camera');
+    until(bear, () => bear.clip === activity);
+    assert.equal(bear.phase, 'enter');
+  });
+}

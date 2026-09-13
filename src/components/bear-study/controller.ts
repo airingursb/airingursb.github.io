@@ -1,9 +1,11 @@
 import clips from '../../assets/bear-study/daily.json';
 import { BearAtlasCache, BearAtlasLoadError } from './atlas-cache';
-import { BearTimeline, routineAction, type ClipId } from './timeline';
+import { BearTimeline, type ClipId } from './timeline';
 import { PetInteraction } from './pet-interaction';
+import { BearLifeScene } from './scene';
+import { routineDelay } from './life';
 
-const labels = { typing: '写代码', reading: '读会儿书', sleep: '打个盹', pet: '摸摸头', drink: '喝一口', music: '听会儿歌', stretch: '伸个懒腰', water: '给植物浇水', shy: '小熊有点害羞' };
+const labels = { typing: '写代码', reading: '读会儿书', sleep: '打个盹', pet: '摸摸头', drink: '喝一口', music: '听会儿歌', stretch: '伸个懒腰', water: '给植物浇水', shy: '小熊有点害羞', coffee: '抱着杯子慢慢醒来', rain: '听着新加坡的雨', camera: '带回一些旅行照片' };
 
 export class DailyBear extends HTMLElement {
   private cleanup: (() => void) | undefined;
@@ -24,7 +26,8 @@ export class DailyBear extends HTMLElement {
     let active: { id: ClipId; image: HTMLImageElement } | undefined;
     let loading: ClipId | undefined;
     let raf = 0, previous = 0, request = 0, messageTimer = 0;
-    let routineTime = 0, routineDelay = 45000 + Math.random() * 45000;
+    let routineTime = 0, nextRoutine = routineDelay(Math.random());
+    const scene = new BearLifeScene(this, id => { void choose(id, false); });
     let painted = '';
 
     const say = (message: string) => {
@@ -62,6 +65,7 @@ export class DailyBear extends HTMLElement {
         }
         return false;
       }
+      scene.sync(timeline.clip, timeline.phase);
       const key = `${id}:${timeline.frame}`;
       if (key !== painted) {
         const c = clips[id];
@@ -69,7 +73,7 @@ export class DailyBear extends HTMLElement {
         context.imageSmoothingEnabled = false;
         context.drawImage(active.image, timeline.frame % c.columns * c.cellWidth,
           Math.floor(timeline.frame / c.columns) * c.cellHeight, c.cellWidth, c.cellHeight,
-          0, 0, canvas.width, canvas.height);
+          0, canvas.height - c.cellHeight, c.cellWidth, c.cellHeight);
         painted = key;
         this.dataset.frame = String(timeline.frame);
       }
@@ -95,11 +99,14 @@ export class DailyBear extends HTMLElement {
       previous = now;
       timeline.advance(delta);
       routineTime += delta;
-      if (routineTime >= routineDelay && timeline.phase === 'hold') {
+      if (routineTime >= 6000 && timeline.phase === 'hold' && scene.arrival()) {
         routineTime = 0;
-        routineDelay = 45000 + Math.random() * 45000;
-        const hour = Number(new Intl.DateTimeFormat('en-GB', { timeZone: 'Asia/Singapore', hour: '2-digit', hourCycle: 'h23' }).format(new Date()));
-        void choose(routineAction(hour, Math.random()), false);
+        void choose('camera', false);
+      }
+      if (routineTime >= nextRoutine && timeline.phase === 'hold') {
+        routineTime = 0;
+        nextRoutine = routineDelay(Math.random());
+        void choose(scene.nextAction(Math.random()), false);
       }
       if (render()) raf = requestAnimationFrame(tick);
       else this.dataset.playing = 'false';
@@ -134,8 +141,10 @@ export class DailyBear extends HTMLElement {
     this.addEventListener('click', click);
     document.addEventListener('visibilitychange', update);
     preference.addEventListener('change', reduce);
+    scene.start();
     update();
     this.cleanup = () => {
+      scene.stop();
       alive = false; request++;
       cancelAnimationFrame(raf); clearTimeout(messageTimer); observer.disconnect();
       this.removeEventListener('click', click);

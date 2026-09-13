@@ -2940,11 +2940,19 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         return { type: 'thunder', desc: 'Thunderstorm' };
       }
 
-      fetch('https://api.open-meteo.com/v1/forecast?latitude=1.29&longitude=103.85&current_weather=true')
+      var weatherFetchedAt = 0;
+      function refreshWeather() {
+      weatherFetchedAt = Date.now();
+      fetch('https://api.open-meteo.com/v1/forecast?latitude=1.29&longitude=103.85&current_weather=true', { signal: AbortSignal.timeout(8000) })
         .then(function (r) { return r.json(); })
         .then(function (data) {
           var cw = data.current_weather;
+          if (!cw || !Number.isFinite(cw.temperature) || !Number.isInteger(cw.weathercode) || cw.weathercode < 0 || cw.weathercode > 99) return;
+          var observedAt = Date.parse(cw.time + 'Z');
+          if (!Number.isFinite(observedAt)) return;
           var info = weatherCodeToInfo(cw.weathercode);
+          badge.dataset.weather = info.type;
+          badge.dataset.observedAt = String(observedAt);
           drawIcon(info.type);
           tempEl.textContent = Math.round(cw.temperature) + '°C';
           descEl.textContent = info.desc;
@@ -2959,8 +2967,14 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           try { localStorage.setItem('site-weather', info.type); } catch (_) {}
         })
         .catch(function () {
-          // Silently fail - don't show weather badge
+          // Silently fail; the bear expires the previous observation independently.
         });
+      }
+      refreshWeather();
+      setInterval(function () { if (!document.hidden) refreshWeather(); }, 15 * 60 * 1000);
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden && Date.now() - weatherFetchedAt >= 15 * 60 * 1000) refreshWeather();
+      });
     })();
 
     // ── Guestbook ──

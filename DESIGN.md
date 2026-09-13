@@ -59,6 +59,18 @@ extremes must fit the stage without cropping; watering must not duplicate the mu
 
 This contract covers the editorial surfaces under `/reading/` and the shared site header. Other long-lived sections retain their local content systems.
 
+## Singapore bear life
+
+The existing compact pixel desk remains the visual reference. Keep the 232px desktop / 200px mobile width; reserve 40px below a 160px sprite stage (24px extra umbrella headroom above the original 136px art) for a low wooden stool and two content keepsakes so 44px targets never overlap the mug/laptop/plant. A small sage desk lamp sits left of the bear and behind the mug. No scene frame, headings, captions, tooltips or activity menu.
+
+Singapore time drives the initial pose and subsequent routine: 07–11 coffee, 11–14 work, 14–18 reading, 18–23 a quiet evening, 23–07 sleep. The lamp glows 19–07 in either site theme; it can be toggled directly without changing the site theme. Time is fictional mascot routine, never an author-presence claim. Rain/thunder from the existing weather request takes priority only while observed data is at most 45 minutes old. Missing/stale weather returns to the clock routine. No extra weather API or indefinite cache inference.
+
+New articles leave one cream envelope and new travel-photo uploads leave a charcoal camera keepsake beneath the desk. Each is a real anchor directly to the latest valid local article/photo route, with a descriptive accessible name and no visible words. Article publication / photo first-publication dates expire after 14 days; the build snapshot itself expires after seven days. Future dates and missing dates do not qualify. A travel place outside Singapore or explicit travel tag qualifies; missing geography is not invented. An arriving camera activity plays once per page when fresh travel content is present, then routine resumes. Older photos do not imply a current trip.
+
+H3 supplies coffee/umbrella/camera authored enter–hold–exit clips; existing reading/sleep clips remain. Lighting, sparse rain, envelopes and resting camera props are programmatic pixel scene layers. Props palette: outline #48382d, sage #91ac89, cream #f4e2b9, lamp warmth #f6d58c, rain #88a6b2, camera #55565c, stool wood #cba574. Lamp glow uses a 240ms opacity transition; reduce-motion has no transition. Rain moves in four discrete steps at 1.6s, at most six drops, contained to the scene and paused offscreen/background/reduced-motion. Content links appear without pulsing; native keyboard focus uses existing accent.
+
+Interaction reference: beui.dev switch source, read 2026-09-13; reuse semantic pressed state and zero-duration reduced-motion path, adapting to a pixel lamp rather than installing Motion. Novel authored sprite transitions retain the existing complete-prop-exit state machine. Respect the same cache, transparent poster and asset-failure fallback.
+
 ## 1. Atmosphere & Identity
 
 Reading feels like a personal editor's desk: quiet, opinionated, and easy to scan. The signature is the contrast between compact mono metadata and generous editorial passages, separated by printer-like rules rather than floating cards. The daily stream records; the weekly edition interprets.

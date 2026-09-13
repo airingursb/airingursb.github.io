@@ -131,3 +131,17 @@ test('mergeRecords drops records whose slug is not in liveSlugs', () => {
   assert.equal(merged.length, 1);
   assert.equal(merged[0].slug, 'a');
 });
+
+ test('photo binary replacement preserves its first publication date', () => {
+  const original = { slug: 'trip', syncedAt: '2026-01-01T00:00:00Z' };
+  const replacement = { slug: 'trip', syncedAt: '2026-09-13T00:00:00Z' };
+  const [photo] = mergeRecords([original], [replacement], new Set(['trip']));
+  assert.equal(photo.firstSyncedAt, original.syncedAt);
+  assert.equal(photo.syncedAt, replacement.syncedAt);
+});
+
+test('a new photo records its first publication date once', () => {
+  const incoming = { slug: 'trip', syncedAt: '2026-09-13T00:00:00Z' };
+  const [photo] = mergeRecords([], [incoming], new Set(['trip']));
+  assert.equal(photo.firstSyncedAt, incoming.syncedAt);
+});

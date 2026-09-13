@@ -28,9 +28,14 @@ export function mergeRecords(existing, incoming, liveSlugs) {
   const merged = [];
   for (const r of existing) {
     if (!liveSlugs.has(r.slug)) continue;
-    merged.push(incomingBySlug.get(r.slug) || r);
+    const next = incomingBySlug.get(r.slug) || r;
+    const firstSyncedAt = r.firstSyncedAt || r.syncedAt || next.syncedAt;
+    merged.push(firstSyncedAt ? { ...next, firstSyncedAt } : next);
     incomingBySlug.delete(r.slug);
   }
-  for (const r of incomingBySlug.values()) merged.push(r);
+  for (const r of incomingBySlug.values()) {
+    const firstSyncedAt = r.firstSyncedAt || r.syncedAt;
+    merged.push(firstSyncedAt ? { ...r, firstSyncedAt } : r);
+  }
   return merged;
 }

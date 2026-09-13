@@ -1779,3 +1779,15 @@
 - [ ] New actions remain static under reduced motion and never show visible captions, titles, controls or a menu.
 - [ ] Watch all new clips: headphones and both ears fit, stretching paws fit, watering leaves exactly one drinking mug and a separate can, and no generated floating hearts survive in the shy clip.
 - [ ] All new poses remain transparent and compact in light/dark at desktop/tablet/mobile sizes; the existing desk, laptop and plant remain aligned.
+
+### Singapore bear life
+
+- [ ] On first load, Singapore 07–11 holds coffee, 11–14 works, 14–18 reads, 18–23 reads quietly, 23–07 sleeps; visitor timezone does not change this schedule.
+- [ ] A fresh rainy/thunder observation from the existing weather badge requests the umbrella; after 45 minutes or on malformed/missing data, it exits fully and returns to the time routine. No timestamp-less localStorage weather drives the bear.
+- [ ] At 19–07 the lamp lights automatically in either site theme; one click/Enter/Space toggles only the scene lamp. Offscreen/background/reduced-motion pause rain and authored motion.
+- [ ] A recent article leaves an envelope on the low stool; it opens the exact article with one activation. A recent travel upload leaves a camera; the arrival animation plays once then resumes daily life, and clicking the camera opens that photo.
+- [ ] Only non-Singapore places or explicit travel tags qualify; missing location is not guessed. New photo firstSyncedAt persists after binary replacements and metadata refresh.
+- [ ] Content older than 14 days, future dates, and snapshots older than seven days remove associated props. Ordinary routine remains usable; old travel photos do not imply a current trip.
+- [ ] Clicking the held book opens /reading/. All scene targets are at least 44px and do not overlap at 200px stage width; keyboard focus remains visible and there are no visible labels, tooltips, menus or playback controls.
+- [ ] All 136px atlases draw unchanged at y=24 inside the 160px canvas; umbrella atlas uses full height. Both ears, canopy and paws fit; desk/laptop/plant remain aligned without image stretching.
+- [ ] Validate morning, afternoon, rain, evening lamp, sleep and travel in light/dark at 375/768/1280; first-screen intro remains readable, with no white matte, hard glow rectangle, floating props or horizontal overflow.

@@ -1,5 +1,5 @@
-export type Activity = 'typing' | 'reading' | 'sleep' | 'music';
-export type ClipId = Activity | 'pet' | 'drink' | 'stretch' | 'water' | 'shy';
+export type Activity = 'typing' | 'reading' | 'sleep' | 'music' | 'coffee' | 'rain';
+export type ClipId = Activity | 'pet' | 'drink' | 'stretch' | 'water' | 'shy' | 'camera';
 export type Clip = {
   readonly asset: string;
   readonly fps: number;
@@ -14,7 +14,7 @@ export type Clip = {
 };
 export type Clips = Readonly<Record<ClipId, Clip>>;
 export const isActivity = (id: ClipId): id is Activity =>
-  id === 'typing' || id === 'reading' || id === 'sleep' || id === 'music';
+  id === 'typing' || id === 'reading' || id === 'sleep' || id === 'music' || id === 'coffee' || id === 'rain';
 
 export function routineActivity(hour: number, random: number): Activity {
   if (hour >= 23 || hour < 7) return random < 0.7 ? 'sleep' : 'reading';
