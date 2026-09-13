@@ -1839,3 +1839,11 @@
 - [ ] 375/768/1280px, light/dark: no image distortion, title clipping, blank cover or persistent transition overlay. Capture intermediate animation and final state.
 - [ ] Keyboard Enter and modified/new-tab clicks preserve native navigation; direct article, no-cover article and unrelated routes remain usable.
 - [ ] Reduced motion, unsupported API, missing image and interrupted navigation: content/navigation remain available, no stuck hidden elements or stale snapshot names.
+# Playbook interactive animation showcases
+
+- [ ] `/playbook/living-scenes/` and `/playbook/reading-companion/`, plus `/en/` equivalents: verify 375/768/1280px, both themes, no horizontal page overflow, readable captions/recipes, working language and sibling links.
+- [ ] Desk: morning/work/afternoon/rain/night change simulated context only; all 12 clips advance, safe transitions preserve art; head/mug/plant/lamp/curtain operate; pause/resume and reduced-motion stills work; real letter/photo/book previews close with Escape and restore focus.
+- [ ] Window/garden bird: demo daytime uses shortened initial wait, night/rain/closed curtain cancel it; normal homepage retains real weather/time and normal scheduling.
+- [ ] Footer: greet returns to reading, book preview works, mailbox opens the explicitly local rehearsal; successful demo shows a letter and greeting with zero subscription requests; pause/offscreen/hidden-tab and reduced-motion behavior verified.
+- [ ] Panda: pointer circle and native direction slider select real frames, 53↔0 wraps naturally, frame inspection and pause work; touch and keyboard work, including when the stage has scrolled offscreen; reduced motion selects stills without pointer autoplay.
+- [ ] Block atlas requests and disable JS: original posters/readable notes remain; no missing canvas hides the only fallback. Production article widget dismissal and narrow-screen policy stay unchanged. Theme button remains keyboard accessible while scrolled.

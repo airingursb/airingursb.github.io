@@ -1,6 +1,6 @@
 import { BirdVisit, BirdVisitGate, birdDelay, birdReturnVisit, birdWeatherAllows } from './bird-state';
 import type { BirdPlace } from './bird-state';
-import { parseWeather } from './life';
+import { sceneContext } from './scene';
 
 const visits = new BirdVisitGate();
 
@@ -10,12 +10,12 @@ export class BearBird extends HTMLElement {
   connectedCallback(): void {
     this.cleanup?.();
     const button = this.querySelector('button');
-    const scope = this.closest('[data-bear-preview-scope], bear-home-study');
+    const scope = this.closest<HTMLElement>('[data-bear-preview-scope], bear-home-study');
     const place: BirdPlace = this.dataset.place === 'garden' ? 'garden' : 'window';
     if (!button || !scope) return;
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     let visible = false, eligibleTime = 0, last = 0, timer = 0;
-    const preview = this.dataset.birdPreview === 'true';
+    const preview = this.dataset.birdPreview === 'true' || scope.dataset.showcase === 'true';
     const returning = preview ? false : birdReturnVisit(() => localStorage, Date.now());
     const nextDelay = () => preview ? 3_000 : birdDelay(Math.random(), returning);
     let delay = nextDelay();
@@ -37,11 +37,10 @@ export class BearBird extends HTMLElement {
       paint();
     };
     const allowed = () => {
-      const badge = document.getElementById('weatherLine');
-      const weather = parseWeather({ kind: badge?.dataset.weather, observedAt: Number(badge?.dataset.observedAt) });
+      const context = sceneContext(scope);
       const curtain = this.closest('bear-home-study')?.getAttribute('data-curtain');
-      return !reduced.matches && !scope.querySelector(':popover-open')
-        && (place === 'garden' || curtain !== 'closed') && birdWeatherAllows({ now: Date.now(), weather });
+      return !reduced.matches && scope.dataset.demoPaused !== 'true' && !scope.querySelector(':popover-open')
+        && (place === 'garden' || curtain !== 'closed') && birdWeatherAllows(context);
     };
     const tick = () => {
       const now = performance.now();
@@ -87,7 +86,7 @@ export class BearBird extends HTMLElement {
     });
     viewport.observe(place === 'window' ? scope : this.parentElement || scope);
     const attributes = new MutationObserver(refresh);
-    attributes.observe(scope, { attributes: true, attributeFilter: ['data-curtain', 'data-period', 'data-weather'] });
+    attributes.observe(scope, { attributes: true, attributeFilter: ['data-curtain', 'data-period', 'data-weather', 'data-demo-hour', 'data-demo-weather', 'data-demo-paused'] });
     button.addEventListener('click', interact);
     scope.addEventListener('toggle', refresh, true);
     document.addEventListener('visibilitychange', refresh);

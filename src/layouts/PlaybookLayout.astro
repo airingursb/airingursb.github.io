@@ -1,0 +1,32 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import '../styles/playbook.css';
+interface Props { title: string; description: string; room: '01' | '02'; slug: string; lang?: 'zh' | 'en' }
+const { title, description, room, slug, lang = 'zh' } = Astro.props;
+const t = (zh: string, en: string) => lang === 'zh' ? zh : en;
+const prefix = lang === 'en' ? '/en' : '';
+const sibling = room === '01' ? 'reading-companion' : 'living-scenes';
+---
+<BaseLayout title={`${title} · Playbook · Airing`} description={description} lang={lang} persistentTheme hreflang={{ zh: `/playbook/${slug}/`, en: `/en/playbook/${slug}/` }}>
+  <div class="playbook">
+    <a class="pb-skip" href="#exhibit">{t('跳到展台', 'Skip to exhibit')}</a>
+    <header class="pb-header">
+      <a class="pb-home" href="/" aria-label={t('返回 Airing 首页', 'Back to Airing’s homepage')}>a<span class="pb-home-dot">.</span></a>
+      <span class="pb-breadcrumb">PLAYBOOK <span aria-hidden="true">/</span> {t('交互手记', 'INTERACTIVE STUDIES')}</span>
+      <a class="pb-language" href={`${lang === 'zh' ? '/en' : ''}/playbook/${slug}/`} lang={lang === 'zh' ? 'en' : 'zh'}>{t('EN', '中文')}</a>
+    </header>
+    <main id="exhibit">
+      <div class="pb-intro">
+        <p class="pb-eyebrow">FIELD NOTES <span class="pb-number">{room} / 02</span></p>
+        <h1>{title}</h1>
+        <p class="pb-lead">{description}</p>
+      </div>
+      <slot />
+      <a class="pb-next" href={`${prefix}/playbook/${sibling}/`}>
+        <span><small>{t('走进另一间展室', 'EXPLORE THE OTHER ROOM')}</small><strong>{room === '01' ? t('目光，跟着你走。', 'A gaze that follows you.') : t('一只熊的一天。', 'A day in a bear’s life.')}</strong></span>
+        <span aria-hidden="true">↗</span>
+      </a>
+    </main>
+    <footer class="pb-footer"><a href="/">Airing · ursb.me</a><span>{t('一些让网页有温度的小实验。', 'Small experiments that make the web feel alive.')}</span></footer>
+  </div>
+</BaseLayout>

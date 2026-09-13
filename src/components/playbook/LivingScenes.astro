@@ -1,0 +1,79 @@
+---
+import PlaybookLayout from '../../layouts/PlaybookLayout.astro';
+import BearHomeStudy from '../BearHomeStudy.astro';
+import BearFooterScene from '../BearFooterScene.astro';
+import BearContentPreview from '../bear-study/BearContentPreview.astro';
+import { readingPreview } from '../bear-study/reading-preview';
+import clips from '../../assets/bear-study/daily.json';
+interface Props { lang?: 'zh' | 'en' }
+const { lang = 'zh' } = Astro.props;
+const t = (zh: string, en: string) => lang === 'zh' ? zh : en;
+const scenarios = [ ['morning','早晨','Morning'], ['work','工作','Work'], ['afternoon','午后','Afternoon'], ['rain','下雨','Rain'], ['night','深夜','Night'] ];
+const actions = [ ['typing','写代码','Typing'], ['coffee','抱杯子','Coffee'], ['reading','翻书','Reading'], ['sleep','打盹','Sleep'], ['pet','摸摸头','Pet'], ['drink','喝一口','Drink'], ['water','浇水','Water'], ['stretch','伸懒腰','Stretch'], ['music','听歌','Music'], ['shy','害羞','Shy'], ['camera','旅行归来','Camera'], ['rain','撑伞素材','Umbrella clip'] ];
+const source = 'https://github.com/airingursb/airingursb.github.io/blob/master/';
+---
+<PlaybookLayout title={t('一只熊的一天。', 'A day in a bear’s life.')} description={t('从桌边到树下，把一个小小的生活空间放进网页。你来时，它正在忙自己的事；你打招呼，它会回应。', 'From a desk to a garden bench, a little living space inside a webpage. It has its own day, and a moment for you when you say hello.')} room="01" slug="living-scenes" lang={lang}>
+  <div data-living-exhibit data-lang={lang}>
+    <section class="pb-exhibit" aria-label={t('桌边小熊互动展台', 'Interactive desk bear exhibit')}>
+      <div class="pb-stage" id="deskStage">
+        <span class="pb-stage-label">01.A / {t('桌边', 'AT THE DESK')}</span>
+        <BearHomeStudy showcase lang={lang} />
+        <span class="pb-caption">{t('点点杯子、台灯、窗帘，也摸摸它的头。', 'Try the mug, lamp, curtain, or a gentle head pat.')}</span>
+      </div>
+      <div class="pb-panel">
+        <h2>{t('把一天，拨给它看。', 'Give it a time of day.')}</h2>
+        <fieldset><legend>{t('场景模拟 · 新加坡时间', 'Scene simulation · Singapore time')}</legend><div class="pb-buttons">
+          {scenarios.map(([id, zh, en]) => <button class="pb-button" type="button" data-scenario={id} aria-pressed={id === 'morning' ? 'true' : 'false'}>{t(zh, en)}</button>)}
+        </div></fieldset>
+        <p class="pb-status" data-scene-status role="status">{t('09:00 · 晴天 · 慢慢醒来', '09:00 · Clear skies · A slow start')}</p>
+        <fieldset><legend>{t('动作图鉴', 'The motion collection')}</legend><div class="pb-buttons">
+          {actions.map(([id, zh, en]) => <button type="button" class="pb-button" data-demo-clip={id}>{t(zh, en)}</button>)}
+        </div></fieldset>
+        <button class="pb-button" type="button" data-desk-pause aria-pressed="false">{t('暂停动作', 'Pause motion')}</button>
+        <p class="pb-note">{t('这里的时间和天气是演示。切换动作会等当前动作自然收尾；晴天窗帘打开后，小鸟的首次等待缩短为约 3 秒。', 'Time and weather here are simulated. Actions transition at a safe boundary. In clear daylight, the bird’s first wait is shortened to about 3 seconds with the curtain open.')}</p>
+        <p class="pb-note" data-motion-notice hidden>{t('系统已开启减少动态效果：直接操作会显示对应静帧。', 'Reduced motion is enabled: direct input shows the corresponding still.')}</p>
+      </div>
+    </section>
+    <div class="pb-stats"><span><b>{Object.keys(clips).length}</b> {t('段动作', 'motion clips')}</span><span><b>12 fps</b> {t('图集播放', 'atlas playback')}</span><span><b>232 × 160</b> {t('场景坐标', 'scene coordinates')}</span><span>{t('浏览器端不播放 MP4', 'No MP4 playback in the browser')}</span></div>
+
+    <section class="pb-section">
+      <div class="pb-section-heading"><span class="pb-eyebrow">01.B</span><h2>{t('翻到页尾，它还在。', 'At the end, it’s still here.')}</h2></div>
+      <div class="pb-exhibit" data-bear-preview-scope data-showcase="true" data-demo-hour="9" data-demo-weather="sunny" data-garden-demo>
+        <div class="pb-stage">
+          <span class="pb-stage-label">{t('树下的阅读角', 'THE GARDEN READING CORNER')}</span>
+          <BearFooterScene lang={lang} />
+          <BearContentPreview idPrefix="playbook-garden" book={readingPreview} lang={lang} />
+          <span class="pb-caption">{t('点小熊打招呼，点书一起读，点信箱打开来信。', 'Say hello, open the book, or try the mailbox.')}</span>
+        </div>
+        <div class="pb-panel">
+          <h2>{t('一次轻轻的回应。', 'A quiet little response.')}</h2>
+          <p>{t('树和长凳安静地留在原地，只有小熊翻页、抬头、挥手。它占据的空间很小，但页面有了一个温柔的结尾。', 'The tree and bench stay still. Only the bear turns a page, looks up, and waves. A small scene gives the page a gentle ending.')}</p>
+          <div class="pb-buttons"><button type="button" class="pb-button" data-greet>{t('和它打招呼', 'Say hello')}</button><button type="button" class="pb-button" data-garden-book>{t('一起读一页', 'Read together')}</button><button type="button" class="pb-button" data-garden-pause aria-pressed="false">{t('暂停动作', 'Pause motion')}</button></div>
+          <details class="pb-recipe" data-mail-demo><summary>{t('试试信箱', 'Try the mailbox')}</summary><p class="pb-note">{t('这是本地演练，不会发送邮件或订阅。正式首页在订阅成功后，信封才会落进信箱。', 'This is a local rehearsal. No email or subscription is sent. On the homepage, the letter drops only after subscription succeeds.')}</p><button type="button" class="pb-button" data-send-demo>{t('演示投递成功', 'Rehearse a successful delivery')}</button><p class="pb-status" role="status" data-mail-status></p></details>
+        </div>
+      </div>
+      <div class="pb-stats"><span><b>150</b> {t('帧', 'frames')}</span><span><b>94 × 101</b> {t('仅角色区域更新', 'moving region only')}</span><span><b>10 fps</b></span><span>{t('靠近页尾才加载动作图集', 'Motion atlas loads near the viewport')}</span></div>
+    </section>
+
+    <section class="pb-section" aria-labelledby="makingTitle">
+      <div class="pb-section-heading"><span class="pb-eyebrow">MAKING OF</span><h2 id="makingTitle">{t('画出动作，再给它生活。', 'Draw the motion. Build the life.')}</h2></div>
+      <div class="pb-two-col">
+        <div class="pb-prose"><p>{t('H3 擅长画出自然的喝水、翻页和挥手。时间、天气、点击、内容预览和动作顺序，则由程序决定。把这两件事分开，小窗和台灯就可以继续扩展，不必重做所有视频。', 'H3 draws natural sipping, page turns, and waves. Code owns time, weather, taps, content previews, and sequencing. Keeping those separate lets the window and lamp evolve without regenerating every video.')}</p><p>{t('头部采用完整场景图集，再叠加独立的窗户、灯和道具；页尾冻结环境，只替换角色的小块区域。它们共享同一个想法，却有不同的渲染策略。', 'The desk uses full scene frames with independent window, lamp, and prop layers. The footer freezes its environment and updates only a small character patch. One idea, two rendering strategies.')}</p><p><a class="pb-source" href="/">{t('回到真实首页，看看它的日常 ↗', 'Visit the real homepage ↗')}</a></p></div>
+        <ol class="pb-steps">
+          <li><h3>{t('先固定角色与构图', 'Lock the character and composition')}</h3><p>{t('先审静帧：轮廓、颜色、桌面基线与动作余量。镜头固定，给耳朵和伸展的手留空间。', 'Review a still first: silhouette, palette, desk baseline, and movement margins. Lock the camera and leave room for ears and outstretched arms.')}</p></li>
+          <li><h3>{t('一次生成一个完整动作', 'Generate one complete action')}</h3><p>{t('起始姿态 → 动作 → 回到起始姿态。循环日常另外标出进入、保持和退出片段。', 'Rest pose → action → rest pose. For routines, author separate entry, hold, and exit segments.')}</p></li>
+          <li><h3>{t('抽帧、去底、冻结环境', 'Extract, matte, freeze the environment')}</h3><p>{t('从视频挑选有效帧，用统一坐标处理白底与边缘。桌子不能抖，熊的浅色脸也不能被误删。', 'Choose useful frames, remove the background, and use one coordinate system. The desk must stay still and the pale muzzle must stay opaque.')}</p></li>
+          <li><h3>{t('打包图集，由状态机接管', 'Pack an atlas and hand off to the state machine')}</h3><p>{t('自然收尾后再切动作。离屏或隐藏标签时暂停，减少动态效果时显示静帧，加载失败则留下海报。', 'Switch actions at a natural exit. Pause offscreen or in hidden tabs, use stills for reduced motion, and keep a poster if loading fails.')}</p></li>
+        </ol>
+      </div>
+      <details class="pb-recipe"><summary>{t('给另一个 agent 的制作起点', 'A starting recipe for another agent')}</summary>
+        <p>{t('先复用角色静帧和已有图集，修改布局不需要生成视频。只有新动作才进入 H3 流程。原始视频、请求记录与运行时图集分开保存，不把 API 密钥放进网页。', 'Reuse the character still and existing atlases first. Layout changes need no video generation. Only new motion goes through H3. Keep masters, request records, and runtime assets separate; never put API keys in the page.')}</p>
+        <pre><code>reference → H3 master → selected frames → alpha matte → WebP atlas
+idle → enter → hold ↺ → exit → next action
+one-shot → previous routine</code></pre>
+        <p>{t('源码入口：', 'Source entry points: ')}<a class="pb-source" href={`${source}src/components/bear-study/timeline.ts`}>BearTimeline</a> · <a class="pb-source" href={`${source}scripts/bear-study/build-daily.mjs`}>build-daily</a> · <a class="pb-source" href={`${source}scripts/bear-study/footer-atlas.mjs`}>footer-atlas</a> · <a class="pb-source" href={`${source}src/components/bear-footer/player.ts`}>footer player</a></p>
+      </details>
+    </section>
+  </div>
+  <script>import './living-scenes';</script>
+</PlaybookLayout>

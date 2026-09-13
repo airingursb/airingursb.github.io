@@ -1,0 +1,58 @@
+---
+import { readFile } from 'node:fs/promises';
+import PlaybookLayout from '../../layouts/PlaybookLayout.astro';
+interface Props { lang?: 'zh' | 'en' }
+const { lang = 'zh' } = Astro.props;
+const t = (zh: string, en: string) => lang === 'zh' ? zh : en;
+const manifest = JSON.parse(await readFile(new URL('../../../public/oil-motion/blog-pet/motion.json', import.meta.url), 'utf8'));
+const samples = [0, 7, 14, 20, 27, 34, 41, 47];
+const source = 'https://github.com/airingursb/airingursb.github.io/blob/master/';
+---
+<PlaybookLayout title={t('目光，跟着你走。', 'A gaze that follows you.')} description={t('文章右下角的水墨熊猫，只做一件小事：望向你正在看的地方。没有聊天框，也没有打断阅读的任务。', 'The watercolor panda in the corner of an article does one small thing: it looks toward you. No chat box. No quests to interrupt the reading.')} room="02" slug="reading-companion" lang={lang}>
+  <panda-exhibit data-lang={lang} data-frames={manifest.frameCount} data-columns={manifest.columns} data-rows={manifest.rows} data-cell={manifest.cellWidth} data-start={manifest.startAngleRadians}>
+    <section class="pb-exhibit" aria-label={t('熊猫方向互动展台', 'Interactive panda direction exhibit')}>
+      <div class="pb-stage" data-pointer-stage>
+        <span class="pb-stage-label">02 / {t('目光实验室', 'THE GAZE LAB')}</span>
+        <div class="pb-orbit">
+          <span class="pb-direction n" aria-hidden="true">N</span><span class="pb-direction e" aria-hidden="true">E</span><span class="pb-direction s" aria-hidden="true">S</span><span class="pb-direction w" aria-hidden="true">W</span>
+          <canvas width="400" height="400" aria-hidden="true" hidden></canvas>
+          <img src="/oil-motion/blog-pet/poster.png" width="200" height="200" alt={t('圆滚滚的水墨熊猫', 'A round watercolor panda')} />
+          <span class="pb-orbit-target" aria-hidden="true"></span>
+        </div>
+        <span class="pb-caption">{t('在展台内移动鼠标；手机轻点不同方向。', 'Move inside the stage; on a phone, tap a direction.')}</span>
+      </div>
+      <div class="pb-panel">
+        <h2>{t('它在看哪里？', 'Where is it looking?')}</h2>
+        <p>{t('试着绕它走一圈。它不是在切换八个视频，而是在一张连续的环形图集里，走向离目标最近的一帧。', 'Move all the way around it. Instead of switching between eight videos, it takes the shortest path through one continuous circular atlas.')}</p>
+        <label class="pb-control-label" for="pandaDirection">{t('目光方向 · 拖动或使用方向键', 'Gaze direction · drag or use arrow keys')}</label>
+        <input class="pb-slider" id="pandaDirection" data-direction type="range" min="-180" max="180" step="1" value="-135" disabled />
+        <div class="pb-stats"><span>{t('目标', 'TARGET')} <b data-angle-output>−135°</b></span><span>{t('当前帧', 'FRAME')} <b data-frame-output>00 / {manifest.frameCount - 1}</b></span></div>
+        <fieldset style="margin-top:20px"><legend>{t('输入方式', 'Input mode')}</legend><div class="pb-buttons"><button type="button" class="pb-button" data-panda-mode="follow" aria-pressed="true">{t('跟随指针', 'Follow pointer')}</button><button type="button" class="pb-button" data-panda-mode="frames" aria-pressed="false">{t('逐帧查看', 'Inspect frames')}</button><button type="button" class="pb-button" data-panda-pause aria-pressed="false">{t('暂停跟随', 'Pause following')}</button></div></fieldset>
+        <div data-frame-controls hidden><label class="pb-control-label" for="pandaFrame">{t('选择帧', 'Choose a frame')}</label><input class="pb-slider" id="pandaFrame" data-frame type="range" min="0" max={manifest.frameCount - 1} step="1" value="0" disabled /></div>
+        <p class="pb-status" role="status" data-panda-status>{t('正在准备图集…', 'Preparing the atlas…')}</p>
+        <p class="pb-note">{t('正式文章里它只有 144px，并在窄屏隐藏。这里把它请到展台上，让手机也能体验。', 'In articles it is just 144px wide and hidden on narrow screens. This exhibit brings it onto the stage so phones can try it too.')}</p>
+      </div>
+    </section>
+  </panda-exhibit>
+  <div class="pb-stats"><span><b>{manifest.frameCount}</b> {t('帧环形图集', 'circular frames')}</span><span><b>{manifest.cellWidth} × {manifest.cellHeight}</b> {t('每格', 'per cell')}</span><span><b>0.11s</b> {t('平滑参数', 'smoothing time')}</span><span>{t('停止输入后按需停止绘制', 'Drawing stops when settled')}</span></div>
+
+  <section class="pb-section">
+    <div class="pb-section-heading"><span class="pb-eyebrow">FRAME BY FRAME</span><h2>{t('一圈目光，藏在一张图里。', 'A whole turn, inside one image.')}</h2></div>
+    <p class="pb-prose">{t('下面是同一张线上图集里的八个采样帧。动作本身已经画好了，浏览器只需要决定现在取哪一格。', 'These eight samples come from the actual production atlas. The motion is already drawn; the browser chooses which cell to show.')}</p>
+    <div class="pb-filmstrip">
+      {samples.map(frame => <figure><div role="img" aria-label={t(`熊猫第 ${frame} 帧`, `Panda frame ${frame}`)} class="pb-frame-sample" style={`background-size:${manifest.columns * 88}px ${manifest.rows * 88}px;background-position:-${frame % manifest.columns * 88}px -${Math.floor(frame / manifest.columns) * 88}px;`}></div><figcaption>{String(frame).padStart(2, '0')} / {manifest.frameCount - 1}</figcaption></figure>)}
+    </div>
+  </section>
+  <section class="pb-section">
+    <div class="pb-section-heading"><span class="pb-eyebrow">MAKING OF</span><h2>{t('让视频，成为输入的函数。', 'Make motion a function of input.')}</h2></div>
+    <div class="pb-two-col"><div class="pb-prose"><p>{t('普通视频由时间决定画面，这只熊猫由指针的方向决定画面。先让 H3 生成一段目光绕一圈的连续动作，再抽帧、清理循环接缝、去除背景，打成透明 WebP 图集。', 'A regular video chooses its picture by time. This panda chooses it by pointer direction. Start with one continuous H3 gaze loop, extract frames, clean its seam, remove the background, and pack a transparent WebP atlas.')}</p><p>{t('不要把角度直接四舍五入成八个方向，也不要用视频 currentTime 反复跳转。连续目标帧加上阻尼，能在快速移动与跨越 0° 接缝时保持连贯。', 'Avoid snapping angles to eight directions or repeatedly seeking video currentTime. Continuous target frames and damping keep movement coherent, including across the circular seam.')}</p><pre class="pb-code"><code>pointer → atan2(dy, dx) → target frame
+target → shortest circular path → damping
+rounded frame → canvas.drawImage()</code></pre></div>
+    <ol class="pb-steps"><li><h3>{t('身份一致，镜头不动', 'One identity, one locked camera')}</h3><p>{t('身体与构图固定，只让头部和目光沿闭合路径转动。一次完整生成，比八个独立视频更容易保持脸与体型一致。', 'Keep body and composition fixed while the head and gaze trace a closed path. One continuous generation preserves identity better than eight independent videos.')}</p></li><li><h3>{t('清理首尾，标定方向', 'Clean the seam and calibrate')}</h3><p>{t('剔除重复停顿，检查最后一帧接第一帧。线上第 0 帧对应左上方，起始角是 −135°，不是通用默认值。', 'Remove duplicate holds and inspect last-to-first continuity. In this atlas, frame 0 faces upper-left at −135°. That calibration is specific to this asset.')}</p></li><li><h3>{t('走最近的那条路', 'Take the shorter way around')}</h3><p>{t('从第 53 帧到第 0 帧应向前一步，而不是倒退 53 步。中心设置死区，避免鼠标停在鼻尖时快速乱转。', 'Frame 53 to frame 0 is one step forward, not 53 steps back. A center dead zone prevents erratic turns when the pointer sits on its nose.')}</p></li><li><h3>{t('安静地陪伴阅读', 'Keep the reading quiet')}</h3><p>{t('限制设备像素比，目标收敛就停止 RAF。正式挂件不拦截正文点击，可以隐藏；减少动态效果时留下静态熊猫。', 'Cap device pixel ratio and stop RAF when settled. The real widget leaves article clicks alone, can be dismissed, and becomes a still under reduced motion.')}</p></li></ol></div>
+    <details class="pb-recipe"><summary>{t('给另一个 agent 的实现提示', 'Implementation notes for another agent')}</summary><p>{t('先用角度滑杆检查完整一圈，再接真实指针。用真实图集验证校准角；换角色后重新测量，不要沿用 −135°。本展台直接复用正式挂件的 renderer、animator 和 pointer vector。', 'Validate a full turn with an angle slider before connecting the pointer. Calibrate against the real atlas; a new character needs a new start angle. This exhibit reuses the production renderer, animator, and pointer-vector helpers.')}</p><pre><code>angle = atan2(pointerY - centerY, pointerX - centerX)
+frame = wrap(angle - startAngle, 2π) / (2π) * frameCount
+delta = shortestCircularDelta(current, target, frameCount)</code></pre><p>{t('源码入口：', 'Source entry points: ')}<a class="pb-source" href={`${source}src/lib/blog-pet-animator.ts`}>animator + renderer</a> · <a class="pb-source" href={`${source}src/lib/blog-pet-pointer.ts`}>pointer vector</a> · <a class="pb-source" href={`${source}public/oil-motion/blog-pet/motion.json`}>manifest</a> · <a class="pb-source" href={`${source}src/components/BlogPetWidget.astro`}>BlogPetWidget</a></p></details>
+  </section>
+  <script>import './panda-exhibit';</script>
+</PlaybookLayout>
+<style>.pb-frame-sample { width: 88px; height: 88px; border: 1px solid var(--c-border); border-radius: 8px; background-color: var(--c-bg-alt); background-image: url('/oil-motion/blog-pet/motion.webp'); background-repeat: no-repeat; }</style>

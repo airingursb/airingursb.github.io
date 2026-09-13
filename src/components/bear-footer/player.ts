@@ -12,7 +12,7 @@ export class BearFooterScene extends HTMLElement {
     if (!canvas || !poster || !bear) return;
     const context = canvas.getContext('2d');
     if (!context) return;
-    const scope = this.closest('[data-bear-preview-scope]');
+    const scope = this.closest<HTMLElement>('[data-bear-preview-scope]');
     const reduced = matchMedia('(prefers-reduced-motion: reduce)');
     let alive = true, visible = false, nearby = false, loading = false;
     let ready = false, greeting = false, time = 0, last = 0, raf = 0, painted = -1;
@@ -48,7 +48,7 @@ export class BearFooterScene extends HTMLElement {
     const update = () => {
       cancelAnimationFrame(raf);
       last = 0;
-      const playing = ready && visible && !document.hidden && !reduced.matches && !scope?.querySelector(':popover-open');
+      const playing = ready && visible && !document.hidden && !reduced.matches && scope?.dataset.demoPaused !== 'true' && !scope?.querySelector(':popover-open');
       this.dataset.playing = String(playing);
       if (ready) draw();
       if (playing) raf = requestAnimationFrame(tick);
@@ -111,12 +111,15 @@ export class BearFooterScene extends HTMLElement {
     reduced.addEventListener('change', preference);
     proximity.observe(this);
     visibility.observe(this);
+    const demoObserver = new MutationObserver(update);
+    if (scope?.dataset.showcase === 'true') demoObserver.observe(scope, { attributes: true, attributeFilter: ['data-demo-paused'] });
     this.dataset.playing = 'false';
     this.cleanup = () => {
       alive = false;
       cancelAnimationFrame(raf);
       proximity.disconnect();
       visibility.disconnect();
+      demoObserver.disconnect();
       atlas.removeEventListener('load', loaded);
       background.removeEventListener('load', loaded);
       atlas.removeEventListener('error', failed);

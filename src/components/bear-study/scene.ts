@@ -2,6 +2,18 @@ import { freshContent, freshWeather, lifeAction, lifeActivity, parseWeather, sin
 import type { LifeContent } from './life';
 import type { ClipId } from './timeline';
 
+export function sceneContext(root: HTMLElement) {
+  const actualNow = Date.now();
+  if (root.dataset.showcase === 'true') {
+    const hour = Number(root.dataset.demoHour ?? 9);
+    const dayStart = Math.floor((actualNow + 8 * 3_600_000) / 86_400_000) * 86_400_000 - 8 * 3_600_000;
+    const now = dayStart + Math.max(0, Math.min(23, hour)) * 3_600_000;
+    return { now, weather: parseWeather({ kind: root.dataset.demoWeather, observedAt: now }) };
+  }
+  const badge = document.getElementById('weatherLine');
+  return { now: actualNow, weather: parseWeather({ kind: badge?.dataset.weather, observedAt: Number(badge?.dataset.observedAt) }) };
+}
+
 /** Coordinates scene props with the existing weather badge and authored animation. */
 export class BearLifeScene {
   private timer = 0;
@@ -24,8 +36,7 @@ export class BearLifeScene {
   }
 
   private context() {
-    const badge = document.getElementById('weatherLine');
-    return { now: Date.now(), weather: parseWeather({ kind: badge?.dataset.weather, observedAt: Number(badge?.dataset.observedAt) }) };
+    return sceneContext(this.root);
   }
 
   private content(link: HTMLAnchorElement | null): LifeContent | null {
@@ -46,8 +57,9 @@ export class BearLifeScene {
       this.lighting = time.lampOn;
       this.setLamp(time.lampOn);
     }
-    const article = freshContent(this.content(this.letter), this.generatedAt, context.now);
-    this.photo = freshContent(this.content(this.camera), this.generatedAt, context.now);
+    const showcase = this.root.dataset.showcase === 'true';
+    const article = showcase ? this.content(this.letter) : freshContent(this.content(this.letter), this.generatedAt, context.now);
+    this.photo = showcase ? this.content(this.camera) : freshContent(this.content(this.camera), this.generatedAt, context.now);
     if (this.letter) this.letter.hidden = article === null;
     if (this.camera) this.camera.hidden = this.photo === null;
     const key = `${time.dayPeriod}:${base}`;
@@ -91,6 +103,7 @@ export class BearLifeScene {
     window.addEventListener('pet-weather', this.refresh);
     document.addEventListener('visibilitychange', this.refresh);
     this.root.addEventListener('click', this.click);
+    if (this.root.dataset.showcase === 'true') this.root.addEventListener('bear-demo-context', this.refresh);
   }
 
   stop() {
@@ -98,5 +111,6 @@ export class BearLifeScene {
     window.removeEventListener('pet-weather', this.refresh);
     document.removeEventListener('visibilitychange', this.refresh);
     this.root.removeEventListener('click', this.click);
+    this.root.removeEventListener('bear-demo-context', this.refresh);
   }
 }

@@ -27,6 +27,7 @@ export class DailyBear extends HTMLElement {
     let loading: ClipId | undefined;
     let raf = 0, previous = 0, request = 0, messageTimer = 0;
     let routineTime = 0, nextRoutine = routineDelay(Math.random());
+    let demoPaused = false;
     const scene = new BearLifeScene(this, id => { void choose(id, false); });
     let painted = '';
 
@@ -114,7 +115,7 @@ export class DailyBear extends HTMLElement {
     const update = () => {
       cancelAnimationFrame(raf); previous = 0;
       const ready = render();
-      const playing = ready && enabled && inView && !document.hidden && !this.querySelector(':popover-open');
+      const playing = ready && enabled && !demoPaused && inView && !document.hidden && !this.querySelector(':popover-open');
       this.dataset.playing = String(playing);
       if (playing) raf = requestAnimationFrame(tick);
     };
@@ -136,9 +137,24 @@ export class DailyBear extends HTMLElement {
       if (!enabled) timeline.settle();
       update();
     };
+    const demo = (event: Event) => {
+      if (this.dataset.showcase !== 'true' || !(event instanceof CustomEvent)) return;
+      const detail: unknown = event.detail;
+      if (typeof detail !== 'object' || detail === null) return;
+      if ('paused' in detail && typeof detail.paused === 'boolean') {
+        demoPaused = detail.paused;
+        this.dataset.demoPaused = String(demoPaused);
+        update();
+      }
+      if ('action' in detail) {
+        const id = Object.keys(clips).find((key): key is ClipId => key === detail.action);
+        if (id) void choose(id);
+      }
+    };
     const observer = new IntersectionObserver(entries => { inView = entries.some(entry => entry.isIntersecting); update(); });
     observer.observe(this);
     this.addEventListener('click', click);
+    if (this.dataset.showcase === 'true') this.addEventListener('bear-demo', demo);
     this.addEventListener('toggle', update, true);
     document.addEventListener('visibilitychange', update);
     preference.addEventListener('change', reduce);
@@ -149,6 +165,7 @@ export class DailyBear extends HTMLElement {
       alive = false; request++;
       cancelAnimationFrame(raf); clearTimeout(messageTimer); observer.disconnect();
       this.removeEventListener('click', click);
+      this.removeEventListener('bear-demo', demo);
       this.removeEventListener('toggle', update, true);
       document.removeEventListener('visibilitychange', update);
       preference.removeEventListener('change', reduce);
