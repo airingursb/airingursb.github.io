@@ -105,6 +105,7 @@ export class BearFooterScene extends HTMLElement {
     atlas.addEventListener('error', failed);
     background.addEventListener('error', failed);
     bear.addEventListener('click', greet);
+    scope?.addEventListener('bear-letter-sent', greet);
     scope?.addEventListener('toggle', update, true);
     document.addEventListener('visibilitychange', update);
     reduced.addEventListener('change', preference);
@@ -121,6 +122,7 @@ export class BearFooterScene extends HTMLElement {
       atlas.removeEventListener('error', failed);
       background.removeEventListener('error', failed);
       bear.removeEventListener('click', greet);
+      scope?.removeEventListener('bear-letter-sent', greet);
       scope?.removeEventListener('toggle', update, true);
       document.removeEventListener('visibilitychange', update);
       reduced.removeEventListener('change', preference);

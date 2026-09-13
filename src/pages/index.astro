@@ -3210,6 +3210,8 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         successEl.classList.remove('show');
         errorEl.classList.remove('show');
 
+        form.dispatchEvent(new CustomEvent('bear-subscribe-pending', { bubbles: true }));
+
         var lang = localStorage.getItem('preferred_lang') === 'en' ? 'en' : 'zh';
         fetch(SUBSCRIBE_API, {
           method: 'POST',
@@ -3221,17 +3223,21 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           if (result.ok && result.data.alreadySubscribed) {
             errorEl.textContent = t('sub_err_exists');
             errorEl.classList.add('show');
+            form.dispatchEvent(new CustomEvent('bear-subscribe-error', { bubbles: true }));
           } else if (result.ok || result.data.ok) {
             successEl.classList.add('show');
             form.style.display = 'none';
+            form.dispatchEvent(new CustomEvent('bear-subscribe-success', { bubbles: true }));
           } else {
             errorEl.textContent = t('sub_err_fail');
             errorEl.classList.add('show');
+            form.dispatchEvent(new CustomEvent('bear-subscribe-error', { bubbles: true }));
           }
         })
         .catch(function () {
           errorEl.textContent = t('sub_err_fail');
           errorEl.classList.add('show');
+          form.dispatchEvent(new CustomEvent('bear-subscribe-error', { bubbles: true }));
         })
         .finally(function () {
           btn.disabled = false;

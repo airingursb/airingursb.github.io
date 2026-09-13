@@ -1,0 +1,43 @@
+bear-bird {
+  --bird-size: 24px;
+  --bird-trip: 900ms;
+  position: absolute;
+  display: block;
+  width: var(--bird-size);
+  height: var(--bird-size);
+  z-index: 5;
+}
+bear-bird[hidden] { display: none !important; }
+bear-bird[data-place='window'] { left: 80%; top: 41%; }
+bear-bird[data-place='garden'] { --bird-size: 28px; left: 68%; top: 26%; }
+bear-bird button {
+  position: absolute;
+  left: calc((var(--bird-size) - 44px) / 2);
+  top: calc((var(--bird-size) - 44px) / 2);
+  width: 44px; height: 44px;
+  padding: 0; border: 0; background: transparent;
+  cursor: pointer; touch-action: manipulation;
+}
+bear-bird button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.bear-bird-flight, .bear-bird-sprite { display: block; width: var(--bird-size); height: var(--bird-size); pointer-events: none; }
+.bear-bird-flight { margin: auto; }
+.bear-bird-sprite {
+  background-image: url('/bear-visitors/bird.webp');
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
+  image-rendering: pixelated;
+  transform-origin: 50% 90%;
+}
+bear-bird[data-state='landing'] .bear-bird-flight { animation: bird-land var(--bird-trip) cubic-bezier(.2,.8,.2,1) both; }
+bear-bird[data-state='leaving'] .bear-bird-flight { animation: bird-leave var(--bird-trip) ease-in both; }
+bear-bird:is([data-state='landing'],[data-state='leaving']) .bear-bird-sprite { animation: bird-wings 200ms steps(1) infinite; }
+bear-bird[data-state='peck'] .bear-bird-sprite { animation: bird-peck 650ms steps(3) both; }
+bear-bird[data-state='hop'] .bear-bird-sprite { background-position: 50% 0; animation: bird-hop 700ms steps(5) both; }
+@keyframes bird-land { from { opacity: 0; transform: translate(32px,-32px); } 25% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes bird-leave { from { opacity: 1; transform: none; } to { opacity: 0; transform: translate(32px,-40px); } }
+@keyframes bird-wings { 0%,100% { background-position: 100% 0; } 50% { background-position: 0 0; } }
+@keyframes bird-peck { 0%,100% { transform: none; } 35%,65% { transform: translateX(-2px) rotate(-9deg); } }
+@keyframes bird-hop { 0%,100% { transform: none; } 22% { transform: translate(-3px,-4px); } 45% { transform: translateX(-4px); } 70% { transform: translate(-2px,-4px); } }
+@media (prefers-reduced-motion: reduce) {
+  bear-bird .bear-bird-flight, bear-bird .bear-bird-sprite { animation: none !important; }
+}

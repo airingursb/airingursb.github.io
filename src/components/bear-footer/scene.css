@@ -37,6 +37,52 @@
 .bear-footer-head { left: 41%; top: 51%; width: 23%; height: 21%; }
 .bear-footer-book { left: 45%; top: 72%; width: 19%; height: 19%; }
 .bear-footer-mail { left: 8%; top: 61%; width: 17%; height: 30%; }
+.bear-mailbox {
+  --mailbox-outline: #48382d;
+  --mailbox-sage: #91ac89;
+  --mailbox-cream: #f4e2b9;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 240ms;
+  filter: brightness(.8) saturate(.84);
+}
+[data-mode='light'] .bear-mailbox { filter: none; }
+[data-mailbox-open='true'] .bear-mailbox { opacity: 1; }
+.bear-mailbox-mouth { fill: var(--mailbox-outline); }
+.bear-mailbox-lid {
+  fill: var(--mailbox-sage);
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  transition: transform 320ms cubic-bezier(.2,.8,.2,1);
+}
+[data-mailbox-open='true'] .bear-mailbox-lid { transform: translateY(6px) scaleY(.32); }
+.bear-mailbox-trim { fill: var(--mailbox-cream); opacity: .5; }
+.bear-mailbox-slot { fill: var(--mailbox-outline); }
+.bear-mailbox-letter {
+  fill: var(--mailbox-cream);
+  stroke: var(--mailbox-outline);
+  stroke-width: 1;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.bear-mailbox-fold { fill: none; stroke: var(--mailbox-sage); }
+[data-mail-state='sending'] .bear-mailbox-letter { opacity: 1; animation: bear-letter-ready 240ms ease-out; }
+[data-mail-state='sent'] .bear-mailbox-letter { animation: bear-letter-delivered 600ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes bear-letter-ready { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@keyframes bear-letter-delivered {
+  0%, 20% { opacity: 1; transform: none; }
+  75% { opacity: 1; transform: translateY(21px) scale(.75); }
+  100% { opacity: 0; transform: translateY(24px) scale(.65); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bear-mailbox, .bear-mailbox-lid { transition: none; }
+  [data-mail-state] .bear-mailbox-letter { animation: none; }
+}
 .bear-footer-scene > img,
 .bear-footer-scene > canvas { filter: brightness(.8) saturate(.84); }
 [data-mode="light"] .bear-footer-scene > img,

@@ -223,3 +223,7 @@ The Reading depth strategy is **borders-only**. Thin rules express grouping; the
 | --- | --- | --- | --- |
 | Other site sections have local, uncodified visual systems | Outside `/reading/` | This extraction is intentionally scoped to the requested weekly prototype | Codify when each section is next redesigned |
 | Weekly issue data is a local editorial overlay | `src/data/reading-weekly.ts` | The UI is being validated before persistence and approval workflow changes | Move to a persisted issue record after product approval |
+
+## Window bird visit timing
+
+First visits use 20–40 seconds of cumulative visible daytime. Scrolling before arrival pauses earned time; background tabs pause pending and active visits. Leaving the viewport during an active visit releases the shared bird with the existing 3–5 minute cooldown. Fresh dry weather, open curtains and reduced-motion rules still apply. Consecutive Singapore calendar-day visits in the same browser shorten waiting to 10–20 seconds, retained on reload for that day. Store dates locally only; unavailable storage falls back to the ordinary wait. The authoring proxy alone marks birds with `data-bird-preview` for a three-second first wait and never writes visit history. No captions or new controls.
