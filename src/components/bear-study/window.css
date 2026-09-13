@@ -1,0 +1,82 @@
+bear-window {
+  --window-width: 30%;
+  --window-transition: 320ms cubic-bezier(.2, .8, .2, 1);
+  display: block;
+  position: absolute;
+  left: 61%;
+  top: 6%;
+  width: var(--window-width);
+  aspect-ratio: 148 / 173;
+}
+.bear-window-button {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.bear-window-button:disabled { cursor: default; }
+.bear-window-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bear-window-art, .bear-window-art img { display: block; position: absolute; inset: 0; width: 100%; height: 100%; }
+.bear-window-art { pointer-events: none; }
+.bear-window-art img { image-rendering: pixelated; transition: opacity 240ms ease-out, filter 240ms ease-out; }
+.bear-window-night {
+  opacity: 0;
+  mask-image: url('/bear-study/window-day.webp');
+  mask-size: 100% 100%;
+  mask-repeat: no-repeat;
+}
+bear-home-study:is([data-period='evening'], [data-period='night']) .bear-window-night { opacity: 1; }
+bear-home-study:is([data-weather='cloudy'], [data-weather='rainy'], [data-weather='thunder']) .bear-window-day { filter: saturate(.65) brightness(.94); }
+.bear-window-glass {
+  position: absolute;
+  inset: 11% 12% 10% 13%;
+  overflow: hidden;
+  opacity: 0;
+  clip-path: polygon(0 0, 68% 0, 68% 9%, 71% 9%, 71% 20%, 77% 20%, 77% 34%, 82% 34%, 82% 46%, 86% 46%, 86% 57%, 91% 57%, 91% 66%, 84% 66%, 84% 78%, 79% 78%, 79% 89%, 71% 89%, 71% 100%, 0 100%);
+  transition: opacity 240ms ease-out;
+}
+bear-home-study:is([data-weather='rainy'], [data-weather='thunder']) .bear-window-glass { opacity: .8; }
+.bear-window-glass i {
+  position: absolute;
+  top: 0;
+  left: 9%;
+  width: 2px;
+  height: 5px;
+  background: var(--bear-rain);
+  animation: bear-window-rain 2.4s steps(6) infinite paused;
+}
+.bear-window-glass i:nth-child(2) { left: 31%; top: 13%; animation-delay: -1.4s; }
+.bear-window-glass i:nth-child(3) { left: 60%; top: 6%; animation-delay: -.8s; }
+.bear-window-glass i:nth-child(4) { left: 19%; top: 55%; animation-delay: -1.9s; }
+.bear-window-glass i:nth-child(5) { left: 68%; top: 60%; animation-delay: -.3s; }
+bear-home-study[data-playing='true'] .bear-window-glass i { animation-play-state: running; }
+.bear-window-curtain {
+  position: absolute;
+  inset: 11% 12% 10% 13%;
+  background: repeating-linear-gradient(90deg, var(--bear-cream) 0 12%, var(--bear-warmth) 12% 16%, var(--bear-cream) 16% 28%, var(--bear-wood) 28% 30%);
+  clip-path: polygon(0 0, 100% 0, 100% 97%, 90% 97%, 90% 100%, 73% 100%, 73% 97%, 57% 97%, 57% 100%, 40% 100%, 40% 97%, 23% 97%, 23% 100%, 7% 100%, 7% 97%, 0 97%);
+  opacity: 0;
+  transform: scaleX(.04);
+  transform-origin: right center;
+  transition: transform var(--window-transition), opacity 160ms ease-out;
+}
+.bear-window-button[aria-pressed='true'] .bear-window-curtain { opacity: 1; transform: scaleX(1); }
+@keyframes bear-window-rain {
+  from { opacity: .9; transform: translate(0, 0); }
+  to { opacity: 0; transform: translate(-3px, 16px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bear-window-art img, .bear-window-glass, .bear-window-curtain { transition: none; }
+  .bear-window-glass i { animation: none; }
+}

@@ -1783,11 +1783,33 @@
 ### Singapore bear life
 
 - [ ] On first load, Singapore 07–11 holds coffee, 11–14 works, 14–18 reads, 18–23 reads quietly, 23–07 sleeps; visitor timezone does not change this schedule.
-- [ ] A fresh rainy/thunder observation from the existing weather badge requests the umbrella; after 45 minutes or on malformed/missing data, it exits fully and returns to the time routine. No timestamp-less localStorage weather drives the bear.
+- [ ] A fresh rainy/thunder observation from the existing weather badge shows rain inside the window and selects indoor reading by day; night retains sleep. After 45 minutes or on malformed/missing data, it returns to the time routine. No timestamp-less localStorage weather drives the bear.
 - [ ] At 19–07 the lamp lights automatically in either site theme; one click/Enter/Space toggles only the scene lamp. Offscreen/background/reduced-motion pause rain and authored motion.
-- [ ] A recent article leaves an envelope on the low stool; it opens the exact article with one activation. A recent travel upload leaves a camera; the arrival animation plays once then resumes daily life, and clicking the camera opens that photo.
+- [ ] A recent article leaves an envelope on the low stool; one activation opens an article preview with an explicit link to the exact article. A recent travel upload leaves a camera; the arrival animation plays once then resumes daily life, and clicking the camera previews that photo before an explicit link opens it.
 - [ ] Only non-Singapore places or explicit travel tags qualify; missing location is not guessed. New photo firstSyncedAt persists after binary replacements and metadata refresh.
 - [ ] Content older than 14 days, future dates, and snapshots older than seven days remove associated props. Ordinary routine remains usable; old travel photos do not imply a current trip.
-- [ ] Clicking the held book opens /reading/. All scene targets are at least 44px and do not overlap at 200px stage width; keyboard focus remains visible and there are no visible labels, tooltips, menus or playback controls.
+- [ ] Clicking the held book opens a dated reading excerpt with an explicit link to /reading/. All scene targets are at least 44px and do not overlap at 200px stage width; keyboard focus remains visible and there are no visible labels, tooltips, menus or playback controls.
 - [ ] All 136px atlases draw unchanged at y=24 inside the 160px canvas; umbrella atlas uses full height. Both ears, canopy and paws fit; desk/laptop/plant remain aligned without image stretching.
 - [ ] Validate morning, afternoon, rain, evening lamp, sleep and travel in light/dark at 375/768/1280; first-screen intro remains readable, with no white matte, hard glow rectangle, floating props or horizontal overflow.
+
+### Homepage bear window, previews and garden V6
+
+- [ ] Production preview at 375/768/1280: morning, indoor rain and night retain complete bear ears and transparent desk layers; window remains visible behind the desk. Rain stays inside the glass.
+- [ ] Clicking the window closes/reopens its curtain; Space does the same with visible keyboard focus. Existing desk atlases remain unchanged.
+- [ ] Letter, camera and held book open readable native content previews on the first click without changing the URL. Real title/date/excerpt/photo are shown; historical book excerpts are not presented as current activity.
+- [ ] Escape, outside click and repeated trigger click close the preview; focus returns to a visible trigger. Open previews pause the owning bear. At all three widths and both themes, panels stay inside the viewport with no clipped CJK text.
+- [ ] Camera freshness fixture changes only the publication timestamp for testing; production retains existing fresh-travel rules and loads preview photos only after activation.
+- [ ] Footer scene occupies at most 340×240 CSS pixels, or 300×212 on mobile. Text and subscription form remain real responsive DOM beside/above the scene.
+- [ ] Footer atlas is deferred until near the viewport. Watch reading/page/blink motion, click the bear to wave, and watch it return to reading. No visible playback/menu controls.
+- [ ] Footer book opens the excerpt; mailbox expands the existing subscription form and focuses email. Opening the form never sends a request; verify explicit submit using an intercepted test response, not a real subscription.
+- [ ] Offscreen/background/popup pauses the footer; reduced motion retains a still scene and functional book/mailbox. Failed animation loading retains the poster and functional content controls.
+
+### Bear content preview polish V7
+
+- [ ] Letter uses thin paper edges, a quiet sage envelope layer, readable title/excerpt and a separated signature/footer; ornament never covers text or links.
+- [ ] Photo shows the full real image within its print, with compact camera/caption/date; initial activation still lazy-loads the image.
+- [ ] Book uses a generous quote page on desktop and a single reading column at <=480px; title/author/date remain readable at320/375/768/1280, with no orphaned final character or page overflow.
+- [ ] All three previews and footer book work in light/dark, with44px close targets, visible keyboard focus, first-click activation, repeated/outside/Escape dismissal and paused owner motion.
+- [ ] Opening paper/page motion settles without shifting layout; reduced motion is immediate. Short viewports scroll inside the panel with reachable close and content links.
+
+- [ ] Letter footer uses one small plain Airing signature aligned with the reading link, with no duplicate pixel a badge; inspect both themes at375/768/1280 and320px.

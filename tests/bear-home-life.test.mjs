@@ -60,11 +60,16 @@ for (const [hour, expected] of [[8, 'coffee'], [12, 'typing'], [16, 'reading'],
 }
 
 for (const kind of ['rainy', 'thunder']) {
-  test(`${kind} takes priority over even the sleeping routine and random reactions`, () => {
+  test(`${kind} outside the window keeps the indoor bear asleep at night`, () => {
     const timestamp = Date.parse('2026-09-13T02:00:00+08:00');
     const context = { now: timestamp, weather: { kind, observedAt: timestamp } };
     const result = life.lifeAction(context, 0.01);
-    assert.equal(result, 'rain');
+    assert.equal(result, 'sleep');
+  });
+  test(`${kind} outside the window lets the indoor bear read during the day`, () => {
+    const context = { now, weather: { kind, observedAt: now } };
+    const result = life.lifeActivity(context);
+    assert.equal(result, 'reading');
   });
 }
 

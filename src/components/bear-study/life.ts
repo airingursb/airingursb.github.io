@@ -1,4 +1,4 @@
-export type LifeActivity = 'typing' | 'reading' | 'sleep' | 'music' | 'coffee' | 'rain';
+export type LifeActivity = 'typing' | 'reading' | 'sleep' | 'music' | 'coffee';
 export type LifeAction = LifeActivity | 'stretch' | 'drink' | 'camera';
 export type DayPeriod = 'morning' | 'work' | 'afternoon' | 'evening' | 'night';
 export type LifeWeather = {
@@ -65,8 +65,8 @@ export function freshContent(content: LifeContent | null, generatedAt: number, n
 /** Omit random for the initial, stable activity; later intervals may briefly play music. */
 export function lifeActivity(context: LifeContext, random: number | null = null): LifeActivity {
   const weather = freshWeather(context.weather, context.now);
-  if (weather !== null && RAIN_WEATHER[weather.kind]) return 'rain';
   const { dayPeriod } = singaporeTime(context.now);
+  if (dayPeriod !== 'night' && weather !== null && RAIN_WEATHER[weather.kind]) return 'reading';
   switch (dayPeriod) {
     case 'night':
       return 'sleep';
@@ -80,7 +80,7 @@ export function lifeActivity(context: LifeContext, random: number | null = null)
 export function lifeAction(context: LifeContext, random: number): LifeAction {
   const activity = lifeActivity(context, random);
   switch (activity) {
-    case 'rain': case 'sleep':
+    case 'sleep':
       return activity;
     case 'typing': case 'reading': case 'music': case 'coffee':
       return random < 0.05 ? 'stretch' : random < 0.1 ? 'drink' : activity;

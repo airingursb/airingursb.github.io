@@ -1,0 +1,51 @@
+---
+import BearFooterScene from './BearFooterScene.astro';
+import BearContentPreview from './bear-study/BearContentPreview.astro';
+import { readingPreview } from './bear-study/reading-preview';
+import './bear-footer/garden.css';
+---
+<section class="bear-garden" data-bear-preview-scope aria-labelledby="gardenTitle">
+  <div class="garden-copy">
+    <p class="garden-eyebrow"><span lang="zh">保持联系</span><span lang="en">LET’S KEEP IN TOUCH</span></p>
+    <h2 id="gardenTitle"><span lang="zh">下次，再一起散步。</span><span lang="en">Until our next walk.</span></h2>
+    <p class="garden-note"><span lang="zh">偶尔写点代码，也记些日常。<br />有新文章时，给你寄一封信。</span><span lang="en">A little code, a few everyday stories.<br />A letter when there’s something new.</span></p>
+    <details class="garden-subscribe" id="subscribe">
+      <summary><span lang="zh">订阅来信</span><span lang="en">Letters from me</span><span aria-hidden="true"> ↗</span></summary>
+      <form class="sub-form" id="subscribeForm">
+        <div class="sub-field">
+          <label for="subName"><span lang="zh">称呼</span><span lang="en">Name</span></label>
+          <input type="text" id="subName" name="name" autocomplete="name" data-i18n-placeholder="sub_name_placeholder" placeholder="your name" required maxlength="50" />
+        </div>
+        <div class="sub-field">
+          <label for="subEmail"><span lang="zh">邮箱</span><span lang="en">Email</span></label>
+          <input type="email" id="subEmail" name="email" autocomplete="email" data-i18n-placeholder="sub_email_placeholder" placeholder="you@example.com" required maxlength="100" />
+        </div>
+        <button type="submit" class="sub-btn" id="subBtn" data-i18n="sub_button">Subscribe</button>
+      </form>
+      <div class="sub-success" id="subSuccess" role="status" data-i18n="sub_success">Subscribed! Check your inbox.</div>
+      <div class="sub-error" id="subError" role="alert"></div>
+      <div class="sub-count" id="subCount" style="display:none"><span id="subCountNum"></span><span data-i18n="sub_count_suffix"> subscribers</span></div>
+    </details>
+    <nav class="garden-links" aria-label="Footer">
+      <a href="/blog/"><span lang="zh">博客</span><span lang="en">Blog</span></a>
+      <a href="/photos/"><span lang="zh">照片</span><span lang="en">Photos</span></a>
+      <a href="mailto:airing@ursb.me"><span lang="zh">写信</span><span lang="en">Write to me</span></a>
+    </nav>
+  </div>
+  <BearFooterScene />
+  <BearContentPreview idPrefix="garden" book={readingPreview} />
+</section>
+<script>
+  const garden = document.querySelector('.bear-garden');
+  const subscription = document.querySelector<HTMLDetailsElement>('.garden-subscribe');
+  garden?.addEventListener('click', event => {
+    if (!(event.target instanceof Element) || !event.target.closest('[data-footer-subscribe]') || !subscription) return;
+    subscription.open = true;
+    subscription.querySelector<HTMLInputElement>('#subEmail')?.focus({ preventScroll: true });
+  });
+  const revealSubscription = () => {
+    if (location.hash === '#subscribe' && subscription) subscription.open = true;
+  };
+  window.addEventListener('hashchange', revealSubscription);
+  revealSubscription();
+</script>

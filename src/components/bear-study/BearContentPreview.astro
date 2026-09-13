@@ -1,0 +1,59 @@
+---
+import type { BearPreviewProps } from './preview-data';
+import './content-preview.css';
+type Props = BearPreviewProps;
+const { idPrefix, post, photo, book } = Astro.props;
+---
+<bear-content-preview>
+  {post && <div class="bear-preview bear-preview-letter" id={`${idPrefix}-letter`} data-preview="letter" popover="auto" role="dialog" aria-labelledby={`${idPrefix}-letter-title`}>
+    <div class="bear-preview-object bear-preview-letter-object">
+      <div class="bear-preview-envelope" aria-hidden="true"></div>
+      <article class="bear-preview-paper bear-preview-letter-paper">
+        <button class="bear-preview-close" type="button" data-preview-close aria-label="收起信笺"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
+        <div class="bear-preview-letter-heading"><span class="bear-preview-meta">Airing 的来信</span><span class="bear-preview-meta">{post.dateLabel}</span></div>
+        <h2 id={`${idPrefix}-letter-title`} tabindex="-1" data-preview-focus>{post.title}</h2>
+        <p class="bear-preview-excerpt">{post.excerpt}</p>
+        <footer class="bear-preview-letter-footer">
+          <a class="bear-preview-link" href={post.href}>读这篇文章 <span aria-hidden="true">↗</span></a>
+          <span class="bear-preview-signature">Airing</span>
+        </footer>
+      </article>
+    </div>
+  </div>}
+  {photo && <div class="bear-preview bear-preview-photo" id={`${idPrefix}-photo`} data-preview="camera" popover="auto" role="dialog" aria-labelledby={`${idPrefix}-photo-title`}>
+    <div class="bear-preview-object bear-preview-photo-object">
+      <figure class="bear-preview-paper bear-preview-photo-paper">
+        <div class="bear-preview-photo-heading"><span class="bear-preview-meta">留住这一刻</span><button class="bear-preview-close" type="button" data-preview-close aria-label="收起照片"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg></button></div>
+        <img class="bear-preview-travel-photo" data-preview-src={photo.imageSrc} width={photo.width} height={photo.height} alt={photo.imageAlt} decoding="async" />
+        <figcaption>
+          <svg class="bear-preview-camera" viewBox="0 0 32 28" aria-hidden="true" shape-rendering="crispEdges"><path fill="var(--bear-paper-muted)" d="M3 6h6V3h10v3h10v19H3Z"/><path fill="var(--bear-paper)" d="M5 8h22v15H5Z"/><path fill="var(--bear-paper-ink)" d="M12 9h8v2h2v8h-2v2h-8v-2h-2v-8h2Z"/><path fill="var(--bear-paper-sage)" d="M13 12h6v6h-6Z"/><path fill="var(--bear-paper-muted)" d="M23 10h2v2h-2Z"/></svg>
+          <div class="bear-preview-photo-caption"><h2 id={`${idPrefix}-photo-title`} tabindex="-1" data-preview-focus>{photo.title}</h2><p class="bear-preview-meta">{photo.dateLabel}</p></div>
+          <a class="bear-preview-link" href={photo.href}>查看照片 <span aria-hidden="true">↗</span></a>
+        </figcaption>
+      </figure>
+    </div>
+  </div>}
+  {book && <div class="bear-preview bear-preview-book" id={`${idPrefix}-book`} data-preview="book" popover="auto" role="dialog" aria-labelledby={`${idPrefix}-book-title`}>
+    <div class="bear-preview-object bear-preview-book-object">
+      <div class="bear-preview-book-cover" aria-hidden="true"></div>
+      <div class="bear-preview-book-pages">
+        <div class="bear-preview-page-left">
+          <p class="bear-preview-meta">书页之间</p>
+          <h2 id={`${idPrefix}-book-title`} tabindex="-1" data-preview-focus>{book.title}</h2>
+          <p class="bear-preview-author">{book.author}</p>
+          <svg class="bear-preview-leaf" viewBox="0 0 48 52" aria-hidden="true" shape-rendering="crispEdges"><path fill="var(--bear-paper-muted)" d="M24 12h4v36h-4ZM8 12h12v4h4v16h-8v-4h-4v-8H8Zm24-8h12v12h-4v8H28V12h4Z"/><path fill="var(--bear-paper-sage)" d="M12 16h8v8h-4v-4h-4Zm24-8h4v8h-4v4h-4v-8h4Z"/></svg>
+        </div>
+        <div class="bear-preview-page-right">
+          <div class="bear-preview-ribbon" aria-hidden="true"></div>
+          <blockquote>{book.quote}</blockquote>
+          <footer class="bear-preview-book-footer"><p class="bear-preview-meta">摘于 {book.dateLabel}</p><a class="bear-preview-link" href={book.href}>查看原摘录 <span aria-hidden="true">↗</span></a></footer>
+        </div>
+      </div>
+      <button class="bear-preview-close" type="button" data-preview-close aria-label="合上书页"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg></button>
+    </div>
+  </div>}
+</bear-content-preview>
+<script>
+  import { BearContentPreview } from './content-preview';
+  if (!customElements.get('bear-content-preview')) customElements.define('bear-content-preview', BearContentPreview);
+</script>

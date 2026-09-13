@@ -10,8 +10,8 @@ const labels = { typing: '写代码', reading: '读会儿书', sleep: '打个盹
 export class DailyBear extends HTMLElement {
   private cleanup: (() => void) | undefined;
   connectedCallback() {
-    const canvas = this.querySelector('canvas');
-    const poster = this.querySelector('img');
+    const canvas = this.querySelector<HTMLCanvasElement>('[data-bear-canvas]');
+    const poster = this.querySelector<HTMLImageElement>('[data-bear-poster]');
     const controls = this.querySelector<HTMLElement>('[data-controls]');
     const head = this.querySelector<HTMLButtonElement>('[data-action="head"]');
     const caption = this.querySelector<HTMLElement>('[data-caption]');
@@ -114,7 +114,7 @@ export class DailyBear extends HTMLElement {
     const update = () => {
       cancelAnimationFrame(raf); previous = 0;
       const ready = render();
-      const playing = ready && enabled && inView && !document.hidden;
+      const playing = ready && enabled && inView && !document.hidden && !this.querySelector(':popover-open');
       this.dataset.playing = String(playing);
       if (playing) raf = requestAnimationFrame(tick);
     };
@@ -136,9 +136,10 @@ export class DailyBear extends HTMLElement {
       if (!enabled) timeline.settle();
       update();
     };
-    const observer = new IntersectionObserver(([entry]) => { inView = entry.isIntersecting; update(); });
+    const observer = new IntersectionObserver(entries => { inView = entries.some(entry => entry.isIntersecting); update(); });
     observer.observe(this);
     this.addEventListener('click', click);
+    this.addEventListener('toggle', update, true);
     document.addEventListener('visibilitychange', update);
     preference.addEventListener('change', reduce);
     scene.start();
@@ -148,6 +149,7 @@ export class DailyBear extends HTMLElement {
       alive = false; request++;
       cancelAnimationFrame(raf); clearTimeout(messageTimer); observer.disconnect();
       this.removeEventListener('click', click);
+      this.removeEventListener('toggle', update, true);
       document.removeEventListener('visibilitychange', update);
       preference.removeEventListener('change', reduce);
     };

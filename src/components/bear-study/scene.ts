@@ -72,7 +72,9 @@ export class BearLifeScene {
   nextAction(random: number): ClipId { return lifeAction(this.context(), random); }
 
   arrival(): boolean {
-    if (this.cameraPlayed || !this.photo || lifeActivity(this.context()) === 'rain' || singaporeTime(Date.now()).dayPeriod === 'night') return false;
+    const context = this.context();
+    const weather = freshWeather(context.weather, context.now);
+    if (this.cameraPlayed || !this.photo || weather?.kind === 'rainy' || weather?.kind === 'thunder' || singaporeTime(context.now).dayPeriod === 'night') return false;
     this.cameraPlayed = true;
     return true;
   }
