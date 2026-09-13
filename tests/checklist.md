@@ -1745,3 +1745,37 @@
 
 - [ ] `/diorama/hidden-sauna/`：炉石上有柔软半透明蒸汽，持续上升、散开、淡出；手机和桌面能看清，转动场景时不变成硬边平面，不遮挡人物表情。
 - [ ] 桑拿蒸汽随「定格」立即停止并可继续；系统减少动态效果时保持静止。
+## Homepage interactive bear
+
+- [ ] Run the built preview, not just dev: `/previews/bear-home/` includes the homepage styles and has the same card/typography layout as `/`.
+- [ ] `/previews/bear-home/`: compact desk bear aligns above the existing weather and reader row at 375px, 768px and 1280px; intro remains visible in the first screen.
+- [ ] `/` renders the interactive desk bear by default and remains indexable; only `/previews/bear-home/` has noindex metadata and a base URL.
+- [ ] Homepage and preview: light/dark themes show a transparent typing/look-up loop with stable desk, cup, laptop and plant; no white rectangle, duplicate poster or layout shift.
+- [ ] Watch a full loop: both ears remain complete at maximum head tilt (especially frames 55–65); the motion mask never clips the head.
+- [ ] No play/pause toolbar or activity menu appears at rest, on hover, on touch, or while keyboard focus is inside the bear. Head/cup/laptop targets retain visible keyboard focus and at least 44×44px hit areas.
+- [ ] Scrolling the bear out of view and switching to a background tab stop playback; returning resumes without a jump.
+- [ ] Reduced motion starts still; head/cup/laptop interactions select still poses without starting playback. A live preference change to reduce resets the still.
+- [ ] Failed atlas loading and disabled JavaScript retain the transparent poster, with no inert pause button.
+
+### Homepage bear daily activities V2
+
+- [ ] Homepage and preview automatically alternates daily activities; the book enters before reading and is put away before changing activity. No activity chooser is rendered.
+- [ ] Typing finishes its current gesture at the next neutral checkpoint before switching; rapidly repeated choices keep only the latest pending action.
+- [ ] Clicking the head pats an awake bear; clicking a sleeping bear plays waking. Clicking the mug plays one sip and returns to the selected activity; the laptop returns to typing.
+- [ ] Inspect all five poses at desktop/mobile widths in both themes: complete ears/paws, one moving mug, stable laptop/plant/table, no white matte or horizontal overflow.
+- [ ] Tab/Enter/Space activate the four scene hotspots; hover has no dashed button outline; keyboard focus remains visible; all targets are at least 44px.
+- [ ] Under reduced motion interactions display static poses; offscreen playback stops. No explicit animation controls remain.
+- [ ] Automatic changes wait 45–90 seconds of visible playback; Singapore 23:00–07:00 prefers sleep. Head/cup/laptop interactions reset the timer without permanently disabling the routine.
+- [ ] Clicking the cup once requests a sip without a second activation. Head/cup/laptop interactions show no caption or native title tooltip; the hidden live region remains available to screen readers.
+- [ ] An unavailable activity atlas leaves the current bear usable and announces retry feedback only to screen readers; other actions still work. Initial atlas failure or disabled JavaScript retains the poster.
+- [ ] New atlases load on demand with a bounded cache; browser requests contain no generation token or video API call; the production homepage uses the same assets as the preview.
+
+### Homepage bear second batch
+
+- [ ] Listening is part of the daytime routine: headphones enter, the listening loop holds, and headphones are put away before watering/petting/another activity. No music actually autoplays.
+- [ ] A daytime stretch plays once and returns to the selected activity; the night routine retains its sleep bias.
+- [ ] One click/Enter/Space on the plant requests watering and returns to the previous activity. At 200px stage width its 44px target does not overlap the laptop target.
+- [ ] Three head activations within five seconds trigger one shy reaction; further head activations are ignored for eight seconds. Spaced activations keep ordinary petting; waking resets the streak.
+- [ ] New actions remain static under reduced motion and never show visible captions, titles, controls or a menu.
+- [ ] Watch all new clips: headphones and both ears fit, stretching paws fit, watering leaves exactly one drinking mug and a separate can, and no generated floating hearts survive in the shy clip.
+- [ ] All new poses remain transparent and compact in light/dark at desktop/tablet/mobile sizes; the existing desk, laptop and plant remain aligned.

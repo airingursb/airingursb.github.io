@@ -1,5 +1,62 @@
 # Airing's Blog Design System
 
+## Homepage interactive bear
+
+`/` displays the interactive bear; `/previews/bear-home/` remains a noindex alias. Preserve
+the existing mono typography, neutral cards, green accent and weather/reader row.
+Use a compact desk vignette rather than a hero banner: 232px wide on desktop,
+200px on mobile, centered above metadata with an 8px gap. No illustration title,
+frame or extra marketing copy. The illustration is decorative, with empty alt text;
+real text and controls remain DOM. Only the preview alias carries noindex metadata.
+
+The bear uses one H3-authored typing/look-up/blink loop, 140 frames at 12 fps.
+The generated white matte is removed offline; static props are locked to the first
+selected frame. Use a transparent PNG poster while loading and on atlas failure.
+Keep the same dimensions on light/dark themes with no blend mode. Canvas uses the
+232×136 logical sprite grid with pixelated scaling. No visible playback toolbar or
+activity menu, including on hover or touch. Pause while offscreen or in a background
+tab. Reduced motion keeps interactions on static poses. No audio.
+
+Daily V2 adds reading and sleeping activities, plus head-pat, sip and waking
+reactions. Retain the same 232×136 stage and desktop/mobile dimensions. Each
+reading/sleeping activity has an entry, quiet hold and exit; complete prop placement before the
+next clip starts. Typing starts in the neutral desk pose and completes the current
+gesture at 2× speed to the next authored neutral checkpoint before switching.
+The sleep exit is the authored waking action. Schedule changes
+only after 45–90 seconds of visible playback, biased to sleep at 23:00–07:00
+Asia/Singapore. This is the mascot's fictional routine, not live author presence.
+
+The reaction heart uses `--bear-heart: #d89987`, sampled from the bear's warm cheek
+palette. Head, mug, laptop and plant are semantic transparent buttons with at least 44px targets;
+Keyboard focus uses the existing accent token; hover does not draw a button outline. A head pat emits one
+small pixel heart; sleeping head activation wakes it. Mug requests a sip, laptop
+requests typing. Repeated requests are coalesced; actions never build a queue.
+Daily activities change automatically. Interacting resets the routine timer but
+never permanently disables the routine. Only the head, cup, laptop and plant are interactive
+targets; retain their accessible names and keyboard Tab/Enter/Space activation.
+
+Interactions show no captions or native title tooltips. Feedback is the bear's
+motion; accessible names and a visually hidden live region support screen readers.
+A single activation requests the action; no second tap on text is required.
+Reduced motion selects still reaction poses without autoplay. Resource failures
+preserve the current bear and announce retry feedback only to screen readers.
+Load new atlases on demand and keep a
+bounded decoded cache; no generation requests or audio in the browser.
+
+Second batch adds a headphones listening activity and three one-shot reactions:
+stretching, watering the existing sprout, and a shy response to repeated petting.
+Music is a silent fictional activity, not synchronized with a live audio player.
+The bear puts headphones on before the held listening loop and removes them before
+another clip starts. Stretching happens occasionally in the daytime routine and
+returns to the selected activity. The plant is a fourth transparent, keyboard-named
+44px hotspot; it requests one watering action. Keep the plant and laptop targets
+separate at the 200px mobile stage width. Watering returns to the selected activity.
+Three head activations within five seconds request shyness; ignore further head
+activations for eight seconds to prevent a chain of reactions. Waking a sleeping
+bear resets the pet streak. All four new poses honor reduced motion, no captions,
+no native tooltips and the existing on-demand atlas cache. Arms and ear/headphone
+extremes must fit the stage without cropping; watering must not duplicate the mug.
+
 This contract covers the editorial surfaces under `/reading/` and the shared site header. Other long-lived sections retain their local content systems.
 
 ## 1. Atmosphere & Identity

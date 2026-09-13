@@ -15,7 +15,10 @@ import { FootprintsMap } from '../components/footprints/FootprintsMap';
 import { cities as footprintCities } from '../data/footprints';
 import IslandWidget from '../components/IslandWidget.astro';
 import LiveCursors from '../components/LiveCursors.tsx';
+import BearHomeStudy from '../components/BearHomeStudy.astro';
 import { getCollection } from 'astro:content';
+
+const bearPreview = Astro.url.pathname === '/previews/bear-home/';
 
 // slug → {zh,en} title map for the site-wide guestbook feed. Comments store a
 // bare slug (PostLayout strips the /en/ prefix), so zh + en of a post share one
@@ -73,6 +76,8 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
 ---
 <BaseLayout title="Airing — Developer & Blogger @ Singapore | ursb.me" leaflet={true}>
   <Fragment slot="head">
+    {bearPreview && <base href="/" />}
+    {bearPreview && <meta name="robots" content="noindex,nofollow" />}
     <script is:inline type="application/ld+json" set:html={JSON.stringify({
       "@context": "https://schema.org",
       "@graph": [
@@ -976,8 +981,8 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
   <LiveCursors client:only="react" />
 
   <div class="container">
-    <div class="bear-wrapper" id="bearWrapper">
-      <canvas id="bear" width="13" height="20"></canvas>
+    <div class="bear-wrapper bear-study-wrapper" id="bearWrapper">
+      <BearHomeStudy />
       <div class="bear-meta">
         <div class="weather-line" id="weatherLine">
           <canvas id="weatherIcon" width="16" height="16"></canvas>
@@ -2127,6 +2132,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
     // ── Pixel Bear ──
     (function () {
       const canvas = document.getElementById('bear');
+      if (!canvas) return;
       const ctx = canvas.getContext('2d');
       const W = 13, H = 15;
       const PAD_TOP = 3;

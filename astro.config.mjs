@@ -36,7 +36,15 @@ export default defineConfig({
   image: {
     domains: ['r2.airingdeng.com'],
   },
-  integrations: [mdx(), react()],
+  integrations: [mdx(), react(), {
+    name: 'bear-home-preview',
+    hooks: {
+      'astro:config:setup': ({ injectRoute }) => {
+        // Share the page entry so Astro includes its styles in both static routes.
+        injectRoute({ pattern: '/previews/bear-home/', entrypoint: './src/pages/index.astro' });
+      },
+    },
+  }],
   markdown: {
     remarkPlugins: [remarkEmbed, [remarkWikilinks, { enNoteSlugs }]],
     rehypePlugins: [rehypeAnchorIds],
