@@ -1830,3 +1830,10 @@
 ### 首页日常箱庭 i18n
 - [ ] 英语浏览器首次访问、EN/CN反复切换与刷新保留偏好时，模块标题、查看全部、四个场景标题、图片alt和读屏名称同步翻译，无中文或翻译键残留。
 - [ ] 375/768/1280宽度英文标题自然换行、日期整齐，横向滚动能访问全部卡片；原有图片和场景链接正常。
+
+### Blog cover → article transition
+- [ ] Chinese/English blog: click featured, small, popular and list cards; only that card's cover/title morph into the corresponding article, without stats/captions inside the moving cover.
+- [ ] Back/Forward twice: restore original card, scroll and Latest/Top ordering, including after scrolling far into an article and after a history entry reload.
+- [ ] 375/768/1280px, light/dark: no image distortion, title clipping, blank cover or persistent transition overlay. Capture intermediate animation and final state.
+- [ ] Keyboard Enter and modified/new-tab clicks preserve native navigation; direct article, no-cover article and unrelated routes remain usable.
+- [ ] Reduced motion, unsupported API, missing image and interrupted navigation: content/navigation remain available, no stuck hidden elements or stale snapshot names.

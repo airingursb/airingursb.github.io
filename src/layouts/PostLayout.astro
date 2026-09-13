@@ -1,4 +1,5 @@
 ---
+import ArticleTransition from '../components/ArticleTransition.astro';
 import SiteHeader from "../components/SiteHeader.astro";
 /**
  * B1 + Inline Comments — Google Docs / 飞书 / 微信读书风格划线评论
@@ -104,6 +105,8 @@ const jsonLd = {
 ---
 
 <BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={new URL(`og/${lang === 'en' ? 'en/' : ''}${Astro.params.slug}.png`, Astro.site).href} hreflang={hreflang} lang={lang}>
+  <ArticleTransition slot="head" />
+  {cover && <link slot="head" rel="preload" as="image" href={cover} />}
   <meta slot="head" property="article:published_time" content={date.toISOString()} />
   <meta slot="head" property="article:modified_time" content={(dateModified ?? date).toISOString()} />
   <meta slot="head" property="article:author" content="Airing" />
@@ -123,7 +126,7 @@ const jsonLd = {
             <a href={`/tags/${tag}`} class="hl-tag">{tag}</a>
           ))}
         </div>
-        <h1 class="headline">{title}</h1>
+        <h1 class="headline" data-article-title>{title}</h1>
         {!cover && description && <p class="post-deck post-deck--headline">{description}</p>}
       </div>
     </div>
@@ -146,7 +149,7 @@ const jsonLd = {
 
     {cover && (
       <div class="cover-section">
-        <img src={cover} alt={title} loading="lazy" decoding="async" />
+        <img src={cover} alt={title} data-article-cover loading="eager" fetchpriority="high" decoding="async" />
         {description && <p class="post-deck post-deck--cover">{description}</p>}
       </div>
     )}
@@ -386,6 +389,7 @@ const jsonLd = {
     </footer>
   </div>
   <BlogPetWidget />
+  <span id="article-navigation-ready" hidden></span>
 </BaseLayout>
 
 <script is:inline>
@@ -2042,7 +2046,7 @@ const jsonLd = {
     max-width: 900px; margin: 0 auto 2rem; padding: 32px 48px 0;
   }
   .cover-section img {
-    width: 100%; height: auto; border-radius: 8px; display: block;
+    width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 8px; display: block;
     object-fit: cover; max-height: 480px;
   }
 

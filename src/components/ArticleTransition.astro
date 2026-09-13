@@ -1,0 +1,142 @@
+<link rel="expect" blocking="render" href="#article-navigation-ready" />
+
+<style is:global>
+  @view-transition { navigation: auto; }
+
+  :root {
+    --article-open-duration: 460ms;
+    --article-open-ease: cubic-bezier(.2,.8,.2,1);
+    --article-page-fade: 160ms;
+  }
+
+  .article-card-art {
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    border-radius: inherit;
+  }
+
+  .hc-img-full > .article-card-art { z-index: 0; }
+  .hc-img-full::before { z-index: 1; }
+  .hc-img-full > .hc-overlay { z-index: 2; }
+
+  ::view-transition { pointer-events: none; }
+  ::view-transition-group(article-cover),
+  ::view-transition-group(article-title) {
+    animation-duration: var(--article-open-duration);
+    animation-timing-function: var(--article-open-ease);
+  }
+  ::view-transition-group(article-title) { z-index: 2; }
+  ::view-transition-old(article-cover),
+  ::view-transition-new(article-cover) {
+    height: 100%;
+    object-fit: cover;
+    overflow: clip;
+    border-radius: inherit;
+  }
+  ::view-transition-old(article-title),
+  ::view-transition-new(article-title) {
+    height: auto;
+    animation-duration: var(--article-page-fade);
+  }
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation-duration: var(--article-page-fade); }
+
+  @media (prefers-reduced-motion: reduce) {
+    @view-transition { navigation: none; }
+    ::view-transition-group(*) { animation-duration: 0s; }
+  }
+</style>
+
+<!-- Install before pagereveal, including when this document returns from bfcache. -->
+<script is:inline>
+(() => {
+  const cards = () => Array.from(document.querySelectorAll('[data-article-card]'));
+  const path = url => new URL(url, location.href).pathname.replace(/\/$/, '');
+  const isBlog = url => /^\/(en\/)?blog$/.test(path(url));
+  const isPost = url => /^\/(en\/)?posts\/[^/]+$/.test(path(url));
+  const originState = () => history.state?.articleOrigin;
+  const kind = card => ['hero-card-lg', 'hero-card-sm', 'popular-card', 'post-item']
+    .find(name => card.classList.contains(name));
+  const visible = element => {
+    if (!element) return false;
+    const box = element.getBoundingClientRect();
+    return box.width > 0 && box.height > 0 && box.bottom > 0 && box.top < innerHeight;
+  };
+
+  function sortList(top) {
+    const items = Array.from(document.querySelectorAll('.post-item'));
+    const container = items[0]?.parentElement;
+    if (!container) return;
+    items.sort((a, b) => top
+      ? Number(a.dataset.rank) - Number(b.dataset.rank)
+      : Date.parse(b.dataset.date) - Date.parse(a.dataset.date));
+    items.forEach(item => container.appendChild(item));
+    document.querySelectorAll('.list-tab').forEach(tab => {
+      tab.classList.toggle('active', (tab.textContent.trim() === 'Top') === top);
+    });
+  }
+
+  document.addEventListener('click', event => {
+    if (!(event.target instanceof Element)) return;
+    const tab = event.target.closest('.list-tab');
+    if (tab) sortList(tab.textContent.trim() === 'Top');
+    const card = event.target.closest('[data-article-card]');
+    if (!card || event.defaultPrevented || event.button !== 0 || event.metaKey ||
+        event.ctrlKey || event.shiftKey || event.altKey || card.target === '_blank') return;
+    history.replaceState({ ...history.state, articleOrigin: {
+      href: card.href, kind: kind(card), x: scrollX, y: scrollY,
+      top: document.querySelector('.list-tab.active')?.textContent.trim() === 'Top',
+    } }, '');
+  });
+
+  function restoreListing() {
+    const saved = originState();
+    if (!isBlog(location.href) || !saved) return;
+    sortList(saved.top);
+    scrollTo({ left: saved.x, top: saved.y, behavior: 'instant' });
+  }
+
+  // Also restore ordering when the browser reloads an evicted history entry.
+  window.addEventListener('pageshow', event => {
+    if (event.persisted || performance.getEntriesByType('navigation')[0]?.type === 'back_forward') {
+      restoreListing();
+    }
+  });
+
+  function prepare(transition, activation, incoming) {
+    if (!transition) return;
+    const named = [];
+    const cleanup = () => named.forEach(element => element.style.removeProperty('view-transition-name'));
+    transition.ready.then(undefined, cleanup);
+    transition.finished.then(cleanup, cleanup);
+    const from = activation?.from?.url;
+    const to = activation?.entry?.url;
+    if (!from || !to || matchMedia('(prefers-reduced-motion: reduce)').matches ||
+        !((isBlog(from) && isPost(to)) || (isPost(from) && isBlog(to)))) {
+      transition.skipTransition();
+      return;
+    }
+    const listing = isBlog(location.href);
+    if (listing && incoming && activation.navigationType === 'traverse') restoreListing();
+    const articleUrl = isPost(to) ? to : from;
+    const saved = originState();
+    const matches = listing ? cards().filter(card => path(card.href) === path(articleUrl)) : [];
+    const card = matches.find(card => saved && path(saved.href) === path(articleUrl) && kind(card) === saved.kind)
+      || matches.find(visible);
+    const root = listing ? card : document.querySelector('.post-page');
+    for (const [selector, name] of [['[data-article-cover]', 'article-cover'], ['[data-article-title]', 'article-title']]) {
+      const element = root?.querySelector(selector);
+      if (visible(element)) {
+        element.style.viewTransitionName = name;
+        named.push(element);
+      }
+    }
+
+  }
+
+  window.addEventListener('pageswap', event => prepare(event.viewTransition, event.activation, false));
+  window.addEventListener('pagereveal', event => prepare(event.viewTransition, window.navigation?.activation, true));
+})();
+</script>
