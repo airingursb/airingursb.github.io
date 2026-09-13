@@ -155,8 +155,13 @@ MODEL_NAME_MAP = {
     # Anthropic (Claude Code)
     'claude-opus-4-6': 'Opus 4.6',
     'claude-opus-4-5-20251101': 'Opus 4.5',
+    'claude-opus-4-8': 'Opus 4.8',
+    'claude-opus-5': 'Opus 5',
     'claude-sonnet-4-6': 'Sonnet 4.6',
     'claude-sonnet-4-5-20241022': 'Sonnet 3.5',
+    'claude-sonnet-5': 'Sonnet 5',
+    'claude-fable-5': 'Fable 5',
+    'claude-fable-5-1': 'Fable 5.1',
     'claude-haiku-4-5-20251001': 'Haiku 4.5',
     'claude-haiku-4-5': 'Haiku 4.5',
     # OpenAI (Codex CLI)
@@ -174,8 +179,13 @@ MODEL_NAME_MAP = {
 MODEL_COLORS = {
     'Opus 4.6': '#4ade80',
     'Opus 4.5': '#a78bfa',
+    'Opus 4.8': '#86efac',
+    'Opus 5': '#22c55e',
     'Sonnet 4.6': '#f472b6',
     'Sonnet 3.5': '#fb923c',
+    'Sonnet 5': '#e879f9',
+    'Fable 5': '#818cf8',
+    'Fable 5.1': '#c084fc',
     'Haiku 4.5': '#38bdf8',
     'GPT-5': '#10b981',
     'GPT-5 Codex': '#0ea5e9',
