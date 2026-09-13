@@ -139,7 +139,10 @@ Pagefind、Cal.com 等第三方库动态注入的 DOM 不带 Astro 的 `data-ast
 ## Cursor Cloud specific instructions
 
 Dev scope is the root **Astro static site** (个人主页/blog). Dependencies are refreshed
-automatically on VM startup via the update script (`npm ci`), so no manual install is needed.
+automatically by the environment `install` step (`scripts/cloud-agent-install.sh`), which runs
+`npm ci` at the repo root and best-effort sets up the `blog-server` backend (see below), so no
+manual install is needed. The script is idempotent and mirrors the dashboard `install` command;
+keep the two in sync when changing setup behaviour.
 
 - **Dev server**: `npx astro dev --host 0.0.0.0 --port 4321`. Serves homepage + blog +
   content-collection posts/notes. No secrets required for the site to boot.
@@ -160,9 +163,12 @@ automatically on VM startup via the update script (`npm ci`), so no manual insta
 ### Backend (blog-api) — full-stack dev
 
 `services/` is a git submodule of the private repo `airingursb/blog-server` (SSH URL, so
-`git submodule update` won't work here). The update script clones it via the authenticated
-`gh` CLI, runs `npm ci` inside `services/blog-api`, and writes a local `services/blog-api/.env`
-with a generated `HMAC_SECRET` (that `.env` is gitignored and regenerated per fresh VM).
+`git submodule update` won't work here). `scripts/cloud-agent-install.sh` clones it via the
+authenticated `gh` CLI, runs `npm ci` inside `services/blog-api`, and writes a local
+`services/blog-api/.env` with a generated `HMAC_SECRET` (that `.env` is gitignored and
+regenerated per fresh VM). This backend setup is **best-effort**: if the build/agent token
+lacks access to the private repo, the step is skipped (non-fatal) and the environment remains a
+usable site-only checkout.
 
 - **Run backend**: `cd services/blog-api && npm run dev` (= `node --watch server.js`),
   listens on `http://localhost:3000`. Only `HMAC_SECRET` is required to boot; everything else
