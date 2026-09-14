@@ -29,6 +29,9 @@ export async function GET(context: APIContext) {
     { zh: '/friends', en: '/en/friends', changefreq: 'monthly', priority: '0.5' },
     { zh: '/search', en: '/en/search', changefreq: 'weekly', priority: '0.5' },
     { zh: '/notes', en: '/en/notes', changefreq: 'weekly', priority: '0.8' },
+    { zh: '/playbook', en: '/en/playbook', changefreq: 'monthly', priority: '0.7' },
+    { zh: '/playbook/living-scenes', en: '/en/playbook/living-scenes', changefreq: 'monthly', priority: '0.6' },
+    { zh: '/playbook/reading-companion', en: '/en/playbook/reading-companion', changefreq: 'monthly', priority: '0.6' },
     { zh: '/reading', en: '/en/reading', changefreq: 'daily', priority: '0.8' },
   ];
 

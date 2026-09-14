@@ -1847,3 +1847,11 @@
 - [ ] Footer: greet returns to reading, book preview works, mailbox opens the explicitly local rehearsal; successful demo shows a letter and greeting with zero subscription requests; pause/offscreen/hidden-tab and reduced-motion behavior verified.
 - [ ] Panda: pointer circle and native direction slider select real frames, 53↔0 wraps naturally, frame inspection and pause work; touch and keyboard work, including when the stage has scrolled offscreen; reduced motion selects stills without pointer autoplay.
 - [ ] Block atlas requests and disable JS: original posters/readable notes remain; no missing canvas hides the only fallback. Production article widget dismissal and narrow-screen policy stay unchanged. Theme button remains keyboard accessible while scrolled.
+
+### Playbook workshop homepage
+- [ ] ZH/EN375/768/1280 light/dark: whole room and both clear directory entries; no title/actor/label clipping.
+- [ ] Mouse/raycast and native labels select both exhibits, camera approaches with interruptible motion; directory hover/focus highlights matching station; Escape/overview restores full view.
+- [ ] Direct links reach same-language exhibit and breadcrumb returns to homepage; returning retains selection, including browser Back.
+- [ ] Bird hop and curtains respond; pause/resume, hidden-tab/offscreen sleep, reduced-motion stills and phone scrolling/taps work.
+- [ ] NoJS, WebGL/context loss, atlas or module failure: real room poster and native directory links remain available; no invisible focus trap.
+- [ ] Workshop theme control stays beside header navigation and never overlaps exhibit entry links in selected phone states (390px touch); header links remain separate tap targets.

@@ -1,0 +1,21 @@
+# Playbook workshop
+
+Approved reference: generated concept exec-6e56c673-3a27-4820-bfc6-0e634498509a.png shown in this conversation. Preserve its roofless oak-and-plaster studio, two distinct illustrated actors, open book, bench/tree, window, generous white page, serif hierarchy and two explicit directory links. Remove incidental English wall slogans as agreed. This is a real3D translation; the generated screenshot is never a page background or a fake UI.
+
+Geometry: 9x5 miniature base, bevelled oak boards, back/left cutaway walls with structural posts; window cutout on right; desk/garden station left, open-book station right. Ground every prop. Fixed orthographic view at about30deg down; no free orbit or required WASD. Actors are existing2D atlas billboards, intentionally illustrations in a3D room, not reconstructed mascot models.
+
+Palette: page inherits --c-bg/--c-text/--c-border/--accent. Oak #b88652 / #d7b68a / #ecd2ad, plaster #eee7da, paper #fff7e3, foliage #4e6740 / #718951 / #98aa6b, soil #504032, bird #a18c70 / #eee1c9, metal #6b675b. Surface roughness .65–.95, metalness0. Cotton rug and pillow patterned sage/cream. Real mesh shadows and contact shading, no excessive bloom/DOF. Daylight key warm plus sky fill; site dark theme lowers exposure/fill and lights the window practical while keeping all exits readable.
+
+HTML shell: max1240px, sides48/24/20px; header72px; heading clamp32–56px serif, lead16px/1.8; body inherited. Room aspect~2:1 desktop,5:4 phone, with full framing. Two directory rows: thin top rule, index12px, title clamp24–32px, description14px,44px entry link. Stack below640px. Region below scene holds selected station brief without overlaying the actors; no nested card chrome. Focus2px accent, hover accent ink, minimum44px targets. Native links work before JS/3D.
+
+State: overview | living-scenes | reading-companion. Select station via raycast or native scene label; camera approaches with interruptible damping response .16s; directory hover/focus highlights matching station without navigation. Entry links open existing same-language routes immediately. Return to overview via button/Escape; sessionStorage stores only selection, storage failure ignored visibly through in-memory fallback. Bird click briefly hops with supported feet; curtain toggles around anchored rod and changes local light. No reward locks, scores, avatars or fake visit metrics.
+
+Reduced-motion: static room and actors, direct selection instant, no camera drift or bird hop. Pointer response disabled on coarse pointer; tap still selects. Pause button stops actor/ambient loops. Stop RAF offscreen/hidden; dispose geometries/materials/textures/observers/listeners on disconnect. Progressive scene poster is captured from actual rendered room after first working build; no-JS/WebGL failure retains image and directory links. Static HTML must not wait forThree.
+
+Skills used: frontend image-to-code/interaction/perfection and programming TypeScript; 3dviz-pro-max d077e0e68915c25be8e71d74684d3144fd1c2aca object-reasoning/object-craft/lighting-direction-and-scale, toy-miniature record, studio and camera rigs consulted for ownership/soft lighting/focus principles. Custom geometry fits this specific room. beui.dev/r/tilt-card/raw consulted: hover-capable gating, bounded pointer motion, reduced-motion immediate path; adapt without new Motion dependency. Existing Three0.184, no new package. Existing site third-party scripts are inherited; previously declined new audit tooling remains absent.
+
+Verification: zh/en375/768/1280 light/dark; both selections, close-up camera, focus/hover associations, native entry routes, return selection, bird/curtain, touch scroll, pause/visibility, reduced-motion, WebGL unavailable and noJS. Compare composition/material craft to approved concept at overview and both focused views. Independent visual/fidelity plus code review before delivery.
+
+Refinement: reduced tree to1.3 scale, beveled sage cover and oak spine, progressively inset page signatures, woven cotton with stitched border. Plaques use semantic --workshop paper/ink/rule/active tokens and shared size/spacing/radius/shadow/duration tokens, with compact phone overrides.
+
+Theme control occupies a reserved slot beside header navigation, never a fixed lower-right overlay over exhibit links (including expanded phone state).

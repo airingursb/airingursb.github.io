@@ -1,0 +1,45 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import './workshop/workshop.css';
+interface Props { lang?: 'zh' | 'en' }
+const { lang = 'zh' } = Astro.props;
+const en = lang === 'en';
+const t = (zh: string, english: string) => en ? english : zh;
+const prefix = en ? '/en' : '';
+const exhibits = [
+  { slug: 'living-scenes', number: '01', label: t('桌边与树下', 'Desk & garden'), title: t('一只熊的一天。', 'A day in a bear’s life.'), description: t('头部与页尾 · 时间、天气与回应', 'Header & footer · Time, weather, and a little company'), detail: t('从早上的一杯水，到树下翻过的一页书。走进小熊的日常，也看看它是怎么做出来的。', 'From a morning sip to a page turned under the tree. Step into the bear’s day, and see how it was made.') },
+  { slug: 'reading-companion', number: '02', label: t('目光实验室', 'The gaze lab'), title: t('目光，跟着你走。', 'A gaze that follows you.'), description: t('文章角落 · 跟随指针的小熊猫', 'The reading corner · A panda that follows your pointer'), detail: t('在书页旁绕一圈，看看它会望向哪里。一个关于目光、图集与陪伴的小实验。', 'Move around the book and see where it looks. A small experiment in gaze, frames, and company.') },
+];
+---
+<BaseLayout title={t('小熊的实验工坊 · Playbook · Airing', 'The little workshop · Playbook · Airing')} description={t('可以玩的网页实验，也把制作方法留在这里。', 'Web experiments you can play with, with the making-of left open.')} lang={lang} persistentTheme hreflang={{zh:'/playbook/',en:'/en/playbook/'}}>
+  <main class="workshop-page">
+    <a class="workshop-skip" href="#workshop-directory">{t('直接看展室目录', 'Skip to the exhibits')}</a>
+    <header class="workshop-header">
+      <a class="workshop-brand" href="/" aria-label={t('返回首页', 'Back home')}>a<span>.</span></a>
+      <span class="workshop-wordmark">PLAYBOOK</span>
+      <nav aria-label={t('页面导航', 'Page navigation')}><a href={`${prefix}/notes/`}>{t('笔记', 'Notes')}</a><a href={en?'/playbook/':'/en/playbook/'} lang={en?'zh':'en'}>{en?'中文':'EN'}</a></nav>
+    </header>
+    <div class="workshop-intro"><h1>{t('小熊的实验工坊', 'The little workshop')}</h1><p>{t('可以玩的网页实验，也把制作方法留在这里。', 'Web experiments you can play with, with the making-of left open.')}</p></div>
+    <playbook-workshop data-lang={lang} data-ready="false">
+      <section class="workshop-stage" data-stage aria-label={t('微缩工坊：选择一张展台靠近看看', 'The miniature workshop: choose an exhibit to look closer')}>
+        <img class="workshop-poster workshop-poster-light" src="/playbook/workshop-light.webp" width="1440" height="800" alt={t('打开屋顶的小工坊，左边是小熊的书桌与长椅，右边是坐在书上的熊猫。', 'An open-roof workshop, with the bear’s desk and bench on the left and a panda on a book on the right.')} fetchpriority="high" />
+        <img class="workshop-poster workshop-poster-dark" src="/playbook/workshop-dark.webp" width="1440" height="800" alt="" aria-hidden="true" />
+        <canvas hidden aria-hidden="true"></canvas>
+        <div class="workshop-hotspots">
+          {exhibits.map(item=><button type="button" class="workshop-plaque" data-station={item.slug} data-anchor={item.slug} aria-pressed="false" aria-controls={`workshop-${item.slug}`}><span>{item.number}</span>{item.label}<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M4 12 12 4M4 4h8v8"/></svg></button>)}
+          <button class="workshop-secret" data-bird data-anchor="bird" aria-label={t('和窗台小鸟打招呼', 'Say hello to the bird')}></button>
+          <button class="workshop-secret" data-curtain data-anchor="curtain" aria-label={t('拉动窗帘', 'Draw the curtain')} aria-pressed="false"></button>
+        </div>
+      </section>
+      <div class="workshop-tools"><span class="workshop-hint-live">{t('点一张展台，靠近看看。', 'Choose a little world to look closer.')}</span><span class="workshop-hint-static">{t('从下面选一间展室，进去看看。', 'Choose an exhibit below to step inside.')}</span><div><button type="button" data-overview hidden>{t('环顾工坊', 'Look around')}</button><button type="button" data-pause aria-pressed="false">{t('暂停动态', 'Pause motion')}</button></div></div>
+      <div class="workshop-preview" aria-live="polite">
+        {exhibits.map(item=><section id={`workshop-${item.slug}`} data-description={item.slug} hidden aria-label={item.title}><div><h2>{item.title}</h2><p>{item.detail}</p></div><a href={`${prefix}/playbook/${item.slug}/`}>{t('进入展室', 'Step inside')} <span aria-hidden="true">↗</span></a></section>)}
+      </div>
+      <nav class="workshop-directory" id="workshop-directory" data-directory aria-label={t('展室目录', 'Exhibit directory')}>
+        {exhibits.map(item=><article class="workshop-entry" data-entry={item.slug}><span class="workshop-number">{item.number}</span><div><h2><a href={`${prefix}/playbook/${item.slug}/`}>{item.title}</a></h2><a class="workshop-enter" href={`${prefix}/playbook/${item.slug}/`}>{t('进入展室', 'Step inside')} <span aria-hidden="true">↗</span></a></div><p>{item.description}</p></article>)}
+      </nav>
+    </playbook-workshop>
+    <footer class="workshop-footer"><span></span><p>{t('2 间展室 · 持续添置中', '2 exhibits · Room for more')}</p><span></span></footer>
+  </main>
+</BaseLayout>
+<script>import './workshop/controller';</script>
