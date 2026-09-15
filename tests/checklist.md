@@ -1855,3 +1855,9 @@
 - [ ] Bird hop and curtains respond; pause/resume, hidden-tab/offscreen sleep, reduced-motion stills and phone scrolling/taps work.
 - [ ] NoJS, WebGL/context loss, atlas or module failure: real room poster and native directory links remain available; no invisible focus trap.
 - [ ] Workshop theme control stays beside header navigation and never overlaps exhibit entry links in selected phone states (390px touch); header links remain separate tap targets.
+
+### Homepage bear analytics
+- [ ] Real homepage only: header/footer50% visible for1s each emit one view; scroll away/hidden tab before1s cancels; scrolling back after exposure does not duplicate.
+- [ ] Pointer/touch/keyboard interactions emit first engage once and each click with correct object; fast click orders view→engage→click; synthetic clicks and automatic responses emit no clicks.
+- [ ] Header head/mug/laptop/plant/lamp/book/letter/camera/window/bird and footer bear/book/mailbox/bird map correctly; previews and subscription remain usable.
+- [ ] Playbook, scene/preview queries, local/Tailscale do not emit bear events; tracker delayed/blocked/failed does not break controls or create duplicate counters. QA requests intercepted, not sent to business-event metrics.
