@@ -1861,3 +1861,7 @@
 - [ ] Pointer/touch/keyboard interactions emit first engage once and each click with correct object; fast click orders view→engage→click; synthetic clicks and automatic responses emit no clicks.
 - [ ] Header head/mug/laptop/plant/lamp/book/letter/camera/window/bird and footer bear/book/mailbox/bird map correctly; previews and subscription remain usable.
 - [ ] Playbook, scene/preview queries, local/Tailscale do not emit bear events; tracker delayed/blocked/failed does not break controls or create duplicate counters. QA requests intercepted, not sent to business-event metrics.
+
+### Reading book orientation
+- [ ] Watch the complete reading entry, held page-turn loop and exit to typing/sip: green outer covers face the viewer throughout; inner pages never become an outward-facing spread; the book is fully put away before the next action.
+- [ ] At 375/768/1280px and both themes, tap the visible green cover to open its preview, dismiss it, and tap the laptop/mug to switch action. Reduced motion keeps a correctly oriented still; the desk, lamp and other props remain aligned.

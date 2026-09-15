@@ -3,12 +3,14 @@ import { mkdir, readdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const [source, destination, batch = 'v2'] = process.argv.slice(2);
-if (!source || !destination || !['v2', 'v3'].includes(batch)) {
-  console.error('Usage: node scripts/bear-study/build-daily.mjs <source-directory> <public-output-directory> [v2|v3]');
+if (!source || !destination || !['v2', 'v3', 'v10'].includes(batch)) {
+  console.error('Usage: node scripts/bear-study/build-daily.mjs <source-directory> <public-output-directory> [v2|v3|v10]');
   process.exit(1);
 }
 const width = 464, height = 272, cellWidth = 232, cellHeight = 136, columns = 10;
-const treatments = batch === 'v3' ? {
+const treatments = batch === 'v10' ? {
+  reading: { start: 12, end: 174, step: 1, holdStart: 42, holdEnd: 114, still: 48 },
+} : batch === 'v3' ? {
   music: { start: 18, end: 174, step: 1, holdStart: 44, holdEnd: 84, still: 66 },
   stretch: { start: 24, end: 160, step: 2, holdStart: 0, holdEnd: 67, still: 36 },
   water: { start: 24, end: 174, step: 2, holdStart: 0, holdEnd: 74, still: 36 },
@@ -20,7 +22,7 @@ const treatments = batch === 'v3' ? {
   drink: { start: 18, end: 174, step: 2, holdStart: 0, holdEnd: 77, still: 32 },
 };
 const typing = JSON.parse(await readFile(new URL('../../src/assets/bear-study/typing.json', import.meta.url), 'utf8'));
-const clips = batch === 'v3'
+const clips = batch !== 'v2'
   ? JSON.parse(await readFile(new URL('../../src/assets/bear-study/daily.json', import.meta.url), 'utf8'))
   : { typing: { ...typing, holdStart: 0, holdEnd: typing.frameCount - 1, still: 0, exitFrames: [24, 113, 139] } };
 const base = await sharp(path.join(source, '../h3-idle-v1/raw/0030.png')).removeAlpha().raw().toBuffer();

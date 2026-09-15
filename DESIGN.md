@@ -26,6 +26,14 @@ The sleep exit is the authored waking action. Schedule changes
 only after 45–90 seconds of visible playback, biased to sleep at 23:00–07:00
 Asia/Singapore. This is the mascot's fictional routine, not live author presence.
 
+Reading V10 corrects the book's geometry throughout entry, page turn and exit:
+the sage exterior and spine face the visitor, the inside pages face the bear.
+A single turning leaf may lift above the book, but stays behind the green cover;
+the inner spread must never replace the viewer-facing exterior. Preserve the
+fixed camera and complete book-put-away action. The book sits beside and behind
+the laptop; its invisible preview target spans 33–56% of the stage width to match
+the visible cover, without moving the laptop's central click target.
+
 The reaction heart uses `--bear-heart: #d89987`, sampled from the bear's warm cheek
 palette. Head, mug, laptop and plant are semantic transparent buttons with at least 44px targets;
 Keyboard focus uses the existing accent token; hover does not draw a button outline. A head pat emits one
