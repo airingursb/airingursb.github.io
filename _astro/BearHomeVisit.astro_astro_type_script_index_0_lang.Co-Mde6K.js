@@ -1,0 +1,1 @@
+import{B as e}from"./content-preview.C5fvuk_I.js";import{B as t}from"./bird.k1hxqlRi.js";customElements.get("bear-content-preview")||customElements.define("bear-content-preview",e);customElements.get("bear-bird")||customElements.define("bear-bird",t);
