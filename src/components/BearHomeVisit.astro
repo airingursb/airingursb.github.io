@@ -1,0 +1,80 @@
+---
+import BearHomeStudy from './BearHomeStudy.astro';
+import WindScene from './bear-stories/wind/WindScene.astro';
+---
+<div class="bear-home-visit" data-bear-visit>
+  <div class="bear-visit-stage" data-visit-stage></div>
+  <template data-visit-template="daily"><BearHomeStudy /></template>
+  <template data-visit-template="wind"><WindScene /></template>
+  <noscript><BearHomeStudy /></noscript>
+  <script is:inline>
+    (() => {
+      const root = document.currentScript?.parentElement;
+      if (!(root instanceof HTMLElement)) return;
+      const forced = new URLSearchParams(location.search).get('bear');
+      const key = 'bear-home-visit-v1';
+      const now = Date.now();
+      let scene = forced === 'daily' || forced === 'wind' ? forced : null;
+      if (!scene) {
+        try {
+          const saved = JSON.parse(sessionStorage.getItem(key) || 'null');
+          if (saved && (saved.scene === 'daily' || saved.scene === 'wind') &&
+              typeof saved.lastSeen === 'number' && now >= saved.lastSeen && now - saved.lastSeen < 30 * 60 * 1000) {
+            scene = saved.scene;
+          }
+        } catch (error) {
+          if (!(error instanceof DOMException || error instanceof SyntaxError)) throw error;
+        }
+        scene ||= Math.random() < .1 ? 'wind' : 'daily';
+        try {
+          sessionStorage.setItem(key, JSON.stringify({ scene, lastSeen: now }));
+        } catch (error) {
+          if (!(error instanceof DOMException)) throw error;
+        }
+      }
+      const template = root.querySelector(`template[data-visit-template="${scene}"]`);
+      const stage = root.querySelector('[data-visit-stage]');
+      if (!(template instanceof HTMLTemplateElement) || !(stage instanceof HTMLElement)) return;
+      stage.append(template.content.cloneNode(true));
+      root.dataset.scene = scene;
+      const language = () => {
+        const bear = stage.querySelector('bear-wind');
+        if (bear instanceof HTMLElement) bear.dataset.lang = document.documentElement.lang === 'en' ? 'en' : 'zh';
+      };
+      language();
+      const observer = new MutationObserver(language);
+      observer.observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+      window.addEventListener('pagehide', event => { if (!event.persisted) observer.disconnect(); }, { once: true });
+    })();
+  </script>
+</div>
+<script>
+  import { BearContentPreview } from './bear-study/content-preview';
+  import { BearBird } from './bear-study/bird';
+  // Astro emits shared component scripts at their first use, which is inside the daily template.
+  // Keep footer behaviors registered even when that template stays inert.
+  if (!customElements.get('bear-content-preview')) customElements.define('bear-content-preview', BearContentPreview);
+  if (!customElements.get('bear-bird')) customElements.define('bear-bird', BearBird);
+</script>
+<style>
+  .bear-home-visit {
+    --visit-width: 232px;
+    display: block;
+    position: relative;
+    width: var(--visit-width);
+    height: calc(var(--visit-width) * 160 / 232 + 40px);
+    margin-inline: auto;
+    line-height: 0;
+  }
+  .bear-visit-stage { position: relative; width: 100%; height: 100%; }
+  .bear-home-visit:not([data-scene]) .bear-visit-stage { visibility: hidden; }
+  .bear-home-visit :global(bear-wind) {
+    --wind-width: calc(var(--visit-width) * 320 / 232);
+    position: absolute;
+    left: 50%;
+    top: calc(var(--visit-width) * -14 / 232);
+    transform: translateX(-50%);
+  }
+  .bear-home-visit > :global(noscript) { position: absolute; inset: 0; }
+  @media (max-width: 600px) { .bear-home-visit { --visit-width: 200px; } }
+</style>

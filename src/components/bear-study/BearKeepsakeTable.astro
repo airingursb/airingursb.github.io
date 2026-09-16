@@ -1,0 +1,67 @@
+---
+import BearLifeProps from './BearLifeProps.astro';
+import BearContentPreview from './BearContentPreview.astro';
+import { getDeskContent } from './desk-content';
+import './life.css';
+interface Props { lang?: 'zh' | 'en' }
+const { lang = 'zh' } = Astro.props;
+const { generatedAt, post, photo, postPreview, photoPreview } = await getDeskContent();
+---
+<bear-keepsake-table data-bear-preview-scope data-generated-at={generatedAt}>
+  <BearLifeProps post={post} photo={photo} tableOnly />
+  <BearContentPreview idPrefix="wind-desk" post={postPreview} photo={photoPreview} lang={lang} />
+</bear-keepsake-table>
+<script>
+  import { freshContent } from './life';
+
+  class BearKeepsakeTable extends HTMLElement {
+    private timer = 0;
+    private language: MutationObserver | null = null;
+
+    connectedCallback() {
+      this.refresh();
+      this.timer = window.setInterval(this.refresh, 30_000);
+      document.addEventListener('visibilitychange', this.refresh);
+      this.language = new MutationObserver(this.refresh);
+      const scene = this.closest('bear-wind');
+      if (scene) this.language.observe(scene, { attributes: true, attributeFilter: ['data-lang'] });
+    }
+
+    private refresh = () => {
+      const en = this.closest('bear-wind')?.getAttribute('data-lang') === 'en';
+      for (const link of this.querySelectorAll<HTMLAnchorElement>('[data-keepsake]')) {
+        const title = link.dataset.title || '';
+        const content = { href: link.href, title, publishedAt: Number(link.dataset.publishedAt) };
+        link.hidden = freshContent(content, Number(this.dataset.generatedAt), Date.now()) === null;
+        const prefix = link.dataset.keepsake === 'letter'
+          ? (en ? 'Preview the latest article: ' : '预览新文章：')
+          : (en ? 'Preview the latest travel photo: ' : '预览新旅行照片：');
+        link.ariaLabel = prefix + title;
+      }
+    };
+
+    disconnectedCallback() {
+      clearInterval(this.timer);
+      document.removeEventListener('visibilitychange', this.refresh);
+      this.language?.disconnect();
+    }
+  }
+
+  if (!customElements.get('bear-keepsake-table')) customElements.define('bear-keepsake-table', BearKeepsakeTable);
+</script>
+<style is:global>
+  bear-wind bear-keepsake-table {
+    --bear-width: calc(var(--wind-width) * 232 / 320);
+    position: absolute;
+    left: 50%;
+    top: calc(var(--wind-width) * 14 / 320);
+    width: var(--bear-width);
+    height: calc(var(--bear-width) * 160 / 232);
+    transform: translateX(-50%);
+    padding: 0;
+    pointer-events: none;
+    z-index: 2;
+  }
+  bear-keepsake-table .bear-keepsake,
+  bear-keepsake-table bear-content-preview { pointer-events: auto; }
+</style>

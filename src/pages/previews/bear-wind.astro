@@ -1,0 +1,66 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import WindScene from '../../components/bear-stories/wind/WindScene.astro';
+import { getCollection } from 'astro:content';
+const lang = Astro.url.pathname.startsWith('/en/') ? 'en' : 'zh';
+const en = lang === 'en';
+const prefix = en ? '/en' : '';
+const isPreview = Astro.url.pathname.includes('/previews/');
+const route = isPreview ? '/previews/bear-wind/' : '/playbook/desk-wind/';
+const storiesRoute = isPreview ? '/previews/bear-stories/' : '/playbook/bear-stories/';
+const articles = (await getCollection(en ? 'postsEn' : 'posts', ({ data }) => !data.draft))
+  .sort((left, right) => right.data.date.getTime() - left.data.date.getTime()).slice(0, 3);
+---
+<BaseLayout title={`${en ? 'A gust at the desk' : '窗边一阵风'} · Airing`} description={en ? 'A fluttering page, a wobbling cup, and a little help from you.' : '一页翻起的纸，一只摇晃的杯子，和你伸出的一点援手。'} lang={lang} noindex={isPreview} hreflang={{ zh: route, en: `/en${route}` }}>
+  <div class="wind-preview">
+    <SiteHeader lang={lang}>
+      <Fragment slot="meta">
+        <a href={`${prefix}${storiesRoute}`}>{en ? 'Four little stories' : '四个小故事'}</a>
+        <a href={`${en ? '' : '/en'}${route}`} lang={en ? 'zh' : 'en'}>{en ? '中文' : 'English'}</a>
+      </Fragment>
+    </SiteHeader>
+    <main class="wind-page">
+      <header class="wind-review">
+        <p>01 / {isPreview ? (en ? 'ACCEPTANCE PREVIEW' : '验收预览') : (en ? 'AT THE DESK' : '书桌边')}</p>
+        <h1>{en ? 'A gust at the desk' : '窗边一阵风'}</h1>
+        <p>{en ? 'Try the paperweight or the window. Leave the bear alone once, too.' : '点点纸镇或窗户，也可以等小熊自己想办法。'}</p>
+        {isPreview && <p><a href="/previews/bear-home/?bear=wind">{en ? 'See it on the full homepage ↗' : '放回完整首页看看 ↗'}</a> · {en ? 'One desk for each visit; the rest of the homepage stays in place.' : '每次来访留下一张书桌，首页其余布局保持原样。'}</p>}
+      </header>
+      <section class="wind-home" aria-label={en ? 'The bear at its desk' : '小熊的书桌'}>
+        <WindScene lang={lang} />
+        <p class="wind-location">SINGAPORE <span aria-hidden="true">·</span> {en ? 'A little room for everyday life' : '日常生活的一小角'}</p>
+        <p class="wind-intro">{en ? 'Making things. Keeping notes.' : '做些东西，记些日常。'}</p>
+      </section>
+      <section class="wind-reading" aria-label={en ? 'Recent writing' : '最近写作'}>
+        <div class="wind-section-label"><span>{en ? 'RECENT WRITING' : '最近写作'}</span><a href={`${prefix}/archive/`}>{en ? 'Archive ↗' : '归档 ↗'}</a></div>
+        {articles.map(article => <a class="wind-article" href={`${prefix}/posts/${article.id}/`}><time datetime={article.data.date.toISOString()}>{article.data.date.toISOString().slice(0, 10)}</time><span>{article.data.title}</span><span aria-hidden="true">↗</span></a>)}
+      </section>
+    </main>
+  </div>
+</BaseLayout>
+<style>
+  :global(body:has(.wind-preview)) { display: block; padding: 0; }
+  .wind-preview { max-width: 1200px; margin: 0 auto; }
+  .wind-preview a { color: var(--c-text-muted); text-underline-offset: 4px; }
+  .wind-page { max-width: 768px; margin: 0 auto; padding: 40px 48px 80px; }
+  .wind-review { text-align: center; color: var(--c-text-muted); }
+  .wind-review p { margin: 0; font: 400 12px/1.8 var(--font-mono, monospace); text-wrap: pretty; }
+  h1 { margin: 8px 0; color: var(--c-text); font: 600 24px/1.5 ui-serif, 'Songti SC', Georgia, serif; }
+  .wind-home { display: flex; flex-direction: column; align-items: center; margin: 32px 0 40px; }
+  .wind-location { font: 400 11px/1.8 var(--font-mono, monospace); color: var(--c-text-muted); margin: 20px 0 0; }
+  .wind-location span { margin: 0 8px; }
+  .wind-intro { font: 400 14px/1.8 var(--font-mono, monospace); margin: 8px 0 0; color: var(--c-text); }
+  .wind-section-label { border-bottom: 1px solid var(--c-border); padding-bottom: 12px; display: flex; align-items: center; justify-content: space-between; font: 500 12px/1.5 var(--font-mono, monospace); color: var(--c-text-muted); }
+  .wind-section-label a { min-height: 44px; display: inline-flex; align-items: center; }
+  .wind-article { display: grid; grid-template-columns: 88px 1fr 12px; gap: 16px; padding: 20px 0; border-bottom: 1px solid var(--c-border); text-decoration: none; align-items: baseline; }
+  .wind-article time { font: 400 11px/1.5 var(--font-mono, monospace); }
+  .wind-article span { font-size: 14px; line-height: 1.8; color: var(--c-text); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  @media (max-width: 720px) {
+    .wind-page { padding: 24px 20px 64px; }
+    .wind-home { margin: 24px 0 32px; }
+    .wind-article { grid-template-columns: 1fr 12px; gap: 4px 12px; }
+    .wind-article time { grid-column: 1 / -1; }
+  }
+</style>
