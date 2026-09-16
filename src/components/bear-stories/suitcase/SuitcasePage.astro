@@ -1,0 +1,54 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import SiteHeader from '../../SiteHeader.astro';
+import SuitcaseStory from './SuitcaseStory.astro';
+import { albumHref, albumName, albumPhotos, copy, type Language } from './content';
+import './page.css';
+
+interface Props { readonly lang?: Language; }
+const { lang = 'zh' } = Astro.props;
+const t = copy[lang];
+const prefix = lang === 'en' ? '/en' : '';
+const isPreview = Astro.url.pathname.includes('/previews/');
+const route = isPreview ? '/previews/bear-suitcase/' : '/photos/suitcase/';
+const storiesRoute = isPreview ? '/previews/bear-stories/' : '/playbook/bear-stories/';
+const covers = albumPhotos.slice(0, 6);
+---
+<BaseLayout title={`${t.title} · Airing`} description={isPreview ? t.description : t.intro} lang={lang} noindex={isPreview} persistentTheme hreflang={{ zh: route, en: `/en${route}` }}>
+  <div class="suitcase-page">
+    <SiteHeader lang={lang}>
+      <div slot="meta" class="suitcase-mast-meta">
+        <a href={`${prefix}${storiesRoute}`}>{t.back}</a>
+        <span class="suitcase-languages"><a href={route} lang="zh" aria-current={lang === 'zh' ? 'page' : undefined}>中文</a><span>/</span><a href={`/en${route}`} lang="en" aria-current={lang === 'en' ? 'page' : undefined}>EN</a></span>
+      </div>
+    </SiteHeader>
+    <main class="suitcase-main">
+      <div class="suitcase-page-heading">
+        <div><h1>{t.heading}</h1><p>{t.intro}</p></div>
+        <a href="/photos/" class="suitcase-all-photos">{lang === 'zh' ? '所有照片' : 'All photographs'} <span aria-hidden="true">↗</span></a>
+      </div>
+      <section class="suitcase-feature" aria-labelledby="suitcase-destination">
+        <SuitcaseStory lang={lang} />
+        <div class="suitcase-destination">
+          <p class="suitcase-kicker">2024.04 — 2024.05</p>
+          <h2 id="suitcase-destination">{t.destination}</h2>
+          <p>{albumPhotos.length} {t.count} <span aria-hidden="true">·</span> <a href={albumHref}>{t.album} <span aria-hidden="true">↗</span></a></p>
+        </div>
+      </section>
+      {isPreview && <aside class="suitcase-review" aria-label={t.preview}>
+        <span>{t.preview}</span><p>{t.instructions}</p>
+      </aside>}
+      <section class="suitcase-archive" aria-labelledby="suitcase-archive-title">
+        <div class="suitcase-archive-heading"><h2 id="suitcase-archive-title">{t.archive}</h2><a href={albumHref}>{albumName} <span aria-hidden="true">↗</span></a></div>
+        <ul class="suitcase-photo-strip">
+          {covers.map(photo => <li><a href={`/photos/${photo.slug}/`} aria-label={photo.title || photo.slug}>
+            <picture>
+              <source type="image/avif" srcset={photo.variants.thumb.avif} />
+              <img src={photo.variants.thumb.webp} width={photo.width} height={photo.height} loading="lazy" decoding="async" alt={photo.title || photo.slug} />
+            </picture>
+          </a></li>)}
+        </ul>
+      </section>
+    </main>
+  </div>
+</BaseLayout>

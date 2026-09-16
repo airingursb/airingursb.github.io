@@ -1,0 +1,51 @@
+---
+import { albumHref, albumName, albumPhotos, copy, formatDate, memories, type Language } from './content';
+import './story.css';
+interface Props { readonly lang: Language; }
+const { lang } = Astro.props;
+const t = copy[lang];
+---
+<div class="suitcase-story" data-suitcase data-lang={lang} data-state="closed">
+  <button class="suitcase-entry" type="button" data-case-open aria-label={t.open} aria-haspopup="dialog" aria-controls="suitcase-dialog" aria-expanded="false">
+    <img src="/bear-stories/suitcase/closed-poster.png" width="480" height="270" alt="" fetchpriority="high" />
+  </button>
+  <dialog class="suitcase-dialog" id="suitcase-dialog" aria-labelledby="suitcase-dialog-title" data-case-dialog>
+    <div class="suitcase-dialog-content">
+      <header class="suitcase-dialog-header">
+        <div><p class="suitcase-kicker">{albumName}</p><h2 id="suitcase-dialog-title">{t.title}</h2></div>
+        <button class="suitcase-dismiss" type="button" data-case-dismiss aria-label={t.close} autofocus>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m4 4 8 8m0-8-8 8" /></svg>
+        </button>
+      </header>
+      <div class="suitcase-stage" data-case-stage>
+        <img class="suitcase-still" data-case-still src="/bear-stories/suitcase/closed-poster.png" width="480" height="270" alt="" />
+        <canvas data-case-canvas width="480" height="270" aria-hidden="true"></canvas>
+        <div class="suitcase-objects" data-case-objects hidden>
+          {memories.map(memory => <button class={`suitcase-object suitcase-object-${memory.object}`} type="button" data-memory={memory.slug} aria-label={memory[lang]} aria-controls={`memory-${memory.slug}`} aria-pressed="false"><span aria-hidden="true"></span></button>)}
+        </div>
+      </div>
+      <p class="suitcase-scene-note" data-case-note>{t.hint}</p>
+      <div class="suitcase-memories" data-case-memories>
+        {memories.map(({ photo }) => <figure class="suitcase-memory" id={`memory-${photo.slug}`} data-photo={photo.slug} hidden>
+          <a href={`/photos/${photo.slug}/`} class="suitcase-real-photo" aria-label={`${t.photo}: ${photo.title || photo.slug}`}>
+            <picture><source type="image/avif" srcset={photo.variants.medium.avif} /><img src={photo.variants.medium.webp} width={photo.width} height={photo.height} loading="lazy" decoding="async" alt={photo.title || photo.slug} /></picture>
+            <span class="suitcase-photo-failed">{t.unavailable}</span>
+          </a>
+          <figcaption>
+            <div><h3>{photo.title || photo.slug}</h3><p>{photo.place ? `${photo.place.city}, ${photo.place.country}` : albumName}</p><time datetime={photo.takenAt || undefined}>{formatDate(photo.takenAt)}</time></div>
+            <div class="suitcase-photo-meta"><span>{photo.exif.camera}</span><span>{[photo.exif.focalLength, photo.exif.aperture, photo.exif.shutter, photo.exif.iso ? `ISO ${photo.exif.iso}` : ''].filter(Boolean).join(' · ')}</span><a href={`/photos/${photo.slug}/`}>{t.photo} <span aria-hidden="true">↗</span></a></div>
+          </figcaption>
+        </figure>)}
+      </div>
+      <footer class="suitcase-dialog-footer">
+        <a href={albumHref}>{t.album} <span class="suitcase-album-count">({albumPhotos.length})</span> <span aria-hidden="true">↗</span></a>
+        <button class="suitcase-pack" type="button" data-case-pack hidden>{t.pack}</button>
+      </footer>
+      <p class="suitcase-sr-only" role="status" aria-live="polite" data-case-status></p>
+    </div>
+  </dialog>
+</div>
+<script>
+  import { initialiseSuitcase } from './story';
+  document.querySelectorAll<HTMLElement>('[data-suitcase]').forEach(initialiseSuitcase);
+</script>
