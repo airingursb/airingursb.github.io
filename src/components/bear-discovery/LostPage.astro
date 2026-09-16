@@ -1,0 +1,55 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../SiteHeader.astro';
+import BearSprite from './BearSprite.astro';
+interface Props { lang?: 'zh' | 'en'; }
+const { lang = 'zh' } = Astro.props;
+const en = lang === 'en';
+const copy = en ? {
+  title: 'A little off the path.', description: 'This page is missing. A good story is still nearby.',
+  home: 'Back home', archive: 'Explore the archive', bear: 'Help the bear read its map',
+} : {
+  title: '好像，走岔了一点。', description: '这一页不在地图上，好故事还在别处等你。',
+  home: '一起回家', archive: '去文章归档', bear: '帮小熊看看地图',
+};
+---
+<BaseLayout title={`404 · ${copy.title} | Airing`} lang={lang} noindex>
+  <div class="lost-shell">
+    <SiteHeader lang={lang}>
+      <Fragment slot="meta"><span>404</span><a class="lost-locale-link" href={en ? '/404.html' : '/en/404/'} lang={en ? 'zh' : 'en'}>{en ? '中文' : 'English'}</a></Fragment>
+    </SiteHeader>
+    <main class="lost-page">
+      <p class="lost-code">404</p>
+      <button class="lost-bear" aria-label={copy.bear}>
+        <BearSprite kind="lost" autoplay />
+      </button>
+      <h1>{copy.title}</h1>
+      <p class="lost-desc">{copy.description}</p>
+      <nav class="lost-actions" aria-label={en ? 'Find your way' : '找回方向'}>
+        <a class="lost-home" href="/"><span aria-hidden="true">←</span>{copy.home}</a>
+        <a href={en ? '/en/archive/' : '/archive/'}>{copy.archive}<span aria-hidden="true">↗</span></a>
+      </nav>
+    </main>
+  </div>
+</BaseLayout>
+<script>
+  document.querySelector('.lost-bear')?.addEventListener('click', event => {
+    const button = event.currentTarget;
+    if (button instanceof HTMLElement) button.querySelector('bear-sprite')?.dispatchEvent(new Event('bear:play'));
+  });
+</script>
+<style>
+  :global(body:has(.lost-shell)) { display: block; padding: 0; }
+  .lost-shell { width: 100%; max-width: 1200px; margin: 0 auto; }
+  .lost-page { min-height: 72svh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 40px 20px; }
+  .lost-code { font: 500 12px/1.5 var(--font-mono, monospace); letter-spacing: .24em; color: var(--c-text-muted); margin: 0 0 8px; }
+  .lost-bear { width: 192px; border: 0; padding: 0; margin: 0 0 16px; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  h1 { font: 600 clamp(24px, 4vw, 36px)/1.5 ui-serif, 'Songti SC', Georgia, serif; color: var(--c-text); margin: 0 0 12px; text-wrap: balance; }
+  .lost-desc { color: var(--c-text-muted); font-size: 14px; line-height: 1.8; margin: 0 0 24px; text-wrap: pretty; }
+  .lost-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 24px; }
+  .lost-actions a { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; color: var(--c-text); font-size: 14px; text-underline-offset: 4px; }
+  .lost-actions .lost-home { border-bottom: 1px solid var(--c-text-muted); text-decoration: none; }
+  .lost-locale-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-text-muted); font-size: 12px; text-underline-offset: 4px; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  @media(max-width: 720px) { .lost-page { min-height: 68svh; } .lost-bear { width: 160px; } }
+</style>
