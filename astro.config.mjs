@@ -42,6 +42,9 @@ export default defineConfig({
       'astro:config:setup': ({ injectRoute }) => {
         // Share the page entry so Astro includes its styles in both static routes.
         injectRoute({ pattern: '/previews/bear-home/', entrypoint: './src/pages/index.astro' });
+        injectRoute({ pattern: '/previews/photo-darkroom/', entrypoint: './src/pages/photos.astro' });
+        injectRoute({ pattern: '/previews/living-cover/', entrypoint: './src/pages/blog.astro' });
+        injectRoute({ pattern: '/previews/lost-bear/en/', entrypoint: './src/pages/previews/lost-bear.astro' });
       },
     },
   }],

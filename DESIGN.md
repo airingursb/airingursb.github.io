@@ -235,3 +235,51 @@ The Reading depth strategy is **borders-only**. Thin rules express grouping; the
 ## Window bird visit timing
 
 First visits use 20–40 seconds of cumulative visible daytime. Scrolling before arrival pauses earned time; background tabs pause pending and active visits. Leaving the viewport during an active visit releases the shared bird with the existing 3–5 minute cooldown. Fresh dry weather, open curtains and reduced-motion rules still apply. Consecutive Singapore calendar-day visits in the same browser shorten waiting to 10–20 seconds, retained on reload for that day. Store dates locally only; unavailable storage falls back to the ordinary wait. The authoring proxy alone marks birds with `data-bird-preview` for a three-second first wait and never writes visit history. No captions or new controls.
+
+## Photo motion previews (September 2026)
+
+The original review aliases reuse the real Photos and Blog pages: `/previews/photo-darkroom/`
+and `/previews/living-cover/`. Both aliases are noindex; approved features are now also enabled on normal pages.
+The darkroom entry sits beside the Photos heading with a 44px minimum target and
+56px photographer bear. Its native modal follows the beui center-morph-modal
+presence pattern (center transform origin, eased reveal, focus return), adapted to
+native dialog and CSS with no React/Motion dependency. Use site neutral surface,
+border and text tokens; the print alone uses `--print-paper: #f3efe3`,
+`--print-ink: #38443a`. Spacing scale 8/16/24/32px. Opening 240ms, print turn 540ms,
+photo developing 3200ms, easing cubic-bezier(.2,.8,.2,1). The real Shanghai photo
+and its catalog metadata remain DOM; the H3 bear is a small transparent sprite,
+not an image of UI. No generated location/date or added story. Close/Escape return
+focus; flip remains available with reduced motion; failures show a readable state.
+
+The living cover uses the existing monthly-36 artwork. Animate only sky above the
+architecture, composed offline over the original cover so building/signs/people
+remain exact. Keep cover size, title and link semantics. Desktop hover/focus plays
+one quiet cloud cycle. On touch devices, a short visible dwell plays once; tapping
+still opens the article. Pause offscreen/hidden, reduced motion stays on original.
+The video is muted, lazy loaded, without controls. Cover transition snapshots use
+the original still by hiding the motion overlay on navigation. No extra badges,
+play buttons, audio or looping across the whole grid.
+
+## Lost-page bear
+
+The approved map-bearing bear is live at the actual 404 page and /en/404/.
+The rejected article-picker experiment has been removed, including its routes,
+component and public art. The 404 scene keeps a compact 144px visible sprite,
+subdued mono 404, localized heading and native home/archive links. The first
+reaction plays once in view; clicking replays it. English/Chinese links go to
+the real localized error-page routes. A shared LostPage component owns layout,
+copy and the same page-width SiteHeader, with no homepage flex-body inheritance.
+Use existing surface/text/border/accent tokens, 8/16/24/32px spacing, 44px
+interactive targets and visible keyboard focus. No captions, sound or controls.
+
+The H3 atlas is lazy-loaded; elapsed playback pauses offscreen/hidden. Reduced
+motion and media failure preserve the PNG poster; navigation works without JS.
+Check every ear/map/hand extreme on dark and light backgrounds.
+
+## Approved motion rollout
+
+The photo darkroom is enabled beside the /photos/ heading, maintaining its
+existing English-only Photos UI and real photograph metadata. The small cloud
+moment is enabled on the monthly-36 cover in both /blog/ and /en/blog/. Approved
+preview aliases remain noindex; production listing pages remain indexable.
+Preserve the original cover-to-article transition and native Back navigation.

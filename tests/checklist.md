@@ -1865,3 +1865,14 @@
 ### Reading book orientation
 - [ ] Watch the complete reading entry, held page-turn loop and exit to typing/sip: green outer covers face the viewer throughout; inner pages never become an outward-facing spread; the book is fully put away before the next action.
 - [ ] At 375/768/1280px and both themes, tap the visible green cover to open its preview, dismiss it, and tap the laptop/mug to switch action. Reduced motion keeps a correctly oriented still; the desk, lamp and other props remain aligned.
+
+## Published photo motion and lost-page bear
+
+- [ ] /photos/: compact camera-bear entry beside heading, unchanged grid at 375/768/1280 in light/dark; open, develop, flip, real photo link, close/Escape/outside click and focus return.
+- [ ] Darkroom reduced motion shows still; failed photo can be retried; photographer has clean alpha across all frames.
+- [ ] /blog/ and /en/blog/: monthly-36 sky moves on hover/focus or one touch dwell; original architecture and labels stay still; offscreen/reduced/failure preserve still.
+- [ ] Cover click and Back retain original article transition/scroll; native modified clicks work.
+- [ ] Unknown path returns HTTP404 with map bear; /en/404/ has complete English UI; locale/home/archive links work without waiting for animation and without JS.
+- [ ] Lost bear plays once on arrival, click replays, reduced/failure stays poster, offscreen/hidden pause, no clipped ears/map/hands or white fringe.
+- [ ] No article-picker component, trigger, route or public assets remain. Old picker preview resolves to 404.
+- [ ] Normal photo/blog pages indexable; error pages and retained review aliases noindex.
