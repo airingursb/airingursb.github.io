@@ -4,7 +4,9 @@ import '../styles/photos.css';
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { siteStrings } from '../lib/i18n';
 import photosData from '../data/photos.json';
+import PhotoDarkroom from '../components/photo-motion/PhotoDarkroom.astro';
 
+const darkroomPreview = Astro.url.pathname === '/previews/photo-darkroom/';
 const s = siteStrings.en.photos;
 const photos = photosData as Array<any>;
 ---
@@ -13,14 +15,18 @@ const photos = photosData as Array<any>;
   title={`${s.title} · Airing`}
   description={s.desc}
   lang="en"
+  noindex={darkroomPreview}
 >
   <div class="photos-page">
     <SiteHeader lang="en" hasEnVersion={false} />
 
 
     <main class="photos-main">
-      <h1 class="photos-title">{s.title}</h1>
-      <p class="photos-desc">{s.desc}</p>
+      <div class="photos-heading">
+        <div><h1 class="photos-title">{s.title}</h1>
+        <p class="photos-desc">{s.desc}</p></div>
+        <PhotoDarkroom />
+      </div>
 
       <nav class="view-switcher" aria-label="Photo views">
         <span class="view-switcher-active">Grid</span>
@@ -63,6 +69,7 @@ const photos = photosData as Array<any>;
   </div>
 
   <style>
+    .photos-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
     /* Nav — matches site convention exactly (moments.astro / blog.astro) */
     /* Mobile dropdown is provided globally — see global.css and BaseLayout.astro */
 

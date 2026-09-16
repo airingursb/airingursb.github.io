@@ -1,0 +1,101 @@
+---
+import photos from '../../data/photos.json';
+const photo = photos.find(photo => photo.slug === '20260320-211256');
+if (!photo) throw new Error('Darkroom preview photograph is missing');
+const date = new Date(photo.takenAt).toLocaleDateString('en-GB', {
+  day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Shanghai',
+});
+---
+<photo-darkroom>
+  <button class="darkroom-entry" aria-haspopup="dialog" aria-label="Open the photo darkroom">
+    <img src="/photo-motion/photographer-poster.png" width="56" height="72" alt="" />
+    <span>Darkroom <span aria-hidden="true">↗</span></span>
+  </button>
+  <dialog class="darkroom-dialog" aria-labelledby="darkroom-title">
+    <header class="darkroom-heading">
+      <h2 id="darkroom-title">The darkroom</h2>
+      <button class="darkroom-close" aria-label="Close darkroom">×</button>
+    </header>
+    <div class="darkroom-stage">
+      <button class="darkroom-print" aria-label="Show the back of the photograph" aria-pressed="false" disabled>
+        <span class="print-inner">
+          <span class="print-front">
+            <span class="print-image"><img data-photo src={photo.variants.medium.webp} alt={photo.title} width="1200" height="1600" decoding="async" /></span>
+            <span class="print-caption">Shanghai, after dark.</span>
+          </span>
+          <span class="print-back" aria-hidden="true">
+            <span class="print-number">FROM THE PHOTO ARCHIVE / 02</span>
+            <span class="print-location">{photo.title}</span>
+            <span class="print-place">{photo.place?.city}, {photo.place?.country}</span>
+            <time datetime={photo.takenAt}>{date}</time>
+            <span class="print-signature">Airing</span>
+          </span>
+        </span>
+      </button>
+      <img class="darkroom-bear" src="/photo-motion/photographer-poster.png" width="72" height="96" alt="" />
+    </div>
+    <footer class="darkroom-actions">
+      <button class="darkroom-flip" disabled>Turn over <span aria-hidden="true">↶</span></button>
+      <a href={`/photos/${photo.slug}/`}>View photograph <span aria-hidden="true">↗</span></a>
+    </footer>
+    <p class="darkroom-status" role="status">Developing your photograph…</p>
+  </dialog>
+</photo-darkroom>
+<script>
+  import './darkroom';
+</script>
+<style>
+  photo-darkroom {
+    --print-paper: #f3efe3; --print-ink: #38443a;
+    --print-ease: cubic-bezier(.2,.8,.2,1); --print-turn: 540ms;
+    --print-reveal: 3200ms; display: block; flex: 0 0 auto;
+  }
+  button, a { -webkit-tap-highlight-color: transparent; }
+  button { font: inherit; cursor: pointer; }
+  button:focus-visible, a:focus-visible { outline: 2px solid var(--c-accent, #4c9875); outline-offset: 4px; }
+  .darkroom-entry { border: 0; background: none; color: var(--c-text-dim); display: flex; align-items: center; gap: 8px; padding: 8px 0 8px 8px; font: 11px ui-monospace, monospace; }
+  .darkroom-entry img { object-fit: contain; image-rendering: pixelated; }
+  .darkroom-entry:hover { color: var(--c-text); }
+  .darkroom-dialog { margin: auto; width: min(480px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); box-sizing: border-box; overflow: auto; padding: 16px 24px 24px; border: 1px solid var(--c-border); border-radius: 12px; background: var(--c-bg); color: var(--c-text); }
+  .darkroom-dialog::backdrop { background: rgb(10 14 17 / .72); backdrop-filter: blur(5px); }
+  .darkroom-dialog[open] { animation: room-open 240ms var(--print-ease) both; }
+  .darkroom-heading { display: flex; justify-content: space-between; align-items: center; }
+  .darkroom-heading h2 { margin: 0; font: 11px ui-monospace, monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--c-text-dim); }
+  .darkroom-close { width: 44px; height: 44px; border: 0; background: none; color: var(--c-text-dim); font-size: 24px; }
+  .darkroom-stage { position: relative; margin: 16px 0 24px; display: grid; justify-items: center; padding-bottom: 12px; }
+  .darkroom-print { width: min(256px, 70vw); aspect-ratio: 3 / 4.2; padding: 0; border: 0; background: transparent; perspective: 1100px; color: var(--print-ink); }
+  .darkroom-print:disabled { cursor: wait; }
+  .print-inner { position: relative; width: 100%; height: 100%; display: block; transform-style: preserve-3d; transition: transform var(--print-turn) var(--print-ease); transform: rotate(-3deg); }
+  .darkroom-print[aria-pressed="true"] .print-inner { transform: rotate(2deg) rotateY(180deg); }
+  .print-front, .print-back { position: absolute; inset: 0; box-sizing: border-box; padding: 12px 12px 0; background: var(--print-paper); border-radius: 1px; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 8px 22px rgb(0 0 0 / .2); }
+  .print-front { display: flex; flex-direction: column; }
+  .print-image { display: block; flex: 1; min-height: 0; background: #dbd9cf; overflow: hidden; }
+  .print-image img { display: block; width: 100%; height: 100%; object-fit: cover; opacity: 0; filter: grayscale(1) contrast(.4); }
+  .darkroom-dialog[data-state="developing"] .print-image img { animation: develop var(--print-reveal) ease-in-out 300ms both; }
+  .darkroom-dialog[data-state="ready"] .print-image img { opacity: 1; filter: none; }
+  .print-caption { display: grid; min-height: 44px; align-content: center; font: italic 14px Georgia, serif; }
+  .print-back { transform: rotateY(180deg); padding: 24px; text-align: left; display: flex; flex-direction: column; justify-content: center; }
+  .print-number { font: 9px/1.8 ui-monospace, monospace; letter-spacing: .08em; opacity: .65; margin-bottom: auto; }
+  .print-location { font-size: 24px; line-height: 1.5; }
+  .print-place, time { font: 11px/1.9 ui-monospace, monospace; }
+  time { margin-top: 16px; }
+  .print-signature { margin-top: auto; padding-top: 24px; text-align: right; font: italic 24px Georgia, serif; }
+  .darkroom-bear { position: absolute; bottom: -6px; left: 0; object-fit: contain; image-rendering: pixelated; pointer-events: none; }
+  .darkroom-actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding-top: 8px; border-top: 1px solid var(--c-border); font: 11px ui-monospace, monospace; }
+  .darkroom-actions button, .darkroom-actions a { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; background: none; color: var(--c-text); border: 0; padding: 0; text-decoration: none; }
+  .darkroom-actions button:disabled { opacity: .4; cursor: wait; }
+  .darkroom-status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  @keyframes room-open { from { opacity: 0; transform: translateY(8px) scale(.97); } to { opacity: 1; transform: none; } }
+  @keyframes develop { from { opacity: 0; filter: grayscale(1) contrast(.4); } 55% { opacity: .65; filter: grayscale(.5) contrast(.8); } to { opacity: 1; filter: none; } }
+  @media (max-width: 480px) {
+    .darkroom-entry { flex-direction: column; gap: 0; }
+    .darkroom-entry img { width: 44px; height: 56px; }
+    .darkroom-dialog { padding: 12px 16px 16px; }
+    .darkroom-bear { width: 56px; height: 74px; left: -8px; }
+    .darkroom-print { width: min(240px, 65vw); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .darkroom-dialog[open], .print-image img { animation: none !important; }
+    .print-inner { transition: none; }
+  }
+</style>
