@@ -1,0 +1,37 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import WorkshopScene from '../../components/bear-stories/workshop/WorkshopScene.astro';
+import { workshopCopy } from '../../components/bear-stories/workshop/content';
+const lang = Astro.url.pathname.startsWith('/en/') ? 'en' : 'zh';
+const copy = workshopCopy[lang];
+const prefix = lang === 'en' ? '/en' : '';
+const isPreview = Astro.url.pathname.includes('/previews/');
+const route = isPreview ? '/previews/bear-workshop/' : '/playbook/workshop/';
+const storiesRoute = isPreview ? '/previews/bear-stories/' : '/playbook/bear-stories/';
+---
+<BaseLayout title={`${copy.title} · Playbook · Airing`} description={copy.intro} lang={lang} persistentTheme noindex={isPreview} hreflang={{ zh: route, en: `/en${route}` }}>
+  <div class="bw-preview-shell">
+    <SiteHeader lang={lang}>
+      <Fragment slot="meta">
+        <span>PLAYBOOK <span aria-hidden="true">/</span> {isPreview ? copy.preview : (lang === 'zh' ? '工作台' : 'Workbench')}</span>
+        <a class="bw-language" href={`${lang === 'zh' ? '/en' : ''}${route}`} lang={lang === 'zh' ? 'en' : 'zh'}>{lang === 'zh' ? 'English' : '中文'}</a>
+      </Fragment>
+    </SiteHeader>
+    <main class="bw-page">
+      <header class="bw-intro">
+        <p class="bw-eyebrow">{copy.eyebrow}</p>
+        <h1>{copy.title}</h1>
+        <p class="bw-lead">{copy.intro}</p>
+      </header>
+      <WorkshopScene lang={lang} />
+      <footer class="bw-footer">
+        <p>{copy.footnote}</p>
+        <nav aria-label={lang === 'zh' ? '继续探索' : 'Keep exploring'}>
+          <a href={`${prefix}${storiesRoute}`}>← {copy.back}</a>
+          <a href={`${prefix}/playbook/`}>{copy.playbook} ↗</a>
+        </nav>
+      </footer>
+    </main>
+  </div>
+</BaseLayout>

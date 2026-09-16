@@ -1,0 +1,39 @@
+---
+import { workshopCopy, workshopProjects } from './content';
+import './workshop.css';
+interface Props { readonly lang: 'zh' | 'en' }
+const { lang } = Astro.props;
+const copy = workshopCopy[lang];
+const prefix = lang === 'en' ? '/en' : '';
+---
+<bear-workshop data-lang={lang} data-phase="idle" data-project="living-scenes">
+  <div class="bw-bench-layout">
+    <div class="bw-bench">
+      <div class="bw-stage" aria-label={copy.bench}>
+        <img class="bw-poster" src="/bear-stories/workshop/poster.png" width="384" height="216" alt="" />
+        <canvas width="384" height="216" aria-hidden="true" hidden></canvas>
+        <button type="button" class="bw-hotspot bw-hotspot-bear" data-replay aria-label={copy.replay} disabled></button>
+        {workshopProjects.map(project => <button type="button" class={`bw-hotspot bw-hotspot-${project.id}`} data-project={project.id} aria-label={project[lang].object} aria-pressed={project.id === 'living-scenes'} disabled></button>)}
+      </div>
+      <div class="bw-choices" role="group" aria-label={copy.choose}>
+        {workshopProjects.map(project => <div class="bw-choice">
+          <button type="button" data-project={project.id} aria-pressed={project.id === 'living-scenes'} disabled>
+            <span class="bw-number">{project.number}</span><span>{project[lang].name}</span>
+          </button>
+          <a class="bw-direct-link" href={`${prefix}/playbook/${project.id}/`}>{project[lang].link}<span aria-hidden="true"> ↗</span></a>
+        </div>)}
+      </div>
+    </div>
+    <section class="bw-notebook" aria-label={copy.label}>
+      <p class="bw-label">{copy.label}</p>
+      {workshopProjects.map(project => <article data-result={project.id} hidden={project.id !== 'living-scenes'}>
+        <h2>{project[lang].title}</h2>
+        <p class="bw-description">{project[lang].description}</p>
+        <p class="bw-detail">{project[lang].detail}</p>
+        <a class="bw-exhibit-link" href={`${prefix}/playbook/${project.id}/`}>{project[lang].link}<span aria-hidden="true">↗</span></a>
+      </article>)}
+      <p class="bw-status" role="status" aria-live="polite" data-status>{copy.idle}</p>
+    </section>
+  </div>
+</bear-workshop>
+<script>import './controller';</script>
