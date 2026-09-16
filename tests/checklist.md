@@ -1876,3 +1876,51 @@
 - [ ] Lost bear plays once on arrival, click replays, reduced/failure stays poster, offscreen/hidden pause, no clipped ears/map/hands or white fringe.
 - [ ] No article-picker component, trigger, route or public assets remain. Old picker preview resolves to 404.
 - [ ] Normal photo/blog pages indexable; error pages and retained review aliases noindex.
+
+## Four bear story acceptance previews
+
+- [ ] `/previews/bear-stories/` and its English counterpart link all four complete stories; all preview routes are noindex and existing production pages remain unchanged.
+- [ ] Wind: window activation starts the gust; paperweight help, window close, and no-input recovery have distinct complete outcomes; repeated taps do not stack actions or leave papers/cup suspended.
+- [ ] Suitcase: clasp opens the miniature world, real photo hotspots and album links work, close restores the complete suitcase; keyboard and touch can finish the same flow.
+- [ ] Workshop: both real project objects select their correct exhibit, the bear completes the test/repair reaction, selection never redirects automatically, and links stay available if media fails.
+- [ ] Shared garden: watering succeeds only after the preview service accepts it; the same visitor/day cannot add water twice; two independent browsers observe the same persisted garden; preview growth controls are visibly separated from shared state.
+- [ ] All stories: Chinese and English at 375/768/1280px in light/dark, clean matte and complete action boundaries, 44px separated hotspots, visible keyboard focus, no audio/playback toolbars or scene instruction bubbles.
+- [ ] Reduced motion keeps complete stills and usable choices; failed media keeps real content links; offscreen/background pauses without skipped catch-up or frozen controls.
+- [ ] Preview garden restart preserves state, malformed/cross-origin writes fail, API unavailability does not simulate a successful communal action.
+- [ ] Idea 9 / DIY postcard guestbook stays deferred until Airing accepts the four previews.
+
+
+### 小熊故事第二轮修订（预览）
+- [ ] 四个场景在深浅色下检查整段动作，轮廓无灰白底污染；奶油色口鼻、书页、雪山与水花高光保留。
+- [ ] 书桌风波的花盆全程不被误抠；窗帘与窗扇关系以第三轮修订的室内开窗设计验收。
+- [ ] 首页融合后保留原窗帘、台灯、电脑交互（尚未接入：新镜头与旧片硬裁均未通过质量检查，本轮保持独立三分支预览；不得标记此项通过）。
+- [ ] 工坊中央桌面锚点固定，角色保留表演但没有镜头校正造成的抖动。
+- [ ] 花园复用一个 BearGardenFooter，点信箱展开同一订阅区；预览链接不发送订阅请求。
+- [ ] 生产首页默认仍显示原读书页尾和订阅表单，预览替换场景不影响默认插槽。
+- [ ] 花园匿名每日浇水、跨浏览器共享、静帧验收、断网与减少动态效果仍可用；测试不重置共享验收数据。
+
+### 小熊故事第三轮：首页中的完整场景
+
+- [ ] `/previews/bear-home/` 复用真实首页；375/768/1280 深浅色下，风波和日常两种场景的天气、在线信息及卡片位置与原首页一致，无新增横向溢出。
+- [ ] 一次访问按 10% 风波、90% 原日常抽选；滚动、切主题、切语言和刷新不重新抽选，30 分钟无访问后可再抽选。`?bear=wind|daily` 只用于预览，不覆盖保存的选择。
+- [ ] DOM 中只有一种活动头部场景，未选中的场景不请求动画图片。存储不可用仍显示一种场景；无 JS 时显示原日常海报。
+- [ ] 新窗仅留左侧窗帘；窗扇从固定右门轴向室内打开，始终位于窗框内，关窗三分支完整，手、纸张、花盆不被窗层覆盖。检查暗色 1×/3× 全时序。
+- [ ] 工坊第一次进入可视区域自动完整演示一次；点小熊或项目可重播，快速连点和加载中点击不重置/叠加；离屏返回不自动再演一次。
+- [ ] 工坊减少动态模式不下载 atlas，项目链接仍可用；资源失败保留静帧和重试入口。真实离屏暂停无补帧跳跃；隐藏页面的模拟事件检查须与真实切标签检查分别记录。
+- [ ] 页尾仅有一只小熊、一棵原树和原长凳；平时继续原读书动画，点水壶合书起身、浇水、回座读书，人物接缝、道具落点和暗色边缘自然。
+- [ ] 读书、摸头、信箱继续可用，书摘关闭后恢复原活动；信箱只展开/聚焦同一订阅区，测试不实际发送订阅。
+- [ ] 花园有显式 preview 才连接预览共享服务；真实首页默认不下载新照料动画、不发预览 API 请求。共享验收数据库不重置，所有自动写入测试使用隔离实例。
+- [ ] 全首页 EN/CN 切换后，新场景状态、可访问名称和操作反馈同步切换；触屏、键盘、减少动态和动画加载失败可完成操作。
+- [ ] 强制 `bear=wind` 时，页尾书摘和小鸟仍正常注册；书摘可打开、暂停照料动作，关闭后恢复。未挂载的日常模板不得吞掉共享组件脚本。
+- [ ] 646px 宽的完整首页页尾采用上下布局；英中文标题和订阅链接不被挤成逐词窄列。
+
+- [ ] Wind homepage retains exactly one original keepsake table at the same position as daily mode at 375/768/1280px. Letter opens the existing preview without navigation; Escape returns focus; scene pauses while the preview is open. Photo freshness and expired snapshot rules match daily mode; the table itself remains.
+- [ ] No-JavaScript homepage fallback stays inside the reserved header and does not overlap the intro card.
+- [ ] 花园照料 150 帧在深浅底逐帧复查：长凳缝隙无白线，小熊弯腰取书时左侧轮廓完整；奶油色口鼻、书页和蓝色水花不被去白边处理误删，水壶和花盆边缘透明。
+- [ ] 书桌风波：无操作、压纸、关窗三个结局结束后继续安静待机，保留各自道具/窗户结果，不再永久定格或自动重播整场风波；循环不倒放翻页/叹气。滚离、后台、打开下方信件时暂停并原位恢复，减少动态效果与素材失败仍使用静态图；待机期间仍可点击道具或开窗触发下一次互动。
+
+### Bear stories production rollout
+
+- [ ] 首页新访问随机数0.099进入风波，0.1及以上进入日常；30分钟内刷新沿用选择，强制预览不污染保存的访问。
+- [ ] 正式首页花园只请求https://chat.ursb.me/api/garden；预览仍请求4410独立存储。匿名Cookie、每天一次、重复点击不增加次数、离线反馈真实。
+- [ ] 正式旅行箱、实验工坊、故事目录及中英切换链接可访问；从Photos/Playbook进入，无验收控制和noindex标记。

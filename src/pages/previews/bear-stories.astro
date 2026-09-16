@@ -1,0 +1,65 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+
+const en = Astro.url.pathname.startsWith('/en/');
+const lang = en ? 'en' : 'zh';
+const prefix = en ? '/en' : '';
+const isPreview = Astro.url.pathname.includes('/previews/');
+const route = isPreview ? '/previews/bear-stories/' : '/playbook/bear-stories/';
+const publicRoutes = { wind: '/playbook/desk-wind/', suitcase: '/photos/suitcase/', workshop: '/playbook/workshop/', garden: '/playbook/shared-garden/' };
+const stories = [
+  { number: '01', path: 'wind', title: en ? 'A gust at the desk' : '一阵风，把书桌吹乱了', text: en ? 'A fluttering page, a wobbling cup, and a little help from you.' : '一页翻起的纸，一只摇晃的杯子，和你伸出的一点援手。', place: en ? 'At the desk' : '书桌边' },
+  { number: '05', path: 'suitcase', title: en ? 'A place inside a suitcase' : '旅行箱里，藏着一个地方', text: en ? 'Open a small suitcase and explore a New Zealand photo album.' : '打开小小的旅行箱，走进一段新西兰的照片记忆。', place: en ? 'Among the photographs' : '照片之间' },
+  { number: '08', path: 'workshop', title: en ? 'The bear’s workshop' : '小熊的实验工坊', text: en ? 'Pick something on the workbench and see how it comes to life.' : '挑一件工作台上的半成品，看看它是怎么被做出来的。', place: 'Playbook' },
+  { number: '10', path: 'garden', title: en ? 'A garden we grow together' : '一起养的一小块花园', text: en ? 'A little water, a small mishap, and a garden that remembers.' : '一点水，一场小意外，一块记得大家照料的花园。', place: en ? 'At the end of the page' : '页尾' },
+] as const;
+---
+<BaseLayout title={`${en ? 'Four little bear stories' : '小熊的四个新故事'} | Airing`} description={en ? 'Four small stories to explore with the bear: a windy desk, a suitcase, a workshop, and a shared garden.' : '和小熊一起，走进窗边的风、旅行箱里的远方、实验工坊与共享花园。'} lang={lang} noindex={isPreview} persistentTheme hreflang={{ zh: route, en: `/en${route}` }}>
+  <div class="story-index">
+    <SiteHeader lang={lang} breadcrumb={isPreview ? (en ? 'Bear stories · Preview' : '小熊的新生活 · 制作预览') : (en ? 'Playbook · Bear stories' : 'Playbook · 小熊的故事')} />
+    <main>
+      <p class="eyebrow">SMALL STORIES, SHARED MOMENTS</p>
+      <h1>{en ? 'A little more life.' : '再多一点，小日子。'}</h1>
+      <p class="introduction">{en ? 'Four new stories to try. Each begins with something the bear can touch, and a small choice you can make.' : '四个可以亲手试试的新故事。从小熊身边的一件东西开始，也从你的一个小动作开始。'}</p>
+      <ol class="stories">
+        {stories.map(story => <li>
+          <a href={`${prefix}${isPreview ? `/previews/bear-${story.path}/` : publicRoutes[story.path]}`}>
+            <span class="number">{story.number}</span>
+            <span class="story-copy"><span class="place">{story.place}</span><h2>{story.title}</h2><span class="description">{story.text}</span></span>
+            <span class="arrow" aria-hidden="true">↗</span>
+          </a>
+        </li>)}
+      </ol>
+      <footer>
+        {isPreview ? <>
+        <p>{en ? 'Acceptance previews. The live website remains unchanged.' : '本轮为验收预览，线上页面保持原样。'}</p>
+        <p>{en ? 'The postcard post office comes next, after these stories have been reviewed together.' : '等这四个故事验收后，我们再一起设计明信片小邮局。'}</p>
+        <a href="https://app.notion.com/p/3ddfdd52948381709bdcf43d8d7d852e">{en ? 'All 11 ideas and the plan in Notion' : 'Notion 里的 11 个创意与实施记录'} <span aria-hidden="true">↗</span></a>
+        </> : <a href={`${prefix}/playbook/`}>← {en ? 'Back to Playbook' : '回到 Playbook'}</a>}
+      </footer>
+    </main>
+  </div>
+</BaseLayout>
+<style>
+  :global(body:has(.story-index)) { display: block; padding: 0; }
+  .story-index { width: 100%; max-width: 1200px; margin: 0 auto; }
+  main { max-width: 800px; margin: 64px auto; padding: 0 48px; }
+  .eyebrow, .number, .place { font-family: var(--font-mono, monospace); font-size: 12px; color: var(--c-text-muted); }
+  .eyebrow { margin: 0 0 16px; letter-spacing: .08em; }
+  h1 { margin: 0 0 24px; color: var(--c-text); font: 600 clamp(32px, 5vw, 48px)/1.3 ui-serif, 'Songti SC', Georgia, serif; text-wrap: balance; }
+  .introduction { max-width: 560px; margin: 0 0 48px; font-size: 16px; line-height: 1.8; color: var(--c-text-muted); text-wrap: pretty; }
+  .stories { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--c-border); }
+  .stories li { border-bottom: 1px solid var(--c-border); }
+  .stories a { display: grid; grid-template-columns: 32px 1fr 24px; align-items: start; gap: 16px; padding: 32px 0; color: var(--c-text); text-decoration: none; }
+  .number { padding-top: 4px; }
+  h2 { font-size: 20px; font-weight: 600; line-height: 1.5; margin: 8px 0; text-wrap: balance; }
+  .description { display: block; font-size: 14px; line-height: 1.8; color: var(--c-text-muted); }
+  .arrow { align-self: center; color: var(--c-text-muted); }
+  .stories a:hover h2, .stories a:hover .arrow { color: var(--accent); }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  footer { margin-top: 40px; font-size: 12px; line-height: 1.8; color: var(--c-text-muted); }
+  footer p { margin: 0 0 8px; }
+  footer a { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; color: var(--c-text-muted); text-underline-offset: 4px; }
+  @media (max-width: 768px) { main { margin-block: 40px; padding-inline: 20px; } .stories a { gap: 12px; grid-template-columns: 24px 1fr 20px; padding-block: 24px; } h2 { font-size: 18px; } }
+</style>

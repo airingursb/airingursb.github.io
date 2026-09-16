@@ -32,6 +32,7 @@ export async function GET(context: APIContext) {
     { zh: '/playbook', en: '/en/playbook', changefreq: 'monthly', priority: '0.7' },
     { zh: '/playbook/living-scenes', en: '/en/playbook/living-scenes', changefreq: 'monthly', priority: '0.6' },
     { zh: '/playbook/reading-companion', en: '/en/playbook/reading-companion', changefreq: 'monthly', priority: '0.6' },
+    ...['/playbook/bear-stories/', '/playbook/desk-wind/', '/playbook/workshop/', '/playbook/shared-garden/', '/photos/suitcase/'].map(route => ({ zh: route, en: `/en${route}`, changefreq: 'monthly', priority: '0.5' })),
     { zh: '/reading', en: '/en/reading', changefreq: 'daily', priority: '0.8' },
   ];
 

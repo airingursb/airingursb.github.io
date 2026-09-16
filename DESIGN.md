@@ -283,3 +283,38 @@ existing English-only Photos UI and real photograph metadata. The small cloud
 moment is enabled on the monthly-36 cover in both /blog/ and /en/blog/. Approved
 preview aliases remain noindex; production listing pages remain indexable.
 Preserve the original cover-to-article transition and native Back navigation.
+
+## Four bear stories — acceptance previews
+
+The next batch consists of four independently reviewable stories: a gust at the existing desk (idea 1), a miniature place unfolding from a travel suitcase (5), a bear-operated project workshop (8), and a collectively tended footer garden (10). Idea 9, the physical-letter / DIY-postcard guestbook, stays deferred until the user accepts these four. Existing production pages remain intact during acceptance.
+
+Keep the existing brown bear identity: dark brown stepped outline, warm brown fur, cream muzzle, coral cheeks, sage accessories. Scene materials use the established bear palette above. Match the editorial site's neutral surface/text/border tokens, 4px spacing grid, 1200px page shell and 20px mobile gutters. Use the existing SiteHeader and semantic buttons/links. One compact scene is the focus of each preview; no card dashboard, score, confetti, persistent instruction bubbles, playback toolbar, or automatic audio. Reviewer instructions belong outside the scene.
+
+Each story has an authored entrance, an actionable stable situation, a character response, and a restful outcome. H3 provides character performance and material changes; program logic owns hit targets, user choices, real content links and persisted state. Use the original site's scene scale and crisp pixel rendering; an intentionally opened travel scene may expand within a bounded area. Preserve original photographs and exact text as DOM content, never regenerate them inside video.
+
+Prefer real art and motion assets over procedural stand-ins. Asset failure and reduced motion retain a complete still with usable controls; offscreen/background work pauses. Touch and keyboard receive the same choices without mandatory hover or timed failure. Hotspots have accessible names, visible keyboard focus and 44px hit targets. New copy supports Chinese and English. Dark backgrounds must expose no white matte fringe, all extremities remain in frame, and responsive layouts must work at 375/768/1280px.
+
+The shared garden must distinguish real shared persistence from an authoring simulation. Watering must be idempotent per visitor/day; growth follows persisted activity, not invented crowd numbers. Preview and production state are isolated. Any authoring shortcuts are visibly outside the scene and absent from production behavior.
+
+
+### Bear stories revision 2: one room, one footer
+
+The eventual homepage integration must retain the existing BearHomeStudy environment, laptop/lamp/curtain controls, and event ownership. New H3 action should occupy only its intended dynamic layer. The current revision remains an independent three-branch acceptance preview: two new clips failed locked-camera QC, and rigid crops of the original footage cut hands/ears or retained stray curtain pixels. Those experiments are not shipped. This revision repairs the original matte, pot and outward window geometry; it does not claim the homepage integration is complete. The existing daily-action videos can remain when a compatible event layer is authored.
+
+Garden acceptance uses the real BearGardenFooter's optional scene/subscription slots. Its default production reading scene and subscription form remain unchanged; preview has one right-hand garden and one subscription destination. A larger farm and collectible plants are design proposals only. Reading-to-watering continuity across the two asset sets is not yet claimed.
+
+Matte acceptance requires temporal dark/light edge inspection, preserving cream interior details and authored water/smoke. Lossless or measured near-lossless sprite encoding must not reintroduce a white matte. Stable scenery is independent from H3 performance, and fixed desk anchor metrics must distinguish camera correction from intentional character movement.
+
+### Bear stories revision 3: one visit, one header scene
+
+The full `/previews/bear-home/` route uses the same `index.astro` entry and page structure as the homepage. The header reserves exactly the original 232×160 artwork footprint plus its 40px lower space (200px-wide artwork on mobile). A visit chooses 10% wind story or 90% existing daily scene before mounting. Only the selected scene exists in the live DOM, so the other scene does not run or fetch atlases. Returning within a 30-minute visit keeps the choice; scrolling, theme/language changes, and tab visibility do not reroll. Review-only `?bear=wind` / `?bear=daily` selects a deterministic variant without overwriting the saved visit. Weather, online count, content cards and footer layout stay in their existing positions. No selection toolbar or transition between incompatible scenes during a visit. Both scenes retain the same original lower keepsake table, envelope and camera anchors. Their shared build snapshot and expiry rules select the same content; wind pauses while a keepsake preview is open and resumes on dismissal. The no-JavaScript original scene remains inside the reserved header.
+
+Wind is a complete alternate visit rather than a cropped actor over the daily desk. Its window should have a visible fixed right jamb and an outward pane projected inside the opening; simplify the right curtain instead of hiding the pane's attachment. The original moving left cloth and reaching hand remain intact.
+
+Workshop runs its authored performance once on first visible arrival, then rests. Project selection or a bear tap can replay it; overlapping input cannot stack performances. Reduced-motion and hidden/offscreen behavior remain explicit.
+
+The integrated garden must keep the original tree, bench, mailbox and seated reading/greeting as one fixed scene. A small persistent plant belongs on the ground; watering is a temporary close-book, stand, care, return-to-reading activity. Shared storage remains preview-only until production integration is approved. Merely replacing the original footer artwork or crossfading two complete backgrounds does not meet this revision's contract.
+
+## Bear stories production rollout (September 16)
+
+The approved wind visit is enabled on the homepage at10%, with90% keeping the original daily desk. A30minute visit retains its choice. The same integrated reading footer now shares real watering state through the existing blog API and primary Supabase project; preview SQLite remains isolated. Travel suitcase and workshop reuse their reviewed art on dedicated public routes, reached from Photos and Playbook. Existing layout, subscription, darkroom and living-cover behavior remain. Wind endings keep quiet authored idle movement. No additional video generation in this rollout.

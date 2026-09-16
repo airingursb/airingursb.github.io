@@ -45,6 +45,20 @@ export default defineConfig({
         injectRoute({ pattern: '/previews/photo-darkroom/', entrypoint: './src/pages/photos.astro' });
         injectRoute({ pattern: '/previews/living-cover/', entrypoint: './src/pages/blog.astro' });
         injectRoute({ pattern: '/previews/lost-bear/en/', entrypoint: './src/pages/previews/lost-bear.astro' });
+        for (const story of ['stories', 'wind', 'suitcase', 'workshop', 'garden']) {
+          injectRoute({ pattern: `/en/previews/bear-${story}/`, entrypoint: `./src/pages/previews/bear-${story}.astro` });
+        }
+        for (const [story, route] of [
+          ['stories', '/playbook/bear-stories/'],
+          ['wind', '/playbook/desk-wind/'],
+          ['workshop', '/playbook/workshop/'],
+          ['garden', '/playbook/shared-garden/'],
+          ['suitcase', '/photos/suitcase/'],
+        ]) {
+          for (const prefix of ['', '/en']) {
+            injectRoute({ pattern: `${prefix}${route}`, entrypoint: `./src/pages/previews/bear-${story}.astro` });
+          }
+        }
       },
     },
   }],
