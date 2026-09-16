@@ -1,0 +1,20 @@
+---
+import BearFooterScene from '../../BearFooterScene.astro';
+import { gardenCopy } from './copy';
+import type { GardenLanguage } from './copy';
+import './garden.css';
+interface Props { readonly lang?: GardenLanguage; readonly preview?: boolean; readonly shared?: boolean }
+const { lang = 'zh', preview = false, shared = preview } = Astro.props;
+const copy = gardenCopy[lang];
+---
+<bear-shared-garden class="shared-garden" data-lang={lang} data-preview={String(preview)} data-shared={String(shared)} data-stage="seed" data-view="shared">
+  <BearFooterScene lang={lang} garden>
+    <img class="shared-garden-growth" src="/bear-stories/garden/sprout.png" alt="" width="60" height="60" hidden />
+    <button class="bear-footer-hotspot shared-garden-water" type="button" aria-label={copy.water} aria-describedby="garden-status"></button>
+  </BearFooterScene>
+  <p class="shared-garden-state" data-garden-state>{shared ? copy.shared : copy.local} · {copy.stages.seed}</p>
+  <p class="shared-garden-status" id="garden-status" role="status" aria-live="polite">{shared ? copy.waiting : copy.localOnly}</p>
+</bear-shared-garden>
+<script>
+  import './controller';
+</script>

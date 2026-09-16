@@ -1,0 +1,72 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import GardenScene from '../../components/bear-stories/garden/GardenScene.astro';
+import BearGardenFooter from '../../components/BearGardenFooter.astro';
+const lang = Astro.url.pathname.startsWith('/en/') ? 'en' : 'zh';
+const english = lang === 'en';
+const prefix = english ? '/en' : '';
+const isPreview = Astro.url.pathname.includes('/previews/');
+const route = isPreview ? '/previews/bear-garden/' : '/playbook/shared-garden/';
+const storiesRoute = isPreview ? '/previews/bear-stories/' : '/playbook/bear-stories/';
+const stages = english
+  ? [{ id: 'seed', label: 'Seed' }, { id: 'sprout', label: 'Sprout' }, { id: 'bud', label: 'Bud' }, { id: 'bloom', label: 'Bloom' }]
+  : [{ id: 'seed', label: '种子' }, { id: 'sprout', label: '萌芽' }, { id: 'bud', label: '花苞' }, { id: 'bloom', label: '开花' }];
+---
+<BaseLayout title={english ? 'A shared little garden — Airing' : '一起照料的小花园 — Airing'} description={english ? 'Help the bear water a shared garden, a little at a time.' : '帮小熊浇一点水，一起照料这片慢慢长大的小花园。'} lang={lang} noindex={isPreview} persistentTheme hreflang={{ zh: route, en: `/en${route}` }}>
+  <SiteHeader lang={lang}>
+    <div slot="meta" class="garden-preview-meta">
+      <a href={`${prefix}${storiesRoute}`}>{english ? 'Bear stories' : '小熊的新故事'}</a>
+      <a href={`${english ? '' : '/en'}${route}`} lang={english ? 'zh' : 'en'}>{english ? '中文' : 'EN'}</a>
+    </div>
+  </SiteHeader>
+  <main class="garden-preview-page">
+    <article class="garden-preview-intro">
+      <p class="garden-preview-eyebrow">10 / {english ? 'A SHARED GARDEN' : '一起照料的小花园'}</p>
+      <h1>{english ? 'A little care, day by day.' : '一点照料，慢慢长大。'}</h1>
+      <p>{english ? 'Some things can wait until tomorrow. Before you leave, help the bear with its watering can.' : '有些事情，可以留到明天。离开之前，帮小熊提一下水壶吧。'}</p>
+    </article>
+    <BearGardenFooter>
+      <GardenScene slot="scene" lang={lang} shared={true} preview={isPreview} />
+      <div slot="subscription" class="garden-preview-subscription">
+        <p>{isPreview ? (english ? 'This is the original homepage reading scene. You can subscribe on the live homepage.' : '这里是首页原来的树下阅读场景。订阅来信请在正式首页填写邮箱。') : (english ? 'Leave your email on the homepage for an occasional letter.' : '在首页留下邮箱，偶尔收一封来信。')}</p>
+        <a href={isPreview ? 'https://ursb.me/#subscribe' : '/#subscribe'} data-footer-subscribe-link>{english ? 'Subscribe on the homepage ↗' : '到首页订阅 ↗'}</a>
+      </div>
+    </BearGardenFooter>
+    {isPreview && <details class="garden-preview-notes">
+      <summary>{english ? 'About this acceptance preview' : '关于这次验收预览'}</summary>
+      <p>{english ? 'This garden is shared by browsers connected to this preview. One watering per browser per Singapore calendar day is saved in an isolated local database. Production is unchanged. Tap the watering can to help; tapping again can replay the bear without adding another watering.' : '连接到这份预览的浏览器共享同一片花园。每个浏览器每天按新加坡日期记录一次浇水，保存在独立的本地数据库里；正式站点尚未改变。点水壶帮忙，再点可以陪小熊重温动作，不会重复记入浇水。'}</p>
+      <p>{english ? 'The garden grows after 1, 3 and 6 saved waterings. Inspect the four resting stages below; these controls only change the displayed still and never write community activity.' : '花园在第 1、3、6 次有效浇水后依次萌芽、含苞、开花。下方仅用于验收四个静帧阶段，不会写入共享花园。'}</p>
+      <p data-garden-preview-status>{english ? 'Checking on the shared preview.' : '正在读取共享预览状态。'}</p>
+      <div class="garden-stage-inspector" role="group" aria-label={english ? 'Inspect growth stages without watering' : '查看生长阶段，不记录浇水'}>
+        {stages.map(stage => <button type="button" data-garden-inspect={stage.id} aria-pressed="false">{stage.label}</button>)}
+        <button type="button" data-garden-inspect="shared" aria-pressed="true">{english ? 'Shared garden' : '回到共享花园'}</button>
+      </div>
+    </details>}
+  </main>
+</BaseLayout>
+<style>
+  :global(body:has(.garden-preview-page)) { display: block; padding: 0; }
+  .garden-preview-page { max-width: 1200px; padding: 0 48px 64px; margin: 0 auto; }
+  .garden-preview-meta { display: flex; width: 100%; justify-content: space-between; }
+  .garden-preview-meta a { color: var(--c-text-muted); }
+  .garden-preview-intro { max-width: 600px; padding: 64px 0; }
+  .garden-preview-eyebrow { margin: 0 0 12px; font-family: var(--font-mono); color: var(--c-text-muted); font-size: 12px; line-height: 1.5; letter-spacing: .04em; }
+  h1 { margin: 0 0 24px; font-size: 28px; line-height: 1.35; font-weight: 600; letter-spacing: -.025em; }
+  .garden-preview-intro > p:last-child { color: var(--c-text-muted); font-size: 16px; line-height: 1.8; }
+  .garden-preview-subscription { max-width: 340px; color: var(--c-text-muted); font-size: 12px; line-height: 1.8; }
+  .garden-preview-subscription a { color: var(--accent); min-height: 44px; display: inline-flex; align-items: center; }
+  .garden-preview-page :global(.bear-garden > bear-shared-garden) { justify-self: end; }
+  .garden-preview-notes { margin-top: 32px; padding-top: 16px; border-top: 1px solid var(--c-border); font-size: 12px; line-height: 1.8; color: var(--c-text-muted); }
+  .garden-preview-notes summary { display: flex; align-items: center; min-height: 44px; width: fit-content; cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+  .garden-preview-notes p { max-width: 720px; margin: 16px 0; }
+  .garden-stage-inspector { display: flex; flex-wrap: wrap; gap: 8px 16px; }
+  .garden-stage-inspector button { min-width: 44px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--c-border); color: var(--c-text-muted); background: var(--c-bg); font: inherit; cursor: pointer; }
+  .garden-stage-inspector button[aria-pressed='true'] { color: var(--c-text); border-color: var(--c-text-muted); }
+  a:focus-visible, button:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  @media (max-width: 768px) { .garden-preview-page { padding-inline: 20px; } }
+  @media (max-width: 768px) {
+    .garden-preview-intro { padding: 40px 0; }
+    .garden-preview-page :global(.bear-garden) { grid-template-columns: minmax(0, 1fr); padding: 32px 0 16px; gap: 8px; }
+  }
+</style>
