@@ -1,5 +1,6 @@
 ---
 import ArticleTransition from '../components/ArticleTransition.astro';
+import LivingCover from '../components/photo-motion/LivingCover.astro';
 import SiteHeader from "../components/SiteHeader.astro";
 /**
  * B1 + Inline Comments — Google Docs / 飞书 / 微信读书风格划线评论
@@ -9,6 +10,10 @@ import SiteHeader from "../components/SiteHeader.astro";
  */
 import BaseLayout from './BaseLayout.astro';
 import BlogPetWidget from '../components/BlogPetWidget.astro';
+import ArticleReadingDock from '../components/editorial/ArticleReadingDock.astro';
+import NextPagePreview from '../components/editorial/NextPagePreview.astro';
+import NewspaperSubscription from '../components/editorial/NewspaperSubscription.astro';
+import type { EditorialNeighbor } from '../components/editorial/editorial-neighbor';
 import '@fontsource/noto-serif-sc/400.css';
 import '@fontsource/noto-serif-sc/600.css';
 import '@fontsource/noto-serif-sc/700.css';
@@ -21,8 +26,8 @@ interface Props {
   tags: string[];
   description?: string;
   cover?: string;
-  prevPost?: { slug: string; title: string } | null;
-  nextPost?: { slug: string; title: string } | null;
+  prevPost?: EditorialNeighbor | null;
+  nextPost?: EditorialNeighbor | null;
   relatedPosts?: { slug: string; title: string }[];
   seriesInfo?: {
     tag: string;
@@ -149,7 +154,10 @@ const jsonLd = {
 
     {cover && (
       <div class="cover-section">
-        <img src={cover} alt={title} data-article-cover loading="eager" fetchpriority="high" decoding="async" />
+        <div class="article-cover-art" data-article-cover>
+          <img src={cover} alt={title} loading="eager" fetchpriority="high" decoding="async" />
+        </div>
+        {Astro.params.slug === 'weekly-36' && <LivingCover slug="weekly-36" mode="article" />}
         {description && <p class="post-deck post-deck--cover">{description}</p>}
       </div>
     )}
@@ -225,8 +233,8 @@ const jsonLd = {
         <slot />
         <div class="article-coda" aria-hidden="true">
           <div class="coda-date">{codaDate}</div>
-          <div class="coda-mark">✦</div>
         </div>
+        <ArticleReadingDock lang={lang} />
       </article>
 
       <!-- Right column: relative container for absolute-positioned cards -->
@@ -290,26 +298,6 @@ const jsonLd = {
       </div>
     </div>
 
-    <!-- Prev / Next Navigation -->
-    {(prevPost || nextPost) && (
-      <nav class="post-nav">
-        <div class="post-nav-inner">
-          {prevPost ? (
-            <a href={`${prefix}/posts/${prevPost.slug}/`} class="post-nav-link post-nav-prev">
-              <span class="post-nav-label">&larr; Newer</span>
-              <span class="post-nav-title">{prevPost.title}</span>
-            </a>
-          ) : <div />}
-          {nextPost ? (
-            <a href={`${prefix}/posts/${nextPost.slug}/`} class="post-nav-link post-nav-next">
-              <span class="post-nav-label">Older &rarr;</span>
-              <span class="post-nav-title">{nextPost.title}</span>
-            </a>
-          ) : <div />}
-        </div>
-      </nav>
-    )}
-
     <!-- Article Like -->
     <div class="article-like-section">
       <div class="al-rule"></div>
@@ -331,18 +319,13 @@ const jsonLd = {
       <div class="al-rule"></div>
     </div>
 
-    <!-- Newsletter CTA -->
-    <div class="newsletter-cta">
-      <div class="nl-inner">
-        <p class="nl-title">Subscribe</p>
-        <p class="nl-desc">Get notified when new posts are published.</p>
-        <form class="nl-form" id="nlForm">
-          <input type="email" class="nl-input" id="nlEmail" placeholder="your@email.com" required />
-          <button type="submit" class="nl-btn">Subscribe</button>
-        </form>
-        <p class="nl-status" id="nlStatus"></p>
+    <section class:list={['article-afterword', 'article-ending', { 'article-ending--single': !prevPost && !nextPost }]} data-article-ending>
+      {(prevPost || nextPost) && <h2 class="article-ending-title">{lang === 'en' ? 'One more page.' : '再翻一页。'}</h2>}
+      <div class="article-ending-grid">
+        <NextPagePreview prev={prevPost} next={nextPost} lang={lang} />
+        <NewspaperSubscription lang={lang} />
       </div>
-    </div>
+    </section>
 
     <!-- Bottom Comment Section -->
     <section class="bottom-comments" id="bottomComments">
@@ -388,7 +371,7 @@ const jsonLd = {
       </div>
     </footer>
   </div>
-  <BlogPetWidget />
+  <BlogPetWidget lang={lang} />
   <span id="article-navigation-ready" hidden></span>
 </BaseLayout>
 
@@ -1895,36 +1878,6 @@ const jsonLd = {
     });
   });
 
-  // Newsletter subscribe
-  var nlForm = document.getElementById('nlForm');
-  var nlEmail = document.getElementById('nlEmail');
-  var nlStatus = document.getElementById('nlStatus');
-  if (nlForm) {
-    nlForm.addEventListener('submit', function(e) {
-      e.preventDefault();
-      var email = nlEmail.value.trim();
-      if (!email) return;
-      nlStatus.textContent = 'Subscribing...';
-      var lang = /^\/en\//.test(location.pathname) ? 'en' : 'zh';
-      fetch(API + '/api/subscribe', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email, lang: lang })
-      }).then(function(r) { return r.json(); })
-        .then(function(d) {
-          if (d.error) {
-            nlStatus.textContent = d.error;
-          } else if (d.alreadySubscribed) {
-            nlStatus.textContent = 'Already subscribed.';
-          } else {
-            nlStatus.textContent = 'Subscribed!';
-            nlEmail.value = '';
-          }
-        })
-        .catch(function() { nlStatus.textContent = 'Failed. Please try again.'; });
-    });
-  }
-
   loadArticleLikes();
   // loadViewRegions();  // disabled 2026-06-26: raw view traffic is bot-skewed
   // (US residential-proxy crawlers survive datacenter + UA + engagement filters),
@@ -2044,6 +1997,9 @@ const jsonLd = {
   /* ===== Cover ===== */
   .cover-section {
     max-width: 900px; margin: 0 auto 2rem; padding: 32px 48px 0;
+  }
+  .article-cover-art {
+    position: relative; overflow: hidden; border-radius: 8px;
   }
   .cover-section img {
     width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 8px; display: block;
@@ -2313,8 +2269,8 @@ const jsonLd = {
   /* Article coda — auto-appended at the end of every post.
      Provides a calm closing flourish: italic date + ✦ endmark. */
   .article-coda {
-    margin-top: 72px;
-    padding-top: 32px;
+    margin-top: 40px;
+    padding-top: 0;
     text-align: center;
   }
   .coda-date {
@@ -2634,7 +2590,7 @@ const jsonLd = {
   .article-like-section {
     display: flex; align-items: center; gap: 24px;
     max-width: 1440px; margin: 0 auto;
-    padding: 48px 48px 0;
+    padding: 24px 48px 0;
     padding-left: calc(48px + 160px + 40px);
     padding-right: calc(48px + 280px + 40px);
   }
@@ -2760,37 +2716,23 @@ const jsonLd = {
     font-size: 11px; color: var(--c-text-dim);
   }
 
-  /* ===== Newsletter CTA ===== */
-  .newsletter-cta {
+  .article-afterword {
     max-width: 1440px;
-    margin: 2rem auto;
-    padding: 0 48px;
-    padding-left: calc(48px + 160px + 40px);
-    padding-right: calc(48px + 280px + 40px);
+    margin: 0 auto;
+    padding-inline: calc(48px + 160px + 40px) calc(48px + 280px + 40px);
   }
-  .nl-inner {
-    border: 1px solid var(--c-border, rgba(255,255,255,0.1));
-    border-radius: 8px;
-    padding: 1.5rem;
-    text-align: center;
+  .article-ending { margin-block: 32px; }
+  .article-ending-title { margin: 0 0 24px; font: 600 32px/1.3 ui-serif, 'Noto Serif SC', 'Songti SC', Georgia, serif; text-wrap: balance; }
+  .article-ending-grid { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(180px, 1fr); gap: 32px; padding-bottom: 24px; border-bottom: 1px solid var(--c-border); }
+  .article-ending--single .article-ending-grid { grid-template-columns: minmax(0, 1fr); }
+  .article-ending--single :global(.newspaper-subscription) { border-left: 0; padding-left: 0; max-width: 400px; }
+  @media (max-width: 600px) {
+    .article-ending-title { font-size: 28px; }
+    .article-ending-grid { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   }
-  .nl-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 0.25rem; }
-  .nl-desc { font-size: 0.85rem; color: var(--c-text-muted, #888); margin-bottom: 1rem; }
-  .nl-form { display: flex; gap: 0.5rem; max-width: 400px; margin: 0 auto; }
-  .nl-input {
-    flex: 1; padding: 0.5rem 0.75rem; border-radius: 6px;
-    border: 1px solid var(--c-border, rgba(255,255,255,0.15));
-    background: transparent; color: var(--c-text, #e5e5e5); font-size: 0.85rem;
+  @media (max-width: 1100px) {
+    .article-afterword { padding-inline: 20px; }
   }
-  .nl-input:focus { border-color: var(--accent, #4ade80); outline: none; }
-  .nl-btn {
-    padding: 0.5rem 1rem; border-radius: 6px;
-    border: 1px solid var(--accent, #4ade80);
-    background: transparent; color: var(--accent, #4ade80); font-weight: 600;
-    font-size: 0.85rem; cursor: pointer; transition: all 0.2s ease;
-  }
-  .nl-btn:hover { background: rgba(74, 222, 128, 0.1); }
-  .nl-status { font-size: 0.8rem; color: var(--c-text-muted); margin-top: 0.5rem; }
 
   /* ===== Bottom Comment Section ===== */
   .bottom-comments {
@@ -3027,9 +2969,7 @@ const jsonLd = {
     .cip-identity { flex-direction: column; gap: 6px; }
 
     /* Article like & bottom comments mobile */
-    .article-like-section { padding: 40px 20px 0 !important; gap: 16px; }
-    .newsletter-cta { padding: 0 20px !important; }
-    .post-nav { padding: 0 20px !important; }
+    .article-like-section { padding: 24px 20px 0 !important; gap: 16px; }
     .article-like-btn { padding: 10px 20px; }
     .bottom-comments { padding: 0 20px 48px; }
     .bc-compose-fields { flex-direction: column; gap: 8px; }
@@ -3062,45 +3002,4 @@ const jsonLd = {
     justify-content: stretch;
   }
 
-  .post-nav {
-    max-width: 1440px;
-    margin: 2rem auto;
-    padding: 0 48px;
-    padding-left: calc(48px + 160px + 40px);
-    padding-right: calc(48px + 280px + 40px);
-  }
-  .post-nav-inner {
-    display: flex;
-    justify-content: space-between;
-    gap: 1.5rem;
-    border-top: 1px solid var(--c-border, rgba(255,255,255,0.1));
-    padding-top: 1.5rem;
-  }
-  .post-nav-link {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    text-decoration: none;
-    max-width: 45%;
-  }
-  .post-nav-next { text-align: right; margin-left: auto; }
-  .post-nav-label {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--c-text-muted, #888);
-  }
-  .post-nav-title {
-    font-size: 0.9rem;
-    color: var(--accent, #4ade80);
-    line-height: 1.4;
-  }
-  .post-nav-link:hover .post-nav-title { text-decoration: underline; }
-
-  @media (max-width: 1100px) {
-    .post-nav {
-      padding-left: 20px;
-      padding-right: 20px;
-    }
-  }
 </style>

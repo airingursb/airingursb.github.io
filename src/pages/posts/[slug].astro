@@ -4,6 +4,7 @@ import PostLayout from '../../layouts/PostLayout.astro';
 import { buildTranslationMap } from '../../lib/i18n';
 import { makeExcerpt, getGitLastModified } from '../../lib/seo';
 import fs from 'node:fs';
+import { toEditorialNeighbor } from '../../components/editorial/editorial-neighbor';
 
 export async function getStaticPaths() {
   const allPosts = (await getCollection('posts', ({ data }) => !data.draft))
@@ -16,8 +17,8 @@ export async function getStaticPaths() {
     params: { slug: post.id },
     props: {
       post,
-      prevPost: idx > 0 ? { slug: allPosts[idx - 1].id, title: allPosts[idx - 1].data.title } : null,
-      nextPost: idx < allPosts.length - 1 ? { slug: allPosts[idx + 1].id, title: allPosts[idx + 1].data.title } : null,
+      prevPost: idx > 0 ? toEditorialNeighbor(allPosts[idx - 1]) : null,
+      nextPost: idx < allPosts.length - 1 ? toEditorialNeighbor(allPosts[idx + 1]) : null,
       relatedPosts: (() => {
         const primaryTag = post.data.tags[0];
         return primaryTag

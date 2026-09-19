@@ -1,18 +1,21 @@
 ---
-interface Props { slug: string }
-const { slug } = Astro.props;
+interface Props {
+  readonly slug: string;
+  readonly mode?: 'card' | 'article';
+}
+const { slug, mode = 'card' } = Astro.props;
 ---
-<living-cover data-slug={slug} hidden></living-cover>
+<living-cover data-slug={slug} data-mode={mode} hidden></living-cover>
 <script>
   import './living-cover';
 </script>
 <style is:global>
-  .article-card-art .living-cover-video {
+  :is(.article-card-art, .article-cover-art) .living-cover-video {
     position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
     pointer-events: none; opacity: 0; transition: opacity 300ms ease;
   }
-  .article-card-art .living-cover-video[data-playing] { opacity: 1; }
+  :is(.article-card-art, .article-cover-art) .living-cover-video[data-playing] { opacity: 1; }
   @media (prefers-reduced-motion: reduce) {
-    .article-card-art .living-cover-video { display: none; }
+    :is(.article-card-art, .article-cover-art) .living-cover-video { display: none; }
   }
 </style>

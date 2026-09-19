@@ -3,20 +3,21 @@
  * BlogPetWidget — SHU-818 oil-motion circular look.
  * Single 360° sprite atlas, pointer angle maps to frame via setDirection.
  */
+interface Props { lang?: "zh" | "en"; }
+const { lang = "zh" } = Astro.props;
 ---
 
 <aside
   id="blog-pet"
   class="blog-pet"
   hidden
-  aria-label="博客水墨熊猫桌宠"
+  aria-label={lang === "en" ? "Watercolor panda companion" : "博客水墨熊猫桌宠"}
 >
   <button
     type="button"
     class="blog-pet-dismiss"
     id="blogPetDismiss"
-    aria-label="隐藏桌宠"
-    title="隐藏"
+    aria-label={lang === "en" ? "Hide the panda" : "隐藏桌宠"}
   >×</button>
   <canvas
     id="blogPetCanvas"
@@ -46,9 +47,19 @@
     height: 144px;
     pointer-events: none;
     filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.18));
+    transform-origin: 0 0;
   }
   .blog-pet[hidden] {
     display: none !important;
+  }
+  .blog-pet[data-pet-docked="true"] {
+    visibility: hidden;
+  }
+  .blog-pet[data-pet-travelling="true"] {
+    will-change: transform;
+  }
+  .blog-pet[data-pet-travelling="true"] .blog-pet-dismiss {
+    display: none;
   }
   .blog-pet-canvas {
     width: 100%;
@@ -119,32 +130,38 @@
     createFrameAnimator,
   } from "../lib/blog-pet-animator";
   import { computePointerVector } from "../lib/blog-pet-pointer";
+  import { BLOG_PET_DISMISSED, dismissBlogPet, isBlogPetDismissed } from "../lib/blog-pet-preference";
 
-  const STORAGE_KEY = "blog-pet-dismissed";
   const BASE = "/oil-motion/blog-pet/";
 
   const root = document.getElementById("blog-pet");
-  const canvas = document.getElementById("blogPetCanvas") as HTMLCanvasElement | null;
+  const canvas = document.querySelector<HTMLCanvasElement>("#blogPetCanvas");
   const dismiss = document.getElementById("blogPetDismiss");
 
   if (!root || !canvas || !dismiss) {
     // no-op
-  } else if (localStorage.getItem(STORAGE_KEY) === "1") {
+  } else if (isBlogPetDismissed()) {
     root.remove();
   } else {
     let cleanup = () => {};
     dismiss.addEventListener("click", () => {
-      localStorage.setItem(STORAGE_KEY, "1");
+      dismissBlogPet();
       cleanup();
       root.remove();
     });
+    window.addEventListener("storage", (event) => {
+      if (event.key !== BLOG_PET_DISMISSED || event.newValue !== "1") return;
+      cleanup();
+      root.remove();
+    });
+    document.addEventListener("astro:before-swap", () => cleanup(), { once: true });
 
     const reduced =
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const desktop = window.matchMedia("(min-width: 801px)").matches;
+    const desktop = window.matchMedia("(min-width: 801px)");
 
     const boot = async () => {
-      if (!desktop) return;
+      if (!desktop.matches || !root.isConnected) return;
       root.hidden = false;
 
       if (reduced) {
@@ -180,6 +197,8 @@
         return;
       }
 
+      if (!root.isConnected) return;
+
       const startAngle =
         atlas.startAngleRadians ?? -Math.PI * 0.75;
       const initialFrame = atlas.initialFrame ?? 0;
@@ -196,6 +215,7 @@
       });
 
       const onMove = (e: PointerEvent) => {
+        if (document.hidden || root.dataset.petDocked || root.dataset.petTravelling) return;
         const rect = canvas.getBoundingClientRect();
         const vector = computePointerVector({
           clientX: e.clientX,
@@ -226,6 +246,9 @@
       renderer.render(initialFrame);
     };
 
+    desktop.addEventListener("change", () => {
+      if (desktop.matches && root.hidden) void boot();
+    });
     void boot();
   }
 </script>

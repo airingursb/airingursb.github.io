@@ -1924,3 +1924,28 @@
 - [ ] 首页新访问随机数0.099进入风波，0.1及以上进入日常；30分钟内刷新沿用选择，强制预览不污染保存的访问。
 - [ ] 正式首页花园只请求https://chat.ursb.me/api/garden；预览仍请求4410独立存储。匿名Cookie、每天一次、重复点击不增加次数、离线反馈真实。
 - [ ] 正式旅行箱、实验工坊、故事目录及中英切换链接可访问；从Photos/Playbook进入，无验收控制和noindex标记。
+
+## Editorial footer performances
+
+- [ ] `/blog/` and `/en/blog/`: compact archive bookcart plays arrival once near viewport; each year opens real articles, translated titles/links and CN fallback labels are correct. Personal homepage garden is unchanged.
+- [ ] Cart click cycles bookmark / bird / stubborn book / reversed book; no simultaneous actions. At most one automatic mishap per session after 18–35 cumulative visible idle seconds, with 25% eligibility; tab/scroll pauses do not reset waiting.
+- [ ] H3 performances preserve full bodies and props, clean transparent edges across all phases on dark/light, opaque cream/white interiors, and natural quiet rest after each action. No freeze on an accidental tail pose, clipping, camera zoom or poster flash.
+- [ ] Article desktop panda moves from its existing floating position into the coda once; only one panda is visible. Scrolling away restores the floating companion; dismissal survives. Mobile uses a compact inline panda with replay.
+- [ ] Prev/next previews show real cover, excerpt, date and reading time; pointer hover, first-click pin, touch disclosure, Enter, Escape, outside close and actual navigation work. Missing/failed covers keep readable content.
+- [ ] Subscription validates email, prevents duplicate pending requests, retains input on errors, distinguishes already subscribed, and plays the H3 paper-slip action only after confirmed new subscription. QA intercepts requests and creates no real subscribers.
+- [ ] All new surfaces work in CN/EN at 375/768/1280px, light/dark, visible focus and 44px controls; no horizontal overflow. Reduced motion skips atlases and travel; media failures retain usable content and posters.
+- [ ] Actors pause offscreen/in hidden tabs without skipping elapsed frames; replay can interrupt resting loops but not an active performance; atlas caching stays bounded. Preview routes are noindex and their explicit action controls never appear on production placements.
+
+### Editorial footer revision 2
+- [x] CN/EN article hero automatically plays existing H3 cover while visible; offscreen/hidden resumes, reduced-motion/Save-Data/error retain still; one view-transition target and card→article→Back work.
+- [x] Subscription has no extra outside rule; compact receiving letter fits 375/768/1280 light/dark; visible counter runs new H3 idle without submitting.
+- [x] Email validation/single-flight/duplicate/error preserve correct copy; only confirmed new subscription interrupts idle for H3 receipt, then returns to a moving rest. RSS and no-JS remain usable.
+- [x] Next/previous links use compact rows, optional cover, disclosure via mouse/touch/keyboard and Escape/outside dismissal; no stacked borders; coda whitespace reduced.
+
+
+### Article ending · accepted direction C (2026-09-19)
+- [ ] Real like control remains centered and prominent above the ending; counts, visitors and feedback still work.
+- [ ] Desktop: next story with real cover/title/excerpt and a compact subscription sidebar. Mobile: story then inline email row; no overflow in CN/EN or light/dark.
+- [ ] Next story is the older neighbor, falling back to newer; a second neighbor remains a quiet link; missing/failed covers leave readable text; no neighbors still allows subscription.
+- [ ] Direction C replaces the previous hover/disclosure preview; native story links support keyboard navigation.
+- [ ] H3 bear idles when visible, pauses offscreen, celebrates only confirmed-new subscription; invalid/pending/error/already states remain functional. Reduced motion and asset failure retain a usable poster.

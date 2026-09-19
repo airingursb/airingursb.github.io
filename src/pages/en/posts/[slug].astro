@@ -2,6 +2,7 @@
 import { getCollection, render } from 'astro:content';
 import PostLayout from '../../../layouts/PostLayout.astro';
 import { makeExcerpt, getGitLastModified } from '../../../lib/seo';
+import { toEditorialNeighbor } from '../../../components/editorial/editorial-neighbor';
 
 export async function getStaticPaths() {
   const enPosts = (await getCollection('postsEn', ({ data }) => !data.draft))
@@ -21,10 +22,10 @@ export async function getStaticPaths() {
     const idx = enPostsSorted.findIndex(p => p.id === enPost.id);
 
     const prevPost = idx > 0
-      ? { slug: enPostsSorted[idx - 1].id, title: enPostsSorted[idx - 1].data.title }
+      ? toEditorialNeighbor(enPostsSorted[idx - 1])
       : null;
     const nextPost = idx < enPostsSorted.length - 1
-      ? { slug: enPostsSorted[idx + 1].id, title: enPostsSorted[idx + 1].data.title }
+      ? toEditorialNeighbor(enPostsSorted[idx + 1])
       : null;
 
     // Related posts: only show posts that have English translations.
