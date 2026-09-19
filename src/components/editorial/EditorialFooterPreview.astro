@@ -1,0 +1,69 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import EditorialActor from './EditorialActor.astro';
+
+const en = Astro.url.pathname.startsWith('/en/');
+const prefix = en ? '/en' : '';
+const lang = en ? 'en' : 'zh';
+const scenes = [
+  { kind: 'cart' as const, title: en ? 'The archive bookcart' : '旧文书车', description: en ? 'A small arrival and four occasional mishaps. Try each performance here; the real footer keeps the controls out of sight.' : '一次推车到来，四个偶尔发生的小意外。这里可以逐个查看，实际页尾只需轻点小熊。', actions: [
+    { clip: 'arrival', title: en ? 'Push and tidy' : '推车、整理' },
+    { clip: 'bookmark', title: en ? 'Catch the bookmark' : '用脚接住书签' },
+    { clip: 'bird', title: en ? 'A bird borrows a page' : '小鸟借走纸片' },
+    { clip: 'tumble', title: en ? 'A stubborn book' : '抽书摔坐' },
+    { clip: 'reverse', title: en ? 'Turn the book around' : '把书放正' },
+  ] },
+  { kind: 'panda' as const, title: en ? 'A pause after the last line' : '读完后的停靠', description: en ? 'The article’s watercolor panda settles beside the ending and closes its book. On a phone, it appears inline.' : '文章里的水彩熊猫在文末停下来，合书休息。手机上直接融入文末。', actions: [{ clip: 'close', title: en ? 'Close the book' : '合书休息' }] },
+  { kind: 'counter' as const, title: en ? 'The newspaper stand' : '订阅报刊亭', description: en ? 'This button previews the performance only. It sends no subscription. The actual form plays it after a confirmed new subscription.' : '这里只演示夹纸签，不发送订阅。实际表单确认新增订阅成功后，才会触发这段动作。', actions: [{ clip: 'subscribe', title: en ? 'Clip the slip' : '夹好订阅纸签' }] },
+];
+---
+<BaseLayout title={`${en ? 'At the end of a page' : '翻到最后一页'} | Airing`} description={en ? 'Editorial motion acceptance preview.' : '博客页尾与文章收尾的动效验收预览。'} lang={lang} persistentTheme noindex hreflang={{ zh: '/previews/editorial-footer/', en: '/en/previews/editorial-footer/' }}>
+  <div class="editorial-review">
+    <SiteHeader lang={lang} breadcrumb={en ? 'Footer · Preview' : '页尾 · 制作预览'} />
+    <main>
+      <p class="eyebrow">{en ? 'ACCEPTANCE PREVIEW' : '动效验收预览'}</p>
+      <h1>{en ? 'At the end of a page.' : '翻到最后一页。'}</h1>
+      <p class="intro">{en ? 'Small performances, fitted into the places where reading continues.' : '把几个完整的小动作，放进读完以后还想多停一会儿的地方。'}</p>
+      <nav aria-label={en ? 'See the integrated pages' : '查看实际布局'}>
+        <a href={`${prefix}/blog/#archive-bookcart`}>{en ? 'Blog footer' : '博客首页页尾'} ↗</a>
+        <a href={`${prefix}/posts/weekly-36/#reading-end`}>{en ? 'Article ending' : '文章详情页收尾'} ↗</a>
+      </nav>
+      {scenes.map(scene => <section data-editorial-demo>
+        <div class="scene-heading"><h2>{scene.title}</h2><p>{scene.description}</p></div>
+        <div class:list={['scene-actor', `scene-${scene.kind}`]}><EditorialActor kind={scene.kind} /></div>
+        <div class="scene-actions">{scene.actions.map(action => <button type="button" data-demo-clip={action.clip}>{action.title}</button>)}</div>
+        <p class="scene-status" data-demo-status role="status" data-playing={en ? 'Playing…' : '播放中…'} data-failed={en ? 'Motion is unavailable or reduced motion is enabled.' : '动画暂不可用，或设备已开启减少动态效果。'}></p>
+      </section>)}
+    </main>
+  </div>
+</BaseLayout>
+<script>
+  import { mountEditorialDemos } from '../../lib/editorial-demo';
+  mountEditorialDemos();
+  document.addEventListener('astro:page-load', mountEditorialDemos);
+</script>
+<style>
+  :global(body:has(.editorial-review)) { display: block; padding: 0; }
+  .editorial-review { max-width: 1200px; margin: auto; width: 100%; }
+  main { max-width: 760px; padding: 48px; margin: auto; }
+  .eyebrow { color: var(--c-text-muted); font: 12px/1.5 var(--font-mono, monospace); letter-spacing: .04em; }
+  h1 { font: 500 clamp(28px, 5vw, 40px)/1.4 ui-serif, 'Songti SC', Georgia, serif; margin: 16px 0; }
+  .intro, .scene-heading p { color: var(--c-text-muted); font-size: 14px; line-height: 1.8; }
+  nav, .scene-actions { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  nav { margin: 24px 0 40px; }
+  nav a { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-text); text-underline-offset: 4px; font-size: 14px; }
+  section { padding: 24px 0; border-top: 1px solid var(--c-border); }
+  h2 { font-size: 18px; font-weight: 500; margin: 0 0 8px; }
+  .scene-heading p { margin: 0; max-width: 560px; }
+  .scene-actor { margin: 24px 0 16px; }
+  .scene-cart { width: 208px; }
+  .scene-panda { width: 96px; }
+  .scene-counter { width: 112px; }
+  button { min-height: 44px; padding: 8px 0; background: none; border: 0; color: var(--c-text-muted); font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+  button:hover { color: var(--accent); }
+  button:disabled { opacity: .5; cursor: wait; }
+  :is(a, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .scene-status { min-height: 20px; margin: 8px 0 0; font-size: 12px; color: var(--c-text-muted); }
+  @media(max-width: 768px) { main { padding: 32px 20px; } .scene-cart { width: 168px; } .scene-counter { width: 88px; } }
+</style>

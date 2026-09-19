@@ -1,0 +1,73 @@
+---
+import EditorialActor from "./EditorialActor.astro";
+
+interface Props {
+  lang?: "zh" | "en";
+}
+
+const { lang = "zh" } = Astro.props;
+---
+
+<div class="article-reading-dock" id="reading-end" data-article-pet-dock data-dock-state="floating">
+  <button
+    type="button"
+    class="article-reading-replay"
+    data-pet-replay
+    aria-label={lang === "en" ? "Replay the panda closing its book" : "再看一次熊猫合上书"}
+  >
+    <EditorialActor kind="panda" width={96} height={96} />
+  </button>
+</div>
+
+<style>
+  .article-reading-dock {
+    --editorial-dock-size: 96px;
+    --editorial-dock: 420ms;
+    --editorial-ease: cubic-bezier(.2, .8, .2, 1);
+    inline-size: var(--editorial-dock-size);
+    block-size: var(--editorial-dock-size);
+    margin: var(--space-6, 24px) auto;
+  }
+  .article-reading-dock[hidden] {
+    display: none;
+  }
+  .article-reading-replay {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+    visibility: hidden;
+  }
+  .article-reading-dock[data-dock-state="docked"] .article-reading-replay {
+    visibility: visible;
+  }
+  .article-reading-replay:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+  }
+  @media print {
+    .article-reading-dock {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { createArticlePetDock } from "../../lib/article-pet-dock";
+
+  const mount = () => {
+    for (const dock of document.querySelectorAll<HTMLElement>("[data-article-pet-dock]")) {
+      if (dock.dataset.dockReady) continue;
+      dock.dataset.dockReady = "true";
+      const dispose = createArticlePetDock(dock);
+      document.addEventListener("astro:before-swap", dispose, { once: true });
+    }
+  };
+  mount();
+  document.addEventListener("astro:page-load", mount);
+</script>

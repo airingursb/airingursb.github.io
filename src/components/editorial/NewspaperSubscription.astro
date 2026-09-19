@@ -1,0 +1,55 @@
+---
+import EditorialActor from './EditorialActor.astro';
+import { newspaperCopy } from './newspaper-subscription-copy';
+import './newspaper-subscription.css';
+
+interface Props {
+  lang?: 'zh' | 'en';
+  idPrefix?: string;
+}
+
+const { lang = 'zh', idPrefix = `newspaper-${lang}` } = Astro.props;
+const copy = newspaperCopy[lang];
+const titleId = `${idPrefix}-title`;
+const emailId = `${idPrefix}-email`;
+const statusId = `${idPrefix}-status`;
+---
+
+<section class="newspaper-subscription" data-newspaper-subscription data-lang={lang} aria-labelledby={titleId}>
+  <div class="newspaper-letter">
+  <div class="newspaper-subscription-heading">
+    <div class="newspaper-counter-space">
+      <span class="newspaper-receipt" aria-hidden="true"></span>
+      <EditorialActor kind="counter" class="newspaper-counter" />
+    </div>
+    <div class="newspaper-subscription-intro">
+      <h3 id={titleId}>{copy.title}</h3>
+      <p>{copy.description}</p>
+    </div>
+  </div>
+  <form class="newspaper-form" data-newspaper-form action="https://chat.ursb.me/api/subscribe" method="post">
+    <div class="newspaper-form-controls">
+      <div class="newspaper-address">
+        <label for={emailId}>{copy.email}</label>
+        <input id={emailId} name="email" type="email" placeholder="you@example.com" autocomplete="email" inputmode="email" required maxlength="254" aria-describedby={statusId} />
+      </div>
+      <input type="hidden" name="lang" value={lang} />
+      <button type="submit" disabled><span data-subscribe-label>{copy.subscribe}</span><svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5" /></svg></button>
+    </div>
+    <p class="newspaper-status" id={statusId} data-newspaper-status role="status" aria-live="polite" aria-atomic="true"></p>
+  </form>
+  <noscript><p class="newspaper-status">{copy.javascript}</p></noscript>
+  </div>
+  <div class="newspaper-subscription-footnote">
+  <span class="newspaper-unsubscribe">{copy.unsubscribe}</span>
+  <a class="newspaper-rss" href={`${lang === 'en' ? '/en' : ''}/blog/feed.xml`}>
+    {copy.rss}
+  </a>
+  </div>
+</section>
+
+<script>
+  import { initNewspaperSubscriptions } from './newspaper-subscription';
+  initNewspaperSubscriptions();
+  document.addEventListener('astro:page-load', initNewspaperSubscriptions);
+</script>

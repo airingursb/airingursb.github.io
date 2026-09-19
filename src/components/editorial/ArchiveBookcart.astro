@@ -1,0 +1,96 @@
+---
+import { getCollection } from 'astro:content';
+import { enPostSlug } from '../../lib/i18n';
+import EditorialActor from './EditorialActor.astro';
+interface Props { lang?: 'zh' | 'en'; }
+const { lang = 'zh' } = Astro.props;
+const en = lang === 'en';
+const posts = (await getCollection('posts', ({ data }) => !data.draft))
+  .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
+const translations = new Map((en ? await getCollection('postsEn', ({ data }) => !data.draft) : []).map(post => [enPostSlug(post.id), post]));
+const years = [...new Set(posts.map(post => post.data.date.getUTCFullYear()))];
+const copy = en ? {
+  label: 'From the archive', invitation: 'There is always another page.',
+  replay: 'Visit the bear’s bookcart', archive: 'Browse the full archive',
+} : {
+  label: '旧文新读', invitation: '再翻一页，或许正好。',
+  replay: '看看小熊的书车', archive: '浏览全部文章',
+};
+---
+<section class="archive-bookcart" id="archive-bookcart" data-archive-bookcart aria-label={copy.label}>
+  <div class="archive-intro">
+    <button type="button" class="archive-actor" data-cart-replay aria-label={copy.replay}>
+      <EditorialActor kind="cart" />
+    </button>
+    <div class="archive-invitation">
+      <p class="archive-label">{copy.label}</p>
+      <h2>{copy.invitation}</h2>
+      <a class="archive-all" href={en ? '/en/archive/' : '/archive/'}>{copy.archive}<span aria-hidden="true"> ↗</span></a>
+    </div>
+  </div>
+  <div class="archive-years">
+    {years.map(year => (
+      <details name={`bookcart-${lang}`} class="archive-year">
+        <summary>
+          <span>{year}</span>
+          <span class="archive-count">{posts.filter(post => post.data.date.getUTCFullYear() === year).length}{en ? ' pieces' : ' 篇'}</span>
+          <span class="archive-plus" aria-hidden="true">+</span>
+        </summary>
+        <ul>
+          {posts.filter(post => post.data.date.getUTCFullYear() === year).map(post => {
+            const translated = translations.get(post.id);
+            return <li>
+              <a href={`${translated ? '/en' : ''}/posts/${post.id}/`}>
+                <time datetime={post.data.date.toISOString()}>{post.data.date.toISOString().slice(5, 10)}</time>
+                <span>{translated?.data.title ?? post.data.title}{en && !translated && <small lang="en">CN</small>}</span>
+              </a>
+            </li>;
+          })}
+        </ul>
+      </details>
+    ))}
+  </div>
+</section>
+<script>
+  import { mountArchiveBookcart } from '../../lib/editorial-actor-cart';
+  const cleanups = new Map<HTMLElement, () => void>();
+  function mount() {
+    document.querySelectorAll<HTMLElement>('[data-archive-bookcart]').forEach(host => {
+      if (!cleanups.has(host)) cleanups.set(host, mountArchiveBookcart(host));
+    });
+  }
+  mount();
+  document.addEventListener('astro:page-load', mount);
+  document.addEventListener('astro:before-swap', () => { cleanups.forEach(dispose => dispose()); cleanups.clear(); });
+</script>
+<style>
+  .archive-bookcart { max-width: 1200px; margin: 0 auto 32px; padding: 0 48px; color: var(--c-text); }
+  .archive-intro { display: flex; align-items: center; gap: 32px; padding-bottom: 24px; }
+  .archive-actor { --editorial-actor-width: 208px; width: var(--editorial-actor-width); flex: 0 0 auto; border: 0; padding: 0; background: none; cursor: pointer; }
+  .archive-label { font: 500 12px/1.5 var(--font-mono, monospace); color: var(--c-text-muted); margin: 0 0 8px; letter-spacing: .04em; }
+  h2 { margin: 0; font: 400 18px/1.8 ui-serif, 'Songti SC', Georgia, serif; text-wrap: balance; }
+  .archive-all { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; color: var(--c-text-muted); text-decoration: none; gap: 8px; }
+  .archive-years { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0 24px; }
+  .archive-year { border-top: 1px solid var(--c-border); min-width: 0; }
+  .archive-year[open] { grid-column: 1 / -1; }
+  summary { display: flex; align-items: center; gap: 12px; min-height: 44px; cursor: pointer; list-style: none; font: 500 14px/1.5 var(--font-mono, monospace); }
+  summary::-webkit-details-marker { display: none; }
+  .archive-count { color: var(--c-text-muted); font-size: 12px; }
+  .archive-plus { margin-left: auto; font: 400 18px/1 sans-serif; }
+  details[open] .archive-plus { transform: rotate(45deg); }
+  ul { margin: 0 0 16px; padding: 0; list-style: none; }
+  li a { display: flex; align-items: baseline; gap: 16px; padding: 12px 0; min-height: 44px; box-sizing: border-box; text-decoration: none; color: var(--c-text); font-size: 14px; line-height: 1.65; }
+  li + li { border-top: 1px solid var(--c-border); }
+  time { flex: 0 0 auto; color: var(--c-text-muted); font: 400 12px/1.8 var(--font-mono, monospace); }
+  small { display: inline-block; margin-left: 8px; font: 400 12px/1.5 var(--font-mono, monospace); color: var(--c-text-muted); }
+  a:hover { color: var(--accent); }
+  :is(a, button, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  @media (max-width: 720px) {
+    .archive-bookcart { padding: 0 20px; }
+    .archive-intro { gap: 16px; align-items: flex-end; }
+    .archive-actor { --editorial-actor-width: 168px; }
+    .archive-invitation { min-width: 0; }
+    .archive-years { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 16px; }
+  }
+  @media (max-width: 420px) { .archive-intro { flex-direction: column; align-items: flex-start; gap: 8px; } }
+</style>

@@ -1,0 +1,39 @@
+---
+import type { EditorialNeighbor } from './editorial-neighbor';
+import './next-page-preview.css';
+
+interface Props {
+  prev?: EditorialNeighbor | null;
+  next?: EditorialNeighbor | null;
+  lang?: 'zh' | 'en';
+}
+const { prev = null, next = null, lang = 'zh' } = Astro.props;
+const en = lang === 'en';
+const prefix = en ? '/en' : '';
+const primary = next ?? prev;
+const secondary = next && prev ? prev : null;
+const href = primary ? `${prefix}/posts/${primary.slug}/` : '';
+---
+{primary && (
+  <nav class="next-page-preview" aria-label={en ? 'Continue reading' : '继续阅读'} data-next-page-preview>
+    <article class="next-page-paper" data-page-paper>
+      <a class="next-page-title" href={href} data-article-card data-slug={primary.slug} data-title={primary.title} data-cover={primary.cover}>
+        {primary.cover && <img class="next-page-cover" data-article-cover src={primary.cover} alt="" width="560" height="315" loading="lazy" decoding="async" />}
+        <h3 data-article-title>{primary.title}</h3>
+      </a>
+      {primary.description && <p class="next-page-description">{primary.description}</p>}
+      <a class="next-page-read" href={href}>{en ? 'Read this story' : '读这篇文章'}<span aria-hidden="true">→</span></a>
+    </article>
+    {secondary && <article class="next-page-secondary" data-page-paper>
+      <a href={`${prefix}/posts/${secondary.slug}/`} data-article-card data-slug={secondary.slug} data-title={secondary.title}>
+        <span>{en ? 'Previous article' : '上一篇'} <span aria-hidden="true">←</span></span>
+        <span data-article-title>{secondary.title}</span>
+      </a>
+    </article>}
+  </nav>
+)}
+<script>
+  import { initNextPagePreviews } from './next-page-preview';
+  initNextPagePreviews();
+  document.addEventListener('astro:page-load', initNextPagePreviews);
+</script>

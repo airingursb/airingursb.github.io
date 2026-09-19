@@ -1,0 +1,21 @@
+---
+interface Props {
+  kind: 'cart' | 'panda' | 'counter';
+  poster?: string;
+  width?: number;
+  height?: number;
+  class?: string;
+}
+const sizes = { cart: [208, 128], panda: [96, 96], counter: [112, 96] } as const;
+const { kind, poster = `/editorial-motion/${kind}/poster.webp`, width = sizes[kind][0], height = sizes[kind][1], class: className } = Astro.props;
+---
+<span class:list={['editorial-actor', className]} data-editorial-actor={`/editorial-motion/${kind}/manifest.json`} data-actor-rendering={kind === 'panda' ? 'smooth' : 'pixelated'} data-actor-state="poster" aria-hidden="true" style={`aspect-ratio:${width}/${height}`}>
+  <img data-actor-poster src={poster} width={width} height={height} loading="lazy" decoding="async" alt="" />
+  <canvas data-actor-canvas width={width} height={height} hidden></canvas>
+</span>
+<style>
+  .editorial-actor { position: relative; display: block; width: 100%; }
+  img, canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+  [data-actor-rendering='smooth'] :is(img, canvas) { image-rendering: auto; }
+  [hidden] { display: none; }
+</style>
