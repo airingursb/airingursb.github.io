@@ -1,0 +1,1 @@
+const t="blog-pet-dismissed";function e(){try{return window.localStorage.getItem(t)==="1"}catch{return!1}}function s(){try{window.localStorage.setItem(t,"1")}catch{}window.dispatchEvent(new Event(t))}export{t as B,s as d,e as i};
