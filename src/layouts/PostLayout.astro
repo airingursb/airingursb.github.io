@@ -13,6 +13,8 @@ import BlogPetWidget from '../components/BlogPetWidget.astro';
 import ArticleReadingDock from '../components/editorial/ArticleReadingDock.astro';
 import NextPagePreview from '../components/editorial/NextPagePreview.astro';
 import NewspaperSubscription from '../components/editorial/NewspaperSubscription.astro';
+import LaterNote from '../components/editorial/LaterNote.astro';
+import type { LaterNoteContent } from '../lib/later-note';
 import type { EditorialNeighbor } from '../components/editorial/editorial-neighbor';
 import '@fontsource/noto-serif-sc/400.css';
 import '@fontsource/noto-serif-sc/600.css';
@@ -26,6 +28,7 @@ interface Props {
   tags: string[];
   description?: string;
   cover?: string;
+  laterNote?: LaterNoteContent;
   prevPost?: EditorialNeighbor | null;
   nextPost?: EditorialNeighbor | null;
   relatedPosts?: { slug: string; title: string }[];
@@ -41,7 +44,7 @@ interface Props {
   hreflang?: { zh?: string; en?: string };
 }
 
-const { title, date, dateModified, tags, description, cover, prevPost, nextPost, relatedPosts = [], seriesInfo, readingTime, lang = 'zh', hreflang } = Astro.props;
+const { title, date, dateModified, tags, description, cover, laterNote, prevPost, nextPost, relatedPosts = [], seriesInfo, readingTime, lang = 'zh', hreflang } = Astro.props;
 
 const seriesNames: Record<string, Record<string, string>> = {
   zh: { weekly: '月刊', annually: '年报' },
@@ -229,6 +232,11 @@ const jsonLd = {
         <a href="/archive" class="sb-nav">&larr; All Posts</a>
       </aside>
 
+      <div class="post-reading-column">
+        {laterNote && <div class="post-later-note">
+          <time class="post-later-original" datetime={date.toISOString()}>{date.toISOString().slice(0, 10).replaceAll('-', '.')}</time>
+          <LaterNote en={lang === 'en'} note={laterNote} />
+        </div>}
       <article class="post-content" id="postContent" data-pagefind-body>
         <slot />
         <div class="article-coda" aria-hidden="true">
@@ -236,6 +244,7 @@ const jsonLd = {
         </div>
         <ArticleReadingDock lang={lang} />
       </article>
+      </div>
 
       <!-- Right column: relative container for absolute-positioned cards -->
       <aside class="comment-rail" id="commentRail">
@@ -2130,6 +2139,9 @@ const jsonLd = {
   }
 
   /* ===== Content ===== */
+  .post-reading-column { min-width: 0; }
+  .post-later-note { position: relative; margin-bottom: 32px; border-bottom: 1px solid var(--c-border); }
+  .post-later-original { position: absolute; left: 0; top: 0; display: flex; align-items: center; min-height: 44px; color: var(--c-text-muted); font: 12px/1.5 var(--font-mono, monospace); }
   .post-content {
     color: var(--c-text); font-size: 18px; line-height: 2.0;
     min-width: 0; max-width: 72ch; position: relative;

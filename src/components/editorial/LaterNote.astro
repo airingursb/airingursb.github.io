@@ -1,0 +1,60 @@
+---
+import type { LaterNoteContent } from '../../lib/later-note';
+interface Props {
+  readonly en: boolean;
+  readonly note: LaterNoteContent;
+  readonly disclaimer?: string;
+}
+const { en, note, disclaimer } = Astro.props;
+const year = note.date.slice(0, 4);
+---
+<details class="later-note" data-later-note>
+  <summary aria-controls="later-note-sheet">
+    <span>{en ? `${year} addendum` : `${year} 年补记`}</span>
+    <svg class="note-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+  </summary>
+  <div class="later-note-sheet" id="later-note-sheet">
+    <div class="note-dateline"><span>{en ? 'A LATER PAGE' : '后来夹进来的一页'}</span><time datetime={note.date}>{note.date.replaceAll('-', '.')}</time></div>
+    <h2>{note.title}</h2>
+    {disclaimer && <p class="note-disclaimer">{disclaimer}</p>}
+    {note.paragraphs.map(paragraph => <p>{paragraph}</p>)}
+    <div class="note-bottom"><span>{en ? 'A note beside the original.' : '原文还在，后来也在。'}</span><button type="button" data-later-close>{en ? 'Back to the article' : '收好，继续读原文'}<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M12 5H4m0 0 3-3M4 5l3 3M4 5v6h8" /></svg></button></div>
+  </div>
+</details>
+<script>
+  import { mountLaterNotes } from '../../lib/later-note-ui';
+  mountLaterNotes();
+  document.addEventListener('astro:page-load', mountLaterNotes);
+</script>
+<style>
+  .later-note {
+    --later-paper: #1b211d;
+    --later-paper-edge: #465148;
+    --later-fold: #303b33;
+    --later-muted: #9ba69d;
+    --later-reveal: 240ms;
+    --later-fold-back: 180ms;
+    --later-ease: cubic-bezier(.2,.8,.2,1);
+    width: 100%;
+  }
+  :global([data-mode="light"]) .later-note { --later-paper: #f8f6ef; --later-paper-edge: #d9ddcf; --later-fold: #e7ebde; --later-muted: #656d76; }
+  summary { display: flex; align-items: center; justify-content: center; gap: 8px; width: fit-content; min-height: 44px; margin-left: auto; padding: 8px 16px; background: var(--later-paper); border: 1px solid var(--later-paper-edge); border-bottom: 0; color: var(--c-text); font: 12px/1.5 var(--font-mono, monospace); cursor: pointer; position: relative; list-style: none; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: ''; position: absolute; top: -1px; right: -1px; width: 12px; height: 12px; background: linear-gradient(45deg, var(--later-fold) 50%, var(--c-bg) 50%); pointer-events: none; }
+  summary:hover { text-decoration: underline; text-underline-offset: 4px; }
+  .note-chevron { transition: transform var(--later-reveal) var(--later-ease); }
+  details[open] .note-chevron { transform: rotate(180deg); }
+  .later-note-sheet { position: relative; transform-origin: top right; padding: 24px 32px 16px; border: 1px solid var(--later-paper-edge); background: var(--later-paper); }
+  .note-dateline { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; color: var(--later-muted); font: 12px/1.5 var(--font-mono, monospace); letter-spacing: .04em; }
+  .later-note .later-note-sheet h2 { margin: 20px 0 12px; color: var(--c-text); font: 500 18px/1.5 ui-serif, 'Songti SC', 'STSong', Georgia, serif; }
+  .later-note .later-note-sheet p { margin: 12px 0 0; color: var(--c-text); font: 16px/1.85 ui-serif, 'Songti SC', 'STSong', Georgia, serif; }
+  .later-note .later-note-sheet p.note-disclaimer { margin: 0 0 20px; color: var(--later-muted); font: 12px/1.65 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .note-bottom { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; margin-top: 20px; padding-top: 12px; border-top: 1px solid var(--later-paper-edge); font: 12px/1.5 var(--font-mono, monospace); }
+  .note-bottom > span { color: var(--later-muted); }
+  button { display: none; align-items: center; justify-content: flex-end; gap: 8px; min-height: 44px; padding: 8px 0; border: 0; background: none; color: var(--c-text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; cursor: pointer; }
+  [data-enhanced] button { display: inline-flex; }
+  button:hover { text-decoration: underline; text-underline-offset: 4px; }
+  :is(button, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  @media (max-width: 600px) { .later-note-sheet { padding: 20px 20px 12px; } summary { padding-inline: 12px; } .note-bottom { gap: 0; } .note-bottom > span { width: 100%; } .note-bottom button { margin-left: auto; } }
+  @media (prefers-reduced-motion: reduce) { .note-chevron { transition: none; } }
+</style>

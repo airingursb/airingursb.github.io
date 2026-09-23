@@ -1,5 +1,44 @@
 # Airing's Blog Design System
 
+## Small delights · September 23 acceptance
+
+The existing Blog bookcart gains real year-driven retrieval. Keep its 208px desktop /
+168px mobile footprint and native archive details. Opening a year immediately exposes
+real article links, independently of the H3 performance. The newest half of years
+use the upper shelf, older years the lower shelf. Selection uses existing accent and
+a 2px leading rule; a 12px mono bookmark names the selected year in DOM, never video.
+Retrieve-upper/lower end in authored held-book rests; return-upper/lower put that book
+back before the next retrieval. Rapid selection coalesces to the latest request at
+gesture boundaries. No accumulating queue, surprise interruption or poster flash.
+An explicit year change completes an already-running one-shot at 3x speed, retaining
+its whole physical action; the next retrieval plays at normal speed.
+Reduced motion and failed assets retain native navigation and selection feedback.
+
+The personal footer keeps its single original tree, bench, reading bear, garden,
+mailbox and bird. Six tiny cream/sage lamps hang within its canopy, using the existing
+warmth #f6d58c and outline #48382d. Separate 44px targets must not overlap old controls.
+Shared lighting is a Singapore-night activity (18:00–06:00), one contribution per
+visitor per night, capped at six. A server acknowledgement controls the persisted
+light; H3 supplies a complete close-book, reach/pull, return-to-reading response.
+No audio, crowd count, score, dashboard or theme switch. State resets at dawn, polls
+only while visible, and never claims success while offline. Preview persistence is
+isolated and visibly identified outside the scene; production uses server time.
+
+The approved later-note UI is an optional author-supplied article feature: a small
+date-adjacent paper tab unfolds
+an inline retrospective above the original article context. Use native disclosure,
+serif prose, mono dates, neutral surface/rule tokens, 4px spacing and visible focus.
+Mobile stays inline; Escape/collapse restore the tab focus. Motion is a short opacity/
+transform reveal disabled under reduced motion. Example addenda are explicitly
+fictional in the noindex demo; real articles render a note only with validated
+`laterNote` frontmatter. Original prose, TOC and inline-comment scope stay untouched.
+
+Personas: first-time CN reader, returning EN reader, mobile touch reader and keyboard/
+reduced-motion reader. Review all three surfaces at 375/768/1280px in both themes.
+Inspect H3 motion temporally on dark/light backgrounds for edges, clipped limbs,
+scenery drift and neutral seams. New gestures use the existing sprite pipeline;
+these Astro/DOM extensions do not introduce React hydration or tooling dependencies.
+
 ## Homepage interactive bear
 
 `/` displays the interactive bear; `/previews/bear-home/` remains a noindex alias. Preserve
