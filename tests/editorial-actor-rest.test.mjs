@@ -127,3 +127,73 @@ test('idle remains the fallback rest and stopping during its decode prevents a l
   assert.equal(f.canvas.hidden, true);
   assert.equal(f.host.dataset.actorState, 'poster');
 });
+
+test('a failed rest announces its clip once while retaining the finished action', async t => {
+  // Given: the requested action is available but its rest atlas fails.
+  const f = fixture({ manifest: rested, decode: url => {
+    if (url.endsWith('/arrival-rest.webp')) throw new Error('missing rest');
+  } });
+  const actor = createEditorialActor(f.host);
+  t.after(() => actor.dispose());
+  const failed = [];
+  f.host.addEventListener('editorial-actor-unavailable', event => failed.push(event.detail.clip));
+  f.intersect(true);
+  // When: the one-shot completes and tries to settle.
+  const playing = actor.play('arrival');
+  await settle();
+  f.step(0);
+  f.step(400);
+  await playing;
+  await settle();
+  // Then: consumers can continue a pending user action without losing the last valid drawing.
+  assert.deepEqual(failed, ['arrival-rest']);
+  assert.equal(f.canvas.hidden, false);
+  assert.equal(f.host.dataset.actorFrame, '3');
+});
+
+test('finishing sooner reaches the authored final frame without accelerating the next action', async t => {
+  // Given: a one-shot is part way through its gesture.
+  const f = fixture({ manifest: { ...rested, clips: { ...rested.clips, arrival: { asset: 'arrival.webp', frames: 4 } } } });
+  const actor = createEditorialActor(f.host);
+  t.after(() => actor.dispose());
+  f.intersect(true);
+  const playing = actor.play('arrival');
+  await settle();
+  f.step(0);
+  f.step(100);
+  // When: a user action requests the current gesture finish promptly.
+  actor.finishSoon();
+  f.step(200);
+  // Then: the gesture reaches its complete last frame, and the next clip plays at normal speed.
+  assert.equal(await playing, true);
+  assert.equal(f.host.dataset.actorFrame, '3');
+  const next = actor.play('bookmark');
+  await settle();
+  f.step(300);
+  f.step(400);
+  assert.equal(f.host.dataset.actorFrame, '1');
+  actor.stop();
+  await next;
+});
+
+test('a finish-soon request during idle loading cannot accelerate the idle loop', async t => {
+  // Given: a named rest has not finished decoding.
+  let resolveRest;
+  const ready = new Promise(resolve => { resolveRest = resolve; });
+  const f = fixture({ manifest: rested, decode: () => ready });
+  const actor = createEditorialActor(f.host);
+  t.after(() => { resolveRest(); actor.dispose(); });
+  f.intersect(true);
+  const resting = actor.play('arrival-rest');
+  await settle();
+  // When: finishing soon is requested before the runtime can identify the idle performance.
+  actor.finishSoon();
+  resolveRest();
+  await settle();
+  f.step(0);
+  f.step(50);
+  // Then: the rest uses its normal frame clock.
+  assert.equal(f.host.dataset.actorFrame, '0');
+  actor.stop();
+  await resting;
+});

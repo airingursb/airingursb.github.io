@@ -21,6 +21,7 @@ const copy = en ? {
   <div class="archive-intro">
     <button type="button" class="archive-actor" data-cart-replay aria-label={copy.replay}>
       <EditorialActor kind="cart" />
+      <span class="archive-bookmark" data-cart-selection aria-hidden="true" hidden></span>
     </button>
     <div class="archive-invitation">
       <p class="archive-label">{copy.label}</p>
@@ -29,8 +30,8 @@ const copy = en ? {
     </div>
   </div>
   <div class="archive-years">
-    {years.map(year => (
-      <details name={`bookcart-${lang}`} class="archive-year">
+    {years.map((year, index) => (
+      <details name={`bookcart-${lang}`} class="archive-year" data-cart-year={year} data-cart-shelf={index < Math.ceil(years.length / 2) ? 'upper' : 'lower'}>
         <summary>
           <span>{year}</span>
           <span class="archive-count">{posts.filter(post => post.data.date.getUTCFullYear() === year).length}{en ? ' pieces' : ' 篇'}</span>
@@ -66,7 +67,9 @@ const copy = en ? {
 <style>
   .archive-bookcart { max-width: 1200px; margin: 0 auto 32px; padding: 0 48px; color: var(--c-text); }
   .archive-intro { display: flex; align-items: center; gap: 32px; padding-bottom: 24px; }
-  .archive-actor { --editorial-actor-width: 208px; width: var(--editorial-actor-width); flex: 0 0 auto; border: 0; padding: 0; background: none; cursor: pointer; }
+  .archive-actor { --editorial-actor-width: 208px; position: relative; width: var(--editorial-actor-width); flex: 0 0 auto; border: 0; padding: 0; background: none; cursor: pointer; }
+  .archive-bookmark { position: absolute; right: 8px; bottom: 0; padding: 0 4px; border-left: 2px solid var(--accent); color: var(--c-text-muted); background: var(--c-bg); font: 500 12px/1.5 var(--font-mono, monospace); }
+  .archive-bookmark[hidden] { display: none; }
   .archive-label { font: 500 12px/1.5 var(--font-mono, monospace); color: var(--c-text-muted); margin: 0 0 8px; letter-spacing: .04em; }
   h2 { margin: 0; font: 400 18px/1.8 ui-serif, 'Songti SC', Georgia, serif; text-wrap: balance; }
   .archive-all { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; color: var(--c-text-muted); text-decoration: none; gap: 8px; }
@@ -78,6 +81,7 @@ const copy = en ? {
   .archive-count { color: var(--c-text-muted); font-size: 12px; }
   .archive-plus { margin-left: auto; font: 400 18px/1 sans-serif; }
   details[open] .archive-plus { transform: rotate(45deg); }
+  details[open] summary { color: var(--accent); }
   ul { margin: 0 0 16px; padding: 0; list-style: none; }
   li a { display: flex; align-items: baseline; gap: 16px; padding: 12px 0; min-height: 44px; box-sizing: border-box; text-decoration: none; color: var(--c-text); font-size: 14px; line-height: 1.65; }
   li + li { border-top: 1px solid var(--c-border); }
