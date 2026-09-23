@@ -1,0 +1,62 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../SiteHeader.astro';
+import BearGardenFooter from '../BearGardenFooter.astro';
+import GardenScene from '../bear-stories/garden/GardenScene.astro';
+const lang = Astro.url.pathname.startsWith('/en/') ? 'en' : 'zh';
+const en = lang === 'en';
+const route = '/previews/tree-lamps/';
+---
+<BaseLayout title={en ? 'Lights under the tree — preview' : '一起点亮树下的灯 — 预览'} description={en ? 'A shared evening in the original garden.' : '在原来的树下，留一盏大家看得见的小灯。'} lang={lang} noindex persistentTheme hreflang={{ zh: route, en: `/en${route}` }}>
+  <SiteHeader lang={lang}><a class="lamp-preview-language" slot="meta" href={`${en ? '' : '/en'}${route}?scene=night`}>{en ? '中文' : 'EN'}</a></SiteHeader>
+  <main class="lamp-preview">
+    <header class="lamp-preview-intro">
+      <p>{en ? '06 / A SHARED EVENING' : '06 / 一起留一盏灯'}</p>
+      <h1>{en ? 'A little light for the next visitor.' : '给下一位路过的人，留一盏灯。'}</h1>
+      <p>{en ? 'The same tree, the same bear. At dusk, six small lamps wait among the branches.' : '还是那棵树，还是那只熊。傍晚时，树枝间多了六盏小灯。'}</p>
+    </header>
+    <BearGardenFooter>
+      <GardenScene slot="scene" lang={lang} shared={false} lamps lampPreview />
+      <div slot="subscription" class="lamp-preview-subscription"><p>{en ? 'This preview does not send email.' : '这里是交互预览，不会发送订阅邮件。'}</p><a href="https://ursb.me/#subscribe" data-footer-subscribe-link>{en ? 'Subscribe on the homepage ↗' : '到首页订阅 ↗'}</a></div>
+    </BearGardenFooter>
+    <aside class="lamp-preview-notes">
+      <p>{en ? 'Tap a lamp among the branches. One lamp per browser each evening, six shared lamps in total. Another browser sees the same lights. They go out at 6 am in Singapore.' : '点一下树枝间的小灯。每个浏览器每晚可以点亮一盏，共六盏；换一个浏览器，也能看见这些灯。新加坡早晨六点，小灯熄灭。'}</p>
+      <nav aria-label={en ? 'Preview clock' : '预览时钟'}>
+        <a href="?scene=night">{en ? 'Evening preview' : '傍晚预览'}</a>
+        <a href="?scene=day">{en ? 'Daytime preview' : '白天预览'}</a>
+        <a href="?">{en ? 'Current Singapore time' : '新加坡当前时间'}</a>
+      </nav>
+      <p class="lamp-preview-disclosure">{en ? 'Acceptance preview: a separate local database, not the live site. Evening/daytime links simulate server time. The mailbox opens a link to the real subscription form.' : '验收预览使用独立本地数据库，正式站点尚未接入。傍晚 / 白天链接会模拟服务器时钟；信箱只打开正式订阅入口。'}</p>
+      <p data-lamp-preview-status>{en ? 'Checking the lamps.' : '正在看看小灯。'}</p>
+    </aside>
+  </main>
+</BaseLayout>
+<script>
+  const feedback = document.querySelector<HTMLElement>('[data-lamp-preview-status]');
+  document.addEventListener('tree-lamps-status', event => {
+    if (feedback && event instanceof CustomEvent && typeof event.detail?.message === 'string') feedback.textContent = event.detail.message;
+  });
+</script>
+<style>
+  :global(body:has(.lamp-preview)) { display: block; padding: 0; }
+  .lamp-preview { max-width: 1200px; margin: 0 auto; padding: 0 48px 64px; }
+  .lamp-preview-language { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-text-muted); text-underline-offset: 4px; }
+  .lamp-preview-intro { max-width: 600px; padding: 64px 0; }
+  .lamp-preview-intro > p:first-child { margin: 0 0 12px; font: 12px/1.5 var(--font-mono); color: var(--c-text-muted); letter-spacing: .04em; }
+  h1 { margin: 0 0 24px; font-size: 28px; line-height: 1.35; letter-spacing: -.025em; }
+  .lamp-preview-intro > p:last-child { color: var(--c-text-muted); font-size: 16px; line-height: 1.8; }
+  .lamp-preview :global(.bear-garden > bear-shared-garden) { justify-self: end; }
+  .lamp-preview :global(.shared-garden-state) { display: none; }
+  .lamp-preview-notes { max-width: 720px; margin-top: 32px; color: var(--c-text-muted); font: 12px/1.8 var(--font-mono); }
+  .lamp-preview-notes nav { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  .lamp-preview-notes a { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-text); text-underline-offset: 4px; }
+  .lamp-preview-disclosure { color: var(--c-text-muted); }
+  .lamp-preview-subscription { max-width: 340px; color: var(--c-text-muted); font-size: 12px; line-height: 1.8; }
+  .lamp-preview-subscription a { color: var(--accent); display: inline-flex; align-items: center; min-height: 44px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  @media (max-width: 768px) {
+    .lamp-preview { padding-inline: 20px; }
+    .lamp-preview-intro { padding: 40px 0; }
+    .lamp-preview :global(.bear-garden) { grid-template-columns: minmax(0, 1fr); padding: 32px 0 16px; gap: 8px; }
+  }
+</style>

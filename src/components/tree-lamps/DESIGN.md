@@ -1,0 +1,15 @@
+# Tree lamps — one shared evening
+
+Extends the root design contract and original 340×240 tree/bench scene. No second footer, frame, counter or instruction bubble. Six tiny pixel lanterns hang inside the canopy at (100,110), (155,65), (213,38), (274,44), (302,109), (247,135). Each light body is 8×12 logical pixels; native transparent targets are at least 44 CSS pixels with no overlap at the 300px mobile stage. Preserve the original bird, book, mailbox and watering targets. A shared pull cord ends at (222,143), within the bear's H3 reach. Original imagery and its matte remain immutable.
+
+Palette inherits outline #48382d, sage #91ac89, cream #f4e2b9 and lamp warmth #f6d58c. Only the local lamps glow; website theme does not change. Glow opacity settles over 240ms with no repeating pulse. A pending choice shows a quiet cream outline, an error shows a brief outline with retry remaining possible. Focus uses the existing accent. Reduced motion has instant visual changes and the same real persistence.
+
+Each native button exposes its number and lit/available/daytime state in Chinese or English, plus a hidden polite result. No visible captions in the production scene. Rendering states: checking, ready, pending, confirmed, already-contributed, occupied, full, daytime, unavailable. A successful server response updates lamps immediately and dispatches `bear-footer-lamp-request` with `{ lampIndex }`; the H3 adapter completes the physical pull when the bear can respond. It does not control or imply save success.
+
+Read the beui.dev button source on 2026-09-23. Reuse the explicit pending/success/error contract, without springy CTA styling or a React dependency. The pixel hanging-lamp + H3 response mechanism is authored for this existing scene.
+
+The server clock defines nights as Singapore 18:00–06:00; dates identify the evening on which each night starts. Six lamps maximum, one lamp per signed anonymous browser each night. A lamp already lit cannot consume another visitor's chance. Stored lights disappear at dawn and the next evening starts empty. Real shared state is re-read only while the scene is visible, every 15 seconds; returning to the tab refreshes. Server time also bounds a one-shot dawn/sunset refresh; no client weather, theme or timezone determines persistence.
+
+Production uses service-role-only invoker RPC, locked per-night row, unique night/visitor and night/lamp constraints, RLS and explicit privilege revokes. Preview uses a separate signed cookie, namespace and local SQLite database on :4420, never production. `?scene=night` and `?scene=day` are acceptance-only simulated clocks held by the preview server; the preview shell explains this. Preview controls cannot send a subscription email. Production migration is supplied but is not applied by this task.
+
+Verification: 375/768/1280, CN/EN, dark/light, keyboard and reduced motion; two independent browsers observe saved lamps; duplicate and concurrent requests cannot overfill or credit twice; next-day dawn/night reset; offline stays unlit and allows retry. Parent owns consolidated root DESIGN/checklist and final visual QA.

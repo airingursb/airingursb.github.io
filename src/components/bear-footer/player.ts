@@ -44,10 +44,13 @@ export class BearFooterScene extends HTMLElement {
         Math.floor(position / source.columns) * source.cellHeight,
         source.cellWidth, source.cellHeight,
         source.left, source.top, source.cellWidth, source.cellHeight);
-      if (can && !activity) context.drawImage(can, 0, 0);
+      if (can && (!activity || activity.keepStaticProps)) context.drawImage(can, 0, 0);
       painted = position;
       this.dataset.frame = String(position);
-      this.dataset.state = activity ? 'watering' : greeting ? 'greet' : 'reading';
+      this.dataset.state = activity ? activity.kind ?? 'watering' : greeting ? 'greet' : 'reading';
+      if (activity) this.dispatchEvent(new CustomEvent('bear-footer-activity-frame', {
+        detail: { kind: activity.kind ?? 'watering', frame: position },
+      }));
     };
     const tick = (now: number) => {
       time += last ? Math.min(now - last, 100) : 0;
