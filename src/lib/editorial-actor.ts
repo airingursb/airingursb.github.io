@@ -2,6 +2,7 @@ import type { EditorialManifest } from './editorial-actor-assets.ts';
 
 export interface EditorialActorController {
   readonly play: (name: string) => Promise<boolean>;
+  readonly finishSoon: () => void;
   readonly stop: () => void;
   readonly dispose: () => void;
 }
@@ -35,6 +36,7 @@ export function createEditorialActor(host: HTMLElement): EditorialActorControlle
   let visible = false;
   let frameRequest = 0;
   let previousTime: number | null = null;
+  let playbackRate = 1;
   host.dataset.actorState = 'poster';
 
   const manifest = () => {
@@ -51,6 +53,7 @@ export function createEditorialActor(host: HTMLElement): EditorialActorControlle
     performance = null;
     busy = false;
     previousTime = null;
+    playbackRate = 1;
     if (!preserveCanvas) restorePoster();
     host.dataset.actorLoop = 'false';
     host.dataset.actorState = preserveCanvas ? 'quiet' : 'poster';
@@ -62,7 +65,7 @@ export function createEditorialActor(host: HTMLElement): EditorialActorControlle
   const stop = () => { generation++; finish(false); };
   const tick = (now: number) => {
     if (!performance || !visible || document.hidden || motion.matches || !canvas || !context) return;
-    if (previousTime !== null) performance.elapsed += now - previousTime;
+    if (previousTime !== null) performance.elapsed += (now - previousTime) * playbackRate;
     previousTime = now;
     const current = performance;
     const { width, height, columns, fps } = current.manifest;
@@ -90,9 +93,15 @@ export function createEditorialActor(host: HTMLElement): EditorialActorControlle
     if (visible && !document.hidden && !motion.matches) frameRequest = requestAnimationFrame(tick);
     else host.dataset.actorState = 'paused';
   };
+  const unavailable = (name: string) => {
+    busy = false;
+    host.dataset.actorState = 'unavailable';
+    host.dispatchEvent(new CustomEvent('editorial-actor-unavailable', { detail: { clip: name } }));
+  };
   async function play(name: string): Promise<boolean> {
     if (disposed || motion.matches || !canvas || !context || (busy && performance?.loop !== true)) return false;
     if (performance?.loop) finish(false, true);
+    playbackRate = 1;
     busy = true;
     const request = ++generation;
     host.dataset.actorState = 'loading';
@@ -100,18 +109,19 @@ export function createEditorialActor(host: HTMLElement): EditorialActorControlle
       const data = await manifest();
       if (request !== generation || disposed || motion.matches) return false;
       const clip = data?.clips[name];
-      if (!data || !clip) { busy = false; host.dataset.actorState = 'unavailable'; return false; }
+      if (!data || !clip) { unavailable(name); return false; }
       const assets = await import('./editorial-actor-assets.ts');
       const atlas = await assets.loadEditorialAtlas(new URL(clip.asset, manifestURL).href);
       if (request !== generation || disposed || motion.matches) return false;
       if (!atlas || atlas.naturalWidth < data.width * data.columns || atlas.naturalHeight < data.height * Math.ceil(clip.frames / data.columns)) {
-        busy = false; host.dataset.actorState = 'unavailable'; return false;
+        unavailable(name); return false;
       }
       if (canvas.width !== data.width) canvas.width = data.width;
       if (canvas.height !== data.height) canvas.height = data.height;
       context.imageSmoothingEnabled = host.dataset.actorRendering === 'smooth';
       return await new Promise<boolean>(complete => {
         performance = { name, atlas, manifest: data, frames: clip.frames, loop: clip.loop === true, complete, elapsed: 0 };
+        if (performance.loop) playbackRate = 1;
         host.dataset.actorLoop = String(performance.loop);
         host.dataset.actorState = performance.loop ? 'quiet' : 'playing';
         host.dispatchEvent(new CustomEvent('editorial-actor-start', { detail: { clip: name } }));
@@ -119,7 +129,7 @@ export function createEditorialActor(host: HTMLElement): EditorialActorControlle
       });
     } catch (error) {
       if (!(error instanceof Error)) throw error;
-      if (request === generation) { busy = false; host.dataset.actorState = 'unavailable'; }
+      if (request === generation) unavailable(name);
       return false;
     }
   }
@@ -136,6 +146,7 @@ export function createEditorialActor(host: HTMLElement): EditorialActorControlle
   motion.addEventListener('change', () => { if (motion.matches) stop(); }, { signal: listeners.signal });
   const controller: EditorialActorController = {
     play,
+    finishSoon() { if (busy && performance?.loop !== true) playbackRate = 3; },
     stop,
     dispose() {
       disposed = true;

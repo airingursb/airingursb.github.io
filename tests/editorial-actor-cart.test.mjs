@@ -22,7 +22,8 @@ test('named rests accumulate cart idle time across replays while excluding asset
   const replay = new EventTarget();
   const host = Object.assign(new EventTarget(), {
     dataset: {},
-    querySelector: selector => selector === '[data-editorial-actor]' ? f.host : replay,
+    querySelectorAll: () => [],
+    querySelector: selector => selector === '[data-editorial-actor]' ? f.host : selector === '[data-cart-replay]' ? replay : null,
   });
   const starts = [];
   f.host.addEventListener('editorial-actor-start', event => starts.push(event.detail.clip));
