@@ -1,0 +1,86 @@
+---
+import { getEntry } from 'astro:content';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../SiteHeader.astro';
+import LaterNote from '../editorial/LaterNote.astro';
+
+const en = Astro.url.pathname.startsWith('/en/');
+const lang = en ? 'en' : 'zh';
+const prefix = en ? '/en' : '';
+const post = await getEntry(en ? 'postsEn' : 'posts', 'tools');
+if (!post) throw new Error('The later-note preview requires the existing tools article.');
+const paragraphs = (post.body ?? '').trim().split(/\n\s*\n/).slice(0, 2);
+---
+<BaseLayout title={`${en ? 'A note added later' : '后来夹进来的一页'} · UI Preview | Airing`} description={en ? 'An interactive preview of dated author addenda beside an original article.' : '旧文补记的可交互设计预览：保留原文，让后来的想法有自己的位置。'} lang={lang} persistentTheme noindex hreflang={{ zh: '/previews/later-note/', en: '/en/previews/later-note/' }}>
+  <div class="later-preview">
+    <SiteHeader lang={lang} breadcrumb={en ? 'Later notes · UI preview' : '旧文补记 · UI 预览'} />
+    <main>
+      <aside class="preview-guide" aria-label={en ? 'About this preview' : '预览说明'}>
+        <span class="study-number">05 / UI STUDY</span>
+        <p>{en ? 'Open the paper tab beside the date. The addendum is fictional; the original excerpt is real.' : '点开日期旁的小纸签试试。补记为虚构示例，下方节选来自真实旧文。'}</p>
+      </aside>
+      <article aria-labelledby="sample-title">
+        <header class="article-heading">
+          <p class="article-kicker">{en ? 'FROM THE ARCHIVE' : '从旧文里翻出一页'}</p>
+          <h1 id="sample-title">{post.data.title}</h1>
+          <div class="article-dates">
+            <p class="original-date"><time datetime="2024-03-29">2024.03.29</time><span>{en ? 'original' : '原文'}</span></p>
+            <LaterNote en={en} note={{
+              date: '2026-09-23',
+              title: en ? 'Revisiting this, two years later.' : '两年后，再翻到这一页。',
+              paragraphs: en ? [
+                'A note here could tell the reader what changed since this toolkit was written: a tool that stayed, one that was retired, or a habit that slowly took its place.',
+                'The original article keeps its place in time. The later thought sits beside it, with its own date.',
+              ] : [
+                '这一页可以写下两年后的变化：哪件工具一直留了下来，哪件已经退役，又有哪些习惯慢慢代替了工具。',
+                '旧文章保留在它写下的那一天。后来的想法，有自己的日期，也有自己的一小块位置。',
+              ],
+            }} disclaimer={en ? 'Fictional example for this UI preview. This is not a note written by Airing.' : '以下为交互演示的虚构补记，不代表 Airing 的真实观点。'} />
+          </div>
+        </header>
+        <div class="article-excerpt" id="original-excerpt">
+          {paragraphs.map(paragraph => <p>{paragraph}</p>)}
+          <a class="original-link" href={`${prefix}/posts/tools/`}>{en ? 'Continue to the original article' : '继续阅读原文'}<span aria-hidden="true">↗</span></a>
+        </div>
+      </article>
+      <details class="design-rationale">
+        <summary>{en ? 'The interaction, in three moments' : '这个交互，分成三个小瞬间'}<span aria-hidden="true">+</span></summary>
+        <ol>
+          <li><strong>{en ? 'Notice it.' : '发现。'}</strong><p>{en ? 'The original date stays put. A small later date suggests there is something new to unfold.' : '原来的日期不动，多一枚后来的日期纸签。不催你点开，只让你知道这里有了新想法。'}</p></li>
+          <li><strong>{en ? 'Unfold it.' : '展开。'}</strong><p>{en ? 'A dated note opens right above the original prose. Nothing covers the article or takes you to another page.' : '纸签在原文上方展开，像往旧书里夹了一页新纸。原文还在眼前，也不用跳去别处。'}</p></li>
+          <li><strong>{en ? 'Keep reading.' : '继续。'}</strong><p>{en ? 'Fold it back with the tab, the return action or Escape. On a phone, it remains part of the same reading column.' : '点纸签、点「收好」或按 Esc，就回到旧文。手机上也留在原来的阅读列里，不弹出一整屏。'}</p></li>
+        </ol>
+        <p class="scope-note">{en ? 'Design preview only. No published article or author statement has been changed.' : '仅为设计预览，没有修改已发布文章，也没有添加真实作者补记。'}</p>
+      </details>
+    </main>
+  </div>
+</BaseLayout>
+<style>
+  :global(body:has(.later-preview)) { display: block; padding: 0; }
+  .later-preview { width: 100%; max-width: 1200px; margin: auto; }
+  main { width: min(100%, 816px); padding: 40px 48px 80px; margin: auto; }
+  .preview-guide { display: flex; align-items: baseline; gap: 16px; margin-bottom: 48px; padding-bottom: 16px; border-bottom: 1px solid var(--c-border); color: var(--c-text-muted); font: 12px/1.65 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .preview-guide p { margin: 0; }
+  .study-number { flex: none; font: 12px/1.5 var(--font-mono, monospace); letter-spacing: .04em; }
+  .article-kicker { margin: 0 0 16px; color: var(--c-text-muted); font: 12px/1.5 var(--font-mono, monospace); letter-spacing: .04em; }
+  h1 { margin: 0 0 32px; color: var(--c-text); font: 500 40px/1.4 ui-serif, 'Songti SC', 'STSong', Georgia, serif; letter-spacing: -.025em; text-wrap: balance; }
+  .article-dates { position: relative; border-bottom: 1px solid var(--c-border); }
+  .original-date { position: absolute; top: 0; left: 0; display: flex; align-items: center; gap: 12px; min-height: 44px; margin: 0; color: var(--c-text-muted); font: 12px/1.5 var(--font-mono, monospace); }
+  .original-date span { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .article-excerpt { margin-top: 32px; }
+  .article-excerpt p { margin: 0 0 24px; color: var(--c-text); font: 18px/1.9 ui-serif, 'Songti SC', 'STSong', Georgia, serif; }
+  .original-link { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; margin-top: 8px; color: var(--c-text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-decoration: underline; text-underline-offset: 6px; text-decoration-color: var(--c-border-light); }
+  .original-link:hover { text-decoration-color: currentColor; }
+  .design-rationale { margin-top: 64px; border-top: 1px solid var(--c-border); color: var(--c-text-muted); font: 14px/1.8 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+  .design-rationale > summary { display: flex; justify-content: space-between; align-items: center; gap: 16px; min-height: 56px; list-style: none; cursor: pointer; }
+  .design-rationale > summary::-webkit-details-marker { display: none; }
+  .design-rationale[open] > summary > span { transform: rotate(45deg); }
+  .design-rationale ol { margin: 16px 0 0; padding-left: 24px; }
+  .design-rationale li { margin-bottom: 16px; padding-left: 8px; }
+  .design-rationale p { margin: 4px 0 0; }
+  .design-rationale strong { color: var(--c-text); font-weight: 500; }
+  .scope-note { padding: 16px 0; font-size: 12px; }
+  :is(a, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  @media (max-width: 768px) { main { padding: 24px 20px 64px; } .preview-guide { display: block; margin-bottom: 40px; } .preview-guide p { margin-top: 8px; } h1 { font-size: 28px; margin-bottom: 24px; } .article-excerpt p { font-size: 18px; } .original-date { gap: 8px; } .design-rationale { margin-top: 48px; } }
+  @media (max-width: 390px) { .original-date { display: block; padding-top: 4px; } .original-date span { display: block; } }
+</style>

@@ -1,5 +1,6 @@
 import { defineCollection, z } from 'astro:content';
 import { glob } from 'astro/loaders';
+import { laterNoteSchema } from './lib/later-note';
 
 const postSchema = z.object({
   title: z.string(),
@@ -9,6 +10,7 @@ const postSchema = z.object({
   cover: z.string().optional(),
   featured: z.boolean().default(false),
   draft: z.boolean().default(false),
+  laterNote: laterNoteSchema.optional(),
 });
 
 const posts = defineCollection({

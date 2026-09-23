@@ -1927,6 +1927,16 @@
 
 ## Editorial footer performances
 
+### Year retrieval, shared tree lamps, later-note preview (September 23)
+
+- [ ] Blog CN/EN: opening any year immediately displays that year's actual article links and a small year bookmark. Recent years retrieve from the upper shelf; older years retrieve from the lower shelf. Switching years puts the old book back before taking the requested book; quick changes coalesce to the last selection.
+- [ ] Cart arrival or an in-flight retrieve finishes at 3x after a new year request, then returns to normal speed. No poster flash, unbounded queue or random mishap interrupts a selected year. Closing the year returns the book. Reduced motion, hidden-tab resume, failed action and failed rest preserve usable archive navigation.
+- [ ] Tree lamps remain part of the single original reading/garden footer. Six 44px lamp targets avoid the bird, bear, book, mailbox and plant controls. H3 closes the book, pulls the switch, and returns to the original reading scene; watering and lighting cannot overwrite each other.
+- [ ] Shared lights use server Singapore time, 18:00–06:00. Two isolated visitors see the same lights; duplicate/concurrent requests count once per visitor/night, occupied lamps do not use a contribution, six is the cap, midnight retains the same night and dawn clears state. API failure never displays a new successful light.
+- [ ] Preview SQLite and simulated clock remain isolated from production; production uses only the Supabase RPC and signed cookies, rejecting unauthorized origins and forged sessions. No production migration is applied during acceptance.
+- [ ] Later-note preview: original title/date/excerpt remain intact. The paper tab starts closed; click/Enter/Space unfolds inline, collapse/Escape restores focus. CN/EN, 375/768/1280px, both themes, reduced motion and no-JS retain readable content. Fictional addendum copy never becomes published author content.
+- [ ] New H3 assets: inspect full motion and seams on dark/light, no matte halos, hollow cream ears, clipped paws, shifting shelves/bench, duplicate books or abrupt background replacement. No audio, visible playback controls or extra footer scene.
+
 - [ ] `/blog/` and `/en/blog/`: compact archive bookcart plays arrival once near viewport; each year opens real articles, translated titles/links and CN fallback labels are correct. Personal homepage garden is unchanged.
 - [ ] Cart click cycles bookmark / bird / stubborn book / reversed book; no simultaneous actions. At most one automatic mishap per session after 18–35 cumulative visible idle seconds, with 25% eligibility; tab/scroll pauses do not reset waiting.
 - [ ] H3 performances preserve full bodies and props, clean transparent edges across all phases on dark/light, opaque cream/white interiors, and natural quiet rest after each action. No freeze on an accidental tail pose, clipping, camera zoom or poster flash.
@@ -1949,3 +1959,9 @@
 - [ ] Next story is the older neighbor, falling back to newer; a second neighbor remains a quiet link; missing/failed covers leave readable text; no neighbors still allows subscription.
 - [ ] Direction C replaces the previous hover/disclosure preview; native story links support keyboard navigation.
 - [ ] H3 bear idles when visible, pauses offscreen, celebrates only confirmed-new subscription; invalid/pending/error/already states remain functional. Reduced motion and asset failure retain a usable poster.
+
+### Small delights production rollout (September 24)
+- [ ] Blog CN/EN year selection retrieves the correct shelf; article links remain immediately usable.
+- [ ] Homepage six tree lamps use production API and real Singapore 18:00–06:00; browser contributions persist, duplicate clicks cannot add a second lamp.
+- [ ] Missing `laterNote` leaves existing article content and publication date unchanged. Valid author-supplied date/title/paragraphs render the approved paper tab in CN/EN; invalid/empty metadata fails validation.
+- [ ] `/previews/later-note/` remains noindex and explicitly fictional; sample text is absent from real articles.
