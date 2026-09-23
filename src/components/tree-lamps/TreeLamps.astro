@@ -1,0 +1,27 @@
+---
+import './lamps.css';
+import { lampCopy } from './copy';
+interface Props { readonly lang?: 'zh' | 'en'; readonly preview?: boolean }
+const { lang = 'zh', preview = false } = Astro.props;
+const lamps = [{ x: 100, y: 110, targetY: 110, cord: 12 }, { x: 155, y: 65, targetY: 65, cord: 12 }, { x: 213, y: 38, targetY: 22, cord: 3 }, { x: 274, y: 44, targetY: 25, cord: 2 }, { x: 302, y: 109, targetY: 109, cord: 12 }, { x: 247, y: 135, targetY: 135, cord: 12 }];
+---
+<bear-tree-lamps data-preview={String(preview)} data-state="checking" data-active="false" data-lang={lang}>
+  <svg class="tree-lamps-art" viewBox="0 0 340 240" aria-hidden="true" shape-rendering="crispEdges">
+    {lamps.map(({ x, y, cord }, index) => <g data-lamp-art={index} data-lit="false">
+      <path class="tree-lamp-string" d={`M${x} ${y - 6 - cord}v${cord}`} />
+      <g class="tree-lamp-glow"><rect x={x - 11} y={y - 11} width="22" height="22" /><rect x={x - 7} y={y - 8} width="14" height="16" /></g>
+      <path class="tree-lamp-outline" d={`M${x - 3} ${y - 6}h6v2h2v8h-2v2h-6v-2h-2v-8h2z`} />
+      <path class="tree-lamp-glass" d={`M${x - 3} ${y - 3}h6v6h-6z`} />
+      <path class="tree-lamp-rim" d={`M${x - 3} ${y - 5}h6v2h-6zm0 8h6v2h-6z`} />
+    </g>)}
+    <path class="tree-lamp-pull" d="M220 112v22l2 4v5" />
+    <path class="tree-lamp-switch" d="M220 141h4v5h-4z" />
+  </svg>
+  {lamps.map(({ x, targetY }, index) => <button type="button" class="tree-lamp-target" data-lamp={index}
+    style={`--lamp-x:${x / 340 * 100}%;--lamp-y:${targetY / 240 * 100}%`}
+    aria-label={lampCopy[lang].light(index)} aria-pressed="false"></button>)}
+  <span class="tree-lamp-status" role="status" aria-live="polite">{lampCopy[lang].checking}</span>
+</bear-tree-lamps>
+<script>
+  import './controller';
+</script>
