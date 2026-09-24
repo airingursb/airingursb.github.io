@@ -1,5 +1,25 @@
 # Airing's Blog Design System
 
+## Paid consultation paused · September 24
+
+Preserve the homepage letter card and free email action. The paid section keeps
+its description, price and topic tags, with a bold neutral pause badge beside its
+title and a persistent explanation: limited capacity; free email remains open.
+Remove the promotional discount badge while paused and mute the price. Reuse
+`--c-bg-alt`, `--c-text`, `--c-text-muted`, `--c-border-light` and `--accent` for focus
+and email only. The gray booking button becomes an explicitly named explanation
+action, opening a native dialog rather than a booking calendar; do not disable
+pointer/keyboard input. No Cal.com binding on this button.
+
+Use the letter section's 12px title/badge, 6px radius and 8/12/16/24px spacing.
+Dialog: maximum 400px width with 16px viewport gutters, 24px padding, 16px title,
+14px body at 1.65 line height, wrapping actions with minimum 44px targets.
+No new motion. Native modal focus containment, Escape/close and focus return;
+close is initially focused. English and Chinese copy follow the homepage switch.
+Verify first-time, mobile and keyboard readers in both languages and themes at
+375/768/1280px. This small Astro change adds no React or audit dependencies and
+does not expand into unrelated homepage performance or design debt.
+
 ## Small delights · September 23 acceptance
 
 The existing Blog bookcart gains real year-driven retrieval. Keep its 208px desktop /
