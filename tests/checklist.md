@@ -1970,3 +1970,11 @@
 - [ ] Homepage six tree lamps use production API and real Singapore 18:00–06:00; browser contributions persist, duplicate clicks cannot add a second lamp.
 - [ ] Missing `laterNote` leaves existing article content and publication date unchanged. Valid author-supplied date/title/paragraphs render the approved paper tab in CN/EN; invalid/empty metadata fails validation.
 - [ ] `/previews/later-note/` remains noindex and explicitly fictional; sample text is absent from real articles.
+
+### SEO / GEO metadata and crawlable English (September 24)
+- [ ] HTTP and the old GitHub Pages hostname redirect to the matching `https://ursb.me/` path. `www` has a valid hostname certificate before its HTTPS redirect is considered repaired.
+- [ ] Every immersive article builds Chinese and English static HTML with localized title/description/OG metadata, one self-canonical, reciprocal hreflang, and Article JSON-LD with author, image, publication date and real modification date. All social images exist in the build.
+- [ ] Direct `/en/immersive/<slug>/` remains English after initialization regardless of saved/browser language; language controls use real locale URLs and preserve the section hash. Old `?lang=en` and `?lang=zh` links retain their section on arrival.
+- [ ] Both immersive variants remain readable without JavaScript. Existing diagrams, interactions, comments and theme controls still work; English notes cards, prose links and RSS target English immersive URLs.
+- [ ] Sitemap lists final trailing-slash URLs, reciprocal existing translations, real published content timestamps, and no search, draft or preview URLs. Every listed local path resolves in the build.
+- [ ] Home and Chinese/English blog, notes, archive, friends, moments and tag pages have their own descriptions. Search pages explicitly opt out of indexing. Metadata changes preserve current layout at desktop and mobile sizes.

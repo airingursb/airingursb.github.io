@@ -1,188 +1,182 @@
 import type { APIContext } from 'astro';
 import { getCollection } from 'astro:content';
-import fs from 'node:fs';
-import path from 'node:path';
+import { z } from 'astro/zod';
+import { existsSync, readFileSync } from 'node:fs';
+import { loadImmersiveArticles } from '../../scripts/immersive-seo/content.mjs';
+import photosData from '../data/photos.json' with { type: 'json' };
+import publicWorkouts from '../data/workouts-public.json' with { type: 'json' };
+import { fetchComics } from '../lib/comics';
+import { slugify } from '../lib/photos-slug';
 import { fetchReadingItems } from '../lib/reading';
+import { getGitLastModified } from '../lib/seo';
+
+type UrlOptions = {
+  readonly lastmod?: string;
+  readonly enLastmod?: string;
+  readonly changefreq: string;
+  readonly priority: string;
+};
+type Photo = {
+  readonly slug: string;
+  readonly albums?: readonly string[];
+  readonly tags?: readonly string[];
+  readonly place?: { readonly city?: string };
+  readonly exif?: { readonly camera?: string | null };
+};
 
 export async function GET(context: APIContext) {
-  const site = context.site!.origin;
+  const site = context.site?.origin ?? 'https://ursb.me';
+  const [posts, postsEn, notes, notesEn, workoutEntries, readingItems, comics, immersiveArticles] = await Promise.all([
+    getCollection('posts', ({ data }) => !data.draft),
+    getCollection('postsEn', ({ data }) => !data.draft),
+    getCollection('notes', ({ data }) => data.public && !data.draft),
+    getCollection('notesEn', ({ data }) => data.public && !data.draft),
+    getCollection('workouts'),
+    fetchReadingItems(),
+    fetchComics(),
+    loadImmersiveArticles(),
+  ]);
 
-  const posts = (await getCollection('posts', ({ data }) => !data.draft))
-    .sort((a, b) => b.data.date.valueOf() - a.data.date.valueOf());
-  const postsEn = (await getCollection('postsEn', ({ data }) => !data.draft));
-  const enPostIds = new Set(postsEn.map(p => p.id));
-
-  const notes = (await getCollection('notes', ({ data }) => data.public && !data.draft));
-  const notesEn = (await getCollection('notesEn', ({ data }) => data.public && !data.draft));
-  const enNoteIds = new Set(notesEn.map(n => n.id));
-  const zhNoteIds = new Set(notes.map(n => n.id));
-  const readingItems = await fetchReadingItems();
-
-  const tagsSet = new Set<string>();
-  posts.forEach(post => post.data.tags.forEach(tag => tagsSet.add(tag)));
-
-  // Static pages with bilingual pairs
   const bilingualStaticPages = [
-    { zh: '/blog', en: '/en/blog', changefreq: 'daily', priority: '0.9' },
-    { zh: '/archive', en: '/en/archive', changefreq: 'weekly', priority: '0.7' },
-    { zh: '/moments', en: '/en/moments', changefreq: 'daily', priority: '0.7' },
-    { zh: '/friends', en: '/en/friends', changefreq: 'monthly', priority: '0.5' },
-    { zh: '/search', en: '/en/search', changefreq: 'weekly', priority: '0.5' },
-    { zh: '/notes', en: '/en/notes', changefreq: 'weekly', priority: '0.8' },
-    { zh: '/playbook', en: '/en/playbook', changefreq: 'monthly', priority: '0.7' },
-    { zh: '/playbook/living-scenes', en: '/en/playbook/living-scenes', changefreq: 'monthly', priority: '0.6' },
-    { zh: '/playbook/reading-companion', en: '/en/playbook/reading-companion', changefreq: 'monthly', priority: '0.6' },
+    { zh: '/blog/', en: '/en/blog/', changefreq: 'daily', priority: '0.9' },
+    { zh: '/archive/', en: '/en/archive/', changefreq: 'weekly', priority: '0.7' },
+    { zh: '/moments/', en: '/en/moments/', changefreq: 'daily', priority: '0.7' },
+    { zh: '/friends/', en: '/en/friends/', changefreq: 'monthly', priority: '0.5' },
+    { zh: '/notes/', en: '/en/notes/', changefreq: 'weekly', priority: '0.8' },
+    { zh: '/playbook/', en: '/en/playbook/', changefreq: 'monthly', priority: '0.7' },
+    { zh: '/playbook/living-scenes/', en: '/en/playbook/living-scenes/', changefreq: 'monthly', priority: '0.6' },
+    { zh: '/playbook/reading-companion/', en: '/en/playbook/reading-companion/', changefreq: 'monthly', priority: '0.6' },
     ...['/playbook/bear-stories/', '/playbook/desk-wind/', '/playbook/workshop/', '/playbook/shared-garden/', '/photos/suitcase/'].map(route => ({ zh: route, en: `/en${route}`, changefreq: 'monthly', priority: '0.5' })),
-    { zh: '/reading', en: '/en/reading', changefreq: 'daily', priority: '0.8' },
+    { zh: '/reading/', en: '/en/reading/', changefreq: 'daily', priority: '0.8' },
+    { zh: '/workouts/', en: '/en/workouts/', changefreq: 'weekly', priority: '0.6' },
+    { zh: '/comics/', en: '/en/comics/', changefreq: 'weekly', priority: '0.7' },
   ];
 
-  // Home (no /en mirror yet)
-  const homePage = { url: '/', changefreq: 'daily', priority: '1.0' };
+  const escapeXml = (value: string) => value.replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
+  const location = (pathname: string) => escapeXml(new URL(`${pathname.replace(/\/+$/, '')}/`, site).href);
+  const lastModified = (sourcePath: string, published: Date | string) =>
+    (getGitLastModified(sourcePath) ?? new Date(published)).toISOString().slice(0, 10);
 
-  function bilingualUrl(zhPath: string, enPath: string, opts: { lastmod?: string; changefreq: string; priority: string }) {
-    const zhLoc = `${site}${zhPath}`;
-    const enLoc = `${site}${enPath}`;
-    const lastmodXml = opts.lastmod ? `    <lastmod>${opts.lastmod}</lastmod>\n` : '';
+  function alternates(zhPath: string, enPath: string) {
+    return `    <xhtml:link rel="alternate" hreflang="zh-CN" href="${location(zhPath)}"/>
+    <xhtml:link rel="alternate" hreflang="en" href="${location(enPath)}"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="${location(zhPath)}"/>`;
+  }
+
+  function singleUrl(pathname: string, opts: UrlOptions, links = '') {
     return `  <url>
-    <loc>${zhLoc}</loc>
-${lastmodXml}    <changefreq>${opts.changefreq}</changefreq>
+    <loc>${location(pathname)}</loc>
+${opts.lastmod ? `    <lastmod>${escapeXml(opts.lastmod)}</lastmod>\n` : ''}    <changefreq>${opts.changefreq}</changefreq>
     <priority>${opts.priority}</priority>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="${zhLoc}"/>
-    <xhtml:link rel="alternate" hreflang="en" href="${enLoc}"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="${zhLoc}"/>
-  </url>
-  <url>
-    <loc>${enLoc}</loc>
-${lastmodXml}    <changefreq>${opts.changefreq}</changefreq>
-    <priority>${opts.priority}</priority>
-    <xhtml:link rel="alternate" hreflang="zh-CN" href="${zhLoc}"/>
-    <xhtml:link rel="alternate" hreflang="en" href="${enLoc}"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="${zhLoc}"/>
-  </url>`;
+${links ? `${links}\n` : ''}  </url>`;
   }
 
-  function singleUrl(path: string, opts: { lastmod?: string; changefreq: string; priority: string }) {
-    const lastmodXml = opts.lastmod ? `    <lastmod>${opts.lastmod}</lastmod>\n` : '';
-    return `  <url>
-    <loc>${site}${path}</loc>
-${lastmodXml}    <changefreq>${opts.changefreq}</changefreq>
-    <priority>${opts.priority}</priority>
-  </url>`;
+  function bilingualUrl(zhPath: string, enPath: string, opts: UrlOptions) {
+    const links = alternates(zhPath, enPath);
+    return `${singleUrl(zhPath, opts, links)}\n${singleUrl(enPath, { ...opts, lastmod: opts.enLastmod ?? opts.lastmod }, links)}`;
   }
 
-  const urls: string[] = [];
+  const urls = [
+    singleUrl('/', { changefreq: 'daily', priority: '1.0' }),
+    singleUrl('/world/', { changefreq: 'monthly', priority: '0.6' }),
+    ...bilingualStaticPages.map(page => bilingualUrl(page.zh, page.en, page)),
+  ];
 
-  // Home (single lang for now)
-  urls.push(singleUrl(homePage.url, { changefreq: homePage.changefreq, priority: homePage.priority }));
-
-  // /world/ — the R3F island scene. The homepage IslandWidget pet
-  // navigates here on click, but via JS-only (role=link with
-  // data-href, not a real <a>), so Googlebot can't discover this
-  // route from the homepage crawl. List it explicitly.
-  urls.push(singleUrl('/world/', { changefreq: 'monthly', priority: '0.6' }));
-
-  // Static bilingual pages
-  for (const p of bilingualStaticPages) {
-    urls.push(bilingualUrl(p.zh, p.en, { changefreq: p.changefreq, priority: p.priority }));
-  }
-
-  // Blog posts: bilingual when EN exists, else single zh
-  for (const post of posts) {
-    const lastmod = post.data.date.toISOString().split('T')[0];
-    if (enPostIds.has(post.id)) {
-      urls.push(bilingualUrl(`/posts/${post.id}/`, `/en/posts/${post.id}/`, {
-        lastmod, changefreq: 'monthly', priority: '0.8'
-      }));
-    } else {
-      urls.push(singleUrl(`/posts/${post.id}/`, { lastmod, changefreq: 'monthly', priority: '0.8' }));
+  for (const group of [
+    { route: 'posts', zh: posts, en: postsEn, extension: 'md', priority: '0.8' },
+    { route: 'notes', zh: notes, en: notesEn, extension: 'mdx', priority: '0.7' },
+  ]) {
+    const enEntries = new Map(group.en.map(entry => [entry.id, entry] as const));
+    const zhIds = new Set(group.zh.map(entry => entry.id));
+    for (const entry of group.zh) {
+      const opts = {
+        lastmod: lastModified(entry.filePath ?? `src/content/${group.route}/${entry.id}.${group.extension}`, entry.data.date),
+        changefreq: 'monthly', priority: group.priority,
+      };
+      const translation = enEntries.get(entry.id);
+      const zhPath = `/${group.route}/${entry.id}/`;
+      const enPath = `/en${zhPath}`;
+      urls.push(translation ? bilingualUrl(zhPath, enPath, {
+        ...opts,
+        enLastmod: lastModified(translation.filePath ?? `src/content/${group.route}/en/${translation.id}.${group.extension}`, translation.data.date),
+      }) : singleUrl(zhPath, opts));
     }
-  }
-
-  // Notes: bilingual when EN exists, else single zh
-  for (const note of notes) {
-    const lastmod = new Date(note.data.date).toISOString().split('T')[0];
-    if (enNoteIds.has(note.id)) {
-      urls.push(bilingualUrl(`/notes/${note.id}/`, `/en/notes/${note.id}/`, {
-        lastmod, changefreq: 'monthly', priority: '0.7'
+    for (const entry of group.en) {
+      if (zhIds.has(entry.id)) continue;
+      urls.push(singleUrl(`/en/${group.route}/${entry.id}/`, {
+        lastmod: lastModified(entry.filePath ?? `src/content/${group.route}/en/${entry.id}.${group.extension}`, entry.data.date),
+        changefreq: 'monthly', priority: group.priority,
       }));
-    } else {
-      urls.push(singleUrl(`/notes/${note.id}/`, { lastmod, changefreq: 'monthly', priority: '0.7' }));
-    }
-  }
-
-  // Also include EN-only notes (unlikely but safe)
-  for (const note of notesEn) {
-    if (!zhNoteIds.has(note.id)) {
-      const lastmod = new Date(note.data.date).toISOString().split('T')[0];
-      urls.push(singleUrl(`/en/notes/${note.id}/`, { lastmod, changefreq: 'monthly', priority: '0.7' }));
     }
   }
 
   for (const item of readingItems) {
     urls.push(bilingualUrl(`/reading/${item.slug}/`, `/en/reading/${item.slug}/`, {
-      lastmod: new Date(item.updated_at).toISOString().split('T')[0],
-      changefreq: 'monthly',
-      priority: '0.6',
+      lastmod: new Date(item.updated_at).toISOString().slice(0, 10),
+      changefreq: 'monthly', priority: '0.6',
     }));
   }
 
-  // Immersive long-form articles — flagship content under /immersive/{slug}/.
-  // Each is a single HTML file with built-in zh/en toggle. We list every subdir
-  // of public/immersive/ that ships an index.html, emit hreflang pairs pointing
-  // to the same URL with the ?lang=en hint for the EN flavour (a small inline
-  // script in each article reads that param and applies the right language on
-  // first paint, so the EN URL Google indexes truly is EN-first).
-  try {
-    const immersiveDir = path.resolve('./public/immersive');
-    const entries = fs.readdirSync(immersiveDir, { withFileTypes: true })
-      .filter(e => e.isDirectory())
-      .map(e => e.name);
-    for (const slug of entries) {
-      const indexPath = path.join(immersiveDir, slug, 'index.html');
-      if (!fs.existsSync(indexPath)) continue;
-      const stat = fs.statSync(indexPath);
-      const lastmod = stat.mtime.toISOString().split('T')[0];
-      const zhLoc = site + '/immersive/' + slug + '/';
-      const enLoc = site + '/immersive/' + slug + '/?lang=en';
-      const hrefLangBlock =
-        '    <xhtml:link rel="alternate" hreflang="zh-CN" href="' + zhLoc + '"/>\n' +
-        '    <xhtml:link rel="alternate" hreflang="en" href="' + enLoc + '"/>\n' +
-        '    <xhtml:link rel="alternate" hreflang="x-default" href="' + zhLoc + '"/>';
-      urls.push(
-        '  <url>\n' +
-        '    <loc>' + zhLoc + '</loc>\n' +
-        '    <lastmod>' + lastmod + '</lastmod>\n' +
-        '    <changefreq>monthly</changefreq>\n' +
-        '    <priority>0.9</priority>\n' +
-        hrefLangBlock + '\n' +
-        '  </url>\n' +
-        '  <url>\n' +
-        '    <loc>' + enLoc + '</loc>\n' +
-        '    <lastmod>' + lastmod + '</lastmod>\n' +
-        '    <changefreq>monthly</changefreq>\n' +
-        '    <priority>0.9</priority>\n' +
-        hrefLangBlock + '\n' +
-        '  </url>'
-      );
+  for (const article of immersiveArticles) {
+    urls.push(bilingualUrl(`/immersive/${article.slug}/`, `/en/immersive/${article.slug}/`, {
+      lastmod: lastModified(article.sourcePath, article.datePublished),
+      changefreq: 'monthly', priority: '0.9',
+    }));
+  }
+
+  const zhTags = new Set(posts.flatMap(post => post.data.tags));
+  const enTags = new Set(postsEn.flatMap(post => post.data.tags));
+  for (const tag of new Set([...zhTags, ...enTags])) {
+    const opts = { changefreq: 'weekly', priority: '0.5' };
+    urls.push(zhTags.has(tag) && enTags.has(tag)
+      ? bilingualUrl(`/tags/${tag}/`, `/en/tags/${tag}/`, opts)
+      : singleUrl(`${zhTags.has(tag) ? '' : '/en'}/tags/${tag}/`, opts));
+  }
+
+  const photos: readonly Photo[] = photosData;
+  const photoPaths = new Set(['/photos/', '/photos/calendar/', '/photos/albums/', '/photos/world/']);
+  for (const photo of photos) {
+    photoPaths.add(`/photos/${photo.slug}/`);
+    const facets = [
+      ...((photo.albums ?? []).map(name => ['albums', name])),
+      ...((photo.tags ?? []).map(name => ['tags', name])),
+      ['places', photo.place?.city], ['cameras', photo.exif?.camera],
+    ];
+    for (const [facet, name] of facets) {
+      if (name && slugify(name)) photoPaths.add(`/photos/${facet}/${slugify(name)}/`);
     }
-  } catch (err) {
-    console.warn('[sitemap] failed to scan public/immersive:', err);
+  }
+  for (const pathname of photoPaths) {
+    urls.push(singleUrl(pathname, { changefreq: 'monthly', priority: '0.5' }));
   }
 
-  // Tags: bilingual (tag keys shared across languages)
-  for (const tag of tagsSet) {
-    urls.push(bilingualUrl(`/tags/${tag}/`, `/en/tags/${tag}/`, {
-      changefreq: 'weekly', priority: '0.5'
+  const localWorkoutIds = existsSync('src/data/workouts.json')
+    ? new Set(z.array(z.object({ id: z.string() })).parse(
+      JSON.parse(readFileSync('src/data/workouts.json', 'utf8')),
+    ).map(workout => workout.id))
+    : undefined;
+  for (const workout of publicWorkouts) {
+    if (localWorkoutIds && !localWorkoutIds.has(workout.id)) continue;
+    const entry = workoutEntries.find(item => item.id.toLowerCase() === workout.id.toLowerCase());
+    if (entry && (!entry.data.public || entry.data.draft)) continue;
+    if (!existsSync(`src/data/workouts-public/${workout.id}.json`)) continue;
+    urls.push(bilingualUrl(`/workouts/${workout.id}/`, `/en/workouts/${workout.id}/`, {
+      changefreq: 'monthly', priority: '0.5',
     }));
   }
 
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+  for (const comic of comics) {
+    urls.push(bilingualUrl(`/comics/${comic.issue_number}/`, `/en/comics/${comic.issue_number}/`, {
+      changefreq: 'monthly', priority: '0.6',
+    }));
+  }
+
+  return new Response(`<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${urls.join('\n')}
-</urlset>`;
-
-  return new Response(xml, {
+</urlset>`, {
     headers: { 'Content-Type': 'application/xml; charset=utf-8' },
   });
 }
