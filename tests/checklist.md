@@ -15,6 +15,11 @@
 
 ## Homepage (`/`)
 
+- [ ] DOM/Screenshot: `#letter` 付费咨询标题旁显示「暂停中」，常驻说明精力有限、暂不接受付费咨询，免费邮件交流照常；保留原布局，价格降为灰色，暂停期间不显示促销标签。
+- [ ] Click/Keyboard: 灰色「预约已暂停 · 查看说明」按钮可用鼠标、Enter、Space 打开暂停说明弹窗，不打开 Cal.com 日历；弹窗提供免费邮件链接和「知道了」，Escape/关闭后焦点回到触发按钮，Tab 焦点留在弹窗中。
+- [ ] DOM: 原免费来信按钮与弹窗邮件链接均指向 `mailto:airing@ursb.me?subject=Letter%20Consultation`。
+- [ ] Screenshot: 暂停模块与弹窗在 375 / 768 / 1280px、明暗模式、中英文切换后无溢出或裁字，键盘焦点清晰，减少动态效果时可正常操作。
+
 - [ ] Screenshot/CSS: 375 / 768 / 1280px 下右上角 EN/CN 切换器随明暗模式切换，使用细边框、柔和选中底色，无固定深色背景或重阴影；不遮挡小熊，不产生横向溢出。
 - [ ] Screenshot/CSS: EN/CN 切换器高度偏矮（按钮约 22–28px 高，触屏约 32px），不过于显眼。
 - [ ] Click/Keyboard: EN/CN 双向切换且刷新后保留；Tab 焦点清晰，Enter/Space 可操作；减少动态效果偏好下无过渡。
