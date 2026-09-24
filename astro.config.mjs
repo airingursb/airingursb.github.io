@@ -1,6 +1,7 @@
 import { defineConfig } from 'astro/config';
 import { remarkEmbed } from './src/plugins/remark-embed.mjs';
 import { rehypeAnchorIds } from './src/plugins/rehype-anchor-ids.mjs';
+import { immersiveSeo } from './scripts/immersive-seo/integration.mjs';
 import mdx from '@astrojs/mdx';
 import react from '@astrojs/react';
 import remarkWikilinks from './src/lib/remark-wikilinks.ts';
@@ -36,7 +37,7 @@ export default defineConfig({
   image: {
     domains: ['r2.airingdeng.com'],
   },
-  integrations: [mdx(), react(), {
+  integrations: [mdx(), react(), immersiveSeo(), {
     name: 'bear-home-preview',
     hooks: {
       'astro:config:setup': ({ injectRoute }) => {

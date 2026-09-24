@@ -1,4 +1,5 @@
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 
 /**
  * Plain-text excerpt from raw markdown, for meta description fallback
@@ -18,7 +19,7 @@ export function makeExcerpt(markdown: string, maxLen = 150): string {
   return text.length > maxLen ? `${text.slice(0, maxLen).trim()}…` : text;
 }
 
-// One `git log` pass over src/content at first call; first time a path
+// One `git log` pass over content sources at first call; first time a path
 // appears in the (newest-first) log is its last-modified commit date.
 let gitDates: Map<string, string> | null = null;
 
@@ -28,9 +29,9 @@ export function getGitLastModified(repoRelativePath: string): Date | undefined {
     try {
       // A shallow clone collapses every file onto HEAD's date — worse than no
       // signal at all, so bail and let callers fall back to the publish date.
-      const shallow = execSync('git rev-parse --is-shallow-repository', { encoding: 'utf-8' }).trim();
+      const shallow = execFileSync('git', ['rev-parse', '--is-shallow-repository'], { encoding: 'utf-8' }).trim();
       if (shallow === 'true') return undefined;
-      const out = execSync('git log --format=@%cI --name-only -- src/content', {
+      const out = execFileSync('git', ['-c', 'core.quotepath=false', 'log', '--format=@%cI', '--name-only', '--', 'src/content', 'public/immersive'], {
         encoding: 'utf-8',
         maxBuffer: 64 * 1024 * 1024,
       });
@@ -42,10 +43,13 @@ export function getGitLastModified(repoRelativePath: string): Date | undefined {
           gitDates.set(line, currentDate);
         }
       }
-    } catch {
-      // Not a git checkout (e.g. shallow CI without history) — fall back silently.
+    } catch (error) {
+      // Git may be unavailable in an exported source tree; callers retain their
+      // publication-date fallback for command failures, not programming errors.
+      if (!(error instanceof Error) || !('status' in error || 'code' in error)) throw error;
     }
   }
-  const iso = gitDates.get(repoRelativePath);
+  const normalizedPath = path.relative(process.cwd(), path.resolve(repoRelativePath)).split(path.sep).join('/');
+  const iso = gitDates.get(normalizedPath);
   return iso ? new Date(iso) : undefined;
 }
