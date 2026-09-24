@@ -1,27 +1,81 @@
 <!DOCTYPE html>
-<html lang="zh-CN" translate="no">
+<html lang="zh-CN"  translate="no">
 <head>
 <meta charset="UTF-8">
+<title>一次 dispatch 的八重翻译 — WebGPU 全栈源码深读</title>
+<meta name="description" content="一行 pass.dispatchWorkgroups() 到 GPU 之间要被翻译八次——JS → Blink WebIDL → Renderer Wire → Mojo IPC → Dawn 验证 → Tint(WGSL→SPIR-V/MSL/HLSL) → Metal/D3D12/Vulkan → 驱动 ISA。25 章纵向切开 WebGPU 全栈，Dawn + wgpu 双栈对照，真源码 · 真延迟 · 一个 compute matmul 作主线。">
+<meta name="author" content="Airing">
+<link rel="canonical" href="https://ursb.me/immersive/webgpu/">
+<link rel="alternate" hreflang="zh-CN" href="https://ursb.me/immersive/webgpu/">
+<link rel="alternate" hreflang="en" href="https://ursb.me/en/immersive/webgpu/">
+<link rel="alternate" hreflang="x-default" href="https://ursb.me/immersive/webgpu/">
+<meta property="og:title" content="一次 dispatch 的八重翻译 — WebGPU 全栈源码深读">
+<meta property="og:description" content="一行 pass.dispatchWorkgroups() 到 GPU 之间要被翻译八次——JS → Blink WebIDL → Renderer Wire → Mojo IPC → Dawn 验证 → Tint(WGSL→SPIR-V/MSL/HLSL) → Metal/D3D12/Vulkan → 驱动 ISA。25 章纵向切开 WebGPU 全栈，Dawn + wgpu 双栈对照，真源码 · 真延迟 · 一个 compute matmul 作主线。">
+<meta property="og:image" content="https://ursb.me/og/notes/webgpu.png">
+<meta property="og:url" content="https://ursb.me/immersive/webgpu/">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="ursb.me · Airing">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:locale:alternate" content="en_US">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="一次 dispatch 的八重翻译 — WebGPU 全栈源码深读">
+<meta name="twitter:description" content="一行 pass.dispatchWorkgroups() 到 GPU 之间要被翻译八次——JS → Blink WebIDL → Renderer Wire → Mojo IPC → Dawn 验证 → Tint(WGSL→SPIR-V/MSL/HLSL) → Metal/D3D12/Vulkan → 驱动 ISA。25 章纵向切开 WebGPU 全栈，Dawn + wgpu 双栈对照，真源码 · 真延迟 · 一个 compute matmul 作主线。">
+<meta name="twitter:image" content="https://ursb.me/og/notes/webgpu.png">
+<meta name="twitter:creator" content="@airingursb">
+<meta property="article:published_time" content="2026-05-18T00:00:00.000Z">
+<meta property="article:modified_time" content="2026-06-07T16:21:31.000Z">
+<meta property="article:author" content="https://ursb.me/">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","@id":"https://ursb.me/immersive/webgpu/#article","headline":"一次 dispatch 的八重翻译 — WebGPU 全栈源码深读","description":"一行 pass.dispatchWorkgroups() 到 GPU 之间要被翻译八次——JS → Blink WebIDL → Renderer Wire → Mojo IPC → Dawn 验证 → Tint(WGSL→SPIR-V/MSL/HLSL) → Metal/D3D12/Vulkan → 驱动 ISA。25 章纵向切开 WebGPU 全栈，Dawn + wgpu 双栈对照，真源码 · 真延迟 · 一个 compute matmul 作主线。","image":["https://ursb.me/og/notes/webgpu.png"],"url":"https://ursb.me/immersive/webgpu/","mainEntityOfPage":{"@type":"WebPage","@id":"https://ursb.me/immersive/webgpu/"},"author":{"@type":"Person","name":"Airing","url":"https://ursb.me/"},"publisher":{"@type":"Person","name":"Airing","url":"https://ursb.me/"},"datePublished":"2026-05-18T00:00:00.000Z","dateModified":"2026-06-07T16:21:31.000Z","inLanguage":"zh-CN"}</script>
+<script data-immersive-routing>(function () {
+  var routes = {"zh":"/immersive/webgpu/","en":"/en/immersive/webgpu/"};
+  var current = new URL(location.href);
+  var requested = current.searchParams.get('lang');
+  if (requested === 'en' || requested === 'zh') {
+    current.pathname = routes[requested];
+    current.searchParams.delete('lang');
+    location.replace(current.pathname + current.search + current.hash);
+  }
+  function target(locale) {
+    var url = new URL(location.href);
+    url.pathname = routes[locale];
+    url.searchParams.delete('lang');
+    return url.pathname + url.search + url.hash;
+  }
+  function syncLinks() {
+    document.querySelectorAll('a[data-immersive-locale]').forEach(function (link) {
+      link.setAttribute('href', target(link.dataset.immersiveLocale));
+    });
+  }
+  document.addEventListener('DOMContentLoaded', syncLinks);
+  window.addEventListener('hashchange', syncLinks);
+  document.addEventListener('click', function (event) {
+    var link = event.target.closest('a[data-immersive-locale]');
+    if (!link) return;
+    link.setAttribute('href', target(link.dataset.immersiveLocale));
+    event.stopImmediatePropagation();
+  }, true);
+})();</script>
+
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="google" content="notranslate">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico">
 <link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico">
 <link rel="icon" href="https://airing.ursb.me/image/favicon.ico">
-<meta name="description" content="一行 dispatchWorkgroups() 在到达 GPU 之前要被翻译八次：JS → Renderer IPC → GPU 进程 → Dawn 验证 → Tint(WGSL→SPIR-V/MSL/HLSL) → Metal/D3D12/Vulkan → 驱动 → GPU ISA。25 章 · 真源码 · 真延迟 · Dawn + wgpu 双栈对照。">
-<meta name="author" content="Airing">
-<meta property="og:title" content="一次 dispatch 的八重翻译 — WebGPU 全栈源码深读">
-<meta property="og:description" content="一行 dispatch 到 GPU 之间要被翻译八次。Dawn + wgpu 双栈对照，25 章源码长读。">
-<meta property="og:image" content="https://ursb.me/og/webgpu.png">
-<meta property="og:url" content="https://ursb.me/immersive/webgpu/">
-<meta property="og:type" content="article">
-<meta property="og:site_name" content="ursb.me · Airing">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="一次 dispatch 的八重翻译 — WebGPU 全栈源码深读">
-<meta name="twitter:description" content="一行 dispatch 到 GPU 之间要被翻译八次。Dawn + wgpu 双栈对照。">
-<meta name="twitter:image" content="https://ursb.me/og/webgpu.png">
-<meta name="twitter:creator" content="@airingursb">
-<title>一次 dispatch 的八重翻译 — WebGPU 全栈源码深读</title>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 <style>
   :root {
     --bg: #f4efe6;
@@ -88,14 +142,14 @@
     backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
     box-shadow: 0 1px 0 rgba(0,0,0,0.02);
   }
-  .lang-toggle button {
+  .lang-toggle :is(button, a) {
     background: transparent; border: 0; padding: 2px 6px;
     font: inherit; color: var(--ink-mute); cursor: pointer;
     letter-spacing: inherit; transition: color 0.15s;
     border-radius: 99px;
   }
-  .lang-toggle button:hover { color: var(--ink); }
-  .lang-toggle button.active { color: var(--ink); font-weight: 600; }
+  .lang-toggle :is(button, a):hover { color: var(--ink); }
+  .lang-toggle :is(button, a).active { color: var(--ink); font-weight: 600; }
   .lang-toggle .sep { color: var(--rule); user-select: none; }
 
   body:not(.lang-en) .lang-en-only { display: none !important; }
@@ -1285,33 +1339,10 @@
   .chap.mainline .chap-num { color: var(--warn); }
 </style>
 <!-- lang-url-param:v1 -->
-<script>
-/* SEO: honor ?lang=en|zh URL param so the page first-paints in the requested
-   language. Without this, a Google-indexed /immersive/X/?lang=en URL would
-   still render zh until the user clicks the toggle. */
-(function() {
-  try {
-    var p = new URLSearchParams(location.search);
-    var lang = p.get('lang');
-    if (lang === 'en' || lang === 'zh') {
-      try { localStorage.setItem('ursb-lang', lang); } catch (e) {}
-      try { localStorage.setItem('article_lang', lang); } catch (e) {}
-      if (lang === 'en') {
-        document.documentElement.lang = 'en';
-      } else {
-        document.documentElement.lang = 'zh-CN';
-      }
-      document.addEventListener('DOMContentLoaded', function() {
-        if (lang === 'en') document.body.classList.add('lang-en');
-        else document.body.classList.remove('lang-en');
-      });
-    }
-  } catch (e) {}
-})();
-</script>
+
 <script async defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script>
 </head>
-<body>
+<body class="">
 
 <!-- ========== BACK LINK ========== -->
 <a class="ursb-backlink" href="https://ursb.me/notes/" target="_self" aria-label="Back to ursb.me notes">
@@ -1323,57 +1354,57 @@
 
 <!-- ========== LANG TOGGLE ========== -->
 <div class="lang-toggle" role="navigation" aria-label="language">
-  <button id="lang-zh" class="active" aria-pressed="true">中</button>
+  <a id="lang-zh"  class="active"  href="/immersive/webgpu/"  hreflang="zh-CN"  data-immersive-locale="zh"  aria-current="page"  style=";display:inline-block;text-align:center;text-decoration:none">中</a>
   <span class="sep">/</span>
-  <button id="lang-en" aria-pressed="false">EN</button>
+  <a id="lang-en"  href="/en/immersive/webgpu/"  hreflang="en"  data-immersive-locale="en"  aria-current="false"  style=";display:inline-block;text-align:center;text-decoration:none"  class="">EN</a>
 </div>
 
 <!-- ========== TOC SIDEBAR (desktop only) ========== -->
 <nav class="toc-side">
   <div class="ts-title">
     <span class="lang-zh-only">目录</span>
-    <span class="lang-en-only">Contents</span>
+    <span class="lang-en-only"  data-pagefind-ignore="">Contents</span>
   </div>
   <ol class="ts-list">
-    <li class="ts-divider"><span class="lang-zh-only">I · 背景</span><span class="lang-en-only">I · Background</span></li>
-    <li data-section="c1"><a href="#c1"><span class="toc-num">01</span><span class="lang-zh-only">五个公式</span><span class="lang-en-only">5 formulas</span></a></li>
-    <li data-section="c2"><a href="#c2"><span class="toc-num">02</span><span class="lang-zh-only">十二年家谱</span><span class="lang-en-only">12-year family tree</span></a></li>
-    <li data-section="c3"><a href="#c3"><span class="toc-num">03</span><span class="lang-zh-only">为什么不直接用 Vulkan</span><span class="lang-en-only">Why not just Vulkan</span></a></li>
-    <li data-section="c4"><a href="#c4"><span class="toc-num">04</span><span class="lang-zh-only">设计哲学</span><span class="lang-en-only">Design philosophy</span></a></li>
-    <li data-section="c5"><a href="#c5"><span class="toc-num">05</span><span class="lang-zh-only">三栈全景</span><span class="lang-en-only">Three-stack atlas</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">I · 背景</span><span class="lang-en-only"  data-pagefind-ignore="">I · Background</span></li>
+    <li data-section="c1"><a href="#c1"><span class="toc-num">01</span><span class="lang-zh-only">五个公式</span><span class="lang-en-only"  data-pagefind-ignore="">5 formulas</span></a></li>
+    <li data-section="c2"><a href="#c2"><span class="toc-num">02</span><span class="lang-zh-only">十二年家谱</span><span class="lang-en-only"  data-pagefind-ignore="">12-year family tree</span></a></li>
+    <li data-section="c3"><a href="#c3"><span class="toc-num">03</span><span class="lang-zh-only">为什么不直接用 Vulkan</span><span class="lang-en-only"  data-pagefind-ignore="">Why not just Vulkan</span></a></li>
+    <li data-section="c4"><a href="#c4"><span class="toc-num">04</span><span class="lang-zh-only">设计哲学</span><span class="lang-en-only"  data-pagefind-ignore="">Design philosophy</span></a></li>
+    <li data-section="c5"><a href="#c5"><span class="toc-num">05</span><span class="lang-zh-only">三栈全景</span><span class="lang-en-only"  data-pagefind-ignore="">Three-stack atlas</span></a></li>
 
-    <li class="ts-divider"><span class="lang-zh-only">主线</span><span class="lang-en-only">Main line</span></li>
-    <li data-section="cmain"><a href="#cmain"><span class="toc-num">✦</span><span class="lang-zh-only">1M 浮点平方</span><span class="lang-en-only">1M floats squared</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">主线</span><span class="lang-en-only"  data-pagefind-ignore="">Main line</span></li>
+    <li data-section="cmain"><a href="#cmain"><span class="toc-num">✦</span><span class="lang-zh-only">1M 浮点平方</span><span class="lang-en-only"  data-pagefind-ignore="">1M floats squared</span></a></li>
 
-    <li class="ts-divider"><span class="lang-zh-only">III · API 表面</span><span class="lang-en-only">III · API surface</span></li>
-    <li data-section="c6"><a href="#c6"><span class="toc-num">06</span><span class="lang-zh-only">Adapter & Device</span><span class="lang-en-only">Adapter & Device</span></a></li>
-    <li data-section="c7"><a href="#c7"><span class="toc-num">07</span><span class="lang-zh-only">Buffer · 映射 · 生命周期</span><span class="lang-en-only">Buffers · mapping</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">III · API 表面</span><span class="lang-en-only"  data-pagefind-ignore="">III · API surface</span></li>
+    <li data-section="c6"><a href="#c6"><span class="toc-num">06</span><span class="lang-zh-only">Adapter & Device</span><span class="lang-en-only"  data-pagefind-ignore="">Adapter & Device</span></a></li>
+    <li data-section="c7"><a href="#c7"><span class="toc-num">07</span><span class="lang-zh-only">Buffer · 映射 · 生命周期</span><span class="lang-en-only"  data-pagefind-ignore="">Buffers · mapping</span></a></li>
     <li data-section="c8"><a href="#c8"><span class="toc-num">08</span>WGSL</a></li>
-    <li data-section="c9"><a href="#c9"><span class="toc-num">09</span><span class="lang-zh-only">Pipeline & BindGroup</span><span class="lang-en-only">Pipeline & BindGroup</span></a></li>
-    <li data-section="c10"><a href="#c10"><span class="toc-num">10</span><span class="lang-zh-only">Encoder & Queue</span><span class="lang-en-only">Encoder & Queue</span></a></li>
+    <li data-section="c9"><a href="#c9"><span class="toc-num">09</span><span class="lang-zh-only">Pipeline & BindGroup</span><span class="lang-en-only"  data-pagefind-ignore="">Pipeline & BindGroup</span></a></li>
+    <li data-section="c10"><a href="#c10"><span class="toc-num">10</span><span class="lang-zh-only">Encoder & Queue</span><span class="lang-en-only"  data-pagefind-ignore="">Encoder & Queue</span></a></li>
 
-    <li class="ts-divider"><span class="lang-zh-only">IV · 跨进程</span><span class="lang-en-only">IV · Cross-process</span></li>
-    <li data-section="c11"><a href="#c11"><span class="toc-num">11</span><span class="lang-zh-only">Renderer ↔ GPU 进程</span><span class="lang-en-only">Renderer ↔ GPU process</span></a></li>
-    <li data-section="c12"><a href="#c12"><span class="toc-num">12</span><span class="lang-zh-only">验证 & 错误域</span><span class="lang-en-only">Validation & error scopes</span></a></li>
-    <li data-section="c13"><a href="#c13"><span class="toc-num">13</span><span class="lang-zh-only">设备丢失 & 恢复</span><span class="lang-en-only">Device loss & recovery</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">IV · 跨进程</span><span class="lang-en-only"  data-pagefind-ignore="">IV · Cross-process</span></li>
+    <li data-section="c11"><a href="#c11"><span class="toc-num">11</span><span class="lang-zh-only">Renderer ↔ GPU 进程</span><span class="lang-en-only"  data-pagefind-ignore="">Renderer ↔ GPU process</span></a></li>
+    <li data-section="c12"><a href="#c12"><span class="toc-num">12</span><span class="lang-zh-only">验证 & 错误域</span><span class="lang-en-only"  data-pagefind-ignore="">Validation & error scopes</span></a></li>
+    <li data-section="c13"><a href="#c13"><span class="toc-num">13</span><span class="lang-zh-only">设备丢失 & 恢复</span><span class="lang-en-only"  data-pagefind-ignore="">Device loss & recovery</span></a></li>
 
-    <li class="ts-divider"><span class="lang-zh-only">V · 编译链</span><span class="lang-en-only">V · Compiler chain</span></li>
-    <li data-section="c14"><a href="#c14"><span class="toc-num">14</span><span class="lang-zh-only">Tint · Dawn 前端</span><span class="lang-en-only">Tint · Dawn frontend</span></a></li>
-    <li data-section="c15"><a href="#c15"><span class="toc-num">15</span><span class="lang-zh-only">Naga · wgpu 前端</span><span class="lang-en-only">Naga · wgpu frontend</span></a></li>
-    <li data-section="c16"><a href="#c16"><span class="toc-num">16</span><span class="lang-zh-only">SPIR-V · MSL · HLSL</span><span class="lang-en-only">SPIR-V · MSL · HLSL</span></a></li>
-    <li data-section="c17"><a href="#c17"><span class="toc-num">17</span><span class="lang-zh-only">Metal · D3D12 · Vulkan</span><span class="lang-en-only">Metal · D3D12 · Vulkan</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">V · 编译链</span><span class="lang-en-only"  data-pagefind-ignore="">V · Compiler chain</span></li>
+    <li data-section="c14"><a href="#c14"><span class="toc-num">14</span><span class="lang-zh-only">Tint · Dawn 前端</span><span class="lang-en-only"  data-pagefind-ignore="">Tint · Dawn frontend</span></a></li>
+    <li data-section="c15"><a href="#c15"><span class="toc-num">15</span><span class="lang-zh-only">Naga · wgpu 前端</span><span class="lang-en-only"  data-pagefind-ignore="">Naga · wgpu frontend</span></a></li>
+    <li data-section="c16"><a href="#c16"><span class="toc-num">16</span><span class="lang-zh-only">SPIR-V · MSL · HLSL</span><span class="lang-en-only"  data-pagefind-ignore="">SPIR-V · MSL · HLSL</span></a></li>
+    <li data-section="c17"><a href="#c17"><span class="toc-num">17</span><span class="lang-zh-only">Metal · D3D12 · Vulkan</span><span class="lang-en-only"  data-pagefind-ignore="">Metal · D3D12 · Vulkan</span></a></li>
 
-    <li class="ts-divider"><span class="lang-zh-only">VI · 计算 & AI</span><span class="lang-en-only">VI · Compute & AI</span></li>
-    <li data-section="c18"><a href="#c18"><span class="toc-num">18</span><span class="lang-zh-only">Workgroup · Subgroup</span><span class="lang-en-only">Workgroup · Subgroup</span></a></li>
-    <li data-section="c19"><a href="#c19"><span class="toc-num">19</span><span class="lang-zh-only">矩阵乘法优化</span><span class="lang-en-only">Matmul on WebGPU</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">VI · 计算 & AI</span><span class="lang-en-only"  data-pagefind-ignore="">VI · Compute & AI</span></li>
+    <li data-section="c18"><a href="#c18"><span class="toc-num">18</span><span class="lang-zh-only">Workgroup · Subgroup</span><span class="lang-en-only"  data-pagefind-ignore="">Workgroup · Subgroup</span></a></li>
+    <li data-section="c19"><a href="#c19"><span class="toc-num">19</span><span class="lang-zh-only">矩阵乘法优化</span><span class="lang-en-only"  data-pagefind-ignore="">Matmul on WebGPU</span></a></li>
     <li data-section="c20"><a href="#c20"><span class="toc-num">20</span>transformers.js</a></li>
-    <li data-section="c21"><a href="#c21"><span class="toc-num">21</span><span class="lang-zh-only">FP16 · 原子 · 时间戳</span><span class="lang-en-only">FP16 · atomics · timestamps</span></a></li>
+    <li data-section="c21"><a href="#c21"><span class="toc-num">21</span><span class="lang-zh-only">FP16 · 原子 · 时间戳</span><span class="lang-en-only"  data-pagefind-ignore="">FP16 · atomics · timestamps</span></a></li>
 
-    <li class="ts-divider"><span class="lang-zh-only">VII · 综合</span><span class="lang-en-only">VII · Synthesis</span></li>
-    <li data-section="c22"><a href="#c22"><span class="toc-num">22</span><span class="lang-zh-only">vs WebGL · WebCL</span><span class="lang-en-only">vs WebGL · WebCL</span></a></li>
-    <li data-section="c23"><a href="#c23"><span class="toc-num">23</span><span class="lang-zh-only">生产故事簿</span><span class="lang-en-only">Production stories</span></a></li>
-    <li data-section="c24"><a href="#c24"><span class="toc-num">24</span><span class="lang-zh-only">限制 · 指纹 · 安全</span><span class="lang-en-only">Limits · fingerprinting</span></a></li>
-    <li data-section="c25"><a href="#c25"><span class="toc-num">25</span><span class="lang-zh-only">之后</span><span class="lang-en-only">What's next</span></a></li>
+    <li class="ts-divider"><span class="lang-zh-only">VII · 综合</span><span class="lang-en-only"  data-pagefind-ignore="">VII · Synthesis</span></li>
+    <li data-section="c22"><a href="#c22"><span class="toc-num">22</span><span class="lang-zh-only">vs WebGL · WebCL</span><span class="lang-en-only"  data-pagefind-ignore="">vs WebGL · WebCL</span></a></li>
+    <li data-section="c23"><a href="#c23"><span class="toc-num">23</span><span class="lang-zh-only">生产故事簿</span><span class="lang-en-only"  data-pagefind-ignore="">Production stories</span></a></li>
+    <li data-section="c24"><a href="#c24"><span class="toc-num">24</span><span class="lang-zh-only">限制 · 指纹 · 安全</span><span class="lang-en-only"  data-pagefind-ignore="">Limits · fingerprinting</span></a></li>
+    <li data-section="c25"><a href="#c25"><span class="toc-num">25</span><span class="lang-zh-only">之后</span><span class="lang-en-only"  data-pagefind-ignore="">What's next</span></a></li>
   </ol>
 </nav>
 
@@ -1384,15 +1415,15 @@
     <div class="meta">
       <span>FIELD&nbsp;NOTE&nbsp;/&nbsp;09</span>
       <span class="lang-zh-only">图形 · 系统</span>
-      <span class="lang-en-only">Graphics · Systems</span>
+      <span class="lang-en-only"  data-pagefind-ignore="">Graphics · Systems</span>
       <span>2026</span>
     </div>
     <h1 class="lang-zh-only">一次 <span class="copper">dispatch</span><br>的<span class="accent">八重翻译</span>。</h1>
-    <h1 class="lang-en-only">Eight <span class="copper">translations</span><br>of one <span class="accent">dispatch</span>.</h1>
+    <h1 class="lang-en-only"  data-pagefind-ignore="">Eight <span class="copper">translations</span><br>of one <span class="accent">dispatch</span>.</h1>
     <p class="subtitle lang-zh-only"><span class="sub-accent">WebGPU 全栈</span>源码深读</p>
-    <p class="subtitle lang-en-only">A <span class="sub-accent">WebGPU stack</span> source-level walkthrough</p>
+    <p class="subtitle lang-en-only"  data-pagefind-ignore="">A <span class="sub-accent">WebGPU stack</span> source-level walkthrough</p>
     <p class="deck lang-zh-only">一行 <code style="font-family:var(--mono);">pass.dispatchWorkgroups(16384)</code> 在到达 GPU 核之前会被翻译<strong>八次</strong>：① JS API → Blink WebIDL；② Blink → Renderer 端 Wire；③ Mojo IPC 跨进程；④ GPU 进程 Dawn 验证；⑤ Tint 把 WGSL 编译成 SPIR-V/MSL/HLSL；⑥ ANGLE/原生 API（Metal/D3D12/Vulkan）；⑦ 厂商驱动编译成 GPU ISA；⑧ GPU 命令处理器 dispatch 给 SM/CU/EU。这是一篇<em>WebGPU 全栈解剖</em>——从一行 JS 到一条 GPU 指令，25 章 · Dawn + wgpu 双栈对照 · 真源码 · 真延迟。</p>
-    <p class="deck lang-en-only">A single line <code style="font-family:var(--mono);">pass.dispatchWorkgroups(16384)</code> is translated <strong>eight times</strong> before it reaches a GPU core: ① JS API → Blink WebIDL; ② Blink → renderer-side Wire; ③ Mojo IPC across processes; ④ GPU-process Dawn validation; ⑤ Tint compiles WGSL into SPIR-V/MSL/HLSL; ⑥ native API (Metal/D3D12/Vulkan); ⑦ vendor driver compiles to GPU ISA; ⑧ GPU command processor dispatches to SMs/CUs/EUs. This is a <em>full WebGPU stack dissection</em> — from one JS call to one GPU instruction, 25 chapters · Dawn + wgpu side-by-side · real source · real latencies.</p>
+    <p class="deck lang-en-only"  data-pagefind-ignore="">A single line <code style="font-family:var(--mono);">pass.dispatchWorkgroups(16384)</code> is translated <strong>eight times</strong> before it reaches a GPU core: ① JS API → Blink WebIDL; ② Blink → renderer-side Wire; ③ Mojo IPC across processes; ④ GPU-process Dawn validation; ⑤ Tint compiles WGSL into SPIR-V/MSL/HLSL; ⑥ native API (Metal/D3D12/Vulkan); ⑦ vendor driver compiles to GPU ISA; ⑧ GPU command processor dispatches to SMs/CUs/EUs. This is a <em>full WebGPU stack dissection</em> — from one JS call to one GPU instruction, 25 chapters · Dawn + wgpu side-by-side · real source · real latencies.</p>
     <div class="byline">
       <span><span class="label">AUTHOR</span><a class="value" href="https://ursb.me" target="_blank" rel="noopener">Airing</a></span>
       <span><span class="label">TOPIC</span><span class="value">WebGPU · graphics · GPU · WGSL · Dawn · wgpu</span></span>
@@ -1402,17 +1433,17 @@
     <aside class="hero-notice">
       <div class="hn-tag">
         <span class="lang-zh-only">FIELD NOTE 系列 · 第九篇</span>
-        <span class="lang-en-only">Field Note series · No. 09</span>
+        <span class="lang-en-only"  data-pagefind-ignore="">Field Note series · No. 09</span>
       </div>
       <p class="hn-body lang-zh-only">这是 <strong>Field Note</strong> 系列的第九篇，姐妹篇有《<a href="https://ursb.me/immersive/quickjs/">一行 JS 的一生 · QuickJS 源码详解</a>》（讲一个引擎全栈）、《<a href="https://ursb.me/immersive/v8-fast-js/">V8 是怎么把 JS 跑快的</a>》（讲多层 JIT）、以及《<a href="https://ursb.me/immersive/gc/">一段内存的多重死亡 · 11 个 GC 家族的家谱</a>》（讲跨语言 GC）。本篇<em>纵向</em>切开一个全栈——从 JS API 到 GPU 核心，把<em>八重翻译</em>逐层揭开。每层都给出真实源码——Dawn 的 <code>src/dawn/native/</code>、wgpu 的 <code>wgpu-core/</code>、Tint 的 <code>src/tint/lang/wgsl/</code>、Naga 的 <code>naga/src/back/</code>——一个完整的<em>compute matmul</em> 作主线，看它怎么从 40 行 JS 走完整个翻译链。</p>
-      <p class="hn-body lang-en-only">This is the ninth piece in the <strong>Field Note</strong> series, siblings to «<a href="https://ursb.me/immersive/quickjs/">The Life of One JS Line · A QuickJS Source-Level Walkthrough</a>» (one engine, full stack), «<a href="https://ursb.me/immersive/v8-fast-js/">How V8 makes JS fast</a>» (multi-tier JIT), and «<a href="https://ursb.me/immersive/gc/">Many Ways to Die · 11 GC families</a>» (cross-language GC). This one slices <em>vertically</em> through a full stack — from JS API down to GPU silicon, unfolding the <em>eight translations</em> layer by layer. Every layer is illustrated with real source: Dawn's <code>src/dawn/native/</code>, wgpu's <code>wgpu-core/</code>, Tint's <code>src/tint/lang/wgsl/</code>, Naga's <code>naga/src/back/</code>. A single <em>compute matmul</em> is threaded through, showing how 40 lines of JS travel the whole translation chain.</p>
+      <p class="hn-body lang-en-only"  data-pagefind-ignore="">This is the ninth piece in the <strong>Field Note</strong> series, siblings to «<a href="https://ursb.me/immersive/quickjs/">The Life of One JS Line · A QuickJS Source-Level Walkthrough</a>» (one engine, full stack), «<a href="https://ursb.me/immersive/v8-fast-js/">How V8 makes JS fast</a>» (multi-tier JIT), and «<a href="https://ursb.me/immersive/gc/">Many Ways to Die · 11 GC families</a>» (cross-language GC). This one slices <em>vertically</em> through a full stack — from JS API down to GPU silicon, unfolding the <em>eight translations</em> layer by layer. Every layer is illustrated with real source: Dawn's <code>src/dawn/native/</code>, wgpu's <code>wgpu-core/</code>, Tint's <code>src/tint/lang/wgsl/</code>, Naga's <code>naga/src/back/</code>. A single <em>compute matmul</em> is threaded through, showing how 40 lines of JS travel the whole translation chain.</p>
     </aside>
 
     <!-- Pipeline pulse banner — 25 chapters + main line + 7 acts -->
     <div class="pipeline-bar">
       <div class="pb-title">
         <span class="lang-zh-only">WebGPU 全栈 · 8 重翻译 · 25 章</span>
-        <span class="lang-en-only">WebGPU stack · 8 translations · 25 chapters</span>
+        <span class="lang-en-only"  data-pagefind-ignore="">WebGPU stack · 8 translations · 25 chapters</span>
         <span class="pb-pulse">▸ LIVE PULSE</span>
       </div>
       <div class="pb-track" id="pbTrack">
@@ -1452,16 +1483,16 @@
       <div class="toc-group-head">
         <div class="tg-num">I</div>
         <div class="tg-name lang-zh-only">背景</div>
-        <div class="tg-name lang-en-only">Background</div>
+        <div class="tg-name lang-en-only"  data-pagefind-ignore="">Background</div>
         <div class="tg-en">5 chapters · why &amp; what</div>
         <div class="tg-count">5</div>
       </div>
       <div class="toc-chips">
-        <a href="#c1" class="toc-chip" data-section="c1"><span class="tc-num">01</span><div class="tc-name"><span class="lang-zh-only">五个公式</span><span class="lang-en-only">5 formulas</span><span class="tc-en">CPU/GPU · throughput vs latency</span></div></a>
-        <a href="#c2" class="toc-chip" data-section="c2"><span class="tc-num">02</span><div class="tc-name"><span class="lang-zh-only">十二年家谱</span><span class="lang-en-only">12-year family tree</span><span class="tc-en">WebGL 2011 → WebGPU 2023</span></div></a>
-        <a href="#c3" class="toc-chip" data-section="c3"><span class="tc-num">03</span><div class="tc-name"><span class="lang-zh-only">为什么不直接 Vulkan</span><span class="lang-en-only">Why not Vulkan</span><span class="tc-en">portability vs raw power</span></div></a>
-        <a href="#c4" class="toc-chip" data-section="c4"><span class="tc-num">04</span><div class="tc-name"><span class="lang-zh-only">设计哲学</span><span class="lang-en-only">Design philosophy</span><span class="tc-en">safe · portable · fast</span></div></a>
-        <a href="#c5" class="toc-chip" data-section="c5"><span class="tc-num">05</span><div class="tc-name"><span class="lang-zh-only">三栈全景</span><span class="lang-en-only">Three-stack atlas</span><span class="tc-en">JS · Dawn/wgpu · Metal/D3D/Vk</span></div></a>
+        <a href="#c1" class="toc-chip" data-section="c1"><span class="tc-num">01</span><div class="tc-name"><span class="lang-zh-only">五个公式</span><span class="lang-en-only"  data-pagefind-ignore="">5 formulas</span><span class="tc-en">CPU/GPU · throughput vs latency</span></div></a>
+        <a href="#c2" class="toc-chip" data-section="c2"><span class="tc-num">02</span><div class="tc-name"><span class="lang-zh-only">十二年家谱</span><span class="lang-en-only"  data-pagefind-ignore="">12-year family tree</span><span class="tc-en">WebGL 2011 → WebGPU 2023</span></div></a>
+        <a href="#c3" class="toc-chip" data-section="c3"><span class="tc-num">03</span><div class="tc-name"><span class="lang-zh-only">为什么不直接 Vulkan</span><span class="lang-en-only"  data-pagefind-ignore="">Why not Vulkan</span><span class="tc-en">portability vs raw power</span></div></a>
+        <a href="#c4" class="toc-chip" data-section="c4"><span class="tc-num">04</span><div class="tc-name"><span class="lang-zh-only">设计哲学</span><span class="lang-en-only"  data-pagefind-ignore="">Design philosophy</span><span class="tc-en">safe · portable · fast</span></div></a>
+        <a href="#c5" class="toc-chip" data-section="c5"><span class="tc-num">05</span><div class="tc-name"><span class="lang-zh-only">三栈全景</span><span class="lang-en-only"  data-pagefind-ignore="">Three-stack atlas</span><span class="tc-en">JS · Dawn/wgpu · Metal/D3D/Vk</span></div></a>
       </div>
     </div>
 
@@ -1469,12 +1500,12 @@
       <div class="toc-group-head">
         <div class="tg-num">★</div>
         <div class="tg-name lang-zh-only">主线</div>
-        <div class="tg-name lang-en-only">Main line</div>
+        <div class="tg-name lang-en-only"  data-pagefind-ignore="">Main line</div>
         <div class="tg-en">1 program · 8 translations</div>
         <div class="tg-count">1</div>
       </div>
       <div class="toc-chips">
-        <a href="#cmain" class="toc-chip thread" data-section="cmain"><span class="tc-num">★</span><div class="tc-name"><span class="lang-zh-only">1M 浮点平方</span><span class="lang-en-only">1M floats squared</span><span class="tc-en">40 lines of JS · 8 layers</span></div></a>
+        <a href="#cmain" class="toc-chip thread" data-section="cmain"><span class="tc-num">★</span><div class="tc-name"><span class="lang-zh-only">1M 浮点平方</span><span class="lang-en-only"  data-pagefind-ignore="">1M floats squared</span><span class="tc-en">40 lines of JS · 8 layers</span></div></a>
       </div>
     </div>
 
@@ -1482,26 +1513,26 @@
       <div class="toc-group-head">
         <div class="tg-num">III–IV</div>
         <div class="tg-name lang-zh-only">API · 跨进程</div>
-        <div class="tg-name lang-en-only">API · IPC</div>
+        <div class="tg-name lang-en-only"  data-pagefind-ignore="">API · IPC</div>
         <div class="tg-en">8 chapters · the front half</div>
         <div class="tg-count">8</div>
       </div>
       <div class="toc-sub" data-thread="quic">
-        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">API 表面 · API surface</span><span class="lang-en-only">API surface</span></div>
+        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">API 表面 · API surface</span><span class="lang-en-only"  data-pagefind-ignore="">API surface</span></div>
         <div class="toc-chips">
-          <a href="#c6" class="toc-chip" data-section="c6"><span class="tc-num">06</span><div class="tc-name"><span class="lang-zh-only">Adapter & Device</span><span class="lang-en-only">Adapter & Device</span><span class="tc-en">requestAdapter · features · limits</span></div></a>
-          <a href="#c7" class="toc-chip" data-section="c7"><span class="tc-num">07</span><div class="tc-name"><span class="lang-zh-only">Buffer · 映射</span><span class="lang-en-only">Buffers · mapping</span><span class="tc-en">STORAGE · COPY_DST · mapAsync</span></div></a>
+          <a href="#c6" class="toc-chip" data-section="c6"><span class="tc-num">06</span><div class="tc-name"><span class="lang-zh-only">Adapter & Device</span><span class="lang-en-only"  data-pagefind-ignore="">Adapter & Device</span><span class="tc-en">requestAdapter · features · limits</span></div></a>
+          <a href="#c7" class="toc-chip" data-section="c7"><span class="tc-num">07</span><div class="tc-name"><span class="lang-zh-only">Buffer · 映射</span><span class="lang-en-only"  data-pagefind-ignore="">Buffers · mapping</span><span class="tc-en">STORAGE · COPY_DST · mapAsync</span></div></a>
           <a href="#c8" class="toc-chip" data-section="c8"><span class="tc-num">08</span><div class="tc-name">WGSL<span class="tc-en">@compute · @workgroup_size · ptr</span></div></a>
-          <a href="#c9" class="toc-chip" data-section="c9"><span class="tc-num">09</span><div class="tc-name"><span class="lang-zh-only">Pipeline · BindGroup</span><span class="lang-en-only">Pipeline · BindGroup</span><span class="tc-en">layout:'auto' · descriptor sets</span></div></a>
-          <a href="#c10" class="toc-chip" data-section="c10"><span class="tc-num">10</span><div class="tc-name"><span class="lang-zh-only">Encoder & Queue</span><span class="lang-en-only">Encoder & Queue</span><span class="tc-en">dispatch · submit · fences</span></div></a>
+          <a href="#c9" class="toc-chip" data-section="c9"><span class="tc-num">09</span><div class="tc-name"><span class="lang-zh-only">Pipeline · BindGroup</span><span class="lang-en-only"  data-pagefind-ignore="">Pipeline · BindGroup</span><span class="tc-en">layout:'auto' · descriptor sets</span></div></a>
+          <a href="#c10" class="toc-chip" data-section="c10"><span class="tc-num">10</span><div class="tc-name"><span class="lang-zh-only">Encoder & Queue</span><span class="lang-en-only"  data-pagefind-ignore="">Encoder & Queue</span><span class="tc-en">dispatch · submit · fences</span></div></a>
         </div>
       </div>
       <div class="toc-sub" data-thread="http">
-        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">跨进程 · cross-process</span><span class="lang-en-only">cross-process</span></div>
+        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">跨进程 · cross-process</span><span class="lang-en-only"  data-pagefind-ignore="">cross-process</span></div>
         <div class="toc-chips">
-          <a href="#c11" class="toc-chip" data-section="c11"><span class="tc-num">11</span><div class="tc-name"><span class="lang-zh-only">Renderer ↔ GPU 进程</span><span class="lang-en-only">Renderer ↔ GPU process</span><span class="tc-en">Mojo IPC · Wire serialization</span></div></a>
-          <a href="#c12" class="toc-chip" data-section="c12"><span class="tc-num">12</span><div class="tc-name"><span class="lang-zh-only">验证 · 错误域</span><span class="lang-en-only">Validation · error scopes</span><span class="tc-en">async errors · push/pop</span></div></a>
-          <a href="#c13" class="toc-chip" data-section="c13"><span class="tc-num">13</span><div class="tc-name"><span class="lang-zh-only">设备丢失 · 恢复</span><span class="lang-en-only">Device loss · recovery</span><span class="tc-en">TDR · driver crash · re-init</span></div></a>
+          <a href="#c11" class="toc-chip" data-section="c11"><span class="tc-num">11</span><div class="tc-name"><span class="lang-zh-only">Renderer ↔ GPU 进程</span><span class="lang-en-only"  data-pagefind-ignore="">Renderer ↔ GPU process</span><span class="tc-en">Mojo IPC · Wire serialization</span></div></a>
+          <a href="#c12" class="toc-chip" data-section="c12"><span class="tc-num">12</span><div class="tc-name"><span class="lang-zh-only">验证 · 错误域</span><span class="lang-en-only"  data-pagefind-ignore="">Validation · error scopes</span><span class="tc-en">async errors · push/pop</span></div></a>
+          <a href="#c13" class="toc-chip" data-section="c13"><span class="tc-num">13</span><div class="tc-name"><span class="lang-zh-only">设备丢失 · 恢复</span><span class="lang-en-only"  data-pagefind-ignore="">Device loss · recovery</span><span class="tc-en">TDR · driver crash · re-init</span></div></a>
         </div>
       </div>
     </div>
@@ -1510,24 +1541,24 @@
       <div class="toc-group-head">
         <div class="tg-num">V–VI</div>
         <div class="tg-name lang-zh-only">编译链 · 计算</div>
-        <div class="tg-name lang-en-only">Compiler · Compute</div>
+        <div class="tg-name lang-en-only"  data-pagefind-ignore="">Compiler · Compute</div>
         <div class="tg-en">8 chapters · the back half</div>
         <div class="tg-count">8</div>
       </div>
       <div class="toc-sub" data-thread="quic">
-        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">编译链 · compiler chain</span><span class="lang-en-only">compiler chain</span></div>
+        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">编译链 · compiler chain</span><span class="lang-en-only"  data-pagefind-ignore="">compiler chain</span></div>
         <div class="toc-chips">
-          <a href="#c14" class="toc-chip" data-section="c14"><span class="tc-num">14</span><div class="tc-name"><span class="lang-zh-only">Tint · Dawn 前端</span><span class="lang-en-only">Tint · Dawn frontend</span><span class="tc-en">parser · resolver · IR</span></div></a>
-          <a href="#c15" class="toc-chip" data-section="c15"><span class="tc-num">15</span><div class="tc-name"><span class="lang-zh-only">Naga · wgpu 前端</span><span class="lang-en-only">Naga · wgpu frontend</span><span class="tc-en">arena IR · valid module</span></div></a>
+          <a href="#c14" class="toc-chip" data-section="c14"><span class="tc-num">14</span><div class="tc-name"><span class="lang-zh-only">Tint · Dawn 前端</span><span class="lang-en-only"  data-pagefind-ignore="">Tint · Dawn frontend</span><span class="tc-en">parser · resolver · IR</span></div></a>
+          <a href="#c15" class="toc-chip" data-section="c15"><span class="tc-num">15</span><div class="tc-name"><span class="lang-zh-only">Naga · wgpu 前端</span><span class="lang-en-only"  data-pagefind-ignore="">Naga · wgpu frontend</span><span class="tc-en">arena IR · valid module</span></div></a>
           <a href="#c16" class="toc-chip" data-section="c16"><span class="tc-num">16</span><div class="tc-name">SPIR-V · MSL · HLSL<span class="tc-en">three IR backends</span></div></a>
           <a href="#c17" class="toc-chip" data-section="c17"><span class="tc-num">17</span><div class="tc-name">Metal · D3D12 · Vulkan<span class="tc-en">native API call mapping</span></div></a>
         </div>
       </div>
       <div class="toc-sub" data-thread="http">
-        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">计算 · 用 GPU 做 AI</span><span class="lang-en-only">compute · AI on GPU</span></div>
+        <div class="toc-sub-tag"><span class="ts-stripe"></span><span class="lang-zh-only">计算 · 用 GPU 做 AI</span><span class="lang-en-only"  data-pagefind-ignore="">compute · AI on GPU</span></div>
         <div class="toc-chips">
-          <a href="#c18" class="toc-chip" data-section="c18"><span class="tc-num">18</span><div class="tc-name"><span class="lang-zh-only">Workgroup · Subgroup</span><span class="lang-en-only">Workgroup · Subgroup</span><span class="tc-en">shared mem · ballot · shuffle</span></div></a>
-          <a href="#c19" class="toc-chip" data-section="c19"><span class="tc-num">19</span><div class="tc-name"><span class="lang-zh-only">矩阵乘法</span><span class="lang-en-only">Matmul</span><span class="tc-en">naive → tiled → wmma</span></div></a>
+          <a href="#c18" class="toc-chip" data-section="c18"><span class="tc-num">18</span><div class="tc-name"><span class="lang-zh-only">Workgroup · Subgroup</span><span class="lang-en-only"  data-pagefind-ignore="">Workgroup · Subgroup</span><span class="tc-en">shared mem · ballot · shuffle</span></div></a>
+          <a href="#c19" class="toc-chip" data-section="c19"><span class="tc-num">19</span><div class="tc-name"><span class="lang-zh-only">矩阵乘法</span><span class="lang-en-only"  data-pagefind-ignore="">Matmul</span><span class="tc-en">naive → tiled → wmma</span></div></a>
           <a href="#c20" class="toc-chip" data-section="c20"><span class="tc-num">20</span><div class="tc-name">transformers.js<span class="tc-en">Llama in 20 lines of WGSL</span></div></a>
           <a href="#c21" class="toc-chip" data-section="c21"><span class="tc-num">21</span><div class="tc-name">FP16 · atomics · ts<span class="tc-en">subgroup · timestamp_query</span></div></a>
         </div>
@@ -1538,15 +1569,15 @@
       <div class="toc-group-head">
         <div class="tg-num">VII</div>
         <div class="tg-name lang-zh-only">综合</div>
-        <div class="tg-name lang-en-only">Synthesis</div>
+        <div class="tg-name lang-en-only"  data-pagefind-ignore="">Synthesis</div>
         <div class="tg-en">4 chapters · putting it together</div>
         <div class="tg-count">4</div>
       </div>
       <div class="toc-chips">
-        <a href="#c22" class="toc-chip" data-section="c22"><span class="tc-num">22</span><div class="tc-name"><span class="lang-zh-only">vs WebGL · WebCL</span><span class="lang-en-only">vs WebGL · WebCL</span><span class="tc-en">6-axis matrix</span></div></a>
-        <a href="#c23" class="toc-chip" data-section="c23"><span class="tc-num">23</span><div class="tc-name"><span class="lang-zh-only">生产故事簿</span><span class="lang-en-only">Production stories</span><span class="tc-en">Figma · Babylon · Bevy · Unity</span></div></a>
-        <a href="#c24" class="toc-chip" data-section="c24"><span class="tc-num">24</span><div class="tc-name"><span class="lang-zh-only">限制 · 指纹</span><span class="lang-en-only">Limits · fingerprinting</span><span class="tc-en">why no GPU id, why limits</span></div></a>
-        <a href="#c25" class="toc-chip" data-section="c25"><span class="tc-num">25</span><div class="tc-name"><span class="lang-zh-only">之后</span><span class="lang-en-only">What's next</span><span class="tc-en">RT · subgroup · multi-GPU</span></div></a>
+        <a href="#c22" class="toc-chip" data-section="c22"><span class="tc-num">22</span><div class="tc-name"><span class="lang-zh-only">vs WebGL · WebCL</span><span class="lang-en-only"  data-pagefind-ignore="">vs WebGL · WebCL</span><span class="tc-en">6-axis matrix</span></div></a>
+        <a href="#c23" class="toc-chip" data-section="c23"><span class="tc-num">23</span><div class="tc-name"><span class="lang-zh-only">生产故事簿</span><span class="lang-en-only"  data-pagefind-ignore="">Production stories</span><span class="tc-en">Figma · Babylon · Bevy · Unity</span></div></a>
+        <a href="#c24" class="toc-chip" data-section="c24"><span class="tc-num">24</span><div class="tc-name"><span class="lang-zh-only">限制 · 指纹</span><span class="lang-en-only"  data-pagefind-ignore="">Limits · fingerprinting</span><span class="tc-en">why no GPU id, why limits</span></div></a>
+        <a href="#c25" class="toc-chip" data-section="c25"><span class="tc-num">25</span><div class="tc-name"><span class="lang-zh-only">之后</span><span class="lang-en-only"  data-pagefind-ignore="">What's next</span><span class="tc-en">RT · subgroup · multi-GPU</span></div></a>
       </div>
     </div>
   </nav>
@@ -1555,9 +1586,9 @@
   <section class="chap" id="c1">
     <div class="chap-num">CHAPTER&nbsp;01</div>
     <h2 class="chap-title lang-zh-only">五个公式 — 为什么 GPU、为什么 WebGPU</h2>
-    <h2 class="chap-title lang-en-only">Five formulas — why GPUs, why WebGPU</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Five formulas — why GPUs, why WebGPU</h2>
     <p class="chap-en lang-zh-only">从 CPU 单核到 GPU 一万六千个 ALU · 从一行 JS 到一条 SIMT 指令</p>
-    <p class="chap-en lang-en-only">From one CPU core to 16,384 GPU ALUs · from one JS line to one SIMT instruction</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">From one CPU core to 16,384 GPU ALUs · from one JS line to one SIMT instruction</p>
 
     <div class="lang-zh-only">
       <p>WebGPU 的存在感来自<em>五个数量级</em>的差异。把它们放在一页上能解释为什么浏览器要再造一套图形 API、为什么不直接复用 WebGL、为什么 2023 年才发布——以及为什么后面 24 章每一章都<em>在和这五个公式纠缠</em>。</p>
@@ -1607,7 +1638,7 @@
       <p style="margin-top:24px;">这五个公式贯穿全书。Ch01-05 是为它们做准备的<em>背景</em>，Ch06-21 是它们的<em>分步展开</em>，Ch22-25 是它们的<em>合成与回望</em>。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>WebGPU's existence comes from <em>five orders-of-magnitude differences</em>. Putting them on one page explains why browsers need a second graphics API, why WebGL wasn't enough, why it took until 2023 — and why every one of the 24 chapters that follow is <em>wrestling with one of these five formulas</em>.</p>
 
       <div class="formula">
@@ -1660,9 +1691,9 @@
   <section class="chap" id="c2">
     <div class="chap-num">CHAPTER&nbsp;02</div>
     <h2 class="chap-title lang-zh-only">十二年家谱 — WebGL 2011 → WebGPU 2023</h2>
-    <h2 class="chap-title lang-en-only">12-year family tree — WebGL 2011 → WebGPU 2023</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">12-year family tree — WebGL 2011 → WebGPU 2023</h2>
     <p class="chap-en lang-zh-only">三股力量汇流：原生 API 现代化 · 浏览器三方提案 · W3C 标准化</p>
-    <p class="chap-en lang-en-only">Three forces converging: modern native APIs · three browser proposals · W3C standardisation</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Three forces converging: modern native APIs · three browser proposals · W3C standardisation</p>
 
     <div class="lang-zh-only">
       <p>WebGPU 不是从零冒出来的。它是 <em>三股力量</em> 在 2017 年同时撞到一起的产物：</p>
@@ -1699,7 +1730,7 @@
       <p style="margin-top:18px;"><strong>三个名字、一个 API、两份代码</strong>：用户看到的是 <code>navigator.gpu</code>，但底下实际有三份独立实现——Dawn（Chrome，C++）、wgpu（Firefox + Deno + Bevy + Servo + ...，Rust）、WebKit's own（Safari，Obj-C++）。整本书会反复对照前两个，因为 Safari 的实现还<em>非常年轻</em>且未开放重要扩展。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>WebGPU didn't appear out of nowhere. It's the product of <em>three forces converging</em> around 2017:</p>
 
       <ul style="margin-left:24px; font-family:var(--sans); font-size:14px; line-height:1.8;">
@@ -1739,9 +1770,9 @@
   <section class="chap" id="c3">
     <div class="chap-num">CHAPTER&nbsp;03</div>
     <h2 class="chap-title lang-zh-only">为什么不直接把 Vulkan 暴露给 JS</h2>
-    <h2 class="chap-title lang-en-only">Why not just expose Vulkan to JS</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Why not just expose Vulkan to JS</h2>
     <p class="chap-en lang-zh-only">显式不等于安全 · 跨平台不等于一致 · 性能不等于可移植</p>
-    <p class="chap-en lang-en-only">Explicit ≠ safe · cross-platform ≠ consistent · fast ≠ portable</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Explicit ≠ safe · cross-platform ≠ consistent · fast ≠ portable</p>
 
     <div class="lang-zh-only">
       <p>这是 WebGPU 设计中<em>最常被问</em>的问题。Vulkan 是 2016 年的 Khronos 标准、跨 Windows/Linux/Android、显式控制、性能逼近金属——为什么不直接 <code>navigator.vk = ...</code> 让 JS 调？</p>
@@ -1771,7 +1802,7 @@
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>This is the <em>most commonly asked</em> question about WebGPU's design. Vulkan exists since 2016, runs on Windows/Linux/Android, exposes explicit control, performance is near-native. Why not just <code>navigator.vk = ...</code> and let JS call it?</p>
 
       <p>Because <em>"explicit" ≠ "safe"</em>, <em>"cross-platform" ≠ "consistent"</em>, and <em>"fast" ≠ "portable"</em>. Each in turn:</p>
@@ -1804,9 +1835,9 @@
   <section class="chap" id="c4">
     <div class="chap-num">CHAPTER&nbsp;04</div>
     <h2 class="chap-title lang-zh-only">设计哲学 — 安全 · 可移植 · 够快，全要</h2>
-    <h2 class="chap-title lang-en-only">Design philosophy — safe · portable · fast, all three</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Design philosophy — safe · portable · fast, all three</h2>
     <p class="chap-en lang-zh-only">把 WebGPU 与 WebGL / Vulkan / Metal / D3D12 放在四个轴上比较</p>
-    <p class="chap-en lang-en-only">WebGPU vs WebGL vs Vulkan vs Metal vs D3D12 on four axes</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">WebGPU vs WebGL vs Vulkan vs Metal vs D3D12 on four axes</p>
 
     <div class="lang-zh-only">
       <p>"安全、可移植、够快"在 2015 年之前是<em>不可能三角</em>。OpenGL 安全但不够快、Vulkan 够快但不安全、Metal 安全 + 够快但不可移植。WebGPU 的赌注是<em>这三个可以同时拿到</em>，只要愿意接受三个让步：</p>
@@ -1839,7 +1870,7 @@
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>"Safe, portable, fast" was an <em>impossible triangle</em> pre-2015. OpenGL was safe but slow; Vulkan was fast but unsafe; Metal was safe-and-fast but Apple-only. WebGPU bet you could have all three, with three concessions:</p>
 
       <ol style="margin-left:24px; font-family:var(--sans); font-size:14px; line-height:1.95;">
@@ -1875,9 +1906,9 @@
   <section class="chap" id="c5">
     <div class="chap-num">CHAPTER&nbsp;05</div>
     <h2 class="chap-title lang-zh-only">三栈全景 — Chrome · Firefox · Safari</h2>
-    <h2 class="chap-title lang-en-only">Three-stack atlas — Chrome · Firefox · Safari</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Three-stack atlas — Chrome · Firefox · Safari</h2>
     <p class="chap-en lang-zh-only">同一行 <code>device.queue.submit()</code> 在三个浏览器里走过的 8 个层不一样</p>
-    <p class="chap-en lang-en-only">The same <code>device.queue.submit()</code> traverses 8 different layers in each browser</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">The same <code>device.queue.submit()</code> traverses 8 different layers in each browser</p>
 
     <div class="lang-zh-only">
       <p>"WebGPU" 是一个 API。但底层有<em>三个独立实现</em>。每条调用从 JS 到 GPU 中间的 8 层堆栈在三个浏览器里完全不同。把它们摆在一起：</p>
@@ -1934,7 +1965,7 @@
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>"WebGPU" is one API, but it has <em>three independent implementations</em>. The 8-layer journey from JS to GPU differs across browsers. Side by side:</p>
 
       <div class="ua-stack">
@@ -1994,9 +2025,9 @@
   <section class="chap mainline" id="cmain">
     <div class="chap-num">MAIN&nbsp;LINE&nbsp;✦</div>
     <h2 class="chap-title lang-zh-only">1M 浮点平方 — 40 行 JS · 8 层翻译</h2>
-    <h2 class="chap-title lang-en-only">1M floats squared — 40 lines of JS · 8 translations</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">1M floats squared — 40 lines of JS · 8 translations</h2>
     <p class="chap-en lang-zh-only">本书的主线程序。每章拆它一行（或一组），看它怎么走完全栈</p>
-    <p class="chap-en lang-en-only">The article's main line. Each chapter dissects one line (or group), tracing it through the full stack</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">The article's main line. Each chapter dissects one line (or group), tracing it through the full stack</p>
 
     <div class="lang-zh-only">
       <p>这是 Field Note 09 的<em>主线程序</em>。它做一件简单的事：在 GPU 上把一个 1,048,576 个 float 的数组<em>每个元素平方</em>，然后读回 CPU 验证。每一行都对应后面 25 章中的一章——按这个顺序把整本书读下来，就等于把<em>这 40 行 JS</em> 一层一层翻译到 GPU 指令。</p>
@@ -2081,7 +2112,7 @@
       <p style="margin-top:14px;">总耗时（暖缓存）：~250 µs CPU + ~200 µs GPU = <em>~450 µs</em>。冷缓存首次 ~15 ms。后续每次提交 ~450 µs。后面的章节会一层一层把这条时间线拆开。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>This is Field Note 09's <em>main line</em>. It does one thing: square each element of a 1,048,576-float array <em>on the GPU</em>, then read back to verify. Every line maps to one of the 25 chapters that follow — read them in order and you're translating <em>these 40 lines</em> layer by layer down to GPU instructions.</p>
 
       <div class="src-stack">
@@ -2169,9 +2200,9 @@
   <section class="chap" id="c6">
     <div class="chap-num">CHAPTER&nbsp;06</div>
     <h2 class="chap-title lang-zh-only">Adapter &amp; Device — 拿到一块 GPU</h2>
-    <h2 class="chap-title lang-en-only">Adapter &amp; Device — getting hold of a GPU</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Adapter &amp; Device — getting hold of a GPU</h2>
     <p class="chap-en lang-zh-only">两次 await · 一次硬件挑选 · 一次能力协商</p>
-    <p class="chap-en lang-en-only">Two awaits · one hardware pick · one capability negotiation</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Two awaits · one hardware pick · one capability negotiation</p>
 
     <div class="lang-zh-only">
       <p>主线 ② 的两行：</p>
@@ -2219,7 +2250,7 @@ const device  = <em>await</em> adapter.requestDevice();           <span style="c
       </ul>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>Main line ②, two lines:</p>
       <pre style="font-family:var(--mono); font-size:13px; background:var(--paper-2); padding:10px 14px; border-radius:6px; line-height:1.55;">const adapter = <em>await</em> navigator.gpu.requestAdapter();   <span style="color:var(--ink-mute);">// physical GPU</span>
 const device  = <em>await</em> adapter.requestDevice();           <span style="color:var(--ink-mute);">// virtual handle</span></pre>
@@ -2270,9 +2301,9 @@ const device  = <em>await</em> adapter.requestDevice();           <span style="c
   <section class="chap" id="c7">
     <div class="chap-num">CHAPTER&nbsp;07</div>
     <h2 class="chap-title lang-zh-only">Buffer · 映射 · 生命周期</h2>
-    <h2 class="chap-title lang-en-only">Buffers · mapping · lifetimes</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Buffers · mapping · lifetimes</h2>
     <p class="chap-en lang-zh-only">4 MB 数据怎么从 JS Float32Array 到达 GPU 显存</p>
-    <p class="chap-en lang-en-only">How 4 MB of Float32Array gets from JS to GPU memory</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">How 4 MB of Float32Array gets from JS to GPU memory</p>
 
     <div class="lang-zh-only">
       <p>主线 ③ + ⑦ 处理两个 buffer：一个 <em>storage buffer</em>（GPU 读写）和一个 <em>map-read buffer</em>（CPU 回读）。这一章拆 GPUBuffer 的 8 个 usage flag、3 种数据路径、2 种映射模式。</p>
@@ -2321,7 +2352,7 @@ const device  = <em>await</em> adapter.requestDevice();           <span style="c
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>Main line ③ and ⑦ both touch buffers: one <em>storage buffer</em> (GPU read/write) and one <em>map-read buffer</em> (CPU read-back). This chapter unpacks the 8 usage flags, 3 data paths, and 2 mapping modes that the spec offers.</p>
 
       <h3 style="margin-top:18px;">① The seven usage flags</h3>
@@ -2373,9 +2404,9 @@ const device  = <em>await</em> adapter.requestDevice();           <span style="c
   <section class="chap" id="c8">
     <div class="chap-num">CHAPTER&nbsp;08</div>
     <h2 class="chap-title lang-zh-only">WGSL — 第四种 shading language</h2>
-    <h2 class="chap-title lang-en-only">WGSL — the fourth shading language</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">WGSL — the fourth shading language</h2>
     <p class="chap-en lang-zh-only">不是 GLSL · 不是 HLSL · 不是 MSL · 设计成可双向翻译到三家</p>
-    <p class="chap-en lang-en-only">Not GLSL · not HLSL · not MSL · designed to round-trip to all three</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Not GLSL · not HLSL · not MSL · designed to round-trip to all three</p>
 
     <div class="lang-zh-only">
       <p>主线 ④ 那段字符串就是 WGSL，整个 WebGPU 协议<em>只接受 WGSL 一种 shader 源码</em>——这是 W3C 工作组做过的最大也是最有争议的决定。</p>
@@ -2439,7 +2470,7 @@ const device  = <em>await</em> adapter.requestDevice();           <span style="c
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>That string literal in main line ④ is WGSL. The WebGPU protocol <em>only accepts WGSL as shader source</em> — the single most consequential (and contentious) decision the W3C working group made.</p>
 
       <h3 style="margin-top:18px;">Why not reuse an existing language</h3>
@@ -2506,9 +2537,9 @@ const device  = <em>await</em> adapter.requestDevice();           <span style="c
   <section class="chap" id="c9">
     <div class="chap-num">CHAPTER&nbsp;09</div>
     <h2 class="chap-title lang-zh-only">Pipeline · BindGroup — 描述符的两层</h2>
-    <h2 class="chap-title lang-en-only">Pipeline · BindGroup — the two-layer descriptor model</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Pipeline · BindGroup — the two-layer descriptor model</h2>
     <p class="chap-en lang-zh-only">为什么需要"layout 的 layout"，以及 layout:'auto' 是怎么实现的</p>
-    <p class="chap-en lang-en-only">Why you need a "layout of layouts" — and how layout:'auto' really works</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Why you need a "layout of layouts" — and how layout:'auto' really works</p>
 
     <div class="lang-zh-only">
       <p>主线 ⑤ 两步：<code>createComputePipeline</code> + <code>createBindGroup</code>。这两个 API 一起回答了一个底层问题：<em>shader 怎么找到它要用的资源？</em></p>
@@ -2561,7 +2592,7 @@ const device  = <em>await</em> adapter.requestDevice();           <span style="c
       <p style="margin-top:12px;">总和 10–30 ms。所以<em>不要在 frame 里创建 pipeline</em>。生产应用通常在启动时把所有 pipeline 预编译好（"pre-warming"）。Chrome 还有 pipeline cache 把编译产物存到磁盘，下次启动直接复用。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>Main line ⑤ does two things: <code>createComputePipeline</code> + <code>createBindGroup</code>. Together they answer one underlying question: <em>how does the shader find the resources it uses?</em></p>
 
       <p>Every modern graphics API uses a <em>two-level descriptor model</em>:</p>
@@ -2617,9 +2648,9 @@ const device  = <em>await</em> adapter.requestDevice();           <span style="c
   <section class="chap" id="c10">
     <div class="chap-num">CHAPTER&nbsp;10</div>
     <h2 class="chap-title lang-zh-only">Encoder · Queue — 录制和提交</h2>
-    <h2 class="chap-title lang-en-only">Encoder · Queue — recording and submitting</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Encoder · Queue — recording and submitting</h2>
     <p class="chap-en lang-zh-only">把 dispatch / draw / copy 攒成 CommandBuffer，再 submit 给 GPU</p>
-    <p class="chap-en lang-en-only">Batch dispatch / draw / copy into a CommandBuffer, then submit to the GPU</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Batch dispatch / draw / copy into a CommandBuffer, then submit to the GPU</p>
 
     <div class="lang-zh-only">
       <p>主线 ⑥ 在 4 行内做了 5 件事：</p>
@@ -2660,7 +2691,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>Main line ⑥ does five things in four lines:</p>
       <pre style="font-family:var(--mono); font-size:13px; background:var(--paper-2); padding:10px 14px; border-radius:6px; line-height:1.55;">const enc  = device.<em>createCommandEncoder</em>();      <span style="color:var(--ink-mute);">// 1. open a recorder</span>
 const pass = enc.<em>beginComputePass</em>();              <span style="color:var(--ink-mute);">// 2. begin compute pass</span>
@@ -2704,9 +2735,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c11">
     <div class="chap-num">CHAPTER&nbsp;11</div>
     <h2 class="chap-title lang-zh-only">Renderer ↔ GPU 进程 — Mojo IPC 与 Wire 序列化</h2>
-    <h2 class="chap-title lang-en-only">Renderer ↔ GPU process — Mojo IPC and Wire serialisation</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Renderer ↔ GPU process — Mojo IPC and Wire serialisation</h2>
     <p class="chap-en lang-zh-only">为什么浏览器要把 dispatch 跨进程跑，怎么跨，付什么代价</p>
-    <p class="chap-en lang-en-only">Why dispatches cross a process boundary, how, and what it costs</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Why dispatches cross a process boundary, how, and what it costs</p>
 
     <div class="lang-zh-only">
       <p>这是翻译<em>③ Mojo IPC</em> 那一层。在桌面 native 应用里调 Metal 一次 <code>dispatchThreadgroups</code> 是<em>一个函数调用</em>，纯 user-space。在 Chrome 里同样的事是<em>跨进程</em>：JS 在 Renderer process（沙箱里），驱动调用在 GPU process（更深的沙箱，但有 driver 访问权）。这一章拆这个边界。</p>
@@ -2769,7 +2800,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       <p>Firefox 用 IPDL（Mozilla 自己的 IPC 框架）传一段<em>不同格式</em>的字节流。wgpu 的 wire 是 Rust struct serialise via bincode，see <code>wgpu/src/backend/wgpu_core/mod.rs</code>。整体延迟和 Dawn 相近（~40 µs）。比较有趣的是 wgpu 在 <em>same-process fast path</em> 时（如 Bevy/Servo 直接嵌入）能完全跳过 IPC，直接 mem-copy struct。Firefox 浏览器里始终走 IPC（沙箱要求）。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>This unpacks translation <em>③ Mojo IPC</em>. In a desktop native app, one <code>dispatchThreadgroups</code> Metal call is <em>one function call</em>, pure user-space. In Chrome the same operation is <em>cross-process</em>: JS in the Renderer (sandboxed), driver calls in the GPU process (also sandboxed, but with driver access). This chapter dissects that boundary.</p>
 
       <h3 style="margin-top:18px;">Why a GPU process at all</h3>
@@ -2835,9 +2866,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c12">
     <div class="chap-num">CHAPTER&nbsp;12</div>
     <h2 class="chap-title lang-zh-only">验证 & 错误域 — 为什么 WebGPU 看起来"几乎不报错"</h2>
-    <h2 class="chap-title lang-en-only">Validation & error scopes — why WebGPU "rarely throws"</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Validation & error scopes — why WebGPU "rarely throws"</h2>
     <p class="chap-en lang-zh-only">异步错误模型 · pushErrorScope/popErrorScope · uncapturederror 事件</p>
-    <p class="chap-en lang-en-only">Async error model · push/popErrorScope · uncapturederror events</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Async error model · push/popErrorScope · uncapturederror events</p>
 
     <div class="lang-zh-only">
       <p>WebGPU 的错误处理有<em>一种奇怪的味道</em>：写错代码很少抛 JS 异常，但东西就是不工作。这章解释为什么——它是<em>故意</em> 设计成这样的，叫做<em>contagion model</em>（污染模型）。</p>
@@ -2935,7 +2966,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       <p style="margin-top:14px;">Dawn 错误信息<em>带调用栈式 context</em>——每个嵌套的 API 调用都会 append 一段 "<em>While calling [X]</em>"。这是 <code>src/dawn/native/ErrorScope.cpp</code> 里 <code>ErrorScope::AppendContext()</code> 干的。比 WebGL 的 <code>getError() === GL_INVALID_OPERATION</code> 信息量多 100×。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>WebGPU error handling has a <em>strange flavour</em>: getting things wrong rarely throws a JS exception, but stuff just doesn't work. This chapter explains why — it's <em>deliberate</em>, often called the <em>contagion model</em>.</p>
 
       <h3 style="margin-top:18px;">Synchronous throw vs asynchronous poisoning</h3>
@@ -3036,9 +3067,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c13">
     <div class="chap-num">CHAPTER&nbsp;13</div>
     <h2 class="chap-title lang-zh-only">设备丢失与恢复 — TDR · driver crash · 全屏切换</h2>
-    <h2 class="chap-title lang-en-only">Device loss & recovery — TDR · driver crash · fullscreen switch</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Device loss & recovery — TDR · driver crash · fullscreen switch</h2>
     <p class="chap-en lang-zh-only">GPU 不可信的时候怎么活下来</p>
-    <p class="chap-en lang-en-only">Staying alive when the GPU lies to you</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Staying alive when the GPU lies to you</p>
 
     <div class="lang-zh-only">
       <p>WebGPU 的一个明显设计决策是：<em>device 可能突然死掉</em>。device.<code>lost</code> 是个 Promise，<em>一定会</em> resolve（要么因为应用主动 destroy，要么因为系统级原因）。</p>
@@ -3092,7 +3123,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       <p>Babylon.js 5+ 默认开 device-loss 监听。Figma 上线 WebGPU 时报告过 <em>TDR 在 Windows + 老 NVIDIA 驱动上的发生率 ~0.3% / 用户 / 月</em>——很低，但有几万用户就有人遇到。Figma 的恢复策略：保存所有 vector 数据在 JS 端，device 丢失时 5 秒 cooldown 后重建 + 重提交所有 pipeline + 重传所有静态纹理（typical 30-100 ms）。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>An obvious WebGPU design choice: <em>devices can die at any time</em>. <code>device.lost</code> is a Promise that <em>always</em> resolves eventually (either because the app destroyed it, or some external event killed it).</p>
 
       <h3 style="margin-top:18px;">Six reasons a device dies</h3>
@@ -3149,9 +3180,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c14">
     <div class="chap-num">CHAPTER&nbsp;14</div>
     <h2 class="chap-title lang-zh-only">Tint — Dawn 的 WGSL 前端</h2>
-    <h2 class="chap-title lang-en-only">Tint — Dawn's WGSL frontend</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Tint — Dawn's WGSL frontend</h2>
     <p class="chap-en lang-zh-only">parser → resolver → IR → writer 的四阶段编译器</p>
-    <p class="chap-en lang-en-only">A four-stage compiler: parser → resolver → IR → writer</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">A four-stage compiler: parser → resolver → IR → writer</p>
 
     <div class="lang-zh-only">
       <p>Tint 是 Chromium 项目里把 WGSL 翻译到 3 种原生 shader 语言的<em>编译器子项目</em>。地址：<code>chromium/src/third_party/dawn/src/tint/</code>。约 11 万行 C++，由 Google 主要维护，但 Apple/Intel 也有 commit。</p>
@@ -3223,7 +3254,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       <p style="margin-top:12px;">Resolver 失败 → 整个 ShaderModule 创建失败 → 抛 <code>GPUValidationError</code> 到 JS。这种错误<em>是同步可见的</em>——通过 <code>shader.getCompilationInfo()</code> async API 拿到详细信息。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>Tint is the Chromium subproject that translates WGSL into three native shader languages. Path: <code>chromium/src/third_party/dawn/src/tint/</code>. About 110k lines of C++, maintained mostly by Google with Apple/Intel contributions.</p>
 
       <h3 style="margin-top:18px;">Why not reuse SPIRV-Cross / DXC / spirv-tools</h3>
@@ -3298,9 +3329,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c15">
     <div class="chap-num">CHAPTER&nbsp;15</div>
     <h2 class="chap-title lang-zh-only">Naga — wgpu 的 WGSL 前端</h2>
-    <h2 class="chap-title lang-en-only">Naga — wgpu's WGSL frontend</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Naga — wgpu's WGSL frontend</h2>
     <p class="chap-en lang-zh-only">Rust · arena IR · 编译给 Firefox / Bevy / Deno 共用</p>
-    <p class="chap-en lang-en-only">Rust · arena IR · powers Firefox / Bevy / Deno alike</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Rust · arena IR · powers Firefox / Bevy / Deno alike</p>
 
     <div class="lang-zh-only">
       <p>Naga 是 Tint 的 Rust 对应物。地址：<a href="https://github.com/gfx-rs/wgpu/tree/trunk/naga" target="_blank" rel="noopener">github.com/gfx-rs/wgpu/tree/trunk/naga</a>。约 6 万行 Rust，gfx-rs 团队维护。它和 Tint 干同样的事——WGSL 翻译到 MSL / HLSL / SPIR-V / GLSL（外加 WGSL→WGSL re-print）——但<em>架构很不一样</em>。</p>
@@ -3372,7 +3403,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>Naga is Tint's Rust counterpart. Repo: <a href="https://github.com/gfx-rs/wgpu/tree/trunk/naga" target="_blank" rel="noopener">github.com/gfx-rs/wgpu/tree/trunk/naga</a>. About 60k lines of Rust, maintained by the gfx-rs team. It does the same job as Tint — translate WGSL into MSL / HLSL / SPIR-V / GLSL (plus a WGSL re-printer) — but its <em>architecture is very different</em>.</p>
 
       <h3 style="margin-top:18px;">The biggest difference: arena IR</h3>
@@ -3447,9 +3478,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c16">
     <div class="chap-num">CHAPTER&nbsp;16</div>
     <h2 class="chap-title lang-zh-only">三个翻译目标 — SPIR-V · MSL · HLSL</h2>
-    <h2 class="chap-title lang-en-only">Three translation targets — SPIR-V · MSL · HLSL</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Three translation targets — SPIR-V · MSL · HLSL</h2>
     <p class="chap-en lang-zh-only">同一行 WGSL，翻译到三种 shader 语言后长什么样</p>
-    <p class="chap-en lang-en-only">The same WGSL line, in three shading languages</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">The same WGSL line, in three shading languages</p>
 
     <div class="lang-zh-only">
       <p>WGSL 进了 Tint/Naga，出来的不再是源代码而是<em>三种格式</em>之一。这一章把<em>同一段</em>主线 WGSL 翻译到三个目标，看每种目标长什么样、各自有什么 quirk。</p>
@@ -3559,7 +3590,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       <p style="margin-top:14px;">注意"越界 read"那行——WGSL spec 强制规定<em>越界读必须 0 或 clamp</em>（不能 UB）。这是 WebGPU 安全模型的核心。Tint/Naga 的<em>每个 backend</em>都要 patch 进相应保护代码：MSL 加显式 if 判断、HLSL 用 RWByteAddressBuffer 自带的保护、SPIR-V 加 RobustBufferAccess capability。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>WGSL goes into Tint/Naga and comes out as <em>one of three formats</em>. This chapter translates the <em>same</em> main-line WGSL to all three targets, side by side, with the quirks each one brings.</p>
 
       <h3 style="margin-top:18px;">Input WGSL (the main line)</h3>
@@ -3672,9 +3703,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c17">
     <div class="chap-num">CHAPTER&nbsp;17</div>
     <h2 class="chap-title lang-zh-only">原生 API 映射 — Metal · D3D12 · Vulkan</h2>
-    <h2 class="chap-title lang-en-only">Native API mapping — Metal · D3D12 · Vulkan</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Native API mapping — Metal · D3D12 · Vulkan</h2>
     <p class="chap-en lang-zh-only">同一个 WebGPU dispatch，在三个原生 API 下的调用链</p>
-    <p class="chap-en lang-en-only">One WebGPU dispatch, mapped to three native API call chains</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">One WebGPU dispatch, mapped to three native API call chains</p>
 
     <div class="lang-zh-only">
       <p>这是翻译⑥的最后一步。Dawn / wgpu 拿到编译好的 shader 后要把它<em>变成原生 API 调用</em>。这一章把主线 ⑥ 在三个原生 API 下的<em>完整调用链</em>列出来。</p>
@@ -3789,7 +3820,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       <p style="margin-top:14px;">总结：主线的 7 个 JS 调用 → 三家 ~12-15 个原生 API 调用 + 一次驱动 shader 编译。<em>八重翻译</em> 到此结束第七层。最后一层（GPU 命令处理器实际 dispatch），Ch18 展开。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>This unpacks translation step ⑥. Once Dawn / wgpu has the compiled shader, it must <em>translate into native API calls</em>. This chapter shows the <em>complete call chain</em> for main line ⑥ on all three native APIs.</p>
 
       <h3 style="margin-top:18px;">Main line submit → Metal (macOS · iOS)</h3>
@@ -3907,9 +3938,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c18">
     <div class="chap-num">CHAPTER&nbsp;18</div>
     <h2 class="chap-title lang-zh-only">Workgroup · Subgroup — GPU 的两级并行单位</h2>
-    <h2 class="chap-title lang-en-only">Workgroup · Subgroup — GPU's two levels of parallelism</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Workgroup · Subgroup — GPU's two levels of parallelism</h2>
     <p class="chap-en lang-zh-only">从一个 dispatch 到 16384 个 workgroup 再到一万亿个 ALU 操作</p>
-    <p class="chap-en lang-en-only">From one dispatch to 16,384 workgroups to a trillion ALU ops</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">From one dispatch to 16,384 workgroups to a trillion ALU ops</p>
 
     <div class="lang-zh-only">
       <p>主线 ⑧ 终于落到 GPU 硬件上了。一行 <code>vkCmdDispatch(16384, 1, 1)</code> 让 GPU 命令处理器（CP）启动调度。它会发生这些事：</p>
@@ -3990,7 +4021,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>Main line ⑧ finally hits the GPU. One <code>vkCmdDispatch(16384, 1, 1)</code> wakes the GPU's command processor (CP). Here's what happens:</p>
 
       <ol style="margin-left:22px; font-family:var(--sans); font-size:14px; line-height:1.85;">
@@ -4074,9 +4105,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c19">
     <div class="chap-num">CHAPTER&nbsp;19</div>
     <h2 class="chap-title lang-zh-only">矩阵乘法 — naive → tiled → wmma</h2>
-    <h2 class="chap-title lang-en-only">Matrix multiply — naive → tiled → wmma</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Matrix multiply — naive → tiled → wmma</h2>
     <p class="chap-en lang-zh-only">同一个 1024×1024 矩阵乘，三种实现，差 50×</p>
-    <p class="chap-en lang-en-only">Same 1024×1024 matmul, three implementations, 50× spread</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Same 1024×1024 matmul, three implementations, 50× spread</p>
 
     <div class="lang-zh-only">
       <p>主线是<em>访存受限的纯算</em>，但真实 GPU 工作大多是<em>矩阵乘</em>——LLM、CV、PCA 全都是 matmul。这一章用 1024×1024 的 matmul 演示从 naive 到 tiled 到 wmma 怎么把性能拉 50×。</p>
@@ -4177,7 +4208,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       <p style="margin-top:14px;">WebGPU 的<em>极限</em>是原生 BLAS 库的 80-95%。差距来自 ① validation 开销、② 缺少最深层硬件特性（如 NVIDIA 的 cp.async 流水线 load）、③ 编译器优化（DXC/Apple Metal 编译器仍比 Tint/Naga 经过更多优化迭代）。</p>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>The main line is <em>memory-bound pure arithmetic</em>, but most real GPU work is <em>matrix multiplication</em> — LLMs, computer vision, PCA, all matmul. This chapter walks 1024×1024 matmul from naive to tiled to wmma, showing a 50× spread.</p>
 
       <h3 style="margin-top:18px;">Baseline · naive WGSL matmul</h3>
@@ -4281,9 +4312,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c20">
     <div class="chap-num">CHAPTER&nbsp;20</div>
     <h2 class="chap-title lang-zh-only">transformers.js — 在浏览器里跑 LLM</h2>
-    <h2 class="chap-title lang-en-only">transformers.js — running LLMs in the browser</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">transformers.js — running LLMs in the browser</h2>
     <p class="chap-en lang-zh-only">从 HuggingFace 模型到 30 tokens/s 输出，靠 WebGPU 全栈</p>
-    <p class="chap-en lang-en-only">HuggingFace model → 30 tokens/s, powered by the WebGPU stack</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">HuggingFace model → 30 tokens/s, powered by the WebGPU stack</p>
 
     <div class="lang-zh-only">
       <p>2024 年开始浏览器里出现了真正实用的 LLM 推理——Llama-3.2-1B 能在 M2 Mac 上跑 30 tokens/s，Qwen2.5-0.5B 能跑 60 tokens/s。这一章解释这背后的工程栈，主角是 <a href="https://huggingface.co/docs/transformers.js" target="_blank" rel="noopener">transformers.js</a> 和 <a href="https://onnxruntime.ai/docs/tutorials/web/" target="_blank" rel="noopener">ONNX Runtime Web</a>。</p>
@@ -4352,7 +4383,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>From 2024, browser-side LLM inference became practical — Llama-3.2-1B runs at 30 tokens/s on M2 Macs, Qwen2.5-0.5B at 60 tokens/s. This chapter dissects the engineering stack — starring <a href="https://huggingface.co/docs/transformers.js" target="_blank" rel="noopener">transformers.js</a> and <a href="https://onnxruntime.ai/docs/tutorials/web/" target="_blank" rel="noopener">ONNX Runtime Web</a>.</p>
 
       <h3 style="margin-top:18px;">Six layers from model to output</h3>
@@ -4424,9 +4455,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c21">
     <div class="chap-num">CHAPTER&nbsp;21</div>
     <h2 class="chap-title lang-zh-only">FP16 · 原子 · 时间戳 — 三个可选特性</h2>
-    <h2 class="chap-title lang-en-only">FP16 · atomics · timestamps — three optional features</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">FP16 · atomics · timestamps — three optional features</h2>
     <p class="chap-en lang-zh-only">需要 enable feature 才能用的能力</p>
-    <p class="chap-en lang-en-only">Features you must opt-in to before using</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Features you must opt-in to before using</p>
 
     <div class="lang-zh-only">
       <p>WebGPU 的核心 API 是<em>所有支持设备都能跑</em>的最小子集。三个常用扩展需要 explicit enable，本章逐个看。</p>
@@ -4492,7 +4523,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>WebGPU's core API is the <em>minimum subset all supported devices can run</em>. Three common extensions need explicit enabling; this chapter walks them.</p>
 
       <h3 style="margin-top:18px;">① <code>shader-f16</code></h3>
@@ -4561,9 +4592,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c22">
     <div class="chap-num">CHAPTER&nbsp;22</div>
     <h2 class="chap-title lang-zh-only">vs WebGL · WebCL — 六轴对比矩阵</h2>
-    <h2 class="chap-title lang-en-only">vs WebGL · WebCL — a six-axis matrix</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">vs WebGL · WebCL — a six-axis matrix</h2>
     <p class="chap-en lang-zh-only">为什么 WebGL 2 还在 · 为什么 WebCL 死了</p>
-    <p class="chap-en lang-en-only">Why WebGL 2 sticks around · why WebCL died</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Why WebGL 2 sticks around · why WebCL died</p>
 
     <div class="lang-zh-only">
       <p>每隔几年浏览器都有一次"GPU API 提案"，结局都不一样。WebGL 1.0/2.0 双双 GA；WebCL 2011 起草、2014 stagnate、2018 弃；WebGPU 2017-2023 一路打到 GA。把三个放一起：</p>
@@ -4627,7 +4658,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>Every few years the Web platform sees a "GPU API proposal"; outcomes vary. WebGL 1.0/2.0 both shipped; WebCL was drafted in 2011, stagnated by 2014, withdrawn in 2018; WebGPU went 2017→2023→GA. Side by side:</p>
 
       <table class="hbench-tbl">
@@ -4694,9 +4725,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c23">
     <div class="chap-num">CHAPTER&nbsp;23</div>
     <h2 class="chap-title lang-zh-only">生产故事簿 — Figma · Babylon · Bevy · Unity</h2>
-    <h2 class="chap-title lang-en-only">Production stories — Figma · Babylon · Bevy · Unity</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Production stories — Figma · Babylon · Bevy · Unity</h2>
     <p class="chap-en lang-zh-only">四个真实工程的 WebGPU 上线史</p>
-    <p class="chap-en lang-en-only">Four real engineering tales of WebGPU adoption</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Four real engineering tales of WebGPU adoption</p>
 
     <div class="lang-zh-only">
       <div class="case-study">
@@ -4731,7 +4762,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <div class="case-study">
         <div class="cs-head"><span class="cs-tag">CASE 1</span> Figma — shipping WebGPU rendering (2024)</div>
         <p><strong>Background</strong>: Figma renders all vectors via WASM + WebGL. A million-layer design file on WebGL hits ~25 FPS. After WebGPU GA in 2023, Figma started migrating.</p>
@@ -4769,9 +4800,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c24">
     <div class="chap-num">CHAPTER&nbsp;24</div>
     <h2 class="chap-title lang-zh-only">限制 · 指纹 · 安全</h2>
-    <h2 class="chap-title lang-en-only">Limits · fingerprinting · security</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">Limits · fingerprinting · security</h2>
     <p class="chap-en lang-zh-only">所有的"为什么不行" 都能追到隐私 / 安全 / 一致性这三个原因</p>
-    <p class="chap-en lang-en-only">Every "why doesn't this work?" traces back to privacy / security / consistency</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">Every "why doesn't this work?" traces back to privacy / security / consistency</p>
 
     <div class="lang-zh-only">
       <p>WebGPU 的<em>边界</em>都是<em>故意</em>设的。这一章列三类边界。</p>
@@ -4824,7 +4855,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       </div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>WebGPU's <em>boundaries</em> are all <em>deliberate</em>. This chapter enumerates three categories.</p>
 
       <h3 style="margin-top:18px;">① Numeric limits — spec-mandated minimums</h3>
@@ -4880,9 +4911,9 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
   <section class="chap" id="c25">
     <div class="chap-num">CHAPTER&nbsp;25</div>
     <h2 class="chap-title lang-zh-only">之后 — WebGPU 的下一个十年</h2>
-    <h2 class="chap-title lang-en-only">What's next — WebGPU in the next decade</h2>
+    <h2 class="chap-title lang-en-only"  data-pagefind-ignore="">What's next — WebGPU in the next decade</h2>
     <p class="chap-en lang-zh-only">subgroup matrix · ray tracing · multi-GPU · HDR · WGSL+</p>
-    <p class="chap-en lang-en-only">subgroup matrix · ray tracing · multi-GPU · HDR · WGSL+</p>
+    <p class="chap-en lang-en-only"  data-pagefind-ignore="">subgroup matrix · ray tracing · multi-GPU · HDR · WGSL+</p>
 
     <div class="lang-zh-only">
       <p>WebGPU 1.0 GA 在 2023 年。现在（2026 年初）是 WebGPU 1.1 的<em>标准化期</em>——8-10 个扩展在 W3C 工作组里走流程。给三年后的图：</p>
@@ -4930,7 +4961,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       <div class="signoff">FIN&nbsp;//&nbsp;END&nbsp;OF&nbsp;FIELD&nbsp;NOTE&nbsp;09</div>
     </div>
 
-    <div class="lang-en-only">
+    <div class="lang-en-only"  data-pagefind-ignore="">
       <p>WebGPU 1.0 went GA in 2023. Right now (early 2026) is WebGPU 1.1's <em>standardisation window</em> — 8–10 extensions are moving through the W3C working group. A picture of three years out:</p>
 
       <h3 style="margin-top:18px;">Landing in 1.1 (2026–2027)</h3>
@@ -4968,7 +4999,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
         <p>Predictions: ① 7B LLMs running at 30 tok/s on <em>consumer GPUs</em> by default; ② video-call clients use WebGPU for real-time face enhancement / denoising / background; ③ in-browser games reach ~90% of native performance; ④ for the first time on the Web, <em>GPU throughput</em> becomes the routine bottleneck (previously always CPU/network). WebGPU is the <em>foundation</em> for all of it.</p>
       </div>
 
-      <p class="quote lang-en-only" style="margin-top:32px;">"One <code>pass.dispatchWorkgroups()</code><br>
+      <p class="quote lang-en-only"  style="margin-top:32px;"  data-pagefind-ignore="">"One <code>pass.dispatchWorkgroups()</code><br>
       gets translated eight times.<br>
       But translated only once,<br>
       it lets the GPU compute<br>
@@ -4990,7 +5021,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       if (lang === "en") {
         document.body.classList.add("lang-en");
         html.setAttribute("lang", "en");
-        document.title = "Eight translations of one dispatch — A WebGPU stack source-level walkthrough";
+        document.title = "一次 dispatch 的八重翻译 — WebGPU 全栈源码深读";
         btnZh.classList.remove("active"); btnZh.setAttribute("aria-pressed", "false");
         btnEn.classList.add("active"); btnEn.setAttribute("aria-pressed", "true");
       } else {
@@ -5002,7 +5033,7 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       }
     }
     var saved;
-    try { saved = localStorage.getItem(KEY); } catch (e) {}
+    try { saved = "zh"; } catch (e) {}
     if (!saved) {
       var nav = (navigator.language || "").toLowerCase();
       saved = nav.indexOf("zh") === 0 ? "zh" : "en";
@@ -5199,25 +5230,25 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
           <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
         </svg>
         <span class="ui-count" id="uiLikeCount">—</span>
-        <span><span lang="zh">点赞</span><span lang="en">Likes</span></span>
+        <span><span lang="zh">点赞</span><span lang="en"  data-pagefind-ignore="">Likes</span></span>
       </button>
       <div class="ui-views" title="Page views">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
           <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
         </svg>
         <span class="ui-count" id="uiViewCount">—</span>
-        <span><span lang="zh">阅读</span><span lang="en">Reads</span></span>
+        <span><span lang="zh">阅读</span><span lang="en"  data-pagefind-ignore="">Reads</span></span>
       </div>
       <button class="ui-share" id="uiShareBtn" type="button">
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
           <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/>
         </svg>
-        <span class="ui-share-text"><span lang="zh">分享</span><span lang="en">Share</span></span>
+        <span class="ui-share-text"><span lang="zh">分享</span><span lang="en"  data-pagefind-ignore="">Share</span></span>
       </button>
     </div>
 
     <h3 class="ui-section-title">
-      <span lang="zh">留下评论</span><span lang="en">Leave a comment</span>
+      <span lang="zh">留下评论</span><span lang="en"  data-pagefind-ignore="">Leave a comment</span>
     </h3>
     <form class="ui-comment-form" id="uiCommentForm" autocomplete="off">
       <div class="ui-form-row">
@@ -5228,18 +5259,18 @@ device.queue.<em>submit</em>([enc.<em>finish</em>()]);              <span style=
       <div class="ui-form-foot">
         <span class="ui-form-status" id="uiFormStatus"></span>
         <button type="submit" id="uiSubmitBtn">
-          <span lang="zh">发布评论</span><span lang="en">Post comment</span>
+          <span lang="zh">发布评论</span><span lang="en"  data-pagefind-ignore="">Post comment</span>
         </button>
       </div>
     </form>
 
     <h3 class="ui-section-title">
-      <span lang="zh">评论</span><span lang="en">Comments</span>
+      <span lang="zh">评论</span><span lang="en"  data-pagefind-ignore="">Comments</span>
       <span id="uiCommentCount" class="ui-count-small">—</span>
     </h3>
     <div class="ui-comment-list" id="uiCommentList">
       <div class="ui-comment-loading">
-        <span lang="zh">加载中…</span><span lang="en">Loading…</span>
+        <span lang="zh">加载中…</span><span lang="en"  data-pagefind-ignore="">Loading…</span>
       </div>
     </div>
   </div>
