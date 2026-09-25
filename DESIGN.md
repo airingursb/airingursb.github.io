@@ -1,5 +1,13 @@
 # Airing's Blog Design System
 
+## Small H3 responses · September 24
+
+Three approved additions use the existing editorial UI and mascot identity: a tiny pixel bear sorting the search index, one truthful mark-and-sweep illustration in the GC article, and a 300×75px shoreline under Blog footer links. Keep the personal homepage desk/garden and the prominent like capsule unchanged. Each local component's DESIGN.md defines its exact state, palette and accessibility contract.
+
+New artwork is authored performance, never UI text. Results and algorithm state stay native DOM and immediate; animation cannot manufacture search success or collection state. Reactions are bounded, silent and coalesced; restored ordinary poses must not freeze mid-gesture. Hidden tabs and offscreen actors stop work. Reduced motion and failed media preserve a coherent still and usable underlying feature.
+
+Retain existing light/dark colors, typography and gutters. Search art is 96px desktop/72px mobile; tide art is 300×75px; technical art is 104px/80px inside a small real explanatory diagram. Native targets are at least44px, keyboard focus uses accent, state text supports Chinese and English, and the visitor never sees playback controls. Inspect transparent art on white and #0d1117 for white/cyan fringes, hollow objects, camera drift and cut ears. New generation requests never run in the visitor browser.
+
 ## Paid consultation paused · September 24
 
 Preserve the homepage letter card and free email action. The paid section keeps

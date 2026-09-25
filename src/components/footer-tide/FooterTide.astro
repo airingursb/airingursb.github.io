@@ -1,0 +1,36 @@
+---
+interface Props { lang?: 'zh' | 'en'; }
+const { lang = 'zh' } = Astro.props;
+---
+<div class="footer-tide" id="footer-tide" data-footer-tide data-tide-state="waiting">
+  <span class="tide-art" data-editorial-actor="/blog-delights/tide/manifest.json" data-actor-rendering="pixelated" aria-hidden="true">
+    <img data-actor-poster src="/blog-delights/tide/poster.webp" width="320" height="80" loading="lazy" decoding="async" alt="" />
+    <canvas data-actor-canvas width="320" height="80" hidden></canvas>
+  </span>
+  <button type="button" class="tide-shell" data-tide-shell hidden aria-label={lang === 'en' ? 'Let the bear listen to the seashell' : '让小熊听听贝壳'}></button>
+</div>
+
+<script>
+  import { mountFooterTide } from './controller';
+  const cleanups = new Map<HTMLElement, () => void>();
+  function mount() {
+    document.querySelectorAll<HTMLElement>('[data-footer-tide]').forEach(host => {
+      if (!cleanups.has(host)) cleanups.set(host, mountFooterTide(host));
+    });
+  }
+  mount();
+  document.addEventListener('astro:page-load', mount);
+  document.addEventListener('astro:before-swap', () => {
+    cleanups.forEach(dispose => dispose());
+    cleanups.clear();
+  });
+</script>
+
+<style>
+  .footer-tide { position: relative; width: min(300px, calc(100% - 40px)); aspect-ratio: 4; margin: 16px auto 0; }
+  .tide-art, img, canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; image-rendering: pixelated; }
+  .tide-shell { position: absolute; left: 64.7%; top: 78%; transform: translate(-50%, -50%); width: 44px; height: 44px; padding: 0; border: 0; border-radius: 4px; background: transparent; cursor: pointer; }
+  .tide-shell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tide-shell[aria-disabled='true'] { cursor: default; }
+  [hidden] { display: none; }
+</style>

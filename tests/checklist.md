@@ -1,5 +1,11 @@
 # Browser QA Checklist
 
+### Small H3 responses (September 24)
+- [ ] Chinese/English Pagefind search returns results immediately; settled query or Enter starts one index-box action, actual completed result count selects found/empty. Rapid edits, clear, IME, cached query and BFCache cannot show a stale result reaction.
+- [ ] GC theater marks exactly root-reachable objects, retains A/B, and reclaims the unreachable C/D cycle; adding a root link retains C/D. Reset, keyboard and reduced motion preserve correct state; both note summaries and both immersive article embeds fit without nested clipping.
+- [ ] Blog CN/EN footer waits briefly then reveals a shell. Click/keyboard plays a complete pick-up/listen/replace/return; repeated clicks do not queue. Existing bookcart/links and homepage garden remain.
+- [ ] All three surfaces fit375/768/1280px, Chinese/English and light/dark. Verify start/middle/end motion, no white matte/holes/cropped limbs, no sound, no resource requests while reduced motion is enabled, and coherent fallback if an atlas is unavailable.
+
 > 供 `/qa-self-test` skill 使用。每个条目由 browser MCP 自动验证。
 > 新增功能时，同步在对应 section 下新增测试条目。
 
