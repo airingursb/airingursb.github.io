@@ -1,5 +1,9 @@
 # Airing's Blog Design System
 
+## Article like reception · September 25
+
+Keep the original centered like capsule. Confirmed new likes add a small press/rebound, heart pop, six coral glints and count lift; transient presentation never delays or changes the real API response. The existing watercolor panda catches one heart, hugs it and returns in about 6.2–6.4 seconds, once per page. Follow `src/components/like-delight/DESIGN.md` for timing, visible-recipient selection, cleanup and reduced-motion behavior. No second mascot or playback controls.
+
 ## Small H3 responses · September 24
 
 Three approved additions use the existing editorial UI and mascot identity: a tiny pixel bear sorting the search index, one truthful mark-and-sweep illustration in the GC article, and a 300×75px shoreline under Blog footer links. Keep the personal homepage desk/garden and the prominent like capsule unchanged. Each local component's DESIGN.md defines its exact state, palette and accessibility contract.

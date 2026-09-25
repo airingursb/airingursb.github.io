@@ -1,0 +1,18 @@
+<span data-like-delight hidden></span>
+
+<script>
+  import { mountLikeDelight } from './controller';
+  import { mountLikeButton } from './button';
+  import './button.css';
+  const mount = () => {
+    const marker = document.querySelector<HTMLElement>('[data-like-delight]');
+    if (!marker || marker.dataset.ready) return;
+    marker.dataset.ready = 'true';
+    const dispose = mountLikeDelight(marker);
+    const button = document.querySelector<HTMLButtonElement>('#articleLikeBtn');
+    const disposeButton = button ? mountLikeButton(button) : () => {};
+    document.addEventListener('astro:before-swap', () => { dispose(); disposeButton(); }, { once: true });
+  };
+  mount();
+  document.addEventListener('astro:page-load', mount);
+</script>

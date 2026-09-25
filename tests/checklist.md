@@ -1984,3 +1984,8 @@
 - [ ] Both immersive variants remain readable without JavaScript. Existing diagrams, interactions, comments and theme controls still work; English notes cards, prose links and RSS target English immersive URLs.
 - [ ] Sitemap lists final trailing-slash URLs, reciprocal existing translations, real published content timestamps, and no search, draft or preview URLs. Every listed local path resolves in the build.
 - [ ] Home and Chinese/English blog, notes, archive, friends, moments and tag pages have their own descriptions. Search pages explicitly opt out of indexing. Metadata changes preserve current layout at desktop and mobile sizes.
+
+### Like reception (September 25)
+- [ ] Original like capsule dimensions and prominence remain intact. Pointer and keyboard press give a small compression/rebound; only confirmed new likes trigger heart pop, six glints, count lift and rose wash. Unlike, error and hydration never celebrate.
+- [ ] H3 reception takes about 6.2–6.4 seconds, with the heart leaving the icon and reaching the authored receiving pose within one second of playback. Inspect catch, hug and complete return in CN/EN at 375/768/1280px and light/dark.
+- [ ] Button decorations clean up after completion, unlike, hidden tab, reduced motion and navigation. Panda still uses the existing visible recipient, once per page; dismissal and offscreen/mobile rules remain intact. No extra pet, audio or production controls.

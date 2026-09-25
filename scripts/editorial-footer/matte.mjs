@@ -1,5 +1,5 @@
 /** Adaptive matte for H3's changing, nearly uniform studio backgrounds. */
-export function extractMatte(raw, width, height) {
+export function extractMatte(raw, width, height, options = {}) {
   const count = width * height;
   if (raw.length !== count * 4) throw new Error('Expected tightly packed RGBA pixels');
   const pixels = Buffer.from(raw);
@@ -51,7 +51,7 @@ export function extractMatte(raw, width, height) {
     // Cyan/blue key gaps in the closed paw/book grip are outside this warm/sage palette.
     const coolGap = backdrop[row + 1] > backdrop[row] + 15 && backdrop[row + 2] > backdrop[row] + 28 && delta < 24 ** 2;
     background[p] = keyColored || coolGap ? 1 : 0;
-    possible[p] = delta < 39 ** 2 || keyColored || (scale > .30 && scale < 1.17 && residual < (p >= count * .78 ? 48 : 31) ** 2) ? 1 : 0;
+    possible[p] = delta < 39 ** 2 || keyColored || (options.shadows !== false && scale > .30 && scale < 1.17 && residual < (p >= count * .78 ? 48 : 31) ** 2) ? 1 : 0;
   }
   const queue = new Int32Array(count), visited = new Uint8Array(count);
   let head = 0, tail = 0;

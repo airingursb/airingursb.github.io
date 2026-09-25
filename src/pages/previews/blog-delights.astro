@@ -1,0 +1,82 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteHeader from '../../components/SiteHeader.astro';
+import BlogPetWidget from '../../components/BlogPetWidget.astro';
+import ArticleReadingDock from '../../components/editorial/ArticleReadingDock.astro';
+import LikeDelight from '../../components/like-delight/LikeDelight.astro';
+---
+<BaseLayout title="阅读之间的小动作 · 制作预览 | Airing" noindex persistentTheme>
+  <div class="delights-preview">
+    <SiteHeader breadcrumb="动效 · 制作预览" hasEnVersion={false} />
+    <main>
+      <p class="eyebrow">1 · 2 · 5 · 6</p>
+      <h1>阅读之间的小动作。</h1>
+      <p class="intro">四处轻巧的回应，放回各自的页面里。</p>
+      <nav aria-label="查看四个互动">
+        <a href="#like">01 接住心意 <span>↓</span></a>
+        <a href="/search/">02 翻找索引卡 <span>↗</span></a>
+        <a href="/notes/gc/">05 技术小剧场 <span>↗</span></a>
+        <a href="/blog/#footer-tide">06 一小段潮汐 <span>↗</span></a>
+      </nav>
+      <section id="like">
+        <p class="eyebrow">01 · 点赞被接住</p>
+        <h2>这份心意，有人收到。</h2>
+        <p>沿用文章原本的点赞按钮和水墨熊猫。下面只演示一次成功回应，不会给真实文章增加点赞。</p>
+        <div class="ending">
+          <span class="coda">写到这里，刚好。</span>
+          <ArticleReadingDock />
+          <div class="like-row">
+            <span class="rule"></span>
+            <button type="button" id="articleLikeBtn" aria-pressed="false" aria-label="预览点赞回应">
+              <svg class="al-icon" viewBox="0 0 24 24" width="22" height="22" fill="none" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1L12 21l7.8-7.6 1.1-1a5.5 5.5 0 0 0-.1-7.8Z" stroke="currentColor" stroke-width="1.7" /></svg>
+              <strong class="al-count" data-preview-count>0</strong> <span>likes</span>
+            </button>
+            <span class="rule"></span>
+          </div>
+        </div>
+        <p class="hint" data-preview-hint>点一次爱心，看熊猫接住它。刷新后可再看一次；关闭的桌宠会保持关闭。</p>
+        <a class="article-link" href="/posts/weekly-36/#reading-end">查看实际文章里的位置 ↗</a>
+      </section>
+    </main>
+  </div>
+  <BlogPetWidget />
+  <LikeDelight />
+</BaseLayout>
+
+<script>
+  const button = document.getElementById('articleLikeBtn');
+  button?.addEventListener('click', () => {
+    const liked = button.getAttribute('aria-pressed') !== 'true';
+    button.setAttribute('aria-pressed', String(liked));
+    const count = button.querySelector('[data-preview-count]');
+    if (count) count.textContent = liked ? '1' : '0';
+    if (liked) button.dispatchEvent(new CustomEvent('article:liked', { bubbles: true }));
+  });
+</script>
+
+<style>
+  :global(body:has(.delights-preview)) { display: block; padding: 0; }
+  .delights-preview { max-width: 1200px; margin: auto; width: 100%; }
+  main { max-width: 800px; padding: 48px; margin: auto; }
+  .eyebrow { font: 12px/1.5 var(--font-mono, monospace); color: var(--c-text-muted); }
+  h1 { font: 500 clamp(28px, 5vw, 40px)/1.4 ui-serif, 'Songti SC', Georgia, serif; margin: 16px 0; }
+  h2 { font: 500 24px/1.5 ui-serif, 'Songti SC', Georgia, serif; margin: 12px 0; }
+  p { font-size: 14px; line-height: 1.8; color: var(--c-text-muted); }
+  nav { margin: 32px 0 56px; border-block: 1px solid var(--c-border); }
+  nav a { display: flex; justify-content: space-between; align-items: center; min-height: 52px; font-size: 14px; text-decoration: none; color: var(--c-text); }
+  nav a + a { border-top: 1px solid var(--c-border); }
+  nav a:hover, .article-link:hover { color: var(--accent); }
+  section { scroll-margin-top: 32px; }
+  .ending { margin: 36px 0 24px; }
+  .coda { display: block; text-align: center; font: italic 14px/1.8 ui-serif, 'Songti SC', Georgia, serif; color: var(--c-text-dim); }
+  .like-row { display: flex; align-items: center; gap: 24px; padding-top: 8px; }
+  .rule { flex: 1; height: 1px; background: var(--c-border); }
+  #articleLikeBtn { display: flex; gap: 8px; align-items: center; padding: 12px 28px; background: rgba(var(--c-overlay-rgb),.03); border: 1px solid var(--c-border); border-radius: 100px; color: var(--c-text-muted); font: inherit; cursor: pointer; min-height: 48px; }
+  #articleLikeBtn[aria-pressed='true'] { border-color: rgba(239,68,68,.4); background: rgba(239,68,68,.08); color: #ef4444; }
+  #articleLikeBtn[aria-pressed='true'] svg { fill: currentColor; }
+  strong { font-size: 16px; font-variant-numeric: tabular-nums; }
+  .hint { font-size: 12px; }
+  .article-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--c-text); font-size: 13px; text-underline-offset: 4px; }
+  :is(a, button):focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  @media (max-width: 600px) { main { padding: 32px 20px; } nav { margin-bottom: 36px; } .like-row { gap: 16px; } }
+</style>

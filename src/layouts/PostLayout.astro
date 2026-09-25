@@ -11,6 +11,7 @@ import SiteHeader from "../components/SiteHeader.astro";
 import BaseLayout from './BaseLayout.astro';
 import BlogPetWidget from '../components/BlogPetWidget.astro';
 import ArticleReadingDock from '../components/editorial/ArticleReadingDock.astro';
+import LikeDelight from '../components/like-delight/LikeDelight.astro';
 import NextPagePreview from '../components/editorial/NextPagePreview.astro';
 import NewspaperSubscription from '../components/editorial/NewspaperSubscription.astro';
 import LaterNote from '../components/editorial/LaterNote.astro';
@@ -381,6 +382,7 @@ const jsonLd = {
     </footer>
   </div>
   <BlogPetWidget lang={lang} />
+  <LikeDelight />
   <span id="article-navigation-ready" hidden></span>
 </BaseLayout>
 
@@ -1663,6 +1665,9 @@ const jsonLd = {
       articleLikeCount.textContent = res.count;
       articleLikeBtn.classList.toggle('liked', res.liked);
       icon.setAttribute('fill', res.liked ? 'currentColor' : 'none');
+      if (res.liked === true && prevLiked === false) {
+        articleLikeBtn.dispatchEvent(new CustomEvent('article:liked', { bubbles: true }));
+      }
       // Update sidebar likes
       var lkEl = document.getElementById('postLikesCount');
       var lkBlock = document.getElementById('postLikesBlock');
