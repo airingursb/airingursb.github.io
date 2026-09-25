@@ -1,0 +1,28 @@
+export const theaterCopy = {
+  zh: {
+    title: '从根出发，找得到谁？', diagram: '标记清扫交互示意图', root: '从 root 开始标记', rootLabel: '标记',
+    sweep: '让小熊清扫未标记的对象', sweepLabel: '清扫', reset: '再试一次', toggle: '接上或断开 root 到 C 的引用',
+    allocated: '点 root 开始标记。A 引用 B，C 与 D 相互引用，却没有连到根。',
+    connected: '你把 C 连到了根。现在再点 root，看看这次会留下谁。',
+    marked: 'A、B 已标记。C、D 虽然相互引用，仍不可达。点小熊清扫它们。',
+    markedAll: '四个对象都能从根到达，包括 C、D 的循环。点小熊检查清扫结果。',
+    swept: '只回收 C、D；A、B 留在原位。循环引用本身不会阻止追踪式 GC。',
+    sweptAll: '没有对象被回收。可达的循环也要保留；是否能从根到达才是关键。',
+    hint: '也可以先点 C，给这个循环接一条根引用。', free: '空闲', markedBadge: '已标记',
+    fallback: '标记清扫从根沿引用找到 A、B 并保留它们；没有根引用的 C ↔ D 循环会被回收。此处是算法示意，不触发浏览器 GC。',
+    detail: '算法示意，不触发浏览器 GC', source: '算法说明',
+  },
+  en: {
+    title: 'What can the roots reach?', diagram: 'Interactive mark-and-sweep diagram', root: 'Start marking from root', rootLabel: 'Mark',
+    sweep: 'Ask the bear to sweep unmarked objects', sweepLabel: 'Sweep', reset: 'Try again', toggle: 'Connect or disconnect the reference from root to C',
+    allocated: 'Select root to mark. A references B. C and D reference each other, but neither is connected to a root.',
+    connected: 'You connected C to a root. Select root and see what survives this time.',
+    marked: 'A and B are marked. C and D still cannot be reached. Select the bear to sweep them.',
+    markedAll: 'All four objects are reachable, including the C–D cycle. Select the bear to check the sweep.',
+    swept: 'Only C and D are reclaimed; A and B stay put. A cycle alone does not prevent tracing GC.',
+    sweptAll: 'Nothing is reclaimed. Reachable cycles survive too: reachability from roots is what matters.',
+    hint: 'Or select C first to connect the cycle to a root.', free: 'free', markedBadge: 'marked',
+    fallback: 'Mark-and-sweep follows root → A → B and preserves both objects. The unreachable C ↔ D cycle is reclaimed. This is an algorithm illustration, not a browser GC trigger.',
+    detail: 'A model, not a browser GC trigger', source: 'Algorithm reference',
+  },
+} as const;

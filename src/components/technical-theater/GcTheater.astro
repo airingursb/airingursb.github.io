@@ -1,0 +1,35 @@
+---
+import { theaterCopy } from './copy';
+import './theater.css';
+interface Props { readonly lang: 'zh' | 'en' }
+const { lang } = Astro.props;
+const copy = theaterCopy[lang];
+---
+<gc-theater data-lang={lang} data-phase="allocated" id="gc-theater">
+  <div class="gc-heading"><h3>{copy.title}</h3><button type="button" data-reset hidden>{copy.reset} <span aria-hidden="true">↺</span></button></div>
+  <div class="gc-scene" role="group" aria-label={copy.diagram}>
+    <button class="gc-bear" type="button" data-sweep aria-label={copy.sweep} disabled>
+      <span data-editorial-actor="/blog-delights/theater/manifest.json" data-actor-rendering="pixelated" data-actor-state="poster" aria-hidden="true">
+        <img data-actor-poster src="/blog-delights/theater/poster.webp" alt="" width="160" height="180" loading="lazy" decoding="async" />
+        <canvas data-actor-canvas width="160" height="180" hidden></canvas>
+      </span>
+      <span class="gc-action-label">{copy.sweepLabel} <span aria-hidden="true">→</span></span>
+    </button>
+    <div class="gc-graph">
+      <button class="gc-root" data-mark type="button" aria-label={copy.root} disabled><span>root</span><small>{copy.rootLabel} →</small></button>
+      <span class="gc-wire gc-wire-root" aria-hidden="true">→</span>
+      <span class="gc-object gc-object-a" data-object="A"><b>A</b><small data-mark-label></small></span>
+      <span class="gc-wire gc-wire-ab" aria-hidden="true">→</span>
+      <span class="gc-object gc-object-b" data-object="B"><b>B</b><small data-mark-label></small></span>
+      <span class="gc-wire gc-wire-optional" aria-hidden="true" hidden>↳</span>
+      <button class="gc-object gc-object-c" data-object="C" type="button" data-connect aria-label={copy.toggle} aria-pressed="false" disabled><b>C</b><small data-mark-label></small></button>
+      <span class="gc-wire gc-wire-cycle" aria-hidden="true">⇄</span>
+      <span class="gc-object gc-object-d" data-object="D"><b>D</b><small data-mark-label></small></span>
+    </div>
+  </div>
+  <p class="gc-caption" data-status role="status" aria-live="polite" aria-atomic="true">{copy.allocated}</p>
+  <p class="gc-hint" data-hint>{copy.hint}</p>
+  <noscript><p>{copy.fallback}</p></noscript>
+  <p class="gc-footnote">{copy.detail}<span aria-hidden="true"> · </span><a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Memory_management#mark-and-sweep_algorithm" target="_blank" rel="noopener noreferrer">{copy.source} ↗</a></p>
+</gc-theater>
+<script>import './controller';</script>

@@ -1,0 +1,32 @@
+---
+import GcTheater from './GcTheater.astro';
+const lang = Astro.url.pathname.startsWith('/en/') ? 'en' : 'zh';
+---
+<!doctype html>
+<html lang={lang === 'en' ? 'en' : 'zh-CN'}>
+<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex, follow" /><title>{lang === 'en' ? 'Mark and sweep · A tiny theater' : '标记与清扫 · 技术小剧场'}</title>
+<script is:inline>
+if (window.parent !== window && document.referrer.startsWith(location.origin + '/')) {
+  const updateTheme = () => {
+    const parentRoot = window.parent.document.documentElement;
+    const parentBody = window.parent.document.body;
+    document.documentElement.dataset.theme = parentRoot.dataset.theme || (parentRoot.classList.contains('dark') || parentBody.classList.contains('dark') ? 'dark' : 'light');
+    document.documentElement.style.background = getComputedStyle(parentBody).backgroundColor;
+  };
+  updateTheme();
+  const observer = new MutationObserver(updateTheme);
+  observer.observe(window.parent.document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
+  observer.observe(window.parent.document.body, { attributes: true, attributeFilter: ['class'] });
+} else {
+  const saved = localStorage.getItem('theme');
+  document.documentElement.dataset.theme = saved === 'dark' || (!saved && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+}
+</script></head>
+<body class="gc-embed-body"><GcTheater lang={lang} /></body>
+</html>
+<style is:global>
+:root{color-scheme:light;--c-text:#24292e;--c-text-muted:#66707b;--c-border:#d8dee4;--c-bg:#fff;background:#fff}
+:root[data-theme='dark']{color-scheme:dark;--c-text:#d8dee4;--c-text-muted:#a0a7b0;--c-border:#3a414a;--c-bg:#0d1117;background:#0d1117}
+body.gc-embed-body{padding:0 12px;margin:0}.gc-embed-body gc-theater{margin:0 auto}
+@media(max-width:430px){.gc-embed-body .gc-heading{min-height:53px;padding-top:8px}.gc-embed-body .gc-scene{min-height:152px}}
+</style>

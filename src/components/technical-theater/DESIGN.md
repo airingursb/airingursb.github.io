@@ -1,0 +1,11 @@
+# Mark-and-sweep theater
+
+One small instructional illustration inside the existing GC essay and its note summary. Keep the site's serif explanation and mono metadata; neutral rules, no dashboard/card chrome. At 620px maximum width, a 104px pixel brown bear sits beside a four-object heap. On narrow screens the bear remains 80px and diagram labels remain 12px. The row is an illustration with a short two-line caption, not an extra hero.
+
+The graph is exact: root → A → B; C ↔ D is unreachable despite internal references. Activating the root marks reachable A/B; activating the broom sweeps only C/D, leaving visible empty slots. The action is determined synchronously by graph traversal, independently of H3 asset loading. A native restart control restores allocation. Active root/broom targets are at least 44px. Each state has an aria-live explanation; graph text and marks do not rely on color. English and Chinese follow document locale; no hover-only teaching.
+
+Brown bear retains original pixel IP (#48382d outline, #a77448 fur, #f4e2b9 muzzle, #d89987 cheeks, #91ac89 sage). Diagram uses parent --ink/--muted/--line where available, blog --text-primary/--text-secondary/--border fallbacks, and green #24784a / dark #8ec9a4 reachable marks. No fake counters or timers. H3 supplies pointing and sweeping only; program owns references, reachability and reclamation. No text or algorithm generated in the video.
+
+Interaction reference: beui.dev action-swap (consulted 2026-09-24); retain semantic button state replacement and immediate reduced-motion states, without React/Motion dependency. State opacity/transform feedback lasts 180ms; H3 runs at 12fps, only after deliberate input, pauses offscreen/hidden, and returns to neutral after one gesture. Reduced motion keeps a complete still and all deterministic state changes. Atlas/media failure leaves the full usable diagram.
+
+Personas: technical first-time reader, English reader, mobile/touch reader and keyboard/reduced-motion reader. Check graph behavior without JS through static explanation, dark/light alpha edges, full ear/broom framing, no horizontal overflow at 375px, and no media download until user interaction. Animated sprite about 104px wide. Scope excludes unrelated GC essay factual claims.
