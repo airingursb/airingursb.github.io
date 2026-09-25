@@ -1,6 +1,7 @@
 ---
 import SiteHeader from "../components/SiteHeader.astro";
 import BaseLayout from '../layouts/BaseLayout.astro';
+import SearchDelight from '../components/search-delight/SearchDelight.astro';
 import { tSite } from '../lib/i18n';
 
 const s = tSite('zh').search;
@@ -12,8 +13,11 @@ const s = tSite('zh').search;
 
     <header class="page-header">
       <div class="header-inner">
-        <h1 class="page-title">{s.title}</h1>
-        <p class="page-desc">{s.desc}</p>
+        <div>
+          <h1 class="page-title">{s.title}</h1>
+          <p class="page-desc">{s.desc}</p>
+        </div>
+        <SearchDelight />
       </div>
     </header>
 
@@ -43,6 +47,10 @@ const s = tSite('zh').search;
         element: "#search",
         showSubResults: true,
         showImages: false,
+        processTerm: function(term) {
+          document.getElementById('search').dispatchEvent(new CustomEvent('search-delight-query', { detail: term }));
+          return term;
+        },
       });
       var searchInput = document.querySelector('#search input');
       var searchTimer = null;
@@ -139,6 +147,7 @@ const s = tSite('zh').search;
   }
   .header-inner {
     max-width: 1200px; margin: 0 auto; padding: 0 48px;
+    display: flex; align-items: center; justify-content: space-between; gap: 24px;
   }
   .page-title {
     font-size: 36px; font-weight: 800; color: var(--c-text);
