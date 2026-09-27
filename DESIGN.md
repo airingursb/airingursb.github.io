@@ -1,5 +1,39 @@
 # Airing's Blog Design System
 
+## AI weekly A4 cover · September 27
+
+The approved red-and-cream cover is a real HTML magazine composition with A4
+portrait proportions (`--cover-ratio: 210 / 297`), not a resized screenshot.
+Its desktop width is 540px (763.714px tall); share exports round to 1080×1528px
+and shelf exports to 540×764px. The issue, share dialog, shelf, archive, homepage,
+RSS and email preserve the complete cover ratio. The existing bear railway art,
+Jev subject, editorial red `#a74432`, paper `#f6f2e8` and ink `#252a27` remain.
+Coverage is September 20–26, publication September 28, with 17 reads in 16 columns.
+
+The reusable `IssueCover` has four rows: compact masthead, flexible illustration
+with a real DOM headline, two linked cover lines, and an editor byline. `Jev` sits
+beside the two-line question so the bear and railway junction retain a generous
+visible field. The illustration alone uses `object-fit: cover` and a 65% vertical
+focus; never stretch text or crop the complete publication image. The cream wash
+fades behind the upper headline. No new artwork, motion, palette or dependencies.
+
+Cover-specific tokens: 6px edge (4px below 680px), 540px maximum width; 8–24px
+gutter and 4–12px internal spacing; 22–44px masthead, 17–34px question, 32–68px
+Jev subject, 8–12px metadata, 9–14px teaser text and 8–14px cover deck. Tiny print
+uses 7–10px. Sizes respond to the cover container rather than the viewport.
+English uses a 22–42px masthead and a 16–30px question; explicit phrase spans keep
+the question in two intentional lines. On narrow screens the cover remains a
+proportional poster, including its rules, caption, wash and 32–44px link targets;
+the adjacent issue desk retains full-size reading type and 44px actions. The
+editor link is at least 24px wide. All links retain visible keyboard focus.
+
+Personas: Chinese and English readers, narrow-screen readers, keyboard users,
+and people saving a cover to share. Check complete art and unclipped text at
+375/768/1280px in the issue and all entry surfaces, then regenerate localized
+share and shelf assets from the same live `.issue-cover` element after fonts
+and the illustration finish decoding. Static review is not visual acceptance;
+the browser evidence and two independent visual reviews belong to the release.
+
 ## Article like reception · September 25
 
 Keep the original centered like capsule. Confirmed new likes add a small press/rebound, heart pop, six coral glints and count lift; transient presentation never delays or changes the real API response. The existing watercolor panda catches one heart, hugs it and returns in about 6.2–6.4 seconds, once per page. Follow `src/components/like-delight/DESIGN.md` for timing, visible-recipient selection, cleanup and reduced-motion behavior. No second mascot or playback controls.

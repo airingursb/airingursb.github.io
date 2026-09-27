@@ -10,7 +10,7 @@ The reading stream is the daily collection; the shelf is its edited weekly editi
 
 - Consume `--c-bg`, `--c-bg-alt`, `--c-text`, `--c-text-muted`, `--c-border`, `--accent`, `--font-mono` from the site. Do not introduce a competing palette.
 - Local tokens: serif editorial stack; spacing 8/12/16/24/32/40/48; metadata 12px, copy 14–16px; action targets at least 44px.
-- `IssueCover` renders the real cover as an image with intrinsic 540×960 dimensions. It is an illustration of the publication, not a raster substitute for navigation or page UI. Text, metadata, titles, contents and links remain real HTML.
+- `IssueCover` renders the complete A4 cover (`210 / 297`) with intrinsic 540×764 dimensions. Localized share images are 1080×1528. Both are exports of the same real HTML cover, recomposed at 540×763.714 rather than stretched from the old portrait. It is an illustration of the publication, not a raster substitute for navigation or page UI. Text, metadata, titles, contents and links remain real HTML.
 - Paper edges and a narrow book spine are the only dimensional decoration; no card shadows, gradients, animated books or wood textures. A thin shelf rule joins the cover to its surrounding layout.
 - Shared cover, metadata and action styles are used by both entry and archive. New issues come from one typed catalog.
 
