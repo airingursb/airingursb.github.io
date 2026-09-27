@@ -529,6 +529,13 @@ def main():
     )
     for msg in messages:
         previous = {p['url']: p for p in existing_previews.get(msg['telegram_post_id'], [])}
+        fetched_urls = {p['url'] for p in msg['link_previews']}
+        for url in extract_urls(msg.get('content', '')):
+            if url in previous and url not in fetched_urls and len(msg['link_previews']) < 3:
+                retained = dict(previous[url])
+                retained['image'] = host_douban_cover(retained.get('image') or '')
+                msg['link_previews'].append(retained)
+                fetched_urls.add(url)
         for preview in msg['link_previews']:
             old_image = previous.get(preview['url'], {}).get('image') or ''
             old_host = urlparse(old_image).hostname or ''

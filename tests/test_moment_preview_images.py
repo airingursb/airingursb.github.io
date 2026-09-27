@@ -69,3 +69,23 @@ def test_sync_preserves_hosted_cover_after_download_failure(monkeypatch: pytest.
     monkeypatch.setattr(sync, "upsert_moments", save)
     sync.main()
     assert save.call_args.args[0][0]["link_previews"][0]["image"] == HOSTED
+
+
+@pytest.mark.parametrize("content,expected_count", [(PAGE, 1), ("Link removed", 0)])
+def test_metadata_outage_preserves_only_links_still_in_message(
+    monkeypatch: pytest.MonkeyPatch, content: str, expected_count: int
+) -> None:
+    previous = {"url": PAGE, "image": HOSTED, "title": "Movie"}
+    messages = [{"telegram_post_id": "channel/1", "content": content,
+                 "images": [], "link_previews": []}]
+    monkeypatch.setattr(sync, "fetch_url", lambda url: "")
+    monkeypatch.setattr(sync, "parse_telegram_messages", lambda html: messages)
+    monkeypatch.setattr(sync, "cos_enabled", lambda: False)
+    monkeypatch.setattr(sync, "fetch_existing_images", Mock(return_value={"channel/1": [previous]}))
+    save = Mock(return_value=True)
+    monkeypatch.setattr(sync, "upsert_moments", save)
+    sync.main()
+    previews = save.call_args.args[0][0]["link_previews"]
+    assert len(previews) == expected_count
+    if expected_count:
+        assert previews == [previous]
