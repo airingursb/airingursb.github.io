@@ -67,6 +67,7 @@
         copied = false;
       }
     }
+    window.umami?.track('weekly-share', { issue: '001', lang: en ? 'en' : 'zh', action: 'copy', result: copied ? 'success' : 'error' });
     copyButton.dataset.copied = String(copied);
     copyLabel.textContent = copied ? (en ? "Copied" : '已复制') : (en ? "Copy link" : '复制链接');
     status.textContent = copied ? (en ? "Link copied. Ready to send to a friend." : '链接已复制。可以粘贴给朋友了。') : (en ? "Could not copy automatically. The link is selected; long-press or use ⌘C / Ctrl+C." : '未能自动复制。链接已选中，请长按或按 ⌘C / Ctrl+C 复制。');
@@ -78,9 +79,12 @@
   nativeButton.addEventListener('click', async () => {
     try {
       await navigator.share({title: dialog.dataset.shareTitle, url: input.value});
+      window.umami?.track('weekly-share', { issue: '001', lang: en ? 'en' : 'zh', action: 'native', result: 'success' });
       status.textContent = (en ? "Opened system sharing." : '已交给系统分享。');
     } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
+      const cancelled = error instanceof DOMException && error.name === 'AbortError';
+      window.umami?.track('weekly-share', { issue: '001', lang: en ? 'en' : 'zh', action: 'native', result: cancelled ? 'cancelled' : 'error' });
+      if (cancelled) return;
       status.textContent = (en ? "System sharing is unavailable. Copy the link or save the cover instead." : '系统分享暂不可用，可以复制链接或保存封面。');
     }
   });

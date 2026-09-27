@@ -231,6 +231,7 @@
     const message = newsletterForm.querySelector('[data-sub-message]');
     const data = new FormData(newsletterForm);
     const email = String(data.get('email') || '');
+    const emailLang = data.get('lang') === 'en' ? 'en' : 'zh';
     const subscriptions = data.getAll('subscriptions').map(String);
     if (subscriptions.length === 0) {
       if (message) message.textContent = lang === 'en' ? 'Select at least one email.' : '请至少选择一种邮件内容。';
@@ -241,7 +242,7 @@
       const response = await fetch('https://chat.ursb.me/api/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, subscriptions, lang: data.get('lang') === 'en' ? 'en' : 'zh' }),
+        body: JSON.stringify({ email, subscriptions, lang: emailLang }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.message || 'Subscription failed');
@@ -255,6 +256,8 @@
           result: result.alreadySubscribed ? 'duplicate' : 'success',
           subscriptions: subscriptions.join(','),
           lang,
+          email_lang: emailLang,
+          issue: window.location.pathname.match(/\/weekly\/(\d{3,})\//)?.[1] || '',
           surface: activeSurface,
         });
       }
@@ -265,6 +268,8 @@
           result: 'error',
           subscriptions: subscriptions.join(','),
           lang,
+          email_lang: emailLang,
+          issue: window.location.pathname.match(/\/weekly\/(\d{3,})\//)?.[1] || '',
           surface: activeSurface,
         });
       }
@@ -274,7 +279,7 @@
   function selectedFeeds() {
     return Array.from(dialog?.querySelectorAll('[data-rss-feed]:checked') || [])
       .filter((feed) => feed instanceof HTMLInputElement)
-      .map((feed) => ({ title: feed.closest('label')?.querySelector('strong')?.textContent || 'Feed', url: feed.value }));
+      .map((feed) => ({ title: feed.closest('label')?.querySelector('strong')?.textContent || 'Feed', url: feed.value, kind: feed.dataset.rssKind || '' }));
   }
 
   dialog?.querySelector('[data-sub-copy-feeds]')?.addEventListener('click', async () => {
@@ -287,7 +292,7 @@
     await navigator.clipboard.writeText(feeds.map((feed) => feed.url).join('\n'));
     if (message) message.textContent = lang === 'en' ? 'Feed URLs copied.' : '订阅地址已复制。';
     if (feeds.some((feed) => feed.url.includes('/reading/'))) {
-      trackEvent('reading-rss-copy', { lang, surface: activeSurface });
+      trackEvent('reading-rss-copy', { lang, surface: activeSurface, feeds: feeds.map((feed) => feed.kind).join(',') });
     }
   });
 
@@ -309,7 +314,7 @@
     URL.revokeObjectURL(href);
     if (message) message.textContent = lang === 'en' ? 'OPML exported.' : 'OPML 已导出。';
     if (feeds.some((feed) => feed.url.includes('/reading/'))) {
-      trackEvent('reading-opml-export', { lang, surface: activeSurface });
+      trackEvent('reading-opml-export', { lang, surface: activeSurface, feeds: feeds.map((feed) => feed.kind).join(',') });
     }
   });
 </script>
