@@ -15,7 +15,7 @@ Preserve the approved V6.4 composition, 3:4 covers, existing watercolor bear, pa
 
 ## Existing journal tokens and anatomy
 
-The retained `styles/editorial-tokens.css` and `styles/tokens.css` define the white exterior, warm paper, pine text, blue handwritten quotations, 4px spacing scale, serif and handwritten roles. `journal.css` owns the 1200px shell and responsive cover/heading/body/footer grid. `letters.css` owns the envelope, ruled sheet, date, signature and correspondence navigation. Share, post-office and long-form modules retain their approved local tokens.
+The retained `styles/editorial-tokens.css` and `styles/tokens.css` define the white exterior, warm paper, pine text, blue handwritten quotations, 4px spacing scale, serif and handwritten roles. `journal.css` owns the 1200px shell and responsive cover/heading/body/footer grid. `letters.css` owns the envelope, ruled sheet, date, signature and correspondence navigation. Share, post-office and long-form modules retain their approved local tokens. Compact Chinese topic labels retain authored phrase boundaries; share titles wrap at punctuation so words and sentence endings stay together on phones.
 
 User journeys: homepage or blog navigation → journal → issue theme → complete correspondence; language switch retains current letter and anchor; share opens a native dialog, copies or downloads a real cover, and Escape returns focus. A visitor can instead use the visible Gmail link for a free letter.
 

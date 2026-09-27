@@ -22,7 +22,12 @@ if (dialog) {
       input.value = url.href;
       const cover = `/echo/share/${number}-${en ? 'en' : 'zh'}.png`;
       dialog.querySelector<HTMLImageElement>('.share-preview img')!.src = cover;
-      dialog.querySelector<HTMLElement>('.share-current-title')!.textContent = title;
+      const titleParts = en ? [title] : title.split(/(?<=[，。！？])/u).map(part => {
+        const phrase = document.createElement('span');
+        phrase.textContent = part;
+        return phrase;
+      });
+      dialog.querySelector<HTMLElement>('.share-current-title')!.replaceChildren(...titleParts);
       download.href = cover;
       download.download = `echo-${number}-${en ? 'en' : 'zh'}.png`;
       dialog.querySelector<HTMLAnchorElement>('#share-x')!.href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(title) + '&url=' + encodeURIComponent(url.href);
