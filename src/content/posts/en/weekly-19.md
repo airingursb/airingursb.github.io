@@ -89,7 +89,7 @@ P7: 🎮 Found an incredibly beautiful scene while doing a Genshin Impact quest.
 
 ![](https://airing.ursb.me/images/blog/IMG_0126.jpeg)
 
-P8: 📮 Since I encouraged letter-writing in last month's post, more friends have started writing. Last month: 20 letters exchanged. Letter correspondence really does feel calmer and more substantial. Readers are welcome to write to me too — airing@ursb.me — about anything at all~
+P8: 📮 Since I encouraged letter-writing in last month's post, more friends have started writing. Last month: 20 letters exchanged. Letter correspondence really does feel calmer and more substantial. Readers are welcome to write to me too — airingdeng@gmail.com — about anything at all~
 
 P9: 📝 On the work front: gave a department presentation, wrote a [technical article](https://me.ursb.me/archives/cross-end.html), took on a sponsored post on Zhihu, studied Android JNI programming, and integrated a debugger into the project's V8 engine.
 

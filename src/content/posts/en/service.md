@@ -14,7 +14,7 @@ You are very welcome to reach out this way. I look forward to building genuine c
 
 Response time: Please refer to the auto-reply you'll receive after sending. Currently I receive about 2–4 consultation letters per month, and my typical turnaround is around 14 days. If volume increases, I may extend the response window — the auto-reply will always reflect the current estimate.
 
-How to reach me: Email airing@ursb.me.
+How to reach me: Email airingdeng@gmail.com.
 
 ## Option 2: Paid Consultation
 I offer one-on-one 50-minute sessions (Chinese only).
@@ -34,4 +34,4 @@ You can book and pay directly at [https://cal.com/airing/50-min-meeting-paid](ht
 
 **Price: $200 USD** (originally $600 USD — limited-time 70% off). Full refunds are available.
 
-For any questions, feel free to email airing@ursb.me at any time. Looking forward to connecting.
+For any questions, feel free to email airingdeng@gmail.com at any time. Looking forward to connecting.

@@ -71,7 +71,7 @@ P1: 🍶 夜晚，清冷的北锣鼓巷。没有破败的气息，只是清冷�
 
 ![](https://airing.ursb.me/images/blog/IMG_4955.jpeg)P7: 🎮 做原神任务时发现的一个超美场景
 
-![](https://airing.ursb.me/images/blog/IMG_0126.jpeg)P8: 📮 自从上期提倡信件交流以来，又多了些好友来信，上月往来信件 20 封，发现信件交流确实更加沉静、深入。也欢迎读者给我写信—— airing@ursb.me ，什么乱七八糟的都可以交流~
+![](https://airing.ursb.me/images/blog/IMG_0126.jpeg)P8: 📮 自从上期提倡信件交流以来，又多了些好友来信，上月往来信件 20 封，发现信件交流确实更加沉静、深入。也欢迎读者给我写信—— airingdeng@gmail.com ，什么乱七八糟的都可以交流~
 
 P9：📝 关于工作，做了一个部门分享，写了一篇[技术文章](https://me.ursb.me/archives/cross-end.html)，在知乎接了一个软广，学习了 Android JNI 编程，给项目的 V8 接入了调试器。
 
