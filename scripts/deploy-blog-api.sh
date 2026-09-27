@@ -77,6 +77,8 @@ echo "[deploy] rsync $LOCAL_DIR/ -> $SERVER:$REMOTE_DIR/"
 # subprocess's tty correctly.
 sshpass -p "$ALIYUN_PASSWORD" rsync -az --delete \
   --exclude=node_modules/ \
+  --exclude=cache/ \
+  --exclude=supabase/.temp/ \
   --exclude=.env \
   --exclude=knowledge-full-backup.md \
   --exclude=.git/ \
