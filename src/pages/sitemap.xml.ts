@@ -9,6 +9,9 @@ import { fetchComics } from '../lib/comics';
 import { slugify } from '../lib/photos-slug';
 import { fetchReadingItems } from '../lib/reading';
 import { getGitLastModified } from '../lib/seo';
+import { issuesFor, issuePath } from '../features/echo/data/issues';
+import { lettersFor } from '../features/echo/data/catalog';
+import { letterPath } from '../features/echo/data/letters';
 
 type UrlOptions = {
   readonly lastmod?: string;
@@ -38,6 +41,7 @@ export async function GET(context: APIContext) {
   ]);
 
   const bilingualStaticPages = [
+    { zh: '/echo/', en: '/en/echo/', changefreq: 'monthly', priority: '0.8' },
     { zh: '/blog/', en: '/en/blog/', changefreq: 'daily', priority: '0.9' },
     { zh: '/archive/', en: '/en/archive/', changefreq: 'weekly', priority: '0.7' },
     { zh: '/moments/', en: '/en/moments/', changefreq: 'daily', priority: '0.7' },
@@ -109,6 +113,13 @@ ${links ? `${links}\n` : ''}  </url>`;
         changefreq: 'monthly', priority: group.priority,
       }));
     }
+  }
+
+  for (const issue of issuesFor('zh')) {
+    urls.push(bilingualUrl(issuePath(issue.number), issuePath(issue.number, 'en'), { changefreq: 'monthly', priority: '0.7' }));
+  }
+  for (const letter of lettersFor('zh')) {
+    urls.push(bilingualUrl(letterPath(letter.id), letterPath(letter.id, 'en'), { changefreq: 'monthly', priority: '0.6' }));
   }
 
   for (const item of readingItems) {

@@ -972,7 +972,6 @@
 - [ ] Portal transitions are instant (no fade) under reduced-motion
 - [ ] All emote behaviors from V2.1 still respect reduced-motion
 
-<<<<<<< HEAD
 
 ## Lounge V2.4 + V2.5 (atmosphere + pipeline maturity)
 
@@ -2092,3 +2091,15 @@
 - [x] 两种语言的链接预览为构建生成的 1200×600 JPEG，均小于 1 MB；完整封面、主题、日期、编辑署名无裁切或缺字。
 - [x] 375 / 768 / 1280px 下详情及分享弹窗正常，复制/社交入口对应当前语言；封面下载、书架、RSS 和邮件继续使用原有 A4 图片。
 - 上线复核：部署后以 Twitterbot User-Agent 请求双语页面及图片均返回 200，MIME 和图像尺寸正确；只确认站点响应，不声称已验证 X 平台缓存或实际帖子。
+
+## Echo production journal and homepage entry (2026-09-27)
+
+- [ ] Canonical /echo/ and /en/echo/ archives, the first issue and four anonymized exchanges load; language switching retains the current exchange and anchor.
+- [ ] Existing blog navigation includes English Echo; original favicon unchanged; no new blog-body promotional block.
+- [ ] Homepage card is between letter consultation and guestbook, follows light/dark theme and zh/en toggle, and links to the corresponding issue/archive language at 375/768/1280px.
+- [ ] Cover art stays 3:4, archive top/bottom alignment remains intact, full correspondence dates/aliases/redaction markers and English paragraph mapping match approved data.
+- [ ] Canonical, alternate-language, OG/share-cover metadata and sitemap use production URLs. Search indexes the journal body; no prototype/research paths ship.
+- [ ] Share open/copy/download/close/focus, issue/topic/original-letter navigation, reduced-motion animation and no-JavaScript reading remain usable.
+- [ ] Navigation and homepage entry events plus journal/share events carry only stable identifiers and UI categories, never letter text, aliases or email addresses.
+- [ ] All public contact destinations use airingdeng@gmail.com; old email survives only as a historical comment-avatar identity with a new Gmail alias.
+- [ ] Build, Node 22 tests, browser screenshots, final independent review and production post-deployment smoke pass; publication date decision is recorded in the release evidence.

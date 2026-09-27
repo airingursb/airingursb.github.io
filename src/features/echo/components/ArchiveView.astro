@@ -1,0 +1,56 @@
+---
+import '../styles/tokens.css';
+import '../styles/journal.css';
+import BlogHeader from './BlogHeader.astro';
+import DocumentHead from './DocumentHead.astro';
+import EchoCover from './EchoCover.astro';
+import PostOfficeHero from './PostOfficeHero.astro';
+import PostOfficeFooter from './PostOfficeFooter.astro';
+import ShareButton from './ShareButton.astro';
+import ShareDialog from './ShareDialog.astro';
+import EditorialText from './EditorialText.astro';
+import { issuesFor } from '../data/issues';
+import { issuePath, lettersFor } from '../data/catalog';
+import { displayDate, letterPath } from '../data/letters';
+import { copy, localeOf } from '../data/i18n';
+import { shareCover } from '../data/covers';
+const lang = localeOf(Astro.url.pathname), en = lang === 'en', t = copy[lang];
+const issues = [...issuesFor(lang)].reverse();
+const dates = (number: string) => lettersFor(lang).filter(letter => (letter.issue ?? '01') === number).flatMap(letter => [letter.incoming.date, letter.reply.date]).sort();
+---
+<!doctype html>
+<html lang={en ? 'en' : 'zh-CN'}><head><DocumentHead title={`${t.name} · ${t.journal} / Airing`} description={t.archiveNote} image={shareCover('01', lang)} /></head>
+<body id="top" data-surface="archive">
+  <a class="skip-link" href="#issues">{t.skip}</a><BlogHeader />
+  <main data-pagefind-body class="journal-shell">
+    <PostOfficeHero />
+    <section id="issues" aria-labelledby="shelf-heading">
+      <div class="journal-shelf-heading"><h2 id="shelf-heading">{en ? 'The issue shelf' : '回声书架'}</h2><p>{en ? 'A question. A reply. A little further.' : '由一个人的困惑，读到自己的答案。'}</p></div>
+      {issues.map((issue, index) => <article class="journal-edition" aria-labelledby={`issue-${issue.number}`}>
+        <a class="journal-cover-link" href={issuePath(issue.number, lang)}><div><EchoCover issue={issue} eager={index === 0} /></div></a>
+        <div class="journal-edition-copy">
+          <header class="journal-edition-heading">
+          <p class="journal-meta"><span>No. {issue.number}</span><span>{issue.category}</span><span>{index === 0 ? t.newest : (en ? 'First issue' : '创刊号')}</span></p>
+          <h3 id={`issue-${issue.number}`}><a href={issuePath(issue.number, lang)}>{en ? issue.headline.join(' ') : <EditorialText text={issue.headline.join('')} keepWords />}</a></h3>
+          </header>
+          <div class="journal-edition-body">
+          <p class="journal-deck"><EditorialText text={issue.dilemma} /></p>
+          <blockquote class="journal-quote"><a href={letterPath(issue.source, lang) + '#reply'}><EditorialText text={issue.quote.join('')} /></a><cite>{t.quote}</cite></blockquote>
+          </div>
+          <div class="journal-edition-footer">
+          <div class="journal-edition-info">
+          <p class="journal-meta">{issue.letterNote} {en ? '4 themes' : '四个阅读主题'}</p>
+          <p class="journal-deck">{en ? 'Correspondence' : '通信时间'}：<time datetime={dates(issue.number)[0]}>{displayDate(dates(issue.number)[0], lang)}</time> — <time datetime={dates(issue.number).at(-1)}>{displayDate(dates(issue.number).at(-1)!, lang)}</time></p>
+          </div>
+          <div class="journal-actions"><a class="journal-action" href={issuePath(issue.number, lang)}>{en ? 'Open this issue' : '翻开这一期'} ↗</a><ShareButton number={issue.number} title={`${t.name} ${issue.number} · ${issue.title}`} path={issuePath(issue.number, lang)} /></div>
+          </div>
+        </div>
+        <nav class="journal-topics" aria-label={`${t.issue} ${issue.number} · ${t.contents}`}><h4>{en ? 'Inside this issue' : '这一期里'}</h4>{issue.sections.map(section => <a href={issuePath(issue.number, lang) + '#' + section.id}><b>{section.number}</b><span><strong><EditorialText text={section.dilemma.join(en ? ' ' : '')} /></strong><small><EditorialText text={section.title.map(part => part.trim()).join(en ? ' ' : '')} /></small></span></a>)}</nav>
+      </article>)}
+    </section>
+
+    <noscript><div class="share-no-js">{en ? 'Save a cover:' : '保存封面：'} {issues.map(issue => <a href={shareCover(issue.number, lang)} download>{t.issue} {issue.number} ↓ </a>)}</div></noscript>
+  </main>
+  <PostOfficeFooter />
+  <ShareDialog />
+</body></html>

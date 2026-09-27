@@ -1,0 +1,14 @@
+---
+import LetterView from "../../../../features/echo/components/LetterView.astro";
+import { lettersFor } from "../../../../features/echo/data/catalog";
+export function getStaticPaths() {
+  const letters = lettersFor('en');
+  return letters.map(letter => {
+    const siblings = letters.filter(other => other.issue === letter.issue);
+    const next = siblings[(siblings.indexOf(letter) + 1) % siblings.length];
+    return { params: { id: letter.id }, props: { letter, next } };
+  });
+}
+const { letter, next } = Astro.props;
+---
+<LetterView letter={letter} next={next} />

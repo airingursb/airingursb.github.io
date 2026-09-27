@@ -1,0 +1,65 @@
+---
+import '../styles/tokens.css';
+import '../styles/layout.css';
+import '../styles/reading.css';
+import '../styles/letters.css';
+import '../styles/journal.css';
+import { Image } from 'astro:assets';
+import BlogHeader from './BlogHeader.astro';
+import DocumentHead from './DocumentHead.astro';
+import { copy, localeOf, localPath } from '../data/i18n';
+import PullQuote from './PullQuote.astro';
+import Passage from './Passage.astro';
+import CorrespondenceIndex from './CorrespondenceIndex.astro';
+import EditorialText from './EditorialText.astro';
+import type { Issue } from '../data/issues';
+import IssueSwitcher from './IssueSwitcher.astro';
+import CorrespondenceTrail from './CorrespondenceTrail.astro';
+import ShareButton from './ShareButton.astro';
+import ShareDialog from './ShareDialog.astro';
+import { issueArt, artDescription, shareCover } from '../data/covers';
+import handwritingFont from '../assets/hand-display.woff2?url';
+interface Props { readonly issue: Issue; }
+const { issue } = Astro.props;
+const lang = localeOf(Astro.url.pathname), en = lang === 'en', t = copy[lang];
+const shareTitle = `${t.name} ${issue.number} · ${issue.title}`;
+---
+<!doctype html>
+<html lang={en ? 'en' : 'zh-CN'}><head>
+  <DocumentHead title={issue.title + ' · ' + t.name + ' / Airing'} description={issue.dilemma + ' ' + issue.quote.join('')} image={shareCover(issue.number, lang)} />
+  <link rel="preload" href={handwritingFont} as="font" type="font/woff2" crossorigin />
+</head>
+<body id="top" data-issue={issue.number}>
+  <a class="skip-link" href="#reading">{t.skip}</a><BlogHeader context={`${t.name} / No. ${issue.number}`} />
+  <div class="journal-shell journal-toolbar"><a class="journal-action" href={localPath('/', lang)}>← {t.archive}</a><ShareButton number={issue.number} title={shareTitle} /></div>
+  <main data-pagefind-body class="journal-shell journal-paper">
+    <header class="journal-masthead">
+      <div class="journal-mast-top"><span>AIRING’S CORRESPONDENCE</span><span>{en ? 'Letters · Questions · Replies' : '来信 · 困境 · 回答'}</span></div>
+      <div class="journal-brand"><p>{en ? <>Some questions return.<br />So do the words that help.</> : <>从来信里，读懂困境。<br />在回答里，继续往前。</>}</p><div><a class="journal-wordmark" href={localPath('/', lang)}>{t.name}</a><small>{en ? 'A JOURNAL OF LETTERS & REPLIES' : 'ECHO / 通信期刊'}</small></div><span>No. {issue.number}</span></div>
+      <div class="journal-edition-line"><span>{issue.category}</span><span>{en ? '4 exchanges · 4 themes' : '四组往返 · 四个主题'}</span><span>{en ? 'Replies by Airing' : '回信 Airing'}</span></div>
+    </header>
+    <section class="journal-opening" aria-labelledby="issue-title">
+      <div>
+        <p class="journal-kicker">{en ? 'The cover story' : '本期主题'}</p>
+        <h1 id="issue-title">{issue.headline.map(line => <span class="headline-line">{line}</span>)}</h1>
+        <div class="dilemma"><p>{issue.dilemma}</p></div>
+        <div class="hero-quote-grid"><PullQuote hero source={issue.source}>{issue.quote.join('')}</PullQuote></div>
+        <div class="editorial-thesis"><p>{issue.thesis.map(line => <span class="headline-line"><EditorialText text={line} /></span>)}</p></div>
+        <div class="journal-actions"><a class="journal-action" href="#reading">{t.read} ↓</a><a class="journal-action" href="#letters">{t.openLetters} ↗</a></div>
+      </div>
+      <figure class="journal-illustration"><Image src={issueArt(issue.number)} alt={artDescription(issue.number, lang)} width={600} widths={[300,500,700]} sizes="(max-width: 720px) 280px, 33vw" format="webp" loading="eager" /><figcaption>{en ? 'Echo / An illustration for this issue' : '回声 / 本期封面画'}</figcaption></figure>
+    </section>
+    <details class="contents journal-contents" open><summary><span>{t.fromDilemma}</span><span>{t.contents} ＋</span></summary><nav aria-label={t.contentsLabel}>{issue.sections.map((section, index) => <a class="chapter-link" href={'#' + section.id} data-chapter={section.id} aria-current={index === 0 ? 'location' : undefined}><span>{section.number}</span><span><EditorialText text={section.dilemma.join(en ? ' ' : '')} /></span></a>)}</nav></details>
+    <article class="reading" aria-label={t.fullReading}>
+      <div class="reading-intro" id="reading"><p class="eyebrow">{issue.intro}</p><p class="meta"><EditorialText text={issue.introNote} /></p></div>
+      {issue.number === '02' && <CorrespondenceTrail />}
+      {issue.sections.map((section, index) => <Passage section={section}>{index === issue.sections.length - 1 && <div class="exercise"><h3>{issue.exercise.title}</h3><p class="meta">{t.exercise}</p><ol>{issue.exercise.steps.map(([step, hint]) => <li><EditorialText text={step} /><span><EditorialText text={hint} /></span></li>)}</ol></div>}</Passage>)}
+      <div class="reading-end"><a class="text-button" href="#letters">{t.openLetters} ↗</a><a href="#top">{t.cover} ↑</a></div>
+    </article>
+    <CorrespondenceIndex issue={issue} />
+    <IssueSwitcher current={issue.number} />
+    <footer class="publication-footer"><div><strong>{t.name}</strong><p class="meta">{t.footer}<br />{t.footerNote}</p><div class="journal-actions"><ShareButton number={issue.number} title={shareTitle} /></div><noscript><p class="share-no-js"><a href={shareCover(issue.number, lang)} download>{en ? 'Save the cover' : '保存本期封面'} ↓</a></p></noscript></div><a href="mailto:airingdeng@gmail.com?subject=Letter%20Consultation">{t.write} ↗</a></footer>
+  </main>
+  <footer class="journal-shell journal-footer">© 2026 Airing · {t.name} / No. {issue.number}</footer>
+  <ShareDialog /><script>import '../reader';</script>
+</body></html>

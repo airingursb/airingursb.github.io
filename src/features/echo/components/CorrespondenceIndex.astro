@@ -1,0 +1,21 @@
+---
+import { letterPath } from '../data/letters';
+import { lettersFor } from '../data/catalog';
+import { copy, localeOf } from '../data/i18n';
+import { issues, type Issue } from '../data/issues';
+import LetterEnvelope from './LetterEnvelope.astro';
+interface Props { readonly issue?: Issue; }
+const { issue = issues[0] } = Astro.props;
+const lang = localeOf(Astro.url.pathname), t = copy[lang];
+const editions = lettersFor(lang).filter(letter => issue.letterIds.includes(letter.id));
+---
+<section class="correspondence-index" id="letters" aria-labelledby="letters-heading">
+  <div class="letter-index-heading"><div><p class="eyebrow">{t.correspondence} / {issue.category}</p><h2 id="letters-heading">{t.letters}</h2></div><p>{issue.letterNote}</p></div>
+  {issue.number === '02' && <p class="letter-thread-note">{t.threadNote}</p>}
+  <div class="letter-pockets">
+    {editions.map(letter => <a class="letter-pocket" href={letterPath(letter.id, lang)}><LetterEnvelope letter={letter} compact /></a>)}
+  </div>
+  <p class="letter-index-colophon">{t.colophon}</p>
+</section>
+
+<style>.letter-thread-note { font:var(--text-small)/1.8 var(--sans); color:var(--muted); margin-bottom:var(--space-3); }</style>

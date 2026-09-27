@@ -1,0 +1,21 @@
+---
+import { Image } from 'astro:assets';
+import type { Issue } from '../data/issues';
+import { localeOf } from '../data/i18n';
+import { issueArt } from '../data/covers';
+interface Props { readonly issue: Issue; readonly eager?: boolean; }
+const { issue, eager = false } = Astro.props;
+const en = localeOf(Astro.url.pathname) === 'en';
+const teasers = issue.number === '02' ? (en ? ['Cultivate experience.', 'Reassess when things change.'] : ['岗位之外，还有什么', '条件变化，重新判断']) : (en ? ['Make something. Then learn.', 'Find direction by doing.'] : ['以创造，带动学习', '在行动里，找到方向']);
+---
+<div class:list={['echo-cover', { 'echo-cover-blue': issue.number === '02' }]} data-cover={issue.number} role="img" aria-label={`${en ? 'Echo cover' : '回声封面'} ${issue.number} · ${issue.title}`}>
+  <div class="cover-micro"><span>AIRING’S LETTERS</span><span>No. {issue.number}</span></div>
+  <div class="cover-brand"><div class="cover-name">{en ? 'Echo' : '回声'}</div>
+  <div class="cover-subtitle">{en ? 'A JOURNAL OF CORRESPONDENCE' : '一份关于困境与回答的通信期刊'}</div></div>
+  <div class="cover-headline">{issue.headline.map(line => <span>{line.replaceAll('-', '‑')}</span>)}</div>
+  <div class="cover-picture">
+    <Image src={issueArt(issue.number)} alt="" width={540} widths={[240,400,540,800]} sizes="(max-width: 720px) 144px, (max-width: 900px) 176px, (max-width: 1020px) 240px, 288px" format="webp" loading={eager ? 'eager' : 'lazy'} />
+  </div>
+  <div class="cover-teasers"><span>{teasers[0]}</span><span>{teasers[1]}</span></div>
+  <div class="cover-colophon"><span>{issue.category}</span><span>{en ? '4 EXCHANGES' : '四组往返'}</span></div>
+</div>

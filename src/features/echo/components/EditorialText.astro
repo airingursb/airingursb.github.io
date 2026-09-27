@@ -1,0 +1,19 @@
+---
+import { localeOf } from '../data/i18n';
+interface Props { text: string; keepWords?: boolean; }
+const { text, keepWords = false } = Astro.props;
+const english = localeOf(Astro.url.pathname) === 'en';
+const units = keepWords
+  ? text.split(/(内驱力)/u).flatMap(part => part === '内驱力' ? [part] : Array.from(new Intl.Segmenter('zh-CN', { granularity: 'word' }).segment(part), word => word.segment))
+  : Array.from(text.matchAll(/[A-Za-z0-9]+|[\s\S]/gu), match => match[0]);
+let tailStart = units.length;
+let tailLength = 0;
+while (tailStart > 0 && tailLength < 6) {
+  tailStart -= 1;
+  tailLength += Array.from(units[tailStart]).length;
+}
+const head = units.slice(0, tailStart);
+const tail = units.slice(tailStart).join('');
+---
+{english ? text : <>{keepWords ? head.map(word => <span class="text-word">{word}</span>) : head.join('')}<span class="text-ending">{tail}</span></>}
+<style>.text-ending, .text-word { white-space: nowrap; }</style>

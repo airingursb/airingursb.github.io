@@ -1,0 +1,55 @@
+---
+import { Image } from 'astro:assets';
+import { issuesFor, issuePath } from '../data/issues';
+import { localPath } from '../data/i18n';
+import cover01Zh from '../../../../public/echo/share/01-zh.png';
+import cover01En from '../../../../public/echo/share/01-en.png';
+const covers = { zh: cover01Zh, en: cover01En };
+const locales = ['zh', 'en'] as const;
+---
+<div class="home-echo" id="echo">
+  {locales.map(lang => {
+    const en = lang === 'en';
+    return <section class="card home-echo-edition" lang={lang} aria-labelledby={`home-echo-heading-${lang}`}>
+      <header class="home-echo-heading">
+        <div><h2 id={`home-echo-heading-${lang}`}>{en ? 'Echo · A correspondence journal' : '回声 · 通信期刊'}</h2><p>LETTERS TO AIRING</p></div>
+        <a class="home-echo-archive" href={localPath('/', lang)} data-umami-event="echo-entry-open" data-umami-event-surface="home" data-umami-event-lang={lang}>{en ? 'All issues' : '全部期刊'} <span aria-hidden="true">→</span></a>
+      </header>
+      <p class="home-echo-intro">{en ? 'A question from someone else. A reply that may speak to you.' : '从一个人的困惑，读到自己的答案。'}</p>
+      <p class="home-echo-description">{en ? 'Reader questions and my replies, gathered by theme. Each issue includes the complete, anonymized exchanges.' : <>把来信里的困境与我的回信，编成可以慢慢读的<span>专题</span>。每一期，都附有脱敏后的<span>完整往返。</span></>}</p>
+      <div class="home-echo-issues" data-count={issuesFor(lang).length}>
+        {[...issuesFor(lang)].reverse().map(issue => <a class="home-echo-issue" href={issuePath(issue.number, lang)} data-umami-event="echo-issue-open" data-umami-event-surface="home" data-umami-event-target={issue.number} data-umami-event-lang={lang}>
+          <Image src={covers[lang]} alt="" width={108} widths={[96,192,240]} sizes="(max-width:480px) 80px,108px" format="webp" loading="lazy" />
+          <div><p class="home-echo-meta">No. {issue.number} <span>{issue.category}</span></p><h3>{issue.headline.join(en ? ' ' : '').replaceAll('-', '‑')}</h3><span class="home-echo-read">{en ? 'Open this issue' : '翻开这一期'} <span aria-hidden="true">↗</span></span></div>
+        </a>)}
+      </div>
+      <p class="home-echo-note">{en ? 'Free letters & replies · Selected and anonymized more than 180 days after the exchange ends' : '免费来信与回信 · 通信结束超过 180 天后，再脱敏选编'}</p>
+    </section>;
+  })}
+</div>
+<style>
+.home-echo { grid-column: 1 / -1; }
+.home-echo-edition[lang='en'] { display: none; }
+:global(html:lang(en)) .home-echo-edition[lang='zh'] { display: none; }
+:global(html:lang(en)) .home-echo-edition[lang='en'] { display: block; }
+.home-echo-heading { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+.home-echo-heading h2 { margin:0; color:var(--c-text); font:600 14px/1.5 var(--font-mono); }
+.home-echo-heading p { margin:4px 0 0; color:var(--c-text-muted); font-size:10px; letter-spacing:.08em; }
+.home-echo-archive { color:var(--c-text); display:inline-flex; align-items:center; gap:8px; min-height:44px; flex-shrink:0; font-size:12px; text-decoration:none; }
+.home-echo-intro { margin:24px 0 8px; color:var(--c-text); font:600 24px/1.5 Georgia,'Noto Serif SC',serif; text-wrap:balance; }
+.home-echo-description { margin:0; color:var(--c-text-muted); font-size:13px; line-height:1.85; }
+.home-echo-issues { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:24px; margin-top:24px; }
+.home-echo-issues[data-count="1"] { grid-template-columns:1fr; }
+.home-echo-description span { white-space:nowrap; }
+.home-echo-issue { display:grid; grid-template-columns:108px minmax(0,1fr); gap:16px; align-items:center; min-width:0; color:var(--c-text); text-decoration:none; }
+.home-echo-issue img { display:block; width:100%; height:auto; aspect-ratio:3 / 4; }
+.home-echo-meta { display:flex; gap:4px 8px; flex-wrap:wrap; margin:0 0 8px; color:var(--c-text-muted); font:11px/1.6 var(--font-mono); }
+.home-echo-issue h3 { margin:0; font:600 18px/1.5 Georgia,'Noto Serif SC',serif; text-wrap:balance; }
+.home-echo-read { display:inline-flex; align-items:center; gap:8px; min-height:44px; margin-top:8px; color:var(--c-text); font-size:12px; }
+.home-echo-issue:hover h3,.home-echo-archive:hover { text-decoration:underline; text-underline-offset:4px; }
+.home-echo [aria-hidden="true"] { color:var(--accent); }
+.home-echo a:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+.home-echo-note { margin:24px 0 0; padding-top:16px; border-top:1px solid var(--c-border); color:var(--c-text-muted); font-size:11px; line-height:1.8; }
+@media(max-width:760px) { .home-echo-issues { grid-template-columns:1fr; } .home-echo-issue + .home-echo-issue { padding-top:16px; border-top:1px solid var(--c-border); } }
+@media(max-width:480px) { .home-echo-heading { align-items:flex-start; gap:8px; } .home-echo-heading h2 { max-width:190px; } .home-echo-intro { font-size:21px; } .home-echo-issue { grid-template-columns:80px minmax(0,1fr); } .home-echo-issue h3 { font-size:17px; } }
+</style>

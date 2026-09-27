@@ -1,0 +1,20 @@
+---
+import type { Section } from '../data/issue';
+import { copy, localeOf } from '../data/i18n';
+import MarginNote from './MarginNote.astro';
+import PullQuote from './PullQuote.astro';
+import EditorialText from './EditorialText.astro';
+interface Props { section: Section; }
+const { section } = Astro.props;
+const en = localeOf(Astro.url.pathname) === 'en';
+---
+<section class="passage" id={section.id} aria-labelledby={`${section.id}-title`}>
+  <div class="passage-body">
+    <p class="section-index">{section.number} <span>{copy[localeOf(Astro.url.pathname)].note}</span></p>
+    <h2 id={`${section.id}-title`}>{en ? section.title.map(part => part.trim()).join(' ') : section.title.map(part => <span class="keep">{part}</span>)}</h2>
+    {section.paragraphs.map(paragraph => <p class="body-copy"><EditorialText text={paragraph} /></p>)}
+    {section.quote && <div class="passage-quote"><PullQuote source={section.source} text={section.quote} /></div>}
+    <slot />
+  </div>
+  <div class="passage-margin"><MarginNote text={section.note} /></div>
+</section>

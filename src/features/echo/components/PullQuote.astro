@@ -1,0 +1,24 @@
+---
+import EditorialText from './EditorialText.astro';
+import { letterPath } from '../data/letters';
+import { copy, localeOf } from '../data/i18n';
+interface Props { source?: string; hero?: boolean; text?: string; }
+const { source, hero = false, text } = Astro.props;
+const lang = localeOf(Astro.url.pathname), t = copy[lang];
+---
+<figure class:list={['pull-quote', { 'hero-quote': hero }]}>
+  <figcaption class="eyebrow">{t.quote}{hero && source && <span class="quote-hint">{t.readReply} ↗</span>}</figcaption>
+  <blockquote>{source ? <a class="quote-jump" href={letterPath(source, lang) + '#reply'} aria-description={t.openReply}>{text ? <EditorialText text={text} keepWords /> : <slot />}</a> : text ? <EditorialText text={text} keepWords /> : <slot />}</blockquote>
+  {source && !hero && <a class="text-button quote-source" href={letterPath(source, lang)}>{t.openLetter} <span aria-hidden="true">↗</span></a>}
+</figure>
+<style>
+  figure { margin: 0; }
+  figcaption { color: var(--muted); margin-bottom: var(--space-3); }
+  blockquote { color: var(--pen); font: var(--type-quote-inline)/1.8 var(--hand); text-wrap: balance; }
+  .hero-quote blockquote { font-size: var(--text-quote); line-height: 1.5; letter-spacing: -.035em; }
+  .quote-source { display: inline-flex; align-items: center; color: var(--pine); font-size: var(--text-small); margin-top: var(--space-2); }
+  .quote-jump { display: block; color: inherit; font: inherit; line-height: inherit; letter-spacing: inherit; text-align: left; text-wrap: balance; text-decoration: none; }
+  .quote-jump:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: var(--underline-offset); }
+  .quote-hint { display: inline-block; font: var(--type-caption-small)/1.8 var(--sans); letter-spacing: 0; margin-left: var(--space-2); }
+  @media (max-width: 600px) { blockquote { font-size: var(--type-quote-inline); line-height: 1.7; } }
+</style>

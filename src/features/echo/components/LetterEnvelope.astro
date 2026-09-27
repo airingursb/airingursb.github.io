@@ -1,0 +1,25 @@
+---
+import type { Correspondence } from '../data/letters';
+import { displayDate } from '../data/letters';
+import PostalMark from './PostalMark.astro';
+import { copy, localeOf } from '../data/i18n';
+interface Props { readonly letter: Correspondence; readonly compact?: boolean; }
+const { letter, compact = false } = Astro.props;
+const Heading = compact ? 'h3' : 'h1';
+const lang = localeOf(Astro.url.pathname), t = copy[lang];
+---
+<div class:list={['letter-envelope', { 'envelope-compact': compact }]}>
+  <p class="envelope-edition"><span>{t.echoLetters}</span><span>NO. {letter.number}</span></p>
+  <PostalMark date={letter.incoming.date} number={letter.number} />
+  <div class="envelope-address">
+    <p class="envelope-to">{letter.round ?? t.recipient} / {t.toAiring}</p>
+    <Heading>{lang === 'en' ? <><span class="envelope-from-prefix">From </span>{letter.code}</> : <>{letter.code}<span class="envelope-from-suffix">的来信</span></>}</Heading>
+    <p class="envelope-subject">{letter.title}</p>
+    <p class="envelope-code">{t.alias} · {letter.code}</p>
+  </div>
+  <div class="envelope-dates">
+    <span>{t.incoming} <time datetime={letter.incoming.date}>{displayDate(letter.incoming.date, lang)}</time></span>
+    <span>{t.reply} <time datetime={letter.reply.date}>{displayDate(letter.reply.date, lang)}</time></span>
+  </div>
+  {compact && <span class="envelope-open">{t.openLetter} <span aria-hidden="true">↗</span></span>}
+</div>

@@ -1,0 +1,37 @@
+---
+import BearPostOffice from './BearPostOffice.astro';
+import { localeOf } from '../data/i18n';
+import '../styles/post-office.css';
+const lang = localeOf(Astro.url.pathname), en = lang === 'en';
+const href = 'mailto:airingdeng@gmail.com?subject=' + encodeURIComponent(en ? 'A letter to Airing' : '写给 Airing 的一封信');
+const steps = en ? [
+  ['01', 'Write freely', 'Tell me your situation, the choices in front of you, and the question on your mind.'],
+  ['02', 'A personal reply, free of charge', 'Letters and replies are free. We can take our time with the question.'],
+  ['03', 'More than 180 days later', 'Only after our exchange has ended for over 180 days may it be anonymized and selected for an issue.'],
+] : [
+  ['01', '写下你的困惑', '说说你的处境、正在纠结的选择，以及希望我回答的问题。'],
+  ['02', '来信与回信，都是免费的', '不必急着把问题想清楚，我们可以在往返里慢慢聊。'],
+  ['03', '超过 180 天，再脱敏选编', '从通信结束算起。隐去身份与私人细节后，部分往返会编入专题。'],
+];
+---
+<header class="post-office">
+  <div class="post-office-grid">
+    <div class="post-office-title">
+      <p class="journal-kicker">Letters to Airing</p>
+      <h1>{en ? 'Echo' : '回声'}<small>{en ? 'A correspondence journal' : '通信期刊'}</small></h1>
+    </div>
+    <div class="post-office-intro">
+      <p class="post-office-lede">{en ? 'Some questions are worth a letter.' : '有些困惑，适合写成一封信。'}</p>
+      <p>{en ? 'About learning, work, or a choice you keep returning to. Tell me what is on your mind. We can start there.' : '关于学习、工作，或一个迟迟没想清楚的选择。把你的处境和问题写给我，我们从这里聊起。'}</p>
+    </div>
+    <div class="post-office-actions">
+      <a class="post-office-write" href={href}><svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1" /><path d="m3 6 9 7 9-7" /></svg>{en ? 'Write to Airing' : '给 Airing 写信'}<span class="post-office-free">{en ? 'FREE' : '免费'}</span></a>
+      <a class="post-office-email" href={href}>airingdeng@gmail.com <span aria-hidden="true">↗</span></a>
+    </div>
+    <BearPostOffice lang={lang} href={href} />
+  </div>
+  <ol class="post-office-policy" aria-label={en ? 'From your inbox to this journal' : '从一封来信，到一期回声'}>
+    {steps.map(([number, title, note]) => <li><span class="post-policy-number" aria-hidden="true">{number}</span><div><h2>{title}</h2><p>{note}</p></div></li>)}
+  </ol>
+  <p class="post-office-edition">{en ? 'Replies by Airing · One issue · Four exchanges' : 'Airing 回信 · 一期专题 · 四组往返'}</p>
+</header>

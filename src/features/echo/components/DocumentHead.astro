@@ -1,0 +1,28 @@
+---
+import { localPath } from '../data/i18n';
+interface Props { readonly title: string; readonly description: string; readonly image?: string; }
+const { title, description, image } = Astro.props;
+const path = Astro.url.pathname.replace(/^\/(?:en\/)?echo/, '') || '/';
+const site = Astro.site ?? new URL('https://ursb.me');
+const canonical = new URL(Astro.url.pathname, site);
+---
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="description" content={description} />
+<meta name="theme-color" content="#ffffff" />
+<title>{title}</title>
+<link rel="canonical" href={canonical} />
+<link rel="icon" href="https://airing.ursb.me/image/favicon.ico" />
+<link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico" />
+<link rel="alternate" hreflang="zh-CN" href={new URL(localPath(path, 'zh'), site)} />
+<link rel="alternate" hreflang="en" href={new URL(localPath(path, 'en'), site)} />
+<link rel="alternate" hreflang="x-default" href={new URL(localPath(path, 'zh'), site)} />
+<meta property="og:type" content={path === '/' ? 'website' : 'article'} />
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:url" content={canonical} />
+<meta property="og:site_name" content="Airing's Blog" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+{image && <><meta property="og:image" content={new URL(image, site)} /><meta name="twitter:image" content={new URL(image, site)} /><meta property="og:image:width" content="540" /><meta property="og:image:height" content="720" /></>}

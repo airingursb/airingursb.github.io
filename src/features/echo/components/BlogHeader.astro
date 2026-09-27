@@ -1,0 +1,16 @@
+---
+import SiteHeader from '../../../components/SiteHeader.astro';
+import { copy, localeOf } from '../data/i18n';
+import '../styles/site-shell.css';
+interface Props { readonly context?: string; }
+const { context } = Astro.props;
+const lang = localeOf(Astro.url.pathname);
+---
+<SiteHeader lang={lang} breadcrumb={context ?? `${copy[lang].name} / ${copy[lang].journal}`} />
+<script>
+  import '../analytics';
+  const languageLinks = document.querySelectorAll<HTMLAnchorElement>('[data-lang-switch]');
+  const syncLanguageAnchor = () => languageLinks.forEach(link => { link.hash = location.hash; });
+  syncLanguageAnchor();
+  window.addEventListener('hashchange', syncLanguageAnchor);
+</script>

@@ -1,0 +1,20 @@
+---
+import { issuesFor, issuePath } from '../data/issues';
+import { copy, localeOf, localPath } from '../data/i18n';
+interface Props { readonly current?: string; }
+const { current } = Astro.props;
+const lang = localeOf(Astro.url.pathname), t = copy[lang], issues = issuesFor(lang);
+---
+<nav class="issue-switcher" aria-label={t.issueNav}>
+  <a href={localPath('/', lang)}>{t.archive}</a>
+  <div>{issues.map(issue => <a href={issuePath(issue.number, lang)} aria-current={current === issue.number ? 'page' : undefined}><span>{issue.number}</span>{issue.category}</a>)}</div>
+</nav>
+<style>
+.issue-switcher { display:flex; gap:var(--space-3); align-items:center; justify-content:space-between; font:var(--text-small)/1.6 var(--sans); padding:var(--space-2) var(--page-inset); border-bottom:1px solid var(--rule); }
+.issue-switcher > a { color:var(--muted); }
+.issue-switcher div { display:flex; gap:var(--space-3); flex-wrap:wrap; }
+a { display:inline-flex; gap:var(--space-1); align-items:center; min-height:var(--control-size); text-decoration:none; }
+[aria-current] { color:var(--pine); text-decoration:underline; text-underline-offset:var(--space-1); }
+span { font-variant-numeric:tabular-nums; }
+@media(max-width:600px) { .issue-switcher { display:block; padding-block:var(--space-1); } .issue-switcher > a { display:none; } .issue-switcher div { justify-content:space-between; gap:var(--space-1); } }
+</style>

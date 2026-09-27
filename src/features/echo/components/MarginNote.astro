@@ -1,0 +1,20 @@
+---
+import { localeOf } from '../data/i18n';
+interface Props { text: string; }
+const { text } = Astro.props;
+const en = localeOf(Astro.url.pathname) === 'en';
+---
+<aside class="margin-note" aria-label={en ? 'Editorial note' : '编辑批注'}>
+  <svg viewBox="0 0 130 48" fill="none" aria-hidden="true"><path d="M127 24C84 0 37 9 5 33m0 0 4-14M5 33l16-2" /></svg>
+  <p>{en ? text.replaceAll('\n', ' ') : text.split('\n').map(line => <span>{line}</span>)}</p>
+</aside>
+<style>
+  .margin-note { color: var(--pen); font: var(--text-note)/1.5 var(--hand); }
+  svg { width: 100px; height: 42px; stroke: currentColor; stroke-width: 1.15; }
+  span { display: block; white-space: nowrap; }
+  @media (max-width: 1279px) { span { display: inline-block; } span + span::before { content: ' '; } }
+  @media (max-width: 600px) {
+    .margin-note { border-left: 1px solid var(--pen); padding-left: var(--space-2); }
+    svg { display: none; }
+  }
+</style>

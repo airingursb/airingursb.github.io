@@ -1,0 +1,25 @@
+---
+import { lettersFor } from '../data/catalog';
+import { letterPath, displayDate } from '../data/letters';
+import { copy, localeOf } from '../data/i18n';
+const lang = localeOf(Astro.url.pathname), t = copy[lang];
+const choiceLetters = lettersFor(lang).filter(letter => letter.issue === '02');
+const steps = [t.trailFirst, t.trailSecond, t.trailThird];
+---
+<div class="correspondence-trail">
+  <p>{t.trail}</p>
+  <ol>{choiceLetters.slice(0,3).map((letter, index) => <li><a href={letterPath(letter.id, lang)}><time datetime={letter.incoming.date}>{displayDate(letter.incoming.date, lang)}</time><span>{letter.round}</span><strong>{steps[index]}</strong></a></li>)}</ol>
+  <p class="trail-note">{t.trailNote}</p>
+</div>
+<style>
+.correspondence-trail { border-block:1px solid var(--rule); padding:var(--space-3) 0; color:var(--muted); font:var(--text-small)/1.8 var(--sans); }
+ol { margin:var(--space-3) 0; padding:0; list-style:none; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--space-3); }
+li { padding-left:var(--space-2); border-left:1px solid var(--rule); }
+a { display:flex; flex-direction:column; gap:var(--space-1); text-decoration:none; }
+a:hover strong { text-decoration:underline; }
+time { font-size:var(--type-caption-label); }
+strong { color:var(--pine); font:var(--text-label)/1.8 var(--serif); }
+a > span { color:var(--pen); font-family:var(--hand); }
+.trail-note { font-size:var(--type-caption-label); }
+@media(max-width:600px) { ol { grid-template-columns:1fr; gap:var(--space-2); } a { display:grid; grid-template-columns:1fr auto; } a > strong { grid-column:1 / -1; } }
+</style>

@@ -1,0 +1,47 @@
+---
+import '../styles/tokens.css';
+import '../styles/letters.css';
+import { letterPath, type Correspondence } from '../data/letters';
+import { issuePath } from '../data/catalog';
+import { copy, localeOf } from '../data/i18n';
+import BlogHeader from './BlogHeader.astro';
+import DocumentHead from './DocumentHead.astro';
+import LetterEnvelope from './LetterEnvelope.astro';
+import LetterSheet from './LetterSheet.astro';
+import CorrespondenceNav from './CorrespondenceNav.astro';
+import EditorialText from './EditorialText.astro';
+import ShareButton from './ShareButton.astro';
+import ShareDialog from './ShareDialog.astro';
+import { shareCover } from '../data/covers';
+import handFont from '../assets/hand.woff2?url';
+interface Props { readonly letter: Correspondence; readonly next: Correspondence; }
+const { letter, next } = Astro.props;
+const lang = localeOf(Astro.url.pathname), t = copy[lang];
+const back = issuePath(letter.issue ?? '01', lang);
+---
+<!doctype html>
+<html lang={lang === 'en' ? 'en' : 'zh-CN'} class="letters-document">
+  <head><DocumentHead title={letter.title + ' · ' + letter.code + ' / ' + t.name} description={letter.title + ' · ' + t.colophon} image={shareCover(letter.issue ?? '01', lang)} /><link rel="preload" href={handFont} as="font" type="font/woff2" crossorigin /></head>
+  <body class="letter-desk" id="top" data-issue={letter.issue ?? '01'} data-letter={letter.id}>
+    <a class="skip-link" href="#incoming">{t.skipLetter}</a>
+    <BlogHeader context={`${t.name} / ${t.transcript}`} />
+    <main data-pagefind-body class="correspondence-book">
+      {lang === 'en' && <p class="translation-note">{t.translated} · {t.alias}: {letter.code}<a href={letterPath(letter.id)} data-lang-switch="zh">{t.original} ↗</a></p>}
+      <LetterEnvelope letter={letter} />
+      <div class="letter-share"><ShareButton number={letter.issue ?? '01'} title={`${t.name} · ${letter.title}`} label={lang === 'en' ? 'Share this exchange' : '分享这组往返'} /></div>
+      <CorrespondenceNav back={back} />
+      <LetterSheet letter={letter.incoming} number={letter.number} />
+      <LetterSheet letter={letter.reply} number={letter.number}>
+        <Fragment slot="attachment-translation">
+          <p>When you want to get rid of a bad habit, focus less on removing it and more on adding a good habit.</p>
+          <p>For example, if you drink too many carbonated drinks and want to change that habit, first focus on drinking more water each day. If you want to spend less time on your phone, focus on spending more time exercising and reading every day.</p>
+        </Fragment>
+      </LetterSheet>
+      <footer class="letter-return-slip">
+        <p class="letter-farewell">{t.farewell}</p><p><EditorialText text={t.privacy} /></p>
+        <nav class="letter-next" aria-label={t.continue}><a href={back + '#letters'}>{t.backLetters} ↙</a><a href={letterPath(next.id, lang)}>{t.next} · {next.code}{next.round ? ' · ' + next.round : ''} →</a></nav>
+      </footer>
+    </main>
+    <ShareDialog /><script>import '../longform-reader';</script>
+  </body>
+</html>

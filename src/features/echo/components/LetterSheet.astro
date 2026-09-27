@@ -1,0 +1,39 @@
+---
+import { Image } from 'astro:assets';
+import type { Manuscript } from '../data/letters';
+import { displayDate } from '../data/letters';
+import EditorialText from './EditorialText.astro';
+import habitsImage from '../assets/original-habits.png';
+import { copy, localeOf } from '../data/i18n';
+interface Props { readonly letter: Manuscript; readonly number: string; }
+const { letter, number } = Astro.props;
+const lang = localeOf(Astro.url.pathname), t = copy[lang];
+---
+<section class:list={['letter-sheet', { 'reply-sheet': letter.id === 'reply' }]} id={letter.id} aria-labelledby={letter.id + '-heading'}>
+  <header class="sheet-header">
+    <div class="stationery-imprint"><span class="stationery-brand" aria-hidden="true">{t.name}</span><span>{t.stationery}<span class="stationery-small">{t.greeting}</span></span><p class="sheet-folio">NO. {number}<span>{letter.label}</span></p></div>
+    <div class="sheet-route"><h2 id={letter.id + '-heading'}>{letter.sender} {t.to} {letter.recipient}</h2><time datetime={letter.date}>{displayDate(letter.date, lang)}</time></div>
+  </header>
+  <div class="sheet-writing">
+    {letter.salutation && <p class="sheet-salutation"><EditorialText text={letter.salutation} keepWords /></p>}
+    <div class="sheet-body">
+      {letter.paragraphs.map(paragraph => paragraph.attachment
+        ? <figure class="letter-attachment" data-letter-block={paragraph.id}>
+            <a href={habitsImage.src} aria-label={t.openImage}>
+              <Image src={habitsImage} alt={t.imageAlt} width={640} format="webp" loading="lazy" decoding="async" />
+            </a>
+            <figcaption>{t.attachment} <a href={habitsImage.src}>{t.fullImage} ↗</a></figcaption>
+            {lang === 'en' && <div class="attachment-translation"><p><strong>Translation of the original attachment</strong></p><slot name="attachment-translation" /></div>}
+          </figure>
+        : paragraph.quotation
+          ? <blockquote class="letter-quotation" data-letter-block={paragraph.id}><EditorialText text={paragraph.text} /></blockquote>
+          : <p class:list={['letter-paragraph', { 'letter-redaction': paragraph.redaction }]} data-letter-block={paragraph.id}><EditorialText text={paragraph.text} /></p>)}
+    </div>
+    <footer class="sheet-signoff">
+      {letter.closing && <p><EditorialText text={letter.closing} /></p>}
+      <p class="sheet-signature">{letter.signature}</p>
+      <time datetime={letter.date}>{displayDate(letter.date, lang)}</time>
+    </footer>
+  </div>
+  <div class="stationery-footer" aria-hidden="true"><span>{t.name} · {t.journal}</span><span>{letter.id === 'incoming' ? t.incomingMark : t.replyMark}</span></div>
+</section>
