@@ -2,12 +2,19 @@
 import SubscriptionDialog from '../../SubscriptionDialog.astro';
 import zhHtml from '../../../data/ai-weekly/001.html?raw';
 import enHtml from '../../../data/ai-weekly/001.en.html?raw';
-import type { WeeklyLocale } from '../../../data/ai-weekly';
+import { aiWeeklyIssues, weeklyDateLabel, type WeeklyLocale } from '../../../data/ai-weekly';
 import '../../../styles/ai-weekly-detail.css';
 
 interface Props { lang: WeeklyLocale }
 const { lang } = Astro.props;
 const zh = lang === 'zh';
+const issue = aiWeeklyIssues[0];
+const publication = zh ? 'AI 趋势周刊' : 'AI Trends Weekly';
+const title = `${publication} ${issue.number} · ${issue.title[lang].join(' ')}`;
+const description = issue.description[lang];
+const canonical = new URL(issue.href[lang], 'https://ursb.me').href;
+const socialImage = new URL(issue.socialImage[lang], 'https://ursb.me').href;
+const imageAlt = `${title} · ${weeklyDateLabel(issue)} · ${zh ? '编辑 Airing；小熊与铁路道岔封面' : 'Edited by Airing; bear and railway-junction cover'}`;
 const html = zh ? zhHtml : enHtml;
 const head = html.match(/<head>([\s\S]*?)<\/head>/)?.[1];
 const body = html.match(/<body>([\s\S]*?)<\/body>/)?.[1];
@@ -22,6 +29,28 @@ const content = body
 <html lang={zh ? 'zh-CN' : 'en'}>
   <head>
     <Fragment set:html={head} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content={publication} />
+    <meta property="og:locale" content={zh ? 'zh_CN' : 'en_US'} />
+    <meta property="og:locale:alternate" content={zh ? 'en_US' : 'zh_CN'} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={socialImage} />
+    <meta property="og:image:secure_url" content={socialImage} />
+    <meta property="og:image:type" content="image/jpeg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="600" />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:creator" content="@airingursb" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={socialImage} />
+    <meta name="twitter:image:alt" content={imageAlt} />
     <script is:inline defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script>
     <link rel="alternate" hreflang="zh-CN" href="https://ursb.me/reading/weekly/001/" />
     <link rel="alternate" hreflang="en" href="https://ursb.me/en/reading/weekly/001/" />

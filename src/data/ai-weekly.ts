@@ -11,6 +11,7 @@ export type AIWeeklyIssue = {
   readonly href: WeeklyText;
   readonly cover: WeeklyText;
   readonly shareCover: WeeklyText;
+  readonly socialImage: WeeklyText;
   readonly columns: readonly { readonly anchor: string; readonly source: string; readonly relatedSources?: readonly string[]; readonly title: WeeklyText; readonly description: WeeklyText }[];
   readonly title: Readonly<Record<WeeklyLocale, readonly string[]>>;
   readonly description: WeeklyText;
@@ -31,6 +32,7 @@ export const aiWeeklyIssues = [
     href: { zh: '/reading/weekly/001/', en: '/en/reading/weekly/001/' },
     cover: { zh: '/reading/weekly/001/assets/shelf-cover.webp', en: '/reading/weekly/001/assets/shelf-cover-en.webp' },
     shareCover: { zh: '/reading/weekly/001/assets/share-cover-01.png', en: '/reading/weekly/001/assets/share-cover-01-en.png' },
+    socialImage: { zh: '/reading/weekly/001/social-zh.jpg', en: '/reading/weekly/001/social-en.jpg' },
     columns: issue001Columns,
     title: { zh: ['Jev，Agent', '该如何做决定？'], en: ['Jev: how should an agent make decisions?'] },
     description: {
