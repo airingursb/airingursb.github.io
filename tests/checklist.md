@@ -2094,6 +2094,9 @@
 
 ## Echo production journal and homepage entry (2026-09-27)
 
+- [x] Homepage write analytics: in zh/en, consultation CTA, paused-consultation dialog email CTA and footer email link each emit one `letter-write-open` with `surface=home` and their distinct `placement`; nested label clicks and keyboard activation work, Gmail destinations remain intact, and payloads contain no email address or letter text.
+- [x] Echo PNG optimization: original illustrations and share covers retain dimensions and decoded RGBA pixels exactly; smaller optimized files only. Responsive WebP display derivatives remain distinct from lossless PNG originals.
+
 - [ ] Canonical /echo/ and /en/echo/ archives, the first issue and four anonymized exchanges load; language switching retains the current exchange and anchor.
 - [ ] Existing blog navigation includes English Echo; original favicon unchanged; no new blog-body promotional block.
 - [ ] Homepage card is between letter consultation and guestbook, follows light/dark theme and zh/en toggle, and links to the corresponding issue/archive language at 375/768/1280px.
