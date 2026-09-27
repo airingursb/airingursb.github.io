@@ -348,6 +348,7 @@
 
 ## Moments (`/moments/`)
 
+- [ ] 中英文动态页：豆瓣电影/图书封面使用自有 CDN，在桌面和手机首屏及加载更多后均正常显示；下载失败保留已有托管封面，不恢复豆瓣防盗链外链。回归：`uv run --with pytest pytest -q tests/test_moment_preview_images.py`；历史修复：`python3 scripts/resync_link_previews.py --douban-images`。
 - [ ] GET `/moments/` returns page
 - [ ] DOM: `.moment-item` exists (timeline items)
 - [ ] DOM: Nav tabs include "Moments" link

@@ -12,6 +12,7 @@ import hashlib
 import hmac
 import time
 import tempfile
+from urllib.parse import urlparse
 
 # Load .env file from repo root (for local development)
 _env_file = os.path.join(os.path.dirname(__file__), '..', '.env')
@@ -114,12 +115,13 @@ def upload_to_cos(image_data, key, content_type='image/jpeg'):
         return None
 
 
-def download_image(url):
+def download_image(url: str, referer: str = '') -> tuple[bytes | None, str | None]:
     """Download image from URL, return (data, content_type) or (None, None)."""
     try:
-        req = urllib.request.Request(url, headers={
-            'User-Agent': 'Mozilla/5.0 (compatible; FeedBot/1.0)'
-        })
+        headers = {'User-Agent': 'Mozilla/5.0 (compatible; FeedBot/1.0)'}
+        if referer:
+            headers['Referer'] = referer
+        req = urllib.request.Request(url, headers=headers)
         resp = urllib.request.urlopen(req, timeout=30)
         data = resp.read()
         content_type = resp.headers.get('Content-Type', 'image/jpeg')
@@ -214,6 +216,32 @@ def is_pin_message(text):
 
 # ── OG Metadata Fetching ────────────────────────────────────
 
+def host_douban_cover(url: str) -> str:
+    """Publish a Douban cover on our CDN; never give browsers a blocked hotlink."""
+    hostname = urlparse(url).hostname or ''
+    if not hostname.endswith('.doubanio.com'):
+        return url
+    if not cos_enabled():
+        print('[COS] Cannot host Douban cover: storage is not configured.', file=sys.stderr)
+        return ''
+    data, content_type = download_image(url, referer='https://movie.douban.com/')
+    if not data or not content_type:
+        return ''
+    mime = content_type.split(';', 1)[0].strip().lower()
+    signatures = {
+        'image/jpeg': (data.startswith(b'\xff\xd8\xff'), 'jpg'),
+        'image/png': (data.startswith(b'\x89PNG\r\n\x1a\n'), 'png'),
+        'image/webp': (data.startswith(b'RIFF') and data[8:12] == b'WEBP', 'webp'),
+    }
+    valid, extension = signatures.get(mime, (False, ''))
+    if not valid:
+        print(f'[COS] Invalid Douban cover response: {mime}', file=sys.stderr)
+        return ''
+    digest = hashlib.sha256(data).hexdigest()
+    key = f'moments/previews/{digest}.{extension}'
+    return upload_to_cos(data, key, mime) or ''
+
+
 def extract_urls(text):
     """Extract URLs from text content."""
     if not text:
@@ -249,7 +277,7 @@ def fetch_douban_metadata(url):
             'url': url,
             'title': title,
             'description': ' / '.join(desc_parts),
-            'image': data.get('pic', {}).get('normal', ''),
+            'image': host_douban_cover(data.get('pic', {}).get('normal', '')),
         }
     except Exception:
         return None
@@ -449,17 +477,14 @@ def upsert_moments(records):
         return False
 
 
-def fetch_existing_images(post_ids):
-    """Fetch existing image URLs from Supabase for given telegram_post_ids.
-    Returns dict: { telegram_post_id: [image_urls] }"""
+def fetch_existing_images(post_ids, field='images'):
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY or not post_ids:
         return {}
 
-    # Query moments by telegram_post_id, only select images column
     ids_param = ','.join(f'"{pid}"' for pid in post_ids)
     endpoint = (
         f'{SUPABASE_URL.rstrip("/")}/rest/v1/moments'
-        f'?select=telegram_post_id,images'
+        f'?select=telegram_post_id,{field}'
         f'&telegram_post_id=in.({ids_param})'
     )
 
@@ -473,7 +498,7 @@ def fetch_existing_images(post_ids):
         data = json.loads(resp.read().decode('utf-8'))
         result = {}
         for row in data:
-            imgs = row.get('images') or []
+            imgs = row.get(field) or []
             if imgs:
                 result[row['telegram_post_id']] = imgs
         return result
@@ -498,6 +523,17 @@ def main():
     if not messages:
         print('No messages to upsert.')
         return
+
+    existing_previews = fetch_existing_images(
+        [m['telegram_post_id'] for m in messages], 'link_previews'
+    )
+    for msg in messages:
+        previous = {p['url']: p for p in existing_previews.get(msg['telegram_post_id'], [])}
+        for preview in msg['link_previews']:
+            old_image = previous.get(preview['url'], {}).get('image') or ''
+            old_host = urlparse(old_image).hostname or ''
+            if not preview.get('image') and old_host and not old_host.endswith('.doubanio.com'):
+                preview['image'] = old_image
 
     # Migrate images from Telegram CDN to COS (skip already-migrated ones)
     if cos_enabled():

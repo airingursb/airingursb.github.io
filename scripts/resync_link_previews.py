@@ -12,7 +12,7 @@ import sys
 import urllib.request
 
 sys.path.insert(0, os.path.dirname(__file__))
-from sync_moments import get_link_previews, extract_urls
+from sync_moments import get_link_previews, extract_urls, host_douban_cover, cos_enabled
 
 SUPABASE_URL = 'https://pcoyocvqfipuydhvdsle.supabase.co'
 SERVICE_KEY = os.environ.get('BLOG_SUPABASE_SERVICE_KEY', '')
@@ -32,6 +32,36 @@ def fetch_moments_with_empty_previews():
     return json.loads(resp.read().decode())
 
 
+def repair_douban_images() -> None:
+    if not cos_enabled():
+        raise SystemExit('COS must be configured to repair Douban covers.')
+    offset = 0
+    updated = 0
+    while True:
+        req = urllib.request.Request(
+            f'{SUPABASE_URL}/rest/v1/moments?select=id,link_previews&order=id&limit=100&offset={offset}',
+            headers={'apikey': SERVICE_KEY, 'Authorization': f'Bearer {SERVICE_KEY}'},
+        )
+        with urllib.request.urlopen(req, timeout=30) as response:
+            moments = json.loads(response.read())
+        if not moments:
+            break
+        for moment in moments:
+            previews = moment.get('link_previews') or []
+            changed = False
+            for preview in previews:
+                original = preview.get('image') or ''
+                hosted = host_douban_cover(original)
+                if hosted and hosted != original:
+                    preview['image'] = hosted
+                    changed = True
+            if changed:
+                update_moment_link_previews(moment['id'], previews)
+                updated += 1
+        offset += len(moments)
+    print(f'Repaired Douban covers in {updated} moments.')
+
+
 def update_moment_link_previews(moment_id, previews):
     """Update a moment's link_previews in Supabase."""
     req = urllib.request.Request(
@@ -49,9 +79,16 @@ def update_moment_link_previews(moment_id, previews):
 
 
 def main():
+    if '--help' in sys.argv:
+        print('Usage: python scripts/resync_link_previews.py [--douban-images]')
+        return
     if not SERVICE_KEY:
         print('Error: BLOG_SUPABASE_SERVICE_KEY environment variable is not set.')
         sys.exit(1)
+
+    if '--douban-images' in sys.argv:
+        repair_douban_images()
+        return
 
     print('Fetching moments with empty link_previews...')
     moments = fetch_moments_with_empty_previews()
