@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { getRssString } from '@astrojs/rss';
+import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import { parse } from 'parse5';
 import { aiWeeklyIssues, weeklyArticleCount } from '../src/data/ai-weekly.ts';
 import { aiWeeklyRssItems } from '../src/lib/ai-weekly-feed.ts';
@@ -48,15 +50,54 @@ test('English edition has translated visible text and accessible labels', () => 
 });
 
 for (const lang of ['zh', 'en']) {
-  test(`weekly RSS links all sixteen columns to the ${lang} edition`, () => {
-    const [entry] = aiWeeklyRssItems(aiWeeklyIssues, lang);
+  test(`weekly RSS attributes issue and all sixteen column links to the ${lang} edition`, () => {
+    // Given the issue's language-specific destination and public campaign metadata.
     const path = `${lang === 'en' ? '/en' : ''}/reading/weekly/001/`;
-    assert.equal(entry.link, path);
+    const campaign = { utm_source: 'ai-weekly', utm_medium: 'rss', utm_campaign: 'ai-weekly-001', lang };
+    // When the feed item is generated.
+    const [entry] = aiWeeklyRssItems(aiWeeklyIssues, lang);
     const content = nodes(parse(entry.content));
     const links = content.filter((node) => node.tagName === 'a').map((node) => attribute(node, 'href'));
-    assert.deepEqual(links, Array.from({ length: 16 }, (_, i) => `https://ursb.me${path}#column-${String(i + 1).padStart(2, '0')}`));
-    assert.equal(aiWeeklyIssues[0].columns.length, 16);
-    assert.ok(Number.isFinite(entry.pubDate.getTime()));
+    // Then every destination has only public attribution fields and retains its absolute path and anchor.
+    for (const [index, href] of [entry.link, ...links].entries()) {
+      const link = new URL(href, 'https://ursb.me');
+      const placement = index === 0 ? 'issue' : `column-${String(index).padStart(2, '0')}`;
+      assert.deepEqual(Object.fromEntries(link.searchParams), { ...campaign, utm_content: placement });
+      assert.equal(href, link.href);
+      assert.equal(link.origin, 'https://ursb.me');
+      assert.equal(link.pathname, path);
+      assert.equal(link.hash, index === 0 ? '' : `#${placement}`);
+    }
+    assert.equal(links.length, 16);
+  });
+
+  test(`weekly RSS XML keeps the ${lang} canonical GUID and publication metadata`, async () => {
+    // Given a previously published item identified by its original canonical URL.
+    const [issue] = aiWeeklyIssues;
+    const canonical = `https://ursb.me${issue.href[lang]}`;
+    const items = aiWeeklyRssItems([issue], lang);
+    // When the installed Astro RSS adapter serializes the tracked item.
+    const xml = await getRssString({ title: 'Weekly feed', description: 'RSS contract', site: 'https://ursb.me', items });
+    const entry = new XMLParser({ ignoreAttributes: false }).parse(xml).rss.channel.item;
+    // Then tracking changes the clickable link without changing reader identity or metadata.
+    assert.equal(XMLValidator.validate(xml), true);
+    assert.deepEqual(entry.guid, { '#text': canonical, '@_isPermaLink': 'true' });
+    assert.equal(entry.link, new URL(items[0].link, 'https://ursb.me').href);
+    assert.equal(entry.pubDate, new Date(`${issue.publishedAt}T00:00:00+08:00`).toUTCString());
+    assert.deepEqual(entry.category, issue.topics.map((topic) => topic.title[lang]));
+    assert.equal(entry['content:encoded'], items[0].content);
+    assert.match(items[0].content, /utm_source=ai-weekly&amp;utm_medium=rss/);
+  });
+
+  test(`weekly RSS presents the complete ${lang} magazine cover at A4 proportions`, () => {
+    // Given the localized full cover used for issue sharing.
+    const [issue] = aiWeeklyIssues;
+    // When the RSS item is rendered as HTML.
+    const [entry] = aiWeeklyRssItems([issue], lang);
+    const image = nodes(parse(entry.content)).find((node) => node.tagName === 'img');
+    // Then readers see the complete cover without stretching the artwork.
+    assert.equal(attribute(image, 'src'), new URL(issue.shareCover[lang], 'https://ursb.me').href);
+    assert.ok(Math.abs(Number(attribute(image, 'height')) / Number(attribute(image, 'width')) - 297 / 210) < 0.001);
   });
 }
 
