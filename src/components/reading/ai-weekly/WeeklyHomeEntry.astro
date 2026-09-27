@@ -1,0 +1,96 @@
+---
+import { aiWeeklyIssues, weeklyArticleCount, weeklyDateLabel } from '../../../data/ai-weekly';
+import IssueCover from './IssueCover.astro';
+import IssueTitle from './IssueTitle.astro';
+import '../../../styles/ai-weekly.css';
+
+const latest = aiWeeklyIssues[0];
+const locales = ['zh', 'en'] as const;
+const editions = locales.map((lang) => ({
+  lang,
+  deck: latest.topics.reduce<Array<{ text: string; topic: boolean }>>((parts, topic) => parts.flatMap((part) =>
+    part.topic ? [part] : part.text.split(topic.title[lang]).flatMap((text, index) =>
+      index === 0
+        ? [{ text, topic: false }]
+        : [{ text: topic.title[lang], topic: true }, { text, topic: false }]
+    )
+  ), [{ text: latest.description[lang], topic: false }]),
+}));
+---
+
+<div class="home-weekly" id="ai-weekly">
+  {editions.map(({ lang, deck }) => {
+    const zh = lang === 'zh';
+    return (
+      <section class="card ai-weekly home-weekly-edition" lang={lang} aria-labelledby={`home-weekly-name-${lang}`}>
+        <div class="home-weekly-heading">
+          <div>
+            <h2 id={`home-weekly-name-${lang}`}>{zh ? 'AI 趋势周刊' : 'AI Trends Weekly'}</h2>
+            <p>{zh ? '每周一更新' : 'Every Monday'}</p>
+          </div>
+          <a class="ai-weekly-action home-weekly-archive" href={`${zh ? '' : '/en'}/reading/weekly/`}>
+            {zh ? '全部周刊' : 'All issues'} <span aria-hidden="true">→</span>
+          </a>
+        </div>
+        <div class="home-weekly-body">
+          <IssueCover issue={latest} lang={lang} />
+          <div class="home-weekly-copy">
+            <p class="ai-weekly-meta"><span>No. {latest.number}</span><span>{weeklyArticleCount(latest)} {zh ? '篇阅读' : 'reads'}</span></p>
+            <h3><a href={latest.href[lang]}><IssueTitle issue={latest} lang={lang} /></a></h3>
+            <p class="home-weekly-range">{weeklyDateLabel(latest)}</p>
+          </div>
+          <p class="ai-weekly-deck">{deck.map((part) => part.topic ? <span class="home-weekly-topic">{part.text}</span> : part.text)}</p>
+          <div class="ai-weekly-actions">
+            <a class="ai-weekly-action ai-weekly-read" href={latest.href[lang]} data-umami-event="weekly-issue-open" data-umami-event-surface="home" data-umami-event-issue={latest.number}>
+              {zh ? '翻开这一期' : 'Read this issue'} <span aria-hidden="true">↗</span>
+            </a>
+            <button class="ai-weekly-subscribe" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="home-weekly">
+              {zh ? '订阅周刊' : 'Subscribe'} <span aria-hidden="true">→</span>
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  })}
+</div>
+
+<style>
+  .home-weekly { grid-column: 1 / -1; }
+  .home-weekly-edition[lang='en'] { display: none; }
+  :global(html:lang(en)) .home-weekly-edition[lang='zh'] { display: none; }
+  :global(html:lang(en)) .home-weekly-edition[lang='en'] { display: block; }
+  .home-weekly-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--weekly-space-md);
+    margin-bottom: var(--weekly-space-md);
+  }
+  .home-weekly-heading h2 { margin: 0; font: 600 14px/1.5 var(--font-mono); }
+  .home-weekly-heading p { margin: 4px 0 0; color: var(--c-text-muted); font-size: 12px; }
+  .home-weekly-archive { flex-shrink: 0; font-size: 12px; }
+  .home-weekly-body {
+    display: grid;
+    grid-template-columns: 118px minmax(0, 1fr);
+    column-gap: var(--weekly-space-lg);
+    align-items: start;
+  }
+  .home-weekly-body > :global(.ai-weekly-cover) { grid-row: 1 / 4; }
+  .home-weekly-copy, .ai-weekly-deck, .ai-weekly-actions { grid-column: 2; min-width: 0; }
+  .home-weekly-copy h3 { margin: 0; font: 600 28px/1.4 var(--weekly-serif); text-wrap: balance; }
+  .home-weekly-copy h3 a { text-decoration: none; }
+  .home-weekly-copy h3 a:hover { text-decoration: underline; text-underline-offset: 5px; }
+  .home-weekly-range { margin: var(--weekly-space-xs) 0 0; color: var(--c-text-muted); font: 12px/1.8 var(--font-mono); }
+  .ai-weekly-deck { margin: var(--weekly-space-xs) 0 0; }
+  .home-weekly-topic { white-space: nowrap; }
+  .ai-weekly-actions { margin-top: var(--weekly-space-xs); }
+  @media (max-width: 480px) {
+    .home-weekly-body { grid-template-columns: 80px minmax(0, 1fr); column-gap: var(--weekly-space-md); }
+    .home-weekly-body > :global(.ai-weekly-cover) { grid-row: 1; }
+    .home-weekly-copy h3 { font-size: 21px; line-height: 1.45; }
+    .ai-weekly-meta { margin-bottom: var(--weekly-space-xs); gap: 4px 8px; }
+    .ai-weekly-meta span + span { padding-inline-start: var(--weekly-space-xs); }
+    .ai-weekly-deck, .ai-weekly-actions { grid-column: 1 / -1; }
+    .ai-weekly-deck { margin-top: var(--weekly-space-md); }
+  }
+</style>

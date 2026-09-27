@@ -1,0 +1,41 @@
+---
+import SubscriptionDialog from '../../SubscriptionDialog.astro';
+import zhHtml from '../../../data/ai-weekly/001.html?raw';
+import enHtml from '../../../data/ai-weekly/001.en.html?raw';
+import type { WeeklyLocale } from '../../../data/ai-weekly';
+import '../../../styles/ai-weekly-detail.css';
+
+interface Props { lang: WeeklyLocale }
+const { lang } = Astro.props;
+const zh = lang === 'zh';
+const html = zh ? zhHtml : enHtml;
+const head = html.match(/<head>([\s\S]*?)<\/head>/)?.[1];
+const body = html.match(/<body>([\s\S]*?)<\/body>/)?.[1];
+if (!head || !body) throw new Error('Weekly issue must contain a complete document');
+const editionSwitch = `<a class="weekly-language" data-weekly-language href="${zh ? '/en' : ''}/reading/weekly/001/" lang="${zh ? 'en' : 'zh-CN'}" hreflang="${zh ? 'en' : 'zh-CN'}">${zh ? 'English' : '简体中文'} ↗</a>`;
+const invitation = `<section class="weekly-invitation" id="subscribe" aria-labelledby="weekly-invitation-title"><div><p class="kicker">${zh ? '读完这一期，还有下一期' : 'Keep the discoveries coming'}</p><h2 id="weekly-invitation-title">${zh ? '把一周的 AI 阅读，寄给你。' : 'A week of AI reading, sent to you.'}</h2><p>${zh ? '本期封面、主题导读与全部专栏入口。可选中文或英文，每期一封。' : 'The cover, theme guide and every column. Choose English or Chinese; one email per issue.'}</p></div><div class="weekly-invitation-actions"><button type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="weekly-issue">${zh ? '订阅 AI 趋势周刊' : 'Get AI Trends Weekly'} →</button><a href="${zh ? '' : '/en'}/reading/weekly/feed.xml">${zh ? '周刊 RSS' : 'Weekly RSS'} ↗</a></div></section>`;
+const content = body
+  .replace('<a class="quick-contents"', `${editionSwitch}<a class="quick-contents"`)
+  .replace('<section class="editorial-note"', `${invitation}<section class="editorial-note"`);
+---
+<!doctype html>
+<html lang={zh ? 'zh-CN' : 'en'}>
+  <head>
+    <Fragment set:html={head} />
+    <link rel="alternate" hreflang="zh-CN" href="https://ursb.me/reading/weekly/001/" />
+    <link rel="alternate" hreflang="en" href="https://ursb.me/en/reading/weekly/001/" />
+    <link rel="alternate" hreflang="x-default" href="https://ursb.me/reading/weekly/001/" />
+    <link rel="alternate" type="application/rss+xml" title={zh ? 'AI 趋势周刊' : 'AI Trends Weekly'} href={`${zh ? '' : '/en'}/reading/weekly/feed.xml`} />
+  </head>
+  <body>
+    <Fragment set:html={content} />
+    <SubscriptionDialog />
+    <script>
+      const switchLink = document.querySelector<HTMLAnchorElement>('[data-weekly-language]');
+      switchLink?.addEventListener('click', () => {
+        switchLink.hash = location.hash;
+        localStorage.setItem('preferred_lang', switchLink.lang.startsWith('en') ? 'en' : 'zh');
+      });
+    </script>
+  </body>
+</html>

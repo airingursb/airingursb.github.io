@@ -1,0 +1,68 @@
+---
+import BaseLayout from '../../../layouts/BaseLayout.astro';
+import SiteHeader from '../../SiteHeader.astro';
+import IssueCover from './IssueCover.astro';
+import IssueTitle from './IssueTitle.astro';
+import { aiWeeklyIssues, weeklyArticleCount, weeklyDateLabel, type WeeklyLocale } from '../../../data/ai-weekly';
+import '../../../styles/reading.css';
+import '../../../styles/ai-weekly.css';
+import '../../../styles/ai-weekly-archive.css';
+
+interface Props { lang: WeeklyLocale }
+const { lang } = Astro.props;
+const zh = lang === 'zh';
+const readingHref = `${zh ? '' : '/en'}/reading/`;
+const years = [...new Set(aiWeeklyIssues.map((issue) => issue.startDate.slice(0, 4)))];
+const description = zh ? 'Airing 的 AI 趋势周刊。从一周的阅读收藏里，整理值得读懂的变化。' : 'AI Trends Weekly by Airing. Weekly editions drawn from Reading Stream.';
+---
+
+<BaseLayout title={`${zh ? 'AI 趋势周刊' : 'AI Trends Weekly'} · ${zh ? '周刊书架' : 'Issue archive'} · Airing`} description={description} lang={lang} hreflang={{ zh: '/reading/weekly/', en: '/en/reading/weekly/' }} ogImage={aiWeeklyIssues[0].cover[lang]}>
+  <div class="reading-page ai-weekly ai-weekly-archive">
+    <SiteHeader lang={lang} />
+    <main class="reading-shell">
+      <header class="ai-weekly-archive-hero">
+        <a class="ai-weekly-action ai-weekly-back" href={readingHref}>← {zh ? '回到阅读流' : 'Back to Reading Stream'}</a>
+        <p class="ai-weekly-eyebrow">Airing’s weekly editions</p>
+        <h1>{zh ? 'AI 趋势周刊' : 'AI Trends Weekly'}</h1>
+        <p class="ai-weekly-intro"><strong>{zh ? '每周一更新。' : 'New every Monday.'}</strong> {zh ? '每天收藏，每周读懂。' : 'Collected daily. Connected weekly.'}<br />{zh ? '把零散的阅读，编成可以翻阅、重读的一期。' : 'A weekly edition to open, explore, and revisit.'}</p>
+        <div class="ai-weekly-archive-byline"><span>{zh ? '编辑' : 'Edited by'} <a href={zh ? '/' : '/en/'} rel="author">Airing ↗</a></span><span>{zh ? `书架上共 ${aiWeeklyIssues.length} 期` : `${aiWeeklyIssues.length} issue on the shelf`}</span><span>{zh ? '取材于个人阅读流' : 'From my Reading Stream'}</span></div>
+      </header>
+
+      {years.map((year) => (
+        <section class="ai-weekly-year" aria-labelledby={`year-${year}`}>
+          <div class="ai-weekly-year-heading"><h2 id={`year-${year}`}>{year}</h2><p>{zh ? '按期收藏，慢慢成册。' : 'An ongoing collection.'}</p></div>
+          <div class="ai-weekly-editions">
+            {aiWeeklyIssues.filter((issue) => issue.startDate.startsWith(year)).map((issue, index) => (
+              <article class="ai-weekly-edition" aria-labelledby={`issue-${issue.number}`}>
+                <div class="ai-weekly-edition-cover"><IssueCover issue={issue} lang={lang} eager={index === 0} /></div>
+                <div class="ai-weekly-edition-copy">
+                  <p class="ai-weekly-meta"><span>No. {issue.number}</span><span>{zh ? '创刊试刊' : 'Pilot edition'}</span></p>
+                  <h3 id={`issue-${issue.number}`}><a href={issue.href[lang]}><IssueTitle issue={issue} lang={lang} /></a></h3>
+                  <p class="ai-weekly-date"><time datetime={issue.startDate}>{weeklyDateLabel(issue)}</time></p>
+                  <p class="ai-weekly-deck">{issue.description[lang]}</p>
+                  <p class="ai-weekly-summary">{zh ? `${weeklyArticleCount(issue)} 篇阅读 · ${issue.topics.length} 个主题` : `${weeklyArticleCount(issue)} reads · ${issue.topics.length} themes`}</p>
+                  <a class="ai-weekly-action ai-weekly-read" href={issue.href[lang]}>{zh ? '翻开这一期' : 'Read this issue'}<span aria-hidden="true">↗</span></a>
+                </div>
+                <nav class="ai-weekly-topics" aria-label={zh ? `第 ${issue.number} 期主题` : `Issue ${issue.number} themes`}>
+                  <h4>{zh ? '这一期里' : 'Inside this issue'}</h4>
+                  {issue.topics.map((topic, topicIndex) => (
+                    <a href={`${issue.href[lang]}#${topic.anchor}`}>
+                      <span class="ai-weekly-topic-number">{String(topicIndex + 1).padStart(2, '0')}</span>
+                      <span><strong>{topic.title[lang]}</strong><small>{topic.description[lang]}</small></span>
+                      <span class="ai-weekly-topic-count">{topic.count}<span class="ai-weekly-sr-only">{zh ? ' 篇专栏' : ' columns'}</span></span>
+                    </a>
+                  ))}
+                </nav>
+              </article>
+            ))}
+          </div>
+        </section>
+      ))}
+      <section class="ai-weekly-archive-end" id="subscribe" aria-labelledby="weekly-subscribe-title">
+        <div><h2 id="weekly-subscribe-title">{zh ? '下一期，送到你的邮箱。' : 'The next issue, in your inbox.'}</h2><p>{zh ? '封面、主题导读与全部专栏入口。可选中文或英文，每期一封。' : 'The cover, theme guide and every column. In English or Chinese, one email per issue.'}</p></div>
+        <div class="ai-weekly-actions"><button class="ai-weekly-subscribe" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="weekly-archive">{zh ? '订阅 AI 趋势周刊' : 'Get AI Trends Weekly'} <span aria-hidden="true">→</span></button><a class="ai-weekly-action" href={`${readingHref}weekly/feed.xml`}>{zh ? '周刊 RSS' : 'Weekly RSS'} ↗</a></div>
+      </section>
+    </main>
+    <footer class="reading-shell reading-footer">© 2026 Airing · {zh ? 'AI 趋势周刊' : 'AI Trends Weekly'}</footer>
+  </div>
+</BaseLayout>

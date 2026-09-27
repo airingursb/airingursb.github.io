@@ -1,0 +1,35 @@
+---
+import { aiWeeklyIssues, weeklyArticleCount, weeklyDateLabel, type WeeklyLocale } from '../../../data/ai-weekly';
+import IssueCover from './IssueCover.astro';
+import IssueTitle from './IssueTitle.astro';
+import '../../../styles/ai-weekly.css';
+
+interface Props { lang: WeeklyLocale }
+const { lang } = Astro.props;
+const latest = aiWeeklyIssues[0];
+const zh = lang === 'zh';
+const archiveHref = `${zh ? '' : '/en'}/reading/weekly/`;
+---
+
+<section class="ai-weekly ai-weekly-shelf" aria-labelledby="weekly-shelf-title">
+  <div class="ai-weekly-shelf-heading">
+    <div class="ai-weekly-shelf-heading-copy">
+      <h2 id="weekly-shelf-title">{zh ? 'AI 趋势周刊' : 'AI Trends Weekly'}</h2>
+      <p><strong>{zh ? '每周一更新。' : 'New every Monday.'}</strong> {zh ? '从每天的收藏，到一周的脉络。' : 'A weekly edition of Airing’s daily reading.'}</p>
+    </div>
+    <a class="ai-weekly-action" href={archiveHref}>{zh ? '全部周刊' : 'All issues'} <span class="ai-weekly-count">{String(aiWeeklyIssues.length).padStart(2, '0')}</span><span aria-hidden="true">→</span></a>
+  </div>
+  <div class="ai-weekly-shelf-body">
+    <IssueCover issue={latest} lang={lang} eager />
+    <div class="ai-weekly-shelf-copy">
+      <p class="ai-weekly-meta"><span>No. {latest.number}</span><span>{zh ? '创刊试刊' : 'Pilot edition'}</span><time datetime={latest.startDate}>{weeklyDateLabel(latest)}</time></p>
+      <h3><a href={latest.href[lang]}><IssueTitle issue={latest} lang={lang} /></a></h3>
+      <p class="ai-weekly-deck">{latest.description[lang]}</p>
+      <p class="ai-weekly-summary">{zh ? `${weeklyArticleCount(latest)} 篇阅读 · ${latest.topics.length} 个主题 · Airing 编辑` : `${weeklyArticleCount(latest)} reads · ${latest.topics.length} themes · Edited by Airing`}</p>
+      <div class="ai-weekly-actions">
+        <a class="ai-weekly-action ai-weekly-read" href={latest.href[lang]}>{zh ? '翻开这一期' : 'Read this issue'}<span aria-hidden="true">↗</span></a>
+        <button class="ai-weekly-subscribe" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="weekly-shelf">{zh ? '订阅下一期' : 'Get the next issue'} <span aria-hidden="true">→</span></button>
+      </div>
+    </div>
+  </div>
+</section>

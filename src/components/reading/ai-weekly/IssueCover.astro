@@ -1,0 +1,19 @@
+---
+import type { AIWeeklyIssue, WeeklyLocale } from '../../../data/ai-weekly';
+
+interface Props {
+  issue: AIWeeklyIssue;
+  lang: WeeklyLocale;
+  eager?: boolean;
+}
+const { issue, lang, eager = false } = Astro.props;
+const label = lang === 'zh'
+  ? `翻开《AI 趋势周刊》第 ${issue.number} 期：${issue.title.zh.join(' ')}`
+  : `Read AI Trends Weekly, issue ${issue.number}: ${issue.title.en.join(' ')}`;
+---
+
+<a class="ai-weekly-cover" href={issue.href[lang]} aria-label={label}>
+  <span class="ai-weekly-book">
+    <img src={issue.cover[lang]} width="540" height="960" alt={lang === 'zh' ? `第 ${issue.number} 期封面：小熊在铁路道岔旁思考 Jev 的决策分工` : `Issue ${issue.number} cover: Airing’s bear at a railway junction, illustrating Jev’s decision-making`} loading={eager ? 'eager' : 'lazy'} decoding="async" />
+  </span>
+</a>

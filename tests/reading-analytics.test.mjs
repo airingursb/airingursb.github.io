@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const files = await Promise.all([
   'src/components/reading/ReadingCard.astro',
+  'src/scripts/reading-stream.ts',
   'src/components/reading/ReadingShareModal.astro',
   'src/components/SubscriptionDialog.astro',
   'src/components/LangSwitch.astro',
