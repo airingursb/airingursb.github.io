@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import sharp from 'sharp';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import { getRssString } from '@astrojs/rss';
@@ -117,5 +118,32 @@ test('the issue represents every saved read in its coverage range, including rel
   for (const [index, document] of documents.entries()) {
     const links = new Set(nodes(document).filter((node) => node.tagName === 'a').map((node) => attribute(node, 'href')));
     for (const source of sources) assert.ok(links.has(index === 0 ? source : source.replace('/reading/', '/en/reading/')), source);
+  }
+});
+
+
+test('share previews are lightweight in both locales while downloads retain the full cover', async () => {
+  for (const [index, document] of documents.entries()) {
+    const lang = index === 0 ? 'zh' : 'en';
+    const image = nodes(document).find((node) => attribute(node, 'id') === 'share-cover');
+    const download = nodes(document).find((node) => hasClass(node, 'save-cover'));
+    const resolve = (value) => new URL(value, 'https://ursb.me/reading/weekly/001/').pathname;
+    const previewPath = resolve(attribute(image, 'src'));
+    const originalPath = resolve(attribute(download, 'href'));
+    assert.equal(originalPath, aiWeeklyIssues[0].shareCover[lang]);
+    assert.notEqual(previewPath, originalPath);
+    assert.equal(attribute(image, 'loading'), 'lazy');
+    assert.equal(attribute(image, 'decoding'), 'async');
+    assert.ok(attribute(download, 'download').endsWith('.png'));
+    const [preview, original] = await Promise.all([previewPath, originalPath].map((path) =>
+      readFile(new URL(`../public${path}`, import.meta.url))));
+    const [small, full] = await Promise.all([sharp(preview).metadata(), sharp(original).metadata()]);
+    assert.equal(small.format, 'webp');
+    assert.equal(full.format, 'png');
+    assert.ok(small.width >= 800, 'retain sufficient resolution for the dialog');
+    assert.ok(Math.abs(small.width / small.height - full.width / full.height) < 0.001);
+    assert.ok(preview.length < original.length / 4, 'avoid loading a full-size download as preview');
+    assert.equal(Number(attribute(image, 'width')), small.width);
+    assert.equal(Number(attribute(image, 'height')), small.height);
   }
 });

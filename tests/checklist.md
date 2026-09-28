@@ -2106,3 +2106,9 @@
 - [ ] Navigation and homepage entry events plus journal/share events carry only stable identifiers and UI categories, never letter text, aliases or email addresses.
 - [ ] All public contact destinations use airingdeng@gmail.com; old email survives only as a historical comment-avatar identity with a new Gmail alias.
 - [ ] Build, Node 22 tests, browser screenshots, final independent review and production post-deployment smoke pass; publication date decision is recorded in the release evidence.
+
+### 分享图片加载（2026-09-28）
+- [ ] 中英文周刊分享弹窗展示完整 WebP 封面，关闭／重开正常；下载仍为 1080×1528 PNG。
+- [ ] 桌面及手机：漫画、运动、相册分享弹窗使用本地构建 WebP，图片比例、文字与按钮正常。
+- [ ] 单张照片分享继续使用 AVIF/WebP；所有分享预览带懒加载，打开后能正常显示。
+- [ ] 运动无 OG 图时保留缺图提示；分享链接、埋点及页面 OG 元数据不变。
