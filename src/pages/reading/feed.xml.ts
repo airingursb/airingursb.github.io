@@ -1,6 +1,6 @@
 import rss from '@astrojs/rss';
 import type { APIContext } from 'astro';
-import { readingRssItems } from '../../lib/reading-feed';
+import { optimizedReadingRssItems } from '../../lib/reading-feed-images';
 import { fetchReadingItems } from '../../lib/reading';
 
 export async function GET(context: APIContext) {
@@ -11,7 +11,7 @@ export async function GET(context: APIContext) {
     description: '我每天读过，并愿意留下的东西。',
     site: context.site ?? 'https://ursb.me',
     stylesheet: '/feed.xsl',
-    items: readingRssItems(items, 'zh'),
+    items: await optimizedReadingRssItems(items, 'zh', context.site ?? 'https://ursb.me'),
     customData: '<language>zh-CN</language>',
   });
 }

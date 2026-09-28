@@ -39,3 +39,25 @@ test('Reading RSS localizes the item and permalink for the English static feed',
   assert.match(entry?.content ?? '', /English summary/);
   assert.match(entry?.content ?? '', /r2\.example\.com\/en\.png/);
 });
+
+test('optimized covers preserve feed identity, source links and localized content', () => {
+  const covers = new Map([
+    [item.cover_url, 'https://ursb.me/_astro/cover-zh.jpeg'],
+    [item.cover_url_en, 'https://ursb.me/_astro/cover-en.jpeg'],
+  ]);
+  for (const lang of ['zh', 'en']) {
+    const [original] = readingRssItems([item], lang);
+    const [optimized] = readingRssItems([item], lang, covers);
+    const source = lang === 'en' ? item.cover_url_en : item.cover_url;
+    const escaped = source.replaceAll('&', '&amp;');
+    assert.deepEqual(optimized, {
+      ...original,
+      content: original.content.replace(escaped, covers.get(source)),
+    });
+    assert.ok(optimized.content.includes('https://ursb.me/_astro/cover-'));
+  }
+  const fallback = { ...item, cover_url_en: null };
+  const [entry] = readingRssItems([fallback], 'en', covers);
+  assert.ok(entry.content.includes(covers.get(item.cover_url)));
+  assert.equal(entry.title, item.title_en);
+});

@@ -10,11 +10,16 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-export function readingRssItems(items: readonly ReadingItem[], lang: 'zh' | 'en'): RSSFeedItem[] {
+export function readingRssItems(
+  items: readonly ReadingItem[],
+  lang: 'zh' | 'en',
+  coverUrls: ReadonlyMap<string, string> = new Map(),
+): RSSFeedItem[] {
   return items.map((item) => {
     const title = lang === 'en' ? item.title_en || item.title : item.title;
     const summary = lang === 'en' ? item.summary_en || item.summary : item.summary;
-    const coverUrl = lang === 'en' ? item.cover_url_en || item.cover_url : item.cover_url;
+    const sourceCover = lang === 'en' ? item.cover_url_en || item.cover_url : item.cover_url;
+    const coverUrl = coverUrls.get(sourceCover) || sourceCover;
     const sourceLink = item.original_url
       ? `<p><a href="${escapeHtml(item.original_url)}">${lang === 'en' ? 'Read the source' : '阅读原文'} →</a></p>`
       : '';
