@@ -51,7 +51,8 @@ Retain existing light/dark colors, typography and gutters. Search art is 96px de
 Preserve the homepage letter card and free email action. The paid section keeps
 its description, price and topic tags, with a bold neutral pause badge beside its
 title and a persistent explanation: limited capacity; free email remains open.
-Remove the promotional discount badge while paused and mute the price. Reuse
+Show only the regular $600 USD / 50 min price, without a crossed-out price or
+promotional discount badge. Keep the price muted while paused. Reuse
 `--c-bg-alt`, `--c-text`, `--c-text-muted`, `--c-border-light` and `--accent` for focus
 and email only. The gray booking button becomes an explicitly named explanation
 action, opening a native dialog rather than a booking calendar; do not disable
