@@ -1,10 +1,10 @@
 # Echo · Correspondence journal
 
-## Issue 02 · Release preparation (2026-10-01)
+## Issue 02 · Release (2026-10-02)
 
 The author has requested release of the reviewed bilingual second issue, including the exercise typography fix. The production build includes both issues and eight anonymized exchanges, the existing issue-02 bear artwork, translated covers, homepage/archive entries and sharing. Keep local component showcase routes and private research outside the release. The `ECHO_EDITORIAL_PREVIEW` flag is unset in production so public pages remain indexable.
 
-The earlier private-preview notes below describe the preparation history. The normal >180-day publication boundary is 2026-10-02; an explicit author decision is required to make an earlier exception. Preparing a release commit does not publish the sources.
+The earlier private-preview notes below describe the preparation history. Publication proceeds on 2026-10-02, after the normal >180-day boundary, under the author's existing release instruction. No early exception is used.
 
 ## Issue 02 · Editorial rewrite (2026-10-01)
 
