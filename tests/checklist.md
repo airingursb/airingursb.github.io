@@ -2094,6 +2094,10 @@
 
 ## Echo production journal and homepage entry (2026-09-27)
 
+- [x] Issue 02 author preview: distinct slate/river opening and correspondence ledger preserve the same typography, content provenance, navigation and letter-reading principles as issue 01; 375/768/1280px, zh/en, no overflow or broken phrases.
+- [x] Three Xingzhou exchanges show both original dates and distinguish actual offers from potential opportunities; Zhiqiu is visibly a separate reader; editorial summaries are labeled and link to the correct full original/reply.
+- [x] Both issues and eight exchanges have translated routes, original redaction markers, correct cover mappings in archive/home/share, current-issue navigation and stable-identifier analytics. Preview carries noindex; no issue-02 source is pushed publicly before 2026-10-02.
+
 - [x] Homepage write analytics: in zh/en, consultation CTA, paused-consultation dialog email CTA and footer email link each emit one `letter-write-open` with `surface=home` and their distinct `placement`; nested label clicks and keyboard activation work, Gmail destinations remain intact, and payloads contain no email address or letter text.
 - [x] Echo PNG optimization: original illustrations and share covers retain dimensions and decoded RGBA pixels exactly; smaller optimized files only. Responsive WebP display derivatives remain distinct from lossless PNG originals.
 
@@ -2113,3 +2117,7 @@
 - [ ] 单张照片分享继续使用 AVIF/WebP；所有分享预览带懒加载，打开后能正常显示。
 - [ ] 运动无 OG 图时保留缺图提示；分享链接、埋点及页面 OG 元数据不变。
 - [ ] 中英文阅读流 RSS 使用可公开访问的绝对 JPEG 预览地址；条目链接、日期、正文和语言回退不变，详情页点击仍能查看原图。
+
+- [x] Echo editorial voice: both issues in Chinese and English use first person when narrating Airing’s own replies; original correspondence, quotes and attribution labels stay unchanged.
+- [x] Echo 02 rewrite: four arguments are bilingual, hero/section quotations match their linked replies, related-source links open the right letters, and the condensed date index follows the essay beside the original letters. Archive, homepage and downloadable covers use the new title; original correspondence remains unchanged. Check 375/768/1280px, sharing, source navigation and missing glyphs.
+- [x] Echo exercise typography: both issues in zh/en at 375/768/1280px retain the main sentence's font and color through its ending; only the hint wrapper starts a smaller muted block. Nested phrase endings stay inline, with no horizontal overflow or browser errors. Verified in the built preview on 2026-10-01.

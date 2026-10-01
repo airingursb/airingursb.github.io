@@ -1,6 +1,7 @@
 import learning from '../assets/cover-learning.png';
+import choices from '../assets/cover-choices.png';
 import type { Locale } from './i18n';
-export function issueArt(_number: string) { return learning; }
+export function issueArt(number: string) { return number === '02' ? choices : learning; }
 export function shareCover(number: string, lang: Locale) { return `/echo/share/${number}-${lang}.png`; }
 export function artDescription(number: string, lang: Locale) {
   return lang === 'en'

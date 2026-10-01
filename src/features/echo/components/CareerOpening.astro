@@ -1,0 +1,38 @@
+---
+import { Image } from 'astro:assets';
+import type { Issue } from '../data/issues';
+import { issueArt, artDescription } from '../data/covers';
+import { copy, localeOf } from '../data/i18n';
+import { letterPath } from '../data/letters';
+import EditorialText from './EditorialText.astro';
+import '../styles/career.css';
+interface Props { readonly issue: Issue; }
+const { issue } = Astro.props;
+const lang = localeOf(Astro.url.pathname), en = lang === 'en', t = copy[lang];
+---
+<section class="career-opening" aria-labelledby="issue-title">
+  <div class="career-heading">
+    <div>
+      <p class="journal-kicker">{en ? 'No. 02 / Career & choices' : 'No. 02 / 职业与选择'}</p>
+      <h1 id="issue-title">{issue.headline.map(line => <span><EditorialText text={line} keepWords /></span>)}</h1>
+    </div>
+    <div class="career-premise">
+      <p class="career-dilemma"><EditorialText text={issue.dilemma} /></p>
+      <p><EditorialText text={issue.thesis.join(en ? ' ' : '')} /></p>
+      <a class="journal-action" href="#reading">{en ? 'Read the four questions' : '从四个问题读起'} ↓</a>
+    </div>
+  </div>
+  <div class="career-spread">
+    <figure class="career-art">
+      <Image src={issueArt(issue.number)} alt={artDescription(issue.number, lang)} width={700} widths={[360,540,700,1000]} sizes="(max-width: 720px) calc(100vw - 40px), 55vw" format="webp" loading="eager" />
+      <figcaption>{en ? 'Two channels. No view of the whole journey yet.' : '两条水路，都还看不见终点。'}</figcaption>
+    </figure>
+    <figure class="career-reply">
+      <figcaption>{t.quote}</figcaption>
+      <blockquote><a class="quote-jump" href={letterPath(issue.source, lang) + '#reply'}>{en ? issue.quote.join('') : issue.quote.map(phrase => <span class="career-quote-phrase">{phrase}</span>)}</a></blockquote>
+      <a class="text-button" href={letterPath(issue.source, lang) + '#reply'}>{t.openReply} ↗</a>
+      <p class="career-note">{en ? 'Experience, evidence, time and the point at which to leave: four questions to put to your next job.' : '经验、证据、时间、离开的时点。把下一步，写进眼前的选择。'}</p>
+    </figure>
+  </div>
+  <div class="career-colophon"><p>{en ? 'Two readers · Four exchanges' : '两位读者 · 四组往返'}</p><p><time datetime="2024-11-18">2024.11.18</time> — <time datetime="2026-04-04">2026.04.04</time></p><a class="journal-action" href="#letters">{t.openLetters} ↗</a></div>
+</section>

@@ -24,7 +24,7 @@ const zh = {
   skipLetter: '跳至来信正文', transcript: '原信转录 · 完整往返', farewell: '一封信，从这里到那里。',
   privacy: '由电子来信转录。称谓与署名使用编辑分配的代号，身份、履历及私人链接等以〔〕标明脱敏。保留原话与问答顺序，长段仅作阅读分段；来信与回信日期依据通信记录。原信未署名时，页面署名依据通信记录。',
   backLetters: '收好这封信，回到本期来信', next: '下一组', continue: '继续读信',
-  archiveIntro: '一期专题 · 四组往返', newest: '新一期', readIssue: '读本期专题',
+  archiveIntro: '两期专题 · 八组往返', newest: '新一期', readIssue: '读本期专题',
   archiveNote: '由电子来信整理，原信以代号与脱敏文本呈现。专题正文为编辑归纳，回信原句均可追到完整往返。',
   backBlog: '回到博客', translated: '英文译文', original: '阅读中文原文',
 } as const;
@@ -51,7 +51,7 @@ const en: Readonly<Record<keyof typeof zh, string>> = {
   skipLetter: 'Skip to the letter', transcript: 'Translated correspondence', farewell: 'A letter, from here to there.',
   privacy: 'Translated in full from anonymized Chinese email transcripts. Reader names and signatures are editorial aliases; square brackets mark redacted identities, biographical details and private links. The original sequence and tone are retained, with long passages divided for reading. Letter and reply dates come from the correspondence records. Where an original has no signature, the displayed attribution also comes from those records.',
   backLetters: 'Return to this issue’s letters', next: 'Next exchange', continue: 'Continue reading',
-  archiveIntro: 'One issue · Four exchanges', newest: 'Latest issue', readIssue: 'Read this issue',
+  archiveIntro: 'Two issues · Eight exchanges', newest: 'Latest issue', readIssue: 'Read this issue',
   archiveNote: 'Drawn from email correspondence, with reader aliases and anonymized transcripts. Issue essays are editorial commentary; every quoted reply links to the complete exchange. English pages translate the Chinese originals.',
   backBlog: 'Back to the blog', translated: 'English translation', original: 'Read the Chinese original',
 };

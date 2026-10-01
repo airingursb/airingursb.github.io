@@ -1,5 +1,36 @@
 # Echo · Correspondence journal
 
+## Issue 02 · Release preparation (2026-10-01)
+
+The author has requested release of the reviewed bilingual second issue, including the exercise typography fix. The production build includes both issues and eight anonymized exchanges, the existing issue-02 bear artwork, translated covers, homepage/archive entries and sharing. Keep local component showcase routes and private research outside the release. The `ECHO_EDITORIAL_PREVIEW` flag is unset in production so public pages remain indexable.
+
+The earlier private-preview notes below describe the preparation history. The normal >180-day publication boundary is 2026-10-02; an explicit author decision is required to make an earlier exception. Preparing a release commit does not publish the sources.
+
+## Issue 02 · Editorial rewrite (2026-10-01)
+
+The author approved the new thesis: “选工作时，别只算这一次” / “Choosing a job? Think one move ahead.” This supersedes the September 30 chronology-led content structure below. Four arguments examine experience for the next job search, evidence for growth and internal transfers, the exchange of time for pay and learning, and the timing of a departure. Each develops the dilemma, reasons, conditions and a useful next question in the author's first person. New editorial analysis is distinguished from unchanged, dated correspondence; no later outcome is invented.
+
+- Move the condensed correspondence dates into `CorrespondenceIndex`, next to the complete original letters. The opening leads directly to the essay. Do not repeat the argument as a second timeline before the essay.
+- Hero and section quotations retain exact source wording in both languages. `relatedSources` links other letters used by a section. Keep existing chapter anchors for saved links.
+- Preserve the slate/river opening, existing bear, paper and type roles. Refresh both share-cover PNGs from `EchoCover` after changing the title and teasers; optimize PNGs without changing decoded pixels. The homepage, archive, issue and share surfaces must use the same title.
+- Verify Chinese font coverage for the new body, headings and handwritten quotes. All original letter bodies, aliases, redactions and dates remain unchanged. This is a private preview; no publication is part of this edit.
+
+## Editorial voice (2026-10-01)
+
+Airing is the narrator of both editions. Use first person for authored introductions, connecting prose and reflections in Chinese and English. Do not describe his reasoning as an outside commentator. Preserve original correspondence, exact quotations, sender/recipient fields, signatures and attribution labels.
+
+## Issue 02 · A correspondence dossier (2026-09-30)
+
+Shared principles, individual issues: the author explicitly wants different visual identities rather than identical templates. Keep reader dilemmas prominent, distinguish editorial interpretation from exact replies, and make every quotation traceable to a dated original. Issue 01 remains the warm learning edition. Issue 02 uses the existing slate-blue cover ink and river/boats illustration to explore decisions made under changing circumstances.
+
+- `CareerOpening`: a full-width headline and quiet editorial premise precede an illustrated spread. The illustration and a handwritten reply share the lower spread, with a small correspondence date line. No new bear, animation, or fabricated outcomes. The title uses 48px / 1.35 (34px on narrow screens), metadata uses existing 12/14px roles, and quote uses 28px / 1.65 (24px narrow). Reuse 16/24/32/48px gaps. New tokens: `--career-ink: #395863`, `--career-title: 48px`, `--career-quote: 28px`, `--career-date-width: 136px`. These belong only to issue 02, not the shared site header.
+- `CorrespondenceTrail`: a chronological editorial ledger, not three identical cards. Each row pairs original incoming/reply dates with the changed circumstance and the resulting question; all copy is explicitly editorial, with links to original replies. First three rows follow Xingzhou; Zhiqiu's fourth exchange is clearly a separate reader and situation. Desktop date gutter is 136px, content flexible; below 900px the circumstance/advice comparison and opening headline/premise stack for readable lines, below 720px the date gutter also stacks. Header summarizes the through-line without pretending an outcome is known.
+- Spatial reference: [StyleGallery sidebar](https://github.com/changeroa/StyleGallery/blob/main/patterns/split-sidebar/sidebar.md), used only for date-gutter/content wrap and readable source order. Document owns all scrolling; no inner scroll or fixed-height content.
+- Reuse `Passage`, `PullQuote`, complete letter sheets, aliases, dates, shared header/footer, dialogs, analytics and language switching. Both locales receive the same editorial structure. The opening quote retains its exact original wording. Changes to claims or anonymized originals are out of scope.
+- Publication boundary: this worktree is a private author preview with `ECHO_EDITORIAL_PREVIEW=true` and noindex metadata. Do not push its second-issue sources or assets to the public repository before 2026-10-02. No scheduled publication is implied. Review URLs use canonical /echo/ paths on a private preview port.
+- Accessibility/personas: a mobile reader can compare changing conditions without a horizontal table; a keyboard reader can open any reply and return to the issue; English readers see translated quotes labeled as such; no new motion or JavaScript. Long headings must preserve Chinese phrases and English words. Date labels remain explicit and dates machine-readable.
+- Validation: new primitives first in an isolated component route at 375/768/1280; then bilingual archive, both issue pages, eight exchange pages, sharing and homepage. Accepted preview limits: noindex and HTTP are intentional; do not remove privacy protections to raise synthetic SEO scores. No new accessibility debt is accepted.
+
 The author approved the V6.4 design and explicitly requested production release on 2026-09-27. This document describes the production system; prototype history and private research remain outside the release.
 
 ## Production integration · 2026-09-27

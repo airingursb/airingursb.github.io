@@ -4,7 +4,9 @@ import { issuesFor, issuePath } from '../data/issues';
 import { localPath } from '../data/i18n';
 import cover01Zh from '../../../../public/echo/share/01-zh.png';
 import cover01En from '../../../../public/echo/share/01-en.png';
-const covers = { zh: cover01Zh, en: cover01En };
+import cover02Zh from '../../../../public/echo/share/02-zh.png';
+import cover02En from '../../../../public/echo/share/02-en.png';
+const covers = { zh: { first: cover01Zh, second: cover02Zh }, en: { first: cover01En, second: cover02En } };
 const locales = ['zh', 'en'] as const;
 ---
 <div class="home-echo" id="echo">
@@ -19,7 +21,7 @@ const locales = ['zh', 'en'] as const;
       <p class="home-echo-description">{en ? 'Reader questions and my replies, gathered by theme. Each issue includes the complete, anonymized exchanges.' : <>把来信里的困境与我的回信，编成可以慢慢读的<span>专题</span>。每一期，都附有脱敏后的<span>完整往返。</span></>}</p>
       <div class="home-echo-issues" data-count={issuesFor(lang).length}>
         {[...issuesFor(lang)].reverse().map(issue => <a class="home-echo-issue" href={issuePath(issue.number, lang)} data-umami-event="echo-issue-open" data-umami-event-surface="home" data-umami-event-target={issue.number} data-umami-event-lang={lang}>
-          <Image src={covers[lang]} alt="" width={108} widths={[96,192,240]} sizes="(max-width:480px) 80px,108px" format="webp" loading="lazy" />
+          <Image src={issue.number === '02' ? covers[lang].second : covers[lang].first} alt="" width={108} widths={[96,192,240]} sizes="(max-width:480px) 80px,108px" format="webp" loading="lazy" />
           <div><p class="home-echo-meta">No. {issue.number} <span>{issue.category}</span></p><h3>{issue.headline.join(en ? ' ' : '').replaceAll('-', '‑')}</h3><span class="home-echo-read">{en ? 'Open this issue' : '翻开这一期'} <span aria-hidden="true">↗</span></span></div>
         </a>)}
       </div>
