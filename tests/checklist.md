@@ -2147,3 +2147,8 @@
 - [x] Keyboard, Escape/focus return, no-JS reading, image alt text and reduced-motion states work.
 - [x] Final Chinese font subsets have no missing glyphs in their intended text roles; PNG compression preserves decoded pixels.
 - [x] Build, scoped Astro check and Echo content tests pass; final evidence is recorded in output/echo-04-12-20261002/QA.md.
+
+### 周刊书架操作样式（2026-10-02）
+- [x] 中英文阅读流书架：阅读和订阅入口使用与首页共用的实心／描边样式，无文字下划线或独立彩色底线；44px 等高，箭头对齐。
+- [x] 375/768/1280px 和浅／深色模式下不溢出；键盘焦点可见；阅读链接和订阅弹窗正常。
+- [x] 首页周刊卡片操作保持原有样式；路由和订阅埋点属性经 diff 确认未修改。
