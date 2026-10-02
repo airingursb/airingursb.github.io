@@ -1,0 +1,23 @@
+---
+import SiteHeader from '../SiteHeader.astro';
+import markup from './markup.html?raw';
+import friends from '../../data/friends.json';
+import reviewed from '../../data/friends-tree-reviewed.json';
+const byUrl=new Map(reviewed.map(friend=>[friend.url,friend]));
+// The published blogroll is the manually approved source. Applications never mutate it.
+const friendData=friends.map(friend=>({...byUrl.get(friend.url),...friend,availability:byUrl.get(friend.url)?.availability??'unknown',checkedDate:byUrl.get(friend.url)?.checkedDate??'',avatarId:byUrl.get(friend.url)?.avatarId??'fox'}));
+const archived=friendData.filter(friend=>friend.availability==='archive').length;
+const content=markup.replaceAll('__FRIEND_COUNT__',String(friendData.length)).replaceAll('__ARCHIVE_COUNT__',String(archived)).replaceAll('__TREE_COUNT__',String(friendData.length-archived));
+---
+<link rel="stylesheet" href="/friends-tree/scene.css" />
+<div class="friends-page">
+  <SiteHeader lang="zh" />
+  <Fragment set:html={content} />
+</div>
+<script is:inline define:vars={{ friendData }}>window.FRIEND_TREE_DATA=friendData;</script>
+<script is:inline src="/friends-tree/scene.js"></script>
+<script is:inline src="/friends-tree/guestbook.js"></script>
+<style is:global>
+  .friends-page { --c-bg: #f7f8f0; --c-text: #303b2c; --c-text-muted: #626d58; --c-text-dim: #717b66; --c-border: #dce1d1; }
+  body:has(.friends-page) #themeSwitcher { display: none; }
+</style>

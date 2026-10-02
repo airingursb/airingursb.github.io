@@ -1,0 +1,13 @@
+# Published friendship forest
+
+The Chinese `/friends/` route uses the approved five-tree design: banyan, ginkgo, fruitless zelkova, cherry and maple. `markup.html` holds accessible native scene/form/directory markup; the component injects the approved blogroll from `src/data/friends.json`. `friends-tree-reviewed.json` contains the 2026-10-02 health review, descriptions and avatar assignments. Unreachable or content-changed links stay available in the directory. One failed check does not assert a permanent closure.
+
+All assets are local under `public/friends-tree/`: transparent trees and32 animal portraits, normalized framing, six stationery styles, shared realH3 bear sprite sheets and separate CSS/runtime. Binary filenames are content hashes. The H3 bear keeps the homepage full-body greeting and15-second book/pull/return sequence; foliage/ropes are frontend interactions. Static bell ropes are vertical with9logicalpx external length. The forest has its approved cream palette independently of the global color preference.
+
+`guestbook.js` reads the existing public `post_slug=guestbook` comments endpoint, groups reply IDs and paginates5 root threads. Preview is local; the separate confirmation sends one request to the existing commentsAPI. Contact email is not copied into public comment text. Failure preserves the draft and exposes retry. Request tests intercept allPOSTs; no test comments or emails are sent.
+
+Link applications are received through the existing guestbook, with name/address/avatar/description and a clear pending-tree-review marker. An approved public comment is not approval to join the tree. Only an intentional edit to the published blogroll adds a bell. After reviewing an application, add the site to `src/data/friends.json` and its display metadata to `friends-tree-reviewed.json`; use `avatarId` for a generated animal or `avatarUrl` for an approved customHTTPS image. Rebuild and deploy. New applications never mutate `window.FRIENDS` or the published files.
+
+Custom avatars supportHTTPS image addresses; the32 animal choices provide defaults. The prior prototype's local-file preview control is hidden because the existingAPI does not upload image files. Submitted application metadata preserves the actual chosen imageURL for manual review.
+
+Release validation: `npm run build` plus realChrome375/768/1280 and normal/reduced H3 playback. Evidence is in the workspace `.omo/evidence/friends-production-20261003/`; the release was built from an isolated checkout of origin/master to avoid publishing unrelated working changes. The existing English route is unchanged.

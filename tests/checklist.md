@@ -2152,3 +2152,10 @@
 - [x] 中英文阅读流书架：阅读和订阅入口使用与首页共用的实心／描边样式，无文字下划线或独立彩色底线；44px 等高，箭头对齐。
 - [x] 375/768/1280px 和浅／深色模式下不溢出；键盘焦点可见；阅读链接和订阅弹窗正常。
 - [x] 首页周刊卡片操作保持原有样式；路由和订阅埋点属性经 diff 确认未修改。
+## Friends · published friendship forest (2026-10-03)
+
+- [x] Chinese `/friends/` has5 distinct trees with short vertical bell ropes,51 eligible friends and44 archived addresses; all95 remain searchable.
+- [x] 375/768/1280: no overflow, friend selection and tree changes work,32 avatar choices and stationery framing remain intact.
+- [x] Guestbook reads real public comments,5 root threads per page; replies submit the parentID. Preview sends nothing; separate confirmation submits once.
+- [x] Link applications include selected avatar and remain off-tree until manual blogroll approval. Email stays private; API failure preserves draft with retry.
+- [ ] Verify production route/assets after deployment; normal H3 full-body sequence and pause state remain usable.
