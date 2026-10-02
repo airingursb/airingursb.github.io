@@ -1,0 +1,32 @@
+---
+import { Image } from 'astro:assets';
+import { copy, localeOf } from '../data/i18n';
+import { lettersFor } from '../data/catalog';
+import { letterPath, displayDate } from '../data/letters';
+import { issueArt, artDescription } from '../data/covers';
+import type { Issue } from '../data/issues';
+import EditorialText from './EditorialText.astro';
+import '../styles/rest.css';
+interface Props { readonly issue: Issue; }
+const { issue } = Astro.props;
+const lang = localeOf(Astro.url.pathname), en = lang === 'en', t = copy[lang];
+const reply = lettersFor(lang).find(letter => letter.id === issue.source)?.reply;
+---
+<section class="rest-opening" aria-labelledby="issue-title">
+  <div class="rest-heading">
+    <p class="journal-kicker">{en ? 'A little time for the present' : '给现在，留一点时间'}</p>
+    <h1 id="issue-title">{issue.headline.map((line, index) => <>{index > 0 && en ? ' ' : ''}<span>{line}</span></>)}</h1>
+    <p class="rest-dilemma"><EditorialText text={issue.dilemma} keepWords /></p>
+    <p class="rest-premise"><EditorialText text={issue.thesis.join(en ? ' ' : '')} keepWords /></p>
+    <a class="journal-action" href="#reading">{t.read} ↓</a>
+  </div>
+  <figure class="rest-window">
+    <Image src={issueArt(issue.number)} alt={artDescription(issue.number, lang)} width={700} widths={[360,540,700,1000]} sizes="(max-width: 720px) calc(100vw - 66px), 40vw" format="webp" loading="eager" fetchpriority="high" />
+    <figcaption><span>{en ? 'A letter can wait a moment.' : '信可以等一会儿，再写。'}</span><span aria-hidden="true">03 / ECHO</span></figcaption>
+  </figure>
+  <figure class="rest-reply">
+    <figcaption>{t.quote}{reply && <time datetime={reply.date}>{displayDate(reply.date, lang)}</time>}</figcaption>
+    <blockquote><a href={letterPath(issue.source, lang) + '#reply'}><EditorialText text={issue.quote.join('')} keepWords /></a></blockquote>
+    <a class="text-button" href={letterPath(issue.source, lang) + '#reply'}>{t.openReply} ↗</a>
+  </figure>
+</section>

@@ -1,6 +1,7 @@
 ---
 import '../styles/tokens.css';
 import '../styles/letters.css';
+import '../styles/editions.css';
 import { letterPath, type Correspondence } from '../data/letters';
 import { issuePath } from '../data/catalog';
 import { copy, localeOf } from '../data/i18n';
@@ -13,11 +14,13 @@ import EditorialText from './EditorialText.astro';
 import ShareButton from './ShareButton.astro';
 import ShareDialog from './ShareDialog.astro';
 import { shareCover } from '../data/covers';
+import { issuesFor } from '../data/issues';
 import handFont from '../assets/hand.woff2?url';
 interface Props { readonly letter: Correspondence; readonly next: Correspondence; }
 const { letter, next } = Astro.props;
 const lang = localeOf(Astro.url.pathname), t = copy[lang];
 const back = issuePath(letter.issue ?? '01', lang);
+const relatedIssues = issuesFor(lang).filter(issue => issue.letterIds.includes(letter.id));
 ---
 <!doctype html>
 <html lang={lang === 'en' ? 'en' : 'zh-CN'} class="letters-document">
@@ -29,7 +32,7 @@ const back = issuePath(letter.issue ?? '01', lang);
       {lang === 'en' && <p class="translation-note">{t.translated} · {t.alias}: {letter.code}<a href={letterPath(letter.id)} data-lang-switch="zh">{t.original} ↗</a></p>}
       <LetterEnvelope letter={letter} />
       <div class="letter-share"><ShareButton number={letter.issue ?? '01'} title={`${t.name} · ${letter.title}`} label={lang === 'en' ? 'Share this exchange' : '分享这组往返'} /></div>
-      <CorrespondenceNav back={back} />
+      <CorrespondenceNav back={back} followups={letter.followups} />
       <LetterSheet letter={letter.incoming} number={letter.number} />
       <LetterSheet letter={letter.reply} number={letter.number}>
         <Fragment slot="attachment-translation">
@@ -37,9 +40,18 @@ const back = issuePath(letter.issue ?? '01', lang);
           <p>For example, if you drink too many carbonated drinks and want to change that habit, first focus on drinking more water each day. If you want to spend less time on your phone, focus on spending more time exercising and reading every day.</p>
         </Fragment>
       </LetterSheet>
+      {letter.followups?.map(part => <LetterSheet letter={part} number={letter.number} />)}
       <footer class="letter-return-slip">
         <p class="letter-farewell">{t.farewell}</p><p><EditorialText text={t.privacy} /></p>
-        <nav class="letter-next" aria-label={t.continue}><a href={back + '#letters'}>{t.backLetters} ↙</a><a href={letterPath(next.id, lang)}>{t.next} · {next.code}{next.round ? ' · ' + next.round : ''} →</a></nav>
+        <nav class="letter-next" aria-label={t.continue}><a data-origin-back href={back + '#letters'}>{t.backLetters} ↙</a>{next.id !== letter.id ? <a data-origin-next href={letterPath(next.id, lang, letter.issue ?? '01')}>{t.next} · {next.code}{next.round ? ' · ' + next.round : ''} →</a> : <a data-origin-next href={back}>{lang === 'en' ? 'Read this issue' : '回读本期专题'} ↗</a>}</nav>
+        <nav class="letter-related-issues" aria-label={lang === 'en' ? 'Read this exchange in an issue' : '这组往返所在的专题'}>
+          <span>{lang === 'en' ? 'In these issues:' : '收录专题：'}</span>
+          {relatedIssues.map(issue => {
+            const position = issue.letterIds.indexOf(letter.id);
+            const nextId = issue.letterIds[(position + 1) % issue.letterIds.length];
+            return <a href={issuePath(issue.number, lang) + '#letters'} data-origin-issue={issue.number} data-origin-next-path={issue.letterIds.length > 1 ? letterPath(nextId, lang, issue.number) : undefined}>No. {issue.number} · {issue.category}</a>;
+          })}
+        </nav>
       </footer>
     </main>
     <ShareDialog /><script>import '../longform-reader';</script>

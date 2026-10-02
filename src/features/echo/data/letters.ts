@@ -7,11 +7,12 @@ export interface LetterParagraph {
   readonly attachment?: boolean;
 }
 export interface Manuscript {
-  readonly id: 'incoming' | 'reply';
+  readonly id: 'incoming' | 'reply' | 'incoming-2' | 'reply-2';
   readonly label: string;
   readonly sender: string;
   readonly recipient: string;
-  readonly date: string;
+  readonly date: string | null;
+  readonly dateNote?: string;
   readonly salutation: string;
   readonly paragraphs: readonly LetterParagraph[];
   readonly closing: string;
@@ -28,9 +29,11 @@ export interface Correspondence {
   readonly chapter: string;
   readonly incoming: Manuscript;
   readonly reply: Manuscript;
+  readonly followups?: readonly Manuscript[];
 }
-export function letterPath(id: string, lang: Locale = 'zh'): string { return localPath('/letters/' + id + '/', lang); }
-export function displayDate(date: string, lang: Locale = 'zh'): string {
+export function letterPath(id: string, lang: Locale = 'zh', fromIssue?: string): string { return localPath('/letters/' + id + '/', lang) + (fromIssue ? '?issue=' + encodeURIComponent(fromIssue) : ''); }
+export function displayDate(date: string | null | undefined, lang: Locale = 'zh'): string {
+  if (!date) return lang === 'en' ? 'Date not recorded' : '独立日期未详';
   if (lang === 'en') return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(date + 'T00:00:00Z'));
   const [year, month, day] = date.split('-');
   return year + '年' + Number(month) + '月' + Number(day) + '日';

@@ -9,6 +9,7 @@ import { letterPath, displayDate } from '../data/letters';
 interface Props { section: Section; }
 const { section } = Astro.props;
 const lang = localeOf(Astro.url.pathname), en = lang === 'en';
+const fromIssue = Astro.url.pathname.match(/\/issues\/(\d+)\//)?.[1];
 const related = (section.relatedSources ?? []).map(id => {
   const letter = lettersFor(lang).find(letter => letter.id === id);
   if (!letter) throw new Error(`Missing related correspondence: ${id}`);
@@ -21,7 +22,7 @@ const related = (section.relatedSources ?? []).map(id => {
     <h2 id={`${section.id}-title`}>{en ? section.title.map(part => part.trim()).join(' ') : section.title.map(part => <span class="keep">{part}</span>)}</h2>
     {section.paragraphs.map(paragraph => <p class="body-copy"><EditorialText text={paragraph} /></p>)}
     {section.quote && <div class="passage-quote"><PullQuote source={section.source} text={section.quote} /></div>}
-    {related.length > 0 && <nav class="passage-sources" aria-label={en ? 'Other correspondence discussed in this section' : '本节涉及的其他往返'}><span>{en ? 'Also discussed' : '本节另见'}</span>{related.map(letter => <a href={letterPath(letter.id, lang) + '#reply'}>{letter.code} · {displayDate(letter.reply.date, lang)} ↗</a>)}</nav>}
+    {related.length > 0 && <nav class="passage-sources" aria-label={en ? 'Other correspondence discussed in this section' : '本节涉及的其他往返'}><span>{en ? 'Also discussed' : '本节另见'}</span>{related.map(letter => <a href={letterPath(letter.id, lang, fromIssue) + '#reply'}>{letter.code} · {displayDate(letter.reply.date, lang)} ↗</a>)}</nav>}
     <slot />
   </div>
   <div class="passage-margin"><MarginNote text={section.note} /></div>

@@ -3,18 +3,30 @@ import { issuesFor, issuePath } from '../data/issues';
 import { copy, localeOf, localPath } from '../data/i18n';
 interface Props { readonly current?: string; }
 const { current } = Astro.props;
-const lang = localeOf(Astro.url.pathname), t = copy[lang], issues = issuesFor(lang);
+const lang = localeOf(Astro.url.pathname), en = lang === 'en', t = copy[lang], issues = issuesFor(lang);
+const index = issues.findIndex(issue => issue.number === current);
+const previous = issues[index - 1], next = issues[index + 1];
 ---
 <nav class="issue-switcher" aria-label={t.issueNav}>
-  <a href={localPath('/', lang)}>{t.archive}</a>
-  <div>{issues.map(issue => <a href={issuePath(issue.number, lang)} aria-current={current === issue.number ? 'page' : undefined}><span>{issue.number}</span>{issue.category}</a>)}</div>
+  <div class="issue-adjacent">
+    {previous ? <a href={issuePath(previous.number, lang)}>← {en ? 'Previous' : '上一期'} · {previous.number}<span>{previous.category}</span></a> : <a href={localPath('/', lang)}>{t.archive} ↗</a>}
+    {next && <a href={issuePath(next.number, lang)}>{en ? 'Next' : '下一期'} · {next.number}<span>{next.category}</span> →</a>}
+  </div>
+  <details class="issue-picker"><summary>{en ? 'Browse all issues' : '翻阅全部期刊'} <span>＋</span></summary>
+    <div>{issues.map(issue => <a href={issuePath(issue.number, lang)} aria-current={current === issue.number ? 'page' : undefined}><span>{issue.number}</span>{issue.category}</a>)}</div>
+  </details>
 </nav>
 <style>
-.issue-switcher { display:flex; gap:var(--space-3); align-items:center; justify-content:space-between; font:var(--text-small)/1.6 var(--sans); padding:var(--space-2) var(--page-inset); border-bottom:1px solid var(--rule); }
-.issue-switcher > a { color:var(--muted); }
-.issue-switcher div { display:flex; gap:var(--space-3); flex-wrap:wrap; }
-a { display:inline-flex; gap:var(--space-1); align-items:center; min-height:var(--control-size); text-decoration:none; }
+.issue-switcher { font:var(--text-small)/1.7 var(--sans); padding:var(--space-3) var(--page-inset); border-bottom:1px solid var(--rule); }
+.issue-adjacent { display:flex; flex-wrap:wrap; gap:var(--space-2) var(--space-3); justify-content:space-between; }
+a { display:inline-flex; align-items:center; gap:var(--space-1); min-height:var(--control-size); text-decoration:none; }
+a:hover { text-decoration:underline; }
+.issue-adjacent span { color:var(--muted); }
+.issue-picker { margin-top:var(--space-2); border-top:1px solid var(--rule); padding-top:var(--space-1); }
+summary { cursor:pointer; display:flex; align-items:center; justify-content:space-between; min-height:var(--control-size); color:var(--pine); }
+summary::marker { content:''; }
+.issue-picker div { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--space-1) var(--space-3); padding-top:var(--space-2); }
 [aria-current] { color:var(--pine); text-decoration:underline; text-underline-offset:var(--space-1); }
 span { font-variant-numeric:tabular-nums; }
-@media(max-width:600px) { .issue-switcher { display:block; padding-block:var(--space-1); } .issue-switcher > a { display:none; } .issue-switcher div { justify-content:space-between; gap:var(--space-1); } }
+@media(max-width:600px) { .issue-switcher { padding:var(--space-2) 0; } .issue-picker div { grid-template-columns:repeat(2,minmax(0,1fr)); } .issue-adjacent span { display:none; } }
 </style>

@@ -1,3 +1,4 @@
+import { editionRoutes } from './data/routes';
 type EventValue = string | number | boolean;
 type EventData = Readonly<Record<string, EventValue>>;
 type AnalyticsWindow = Window & { umami?: { track: (name: string, data: EventData) => void } };
@@ -6,7 +7,9 @@ const production = ['ursb.me', 'www.ursb.me', 'airingursb.github.io'].includes(l
 const lang = document.documentElement.lang.startsWith('en') ? 'en' : 'zh';
 const path = location.pathname.replace(/^\/(?:en\/)?echo/, '');
 const surface = path.includes('/letters/') ? 'letter' : /\/issues\/\d+\//.test(path) ? 'issue' : path === '/blog/' ? 'blog' : 'archive';
-const base: EventData = { lang, surface, issue: document.body.dataset.issue ?? '', letter: document.body.dataset.letter ?? '' };
+const requestedIssue = new URLSearchParams(location.search).get('issue');
+const origin = editionRoutes.find(edition => edition.number === requestedIssue && edition.letters.some(id => id === document.body.dataset.letter));
+const base: EventData = { lang, surface, issue: document.body.dataset.issue ?? '', letter: document.body.dataset.letter ?? '', ...(origin ? { originIssue: origin.number } : {}) };
 const pending: { name: string; data: EventData }[] = [];
 export function trackEcho(action: string, detail: EventData = {}) {
   const name = 'echo-' + action;
@@ -25,7 +28,8 @@ if (production && !host.umami && !document.querySelector('script[data-website-id
   document.head.append(script);
 }
 trackEcho('page-view');
-const letterIds = new Set(['output', 'practice', 'interest', 'mist', 'offer-autumn', 'offer-spring', 'offer-summer', 'four-options']);
+const letterIds = new Set<string>(editionRoutes.flatMap(edition => [...edition.letters]));
+const issueNumbers = new Set<string>(editionRoutes.map(edition => edition.number));
 document.addEventListener('click', event => {
   const target = event.target;
   if (!(target instanceof Element)) return;
@@ -42,8 +46,8 @@ document.addEventListener('click', event => {
   const letter = link.pathname.match(/\/letters\/([^/]+)\//)?.[1];
   if (letter && letterIds.has(letter)) { trackEcho('letter-open', { target: letter, chapter: link.hash === '#reply' ? 'reply' : 'incoming' }); return; }
   if (link.hash && link.pathname === location.pathname) { trackEcho('chapter-open', { chapter: link.hash.slice(1) }); return; }
-  const issue = link.pathname.match(/\/issues\/(01|02)\//)?.[1];
-  if (issue) { trackEcho('issue-open', { target: issue, chapter: link.hash.slice(1) }); return; }
+  const issue = link.pathname.match(/\/issues\/(\d+)\//)?.[1];
+  if (issue && issueNumbers.has(issue)) { trackEcho('issue-open', { target: issue, chapter: link.hash.slice(1) }); return; }
   if (/^\/(?:en\/)?echo\/(?:issues\/)?$/.test(link.pathname)) { trackEcho(surface === 'blog' ? 'entry-open' : 'archive-open'); return; }
 });
 const thresholds = new Set<number>();
@@ -76,4 +80,4 @@ const sectionObserver = new IntersectionObserver(entries => {
     trackEcho('letter-section-view', { chapter: entry.target.id.replace('-heading', '') });
   }
 }, { threshold: 0.5 });
-document.querySelectorAll('#incoming-heading, #reply-heading').forEach(heading => sectionObserver.observe(heading));
+document.querySelectorAll('.letter-sheet h2').forEach(heading => sectionObserver.observe(heading));

@@ -12,11 +12,14 @@ import EditorialText from './EditorialText.astro';
 import { issuesFor } from '../data/issues';
 import { issuePath, lettersFor } from '../data/catalog';
 import { displayDate, letterPath } from '../data/letters';
-import { copy, localeOf } from '../data/i18n';
+import { copy, localeOf, themeCount } from '../data/i18n';
 import { shareCover } from '../data/covers';
 const lang = localeOf(Astro.url.pathname), en = lang === 'en', t = copy[lang];
 const issues = [...issuesFor(lang)].reverse();
-const dates = (number: string) => lettersFor(lang).filter(letter => (letter.issue ?? '01') === number).flatMap(letter => [letter.incoming.date, letter.reply.date]).sort();
+const dates = (number: string) => {
+  const issue = issues.find(item => item.number === number);
+  return lettersFor(lang).filter(letter => issue?.letterIds.includes(letter.id)).flatMap(letter => [letter.incoming.date, letter.reply.date]).filter((date): date is string => Boolean(date)).sort();
+};
 ---
 <!doctype html>
 <html lang={en ? 'en' : 'zh-CN'}><head><DocumentHead title={`${t.name} · ${t.journal} / Airing`} description={t.archiveNote} image={shareCover(issues[0].number, lang)} /></head>
@@ -26,20 +29,20 @@ const dates = (number: string) => lettersFor(lang).filter(letter => (letter.issu
     <PostOfficeHero />
     <section id="issues" aria-labelledby="shelf-heading">
       <div class="journal-shelf-heading"><h2 id="shelf-heading">{en ? 'The issue shelf' : '回声书架'}</h2><p>{en ? 'A question. A reply. A little further.' : '由一个人的困惑，读到自己的答案。'}</p></div>
-      {issues.map((issue, index) => <article class="journal-edition" aria-labelledby={`issue-${issue.number}`}>
+      {issues.slice(0, 1).map((issue, index) => <article class="journal-edition" aria-labelledby={`issue-${issue.number}`}>
         <a class="journal-cover-link" href={issuePath(issue.number, lang)}><div><EchoCover issue={issue} eager={index === 0} /></div></a>
         <div class="journal-edition-copy">
           <header class="journal-edition-heading">
-          <p class="journal-meta"><span>No. {issue.number}</span><span>{issue.category}</span><span>{index === 0 ? t.newest : (en ? 'First issue' : '创刊号')}</span></p>
+          <p class="journal-meta"><span>No. {issue.number}</span><span>{issue.category}</span>{index === 0 ? <span>{t.newest}</span> : issue.number === '01' && <span>{en ? 'First issue' : '创刊号'}</span>}</p>
           <h3 id={`issue-${issue.number}`}><a href={issuePath(issue.number, lang)}>{en ? issue.headline.join(' ') : <EditorialText text={issue.headline.join('')} keepWords />}</a></h3>
           </header>
           <div class="journal-edition-body">
           <p class="journal-deck"><EditorialText text={issue.dilemma} /></p>
-          <blockquote class="journal-quote"><a href={letterPath(issue.source, lang) + '#reply'}><EditorialText text={issue.quote.join('')} /></a><cite>{t.quote}</cite></blockquote>
+          <blockquote class="journal-quote"><a href={letterPath(issue.source, lang, issue.number) + '#reply'}><EditorialText text={issue.quote.join('')} /></a><cite>{t.quote}</cite></blockquote>
           </div>
           <div class="journal-edition-footer">
           <div class="journal-edition-info">
-          <p class="journal-meta">{issue.letterNote} {en ? '4 themes' : '四个阅读主题'}</p>
+          <p class="journal-meta">{issue.letterNote} {themeCount(issue.sections.length, lang)}</p>
           <p class="journal-deck">{en ? 'Correspondence' : '通信时间'}：<time datetime={dates(issue.number)[0]}>{displayDate(dates(issue.number)[0], lang)}</time> — <time datetime={dates(issue.number).at(-1)}>{displayDate(dates(issue.number).at(-1)!, lang)}</time></p>
           </div>
           <div class="journal-actions"><a class="journal-action" href={issuePath(issue.number, lang)}>{en ? 'Open this issue' : '翻开这一期'} ↗</a><ShareButton number={issue.number} title={`${t.name} ${issue.number} · ${issue.title}`} path={issuePath(issue.number, lang)} /></div>
@@ -55,6 +58,15 @@ const dates = (number: string) => lettersFor(lang).filter(letter => (letter.issu
           </a>)}
         </nav>
       </article>)}
+      <div class="archive-shelf">
+        {issues.slice(1).map(issue => <article class="shelf-edition" aria-labelledby={`issue-${issue.number}`}>
+          <a class="shelf-cover" href={issuePath(issue.number, lang)}><EchoCover issue={issue} /></a>
+          <p class="journal-meta">No. {issue.number} · {issue.category}</p>
+          <h3 id={`issue-${issue.number}`}><a href={issuePath(issue.number, lang)}><EditorialText text={issue.title} keepWords /></a></h3>
+          <p class="shelf-dilemma"><EditorialText text={issue.dilemma} /></p>
+          <div class="journal-actions"><a class="journal-action" href={issuePath(issue.number, lang)}>{en ? 'Open this issue' : '翻开这一期'} ↗</a><ShareButton number={issue.number} title={`${t.name} ${issue.number} · ${issue.title}`} path={issuePath(issue.number, lang)} /></div>
+        </article>)}
+      </div>
     </section>
 
     <noscript><div class="share-no-js">{en ? 'Save a cover:' : '保存封面：'} {issues.map(issue => <a href={shareCover(issue.number, lang)} download>{t.issue} {issue.number} ↓ </a>)}</div></noscript>
@@ -62,3 +74,15 @@ const dates = (number: string) => lettersFor(lang).filter(letter => (letter.issu
   <PostOfficeFooter />
   <ShareDialog />
 </body></html>
+<style>
+.archive-shelf { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:var(--space-5) var(--space-4); padding-block:var(--space-5); }
+.shelf-edition { display:flex; flex-direction:column; min-width:0; border-bottom:1px solid var(--journal-rule); padding-bottom:var(--space-3); }
+.shelf-cover { display:block; margin-bottom:var(--space-3); padding:var(--space-half); background:#f4f4f0; border-bottom:4px double var(--journal-rule); text-decoration:none; }
+.shelf-edition h3 { margin-block:var(--space-1) var(--space-2); font:700 23px/1.6 var(--serif); text-wrap:pretty; }
+.shelf-edition h3 a { text-decoration:none; }
+.shelf-edition a:hover { text-decoration:underline; text-underline-offset:4px; }
+.shelf-dilemma { color:var(--muted); font:var(--text-small)/1.9 var(--serif); }
+.shelf-edition .journal-actions { margin-top:auto; padding-top:var(--space-3); gap:var(--space-2); flex-wrap:wrap; }
+@media(max-width:900px) { .archive-shelf { grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-4); } }
+@media(max-width:600px) { .archive-shelf { grid-template-columns:minmax(0,1fr); } .shelf-cover { max-width:340px; width:100%; margin-inline:auto; } }
+</style>

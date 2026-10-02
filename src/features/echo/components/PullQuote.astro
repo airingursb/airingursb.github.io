@@ -1,15 +1,19 @@
 ---
 import EditorialText from './EditorialText.astro';
-import { letterPath } from '../data/letters';
+import { letterPath, displayDate } from '../data/letters';
+import { lettersFor } from '../data/catalog';
 import { copy, localeOf } from '../data/i18n';
 interface Props { source?: string; hero?: boolean; text?: string; }
 const { source, hero = false, text } = Astro.props;
 const lang = localeOf(Astro.url.pathname), t = copy[lang];
+const fromIssue = Astro.url.pathname.match(/\/issues\/(\d+)\//)?.[1];
+const original = source ? lettersFor(lang).find(letter => letter.id === source) : undefined;
+const href = source ? letterPath(source, lang, fromIssue) : '';
 ---
 <figure class:list={['pull-quote', { 'hero-quote': hero }]}>
-  <figcaption class="eyebrow">{t.quote}{hero && source && <span class="quote-hint">{t.readReply} ↗</span>}</figcaption>
-  <blockquote>{source ? <a class="quote-jump" href={letterPath(source, lang) + '#reply'} aria-description={t.openReply}>{text ? <EditorialText text={text} keepWords /> : <slot />}</a> : text ? <EditorialText text={text} keepWords /> : <slot />}</blockquote>
-  {source && !hero && <a class="text-button quote-source" href={letterPath(source, lang)}>{t.openLetter} <span aria-hidden="true">↗</span></a>}
+  <figcaption class="eyebrow">{t.quote}{original && <span class="quote-date"> · {displayDate(original.reply.date, lang)}</span>}{hero && source && <span class="quote-hint">{t.readReply} ↗</span>}</figcaption>
+  <blockquote>{source ? <a class="quote-jump" href={href + '#reply'} aria-description={t.openReply}>{text ? <EditorialText text={text} keepWords /> : <slot />}</a> : text ? <EditorialText text={text} keepWords /> : <slot />}</blockquote>
+  {source && !hero && <a class="text-button quote-source" href={href}>{t.openLetter} <span aria-hidden="true">↗</span></a>}
 </figure>
 <style>
   figure { margin: 0; }

@@ -1,4 +1,7 @@
 import type { Issue } from '../issues.ts';
+import { englishRestIssue } from './rest-issue.ts';
+import { englishSeasonAIssues } from './season-a-issues.ts';
+import { englishSeasonBIssues } from './season-b-issues.ts';
 
 export const englishIssues: readonly Issue[] = [
 {
@@ -267,5 +270,8 @@ export const englishIssues: readonly Issue[] = [
       ]
     ]
   }
-}
+},
+  englishRestIssue,
+  ...englishSeasonAIssues,
+  ...englishSeasonBIssues,
 ];

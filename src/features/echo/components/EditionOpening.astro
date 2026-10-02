@@ -1,0 +1,30 @@
+---
+import { Image } from 'astro:assets';
+import type { Issue } from '../data/issues';
+import { copy, localeOf } from '../data/i18n';
+import { issueArt, artDescription } from '../data/covers';
+import { presentationFor, editionCaption } from '../data/presentation';
+import EditorialText from './EditorialText.astro';
+import PullQuote from './PullQuote.astro';
+import '../styles/editions.css';
+interface Props { readonly issue: Issue; }
+const { issue } = Astro.props;
+const lang = localeOf(Astro.url.pathname), en = lang === 'en', t = copy[lang];
+const design = presentationFor(issue.number);
+---
+<section class="edition-opening" data-composition={design.composition} aria-labelledby="issue-title">
+  <header class="edition-heading">
+    <p class="journal-kicker">No. {issue.number} / {issue.category}</p>
+    <h1 id="issue-title">{en ? issue.headline.join(' ') : issue.headline.map(line => <span><EditorialText text={line} keepWords /></span>)}</h1>
+    <p class="edition-dilemma"><EditorialText text={issue.dilemma} /></p>
+  </header>
+  <figure class="edition-art">
+    <Image src={issueArt(issue.number)} alt={artDescription(issue.number, lang)} width={700} widths={[360,540,700,1000]} sizes="(max-width: 900px) calc(100vw - 64px), 46vw" format="webp" loading="eager" fetchpriority="high" />
+    <figcaption>{editionCaption(issue.number, lang)}</figcaption>
+  </figure>
+  <div class="edition-premise">
+    <PullQuote hero source={issue.source} text={issue.quote.join('')} />
+    <p class="edition-thesis"><EditorialText text={issue.thesis.join(en ? ' ' : '')} /></p>
+    <div class="journal-actions"><a class="journal-action" href="#reading">{t.read} ↓</a><a class="journal-action" href="#letters">{t.openLetters} ↗</a></div>
+  </div>
+</section>

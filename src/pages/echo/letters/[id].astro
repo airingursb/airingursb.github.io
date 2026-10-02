@@ -1,10 +1,12 @@
 ---
 import LetterView from "../../../features/echo/components/LetterView.astro";
 import { lettersFor } from "../../../features/echo/data/catalog";
+import { issuesFor } from "../../../features/echo/data/issues";
 export function getStaticPaths() {
   const letters = lettersFor('zh');
   return letters.map(letter => {
-    const siblings = letters.filter(other => other.issue === letter.issue);
+    const issue = issuesFor('zh').find(issue => issue.number === (letter.issue ?? '01'));
+    const siblings = (issue?.letterIds ?? [letter.id]).map(id => letters.find(other => other.id === id)!);
     const next = siblings[(siblings.indexOf(letter) + 1) % siblings.length];
     return { params: { id: letter.id }, props: { letter, next } };
   });

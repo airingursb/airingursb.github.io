@@ -2,11 +2,11 @@
 import { Image } from 'astro:assets';
 import { issuesFor, issuePath } from '../data/issues';
 import { localPath } from '../data/i18n';
-import cover01Zh from '../../../../public/echo/share/01-zh.png';
-import cover01En from '../../../../public/echo/share/01-en.png';
-import cover02Zh from '../../../../public/echo/share/02-zh.png';
-import cover02En from '../../../../public/echo/share/02-en.png';
-const covers = { zh: { first: cover01Zh, second: cover02Zh }, en: { first: cover01En, second: cover02En } };
+import EditorialText from './EditorialText.astro';
+import type { ImageMetadata } from 'astro';
+import { issueArt } from '../data/covers';
+const covers = import.meta.glob<{ default: ImageMetadata }>('../../../../public/echo/share/*.png', { eager: true });
+const homeCover = (number: string, lang: string) => covers[`../../../../public/echo/share/${number}-${lang}.png`]?.default ?? issueArt(number);
 const locales = ['zh', 'en'] as const;
 ---
 <div class="home-echo" id="echo">
@@ -19,10 +19,10 @@ const locales = ['zh', 'en'] as const;
       </header>
       <p class="home-echo-intro">{en ? 'A question from someone else. A reply that may speak to you.' : '从一个人的困惑，读到自己的答案。'}</p>
       <p class="home-echo-description">{en ? 'Reader questions and my replies, gathered by theme. Each issue includes the complete, anonymized exchanges.' : <>把来信里的困境与我的回信，编成可以慢慢读的<span>专题</span>。每一期，都附有脱敏后的<span>完整往返。</span></>}</p>
-      <div class="home-echo-issues" data-count={issuesFor(lang).length}>
-        {[...issuesFor(lang)].reverse().map(issue => <a class="home-echo-issue" href={issuePath(issue.number, lang)} data-umami-event="echo-issue-open" data-umami-event-surface="home" data-umami-event-target={issue.number} data-umami-event-lang={lang}>
-          <Image src={issue.number === '02' ? covers[lang].second : covers[lang].first} alt="" width={108} widths={[96,192,240]} sizes="(max-width:480px) 80px,108px" format="webp" loading="lazy" />
-          <div><p class="home-echo-meta">No. {issue.number} <span>{issue.category}</span></p><h3>{issue.headline.join(en ? ' ' : '').replaceAll('-', '‑')}</h3><span class="home-echo-read">{en ? 'Open this issue' : '翻开这一期'} <span aria-hidden="true">↗</span></span></div>
+      <div class="home-echo-issues" data-count={Math.min(3, issuesFor(lang).length)}>
+        {[...issuesFor(lang)].reverse().slice(0, 3).map(issue => <a class="home-echo-issue" href={issuePath(issue.number, lang)} data-umami-event="echo-issue-open" data-umami-event-surface="home" data-umami-event-target={issue.number} data-umami-event-lang={lang}>
+          <Image src={homeCover(issue.number, lang)} alt="" width={108} widths={[96,192,240]} sizes="(max-width:480px) 80px,108px" format="webp" loading="lazy" />
+          <div><p class="home-echo-meta">No. {issue.number} <span>{issue.category}</span></p><h3>{en ? issue.headline.join(' ').replaceAll('-', '‑') : <EditorialText text={issue.headline.join('')} keepWords />}</h3><span class="home-echo-read">{en ? 'Open this issue' : '翻开这一期'} <span aria-hidden="true">↗</span></span></div>
         </a>)}
       </div>
       <p class="home-echo-note">{en ? 'Free letters & replies · Selected and anonymized more than 180 days after the exchange ends' : '免费来信与回信 · 通信结束超过 180 天后，再脱敏选编'}</p>
@@ -44,6 +44,7 @@ const locales = ['zh', 'en'] as const;
 .home-echo-issues[data-count="1"] { grid-template-columns:1fr; }
 .home-echo-description span { white-space:nowrap; }
 .home-echo-issue { display:grid; grid-template-columns:108px minmax(0,1fr); gap:16px; align-items:center; min-width:0; color:var(--c-text); text-decoration:none; }
+@media(min-width:1100px) { .home-echo-issues[data-count="3"] { grid-template-columns:repeat(3,minmax(0,1fr)); } .home-echo-issues[data-count="3"] .home-echo-issue { grid-template-columns:80px minmax(0,1fr); } }
 .home-echo-issue img { display:block; width:100%; height:auto; aspect-ratio:3 / 4; }
 .home-echo-meta { display:flex; gap:4px 8px; flex-wrap:wrap; margin:0 0 8px; color:var(--c-text-muted); font:11px/1.6 var(--font-mono); }
 .home-echo-issue h3 { margin:0; font:600 18px/1.5 Georgia,'Noto Serif SC',serif; text-wrap:balance; }

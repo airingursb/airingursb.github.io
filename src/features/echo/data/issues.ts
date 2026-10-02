@@ -2,8 +2,12 @@ import { sections as learningSections, type Section } from './issue.ts';
 import { issuePath } from './catalog.ts';
 import { englishIssues } from './en/issues.ts';
 import type { Locale } from './i18n.ts';
+import { restIssue } from './rest-issue.ts';
+import { seasonAIssues } from './season-a-issues.ts';
+import { seasonBIssues } from './season-b-issues.ts';
 
 export interface Issue {
+  readonly releaseAfter?: string;
   readonly number: string;
   readonly category: string;
   readonly title: string;
@@ -19,7 +23,8 @@ export interface Issue {
   readonly letterIds: readonly string[];
   readonly letterNote: string;
   readonly sections: readonly Section[];
-  readonly exercise: { readonly title: string; readonly steps: readonly (readonly [string, string])[] };
+  readonly exercise?: { readonly title: string; readonly steps: readonly (readonly [string, string])[] };
+  readonly reflection?: { readonly title: string; readonly question: string; readonly note: string };
 }
 
 export const issues: readonly Issue[] = [
@@ -99,6 +104,9 @@ export const issues: readonly Issue[] = [
       ['我准备投入什么，又准备等到什么时候？', '写清时间、搬迁与收入的交换，再定一个复查经验积累或等待事项的节点。'],
     ] },
   },
+  restIssue,
+  ...seasonAIssues,
+  ...seasonBIssues,
 ];
 
 export { issuePath };

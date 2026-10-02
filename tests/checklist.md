@@ -2121,4 +2121,29 @@
 - [x] Echo editorial voice: both issues in Chinese and English use first person when narrating Airing’s own replies; original correspondence, quotes and attribution labels stay unchanged.
 - [x] Echo 02 rewrite: four arguments are bilingual, hero/section quotations match their linked replies, related-source links open the right letters, and the condensed date index follows the essay beside the original letters. Archive, homepage and downloadable covers use the new title; original correspondence remains unchanged. Check 375/768/1280px, sharing, source navigation and missing glyphs.
 - [x] Echo exercise typography: both issues in zh/en at 375/768/1280px retain the main sentence's font and color through its ending; only the hint wrapper starts a smaller muted block. Nested phrase endings stay inline, with no horizontal overflow or browser errors. Verified in the built preview on 2026-10-01.
-- [x] Echo 02 release candidate: the clean production build exposes both languages, eight new letter routes and the correct canonical/share metadata without preview noindex or component showcase routes. Share copy/download and write clicks emit one matching event each; cover downloads match their PNG sources. English headline phrases retain a separating space at 375/768/1280px. Verified locally on 2026-10-01; public deployment is pending the publication-time decision.
+- [x] Echo 02 release candidate: the clean production build exposes both languages, eight new letter routes and the correct canonical/share metadata without preview noindex or component showcase routes. Share copy/download and write clicks emit one matching event each; cover downloads match their PNG sources. English headline phrases retain a separating space at 375/768/1280px. Published after the normal publication boundary on 2026-10-02; deployment and live bilingual route smoke passed.
+
+### Echo 03 · Time and living (2026-10-02)
+
+- [x] Four first-person sections and one closing reflection have full English translations; every quoted reply matches its dated original and no later outcome is invented.
+- [x] Three complete exchanges preserve all six dates and paragraph order; two letters belong to Yanxia, and Weiguang retains the alias used in issue 01. Identity details are explicitly redacted.
+- [x] New opening, reflection and grouped envelopes work at 375/768/1280px in both languages; no clipped bear, broken title phrases, overlapping postmark, missing glyphs or horizontal overflow.
+- [x] Archive, issue masthead, homepage and 3:4 covers show three exchanges for issue 03 and three issues / eleven exchanges overall; the middle issue is not mislabeled as the inaugural issue.
+- [x] Chinese/English share covers match the visible title and art. PNG compression preserves decoded pixels; downloads return the correct image.
+- [x] Source, chapter, issue and language navigation preserve their destinations; share/copy/download/write actions each emit exactly one stable-identifier event, without personal content.
+- [x] Build, scoped Astro check, Echo content tests and browser QA pass. Author preview stays noindex; issue 03 remains unpublished pending the author's release instruction. Evidence: `output/echo-03-20261002/QA.md`; mobile performance audit values are recorded there separately.
+
+### Echo editions 04–12 · Private author preview
+
+- [x] Twelve bilingual issue pages and twenty unique exchange pages load at 375/768/1280 without horizontal overflow or missing visible images.
+- [x] Latest issue and eleven shelf covers use correct 3:4 covers; the personal homepage shows the latest three issues in both languages.
+- [x] English issue 02 has a readable full-width tablet quotation; dated quote captions on 02/03 lead to their original replies.
+- [x] Shared originals return to the originating issue and its next exchange; language switching retains that issue and the selected sheet.
+- [x] Reader follow-ups on record-and-return / study-purpose have their own sheets, speaker, navigation anchors and explicitly unknown independent dates.
+- [x] Private-message dates on work-boundaries distinguish the record date from unknown message dates; no date is fabricated.
+- [x] Per the author's 2026-10-02 request, the private-preview notice is absent from the bilingual archive, issue 10, its original transcript and component showcase, without leaving an empty card or gap. Evidence: `output/echo-04-12-20261002/notice-removed/checks.json` and screenshots.
+- [x] Bilingual quotations match their dated reply text; translations preserve paragraph identities, redaction markers, sequence and follow-up roles.
+- [x] All 24 share covers download correctly; share/copy/download/write interactions emit one event each with identifiers only.
+- [x] Keyboard, Escape/focus return, no-JS reading, image alt text and reduced-motion states work.
+- [x] Final Chinese font subsets have no missing glyphs in their intended text roles; PNG compression preserves decoded pixels.
+- [x] Build, scoped Astro check and Echo content tests pass; final evidence is recorded in output/echo-04-12-20261002/QA.md.

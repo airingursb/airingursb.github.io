@@ -9,10 +9,11 @@ interface Props { readonly letter: Manuscript; readonly number: string; }
 const { letter, number } = Astro.props;
 const lang = localeOf(Astro.url.pathname), t = copy[lang];
 ---
-<section class:list={['letter-sheet', { 'reply-sheet': letter.id === 'reply' }]} id={letter.id} aria-labelledby={letter.id + '-heading'}>
+<section class:list={['letter-sheet', { 'reply-sheet': letter.id.startsWith('reply') }]} id={letter.id} aria-labelledby={letter.id + '-heading'}>
   <header class="sheet-header">
     <div class="stationery-imprint"><span class="stationery-brand" aria-hidden="true">{t.name}</span><span>{t.stationery}<span class="stationery-small">{t.greeting}</span></span><p class="sheet-folio">NO. {number}<span>{letter.label}</span></p></div>
     <div class="sheet-route"><h2 id={letter.id + '-heading'}>{letter.sender} {t.to} {letter.recipient}</h2><time datetime={letter.date}>{displayDate(letter.date, lang)}</time></div>
+    {letter.dateNote && <p class="sheet-date-note">{letter.dateNote}</p>}
   </header>
   <div class="sheet-writing">
     {letter.salutation && <p class="sheet-salutation"><EditorialText text={letter.salutation} keepWords /></p>}
@@ -31,9 +32,9 @@ const lang = localeOf(Astro.url.pathname), t = copy[lang];
     </div>
     <footer class="sheet-signoff">
       {letter.closing && <p><EditorialText text={letter.closing} /></p>}
-      <p class="sheet-signature">{letter.signature}</p>
+      {letter.signature && <p class="sheet-signature">{letter.signature}</p>}
       <time datetime={letter.date}>{displayDate(letter.date, lang)}</time>
     </footer>
   </div>
-  <div class="stationery-footer" aria-hidden="true"><span>{t.name} · {t.journal}</span><span>{letter.id === 'incoming' ? t.incomingMark : t.replyMark}</span></div>
+  <div class="stationery-footer" aria-hidden="true"><span>{t.name} · {t.journal}</span><span>{letter.id.startsWith('incoming') ? t.incomingMark : t.replyMark}</span></div>
 </section>

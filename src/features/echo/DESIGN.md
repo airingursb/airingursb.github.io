@@ -1,5 +1,37 @@
 # Echo · Correspondence journal
 
+## Issues 03–12 · Authorized release (2026-10-02)
+
+The author explicitly requested publication of the reviewed current edition set after asking to remove the private-preview notice. Release all twelve bilingual issues, twenty anonymized exchanges, the shared archive/homepage navigation, and all twenty-four share covers. Issue 10 is included under this explicit author-approved exception to the usual 180-day interval; its retained `releaseAfter` value records the original standard eligibility date, not a production gate. Earlier private-preview instructions below are historical preparation notes superseded by this release decision.
+
+Keep the local `.env.local`, research evidence, raw private source records and the Echo component-showcase routes outside the release. Production does not set `ECHO_EDITORIAL_PREVIEW`; canonical Echo pages remain indexable and use the public ursb.me URLs. Preserve the existing favicon and unrelated site work.
+
+## Issue 03 · An afternoon left open (2026-10-02)
+
+Approved theme: “休息，也需要一个理由吗？” / “Does rest need a reason?” Four first-person essays examine the cost of treating every hour as an investment. Three complete, anonymized exchanges belong to two readers; the first two remain one ongoing conversation. Historical replies stay dated, attributed and distinct from newly written commentary. Publication remains subject to the author's instruction; this worktree is a private, noindex preview.
+
+- Keep the same watercolor bear and 3:4 cover anatomy. New illustration: a letter left on the desk while the bear looks through a post-office window at sunset. Theme typography remains larger than the journal name. No new animation: stillness is part of this edition's subject.
+- Tokens local to edition 03: `--rest-ink: #784a3e`, `--rest-paper: #f5f1e8`, `--rest-rule: #cbb9a7`, `--rest-title: 52px` (42px tablet, 36px mobile), `--rest-quote: 28px` (24px mobile), `--rest-copy-measure: 34rem`. Preserve existing body/handwritten/source type roles and 8/16/24/32/48px spacing. Dark text on paper; no low-contrast apricot body text.
+- `RestOpening` pairs a large question and small editorial premise with a window-shaped crop of the real illustration. A dated, linked handwritten quote completes the opening below it. Reading width follows [StyleGallery content-limiter](https://github.com/changeroa/StyleGallery/blob/main/patterns/containment/content-limiter.md): fluid outer composition, limited prose measure, document-owned scrolling.
+- `OpenQuestion` closes with one reflection, not another exercise checklist. `CorrespondenceIndex` groups this issue's envelopes by stable reader alias and explicitly labels the continuing conversation. Same component used on both language surfaces; all dates and complete originals remain accessible.
+- Validate primitives in a private showcase at 375/768/1280 before composing the issue. Cover/title long-text, grouped letters, keyboard focus, empty exercise vs reflection, and source jumps are required states. Below 720px, reading order stays title → picture → quote; no absolute-positioned prose or fixed content heights.
+- Archive, homepage, cover, masthead and analytics must accommodate three exchanges. Lightweight public route identifiers may enter the client bundle; full correspondence data must not. Refresh both share covers from the actual cover component. PNG optimization is lossless and decoded-pixel equality is recorded; responsive WebP files are separate delivery derivatives.
+- The homepage uses three columns on wide screens with 80px cover thumbnails, preserving enough width for complete Chinese words and sentence endings; narrower screens retain the existing two-column or stacked layout. English compact postmarks use the existing 10px byline role and centered text inside the seal.
+- Verify the exact hero/section quotations against the anonymized replies, preserve paragraph order in English, extend Chinese font subsets, and check share/copy/download/write events once per action. No private names, contact details or body text in analytics.
+- Accepted preview limits: private HTTP and noindex, plus existing unrelated homepage accessibility/performance debt. No new accessibility debt or dependencies are needed.
+
+## Issues 04–12 · A growing correspondence shelf (2026-10-02)
+
+The author asks for all nine editions in a private preview. Keep the established 3:4 cover, watercolor bear identity, large topic headline, restrained journal name, readable paper and dated original quotations. Each edition receives a distinct illustration and ink palette. Three opening compositions (field notes, desk spread, quiet horizon) vary the relationship of title, artwork and quotation while keeping the same reading order on narrow screens. No new motion is required.
+
+- New tokens: `--edition-ink`, `--edition-wash`, `--edition-title: clamp(32px, 4.5vw, 54px)`. Ink colors stay dark on paper; focus remains the existing blue. Use the existing type roles and spacing scale. Hero text never overlays artwork. Opening layouts stack below 900px and titles have no fixed height.
+- The archive features the newest edition, followed by a three-column cover shelf (two columns below 900px, one below 600px). The personal homepage shows only the latest three editions. A native details issue picker and adjacent links replace an ever-growing row of twelve links.
+- A correspondence can appear in several themes but has one canonical transcript. Query context identifies the originating issue; links back and the next exchange preserve that context. Related-edition links remain visible without JavaScript. Counts use unique exchanges, never sum reused memberships.
+- Manuscripts support reader follow-ups and author follow-ups. Unknown individual dates are shown as unknown, with the source-page date explicitly described as a record date. Never turn a page timestamp into a message timestamp. Every speaker retains a separate sheet.
+- The author requested removal of the private-preview notice on 2026-10-02. Issue, transcript, shelf and component showcase render without that card in either language. Source-date metadata remains internal. Cover downloads use the same DOM cover, with lossless PNG optimization and pixel verification.
+- Quote captions include the original reply date, including in issues 02 and 03. The issue-02 tablet spread gives the English quotation a full-width line measure. New content is first-person editorial interpretation, exact quotations are checked against retained source paragraphs, and translations preserve all correspondence turns.
+- Required evidence: bilingual 375/768/1280 screenshots, no horizontal overflow, source and return navigation, follow-up roles, unknown dates, all cover downloads, copy/share/write analytics once per action, reduced-motion behavior of the existing bear, font glyph coverage, and unique source membership tests.
+
 ## Issue 02 · Release (2026-10-02)
 
 The author has requested release of the reviewed bilingual second issue, including the exercise typography fix. The production build includes both issues and eight anonymized exchanges, the existing issue-02 bear artwork, translated covers, homepage/archive entries and sharing. Keep local component showcase routes and private research outside the release. The `ECHO_EDITORIAL_PREVIEW` flag is unset in production so public pages remain indexable.
