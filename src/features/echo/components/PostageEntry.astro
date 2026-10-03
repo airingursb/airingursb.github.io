@@ -1,0 +1,40 @@
+---
+import { localeOf, localPath } from '../data/i18n';
+import { lettersFor } from '../data/catalog';
+import { readerForLetter } from '../data/reader-characters';
+import { postageFor } from '../data/postage';
+import EditorialText from './EditorialText.astro';
+const lang = localeOf(Astro.url.pathname), en = lang === 'en';
+const letters = lettersFor(lang);
+const readers = new Set(letters.map(letter => readerForLetter(letter.id).id)).size;
+const stamps = ['output', 'offer-autumn', 'mist'].map(postageFor);
+---
+<aside class="postage-insert" id="postage-album" aria-labelledby="postage-entry-heading">
+  <a class="postage-entry" href={localPath('/postage/', lang)} data-postage-entry="archive">
+    <div class="postage-entry-art" aria-hidden="true">
+      {stamps.map(stamp => <img src={stamp.src} width={stamp.width} height={stamp.height} alt="" loading="lazy" decoding="async" />)}
+    </div>
+    <div class="postage-entry-copy">
+      <p class="postage-entry-count">{en ? `${readers} readers · ${letters.length} stamps` : `${readers} 位来信者 · ${letters.length} 枚邮票`}</p>
+      <h2 id="postage-entry-heading">{en ? 'The readers’ postage album' : '来信者的邮票册'}</h2>
+      <p class="postage-entry-deck"><EditorialText text={en ? 'A familiar face, a different little scene with every letter.' : '同一个熟悉的面孔，带着不同的一封信回来。'} /></p>
+    </div>
+    <span class="postage-entry-action echo-text-link">{en ? 'Open album' : '翻开邮票册'}<span aria-hidden="true">↗</span></span>
+  </a>
+</aside>
+<style>
+.postage-insert { margin-bottom:var(--space-4); scroll-margin-top:var(--space-3); }
+.postage-entry { --postage-entry-stamp:72px; --postage-entry-art:232px; --postage-entry-title:24px; display:grid; grid-template-columns:var(--postage-entry-art) minmax(0,1fr) auto; align-items:center; gap:var(--space-3); padding:var(--space-3); background:var(--journal-paper); border-block:1px solid var(--journal-rule); text-decoration:none; }
+.postage-entry-art { grid-column:1; display:flex; justify-content:center; gap:var(--space-1); padding-block:var(--space-1); }
+.postage-entry-art img { display:block; width:var(--postage-entry-stamp); height:auto; min-width:0; }
+.postage-entry-art img:first-child { transform:rotate(-8deg); }
+.postage-entry-art img:last-child { transform:rotate(8deg); }
+.postage-entry-copy { min-width:0; }
+.postage-entry-count { font:var(--text-small)/1.8 var(--sans); color:var(--muted); }
+.postage-entry h2 { font:600 var(--postage-entry-title)/1.6 var(--serif); color:var(--pine); margin-block:var(--space-1); text-wrap:pretty; }
+.postage-entry-deck { font:var(--text-small)/1.9 var(--serif); color:var(--muted); }
+.postage-entry-action { white-space:nowrap; font:var(--text-small)/1.8 var(--sans); color:var(--pine); }
+.postage-entry:hover .postage-entry-action { text-decoration:underline; text-underline-offset:4px; }
+@media(max-width:720px) { .postage-entry { --postage-entry-stamp:64px; grid-template-columns:minmax(0,1fr) auto; gap:var(--space-2); } .postage-entry-copy { grid-column:1/-1; grid-row:1; } .postage-entry-art { grid-column:1; grid-row:2; justify-content:flex-start; } .postage-entry-action { grid-column:2; grid-row:2; align-self:end; } }
+@media(max-width:420px) { .postage-entry { --postage-entry-stamp:48px; } }
+</style>

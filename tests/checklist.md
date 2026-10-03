@@ -1,5 +1,46 @@
 # Browser QA Checklist
 
+### Echo postage release (October 3)
+
+- [x] Production build has bilingual public album/entrance,16 readers/20 distinct stamps, uniform Chinese fonts and continuous text-link underlines; original bodies/dates/aliases and favicon remain unchanged. Public pages have no preview label/noindex and private study routes are absent.
+- [x] Preview production artifacts in Chrome at375/768/1280, both languages/themes. Native archive→album→original navigation, theme/language, sharing and write/postage/letter analytics remain correct.
+
+### Echo continuous text links and album font (October 3, author preview)
+
+- [x] Hero email, footer invitation and postage entry keep text/arrow in one inline context with no inserted space or flex gap; native underlines remain continuous in default/hover, with44px targets and visible keyboard focus at320/375/768/1280, both languages/themes. Mailto and album tracking remain once per click.
+- [x] Chinese album title/reader labels use the existing Noto Serif family consistently without per-character system fallback;400/700 subsets preserve all previous glyphs, and both archive/album match surrounding titles after a cold load.
+
+### Echo postage album entrance (October 3, author preview)
+
+- [x] CN/EN Echo archive shows one coherent postal insert between introduction and issue shelf, using three generated reader stamps, live16-reader/20-stamp count and a clear native album link; fits320/375/768/1280 in both themes without image/text collision or overflow.
+- [x] `/echo/postage/` and `/en/echo/postage/` load the grouped album; alternate-language, original-letter and archive-return links work, theme persists, favicon unchanged. Existing private preview aliases still work when enabled.
+- [x] Mouse/keyboard entrance activation emits exactly one `echo-postage-open` with safe locale/surface/entry fields, destination page-view has surface `postage`, and a stamp's original link retains exactly one `echo-letter-open`. No reader alias, body text or character assignment enters payloads.
+
+
+### Echo reader characters and postage (October 3, author preview)
+
+- [x] Sixteen pseudonymous readers have16 distinct fixed Friends Notebook characters; continuing exchanges retain their character and original alias, including行舟/檐下/微光. Twenty stamps show separate generated scenes, consistent across languages and issue reuse; Airing retains the original bear at the footer.
+- [x] The bilingual private album groups20 letters under16 labelled reader portraits, displays exact matching stamps and native original links, and fits320/375/768/1280 in light/dark. Language navigation, keyboard focus, theme persistence, dates and text remain correct.
+- [x] Image2.5 references match the selected actual32-character family; delivery PNG compression preserves decoded RGBA exactly. No SVG replacement illustration, private text or real identities in prompts/analytics.
+
+### Echo individual postage and aliases (October 3, author preview)
+
+- [x] Twenty canonical correspondences each have distinct Image2.5 character artwork; same original retains its stamp across both languages and all issue memberships. No SVG postage remains in envelopes or the post-office footer.
+- [x] The private bilingual postage album shows20 distinct loaded images and linked aliases/subjects, fits320/375/768/1280 in light/dark, and supports language/theme switching, keyboard focus and native original/return links. Routes are omitted without the editorial-preview flag.
+- [x] Repeated aliases only identify verified continuing readers: 行舟3 rounds, 檐下2 and 微光2. Dates, source text and live metadata remain unchanged; asset generation receives no original bodies or identities.
+
+### Echo generated bear postage (October 3, author preview)
+
+- [x] All Chinese/English original envelopes and compact issue-index envelopes render a fixed correspondence-specific generated watercolor character postage; no inline SVG illustration remains in PostalMark. Stamp artwork retains transparent perforations, intrinsic dimensions and lossless PNG delivery; no opaque rectangle appears in dark mode.
+- [x] Full/compact envelopes fit375/768/1280 in both themes/languages without stamp overlap with edition number, address, subject or dates; compact date metadata remains visible. Original paragraph order, aliases, dates and source/return links stay unchanged.
+
+### Echo stationery refinement (October 3, author preview)
+
+- [x] CN/EN originals retain complete ordered paragraphs, aliases, dates, signature, blue greeting and handwriting; short/long, attachment, followup and unknown-date cases fit375/768/1280 in light/dark without overflow.
+- [x] Subtle paper fibers, quieter rules and paper-edge shadows are visible without obscuring ink; incoming/reply paper tones remain distinct. The phone envelope is shorter, stamp and subject do not overlap, and compact issue-index envelopes retain their layout.
+- [x] Theme control is inside the shared Echo header beside language links, has44px target and pressed state, does not float over text, persists light/dark on reload/navigation and emits one theme-toggle event per click.
+- [x] Header navigation, language/hash switching, source return links, sharing and attachment opening remain usable on archive, issues and letters; favicon unchanged. Preview is noindex and not published.
+
 ### Small H3 responses (September 24)
 - [ ] Chinese/English Pagefind search returns results immediately; settled query or Enter starts one index-box action, actual completed result count selects found/empty. Rapid edits, clear, IME, cached query and BFCache cannot show a stale result reaction.
 - [ ] GC theater marks exactly root-reachable objects, retains A/B, and reclaims the unreachable C/D cycle; adding a root link retains C/D. Reset, keyboard and reduced motion preserve correct state; both note summaries and both immersive article embeds fit without nested clipping.

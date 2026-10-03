@@ -18,11 +18,15 @@
   --sheet-signature: 32px;
   --letter-bar-height: 64px;
   --letter-stamp-width: 76px;
-  --letter-stamp-height: 92px;
+  --letter-stamp-height: calc(var(--letter-stamp-width) * 4 / 3);
+  --letter-stamp-shadow: 0 1px 1px #27382b24;
   --letter-postmark-size: 96px;
   --letter-envelope-padding: 40px;
   --letter-envelope-subject: 21px;
-  --letter-sheet-shadow: 0 1px 2px #27382b24, 0 12px 28px -18px #26362959;
+  --letter-sheet-shadow: 0 1px 2px #27382b14, 0 10px 18px -14px #26362950, inset 0 1px 0 #ffffff80;
+  --letter-fiber-opacity: .06;
+  --letter-reply-paper: #f8f5ed;
+  --letter-sheet-sheen: linear-gradient(to bottom, #ffffff70, transparent 16px);
   --letter-crease-shadow: #a5a28a20;
   --letter-crease-light: #ffffff80;
 }
@@ -35,7 +39,8 @@
 .correspondence-book { max-width: var(--letter-width); margin: auto; padding: var(--space-3) var(--space-2) 0; }
 .letter-envelope { --muted: var(--letter-envelope-muted); position: relative; isolation: isolate; background: var(--letter-envelope) url('../assets/paper.svg'); border: 1px solid var(--rule); box-shadow: var(--letter-sheet-shadow); padding: var(--letter-envelope-padding); }
 .letter-envelope::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: linear-gradient(154deg, transparent 49.8%, var(--letter-crease-shadow) 50%, transparent 50.2%) bottom right / 52% 35% no-repeat, linear-gradient(26deg, transparent 49.8%, var(--letter-crease-shadow) 50%, transparent 50.2%) bottom left / 52% 35% no-repeat; }
-.envelope-edition { display: flex; gap: var(--space-2); color: var(--muted); font: var(--type-caption-label)/1.8 var(--sans); letter-spacing: .12em; margin-bottom: var(--space-5); }
+.envelope-edition { display: flex; flex-wrap: wrap; gap: var(--space-xs) var(--space-2); color: var(--muted); font: var(--type-caption-label)/1.8 var(--sans); letter-spacing: .12em; margin-bottom: var(--space-5); padding-right: calc(var(--letter-stamp-width) + var(--space-1)); }
+.envelope-edition > span:last-child { white-space: nowrap; }
 .envelope-address { padding-right: calc(var(--letter-stamp-width) + var(--space-5)); }
 .envelope-to { color: var(--muted); font: var(--text-small)/1.8 var(--sans); margin-bottom: var(--space-half); }
 .envelope-address h1, .envelope-address h3 { color: var(--pen); font: var(--letter-title)/1.5 var(--hand); }
@@ -45,20 +50,21 @@
 .envelope-dates { border-top: 1px solid var(--rule); padding-top: var(--space-2); margin-top: var(--space-5); display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); color: var(--muted); font: var(--text-small)/1.8 var(--sans); }
 .envelope-dates time { font-size: var(--text-small); margin-left: var(--space-1); font-variant-numeric: tabular-nums; }
 .postal-motif { position: absolute; top: var(--letter-envelope-padding); right: var(--letter-envelope-padding); width: calc(var(--letter-stamp-width) + var(--letter-postmark-size)); height: calc(var(--letter-stamp-height) + var(--space-3)); pointer-events: none; }
-.echo-stamp { position: absolute; right: 0; top: 0; width: var(--letter-stamp-width); height: var(--letter-stamp-height); color: var(--pine); background: var(--letter-stamp); outline: 1px dashed var(--pine); outline-offset: 3px; border: 4px solid var(--source-leaf); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-xs); transform: rotate(4deg); }
-.echo-stamp > span { font: var(--text-note)/1 var(--serif); }
-.echo-stamp svg { width: 44px; height: 26px; }
-.echo-stamp small { font: var(--type-caption-small)/1.2 var(--sans); }
+.echo-stamp { position: absolute; right: 0; top: 0; display: block; width: var(--letter-stamp-width); height: var(--letter-stamp-height); object-fit: contain; filter: drop-shadow(var(--letter-stamp-shadow)); transform: rotate(4deg); }
 .letter-postmark { position: absolute; left: var(--space-1); top: var(--space-4); width: var(--letter-postmark-size); height: var(--letter-postmark-size); border: 1px solid var(--muted); outline: 1px solid var(--muted); outline-offset: -5px; border-radius: 50%; color: var(--muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-xs); transform: rotate(-8deg); font: var(--type-caption-small)/1.5 var(--sans); }
 .letter-postmark strong { font-size: var(--type-caption-label); font-weight: 400; }
+.letter-postmark > span { font: var(--type-byline)/1.4 var(--sans); text-align: center; }
+.letter-postmark > span:first-child { max-width: calc(100% - var(--space-1)); }
+.letter-postmark > span:last-child { white-space: nowrap; }
 .letter-navigation { position: sticky; top: 0; z-index: 3; max-width: var(--sheet-width); margin: var(--space-5) auto var(--space-3); display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--letter-bar-height); background: var(--letter-desk); border-block: 1px solid var(--rule); padding: var(--space-1) var(--space-2); font: var(--text-small)/1.8 var(--sans); }
 .letter-navigation a { display: inline-flex; align-items: center; min-height: var(--control-size); text-decoration: none; color: var(--muted); gap: var(--space-1); }
 .letter-navigation a:hover, .letter-navigation a[aria-current] { color: var(--pen); text-decoration: underline; }
 .letter-chapters { display: flex; align-items: center; gap: var(--space-3); flex-wrap:wrap; justify-content:center; }
 .letter-chapters > span { color: var(--rule); }
-.letter-sheet { position: relative; max-width: var(--sheet-width); margin: 0 auto var(--space-6); padding: var(--space-5) var(--sheet-inset); background-color: var(--source-leaf); background-image: linear-gradient(to bottom, transparent 260px, var(--letter-crease-shadow) 261px, var(--letter-crease-light) 262px, transparent 264px), url('../assets/paper.svg'); border: 1px solid var(--paper-edge); box-shadow: var(--letter-sheet-shadow); scroll-margin-top: calc(var(--letter-bar-height) + var(--space-3)); }
+.letter-sheet { position: relative; isolation: isolate; max-width: var(--sheet-width); margin: 0 auto var(--space-6); padding: var(--space-5) var(--sheet-inset); background-color: var(--source-leaf); background-image: var(--letter-sheet-sheen); border: 1px solid color-mix(in srgb, var(--paper-edge) 35%, transparent); box-shadow: var(--letter-sheet-shadow); scroll-margin-top: calc(var(--letter-bar-height) + var(--space-3)); }
+.letter-sheet::after { content: ''; position: absolute; inset: 0; z-index: -1; background: url('../assets/stationery/paper-fibers.webp') repeat; opacity: var(--letter-fiber-opacity); pointer-events: none; }
 .letter-sheet::before { content: ''; position: absolute; top: var(--space-5); bottom: var(--space-5); left: calc(var(--sheet-inset) - var(--space-3)); border-left: 1px solid var(--letter-crease-shadow); pointer-events: none; }
-.reply-sheet { background-color: var(--paper); }
+.reply-sheet { background-color: var(--letter-reply-paper); }
 .sheet-header { max-width: var(--sheet-measure); margin: 0 auto var(--space-5); border-bottom: 1px solid var(--rule); padding-bottom: var(--space-3); }
 .sheet-folio { display: flex; justify-content: space-between; color: var(--muted); font: var(--type-caption-label)/1.8 var(--sans); letter-spacing: .12em; margin-bottom: var(--space-2); }
 .sheet-route { display: flex; align-items: baseline; justify-content: space-between; flex-wrap: wrap; gap: var(--space-1) var(--space-3); }
@@ -92,16 +98,12 @@
 .letter-pocket .letter-envelope { height: 100%; transition: border-color var(--duration), background-color var(--duration); }
 .letter-pocket:hover .letter-envelope { border-color: var(--pen); background-color: var(--source-leaf); }
 .letter-pocket:hover .envelope-open { text-decoration: underline; }
-.envelope-compact { --letter-title: 30px; --letter-envelope-padding: 24px; --letter-envelope-subject: 16px; }
-.envelope-compact .envelope-edition { margin-bottom: var(--space-4); }
+.envelope-compact { --letter-title: 30px; --letter-envelope-padding: 24px; --letter-envelope-subject: 16px; --letter-stamp-width: 56px; --letter-stamp-height: calc(var(--letter-stamp-width) * 4 / 3); }
 .envelope-compact .envelope-address { padding-right: 0; }
 .envelope-compact .envelope-to { font-size: var(--type-caption-label); }
 .envelope-compact .envelope-code { display: none; }
-.envelope-compact .postal-motif { width: auto; height: auto; top: var(--space-2); right: var(--space-2); }
-.envelope-compact .echo-stamp { display: none; }
-.envelope-compact .letter-postmark { position: relative; width: 72px; height: 72px; top: 0; left: 0; }
-.envelope-compact .letter-postmark strong { font-size: var(--type-caption-small); }
-.envelope-compact .letter-postmark span:first-child { display: none; }
+.envelope-compact .postal-motif { width: var(--letter-stamp-width); height: var(--letter-stamp-height); top: var(--space-2); right: var(--space-2); }
+.envelope-compact .letter-postmark { display: none; }
 .envelope-compact .envelope-dates { display: grid; gap: var(--space-xs); margin-top: var(--space-3); font-size: var(--type-caption-label); }
 .envelope-compact .envelope-dates time { font-size: var(--text-small); margin-left: var(--space-xs); }
 .envelope-open { display: inline-block; color: var(--pen); font: var(--text-small)/1.8 var(--sans); margin-top: var(--space-3); }
@@ -110,7 +112,7 @@
   .letter-pockets { grid-template-columns: minmax(0,1fr); }
 }
 @media(max-width: 600px) {
-  :root { --sheet-inset: 24px; --sheet-type: 20px; --sheet-leading: 2; --letter-title: 32px; --sheet-salutation: 25px; --letter-envelope-padding: 24px; --letter-stamp-width: 64px; --letter-stamp-height: 76px; --letter-postmark-size: 80px; --letter-envelope-subject: 18px; }
+  :root { --sheet-inset: 24px; --sheet-type: 20px; --sheet-leading: 2; --letter-title: 32px; --sheet-salutation: 25px; --letter-envelope-padding: 24px; --letter-stamp-width: 64px; --letter-postmark-size: 80px; --letter-envelope-subject: 18px; }
   .letter-masthead { padding-inline: var(--space-3); min-height: var(--header-height); }
   .letter-brand span { display: none; }
   .correspondence-book { padding: var(--space-2) var(--space-half) 0; }
@@ -118,10 +120,9 @@
   .envelope-address { padding-right: 0; }
   .postal-motif { top: var(--space-4); }
   .envelope-to { font-size: var(--type-caption-label); }
+  .letter-envelope:not(.envelope-compact) .envelope-to { max-width: calc(100% - var(--letter-stamp-width) - var(--letter-postmark-size)); }
   .envelope-dates { flex-direction: column; gap: var(--space-xs); margin-top: var(--space-4); font-size: var(--type-caption-label); }
   .letter-postmark strong { font-size: var(--type-caption-small); }
-  .echo-stamp > span { font-size: var(--text-small); }
-  .echo-stamp svg { width: 36px; height: 22px; }
   .letter-navigation { font-size: var(--type-caption-label); padding-inline: var(--space-1); gap: var(--space-1); margin-top: var(--space-4); }
   .letter-chapters { gap: var(--space-2); }
   .letter-sheet { padding-block: var(--space-4); margin-bottom: var(--space-5); }
@@ -136,7 +137,7 @@
 }
 
 /* Stationery shared by every full correspondence. */
-:root { --stationery-rule:#24508424; --stationery-margin:#8d5a4e40; --stationery-seal:#85645d; --stationery-mark:40px; --stationery-period:2.05em; }
+:root { --stationery-rule:#24508416; --stationery-margin:#8d5a4e28; --stationery-seal:#85645d; --stationery-mark:40px; --stationery-period:calc(1em * var(--sheet-leading)); }
 .letter-sheet { padding-top:var(--space-4); }
 .letter-sheet::before { top:var(--space-4); bottom:var(--space-4); left:calc(var(--sheet-inset) - var(--space-3)); width:var(--space-xs); border-inline:1px solid var(--stationery-margin); }
 .stationery-imprint { display:flex; align-items:center; gap:var(--space-2); color:var(--stationery-seal); padding-bottom:var(--space-3); margin-bottom:var(--space-3); border-bottom:3px double var(--stationery-margin); font:var(--text-label)/1.6 var(--serif); letter-spacing:.15em; }

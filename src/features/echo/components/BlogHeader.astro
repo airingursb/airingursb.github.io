@@ -4,13 +4,21 @@ import { copy, localeOf } from '../data/i18n';
 import '../styles/site-shell.css';
 import '../styles/theme.css';
 import ThemeToggle from './ThemeToggle.astro';
+import LangSwitch from '../../../components/LangSwitch.astro';
 interface Props { readonly context?: string; }
 const { context } = Astro.props;
 const lang = localeOf(Astro.url.pathname);
 ---
-<SiteHeader lang={lang} breadcrumb={context ?? `${copy[lang].name} / ${copy[lang].journal}`} />
+<SiteHeader lang={lang}>
+  <Fragment slot="meta">
+    <span class="echo-header-context">{context ?? `${copy[lang].name} / ${copy[lang].journal}`}</span>
+    <div class="echo-header-tools">
+      <LangSwitch lang={lang} currentPath={Astro.url.pathname} />
+      <ThemeToggle />
+    </div>
+  </Fragment>
+</SiteHeader>
 <script is:inline src="/site-analytics.js"></script>
-<ThemeToggle />
 <script>
   import '../analytics';
   const languageLinks = document.querySelectorAll<HTMLAnchorElement>('[data-lang-switch]');

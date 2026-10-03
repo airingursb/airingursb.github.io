@@ -1,0 +1,86 @@
+---
+import '../styles/tokens.css';
+import '../styles/letters.css';
+import BlogHeader from './BlogHeader.astro';
+import DocumentHead from './DocumentHead.astro';
+import EditorialText from './EditorialText.astro';
+import { lettersFor } from '../data/catalog';
+import { letterPath } from '../data/letters';
+import { localeOf, localPath } from '../data/i18n';
+import { postageFor, portraitFor } from '../data/postage';
+import { readerForLetter } from '../data/reader-characters';
+const lang = localeOf(Astro.url.pathname), en = lang === 'en';
+const letters = lettersFor(lang);
+const groups = [...new Set(letters.map(letter => readerForLetter(letter.id).id))].map(id => {
+  const exchanges = letters.filter(letter => readerForLetter(letter.id).id === id);
+  return { reader: readerForLetter(exchanges[0].id), portrait: portraitFor(exchanges[0].id), exchanges };
+});
+const title = en ? 'Readers & their stamps' : '来信者的邮票册';
+const preview = import.meta.env.ECHO_EDITORIAL_PREVIEW === 'true';
+---
+<!doctype html>
+<html lang={en ? 'en' : 'zh-CN'}>
+  <head><DocumentHead title={`${title} / Airing`} description={en ? 'One character for each reader. A new stamp for each exchange.' : '每位来信者一个形象，每组往返一枚邮票。'} /></head>
+  <body id="top" data-surface="postage">
+    <a class="skip-link" href="#postage">{en ? 'Skip to the stamps' : '跳到邮票册'}</a>
+    <BlogHeader context={title} />
+    <main class="postage-album" id="postage">
+      <header class="album-heading">
+        <p class="album-kicker">ECHO · READERS & LETTERS</p>
+        <h1>{title}</h1>
+        <p>{en ? `${groups.length} readers. ${groups.length} characters. ${letters.length} individual stamps.` : `${groups.length} 位来信者，${groups.length} 个形象，${letters.length} 枚邮票。`}</p>
+        <p class="album-note">{en ? 'A familiar character returns with each new letter. These characters come from the Friends Notebook; each exchange has its own little scene.' : '熟悉的面孔，带着新的一封信回来。从友人帐的形象里，为每位来信者选一个角色；让每组往返留下不同的小场景。'}</p>
+      </header>
+      <div class="album-readers">
+        {groups.map(({ reader, portrait, exchanges }) => <section class="album-reader" aria-labelledby={`reader-${reader.id}`} data-reader-id={reader.id} data-character-id={reader.character}>
+          <header class="reader-heading">
+            <img src={portrait.src} width={portrait.width} height={portrait.height} alt="" decoding="async" />
+            <div><h2 id={`reader-${reader.id}`}>{exchanges[0].code}</h2><p>{reader.name[lang]} · {en ? `${exchanges.length} ${exchanges.length === 1 ? 'exchange' : 'exchanges'}` : `${exchanges.length} 组往返`}</p></div>
+          </header>
+          <ol class:list={['reader-stamps', { 'single-exchange': exchanges.length === 1 }]} style={`--reader-count:${exchanges.length}`}>
+            {exchanges.map(letter => {
+              const stamp = postageFor(letter.id);
+              return <li><a class="album-entry" href={letterPath(letter.id, lang)} data-letter-id={letter.id}>
+                <span class="album-art"><img src={stamp.src} width={stamp.width} height={stamp.height} alt="" decoding="async" /></span>
+                <div class="album-caption"><span class="album-meta">No. {letter.number}</span>
+                  <h3><EditorialText text={letter.title} keepWords /></h3><span class="album-open">{en ? 'Open the envelope' : '打开信封'} ↗</span>
+                </div>
+              </a></li>;
+            })}
+          </ol>
+        </section>)}
+      </div>
+      <footer class="album-footer"><span>{preview ? (en ? 'Author preview · Not published' : '作者预览 · 尚未发布') : 'ECHO · POSTAGE COLLECTION'}</span><a href={localPath('/', lang)}>{en ? 'Back to Echo' : '返回回声'} ↗</a></footer>
+    </main>
+  </body>
+</html>
+<style>
+.postage-album { --album-width:960px; --album-art:112px; --album-series-art:80px; --album-portrait:48px; --album-title:36px; max-width:var(--album-width); margin:var(--space-5) auto; padding-inline:var(--space-2); }
+.album-heading { padding-bottom:var(--space-4); border-bottom:4px double var(--rule); }
+.album-kicker,.album-meta,.album-open,.album-footer,.reader-heading p { font:var(--text-small)/1.8 var(--sans); color:var(--muted); }
+.album-kicker { letter-spacing:.1em; }
+.album-heading h1 { font:700 var(--album-title)/1.4 var(--serif); color:var(--pine); margin-block:var(--space-2); }
+.album-heading > p:not(.album-kicker) { font:var(--text-label)/1.9 var(--serif); }
+.album-heading .album-note { color:var(--muted); max-width:640px; margin-top:var(--space-1); }
+.album-readers { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:var(--space-3); margin-block:var(--space-4); }
+.album-reader { min-width:0; padding:var(--space-3); border:1px solid var(--rule); background:var(--letter-envelope); }
+.reader-heading { display:flex; align-items:center; gap:var(--space-2); padding-bottom:var(--space-2); border-bottom:1px solid var(--rule); margin-bottom:var(--space-3); }
+.reader-heading img { width:var(--album-portrait); height:var(--album-portrait); object-fit:contain; }
+.reader-heading h2 { font:600 var(--text-label)/1.8 var(--serif); color:var(--pine); }
+.reader-stamps { display:grid; grid-template-columns:repeat(var(--reader-count),minmax(0,1fr)); gap:var(--space-2); list-style:none; padding:0; margin:0; }
+.reader-stamps li { min-width:0; }
+.album-entry { display:flex; flex-direction:column; height:100%; text-decoration:none; }
+.album-art { display:flex; justify-content:center; margin-bottom:var(--space-2); }
+.album-art img { display:block; width:var(--album-series-art); max-width:100%; height:auto; }
+.album-caption { display:flex; flex-direction:column; flex:1; }
+.album-entry h3 { font:400 var(--text-small)/1.8 var(--serif); color:var(--ink); margin-block:var(--space-1) var(--space-2); overflow-wrap:anywhere; }
+.album-open { color:var(--pine); margin-top:auto; }
+.single-exchange .album-entry { display:grid; grid-template-columns:var(--album-art) minmax(0,1fr); gap:var(--space-2); align-items:center; }
+.single-exchange .album-art { margin:0; }
+.single-exchange .album-art img { width:var(--album-art); }
+.album-entry:hover .album-open { text-decoration:underline; text-underline-offset:4px; }
+.album-footer { display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); border-top:1px solid var(--rule); padding-top:var(--space-2); flex-wrap:wrap; }
+.album-footer a { display:inline-flex; min-height:44px; align-items:center; color:var(--pine); }
+@media(max-width:900px) { .album-readers { grid-template-columns:minmax(0,1fr); } }
+@media(max-width:600px) { .album-reader { padding:var(--space-2); } .album-readers { gap:var(--space-2); } .reader-stamps { grid-template-columns:minmax(0,1fr); } .album-entry { display:grid; grid-template-columns:var(--album-series-art) minmax(0,1fr); gap:var(--space-2); align-items:center; } .album-art { margin:0; } }
+</style>

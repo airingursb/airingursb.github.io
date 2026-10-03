@@ -9,7 +9,7 @@ const host = window as AnalyticsWindow;
 const production = ['ursb.me', 'www.ursb.me', 'airingursb.github.io'].includes(location.hostname);
 const lang = document.documentElement.lang.startsWith('en') ? 'en' : 'zh';
 const path = location.pathname.replace(/^\/(?:en\/)?echo/, '');
-const surface = path.includes('/letters/') ? 'letter' : /\/issues\/\d+\//.test(path) ? 'issue' : path === '/blog/' ? 'blog' : 'archive';
+const surface = path === '/postage/' || path === '/previews/postage/' ? 'postage' : path.includes('/letters/') ? 'letter' : /\/issues\/\d+\//.test(path) ? 'issue' : path === '/blog/' ? 'blog' : 'archive';
 const requestedIssue = new URLSearchParams(location.search).get('issue');
 const origin = editionRoutes.find(edition => edition.number === requestedIssue && edition.letters.some(id => id === document.body.dataset.letter));
 const base: EventData = { lang, surface, issue: document.body.dataset.issue ?? '', letter: document.body.dataset.letter ?? '', ...(origin ? { originIssue: origin.number } : {}) };
@@ -47,6 +47,7 @@ document.addEventListener('click', event => {
   if (link.closest('.letter-attachment')) { trackEcho('attachment-open'); return; }
   if (link.dataset.readingChapter) { trackEcho('letter-section-open', { chapter: link.dataset.readingChapter }); return; }
   if (link.dataset.chapter) { trackEcho('chapter-open', { chapter: link.dataset.chapter }); return; }
+  if (/^\/(?:en\/)?echo\/postage\/$/.test(link.pathname)) { trackEcho('postage-open', { entry: link.dataset.postageEntry === 'archive' ? 'archive' : surface }); return; }
   const letter = link.pathname.match(/\/letters\/([^/]+)\//)?.[1];
   if (letter && letterIds.has(letter)) { trackEcho('letter-open', { target: letter, chapter: link.hash === '#reply' ? 'reply' : 'incoming' }); return; }
   if (link.hash && link.pathname === location.pathname) { trackEcho('chapter-open', { chapter: link.hash.slice(1) }); return; }
