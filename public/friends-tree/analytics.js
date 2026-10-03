@@ -13,6 +13,7 @@
     const data = { module: 'friends', mode: document.documentElement.dataset.mode, ...detail };
     window.dispatchEvent(new CustomEvent('friend:analytics', { detail: { name, data } }));
     if (!production) return;
+    if (window.siteAnalytics) { window.siteAnalytics.track(name, data); return; }
     if (window.umami?.track) window.umami.track(name, data);
     else {
       if (pending.length < 50) pending.push({ name, data });

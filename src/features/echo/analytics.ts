@@ -1,7 +1,10 @@
 import { editionRoutes } from './data/routes';
 type EventValue = string | number | boolean;
 type EventData = Readonly<Record<string, EventValue>>;
-type AnalyticsWindow = Window & { umami?: { track: (name: string, data: EventData) => void } };
+type AnalyticsWindow = Window & {
+  umami?: { track: (name: string, data: EventData) => void };
+  siteAnalytics?: { track: (name: string, data: EventData) => void };
+};
 const host = window as AnalyticsWindow;
 const production = ['ursb.me', 'www.ursb.me', 'airingursb.github.io'].includes(location.hostname);
 const lang = document.documentElement.lang.startsWith('en') ? 'en' : 'zh';
@@ -16,6 +19,7 @@ export function trackEcho(action: string, detail: EventData = {}) {
   const data = { ...base, ...detail };
   window.dispatchEvent(new CustomEvent('echo:analytics', { detail: { name, data } }));
   if (!production) return;
+  if (host.siteAnalytics) { host.siteAnalytics.track(name, data); return; }
   if (host.umami) host.umami.track(name, data);
   else if (pending.length < 50) pending.push({ name, data });
 }
