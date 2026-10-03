@@ -1,5 +1,16 @@
 # Airing's Blog Design System
 
+## Friends arrival · October 3
+
+Each fresh visit starts at a uniformly random tree. Keep each tree's fixed friend
+group and bell positions; randomize the initial tree only, never directory
+selection or the reader's current tree. Remove the tree-thumbnail tab row.
+The existing previous/next tree controls and searchable directory keep all
+approved friends reachable. Retain the existing light/dark palette and H3 actor.
+Wind remains a quiet, visible-page interaction: first gust randomly after 5–18 seconds,
+then 55–85 seconds between gusts, or immediately when the canopy is activated.
+Pause and reduced motion continue to suppress wind.
+
 ## AI weekly A4 cover · September 27
 
 The approved red-and-cream cover is a real HTML magazine composition with A4

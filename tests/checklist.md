@@ -1,5 +1,12 @@
 # Browser QA Checklist
 
+### Friends random arrival (October 3)
+
+- [x] Remove tree-thumbnail tabs. Independent visits choose random trees; directory selection keeps each friend's fixed tree and bell position.
+- [x] Previous/next controls still reach five trees and all51 approved neighbors; searching DIYGod locates the banyan tree.
+- [x] Timer-boundary checks verify first visible-page delay at5/11.5/17.999987 seconds and remaining-time preservation on pause; subsequent delays remain55–85 seconds. Chrome observes an automatic gust and manual wind still works.
+- [x] Production build and375/1280px Chrome preview pass with no tree-thumbnail tabs; screenshots are in the release worktree's `qa/`. The versioned scene.js URL avoids the old cached timer.
+
 ### Echo postage release (October 3)
 
 - [x] Production build has bilingual public album/entrance,16 readers/20 distinct stamps, uniform Chinese fonts and continuous text-link underlines; original bodies/dates/aliases and favicon remain unchanged. Public pages have no preview label/noindex and private study routes are absent.
