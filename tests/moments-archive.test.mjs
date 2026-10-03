@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {fetchAllMoments,normalizeMoment,momentEntryHtml,linkify} from '../public/moments-ui/core.mjs';
+import {fetchAllMoments,normalizeMoment,momentEntryHtml,linkify} from '../public/moments-ui/core.js';
 
 test('archive fetch reads every page before returning and deduplicates records',async()=>{
  const calls=[];

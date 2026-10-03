@@ -1,5 +1,5 @@
-import {esc,safeUrl,renderTimeline,normalizeMoment,fetchAllMoments} from './core.mjs';
-import {createProjector} from './actor.mjs';
+import {esc,safeUrl,renderTimeline,normalizeMoment,fetchAllMoments} from './core.js';
+import {createProjector} from './actor.js';
 const $=id=>document.getElementById(id);
 const {moments,comics}=window.MOMENTS_DATA;
 const cached=new Map(moments.map(m=>[m.id,m]));

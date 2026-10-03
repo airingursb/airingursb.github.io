@@ -1,4 +1,4 @@
-import {esc,EMOJIS} from './core.mjs';
+import {esc,EMOJIS} from './core.js';
 
 const list=document.getElementById('moment-list');
 const drafts=new Map(),conversations=new Map(),pending=new Set(),viewed=new Set();
