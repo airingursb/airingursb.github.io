@@ -648,9 +648,10 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
  const tabletPoints=[{x:310,y:60},{x:425,y:70},{x:210,y:115},{x:505,y:165},{x:130,y:180},{x:365,y:175},{x:555,y:270},{x:230,y:235},{x:430,y:285}];
  const phone=matchMedia('(max-width:600px)'),tablet=matchMedia('(max-width:1100px)'),reduced=matchMedia('(prefers-reduced-motion:reduce)');
  const treeFriends=friends.map((f,i)=>i).filter(i=>friends[i].availability!=='archive');
- const groupSize=Math.ceil(treeFriends.length/variants.length),forestNav=document.getElementById('forest-nav');
- let mode='forest',branch=0,selected=-1,paused=false,speechTimer=0,directoryFilter='all',visible=true,transitionId=0,busy=false,animations=[];
- const branches={wind:0,forest:0};
+ const groupSize=Math.ceil(treeFriends.length/variants.length);
+ const initialTree=Math.floor(Math.random()*variants.length);
+ let mode='forest',branch=initialTree,selected=-1,paused=false,speechTimer=0,directoryFilter='all',visible=true,transitionId=0,busy=false,animations=[];
+ const branches={wind:0,forest:initialTree};
  const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
  const host=u=>{try{return new URL(u).hostname.replace(/^www\./,'');}catch{return u;}};
  const avatarFor=f=>f.avatar?.src||window.FRIEND_AVATARS[0].src;
@@ -662,11 +663,10 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
  const pageSize=()=>mode==='roam'?treeFriends.length:mode==='forest'?groupSize:pointSet().length;
  const pageCount=()=>Math.ceil(treeFriends.length/pageSize());
  function updateControls(){
-  document.getElementById('roam-controls').hidden=mode!=='roam';document.getElementById('mode-controls').hidden=mode==='roam';forestNav.hidden=mode!=='forest';
+  document.getElementById('roam-controls').hidden=mode!=='roam';document.getElementById('mode-controls').hidden=mode==='roam';
   document.getElementById('branch-prev').textContent=mode==='forest'?'← 上一棵树':'← 上一阵风';document.getElementById('branch-next').textContent=mode==='forest'?'去下一棵树 →':'借下一阵风 →';
   document.getElementById('branch-prev').disabled=busy;document.getElementById('branch-next').disabled=busy;
   document.getElementById('branch-count').textContent=mode==='forest'?variants[branch].name:'';
-  forestNav.querySelectorAll('button').forEach((b,i)=>b.setAttribute('aria-pressed',String(i===branch)));
  }
  function paint(){
   const size=pageSize(),points=pointSet(),shown=mode==='roam'?treeFriends:treeFriends.slice(branch*size,(branch+1)*size);
@@ -703,7 +703,7 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
   busy=false;syncWind();updateControls();document.getElementById('selection-status').textContent=isWind?'风带来了另一枝朋友。':'来到'+variants[branch].name+'，这里住着'+bells.children.length+'位朋友。';
  }
  const descriptions={roam:'朋友一直挂在同一根枝头。拖动树冠、靠近铃签，像在树下慢慢散步；也可以直接搜名字。',wind:'树留在原地。一阵风把这一枝铃签轻轻翻过，带来下一组朋友；没有页码，也不自动翻走正在看的内容。',forest:'把友人帐种成一小片林子。每棵树有自己的样子，也住着固定的一组朋友。'};
- const hints={roam:'拖动树冠 · 双指缩放 · 键盘方向键移动，＋ / − 缩放，Home 看全树。',wind:'点“借下一阵风”换一枝朋友；摸摸树叶，只会把铃轻轻摇响。',forest:'点树的缩影走过去。每位朋友都住在固定的树上，也可以通过名录直接找到。'};
+ const hints={roam:'拖动树冠 · 双指缩放 · 键盘方向键移动，＋ / − 缩放，Home 看全树。',wind:'点“借下一阵风”换一枝朋友；摸摸树叶，只会把铃轻轻摇响。',forest:'摸摸树叶，让风吹过。换一棵树继续逛，也可以直接找一位朋友。'};
  function setMode(next,{hash=true}={}){
   next='forest';cancelTransition();camera.stop();branches[mode]=branch;mode=next;branch=mode==='roam'?0:branches[mode];root.dataset.mode=mode;root.setAttribute('aria-describedby','mode-hint');
   paint();if(mode==='roam')camera.start();document.querySelectorAll('[data-mode-choice]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.modeChoice===mode)));
@@ -732,8 +732,6 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
   syncWind();
   if(perform&&position>=0){window.friendTreeActor?.playBell();bells.querySelector('[data-friend="'+index+'"]')?.classList.add('ringing');speak('我来摇响这枚铃。');}
  }
- forestNav.innerHTML=variants.map((t,i)=>'<button data-tree="'+i+'" aria-pressed="false"><img src="'+t.src+'" alt=""><span>'+esc(t.name)+'</span><small>'+treeFriends.slice(i*groupSize,(i+1)*groupSize).length+' 位邻居</small></button>').join('');
- forestNav.addEventListener('click',e=>{const b=e.target.closest('[data-tree]');if(b)turn(Number(b.dataset.tree));});
  document.querySelectorAll('[data-mode-choice]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.modeChoice)));
  bells.addEventListener('click',e=>{const b=e.target.closest('[data-friend]');if(b)pick(Number(b.dataset.friend),{locate:mode==='roam'&&camera.getState().zoom<2.2});});
  document.getElementById('branch-prev').addEventListener('click',()=>turn(branch-1));document.getElementById('branch-next').addEventListener('click',()=>turn(branch+1));
@@ -762,7 +760,7 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
 
 (() => {
  const scene=document.getElementById('tree-scene'),layer=document.getElementById('wind-leaves'),button=document.getElementById('wind-button');
- const reduced=matchMedia('(prefers-reduced-motion:reduce)');let visible=false,paused=false,destroyed=false,timer=0,animations=[],active=false,remaining=18000,started=0;
+ const reduced=matchMedia('(prefers-reduced-motion:reduce)');let visible=false,paused=false,destroyed=false,timer=0,animations=[],active=false,remaining=5000+Math.random()*13000,started=0;
  const canMove=()=>!destroyed&&visible&&!paused&&!document.hidden&&!reduced.matches;
  function clear(){clearTimeout(timer);timer=0;}
  function schedule(){clear();if(canMove()&&!active){started=performance.now();timer=setTimeout(()=>gust(),remaining);}}
