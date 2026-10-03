@@ -10,7 +10,18 @@ const canonical = new URL(Astro.url.pathname, site);
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="description" content={description} />
 {import.meta.env.ECHO_EDITORIAL_PREVIEW === 'true' && <meta name="robots" content="noindex, nofollow" />}
-<meta name="theme-color" content="#ffffff" />
+<meta name="theme-color" content="#ffffff" id="echo-theme-color" />
+<script is:inline>
+  (() => {
+    let mode = 'light';
+    try {
+      const saved = localStorage.getItem('blog-mode');
+      if (localStorage.getItem('blog-mode-set') && (saved === 'dark' || saved === 'light')) mode = saved;
+    } catch {}
+    document.documentElement.dataset.mode = mode;
+    document.getElementById('echo-theme-color').content = mode === 'dark' ? '#0d1117' : '#ffffff';
+  })();
+</script>
 <title>{title}</title>
 <link rel="canonical" href={canonical} />
 <link rel="icon" href="https://airing.ursb.me/image/favicon.ico" />

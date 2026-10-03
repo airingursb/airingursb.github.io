@@ -2159,3 +2159,11 @@
 - [x] Guestbook reads real public comments,5 root threads per page; replies submit the parentID. Preview sends nothing; separate confirmation submits once.
 - [x] Link applications include selected avatar and remain off-tree until manual blogroll approval. Email stays private; API failure preserves draft with retry.
 - [ ] Verify production route/assets after deployment; normal H3 full-body sequence and pause state remain usable.
+
+## Friends / Echo theme continuity and analytics (2026-10-03)
+
+- [x] Saved dark/light mode applies before the first visible dark-mode paint; Friends and all66 bilingual Echo archive/issue/letter routes inherit it.
+- [x] 375/768/1280: toggle, reload, headers, six friend papers, avatars, directory, guestbook and Echo handwriting retain readable contrast and no horizontal overflow.
+- [x] Printed Echo covers retain their original paper colors; reading sheets and share dialog follow dark mode. Existing H3 artwork and controls remain usable.
+- [x] Browser telemetry checks verify queued page-view delivery, one event per action, failed submission/retry/success separation and existing Echo share/write/read-depth events. Test requests are intercepted; no private draft fields enter analytics.
+- [ ] Verify the deployed dark-mode routes, theme continuity across blog/Echo/Friends navigation and telemetry script assets.

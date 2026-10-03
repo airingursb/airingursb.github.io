@@ -66,6 +66,7 @@
     if(content.length>2000){error.textContent='资料过长，请缩短介绍或头像地址后重新预览。';return;}
     const submitted={post_slug:'guestbook',nickname:preview.name,email,website:preview.url||undefined,content,parent_id:preview.parent_id||null,notify_replies:notify};
     sending=true;confirm.disabled=true;confirm.textContent='正在提交……';error.textContent='';
+    window.friendTreeAnalytics?.track('friend-registration-attempt',{kind:application?'application':'message'});
     try{
       const response=await fetch(api+'/api/comments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(submitted)});
       const result=await response.json();if(!response.ok)throw Error(result.message||'提交失败，请稍后再试。');
@@ -74,12 +75,12 @@
       confirm.hidden=true;preview=null;parentId=null;
       try{localStorage.removeItem('ursb:friend-tree:guestbook-draft:v1');}catch{}
       await load();
-      window.umami?.track('friend-registration-submit',{kind:application?'application':'message'});
-    }catch(cause){error.textContent=cause.message||'提交失败，请稍后再试。';confirm.textContent='重试提交';}
+      window.friendTreeAnalytics?.track('friend-registration-submit',{kind:application?'application':'message'});
+    }catch(cause){error.textContent=cause.message||'提交失败，请稍后再试。';confirm.textContent='重试提交';window.friendTreeAnalytics?.track('friend-registration-error',{kind:application?'application':'message'});}
     finally{sending=false;confirm.disabled=false;}
   });
-  const changePage=delta=>{page=Math.max(0,Math.min(Math.ceil(roots.length/5)-1,page+delta));render();$('gb-thread-title').focus({preventScroll:true});$('gb-thread-title').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});};
+  const changePage=delta=>{page=Math.max(0,Math.min(Math.ceil(roots.length/5)-1,page+delta));render();window.friendTreeAnalytics?.track('friend-comment-page',{page:page+1});$('gb-thread-title').focus({preventScroll:true});$('gb-thread-title').scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'instant':'smooth'});};
   $('gb-comments-prev').addEventListener('click',()=>changePage(-1));$('gb-comments-next').addEventListener('click',()=>changePage(1));
-  document.getElementById('friend-visit').addEventListener('click',event=>window.umami?.track('friend-link',{url:event.currentTarget.href}));
+  document.getElementById('friend-visit').addEventListener('click',event=>window.friendTreeAnalytics?.track('friend-link',{url:event.currentTarget.href}));
   void load();
 })();

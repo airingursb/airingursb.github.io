@@ -1,0 +1,22 @@
+---
+const en = Astro.url.pathname.startsWith('/en/');
+---
+<button class="echo-theme-toggle" id="echo-theme-toggle" type="button" aria-label={en ? 'Toggle light/dark mode' : '切换明暗主题'}>
+  <svg class="echo-theme-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l2 2m10 10 2 2M5 19l2-2M17 7l2-2" /></svg>
+  <svg class="echo-theme-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M20.7 13a9 9 0 0 1-9.7-9.7A9 9 0 1 0 20.7 13Z" /></svg>
+</button>
+<script>
+  import { trackEcho } from '../analytics';
+  const button = document.getElementById('echo-theme-toggle');
+  button?.addEventListener('click', () => {
+    const mode = document.documentElement.dataset.mode === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.mode = mode;
+    const meta = document.querySelector<HTMLMetaElement>('#echo-theme-color');
+    if (meta) meta.content = mode === 'dark' ? '#0d1117' : '#ffffff';
+    try {
+      localStorage.setItem('blog-mode', mode);
+      localStorage.setItem('blog-mode-set', '1');
+    } catch {}
+    trackEcho('theme-toggle', { mode });
+  });
+</script>

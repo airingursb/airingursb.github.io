@@ -1,5 +1,13 @@
 # Echo · Correspondence journal
 
+## Theme continuity repair · 2026-10-03
+
+Respect the site's saved `blog-mode` / `blog-mode-set` before first paint on every Chinese/English archive, issue and letter route. Default to light when no manual preference exists, matching the other blog routes. A persistent native 44px SVG theme button reuses those keys and records `echo-theme-toggle`; it never resets the theme during navigation. Keep all layout, H3, type roles and original share-cover colors intact.
+
+Dark tokens: canvas/site background #0d1117, surface #161b22, journal paper #1b242b, leaf #1d272d, ink #e6edf3, muted #a7b2b6, rule #3b4850, pine #b2cfbd, pen #aecbea, selected #25332e, rest ink #e5bdab, rest paper #282422, rest rule #6b554a, highlight #3c422c, active highlight #515b34, paper edge #3b4850. Envelopes #252c2c, pencil #e1e7e4, stamp #2c3c34, envelope muted #b5bfba, crease #0002 / #ffffff08, stationery rule #aecbea24, margin #d0a69840, seal #d8b9ae. Career ink #b1cbd3. Each edition derives its night ink by mixing 78% shared ink with its original edition color; its wash becomes selected. Keep printed 3:4 covers light, including their green #3b5b49, blue #395863, rest #784a3e and paper #f7f4eb. Covers and share PNGs are artifacts; surrounding shelf, reading sheets and share dialog follow the UI theme.
+
+Verification: all 66 canonical routes (12 issues + 20 letters + archive per language), stored dark/light first paint and cross-route persistence, live toggle/reload, headers, paper, handwriting, share dialog and reduced/normal bear playback at phone/tablet/desktop. Text contrast >=4.5:1. Analytics carries identifiers/categories only, never correspondence bodies, private aliases, email or selected text. Existing third-party performance debt remains outside this repair; no new dependencies or regenerated artwork.
+
 ## Issues 03–12 · Authorized release (2026-10-02)
 
 The author explicitly requested publication of the reviewed current edition set after asking to remove the private-preview notice. Release all twelve bilingual issues, twenty anonymized exchanges, the shared archive/homepage navigation, and all twenty-four share covers. Issue 10 is included under this explicit author-approved exception to the usual 180-day interval; its retained `releaseAfter` value records the original standard eligibility date, not a production gate. Earlier private-preview instructions below are historical preparation notes superseded by this release decision.
