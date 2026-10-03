@@ -1,0 +1,34 @@
+---
+import SiteHeader from '../SiteHeader.astro';
+import {fetchComics} from '../../lib/comics';
+import snapshot from '../../data/moments-archive.json';
+import markup from './markup.html?raw';
+import {fetchAllMoments,normalizeMoment,renderTimeline} from '../../../public/moments-ui/core.mjs';
+
+const cached=new Map(snapshot.moments.map(moment=>[moment.id,moment]));
+let moments=snapshot.moments;
+try {
+  const current=(await fetchAllMoments()).map(raw=>normalizeMoment(raw,cached.get(raw.id))).filter(Boolean);
+  moments=current.sort((a,b)=>b.publishedAt.localeCompare(a.publishedAt));
+} catch {
+  console.warn('[moments] Public API unavailable; retaining complete archive snapshot.');
+}
+const approvedComics=await fetchComics();
+const comics=approvedComics.length?approvedComics.slice(0,12).map(comic=>({id:String(comic.issue_number),url:`/comics/${comic.issue_number}/`,image:comic.panels.url,title:comic.title.zh,date:new Date(comic.published_at).toLocaleDateString('zh-CN',{month:'long',day:'numeric',timeZone:'Asia/Shanghai'})})):snapshot.comics;
+const content=markup.replaceAll('__MOMENT_COUNT__',String(moments.length)).replace('__STATIC_TIMELINE__',renderTimeline(moments.slice(0,6),moments));
+const payload=JSON.stringify({moments,comics}).replaceAll('<','\\u003c');
+---
+<link rel="stylesheet" href="/moments-ui/scene.css" />
+<link rel="stylesheet" href="/moments-ui/theme.css" />
+<div class="moments-page">
+  <SiteHeader lang="zh" motto="应无所住而生其心" />
+  <div class="container">
+    <Fragment set:html={content} />
+    <footer class="site-footer"><span>© 2026 Airing · 小屋还在慢慢生长。</span><a href="/blog/">回到博客 ↗</a></footer>
+  </div>
+</div>
+<script id="moments-data" type="application/json" set:html={payload} />
+<script is:inline>window.MOMENTS_DATA=JSON.parse(document.getElementById('moments-data').textContent);</script>
+<script is:inline src="/site-analytics.js"></script>
+<script is:inline type="module" src="/moments-ui/interactions.mjs"></script>
+<script is:inline type="module" src="/moments-ui/scene.mjs"></script>

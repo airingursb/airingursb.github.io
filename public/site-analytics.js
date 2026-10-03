@@ -7,7 +7,7 @@
   const read = () => {
     try {
       const saved = JSON.parse(sessionStorage.getItem(key) || '[]');
-      if (Array.isArray(saved)) return saved.filter(event => event && /^(friend|echo)-/.test(event.name) && event.data && typeof event.data === 'object' && Date.now() - event.at < 20 * 60 * 1000).slice(-50);
+      if (Array.isArray(saved)) return saved.filter(event => event && /^(friend|echo|moment)-/.test(event.name) && event.data && typeof event.data === 'object' && Date.now() - event.at < 20 * 60 * 1000).slice(-50);
     } catch {}
     return pending;
   };

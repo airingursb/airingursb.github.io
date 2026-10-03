@@ -348,11 +348,17 @@
 
 ## Moments (`/moments/`)
 
+- [ ] 中文 Moments 新时间轴：375/768/1280px 下完整分页可达所有动态，正文与原始数据一致，配图与链接封面正常解码，正文 URL 为安全外链，无横向溢出。
+- [ ] 统一年月热力选择器：每月显示完整动态数量，空月份禁用；支持整年、全部时间和图文筛选联动；键盘方向键/Home/End 可导航，Escape 关闭并恢复焦点。
+- [ ] 中文 Moments 保留昵称/邮箱/评论、点赞和八种表情；失败有提示，点赞回滚、评论草稿保留且能重试；切换筛选或分页保留草稿，重复提交被阻止。
+- [ ] 中文 Moments 读取完整 API 分页后原子更新；接口失败保留完整静态存档并提供重试；无 JavaScript 时首六条动态可读；配图缓存来源在构建及浏览器二次归一化后仍保留。
+- [ ] 中文 Moments 与全站主题同步，保存暗色后重新进入页面仍为暗色；H3 放映机可播放和暂停，离屏/后台/减少动态偏好时停止；筛选、翻页、图片、动画和互动使用 moment-* 埋点，不包含评论、邮箱等用户输入。
 - [ ] 中英文动态页：豆瓣电影/图书封面使用自有 CDN，在桌面和手机首屏及加载更多后均正常显示；下载失败保留已有托管封面，不恢复豆瓣防盗链外链。回归：`uv run --with pytest pytest -q tests/test_moment_preview_images.py`；历史修复：`python3 scripts/resync_link_previews.py --douban-images`。
 - [ ] GET `/moments/` returns page
 - [ ] DOM: `.moment-item` exists (timeline items)
 - [ ] DOM: Nav tabs include "Moments" link
 - [ ] Nested comment replies: indentation **capped** (no cumulative blowup). Reply items carry `--cd` (0–4) and `.comment-reply`. Desktop: margin-left = `--cd × 30px`, capped at depth 4. Mobile (≤640px): only **one** level of indent (`min(--cd,1) × 16px`) however deep the thread goes. Deep threads stay readable on a 375px-wide screen.
+- [ ] 中文新时间轴的 `.moment-comment` 为扁平节点，`--depth` 最大 4；手机仅一层缩进，深层回复不会挤窄正文。
 
 ## Admin (`/admin/`)
 
