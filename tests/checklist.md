@@ -2168,3 +2168,4 @@
 - [x] Browser telemetry checks verify queued page-view delivery, one event per action, failed submission/retry/success separation and existing Echo share/write/read-depth events. Test requests are intercepted; no private draft fields enter analytics.
 - [ ] Verify the deployed dark-mode routes, theme continuity across blog/Echo/Friends navigation and telemetry script assets.
 - [x] A delayed analytics SDK plus immediate Echo→Friends navigation preserves the queued theme event and its origin route; repeated flush does not duplicate it. The bounded session queue expires old events and does not include drafted private fields.
+- [x] Friends theme telemetry uses the button's own click listener: the site's propagation stop must not suppress it, the resulting mode is recorded, and two toggles emit exactly two events. Verified in the real built page;28/28 telemetry checks pass.

@@ -36,10 +36,12 @@
     else if (target.id === 'wind-button' || target.id === 'wind-menu') track('friend-wind');
     else if (target.id === 'bear-touch') track('friend-bear-greet');
     else if (target.id === 'motion-toggle') track('friend-motion-toggle', { paused: window.friendTreeModes?.getState().paused });
-    else if (target.id === 'modeToggle') track('friend-theme-toggle');
     else if (target.matches('.gb-avatar-option[data-avatar]')) track('friend-avatar-select', { avatar: target.dataset.avatar, kind: 'default' });
     else if (target.matches('[data-comment-id]')) track('friend-reply-open');
   });
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('modeToggle')?.addEventListener('click', () => track('friend-theme-toggle'));
+  }, { once: true });
   window.addEventListener('friend-draft-preview', event => track('friend-guestbook-preview', { kind: event.detail.mode === 'site' ? 'application' : 'message' }));
   document.getElementById('gb-avatar-url')?.addEventListener('change', event => {
     if (event.target.value.trim() && event.target.checkValidity()) track('friend-avatar-select', { kind: 'custom' });
