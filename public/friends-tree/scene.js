@@ -793,7 +793,7 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
   const avatarUrl = el('gb-avatar-url'), avatarFile = el('gb-avatar-file'), avatarError = el('gb-avatar-error');
   const avatars = (Array.isArray(window.FRIEND_AVATARS) ? window.FRIEND_AVATARS : []).filter(a => a && typeof a.id === 'string' && typeof a.src === 'string');
   let avatar = avatars[0] ? { ...avatars[0], kind: 'forest' } : null, avatarPending = false, avatarSequence = 0;
-  let avatarsExpanded = false;
+  let avatarsExpanded = true;
   const avatarToggle = document.createElement('button'); avatarToggle.type = 'button'; avatarToggle.id = 'gb-avatar-toggle'; avatarToggle.className = 'gb-quiet gb-avatar-toggle';
   avatarToggle.setAttribute('aria-controls', 'gb-avatar-options'); avatarToggle.hidden = avatars.length <= 8; el('gb-avatar-options').after(avatarToggle);
   const storageKey = 'ursb:friend-tree:guestbook-draft:v1';
@@ -920,7 +920,7 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
       if (name.value || url.value || message.value || !isSite()) save.textContent = '已恢复当前浏览器中的草稿';
     }
   } catch { save.textContent = '浏览器未允许读取草稿，可直接填写'; }
-  avatarsExpanded = avatar?.kind === 'forest' && avatars.findIndex(item => item.id === avatar.id) >= 8;
+  avatarsExpanded = true;
   refreshCount(); paintAvatar(); paintAvatarOptions();
   form.addEventListener('input', event => {
     clearErrors(); clearPreview(); refreshCount();
@@ -967,7 +967,7 @@ window.FOREST_LAYOUTS={"banyan":{"pullAnchor":{"x":302,"y":263},"bells":[{"ancho
   el('gb-edit').addEventListener('click', () => { clearPreview(); message.focus(); });
   el('gb-clear').addEventListener('click', () => {
     clearPreview(); form.reset(); setReply(''); clearErrors(); updateMode(); refreshCount();
-    avatarSequence++; avatarPending = false; avatar = avatars[0] ? { ...avatars[0], kind: 'forest' } : null; avatarError.textContent = ''; avatarsExpanded = false; paintAvatar(); paintAvatarOptions();
+    avatarSequence++; avatarPending = false; avatar = avatars[0] ? { ...avatars[0], kind: 'forest' } : null; avatarError.textContent = ''; avatarsExpanded = true; paintAvatar(); paintAvatarOptions();
     try { localStorage.removeItem(storageKey); save.textContent = '草稿已清空'; }
     catch { save.textContent = '当前页面已清空；浏览器阻止了清除已保存的草稿'; }
     name.focus();
