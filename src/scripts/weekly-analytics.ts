@@ -16,7 +16,7 @@ export function weeklyDestination(href: string): WeeklyDestination | null {
   return {
     kind: match[2] ? 'issue' : match[3] ? 'rss' : 'archive',
     issue: match[2] || '', lang: match[1] ? 'en' : 'zh',
-    target: /^(column-\d+|agents|creation|science|life|issue-guide|top)$/.test(anchor) ? anchor : '',
+    target: /^(column-\d+|agents|creation|science|life|issue-guide|top|runtime|quality|tools|signals|contents|sources|subscribe|film|context|durable|mods|routing|eval|stamps|art-history|creativity|sre|teams|advisor|sonnet|devday|dex|aigc|assistant-demand|distribution|terminology|product-[a-z-]+)$/.test(anchor) ? anchor : '',
   };
 }
 
@@ -30,13 +30,18 @@ export function initWeeklyAnalytics() {
     if (!control) return;
     const surface = control.closest<HTMLElement>('[data-weekly-surface]')?.dataset.weeklySurface;
     if (!surface) return;
-    const column = control.closest<HTMLElement>('.column-article')?.id || '';
+    const unit = control.closest<HTMLElement>('[data-weekly-column], .column-article');
+    const column = unit?.dataset.weeklyColumn || unit?.id || '';
     const context = { issue, lang: language(), surface, column };
     if (control.matches('.share-trigger')) trackEvent('weekly-share-open', context);
     if (control.matches('.figure-open')) trackEvent('weekly-image-open', context);
     if (!(control instanceof HTMLAnchorElement)) return;
     if (control.matches('.save-cover, #share-x, #share-threads')) {
       trackEvent('weekly-share', { ...context, action: control.matches('.save-cover') ? 'cover-download' : control.id.replace('share-', ''), result: 'click' });
+      return;
+    }
+    if (/^\/reading\/weekly\/\d{3,}\/assets\//.test(new URL(control.href).pathname)) {
+      trackEvent('weekly-image-open', context);
       return;
     }
     const destination = weeklyDestination(control.href);
@@ -53,21 +58,25 @@ export function initWeeklyAnalytics() {
   document.addEventListener('toggle', (event) => {
     const detail = event.target;
     if (!(detail instanceof HTMLDetailsElement) || !detail.open || !issue) return;
-    if (!detail.matches('.article-sources, .issue-index')) return;
-    trackEvent('weekly-details-open', { issue, lang: language(), kind: detail.matches('.article-sources') ? 'sources' : 'contents', column: detail.closest('.column-article')?.id || '' });
+    if (!detail.matches('.article-sources, .issue-index, .reading-register details')) return;
+    trackEvent('weekly-details-open', { issue, lang: language(), kind: detail.matches('.article-sources, .reading-register details') ? 'sources' : 'contents', column: detail.closest('.column-article')?.id || '' });
   }, true);
   if (!issue) return;
   const seen = new Set<string>();
   const observer = new IntersectionObserver((entries) => {
     for (const entry of entries) {
       if (!entry.isIntersecting || document.visibilityState !== 'visible') continue;
-      const column = entry.target.closest('.column-article')?.id;
+      const unit = entry.target.closest<HTMLElement>('[data-weekly-column], .column-article');
+      const column = unit?.dataset.weeklyColumn || unit?.id;
       if (!column || seen.has(column) || !window.umami) continue;
       seen.add(column);
       trackEvent('weekly-column-view', { issue, lang: language(), column });
     }
   }, { threshold: 0.5 });
-  document.querySelectorAll('.column-article h3').forEach((heading) => observer.observe(heading));
+  document.querySelectorAll<HTMLElement>('[data-weekly-column], .column-article').forEach(unit => {
+    const heading = unit.querySelector('h3, h4');
+    if (heading) observer.observe(heading);
+  });
   const depths = new Set<number>();
   let frame = 0;
   window.addEventListener('scroll', () => {

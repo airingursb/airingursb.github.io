@@ -1,0 +1,18 @@
+---
+import draft from '../../../data/ai-weekly/002.json';
+interface Props { ids: number[]; lang: 'zh' | 'en'; }
+const { ids, lang } = Astro.props;
+const zh = lang === 'zh';
+---
+<div class="draft-source-links" aria-label={zh ? '本段阅读来源' : 'Reading sources for this section'}>
+  <span>{zh ? '阅读来源' : 'Saved readings'}</span>
+  {ids.map(n => {
+    const source = draft.sources.find(item => item.n === n)!;
+    return <a href={`${zh ? '' : '/en'}/reading/${source.slug}/`} title={(zh ? source.title : source.title_en) || source.title}>[{String(n).padStart(2, '0')}] {source.author || source.source} ↗</a>;
+  })}
+</div>
+<style is:global>
+.draft-source-links { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; margin-top:20px; padding-top:12px; border-top:1px solid var(--faint); color:var(--muted); font:12px/1.6 var(--sans); }
+.draft-source-links a { display:inline-flex; align-items:center; min-height:44px; text-decoration-thickness:1px; }
+.draft-source-links > span { letter-spacing:.05em; }
+</style>

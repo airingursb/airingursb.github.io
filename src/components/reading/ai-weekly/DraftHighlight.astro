@@ -1,0 +1,15 @@
+---
+interface Props { text: string; phrases: string[]; }
+const { text, phrases } = Astro.props;
+const pieces: {text:string; highlighted:boolean}[] = [];
+let cursor = 0;
+while (cursor < text.length) {
+ const matches = phrases.filter(Boolean).map(phrase => ({phrase,index:text.indexOf(phrase,cursor)})).filter(m => m.index >= 0).sort((a,b) => a.index-b.index || b.phrase.length-a.phrase.length);
+ const next = matches[0];
+ if (!next) { pieces.push({text:text.slice(cursor),highlighted:false}); break; }
+ if (next.index > cursor) pieces.push({text:text.slice(cursor,next.index),highlighted:false});
+ pieces.push({text:next.phrase,highlighted:true});
+ cursor = next.index + next.phrase.length;
+}
+---
+{pieces.map(piece => piece.highlighted ? <strong class="editorial-highlight">{piece.text}</strong> : piece.text)}

@@ -1,3 +1,4 @@
+import issue002Columns from './ai-weekly/002.columns.json' with { type: 'json' };
 import issue001Columns from './ai-weekly/001.columns.json' with { type: 'json' };
 
 export type WeeklyLocale = 'zh' | 'en';
@@ -24,6 +25,29 @@ export type AIWeeklyIssue = {
 };
 
 export const aiWeeklyIssues = [
+  {
+    number: '002',
+    startDate: '2026-09-27',
+    endDate: '2026-10-03',
+    publishedAt: '2026-10-05',
+    href: { zh: '/reading/weekly/002/', en: '/en/reading/weekly/002/' },
+    cover: { zh: '/reading/weekly/002/assets/shelf-cover.webp', en: '/reading/weekly/002/assets/shelf-cover-en.webp' },
+    shareCover: { zh: '/reading/weekly/002/assets/share-cover-02.png', en: '/reading/weekly/002/assets/share-cover-02-en.png' },
+    socialImage: { zh: '/reading/weekly/002/social-zh.jpg', en: '/reading/weekly/002/social-en.jpg' },
+    columns: issue002Columns,
+    title: { zh: ['Opus 5.5，', '把代码拍成电影'], en: ['Opus 5.5:', 'making films with code'] },
+    description: {
+      zh: '从代码生成影片，到更省上下文的 Agent 运行方式，本期追踪的是：更快、更便宜的能力，怎样变成可控的工作流。',
+      en: 'From films built with code to leaner agents: how do faster, cheaper tools become workflows we can control?',
+    },
+    topics: [
+      { anchor: 'creation', title: { zh: 'Opus 5.5 × 代码拍电影', en: 'Opus 5.5 × films from code' }, description: { zh: '制作流程与创作短读', en: 'Workflow and creative notes' }, count: 4 },
+      { anchor: 'runtime', title: { zh: 'Agent 的工作台', en: 'The agent workspace' }, description: { zh: '上下文、Pi 1.0 与 Mods', en: 'Context, Pi 1.0 and Mods' }, count: 5 },
+      { anchor: 'quality', title: { zh: '成本与质量', en: 'Cost and quality' }, description: { zh: '决策分流与自动评测', en: 'Routing and evaluations' }, count: 3 },
+      { anchor: 'tools', title: { zh: '这一周的新品架', en: 'This week’s tool shelf' }, description: { zh: '10 款工具，短读速览', en: '10 tools, in brief' }, count: 10 },
+      { anchor: 'signals', title: { zh: '值得留意的变化', en: 'Changes to watch' }, description: { zh: '发布、观点与生态观察', en: 'Launches, opinions and ecosystem' }, count: 7 },
+    ],
+  },
   {
     number: '001',
     startDate: '2026-09-20',

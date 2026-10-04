@@ -1,0 +1,19 @@
+---
+import type { AIWeeklyIssue, WeeklyLocale } from '../../../data/ai-weekly';
+interface Props { issue: AIWeeklyIssue; lang: WeeklyLocale; }
+const { issue, lang } = Astro.props;
+const zh = lang === 'zh';
+const title = `${zh ? 'AI 趋势周刊' : 'AI Trends Weekly'} ${issue.number} · ${issue.title[lang].join(' ')}`;
+const url = `https://ursb.me${issue.href[lang]}`;
+---
+<dialog id="issue-share" class="weekly-share-dialog" aria-labelledby="share-title" data-issue={issue.number} data-share-title={title} data-share-url={url}>
+ <div class="share-heading"><div><p class="kicker">{zh?'和朋友一起读':'READ WITH A FRIEND'}</p><h2 id="share-title">{zh?'分享这一期':'Share this issue'}</h2></div><button type="button" class="share-close" aria-label={zh?'关闭分享':'Close sharing'}>×</button></div>
+ <div class="share-preview"><img src={issue.shareCover[lang].replace('.png','.webp')} width="864" height="1222" alt={title} loading="lazy" decoding="async"/></div>
+ <div class="share-controls"><label class="share-link-label" for="share-url">{zh?'本期链接':'Issue link'}</label><div class="share-link-row"><input id="share-url" value={url} readonly/><button id="share-copy" type="button"><span>{zh?'复制链接':'Copy link'}</span></button></div>
+ <div class="share-actions"><a class="save-cover" href={issue.shareCover[lang]} download={`${zh?'AI趋势周刊':'AI-Trends-Weekly'}-${issue.number}-cover.png`}>{zh?'保存封面':'Save cover'} ↓</a><button id="share-native" type="button" hidden>{zh?'系统分享':'Share…'}</button><a id="share-x" href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`} target="_blank" rel="noopener noreferrer">X ↗</a><a id="share-threads" href={`https://www.threads.net/intent/post?text=${encodeURIComponent(`${title} ${url}`)}`} target="_blank" rel="noopener noreferrer">Threads ↗</a></div>
+ <p id="share-status" role="status" aria-live="polite">{zh?'可保存封面图片，发给一起阅读的朋友。':'Save the cover and send it to a friend who reads with you.'}</p></div>
+</dialog>
+<script>
+ import { initWeeklyShare } from '../../../scripts/weekly-share';
+ initWeeklyShare();
+</script>

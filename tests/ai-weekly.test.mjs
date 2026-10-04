@@ -56,7 +56,7 @@ for (const lang of ['zh', 'en']) {
     const path = `${lang === 'en' ? '/en' : ''}/reading/weekly/001/`;
     const campaign = { utm_source: 'ai-weekly', utm_medium: 'rss', utm_campaign: 'ai-weekly-001', lang };
     // When the feed item is generated.
-    const [entry] = aiWeeklyRssItems(aiWeeklyIssues, lang);
+    const [entry] = aiWeeklyRssItems(aiWeeklyIssues.filter(issue => issue.number === '001'), lang);
     const content = nodes(parse(entry.content));
     const links = content.filter((node) => node.tagName === 'a').map((node) => attribute(node, 'href'));
     // Then every destination has only public attribution fields and retains its absolute path and anchor.
@@ -74,7 +74,7 @@ for (const lang of ['zh', 'en']) {
 
   test(`weekly RSS XML keeps the ${lang} canonical GUID and publication metadata`, async () => {
     // Given a previously published item identified by its original canonical URL.
-    const [issue] = aiWeeklyIssues;
+    const issue = aiWeeklyIssues.find(issue => issue.number === '001');
     const canonical = `https://ursb.me${issue.href[lang]}`;
     const items = aiWeeklyRssItems([issue], lang);
     // When the installed Astro RSS adapter serializes the tracked item.
@@ -92,7 +92,7 @@ for (const lang of ['zh', 'en']) {
 
   test(`weekly RSS presents the complete ${lang} magazine cover at A4 proportions`, () => {
     // Given the localized full cover used for issue sharing.
-    const [issue] = aiWeeklyIssues;
+    const issue = aiWeeklyIssues.find(issue => issue.number === '001');
     // When the RSS item is rendered as HTML.
     const [entry] = aiWeeklyRssItems([issue], lang);
     const image = nodes(parse(entry.content)).find((node) => node.tagName === 'img');
@@ -105,7 +105,7 @@ for (const lang of ['zh', 'en']) {
 
 test('the issue represents every saved read in its coverage range, including related reads in a shared column', async () => {
   // Given the frozen Reading Stream snapshot and the issue’s calendar window.
-  const [issue] = aiWeeklyIssues;
+  const issue = aiWeeklyIssues.find(issue => issue.number === '001');
   const snapshot = JSON.parse(await readFile(new URL('./fixtures/ai-weekly-001-reads.json', import.meta.url), 'utf8'));
   const start = Date.parse(issue.startDate + 'T00:00:00+08:00');
   const end = Date.parse(issue.endDate + 'T00:00:00+08:00') + 86400000;
@@ -130,7 +130,7 @@ test('share previews are lightweight in both locales while downloads retain the 
     const resolve = (value) => new URL(value, 'https://ursb.me/reading/weekly/001/').pathname;
     const previewPath = resolve(attribute(image, 'src'));
     const originalPath = resolve(attribute(download, 'href'));
-    assert.equal(originalPath, aiWeeklyIssues[0].shareCover[lang]);
+    assert.equal(originalPath, aiWeeklyIssues.find(issue => issue.number === '001').shareCover[lang]);
     assert.notEqual(previewPath, originalPath);
     assert.equal(attribute(image, 'loading'), 'lazy');
     assert.equal(attribute(image, 'decoding'), 'async');

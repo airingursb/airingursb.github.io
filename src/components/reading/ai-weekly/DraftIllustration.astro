@@ -1,0 +1,26 @@
+---
+import draft from '../../../data/ai-weekly/002.json';
+interface Props {
+  id: string;
+  lang: 'zh' | 'en';
+  sizes: string;
+  className?: string;
+}
+const { id, lang, sizes, className } = Astro.props;
+const artwork = draft.illustrations.find(item => item.id === id);
+if (!artwork) throw new Error(`Missing weekly illustration: ${id}`);
+const root = '/reading/weekly/002/assets/';
+const label = lang === 'zh' ? '放大概念插画' : 'Open full-size concept illustration';
+---
+<a class:list={['draft-illustration', className]} href={`${root}${artwork.file}`} target="_blank" rel="noopener" aria-label={`${label}：${artwork.alt[lang]}`}>
+  <img
+    src={`${root}${artwork.file}`}
+    srcset={`${root}${artwork.smallFile} ${artwork.smallWidth}w, ${root}${artwork.file} ${artwork.width}w`}
+    sizes={sizes}
+    width={artwork.width}
+    height={artwork.height}
+    alt={artwork.alt[lang]}
+    loading="lazy"
+    decoding="async"
+  />
+</a>

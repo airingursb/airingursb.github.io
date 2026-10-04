@@ -1,0 +1,116 @@
+---
+import '@fontsource/noto-serif-sc/400.css';
+import '@fontsource/noto-serif-sc/700.css';
+import draft from '../../../data/ai-weekly/002.json';
+import Issue002Cover from './Issue002Cover.astro';
+import WeeklyShareDialog from './WeeklyShareDialog.astro';
+import SubscriptionDialog from '../../SubscriptionDialog.astro';
+import { aiWeeklyIssues } from '../../../data/ai-weekly';
+import columns from '../../../data/ai-weekly/002.columns.json';
+import DraftSources from './DraftSources.astro';
+import DraftDiagram from './DraftDiagram.astro';
+import DraftHighlight from './DraftHighlight.astro';
+import DraftProductImage from './DraftProductImage.astro';
+import '../../../styles/ai-weekly-draft.css';
+interface Props { lang: 'zh' | 'en'; preview?: boolean; }
+const { lang, preview = false } = Astro.props;
+const issue = aiWeeklyIssues.find(issue => issue.number === '002')!;
+const columnAnchor = (id: string) => columns.find(column => column.id === id)!.anchor;
+const canonical = `https://ursb.me${issue.href[lang]}`;
+const socialImage = `https://ursb.me${issue.socialImage[lang]}`;
+const zh = lang === 'zh';
+const t = (value: {zh:string;en:string}) => value[lang];
+const title = zh ? 'AI 趋势周刊' : 'AI Trends Weekly';
+const toolArtSizes = '(max-width: 700px) calc(100vw - 80px), (max-width: 1100px) calc((100vw - 160px) / 2), 240px';
+const groups = [
+ {id:'creation',name:zh?'封面 / 代码拍电影':'Cover / Films from code',detail:zh?'制作流程 · 风格样片 · 创作短读':'Workflow · gallery · creative notes',count:4},
+ {id:'runtime',name:zh?'工程 / Agent 的工作台':'Engineering / The agent workspace',detail:zh?'上下文 · Pi 1.0 · Mods':'Context · Pi 1.0 · Mods',count:12},
+ {id:'quality',name:zh?'方法 / 成本与质量':'Practice / Cost and quality',detail:zh?'决策分流 · 自动评测':'Routing · evaluations',count:10},
+ {id:'tools',name:zh?'工具 / 这一周的新品架':'Tools / This week’s shelf',detail:zh?'10 款工具，短读速览':'10 tools, a compact overview',count:11},
+ {id:'signals',name:zh?'短评 / 值得留意的变化':'Briefs / Changes to watch',detail:zh?'发布 · 观点 · 生态观察':'Launches · opinions · ecosystem',count:8},
+];
+---
+<!doctype html>
+<html lang={zh?'zh-CN':'en'}>
+<head>
+ <meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" />
+ <title>{title} 002 · {issue.title[lang].join(' ')}{preview ? (zh?' · 编辑预览':' · Editorial preview') : ''}</title>
+ <meta name="description" content={t(draft.intro)} />{preview && <meta name="robots" content="noindex,nofollow" />}
+ <link rel="icon" href="/favicon.ico" />
+ {!preview && <Fragment>
+  <link rel="canonical" href={canonical} />
+  <link rel="alternate" hreflang="zh-CN" href={`https://ursb.me${issue.href.zh}`} />
+  <link rel="alternate" hreflang="en" href={`https://ursb.me${issue.href.en}`} />
+  <link rel="alternate" hreflang="x-default" href={`https://ursb.me${issue.href.zh}`} />
+  <link rel="alternate" type="application/rss+xml" title={title} href={`${zh?'':'/en'}/reading/weekly/feed.xml`} />
+  <meta property="og:type" content="article" /><meta property="og:site_name" content={title} />
+  <meta property="og:locale" content={zh?'zh_CN':'en_US'} /><meta property="og:locale:alternate" content={zh?'en_US':'zh_CN'} />
+  <meta property="og:title" content={`${title} 002 · ${issue.title[lang].join(' ')}`} /><meta property="og:description" content={t(draft.intro)} />
+  <meta property="og:url" content={canonical} /><meta property="og:image" content={socialImage} /><meta property="og:image:secure_url" content={socialImage} />
+  <meta property="og:image:type" content="image/jpeg" /><meta property="og:image:width" content="1200" /><meta property="og:image:height" content="600" />
+  <meta property="og:image:alt" content={`${title} 002 · ${issue.title[lang].join(' ')} · Airing`} />
+  <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:creator" content="@airingursb" />
+  <meta name="twitter:title" content={`${title} 002 · ${issue.title[lang].join(' ')}`} /><meta name="twitter:description" content={t(draft.intro)} />
+  <meta name="twitter:image" content={socialImage} /><meta name="twitter:image:alt" content={`${title} 002 · ${issue.title[lang].join(' ')} · Airing`} />
+  <script is:inline defer src="https://analytics.ursb.me/script.js" data-website-id="aa8d5a16-df21-4058-a0a8-0191cdd3798d"></script>
+ </Fragment>}
+
+</head>
+<body data-pagefind-ignore={preview || undefined} data-weekly-surface={preview ? undefined : "weekly-issue"}>
+<a class="skip" href="#contents">{zh?'跳至本期目录':'Skip to contents'}</a>
+<div class="outside-bar"><a href={`${zh?'':'/en'}/reading/`}>← {zh?'Airing 的阅读流':'Airing’s reading stream'}</a><span>{preview ? (zh?'第 002 期 · 编辑预览':'Issue 002 · Editorial preview') : (zh?'第 002 期':'Issue 002')}</span><a href={preview ? `${zh?'/en':''}/previews/ai-weekly-002/` : issue.href[zh?'en':'zh']} data-language-switch>{zh?'English ↗':'简体中文 ↗'}</a></div>
+<main class="paper">
+<header class="issue-front">
+ <Issue002Cover lang={lang}/>
+ <div class="issue-desk">
+  <div class="desk-heading"><p class="kicker">AIRING’S READING DESK</p><span class="serial">002</span></div>
+  <h2>{zh?'创作在提速，':'Creation speeds up.'}<br/>{zh?'判断更不能省。':'Judgment still matters.'}</h2>
+  <p class="desk-intro">{t(draft.intro)}</p>
+  <dl class="issue-facts"><div><dt>{zh?'本期编辑':'Editor'}</dt><dd><a class="editor" href="https://ursb.me/">Airing ↗</a></dd></div><div><dt>{zh?'本期范围':'Reading period'}</dt><dd>2026.09.27 — 2026.10.03</dd></div><div><dt>{preview ? (zh?'计划出版':'Planned publication') : (zh?'出版日期':'Publication date')}</dt><dd>2026.10.05 <span>{zh?'每周一更新':'Every Monday'}</span></dd></div><div><dt>{zh?'本期收录':'Inside'}</dt><dd>{zh?'45 篇阅读 · 5 个主题':'45 saves · 5 themes'}<span>{zh?'6 篇专题 · 10 款工具 · 13 则短读':'6 features · 10 tools · 13 briefs'}</span></dd></div></dl>
+  <blockquote class="desk-note"><p class="kicker">{zh?'本期导读':'EDITOR’S GUIDE'}</p><p>{zh?'代码怎样变成影片？Agent 怎样少带包袱、多留证据？哪些新品值得顺手试一试？这一期，详略跟着问题走。':'How does code become a film? How do agents retain evidence with less context? Which tools deserve a try?'}</p></blockquote>
+  <div class="desk-actions"><a class="read-issue" href="#creation">{zh?'阅读封面专题':'Read the cover story'} ↘</a><a class="outline-action" href="#contents">{zh?'本期目录':'Contents'} ↓</a>{!preview && <button type="button" class="outline-action share-trigger">{zh?'分享本期':'Share this issue'} ↗</button>}</div>
+  <p class="desk-source">{zh?'取材于':'From'} <a href={`${zh?'':'/en'}/reading/`}>{zh?'Airing 的阅读流':'Airing’s reading stream'}</a><br/>{zh?'原文、图像出处与补充资料随文附上。':'Original readings, image credits and supporting references included.'}</p>
+ </div>
+</header>
+<nav id="contents" class="contents" aria-label={zh?'本期目录':'Issue contents'}><div class="section-top"><h2>{zh?'本期目录':'In this issue'}</h2><span>{zh?'可按兴趣跳读':'Read in any order'}</span></div><div class="theme-guide">{groups.map((g,i)=><a href={`#${g.id}`}><span class="guide-number">0{i+1}<small>{g.count} {zh?'篇阅读':'saves'}</small></span><h3>{g.name}</h3><p>{g.detail}</p></a>)}</div></nav>
+{['creation','runtime','quality'].map((groupId,groupIndex)=>{
+ const featureIds=groupIndex===0?['film']:groupIndex===1?['context','durable','mods']:['routing','eval'];
+ return <section id={groupId} class={`chapter chapter-${groupId}`}>
+  <div class="chapter-heading"><span>0{groupIndex+1}</span><h2>{groups[groupIndex].name.split(' / ')[1]}</h2><p>{groups[groupIndex].detail}</p></div>
+  {draft.features.filter(f=>featureIds.includes(f.id)).map((feature,index)=><article id={feature.id} class={`feature feature-${feature.id}`} data-editorial-kind="feature" data-source-ids={feature.sources.join(',')} data-weekly-column={columnAnchor(feature.id)}><span class="column-anchor" id={columnAnchor(feature.id)} aria-hidden="true"></span>
+   <div class="feature-heading"><p class="kicker">{feature.id==='film'?(zh?'封面专题':'COVER STORY'):`${zh?'深入阅读':'FEATURE'} / ${String(index+1).padStart(2,'0')}`}</p><h3>{t(feature.title)}</h3><p class="feature-deck">{t(feature.deck)}</p></div>
+   <aside class="takeaway"><span>{zh?'核心判断':'THE TAKEAWAY'}</span><p>{t(feature.takeaway)}</p></aside>
+   <div class="feature-body">{feature.sections.map(s=><section class="feature-section">
+    <div class:list={['prose-spread',{'has-rail':s.note}]}><div class="section-copy"><h4>{t(s.title)}</h4>{t(s.text).split('\n\n').map(paragraph=><p><DraftHighlight text={paragraph} phrases={s.highlights.map(h=>t(h))}/></p>)}</div>
+     {s.note && <aside class="reading-rail"><h5>{t(s.note.title)}</h5><p>{t(s.note.text)}</p></aside>}
+    </div>
+    {s.visual && <DraftDiagram type={s.visual} lang={lang}/>}
+   </section>)}</div>
+   <DraftSources ids={feature.sources} lang={lang}/>
+   {feature.references.length>0 && <div class="primary-references"><span>{zh?'补充核查':'Supporting references'}</span>{feature.references.map(r=><a href={r.url}>{r.label} ↗</a>)}</div>}
+  </article>)}
+  {groupIndex===0 && <div class="brief-strip"><h3>{zh?'创作短读 / 把视线放回作品':'Creative notes / Look at the work'}</h3><div class="brief-grid">{draft.creation.map(b=><article id={b.id} data-editorial-kind="brief" data-source-ids={b.sources.join(',')} data-weekly-column={columnAnchor(b.id)}><span class="column-anchor" id={columnAnchor(b.id)} aria-hidden="true"></span><h4>{t(b.title)}</h4><p>{t(b.text)}</p><DraftSources ids={b.sources} lang={lang}/></article>)}</div></div>}
+  {groupIndex===1 && <div class="field-notes"><h3>{zh?'工程札记':'Field notes'}</h3>{draft.fieldnotes.filter(b=>b.id!=='advisor').map(b=><article id={b.id} data-editorial-kind="brief" data-source-ids={b.sources.join(',')} data-weekly-column={columnAnchor(b.id)}><span class="column-anchor" id={columnAnchor(b.id)} aria-hidden="true"></span><h4>{t(b.title)}</h4><p>{t(b.text)}</p><DraftSources ids={b.sources} lang={lang}/></article>)}</div>}
+  {groupIndex===2 && <div class="field-notes">{draft.fieldnotes.filter(b=>b.id==='advisor').map(b=><article id={b.id} data-editorial-kind="brief" data-source-ids={b.sources.join(',')} data-weekly-column={columnAnchor(b.id)}><span class="column-anchor" id={columnAnchor(b.id)} aria-hidden="true"></span><h3>{t(b.title)}</h3><p>{t(b.text)}</p><DraftSources ids={b.sources} lang={lang}/></article>)}</div>}
+ </section>;
+})}
+<section id="tools" class="chapter"><div class="chapter-heading"><span>04</span><h2>{zh?'这一周的新品架':'This week’s tool shelf'}</h2><p>{zh?'选工具，先看它解决哪件小事。':'Start with the small job a tool solves.'}</p></div><p class="section-intro">{zh?'语音、画布、记忆与测试：10 款工具，11 条收藏。这里给你一个尝试的理由，也留一个判断的边界。':'Voice, canvas, memory and tests: 10 tools across 11 saves. A reason to try each, and a boundary to keep in mind.'}</p><p class="tool-art-note">{zh?'图片来自产品官网与项目页面，点击查看完整图。':'Images from official product sites and project pages; select one to view the complete image.'}</p><div class="tool-grid">{draft.tools.map((tool,i)=><article id={tool.imageId} class="tool-card" data-editorial-kind="product" data-source-ids={tool.sources.join(',')} data-weekly-column={columnAnchor(tool.imageId)}><span class="column-anchor" id={columnAnchor(tool.imageId)} aria-hidden="true"></span><div class="tool-meta"><span>{t(tool.category)}</span><span class="mono">{String(i+1).padStart(2,'0')}</span></div><div class="tool-head"><h3><a href={draft.sources.find(s=>s.n===tool.sources[0])?.original_url || `${zh?'':'/en'}/reading/${draft.sources.find(s=>s.n===tool.sources[0])!.slug}/`}>{tool.name} <span aria-hidden="true">↗</span></a></h3><DraftProductImage id={tool.imageId} lang={lang} sizes={toolArtSizes}/></div><p>{t(tool.text)}</p><p class="tool-use">{t(tool.use)}</p><p class="tool-note">{t(tool.note)}</p><DraftSources ids={tool.sources} lang={lang}/></article>)}</div></section>
+<section id="signals" class="chapter"><div class="chapter-heading"><span>05</span><h2>{zh?'值得留意的变化':'Changes to watch'}</h2><p>{zh?'把消息、观点与事实分清。':'Separate news, opinions and evidence.'}</p></div><div class="signals-grid">{draft.signals.map(b=><article id={b.id} data-editorial-kind="brief" data-source-ids={b.sources.join(',')} data-weekly-column={columnAnchor(b.id)}><span class="column-anchor" id={columnAnchor(b.id)} aria-hidden="true"></span><p class="kicker">{b.id==='terminology'?(zh?'回到原文':'CHECK THE ORIGINAL'):(zh?'阅读短评':'READING NOTE')}</p><h3>{t(b.title)}</h3><p>{t(b.text)}</p><DraftSources ids={b.sources} lang={lang}/>{b.references.length>0 && <div class="primary-references">{b.references.map(r=><a href={r.url}>{r.label} ↗</a>)}</div>}</article>)}</div></section>
+{!preview && <section class="weekly-invitation" id="subscribe" aria-labelledby="weekly-invitation-title">
+ <div><p class="kicker">{zh?'读完这一期，还有下一期':'KEEP THE DISCOVERIES COMING'}</p><h2 id="weekly-invitation-title">{zh?'把一周的 AI 阅读，寄给你。':'A week of AI reading, sent to you.'}</h2><p>{zh?'每周一更新。可选中文或英文，封面、主题导读与全部阅读入口，每期一封。':'Every Monday. The cover, theme guide and every reading, in English or Chinese. One email per issue.'}</p></div>
+ <div class="invitation-actions"><button class="read-issue" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="weekly-issue">{zh?'订阅下一期':'Get the next issue'} →</button><a class="outline-action" href={`${zh?'':'/en'}/reading/weekly/feed.xml`}>{zh?'周刊 RSS':'Weekly RSS'} ↗</a></div>
+</section>}
+<section class="reading-register" id="sources"><details><summary><span>{zh?'本期全部阅读':'All saved readings'}</span><span>45 <span aria-hidden="true">＋</span></span></summary><p>{zh?'每条收藏都在正文中有对应位置。同主题合并分析，同产品合并陈列；这里保留原题和原文入口。':'Every save has a home in the issue. Related sources and duplicate product coverage are grouped, with original titles and links preserved here.'}</p><ol>{draft.sources.map(s=><li value={s.n}><div><a href={`${zh?'':'/en'}/reading/${s.slug}/`}>{(zh?s.title:s.title_en)||s.title}</a><span>{s.author||s.source}</span></div>{s.original_url?<a class="original-link" href={s.original_url}>{zh?'原文':'Original'} ↗</a>:<span class="no-original">{zh?'邮件收藏':'Saved email'}</span>}</li>)}</ol></details></section>
+<footer class="colophon"><div><strong>{title} · 002</strong><p>{zh?'每周一更新。每天收藏，每周读懂。':'Every Monday. Daily saves, weekly understanding.'}</p></div><p>{zh?'编辑':'Edited by'} <a href="https://ursb.me/">Airing ↗</a><br/><a href="#contents">{zh?'回到目录':'Back to contents'} ↑</a></p></footer>
+</main>
+{!preview && <Fragment><WeeklyShareDialog issue={issue} lang={lang}/><SubscriptionDialog/></Fragment>}
+<script>
+ const switchLink=document.querySelector<HTMLAnchorElement>('[data-language-switch]');
+ switchLink?.addEventListener('click',()=>{ switchLink.hash=location.hash; localStorage.setItem('preferred_lang', document.documentElement.lang.startsWith('en') ? 'zh' : 'en'); });
+</script>
+<script>
+ import { initWeeklyAnalytics } from '../../../scripts/weekly-analytics';
+ if (document.body.dataset.weeklySurface === 'weekly-issue') initWeeklyAnalytics();
+</script>
+</body>
+</html>

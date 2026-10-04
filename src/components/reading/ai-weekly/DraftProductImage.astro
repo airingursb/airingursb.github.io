@@ -1,0 +1,35 @@
+---
+import draft from '../../../data/ai-weekly/002.json';
+interface Props {
+  id: string;
+  lang: 'zh' | 'en';
+  sizes: string;
+}
+const { id, lang, sizes } = Astro.props;
+const artwork = draft.toolImages.find(item => item.id === id);
+if (!artwork) throw new Error(`Missing official product image: ${id}`);
+const root = '/reading/weekly/002/assets/';
+const label = lang === 'zh' ? '查看完整产品图' : 'Open the complete product image';
+const credits = {
+  'official-screenshot': { zh: '官网界面', en: 'Official UI' },
+  'official-artwork': { zh: '官方展示图', en: 'Official artwork' },
+  'official-demo-frame': { zh: '项目演示', en: 'Project demo' },
+  'official-site-capture': { zh: '官网截图', en: 'Website capture' },
+};
+const credit = credits[artwork.kind as keyof typeof credits][lang];
+---
+<figure class="product-art">
+  <a class="product-image" href={`${root}${artwork.fullFile}`} target="_blank" rel="noopener" aria-label={`${label}：${artwork.alt[lang]}`}>
+    <img
+      src={`${root}${artwork.file}`}
+      srcset={`${root}${artwork.smallFile} ${artwork.smallWidth}w, ${root}${artwork.file} ${artwork.width}w`}
+      sizes={sizes}
+      width={artwork.width}
+      height={artwork.height}
+      alt={artwork.alt[lang]}
+      loading="lazy"
+      decoding="async"
+    />
+  </a>
+  <figcaption><a href={artwork.sourcePage} target="_blank" rel="noopener" aria-label={`${credit} · ${artwork.product}`}>{credit} <span aria-hidden="true">↗</span></a></figcaption>
+</figure>

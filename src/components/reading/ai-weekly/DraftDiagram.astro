@@ -1,0 +1,131 @@
+---
+import draft from '../../../data/ai-weekly/002.json';
+import DraftFigure from './DraftFigure.astro';
+import DraftIllustration from './DraftIllustration.astro';
+interface Props { type:string; lang:'zh'|'en'; }
+const { type, lang } = Astro.props;
+const zh=lang==='zh';
+const l=(a:string,b:string)=>zh?a:b;
+const fig=(id:string)=>draft.originalFigures.find(f=>f.id===id)!;
+const sol=draft.evidence.context;
+const evaluation=draft.evidence.eval;
+const film=draft.evidence.film;
+const storyboardSizes='(max-width: 700px) calc(100vw - 40px), (max-width: 1100px) calc((100vw - 88px) / 2), 564px';
+const sceneSizes='(max-width: 700px) calc(100vw - 80px), (max-width: 1100px) calc(100vw - 112px), 630px';
+const savings=(1-sol.optimized.totalCostUSD/sol.baseline.totalCostUSD)*100;
+const amortizedSavings=(1-(sol.optimized.totalCostUSD/sol.optimized.solved)/(sol.baseline.totalCostUSD/sol.baseline.solved))*100;
+const styles=[
+ {file:'swiss-motion',name:l('瑞士平面动效','Swiss motion'),form:l('网格 × 字形 × 节拍','Grid × type × rhythm'),text:l('结构随节拍重组，适合把规则、比例和例外做成视觉节奏。','Recompose structure on the beat to show rules, proportions and exceptions.')},
+ {file:'shadow-puppet',name:l('皮影戏','Shadow puppetry'),form:l('关节 × 幕布 × 灯光','Joints × screen × light'),text:l('运动要服从偶的结构；灯光变化本身可以成为故事线索。','Movement follows the puppet’s construction; light can carry the narrative.')},
+ {file:'watercolor',name:l('水彩笔刷','Watercolor brush'),form:l('落笔 × 晕染 × 留白','Strokes × washes × space'),text:l('材质变化承担过渡，更适合氛围与意象；信息不能淹没在纹理里。','Material can carry a transition and mood while keeping information readable.')},
+ {file:'urban-sketch',name:l('都市速写','Urban sketch'),form:l('线稿 × 色块 × 街景','Lines × color × streets'),text:l('依次出现的线条与色块，让观众跟着视线发现一个地方。','Sequenced lines and washes guide the viewer’s discovery of a place.')},
+];
+const beats=[
+ {art:'story-01-question',title:l('提出问题','Pose the question'),voice:l('“为什么越做越乱？”','“Why does work get messier?”'),caption:l('先让观众看见一次犹豫，再提出上下文的问题。','Begin with a moment of hesitation, then introduce the context question.')},
+ {art:'story-02-burden',title:l('看见负担','Reveal the burden'),voice:l('“每轮都带上同一份日志。”','“The same log returns every turn.”'),caption:l('重复的纸卷挤满桌面，把反复输入变成看得见的负担。','Repeating paper crowds the desk, making redundant input visible.')},
+ {art:'story-03-archive',title:l('分开存与读','Separate storage and reading'),voice:l('“完整存，只读当前需要的。”','“Keep everything; read what is needed.”'),caption:l('整份资料进入档案，工作台只留下索引和当前需要的页。','Archive the complete record; retain an index and the pages needed now.')},
+ {art:'story-04-evidence',title:l('回到证据','Return to evidence'),voice:l('“需要时，再回到原始证据。”','“Retrieve the original when needed.”'),caption:l('把摘要与取回的原文放在一起，核对同一处信息。','Place the summary beside the retrieved original and check the same detail.')},
+];
+---
+{type==='film-pipeline' && <figure class="exhibit production">
+ <figcaption class="exhibit-heading"><span class="kicker">01 / PRODUCTION</span><h5><span class="balanced-phrase">{l('一个导演方案，','One treatment,')}</span>{' '}<span class="balanced-phrase">{l('三路素材，','three tracks,')}</span>{' '}<span class="balanced-phrase">{l('同一时间轴','one timeline')}</span></h5></figcaption>
+ <div class="illustrated-mechanism">
+ <div class="mechanism-scene"><DraftIllustration id="production-desk" lang={lang} sizes={sceneSizes}/><p class="image-credit">{l('小熊剪辑台 · 编者概念插画。画面、声音、字幕沿共同切点组织；具体制作步骤见旁边的说明。','Bear editing desk · editorial concept art. Picture, sound and captions share cut points; the adjacent text gives the production steps.')}</p></div>
+ <div class="production-plan">
+ <div class="production-root"><strong>{l('故事 · 风格 · 镜头与节拍','Story · style · shots & beats')}</strong><span>{l('先确定要让观众理解什么变化','Define the change the viewer should understand')}</span></div>
+ <div class="production-lanes">
+  <div><span class="lane-label">PICTURE</span><h6>{l('动画程序','Animation code')}</h6><code>Canvas / WebGL → render(t)</code><p>{l('浏览器按时间取帧；标题、运动和参数可改。','A browser selects frames by time; titles, motion and parameters remain editable.')}</p></div>
+  <div><span class="lane-label">SOUND</span><h6>{l('旁白 · 音乐 · 音效','Voice · music · effects')}</h6><code>{l('声轨 + cue 时间点','Audio tracks + timed cues')}</code><p>{l('台词与动作共用节拍，避免各自计时。','Speech and action share cues rather than independent clocks.')}</p></div>
+  <div><span class="lane-label">TEXT</span><h6>{l('字幕与标题','Captions and titles')}</h6><code>{l('文字 + 出现 / 停留时间','Text + start / hold time')}</code><p>{l('内容和读完所需时间，都在方案里确认。','Plan both the words and the time needed to read them.')}</p></div>
+ </div>
+ <div class="production-output"><strong>FFmpeg</strong><span>{l('逐帧画面 + 混音 + 字幕 → 成片','Frames + mixed audio + captions → film')}</span></div>
+ </div></div>
+ <p class="exhibit-caption">{l('编者根据 DIRECTOR / TECHNIQUE 绘制。三路素材共用时间点，修改才有明确的落点。','Editorial diagram based on DIRECTOR / TECHNIQUE. Shared cues make revisions locatable.')}</p>
+</figure>}
+
+{type==='film-styles' && <section class="style-atlas" aria-label={l('原项目样片与视觉语法','Original project samples and visual methods')}>
+ <div class="gallery-head"><h5>{l('看原片：风格怎样帮助理解','In the source films: how style helps understanding')}</h5><a href="https://lemomo-ai.github.io/lemo-opuscar/">{l('看完整样片','Watch the films')} ↗</a></div>
+ <figure class="style-lead"><a href="/reading/weekly/002/assets/whiteboard.webp" target="_blank" rel="noopener" aria-label={l('放大白板讲解原项目画面','Open the full whiteboard frame')}><img src="/reading/weekly/002/assets/whiteboard.webp" width="800" height="450" alt={l('Lemo 白板样片中并排的时钟与讲解用标记','Clocks and explanatory marks in Lemo’s whiteboard sample')} loading="lazy" decoding="async"/></a><figcaption><p class="kicker">WHITEBOARD</p><h6>{l('两个钟，把抽象差异变成对照','Two clocks make a difference visible')}</h6><p>{l('先建立可比较的对象，再让笔画、公式与旁白同步出现。画面承担解释，而不是填补空白。','Create comparable objects, then reveal marks and formulas alongside the voice. The picture carries the explanation.')}</p><a href="https://github.com/lemomo-ai/lemo-opuscar/blob/c4bc370eb15d36c88e074fdba1b0248b62a8e419/styles/whiteboard/STYLE.md">{l('读风格文档','Read the style guide')} ↗</a></figcaption></figure>
+ <div class="style-comparisons">{styles.map(g=><figure><a href={`/reading/weekly/002/assets/${g.file}.webp`} target="_blank" rel="noopener" aria-label={`${l('放大原项目画面：','Open source frame: ')}${g.name}`}><img src={`/reading/weekly/002/assets/${g.file}.webp`} width="800" height="450" alt={`${g.name} · Lemo lemo-opuscar`} loading="lazy" decoding="async"/></a><figcaption><h6>{g.name}</h6><span class="style-form">{g.form}</span><p>{g.text}</p><a href={`https://github.com/lemomo-ai/lemo-opuscar/blob/c4bc370eb15d36c88e074fdba1b0248b62a8e419/styles/${g.file}/STYLE.md`}>STYLE.md ↗</a></figcaption></figure>)}</div>
+ <p class="image-credit">{l('原项目画面：Lemo / lemo-opuscar，固定版本 c4bc370。点击画面可放大；封面小熊是本刊单独生成的概念插画。','Source frames: Lemo / lemo-opuscar, revision c4bc370. Click a frame for full size. The bear cover is a separate editorial illustration.')}</p>
+</section>}
+
+{type==='film-timeline' && <figure class="exhibit film-timeline" id="storyboard">
+ <figcaption class="exhibit-heading"><span class="kicker">02 / STORYBOARD</span><h5>{l('45 秒，四个理解上的变化','45 seconds, four changes in understanding')}</h5><span class="exhibit-subtitle">{l('编者分镜示例 · 不是原项目成片','Editorial storyboard · not an original project film')}</span></figcaption>
+ <ol class="storyboard">{beats.map((b,i)=><li><DraftIllustration id={b.art} lang={lang} sizes={storyboardSizes} className="story-frame"/><div class="shot-heading"><span class="shot-number mono">0{i+1}</span><div><span class="shot-time mono">{film.beats[i].start.toString().padStart(2,'0')}–{film.beats[i].end.toString().padStart(2,'0')}s</span><h6>{b.title}</h6></div></div><p class="shot-voice">{b.voice}</p><p class="shot-caption">{b.caption}</p></li>)}</ol>
+ <p class="storyboard-credit image-credit">{l('小熊分镜 · AI 概念插画。四张图是静态故事板，说明镜头要表达什么；不代表 Opus 已生成这段动画。','Bear storyboard · AI concept art. These are static narrative frames showing each shot’s purpose, not a claim that Opus generated this animation.')}</p>
+ <div class="cue-timeline"><div class="cue-axis"><span>{l('共享时钟','Shared clock')}</span><div><span>0s</span><span>15s</span><span>30s</span><span>45s</span></div></div>
+  {[l('画面','Picture'),l('旁白','Voice'),l('字幕','Captions')].map((label,i)=><div class={`cue-row cue-track-${i}`}><strong>{label}</strong><div class="cue-bars" style={`grid-template-columns:${film.beats.map(b=>`${b.end-b.start}fr`).join(' ')}`}>{film.beats.map((_,j)=><span><b>0{j+1}</b></span>)}</div></div>)}
+ </div>
+ <div class="film-edit"><strong>{l('一次修改怎样传递？','How does one edit propagate?')}</strong><p>{l('第 02 段旁白变长 → 把第 03 段起点后移 → 同步调整画面、字幕与音效 cue → 重新渲染与合成。','Longer shot-02 narration → shift shot 03 → update picture, captions and sound cues → render and assemble again.')}</p></div>
+ <p class="exhibit-caption">{l('分镜等宽方便比较，轨道按时长比例绘制。帧数为编者计算：','Storyboard panels have equal width; tracks use proportional duration. Editorial frame calculation: ')}<span class="mono">{film.durationSeconds}s × {film.framesPerSecond} fps = {(film.durationSeconds*film.framesPerSecond).toLocaleString('en-US')} {l('帧','frames')}</span>{l('。不代表生成速度。','; not a speed measurement.')}</p>
+</figure>}
+
+{type==='context-archive' && <figure class="exhibit context-comparison">
+ <figcaption class="exhibit-heading"><span class="kicker">03 / CONTEXT</span><h5>{l('完整的记录，可以有精简的入口','A complete record can have a compact entry point')}</h5><span class="exhibit-subtitle">{l('编者示例 · 2,000 行日志 · 形状示意，不代表 token 测量','Editorial example · 2,000-line log · structure, not token measurements')}</span></figcaption>
+ <div class="context-panels"><div class="context-before"><span class="lane-label">BEFORE</span><h6>{l('每轮带上完整结果','Carry the full output each turn')}</h6><div class="log-stack"><div><span>build.log</span><code>0001 … 2000</code></div><div><span>{l('下一次判断','Next decision')}</span><code>0001 … 2000</code></div><div><span>{l('再一次验证','Another check')}</span><code>0001 … 2000</code></div></div><p>{l('档案、当前目标与观察结果混在同一输入里。','Archive, current goal and observations remain mixed in the input.')}</p></div>
+ <div class="context-after"><span class="lane-label">AFTER</span><h6>{l('档案保留，桌面按需呈现','Retain the archive; select the input')}</h6><div class="archive-box"><strong>{l('完整日志 / 本地档案','Full log / local archive')}</strong><code>build.log · 0001 … 2000</code></div><span class="recall-arrow" aria-hidden="true">↕</span><div class="receipt-box"><strong>{l('模型当前看到的内容','What the model sees now')}</strong><dl><div><dt>{l('句柄','Handle')}</dt><dd><code>log:build/184</code></dd></div><div><dt>{l('关键行','Excerpt')}</dt><dd><code>317–322 · {l('错误位置','error location')}</code></dd></div><div><dt>{l('下一步','Next')}</dt><dd>{l('修改对应文件后验证','Edit the relevant file, then verify')}</dd></div></dl></div><p>{l('需要更多证据 → 按句柄取回对应原文。','Need more evidence? Retrieve the relevant source through the handle.')}</p></div></div>
+ <p class="exhibit-caption">{l('句柄和行号为示例；具体召回接口依扩展而定。省下的是重复输入，原始证据仍在档案中。','Handles and line numbers are illustrative; recall APIs depend on the extension. Less repeated input, with the original evidence retained.')}</p>
+</figure>}
+
+{type==='context-payback' && <aside class="equation-strip"><span class="kicker">{l('压缩何时回本？','WHEN DOES COMPACTION PAY?')}</span><div class="payback-equation"><span><b>N</b> × {l('后续每轮省下的费用','savings per later turn')}</span><strong aria-label={l('大于','greater than')}>＞</strong><span>{l('重写费用','rewrite cost')} + {l('缓存重建费用','cache reconstruction')}</span></div><p>{l('编者成本模型：N 是压缩后仍会进行的轮数。任务快结束了，或前缀缓存利用率很高时，频繁压缩可能不划算。','Editorial cost model: N is the number of future turns. Frequent compaction may not repay its cost near task completion or with effective prefix caching.')}</p></aside>}
+
+{type==='context-cost' && <section class="cost-exhibit" aria-label={l('SoL-Pi 的原始结果与成功任务摊销','SoL-Pi source results and cost per solved task')}>
+ <div class="paired-figures"><DraftFigure item={fig('sol-tasks')} lang={lang}/><DraftFigure item={fig('sol-cost')} lang={lang}/></div>
+ <figure class="cost-ledger"><figcaption><span class="kicker">{l('编者计算 / 同一任务组','EDITORIAL CALCULATION / SAME TASK GROUP')}</span><h5>{l(`账单降了 ${savings.toFixed(1)}%，摊销到成功任务呢？`,`Total bill −${savings.toFixed(1)}%. What about each solved task?`)}</h5></figcaption><div class="ledger-table"><table><thead><tr><th>{l('框架','Harness')}</th><th>{l('总费用','Total cost')}</th><th>{l('解出题数','Solved')}</th><th>{l('费用 ÷ 解题数','Cost ÷ solved')}</th></tr></thead><tbody>{[sol.baseline,sol.optimized].map(row=><tr><th scope="row">{row.harness}</th><td>${row.totalCostUSD.toFixed(2)}</td><td>{row.solved} / {sol.taskCount}</td><td>${(row.totalCostUSD/row.solved).toFixed(2)}</td></tr>)}</tbody></table></div>
+ <div class="ledger-reading"><strong>−{amortizedSavings.toFixed(1)}%<span>{l('每个成功任务的摊销费用','amortized cost per solved task')}</span></strong><p>{l('完成数同时少了 3 道。摊销包括失败尝试，未控制题目难度；不能理解为每一道题都省了这个比例。','Three fewer tasks were solved. Amortization includes failed attempts and does not control task difficulty.')}</p></div><p class="exhibit-caption">{sol.benchmark} · {sol.taskCount} CPU-only {l('任务','tasks')} · USD · <a href={sol.url}>NVlabs ↗</a></p></figure>
+</section>}
+
+{type==='pi-release' && <>
+ <figure class="exhibit pi-release-routes">
+  <figcaption class="exhibit-heading"><span class="kicker">RELEASE / 2026.10.01</span><h5>{l('同一天发布，两个落点','One release day, two destinations')}</h5></figcaption>
+  <div class="release-routes">
+   <div><span class="lane-label">PI CODING AGENT / 1.0</span><h6>{l('人在终端里，直接带着它做事','One person, working in a terminal')}</h6><p>{l('写代码、调工具；人可以检查中断位置，再继续。','Write code and use tools; inspect an interruption and ask it to continue.')}</p><p>{l('1.0 更新：默认全屏、精简 Codemode 提示、脚本内生图、MCP OAuth 加固。','1.0 refinements: fullscreen by default, leaner Codemode prompts, image generation in scripts and stronger MCP OAuth.')}</p></div>
+   <div><span class="lane-label">PI DURABLE / EXPERIMENTAL</span><h6>{l('任务跑得久，进度也留得住','Long-running work, with saved progress')}</h6><p>{l('为长任务与多个客户端构建应用；保存检查点，恢复未完成任务。','Build applications for long tasks and multiple clients; save checkpoints and resume unfinished work.')}</p><p>{l('这是独立实验包。工具重跑需要明确策略；子 Agent 由应用组合。','A separate experimental package. Tool replay needs an explicit policy; applications compose their own subagents.')}</p></div>
+  </div>
+  <p class="exhibit-caption">{l('编者按官方说明整理。两条路线共享底层能力；Durable 的实验状态和恢复策略要单独评估。','Editorial comparison from the official announcements. Shared foundations, distinct use cases; evaluate Durable’s experimental status and replay policy separately.')}{' '}<a href="https://earendil.com/posts/pi-1-0/">{l('发布说明','Announcement')} ↗</a>{' · '}<a href="https://earendil.com/posts/pi-durable/">Pi Durable ↗</a></p>
+ </figure>
+ <div class="trace-reading pi-release-demo">
+  <DraftFigure item={fig('pi-router')} lang={lang}/>
+  <aside class="reading-rail"><h5>{l('同一会话，三种职责','One conversation, three roles')}</h5><p>{l('官方演示里的自定义扩展 router/auto，把“谁来做下一步”写进工作流。','The demo’s custom router/auto extension makes the choice of the next model part of the workflow.')}</p><ol>
+   <li><strong>Claude Opus 5.5</strong><p>{l('先规划：确定脚本的范围、步骤与检查。','Plan the script’s scope, steps and checks.')}</p></li>
+   <li><strong>Jev</strong><p>{l('判断是否从规划进入实现阶段。','Classify whether to move from planning to implementation.')}</p></li>
+   <li><strong>GPT 6 Luna</strong><p>{l('接过实现：读取项目、写脚本并运行。','Take over implementation: read the project, write the script and run it.')}</p></li>
+  </ol></aside>
+ </div>
+</>}
+
+{type==='durable-recovery' && <figure class="exhibit recovery">
+ <figcaption class="exhibit-heading"><span class="kicker">04 / RECOVERY</span><h5><span class="balanced-phrase">{l('邮件已被接受，','Accepted by the provider,')}</span>{' '}<span class="balanced-phrase">{l('回执却没来得及存','but no stored receipt')}</span></h5><span class="exhibit-subtitle">{l('编者故障示例 · 不代表 Pi 的默认发送策略','Editorial failure scenario · not Pi’s default sending policy')}</span></figcaption>
+ <div class="illustrated-mechanism recovery-scene"><div class="mechanism-scene"><DraftIllustration id="recovery-receipt" lang={lang} sizes={sceneSizes}/><p class="image-credit">{l('信封已在投递箱里，回执簿仍是空白。插画用两个物件表现外部动作与本地记录之间的空隙。','The envelope is in the dispatch box while the receipt book is blank. The illustration shows the gap between an external effect and a local record.')}</p></div>
+ <ol class="interruption-line"><li><span>01</span><strong>{l('记录发送意图','Record send intent')}</strong><small>{l('本地有记录','Local record exists')}</small></li><li><span>02</span><strong>{l('服务接受请求','Provider accepts request')}</strong><small>{l('副作用可能已发生','The effect may have occurred')}</small></li><li class="crash-step"><span>×</span><strong>{l('进程中断','Process stops')}</strong><small>{l('回执尚未提交','Receipt not committed')}</small></li></ol>
+ </div>
+ <div class="recovery-question"><strong>{l('重启后：查的是状态，不是猜答案','After restart: reconcile the state')}</strong><span>{l('不能从“无回执”推断“没发送”','Missing receipt ≠ unsent')}</span></div>
+ <div class="recovery-branches"><div><span class="state-mark">✓</span><h6>{l('已确认完成','Confirmed complete')}</h6><p>{l('读取已提交结果，继续下一个步骤。','Reuse the committed result and proceed.')}</p></div><div><span class="state-mark">○</span><h6>{l('确认未执行','Confirmed unstarted')}</h6><p>{l('按策略重新安排，不重做已完成部分。','Schedule according to policy; preserve completed work.')}</p></div><div class="state-unknown"><span class="state-mark">?</span><h6>{l('结果不明','Unknown outcome')}</h6><p>{l('查服务端状态 / 幂等键；确认后才决定重试。','Check provider state or the idempotency key before deciding to retry.')}</p></div></div><p class="exhibit-caption">{l('对话持久化保存进度；外部动作是否发生，仍需外部确认。','Conversation persistence retains progress; an external effect still needs external confirmation.')}</p>
+</figure>}
+
+{type==='mods-events' && <figure class="exhibit event-map">
+ <figcaption class="exhibit-heading"><span class="kicker">05 / EVENTS</span><h5>{l('执行链上的检查，旁路中的提醒','Checks on the action path; reminders alongside it')}</h5></figcaption>
+ <ol class="event-chain"><li><span>{l('模型','Model')}</span><strong>{l('提出工具调用','Propose a tool call')}</strong><small>{l('准备改哪些文件？','Which files will change?')}</small></li><li><span>MOD EVENT</span><strong>{l('观察 / 参与处理','Observe / handle event')}</strong><small>{l('影响范围是否异常？','Is the impact unexpected?')}</small></li><li class="permission-node"><span>{l('权限边界','Permission boundary')}</span><strong>{l('检查实际动作','Check the actual action')}</strong><small>{l('参数变了也要检查','Check rewritten arguments too')}</small></li><li><span>{l('工具','Tool')}</span><strong>{l('执行并返回结果','Execute and return')}</strong><small>{l('留下可审阅的结果','Retain a reviewable result')}</small></li></ol>
+ <div class="observer-path"><span class="lane-label">{l('旁路观察','OBSERVER PATH')}</span><div><strong>Token Weather / Replay Theater</strong><p>{l('显示占用与成本，回看修改；它们提供信息。','Inspect context, cost and edits; these provide information.')}</p></div><div><strong>You should know</strong><p>{l('指出遗漏要求与对应证据；它提供提醒。','Flag an omitted requirement with evidence; this provides a reminder.')}</p></div></div><p class="exhibit-caption">{l('编者结构示意。提醒 ≠ 授权；扩展参与流程，也不等于跳过既有权限。','Editorial structure. A reminder is not authorization; an extension does not remove existing permission requirements.')}</p>
+</figure>}
+
+{type==='routing-cost' && <figure class="exhibit routing-tree">
+ <figcaption class="exhibit-heading"><span class="kicker">06 / ROUTING</span><h5>{zh?<><span class="balanced-phrase">阅读流分流：</span><span class="balanced-phrase">把判断和行动分开</span></>:'Reading-stream routing: separate choice from action'}</h5><span class="exhibit-subtitle">{l('编者任务示例 · 未设置通用置信度阈值','Editorial task example · no universal confidence threshold')}</span></figcaption><div class="routing-input"><span>{l('收藏正文 + 允许分类 + 来源完整性','Saved text + allowed categories + source completeness')}</span><strong>{l('轻量决策层给出选择与置信度','A lightweight layer returns a choice and confidence')}</strong></div>
+ <div class="branch-connector" aria-hidden="true"><svg viewBox="0 0 1000 32" preserveAspectRatio="none" focusable="false"><path d="M500 0V16H250V32M500 16H750V32" fill="none" stroke="currentColor" stroke-width="1" vector-effect="non-scaling-stroke"/></svg></div>
+ <div class="routing-branches"><div><span class="lane-label">{l('常规','ROUTINE')}</span><h6>{l('明确的产品发布','A clear product launch')}</h6><p>{l('进入新品架，写简短介绍。','Place on the shelf with a concise description.')}</p></div><div><span class="lane-label">{l('模糊 / 证据不全','AMBIGUOUS / INCOMPLETE')}</span><h6>{l('产品与机制都有','Both product and mechanism')}</h6><p>{l('升级模型 / 人工，保留疑点。','Escalate to a model or human; retain the uncertainty.')}</p></div></div>
+ <div class="routing-gate"><strong>{l('共同的结果核验','Shared outcome verification')}</strong><span>{l('来源可追踪 · 分类可检查 · ','Traceable sources · valid category · ')}<span class="balanced-phrase">{l('结果符合任务要求','fulfilled requirements')}</span></span></div>
+ <div class="permission-check"><strong>{l('下一步如果要发布 / 发送','If the next step publishes or sends')}</strong><span>{zh?<><span class="balanced-phrase">另行检查授权；</span><span class="balanced-phrase">高置信度不授予行动许可。</span></>:'Check authorization separately; confidence cannot grant it.'}</span></div>
+ <div class="routing-equation"><span>{l('每个成功任务的总费用','Total cost per successful task')}</span><div><span>{l('路由 + 执行 + 升级 + 验证 + 错判返工','Routing + execution + escalation + verification + recovery')}</span><strong>{l('成功完成的任务数','Completed tasks')}</strong></div></div><p class="exhibit-caption">{l('只有分子更低、完成情况也符合要求时，才能说流程真的更划算。这里没有把作者的不同降本案例混成一组数据。','Assess the full bill alongside completion. The authors’ separate savings accounts are not combined into one dataset.')}</p>
+</figure>}
+
+{type==='eval-results' && <figure class="exhibit eval-results">
+ <figcaption class="exhibit-heading"><span class="kicker">07 / HELD-OUT RESULT</span><h5>{l('准确率与费用，要在同一组题上对照','Compare accuracy and cost on the same held-out cases')}</h5></figcaption>
+ <div class="sample-split"><div style={`width:calc((100% - 4px) * ${evaluation.searchCount/evaluation.ticketCount})`}><strong>{evaluation.searchCount}</strong><span>{l('优化样本 / 用来找修改','Search / guide edits')}</span></div><div style={`width:calc((100% - 4px) * ${evaluation.holdoutCount/evaluation.ticketCount})`}><strong>{evaluation.holdoutCount}</strong><span>{l('留出样本 / 独立检查','Held out / final check')}</span></div></div>
+ <div class="eval-panels"><section><h6>{l('留出集准确率','Held-out accuracy')}</h6><span class="chart-unit">{l('按原文报告 · 单位 %','As reported · percent')}</span><div class="bar-chart">{[evaluation.baseline,evaluation.optimized].map((row,i)=><div class={`bar-row ${i?'optimized':''}`}><span>{i?l('优化后','Optimized'):l('基线','Baseline')}</span><div class="bar-track"><span style={`width:${row.accuracyPercent}%`}></span></div><strong>{row.accuracyPercent}%</strong></div>)}<div class="chart-axis"><span>0</span><span>100%</span></div></div><p class="chart-reading"><strong>+{(evaluation.optimized.accuracyPercent-evaluation.baseline.accuracyPercent).toFixed(1)} pp</strong><span>{l('增加 11.9 个百分点','11.9 percentage points higher')}</span></p></section>
+ <section><h6>{l('同一留出集的相对费用','Relative cost on the same holdout')}</h6><span class="chart-unit">{l('基线 = 100 · 不是美元金额','Baseline = 100 · not USD')}</span><div class="bar-chart">{[evaluation.baseline,evaluation.optimized].map((row,i)=><div class={`bar-row ${i?'optimized':''}`}><span>{i?l('优化后','Optimized'):l('基线','Baseline')}</span><div class="bar-track"><span style={`width:${row.costIndex}%`}></span></div><strong>{i?'≈':''}{row.costIndex}</strong></div>)}<div class="chart-axis"><span>0</span><span>100</span></div></div><p class="chart-reading"><strong>≈ 1/5</strong><span>{l('原文描述的成本比例','Reported cost ratio')}</span></p></section></div><p class="exhibit-caption">{l('来源：Lance Martin，支持工单案例。上图只使用 14 条留出样本；优化样本的 98.9% 不混入。相对成本为约数。','Source: Lance Martin’s support-ticket case. Only the 14-case holdout is compared; the 98.9% optimization score is excluded. Cost is approximate.')} <a href={evaluation.url}>{l('原文','Source')} ↗</a></p>
+</figure>}
+
+{type==='eval-loop' && <div class="evaluation-loop"><DraftFigure item={fig('eval-loop')} lang={lang}/><div class="loop-rules"><div><strong>{l('两组都改善','Both improve')}</strong><span>{l('按约定规则保留','Keep under the predefined rule')}</span></div><div><strong>{l('只在已见样本改善','Only seen cases improve')}</strong><span>{l('检查过拟合，不能直接宣告进步','Investigate overfitting before claiming progress')}</span></div><div><strong>{l('验证退步','Validation regresses')}</strong><span>{l('回退，再看失败轨迹','Revert and inspect the failures')}</span></div></div></div>}
+
+{type==='eval-trace' && <div class="trace-reading"><DraftFigure item={fig('eval-trace')} lang={lang}/><aside class="reading-rail"><span class="kicker">{l('怎样读一次失败','READ A FAILURE')}</span><ol><li><strong>{l('读原始输入','Read the input')}</strong><p>{l('要求模糊，还是模型漏读？','Was the requirement unclear or overlooked?')}</p></li><li><strong>{l('沿工具调用往下看','Follow the tool calls')}</strong><p>{l('拿到了证据吗？调用是否符合规则？','Was evidence retrieved? Were rules followed?')}</p></li><li><strong>{l('核对评分理由','Check the grading reason')}</strong><p>{l('结果真的错了，还是评分器不稳定？','Is the output wrong, or is the grader unstable?')}</p></li></ol></aside></div>}
