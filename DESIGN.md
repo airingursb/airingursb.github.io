@@ -482,3 +482,8 @@ Keep provider attribution visible. Missing token, unsupported WebGL or failed
 map requests show a plain location-link fallback instead of a blank map.
 Photo detail metadata stacks at 768px and below so the histogram cannot squeeze
 the location map into a narrow strip; retain the existing larger-screen layout.
+
+## Blog sidebar · October 4
+
+The bilingual blog sidebars end after subscription; remove the latest-keepsake
+preview entry without removing the diorama pages or comic links.

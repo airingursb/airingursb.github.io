@@ -2231,3 +2231,5 @@
 - [ ] Located photo detail maps show the correct location and link to its place archive; absent coordinates omit the map. Check 375/768/1280px and both themes.
 - [ ] Missing token, disabled WebGL and blocked Mapbox requests show usable place links instead of a blank canvas; restore requests and reload to recover.
 - [ ] Homepage footprints still show the current/visited cities, popup, controls and theme changes after sharing map initialization.
+
+- [ ] `/blog/` and `/en/blog/` no longer render or load the recent-keepsake preview; author/subscription/sidebar layout and standalone diorama/comic links remain intact.
