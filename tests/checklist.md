@@ -2309,3 +2309,9 @@
 - [ ] 登记表默认展开32个头像；清空后仍展开；预览、正式提交、人工审核上树和留言分页沿用原流程。
 - [ ] 随机树、首次5–18秒随机风、小熊H3播放、主题切换与原友人名录仍工作。
 - [ ] 新文章交互沿用友人页统计队列，统计不携带搜索词、收藏标题或登记内容。
+
+### 首页软件推荐更新（2026-10-04）
+
+- [x] 中文和英文首页的五组软件标签均保留；Notion、Herdr、Wispr Flow、Hemory、Grok Bot、MoneyWise 在对应分类正确显示。
+- [x] 软件推荐区块不再包含 Obsidian、Warp、Typeless、AnyGen、NotebookLM、Voicenotes、OpenClaw、MoneyWiz；Astro 页与旧 HTML 模板的列表一致。
+- [x] 手机和桌面下标签正常换行，长名称完整可见，没有横向溢出。
