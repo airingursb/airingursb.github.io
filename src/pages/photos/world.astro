@@ -1,25 +1,14 @@
 ---
 import SiteHeader from "../../components/SiteHeader.astro";
 import '../../styles/photos.css';
-// Leaflet CSS + JS are loaded globally from BaseLayout (CDN); use window.L
+import PhotoMap, { type PhotoPin } from '../../components/photos/PhotoMap';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import photosData from '../../data/photos.json';
 import { slugify } from '../../lib/photos-slug';
 
 const photos = photosData as Array<any>;
 
-type CityPin = {
-  citySlug: string;
-  city: string;
-  country: string;
-  coords: [number, number];
-  count: number;
-  thumb: string;
-  latestSlug: string;
-  latestTitle: string;
-};
-
-const cityMap = new Map<string, CityPin>();
+const cityMap = new Map<string, PhotoPin>();
 for (const p of photos) {
   if (!p.place?.coords || !p.place?.city) continue;
   const key = slugify(p.place.city);
@@ -32,8 +21,6 @@ for (const p of photos) {
       coords: p.place.coords,
       count: 1,
       thumb: p.variants.thumb.webp,
-      latestSlug: p.slug,
-      latestTitle: p.title || p.slug,
     });
   } else {
     existing.count += 1;
@@ -45,14 +32,12 @@ for (const p of photos) {
 
 const pins = Array.from(cityMap.values());
 const totalPlaced = pins.reduce((acc, p) => acc + p.count, 0);
-const pinsJson = JSON.stringify(pins);
 ---
 
 <BaseLayout
   title="World map · Photos · Airing"
   description="Photos plotted on an interactive world map."
   lang="en"
-  leaflet={true}
 >
   <div class="photos-page world-page">
     <SiteHeader lang="en" hasEnVersion={false} />
@@ -78,93 +63,10 @@ const pinsJson = JSON.stringify(pins);
       {pins.length === 0 ? (
         <p class="photos-empty">No located photos yet.</p>
       ) : (
-        <div class="world-map" id="worldMap" data-pins={pinsJson}></div>
+        <div class="world-map" id="worldMap"><PhotoMap pins={pins} client:visible /></div>
       )}
     </main>
   </div>
-
-  <script>
-    // Leaflet is loaded globally via BaseLayout CDN
-    const L = (window as any).L;
-
-    type Pin = {
-      citySlug: string;
-      city: string;
-      country: string;
-      coords: [number, number];
-      count: number;
-      thumb: string;
-      latestSlug: string;
-      latestTitle: string;
-    };
-
-    const el = document.getElementById('worldMap');
-    if (el && L) {
-      const pins: Pin[] = JSON.parse(el.dataset.pins || '[]');
-      const dark = document.documentElement.dataset.mode === 'dark';
-      const tileUrl = dark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-
-      const map = L.map(el, {
-        worldCopyJump: true,
-        scrollWheelZoom: true,
-      });
-
-      L.tileLayer(tileUrl, {
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 18,
-        minZoom: 2,
-      }).addTo(map);
-
-      const escapeHtml = (s: string) =>
-        s.replace(/[&<>"']/g, (c) => (
-          { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string
-        ));
-
-      const bounds: [number, number][] = [];
-      for (const pin of pins) {
-        const icon = L.divIcon({
-          className: pin.count > 1 ? 'photo-pin photo-pin-multi' : 'photo-pin',
-          iconSize: pin.count > 1 ? [22, 22] : [16, 16],
-          iconAnchor: pin.count > 1 ? [11, 11] : [8, 8],
-          html: pin.count > 1 ? `<span class="photo-pin-count">${pin.count}</span>` : '',
-        });
-
-        const popupHtml = `
-          <a class="world-pop" href="/photos/places/${escapeHtml(pin.citySlug)}">
-            <img src="${escapeHtml(pin.thumb)}" alt="${escapeHtml(pin.city)}" />
-            <div class="world-pop-meta">
-              <strong>${escapeHtml(pin.city)}</strong>
-              <span>${escapeHtml(pin.country)}</span>
-              <em>${pin.count} photo${pin.count === 1 ? '' : 's'}</em>
-            </div>
-          </a>`;
-
-        L.marker(pin.coords, { icon })
-          .bindPopup(popupHtml, { closeButton: false, maxWidth: 220 })
-          .on('popupopen', () => {
-            if (typeof (window as any).umami !== 'undefined') {
-              (window as any).umami.track('world-marker-click', {
-                city: pin.city,
-                country: pin.country,
-                count: pin.count,
-              });
-            }
-          })
-          .addTo(map);
-
-        bounds.push(pin.coords);
-      }
-
-      if (bounds.length > 0) {
-        map.fitBounds(bounds as any, { padding: [40, 40], maxZoom: 6 });
-      } else {
-        map.setView([20, 0], 2);
-      }
-    }
-  </script>
 
   <style>
     .world-main {
@@ -210,58 +112,6 @@ const pinsJson = JSON.stringify(pins);
       display: block; padding: 0; align-items: stretch; justify-content: stretch;
     }
 
-    /* Multi-photo pin variant — bigger ring + count badge */
-    .photo-pin-multi {
-      background: #111;
-      width: 22px !important; height: 22px !important;
-      border: 2.5px solid #fff;
-      border-radius: 50%;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.35);
-      display: flex; align-items: center; justify-content: center;
-    }
-    [data-mode="dark"] .photo-pin-multi {
-      background: #fff;
-      border-color: #111;
-    }
-    .photo-pin-count {
-      font-size: 10px;
-      font-weight: 700;
-      color: #fff;
-      line-height: 1;
-      letter-spacing: 0;
-    }
-    [data-mode="dark"] .photo-pin-count { color: #111; }
-
-    /* Popup card */
-    .leaflet-popup-content-wrapper { border-radius: 4px; padding: 0; overflow: hidden; }
-    .leaflet-popup-content { margin: 0; min-width: 200px; }
-    .world-pop {
-      display: block;
-      text-decoration: none;
-      color: inherit;
-    }
-    .world-pop img {
-      display: block;
-      width: 100%;
-      aspect-ratio: 3 / 2;
-      object-fit: cover;
-    }
-    .world-pop-meta {
-      padding: 8px 10px 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .world-pop-meta strong { font-size: 13px; font-weight: 600; }
-    .world-pop-meta span { font-size: 11px; color: #888; }
-    .world-pop-meta em {
-      font-style: normal;
-      font-size: 10px;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: #666;
-      margin-top: 2px;
-    }
   </style>
 
   <script is:inline define:vars={{ currentView: 'map' }}>

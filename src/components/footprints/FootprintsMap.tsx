@@ -8,17 +8,13 @@
 
 import * as React from 'react';
 import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+import { createSiteMap, MAPBOX_TOKEN as TOKEN, mapStyle } from '../../lib/site-map';
 import { useColorTheme, type ColorTheme } from '../workouts/workoutColors';
 import { COUNTRY_FLAGS, type City } from '../../data/footprints';
 
 interface Props {
   cities: City[];
 }
-
-// Mirror RouteMap.tsx — `import.meta.env.PUBLIC_*` is substituted by Vite
-// at build time only when accessed exactly like this (no wrapping).
-const TOKEN: string | undefined = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 
 const CURRENT_COLOR = '#ff6b6b';
 const VISITED_LIGHT = '#2fa84f';
@@ -53,9 +49,7 @@ function FootprintsMapboxMap({ cities, theme }: { cities: City[]; theme: ColorTh
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const mapRef = React.useRef<mapboxgl.Map | null>(null);
   const [ready, setReady] = React.useState(false);
-  const styleUrl = theme === 'dark'
-    ? 'mapbox://styles/mapbox/dark-v11'
-    : 'mapbox://styles/mapbox/light-v11';
+  const styleUrl = mapStyle(theme);
   const visitedColor = theme === 'dark' ? VISITED_DARK : VISITED_LIGHT;
   const dotStroke = theme === 'dark' ? 'rgba(16,20,26,0.95)' : 'rgba(255,255,255,0.95)';
 
@@ -65,34 +59,19 @@ function FootprintsMapboxMap({ cities, theme }: { cities: City[]; theme: ColorTh
 
   React.useEffect(() => {
     if (!containerRef.current) return;
-    mapboxgl.accessToken = TOKEN!;
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: styleUrl,
+    const map = createSiteMap(containerRef.current, theme, {
       center: [home.lng, home.lat],
       zoom: 2.2,
-      attributionControl: { compact: true },
-      // Cartographic — no rotation, no 3D tilt.
-      dragRotate: false,
-      pitchWithRotate: false,
-      touchPitch: false,
-      renderWorldCopies: false,
     });
-    map.touchZoomRotate.disableRotation();
-    map.addControl(new mapboxgl.NavigationControl({ showCompass: false, visualizePitch: false }), 'top-left');
     mapRef.current = map;
 
     map.on('load', () => {
-      localizeLabels(map);
       applyAtmosphere(map, theme);
       paintLayers(map, cities, current, visitedColor, dotStroke);
       setReady(true);
     });
 
-    const onResize = () => map.resize();
-    window.addEventListener('resize', onResize);
     return () => {
-      window.removeEventListener('resize', onResize);
       map.remove();
       mapRef.current = null;
     };
@@ -105,7 +84,6 @@ function FootprintsMapboxMap({ cities, theme }: { cities: City[]; theme: ColorTh
     if (!map) return;
     map.setStyle(styleUrl);
     map.once('style.load', () => {
-      localizeLabels(map);
       applyAtmosphere(map, theme);
       paintLayers(map, cities, current, visitedColor, dotStroke);
     });
@@ -157,24 +135,6 @@ function computeStats(cities: City[]) {
   const countries = new Set(cities.map(c => c.country));
   const continents = new Set(cities.map(c => c.continent));
   return { cities: cities.length, countries: countries.size, continents: continents.size };
-}
-
-/* ───────────────────── basemap localization ──────────────────── */
-
-function localizeLabels(map: mapboxgl.Map) {
-  if (typeof document === 'undefined') return;
-  if (document.documentElement.lang !== 'en') return;
-  const layers = map.getStyle()?.layers ?? [];
-  for (const layer of layers) {
-    if (layer.type !== 'symbol') continue;
-    const layout = (layer as any).layout;
-    if (!layout || !('text-field' in layout)) continue;
-    try {
-      map.setLayoutProperty(layer.id, 'text-field', ['coalesce', ['get', 'name_en'], ['get', 'name']]);
-    } catch {
-      // Some symbol layers reject expression text-field — silent skip is fine.
-    }
-  }
 }
 
 function applyAtmosphere(map: mapboxgl.Map, theme: ColorTheme) {

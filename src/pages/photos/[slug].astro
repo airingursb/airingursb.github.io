@@ -1,7 +1,7 @@
 ---
 import SiteHeader from "../../components/SiteHeader.astro";
 import '../../styles/photos.css';
-// Leaflet CSS + JS are loaded globally from BaseLayout (CDN); use window.L
+import PhotoMap from '../../components/photos/PhotoMap';
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { siteStrings } from '../../lib/i18n';
 import { slugify } from '../../lib/photos-slug';
@@ -79,7 +79,6 @@ const ogDescription = photo.description
   ogImage={ogImageUrl}
   ogType="article"
   lang="en"
-  leaflet={true}
 >
   <div class="photo-detail-page">
     <SiteHeader lang="en" hasEnVersion={false} />
@@ -173,13 +172,16 @@ const ogDescription = photo.description
               </a>
             )}
             {photo.place?.coords && (
-              <div
-                class="meta-map"
-                id="metaMap"
-                data-lat={photo.place.coords[0]}
-                data-lng={photo.place.coords[1]}
-                data-city-slug={slugify(photo.place.city)}
-              ></div>
+              <div class="meta-map" id="metaMap">
+                <PhotoMap detail client:visible pins={[{
+                  citySlug: slugify(photo.place.city),
+                  city: photo.place.city,
+                  country: photo.place.country || '',
+                  coords: photo.place.coords,
+                  count: 1,
+                  thumb: photo.variants.thumb.webp,
+                }]} />
+              </div>
             )}
 
             {photo.albums && photo.albums.length > 0 && (
@@ -538,43 +540,6 @@ const ogDescription = photo.description
     }
   </script>
 
-  <script>
-    // Leaflet is loaded globally via BaseLayout CDN
-    const L = (window as any).L;
-    const el = document.getElementById('metaMap');
-    if (el && L) {
-      const lat = parseFloat(el.dataset.lat || '0');
-      const lng = parseFloat(el.dataset.lng || '0');
-      const citySlug = el.dataset.citySlug || '';
-      const dark = document.documentElement.dataset.mode === 'dark';
-      const tileUrl = dark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-
-      const map = L.map(el, {
-        scrollWheelZoom: false,
-        zoomControl: false,
-        attributionControl: true,
-      }).setView([lat, lng], 11);
-
-      L.tileLayer(tileUrl, {
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        subdomains: 'abcd',
-        maxZoom: 18,
-      }).addTo(map);
-
-      const pin = L.divIcon({
-        className: 'photo-pin',
-        iconSize: [16, 16],
-        iconAnchor: [8, 8],
-      });
-      const marker = L.marker([lat, lng], { icon: pin }).addTo(map);
-      marker.on('click', () => {
-        window.location.href = `/photos/places/${citySlug}`;
-      });
-    }
-  </script>
-
   <style>
     /* Mobile dropdown is provided globally — see global.css and BaseLayout.astro */
 
@@ -603,32 +568,6 @@ const ogDescription = photo.description
   </style>
 
   <style is:global>
-    /* Custom marker — minimal CSS pin matching site style */
-    .photo-pin {
-      width: 16px; height: 16px;
-      background: #111;
-      border: 3px solid #fff;
-      border-radius: 50%;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-      cursor: pointer;
-    }
-    [data-mode="dark"] .photo-pin {
-      background: #fff;
-      border-color: #111;
-    }
-    /* Leaflet attribution: lighter, smaller */
-    .leaflet-container .leaflet-control-attribution {
-      font-size: 9px;
-      background: rgba(255, 255, 255, 0.7);
-    }
-    [data-mode="dark"] .leaflet-container .leaflet-control-attribution {
-      background: rgba(0, 0, 0, 0.5);
-      color: rgba(255, 255, 255, 0.6);
-    }
-    [data-mode="dark"] .leaflet-container .leaflet-control-attribution a {
-      color: rgba(255, 255, 255, 0.7);
-    }
-
     body:has(.photo-detail-page) {
       display: block;
       padding: 0;

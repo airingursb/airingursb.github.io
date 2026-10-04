@@ -469,3 +469,16 @@ The monthly-36 article hero reuses the existing palace-clouds clip, automaticall
 ### Article ending: accepted direction C (September 19)
 Use the approved standalone C composition from `output/article-ending-directions/` and its restored prominent likes control. The article coda is followed by the existing centered likes capsule and two rules; real counts/regions/online behavior remain intact. Then an editorial ending starts with “再翻一页。” / “One more page.”. Primary recommendation (next older article, otherwise previous newer article) uses its actual 16:9 cover, serif title, visible description, native article link and existing cover transition. When both neighbors exist, preserve a quiet previous-article link. Missing/failed covers collapse to a text recommendation; no fabricated placeholder art. No neighbor still leaves the subscription usable without an empty recommendation.
 At desktop the primary article and a narrow subscription side column share one bottom rule (ratio1.65:1,32px gap). At <=600px stack recommendation then subscription, with small H3 bear at top-right of the subscription and one underline email row. No outer newsletter card; desktop bear sits above the invitation. Use site neutral tokens, 28px heading/18px invitation/14px description/12px metadata, 16px email input; 44px targets, visible focus, native email validation and translated loading/success/already/error responses. Reuse the authored H3 idle/receipt/rest assets and existing real subscription service. UI appearance cannot report delivery; confirmed animation follows API acknowledgement only. Existing subscription notices and RSS remain. Likes are NOT moved into the side column or replaced by an unobtrusive inline icon.
+
+## Photo maps · October 4
+
+Photo world/detail maps share the homepage Mapbox base, public token, neutral
+light-v11/dark-v11 styles, English labels and resize lifecycle. Preserve world
+map dimensions (70vh/420px minimum; mobile 56vh/340px) and the 160px detail map.
+World pins retain city photo counts and photo/place popups; detail pins link to
+place archives. Use existing text/background/border/accent tokens, 4px radius,
+12px popup text, 8/12px spacing and 44px marker hit areas around a 22px count dot.
+Keep provider attribution visible. Missing token, unsupported WebGL or failed
+map requests show a plain location-link fallback instead of a blank map.
+Photo detail metadata stacks at 768px and below so the histogram cannot squeeze
+the location map into a narrow strip; retain the existing larger-screen layout.

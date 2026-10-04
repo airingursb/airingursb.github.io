@@ -2223,3 +2223,11 @@
 - [ ] Verify the deployed dark-mode routes, theme continuity across blog/Echo/Friends navigation and telemetry script assets.
 - [x] A delayed analytics SDK plus immediate Echo→Friends navigation preserves the queued theme event and its origin route; repeated flush does not duplicate it. The bounded session queue expires old events and does not include drafted private fields.
 - [x] Friends theme telemetry uses the button's own click listener: the site's propagation stop must not suppress it, the resulting mode is recorded, and two toggles emit exactly two events. Verified in the real built page;28/28 telemetry checks pass.
+
+## Photo map shared basemap regression
+
+- [ ] `/photos/world/` uses the homepage Mapbox base: real geography, 7 city markers / 21 photos for the current catalog, visible attribution, and no CARTO or Leaflet requests.
+- [ ] World markers open the correct thumbnail/count/place link; keyboard activation and zoom work. Theme changes repaint the basemap without losing markers or current viewport.
+- [ ] Located photo detail maps show the correct location and link to its place archive; absent coordinates omit the map. Check 375/768/1280px and both themes.
+- [ ] Missing token, disabled WebGL and blocked Mapbox requests show usable place links instead of a blank canvas; restore requests and reload to recover.
+- [ ] Homepage footprints still show the current/visited cities, popup, controls and theme changes after sharing map initialization.
