@@ -12,6 +12,7 @@ import { getGitLastModified } from '../lib/seo';
 import { issuesFor, issuePath } from '../features/echo/data/issues';
 import { lettersFor } from '../features/echo/data/catalog';
 import { letterPath } from '../features/echo/data/letters';
+import { aiWeeklyIssues } from '../data/ai-weekly';
 
 type UrlOptions = {
   readonly lastmod?: string;
@@ -52,6 +53,7 @@ export async function GET(context: APIContext) {
     { zh: '/playbook/reading-companion/', en: '/en/playbook/reading-companion/', changefreq: 'monthly', priority: '0.6' },
     ...['/playbook/bear-stories/', '/playbook/desk-wind/', '/playbook/workshop/', '/playbook/shared-garden/', '/photos/suitcase/'].map(route => ({ zh: route, en: `/en${route}`, changefreq: 'monthly', priority: '0.5' })),
     { zh: '/reading/', en: '/en/reading/', changefreq: 'daily', priority: '0.8' },
+    { zh: '/reading/weekly/', en: '/en/reading/weekly/', changefreq: 'weekly', priority: '0.8' },
     { zh: '/workouts/', en: '/en/workouts/', changefreq: 'weekly', priority: '0.6' },
     { zh: '/comics/', en: '/en/comics/', changefreq: 'weekly', priority: '0.7' },
   ];
@@ -120,6 +122,10 @@ ${links ? `${links}\n` : ''}  </url>`;
   }
   for (const letter of lettersFor('zh')) {
     urls.push(bilingualUrl(letterPath(letter.id), letterPath(letter.id, 'en'), { changefreq: 'monthly', priority: '0.6' }));
+  }
+
+  for (const issue of aiWeeklyIssues) {
+    urls.push(bilingualUrl(issue.href.zh, issue.href.en, { changefreq: 'monthly', priority: '0.7' }));
   }
 
   for (const item of readingItems) {

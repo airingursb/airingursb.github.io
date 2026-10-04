@@ -60,3 +60,22 @@ for (const lang of ['zh', 'en']) {
   assert.equal(attr(first.find(node=>node.tagName==='meta'&&attr(node,'property')==='og:url'),'content'),`https://ursb.me${prefix}/reading/weekly/001/`);
  });
 }
+test('sitemap discovers every published edition in both languages and excludes draft aliases', async () => {
+  const xml = await readFile(built('/sitemap.xml'), 'utf8');
+  const entries = [...xml.matchAll(/<url>([\s\S]*?)<\/url>/g)].map(match => match[1]);
+  const paths = [
+    { zh: '/reading/weekly/', en: '/en/reading/weekly/' },
+    ...aiWeeklyIssues.map(issue => issue.href),
+  ];
+  for (const pair of paths) {
+    for (const lang of ['zh', 'en']) {
+      const location = `https://ursb.me${pair[lang]}`;
+      const matching = entries.filter(entry => entry.includes(`<loc>${location}</loc>`));
+      assert.equal(matching.length, 1, location);
+      for (const [hreflang, path] of [['zh-CN', pair.zh], ['en', pair.en], ['x-default', pair.zh]]) {
+        assert.ok(matching[0].includes(`hreflang="${hreflang}" href="https://ursb.me${path}"`));
+      }
+    }
+  }
+  assert.ok(!entries.some(entry => entry.includes('<loc>https://ursb.me/previews/') || entry.includes('<loc>https://ursb.me/en/previews/')));
+});
