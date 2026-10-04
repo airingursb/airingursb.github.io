@@ -2233,3 +2233,13 @@
 - [ ] Homepage footprints still show the current/visited cities, popup, controls and theme changes after sharing map initialization.
 
 - [ ] `/blog/` and `/en/blog/` no longer render or load the recent-keepsake preview; author/subscription/sidebar layout and standalone diorama/comic links remain intact.
+
+## Friends · 林间信笺（2026-10-04）
+
+- [ ] /friends/ 在现有友人树下显示双列信笺，375px 单列，768/1280px 无横向溢出；明暗主题和登记处一致。
+- [ ] 标题、作者、原文按钮打开真实小站；编辑便笺不冒充已经运行的 Agent；页面明确显示采集日期。
+- [ ] 搜索作者/标题、7/30天/全部、旧信、本机收藏与每页6篇分页可组合；空结果可恢复。
+- [ ] 收藏刷新后保留，取消与清空可恢复为空；散步路线提供三篇文章并可关闭。
+- [ ] 登记表默认展开32个头像；清空后仍展开；预览、正式提交、人工审核上树和留言分页沿用原流程。
+- [ ] 随机树、首次5–18秒随机风、小熊H3播放、主题切换与原友人名录仍工作。
+- [ ] 新文章交互沿用友人页统计队列，统计不携带搜索词、收藏标题或登记内容。

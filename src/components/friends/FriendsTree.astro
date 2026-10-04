@@ -1,22 +1,30 @@
 ---
 import SiteHeader from '../SiteHeader.astro';
 import markup from './markup.html?raw';
+import lettersMarkup from './letters.html?raw';
+import lettersData from '../../data/friends-letters.json';
 import friends from '../../data/friends.json';
 import reviewed from '../../data/friends-tree-reviewed.json';
 const byUrl=new Map(reviewed.map(friend=>[friend.url,friend]));
 // The published blogroll is the manually approved source. Applications never mutate it.
 const friendData=friends.map(friend=>({...byUrl.get(friend.url),...friend,availability:byUrl.get(friend.url)?.availability??'unknown',checkedDate:byUrl.get(friend.url)?.checkedDate??'',avatarId:byUrl.get(friend.url)?.avatarId??'fox'}));
 const archived=friendData.filter(friend=>friend.availability==='archive').length;
-const content=markup.replaceAll('__FRIEND_COUNT__',String(friendData.length)).replaceAll('__ARCHIVE_COUNT__',String(archived)).replaceAll('__TREE_COUNT__',String(friendData.length-archived));
+const escapeText=(value:string)=>value.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+const firstLetters=lettersData.posts.filter(post=>Date.now()-Date.parse(post.published)<=30*86400000).slice(0,6).map(post=>`<article class="option-row"><div class="option-author"><div class="option-author-info"><a href="${escapeText(post.url)}" target="_blank" rel="noopener noreferrer">${escapeText(post.friend)}</a></div><time datetime="${escapeText(post.published)}">${post.published.slice(5,10).replace('-','.')}</time></div><div class="option-main"><h3 class="option-title"><a href="${escapeText(post.article)}" target="_blank" rel="noopener noreferrer">${escapeText(post.title)}</a></h3>${post.recommendation?`<aside class="option-note"><div class="option-note-label">读前便笺 · 根据正文片段</div><p>${escapeText(post.recommendation)}</p></aside>`:''}</div><div class="option-actions"><a href="${escapeText(post.article)}" target="_blank" rel="noopener noreferrer">读这封信 ↗</a></div></article>`).join('');
+const lettersContent=lettersMarkup.replace('<div id="letter-list"></div>','<div id="letter-list">'+firstLetters+'</div><noscript><p class="source-note">搜索、筛选和收藏需要 JavaScript；文章链接可以直接打开。</p></noscript>');
+const content=markup.replace('<div class="path-divider"',lettersContent+'<div class="path-divider"').replaceAll('__FRIEND_COUNT__',String(friendData.length)).replaceAll('__ARCHIVE_COUNT__',String(archived)).replaceAll('__TREE_COUNT__',String(friendData.length-archived));
 ---
 <link rel="stylesheet" href="/friends-tree/scene.css" />
 <link rel="stylesheet" href="/friends-tree/theme.css" />
+<link rel="stylesheet" href="/friends-tree/letters.css?v=20261004" />
 <div class="friends-page">
   <SiteHeader lang="zh" />
   <Fragment set:html={content} />
 </div>
 <script is:inline define:vars={{ friendData }}>window.FRIEND_TREE_DATA=friendData;</script>
+<script is:inline define:vars={{ lettersData }}>window.FRIEND_LETTERS_DATA=lettersData;</script>
 <script is:inline src="/site-analytics.js"></script>
 <script is:inline src="/friends-tree/analytics.js?v=20261003-theme-toggle"></script>
-<script is:inline src="/friends-tree/scene.js?v=20261003-random-arrival"></script>
+<script is:inline src="/friends-tree/scene.js?v=20261004-letters"></script>
 <script is:inline src="/friends-tree/guestbook.js"></script>
+<script is:inline src="/friends-tree/letters.js?v=20261004"></script>
