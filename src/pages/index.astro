@@ -14,6 +14,7 @@ import WorkoutCardPreview from '../components/workouts/WorkoutCardPreview.astro'
 import { FIXED_DATES, FLOATING_DATES } from '../lib/easter-egg-themes';
 import { fetchComics } from '../lib/comics';
 import { fetchReadingItems } from '../lib/reading';
+import { loadReadingCover, readingCoverLabel } from '../lib/reading-cover';
 import { FootprintsMap } from '../components/footprints/FootprintsMap';
 import { cities as footprintCities } from '../data/footprints';
 import IslandWidget from '../components/IslandWidget.astro';
@@ -52,11 +53,16 @@ const allComics = await fetchComics();
 const latestComic = allComics[0];
 const recentReading = await fetchReadingItems(8);
 const recentReadingCards = await Promise.all(recentReading.map(async (item) => {
+  const coverEnSource = item.cover_url_en || item.cover_url;
   const [coverZh, coverEn] = await Promise.all([
-    getImage({ src: item.cover_url, width: 720, height: 480, format: 'webp', quality: 75 }),
-    getImage({ src: item.cover_url_en || item.cover_url, width: 720, height: 480, format: 'webp', quality: 75 }),
+    loadReadingCover(readingCoverLabel(item), item.cover_url, () => (
+      getImage({ src: item.cover_url, width: 720, height: 480, format: 'webp', quality: 75 })
+    )),
+    loadReadingCover(readingCoverLabel(item, 'en'), coverEnSource, () => (
+      getImage({ src: coverEnSource, width: 720, height: 480, format: 'webp', quality: 75 })
+    )),
   ]);
-  return { item, coverZh: coverZh.src, coverEn: coverEn.src };
+  return { item, coverZh: coverZh?.src ?? '', coverEn: coverEn?.src ?? '' };
 }));
 const formatComicDate = (s: string, locale: 'zh' | 'en') =>
   new Date(s).toLocaleDateString(locale === 'zh' ? 'zh-CN' : 'en-US', {
@@ -1321,18 +1327,20 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
                 data-umami-event-position={index + 1}
               >
                 <div class="reading-home-thumb">
-                  <img
-                    src={coverZh}
-                    alt={item.title}
-                    data-src-zh={coverZh}
-                    data-src-en={coverEn}
-                    data-alt-zh={item.title}
-                    data-alt-en={item.title_en || item.title}
-                    loading="lazy"
-                    decoding="async"
-                    width="720"
-                    height="480"
-                  />
+                  {(coverZh || coverEn) && (
+                    <img
+                      src={coverZh || coverEn}
+                      alt={item.title}
+                      data-src-zh={coverZh}
+                      data-src-en={coverEn}
+                      data-alt-zh={item.title}
+                      data-alt-en={item.title_en || item.title}
+                      loading="lazy"
+                      decoding="async"
+                      width="720"
+                      height="480"
+                    />
+                  )}
                   {index === 0 && <span class="reading-home-new">NEW</span>}
                 </div>
                 <div class="reading-home-meta">

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { inferRemoteSize } from '../node_modules/astro/dist/assets/utils/remoteProbe.js';
+import { loadReadingCover } from '../src/lib/reading-cover.ts';
 import { readingRssItems } from '../src/lib/reading-feed.ts';
 
 const item = {
@@ -60,4 +62,69 @@ test('optimized covers preserve feed identity, source links and localized conten
   const [entry] = readingRssItems([fallback], 'en', covers);
   assert.ok(entry.content.includes(covers.get(item.cover_url)));
   assert.equal(entry.title, item.title_en);
+});
+
+test('Reading RSS omits a cover that could not be fetched or measured', () => {
+  const covers = new Map([[item.cover_url, null]]);
+  const [entry] = readingRssItems([item], 'zh', covers);
+
+  assert.doesNotMatch(entry?.content ?? '', /<img/);
+  assert.match(entry?.content ?? '', /中文摘要/);
+  assert.match(entry?.content ?? '', /阅读原文/);
+});
+
+test('loadReadingCover warns with the item and URL, then keeps going', async () => {
+  const missing = 'https://r2.airingdeng.com/notion/this-cover-does-not-exist-404.png';
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    warnings.push(args.map(String).join(' '));
+  };
+
+  try {
+    const result = await loadReadingCover(
+      '"Dream-RSI · 让 Agent 在自己的历史里做梦来自我进化" (dream-rsi-evolving-worlds)',
+      missing,
+      async () => {
+        throw new Error(`FailedToFetchRemoteImageDimensions: Failed to get the dimensions for ${missing}`);
+      },
+    );
+
+    assert.equal(result, null);
+    assert.match(warnings.join('\n'), /Dream-RSI/);
+    assert.match(warnings.join('\n'), /dream-rsi-evolving-worlds/);
+    assert.match(warnings.join('\n'), new RegExp(missing.replaceAll('.', '\\.')));
+  } finally {
+    console.warn = originalWarn;
+  }
+});
+
+test('loadReadingCover returns the optimized cover when the probe succeeds', async () => {
+  const result = await loadReadingCover('"ok" (ok)', 'https://r2.example.com/ok.png', async () => 'https://ursb.me/_astro/ok.jpeg');
+  assert.equal(result, 'https://ursb.me/_astro/ok.jpeg');
+});
+
+test('Astro inferRemoteSize 404s are skipped with a warning naming the item and URL', async () => {
+  const missing = 'https://r2.airingdeng.com/notion/this-cover-does-not-exist-404.png';
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    warnings.push(args.map(String).join(' '));
+  };
+
+  try {
+    const result = await loadReadingCover(
+      '"Dream-RSI · 让 Agent 在自己的历史里做梦来自我进化" (dream-rsi-evolving-worlds)',
+      missing,
+      () => inferRemoteSize(missing),
+    );
+
+    assert.equal(result, null);
+    assert.match(
+      warnings.join('\n'),
+      /\[reading\] skip missing cover for "Dream-RSI · 让 Agent 在自己的历史里做梦来自我进化" \(dream-rsi-evolving-worlds\): https:\/\/r2\.airingdeng\.com\/notion\/this-cover-does-not-exist-404\.png \(Failed to get the dimensions for/,
+    );
+  } finally {
+    console.warn = originalWarn;
+  }
 });
