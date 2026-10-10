@@ -38,6 +38,13 @@ export default defineConfig({
     domains: ['r2.airingdeng.com'],
   },
   integrations: [mdx(), react(), immersiveSeo(), {
+    name: 'client-interaction-directive',
+    hooks: {
+      'astro:config:setup': ({ addClientDirective }) => {
+        addClientDirective({ name: 'interaction', entrypoint: './src/directives/interaction.js' });
+      },
+    },
+  }, {
     name: 'bear-home-preview',
     hooks: {
       'astro:config:setup': ({ injectRoute }) => {

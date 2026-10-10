@@ -5,8 +5,9 @@
 // style — so: no frame, no border, no card shadow, no title bar.
 // Just the island silhouette floating freely on the page.
 //
-// R3F mounts lazily on scroll-into-view (still — first scroll typically
-// happens within a few seconds of page load anyway).
+// R3F mounts lazily via client:interaction (src/directives/interaction.js):
+// only when visible, and only after the first interaction or a few seconds
+// after load — so three.js stays out of the first paint.
 // Click the whole pet → /world/.
 import IslandWidget from './IslandWidget'
 ---
@@ -68,7 +69,7 @@ import IslandWidget from './IslandWidget'
          and would pulse forever for vestibular-disorder users on the
          rare WebGL-failed path. -->
   </svg>
-  <IslandWidget client:visible />
+  <IslandWidget client:interaction />
   <!-- FX overlay: covers the canvas, particles spawn here on click.
        pointer-events:none so it never blocks the panel/chips below.
        z-index above canvas (z:0) but below panel (z:4). -->
@@ -143,6 +144,11 @@ import IslandWidget from './IslandWidget'
     }
 
     function checkCanvas() {
+      // R3F server-renders an empty <canvas>; it only counts once the island
+      // has hydrated (Astro drops the `ssr` attribute), otherwise the
+      // skeleton would fade out while the deferred island is still loading.
+      const island = wrap.querySelector('astro-island')
+      if (island && island.hasAttribute('ssr')) return false
       const canvas = wrap.querySelector('canvas')
       if (canvas && isCanvasWorking(canvas)) {
         wrap.classList.add('island-loaded')
@@ -161,9 +167,11 @@ import IslandWidget from './IslandWidget'
     const obs = new MutationObserver(() => {
       if (checkCanvas()) obs.disconnect()
     })
-    obs.observe(wrap, { childList: true, subtree: true })
+    obs.observe(wrap, { childList: true, subtree: true, attributes: true, attributeFilter: ['ssr'] })
 
-    setTimeout(() => {
+    // The WebGL watchdog starts when hydration actually begins (the island
+    // is deferred by client:interaction), not at page load.
+    wrap.addEventListener('island:hydrating', () => setTimeout(() => {
       const canvas = wrap.querySelector('canvas')
       if (!canvas || !isCanvasWorking(canvas)) {
         obs.disconnect()
@@ -174,7 +182,7 @@ import IslandWidget from './IslandWidget'
         wrap.classList.add('island-loaded')
         setBusy(false)
       }
-    }, 12000)
+    }, 12000), { once: true })
 
     // Click handler: clicking the pet does NOT navigate (too easy to
     // mis-trigger). It plays a random visual effect overlay (snow,
