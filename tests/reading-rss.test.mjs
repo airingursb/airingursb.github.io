@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { inferRemoteSize } from '../node_modules/astro/dist/assets/utils/remoteProbe.js';
 import { loadReadingCover } from '../src/lib/reading-cover.ts';
 import { readingRssItems } from '../src/lib/reading-feed.ts';
 
@@ -103,7 +104,7 @@ test('loadReadingCover returns the optimized cover when the probe succeeds', asy
   assert.equal(result, 'https://ursb.me/_astro/ok.jpeg');
 });
 
-test('a real 404 cover URL is skipped with a warning naming the item and URL', async () => {
+test('Astro inferRemoteSize 404s are skipped with a warning naming the item and URL', async () => {
   const missing = 'https://r2.airingdeng.com/notion/this-cover-does-not-exist-404.png';
   const warnings = [];
   const originalWarn = console.warn;
@@ -115,19 +116,14 @@ test('a real 404 cover URL is skipped with a warning naming the item and URL', a
     const result = await loadReadingCover(
       '"Dream-RSI · 让 Agent 在自己的历史里做梦来自我进化" (dream-rsi-evolving-worlds)',
       missing,
-      async () => {
-        const response = await fetch(missing);
-        if (!response.ok) {
-          throw new Error(`FailedToFetchRemoteImageDimensions: Failed to get the dimensions for ${missing}`);
-        }
-        return 'should-not-optimize-a-missing-cover';
-      },
+      () => inferRemoteSize(missing),
     );
 
     assert.equal(result, null);
-    assert.match(warnings.join('\n'), /\[reading\] skip missing cover for "Dream-RSI/);
-    assert.match(warnings.join('\n'), /dream-rsi-evolving-worlds/);
-    assert.match(warnings.join('\n'), /this-cover-does-not-exist-404\.png/);
+    assert.match(
+      warnings.join('\n'),
+      /\[reading\] skip missing cover for "Dream-RSI · 让 Agent 在自己的历史里做梦来自我进化" \(dream-rsi-evolving-worlds\): https:\/\/r2\.airingdeng\.com\/notion\/this-cover-does-not-exist-404\.png \(Failed to get the dimensions for/,
+    );
   } finally {
     console.warn = originalWarn;
   }
