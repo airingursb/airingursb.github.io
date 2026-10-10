@@ -1,8 +1,9 @@
 ---
 import SiteHeader from "../../../components/SiteHeader.astro";
-import { Image } from 'astro:assets';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
+import ReadingCover from '../../../components/reading/ReadingCover.astro';
 import ReadingShareModal from '../../../components/reading/ReadingShareModal.astro';
+import { readingCoverLabel } from '../../../lib/reading-cover';
 import {
   fetchReadingItems,
   localizeReadingItem,
@@ -77,9 +78,10 @@ const shareUrl = new URL(`/en/reading/${item.slug}/`, Astro.site ?? 'https://urs
       <article class="reading-detail-grid">
         <div>
           <button class="reading-poster" type="button" data-open-lightbox aria-label="View full image" data-umami-event="reading-original-open" data-umami-event-slug={item.slug} data-umami-event-lang="en">
-            <Image
+            <ReadingCover
               src={item.cover_url}
               alt={item.title}
+              label={readingCoverLabel(item, 'en')}
               width={1440}
               height={960}
               widths={[720, 1440]}
@@ -141,13 +143,13 @@ const shareUrl = new URL(`/en/reading/${item.slug}/`, Astro.site ?? 'https://urs
         <nav class="reading-prev-next" aria-label="Adjacent reading notes">
           {newer ? (
             <a class="reading-related" href={`/en/reading/${newer.slug}/`} data-umami-event="reading-card-open" data-umami-event-slug={newer.slug} data-umami-event-source={newer.source} data-umami-event-surface="detail-related" data-umami-event-direction="newer" data-umami-event-lang="en">
-              <Image src={newer.cover_url} alt="" loading="lazy" width={360} height={240} format="webp" quality={75} />
+              <ReadingCover src={newer.cover_url} alt="" label={readingCoverLabel(newer, 'en')} loading="lazy" width={360} height={240} format="webp" quality={75} />
               <span><small>← Newer</small><strong>{newer.title}</strong></span>
             </a>
           ) : <span />}
           {older && (
             <a class="reading-related" href={`/en/reading/${older.slug}/`} data-umami-event="reading-card-open" data-umami-event-slug={older.slug} data-umami-event-source={older.source} data-umami-event-surface="detail-related" data-umami-event-direction="older" data-umami-event-lang="en">
-              <Image src={older.cover_url} alt="" loading="lazy" width={360} height={240} format="webp" quality={75} />
+              <ReadingCover src={older.cover_url} alt="" label={readingCoverLabel(older, 'en')} loading="lazy" width={360} height={240} format="webp" quality={75} />
               <span><small>Older →</small><strong>{older.title}</strong></span>
             </a>
           )}

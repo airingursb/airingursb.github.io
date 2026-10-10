@@ -1,0 +1,59 @@
+---
+import { getImage } from 'astro:assets';
+import { loadReadingCover } from '../../lib/reading-cover';
+
+interface Props {
+  src: string;
+  alt: string;
+  label: string;
+  width: number;
+  height: number;
+  widths?: number[];
+  sizes?: string;
+  format?: 'webp' | 'jpeg' | 'png' | 'avif';
+  quality?: number;
+  loading?: 'lazy' | 'eager';
+  fetchpriority?: 'high' | 'low' | 'auto';
+  decoding?: 'async' | 'auto' | 'sync';
+  priority?: boolean;
+}
+
+const {
+  src,
+  alt,
+  label,
+  width,
+  height,
+  widths,
+  sizes,
+  format = 'webp',
+  quality = 75,
+  loading,
+  fetchpriority,
+  decoding,
+  priority = false,
+} = Astro.props;
+
+const image = await loadReadingCover(label, src, () => getImage({
+  src,
+  width,
+  height,
+  widths,
+  format,
+  quality,
+}));
+---
+
+{image && (
+  <img
+    src={image.src}
+    srcset={image.srcSet?.attribute || undefined}
+    sizes={sizes}
+    width={image.attributes.width ?? width}
+    height={image.attributes.height ?? height}
+    alt={alt}
+    loading={priority ? 'eager' : loading}
+    fetchpriority={priority ? 'high' : fetchpriority}
+    decoding={decoding}
+  />
+)}

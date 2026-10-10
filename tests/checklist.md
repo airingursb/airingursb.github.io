@@ -1667,6 +1667,7 @@
 - [ ] `/en/reading/` 使用 `Title EN`、`Summary EN`、`Cover EN`；单字段缺失时独立回退中文
 - [ ] 中英文详情页互设 `hreflang`，LangSwitch 保持相同 slug，sitemap 同时包含两种 URL
 - [ ] 英文 RSS 使用英文标题/摘要/封面与 `/en/reading/<slug>/` permalink
+- [ ] 单条阅读流封面 404 或无法探测尺寸时，RSS / 列表 / 详情 / 首页省略该图并打印带条目标题和 URL 的构建警告，整站构建继续成功；完好封面仍输出构建期派生图
 - [ ] 英文周报订阅使用英文模板和英文 Feed 地址
 - [ ] Reading 周报按订阅者默认语言发送；邮件顶部可一键切换中英文，切换后同时影响月刊与 Reading 后续邮件
 - [ ] 卡片进入、来源跳转、组合筛选、查看原图、分享渠道和语言切换分别产生 Reading Umami 事件，且不携带邮箱
