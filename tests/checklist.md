@@ -101,7 +101,7 @@
 - [ ] DOM: 有英文版的页面 hreflang 为 `zh-CN` / `en` / `x-default` 三条，href 为绝对 URL
 - [ ] GET `/llms.txt` 返回 200，含全部博文列表
 - [ ] GET 不存在的路径渲染自定义 404 页（含首页/博客链接，meta robots noindex）
-- [ ] Evaluate: 博文页无 `unpkg.com/leaflet` 资源；`/workouts/`、`/photos/world/`、首页有且地图正常渲染
+- [ ] Evaluate: 全站（含首页、`/workouts/`、`/photos/world/`）无 `unpkg.com/leaflet` 与 `app.cal.com/embed` 请求；地图均为 Mapbox（`.mapboxgl-map`）且正常渲染
 - [ ] Evaluate: 博文页无 `fonts.googleapis.com` 请求，Noto Serif SC 从 `/_astro/*.woff2` 加载
 - [ ] GET `/blog/feed.xml` 前 50 条 item 有全文 `content:encoded`，所有 item description 非空
 
@@ -528,7 +528,7 @@
 
 - [ ] DOM: `<div id="metaMap">` 存在 + `data-lat` / `data-lng` / `data-city-slug` 属性齐全
 - [ ] CSS: `.meta-map` 高度 160px,有 border + border-radius
-- [ ] Evaluate: 加载后 `#metaMap` 内有 `.leaflet-container`(Leaflet 已初始化)
+- [ ] Evaluate: 加载后 `#metaMap` 内有 `.mapboxgl-map`(Mapbox 已初始化)
 - [ ] DOM: 地图上有 `.photo-pin` marker
 - [ ] 点 marker 跳到 `/photos/places/<city-slug>`
 - [ ] 没有 `place.coords` 的照片不渲染 `#metaMap`
@@ -538,7 +538,7 @@
 - [ ] GET: 200 OK
 - [ ] DOM: `.world-map` + `data-pins` 属性,JSON 解析后非空数组
 - [ ] CSS: `.world-map` 高度 70vh / min-height 420px (移动端 56vh / 340px)
-- [ ] Evaluate: `.leaflet-container` 渲染,marker 数量 = unique city 数
+- [ ] Evaluate: `.mapboxgl-map` 渲染,marker 数量 = unique city 数
 - [ ] 多张照片同城显示 `.photo-pin-multi` (带计数 badge)
 - [ ] 点 marker 弹出 popup,内含缩略图 + city + country + 张数
 - [ ] popup 卡片 `.world-pop` 是链接,点击跳 `/photos/places/<city>`
