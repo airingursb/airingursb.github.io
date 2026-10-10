@@ -17,21 +17,29 @@ export function resetReadingCoverReachability(): void {
   reachability.clear();
 }
 
+function isImageContentType(value: string | null): boolean {
+  const type = value?.split(';', 1)[0]?.trim().toLowerCase();
+  return Boolean(type?.startsWith('image/'));
+}
+
+async function consumeBody(response: Response): Promise<void> {
+  try {
+    await response.body?.cancel();
+  } catch {
+    await response.arrayBuffer().catch(() => undefined);
+  }
+}
+
 async function probeReadingCover(url: string): Promise<boolean> {
   if (!url) return false;
 
   try {
-    const head = await fetch(url, { method: 'HEAD', redirect: 'manual' });
-    if (head.status === 200) return true;
-    if (head.status !== 405 && head.status !== 501) return false;
-  } catch {
-    // Some hosts reject HEAD; fall through to GET, same as Astro's asset loader.
-  }
-
-  try {
-    const response = await fetch(url, { method: 'GET', redirect: 'manual' });
-    response.body?.cancel?.();
-    return response.status === 200;
+    // GET the exact URL Astro will fetch. HEAD is not trustworthy here:
+    // R2/CF can answer HEAD 200 while a plain GET still returns a cached 404 HTML page.
+    const response = await fetch(url, { method: 'GET', redirect: 'follow' });
+    const reachable = response.status === 200 && isImageContentType(response.headers.get('content-type'));
+    await consumeBody(response);
+    return reachable;
   } catch {
     return false;
   }
@@ -53,7 +61,7 @@ export async function loadReadingCover<T>(
 ): Promise<T | null> {
   try {
     if (!(await readingCoverIsReachable(url))) {
-      throw new Error('cover is not reachable (HTTP not 200)');
+      throw new Error('cover is not reachable (GET must return 200 image/*)');
     }
     return await load();
   } catch (error) {

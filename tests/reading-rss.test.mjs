@@ -33,6 +33,16 @@ function startCoverServer() {
     const server = createServer((req, res) => {
       const url = req.url || '/';
       hits.set(url, (hits.get(url) || 0) + 1);
+      if (url.startsWith('/head-ok-get-404')) {
+        if (req.method === 'HEAD') {
+          res.writeHead(200, { 'content-type': 'image/png' });
+          res.end();
+          return;
+        }
+        res.writeHead(404, { 'content-type': 'text/html' });
+        res.end('<html>cached miss</html>');
+        return;
+      }
       if (url.startsWith('/ok')) {
         res.writeHead(200, { 'content-type': 'image/png', 'content-length': '2' });
         res.end(req.method === 'HEAD' ? undefined : 'ok');
@@ -145,9 +155,42 @@ test('unreachable covers are never queued for Astro generateImagesForPath', asyn
     assert.equal(hits.get('/missing.png'), 1);
     assert.match(
       warnings.join('\n'),
-      /\[reading\] skip missing cover for "Dream-RSI · 让 Agent 在自己的历史里做梦来自我进化" \(r-bcsejv8vnyctm_sz\): http:\/\/127\.0\.0\.1:\d+\/missing\.png \(cover is not reachable \(HTTP not 200\)\)/,
+      /\[reading\] skip missing cover for "Dream-RSI · 让 Agent 在自己的历史里做梦来自我进化" \(r-bcsejv8vnyctm_sz\): http:\/\/127\.0\.0\.1:\d+\/missing\.png \(cover is not reachable \(GET must return 200 image\/\*\)\)/,
     );
     assert.match(warnings.join('\n'), /Monid/);
+  } finally {
+    console.warn = originalWarn;
+    resetReadingCoverReachability();
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test('HEAD 200 with GET 404 is treated as unreachable and never queued', async () => {
+  resetReadingCoverReachability();
+  const { server, hits, urlFor } = await startCoverServer();
+  const misleading = urlFor('/head-ok-get-404.png');
+  const warnings = [];
+  const originalWarn = console.warn;
+  console.warn = (...args) => {
+    warnings.push(args.map(String).join(' '));
+  };
+  let loadCalled = false;
+
+  try {
+    const result = await loadReadingCover(
+      '"Dream-RSI · 让 Agent 在自己的历史里做梦来自我进化" (r-bcsejv8vnyctm_sz)',
+      misleading,
+      async () => {
+        loadCalled = true;
+        return loadRemoteImage(misleading);
+      },
+    );
+
+    assert.equal(result, null);
+    assert.equal(loadCalled, false);
+    assert.equal(hits.get('/head-ok-get-404.png'), 1);
+    assert.match(warnings.join('\n'), /head-ok-get-404\.png/);
+    assert.match(warnings.join('\n'), /GET must return 200 image\/\*/);
   } finally {
     console.warn = originalWarn;
     resetReadingCoverReachability();
