@@ -1,11 +1,11 @@
 ---
-import { getImage } from 'astro:assets';
-import { loadReadingCover } from '../../lib/reading-cover';
+import { resolveReadingCoverImage, type ReadingCoverImage } from '../../lib/reading-cover-image';
 
 interface Props {
-  src: string;
+  image?: ReadingCoverImage | null;
+  src?: string;
   alt: string;
-  label: string;
+  label?: string;
   width: number;
   height: number;
   widths?: number[];
@@ -19,6 +19,7 @@ interface Props {
 }
 
 const {
+  image: provided,
   src,
   alt,
   label,
@@ -34,14 +35,11 @@ const {
   priority = false,
 } = Astro.props;
 
-const image = await loadReadingCover(label, src, () => getImage({
-  src,
-  width,
-  height,
-  widths,
-  format,
-  quality,
-}));
+const image = provided !== undefined
+  ? provided
+  : src && label
+    ? await resolveReadingCoverImage(src, label, { width, height, widths, format, quality })
+    : null;
 ---
 
 {image && (

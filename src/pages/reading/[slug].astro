@@ -4,6 +4,7 @@ import BaseLayout from '../../layouts/BaseLayout.astro';
 import ReadingCover from '../../components/reading/ReadingCover.astro';
 import ReadingShareModal from '../../components/reading/ReadingShareModal.astro';
 import { readingCoverLabel } from '../../lib/reading-cover';
+import { resolveReadingCoverImage } from '../../lib/reading-cover-image';
 import { fetchReadingItems, readingDate, type ReadingItem } from '../../lib/reading';
 import '../../styles/photos.css';
 import '../../styles/reading.css';
@@ -31,6 +32,21 @@ const description = item.summary || `${item.author ? `${item.author} · ` : ''}$
 const summaryLines = (item.summary || '').split('\n').map((line) => line.trim()).filter(Boolean);
 const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^[-*]\s+/.test(line));
 const shareUrl = new URL(`/reading/${item.slug}/`, Astro.site ?? 'https://ursb.me').href;
+const [cover, newerCover, olderCover] = await Promise.all([
+  resolveReadingCoverImage(item.cover_url, readingCoverLabel(item), {
+    width: 1440, height: 960, widths: [720, 1440], format: 'webp', quality: 75,
+  }),
+  newer
+    ? resolveReadingCoverImage(newer.cover_url, readingCoverLabel(newer), {
+      width: 360, height: 240, format: 'webp', quality: 75,
+    })
+    : null,
+  older
+    ? resolveReadingCoverImage(older.cover_url, readingCoverLabel(older), {
+      width: 360, height: 240, format: 'webp', quality: 75,
+    })
+    : null,
+]);
 ---
 
 <BaseLayout
@@ -66,26 +82,24 @@ const shareUrl = new URL(`/reading/${item.slug}/`, Astro.site ?? 'https://ursb.m
       </header>
 
       <article class="reading-detail-grid">
-        <div>
-          <button class="reading-poster" type="button" data-open-lightbox aria-label="查看原图" data-umami-event="reading-original-open" data-umami-event-slug={item.slug} data-umami-event-lang="zh">
-            <ReadingCover
-              src={item.cover_url}
-              alt={item.title}
-              label={readingCoverLabel(item)}
-              width={1440}
-              height={960}
-              widths={[720, 1440]}
-              sizes="(max-width: 720px) 100vw, (max-width: 1080px) calc(100vw - 64px), 883px"
-              format="webp"
-              quality={75}
-              priority
-            />
-            <span class="reading-zoom-label">⌕ 点击查看原图</span>
-          </button>
-          <div class="reading-caption">
-            <span>Agent 生成阅读卡片 · 1536 × 1024</span>
+        {cover && (
+          <div class="reading-detail-cover">
+            <button class="reading-poster" type="button" data-open-lightbox aria-label="查看原图" data-umami-event="reading-original-open" data-umami-event-slug={item.slug} data-umami-event-lang="zh">
+              <ReadingCover
+                image={cover}
+                alt={item.title}
+                width={1440}
+                height={960}
+                sizes="(max-width: 720px) 100vw, (max-width: 1080px) calc(100vw - 64px), 883px"
+                priority
+              />
+              <span class="reading-zoom-label">⌕ 点击查看原图</span>
+            </button>
+            <div class="reading-caption">
+              <span>Agent 生成阅读卡片 · 1536 × 1024</span>
+            </div>
           </div>
-        </div>
+        )}
 
         <aside class="reading-detail-side">
           {item.summary && (
@@ -132,14 +146,14 @@ const shareUrl = new URL(`/reading/${item.slug}/`, Astro.site ?? 'https://ursb.m
       {(newer || older) && (
         <nav class="reading-prev-next" aria-label="相邻阅读记录">
           {newer ? (
-            <a class="reading-related" href={`/reading/${newer.slug}/`} data-umami-event="reading-card-open" data-umami-event-slug={newer.slug} data-umami-event-source={newer.source} data-umami-event-surface="detail-related" data-umami-event-direction="newer" data-umami-event-lang="zh">
-              <ReadingCover src={newer.cover_url} alt="" label={readingCoverLabel(newer)} loading="lazy" width={360} height={240} format="webp" quality={75} />
+            <a class:list={['reading-related', { 'reading-related--no-cover': !newerCover }]} href={`/reading/${newer.slug}/`} data-umami-event="reading-card-open" data-umami-event-slug={newer.slug} data-umami-event-source={newer.source} data-umami-event-surface="detail-related" data-umami-event-direction="newer" data-umami-event-lang="zh">
+              {newerCover && <ReadingCover image={newerCover} alt="" loading="lazy" width={360} height={240} />}
               <span><small>← 更新一条</small><strong>{newer.title}</strong></span>
             </a>
           ) : <span />}
           {older && (
-            <a class="reading-related" href={`/reading/${older.slug}/`} data-umami-event="reading-card-open" data-umami-event-slug={older.slug} data-umami-event-source={older.source} data-umami-event-surface="detail-related" data-umami-event-direction="older" data-umami-event-lang="zh">
-              <ReadingCover src={older.cover_url} alt="" label={readingCoverLabel(older)} loading="lazy" width={360} height={240} format="webp" quality={75} />
+            <a class:list={['reading-related', { 'reading-related--no-cover': !olderCover }]} href={`/reading/${older.slug}/`} data-umami-event="reading-card-open" data-umami-event-slug={older.slug} data-umami-event-source={older.source} data-umami-event-surface="detail-related" data-umami-event-direction="older" data-umami-event-lang="zh">
+              {olderCover && <ReadingCover image={olderCover} alt="" loading="lazy" width={360} height={240} />}
               <span><small>更早一条 →</small><strong>{older.title}</strong></span>
             </a>
           )}
@@ -148,10 +162,12 @@ const shareUrl = new URL(`/reading/${item.slug}/`, Astro.site ?? 'https://ursb.m
     </main>
   </div>
 
-  <div class="reading-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="阅读卡片原图">
-    <button class="reading-lightbox-close" type="button" data-close-lightbox aria-label="关闭">×</button>
-    <img data-original-src={item.cover_url} alt={item.title} />
-  </div>
+  {cover && (
+    <div class="reading-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="阅读卡片原图">
+      <button class="reading-lightbox-close" type="button" data-close-lightbox aria-label="关闭">×</button>
+      <img data-original-src={item.cover_url} alt={item.title} />
+    </div>
+  )}
 
   <script is:inline>
     if (localStorage.getItem('preferred_lang') === 'en') {

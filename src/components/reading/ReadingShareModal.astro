@@ -1,4 +1,5 @@
 ---
+import { resolveReadingCoverImage } from '../../lib/reading-cover-image';
 import ReadingCover from './ReadingCover.astro';
 
 interface Props {
@@ -10,6 +11,12 @@ interface Props {
 }
 
 const { coverUrl, coverLabel, lang, shareTitle, shareUrl } = Astro.props;
+const cover = await resolveReadingCoverImage(coverUrl, coverLabel || `"${shareTitle}"`, {
+  width: 720,
+  height: 480,
+  format: 'webp',
+  quality: 75,
+});
 const labels = lang === 'en'
   ? {
       share: 'Share',
@@ -42,19 +49,18 @@ const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUr
   <div class="share-card" role="dialog" aria-modal="true" aria-label={labels.share}>
     <button type="button" class="share-close" id="readingShareClose" aria-label={labels.close}>×</button>
 
-    <div class="share-image">
-      <ReadingCover
-        src={coverUrl}
-        alt={shareTitle}
-        label={coverLabel || `"${shareTitle}"`}
-        width={720}
-        height={480}
-        format="webp"
-        quality={75}
-        loading="lazy"
-        decoding="async"
-      />
-    </div>
+    {cover && (
+      <div class="share-image">
+        <ReadingCover
+          image={cover}
+          alt={shareTitle}
+          width={720}
+          height={480}
+          loading="lazy"
+          decoding="async"
+        />
+      </div>
+    )}
 
     <div class="share-row">
       <input type="text" readonly value={shareUrl} class="share-url" id="readingShareUrl" aria-label={labels.copy} />

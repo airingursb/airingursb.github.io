@@ -2,6 +2,7 @@
 import type { ReadingItem } from '../../lib/reading';
 import { localizeReadingItem } from '../../lib/reading';
 import { readingCoverLabel } from '../../lib/reading-cover';
+import { resolveReadingCoverImage } from '../../lib/reading-cover-image';
 import type { ReadingWeeklyIssue, ReadingWeeklyLanguage } from '../../data/reading-weekly';
 import { editorialText, weeklyDateRange } from '../../data/reading-weekly';
 import ReadingCover from './ReadingCover.astro';
@@ -14,6 +15,15 @@ interface Props {
 
 const { issue, lead: rawLead, lang } = Astro.props;
 const lead = rawLead ? localizeReadingItem(rawLead, lang) : undefined;
+const cover = lead
+  ? await resolveReadingCoverImage(lead.cover_url, readingCoverLabel(lead, lang), {
+    width: 960,
+    height: 640,
+    widths: [480, 960],
+    format: 'webp',
+    quality: 75,
+  })
+  : null;
 const href = `${lang === 'en' ? '/en' : ''}/reading/weekly/${issue.slug}/`;
 const status = issue.status === 'draft'
   ? (lang === 'en' ? 'Editorial preview' : '编辑预览')
@@ -29,17 +39,13 @@ const status = issue.status === 'draft'
     data-umami-event-edition={issue.edition}
     data-umami-event-lang={lang}
   >
-    {lead ? (
+    {cover ? (
       <ReadingCover
-        src={lead.cover_url}
-        alt={lead.title}
-        label={readingCoverLabel(lead, lang)}
+        image={cover}
+        alt={lead?.title || editorialText(issue.title, lang)}
         width={960}
         height={640}
-        widths={[480, 960]}
         sizes="(max-width: 720px) calc(100vw - 40px), 480px"
-        format="webp"
-        quality={75}
         loading="eager"
         fetchpriority="high"
         decoding="async"
