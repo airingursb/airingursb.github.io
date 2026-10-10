@@ -82,6 +82,9 @@
 - [ ] Screenshot/CSS: `/blog/` 和 `/en/blog/` 手机端仅缩写星期（如 TUE），保留完整月份、日、年；375 / 393 / 768px 下日期与文章数、在读人数、语言切换同一行完整显示；320px 空间不足可整组换行；1280px 保留完整星期，无文字拆分或横向溢出。
 
 - [ ] GET `/` 返回页面，title 包含 "Airing"
+- [ ] Evaluate: 375px 首次加载期间逐帧采样 `.online-line` 高度始终约一行（≈18px），直接子文本节点里从不出现 `@keyframes` / `vps-` 等 CSS 源码；乱码动画只作用在可见的人数文字上，地区弹窗点击后仍可打开。
+- [ ] Evaluate: 375px 首页 CLS < 0.1（`.online-line` 预留了高度，填充人数时卡片不下移）。
+- [ ] Click: 卡片里的「留言 / Message」链接跳到本页 `#guestbook` 留言板，不再外跳 blog.ursb.me。
 - [ ] DOM: `<link rel="canonical">` 存在，href 为 `https://ursb.me/`
 - [ ] DOM: `<meta property="og:url">` 存在
 - [ ] DOM: `<meta name="twitter:card">` 存在
@@ -156,6 +159,8 @@
       (position: fixed; bottom: 20px; left: 20px; ~220×220)
 - [ ] DOM: wrapper has `role="link"` + `tabindex="0"` + `aria-label`
 - [ ] DOM: `.island-skeleton` SVG renders inside the wrap (loading state)
+- [ ] Evaluate (≥1300px): no three.js / IslandWidget chunk is requested before the window `load` event; with no input it loads ~4s after load, and on the first pointer/scroll/key input it loads immediately (`client:interaction`, `src/directives/interaction.js`).
+- [ ] DOM: until the island hydrates (`astro-island[ssr]` present) the skeleton stays visible and the wrap has no `island-loaded` class; the corner is never blank.
 - [ ] DOM: `.island-pet-panel` exists with `inert` attribute initially
 - [ ] Hover: panel reveals (opacity 1, pointer-events auto), inert removed
 - [ ] Tab key: panel reveals on focusin, chip buttons (enter + cycle)
@@ -351,6 +356,7 @@
 - [ ] GET `/search/` 返回页面
 - [ ] CSS: `.pagefind-ui__search-input` 背景色不是 `rgb(255, 255, 255)` (暗色模式)
 - [ ] 输入 "Flutter" 后，DOM 出现搜索结果 `.pagefind-ui__result`
+- [ ] 输入 "控制论" 后，结果里包含笔记 `/notes/cybernetics-and-ai-coding/`（笔记页带 `data-pagefind-body`，中英文笔记都进索引）
 - [ ] DOM: 搜索结果链接颜色为主题色（非默认蓝色）
 - [ ] Screenshot: 搜索页整体截图，确认风格与 Archive 一致
 
@@ -433,6 +439,15 @@
 - [ ] DOM: `#tocBlock` exists and is visible (`display` not `none`)
 - [ ] DOM: `#tocNav` contains `.toc-link` elements matching h2/h3 headings
 - [ ] DOM: `.toc-link.active` exists (scroll spy highlights current section)
+
+## Mobile TOC pill + sheet (`/posts/after-ai-takes-everything/`, `/en/posts/after-ai-takes-everything/`, `/en/notes/tls-handshake/`)
+
+- [ ] Evaluate (390px): `#mtocPill` is hidden at the top of the page, appears once `.post-content` (notes: `.article-col .prose`) scrolls past the viewport top, and hides again once the article end is above 60% of the viewport (comments / footer).
+- [ ] DOM: pill shows `当前/总数` + current chapter title with the leading numeral stripped (`四、` / `IV.` / `2.`); the ring advances with scroll.
+- [ ] Click: pill opens `#mtocSheet` (aria-expanded=true, page scroll locked); rows show 已读 / 在读 / N 分钟, the current row is highlighted and focused; summary "还剩约 N 分钟" never exceeds the total.
+- [ ] Click: tapping a row closes the sheet and scrolls that heading to the top; 回到开头 / 跳到评论 work; Escape, overlay tap, close button and dragging the handle down all close it and focus returns to the pill.
+- [ ] Evaluate: pill never shows at ≥1101px (posts) / ≥961px (notes), and pages with fewer than 3 headings (e.g. `/notes/chromium-renderer/`) get no pill.
+- [ ] Screenshot: light/dark mode, 375px; pill does not overlap the theme switcher (it fades away after the first screen) and causes no horizontal overflow.
 
 ## Light Mode Accent Colors
 

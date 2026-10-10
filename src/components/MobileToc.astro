@@ -1,0 +1,507 @@
+---
+/**
+ * MobileToc — chapter pill + bottom-sheet table of contents for long reads
+ * on narrow screens, where the desktop sidebar TOC is hidden.
+ *
+ * - Pill (bottom-left, opposite the theme switcher) appears once the reader
+ *   is inside the article and hides again after its end. It shows overall
+ *   progress (ring), "current / total" chapter and the chapter title.
+ * - Tapping it opens a sheet listing every h2 (+ indented h3): read /
+ *   reading / upcoming, minutes per chapter and time left.
+ *
+ * Chapters are h2s when there are at least two, otherwise every heading.
+ * Pages need >= 3 headings or nothing shows (two-heading notes are mostly
+ * one interactive piece; a "2/2" pill there would mislead).
+ */
+interface Props {
+  lang?: 'zh' | 'en';
+  /** Element holding the article body (headings are read from it). */
+  content: string;
+  /** Viewport width (px) at and below which the desktop TOC is hidden. */
+  maxWidth: number;
+  /** Whole-article reading time in minutes, split across chapters by length. */
+  readingTime?: number;
+  /** Comments section to jump to, if the page has one. */
+  comments?: string;
+}
+const { lang = 'zh', content, maxWidth, readingTime, comments } = Astro.props;
+const en = lang === 'en';
+const labels = en
+  ? { toc: 'Contents', open: 'Open contents', close: 'Close contents', read: 'Read', reading: 'Reading', min: '{n} min', summary: '{c} sections · {t} min · ~{l} min left', top: 'Back to top', comments: 'Comments', commentsN: 'Comments · {n}' }
+  : { toc: '目录', open: '打开目录', close: '关闭目录', read: '已读', reading: '在读', min: '{n} 分钟', summary: '{c} 节 · 全文约 {t} 分钟 · 还剩约 {l} 分钟', top: '回到开头', comments: '跳到评论', commentsN: '跳到评论 · {n}' };
+---
+
+<div
+  class="mtoc"
+  id="mobileToc"
+  data-content={content}
+  data-max={maxWidth}
+  data-minutes={readingTime ?? ''}
+  data-comments={comments ?? ''}
+  data-lang={lang}
+  data-labels={JSON.stringify(labels)}
+>
+  <button type="button" class="mtoc-pill" id="mtocPill" aria-label={labels.open} aria-haspopup="dialog" aria-controls="mtocSheet" aria-expanded="false" hidden>
+    <svg class="mtoc-ring" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="9" class="mtoc-ring-track"></circle>
+      <circle cx="12" cy="12" r="9" class="mtoc-ring-bar" id="mtocRing" transform="rotate(-90 12 12)"></circle>
+    </svg>
+    <span class="mtoc-pill-count" id="mtocCount"></span>
+    <span class="mtoc-pill-title" id="mtocTitle"></span>
+    <svg class="mtoc-chevron" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>
+  </button>
+
+  <div class="mtoc-overlay" id="mtocOverlay" hidden></div>
+  <section class="mtoc-sheet" id="mtocSheet" role="dialog" aria-modal="true" aria-labelledby="mtocHeading" hidden>
+    <div class="mtoc-grab" id="mtocGrab">
+      <div class="mtoc-handle"></div>
+      <div class="mtoc-head">
+        <div class="mtoc-head-text">
+          <h2 class="mtoc-heading" id="mtocHeading">{labels.toc}</h2>
+          <span class="mtoc-summary" id="mtocSummary"></span>
+        </div>
+        <button type="button" class="mtoc-close" id="mtocClose" aria-label={labels.close}>
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+        </button>
+      </div>
+    </div>
+    <nav class="mtoc-list" id="mtocList" aria-labelledby="mtocHeading"></nav>
+    <div class="mtoc-foot">
+      <button type="button" class="mtoc-foot-btn" id="mtocTop">{labels.top}</button>
+      {comments && <button type="button" class="mtoc-foot-btn" id="mtocComments">{labels.comments}</button>}
+    </div>
+  </section>
+</div>
+
+<script>
+  const root = document.getElementById('mobileToc');
+  const content = root && document.querySelector<HTMLElement>(root.dataset.content || '');
+  if (root && content) init(root, content);
+
+  function init(root: HTMLElement, content: HTMLElement) {
+    const L = JSON.parse(root.dataset.labels || '{}');
+    const fmt = (s: string, v: Record<string, string | number>) => s.replace(/\{(\w+)\}/g, (_, k) => String(v[k] ?? ''));
+    const headings = Array.from(content.querySelectorAll<HTMLElement>('h2, h3'));
+    if (headings.length < 3) return;
+    headings.forEach((h, i) => { if (!h.id) h.id = 'heading-' + i; });
+
+    const pill = document.getElementById('mtocPill') as HTMLButtonElement;
+    const ring = document.getElementById('mtocRing') as unknown as SVGCircleElement;
+    const countEl = document.getElementById('mtocCount')!;
+    const titleEl = document.getElementById('mtocTitle')!;
+    const overlay = document.getElementById('mtocOverlay')!;
+    const sheet = document.getElementById('mtocSheet')!;
+    const list = document.getElementById('mtocList')!;
+    const summary = document.getElementById('mtocSummary')!;
+    const commentsBtn = document.getElementById('mtocComments');
+    const commentsEl = root.dataset.comments ? document.querySelector<HTMLElement>(root.dataset.comments) : null;
+    const mq = window.matchMedia(`(max-width: ${root.dataset.max}px)`);
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const C = 2 * Math.PI * 9;
+    ring.style.strokeDasharray = `0 ${C}`;
+
+    // "一、珍妮机" → { no: "一", title: "珍妮机" }; "2. Setup" / "IV. Taste" → { no, title }
+    const NUM = /^\s*([一二三四五六七八九十百零〇]+|\d+|[IVXLC]+)\s*[、.．:：]\s+|^\s*([一二三四五六七八九十百零〇]+|\d+)\s*[、.．:：]\s*/;
+    const split = (text: string, i: number) => {
+      const m = text.match(NUM);
+      return m ? { no: m[1] || m[2], title: text.slice(m[0].length) } : { no: String(i + 1), title: text };
+    };
+
+    // Chapters = h2s (if >= 2), else every heading. Each heading knows its chapter.
+    const h2s = headings.filter((h) => h.tagName === 'H2');
+    const chapters = h2s.length >= 2 ? h2s : headings;
+    const chapterOf = headings.map((h) => {
+      let c = -1;
+      chapters.forEach((ch, ci) => { if (ch === h || ch.compareDocumentPosition(h) & Node.DOCUMENT_POSITION_FOLLOWING) c = ci; });
+      return c;
+    });
+
+    // Minutes per chapter: the article's reading time split by text length.
+    const lengths = chapters.map((ch, i) => {
+      const r = document.createRange();
+      r.setStartBefore(ch);
+      if (chapters[i + 1]) r.setEndBefore(chapters[i + 1]); else r.setEndAfter(content.lastElementChild || content);
+      return r.toString().replace(/\s+/g, '').length;
+    });
+    const totalLen = lengths.reduce((a, b) => a + b, 0) || 1;
+    const totalMin = Number(root.dataset.minutes) || Math.max(1, Math.round(totalLen / (root.dataset.lang === 'en' ? 1100 : 400)));
+    // Keep fractions for sums ("time left" must never exceed the total);
+    // round only for the per-chapter label.
+    const share = lengths.map((n) => (n / totalLen) * totalMin);
+    const mins = share.map((m) => Math.max(1, Math.round(m)));
+
+    // Build rows once; state classes are refreshed on open / scroll.
+    const rows = headings.map((h, i) => {
+      const isChapter = chapters.includes(h);
+      const a = document.createElement('a');
+      a.href = '#' + h.id;
+      a.className = 'mtoc-row' + (isChapter ? '' : ' mtoc-row--sub');
+      const parts = split(h.textContent || '', chapters.indexOf(h));
+      if (isChapter) {
+        const no = document.createElement('span');
+        no.className = 'mtoc-no';
+        no.textContent = parts.no;
+        a.appendChild(no);
+      }
+      const t = document.createElement('span');
+      t.className = 'mtoc-row-title';
+      t.textContent = isChapter ? parts.title : (h.textContent || '');
+      a.appendChild(t);
+      if (isChapter) {
+        const meta = document.createElement('span');
+        meta.className = 'mtoc-meta';
+        a.appendChild(meta);
+      }
+      a.addEventListener('click', (e) => {
+        e.preventDefault();
+        close(false);
+        h.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'start' });
+        history.replaceState(null, '', '#' + h.id);
+        const u = (window as any).umami;
+        if (u) u.track('toc-click', { heading: h.textContent, source: 'mobile' });
+      });
+      list.appendChild(a);
+      return a;
+    });
+
+    let active = -1;
+    let progress = 0;
+    function measure() {
+      let a = -1;
+      for (let i = headings.length - 1; i >= 0; i--) {
+        if (headings[i].getBoundingClientRect().top <= 96) { a = i; break; }
+      }
+      active = a;
+      const r = content.getBoundingClientRect();
+      const span = Math.max(1, r.height - window.innerHeight * 0.5);
+      progress = Math.min(1, Math.max(0, -r.top / span));
+      return r;
+    }
+
+    function paintPill() {
+      const ci = Math.max(0, active >= 0 ? chapterOf[active] : 0);
+      const parts = split(chapters[ci].textContent || '', ci);
+      countEl.textContent = `${ci + 1}/${chapters.length}`;
+      titleEl.textContent = parts.title;
+      ring.style.strokeDasharray = `${(C * progress).toFixed(1)} ${C}`;
+    }
+
+    function paintRows() {
+      const ci = active >= 0 ? chapterOf[active] : -1;
+      let left = 0;
+      chapters.forEach((_, i) => { if (i > ci) left += share[i]; else if (i === ci) left += share[i] * 0.5; });
+      summary.textContent = fmt(L.summary, { c: chapters.length, t: totalMin, l: Math.min(totalMin, Math.max(1, Math.round(left))) });
+      rows.forEach((row, i) => {
+        const c = chapterOf[i];
+        const isChapter = chapters[c] === headings[i] || chapters === headings;
+        const state = i === active ? 'current' : i < active ? 'read' : 'next';
+        row.classList.toggle('is-read', state === 'read' && !(isChapter && c === ci));
+        row.classList.toggle('is-current', state === 'current' || (isChapter && c === ci));
+        if (state === 'current' || (isChapter && c === ci)) row.setAttribute('aria-current', 'location'); else row.removeAttribute('aria-current');
+        const meta = row.querySelector('.mtoc-meta');
+        if (meta) meta.textContent = c === ci ? L.reading : c < ci ? L.read : fmt(L.min, { n: mins[c] });
+      });
+    }
+
+    // Pill visibility: narrow screens, inside the article body only.
+    let ticking = false;
+    function update() {
+      ticking = false;
+      const r = measure();
+      const show = mq.matches && r.top < 0 && r.bottom > window.innerHeight * 0.6;
+      if (pill.hidden === show) pill.hidden = !show;
+      if (show) paintPill();
+      if (!sheet.hidden) paintRows();
+    }
+    const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
+    mq.addEventListener('change', () => { if (!mq.matches) close(false); onScroll(); });
+    update();
+
+    // Sheet open / close + focus handling.
+    let lastFocus: HTMLElement | null = null;
+    function open() {
+      measure();
+      paintRows();
+      if (commentsBtn) {
+        const n = parseInt((document.getElementById('bcCount')?.textContent || '').replace(/\D/g, ''), 10);
+        commentsBtn.textContent = n > 0 ? fmt(L.commentsN, { n }) : L.comments;
+      }
+      lastFocus = document.activeElement as HTMLElement;
+      overlay.hidden = false;
+      sheet.hidden = false;
+      sheet.style.transform = '';
+      document.documentElement.classList.add('mtoc-locked');
+      pill.setAttribute('aria-expanded', 'true');
+      const cur = list.querySelector<HTMLElement>('.is-current') || rows[0];
+      cur.scrollIntoView({ block: 'center' });
+      cur.focus({ preventScroll: true });
+      document.addEventListener('keydown', onKey);
+      requestAnimationFrame(() => root.classList.add('is-open'));
+    }
+    function close(restoreFocus = true) {
+      if (sheet.hidden) return;
+      root.classList.remove('is-open');
+      document.removeEventListener('keydown', onKey);
+      document.documentElement.classList.remove('mtoc-locked');
+      pill.setAttribute('aria-expanded', 'false');
+      const done = () => { overlay.hidden = true; sheet.hidden = true; sheet.style.transform = ''; };
+      if (reduce.matches) done(); else setTimeout(done, 220);
+      if (restoreFocus && lastFocus) lastFocus.focus({ preventScroll: true });
+    }
+
+    pill.addEventListener('click', open);
+    overlay.addEventListener('click', () => close());
+    document.getElementById('mtocClose')!.addEventListener('click', () => close());
+    document.getElementById('mtocTop')!.addEventListener('click', () => {
+      close(false);
+      window.scrollTo({ top: 0, behavior: reduce.matches ? 'auto' : 'smooth' });
+    });
+    if (commentsBtn && commentsEl) {
+      commentsBtn.addEventListener('click', () => {
+        close(false);
+        commentsEl.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'start' });
+      });
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { e.preventDefault(); close(); return; }
+      if (e.key !== 'Tab') return;
+      const f = Array.from(sheet.querySelectorAll<HTMLElement>('a[href], button')).filter((el) => el.offsetParent !== null);
+      if (!f.length) return;
+      const first = f[0], last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      else if (!sheet.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    }
+
+    // Drag the handle area down to dismiss.
+    const grab = document.getElementById('mtocGrab')!;
+    let y0 = 0, dy = 0, dragging = false;
+    grab.addEventListener('touchstart', (e) => { y0 = e.touches[0].clientY; dy = 0; dragging = true; sheet.style.transition = 'none'; }, { passive: true });
+    grab.addEventListener('touchmove', (e) => {
+      if (!dragging) return;
+      dy = Math.max(0, e.touches[0].clientY - y0);
+      sheet.style.transform = `translateY(${dy}px)`;
+    }, { passive: true });
+    grab.addEventListener('touchend', () => {
+      if (!dragging) return;
+      dragging = false;
+      sheet.style.transition = '';
+      if (dy > 80) close(); else sheet.style.transform = '';
+    });
+  }
+</script>
+
+<style>
+  .mtoc-pill {
+    position: fixed;
+    left: 16px;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+    z-index: 890;
+    height: 44px;
+    max-width: min(300px, calc(100vw - 92px));
+    box-sizing: border-box;
+    padding: 0 14px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 22px;
+    border: 1px solid var(--c-border-light);
+    background: rgba(var(--c-bg-rgb), 0.94);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+    color: var(--c-text);
+    font: inherit;
+    cursor: pointer;
+    animation: mtoc-in 0.22s ease-out;
+  }
+  .mtoc-pill[hidden] { display: none; }
+  .mtoc-pill:focus-visible,
+  .mtoc-sheet :global(.mtoc-row:focus-visible),
+  .mtoc-close:focus-visible,
+  .mtoc-foot-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @keyframes mtoc-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+  }
+  .mtoc-ring { flex-shrink: 0; }
+  .mtoc-ring circle { fill: none; stroke-width: 2.5; }
+  .mtoc-ring-track { stroke: var(--c-border-light); }
+  .mtoc-ring-bar { stroke: var(--accent); stroke-linecap: round; transition: stroke-dasharray 0.15s linear; }
+  .mtoc-pill-count {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--c-text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .mtoc-pill-title {
+    min-width: 0;
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mtoc-chevron,
+  .mtoc-close svg {
+    flex-shrink: 0;
+    fill: none;
+    stroke: var(--c-text-muted);
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .mtoc-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    background: rgba(1, 4, 9, 0.6);
+    opacity: 0;
+    transition: opacity 0.22s ease;
+  }
+  .mtoc-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10001;
+    max-height: 72vh;
+    max-height: 72dvh;
+    box-sizing: border-box;
+    padding: 10px 12px calc(20px + env(safe-area-inset-bottom, 0px));
+    display: flex;
+    flex-direction: column;
+    background: var(--c-bg-alt);
+    border-top: 1px solid var(--c-border-light);
+    border-radius: 18px 18px 0 0;
+    color: var(--c-text);
+    transform: translateY(100%);
+    transition: transform 0.22s ease;
+  }
+  .mtoc-overlay[hidden],
+  .mtoc-sheet[hidden] { display: none; }
+  .mtoc.is-open .mtoc-overlay { opacity: 1; }
+  .mtoc.is-open .mtoc-sheet { transform: translateY(0); }
+  :global(html.mtoc-locked),
+  :global(html.mtoc-locked body) { overflow: hidden; }
+
+  .mtoc-grab { touch-action: none; }
+  .mtoc-handle {
+    width: 36px;
+    height: 4px;
+    margin: 0 auto 8px;
+    border-radius: 2px;
+    background: var(--c-border-light);
+  }
+  .mtoc-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px 8px;
+  }
+  .mtoc-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .mtoc-heading { margin: 0; font-size: 17px; font-weight: 700; line-height: 1.4; }
+  .mtoc-summary { font-size: 12px; color: var(--c-text-muted); }
+  .mtoc-close {
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border: 0;
+    border-radius: 22px;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .mtoc-list {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .mtoc-sheet :global(.mtoc-row) {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-height: 48px;
+    padding: 0 12px;
+    border-radius: 10px;
+    text-decoration: none;
+    color: var(--c-text);
+    flex-shrink: 0;
+  }
+  .mtoc-sheet :global(.mtoc-row--sub) {
+    min-height: 40px;
+    padding-left: 46px;
+    font-size: 13px;
+    color: var(--c-text-muted);
+  }
+  .mtoc-sheet :global(.mtoc-no) {
+    width: 22px;
+    flex-shrink: 0;
+    font-family: 'Noto Serif SC', serif;
+    font-size: 14px;
+    color: var(--c-text-muted);
+  }
+  .mtoc-sheet :global(.mtoc-row-title) {
+    flex: 1;
+    min-width: 0;
+    font-size: 15px;
+    line-height: 1.4;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mtoc-sheet :global(.mtoc-row--sub .mtoc-row-title) { font-size: 13px; }
+  .mtoc-sheet :global(.mtoc-meta) {
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--c-text-muted);
+  }
+  .mtoc-sheet :global(.mtoc-row.is-read) { color: var(--c-text-muted); }
+  .mtoc-sheet :global(.mtoc-row.is-current) {
+    background: rgba(var(--accent-rgb), 0.1);
+    color: var(--accent);
+  }
+  .mtoc-sheet :global(.mtoc-row.is-current .mtoc-row-title) { font-weight: 700; }
+  .mtoc-sheet :global(.mtoc-row.is-current .mtoc-no),
+  .mtoc-sheet :global(.mtoc-row.is-current .mtoc-meta) { color: var(--accent); }
+
+  .mtoc-foot {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+    padding: 10px 4px 0;
+    border-top: 1px solid var(--c-border);
+  }
+  .mtoc-foot-btn {
+    flex: 1;
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--c-border-light);
+    background: transparent;
+    color: var(--c-text);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mtoc-pill { animation: none; }
+    .mtoc-overlay, .mtoc-sheet, .mtoc-ring-bar { transition: none; }
+  }
+  @media print {
+    .mtoc { display: none; }
+  }
+</style>

@@ -5,6 +5,7 @@ import { getCollection, render } from 'astro:content';
 import { getBacklinks } from '../../../lib/backlinks';
 import { tSite } from '../../../lib/i18n';
 import { getGitLastModified } from '../../../lib/seo';
+import MobileToc from '../../../components/MobileToc.astro';
 
 export async function getStaticPaths() {
   const notes = await getCollection('notesEn', ({ data }) => data.public && !data.draft);
@@ -41,7 +42,8 @@ const s = tSite('en').notes;
 
 // Reading time: EN pure word count
 const wordCount = (note.body ?? '').split(/\s+/).filter(Boolean).length;
-const readingTime = s.readingTime(Math.max(1, Math.ceil(wordCount / 200)));
+const readingMinutes = Math.max(1, Math.ceil(wordCount / 200));
+const readingTime = s.readingTime(readingMinutes);
 
 const hreflang = hasZh ? {
   zh: new URL(`/notes/${note.id}/`, Astro.site).href,
@@ -1124,6 +1126,7 @@ const jsonLd = {
     function linkify(s) { return s.replace(/(https?:\/\/[^\s<)]+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>'); }
   })();
   </script>
+  <MobileToc lang="en" content=".article-col .prose" maxWidth={960} readingTime={readingMinutes} comments="#bottomComments" />
 </BaseLayout>
 
 <style is:global>
