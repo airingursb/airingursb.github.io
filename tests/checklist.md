@@ -442,7 +442,8 @@
 
 ## Mobile TOC pill + sheet (`/posts/after-ai-takes-everything/`, `/en/posts/after-ai-takes-everything/`, `/en/notes/tls-handshake/`)
 
-- [ ] Evaluate (390px): `#mtocPill` is hidden at the top of the page, appears once `.post-content` (notes: `.article-col .prose`) scrolls past the viewport top, and hides again once the article end is above 60% of the viewport (comments / footer).
+- [ ] Evaluate (390px): `#mtocPill[data-state]` is `off` before the reader is one screen into `.post-content` (notes: `.article-col .prose`) and in the article's last ~2 screens; `away` (slid out, tabindex -1) while scrolling down; `full` on scroll-up; `ring` (faint ring only, still tappable) after ~2s idle.
+- [ ] Evaluate: crossing into a new chapter while reading shows `full` with the new "n/total" for ~1.5s, then follows the scroll (`away`) or settles to `ring`. Jumping from the sheet announces only the landing chapter, with no slide-out flicker afterwards.
 - [ ] DOM: pill shows `当前/总数` + current chapter title with the leading numeral stripped (`四、` / `IV.` / `2.`); the ring advances with scroll.
 - [ ] Click: pill opens `#mtocSheet` (aria-expanded=true, page scroll locked); rows show 已读 / 在读 / N 分钟, the current row is highlighted and focused; summary "还剩约 N 分钟" never exceeds the total.
 - [ ] Click: tapping a row closes the sheet and scrolls that heading to the top; 回到开头 / 跳到评论 work; Escape, overlay tap, close button and dragging the handle down all close it and focus returns to the pill.

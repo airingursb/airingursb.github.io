@@ -3,9 +3,11 @@
  * MobileToc — chapter pill + bottom-sheet table of contents for long reads
  * on narrow screens, where the desktop sidebar TOC is hidden.
  *
- * - Pill (bottom-left, opposite the theme switcher) appears once the reader
- *   is inside the article and hides again after its end. It shows overall
- *   progress (ring), "current / total" chapter and the chapter title.
+ * - Pill (bottom-left, opposite the theme switcher) stays out of the way
+ *   while reading: it slides away on scroll-down, comes back on scroll-up,
+ *   settles to a faint progress ring after 2s idle, and briefly shows the
+ *   new chapter when one starts. Not shown before the reader is a screen
+ *   into the article, nor in its last ~2 screens.
  * - Tapping it opens a sheet listing every h2 (+ indented h3): read /
  *   reading / upcoming, minutes per chapter and time left.
  *
@@ -41,14 +43,16 @@ const labels = en
   data-lang={lang}
   data-labels={JSON.stringify(labels)}
 >
-  <button type="button" class="mtoc-pill" id="mtocPill" aria-label={labels.open} aria-haspopup="dialog" aria-controls="mtocSheet" aria-expanded="false" hidden>
-    <svg class="mtoc-ring" width="24" height="24" viewBox="0 0 24 24" aria-hidden="true">
+  <button type="button" class="mtoc-pill" id="mtocPill" data-state="off" tabindex="-1" aria-hidden="true" aria-label={labels.open} aria-haspopup="dialog" aria-controls="mtocSheet" aria-expanded="false">
+    <svg class="mtoc-ring" width="26" height="26" viewBox="0 0 24 24" aria-hidden="true">
       <circle cx="12" cy="12" r="9" class="mtoc-ring-track"></circle>
       <circle cx="12" cy="12" r="9" class="mtoc-ring-bar" id="mtocRing" transform="rotate(-90 12 12)"></circle>
     </svg>
-    <span class="mtoc-pill-count" id="mtocCount"></span>
-    <span class="mtoc-pill-title" id="mtocTitle"></span>
-    <svg class="mtoc-chevron" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>
+    <span class="mtoc-pill-body">
+      <span class="mtoc-pill-count" id="mtocCount"></span>
+      <span class="mtoc-pill-title" id="mtocTitle"></span>
+      <svg class="mtoc-chevron" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 15l6-6 6 6"></path></svg>
+    </span>
   </button>
 
   <div class="mtoc-overlay" id="mtocOverlay" hidden></div>
@@ -155,6 +159,7 @@ const labels = en
       a.addEventListener('click', (e) => {
         e.preventDefault();
         close(false);
+        startJump();
         h.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'start' });
         history.replaceState(null, '', '#' + h.id);
         const u = (window as any).umami;
@@ -203,20 +208,102 @@ const labels = en
       });
     }
 
-    // Pill visibility: narrow screens, inside the article body only.
+    // Pill states — keep it out of the reader's way:
+    //   off  : outside the article (first screen of it, or its last ~2 screens)
+    //   away : scrolling down = reading → slid out of view
+    //   full : scrolling up (looking for something), keyboard focus, or a
+    //          short announcement when a new chapter starts
+    //   ring : idle for a moment → only a faint progress ring, still tappable
+    type State = 'off' | 'away' | 'full' | 'ring';
+    const IDLE_MS = 2000;
+    const ANNOUNCE_MS = 1500;
+    let state: State = 'off';
+    let lastY = window.scrollY;
+    let goingDown = true;
+    let lastMove = 0;
+    let idleTimer = 0;
+    let announceTimer = 0;
+    let jumpTimer = 0;
+    let announcing = false;
+    let jumping = false;
+    let chapter = -1;
+
+    function setState(next: State) {
+      if (next === state) return;
+      state = next;
+      pill.dataset.state = next;
+      const gone = next === 'off' || next === 'away';
+      pill.tabIndex = gone ? -1 : 0;
+      if (gone) pill.setAttribute('aria-hidden', 'true'); else pill.removeAttribute('aria-hidden');
+      if (!gone) paintPill();
+    }
+    function calm() {
+      // What the pill should be once nothing is happening.
+      if (state === 'off' || announcing || pill.matches(':focus-visible')) return;
+      if (performance.now() - lastMove >= IDLE_MS - 50) setState('ring');
+      else setState(goingDown ? 'away' : 'full');
+    }
+    function announce() {
+      announcing = true;
+      setState('full');
+      clearTimeout(announceTimer);
+      announceTimer = window.setTimeout(() => {
+        announcing = false;
+        if (state === 'off' || pill.matches(':focus-visible')) return;
+        // Still scrolling → follow the scroll direction; otherwise settle
+        // straight into the ring (no slide-out-then-back flicker).
+        if (performance.now() - lastMove < 300) setState(goingDown ? 'away' : 'full');
+        else setState('ring');
+      }, ANNOUNCE_MS);
+    }
+    // Jumps from the sheet scroll a long way; announce only where they land.
+    function startJump() {
+      jumping = true;
+      clearTimeout(jumpTimer);
+      jumpTimer = window.setTimeout(endJump, 1500);
+    }
+    function endJump() {
+      if (!jumping) return;
+      jumping = false;
+      measure();
+      chapter = currentChapter();
+      if (state !== 'off') announce();
+    }
+    const currentChapter = () => Math.max(0, active >= 0 ? chapterOf[active] : 0);
+
     let ticking = false;
     function update() {
       ticking = false;
       const r = measure();
-      const show = mq.matches && r.top < 0 && r.bottom > window.innerHeight * 0.6;
-      if (pill.hidden === show) pill.hidden = !show;
-      if (show) paintPill();
+      const vh = window.innerHeight;
+      const y = window.scrollY;
+      const moved = Math.abs(y - lastY) > 2;
+      if (moved) { goingDown = y > lastY; lastY = y; lastMove = performance.now(); }
+      if (jumping && moved) { clearTimeout(jumpTimer); jumpTimer = window.setTimeout(endJump, 180); }
+
+      const inArticle = mq.matches && r.top < -vh && r.bottom > vh * 3;
+      const ci = currentChapter();
+      if (!inArticle) {
+        setState('off');
+      } else if (state === 'off') {
+        // Entering the zone (incl. deep links): start quiet.
+        setState(moved && goingDown ? 'away' : moved ? 'full' : 'ring');
+      } else if (!jumping && ci !== chapter && chapter !== -1) {
+        announce();
+      } else if (moved && !announcing && !jumping) {
+        setState(goingDown ? 'away' : 'full');
+      }
+      chapter = ci;
+      if (state !== 'off' && state !== 'away') paintPill();
+      if (moved) { clearTimeout(idleTimer); idleTimer = window.setTimeout(calm, IDLE_MS); }
       if (!sheet.hidden) paintRows();
     }
     const onScroll = () => { if (!ticking) { ticking = true; requestAnimationFrame(update); } };
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
     mq.addEventListener('change', () => { if (!mq.matches) close(false); onScroll(); });
+    pill.addEventListener('focus', () => { if (pill.matches(':focus-visible') && state === 'ring') setState('full'); });
+    pill.addEventListener('blur', () => { clearTimeout(idleTimer); idleTimer = window.setTimeout(calm, IDLE_MS); });
     update();
 
     // Sheet open / close + focus handling.
@@ -256,11 +343,13 @@ const labels = en
     document.getElementById('mtocClose')!.addEventListener('click', () => close());
     document.getElementById('mtocTop')!.addEventListener('click', () => {
       close(false);
+      startJump();
       window.scrollTo({ top: 0, behavior: reduce.matches ? 'auto' : 'smooth' });
     });
     if (commentsBtn && commentsEl) {
       commentsBtn.addEventListener('click', () => {
         close(false);
+        startJump();
         commentsEl.scrollIntoView({ behavior: reduce.matches ? 'auto' : 'smooth', block: 'start' });
       });
     }
@@ -300,34 +389,61 @@ const labels = en
     bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     z-index: 890;
     height: 44px;
+    min-width: 44px;
     max-width: min(300px, calc(100vw - 92px));
     box-sizing: border-box;
-    padding: 0 14px 0 10px;
+    padding: 0 14px 0 9px;
+    display: flex;
+    align-items: center;
+    border-radius: 22px;
+    border: 1px solid var(--c-border);
+    background: rgba(var(--c-bg-rgb), 0.92);
+    color: var(--c-text-muted);
+    font: inherit;
+    cursor: pointer;
+    transition: transform 0.28s ease, opacity 0.28s ease, background-color 0.28s ease, border-color 0.28s ease, padding 0.28s ease, visibility 0s;
+  }
+  /* off / away: slid below the screen edge, not focusable */
+  .mtoc-pill[data-state='off'],
+  .mtoc-pill[data-state='away'] {
+    transform: translateY(calc(100% + 32px + env(safe-area-inset-bottom, 0px)));
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition: transform 0.28s ease, opacity 0.28s ease, visibility 0s 0.28s;
+  }
+  /* ring: just the faint progress ring */
+  .mtoc-pill[data-state='ring'] {
+    padding: 0 9px;
+    border-color: transparent;
+    background: transparent;
+    opacity: 0.45;
+  }
+  .mtoc-pill-body {
     display: flex;
     align-items: center;
     gap: 10px;
-    border-radius: 22px;
-    border: 1px solid var(--c-border-light);
-    background: rgba(var(--c-bg-rgb), 0.94);
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
-    color: var(--c-text);
-    font: inherit;
-    cursor: pointer;
-    animation: mtoc-in 0.22s ease-out;
+    min-width: 0;
+    max-width: 240px;
+    margin-left: 10px;
+    overflow: hidden;
+    white-space: nowrap;
+    transition: max-width 0.28s ease, opacity 0.2s ease, margin-left 0.28s ease;
   }
-  .mtoc-pill[hidden] { display: none; }
+  @media (hover: hover) {
+    .mtoc-pill[data-state='ring']:hover { opacity: 1; }
+  }
+  .mtoc-pill[data-state='ring'] .mtoc-pill-body {
+    max-width: 0;
+    margin-left: 0;
+    opacity: 0;
+  }
   .mtoc-pill:focus-visible,
   .mtoc-sheet :global(.mtoc-row:focus-visible),
   .mtoc-close:focus-visible,
   .mtoc-foot-btn:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-  }
-  @keyframes mtoc-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: none; }
   }
   .mtoc-ring { flex-shrink: 0; }
   .mtoc-ring circle { fill: none; stroke-width: 2.5; }
@@ -336,13 +452,12 @@ const labels = en
   .mtoc-pill-count {
     flex-shrink: 0;
     font-size: 12px;
-    color: var(--c-text-muted);
+    color: var(--c-text-dim);
     font-variant-numeric: tabular-nums;
   }
   .mtoc-pill-title {
     min-width: 0;
-    font-size: 14px;
-    font-weight: 500;
+    font-size: 13px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -498,8 +613,7 @@ const labels = en
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .mtoc-pill { animation: none; }
-    .mtoc-overlay, .mtoc-sheet, .mtoc-ring-bar { transition: none; }
+    .mtoc-pill, .mtoc-pill-body, .mtoc-overlay, .mtoc-sheet, .mtoc-ring-bar { transition: none; }
   }
   @media print {
     .mtoc { display: none; }
