@@ -2,6 +2,7 @@
 import type { ReadingItem } from '../../lib/reading';
 import { localizeReadingItem, readingDate, readingMonth, readingSourceLabel } from '../../lib/reading';
 import { readingCoverLabel } from '../../lib/reading-cover';
+import { resolveReadingCoverImage } from '../../lib/reading-cover-image';
 import ReadingCover from './ReadingCover.astro';
 
 interface Props {
@@ -16,6 +17,13 @@ interface Props {
 const { item: rawItem, eager = false, lang = 'zh', position = 0, surface = 'list' } = Astro.props;
 const item = localizeReadingItem(rawItem, lang);
 const detailHref = `${lang === 'en' ? '/en' : ''}/reading/${item.slug}/`;
+const cover = await resolveReadingCoverImage(item.cover_url, readingCoverLabel(item, lang), {
+  width: 720,
+  height: 480,
+  widths: [360, 720],
+  format: 'webp',
+  quality: 75,
+});
 ---
 
 <article
@@ -25,32 +33,30 @@ const detailHref = `${lang === 'en' ? '/en' : ''}/reading/${item.slug}/`;
   data-month={readingMonth(item.saved_at)}
   hidden={Astro.props.hidden}
 >
-  <a
-    class="reading-card-cover"
-    href={detailHref}
-    aria-label={item.title}
-    data-umami-event="reading-card-open"
-    data-umami-event-slug={item.slug}
-    data-umami-event-source={item.source}
-    data-umami-event-surface={surface}
-    data-umami-event-position={position}
-    data-umami-event-lang={lang}
-  >
-    <ReadingCover
-      src={item.cover_url}
-      alt={item.title}
-      label={readingCoverLabel(item, lang)}
-      width={720}
-      height={480}
-      widths={[360, 720]}
-      sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 360px"
-      format="webp"
-      quality={75}
-      loading={eager ? 'eager' : 'lazy'}
-      fetchpriority={eager ? 'high' : 'auto'}
-      decoding="async"
-    />
-  </a>
+  {cover && (
+    <a
+      class="reading-card-cover"
+      href={detailHref}
+      aria-label={item.title}
+      data-umami-event="reading-card-open"
+      data-umami-event-slug={item.slug}
+      data-umami-event-source={item.source}
+      data-umami-event-surface={surface}
+      data-umami-event-position={position}
+      data-umami-event-lang={lang}
+    >
+      <ReadingCover
+        image={cover}
+        alt={item.title}
+        width={720}
+        height={480}
+        sizes="(max-width: 720px) 100vw, (max-width: 1080px) 50vw, 360px"
+        loading={eager ? 'eager' : 'lazy'}
+        fetchpriority={eager ? 'high' : 'auto'}
+        decoding="async"
+      />
+    </a>
+  )}
   <h2 class="reading-card-title">
     <a
       href={detailHref}

@@ -2,6 +2,7 @@
 import type { ReadingItem } from '../../lib/reading';
 import { localizeReadingItem, readingSourceLabel } from '../../lib/reading';
 import { readingCoverLabel } from '../../lib/reading-cover';
+import { resolveReadingCoverImage } from '../../lib/reading-cover-image';
 import type { LocalizedEditorialText, ReadingWeeklyLanguage } from '../../data/reading-weekly';
 import { editorialText } from '../../data/reading-weekly';
 import ReadingCover from './ReadingCover.astro';
@@ -21,33 +22,38 @@ const title = item.title.startsWith('@') && item.title.includes(' · ')
   : item.title;
 const detailHref = `${lang === 'en' ? '/en' : ''}/reading/${item.slug}/`;
 const isLead = variant === 'lead';
+const cover = await resolveReadingCoverImage(item.cover_url, readingCoverLabel(item, lang), {
+  width: isLead ? 960 : 480,
+  height: isLead ? 640 : 320,
+  widths: isLead ? [480, 960] : [240, 480],
+  format: 'webp',
+  quality: 75,
+});
 ---
 
-<article class:list={['weekly-story', `weekly-story--${variant}`]}>
-  <a
-    class="weekly-story-cover"
-    href={detailHref}
-    aria-label={item.title}
-    data-umami-event="reading-weekly-story-open"
-    data-umami-event-slug={item.slug}
-    data-umami-event-surface={variant}
-    data-umami-event-lang={lang}
-  >
-    <ReadingCover
-      src={item.cover_url}
-      alt={item.title}
-      label={readingCoverLabel(item, lang)}
-      width={isLead ? 960 : 480}
-      height={isLead ? 640 : 320}
-      widths={isLead ? [480, 960] : [240, 480]}
-      sizes={isLead ? '(max-width: 720px) calc(100vw - 40px), 560px' : '(max-width: 720px) 96px, 160px'}
-      format="webp"
-      quality={75}
-      loading={isLead ? 'eager' : 'lazy'}
-      fetchpriority={isLead ? 'high' : 'auto'}
-      decoding="async"
-    />
-  </a>
+<article class:list={['weekly-story', `weekly-story--${variant}`, { 'weekly-story--no-cover': !cover }]}>
+  {cover && (
+    <a
+      class="weekly-story-cover"
+      href={detailHref}
+      aria-label={item.title}
+      data-umami-event="reading-weekly-story-open"
+      data-umami-event-slug={item.slug}
+      data-umami-event-surface={variant}
+      data-umami-event-lang={lang}
+    >
+      <ReadingCover
+        image={cover}
+        alt={item.title}
+        width={isLead ? 960 : 480}
+        height={isLead ? 640 : 320}
+        sizes={isLead ? '(max-width: 720px) calc(100vw - 40px), 560px' : '(max-width: 720px) 96px, 160px'}
+        loading={isLead ? 'eager' : 'lazy'}
+        fetchpriority={isLead ? 'high' : 'auto'}
+        decoding="async"
+      />
+    </a>
+  )}
   <div class="weekly-story-body">
     <div class="weekly-story-meta">
       {number && <span class="weekly-story-number">{number}</span>}

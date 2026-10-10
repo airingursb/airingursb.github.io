@@ -4,6 +4,7 @@ import BaseLayout from '../../../layouts/BaseLayout.astro';
 import ReadingCover from '../../../components/reading/ReadingCover.astro';
 import ReadingShareModal from '../../../components/reading/ReadingShareModal.astro';
 import { readingCoverLabel } from '../../../lib/reading-cover';
+import { resolveReadingCoverImage } from '../../../lib/reading-cover-image';
 import {
   fetchReadingItems,
   localizeReadingItem,
@@ -41,6 +42,21 @@ const description = item.summary || `${item.author ? `${item.author} · ` : ''}$
 const summaryLines = (item.summary || '').split('\n').map((line) => line.trim()).filter(Boolean);
 const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^[-*]\s+/.test(line));
 const shareUrl = new URL(`/en/reading/${item.slug}/`, Astro.site ?? 'https://ursb.me').href;
+const [cover, newerCover, olderCover] = await Promise.all([
+  resolveReadingCoverImage(item.cover_url, readingCoverLabel(item, 'en'), {
+    width: 1440, height: 960, widths: [720, 1440], format: 'webp', quality: 75,
+  }),
+  newer
+    ? resolveReadingCoverImage(newer.cover_url, readingCoverLabel(newer, 'en'), {
+      width: 360, height: 240, format: 'webp', quality: 75,
+    })
+    : null,
+  older
+    ? resolveReadingCoverImage(older.cover_url, readingCoverLabel(older, 'en'), {
+      width: 360, height: 240, format: 'webp', quality: 75,
+    })
+    : null,
+]);
 ---
 
 <BaseLayout
@@ -76,26 +92,24 @@ const shareUrl = new URL(`/en/reading/${item.slug}/`, Astro.site ?? 'https://urs
       </header>
 
       <article class="reading-detail-grid">
-        <div>
-          <button class="reading-poster" type="button" data-open-lightbox aria-label="View full image" data-umami-event="reading-original-open" data-umami-event-slug={item.slug} data-umami-event-lang="en">
-            <ReadingCover
-              src={item.cover_url}
-              alt={item.title}
-              label={readingCoverLabel(item, 'en')}
-              width={1440}
-              height={960}
-              widths={[720, 1440]}
-              sizes="(max-width: 720px) 100vw, (max-width: 1080px) calc(100vw - 64px), 883px"
-              format="webp"
-              quality={75}
-              priority
-            />
-            <span class="reading-zoom-label">⌕ View full image</span>
-          </button>
-          <div class="reading-caption">
-            <span>Agent-generated reading card · 1536 × 1024</span>
+        {cover && (
+          <div class="reading-detail-cover">
+            <button class="reading-poster" type="button" data-open-lightbox aria-label="View full image" data-umami-event="reading-original-open" data-umami-event-slug={item.slug} data-umami-event-lang="en">
+              <ReadingCover
+                image={cover}
+                alt={item.title}
+                width={1440}
+                height={960}
+                sizes="(max-width: 720px) 100vw, (max-width: 1080px) calc(100vw - 64px), 883px"
+                priority
+              />
+              <span class="reading-zoom-label">⌕ View full image</span>
+            </button>
+            <div class="reading-caption">
+              <span>Agent-generated reading card · 1536 × 1024</span>
+            </div>
           </div>
-        </div>
+        )}
 
         <aside class="reading-detail-side">
           {item.summary && (
@@ -142,14 +156,14 @@ const shareUrl = new URL(`/en/reading/${item.slug}/`, Astro.site ?? 'https://urs
       {(newer || older) && (
         <nav class="reading-prev-next" aria-label="Adjacent reading notes">
           {newer ? (
-            <a class="reading-related" href={`/en/reading/${newer.slug}/`} data-umami-event="reading-card-open" data-umami-event-slug={newer.slug} data-umami-event-source={newer.source} data-umami-event-surface="detail-related" data-umami-event-direction="newer" data-umami-event-lang="en">
-              <ReadingCover src={newer.cover_url} alt="" label={readingCoverLabel(newer, 'en')} loading="lazy" width={360} height={240} format="webp" quality={75} />
+            <a class:list={['reading-related', { 'reading-related--no-cover': !newerCover }]} href={`/en/reading/${newer.slug}/`} data-umami-event="reading-card-open" data-umami-event-slug={newer.slug} data-umami-event-source={newer.source} data-umami-event-surface="detail-related" data-umami-event-direction="newer" data-umami-event-lang="en">
+              {newerCover && <ReadingCover image={newerCover} alt="" loading="lazy" width={360} height={240} />}
               <span><small>← Newer</small><strong>{newer.title}</strong></span>
             </a>
           ) : <span />}
           {older && (
-            <a class="reading-related" href={`/en/reading/${older.slug}/`} data-umami-event="reading-card-open" data-umami-event-slug={older.slug} data-umami-event-source={older.source} data-umami-event-surface="detail-related" data-umami-event-direction="older" data-umami-event-lang="en">
-              <ReadingCover src={older.cover_url} alt="" label={readingCoverLabel(older, 'en')} loading="lazy" width={360} height={240} format="webp" quality={75} />
+            <a class:list={['reading-related', { 'reading-related--no-cover': !olderCover }]} href={`/en/reading/${older.slug}/`} data-umami-event="reading-card-open" data-umami-event-slug={older.slug} data-umami-event-source={older.source} data-umami-event-surface="detail-related" data-umami-event-direction="older" data-umami-event-lang="en">
+              {olderCover && <ReadingCover image={olderCover} alt="" loading="lazy" width={360} height={240} />}
               <span><small>Older →</small><strong>{older.title}</strong></span>
             </a>
           )}
@@ -158,10 +172,12 @@ const shareUrl = new URL(`/en/reading/${item.slug}/`, Astro.site ?? 'https://urs
     </main>
   </div>
 
-  <div class="reading-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Full reading card">
-    <button class="reading-lightbox-close" type="button" data-close-lightbox aria-label="Close">×</button>
-    <img data-original-src={item.cover_url} alt={item.title} />
-  </div>
+  {cover && (
+    <div class="reading-lightbox" data-lightbox role="dialog" aria-modal="true" aria-label="Full reading card">
+      <button class="reading-lightbox-close" type="button" data-close-lightbox aria-label="Close">×</button>
+      <img data-original-src={item.cover_url} alt={item.title} />
+    </div>
+  )}
 
   <script>
     const lightbox = document.querySelector('[data-lightbox]');
