@@ -536,13 +536,22 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
       var text = txt(el);
       if (!text) return;
       if (opts.preserveHTML) {
-        var originalHTML = el.innerHTML;
-        el.textContent = text;
-        scramble(el, text, opts);
-        var d = (opts.duration || 780) + 60;
-        setTimeout(function() {
-          if (!el.__scrambleId && txt(el) === text) el.innerHTML = originalHTML;
-        }, d);
+        // Scramble only the visible label pieces in place. Flattening the
+        // whole element would also dump hidden children (the region popover
+        // and its SVG <style>) into the line as raw text for a moment.
+        Array.prototype.slice.call(el.childNodes).forEach(function(node) {
+          if (node.nodeType === 3) {
+            if (!node.nodeValue.trim()) return;
+            var span = document.createElement('span');
+            span.textContent = node.nodeValue;
+            el.replaceChild(span, node);
+            node = span;
+          } else if (node.nodeType !== 1 || node.matches('.online-country-popover, .online-dot, style, svg, img')) {
+            return;
+          }
+          var t = node.textContent;
+          if (t.trim() && !node.children.length) scramble(node, t, opts);
+        });
       } else {
         scramble(el, text, opts);
       }
@@ -1007,7 +1016,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           <span class="temp" id="weatherTemp"></span>
           <span id="weatherDesc"></span>
         </div>
-        <div class="online-line" data-online="site" data-online-template='<span class="online-dot"></span><span class="online-count">{n}</span> online' data-online-min="1" data-online-countries="popover" data-online-region-min="2" data-online-region-label="regions" data-online-popover-title="Readers by region" data-online-total-template="{n} readers online" data-online-locale="en" style="display:none"></div>
+        <div class="online-line" data-online="site" data-online-template='<span class="online-dot"></span><span class="online-count">{n}</span> online' data-online-min="1" data-online-countries="popover" data-online-region-min="2" data-online-region-label="regions" data-online-popover-title="Readers by region" data-online-total-template="{n} readers online" data-online-locale="en"></div>
       </div>
     </div>
 
@@ -1056,7 +1065,7 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
           <span class="sep">/</span>
           <a href="https://t.me/s/airingchannel" target="_blank" data-i18n="link_channel">Channel</a>
           <span class="sep">/</span>
-          <a href="https://blog.ursb.me/about" data-i18n="link_message">Message</a>
+          <a href="#guestbook" data-i18n="link_message">Message</a>
           <span class="sep">/</span>
           <a href="./notes" data-i18n="link_notes" data-href-zh="./notes" data-href-en="./en/notes">Notes</a>
         </div>
