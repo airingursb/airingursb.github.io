@@ -32,6 +32,8 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+from local_dev_traffic import POSTGREST_EXCLUDE_LOCAL_DEV, exclude_local_dev_views
+
 # ── Config ───────────────────────────────────────────────────────────────────
 
 HOMEPAGE_SB_URL = 'https://pcoyocvqfipuydhvdsle.supabase.co'
@@ -157,14 +159,14 @@ def collect_metrics() -> tuple[dict, list, dict]:
         })
         metrics['home_uv'] = max(0, legacy_total - int(float(prev[0]['value']))) if prev else 0
 
-    # Blog
-    rng_view = day_filter(YESTERDAY, 'viewed_at')
+    # Blog — exclude localhost / 127.0.0.1 referrers (local Astro dev).
+    rng_view = day_filter(YESTERDAY, 'viewed_at') + [POSTGREST_EXCLUDE_LOCAL_DEV]
     metrics['blog_pv'] = sb_count(BLOG_SB_URL, BLOG_SB_KEY, 'post_views', rng_view)
 
-    views = sb_get(BLOG_SB_URL, BLOG_SB_KEY, 'post_views', {
-        'select': 'ip,post_slug',
+    views = exclude_local_dev_views(sb_get(BLOG_SB_URL, BLOG_SB_KEY, 'post_views', {
+        'select': 'ip,post_slug,referrer',
         'viewed_at': [f'gte.{YESTERDAY}T00:00:00Z', f'lt.{TODAY}T00:00:00Z'],
-    })
+    }) or [])
     metrics['blog_uv'] = len({v['ip'] for v in views})
 
     post_counts: dict[str, int] = {}
