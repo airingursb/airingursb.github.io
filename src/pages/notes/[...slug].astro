@@ -297,8 +297,11 @@ const jsonLd = {
     var NOTE_SLUG = 'note/' + location.pathname.replace(/^\/(?:en\/)?notes\//, '').replace(/\/$/, '');
     var USER_KEY = 'blog-user-identity';
 
-    // Track pageview (fire-and-forget)
-    fetch(API + '/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/view', { method: 'POST' }).catch(function() {});
+    // Track pageview (fire-and-forget). Never write local-dev traffic to prod.
+    var host = location.hostname;
+    if (host === 'ursb.me' || host === 'www.ursb.me' || host === 'airingursb.github.io') {
+      fetch(API + '/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/view', { method: 'POST' }).catch(function() {});
+    }
 
     // Fetch and display view count
     fetch(API + '/api/posts/' + encodeURIComponent(NOTE_SLUG) + '/views')

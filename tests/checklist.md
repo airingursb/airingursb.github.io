@@ -2343,3 +2343,9 @@
 - [x] 中文和英文首页的五组软件标签均保留；Notion、Herdr、Wispr Flow、Hemory、Grok Bot、MoneyWise 在对应分类正确显示。
 - [x] 软件推荐区块不再包含 Obsidian、Warp、Typeless、AnyGen、NotebookLM、Voicenotes、OpenClaw、MoneyWiz；Astro 页与旧 HTML 模板的列表一致。
 - [x] 手机和桌面下标签正常换行，长名称完整可见，没有横向溢出。
+
+## Local-dev analytics guard (2026-10-11)
+
+- [ ] localhost / 127.0.0.1 / 非生产 hostname 打开文章或笔记时，浏览器不请求 `https://analytics.ursb.me/script.js`，也不 POST `/api/posts/:slug/view`。
+- [ ] 生产 hostname（ursb.me / www.ursb.me / airingursb.github.io）仍加载 Umami（websiteId `aa8d5a16-…`），文章页仍记录 pageview；GET `/views` 本地预览仍可显示阅读数。
+- [ ] 服务端（blog-api）对 Referer/Origin 为 localhost / 127.0.0.1 的 `/view` 返回 200 但不写入 `post_views`；小时流量异常与日报 `blog_pv` 忽略这些 referrer。不删除历史行，不改 subscribe IP blocklist。

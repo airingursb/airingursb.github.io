@@ -742,8 +742,11 @@ const jsonLd = {
   // from the quoted text's script (legacy rows created before the lang column).
   function commentLang(c) { return c.lang || (hasCJK(c.selected_text) ? 'zh' : 'en'); }
 
-  // Track pageview (fire-and-forget)
-  fetch(API + '/api/posts/' + encodeURIComponent(POST_SLUG) + '/view', { method: 'POST' }).catch(function() {});
+  // Track pageview (fire-and-forget). Never write local-dev traffic to prod.
+  var host = location.hostname;
+  if (host === 'ursb.me' || host === 'www.ursb.me' || host === 'airingursb.github.io') {
+    fetch(API + '/api/posts/' + encodeURIComponent(POST_SLUG) + '/view', { method: 'POST' }).catch(function() {});
+  }
 
   // Fetch and display view count (only show if >= 1000)
   fetch(API + '/api/posts/' + encodeURIComponent(POST_SLUG) + '/views')
