@@ -2140,6 +2140,9 @@ const jsonLd = {
   .post-content {
     color: var(--c-text); font-size: 18px; line-height: 2.0;
     min-width: 0; max-width: 72ch; position: relative;
+    /* Long URLs / identifiers (e.g. HTMLConstructionSite::CreateElement)
+       must wrap instead of widening the page on phones. */
+    overflow-wrap: anywhere;
     font-family: 'Noto Serif SC', 'Source Han Serif CN', 'Source Han Serif SC', 'Songti SC', STSong, serif;
     letter-spacing: 0.02em;
   }
@@ -2300,6 +2303,11 @@ const jsonLd = {
     font-style: italic;
   }
   .post-content :global(table) { width: 100%; border-collapse: collapse; margin: 24px 0; font-size: 14px; }
+  /* Narrow screens: a wide table scrolls inside its own box rather than
+     dragging the whole page sideways; cell words stay intact. */
+  @media (max-width: 1100px) {
+    .post-content :global(table) { display: block; width: max-content; max-width: 100%; overflow-x: auto; overflow-wrap: normal; }
+  }
   .post-content :global(th), .post-content :global(td) { border: 1px solid var(--c-border); padding: 8px 14px; text-align: left; }
   .post-content :global(th) {
     background: rgba(var(--c-overlay-rgb),0.02); font-weight: 600; color: var(--c-text-muted);
@@ -2822,7 +2830,7 @@ const jsonLd = {
   }
   .bottom-comments :global(.bc-actions) {
     display: flex; align-items: center; gap: 16px;
-    margin-top: 10px;
+    margin-top: 10px; flex-wrap: wrap;
   }
   .bottom-comments :global(.bc-like-btn) {
     display: flex; align-items: center; gap: 5px;
