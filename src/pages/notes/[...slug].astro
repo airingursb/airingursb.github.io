@@ -7,6 +7,9 @@ import { getBacklinks } from '../../lib/backlinks';
 import { tSite } from '../../lib/i18n';
 import { getGitLastModified } from '../../lib/seo';
 import MobileToc from '../../components/MobileToc.astro';
+import NoteTitle from '../../components/notes/NoteTitle.astro';
+import { topicLabel, formatLabel, titleParts } from '../../lib/field-notes';
+import '../../styles/field-notes.css';
 
 export async function getStaticPaths() {
   const notes = await getCollection('notes', ({ data }) => data.public && !data.draft);
@@ -41,6 +44,13 @@ const relatedNotes = [
 
 const s = tSite('zh').notes;
 
+// Field Notes header + ending (see src/lib/field-notes.ts)
+const listHref = '/notes/';
+const fnTopic = topicLabel(note.data.topic, 'zh');
+const fnParts = titleParts(note.data.title, note.data.immersive?.url, 'zh');
+const fnFormat = formatLabel(note.data, 'zh');
+const fnRelated = relatedNotes.slice(0, 3).map(r => ({ ...r, topic: topicLabel(allNotes.find(n => n.id === r.slug)?.data.topic, 'zh') }));
+
 // Reading time: count CJK characters and Latin words separately
 const cjkChars = (note.body?.match(/[\u4e00-\u9fff]/g) || []).length;
 const latinWords = note.body?.split(/\s+/).filter(w => w.length > 0).length || 0;
@@ -72,43 +82,55 @@ const jsonLd = {
 ---
 <BaseLayout title={`${note.data.title} | ${s.siteTitle}`} description={note.data.summary} ogImage={`${Astro.site || 'https://ursb.me/'}og/notes/${note.id}.png`} ogType="article" hreflang={hreflang}>
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
-  <div class="note-detail-page">
+  <div class="note-detail-page fn-page">
     <SiteHeader lang="zh" hasEnVersion={hasEn} />
 
     <main class="detail-main">
       <div class="three-col">
-        <!-- Left: Note list -->
-        <aside class="note-sidebar">
-          <div class="sidebar-inner">
-            <a href="/notes" class="sidebar-back">{s.backToList}</a>
-            <div class="sidebar-list">
-              {allNotes.map(n => (
-                <a
-                  href={`/notes/${n.id}`}
-                  class:list={['sl-item', { active: n.id === note.id }]}
-                >
-                  <span class="sl-title">{n.data.title}</span>
-                  <span class="sl-date">{n.data.date.replace(/-/g, '.')}</span>
-                </a>
-              ))}
-            </div>
-          </div>
-        </aside>
-
         <!-- Center: Article -->
         <div class="article-col" data-pagefind-body>
-          <header class="article-header">
-            <h1>{note.data.title}</h1>
-            <div class="article-meta">
-              <span>{note.data.date.replace(/-/g, '.')}</span>
-              <span class="dot"></span>
-              <span>{readingTime}</span>
+          <header class="article-header fn-head">
+            <nav class="fn-crumb" aria-label="面包屑">
+              <a href={listHref}>← FIELD NOTES</a>
+              {fnTopic && <><span aria-hidden="true"> / </span><a href={`${listHref}?topic=${note.data.topic}`}>{fnTopic}</a></>}
+            </nav>
+            <span class="fn-kicker">FIELD NOTE{fnTopic && ` · ${fnTopic}`} · {note.data.date.replace(/-/g, '.')}</span>
+            <h1><NoteTitle parts={fnParts} /></h1>
+            <p class="fn-standfirst">{note.data.summary}</p>
+            <div class="fn-meta">
+              <span>AUTHOR <b>Airing</b></span>
+              {note.data.tags.length > 0 && <span>TOPIC <b>{note.data.tags.slice(0, 3).join(' · ')}</b></span>}
+              <span>FORMAT <b>{fnFormat} · {readingTime}</b></span>
             </div>
+            {note.data.immersive && <a class="fn-immersive" href={note.data.immersive.url} target="_blank" rel="noopener">进入沉浸式阅读 →</a>}
           </header>
 
           <article class="prose">
             <Content />
           </article>
+
+          <section class="fn-end" data-pagefind-ignore>
+            {note.data.tags.length > 0 && (
+              <div class="fn-end-tags">
+                {note.data.tags.map(tag => (
+                  <a href={`${listHref}?tag=${encodeURIComponent(tag)}`} class="fn-chip fn-chip-sm">{tag}</a>
+                ))}
+              </div>
+            )}
+            {fnRelated.length > 0 && (
+              <>
+                <h2 class="fn-end-title">{s.relatedNotes}</h2>
+                <div class="fn-related">
+                  {fnRelated.map(r => (
+                    <a href={`/notes/${r.slug}/`} class="fn-card fn-related-card">
+                      <span class="fn-kicker">{r.topic || 'FIELD NOTE'}</span>
+                      <span class="fn-related-title">{r.title}</span>
+                    </a>
+                  ))}
+                </div>
+              </>
+            )}
+          </section>
         </div>
 
         <!-- Right: TOC + Meta -->
@@ -129,14 +151,6 @@ const jsonLd = {
               </div>
             )}
 
-            <div class="meta-section">
-              <div class="meta-label">{s.tagsLabel}</div>
-              <div class="meta-tags">
-                {note.data.tags.map(tag => (
-                  <a href={`/notes?tag=${encodeURIComponent(tag)}`} class="meta-tag">{tag}</a>
-                ))}
-              </div>
-            </div>
 
             <!-- Stats block -->
             <div class="meta-section" id="noteStatsBlock" style="display:none;">
@@ -148,16 +162,6 @@ const jsonLd = {
               </div>
             </div>
 
-            {relatedNotes.length > 0 && (
-              <div class="meta-section">
-                <div class="meta-label">{s.relatedNotes}</div>
-                <div class="related-list">
-                  {relatedNotes.map(r => (
-                    <a href={`/notes/${r.slug}`} class="related-item">→ {r.title}</a>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           <!-- Comment cards rail (absolutely positioned within .meta-sidebar) -->
@@ -1685,69 +1689,39 @@ const jsonLd = {
     max-width: 1200px; margin: 0 auto;
     padding: 0 48px;
     display: grid;
-    grid-template-columns: 200px 1fr 220px;
-    gap: 40px;
+    grid-template-columns: minmax(0, 760px) minmax(180px, 220px);
+    justify-content: space-between;
+    gap: 64px;
     align-items: start;
   }
 
-  /* Left sidebar: note list */
-  .note-sidebar { padding-top: 32px; }
-  .sidebar-inner {
-    position: sticky; top: 80px;
-    max-height: calc(100vh - 120px);
-    overflow-y: auto;
-  }
-  .sidebar-back {
-    display: block;
-    font-size: 12px; color: var(--c-text-dim);
-    margin-bottom: 16px; text-decoration: none;
-  }
-  .sidebar-back:hover { color: var(--c-text); }
-  .sidebar-list {
-    display: flex; flex-direction: column; gap: 2px;
-  }
-  .sl-item {
-    display: block; padding: 8px 10px;
-    border-radius: 6px; text-decoration: none;
-    border-left: 2px solid transparent;
-    transition: all 0.15s;
-  }
-  .sl-item:hover { background: rgba(var(--c-overlay-rgb), 0.04); }
-  .sl-item.active {
-    background: rgba(var(--c-overlay-rgb), 0.06);
-    border-left-color: var(--accent);
-  }
-  .sl-title {
-    display: block;
-    font-size: 13px; color: var(--c-text);
-    line-height: 1.3;
-    overflow: hidden; text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .sl-item.active .sl-title { color: var(--accent); font-weight: 600; }
-  .sl-date {
-    display: block;
-    font-size: 11px; color: var(--c-text-dim);
-    margin-top: 2px; font-variant-numeric: tabular-nums;
-  }
-
   /* Center: article */
-  .article-col { min-width: 0; padding-top: 32px; }
-  .article-header { padding-bottom: 32px; }
-  .article-header h1 {
-    font-family: 'Noto Serif SC', serif;
-    font-size: 28px; font-weight: 700; color: var(--c-text);
-    line-height: 1.3; letter-spacing: -0.5px;
+  .article-col { min-width: 0; padding-top: 28px; }
+  /* Field Notes header: crumb · kicker · title · standfirst · meta */
+  .fn-head { display: flex; flex-direction: column; gap: 18px; padding-bottom: 36px; margin-bottom: 36px; border-bottom: 1px solid var(--fn-rule); }
+  .fn-crumb { font-family: var(--fn-mono); font-size: 12px; letter-spacing: 1px; color: var(--fn-mute); margin-bottom: 18px; }
+  .fn-crumb a { color: var(--fn-mute); text-decoration: none; }
+  .fn-crumb a:hover { color: var(--fn-ink); }
+  .fn-head .fn-kicker { font-size: 12px; letter-spacing: 2px; }
+  .fn-head h1 {
+    margin: 0; font-family: var(--fn-serif);
+    font-size: 48px; font-weight: 900; color: var(--fn-ink);
+    line-height: 1.2; letter-spacing: -0.5px; overflow-wrap: anywhere;
   }
-  .article-meta {
-    display: flex; align-items: center; gap: 12px;
-    font-size: 13px; color: var(--c-text-dim);
-    margin-top: 12px;
-  }
-  .dot {
-    width: 3px; height: 3px; border-radius: 50%;
-    background: var(--c-border);
-  }
+  .fn-standfirst { margin: 0; font-family: var(--fn-serif); font-size: 19px; line-height: 1.8; color: var(--fn-ink-soft); }
+  .fn-head .fn-meta { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 0; padding-top: 16px; border-top: 1px solid var(--fn-rule-soft); font-family: var(--fn-mono); font-size: 12px; color: var(--fn-mute); }
+  .fn-head .fn-meta b { color: var(--fn-ink); font-weight: 500; }
+  .fn-immersive { align-self: flex-start; font-family: var(--fn-mono); font-size: 13px; color: var(--fn-copper); text-decoration: none; }
+  .fn-immersive:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+  /* Ending: tags + related notes */
+  .fn-end { margin-top: 64px; padding-top: 28px; border-top: 1px solid var(--fn-rule); }
+  .fn-end-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+  .fn-end-title { margin: 36px 0 16px; font-family: var(--fn-serif); font-size: 22px; font-weight: 700; color: var(--fn-ink); }
+  .fn-related { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .fn-related-card { padding: 18px; gap: 8px; }
+  .fn-related-card .fn-kicker { font-size: 10px; }
+  .fn-related-title { font-family: var(--fn-serif); font-size: 17px; font-weight: 700; line-height: 1.4; overflow-wrap: anywhere; }
 
   /* Right sidebar: TOC + meta */
   .meta-sidebar { padding-top: 32px; position: relative; }
@@ -1778,36 +1752,16 @@ const jsonLd = {
   }
   .toc-list a:hover { color: var(--c-text); }
 
-  /* Tags */
-  .meta-tags { display: flex; flex-wrap: wrap; gap: 6px; }
-  .meta-tag {
-    font-size: 12px; padding: 3px 10px;
-    border-radius: 99px; text-decoration: none;
-    border: 1px solid var(--c-border);
-    color: var(--c-text-dim); transition: all 0.15s;
-  }
-  .meta-tag:hover {
-    border-color: var(--accent); color: var(--accent);
-  }
-
-  /* Related notes */
-  .related-list {
-    display: flex; flex-direction: column; gap: 6px;
-  }
-  .related-item {
-    font-size: 13px; color: var(--c-text-dim);
-    text-decoration: none; transition: color 0.2s;
-  }
-  .related-item:hover { color: var(--accent); }
-
   @media (max-width: 960px) {
     .three-col {
       grid-template-columns: 1fr;
       padding: 0 20px;
     }
-    .note-sidebar { display: none; }
     .meta-sidebar { display: none; }
-    .article-header h1 { font-size: 24px; }
+    .fn-head h1 { font-size: 32px; }
+    .fn-standfirst { font-size: 17px; }
+    .fn-crumb { margin-bottom: 4px; }
+    .fn-related { grid-template-columns: minmax(0, 1fr); gap: 10px; }
     .article-like-section { padding: 32px 20px 0; }
     .bottom-comments { padding: 0 20px 48px; }
   }

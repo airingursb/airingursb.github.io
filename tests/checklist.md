@@ -449,6 +449,17 @@
 - [ ] Evaluate: pill never shows at ≥1101px (posts) / ≥961px (notes), and pages with fewer than 3 headings (e.g. `/notes/chromium-renderer/`) get no pill.
 - [ ] Screenshot: light/dark mode, 375px; pill does not overlap the theme switcher (it fades away after the first screen) and causes no horizontal overflow.
 
+## Notes — Field Notes (`/notes/`, `/en/notes/`, `/notes/<slug>/`)
+
+> Index: `src/components/notes/NotesIndex.astro` (shared zh/en). Detail: `src/pages/{,en/}notes/[...slug].astro`. Tokens: `src/styles/field-notes.css`. Data: frontmatter `topic` / `cover` / `stations`, helpers in `src/lib/field-notes.ts`.
+
+- [ ] Screenshot (1440 + 390, light + dark): paper palette on both index and detail; site header, footer, comments and theme switcher use the same paper tokens; no horizontal overflow at 390px.
+- [ ] DOM: index shows the newest non-Playbook note as the featured card (with its `stations` route when set), the two Playbook pieces with cover images, then every other note in the grid; card summaries clamp at 3 lines.
+- [ ] Click: topic chips (全部 + 7 topics, counts from frontmatter `topic`) filter the grid, hide the featured/Playbook block and sync `?topic=`; search filters title + summary; `?tag=<tag>` (linked from note pages) filters by fine-grained tag and shows a removable `#tag ×` chip.
+- [ ] DOM: card / header titles of immersive notes reproduce the coloured spans of `/immersive/<slug>/` hero `<h1>` exactly (e.g. 一次 **dispatch** 的 **八重翻译**。, 一段内存的 **多重** 死亡**。**); notes without an immersive page have plain titles.
+- [ ] Mobile (≤640px): topics are one horizontally scrollable row (no wall of tags above the list).
+- [ ] Detail: no left "all notes" column; article column up to 760px with the TOC (+ inline-comment rail, stats) on the right; header = crumb · kicker · title · standfirst · AUTHOR/TOPIC/FORMAT; tags + up to 3 related-note cards at the end (`data-pagefind-ignore`).
+
 ## Light Mode Accent Colors
 
 - [ ] CSS: In light mode, `--accent` is a darker shade (e.g. `#16a34a` for green theme)

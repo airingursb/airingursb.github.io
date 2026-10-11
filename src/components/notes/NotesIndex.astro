@@ -1,0 +1,329 @@
+---
+/**
+ * Notes index — "Field Notes" catalogue, shared by /notes/ and /en/notes/.
+ * Newest note as a featured card, the Playbook pieces as image cards, then
+ * every note in a card grid. Filters: 7 topics (frontmatter `topic`),
+ * free-text search, and `?tag=` (fine-grained tags, linked from note pages).
+ */
+import { getCollection } from 'astro:content';
+import SiteHeader from '../SiteHeader.astro';
+import NoteTitle from './NoteTitle.astro';
+import { TOPICS, topicLabel, formatLabel, titleParts } from '../../lib/field-notes';
+import '../../styles/field-notes.css';
+
+interface Props { lang: 'zh' | 'en' }
+const { lang } = Astro.props;
+const en = lang === 'en';
+const prefix = en ? '/en' : '';
+
+const notes = (await getCollection(en ? 'notesEn' : 'notes', ({ data }) => data.public && !data.draft))
+  .sort((a, b) => new Date(b.data.date).valueOf() - new Date(a.data.date).valueOf());
+
+const items = notes.map((n) => ({
+  id: n.id,
+  title: n.data.title,
+  parts: titleParts(n.data.title, n.data.immersive?.url, lang),
+  summary: n.data.summary,
+  date: n.data.date.replace(/-/g, '.'),
+  topic: n.data.topic,
+  topicName: topicLabel(n.data.topic, lang),
+  format: formatLabel(n.data, lang),
+  cover: n.data.cover,
+  stations: n.data.stations,
+  tags: n.data.tags,
+  href: n.data.immersive ? n.data.immersive.url : `${prefix}/notes/${n.id}/`,
+  external: !!n.data.immersive,
+}));
+
+const featured = items.find((n) => n.topic !== 'play');
+const playbook = items.filter((n) => n.topic === 'play').slice(0, 2);
+const homeHidden = new Set([featured?.id, ...playbook.map((p) => p.id)]);
+
+const counts = new Map<string, number>();
+for (const n of items) if (n.topic) counts.set(n.topic, (counts.get(n.topic) || 0) + 1);
+const topics = TOPICS.filter((t) => counts.get(t)).map((t) => ({ id: t, label: topicLabel(t, lang), count: counts.get(t)! }));
+
+const t = en
+  ? {
+      kicker: `FIELD NOTES · ${items.length} notes`,
+      lead: 'Walking one mechanism from input to output: source, diagrams, interactive specimens. On browsers, runtimes, networking, AI — and anything else that makes me curious.',
+      search: 'Search titles or summaries',
+      all: 'All', newest: 'NEWEST', enter: 'Read →', playbook: 'Playbook', playbookNote: 'Small scenes of life, put into a web page',
+      allNotes: 'All notes', byDate: 'Newest first', results: 'Search results', count: (n: number) => `${n} notes`,
+      empty: 'No notes match.', clearTag: 'Clear tag', route: 'Stations along the way', filterBy: 'Filter by topic',
+    }
+  : {
+      kicker: `FIELD NOTES · ${items.length} 篇`,
+      lead: '把一个机制从输入到输出完整走一遍：源码、图解、可交互的标本。关于浏览器、运行时、网络、AI，以及一切让我好奇的事物。',
+      search: '搜索标题或摘要',
+      all: '全部', newest: '最新', enter: '进入阅读 →', playbook: '小品', playbookNote: '放进网页里的小小生活场景',
+      allNotes: '全部笔记', byDate: '按时间排列', results: '搜索结果', count: (n: number) => `${n} 篇`,
+      empty: '没有找到相关笔记。', clearTag: '清除标签', route: '途经的站点', filterBy: '按主题筛选',
+    };
+const labels = {
+  allNotes: t.allNotes, byDate: t.byDate, results: t.results, countTpl: t.count(0).replace('0', '{n}'),
+  topics: Object.fromEntries(topics.map((x) => [x.id, x.label])),
+};
+---
+
+<div class="notes-page fn-page fn-index">
+  <SiteHeader lang={lang} />
+
+  <div class="fn-wrap">
+    <section class="fn-hero">
+      <div class="fn-hero-text">
+        <span class="fn-kicker">{t.kicker}</span>
+        {en
+          ? <h1 class="fn-hero-title">Traces of <span class="fn-hl-copper">Thought</span>.</h1>
+          : <h1 class="fn-hero-title">思考的<span class="fn-hl-copper">痕迹</span>。</h1>}
+        <p class="fn-hero-lead">{t.lead}</p>
+      </div>
+      <div class="fn-hero-tools">
+        <label class="fn-search">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>
+          <input type="search" id="fnSearch" placeholder={t.search} aria-label={t.search} autocomplete="off" />
+        </label>
+        <a href={`${prefix}/notes/feed.xml`} class="fn-rss" id="notesRssLink">RSS</a>
+      </div>
+    </section>
+
+    <nav class="fn-topics" aria-label={t.filterBy}>
+      <div class="fn-topics-row">
+        <button type="button" class="fn-chip" data-topic="all" aria-pressed="true">{t.all}<span class="fn-chip-count">{items.length}</span></button>
+        {topics.map((tp) => (
+          <button type="button" class="fn-chip" data-topic={tp.id} aria-pressed="false">{tp.label}<span class="fn-chip-count">{tp.count}</span></button>
+        ))}
+        <button type="button" class="fn-chip is-on" id="fnTagChip" hidden aria-label={t.clearTag}><span id="fnTagText"></span><span aria-hidden="true">×</span></button>
+      </div>
+    </nav>
+
+    <div id="fnHome">
+      {featured && (
+        <a href={featured.href} class:list={['fn-card', 'fn-featured', { 'has-route': featured.stations?.length }]} {...(featured.external ? { target: '_blank', rel: 'noopener' } : {})}>
+          <div class="fn-featured-text">
+            <span class="fn-kicker">{t.newest} · {featured.topicName} · {featured.date}</span>
+            <h2 class:list={['fn-card-title', 'fn-featured-title', { long: featured.title.length > (en ? 60 : 30) }]}><NoteTitle parts={featured.parts} /></h2>
+            <p class="fn-featured-summary">{featured.summary}</p>
+            <div class="fn-featured-meta">
+              <span>FORMAT <b>{featured.format}</b></span>
+              <span class="fn-hl-copper">{t.enter}</span>
+            </div>
+          </div>
+          {featured.stations?.length && (
+            <ol class="fn-route" aria-label={t.route}>
+              {featured.stations.map((st, i) => (
+                <li class:list={{ last: i === featured.stations!.length - 1 }}><span>{String(i + 1).padStart(2, '0')}</span>{st}</li>
+              ))}
+            </ol>
+          )}
+        </a>
+      )}
+
+      {playbook.length > 0 && (
+        <>
+          <div class="fn-section-head">
+            <h2>{t.playbook}</h2>
+            <span>{t.playbookNote}</span>
+          </div>
+          <div class="fn-playbook">
+            {playbook.map((p) => (
+              <a href={p.href} class="fn-card fn-play" {...(p.external ? { target: '_blank', rel: 'noopener' } : {})}>
+                {p.cover && <img src={p.cover} alt="" loading="lazy" decoding="async" />}
+                <div class="fn-play-text">
+                  <span class="fn-kicker">PLAYBOOK · {p.date}</span>
+                  <h3 class="fn-card-title"><NoteTitle parts={p.parts} /></h3>
+                  <p class="fn-card-summary">{p.summary}</p>
+                </div>
+              </a>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+
+    <div class="fn-section-head">
+      <h2 id="fnGridTitle">{t.allNotes}</h2>
+      <span id="fnGridMeta">{t.byDate}</span>
+    </div>
+    <div class="fn-grid" id="fnGrid">
+      {items.map((n) => (
+        <a
+          href={n.href}
+          class="fn-card fn-note"
+          data-topic={n.topic || ''}
+          data-tags={JSON.stringify(n.tags)}
+          data-text={`${n.title} ${n.summary}`.toLowerCase()}
+          data-home-hidden={homeHidden.has(n.id) ? '' : undefined}
+          hidden={homeHidden.has(n.id)}
+          {...(n.external ? { target: '_blank', rel: 'noopener' } : {})}
+        >
+          <span class="fn-kicker">FIELD NOTE{n.topicName && ` · ${n.topicName}`}</span>
+          <h3 class="fn-card-title"><NoteTitle parts={n.parts} /></h3>
+          <p class="fn-card-summary">{n.summary}</p>
+          <div class="fn-card-foot"><span>{n.date}</span><span>{n.format}</span></div>
+        </a>
+      ))}
+    </div>
+    <p class="fn-empty" id="fnEmpty" hidden>{t.empty}</p>
+  </div>
+
+  <footer class="fn-footer">
+    <span>&copy; 2026 Airing</span>
+    <nav>
+      <a href={`${prefix}/`}>Home</a>
+      <a href={`${prefix}/archive/`}>Archive</a>
+      <a href={`${prefix}/notes/feed.xml`}>RSS</a>
+    </nav>
+  </footer>
+</div>
+
+<script is:inline define:vars={{ labels }}>
+(function () {
+  var grid = document.getElementById('fnGrid');
+  if (!grid) return;
+  var cards = Array.prototype.slice.call(grid.querySelectorAll('.fn-note'));
+  var chips = Array.prototype.slice.call(document.querySelectorAll('.fn-topics [data-topic]'));
+  var home = document.getElementById('fnHome');
+  var title = document.getElementById('fnGridTitle');
+  var meta = document.getElementById('fnGridMeta');
+  var empty = document.getElementById('fnEmpty');
+  var search = document.getElementById('fnSearch');
+  var tagChip = document.getElementById('fnTagChip');
+  var tagText = document.getElementById('fnTagText');
+
+  var params = new URLSearchParams(location.search);
+  var topic = labels.topics[params.get('topic')] ? params.get('topic') : 'all';
+  var tag = params.get('tag') || '';
+
+  function update(track) {
+    var q = (search.value || '').trim().toLowerCase();
+    var isHome = topic === 'all' && !tag && !q;
+    home.hidden = !isHome;
+    var shown = 0;
+    cards.forEach(function (c) {
+      var ok;
+      if (isHome) ok = !c.hasAttribute('data-home-hidden');
+      else {
+        ok = (topic === 'all' || c.dataset.topic === topic)
+          && (!tag || JSON.parse(c.dataset.tags || '[]').indexOf(tag) >= 0)
+          && (!q || c.dataset.text.indexOf(q) >= 0);
+      }
+      c.hidden = !ok;
+      if (ok) shown++;
+    });
+    chips.forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.topic === topic)); });
+    tagChip.hidden = !tag;
+    tagText.textContent = '#' + tag;
+    title.textContent = isHome ? labels.allNotes : tag ? '#' + tag : topic !== 'all' ? labels.topics[topic] : labels.results;
+    meta.textContent = isHome ? labels.byDate : labels.countTpl.replace('{n}', shown);
+    empty.hidden = shown > 0;
+
+    var url = new URL(location.href);
+    if (topic === 'all') url.searchParams.delete('topic'); else url.searchParams.set('topic', topic);
+    if (tag) url.searchParams.set('tag', tag); else url.searchParams.delete('tag');
+    history.replaceState(null, '', url.toString());
+    if (track && typeof umami !== 'undefined') umami.track('notes-topic-filter', { topic: topic, tag: tag });
+  }
+
+  chips.forEach(function (b) {
+    b.addEventListener('click', function () { topic = b.dataset.topic; update(true); });
+  });
+  tagChip.addEventListener('click', function () { tag = ''; update(true); });
+  search.addEventListener('input', function () { update(false); });
+  var rss = document.getElementById('notesRssLink');
+  if (rss) rss.addEventListener('click', function () { if (typeof umami !== 'undefined') umami.track('notes-rss-click'); });
+  update(false);
+})();
+</script>
+
+<style>
+  .fn-wrap { max-width: 1200px; margin: 0 auto; padding: 0 48px 96px; box-sizing: border-box; font-family: var(--fn-sans); }
+
+  .fn-hero { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; flex-wrap: wrap; padding: 56px 0 32px; }
+  .fn-hero-text { display: flex; flex-direction: column; gap: 14px; max-width: 640px; }
+  .fn-hero-text .fn-kicker { font-size: 12px; letter-spacing: 2px; }
+  .fn-hero-title { margin: 0; font-family: var(--fn-serif); font-size: 60px; font-weight: 900; line-height: 1.15; letter-spacing: -0.5px; color: var(--fn-ink); }
+  .fn-hero-lead { margin: 0; font-size: 16px; line-height: 1.8; color: var(--fn-ink-soft); }
+  .fn-hero-tools { display: flex; align-items: center; gap: 16px; }
+  .fn-search { display: flex; align-items: center; gap: 10px; width: 300px; height: 44px; box-sizing: border-box; padding: 0 14px; border: 1px solid var(--fn-rule); border-radius: 4px; background: var(--fn-paper); color: var(--fn-mute); }
+  .fn-search:focus-within { border-color: var(--fn-ink); }
+  .fn-search input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; font-size: 14px; color: var(--fn-ink); }
+  .fn-search input::placeholder { color: var(--fn-mute); }
+  .fn-rss { font-family: var(--fn-mono); font-size: 12px; letter-spacing: 1px; color: var(--fn-copper); text-decoration: none; padding: 12px 0; }
+
+  .fn-topics { position: relative; padding-bottom: 28px; border-bottom: 1px solid var(--fn-rule); }
+  .fn-topics-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .fn-topics [hidden] { display: none; }
+
+  .fn-featured { display: grid; grid-template-columns: minmax(0, 1fr); gap: 48px; margin-top: 40px; padding: 44px 48px; }
+  .fn-featured.has-route { grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); }
+  .fn-featured-text { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+  .fn-featured-title { font-size: 42px; line-height: 1.25; }
+  .fn-featured-title.long { font-size: 34px; }
+  .fn-featured-summary { margin: 0; font-size: 15px; line-height: 1.85; color: var(--fn-ink-soft); display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+  .fn-featured-meta { display: flex; gap: 28px; flex-wrap: wrap; padding-top: 6px; font-family: var(--fn-mono); font-size: 12px; color: var(--fn-mute); }
+  .fn-featured-meta b { color: var(--fn-ink); font-weight: 500; }
+  .fn-route { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; justify-content: center; border-left: 1px solid var(--fn-rule); font-family: var(--fn-mono); font-size: 13px; }
+  .fn-route li { display: flex; align-items: center; gap: 14px; padding: 9px 0 9px 22px; color: var(--fn-ink); }
+  .fn-route li span { width: 22px; color: var(--fn-mute); }
+  .fn-route li.last { color: var(--fn-copper); font-weight: 500; }
+
+  .fn-section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin: 56px 0 18px; }
+  .fn-section-head h2 { margin: 0; font-family: var(--fn-serif); font-size: 24px; font-weight: 700; color: var(--fn-ink); }
+  .fn-section-head span { font-size: 13px; color: var(--fn-mute); }
+
+  .fn-playbook { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .fn-play { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 0; padding: 0; overflow: hidden; }
+  .fn-play img { width: 200px; height: 100%; min-height: 170px; object-fit: cover; display: block; background: var(--fn-bg-soft); }
+  .fn-play img[src$='reading-companion.webp'] { object-fit: contain; padding: 12px; box-sizing: border-box; }
+  .fn-play-text { display: flex; flex-direction: column; gap: 10px; padding: 22px 24px; }
+  .fn-play .fn-card-title { font-size: 22px; }
+
+  .fn-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+  .fn-grid [hidden] { display: none; }
+  .fn-empty { margin: 40px 0; font-size: 15px; color: var(--fn-mute); }
+
+  .fn-footer { max-width: 1104px; margin: 0 auto; padding: 28px 0 48px; display: flex; justify-content: space-between; gap: 16px; border-top: 1px solid var(--fn-rule); font-size: 13px; color: var(--fn-mute); box-sizing: border-box; }
+  .fn-footer nav { display: flex; gap: 20px; }
+  .fn-footer a { color: var(--fn-mute); text-decoration: none; }
+  .fn-footer a:hover { color: var(--fn-ink); }
+
+  @media (max-width: 860px) {
+    .fn-featured.has-route { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .fn-route { flex-direction: row; flex-wrap: wrap; gap: 6px 10px; border-left: 0; border-top: 1px solid var(--fn-rule-soft); padding-top: 14px; font-size: 11px; }
+    .fn-route li { padding: 0; gap: 10px; }
+    .fn-route li span { display: none; }
+    .fn-route li:not(.last)::after { content: '→'; color: var(--fn-mute); }
+    .fn-playbook { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 768px) {
+    .fn-wrap { padding: 0 20px 64px; }
+    .fn-footer { margin: 0 20px; }
+  }
+  @media (max-width: 640px) {
+    .fn-hero { padding: 32px 0 20px; gap: 16px; }
+    .fn-hero-title { font-size: 40px; }
+    .fn-hero-lead { font-size: 14px; }
+    .fn-hero-tools { width: 100%; }
+    .fn-search { flex: 1; width: auto; }
+    /* One swipeable row of topics instead of a wall of chips. */
+    .fn-topics { margin: 0 -20px; padding: 4px 0 18px; }
+    .fn-topics-row { flex-wrap: nowrap; overflow-x: auto; padding: 0 20px; scrollbar-width: none; }
+    .fn-topics-row::-webkit-scrollbar { display: none; }
+    .fn-topics::after { content: ''; position: absolute; top: 0; right: 0; bottom: 14px; width: 40px; background: linear-gradient(90deg, rgba(var(--c-bg-rgb), 0), var(--fn-bg)); pointer-events: none; }
+    .fn-featured { margin-top: 24px; padding: 24px 22px; }
+    .fn-featured-title { font-size: 28px; }
+    .fn-featured-summary { font-size: 14px; -webkit-line-clamp: 3; }
+    .fn-section-head { margin: 36px 0 14px; }
+    .fn-section-head h2 { font-size: 20px; }
+    .fn-play { grid-template-columns: 120px minmax(0, 1fr); }
+    .fn-play img { width: 120px; min-height: 120px; }
+    .fn-play-text { padding: 16px; gap: 6px; }
+    .fn-play .fn-card-title { font-size: 18px; }
+    .fn-play .fn-card-summary { -webkit-line-clamp: 2; font-size: 13px; }
+    .fn-grid { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+    .fn-note { padding: 20px; gap: 10px; }
+    .fn-note .fn-card-title { font-size: 21px; }
+    .fn-footer { padding: 24px 0 40px; flex-direction: column; }
+  }
+</style>

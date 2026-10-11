@@ -31,6 +31,12 @@ const noteSchema = z.object({
   draft: z.boolean().default(false),
   interactive: z.boolean().default(false),
   summary: z.string(),
+  // Field Notes topic shown on /notes (filters + card kicker). See src/lib/field-notes.ts.
+  topic: z.enum(['ai', 'browser', 'runtime', 'net', 'gfx', 'eng', 'play']).optional(),
+  // Optional card image (used by the Playbook pieces on /notes).
+  cover: z.string().optional(),
+  // Optional route shown beside the featured (newest) note on /notes.
+  stations: z.array(z.string()).optional(),
   // Immersive: standalone full-page article hosted under /immersive/<slug>/
   // When set, the notes list links directly to this URL (target=_blank) and shows
   // a special badge. The detail page /notes/<slug>/ still renders mdx body as
