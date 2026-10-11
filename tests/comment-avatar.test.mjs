@@ -1,0 +1,58 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import vm from 'node:vm';
+
+const SRC = readFileSync(new URL('../src/lib/comment-avatar.js', import.meta.url), 'utf8');
+const GH = 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80';
+const attr = (u) => u.replace(/&/g, '&amp;');
+const sha = (s) => createHash('sha256').update(s).digest('hex');
+
+function load() {
+  const ctx = { crypto: globalThis.crypto, TextEncoder, Uint8Array, Array, Promise, String, encodeURIComponent };
+  ctx.globalThis = ctx;
+  vm.createContext(ctx);
+  vm.runInContext(SRC, ctx);
+  return ctx.CommentAvatar;
+}
+
+test('all three author emails map to the GitHub avatar, sync and case-insensitive', () => {
+  const CA = load();
+  for (const e of ['me@ursb.me', 'airing@ursb.me', 'airingdeng@gmail.com', '  Airing@URSB.me ']) {
+    assert.equal(CA.isAuthor(e), true, e);
+    assert.equal(CA.peek(e), GH);
+    assert.equal(CA.imgAttrs({ email: e }), `src="${attr(GH)}"`);
+  }
+  assert.equal(CA.isAuthor('someone@example.com'), false);
+});
+
+test('non-authors resolve to a per-email sha256 gravatar with robohash fallback', async () => {
+  const CA = load();
+  const a = await CA.resolve(' Kng@Example.com ');
+  const b = await CA.resolve('other@example.com');
+  assert.equal(a, `https://gravatar.com/avatar/${sha('kng@example.com')}?d=robohash&s=80`);
+  assert.equal(b, `https://gravatar.com/avatar/${sha('other@example.com')}?d=robohash&s=80`);
+  assert.notEqual(a, b);
+});
+
+test('imgAttrs: placeholder + data-avatar-email until primed, final URL after', async () => {
+  const CA = load();
+  const c = { email: 'reader@example.com' };
+  const before = CA.imgAttrs(c);
+  assert.match(before, /^src="data:image\/svg\+xml/);
+  assert.match(before, /data-avatar-email="reader@example.com"/);
+  await CA.prime(CA.emailsOf([{ email: 'x@example.com', replies: [c] }]));
+  assert.equal(CA.imgAttrs(c), `src="${attr(`https://gravatar.com/avatar/${sha('reader@example.com')}?d=robohash&s=80`)}"`);
+});
+
+test('stored avatar wins and attributes are escaped', () => {
+  const CA = load();
+  assert.equal(CA.imgAttrs({ avatar: 'https://x/a.png?a=1&b="2"', email: 'me@ursb.me' }), 'src="https://x/a.png?a=1&amp;b=&quot;2&quot;"');
+  assert.match(CA.imgAttrs({ email: 'a"b@example.com' }), /data-avatar-email="a&quot;b@example.com"/);
+});
+
+test('emailsOf walks nested replies', () => {
+  const CA = load();
+  assert.deepEqual([...CA.emailsOf([{ email: 'a', replies: [{ email: 'b', replies: [{ email: 'c' }] }] }, { email: 'd' }])], ['a', 'b', 'c', 'd']);
+});
