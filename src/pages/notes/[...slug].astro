@@ -1,4 +1,5 @@
 ---
+import commentAvatarJs from '../../lib/comment-avatar.js?raw';
 import SiteHeader from "../../components/SiteHeader.astro";
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { getCollection, render } from 'astro:content';
@@ -285,6 +286,7 @@ const jsonLd = {
   })();
   </script>
 
+  <script is:inline set:html={commentAvatarJs}></script>
   <script is:inline>
   (function() {
     var API = 'https://chat.ursb.me';
@@ -373,30 +375,15 @@ const jsonLd = {
       if (id.website && bcWebsite) bcWebsite.value = id.website;
     }
 
-    var AUTHOR_EMAILS = {
-      'me@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80',
-      'airing@ursb.me': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80',
-      'airingdeng@gmail.com': 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80',
-    };
-    var gravatarCache = {};
-    async function sha256Hex(str) {
-      var buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-      return Array.from(new Uint8Array(buf)).map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
-    }
-    function gravatarUrl(email) {
-      var e = (email || '').trim().toLowerCase();
-      if (AUTHOR_EMAILS[e]) return AUTHOR_EMAILS[e];
-      if (gravatarCache[e]) return gravatarCache[e];
-      // Start async hash, return placeholder for now
-      sha256Hex(e).then(function(h) { gravatarCache[e] = 'https://gravatar.com/avatar/' + h + '?d=robohash&s=80'; });
-      return 'https://gravatar.com/avatar/?d=robohash&s=80';
-    }
-    function commentAvatarUrl(comment) {
-      if (comment && comment.avatar) return comment.avatar;
-      return gravatarUrl(comment ? comment.email : '');
-    }
+    // Avatars: see src/lib/comment-avatar.js (authors -> GitHub avatar, everyone
+    // else -> per-email SHA-256 Gravatar with robohash fallback). Pending emails
+    // render a neutral placeholder and are swapped in by the observer.
+    var CA = window.CommentAvatar;
+    CA.observe();
+    function commentAvatarAttrs(comment) { return CA.imgAttrs(comment); }
     function updateComposeAvatar(email) {
-      if (email && bcComposeAvatar) bcComposeAvatar.src = gravatarUrl(email);
+      if (!email || !bcComposeAvatar) return;
+      CA.resolve(email).then(function(url) { if (!bcEmail || CA.normalize(bcEmail.value) === CA.normalize(email)) bcComposeAvatar.src = url; });
     }
 
     var avatarTimer;
@@ -570,7 +557,7 @@ const jsonLd = {
             repliesHtml +=
               '<div class="cm-reply">' +
                 '<div class="cm-reply-header">' +
-                  '<img class="cm-reply-avatar" src="' + commentAvatarUrl(r) + '" />' +
+                  '<img class="cm-reply-avatar" ' + commentAvatarAttrs(r) + ' />' +
                   '<span class="cm-reply-name">' + esc(r.nickname) + '</span>' +
                   '<span class="cm-reply-time">' + rTimeStr + '</span>' +
                 '</div>' +
@@ -582,7 +569,7 @@ const jsonLd = {
 
         card.innerHTML =
           '<div class="cm-card-author">' +
-            '<img src="' + commentAvatarUrl(c) + '" class="cm-card-avatar" />' +
+            '<img ' + commentAvatarAttrs(c) + ' class="cm-card-avatar" />' +
             '<span class="cm-card-name">' + esc(c.nickname) + '</span>' +
           '</div>' +
           '<div class="cm-card-quote">\u201c' + esc(trunc(c.selected_text, 50)) + '\u201d</div>' +
@@ -719,7 +706,7 @@ const jsonLd = {
           div.className = 'ms-reply-item';
           div.innerHTML =
             '<div class="ms-reply-header">' +
-              '<img src="' + commentAvatarUrl(r) + '" class="ms-reply-avatar" />' +
+              '<img ' + commentAvatarAttrs(r) + ' class="ms-reply-avatar" />' +
               '<span class="ms-reply-name">' + esc(r.nickname) + '</span>' +
               '<span class="ms-reply-time">' + rTimeStr + '</span>' +
             '</div>' +
@@ -988,7 +975,7 @@ const jsonLd = {
     function loadBottomComments() {
       apiGet('/api/comments?post_slug=' + encodeURIComponent(NOTE_SLUG)).then(function(res) {
         bottomComments = res.comments || [];
-        renderBottomComments();
+        CA.prime(CA.emailsOf(bottomComments)).then(renderBottomComments);
       });
     }
 
@@ -1025,7 +1012,7 @@ const jsonLd = {
         ? '<a class="bc-name bc-name-link" href="' + esc(c.website) + '" target="_blank" rel="noopener noreferrer">' + esc(c.nickname) + '</a>'
         : '<span class="bc-name">' + esc(c.nickname) + '</span>';
       div.innerHTML =
-        '<div class="bc-avatar-wrap"><img src="' + commentAvatarUrl(c) + '" class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
+        '<div class="bc-avatar-wrap"><img ' + commentAvatarAttrs(c) + ' class="bc-avatar-img" style="width:' + avatarSize + 'px;height:' + avatarSize + 'px" /></div>' +
         '<div class="bc-body">' +
           '<div class="bc-meta">' +
             nameHtml +
@@ -1130,9 +1117,11 @@ const jsonLd = {
 
     apiGet('/api/inline-comments?post_slug=' + encodeURIComponent(NOTE_SLUG)).then(function(res) {
       inlineComments = res.comments || [];
-      restoreHighlights();
-      renderInlineComments();
-      scrollToHashHighlight();
+      CA.prime(CA.emailsOf(inlineComments)).then(function() {
+        restoreHighlights();
+        renderInlineComments();
+        scrollToHashHighlight();
+      });
     });
 
     loadArticleLikes();
