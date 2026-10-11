@@ -150,7 +150,7 @@
 > Component: `src/components/IslandWidget.tsx` (R3F scene, ~1600 LOC) +
 > `src/components/widget-sakura.tsx` (sakura geometry) +
 > `src/components/island-shared.ts` (shared wind/hearth/dwell + palette) +
-> `src/components/IslandWidget.astro` (wrapper + skeleton + chip panel).
+> `src/components/IslandWidget.astro` (wrapper + chip panel).
 > V51+: floating body-level pet (NOT inline card). 220×220 fixed
 > bottom-left. Wrapper has role="link" + tabindex=0 + JS click handler
 > navigating to `/world/`. Hidden on mobile (<800px).
@@ -158,9 +158,9 @@
 - [ ] DOM: `#island-3d-canvas-wrap` exists at bottom-left of homepage
       (position: fixed; bottom: 20px; left: 20px; ~220×220)
 - [ ] DOM: wrapper has `role="link"` + `tabindex="0"` + `aria-label`
-- [ ] DOM: `.island-skeleton` SVG renders inside the wrap (loading state)
+- [ ] CSS: before the scene is up (no `island-loaded`) the wrap is invisible — `opacity: 0`, `visibility: hidden`, no pointer events, not focusable; no placeholder art. It fades in (~0.6s) once `island-loaded` is set.
 - [ ] Evaluate (≥1300px): no three.js / IslandWidget chunk is requested before the window `load` event; with no input it loads ~4s after load, and on the first pointer/scroll/key input it loads immediately (`client:interaction`, `src/directives/interaction.js`).
-- [ ] DOM: until the island hydrates (`astro-island[ssr]` present) the skeleton stays visible and the wrap has no `island-loaded` class; the corner is never blank.
+- [ ] DOM: `island-loaded` is only set after the island hydrates (`astro-island[ssr]` gone), so the pet never fades in as an empty canvas.
 - [ ] DOM: `.island-pet-panel` exists with `inert` attribute initially
 - [ ] Hover: panel reveals (opacity 1, pointer-events auto), inert removed
 - [ ] Tab key: panel reveals on focusin, chip buttons (enter + cycle)
@@ -168,12 +168,12 @@
 - [ ] Evaluate (WebGL OK): within 12s, `wrap.classList.contains('island-loaded')` is true
 - [ ] Evaluate (WebGL OK): `wrap.querySelector('canvas')` returns canvas
       with non-null `.getContext('webgl2')` or `.getContext('webgl')`
-- [ ] Evaluate (WebGL failed): after 12s, `wrap.classList.contains('island-webgl-failed')` is true
+- [ ] Evaluate (WebGL failed): after 12s, `wrap.classList.contains('island-webgl-failed')` is true and the pet stays invisible
 - [ ] Cycle chip: clicking advances quote — `window.__islandQuoteIdx`
       increments + DOM `data-idx` increments AND both stay in sync
 - [ ] Mobile (<800px): widget entirely hidden via CSS
 - [ ] Reduced motion: R3F `frameloop="demand"` (single static render),
-      skeleton pulse + hover lift CSS-suppressed
+      hover lift CSS-suppressed
 - [ ] Print: pet hidden via `@media print { display:none }`
 - [ ] Forced-colors mode: panel uses Canvas/CanvasText with visible border
 - [ ] Click anywhere on wrapper: navigates to `/world/`

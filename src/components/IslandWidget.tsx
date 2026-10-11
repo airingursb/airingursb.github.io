@@ -1524,11 +1524,8 @@ function ContextLossHandlers() {
     // 'webglcontextrestored' event — even though the context is
     // technically alive, all useMemo'd buffers are orphaned and the
     // canvas would render blank. Optimistically flipping back to
-    // 'island-loaded' would HIDE the skeleton + hint and show the
-    // user an empty 220×220 transparent square with no recovery
-    // affordance. Honest UX: stay in failed state until refresh
-    // (the existing wrapper click handler still navigates to /world/
-    // as the recovery path).
+    // 'island-loaded' would show an empty 220×220 square. Stay in the
+    // failed state (the pet is hidden) until the next page load.
     el.addEventListener('webglcontextlost', onLost, { passive: false } as AddEventListenerOptions)
     return () => {
       el.removeEventListener('webglcontextlost', onLost)

@@ -16,67 +16,11 @@ import IslandWidget from './IslandWidget'
      <a> is invalid HTML). Keyboard activation wired via JS. -->
 <div role="link" tabindex="0" data-href="/world/" class="island-pet" id="island-3d-canvas-wrap"
      aria-label="进入森林岛 — Airing 的 3D 漫游" aria-busy="true">
-  <!-- WebGL-loading / failed skeleton (tiny pet silhouette) -->
-  <svg class="island-skeleton" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet" aria-hidden="true">
-    <defs>
-      <linearGradient id="pet-cliff" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0" stop-color="#B88560" stop-opacity="0.55" />
-        <stop offset="1" stop-color="#6B4530" stop-opacity="0.65" />
-      </linearGradient>
-      <radialGradient id="pet-shoji" cx="0.5" cy="0.5" r="0.5">
-        <stop offset="0" stop-color="#FFEFD0" stop-opacity="0.9" />
-        <stop offset="1" stop-color="#FFEFD0" stop-opacity="0" />
-      </radialGradient>
-    </defs>
-    <!-- Distant mountain (single, simpler than full skeleton) -->
-    <path d="M 0 100 L 35 78 L 70 92 L 110 68 L 150 88 L 200 76 L 200 130 L 0 130 Z"
-          fill="rgba(135, 155, 170, 0.32)" />
-    <!-- Island base (grass disc + soil cliff) -->
-    <ellipse cx="100" cy="170" rx="92" ry="8" fill="url(#pet-cliff)" />
-    <ellipse cx="100" cy="158" rx="86" ry="14" fill="rgba(168, 199, 122, 0.72)" />
-    <!-- Two cedars (left) -->
-    <g opacity="0.88">
-      <polygon points="32,160 46,160 39,108" fill="rgba(56, 88, 48, 0.72)" />
-      <polygon points="50,162 64,162 57,114" fill="rgba(48, 76, 42, 0.78)" />
-    </g>
-    <!-- Cabin: irimoya roof + shoji glow + chimney smoke -->
-    <g>
-      <rect x="74" y="120" width="48" height="34" fill="rgba(245, 232, 200, 0.88)" />
-      <ellipse cx="98" cy="142" rx="18" ry="9" fill="url(#pet-shoji)" />
-      <line x1="84" y1="132" x2="112" y2="132" stroke="rgba(58, 37, 22, 0.45)" stroke-width="0.7" />
-      <line x1="98" y1="124" x2="98" y2="146" stroke="rgba(58, 37, 22, 0.45)" stroke-width="0.7" />
-      <polygon points="64,120 132,120 124,104 72,104" fill="rgba(74, 86, 108, 0.94)" />
-      <polygon points="72,104 124,104 117,92 79,92" fill="rgba(110, 124, 148, 0.92)" />
-      <rect x="78" y="90" width="40" height="3" fill="rgba(46, 53, 64, 0.92)" />
-      <rect x="108" y="80" width="4" height="10" fill="rgba(58, 37, 22, 0.72)" />
-      <path d="M110 78 Q 114 72, 110 66" stroke="rgba(220, 210, 200, 0.55)" stroke-width="1.8" fill="none" stroke-linecap="round" />
-    </g>
-    <!-- Sakura right -->
-    <g>
-      <path d="M152 158 Q 150 138, 148 124" stroke="rgba(58, 37, 22, 0.50)" stroke-width="1.5" fill="none" stroke-linecap="round" />
-      <ellipse cx="148" cy="120" rx="18" ry="14" fill="rgba(240, 175, 195, 0.62)" />
-      <ellipse cx="160" cy="112" rx="13" ry="11" fill="rgba(255, 200, 215, 0.55)" />
-    </g>
-    <!-- Torii (small, right edge) -->
-    <g>
-      <rect x="172" y="128" width="2.5" height="28" fill="rgba(200, 74, 53, 0.85)" />
-      <rect x="186" y="128" width="2.5" height="28" fill="rgba(200, 74, 53, 0.85)" />
-      <path d="M168 126 Q 180 119, 192 126 L 192 130 L 168 130 Z" fill="rgba(31, 24, 18, 0.92)" />
-      <rect x="170" y="140" width="20" height="2" fill="rgba(200, 74, 53, 0.85)" />
-    </g>
-    <!-- Skeleton fades out via CSS once the canvas mounts. No SMIL
-         <animate> here — SMIL ignores CSS @media (prefers-reduced-motion)
-         and would pulse forever for vestibular-disorder users on the
-         rare WebGL-failed path. -->
-  </svg>
   <IslandWidget client:interaction />
   <!-- FX overlay: covers the canvas, particles spawn here on click.
        pointer-events:none so it never blocks the panel/chips below.
        z-index above canvas (z:0) but below panel (z:4). -->
   <div class="island-pet-fx" aria-hidden="true"></div>
-  <!-- V50 a11y: WebGL-failed hint as REAL element (CSS ::after is
-       skipped by most screen readers); visibility toggled by JS. -->
-  <span class="island-pet-hint" aria-live="polite" hidden>需要 WebGL · 点击进入完整页面</span>
 
   <!-- V53.5: completely self-contained chips. No external JS dependency.
        Quote list embedded as JSON in data-quotes attr; cycle logic
@@ -118,17 +62,12 @@ import IslandWidget from './IslandWidget'
       'WebGL2RenderingContext' in window ||
       'WebGLRenderingContext' in window
     )
-    function showHint(visible) {
-      const hint = wrap.querySelector('.island-pet-hint')
-      if (hint) hint.hidden = !visible
-    }
     function setBusy(busy) {
       wrap.setAttribute('aria-busy', busy ? 'true' : 'false')
     }
 
     if (!HAS_WEBGL) {
       wrap.classList.add('island-webgl-failed')
-      showHint(true)
       setBusy(false)
       return
     }
@@ -146,7 +85,7 @@ import IslandWidget from './IslandWidget'
     function checkCanvas() {
       // R3F server-renders an empty <canvas>; it only counts once the island
       // has hydrated (Astro drops the `ssr` attribute), otherwise the
-      // skeleton would fade out while the deferred island is still loading.
+      // pet would fade in while the deferred island is still loading.
       const island = wrap.querySelector('astro-island')
       if (island && island.hasAttribute('ssr')) return false
       const canvas = wrap.querySelector('canvas')
@@ -176,8 +115,7 @@ import IslandWidget from './IslandWidget'
       if (!canvas || !isCanvasWorking(canvas)) {
         obs.disconnect()
         wrap.classList.add('island-webgl-failed')
-        showHint(true)
-        setBusy(false)
+          setBusy(false)
       } else if (!wrap.classList.contains('island-loaded')) {
         wrap.classList.add('island-loaded')
         setBusy(false)
@@ -1152,7 +1090,8 @@ import IslandWidget from './IslandWidget'
        the panel's entry delay — otherwise the scene gets "louder"
        at the exact moment the quote is trying to bloom into view. */
     transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
-                filter 280ms ease-out 120ms;
+                filter 280ms ease-out 120ms,
+                opacity 600ms ease;
   }
   .island-pet:hover {
     /* Killed scale(1.02) — was competing with the panel's
@@ -1179,9 +1118,7 @@ import IslandWidget from './IslandWidget'
     pointer-events: none;
   }
   .island-pet.island-pet-flying .island-pet-panel,
-  .island-pet.island-pet-flying .island-pet-fx,
-  .island-pet.island-pet-flying .island-pet-hint,
-  .island-pet.island-pet-flying .island-skeleton {
+  .island-pet.island-pet-flying .island-pet-fx {
     /* Hide UI overlay during the fly-in — only the canvas matters now */
     opacity: 0;
     transition: opacity 180ms ease;
@@ -1232,33 +1169,13 @@ import IslandWidget from './IslandWidget'
     background: transparent;
   }
 
-  /* Skeleton fills the same area, fades out fast when canvas loaded
-     (V51 fix: 0.9s fade left a visible ghost overlap — now 0.35s + a
-     longer-delayed display:none to fully remove from compositing). */
-  .island-pet .island-skeleton {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 2;
-    pointer-events: none;
-    transition: opacity 0.35s ease;
-  }
-  .island-pet.island-loaded .island-skeleton {
+  /* No placeholder art: the pet stays invisible (and unfocusable /
+     unhoverable) until the 3D scene is up, then fades in. If WebGL is
+     missing or the context is lost it simply never appears. */
+  .island-pet:not(.island-loaded) {
     opacity: 0;
-    /* Wait for fade to finish, then remove from layer tree entirely
-       so we never see ghost overlap on slow GPUs. */
-    animation: island-skel-disappear 0.4s ease forwards;
-  }
-  @keyframes island-skel-disappear {
-    to { visibility: hidden; }
-  }
-
-  /* WebGL-failed: keep skeleton visible (it IS the fallback) + show hint */
-  .island-pet.island-webgl-failed .island-skeleton {
-    opacity: 1 !important;
-    animation: none;
-    visibility: visible;
+    visibility: hidden;
+    pointer-events: none;
   }
 
   /* ── Click-fx overlay ──────────────────────────────────────────
@@ -1532,29 +1449,6 @@ import IslandWidget from './IslandWidget'
       animation: none !important;
       opacity: 0 !important;
     }
-  }
-  .island-pet-hint {
-    position: absolute;
-    /* V52.8 (Sub-A polish): was bottom:-4px which placed the pill
-       in the theme-switcher's vertical band (24-60px from viewport
-       bottom). Moved to top:-4px translate(-50%, -100%) — pill sits
-       above the pet, away from the theme switcher entirely, and
-       reads more naturally as a label pointing down at the broken
-       widget. */
-    top: -4px;
-    left: 50%;
-    transform: translate(-50%, -100%);
-    padding: 4px 10px;
-    background: rgba(28, 22, 18, 0.84);
-    color: rgba(252, 244, 226, 0.96);
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 10px;
-    border-radius: 10px;
-    z-index: 3;
-    pointer-events: none;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    white-space: nowrap;
   }
 
   /* V53.1: 1300px gate (per user). Below 1300 the homepage cards
@@ -1962,7 +1856,7 @@ import IslandWidget from './IslandWidget'
      this rule does NOT hide R3F — that would lose the scene entirely.
      R3F's frameloop drops to "demand" via PREFERS_REDUCED_MOTION (in
      island-shared.ts) so the scene renders ONCE and freezes; this CSS
-     rule kills the wrapper-level hover lift + skeleton breath pulse
+     rule kills the wrapper-level hover lift
      so nothing else animates around the static frozen scene. */
   @media (prefers-reduced-motion: reduce) {
     .island-pet {
@@ -1971,9 +1865,6 @@ import IslandWidget from './IslandWidget'
     .island-pet:hover {
       transform: none;
       filter: drop-shadow(0 6px 14px rgba(40, 50, 60, 0.18));
-    }
-    .island-pet .island-skeleton {
-      animation: none;
     }
   }
 
