@@ -14,18 +14,20 @@ function nodes(root) { return [root, ...(root.childNodes || []).flatMap(nodes)];
 const attribute = (node, key) => node.attrs?.find((attr) => attr.name === key)?.value;
 const hasClass = (node, name) => attribute(node, 'class')?.split(' ').includes(name);
 
-test('each issue covers Sunday through Saturday and publishes after a Sunday editing buffer', () => {
+test('each issue covers Sunday through Saturday, with a Sunday buffer before its scheduled release', () => {
   for (const issue of aiWeeklyIssues) {
     // Given a catalog issue whose date-only fields use the UTC+8 publication calendar.
     const start = new Date(`${issue.startDate}T00:00:00Z`);
     const end = new Date(`${issue.endDate}T00:00:00Z`);
     const publication = new Date(`${issue.publishedAt}T00:00:00Z`);
+    const scheduled = new Date(`${issue.scheduledFor ?? issue.publishedAt}T00:00:00Z`);
     // When the coverage and publication dates are compared as calendar days.
     const day = 24 * 60 * 60 * 1000;
     // Then the seven-day issue ends on Saturday, with Sunday free before Monday publication.
     assert.equal(start.getUTCDay(), 0, issue.number);
     assert.equal(end.getTime() - start.getTime(), 6 * day, issue.number);
-    assert.equal(publication.getTime() - end.getTime(), 2 * day, issue.number);
+    assert.equal(scheduled.getTime() - end.getTime(), 2 * day, issue.number);
+    assert.ok(publication.getTime() >= scheduled.getTime(), issue.number);
   }
 });
 

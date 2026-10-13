@@ -50,12 +50,13 @@ for (const lang of ['zh', 'en']) {
   const download=document.find(node=>attr(node,'class')==='save-cover');
   assert.equal(attr(download,'href'),issue.shareCover[lang]);assert.ok(attr(download,'download'));
  });
- test(`${lang} archive and reading shelf lead with 002 and preserve issue 001`, async () => {
+ test(`${lang} archive retains issue 002 while the reading shelf leads with the latest issue`, async () => {
   const prefix=lang==='en'?'/en':'';
   const archive=await readFile(built(`${prefix}/reading/weekly/index.html`),'utf8');
   assert.ok(archive.indexOf('issue-002')<archive.indexOf('issue-001'));
   const reading=await readFile(built(`${prefix}/reading/index.html`),'utf8');
-  assert.ok(reading.includes(issue.href[lang]));assert.ok(reading.includes(issue.cover[lang]));
+  assert.ok(reading.includes(aiWeeklyIssues[0].href[lang]));assert.ok(reading.includes(aiWeeklyIssues[0].cover[lang]));
+  assert.ok(archive.includes(issue.href[lang]));assert.ok(archive.includes(issue.cover[lang]));
   const first=await documentAt(`${aiWeeklyIssues.find(issue=>issue.number==='001').href[lang]}index.html`);
   assert.equal(attr(first.find(node=>node.tagName==='meta'&&attr(node,'property')==='og:url'),'content'),`https://ursb.me${prefix}/reading/weekly/001/`);
  });

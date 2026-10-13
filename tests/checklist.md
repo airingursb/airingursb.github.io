@@ -1,5 +1,17 @@
 # Browser QA Checklist
 
+### AI 趋势周刊 003 正式发布（2026-10-13）
+
+- [x] 中英文正式页保留已审定的五篇专题、十款产品、十一则短读及 28 条收藏，26 个专栏锚点可达。
+- [x] 范围保持 10.04–10.10；计划日期 10.12 与实际出版日期 10.13 分开，RSS 使用实际日期。
+- [x] 首页、阅读流和书架以 003 为最新一期；001/002 的正文、链接与元信息保持正确。
+- [x] 两种语言 375/768/1280：封面、分享面板、订阅入口、目录、展开背景和产品原图可读，无横向溢出。
+- [x] 分享复制正式 URL、原版 PNG 下载、压缩 WebP 预览与 X/Threads 链接正常；Escape 关闭和焦点归位正常。
+- [x] 订阅默认选择周刊及对应语言；仅检查打开/关闭，不提交订阅或发送邮件。
+- [x] canonical/hreflang/OG/X/RSS/站点地图完整；预览保持 noindex；正式版埋点归属 003，展开数学背景归属 column-01。
+- [x] 构建、57 项周刊测试和双语真实浏览器检查通过；发布工作树 output/weekly-003/ 保存完整截图与验证记录。
+- [ ] 发布后确认部署成功，线上正文与分享图片返回 200。
+
 ### Friends random arrival (October 3)
 
 - [x] Remove tree-thumbnail tabs. Independent visits choose random trees; directory selection keeps each friend's fixed tree and bell position.

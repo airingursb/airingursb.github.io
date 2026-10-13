@@ -1,3 +1,4 @@
+import issue003Columns from './ai-weekly/003.columns.json' with { type: 'json' };
 import issue002Columns from './ai-weekly/002.columns.json' with { type: 'json' };
 import issue001Columns from './ai-weekly/001.columns.json' with { type: 'json' };
 
@@ -9,6 +10,7 @@ export type AIWeeklyIssue = {
   readonly startDate: string;
   readonly endDate: string;
   readonly publishedAt: string;
+  readonly scheduledFor?: string;
   readonly href: WeeklyText;
   readonly cover: WeeklyText;
   readonly shareCover: WeeklyText;
@@ -25,6 +27,106 @@ export type AIWeeklyIssue = {
 };
 
 export const aiWeeklyIssues = [
+  {
+    "number": "003",
+    "startDate": "2026-10-04",
+    "endDate": "2026-10-10",
+    "publishedAt": "2026-10-13",
+    "scheduledFor": "2026-10-12",
+    "href": {
+      "zh": "/reading/weekly/003/",
+      "en": "/en/reading/weekly/003/"
+    },
+    "cover": {
+      "zh": "/reading/weekly/003/assets/shelf-cover.webp",
+      "en": "/reading/weekly/003/assets/shelf-cover-en.webp"
+    },
+    "shareCover": {
+      "zh": "/reading/weekly/003/assets/share-cover-03.png",
+      "en": "/reading/weekly/003/assets/share-cover-03-en.png"
+    },
+    "socialImage": {
+      "zh": "/reading/weekly/003/social-zh.jpg",
+      "en": "/reading/weekly/003/social-en.jpg"
+    },
+    "columns": issue003Columns,
+    "title": {
+      "zh": [
+        "OpenAI 的数学手稿：",
+        "突破与抵制之间"
+      ],
+      "en": [
+        "OpenAI’s mathematics:",
+        "progress and resistance"
+      ]
+    },
+    "description": {
+      "zh": "OpenAI 公布 700 多份 AI 数学手稿，随后出现修订、撤回与抵制。从事件经过读起，看 AI 的贡献、数学家的分歧，以及新的合作方式。",
+      "en": "OpenAI released 700-plus AI mathematics manuscripts. Explore the research, corrections and objections, and how people and AI might collaborate."
+    },
+    "topics": [
+      {
+        "anchor": "mathematics",
+        "title": {
+          "zh": "AI 与数学",
+          "en": "AI and mathematics"
+        },
+        "description": {
+          "zh": "突破、抵制与新的科研分工",
+          "en": "Breakthroughs, resistance and research roles"
+        },
+        "count": 1
+      },
+      {
+        "anchor": "engineering",
+        "title": {
+          "zh": "Agent 怎样承担工作",
+          "en": "Agents taking on work"
+        },
+        "description": {
+          "zh": "记忆的取舍与行动的责任",
+          "en": "Memory choices and responsibility for actions"
+        },
+        "count": 4
+      },
+      {
+        "anchor": "research",
+        "title": {
+          "zh": "AI 究竟在改进什么",
+          "en": "What is AI improving?"
+        },
+        "description": {
+          "zh": "自我改进与协作的边界",
+          "en": "The limits of improvement and collaboration"
+        },
+        "count": 3
+      },
+      {
+        "anchor": "tools",
+        "title": {
+          "zh": "本周新品架",
+          "en": "This week’s shelf"
+        },
+        "description": {
+          "zh": "10 款产品，快速认识",
+          "en": "A quick look at ten products"
+        },
+        "count": 10
+      },
+      {
+        "anchor": "notes",
+        "title": {
+          "zh": "一周的其他线索",
+          "en": "Other threads"
+        },
+        "description": {
+          "zh": "产品观察、阅读与图解",
+          "en": "Products, reading and visual thinking"
+        },
+        "count": 8
+      }
+    ]
+  },
   {
     number: '002',
     startDate: '2026-09-27',

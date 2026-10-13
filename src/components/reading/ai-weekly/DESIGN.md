@@ -1,5 +1,16 @@
 # AI 趋势周刊 · Entry & archive
 
+## Issue 003: publication
+
+Publish the approved bilingual reader at /reading/weekly/003/ and /en/reading/weekly/003/. Keep the 2026-10-04–10 reading range and the planned Monday 2026-10-12 date as scheduling metadata; the actual publication date is 2026-10-13. The preview aliases remain noindex and inactive for subscription and telemetry.
+
+- Preserve the accepted prose: establish the event before opinions, define subjects before analysis, and interleave examples with their explanations. The cover feature has eight sections. Detailed mathematical background remains a native, keyboard-accessible disclosure.
+- Use the existing paper/ink/forest/brick tokens, A4 cover, serif/sans/mono fonts and four-pixel spacing grid. Ten live bilingual diagrams and a Dream replay example explain counts, assumptions, mechanisms and relationships. Original research figures retain their natural ratios; ten products retain official images.
+- All 28 saved readings have one home across 26 editorial units: five features, ten products and eleven briefs. Published columns use stable column-NN IDs; catalog topic counts count editorial units, while the reader directory counts saved readings.
+- Reuse WeeklyShareDialog, SubscriptionDialog and existing weekly telemetry. The reader adds localized canonical/hreflang/OG/X/RSS metadata, a share action and a closing subscription invitation. Record the issue, locale, column and known topic targets; optional math-background opens have their own event kind.
+- Export localized 1080×1528 PNG downloads, 864×1222 WebP dialog previews and 540×764 WebP shelf covers. Use the shared 1200×600 JPEG renderer for crawler cards. The latest edition leads entry points, and older editions retain their own metadata and labels.
+- Verify both locales at 375/768/1280, the whole reader and expanded background, native share/subscription states, reading shelf, archive and home entry. Website publication does not invoke a mail-sending endpoint.
+
 Extend the root reading-stream design system. Keep the existing SiteHeader, 1200px shell, 48px/20px gutters, neutral light/dark theme, serif editorial headings, system sans body, and mono issue metadata.
 
 ## Intent

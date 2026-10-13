@@ -1,0 +1,15 @@
+---
+import sources from '../../../data/ai-weekly/003.sources.json';
+interface Props { ids: number[]; lang: 'zh' | 'en'; }
+const { ids, lang } = Astro.props;
+const zh = lang === 'zh';
+const selected = ids.map(id => {
+ const source = sources.find(s => s.n === id);
+ if (!source) throw new Error('Missing issue 003 source '+id);
+ return source;
+});
+---
+<div class="draft-source-links">
+ <span>{zh ? '阅读来源' : 'SAVED READINGS'}</span>
+ {selected.map(s => <a href={`https://ursb.me${zh ? '' : '/en'}/reading/${s.slug}/`} title={(zh ? s.title : s.title_en)||s.title}>[{String(s.n).padStart(2,'0')}] {s.author||s.source} ↗</a>)}
+</div>

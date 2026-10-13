@@ -1,0 +1,35 @@
+---
+import Issue003HeadingText from './Issue003HeadingText.astro';
+import draft from '../../../data/ai-weekly/003.json';
+import Issue003RichVisual from './Issue003RichVisual.astro';
+interface Props { lang: 'zh' | 'en'; }
+const { lang } = Astro.props;
+const zh = lang === 'zh';
+const t = (v: { zh: string; en: string }) => v[lang];
+---
+<details id="math-background" class="math-background">
+ <summary><span><strong>{zh ? '三个数学结果，分别说明什么？' : 'What do the three mathematical results actually claim?'}</strong><small>{zh ? '可选背景 · 范围、图解与原手稿' : 'Optional background · scope, diagrams and manuscripts'}</small></span><span class="disclosure-symbol" aria-hidden="true">＋</span></summary>
+ <div class="math-background-body">
+  <p class="background-intro">{zh ? '想进一步了解这三个问题，可以从下面的入门图解读起。图中解释手稿报告的结论与范围，完整证明仍需查阅原文。' : 'For more background on these three problems, start with the diagrams below. They explain the reported claims and their scope; follow the originals for the full proofs.'}</p>
+  {draft.mathBackgrounds.map(s=><section id={s.id} class="feature-section">
+   <h4 class="section-title"><Issue003HeadingText text={t(s.title)} lang={lang}/></h4>
+   <div class="section-copy">{t(s.text).split('\n\n').map(p=><p>{p}</p>)}</div>
+   <Issue003RichVisual type={s.visual} lang={lang}/>
+   <div class="primary-references section-references"><span>{zh ? '本段资料' : 'Section references'}</span>{s.references.map(r=><a href={r.url}>{t(r.label)} ↗</a>)}</div>
+  </section>)}
+ </div>
+</details>
+<script>
+ const background = document.querySelector<HTMLDetailsElement>('#math-background');
+ function revealBackgroundAnchor() {
+  if (!background || !location.hash) return;
+  let id: string;
+  try { id = decodeURIComponent(location.hash.slice(1)); } catch { return; }
+  const target = document.getElementById(id);
+  if (!target || !background.contains(target)) return;
+  background.open = true;
+  target.scrollIntoView();
+ }
+ revealBackgroundAnchor();
+ window.addEventListener('hashchange', revealBackgroundAnchor);
+</script>

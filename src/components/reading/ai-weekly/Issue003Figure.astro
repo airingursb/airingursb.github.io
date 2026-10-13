@@ -1,0 +1,19 @@
+---
+import Issue003HeadingText from './Issue003HeadingText.astro';
+import figures from '../../../data/ai-weekly/003.figures.json';
+interface Props { id: string; lang: 'zh' | 'en'; }
+const { id, lang } = Astro.props;
+const figure = figures.find(f => f.id === id);
+if (!figure) throw new Error('Unknown issue 003 evidence figure: '+id);
+const t = (v: { zh: string; en: string }) => v[lang];
+const path = '/reading/weekly/003/assets/'+id;
+const smallWidth = Math.min(480,figure.width);
+const largeWidth = Math.min(1200,figure.width);
+---
+<figure class={'source-figure evidence-003 evidence-'+id} style={'--native-width:'+figure.width+'px'}>
+ <div class="source-figure-heading"><h5><Issue003HeadingText text={t(figure.title)} lang={lang}/></h5><a href={path+'-full.webp'} target="_blank" rel="noopener">{lang==='zh'?'放大原图':'Enlarge'} ↗</a></div>
+ <a class="figure-enlarge" href={path+'-full.webp'} target="_blank" rel="noopener" aria-label={(lang==='zh'?'放大：':'Enlarge: ')+t(figure.title)}>
+  <img src={path+'-1200.webp'} srcset={path+'-480.webp '+smallWidth+'w, '+path+'-1200.webp '+largeWidth+'w'} sizes={`(max-width:700px) calc(100vw - 40px), (max-width:1279px) calc(100vw - 64px), ${largeWidth}px`} width={figure.width} height={figure.height} alt={t(figure.alt)} loading="lazy" decoding="async"/>
+ </a>
+ <figcaption>{t(figure.caption)} <a href={figure.url}>{lang==='zh'?'来源与上下文':'Source and context'} ↗</a></figcaption>
+</figure>

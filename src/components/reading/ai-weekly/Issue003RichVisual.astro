@@ -1,0 +1,156 @@
+---
+import Issue003HeadingText from './Issue003HeadingText.astro';
+import issue from '../../../data/ai-weekly/003.json';
+import Issue003Figure from './Issue003Figure.astro';
+import Issue003Visual from './Issue003Visual.astro';
+interface Props { type: string; lang: 'zh' | 'en'; }
+const { type, lang } = Astro.props;
+const zh = lang === 'zh';
+const p = (a: string,b: string) => zh ? a : b;
+const primary = 'https://github.com/openai/math/blob/'+issue.snapshot.sha+'/';
+const growth = [
+ {name:p('逐项相乘','Naive multiplication'),power:'3',factor:8,display:'8'},
+ {name:'Strassen',power:'log₂ 7 ≈ 2.807',factor:7,display:'7'},
+ {name:p('本次手稿','Reported bound'),power:'9/4 = 2.25',factor:2**2.25,display:'≈ 4.76'}
+];
+const needleAngles = Array.from({length:12},(_,i)=>i*15);
+const prefixRows = [
+ {label:p('上一轮','Previous'),parts:[p('系统规则','Rules'),p('工具定义','Tools'),p('完整历史','History')],status:p('已计算','Computed'),kind:'original'},
+ {label:p('只追加','Append'),parts:[p('系统规则','Rules'),p('工具定义','Tools'),p('完整历史','History')],status:p('新消息','New input'),kind:'append'},
+ {label:p('改工具','Edit tool'),parts:[p('系统规则','Rules'),p('修改定义','Edited tools'),p('完整历史','History')],status:p('新消息','New input'),kind:'changed'}
+];
+const topologies = [
+ {id:'star',name:p('星形','Star'),use:p('各自查资料，交给编辑汇总。','Parallel research, then editorial synthesis.'),edges:[[130,75,40,25],[130,75,220,25],[130,75,40,125],[130,75,220,125]],nodes:[[130,75],[40,25],[220,25],[40,125],[220,125]]},
+ {id:'chain',name:p('链式','Chain'),use:p('取材 → 核查 → 写作 → 审阅。','Collect → verify → write → review.'),edges:[[25,75,95,75],[95,75,165,75],[165,75,235,75]],nodes:[[25,75],[95,75],[165,75],[235,75]]},
+ {id:'mesh',name:p('网状','Mesh'),use:p('不同专家相互质疑，交换证据。','Specialists challenge claims and exchange evidence.'),edges:[[60,25,200,25],[60,25,60,125],[60,25,200,125],[200,25,60,125],[200,25,200,125],[60,125,200,125]],nodes:[[60,25],[200,25],[60,125],[200,125]]}
+];
+---
+{type==='research-map' && <figure class="research-map rich-figure">
+ <figcaption><p class="kicker">THREE CLAIMS TO UNDERSTAND</p><h5><Issue003HeadingText text={p('先把“重大成果”拆成三个可以读懂的命题','Start with three concrete statements')} lang={lang}/></h5></figcaption>
+ <ol class="result-index">
+  <li><a href="#math-riemann"><strong>7/8</strong><div><h6><Issue003HeadingText text={p('给零点划出一条固定边界','A fixed boundary for zeros')} lang={lang}/></h6><p>{p('准黎曼：在一条垂直线右侧排除零点，适用于所有高度。','Quasi-Riemann: a zero-free half-plane at every height.')}</p></div><span aria-hidden="true">↓</span></a></li>
+  <li><a href="#math-matrix"><strong>9/4</strong><div><h6><Issue003HeadingText text={p('让矩阵乘法的增长更慢','A lower growth exponent for matrix multiplication')} lang={lang}/></h6><p>{p('指数上界：讨论大规模算术计算，不是显卡跑分。','An asymptotic arithmetic bound, rather than a GPU benchmark.')}</p></div><span aria-hidden="true">↓</span></a></li>
+  <li><a href="#math-kakeya"><strong>4D</strong><div><h6><Issue003HeadingText text={p('每个方向都有线段，维数能有多小？','How small can dimension be with every direction present?')} lang={lang}/></h6><p>{p('四维挂谷：在四维空间中，Hausdorff 维数必须为 4。','Kakeya in four dimensions: Hausdorff dimension must be four.')}</p></div><span aria-hidden="true">↓</span></a></li>
+ </ol>
+ <p class="diagram-caption">{p('这里解释官方手稿的声明与适用范围；本刊没有独立验证其完整证明。','We explain the manuscripts’ statements and scope, without independently certifying their full proofs.')}</p>
+</figure>}
+{type==='riemann-plane' && <figure class="rich-figure riemann-figure">
+ <figcaption class="rich-heading"><p class="kicker">01 / A BOUNDARY IN THE COMPLEX PLANE</p><h5><Issue003HeadingText text={p('7/8 的边界，还没有到 1/2','7/8 moves the boundary left, but does not reach 1/2')} lang={lang}/></h5></figcaption>
+ <div class="plane-spread">
+  <div class="plane-chart">
+   <svg viewBox="0 0 500 285" role="img" aria-label={p('复平面示意：横轴为实部，1/2 是黎曼猜想的目标线；7/8 右侧是手稿声明的无零点区域，不画实际零点。','Complex-plane schematic: real part on the horizontal axis; one-half is the Riemann target; to the right of seven-eighths is the claimed zero-free region. No actual zeros are plotted.')}>
+    <rect x="60" y="35" width="380" height="200" fill="var(--inset)"/>
+    <rect x="392.5" y="35" width="77.5" height="200" fill="var(--forest)" opacity=".15"/>
+    <path d="M60 15V235H482" fill="none" stroke="var(--ink)" stroke-width="1.5"/>
+    <path d="M250 35V235" fill="none" stroke="var(--accent)" stroke-width="2" stroke-dasharray="6 6"/>
+    <path d="M392.5 35V235" fill="none" stroke="var(--forest)" stroke-width="3"/>
+    <path d="M440 35V235" fill="none" stroke="var(--rule)" stroke-dasharray="3 4"/>
+    <g fill="var(--ink)" font-size="18" font-family="Georgia,serif"><text x="53" y="263">0</text><text x="238" y="263">1/2</text><text x="435" y="263">1</text><text x="382" y="26" fill="var(--forest)">7/8</text><text x="460" y="263">σ</text><text x="15" y="30">t</text></g>
+   </svg>
+   <p class="diagram-caption">{p('s = σ + it。横轴是实部，纵轴是虚部；高度不限。图中没有采样零点。','s = σ + it. Horizontal: real part. Vertical: imaginary part, with no height bound. No zeros are sampled here.')}</p>
+  </div>
+  <dl class="plane-key">
+   <div class="target-key"><dt>1/2</dt><dd><strong>{p('黎曼猜想的目标','The Riemann target')}</strong>{zh ? <Fragment>ζ(s) 的非平凡零点都在<span class="heading-word">这条线上。</span></Fragment> : 'All nontrivial zeros of ζ(s) lie on this line.'}</dd></div>
+   <div class="boundary-key"><dt>7/8</dt><dd><strong>{p('主证明的固定边界','The primary proof’s fixed bound')}</strong>{p('声明 Re(s) > 7/8 没有零点；主函数在 s=1 的极点另行处理。','Claims no zeros for Re(s) > 7/8; the pole at s=1 for principal functions is handled separately.')}</dd></div>
+   <div><dt>11/12</dt><dd><strong>{p('另一份证明的边界','The alternative proof’s bound')}</strong>{p('属于同一成果家族，边界更靠右。两份证明的常数不要混用。','Same result family, a bound further to the right. Keep the constants of the two proofs separate.')}</dd></div>
+  </dl>
+ </div>
+</figure>}
+{type==='matrix-work' && <div class="matrix-work">
+ <figure class="rich-figure matrix-figure">
+  <figcaption class="rich-heading"><p class="kicker">02 / COMPUTATION GROWTH</p><h5><Issue003HeadingText text={p('不是少算一个格子，而是改造整块乘法的算法','Change the multiplication algorithm, not just one cell')} lang={lang}/></h5></figcaption>
+  <div class="matrix-spread">
+   <div class="matrix-demo"><div class="matrix-equation" aria-label={p('两个二乘二矩阵相乘，输出 c11 为 a11b11 加 a12b21','Two two-by-two matrices multiply; c11 equals a11b11 plus a12b21')}>
+    <div class="tiny-matrix matrix-a"><span>a₁₁</span><span>a₁₂</span><span>a₂₁</span><span>a₂₂</span></div><b aria-hidden="true">×</b><div class="tiny-matrix matrix-b"><span>b₁₁</span><span>b₁₂</span><span>b₂₁</span><span>b₂₂</span></div><b aria-hidden="true">=</b><div class="tiny-matrix matrix-c"><span>c₁₁</span><span>c₁₂</span><span>c₂₁</span><span>c₂₂</span></div>
+   </div><p class="cell-expression">c₁₁ = a₁₁b₁₁ + a₁₂b₂₁</p><p>{p('逐项算 4 个格子，需要 8 次标量乘法。Strassen 将块乘法重组为 7 次，并递归使用。','Four output cells need eight scalar multiplications by the naive method. Strassen reorganizes block multiplication into seven and recurses.')}</p></div>
+   <div class="growth-comparison"><h6><Issue003HeadingText text={p('矩阵边长翻倍，主导计算量乘几倍？','Double the matrix side: how much does leading work grow?')} lang={lang}/></h6>
+    {growth.map(g=><div class="growth-row"><div><span>{g.name}</span><small>ω = {g.power}</small></div><div class="growth-track"><span style={'width:'+g.factor/8*100+'%'}></span></div><strong>{g.display}×</strong></div>)}
+    <p class="diagram-caption">{p('编者的渐近增长示意：比较 2^ω，忽略常数与 ε；不是实测速度，也不表示小矩阵更快。','Editorial asymptotic illustration comparing 2^ω, omitting constants and epsilon. Not measured speed or a claim about small matrices.')}</p>
+   </div>
+  </div>
+ </figure>
+ <Issue003Figure id="matrix-theorem" lang={lang}/>
+</div>}
+{type==='kakeya-geometry' && <figure class="rich-figure kakeya-figure">
+ <figcaption class="rich-heading"><p class="kicker">03 / DIRECTIONS AND DIMENSION</p><h5><Issue003HeadingText text={p('“每个方向都有”，约束的是整个集合','Every direction imposes a condition on the whole set')} lang={lang}/></h5></figcaption>
+ <div class="kakeya-spread">
+  <div class="needle-demo"><svg viewBox="0 0 300 250" role="img" aria-label={p('二维方向示意：相同长度的线段按不同角度展开。只是包含各方向的简单例子，不是最小挂谷集。','Two-dimensional direction sketch: equal-length segments at different angles. A simple direction-containing example, not a minimal Kakeya set.')}>
+   <circle cx="150" cy="125" r="90" stroke="var(--rule)" fill="none" stroke-dasharray="3 5"/>
+   {needleAngles.map(a=><line x1="60" y1="125" x2="240" y2="125" transform={'rotate('+a+' 150 125)'} stroke={a===45?'var(--accent)':'var(--forest)'} stroke-width={a===45?4:1.7} opacity={a===45?1:.58}/>)}
+   <circle cx="150" cy="125" r="3" fill="var(--ink)"/>
+  </svg><p class="diagram-caption">{p('二维方向示意。真正的条件允许线段各自平移，不要求经过同一个中心；此图不展示四维证明。','Two-dimensional illustration. Segments may translate independently, without sharing a center. This does not depict a four-dimensional proof.')}</p></div>
+  <div class="dimension-reading"><h6><Issue003HeadingText text={p('维数在问：细看时，需要多少空间来容纳它？','Dimension asks how spatial complexity grows at finer scales')} lang={lang}/></h6><div class="dimension-samples">
+   <div><svg viewBox="0 0 90 64" aria-hidden="true"><circle cx="45" cy="32" r="4" fill="var(--forest)"/></svg><strong>0</strong><span>{p('点','Point')}</span></div>
+   <div><svg viewBox="0 0 90 64" aria-hidden="true"><path d="M10 32H80" stroke="var(--forest)" stroke-width="3" fill="none"/></svg><strong>1</strong><span>{p('线段','Segment')}</span></div>
+   <div><svg viewBox="0 0 90 64" aria-hidden="true"><rect x="20" y="7" width="50" height="50" fill="var(--forest)" opacity=".2" stroke="var(--forest)"/></svg><strong>2</strong><span>{p('正方形','Square')}</span></div>
+  </div><p class="dimension-conclusion"><strong>R⁴ → dim<sub>H</sub> = 4</strong>{p('四维手稿的声明：只要每个方向都有一条单位线段，Hausdorff 维数就不能降到 4 以下。','The four-dimensional claim: a unit segment in every direction forces Hausdorff dimension four.')}</p><p class="diagram-caption">{p('这些是维数的直觉例子。满 Hausdorff 维数不等于正的体积；度量与命题口径要分开。','Intuitive dimension examples. Full Hausdorff dimension does not imply positive volume; keep the quantities distinct.')}</p></div>
+ </div>
+</figure>}
+{type==='formalization-chain' && <div class="formalization-visual">
+ <figure class="artifact-chain rich-figure"><figcaption class="rich-heading"><p class="kicker">04 / FROM A MANUSCRIPT TO A CHECKED STATEMENT</p><h5><Issue003HeadingText text={p('三个产物，分别回答三个问题','Three artifacts answer different questions')} lang={lang}/></h5></figcaption>
+  <ol><li><span>01 / PDF</span><h6><Issue003HeadingText text={p('推导和解释写在哪里？','Where is the argument explained?')} lang={lang}/></h6><p>{p('自然语言手稿与引用，供人阅读、质疑和查新。','A human-readable manuscript and citations for scrutiny and literature review.')}</p></li><li><span>02 / LEAN</span><h6><Issue003HeadingText text={p('给定命题的证明能否检查？','Can this formal statement’s proof be checked?')} lang={lang}/></h6><p>{p('定义、假设、量词及证明项进入形式系统。','Definitions, assumptions, quantifiers and proof terms enter a formal system.')}</p></li><li><span>03 / COMPARATOR</span><h6><Issue003HeadingText text={p('形式化的还是原问题吗？','Does the formal statement match the intended problem?')} lang={lang}/></h6><p>{p('对照非形式化目标与形式化声明，另检查命题对齐。','Compare the informal target with the formal statement; alignment needs its own check.')}</p></li></ol>
+  <p class="diagram-caption">{p('编者整理。Comparator 的对照结论不能代替证明内核，形式化的顶层结论也不自动覆盖整篇论文的后续应用。','Editorial map. A comparator verdict does not replace the proof kernel, nor does formalizing a top-line result automatically cover every later application.')}</p>
+ </figure>
+ <Issue003Visual type="ledger" lang={lang}/>
+</div>}
+{type==='understanding-bridge' && <figure class="understanding-bridge rich-figure">
+ <figcaption><p class="kicker">{p('回到卡兹克的核心问题','BACK TO KAZIKE’S QUESTION')}</p><h5><Issue003HeadingText text={p('有了可以检查的答案，还需要能继续生长的理解','A checkable answer still needs an understanding that can grow')} lang={lang}/></h5></figcaption>
+ <dl><div><dt>{p('提问','Ask')}</dt><dd>{p('为什么把“所有高度”作为条件？为什么选择四维？先把要解的问题定义清楚。','Why require every height? Why four dimensions? Define the problem worth solving.')}</dd></div><div><dt>{p('理解','Understand')}</dt><dd>{p('把 7/8 的边界、9/4 的指数和维数的含义，转成别人能继续使用的解释。','Make the boundary, exponent and dimension understandable enough for others to build on.')}</dd></div><div><dt>{p('意义','Connect')}</dt><dd>{p('追问这套方法能迁移到哪些问题，哪些假设让它失效，而不只记住一串成果。','Ask where a method transfers and which assumptions break it, beyond cataloguing results.')}</dd></div></dl>
+ <p class="diagram-caption">{p('“提问、理解、意义”来自重点推荐文章的讨论；以上三个具体问题由编者展开。','The lead essay discusses asking, understanding and meaning; the concrete examples here are editorial extensions.')}</p>
+</figure>}
+{type==='cache-prefix' && <figure class="rich-figure prefix-figure">
+ <figcaption class="rich-heading"><p class="kicker">PREFIX / EXACT TOKENS MATTER</p><h5><Issue003HeadingText text={p('复用从开头开始，在第一个变化处停止','Reuse starts at the beginning and stops at the first change')} lang={lang}/></h5></figcaption>
+ <div class="prefix-rows">{prefixRows.map(row=><div class={'prefix-row prefix-'+row.kind}><strong>{row.label}</strong><div class="prefix-parts">{row.parts.map((part,i)=><span class:list={{'prefix-reused':row.kind==='append'||row.kind==='changed'&&i===0,'prefix-invalid':row.kind==='changed'&&i>0}}>{part}</span>)}<span class:list={['prefix-status',{'fresh-input':row.kind!=='original'}]}>{row.status}</span></div></div>)}</div>
+ <div class="prefix-legend"><span>{p('绿色：可复用的相同前缀','Green: identical, reusable prefix')}</span><span>{p('虚线：需重新计算的后续部分','Dashed: continuation requiring new computation')}</span></div>
+ <p class="diagram-caption">{p('服务商仍决定缓存保留、命中与路由。方块不按 token 数量比例绘制；语义相同不保证 token 相同。','Retention, hits and routing depend on the provider. Blocks are not token-proportional. Equivalent meaning does not guarantee identical tokens.')}</p>
+</figure>}
+{type==='handoff-record' && <figure class="rich-figure handoff-figure">
+ <figcaption class="rich-heading"><p class="kicker">ARCHIVE / WORKING VIEW</p><h5><Issue003HeadingText text={p('完整历史留作档案，摘要像一张交接单','Keep the archive; make the summary a handoff record')} lang={lang}/></h5></figcaption>
+ <div class="handoff-spread"><div class="archive-stack"><span>{p('持久档案','PERSISTENT ARCHIVE')}</span><ol><li>{p('28 条原始收藏与保存时间','28 original saves and timestamps')}</li><li>{p('已读全文、原图、版本链接','Read texts, source figures and version links')}</li><li>{p('核查过程与尚未回答的问题','Review trail and unresolved questions')}</li></ol><p>{p('压缩工作视图，不等于删除这些记录。','Compacting the working view need not delete these records.')}</p></div><div class="handoff-sheet"><p class="kicker">{p('交给下一轮的工作摘要 · 编者示例','WORKING HANDOFF · EDITORIAL EXAMPLE')}</p><dl><div><dt>{p('目标','Goal')}</dt><dd>{p('分析 AI 在科研中的贡献与合作关系。','Analyze AI’s research contribution and relationships.')}</dd></div><div><dt>{p('已更新','Updated')}</dt><dd>{p('APPSO 完整官网原文已取得；需要纳入反对意见。','APPSO’s full publisher article recovered; include its objections.')}</dd></div><div><dt>{p('待判断','Open')}</dt><dd>{p('公开证明可核验，不等于内部模型评估可复现。','Checkable public proofs do not imply reproducible internal-model evaluations.')}</dd></div><div><dt>{p('下一步','Next')}</dt><dd>{p('回看旧结论，分开能力、发布流程与研究目的。','Revisit judgments; separate capability, release and research aims.')}</dd></div></dl></div></div>
+ <p class="diagram-caption">{p('工作摘要服务于下一步行动；原始记录服务于回溯与重新判断。两者承担不同职责。','A working summary supports the next action; original records support traceability and reassessment.')}</p>
+</figure>}
+{type==='cache-cost' && <figure class="rich-figure cache-cost">
+ <figcaption class="rich-heading"><p class="kicker">COST / AN ILLUSTRATIVE REQUEST</p><h5><Issue003HeadingText text={p('同样 84k 输入，一次命中和一次失效怎么计价？','The same 84k input, with and without a cache hit')} lang={lang}/></h5><p>{p('假设稳定前缀 80k + 新消息 4k；缓存读取单价为普通输入的 0.1。','Assume an 80k stable prefix + 4k new input; cache reads cost 0.1 of ordinary input.')}</p></figcaption>
+ <div class="cost-rows"><div><span>{p('命中','Hit')}</span><div class="cost-track"><span style="width:9.52381%" class="cost-cache"></span><span style="width:4.761905%" class="cost-new"></span></div><strong>12k</strong></div><div><span>{p('失效','Miss')}</span><div class="cost-track"><span style="width:100%" class="cost-miss"></span></div><strong>84k</strong></div></div>
+ <div class="cost-equations"><p>80k × 0.1 + 4k = <strong>12k</strong></p><p>80k + 4k = <strong>84k</strong></p></div>
+ <p class="diagram-caption">{p('单位是“普通输入单价下的等价计费量”，不是实际 token 数。自拟例子，未计缓存写入、输出、存储与失效后重建费用；不对应任何供应商当前报价。','Unit: equivalent billing volume at the ordinary input price, not actual token count. Illustrative only; cache writing, output, storage and rebuilding costs are excluded. Not a current vendor quote.')}</p>
+</figure>}
+{type==='pi-source-plate' && <Issue003Figure id="pi-crash-plate" lang={lang}/>}
+{type==='effect-timeline' && <figure class="rich-figure effect-timeline">
+ <figcaption class="rich-heading"><p class="kicker">COMMIT / EXECUTE / COMMIT</p><h5><Issue003HeadingText text={p('外部动作夹在两次本地提交中间','The external effect sits between two local commits')} lang={lang}/></h5></figcaption>
+ <ol class="effect-steps"><li><span>01</span><h6><Issue003HeadingText text={p('提交意图','Commit intent')} lang={lang}/></h6><p>{p('持久化工具调用与重放策略。','Persist the tool call and replay policy.')}</p></li><li><span>02</span><h6><Issue003HeadingText text={p('远端执行','Execute externally')} lang={lang}/></h6><p>{p('邮件服务可能已经接受请求。','The email service may accept the request.')}</p><strong class="crash-window">{p('此处崩溃：外部结果不确定','Crash here: external outcome unknown')}</strong></li><li><span>03</span><h6><Issue003HeadingText text={p('提交结果','Commit result')} lang={lang}/></h6><p>{p('把回执与完成状态写入本地。','Persist the receipt and completion state.')}</p></li></ol>
+ <div class="effect-recovery"><strong>{p('恢复后先判断动作语义','Recovery starts with the effect’s semantics')}</strong><p><b>safe</b> {p('可以重放，例如重新获取报告。','May replay, as with report retrieval.')}</p><p><b>unsafe</b> {p('返回中断状态；由应用核对远端回执与幂等键。','Return interrupted; let the application check remote receipts and idempotency keys.')}</p></div>
+ <p class="diagram-caption">{p('基于 Pi Durable 的机制，邮件是编者应用示例。框架不自动保证外部副作用 exactly-once。','Based on Pi Durable; email is an editorial application example. The framework does not automatically guarantee exactly-once external effects.')}</p>
+</figure>}
+{type==='dream-overview' && <Issue003Figure id="dream-overview" lang={lang}/>}
+{type==='dream' && <Fragment>
+ <figure class="rich-figure replay-example">
+  <figcaption class="rich-heading"><p class="kicker">REPLAY / SAME TREE, DIFFERENT CHOICES</p><h5><Issue003HeadingText text={p('不再重跑已完成的实验，先比较选择的顺序','Compare choices without rerunning recorded experiments')} lang={lang}/></h5></figcaption>
+  <div class="replay-demo-grid">
+   <div class="replay-tree">
+    <svg viewBox="0 0 340 270" role="img" aria-label={p('示意历史树：起点分出 A、B、C。A 下继续分出 A1、A2、A3；B 下有 B1。各节点都有已记录结果。','Illustrative history tree: the start branches to A, B and C. A continues to A1, A2 and A3; B continues to B1. Every node has a recorded result.')}>
+     <g fill="none" stroke="var(--rule)" stroke-width="1.5"><path d="M170 35 L55 85 M170 35 L170 85 M170 35 L285 85 M55 85 V235 M170 85 V135"/></g>
+     <path d="M170 35 V135" fill="none" stroke="var(--forest)" stroke-width="3"/>
+     {[{x:170,y:30,t:p('起点','Start')},{x:55,y:85,t:'A'},{x:170,y:85,t:'B'},{x:285,y:85,t:'C'},{x:55,y:135,t:'A1'},{x:55,y:185,t:'A2'},{x:55,y:235,t:'A3'},{x:170,y:135,t:'B1'}].map(n=><g><rect x={n.x-27} y={n.y-16} width="54" height="32" rx="3" fill={n.t.startsWith('B')?'var(--forest)':'var(--paper)'} stroke={n.t==='C'?'var(--accent)':'var(--forest)'} stroke-width="1.5"/><text x={n.x} y={n.y+5} text-anchor="middle" font-size="14" fill={n.t.startsWith('B')?'var(--paper)':'var(--ink)'}>{n.t}</text></g>)}
+    </svg>
+    <p>{p('A 改善有限 · B 更有潜力 · C 失败','A: modest · B: promising · C: failed')}</p>
+   </div>
+   <div>
+    <div class="replay-route"><strong>{p('策略一：沿 A 深挖','Policy one: pursue A')}</strong><span>A → A1 → A2 → A3</span><p>{p('已有结果会显示，这些选择带来了什么。','Recorded outcomes show what these choices achieved.')}</p></div>
+    <div class="replay-route"><strong>{p('策略二：先比较，再跟进 B','Policy two: compare, then follow B')}</strong><span>A → B → C → B1</span><p>{p('同一批历史节点，换一种访问顺序。','The same historical nodes, visited in a different order.')}</p></div>
+   </div>
+  </div>
+  <p class="diagram-caption">{p('编者简化示例；字母、路线与结果描述用于解释重放，不是实验数据。策略请求旧树没有的节点时，仍需新的真实探索。','Simplified editorial example; letters, routes and outcome descriptions are not experimental data. A requested node missing from the history still requires new real exploration.')}</p>
+ </figure>
+ <Issue003Visual type="dream" lang={lang}/>
+</Fragment>}
+{type==='dream-results' && <div class="dream-results"><Issue003Figure id="dream-lasso" lang={lang}/><dl class="experiment-reading">
+ <div><dt>{p('Gemini 3.7 Flash · 发现调用','Gemini 3.7 Flash · discovery calls')}</dt><dd><span>3,200 → </span><strong>1,879</strong><small>{p('由报告数据计算：约少 41%','Computed from reported data: about 41% fewer')}</small></dd></div>
+ <div><dt>{p('六个留出数据集 · 平均运行时间','Six held-out datasets · average runtime')}</dt><dd><span>2,516.7 → </span><strong>2,350.6 <small>ms</small></strong><small>{p('由报告数据计算：约改善 6.6%','Computed from reported data: about 6.6% lower')}</small></dd></div>
+ </dl><p class="diagram-caption">{p('同一模型、同一 Lasso 实验的两个指标。调用数减少不等于所有费用减少；本刊没有独立复测。','Two measures from the same model and Lasso experiment. Fewer calls are not the whole cost bill; no independent rerun by this issue.')}</p></div>}
+{type==='panda-source' && <Issue003Figure id="panda-architecture" lang={lang}/>}
+{type==='team-topologies' && <figure class="rich-figure topology-figure">
+ <figcaption class="rich-heading"><p class="kicker">TEAM / DEPENDENCIES SHAPE COMMUNICATION</p><h5><Issue003HeadingText text={p('同一个调研任务，也可以有三种协作结构','One research task, three collaboration structures')} lang={lang}/></h5></figcaption>
+ <div class="topology-grid">{topologies.map(top=><div><h6><Issue003HeadingText text={top.name} lang={lang}/></h6><svg viewBox="0 0 260 150" role="img" aria-label={top.name+': '+top.use}><g fill="none" stroke="var(--forest)" stroke-width="1.5">{top.edges.map(e=><line x1={e[0]} y1={e[1]} x2={e[2]} y2={e[3]}/>)}</g>{top.nodes.map((n,i)=><g><circle cx={n[0]} cy={n[1]} r="16" fill="var(--paper)" stroke={top.id==='star'&&i===0?'var(--accent)':'var(--forest)'} stroke-width="2"/><text x={n[0]} y={n[1]+5} text-anchor="middle" font-size="15" fill="var(--ink)">{String.fromCharCode(65+i)}</text></g>)}</svg><p>{top.use}</p></div>)}</div>
+ <p class="diagram-caption">{p('编者任务示例：节点字母只代表角色，线表示协作关系；不是论文测试规模，也不表示某种拓扑普遍更优。','Editorial task example. Letters are roles, lines are collaboration relationships. Not the study’s test scale or a universal topology ranking.')}</p>
+</figure>}

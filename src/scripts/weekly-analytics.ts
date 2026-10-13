@@ -7,6 +7,8 @@ type WeeklyDestination = {
   readonly target: string;
 };
 
+const issue003Targets = new Set(["mathematics-feature","context","durable","dream","panda","rea","designeer","gitagent","monid","openbot","rill","mintlify","lapis","vphone","t3","correct","instructions","embedding","jev","dex","founderpark","thin","aigc","a16z","zeno","llm-book","mathematics","engineering","research","tools","notes","math-overview","math-ai-work","math-debate","math-formalization","math-ownership","math-history","math-relationship","math-understanding","math-riemann","math-matrix","math-kakeya"]);
+
 export function weeklyDestination(href: string): WeeklyDestination | null {
   const url = new URL(href);
   if (url.hostname !== 'ursb.me' && url.origin !== (typeof location === 'undefined' ? '' : location.origin)) return null;
@@ -16,7 +18,7 @@ export function weeklyDestination(href: string): WeeklyDestination | null {
   return {
     kind: match[2] ? 'issue' : match[3] ? 'rss' : 'archive',
     issue: match[2] || '', lang: match[1] ? 'en' : 'zh',
-    target: /^(column-\d+|agents|creation|science|life|issue-guide|top|runtime|quality|tools|signals|contents|sources|subscribe|film|context|durable|mods|routing|eval|stamps|art-history|creativity|sre|teams|advisor|sonnet|devday|dex|aigc|assistant-demand|distribution|terminology|product-[a-z-]+)$/.test(anchor) ? anchor : '',
+    target: /^(column-\d+|agents|creation|science|life|issue-guide|top|runtime|quality|tools|signals|contents|sources|subscribe|film|context|durable|mods|routing|eval|stamps|art-history|creativity|sre|teams|advisor|sonnet|devday|dex|aigc|assistant-demand|distribution|terminology|product-[a-z-]+)$/.test(anchor) || issue003Targets.has(anchor) ? anchor : '',
   };
 }
 
@@ -58,8 +60,9 @@ export function initWeeklyAnalytics() {
   document.addEventListener('toggle', (event) => {
     const detail = event.target;
     if (!(detail instanceof HTMLDetailsElement) || !detail.open || !issue) return;
-    if (!detail.matches('.article-sources, .issue-index, .reading-register details')) return;
-    trackEvent('weekly-details-open', { issue, lang: language(), kind: detail.matches('.article-sources, .reading-register details') ? 'sources' : 'contents', column: detail.closest('.column-article')?.id || '' });
+    if (!detail.matches('.article-sources, .issue-index, .reading-register details, #math-background')) return;
+    const unit = detail.closest<HTMLElement>('[data-weekly-column], .column-article');
+    trackEvent('weekly-details-open', { issue, lang: language(), kind: detail.id === 'math-background' ? 'background' : detail.matches('.article-sources, .reading-register details') ? 'sources' : 'contents', column: unit?.dataset.weeklyColumn || unit?.id || '' });
   }, true);
   if (!issue) return;
   const seen = new Set<string>();

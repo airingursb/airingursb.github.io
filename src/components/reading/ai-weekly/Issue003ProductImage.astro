@@ -1,0 +1,18 @@
+---
+import images from '../../../data/ai-weekly/003.images.json';
+interface Props { id: string; lang: 'zh' | 'en'; }
+const { id, lang } = Astro.props;
+const art = images.find(a => a.id === id);
+if (!art) throw new Error('Missing issue 003 product image '+id);
+const root = '/reading/weekly/003/assets/';
+const label = lang === 'zh' ? '查看完整产品图' : 'Open the complete product image';
+const credit = art.kind === 'official-screenshot'
+ ? (lang === 'zh' ? '官网界面' : 'Official UI')
+ : (lang === 'zh' ? '官方展示图' : 'Official artwork');
+---
+<figure class="product-art">
+ <a class="product-image" href={root+art.fullFile} target="_blank" rel="noopener" aria-label={label+'：'+art.alt[lang]}>
+  <img src={root+art.file} srcset={`${root}${art.smallFile} 480w, ${root}${art.file} 960w`} sizes="(max-width: 700px) calc(100vw - 80px), (max-width: 1100px) calc((100vw - 160px) / 2), 240px" width="960" height="640" alt={art.alt[lang]} loading="lazy" decoding="async"/>
+ </a>
+ <figcaption><a href={art.sourcePage} target="_blank" rel="noopener" aria-label={credit+' · '+art.product}>{credit} ↗</a></figcaption>
+</figure>

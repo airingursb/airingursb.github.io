@@ -1,0 +1,61 @@
+---
+import Issue003HeadingText from './Issue003HeadingText.astro';
+import issue from '../../../data/ai-weekly/003.json';
+interface Props { type: string; lang: 'zh' | 'en'; }
+const { type, lang } = Astro.props;
+const zh = lang === 'zh';
+const pick = (a: string, b: string) => zh ? a : b;
+const history = 'https://github.com/openai/math/blob/'+issue.snapshot.sha+'/history.md';
+const checks = [
+ [pick('命题忠实吗？','Faithful statement?'),pick('定义、量词、前提与原问题一致。','Definitions, quantifiers and assumptions match the intended problem.'),pick('读声明','Read the statement')],
+ [pick('推导有效吗？','Valid derivation?'),pick('每一步在给定规则与假设下成立。','Each step follows under the specified rules and assumptions.'),pick('检查证明','Check the proof')],
+ [pick('结果已有吗？','Novel result?'),pick('比较已有文献，核对依赖与引用。','Compare prior literature; inspect dependencies and citations.'),pick('查文献','Review literature')],
+ [pick('为什么重要？','Why significant?'),pick('解释贡献、适用范围与后续用途。','Explain the contribution, scope and possible uses.'),pick('理解与讨论','Interpret and discuss')]
+];
+---
+{type === 'ledger' && <figure class="exhibit math-ledger" aria-labelledby="ledger-title">
+ <figcaption class="exhibit-heading"><p class="kicker">01 / VERSION LEDGER</p><h5 id="ledger-title"><Issue003HeadingText text={pick('同一批手稿，三个不同口径','One release, three different measures')} lang={lang}/></h5><p class="exhibit-subtitle">{pick('官方仓库快照 · 2026.10.10 · 以下数字不表示同行评审结论','Official repository snapshot · 2026.10.10 · These counts are not peer-review verdicts')}</p></figcaption>
+ <div class="ledger-grid"><div><span>{pick('初始发布','Initial release')}</span><strong>722</strong><p>{pick('手稿','manuscripts')}</p></div><div><span>{pick('3 份撤回后','After three withdrawals')}</span><strong>719</strong><p>{pick('现存手稿 · 372 个家族','remaining manuscripts · 372 families')}</p></div><div><span>{pick('顶层结果已形式化','Formalized top-line results')}</span><strong>300<span>/719</span></strong><p>{pick('约 42% 的覆盖','about 42% coverage')}</p></div></div>
+ <div class="ledger-change"><strong>10.07</strong><p>{pick('修订记录：撤回 3 份；修复或修改 14 份；另有 13 份更新依赖引用。','History: three withdrawn; fourteen repaired or revised; thirteen more updated dependency references.')}</p></div>
+ <p class="exhibit-caption">{pick('数量会随审查变化。核对时应保留版本与命题，而非只记住发布时的数字。','Counts can change under scrutiny. Preserve the version and statement, not just the launch number.')} <a href={history}>{pick('查看对应修订记录','Read the matching revision history')} ↗</a></p>
+</figure>}
+{type === 'proof' && <figure class="exhibit proof-construction" aria-labelledby="proof-title">
+ <figcaption class="exhibit-heading"><p class="kicker">02 / A PROOF, NOT A TEST</p><h5 id="proof-title"><Issue003HeadingText text={pick('为什么质数没有“最后一个”','Why there is no last prime')} lang={lang}/></h5><p class="exhibit-subtitle">{pick('经典证明的编者图解 · 不是本次 OpenAI 发布的研究结果','Editorial explanation of a classical proof · Not a result from this OpenAI release')}</p></figcaption>
+ <ol class="proof-steps">
+  <li><span class="step-number">01</span><div><h6><Issue003HeadingText text={pick('假设清单已经完整','Assume a complete finite list')} lang={lang}/></h6><p class="math-expression">p₁, p₂, …, pₙ</p><p>{pick('里面是你声称全部的质数。','The list supposedly contains every prime.')}</p></div></li>
+  <li><span class="step-number">02</span><div><h6><Issue003HeadingText text={pick('构造一个新数','Construct another number')} lang={lang}/></h6><p class="math-expression">N = p₁ × p₂ × … × pₙ + 1</p><p>{pick('N 大于 1，且必有质因数。','N is greater than one and has a prime factor.')}</p></div></li>
+  <li><span class="step-number">03</span><div><h6><Issue003HeadingText text={pick('清单中的每个质数都除不尽它','No listed prime divides it')} lang={lang}/></h6><p class="math-expression">{pick('N ÷ pᵢ 的余数 = 1','N modulo pᵢ = 1')}</p><p>{pick('因此它的质因数来自清单以外。','Its prime factor must lie outside the list.')}</p></div></li>
+  <li><span class="step-number">04</span><div><h6><Issue003HeadingText text={pick('“完整清单”并不完整','The complete list was incomplete')} lang={lang}/></h6><p>{pick('任意有限清单都可以被这样反驳。','The argument contradicts any purported finite list.')}</p></div></li>
+ </ol>
+ <div class="proof-caution"><strong>{pick('别丢掉这一步','Keep this distinction')}</strong><p>{pick('N 不一定是质数。证明只需要：它有一个不在清单里的质因数。','N need not be prime. The proof needs a prime factor outside the list.')}</p></div>
+</figure>}
+{type === 'review' && <figure class="exhibit review-questions" aria-labelledby="review-title">
+ <figcaption class="exhibit-heading"><p class="kicker">03 / FOUR QUESTIONS</p><h5 id="review-title"><Issue003HeadingText text={pick('一个“通过”标签，装不下四种判断','One pass label cannot answer four questions')} lang={lang}/></h5></figcaption>
+ <div class="review-grid">{checks.map((c,i) => <div><span class="step-number">0{i+1}</span><h6><Issue003HeadingText text={c[0]} lang={lang}/></h6><p>{c[1]}</p><span class="review-action">{c[2]}</span></div>)}</div>
+ <p class="exhibit-caption">{pick('编者的核查框架。形式化检查主要回答给定命题的推导问题；命题对齐、新意和意义仍要分别检查。','An editorial review framework. Formal checking addresses derivation for the given statement; fidelity, novelty and significance need separate scrutiny.')}</p>
+</figure>}
+{type === 'context' && <figure class="exhibit context-contrast" aria-labelledby="context-title">
+ <figcaption class="exhibit-heading"><p class="kicker">04 / CONTEXT & COMPUTE</p><h5 id="context-title"><Issue003HeadingText text={pick('模型看到什么，与哪些计算可以复用','What the model sees, and which work can be reused')} lang={lang}/></h5></figcaption>
+ <div class="comparison-003"><section><h6><Issue003HeadingText text={pick('只追加：前缀保持一致','Append: keep the prefix identical')} lang={lang}/></h6><div class="token-strip"><span>{pick('规则','Rules')}</span><span>{pick('历史','History')}</span><span class="new-token">{pick('新消息','New input')}</span></div><p>{pick('已有前缀可能命中缓存，只计算新增部分。缓存保留与路由仍取决于服务商。','The existing prefix may hit a cache; the suffix needs new work. Retention and routing depend on the provider.')}</p></section><section><h6><Issue003HeadingText text={pick('压缩：摘要替代较早内容','Compact: summarize older context')} lang={lang}/></h6><div class="token-strip"><span>{pick('规则','Rules')}</span><span class="changed-token">{pick('摘要','Summary')}</span><span>{pick('近期消息','Recent turns')}</span></div><p>{pick('从历史变成摘要的位置起，前缀变了。旧计算不能直接沿用；之后可以重新积累缓存。','The prefix changes where history becomes a summary. Its old continuation cannot carry over; new caching can accumulate afterward.')}</p></section></div>
+ <p class="exhibit-caption">{pick('机制示意，无 token 比例或实测性能含义。完整来源记录与工作摘要各自保留。','Mechanism sketch, without token proportions or measured performance. Keep source records alongside the working summary.')}</p>
+</figure>}
+{type === 'durable' && <figure class="exhibit recovery-003" aria-labelledby="recovery-title">
+ <figcaption class="exhibit-heading"><p class="kicker">05 / STATE & EFFECT</p><h5 id="recovery-title"><Issue003HeadingText text={pick('崩溃发生后，把两条线分开检查','After a crash, examine two separate tracks')} lang={lang}/></h5></figcaption>
+ <div class="comparison-003"><section><p class="lane-label">{pick('存储里的状态','PERSISTED STATE')}</p><ol><li>{pick('提交任务意图与回放策略','Commit intent and replay policy')}</li><li>{pick('执行过程中持续记录状态','Record state while execution proceeds')}</li><li>{pick('重启后读取已提交的检查点','Read committed checkpoints on restart')}</li></ol></section><section><p class="lane-label">{pick('外部发生的动作','EXTERNAL EFFECT')}</p><ol><li>{pick('远端系统可能已接收动作','The remote system may accept the action')}</li><li>{pick('本地回执可能尚未提交','The local receipt may still be uncommitted')}</li><li>{pick('核对回执或幂等标识，再决定下一步','Check a receipt or idempotency key before continuing')}</li></ol></section></div>
+ <div class="replay-outcomes"><p><strong>{pick('可安全重放','Safe to replay')}</strong>{pick('手册示例：重新执行报告获取。','Manual example: rerun report retrieval.')}</p><p><strong>{pick('不安全的已开始调用','Started unsafe call')}</strong>{pick('返回中断信息；不自动再执行。','Return an interrupted result; do not automatically rerun.')}</p></div>
+ <p class="exhibit-caption">{pick('依据手册 1.0.3；外部回执核查是应用层示例，不宣称框架自动提供邮件去重。','Based on manual 1.0.3. External receipt checks illustrate application work, not automatic email deduplication by the framework.')}</p>
+</figure>}
+{type === 'dream' && <figure class="dream-figure source-figure">
+ <div class="source-figure-heading"><h5><Issue003HeadingText text={pick('Dream-RSI 原图 / 同一历史，比较不同走法','Dream-RSI original figure / Different paths through one history')} lang={lang}/></h5><a href="/reading/weekly/003/assets/dream-simulator.webp" target="_blank" rel="noopener">{pick('放大原图','Enlarge')} ↗</a></div>
+ <a class="figure-enlarge" href="/reading/weekly/003/assets/dream-simulator.webp" target="_blank" rel="noopener" aria-label={pick('放大 Dream-RSI 探索与重放原图','Enlarge the original Dream-RSI exploration and replay figure')}><img src="/reading/weekly/003/assets/dream-simulator.webp" width="1385" height="560" alt={pick('Dream-RSI 项目图：真实探索产生历史树，候选策略重放同一棵树并得到质量、成本和延迟反馈。','Dream-RSI diagram: real exploration creates a history tree; candidate policies replay it for quality, cost and latency feedback.')} loading="lazy" decoding="async"/></a>
+ <figcaption>{pick('来源：Dream-RSI 项目图 2。重放使用已经记录的节点结果；新探索仍需真实执行。','Source: Dream-RSI project figure 2. Replay uses recorded node outcomes; new exploration still needs real execution.')} <a href="https://www.dream-rsi.com/">{pick('项目与论文','Project and paper')} ↗</a></figcaption>
+</figure>}
+{type === 'panda' && <figure class="exhibit panda-003" aria-labelledby="panda-title">
+ <figcaption class="exhibit-heading"><p class="kicker">06 / DISCOVER, THEN COLLABORATE</p><h5 id="panda-title"><Issue003HeadingText text={pick('从更大的集体，找出一次任务的小团队','Find a task-sized team inside a larger collective')} lang={lang}/></h5></figcaption>
+ <div class="team-scope"><div><p class="lane-label">{pick('集体层','COLLECTIVE')}</p><h6><Issue003HeadingText text={pick('能力发现与信任约束','Capability discovery and trust')} lang={lang}/></h6><div class="agent-nodes"><span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span></div><p>{pick('找到可以协作的节点。','Find eligible collaborators.')}</p></div><span class="scope-arrow" aria-hidden="true">→</span><div><p class="lane-label">{pick('任务团队','TASK TEAM')}</p><h6><Issue003HeadingText text={pick('通信、执行与重规划','Communicate, execute, replan')} lang={lang}/></h6><div class="agent-nodes selected"><span>B</span><span>D</span><span>F</span></div><p>{pick('按任务选择星形、链式或网状编排。','Choose star, chain or mesh orchestration for the task.')}</p></div></div>
+ <p class="exhibit-caption">{pick('编者机制图：字母节点只是角色示意，没有测试规模或性能含义。信任约束同时作用于合作过程。','Editorial mechanism diagram. Lettered nodes illustrate roles, not experimental scale or performance. Trust constraints also govern collaboration.')}</p>
+</figure>}
+{type === 'zeno' && <figure class="zeno-003">
+ <div class="zeno-pieces" aria-hidden="true"><span>½</span><span>¼</span><span>⅛</span><span>…</span></div>
+ <figcaption><span class="math-expression">½ + ¼ + ⅛ + … = 1</span><p>{pick('编者图解：步数无限，总长度仍可有限。与原帖视频分别呈现。','Editorial sketch: infinitely many steps can span a finite total length. This is separate from the original video.')}</p></figcaption>
+</figure>}

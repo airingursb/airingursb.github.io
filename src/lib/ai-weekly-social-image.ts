@@ -28,7 +28,7 @@ export async function generateWeeklySocialImage(issue: AIWeeklyIssue, lang: Week
     ),
     h('div', { style: { display: 'flex', flexDirection: 'column', gap: 24 } },
       h('div', { style: { display: 'flex', flexDirection: 'column', fontSize: 52, fontWeight: 700, lineHeight: 1.2 } },
-        ...issue.title[lang].map((line) => h('div', { key: line }, line)),
+        ...issue.title[lang].map((line) => h('div', { key: line }, line.replaceAll('’', "'"))),
       ),
       h('div', { style: { fontSize: 24, lineHeight: 1.5, color: palette.muted } }, issue.description[lang].replaceAll('’', "'")),
     ),
