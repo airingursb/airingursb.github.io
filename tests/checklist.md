@@ -1,5 +1,15 @@
 # Browser QA Checklist
 
+### Avatar 48 site icons (October 16, unpublished preview)
+
+- [x] Original avatar 48 artwork only: blue beret, white bear and orange scarf; no redraw, crop or interactive-bear changes.
+- [x] PNGs are 16/32/48px; ICO includes 16/32/48px; Apple touch PNG is 180px. Actual-size and enlarged visual inspection completed.
+- [x] Existing icon declarations use versioned local paths, including bilingual weekly issue 001, immersive pages, Echo, Diorama, GC game and bonsai mirror. Legacy ICO matches root ICO.
+- [x] 405 automated tests pass, including three favicon regression tests.
+- [x] Full production build and Pagefind indexing passed (268 indexed pages); built HTML icon targets resolve to existing local assets.
+- [ ] Browser preview at desktop/mobile sizes: blocked by isolated localhost and shell Chromium socket restrictions in this environment.
+- [ ] After publication, verify deployed ICO/PNG content and cache refresh on desktop/mobile browsers.
+
 ### AI 趋势周刊 003 正式发布（2026-10-13）
 
 - [x] 中英文正式页保留已审定的五篇专题、十款产品、十一则短读及 28 条收藏，26 个专栏锚点可达。

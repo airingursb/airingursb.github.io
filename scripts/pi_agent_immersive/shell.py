@@ -446,9 +446,11 @@ def head() -> str:
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="google" content="notranslate">
 <meta name="referrer" content="strict-origin-when-cross-origin">
-<link rel="shortcut icon" href="https://airing.ursb.me/image/favicon.ico">
-<link rel="apple-touch-icon" href="https://airing.ursb.me/image/favicon.ico">
-<link rel="icon" href="https://airing.ursb.me/image/favicon.ico">
+<link rel="icon" type="image/x-icon" href="/favicon.ico?v=avatar48" />
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png?v=avatar48" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png?v=avatar48" />
+<link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png?v=avatar48" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=avatar48" />
 <meta name="description" content="{desc_zh}">
 <meta name="author" content="Airing">
 <meta property="og:title" content="{TITLE_ZH} — Pi Agent 源码全景">
