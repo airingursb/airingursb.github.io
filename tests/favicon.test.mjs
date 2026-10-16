@@ -32,7 +32,17 @@ test('all existing site icon declarations use the versioned avatar48 assets', as
     if (!links.length || links.every(l => l.includes('href="data:,"'))) continue;
     heads++;
     assert.equal(links.length,5,file);
-    assert.ok(links.every(l => /href="\/(?:favicon(?:-\d+x\d+\.png|\.ico)|apple-touch-icon\.png)\?v=avatar48"/.test(l)),file);
+    assert.ok(links.every(l => /href="\/(?:favicon(?:-\d+x\d+\.png|\.ico)|apple-touch-icon\.png)\?v=avatar48-v2"/.test(l)),file);
   }
   assert.equal(heads,27);
+});
+test('favicon PNGs have transparent outer corners and opaque white face', async () => {
+  const { default: sharp } = await import('sharp');
+  for (const size of [16,32,48]) {
+    const data = await read(`public/favicon-${size}x${size}.png`);
+    const { data: pixels, info } = await sharp(data).ensureAlpha().raw().toBuffer({resolveWithObject:true});
+    assert.equal(info.channels,4);
+    for (const [x,y] of [[0,0],[size-1,0],[0,size-1],[size-1,size-1]]) assert.ok(pixels[(y*size+x)*4+3] <= 5, `transparent corner ${size}`);
+    assert.ok(pixels[(Math.floor(size/2)*size+Math.floor(size/2))*4+3] >= 240, `white face remains opaque ${size}`);
+  }
 });

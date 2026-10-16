@@ -1,5 +1,13 @@
 # Browser QA Checklist
 
+### Avatar 48 transparent crop revision (October 17, unpublished preview)
+
+- [x] Remove external cream background while retaining white fur, blue beret, orange scarf and original character identity.
+- [x] Tightly frame subject with less than 1% added optical margin; inspect actual16/32/48px against light and dark tabs.
+- [x] Browser PNG/ICO assets retain alpha; Apple touch asset uses an opaque white background.
+- [x] Owner approved revised preview and confirmed transparent browser icons in dark mode before publication.
+- [ ] After publication, verify cache-busted avatar48-v2 links and deployed pixels.
+
 ### Avatar 48 site icons (October 16, unpublished preview)
 
 - [x] Original avatar 48 artwork only: blue beret, white bear and orange scarf; no redraw, crop or interactive-bear changes.
