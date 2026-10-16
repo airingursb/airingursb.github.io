@@ -1,5 +1,23 @@
 # Airing's Blog Design System
 
+## Chinese Blog author profile · October 16
+
+Keep the existing centered author introduction and subscription content on
+`/blog/`. Give the approved 48 portrait an 80px square, circular presentation,
+with 12px below it and an explicit block box to remove inline-image baseline
+space. Use an 18px/1.3 author name, 8px name-to-bio gap, the existing 13px bio
+at 1.5 line height, and 12px before the social row. Retain all eight controls;
+their glyphs are 16px within 28px targets separated by 4px. Keyboard focus stays
+visible with the existing accent token.
+
+The author group uses 8px top and 16px bottom padding. The subscription rule
+follows after 4px, with 16px below the rule, a balanced 13px/1.6 description
+and a 44px minimum-height button. Keep the group at most 320px wide, centered
+when the sidebar moves below the article list. Retain the existing light/dark
+palette, typography families, links, copy, WeChat popover and subscription dialog.
+This layout is scoped to the Chinese Blog page; other portrait sizes and the
+English Blog remain unchanged. No new artwork, animation or dependencies.
+
 ## Friends arrival · October 3
 
 Each fresh visit starts at a uniformly random tree. Keep each tree's fixed friend

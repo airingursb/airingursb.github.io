@@ -46,9 +46,15 @@ test('imgAttrs: placeholder + data-avatar-email until primed, final URL after', 
   assert.equal(CA.imgAttrs(c), `src="${attr(`https://gravatar.com/avatar/${sha('reader@example.com')}?d=robohash&s=80`)}"`);
 });
 
-test('stored avatar wins and attributes are escaped', () => {
+test('author identity overrides a legacy stored avatar', () => {
   const CA = load();
-  assert.equal(CA.imgAttrs({ avatar: 'https://x/a.png?a=1&b="2"', email: 'me@ursb.me' }), 'src="https://x/a.png?a=1&amp;b=&quot;2&quot;"');
+  const comment = { email: ' Me@URSB.me ', avatar: 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80' };
+  assert.equal(CA.imgAttrs(comment), `src="${attr(GH)}"`);
+});
+
+test('stored reader avatar wins and attributes are escaped', () => {
+  const CA = load();
+  assert.equal(CA.imgAttrs({ nickname: 'Airing', avatar: 'https://x/a.png?a=1&b="2"', email: 'reader@example.com' }), 'src="https://x/a.png?a=1&amp;b=&quot;2&quot;"');
   assert.match(CA.imgAttrs({ email: 'a"b@example.com' }), /data-avatar-email="a&quot;b@example.com"/);
 });
 
