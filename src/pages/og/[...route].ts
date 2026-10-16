@@ -15,9 +15,8 @@ const notoSansSCRegular = fs.readFileSync('src/assets/fonts/NotoSansSC-Regular.t
 const jetBrainsMono = fs.readFileSync('src/assets/fonts/JetBrainsMono-Medium.ttf');
 
 // Load avatar
-const avatarData = await fetch('https://avatars.githubusercontent.com/u/10513408?v=4&s=80')
-  .then((res) => res.arrayBuffer());
-const avatarBase64 = `data:image/jpeg;base64,${Buffer.from(avatarData).toString('base64')}`;
+const avatarData = fs.readFileSync('src/assets/airing-avatar-48.png');
+const avatarBase64 = `data:image/png;base64,${avatarData.toString('base64')}`;
 
 function extractExcerpt(path: string): string {
   const raw = fs.readFileSync(path, 'utf-8');

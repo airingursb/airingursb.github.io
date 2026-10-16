@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 
 const SRC = readFileSync(new URL('../src/lib/comment-avatar.js', import.meta.url), 'utf8');
-const GH = 'https://avatars.githubusercontent.com/u/10513408?v=4&s=80';
+const GH = '/images/airing-avatar-48.webp';
 const attr = (u) => u.replace(/&/g, '&amp;');
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 
@@ -17,7 +17,7 @@ function load() {
   return ctx.CommentAvatar;
 }
 
-test('all three author emails map to the GitHub avatar, sync and case-insensitive', () => {
+test('all three author emails map to the blog avatar, sync and case-insensitive', () => {
   const CA = load();
   for (const e of ['me@ursb.me', 'airing@ursb.me', 'airingdeng@gmail.com', '  Airing@URSB.me ']) {
     assert.equal(CA.isAuthor(e), true, e);
