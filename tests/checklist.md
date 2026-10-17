@@ -1,5 +1,12 @@
 # Browser QA Checklist
 
+### Homepage writing card (October 17)
+
+- [x] 「最新文章」「最新笔记」合并为一张卡，「文章 / 笔记」标签切换面板与右上「全部文章 / 全部笔记」链接；方向键/Home/End 可切换，`/#notes` 直接打开笔记。
+- [x] 按年份分组，组右上角为像素体年份水印；文章行有 84×46 封面缩略图（来自 frontmatter `cover`），笔记无图；标题后点线引至 `MM/DD` 日期。
+- [x] 14 天内的条目在标题后显示绿框「新」/「NEW」，随语言切换；中英文分组只显示当前语言。
+- [x] 浅色/深色、中文/英文、390/1280px 下无溢出；390px 缩略图缩为 64×36、点线隐藏，标题省略。
+
 ### Avatar 48 transparent crop revision (October 17, unpublished preview)
 
 - [x] Remove external cream background while retaining white fur, blue beret, orange scarf and original character identity.

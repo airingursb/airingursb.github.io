@@ -318,15 +318,14 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         if (href) el.setAttribute('href', href);
       });
 
-      // Toggle bilingual cards (posts + notes) by language
-      ['posts', 'notes'].forEach(function(cardId) {
-        var card = document.getElementById(cardId);
-        if (!card) return;
-        var zhItems = card.querySelectorAll('.post-item-zh');
-        var enItems = card.querySelectorAll('.post-item-en');
-        if (enItems.length > 0) {
-          zhItems.forEach(function(el) { el.style.display = currentLang === 'zh' ? '' : 'none'; });
-          enItems.forEach(function(el) { el.style.display = currentLang === 'en' ? '' : 'none'; });
+      // Toggle bilingual writing lists (posts + notes) by language
+      ['posts', 'notes'].forEach(function(panelId) {
+        var panel = document.getElementById(panelId);
+        if (!panel) return;
+        if (panel.querySelector('.wl-group[data-lang="en"]')) {
+          panel.querySelectorAll('.wl-group[data-lang]').forEach(function(el) {
+            el.style.display = el.getAttribute('data-lang') === currentLang ? '' : 'none';
+          });
         }
       });
 
@@ -1164,118 +1163,180 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
         </div>
       </div>
 
-      <!-- Latest Posts -->
-      <div class="card card-posts" id="posts">
-        <div class="section-title" data-i18n="sec_posts">Latest Posts</div>
+      <!-- Writing: latest posts + notes, one card with tabs -->
+      <div class="card card-writing" id="writing">
+        <div class="wl-head">
+          <div class="wl-tabs" role="tablist" aria-label="Writing">
+            <button type="button" class="wl-tab" role="tab" id="wl-tab-posts" aria-controls="posts" aria-selected="true" data-i18n="tab_posts">Posts</button>
+            <button type="button" class="wl-tab" role="tab" id="wl-tab-notes" aria-controls="notes" aria-selected="false" tabindex="-1" data-i18n="tab_notes">Notes</button>
+          </div>
+          <a class="wl-more" data-for="posts" href="/blog/" data-href-zh="/blog/" data-href-en="/en/blog/" data-i18n="wl_more_posts">All posts →</a>
+          <a class="wl-more" data-for="notes" href="/notes/" data-href-zh="/notes/" data-href-en="/en/notes/" data-i18n="wl_more_notes" hidden>All notes →</a>
+        </div>
+        <div class="wl-panel" id="posts" role="tabpanel" aria-labelledby="wl-tab-posts">
         <!-- ARTICLES_START -->
-            <a href="https://ursb.me/posts/weekly-36/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">月刊（第36期）：伊始</span>
-              <span class="post-date">2026.09.06</span>
-            </a>
-            <a href="https://ursb.me/posts/after-ai-takes-everything/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">当 AI 拿走一切之后</span>
-              <span class="post-date">2026.06.12</span>
-            </a>
-            <a href="https://ursb.me/posts/weekly-35/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">月刊（第35期）：我和 Claude 老师 Vibe Coding 的周末</span>
-              <span class="post-date">2026.05.23</span>
-            </a>
-            <a href="https://ursb.me/posts/weekly-34/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">月刊（第34期）：创造的快乐</span>
-              <span class="post-date">2026.04.05</span>
-            </a>
-            <a href="https://ursb.me/posts/2015-2016-essays/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">2015-2016 随笔选集</span>
-              <span class="post-date">2026.03.31</span>
-            </a>
-            <a href="https://ursb.me/posts/summary-2025/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">2025，全新旅途</span>
-              <span class="post-date">2026.02.15</span>
-            </a>
+            <div class="wl-group" data-lang="zh">
+              <svg class="wl-year-mark" viewBox="0 0 7 5" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM4 1h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1z"/></svg>
+              <div class="wl-year">2026</div>
+              <a href="https://ursb.me/posts/weekly-36/" class="post-item" target="_blank" rel="noopener">
+                <img class="wl-thumb" src="https://r2.airingdeng.com/blog/wj36/cover-c0b38e12b394/full.webp" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">月刊（第36期）：伊始</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-09-06">09/06</time>
+              </a>
+              <a href="https://ursb.me/posts/after-ai-takes-everything/" class="post-item" target="_blank" rel="noopener">
+                <img class="wl-thumb" src="https://r2.airingdeng.com/blog/aae/cover.webp" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">当 AI 拿走一切之后</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-06-12">06/12</time>
+              </a>
+              <a href="https://ursb.me/posts/weekly-35/" class="post-item" target="_blank" rel="noopener">
+                <img class="wl-thumb" src="https://r2.airingdeng.com/blog/wj35/multitask-phone.webp" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">月刊（第35期）：我和 Claude 老师 Vibe Coding 的周末</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-05-23">05/23</time>
+              </a>
+              <a href="https://ursb.me/posts/weekly-34/" class="post-item" target="_blank" rel="noopener">
+                <img class="wl-thumb" src="https://airing.ursb.me/image/blog/wj34/2026-04-05.jpg" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">月刊（第34期）：创造的快乐</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-04-05">04/05</time>
+              </a>
+              <a href="https://ursb.me/posts/2015-2016-essays/" class="post-item" target="_blank" rel="noopener">
+                <img class="wl-thumb" src="https://airing.ursb.me/image/blog/2026-03-31.jpg" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">2015-2016 随笔选集</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-03-31">03/31</time>
+              </a>
+              <a href="https://ursb.me/posts/summary-2025/" class="post-item" target="_blank" rel="noopener">
+                <img class="wl-thumb" src="https://airing.ursb.me/image/blog/wj30/IMG_7379.jpeg" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">2025，全新旅途</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-02-15">02/15</time>
+              </a>
+            </div>
         <!-- ARTICLES_END -->
         <!-- ARTICLES_EN_START -->
-            <a href="/en/posts/weekly-36/" class="post-item post-item-en">
-              <span class="post-title">Monthly #36: A Beginning</span>
-              <span class="post-date">2026.09.06</span>
-            </a>
-            <a href="/en/posts/after-ai-takes-everything/" class="post-item post-item-en">
-              <span class="post-title">After AI Takes Everything</span>
-              <span class="post-date">2026.06.12</span>
-            </a>
-            <a href="/en/posts/weekly-35/" class="post-item post-item-en">
-              <span class="post-title">Weekly #35: Vibe Coding Weekends with Professor Claude</span>
-              <span class="post-date">2026.05.23</span>
-            </a>
-            <a href="/en/posts/weekly-34/" class="post-item post-item-en">
-              <span class="post-title">Weekly #34: The Joy of Making Things</span>
-              <span class="post-date">2026.04.05</span>
-            </a>
-            <a href="/en/posts/summary-2025/" class="post-item post-item-en">
-              <span class="post-title">2025: A Brand New Journey</span>
-              <span class="post-date">2026.02.15</span>
-            </a>
-            <a href="/en/posts/weekly-33/" class="post-item post-item-en">
-              <span class="post-title">Weekly #33: The Ladder of Inference</span>
-              <span class="post-date">2025.11.15</span>
-            </a>
+            <div class="wl-group" data-lang="en">
+              <svg class="wl-year-mark" viewBox="0 0 7 5" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM4 1h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1z"/></svg>
+              <div class="wl-year">2026</div>
+              <a href="/en/posts/weekly-36/" class="post-item">
+                <img class="wl-thumb" src="https://r2.airingdeng.com/blog/wj36/cover-c0b38e12b394/full.webp" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">Monthly #36: A Beginning</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-09-06">09/06</time>
+              </a>
+              <a href="/en/posts/after-ai-takes-everything/" class="post-item">
+                <img class="wl-thumb" src="https://r2.airingdeng.com/blog/aae/cover.webp" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">After AI Takes Everything</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-06-12">06/12</time>
+              </a>
+              <a href="/en/posts/weekly-35/" class="post-item">
+                <img class="wl-thumb" src="https://r2.airingdeng.com/blog/wj35/multitask-phone.webp" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">Weekly #35: Vibe Coding Weekends with Professor Claude</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-05-23">05/23</time>
+              </a>
+              <a href="/en/posts/weekly-34/" class="post-item">
+                <img class="wl-thumb" src="https://airing.ursb.me/image/blog/wj34/2026-04-05.jpg" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">Weekly #34: The Joy of Making Things</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-04-05">04/05</time>
+              </a>
+              <a href="/en/posts/summary-2025/" class="post-item">
+                <img class="wl-thumb" src="https://airing.ursb.me/image/blog/wj30/IMG_7379.jpeg" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">2025: A Brand New Journey</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-02-15">02/15</time>
+              </a>
+            </div>
+            <div class="wl-group" data-lang="en">
+              <svg class="wl-year-mark" viewBox="0 0 7 5" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM4 1h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM6 3h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1z"/></svg>
+              <div class="wl-year">2025</div>
+              <a href="/en/posts/weekly-33/" class="post-item">
+                <img class="wl-thumb" src="https://airing.ursb.me/image/blog/wj33/B0000514HEIC1760766420-1.jpg" alt="" width="84" height="46" loading="lazy" decoding="async">
+                <span class="post-title">Weekly #33: The Ladder of Inference</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2025-11-15">11/15</time>
+              </a>
+            </div>
         <!-- ARTICLES_EN_END -->
-      </div>
-
-      <!-- Latest Notes -->
-      <div class="card card-notes" id="notes">
-        <div class="section-title" data-i18n="sec_notes">Latest Notes</div>
+        </div>
+        <div class="wl-panel" id="notes" role="tabpanel" aria-labelledby="wl-tab-notes" hidden>
         <!-- NOTES_START -->
-            <a href="https://ursb.me/playbook/living-scenes/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">一只熊的一天。</span>
-              <span class="post-date">2026.09.13</span>
-            </a>
-            <a href="https://ursb.me/playbook/reading-companion/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">目光，跟着你走。</span>
-              <span class="post-date">2026.09.13</span>
-            </a>
-            <a href="/immersive/pi-agent/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">一条用户消息在 Pi Agent 里的一生 —— 从回车到 JSONL 的 26 站</span>
-              <span class="post-date">2026.08.22</span>
-            </a>
-            <a href="/immersive/llm-inference-life/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">一次 LLM 推理的一生 —— 一个 prompt 在 llama.cpp 里走过的 28 个站</span>
-              <span class="post-date">2026.05.24</span>
-            </a>
-            <a href="/immersive/css-engine/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">一段 CSS 的一生 —— Chromium 样式引擎全景</span>
-              <span class="post-date">2026.05.23</span>
-            </a>
-            <a href="/immersive/tls-handshake/" class="post-item post-item-zh" target="_blank" rel="noopener">
-              <span class="post-title">一次 TLS 握手的一生 —— TLS 1.3 协议全景</span>
-              <span class="post-date">2026.05.23</span>
-            </a>
+            <div class="wl-group" data-lang="zh">
+              <svg class="wl-year-mark" viewBox="0 0 7 5" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM4 1h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1z"/></svg>
+              <div class="wl-year">2026</div>
+              <a href="https://ursb.me/playbook/living-scenes/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">一只熊的一天。</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-09-13">09/13</time>
+              </a>
+              <a href="https://ursb.me/playbook/reading-companion/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">目光，跟着你走。</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-09-13">09/13</time>
+              </a>
+              <a href="/immersive/pi-agent/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">一条用户消息在 Pi Agent 里的一生 —— 从回车到 JSONL 的 26 站</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-08-22">08/22</time>
+              </a>
+              <a href="/immersive/llm-inference-life/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">一次 LLM 推理的一生 —— 一个 prompt 在 llama.cpp 里走过的 28 个站</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-05-24">05/24</time>
+              </a>
+              <a href="/immersive/css-engine/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">一段 CSS 的一生 —— Chromium 样式引擎全景</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-05-23">05/23</time>
+              </a>
+              <a href="/immersive/tls-handshake/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">一次 TLS 握手的一生 —— TLS 1.3 协议全景</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-05-23">05/23</time>
+              </a>
+            </div>
         <!-- NOTES_END -->
         <!-- NOTES_EN_START -->
-            <a href="https://ursb.me/en/playbook/living-scenes/" class="post-item post-item-en" target="_blank" rel="noopener">
-              <span class="post-title">A day in a bear’s life.</span>
-              <span class="post-date">2026.09.13</span>
-            </a>
-            <a href="https://ursb.me/en/playbook/reading-companion/" class="post-item post-item-en" target="_blank" rel="noopener">
-              <span class="post-title">A gaze that follows you.</span>
-              <span class="post-date">2026.09.13</span>
-            </a>
-            <a href="/en/immersive/pi-agent/" class="post-item post-item-en" target="_blank" rel="noopener">
-              <span class="post-title">The Life of a User Message Inside Pi Agent — 26 Stations from Enter to JSONL</span>
-              <span class="post-date">2026.08.22</span>
-            </a>
-            <a href="/en/immersive/llm-inference-life/" class="post-item post-item-en" target="_blank" rel="noopener">
-              <span class="post-title">The Life of an LLM Inference — A Prompt's 28 Stops Inside llama.cpp</span>
-              <span class="post-date">2026.05.24</span>
-            </a>
-            <a href="/en/immersive/css-engine/" class="post-item post-item-en" target="_blank" rel="noopener">
-              <span class="post-title">The Life of a Stylesheet — Inside Chromium's CSS Engine</span>
-              <span class="post-date">2026.05.23</span>
-            </a>
-            <a href="/en/immersive/tls-handshake/" class="post-item post-item-en" target="_blank" rel="noopener">
-              <span class="post-title">The Life of a TLS Handshake — TLS 1.3 Protocol in Full</span>
-              <span class="post-date">2026.05.23</span>
-            </a>
+            <div class="wl-group" data-lang="en">
+              <svg class="wl-year-mark" viewBox="0 0 7 5" aria-hidden="true" focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM2 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM0 3h1v1h-1zM0 4h1v1h-1zM1 4h1v1h-1zM2 4h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM4 1h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM4 4h1v1h-1zM5 4h1v1h-1zM6 4h1v1h-1z"/></svg>
+              <div class="wl-year">2026</div>
+              <a href="https://ursb.me/en/playbook/living-scenes/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">A day in a bear’s life.</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-09-13">09/13</time>
+              </a>
+              <a href="https://ursb.me/en/playbook/reading-companion/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">A gaze that follows you.</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-09-13">09/13</time>
+              </a>
+              <a href="/en/immersive/pi-agent/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">The Life of a User Message Inside Pi Agent — 26 Stations from Enter to JSONL</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-08-22">08/22</time>
+              </a>
+              <a href="/en/immersive/llm-inference-life/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">The Life of an LLM Inference — A Prompt's 28 Stops Inside llama.cpp</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-05-24">05/24</time>
+              </a>
+              <a href="/en/immersive/css-engine/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">The Life of a Stylesheet — Inside Chromium's CSS Engine</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-05-23">05/23</time>
+              </a>
+              <a href="/en/immersive/tls-handshake/" class="post-item" target="_blank" rel="noopener">
+                <span class="post-title">The Life of a TLS Handshake — TLS 1.3 Protocol in Full</span>
+                <span class="wl-lead" aria-hidden="true"></span>
+                <time class="post-date" datetime="2026-05-23">05/23</time>
+              </a>
+            </div>
         <!-- NOTES_EN_END -->
+        </div>
       </div>
 
       <!-- Channel -->
@@ -4381,61 +4442,60 @@ const dataUpdatedEn = dataUpdatedDate.toLocaleDateString('en-US', { month: 'shor
   </script>
   <script is:inline src="/assets/online-presence.js" defer></script>
 
-  <!-- "New" badge injection for posts/notes within last 14 days -->
+  <!-- Writing card: posts/notes tabs + "new" badge for items within 14 days -->
   <script is:inline>
     (function () {
-      var WINDOW_DAYS = 14;
-      // Animated NEW badge — gradient text with SMIL color cycling
-      // (pink → purple → cyan, 3s loop). Source asset:
-      // https://github.com/airingursb/airingursb/blob/master/assets/new-badge.svg
-      var BADGE_SVG = ''
-        + '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="10" viewBox="0 0 22 10" aria-hidden="true">'
-        +   '<defs>'
-        +     '<linearGradient id="g-newbadge" x1="0%" y1="0%" x2="100%" y2="0%">'
-        +       '<stop offset="0%" stop-color="#FF0080">'
-        +         '<animate attributeName="stop-color" values="#FF0080;#7928CA;#00D4FF;#7928CA;#FF0080" dur="3s" repeatCount="indefinite"/>'
-        +       '</stop>'
-        +       '<stop offset="100%" stop-color="#7928CA">'
-        +         '<animate attributeName="stop-color" values="#7928CA;#00D4FF;#FF0080;#00D4FF;#7928CA" dur="3s" repeatCount="indefinite"/>'
-        +       '</stop>'
-        +     '</linearGradient>'
-        +   '</defs>'
-        +   '<text x="0" y="8" font-family="-apple-system,BlinkMacSystemFont,&apos;Segoe UI&apos;,Roboto,Helvetica,Arial,sans-serif" font-size="9" font-weight="700" fill="url(#g-newbadge)" letter-spacing="0.4">NEW</text>'
-        + '</svg>';
-      function parseDate(text) {
-        if (!text) return null;
-        var m = text.trim().match(/^(\d{4})\.(\d{1,2})\.(\d{1,2})/);
-        if (!m) return null;
-        return new Date(parseInt(m[1], 10), parseInt(m[2], 10) - 1, parseInt(m[3], 10));
+      var card = document.getElementById('writing');
+      if (!card) return;
+
+      var tabs = Array.prototype.slice.call(card.querySelectorAll('[role="tab"]'));
+      function select(tab, focus) {
+        tabs.forEach(function (t) {
+          var on = t === tab;
+          var id = t.getAttribute('aria-controls');
+          t.setAttribute('aria-selected', on ? 'true' : 'false');
+          t.tabIndex = on ? 0 : -1;
+          document.getElementById(id).hidden = !on;
+          card.querySelector('.wl-more[data-for="' + id + '"]').hidden = !on;
+        });
+        if (focus) tab.focus();
       }
+      tabs.forEach(function (tab, i) {
+        tab.addEventListener('click', function () { select(tab); });
+        tab.addEventListener('keydown', function (e) {
+          var next = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }[e.key];
+          if (next === undefined) return;
+          e.preventDefault();
+          select(tabs[(next + tabs.length) % tabs.length], true);
+        });
+      });
+      if (location.hash === '#notes') select(tabs[1]);
+
+      var WINDOW_DAYS = 14;
       function tag() {
-        var now = new Date();
-        var cutoff = now.getTime() - WINDOW_DAYS * 86400000;
-        var items = document.querySelectorAll('.card-posts .post-item, .card-notes .post-item');
-        items.forEach(function (el) {
+        var now = Date.now();
+        var cutoff = now - WINDOW_DAYS * 86400000;
+        var label = window.currentLang === 'en' ? 'NEW' : '新';
+        card.querySelectorAll('.post-item').forEach(function (el) {
           var dateEl = el.querySelector('.post-date');
           var titleEl = el.querySelector('.post-title');
           if (!dateEl || !titleEl) return;
-          var d = parseDate(dateEl.textContent);
-          if (!d) return;
-          var existing = titleEl.querySelector('.new-badge');
-          var isNew = d.getTime() >= cutoff && d.getTime() <= now.getTime();
+          var d = new Date((dateEl.getAttribute('datetime') || '') + 'T00:00:00');
+          if (isNaN(d)) return;
+          var existing = el.querySelector('.wl-new');
+          var isNew = d.getTime() >= cutoff && d.getTime() <= now;
           if (isNew && !existing) {
-            var span = document.createElement('span');
-            span.className = 'new-badge';
-            span.setAttribute('aria-label', 'new');
-            span.innerHTML = BADGE_SVG;
-            titleEl.insertBefore(span, titleEl.firstChild);
+            existing = document.createElement('span');
+            existing.className = 'wl-new';
+            titleEl.after(existing);
           } else if (!isNew && existing) {
             existing.remove();
+            existing = null;
           }
+          if (existing) existing.textContent = label;
         });
       }
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', tag);
-      } else {
-        tag();
-      }
+      tag();
       window.addEventListener('langchange', tag);
     })();
   </script>

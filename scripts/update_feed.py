@@ -76,31 +76,119 @@ def format_date(raw, fmt_out='%Y.%m.%d'):
     return raw[:10] if raw else ''
 
 
+def resolve_item_link(a, lang):
+    """Return (escaped href, target attrs) for a feed item."""
+    link = a['link']
+    if lang == 'en':
+        # Convert external links to local /en/posts/ links
+        m = re.search(r'ursb\.me/en/posts/([^/]+)/?', link)
+        if m:
+            link = f'/en/posts/{m.group(1)}/'
+    elif lang == 'zh':
+        # Convert external blog.ursb.me links to local /posts/ links
+        m = re.search(r'blog\.ursb\.me/posts/([^/]+)/?', link)
+        if m:
+            link = f'/posts/{m.group(1)}'
+    link = escape_html(link)
+    # Open in new tab for: external links, OR immersive standalone pages
+    is_immersive = a.get('immersive') or link.startswith('/immersive/')
+    target = ' target="_blank" rel="noopener"' if (not link.startswith('/') or is_immersive) else ''
+    return link, target
+
+
 def generate_items_html(items, lang=None):
     lines = []
     for a in items:
         title = escape_html(a['title'])
-        link = a['link']
-        if lang == 'en':
-            # Convert external links to local /en/posts/ links
-            m = re.search(r'ursb\.me/en/posts/([^/]+)/?', link)
-            if m:
-                link = f'/en/posts/{m.group(1)}/'
-        elif lang == 'zh':
-            # Convert external blog.ursb.me links to local /posts/ links
-            m = re.search(r'blog\.ursb\.me/posts/([^/]+)/?', link)
-            if m:
-                link = f'/posts/{m.group(1)}'
-        link = escape_html(link)
+        link, target = resolve_item_link(a, lang)
         date = a['date']
-        # Open in new tab for: external links, OR immersive standalone pages
-        is_immersive = a.get('immersive') or link.startswith('/immersive/')
-        target = ' target="_blank" rel="noopener"' if (not link.startswith('/') or is_immersive) else ''
         lang_cls = f' post-item-{lang}' if lang else ''
         lines.append(f'            <a href="{link}" class="post-item{lang_cls}"{target}>')
         lines.append(f'              <span class="post-title">{title}</span>')
         lines.append(f'              <span class="post-date">{date}</span>')
         lines.append(f'            </a>')
+    return '\n'.join(lines)
+
+
+# ── Homepage writing card (posts + notes) ────────────────────
+
+POSTS_DIR = os.path.join(os.path.dirname(__file__), '..', 'src', 'content', 'posts')
+
+# 3×5 pixel digits for the year watermark, one string per row.
+PIXEL_DIGITS = {
+    '0': ['111', '101', '101', '101', '111'],
+    '1': ['010', '110', '010', '010', '111'],
+    '2': ['111', '001', '111', '100', '111'],
+    '3': ['111', '001', '111', '001', '111'],
+    '4': ['101', '101', '111', '001', '001'],
+    '5': ['111', '100', '111', '001', '111'],
+    '6': ['111', '100', '111', '101', '111'],
+    '7': ['111', '001', '001', '001', '001'],
+    '8': ['111', '101', '111', '101', '111'],
+    '9': ['111', '101', '111', '001', '111'],
+}
+
+
+def pixel_year_svg(year):
+    """Draw the last two digits of a year as a pixel-art SVG watermark."""
+    cells = []
+    for i, ch in enumerate(str(year)[-2:]):
+        for y, row in enumerate(PIXEL_DIGITS.get(ch, [])):
+            for x, on in enumerate(row):
+                if on == '1':
+                    cells.append(f'M{i * 4 + x} {y}h1v1h-1z')
+    return ('<svg class="wl-year-mark" viewBox="0 0 7 5" aria-hidden="true" '
+            f'focusable="false" shape-rendering="crispEdges"><path fill="currentColor" d="{"".join(cells)}"/></svg>')
+
+
+def load_post_covers(lang):
+    """Map post slug -> cover URL from frontmatter; EN falls back to the ZH cover."""
+    covers = {}
+    dirs = [POSTS_DIR, os.path.join(POSTS_DIR, 'en')] if lang == 'en' else [POSTS_DIR]
+    for d in dirs:
+        if not os.path.isdir(d):
+            continue
+        for name in os.listdir(d):
+            if not name.endswith(('.md', '.mdx')):
+                continue
+            with open(os.path.join(d, name), encoding='utf-8') as f:
+                text = f.read(4096)
+            fm = re.match(r'---\n(.*?)\n---', text, re.DOTALL)
+            m = fm and re.search(r'^cover:\s*(.+?)\s*$', fm.group(1), re.MULTILINE)
+            if m:
+                covers[os.path.splitext(name)[0]] = m.group(1).strip('\'"')
+    return covers
+
+
+def generate_writing_html(items, lang, covers=None):
+    """Posts/notes grouped by year: cover thumb, title, dotted leader, MM/DD."""
+    covers = covers or {}
+    groups = []
+    for a in items:
+        year = a['date'][:4]
+        if not groups or groups[-1][0] != year:
+            groups.append((year, []))
+        groups[-1][1].append(a)
+
+    lines = []
+    for year, group in groups:
+        lines.append(f'            <div class="wl-group" data-lang="{lang}">')
+        lines.append(f'              {pixel_year_svg(year)}')
+        lines.append(f'              <div class="wl-year">{year}</div>')
+        for a in group:
+            title = escape_html(a['title'])
+            link, target = resolve_item_link(a, lang)
+            y, mo, d = (a['date'].split('.') + ['', ''])[:3]
+            m = re.search(r'/posts/([^/?#]+)', a['link'])
+            cover = covers.get(m.group(1)) if m else None
+            lines.append(f'              <a href="{link}" class="post-item"{target}>')
+            if cover:
+                lines.append(f'                <img class="wl-thumb" src="{escape_html(cover)}" alt="" width="84" height="46" loading="lazy" decoding="async">')
+            lines.append(f'                <span class="post-title">{title}</span>')
+            lines.append('                <span class="wl-lead" aria-hidden="true"></span>')
+            lines.append(f'                <time class="post-date" datetime="{y}-{mo}-{d}">{mo}/{d}</time>')
+            lines.append('              </a>')
+        lines.append('            </div>')
     return '\n'.join(lines)
 
 
@@ -612,7 +700,7 @@ def main():
         xml_str = fetch_url(FEED_URL)
         articles = parse_blog_feed(xml_str)
         if articles:
-            html = generate_items_html(articles, lang='zh')
+            html = generate_writing_html(articles, 'zh', load_post_covers('zh'))
             content = replace_section(content, '<!-- ARTICLES_START -->', '<!-- ARTICLES_END -->', html)
             sync_to_astro('<!-- ARTICLES_START -->', '<!-- ARTICLES_END -->', html, 'Blog')
             print(f'Blog: {len(articles)} articles')
@@ -627,7 +715,7 @@ def main():
         xml_str = fetch_url(FEED_EN_URL)
         articles_en = parse_blog_feed(xml_str)
         if articles_en:
-            html = generate_items_html(articles_en, lang='en')
+            html = generate_writing_html(articles_en, 'en', load_post_covers('en'))
             content = replace_section(content, '<!-- ARTICLES_EN_START -->', '<!-- ARTICLES_EN_END -->', html)
             sync_to_astro('<!-- ARTICLES_EN_START -->', '<!-- ARTICLES_EN_END -->', html, 'Blog EN')
             print(f'Blog EN: {len(articles_en)} articles')
@@ -642,7 +730,7 @@ def main():
         xml_str = fetch_url(NOTES_FEED_URL)
         notes = parse_notes_feed(xml_str)
         if notes:
-            html = generate_items_html(notes, lang='zh')
+            html = generate_writing_html(notes, 'zh')
             content = replace_section(content, '<!-- NOTES_START -->', '<!-- NOTES_END -->', html)
             sync_to_astro('<!-- NOTES_START -->', '<!-- NOTES_END -->', html, 'Notes')
             print(f'Notes: {len(notes)} notes')
@@ -657,7 +745,7 @@ def main():
         xml_str = fetch_url(NOTES_EN_FEED_URL)
         notes_en = parse_notes_feed(xml_str)
         if notes_en:
-            html = generate_items_html(notes_en, lang='en')
+            html = generate_writing_html(notes_en, 'en')
             content = replace_section(content, '<!-- NOTES_EN_START -->', '<!-- NOTES_EN_END -->', html)
             sync_to_astro('<!-- NOTES_EN_START -->', '<!-- NOTES_EN_END -->', html, 'Notes EN')
             print(f'Notes EN: {len(notes_en)} notes')
