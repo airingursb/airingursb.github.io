@@ -11,7 +11,9 @@
 comics-studio/
 ├── README.md          ← 这份（agents 必读）
 ├── PROMPT.md          ← 主提示词模板（场景描述 + MJ 参数）
-├── publish.mjs        ← 发布命令：把草稿推到 Telegram preview
+├── publish.mjs        ← 发布新一期：把草稿推到 Telegram preview
+├── replace.mjs        ← 替换已发布期数的图（重画、修图），不新建期号
+├── strip-assets.mjs   ← 两个脚本共用：读 env、PNG→WebP、上传 R2
 ├── package.json       ← deps (@aws-sdk/client-s3, @supabase/supabase-js)
 ├── refs/              ← 角色 reference 图（不要改）
 │   ├── panda.png         (主角 Airing 熊猫)
@@ -64,7 +66,10 @@ comics-studio/
 $ node comics-studio/publish.mjs drafts/<slug>
   ↓
 1. 在 Supabase 建 draft row
-2. 上传 strip.png 到 R2 (strip/<rowId>/v1/strip.png)
+2. 上传到 R2 的 strip/<rowId>/v1/：
+   - strip.png  原图，存档用，也用作 og:image 和 Telegram 预览
+   - strip.webp 压缩版（质量 85，尺寸不变，约为 PNG 的 1/8），网站上显示的就是它
+   panels = { url: webp, original: png, width, height, alt }
 3. 用 Telegram Bot API 推 preview 到管理员 DM (带 [✅ 发布 | ❌ 删] 按钮)
   ↓
 你在 Telegram tap ✅ → 分配 No. N → 触发 GH Actions deploy → ~3min 后 ursb.me/comics/N 上线
@@ -85,6 +90,21 @@ node comics-studio/publish.mjs drafts/2026-05-17-semicolon
 # 或者：
 # node comics-studio/publish.mjs comics-studio/drafts/2026-05-17-semicolon
 ```
+
+### 替换已发布的期数
+
+```bash
+# 期号=图片路径（strip.png 或包含 strip.png 的目录），可以一次给多期
+node comics-studio/replace.mjs 3=~/Downloads/comics-redraw/no03 17=./no17/strip.png
+node comics-studio/replace.mjs 3=./no03 --dry-run     # 只看会改什么
+```
+
+每一期：上传 PNG + WebP 到下一个版本目录 `strip/<rowId>/v<N+1>/`（旧版本留在 R2 不删），
+把 `panels.url` 指过去，旧地址记在 `panels.previous` 里方便回滚。全部换完后触发一次部署
+（有 `GH_DISPATCH_TOKEN` 用它，没有就用本机已登录的 `gh`），约 3 分钟后上线。
+只需要 Supabase 和 R2 的 env，不需要 Telegram。
+
+> Telegram 直接发图给 bot 的那条路（`supabase/functions/comics-bot`）仍只存 PNG，不生成 WebP。
 
 脚本会自动从下列文件里读取 env vars（先后顺序，先找到的优先）：
 

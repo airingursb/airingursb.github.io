@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // comics-studio/publish.mjs
-// Take a finished draft (strip.png + meta.json) → create draft row + upload to R2 +
-// send Telegram preview to admin. Admin taps ✅ in Telegram to actually publish.
+// Take a finished draft (strip.png + meta.json) → create draft row + upload PNG and
+// a WebP copy to R2 + send Telegram preview to admin. Admin taps ✅ in Telegram to actually publish.
 //
 // Usage:
 //   node comics-studio/publish.mjs drafts/<slug>
@@ -19,43 +19,21 @@
 //   ADMIN_TELEGRAM_USER_ID
 
 import { readFile, stat } from 'node:fs/promises';
-import { existsSync, readFileSync } from 'node:fs';
 import { resolve, basename, dirname, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createClient } from '@supabase/supabase-js';
+import { loadEnv, envFiles, requireEnv, createR2, uploadStripVersion } from './strip-assets.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, '..');
 
 // ── Load env from common locations ──────────────────────────────
-const ENV_FILES = [
-  resolve(__dirname, '.env'),
-  resolve(REPO_ROOT, 'services/blog-api/.env'),
-  resolve(REPO_ROOT, '.env'),
-];
-for (const f of ENV_FILES) {
-  if (!existsSync(f)) continue;
-  for (const line of readFileSync(f, 'utf8').split('\n')) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#') || !trimmed.includes('=')) continue;
-    const eq = trimmed.indexOf('=');
-    const k = trimmed.slice(0, eq).trim();
-    const v = trimmed.slice(eq + 1).trim();
-    if (!(k in process.env)) process.env[k] = v;
-  }
-}
-
-const REQUIRED = [
+loadEnv(envFiles(__dirname, REPO_ROOT));
+requireEnv([
   'BLOG_SUPABASE_URL', 'BLOG_SUPABASE_SERVICE_KEY',
   'R2_ACCOUNT_ID', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY', 'R2_BUCKET', 'R2_PUBLIC_BASE',
   'COMICS_TELEGRAM_BOT_TOKEN', 'ADMIN_TELEGRAM_USER_ID',
-];
-const missing = REQUIRED.filter(k => !process.env[k]);
-if (missing.length) {
-  console.error('Missing env vars:', missing.join(', '));
-  process.exit(1);
-}
+]);
 
 // ── Resolve draft directory ──────────────────────────────────────
 let draftArg = process.argv[2];
@@ -134,29 +112,17 @@ async function rollback(reason) {
   process.exit(1);
 }
 
-// ── 2. Upload to R2 ──────────────────────────────────────────────
-let url;
+// ── 2. Upload PNG + WebP to R2 ───────────────────────────────────
+let url, original;
 try {
-  const r2 = new S3Client({
-    region: 'auto',
-    endpoint: `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-    },
-  });
-  const key = `strip/${row.id}/v1/strip.png`;
-  await r2.send(new PutObjectCommand({
-    Bucket: process.env.R2_BUCKET,
-    Key: key,
-    Body: imageBytes,
-    ContentType: 'image/png',
-  }));
-  url = `${process.env.R2_PUBLIC_BASE.replace(/\/$/, '')}/${key}`;
+  const r2 = await createR2();
+  const panels = await uploadStripVersion({ r2, rowId: row.id, version: 1, pngBytes: imageBytes });
+  ({ url, original } = panels);
   console.log(`✓ uploaded to R2 · ${url}`);
+  console.log(`   png ${(panels.bytes.png / 1024).toFixed(0)} KB → webp ${(panels.bytes.webp / 1024).toFixed(0)} KB`);
 
   await sb.from('comics').update({
-    panels: { url, alt: { zh: titleZh, en: titleEn } },
+    panels: { url, original, width: panels.width, height: panels.height, alt: { zh: titleZh, en: titleEn } },
   }).eq('id', row.id);
 } catch (e) {
   await rollback(`R2 upload failed: ${e.message || e}`);
@@ -178,7 +144,7 @@ const tgCall = async (method, body) => {
 try {
   await tgCall('sendPhoto', {
     chat_id: adminId,
-    photo: url,
+    photo: original,
     caption: `*草稿* · 「${titleZh}」` + (titleEn !== titleZh ? ` / 「${titleEn}」` : ''),
     parse_mode: 'Markdown',
   });

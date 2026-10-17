@@ -1,5 +1,12 @@
 # Browser QA Checklist
 
+### Comics publishing WebP + replace (October 18)
+
+- [x] `publish.mjs` 上传 PNG 原图和 WebP（质量 85、尺寸不变）到 `strip/<id>/v1/`，`panels.url` 指向 WebP，`panels.original` 存 PNG；Telegram 预览用 PNG。
+- [x] 新增 `replace.mjs <期号>=<图>`：上传到下一个版本目录、改 `panels.url`、旧地址记入 `panels.previous`，全部完成后触发一次部署；`--dry-run` 不写任何东西。
+- [x] 详情页 og:image 优先用 PNG 原图；封面、存档卡、详情页图片带上 width/height。
+- [x] No.17 原图对比：3.3 MB PNG → 约 340 KB WebP，2 倍放大下文字与线条无可见差异。
+
 ### Homepage writing card (October 17)
 
 - [x] 「最新文章」「最新笔记」合并为一张卡，「文章 / 笔记」标签切换面板与右上「全部文章 / 全部笔记」链接；方向键/Home/End 可切换，`/#notes` 直接打开笔记。

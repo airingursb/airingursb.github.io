@@ -2,7 +2,11 @@
 // Build-time Supabase fetch of all approved comics.
 
 export interface ComicPanels {
-  url: string;
+  url: string;            // what pages show (WebP for strips published via comics-studio)
+  original?: string;      // source PNG, used where WebP is poorly supported (og:image)
+  width?: number;
+  height?: number;
+  previous?: string | null;
   alt?: { zh: string; en: string };
 }
 
