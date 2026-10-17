@@ -220,6 +220,13 @@ Reading feels like a personal editor's desk: quiet, opinionated, and easy to sca
 
 ## 2. Color
 
+All site tokens (colour, font stacks, type scale, spacing) live in
+`src/styles/tokens.css`. `global.css` imports it for every `BaseLayout` page;
+standalone surfaces that render their own `<html>` but share `SiteHeader`
+(currently Echo) import it directly. Never redefine `--c-*` or `--accent` in a
+section stylesheet — a section's own look uses section-prefixed private tokens
+(for example Echo's `--paper`, `--ink`, `--pen`, `--echo-space-*`).
+
 ### Palette
 
 | Role | Token | Light | Dark | Usage |
@@ -252,21 +259,38 @@ Reading feels like a personal editor's desk: quiet, opinionated, and easy to sca
 | Small | `0.75rem` | 500 | 1.5 | `0` | Compact UI |
 | Meta | `0.75rem` | 500 | 1.5 | `0.04em` | Labels and timestamps |
 
+### Type scale tokens
+
+| Token | Size | Usage |
+| --- | --- | --- |
+| `--text-xs` | `12px` | Metadata, captions, timestamps — the floor for readable text |
+| `--text-sm` | `14px` | Compact UI and actionable labels |
+| `--text-base` | `16px` | Body copy |
+| `--text-lg` | `18px` | Lead / deck |
+| `--text-xl` | `20px` | Small headings |
+
+Larger display sizes stay local to their section (they are layout decisions,
+not shared roles).
+
 ### Font stacks
 
 - UI and story titles: `-apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif`.
-- Editorial display and long-form notes: `ui-serif, "Songti SC", "STSong", Georgia, serif`.
-- Metadata: the site-level `--font-mono` stack.
+- Editorial display and long-form notes: `--font-serif` = `ui-serif, "Songti SC", "STSong", Georgia, serif`. Sections may override it locally (the Blog index scopes a Noto Serif SC stack).
+- Metadata and code: `--font-mono` = `ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace`. Use the token; do not hand-write monospace stacks or name fonts that are not loaded (e.g. JetBrains Mono).
 
 ### Rules
 
 - The serif face marks authored editorial judgment; generated metadata and navigation remain sans or mono.
-- Weekly body text is 16px; actionable labels are at least 14px and metadata is at least 12px.
+- Weekly body text is 16px; actionable labels are at least 14px and metadata is at least 12px (`--text-xs`).
+- 12px is the site-wide floor for readable text. The single documented exception is the shared site header's brand/navigation/meta row: 11px uppercase with .06–.12em tracking (see *Shared site header*). New UI must not go below 12px.
 - Chinese display lines use balanced wrapping where supported and avoid one-character orphan lines.
 
 ## 4. Spacing & Layout
 
-All intentional spacing uses a 4px base.
+All intentional spacing uses a 4px base: `--space-N` = N × 4px. `--space-1`…`--space-8`
+are global (`src/styles/tokens.css`); the larger Reading steps (`--space-10`…`--space-20`)
+are scoped to `.weekly-page`. Echo's letter/paper surfaces keep their own 8px-base
+rhythm under the distinct names `--echo-space-1…7` so they never shadow the site scale.
 
 | Token | Value | Usage |
 | --- | --- | --- |
@@ -276,6 +300,7 @@ All intentional spacing uses a 4px base.
 | `--space-4` | `16px` | Compact component padding |
 | `--space-5` | `20px` | Mobile page gutter |
 | `--space-6` | `24px` | Story spacing |
+| `--space-7` | `28px` | Paragraph rhythm |
 | `--space-8` | `32px` | Component groups |
 | `--space-10` | `40px` | Section separation |
 | `--space-12` | `48px` | Desktop page gutter |
@@ -293,7 +318,7 @@ All intentional spacing uses a 4px base.
 ### Shared site header (`SiteHeader.astro`)
 
 - **Structure:** 4px top rule, brand/navigation row, metadata/language row and 1px bottom rule. Every published blog-style page uses this component; page-specific metadata is slotted, never a copied navigation list.
-- **Tokens:** 1200px shell, 48px desktop / 20px mobile gutters, 24px top margin, 14px bar padding, 16px navigation gap. Brand and navigation use the site sans stack at 11px / 1.5; brand weight 600 and tracking .12em, links weight 400 and tracking .06em. This preserves the existing Moments masthead rather than Reading's separate mono brand and active underline.
+- **Tokens:** 1200px shell, 48px desktop / 20px mobile gutters, 24px top margin, 14px bar padding, 16px navigation gap. Brand and navigation use the site sans stack at 11px / 1.5 (the one documented exception to the 12px text floor); brand weight 600 and tracking .12em, links weight 400 and tracking .06em. This preserves the existing Moments masthead rather than Reading's separate mono brand and active underline.
 - **Navigation:** Blog, Moment, Notes, Reading, Photos, Friends; locale-aware paths with trailing slashes. Photos is a shared English-only route. Comics keeps its contextual Archive/Comics links. Nested routes highlight their parent section.
 - **States:** current section, hover, keyboard focus.
 - **Accessibility:** landmark navigation, `aria-current`, visible focus, 44px mobile menu and link targets, Escape closes the menu and restores focus. The no-JavaScript fallback exposes the navigation.

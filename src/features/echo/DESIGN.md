@@ -158,3 +158,9 @@ User journeys: homepage or blog navigation → journal → issue theme → compl
 Publication scope follows the author’s editorial decision. Content is anonymized before entering this module, with stable aliases and original dates. Analytics records stable issue/letter/chapter identifiers and interaction categories, never body text, aliases, email addresses or selected text.
 
 Launch scope: issue 01 only. Issue 02 ends on 2026-04-04 and does not pass the author’s >180-day rule until 2026-10-02. Its full source, English translations and cover downloads are excluded from the public release, not merely hidden by client code. The complete two-issue author preview remains local.
+
+## Site tokens and the Echo shell · October 17
+
+- The page shell — shared `SiteHeader`, page canvas, borders, focus accent — uses the site tokens from `src/styles/tokens.css` (imported by `BlogHeader.astro`). `site-shell.css` and `theme.css` never redefine `--c-*` or `--accent`; light/dark values come from the site palette, so the Echo header matches every other tab in both modes.
+- Echo's paper/letter identity stays in Echo-private tokens: `--paper`, `--ink`, `--pine`, `--pen`, `--muted`, `--rule`, `--selected`, the serif/hand stacks and the letter/stationery tokens. `--canvas` and dark `--ink` alias the site `--c-bg` / `--c-text`.
+- Echo's spacing scale is 8px-based and is named `--echo-space-1…7` (8/16/24/32/48/64/96px) so it never collides with the site's 4px `--space-*`. References above to "8/16/24/32px spacing" mean these tokens.
