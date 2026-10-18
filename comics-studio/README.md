@@ -10,15 +10,18 @@
 ```
 comics-studio/
 ├── README.md          ← 这份（agents 必读）
-├── PROMPT.md          ← 主提示词模板（场景描述 + MJ 参数）
+├── PROMPT.md          ← 主提示词模板（固定角色 + 四格场景、旁白与对白）
 ├── publish.mjs        ← 发布新一期：把草稿推到 Telegram preview
 ├── replace.mjs        ← 替换已发布期数的图（重画、修图），不新建期号
 ├── strip-assets.mjs   ← 两个脚本共用：读 env、PNG→WebP、上传 R2
 ├── package.json       ← deps (@aws-sdk/client-s3, @supabase/supabase-js)
-├── refs/              ← 角色 reference 图（不要改）
-│   ├── panda.png         (主角 Airing 熊猫)
-│   ├── moflow-ink.png    (AI 伙伴 Moflow)
-│   └── style-prompt.md   (style 描述参考)
+├── refs/              ← 新版角色与画风标准，出图时必须附参考
+│   ├── panda.png         (Airing 正、侧、背全身 + 三种表情)
+│   ├── moflow-ink.png    (Moflow 正、侧、背全身 + 三种表情；兼容旧文件名)
+│   ├── character-height.png (同框身高比，Airing : Moflow 约 2 : 1)
+│   ├── style-prompt.md   (彩铅 + 蜡笔 Q 版固定前缀)
+│   ├── generation-prompts.md (来源与角色设定图生图提示词)
+│   └── sources/         (高清头像、No.2 / No.9 v2 漫画参考)
 └── drafts/            ← 你的产出区
     └── <YYYY-MM-DD-slug>/
         ├── strip.png       (你画的 2×2 四格图)
@@ -26,6 +29,18 @@ comics-studio/
 ```
 
 —
+
+## 新版角色参考的使用顺序
+
+以后每次出图同时使用这三张设定图：
+
+1. [`refs/panda.png`](refs/panda.png)：Airing 的正面、侧面、背面全身，以及开心、惊讶、困倦。大圆白脸，无黑眼圈，小黑点眼睛、ω 形嘴、橙色椭圆腮红、黑耳朵；必戴深蓝带小柄贝雷帽和橙色三角领巾。黑色四肢、白肚子、矮胖，卡其背包款式可换。
+2. [`refs/moflow-ink.png`](refs/moflow-ink.png)：Moflow 的正面、侧面、背面全身，以及开心、惊讶、困倦。淡蓝毛绒圆团，头顶固定 3 撮羽毛状呆毛，黑点眼睛带高光、粉腮红、小嘴，可有小手；不画鸟形、鸟嘴、翅膀，不带或抱爱心。文件名仅为兼容保留，图片已替换。
+3. [`refs/character-height.png`](refs/character-height.png)：两人同一地面、同一距离的身高比。含帽柄与呆毛，Moflow 约为 Airing 全高的 1/2。
+
+再附 [`refs/sources/no02-v2.webp`](refs/sources/no02-v2.webp)、[`refs/sources/no09-v2.webp`](refs/sources/no09-v2.webp)，参考彩铅与蜡笔颗粒、断续黑线、暖光、完整背景和文字布局。设定图的素纸底只用于看清角色，漫画必须画完整场景。历史图与固定设定有差异时，以本次设定为准；No.17 的 3:2 横版是例外，新漫画固定正方形四格。
+
+Airing 与 [`src/assets/airing-avatar-48.png`](../src/assets/airing-avatar-48.png) 是同一角色，高清头像存于 [`refs/sources/airing-avatar-hd.png`](refs/sources/airing-avatar-hd.png)。参考来源与生成记录见 [`refs/generation-prompts.md`](refs/generation-prompts.md)。本轮三张设定图另存于 `~/Desktop/comics-character-sheets/`，文件名分别为 `airing-character-sheet.png`、`moflow-character-sheet.png`、`character-height.png`。
 
 ## 🤝 Drawing Agent 契约
 
@@ -37,7 +52,7 @@ comics-studio/
 - 2×2 grid 四格漫画
 - 方形（1:1），建议 1024×1024 或更高
 - 已经按 `PROMPT.md` 出过图、角色与 `refs/` 一致
-- 图里**不要有文字**（除非那是手写日记艺术效果，但 caption/标题不要画进去）
+- 图中文字使用**黑色手写中文**；每格左上角放一至两行旁白。对白只用一根小短线指向说话人，**不画对白框**。标题保留在元数据里。
 
 ### `meta.json`
 ```json
@@ -129,11 +144,12 @@ ADMIN_TELEGRAM_USER_ID=
 
 ## 📐 出图规则（agents 也要遵守）
 
-- **2×2 grid 布局**，方形 1:1
-- **角色必须与 `refs/` 一致** —— 用 MJ `--cref` / SD IP-Adapter
-- **图里不放文字** —— 没有对白气泡、题字、屏幕字
-- **水墨手绘风格** —— 不要 3D / 卡通 / vector / 照片质感
-- **背景极简** —— 桌角、窗台、一只茶杯就够
+- **2×2 grid 布局，1:1 正方形**；No.17 的 3:2 横版仅为历史例外，不沿用。
+- **角色必须与上述三张设定图一致**；使用支持参考图的模型，同时附角色图、比例图和新版漫画场景参考。
+- **彩铅 + 蜡笔质感手绘 Q 版**，黑线故意断续，上色有颗粒感；不使用 3D、vector 或照片质感。
+- **完整背景、暖光和场景细节**，保持空间、道具与角色的连续性，并预留可读文字区。
+- **黑色手写中文**；每格左上角一至两行旁白；对白只用一根小短线指向说话人，无对白框。按脚本可以没有对白，旁白仍须保留。
+- **逐字校对文字和逐格核对角色**：帽子、领巾、脸型、呆毛、身高比出现漂移就先修图。
 
 ## 🎭 起承转合（每期都按这个节奏，避免流水账）
 
@@ -146,8 +162,8 @@ ADMIN_TELEGRAM_USER_ID=
 
 ## 🚫 不要做的事
 
-- 不要改 `refs/panda.png` 和 `refs/moflow-ink.png` —— 一旦改了，以前所有漫画在视觉上脱节
-- 不要试图让图像模型画对白文字 —— 90% 翻车率
+- 不要自行改变固定画风、角色识别点或身高比；需要修订设定时同步更新三张设定图、`PROMPT.md` 和 `refs/style-prompt.md`。
+- 不要沿用旧的角色形象或空白背景规则；中文旁白和短线对白按新版模板绘制，并逐字校对。
 - 不要在 `meta.json.title` 里塞一长串 —— 标题 ≤12 字，源文本放 `source_text`
 - 不要在 `drafts/` 之外手工删 R2 / Supabase 数据 —— 走流水线
 
