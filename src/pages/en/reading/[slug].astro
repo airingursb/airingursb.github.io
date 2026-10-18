@@ -8,12 +8,12 @@ import { resolveReadingCoverImage } from '../../../lib/reading-cover-image';
 import {
   fetchReadingItems,
   localizeReadingItem,
-  readingDate,
   readingSourceLabel,
   readingTypeLabel,
   type ReadingItem,
 } from '../../../lib/reading';
 import '../../../styles/reading.css';
+import { formatDisplayDate } from '../../../lib/display-date';
 import '../../../styles/photos.css';
 
 export async function getStaticPaths() {
@@ -44,7 +44,8 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
 const shareUrl = new URL(`/en/reading/${item.slug}/`, Astro.site ?? 'https://ursb.me').href;
 const [cover, newerCover, olderCover] = await Promise.all([
   resolveReadingCoverImage(item.cover_url, readingCoverLabel(item, 'en'), {
-    width: 1440, height: 960, widths: [720, 1440], format: 'webp', quality: 75,
+    // Keep the card's own ratio; the frame follows it instead of cropping to 3:2.
+    inferSize: true, widths: [720, 1080, 1440, 1600], format: 'webp', quality: 80,
   }),
   newer
     ? resolveReadingCoverImage(newer.cover_url, readingCoverLabel(newer, 'en'), {
@@ -57,6 +58,9 @@ const [cover, newerCover, olderCover] = await Promise.all([
     })
     : null,
 ]);
+const coverWidth = Number(cover?.attributes.width) || 1440;
+const coverHeight = Number(cover?.attributes.height) || 960;
+const coverRatio = `aspect-ratio: ${coverWidth} / ${coverHeight}`;
 ---
 
 <BaseLayout
@@ -78,7 +82,7 @@ const [cover, newerCover, olderCover] = await Promise.all([
           <div class="reading-detail-byline">
             {item.author && <span>{item.author}</span>}
             <span class="reading-source">{readingSourceLabel(item.source, 'en')}</span>
-            <span>Saved {readingDate(item.saved_at, 'en-US')}</span>
+            <span>Saved {formatDisplayDate(item.saved_at, 'en')}</span>
           </div>
         </div>
         <div class="reading-detail-actions">
@@ -94,19 +98,19 @@ const [cover, newerCover, olderCover] = await Promise.all([
       <article class="reading-detail-grid">
         {cover && (
           <div class="reading-detail-cover">
-            <button class="reading-poster" type="button" data-open-lightbox aria-label="View full image" data-umami-event="reading-original-open" data-umami-event-slug={item.slug} data-umami-event-lang="en">
+            <button class="reading-poster" type="button" style={coverRatio} data-open-lightbox aria-label="View full image" data-umami-event="reading-original-open" data-umami-event-slug={item.slug} data-umami-event-lang="en">
               <ReadingCover
                 image={cover}
                 alt={item.title}
-                width={1440}
-                height={960}
+                width={coverWidth}
+                height={coverHeight}
                 sizes="(max-width: 720px) 100vw, (max-width: 1080px) calc(100vw - 64px), 883px"
                 priority
               />
               <span class="reading-zoom-label">⌕ View full image</span>
             </button>
             <div class="reading-caption">
-              <span>Agent-generated reading card · 1536 × 1024</span>
+              <span>Agent-generated reading card · {coverWidth} × {coverHeight}</span>
             </div>
           </div>
         )}
@@ -129,8 +133,8 @@ const [cover, newerCover, olderCover] = await Promise.all([
             <dl class="reading-facts">
               {item.author && <div><dt>Author</dt><dd>{item.author}</dd></div>}
               <div><dt>Source</dt><dd>{readingSourceLabel(item.source, 'en')}{item.item_type ? ` · ${readingTypeLabel(item.item_type, 'en')}` : ''}</dd></div>
-              {item.original_published_at && <div><dt>Published</dt><dd>{readingDate(item.original_published_at, 'en-US')}</dd></div>}
-              <div><dt>Saved</dt><dd>{readingDate(item.saved_at, 'en-US')}</dd></div>
+              {item.original_published_at && <div><dt>Published</dt><dd>{formatDisplayDate(item.original_published_at, 'en')}</dd></div>}
+              <div><dt>Saved</dt><dd>{formatDisplayDate(item.saved_at, 'en')}</dd></div>
             </dl>
           </section>
           {(item.topics.length > 0 || item.original_url) && (

@@ -1,8 +1,6 @@
 ---
 import SiteHeader from "../../../components/SiteHeader.astro";
 import '../../../styles/workouts.css';
-import '../../../styles/photos.css';   // for .share-modal/.share-card/.share-row CSS
-import 'mapbox-gl/dist/mapbox-gl.css';
 import BaseLayout from '../../../layouts/BaseLayout.astro';
 import { siteStrings } from '../../../lib/i18n';
 import { getCollection, render } from 'astro:content';
@@ -36,7 +34,7 @@ const titleEn = contentEntry?.data.title.en ?? contentEntry?.data.title.zh ?? de
 const Body = contentEntry?.body ? (await render(contentEntry)).Content : null;
 
 const s = siteStrings.en.workouts;
-const shareUrl = new URL(`/en/workouts/${id}`, Astro.site ?? 'https://ursb.me').href;
+const shareUrl = new URL(`/en/workouts/${id}/`, Astro.site ?? 'https://ursb.me').href;
 const ogImage = (detail?.og?.en ?? detail?.og?.zh) as string | undefined;
 ---
 
@@ -45,7 +43,7 @@ const ogImage = (detail?.og?.en ?? detail?.og?.zh) as string | undefined;
   description={contentEntry?.data.description?.en ?? ''}
   ogImage={ogImage}
   lang="en"
-  hreflang={{ zh: `/workouts/${id}`, en: `/en/workouts/${id}` }}
+  hreflang={{ zh: `/workouts/${id}/`, en: `/en/workouts/${id}/` }}
 >
   <div class="workout-detail-page">
     <SiteHeader lang="en">
@@ -53,15 +51,16 @@ const ogImage = (detail?.og?.en ?? detail?.og?.zh) as string | undefined;
     </SiteHeader>
 
     <main style="padding: 24px 16px;">
-      <article class="workout-card" style="position: relative;">
-        <WorkoutShareModal ogImage={ogImage} shareUrl={shareUrl} shareTitle={titleEn} />
+      <article class="workout-card">
         <WorkoutHeader
           type={detail.type}
           distanceKm={detail.stats.distanceKm}
           durationSec={detail.durationSec}
           name={titleEn}
-        />
-        <WorkoutDetail workout={detail} client:visible />
+        >
+          <WorkoutShareModal ogImage={ogImage} shareUrl={shareUrl} shareTitle={titleEn} lang="en" />
+        </WorkoutHeader>
+        <WorkoutDetail workout={detail} labels={{ metricLabels: s.metricLabels, units: s.units, detailLabels: s.detailLabels }} client:visible />
       </article>
 
       {Body && (

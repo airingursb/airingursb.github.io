@@ -1,0 +1,136 @@
+---
+// Shared body of /comics/[issue]/ and /en/comics/[issue]/.
+import { getImage } from 'astro:assets';
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import ComicMasthead from './ComicMasthead.astro';
+import ComicIssueIndex from './ComicIssueIndex.astro';
+import ComicShareModal from './ComicShareModal.astro';
+import type { Comic } from '../../lib/comics';
+import { siteStrings } from '../../lib/i18n';
+import { formatDisplayDate } from '../../lib/display-date';
+import { dioramas, dioramaUrl } from '../../data/dioramas';
+import '../../styles/comics.css';
+
+interface Props {
+  comic: Comic;
+  prev: Comic | null;
+  next: Comic | null;
+  allComics: Comic[];
+  lang: 'zh' | 'en';
+}
+
+const { comic, prev, next, allComics, lang } = Astro.props;
+const en = lang === 'en';
+const s = siteStrings[lang].comics;
+const base = en ? '/en/comics' : '/comics';
+const title = (en ? comic.title.en : comic.title.zh) || comic.title.zh;
+const date = formatDisplayDate(comic.published_at || comic.created_at, lang);
+// Dioramas are Chinese-only; the English page links to them with a language note.
+const scene = dioramas.find(scene => scene.comicIssue === comic.issue_number);
+const imgUrl = comic.panels?.url || '';
+const original = comic.panels?.original || imgUrl;
+const altText = (en ? comic.panels?.alt?.en : undefined) || comic.panels?.alt?.zh || title;
+const issueLabel = (issue: number) => `${s.issuePrefix} ${String(issue).padStart(2, '0')}`;
+
+// Responsive strip: a 344KB original no longer ships to every screen.
+let strip: { src: string; srcset?: string; width?: number; height?: number } | null = null;
+if (imgUrl) {
+  try {
+    let width = Number(comic.panels?.width) || 0;
+    let height = Number(comic.panels?.height) || 0;
+    if (!width || !height) {
+      const probe = await getImage({ src: imgUrl, inferSize: true });
+      width = Number(probe.attributes.width);
+      height = Number(probe.attributes.height);
+    }
+    const target = Math.min(1600, width);
+    const widths = [480, 960, 1280, 1600].filter(w => w < target).concat(target);
+    const image = await getImage({ src: imgUrl, width: target, height: Math.round(height * target / width), widths, format: 'webp', quality: 82 });
+    strip = { src: image.src, srcset: image.srcSet.attribute, width: target, height: Math.round(height * target / width) };
+  } catch (error) {
+    console.warn(`[comics] responsive strip skipped for #${comic.issue_number}:`, error);
+    strip = { src: imgUrl, width: comic.panels?.width, height: comic.panels?.height };
+  }
+}
+const zoomLabel = en ? 'Open the full-size strip' : '查看原图';
+const pagerLabel = en ? 'Previous and next issues' : '上一期与下一期';
+---
+
+<BaseLayout
+  title={`${s.issuePrefix} ${comic.issue_number} · ${title} · ${s.title}`}
+  description={comic.source_text || title}
+  ogImage={comic.panels?.original || comic.panels?.url}
+  ogType="article"
+  lang={lang}
+  hreflang={{ zh: `/comics/${comic.issue_number}/`, en: `/en/comics/${comic.issue_number}/` }}
+>
+  <ComicMasthead lang={lang} />
+  <main class="comics-page comic-detail">
+    <div class="meta-row">
+      <div class="meta">
+        <strong class="meta-issue">{issueLabel(comic.issue_number)}</strong>
+        <span>{date}</span>
+        {comic.tags?.length > 0 && <span class="meta-tags">{comic.tags.map((t) => <span class="meta-tag">#{t}</span>)}</span>}
+      </div>
+      <ComicShareModal comic={comic} lang={lang} preview={strip ?? undefined} />
+    </div>
+    <h1 class="comic-title" lang={en ? 'en' : undefined}>{title}</h1>
+
+    {scene && (
+      <a class="comic-diorama-link" href={dioramaUrl(scene)} hreflang={en ? 'zh-CN' : undefined}>
+        <img src={scene.cover} width="160" height="90" alt="" />
+        <span>
+          <small>{en ? 'This strip also became a small world' : '这一格，也被收藏成了小世界'}</small>
+          {en
+            ? <strong>Step into the diorama <span lang="zh-CN">《{scene.title}》</span> <span class="comic-diorama-lang">(Chinese)</span> <span aria-hidden="true">↗</span></strong>
+            : <strong>走进《{scene.title}》箱庭 <span aria-hidden="true">↗</span></strong>}
+        </span>
+      </a>
+    )}
+
+    {strip && (
+      <a class="strip-zoom" href={original} target="_blank" rel="noopener" aria-label={`${zoomLabel} · ${altText}`}>
+        <img
+          class="strip-img-full"
+          src={strip.src}
+          srcset={strip.srcset}
+          sizes="(max-width: 880px) calc(100vw - 48px), 832px"
+          alt={altText}
+          width={strip.width}
+          height={strip.height}
+          fetchpriority="high"
+        />
+        <span class="strip-zoom-hint" aria-hidden="true">{zoomLabel} ↗</span>
+      </a>
+    )}
+
+    {(prev || next) && (
+      <nav class="comic-pager" aria-label={pagerLabel}>
+        {prev
+          ? <a class="prev" href={`${base}/${prev.issue_number}/`} rel="prev"><span aria-hidden="true">←</span><span class="num">{issueLabel(prev.issue_number)}</span><span class="title">{(en ? prev.title.en : prev.title.zh) || prev.title.zh}</span><span class="sr-only">{s.prev}</span></a>
+          : <span class="is-empty" />}
+        {next
+          ? <a class="next" href={`${base}/${next.issue_number}/`} rel="next"><span class="sr-only">{s.next}</span><span class="title">{(en ? next.title.en : next.title.zh) || next.title.zh}</span><span class="num">{issueLabel(next.issue_number)}</span><span aria-hidden="true">→</span></a>
+          : <span class="is-empty" />}
+      </nav>
+    )}
+
+    {comic.source_text && comic.source_text !== title && (
+      <div class="source">{en ? `"${comic.source_text}"` : `「${comic.source_text}」`}</div>
+    )}
+
+    <ComicIssueIndex comics={allComics} current={comic.issue_number} lang={lang} />
+  </main>
+</BaseLayout>
+
+<style>
+  .comic-diorama-link { display:flex; align-items:center; gap:20px; margin:0 0 32px; padding:16px; border:1px solid var(--c-border); border-radius:4px; color:var(--c-text); text-decoration:none; }
+  .comic-diorama-link img { display:block; width:128px; height:72px; object-fit:cover; border-radius:3px; }
+  .comic-diorama-link small { display:block; font-size:12px; color:var(--c-text-muted); margin-bottom:8px; }
+  .comic-diorama-link strong { display:block; font-size:14px; font-weight:500; line-height:1.7; text-wrap:pretty; }
+  .comic-diorama-lang { color:var(--c-text-muted); font-weight:400; white-space:nowrap; }
+  .comic-diorama-link:hover strong { text-decoration:underline; }
+  .comic-diorama-link:focus-visible { outline:2px solid var(--accent); outline-offset:4px; }
+  .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  @media(max-width:540px) { .comic-diorama-link { gap:12px; padding:12px; } .comic-diorama-link img { width:80px; height:64px; } .comic-diorama-link strong { font-size:13px; } }
+</style>

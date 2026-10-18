@@ -141,37 +141,106 @@ body:has(.comics-page) {
 }
 
 /* ── Detail page ─────────────────────────────────────────────────── */
+/* Every colour is a site token so the page reads in light and dark mode. */
+.comic-detail .meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  color: var(--c-text-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+.comic-detail .meta-issue { color: var(--c-text); font-weight: 700; }
+.comic-detail .meta-tags { display: inline-flex; flex-wrap: wrap; gap: 4px 8px; }
+.comic-detail .meta-tag { white-space: nowrap; }
+.comic-detail .comic-title {
+  font-family: var(--font-serif);
+  font-size: 2rem;
+  line-height: 1.3;
+  margin: 0 0 32px;
+  color: var(--c-text);
+  text-wrap: balance;
+}
+.comic-detail .strip-zoom {
+  display: block;
+  margin: 32px 0 0;
+  border-radius: 4px;
+  cursor: zoom-in;
+  text-decoration: none;
+}
+.comic-detail .strip-zoom:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 .comic-detail .strip-img-full {
   width: 100%;
   height: auto;
-  background: #fff;
+  background: #fff; /* strips are drawn on white paper in both modes */
   border-radius: 4px;
   display: block;
-  margin: 32px 0;
-  border: 1px solid #e8e8e8;
+  border: 1px solid var(--c-border);
+}
+.comic-detail .strip-zoom-hint {
+  display: block;
+  margin-top: 8px;
+  color: var(--c-text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: right;
 }
 
 .comic-detail .source {
   font-style: italic;
-  color: #555;
-  border-left: 3px solid #ddd;
+  color: var(--c-text-muted);
+  border-left: 3px solid var(--c-border-light);
   padding-left: 16px;
   margin: 32px 0;
   line-height: 1.6;
 }
 
-.comic-detail .nav {
+/* Compact previous / next strip between the comic and its source line. */
+.comic-detail .comic-pager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--c-border);
+  border-bottom: 1px solid var(--c-border);
+}
+.comic-detail .comic-pager a,
+.comic-detail .comic-pager span.is-empty {
   display: flex;
-  justify-content: space-between;
-  margin-top: 48px;
-  font-size: 14px;
-}
-
-.comic-detail .nav a {
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  padding: 6px 0;
+  color: var(--c-text-muted);
   text-decoration: none;
-  color: #444;
+  font-size: 14px;
+  min-width: 0;
 }
-.comic-detail .nav a:hover { color: #000; }
+.comic-detail .comic-pager .next { justify-content: flex-end; text-align: right; }
+.comic-detail .comic-pager a:hover,
+.comic-detail .comic-pager a:focus-visible { color: var(--c-text); }
+.comic-detail .comic-pager a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.comic-detail .comic-pager .num {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--c-text-muted);
+}
+.comic-detail .comic-pager .title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-serif);
+}
+@media (max-width: 540px) {
+  .comic-detail .comic-pager .title { display: none; }
+}
 
 /* ── Back issues archive (detail page footer) ──────────────────────── */
 /* Newspaper-style table of contents — thick top rule + hairline row
@@ -188,7 +257,7 @@ body:has(.comics-page) {
   margin-bottom: 14px;
 }
 .comic-toc-label {
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--c-text-muted);
@@ -219,29 +288,29 @@ body:has(.comics-page) {
 .comic-toc a.toc-row:hover { background: rgba(var(--c-overlay-rgb), 0.04); }
 .comic-toc a.toc-row:hover .toc-title { color: var(--c-text); }
 .comic-toc .toc-num {
-  font-family: "SF Mono", Menlo, monospace;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   letter-spacing: 0.06em;
   color: var(--c-text-dim);
   font-weight: 600;
 }
 .comic-toc .toc-title {
-  font-family: ui-serif, "Songti SC", "STSong", Georgia, serif;
+  font-family: var(--font-serif);
   font-size: 16px;
   color: var(--c-text-muted);
   line-height: 1.3;
 }
 .comic-toc .toc-date {
-  font-family: "SF Mono", Menlo, monospace;
-  font-size: 11px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   letter-spacing: 0.04em;
   color: var(--c-text-dim);
   text-align: right;
   justify-self: end;
 }
 .comic-toc .toc-here {
-  font-family: "SF Mono", Menlo, monospace;
-  font-size: 10.5px;
+  font-family: var(--font-mono);
+  font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--c-text-dim);
@@ -281,8 +350,8 @@ body:has(.comics-page) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
   background: transparent;
   border: 1px solid var(--c-border);
@@ -295,163 +364,4 @@ body:has(.comics-page) {
   color: var(--c-text);
   background: rgba(var(--c-overlay-rgb), 0.04);
   border-color: var(--c-text-muted);
-}
-
-/* ── Share modal (mirrors src/styles/photos.css) ───────────────────── */
-.share-modal[hidden] { display: none; }
-
-.share-modal {
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1.5rem;
-}
-.share-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 0;
-  cursor: pointer;
-  padding: 0;
-}
-.share-card {
-  position: relative;
-  width: 100%;
-  max-width: 520px;
-  background: var(--c-bg, #0a0a0a);
-  border: 1px solid var(--c-border, #2a2a2a);
-  border-radius: 14px;
-  overflow: hidden;
-  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  color: var(--c-text, #ddd);
-}
-.share-close {
-  position: absolute;
-  top: 0.6rem;
-  right: 0.6rem;
-  z-index: 2;
-  background: rgba(0, 0, 0, 0.4);
-  border: 0;
-  color: #fff;
-  font-size: 1.4rem;
-  line-height: 1;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.7;
-  transition: opacity 150ms;
-}
-.share-close:hover { opacity: 1; }
-.share-image {
-  position: relative;
-  background: var(--c-bg, #0a0a0a);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.share-image img {
-  display: block;
-  max-width: 100%;
-  max-height: 75vh;
-  width: auto;
-  height: auto;
-}
-.share-overlay {
-  position: absolute;
-  top: 0.85rem;
-  left: 1rem;
-  right: 1rem;
-  font-family: var(--font-mono);
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: #fff;
-  letter-spacing: 0.04em;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.55);
-  pointer-events: none;
-}
-.share-image-meta {
-  position: absolute;
-  left: 1rem;
-  right: 1rem;
-  bottom: 0.85rem;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.65), rgba(0, 0, 0, 0));
-  padding: 1.5rem 0 0;
-  pointer-events: none;
-}
-.share-image-meta h3 {
-  margin: 0 0 0.15rem;
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #fff;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
-}
-.share-image-date {
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
-  color: rgba(255, 255, 255, 0.7);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
-}
-.share-row {
-  display: flex;
-  align-items: stretch;
-  gap: 0.5rem;
-  padding: 0.85rem;
-  background: var(--c-bg, #0a0a0a);
-  border-top: 1px solid var(--c-border, #1a1a1a);
-}
-.share-url {
-  flex: 1;
-  min-width: 0;
-  background: var(--c-bg-alt, #141414);
-  border: 1px solid var(--c-border, #2a2a2a);
-  color: var(--c-text, #ddd);
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
-  padding: 0 0.75rem;
-  border-radius: 8px;
-  outline: none;
-  cursor: text;
-}
-.share-url:focus { border-color: var(--c-text-muted, #555); }
-.share-actions-row { display: flex; gap: 0.35rem; }
-.share-act {
-  width: 36px;
-  height: 36px;
-  background: var(--c-bg-alt, #141414);
-  border: 1px solid var(--c-border, #2a2a2a);
-  color: var(--c-text, #ddd);
-  border-radius: 8px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  text-decoration: none;
-  padding: 0;
-  transition: background 150ms, border-color 150ms, color 150ms;
-}
-.share-act:hover {
-  background: rgba(var(--c-overlay-rgb), 0.06);
-  border-color: var(--c-text-muted, #555);
-}
-.share-act.copied {
-  color: #5fc77e;
-  border-color: #5fc77e;
-}
-@media (max-width: 480px) {
-  .share-modal { padding: 0.75rem; }
-  .share-card { border-radius: 10px; }
-  .share-act { width: 34px; height: 34px; }
-  .share-row { padding: 0.65rem; }
 }
