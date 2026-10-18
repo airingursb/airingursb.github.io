@@ -171,14 +171,20 @@ const description = rawDescription || "Airing's Homepage - Software Engineer @ S
       if (switcher && switcher.dataset.persistent !== 'true') chromeEls.push(switcher);
       if (chromeEls.length) {
         var away = false;
+        var scrolled = false;
         var hideAt = 0.4;  // hide after scrolling ~40% of viewport
         var showAt = 0.25; // re-show only when back near top of first screen
         function updateChromeFade() {
           var vh = window.innerHeight || 800;
           var y = window.scrollY || window.pageYOffset || 0;
-          var next = away
+          scrolled = scrolled
             ? (y > vh * showAt)
             : (y > vh * hideAt);
+          // Short pages: once the reader scrolls to the end (comments, footer
+          // links), get out of the way there too.
+          var docH = document.documentElement.scrollHeight;
+          var nearEnd = y > 48 && y + vh >= docH - 96;
+          var next = scrolled || nearEnd;
           if (next === away) return;
           away = next;
           for (var i = 0; i < chromeEls.length; i++) {
