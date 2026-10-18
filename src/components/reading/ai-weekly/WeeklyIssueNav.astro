@@ -1,0 +1,38 @@
+---
+// Cross-issue navigation at the end of an AI Weekly issue (M1):
+// "← 第 002 期 · 标题 | 全部期刊 | 第 004 期 · 标题 →".
+// Plain HTML with inline-scoped styles so it works in the three issue
+// templates (001 static HTML, 002, 003) on their own paper tokens.
+import { aiWeeklyIssues, type WeeklyLocale } from '../../../data/ai-weekly';
+
+interface Props { number: string; lang: WeeklyLocale; }
+const { number, lang } = Astro.props;
+const zh = lang === 'zh';
+const ordered = [...aiWeeklyIssues].sort((a, b) => a.number.localeCompare(b.number));
+const index = ordered.findIndex(issue => issue.number === number);
+const prev = index > 0 ? ordered[index - 1] : null;
+const next = index >= 0 && index < ordered.length - 1 ? ordered[index + 1] : null;
+const label = (n: string) => zh ? `第 ${n} 期` : `Issue ${n}`;
+const title = (issue: typeof ordered[number]) => issue.title[lang].join(zh ? '' : ' ');
+const shelf = zh ? '/reading/weekly/' : '/en/reading/weekly/';
+---
+<nav class="weekly-issue-nav" aria-label={zh ? '其他期刊' : 'Other issues'}>
+  {prev ? <a class="prev" href={prev.href[lang]} rel="prev"><span class="dir">← {label(prev.number)}</span><span class="title">{title(prev)}</span></a> : <span class="prev empty" />}
+  <a class="shelf" href={shelf}>{zh ? '全部期刊' : 'All issues'} →</a>
+  {next ? <a class="next" href={next.href[lang]} rel="next"><span class="dir">{label(next.number)} →</span><span class="title">{title(next)}</span></a> : <span class="next empty" />}
+</nav>
+<style>
+  .weekly-issue-nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: stretch; gap: 16px; margin: 32px 0 0; padding: 16px 0; border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); font: 14px/1.6 var(--sans); }
+  .weekly-issue-nav a { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-height: 44px; color: var(--ink); text-decoration: none; }
+  .weekly-issue-nav a:hover .title, .weekly-issue-nav a:hover .dir, .weekly-issue-nav .shelf:hover { color: var(--accent); }
+  .weekly-issue-nav a:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+  .weekly-issue-nav .dir { color: var(--muted); font: 12px/1.6 var(--mono, ui-monospace, monospace); letter-spacing: .04em; }
+  .weekly-issue-nav .title { font: 700 16px/1.5 var(--serif); }
+  .weekly-issue-nav .shelf { align-self: center; padding: 8px 16px; border: 1px solid var(--rule); font-weight: 600; white-space: nowrap; }
+  .weekly-issue-nav .next { text-align: right; align-items: flex-end; }
+  @media (max-width: 700px) {
+    .weekly-issue-nav { grid-template-columns: 1fr 1fr; }
+    .weekly-issue-nav .shelf { grid-column: 1 / -1; grid-row: 2; justify-self: center; }
+    .weekly-issue-nav .title { font-size: 15px; }
+  }
+</style>

@@ -2,6 +2,7 @@ import { defineConfig } from 'astro/config';
 import { remarkEmbed } from './src/plugins/remark-embed.mjs';
 import { rehypeAnchorIds } from './src/plugins/rehype-anchor-ids.mjs';
 import { immersiveSeo } from './scripts/immersive-seo/integration.mjs';
+import { weeklyFontSubset } from './scripts/weekly-fonts/integration.mjs';
 import mdx from '@astrojs/mdx';
 import react from '@astrojs/react';
 import remarkWikilinks from './src/lib/remark-wikilinks.ts';
@@ -37,7 +38,7 @@ export default defineConfig({
   image: {
     domains: ['r2.airingdeng.com'],
   },
-  integrations: [mdx(), react(), immersiveSeo(), {
+  integrations: [mdx(), react(), immersiveSeo(), weeklyFontSubset(), {
     name: 'client-interaction-directive',
     hooks: {
       'astro:config:setup': ({ addClientDirective }) => {
