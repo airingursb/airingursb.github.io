@@ -1,5 +1,12 @@
 # Browser QA Checklist
 
+### AI Weekly covers in the new avatar (October 18)
+
+- [x] Issues 001–003 cover illustrations keep their watercolor scenes and the space left for the title; only the brown bear became the beret panda. The small bear figures in issue 002 (stage silhouette, pinned sketch) are pandas too.
+- [x] Share covers (`share-cover-0N[-en].png`, 1080×1528) were re-rendered from the live `.issue-cover` at 540px; the `.webp` previews and `shelf-cover[-en].webp` were rebuilt from them. Social cards are built from these PNGs at build time.
+- [x] Cover alt text and art credits say panda instead of bear in both languages.
+- [x] `tsx --test tests/ai-weekly.test.mjs tests/weekly-analytics.test.mjs` passes 14/14.
+
 ### Echo covers + diorama strips in the new avatar (October 18)
 
 - [x] All twelve Echo cover illustrations keep their watercolor scenes, size and composition; only the brown bear became the beret panda. Each cover's crop (`coverPosition`) still shows the panda's face.
