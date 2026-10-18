@@ -5,6 +5,7 @@ import { buildTranslationMap } from '../../lib/i18n';
 import { makeExcerpt, getGitLastModified } from '../../lib/seo';
 import fs from 'node:fs';
 import { toEditorialNeighbor } from '../../components/editorial/editorial-neighbor';
+import { readingMinutes, relatedPosts as rankRelated, seriesIssue, toRelatedInput as asRelated } from '../../lib/post-meta';
 
 export async function getStaticPaths() {
   const allPosts = (await getCollection('posts', ({ data }) => !data.draft))
@@ -19,15 +20,7 @@ export async function getStaticPaths() {
       post,
       prevPost: idx > 0 ? toEditorialNeighbor(allPosts[idx - 1]) : null,
       nextPost: idx < allPosts.length - 1 ? toEditorialNeighbor(allPosts[idx + 1]) : null,
-      relatedPosts: (() => {
-        const primaryTag = post.data.tags[0];
-        return primaryTag
-          ? allPosts
-              .filter(p => p.id !== post.id && p.data.tags.includes(primaryTag))
-              .slice(0, 5)
-              .map(p => ({ slug: p.id, title: p.data.title }))
-          : [];
-      })(),
+      relatedPosts: rankRelated(asRelated(post), allPosts.map(asRelated)),
       seriesInfo: (() => {
         const seriesTags = ['weekly', 'annually'];
         const seriesTag = post.data.tags.find(t => seriesTags.includes(t));
@@ -38,6 +31,7 @@ export async function getStaticPaths() {
         const idx = seriesPosts.findIndex(p => p.id === post.id);
         return {
           tag: seriesTag,
+          issue: seriesIssue(post.data.title, seriesTag),
           total: seriesPosts.length,
           current: idx + 1,
           prev: idx > 0 ? { slug: seriesPosts[idx - 1].id, title: seriesPosts[idx - 1].data.title } : null,
@@ -50,12 +44,11 @@ export async function getStaticPaths() {
 }
 
 const { post, prevPost, nextPost, relatedPosts, seriesInfo, hasEn } = Astro.props;
-const { Content } = await render(post);
+const { Content, remarkPluginFrontmatter } = await render(post);
+const hasMath = !!remarkPluginFrontmatter?.hasMath;
 const rawMd = fs.readFileSync(`./src/content/posts/${post.id}.md`, 'utf-8');
 const contentOnly = rawMd.replace(/^---[\s\S]*?---/, '');
-const chineseChars = (contentOnly.match(/[\u4e00-\u9fff]/g) || []).length;
-const englishWords = contentOnly.replace(/[\u4e00-\u9fff]/g, '').split(/\s+/).filter(Boolean).length;
-const readingTime = Math.max(1, Math.ceil((chineseChars + englishWords) / 200));
+const readingTime = readingMinutes(contentOnly);
 const hreflang = hasEn ? {
   zh: new URL(`/posts/${post.id}/`, Astro.site).href,
   en: new URL(`/en/posts/${post.id}/`, Astro.site).href,
@@ -77,6 +70,7 @@ const dateModified = getGitLastModified(`src/content/posts/${post.id}.md`);
   relatedPosts={relatedPosts}
   seriesInfo={seriesInfo}
   readingTime={readingTime}
+  hasMath={hasMath}
   lang="zh"
   hreflang={hreflang}
 >

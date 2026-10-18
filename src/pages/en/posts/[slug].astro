@@ -3,6 +3,7 @@ import { getCollection, render } from 'astro:content';
 import PostLayout from '../../../layouts/PostLayout.astro';
 import { makeExcerpt, getGitLastModified } from '../../../lib/seo';
 import { toEditorialNeighbor } from '../../../components/editorial/editorial-neighbor';
+import { readingMinutes, relatedPosts as rankRelated, seriesIssue, toRelatedInput as asRelated } from '../../../lib/post-meta';
 
 export async function getStaticPaths() {
   const enPosts = (await getCollection('postsEn', ({ data }) => !data.draft))
@@ -30,16 +31,7 @@ export async function getStaticPaths() {
 
     // Related posts: only show posts that have English translations.
     // Better to show fewer (or none) than send EN readers to a Chinese page.
-    const primaryTag = enPost.data.tags[0];
-    const relatedPosts = primaryTag
-      ? enPosts
-          .filter(p => p.id !== enPost.id && p.data.tags.includes(primaryTag))
-          .slice(0, 5)
-          .map(p => ({
-            slug: p.id,
-            title: p.data.title,
-          }))
-      : [];
+    const relatedPosts = rankRelated(asRelated(enPost), enPosts.map(asRelated));
 
     // Series info
     const seriesTags = ['weekly', 'annually'];
@@ -55,6 +47,7 @@ export async function getStaticPaths() {
         const nextSeries = seriesIdx < seriesPosts.length - 1 ? seriesPosts[seriesIdx + 1] : null;
         seriesInfo = {
           tag: seriesTag,
+          issue: seriesIssue(enPost.data.title, seriesTag),
           total: seriesPosts.length,
           current: seriesIdx + 1,
           prev: prevSeries ? {
@@ -83,12 +76,12 @@ export async function getStaticPaths() {
 }
 
 const { enPost, relatedPosts, prevPost, nextPost, seriesInfo, zhSlug } = Astro.props;
-const { Content } = await render(enPost);
+const { Content, remarkPluginFrontmatter } = await render(enPost);
+const hasMath = !!remarkPluginFrontmatter?.hasMath;
 
-// Reading time: English word count / 200
+// Reading time: prose only (code, images and URLs removed).
 const contentOnly = enPost.body ?? '';
-const wordCount = contentOnly.split(/\s+/).filter(Boolean).length;
-const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+const readingTime = readingMinutes(contentOnly);
 
 const hreflang = {
   zh: new URL(`/posts/${zhSlug}/`, Astro.site).href,
@@ -111,6 +104,7 @@ const dateModified = getGitLastModified(`src/content/posts/en/${enPost.id}.md`);
   relatedPosts={relatedPosts}
   seriesInfo={seriesInfo}
   readingTime={readingTime}
+  hasMath={hasMath}
   lang="en"
   hreflang={hreflang}
 >
