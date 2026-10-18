@@ -244,10 +244,11 @@ for (const c of allComics) {
                           </div>
                           <form class="comment-form" data-moment-id={m.id}>
                             <div class="comment-form-row">
-                              <input class="comment-input" name="nickname" placeholder="Nickname *" required style="flex:1" />
-                              <input class="comment-input" name="email" type="email" placeholder="Email (optional)" style="flex:1" />
+                              <input class="comment-input" name="nickname" placeholder="Nickname *" aria-label="Nickname" autocomplete="nickname" required style="flex:1" />
+                              <input class="comment-input" name="email" type="email" placeholder="Email (optional)" aria-label="Email (optional)" autocomplete="email" style="flex:1" />
                             </div>
-                            <textarea class="comment-input" name="content" rows={2} placeholder="Write a comment..." required></textarea>
+                            <textarea class="comment-input" name="content" rows={2} placeholder="Write a comment..." aria-label="Comment" required></textarea>
+                            <p class="comment-status" role="status" aria-live="polite"></p>
                             <button class="comment-submit" type="submit">Send</button>
                           </form>
                         </div>
@@ -567,6 +568,14 @@ for (const c of allComics) {
   .action-btn:hover { color: var(--c-text); background: rgba(var(--c-overlay-rgb), 0.06); }
   .action-btn.liked { color: #e05d68; }
   .action-btn svg { flex-shrink: 0; }
+  /* Touch screens: grow the hit area to 44px without changing the look. */
+  @media (pointer: coarse) {
+    .action-btn, .comment-submit { position: relative; }
+    .action-btn::before, .comment-submit::before {
+      content: ''; position: absolute; inset: -11px -4px;
+    }
+    .comment-submit::before { inset: -7px -2px; }
+  }
 
   .reactions-row {
     display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
@@ -665,6 +674,11 @@ for (const c of allComics) {
   }
   .comment-submit:hover { opacity: 0.85; }
   .comment-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+  /* Inline send state (replaces alert()); empty until there is something to say. */
+  .comment-status { margin: 0; font-size: 12px; line-height: 1.5; color: var(--c-text-muted); }
+  .comment-status:empty { display: none; }
+  .comment-status.is-error { color: #ef4444; }
+  [data-mode="light"] .comment-status.is-error { color: color-mix(in srgb, #ef4444 75%, var(--c-text)); }
 
   /* Loader / End */
   .loader-wrap {
@@ -1013,10 +1027,11 @@ for (const c of allComics) {
             </div>
             <form class="comment-form" data-moment-id="${esc(m.id)}">
               <div class="comment-form-row">
-                <input class="comment-input" name="nickname" placeholder="Nickname *" required style="flex:1">
-                <input class="comment-input" name="email" type="email" placeholder="Email (optional)" style="flex:1">
+                <input class="comment-input" name="nickname" placeholder="Nickname *" aria-label="Nickname" autocomplete="nickname" required style="flex:1">
+                <input class="comment-input" name="email" type="email" placeholder="Email (optional)" aria-label="Email (optional)" autocomplete="email" style="flex:1">
               </div>
-              <textarea class="comment-input" name="content" rows="2" placeholder="Write a comment..." required></textarea>
+              <textarea class="comment-input" name="content" rows="2" placeholder="Write a comment..." aria-label="Comment" required></textarea>
+              <p class="comment-status" role="status" aria-live="polite"></p>
               <button class="comment-submit" type="submit">Send</button>
             </form>
           </div>
@@ -1450,8 +1465,15 @@ for (const c of allComics) {
     if (!nickname || !content) return;
 
     const submitBtn = form.querySelector('.comment-submit');
+    const statusEl = form.querySelector('.comment-status');
+    const setStatus = (msg, isError) => {
+      if (!statusEl) return;
+      statusEl.textContent = msg;
+      statusEl.classList.toggle('is-error', !!isError);
+    };
     submitBtn.disabled = true;
     submitBtn.textContent = 'Sending...';
+    setStatus('');
 
     try {
       const data = await postComment(momentId, { nickname, email, content });
@@ -1469,9 +1491,11 @@ for (const c of allComics) {
       }
       // Clear form
       form.querySelector('[name="content"]').value = '';
+      setStatus('Comment sent.');
     } catch (err) {
       console.error('Comment failed:', err);
-      alert('Failed to send comment. Please try again later.');
+      // Keep the draft; say what happened next to the form.
+      setStatus('Failed to send comment. Your text is kept, please try again later.', true);
     }
 
     submitBtn.disabled = false;
