@@ -47,9 +47,9 @@
         document.documentElement.setAttribute('data-mode', isBlog ? 'light' : 'dark');
       }
     })();
-  </script><link rel="stylesheet" href="/_astro/BaseLayout.CIlkkO-G.css">
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.BPtt2Vv_.css">
 <link rel="stylesheet" href="/_astro/UmamiLoader.DRjtQQ9I.css">
-<link rel="stylesheet" href="/_astro/SiteHeader.CYcRuda1.css">
+<link rel="stylesheet" href="/_astro/SiteHeader.D55r4xys.css">
 <link rel="stylesheet" href="/_astro/BearFooterScene.CpNYXQ5t.css">
 <style>body:has(.lamp-preview){display:block;padding:0}.lamp-preview[data-astro-cid-dbkgb3np]{max-width:1200px;margin:0 auto;padding:0 48px 64px}.lamp-preview-language[data-astro-cid-dbkgb3np]{display:inline-flex;align-items:center;min-height:44px;color:var(--c-text-muted);text-underline-offset:4px}.lamp-preview-intro[data-astro-cid-dbkgb3np]{max-width:600px;padding:64px 0}.lamp-preview-intro[data-astro-cid-dbkgb3np]>p[data-astro-cid-dbkgb3np]:first-child{margin:0 0 12px;font:12px/1.5 var(--font-mono);color:var(--c-text-muted);letter-spacing:.04em}h1[data-astro-cid-dbkgb3np]{margin:0 0 24px;font-size:28px;line-height:1.35;letter-spacing:-.025em}.lamp-preview-intro[data-astro-cid-dbkgb3np]>p[data-astro-cid-dbkgb3np]:last-child{color:var(--c-text-muted);font-size:16px;line-height:1.8}.lamp-preview[data-astro-cid-dbkgb3np] .bear-garden>bear-shared-garden{justify-self:end}.lamp-preview[data-astro-cid-dbkgb3np] .shared-garden-state{display:none}.lamp-preview-notes[data-astro-cid-dbkgb3np]{max-width:720px;margin-top:32px;color:var(--c-text-muted);font:12px/1.8 var(--font-mono)}.lamp-preview-notes[data-astro-cid-dbkgb3np] nav[data-astro-cid-dbkgb3np]{display:flex;flex-wrap:wrap;gap:8px 24px}.lamp-preview-notes[data-astro-cid-dbkgb3np] a[data-astro-cid-dbkgb3np]{display:inline-flex;align-items:center;min-height:44px;color:var(--c-text);text-underline-offset:4px}.lamp-preview-disclosure[data-astro-cid-dbkgb3np]{color:var(--c-text-muted)}.lamp-preview-subscription[data-astro-cid-dbkgb3np]{max-width:340px;color:var(--c-text-muted);font-size:12px;line-height:1.8}.lamp-preview-subscription[data-astro-cid-dbkgb3np] a[data-astro-cid-dbkgb3np]{color:var(--accent);display:inline-flex;align-items:center;min-height:44px}a[data-astro-cid-dbkgb3np]:focus-visible{outline:2px solid var(--accent);outline-offset:4px}@media(max-width:768px){.lamp-preview[data-astro-cid-dbkgb3np]{padding-inline:20px}.lamp-preview-intro[data-astro-cid-dbkgb3np]{padding:40px 0}.lamp-preview[data-astro-cid-dbkgb3np] .bear-garden{grid-template-columns:minmax(0,1fr);padding:32px 0 16px;gap:8px}}
 </style>
@@ -108,14 +108,20 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
       if (switcher && switcher.dataset.persistent !== 'true') chromeEls.push(switcher);
       if (chromeEls.length) {
         var away = false;
+        var scrolled = false;
         var hideAt = 0.4;  // hide after scrolling ~40% of viewport
         var showAt = 0.25; // re-show only when back near top of first screen
         function updateChromeFade() {
           var vh = window.innerHeight || 800;
           var y = window.scrollY || window.pageYOffset || 0;
-          var next = away
+          scrolled = scrolled
             ? (y > vh * showAt)
             : (y > vh * hideAt);
+          // Short pages: once the reader scrolls to the end (comments, footer
+          // links), get out of the way there too.
+          var docH = document.documentElement.scrollHeight;
+          var nearEnd = y > 48 && y + vh >= docH - 96;
+          var next = scrolled || nearEnd;
           if (next === away) return;
           away = next;
           for (var i = 0; i < chromeEls.length; i++) {

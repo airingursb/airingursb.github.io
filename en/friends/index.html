@@ -47,8 +47,8 @@
         document.documentElement.setAttribute('data-mode', isBlog ? 'light' : 'dark');
       }
     })();
-  </script><link rel="stylesheet" href="/_astro/BaseLayout.CIlkkO-G.css">
-<link rel="stylesheet" href="/_astro/SiteHeader.CYcRuda1.css">
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.BPtt2Vv_.css">
+<link rel="stylesheet" href="/_astro/SiteHeader.D55r4xys.css">
 <link rel="stylesheet" href="/_astro/UmamiLoader.DRjtQQ9I.css">
 <link rel="stylesheet" href="/_astro/friends@_@astro.CbR9j-Mu.css"></head> <body>  <div class="friends-page" data-astro-cid-3xggesn2> <header class="site-header" data-astro-cid-ctg3m53h> <div class="site-header-inner" data-astro-cid-ctg3m53h> <div class="site-header-rule" data-astro-cid-ctg3m53h></div> <div class="site-header-bar" data-astro-cid-ctg3m53h> <a class="site-header-brand" href="/en/blog/" data-astro-cid-ctg3m53h>Airing's Blog</a>  <button class="site-header-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false" aria-controls="site-navigation" data-astro-cid-ctg3m53h> <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true" data-astro-cid-ctg3m53h><path d="M2 4h12 M2 8h12 M2 12h12" data-astro-cid-ctg3m53h></path></svg> </button> <nav class="site-header-nav" id="site-navigation" aria-label="Site navigation" data-astro-cid-ctg3m53h> <a href="/en/blog/" data-umami-event-surface="navigation" data-umami-event-lang="en" data-astro-cid-ctg3m53h>Blog</a><a href="/en/echo/" data-umami-event="echo-entry-open" data-umami-event-surface="navigation" data-umami-event-lang="en" data-astro-cid-ctg3m53h>Echo</a><a href="/en/moments/" data-umami-event-surface="navigation" data-umami-event-lang="en" data-astro-cid-ctg3m53h>Moment</a><a href="/en/notes/" data-umami-event-surface="navigation" data-umami-event-lang="en" data-astro-cid-ctg3m53h>Notes</a><a href="/en/reading/" data-umami-event-surface="navigation" data-umami-event-lang="en" data-astro-cid-ctg3m53h>Reading</a><a href="/photos/" data-umami-event-surface="navigation" data-umami-event-lang="en" data-astro-cid-ctg3m53h>Photos</a><a href="/en/friends/" data-umami-event-surface="navigation" data-umami-event-lang="en" aria-current="page" data-astro-cid-ctg3m53h>Friends</a> </nav> </div> <div class="site-header-meta" data-astro-cid-ctg3m53h>  <span class="site-header-context" data-astro-cid-ctg3m53h></span> <span class="lang-switch" data-astro-cid-r2b4e7hz> <a href="/friends/" class="lang-link" data-lang-switch="zh" data-umami-event-from="en" data-umami-event-to="zh" data-umami-event-surface="list" data-astro-cid-r2b4e7hz>中</a> <span class="lang-sep" data-astro-cid-r2b4e7hz>·</span> <strong class="lang-active" data-astro-cid-r2b4e7hz>EN</strong> </span>  <script>
   // Persist language preference on click
@@ -115,14 +115,20 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
       if (switcher && switcher.dataset.persistent !== 'true') chromeEls.push(switcher);
       if (chromeEls.length) {
         var away = false;
+        var scrolled = false;
         var hideAt = 0.4;  // hide after scrolling ~40% of viewport
         var showAt = 0.25; // re-show only when back near top of first screen
         function updateChromeFade() {
           var vh = window.innerHeight || 800;
           var y = window.scrollY || window.pageYOffset || 0;
-          var next = away
+          scrolled = scrolled
             ? (y > vh * showAt)
             : (y > vh * hideAt);
+          // Short pages: once the reader scrolls to the end (comments, footer
+          // links), get out of the way there too.
+          var docH = document.documentElement.scrollHeight;
+          var nearEnd = y > 48 && y + vh >= docH - 96;
+          var next = scrolled || nearEnd;
           if (next === away) return;
           away = next;
           for (var i = 0; i < chromeEls.length; i++) {

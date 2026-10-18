@@ -47,8 +47,8 @@
         document.documentElement.setAttribute('data-mode', isBlog ? 'light' : 'dark');
       }
     })();
-  </script><link rel="stylesheet" href="/_astro/BaseLayout.CIlkkO-G.css">
-<link rel="stylesheet" href="/_astro/SiteHeader.CYcRuda1.css">
+  </script><link rel="stylesheet" href="/_astro/BaseLayout.BPtt2Vv_.css">
+<link rel="stylesheet" href="/_astro/SiteHeader.D55r4xys.css">
 <style>.search-delight[data-astro-cid-y774xfmw]{display:block;flex:0 0 96px;position:relative;width:96px;aspect-ratio:5 / 6;pointer-events:none}img[data-astro-cid-y774xfmw],canvas[data-astro-cid-y774xfmw]{display:block;width:100%;height:100%;position:absolute;inset:0;object-fit:contain;image-rendering:pixelated}[data-astro-cid-y774xfmw][hidden]{display:none}@media(max-width:768px){.search-delight[data-astro-cid-y774xfmw]{width:72px;flex-basis:72px}}
 </style>
 <link rel="stylesheet" href="/_astro/UmamiLoader.DRjtQQ9I.css">
@@ -143,14 +143,20 @@ RSS <span data-sub-copy="realtimeLabel">实时</span> </button> </div> <section 
       if (switcher && switcher.dataset.persistent !== 'true') chromeEls.push(switcher);
       if (chromeEls.length) {
         var away = false;
+        var scrolled = false;
         var hideAt = 0.4;  // hide after scrolling ~40% of viewport
         var showAt = 0.25; // re-show only when back near top of first screen
         function updateChromeFade() {
           var vh = window.innerHeight || 800;
           var y = window.scrollY || window.pageYOffset || 0;
-          var next = away
+          scrolled = scrolled
             ? (y > vh * showAt)
             : (y > vh * hideAt);
+          // Short pages: once the reader scrolls to the end (comments, footer
+          // links), get out of the way there too.
+          var docH = document.documentElement.scrollHeight;
+          var nearEnd = y > 48 && y + vh >= docH - 96;
+          var next = scrolled || nearEnd;
           if (next === away) return;
           away = next;
           for (var i = 0; i < chromeEls.length; i++) {
