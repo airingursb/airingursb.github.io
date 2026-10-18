@@ -1,5 +1,22 @@
 # Browser QA Checklist
 
+### 文章详情页 UI 修复 + 标签页年份（October 18）
+
+- [x] 桌面目录：长文（chromium-renderer 24 条）每条约 23px 不再重叠，目录可滚动到最后一条；滚到某个标题时目录高亮的就是它（距视口顶 ≤ 96px），不再提前一屏。
+- [x] 侧栏「进度」显示 2px 强调色进度线和百分比，「↑ 顶部」回到开头并把焦点放到标题；≤ 1100px 隐藏（由 MobileToc 负责）。
+- [x] ` ```JavaScript ` / ` ```Javascript ` 代码块有语法高亮；代码块上方有语言标签和「复制 / copy」按钮，点击后显示「已复制」；1280px 下代码块离两侧分栏线各 16px，≤ 600px 内边距 16px。
+- [x] learning-system 中英文版公式由 KaTeX 渲染，宽矩阵在 375px 下只在公式框内横向滚动；只有这两篇加载 katex.min.css；全站其他 `$`（价格、shell 变量、Dart `$value`）不被当成公式。
+- [x] 正文图片：首图之外 `loading="lazy" decoding="async"`，有缓存尺寸的图片带 width/height；alt 只取作者写的图注、标题或冒号引导句；图片可 Tab 聚焦，Enter/空格打开放大层（role=dialog、关闭按钮、Esc 关闭并还原焦点），光标为 zoom-in。
+- [x] ≤ 1100px：正文上方只有一行等宽元信息（日期 · 标签 · 时长 · 阅读/点赞/评论数），数字晚到只向右延伸、不推动正文；读者、相关文章、全部文章移到正文之后。
+- [x] 中文页侧栏、点赞按钮、页脚为中文；「← 上一篇」箭头在前；中文导语不再是斜体；深色模式正文图片亮度 0.88；浅色模式正文链接 ≥ 5:1。
+- [x] 元信息 / 目录 / 表头 / 系列徽章 / 页脚 ≥ 12px，颜色用 `--c-text-muted`；h2 26px、h3 21px/700；≤ 600px 正文 17px/1.85；英文正文行高 1.75、最宽 38em。
+- [x] 文章页页头与标题、侧栏左边对齐（1440 外壳，≤ 1100px 两侧 20px）。
+- [x] 系列徽章显示标题里的期号（月刊 #36 / Weekly #35），年报显示年份；相关文章按内容相似度排序；阅读时长去掉代码和链接后按 350 字 / 220 词每分钟计算。
+- [x] 熊猫在 ≤ 1100px 隐藏，桌面端位于主题按钮上方（bottom 72px），两者不重叠。
+- [x] /og/chromium-renderer.png 由文章生成；沉浸版改用 /og/immersive/chromium-renderer.png。
+- [x] 中英文标签页按年分组（跨年时），卡片日期带年份，摘要两行截断高度 39px。
+- [x] `npx tsx --test tests/post-detail.test.mjs` 通过。
+
 ### AI Weekly covers in the new avatar (October 18)
 
 - [x] Issues 001–003 cover illustrations keep their watercolor scenes and the space left for the title; only the brown bear became the beret panda. The small bear figures in issue 002 (stage silhouette, pinned sketch) are pandas too.

@@ -6,10 +6,12 @@ interface Props {
   readonly hasEnVersion?: boolean;
   readonly motto?: string;
   readonly breadcrumb?: string;
+  /** Match the 1440px article shell (PostLayout) instead of the 1200px default. */
+  readonly wide?: boolean;
 }
 
 const currentPath = Astro.url.pathname;
-const { lang = currentPath.startsWith('/en/') ? 'en' : 'zh', hasEnVersion = true, motto, breadcrumb } = Astro.props;
+const { lang = currentPath.startsWith('/en/') ? 'en' : 'zh', hasEnVersion = true, motto, breadcrumb, wide = false } = Astro.props;
 const prefix = lang === 'en' ? '/en' : '';
 const section = currentPath.replace(/^\/en\//, '/').split('/')[1] ?? '';
 const blogSections = ['blog', 'posts', 'archive', 'tags', 'search'];
@@ -27,7 +29,7 @@ const links = [
 const activeSection = blogSections.includes(section) ? 'blog' : section;
 ---
 
-<header class="site-header">
+<header class:list={['site-header', { 'site-header--wide': wide }]}>
   <div class="site-header-inner">
     <div class="site-header-rule"></div>
     <div class="site-header-bar">
@@ -59,6 +61,7 @@ const activeSection = blogSections.includes(section) ? 'blog' : section;
     line-height: 1.5;
   }
   .site-header-inner { max-width: 1200px; margin: 0 auto; padding: 0 var(--header-gutter); }
+  .site-header--wide .site-header-inner { max-width: 1440px; }
   .site-header-rule { height: 4px; background: var(--c-text); margin-top: 24px; }
   .site-header-bar { display: flex; justify-content: space-between; align-items: center; gap: var(--header-gap); padding: 14px 0; position: relative; }
   .site-header-brand { flex-shrink: 0; color: var(--c-text-muted); font-size: var(--header-font-size); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; text-decoration: none; }
@@ -72,7 +75,7 @@ const activeSection = blogSections.includes(section) ? 'blog' : section;
   .site-header-context :global(a) { color: var(--c-text-muted); }
   .site-header-toggle { display: none; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; background: transparent; color: var(--c-text); cursor: pointer; }
   .site-header a:focus-visible, .site-header-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-  @media (max-width: 1100px) { .site-header-motto { display: none; } }
+  @media (max-width: 1100px) { .site-header-motto { display: none; } .site-header--wide { --header-gutter: 20px; } }
   @media (max-width: 768px) {
     .site-header { --header-gutter: 20px; }
     .site-header-bar { flex-wrap: wrap; padding: 0; min-height: 44px; }

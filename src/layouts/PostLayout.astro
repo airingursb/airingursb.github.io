@@ -20,8 +20,11 @@ import LaterNote from '../components/editorial/LaterNote.astro';
 import type { LaterNoteContent } from '../lib/later-note';
 import type { EditorialNeighbor } from '../components/editorial/editorial-neighbor';
 import '@fontsource/noto-serif-sc/400.css';
-import '@fontsource/noto-serif-sc/600.css';
+// 600 is not loaded: headings use 700, and browsers map a 600 request to the
+// next heavier face, so it only cost ~45 extra woff2 subsets on cold loads.
 import '@fontsource/noto-serif-sc/700.css';
+// Emitted as a separate file and linked only on posts that contain TeX math.
+import katexCssUrl from 'katex/dist/katex.min.css?url';
 
 interface Props {
   title: string;
@@ -37,17 +40,27 @@ interface Props {
   relatedPosts?: { slug: string; title: string }[];
   seriesInfo?: {
     tag: string;
+    /** Issue number from the title ("#36") or the year of an annual review. */
+    issue?: string | null;
     total: number;
     current: number;
     prev: { slug: string; title: string } | null;
     next: { slug: string; title: string } | null;
   } | null;
   readingTime?: number;
+  /** Body contains KaTeX output (remark-has-math) → link the KaTeX stylesheet. */
+  hasMath?: boolean;
   lang?: 'zh' | 'en';
   hreflang?: { zh?: string; en?: string };
 }
 
-const { title, date, dateModified, tags, description, cover, laterNote, prevPost, nextPost, relatedPosts = [], seriesInfo, readingTime, lang = 'zh', hreflang } = Astro.props;
+const { title, date, dateModified, tags, description, cover, laterNote, prevPost, nextPost, relatedPosts = [], seriesInfo, readingTime, hasMath = false, lang = 'zh', hreflang } = Astro.props;
+
+// Sidebar / meta-line labels. The mobile meta line hides labels and shows
+// the unit after each count instead ("48,615 次阅读").
+const L = lang === 'en'
+  ? { date: 'Date', tags: 'Tags', author: 'Author', read: 'Read', min: 'min', views: 'Views', viewsUnit: 'views', likes: 'Likes', likesUnit: 'likes', comments: 'Comments', commentsUnit: 'comments', readers: 'Readers', progress: 'Progress', top: 'Top', topLabel: 'Back to top', toc: 'Contents', related: 'Related', allPosts: 'All posts', home: 'Home', archive: 'Archive', likeBtn: 'likes', meta: 'Article details' }
+  : { date: '日期', tags: '标签', author: '作者', read: '阅读时长', min: '分钟', views: '阅读', viewsUnit: '次阅读', likes: '点赞', likesUnit: '人点赞', comments: '评论', commentsUnit: '条评论', readers: '读者', progress: '进度', top: '顶部', topLabel: '回到顶部', toc: '目录', related: '相关文章', allPosts: '全部文章', home: '首页', archive: '归档', likeBtn: '人喜欢', meta: '文章信息' };
 
 const seriesNames: Record<string, Record<string, string>> = {
   zh: { weekly: '月刊', annually: '年报' },
@@ -117,6 +130,7 @@ const jsonLd = {
 
 <BaseLayout title={`${title} | Airing`} description={description} ogType="article" ogImage={new URL(`og/${lang === 'en' ? 'en/' : ''}${Astro.params.slug}.png`, Astro.site).href} hreflang={hreflang} lang={lang}>
   <ArticleTransition slot="head" />
+  {hasMath && <link slot="head" rel="stylesheet" href={katexCssUrl} />}
   {cover && <link slot="head" rel="preload" as="image" href={cover} />}
   <meta slot="head" property="article:published_time" content={date.toISOString()} />
   <meta slot="head" property="article:modified_time" content={(dateModified ?? date).toISOString()} />
@@ -125,8 +139,8 @@ const jsonLd = {
   <script slot="head" type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <div class="post-page" data-lang={lang}>
     <!-- Masthead -->
-    <SiteHeader lang={lang} hasEnVersion={hasEnVersion}>
-      <span>{dateStr}</span>
+    <SiteHeader lang={lang} hasEnVersion={hasEnVersion} wide>
+      <span class="post-mast-date">{dateStr}</span>
     </SiteHeader>
 
     <!-- Headline -->
@@ -134,7 +148,7 @@ const jsonLd = {
       <div class="headline-inner">
         <div class="headline-tags">
           {tags.map(tag => (
-            <a href={`/tags/${tag}`} class="hl-tag">{tag}</a>
+            <a href={`${prefix}/tags/${tag}/`} class="hl-tag">{tag}</a>
           ))}
         </div>
         <h1 class="headline" data-article-title>{title}</h1>
@@ -148,8 +162,8 @@ const jsonLd = {
           {seriesInfo.prev && (
             <a href={`${prefix}/posts/${seriesInfo.prev.slug}/`} class="series-arrow" title={seriesInfo.prev.title}>&larr;</a>
           )}
-          <a href={`/tags/${seriesInfo.tag}/`} class="series-badge">
-            {(seriesNames[lang] || seriesNames.zh)[seriesInfo.tag] || seriesInfo.tag} #{seriesInfo.current} / {seriesInfo.total}
+          <a href={`${prefix}/tags/${seriesInfo.tag}/`} class="series-badge">
+            {(seriesNames[lang] || seriesNames.zh)[seriesInfo.tag] || seriesInfo.tag}{seriesInfo.issue ? ` ${seriesInfo.issue}` : ''}
           </a>
           {seriesInfo.next && (
             <a href={`${prefix}/posts/${seriesInfo.next.slug}/`} class="series-arrow" title={seriesInfo.next.title}>&rarr;</a>
@@ -171,59 +185,71 @@ const jsonLd = {
     <!-- Three-column: sidebar | content | comments -->
     <div class="content-grid" id="contentGrid">
       <aside class="sidebar-left">
-        <div class="sb-block">
-          <div class="sb-label">Date</div>
-          <div class="sb-value">{shortDate}</div>
-        </div>
-        {tags.length > 0 && (
-          <div class="sb-block">
-            <div class="sb-label">Tags</div>
-            <div class="sb-tags">
-              {tags.map(tag => (
-                <a href={`/tags/${tag}`} class="sb-tag">#{tag}</a>
-              ))}
+        <div class="sb-meta" role="group" aria-label={L.meta}>
+          <div class="sb-block sb-date">
+            <div class="sb-label">{L.date}</div>
+            <div class="sb-value"><time datetime={date.toISOString()}>{shortDate}</time></div>
+          </div>
+          {tags.length > 0 && (
+            <div class="sb-block">
+              <div class="sb-label">{L.tags}</div>
+              <div class="sb-tags">
+                {tags.map(tag => (
+                  <a href={`${prefix}/tags/${tag}/`} class="sb-tag">#{tag}</a>
+                ))}
+              </div>
             </div>
+          )}
+          <div class="sb-block sb-author">
+            <div class="sb-label">{L.author}</div>
+            <div class="sb-value"><a href="/" style="color:inherit;text-decoration:none;">Airing</a></div>
           </div>
-        )}
-        <div class="sb-block">
-          <div class="sb-label">Author</div>
-          <div class="sb-value"><a href="/" style="color:inherit;text-decoration:none;">Airing</a></div>
-        </div>
-        {readingTime && (
-          <div class="sb-block">
-            <div class="sb-label">Read</div>
-            <div class="sb-value">{readingTime} min</div>
+          {readingTime && (
+            <div class="sb-block">
+              <div class="sb-label">{L.read}</div>
+              <div class="sb-value">{readingTime} {L.min}</div>
+            </div>
+          )}
+          <div class="sb-block" id="postViewsBlock" style="display:none;">
+            <div class="sb-label">{L.views}</div>
+            <div class="sb-value"><span id="postViews">-</span><span class="sb-unit"> {L.viewsUnit}</span></div>
           </div>
-        )}
-        <div class="sb-block" id="postViewsBlock" style="display:none;">
-          <div class="sb-label">Views</div>
-          <div class="sb-value" id="postViews">-</div>
+          <div class="sb-block" id="postLikesBlock" style="display:none;">
+            <div class="sb-label">{L.likes}</div>
+            <div class="sb-value"><span id="postLikesCount">-</span><span class="sb-unit"> {L.likesUnit}</span></div>
+          </div>
+          <div class="sb-block" id="postCommentsBlock" style="display:none;">
+            <div class="sb-label">{L.comments}</div>
+            <div class="sb-value"><span id="postCommentsCount">-</span><span class="sb-unit"> {L.commentsUnit}</span></div>
+          </div>
         </div>
-        <div class="sb-block" id="postLikesBlock" style="display:none;">
-          <div class="sb-label">Likes</div>
-          <div class="sb-value" id="postLikesCount">-</div>
-        </div>
-        <div class="sb-block" id="postCommentsBlock" style="display:none;">
-          <div class="sb-label">Comments</div>
-          <div class="sb-value" id="postCommentsCount">-</div>
-        </div>
-        <div class="sb-block" id="viewGeoBlock" style="display:none;">
-          <div class="sb-label">Readers</div>
+        <div class="sb-block sb-readers" id="viewGeoBlock" style="display:none;">
+          <div class="sb-label">{L.readers}</div>
           <div class="vg-list" id="vgList"></div>
           <button class="vg-toggle" id="vgToggle" type="button" style="display:none;"></button>
         </div>
         <div class="sb-divider"></div>
+        <div class="sb-block sb-progress" id="readProgress" hidden>
+          <div class="sb-label" id="readProgressLabel">{L.progress}</div>
+          <div class="rp-track" role="progressbar" aria-labelledby="readProgressLabel" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <span class="rp-bar" id="readProgressBar"></span>
+          </div>
+          <div class="rp-row">
+            <span class="rp-pct" id="readProgressPct" aria-hidden="true">0%</span>
+            <button type="button" class="rp-top" id="readProgressTop" aria-label={L.topLabel}><span aria-hidden="true">↑</span> {L.top}</button>
+          </div>
+        </div>
         <div class="sb-block toc-block" id="tocBlock" style="display:none;">
-          <div class="sb-label">Contents</div>
-          <nav class="toc-nav" id="tocNav"></nav>
+          <div class="sb-label" id="tocLabel">{L.toc}</div>
+          <nav class="toc-nav" id="tocNav" aria-labelledby="tocLabel"></nav>
         </div>
 
         {relatedPosts.length > 0 && (
           <>
             <div class="sb-divider"></div>
-            <div class="sb-block">
-              <div class="sb-label">Related</div>
-              <ul class="sb-related">
+            <div class="sb-block sb-related-block">
+              <div class="sb-label" id="relatedLabel">{L.related}</div>
+              <ul class="sb-related" aria-labelledby="relatedLabel">
                 {relatedPosts.map(rp => (
                   <li><a href={`${prefix}/posts/${rp.slug}/`} class="sb-related-link">{rp.title}</a></li>
                 ))}
@@ -232,7 +258,7 @@ const jsonLd = {
           </>
         )}
         <div class="sb-divider"></div>
-        <a href="/archive" class="sb-nav">&larr; All Posts</a>
+        <a href={`${prefix}/archive/`} class="sb-nav">&larr; {L.allPosts}</a>
       </aside>
 
       <div class="post-reading-column">
@@ -319,7 +345,7 @@ const jsonLd = {
             <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" stroke="currentColor" stroke-width="1.5" fill="none"/>
           </svg>
           <span class="al-count" id="articleLikeCount">0</span>
-          <span class="al-label">likes</span>
+          <span class="al-label">{L.likeBtn}</span>
         </button>
         <div class="al-regions" id="alRegions" style="display:none" tabindex="0">
           <span class="al-regions-flags" id="alRegionsFlags"></span>
@@ -376,9 +402,9 @@ const jsonLd = {
       <div class="footer-inner">
         <div class="footer-rule"></div>
         <div class="footer-bar">
-          <a href="/">&larr; Home</a>
+          <a href="/">&larr; {L.home}</a>
           <span class="footer-copy">&copy; Airing</span>
-          <a href="/archive">Archive &rarr;</a>
+          <a href={`${prefix}/archive/`}>{L.archive} &rarr;</a>
         </div>
       </div>
     </footer>
@@ -407,7 +433,14 @@ const jsonLd = {
       var prev = node.previousSibling;
       while (prev && prev.nodeType === 3 && !prev.textContent.trim()) prev = prev.previousSibling;
       if (!prev || prev.nodeName !== 'IMG') continue;
-      if (text.length > 30 || text.indexOf('\n') !== -1 || text.charAt(0) === '#') continue;
+      if (text.length > 30 || text.indexOf('\n') !== -1 || text.charAt(0) === '#' || text.charAt(0) === '>') continue;
+      // "ECMAScript 标准支持情况：" introduces the next figure, not this one.
+      if (/[：:]$/.test(text)) continue;
+      // Same rule as rehype-post-images: a caption ends its line. Text that
+      // runs on into a link/code ("核心逻辑是将 <a>…</a> 的…") is prose.
+      var nextEl = node.nextSibling;
+      while (nextEl && nextEl.nodeType === 3 && !nextEl.textContent.trim()) nextEl = nextEl.nextSibling;
+      if (nextEl && nextEl.nodeName !== 'IMG' && nextEl.nodeName !== 'BR') continue;
       var span = document.createElement('span');
       span.className = 'img-caption';
       span.textContent = text;
@@ -563,6 +596,7 @@ const jsonLd = {
     a.className = 'toc-link';
     a.href = '#' + h.id;
     a.textContent = h.textContent;
+    a.title = h.textContent;
     a.setAttribute('data-level', h.tagName === 'H2' ? '2' : '3');
     a.addEventListener('click', function(e) {
       e.preventDefault();
@@ -581,13 +615,15 @@ const jsonLd = {
   var ticking = false;
 
   function updateActive() {
-    var scrollY = window.scrollY + 80;
+    // Viewport geometry, like MobileToc: offsetTop is relative to the
+    // positioned .post-content, which made the highlight run ~1 screen early.
     var active = null;
     for (var i = headingArr.length - 1; i >= 0; i--) {
-      if (headingArr[i].offsetTop <= scrollY) { active = i; break; }
+      if (headingArr[i].getBoundingClientRect().top <= 96) { active = i; break; }
     }
     tocLinks.forEach(function(link, idx) {
       link.classList.toggle('active', idx === active);
+      if (idx === active) link.setAttribute('aria-current', 'location'); else link.removeAttribute('aria-current');
     });
     // Scroll active link into view within TOC nav
     if (active !== null && tocLinks[active]) {
@@ -604,6 +640,45 @@ const jsonLd = {
     if (!ticking) { ticking = true; requestAnimationFrame(updateActive); }
   }, { passive: true });
   updateActive();
+})();
+
+/* Desktop reading progress + back to top (MobileToc covers <= 1100px) */
+(function() {
+  var content = document.querySelector('.post-content');
+  var box = document.getElementById('readProgress');
+  if (!content || !box) return;
+  var bar = document.getElementById('readProgressBar');
+  var pct = document.getElementById('readProgressPct');
+  var track = box.querySelector('.rp-track');
+  var top = document.getElementById('readProgressTop');
+  var reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+  var ticking = false;
+  var last = -1;
+  function update() {
+    ticking = false;
+    var r = content.getBoundingClientRect();
+    var vh = window.innerHeight;
+    // Only worth showing when the article is longer than ~1.5 screens.
+    var long = r.height > vh * 1.5;
+    if (box.hidden === long) box.hidden = !long;
+    if (!long) return;
+    var span = Math.max(1, r.height - vh);
+    var p = Math.round(Math.min(1, Math.max(0, -r.top / span)) * 100);
+    if (p === last) return;
+    last = p;
+    bar.style.transform = 'scaleX(' + (p / 100) + ')';
+    pct.textContent = p + '%';
+    track.setAttribute('aria-valuenow', String(p));
+  }
+  function onScroll() { if (!ticking) { ticking = true; requestAnimationFrame(update); } }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+  top.addEventListener('click', function() {
+    window.scrollTo({ top: 0, behavior: reduce.matches ? 'auto' : 'smooth' });
+    var h1 = document.querySelector('[data-article-title]');
+    if (h1) { h1.setAttribute('tabindex', '-1'); h1.focus({ preventScroll: true }); }
+  });
+  update();
 })();
 </script>
 <script is:inline>
@@ -647,13 +722,39 @@ const jsonLd = {
 })();
 </script>
 <script is:inline>
-/* Click-to-zoom lightbox for post images */
+/* Click-to-zoom lightbox for post images — pointer and keyboard */
 (function() {
   var container = document.querySelector('.post-content');
   if (!container) return;
+  var page = document.querySelector('.post-page');
+  var en = page && page.getAttribute('data-lang') === 'en';
+  var T = en
+    ? { zoom: 'Enlarge image', zoomed: 'Enlarged image', close: 'Close' }
+    : { zoom: '放大图片', zoomed: '放大的图片', close: '关闭' };
+
+  // Zoomable images become keyboard targets. Linked images keep their link.
+  function zoomable(img) {
+    return img && !img.closest('a') && !img.closest('.katex');
+  }
+  container.querySelectorAll('img').forEach(function(img) {
+    if (!zoomable(img)) return;
+    img.setAttribute('tabindex', '0');
+    img.setAttribute('role', 'button');
+    img.setAttribute('aria-label', img.alt ? T.zoom + '：' + img.alt : T.zoom);
+    img.classList.add('is-zoomable');
+  });
 
   var overlay = null;
-  function onKey(e) { if (e.key === 'Escape') close(); }
+  var opener = null;
+  function onKey(e) {
+    if (e.key === 'Escape') { e.preventDefault(); close(); }
+    else if (e.key === 'Tab' && overlay) {
+      // Single focusable control: keep focus inside the dialog.
+      e.preventDefault();
+      var btn = overlay.querySelector('.img-zoom-close');
+      if (btn) btn.focus();
+    }
+  }
   function close() {
     if (!overlay) return;
     var o = overlay; overlay = null;
@@ -661,32 +762,98 @@ const jsonLd = {
     document.body.style.overflow = '';
     document.removeEventListener('keydown', onKey);
     setTimeout(function() { if (o.parentNode) o.parentNode.removeChild(o); }, 220);
+    if (opener && document.contains(opener)) opener.focus({ preventScroll: true });
+    opener = null;
   }
   function open(img) {
     if (overlay) close();
+    opener = img;
     overlay = document.createElement('div');
     overlay.className = 'img-zoom-overlay';
+    overlay.setAttribute('role', 'dialog');
+    overlay.setAttribute('aria-modal', 'true');
+    overlay.setAttribute('aria-label', img.alt ? T.zoomed + '：' + img.alt : T.zoomed);
     var big = document.createElement('img');
     big.src = img.currentSrc || img.src;
     big.alt = img.alt || '';
     big.className = 'img-zoom-img';
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'img-zoom-close';
+    btn.setAttribute('aria-label', T.close);
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
     overlay.appendChild(big);
+    overlay.appendChild(btn);
     document.body.appendChild(overlay);
     document.body.style.overflow = 'hidden';
-    requestAnimationFrame(function() { overlay.classList.add('open'); });
+    requestAnimationFrame(function() { if (overlay) overlay.classList.add('open'); });
     overlay.addEventListener('click', close);
     document.addEventListener('keydown', onKey);
+    btn.focus({ preventScroll: true });
     if (typeof umami !== 'undefined') umami.track('image-zoom', { src: big.src });
   }
 
   container.addEventListener('click', function(e) {
     var img = e.target.closest('img');
     if (!img || !container.contains(img)) return;
-    if (img.closest('a')) return;
+    if (!zoomable(img)) return;
     var w = img.naturalWidth || img.offsetWidth;
     if (w < 100) return;
     e.preventDefault();
     open(img);
+  });
+  container.addEventListener('keydown', function(e) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    var img = e.target;
+    if (!img || img.tagName !== 'IMG' || !img.classList.contains('is-zoomable')) return;
+    e.preventDefault();
+    open(img);
+  });
+})();
+
+/* Code blocks: language tag + copy button. The bar's text is CSS-generated
+   (attr()), so it adds no text nodes to .post-content — inline-comment
+   anchoring walks text nodes and must not see it. */
+(function() {
+  var container = document.querySelector('.post-content');
+  if (!container || !navigator.clipboard) return;
+  var page = document.querySelector('.post-page');
+  var en = page && page.getAttribute('data-lang') === 'en';
+  var T = en
+    ? { copy: 'copy', copied: 'copied', fail: 'failed', label: 'Copy code' }
+    : { copy: '复制', copied: '已复制', fail: '复制失败', label: '复制代码' };
+  container.querySelectorAll('pre').forEach(function(pre) {
+    if (pre.previousElementSibling && pre.previousElementSibling.classList.contains('code-bar')) return;
+    var lang = (pre.getAttribute('data-language') || '').toLowerCase();
+    if (lang === 'plaintext' || lang === 'text' || lang === 'txt') lang = '';
+    var bar = document.createElement('div');
+    bar.className = 'code-bar';
+    bar.setAttribute('data-lang', lang);
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'code-copy';
+    btn.setAttribute('data-label', T.copy);
+    btn.setAttribute('aria-label', T.label);
+    var timer = null;
+    btn.addEventListener('click', function() {
+      var code = pre.querySelector('code') || pre;
+      navigator.clipboard.writeText(code.innerText.replace(/\n$/, '')).then(function() {
+        btn.setAttribute('data-label', T.copied);
+        btn.setAttribute('aria-label', T.copied);
+      }, function() {
+        btn.setAttribute('data-label', T.fail);
+        btn.setAttribute('aria-label', T.fail);
+      });
+      clearTimeout(timer);
+      timer = setTimeout(function() {
+        btn.setAttribute('data-label', T.copy);
+        btn.setAttribute('aria-label', T.label);
+      }, 1600);
+      if (typeof umami !== 'undefined') umami.track('code-copy', { lang: lang || 'text' });
+    });
+    bar.appendChild(btn);
+    pre.parentNode.insertBefore(bar, pre);
+    pre.classList.add('has-code-bar');
   });
 })();
 </script>
@@ -716,6 +883,15 @@ const jsonLd = {
     transition: transform 0.22s ease;
   }
   .img-zoom-overlay.open .img-zoom-img { transform: scale(1); }
+  .img-zoom-close {
+    position: absolute; top: 12px; right: 12px;
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 44px; height: 44px; padding: 0; border-radius: 50%;
+    border: 1px solid rgba(255, 255, 255, 0.24); background: rgba(13, 17, 23, 0.6);
+    color: #e6edf3; cursor: pointer !important;
+  }
+  .img-zoom-close:hover { background: rgba(255, 255, 255, 0.12); }
+  .img-zoom-close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   @media (max-width: 640px) {
     .img-zoom-overlay { padding: 8px; }
     .img-zoom-img { max-width: calc(100vw - 16px); max-height: calc(100vh - 16px); }
@@ -1954,8 +2130,10 @@ const jsonLd = {
   }
 
   /* ===== Masthead ===== */
+  /* Article date in the shared header's meta row: muted (AA), 12px floor. */
+  .post-mast-date { color: var(--c-text-muted); font-size: var(--text-xs); }
   .mast-date {
-    font-size: 12px; color: var(--c-text-dim);
+    font-size: 12px; color: var(--c-text-muted);
     position: absolute; left: 50%; transform: translateX(-50%);
     font-family: var(--font-serif);
     letter-spacing: 0.08em;
@@ -1964,16 +2142,16 @@ const jsonLd = {
   /* ===== Headline ===== */
   .headline-section {
     max-width: 1440px; margin: 0 auto;
-    padding: 48px 48px 0; position: relative;
+    padding: 32px 48px 0; position: relative;
   }
   .headline-section::after {
     content: ''; display: block; height: 1px;
-    background: var(--c-border); margin-top: 40px;
+    background: var(--c-border); margin-top: 24px;
   }
   .headline-inner { max-width: 860px; }
   .headline-tags { display: flex; gap: 8px; margin-bottom: 12px; }
   .hl-tag {
-    font-size: 11px; color: var(--accent); text-decoration: none;
+    font-size: var(--text-xs); color: var(--accent); text-decoration: none;
     text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
   }
   .headline {
@@ -1993,6 +2171,8 @@ const jsonLd = {
     padding-left: 16px;
     border-left: 2px solid var(--c-border);
   }
+  /* Chinese faces have no italic; the browser would only shear the glyphs. */
+  .post-page[data-lang="zh"] .post-deck { font-style: normal; }
   /* When shown in the headline block (post has no cover) */
   .post-deck--headline {
     margin-top: 22px;
@@ -2010,7 +2190,7 @@ const jsonLd = {
   }
   .cover-section img {
     width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 8px; display: block;
-    object-fit: cover; max-height: 480px;
+    object-fit: cover; max-height: min(480px, 45vh);
   }
 
   /* ===== Series Nav ===== */
@@ -2024,10 +2204,10 @@ const jsonLd = {
     gap: 0.5rem;
   }
   .series-badge {
-    font-size: 11px;
+    font-size: var(--text-xs);
     padding: 0;
     border: none;
-    color: var(--c-text-dim, #666);
+    color: var(--c-text-muted);
     text-decoration: none;
     letter-spacing: 0.06em;
     text-transform: uppercase;
@@ -2063,11 +2243,13 @@ const jsonLd = {
   }
   .sb-block { margin-bottom: 24px; }
   .sb-label {
-    font-size: 9px; color: var(--c-text-dim);
+    font-size: var(--text-xs); color: var(--c-text-muted);
     text-transform: uppercase; letter-spacing: 0.12em;
     margin-bottom: 4px; font-weight: 600;
   }
   .sb-value { font-size: 13px; color: var(--c-text-muted); }
+  .sb-meta > .sb-block { margin-bottom: 24px; }
+  .sb-unit { display: none; }
   .sb-tags { display: flex; flex-direction: column; gap: 2px; }
   .sb-tag { font-size: 13px; color: var(--accent); text-decoration: none; }
   .sb-tag:hover { opacity: 0.7; }
@@ -2082,14 +2264,14 @@ const jsonLd = {
   .vg-list :global(.vg-row) { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--c-text-muted); padding: 4px 0; line-height: 1.3; }
   .vg-list :global(.vg-row img.c-flag) { margin-left: 0; flex: none; }
   .vg-list :global(.vg-name) { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .vg-list :global(.vg-pct) { flex: none; font-variant-numeric: tabular-nums; color: var(--c-text-dim); }
+  .vg-list :global(.vg-pct) { flex: none; font-variant-numeric: tabular-nums; color: var(--c-text-muted); }
   .vg-toggle {
     margin-top: 8px; padding: 0; border: 0; background: none;
-    font: inherit; font-size: 13px; color: var(--c-text-dim);
+    font: inherit; font-size: 13px; color: var(--c-text-muted);
     cursor: pointer; text-align: left;
   }
   .vg-toggle:hover { color: var(--accent); }
-  .sb-nav { font-size: 12px; color: var(--c-text-dim); text-decoration: none; }
+  .sb-nav { font-size: 12px; color: var(--c-text-muted); text-decoration: none; }
   .sb-nav:hover { color: var(--c-text); }
   .sb-related {
     list-style: none;
@@ -2117,7 +2299,10 @@ const jsonLd = {
   }
   .toc-nav::-webkit-scrollbar { width: 2px; }
   .toc-nav::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
+  /* flex-shrink: 0 — inside the 40vh flex column the links were squeezed to
+     ~13px and overlapped; now the list overflows and scrolls instead. */
   .toc-nav :global(.toc-link) {
+    flex-shrink: 0;
     font-size: 12px; line-height: 1.4;
     color: var(--c-text-muted, #888);
     text-decoration: none;
@@ -2129,7 +2314,16 @@ const jsonLd = {
     overflow: hidden;
     text-overflow: ellipsis;
   }
-  .toc-nav :global(.toc-link[data-level="3"]) { padding-left: 20px; font-size: 11px; }
+  .toc-nav :global(.toc-link[data-level="3"]) { padding-left: 20px; font-size: var(--text-xs); }
+
+  /* Desktop reading progress (sidebar) */
+  .sb-progress[hidden] { display: none; }
+  .rp-track { height: 2px; background: var(--c-border); overflow: hidden; margin: 8px 0 6px; }
+  .rp-bar { display: block; height: 100%; background: var(--accent); transform: scaleX(0); transform-origin: 0 50%; }
+  .rp-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: var(--text-xs)/1.5 var(--font-mono); color: var(--c-text-muted); font-variant-numeric: tabular-nums; }
+  .rp-top { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; padding: 0; border: 0; background: none; font: inherit; color: var(--c-text-muted); cursor: pointer; }
+  .rp-top:hover { color: var(--c-text); }
+  .rp-top:focus-visible, .toc-nav :global(.toc-link:focus-visible), .sb-related-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .toc-nav :global(.toc-link:hover) { color: var(--c-text); }
   .toc-nav :global(.toc-link.active) {
     color: var(--accent, #4ade80);
@@ -2152,9 +2346,11 @@ const jsonLd = {
   .post-page[data-lang="en"] .post-content {
     font-family: Georgia, 'Times New Roman', 'Noto Serif SC', serif;
     letter-spacing: normal;
+    /* ~70 characters a line; 2.0 leading was set for CJK. */
+    line-height: 1.75; max-width: 38em;
   }
   .post-content :global(h2) {
-    font-size: 24px; font-weight: 700; margin-top: 48px; margin-bottom: 20px;
+    font-size: 26px; font-weight: 700; margin-top: 48px; margin-bottom: 20px;
     color: var(--c-text);
     font-family: 'Noto Serif SC', 'Source Han Serif CN', 'Songti SC', serif;
     line-height: 1.4; letter-spacing: 0.01em;
@@ -2164,7 +2360,7 @@ const jsonLd = {
   }
   .post-content :global(:first-child) { margin-top: 0; }
   .post-content :global(h3) {
-    font-size: 19px; font-weight: 600; margin-top: 40px; margin-bottom: 16px;
+    font-size: 21px; font-weight: 700; margin-top: 40px; margin-bottom: 16px;
     color: var(--c-text);
     font-family: 'Noto Serif SC', 'Source Han Serif CN', 'Songti SC', serif;
     line-height: 1.45;
@@ -2178,6 +2374,12 @@ const jsonLd = {
     border-bottom: 1px solid rgba(var(--accent-rgb),0.25);
   }
   .post-content :global(a:hover) { border-bottom-color: var(--accent); }
+  /* Light accents (#16a34a ≈ 3.3:1) are too pale for body links; darken
+     toward the text colour → ≥ 5:1 on white for every theme accent. */
+  :global([data-mode="light"]) .post-content :global(a) {
+    color: color-mix(in srgb, var(--accent) 72%, var(--c-text));
+  }
+  .post-content :global(a:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
   .post-content :global(img) {
     max-width: 100%;
     border-radius: 10px;
@@ -2186,9 +2388,13 @@ const jsonLd = {
     max-height: 70vh;
     object-fit: contain;
     box-shadow: none;
-    cursor: zoom-in;
   }
+  /* !important: global.css sets a custom cursor on * with !important. */
+  .post-content :global(img.is-zoomable) { cursor: zoom-in !important; }
+  .post-content :global(img.is-zoomable:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
   .post-content :global(a img) { cursor: pointer; }
+  /* White-background diagrams glare in dark mode. */
+  :global(html:not([data-mode="light"])) .post-content :global(img) { filter: brightness(0.88); }
   .post-content :global(.img-caption) {
     display: block;
     text-align: center;
@@ -2235,15 +2441,43 @@ const jsonLd = {
     line-height: 1.4;
   }
 
+  /* Breaks out 24px each side — the column gap is 40px, so the block no
+     longer touches the sidebar / comment-rail rules. */
   .post-content :global(pre) {
-    max-width: calc(100% + 80px); width: calc(100% + 80px);
-    margin-left: -40px; background: var(--c-bg);
+    max-width: calc(100% + 48px); width: calc(100% + 48px);
+    margin-left: -24px; background: var(--c-bg);
     border: 1px solid var(--c-border); border-radius: 4px;
     padding: 20px 28px; overflow-x: auto;
     margin-top: 24px; margin-bottom: 24px;
     font-size: 13px; line-height: 1.65;
     font-family: var(--font-mono);
   }
+  /* Code bar (language + copy), inserted before <pre> by script. Its text
+     is generated content so it never enters .post-content's text nodes. */
+  .post-content :global(.code-bar) {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    width: calc(100% + 48px); margin: 24px 0 0 -24px; padding: 0 8px 0 16px;
+    min-height: 32px; box-sizing: border-box;
+    border: 1px solid var(--c-border); border-bottom: 0; border-radius: 4px 4px 0 0;
+    background: var(--c-bg-alt);
+    font: var(--text-xs)/1 var(--font-mono); color: var(--c-text-muted);
+    letter-spacing: 0.04em;
+  }
+  .post-content :global(.code-bar)::before { content: attr(data-lang); text-transform: lowercase; }
+  .post-content :global(.code-copy) {
+    display: inline-flex; align-items: center; min-height: 28px; padding: 0 8px;
+    border: 0; border-radius: 3px; background: none; cursor: pointer;
+    font: inherit; color: var(--c-text-muted);
+  }
+  .post-content :global(.code-copy)::before { content: attr(data-label); }
+  .post-content :global(.code-copy:hover) { color: var(--c-text); background: rgba(var(--c-overlay-rgb), 0.06); }
+  .post-content :global(.code-copy:focus-visible) { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .post-content :global(pre.has-code-bar) { margin-top: 0; border-top-left-radius: 0; border-top-right-radius: 0; }
+  /* KaTeX display math: wide matrices scroll inside their own box. */
+  .post-content :global(.katex-display) { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+  /* overflow-wrap:anywhere on .post-content would split a symbol from its
+     sub/superscript; KaTeX still breaks inline math after = and operators. */
+  .post-content :global(.katex) { letter-spacing: normal; overflow-wrap: normal; }
   .post-content :global(code:not(pre code)) {
     background: rgba(var(--c-overlay-rgb),0.05); padding: 2px 6px;
     border-radius: 3px; font-size: 14px;
@@ -2314,7 +2548,7 @@ const jsonLd = {
   .post-content :global(th), .post-content :global(td) { border: 1px solid var(--c-border); padding: 8px 14px; text-align: left; }
   .post-content :global(th) {
     background: rgba(var(--c-overlay-rgb),0.02); font-weight: 600; color: var(--c-text-muted);
-    font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+    font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em;
   }
   .post-content :global(strong) {
     font-weight: 700;
@@ -2617,7 +2851,7 @@ const jsonLd = {
   }
   .article-online {
     font-size: 12px;
-    color: var(--c-text-dim);
+    color: var(--c-text-muted);
     white-space: nowrap;
   }
   .al-rule {
@@ -2944,11 +3178,11 @@ const jsonLd = {
   .footer-rule { height: 4px; background: var(--c-text); margin-bottom: 14px; }
   .footer-bar { display: flex; justify-content: space-between; align-items: center; }
   .footer-bar a {
-    font-size: 11px; color: var(--c-text-dim); text-decoration: none;
+    font-size: var(--text-xs); color: var(--c-text-muted); text-decoration: none;
     text-transform: uppercase; letter-spacing: 0.06em;
   }
   .footer-bar a:hover { color: var(--c-text); }
-  .footer-copy { font-size: 11px; color: var(--c-border-light); }
+  .footer-copy { font-size: var(--text-xs); color: var(--c-text-muted); }
 
   /* ===== Animations ===== */
   @keyframes fadeInCard {
@@ -2963,21 +3197,46 @@ const jsonLd = {
   /* ===== Responsive ===== */
   @media (max-width: 1100px) {
     .content-grid { grid-template-columns: 1fr; gap: 0; }
-    .sidebar-left {
-      position: static; border-right: none;
+    /* The sidebar dissolves: one mono meta line above the article; readers,
+       related posts and "all posts" move below it (order 1). */
+    .sidebar-left { display: contents; }
+    .sidebar-left > * { order: 1; }
+    .sidebar-left > .sb-meta { order: 0; }
+    .sb-meta {
+      display: flex; align-items: baseline; flex-wrap: nowrap;
+      /* No wrapping: counts that arrive after load extend the line sideways
+         instead of pushing the article down (CLS). */
+      overflow-x: auto; scrollbar-width: none; white-space: nowrap;
+      /* Fade the edge so a line that runs past the screen reads as scrollable. */
+      -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+      mask-image: linear-gradient(to right, #000 calc(100% - 24px), transparent);
+      padding-bottom: 12px; margin-bottom: 24px;
       border-bottom: 1px solid var(--c-border);
-      padding-right: 0; padding-bottom: 20px; margin-bottom: 32px;
-      display: flex; gap: 24px; flex-wrap: wrap;
+      font: var(--text-xs)/1.6 var(--font-mono); color: var(--c-text-muted);
     }
+    .sb-meta::-webkit-scrollbar { display: none; }
+    .sb-meta > .sb-block { display: flex; align-items: baseline; margin: 0; flex: none; }
+    .sb-meta > .sb-block + .sb-block::before { content: '·'; margin: 0 8px; color: var(--c-text-muted); }
+    .sb-meta .sb-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+    .sb-meta .sb-value, .sb-meta .sb-tag { font: inherit; }
+    .sb-meta .sb-tags { flex-direction: row; gap: 8px; }
+    .sb-meta .sb-author { display: none; }
+    .sb-unit { display: inline; }
     .sb-block { margin-bottom: 0; }
     .sb-divider { display: none; }
-    .toc-block { display: none !important; }
+    .toc-block, .sb-progress { display: none !important; }
+    .sb-readers, .sb-related-block { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--c-border); }
+    .sb-readers .vg-list { max-height: none; }
+    .sb-related { gap: 0; }
+    .sb-related-link { display: flex; align-items: center; min-height: 44px; font-size: 15px; line-height: 1.45; }
+    .sb-nav { display: inline-flex; align-items: center; min-height: 44px; margin-top: 12px; font-size: 13px; justify-self: start; }
 
     /* Hide desktop comment rail on mobile */
     .comment-rail { display: none; }
 
     .post-content :global(img),
-    .post-content :global(pre) { max-width: 100%; width: 100%; margin-left: 0; }
+    .post-content :global(pre),
+    .post-content :global(.code-bar) { max-width: 100%; width: 100%; margin-left: 0; }
 
     .headline-section, .content-grid, .cover-section, .page-footer { padding-left: 20px; padding-right: 20px; }
     .mast-date { display: none; }
@@ -2993,6 +3252,12 @@ const jsonLd = {
     .bc-compose-fields { flex-direction: column; gap: 8px; }
     .bc-compose-avatar .bc-avatar-img { width: 32px; height: 32px; }
     .bc-compose { gap: 12px; }
+  }
+  @media (max-width: 600px) {
+    .post-content { font-size: 17px; line-height: 1.85; }
+    .post-page[data-lang="en"] .post-content { line-height: 1.7; }
+    .post-content :global(pre) { padding: 16px; }
+    .post-content :global(.code-bar) { padding-left: 12px; }
   }
 </style>
 
