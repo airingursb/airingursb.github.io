@@ -1,6 +1,10 @@
 import { defineConfig } from 'astro/config';
 import { remarkEmbed } from './src/plugins/remark-embed.mjs';
 import { rehypeAnchorIds } from './src/plugins/rehype-anchor-ids.mjs';
+import { rehypePostImages } from './src/plugins/rehype-post-images.mjs';
+import { remarkHasMath } from './src/plugins/remark-has-math.mjs';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 import { immersiveSeo } from './scripts/immersive-seo/integration.mjs';
 import mdx from '@astrojs/mdx';
 import react from '@astrojs/react';
@@ -71,10 +75,16 @@ export default defineConfig({
     },
   }],
   markdown: {
-    remarkPlugins: [remarkEmbed, [remarkWikilinks, { enNoteSlugs }]],
-    rehypePlugins: [rehypeAnchorIds],
+    remarkPlugins: [remarkEmbed, [remarkWikilinks, { enNoteSlugs }], remarkMath, remarkHasMath],
+    // KaTeX renders at build time (HTML + MathML, no client JS); the stylesheet
+    // is linked only on pages whose frontmatter gets `hasMath` (remark-has-math).
+    rehypePlugins: [[rehypeKatex, { strict: false, throwOnError: false }], rehypeAnchorIds, rehypePostImages],
     shikiConfig: {
       theme: 'github-dark',
+      // Old posts fence code as ```JavaScript / ```Javascript; Shiki ids are
+      // lower-case, so without these the blocks fall back to plain text.
+      // (```flow is flowchart.js DSL, not Flow-typed JS — left as plain text.)
+      langAlias: { JavaScript: 'javascript', Javascript: 'javascript', JS: 'javascript' },
     },
   },
 });

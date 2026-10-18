@@ -8,7 +8,7 @@ export function createArticlePetDock(dock: HTMLElement): () => void {
   if (!host || !replay) return () => {};
 
   const pet = document.getElementById("blog-pet");
-  const desktop = window.matchMedia("(min-width: 801px)");
+  const desktop = window.matchMedia("(min-width: 1101px)"); // floating pet is hidden at <= 1100px
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
   const actor = createEditorialActor(host);
   const poster = host.querySelector<HTMLImageElement>("[data-actor-poster]");
