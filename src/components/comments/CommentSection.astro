@@ -12,32 +12,46 @@ interface Props { lang?: CommentLang }
 const { lang = 'zh' } = Astro.props;
 const t = commentStrings(lang);
 ---
-<section class="bottom-comments" id="bottomComments">
+<section class="bottom-comments" id="bottomComments" aria-labelledby="bcTitle">
   <div class="bc-inner">
     <div class="bc-header">
-      <h2 class="bc-title">{t.title}</h2>
+      <h2 class="bc-title" id="bcTitle">{t.title}</h2>
       <span class="bc-count" id="bcCount">{t.countPending}</span>
+      <a class="bc-jump" href="#bcCompose" id="bcJump">{t.writeComment}</a>
     </div>
-    <div class="bc-thread" id="bcThread"></div>
-    <div class="bc-compose">
+    <div class="bc-thread" id="bcThread" aria-busy="true">
+      <p class="bc-state" role="status">{t.loading}</p>
+    </div>
+    <button type="button" class="bc-load-more" id="bcLoadMore" hidden></button>
+    <form class="bc-compose" id="bcCompose" novalidate aria-label={t.composeLabel}>
       <div class="bc-compose-avatar">
         <img id="bcComposeAvatar" src="https://gravatar.com/avatar/00000000000000000000000000000000?d=robohash&s=80" alt="" class="bc-avatar-img" />
       </div>
       <div class="bc-compose-form">
         <div class="bc-compose-fields">
-          <input type="text" class="bc-input" id="bcNickname" placeholder={t.nickname} />
-          <input type="email" class="bc-input" id="bcEmail" placeholder={t.email} />
-          <input type="url" class="bc-input" id="bcWebsite" placeholder={t.website} />
+          <label class="cm-sr-only" for="bcNickname">{t.nickname}</label>
+          <input type="text" class="bc-input" id="bcNickname" name="nickname" placeholder={t.nickname} autocomplete="nickname" required />
+          <label class="cm-sr-only" for="bcEmail">{t.email}</label>
+          <input type="email" class="bc-input" id="bcEmail" name="email" placeholder={t.email} autocomplete="email" required />
+          <label class="cm-sr-only" for="bcWebsite">{t.website}</label>
+          <input type="url" class="bc-input" id="bcWebsite" name="website" placeholder={t.website} autocomplete="url" />
         </div>
-        <textarea class="bc-textarea" id="bcTextarea" placeholder={t.placeholder} rows="4"></textarea>
+        <div class="bc-reply-hint" id="bcReplyHint" hidden>
+          <span id="bcReplyName"></span>
+          <span aria-hidden="true">·</span>
+          <button type="button" class="bc-reply-cancel" id="bcReplyCancel">{t.cancelReply}</button>
+        </div>
+        <label class="cm-sr-only" for="bcTextarea">{t.composeLabel}</label>
+        <textarea class="bc-textarea" id="bcTextarea" name="content" placeholder={t.placeholder} rows="4" required></textarea>
         <div class="bc-compose-footer">
           <label class="bc-notify-label">
             <input type="checkbox" id="bcNotify" />
             <span>{t.notify}</span>
           </label>
-          <button type="button" class="bc-submit" id="bcSubmit">{t.submit}</button>
+          <button type="submit" class="bc-submit" id="bcSubmit">{t.submit}</button>
         </div>
+        <p class="cm-status" id="bcStatus" role="status" aria-live="polite"></p>
       </div>
-    </div>
+    </form>
   </div>
 </section>

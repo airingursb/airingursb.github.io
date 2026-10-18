@@ -1,8 +1,9 @@
 ---
 /**
  * Inline (highlight) comment chrome shared by posts and notes: the selection
- * FAB, the "add comment" popover and the mobile sheet. The rail that holds the
- * cards (#commentCards) belongs to each page's own grid.
+ * FAB, the "add comment" popover and the mobile sheet (a native <dialog>, so
+ * Escape, focus containment and the backdrop come from the browser). The rail
+ * that holds the cards (#commentCards) belongs to each page's own grid.
  */
 import { commentStrings, type CommentLang } from './strings';
 import './comments.css';
@@ -17,40 +18,55 @@ const t = commentStrings(lang);
   </svg>
 </button>
 
-<div class="comment-input-popover" id="commentPopover">
+<div class="comment-input-popover" id="commentPopover" role="dialog" aria-label={t.popoverLabel}>
   <div class="cip-header">
     <span class="cip-selected" id="cipSelectedText"></span>
   </div>
   <div class="cip-identity">
-    <input type="text" class="cip-input" id="cipNickname" placeholder={t.nickname} />
-    <input type="email" class="cip-input" id="cipEmail" placeholder={t.email} />
+    <label class="cm-sr-only" for="cipNickname">{t.nickname}</label>
+    <input type="text" class="cip-input" id="cipNickname" placeholder={t.nickname} autocomplete="nickname" required />
+    <label class="cm-sr-only" for="cipEmail">{t.email}</label>
+    <input type="email" class="cip-input" id="cipEmail" placeholder={t.email} autocomplete="email" />
   </div>
-  <textarea class="cip-textarea" id="cipTextarea" placeholder={t.placeholder} rows="3"></textarea>
+  <label class="cm-sr-only" for="cipTextarea">{t.popoverLabel}</label>
+  <textarea class="cip-textarea" id="cipTextarea" placeholder={t.placeholder} rows="3" required></textarea>
+  <p class="cm-status" id="cipStatus" role="status" aria-live="polite"></p>
   <div class="cip-actions">
     <button type="button" class="cip-cancel" id="cipCancel">{t.cancel}</button>
     <button type="button" class="cip-submit" id="cipSubmit">{t.inlineSubmit}</button>
   </div>
 </div>
 
-<div class="mobile-sheet-overlay" id="mobileOverlay"></div>
-<div class="mobile-sheet" id="mobileSheet">
-  <div class="ms-handle"></div>
-  <div class="ms-quote" id="msQuote"></div>
-  <div class="ms-body" id="msBody"></div>
-  <div class="ms-author" id="msAuthor"></div>
-  <div class="ms-time" id="msTime"></div>
-  <div class="ms-replies" id="msReplies"></div>
-  <button type="button" class="ms-reply-toggle" id="msReplyToggle">{t.reply}</button>
-  <div class="ms-reply-form" id="msReplyForm" style="display:none;">
-    <div class="ms-rf-identity">
-      <input type="text" class="ms-rf-input" id="msRfNickname" placeholder={t.nickname} />
-      <input type="email" class="ms-rf-input" id="msRfEmail" placeholder={t.email} />
+<dialog class="mobile-sheet" id="mobileSheet" aria-labelledby="msTitle">
+  <div class="ms-inner">
+    <div class="ms-top">
+      <span class="ms-handle" aria-hidden="true"></span>
+      <h2 class="cm-sr-only" id="msTitle">{t.sheetLabel}</h2>
+      <button type="button" class="ms-close" id="msClose" aria-label={t.close}>
+        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3l10 10M13 3L3 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
     </div>
-    <textarea class="ms-rf-textarea" id="msRfTextarea" placeholder={t.replyPlaceholder} rows="2"></textarea>
-    <label class="ms-rf-notify"><input type="checkbox" id="msRfNotify" checked /> {t.notifyShort}</label>
-    <div class="ms-rf-actions">
-      <button type="button" class="ms-rf-cancel" id="msRfCancel">{t.cancel}</button>
-      <button type="button" class="ms-rf-submit" id="msRfSubmit">{t.reply}</button>
+    <div class="ms-quote" id="msQuote"></div>
+    <div class="ms-body" id="msBody"></div>
+    <div class="ms-author" id="msAuthor"></div>
+    <div class="ms-time" id="msTime"></div>
+    <div class="ms-replies" id="msReplies"></div>
+    <button type="button" class="ms-reply-toggle" id="msReplyToggle">{t.reply}</button>
+    <div class="ms-reply-form" id="msReplyForm" hidden>
+      <div class="ms-rf-identity">
+        <label class="cm-sr-only" for="msRfNickname">{t.nickname}</label>
+        <input type="text" class="ms-rf-input" id="msRfNickname" placeholder={t.nickname} autocomplete="nickname" required />
+        <label class="cm-sr-only" for="msRfEmail">{t.email}</label>
+        <input type="email" class="ms-rf-input" id="msRfEmail" placeholder={t.email} autocomplete="email" />
+      </div>
+      <label class="cm-sr-only" for="msRfTextarea">{t.replyLabel}</label>
+      <textarea class="ms-rf-textarea" id="msRfTextarea" placeholder={t.replyPlaceholder} rows="2" required></textarea>
+      <label class="ms-rf-notify"><input type="checkbox" id="msRfNotify" checked /> {t.notifyShort}</label>
+      <p class="cm-status" id="msRfStatus" role="status" aria-live="polite"></p>
+      <div class="ms-rf-actions">
+        <button type="button" class="ms-rf-cancel" id="msRfCancel">{t.cancel}</button>
+        <button type="button" class="ms-rf-submit" id="msRfSubmit">{t.reply}</button>
+      </div>
     </div>
   </div>
-</div>
+</dialog>
