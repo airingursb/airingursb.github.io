@@ -3,19 +3,31 @@ import SiteHeader from "../../components/SiteHeader.astro";
 /**
  * Friends — 友链 + 留言板
  * Top: friend links list
- * Bottom: guestbook comments (chat.ursb.me API, slug "friends")
+ * Bottom: guestbook comments (chat.ursb.me API, slug "guestbook")
  */
 import BaseLayout from '../../layouts/BaseLayout.astro';
 import { tSite } from '../../lib/i18n';
-import friends from '../../data/friends.json';
-import friendsMeta from '../../data/friends_meta.json';
+import friendsList from '../../data/friends.json';
+import reviewed from '../../data/friends-tree-reviewed.json';
 
 const s = tSite('en').friends;
 
-const sites = friendsMeta.sites || {};
-const checkedAt = friendsMeta.checkedAt ? new Date(friendsMeta.checkedAt) : null;
-const checkedStr = checkedAt
-  ? checkedAt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+// Same source as the Chinese Friends page: the approved blogroll plus the
+// reviewed health/description metadata. Descriptions have no English copy yet,
+// so they are shown as written by each site.
+const byUrl = new Map(reviewed.map((f) => [f.url, f]));
+const friends = friendsList.map((f) => {
+  const meta = byUrl.get(f.url);
+  return {
+    ...f,
+    description: meta?.description || '',
+    availability: meta?.availability ?? 'unknown',
+    checkedDate: meta?.checkedDate ?? '',
+  };
+});
+const latestCheck = friends.map((f) => f.checkedDate).filter(Boolean).sort().pop();
+const checkedStr = latestCheck
+  ? new Date(latestCheck + 'T00:00:00Z').toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' })
   : '';
 
 function getDomain(url: string) {
@@ -24,12 +36,11 @@ function getDomain(url: string) {
 function getFaviconUrl(url: string) {
   return `https://www.google.com/s2/favicons?domain=${getDomain(url)}&sz=32`;
 }
-function getSiteStatus(url: string): 'ok' | 'error' | 'unknown' {
-  const m = sites[url];
-  if (!m) return 'unknown';
-  return m.ok ? 'ok' : 'error';
+function getSiteStatus(f: { availability: string }): 'ok' | 'error' | 'unknown' {
+  if (f.availability === 'ok') return 'ok';
+  if (f.availability === 'archive') return 'error';
+  return 'unknown';
 }
-const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
 ---
 
 <BaseLayout title={`${s.title} | Airing`} description={`Airing's blogroll and guestbook. ${s.desc}`} lang="en" hreflang={{ zh: '/friends/', en: '/en/friends/' }}>
@@ -49,15 +60,18 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
       <div class="friends-inner">
         <div class="friends-grid">
           {friends.map((f) => {
-            const status = getSiteStatus(f.url);
+            const status = getSiteStatus(f);
             return (
               <a href={f.url} class={`friend-card fc-${status}`} target="_blank" rel="noopener noreferrer">
                 <div class="fc-top">
                   <img src={getFaviconUrl(f.url)} alt="" class="fc-icon" loading="lazy" width="16" height="16" />
-                  <span class={`fc-status fc-status-${status}`} title={status === 'ok' ? 'Accessible' : status === 'error' ? 'Unreachable' : 'Unknown'} />
+                  {status === 'error'
+                    ? <span class="fc-badge">Archived</span>
+                    : <span class={`fc-status fc-status-${status}`} title={status === 'ok' ? 'Accessible' : 'Automatic check limited'} />}
                 </div>
                 <span class="fc-name">{f.name}</span>
                 <span class="fc-domain">{getDomain(f.url)}</span>
+                {f.description && <span class="fc-desc" title={f.description}>{f.description}</span>}
               </a>
             );
           })}
@@ -98,10 +112,10 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
       <div class="gb-inner">
         <div class="bc-header">
           <h2 class="bc-title">{s.guestbook}</h2>
-          <span class="bc-count" id="gbCount">0 messages</span>
+          <span class="bc-count" id="gbCount" aria-live="polite">Loading…</span>
         </div>
 
-        <div class="bc-thread" id="gbThread"></div>
+        <div class="bc-thread" id="gbThread"><p class="bc-state" role="status">Loading messages…</p></div>
 
         <div class="bc-compose">
           <div class="bc-compose-avatar">
@@ -139,7 +153,7 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
   </div>
   <script is:inline>
     if (localStorage.getItem('preferred_lang') === 'zh') {
-      window.location.replace('/friends');
+      window.location.replace('/friends/');
     }
   </script>
 </BaseLayout>
@@ -183,8 +197,7 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     margin-left: 6px; vertical-align: middle;
   }
   .page-checked {
-    font-size: 12px; color: var(--c-text-dim); margin-top: 4px;
-    opacity: 0.6;
+    font-size: 12px; color: var(--c-text-muted); margin-top: 4px;
   }
 
   /* Friends Section */
@@ -211,6 +224,7 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     transition: all 0.2s ease;
     background: rgba(var(--c-overlay-rgb), 0.02);
     position: relative;
+    min-width: 0;
   }
   .friend-card:hover {
     border-color: var(--accent);
@@ -218,11 +232,14 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     box-shadow: 0 4px 12px rgba(0,0,0,0.06);
     background: rgba(var(--c-overlay-rgb), 0.05);
   }
-  .friend-card.fc-error {
-    opacity: 0.55;
+  .friend-card.fc-error .fc-name,
+  .friend-card.fc-error .fc-domain {
+    color: var(--c-text-muted);
   }
-  .friend-card.fc-error:hover {
-    opacity: 0.8;
+  .fc-badge {
+    font-size: 12px; line-height: 1.4; color: var(--c-text-muted);
+    border: 1px solid var(--c-border-light); border-radius: 4px;
+    padding: 0 6px; flex-shrink: 0;
   }
   .fc-top {
     display: flex; align-items: center; justify-content: space-between;
@@ -248,6 +265,10 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
   .friend-card:hover .fc-name { color: var(--accent); }
   .fc-domain {
     font-size: 11px; color: var(--c-text-dim);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .fc-desc {
+    font-size: 12px; line-height: 1.5; color: var(--c-text-muted);
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 
@@ -343,7 +364,7 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
   }
   .bc-count {
-    font-size: 13px; color: var(--c-text-dim);
+    font-size: 13px; color: var(--c-text-muted);
     background: rgba(var(--c-overlay-rgb),0.06);
     padding: 2px 10px; border-radius: 10px;
   }
@@ -364,8 +385,20 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
   }
   .guestbook-section :global(.bc-body) { flex: 1; min-width: 0; }
   .guestbook-section :global(.bc-meta) {
-    display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 8px;
+    min-width: 0;
   }
+  .guestbook-section :global(.bc-name) { overflow-wrap: anywhere; min-width: 0; }
+  .guestbook-section :global(.bc-time) { white-space: nowrap; }
+  .guestbook-section :global(.bc-state) {
+    color: var(--c-text-muted); font-size: 14px; padding: 40px 0; text-align: center;
+  }
+  .guestbook-section :global(.bc-retry) {
+    margin-left: 8px; padding: 4px 12px; min-height: 32px;
+    font: inherit; font-size: 13px; color: var(--accent);
+    background: none; border: 1px solid var(--c-border-light); border-radius: 6px; cursor: pointer;
+  }
+  .guestbook-section :global(.bc-retry:hover) { border-color: var(--accent); }
   .guestbook-section :global(.bc-name) {
     font-size: 14px; font-weight: 600; color: var(--c-text);
   }
@@ -632,9 +665,15 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
   }
 
   function loadComments() {
+    gbCount.textContent = 'Loading…';
+    gbThread.innerHTML = '<p class="bc-state" role="status">Loading messages…</p>';
     apiGet('/api/comments?post_slug=' + encodeURIComponent(SLUG)).then(function(res) {
       allComments = res.comments || [];
       renderComments();
+    }).catch(function() {
+      gbCount.textContent = 'Unavailable';
+      gbThread.innerHTML = '<p class="bc-state" role="alert">Couldn\u2019t load messages right now.<button type="button" class="bc-retry" id="gbRetry">Try again</button></p>';
+      document.getElementById('gbRetry').addEventListener('click', loadComments);
     });
   }
 
@@ -652,7 +691,7 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     });
 
     if (!roots.length) {
-      gbThread.innerHTML = '<p style="color:var(--c-text-dim);font-size:14px;padding:40px 0;text-align:center">No messages yet. Be the first to leave one!</p>';
+      gbThread.innerHTML = '<p class="bc-state">No messages yet. Be the first to leave one!</p>';
       return;
     }
 
@@ -664,7 +703,7 @@ const okCount = friends.filter(f => getSiteStatus(f.url) === 'ok').length;
     div.className = 'bc-item' + (isReply ? ' bc-reply' : '');
 
     var time = new Date(c.created_at);
-    var timeStr = time.toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
+    var timeStr = time.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
 
     var avatarSize = isReply ? 32 : 40;
     var nameHtml = c.website

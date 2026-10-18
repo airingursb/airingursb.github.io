@@ -1,5 +1,19 @@
 # Browser QA Checklist
 
+### Friends notebook fixes (October 18)
+
+- [x] 375px 下「散步 / 旧信 / 手帐」三张卡为单列（每张 335px），邮戳不再压住 FROM THE OLD MAILBOX；`letters.css` 末尾 `.reading-aside` 三列规则改在 `@media(min-width:641px) and (max-width:1100px)`。768px 三列（各 227px），1280px 仍在右侧栏纵排（264px）。浅色/深色都截图确认。
+- [x] 「找一位朋友」名录弹窗（`scene.css .directory-dialog`）和散步弹窗（`letters.css .forest-mail dialog`）补回 `margin:auto`；本页只有这两个 `<dialog>`。实测左右边距相等：375px 为 17/17 与 16/16，768px 为 74/74 与 64/64，1280px 为 330/330 与 320/320，上下也对称。
+- [x] 树上 51 位朋友中原有 16 位无简介，按各站 meta description / 副标题 / RSS / 关于页补齐 13 位；亿林、Leo的小站（Cloudflare 拦截）和云起（域名跳到广告页）留空。
+- [x] 名录 95 项中 48 项显示 12px 单行省略简介（`white-space:nowrap; text-overflow:ellipsis`），无简介的不出这一行；每项右侧有 44×44 直达外链，`target="_blank" rel="noopener"`，aria-label「在新标签页打开 X 的网站」。点名录项仍关闭弹窗、回到树上并显示该朋友的信笺。
+- [x] 英文页改读 `friends.json` + `friends-tree-reviewed.json`：95 位朋友、44 张 Archived、49 正常、2 检查受限，48 条简介原文显示；不再读 `friends_meta.json`（旧 weizicoding.cn 地址消失，5 位新朋友补上）。
+- [x] 英文页留言日期用 `en-US`（如 Oct 2, 2026）；`.bc-meta` 可换行、日期不折行。
+- [x] 英文页留言加载中显示「Loading…」，失败显示「Unavailable」和「Try again」重试按钮，不再先显示 0（本地预览跨域请求失败，正好看到出错状态）。
+- [x] 失联卡片去掉 `opacity:.55`、`.page-checked` 去掉 `opacity:.6`，改用 `--c-text-muted` 并加 Archived 标签；对比度浅色 5.03:1、深色 4.86:1。
+- [x] `/friends` 改为 `/friends/`；文件头注释的留言 slug 改为 `guestbook`。
+- [x] 中英文页 375/768/1280、浅色/深色共 12 种组合 `scrollWidth - clientWidth = 0`。英文卡片加 `min-width:0`，避免单行简介把网格撑宽。
+- [x] `npm run build` 通过；`npm test` 406 项 405 通过，`seo-sitemap` 因本机 Node 22.14 没有 `registerHooks` 失败，未改动的 HEAD 上同样失败。
+
 ### AI Weekly covers in the new avatar (October 18)
 
 - [x] Issues 001–003 cover illustrations keep their watercolor scenes and the space left for the title; only the brown bear became the beret panda. The small bear figures in issue 002 (stage silhouette, pinned sketch) are pandas too.

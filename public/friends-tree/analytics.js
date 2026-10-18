@@ -29,6 +29,7 @@
     if (!target) return;
     if (target.matches('[data-tree]')) track('friend-tree-open', { tree: Number(target.dataset.tree) + 1 });
     else if (target.matches('.bell[data-friend]')) track('friend-bell-select', { friend: Number(target.dataset.friend) + 1, source: 'bell' });
+    else if (target.matches('#directory-list .directory-visit')) track('friend-link', { url: target.href, source: 'directory' });
     else if (target.matches('#directory-list [data-index]')) track('friend-bell-select', { friend: Number(target.dataset.index) + 1, source: 'directory' });
     else if (target.id === 'random-friend') track('friend-bell-select', { friend: Number(window.friendTreeModes?.getState().selected) + 1, source: 'random' });
     else if (target.id === 'open-directory' || target.id === 'open-archive') track('friend-directory-open', { scope: target.id === 'open-archive' ? 'archive' : 'all' });
