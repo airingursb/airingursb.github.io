@@ -6,6 +6,7 @@ import { remarkHasMath } from './src/plugins/remark-has-math.mjs';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { immersiveSeo } from './scripts/immersive-seo/integration.mjs';
+import { weeklyFontSubset } from './scripts/weekly-fonts/integration.mjs';
 import mdx from '@astrojs/mdx';
 import react from '@astrojs/react';
 import remarkWikilinks from './src/lib/remark-wikilinks.ts';
@@ -41,7 +42,7 @@ export default defineConfig({
   image: {
     domains: ['r2.airingdeng.com'],
   },
-  integrations: [mdx(), react(), immersiveSeo(), {
+  integrations: [mdx(), react(), immersiveSeo(), weeklyFontSubset(), {
     name: 'client-interaction-directive',
     hooks: {
       'astro:config:setup': ({ addClientDirective }) => {

@@ -1,8 +1,10 @@
 // src/components/workouts/RouteMap.tsx
 import * as React from 'react';
-import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+// mapbox-gl (~500KB) is loaded on demand: the detail page first shows the
+// static SVG route and only fetches the interactive map when asked.
+import type mapboxgl from 'mapbox-gl';
 import type { RoutePoint, Bbox, WorkoutMetric } from './types';
+import { DEFAULT_LABELS, type WorkoutLabels } from './labels';
 import { colorFor, percentileRange, useColorTheme, type ColorTheme } from './workoutColors';
 
 interface Props {
@@ -11,6 +13,7 @@ interface Props {
   metric: WorkoutMetric;
   theme?: ColorTheme;     // optional override; defaults to useColorTheme()
   height?: number;
+  labels?: WorkoutLabels;
 }
 
 // `import.meta.env.PUBLIC_*` is replaced at build time by Vite via plain
@@ -19,30 +22,56 @@ interface Props {
 // the bundle — so write the access exactly like this and only this.
 const TOKEN: string | undefined = import.meta.env.PUBLIC_MAPBOX_TOKEN;
 
-export function RouteMap({ route, bbox, metric, theme: themeProp, height = 380 }: Props) {
+export function RouteMap({ route, bbox, metric, theme: themeProp, height = 380, labels = DEFAULT_LABELS }: Props) {
   const themeFromDoc = useColorTheme();
   const theme = themeProp ?? themeFromDoc;
+  const [interactive, setInteractive] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const d = { ...DEFAULT_LABELS.detailLabels, ...labels.detailLabels };
   if (!route.length || !bbox) {
     return <div className="workout-map" style={{ height, display: 'grid', placeItems: 'center', color: 'var(--w-fg-muted)' }}>
       No GPS data
     </div>;
   }
   if (!TOKEN) return <SvgFallback route={route} bbox={bbox} metric={metric} theme={theme} height={height} />;
-  return <MapboxMap route={route} bbox={bbox} metric={metric} theme={theme} height={height} />;
+  if (interactive) {
+    return (
+      <div className="workout-map-shell" aria-busy={loading}>
+        <MapboxMap route={route} bbox={bbox} metric={metric} theme={theme} height={height} onReady={() => setLoading(false)} />
+        {loading && <span className="workout-map-status" role="status">{d.loadingMap}</span>}
+      </div>
+    );
+  }
+  return (
+    <div className="workout-map-shell">
+      <SvgFallback route={route} bbox={bbox} metric={metric} theme={theme} height={height} />
+      <span className="workout-map-hint">{d.mapHint}</span>
+      <button type="button" className="workout-map-load" onClick={() => { setLoading(true); setInteractive(true); }}>
+        {d.loadMap}
+      </button>
+    </div>
+  );
 }
 
-function MapboxMap({ route, bbox, metric, theme, height }: Required<Omit<Props, 'height'>> & { height: number }) {
+function MapboxMap({ route, bbox, metric, theme, height, onReady }: Required<Omit<Props, 'height' | 'labels'>> & { height: number; onReady: () => void }) {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const mapRef = React.useRef<mapboxgl.Map | null>(null);
   const styleUrl = theme === 'dark'
     ? 'mapbox://styles/mapbox/dark-v11'
     : 'mapbox://styles/mapbox/light-v11';
 
-  // Init map once
+  // Init map once (after the library arrives)
   React.useEffect(() => {
-    if (!containerRef.current) return;
-    mapboxgl.accessToken = TOKEN!;
-    const map = new mapboxgl.Map({
+    let cancelled = false;
+    let map: mapboxgl.Map | null = null;
+    (async () => {
+    const [{ default: mapbox }] = await Promise.all([
+      import('mapbox-gl'),
+      import('mapbox-gl/dist/mapbox-gl.css'),
+    ]);
+    if (cancelled || !containerRef.current) return;
+    mapbox.accessToken = TOKEN!;
+    map = new mapbox.Map({
       container: containerRef.current,
       style: styleUrl,
       bounds: [[bbox[0], bbox[1]], [bbox[2], bbox[3]]],
@@ -54,11 +83,14 @@ function MapboxMap({ route, bbox, metric, theme, height }: Required<Omit<Props, 
       attributionControl: { compact: true },
     });
     mapRef.current = map;
-    map.on('load', () => {
-      localizeLabels(map);
-      paintRoute(map, route, metric, theme);
+    const loaded = map;
+    loaded.on('load', () => {
+      localizeLabels(loaded);
+      paintRoute(loaded, route, metric, theme);
+      onReady();
     });
-    return () => { map.remove(); mapRef.current = null; };
+    })();
+    return () => { cancelled = true; map?.remove(); mapRef.current = null; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

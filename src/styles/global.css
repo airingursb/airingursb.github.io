@@ -2,8 +2,8 @@
     /* ===== Theme Switcher ===== */
     .theme-switcher {
       position: fixed;
-      bottom: 24px;
-      right: 24px;
+      bottom: max(24px, env(safe-area-inset-bottom));
+      right: max(24px, env(safe-area-inset-right));
       z-index: 9999;
       display: flex;
       align-items: center;
@@ -15,11 +15,19 @@
       visibility: hidden;
       pointer-events: none;
     }
+    /* Never float above an open dialog (share dialogs, lightboxes). */
+    html.site-share-open .theme-switcher,
+    body:has(dialog[open]) .theme-switcher {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
     .mode-toggle {
       width: 36px; height: 36px;
       border-radius: 50%;
-      background: rgba(var(--c-overlay-rgb),0.06);
-      border: 1px solid var(--c-border);
+      /* Near-opaque disc so text underneath never reads through the icon. */
+      background: rgba(var(--c-bg-rgb), 0.92);
+      border: 1px solid var(--c-border-light);
       color: var(--c-text-muted);
       cursor: pointer;
       display: flex; align-items: center; justify-content: center;
@@ -30,6 +38,15 @@
       border-color: var(--accent);
       color: var(--accent);
       background: rgba(var(--accent-rgb), 0.1);
+    }
+    .mode-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    /* Touch screens: a full 44px target, tucked closer to the corner. */
+    @media (pointer: coarse) {
+      .theme-switcher {
+        bottom: max(16px, env(safe-area-inset-bottom));
+        right: max(16px, env(safe-area-inset-right));
+      }
+      .mode-toggle { width: 44px; height: 44px; }
     }
     .mode-toggle .icon-sun { display: none; }
     .mode-toggle .icon-moon { display: block; }
@@ -3295,7 +3312,7 @@
         font-size: 12px !important;
       }
       body:has(.mast-bar) .mast-links a:hover {
-        background: var(--c-bg-elev, #141414);
+        background: var(--c-bg-alt);
       }
       /* Show items previously hidden via .mast-hide-mobile inside the dropdown */
       body:has(.mast-bar) .mast-hide-mobile { display: block !important; }

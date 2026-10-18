@@ -30,3 +30,7 @@ Full prompts, public reference URLs, request/task/status receipts, raw outputs, 
 | `starting-gently` | red-panda | `gpt-image-2.5-sunburst` | `task_01M40RYDWGMJ623E72XCSQNY84` | The character gently places one small golden seed into a terracotta pot held in its other paw; hopeful calm face. Pale sunrise-peach inset and warm pine rules. | 132,681 | `217cb47626fb83ee049c2006fc5e8c595b24165ab778ae813f2c3c45a8b5f343` |
 | `own-measure` | koala | `gpt-image-2.5-sunburst` | `task_01M40S0EPNG3EFA643YJ17DES0` | The character holds one large folded ivory paper star against its chest, looking confidently and gently forward. Muted lilac-gray inset and dark olive rules. | 115,895 | `38ea7ce9899a224abce24cf699b117469e79cf769259b08b72e278c328d5bd6b` |
 | `certain-ground` | seal | `gpt-image-2.5-sunburst` | `task_01M40RZZYYYXGBVT7NY80VR7X3` | The character holds a smooth rounded slate-gray river pebble with both paws, quiet grounded expression. Pale river-mint inset and blue-green rules. | 116,456 | `0c76c1788a2717f9dd412a44315eb7b3c6e11cff77d1f73c34af0679426616b5` |
+
+## Display derivatives (2026-10-18)
+
+The PNGs here remain the 228×304 lossless masters (album artwork and the strict pixel-equality record). The envelope, archive entry and footer show stamps at 56–76px, so they use `../postage-display/<id>.webp`: 152×203 (2× the 76px envelope), one Lanczos resize, WebP lossless, about 44KB instead of about 120KB. `scripts/echo-assets/make-display-derivatives.mjs` regenerates them and verifies alpha everywhere and RGB on every visible pixel against the resized buffer.

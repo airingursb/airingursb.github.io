@@ -15,6 +15,19 @@ const copy = en ? {
 ---
 <BaseLayout title={`404 · ${copy.title} | Airing`} lang={lang} noindex>
   <div class="lost-shell">
+    {!en && (
+      <script is:inline>
+        // GitHub Pages answers every missing URL with this Chinese /404.html.
+        // Readers who were on an /en/ address get the English 404 instead,
+        // keeping the address they asked for so it can be shown there.
+        (function () {
+          var path = location.pathname;
+          if (/^\/en(\/|$)/.test(path) && !/^\/en\/404(\.html|\/)?$/.test(path)) {
+            location.replace('/en/404/?from=' + encodeURIComponent(path + location.search));
+          }
+        })();
+      </script>
+    )}
     <SiteHeader lang={lang}>
       <Fragment slot="meta"><span>404</span><a class="lost-locale-link" href={en ? '/404.html' : '/en/404/'} lang={en ? 'zh' : 'en'}>{en ? '中文' : 'English'}</a></Fragment>
     </SiteHeader>
@@ -25,14 +38,21 @@ const copy = en ? {
       </button>
       <h1>{copy.title}</h1>
       <p class="lost-desc">{copy.description}</p>
+      {en && <p class="lost-path" data-lost-path hidden>Requested: <code></code></p>}
       <nav class="lost-actions" aria-label={en ? 'Find your way' : '找回方向'}>
-        <a class="lost-home" href="/"><span aria-hidden="true">←</span>{copy.home}</a>
+        <a class="lost-home" href={en ? "/en/" : "/"}><span aria-hidden="true">←</span>{copy.home}</a>
         <a href={en ? '/en/archive/' : '/archive/'}>{copy.archive}<span aria-hidden="true">↗</span></a>
       </nav>
     </main>
   </div>
 </BaseLayout>
 <script>
+  const requested = new URLSearchParams(location.search).get('from');
+  const pathNote = document.querySelector<HTMLElement>('[data-lost-path]');
+  if (pathNote && requested && requested.startsWith('/')) {
+    pathNote.querySelector('code')!.textContent = requested;
+    pathNote.hidden = false;
+  }
   document.querySelector('.lost-bear')?.addEventListener('click', event => {
     const button = event.currentTarget;
     if (button instanceof HTMLElement) button.querySelector('bear-sprite')?.dispatchEvent(new Event('bear:play'));
@@ -46,6 +66,8 @@ const copy = en ? {
   .lost-bear { width: 192px; border: 0; padding: 0; margin: 0 0 16px; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   h1 { font: 600 clamp(24px, 4vw, 36px)/1.5 ui-serif, 'Songti SC', Georgia, serif; color: var(--c-text); margin: 0 0 12px; text-wrap: balance; }
   .lost-desc { color: var(--c-text-muted); font-size: 14px; line-height: 1.8; margin: 0 0 24px; text-wrap: pretty; }
+  .lost-path { margin: -12px 0 24px; color: var(--c-text-muted); font: 12px/1.6 var(--font-mono, monospace); overflow-wrap: anywhere; }
+  .lost-path code { color: var(--c-text); }
   .lost-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 24px; }
   .lost-actions a { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; color: var(--c-text); font-size: 14px; text-underline-offset: 4px; }
   .lost-actions .lost-home { border-bottom: 1px solid var(--c-text-muted); text-decoration: none; }

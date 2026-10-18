@@ -1,5 +1,19 @@
 # Airing's Blog Design System
 
+## Detail pages polish · October 18
+
+Covers the comics, photos, reading, workouts, AI Weekly, Echo, diorama and notes detail pages.
+
+- **One share dialog.** Comics, reading, workouts and photos use `src/components/ShareDialog.astro` (`src/scripts/share-dialog.ts`, `src/styles/share-dialog.css`): native `<dialog>` + `showModal()`, like Echo and the Weekly. Issue number, title and date sit as text under the preview, never on top of the artwork. The preview reuses the image already on the page (`data-share-reuse`), so it is there on open. Controls are 44px, Tab stays inside, Escape and the backdrop close it, and focus returns to the trigger. The URL field shows its end (the slug). There is a download button for the original artwork. Every colour is a site token, so it follows dark mode. The floating theme switcher hides while any dialog is open.
+- **Detail dates.** Metadata dates are `2026.08.15` in Chinese and `Aug 15, 2026` in English, in Asia/Shanghai time (`src/lib/display-date.ts`). Echo's handwritten letter dates are part of that sub-style and stay as they are.
+- **Comics.** A compact prev/next pager (44px, monospace issue numbers) sits between the strip and the source quote. The strip is served responsively and links to the original. The English page links to the Chinese diorama, marked "(Chinese)". The extra Archive/Comics header links stay on purpose (commit d4a7c09ad).
+- **Workouts map.** Static SVG route first; Mapbox (`mapbox-gl`, ~500KB) loads only after "Load map" is pressed.
+- **Print surfaces in dark mode (intentional exception).** The AI Weekly paper and the diorama sheet stay light in dark mode, because they are printed objects. Only the desk around them, the outside bar or masthead, the footer and `theme-color` follow the reader's site-wide `blog-mode`. Both pages have their own 44px toggle, which writes the same keys as BaseLayout.
+- **AI Weekly navigation and fonts.** All three issues share the outside bar (`← 周刊书架`, `中 · EN`, theme toggle) and the closing nav (`← previous | 全部期刊 | next →`). Fonts: weekly 001 ships its committed subsets. For 002 and 003, `scripts/weekly-fonts/` subsets Noto Serif SC 400/700 at build time to the characters each issue prints. Chinese pages get a CJK file and a Latin file; English pages get only the CJK names, and their Latin text is set in the system serif. Dev keeps the full @fontsource files.
+- **Echo assets.** The 228×304 PNG stamps stay as the lossless masters. Envelope, archive and footer stamps use 2× lossless WebP display derivatives (`assets/postage-display/`, `scripts/echo-assets/make-display-derivatives.mjs`). The paper-fibre tile is a 256px lossless derivative drawn at 400px. After the build, each letter page gets its own subset of the handwriting font, declared with an exact `unicode-range`; the master font remains the fallback for anything else.
+- **Diorama on phones.** Phones and touch tablets show the scene's still cover with an "进入 3D 小世界" button. three.js and the plush models load only after that tap, or by themselves on a fast unmetered connection. Desktop loads straight away and uses the poster as the loading placeholder.
+- **404.** GitHub Pages serves the Chinese `/404.html` for every miss, so an `/en/…` miss is replaced by `/en/404/?from=…`, which shows the requested path.
+
 ## Chinese Blog author profile · October 16
 
 Keep the existing centered author introduction and subscription content on

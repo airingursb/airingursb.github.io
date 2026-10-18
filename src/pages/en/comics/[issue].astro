@@ -1,12 +1,7 @@
 ---
-// src/pages/en/comics/[issue].astro
-import BaseLayout from '../../../layouts/BaseLayout.astro';
-import ComicMasthead from '../../../components/comics/ComicMasthead.astro';
-import ComicIssueIndex from '../../../components/comics/ComicIssueIndex.astro';
-import ComicShareModal from '../../../components/comics/ComicShareModal.astro';
+// /en/comics/[issue].astro
+import ComicIssuePage from '../../../components/comics/ComicIssuePage.astro';
 import { fetchComics } from '../../../lib/comics';
-import { siteStrings } from '../../../lib/i18n';
-import '../../../styles/comics.css';
 
 export async function getStaticPaths() {
   const comics = await fetchComics();
@@ -21,42 +16,7 @@ export async function getStaticPaths() {
   }));
 }
 
-const s = siteStrings.en.comics;
 const { comic, prev, next, allComics } = Astro.props;
-const date = new Date(comic.published_at || comic.created_at).toLocaleDateString('en-US', {
-  year: 'numeric', month: 'long', day: 'numeric',
-});
-const imgUrl = comic.panels?.url || '';
-const altText = comic.panels?.alt?.en || comic.panels?.alt?.zh || comic.title.en;
 ---
 
-<BaseLayout
-  title={`${s.issuePrefix} ${comic.issue_number} · ${comic.title.en} · ${s.title}`}
-  description={comic.source_text || comic.title.en}
-  ogImage={comic.panels?.original || comic.panels?.url}
-  ogType="article"
-  lang="en"
->
-  <ComicMasthead lang="en" />
-  <main class="comics-page comic-detail">
-    <div class="meta-row">
-      <div class="meta" style="font-size:13px;color:#888;letter-spacing:0.04em;">
-        <strong style="color:#444;">{s.issuePrefix} {comic.issue_number}</strong>
-        · {date}
-        {comic.tags?.map((t) => <span style="margin-left:8px;">#{t}</span>)}
-      </div>
-      <ComicShareModal comic={comic} lang="en" />
-    </div>
-    <h1 style="font-family:ui-serif,Georgia,serif;font-size:2rem;margin:0 0 32px;">
-      {comic.title.en}
-    </h1>
-
-    {imgUrl && <img class="strip-img-full" src={imgUrl} alt={altText} width={comic.panels?.width} height={comic.panels?.height} />}
-
-    {comic.source_text && comic.source_text !== comic.title.en && (
-      <div class="source">"{comic.source_text}"</div>
-    )}
-
-    <ComicIssueIndex comics={allComics} current={comic.issue_number} lang="en" />
-  </main>
-</BaseLayout>
+<ComicIssuePage comic={comic} prev={prev} next={next} allComics={allComics} lang="en" />

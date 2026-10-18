@@ -5,9 +5,10 @@ import ReadingCover from '../../components/reading/ReadingCover.astro';
 import ReadingShareModal from '../../components/reading/ReadingShareModal.astro';
 import { readingCoverLabel } from '../../lib/reading-cover';
 import { resolveReadingCoverImage } from '../../lib/reading-cover-image';
-import { fetchReadingItems, readingDate, type ReadingItem } from '../../lib/reading';
+import { fetchReadingItems, type ReadingItem } from '../../lib/reading';
 import '../../styles/photos.css';
 import '../../styles/reading.css';
+import { formatDisplayDate } from '../../lib/display-date';
 
 export async function getStaticPaths() {
   const items = await fetchReadingItems();
@@ -34,7 +35,8 @@ const summaryIsList = summaryLines.length > 1 && summaryLines.every((line) => /^
 const shareUrl = new URL(`/reading/${item.slug}/`, Astro.site ?? 'https://ursb.me').href;
 const [cover, newerCover, olderCover] = await Promise.all([
   resolveReadingCoverImage(item.cover_url, readingCoverLabel(item), {
-    width: 1440, height: 960, widths: [720, 1440], format: 'webp', quality: 75,
+    // Keep the card's own ratio; the frame follows it instead of cropping to 3:2.
+    inferSize: true, widths: [720, 1080, 1440, 1600], format: 'webp', quality: 80,
   }),
   newer
     ? resolveReadingCoverImage(newer.cover_url, readingCoverLabel(newer), {
@@ -47,6 +49,9 @@ const [cover, newerCover, olderCover] = await Promise.all([
     })
     : null,
 ]);
+const coverWidth = Number(cover?.attributes.width) || 1440;
+const coverHeight = Number(cover?.attributes.height) || 960;
+const coverRatio = `aspect-ratio: ${coverWidth} / ${coverHeight}`;
 ---
 
 <BaseLayout
@@ -68,7 +73,7 @@ const [cover, newerCover, olderCover] = await Promise.all([
           <div class="reading-detail-byline">
             {item.author && <span>{item.author}</span>}
             <span class="reading-source">{item.source}</span>
-            <span>收藏于 {readingDate(item.saved_at)}</span>
+            <span>收藏于 {formatDisplayDate(item.saved_at, 'zh')}</span>
           </div>
         </div>
         <div class="reading-detail-actions">
@@ -84,19 +89,19 @@ const [cover, newerCover, olderCover] = await Promise.all([
       <article class="reading-detail-grid">
         {cover && (
           <div class="reading-detail-cover">
-            <button class="reading-poster" type="button" data-open-lightbox aria-label="查看原图" data-umami-event="reading-original-open" data-umami-event-slug={item.slug} data-umami-event-lang="zh">
+            <button class="reading-poster" type="button" style={coverRatio} data-open-lightbox aria-label="查看原图" data-umami-event="reading-original-open" data-umami-event-slug={item.slug} data-umami-event-lang="zh">
               <ReadingCover
                 image={cover}
                 alt={item.title}
-                width={1440}
-                height={960}
+                width={coverWidth}
+                height={coverHeight}
                 sizes="(max-width: 720px) 100vw, (max-width: 1080px) calc(100vw - 64px), 883px"
                 priority
               />
               <span class="reading-zoom-label">⌕ 点击查看原图</span>
             </button>
             <div class="reading-caption">
-              <span>Agent 生成阅读卡片 · 1536 × 1024</span>
+              <span>Agent 生成阅读卡片 · {coverWidth} × {coverHeight}</span>
             </div>
           </div>
         )}
@@ -119,8 +124,8 @@ const [cover, newerCover, olderCover] = await Promise.all([
             <dl class="reading-facts">
               {item.author && <div><dt>作者</dt><dd>{item.author}</dd></div>}
               <div><dt>来源</dt><dd>{item.source}{item.item_type ? ` · ${item.item_type}` : ''}</dd></div>
-              {item.original_published_at && <div><dt>原文时间</dt><dd>{readingDate(item.original_published_at)}</dd></div>}
-              <div><dt>收藏时间</dt><dd>{readingDate(item.saved_at)}</dd></div>
+              {item.original_published_at && <div><dt>原文时间</dt><dd>{formatDisplayDate(item.original_published_at, 'zh')}</dd></div>}
+              <div><dt>收藏时间</dt><dd>{formatDisplayDate(item.saved_at, 'zh')}</dd></div>
             </dl>
           </section>
           {(item.topics.length > 0 || item.original_url) && (

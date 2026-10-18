@@ -1,6 +1,4 @@
 ---
-import '@fontsource/noto-serif-sc/400.css';
-import '@fontsource/noto-serif-sc/700.css';
 import draft from '../../../data/ai-weekly/002.json';
 import Issue002Cover from './Issue002Cover.astro';
 import WeeklyShareDialog from './WeeklyShareDialog.astro';
@@ -13,6 +11,10 @@ import DraftHighlight from './DraftHighlight.astro';
 import DraftProductImage from './DraftProductImage.astro';
 import '../../../styles/ai-weekly-draft.css';
 import UmamiLoader from '../../UmamiLoader.astro';
+import WeeklyIssueNav from './WeeklyIssueNav.astro';
+import WeeklyFonts from './WeeklyFonts.astro';
+import WeeklyLanguageSwitch from './WeeklyLanguageSwitch.astro';
+import WeeklyThemeMode from './WeeklyThemeMode.astro';
 interface Props { lang: 'zh' | 'en'; preview?: boolean; }
 const { lang, preview = false } = Astro.props;
 const issue = aiWeeklyIssues.find(issue => issue.number === '002')!;
@@ -60,16 +62,18 @@ const groups = [
   <UmamiLoader />
  </Fragment>}
 
+ <WeeklyThemeMode part="head" />
+ <WeeklyFonts issue="002" lang={lang} />
 </head>
 <body data-pagefind-ignore={preview || undefined} data-weekly-surface={preview ? undefined : "weekly-issue"}>
 <a class="skip" href="#contents">{zh?'跳至本期目录':'Skip to contents'}</a>
-<div class="outside-bar"><a href={`${zh?'':'/en'}/reading/`}>← {zh?'Airing 的阅读流':'Airing’s reading stream'}</a><span>{preview ? (zh?'第 002 期 · 编辑预览':'Issue 002 · Editorial preview') : (zh?'第 002 期':'Issue 002')}</span><a href={preview ? `${zh?'/en':''}/previews/ai-weekly-002/` : issue.href[zh?'en':'zh']} data-language-switch>{zh?'English ↗':'简体中文 ↗'}</a></div>
+<div class="outside-bar"><a href={`${zh?'':'/en'}/reading/weekly/`}>← {zh?'周刊书架':'Weekly shelf'}</a><span>{preview ? (zh?'第 002 期 · 编辑预览':'Issue 002 · Editorial preview') : (zh?'第 002 期':'Issue 002')}</span><div class="outside-tools"><WeeklyLanguageSwitch lang={lang} href={preview ? `${zh?'/en':''}/previews/ai-weekly-002/` : issue.href[zh?'en':'zh']}/><WeeklyThemeMode part="toggle" lang={lang}/></div></div>
 <main class="paper">
 <header class="issue-front">
  <Issue002Cover lang={lang}/>
  <div class="issue-desk">
   <div class="desk-heading"><p class="kicker">AIRING’S READING DESK</p><span class="serial">002</span></div>
-  <h2>{zh?'创作在提速，':'Creation speeds up.'}<br/>{zh?'判断更不能省。':'Judgment still matters.'}</h2>
+  <h1>{zh?'创作在提速，':'Creation speeds up.'}<br/>{zh?'判断更不能省。':'Judgment still matters.'}</h1>
   <p class="desk-intro">{t(draft.intro)}</p>
   <dl class="issue-facts"><div><dt>{zh?'本期编辑':'Editor'}</dt><dd><a class="editor" href="https://ursb.me/">Airing ↗</a></dd></div><div><dt>{zh?'本期范围':'Reading period'}</dt><dd>2026.09.27 — 2026.10.03</dd></div><div><dt>{preview ? (zh?'计划出版':'Planned publication') : (zh?'出版日期':'Publication date')}</dt><dd>2026.10.05 <span>{zh?'每周一更新':'Every Monday'}</span></dd></div><div><dt>{zh?'本期收录':'Inside'}</dt><dd>{zh?'45 篇阅读 · 5 个主题':'45 saves · 5 themes'}<span>{zh?'6 篇专题 · 10 款工具 · 13 则短读':'6 features · 10 tools · 13 briefs'}</span></dd></div></dl>
   <blockquote class="desk-note"><p class="kicker">{zh?'本期导读':'EDITOR’S GUIDE'}</p><p>{zh?'代码怎样变成影片？Agent 怎样少带包袱、多留证据？哪些新品值得顺手试一试？这一期，详略跟着问题走。':'How does code become a film? How do agents retain evidence with less context? Which tools deserve a try?'}</p></blockquote>
@@ -106,6 +110,7 @@ const groups = [
  <div class="invitation-actions"><button class="read-issue" type="button" data-subscribe-open data-subscribe-context="reading" data-subscribe-surface="weekly-issue">{zh?'订阅下一期':'Get the next issue'} →</button><a class="outline-action" href={`${zh?'':'/en'}/reading/weekly/feed.xml`}>{zh?'周刊 RSS':'Weekly RSS'} ↗</a></div>
 </section>}
 <section class="reading-register" id="sources"><details><summary><span>{zh?'本期全部阅读':'All saved readings'}</span><span>45 <span aria-hidden="true">＋</span></span></summary><p>{zh?'每条收藏都在正文中有对应位置。同主题合并分析，同产品合并陈列；这里保留原题和原文入口。':'Every save has a home in the issue. Related sources and duplicate product coverage are grouped, with original titles and links preserved here.'}</p><ol>{draft.sources.map(s=><li value={s.n}><div><a href={`${zh?'':'/en'}/reading/${s.slug}/`}>{(zh?s.title:s.title_en)||s.title}</a><span>{s.author||s.source}</span></div>{s.original_url?<a class="original-link" href={s.original_url}>{zh?'原文':'Original'} ↗</a>:<span class="no-original">{zh?'邮件收藏':'Saved email'}</span>}</li>)}</ol></details></section>
+<WeeklyIssueNav number="002" lang={lang}/>
 <footer class="colophon"><div><strong>{title} · 002</strong><p>{zh?'每周一更新。每天收藏，每周读懂。':'Every Monday. Daily saves, weekly understanding.'}</p></div><p>{zh?'编辑':'Edited by'} <a href="https://ursb.me/">Airing ↗</a><br/><a href="#contents">{zh?'回到目录':'Back to contents'} ↑</a></p></footer>
 </main>
 {!preview && <Fragment><WeeklyShareDialog issue={issue} lang={lang}/><SubscriptionDialog/></Fragment>}

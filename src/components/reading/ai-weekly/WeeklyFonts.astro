@@ -1,0 +1,24 @@
+---
+// Noto Serif SC for one AI Weekly issue (H6). The woff2 files are subset at
+// build time from the issue's own built pages (scripts/weekly-fonts), so a
+// Chinese issue ships only the glyphs it prints and an English issue only the
+// handful of CJK source names; English Latin text uses the system serif.
+// In `astro dev` the subsets do not exist yet, so the full @fontsource faces
+// are loaded instead.
+import { WEEKLY_FONT_WEIGHTS, LATIN_RANGE, CJK_RANGE, weeklyFontUrl } from '../../../../scripts/weekly-fonts/subset.mjs';
+
+interface Props { issue: string; lang: 'zh' | 'en'; }
+const { issue, lang } = Astro.props;
+if (import.meta.env.DEV) {
+  await import('@fontsource/noto-serif-sc/400.css');
+  await import('@fontsource/noto-serif-sc/700.css');
+}
+const faces = import.meta.env.DEV ? [] : WEEKLY_FONT_WEIGHTS.flatMap((weight) => [
+  { weight, part: 'cjk', range: CJK_RANGE },
+  ...(lang === 'zh' ? [{ weight, part: 'latin', range: LATIN_RANGE }] : []),
+]);
+const css = faces.map(({ weight, part, range }) => `@font-face{font-family:'Noto Serif SC';font-style:normal;font-weight:${weight};font-display:swap;src:url(${weeklyFontUrl(issue, lang, weight, part)}) format('woff2');unicode-range:${range}}`).join('');
+const preload = !import.meta.env.DEV && lang === 'zh' ? weeklyFontUrl(issue, lang, 400, 'cjk') : null;
+---
+{preload && <link rel="preload" href={preload} as="font" type="font/woff2" crossorigin />}
+{css && <style set:html={css} />}

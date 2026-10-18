@@ -1,0 +1,103 @@
+---
+// Site-wide share dialog for detail pages (comics, reading, workouts, photos).
+// Same interaction model as the Echo and AI Weekly dialogs: a native <dialog>
+// opened with showModal(), so focus stays inside, Escape closes it, the page
+// behind is inert and the floating theme switcher sits under the backdrop.
+//
+// Usage: render one <ShareDialog id="…"> and give any trigger
+// `data-share-open="<same id>"`. Put the preview image in the "preview" slot;
+// keep its width/height attributes so the frame reserves space while loading.
+import '../styles/share-dialog.css';
+
+interface Props {
+  id: string;
+  lang: 'zh' | 'en';
+  shareTitle: string;
+  shareUrl: string;
+  heading?: string;
+  kicker?: string;
+  caption?: string;
+  download?: { href: string; filename: string; label?: string };
+  /** Umami event fired when the dialog opens. */
+  openEvent?: string;
+  /** Umami event fired for copy / native / social actions (with `channel`). */
+  actionEvent?: string;
+  /** Extra Umami properties shared by both events. */
+  eventData?: Record<string, string | number>;
+}
+
+const {
+  id,
+  lang,
+  shareTitle,
+  shareUrl,
+  heading,
+  kicker,
+  caption,
+  download,
+  openEvent,
+  actionEvent,
+  eventData = {},
+} = Astro.props;
+
+const en = lang === 'en';
+const copy = en
+  ? { heading: 'Share this page', kicker: 'PASS IT ON', close: 'Close sharing', link: 'Link to this page', copy: 'Copy link', copied: 'Copied', copyOk: 'Link copied. Ready to send to a friend.', copyFail: 'Could not copy automatically. The link is selected; long-press or use ⌘C / Ctrl+C.', native: 'System share', nativeOk: 'Handed over to system sharing.', nativeFail: 'System sharing is unavailable. Copy the link instead.', save: 'Save image', hint: 'Copy the link, or send it straight to X or Threads.' }
+  : { heading: '分享这一页', kicker: '转给朋友', close: '关闭分享', link: '这一页的链接', copy: '复制链接', copied: '已复制', copyOk: '链接已复制，可以粘贴给朋友了。', copyFail: '未能自动复制。链接已选中，请长按或按 ⌘C / Ctrl+C。', native: '系统分享', nativeOk: '已交给系统分享。', nativeFail: '系统分享暂不可用，可以复制链接。', save: '保存图片', hint: '复制链接，或直接分享到 X / Threads。' };
+
+const xHref = `https://twitter.com/intent/tweet?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(shareTitle)}`;
+const threadsHref = `https://www.threads.net/intent/post?text=${encodeURIComponent(`${shareTitle} ${shareUrl}`)}`;
+const hasPreview = Astro.slots.has('preview');
+---
+
+<dialog
+  id={id}
+  class="site-share"
+  aria-labelledby={`${id}-title`}
+  data-site-share
+  data-share-title={shareTitle}
+  data-share-url={shareUrl}
+  data-open-event={openEvent}
+  data-action-event={actionEvent}
+  data-event-data={JSON.stringify(eventData)}
+  data-copy-label={copy.copy}
+  data-copied-label={copy.copied}
+  data-copy-ok={copy.copyOk}
+  data-copy-fail={copy.copyFail}
+  data-native-ok={copy.nativeOk}
+  data-native-fail={copy.nativeFail}
+  data-hint={copy.hint}
+>
+  <header class="site-share-head">
+    <div>
+      <p class="site-share-kicker">{kicker ?? copy.kicker}</p>
+      <h2 id={`${id}-title`}>{heading ?? copy.heading}</h2>
+    </div>
+    <button type="button" class="site-share-close" data-share-close aria-label={copy.close}>
+      <svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9" /></svg>
+    </button>
+  </header>
+  {hasPreview && <div class="site-share-preview"><slot name="preview" /></div>}
+  <div class="site-share-controls">
+    {caption && <p class="site-share-caption">{caption}</p>}
+    <label class="site-share-label" for={`${id}-url`}>{copy.link}</label>
+    <div class="site-share-link-row">
+      <input id={`${id}-url`} class="site-share-url" type="text" readonly value={shareUrl} spellcheck="false" />
+      <button type="button" class="site-share-btn" data-share-copy>{copy.copy}</button>
+    </div>
+    <div class="site-share-actions">
+      {download && (
+        <a class="site-share-btn site-share-primary" href={download.href} download={download.filename} target="_blank" rel="noopener noreferrer" data-share-channel="download">{download.label ?? copy.save} ↓</a>
+      )}
+      <button type="button" class="site-share-btn" data-share-native hidden>{copy.native} ↗</button>
+      <a class="site-share-btn" href={xHref} target="_blank" rel="noopener noreferrer" data-share-channel="x">X ↗</a>
+      <a class="site-share-btn" href={threadsHref} target="_blank" rel="noopener noreferrer" data-share-channel="threads">Threads ↗</a>
+    </div>
+    <p class="site-share-status" role="status" aria-live="polite">{copy.hint}</p>
+  </div>
+</dialog>
+
+<script>
+  import { initShareDialogs } from '../scripts/share-dialog';
+  initShareDialogs();
+</script>
